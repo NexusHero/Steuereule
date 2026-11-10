@@ -22,6 +22,10 @@ export const ALLOWED_RECEIPT_PARSE_MIME_TYPES = [
   'application/pdf',
 ] as const
 
+/** Document kinds with a registered parse strategy (`auto` = generic receipt classifier). */
+export const DOCUMENT_KINDS = ['auto', 'lstb'] as const
+export type DocumentKind = (typeof DOCUMENT_KINDS)[number]
+
 export class ParseReceiptDto {
   @ApiProperty({ type: Number, example: 2025 })
   @IsInt()
@@ -52,8 +56,8 @@ export class ParseReceiptDto {
   })
   @IsOptional()
   @IsString()
-  @IsIn(['auto', 'lstb'])
-  kind?: 'auto' | 'lstb'
+  @IsIn([...DOCUMENT_KINDS])
+  kind?: DocumentKind
 
   @ApiPropertyOptional({
     type: String,

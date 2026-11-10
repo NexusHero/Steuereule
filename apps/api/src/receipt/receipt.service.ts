@@ -1,4 +1,4 @@
-import { Inject, Injectable, Optional } from '@nestjs/common'
+import { Inject, Injectable } from '@nestjs/common'
 import { assignmentFromData, isReceiptType, type ReceiptAssignment, type ReceiptType } from '@steuereule/core'
 import { InvalidInputError, NotFoundError } from '../common/domain-error.js'
 import { AuditService } from '../audit/audit.service.js'
@@ -85,8 +85,13 @@ export class ReceiptService {
   constructor(
     @Inject(RECEIPT_REPOSITORY) private readonly repository: ReceiptRepository,
     @Inject(AuditService) private readonly auditService: AuditService,
-    @Optional() @Inject(STORAGE_PORT) private readonly storage?: StoragePort,
+    @Inject(STORAGE_PORT) private readonly storage: StoragePort,
   ) {}
+
+  /** Whether the Beleg exists and belongs to the caller (ownership check for parse/confirm). */
+  async isOwnedBy(userId: string, id: string): Promise<boolean> {
+    return (await this.repository.findByIdForUser(userId, id)) !== null
+  }
 
   async list(userId: string): Promise<ReceiptResponseDto[]> {
     const rows = await this.repository.findAllForUser(userId)
@@ -107,9 +112,6 @@ export class ReceiptService {
   }
 
   async upload(userId: string, input: UploadReceiptInput): Promise<ReceiptResponseDto> {
-    if (!this.storage) {
-      throw new Error('Receipt binary storage adapter is not configured.')
-    }
 
     const mimeType = detectAllowedReceiptMimeType(input.buffer)
     const cleanFileName = input.fileName.trim().slice(0, 255) || 'beleg'
@@ -150,7 +152,7 @@ export class ReceiptService {
     if (record === null) {
       throw new NotFoundError('BELEG_NOT_FOUND', `Beleg "${id}" does not exist for this account.`)
     }
-    const stored = this.storage ? await this.storage.get(userId, id) : null
+    const stored = await this.storage.get(userId, id)
     if (stored === null) {
       throw new NotFoundError('BELEG_DATEI_NOT_FOUND', `Für Beleg "${id}" liegt keine entschlüsselbare Originaldatei vor.`)
     }
@@ -178,9 +180,7 @@ export class ReceiptService {
     if (existing === null) {
       throw new NotFoundError('BELEG_NOT_FOUND', `Beleg "${id}" does not exist for this account.`)
     }
-    if (this.storage) {
-      await this.storage.delete(userId, id)
-    }
+    await this.storage.delete(userId, id)
     await this.repository.deleteForUser(userId, id)
     return { deleted: true }
   }

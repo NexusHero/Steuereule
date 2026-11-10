@@ -7,7 +7,7 @@ import { wageTaxCertificateStatus } from '@steuereule/core'
 import {
   useLstbControllerGetLstb,
   useLstbControllerSetField,
-  useLstbControllerConfirmScan,
+  useLstbScanControllerConfirmScan,
   useReceiptParseControllerParseReceipt,
   useAdvisorControllerGetSession,
   useAdvisorControllerDismissAction,
@@ -142,7 +142,7 @@ export function LstbScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YE
 
   const query = useLstbControllerGetLstb(taxYear, params)
   const setField = useLstbControllerSetField()
-  const confirmScan = useLstbControllerConfirmScan()
+  const confirmScan = useLstbScanControllerConfirmScan()
   const parseReceipt = useReceiptParseControllerParseReceipt()
   const dismissAction = useAdvisorControllerDismissAction()
   const advisorSessionQuery = useAdvisorControllerGetSession(taxYear, { query: { retry: false } })

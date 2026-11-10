@@ -7,6 +7,7 @@ import { fieldAccessFrom } from '../src/confirmation/field-access.js'
 import { CockpitService } from '../src/cockpit/cockpit.service.js'
 import { PrintoutService } from '../src/printout/printout.service.js'
 import { OwlModeService } from '../src/owl-mode/owl-mode.service.js'
+import { InMemoryStorageAdapter } from './fakes/in-memory-storage.adapter.js'
 import { ReceiptService } from '../src/receipt/receipt.service.js'
 import { UnlockService } from '../src/unlock/unlock.service.js'
 import { AuditService } from '../src/audit/audit.service.js'
@@ -164,7 +165,7 @@ describe('McpService (ADR-0052 §3 / §5 / §8 / §12)', () => {
       auditService,
     )
 
-    receiptService = new ReceiptService(receiptRepo, auditService)
+    receiptService = new ReceiptService(receiptRepo, auditService, new InMemoryStorageAdapter())
 
     mcpService = new McpService(
       cockpitService,

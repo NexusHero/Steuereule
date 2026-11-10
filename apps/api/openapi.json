@@ -167,7 +167,7 @@
         ]
       },
       "put": {
-        "operationId": "LstbController_confirmScan",
+        "operationId": "LstbScanController_confirmScan",
         "parameters": [
           {
             "name": "person",
@@ -3794,53 +3794,6 @@
           "lohnsteuer",
           "sozialversicherung",
           "state"
-        ]
-      },
-      "ConfirmLstbScanDto": {
-        "type": "object",
-        "properties": {
-          "bruttoarbeitslohn": {
-            "type": "number",
-            "example": 54320,
-            "description": "Bruttoarbeitslohn (Zeile 3) in whole EUR."
-          },
-          "lohnsteuer": {
-            "type": "number",
-            "example": 9840,
-            "description": "Einbehaltene Lohnsteuer (Zeile 4) in whole EUR."
-          },
-          "sozialversicherung": {
-            "type": "number",
-            "example": 10912,
-            "description": "SV-Arbeitnehmeranteil (Summe Zeilen 23/23a/23b, 25, 26 und 27) in whole EUR."
-          },
-          "receiptId": {
-            "type": "string",
-            "example": "beleg-123",
-            "description": "Optional receipt id for { kind: \"beleg\", receiptId } provenance."
-          },
-          "overwriteExisting": {
-            "type": "boolean",
-            "example": false,
-            "description": "Must be true to overwrite already captured LStB fields (ADR-0008)."
-          },
-          "actionIds": {
-            "example": [
-              "act-1",
-              "act-2",
-              "act-3"
-            ],
-            "description": "Staged advisor actionIds fulfilled by this confirmation.",
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        },
-        "required": [
-          "bruttoarbeitslohn",
-          "lohnsteuer",
-          "sozialversicherung"
         ]
       },
       "LinkPersonBDto": {
@@ -8102,6 +8055,53 @@
         },
         "required": [
           "decision"
+        ]
+      },
+      "ConfirmLstbScanDto": {
+        "type": "object",
+        "properties": {
+          "bruttoarbeitslohn": {
+            "type": "number",
+            "example": 54320,
+            "description": "Bruttoarbeitslohn (Zeile 3) in whole EUR."
+          },
+          "lohnsteuer": {
+            "type": "number",
+            "example": 9840,
+            "description": "Einbehaltene Lohnsteuer (Zeile 4) in whole EUR."
+          },
+          "sozialversicherung": {
+            "type": "number",
+            "example": 10912,
+            "description": "SV-Arbeitnehmeranteil (Summe Zeilen 23/23a/23b, 25, 26 und 27) in whole EUR."
+          },
+          "receiptId": {
+            "type": "string",
+            "example": "beleg-123",
+            "description": "Optional receipt id for { kind: \"beleg\", receiptId } provenance."
+          },
+          "overwriteExisting": {
+            "type": "boolean",
+            "example": false,
+            "description": "Must be true to overwrite already captured LStB fields (ADR-0008)."
+          },
+          "actionIds": {
+            "example": [
+              "act-1",
+              "act-2",
+              "act-3"
+            ],
+            "description": "Staged advisor actionIds fulfilled by this confirmation.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "bruttoarbeitslohn",
+          "lohnsteuer",
+          "sozialversicherung"
         ]
       },
       "DeleteAccountRequestDto": {

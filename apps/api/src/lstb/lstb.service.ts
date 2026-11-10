@@ -1,5 +1,5 @@
-import { Inject, Injectable, Optional } from '@nestjs/common'
-import { ConflictError, InvalidInputError, NotFoundError } from '../common/domain-error.js'
+import { Inject, Injectable } from '@nestjs/common'
+import { ConflictError, InvalidInputError } from '../common/domain-error.js'
 import {
   isValidAmount,
   wageTaxCertificateStatus,
@@ -12,22 +12,23 @@ import {
   type WageTaxCertificateConflict,
   provenanceKey,
 } from '@steuereule/core'
-import {
-  ADVISOR_REPOSITORY,
-  markLstbActionsAppliedInRepo,
-  type AdvisorRepository,
-} from '../advisor/advisor.repository.js'
 import { AuditService } from '../audit/audit.service.js'
 import { PROVENANCE_REPOSITORY, type ProvenanceRepository } from '../marking/marking.repository.js'
-import { passThroughTransactionRunner, TRANSACTION_RUNNER, type TransactionRunner } from '../prisma/transaction.js'
-import { RECEIPT_REPOSITORY, type ReceiptRepository } from '../receipt/receipt.repository.js'
 import { WAGE_TAX_CERTIFICATE_REPOSITORY, type WageTaxCertificateRepository } from './lstb.repository.js'
-import type { ConfirmLstbScanDto } from './dto/confirm-lstb-scan.dto.js'
 import type { LstbFieldDto } from './dto/lstb-field.dto.js'
 import type { LstbResponseDto } from './dto/lstb-response.dto.js'
 import type { LstbConflictDto } from './dto/lstb-conflict.dto.js'
 import type { LstbStatusDto } from './dto/lstb-state.dto.js'
 import { wageTaxCertificateDataFrom } from './lstb-data.js'
+
+const LSTB_FIELD_IDS: readonly WageTaxCertificateFieldId[] = ['bruttoarbeitslohn', 'lohnsteuer', 'sozialversicherung']
+
+export type ScannedLstbValues = Readonly<Record<WageTaxCertificateFieldId, number>>
+
+export interface ExistingLstbValues {
+  readonly hasExisting: boolean
+  readonly existing: Readonly<Record<WageTaxCertificateFieldId, number | null>>
+}
 
 function stateFromDto(dto: LstbFieldDto): WageTaxCertificateFieldState {
   if (dto.kind === 'offen') return { kind: 'offen' }
@@ -85,11 +86,6 @@ export class LstbService {
     @Inject(WAGE_TAX_CERTIFICATE_REPOSITORY) private readonly repository: WageTaxCertificateRepository,
     @Inject(AuditService) private readonly auditService: AuditService,
     @Inject(PROVENANCE_REPOSITORY) private readonly markings: ProvenanceRepository,
-    @Optional() @Inject(RECEIPT_REPOSITORY) private readonly receiptRepository?: ReceiptRepository,
-    @Optional() @Inject(ADVISOR_REPOSITORY) private readonly advisorRepository?: AdvisorRepository,
-    @Optional()
-    @Inject(TRANSACTION_RUNNER)
-    private readonly transactions: TransactionRunner = passThroughTransactionRunner,
   ) {}
 
   async getState(userId: string, taxYear: number): Promise<LstbResponseDto> {
@@ -110,30 +106,42 @@ export class LstbService {
     return toResponse(next)
   }
 
-  async applyConfirmedScan(
-    actorUserId: string,
-    targetUserId: string,
+  /** Values already captured for the year — a scan must never overwrite them silently (ADR-0008). */
+  async existingValues(userId: string, taxYear: number): Promise<ExistingLstbValues> {
+    const data = wageTaxCertificateDataFrom(await this.repository.findForUserAndYear(userId, taxYear))
+    const valueOf = (id: WageTaxCertificateFieldId): number | null => {
+      const state = data[id]
+      return state.kind === 'erfasst' ? state.value : null
+    }
+    return {
+      hasExisting: LSTB_FIELD_IDS.some((id) => data[id].kind !== 'offen'),
+      existing: {
+        bruttoarbeitslohn: valueOf('bruttoarbeitslohn'),
+        lohnsteuer: valueOf('lohnsteuer'),
+        sozialversicherung: valueOf('sozialversicherung'),
+      },
+    }
+  }
+
+  /**
+   * Writes all three confirmed scan values with Beleg provenance. Callers run it inside a
+   * transaction together with their own bookkeeping, so the write is all-or-nothing.
+   */
+  async applyScannedValues(
+    userId: string,
     taxYear: number,
-    dto: ConfirmLstbScanDto,
+    values: ScannedLstbValues,
+    options: { readonly receiptId: string | null; readonly overwriteExisting: boolean },
   ): Promise<LstbResponseDto> {
-    const fieldsToApply: readonly { id: WageTaxCertificateFieldId; value: number }[] = [
-      { id: 'bruttoarbeitslohn', value: dto.bruttoarbeitslohn },
-      { id: 'lohnsteuer', value: dto.lohnsteuer },
-      { id: 'sozialversicherung', value: dto.sozialversicherung },
-    ]
-    for (const item of fieldsToApply) {
-      if (!isValidAmount(item.value)) {
-        throw new InvalidInputError(
-          'FIELD_VALUE_INVALID',
-          `Field "${item.id}" requires a non-negative whole-euro integer.`,
-        )
+    for (const id of LSTB_FIELD_IDS) {
+      if (!isValidAmount(values[id])) {
+        throw new InvalidInputError('FIELD_VALUE_INVALID', `Field "${id}" requires a non-negative whole-euro integer.`)
       }
     }
-
     const candidate: WageTaxCertificateData = {
-      bruttoarbeitslohn: { kind: 'erfasst', value: dto.bruttoarbeitslohn },
-      lohnsteuer: { kind: 'erfasst', value: dto.lohnsteuer },
-      sozialversicherung: { kind: 'erfasst', value: dto.sozialversicherung },
+      bruttoarbeitslohn: { kind: 'erfasst', value: values.bruttoarbeitslohn },
+      lohnsteuer: { kind: 'erfasst', value: values.lohnsteuer },
+      sozialversicherung: { kind: 'erfasst', value: values.sozialversicherung },
     }
     const candidateStatus = wageTaxCertificateStatus(candidate)
     if (candidateStatus.kind === 'widerspruch') {
@@ -144,57 +152,28 @@ export class LstbService {
       )
     }
 
-    if (dto.receiptId && this.receiptRepository) {
-      const receipt = await this.receiptRepository.findByIdForUser(actorUserId, dto.receiptId)
-      if (receipt === null) {
-        throw new NotFoundError('BELEG_NOT_FOUND', `Beleg "${dto.receiptId}" does not exist for this account.`)
-      }
+    const current = await this.existingValues(userId, taxYear)
+    if (current.hasExisting && !options.overwriteExisting) {
+      throw new ConflictError(
+        'LSTB_EXISTING_VALUES_CONFLICT',
+        'Für dieses Steuerjahr liegen bereits LStB-Werte vor. Bestehende Werte ersetzen oder abbrechen?',
+        { existing: current.existing },
+      )
     }
 
-    return this.transactions.run(async () => {
-      const existingRecord = await this.repository.findForUserAndYear(targetUserId, taxYear)
-      const existingData = wageTaxCertificateDataFrom(existingRecord)
-      const hasExisting =
-        existingData.bruttoarbeitslohn.kind !== 'offen' ||
-        existingData.lohnsteuer.kind !== 'offen' ||
-        existingData.sozialversicherung.kind !== 'offen'
-
-      if (hasExisting && !dto.overwriteExisting) {
-        throw new ConflictError(
-          'LSTB_EXISTING_VALUES_CONFLICT',
-          'Für dieses Steuerjahr liegen bereits LStB-Werte vor. Bestehende Werte ersetzen oder abbrechen?',
-          {
-            existing: {
-              bruttoarbeitslohn:
-                existingData.bruttoarbeitslohn.kind === 'erfasst' ? existingData.bruttoarbeitslohn.value : null,
-              lohnsteuer: existingData.lohnsteuer.kind === 'erfasst' ? existingData.lohnsteuer.value : null,
-              sozialversicherung:
-                existingData.sozialversicherung.kind === 'erfasst' ? existingData.sozialversicherung.value : null,
-            },
-          },
-        )
+    for (const id of LSTB_FIELD_IDS) {
+      await this.repository.setField(userId, taxYear, id, serializeWageTaxCertificateField(candidate[id]))
+      if (options.receiptId !== null) {
+        await this.markings.save(userId, taxYear, {
+          key: provenanceKey('lstb', id),
+          provenance: { kind: 'beleg', receiptId: options.receiptId },
+          confirmed: true,
+          proposal: null,
+        })
+      } else {
+        await this.markings.remove(userId, taxYear, [provenanceKey('lstb', id)])
       }
-
-      for (const item of fieldsToApply) {
-        const serialized = serializeWageTaxCertificateField({ kind: 'erfasst', value: item.value })
-        await this.repository.setField(targetUserId, taxYear, item.id, serialized)
-        if (dto.receiptId) {
-          await this.markings.save(targetUserId, taxYear, {
-            key: provenanceKey('lstb', item.id),
-            provenance: { kind: 'beleg', receiptId: dto.receiptId },
-            confirmed: true,
-            proposal: null,
-          })
-        } else {
-          await this.markings.remove(targetUserId, taxYear, [provenanceKey('lstb', item.id)])
-        }
-      }
-
-      if (dto.actionIds && dto.actionIds.length > 0 && this.advisorRepository) {
-        await markLstbActionsAppliedInRepo(this.advisorRepository, actorUserId, taxYear, dto.actionIds)
-      }
-
-      return toResponse(candidate)
-    })
+    }
+    return toResponse(candidate)
   }
 }
