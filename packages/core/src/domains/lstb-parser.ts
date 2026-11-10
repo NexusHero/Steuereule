@@ -15,11 +15,18 @@ export type LstbFieldReason =
   | 'plausibility_conflict'
   | 'partial_sv_lines'
 
+/** One summand of a field's calculation, e.g. line 23a with its printed amount. Formatting is the UI's job. */
+export interface LstbCalculationTerm {
+  readonly line: string
+  readonly amount: number
+}
+
 export interface LstbExtractedField {
   readonly value: number | null
   readonly status: LstbExtractedFieldStatus
   readonly sourceLines: readonly string[]
-  readonly calculationPath: string | null
+  /** Summands that make up `value` (empty when nothing was read). */
+  readonly calculation: readonly LstbCalculationTerm[]
   readonly reason: LstbFieldReason | null
 }
 
@@ -40,7 +47,8 @@ export interface LstbExtractionResult {
     readonly sozialversicherung: LstbExtractedField
   }
   readonly svBreakdown: LstbSvBreakdown
-  readonly needsLlmFallback: boolean
+  /** Fields that are missing or need a check (`pruefen`); empty when the certificate read cleanly. */
+  readonly unresolvedFields: readonly WageTaxCertificateFieldId[]
 }
 
 export interface LstbExtractionInput {
@@ -58,14 +66,6 @@ const MAX_REASONABLE_EUR = 10_000_000
 
 function isSupportedLstbYear(year: number): boolean {
   return Number.isInteger(year) && year >= MIN_LSTB_YEAR && year <= MAX_LSTB_YEAR
-}
-
-function formatDeAmount(amount: number): string {
-  const isWhole = Math.abs(amount - Math.round(amount)) < 0.005
-  if (isWhole) {
-    return `${Math.round(amount).toLocaleString('de-DE')} €`
-  }
-  return `${amount.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`
 }
 
 /**
@@ -117,8 +117,8 @@ export function parseGermanOcrAmount(raw: string): number | null {
 }
 
 /**
- * Extracts the tax year printed on a Lohnsteuerbescheinigung, preferring explicit certificate
- * headers and employment period dates over secondary print timestamps or birth years.
+ * Extracts the tax year printed on a Lohnsteuerbescheinigung from its explicit header or
+ * certification period only; anything else returns null.
  */
 export function extractLstbTaxYear(rawText: string): number | null {
   if (!rawText) return null
@@ -138,18 +138,8 @@ export function extractLstbTaxYear(rawText: string): number | null {
     }
   }
 
-  // Line-by-line fallback skipping DOB / print timestamp lines
-  for (const line of rawText.split(/\r?\n/)) {
-    if (/\b(?:geb\.?|geburtsdatum|druckdatum|erstellt|datum|ausgestellt)\b/i.test(line)) {
-      continue
-    }
-    const yearMatch = /\b(202[0-9]|2030)\b/.exec(line)
-    if (yearMatch?.[1]) {
-      const year = Number.parseInt(yearMatch[1], 10)
-      if (isSupportedLstbYear(year)) return year
-    }
-  }
-
+  // No generic "first year on the page" fallback: form versions, print dates and birth years
+  // look alike. Without an explicit header the year stays unknown and the UI asks (ADR-0008).
   return null
 }
 
@@ -163,7 +153,7 @@ function normalizeNonNegNum(val: number | null | undefined): number | null {
 /**
  * Deterministically sums employee SV contributions (lines 23/23a/23b, 25, 26, 27), checks
  * statutory plausibility (LSt <= Brutto, SV <= Brutto), and assigns 'ok' vs 'pruefen' per field.
- * Used identically after BOTH Stage 1 regex extraction and Stage 2 LLM text extraction.
+ * Shared by the deterministic parser and any text fallback, so both are judged by the same rules.
  */
 export function evaluateLstbExtraction(input: LstbExtractionInput): LstbExtractionResult {
   const taxYear = input.taxYear !== null && isSupportedLstbYear(input.taxYear) ? input.taxYear : null
@@ -239,7 +229,7 @@ export function evaluateLstbExtraction(input: LstbExtractionInput): LstbExtracti
       value: null,
       status: 'pruefen',
       sourceLines: ['3'],
-      calculationPath: null,
+      calculation: [],
       reason: unreadableSet.has('bruttoarbeitslohn') ? 'unreadable' : 'missing',
     }
   } else if (unreadableSet.has('bruttoarbeitslohn') || ambiguousSet.has('bruttoarbeitslohn')) {
@@ -247,7 +237,7 @@ export function evaluateLstbExtraction(input: LstbExtractionInput): LstbExtracti
       value: bruttoRounded,
       status: 'pruefen',
       sourceLines: ['3'],
-      calculationPath: `Zeile 3: ${formatDeAmount(line3!)}`,
+      calculation: [{ line: '3', amount: line3! }],
       reason: 'unreadable',
     }
   } else {
@@ -255,7 +245,7 @@ export function evaluateLstbExtraction(input: LstbExtractionInput): LstbExtracti
       value: bruttoRounded,
       status: lstExceedsBrutto || svExceedsBrutto ? 'pruefen' : 'ok',
       sourceLines: ['3'],
-      calculationPath: `Zeile 3: ${formatDeAmount(line3!)}`,
+      calculation: [{ line: '3', amount: line3! }],
       reason: lstExceedsBrutto || svExceedsBrutto ? 'plausibility_conflict' : null,
     }
   }
@@ -266,7 +256,7 @@ export function evaluateLstbExtraction(input: LstbExtractionInput): LstbExtracti
       value: null,
       status: 'pruefen',
       sourceLines: ['4'],
-      calculationPath: null,
+      calculation: [],
       reason: unreadableSet.has('lohnsteuer') ? 'unreadable' : 'missing',
     }
   } else if (lstExceedsBrutto) {
@@ -274,7 +264,7 @@ export function evaluateLstbExtraction(input: LstbExtractionInput): LstbExtracti
       value: lohnsteuerRounded,
       status: 'pruefen',
       sourceLines: ['4'],
-      calculationPath: `Zeile 4: ${formatDeAmount(line4!)}`,
+      calculation: [{ line: '4', amount: line4! }],
       reason: 'plausibility_conflict',
     }
   } else if (unreadableSet.has('lohnsteuer') || ambiguousSet.has('lohnsteuer')) {
@@ -282,7 +272,7 @@ export function evaluateLstbExtraction(input: LstbExtractionInput): LstbExtracti
       value: lohnsteuerRounded,
       status: 'pruefen',
       sourceLines: ['4'],
-      calculationPath: `Zeile 4: ${formatDeAmount(line4!)}`,
+      calculation: [{ line: '4', amount: line4! }],
       reason: 'unreadable',
     }
   } else {
@@ -290,7 +280,7 @@ export function evaluateLstbExtraction(input: LstbExtractionInput): LstbExtracti
       value: lohnsteuerRounded,
       status: 'ok',
       sourceLines: ['4'],
-      calculationPath: `Zeile 4: ${formatDeAmount(line4!)}`,
+      calculation: [{ line: '4', amount: line4! }],
       reason: null,
     }
   }
@@ -301,20 +291,19 @@ export function evaluateLstbExtraction(input: LstbExtractionInput): LstbExtracti
       value: null,
       status: 'pruefen',
       sourceLines: [],
-      calculationPath: null,
+      calculation: [],
       reason: unreadableSet.has('sozialversicherung') ? 'unreadable' : 'missing',
     }
   } else {
     const sourceLines = svEntries.map((e) => e.line)
-    const calcParts = svEntries.map((e) => `Zeile ${e.line} (${formatDeAmount(e.amount)})`)
-    const calculationPath = `${calcParts.join(' + ')} = ${formatDeAmount(svRounded)}`
+    const calculation = svEntries.map((e) => ({ line: e.line, amount: e.amount }))
 
     if (svExceedsBrutto) {
       svField = {
         value: svRounded,
         status: 'pruefen',
         sourceLines,
-        calculationPath,
+        calculation,
         reason: 'plausibility_conflict',
       }
     } else if (unreadableSet.has('sozialversicherung') || ambiguousSet.has('sozialversicherung')) {
@@ -322,7 +311,7 @@ export function evaluateLstbExtraction(input: LstbExtractionInput): LstbExtracti
         value: svRounded,
         status: 'pruefen',
         sourceLines,
-        calculationPath,
+        calculation,
         reason: 'unreadable',
       }
     } else if (svCategoriesPresent.size < 2 && svRounded > 0) {
@@ -330,7 +319,7 @@ export function evaluateLstbExtraction(input: LstbExtractionInput): LstbExtracti
         value: svRounded,
         status: 'pruefen',
         sourceLines,
-        calculationPath,
+        calculation,
         reason: 'partial_sv_lines',
       }
     } else {
@@ -338,17 +327,21 @@ export function evaluateLstbExtraction(input: LstbExtractionInput): LstbExtracti
         value: svRounded,
         status: 'ok',
         sourceLines,
-        calculationPath,
+        calculation,
         reason: null,
       }
     }
   }
 
-  const needsLlmFallback =
-    taxYear === null ||
-    bruttoField.status === 'pruefen' ||
-    lohnsteuerField.status === 'pruefen' ||
-    svField.status === 'pruefen'
+  const unresolvedFields = (
+    [
+      ['bruttoarbeitslohn', bruttoField],
+      ['lohnsteuer', lohnsteuerField],
+      ['sozialversicherung', svField],
+    ] as const
+  )
+    .filter(([, field]) => field.status === 'pruefen')
+    .map(([id]) => id)
 
   return {
     taxYear,
@@ -358,7 +351,7 @@ export function evaluateLstbExtraction(input: LstbExtractionInput): LstbExtracti
       sozialversicherung: svField,
     },
     svBreakdown,
-    needsLlmFallback,
+    unresolvedFields,
   }
 }
 

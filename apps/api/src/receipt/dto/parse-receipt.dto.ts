@@ -1,7 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 import { IsBoolean, IsIn, IsInt, IsNotEmpty, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator'
 import { SCREENS, type Screen } from '@steuereule/core'
-import { AdvisorActionProposalDto, AdvisorChatMessageDto } from '../../advisor/dto/advisor.dto.js'
+import { AdvisorActionProposalDto, AdvisorChatMessageDto, CalculationTermDto } from '../../advisor/dto/advisor.dto.js'
 
 export const RECEIPT_VENDOR_CATEGORIES = [
   'arbeitsmittel',
@@ -136,8 +136,8 @@ export class LstbExtractedFieldDto {
   @ApiProperty({ type: [String], example: ['3'] })
   sourceLines!: string[]
 
-  @ApiProperty({ type: String, nullable: true, example: 'Zeile 3: 54.320,00 €' })
-  calculationPath!: string | null
+  @ApiProperty({ type: () => [CalculationTermDto], description: 'Summands of `value`; formatted by the client.' })
+  calculation!: CalculationTermDto[]
 
   @ApiProperty({
     type: String,

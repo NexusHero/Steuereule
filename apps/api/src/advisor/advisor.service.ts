@@ -17,6 +17,7 @@ import {
   type AdvisorTurnResult,
   type AdvisorUndoEntry,
   type CaseDigest,
+  type LstbCalculationTerm,
   type LstbExtractedField,
   type OwlSourceId,
   type Profession,
@@ -112,6 +113,14 @@ function toMessageDto(record: AdvisorChatMessageRecord): AdvisorChatMessageDto {
     meta: record.meta ? toPublicMeta(record.meta) : null,
     createdAt: record.createdAt.toISOString(),
   }
+}
+
+const EURO = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 2 })
+
+/** Chat-facing reason of a scanned LStB proposal, e.g. „Zeile 23a (5.051,76 €) + Zeile 25 (…)“. */
+function describeLstbCalculation(terms: readonly LstbCalculationTerm[]): string {
+  if (terms.length === 0) return 'Aus Lohnsteuerbescheinigung extrahierter Wert (§ 9 Abs. 1 EStG).'
+  return `Aus Lohnsteuerbescheinigung: ${terms.map((t) => `Zeile ${t.line} (${EURO.format(t.amount)})`).join(' + ')}`
 }
 
 @Injectable()
@@ -572,15 +581,13 @@ export class AdvisorService {
         beforeRefundEur: sim.beforeRefundEur,
         afterRefundEur: sim.afterRefundEur,
         deltaEur: sim.deltaEur,
-        reason:
-          item.extracted.calculationPath ??
-          'Aus Lohnsteuerbescheinigung extrahierter Wert (§ 9 Abs. 1 EStG).',
+        reason: describeLstbCalculation(item.extracted.calculation),
         sourceId: 'estg-9-1',
         paragraph: ADVISOR_LEGAL_SOURCES['estg-9-1'].paragraph,
         ...(input.receiptId ? { receiptId: input.receiptId } : {}),
         confidenceStatus: item.extracted.status,
         sourceLines: item.extracted.sourceLines,
-        calculationPath: item.extracted.calculationPath,
+        calculation: item.extracted.calculation,
         fieldReason: item.extracted.reason,
       }
     })

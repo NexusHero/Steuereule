@@ -38,7 +38,9 @@ describe('extractLstbTaxYear', () => {
 
   it('extracts year from Bescheinigungszeitraum or fallback non-date lines', () => {
     expect(extractLstbTaxYear('Bescheinigungszeitraum 01.01.2025 - 31.12.2025')).toBe(2025)
-    expect(extractLstbTaxYear('Abrechnung\n2025\nBrutto 40000')).toBe(2025)
+    // A bare year (form version, print date) is not evidence of the certificate year.
+    expect(extractLstbTaxYear('Abrechnung\n2025\nBrutto 40000')).toBeNull()
+    expect(extractLstbTaxYear('Formularversion 2024\nBruttoarbeitslohn 40.000,00')).toBeNull()
     expect(extractLstbTaxYear('Geburtsdatum 01.01.2024\nohne Jahr')).toBeNull()
   })
 })
@@ -61,19 +63,19 @@ describe('parseLstbTextDeterministically', () => {
 
     const res = parseLstbTextDeterministically(cleanLstb)
     expect(res.taxYear).toBe(2025)
-    expect(res.needsLlmFallback).toBe(false)
+    expect(res.unresolvedFields).toEqual([])
     expect(res.fields.bruttoarbeitslohn).toEqual({
       value: 54320,
       status: 'ok',
       sourceLines: ['3'],
-      calculationPath: 'Zeile 3: 54.320 €',
+      calculation: [{ line: '3', amount: 54320 }],
       reason: null,
     })
     expect(res.fields.lohnsteuer).toEqual({
       value: 9810,
       status: 'ok',
       sourceLines: ['4'],
-      calculationPath: 'Zeile 4: 9.810 €',
+      calculation: [{ line: '4', amount: 9810 }],
       reason: null,
     })
     // Sum: 5051.76 + 4182.64 + 977.76 + 706.16 = 10918.32 -> 10918 €
@@ -82,8 +84,12 @@ describe('parseLstbTextDeterministically', () => {
     expect(res.fields.sozialversicherung.status).toBe('ok')
     expect(res.fields.sozialversicherung.sourceLines).toEqual(['23a', '25', '26', '27'])
     expect(res.fields.sozialversicherung.reason).toBeNull()
-    expect(res.fields.sozialversicherung.calculationPath).toContain('Zeile 23a')
-    expect(res.fields.sozialversicherung.calculationPath).toContain('10.918 €')
+    expect(res.fields.sozialversicherung.calculation).toEqual([
+      { line: '23a', amount: 5051.76 },
+      { line: '25', amount: 4182.64 },
+      { line: '26', amount: 977.76 },
+      { line: '27', amount: 706.16 },
+    ])
     // Zero PII keys exist in result
     expect(JSON.stringify(res)).not.toContain('Rheinpharma')
     expect(JSON.stringify(res)).not.toContain('Steuerklasse')
@@ -106,7 +112,7 @@ describe('parseLstbTextDeterministically', () => {
 
     const res = parseLstbTextDeterministically(multiline)
     expect(res.taxYear).toBe(2024)
-    expect(res.needsLlmFallback).toBe(false)
+    expect(res.unresolvedFields).toEqual([])
     expect(res.fields.bruttoarbeitslohn.value).toBe(42000)
     expect(res.fields.lohnsteuer.value).toBe(6450)
     expect(res.fields.sozialversicherung.value).toBe(7161) // 3906 + 3255, ignores line 24a!
@@ -123,7 +129,7 @@ describe('parseLstbTextDeterministically', () => {
     ].join('\n')
 
     const res = parseLstbTextDeterministically(implausible)
-    expect(res.needsLlmFallback).toBe(true)
+    expect(res.unresolvedFields.length).toBeGreaterThan(0)
     expect(res.fields.lohnsteuer.status).toBe('pruefen')
     expect(res.fields.lohnsteuer.reason).toBe('plausibility_conflict')
     expect(res.fields.bruttoarbeitslohn.status).toBe('pruefen')
@@ -138,13 +144,13 @@ describe('parseLstbTextDeterministically', () => {
     ].join('\n')
 
     const res = parseLstbTextDeterministically(partial)
-    expect(res.needsLlmFallback).toBe(true)
+    expect(res.unresolvedFields.length).toBeGreaterThan(0)
     expect(res.fields.bruttoarbeitslohn.status).toBe('ok')
     expect(res.fields.lohnsteuer).toEqual({
       value: null,
       status: 'pruefen',
       sourceLines: ['4'],
-      calculationPath: null,
+      calculation: [],
       reason: 'missing',
     })
     expect(res.fields.sozialversicherung.status).toBe('pruefen')
@@ -167,7 +173,7 @@ describe('parseLstbTextDeterministically', () => {
       unreadableFields: ['lohnsteuer'],
     })
 
-    expect(res.needsLlmFallback).toBe(true)
+    expect(res.unresolvedFields.length).toBeGreaterThan(0)
     expect(res.fields.lohnsteuer.status).toBe('pruefen')
     expect(res.fields.lohnsteuer.reason).toBe('unreadable')
     expect(res.fields.sozialversicherung.value).toBe(11500)
@@ -192,7 +198,7 @@ describe('parseLstbTextDeterministically', () => {
     ].join('\n')
 
     const parsed = parseLstbTextDeterministically(keywordsOnly)
-    expect(parsed.needsLlmFallback).toBe(false)
+    expect(parsed.unresolvedFields).toEqual([])
     expect(parsed.fields.bruttoarbeitslohn.value).toBe(36000)
     expect(parsed.fields.lohnsteuer.value).toBe(5100)
     expect(parsed.fields.sozialversicherung.value).toBe(7150)
