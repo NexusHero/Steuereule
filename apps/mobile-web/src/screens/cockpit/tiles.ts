@@ -58,6 +58,7 @@ export interface TileFacts {
   readonly answers: Answers
   readonly masterData?: MasterDataResponseDto | null | undefined
   readonly boosterEnabled?: boolean | undefined
+  readonly pendingTiles?: ReadonlySet<TileId> | undefined
   readonly lstb?: LstbResponseDto | null | undefined
   readonly ch?: ChSalaryCertificateResponseDto | null | undefined
   readonly pension?: PensionResponseDto | null | undefined

@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Pressable, Text, View, type TextStyle, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { Card, useBreakpoint, useTheme, type UiTheme } from '@steuereule/ui'
+import { Card, hapticSuccess, useBreakpoint, useTheme, type UiTheme } from '@steuereule/ui'
 import type { Answers, Conflict, Notice } from '@steuereule/core'
 import {
   useCapitalControllerGet,
@@ -18,7 +18,7 @@ import type { PartnerAreaParam } from '../../navigation/routes'
 import type { FunnelPath } from '../funnel/KontoWandScreen'
 import { CockpitPartnerSection } from './CockpitPartnerSection'
 import { derivePersonas } from './personas'
-import { hasAnswersForEntry, partitionTiles, tileHintSeverity, type TileDefinition, type TileFacts, type TileStatus } from './tiles'
+import { TILES, hasAnswersForEntry, partitionTiles, tileHintSeverity, type TileDefinition, type TileFacts, type TileId, type TileStatus } from './tiles'
 
 export function useCockpitTileFacts(
   year: number,
@@ -39,10 +39,20 @@ export function useCockpitTileFacts(
 
   if (!active || path === null) return null
 
+  const pendingTiles = new Set<TileId>()
+  if (path === 'angestellte' && lstb.isPending) pendingTiles.add('lstb')
+  if (path === 'ch' && ch.isPending) pendingTiles.add('ch')
+  if (path === 'rente' && pension.isPending) pendingTiles.add('rente')
+  if (path !== 'rente' && commute.isPending) pendingTiles.add('arbeitsweg')
+  if (capital.isPending) pendingTiles.add('kapital')
+  if (rental.isPending) pendingTiles.add('vermietung')
+  if (hasChildren && children.isPending) pendingTiles.add('kinder')
+
   return {
     path,
     answers,
     masterData: masterData ?? null,
+    ...(pendingTiles.size > 0 ? { pendingTiles } : {}),
     lstb: lstb.data?.status === 200 ? lstb.data.data : null,
     ch: ch.data?.status === 200 ? ch.data.data : null,
     pension: pension.data?.status === 200 ? pension.data.data : null,
@@ -87,6 +97,31 @@ export function CockpitTiles({
   const styles = makeStyles(t)
   const { t: tr } = useTranslation(APP_NS)
   const [moreExpanded, setMoreExpanded] = useState(false)
+  const prevStatusesRef = useRef<{ year: number | undefined; map: Map<TileId, TileStatus> }>({
+    year,
+    map: new Map(),
+  })
+
+  useEffect(() => {
+    if (prevStatusesRef.current.year !== year) {
+      prevStatusesRef.current = { year, map: new Map() }
+    }
+    const prev = prevStatusesRef.current.map
+    let newlyCompleted = false
+    for (const tile of TILES) {
+      if (!tile.isVisible(facts)) continue
+      if (facts.pendingTiles?.has(tile.id)) continue
+      const nextStatus = tile.status(facts)
+      const previousStatus = prev.get(tile.id)
+      if (previousStatus !== undefined && previousStatus !== 'erledigt' && nextStatus === 'erledigt') {
+        newlyCompleted = true
+      }
+      prev.set(tile.id, nextStatus)
+    }
+    if (newlyCompleted) {
+      void hapticSuccess()
+    }
+  }, [facts, year])
 
   const personas = derivePersonas(facts.answers, facts.masterData)
   const { main, more } = partitionTiles(facts)

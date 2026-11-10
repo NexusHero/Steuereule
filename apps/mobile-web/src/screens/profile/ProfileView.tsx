@@ -4,6 +4,7 @@ import { Card, Chip, useTheme, type Breakpoint } from '@steuereule/ui'
 import { APP_NS } from '../../i18n/resources'
 import { makeProfileStyles } from './styles'
 import { ProfileAppearanceSection } from './ProfileAppearanceSection'
+import { ProfileHapticsSection } from './ProfileHapticsSection'
 import { AssistantsListSection } from './AssistentenListSection'
 import { DeviceListSection } from '../device/DeviceListSection'
 import type { OnboardingProfile } from '../onboarding/profileMapping'
@@ -74,6 +75,8 @@ export function ProfileView({ profile, onEdit, justSaved, bp, onOpenPrivacy, onO
       </Card>
 
       <ProfileAppearanceSection />
+
+      <ProfileHapticsSection />
 
       <AssistantsListSection />
 

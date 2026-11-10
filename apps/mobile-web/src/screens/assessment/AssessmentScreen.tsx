@@ -21,6 +21,7 @@ import { APP_NS } from '../../i18n/resources'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
+import { triggerSaveErrorHaptic, warnOnHttpError } from '../shared/saveFeedback'
 
 type FieldId = 'einnahmen' | 'vorsorgeaufwand' | 'anrechnung' | 'festgesetzteSteuer' | 'erstattung'
 
@@ -75,8 +76,16 @@ export function AssessmentScreen({ onDone = () => {}, onBack, taxYear = CURRENT_
 
   const refetch = () => void queryClient.invalidateQueries({ queryKey: getAssessmentControllerGetQueryKey(taxYear) })
 
+  const mutationCallbacks = {
+    onSuccess: (res: { readonly status: number }) => {
+      warnOnHttpError(res.status)
+      refetch()
+    },
+    onError: triggerSaveErrorHaptic,
+  }
+
   function sendField(field: FieldId, data: PutAssessmentFieldDto) {
-    setField.mutate({ jahr: taxYear, feld: field, data }, { onSuccess: refetch })
+    setField.mutate({ jahr: taxYear, feld: field, data }, mutationCallbacks)
   }
 
   return (
@@ -100,15 +109,15 @@ export function AssessmentScreen({ onDone = () => {}, onBack, taxYear = CURRENT_
         />
       ))}
 
-      <DateEditor date={response.frist.assessmentDate} onSet={(date) => setDate.mutate({ jahr: taxYear, data: { date } }, { onSuccess: refetch })} />
+      <DateEditor date={response.frist.assessmentDate} onSet={(date) => setDate.mutate({ jahr: taxYear, data: { date } }, mutationCallbacks)} />
 
       <ReconciliationSection response={response} />
 
-      <StatusSection response={response} onSetStatus={(status) => setStatus.mutate({ jahr: taxYear, data: { status } }, { onSuccess: refetch })} />
+      <StatusSection response={response} onSetStatus={(status) => setStatus.mutate({ jahr: taxYear, data: { status } }, mutationCallbacks)} />
 
       <AppealSection
         response={response}
-        onAppeal={(reason) => setAppeal.mutate({ jahr: taxYear, data: { reason } }, { onSuccess: refetch })}
+        onAppeal={(reason) => setAppeal.mutate({ jahr: taxYear, data: { reason } }, mutationCallbacks)}
       />
 
       <Button onPress={onDone} style={styles.cta}>

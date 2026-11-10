@@ -8,6 +8,7 @@ import { toOnboardingProfile, toPutProfileDto, type OnboardingProfile } from './
 import { ProfileView } from './profile/ProfileView'
 import { ProfileEdit } from './profile/ProfileEdit'
 import { LoadingState, ErrorState } from './shared/ScreenState'
+import { triggerSaveErrorHaptic } from './shared/saveFeedback'
 
 export interface ProfileScreenProps {
   readonly onOpenPrivacy: () => void
@@ -69,10 +70,14 @@ export function ProfileScreen({ onOpenPrivacy, onOpenSecurity, onOpenMasterData,
             setDraft(null)
             setJustSaved(true)
           } else {
+            triggerSaveErrorHaptic()
             setSaveError(tr('profil.saveError.validation'))
           }
         },
-        onError: () => setSaveError(tr('profil.saveError.network')),
+        onError: () => {
+          triggerSaveErrorHaptic()
+          setSaveError(tr('profil.saveError.network'))
+        },
       },
     )
   }

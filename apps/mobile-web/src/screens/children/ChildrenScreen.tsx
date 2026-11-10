@@ -31,6 +31,7 @@ import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
 import { ErrorState, LoadingState } from '../shared/ScreenState'
 import { usePendingMutations } from '../shared/usePendingMutations'
+import { watchSaveResult } from '../shared/saveFeedback'
 
 export interface ChildItem {
   id: string
@@ -175,7 +176,7 @@ function ConnectedKinderScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TA
       initialKinder={query.data.data.kinder}
       onAddChild={(data) => {
         const task = (async () => {
-          await createChild.mutateAsync({ jahr: taxYear, data })
+          await watchSaveResult(createChild.mutateAsync({ jahr: taxYear, data }))
           await invalidate()
         })()
         track(task)
@@ -183,7 +184,7 @@ function ConnectedKinderScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TA
       }}
       onSaveChild={(id, data) => {
         const task = (async () => {
-          await updateChild.mutateAsync({ jahr: taxYear, id, data })
+          await watchSaveResult(updateChild.mutateAsync({ jahr: taxYear, id, data }))
           await invalidate()
         })()
         track(task)
@@ -191,7 +192,7 @@ function ConnectedKinderScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TA
       }}
       onDeleteChild={(id) => {
         const task = (async () => {
-          await deleteChild.mutateAsync({ jahr: taxYear, id })
+          await watchSaveResult(deleteChild.mutateAsync({ jahr: taxYear, id }))
           await invalidate()
         })()
         track(task)

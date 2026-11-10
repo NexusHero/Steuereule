@@ -28,6 +28,7 @@ import { BackButton, BackButtonSpacer } from '../shared/BackButton'
 import { LoadingState } from '../shared/ScreenState'
 import { integerFrom } from '../shared/integer'
 import { InMaskAdvisorCompanion } from '../advisor/InMaskAdvisorCompanion'
+import { triggerSaveErrorHaptic } from '../shared/saveFeedback'
 
 export interface WorkdaysScreenProps {
   readonly onDone?: () => void
@@ -139,10 +140,14 @@ function WorkdaysForm({
             void queryClient.invalidateQueries({ queryKey: getTaxEstimateControllerGetQueryKey(taxYear) })
             onDone()
           } else {
+            triggerSaveErrorHaptic()
             setError(true)
           }
         },
-        onError: () => setError(true),
+        onError: () => {
+          triggerSaveErrorHaptic()
+          setError(true)
+        },
       },
     )
   }

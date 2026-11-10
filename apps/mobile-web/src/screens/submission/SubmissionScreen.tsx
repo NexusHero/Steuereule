@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ScrollView, Text, View, type TextStyle, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
-import { Button, Card, WIDE_CONTENT_MAX_WIDTH, useBreakpoint, useTheme, type UiTheme } from '@steuereule/ui'
+import { Button, Card, WIDE_CONTENT_MAX_WIDTH, hapticWarning, useBreakpoint, useTheme, type UiTheme } from '@steuereule/ui'
 import { useLinkControllerGet, useMasterDataControllerRead } from '@steuereule/api-client'
 import type { Answers, Conflict, Notice } from '@steuereule/core'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
@@ -39,6 +39,18 @@ export function SubmissionScreen({
     masterDataQuery.data?.status === 200 && masterDataQuery.data.data.familienstand === 'verheiratet'
   const linkQuery = useLinkControllerGet(taxYear, { query: { enabled: isMarried } })
   const [comparisonDone, setComparisonDone] = useState(false)
+  const hasBlockingConflict = plausibility.status === 'ready' && plausibility.conflicts.length > 0
+  const prevConflictRef = useRef<{ taxYear: number; active: boolean }>({ taxYear, active: false })
+
+  useEffect(() => {
+    if (prevConflictRef.current.taxYear !== taxYear) {
+      prevConflictRef.current = { taxYear, active: false }
+    }
+    if (!prevConflictRef.current.active && hasBlockingConflict) {
+      void hapticWarning()
+    }
+    prevConflictRef.current.active = hasBlockingConflict
+  }, [taxYear, hasBlockingConflict])
 
   if (plausibility.status === 'loading' || masterDataQuery.isPending || (isMarried && linkQuery.isPending)) {
     return <LoadingState bp={bp} label={tr('abgabe.loading')} />

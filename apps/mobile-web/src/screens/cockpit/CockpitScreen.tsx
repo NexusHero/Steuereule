@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
-import { Button, Card, Chip, HerkunftsChip, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme, type Breakpoint } from '@steuereule/ui'
+import { Button, Card, Chip, HerkunftsChip, hapticSelection, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme, type Breakpoint } from '@steuereule/ui'
 import { DeadlinesBanner } from '../deadlines/DeadlinesBanner'
 import { formatEuro, formatEuroRange, UNCERTAINTY_PER_ITEM, type Answers, type Conflict, type Notice } from '@steuereule/core'
 import {
@@ -78,6 +78,7 @@ export function CockpitScreen({
   const { t: tr } = useTranslation(APP_NS)
   const [year, setYearInternal] = useState(taxYear)
   const setYear = (fresh: number) => {
+    if (fresh !== year) void hapticSelection()
     setYearInternal(fresh)
     onYearChange?.(fresh)
   }

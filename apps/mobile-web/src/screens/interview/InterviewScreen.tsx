@@ -16,6 +16,7 @@ import { QuestionScreen } from './QuestionScreen'
 import { GateScreen } from './GateScreen'
 import { type PostErrorKind } from './PostErrorNotice'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
+import { triggerSaveErrorHaptic } from '../shared/saveFeedback'
 
 function collectFollowUpStepIds(stepId: EntryStepId, acc = new Set<EntryStepId>()): ReadonlySet<EntryStepId> {
   if (acc.has(stepId)) return acc
@@ -152,6 +153,7 @@ export function InterviewScreen({ onDone, taxYear = CURRENT_TAX_YEAR }: Intervie
         try {
           const response = await postAnswer.mutateAsync({ jahr: taxYear, data: { questionId: stepId, value } })
           if (response.status !== 200) {
+            triggerSaveErrorHaptic()
             refetchOnInterviewSyncRef.current = false
             setPostError(response.status === 409 ? 'conflict' : 'invalid')
             setHistory([])
@@ -159,6 +161,7 @@ export function InterviewScreen({ onDone, taxYear = CURRENT_TAX_YEAR }: Intervie
             void interviewQuery.refetch()
           }
         } catch {
+          triggerSaveErrorHaptic()
           refetchOnInterviewSyncRef.current = false
           setAnswers(previousAnswers)
           setHistory(previousHistory)

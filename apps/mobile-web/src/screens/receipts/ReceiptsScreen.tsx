@@ -16,6 +16,7 @@ import { APP_NS } from '../../i18n/resources'
 import { ReceiptPickerButton } from '../shared/ReceiptPickerButton'
 import { detectDocumentMimeType } from '../../lib/documentOcr'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
+import { triggerSaveErrorHaptic, warnOnHttpError } from '../shared/saveFeedback'
 import { ReceiptFileModal } from './ReceiptFileModal'
 
 const KIND_LABEL_KEYS: Readonly<Record<string, string>> = {
@@ -85,8 +86,11 @@ export function ReceiptsScreen() {
         onSuccess: (response) => {
           if (response.status === 200) {
             void queryClient.invalidateQueries({ queryKey: getReceiptControllerListQueryKey() })
+          } else {
+            warnOnHttpError(response.status)
           }
         },
+        onError: triggerSaveErrorHaptic,
       },
     )
   }
@@ -103,8 +107,10 @@ export function ReceiptsScreen() {
         await queryClient.invalidateQueries({ queryKey: getReceiptControllerListQueryKey() })
         return
       }
+      triggerSaveErrorHaptic()
       setDeleteErrorId(id)
     } catch {
+      triggerSaveErrorHaptic()
       setDeleteErrorId(id)
     }
   }
@@ -177,6 +183,7 @@ function UploadCard({ onUploaded }: { readonly onUploaded: () => void }) {
 
     const detectedMime = detectDocumentMimeType(new Uint8Array(0), file.type, file.name)
     if (detectedMime === null) {
+      triggerSaveErrorHaptic()
       setStatusMessage({ kind: 'error', text: tr('belege.upload.errorUnsupported') })
       return
     }
@@ -189,12 +196,14 @@ function UploadCard({ onUploaded }: { readonly onUploaded: () => void }) {
         kind: selectedKind,
       })
       if (!result.ok) {
+        triggerSaveErrorHaptic()
         setStatusMessage({ kind: 'error', text: tr('belege.upload.errorFailed') })
         return
       }
       setStatusMessage({ kind: 'ok', text: tr('belege.upload.success') })
       onUploaded()
     } catch {
+      triggerSaveErrorHaptic()
       setStatusMessage({ kind: 'error', text: tr('belege.upload.errorFailed') })
     } finally {
       setUploading(false)

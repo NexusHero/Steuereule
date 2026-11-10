@@ -19,6 +19,7 @@ import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
 import { usePendingMutations } from '../shared/usePendingMutations'
+import { watchSaveResult } from '../shared/saveFeedback'
 import { InMaskAdvisorCompanion } from '../advisor/InMaskAdvisorCompanion'
 import { FIELDS, type FieldId, type StagedFieldDraft } from './scan/lstbScanDraft'
 import { LstbScanPanel } from './scan/LstbScanPanel'
@@ -68,7 +69,7 @@ export function LstbScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YE
 
   function send(field: FieldId, data: LstbFieldDto) {
     track(
-      setField.mutateAsync({ jahr: taxYear, feld: field, data, ...(params ? { params } : {}) }).then(() => {
+      watchSaveResult(setField.mutateAsync({ jahr: taxYear, feld: field, data, ...(params ? { params } : {}) })).then(() => {
         void queryClient.invalidateQueries({ queryKey: getLstbControllerGetLstbQueryKey(taxYear, params) })
         void queryClient.invalidateQueries({ queryKey: getCockpitControllerGetCockpitSummaryQueryKey(taxYear) })
         void queryClient.invalidateQueries({ queryKey: getTaxEstimateControllerGetQueryKey(taxYear) })

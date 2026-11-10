@@ -12,6 +12,7 @@ import { OnboardingSummary } from './onboarding/OnboardingSummary'
 import { LoadingState, ErrorState } from './shared/ScreenState'
 import { StepIndicator } from './shared/StepIndicator'
 import { BackButton, BackButtonSpacer } from './shared/BackButton'
+import { triggerSaveErrorHaptic } from './shared/saveFeedback'
 
 export interface OnboardingScreenProps {
   readonly onDone: () => void
@@ -75,10 +76,14 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
           if (response.status === 200) {
             onDone()
           } else {
+            triggerSaveErrorHaptic()
             setSubmitError(tr('onboarding.summary.submitError.validation'))
           }
         },
-        onError: () => setSubmitError(tr('onboarding.summary.submitError.network')),
+        onError: () => {
+          triggerSaveErrorHaptic()
+          setSubmitError(tr('onboarding.summary.submitError.network'))
+        },
       },
     )
   }

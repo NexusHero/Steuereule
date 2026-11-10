@@ -15,6 +15,7 @@ import {
 import { APP_NS } from '../../i18n/resources'
 import { makePrivacyStyles } from '../privacy/styles'
 import { ErrorState, LoadingState } from '../shared/ScreenState'
+import { triggerSaveErrorHaptic } from '../shared/saveFeedback'
 
 export type ConfirmationForm = FieldProvenanceDto['screen']
 
@@ -88,8 +89,12 @@ export function ConfirmationScreen({ year, onBack, onOpenScreen }: ConfirmationS
     setError(false)
     try {
       const result = await action()
-      if (result.status !== 200) setError(true)
+      if (result.status !== 200) {
+        triggerSaveErrorHaptic()
+        setError(true)
+      }
     } catch {
+      triggerSaveErrorHaptic()
       setError(true)
     }
     await queryClient.invalidateQueries()

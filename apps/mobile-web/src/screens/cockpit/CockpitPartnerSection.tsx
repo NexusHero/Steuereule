@@ -1,6 +1,7 @@
+import { useEffect, useRef } from 'react'
 import { Pressable, Text, View, type TextStyle, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { Card, useBreakpoint, useTheme, type UiTheme } from '@steuereule/ui'
+import { Card, hapticSuccess, useBreakpoint, useTheme, type UiTheme } from '@steuereule/ui'
 import { useCommuteControllerGet, useLstbControllerGetLstb } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import type { PartnerAreaParam } from '../../navigation/routes'
@@ -27,6 +28,32 @@ export function CockpitPartnerSection({ year, partnerName, enabled, onOpenPartne
 
   const lstbStatus = tileById('lstb').status({ path: 'angestellte', answers: {}, lstb: lstbData })
   const commuteStatus = tileById('arbeitsweg').status({ path: 'angestellte', answers: {}, commute: commuteData })
+  const lstbPending = enabled && lstb.isPending
+  const commutePending = enabled && commute.isPending
+  const prevStatusesRef = useRef<{ year: number; lstb?: TileStatus; commute?: TileStatus }>({ year })
+
+  useEffect(() => {
+    if (prevStatusesRef.current.year !== year) {
+      prevStatusesRef.current = { year }
+    }
+    const prev = prevStatusesRef.current
+    let newlyCompleted = false
+    if (!lstbPending) {
+      if (prev.lstb !== undefined && prev.lstb !== 'erledigt' && lstbStatus === 'erledigt') {
+        newlyCompleted = true
+      }
+      prev.lstb = lstbStatus
+    }
+    if (!commutePending) {
+      if (prev.commute !== undefined && prev.commute !== 'erledigt' && commuteStatus === 'erledigt') {
+        newlyCompleted = true
+      }
+      prev.commute = commuteStatus
+    }
+    if (newlyCompleted) {
+      void hapticSuccess()
+    }
+  }, [year, lstbPending, commutePending, lstbStatus, commuteStatus])
 
   const items: readonly { readonly area: PartnerAreaParam; readonly testId: string; readonly titleKey: string; readonly status: TileStatus }[] = [
     { area: 'lstb', testId: 'partner-lstb', titleKey: 'cockpit.kachel.partner-lstb.titel', status: lstbStatus },
