@@ -17,10 +17,16 @@ import {
   monthlyChildBenefitClaim,
   laterAmountSteps,
   widenForLaterAmounts,
+  householdServicesFromAnswers,
+  calculateHouseholdServicesReduction,
+  extraordinaryBurdenFromAnswers,
+  burdenChildrenBracket,
+  amountFromAnswer,
   type Answers,
   type SpouseIncome,
   type TaxEstimate,
 } from '@steuereule/core'
+import { HOUSEHOLD_AND_HEALTH_BOOSTERS } from '../config/features.js'
 import { COMMUTE_REPOSITORY, type CommuteInputs, type CommuteRepository } from '../commute/commute.repository.js'
 import { CROSS_BORDER_SALARY_STATEMENT_REPOSITORY, type CrossBorderSalaryStatementRepository } from '../ch-salary-certificate/ch-salary-certificate.repository.js'
 import { crossBorderStatusFromAnswers, salaryCertificateValuesFromRecord, exchangeRateFromRecord } from '../ch-salary-certificate/salary-certificate-data.js'
@@ -58,7 +64,11 @@ export class TaxEstimateService {
     @Inject(RENTAL_REPOSITORY) private readonly rental?: RentalRepository,
   ) {}
 
-  async getState(userId: string, year: number): Promise<TaxEstimateStatus> {
+  async getState(
+    userId: string,
+    year: number,
+    boostersEnabled: boolean = HOUSEHOLD_AND_HEALTH_BOOSTERS,
+  ): Promise<TaxEstimateStatus> {
     return withSpan('tax_estimate.calculate', async () => {
       const [lstbRecord, interviewRows, chRecord, masterData, path] = await Promise.all([
       this.lstb.findForUserAndYear(userId, year),
@@ -71,7 +81,7 @@ export class TaxEstimateService {
 
     if (answers.job !== 'Angestellt') return { kind: 'nicht-moeglich', reason: 'nur-angestellte' }
     if (masterData?.familienstand === 'verheiratet' || answers.familienstand === 'Verheiratet') {
-      return this.marriedCouple(userId, year)
+      return this.marriedCouple(userId, year, boostersEnabled)
     }
     if (gatedIncomeTypes(answers).length > 0 || specialCircumstance(answers)) {
       return { kind: 'nicht-moeglich', reason: 'besondere-lebenslage' }
@@ -80,7 +90,16 @@ export class TaxEstimateService {
     const numbers = employeeFromAnswers(answers)
     const allowance = commuterAllowanceFrom(year, path)
     const churchTaxOpen = masterData?.religion !== undefined && masterData?.religion !== null && masterData.religion !== 'VD'
-    const laterCount = laterAmountSteps(answers).length
+    const laterCount = countLaterAmounts(answers, boostersEnabled)
+    const singleParent =
+      answers.kinder !== undefined &&
+      answers.kinder !== 'Nein' &&
+      (answers.familienstand === 'Ledig' ||
+        answers.familienstand === 'Geschieden oder getrennt' ||
+        answers.familienstand === 'Verwitwet')
+    const childrenBracket = burdenChildrenBracket(answers.kinder)
+    const householdReductionEur = boostersEnabled ? householdServicesFromAnswers(answers, year).totalReductionEur : 0
+    const healthExpensesEur = boostersEnabled ? extraordinaryBurdenFromAnswers(answers) : 0
 
     if (answers.ausland === CH_FOREIGN) {
       const values = salaryCertificateValuesFromRecord(chRecord)
@@ -118,6 +137,10 @@ export class TaxEstimateService {
           healthInsuranceEur: Math.round(chfToEur(krankenkasseChf, exchangeRate.rate)) + numbers.healthCareContributions,
           commuterAllowance: allowance,
           donations: numbers.donations,
+          householdReductionEur,
+          healthExpensesEur,
+          singleParent,
+          childrenBracket,
         }),
         churchTaxOpen,
         laterCount,
@@ -137,6 +160,10 @@ export class TaxEstimateService {
           otherIncomeRelatedExpenses: numbers.relocationCosts,
           donations: numbers.donations,
           selfPaidKvPv: numbers.healthCareContributions,
+          householdReductionEur,
+          healthExpensesEur,
+          singleParent,
+          childrenBracket,
         }),
         churchTaxOpen,
         laterCount,
@@ -145,12 +172,12 @@ export class TaxEstimateService {
   }
 
   /** ADR-0054: a couple's estimate from both spouses' figures — only once the joint return for the year is set up. */
-  private async marriedCouple(userId: string, year: number): Promise<TaxEstimateStatus> {
+  private async marriedCouple(userId: string, year: number, boostersEnabled: boolean): Promise<TaxEstimateStatus> {
     const link = this.link ? await this.link.findByUserAndYear(userId, year) : null
     if (!link || link.filingType !== 'zusammen') return { kind: 'offen', missing: ['veranlagungsart'] }
     const [a, b] = await Promise.all([
-      this.income(link.personAUserId, year),
-      link.personBUserId ? this.income(link.personBUserId, year) : Promise.resolve(null),
+      this.income(link.personAUserId, year, boostersEnabled),
+      link.personBUserId ? this.income(link.personBUserId, year, boostersEnabled) : Promise.resolve(null),
     ])
     const missing = [...(a?.kind === 'offen' ? a.missing : []), ...(b?.kind === 'offen' ? b.missing.map((f) => `personB.${f}`) : [])]
     if (a.kind === 'none') missing.unshift('einkommen')
@@ -162,6 +189,11 @@ export class TaxEstimateService {
       link.personBUserId ? this.masterData.findByUserId(link.personBUserId) : Promise.resolve(null),
     ])
     const church = (religion: string | null | undefined) => religion !== undefined && religion !== null && religion !== 'VD'
+    const bAnswers = b?.kind === 'ok' || b?.kind === 'none' ? b.answers : {}
+    const householdReductionEur = boostersEnabled ? jointHouseholdReduction(a.answers, bAnswers, year) : 0
+    const healthExpensesEur = boostersEnabled
+      ? extraordinaryBurdenFromAnswers(a.answers) + extraordinaryBurdenFromAnswers(bAnswers)
+      : 0
     const estimate = estimateMarriedCouple({
       year,
       a: a.spouse,
@@ -171,6 +203,9 @@ export class TaxEstimateService {
       rentalSurplus: properties.reduce((sum, o) => sum + rentalSurplus(o), 0),
       donations: a.donations + (b?.kind === 'ok' ? b.donations : 0),
       churchMember: church(sdA?.religion) || church(sdB?.religion),
+      householdReductionEur,
+      healthExpensesEur,
+      childrenBracket: burdenChildrenBracket(a.answers.kinder ?? bAnswers.kinder),
     })
     if (estimate.kind !== 'spanne') return { kind: 'nicht-moeglich', reason: estimate.reason }
     const { childAllowanceUsed: _k, churchTax: _c, churchTaxOpen, ...range } = estimate
@@ -188,10 +223,11 @@ export class TaxEstimateService {
   private async income(
     userId: string,
     year: number,
+    boostersEnabled: boolean,
   ): Promise<
-    | { kind: 'ok'; spouse: SpouseIncome; donations: number; laterCount: number }
+    | { kind: 'ok'; spouse: SpouseIncome; donations: number; laterCount: number; answers: Answers }
     | { kind: 'offen'; missing: string[] }
-    | { kind: 'none'; laterCount: number }
+    | { kind: 'none'; laterCount: number; answers: Answers }
   > {
     const [lstbRecord, interviewRows, chRecord, path] = await Promise.all([
       this.lstb.findForUserAndYear(userId, year),
@@ -200,7 +236,7 @@ export class TaxEstimateService {
       this.commute.findForUserAndYear(userId, year),
     ])
     const answers = answersFrom(interviewRows)
-    const laterCount = laterAmountSteps(answers).length
+    const laterCount = countLaterAmounts(answers, boostersEnabled)
     const numbers = employeeFromAnswers(answers)
     const allowance = commuterAllowanceFrom(year, path)
     if (chRecord && (answers.ausland === CH_FOREIGN || lstbRecord === null)) {
@@ -229,6 +265,7 @@ export class TaxEstimateService {
         kind: 'ok',
         donations: numbers.donations,
         laterCount,
+        answers,
         spouse: {
           kind: 'crossBorder',
           wageEur: rows.z23,
@@ -240,7 +277,7 @@ export class TaxEstimateService {
         },
       }
     }
-    if (lstbRecord === null) return { kind: 'none', laterCount }
+    if (lstbRecord === null) return { kind: 'none', laterCount, answers }
     const state = wageTaxCertificateStatus(wageTaxCertificateDataFrom(lstbRecord))
     if (state.kind === 'unvollstaendig') return { kind: 'offen', missing: [...state.open, ...state.unclear] }
     if (state.kind === 'widerspruch') return { kind: 'offen', missing: state.conflicts.map((w) => w.kind) }
@@ -248,6 +285,7 @@ export class TaxEstimateService {
       kind: 'ok',
       donations: numbers.donations,
       laterCount,
+      answers,
       spouse: {
         kind: 'employee',
         grossWage: state.bruttoarbeitslohn,
@@ -258,6 +296,22 @@ export class TaxEstimateService {
       },
     }
   }
+}
+
+function countLaterAmounts(answers: Answers, boostersEnabled: boolean): number {
+  return laterAmountSteps(answers).filter((step) => boostersEnabled || !step.startsWith('haushalt-')).length
+}
+
+function jointHouseholdReduction(a: Answers, b: Answers, year: number): number {
+  const services = (ans: Answers) => (ans['haushalt-gate'] === 'Ja' ? amountFromAnswer(ans['haushalt-dienstleistung-betrag']) ?? 0 : 0)
+  const craftsmen = (ans: Answers) => (ans['haushalt-gate'] === 'Ja' ? amountFromAnswer(ans['haushalt-handwerker-betrag']) ?? 0 : 0)
+  const minijob = (ans: Answers) => (ans['haushalt-gate'] === 'Ja' ? amountFromAnswer(ans['haushalt-minijob-betrag']) ?? 0 : 0)
+  return calculateHouseholdServicesReduction({
+    year,
+    servicesEur: services(a) + services(b),
+    craftsmenEur: craftsmen(a) + craftsmen(b),
+    minijobEur: minijob(a) + minijob(b),
+  }).totalReductionEur
 }
 
 /** Anlage V result of one object as the estimate needs it: rent and Umlagen less costs, interest and linear AfA. */

@@ -537,6 +537,8 @@
                 "sonderausgaben",
                 "segment-ch",
                 "alleinerziehend",
+                "haushalt",
+                "gesundheit",
                 "berufsprofil"
               ],
               "type": "string"
