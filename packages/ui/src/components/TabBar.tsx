@@ -1,7 +1,7 @@
 import { useRef, useState, type ReactNode } from 'react'
 import { Animated, Easing, Pressable, Text, View, type LayoutChangeEvent, type StyleProp, type TextStyle, type ViewStyle } from 'react-native'
 import { theme as motionTokens } from '@steuereule/tokens'
-import { useTheme } from '../theme/useTheme'
+import { inkOnFunke, useTheme } from '../theme/useTheme'
 import { useReducedMotion } from '../motion/useReducedMotion'
 
 export const TAB_ICON_PATHS = {
@@ -173,7 +173,7 @@ function makeStyles(t: ReturnType<typeof useTheme>) {
     fontWeight: t.weight.fett,
     color: t.color.tinte2,
   }
-  const labelActive: TextStyle = { color: t.color.tinte }
+  const labelActive: TextStyle = { color: inkOnFunke(t) }
 
   return { bar, inner, pill, tab, tabActiveFallback, label, labelActive }
 }

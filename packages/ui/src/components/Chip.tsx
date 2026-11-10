@@ -1,6 +1,6 @@
 import { Pressable, Text, type ViewStyle, type TextStyle, type StyleProp } from 'react-native'
 import { type ReactNode } from 'react'
-import { useTheme } from '../theme/useTheme'
+import { inkOnFunke, useTheme } from '../theme/useTheme'
 
 export type ChipVariant = 'standard' | 'src' | 'pro'
 
@@ -22,7 +22,7 @@ export function Chip({ variant = 'standard', active = false, onPress, style, chi
       : variant === 'pro'
         ? t.color.nacht
         : t.color.karte
-  const fg = variant === 'pro' ? t.color.funke : t.color.tinte
+  const fg = active ? inkOnFunke(t) : variant === 'pro' ? t.color.funke : t.color.tinte
 
   const container: ViewStyle = {
     alignSelf: 'flex-start',

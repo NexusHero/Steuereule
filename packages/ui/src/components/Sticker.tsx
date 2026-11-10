@@ -1,6 +1,6 @@
 import { View, Text, type ViewStyle, type TextStyle, type StyleProp } from 'react-native'
 import { type ReactNode } from 'react'
-import { useTheme } from '../theme/useTheme'
+import { inkOnFunke, useTheme } from '../theme/useTheme'
 
 export interface StickerProps {
   readonly style?: StyleProp<ViewStyle>
@@ -22,7 +22,7 @@ export function Sticker({ style, children, testID }: StickerProps) {
     ...t.shadow.hartS,
   }
   const label: TextStyle = {
-    color: t.color.tinte,
+    color: inkOnFunke(t),
     fontFamily: t.font.text,
     fontWeight: t.weight.schwer,
     fontVariant: ['tabular-nums'],

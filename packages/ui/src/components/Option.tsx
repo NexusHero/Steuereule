@@ -1,6 +1,6 @@
 import { Pressable, Text, type ViewStyle, type TextStyle, type StyleProp } from 'react-native'
 import { type ReactNode } from 'react'
-import { useTheme } from '../theme/useTheme'
+import { inkOnFunke, useTheme } from '../theme/useTheme'
 
 export interface OptionProps {
   readonly selected?: boolean
@@ -29,7 +29,7 @@ export function Option({ selected = false, onPress, style, children, testID }: O
     fontFamily: t.font.text,
     fontWeight: t.weight.fett,
     fontSize: t.size.m,
-    color: t.color.tinte,
+    color: selected ? inkOnFunke(t) : t.color.tinte,
   }
   return (
     <Pressable

@@ -1,6 +1,6 @@
 import { Pressable, Text, type ViewStyle, type TextStyle, type StyleProp } from 'react-native'
 import { type ReactNode } from 'react'
-import { useTheme } from '../theme/useTheme'
+import { inkOnFunke, useTheme } from '../theme/useTheme'
 
 export type ButtonVariant = 'primaer' | 'ghost' | 'leise' | 'nacht'
 
@@ -22,7 +22,7 @@ export function Button({ variant = 'primaer', disabled = false, onPress, style, 
     leise: t.color.funkeWeich,
     nacht: t.color.nacht,
   }
-  const fg = variant === 'nacht' ? t.color.funke : t.color.tinte
+  const fg = variant === 'nacht' ? t.color.funke : variant === 'primaer' ? inkOnFunke(t) : t.color.tinte
   const shadow = variant === 'leise' ? t.shadow.hartS : t.shadow.hart
 
   const container: ViewStyle = {

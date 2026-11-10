@@ -1,5 +1,5 @@
 export { ThemeProvider, ThemeContext, type UiTheme, type ThemeProviderProps } from './theme/ThemeProvider'
-export { useTheme } from './theme/useTheme'
+export { useTheme, inkOnFunke } from './theme/useTheme'
 
 export { createI18n } from './i18n/createI18n'
 export { uiResources, UI_NS, type UiLocale } from './i18n/resources'
