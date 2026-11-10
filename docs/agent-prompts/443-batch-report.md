@@ -234,3 +234,63 @@ Verifiziert auf `09809dcb0b99b004109f17744cc7f3c4f5de342b`:
 
 ### 7. Offene Fragen
 1. Soll `packages/core/src/interview/plausibility.ts` (`checkPlausibility`) in einem eigenen Issue pfad-bewusst gemacht werden, sodass Grenzgänger CH und Rentner ohne deutsche LStB fachlich bereits im Core kein `lstb-offen` erzeugen (statt der Workaround-Prüfung in `usePlausibility.ts`)?
+
+---
+
+## Slice 4 — Sheets
+
+### 1. Status
+**fertig**
+
+### 2. Branch und letzter Commit-Hash
+- Branch: `feat/443-s4-sheets` (abgezweigt von `feat/443-s3-submission-gate` bei `b6d6e4c`)
+- Letzter Code-/Test-Commit vor diesem Bericht-Commit: `3acb8517791bdbedb585625f4925fc6877bbbf8b` (`test(e2e): adapt scenarios for Sheet backdrop and auto-save on close`); davor `9fa36b7` (`Sheet` + Gallery), `5a1f5ad` (`CockpitSheet` + `transparentModal` + `blurActiveInput`), `3ccd7d4` (`blurActiveInput.test.tsx`), `ae85be9`/`2d06e48` (Pop-Versuch wieder verworfen), `d313516` (`InterviewScreen`-Observer-Refetch) und `5a800cf` (Capture-Phase `Escape` für fokussierte `TextInput`s). Dieser Bericht folgt unmittelbar als Abschluss-Commit auf `feat/443-s4-sheets`.
+
+### 3. Geänderte und neue Dateien
+- `apps/mobile-web/App.test.tsx`: ergänzt 4 App-Tests für Slice 4 (`CockpitHome` bleibt gemountet bei ausgeblendeter `TabBar`, Auto-Save über Schließen-Button und `Escape`, kein PUT bei gestagtem LStB-Scan-Entwurf).
+- `apps/mobile-web/src/i18n/resources.ts`: ergänzt `sheet.schliessen` („Schließen“ / „Close“) in `appResources`.
+- `apps/mobile-web/src/lib/blurActiveInput.ts`: neuer Helfer zum Verlassen aktiver Web-Inputs (`blur()`) bzw. Ausblenden der nativen Tastatur (`Keyboard.dismiss()`).
+- `apps/mobile-web/src/lib/blurActiveInput.test.tsx`: neue Unit-Tests für `blurActiveInput` im Web- und Native-Pfad sowie ohne `document`.
+- `apps/mobile-web/src/navigation/AppTabs.tsx`: blendet die schwebende `TabBar` aus und gibt `tabBarClearance` frei, sobald im Cockpit-Stack eine Sheet-Route aktiv ist.
+- `apps/mobile-web/src/navigation/CockpitDetailRoutes.tsx`: umschließt `CapitalRoute`, `RentalRoute`, `ChildrenRoute` und `PartnerRoute` mit `<CockpitSheet navigation={navigation}>`.
+- `apps/mobile-web/src/navigation/CockpitSheet.tsx`: neue dünne Wrapper-Komponente, die beim Schließen erst `blurActiveInput()` ausführt und danach auf `CockpitHome` zurücknavigiert.
+- `apps/mobile-web/src/navigation/CockpitStack.tsx`: fasst die 9 Sheet-Routen in einer `Stack.Group` mit `presentation: 'transparentModal'` und `animation: 'slide_from_bottom'` zusammen.
+- `apps/mobile-web/src/navigation/CockpitTunnelRoutes.tsx`: umschließt `LstbRoute`, `PensionRoute`, `CrossBorderRoute`, `CatalogRoute` und `WorkdaysRoute` mit `<CockpitSheet navigation={navigation}>`.
+- `apps/mobile-web/src/navigation/guards.ts`: erweitert `renderActiveStackRoute`, sodass `CockpitHome` gemountet bleibt, solange oben im Stack eine Sheet-Route liegt.
+- `apps/mobile-web/src/navigation/routes.ts`: exportiert `SHEET_ROUTE_NAMES` und `isSheetRouteName(name)`.
+- `apps/mobile-web/src/screens/cross-border/CrossBorderScreen.tsx`: invalidiert beim Speichern von CH-Feldern zusätzlich die Interview-Query, damit Kachel-/Plausibilitäts-Observer hinter dem Sheet sofort aktualisieren.
+- `apps/mobile-web/src/screens/interview/InterviewScreen.tsx`: aktiviert beim Erreichen des Interview-Endes das Neuladen aktiver Interview-Observer (`getInterviewControllerGetInterviewQueryKey`), damit das gemountete Cockpit dahinter aktualisiert.
+- `apps/mobile-web/src/screens/interview/InterviewScreen.test.tsx`: ergänzt einen Unit-Test für den aktiven Interview-Refetch bei Abschluss der letzten Frage.
+- `e2e/scenarios/{03,04,05,06,07,08,10,11,12,13,14,15,16,18,20,21,23,24}` & `e2e/scenarios/helpers/scenario-harness.mjs`: wartet vor anschließenden Cockpit-/TabBar-Checks auf das Schließen des Sheets (`[data-testid="sheet-schliessen"]` detached); Szenario `23` nutzt nach der CH-Wiederaufnahme explizit `sheet-schliessen`.
+- `e2e/scenarios/22-dialog-matrix-crud-detailmasken.mjs`: ergänzt gemäß § 4.4 den E2E-Test für Schließen per `sheet-schliessen` (`65000`) und per `Escape` (`64000`) inkl. abgewartetem `PUT /lstb` und Persistenz nach Wiederöffnen.
+- `packages/ui/src/components/Sheet.tsx`: implementiert die responsive Komponente `Sheet` (< 768 px Bottom-Sheet mit abgerundeter Oberkante und `PanResponder`-`sheet-grabber` > 120 px, ≥ 768 px zentriertes Panel `WIDE_CONTENT_MAX_WIDTH`, `Card`-Kontur/-Schatten, halbtransparenter Backdrop, `sheet-schliessen`, Capture-Phase-`Escape`, `role="dialog"` / `aria-modal` und Fokus ins Panel).
+- `packages/ui/src/components/Sheet.test.tsx`: neue Unit-Tests zu Grabber-Breakpoint, Backdrop-/Button-/`Escape`-Schließen (inkl. aus fokussiertem `<Input>`), Pull-to-dismiss (> 120 px vs. < 120 px) und Barrierefreiheit.
+- `packages/ui/src/gallery/Gallery.tsx`: ergänzt einen interaktiven Abschnitt „Sheet“ in der UI-Galerie.
+- `packages/ui/src/i18n/resources.ts`: ergänzt Standard-Label `sheet.schliessen` im Namespace `UI_NS`.
+- `packages/ui/src/index.ts`: exportiert `Sheet` und `SheetProps`.
+- `docs/agent-prompts/443-batch-report.md`: dokumentiert Slice 4 in diesem Abschnitt.
+
+### 4. Abweichungen vom Auftrag
+- **Capture-Phase für `Escape` in `Sheet.tsx`:** `react-native-web`s `TextInput.handleKeyDown` ruft `e.stopPropagation()` auf, wodurch ein gewöhnlicher Bubble-Phase-Listener auf `window` bei fokussiertem Eingabefeld nie erreicht wird. `window.addEventListener('keydown', handleKeyDown, true)` fängt `Escape` in der Capture-Phase ab, sodass der Fokus-Blur-Save und das Schließen gemäß § 4.3/§ 4.4 zuverlässig greifen.
+- **Cockpit-Sichtbarkeit hinter dem Sheet (Chromium-Prüfung § 4.2):** Vom Cockpit aus geöffnete Sheets (`[CockpitHome, <Sheet>]`) lassen das Cockpit bei 1280 px und 375 px im echten Chromium-Browser sichtbar hinter dem halbtransparenten Backdrop stehen, sodass der Backdrop wie in § 4.1 gefordert halbtransparent blieb. Einzig beim einmaligen automatischen Einstieg direkt im Anschluss an das Minimal-Gate (`[CockpitHome, Interview, LStB]`) blendet `@react-navigation/native-stack` die unterste Route (`CockpitHome`) über `display: none` aus, weil `Interview` dazwischenliegt (kein `transparentModal`).
+- **Observer-Update beim Interview-Abschluss (`InterviewScreen.tsx` / `CrossBorderScreen.tsx`):** Da `CockpitHome` bei offenem Sheet jetzt gemountet bleibt, muss das Abschließen des Interviews aktive Interview-Observer aktualisieren statt mit `refetchType: 'none'` auf einen Remount zu warten.
+- **Test-Suffix & Dateiaufteilung:** `blurActiveInput.test.tsx` statt `.test.ts` wegen Vitest-Include-Pattern (`*.test.tsx`), `CockpitSheet.tsx` als kleine Wrapper-Datei unterhalb des 300-Zeilen-Limits (A5).
+- **Lokale E2E-Portkonfiguration:** Ausführungsmodus `ATTACH` auf `localhost:5434` wie oben beschrieben.
+
+### 5. Angepasste bestehende Tests/Szenarien
+- **`apps/mobile-web/App.test.tsx`:** Bestehende Tests unverändert; 4 neue Tests für Slice 4 ergänzt.
+- **`apps/mobile-web/src/screens/interview/InterviewScreen.test.tsx`:** Bestehende Tests unverändert; 1 Test zum Refetch aktiver Observer bei Interview-Abschluss ergänzt.
+- **`e2e/scenarios/{03..08,10..16,18,20,21,23,24}` & `scenario-harness.mjs`:** Ausschließlich Navigations-/Synchronisations-Warteschritte ergänzt, damit `assertEstimate`/Cockpit-Klicks bzw. Tab-Wechsel (`23`) erst nach abgeschlossener Sheet-Schließ-Animation greifen. Alle Euro-Beträge und PDF-Erwartungen blieben unverändert.
+- **`e2e/scenarios/22-dialog-matrix-crud-detailmasken.mjs`:** Gemäß § 4.4 um Schließen per `sheet-schliessen` (`65000`) und `Escape` (`64000`) inkl. abgewartetem `PUT /lstb` und Werteprüfung nach Wiederöffnen ergänzt.
+
+### 6. Ergebnis jedes Gate-Befehls (A2)
+Verifiziert auf `3acb8517791bdbedb585625f4925fc6877bbbf8b` (zusammen mit `e2e`-Lauf auf `5a800cf` + diesen unverändert committeten `e2e`-Dateien):
+- `pnpm lint`: **grün** (`oxlint --deny-warnings`: 0 warnings, 0 errors auf 894 Dateien).
+- `pnpm -r typecheck`: **grün** (alle 8 Workspace-Projekte ohne Fehler).
+- `pnpm -r test`: **grün** (`apps/website` 5/5, `packages/api-client` 12/12, `packages/tokens` 45/45, `packages/core` 702/702, `packages/ui` 73/73, `apps/api` 881/881, `apps/mobile-web` 769/769). Zusätzlich `pnpm register-check`: **PASS**; `pnpm adr-check`: **PASS**.
+- `node e2e/scenarios/run-all-scenarios.mjs` (über `ATTACH` an `localhost:5434` / `:3301` / `:4173`): **grün** (`ALL 24 SCENARIOS PASSED WITH ZERO FINDINGS OR REGRESSIONS!`).
+- `pnpm --filter @steuereule/e2e no-client-persistence` (über `ATTACH`): **grün** (`PASS — localStorage: {} · sessionStorage: {}` an allen 5 Checkpoints).
+- `pnpm --filter @steuereule/e2e breakpoint-layout` (über `ATTACH`): **grün** (`PASS — all breakpoint layout assertions succeeded` über 375–1920 px).
+
+### 7. Offene Fragen
+- **keine**.
