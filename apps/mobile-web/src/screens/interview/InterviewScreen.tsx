@@ -7,6 +7,8 @@ import {
   useInterviewControllerGetInterview,
   useInterviewControllerPostAnswer,
   getCockpitControllerGetCockpitSummaryQueryKey,
+  getInterviewControllerGetInterviewQueryKey,
+  getTaxEstimateControllerGetQueryKey,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
@@ -75,6 +77,12 @@ export function InterviewScreen({ onDone, taxYear = CURRENT_TAX_YEAR }: Intervie
       onSuccess: (response) => {
         if (response.status === 200) {
           void queryClient.invalidateQueries({ queryKey: getCockpitControllerGetCockpitSummaryQueryKey(taxYear) })
+          void queryClient.invalidateQueries({ queryKey: getTaxEstimateControllerGetQueryKey(taxYear) })
+          void queryClient.invalidateQueries({
+            queryKey: getInterviewControllerGetInterviewQueryKey(taxYear),
+            exact: true,
+            refetchType: 'none',
+          })
         }
       },
     },

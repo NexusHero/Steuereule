@@ -3,16 +3,16 @@
 // Herkunft. The § 32d Abs. 6 Günstigerprüfung renders `kind` FIRST (ADR-0034): eindeutig with
 // Empfehlung, zu-knapp/unbestimmt as honest no-verdict states, nicht-anwendbar naming the gate.
 // The client stays dumb: the fold and the comparison come from the server.
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
 import { ThemeProvider } from '@steuereule/ui'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
+import { getCockpitControllerGetCockpitSummaryQueryKey, getTaxEstimateControllerGetQueryKey, type KapitalResponseDto } from '@steuereule/api-client'
 import { createAppI18n } from '../../i18n/app-i18n'
 import { CapitalScreen } from './CapitalScreen'
 import { server } from '../../test-msw-server'
-import type { KapitalResponseDto } from '@steuereule/api-client'
 
 const TAX_YEAR = 2026
 const CAPITAL_URL = `*/v1/steuerjahre/${TAX_YEAR}/kapital`
@@ -47,18 +47,20 @@ const UNAMBIGUOUS_FLAT_RATE = {
   },
 }
 
-function renderCapital() {
+function renderCapital(onDone: () => void = () => {}, queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } }), onBack?: () => void) {
   const i18n = createAppI18n('de')
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={i18n}>
-        <ThemeProvider mode="light">
-          <CapitalScreen taxYear={TAX_YEAR} onDone={() => {}} />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
-  )
+  return {
+    queryClient,
+    ...render(
+      <QueryClientProvider client={queryClient}>
+        <I18nextProvider i18n={i18n}>
+          <ThemeProvider mode="light">
+            <CapitalScreen taxYear={TAX_YEAR} onDone={onDone} {...(onBack ? { onBack } : {})} />
+          </ThemeProvider>
+        </I18nextProvider>
+      </QueryClientProvider>,
+    ),
+  }
 }
 
 describe('KapitalScreen', () => {
@@ -192,5 +194,40 @@ describe('KapitalScreen', () => {
     renderCapital()
 
     expect(await screen.findByText(/Krypto bleibt in 1.0 ehrlich außen vor/)).toBeTruthy()
+  })
+
+  it('awaits in-flight PUT before calling onDone and invalidates cockpitSummary and taxEstimate', async () => {
+    let releasePut: () => void = () => {}
+    const putPending = new Promise<void>((resolve) => {
+      releasePut = resolve
+    })
+    server.use(
+      http.put(`${CAPITAL_URL}/kapitalertraege`, async () => {
+        await putPending
+        return HttpResponse.json(GERMAN_BROKER, { status: 200 })
+      }),
+    )
+    const onDone = vi.fn()
+    const onBack = vi.fn()
+    const { queryClient } = renderCapital(onDone, undefined, onBack)
+    const summaryKey = getCockpitControllerGetCockpitSummaryQueryKey(TAX_YEAR)
+    const estimateKey = getTaxEstimateControllerGetQueryKey(TAX_YEAR)
+    queryClient.setQueryData(summaryKey, { status: 200, data: null, headers: new Headers() })
+    queryClient.setQueryData(estimateKey, { status: 200, data: { kind: 'offen' }, headers: new Headers() })
+
+    const input = await screen.findByLabelText(/Kapitalerträge \(Einkünfte aus Kapitalvermögen\)/)
+    fireEvent.click(screen.getByLabelText('Zurück'))
+    expect(onBack).toHaveBeenCalledOnce()
+
+    fireEvent.change(input, { target: { value: '5000' } })
+    fireEvent.blur(input)
+    fireEvent.click(screen.getByTestId('kapital-weiter'))
+    await new Promise((r) => setTimeout(r, 20))
+    expect(onDone).not.toHaveBeenCalled()
+
+    releasePut()
+    await waitFor(() => expect(onDone).toHaveBeenCalledOnce())
+    expect(queryClient.getQueryState(summaryKey)?.isInvalidated).toBe(true)
+    expect(queryClient.getQueryState(estimateKey)?.isInvalidated).toBe(true)
   })
 })

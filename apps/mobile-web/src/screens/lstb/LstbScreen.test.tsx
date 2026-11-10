@@ -45,7 +45,7 @@ const CONFLICT: LstbResponseDto = {
 }
 
 function renderLstb(
-  opts: string | { readonly partnerName?: string; readonly onSwitchTaxYear?: (year: number) => void; readonly lng?: 'de' | 'en' } = {},
+  opts: string | { readonly partnerName?: string; readonly onSwitchTaxYear?: (year: number) => void; readonly onDone?: () => void; readonly lng?: 'de' | 'en' } = {},
 ) {
   const resolved = typeof opts === 'string' ? { partnerName: opts } : opts
   const i18n = createAppI18n(resolved.lng ?? 'de')
@@ -56,7 +56,7 @@ function renderLstb(
         <ThemeProvider mode="light">
           <LstbScreen
             taxYear={TAX_YEAR}
-            onDone={() => {}}
+            onDone={resolved.onDone ?? (() => {})}
             {...(resolved.partnerName ? { partnerName: resolved.partnerName } : {})}
             {...(resolved.onSwitchTaxYear ? { onSwitchTaxYear: resolved.onSwitchTaxYear } : {})}
           />
@@ -733,5 +733,31 @@ describe('LstbScreen', () => {
       URL.createObjectURL = origCreate
       URL.revokeObjectURL = origRevoke
     }
+  })
+
+  it('waits for an in-flight blur PUT before invoking onDone', async () => {
+    let releasePut: () => void = () => {}
+    const putPending = new Promise<void>((resolve) => {
+      releasePut = resolve
+    })
+    server.use(
+      http.put('*/v1/steuerjahre/:jahr/lstb/:feld', async () => {
+        await putPending
+        return HttpResponse.json(EMPTY_LSTB_RESPONSE, { status: 200 })
+      }),
+    )
+    const onDone = vi.fn()
+    renderLstb({ onDone })
+
+    const input = await screen.findByTestId('lstb-bruttoarbeitslohn')
+    fireEvent.change(input, { target: { value: '50000' } })
+    fireEvent.blur(input)
+    fireEvent.click(screen.getByTestId('lstb-weiter'))
+
+    await new Promise((r) => setTimeout(r, 20))
+    expect(onDone).not.toHaveBeenCalled()
+
+    releasePut()
+    await waitFor(() => expect(onDone).toHaveBeenCalledOnce())
   })
 })

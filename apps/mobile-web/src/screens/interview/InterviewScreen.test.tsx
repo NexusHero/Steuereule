@@ -12,7 +12,12 @@ import { I18nextProvider } from 'react-i18next'
 import { ThemeProvider } from '@steuereule/ui'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
-import { getCockpitControllerGetCockpitSummaryQueryKey, type InterviewStateDto } from '@steuereule/api-client'
+import {
+  getCockpitControllerGetCockpitSummaryQueryKey,
+  getInterviewControllerGetInterviewQueryKey,
+  getTaxEstimateControllerGetQueryKey,
+  type InterviewStateDto,
+} from '@steuereule/api-client'
 import { createAppI18n } from '../../i18n/app-i18n'
 import { InterviewScreen } from './InterviewScreen'
 import { server, EMPTY_INTERVIEW_STATE } from '../../test-msw-server'
@@ -207,6 +212,22 @@ describe('InterviewScreen', () => {
     confirm()
 
     await waitFor(() => expect(queryClient.getQueryState(cockpitKey)?.isInvalidated).toBe(true))
+  })
+
+  it('also invalidates taxEstimate and unfiltered interview cache on a successful write', async () => {
+    const { queryClient } = await renderOnJobQuestion()
+    const estimateKey = getTaxEstimateControllerGetQueryKey(TAX_YEAR)
+    const interviewKey = getInterviewControllerGetInterviewQueryKey(TAX_YEAR)
+    queryClient.setQueryData(estimateKey, { status: 200, data: { kind: 'offen' }, headers: new Headers() })
+    queryClient.setQueryData(interviewKey, { status: 200, data: EMPTY_INTERVIEW_STATE, headers: new Headers() })
+
+    fireEvent.click(screen.getByText('Angestellt'))
+    await onForeignQuestion()
+
+    await waitFor(() => {
+      expect(queryClient.getQueryState(estimateKey)?.isInvalidated).toBe(true)
+      expect(queryClient.getQueryState(interviewKey)?.isInvalidated).toBe(true)
+    })
   })
 
   describe('a rejected write (400/409) — the server and the local graph disagree, never swallowed', () => {
