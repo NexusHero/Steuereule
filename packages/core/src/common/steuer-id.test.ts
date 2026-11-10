@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isValidTaxId, isValidTaxNumber } from './steuer-id'
+import { checkTaxId, isValidTaxId, isValidTaxNumber } from './steuer-id'
 
 // Boundary table for the shape rules the Onboarding PUT /v1/profile endpoint enforces
 // server-side. This table is the single source of truth the frontend formatter (#27)
@@ -69,5 +69,24 @@ describe('isValidSteuernummer', () => {
 
   it('accepts 13 digits (upper bound)', () => {
     expect(isValidTaxNumber('1234567890123')).toBe(true)
+  })
+})
+
+describe('checkTaxId (#452 decision 11)', () => {
+  it('accepts real-shaped Steuer-IDs with a correct check digit', () => {
+    for (const id of ['86095742719', '47036892816', '65929970489']) expect(checkTaxId(id)).toBe('valid')
+    expect(checkTaxId('860 957 427 19')).toBe('valid')
+  })
+
+  it('rejects a wrong check digit, a leading 0 and a wrong digit distribution', () => {
+    expect(checkTaxId('86095742718')).toBe('invalid')
+    expect(checkTaxId('06095742719')).toBe('invalid')
+    expect(checkTaxId('12345678901')).toBe('invalid')
+  })
+
+  it('stays quiet while the number is still being typed', () => {
+    expect(checkTaxId('')).toBe('incomplete')
+    expect(checkTaxId('8609574')).toBe('incomplete')
+    expect(checkTaxId('86x')).toBe('invalid')
   })
 })

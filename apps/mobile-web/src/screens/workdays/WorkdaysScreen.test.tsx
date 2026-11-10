@@ -179,3 +179,44 @@ describe('ArbeitstageScreen holiday region from the address (#451 slice 3)', () 
     expect(screen.queryByTestId('feiertage-region-aus-plz')).toBeNull()
   })
 })
+
+describe('„Wie 2025 übernehmen“ for the Arbeitsweg (#452 slice 4, AC 7)', () => {
+  const prior = {
+    inputs: { workdays: [1, 2, 3, 4], vacationDays: 28, sickDays: 3, homeOfficeDays: 40, oneWayKm: 18, transport: 'pkw', workplace: 'Freiburg', publicHolidayRegion: 'BW' },
+    workdays: { weekdays: 209, workdays: 178, commuteDays: 138 },
+    commuterAllowance: 745,
+  }
+
+  it('fills the form from last year on a click, marks it, and saves only on „Weiter“', async () => {
+    let puts = 0
+    server.use(
+      http.get('*/v1/steuerjahre/2025/arbeitsweg', () => HttpResponse.json(prior)),
+      http.put('*/v1/steuerjahre/2026/arbeitsweg', () => {
+        puts += 1
+        return HttpResponse.json(prior)
+      }),
+    )
+    renderWorkdays(() => {}, 2026)
+    const button = await screen.findByTestId('wie-vorjahr-arbeitsweg')
+    expect(((await screen.findByLabelText('Urlaubstage')) as HTMLInputElement).value).toBe('')
+
+    fireEvent.click(button)
+    expect((screen.getByLabelText('Urlaubstage') as HTMLInputElement).value).toBe('28')
+    expect((screen.getByLabelText('Einfache Entfernung in km') as HTMLInputElement).value).toBe('18')
+    expect(screen.getByTestId('wie-vorjahr-markiert').textContent).toContain('aus 2025')
+    expect(puts).toBe(0)
+
+    fireEvent.click(screen.getByTestId('arbeitstage-weiter'))
+    await waitFor(() => expect(puts).toBe(1))
+  })
+
+  it('does not offer a takeover once the year has its own values', async () => {
+    server.use(
+      http.get('*/v1/steuerjahre/2025/arbeitsweg', () => HttpResponse.json(prior)),
+      http.get('*/v1/steuerjahre/2026/arbeitsweg', () => HttpResponse.json(prior)),
+    )
+    renderWorkdays(() => {}, 2026)
+    await screen.findByLabelText('Urlaubstage')
+    expect(screen.queryByTestId('wie-vorjahr-arbeitsweg')).toBeNull()
+  })
+})

@@ -3,7 +3,8 @@ import { Pressable, ScrollView, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { Button, Card, Chip, Feld, Input, Option, useBreakpoint, useTheme, type InputAutoComplete } from '@steuereule/ui'
-import { formatGermanDate, MARITAL_STATUSES, RELIGION_KEYS } from '@steuereule/core'
+import {
+  bankNameForIban, formatGermanDate, MARITAL_STATUSES, RELIGION_KEYS } from '@steuereule/core'
 import {
   getLinkControllerGetQueryKey,
   useLinkControllerGet,
@@ -20,6 +21,8 @@ import { ErrorState, LoadingState } from '../shared/ScreenState'
 import { triggerSaveErrorHaptic, warnOnHttpError } from '../shared/saveFeedback'
 import { germanToIso, isoToGerman, toDraft, zuPutDto, type MasterDataDraft } from './masterDataMapping'
 import { PostalCodeHint } from '../shared/PostalCodeHint'
+import { TaxIdHint } from '../shared/TaxIdHint'
+import { PartnerLinkStatus } from './PartnerLinkStatus'
 import { prefillCity } from '../shared/postalCodePrefill'
 
 export interface MasterDataScreenProps {
@@ -186,6 +189,11 @@ export function MasterDataScreen({ onBack, taxYear = CURRENT_TAX_YEAR, onRecordP
       ) : null}
 
       {textField('iban')}
+      {bankNameForIban(form.iban) ? (
+        <Text style={styles.hint} testID="stammdaten-iban-bank">
+          {t('stammdaten.bankAusIban', { bank: bankNameForIban(form.iban) })}
+        </Text>
+      ) : null}
       {textField('kontoinhaber')}
       {textField('finanzamt')}
       {textField('telefon')}
@@ -314,6 +322,7 @@ function TaxYearLinkSection({
           </Chip>
         </View>
       </Feld>
+      <PartnerLinkStatus taxYear={taxYear} onChanged={invalidate} />
       {filingType === 'zusammen' && current?.personBHasOwnAccount ? (
         <Text style={{ fontSize: theme.size.s, color: theme.color.tinte2 }}>
           {`${[personB?.firstName, personB?.lastName].filter(Boolean).join(' ') || 'Person B'} pflegt die Angaben im eigenen Konto.`}
@@ -333,6 +342,7 @@ function TaxYearLinkSection({
           </Feld>
           <Feld label="Steuer-ID Partner (11 Ziffern)">
             <Input type="numeric" value={taxIdB || (personB?.steuerId ?? '')} onChange={setTaxIdB} testID="personb-steuerid" />
+            <TaxIdHint value={taxIdB} testID="personb-steuerid-hinweis" />
           </Feld>
           <Feld label="Geburtsdatum Partner (TT.MM.JJJJ)">
             <Input value={birthDateB || isoToGerman(personB?.geburtsdatum ?? null)} onChange={setBirthDateB} autoComplete="off" testID="personb-geburtsdatum" />

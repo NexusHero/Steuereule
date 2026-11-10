@@ -232,3 +232,40 @@ describe('KatalogScreen', () => {
     await waitFor(() => expect(onDone).toHaveBeenCalledOnce())
   })
 })
+
+describe('„Wie 2025 übernehmen“ for Spenden (#452 slice 4, AC 7)', () => {
+  it('offers last year’s amount, fills the field only on a click, marks it and saves only on „Weiter“', async () => {
+    const posted: unknown[] = []
+    server.use(
+      http.get(`*/v1/steuerjahre/${TAX_YEAR}/interview`, () => HttpResponse.json({ answers: { spenden: 'Ja' }, nextStep: { kind: 'question', id: 'spenden-betrag' }, openItems: 1 })),
+      http.get(`*/v1/steuerjahre/${TAX_YEAR - 1}/interview`, () => HttpResponse.json({ answers: { spenden: 'Ja', 'spenden-betrag': '300' }, nextStep: { kind: 'done' }, openItems: 0 })),
+      http.post(`*/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, async ({ request }) => {
+        posted.push(await request.json())
+        return HttpResponse.json({ answers: {}, nextStep: { kind: 'done' }, openItems: 0 })
+      }),
+    )
+    renderCatalog('sonderausgaben')
+    const offer = await screen.findByTestId('wie-vorjahr-spenden-betrag')
+    expect(offer.textContent).toContain('2025')
+    expect(offer.textContent).toContain('300')
+    expect((screen.getByTestId('katalog-input-spenden-betrag') as HTMLInputElement).value).toBe('')
+
+    fireEvent.click(offer)
+    expect((screen.getByTestId('katalog-input-spenden-betrag') as HTMLInputElement).value).toBe('300')
+    expect(screen.getByTestId('wie-vorjahr-markiert-spenden-betrag').textContent).toContain('aus 2025')
+    expect(posted).toEqual([])
+
+    fireEvent.click(screen.getByTestId('katalog-submit-spenden-betrag'))
+    await waitFor(() => expect(posted).toEqual([{ questionId: 'spenden-betrag', value: '300' }]))
+  })
+
+  it('offers nothing when last year had no amount', async () => {
+    server.use(
+      http.get(`*/v1/steuerjahre/${TAX_YEAR}/interview`, () => HttpResponse.json({ answers: { spenden: 'Ja' }, nextStep: { kind: 'question', id: 'spenden-betrag' }, openItems: 1 })),
+      http.get(`*/v1/steuerjahre/${TAX_YEAR - 1}/interview`, () => HttpResponse.json({ answers: {}, nextStep: { kind: 'question', id: 'spenden' }, openItems: 0 })),
+    )
+    renderCatalog('sonderausgaben')
+    await screen.findByTestId('katalog-input-spenden-betrag')
+    expect(screen.queryByTestId('wie-vorjahr-spenden-betrag')).toBeNull()
+  })
+})

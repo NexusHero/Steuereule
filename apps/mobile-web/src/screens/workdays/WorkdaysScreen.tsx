@@ -45,16 +45,20 @@ export function WorkdaysScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TA
   const bp = useBreakpoint()
   const { t: tr } = useTranslation(APP_NS)
   const query = useCommuteControllerGet(taxYear, partnerName === undefined ? undefined : { person: 'B' })
+  // #452 slice 4: last year's commute, offered on a click, never filled in silently.
+  const priorQuery = useCommuteControllerGet(taxYear - 1, partnerName === undefined ? undefined : { person: 'B' }, { query: { retry: false } })
   // #451 slice 3: the user's own address suggests the holiday region; the partner's may differ.
   const masterData = useMasterDataControllerRead({ query: { enabled: partnerName === undefined, retry: false } })
 
-  if (query.isPending || (partnerName === undefined && masterData.isPending)) return <LoadingState bp={bp} label={tr('arbeitstage.loading')} />
+  if (query.isPending || priorQuery.isPending || (partnerName === undefined && masterData.isPending)) return <LoadingState bp={bp} label={tr('arbeitstage.loading')} />
   const saved = query.data?.status === 200 ? query.data.data.inputs : null
+  const prior = priorQuery.data?.status === 200 ? priorQuery.data.data.inputs : null
   const address = masterData.data?.status === 200 ? masterData.data.data : null
   const addressState = address?.plz ? stateForAddress(address.plz, address.wohnort ?? '') : null
   return (
     <WorkdaysForm
       saved={saved}
+      prior={saved === null ? prior : null}
       addressState={partnerName === undefined ? addressState : null}
       taxYear={taxYear}
       onDone={onDone}
@@ -66,6 +70,7 @@ export function WorkdaysScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TA
 
 function WorkdaysForm({
   saved,
+  prior,
   addressState,
   taxYear,
   partnerName,
@@ -73,6 +78,8 @@ function WorkdaysForm({
   onBack,
 }: {
   readonly saved: CommuteInputsDto | null
+  /** Last year's commute, offered via „Wie {Vorjahr} übernehmen“ while this year has none. */
+  readonly prior: CommuteInputsDto | null
   /** Bundesland from the master-data address, used only while no region is saved. */
   readonly addressState: GermanState | null
   readonly taxYear: number
@@ -130,6 +137,29 @@ function WorkdaysForm({
       ? allowanceOrNull(oneWayKm, result.commuteDays, taxYear, transport === 'pkw')
       : null
 
+  const [takenOver, setTakenOver] = useState(false)
+
+  /** „Wie 2025 übernehmen“ (#452 decision 8): fills the form, marked; it counts once „Weiter“ saves it. */
+  function takeOverPriorYear() {
+    if (!prior) return
+    const days = ((prior.workdays as IsoWeekday[] | undefined) ?? [1, 2, 3, 4, 5]).slice()
+    setWorkdays(days)
+    setVacation(textFrom(prior.vacationDays))
+    setSick(textFrom(prior.sickDays))
+    setHomeOffice(textFrom(prior.homeOfficeDays))
+    setKm(textFrom(prior.oneWayKm))
+    setTransport(prior.transport ?? null)
+    setWorkplace(prior.workplace ?? '')
+    const priorRegion = (prior.publicHolidayRegion as HolidayRegion | null | undefined) ?? null
+    if (priorRegion !== null) {
+      setRegion(priorRegion)
+      setRegionFromAddress(false)
+      // The holidays fall on other days this year: recount them for the new year.
+      setPublicHolidays(String(holidaysOnWorkdays(taxYear, priorRegion, days)))
+    }
+    setTakenOver(true)
+  }
+
   function next() {
     if (result?.kind === 'widerspruch') return
     setError(false)
@@ -178,6 +208,16 @@ function WorkdaysForm({
 
       <Text style={styles.heading}>{partnerName === undefined ? tr('arbeitstage.heading') : tr('arbeitstage.headingPartner', { name: partnerName })}</Text>
       <Text style={styles.help}>{tr('arbeitstage.help')}</Text>
+      {prior && !takenOver ? (
+        <Button variant="leise" onPress={takeOverPriorYear} style={styles.priorButton} testID="wie-vorjahr-arbeitsweg">
+          {tr('vorjahr.uebernehmen', { year: taxYear - 1 })}
+        </Button>
+      ) : null}
+      {takenOver ? (
+        <Text style={styles.regionHint} accessibilityLiveRegion="polite" testID="wie-vorjahr-markiert">
+          {tr('vorjahr.markiert', { year: taxYear - 1 })}
+        </Text>
+      ) : null}
 
       <Text style={styles.sectionLabel}>{tr('arbeitstage.weekdays')}</Text>
       <View style={styles.weekdayRow}>
@@ -361,8 +401,10 @@ function makeStyles(t: UiTheme) {
   const conflictHeading: TextStyle = { color: t.color.tinte, fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size.m, marginBottom: t.space.s2 }
   const conflictBody: TextStyle = { color: t.color.tinte, fontFamily: t.font.text, fontSize: t.size.s }
   const cta: ViewStyle = { marginTop: t.space.s4 }
+  const priorButton: ViewStyle = { marginBottom: t.space.s4 }
   const regionHint: TextStyle = { color: t.color.ki, fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: t.size.xs, marginTop: -t.space.s2 }
   return {
+    priorButton,
     regionHint,
     screen, wideScreen, headerRow, heading, help, sectionLabel, weekdayRow, weekday, weekdayActive, weekdayText, weekdayActiveText,
     ergebnisBlock: resultBlock, resultRow, resultLabel, resultValue, honestyNote, widerspruchBlock: conflictBlock, widerspruchHeading: conflictHeading, widerspruchBody: conflictBody, cta,

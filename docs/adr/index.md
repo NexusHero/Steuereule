@@ -79,6 +79,7 @@ The ADRs **justify** the architecture; the [living arc42 document](../arc42/READ
 | 0059 | Eigene Keystore-Datenbank für Beleg-Schlüssel (Crypto-Shredding bis in die Backups) | Accepted |
 | 0060 | On-Device-OCR im Web, selbst gehostet, OCR-Werte nie grün | Accepted |
 | 0061 | Diktieren Stufe 2: Sprachmodell von Hugging Face, gepinnt und geprüft (Abweichung von ADR-0060) | Accepted |
+| 0062 | Haushalt auf Kontoebene: Ehepartner und Kinder einmal anlegen, pro Jahr auswählen | Accepted |
 
 See also the [Tech Radar](./tech-radar.md).
 

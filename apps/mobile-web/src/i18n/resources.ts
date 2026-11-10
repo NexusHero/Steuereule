@@ -470,6 +470,7 @@ export const appResources = {
         hinweisEdaten: 'Lohnsteuer, Sozialversicherung und andere „e“-Zeilen liegen dem Finanzamt bereits vom Arbeitgeber vor und bleiben leer. Nur den Bruttoarbeitslohn (Anlage N, Zeile 5) tragen wir zur Kontrolle ein.',
       },
       stammdaten: {
+        bankAusIban: 'Bank: {{bank}} (aus der IBAN)',
         rowLabel: 'Angaben für die Steuererklärung',
         title: 'Angaben für die Erklärung',
         back: 'Zurück',
@@ -529,6 +530,41 @@ export const appResources = {
       rechtliches: {
         back: 'Zurück',
         links: 'Rechtliches',
+      },
+      vorjahr: {
+        uebernehmen: 'Wie {{year}} übernehmen',
+        betrag: 'Wie {{year}}: {{amount}} übernehmen',
+        markiert: 'aus {{year}} übernommen – zählt erst, wenn du speicherst. Prüf die Werte kurz.',
+      },
+      steuerIdHinweis: {
+        ungueltig: 'Diese Steuer-ID kann so nicht stimmen. Prüf bitte die Ziffern auf dem Brief vom Bundeszentralamt für Steuern.',
+      },
+      haushalt: {
+        kinder: {
+          titel: 'Kinder aus deinem Haushalt',
+          auswahl: 'Wer ist {{year}} dabei? Name, Geburtsdatum und Steuer-ID musst du nicht noch mal eintippen.',
+          uebernehmen: 'Für {{year}} übernehmen ({{count}})',
+          ueber25: 'über 25 – nur wenn es noch zählt',
+          ausbildungHinweis: 'Ab 18 zählt ein Kind steuerlich nur, solange es in Ausbildung oder Studium ist. Die App fragt das noch nicht ab, und die Schätzung berücksichtigt es noch nicht.',
+        },
+        ausJahr: 'aus {{year}}',
+        dublette: {
+          frage: 'Sind „{{a}}“ und „{{b}}“ dieselbe Person?',
+          ja: 'Ja, dieselbe',
+          nein: 'Nein, zwei Personen',
+        },
+        geaendertVonPartner: 'geändert von deinem Partner am {{date}}',
+        nichtMehrDabei: 'Ab {{year}} nicht mehr dabei',
+        loeschen: 'Endgültig löschen',
+        loeschenWarnung: 'Damit verschwindet {{name}} aus allen Steuerjahren, auch aus abgeschlossenen. Das lässt sich nicht rückgängig machen.',
+        loeschenBestaetigen: 'Ja, endgültig löschen',
+        abbrechen: 'Abbrechen',
+        fehler: 'Das hat nicht geklappt. Bitte versuch es noch mal.',
+        partner: {
+          verknuepftSeit: 'Ihr seid seit {{year}} verknüpft. In jedem neuen Jahr bleibt die Verknüpfung, ein neuer Einladungscode ist nicht nötig.',
+          beenden: 'Ab {{year}} nicht mehr verknüpft',
+          beendetAb: 'Die Verknüpfung endet mit {{year}}.',
+        },
       },
       plz: {
         fromPostalCode: 'aus deiner PLZ',
@@ -2175,6 +2211,7 @@ export const appResources = {
         hinweisEdaten: 'Income tax, social security and other “e” lines are already reported by your employer and stay empty. Only the gross wage (Anlage N, line 5) is filled in, as a cross-check.',
       },
       stammdaten: {
+        bankAusIban: 'Bank: {{bank}} (from the IBAN)',
         rowLabel: 'Details for your tax return',
         title: 'Return details',
         back: 'Back',
@@ -2234,6 +2271,41 @@ export const appResources = {
       rechtliches: {
         back: 'Back',
         links: 'Legal',
+      },
+      vorjahr: {
+        uebernehmen: 'Take over as in {{year}}',
+        betrag: 'Take over {{year}}: {{amount}}',
+        markiert: 'taken over from {{year}} – it counts once you save. Please check the values.',
+      },
+      steuerIdHinweis: {
+        ungueltig: 'This tax ID cannot be right. Please check the digits on the letter from the Federal Central Tax Office.',
+      },
+      haushalt: {
+        kinder: {
+          titel: 'Children in your household',
+          auswahl: 'Who is part of {{year}}? You don’t need to type name, birth date and tax ID again.',
+          uebernehmen: 'Take over for {{year}} ({{count}})',
+          ueber25: 'over 25 – only if they still count',
+          ausbildungHinweis: 'From 18 a child only counts for tax while in education or studies. The app does not ask this yet, and the estimate does not take it into account yet.',
+        },
+        ausJahr: 'from {{year}}',
+        dublette: {
+          frage: 'Are “{{a}}” and “{{b}}” the same person?',
+          ja: 'Yes, the same',
+          nein: 'No, two people',
+        },
+        geaendertVonPartner: 'changed by your partner on {{date}}',
+        nichtMehrDabei: 'No longer included from {{year}}',
+        loeschen: 'Delete for good',
+        loeschenWarnung: '{{name}} will disappear from every tax year, including finished ones. This cannot be undone.',
+        loeschenBestaetigen: 'Yes, delete for good',
+        abbrechen: 'Cancel',
+        fehler: 'That did not work. Please try again.',
+        partner: {
+          verknuepftSeit: 'You have been linked since {{year}}. The link stays in every new year; no new invitation code is needed.',
+          beenden: 'No longer linked from {{year}}',
+          beendetAb: 'The link ends with {{year}}.',
+        },
       },
       plz: {
         fromPostalCode: 'from your postcode',
