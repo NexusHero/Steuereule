@@ -104,20 +104,22 @@ export function CockpitStack() {
       <Stack.Screen name="CockpitHome" component={CockpitHomeRoute} />
       <Stack.Screen name="Interview" component={InterviewRoute} />
       <Stack.Screen name="AccountWall" component={AccountWallRoute} />
-      <Stack.Screen name="Lstb" component={LstbRoute} />
-      <Stack.Screen name="Pension" component={PensionRoute} />
-      <Stack.Screen name="CrossBorder" component={CrossBorderRoute} />
-      <Stack.Screen name="Catalog" component={CatalogRoute} getId={({ params }) => `${params.year}-${params.entry}`} />
-      <Stack.Screen name="Workdays" component={WorkdaysRoute} />
       <Stack.Screen name="Submission" component={SubmissionRoute} />
       <Stack.Screen name="Plausibility" component={PlausibilityRoute} />
       <Stack.Screen name="FilingTypeComparison" component={FilingTypeComparisonRoute} />
       <Stack.Screen name="Assessment" component={AssessmentRoute} />
-      <Stack.Screen name="Capital" component={CapitalRoute} />
-      <Stack.Screen name="Rental" component={RentalRoute} />
-      <Stack.Screen name="Children" component={ChildrenRoute} />
       <Stack.Screen name="CockpitMasterData" component={CockpitMasterDataRoute} />
-      <Stack.Screen name="Partner" component={PartnerRoute} />
+      <Stack.Group screenOptions={{ presentation: 'transparentModal', animation: 'slide_from_bottom' }}>
+        <Stack.Screen name="Lstb" component={LstbRoute} />
+        <Stack.Screen name="Pension" component={PensionRoute} />
+        <Stack.Screen name="CrossBorder" component={CrossBorderRoute} />
+        <Stack.Screen name="Catalog" component={CatalogRoute} getId={({ params }) => `${params.year}-${params.entry}`} />
+        <Stack.Screen name="Workdays" component={WorkdaysRoute} />
+        <Stack.Screen name="Capital" component={CapitalRoute} />
+        <Stack.Screen name="Rental" component={RentalRoute} />
+        <Stack.Screen name="Children" component={ChildrenRoute} />
+        <Stack.Screen name="Partner" component={PartnerRoute} />
+      </Stack.Group>
     </Stack.Navigator>
   )
 }

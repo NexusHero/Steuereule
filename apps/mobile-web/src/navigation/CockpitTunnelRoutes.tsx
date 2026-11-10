@@ -11,6 +11,7 @@ import { FilingTypeComparisonScreen } from '../screens/filing-type-comparison/Fi
 import { tileById, type TileDefinition } from '../screens/cockpit/tiles'
 import { useShellState } from './ShellState'
 import { RequiresAccount } from './RequiresAccount'
+import { CockpitSheet } from './CockpitSheet'
 import { useYearGuard } from './guards'
 import type { CatalogEntryParam, CockpitStackParamList } from './routes'
 
@@ -66,15 +67,17 @@ export function LstbRoute({ navigation, route }: Props<'Lstb'>) {
 
   return (
     <RequiresAccount>
-      <LstbScreen
-        taxYear={year}
-        onSwitchTaxYear={(nextYear) => {
-          setTaxYear(nextYear)
-          navigation.setParams({ year: nextYear })
-        }}
-        onDone={home}
-        onBack={home}
-      />
+      <CockpitSheet navigation={navigation}>
+        <LstbScreen
+          taxYear={year}
+          onSwitchTaxYear={(nextYear) => {
+            setTaxYear(nextYear)
+            navigation.setParams({ year: nextYear })
+          }}
+          onDone={home}
+          onBack={home}
+        />
+      </CockpitSheet>
     </RequiresAccount>
   )
 }
@@ -85,7 +88,9 @@ export function PensionRoute({ navigation, route }: Props<'Pension'>) {
   const home = () => navigation.navigate('CockpitHome', undefined, { pop: true })
   return (
     <RequiresAccount>
-      <PensionerScreen taxYear={year} onDone={home} onBack={home} />
+      <CockpitSheet navigation={navigation}>
+        <PensionerScreen taxYear={year} onDone={home} onBack={home} />
+      </CockpitSheet>
     </RequiresAccount>
   )
 }
@@ -96,7 +101,9 @@ export function CrossBorderRoute({ navigation, route }: Props<'CrossBorder'>) {
   const home = () => navigation.navigate('CockpitHome', undefined, { pop: true })
   return (
     <RequiresAccount>
-      <CrossBorderScreen taxYear={year} onDone={home} onBack={home} />
+      <CockpitSheet navigation={navigation}>
+        <CrossBorderScreen taxYear={year} onDone={home} onBack={home} />
+      </CockpitSheet>
     </RequiresAccount>
   )
 }
@@ -118,7 +125,9 @@ export function CatalogRoute({ navigation, route }: Props<'Catalog'>) {
 
   return (
     <RequiresAccount>
-      <CatalogScreen key={`${year}-${validEntry}`} taxYear={year} entry={validEntry} revisit={revisit} onDone={home} onBack={home} />
+      <CockpitSheet navigation={navigation}>
+        <CatalogScreen key={`${year}-${validEntry}`} taxYear={year} entry={validEntry} revisit={revisit} onDone={home} onBack={home} />
+      </CockpitSheet>
     </RequiresAccount>
   )
 }
@@ -129,7 +138,9 @@ export function WorkdaysRoute({ navigation, route }: Props<'Workdays'>) {
   const home = () => navigation.navigate('CockpitHome', undefined, { pop: true })
   return (
     <RequiresAccount>
-      <WorkdaysScreen taxYear={year} onDone={home} onBack={home} />
+      <CockpitSheet navigation={navigation}>
+        <WorkdaysScreen taxYear={year} onDone={home} onBack={home} />
+      </CockpitSheet>
     </RequiresAccount>
   )
 }

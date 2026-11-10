@@ -17,7 +17,7 @@ import { ReceiptsScreen } from '../screens/receipts/ReceiptsScreen'
 import { CockpitStack } from './CockpitStack'
 import { ProfileStack } from './ProfileStack'
 import { useShellState } from './ShellState'
-import type { AppTabParamList } from './routes'
+import { isSheetRouteName, type AppTabParamList } from './routes'
 
 type TabId = 'cockpit' | 'eule' | 'belege' | 'profil'
 type TabRouteName = keyof AppTabParamList
@@ -40,6 +40,10 @@ const Tab = createBottomTabNavigator<AppTabParamList>()
 
 function isTabBarVisible(state: TabNavigationState<AppTabParamList>): boolean {
   const activeTabRoute = state.routes[state.index]
+  if (activeTabRoute?.name === 'Cockpit') {
+    const focusedCockpit = getFocusedRouteNameFromRoute(activeTabRoute) ?? 'CockpitHome'
+    return !isSheetRouteName(focusedCockpit)
+  }
   if (activeTabRoute?.name !== 'Profile') return true
   const focusedProfile = getFocusedRouteNameFromRoute(activeTabRoute) ?? 'ProfileHome'
   return focusedProfile === 'ProfileHome'

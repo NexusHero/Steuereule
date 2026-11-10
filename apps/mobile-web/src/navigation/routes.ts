@@ -24,6 +24,22 @@ export type CockpitStackParamList = {
   Partner: { year: number; area: PartnerAreaParam }
 }
 
+export const SHEET_ROUTE_NAMES: readonly (keyof CockpitStackParamList)[] = [
+  'Lstb',
+  'CrossBorder',
+  'Pension',
+  'Catalog',
+  'Workdays',
+  'Capital',
+  'Rental',
+  'Children',
+  'Partner',
+]
+
+export function isSheetRouteName(name: string | undefined): boolean {
+  return name !== undefined && (SHEET_ROUTE_NAMES as readonly string[]).includes(name)
+}
+
 export type ProfileStackParamList = {
   ProfileHome: undefined
   Privacy: undefined

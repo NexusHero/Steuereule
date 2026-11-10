@@ -658,13 +658,35 @@ describe('App', () => {
       )
     }
 
-    it('AC-1: preserves LStB mask and typed input value across switching to Belege tab and back', async () => {
+    it('AC-1: preserves active non-sheet Cockpit mask and typed input value across switching to Belege tab and back', async () => {
       mockSignedInSession()
       mockCompletedEmployeeInterview(2026)
-      let lstbPutCount = 0
+      let masterDataPutCount = 0
       server.use(
-        http.put('*/v1/steuerjahre/:jahr/lstb/:feld', () => {
-          lstbPutCount += 1
+        http.get('*/v1/stammdaten', () =>
+          HttpResponse.json(
+            {
+              geburtsdatum: null,
+              strasse: null,
+              hausnummer: null,
+              hausnummerZusatz: null,
+              plz: null,
+              wohnort: null,
+              beruf: null,
+              religion: null,
+              familienstand: null,
+              familienstandSeit: null,
+              iban: null,
+              kontoinhaber: null,
+              finanzamt: null,
+              telefon: null,
+              missing: [],
+            },
+            { status: 200 },
+          ),
+        ),
+        http.put('*/v1/stammdaten', () => {
+          masterDataPutCount += 1
           return HttpResponse.json({}, { status: 200 })
         }),
       )
@@ -673,21 +695,61 @@ describe('App', () => {
       const { default: App } = await import('./App')
       render(<App />)
 
-      fireEvent.click(await screen.findByTestId('cockpit-weiter'))
-      const grossInput = (await screen.findByTestId('lstb-bruttoarbeitslohn')) as HTMLInputElement
-      fireEvent.change(grossInput, { target: { value: '52000' } })
+      fireEvent.click(await screen.findByTestId('cockpit-stammdaten'))
+      const dobInput = (await screen.findByTestId('stammdaten-geburtsdatum')) as HTMLInputElement
+      fireEvent.change(dobInput, { target: { value: '01.02.1990' } })
 
       fireEvent.click(screen.getByRole('tab', { name: 'Belege' }))
       await screen.findByText('Beleg hochladen (PDF / Foto)')
-      expect(isElementDisplayed(grossInput)).toBe(false)
+      expect(isElementDisplayed(dobInput)).toBe(false)
 
       fireEvent.click(screen.getByRole('tab', { name: 'Cockpit' }))
-      await waitFor(() => expect(isElementDisplayed(screen.getByTestId('lstb-bruttoarbeitslohn'))).toBe(true))
-      expect((screen.getByTestId('lstb-bruttoarbeitslohn') as HTMLInputElement).value).toBe('52000')
-      expect(lstbPutCount).toBe(0)
+      await waitFor(() => expect(isElementDisplayed(screen.getByTestId('stammdaten-geburtsdatum'))).toBe(true))
+      expect((screen.getByTestId('stammdaten-geburtsdatum') as HTMLInputElement).value).toBe('01.02.1990')
+      expect(masterDataPutCount).toBe(0)
     })
 
-    it('Pop-to-Root: tapping the active Cockpit tab returns from LStB to CockpitHome', async () => {
+    it('Pop-to-Root: tapping the active Cockpit tab returns from CockpitMasterData to CockpitHome', async () => {
+      mockSignedInSession()
+      mockCompletedEmployeeInterview(2026)
+      server.use(
+        http.get('*/v1/stammdaten', () =>
+          HttpResponse.json(
+            {
+              geburtsdatum: null,
+              strasse: null,
+              hausnummer: null,
+              hausnummerZusatz: null,
+              plz: null,
+              wohnort: null,
+              beruf: null,
+              religion: null,
+              familienstand: null,
+              familienstandSeit: null,
+              iban: null,
+              kontoinhaber: null,
+              finanzamt: null,
+              telefon: null,
+              missing: [],
+            },
+            { status: 200 },
+          ),
+        ),
+      )
+
+      window.history.pushState({}, '', '/app')
+      const { default: App } = await import('./App')
+      render(<App />)
+
+      fireEvent.click(await screen.findByTestId('cockpit-stammdaten'))
+      await screen.findByTestId('stammdaten-geburtsdatum')
+
+      fireEvent.click(screen.getByRole('tab', { name: 'Cockpit' }))
+      await screen.findByTestId('cockpit-weiter')
+      expect(screen.queryByTestId('stammdaten-geburtsdatum')).toBeNull()
+    })
+
+    it('Slice 4: keeps CockpitHome mounted behind an open Sheet and hides the TabBar', async () => {
       mockSignedInSession()
       mockCompletedEmployeeInterview(2026)
 
@@ -697,10 +759,153 @@ describe('App', () => {
 
       fireEvent.click(await screen.findByTestId('cockpit-weiter'))
       await screen.findByTestId('lstb-bruttoarbeitslohn')
+      expect(screen.getByTestId('sheet-schliessen')).toBeTruthy()
+      expect(screen.getByTestId('cockpit-weiter')).toBeTruthy()
+      expect(screen.queryAllByRole('tab')).toHaveLength(0)
+    })
 
-      fireEvent.click(screen.getByRole('tab', { name: 'Cockpit' }))
-      await screen.findByTestId('cockpit-weiter')
-      expect(screen.queryByTestId('lstb-bruttoarbeitslohn')).toBeNull()
+    it('Slice 4: auto-saves focused LStB input on Sheet close without prior blur and returns to Cockpit', async () => {
+      mockSignedInSession()
+      mockCompletedEmployeeInterview(2026)
+      const putPayloads: { feld: string; body: unknown }[] = []
+      server.use(
+        http.put('*/v1/steuerjahre/:jahr/lstb/:feld', async ({ params, request }) => {
+          putPayloads.push({ feld: String(params.feld), body: await request.json() })
+          return HttpResponse.json(
+            {
+              bruttoarbeitslohn: { kind: 'erfasst', value: 52000 },
+              lohnsteuer: { kind: 'offen' },
+              sozialversicherung: { kind: 'offen' },
+              state: { kind: 'unvollstaendig', open: ['lohnsteuer', 'sozialversicherung'], unclear: [] },
+            },
+            { status: 200 },
+          )
+        }),
+      )
+
+      window.history.pushState({}, '', '/app')
+      const { default: App } = await import('./App')
+      render(<App />)
+
+      fireEvent.click(await screen.findByTestId('cockpit-weiter'))
+      const grossInput = (await screen.findByTestId('lstb-bruttoarbeitslohn')) as HTMLInputElement
+      grossInput.focus()
+      expect(document.activeElement).toBe(grossInput)
+      fireEvent.change(grossInput, { target: { value: '52000' } })
+
+      fireEvent.click(screen.getByTestId('sheet-schliessen'))
+
+      await waitFor(() =>
+        expect(putPayloads).toEqual([{ feld: 'bruttoarbeitslohn', body: { kind: 'erfasst', value: 52000 } }]),
+      )
+      await waitFor(() => expect(screen.queryByTestId('sheet-schliessen')).toBeNull())
+      expect(screen.getByRole('tab', { name: 'Cockpit' })).toBeTruthy()
+    })
+
+    it('Slice 4: does not PUT LStB fields on Sheet close when a scan draft is staged', async () => {
+      mockSignedInSession()
+      mockCompletedEmployeeInterview(2026)
+      let lstbPutCount = 0
+      let confirmScanCount = 0
+      server.use(
+        http.get('*/v1/steuerjahre/2026/advisor/session', () =>
+          HttpResponse.json(
+            {
+              enabled: true,
+              greeting: 'Hallo',
+              openCards: [],
+              messages: [
+                {
+                  id: 'msg-scan-slice4',
+                  role: 'assistant',
+                  content: 'Entwurf bereit',
+                  createdAt: '2026-11-10T08:00:00.000Z',
+                  meta: {
+                    lstbScan: {
+                      receiptId: 'rec-staged-4',
+                      stage: 'deterministic',
+                      taxYearOnDocument: 2026,
+                      person: 'A',
+                      actionIds: ['act-s1', 'act-s2', 'act-s3'],
+                    },
+                    actions: [
+                      {
+                        actionId: 'act-s1',
+                        status: 'pending',
+                        screen: 'lstb',
+                        field: 'bruttoarbeitslohn',
+                        label: 'Brutto',
+                        newValue: '61000',
+                        beforeRefundEur: 0,
+                        afterRefundEur: 0,
+                        deltaEur: 0,
+                        reason: 'LStB-Scan',
+                        sourceId: 'estg-9-1',
+                        confidenceStatus: 'ok',
+                      },
+                      {
+                        actionId: 'act-s2',
+                        status: 'pending',
+                        screen: 'lstb',
+                        field: 'lohnsteuer',
+                        label: 'LSt',
+                        newValue: '9400',
+                        beforeRefundEur: 0,
+                        afterRefundEur: 0,
+                        deltaEur: 0,
+                        reason: 'LStB-Scan',
+                        sourceId: 'estg-9-1',
+                        confidenceStatus: 'ok',
+                      },
+                      {
+                        actionId: 'act-s3',
+                        status: 'pending',
+                        screen: 'lstb',
+                        field: 'sozialversicherung',
+                        label: 'SV',
+                        newValue: '12200',
+                        beforeRefundEur: 0,
+                        afterRefundEur: 0,
+                        deltaEur: 0,
+                        reason: 'LStB-Scan',
+                        sourceId: 'estg-9-1',
+                        confidenceStatus: 'ok',
+                      },
+                    ],
+                  },
+                },
+              ],
+              quickChips: [],
+              legalSources: [],
+            },
+            { status: 200 },
+          ),
+        ),
+        http.put('*/v1/steuerjahre/:jahr/lstb/:feld', () => {
+          lstbPutCount += 1
+          return HttpResponse.json({}, { status: 200 })
+        }),
+        http.put('*/v1/steuerjahre/:jahr/lstb', () => {
+          confirmScanCount += 1
+          return HttpResponse.json({}, { status: 200 })
+        }),
+      )
+
+      window.history.pushState({}, '', '/app')
+      const { default: App } = await import('./App')
+      render(<App />)
+
+      fireEvent.click(await screen.findByTestId('cockpit-weiter'))
+      await screen.findByTestId('lstb-scan-draft-banner')
+      const grossInput = screen.getByTestId('lstb-bruttoarbeitslohn') as HTMLInputElement
+      expect(grossInput.value).toBe('61000')
+      grossInput.focus()
+      fireEvent.change(grossInput, { target: { value: '62000' } })
+
+      fireEvent.click(screen.getByTestId('sheet-schliessen'))
+      await waitFor(() => expect(screen.queryByTestId('sheet-schliessen')).toBeNull())
+      expect(lstbPutCount).toBe(0)
+      expect(confirmScanCount).toBe(0)
     })
 
     it('AC-2: opening /app/steuerjahr/2025/lstb signed-in loads the 2025 LStB screen', async () => {
@@ -1064,7 +1269,8 @@ describe('App', () => {
       render(<App />)
 
       await screen.findByTestId('kapital-weiter')
-      fireEvent.click(screen.getByRole('tab', { name: 'Profil' }))
+      fireEvent.click(screen.getByTestId('sheet-schliessen'))
+      fireEvent.click(await screen.findByRole('tab', { name: 'Profil' }))
       await screen.findByText('Dieses Gerät')
       fireEvent.click(screen.getByText('Abmelden'))
 
@@ -1096,7 +1302,8 @@ describe('App', () => {
       render(<App />)
 
       await screen.findByTestId('kapital-weiter')
-      fireEvent.click(screen.getByRole('tab', { name: 'Profil' }))
+      fireEvent.click(screen.getByTestId('sheet-schliessen'))
+      fireEvent.click(await screen.findByRole('tab', { name: 'Profil' }))
       await screen.findByText('Deine Angaben')
       fireEvent.click(screen.getByText('So schützen wir deine Daten (DSGVO)'))
       await screen.findByText('Konto & Daten löschen')
