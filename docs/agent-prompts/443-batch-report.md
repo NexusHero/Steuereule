@@ -294,3 +294,80 @@ Verifiziert auf `3acb8517791bdbedb585625f4925fc6877bbbf8b` (zusammen mit `e2e`-L
 
 ### 7. Offene Fragen
 - **keine**.
+
+---
+
+## Slice 5 — Persona-Booster & duales Cockpit
+
+### 1. Status
+**angehalten (Stopp-Regel 4 — § 5.5 Gesamtbetrag der Einkünfte / GdE fehlt sicher im Core)**
+
+### 2. Branch und letzter Commit-Hash
+- Branch: `feat/443-s5-persona-boosters` (abgezweigt von `feat/443-s4-sheets` bei `81be5c206134e68f8ecb4c58133fa97d15ca42a1`)
+- Letzter Code-/Test-Stand: unverändert `81be5c206134e68f8ecb4c58133fa97d15ca42a1` (keine Codeänderungen vor Klärung vorgenommen); dieser Bericht-Commit bildet den Abschluss des Halts auf `feat/443-s5-persona-boosters`.
+
+### 3. Geänderte und neue Dateien
+- `docs/agent-prompts/443-batch-report.md`: ergänzt den Haltebericht für Slice 5 gemäß Stopp-Regel 4 sowie die Gesamtzusammenfassung (Teil D).
+
+### 4. Abweichungen vom Auftrag
+- **Sofortiger Batch-Halt in Slice 5 (§ 5.5 & A3 Stopp-Regel 4):** § 5.5 verlangt explizit: *„Woher der GdE kommt: aus der vorhandenen Berechnung im Core. Gibt es keinen GdE-Wert, den du sicher benutzen kannst: **Stopp-Regel 4**.“* Eine Prüfung von Core und API ergab, dass ein sicher nutzbarer **Gesamtbetrag der Einkünfte (GdE, § 2 Abs. 3 EStG)** im Core nicht vorhanden ist:
+  1. `TaxEstimate` (`packages/core/src/engine/tax-estimate.ts`), `MarriedEstimate` (`packages/core/src/engine/married-estimate.ts`), `CalculationStatus` (`packages/core/src/engine/berechnung.ts`) und `assessmentCalculationStatus` (`packages/core/src/engine/assessment.ts`) berechnen und liefern keinen GdE-Wert (sowohl `docs/adr/0038-berechnungs-kern-ki-port.md` als auch `docs/adr/0041-lstb-angestellte-vertikale.md` vermerken die *zumutbare Belastung* ausdrücklich als späteren Slice).
+  2. Der Zwischenterm `input.einnahmen - input.werbungskosten` in `taxEstimateEmployee` / `taxEstimateCrossBorder` (`tax-estimate.ts:114`) entspricht nur den Einkünften aus nichtselbständiger Arbeit und ist aus drei Gründen nicht sicher als GdE für § 33 Abs. 3 EStG verwendbar:
+     - **Fehlender § 24b EStG für Alleinerziehende:** Eine der drei Haupt-Personas für die Kachel `gesundheit` (§ 5.2) ist `alleinerziehend`. Nach § 2 Abs. 3 EStG mindert der Entlastungsbetrag für Alleinerziehende (§ 24b EStG, `singleParentReliefEur = 4.260 €` in `packages/core/src/math/tax-parameters.ts:53,123-128,180`) die Summe der Einkünfte bereits *vor* dem GdE; er wird jedoch weder in `taxEstimateEmployee` (`EmployeeEstimateInput` kennt weder Kinder noch Alleinerziehenden-Status) noch in `TaxEstimateService` (`apps/api/src/tax-estimate/tax-estimate.service.ts`) abgezogen (ein Grep über `packages/core/src` und `apps/api/src` bestätigt die ausschließliche Nutzung in `tax-parameters.test.ts`). Damit läge der angenommene GdE um `4.260 €` zu hoch und würde die Stufengrenzen `15.340 €` / `51.130 €` verzerren.
+     - **Fehlende Schätzung / GdE für Rentner:** Ebenfalls Haupt-Persona für `gesundheit` (§ 5.2) ist `rentner`. `TaxEstimateService.getState` (`apps/api/src/tax-estimate/tax-estimate.service.ts:72`) bricht für Nicht-Angestellte mit `{ kind: 'nicht-moeglich', reason: 'nur-angestellte' }` ab; `packages/core/src/domains/pension.ts` berechnet nur den Besteuerungs-/Ertragsanteil (`pensionAsCoreLineItem`) ohne Werbungskostenpauschale (`102 €`) oder Altersentlastungsbetrag (§ 24a EStG).
+     - **Weitere Einkünfte ausgeklammert:** `TaxEstimateService.getState` (`lines 76–78`) bricht bei `gatedIncomeTypes(answers).length > 0 || specialCircumstance(answers)` mit `besondere-lebenslage` ab, und `estimateMarriedCouple` (`married-estimate.ts:97`) addiert nur `spouses.income + rentalSurplus` ohne Kapitalerträge, Renten oder Nebeneinkünfte.
+  3. Auch bei § 5.7 zeigt der Druckschablonen-Check (`vordrucke-2025.json` vs. `felder-2025.json` / `printout-values.ts`), dass `anlage-haushaltsnahe-aufwendungen` und `anlage-aussergewoehnliche-belastungen` noch keine Feldmappings besitzen (`HOUSEHOLD_AND_HEALTH_BOOSTERS = false`), § 5.7 fordert jedoch auch bei `false` vollständige Rechenlogik und Tests (§ 5.5/§ 5.6 inkl. Integration in `tax-estimate.service.ts` → Core-Schätzfunktionen). Gemäß § A3 wurden deshalb weder eine geratene GdE-Berechnung noch die Slices 6–7 begonnen.
+
+### 5. Angepasste bestehende Tests/Szenarien
+- **keine**.
+
+### 6. Ergebnis jedes Gate-Befehls (A2)
+- Da der Batch gemäß Stopp-Regel 4 unmittelbar vor jeglichen Codeänderungen auf `feat/443-s5-persona-boosters` angehalten wurde, entspricht der Code-Stand vollständig `81be5c206134e68f8ecb4c58133fa97d15ca42a1` (Slice 4: alle 6 Gate-Befehle + `register-check` + `adr-check` grün). Auf dem neuen Branch wurden daher keine eigenen Gate-Läufe neu ausgeführt.
+
+### 7. Offene Fragen
+1. **GdE-Berechnung für § 33 Abs. 3 EStG (§ 5.5 & § 5.6, blockierend — Stopp-Regel 4):** Wie soll der Gesamtbetrag der Einkünfte (GdE) für die zumutbare Belastung im Core ermittelt bzw. übergeben werden — insbesondere:
+   - Soll `singleParentReliefEur` (§ 24b EStG) für `alleinerziehend` bei der GdE- und zvE-Berechnung in `tax-estimate.ts` abgezogen werden?
+   - Wie ist bei `rentner`, `verheiratet` und übrigen Einkunftsarten (Vermietung, Kapital, Nebeneinkünfte) zu verfahren (nur in bestehenden Angestellten-/Ehepaar-Schätzern einbinden oder GdE separat definieren)?
+2. **Druckschablonen für § 35a / § 33 (§ 5.7):** `vordrucke-2022.json`–`vordrucke-2025.json` führen `anlage-haushaltsnahe-aufwendungen` und `anlage-aussergewoehnliche-belastungen` als Vordrucke, in `apps/api/src/printout/felder-2025.json` (`vorlagen`: `est-1-a`, `anlage-n`, `anlage-r`, `anlage-kap`, `anlage-n-gre`, `anlage-v`, `anlage-kind`, `anlage-sonderausgaben`, `anlage-av`, `anlage-vorsorgeaufwand`) und `printout-values.ts` fehlen jedoch noch alle Feldmappings dafür. Bei Weiterarbeit nach Klärung von Punkt 1 greift daher `HOUSEHOLD_AND_HEALTH_BOOSTERS = false`.
+
+---
+
+## Gesamt (Teil D)
+
+### Status des Batches
+- **Slices 1–4:** vollständig umgesetzt, per Unit-/Integrationstests sowie allen 24 E2E-Szenarien (inkl. `no-client-persistence` und `breakpoint-layout`) lokal verifiziert und auf gestapelten Branches committet.
+- **Slice 5 (`feat/443-s5-persona-boosters`):** gemäß **A3 Stopp-Regel 4** & **§ 5.5** ohne geratene Steuerlogik sauber angehalten.
+- **Slices 6–7:** aufgrund des Stopps in Slice 5 (§ A1 & § A3) **nicht begonnen**.
+- **Repository-Status:** Nichts gepusht, keine PRs geöffnet, nichts gemerged.
+
+### Übersicht der Branches und letzten Commit-Hashes
+Basis auf `origin/main`: `1990ed3641056e107bce17497e9108acc70c3601`
+
+| Slice | Branch | Abgezweigt von | Status | Letzter Commit-Hash |
+| :--- | :--- | :--- | :--- | :--- |
+| 1 Navigation | `feat/443-s1-navigation` | `origin/main` (`1990ed3`) | fertig | `405f6c78621bb65e8516b137dd78fba14a06707b` |
+| 2 Hub-Cockpit | `feat/443-s2-hub-cockpit` | `feat/443-s1-navigation` (`405f6c7`) | fertig | `53d7dd236505d733a2e0ab61187256df076fdbab` |
+| 3 Abgabe-Gate | `feat/443-s3-submission-gate` | `feat/443-s2-hub-cockpit` (`53d7dd2`) | fertig | `b6d6e4c48fcd80baaf3c76135218cfc9bb48f7e3` |
+| 4 Sheets | `feat/443-s4-sheets` | `feat/443-s3-submission-gate` (`b6d6e4c`) | fertig | `81be5c206134e68f8ecb4c58133fa97d15ca42a1` |
+| 5 Persona-Booster | `feat/443-s5-persona-boosters` | `feat/443-s4-sheets` (`81be5c2`) | angehalten (Stopp-Regel 4) | Ausgangsstand `81be5c206134e68f8ecb4c58133fa97d15ca42a1` + dieser Abschluss-Commit (`docs(report): ...`) |
+| 6 Dark Mode | — | — | nicht gestartet | — |
+| 7 Tastatur & Haptik | — | — | nicht gestartet | — |
+
+### Alle offenen Fragen (Slices 1–5)
+- **Slice 1:**
+  1. Sollen `ProfileHome` (`/app/profil`) und `Privacy` (`/app/profil/datenschutz`) wie bisher für Gäste zugänglich bleiben (DSGVO-Transparenz & bestehende Tests in `apps/mobile-web/App.test.tsx`), oder künftig ebenfalls durch `<RequiresAccount>` auf `AccountWall` umgeleitet werden (inkl. Anpassung der Gast-Profil-Tests)?
+  2. `@react-navigation/bottom-tabs` wurde mit `~7.18.14` passend zu `@react-navigation/native@7.3.14` gepinnt (`7.21.0` führte zu einem Laufzeit-`TypeError: render is not a function`). Soll `@react-navigation/native` separat in einem eigenen Update hochgezogen werden?
+- **Slice 2:**
+  - *keine*.
+- **Slice 3:**
+  3. Soll `packages/core/src/interview/plausibility.ts` (`checkPlausibility`) in einem eigenen Issue pfad-bewusst gemacht werden, sodass CH-Grenzgänger und Rentner ohne deutsche LStB bereits im Core kein `lstb-offen` erhalten (statt des Workarounds in `apps/mobile-web/src/screens/plausibility/usePlausibility.ts`)?
+- **Slice 4:**
+  - *keine*.
+- **Slice 5 (blockierend — Stopp-Regel 4):**
+  4. **GdE-Berechnung für § 33 Abs. 3 EStG (§ 5.5 & § 5.6):** Da `tax-estimate.ts` / `married-estimate.ts` / `berechnung.ts` keinen GdE liefern, `singleParentReliefEur` (§ 24b EStG, `4.260 €`) für `alleinerziehend` im Schätzer fehlt und `rentner` (`nur-angestellte`) bzw. `besondere-lebenslage` derzeit keine Steuerschätzung erhalten: Wie soll der GdE für `extraordinary-burdens.ts` und die Einbindung in die Steuerschätzung (§ 5.6) genau berechnet werden?
+  5. **Druckschablonen für § 35a / § 33 (§ 5.7):** `felder-2025.json` und `printout-values.ts` enthalten noch keine Feldmappings für `anlage-haushaltsnahe-aufwendungen` und `anlage-aussergewoehnliche-belastungen` (daher bei Weiterarbeit `HOUSEHOLD_AND_HEALTH_BOOSTERS = false`).
+
+### Welche Gate-Befehle lokal nicht liefen
+- **Slices 1–4:** Alle 6 geforderten Gate-Befehle (`pnpm lint`, `pnpm -r typecheck`, `pnpm -r test`, `node e2e/scenarios/run-all-scenarios.mjs`, `pnpm --filter @steuereule/e2e no-client-persistence`, `pnpm --filter @steuereule/e2e breakpoint-layout`) sowie `pnpm register-check` und `pnpm adr-check` liefen lokal auf allen vier abgeschlossenen Slices vollständig und **grün** (E2E im `ATTACH`-Modus gegen `localhost:5434`, da Port `5432` lokal durch einen anderen Dienst belegt ist).
+- **Slice 5 (`feat/443-s5-persona-boosters`):** Keine eigenen Gate-Läufe ausgeführt, da wegen Stopp-Regel 4 kein Code auf diesem Branch geändert wurde (Code-Basis entspricht `81be5c2`).
+- **Slices 6–7 (inkl. neuem `e2e/responsive/dark-mode.mjs` aus § 6.4):** Wegen des Stopps in Slice 5 nicht erreicht und daher nicht ausgeführt.
