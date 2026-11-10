@@ -123,27 +123,11 @@ export class PrismaChildRepository implements ChildRepository {
     const existing = await this.prisma.child.findFirst({ where: { id, userId, taxYear } })
     if (existing === null) return null
 
+    // Prisma field names (the @map'ped column names are the database's business, #423).
     const updateData: Record<string, string | boolean | null> = {}
-    if (data.firstName !== undefined) updateData.vorname = data.firstName
-    if (data.lastName !== undefined) updateData.nachname = data.lastName
-    if (data.geburtsdatum !== undefined) updateData.geburtsdatum = data.geburtsdatum
-    if (data.taxId !== undefined) updateData.idnr = data.taxId
-    if (data.childBenefitClaimEur !== undefined) updateData.kindergeldAnspruchEur = data.childBenefitClaimEur
-    if (data.kinship !== undefined) updateData.kindschaftsverhaeltnis = data.kinship
-    if (data.kinshipB !== undefined) updateData.kindschaftsverhaeltnisB = data.kinshipB
-    if (data.familyBenefitsOffice !== undefined) updateData.familienkasse = data.familyBenefitsOffice
-    if (data.domesticResidenceAllYear !== undefined) updateData.wohnsitzInlandGanzjaehrig = data.domesticResidenceAllYear
-    if (data.otherParent !== undefined) updateData.andererElternteil = data.otherParent
-    if (data.otherParentName !== undefined) updateData.andererElternteilName = data.otherParentName
-    if (data.otherParentBirthDate !== undefined) updateData.andererElternteilGeburtsdatum = data.otherParentBirthDate
-    if (data.otherParentAddress !== undefined) updateData.andererElternteilAdresse = data.otherParentAddress
-    if (data.otherParentKind !== undefined) updateData.andererElternteilArt = data.otherParentKind
-    if (data.otherParentDiedOn !== undefined) updateData.andererElternteilVerstorbenAm = data.otherParentDiedOn
-    if (data.registeredWithMeAllYear !== undefined) updateData.gemeldetBeiMirGanzjaehrig = data.registeredWithMeAllYear
-    if (data.childBenefitToMeAllYear !== undefined) updateData.kindergeldAnMichGanzjaehrig = data.childBenefitToMeAllYear
-    if (data.healthBasicEur !== undefined) updateData.kvBasisEur = data.healthBasicEur
-    if (data.careEur !== undefined) updateData.pvEur = data.careEur
-    if (data.swissFamilyAllowanceEur !== undefined) updateData.schweizerKinderzulageEur = data.swissFamilyAllowanceEur
+    for (const [key, value] of Object.entries(data)) {
+      if (value !== undefined) updateData[key] = value
+    }
 
     const [row] = await this.prisma.$transaction([
       this.prisma.child.update({ where: { id }, data: updateData }),
