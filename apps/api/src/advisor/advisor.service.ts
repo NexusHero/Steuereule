@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto'
+import { newActionId } from '../common/action-id.js'
 import { Inject, Injectable, Optional } from '@nestjs/common'
 import {
   ADVISOR_LEGAL_SOURCES,
@@ -363,7 +363,7 @@ export class AdvisorService {
 
     // 5. Build PII-free CaseDigest & stream Zero-Write advisor turn via LangGraph engine (with deterministic fallback)
     const digest = await this.buildCaseDigest(userId, taxYear)
-    const actionIdFactory = () => `act-${randomUUID().slice(0, 12)}`
+    const actionIdFactory = newActionId
 
     if (!this.advisorEngine) {
       const turn = evaluateAdvisorTurn({
@@ -496,7 +496,7 @@ export class AdvisorService {
     const sim = simulateAdvisorFieldDelta(digest, input.screen, input.field, input.newValue)
 
     const draft: AdvisorActionProposal = {
-      actionId: `act-${randomUUID().slice(0, 12)}`,
+      actionId: newActionId(),
       status: 'pending',
       screen: input.screen,
       field: input.field,
@@ -572,7 +572,7 @@ export class AdvisorService {
           : { previousValue: null, beforeRefundEur: 0, afterRefundEur: 0, deltaEur: 0 }
 
       return {
-        actionId: `act-${randomUUID().slice(0, 12)}`,
+        actionId: newActionId(),
         status: 'pending',
         screen: 'lstb',
         field: item.field,
