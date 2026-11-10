@@ -428,6 +428,7 @@ describe('ReceiptParseService — Two-Stage LStB Cascade (#444)', () => {
       fileName: 'LStB_2025.pdf',
       receiptId: ownedReceipt.id,
       rawText,
+      textSource: 'pdf_text',
     })
 
     // Stage 1 succeeded: zero LLM calls!
@@ -502,13 +503,14 @@ describe('ReceiptParseService — Two-Stage LStB Cascade (#444)', () => {
     }
 
     expect(res.lstb?.stage).toBe('llm_text_fallback')
-    // Deterministic green value is never overridden by the model's 99.000.
-    expect(res.lstb?.fields.bruttoarbeitslohn).toMatchObject({ value: 48000, status: 'ok' })
+    // The model's 99.000 never overrides the deterministic value; from a photo (OCR) it is
+    // still only `pruefen` (ADR-0060).
+    expect(res.lstb?.fields.bruttoarbeitslohn).toMatchObject({ value: 48000, status: 'pruefen', reason: 'ocr_source' })
     // 7.600 is not printed anywhere in the text the model saw -> dropped, stays open.
     expect(res.lstb?.fields.lohnsteuer).toMatchObject({ value: null, status: 'pruefen' })
     // SV was read deterministically (partial) and stays yellow — never upgraded to green.
     expect(res.lstb?.fields.sozialversicherung).toMatchObject({ value: 4464, status: 'pruefen' })
-    expect(Object.values(res.lstb?.fields ?? {}).filter((f) => f.status === 'ok')).toHaveLength(1)
+    expect(Object.values(res.lstb?.fields ?? {}).filter((f) => f.status === 'ok')).toHaveLength(0)
   })
 
   it('Stage 2 fills a field only with an amount printed in the row, always as llm_suggested', async () => {
@@ -536,7 +538,13 @@ describe('ReceiptParseService — Two-Stage LStB Cascade (#444)', () => {
       '25. AN Krankenversicherung 3.650,00',
     ].join('\n')
 
-    const res = await h.parseService.parseReceipt('user-lstb-4', { taxYear: 2025, kind: 'lstb', fileName: 'lstb.pdf', rawText })
+    const res = await h.parseService.parseReceipt('user-lstb-4', {
+      taxYear: 2025,
+      kind: 'lstb',
+      fileName: 'lstb.pdf',
+      rawText,
+      textSource: 'pdf_text',
+    })
 
     expect(res.lstb?.fields.lohnsteuer).toMatchObject({ value: 7600, status: 'pruefen', reason: 'llm_suggested' })
     expect(res.lstb?.fields.bruttoarbeitslohn.status).toBe('ok')

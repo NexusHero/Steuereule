@@ -136,12 +136,26 @@ async function defaultLoadPdfJs(): Promise<PdfJsLikeModule> {
   return pdfMod as unknown as PdfJsLikeModule
 }
 
+/**
+ * Same-origin paths of the self-hosted OCR assets (ADR-0060, scripts/ocr-assets.mjs). Without
+ * them tesseract.js would download worker, WASM core and language data from a public CDN.
+ */
+export function selfHostedOcrPaths(origin: string): { workerPath: string; corePath: string; langPath: string } {
+  const base = `${origin.replace(/\/$/, '')}/ocr`
+  return { workerPath: `${base}/worker.min.js`, corePath: `${base}/core`, langPath: `${base}/lang` }
+}
+
 async function defaultCreateTesseractWorker(
   langs: string,
   options?: { readonly logger?: (msg: { readonly status?: string; readonly progress?: number }) => void },
 ): Promise<TesseractLikeWorker> {
   const tesseractMod = await import('tesseract.js')
-  const worker = await tesseractMod.createWorker(langs, 1, options?.logger ? { logger: options.logger } : undefined)
+  const worker = await tesseractMod.createWorker(langs, 1, {
+    ...selfHostedOcrPaths(globalThis.location?.origin ?? ''),
+    gzip: true,
+    workerBlobURL: false,
+    ...(options?.logger ? { logger: options.logger } : {}),
+  })
   return worker as unknown as TesseractLikeWorker
 }
 

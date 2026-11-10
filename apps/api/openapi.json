@@ -6402,6 +6402,15 @@
             "example": "A",
             "description": "Taxpayer slot when parsing a partner LStB (ADR-0054)."
           },
+          "textSource": {
+            "type": "string",
+            "enum": [
+              "pdf_text",
+              "ocr"
+            ],
+            "example": "pdf_text",
+            "description": "How rawText was produced on the device: a PDF text layer, or OCR of a photo/scan (never green, ADR-0060)."
+          },
           "mimeType": {
             "type": "string",
             "enum": [
@@ -6673,7 +6682,8 @@
               "unreadable",
               "plausibility_conflict",
               "partial_sv_lines",
-              "llm_suggested"
+              "llm_suggested",
+              "ocr_source"
             ],
             "example": null
           }
@@ -6897,7 +6907,8 @@
               "unreadable",
               "plausibility_conflict",
               "partial_sv_lines",
-              "llm_suggested"
+              "llm_suggested",
+              "ocr_source"
             ],
             "example": null
           },
@@ -7138,7 +7149,8 @@
               "unreadable",
               "plausibility_conflict",
               "partial_sv_lines",
-              "llm_suggested"
+              "llm_suggested",
+              "ocr_source"
             ],
             "example": null
           }

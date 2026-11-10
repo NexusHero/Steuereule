@@ -9,6 +9,10 @@
 //      (`PRISMA_FIELD_ENCRYPTION_KEY`, `BETTER_AUTH_SECRET`, `GUEST_SESSION_SECRET`,
 //      `STRIPE_SECRET_KEY`, `BREVO_API_KEY`, `k1.aesgcm256.`, `@prisma/client`) appear
 //      anywhere in the client bundle.
+//   4. The self-hosted OCR assets under ocr/ (ADR-0060) are lazily loaded worker files, not app
+//      bundles: they are excluded from the app budgets above, held to their own budget, and
+//      must match apps/mobile-web/ocr-assets.lock.json byte for byte.
+import { createHash } from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -19,6 +23,9 @@ const DIST_DIR = path.resolve(ROOT, process.argv[2] || 'apps/mobile-web/dist')
 const MAX_TOTAL_JS_BYTES = 10 * 1024 * 1024 // 10 MB
 const MAX_SINGLE_JS_BYTES = 6 * 1024 * 1024 // 6 MB
 const MAX_TOTAL_DIST_BYTES = 25 * 1024 * 1024 // 25 MB
+const MAX_OCR_ASSET_BYTES = 24 * 1024 * 1024 // 24 MB — worker + 3 WASM cores + deu/eng data
+const OCR_DIR = 'ocr'
+const OCR_LOCK = path.resolve(ROOT, 'apps/mobile-web/ocr-assets.lock.json')
 
 const FORBIDDEN_CLIENT_PATTERNS = [
   { id: 'PRISMA_FIELD_ENCRYPTION_KEY', regex: /PRISMA_FIELD_ENCRYPTION_KEY/ },
@@ -61,11 +68,18 @@ const files = walkFiles(DIST_DIR)
 let totalDistBytes = 0
 let totalJsBytes = 0
 let jsFileCount = 0
+let ocrBytes = 0
+const ocrFiles = new Map()
 const findings = []
 
 for (const file of files) {
   const stat = fs.statSync(file)
   const rel = path.relative(DIST_DIR, file)
+  if (rel.split(path.sep)[0] === OCR_DIR) {
+    ocrBytes += stat.size
+    ocrFiles.set(rel.split(path.sep).slice(1).join('/'), file)
+    continue
+  }
   totalDistBytes += stat.size
 
   if (file.endsWith('.js') || file.endsWith('.mjs')) {
@@ -96,6 +110,23 @@ if (totalJsBytes > MAX_TOTAL_JS_BYTES) {
   findings.push(
     `Total JS size ${(totalJsBytes / (1024 * 1024)).toFixed(2)} MB exceeds budget of ${(MAX_TOTAL_JS_BYTES / (1024 * 1024)).toFixed(2)} MB`,
   )
+}
+
+const ocrLock = JSON.parse(fs.readFileSync(OCR_LOCK, 'utf8'))
+for (const [asset, expected] of Object.entries(ocrLock)) {
+  const file = ocrFiles.get(asset)
+  if (!file) {
+    findings.push(`Self-hosted OCR asset missing from the export: ${OCR_DIR}/${asset} (ADR-0060)`)
+    continue
+  }
+  const actual = createHash('sha256').update(fs.readFileSync(file)).digest('hex')
+  if (actual !== expected) findings.push(`OCR asset ${OCR_DIR}/${asset} does not match ocr-assets.lock.json`)
+}
+for (const asset of ocrFiles.keys()) {
+  if (!(asset in ocrLock)) findings.push(`Unpinned file in ${OCR_DIR}/: ${asset}`)
+}
+if (ocrBytes > MAX_OCR_ASSET_BYTES) {
+  findings.push(`OCR assets ${(ocrBytes / (1024 * 1024)).toFixed(2)} MB exceed their budget of ${(MAX_OCR_ASSET_BYTES / (1024 * 1024)).toFixed(2)} MB`)
 }
 
 if (totalDistBytes > MAX_TOTAL_DIST_BYTES) {

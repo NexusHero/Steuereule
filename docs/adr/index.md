@@ -77,6 +77,7 @@ The ADRs **justify** the architecture; the [living arc42 document](../arc42/READ
 | 0056 | Asynchrone PDF-Generierung & Job-Entkopplung (Fault Isolation) | Accepted |
 | 0058 | LStB-Textfallback: Allowlist, Belegprüfung, nie grün | Accepted |
 | 0059 | Eigene Keystore-Datenbank für Beleg-Schlüssel (Crypto-Shredding bis in die Backups) | Accepted |
+| 0060 | On-Device-OCR im Web, selbst gehostet, OCR-Werte nie grün | Accepted |
 
 See also the [Tech Radar](./tech-radar.md).
 

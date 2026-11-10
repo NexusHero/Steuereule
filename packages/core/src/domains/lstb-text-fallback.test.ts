@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { applyLstbTextFallback, parseLstbTextDeterministically, selectLstbRelevantLines } from './lstb-parser'
+import {
+  applyLstbTextFallback,
+  capOcrSourcedExtraction,
+  parseLstbTextDeterministically,
+  selectLstbRelevantLines,
+} from './lstb-parser'
 
 const NO_SV = { line23: null, line23a: null, line23b: null, line25: null, line26: null, line27: null }
 
@@ -106,5 +111,19 @@ describe('applyLstbTextFallback — never a false green (AC 4)', () => {
       expect(field.reason).toBe('llm_suggested')
     }
     expect(merged.fields.sozialversicherung.value).toBe(4464 + 3650)
+  })
+})
+
+describe('capOcrSourcedExtraction — OCR text is never green', () => {
+  it('turns every ok field into pruefen/ocr_source and keeps values and other reasons', () => {
+    const clean = parseLstbTextDeterministically(
+      ['Lohnsteuerbescheinigung für 2025', '3. Bruttoarbeitslohn 48.000,00', '4. Lohnsteuer 7.600,00', '23a RV 4.464,00', '25. KV 3.650,00'].join('\n'),
+    )
+    expect(clean.unresolvedFields).toEqual([])
+
+    const capped = capOcrSourcedExtraction(clean)
+
+    expect(capped.fields.bruttoarbeitslohn).toMatchObject({ value: 48000, status: 'pruefen', reason: 'ocr_source' })
+    expect(capped.unresolvedFields).toEqual(['bruttoarbeitslohn', 'lohnsteuer', 'sozialversicherung'])
   })
 })

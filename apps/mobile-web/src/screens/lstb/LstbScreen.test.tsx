@@ -345,6 +345,7 @@ describe('LstbScreen', () => {
       fileName: 'lstb-2026.pdf',
       receiptId: 'rec-lstb-1',
       rawText: 'Ausdruck der elektronischen Lohnsteuerbescheinigung für 2026\n3. Bruttoarbeitslohn 54.000,00',
+      textSource: 'pdf_text',
       stageDraft: true,
     })
 
