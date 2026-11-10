@@ -1,3 +1,4 @@
+import { HouseholdCoreModule } from '../household/household-core.module.js'
 import { Module } from '@nestjs/common'
 import { AuditModule } from '../audit/audit.module.js'
 import { PrismaModule } from '../prisma/prisma.module.js'
@@ -18,7 +19,7 @@ import { TAX_DATA_EXPORT_REPOSITORY } from './tax-data-export.repository.js'
 import { PrismaTaxDataExportRepository } from './tax-data-export.repository.prisma.js'
 
 @Module({
-  imports: [PrismaModule, AuditModule, ProfileModule, KeystoreModule],
+  imports: [PrismaModule, AuditModule, ProfileModule, KeystoreModule, HouseholdCoreModule],
   controllers: [AccountDeletionController, AccountExportController],
   providers: [
     AccountDeletionService,

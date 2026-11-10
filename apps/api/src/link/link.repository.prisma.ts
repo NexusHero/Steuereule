@@ -36,6 +36,11 @@ export class PrismaLinkRepository implements PartnerCouplingRepository {
     return row ? toRecord(row) : null
   }
 
+  async listForPersonA(personAUserId: string): Promise<PartnerCouplingRecord[]> {
+    const rows = await this.prisma.taxYearLink.findMany({ where: { personAUserId }, orderBy: { taxYear: 'asc' } })
+    return rows.map(toRecord)
+  }
+
   async findByInvitationCode(code: string): Promise<PartnerCouplingRecord | null> {
     const row = await this.prisma.taxYearLink.findUnique({
       where: { invitationCode: code },

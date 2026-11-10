@@ -167,3 +167,18 @@ export {
   getAssistantsControllerGetClientInfoMockHandler,
   getSteuerEuleAPIMock as getAssistentenApiMock,
 } from './generated/assistenten.msw'
+export {
+  getHouseholdControllerGetResponseMock,
+  getHouseholdControllerAdoptChildrenResponseMock,
+  getHouseholdControllerLeaveResponseMock,
+  getHouseholdControllerEndPartnerResponseMock,
+  getHouseholdControllerDeleteResponseMock,
+  getHouseholdControllerAnswerResponseMock,
+  getHouseholdControllerGetMockHandler,
+  getHouseholdControllerAdoptChildrenMockHandler,
+  getHouseholdControllerLeaveMockHandler,
+  getHouseholdControllerEndPartnerMockHandler,
+  getHouseholdControllerDeleteMockHandler,
+  getHouseholdControllerAnswerMockHandler,
+  getSteuerEuleAPIMock as getHaushaltApiMock,
+} from './generated/haushalt.msw'

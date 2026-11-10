@@ -1,4 +1,5 @@
-import { Inject, Injectable } from '@nestjs/common'
+import { Inject, Injectable, Optional } from '@nestjs/common'
+import { HouseholdAccessService, linkActiveIn } from '../household/household-access.service.js'
 import { ForbiddenError, InvalidInputError, NotFoundError } from '../common/domain-error.js'
 import { randomBytes } from 'node:crypto'
 import { AuditService } from '../audit/audit.service.js'
@@ -50,6 +51,7 @@ export class LinkService {
     @Inject(PROFILE_REPOSITORY) private readonly profileRepository: ProfileRepository,
     @Inject(MASTER_DATA_REPOSITORY) private readonly masterDataRepository: MasterDataRepository,
     @Inject(AuditService) private readonly auditService: AuditService,
+    @Optional() @Inject(HouseholdAccessService) private readonly household?: HouseholdAccessService,
   ) {}
 
   async get(userId: string, taxYear: number): Promise<LinkResponseDto> {
@@ -113,6 +115,17 @@ export class LinkService {
     }
 
     if (dto.filingType === 'zusammen') {
+      // ADR-0062: a couple linked once stays linked in every later year — no new invitation (AC 2).
+      const partner = await this.household?.partnerLink(userId)
+      if (partner && partner.personBUserId !== '' && linkActiveIn(partner, taxYear) && !(existing?.filingType === 'zusammen' && existing.personBUserId !== '')) {
+        await this.repository.upsert(userId, taxYear, {
+          filingType: 'zusammen',
+          personBUserId: partner.personBUserId,
+          invitationCode: null,
+          invitationCodeValidUntil: null,
+        })
+        return this.get(userId, taxYear)
+      }
       const remains = existing?.filingType === 'zusammen' && existing.personBUserId !== ''
       const invitation =
         remains && hasOwnAccount(existing)
@@ -125,6 +138,7 @@ export class LinkService {
         personBUserId: remains ? existing.personBUserId : shadowId(userId, taxYear),
         ...invitation,
       })
+      if (!remains) await this.prefillSpouseFromHousehold(userId, taxYear, shadowId(userId, taxYear))
     } else {
       await this.repository.upsert(userId, taxYear, {
         filingType: 'einzel',
@@ -190,6 +204,16 @@ export class LinkService {
       throw new InvalidInputError('INVITATION_IS_OWN', 'You cannot couple with your own invitation.')
     }
     await this.repository.setPersonB(row.id, userId)
+    await this.household?.linkPartner(row.personAUserId, userId, taxYear)
     return this.get(userId, taxYear)
+  }
+
+  /** A spouse without an account is typed once: a new year's placeholder starts from the household (AC 1). */
+  private async prefillSpouseFromHousehold(userId: string, taxYear: number, spouseUserId: string): Promise<void> {
+    const facts = await this.household?.spouseFacts(userId, taxYear)
+    if (!facts || (await this.profileRepository.findByUserId(spouseUserId))) return
+    await this.profileRepository.upsert(spouseUserId, { firstName: facts.firstName, lastName: facts.lastName, steuerId: facts.taxId, steuernummer: null })
+    const previous = (await this.masterDataRepository.findByUserId(spouseUserId)) ?? emptyMasterData()
+    await this.masterDataRepository.save(spouseUserId, { ...previous, geburtsdatum: facts.birthDate, familienstand: 'verheiratet' })
   }
 }

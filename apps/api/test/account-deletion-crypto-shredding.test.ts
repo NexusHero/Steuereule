@@ -9,6 +9,7 @@ import { InMemoryUserKeyStore } from './fakes/in-memory-user-key-store.js'
 function prismaStub(taxDataHolds: number, order: string[]): PrismaService {
   return {
     legalHold: { count: async () => taxDataHolds },
+    householdPerson: { findMany: async () => [] },
     $transaction: async () => {
       order.push('transaction')
       throw new Error('simulated tax-data transaction failure')

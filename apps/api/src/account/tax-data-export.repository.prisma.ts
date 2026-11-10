@@ -1,4 +1,5 @@
-import { Inject, Injectable } from '@nestjs/common'
+import { Inject, Injectable, Optional } from '@nestjs/common'
+import { PersonSealService } from '../household/person-seal.service.js'
 import { Prisma } from '@prisma/client'
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
 import type { ExportTaxDataEntry, ExportTaxDataValue } from './export/export-document.js'
@@ -39,7 +40,10 @@ export function toExportEntry(area: string, model: Prisma.ModelName, row: Row): 
 
 @Injectable()
 export class PrismaTaxDataExportRepository implements TaxDataExportRepository {
-  constructor(@Inject(ENCRYPTED_PRISMA) private readonly prisma: EncryptedPrismaClient) {}
+  constructor(
+    @Inject(ENCRYPTED_PRISMA) private readonly prisma: EncryptedPrismaClient,
+    @Optional() @Inject(PersonSealService) private readonly seal?: PersonSealService,
+  ) {}
 
   async findAllForUser(userId: string): Promise<ExportTaxDataEntry[]> {
     const where = { userId }
@@ -67,6 +71,24 @@ export class PrismaTaxDataExportRepository implements TaxDataExportRepository {
         this.prisma.owlCardDismissal.findMany({ where }),
         this.prisma.advisorChatMessage.findMany({ where }),
       ])
+    // ADR-0062: household people are sealed under their own key — the export shows them readable.
+    const household = await this.prisma.householdPerson.findMany({ where: { householdUserId: userId }, include: { memberships: true } })
+    const householdRows = await Promise.all(
+      household.map(async ({ sealed, memberships, ...row }) => {
+        const facts = this.seal ? await this.seal.unseal(row.id, sealed) : null
+        return {
+          ...row,
+          firstName: facts?.firstName ?? null,
+          lastName: facts?.lastName ?? null,
+          birthDate: facts?.birthDate ?? null,
+          taxId: facts?.taxId ?? null,
+          diedOn: facts?.diedOn ?? null,
+          years: memberships.map((m) => m.taxYear).sort().join(', '),
+        }
+      }),
+    )
+    const partnerLinks = await this.prisma.partnerLink.findMany({ where: { OR: [{ personAUserId: userId }, { personBUserId: userId }] } })
+    const mergeQuestions = await this.prisma.householdMergeCandidate.findMany({ where: { householdUserId: userId } })
 
     const entries = [
       ...taxYears.map((row) => toExportEntry('Steuerjahr', 'TaxYear', row)),
@@ -88,6 +110,9 @@ export class PrismaTaxDataExportRepository implements TaxDataExportRepository {
       ...owlSetting.map((row) => toExportEntry('Eulen-Modus-Einstellung', 'OwlSetting', row)),
       ...owlDismissals.map((row) => toExportEntry('Eulen-Modus-Kartenverwurf', 'OwlCardDismissal', row)),
       ...advisorMessages.map((row) => toExportEntry('Steuerberater-Chat', 'AdvisorChatMessage', row)),
+      ...householdRows.map((row) => toExportEntry('Haushalt (Person)', 'HouseholdPerson', row)),
+      ...partnerLinks.map((row) => toExportEntry('Partner-Verknüpfung', 'PartnerLink', row)),
+      ...mergeQuestions.map((row) => toExportEntry('Haushalt (Rückfrage „dieselben?“)', 'HouseholdMergeCandidate', row)),
     ]
     return entries.sort(
       (a, b) =>

@@ -17,6 +17,10 @@ export class FakeLinkRepository implements PartnerCouplingRepository {
     return Promise.resolve(null)
   }
 
+  listForPersonA(personAUserId: string): Promise<PartnerCouplingRecord[]> {
+    return Promise.resolve([...this.store.values()].filter((r) => r.personAUserId === personAUserId).sort((a, b) => a.taxYear - b.taxYear))
+  }
+
   findByInvitationCode(code: string): Promise<PartnerCouplingRecord | null> {
     for (const r of this.store.values()) {
       if (r.invitationCode === code) return Promise.resolve(r)

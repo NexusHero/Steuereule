@@ -23,6 +23,10 @@ describe('PrismaTaxDataExportRepository', () => {
     const erased = new Set([
       ...taxDataTables(new Proxy({}, { get: (_t, key) => String(key) }) as never).map(String),
       'taxYearLink',
+      // ADR-0062: erased in the same transaction, outside taxDataTables (keyed by householdUserId / person A/B).
+      'householdPerson',
+      'householdMergeCandidate',
+      'partnerLink',
     ])
     expect([...read].sort()).toEqual([...erased].sort())
   })

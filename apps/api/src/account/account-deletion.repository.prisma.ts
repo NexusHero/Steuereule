@@ -19,7 +19,12 @@ export class PrismaAccountDeletionRepository implements AccountDeletionRepositor
     // tax data keeps the key, because the held files must stay readable.
     const taxDataHeld =
       (await this.prisma.legalHold.count({ where: { userId, resource: 'taxData', holdUntil: { gt: new Date() } } })) > 0
-    if (!taxDataHeld) await this.keys.destroy(userId)
+    if (!taxDataHeld) {
+      await this.keys.destroy(userId)
+      // ADR-0062: every household person has an own key; destroying it shreds their facts.
+      const persons = await this.prisma.householdPerson.findMany({ where: { householdUserId: userId }, select: { id: true } })
+      for (const person of persons) await this.keys.destroy(`household-person:${person.id}`)
+    }
     return deleteAccountTransaction(this.prisma, userId)
   }
 }

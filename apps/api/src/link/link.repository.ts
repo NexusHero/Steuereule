@@ -13,6 +13,8 @@ export const PARTNER_COUPLING_REPOSITORY = Symbol('PARTNER_COUPLING_REPOSITORY')
 export interface PartnerCouplingRepository {
   findByUserAndYear(userId: string, taxYear: number): Promise<PartnerCouplingRecord | null>
   findByInvitationCode(code: string): Promise<PartnerCouplingRecord | null>
+  /** Every year in which this account is person A — the household migration reads it (ADR-0062). */
+  listForPersonA(personAUserId: string): Promise<PartnerCouplingRecord[]>
   upsert(
     personAUserId: string,
     taxYear: number,

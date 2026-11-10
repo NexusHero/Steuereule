@@ -34,6 +34,8 @@ export const CHILD_REPOSITORY = Symbol('CHILD_REPOSITORY')
 /** What Anlage Kind needs beyond the child's identity. */
 export interface ChildRepository {
   listForUserAndYear(userId: string, taxYear: number): Promise<ChildRecord[]>
+  /** Every year of the account, oldest first — the household migration reads it (ADR-0062). */
+  listAllForUser(userId: string): Promise<ChildRecord[]>
   create(
     userId: string,
     taxYear: number,
