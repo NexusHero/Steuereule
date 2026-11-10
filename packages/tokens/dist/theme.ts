@@ -163,7 +163,7 @@ export const theme = {
       "okWeich": "#143020",
       "warn": "#e07b00",
       "warnWeich": "#392a10",
-      "fehler": "#e0362c",
+      "fehler": "#e96a61",
       "fehlerWeich": "#3b1512"
     },
     "shadow": {
