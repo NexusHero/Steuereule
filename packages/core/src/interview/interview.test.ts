@@ -708,12 +708,19 @@ describe('AMOUNT_LATER ("Betrag später eintragen", Ticket #443 Slice 2)', () =>
       laterAmountSteps({
         spenden: 'Ja',
         'spenden-betrag': AMOUNT_LATER,
+        'kv-pv': 'Nein',
         umzug: 'Ja',
         'umzug-kosten': '450',
         riester: 'Ja',
         'riester-betrag': AMOUNT_LATER,
       }),
     ).toEqual(['spenden-betrag', 'riester-betrag'])
+  })
+
+  it('laterAmountSteps ignores a stale „später“ whose parent was answered differently afterwards', () => {
+    // Umzug „Ja“ → Kosten später → Umzug „Nein“: the follow-up stays stored but is no longer asked.
+    expect(laterAmountSteps({ dhf: 'Nein', umzug: 'Nein', 'umzug-kosten': AMOUNT_LATER })).toEqual([])
+    expect(laterAmountSteps({ dhf: 'Nein', umzug: 'Ja', 'umzug-kosten': AMOUNT_LATER })).toEqual(['umzug-kosten'])
   })
 
   it('amountFromAnswer parses integers and returns null for undefined or AMOUNT_LATER', () => {

@@ -89,7 +89,7 @@ describe('pruefePlausibilitaet (M2)', () => {
   it('AMOUNT_LATER catalog answers produce a betrag-spaeter Notice without blocking', () => {
     const r = checkPlausibility({
       ...inputs(),
-      answers: { spenden: 'Ja', 'spenden-betrag': 'spaeter', umzug: 'Ja', 'umzug-kosten': 'spaeter' },
+      answers: { spenden: 'Ja', 'spenden-betrag': 'spaeter', dhf: 'Nein', umzug: 'Ja', 'umzug-kosten': 'spaeter' },
     })
     expect(r.kind).toBe('einreichbar')
     expect(notices(r)).toEqual([{ kind: 'betrag-spaeter', steps: ['spenden-betrag', 'umzug-kosten'] }])

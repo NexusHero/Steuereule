@@ -192,7 +192,7 @@ describe('SteuerschaetzungService', () => {
     const setupCouple = async (aLater: boolean, bLater: boolean) => {
       const env = setup()
       env.interview.seed('a', 2025, aLater ? { ...EMPLOYED, spenden: 'Ja', 'spenden-betrag': AMOUNT_LATER } : EMPLOYED)
-      env.interview.seed('spouse_a_2025', 2025, bLater ? { umzug: 'Ja', 'umzug-kosten': AMOUNT_LATER } : {})
+      env.interview.seed('spouse_a_2025', 2025, bLater ? { dhf: 'Nein', umzug: 'Ja', 'umzug-kosten': AMOUNT_LATER } : {})
       await env.stammdaten.save('a', { familienstand: 'verheiratet', religion: 'VD' } as MasterDataRecord)
       await env.kopplung.upsert('a', 2025, { personBUserId: 'spouse_a_2025', filingType: 'zusammen' })
       env.lstb.seed({ userId: 'a', taxYear: 2025, bruttoarbeitslohn: '82000', lohnsteuer: '9890', sozialversicherung: '15473' })
