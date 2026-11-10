@@ -6,7 +6,9 @@ import { CrossBorderScreen } from '../screens/cross-border/CrossBorderScreen'
 import { CatalogScreen } from '../screens/catalog/CatalogScreen'
 import { WorkdaysScreen } from '../screens/workdays/WorkdaysScreen'
 import { PlausibilityScreen } from '../screens/plausibility/PlausibilityScreen'
+import { SubmissionScreen } from '../screens/submission/SubmissionScreen'
 import { FilingTypeComparisonScreen } from '../screens/filing-type-comparison/FilingTypeComparisonScreen'
+import { tileById, type TileDefinition } from '../screens/cockpit/tiles'
 import { useShellState } from './ShellState'
 import { RequiresAccount } from './RequiresAccount'
 import { useYearGuard } from './guards'
@@ -15,6 +17,46 @@ import type { CatalogEntryParam, CockpitStackParamList } from './routes'
 const CATALOG_ENTRIES: readonly CatalogEntryParam[] = ['lebenslagen', 'einkuenfte', 'sonderausgaben']
 
 type Props<T extends keyof CockpitStackParamList> = NativeStackScreenProps<CockpitStackParamList, T>
+
+export function navigateToTileRoute(
+  navigation: {
+    readonly navigate: <RouteName extends keyof CockpitStackParamList>(
+      screen: RouteName,
+      params: CockpitStackParamList[RouteName],
+    ) => void
+  },
+  year: number,
+  tile: TileDefinition,
+  revisit: boolean,
+): void {
+  const r = tile.route
+  switch (r.screen) {
+    case 'Lstb':
+      navigation.navigate('Lstb', { year })
+      return
+    case 'CrossBorder':
+      navigation.navigate('CrossBorder', { year })
+      return
+    case 'Pension':
+      navigation.navigate('Pension', { year })
+      return
+    case 'Catalog':
+      navigation.navigate('Catalog', revisit ? { year, entry: r.entry, revisit: true } : { year, entry: r.entry })
+      return
+    case 'Workdays':
+      navigation.navigate('Workdays', { year })
+      return
+    case 'Capital':
+      navigation.navigate('Capital', { year })
+      return
+    case 'Rental':
+      navigation.navigate('Rental', { year })
+      return
+    case 'Children':
+      navigation.navigate('Children', { year })
+      return
+  }
+}
 
 export function LstbRoute({ navigation, route }: Props<'Lstb'>) {
   const year = useYearGuard(route.params?.year, navigation)
@@ -115,6 +157,29 @@ export function FilingTypeComparisonRoute({ navigation, route }: Props<'FilingTy
         taxYear={year}
         onBack={() => navigation.navigate('Plausibility', { year }, { pop: true })}
         onDone={() => navigation.navigate('CockpitHome', undefined, { pop: true })}
+      />
+    </RequiresAccount>
+  )
+}
+
+export function SubmissionRoute({ navigation, route }: Props<'Submission'>) {
+  const year = useYearGuard(route.params?.year, navigation)
+  const { onOpenPrintout } = useShellState()
+  if (year === null) return null
+
+  const goHome = () => {
+    const hasHome = navigation.getState().routes.some((r) => r.name === 'CockpitHome')
+    if (hasHome) navigation.navigate('CockpitHome', undefined, { pop: true })
+    else navigation.replace('CockpitHome')
+  }
+
+  return (
+    <RequiresAccount>
+      <SubmissionScreen
+        taxYear={year}
+        onBack={goHome}
+        onOpenTile={(tileId, revisit) => navigateToTileRoute(navigation, year, tileById(tileId), revisit)}
+        onOpenPrintout={(targetYear) => onOpenPrintout?.(targetYear)}
       />
     </RequiresAccount>
   )

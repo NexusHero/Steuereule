@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react'
 import { View } from 'react-native'
 import { StatusBar } from 'expo-status-bar'
-import { I18nextProvider } from 'react-i18next'
+import { I18nextProvider, useTranslation } from 'react-i18next'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { NavigationContainer, useLinkTo } from '@react-navigation/native'
 import { createNativeStackNavigator, type NativeStackScreenProps } from '@react-navigation/native-stack'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
-import { ThemeProvider } from '@steuereule/ui'
+import { ThemeProvider, useBreakpoint } from '@steuereule/ui'
 import { configureApiClient } from '@steuereule/api-client'
 import { createAppI18n } from './src/i18n/app-i18n'
+import { APP_NS } from './src/i18n/resources'
 import { createAppAuthClient } from './src/auth/auth-client'
 import { AuthClientProvider } from './src/auth/AuthClientProvider'
 import { APP_QUERY_DEFAULTS } from './src/query-client'
@@ -26,9 +27,12 @@ import { DeviceScreen } from './src/screens/device/DeviceScreen'
 import { LegalScreen } from './src/screens/legal/LegalScreen'
 import { MasterDataScreen } from './src/screens/master-data/MasterDataScreen'
 import { PrintoutScreen } from './src/screens/printout/PrintoutScreen'
+import { usePlausibility } from './src/screens/plausibility/usePlausibility'
+import { LoadingState } from './src/screens/shared/ScreenState'
 import { ConfirmationScreen, type ConfirmationForm } from './src/screens/confirmation/ConfirmationScreen'
 import { OauthConsentScreen } from './src/screens/oauth/OauthConsentScreen'
 import { ChildrenScreen } from './src/screens/children/ChildrenScreen'
+import { CURRENT_TAX_YEAR } from './src/config/taxYear'
 import {
   rememberPendingPath,
   rememberReturnTo,
@@ -43,6 +47,7 @@ import { viewAfterInterview } from './src/screens/funnel/afterTheInterview'
 import type { RootStackParamList } from './src/navigation/routes'
 import { linking } from './src/navigation/linking'
 import { ShellStateProvider, useShellState } from './src/navigation/ShellState'
+import { SubmissionGateProvider, useSubmissionGate } from './src/navigation/SubmissionGateContext'
 import { AppTabs } from './src/navigation/AppTabs'
 
 const i18n = createAppI18n('de')
@@ -63,23 +68,25 @@ export default function App() {
         <I18nextProvider i18n={i18n}>
           <ThemeProvider mode="light">
             <AuthClientProvider client={authClient}>
-              <View style={{ flex: 1 }}>
-                <NavigationContainer linking={linking}>
-                  <RootStack.Navigator screenOptions={{ headerShown: false }}>
-                    <RootStack.Screen name="Splash" component={SplashRoute} />
-                    <RootStack.Screen name="Login" component={LoginRoute} />
-                    <RootStack.Screen name="Registration" component={RegistrationRoute} />
-                    <RootStack.Screen name="Onboarding" component={OnboardingRoute} />
-                    <RootStack.Screen name="App" component={AppRoute} />
-                    <RootStack.Screen name="Device" component={DeviceRoute} />
-                    <RootStack.Screen name="Legal" component={LegalRoute} />
-                    <RootStack.Screen name="Printout" component={PrintoutRoute} />
-                    <RootStack.Screen name="Confirmation" component={ConfirmationRoute} />
-                    <RootStack.Screen name="OauthConsent" component={OauthConsentRoute} />
-                  </RootStack.Navigator>
-                </NavigationContainer>
-                <StatusBar style="dark" />
-              </View>
+              <SubmissionGateProvider>
+                <View style={{ flex: 1 }}>
+                  <NavigationContainer linking={linking}>
+                    <RootStack.Navigator screenOptions={{ headerShown: false }}>
+                      <RootStack.Screen name="Splash" component={SplashRoute} />
+                      <RootStack.Screen name="Login" component={LoginRoute} />
+                      <RootStack.Screen name="Registration" component={RegistrationRoute} />
+                      <RootStack.Screen name="Onboarding" component={OnboardingRoute} />
+                      <RootStack.Screen name="App" component={AppRoute} />
+                      <RootStack.Screen name="Device" component={DeviceRoute} />
+                      <RootStack.Screen name="Legal" component={LegalRoute} />
+                      <RootStack.Screen name="Printout" component={PrintoutRoute} />
+                      <RootStack.Screen name="Confirmation" component={ConfirmationRoute} />
+                      <RootStack.Screen name="OauthConsent" component={OauthConsentRoute} />
+                    </RootStack.Navigator>
+                  </NavigationContainer>
+                  <StatusBar style="dark" />
+                </View>
+              </SubmissionGateProvider>
             </AuthClientProvider>
           </ThemeProvider>
         </I18nextProvider>
@@ -138,11 +145,35 @@ function LegalRoute({ navigation, route }: NativeStackScreenProps<RootStackParam
 
 function PrintoutRoute({ navigation, route }: NativeStackScreenProps<RootStackParamList, 'Printout'>) {
   const [view, setView] = useState<'ausdruck' | 'stammdaten' | 'sonderausgaben' | 'kinder' | 'vermietung' | 'kapital' | 'grenzgaenger'>('ausdruck')
+  const bp = useBreakpoint()
+  const { t: tr } = useTranslation(APP_NS)
   const year = Number(route.params?.year)
+  const validYear = Number.isInteger(year)
+  const plausibility = usePlausibility(validYear ? year : CURRENT_TAX_YEAR, { enabled: validYear })
+  const { areNoticesConfirmed } = useSubmissionGate()
+
+  const gateBlocked =
+    validYear &&
+    (plausibility.status === 'error' ||
+      (plausibility.status === 'ready' &&
+        (plausibility.conflicts.length > 0 || !areNoticesConfirmed(year, plausibility.notices))))
+
   useEffect(() => {
-    if (!Number.isInteger(year)) navigation.replace('App')
-  }, [year, navigation])
-  if (!Number.isInteger(year)) return null
+    if (!validYear) {
+      navigation.replace('App')
+      return
+    }
+    if (gateBlocked) {
+      navigation.replace('App', {
+        screen: 'Cockpit',
+        params: { screen: 'Submission', params: { year } },
+      })
+    }
+  }, [validYear, gateBlocked, year, navigation])
+
+  if (!validYear) return null
+  if (plausibility.status === 'loading') return <LoadingState bp={bp} label={tr('abgabe.loading')} />
+  if (gateBlocked || plausibility.status !== 'ready') return null
   if (view === 'stammdaten') return <MasterDataScreen onBack={() => setView('ausdruck')} />
   if (view === 'grenzgaenger') return <CrossBorderScreen taxYear={year} onDone={() => setView('ausdruck')} />
   if (view === 'kapital') return <CapitalScreen taxYear={year} onDone={() => setView('ausdruck')} onBack={() => setView('ausdruck')} />
@@ -207,6 +238,7 @@ function OauthConsentRoute({ route }: NativeStackScreenProps<RootStackParamList,
 }
 
 function AppRoute({ navigation, route }: NativeStackScreenProps<RootStackParamList, 'App'>) {
+  const { resetSubmissionGate } = useSubmissionGate()
   return (
     <ShellStateProvider
       startInInterview={route.params?.start === 'interview'}
@@ -215,6 +247,7 @@ function AppRoute({ navigation, route }: NativeStackScreenProps<RootStackParamLi
       onOpenPrintout={(year) => navigation.navigate('Printout', { year: String(year) })}
       onOpenConfirmation={(year) => navigation.navigate('Confirmation', { year: String(year) })}
       onSignedOut={() => {
+        resetSubmissionGate()
         queryClient.clear()
         navigation.replace('Login')
         rememberReturnTo(null)

@@ -39,6 +39,7 @@ export interface CockpitScreenProps {
   readonly onOpenKinder?: () => void
   readonly onOpenOwlMode?: (year: number) => void
   readonly onOpenPrintout?: (year: number) => void
+  readonly onOpenSubmission?: (year: number) => void
   readonly onOpenConfirmation?: (year: number) => void
   readonly onContinuePath?: (path: FunnelPath) => void
   readonly onOpenTile?: (tile: TileDefinition, revisit: boolean) => void
@@ -61,6 +62,7 @@ export function CockpitScreen({
   onOpenKinder,
   onOpenOwlMode,
   onOpenPrintout,
+  onOpenSubmission,
   onOpenConfirmation,
   onContinuePath,
   onOpenTile,
@@ -122,6 +124,7 @@ export function CockpitScreen({
           onPress: onOpenMasterData,
         }
   const openTile = onOpenTile ?? (() => {})
+  const submissionHandler = onOpenSubmission ?? onOpenPrintout
   const nextTile = tileFacts !== null ? nextStepTile(tileFacts) : null
   const next: Next | null =
     tileFacts !== null
@@ -130,7 +133,10 @@ export function CockpitScreen({
             label: tr('cockpit.naechsterSchritt', { titel: tr(nextTile.titleKey) }),
             onPress: () => openTile(nextTile, tileRevisitFlag(nextTile, tileFacts.answers)),
           }
-        : null
+        : {
+            label: tr('cockpit.naechsterSchritt', { titel: tr('cockpit.abgabe.titel') }),
+            onPress: () => submissionHandler?.(year),
+          }
       : path !== null && onContinuePath
         ? { label: tr('cockpit.weiterMitDeinemWeg', { pfad: tr(`funnel.kontoWand.pfad.${path}`) }), onPress: () => onContinuePath(path) }
         : null
@@ -146,6 +152,7 @@ export function CockpitScreen({
         tileFacts={tileFacts}
         findings={findings}
         onOpenTile={openTile}
+        {...(submissionHandler ? { onOpenSubmission: () => submissionHandler(year) } : {})}
         masterData={masterData}
         onOpenInterview={onOpenInterview}
         onOpenAssessment={onOpenAssessment}
@@ -153,7 +160,7 @@ export function CockpitScreen({
         onOpenRental={onOpenRental}
         {...(onOpenKinder ? { onOpenKinder } : {})}
         {...(onOpenOwlMode ? { onOpenOwlMode: () => onOpenOwlMode(year) } : {})}
-        {...(onOpenPrintout ? { onOpenPrintout: () => onOpenPrintout(year) } : {})}
+        {...(submissionHandler ? { onOpenPrintout: () => submissionHandler(year) } : {})}
         bp={bp}
       />
     )
@@ -171,6 +178,7 @@ export function CockpitScreen({
       tileFacts={tileFacts}
       findings={findings}
       onOpenTile={openTile}
+      {...(submissionHandler ? { onOpenSubmission: () => submissionHandler(year) } : {})}
       masterData={masterData}
       onOpenInterview={onOpenInterview}
       onOpenAssessment={onOpenAssessment}
@@ -178,7 +186,7 @@ export function CockpitScreen({
       onOpenRental={onOpenRental}
       {...(onOpenKinder ? { onOpenKinder } : {})}
       {...(onOpenOwlMode ? { onOpenOwlMode: () => onOpenOwlMode(year) } : {})}
-      {...(onOpenPrintout ? { onOpenPrintout: () => onOpenPrintout(year) } : {})}
+      {...(submissionHandler ? { onOpenPrintout: () => submissionHandler(year) } : {})}
       bp={bp}
     />
   )
@@ -257,6 +265,7 @@ interface CockpitEmptyProps {
   readonly tileFacts: TileFacts | null
   readonly findings: PlausibilityFindings
   readonly onOpenTile: (tile: TileDefinition, revisit: boolean) => void
+  readonly onOpenSubmission?: () => void
   readonly masterData: Next | null
   readonly onOpenInterview: () => void
   readonly onOpenAssessment: () => void
@@ -317,7 +326,7 @@ function EuleBannerNotice() {
   )
 }
 
-function CockpitEmpty({ year, onYearChange, refresh, isRefreshing, next, tileFacts, findings, onOpenTile, masterData, onOpenInterview, onOpenAssessment, onOpenCapital, onOpenRental, onOpenKinder, onOpenOwlMode, bp }: CockpitEmptyProps) {
+function CockpitEmpty({ year, onYearChange, refresh, isRefreshing, next, tileFacts, findings, onOpenTile, onOpenSubmission, masterData, onOpenInterview, onOpenAssessment, onOpenCapital, onOpenRental, onOpenKinder, onOpenOwlMode, bp }: CockpitEmptyProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
@@ -348,6 +357,7 @@ function CockpitEmpty({ year, onYearChange, refresh, isRefreshing, next, tileFac
             conflicts={findings.conflicts}
             notices={findings.notices}
             onOpenTile={onOpenTile}
+            {...(onOpenSubmission ? { onOpenSubmission } : {})}
           />
         ) : null}
         {onOpenOwlMode ? <View style={styles.berater}><OwlAdvisorCard onOpen={onOpenOwlMode} testID="cockpit-empty-eulen-modus" /></View> : null}
@@ -425,6 +435,7 @@ interface CockpitLoadedProps {
   readonly tileFacts: TileFacts | null
   readonly findings: PlausibilityFindings
   readonly onOpenTile: (tile: TileDefinition, revisit: boolean) => void
+  readonly onOpenSubmission?: () => void
   readonly masterData: Next | null
   readonly onOpenInterview: () => void
   readonly onOpenAssessment: () => void
@@ -436,7 +447,7 @@ interface CockpitLoadedProps {
   readonly bp: Breakpoint
 }
 
-function CockpitLoaded({ summary, year, onYearChange, confirmation, onOpenConfirmation, refresh, isRefreshing, next, tileFacts, findings, onOpenTile, masterData, onOpenInterview, onOpenAssessment, onOpenCapital, onOpenRental, onOpenKinder, onOpenOwlMode, onOpenPrintout, bp }: CockpitLoadedProps) {
+function CockpitLoaded({ summary, year, onYearChange, confirmation, onOpenConfirmation, refresh, isRefreshing, next, tileFacts, findings, onOpenTile, onOpenSubmission, masterData, onOpenInterview, onOpenAssessment, onOpenCapital, onOpenRental, onOpenKinder, onOpenOwlMode, onOpenPrintout, bp }: CockpitLoadedProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
@@ -478,6 +489,7 @@ function CockpitLoaded({ summary, year, onYearChange, confirmation, onOpenConfir
           conflicts={findings.conflicts}
           notices={findings.notices}
           onOpenTile={onOpenTile}
+          {...(onOpenSubmission ? { onOpenSubmission } : {})}
         />
       ) : null}
       {onOpenOwlMode ? <View style={styles.berater}><OwlAdvisorCard onOpen={onOpenOwlMode} /></View> : null}

@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { createNativeStackNavigator, type NativeStackScreenProps } from '@react-navigation/native-stack'
 import { CockpitScreen } from '../screens/cockpit/CockpitScreen'
-import type { TileDefinition } from '../screens/cockpit/tiles'
 import { useAccountSession } from '../auth/useAccountSession'
 import { InterviewScreen } from '../screens/interview/InterviewScreen'
 import { AccountWallScreen, pathFromAnswers } from '../screens/funnel/KontoWandScreen'
@@ -14,7 +13,9 @@ import {
   LstbRoute,
   PensionRoute,
   PlausibilityRoute,
+  SubmissionRoute,
   WorkdaysRoute,
+  navigateToTileRoute,
 } from './CockpitTunnelRoutes'
 import {
   AssessmentRoute,
@@ -31,7 +32,7 @@ const Stack = createNativeStackNavigator<CockpitStackParamList>()
 type Props<T extends keyof CockpitStackParamList> = NativeStackScreenProps<CockpitStackParamList, T>
 
 function CockpitHomeRoute({ navigation }: Props<'CockpitHome'>) {
-  const { taxYear, setTaxYear, setFunnelPath, setPendingPath, switchToTab, consumeStartInterview, onOpenPrintout, onOpenConfirmation } =
+  const { taxYear, setTaxYear, setFunnelPath, setPendingPath, switchToTab, consumeStartInterview, onOpenConfirmation } =
     useShellState()
   const { state: sessionState } = useAccountSession()
   const [redirecting, setRedirecting] = useState(() => consumeStartInterview())
@@ -43,36 +44,6 @@ function CockpitHomeRoute({ navigation }: Props<'CockpitHome'>) {
   }, [redirecting, navigation, taxYear])
 
   if (redirecting) return null
-
-  const openTile = (tile: TileDefinition, revisit: boolean) => {
-    const r = tile.route
-    switch (r.screen) {
-      case 'Lstb':
-        navigation.navigate('Lstb', { year: taxYear })
-        return
-      case 'CrossBorder':
-        navigation.navigate('CrossBorder', { year: taxYear })
-        return
-      case 'Pension':
-        navigation.navigate('Pension', { year: taxYear })
-        return
-      case 'Catalog':
-        navigation.navigate('Catalog', revisit ? { year: taxYear, entry: r.entry, revisit: true } : { year: taxYear, entry: r.entry })
-        return
-      case 'Workdays':
-        navigation.navigate('Workdays', { year: taxYear })
-        return
-      case 'Capital':
-        navigation.navigate('Capital', { year: taxYear })
-        return
-      case 'Rental':
-        navigation.navigate('Rental', { year: taxYear })
-        return
-      case 'Children':
-        navigation.navigate('Children', { year: taxYear })
-        return
-    }
-  }
 
   return (
     <CockpitScreen
@@ -87,12 +58,12 @@ function CockpitHomeRoute({ navigation }: Props<'CockpitHome'>) {
       onOpenKinder={() => navigation.navigate('Children', { year: taxYear })}
       onOpenOwlMode={() => switchToTab('Owl')}
       onOpenMasterData={() => navigation.navigate('CockpitMasterData', { year: taxYear })}
-      onOpenTile={openTile}
+      onOpenSubmission={(year) => navigation.navigate('Submission', { year })}
+      onOpenTile={(tile, revisit) => navigateToTileRoute(navigation, taxYear, tile, revisit)}
       onContinuePath={(path) => {
         setFunnelPath(path)
         setPendingPath(path)
       }}
-      {...(onOpenPrintout ? { onOpenPrintout } : {})}
       {...(onOpenConfirmation ? { onOpenConfirmation } : {})}
     />
   )
@@ -138,6 +109,7 @@ export function CockpitStack() {
       <Stack.Screen name="CrossBorder" component={CrossBorderRoute} />
       <Stack.Screen name="Catalog" component={CatalogRoute} getId={({ params }) => `${params.year}-${params.entry}`} />
       <Stack.Screen name="Workdays" component={WorkdaysRoute} />
+      <Stack.Screen name="Submission" component={SubmissionRoute} />
       <Stack.Screen name="Plausibility" component={PlausibilityRoute} />
       <Stack.Screen name="FilingTypeComparison" component={FilingTypeComparisonRoute} />
       <Stack.Screen name="Assessment" component={AssessmentRoute} />
