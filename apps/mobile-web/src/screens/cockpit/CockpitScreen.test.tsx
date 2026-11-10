@@ -11,6 +11,7 @@ import { QueryClient, QueryClientProvider, focusManager } from '@tanstack/react-
 import { http, HttpResponse } from 'msw'
 import { createAppI18n } from '../../i18n/app-i18n'
 import { CockpitScreen } from './CockpitScreen'
+import type { TileDefinition } from './tiles'
 import { server } from '../../test-msw-server'
 import type { CockpitSummaryDto, InterviewStateDto } from '@steuereule/api-client'
 import type { FunnelPath } from '../funnel/KontoWandScreen'
@@ -71,12 +72,15 @@ function mockCockpitError() {
 
 function renderCockpit(opts: {
   lng?: 'de' | 'en'
+  isSignedIn?: boolean
   onOpenInterview?: () => void
   onOpenKinder?: () => void
   onOpenOwlMode?: (year: number) => void
   onOpenPrintout?: (year: number) => void
+  onOpenSubmission?: (year: number) => void
   onOpenConfirmation?: (year: number) => void
   onContinuePath?: (path: FunnelPath) => void
+  onOpenTile?: (tile: TileDefinition, revisit: boolean) => void
   onYearChange?: (year: number) => void
   onOpenMasterData?: () => void
   taxYear?: number
@@ -89,12 +93,15 @@ function renderCockpit(opts: {
         <ThemeProvider mode="light">
           <CockpitScreen
             taxYear={opts.taxYear ?? TAX_YEAR}
+            {...(opts.isSignedIn !== undefined ? { isSignedIn: opts.isSignedIn } : {})}
             onOpenInterview={opts.onOpenInterview ?? (() => {})}
             {...(opts.onOpenKinder ? { onOpenKinder: opts.onOpenKinder } : {})}
             {...(opts.onOpenOwlMode ? { onOpenOwlMode: opts.onOpenOwlMode } : {})}
             {...(opts.onOpenPrintout ? { onOpenPrintout: opts.onOpenPrintout } : {})}
+            {...(opts.onOpenSubmission ? { onOpenSubmission: opts.onOpenSubmission } : {})}
             {...(opts.onOpenConfirmation ? { onOpenConfirmation: opts.onOpenConfirmation } : {})}
             {...(opts.onContinuePath ? { onContinuePath: opts.onContinuePath } : {})}
+            {...(opts.onOpenTile ? { onOpenTile: opts.onOpenTile } : {})}
             {...(opts.onYearChange ? { onYearChange: opts.onYearChange } : {})}
             {...(opts.onOpenMasterData ? { onOpenMasterData: opts.onOpenMasterData } : {})}
           />
@@ -421,26 +428,26 @@ describe('CockpitScreen — Kinder & Eulen-Modus entries', () => {
     expect(card.compareDocumentPosition(check) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
-  describe('"Weiter mit deinem Weg" — the way back into the path once the three questions are answered', () => {
+  describe('"Weiter mit deinem Weg" — the way back into the path once the three questions are answered (guest)', () => {
     it.each([
       [{ job: 'Angestellt', ausland: 'Ja, in die Schweiz', kinder: 'Nein' }, 'Grenzgänger CH', 'ch'],
       [{ job: 'Rente', ausland: 'Nein', kinder: 'Nein' }, 'Rente', 'rente'],
       [{ job: 'Angestellt', ausland: 'Nein', kinder: 'Nein' }, 'Angestellte', 'angestellte'],
-    ] as const)('leads %o into the %s path', async (answers, label, path) => {
+    ] as const)('leads %o into the %s path for guests', async (answers, label, path) => {
       mockCockpit({ ...LOADED_SUMMARY, openItems: 0 })
       mockInterview(answers)
       const onContinuePath = vi.fn()
-      renderCockpit({ onContinuePath })
+      renderCockpit({ isSignedIn: false, onContinuePath })
 
       fireEvent.click(await screen.findByText(`Weiter mit deinem Weg · ${label}`))
 
       expect(onContinuePath).toHaveBeenCalledWith(path)
     })
 
-    it('offers it from the empty state too', async () => {
+    it('offers it from the empty state too for guests', async () => {
       mockCockpit(null)
       mockInterview({ job: 'Angestellt', ausland: 'Ja, in die Schweiz', kinder: 'Nein' })
-      renderCockpit({ onContinuePath: () => {} })
+      renderCockpit({ isSignedIn: false, onContinuePath: () => {} })
 
       expect(await screen.findByText('Weiter mit deinem Weg · Grenzgänger CH')).toBeTruthy()
     })
@@ -448,11 +455,163 @@ describe('CockpitScreen — Kinder & Eulen-Modus entries', () => {
     it('stays hidden while the three questions are not answered yet', async () => {
       mockCockpit(LOADED_SUMMARY)
       mockInterview({ job: 'Angestellt' }, false)
-      renderCockpit({ onContinuePath: () => {} })
+      renderCockpit({ isSignedIn: false, onContinuePath: () => {} })
 
       await screen.findByText('Fragen beantworten')
 
       expect(screen.queryByText(/Weiter mit deinem Weg/)).toBeNull()
+    })
+  })
+
+  describe('Hub-Cockpit tiles & Nächster Schritt (§ 2.2–2.4)', () => {
+    it('renders visible tiles with statuses and next-step CTA for signed-in users once interview is done', async () => {
+      mockCockpit(LOADED_SUMMARY)
+      mockInterview({
+        job: 'Angestellt',
+        ausland: 'Nein',
+        kinder: 'Nein',
+        familienstand: 'Ledig',
+        dhf: 'Ja',
+        'dhf-miete': 'spaeter',
+        umzug: 'Nein',
+        abfindung: 'Nein',
+        lohnersatz: 'Nein',
+        nebenjob: 'Nein',
+      })
+      server.use(
+        http.get(`*/v1/steuerjahre/${TAX_YEAR}/lstb`, () =>
+          HttpResponse.json({
+            bruttoarbeitslohn: { kind: 'erfasst', value: 50000 },
+            lohnsteuer: { kind: 'erfasst', value: 8000 },
+            sozialversicherung: { kind: 'erfasst', value: 10000 },
+            state: { kind: 'vollstaendig', bruttoarbeitslohn: 50000, lohnsteuer: 8000, sozialversicherung: 10000 },
+          }),
+        ),
+      )
+      const onOpenTile = vi.fn()
+      renderCockpit({ isSignedIn: true, onOpenTile })
+
+      expect((await screen.findByTestId('cockpit-kachel-lstb-status')).textContent).toBe('Erledigt')
+      expect(screen.getByTestId('cockpit-kachel-lebenslagen-status').textContent).toBe('⏳ Betrag offen')
+      expect(screen.getByTestId('cockpit-kachel-einkuenfte-status').textContent).toBe('Offen')
+
+      const nextButton = await screen.findByTestId('cockpit-weiter')
+      expect(nextButton.textContent).toContain('Nächster Schritt: Weitere Einkünfte')
+      await act(async () => {})
+      fireEvent.click(nextButton)
+      expect(onOpenTile).toHaveBeenCalledWith(expect.objectContaining({ id: 'einkuenfte' }), false)
+
+      fireEvent.click(screen.getByTestId('cockpit-kachel-lebenslagen'))
+      expect(onOpenTile).toHaveBeenCalledWith(expect.objectContaining({ id: 'lebenslagen' }), true)
+    })
+
+    it('renders tiles in empty state too and points cockpit-weiter to Abgabe vorbereiten when all path tiles are erledigt', async () => {
+      mockCockpit(null)
+      mockInterview({
+        job: 'Rente',
+        ausland: 'Nein',
+        kinder: 'Nein',
+        familienstand: 'Ledig',
+        einkuenfte: 'Nein',
+        spenden: 'Nein',
+        'kv-pv': 'Nein',
+        riester: 'Nein',
+      })
+      server.use(
+        http.get(`*/v1/steuerjahre/${TAX_YEAR}/rente`, () =>
+          HttpResponse.json({
+            kind: 'GesetzlicheRente',
+            jahresbetrag: { kind: 'erfasst', value: 18000 },
+            rentenbeginnJahr: { kind: 'erfasst', value: 2020 },
+            alterBeiRentenbeginn: { kind: 'offen' },
+            items: [],
+            status: { kind: 'bestimmt', einnahmen: 14400, vorsorgeaufwand: 0, anrechnung: 0 },
+          }),
+        ),
+      )
+      const onOpenSubmission = vi.fn()
+      renderCockpit({ isSignedIn: true, onOpenTile: vi.fn(), onOpenSubmission })
+
+      await waitFor(() => {
+        expect(screen.getByTestId('cockpit-kachel-rente-status').textContent).toBe('Erledigt')
+        expect(screen.getByTestId('cockpit-kachel-einkuenfte-status').textContent).toBe('Erledigt')
+        expect(screen.getByTestId('cockpit-kachel-sonderausgaben-status').textContent).toBe('Erledigt')
+        expect(screen.getByTestId('cockpit-weiter').textContent).toContain('Nächster Schritt: Abgabe vorbereiten')
+      })
+      expect(screen.queryByTestId('cockpit-kachel-lstb')).toBeNull()
+      expect(screen.queryByTestId('cockpit-kachel-arbeitsweg')).toBeNull()
+
+      await act(async () => {})
+      fireEvent.click(screen.getByTestId('cockpit-weiter'))
+      expect(onOpenSubmission).toHaveBeenCalledWith(TAX_YEAR)
+    })
+
+    it('renders the wide cockpit-abgabe-vorbereiten tile and opens Submission on press (§ 3.4)', async () => {
+      mockCockpit(LOADED_SUMMARY)
+      mockInterview({ job: 'Angestellt', ausland: 'Nein', kinder: 'Nein', familienstand: 'Ledig' })
+      const onOpenSubmission = vi.fn()
+      renderCockpit({ isSignedIn: true, onOpenTile: vi.fn(), onOpenSubmission })
+
+      const subTile = await screen.findByTestId('cockpit-abgabe-vorbereiten')
+      expect(subTile.textContent).toContain('Abgabe vorbereiten')
+      fireEvent.click(subTile)
+      expect(onOpenSubmission).toHaveBeenCalledWith(TAX_YEAR)
+    })
+
+    it('keeps existing secondary buttons accessible alongside hub tiles', async () => {
+      mockCockpit(LOADED_SUMMARY)
+      mockInterview({ job: 'Angestellt', ausland: 'Nein', kinder: '1 Kind', familienstand: 'Ledig' })
+      renderCockpit({ isSignedIn: true, onOpenTile: vi.fn(), onOpenKinder: vi.fn(), onOpenPrintout: vi.fn() })
+
+      expect(await screen.findByTestId('cockpit-kachel-kinder')).toBeTruthy()
+      expect(screen.getByTestId('cockpit-kapital')).toBeTruthy()
+      expect(screen.getByTestId('cockpit-vermietung')).toBeTruthy()
+      expect(screen.getByTestId('cockpit-kinder')).toBeTruthy()
+      expect(screen.getByTestId('cockpit-bescheid')).toBeTruthy()
+      expect(screen.getByTestId('cockpit-ausdruck')).toBeTruthy()
+    })
+
+    it('renders red blocker hint for conflicts and warning hint for notices without conflicts (§ 3.3)', async () => {
+      mockCockpit(LOADED_SUMMARY)
+      mockInterview({
+        job: 'Angestellt',
+        ausland: 'Nein',
+        kinder: 'Nein',
+        familienstand: 'Ledig',
+        dhf: 'Ja',
+        'dhf-miete': 'spaeter',
+        umzug: 'Nein',
+        abfindung: 'Nein',
+        lohnersatz: 'Nein',
+        nebenjob: 'Nein',
+      })
+      renderCockpit({ isSignedIn: true, onOpenTile: vi.fn() })
+
+      const lstbHint = await screen.findByTestId('cockpit-kachel-lstb-hinweis')
+      expect(lstbHint.textContent).toBe('Muss vor der Abgabe geklärt werden')
+
+      const lifeHint = screen.getByTestId('cockpit-kachel-lebenslagen-hinweis')
+      expect(lifeHint.textContent).toBe('Bitte prüfen')
+
+      expect(getComputedStyle(lstbHint).color).not.toBe(getComputedStyle(lifeHint).color)
+      expect(screen.queryByTestId('cockpit-kachel-sonderausgaben-hinweis')).toBeNull()
+    })
+
+    it('shows blocker hint on einkuenfte tile for gated income category (§ 3.3)', async () => {
+      mockCockpit(LOADED_SUMMARY)
+      mockInterview({
+        job: 'Angestellt',
+        ausland: 'Nein',
+        kinder: 'Nein',
+        familienstand: 'Ledig',
+        einkuenfte: 'Kapitalerträge',
+        'kap-depot': 'Krypto',
+        'kap-gate': 'Ja',
+      })
+      renderCockpit({ isSignedIn: true, onOpenTile: vi.fn() })
+
+      const incomeHint = await screen.findByTestId('cockpit-kachel-einkuenfte-hinweis')
+      expect(incomeHint.textContent).toBe('Muss vor der Abgabe geklärt werden')
     })
   })
 })

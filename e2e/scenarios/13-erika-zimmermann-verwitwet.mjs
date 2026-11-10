@@ -46,6 +46,8 @@ export async function runScenario13(browser, webOrigin) {
   await page.waitForLoadState('networkidle').catch(() => {})
   await page.locator('[data-testid="lstb-weiter"]').click()
 
+  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
+  await page.locator('[data-testid="cockpit-kacheln"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.getByRole('tab', { name: 'Cockpit' }).click()
   await assertCockpitEstimate(page, 'Scenario 13', { direction: 'Erstattung' })
   console.log('[Scenario 13] PASS: Widowed taxpayer interview and calculation verified.')

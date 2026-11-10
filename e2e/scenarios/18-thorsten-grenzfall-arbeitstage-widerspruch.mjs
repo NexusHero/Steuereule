@@ -6,6 +6,7 @@ import {
   guardAgainst429,
   fail,
   registerAndOnboard,
+  nextStep,
   runStandaloneScenario,
 } from './helpers/scenario-harness.mjs'
 
@@ -43,21 +44,25 @@ export async function runScenario18(browser, webOrigin) {
   await page.locator('[data-testid="lstb-lohnsteuer"]').fill('8000')
   await page.locator('[data-testid="lstb-sozialversicherung"]').fill('10000')
   await page.locator('[data-testid="lstb-weiter"]').click()
+  await nextStep(page)
 
   for (const step of ['dhf', 'umzug', 'abfindung', 'lohnersatz', 'nebenjob']) {
     const opt = page.locator(`[data-testid="katalog-option-${step}-Nein"]`)
     await opt.waitFor({ state: 'visible', timeout: 10_000 })
     await opt.click()
   }
+  await nextStep(page)
 
   await page.locator('[data-testid="katalog-option-einkuenfte-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="katalog-option-einkuenfte-Nein"]').click()
+  await nextStep(page)
 
   for (const step of ['spenden', 'kv-pv', 'riester']) {
     const opt = page.locator(`[data-testid="katalog-option-${step}-Nein"]`)
     await opt.waitFor({ state: 'visible', timeout: 10_000 })
     await opt.click()
   }
+  await nextStep(page)
 
   const urlaubInput = page.locator('[data-testid="arbeitstage-urlaub"]')
   await urlaubInput.waitFor({ state: 'visible', timeout: 10_000 })
@@ -80,8 +85,16 @@ export async function runScenario18(browser, webOrigin) {
     fail('Submit button should be enabled after correcting absences')
   }
   await submitBtn.click()
+  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
 
-  await page.locator('[data-testid="plausibilitaet-weiter"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await page.locator('[data-testid="cockpit-kachel-arbeitsweg-status"]', { hasText: 'Erledigt' }).waitFor({
+    state: 'visible',
+    timeout: 10_000,
+  })
+  await page.locator('[data-testid="cockpit-abgabe-vorbereiten"]').click()
+  const printBtn = page.locator('[data-testid="abgabe-zum-ausdruck"]')
+  await printBtn.waitFor({ state: 'visible', timeout: 10_000 })
+  if (await printBtn.isDisabled()) fail('Expected abgabe-zum-ausdruck enabled after correcting absences in Scenario 18')
   console.log('[Scenario 18] PASS: WorkdaysScreen contradiction boundary and recovery verified.')
 
   await ctx.close()

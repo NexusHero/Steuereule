@@ -267,6 +267,16 @@ export const appResources = {
         sicherheit: {
           rowLabel: 'Sicherheit (Zwei-Faktor)',
         },
+        darstellung: {
+          titel: 'Darstellung',
+          system: 'System',
+          hell: 'Immer hell',
+          dunkel: 'Immer dunkel',
+        },
+        haptik: {
+          titel: 'Haptisches Feedback',
+          beschreibung: 'Kurze Vibration bei Auswahl, Bestätigung und Warnungen.',
+        },
         devices: {
           heading: 'Angemeldete Geräte',
           loading: 'Geräte werden geladen …',
@@ -902,6 +912,9 @@ export const appResources = {
         warnung: 'Abgabefrist: {{frist}} (noch {{tage}} Tage). Bei Verspätung fällt ein Verspätungszuschlag an — mindestens {{mindestsatz}} pro Monat (§ 152 AO).',
         abgelaufen: 'Die Abgabefrist {{frist}} ist um {{tage}} Tage überschritten. Verspätungszuschlag (§ 152 AO): mindestens {{mindestsatz}} pro Monat — reich die Erklärung bald ein.',
       },
+      shared: {
+        saveFailed: 'Mindestens eine Eingabe wurde nicht gespeichert. Prüf deine Verbindung und gib sie noch einmal ein – oder tipp noch einmal, um trotzdem weiterzugehen.',
+      },
       katalog: {
         einkuenfteBeantworten: 'Frage jetzt beantworten',
         back: 'Zurück',
@@ -914,6 +927,7 @@ export const appResources = {
         conflict: 'Deine Antwort passte nicht zum gespeicherten Stand. Wir haben deinen Fortschritt aktualisiert.',
         progress: '{{done}} von {{total}}',
         amountPlaceholder: 'Ganzzahlige Euro',
+        amountLater: 'Betrag später eintragen',
         weiter: 'Weiter',
         questions: {
           dhf: 'Hast du eine doppelte Haushaltsführung?',
@@ -944,7 +958,16 @@ export const appResources = {
           'riester-art': 'Wie bist du begünstigt?',
           'ae-weitere-person': 'War außer dir eine weitere volljährige Person in eurer Wohnung gemeldet, für die es kein Kindergeld gab?',
           'ae-haushaltsgemeinschaft': 'Hast du mit einer weiteren volljährigen Person zusammen gewirtschaftet (z. B. Partner, Mitbewohner), für die es kein Kindergeld gab?',
+          'haushalt-gate': 'Hattest du Kosten für Handwerker, Haushaltshilfe oder Dienstleistungen rund um die Wohnung, auch aus der Nebenkostenabrechnung?',
+          'haushalt-dienstleistung-betrag': 'Arbeitskosten haushaltsnahe Dienstleistungen und Pflege (z. B. Hausmeister, Treppenhausreinigung, Gartenpflege, Winterdienst)',
+          'haushalt-handwerker-betrag': 'Arbeitskosten Handwerkerleistungen (Renovierung, Reparatur, Wartung)',
+          'haushalt-minijob-betrag': 'Aufwendungen für eine geringfügig Beschäftigte im Haushalt',
+          'gesundheit-gate': 'Hattest du selbst bezahlte Krankheitskosten (Zuzahlungen, Brille, Zahnersatz, Medikamente auf Rezept)?',
+          'gesundheit-betrag': 'Summe der selbst getragenen Kosten nach Erstattungen der Krankenkasse',
           'riester-einnahmen-vorjahr': 'Beitragspflichtige Einnahmen im Vorjahr (steht in deiner Renteninformation bzw. der Meldebescheinigung zur Sozialversicherung)',
+        },
+        hints: {
+          'haushalt-gate': 'Nur Arbeits-, Maschinen- und Fahrtkosten zählen, kein Material. Bezahlt per Überweisung, nicht bar.',
         },
         options: {
           Ja: 'Ja',
@@ -1027,6 +1050,26 @@ export const appResources = {
           pauschale: 'Entfernungspauschale',
         },
       },
+      abgabe: {
+        back: 'Zurück',
+        loading: 'Abgabe wird geprüft …',
+        loadError: {
+          heading: 'Das hat nicht geklappt.',
+          message: 'Die Prüfung für deine Abgabe konnte nicht geladen werden. Prüf die Verbindung und versuch es noch mal.',
+          retry: 'Noch mal versuchen',
+        },
+        heading: 'Abgabe vorbereiten',
+        schrittPlausibilitaet: '1. Prüfung vor Abgabe',
+        plausibilitaetOk: 'Alles klar — keine Widersprüche, nichts mehr offen.',
+        widerspruchBlockiert: 'Diese Punkte müssen vor der Abgabe geklärt werden:',
+        hinweisPruefen: 'Bitte prüfen:',
+        zurKachel: 'Öffnen: {{titel}}',
+        warnungenBestaetigen: 'Gelesen, trotzdem weiter',
+        schrittVergleich: 'Veranlagungsartenvergleich',
+        vergleichUeberspringen: 'Überspringen',
+        schrittAusdruck: 'Ausdruck',
+        zumAusdruck: 'Weiter zum Ausdruck',
+      },
       plausibilitaet: {
         back: 'Zurück',
         loading: 'Deine Prüfung wird geladen …',
@@ -1055,6 +1098,7 @@ export const appResources = {
         hinweis: {
           'erfasst-nicht-gerechnet': 'Erfasste, aber noch nicht gerechnete Beträge sind vorhanden.',
           'werbungskosten-uebersteigt-einnahmen': 'Deine Werbungskosten übersteigen die Einnahmen.',
+          'betrag-spaeter': 'Mindestens ein Betrag ist noch mit „Später eintragen“ markiert.',
         },
       },
       cockpit: {
@@ -1086,6 +1130,46 @@ export const appResources = {
         refreshing: 'Wird aktualisiert …',
         answerQuestions: 'Fragen beantworten',
         weiterMitDeinemWeg: 'Weiter mit deinem Weg · {{pfad}}',
+        naechsterSchritt: 'Nächster Schritt: {{titel}}',
+        kachel: {
+          status: {
+            offen: 'Offen',
+            erledigt: 'Erledigt',
+            betragOffen: '⏳ Betrag offen',
+          },
+          hinweis: {
+            blocker: 'Muss vor der Abgabe geklärt werden',
+            warnung: 'Bitte prüfen',
+          },
+          lstb: { titel: 'Lohnsteuerbescheinigung' },
+          ch: { titel: 'Schweizer Lohnausweis' },
+          rente: { titel: 'Rente' },
+          lebenslagen: { titel: 'Lebenslagen' },
+          einkuenfte: { titel: 'Weitere Einkünfte' },
+          sonderausgaben: { titel: 'Sonderausgaben' },
+          arbeitsweg: { titel: 'Arbeitstage & Weg' },
+          kapital: { titel: 'Kapital & Zinsen' },
+          vermietung: { titel: 'Vermietete Objekte' },
+          kinder: { titel: 'Kinder' },
+          alleinerziehend: { titel: 'Alleinerziehend' },
+          haushalt: { titel: 'Haushalt & Handwerker' },
+          gesundheit: { titel: 'Gesundheit & Krankheitskosten' },
+          'partner-lstb': { titel: 'Lohnsteuerbescheinigung' },
+          'partner-arbeitsweg': { titel: 'Arbeitstage & Weg' },
+        },
+        weitereThemen: 'Weitere Themen',
+        boosterUeberschrift: {
+          nachzahlung: 'Nachzahlung senken',
+          erstattung: 'Erstattung erhöhen',
+        },
+        bereich: {
+          du: 'Du',
+          partner: '{{name}}',
+          partnerFallback: 'Partner',
+        },
+        abgabe: {
+          titel: 'Abgabe vorbereiten',
+        },
         stammdatenErgaenzen: 'Angaben für die Erklärung ergänzen · {{anzahl}} fehlen',
         stammdatenAnsehen: 'Angaben für die Erklärung & Partner',
         erstattung: {
@@ -1549,6 +1633,9 @@ export const appResources = {
           },
         },
       },
+      sheet: {
+        schliessen: 'Schließen',
+      },
     },
   },
   en: {
@@ -1816,6 +1903,16 @@ export const appResources = {
         },
         sicherheit: {
           rowLabel: 'Security (two-factor)',
+        },
+        darstellung: {
+          titel: 'Appearance',
+          system: 'System',
+          hell: 'Always light',
+          dunkel: 'Always dark',
+        },
+        haptik: {
+          titel: 'Haptic feedback',
+          beschreibung: 'Subtle vibration on selection, confirmation, and warnings.',
         },
         devices: {
           heading: 'Signed-in devices',
@@ -2452,6 +2549,9 @@ export const appResources = {
         warnung: 'Filing deadline: {{frist}} ({{tage}} days left). Late filing incurs a late-filing surcharge — at least {{mindestsatz}} per month (§ 152 AO).',
         abgelaufen: 'The filing deadline {{frist}} passed {{tage}} days ago. Late-filing surcharge (§ 152 AO): at least {{mindestsatz}} per month — file soon.',
       },
+      shared: {
+        saveFailed: 'At least one entry was not saved. Check your connection and enter it again — or tap again to continue anyway.',
+      },
       katalog: {
         einkuenfteBeantworten: 'Answer the question now',
         back: 'Back',
@@ -2464,6 +2564,7 @@ export const appResources = {
         conflict: "Your answer didn't match what was saved. We've updated your progress.",
         progress: '{{done}} of {{total}}',
         amountPlaceholder: 'Whole euros',
+        amountLater: 'Enter amount later',
         weiter: 'Continue',
         questions: {
           dhf: 'Do you keep a second household for work?',
@@ -2494,7 +2595,16 @@ export const appResources = {
           'riester-art': 'How are you eligible?',
           'ae-weitere-person': 'Was another adult registered at your home for whom there was no child benefit?',
           'ae-haushaltsgemeinschaft': 'Did you share a household with another adult (e.g. partner, flatmate) for whom there was no child benefit?',
+          'haushalt-gate': 'Did you have expenses for tradespeople, domestic help, or household services, including via your utility bill?',
+          'haushalt-dienstleistung-betrag': 'Labour costs for household services and care (e.g. caretaker, stairwell cleaning, gardening, winter service)',
+          'haushalt-handwerker-betrag': 'Labour costs for tradespeople services (renovation, repair, maintenance)',
+          'haushalt-minijob-betrag': 'Expenses for a marginal domestic employee (Minijob)',
+          'gesundheit-gate': 'Did you pay medical costs out of pocket (co-payments, glasses, dental prosthetics, prescription medication)?',
+          'gesundheit-betrag': 'Total out-of-pocket medical costs after health-insurance reimbursements',
           'riester-einnahmen-vorjahr': 'Contributory earnings in the previous year (see your pension statement or social-insurance notice)',
+        },
+        hints: {
+          'haushalt-gate': 'Only labour, machine, and travel costs count, not materials. Paid by bank transfer, not cash.',
         },
         options: {
           Ja: 'Yes',
@@ -2577,6 +2687,26 @@ export const appResources = {
           pauschale: 'Commuting allowance',
         },
       },
+      abgabe: {
+        back: 'Back',
+        loading: 'Checking submission …',
+        loadError: {
+          heading: "That didn't work.",
+          message: "Your submission checks couldn't be loaded. Check your connection and try again.",
+          retry: 'Try again',
+        },
+        heading: 'Prepare submission',
+        schrittPlausibilitaet: '1. Pre-filing check',
+        plausibilitaetOk: 'All clear — no contradictions, nothing left open.',
+        widerspruchBlockiert: 'These items must be resolved before filing:',
+        hinweisPruefen: 'Please review:',
+        zurKachel: 'Open: {{titel}}',
+        warnungenBestaetigen: 'Read, continue anyway',
+        schrittVergleich: 'Assessment comparison',
+        vergleichUeberspringen: 'Skip',
+        schrittAusdruck: 'Printout',
+        zumAusdruck: 'Continue to printout',
+      },
       plausibilitaet: {
         back: 'Back',
         loading: 'Loading your check …',
@@ -2605,6 +2735,7 @@ export const appResources = {
         hinweis: {
           'erfasst-nicht-gerechnet': 'Some captured amounts are not yet calculated.',
           'werbungskosten-uebersteigt-einnahmen': 'Your work-related expenses exceed your income.',
+          'betrag-spaeter': 'At least one amount is still marked to be entered later.',
         },
       },
       cockpit: {
@@ -2636,6 +2767,46 @@ export const appResources = {
         refreshing: 'Refreshing …',
         answerQuestions: 'Answer questions',
         weiterMitDeinemWeg: 'Continue your path · {{pfad}}',
+        naechsterSchritt: 'Next step: {{titel}}',
+        kachel: {
+          status: {
+            offen: 'Open',
+            erledigt: 'Done',
+            betragOffen: '⏳ Amount open',
+          },
+          hinweis: {
+            blocker: 'Must be resolved before filing',
+            warnung: 'Please review',
+          },
+          lstb: { titel: 'Wage tax certificate' },
+          ch: { titel: 'Swiss salary certificate' },
+          rente: { titel: 'Pension' },
+          lebenslagen: { titel: 'Life events' },
+          einkuenfte: { titel: 'Other income' },
+          sonderausgaben: { titel: 'Special expenses' },
+          arbeitsweg: { titel: 'Workdays & commute' },
+          kapital: { titel: 'Capital & interest' },
+          vermietung: { titel: 'Rental property' },
+          kinder: { titel: 'Children' },
+          alleinerziehend: { titel: 'Single parent' },
+          haushalt: { titel: 'Household & tradespeople' },
+          gesundheit: { titel: 'Health & medical costs' },
+          'partner-lstb': { titel: 'Wage tax certificate' },
+          'partner-arbeitsweg': { titel: 'Workdays & commute' },
+        },
+        weitereThemen: 'More topics',
+        boosterUeberschrift: {
+          nachzahlung: 'Reduce back-payment',
+          erstattung: 'Increase refund',
+        },
+        bereich: {
+          du: 'You',
+          partner: '{{name}}',
+          partnerFallback: 'Partner',
+        },
+        abgabe: {
+          titel: 'Prepare submission',
+        },
         stammdatenErgaenzen: 'Complete the details for your return · {{anzahl}} missing',
         stammdatenAnsehen: 'Details for your return & partner',
         erstattung: {
@@ -3099,6 +3270,9 @@ export const appResources = {
             childcareCosts: 'Check childcare costs (daycare/after-school)',
           },
         },
+      },
+      sheet: {
+        schliessen: 'Close',
       },
     },
   },

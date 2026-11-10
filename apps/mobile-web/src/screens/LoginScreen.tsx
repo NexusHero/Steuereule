@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { ScrollView, View, Text, Pressable, ActivityIndicator } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { Button, Input, Feld, Chip, useTheme, useBreakpoint } from '@steuereule/ui'
+import { Button, Input, Feld, Chip, inkOnFunke, useTheme, useBreakpoint } from '@steuereule/ui'
 import { APP_NS } from '../i18n/resources'
 import { useAuthClient } from '../auth/AuthClientProvider'
 import { authErrorKey } from '../auth/authErrors'
@@ -140,7 +140,7 @@ export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true, 
       <Button onPress={() => void login()} disabled={stage.kind === 'submitting'}>
         {stage.kind === 'submitting' ? (
           <View style={styles.submittingRow}>
-            <ActivityIndicator size="small" color={t.color.tinte} />
+            <ActivityIndicator size="small" color={inkOnFunke(t)} />
             <Text style={styles.submittingLabel}>{tr('login.submitting')}</Text>
           </View>
         ) : (
@@ -228,7 +228,7 @@ function TwoFactorChallenge({ email, onDone }: { readonly email: string; readonl
         {tr('login.twoFactor.body', { email })}
       </Text>
       <Feld label={tr('login.twoFactor.codeLabel')} error={error}>
-        <Input type="text" value={code} onChange={setCode} placeholder="123456" onSubmit={() => void submit()} />
+        <Input type="numeric" value={code} onChange={setCode} placeholder="123456" onSubmit={() => void submit()} />
       </Feld>
       <Button onPress={() => void submit()} disabled={busy || !code}>
         {busy ? tr('login.submitting') : tr('login.twoFactor.submit')}

@@ -63,7 +63,15 @@ export async function runScenario05(browser, webOrigin, sql) {
   await page.waitForTimeout(500)
 
   await page.locator('text=Steuerpflichtiger Anteil').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('text=Weiter').click()
+  await page.getByRole('button', { name: 'Weiter', exact: true }).click()
+  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
+
+  await page.locator('[data-testid="cockpit-kachel-kapital"]').waitFor({ state: 'visible', timeout: 10_000 })
+  if (await page.locator('[data-testid="cockpit-kachel-arbeitsweg"]').isVisible()) {
+    fail('Expected arbeitsweg tile collapsed under Weitere Themen for retiree in Scenario 05')
+  }
+  await page.locator('[data-testid="cockpit-weitere-themen"]').click()
+  await page.locator('[data-testid="cockpit-kachel-arbeitsweg"]').waitFor({ state: 'visible', timeout: 10_000 })
 
   const capitalBtn = page.locator('[data-testid="cockpit-kapital"]')
   await capitalBtn.waitFor({ state: 'visible', timeout: 10_000 })
@@ -119,6 +127,8 @@ export async function runScenario05(browser, webOrigin, sql) {
 
   unlockTaxYearInDb(sql, email, 2025)
   await page.locator('[data-testid="cockpit-ausdruck"]').click()
+  await page.locator('[data-testid="abgabe-zum-ausdruck"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await page.locator('[data-testid="abgabe-zum-ausdruck"]').click()
   await page.locator('[data-testid="ausdruck-zurueck"]').waitFor({ state: 'visible', timeout: 10_000 })
   await confirmAnnexesIfPresent(page)
 

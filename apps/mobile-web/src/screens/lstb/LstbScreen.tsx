@@ -18,6 +18,9 @@ import { integerFrom } from '../shared/integer'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
+import { usePendingMutations } from '../shared/usePendingMutations'
+import { SaveFailedNotice } from '../shared/SaveFailedNotice'
+import { watchSaveResult } from '../shared/saveFeedback'
 import { InMaskAdvisorCompanion } from '../advisor/InMaskAdvisorCompanion'
 import { FIELDS, type FieldId, type StagedFieldDraft } from './scan/lstbScanDraft'
 import { LstbScanPanel } from './scan/LstbScanPanel'
@@ -46,6 +49,7 @@ export function LstbScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YE
   const setField = useLstbControllerSetField()
   const scan = useLstbScan({ taxYear, person: expectedPerson })
   const stagedScan = scan.stagedScan
+  const { track, flushThen: finish, saveFailed } = usePendingMutations()
 
   if (query.isPending) {
     return <LoadingState bp={bp} label={tr('lstb.loading')} />
@@ -65,22 +69,19 @@ export function LstbScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YE
   const response = query.data.data
 
   function send(field: FieldId, data: LstbFieldDto) {
-    setField.mutate(
-      { jahr: taxYear, feld: field, data, ...(params ? { params } : {}) },
-      {
-        onSuccess: () => {
-          void queryClient.invalidateQueries({ queryKey: getLstbControllerGetLstbQueryKey(taxYear, params) })
-          void queryClient.invalidateQueries({ queryKey: getCockpitControllerGetCockpitSummaryQueryKey(taxYear) })
-          void queryClient.invalidateQueries({ queryKey: getTaxEstimateControllerGetQueryKey(taxYear) })
-        },
-      },
+    track(
+      watchSaveResult(setField.mutateAsync({ jahr: taxYear, feld: field, data, ...(params ? { params } : {}) })).then(() => {
+        void queryClient.invalidateQueries({ queryKey: getLstbControllerGetLstbQueryKey(taxYear, params) })
+        void queryClient.invalidateQueries({ queryKey: getCockpitControllerGetCockpitSummaryQueryKey(taxYear) })
+        void queryClient.invalidateQueries({ queryKey: getTaxEstimateControllerGetQueryKey(taxYear) })
+      }),
     )
   }
 
   return (
     <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="screen-container">
       <View style={styles.headerRow}>
-        {onBack ? <BackButton accessibilityLabel={tr('lstb.back')} onPress={onBack} /> : <BackButtonSpacer />}
+        {onBack ? <BackButton accessibilityLabel={tr('lstb.back')} onPress={() => finish(onBack)} /> : <BackButtonSpacer />}
       </View>
       <Text style={styles.heading}>{partnerName === undefined ? tr('lstb.heading') : tr('lstb.headingPartner', { name: partnerName })}</Text>
       <Text style={styles.help}>{tr('lstb.help')}</Text>
@@ -110,7 +111,8 @@ export function LstbScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YE
 
       <InMaskAdvisorCompanion screen="lstb" taxYear={taxYear} />
 
-      <Button onPress={onDone} style={styles.cta} testID="lstb-weiter">
+      <SaveFailedNotice visible={saveFailed} />
+      <Button onPress={() => finish(onDone)} style={styles.cta} testID="lstb-weiter">
         {tr('lstb.weiter')}
       </Button>
     </ScrollView>

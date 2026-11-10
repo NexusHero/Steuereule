@@ -222,4 +222,14 @@ describe('StammdatenScreen (ADR-0050)', () => {
     expect(screen.getByLabelText('IBAN für die Erstattung')).toBeTruthy()
     expect(screen.getByLabelText('Zuständiges Finanzamt')).toBeTruthy()
   })
+
+  it('uses numeric keyboard mode for numeric master-data inputs', async () => {
+    server.use(http.get('*/v1/stammdaten', () => HttpResponse.json(LEER)))
+    renderScreen()
+
+    const hausnummer = await screen.findByTestId('stammdaten-hausnummer')
+    const plz = screen.getByTestId('stammdaten-plz')
+    expect(hausnummer.getAttribute('inputmode')).toBe('numeric')
+    expect(plz.getAttribute('inputmode')).toBe('numeric')
+  })
 })

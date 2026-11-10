@@ -54,6 +54,29 @@ describe('employeeFromAnswers — the catalogue answers feed the Rechenkern', ()
     expect(employeeFromAnswers({ nebenjob: 'Minijob', 'nebenjob-brutto': '500' }).sideJobGross).toBe(0)
     expect(employeeFromAnswers({ nebenjob: 'Nebenjob', 'nebenjob-brutto': '6000' }).sideJobGross).toBe(6000)
   })
+
+  it('treats AMOUNT_LATER on catalog deduction amounts as 0 € and never NaN', () => {
+    const figures = employeeFromAnswers({
+      umzug: 'Ja',
+      'umzug-kosten': 'spaeter',
+      spenden: 'Ja',
+      'spenden-betrag': 'spaeter',
+      riester: 'Ja',
+      'riester-betrag': 'spaeter',
+      dhf: 'Ja',
+      'dhf-miete': 'spaeter',
+    })
+    expect(figures).toEqual({
+      sideJobGross: 0,
+      relocationCosts: 0,
+      donations: 0,
+      healthCareContributions: 0,
+      riester: 0,
+      doubleHouseholdRent: 0,
+      severanceAmount: 0,
+      wageReplacementAmount: 0,
+    })
+  })
 })
 
 describe('angestelltenStand — the deterministic fold', () => {

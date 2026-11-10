@@ -1,5 +1,7 @@
 import { incomeTax, isSupportedIncomeTaxYear, soliExemptionLimits, solidaritaetszuschlag } from '../math/tarif'
 import { getTaxYearParameters } from '../math/tax-parameters'
+import { applyHouseholdTaxReduction } from '../domains/household-services'
+import { calculateExtraordinaryBurden, type BurdenChildrenBracket } from '../domains/extraordinary-burdens'
 
 export interface Range {
   readonly from: number
@@ -30,6 +32,14 @@ export interface EmployeeEstimateInput {
   readonly otherIncomeRelatedExpenses: number
   readonly donations: number
   readonly selfPaidKvPv: number
+  /** § 35a EStG tax reduction in EUR (optional, defaults to 0). */
+  readonly householdReductionEur?: number | undefined
+  /** § 33 EStG self-paid medical expenses in EUR (optional, defaults to 0). */
+  readonly healthExpensesEur?: number | undefined
+  /** § 24b EStG single-parent status used when deriving GdE for § 33 reasonable burden. */
+  readonly singleParent?: boolean | undefined
+  /** § 33 Abs. 3 EStG children bracket (defaults to '0'). */
+  readonly childrenBracket?: BurdenChildrenBracket | undefined
 }
 
 /** The EUR lines of the Anlage N-Gre (anlageNGreBetraege) plus what the user pays outside the salary. */
@@ -47,6 +57,14 @@ export interface CrossBorderEstimateInput {
   readonly healthInsuranceEur: number
   readonly commuterAllowance: number
   readonly donations: number
+  /** § 35a EStG tax reduction in EUR (optional, defaults to 0). */
+  readonly householdReductionEur?: number | undefined
+  /** § 33 EStG self-paid medical expenses in EUR (optional, defaults to 0). */
+  readonly healthExpensesEur?: number | undefined
+  /** § 24b EStG single-parent status used when deriving GdE for § 33 reasonable burden. */
+  readonly singleParent?: boolean | undefined
+  /** § 33 Abs. 3 EStG children bracket (defaults to '0'). */
+  readonly childrenBracket?: BurdenChildrenBracket | undefined
 }
 
 /**
@@ -73,6 +91,10 @@ export function taxEstimateEmployee(e: EmployeeEstimateInput): TaxEstimate {
     alreadyPaid: (taxAmount) => e.lohnsteuer - taxAmount + soli(e.lohnsteuer, e.year),
     anrechnung: e.lohnsteuer,
     specialExpensesLumpSum: params.lumpSums.specialExpensesSingle,
+    householdReductionEur: e.householdReductionEur,
+    healthExpensesEur: e.healthExpensesEur,
+    singleParent: e.singleParent,
+    childrenBracket: e.childrenBracket,
   })
 }
 
@@ -97,6 +119,10 @@ export function taxEstimateCrossBorder(e: CrossBorderEstimateInput): TaxEstimate
     alreadyPaid: (taxAmount) => e.withholdingTaxEur - taxAmount,
     anrechnung: e.withholdingTaxEur,
     specialExpensesLumpSum: params.lumpSums.specialExpensesSingle,
+    householdReductionEur: e.householdReductionEur,
+    healthExpensesEur: e.healthExpensesEur,
+    singleParent: e.singleParent,
+    childrenBracket: e.childrenBracket,
   })
 }
 
@@ -109,13 +135,34 @@ function estimate(input: {
   readonly alreadyPaid: (incomeTaxAmount: number) => number
   readonly anrechnung: number
   readonly specialExpensesLumpSum: number
+  readonly householdReductionEur?: number | undefined
+  readonly healthExpensesEur?: number | undefined
+  readonly singleParent?: boolean | undefined
+  readonly childrenBracket?: BurdenChildrenBracket | undefined
 }): TaxEstimate {
+  const params = getTaxYearParameters(input.year)
+  const singleParentRelief = input.singleParent ? params.children.singleParentReliefEur : 0
+  const gdeEur = Math.max(0, input.einnahmen - input.werbungskosten - singleParentRelief)
+  const deductibleBurdenEur =
+    (input.healthExpensesEur ?? 0) > 0
+      ? Math.round(
+          calculateExtraordinaryBurden({
+            year: input.year,
+            gdeEur,
+            expensesEur: input.healthExpensesEur ?? 0,
+            filing: 'einzel',
+            childrenBracket: input.childrenBracket ?? '0',
+          }).deductibleEur,
+        )
+      : 0
   const specialExpenses = Math.max(input.specialExpensesLumpSum, input.donations)
-  const zve = (provision: number) => Math.max(0, input.einnahmen - input.werbungskosten - provision - specialExpenses)
+  const zve = (provision: number) =>
+    Math.max(0, input.einnahmen - input.werbungskosten - provision - specialExpenses - deductibleBurdenEur)
   const taxableIncome = { from: zve(input.provision.to), to: zve(input.provision.from) }
+  const reductionEur = input.householdReductionEur ?? 0
   const incomeTaxOwed = {
-    from: incomeTax(taxableIncome.from, input.year),
-    to: incomeTax(taxableIncome.to, input.year),
+    from: applyHouseholdTaxReduction(incomeTax(taxableIncome.from, input.year), reductionEur),
+    to: applyHouseholdTaxReduction(incomeTax(taxableIncome.to, input.year), reductionEur),
   }
   const soliRange = { from: soli(incomeTaxOwed.from, input.year), to: soli(incomeTaxOwed.to, input.year) }
   return {

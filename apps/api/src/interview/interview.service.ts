@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common'
+import { HOUSEHOLD_AND_HEALTH_BOOSTERS } from '../config/features.js'
 import { ConflictError, InvalidInputError } from '../common/domain-error.js'
 import {
   ENTRIES,
@@ -37,7 +38,22 @@ export class InvalidAnswerValueError extends InvalidInputError {
   }
 }
 
-const ADMITTED_ENTRY_IDS: readonly EntryId[] = ['minimal-gate', 'lebenslagen', 'einkuenfte', 'sonderausgaben', 'segment-ch', 'alleinerziehend', 'berufsprofil']
+const ADMITTED_ENTRY_IDS: readonly EntryId[] = [
+  'minimal-gate',
+  'lebenslagen',
+  'einkuenfte',
+  'sonderausgaben',
+  'segment-ch',
+  'alleinerziehend',
+  'berufsprofil',
+]
+
+/** § 35a / § 33 entries: answers are only taken once estimate and printout can use them (ADR-0032). */
+const BOOSTER_ENTRY_IDS: readonly EntryId[] = ['haushalt', 'gesundheit']
+
+export function admittedEntryIds(boostersEnabled: boolean): readonly EntryId[] {
+  return boostersEnabled ? [...ADMITTED_ENTRY_IDS, ...BOOSTER_ENTRY_IDS] : ADMITTED_ENTRY_IDS
+}
 
 const GUEST_ADMITTED_ENTRY_IDS: readonly EntryId[] = ['minimal-gate']
 
@@ -49,6 +65,9 @@ function assertGuestMayUse(kind: UserIdKind, entryId: EntryId): void {
 
 @Injectable()
 export class InterviewService {
+  /** Tests switch the § 35a / § 33 boosters on; production follows the flag. */
+  protected readonly boostersEnabled: boolean = HOUSEHOLD_AND_HEALTH_BOOSTERS
+
   constructor(
     @Inject(INTERVIEW_ANSWER_REPOSITORY) private readonly repository: InterviewAnswerRepository,
     @Inject(AuditService) private readonly auditService: AuditService,
@@ -81,7 +100,7 @@ export class InterviewService {
     const rows = await this.repository.findAllForUserAndYear(userId, taxYear)
     const answers = answersFrom(rows)
     const entryId = entryForStep(dto.questionId as never)
-    if (entryId === undefined || !ADMITTED_ENTRY_IDS.includes(entryId)) {
+    if (entryId === undefined || !admittedEntryIds(this.boostersEnabled).includes(entryId)) {
       throw new UnreachableAnswerError(dto.questionId)
     }
     assertGuestMayUse(kind, entryId)

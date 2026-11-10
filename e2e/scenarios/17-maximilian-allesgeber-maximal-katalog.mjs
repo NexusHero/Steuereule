@@ -6,6 +6,7 @@ import {
   guardAgainst429,
   fail,
   registerAndOnboard,
+  nextStep,
   runStandaloneScenario,
 } from './helpers/scenario-harness.mjs'
 
@@ -43,6 +44,7 @@ export async function runScenario17(browser, webOrigin) {
   await page.locator('[data-testid="lstb-lohnsteuer"]').fill('14000')
   await page.locator('[data-testid="lstb-sozialversicherung"]').fill('13000')
   await page.locator('[data-testid="lstb-weiter"]').click()
+  await nextStep(page)
 
   await page.locator('[data-testid="katalog-option-dhf-Ja"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="katalog-option-dhf-Ja"]').click()
@@ -71,6 +73,7 @@ export async function runScenario17(browser, webOrigin) {
   await page.locator('[data-testid="katalog-option-nebenjob-Minijob"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="katalog-option-nebenjob-Minijob"]').click()
 
+  await nextStep(page)
   await page.locator('[data-testid="katalog-option-einkuenfte-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
   console.log('[Scenario 17] PASS: All Lebenslagen Ja branches with amounts accepted and transitioned seamlessly.')
 

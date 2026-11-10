@@ -1,4 +1,4 @@
-import type { Answers } from '../interview/interview'
+import { amountFromAnswer, type Answers } from '../interview/interview'
 import { isSupportedIncomeTaxYear } from '../math/tarif'
 import { getTaxYearParameters } from '../math/tax-parameters'
 
@@ -22,19 +22,14 @@ const KIND_MAP: Readonly<Record<string, HealthInsuranceKind>> = {
   Ausländisch: 'ausland',
 }
 
-function parseAmount(value: string | undefined): number {
-  const n = Number(value ?? 0)
-  return Number.isFinite(n) ? n : 0
-}
-
 export function healthInsuranceFromAnswers(answers: Answers): HealthInsurance | null {
   if (answers['kv-pv'] !== 'Ja') return null
   return {
     kind: KIND_MAP[answers['kv-pv-art'] ?? ''] ?? 'gesetzlich',
-    basicHealthAmount: parseAmount(answers['kv-pv-betrag']),
+    basicHealthAmount: amountFromAnswer(answers['kv-pv-betrag']) ?? 0,
     withSickPay: answers['kv-krankengeld'] === 'Ja',
-    careInsuranceAmount: parseAmount(answers['pv-betrag']),
-    optionalExtrasAmount: parseAmount(answers['kv-wahl-betrag']),
+    careInsuranceAmount: amountFromAnswer(answers['pv-betrag']) ?? 0,
+    optionalExtrasAmount: amountFromAnswer(answers['kv-wahl-betrag']) ?? 0,
   }
 }
 

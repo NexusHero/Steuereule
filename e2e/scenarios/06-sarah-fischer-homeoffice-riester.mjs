@@ -7,6 +7,8 @@ import {
   fail,
   registerAndOnboard,
   selectTaxYear2025,
+  nextStep,
+  openTile,
   assertCockpitEstimate,
   runStandaloneScenario,
 } from './helpers/scenario-harness.mjs'
@@ -43,20 +45,38 @@ export async function runScenario06(browser, webOrigin) {
   await page.locator('[data-testid="lstb-lohnsteuer"]').fill('12800')
   await page.locator('[data-testid="lstb-sozialversicherung"]').fill('13200')
   await page.locator('[data-testid="lstb-weiter"]').click()
+  await nextStep(page)
 
+  // Defer umzug-kosten via AMOUNT_LATER -> verify "⏳ Betrag offen" on Cockpit tile -> revisit & fill 1500 -> "Erledigt"
   await page.locator('[data-testid="katalog-option-dhf-Nein"]').click()
   await page.locator('[data-testid="katalog-option-umzug-Ja"]').click()
-  await page.locator('[data-testid="katalog-input-umzug-kosten"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="katalog-input-umzug-kosten"]').fill('1500')
-  await page.locator('[data-testid="katalog-submit-umzug-kosten"]').click()
+  await page.locator('[data-testid="katalog-later-umzug-kosten"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await page.locator('[data-testid="katalog-later-umzug-kosten"]').click()
   await page.locator('[data-testid="katalog-option-abfindung-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="katalog-option-abfindung-Nein"]').click()
   await page.locator('[data-testid="katalog-option-lohnersatz-Nein"]').click()
   await page.locator('[data-testid="katalog-option-nebenjob-Nein"]').click()
+  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
 
+  await page.locator('[data-testid="cockpit-kachel-lebenslagen-status"]', { hasText: '⏳ Betrag offen' }).waitFor({
+    state: 'visible',
+    timeout: 10_000,
+  })
+  await openTile(page, 'lebenslagen')
+  await page.locator('[data-testid="katalog-input-umzug-kosten"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await page.locator('[data-testid="katalog-input-umzug-kosten"]').fill('1500')
+  await page.locator('[data-testid="katalog-submit-umzug-kosten"]').click()
+  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
+  await page.locator('[data-testid="cockpit-kachel-lebenslagen-status"]', { hasText: 'Erledigt' }).waitFor({
+    state: 'visible',
+    timeout: 10_000,
+  })
+
+  await nextStep(page)
   await page.locator('[data-testid="katalog-option-einkuenfte-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="katalog-option-einkuenfte-Nein"]').click()
 
+  await nextStep(page)
   await page.locator('[data-testid="katalog-option-spenden-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="katalog-option-spenden-Nein"]').click()
   await page.locator('[data-testid="katalog-option-kv-pv-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
@@ -72,6 +92,7 @@ export async function runScenario06(browser, webOrigin) {
   await page.locator('[data-testid="katalog-input-riester-einnahmen-vorjahr"]').fill('60000')
   await page.locator('[data-testid="katalog-submit-riester-einnahmen-vorjahr"]').click()
 
+  await nextStep(page)
   await page.locator('[data-testid="arbeitstage-urlaub"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="arbeitstage-urlaub"]').fill('30')
   await page.locator('[data-testid="arbeitstage-krank"]').fill('5')
@@ -81,11 +102,14 @@ export async function runScenario06(browser, webOrigin) {
   await page.locator('[data-testid="arbeitstage-transport-pkw"]').click()
   await page.locator('[data-testid="arbeitstage-arbeitsort"]').fill('München')
   await page.locator('[data-testid="arbeitstage-weiter"]').click()
+  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
 
-  await page.locator('[data-testid="plausibilitaet-weiter"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="plausibilitaet-weiter"]').click()
-  await page.locator('[data-testid="verheiratet-nein"]').click()
-  await page.locator('[data-testid="veranlagungsartenvergleich-weiter"]').click()
+  await page.locator('[data-testid="cockpit-kacheln"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await page.locator('[data-testid="cockpit-abgabe-vorbereiten"]').click()
+  const printBtn = page.locator('[data-testid="abgabe-zum-ausdruck"]')
+  await printBtn.waitFor({ state: 'visible', timeout: 10_000 })
+  if (await printBtn.isDisabled()) fail('Expected abgabe-zum-ausdruck enabled for Scenario 06')
+  await page.locator('[data-testid="abgabe-zurueck"]').click()
 
   await assertCockpitEstimate(page, 'Scenario 06', { direction: 'Erstattung' })
   console.log('[Scenario 06] PASS: Remote worker flow with Homeoffice-Pauschale and Riester verified.')

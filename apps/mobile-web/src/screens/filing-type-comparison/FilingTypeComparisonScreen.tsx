@@ -17,9 +17,15 @@ export interface FilingTypeComparisonScreenProps {
   readonly onBack?: () => void
   readonly onDone?: () => void
   readonly taxYear?: number
+  readonly embedded?: boolean
 }
 
-export function FilingTypeComparisonScreen({ onBack, onDone, taxYear = CURRENT_TAX_YEAR }: FilingTypeComparisonScreenProps) {
+export function FilingTypeComparisonScreen({
+  onBack,
+  onDone,
+  taxYear = CURRENT_TAX_YEAR,
+  embedded = false,
+}: FilingTypeComparisonScreenProps) {
   const bp = useBreakpoint()
   const t = useTheme()
   const styles = makeStyles(t)
@@ -36,11 +42,13 @@ export function FilingTypeComparisonScreen({ onBack, onDone, taxYear = CURRENT_T
 
   const query = useFilingTypeComparisonControllerGetComparison(taxYear, params, { query: { enabled: ready } })
 
-  return (
-    <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="screen-container">
-      <View style={styles.headerRow}>
-        {onBack ? <BackButton accessibilityLabel={tr('veranlagungsartenvergleich.back')} onPress={onBack} /> : <BackButtonSpacer />}
-      </View>
+  const content = (
+    <>
+      {!embedded ? (
+        <View style={styles.headerRow}>
+          {onBack ? <BackButton accessibilityLabel={tr('veranlagungsartenvergleich.back')} onPress={onBack} /> : <BackButtonSpacer />}
+        </View>
+      ) : null}
 
       <Text style={styles.heading}>{tr('veranlagungsartenvergleich.heading')}</Text>
 
@@ -91,6 +99,16 @@ export function FilingTypeComparisonScreen({ onBack, onDone, taxYear = CURRENT_T
           {tr('veranlagungsartenvergleich.done')}
         </Button>
       ) : null}
+    </>
+  )
+
+  if (embedded) {
+    return <View style={styles.embedded}>{content}</View>
+  }
+
+  return (
+    <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="screen-container">
+      {content}
     </ScrollView>
   )
 }
@@ -154,6 +172,7 @@ function makeStyles(t: UiTheme) {
     alignSelf: 'center',
   }
   const wideScreen: ViewStyle = { ...screen, maxWidth: WIDE_CONTENT_MAX_WIDTH }
+  const embedded: ViewStyle = { width: '100%' }
   const headerRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', marginBottom: t.space.s4 }
   const heading: TextStyle = {
     fontFamily: t.font.display,
@@ -171,5 +190,5 @@ function makeStyles(t: UiTheme) {
   const numberLabel: TextStyle = { color: t.color.tinte2, fontFamily: t.font.mono, fontSize: t.size.xs, textTransform: 'uppercase', letterSpacing: 0.08 * t.size.xs, marginBottom: t.space.s1 }
   const number: TextStyle = { color: t.color.tinte, fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size['2xl'], fontVariant: ['tabular-nums'], marginBottom: t.space.s2 }
   const doneCta: ViewStyle = { marginTop: t.space.s5 }
-  return { screen, wideScreen, headerRow, heading, label, optionRow, inputBlock, hinweis: notice, resultBlock, aussage: statement, zahlLabel: numberLabel, zahl: number, doneCta }
+  return { screen, wideScreen, embedded, headerRow, heading, label, optionRow, inputBlock, hinweis: notice, resultBlock, aussage: statement, zahlLabel: numberLabel, zahl: number, doneCta }
 }

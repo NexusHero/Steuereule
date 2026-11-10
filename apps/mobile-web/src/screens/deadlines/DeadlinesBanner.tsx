@@ -1,6 +1,6 @@
 import { Text, View, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { useTheme, type UiTheme } from '@steuereule/ui'
+import { inkOnFunke, useTheme, type UiTheme } from '@steuereule/ui'
 import { formatEuro } from '@steuereule/core'
 import { useDeadlinesControllerGetDeadlines, type DeadlinesResponseDto } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
@@ -55,6 +55,6 @@ function makeStyles(t: UiTheme) {
     paddingVertical: t.space.s2,
     marginBottom: t.space.s3,
   }
-  const text: TextStyle = { color: t.color.tinte, fontFamily: t.font.text, fontSize: t.size.s }
+  const text: TextStyle = { color: inkOnFunke(t), fontFamily: t.font.text, fontSize: t.size.s }
   return { banner, text }
 }

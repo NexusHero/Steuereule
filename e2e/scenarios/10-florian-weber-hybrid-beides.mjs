@@ -50,6 +50,8 @@ export async function runScenario10(browser, webOrigin) {
   await page.locator('[data-testid="lstb-sozialversicherung"]').fill('11000')
   await page.locator('[data-testid="lstb-weiter"]').click()
 
+  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
+  await page.locator('[data-testid="cockpit-kacheln"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.getByRole('tab', { name: 'Cockpit' }).click()
   await assertCockpitEstimate(page, 'Scenario 10', {
     expectedText: 'Die Erstattung rechnen wir bisher nur für Angestellte.',

@@ -7,6 +7,7 @@ import {
   fail,
   registerAndOnboard,
   selectTaxYear2025,
+  nextStep,
   assertCockpitEstimate,
   runStandaloneScenario,
 } from './helpers/scenario-harness.mjs'
@@ -42,15 +43,18 @@ export async function runScenario07(browser, webOrigin) {
   await page.locator('[data-testid="lstb-lohnsteuer"]').fill('8400')
   await page.locator('[data-testid="lstb-sozialversicherung"]').fill('11000')
   await page.locator('[data-testid="lstb-weiter"]').click()
+  await nextStep(page)
 
   for (const step of ['dhf', 'umzug', 'abfindung', 'lohnersatz', 'nebenjob']) {
     const opt = page.locator(`[data-testid="katalog-option-${step}-Nein"]`)
     await opt.waitFor({ state: 'visible', timeout: 10_000 })
     await opt.click()
   }
+  await nextStep(page)
 
   await page.locator('[data-testid="katalog-option-einkuenfte-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="katalog-option-einkuenfte-Nein"]').click()
+  await nextStep(page)
 
   await page.locator('[data-testid="katalog-option-spenden-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="katalog-option-spenden-Nein"]').click()
@@ -58,6 +62,7 @@ export async function runScenario07(browser, webOrigin) {
   await page.locator('[data-testid="katalog-option-kv-pv-Nein"]').click()
   await page.locator('[data-testid="katalog-option-riester-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="katalog-option-riester-Nein"]').click()
+  await nextStep(page)
 
   await page.locator('[data-testid="arbeitstage-urlaub"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="arbeitstage-urlaub"]').fill('28')
@@ -68,11 +73,15 @@ export async function runScenario07(browser, webOrigin) {
   await page.locator('[data-testid="arbeitstage-transport-oepnv"]').click()
   await page.locator('[data-testid="arbeitstage-arbeitsort"]').fill('Köln')
   await page.locator('[data-testid="arbeitstage-weiter"]').click()
+  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
 
-  await page.locator('[data-testid="plausibilitaet-weiter"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="plausibilitaet-weiter"]').click()
-  await page.locator('[data-testid="verheiratet-nein"]').click()
-  await page.locator('[data-testid="veranlagungsartenvergleich-weiter"]').click()
+  await page.locator('[data-testid="cockpit-kacheln"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await page.locator('[data-testid="cockpit-kachel-alleinerziehend"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await page.locator('[data-testid="cockpit-abgabe-vorbereiten"]').click()
+  const printBtn = page.locator('[data-testid="abgabe-zum-ausdruck"]')
+  await printBtn.waitFor({ state: 'visible', timeout: 10_000 })
+  if (await printBtn.isDisabled()) fail('Expected abgabe-zum-ausdruck enabled for Scenario 07')
+  await page.locator('[data-testid="abgabe-zurueck"]').click()
 
   const kinderBtn = page.locator('[data-testid="cockpit-kinder"]')
   await kinderBtn.waitFor({ state: 'visible', timeout: 10_000 })

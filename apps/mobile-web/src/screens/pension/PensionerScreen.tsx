@@ -2,12 +2,14 @@ import { useState } from 'react'
 import { ScrollView, View, Text, Pressable, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { Button, Feld, Input, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
+import { Button, Feld, Input, inkOnFunke, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
 import {
+  getCockpitControllerGetCockpitSummaryQueryKey,
+  getPensionControllerGetQueryKey,
+  getTaxEstimateControllerGetQueryKey,
   usePensionControllerGet,
   usePensionControllerSetField,
   usePensionControllerSetPensionKind,
-  getPensionControllerGetQueryKey,
   type PensionFieldDto,
   type PensionResponseDto,
 } from '@steuereule/api-client'
@@ -17,6 +19,9 @@ import { integerFrom } from '../shared/integer'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
+import { usePendingMutations } from '../shared/usePendingMutations'
+import { SaveFailedNotice } from '../shared/SaveFailedNotice'
+import { watchSaveResult } from '../shared/saveFeedback'
 
 type FieldId = 'jahresbetrag' | 'rentenbeginnJahr' | 'alterBeiRentenbeginn'
 
@@ -35,6 +40,7 @@ export function PensionerScreen({ onDone = () => {}, onBack, taxYear = CURRENT_T
   const query = usePensionControllerGet(taxYear)
   const setKind = usePensionControllerSetPensionKind()
   const setField = usePensionControllerSetField()
+  const { track, flushThen, saveFailed } = usePendingMutations()
 
   if (query.isPending) {
     return <LoadingState bp={bp} label={tr('rente.loading')} />
@@ -55,14 +61,16 @@ export function PensionerScreen({ onDone = () => {}, onBack, taxYear = CURRENT_T
 
   function invalidate() {
     void queryClient.invalidateQueries({ queryKey: getPensionControllerGetQueryKey(taxYear) })
+    void queryClient.invalidateQueries({ queryKey: getCockpitControllerGetCockpitSummaryQueryKey(taxYear) })
+    void queryClient.invalidateQueries({ queryKey: getTaxEstimateControllerGetQueryKey(taxYear) })
   }
 
   function sendKind(kind: PensionType | null) {
-    setKind.mutate({ jahr: taxYear, data: { kind } }, { onSuccess: invalidate })
+    track(watchSaveResult(setKind.mutateAsync({ jahr: taxYear, data: { kind } })).then(invalidate))
   }
 
   function send(field: FieldId, data: PensionFieldDto) {
-    setField.mutate({ jahr: taxYear, feld: field, data }, { onSuccess: invalidate })
+    track(watchSaveResult(setField.mutateAsync({ jahr: taxYear, feld: field, data })).then(invalidate))
   }
 
   const showsPensionStartYear = response.kind !== null && response.kind !== 'PrivateRentenversicherung'
@@ -71,7 +79,7 @@ export function PensionerScreen({ onDone = () => {}, onBack, taxYear = CURRENT_T
   return (
     <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="screen-container">
       <View style={styles.headerRow}>
-        {onBack ? <BackButton accessibilityLabel={tr('rente.back')} onPress={onBack} /> : <BackButtonSpacer />}
+        {onBack ? <BackButton accessibilityLabel={tr('rente.back')} onPress={() => flushThen(onBack)} /> : <BackButtonSpacer />}
       </View>
       <Text style={styles.heading}>{tr('rente.heading')}</Text>
       <Text style={styles.help}>{tr('rente.help')}</Text>
@@ -113,7 +121,8 @@ export function PensionerScreen({ onDone = () => {}, onBack, taxYear = CURRENT_T
 
       <ItemNotice response={response} />
 
-      <Button onPress={onDone} style={styles.cta}>
+      <SaveFailedNotice visible={saveFailed} />
+      <Button onPress={() => flushThen(onDone)} style={styles.cta}>
         {tr('rente.weiter')}
       </Button>
     </ScrollView>
@@ -213,7 +222,7 @@ function makeStyles(t: UiTheme) {
   }
   const kindButtonActive: ViewStyle = { backgroundColor: t.color.funke, borderColor: t.color.funke }
   const kindLabel: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.s }
-  const kindLabelActive: TextStyle = { color: t.color.tinte, fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: t.size.s }
+  const kindLabelActive: TextStyle = { color: inkOnFunke(t), fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: t.size.s }
   const fieldRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s3 }
   const unclearButton: ViewStyle = {
     paddingHorizontal: t.space.s3,

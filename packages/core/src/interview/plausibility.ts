@@ -2,6 +2,7 @@ import type { WageTaxCertificateFieldId, WageTaxCertificateStatus } from '../dom
 import type { WorkdaysResult } from '../common/workdays'
 import type { EmployeeStatus } from '../domains/employee'
 import type { IncomeType } from '../domains/income-types'
+import { laterAmountSteps, type Answers, type EntryStepId } from './interview'
 
 export type Conflict =
   | { readonly kind: 'lstb-offen'; readonly fields: readonly WageTaxCertificateFieldId[] }
@@ -13,12 +14,14 @@ export type Conflict =
 export type Notice =
   | { readonly kind: 'erfasst-nicht-gerechnet'; readonly amount: number }
   | { readonly kind: 'werbungskosten-uebersteigt-einnahmen'; readonly werbungskosten: number; readonly einnahmen: number }
+  | { readonly kind: 'betrag-spaeter'; readonly steps: readonly EntryStepId[] }
 
 export interface PlausibilityInput {
   readonly lstb: WageTaxCertificateStatus
   readonly workdays: WorkdaysResult
   readonly status: EmployeeStatus
   readonly recordedNotCalculated: number
+  readonly answers?: Answers
 }
 
 export type PlausibilityResult =
@@ -52,6 +55,10 @@ export function checkPlausibility(inputs: PlausibilityInput): PlausibilityResult
   const { einnahmen, werbungskosten } = inputs.status
   if (werbungskosten > einnahmen) {
     notices.push({ kind: 'werbungskosten-uebersteigt-einnahmen', werbungskosten, einnahmen })
+  }
+  const laterSteps = laterAmountSteps(inputs.answers ?? {})
+  if (laterSteps.length > 0) {
+    notices.push({ kind: 'betrag-spaeter', steps: laterSteps })
   }
 
   if (conflicts.length === 0) return { kind: 'einreichbar', notices }

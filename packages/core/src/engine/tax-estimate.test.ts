@@ -90,4 +90,49 @@ describe('steuerschaetzungGrenzgaenger', () => {
     if (estimate.kind !== 'spanne') throw new Error('expected a range')
     expect(estimate.provision).toEqual({ from: 9678 + 4000, to: 9678 + 4000 })
   })
+
+  it('reduces income tax by § 35a household reduction (clamped at 0 €) and deducts § 33 extraordinary burden', () => {
+    const base = taxEstimateEmployee(EMPLOYED)
+    const withHousehold = taxEstimateEmployee({ ...EMPLOYED, householdReductionEur: 1200 })
+    const zeroTaxClamped = taxEstimateEmployee({ ...EMPLOYED, householdReductionEur: 50000 })
+    const withHealth = taxEstimateEmployee({
+      ...EMPLOYED,
+      healthExpensesEur: 4000,
+      childrenBracket: '0',
+    })
+    const crossWithHealth = taxEstimateCrossBorder({
+      ...CROSS_BORDER,
+      householdReductionEur: 600,
+      healthExpensesEur: 8000,
+      childrenBracket: '1-2',
+    })
+
+    if (
+      base.kind !== 'spanne' ||
+      withHousehold.kind !== 'spanne' ||
+      zeroTaxClamped.kind !== 'spanne' ||
+      withHealth.kind !== 'spanne' ||
+      crossWithHealth.kind !== 'spanne'
+    ) {
+      throw new Error('expected spans')
+    }
+    expect(withHousehold.incomeTax).toEqual({
+      from: base.incomeTax.from - 1200,
+      to: base.incomeTax.to - 1200,
+    })
+    expect(zeroTaxClamped.incomeTax).toEqual({ from: 0, to: 0 })
+    expect(withHealth.taxableIncome.from).toBeLessThan(base.taxableIncome.from)
+    const singleParentWithHealth = taxEstimateEmployee({
+      ...EMPLOYED,
+      healthExpensesEur: 4000,
+      singleParent: true,
+      childrenBracket: '1-2',
+    })
+    if (singleParentWithHealth.kind !== 'spanne') throw new Error('expected span')
+    // Single-parent § 24b lowers GdE -> lower reasonable burden -> larger § 33 deduction -> lower zvE.
+    expect(singleParentWithHealth.taxableIncome.from).toBeLessThan(withHealth.taxableIncome.from)
+    expect(crossWithHealth.taxableIncome.from).toBeLessThan(
+      (taxEstimateCrossBorder(CROSS_BORDER) as Extract<typeof base, { kind: 'spanne' }>).taxableIncome.from,
+    )
+  })
 })

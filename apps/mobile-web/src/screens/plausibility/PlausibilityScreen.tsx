@@ -1,25 +1,12 @@
+import { useEffect, useRef } from 'react'
 import { ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { Button, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
-import {
-  employeeFromData,
-  calculateEmployeeStatus,
-  wageTaxCertificateStatus,
-  checkPlausibility,
-  type Answers,
-  type WageTaxCertificateData,
-  type WageTaxCertificateFieldState,
-} from '@steuereule/core'
-import {
-  useInterviewControllerGetInterview,
-  useLstbControllerGetLstb,
-  useMasterDataControllerRead,
-  type LstbResponseDto,
-} from '@steuereule/api-client'
+import { Button, hapticWarning, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
 import { APP_NS } from '../../i18n/resources'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
+import { usePlausibility } from './usePlausibility'
 
 export interface PlausibilityScreenProps {
   readonly onBack?: () => void
@@ -32,36 +19,37 @@ export function PlausibilityScreen({ onBack, onDone, taxYear = CURRENT_TAX_YEAR 
   const t = useTheme()
   const styles = makeStyles(t)
   const { t: tr } = useTranslation(APP_NS)
-  const lstbQuery = useLstbControllerGetLstb(taxYear)
-  const interviewQuery = useInterviewControllerGetInterview(taxYear)
-  const masterDataQuery = useMasterDataControllerRead()
+  const plausibility = usePlausibility(taxYear)
+  const hasBlockingConflict = plausibility.status === 'ready' && plausibility.conflicts.length > 0
+  const prevConflictRef = useRef<{ taxYear: number; active: boolean }>({ taxYear, active: false })
 
-  if (lstbQuery.isPending || interviewQuery.isPending || masterDataQuery.isPending) {
+  useEffect(() => {
+    if (prevConflictRef.current.taxYear !== taxYear) {
+      prevConflictRef.current = { taxYear, active: false }
+    }
+    if (!prevConflictRef.current.active && hasBlockingConflict) {
+      void hapticWarning()
+    }
+    prevConflictRef.current.active = hasBlockingConflict
+  }, [taxYear, hasBlockingConflict])
+
+  if (plausibility.status === 'loading') {
     return <LoadingState bp={bp} label={tr('plausibilitaet.loading')} />
   }
-  if (lstbQuery.isError || lstbQuery.data.status !== 200 || interviewQuery.isError || interviewQuery.data.status !== 200) {
+  if (plausibility.status === 'error') {
     return (
       <ErrorState
         bp={bp}
         heading={tr('plausibilitaet.loadError.heading')}
         message={tr('plausibilitaet.loadError.message')}
         retryLabel={tr('plausibilitaet.loadError.retry')}
-        onRetry={() => {
-          void lstbQuery.refetch()
-          void interviewQuery.refetch()
-        }}
+        onRetry={plausibility.retry}
       />
     )
   }
 
-  const data = dataFromResponse(lstbQuery.data.data)
-  const answers = interviewQuery.data.data.answers as Answers
-  const result = checkPlausibility(fold(data, answers))
-  // The Stammdaten are not part of the core check, but the printout cannot go out without them —
-  // "nichts mehr offen" must not be claimed while they (or their state) are missing.
-  const missingPersonalDetails =
-    masterDataQuery.data?.status === 200 ? masterDataQuery.data.data.missing.length : null
-  const allClear = result.kind === 'einreichbar' && missingPersonalDetails === 0
+  const { conflicts, notices, missingPersonalDetails } = plausibility
+  const allClear = conflicts.length === 0 && missingPersonalDetails === 0
 
   return (
     <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="screen-container">
@@ -83,10 +71,10 @@ export function PlausibilityScreen({ onBack, onDone, taxYear = CURRENT_TAX_YEAR 
       ) : null}
       {missingPersonalDetails === null ? <Text style={styles.nichtEinreichbar}>{tr('plausibilitaet.stammdatenUnbekannt')}</Text> : null}
 
-      {result.kind === 'nicht-einreichbar' && result.conflicts.length > 0 ? (
+      {conflicts.length > 0 ? (
         <View style={styles.block}>
           <Text style={styles.blockHeading}>{tr('plausibilitaet.widersprueche')}</Text>
-          {result.conflicts.map((w, i) => (
+          {conflicts.map((w, i) => (
             <Text key={i} style={styles.widerspruchItem}>
               {tr(`plausibilitaet.widerspruch.${w.kind}`, { defaultValue: w.kind })}
             </Text>
@@ -94,10 +82,10 @@ export function PlausibilityScreen({ onBack, onDone, taxYear = CURRENT_TAX_YEAR 
         </View>
       ) : null}
 
-      {result.notices.length > 0 ? (
+      {notices.length > 0 ? (
         <View style={styles.block}>
           <Text style={styles.blockHeading}>{tr('plausibilitaet.hinweise')}</Text>
-          {result.notices.map((h, i) => (
+          {notices.map((h, i) => (
             <Text key={i} style={styles.hinweisItem}>
               {tr(`plausibilitaet.hinweis.${h.kind}`, { defaultValue: h.kind })}
             </Text>
@@ -112,32 +100,6 @@ export function PlausibilityScreen({ onBack, onDone, taxYear = CURRENT_TAX_YEAR 
       ) : null}
     </ScrollView>
   )
-}
-
-function dataFromResponse(r: LstbResponseDto): WageTaxCertificateData {
-  return {
-    bruttoarbeitslohn: r.bruttoarbeitslohn as WageTaxCertificateFieldState,
-    lohnsteuer: r.lohnsteuer as WageTaxCertificateFieldState,
-    sozialversicherung: r.sozialversicherung as WageTaxCertificateFieldState,
-  }
-}
-
-function fold(data: WageTaxCertificateData, answers: Answers) {
-  const facts = employeeFromData(data, answers)
-
-  return {
-    lstb: wageTaxCertificateStatus(data),
-    workdays: { kind: 'bestimmt' as const, weekdays: 0, workdays: 0, commuteDays: 0 },
-    status: calculateEmployeeStatus({
-      income: facts.einnahmen,
-      incomeRelatedExpenses: facts.werbungskosten,
-      specialExpenses: facts.specialExpenses,
-      openItems: facts.openItems,
-      conflicts: facts.conflicts,
-      gated: facts.gated,
-    }),
-    recordedNotCalculated: facts.recordedNotCalculated,
-  }
 }
 
 function makeStyles(t: UiTheme) {

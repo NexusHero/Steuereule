@@ -2,16 +2,16 @@
 // objects with their four honest fields and derived facts (Miete, Werbungskosten, AfA with its
 // § 7 Abs. 4 Herkunft), POSTs new objects and PUTs whole euros. The Verkauf/möbliert gate is
 // named honestly (ADR-033). The client stays dumb: every number comes from the server.
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
 import { ThemeProvider } from '@steuereule/ui'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
+import { getCockpitControllerGetCockpitSummaryQueryKey, getTaxEstimateControllerGetQueryKey, type RentalResponseDto } from '@steuereule/api-client'
 import { createAppI18n } from '../../i18n/app-i18n'
 import { RentalScreen } from './RentalScreen'
 import { server } from '../../test-msw-server'
-import type { RentalResponseDto } from '@steuereule/api-client'
 
 const TAX_YEAR = 2026
 const RENTAL_URL = `*/v1/steuerjahre/${TAX_YEAR}/vermietung`
@@ -46,18 +46,20 @@ const FULL_PROPERTY: RentalResponseDto = {
   status: { kind: 'bestimmt', einnahmen: 12000, vorsorgeaufwand: 0, anrechnung: 0, werbungskosten: 1500, depreciation: 4000, openItems: 0, conflicts: 0 },
 }
 
-function renderRental() {
+function renderRental(onDone: () => void = () => {}, queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } }), onBack?: () => void) {
   const i18n = createAppI18n('de')
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={i18n}>
-        <ThemeProvider mode="light">
-          <RentalScreen taxYear={TAX_YEAR} onDone={() => {}} />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
-  )
+  return {
+    queryClient,
+    ...render(
+      <QueryClientProvider client={queryClient}>
+        <I18nextProvider i18n={i18n}>
+          <ThemeProvider mode="light">
+            <RentalScreen taxYear={TAX_YEAR} onDone={onDone} {...(onBack ? { onBack } : {})} />
+          </ThemeProvider>
+        </I18nextProvider>
+      </QueryClientProvider>,
+    ),
+  }
 }
 
 describe('VermietungScreen', () => {
@@ -165,5 +167,41 @@ describe('VermietungScreen', () => {
 
     expect(await screen.findByText(/Verkauf oder möbliert-auf-Zeit bleibt in 1.0 ehrlich außen vor/)).toBeTruthy()
     expect(screen.queryByTestId('objekt-hinzufuegen')).toBeNull()
+  })
+
+  it('awaits in-flight PUT before calling onDone and invalidates cockpitSummary and taxEstimate', async () => {
+    let releasePut: () => void = () => {}
+    const putPending = new Promise<void>((resolve) => {
+      releasePut = resolve
+    })
+    server.use(
+      http.get(RENTAL_URL, () => HttpResponse.json(FULL_PROPERTY, { status: 200 })),
+      http.put(`${RENTAL_URL}/objekte/:objektId/:feld`, async () => {
+        await putPending
+        return HttpResponse.json(FULL_PROPERTY, { status: 200 })
+      }),
+    )
+    const onDone = vi.fn()
+    const onBack = vi.fn()
+    const { queryClient } = renderRental(onDone, undefined, onBack)
+    const summaryKey = getCockpitControllerGetCockpitSummaryQueryKey(TAX_YEAR)
+    const estimateKey = getTaxEstimateControllerGetQueryKey(TAX_YEAR)
+    queryClient.setQueryData(summaryKey, { status: 200, data: null, headers: new Headers() })
+    queryClient.setQueryData(estimateKey, { status: 200, data: { kind: 'offen' }, headers: new Headers() })
+
+    const input = await screen.findByLabelText(/Mieteinnahmen \(Jahreskaltmiete\)/)
+    fireEvent.click(screen.getByLabelText('Zurück'))
+    expect(onBack).toHaveBeenCalledOnce()
+
+    fireEvent.change(input, { target: { value: '15000' } })
+    fireEvent.blur(input)
+    fireEvent.click(screen.getByTestId('vermietung-weiter'))
+    await new Promise((r) => setTimeout(r, 20))
+    expect(onDone).not.toHaveBeenCalled()
+
+    releasePut()
+    await waitFor(() => expect(onDone).toHaveBeenCalledOnce())
+    expect(queryClient.getQueryState(summaryKey)?.isInvalidated).toBe(true)
+    expect(queryClient.getQueryState(estimateKey)?.isInvalidated).toBe(true)
   })
 })

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
+  AMOUNT_LATER,
+  amountFromAnswer,
   buildStepIndex,
   ENTRIES,
   entryForStep,
@@ -8,6 +10,8 @@ import {
   isReachableFor,
   isValidAnswer,
   JOB_VALUES,
+  LATER_ALLOWED_STEPS,
+  laterAmountSteps,
   nextStep,
   nextStepFor,
   QUESTIONS,
@@ -675,5 +679,94 @@ describe('Berufsprofil — the occupation group, asked where the advice lives', 
   it('accepts only the declared occupation groups', () => {
     expect(isValidAnswer('beruf', 'Pflege & Gesundheit')).toBe(true)
     expect(isValidAnswer('beruf', 'Astronaut')).toBe(false)
+  })
+})
+
+describe('AMOUNT_LATER ("Betrag später eintragen", Ticket #443 Slice 2)', () => {
+  it('accepts AMOUNT_LATER only for LATER_ALLOWED_STEPS and rejects forbidden integer steps', () => {
+    expect(AMOUNT_LATER).toBe('spaeter')
+    for (const step of LATER_ALLOWED_STEPS) {
+      expect(isValidAnswer(step, AMOUNT_LATER)).toBe(true)
+    }
+    for (const forbidden of [
+      'weg',
+      'tage',
+      'ch-nichtrueckkehrtage',
+      'abfindung-betrag',
+      'lohnersatz-betrag',
+      'nebenjob-brutto',
+      'riester-einnahmen-vorjahr',
+      'spenden',
+    ] as const) {
+      expect(isValidAnswer(forbidden, AMOUNT_LATER)).toBe(false)
+    }
+  })
+
+  it('laterAmountSteps returns every declared step answered with AMOUNT_LATER', () => {
+    expect(laterAmountSteps({})).toEqual([])
+    expect(
+      laterAmountSteps({
+        spenden: 'Ja',
+        'spenden-betrag': AMOUNT_LATER,
+        'kv-pv': 'Nein',
+        umzug: 'Ja',
+        'umzug-kosten': '450',
+        riester: 'Ja',
+        'riester-betrag': AMOUNT_LATER,
+      }),
+    ).toEqual(['spenden-betrag', 'riester-betrag'])
+  })
+
+  it('laterAmountSteps ignores a stale „später“ whose parent was answered differently afterwards', () => {
+    // Umzug „Ja“ → Kosten später → Umzug „Nein“: the follow-up stays stored but is no longer asked.
+    expect(laterAmountSteps({ dhf: 'Nein', umzug: 'Nein', 'umzug-kosten': AMOUNT_LATER })).toEqual([])
+    expect(laterAmountSteps({ dhf: 'Nein', umzug: 'Ja', 'umzug-kosten': AMOUNT_LATER })).toEqual(['umzug-kosten'])
+  })
+
+  it('amountFromAnswer parses integers and returns null for undefined or AMOUNT_LATER', () => {
+    expect(amountFromAnswer(undefined)).toBeNull()
+    expect(amountFromAnswer(AMOUNT_LATER)).toBeNull()
+    expect(amountFromAnswer('')).toBeNull()
+    expect(amountFromAnswer('0')).toBe(0)
+    expect(amountFromAnswer('650')).toBe(650)
+  })
+})
+
+describe('Ticket #443 Slice 5 — haushalt & gesundheit catalogue entries', () => {
+  it('walks haushalt steps and finishes immediately on Nein', () => {
+    expect(nextStepFor(ENTRIES.haushalt, {})).toEqual({ kind: 'question', id: 'haushalt-gate' })
+    expect(nextStepFor(ENTRIES.haushalt, { 'haushalt-gate': 'Nein' })).toEqual({ kind: 'done' })
+    expect(nextStepFor(ENTRIES.haushalt, { 'haushalt-gate': 'Ja' })).toEqual({
+      kind: 'question',
+      id: 'haushalt-dienstleistung-betrag',
+    })
+    expect(
+      nextStepFor(ENTRIES.haushalt, {
+        'haushalt-gate': 'Ja',
+        'haushalt-dienstleistung-betrag': AMOUNT_LATER,
+      }),
+    ).toEqual({ kind: 'question', id: 'haushalt-handwerker-betrag' })
+    expect(
+      nextStepFor(ENTRIES.haushalt, {
+        'haushalt-gate': 'Ja',
+        'haushalt-dienstleistung-betrag': '1200',
+        'haushalt-handwerker-betrag': '3000',
+        'haushalt-minijob-betrag': '500',
+      }),
+    ).toEqual({ kind: 'done' })
+  })
+
+  it('walks gesundheit steps and supports integer medical amounts', () => {
+    expect(nextStepFor(ENTRIES.gesundheit, {})).toEqual({ kind: 'question', id: 'gesundheit-gate' })
+    expect(nextStepFor(ENTRIES.gesundheit, { 'gesundheit-gate': 'Nein' })).toEqual({ kind: 'done' })
+    expect(nextStepFor(ENTRIES.gesundheit, { 'gesundheit-gate': 'Ja' })).toEqual({
+      kind: 'question',
+      id: 'gesundheit-betrag',
+    })
+    expect(isValidAnswer('gesundheit-betrag', '2500')).toBe(true)
+    expect(isValidAnswer('gesundheit-betrag', AMOUNT_LATER)).toBe(false)
+    expect(
+      nextStepFor(ENTRIES.gesundheit, { 'gesundheit-gate': 'Ja', 'gesundheit-betrag': '2500' }),
+    ).toEqual({ kind: 'done' })
   })
 })

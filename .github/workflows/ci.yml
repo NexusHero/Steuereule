@@ -829,6 +829,10 @@ jobs:
         # the real UI (sign-up through RegistrierungScreen, then sign-in with that same account
         # through LoginScreen), no DB/API access needed.
         run: node e2e/responsive/banner-ds-qa.mjs
+      - name: Dark-mode gate (#443 slice 6) — system dark, Sheet and Profil, „Immer hell“ survives a reload
+        # Same stack as the gates above (startStack attaches to the running API and bundle);
+        # needs DATABASE_URL (job env) to verify the out-of-band sign-up.
+        run: node e2e/responsive/dark-mode.mjs
       - name: Visibility-refetch gate (#223) — live re-read of email verification, both screens
         # Needs DATABASE_URL (already set in this job's env, above) to flip `emailVerified`
         # directly — there is no mail client in this environment (#224 is the still-manual,

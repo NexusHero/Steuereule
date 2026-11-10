@@ -77,6 +77,56 @@ export async function registerAndOnboard(
   await page.locator('[data-testid="cockpit-interview"]').waitFor({ state: 'visible', timeout: 15_000 })
 }
 
+const TILE_READY_CSS = {
+  lstb: '[data-testid="lstb-bruttoarbeitslohn"]',
+  ch: '[data-testid="ch-wohnsitz-deutschland"], [data-testid="ch-tage-input"], [data-testid="ch-feld-lohn"]',
+  lebenslagen: '[data-testid^="katalog-option-"], [data-testid^="katalog-input-"]',
+  einkuenfte: '[data-testid^="katalog-option-"], [data-testid^="katalog-input-"]',
+  sonderausgaben: '[data-testid^="katalog-option-"], [data-testid^="katalog-input-"]',
+  arbeitsweg: '[data-testid="arbeitstage-urlaub"]',
+  kapital: '[data-testid="kapital-frage-beantworten"], [data-testid="kapital-kapitalertraege"]',
+  vermietung: '[data-testid="objekt-hinzufuegen"], [data-testid="vermietung-0-mieteinnahmen"], [data-testid="vermietung-frage-beantworten"]',
+  kinder: '[data-testid="kind-neu"], [data-testid="kind-vorname"]',
+}
+
+const ANY_TILE_CSS = Object.values(TILE_READY_CSS).join(', ')
+
+async function waitForCockpitSettled(page) {
+  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 15_000 })
+  await page.locator('[data-testid="cockpit-kacheln"]').waitFor({ state: 'visible', timeout: 15_000 })
+  await page.waitForTimeout(100)
+  await page.waitForLoadState('networkidle').catch(() => {})
+}
+
+function tileReadyLocator(page, tileId) {
+  if (tileId === 'rente') return page.locator('text=Welche Rente beziehst du?')
+  const css = TILE_READY_CSS[tileId]
+  if (!css) throw new Error(`Unknown cockpit tileId: "${tileId}"`)
+  return page.locator(css).first()
+}
+
+function anyMaskReadyLocator(page) {
+  return page.locator(ANY_TILE_CSS).or(page.locator('text=Welche Rente beziehst du?')).first()
+}
+
+/** Clicks a specific Cockpit tile (`cockpit-kachel-<tileId>`) and waits until its mask is visible. */
+export async function openTile(page, tileId) {
+  await waitForCockpitSettled(page)
+  const tile = page.locator(`[data-testid="cockpit-kachel-${tileId}"]`)
+  await tile.waitFor({ state: 'visible', timeout: 10_000 })
+  await tile.click()
+  await tileReadyLocator(page, tileId).waitFor({ state: 'visible', timeout: 10_000 })
+}
+
+/** Clicks the Cockpit "Nächster Schritt" CTA (`cockpit-weiter`) and waits until the target mask is visible. */
+export async function nextStep(page) {
+  await waitForCockpitSettled(page)
+  const nextBtn = page.locator('[data-testid="cockpit-weiter"]')
+  await nextBtn.waitFor({ state: 'visible', timeout: 10_000 })
+  await nextBtn.click()
+  await anyMaskReadyLocator(page).waitFor({ state: 'visible', timeout: 10_000 })
+}
+
 /** Switches the Cockpit tax year to 2025. */
 export async function selectTaxYear2025(page) {
   await selectTaxYear(page, 2025)
@@ -95,6 +145,7 @@ export async function selectTaxYear(page, year) {
  * against the scenario's independent reference.
  */
 export async function assertEstimate(page, label, { direction, contains } = {}) {
+  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 15_000 })
   const locator = page.locator('[data-testid="cockpit-erstattung"]')
   await locator.waitFor({ state: 'visible', timeout: 10_000 })
   await page.waitForLoadState('networkidle').catch(() => {})
@@ -124,6 +175,7 @@ export async function assertEstimate(page, label, { direction, contains } = {}) 
 
 /** Asserts Cockpit estimate direction, minAmount, or exact expectedText. */
 export async function assertCockpitEstimate(page, label, { direction, minAmount, expectedText } = {}) {
+  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 15_000 })
   const locator = page.locator('[data-testid="cockpit-erstattung"]')
   await locator.waitFor({ state: 'visible', timeout: 10_000 })
   await page.waitForLoadState('networkidle').catch(() => {})

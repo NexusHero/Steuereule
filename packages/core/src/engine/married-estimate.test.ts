@@ -66,4 +66,19 @@ describe('estimateMarriedCouple (ADR-0054)', () => {
   it('declines years without a tariff', () => {
     expect(estimateMarriedCouple({ ...WEBER, year: 2019 })).toEqual({ kind: 'nicht-moeglich', reason: 'jahr-ohne-tarif' })
   })
+
+  it('deducts § 33 extraordinary burden above reasonable threshold and applies § 35a reduction (capped at 0 tarif tax)', () => {
+    const base = range(WEBER)
+    const withBurden = range({ ...WEBER, healthExpensesEur: 12000 })
+    expect(withBurden.taxableIncome.from).toBeLessThan(base.taxableIncome.from)
+
+    const withHousehold = range({ ...WEBER, householdReductionEur: 1500 })
+    expect(withHousehold.incomeTax.from).toBe(base.incomeTax.from - 1500)
+
+    const highWithChildAllowance = range({ ...WEBER, children: 2, childBenefit: 6120 })
+    const highWithHugeReduction = range({ ...WEBER, children: 2, childBenefit: 6120, householdReductionEur: 200000 })
+    // § 35a reduces tarifliche ESt down to 0, while Kindergeld Hinzurechnung (§ 31 EStG) remains.
+    expect(highWithHugeReduction.incomeTax.from).toBe(6120)
+    expect(highWithChildAllowance.incomeTax.from).toBeGreaterThan(6120)
+  })
 })

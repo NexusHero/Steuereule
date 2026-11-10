@@ -45,4 +45,18 @@ describe('self-paid health and care insurance (Anlage Vorsorgeaufwand Z. 16–33
     expect(employeeFromAnswers(answers).healthCareContributions).toBe(2880 + 600)
     expect(employeeFromAnswers({ ...answers, 'kv-krankengeld': 'Nein' }).healthCareContributions).toBe(3000 + 600)
   })
+
+  it('treats AMOUNT_LATER on health/care amount fields as 0 € and never NaN', () => {
+    const parsed = healthInsuranceFromAnswers({
+      'kv-pv': 'Ja',
+      'kv-pv-art': 'Privat',
+      'kv-pv-betrag': 'spaeter',
+      'pv-betrag': 'spaeter',
+      'kv-wahl-betrag': 'spaeter',
+    })
+    expect(parsed).toEqual({ kind: 'privat', basicHealthAmount: 0, withSickPay: false, careInsuranceAmount: 0, optionalExtrasAmount: 0 })
+    expect(Number.isNaN(parsed?.basicHealthAmount)).toBe(false)
+    expect(Number.isNaN(parsed?.careInsuranceAmount)).toBe(false)
+    expect(Number.isNaN(parsed?.optionalExtrasAmount)).toBe(false)
+  })
 })

@@ -1,5 +1,5 @@
 import { type ViewStyle, type TextStyle } from 'react-native'
-import { WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
+import { WIDE_CONTENT_MAX_WIDTH, inkOnFunke, type UiTheme } from '@steuereule/ui'
 
 export function makeLoginStyles(t: UiTheme) {
   const screen: ViewStyle = {
@@ -28,7 +28,7 @@ export function makeLoginStyles(t: UiTheme) {
   const link: TextStyle = { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.tinte }
   const guestNote: TextStyle = { fontFamily: t.font.text, fontSize: t.size.xs, color: t.color.tinte2, textAlign: 'center', marginTop: t.space.s2 }
   const submittingRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s2 }
-  const submittingLabel: TextStyle = { fontFamily: t.font.text, fontWeight: t.weight.schwer, fontSize: t.size.m, color: t.color.tinte }
+  const submittingLabel: TextStyle = { fontFamily: t.font.text, fontWeight: t.weight.schwer, fontSize: t.size.m, color: inkOnFunke(t) }
   const cta: ViewStyle = { marginTop: t.space.s5 }
   const outageBanner: ViewStyle = {
     backgroundColor: t.color.fehlerWeich,

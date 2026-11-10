@@ -9,6 +9,7 @@ import {
   fail,
   registerAndOnboard,
   selectTaxYear2025,
+  nextStep,
   assertEstimate,
   unlockTaxYearInDb,
   confirmAnnexesIfPresent,
@@ -94,15 +95,18 @@ export async function runScenario03(browser, webOrigin, sql, markusSession = nul
   await pageJulia.waitForTimeout(500)
 
   await pageJulia.locator('[data-testid="ch-lohnausweis-weiter"]').click()
+  await nextStep(pageJulia)
 
   await pageJulia.locator('[data-testid="katalog-option-einkuenfte-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
   await pageJulia.locator('[data-testid="katalog-option-einkuenfte-Nein"]').click()
+  await nextStep(pageJulia)
   await pageJulia.locator('[data-testid="katalog-option-spenden-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
   await pageJulia.locator('[data-testid="katalog-option-spenden-Nein"]').click()
   await pageJulia.locator('[data-testid="katalog-option-kv-pv-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
   await pageJulia.locator('[data-testid="katalog-option-kv-pv-Nein"]').click()
   await pageJulia.locator('[data-testid="katalog-option-riester-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
   await pageJulia.locator('[data-testid="katalog-option-riester-Nein"]').click()
+  await nextStep(pageJulia)
 
   await pageJulia.locator('[data-testid="arbeitstage-urlaub"]').waitFor({ state: 'visible', timeout: 10_000 })
   await pageJulia.locator('[data-testid="arbeitstage-urlaub"]').fill(String(s.julia.commute.vacationDays))
@@ -113,6 +117,7 @@ export async function runScenario03(browser, webOrigin, sql, markusSession = nul
   await pageJulia.locator(`[data-testid="arbeitstage-transport-${s.julia.commute.transport}"]`).click()
   await pageJulia.locator('[data-testid="arbeitstage-arbeitsort"]').fill(s.julia.commute.workplace)
   await pageJulia.locator('[data-testid="arbeitstage-weiter"]').click()
+  await pageJulia.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
 
   await pageJulia.locator('[data-testid="cockpit-stammdaten"]').waitFor({ state: 'visible', timeout: 10_000 })
   await pageJulia.locator('[data-testid="cockpit-stammdaten"]').click()
@@ -135,6 +140,10 @@ export async function runScenario03(browser, webOrigin, sql, markusSession = nul
   unlockTaxYearInDb(sql, s.markus.email, s.year)
 
   await pageMarkus.locator('[data-testid="cockpit-ausdruck"]').click()
+  await pageMarkus.locator('[data-testid="abgabe-vergleich-ueberspringen"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await pageMarkus.locator('[data-testid="abgabe-vergleich-ueberspringen"]').click()
+  await pageMarkus.locator('[data-testid="abgabe-zum-ausdruck"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await pageMarkus.locator('[data-testid="abgabe-zum-ausdruck"]').click()
   await pageMarkus.locator('[data-testid="ausdruck-zurueck"]').waitFor({ state: 'visible', timeout: 10_000 })
 
   await confirmAnnexesIfPresent(pageMarkus)

@@ -4,13 +4,15 @@ import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { Button, Card, Chip, Feld, Input, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
 import {
+  getCapitalControllerGetMostFavourableCheckQueryKey,
+  getCapitalControllerGetQueryKey,
+  getCockpitControllerGetCockpitSummaryQueryKey,
+  getTaxEstimateControllerGetQueryKey,
   useCapitalControllerGet,
   useCapitalControllerSetField,
   useCapitalControllerSetOwner,
   useLinkControllerGet,
   useCapitalControllerGetMostFavourableCheck,
-  getCapitalControllerGetQueryKey,
-  getCapitalControllerGetMostFavourableCheckQueryKey,
   type KapitalFeldDto,
   type KapitalResponseDto,
   type GuenstigerpruefungDto,
@@ -22,6 +24,9 @@ import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { CatalogScreen } from '../catalog/CatalogScreen'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
+import { usePendingMutations } from '../shared/usePendingMutations'
+import { SaveFailedNotice } from '../shared/SaveFailedNotice'
+import { watchSaveResult } from '../shared/saveFeedback'
 
 export interface CapitalScreenProps {
   readonly onDone?: () => void
@@ -39,6 +44,7 @@ export function CapitalScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX
   const setField = useCapitalControllerSetField()
   const setOwner = useCapitalControllerSetOwner()
   const link = useLinkControllerGet(taxYear)
+  const { track, flushThen, saveFailed } = usePendingMutations()
   const joint = link.data?.status === 200 && link.data.data.filingType === 'zusammen'
 
   // The depot / the kind of letting is a catalogue answer; the mask can ask it right here.
@@ -72,16 +78,18 @@ export function CapitalScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX
   function invalidate() {
     void queryClient.invalidateQueries({ queryKey: getCapitalControllerGetQueryKey(taxYear) })
     void queryClient.invalidateQueries({ queryKey: getCapitalControllerGetMostFavourableCheckQueryKey(taxYear) })
+    void queryClient.invalidateQueries({ queryKey: getCockpitControllerGetCockpitSummaryQueryKey(taxYear) })
+    void queryClient.invalidateQueries({ queryKey: getTaxEstimateControllerGetQueryKey(taxYear) })
   }
 
   function send(field: CapitalFieldId, data: KapitalFeldDto) {
-    setField.mutate({ jahr: taxYear, feld: field, data }, { onSuccess: invalidate })
+    track(watchSaveResult(setField.mutateAsync({ jahr: taxYear, feld: field, data })).then(invalidate))
   }
 
   return (
     <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="screen-container">
       <View style={styles.headerRow}>
-        {onBack ? <BackButton accessibilityLabel={tr('kapital.back')} onPress={onBack} /> : <BackButtonSpacer />}
+        {onBack ? <BackButton accessibilityLabel={tr('kapital.back')} onPress={() => flushThen(onBack)} /> : <BackButtonSpacer />}
       </View>
       <Text style={styles.heading}>{tr('kapital.heading')}</Text>
       <Text style={styles.help}>{tr('kapital.help')}</Text>
@@ -100,7 +108,7 @@ export function CapitalScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX
               <Chip
                 key={inhaber}
                 active={(response.inhaber ?? 'A') === inhaber}
-                onPress={() => setOwner.mutate({ jahr: taxYear, data: { inhaber } }, { onSuccess: invalidate })}
+                onPress={() => track(watchSaveResult(setOwner.mutateAsync({ jahr: taxYear, data: { inhaber } })).then(invalidate))}
                 testID={`kapital-inhaber-${inhaber}`}
               >
                 {tr(`kapital.inhaber.${inhaber}`)}
@@ -125,7 +133,8 @@ export function CapitalScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX
 
       <MostFavourableCheckSection taxYear={taxYear} />
 
-      <Button onPress={onDone} style={styles.cta} testID="kapital-weiter">
+      <SaveFailedNotice visible={saveFailed} />
+      <Button onPress={() => flushThen(onDone)} style={styles.cta} testID="kapital-weiter">
         {tr('kapital.weiter')}
       </Button>
     </ScrollView>

@@ -714,6 +714,13 @@
       "scope": "[data-theme=\"dunkel\"]"
     },
     {
+      "name": "--fehler",
+      "value": "#e96a61",
+      "kind": "color",
+      "definedIn": "tokens/dunkel.css",
+      "scope": "[data-theme=\"dunkel\"]"
+    },
+    {
       "name": "--fehler-weich",
       "value": "#3b1512",
       "kind": "color",

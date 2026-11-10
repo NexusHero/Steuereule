@@ -7,6 +7,8 @@ import {
   useInterviewControllerGetInterview,
   useInterviewControllerPostAnswer,
   getCockpitControllerGetCockpitSummaryQueryKey,
+  getInterviewControllerGetInterviewQueryKey,
+  getTaxEstimateControllerGetQueryKey,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
@@ -14,6 +16,7 @@ import { QuestionScreen } from './QuestionScreen'
 import { GateScreen } from './GateScreen'
 import { type PostErrorKind } from './PostErrorNotice'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
+import { triggerSaveErrorHaptic } from '../shared/saveFeedback'
 
 function collectFollowUpStepIds(stepId: EntryStepId, acc = new Set<EntryStepId>()): ReadonlySet<EntryStepId> {
   if (acc.has(stepId)) return acc
@@ -75,6 +78,12 @@ export function InterviewScreen({ onDone, taxYear = CURRENT_TAX_YEAR }: Intervie
       onSuccess: (response) => {
         if (response.status === 200) {
           void queryClient.invalidateQueries({ queryKey: getCockpitControllerGetCockpitSummaryQueryKey(taxYear) })
+          void queryClient.invalidateQueries({ queryKey: getTaxEstimateControllerGetQueryKey(taxYear) })
+          void queryClient.invalidateQueries({
+            queryKey: getInterviewControllerGetInterviewQueryKey(taxYear),
+            exact: true,
+            ...(refetchOnInterviewSyncRef.current ? {} : { refetchType: 'none' }),
+          })
         }
       },
     },
@@ -85,6 +94,14 @@ export function InterviewScreen({ onDone, taxYear = CURRENT_TAX_YEAR }: Intervie
   const [postError, setPostError] = useState<PostErrorKind | null>(null)
   const [seeded, setSeeded] = useState(false)
   const mutationQueue = useRef<Promise<void>>(Promise.resolve())
+  const refetchOnInterviewSyncRef = useRef(false)
+
+  useEffect(() => {
+    refetchOnInterviewSyncRef.current = false
+    return () => {
+      refetchOnInterviewSyncRef.current = true
+    }
+  }, [])
 
   useEffect(() => {
     if (!seeded && interviewQuery.isFetchedAfterMount && interviewQuery.data?.status === 200) {
@@ -124,20 +141,28 @@ export function InterviewScreen({ onDone, taxYear = CURRENT_TAX_YEAR }: Intervie
     setPostError(null)
     const previousAnswers = answers
     const previousHistory = history
+    const nextAnswers = { ...answers, [stepId]: value }
+    if (nextStep(nextAnswers).kind === 'done') {
+      refetchOnInterviewSyncRef.current = true
+    }
     setHistory((h) => [...h, stepId])
-    setAnswers((a) => ({ ...a, [stepId]: value }))
+    setAnswers(nextAnswers)
 
     mutationQueue.current = mutationQueue.current
       .then(async () => {
         try {
           const response = await postAnswer.mutateAsync({ jahr: taxYear, data: { questionId: stepId, value } })
           if (response.status !== 200) {
+            triggerSaveErrorHaptic()
+            refetchOnInterviewSyncRef.current = false
             setPostError(response.status === 409 ? 'conflict' : 'invalid')
             setHistory([])
             setSeeded(false)
             void interviewQuery.refetch()
           }
         } catch {
+          triggerSaveErrorHaptic()
+          refetchOnInterviewSyncRef.current = false
           setAnswers(previousAnswers)
           setHistory(previousHistory)
           setPostError('network')
@@ -147,6 +172,7 @@ export function InterviewScreen({ onDone, taxYear = CURRENT_TAX_YEAR }: Intervie
   }
 
   function back() {
+    refetchOnInterviewSyncRef.current = false
     setPostError(null)
     setHistory((h) => {
       if (h.length === 0) return h

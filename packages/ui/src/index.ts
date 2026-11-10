@@ -1,5 +1,5 @@
 export { ThemeProvider, ThemeContext, type UiTheme, type ThemeProviderProps } from './theme/ThemeProvider'
-export { useTheme } from './theme/useTheme'
+export { useTheme, inkOnFunke } from './theme/useTheme'
 
 export { createI18n } from './i18n/createI18n'
 export { uiResources, UI_NS, type UiLocale } from './i18n/resources'
@@ -20,6 +20,7 @@ export { Input, type InputProps, type InputType } from './components/Input'
 export { Field as Feld, type FieldProps as FeldProps } from './components/Field'
 export { Chip, type ChipProps, type ChipVariant } from './components/Chip'
 export { Option, type OptionProps } from './components/Option'
+export { Sheet, type SheetProps } from './components/Sheet'
 export { TabBar, TAB_BAR_HEIGHT, TAB_ICON_PATHS, tabBarClearance, type TabBarProps, type TabItem } from './components/TabBar'
 
 export { Gallery } from './gallery/Gallery'
@@ -27,3 +28,12 @@ export { Gallery } from './gallery/Gallery'
 export { useReducedMotion } from './motion/useReducedMotion'
 export { useBreakpoint, resolveBreakpoint, type Breakpoint } from './responsive/useBreakpoint'
 export { WIDE_CONTENT_MAX_WIDTH } from './responsive/contentWidth'
+export {
+  hapticSelection,
+  hapticLight,
+  hapticMedium,
+  hapticSuccess,
+  hapticWarning,
+  setHapticsEnabled,
+  isHapticsEnabled,
+} from './lib/haptics'

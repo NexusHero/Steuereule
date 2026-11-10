@@ -44,5 +44,7 @@ export interface TaxEstimateDto {
   churchTaxOpen?: boolean;
   missing?: string[];
   reason?: TaxEstimateDtoReason;
+  /** Number of deferred catalog deduction amounts. */
+  laterAmounts?: number;
 }
 

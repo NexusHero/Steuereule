@@ -3,6 +3,7 @@ import { NotFoundError } from '../common/domain-error.js'
 import {
   CH_RESIDENCE_VALUES,
   YEAR_INDEPENDENT,
+  amountFromAnswer,
   calculateWorkdays,
   missingConfirmations,
   crossBorderStatus,
@@ -223,6 +224,8 @@ export class PrintoutService {
       }
     })
 
+    const donationsAmount = amountFromAnswer(answers['spenden-betrag'])
+
     return printoutValues({
       taxYear: year,
       profile: {
@@ -249,7 +252,7 @@ export class PrintoutService {
       rental: rentalFacts.length > 0 ? rentalFacts : null,
       kinder: childrenFacts.length > 0 ? childrenFacts : null,
       link: link ? { filingType: link.filingType, personB: personBFacts } : null,
-      specialExpenses: answers['spenden-betrag'] ? { donations: answers['spenden-betrag'] } : null,
+      specialExpenses: donationsAmount !== null ? { donations: String(donationsAmount) } : null,
       healthInsurance: healthInsurances(answers, ch),
       singleParent: {
         otherPerson: answers['ae-weitere-person'] ?? null,

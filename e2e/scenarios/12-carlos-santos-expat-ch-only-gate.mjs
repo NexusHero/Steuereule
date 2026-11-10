@@ -55,6 +55,8 @@ export async function runScenario12(browser, webOrigin) {
   await page.waitForLoadState('networkidle').catch(() => {})
   await page.locator('[data-testid="lstb-weiter"]').click()
 
+  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
+  await page.locator('[data-testid="cockpit-kacheln"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.getByRole('tab', { name: 'Cockpit' }).click()
   await assertCockpitEstimate(page, 'Scenario 12', { direction: 'Erstattung' })
   console.log('[Scenario 12] PASS: CH-Only Gate boundary and continuation flow verified.')

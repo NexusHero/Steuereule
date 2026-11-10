@@ -13,6 +13,9 @@ import {
   useChSalaryCertificateControllerSetProvision,
   useChSalaryCertificateControllerSetExchangeRate,
   getChSalaryCertificateControllerGetQueryKey,
+  getCockpitControllerGetCockpitSummaryQueryKey,
+  getInterviewControllerGetInterviewQueryKey,
+  getTaxEstimateControllerGetQueryKey,
   type ChSalaryCertificateResponseDto,
   type PutSalaryCertificateFieldDto,
   type NGreDetailsDto,
@@ -24,15 +27,19 @@ import { integerFrom } from '../shared/integer'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
+import { usePendingMutations } from '../shared/usePendingMutations'
+import { SaveFailedNotice } from '../shared/SaveFailedNotice'
+import { triggerSaveErrorHaptic, watchSaveResult } from '../shared/saveFeedback'
 
 export interface CrossBorderScreenProps {
   readonly onDone: () => void
+  readonly onBack?: () => void
   readonly taxYear?: number
 }
 
 const SEGMENT_CH = ENTRIES['segment-ch']
 
-export function CrossBorderScreen({ onDone, taxYear = CURRENT_TAX_YEAR }: CrossBorderScreenProps) {
+export function CrossBorderScreen({ onDone, onBack, taxYear = CURRENT_TAX_YEAR }: CrossBorderScreenProps) {
   const bp = useBreakpoint()
   const { t: tr } = useTranslation(APP_NS)
   const queryClient = useQueryClient()
@@ -46,9 +53,16 @@ export function CrossBorderScreen({ onDone, taxYear = CURRENT_TAX_YEAR }: CrossB
 
   const [interviewAnswers, setInterviewAnswers] = useState<Answers>({})
   const [seeded, setSeeded] = useState(false)
+  const { track, flushThen: finish, saveFailed } = usePendingMutations()
   // The CH answers depend on each other (Tage is only reachable after Wohnsitz): posting them in
   // parallel let the second one overtake the first and come back 409 ANSWER_UNREACHABLE.
   const answerQueue = useRef<Promise<unknown>>(Promise.resolve())
+
+  function invalidateCertificate(): void {
+    void queryClient.invalidateQueries({ queryKey: getChSalaryCertificateControllerGetQueryKey(taxYear) })
+    void queryClient.invalidateQueries({ queryKey: getCockpitControllerGetCockpitSummaryQueryKey(taxYear) })
+    void queryClient.invalidateQueries({ queryKey: getTaxEstimateControllerGetQueryKey(taxYear) })
+  }
 
   if (!seeded && interviewQuery.data?.status === 200) {
     setInterviewAnswers(interviewQuery.data.data.answers as Answers)
@@ -81,47 +95,53 @@ export function CrossBorderScreen({ onDone, taxYear = CURRENT_TAX_YEAR }: CrossB
     setInterviewAnswers((a) => ({ ...a, [questionId]: value }))
     const post = answerQueue.current.then(() => postAnswer.mutateAsync({ jahr: taxYear, data: { questionId, value } }))
     answerQueue.current = post.catch(() => {})
-    void post.then(
-      (response) => {
-        if (response.status === 200) {
-          void queryClient.invalidateQueries({ queryKey: getChSalaryCertificateControllerGetQueryKey(taxYear) })
-          return
-        }
-        setInterviewAnswers(previous)
-        setSeeded(false)
-        void interviewQuery.refetch()
-      },
-      () => {
-        setInterviewAnswers(previous)
-      },
+    track(
+      post.then(
+        (response) => {
+          if (response.status === 200) {
+            invalidateCertificate()
+            void queryClient.invalidateQueries({
+              queryKey: getInterviewControllerGetInterviewQueryKey(taxYear),
+              exact: true,
+            })
+            void queryClient.invalidateQueries({
+              queryKey: getInterviewControllerGetInterviewQueryKey(taxYear, { eintrag: 'segment-ch' }),
+              refetchType: 'none',
+            })
+            return
+          }
+          setInterviewAnswers(previous)
+          setSeeded(false)
+          triggerSaveErrorHaptic()
+          void interviewQuery.refetch()
+        },
+        () => {
+          triggerSaveErrorHaptic()
+          setInterviewAnswers(previous)
+        },
+      ),
     )
   }
 
   if (step !== null && step.kind === 'question') {
-    return <ChInterviewStep stepId={step.id} onAnswer={answer} bp={bp} onBack={onDone} />
+    return <ChInterviewStep stepId={step.id} onAnswer={answer} bp={bp} onBack={() => finish(onBack ?? onDone)} />
   }
 
   return (
+    <>
+    <SaveFailedNotice visible={saveFailed} />
     <SalaryCertificateStep
       salaryCertificate={salaryCertificate}
       taxYear={taxYear}
-      onSetField={setField.mutate}
-      onSetExchangeRate={setExchangeRate.mutate}
-      onSetProvision={(data) =>
-        setProvision.mutate(
-          { jahr: taxYear, data },
-          { onSuccess: () => void queryClient.invalidateQueries({ queryKey: getChSalaryCertificateControllerGetQueryKey(taxYear) }) },
-        )
-      }
-      onSetNGre={(data) =>
-        setNGre.mutate(
-          { jahr: taxYear, data },
-          { onSuccess: () => void queryClient.invalidateQueries({ queryKey: getChSalaryCertificateControllerGetQueryKey(taxYear) }) },
-        )
-      }
-      onDone={onDone}
+      onSetField={(vars) => track(watchSaveResult(setField.mutateAsync(vars)).then(invalidateCertificate))}
+      onSetExchangeRate={(vars) => track(watchSaveResult(setExchangeRate.mutateAsync(vars)).then(invalidateCertificate))}
+      onSetProvision={(data) => track(watchSaveResult(setProvision.mutateAsync({ jahr: taxYear, data })).then(invalidateCertificate))}
+      onSetNGre={(data) => track(watchSaveResult(setNGre.mutateAsync({ jahr: taxYear, data })).then(invalidateCertificate))}
+      onDone={() => finish(onDone)}
+      {...(onBack ? { onBack: () => finish(onBack) } : {})}
       bp={bp}
     />
+    </>
   )
 }
 
@@ -198,6 +218,7 @@ function SalaryCertificateStep({
   onSetNGre,
   onSetProvision,
   onDone,
+  onBack,
   bp,
 }: {
   readonly salaryCertificate: ChSalaryCertificateResponseDto
@@ -208,6 +229,7 @@ function SalaryCertificateStep({
   readonly onSetNGre: (data: PutNGreDto) => void
   readonly onSetProvision: (data: PutProvisionDto) => void
   readonly onDone: () => void
+  readonly onBack?: () => void
   readonly bp: Breakpoint
 }) {
   const t = useTheme()
@@ -224,7 +246,7 @@ function SalaryCertificateStep({
   return (
     <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="screen-container">
       <View style={styles.headerRow}>
-        <BackButtonSpacer />
+        {onBack ? <BackButton accessibilityLabel={tr('grenzgaenger.back')} onPress={onBack} /> : <BackButtonSpacer />}
         <Text style={styles.heading}>{tr('grenzgaenger.lohnausweis.title')}</Text>
       </View>
       <Text style={styles.help}>{tr('grenzgaenger.lohnausweis.help')}</Text>

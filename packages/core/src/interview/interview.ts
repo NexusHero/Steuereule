@@ -42,6 +42,14 @@ export type SpecialExpenseQuestionId =
 
 export type SingleParentQuestionId = 'ae-weitere-person' | 'ae-haushaltsgemeinschaft'
 
+export type HouseholdQuestionId =
+  | 'haushalt-gate'
+  | 'haushalt-dienstleistung-betrag'
+  | 'haushalt-handwerker-betrag'
+  | 'haushalt-minijob-betrag'
+
+export type HealthQuestionId = 'gesundheit-gate' | 'gesundheit-betrag'
+
 /** Asked where the advice lives (the Eule tab), not in the Minimal-Gate — value first (ADR-0045). */
 export type ProfessionQuestionId = 'beruf'
 
@@ -65,6 +73,8 @@ export type EntryQuestionId =
   | SpecialExpenseQuestionId
   | SegmentChQuestionId
   | SingleParentQuestionId
+  | HouseholdQuestionId
+  | HealthQuestionId
   | ProfessionQuestionId
 export type EntryGateId = MinimalGateGateId | SegmentTwoGateId
 
@@ -132,6 +142,46 @@ export type ChResidence = (typeof CH_RESIDENCE_VALUES)[number]
 export const QUESTION_ORDER: readonly MinimalGateQuestionId[] = ['job', 'ausland', 'kinder', 'familienstand']
 
 export const GATE_ACKNOWLEDGED = 'weiter'
+
+export const AMOUNT_LATER = 'spaeter'
+
+export const LATER_ALLOWED_STEPS = [
+  'dhf-miete',
+  'umzug-kosten',
+  'spenden-betrag',
+  'kv-pv-betrag',
+  'pv-betrag',
+  'kv-wahl-betrag',
+  'riester-betrag',
+  'haushalt-dienstleistung-betrag',
+  'haushalt-handwerker-betrag',
+  'haushalt-minijob-betrag',
+] as const
+
+const LATER_ALLOWED_SET: ReadonlySet<string> = new Set<string>(LATER_ALLOWED_STEPS)
+
+/**
+ * Steps still marked „später“. A stored answer whose parent was later answered differently
+ * (Umzug „Ja“ → Kosten später → Umzug „Nein“) stays in storage but is no longer reachable, so it
+ * must not widen the range, raise a notice or keep a tile on „Betrag offen“.
+ */
+export function laterAmountSteps(answers: Answers): readonly EntryStepId[] {
+  return Object.entries(answers)
+    .filter(([step, value]) => Object.hasOwn(QUESTIONS, step) && value === AMOUNT_LATER)
+    .map(([step]) => step as EntryStepId)
+    .filter((step) => {
+      const entry = entryForStep(step)
+      return entry !== undefined && isReachableFor(ENTRIES[entry], answers, step)
+    })
+}
+
+export function amountFromAnswer(value: string | undefined): number | null {
+  if (value === undefined || value === AMOUNT_LATER) return null
+  const trimmed = value.trim()
+  if (!/^-?\d+$/.test(trimmed)) return null
+  const n = Number(trimmed)
+  return Number.isSafeInteger(n) ? n : null
+}
 
 export type ValueForm =
   | { readonly kind: 'enum'; readonly values: readonly string[] }
@@ -266,6 +316,22 @@ export const QUESTIONS: Readonly<Record<EntryStepId, QuestionDeclaration>> = {
   },
   'ae-weitere-person': { id: 'ae-weitere-person', kind: 'question', form: { kind: 'enum', values: YES_NO_VALUES } },
   'ae-haushaltsgemeinschaft': { id: 'ae-haushaltsgemeinschaft', kind: 'question', form: { kind: 'enum', values: YES_NO_VALUES } },
+  'haushalt-gate': {
+    id: 'haushalt-gate',
+    kind: 'question',
+    form: { kind: 'enum', values: YES_NO_VALUES },
+    followUps: { Ja: ['haushalt-dienstleistung-betrag', 'haushalt-handwerker-betrag', 'haushalt-minijob-betrag'] },
+  },
+  'haushalt-dienstleistung-betrag': { id: 'haushalt-dienstleistung-betrag', kind: 'question', form: { kind: 'integer', min: 0, max: 1000000 } },
+  'haushalt-handwerker-betrag': { id: 'haushalt-handwerker-betrag', kind: 'question', form: { kind: 'integer', min: 0, max: 1000000 } },
+  'haushalt-minijob-betrag': { id: 'haushalt-minijob-betrag', kind: 'question', form: { kind: 'integer', min: 0, max: 1000000 } },
+  'gesundheit-gate': {
+    id: 'gesundheit-gate',
+    kind: 'question',
+    form: { kind: 'enum', values: YES_NO_VALUES },
+    followUps: { Ja: ['gesundheit-betrag'] },
+  },
+  'gesundheit-betrag': { id: 'gesundheit-betrag', kind: 'question', form: { kind: 'integer', min: 0, max: 1000000 } },
   'riester-einnahmen-vorjahr': { id: 'riester-einnahmen-vorjahr', kind: 'question', form: { kind: 'integer', min: 0, max: 1000000 } },
 
   'ch-wohnsitz': { id: 'ch-wohnsitz', kind: 'question', form: { kind: 'enum', values: CH_RESIDENCE_VALUES } },
@@ -280,6 +346,8 @@ export type EntryId =
   | 'sonderausgaben'
   | 'segment-ch'
   | 'alleinerziehend'
+  | 'haushalt'
+  | 'gesundheit'
   | 'berufsprofil'
 
 export interface CatalogueEntry {
@@ -302,6 +370,8 @@ export const ENTRIES: Readonly<Record<EntryId, CatalogueEntry>> = {
   },
   'segment-ch': { id: 'segment-ch', steps: ['ch-wohnsitz', 'ch-nichtrueckkehrtage'] },
   alleinerziehend: { id: 'alleinerziehend', steps: ['ae-weitere-person', 'ae-haushaltsgemeinschaft'] },
+  haushalt: { id: 'haushalt', steps: ['haushalt-gate'] },
+  gesundheit: { id: 'gesundheit', steps: ['gesundheit-gate'] },
   /** The occupation group for the owl's profession tips — one question, asked in the Eule tab. */
   berufsprofil: { id: 'berufsprofil', steps: ['beruf'] },
 }
@@ -480,5 +550,6 @@ function isAccepted(form: ValueForm, value: string): boolean {
 export function isValidAnswer(step: EntryStepId, value: string): boolean {
   const decl = Object.hasOwn(QUESTIONS, step) ? QUESTIONS[step] : undefined
   if (decl === undefined) return false
+  if (value === AMOUNT_LATER) return LATER_ALLOWED_SET.has(step)
   return isAccepted(decl.form, value)
 }

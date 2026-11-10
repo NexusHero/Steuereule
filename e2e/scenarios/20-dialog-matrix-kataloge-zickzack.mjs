@@ -9,6 +9,8 @@ import {
   fail,
   registerAndOnboard,
   selectTaxYear2025,
+  nextStep,
+  openTile,
   runStandaloneScenario,
 } from './helpers/scenario-harness.mjs'
 
@@ -43,6 +45,7 @@ export async function runScenario20(browser, webOrigin) {
   await page.locator('[data-testid="lstb-lohnsteuer"]').fill('11500')
   await page.locator('[data-testid="lstb-sozialversicherung"]').fill('12400')
   await page.locator('[data-testid="lstb-weiter"]').click()
+  await nextStep(page)
 
   // --- 1. Catalog Lebenslagen Zig-Zag ---
   // DHF = Ja -> dhf-miete appears -> Back -> returns to dhf (NOT LstbScreen!) -> Nein
@@ -78,16 +81,27 @@ export async function runScenario20(browser, webOrigin) {
   await page.locator('[data-testid="katalog-option-nebenjob-Nebenjob"]').click()
   await page.locator('[data-testid="katalog-input-nebenjob-brutto"]').fill('3600')
   await page.locator('[data-testid="katalog-submit-nebenjob-brutto"]').click()
+  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
 
-  // --- 2. Bumerang-Bug Check #1: Einkünfte -> Back into completed Lebenslagen ---
-  await page.locator('[data-testid="katalog-option-einkuenfte-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.getByLabel('Zurück').click()
-  // Should reopen on the last walked step of Lebenslagen (nebenjob-brutto), NOT bounce back to Einkünfte!
+  // --- 2. Bumerang-Bug Check #1: Revisit completed Lebenslagen via Cockpit tile & Back from Einkünfte ---
+  await page.locator('[data-testid="cockpit-kachel-lebenslagen-status"]', { hasText: 'Erledigt' }).waitFor({
+    state: 'visible',
+    timeout: 10_000,
+  })
+  await openTile(page, 'lebenslagen')
+  // Should reopen on the last walked step of Lebenslagen (nebenjob-brutto), NOT bounce back to Cockpit!
   await page.locator('[data-testid="katalog-input-nebenjob-brutto"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.getByLabel('Zurück').click()
   await page.locator('[data-testid="katalog-option-nebenjob-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="katalog-option-nebenjob-Nein"]').click()
-  console.log('[Scenario 20] Verified: Back from Einkünfte into completed Lebenslagen works without Bumerang bounce.')
+
+  await nextStep(page)
+  await page.locator('[data-testid="katalog-option-einkuenfte-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await page.getByLabel('Zurück').click()
+  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
+  await page.locator('[data-testid="cockpit-kacheln"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await nextStep(page)
+  console.log('[Scenario 20] Verified: Revisit of completed Lebenslagen and Back from Einkünfte to Cockpit work cleanly.')
 
   // --- 3. Catalog Einkünfte: Krypto-Gate & Vermietung-Gate Zig-Zag ---
   await page.locator('[data-testid="katalog-option-einkuenfte-Kapitalerträge"]').waitFor({ state: 'visible', timeout: 10_000 })
@@ -110,6 +124,7 @@ export async function runScenario20(browser, webOrigin) {
   await page.getByLabel('Zurück').click()
   await page.locator('[data-testid="katalog-option-vermietung-art-Einfach"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="katalog-option-vermietung-art-Einfach"]').click()
+  await nextStep(page)
 
   // --- 4. Catalog Sonderausgaben: KV/PV branches, consecutive integer inputs & Riester ---
   await page.locator('[data-testid="katalog-option-spenden-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
@@ -155,7 +170,7 @@ export async function runScenario20(browser, webOrigin) {
   await wahlInput.fill('120')
   await page.locator('[data-testid="katalog-submit-kv-wahl-betrag"]').click()
 
-  // Riester = Ja -> 1200 -> Mittelbar -> advances to WorkdaysScreen
+  // Riester = Ja -> 1200 -> Mittelbar -> returns to CockpitHome
   await page.locator('[data-testid="katalog-option-riester-Ja"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="katalog-option-riester-Ja"]').click()
   await page.locator('[data-testid="katalog-input-riester-betrag"]').waitFor({ state: 'visible', timeout: 10_000 })
@@ -163,13 +178,21 @@ export async function runScenario20(browser, webOrigin) {
   await page.locator('[data-testid="katalog-submit-riester-betrag"]').click()
   await page.locator('[data-testid="katalog-option-riester-art-Mittelbar"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="katalog-option-riester-art-Mittelbar"]').click()
+  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
 
-  // --- 5. Bumerang-Bug Check #2: WorkdaysScreen -> Back into completed Sonderausgaben ---
-  await page.locator('[data-testid="arbeitstage-urlaub"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.getByLabel('Zurück').click()
+  // --- 5. Bumerang-Bug Check #2: Revisit completed Sonderausgaben & Back from WorkdaysScreen ---
+  await page.locator('[data-testid="cockpit-kachel-sonderausgaben-status"]', { hasText: 'Erledigt' }).waitFor({
+    state: 'visible',
+    timeout: 10_000,
+  })
+  await openTile(page, 'sonderausgaben')
   await page.locator('[data-testid="katalog-option-riester-art-Mittelbar"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="katalog-option-riester-art-Mittelbar"]').click()
+  await nextStep(page)
   await page.locator('[data-testid="arbeitstage-urlaub"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await page.getByLabel('Zurück').click()
+  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
+  await page.locator('[data-testid="cockpit-kacheln"]').waitFor({ state: 'visible', timeout: 10_000 })
 
   console.log('[Scenario 20] PASS: All catalog branches, gates, consecutive integer inputs, and revisit Back-navigation verified.')
   await ctx.close()

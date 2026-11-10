@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { AMOUNT_LATER, UNCERTAINTY_PER_ITEM } from '@steuereule/core'
 import type { CommuteInputs, CommuteRepository } from '../src/commute/commute.repository.js'
 import type { CrossBorderSalaryStatementRecord } from '../src/ch-salary-certificate/ch-salary-certificate.repository.js'
 import type { MasterDataRecord } from '../src/master-data/master-data.repository.js'
@@ -166,5 +167,45 @@ describe('SteuerschaetzungService', () => {
     const status = await service.getState('u', 2025)
 
     expect(status).toEqual({ kind: 'offen', missing: ['pk-obligatorium'] })
+  })
+
+  it('widens only result.to by UNCERTAINTY_PER_ITEM for each AMOUNT_LATER answer in a single estimate', async () => {
+    const base = setup()
+    base.interview.seed('u', 2025, EMPLOYED)
+    base.lstb.seed({ userId: 'u', taxYear: 2025, bruttoarbeitslohn: '45000', lohnsteuer: '6100', sozialversicherung: '9200' })
+    const baseline = range(await base.service.getState('u', 2025))
+    expect(baseline.laterAmounts).toBeUndefined()
+
+    const deferred = setup()
+    deferred.interview.seed('u', 2025, { ...EMPLOYED, spenden: 'Ja', 'spenden-betrag': AMOUNT_LATER })
+    deferred.lstb.seed({ userId: 'u', taxYear: 2025, bruttoarbeitslohn: '45000', lohnsteuer: '6100', sozialversicherung: '9200' })
+    const widened = range(await deferred.service.getState('u', 2025))
+
+    expect(widened.result.from).toBe(baseline.result.from)
+    expect(widened.result.to).toBe(baseline.result.to + UNCERTAINTY_PER_ITEM)
+    expect(widened.taxableIncome).toEqual(baseline.taxableIncome)
+    expect(widened.incomeTax).toEqual(baseline.incomeTax)
+    expect(widened.laterAmounts).toBe(1)
+  })
+
+  it('sums AMOUNT_LATER answers from both spouses in a joint couple estimate', async () => {
+    const setupCouple = async (aLater: boolean, bLater: boolean) => {
+      const env = setup()
+      env.interview.seed('a', 2025, aLater ? { ...EMPLOYED, spenden: 'Ja', 'spenden-betrag': AMOUNT_LATER } : EMPLOYED)
+      env.interview.seed('spouse_a_2025', 2025, bLater ? { dhf: 'Nein', umzug: 'Ja', 'umzug-kosten': AMOUNT_LATER } : {})
+      await env.stammdaten.save('a', { familienstand: 'verheiratet', religion: 'VD' } as MasterDataRecord)
+      await env.kopplung.upsert('a', 2025, { personBUserId: 'spouse_a_2025', filingType: 'zusammen' })
+      env.lstb.seed({ userId: 'a', taxYear: 2025, bruttoarbeitslohn: '82000', lohnsteuer: '9890', sozialversicherung: '15473' })
+      env.lstb.seed({ userId: 'spouse_a_2025', taxYear: 2025, bruttoarbeitslohn: '48000', lohnsteuer: '10420', sozialversicherung: '10008' })
+      return range(await env.service.getState('a', 2025))
+    }
+
+    const baseline = await setupCouple(false, false)
+    const widened = await setupCouple(true, true)
+
+    expect(baseline.laterAmounts).toBeUndefined()
+    expect(widened.result.from).toBe(baseline.result.from)
+    expect(widened.result.to).toBe(baseline.result.to + 2 * UNCERTAINTY_PER_ITEM)
+    expect(widened.laterAmounts).toBe(2)
   })
 })

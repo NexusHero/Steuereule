@@ -41,7 +41,7 @@ export function SocialSignInSection({ disabled, onSignedIn, onError, showUnknown
       <>
         <View style={styles.socialButtons}>
           {googleAvailable === 'available' ? providerButton('google', tr('login.google'), <GoogleG />, 'google') : null}
-          {appleAvailable === 'available' ? providerButton('apple', tr('login.apple'), <AppleG />, 'apple') : null}
+          {appleAvailable === 'available' ? providerButton('apple', tr('login.apple'), <AppleG color={t.color.tinte} />, 'apple') : null}
         </View>
         <SocialDivider />
       </>

@@ -537,6 +537,8 @@
                 "sonderausgaben",
                 "segment-ch",
                 "alleinerziehend",
+                "haushalt",
+                "gesundheit",
                 "berufsprofil"
               ],
               "type": "string"
@@ -5744,6 +5746,10 @@
               "besondere-lebenslage",
               "jahr-ohne-tarif"
             ]
+          },
+          "laterAmounts": {
+            "type": "number",
+            "description": "Number of deferred catalog deduction amounts."
           }
         },
         "required": [

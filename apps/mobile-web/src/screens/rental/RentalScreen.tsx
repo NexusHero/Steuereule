@@ -5,8 +5,10 @@ import { useQueryClient } from '@tanstack/react-query'
 import { Button, Card, Chip, Feld, Input, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
 import { formatEuro, RENTAL_FIELDS, type RentalFieldId } from '@steuereule/core'
 import {
-  useLinkControllerGet,
+  getCockpitControllerGetCockpitSummaryQueryKey,
   getRentalControllerGetQueryKey,
+  getTaxEstimateControllerGetQueryKey,
+  useLinkControllerGet,
   useRentalControllerCreate,
   useRentalControllerGet,
   useRentalControllerSetAddress,
@@ -22,6 +24,9 @@ import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { CatalogScreen } from '../catalog/CatalogScreen'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
+import { usePendingMutations } from '../shared/usePendingMutations'
+import { SaveFailedNotice } from '../shared/SaveFailedNotice'
+import { watchSaveResult } from '../shared/saveFeedback'
 
 export interface RentalScreenProps {
   readonly onDone?: () => void
@@ -39,6 +44,7 @@ export function RentalScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_
   const createProperty = useRentalControllerCreate()
   const setField = useRentalControllerSetField()
   const setAddress = useRentalControllerSetAddress()
+  const { track, flushThen, saveFailed } = usePendingMutations()
 
   // The depot / the kind of letting is a catalogue answer; the mask can ask it right here.
   const [questionOpen, setQuestionOpen] = useState(false)
@@ -72,24 +78,26 @@ export function RentalScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_
 
   function invalidate() {
     void queryClient.invalidateQueries({ queryKey: getRentalControllerGetQueryKey(taxYear) })
+    void queryClient.invalidateQueries({ queryKey: getCockpitControllerGetCockpitSummaryQueryKey(taxYear) })
+    void queryClient.invalidateQueries({ queryKey: getTaxEstimateControllerGetQueryKey(taxYear) })
   }
 
   function send(propertyId: string, field: RentalFieldId, data: RentalFieldDto) {
-    setField.mutate({ jahr: taxYear, objektId: propertyId, feld: field, data }, { onSuccess: invalidate })
+    track(watchSaveResult(setField.mutateAsync({ jahr: taxYear, objektId: propertyId, feld: field, data })).then(invalidate))
   }
 
   function sendAddress(propertyId: string, data: PutRentalAddressDto) {
-    setAddress.mutate({ jahr: taxYear, objektId: propertyId, data }, { onSuccess: invalidate })
+    track(watchSaveResult(setAddress.mutateAsync({ jahr: taxYear, objektId: propertyId, data })).then(invalidate))
   }
 
   function addProperty() {
-    createProperty.mutate({ jahr: taxYear }, { onSuccess: invalidate })
+    track(watchSaveResult(createProperty.mutateAsync({ jahr: taxYear })).then(invalidate))
   }
 
   return (
     <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="screen-container">
       <View style={styles.headerRow}>
-        {onBack ? <BackButton accessibilityLabel={tr('vermietung.back')} onPress={onBack} /> : <BackButtonSpacer />}
+        {onBack ? <BackButton accessibilityLabel={tr('vermietung.back')} onPress={() => flushThen(onBack)} /> : <BackButtonSpacer />}
       </View>
       <Text style={styles.heading}>{tr('vermietung.heading')}</Text>
       <Text style={styles.help}>{tr('vermietung.help')}</Text>
@@ -120,7 +128,8 @@ export function RentalScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_
 
       <StatusNotice response={response} />
 
-      <Button onPress={onDone} style={styles.cta} testID="vermietung-weiter">
+      <SaveFailedNotice visible={saveFailed} />
+      <Button onPress={() => flushThen(onDone)} style={styles.cta} testID="vermietung-weiter">
         {tr('vermietung.weiter')}
       </Button>
     </ScrollView>
