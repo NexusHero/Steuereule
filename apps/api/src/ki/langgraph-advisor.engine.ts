@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import { newActionId } from '../common/action-id.js'
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import {
   AIMessage,
@@ -199,7 +200,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
   ) {
     const tools = buildToolSchemas()
     const boundModel = typeof model.bindTools === 'function' ? model.bindTools([...tools]) : model
-    const makeActionId = request.actionIdFactory ?? (() => `act-${randomUUID().slice(0, 12)}`)
+    const makeActionId = request.actionIdFactory ?? (newActionId)
 
     const agentNode = async (
       state: typeof AdvisorGraphState.State,
