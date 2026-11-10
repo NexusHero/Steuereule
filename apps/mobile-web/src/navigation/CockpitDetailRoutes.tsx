@@ -9,6 +9,7 @@ import { LstbScreen } from '../screens/lstb/LstbScreen'
 import { WorkdaysScreen } from '../screens/workdays/WorkdaysScreen'
 import { useShellState } from './ShellState'
 import { RequiresAccount } from './RequiresAccount'
+import { CockpitSheet } from './CockpitSheet'
 import { useYearGuard } from './guards'
 import type { CockpitStackParamList, PartnerAreaParam } from './routes'
 
@@ -33,7 +34,9 @@ export function CapitalRoute({ navigation, route }: Props<'Capital'>) {
   const home = () => navigation.navigate('CockpitHome', undefined, { pop: true })
   return (
     <RequiresAccount>
-      <CapitalScreen taxYear={year} onDone={home} onBack={home} />
+      <CockpitSheet navigation={navigation}>
+        <CapitalScreen taxYear={year} onDone={home} onBack={home} />
+      </CockpitSheet>
     </RequiresAccount>
   )
 }
@@ -44,7 +47,9 @@ export function RentalRoute({ navigation, route }: Props<'Rental'>) {
   const home = () => navigation.navigate('CockpitHome', undefined, { pop: true })
   return (
     <RequiresAccount>
-      <RentalScreen taxYear={year} onDone={home} onBack={home} />
+      <CockpitSheet navigation={navigation}>
+        <RentalScreen taxYear={year} onDone={home} onBack={home} />
+      </CockpitSheet>
     </RequiresAccount>
   )
 }
@@ -55,7 +60,9 @@ export function ChildrenRoute({ navigation, route }: Props<'Children'>) {
   const home = () => navigation.navigate('CockpitHome', undefined, { pop: true })
   return (
     <RequiresAccount>
-      <ChildrenScreen taxYear={year} onDone={home} onBack={home} />
+      <CockpitSheet navigation={navigation}>
+        <ChildrenScreen taxYear={year} onDone={home} onBack={home} />
+      </CockpitSheet>
     </RequiresAccount>
   )
 }
@@ -96,20 +103,22 @@ export function PartnerRoute({ navigation, route }: Props<'Partner'>) {
 
   return (
     <RequiresAccount>
-      {activePartner.area === 'lstb' ? (
-        <LstbScreen
-          taxYear={year}
-          partnerName={activePartner.name}
-          onSwitchTaxYear={(nextYear) => {
-            setTaxYear(nextYear)
-            navigation.setParams({ year: nextYear })
-          }}
-          onDone={backToMasterData}
-          onBack={backToMasterData}
-        />
-      ) : (
-        <WorkdaysScreen taxYear={year} partnerName={activePartner.name} onDone={backToMasterData} onBack={backToMasterData} />
-      )}
+      <CockpitSheet navigation={navigation}>
+        {activePartner.area === 'lstb' ? (
+          <LstbScreen
+            taxYear={year}
+            partnerName={activePartner.name}
+            onSwitchTaxYear={(nextYear) => {
+              setTaxYear(nextYear)
+              navigation.setParams({ year: nextYear })
+            }}
+            onDone={backToMasterData}
+            onBack={backToMasterData}
+          />
+        ) : (
+          <WorkdaysScreen taxYear={year} partnerName={activePartner.name} onDone={backToMasterData} onBack={backToMasterData} />
+        )}
+      </CockpitSheet>
     </RequiresAccount>
   )
 }

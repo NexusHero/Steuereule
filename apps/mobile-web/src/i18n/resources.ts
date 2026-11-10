@@ -1594,6 +1594,9 @@ export const appResources = {
           },
         },
       },
+      sheet: {
+        schliessen: 'Schließen',
+      },
     },
   },
   en: {
@@ -3189,6 +3192,9 @@ export const appResources = {
             childcareCosts: 'Check childcare costs (daycare/after-school)',
           },
         },
+      },
+      sheet: {
+        schliessen: 'Close',
       },
     },
   },

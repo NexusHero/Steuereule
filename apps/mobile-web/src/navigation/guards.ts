@@ -3,7 +3,7 @@ import type { NavigationState } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { SELECTABLE_TAX_YEARS } from '../config/taxYear'
 import { useShellState } from './ShellState'
-import type { CockpitStackParamList } from './routes'
+import { isSheetRouteName, type CockpitStackParamList } from './routes'
 
 export function isSelectableYear(rawYear: unknown): rawYear is number {
   return typeof rawYear === 'number' && Number.isInteger(rawYear) && SELECTABLE_TAX_YEARS.includes(rawYear)
@@ -11,19 +11,22 @@ export function isSelectableYear(rawYear: unknown): rawYear is number {
 
 /**
  * Unmounts buried stack routes so duplicate back buttons/inputs under `display: none` cannot match
- * accessibility queries, while keeping the top route alive across tab switches.
+ * accessibility queries, while keeping `CockpitHome` mounted behind an open Sheet route.
  */
 export function renderActiveStackRoute({
   route,
   navigation,
   children,
 }: {
-  readonly route: { readonly key: string }
+  readonly route: { readonly key: string; readonly name: string }
   readonly navigation: { readonly getState: () => NavigationState }
   readonly children: ReactElement
 }): ReactElement {
   const stackState = navigation.getState()
-  return createElement(Fragment, null, stackState.routes[stackState.index]?.key === route.key ? children : null)
+  const topRoute = stackState.routes[stackState.index]
+  const visible =
+    topRoute?.key === route.key || (route.name === 'CockpitHome' && isSheetRouteName(topRoute?.name))
+  return createElement(Fragment, null, visible ? children : null)
 }
 
 /**
