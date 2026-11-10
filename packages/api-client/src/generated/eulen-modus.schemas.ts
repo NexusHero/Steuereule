@@ -179,6 +179,7 @@ export const AdvisorActionProposalDtoFieldReason = {
   unreadable: 'unreadable',
   plausibility_conflict: 'plausibility_conflict',
   partial_sv_lines: 'partial_sv_lines',
+  llm_suggested: 'llm_suggested',
 } as const;
 
 export type AdvisorActionProposalDtoCompanionFields = {[key: string]: string};
@@ -319,6 +320,7 @@ export const AdvisorMaxPathProposalDtoFieldReason = {
   unreadable: 'unreadable',
   plausibility_conflict: 'plausibility_conflict',
   partial_sv_lines: 'partial_sv_lines',
+  llm_suggested: 'llm_suggested',
 } as const;
 
 export type AdvisorMaxPathProposalDtoCompanionFields = {[key: string]: string};
@@ -464,6 +466,7 @@ export const LstbExtractedFieldDtoReason = {
   unreadable: 'unreadable',
   plausibility_conflict: 'plausibility_conflict',
   partial_sv_lines: 'partial_sv_lines',
+  llm_suggested: 'llm_suggested',
 } as const;
 
 export interface LstbExtractedFieldDto {

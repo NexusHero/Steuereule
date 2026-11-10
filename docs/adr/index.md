@@ -75,6 +75,7 @@ The ADRs **justify** the architecture; the [living arc42 document](../arc42/READ
 | 0054 | Zusammenveranlagung: eine gemeinsame Erklärung, Person A erfasst für Person B mit | Accepted |
 | 0055 | Zero-Downtime Database Migrations (Expand and Contract Pattern) | Accepted |
 | 0056 | Asynchrone PDF-Generierung & Job-Entkopplung (Fault Isolation) | Accepted |
+| 0058 | LStB-Textfallback: Allowlist, Belegprüfung, nie grün | Accepted |
 
 See also the [Tech Radar](./tech-radar.md).
 

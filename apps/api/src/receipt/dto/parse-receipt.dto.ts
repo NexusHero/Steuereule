@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 import { IsBoolean, IsIn, IsInt, IsNotEmpty, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator'
-import { SCREENS, type Screen } from '@steuereule/core'
+import { SCREENS, type LstbFieldReason, type Screen } from '@steuereule/core'
 import { AdvisorActionProposalDto, AdvisorChatMessageDto, CalculationTermDto } from '../../advisor/dto/advisor.dto.js'
 
 export const RECEIPT_VENDOR_CATEGORIES = [
@@ -142,10 +142,10 @@ export class LstbExtractedFieldDto {
   @ApiProperty({
     type: String,
     nullable: true,
-    enum: ['missing', 'unreadable', 'plausibility_conflict', 'partial_sv_lines'],
+    enum: ['missing', 'unreadable', 'plausibility_conflict', 'partial_sv_lines', 'llm_suggested'],
     example: null,
   })
-  reason!: 'missing' | 'unreadable' | 'plausibility_conflict' | 'partial_sv_lines' | null
+  reason!: LstbFieldReason | null
 }
 
 export class LstbExtractedFieldsDto {
