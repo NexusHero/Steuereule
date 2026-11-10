@@ -11,7 +11,6 @@ import {
   PROFESSION_VALUES,
   type AdvisorActionProposal,
   type AdvisorChatMessageView,
-  type AdvisorQuickAction,
   type CaseDigest,
   type OwlCardsDisplay,
   type Profession,
@@ -50,7 +49,7 @@ import { AssessmentScreen } from '../assessment/AssessmentScreen'
 import { CatalogScreen } from '../catalog/CatalogScreen'
 import { MasterDataScreen } from '../master-data/MasterDataScreen'
 import { ProfessionPicker } from './ProfessionPicker'
-import { AdvisorChatPanel } from './AdvisorChatPanel'
+import { AdvisorChatPanel, sendOptionsToDto, type ChatSendOptions } from './AdvisorChatPanel'
 import { invalidateAllTaxQueries, useOptionalCopilotBridge, type OwlViewMode } from './CopilotBridgeProvider'
 
 export interface OwlModeScreenProps {
@@ -66,7 +65,7 @@ export interface OwlModeScreenProps {
   /** The interview's occupation group; null = not chosen yet, undefined = no picker (not loaded). */
   readonly profession?: Profession | null | undefined
   readonly onChooseProfession?: ((profession: Profession) => Promise<void> | void) | undefined
-  readonly onSendMessage?: ((text: string, quickAction?: AdvisorQuickAction) => Promise<void> | void) | undefined
+  readonly onSendMessage?: ((text: string, options?: ChatSendOptions) => Promise<void> | void) | undefined
   readonly onApplyAction?: ((actionId: string) => Promise<void> | void) | undefined
   readonly onUndoAction?: ((actionId: string) => Promise<void> | void) | undefined
   readonly isGuest?: boolean | undefined
@@ -331,13 +330,13 @@ function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CURRENT_T
         if (response.status !== 200) throw new Error(`profession not stored (HTTP ${response.status})`)
         await invalidate()
       }}
-      onSendMessage={async (text, quickAction) => {
+      onSendMessage={async (text, options) => {
         if (bridge) {
           const activeScreen = bridge.owlViewMode.kind === 'mask' ? bridge.owlViewMode.screen : undefined
-          await bridge.sendStreamingMessage(text, activeScreen, quickAction ? { quickAction } : undefined)
+          await bridge.sendStreamingMessage(text, activeScreen, options)
           return
         }
-        await sendMessageMutation.mutateAsync({ jahr: taxYear, data: { message: text } })
+        await sendMessageMutation.mutateAsync({ jahr: taxYear, data: { message: text, ...sendOptionsToDto(options) } })
         await invalidate()
       }}
       onApplyAction={async (actionId) => {
@@ -507,18 +506,26 @@ function OwlModeScreenView({
     }
   }
 
-  async function handleSendChat(text: string, quickAction?: AdvisorQuickAction) {
+  async function handleSendChat(text: string, options?: ChatSendOptions) {
     setIsSending(true)
     try {
       if (onSendMessage) {
-        await onSendMessage(text, quickAction)
+        await onSendMessage(text, options)
         return
+      }
+      // Regenerate / edit locally: the replaced turn leaves the chat before the new one is added.
+      const replaceFrom = options?.replaceFromMessageId
+      if (replaceFrom !== undefined) {
+        setLocalMessages((prev) => {
+          const at = prev.findIndex((m) => m.id === replaceFrom)
+          return at === -1 ? prev : prev.slice(0, at)
+        })
       }
       if (bridge && bridge.isAuthenticated) {
         const res = await bridge.sendStreamingMessage(
           text,
           viewMode.kind === 'mask' ? viewMode.screen : undefined,
-          quickAction ? { quickAction } : undefined,
+          options,
         )
         // A stopped answer stays stopped: no local stand-in reply (#451 decision 2).
         if (res === 'aborted') return

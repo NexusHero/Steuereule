@@ -554,4 +554,54 @@ describe('AdvisorService (In-App Steuerberater Agent "Deine Eule")', () => {
     await withEngine.sendMessage(USER, YEAR, { message: 'Was hab ich vergessen?' })
     expect(seen).toEqual([true, false])
   })
+
+  describe('replace a turn: regenerate and edit-and-resend (#451 slice 1b)', () => {
+    beforeEach(async () => {
+      await interviewRepo.write({ userId: USER, taxYear: YEAR, questionId: 'spenden', value: 'Ja', openItems: 0 })
+    })
+
+    it('replaces the last turn: the old answer leaves the session and its pending proposal is dismissed, never applied', async () => {
+      const first = await advisorService.sendMessage(USER, YEAR, { message: 'Bitte 300 € Spenden eintragen' })
+      const oldAction = first.assistantMessage.meta!.action!
+      expect(oldAction.status).toBe('pending')
+
+      const second = await advisorService.sendMessage(USER, YEAR, {
+        message: 'Bitte 350 € Spenden eintragen',
+        replaceFromMessageId: first.userMessage.id,
+      })
+
+      const session = await advisorService.getSession(USER, YEAR)
+      expect(session.messages.map((m) => m.id)).toEqual([second.userMessage.id, second.assistantMessage.id])
+      await expect(advisorService.applyAction(USER, YEAR, oldAction.actionId)).rejects.toMatchObject({ code: 'ADVISOR_ACTION_DISMISSED' })
+      expect(second.assistantMessage.meta?.action?.newValue).toBe('350')
+    })
+
+    it('regenerates with the same question', async () => {
+      const first = await advisorService.sendMessage(USER, YEAR, { message: 'Bitte 300 € Spenden eintragen' })
+      const again = await advisorService.sendMessage(USER, YEAR, { message: 'Bitte 300 € Spenden eintragen', replaceFromMessageId: first.userMessage.id })
+      const session = await advisorService.getSession(USER, YEAR)
+      expect(session.messages).toHaveLength(2)
+      expect(session.messages[0]!.id).toBe(again.userMessage.id)
+    })
+
+    it('refuses to replace anything but the latest question', async () => {
+      const first = await advisorService.sendMessage(USER, YEAR, { message: 'Bitte 300 € Spenden eintragen' })
+      await advisorService.sendMessage(USER, YEAR, { message: 'Was ist der Pauschbetrag?' })
+      await expect(
+        advisorService.sendMessage(USER, YEAR, { message: 'x', replaceFromMessageId: first.userMessage.id }),
+      ).rejects.toMatchObject({ code: 'ADVISOR_REPLACE_NOT_LATEST' })
+      await expect(
+        advisorService.sendMessage(USER, YEAR, { message: 'x', replaceFromMessageId: first.assistantMessage.id }),
+      ).rejects.toMatchObject({ code: 'ADVISOR_REPLACE_NOT_LATEST' })
+    })
+
+    it('leaves an applied proposal applied: replacing only dismisses what is still pending', async () => {
+      const first = await advisorService.sendMessage(USER, YEAR, { message: 'Bitte 300 € Spenden eintragen' })
+      await advisorService.applyAction(USER, YEAR, first.assistantMessage.meta!.action!.actionId)
+      await advisorService.sendMessage(USER, YEAR, { message: 'Bitte 300 € Spenden eintragen', replaceFromMessageId: first.userMessage.id })
+      await expect(advisorService.applyAction(USER, YEAR, first.assistantMessage.meta!.action!.actionId)).rejects.toMatchObject({
+        code: 'ADVISOR_ACTION_ALREADY_APPLIED',
+      })
+    })
+  })
 })

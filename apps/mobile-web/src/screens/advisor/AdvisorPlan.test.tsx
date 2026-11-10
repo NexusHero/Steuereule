@@ -150,4 +150,28 @@ describe('plan checklist (#451 slice 6, AC 11–14)', () => {
       ],
     })
   })
+
+  it('sends replaceFromMessageId when an answer is regenerated or a question edited (#451 slice 1b)', async () => {
+    let sentBody: unknown = null
+    server.use(
+      http.post('*/v1/steuerjahre/2025/advisor/stream', async ({ request }) => {
+        sentBody = await request.json()
+        return new Response(sse('done', { mode: 'langgraph', userMessage: null, assistantMessage: null }), {
+          status: 200,
+          headers: { 'Content-Type': 'text/event-stream' },
+        })
+      }),
+    )
+    function Probe() {
+      const bridge = useCopilotBridge()
+      return <button data-testid="send" onClick={() => void bridge.sendStreamingMessage('Und 350 €?', undefined, { replaceFromMessageId: 'u2' })} />
+    }
+    render(
+      <Providers>
+        <Probe />
+      </Providers>,
+    )
+    act(() => screen.getByTestId('send').click())
+    await waitFor(() => expect(sentBody).toEqual({ message: 'Und 350 €?', replaceFromMessageId: 'u2' }))
+  })
 })

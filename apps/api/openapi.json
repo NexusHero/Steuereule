@@ -7538,6 +7538,10 @@
               "forgotten_check"
             ],
             "description": "Quick start that shapes the turn: forgotten_check always opens with a visible plan (#451)."
+          },
+          "replaceFromMessageId": {
+            "type": "string",
+            "description": "Regenerate or edit-and-resend (#451): the id of the latest user message. That turn is replaced; its pending proposals are dismissed, never applied."
           }
         },
         "required": [

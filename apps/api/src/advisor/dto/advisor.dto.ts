@@ -302,6 +302,16 @@ export class SendAdvisorMessageDto {
   @IsOptional()
   @IsIn(ADVISOR_QUICK_ACTIONS)
   quickAction?: AdvisorQuickAction | undefined
+
+  @ApiPropertyOptional({
+    type: String,
+    description:
+      'Regenerate or edit-and-resend (#451): the id of the latest user message. That turn is replaced; its pending proposals are dismissed, never applied.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  replaceFromMessageId?: string | undefined
 }
 
 export class SendAdvisorMessageResponseDto {

@@ -163,6 +163,82 @@ export async function runScenario24(browser, webOrigin) {
 
   await page.locator('text=Steuerberatungsgesetz').first().waitFor({ state: 'visible', timeout: 10_000 })
 
+  // 7. Chat basics (#451 slice 1b): regenerate, edit-and-resend, copy, Markdown.
+  const assistantMessages = page.locator('[data-testid="advisor-assistant-message"]')
+  const writes = []
+  page.on('request', (req) => {
+    if (req.method() !== 'GET' && /\/advisor\/actions\//.test(req.url())) writes.push(req.url())
+  })
+
+  // 7a. A pending proposal, then „Neu generieren“: the old answer is replaced, its proposal is gone
+  //     and was never applied; the turn count stays the same.
+  await chatInput.fill('Bitte 450 € Spenden eintragen')
+  await chatSend.click()
+  await page.locator('[data-testid="advisor-action-card"]', { hasText: '450' }).first().waitFor({ state: 'visible', timeout: 10_000 })
+  const answersBefore = await assistantMessages.count()
+  await page.locator('[data-testid="advisor-message-regenerate"]').click()
+  await page.waitForFunction(
+    (n) => document.querySelectorAll('[data-testid="advisor-assistant-message"]').length === n && !document.querySelector('[data-testid="advisor-thinking"]'),
+    answersBefore,
+    { timeout: 15_000 },
+  )
+  if ((await page.locator('[data-testid="advisor-action-card"]', { hasText: '450' }).count()) !== 1) {
+    fail('[Scenario 24] After „Neu generieren“ exactly one 450 € proposal (the new one) must remain')
+  }
+  console.log('[Scenario 24] ✅ Regenerate replaces the latest answer, turn count unchanged')
+
+  // 7b. Edit the latest question: the 450 € proposal is replaced by a 500 € one, nothing applied.
+  await page.locator('[data-testid="advisor-message-edit"]').click()
+  if ((await chatInput.inputValue()) !== 'Bitte 450 € Spenden eintragen') fail('[Scenario 24] Edit must put the last question into the field')
+  await chatInput.fill('Bitte 500 € Spenden eintragen')
+  await chatSend.click()
+  await page.locator('[data-testid="advisor-action-card"]', { hasText: '500' }).first().waitFor({ state: 'visible', timeout: 15_000 })
+  await page.locator('[data-testid="advisor-action-card"]', { hasText: '450' }).waitFor({ state: 'detached', timeout: 10_000 })
+  if (writes.length > 0) fail(`[Scenario 24] Regenerate/edit must never apply a proposal, saw ${writes.join(', ')}`)
+  console.log('[Scenario 24] ✅ Edit-and-resend replaces the answer; the replaced proposal was never applied')
+
+  // 7c. Copy the latest answer.
+  await ctx.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: webOrigin })
+  const copy = page.locator('[data-testid="advisor-message-copy"]').last()
+  await copy.click()
+  await page.waitForFunction(() => [...document.querySelectorAll('[data-testid="advisor-message-copy"]')].some((b) => b.textContent === 'Kopiert'), null, { timeout: 5_000 })
+  const clip = await page.evaluate(() => navigator.clipboard.readText())
+  if (!clip.includes('500')) fail(`[Scenario 24] Copy should put the answer on the clipboard, got ${JSON.stringify(clip.slice(0, 80))}`)
+  console.log('[Scenario 24] ✅ Copy puts the answer on the clipboard and confirms „Kopiert“')
+
+  // 7d. Markdown (KI stub: one stored answer as a model would write it). Bold, list and table are
+  //     rendered, a javascript: link is not a link, an image is never fetched.
+  const imageRequests = []
+  page.on('request', (req) => {
+    if (req.url().includes('tracker.example')) imageRequests.push(req.url())
+  })
+  await page.route('**/advisor/session', async (route) => {
+    const res = await route.fetch()
+    const json = await res.json()
+    json.messages = [
+      ...json.messages,
+      {
+        id: 'stub-md',
+        role: 'assistant',
+        content: '**Fett** und _kursiv_\n\n- Punkt eins\n- Punkt zwei\n\n| Posten | Betrag |\n| --- | --- |\n| Spenden | 500 € |\n\n[böse](javascript:alert(1)) ![x](https://tracker.example/p.png)',
+        meta: null,
+        createdAt: new Date().toISOString(),
+      },
+    ]
+    await route.fulfill({ response: res, json })
+  })
+  await page.reload({ waitUntil: 'networkidle' })
+  if (await fragenTab.isVisible().catch(() => false)) await fragenTab.click()
+  const md = assistantMessages.last()
+  await md.waitFor({ state: 'visible', timeout: 10_000 })
+  const mdText = await md.innerText()
+  if (mdText.includes('**') || mdText.includes('| ---')) fail(`[Scenario 24] Markdown must be rendered, saw raw: ${mdText.slice(0, 120)}`)
+  if (!mdText.includes('Punkt eins') || !mdText.includes('Spenden')) fail('[Scenario 24] Markdown list/table content missing')
+  if ((await md.locator('a[href^="javascript:"]').count()) !== 0) fail('[Scenario 24] A javascript: link must never become a link')
+  if (imageRequests.length > 0) fail('[Scenario 24] Markdown images must never be fetched')
+  await page.unroute('**/advisor/session')
+  console.log('[Scenario 24] ✅ Markdown rendered (bold, list, table); javascript: link inert; no image fetched')
+
   // Return to Cockpit and verify estimate is still healthy
   await page.getByRole('tab', { name: 'Cockpit' }).click()
   await assertCockpitEstimate(page, 'Scenario 24 After Advisor Action', { direction: 'Erstattung' })

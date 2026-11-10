@@ -3,6 +3,9 @@ import { Linking, Pressable, Text, TextInput, View, type TextStyle, type ViewSty
 import { ChatComposer } from './chat/ChatComposer'
 import { ThinkingIndicator } from './chat/ThinkingIndicator'
 import { DictationHint } from './chat/DictationHint'
+import { MarkdownMessage } from './chat/MarkdownMessage'
+import { copyToClipboard } from './chat/clipboard'
+import { plainTextForCopy } from './chat/markdownLinks'
 import type { AbortedTurn, AdvisorPlanView } from './CopilotBridgeProvider'
 import { PlanChecklist } from './chat/PlanChecklist'
 import { useTranslation } from 'react-i18next'
@@ -16,11 +19,9 @@ import {
   type AdvisorLegalSource,
   type AdvisorQuickAction,
   type AdvisorTwoPathsProposal,
-  type OwlSourceId,
   type Screen,
 } from '@steuereule/core'
 import { APP_NS } from '../../i18n/resources'
-import type { Tr } from '../shared/tr'
 
 export interface AdvisorChatPanelProps {
   readonly greeting?: string | undefined
@@ -31,7 +32,7 @@ export interface AdvisorChatPanelProps {
   readonly streamedText?: string | undefined
   readonly chatError?: string | null | undefined
   readonly basisMode?: boolean | undefined
-  readonly onSendMessage: (text: string, quickAction?: AdvisorQuickAction) => Promise<void> | void
+  readonly onSendMessage: (text: string, options?: ChatSendOptions) => Promise<void> | void
   /** The plan of the current or last answer (#451 slice 6). */
   readonly plan?: AdvisorPlanView | null | undefined
   /** Stops the running answer; without it the chat offers no Stop (e.g. the non-streaming companion). */
@@ -52,59 +53,25 @@ export interface AdvisorChatPanelProps {
   readonly compact?: boolean | undefined
 }
 
+/** How a message is sent: a quick start, or replacing the latest turn (regenerate / edit, #451 1b). */
+export interface ChatSendOptions {
+  readonly quickAction?: AdvisorQuickAction | undefined
+  readonly replaceFromMessageId?: string | undefined
+}
+
+/** The options as request fields, without keys that are unset (the DTO forbids explicit undefined). */
+export function sendOptionsToDto(options: ChatSendOptions | undefined): { quickAction?: AdvisorQuickAction; replaceFromMessageId?: string } {
+  return {
+    ...(options?.quickAction ? { quickAction: options.quickAction } : {}),
+    ...(options?.replaceFromMessageId ? { replaceFromMessageId: options.replaceFromMessageId } : {}),
+  }
+}
+
 /** A quick-start chip that also tells the server how to run the turn (e.g. always with a plan). */
 export interface AdvisorQuickChip {
   readonly label: string
   readonly testID: string
   readonly quickAction?: AdvisorQuickAction | undefined
-}
-
-const SOURCE_TAG_REGEX = /\[(estg-[a-z0-9-]+|ao-355)\]/g
-
-function renderMessageWithLawChips(
-  content: string,
-  onSelectSource: (source: AdvisorLegalSource) => void,
-  styles: ReturnType<typeof makeStyles>,
-  tr: Tr,
-) {
-  const parts: React.ReactNode[] = []
-  let lastIndex = 0
-  let match: RegExpExecArray | null
-
-  const rx = new RegExp(SOURCE_TAG_REGEX.source, 'g')
-  while ((match = rx.exec(content)) !== null) {
-    if (match.index > lastIndex) {
-      parts.push(content.slice(lastIndex, match.index))
-    }
-    const sourceId = match[1] as OwlSourceId
-    const legalSource = ADVISOR_LEGAL_SOURCES[sourceId]
-    if (legalSource) {
-      parts.push(
-        <Pressable
-          key={`${sourceId}-${match.index}`}
-          accessibilityRole="button"
-          accessibilityLabel={tr('advisor.chat.legalSourceAria', {
-            paragraph: legalSource.paragraph,
-            defaultValue: `Rechtsquelle ${legalSource.paragraph}`,
-          })}
-          onPress={() => onSelectSource(legalSource)}
-          style={styles.inlineLawChip}
-          testID={`law-chip-${sourceId}`}
-        >
-          <Text style={styles.inlineLawChipText}>{`§ ${legalSource.paragraph.replace(/^§\s*/, '')}`}</Text>
-        </Pressable>,
-      )
-    } else {
-      parts.push(match[0])
-    }
-    lastIndex = rx.lastIndex
-  }
-
-  if (lastIndex < content.length) {
-    parts.push(content.slice(lastIndex))
-  }
-
-  return <Text style={styles.assistantText}>{parts}</Text>
 }
 
 function ActionProposalCardView({
@@ -396,6 +363,8 @@ export function AdvisorChatPanel({
   const [receiptTextOpen, setReceiptTextOpen] = useState(false)
   const [receiptFileName, setReceiptFileName] = useState('beleg.pdf')
   const [receiptRawText, setReceiptRawText] = useState('')
+  const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
 
   async function handleSubmit(rawText?: string, quickAction?: AdvisorQuickAction) {
     const text = (rawText ?? inputText).trim()
@@ -403,11 +372,37 @@ export function AdvisorChatPanel({
     if (rawText === undefined) {
       setInputText('')
     }
-    await (quickAction ? onSendMessage(text, quickAction) : onSendMessage(text))
+    await (quickAction ? onSendMessage(text, { quickAction }) : onSendMessage(text))
   }
 
   // The plan sits above the answer it belongs to: the live one, the stopped one, or the last one.
   const lastAssistantIndex = messages.reduce((last, m, i) => (m.role === 'assistant' ? i : last), -1)
+  const lastUserIndex = messages.reduce((last, m, i) => (m.role === 'user' ? i : last), -1)
+  const lastUser = lastUserIndex === -1 ? null : messages[lastUserIndex]!
+  const canReplace = !isSending && lastUser !== null
+
+  async function copyMessage(id: string, content: string) {
+    if (await copyToClipboard(plainTextForCopy(content))) {
+      setCopiedId(id)
+      setTimeout(() => setCopiedId((current) => (current === id ? null : current)), 2000)
+    }
+  }
+
+  function regenerate() {
+    if (!canReplace || lastUser === null) return
+    void onSendMessage(lastUser.content, { replaceFromMessageId: lastUser.id })
+  }
+
+  function startEdit() {
+    if (!canReplace || lastUser === null) return
+    setEditingId(lastUser.id)
+    setInputText(lastUser.content)
+  }
+
+  function cancelEdit() {
+    setEditingId(null)
+    setInputText('')
+  }
   const planAboveLastAnswer = plan !== null && !isSending && abortedTurn === null
 
   async function handleReceiptSubmit() {
@@ -460,8 +455,21 @@ export function AdvisorChatPanel({
       <View style={styles.messagesList}>
         {messages.map((msg, index) =>
           msg.role === 'user' ? (
-            <View key={msg.id} style={styles.userBubble} testID="advisor-user-message">
-              <Text style={styles.userBubbleText}>{msg.content}</Text>
+            <View key={msg.id} style={styles.userTurn}>
+              <View style={styles.userBubble} testID="advisor-user-message">
+                <Text style={styles.userBubbleText}>{msg.content}</Text>
+              </View>
+              {index === lastUserIndex && canReplace && editingId === null ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={tr('advisor.chat.editAria')}
+                  onPress={startEdit}
+                  style={styles.messageAction}
+                  testID="advisor-message-edit"
+                >
+                  <Text style={styles.messageActionText}>{tr('advisor.chat.edit')}</Text>
+                </Pressable>
+              ) : null}
             </View>
           ) : (
             <View key={msg.id}>
@@ -470,7 +478,7 @@ export function AdvisorChatPanel({
               <View style={styles.assistantBubbleHeader}>
                 <AiChip>{tr('advisor.chat.sender', 'Die Eule')}</AiChip>
               </View>
-              {renderMessageWithLawChips(msg.content, setSelectedSource, styles, tr)}
+              <MarkdownMessage content={msg.content} onSelectSource={setSelectedSource} />
 
               {/* Source Pills when sources are in meta */}
               {msg.meta?.sources && msg.meta.sources.length > 0 ? (
@@ -543,6 +551,34 @@ export function AdvisorChatPanel({
                   styles={styles}
                 />
               ) : null}
+
+              <View style={styles.messageActions}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={tr('advisor.chat.copyAria')}
+                  onPress={() => void copyMessage(msg.id, msg.content)}
+                  style={styles.messageAction}
+                  testID="advisor-message-copy"
+                >
+                  <Text style={styles.messageActionText}>{copiedId === msg.id ? tr('advisor.chat.copied') : tr('advisor.chat.copy')}</Text>
+                </Pressable>
+                {index === lastAssistantIndex && lastAssistantIndex > lastUserIndex && canReplace ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={tr('advisor.chat.regenerateAria')}
+                    onPress={regenerate}
+                    style={styles.messageAction}
+                    testID="advisor-message-regenerate"
+                  >
+                    <Text style={styles.messageActionText}>{tr('advisor.chat.regenerate')}</Text>
+                  </Pressable>
+                ) : null}
+              </View>
+              {copiedId === msg.id ? (
+                <Text style={styles.srOnly} accessibilityLiveRegion="polite" aria-live="polite">
+                  {tr('advisor.chat.copied')}
+                </Text>
+              ) : null}
             </Card>
             </View>
           ),
@@ -556,7 +592,7 @@ export function AdvisorChatPanel({
               <AiChip>{tr('advisor.chat.sender', 'Die Eule')}</AiChip>
             </View>
             <View testID="advisor-stream-token-preview" accessibilityLabel={tr('advisor.chat.answering')}>
-              {renderMessageWithLawChips(streamedText, setSelectedSource, styles, tr)}
+              <MarkdownMessage content={streamedText} onSelectSource={setSelectedSource} />
             </View>
           </Card>
         ) : isSending ? (
@@ -569,7 +605,7 @@ export function AdvisorChatPanel({
               <AiChip>{tr('advisor.chat.sender', 'Die Eule')}</AiChip>
               <Text style={styles.abortedBadge}>{tr('advisor.chat.aborted')}</Text>
             </View>
-            {abortedTurn.partialText.length > 0 ? renderMessageWithLawChips(abortedTurn.partialText, setSelectedSource, styles, tr) : null}
+            {abortedTurn.partialText.length > 0 ? <MarkdownMessage content={abortedTurn.partialText} onSelectSource={setSelectedSource} /> : null}
             <Pressable
               accessibilityRole="button"
               onPress={() => void handleSubmit(abortedTurn.question)}
@@ -730,12 +766,22 @@ export function AdvisorChatPanel({
           </Pressable>
         ) : null}
         <View style={styles.composer}>
+          {editingId !== null ? (
+            <View style={styles.editBanner} testID="advisor-edit-banner">
+              <Text style={styles.messageActionText}>{tr('advisor.chat.editing')}</Text>
+              <Pressable accessibilityRole="button" onPress={cancelEdit} testID="advisor-edit-cancel">
+                <Text style={styles.messageActionText}>{tr('advisor.chat.editCancel')}</Text>
+              </Pressable>
+            </View>
+          ) : null}
           <ChatComposer
             value={inputText}
             onChangeText={setInputText}
             onSend={(text) => {
               setInputText('')
-              void onSendMessage(text)
+              const replaceFromMessageId = editingId
+              setEditingId(null)
+              void (replaceFromMessageId ? onSendMessage(text, { replaceFromMessageId }) : onSendMessage(text))
             }}
             onStop={onStop}
             sending={isSending}
@@ -1145,6 +1191,12 @@ function makeStyles(t: UiTheme) {
       gap: t.space.s1,
     } as ViewStyle,
     composer: { flex: 1 } as ViewStyle,
+    userTurn: { alignItems: 'flex-end' } as ViewStyle,
+    messageActions: { flexDirection: 'row', gap: t.space.s3, marginTop: t.space.s2 } as ViewStyle,
+    messageAction: { paddingVertical: 2 } as ViewStyle,
+    messageActionText: { fontFamily: t.font.text, fontSize: t.size.xs, color: t.color.tinte2, fontWeight: t.weight.fett } as TextStyle,
+    editBanner: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: t.space.s1 } as ViewStyle,
+    srOnly: { position: 'absolute', width: 1, height: 1, overflow: 'hidden', opacity: 0 } as TextStyle,
     abortedBadge: {
       fontFamily: t.font.text,
       fontSize: t.size.xs,

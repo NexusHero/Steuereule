@@ -170,6 +170,8 @@ export interface AdvisorMessageMeta {
   readonly sources?: readonly OwlSourceId[] | undefined
   /** Server-internal: which engine produced the turn, kept with the drafts it proposed. */
   readonly engine?: AdvisorEngineInfo | undefined
+  /** Server-internal: the turn was regenerated or edited away (#451 slice 1b); hidden from the chat. */
+  readonly replaced?: true | undefined
 }
 
 export interface AdvisorChatMessageView {

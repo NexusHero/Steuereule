@@ -645,6 +645,8 @@ export interface SendAdvisorMessageDto {
   activeScreen?: SendAdvisorMessageDtoActiveScreen;
   /** Quick start that shapes the turn: forgotten_check always opens with a visible plan (#451). */
   quickAction?: SendAdvisorMessageDtoQuickAction;
+  /** Regenerate or edit-and-resend (#451): the id of the latest user message. That turn is replaced; its pending proposals are dismissed, never applied. */
+  replaceFromMessageId?: string;
 }
 
 /**

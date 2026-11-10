@@ -81,6 +81,8 @@ export interface AdvisorPlanView {
 
 export interface SendStreamingOptions {
   readonly quickAction?: AdvisorQuickAction | undefined
+  /** Regenerate / edit-and-resend: the latest user message whose turn the answer replaces. */
+  readonly replaceFromMessageId?: string | undefined
 }
 
 /** Marks the running step of a stopped plan as aborted; finished steps stay as they are. */
@@ -351,6 +353,7 @@ export function CopilotBridgeProvider({
             message,
             ...(activeScreen ? { activeScreen } : {}),
             ...(options?.quickAction ? { quickAction: options.quickAction } : {}),
+            ...(options?.replaceFromMessageId ? { replaceFromMessageId: options.replaceFromMessageId } : {}),
           }),
         })
 

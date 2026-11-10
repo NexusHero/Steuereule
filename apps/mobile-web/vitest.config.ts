@@ -1,3 +1,5 @@
+import { createRequire } from 'node:module'
+import path from 'node:path'
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import { screensWebPlatformResolver } from './vitest.rn-navigation-resolver'
@@ -43,6 +45,14 @@ import { reactNativeWebResolutionCanary } from './reactNativeWebResolutionCanary
 // build) — reverted, reran, green again. Both files carry the full account, including why the
 // canary is a file and not the in-memory array it started as (that array read back empty on
 // every run, including the broken one, and would have too here).
+const requireHere = createRequire(import.meta.url)
+
+/** Absolute path of a package's ES build, resolved from this app or from `parent`'s own deps. */
+function esModuleEntry(pkg: string, file: string, parent?: string): string {
+  const from = parent ? createRequire(requireHere.resolve(`${parent}/package.json`)) : requireHere
+  return path.join(path.dirname(from.resolve(`${pkg}/package.json`)), file)
+}
+
 export default defineConfig({
   plugins: [react(), screensWebPlatformResolver(), reactNativeWebResolutionCanary()],
   resolve: {
@@ -50,6 +60,13 @@ export default defineConfig({
       'react-native': 'react-native-web',
       // react-native-svg ships Flow source jsdom can't parse; stub it for tests only.
       'react-native-svg': new URL('./src/test-stubs/react-native-svg.tsx', import.meta.url).pathname,
+      'expo-clipboard': new URL('./src/test-stubs/expo-clipboard.ts', import.meta.url).pathname,
+      // react-native-marked and two of its helpers put a CommonJS build in `main`; its
+      // require('react-native') would bypass the alias above. Point at their ES builds — what
+      // Metro picks via `module` — so react-native-web is used, as in the shipped bundle (#451).
+      'react-native-marked': esModuleEntry('react-native-marked', 'dist/module/index.js'),
+      '@jsamr/react-native-li': esModuleEntry('@jsamr/react-native-li', 'lib/module/index.js', 'react-native-marked'),
+      'react-native-reanimated-table': esModuleEntry('react-native-reanimated-table', 'lib/module/index.js', 'react-native-marked'),
     },
   },
   test: {
@@ -70,7 +87,16 @@ export default defineConfig({
         // Scoped by package directory, nothing else — see the file-level comment above. These
         // match against the *resolved* id (an absolute path), not the bare specifier, which is
         // why each pattern anchors on `/node_modules/<pkg>/`.
-        inline: [/\/node_modules\/@react-navigation\//, /\/node_modules\/react-native-screens\//, /\/node_modules\/react-native-safe-area-context\//],
+        // react-native-marked (+ its list/table helpers) require('react-native') — inlined so the
+        // alias above swaps in react-native-web exactly as Metro does for the shipped bundle (#451).
+        inline: [
+          /\/node_modules\/@react-navigation\//,
+          /\/node_modules\/react-native-screens\//,
+          /\/node_modules\/react-native-safe-area-context\//,
+          /\/node_modules\/react-native-marked\//,
+          /\/node_modules\/@jsamr\//,
+          /\/node_modules\/react-native-reanimated-table\//,
+        ],
       },
     },
     coverage: {
