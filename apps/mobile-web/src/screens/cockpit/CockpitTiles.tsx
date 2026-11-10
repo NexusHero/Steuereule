@@ -1,7 +1,7 @@
 import { Pressable, Text, View, type TextStyle, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { Card, useBreakpoint, useTheme, type UiTheme } from '@steuereule/ui'
-import type { Answers } from '@steuereule/core'
+import type { Answers, Conflict, Notice } from '@steuereule/core'
 import {
   useCapitalControllerGet,
   useChSalaryCertificateControllerGet,
@@ -13,7 +13,7 @@ import {
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import type { FunnelPath } from '../funnel/KontoWandScreen'
-import { hasAnswersForEntry, visibleTiles, type TileDefinition, type TileFacts, type TileStatus } from './tiles'
+import { hasAnswersForEntry, tileHintSeverity, visibleTiles, type TileDefinition, type TileFacts, type TileStatus } from './tiles'
 
 export function useCockpitTileFacts(
   year: number,
@@ -52,10 +52,12 @@ export function tileRevisitFlag(tile: TileDefinition, answers: Answers): boolean
 
 export interface CockpitTilesProps {
   readonly facts: TileFacts
+  readonly conflicts?: readonly Conflict[]
+  readonly notices?: readonly Notice[]
   readonly onOpenTile: (tile: TileDefinition, revisit: boolean) => void
 }
 
-export function CockpitTiles({ facts, onOpenTile }: CockpitTilesProps) {
+export function CockpitTiles({ facts, conflicts = [], notices = [], onOpenTile }: CockpitTilesProps) {
   const bp = useBreakpoint()
   const t = useTheme()
   const styles = makeStyles(t)
@@ -67,6 +69,7 @@ export function CockpitTiles({ facts, onOpenTile }: CockpitTilesProps) {
       {tiles.map((tile) => {
         const status = tile.status(facts)
         const revisit = tileRevisitFlag(tile, facts.answers)
+        const severity = tileHintSeverity(tile.id, conflicts, notices)
         return (
           <Pressable
             key={tile.id}
@@ -80,6 +83,14 @@ export function CockpitTiles({ facts, onOpenTile }: CockpitTilesProps) {
               <Text style={statusStyle(status, styles)} testID={`cockpit-kachel-${tile.id}-status`}>
                 {statusLabel(status, tr)}
               </Text>
+              {severity !== null ? (
+                <Text
+                  style={severity === 'blocker' ? styles.hintBlocker : styles.hintWarning}
+                  testID={`cockpit-kachel-${tile.id}-hinweis`}
+                >
+                  {tr(severity === 'blocker' ? 'cockpit.kachel.hinweis.blocker' : 'cockpit.kachel.hinweis.warnung')}
+                </Text>
+              ) : null}
             </Card>
           </Pressable>
         )
@@ -136,6 +147,14 @@ function makeStyles(t: UiTheme) {
   const statusOpen: TextStyle = { ...statusBase, color: t.color.tinte2 }
   const statusDone: TextStyle = { ...statusBase, color: t.color.ok }
   const statusLater: TextStyle = { ...statusBase, color: t.color.warn }
+  const hintBase: TextStyle = {
+    fontFamily: t.font.text,
+    fontWeight: t.weight.fett,
+    fontSize: t.size.xs,
+    marginTop: t.space.s1,
+  }
+  const hintBlocker: TextStyle = { ...hintBase, color: t.color.fehler }
+  const hintWarning: TextStyle = { ...hintBase, color: t.color.warn }
 
   return {
     grid,
@@ -146,5 +165,7 @@ function makeStyles(t: UiTheme) {
     statusOpen,
     statusDone,
     statusLater,
+    hintBlocker,
+    hintWarning,
   }
 }
