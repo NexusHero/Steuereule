@@ -497,6 +497,7 @@ describe('CockpitScreen — Kinder & Eulen-Modus entries', () => {
 
       const nextButton = await screen.findByTestId('cockpit-weiter')
       expect(nextButton.textContent).toContain('Nächster Schritt: Weitere Einkünfte')
+      await act(async () => {})
       fireEvent.click(nextButton)
       expect(onOpenTile).toHaveBeenCalledWith(expect.objectContaining({ id: 'einkuenfte' }), false)
 
@@ -531,15 +532,17 @@ describe('CockpitScreen — Kinder & Eulen-Modus entries', () => {
       const onOpenSubmission = vi.fn()
       renderCockpit({ isSignedIn: true, onOpenTile: vi.fn(), onOpenSubmission })
 
-      expect((await screen.findByTestId('cockpit-kachel-rente-status')).textContent).toBe('Erledigt')
-      expect(screen.getByTestId('cockpit-kachel-einkuenfte-status').textContent).toBe('Erledigt')
-      expect(screen.getByTestId('cockpit-kachel-sonderausgaben-status').textContent).toBe('Erledigt')
+      await waitFor(() => {
+        expect(screen.getByTestId('cockpit-kachel-rente-status').textContent).toBe('Erledigt')
+        expect(screen.getByTestId('cockpit-kachel-einkuenfte-status').textContent).toBe('Erledigt')
+        expect(screen.getByTestId('cockpit-kachel-sonderausgaben-status').textContent).toBe('Erledigt')
+        expect(screen.getByTestId('cockpit-weiter').textContent).toContain('Nächster Schritt: Abgabe vorbereiten')
+      })
       expect(screen.queryByTestId('cockpit-kachel-lstb')).toBeNull()
       expect(screen.queryByTestId('cockpit-kachel-arbeitsweg')).toBeNull()
 
-      const nextButton = screen.getByTestId('cockpit-weiter')
-      expect(nextButton.textContent).toContain('Nächster Schritt: Abgabe vorbereiten')
-      fireEvent.click(nextButton)
+      await act(async () => {})
+      fireEvent.click(screen.getByTestId('cockpit-weiter'))
       expect(onOpenSubmission).toHaveBeenCalledWith(TAX_YEAR)
     })
 
