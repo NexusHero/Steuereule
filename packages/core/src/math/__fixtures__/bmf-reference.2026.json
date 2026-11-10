@@ -1,0 +1,170 @@
+{
+  "source": "BMF, Berechnung der Einkommensteuer (tarifliche ESt nach § 32a EStG)",
+  "url": "https://www.bmf-steuerrechner.de/ekst/eingabeformekst.xhtml",
+  "retrieved": "2026-11-10",
+  "year": 2026,
+  "cases": [
+    {
+      "zvE": 12347,
+      "splitting": false,
+      "incomeTax": 0,
+      "soli": 0
+    },
+    {
+      "zvE": 12348,
+      "splitting": false,
+      "incomeTax": 0,
+      "soli": 0
+    },
+    {
+      "zvE": 12349,
+      "splitting": false,
+      "incomeTax": 0,
+      "soli": 0
+    },
+    {
+      "zvE": 17798,
+      "splitting": false,
+      "incomeTax": 1034,
+      "soli": 0
+    },
+    {
+      "zvE": 17799,
+      "splitting": false,
+      "incomeTax": 1034,
+      "soli": 0
+    },
+    {
+      "zvE": 17800,
+      "splitting": false,
+      "incomeTax": 1035,
+      "soli": 0
+    },
+    {
+      "zvE": 20000,
+      "splitting": false,
+      "incomeTax": 1570,
+      "soli": 0
+    },
+    {
+      "zvE": 30000,
+      "splitting": false,
+      "incomeTax": 4217,
+      "soli": 0
+    },
+    {
+      "zvE": 40000,
+      "splitting": false,
+      "incomeTax": 7209,
+      "soli": 0
+    },
+    {
+      "zvE": 50000,
+      "splitting": false,
+      "incomeTax": 10548,
+      "soli": 0
+    },
+    {
+      "zvE": 60000,
+      "splitting": false,
+      "incomeTax": 14233,
+      "soli": 0
+    },
+    {
+      "zvE": 69877,
+      "splitting": false,
+      "incomeTax": 18212,
+      "soli": 0
+    },
+    {
+      "zvE": 69878,
+      "splitting": false,
+      "incomeTax": 18213,
+      "soli": 0
+    },
+    {
+      "zvE": 69879,
+      "splitting": false,
+      "incomeTax": 18213,
+      "soli": 0
+    },
+    {
+      "zvE": 70000,
+      "splitting": false,
+      "incomeTax": 18264,
+      "soli": 0
+    },
+    {
+      "zvE": 75000,
+      "splitting": false,
+      "incomeTax": 20364,
+      "soli": 1.66
+    },
+    {
+      "zvE": 80000,
+      "splitting": false,
+      "incomeTax": 22464,
+      "soli": 251.56
+    },
+    {
+      "zvE": 90000,
+      "splitting": false,
+      "incomeTax": 26664,
+      "soli": 751.36
+    },
+    {
+      "zvE": 100000,
+      "splitting": false,
+      "incomeTax": 30864,
+      "soli": 1251.16
+    },
+    {
+      "zvE": 110000,
+      "splitting": false,
+      "incomeTax": 35064,
+      "soli": 1750.96
+    },
+    {
+      "zvE": 277824,
+      "splitting": false,
+      "incomeTax": 105550,
+      "soli": 5805.25
+    },
+    {
+      "zvE": 277825,
+      "splitting": false,
+      "incomeTax": 105550,
+      "soli": 5805.25
+    },
+    {
+      "zvE": 277826,
+      "splitting": false,
+      "incomeTax": 105551,
+      "soli": 5805.3
+    },
+    {
+      "zvE": 300000,
+      "splitting": false,
+      "incomeTax": 115529,
+      "soli": 6354.09
+    },
+    {
+      "zvE": 40000,
+      "splitting": true,
+      "incomeTax": 3140,
+      "soli": 0
+    },
+    {
+      "zvE": 80000,
+      "splitting": true,
+      "incomeTax": 14418,
+      "soli": 0
+    },
+    {
+      "zvE": 140000,
+      "splitting": true,
+      "incomeTax": 36528,
+      "soli": 0
+    }
+  ]
+}

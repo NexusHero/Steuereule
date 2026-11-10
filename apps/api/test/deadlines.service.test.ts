@@ -31,7 +31,7 @@ describe('FristenService', () => {
   it('returns the structure for a supported year — abgabefrist from the per-year Regelwerk', async () => {
     const dto = await service.getDeadlines(2026)
 
-    expect(dto.filingDeadline).toBe('2027-07-31')
+    expect(dto.filingDeadline).toBe('2027-08-02')
     expect(dto.today).toMatch(/^\d{4}-\d{2}-\d{2}$/)
     expect(['keine', 'warnung', 'abgelaufen']).toContain(dto.level)
     // The response is self-consistent: verbleibendeTage = frist − heute (the core's arithmetic).

@@ -35,12 +35,14 @@ export const TAX_YEARS: Readonly<Record<IncomeTaxYear, TariffCoefficients>> = {
   2023: {
     basicAllowance: 10908,
     zone2Upper: 15999,
-    zone2C1: 995.21,
+    // § 32a EStG 2023 (Inflationsausgleichsgesetz): 979,18 / 192,59 / 966,53. The 2021 values
+    // stood here before and overstated the tax between 10.909 € and 62.809 € (#450 Teil 6).
+    zone2C1: 979.18,
     zone2C2: 1400,
     zone3Upper: 62809,
-    zone3C1: 208.85,
+    zone3C1: 192.59,
     zone3C2: 2397,
-    zone3Const: 970.28,
+    zone3Const: 966.53,
     zone4Upper: 277825,
     zone4Rate: 0.42,
     zone4Sub: 9972.98,

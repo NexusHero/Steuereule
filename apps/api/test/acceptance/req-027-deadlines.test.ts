@@ -82,7 +82,7 @@ describe('REQ-027 — the Fristen-Warnmodus (§ 149/§ 152 AO), against the real
         lateFilingSurcharge: { minimumRateEur: number; percentPerMonth: number }
       }
 
-      expect(body.filingDeadline).toBe('2027-07-31')
+      expect(body.filingDeadline).toBe('2027-08-02')
       expect(body.today).toMatch(/^\d{4}-\d{2}-\d{2}$/)
       expect(['keine', 'warnung', 'abgelaufen']).toContain(body.level)
       // Self-consistency: verbleibendeTage = frist − heute (the core's whole-day arithmetic).
@@ -98,7 +98,7 @@ describe('REQ-027 — the Fristen-Warnmodus (§ 149/§ 152 AO), against the real
   it('pins each supported year to 31 July of the following year (the explicit Regelwerk)', async () => {
     const cookie = await signUp('regelwerk@example.com')
 
-    for (const [year, frist] of [[2024, '2025-07-31'], [2025, '2026-07-31'], [2026, '2027-07-31']] as const) {
+    for (const [year, frist] of [[2024, '2025-07-31'], [2025, '2026-07-31'], [2026, '2027-08-02']] as const) {
       const response = await getDeadlines(cookie, year)
       expect(response.status).toBe(200)
       const body = (await response.json()) as { filingDeadline: string }
@@ -120,6 +120,6 @@ describe('REQ-027 — the Fristen-Warnmodus (§ 149/§ 152 AO), against the real
     const response = await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/fristen`, { headers: { cookie: guestCookie } })
     expect(response.status).toBe(200)
     const body = (await response.json()) as { filingDeadline: string }
-    expect(body.filingDeadline).toBe('2027-07-31')
+    expect(body.filingDeadline).toBe('2027-08-02')
   })
 })

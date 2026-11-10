@@ -31,7 +31,7 @@ function renderBanner() {
 }
 
 const WARNING: DeadlinesResponseDto = {
-  filingDeadline: '2027-07-31',
+  filingDeadline: '2027-08-02',
   today: '2027-06-01',
   level: 'warnung',
   remainingDays: 60,
@@ -39,7 +39,7 @@ const WARNING: DeadlinesResponseDto = {
 }
 
 const EXPIRED: DeadlinesResponseDto = {
-  filingDeadline: '2027-07-31',
+  filingDeadline: '2027-08-02',
   today: '2027-08-01',
   level: 'abgelaufen',
   remainingDays: -1,
@@ -65,7 +65,7 @@ describe('FristenBanner', () => {
 
     const banner = await screen.findByTestId('fristen-banner-warnung')
     expect(banner).toBeTruthy()
-    expect(screen.getByText(/Abgabefrist: 31\.07\.2027 \(noch 60 Tage\)/)).toBeTruthy()
+    expect(screen.getByText(/Abgabefrist: 02\.08\.2027 \(noch 60 Tage\)/)).toBeTruthy()
     expect(screen.getByText(/mindestens 25 € pro Monat/)).toBeTruthy()
   })
 

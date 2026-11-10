@@ -20,7 +20,8 @@ describe('abgabefristFuer — § 149 Abs. 2 AO, the explicit per-year table', ()
     expect(filingDeadlineFor(2023)).toBe('2024-09-02')
     expect(filingDeadlineFor(2024)).toBe('2025-07-31')
     expect(filingDeadlineFor(2025)).toBe('2026-07-31')
-    expect(filingDeadlineFor(2026)).toBe('2027-07-31')
+    // 31.07.2027 is a Saturday → 02.08.2027 (§ 108 Abs. 3 AO; #450 Teil 6).
+    expect(filingDeadlineFor(2026)).toBe('2027-08-02')
   })
 
   it('throws for an unsupported year — never falls back to a neighbour year', () => {
@@ -42,7 +43,7 @@ describe('voluntaryFilingDeadlineFor & isFestsetzungsverjaehrt — § 169 Abs. 2
   it('returns the statutory 4-year statute of limitations deadline', () => {
     expect(voluntaryFilingDeadlineFor(2022)).toBe('2026-12-31')
     expect(voluntaryFilingDeadlineFor(2023)).toBe('2027-12-31')
-    expect(voluntaryFilingDeadlineFor(2024)).toBe('2028-12-31')
+    expect(voluntaryFilingDeadlineFor(2024)).toBe('2029-01-02')
     expect(voluntaryFilingDeadlineFor(2025)).toBe('2029-12-31')
     expect(voluntaryFilingDeadlineFor(2026)).toBe('2030-12-31')
   })
@@ -57,24 +58,24 @@ describe('voluntaryFilingDeadlineFor & isFestsetzungsverjaehrt — § 169 Abs. 2
 
 describe('fristenWarnung — the derived warning stage (ADR-0039, never a status)', () => {
   it('is keine more than 60 days before the frist', () => {
-    // 31.07.2027 minus 61 Tage = 31.05.2027.
-    const warning = deadlineWarning(2026, '2027-05-31')
-    expect(warning).toEqual({ level: 'keine', filingDeadline: '2027-07-31', remainingDays: 61 })
+    // 02.08.2027 minus 61 Tage = 02.06.2027.
+    const warning = deadlineWarning(2026, '2027-06-02')
+    expect(warning).toEqual({ level: 'keine', filingDeadline: '2027-08-02', remainingDays: 61 })
   })
 
   it('is warnung from 60 days before the frist (inclusive)', () => {
-    const warning = deadlineWarning(2026, '2027-06-01') // 60 Tage vor dem 31.07.
-    expect(warning).toEqual({ level: 'warnung', filingDeadline: '2027-07-31', remainingDays: 60 })
+    const warning = deadlineWarning(2026, '2027-06-03') // 60 Tage vor dem 02.08.
+    expect(warning).toEqual({ level: 'warnung', filingDeadline: '2027-08-02', remainingDays: 60 })
   })
 
   it('is warnung on the frist day itself — 0 days remaining is not yet abgelaufen', () => {
-    const warning = deadlineWarning(2026, '2027-07-31')
-    expect(warning).toEqual({ level: 'warnung', filingDeadline: '2027-07-31', remainingDays: 0 })
+    const warning = deadlineWarning(2026, '2027-08-02')
+    expect(warning).toEqual({ level: 'warnung', filingDeadline: '2027-08-02', remainingDays: 0 })
   })
 
   it('is abgelaufen the day after the frist — the honest banner input, never a verspätet status', () => {
-    const warning = deadlineWarning(2026, '2027-08-01')
-    expect(warning).toEqual({ level: 'abgelaufen', filingDeadline: '2027-07-31', remainingDays: -1 })
+    const warning = deadlineWarning(2026, '2027-08-03')
+    expect(warning).toEqual({ level: 'abgelaufen', filingDeadline: '2027-08-02', remainingDays: -1 })
   })
 
   it('spans a year boundary in whole days (2025 frist: 31.07.2026)', () => {

@@ -11,7 +11,7 @@ export class LateFilingFeeDto {
 
 /** The response shape for `GET /v1/steuerjahre/{jahr}/fristen`. */
 export class DeadlinesResponseDto {
-  @ApiProperty({ type: String, example: '2027-07-31', description: 'Die Abgabefrist (§ 149 Abs. 2 AO), ISO yyyy-mm-dd.' })
+  @ApiProperty({ type: String, example: '2027-08-02', description: 'Die Abgabefrist (§ 149 Abs. 2 AO), ISO yyyy-mm-dd.' })
   filingDeadline!: string
 
   @ApiProperty({ type: String, example: '2027-06-01', description: 'Der Server-Stichtag in Europe/Berlin, ISO yyyy-mm-dd.' })

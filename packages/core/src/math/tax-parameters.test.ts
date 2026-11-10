@@ -56,7 +56,8 @@ describe('TaxYearParameters (Temporal Parameter Registry)', () => {
 
     const p2024 = getTaxYearParameters(2024)
     expect(p2024.deadlines.standardFilingDeadline).toBe('2025-07-31')
-    expect(p2024.deadlines.voluntaryFilingDeadline).toBe('2028-12-31')
+    // 31.12.2028 is a Sunday, 01.01.2029 a holiday → 02.01.2029 (§ 108 Abs. 3 AO, BFH VI R 14/15; #450 Teil 6).
+    expect(p2024.deadlines.voluntaryFilingDeadline).toBe('2029-01-02')
     expect(p2024.deadlines.warningThresholdDays).toBe(60)
     expect(p2024.deadlines.lateFilingMinEur).toBe(25)
     expect(p2024.deadlines.lateFilingPercentPerMonth).toBe(0.25)
@@ -69,7 +70,8 @@ describe('TaxYearParameters (Temporal Parameter Registry)', () => {
     expect(p2025.deadlines.voluntaryFilingDeadline).toBe('2029-12-31')
 
     const p2026 = getTaxYearParameters(2026)
-    expect(p2026.deadlines.standardFilingDeadline).toBe('2027-07-31')
+    // 31.07.2027 is a Saturday → Monday 02.08.2027 (§ 108 Abs. 3 AO; #450 Teil 6).
+    expect(p2026.deadlines.standardFilingDeadline).toBe('2027-08-02')
     expect(p2026.deadlines.voluntaryFilingDeadline).toBe('2030-12-31')
   })
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { taxEstimateEmployee, taxEstimateCrossBorder } from './tax-estimate'
+import { homeOfficeAllowance, taxEstimateEmployee, taxEstimateCrossBorder } from './tax-estimate'
 import { incomeTax } from '../math/tarif'
 
 const EMPLOYED = {
@@ -134,5 +134,49 @@ describe('steuerschaetzungGrenzgaenger', () => {
     expect(crossWithHealth.taxableIncome.from).toBeLessThan(
       (taxEstimateCrossBorder(CROSS_BORDER) as Extract<typeof base, { kind: 'spanne' }>).taxableIncome.from,
     )
+  })
+})
+
+describe('§ 24b Entlastungsbetrag in der Spanne (#450 Teil 6)', () => {
+  it('lowers the taxable income by 4.260 € for a single parent with one child', () => {
+    const without = taxEstimateEmployee(EMPLOYED)
+    const single = taxEstimateEmployee({ ...EMPLOYED, singleParent: true, singleParentChildren: 1 })
+    if (without.kind !== 'spanne' || single.kind !== 'spanne') throw new Error('expected a range')
+    expect(single.taxableIncome.from).toBe(without.taxableIncome.from - 4260)
+    expect(single.taxableIncome.to).toBe(without.taxableIncome.to - 4260)
+    expect(single.result.to).toBeGreaterThan(without.result.to)
+  })
+
+  it('adds 240 € for every further child (§ 24b Abs. 2 Satz 2 EStG)', () => {
+    const one = taxEstimateEmployee({ ...EMPLOYED, singleParent: true, singleParentChildren: 1 })
+    const three = taxEstimateEmployee({ ...EMPLOYED, singleParent: true, singleParentChildren: 3 })
+    if (one.kind !== 'spanne' || three.kind !== 'spanne') throw new Error('expected a range')
+    expect(three.taxableIncome.from).toBe(one.taxableIncome.from - 480)
+  })
+
+  it('uses 4.008 € in 2022', () => {
+    const without = taxEstimateEmployee({ ...EMPLOYED, year: 2022 })
+    const single = taxEstimateEmployee({ ...EMPLOYED, year: 2022, singleParent: true, singleParentChildren: 1 })
+    if (without.kind !== 'spanne' || single.kind !== 'spanne') throw new Error('expected a range')
+    expect(single.taxableIncome.from).toBe(without.taxableIncome.from - 4008)
+  })
+})
+
+describe('Homeoffice-Pauschale (§ 4 Abs. 5 Satz 1 Nr. 6c EStG, #450 Teil 6)', () => {
+  it('is 6 € per home-office day', () => {
+    expect(homeOfficeAllowance(2025, 100)).toBe(600)
+  })
+
+  it('stops at 210 days / 1.260 €', () => {
+    expect(homeOfficeAllowance(2025, 230)).toBe(1260)
+  })
+
+  it('was 5 € per day, at most 600 € in 2022', () => {
+    expect(homeOfficeAllowance(2022, 100)).toBe(500)
+    expect(homeOfficeAllowance(2022, 200)).toBe(600)
+  })
+
+  it('is nothing without home-office days', () => {
+    expect(homeOfficeAllowance(2025, 0)).toBe(0)
   })
 })

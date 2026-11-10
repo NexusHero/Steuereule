@@ -4,6 +4,8 @@ import {
   LATE_FILING_FEE_MINIMUM_EUR,
   LATE_FILING_FEE_PERCENT_PER_MONTH,
   deadlineWarning,
+  getTaxYearParameters,
+  isSupportedIncomeTaxYear,
 } from '@steuereule/core'
 import type { DeadlinesResponseDto } from './dto/deadlines-response.dto.js'
 
@@ -44,10 +46,12 @@ export class DeadlinesService {
       today,
       level: warning.level,
       remainingDays: warning.remainingDays,
-      lateFilingSurcharge: {
-        minimumRateEur: LATE_FILING_FEE_MINIMUM_EUR,
-        percentPerMonth: LATE_FILING_FEE_PERCENT_PER_MONTH,
-      },
+      lateFilingSurcharge: isSupportedIncomeTaxYear(taxYear)
+        ? {
+            minimumRateEur: getTaxYearParameters(taxYear).deadlines.lateFilingMinEur,
+            percentPerMonth: getTaxYearParameters(taxYear).deadlines.lateFilingPercentPerMonth,
+          }
+        : { minimumRateEur: LATE_FILING_FEE_MINIMUM_EUR, percentPerMonth: LATE_FILING_FEE_PERCENT_PER_MONTH },
     }
   }
 }
