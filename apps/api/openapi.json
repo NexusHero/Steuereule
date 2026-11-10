@@ -3428,6 +3428,241 @@
         ]
       }
     },
+    "/v1/steuerjahre/{jahr}/haushalt": {
+      "get": {
+        "operationId": "HouseholdController_get",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HouseholdResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Requires account."
+          }
+        },
+        "tags": [
+          "haushalt"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/haushalt/kinder/uebernehmen": {
+      "post": {
+        "operationId": "HouseholdController_adoptChildren",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdoptChildrenDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HouseholdResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "haushalt"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/haushalt/personen/{personId}/nicht-mehr-dabei": {
+      "post": {
+        "operationId": "HouseholdController_leave",
+        "parameters": [
+          {
+            "name": "personId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The first year without the person.",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HouseholdResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "haushalt"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/haushalt/partner/nicht-mehr-dabei": {
+      "post": {
+        "operationId": "HouseholdController_endPartner",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The first year without the spouse link.",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HouseholdResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "haushalt"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/haushalt/personen/{personId}": {
+      "delete": {
+        "operationId": "HouseholdController_delete",
+        "parameters": [
+          {
+            "name": "personId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HouseholdResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "haushalt"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/haushalt/dubletten/{id}": {
+      "post": {
+        "operationId": "HouseholdController_answer",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnswerCandidateDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HouseholdResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "haushalt"
+        ]
+      }
+    },
     "/mcp/sse": {
       "get": {
         "operationId": "McpController_sse",
@@ -8878,6 +9113,201 @@
           "jobId",
           "status",
           "statusUrl"
+        ]
+      },
+      "HouseholdPersonDto": {
+        "type": "object",
+        "properties": {
+          "personId": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "spouse",
+              "child"
+            ]
+          },
+          "firstName": {
+            "type": "string"
+          },
+          "lastName": {
+            "type": "string"
+          },
+          "birthDate": {
+            "type": "string",
+            "example": "2019-05-12"
+          },
+          "childId": {
+            "type": "string",
+            "nullable": true,
+            "description": "The year’s Kind row when the person is part of the year."
+          },
+          "inThisYear": {
+            "type": "boolean"
+          },
+          "fromYear": {
+            "type": "number",
+            "nullable": true,
+            "description": "Last earlier year the person was part of („aus 2025“)."
+          },
+          "preselected": {
+            "type": "boolean",
+            "description": "Preselected for this year (last year’s people, children up to 25)."
+          },
+          "selectable": {
+            "type": "boolean"
+          },
+          "asksForEducation": {
+            "type": "boolean",
+            "description": "From 18 the mask asks about education."
+          },
+          "leftFromYear": {
+            "type": "number",
+            "nullable": true
+          },
+          "updatedBySelf": {
+            "type": "boolean",
+            "description": "The last change was made by the requesting account."
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "personId",
+          "kind",
+          "firstName",
+          "lastName",
+          "birthDate",
+          "childId",
+          "inThisYear",
+          "fromYear",
+          "preselected",
+          "selectable",
+          "asksForEducation",
+          "leftFromYear",
+          "updatedBySelf",
+          "updatedAt"
+        ]
+      },
+      "HouseholdCandidatePersonDto": {
+        "type": "object",
+        "properties": {
+          "personId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "birthDate": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "personId",
+          "name",
+          "birthDate"
+        ]
+      },
+      "HouseholdCandidateDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "a": {
+            "$ref": "#/components/schemas/HouseholdCandidatePersonDto"
+          },
+          "b": {
+            "$ref": "#/components/schemas/HouseholdCandidatePersonDto"
+          }
+        },
+        "required": [
+          "id",
+          "a",
+          "b"
+        ]
+      },
+      "PartnerLinkDto": {
+        "type": "object",
+        "properties": {
+          "validFromYear": {
+            "type": "number"
+          },
+          "endedFromYear": {
+            "type": "number",
+            "nullable": true
+          },
+          "ownAccount": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "validFromYear",
+          "endedFromYear",
+          "ownAccount"
+        ]
+      },
+      "HouseholdResponseDto": {
+        "type": "object",
+        "properties": {
+          "householdUserId": {
+            "type": "string"
+          },
+          "persons": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HouseholdPersonDto"
+            }
+          },
+          "candidates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HouseholdCandidateDto"
+            }
+          },
+          "partnerLink": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PartnerLinkDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "householdUserId",
+          "persons",
+          "candidates",
+          "partnerLink"
+        ]
+      },
+      "AdoptChildrenDto": {
+        "type": "object",
+        "properties": {
+          "personIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "personIds"
+        ]
+      },
+      "AnswerCandidateDto": {
+        "type": "object",
+        "properties": {
+          "same": {
+            "type": "boolean",
+            "description": "true = the same person (merge), false = two people"
+          }
+        },
+        "required": [
+          "same"
         ]
       }
     }

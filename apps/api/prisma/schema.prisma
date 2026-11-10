@@ -909,6 +909,79 @@ model TaxYearLink {
   @@map("SteuerjahrKopplung")
 }
 
+/// A spouse or child kept once per household (ADR-0062, #452). The household belongs to the account of
+/// person A (`householdUserId`). Stable facts (names, birth date, Steuer-ID, date of death) live in
+/// `sealed`, encrypted under the person's own key in the keystore (`household-person:<id>`, ADR-0059):
+/// destroying that key makes them unreadable everywhere (crypto-shredding per person).
+model HouseholdPerson {
+  id              String   @id @default(uuid())
+  householdUserId String   @map("haushaltNutzerId")
+  /// 'spouse' | 'child'
+  kind            String   @map("art")
+  sealed          String   @map("versiegelt")
+  /// Spouse with an own account (set when the invitation was redeemed once).
+  linkedUserId    String?  @map("verknuepftesKonto")
+  /// "Ab Jahr X nicht mehr dabei": membership ends with this year; earlier years stay.
+  leftFromYear    Int?     @map("nichtMehrDabeiAb")
+  updatedByUserId String   @map("geaendertVon")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  memberships TaxYearMembership[]
+
+  @@index([householdUserId])
+  @@map("HaushaltPerson")
+}
+
+/// Person × tax year (ADR-0062). The yearly facts stay in the year's record the calculation reads:
+/// the Kind row (`childId`) or the spouse of the year's SteuerjahrKopplung (`spouseUserId`).
+model TaxYearMembership {
+  id           String          @id @default(uuid())
+  personId     String          @map("personId")
+  person       HouseholdPerson @relation(fields: [personId], references: [id], onDelete: Cascade)
+  taxYear      Int             @map("steuerjahr")
+  childId      String?         @unique @map("kindId")
+  spouseUserId String?         @map("partnerNutzerId")
+  createdAt    DateTime        @default(now())
+
+  @@unique([personId, taxYear])
+  @@index([taxYear])
+  @@map("HaushaltJahr")
+}
+
+/// The spouse link without a year (ADR-0062 §3): valid from `validFromYear` until a partner ends it
+/// with `endedFromYear`. It survives a change of the Veranlagungsart, which stays per year.
+model PartnerLink {
+  id              String   @id @default(uuid())
+  personAUserId   String   @unique @map("personANutzerId")
+  /// Own account of person B, or '' while B has none.
+  personBUserId   String   @default("") @map("personBNutzerId")
+  spousePersonId  String?  @map("partnerPersonId")
+  validFromYear   Int      @map("gueltigAb")
+  endedFromYear   Int?     @map("beendetAb")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([personBUserId])
+  @@map("PartnerVerknuepfung")
+}
+
+/// Two household people that look alike but are not the same (ADR-0062 §5): asked once.
+model HouseholdMergeCandidate {
+  id              String    @id @default(uuid())
+  householdUserId String    @map("haushaltNutzerId")
+  personId        String    @map("personId")
+  otherPersonId   String    @map("anderePersonId")
+  /// null = not yet answered, 'same' = merged, 'different' = kept apart
+  resolution      String?   @map("antwort")
+  resolvedAt      DateTime? @map("beantwortetAm")
+  createdAt       DateTime  @default(now())
+
+  @@unique([personId, otherPersonId])
+  @@index([householdUserId])
+  @@map("HaushaltDublette")
+}
+
 /// Opt-in setting and consent for Eulen-Modus (product ADR-037, ADR-048).
 model OwlSetting {
   id        String    @id @default(uuid())

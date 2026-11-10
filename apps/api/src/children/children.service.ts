@@ -3,6 +3,7 @@ import { InvalidInputError, NotFoundError } from '../common/domain-error.js'
 import { calculateDifferentialChildBenefit, isValidChildBirthDate, calculateChildrenStatus, type ChildData } from '@steuereule/core'
 import { AuditService } from '../audit/audit.service.js'
 import { CROSS_BORDER_SALARY_STATEMENT_REPOSITORY, type CrossBorderSalaryStatementRepository } from '../ch-salary-certificate/ch-salary-certificate.repository.js'
+import { HouseholdAccessService } from '../household/household-access.service.js'
 import { PARTNER_COUPLING_REPOSITORY, type PartnerCouplingRepository } from '../link/link.repository.js'
 import { CHILD_REPOSITORY, type ChildRecord, type ChildRepository } from './child.repository.js'
 import type { CreateChildDto, ChildrenResponseDto, ChildResponseDto, UpdateChildDto } from './dto/child.dto.js'
@@ -56,7 +57,13 @@ export class ChildrenService {
     @Inject(AuditService) private readonly auditService: AuditService,
     @Optional() @Inject(CROSS_BORDER_SALARY_STATEMENT_REPOSITORY) private readonly chSalaryCertificate?: CrossBorderSalaryStatementRepository,
     @Optional() @Inject(PARTNER_COUPLING_REPOSITORY) private readonly link?: PartnerCouplingRepository,
+    @Optional() @Inject(HouseholdAccessService) private readonly household?: HouseholdAccessService,
   ) {}
+
+  /** A linked spouse with an own account works on the shared children of A's return (#452 decision 7). */
+  private owner(userId: string, taxYear: number): Promise<string> {
+    return this.household ? this.household.householdOwner(userId, taxYear) : Promise.resolve(userId)
+  }
 
   private async getPerChildSwissAllowanceEur(userId: string, year: number, count: number): Promise<number | null> {
     if (!this.chSalaryCertificate || count <= 0) return null
@@ -99,40 +106,45 @@ export class ChildrenService {
   }
 
   async list(userId: string, taxYear: number): Promise<ChildrenResponseDto> {
-    const records = await this.repository.listForUserAndYear(userId, taxYear)
+    const owner = await this.owner(userId, taxYear)
+    const records = await this.repository.listForUserAndYear(owner, taxYear)
     if (records.length > 0) {
       await this.auditService.append({ userId, action: 'READ', resource: 'kind' })
     }
-    return this.toResponse(userId, records, taxYear)
+    return this.toResponse(owner, records, taxYear)
   }
 
   async create(userId: string, taxYear: number, dto: CreateChildDto): Promise<ChildrenResponseDto> {
     if (!isValidChildBirthDate(dto.geburtsdatum, taxYear)) {
       throw new InvalidInputError('GEBURTSDATUM_INVALID', 'The birth date is not valid for this tax year.')
     }
-    await this.repository.create(userId, taxYear, dto)
-    const records = await this.repository.listForUserAndYear(userId, taxYear)
-    return this.toResponse(userId, records, taxYear)
+    const owner = await this.owner(userId, taxYear)
+    await this.repository.create(owner, taxYear, dto)
+    const records = await this.repository.listForUserAndYear(owner, taxYear)
+    return this.toResponse(owner, records, taxYear)
   }
 
   async update(userId: string, taxYear: number, id: string, dto: UpdateChildDto): Promise<ChildrenResponseDto> {
     if (dto.geburtsdatum && !isValidChildBirthDate(dto.geburtsdatum, taxYear)) {
       throw new InvalidInputError('GEBURTSDATUM_INVALID', 'The birth date is not valid for this tax year.')
     }
-    const updated = await this.repository.update(userId, taxYear, id, dto)
+    const owner = await this.owner(userId, taxYear)
+    const updated = await this.repository.update(owner, taxYear, id, dto)
     if (!updated) {
       throw new NotFoundError('KIND_NOT_FOUND', `Kind "${id}" does not exist for this account.`)
     }
-    const records = await this.repository.listForUserAndYear(userId, taxYear)
-    return this.toResponse(userId, records, taxYear)
+    await this.household?.recordChildEdit(userId, id, dto)
+    const records = await this.repository.listForUserAndYear(owner, taxYear)
+    return this.toResponse(owner, records, taxYear)
   }
 
   async delete(userId: string, taxYear: number, id: string): Promise<ChildrenResponseDto> {
-    const deleted = await this.repository.delete(userId, taxYear, id)
+    const owner = await this.owner(userId, taxYear)
+    const deleted = await this.repository.delete(owner, taxYear, id)
     if (!deleted) {
       throw new NotFoundError('KIND_NOT_FOUND', `Kind "${id}" does not exist for this account.`)
     }
-    const records = await this.repository.listForUserAndYear(userId, taxYear)
-    return this.toResponse(userId, records, taxYear)
+    const records = await this.repository.listForUserAndYear(owner, taxYear)
+    return this.toResponse(owner, records, taxYear)
   }
 }

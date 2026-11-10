@@ -17,6 +17,14 @@ export class FakeChildRepository implements ChildRepository {
     )
   }
 
+  listAllForUser(userId: string): Promise<ChildRecord[]> {
+    return Promise.resolve(
+      [...this.store.values()]
+        .filter((r) => r.userId === userId)
+        .sort((a, b) => a.taxYear - b.taxYear || a.sequenceNumber - b.sequenceNumber),
+    )
+  }
+
   create(
     userId: string,
     taxYear: number,

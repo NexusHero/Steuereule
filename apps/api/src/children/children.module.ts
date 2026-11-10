@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common'
 import { AuditModule } from '../audit/audit.module.js'
 import { ChSalaryCertificateModule } from '../ch-salary-certificate/ch-salary-certificate.module.js'
+import { HouseholdCoreModule } from '../household/household-core.module.js'
 import { LinkModule } from '../link/link.module.js'
 import { PrismaModule } from '../prisma/prisma.module.js'
 import { ChildrenController } from './children.controller.js'
@@ -9,7 +10,7 @@ import { CHILD_REPOSITORY } from './child.repository.js'
 import { PrismaChildRepository } from './child.repository.prisma.js'
 
 @Module({
-  imports: [PrismaModule, AuditModule, ChSalaryCertificateModule, LinkModule],
+  imports: [PrismaModule, AuditModule, ChSalaryCertificateModule, LinkModule, HouseholdCoreModule],
   controllers: [ChildrenController],
   providers: [
     ChildrenService,

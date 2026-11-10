@@ -28,6 +28,7 @@ import { FilingTypeComparisonModule } from './filing-type-comparison/filing-type
 import { RentalModule } from './rental/rental.module.js'
 import { ChildrenModule } from './children/children.module.js'
 import { LinkModule } from './link/link.module.js'
+import { HouseholdModule } from './household/household.module.js'
 import { OwlModeModule } from './owl-mode/owl-mode.module.js'
 import { AdvisorModule } from './advisor/advisor.module.js'
 import { McpModule } from './mcp/mcp.module.js'
@@ -63,6 +64,7 @@ import { DomainErrorFilter } from './common/domain-error.filter.js'
     PrintoutModule,
     ChildrenModule,
     LinkModule,
+    HouseholdModule,
     OwlModeModule,
     AdvisorModule,
     McpModule,

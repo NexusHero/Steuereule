@@ -405,6 +405,20 @@ export default defineConfig({
       },
     },
   },
+  haushalt: {
+    input: { target: '../../apps/api/openapi.json', filters: { tags: ['haushalt'] } },
+    output: {
+      target: './src/generated/haushalt.ts',
+      mode: 'split',
+      client: 'react-query',
+      httpClient: 'fetch',
+      mock: true,
+      override: {
+        mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        mock: { required: true },
+      },
+    },
+  },
   kopplung: {
     input: { target: '../../apps/api/openapi.json', filters: { tags: ['kopplung'] } },
     output: {

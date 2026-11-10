@@ -80,6 +80,10 @@ export async function deleteAccountTransaction(
       await tx.taxYearLink.deleteMany({
         where: { OR: [{ personAUserId: userId }, { personBUserId: userId }] },
       })
+      // ADR-0062: the household, its yearly memberships (cascade) and the spouse link.
+      await tx.householdMergeCandidate.deleteMany({ where: { householdUserId: userId } })
+      await tx.householdPerson.deleteMany({ where: { householdUserId: userId } })
+      await tx.partnerLink.deleteMany({ where: { OR: [{ personAUserId: userId }, { personBUserId: userId }] } })
     }
     await tx.deviceCode.deleteMany({ where: { userId } })
 

@@ -53,6 +53,14 @@ export class PrismaChildRepository implements ChildRepository {
     return rows.map(toRecord)
   }
 
+  async listAllForUser(userId: string): Promise<ChildRecord[]> {
+    const rows = await this.prisma.child.findMany({
+      where: { userId },
+      orderBy: [{ taxYear: 'asc' }, { sequenceNumber: 'asc' }],
+    })
+    return rows.map(toRecord)
+  }
+
   async create(
     userId: string,
     taxYear: number,
