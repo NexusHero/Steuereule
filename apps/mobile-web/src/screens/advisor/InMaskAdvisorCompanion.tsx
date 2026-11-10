@@ -305,7 +305,7 @@ function makeStyles(t: UiTheme) {
       fontFamily: t.font.text,
       fontWeight: t.weight.fett,
       fontSize: t.size.s,
-      color: t.color.ki,
+      color: t.color.kiTinte,
     } as TextStyle,
     sheetCard: {
       padding: t.space.s4,
@@ -340,7 +340,7 @@ function makeStyles(t: UiTheme) {
       fontFamily: t.font.text,
       fontWeight: t.weight.fett,
       fontSize: t.size.s,
-      color: t.color.ki,
+      color: t.color.kiTinte,
     } as TextStyle,
     privacyNotice: {
       fontFamily: t.font.text,

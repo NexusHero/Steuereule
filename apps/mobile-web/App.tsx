@@ -1,12 +1,12 @@
-import { useEffect, useState } from 'react'
-import { View } from 'react-native'
+import { useEffect, useState, type ReactNode } from 'react'
+import * as RN from 'react-native'
 import { StatusBar } from 'expo-status-bar'
 import { I18nextProvider, useTranslation } from 'react-i18next'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { NavigationContainer, useLinkTo } from '@react-navigation/native'
+import { DarkTheme, DefaultTheme, NavigationContainer, useLinkTo } from '@react-navigation/native'
 import { createNativeStackNavigator, type NativeStackScreenProps } from '@react-navigation/native-stack'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
-import { ThemeProvider, useBreakpoint } from '@steuereule/ui'
+import { ThemeProvider, useBreakpoint, useTheme } from '@steuereule/ui'
 import { configureApiClient } from '@steuereule/api-client'
 import { createAppI18n } from './src/i18n/app-i18n'
 import { APP_NS } from './src/i18n/resources'
@@ -49,6 +49,7 @@ import { linking } from './src/navigation/linking'
 import { ShellStateProvider, useShellState } from './src/navigation/ShellState'
 import { SubmissionGateProvider, useSubmissionGate } from './src/navigation/SubmissionGateContext'
 import { AppTabs } from './src/navigation/AppTabs'
+import { AppearanceProvider, resolveThemeMode, useAppearance } from './src/lib/appearance'
 
 const i18n = createAppI18n('de')
 const queryClient = new QueryClient({ defaultOptions: APP_QUERY_DEFAULTS })
@@ -66,32 +67,79 @@ export default function App() {
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>
         <I18nextProvider i18n={i18n}>
-          <ThemeProvider mode="light">
-            <AuthClientProvider client={authClient}>
-              <SubmissionGateProvider>
-                <View style={{ flex: 1 }}>
-                  <NavigationContainer linking={linking}>
-                    <RootStack.Navigator screenOptions={{ headerShown: false }}>
-                      <RootStack.Screen name="Splash" component={SplashRoute} />
-                      <RootStack.Screen name="Login" component={LoginRoute} />
-                      <RootStack.Screen name="Registration" component={RegistrationRoute} />
-                      <RootStack.Screen name="Onboarding" component={OnboardingRoute} />
-                      <RootStack.Screen name="App" component={AppRoute} />
-                      <RootStack.Screen name="Device" component={DeviceRoute} />
-                      <RootStack.Screen name="Legal" component={LegalRoute} />
-                      <RootStack.Screen name="Printout" component={PrintoutRoute} />
-                      <RootStack.Screen name="Confirmation" component={ConfirmationRoute} />
-                      <RootStack.Screen name="OauthConsent" component={OauthConsentRoute} />
-                    </RootStack.Navigator>
-                  </NavigationContainer>
-                  <StatusBar style="dark" />
-                </View>
-              </SubmissionGateProvider>
-            </AuthClientProvider>
-          </ThemeProvider>
+          <AppearanceProvider>
+            <ThemeBridge>
+              <AuthClientProvider client={authClient}>
+                <SubmissionGateProvider>
+                  <ThemedShellFrame>
+                    <RootNavigator />
+                  </ThemedShellFrame>
+                </SubmissionGateProvider>
+              </AuthClientProvider>
+            </ThemeBridge>
+          </AppearanceProvider>
         </I18nextProvider>
       </QueryClientProvider>
     </SafeAreaProvider>
+  )
+}
+
+function ThemeBridge({ children }: { readonly children: ReactNode }) {
+  const colorScheme = RN.useColorScheme()
+  const { preference } = useAppearance()
+  const mode = resolveThemeMode(preference, colorScheme)
+  return <ThemeProvider mode={mode}>{children}</ThemeProvider>
+}
+
+function ThemedShellFrame({ children }: { readonly children: ReactNode }) {
+  const t = useTheme()
+
+  useEffect(() => {
+    if (RN.Platform.OS !== 'web' || typeof document === 'undefined') return
+    document.body.style.backgroundColor = t.color.grund
+    document.documentElement.style.colorScheme = t.mode
+  }, [t.color.grund, t.mode])
+
+  return (
+    <RN.View style={{ flex: 1, backgroundColor: t.color.grund }}>
+      {children}
+      <StatusBar style={t.mode === 'dark' ? 'light' : 'dark'} />
+    </RN.View>
+  )
+}
+
+function RootNavigator() {
+  const t = useTheme()
+  const baseNavTheme = t.mode === 'dark' ? DarkTheme : DefaultTheme
+  const navTheme = {
+    ...baseNavTheme,
+    dark: t.mode === 'dark',
+    colors: {
+      ...baseNavTheme.colors,
+      primary: t.color.funke,
+      background: t.color.grund,
+      card: t.color.karte,
+      text: t.color.tinte,
+      border: t.color.linie,
+      notification: t.color.fehler,
+    },
+  }
+
+  return (
+    <NavigationContainer linking={linking} theme={navTheme}>
+      <RootStack.Navigator screenOptions={{ headerShown: false }}>
+        <RootStack.Screen name="Splash" component={SplashRoute} />
+        <RootStack.Screen name="Login" component={LoginRoute} />
+        <RootStack.Screen name="Registration" component={RegistrationRoute} />
+        <RootStack.Screen name="Onboarding" component={OnboardingRoute} />
+        <RootStack.Screen name="App" component={AppRoute} />
+        <RootStack.Screen name="Device" component={DeviceRoute} />
+        <RootStack.Screen name="Legal" component={LegalRoute} />
+        <RootStack.Screen name="Printout" component={PrintoutRoute} />
+        <RootStack.Screen name="Confirmation" component={ConfirmationRoute} />
+        <RootStack.Screen name="OauthConsent" component={OauthConsentRoute} />
+      </RootStack.Navigator>
+    </NavigationContainer>
   )
 }
 

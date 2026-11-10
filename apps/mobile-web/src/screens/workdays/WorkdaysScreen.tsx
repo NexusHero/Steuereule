@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { ScrollView, View, Text, Pressable, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { Button, Chip, Feld, Input, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
+import { Button, Chip, Feld, Input, inkOnFunke, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
 import {
   GERMAN_STATES,
   SWISS_CANTONS,
@@ -323,7 +323,7 @@ function makeStyles(t: UiTheme) {
   }
   const weekdayActive: ViewStyle = { backgroundColor: t.color.funke }
   const weekdayText: TextStyle = { color: t.color.tinte, fontFamily: t.font.text, fontSize: t.size.s }
-  const weekdayActiveText: TextStyle = { color: t.color.funkeTinte, fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: t.size.s }
+  const weekdayActiveText: TextStyle = { color: inkOnFunke(t), fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: t.size.s }
   const resultBlock: ViewStyle = { marginTop: t.space.s4, padding: t.space.s4, backgroundColor: t.color.karte, borderWidth: t.space.kontur, borderColor: t.color.tinte, borderRadius: t.radius.s }
   const resultRow: ViewStyle = { flexDirection: 'row', justifyContent: 'space-between', marginBottom: t.space.s2 }
   const resultLabel: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.m }

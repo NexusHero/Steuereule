@@ -749,7 +749,7 @@ function makeStyles(t: UiTheme) {
       fontFamily: t.font.text,
       fontWeight: t.weight.fett,
       fontSize: t.size.s,
-      color: t.color.ki,
+      color: t.color.kiTinte,
     } as TextStyle,
     messagesList: {
       gap: t.space.s3,
@@ -795,7 +795,7 @@ function makeStyles(t: UiTheme) {
       fontFamily: t.font.text,
       fontWeight: t.weight.fett,
       fontSize: t.size.s,
-      color: t.color.ki,
+      color: t.color.kiTinte,
     } as TextStyle,
     sourcesRow: {
       flexDirection: 'row',
@@ -815,7 +815,7 @@ function makeStyles(t: UiTheme) {
       fontFamily: t.font.text,
       fontWeight: t.weight.fett,
       fontSize: t.size.xs,
-      color: t.color.ki,
+      color: t.color.kiTinte,
     } as TextStyle,
     choicesContainer: {
       marginTop: t.space.s3,
@@ -920,7 +920,7 @@ function makeStyles(t: UiTheme) {
     diffNewValue: {
       fontFamily: t.font.display,
       fontWeight: t.weight.fett,
-      color: t.color.ki,
+      color: t.color.kiTinte,
     } as TextStyle,
     actionReason: {
       fontFamily: t.font.text,
@@ -978,7 +978,7 @@ function makeStyles(t: UiTheme) {
       fontFamily: t.font.text,
       fontWeight: t.weight.fett,
       fontSize: t.size.xs,
-      color: t.color.ki,
+      color: t.color.kiTinte,
     } as TextStyle,
     twoPathsContainer: {
       marginTop: t.space.s3,
@@ -1010,7 +1010,7 @@ function makeStyles(t: UiTheme) {
       fontFamily: t.font.text,
       fontWeight: t.weight.fett,
       fontSize: t.size.s,
-      color: t.color.ki,
+      color: t.color.kiTinte,
     } as TextStyle,
     streamStepText: {
       fontFamily: t.font.text,
@@ -1066,7 +1066,7 @@ function makeStyles(t: UiTheme) {
       fontFamily: t.font.display,
       fontWeight: t.weight.schwer,
       fontSize: t.size.l,
-      color: t.color.ki,
+      color: t.color.kiTinte,
     } as TextStyle,
     lawModalTitle: {
       fontFamily: t.font.display,
@@ -1107,7 +1107,7 @@ function makeStyles(t: UiTheme) {
       fontFamily: t.font.text,
       fontWeight: t.weight.fett,
       fontSize: t.size.xs,
-      color: t.color.ki,
+      color: t.color.kiTinte,
     } as TextStyle,
     inputRow: {
       flexDirection: 'row',
