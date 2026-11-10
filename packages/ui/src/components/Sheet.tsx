@@ -10,6 +10,8 @@ import { UI_NS } from '../i18n/resources'
 
 const DISMISS_DRAG_DISTANCE_PX = 120
 const COMPACT_ENTRY_OFFSET_PX = 40
+const FOCUSABLE_SELECTOR =
+  'a[href], button, input, select, textarea, [tabindex]:not([tabindex="-1"]), [role="button"]'
 
 export function sheetKeyboardBehavior(os: string): 'padding' | undefined {
   return os === 'ios' ? 'padding' : undefined
@@ -55,10 +57,47 @@ export function Sheet({ onClose, closeLabel, children, testID }: SheetProps) {
     return () => anim.stop()
   }, [compact, reducedMotion, translateY])
 
+  // Web dialog contract: focus stays inside the sheet while it is open and returns to the opener afterwards.
+  // Read during the first render, before the panel takes focus.
+  const openerRef = useRef<HTMLElement | null>(
+    Platform.OS === 'web' && typeof document !== 'undefined' ? (document.activeElement as HTMLElement | null) : null,
+  )
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof document === 'undefined') return
+    const opener = openerRef.current
+    return () => {
+      if (opener && typeof opener.focus === 'function' && document.contains(opener)) opener.focus()
+    }
+  }, [])
+
   useEffect(() => {
     if (Platform.OS !== 'web' || typeof window === 'undefined') return
+    function trapTab(event: KeyboardEvent) {
+      const panel = panelRef.current as unknown as HTMLElement | null
+      if (!panel || typeof panel.querySelectorAll !== 'function') return
+      const focusables = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
+        (el) => !el.hasAttribute('disabled') && el.getAttribute('aria-hidden') !== 'true',
+      )
+      const first = focusables[0]
+      const last = focusables[focusables.length - 1]
+      if (!first || !last) return
+      const active = document.activeElement as HTMLElement | null
+      const inside = active !== null && panel.contains(active)
+      if (event.shiftKey && (!inside || active === first || active === panel)) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && (!inside || active === last)) {
+        event.preventDefault()
+        first.focus()
+      }
+    }
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') {
+      if (event.key === 'Tab') {
+        trapTab(event)
+        return
+      }
+      // A composing IME or a control that already handled Escape keeps it.
+      if (event.key === 'Escape' && !event.isComposing && !event.defaultPrevented) {
         onCloseRef.current()
       }
     }

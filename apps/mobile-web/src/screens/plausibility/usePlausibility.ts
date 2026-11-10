@@ -52,6 +52,7 @@ function foldInputs(data: WageTaxCertificateData, answers: Answers) {
 
   return {
     lstb,
+    // A workdays contradiction can never be stored: the commute PUT rejects it (ARBEITSTAGE_WIDERSPRUCH).
     workdays: { kind: 'bestimmt' as const, weekdays: 0, workdays: 0, commuteDays: 0 },
     status: calculateEmployeeStatus({
       income: facts.einnahmen,
