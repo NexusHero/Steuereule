@@ -317,4 +317,26 @@ describe('InterviewService', () => {
       )
     })
   })
+
+  describe('AMOUNT_LATER allowlist (#443 Slice 2)', () => {
+    it('accepts spaeter for spenden-betrag and keeps later steps reachable', async () => {
+      await service.postAnswer(USER_ID, TAX_YEAR, { questionId: 'spenden', value: 'Ja' })
+      const next = await service.postAnswer(USER_ID, TAX_YEAR, { questionId: 'spenden-betrag', value: 'spaeter' })
+      expect(next).toEqual({ nextStep: { kind: 'question', id: 'kv-pv' }, openItems: 2 })
+    })
+
+    it('rejects (400) spaeter for a non-allowlisted integer step (abfindung-betrag & ch-nichtrueckkehrtage)', async () => {
+      await service.postAnswer(USER_ID, TAX_YEAR, { questionId: 'dhf', value: 'Nein' })
+      await service.postAnswer(USER_ID, TAX_YEAR, { questionId: 'umzug', value: 'Nein' })
+      await service.postAnswer(USER_ID, TAX_YEAR, { questionId: 'abfindung', value: 'Ja' })
+      await expect(
+        service.postAnswer(USER_ID, TAX_YEAR, { questionId: 'abfindung-betrag', value: 'spaeter' }),
+      ).rejects.toBeInstanceOf(InvalidAnswerValueError)
+
+      await service.postAnswer(USER_ID, TAX_YEAR, { questionId: 'ch-wohnsitz', value: 'Deutschland' })
+      await expect(
+        service.postAnswer(USER_ID, TAX_YEAR, { questionId: 'ch-nichtrueckkehrtage', value: 'spaeter' }),
+      ).rejects.toBeInstanceOf(InvalidAnswerValueError)
+    })
+  })
 })

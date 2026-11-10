@@ -109,4 +109,28 @@ describe('EulenModusService', () => {
     expect(tips[0]!.sourceTranslated).toContain('§ 9 Abs. 1 Satz 1 EStG')
     expect(tips[1]!.sourceTranslated).toContain('§ 9 Abs. 1 Satz 3 Nr. 6 und 7 EStG')
   })
+
+  it('treats AMOUNT_LATER prior-year donations as not entered (null, never NaN) and still checks current year when deferred', async () => {
+    const settingRepo = new FakeOwlSettingRepository()
+    const interviewRepo = new FakeInterviewAnswerRepository()
+    const service = new OwlModeService(
+      settingRepo,
+      new FakeOwlCardDismissalRepository(),
+      new FakeChildRepository(),
+      interviewRepo,
+      new FakeAssessmentRepository(),
+      new RagKiAdapter(),
+      new FakeAuditService() as never,
+    )
+    await service.setSetting('user-1', true)
+
+    await interviewRepo.write({ userId: 'user-1', taxYear: 2024, questionId: 'spenden-betrag', value: 'spaeter', openItems: 0 })
+    const resPriorLater = await service.getCards('user-1', 2025, '2025-11-01')
+    expect(resPriorLater.cards.some((c) => c.trigger === 'vorjahresvergleich')).toBe(false)
+
+    await interviewRepo.write({ userId: 'user-1', taxYear: 2024, questionId: 'spenden-betrag', value: '300', openItems: 0 })
+    await interviewRepo.write({ userId: 'user-1', taxYear: 2025, questionId: 'spenden-betrag', value: 'spaeter', openItems: 0 })
+    const resCurrentLater = await service.getCards('user-1', 2025, '2025-11-01')
+    expect(resCurrentLater.cards.some((c) => c.trigger === 'vorjahresvergleich')).toBe(true)
+  })
 })
