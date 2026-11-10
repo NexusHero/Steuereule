@@ -630,9 +630,23 @@ export const SendAdvisorMessageDtoActiveScreen = {
   assessment: 'assessment',
 } as const;
 
+/**
+ * Quick start that shapes the turn: forgotten_check always opens with a visible plan (#451).
+ */
+export type SendAdvisorMessageDtoQuickAction = typeof SendAdvisorMessageDtoQuickAction[keyof typeof SendAdvisorMessageDtoQuickAction];
+
+
+export const SendAdvisorMessageDtoQuickAction = {
+  forgotten_check: 'forgotten_check',
+} as const;
+
 export interface SendAdvisorMessageDto {
   message: string;
   activeScreen?: SendAdvisorMessageDtoActiveScreen;
+  /** Quick start that shapes the turn: forgotten_check always opens with a visible plan (#451). */
+  quickAction?: SendAdvisorMessageDtoQuickAction;
+  /** Regenerate or edit-and-resend (#451): the id of the latest user message. That turn is replaced; its pending proposals are dismissed, never applied. */
+  replaceFromMessageId?: string;
 }
 
 /**

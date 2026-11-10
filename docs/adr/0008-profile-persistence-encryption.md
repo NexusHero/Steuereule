@@ -75,3 +75,11 @@ security/DSGVO decisions go to the human, captured as an ADR). The stakeholder d
 - **Persist non-sensitive fields only, Steuer-ID never at rest until submission (ADR-027-strict)** —
   considered; rejected in favour of encrypted server-side persistence so the prefill works end-to-end
   while the sensitive field is still protected.
+
+## Documented exception (ADR-0061, 2026-11-10)
+
+The on-device dictation model (Whisper "base", ~80 MB) is the one thing the web app keeps in the
+browser (Cache Storage `steuereule-dictation-model-v1`), loaded only after consent. It holds **no
+user data** — only model weights and tokenizer files, each verified against a pinned SHA-256 — and
+the user removes it under „Profil → Sprachmodell löschen". No tax data, no audio and no transcript
+is ever written to any client store. See [ADR-0061](./0061-on-device-dictation-model-source.md).

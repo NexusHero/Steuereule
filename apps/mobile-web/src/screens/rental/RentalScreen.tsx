@@ -27,6 +27,8 @@ import { BackButton, BackButtonSpacer } from '../shared/BackButton'
 import { usePendingMutations } from '../shared/usePendingMutations'
 import { SaveFailedNotice } from '../shared/SaveFailedNotice'
 import { watchSaveResult } from '../shared/saveFeedback'
+import { PostalCodeHint } from '../shared/PostalCodeHint'
+import { prefillCity } from '../shared/postalCodePrefill'
 
 export interface RentalScreenProps {
   readonly onDone?: () => void
@@ -165,6 +167,14 @@ function PropertyCard({
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
+  const [cityPrefill, setCityPrefill] = useState<string | null>(null)
+
+  function sendPostalCode(plz: string) {
+    // #451 slice 3: a one-place postal code fills an empty Ort of the property.
+    const { city, prefill } = prefillCity({ plz, city: property.city ?? '', lastPrefill: cityPrefill })
+    setCityPrefill(prefill)
+    onSendAddress?.(city !== (property.city ?? '') ? { plz, city } : { plz })
+  }
 
   return (
     <Card style={styles.objektCard}>
@@ -189,6 +199,7 @@ function PropertyCard({
             value={[property.strasse, property.hausnummer].filter(Boolean).join(' ')}
             placeholder="Musterstraße 12"
             accessibilityLabel="Straße und Hausnummer"
+            autoComplete="street-address"
             testID={`vermietung-${index}-adresse`}
             onChange={(val) => {
               const parts = val.split(' ')
@@ -207,8 +218,9 @@ function PropertyCard({
                 placeholder="10115"
                 type="numeric"
                 accessibilityLabel="Postleitzahl"
+                autoComplete="postal-code"
                 testID={`vermietung-${index}-plz`}
-                onChange={(plz) => onSendAddress?.({ plz })}
+                onChange={sendPostalCode}
               />
             </Feld>
           </View>
@@ -218,12 +230,23 @@ function PropertyCard({
                 value={property.city ?? ''}
                 placeholder="Berlin"
                 accessibilityLabel="Ort"
+                autoComplete="address-level2"
                 testID={`vermietung-${index}-ort`}
                 onChange={(city) => onSendAddress?.({ city })}
               />
             </Feld>
           </View>
         </View>
+        <PostalCodeHint
+          plz={property.plz ?? ''}
+          city={property.city ?? ''}
+          prefill={cityPrefill}
+          onChooseCity={(city) => {
+            setCityPrefill(city)
+            onSendAddress?.({ city })
+          }}
+          testIDPrefix={`vermietung-${index}`}
+        />
         <Feld label="Gesamtwohnfläche (m²)">
           <Input
             value={property.livingArea ?? ''}

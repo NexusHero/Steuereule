@@ -86,7 +86,7 @@ export function RegistrationScreen({ onDone, onLogin }: RegistrationScreenProps)
       <SocialSignInSection disabled={stage.kind === 'submitting'} onSignedIn={onDone} onError={setError} />
 
       <Feld label={tr('registrierung.emailLabel')}>
-        <Input type="email" value={mail} onChange={setMail} placeholder={tr('registrierung.emailPlaceholder')} testID="registrierung-email" />
+        <Input type="email" value={mail} onChange={setMail} placeholder={tr('registrierung.emailPlaceholder')} autoComplete="email" testID="registrierung-email" />
       </Feld>
       <Feld label={tr('registrierung.passwordLabel')} error={errorMessage}>
         <Input
@@ -95,6 +95,7 @@ export function RegistrationScreen({ onDone, onLogin }: RegistrationScreenProps)
           onChange={setPass}
           placeholder={tr('registrierung.passwordPlaceholder')}
           onSubmit={() => void create()}
+          autoComplete="new-password"
           testID="registrierung-passwort"
         />
       </Feld>

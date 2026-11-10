@@ -1,0 +1,100 @@
+import { useState } from 'react'
+import { describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen } from '@testing-library/react'
+import { I18nextProvider } from 'react-i18next'
+import { ThemeProvider } from '@steuereule/ui'
+import { createAppI18n } from '../../../i18n/app-i18n'
+import { ChatComposer } from './ChatComposer'
+import type { ChatInputPlatform } from './chatKeys'
+
+function Host({
+  platform,
+  sending = false,
+  onSend,
+  onStop,
+  variant,
+}: {
+  readonly platform: ChatInputPlatform
+  readonly sending?: boolean
+  readonly onSend: (text: string) => void
+  readonly onStop?: () => void
+  readonly variant?: 'panel' | 'dock'
+}) {
+  const [value, setValue] = useState('')
+  return (
+    <I18nextProvider i18n={createAppI18n('de')}>
+      <ThemeProvider mode="light">
+        <ChatComposer
+          value={value}
+          onChangeText={setValue}
+          onSend={(text) => {
+            onSend(text)
+            setValue('')
+          }}
+          onStop={onStop}
+          sending={sending}
+          placeholder="Frag die Eule"
+          inputTestID="input"
+          sendTestID="send"
+          platform={platform}
+          variant={variant}
+        />
+      </ThemeProvider>
+    </I18nextProvider>
+  )
+}
+
+const input = () => screen.getByTestId('input') as HTMLTextAreaElement
+
+describe('ChatComposer (#451 slice 1)', () => {
+  it('sends on Enter on a desktop and clears the field', () => {
+    const onSend = vi.fn()
+    render(<Host platform="desktop" onSend={onSend} />)
+    fireEvent.change(input(), { target: { value: 'Laptop absetzen?' } })
+    fireEvent.keyDown(input(), { key: 'Enter' })
+    expect(onSend).toHaveBeenCalledWith('Laptop absetzen?')
+    expect(input().value).toBe('')
+  })
+
+  it('keeps Shift+Enter as a line break on a desktop', () => {
+    const onSend = vi.fn()
+    render(<Host platform="desktop" onSend={onSend} />)
+    fireEvent.change(input(), { target: { value: 'Zeile 1' } })
+    fireEvent.keyDown(input(), { key: 'Enter', shiftKey: true })
+    expect(onSend).not.toHaveBeenCalled()
+  })
+
+  it('never sends with Enter on a phone; only the button sends', () => {
+    const onSend = vi.fn()
+    render(<Host platform="touch" variant="dock" onSend={onSend} />)
+    fireEvent.change(input(), { target: { value: 'Kurze Frage' } })
+    fireEvent.keyDown(input(), { key: 'Enter' })
+    expect(onSend).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByTestId('send'))
+    expect(onSend).toHaveBeenCalledWith('Kurze Frage')
+  })
+
+  it('is a multiline field', () => {
+    render(<Host platform="desktop" onSend={vi.fn()} />)
+    expect(input().tagName).toBe('TEXTAREA')
+    expect(input().getAttribute('enterkeyhint')).toBe('send')
+  })
+
+  it('turns the send button into Stop while answering, and Escape stops too', () => {
+    const onStop = vi.fn()
+    render(<Host platform="desktop" sending onSend={vi.fn()} onStop={onStop} />)
+    expect(screen.queryByTestId('send')).toBeNull()
+    fireEvent.click(screen.getByTestId('advisor-chat-stop'))
+    expect(onStop).toHaveBeenCalledTimes(1)
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(onStop).toHaveBeenCalledTimes(2)
+  })
+
+  it('does not send a second question while one is running', () => {
+    const onSend = vi.fn()
+    render(<Host platform="desktop" sending onSend={onSend} />)
+    fireEvent.change(input(), { target: { value: 'Noch was' } })
+    fireEvent.keyDown(input(), { key: 'Enter' })
+    expect(onSend).not.toHaveBeenCalled()
+  })
+})

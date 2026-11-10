@@ -1,3 +1,4 @@
+import { POSTAL_CODE_SOURCE } from '@steuereule/core'
 export type LegalPage = 'impressum' | 'datenschutz' | 'agb' | 'hinweise'
 
 export const LEGAL_PAGES: readonly LegalPage[] = ['impressum', 'datenschutz', 'agb', 'hinweise']
@@ -98,6 +99,7 @@ export function privacy(operator: Operator | null): readonly Section[] {
         'Zahlungen: Stripe Payments Europe Ltd. (Irland) wickelt Zahlungen ab und ist dafür eigenständig verantwortlich.',
         'Anmeldung mit Google (nur wenn du sie wählst): Google Ireland Ltd. erhält die für die Anmeldung nötigen Daten.',
         'Eigener KI-Assistent (nur wenn du ihn verbindest): Verknüpfst du einen externen Assistenten (z. B. Anthropic Claude, OpenAI), werden Daten auf deine Weisung an den jeweiligen Anbieter übertragen. Bei Anbietern in Drittländern (z. B. USA) erfolgt die Übermittlung auf Grundlage deiner ausdrücklichen Einwilligung (Art. 49 Abs. 1 lit. a DSGVO) bzw. von Angemessenheitsbeschlüssen. Du kannst die Verknüpfung jederzeit mit sofortiger Wirkung unter „Profil → Verbundene Assistenten“ widerrufen.',
+        'Sprachmodell für das Diktieren (nur wenn du zustimmst): Für das Diktieren im Chat lädt die App einmalig ein Sprachmodell von Hugging Face, Inc. (USA) bzw. dessen Download-Servern (hf.co). Dabei erhält Hugging Face deine IP-Adresse und den Zeitpunkt des Abrufs, sonst nichts: Dein Ton und der erkannte Text bleiben auf deinem Gerät. Die Übermittlung in die USA erfolgt auf Grundlage deiner ausdrücklichen Einwilligung (Art. 6 Abs. 1 lit. a und Art. 49 Abs. 1 lit. a DSGVO), die du im Dialog vor dem Download gibst. Das Modell bleibt im Speicher deines Browsers, enthält keine Daten von dir und lässt sich unter „Profil → Sprachmodell löschen“ entfernen.',
         'Passwortprüfung: Bei der Registrierung prüfen wir dein Passwort gegen die Datenbank „Have I Been Pwned“. Dabei verlassen nur die ersten fünf Zeichen eines Hash-Werts unseren Server, nie dein Passwort.',
         'An das Finanzamt übermitteln wir nichts. Du druckst die Formulare aus und reichst sie selbst ein.',
       ],
@@ -199,6 +201,13 @@ export const NOTICES: readonly Section[] = [
     title: 'Abgabe auf Papier',
     paragraphs: [
       'SteuerEule übermittelt nichts elektronisch an das Finanzamt. Du druckst die ausgefüllten Formulare aus, prüfst sie, unterschreibst den Hauptvordruck und reichst alles bei deinem Finanzamt ein. Wer Gewinneinkünfte hat (z. B. aus Gewerbe oder Selbstständigkeit), muss elektronisch abgeben – diese Fälle unterstützt SteuerEule nicht.',
+    ],
+  },
+  {
+    title: 'Datenquellen',
+    paragraphs: [
+      `Postleitzahlen, Orte und Bundesländer: © OpenStreetMap-Mitwirkende, verfügbar unter der Open Database License (ODbL) 1.0 (opendatacommons.org/licenses/odbl/1-0/). Auszug des Projekts OpenPLZ API, Stand ${POSTAL_CODE_SOURCE.retrieved}.`,
+      'Die Zuordnung läuft auf deinem Gerät. Deine Postleitzahl wird dafür nirgendwohin geschickt.',
     ],
   },
 ]

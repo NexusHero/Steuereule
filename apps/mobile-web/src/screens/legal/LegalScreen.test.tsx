@@ -91,3 +91,18 @@ describe('legal texts stay honest about what the product does', () => {
     expect(alles).toContain('Die steuerliche Verantwortung verbleibt stets bei dir als Steuerpflichtigem')
   })
 })
+
+describe('OSM attribution (#451 slice 3, decision 8)', () => {
+  it('names OpenStreetMap and the ODbL under Wichtige Hinweise', () => {
+    renderPage('hinweise')
+    expect(screen.getByText('Datenquellen')).toBeTruthy()
+    expect(screen.getByText(/© OpenStreetMap-Mitwirkende, verfügbar unter der Open Database License \(ODbL\) 1\.0/)).toBeTruthy()
+  })
+})
+
+describe('privacy policy: dictation model (#451 slice 5)', () => {
+  it('names Hugging Face (USA), the IP address and the consent basis', () => {
+    renderPage('datenschutz')
+    expect(screen.getByText(/Sprachmodell für das Diktieren \(nur wenn du zustimmst\): .*Hugging Face, Inc\. \(USA\).*Dabei erhält Hugging Face deine IP-Adresse/)).toBeTruthy()
+  })
+})

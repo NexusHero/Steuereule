@@ -233,3 +233,49 @@ describe('StammdatenScreen (ADR-0050)', () => {
     expect(plz.getAttribute('inputmode')).toBe('numeric')
   })
 })
+
+describe('StammdatenScreen PLZ → Ort (#451 slice 3)', () => {
+  it('fills the Ort from a one-place postal code, marks it and shows Bundesland and church tax rate', async () => {
+    server.use(http.get('*/v1/stammdaten', () => HttpResponse.json(LEER)))
+    renderScreen()
+    await screen.findByTestId('stammdaten-plz')
+    fireEvent.click(screen.getByText('römisch-katholisch'))
+    input('stammdaten-plz', '80331')
+    expect((screen.getByTestId('stammdaten-wohnort') as HTMLInputElement).value).toBe('München')
+    expect(screen.getByTestId('stammdaten-ort-aus-plz').textContent).toBe('aus deiner PLZ')
+    expect(screen.getByTestId('stammdaten-bundesland').textContent).toContain('Bayern')
+    expect(screen.getByTestId('stammdaten-kirchensteuersatz').textContent).toBe('Kirchensteuersatz in Bayern: 8 %')
+  })
+
+  it('keeps the prefilled Ort changeable and drops the mark once the user edits it', async () => {
+    server.use(http.get('*/v1/stammdaten', () => HttpResponse.json(LEER)))
+    renderScreen()
+    await screen.findByTestId('stammdaten-plz')
+    input('stammdaten-plz', '10115')
+    input('stammdaten-wohnort', 'Berlin-Mitte')
+    expect(screen.queryByTestId('stammdaten-ort-aus-plz')).toBeNull()
+    input('stammdaten-plz', '80331')
+    expect((screen.getByTestId('stammdaten-wohnort') as HTMLInputElement).value).toBe('Berlin-Mitte')
+  })
+
+  it('offers a choice when the postal code has several places', async () => {
+    server.use(http.get('*/v1/stammdaten', () => HttpResponse.json(LEER)))
+    renderScreen()
+    await screen.findByTestId('stammdaten-plz')
+    input('stammdaten-plz', '21039')
+    expect(screen.getByTestId('stammdaten-plz-auswahl')).toBeTruthy()
+    expect(screen.queryByTestId('stammdaten-bundesland')).toBeNull()
+    fireEvent.click(screen.getByText('Escheburg'))
+    expect((screen.getByTestId('stammdaten-wohnort') as HTMLInputElement).value).toBe('Escheburg')
+    expect(screen.queryByTestId('stammdaten-plz-auswahl')).toBeNull()
+    expect(screen.getByTestId('stammdaten-bundesland').textContent).toContain('Schleswig-Holstein')
+  })
+
+  it('says so when the postal code is not in the table', async () => {
+    server.use(http.get('*/v1/stammdaten', () => HttpResponse.json(LEER)))
+    renderScreen()
+    await screen.findByTestId('stammdaten-plz')
+    input('stammdaten-plz', '00000')
+    expect(screen.getByTestId('stammdaten-plz-unbekannt')).toBeTruthy()
+  })
+})

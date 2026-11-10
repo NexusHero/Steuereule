@@ -26,7 +26,7 @@ import {
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
-import { AdvisorChatPanel } from './AdvisorChatPanel'
+import { AdvisorChatPanel, sendOptionsToDto, type ChatSendOptions } from './AdvisorChatPanel'
 import { useOptionalCopilotBridge } from './CopilotBridgeProvider'
 
 export interface InMaskAdvisorCompanionProps {
@@ -140,11 +140,11 @@ export function InMaskAdvisorCompanion({
     ])
   }
 
-  async function handleSendMessage(text: string) {
+  async function handleSendMessage(text: string, options?: ChatSendOptions) {
     try {
       const res = await sendMutation.mutateAsync({
         jahr: taxYear,
-        data: { message: text, activeScreen: screen },
+        data: { message: text, activeScreen: screen, ...sendOptionsToDto(options) },
       })
       if (res.status === 200) {
         await queryClient.invalidateQueries({
@@ -156,6 +156,13 @@ export function InMaskAdvisorCompanion({
       // Offline / guest fallback: evaluate locally in-memory
     }
 
+    const replaceFrom = options?.replaceFromMessageId
+    if (replaceFrom !== undefined) {
+      setLocalMessages((prev) => {
+        const at = prev.findIndex((m) => m.id === replaceFrom)
+        return at === -1 ? prev : prev.slice(0, at)
+      })
+    }
     const userMsg: AdvisorChatMessageView = {
       id: `local-u-${Date.now()}`,
       role: 'user',

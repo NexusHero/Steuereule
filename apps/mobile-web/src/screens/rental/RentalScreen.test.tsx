@@ -149,6 +149,20 @@ describe('VermietungScreen', () => {
     expect(screen.queryByLabelText('Dein Anteil am Objekt in % (der Rest gehört deinem Partner)')).toBeNull()
   })
 
+  it('fills the empty Ort of the property from a one-place postal code (#451 slice 3)', async () => {
+    const bodies: unknown[] = []
+    server.use(http.get(RENTAL_URL, () => HttpResponse.json(FULL_PROPERTY, { status: 200 })))
+    server.use(
+      http.put(`${RENTAL_URL}/objekte/:objektId/adresse`, async ({ request }) => {
+        bodies.push(await request.json())
+        return HttpResponse.json(FULL_PROPERTY, { status: 200 })
+      }),
+    )
+    renderRental()
+    fireEvent.change(await screen.findByTestId('vermietung-0-plz'), { target: { value: '01067' } })
+    await waitFor(() => expect(bodies).toContainEqual({ plz: '01067', city: 'Dresden' }))
+  })
+
   it('names the Verkauf/möbliert gate honestly and hides the add CTA', async () => {
     server.use(
       http.get(RENTAL_URL, () =>

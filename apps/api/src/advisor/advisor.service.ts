@@ -291,7 +291,7 @@ export class AdvisorService {
       enabled: setting.enabled,
       greeting,
       openCards: cardsRes.cards,
-      messages: history.map(toMessageDto),
+      messages: history.filter((m) => !m.meta?.replaced).map(toMessageDto),
       quickChips: [
         'Kanzlei-Endprüfung starten',
         'Homeoffice vs. Arbeitszimmer prüfen',
@@ -347,7 +347,10 @@ export class AdvisorService {
     // 3. Double PII Shield: scrub known names, Steuer-IDs, IBANs, emails, and phones from user free-text & history
     const knownNames = await this.knownNamesForScrubbing(userId, taxYear)
     const scrubbedUserText = scrubUserMessagePii(dto.message.trim(), knownNames)
-    const priorRecords = await this.advisorRepo.listForUserAndYear(userId, taxYear)
+    if (dto.replaceFromMessageId !== undefined) {
+      await this.replaceLatestTurn(userId, taxYear, dto.replaceFromMessageId)
+    }
+    const priorRecords = (await this.advisorRepo.listForUserAndYear(userId, taxYear)).filter((m) => !m.meta?.replaced)
     const history: AdvisorHistoryEntry[] = priorRecords.slice(-10).map((msg) => ({
       role: msg.role,
       content: scrubUserMessagePii(msg.content, knownNames),
@@ -413,6 +416,7 @@ export class AdvisorService {
       history,
       actionIdFactory,
       signal,
+      planRequired: dto.quickAction === 'forgotten_check',
     })) {
       if (ev.event === 'action') {
         const enriched = await this.enrichSingleDraft(userId, taxYear, ev.data)
@@ -465,6 +469,32 @@ export class AdvisorService {
 
       yield ev
     }
+  }
+
+  /**
+   * Regenerate / edit-and-resend (#451 slice 1b): the latest user message and everything after it
+   * leave the chat. Proposals still pending there are dismissed so they can never be applied;
+   * applied ones stay applied (their undo still works from the cockpit history).
+   */
+  private async replaceLatestTurn(userId: string, taxYear: number, userMessageId: string): Promise<void> {
+    const visible = (await this.advisorRepo.listForUserAndYear(userId, taxYear)).filter((m) => !m.meta?.replaced)
+    const lastUserIndex = visible.map((m) => m.role).lastIndexOf('user')
+    if (lastUserIndex === -1 || visible[lastUserIndex]!.id !== userMessageId) {
+      throw new InvalidInputError('ADVISOR_REPLACE_NOT_LATEST', 'Nur die letzte Frage lässt sich neu stellen oder bearbeiten.')
+    }
+    const dismiss = <A extends AdvisorActionProposal>(a: A): A => (a.status === 'pending' ? { ...a, status: 'dismissed' } : a)
+    await this.transactions.run(async () => {
+      for (const record of visible.slice(lastUserIndex)) {
+        const meta = record.meta ?? {}
+        await this.advisorRepo.updateMessageMeta(record.id, userId, {
+          ...meta,
+          ...(meta.action ? { action: dismiss(meta.action) } : {}),
+          ...(meta.actions ? { actions: meta.actions.map(dismiss) } : {}),
+          ...(meta.twoPaths ? { twoPaths: { ...meta.twoPaths, safePath: dismiss(meta.twoPaths.safePath), maxPath: dismiss(meta.twoPaths.maxPath) } } : {}),
+          replaced: true,
+        })
+      }
+    })
   }
 
   async stageReceiptProposal(

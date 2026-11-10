@@ -603,8 +603,9 @@ describe('Slice 4: CopilotBridgeProvider & 3-Breakpoint OwlMode Workspace', () =
       </BridgeHarness>,
     )
 
-    expect(screen.getByTestId('advisor-thinking')).toBeTruthy()
-    expect(screen.getByTestId('advisor-stream-step').textContent).toContain('Schritt 1')
+    // #451 slice 1: once tokens arrive, the answer grows in the owl's bubble instead of the thinking box.
+    expect(screen.queryByTestId('advisor-thinking')).toBeNull()
+    expect(screen.getByTestId('advisor-streaming-message')).toBeTruthy()
     expect(screen.getByTestId('advisor-stream-token-preview').textContent).toContain('Live Antwort...')
     expect(screen.getByTestId('advisor-chat-error').textContent).toContain('Kurze Unterbrechung')
 

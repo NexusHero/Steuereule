@@ -1,5 +1,15 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Linking, Pressable, Text, TextInput, View, type TextStyle, type ViewStyle } from 'react-native'
+import { ChatComposer } from './chat/ChatComposer'
+import { ThinkingIndicator } from './chat/ThinkingIndicator'
+import { DictationHint } from './chat/DictationHint'
+import { DictationBar } from './chat/DictationBar'
+import { browserDictationEngine, type DictationEngine } from '../../lib/dictation/engine'
+import { MarkdownMessage } from './chat/MarkdownMessage'
+import { copyToClipboard } from './chat/clipboard'
+import { plainTextForCopy } from './chat/markdownLinks'
+import type { AbortedTurn, AdvisorPlanView } from './CopilotBridgeProvider'
+import { PlanChecklist } from './chat/PlanChecklist'
 import { useTranslation } from 'react-i18next'
 import { AiChip, Button, Card, useTheme, type UiTheme } from '@steuereule/ui'
 import { ReceiptPickerButton } from '../shared/ReceiptPickerButton'
@@ -9,23 +19,30 @@ import {
   type AdvisorActionProposal,
   type AdvisorChatMessageView,
   type AdvisorLegalSource,
+  type AdvisorQuickAction,
   type AdvisorTwoPathsProposal,
-  type OwlSourceId,
   type Screen,
 } from '@steuereule/core'
 import { APP_NS } from '../../i18n/resources'
-import type { Tr } from '../shared/tr'
 
 export interface AdvisorChatPanelProps {
   readonly greeting?: string | undefined
   readonly messages: readonly AdvisorChatMessageView[]
-  readonly quickChips?: readonly string[] | undefined
+  readonly quickChips?: readonly (string | AdvisorQuickChip)[] | undefined
   readonly isSending?: boolean | undefined
   readonly streamSteps?: readonly string[] | undefined
   readonly streamedText?: string | undefined
   readonly chatError?: string | null | undefined
   readonly basisMode?: boolean | undefined
-  readonly onSendMessage: (text: string) => Promise<void> | void
+  readonly onSendMessage: (text: string, options?: ChatSendOptions) => Promise<void> | void
+  /** On-device dictation (#451 slice 5); the browser engine unless a test passes its own. */
+  readonly dictationEngine?: DictationEngine | undefined
+  /** The plan of the current or last answer (#451 slice 6). */
+  readonly plan?: AdvisorPlanView | null | undefined
+  /** Stops the running answer; without it the chat offers no Stop (e.g. the non-streaming companion). */
+  readonly onStop?: (() => void) | undefined
+  /** The last answer the user stopped: partial text, marked as aborted, with „Noch mal fragen“. */
+  readonly abortedTurn?: AbortedTurn | null | undefined
   readonly onApplyAction?: ((actionId: string) => Promise<void> | void) | undefined
   readonly onUndoAction?: ((actionId: string) => Promise<void> | void) | undefined
   readonly onInspectMask?: ((screen: Screen, field?: string) => void) | undefined
@@ -40,52 +57,25 @@ export interface AdvisorChatPanelProps {
   readonly compact?: boolean | undefined
 }
 
-const SOURCE_TAG_REGEX = /\[(estg-[a-z0-9-]+|ao-355)\]/g
+/** How a message is sent: a quick start, or replacing the latest turn (regenerate / edit, #451 1b). */
+export interface ChatSendOptions {
+  readonly quickAction?: AdvisorQuickAction | undefined
+  readonly replaceFromMessageId?: string | undefined
+}
 
-function renderMessageWithLawChips(
-  content: string,
-  onSelectSource: (source: AdvisorLegalSource) => void,
-  styles: ReturnType<typeof makeStyles>,
-  tr: Tr,
-) {
-  const parts: React.ReactNode[] = []
-  let lastIndex = 0
-  let match: RegExpExecArray | null
-
-  const rx = new RegExp(SOURCE_TAG_REGEX.source, 'g')
-  while ((match = rx.exec(content)) !== null) {
-    if (match.index > lastIndex) {
-      parts.push(content.slice(lastIndex, match.index))
-    }
-    const sourceId = match[1] as OwlSourceId
-    const legalSource = ADVISOR_LEGAL_SOURCES[sourceId]
-    if (legalSource) {
-      parts.push(
-        <Pressable
-          key={`${sourceId}-${match.index}`}
-          accessibilityRole="button"
-          accessibilityLabel={tr('advisor.chat.legalSourceAria', {
-            paragraph: legalSource.paragraph,
-            defaultValue: `Rechtsquelle ${legalSource.paragraph}`,
-          })}
-          onPress={() => onSelectSource(legalSource)}
-          style={styles.inlineLawChip}
-          testID={`law-chip-${sourceId}`}
-        >
-          <Text style={styles.inlineLawChipText}>{`§ ${legalSource.paragraph.replace(/^§\s*/, '')}`}</Text>
-        </Pressable>,
-      )
-    } else {
-      parts.push(match[0])
-    }
-    lastIndex = rx.lastIndex
+/** The options as request fields, without keys that are unset (the DTO forbids explicit undefined). */
+export function sendOptionsToDto(options: ChatSendOptions | undefined): { quickAction?: AdvisorQuickAction; replaceFromMessageId?: string } {
+  return {
+    ...(options?.quickAction ? { quickAction: options.quickAction } : {}),
+    ...(options?.replaceFromMessageId ? { replaceFromMessageId: options.replaceFromMessageId } : {}),
   }
+}
 
-  if (lastIndex < content.length) {
-    parts.push(content.slice(lastIndex))
-  }
-
-  return <Text style={styles.assistantText}>{parts}</Text>
+/** A quick-start chip that also tells the server how to run the turn (e.g. always with a plan). */
+export interface AdvisorQuickChip {
+  readonly label: string
+  readonly testID: string
+  readonly quickAction?: AdvisorQuickAction | undefined
 }
 
 function ActionProposalCardView({
@@ -354,6 +344,10 @@ export function AdvisorChatPanel({
   chatError = null,
   basisMode = false,
   onSendMessage,
+  onStop,
+  abortedTurn = null,
+  plan = null,
+  dictationEngine = browserDictationEngine,
   onApplyAction,
   onUndoAction,
   onInspectMask,
@@ -374,15 +368,59 @@ export function AdvisorChatPanel({
   const [receiptTextOpen, setReceiptTextOpen] = useState(false)
   const [receiptFileName, setReceiptFileName] = useState('beleg.pdf')
   const [receiptRawText, setReceiptRawText] = useState('')
+  const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [dictationSupported, setDictationSupported] = useState(false)
 
-  async function handleSubmit(rawText?: string) {
+  useEffect(() => {
+    let alive = true
+    void dictationEngine
+      .support()
+      .then((result) => alive && setDictationSupported(result.supported))
+      .catch(() => {})
+    return () => {
+      alive = false
+    }
+  }, [dictationEngine])
+  const [editingId, setEditingId] = useState<string | null>(null)
+
+  async function handleSubmit(rawText?: string, quickAction?: AdvisorQuickAction) {
     const text = (rawText ?? inputText).trim()
     if (!text || isSending) return
     if (rawText === undefined) {
       setInputText('')
     }
-    await onSendMessage(text)
+    await (quickAction ? onSendMessage(text, { quickAction }) : onSendMessage(text))
   }
+
+  // The plan sits above the answer it belongs to: the live one, the stopped one, or the last one.
+  const lastAssistantIndex = messages.reduce((last, m, i) => (m.role === 'assistant' ? i : last), -1)
+  const lastUserIndex = messages.reduce((last, m, i) => (m.role === 'user' ? i : last), -1)
+  const lastUser = lastUserIndex === -1 ? null : messages[lastUserIndex]!
+  const canReplace = !isSending && lastUser !== null
+
+  async function copyMessage(id: string, content: string) {
+    if (await copyToClipboard(plainTextForCopy(content))) {
+      setCopiedId(id)
+      setTimeout(() => setCopiedId((current) => (current === id ? null : current)), 2000)
+    }
+  }
+
+  function regenerate() {
+    if (!canReplace || lastUser === null) return
+    void onSendMessage(lastUser.content, { replaceFromMessageId: lastUser.id })
+  }
+
+  function startEdit() {
+    if (!canReplace || lastUser === null) return
+    setEditingId(lastUser.id)
+    setInputText(lastUser.content)
+  }
+
+  function cancelEdit() {
+    setEditingId(null)
+    setInputText('')
+  }
+  const planAboveLastAnswer = plan !== null && !isSending && abortedTurn === null
 
   async function handleReceiptSubmit() {
     if (!onAttachReceipt || isParsingReceipt) return
@@ -413,32 +451,51 @@ export function AdvisorChatPanel({
       {/* Quick-Starter Chips */}
       {quickChips.length > 0 && messages.length === 0 ? (
         <View style={styles.quickChipsRow} testID="advisor-quick-chips">
-          {quickChips.map((chip) => (
-            <Pressable
-              key={chip}
-              accessibilityRole="button"
-              onPress={() => void handleSubmit(chip)}
-              style={styles.quickChipButton}
-            >
-              <Text style={styles.quickChipText}>{chip}</Text>
-            </Pressable>
-          ))}
+          {quickChips.map((entry) => {
+            const chip = typeof entry === 'string' ? { label: entry, testID: undefined, quickAction: undefined } : entry
+            return (
+              <Pressable
+                key={chip.label}
+                accessibilityRole="button"
+                onPress={() => void handleSubmit(chip.label, chip.quickAction)}
+                style={styles.quickChipButton}
+                testID={chip.testID}
+              >
+                <Text style={styles.quickChipText}>{chip.label}</Text>
+              </Pressable>
+            )
+          })}
         </View>
       ) : null}
 
       {/* Conversation History */}
       <View style={styles.messagesList}>
-        {messages.map((msg) =>
+        {messages.map((msg, index) =>
           msg.role === 'user' ? (
-            <View key={msg.id} style={styles.userBubble} testID="advisor-user-message">
-              <Text style={styles.userBubbleText}>{msg.content}</Text>
+            <View key={msg.id} style={styles.userTurn}>
+              <View style={styles.userBubble} testID="advisor-user-message">
+                <Text style={styles.userBubbleText}>{msg.content}</Text>
+              </View>
+              {index === lastUserIndex && canReplace && editingId === null ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={tr('advisor.chat.editAria')}
+                  onPress={startEdit}
+                  style={styles.messageAction}
+                  testID="advisor-message-edit"
+                >
+                  <Text style={styles.messageActionText}>{tr('advisor.chat.edit')}</Text>
+                </Pressable>
+              ) : null}
             </View>
           ) : (
-            <Card key={msg.id} style={styles.assistantBubble} testID="advisor-assistant-message">
+            <View key={msg.id}>
+            {planAboveLastAnswer && index === lastAssistantIndex ? <PlanChecklist plan={plan} /> : null}
+            <Card style={styles.assistantBubble} testID="advisor-assistant-message">
               <View style={styles.assistantBubbleHeader}>
                 <AiChip>{tr('advisor.chat.sender', 'Die Eule')}</AiChip>
               </View>
-              {renderMessageWithLawChips(msg.content, setSelectedSource, styles, tr)}
+              <MarkdownMessage content={msg.content} onSelectSource={setSelectedSource} />
 
               {/* Source Pills when sources are in meta */}
               {msg.meta?.sources && msg.meta.sources.length > 0 ? (
@@ -511,24 +568,70 @@ export function AdvisorChatPanel({
                   styles={styles}
                 />
               ) : null}
+
+              <View style={styles.messageActions}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={tr('advisor.chat.copyAria')}
+                  onPress={() => void copyMessage(msg.id, msg.content)}
+                  style={styles.messageAction}
+                  testID="advisor-message-copy"
+                >
+                  <Text style={styles.messageActionText}>{copiedId === msg.id ? tr('advisor.chat.copied') : tr('advisor.chat.copy')}</Text>
+                </Pressable>
+                {index === lastAssistantIndex && lastAssistantIndex > lastUserIndex && canReplace ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={tr('advisor.chat.regenerateAria')}
+                    onPress={regenerate}
+                    style={styles.messageAction}
+                    testID="advisor-message-regenerate"
+                  >
+                    <Text style={styles.messageActionText}>{tr('advisor.chat.regenerate')}</Text>
+                  </Pressable>
+                ) : null}
+              </View>
+              {copiedId === msg.id ? (
+                <Text style={styles.srOnly} accessibilityLiveRegion="polite" aria-live="polite">
+                  {tr('advisor.chat.copied')}
+                </Text>
+              ) : null}
             </Card>
+            </View>
           ),
         )}
 
-        {isSending ? (
-          <View style={styles.thinkingBox} testID="advisor-thinking">
-            <Text style={styles.thinkingText}>{tr('advisor.chat.thinking', 'Eule prüft deine Akte & Paragraphen …')}</Text>
-            {streamSteps.length > 0 ? (
-              <Text style={styles.streamStepText} testID="advisor-stream-step">
-                {streamSteps.join(' · ')}
-              </Text>
-            ) : null}
-            {streamedText.length > 0 ? (
-              <Text style={styles.streamTokenPreview} testID="advisor-stream-token-preview">
-                {streamedText}
-              </Text>
-            ) : null}
-          </View>
+        {plan !== null && (isSending || abortedTurn !== null) ? <PlanChecklist plan={plan} /> : null}
+
+        {isSending && streamedText.length > 0 ? (
+          <Card style={styles.assistantBubble} testID="advisor-streaming-message">
+            <View style={styles.assistantBubbleHeader}>
+              <AiChip>{tr('advisor.chat.sender', 'Die Eule')}</AiChip>
+            </View>
+            <View testID="advisor-stream-token-preview" accessibilityLabel={tr('advisor.chat.answering')}>
+              <MarkdownMessage content={streamedText} onSelectSource={setSelectedSource} />
+            </View>
+          </Card>
+        ) : isSending ? (
+          <ThinkingIndicator steps={streamSteps} />
+        ) : null}
+
+        {abortedTurn && !isSending ? (
+          <Card style={styles.assistantBubble} testID="advisor-message-aborted">
+            <View style={styles.assistantBubbleHeader}>
+              <AiChip>{tr('advisor.chat.sender', 'Die Eule')}</AiChip>
+              <Text style={styles.abortedBadge}>{tr('advisor.chat.aborted')}</Text>
+            </View>
+            {abortedTurn.partialText.length > 0 ? <MarkdownMessage content={abortedTurn.partialText} onSelectSource={setSelectedSource} /> : null}
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => void handleSubmit(abortedTurn.question)}
+              style={styles.choicePill}
+              testID="advisor-retry"
+            >
+              <Text style={styles.choicePillText}>{tr('advisor.chat.retry')}</Text>
+            </Pressable>
+          </Card>
         ) : null}
       </View>
 
@@ -664,6 +767,16 @@ export function AdvisorChatPanel({
         </Card>
       ) : null}
 
+      {dictationSupported ? (
+        <DictationBar
+          engine={dictationEngine}
+          disabled={isSending}
+          onTranscript={(text) => setInputText((prev) => (prev.trim() ? `${prev.trimEnd()} ${text}` : text))}
+        />
+      ) : (
+        <DictationHint />
+      )}
+
       {/* Chat Input Bar */}
       <View style={[styles.inputRow, compact && styles.inputRowCompact]}>
         {onAttachReceipt || onAttachReceiptFile ? (
@@ -677,30 +790,31 @@ export function AdvisorChatPanel({
             <Text style={styles.attachButtonText}>📎</Text>
           </Pressable>
         ) : null}
-        <TextInput
-          accessibilityLabel={tr(
-            'advisor.chat.inputPlaceholder',
-            'Frag deine Eule (z. B. Fortbildung, Laptop, Spenden, Endprüfung) …',
-          )}
-          value={inputText}
-          onChangeText={setInputText}
-          placeholder={tr(
-            'advisor.chat.inputPlaceholder',
-            'Frag deine Eule (z. B. Fortbildung, Laptop, Spenden, Endprüfung) …',
-          )}
-          placeholderTextColor={theme.color.tinte2}
-          style={styles.textInput}
-          onSubmitEditing={() => void handleSubmit()}
-          testID="advisor-chat-input"
-        />
-        <Button
-          onPress={() => void handleSubmit()}
-          disabled={isSending || inputText.trim().length === 0}
-          style={styles.sendButton}
-          testID="advisor-chat-send"
-        >
-          {tr('advisor.chat.sendButton', 'Fragen')}
-        </Button>
+        <View style={styles.composer}>
+          {editingId !== null ? (
+            <View style={styles.editBanner} testID="advisor-edit-banner">
+              <Text style={styles.messageActionText}>{tr('advisor.chat.editing')}</Text>
+              <Pressable accessibilityRole="button" onPress={cancelEdit} testID="advisor-edit-cancel">
+                <Text style={styles.messageActionText}>{tr('advisor.chat.editCancel')}</Text>
+              </Pressable>
+            </View>
+          ) : null}
+          <ChatComposer
+            value={inputText}
+            onChangeText={setInputText}
+            onSend={(text) => {
+              setInputText('')
+              const replaceFromMessageId = editingId
+              setEditingId(null)
+              void (replaceFromMessageId ? onSendMessage(text, { replaceFromMessageId }) : onSendMessage(text))
+            }}
+            onStop={onStop}
+            sending={isSending}
+            placeholder={tr('advisor.chat.inputPlaceholder', 'Frag deine Eule (z. B. Fortbildung, Laptop, Spenden, Endprüfung) …')}
+            inputTestID="advisor-chat-input"
+            sendTestID="advisor-chat-send"
+          />
+        </View>
       </View>
     </View>
   )
@@ -776,6 +890,8 @@ function makeStyles(t: UiTheme) {
       borderColor: t.color.kiLinie,
     } as ViewStyle,
     assistantBubbleHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
       marginBottom: t.space.s2,
     } as ViewStyle,
     assistantText: {
@@ -1000,29 +1116,11 @@ function makeStyles(t: UiTheme) {
       color: t.color.warn,
       marginBottom: 4,
     } as TextStyle,
-    thinkingBox: {
-      padding: t.space.s3,
-      borderRadius: t.radius.m,
-      backgroundColor: t.color.kiWeich,
-      alignItems: 'center',
-    } as ViewStyle,
-    thinkingText: {
-      fontFamily: t.font.text,
-      fontWeight: t.weight.fett,
-      fontSize: t.size.s,
-      color: t.color.kiTinte,
-    } as TextStyle,
     streamStepText: {
       fontFamily: t.font.text,
       fontSize: t.size.xs,
       color: t.color.tinte2,
       marginTop: 4,
-    } as TextStyle,
-    streamTokenPreview: {
-      fontFamily: t.font.text,
-      fontSize: t.size.s,
-      color: t.color.tinte,
-      marginTop: t.space.s2,
     } as TextStyle,
     errorBox: {
       padding: t.space.s3,
@@ -1117,6 +1215,19 @@ function makeStyles(t: UiTheme) {
     inputRowCompact: {
       gap: t.space.s1,
     } as ViewStyle,
+    composer: { flex: 1 } as ViewStyle,
+    userTurn: { alignItems: 'flex-end' } as ViewStyle,
+    messageActions: { flexDirection: 'row', gap: t.space.s3, marginTop: t.space.s2 } as ViewStyle,
+    messageAction: { paddingVertical: 2 } as ViewStyle,
+    messageActionText: { fontFamily: t.font.text, fontSize: t.size.xs, color: t.color.tinte2, fontWeight: t.weight.fett } as TextStyle,
+    editBanner: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: t.space.s1 } as ViewStyle,
+    srOnly: { position: 'absolute', width: 1, height: 1, overflow: 'hidden', opacity: 0 } as TextStyle,
+    abortedBadge: {
+      fontFamily: t.font.text,
+      fontSize: t.size.xs,
+      color: t.color.tinte2,
+      marginLeft: t.space.s2,
+    } as TextStyle,
     attachButton: {
       paddingHorizontal: t.space.s3,
       paddingVertical: t.space.s3,
@@ -1129,10 +1240,6 @@ function makeStyles(t: UiTheme) {
       fontSize: t.size.m,
       color: t.color.tinte,
     } as TextStyle,
-    sendButton: {
-      width: 'auto',
-      paddingHorizontal: t.space.s4,
-    } as ViewStyle,
     textInput: {
       flex: 1,
       backgroundColor: t.color.karte,

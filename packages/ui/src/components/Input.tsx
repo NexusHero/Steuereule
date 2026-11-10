@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { TextInput, type TextStyle } from 'react-native'
+import { Platform, TextInput, type TextInputProps, type TextStyle } from 'react-native'
+import { autoCompleteProps, type InputAutoComplete } from '../lib/autoComplete'
 import { useTheme } from '../theme/useTheme'
 
 export type InputType = 'text' | 'email' | 'password' | 'numeric'
@@ -15,6 +16,11 @@ export interface InputProps {
   readonly mono?: boolean
   readonly onFocus?: () => void
   readonly onBlur?: () => void
+  /**
+   * Autofill hint (#451). Numeric fields default to `off`: amounts must never be filled from
+   * the browser's memory. Text fields without a hint leave the browser's own heuristics alone.
+   */
+  readonly autoComplete?: InputAutoComplete
 }
 
 const KEYBOARD_TYPE: Record<InputType, 'default' | 'email-address' | 'number-pad'> = {
@@ -35,6 +41,7 @@ export function Input({
   mono = false,
   onFocus,
   onBlur,
+  autoComplete,
 }: InputProps) {
   const t = useTheme()
   const [isFocused, setIsFocused] = useState(false)
@@ -55,9 +62,12 @@ export function Input({
     ...(isFocused ? t.shadow.hartS : {}),
     ...({ outlineStyle: 'none', outlineWidth: 0 } as any),
   }
+  const hint = autoComplete ?? (type === 'numeric' ? 'off' : undefined)
+  const autofill = hint === undefined ? {} : (autoCompleteProps(hint, Platform.OS) as Pick<TextInputProps, 'autoComplete' | 'textContentType'>)
   return (
     <TextInput
       testID={testID}
+      {...autofill}
       accessibilityLabel={accessibilityLabel}
       value={value}
       onChangeText={onChange}
