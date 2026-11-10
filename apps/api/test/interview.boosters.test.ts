@@ -8,13 +8,26 @@ import { FakeInterviewAnswerRepository } from './fakes/fake-interview-answer.rep
 const USER_ID = 'user-1'
 const TAX_YEAR = 2025
 
+/** The boosters are behind HOUSEHOLD_AND_HEALTH_BOOSTERS; these tests cover the switched-on state. */
+class BoostersOnInterviewService extends InterviewService {
+  protected override readonly boostersEnabled = true
+}
+
+describe('InterviewService — Slice 5 boosters while the flag is off', () => {
+  it('rejects haushalt and gesundheit answers so nothing is stored that estimate and printout ignore', async () => {
+    const service = new InterviewService(new FakeInterviewAnswerRepository(), new AuditService(new FakeAuditRepository()))
+    await expect(service.postAnswer(USER_ID, TAX_YEAR, { questionId: 'haushalt-gate', value: 'Ja' })).rejects.toThrow()
+    await expect(service.postAnswer(USER_ID, TAX_YEAR, { questionId: 'gesundheit-gate', value: 'Ja' })).rejects.toThrow()
+  })
+})
+
 describe('InterviewService — Slice 5 haushalt & gesundheit entries', () => {
   let repository: FakeInterviewAnswerRepository
   let service: InterviewService
 
   beforeEach(() => {
     repository = new FakeInterviewAnswerRepository()
-    service = new InterviewService(repository, new AuditService(new FakeAuditRepository()))
+    service = new BoostersOnInterviewService(repository, new AuditService(new FakeAuditRepository()))
   })
 
   it('persists and reads haushalt catalogue answers including AMOUNT_LATER', async () => {
