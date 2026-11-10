@@ -3,11 +3,14 @@
 // real-Postgres proof (ciphertext at rest, audit atomicity, cross-user isolation, the real
 // derived zustand through Prisma) lives in test/acceptance/req-016-lstb-angestellte.test.ts.
 import { beforeEach, describe, expect, it } from 'vitest'
+import { InMemoryAdvisorRepository } from '../src/advisor/advisor.repository.js'
 import { FakeMarkingRepository } from './fakes/fake-marking.repository.js'
 import { AuditService } from '../src/audit/audit.service.js'
+import { ConflictError, InvalidInputError } from '../src/common/domain-error.js'
 import { LstbService } from '../src/lstb/lstb.service.js'
 import { FakeAuditRepository } from './fakes/fake-audit.repository.js'
 import { FakeLstbRepository } from './fakes/fake-lstb.repository.js'
+import { FakeReceiptRepository } from './fakes/fake-receipt.repository.js'
 
 const USER_ID = 'user-1'
 const TAX_YEAR = 2026
@@ -16,13 +19,23 @@ describe('LstbService', () => {
   let markings: FakeMarkingRepository
   let repository: FakeLstbRepository
   let auditRepository: FakeAuditRepository
+  let receiptRepository: FakeReceiptRepository
+  let advisorRepository: InMemoryAdvisorRepository
   let service: LstbService
 
   beforeEach(() => {
     repository = new FakeLstbRepository()
     auditRepository = new FakeAuditRepository()
     markings = new FakeMarkingRepository()
-    service = new LstbService(repository, new AuditService(auditRepository), markings)
+    receiptRepository = new FakeReceiptRepository()
+    advisorRepository = new InMemoryAdvisorRepository()
+    service = new LstbService(
+      repository,
+      new AuditService(auditRepository),
+      markings,
+      receiptRepository,
+      advisorRepository,
+    )
   })
 
   describe('getState — the honest empty mask', () => {
@@ -118,5 +131,112 @@ describe('LstbService', () => {
     await service.setField('user-1', 2025, 'lohnsteuer', { kind: 'erfasst', value: 700 })
 
     expect(markings.all().map((k) => k.key)).toEqual(['lstb.bruttoarbeitslohn'])
+  })
+
+  describe('applyConfirmedScan — atomic batch confirmation with receipt provenance (#444)', () => {
+    it('writes all 3 fields, stores { kind: "beleg", receiptId } provenance markings, and marks staged actions applied', async () => {
+      const receipt = await receiptRepository.create(USER_ID, { fileName: 'lstb-2026.pdf' })
+      const msg = await advisorRepository.createMessage({
+        userId: USER_ID,
+        taxYear: TAX_YEAR,
+        role: 'assistant',
+        content: 'LStB erkannt.',
+        meta: {
+          lstbScan: { receiptId: receipt.id, stage: 'deterministic', taxYearOnDocument: TAX_YEAR, actionIds: ['act-1'] },
+          actions: [
+            {
+              actionId: 'act-1',
+              status: 'pending',
+              screen: 'lstb',
+              field: 'bruttoarbeitslohn',
+              instance: null,
+              label: 'Bruttoarbeitslohn',
+              previousValue: null,
+              newValue: '54320',
+              beforeRefundEur: 0,
+              afterRefundEur: 0,
+              deltaEur: 0,
+              reason: 'Zeile 3',
+              sourceId: 'estg-9-1',
+            },
+          ],
+        },
+      })
+
+      const result = await service.applyConfirmedScan(USER_ID, USER_ID, TAX_YEAR, {
+        bruttoarbeitslohn: 54320,
+        lohnsteuer: 9840,
+        sozialversicherung: 10912,
+        receiptId: receipt.id,
+        actionIds: ['act-1'],
+      })
+
+      expect(result.state).toEqual({
+        kind: 'vollstaendig',
+        bruttoarbeitslohn: 54320,
+        lohnsteuer: 9840,
+        sozialversicherung: 10912,
+      })
+
+      const savedMarkings = markings.all()
+      expect(savedMarkings).toHaveLength(3)
+      for (const m of savedMarkings) {
+        expect(m.provenance).toEqual({ kind: 'beleg', receiptId: receipt.id })
+        expect(m.confirmed).toBe(true)
+      }
+
+      const reloadedMsg = (await advisorRepository.listForUserAndYear(USER_ID, TAX_YEAR)).find((r) => r.id === msg.id)
+      expect(reloadedMsg?.meta?.actions?.[0]?.status).toBe('applied')
+    })
+
+    it('throws ConflictError (409) when LStB values already exist unless overwriteExisting is true (ADR-0008)', async () => {
+      repository.seed({
+        userId: USER_ID,
+        taxYear: TAX_YEAR,
+        bruttoarbeitslohn: '40000',
+        lohnsteuer: '6000',
+        sozialversicherung: '8000',
+      })
+
+      await expect(
+        service.applyConfirmedScan(USER_ID, USER_ID, TAX_YEAR, {
+          bruttoarbeitslohn: 54320,
+          lohnsteuer: 9840,
+          sozialversicherung: 10912,
+        }),
+      ).rejects.toBeInstanceOf(ConflictError)
+
+      const overwritten = await service.applyConfirmedScan(USER_ID, USER_ID, TAX_YEAR, {
+        bruttoarbeitslohn: 54320,
+        lohnsteuer: 9840,
+        sozialversicherung: 10912,
+        overwriteExisting: true,
+      })
+      expect(overwritten.bruttoarbeitslohn).toEqual({ kind: 'erfasst', value: 54320 })
+    })
+
+    it('rejects implausible values (LSt or SV > Brutto) cleanly before touching persistence', async () => {
+      await expect(
+        service.applyConfirmedScan(USER_ID, USER_ID, TAX_YEAR, {
+          bruttoarbeitslohn: 10000,
+          lohnsteuer: 12000,
+          sozialversicherung: 2000,
+        }),
+      ).rejects.toBeInstanceOf(InvalidInputError)
+
+      expect(await repository.findForUserAndYear(USER_ID, TAX_YEAR)).toBeNull()
+    })
+
+    it('rejects foreign receiptId without leaking existence', async () => {
+      const otherReceipt = await receiptRepository.create('other-user', { fileName: 'other.pdf' })
+      await expect(
+        service.applyConfirmedScan(USER_ID, USER_ID, TAX_YEAR, {
+          bruttoarbeitslohn: 50000,
+          lohnsteuer: 8000,
+          sozialversicherung: 10000,
+          receiptId: otherReceipt.id,
+        }),
+      ).rejects.toThrow(/does not exist/)
+    })
   })
 })

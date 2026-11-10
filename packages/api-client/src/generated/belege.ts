@@ -26,6 +26,7 @@ import type {
 
 import type {
   CreateReceiptDto,
+  DeleteReceiptResponseDto,
   ReceiptResponseDto,
   SetAssignmentDto
 } from './belege.schemas';
@@ -236,6 +237,83 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       return useMutation(getReceiptControllerCreateMutationOptions(options), queryClient);
     }
 
+export type receiptControllerUploadResponse201 = {
+  data: ReceiptResponseDto
+  status: 201
+}
+
+export type receiptControllerUploadResponseSuccess = (receiptControllerUploadResponse201) & {
+  headers: Headers;
+};
+;
+
+export type receiptControllerUploadResponse = (receiptControllerUploadResponseSuccess)
+
+export const getReceiptControllerUploadUrl = () => {
+
+
+
+
+  return `/v1/belege/upload`
+}
+
+export const receiptControllerUpload = async ( options?: RequestInit): Promise<receiptControllerUploadResponse> => {
+
+  return httpClient<receiptControllerUploadResponse>(getReceiptControllerUploadUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getReceiptControllerUploadMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof receiptControllerUpload>>, TError,void, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof receiptControllerUpload>>, TError,void, TContext> => {
+
+const mutationKey = ['receiptControllerUpload'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof receiptControllerUpload>>, void> = () => {
+
+
+          return  receiptControllerUpload(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReceiptControllerUploadMutationResult = NonNullable<Awaited<ReturnType<typeof receiptControllerUpload>>>
+
+    export type ReceiptControllerUploadMutationError = unknown
+
+    export const useReceiptControllerUpload = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof receiptControllerUpload>>, TError,void, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof receiptControllerUpload>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getReceiptControllerUploadMutationOptions(options), queryClient);
+    }
+
 export type receiptControllerSetAssignmentResponse200 = {
   data: ReceiptResponseDto
   status: 200
@@ -319,5 +397,89 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getReceiptControllerSetAssignmentMutationOptions(options), queryClient);
+    }
+
+export type receiptControllerDeleteResponse200 = {
+  data: DeleteReceiptResponseDto
+  status: 200
+}
+
+export type receiptControllerDeleteResponse404 = {
+  data: void
+  status: 404
+}
+
+export type receiptControllerDeleteResponseSuccess = (receiptControllerDeleteResponse200) & {
+  headers: Headers;
+};
+export type receiptControllerDeleteResponseError = (receiptControllerDeleteResponse404) & {
+  headers: Headers;
+};
+
+export type receiptControllerDeleteResponse = (receiptControllerDeleteResponseSuccess | receiptControllerDeleteResponseError)
+
+export const getReceiptControllerDeleteUrl = (id: string,) => {
+
+
+
+
+  return `/v1/belege/${id}`
+}
+
+export const receiptControllerDelete = async (id: string, options?: RequestInit): Promise<receiptControllerDeleteResponse> => {
+
+  return httpClient<receiptControllerDeleteResponse>(getReceiptControllerDeleteUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getReceiptControllerDeleteMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof receiptControllerDelete>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof receiptControllerDelete>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['receiptControllerDelete'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof receiptControllerDelete>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  receiptControllerDelete(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReceiptControllerDeleteMutationResult = NonNullable<Awaited<ReturnType<typeof receiptControllerDelete>>>
+
+    export type ReceiptControllerDeleteMutationError = void
+
+    export const useReceiptControllerDelete = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof receiptControllerDelete>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof receiptControllerDelete>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getReceiptControllerDeleteMutationOptions(options), queryClient);
     }
 

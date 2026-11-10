@@ -8,6 +8,7 @@ import {
   maskEmployer,
   maskPhone,
   scrubUserMessagePii,
+  scrubDocumentTextPii,
 } from './pii-masking'
 
 describe('PII Masking (ADR-0052 §8 — Personenbezogene Daten: schreiben ja, lesen maskiert)', () => {
@@ -114,6 +115,66 @@ describe('PII Masking (ADR-0052 §8 — Personenbezogene Daten: schreiben ja, le
       expect(output).toContain('[IBAN-GESCHÜTZT]')
       expect(output).toContain('[KONTAKT-GESCHÜTZT]')
       expect(output).toContain('1.250 € Fortbildung')
+    })
+  })
+
+  describe('scrubDocumentTextPii', () => {
+    it('returns empty string for empty input', () => {
+      expect(scrubDocumentTextPii('')).toBe('')
+    })
+
+    it('removes eTIN, Transferticket, employer company names, addresses, birthdates, Steuerklasse, SV-Nr, and Steuer-ID while preserving LStB numeric tax lines', () => {
+      const doc = [
+        'Ausdruck der elektronischen Lohnsteuerbescheinigung für 2025',
+        'Rheinpharma AG',
+        'Arbeitgeber: Musterfirma GmbH',
+        'Musterstraße 12a',
+        '12345 Musterstadt',
+        'Name, Vorname: Brenner, Markus',
+        'Geburtsdatum: 14.03.1988',
+        'eTIN: BRENNM19880314',
+        'Identifikationsnummer: 12 345 678 901',
+        'Transferticket: et2025011598765432',
+        'Steuerklasse: I / 1,0',
+        'Sozialversicherungsnummer: 12 140388 B 019',
+        '3. Bruttoarbeitslohn einschl. Sachbezüge ohne 9. und 10.    54.320,00',
+        '4. Einbehaltene Lohnsteuer von 3.                           9.810,00',
+        '23a Arbeitnehmeranteil zur gesetzlichen Rentenversicherung   5.051,76',
+        '25. Arbeitnehmerbeiträge zur gesetzlichen Krankenversicherung 4.182,64',
+        '26. Arbeitnehmerbeiträge zur sozialen Pflegeversicherung       977,76',
+        '27. Arbeitnehmerbeiträge zur Arbeitslosenversicherung          706,16',
+      ].join('\n')
+
+      const scrubbed = scrubDocumentTextPii(doc, ['Markus Brenner'])
+      expect(scrubbed).not.toContain('Rheinpharma AG')
+      expect(scrubbed).not.toContain('Musterfirma GmbH')
+      expect(scrubbed).not.toContain('Musterstraße 12a')
+      expect(scrubbed).not.toContain('12345 Musterstadt')
+      expect(scrubbed).not.toContain('Brenner')
+      expect(scrubbed).not.toContain('Markus')
+      expect(scrubbed).not.toContain('14.03.1988')
+      expect(scrubbed).not.toContain('BRENNM19880314')
+      expect(scrubbed).not.toContain('12 345 678 901')
+      expect(scrubbed).not.toContain('et2025011598765432')
+      expect(scrubbed).not.toContain('Steuerklasse: I')
+      expect(scrubbed).not.toContain('12 140388 B 019')
+
+      // Preserves LStB year and numeric lines!
+      expect(scrubbed).toContain('Lohnsteuerbescheinigung für 2025')
+      expect(scrubbed).toContain('3. Bruttoarbeitslohn')
+      expect(scrubbed).toContain('54.320,00')
+      expect(scrubbed).toContain('4. Einbehaltene Lohnsteuer')
+      expect(scrubbed).toContain('9.810,00')
+      expect(scrubbed).toContain('23a Arbeitnehmeranteil')
+      expect(scrubbed).toContain('5.051,76')
+      expect(scrubbed).toContain('27. Arbeitnehmerbeiträge')
+      expect(scrubbed).toContain('706,16')
+    })
+
+    it('preserves 5-digit euro amounts like 50000 Bruttoarbeitslohn (does not mistake for PLZ)', () => {
+      const doc = '3. Bruttoarbeitslohn\n50000 Bruttoarbeitslohn EUR'
+      const scrubbed = scrubDocumentTextPii(doc)
+      expect(scrubbed).toContain('50000 Bruttoarbeitslohn')
     })
   })
 })

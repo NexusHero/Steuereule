@@ -47,5 +47,35 @@ describe('HerkunftsChip', () => {
     fireEvent.click(screen.getByText('Herkunft'))
     expect(screen.getByText('NUR-REGEL')).toBeTruthy()
     expect(screen.queryByText('Beleg:')).toBeNull()
+    expect(screen.queryByText('Hinweis:')).toBeNull()
+  })
+
+  it('supports ok and pruefen confidence variants in both locales and displays optional reason', () => {
+    renderUi(
+      <ProvenanceChip
+        variant="ok"
+        testID="chip-ok"
+        source={{ receipt: 'LStB_2025.pdf', rule: 'Zeile 3', calculationPath: '54320 €' }}
+      />,
+    )
+    expect(screen.getByText('✓ Herkunft')).toBeTruthy()
+
+    renderUi(
+      <ProvenanceChip
+        variant="pruefen"
+        testID="chip-pruefen"
+        source={{
+          receipt: 'LStB_2025.pdf',
+          rule: 'Zeilen 23, 25, 26, 27',
+          reason: 'Nur Teilzeilen gefunden.',
+        }}
+      />,
+      { lng: 'en' },
+    )
+    const warnChip = screen.getByText('! Review · Origin')
+    expect(warnChip).toBeTruthy()
+    fireEvent.click(warnChip)
+    expect(screen.getByText('Note:')).toBeTruthy()
+    expect(screen.getByText('Nur Teilzeilen gefunden.')).toBeTruthy()
   })
 })

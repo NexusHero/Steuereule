@@ -19,8 +19,11 @@ import {
   type AdvisorActionStatus,
   type AdvisorChatMessageView,
   type AdvisorLegalSource,
+  type AdvisorLstbScanMeta,
   type AdvisorMessageMeta,
   type AdvisorTwoPathsProposal,
+  type LstbExtractedFieldStatus,
+  type LstbFieldReason,
   type OwlSourceId,
   type Screen,
 } from '@steuereule/core'
@@ -146,6 +149,26 @@ export class AdvisorActionProposalDto implements AdvisorActionProposal {
 
   @ApiPropertyOptional({ type: String, example: '§ 10b EStG' })
   paragraph?: string | undefined
+
+  @ApiPropertyOptional({ type: String, example: 'beleg-123' })
+  receiptId?: string | undefined
+
+  @ApiPropertyOptional({ type: String, enum: ['ok', 'pruefen'], example: 'ok' })
+  confidenceStatus?: LstbExtractedFieldStatus | undefined
+
+  @ApiPropertyOptional({ type: [String], example: ['3'] })
+  sourceLines?: readonly string[] | undefined
+
+  @ApiPropertyOptional({ type: String, nullable: true, example: 'Zeile 3: 54.320,00 €' })
+  calculationPath?: string | null | undefined
+
+  @ApiPropertyOptional({
+    type: String,
+    nullable: true,
+    enum: ['missing', 'unreadable', 'plausibility_conflict', 'partial_sv_lines'],
+    example: null,
+  })
+  fieldReason?: LstbFieldReason | null | undefined
 }
 
 export class AdvisorMaxPathProposalDto extends AdvisorActionProposalDto {
@@ -170,12 +193,35 @@ export class AdvisorTwoPathsProposalDto implements AdvisorTwoPathsProposal {
   sourceId!: OwlSourceId
 }
 
+export class AdvisorLstbScanMetaDto implements AdvisorLstbScanMeta {
+  @ApiProperty({ type: String, nullable: true, example: 'beleg-123' })
+  receiptId!: string | null
+
+  @ApiProperty({ type: String, enum: ['deterministic', 'llm_text_fallback'], example: 'deterministic' })
+  stage!: 'deterministic' | 'llm_text_fallback'
+
+  @ApiProperty({ type: Number, nullable: true, example: 2025 })
+  taxYearOnDocument!: number | null
+
+  @ApiPropertyOptional({ type: String, enum: ['A', 'B'], example: 'A' })
+  person?: 'A' | 'B' | undefined
+
+  @ApiProperty({ type: [String], example: ['act-1', 'act-2', 'act-3'] })
+  actionIds!: readonly string[]
+}
+
 export class AdvisorMessageMetaDto implements AdvisorMessageMeta {
   @ApiPropertyOptional({ type: [String] })
   choices?: readonly string[] | undefined
 
   @ApiPropertyOptional({ type: AdvisorActionProposalDto })
   action?: AdvisorActionProposalDto | undefined
+
+  @ApiPropertyOptional({ type: [AdvisorActionProposalDto] })
+  actions?: readonly AdvisorActionProposalDto[] | undefined
+
+  @ApiPropertyOptional({ type: AdvisorLstbScanMetaDto })
+  lstbScan?: AdvisorLstbScanMetaDto | undefined
 
   @ApiPropertyOptional({ type: AdvisorTwoPathsProposalDto })
   twoPaths?: AdvisorTwoPathsProposalDto | undefined

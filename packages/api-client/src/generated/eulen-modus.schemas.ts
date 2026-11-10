@@ -5,6 +5,28 @@
  * Onboarding profile endpoints (steuereule#29)
  * OpenAPI spec version: 1.0
  */
+/**
+ * Explicit document parser cascade: "lstb" uses deterministic two-stage German LStB extraction.
+ */
+export type ParseReceiptDtoKind = typeof ParseReceiptDtoKind[keyof typeof ParseReceiptDtoKind];
+
+
+export const ParseReceiptDtoKind = {
+  auto: 'auto',
+  lstb: 'lstb',
+} as const;
+
+/**
+ * Taxpayer slot when parsing a partner LStB (ADR-0054).
+ */
+export type ParseReceiptDtoPerson = typeof ParseReceiptDtoPerson[keyof typeof ParseReceiptDtoPerson];
+
+
+export const ParseReceiptDtoPerson = {
+  A: 'A',
+  B: 'B',
+} as const;
+
 export type ParseReceiptDtoMimeType = typeof ParseReceiptDtoMimeType[keyof typeof ParseReceiptDtoMimeType];
 
 
@@ -19,6 +41,12 @@ export interface ParseReceiptDto {
   taxYear: number;
   fileName: string;
   rawText?: string;
+  /** Explicit document parser cascade: "lstb" uses deterministic two-stage German LStB extraction. */
+  kind?: ParseReceiptDtoKind;
+  /** Optional existing Beleg id owned by the caller to link provenance. */
+  receiptId?: string;
+  /** Taxpayer slot when parsing a partner LStB (ADR-0054). */
+  person?: ParseReceiptDtoPerson;
   /** Base64-encoded image/PDF content for vision_ocr extraction (max ~5 MB). */
   imageBase64?: string;
   mimeType?: ParseReceiptDtoMimeType;
@@ -129,6 +157,27 @@ export const AdvisorActionProposalDtoSourceId = {
   'ao-355': 'ao-355',
 } as const;
 
+export type AdvisorActionProposalDtoConfidenceStatus = typeof AdvisorActionProposalDtoConfidenceStatus[keyof typeof AdvisorActionProposalDtoConfidenceStatus];
+
+
+export const AdvisorActionProposalDtoConfidenceStatus = {
+  ok: 'ok',
+  pruefen: 'pruefen',
+} as const;
+
+/**
+ * @nullable
+ */
+export type AdvisorActionProposalDtoFieldReason = typeof AdvisorActionProposalDtoFieldReason[keyof typeof AdvisorActionProposalDtoFieldReason] | null;
+
+
+export const AdvisorActionProposalDtoFieldReason = {
+  missing: 'missing',
+  unreadable: 'unreadable',
+  plausibility_conflict: 'plausibility_conflict',
+  partial_sv_lines: 'partial_sv_lines',
+} as const;
+
 export type AdvisorActionProposalDtoCompanionFields = {[key: string]: string};
 
 /**
@@ -162,6 +211,13 @@ export interface AdvisorActionProposalDto {
   reason: string;
   sourceId: AdvisorActionProposalDtoSourceId;
   paragraph?: string;
+  receiptId?: string;
+  confidenceStatus?: AdvisorActionProposalDtoConfidenceStatus;
+  sourceLines?: string[];
+  /** @nullable */
+  calculationPath?: string | null;
+  /** @nullable */
+  fieldReason?: AdvisorActionProposalDtoFieldReason;
 }
 
 export type AdvisorChatMessageDtoRole = typeof AdvisorChatMessageDtoRole[keyof typeof AdvisorChatMessageDtoRole];
@@ -171,6 +227,32 @@ export const AdvisorChatMessageDtoRole = {
   user: 'user',
   assistant: 'assistant',
 } as const;
+
+export type AdvisorLstbScanMetaDtoStage = typeof AdvisorLstbScanMetaDtoStage[keyof typeof AdvisorLstbScanMetaDtoStage];
+
+
+export const AdvisorLstbScanMetaDtoStage = {
+  deterministic: 'deterministic',
+  llm_text_fallback: 'llm_text_fallback',
+} as const;
+
+export type AdvisorLstbScanMetaDtoPerson = typeof AdvisorLstbScanMetaDtoPerson[keyof typeof AdvisorLstbScanMetaDtoPerson];
+
+
+export const AdvisorLstbScanMetaDtoPerson = {
+  A: 'A',
+  B: 'B',
+} as const;
+
+export interface AdvisorLstbScanMetaDto {
+  /** @nullable */
+  receiptId: string | null;
+  stage: AdvisorLstbScanMetaDtoStage;
+  /** @nullable */
+  taxYearOnDocument: number | null;
+  person?: AdvisorLstbScanMetaDtoPerson;
+  actionIds: string[];
+}
 
 export type AdvisorMaxPathProposalDtoStatus = typeof AdvisorMaxPathProposalDtoStatus[keyof typeof AdvisorMaxPathProposalDtoStatus];
 
@@ -216,6 +298,27 @@ export const AdvisorMaxPathProposalDtoSourceId = {
   'ao-355': 'ao-355',
 } as const;
 
+export type AdvisorMaxPathProposalDtoConfidenceStatus = typeof AdvisorMaxPathProposalDtoConfidenceStatus[keyof typeof AdvisorMaxPathProposalDtoConfidenceStatus];
+
+
+export const AdvisorMaxPathProposalDtoConfidenceStatus = {
+  ok: 'ok',
+  pruefen: 'pruefen',
+} as const;
+
+/**
+ * @nullable
+ */
+export type AdvisorMaxPathProposalDtoFieldReason = typeof AdvisorMaxPathProposalDtoFieldReason[keyof typeof AdvisorMaxPathProposalDtoFieldReason] | null;
+
+
+export const AdvisorMaxPathProposalDtoFieldReason = {
+  missing: 'missing',
+  unreadable: 'unreadable',
+  plausibility_conflict: 'plausibility_conflict',
+  partial_sv_lines: 'partial_sv_lines',
+} as const;
+
 export type AdvisorMaxPathProposalDtoCompanionFields = {[key: string]: string};
 
 /**
@@ -249,6 +352,13 @@ export interface AdvisorMaxPathProposalDto {
   reason: string;
   sourceId: AdvisorMaxPathProposalDtoSourceId;
   paragraph?: string;
+  receiptId?: string;
+  confidenceStatus?: AdvisorMaxPathProposalDtoConfidenceStatus;
+  sourceLines?: string[];
+  /** @nullable */
+  calculationPath?: string | null;
+  /** @nullable */
+  fieldReason?: AdvisorMaxPathProposalDtoFieldReason;
   evidenceHint: string;
 }
 
@@ -292,6 +402,8 @@ export const AdvisorMessageMetaDtoSourcesItem = {
 export interface AdvisorMessageMetaDto {
   choices?: string[];
   action?: AdvisorActionProposalDto;
+  actions?: AdvisorActionProposalDto[];
+  lstbScan?: AdvisorLstbScanMetaDto;
   twoPaths?: AdvisorTwoPathsProposalDto;
   sources?: AdvisorMessageMetaDtoSourcesItem[];
 }
@@ -305,6 +417,85 @@ export interface AdvisorChatMessageDto {
   createdAt: string;
 }
 
+export type ParsedLstbResponseDtoStage = typeof ParsedLstbResponseDtoStage[keyof typeof ParsedLstbResponseDtoStage];
+
+
+export const ParsedLstbResponseDtoStage = {
+  deterministic: 'deterministic',
+  llm_text_fallback: 'llm_text_fallback',
+} as const;
+
+export interface LstbYearConflictDto {
+  documentYear: number;
+  activeYear: number;
+}
+
+export interface LstbExistingValuesDto {
+  /** @nullable */
+  bruttoarbeitslohn: number | null;
+  /** @nullable */
+  lohnsteuer: number | null;
+  /** @nullable */
+  sozialversicherung: number | null;
+}
+
+export interface LstbExistingConflictDto {
+  hasExisting: boolean;
+  existing: LstbExistingValuesDto;
+}
+
+export type LstbExtractedFieldDtoStatus = typeof LstbExtractedFieldDtoStatus[keyof typeof LstbExtractedFieldDtoStatus];
+
+
+export const LstbExtractedFieldDtoStatus = {
+  ok: 'ok',
+  pruefen: 'pruefen',
+} as const;
+
+/**
+ * @nullable
+ */
+export type LstbExtractedFieldDtoReason = typeof LstbExtractedFieldDtoReason[keyof typeof LstbExtractedFieldDtoReason] | null;
+
+
+export const LstbExtractedFieldDtoReason = {
+  missing: 'missing',
+  unreadable: 'unreadable',
+  plausibility_conflict: 'plausibility_conflict',
+  partial_sv_lines: 'partial_sv_lines',
+} as const;
+
+export interface LstbExtractedFieldDto {
+  /** @nullable */
+  value: number | null;
+  status: LstbExtractedFieldDtoStatus;
+  sourceLines: string[];
+  /** @nullable */
+  calculationPath: string | null;
+  /** @nullable */
+  reason: LstbExtractedFieldDtoReason;
+}
+
+export interface LstbExtractedFieldsDto {
+  bruttoarbeitslohn: LstbExtractedFieldDto;
+  lohnsteuer: LstbExtractedFieldDto;
+  sozialversicherung: LstbExtractedFieldDto;
+}
+
+export interface ParsedLstbResponseDto {
+  stage: ParsedLstbResponseDtoStage;
+  /** @nullable */
+  receiptId: string | null;
+  /** @nullable */
+  taxYearOnDocument: number | null;
+  /** @nullable */
+  yearConflict: LstbYearConflictDto | null;
+  existingLstbConflict: LstbExistingConflictDto;
+  fields: LstbExtractedFieldsDto;
+  stagedActionIds: string[];
+  securityBlocked: boolean;
+}
+
 export interface ParseReceiptResponseDto {
   mode: ParseReceiptResponseDtoMode;
   securityBlocked: boolean;
@@ -313,6 +504,8 @@ export interface ParseReceiptResponseDto {
   stagedAction?: AdvisorActionProposalDto | null;
   /** @nullable */
   assistantMessage?: AdvisorChatMessageDto | null;
+  /** @nullable */
+  lstb?: ParsedLstbResponseDto | null;
 }
 
 export type OwlCardDtoTrigger = typeof OwlCardDtoTrigger[keyof typeof OwlCardDtoTrigger];

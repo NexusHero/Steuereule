@@ -4,7 +4,18 @@ import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypte
 import type { ExportTaxDataEntry, ExportTaxDataValue } from './export/export-document.js'
 import type { TaxDataExportRepository } from './tax-data-export.repository.js'
 
-const OMITTED_FIELDS = new Set(['id', 'userId', 'personAUserId', 'personBUserId', 'taxYear'])
+const OMITTED_FIELDS = new Set([
+  'id',
+  'userId',
+  'personAUserId',
+  'personBUserId',
+  'taxYear',
+  'receiptId',
+  'iv',
+  'authTag',
+  'cipherBytes',
+  'keyVersion',
+])
 
 /**
  * The export names every figure by its database column. The columns keep their German names through
@@ -20,7 +31,7 @@ export function toExportEntry(area: string, model: Prisma.ModelName, row: Row): 
   const columns = COLUMNS.get(model)
   const fields: Record<string, ExportTaxDataValue> = {}
   for (const [key, value] of Object.entries(row)) {
-    if (OMITTED_FIELDS.has(key)) continue
+    if (OMITTED_FIELDS.has(key) || value instanceof Uint8Array) continue
     fields[columns?.get(key) ?? key] = value instanceof Date ? value.toISOString() : (value as ExportTaxDataValue)
   }
   return { area, taxYear: row.taxYear ?? null, fields }
@@ -32,10 +43,11 @@ export class PrismaTaxDataExportRepository implements TaxDataExportRepository {
 
   async findAllForUser(userId: string): Promise<ExportTaxDataEntry[]> {
     const where = { userId }
-    const [taxYears, answers, receipts, lstb, ch, pension, capital, commute, rental, assessments, markings, yearTakeovers, masterData, kinder, links, owlSetting, owlDismissals, advisorMessages] =
+    const [taxYears, answers, receiptFiles, receipts, lstb, ch, pension, capital, commute, rental, assessments, markings, yearTakeovers, masterData, kinder, links, owlSetting, owlDismissals, advisorMessages] =
       await Promise.all([
         this.prisma.taxYear.findMany({ where }),
         this.prisma.interviewAnswer.findMany({ where }),
+        this.prisma.receiptFile.findMany({ where }),
         this.prisma.receipt.findMany({ where }),
         this.prisma.lstb.findMany({ where }),
         this.prisma.chSalaryCertificate.findMany({ where }),
@@ -59,6 +71,7 @@ export class PrismaTaxDataExportRepository implements TaxDataExportRepository {
     const entries = [
       ...taxYears.map((row) => toExportEntry('Steuerjahr', 'TaxYear', row)),
       ...answers.map((row) => toExportEntry('Interview-Antwort', 'InterviewAnswer', row)),
+      ...receiptFiles.map((row) => toExportEntry('Beleg-Datei', 'ReceiptFile', row)),
       ...receipts.map((row) => toExportEntry('Beleg', 'Receipt', row)),
       ...lstb.map((row) => toExportEntry('Lohnsteuerbescheinigung', 'Lstb', row)),
       ...ch.map((row) => toExportEntry('Lohnausweis (CH)', 'ChSalaryCertificate', row)),

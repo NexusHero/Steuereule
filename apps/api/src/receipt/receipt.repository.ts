@@ -1,5 +1,10 @@
 import type { ReceiptType } from '@steuereule/core'
 
+export interface ReceiptFileMetaRecord {
+  readonly mimeType: string
+  readonly byteLength: number
+}
+
 export interface ReceiptRecord {
   id: string
   userId: string
@@ -12,6 +17,7 @@ export interface ReceiptRecord {
   paymentDate?: string
   taxYear: number | null
   proposalDismissed: boolean
+  fileMeta?: ReceiptFileMetaRecord | null
   createdAt: Date
   updatedAt: Date
 }
@@ -40,4 +46,5 @@ export interface ReceiptRepository {
   findByIdForUser(userId: string, id: string): Promise<ReceiptRecord | null>
   create(userId: string, data: CreateReceiptData): Promise<ReceiptRecord>
   setAssignment(userId: string, id: string, data: SetAssignmentData): Promise<ReceiptRecord | null>
+  deleteForUser(userId: string, id: string): Promise<boolean>
 }

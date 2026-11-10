@@ -2,7 +2,13 @@
 // the derived-zuordnung contract without a database. `create`/`setSteuerjahr` mirror the
 // real repository's return shapes; the derived Zuordnung state is left to BelegService (as
 // in production, the repository stores facts, never the derived state — ADR-014/048).
-import type { ReceiptRecord, ReceiptRepository, CreateReceiptData, SetAssignmentData } from '../../src/receipt/receipt.repository.js'
+import type {
+  ReceiptRecord,
+  ReceiptRepository,
+  ReceiptFileMetaRecord,
+  CreateReceiptData,
+  SetAssignmentData,
+} from '../../src/receipt/receipt.repository.js'
 
 export class FakeReceiptRepository implements ReceiptRepository {
   private readonly rows: ReceiptRecord[] = []
@@ -31,6 +37,7 @@ export class FakeReceiptRepository implements ReceiptRepository {
       ...(data.zahlungsdatum !== undefined ? { zahlungsdatum: data.zahlungsdatum } : {}),
       taxYear: null,
       proposalDismissed: false,
+      fileMeta: null,
       createdAt: now,
       updatedAt: now,
     }
@@ -49,6 +56,23 @@ export class FakeReceiptRepository implements ReceiptRepository {
     }
     this.rows[index] = updated
     return Promise.resolve(updated)
+  }
+
+  deleteForUser(userId: string, id: string): Promise<boolean> {
+    const index = this.rows.findIndex((row) => row.userId === userId && row.id === id)
+    if (index === -1) return Promise.resolve(false)
+    this.rows.splice(index, 1)
+    return Promise.resolve(true)
+  }
+
+  setFileMeta(userId: string, id: string, fileMeta: ReceiptFileMetaRecord | null): void {
+    const index = this.rows.findIndex((row) => row.userId === userId && row.id === id)
+    if (index === -1) return
+    this.rows[index] = {
+      ...this.rows[index]!,
+      fileMeta,
+      updatedAt: new Date(),
+    }
   }
 
   /** Test seam: seed a record directly, bypassing create()'s audit side-effects. */

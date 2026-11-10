@@ -25,6 +25,8 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  ConfirmLstbScanDto,
+  LstbControllerConfirmScanParams,
   LstbControllerGetLstbParams,
   LstbControllerSetFieldParams,
   LstbFieldDto,
@@ -181,6 +183,100 @@ export function useLstbControllerGetLstb<TData = Awaited<ReturnType<typeof lstbC
 
 
 
+
+export type lstbControllerConfirmScanResponse200 = {
+  data: LstbResponseDto
+  status: 200
+}
+
+export type lstbControllerConfirmScanResponse401 = {
+  data: void
+  status: 401
+}
+
+export type lstbControllerConfirmScanResponseSuccess = (lstbControllerConfirmScanResponse200) & {
+  headers: Headers;
+};
+export type lstbControllerConfirmScanResponseError = (lstbControllerConfirmScanResponse401) & {
+  headers: Headers;
+};
+
+export type lstbControllerConfirmScanResponse = (lstbControllerConfirmScanResponseSuccess | lstbControllerConfirmScanResponseError)
+
+export const getLstbControllerConfirmScanUrl = (jahr: number,
+    params?: LstbControllerConfirmScanParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/v1/steuerjahre/${jahr}/lstb?${stringifiedParams}` : `/v1/steuerjahre/${jahr}/lstb`
+}
+
+export const lstbControllerConfirmScan = async (jahr: number,
+    confirmLstbScanDto: ConfirmLstbScanDto,
+    params?: LstbControllerConfirmScanParams, options?: RequestInit): Promise<lstbControllerConfirmScanResponse> => {
+
+  return httpClient<lstbControllerConfirmScanResponse>(getLstbControllerConfirmScanUrl(jahr,params),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(confirmLstbScanDto)
+  }
+);}
+
+
+
+
+
+export const getLstbControllerConfirmScanMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof lstbControllerConfirmScan>>, TError,{jahr: number;data: ConfirmLstbScanDto;params?: LstbControllerConfirmScanParams}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof lstbControllerConfirmScan>>, TError,{jahr: number;data: ConfirmLstbScanDto;params?: LstbControllerConfirmScanParams}, TContext> => {
+
+const mutationKey = ['lstbControllerConfirmScan'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof lstbControllerConfirmScan>>, {jahr: number;data: ConfirmLstbScanDto;params?: LstbControllerConfirmScanParams}> = (props) => {
+          const {jahr,data,params} = props ?? {};
+
+          return  lstbControllerConfirmScan(jahr,data,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type LstbControllerConfirmScanMutationResult = NonNullable<Awaited<ReturnType<typeof lstbControllerConfirmScan>>>
+    export type LstbControllerConfirmScanMutationBody = ConfirmLstbScanDto
+    export type LstbControllerConfirmScanMutationError = void
+
+    export const useLstbControllerConfirmScan = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof lstbControllerConfirmScan>>, TError,{jahr: number;data: ConfirmLstbScanDto;params?: LstbControllerConfirmScanParams}, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof lstbControllerConfirmScan>>,
+        TError,
+        {jahr: number;data: ConfirmLstbScanDto;params?: LstbControllerConfirmScanParams},
+        TContext
+      > => {
+      return useMutation(getLstbControllerConfirmScanMutationOptions(options), queryClient);
+    }
 
 export type lstbControllerSetFieldResponse200 = {
   data: LstbResponseDto

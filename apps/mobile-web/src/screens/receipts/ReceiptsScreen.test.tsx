@@ -5,7 +5,7 @@
 // Zuordnung states render (ungebunden/vorgeschlagen/zugeordnet/konflikt) with art + dates, the
 // suggestion is confirmed by a tap, a conflicting year is VISIBLE (ADR-008) instead of silently
 // overwritten, and the upload affordance is the honest "Scan folgt" placeholder (ADR-032 §2).
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
 import { ThemeProvider } from '@steuereule/ui'
@@ -24,6 +24,9 @@ const UNBOUND: ReceiptResponseDto = {
   kind: null,
   belegdatum: null,
   zahlungsdatum: null,
+  hasFile: false,
+  mimeType: null,
+  byteLength: null,
   assignment: { kind: 'ungebunden' },
 }
 
@@ -33,6 +36,9 @@ const PROPOSED: ReceiptResponseDto = {
   kind: 'Sonstiges',
   belegdatum: '2025-12-20',
   zahlungsdatum: '2026-01-15',
+  hasFile: false,
+  mimeType: null,
+  byteLength: null,
   assignment: { kind: 'vorgeschlagen', taxYear: 2026, provenance: 'zahlungsdatum' },
 }
 
@@ -42,6 +48,9 @@ const ASSIGNED: ReceiptResponseDto = {
   kind: 'Lohnausweis',
   belegdatum: '2026-02-01',
   zahlungsdatum: null,
+  hasFile: true,
+  mimeType: 'application/pdf',
+  byteLength: 1024,
   assignment: { kind: 'zugeordnet', taxYear: 2026 },
 }
 
@@ -51,6 +60,9 @@ const CONFLICT: ReceiptResponseDto = {
   kind: 'Sonstiges',
   belegdatum: '2026-01-02',
   zahlungsdatum: null,
+  hasFile: false,
+  mimeType: null,
+  byteLength: null,
   assignment: { kind: 'konflikt', taxYear: 2025, proposalYear: 2026, provenance: 'belegdatum' },
 }
 
@@ -94,13 +106,199 @@ describe('BelegeScreen', () => {
     ).toBeTruthy()
   })
 
-  it('renders the honest "Scan folgt" placeholder instead of a fake scan/upload button (ADR-032 §2)', async () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('renders the real encrypted PDF/photo upload card instead of a placeholder (#444)', async () => {
     mockReceipts([])
     renderReceipts()
-    await screen.findByText('Wirf alles rein — wir sortieren')
-    expect(screen.getByText(/Das Scannen und Fotografieren der Belege folgt noch/)).toBeTruthy()
-    expect(screen.queryByText('Beleg scannen')).toBeNull()
-    expect(screen.queryByText('PDF hochladen')).toBeNull()
+    await screen.findByText('Beleg hochladen (PDF / Foto)')
+    expect(screen.getByTestId('belege-upload-card')).toBeTruthy()
+    expect(screen.getByTestId('belege-upload-cta')).toBeTruthy()
+    expect(screen.getByLabelText('Belegart')).toBeTruthy()
+    expect(screen.queryByText(/folgt noch/)).toBeNull()
+  })
+
+  it('rejects an unsupported file format on upload without calling the API', async () => {
+    mockReceipts([])
+    let uploadCalls = 0
+    server.use(
+      http.post('*/v1/belege/upload', () => {
+        uploadCalls += 1
+        return HttpResponse.json(ASSIGNED, { status: 201 })
+      }),
+    )
+    renderReceipts()
+    await screen.findByTestId('belege-file-input')
+
+    const badFile = new File(['hello'], 'notes.txt', { type: 'text/plain' })
+    fireEvent.change(screen.getByTestId('belege-file-input'), { target: { files: [badFile] } })
+
+    expect(await screen.findByText('Bitte wähle eine PDF-, JPEG-, PNG- oder WebP-Datei aus.')).toBeTruthy()
+    expect(uploadCalls).toBe(0)
+  })
+
+  it('uploads a receipt multipart FormData with selected Belegart and refreshes the inbox', async () => {
+    let list: ReceiptResponseDto[] = []
+    const fetchSpy = vi.spyOn(globalThis, 'fetch')
+    server.use(
+      http.get(RECEIPTS_URL, () => HttpResponse.json(list, { status: 200 })),
+      http.post('*/v1/belege/upload', () => {
+        list = [ASSIGNED]
+        return HttpResponse.json(ASSIGNED, { status: 201 })
+      }),
+    )
+    renderReceipts()
+    await screen.findByText('Noch keine Belege.')
+
+    fireEvent.change(screen.getByLabelText('Belegart'), { target: { value: 'Lohnausweis' } })
+    const pdfFile = new File(['%PDF-1.4\ntest'], 'lohnausweis-2026.pdf', { type: 'application/pdf' })
+    fireEvent.change(screen.getByTestId('belege-file-input'), { target: { files: [pdfFile] } })
+
+    expect(await screen.findByText('Beleg gespeichert.')).toBeTruthy()
+    expect(await screen.findByText('lohnausweis-2026.pdf')).toBeTruthy()
+    expect(screen.getByText('Originaldatei verschlüsselt hinterlegt')).toBeTruthy()
+
+    const uploadCall = fetchSpy.mock.calls.find(([url]) => String(url).endsWith('/v1/belege/upload'))
+    expect(uploadCall).toBeTruthy()
+    const body = uploadCall![1]?.body
+    expect(body).toBeInstanceOf(FormData)
+    expect((body as FormData).get('kind')).toBe('Lohnausweis')
+    const uploadedFile = (body as FormData).get('file')
+    expect(uploadedFile).toBeInstanceOf(File)
+    expect((uploadedFile as File).name).toBe('lohnausweis-2026.pdf')
+  })
+
+  it('shows an honest error when multipart upload fails on the server', async () => {
+    mockReceipts([])
+    server.use(http.post('*/v1/belege/upload', () => HttpResponse.json({ message: 'Server error' }, { status: 500 })))
+    renderReceipts()
+    await screen.findByTestId('belege-file-input')
+
+    const imgFile = new File([new Uint8Array([0xff, 0xd8, 0xff])], 'foto.jpg', { type: 'image/jpeg' })
+    fireEvent.change(screen.getByTestId('belege-file-input'), { target: { files: [imgFile] } })
+
+    expect(await screen.findByText('Der Upload hat nicht geklappt. Prüf die Verbindung und versuch es noch mal.')).toBeTruthy()
+  })
+
+  it('opens ReceiptFileModal for PDF and image files and strictly revokes ObjectURLs on close', async () => {
+    const IMAGE_RECEIPT: ReceiptResponseDto = {
+      id: 'b-foto',
+      fileName: 'quittung.png',
+      kind: 'Sonstiges',
+      belegdatum: null,
+      zahlungsdatum: null,
+      hasFile: true,
+      mimeType: 'image/png',
+      byteLength: 128,
+      assignment: { kind: 'ungebunden' },
+    }
+    mockReceipts([ASSIGNED, IMAGE_RECEIPT])
+    const createdUrls: string[] = []
+    const revokedUrls: string[] = []
+    const origCreate = URL.createObjectURL
+    const origRevoke = URL.revokeObjectURL
+    URL.createObjectURL = vi.fn(() => {
+      const url = `blob:http://localhost/test-${createdUrls.length + 1}`
+      createdUrls.push(url)
+      return url
+    })
+    URL.revokeObjectURL = vi.fn((u: string) => {
+      revokedUrls.push(u)
+    })
+
+    try {
+      server.use(
+        http.get('*/v1/belege/b-zugeordnet/datei', () => {
+          return new HttpResponse(new Uint8Array([0x25, 0x50, 0x44, 0x46]), {
+            status: 200,
+            headers: { 'Content-Type': 'application/pdf' },
+          })
+        }),
+        http.get('*/v1/belege/b-foto/datei', () => {
+          return new HttpResponse(new Uint8Array([0x89, 0x50, 0x4e, 0x47]), {
+            status: 200,
+            headers: { 'Content-Type': 'image/png' },
+          })
+        }),
+      )
+
+      renderReceipts()
+      await screen.findByTestId('receipt-preview-b-zugeordnet')
+
+      // Open PDF preview -> iframe + download link
+      fireEvent.click(screen.getByTestId('receipt-preview-b-zugeordnet'))
+      expect(await screen.findByTestId('receipt-file-modal')).toBeTruthy()
+      expect(await screen.findByTitle('lohnausweis-2026.pdf')).toBeTruthy()
+      expect(screen.getByText('Herunterladen')).toBeTruthy()
+
+      // Close revokes first ObjectURL
+      fireEvent.click(screen.getByTestId('receipt-file-close'))
+      await waitFor(() => expect(revokedUrls).toContain('blob:http://localhost/test-1'))
+
+      // Open PNG preview -> <img>
+      fireEvent.click(screen.getByTestId('receipt-preview-b-foto'))
+      expect(await screen.findByAltText('quittung.png')).toBeTruthy()
+
+      // Close revokes second ObjectURL
+      fireEvent.click(screen.getByTestId('receipt-file-close'))
+      await waitFor(() => expect(revokedUrls).toContain('blob:http://localhost/test-2'))
+    } finally {
+      URL.createObjectURL = origCreate
+      URL.revokeObjectURL = origRevoke
+    }
+  })
+
+  it('shows an honest preview error when GET /v1/belege/:id/datei returns 404', async () => {
+    mockReceipts([ASSIGNED])
+    server.use(http.get('*/v1/belege/b-zugeordnet/datei', () => HttpResponse.json({ message: 'Not found' }, { status: 404 })))
+
+    renderReceipts()
+    await screen.findByTestId('receipt-preview-b-zugeordnet')
+    fireEvent.click(screen.getByTestId('receipt-preview-b-zugeordnet'))
+
+    expect(
+      await screen.findByText('Die Originaldatei konnte nicht geladen werden (möglicherweise bereits gelöscht).'),
+    ).toBeTruthy()
+  })
+
+  it('requires two-step inline confirmation before deleting a receipt and handles delete failure honestly', async () => {
+    let list: ReceiptResponseDto[] = [ASSIGNED]
+    let deleteCalls = 0
+    let failDelete = true
+    server.use(
+      http.get(RECEIPTS_URL, () => HttpResponse.json(list, { status: 200 })),
+      http.delete('*/v1/belege/b-zugeordnet', () => {
+        deleteCalls += 1
+        if (failDelete) {
+          return HttpResponse.json({ message: 'fail' }, { status: 500 })
+        }
+        list = []
+        return HttpResponse.json({ deleted: true }, { status: 200 })
+      }),
+    )
+
+    renderReceipts()
+    await screen.findByTestId('receipt-delete-b-zugeordnet')
+
+    // Step 1: open confirm -> cancel -> 0 DELETE calls
+    fireEvent.click(screen.getByTestId('receipt-delete-b-zugeordnet'))
+    expect(await screen.findByText('Beleg endgültig löschen?')).toBeTruthy()
+    fireEvent.click(screen.getByText('Abbrechen'))
+    expect(deleteCalls).toBe(0)
+
+    // Step 2: confirm when server fails -> shows error
+    fireEvent.click(screen.getByTestId('receipt-delete-b-zugeordnet'))
+    fireEvent.click(screen.getByTestId('receipt-delete-confirm-b-zugeordnet'))
+    expect(await screen.findByText('Der Beleg konnte nicht gelöscht werden.')).toBeTruthy()
+    expect(deleteCalls).toBe(1)
+
+    // Step 3: confirm succeeds -> deletes and shows empty inbox
+    failDelete = false
+    fireEvent.click(screen.getByTestId('receipt-delete-confirm-b-zugeordnet'))
+    await screen.findByText('Noch keine Belege.')
+    expect(deleteCalls).toBe(2)
   })
 
   it('renders every Zuordnung state with its art and dates, from the API (never hard-coded)', async () => {
@@ -126,9 +324,9 @@ describe('BelegeScreen', () => {
     mockReceipts([PROPOSED, ASSIGNED, UNBOUND])
     renderReceipts()
     await screen.findByText('rechnung-fortbildung.pdf')
-    // `art: 'Lohnausweis'` → label; `art: null` → the generic "Beleg"
-    expect(screen.getByText('Lohnausweis')).toBeTruthy()
-    expect(screen.getByText('Sonstiges')).toBeTruthy()
+    // `art: 'Lohnausweis'` → label; `art: null` → the generic "Beleg" (once in <select>, once on card badge)
+    expect(screen.getAllByText('Lohnausweis').length).toBe(2)
+    expect(screen.getAllByText('Sonstiges').length).toBe(2)
     expect(screen.getByText('Beleg')).toBeTruthy()
   })
 
@@ -267,13 +465,17 @@ describe('BelegeScreen', () => {
   })
 
   it('switches to English when the locale changes (ADR-0006)', async () => {
-    mockReceipts([PROPOSED, CONFLICT])
+    mockReceipts([PROPOSED, CONFLICT, ASSIGNED])
     renderReceipts({ lng: 'en' })
     expect(await screen.findByText('Receipts')).toBeTruthy()
+    expect(screen.getByText('Upload receipt (PDF / photo)')).toBeTruthy()
+    expect(screen.getByText('Upload PDF or photo')).toBeTruthy()
     expect(screen.getByText('Suggestion: 2026')).toBeTruthy()
     expect(screen.getByText('Two years for this receipt — you decide.')).toBeTruthy()
     expect(screen.getByText('Adopt suggestion 2026')).toBeTruthy()
     expect(screen.getByText('Keep 2025')).toBeTruthy()
+    expect(screen.getByText('View receipt')).toBeTruthy()
+    expect(screen.getAllByText('Delete').length).toBe(3)
   })
 
   it('refetches the inbox after a successful assignment so the derived state never goes stale', async () => {

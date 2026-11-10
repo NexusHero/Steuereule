@@ -1,17 +1,26 @@
 import { Module } from '@nestjs/common'
-import { MarkingModule } from '../marking/marking.module.js'
+import { AdvisorDataModule } from '../advisor/advisor-data.module.js'
 import { AuditModule } from '../audit/audit.module.js'
 import { LinkModule } from '../link/link.module.js'
+import { MarkingModule } from '../marking/marking.module.js'
 import { PrismaModule } from '../prisma/prisma.module.js'
+import { ReceiptStorageModule } from '../receipt/receipt-storage.module.js'
 import { LstbController } from './lstb.controller.js'
-import { WAGE_TAX_CERTIFICATE_REPOSITORY } from './lstb.repository.js'
-import { PrismaLstbRepository } from './lstb.repository.prisma.js'
+import { LstbDataModule } from './lstb-data.module.js'
 import { LstbService } from './lstb.service.js'
 
 @Module({
-  imports: [MarkingModule, PrismaModule, AuditModule, LinkModule],
+  imports: [
+    LstbDataModule,
+    MarkingModule,
+    PrismaModule,
+    AuditModule,
+    LinkModule,
+    ReceiptStorageModule,
+    AdvisorDataModule,
+  ],
   controllers: [LstbController],
-  providers: [LstbService, { provide: WAGE_TAX_CERTIFICATE_REPOSITORY, useClass: PrismaLstbRepository }],
-  exports: [WAGE_TAX_CERTIFICATE_REPOSITORY],
+  providers: [LstbService],
+  exports: [LstbDataModule, LstbService],
 })
 export class LstbModule {}

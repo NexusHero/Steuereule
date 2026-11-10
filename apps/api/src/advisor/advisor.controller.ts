@@ -217,4 +217,20 @@ export class AdvisorController {
   ): Promise<AdvisorActionMutationResponseDto> {
     return this.service.undoAction(userId, year, actionId)
   }
+
+  @Post('actions/:actionId/dismiss')
+  @HttpCode(200)
+  @RequiresAccount()
+  @ForbidAssistant()
+  @ApiParam({ name: 'jahr', type: Number, example: 2025 })
+  @ApiParam({ name: 'actionId', type: String, example: 'act-123456' })
+  @ApiOkResponse({ type: AdvisorActionMutationResponseDto })
+  @ApiUnauthorizedResponse({ description: 'Requires account.' })
+  dismissAction(
+    @CurrentUser() userId: string,
+    @Param('jahr', ParseTaxYearPipe) year: number,
+    @Param('actionId') actionId: string,
+  ): Promise<AdvisorActionMutationResponseDto> {
+    return this.service.dismissAction(userId, year, actionId)
+  }
 }

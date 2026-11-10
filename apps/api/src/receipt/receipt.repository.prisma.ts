@@ -16,6 +16,7 @@ function toRecord(row: {
   zahlungsdatum: Date | null
   taxYear: number | null
   proposalDismissed: boolean
+  file?: { mimeType: string; byteLength: number } | null
   createdAt: Date
   updatedAt: Date
 }): ReceiptRecord {
@@ -28,10 +29,15 @@ function toRecord(row: {
     ...(row.zahlungsdatum !== null ? { zahlungsdatum: toIsoDate(row.zahlungsdatum) } : {}),
     taxYear: row.taxYear,
     proposalDismissed: row.proposalDismissed,
+    ...(row.file !== undefined ? { fileMeta: row.file ? { mimeType: row.file.mimeType, byteLength: row.file.byteLength } : null } : {}),
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   }
 }
+
+const FILE_META_INCLUDE = {
+  file: { select: { mimeType: true, byteLength: true } },
+} as const
 
 function fromIsoDate(value: string): Date {
   const date = new Date(value)
@@ -44,12 +50,19 @@ export class PrismaReceiptRepository implements ReceiptRepository {
   constructor(@Inject(ENCRYPTED_PRISMA) private readonly prisma: EncryptedPrismaClient) {}
 
   async findAllForUser(userId: string): Promise<ReceiptRecord[]> {
-    const rows = await this.prisma.receipt.findMany({ where: { userId }, orderBy: { createdAt: 'desc' } })
+    const rows = await this.prisma.receipt.findMany({
+      where: { userId },
+      include: FILE_META_INCLUDE,
+      orderBy: { createdAt: 'desc' },
+    })
     return rows.map(toRecord)
   }
 
   async findByIdForUser(userId: string, id: string): Promise<ReceiptRecord | null> {
-    const row = await this.prisma.receipt.findFirst({ where: { id, userId } })
+    const row = await this.prisma.receipt.findFirst({
+      where: { id, userId },
+      include: FILE_META_INCLUDE,
+    })
     return row === null ? null : toRecord(row)
   }
 
@@ -63,6 +76,7 @@ export class PrismaReceiptRepository implements ReceiptRepository {
           ...(data.belegdatum !== undefined ? { belegdatum: fromIsoDate(data.belegdatum) } : {}),
           ...(data.zahlungsdatum !== undefined ? { zahlungsdatum: fromIsoDate(data.zahlungsdatum) } : {}),
         },
+        include: FILE_META_INCLUDE,
       }),
       this.prisma.taxDataAccessLog.create({
         data: { userId, action: 'WRITE', resource: 'beleg' },
@@ -79,11 +93,25 @@ export class PrismaReceiptRepository implements ReceiptRepository {
       this.prisma.receipt.update({
         where: { id },
         data: { taxYear: data.taxYear, proposalDismissed: data.proposalDismissed },
+        include: FILE_META_INCLUDE,
       }),
       this.prisma.taxDataAccessLog.create({
         data: { userId, action: 'WRITE', resource: 'beleg' },
       }),
     ])
     return toRecord(updated)
+  }
+
+  async deleteForUser(userId: string, id: string): Promise<boolean> {
+    const row = await this.prisma.receipt.findFirst({ where: { id, userId }, select: { id: true } })
+    if (row === null) return false
+
+    await this.prisma.$transaction([
+      this.prisma.receipt.delete({ where: { id } }),
+      this.prisma.taxDataAccessLog.create({
+        data: { userId, action: 'WRITE', resource: 'beleg' },
+      }),
+    ])
+    return true
   }
 }

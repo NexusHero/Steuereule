@@ -3,6 +3,7 @@ import { isSupportedIncomeTaxYear } from '../math/tarif'
 import { getTaxYearParameters } from '../math/tax-parameters'
 import type { Marking, Screen } from './marking'
 import type { Profession } from './interview'
+import type { LstbExtractedFieldStatus, LstbFieldReason } from '../domains/lstb-parser'
 import { taxEstimateCrossBorder, taxEstimateEmployee } from '../engine/tax-estimate'
 
 export type AdvisorActionStatus = 'pending' | 'applied' | 'dismissed' | 'superseded' | 'undone'
@@ -124,6 +125,12 @@ export interface AdvisorActionProposal {
   readonly reason: string
   readonly sourceId: OwlSourceId
   readonly paragraph?: string | undefined
+  /** Optional receipt reference when a proposal originates from a scanned receipt (#444). */
+  readonly receiptId?: string | undefined
+  readonly confidenceStatus?: LstbExtractedFieldStatus | undefined
+  readonly sourceLines?: readonly string[] | undefined
+  readonly calculationPath?: string | null | undefined
+  readonly fieldReason?: LstbFieldReason | null | undefined
 }
 
 export interface AdvisorUndoEntry {
@@ -146,9 +153,19 @@ export interface AdvisorTwoPathsProposal {
   readonly sourceId: OwlSourceId
 }
 
+export interface AdvisorLstbScanMeta {
+  readonly receiptId: string | null
+  readonly stage: 'deterministic' | 'llm_text_fallback'
+  readonly taxYearOnDocument: number | null
+  readonly person?: 'A' | 'B' | undefined
+  readonly actionIds: readonly string[]
+}
+
 export interface AdvisorMessageMeta {
   readonly choices?: readonly string[] | undefined
   readonly action?: AdvisorActionProposal | undefined
+  readonly actions?: readonly AdvisorActionProposal[] | undefined
+  readonly lstbScan?: AdvisorLstbScanMeta | undefined
   readonly twoPaths?: AdvisorTwoPathsProposal | undefined
   readonly sources?: readonly OwlSourceId[] | undefined
   /** Server-internal: which engine produced the turn, kept with the drafts it proposed. */

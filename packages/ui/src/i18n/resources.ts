@@ -8,6 +8,9 @@ export const uiResources = {
         beleg: 'Beleg',
         regel: 'Regel',
         rechenweg: 'Rechenweg',
+        hinweis: 'Hinweis',
+        okBadge: 'Geprüft',
+        pruefenBadge: 'Prüfen',
       },
       ai: {
         marke: 'KI',
@@ -21,6 +24,9 @@ export const uiResources = {
         beleg: 'Beleg',
         regel: 'Rule',
         rechenweg: 'Calculation',
+        hinweis: 'Note',
+        okBadge: 'Verified',
+        pruefenBadge: 'Review',
       },
       ai: {
         marke: 'AI',
