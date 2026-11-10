@@ -20,6 +20,7 @@ import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
 import { usePendingMutations } from '../shared/usePendingMutations'
+import { watchSaveResult } from '../shared/saveFeedback'
 
 type FieldId = 'jahresbetrag' | 'rentenbeginnJahr' | 'alterBeiRentenbeginn'
 
@@ -64,11 +65,11 @@ export function PensionerScreen({ onDone = () => {}, onBack, taxYear = CURRENT_T
   }
 
   function sendKind(kind: PensionType | null) {
-    track(setKind.mutateAsync({ jahr: taxYear, data: { kind } }).then(invalidate))
+    track(watchSaveResult(setKind.mutateAsync({ jahr: taxYear, data: { kind } })).then(invalidate))
   }
 
   function send(field: FieldId, data: PensionFieldDto) {
-    track(setField.mutateAsync({ jahr: taxYear, feld: field, data }).then(invalidate))
+    track(watchSaveResult(setField.mutateAsync({ jahr: taxYear, feld: field, data })).then(invalidate))
   }
 
   const showsPensionStartYear = response.kind !== null && response.kind !== 'PrivateRentenversicherung'

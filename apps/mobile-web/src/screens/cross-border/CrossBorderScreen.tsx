@@ -28,6 +28,7 @@ import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
 import { usePendingMutations } from '../shared/usePendingMutations'
+import { triggerSaveErrorHaptic, watchSaveResult } from '../shared/saveFeedback'
 
 export interface CrossBorderScreenProps {
   readonly onDone: () => void
@@ -105,9 +106,11 @@ export function CrossBorderScreen({ onDone, onBack, taxYear = CURRENT_TAX_YEAR }
           }
           setInterviewAnswers(previous)
           setSeeded(false)
+          triggerSaveErrorHaptic()
           void interviewQuery.refetch()
         },
         () => {
+          triggerSaveErrorHaptic()
           setInterviewAnswers(previous)
         },
       ),
@@ -122,10 +125,10 @@ export function CrossBorderScreen({ onDone, onBack, taxYear = CURRENT_TAX_YEAR }
     <SalaryCertificateStep
       salaryCertificate={salaryCertificate}
       taxYear={taxYear}
-      onSetField={(vars) => track(setField.mutateAsync(vars).then(invalidateCertificate))}
-      onSetExchangeRate={(vars) => track(setExchangeRate.mutateAsync(vars).then(invalidateCertificate))}
-      onSetProvision={(data) => track(setProvision.mutateAsync({ jahr: taxYear, data }).then(invalidateCertificate))}
-      onSetNGre={(data) => track(setNGre.mutateAsync({ jahr: taxYear, data }).then(invalidateCertificate))}
+      onSetField={(vars) => track(watchSaveResult(setField.mutateAsync(vars)).then(invalidateCertificate))}
+      onSetExchangeRate={(vars) => track(watchSaveResult(setExchangeRate.mutateAsync(vars)).then(invalidateCertificate))}
+      onSetProvision={(data) => track(watchSaveResult(setProvision.mutateAsync({ jahr: taxYear, data })).then(invalidateCertificate))}
+      onSetNGre={(data) => track(watchSaveResult(setNGre.mutateAsync({ jahr: taxYear, data })).then(invalidateCertificate))}
       onDone={() => finish(onDone)}
       {...(onBack ? { onBack: () => finish(onBack) } : {})}
       bp={bp}

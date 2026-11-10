@@ -25,6 +25,7 @@ import { CatalogScreen } from '../catalog/CatalogScreen'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
 import { usePendingMutations } from '../shared/usePendingMutations'
+import { watchSaveResult } from '../shared/saveFeedback'
 
 export interface RentalScreenProps {
   readonly onDone?: () => void
@@ -81,15 +82,15 @@ export function RentalScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_
   }
 
   function send(propertyId: string, field: RentalFieldId, data: RentalFieldDto) {
-    track(setField.mutateAsync({ jahr: taxYear, objektId: propertyId, feld: field, data }).then(invalidate))
+    track(watchSaveResult(setField.mutateAsync({ jahr: taxYear, objektId: propertyId, feld: field, data })).then(invalidate))
   }
 
   function sendAddress(propertyId: string, data: PutRentalAddressDto) {
-    track(setAddress.mutateAsync({ jahr: taxYear, objektId: propertyId, data }).then(invalidate))
+    track(watchSaveResult(setAddress.mutateAsync({ jahr: taxYear, objektId: propertyId, data })).then(invalidate))
   }
 
   function addProperty() {
-    track(createProperty.mutateAsync({ jahr: taxYear }).then(invalidate))
+    track(watchSaveResult(createProperty.mutateAsync({ jahr: taxYear })).then(invalidate))
   }
 
   return (

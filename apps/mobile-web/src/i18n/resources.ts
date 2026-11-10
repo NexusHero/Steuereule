@@ -273,6 +273,10 @@ export const appResources = {
           hell: 'Immer hell',
           dunkel: 'Immer dunkel',
         },
+        haptik: {
+          titel: 'Haptisches Feedback',
+          beschreibung: 'Kurze Vibration bei Auswahl, Bestätigung und Warnungen.',
+        },
         devices: {
           heading: 'Angemeldete Geräte',
           loading: 'Geräte werden geladen …',
@@ -1900,6 +1904,10 @@ export const appResources = {
           system: 'System',
           hell: 'Always light',
           dunkel: 'Always dark',
+        },
+        haptik: {
+          titel: 'Haptic feedback',
+          beschreibung: 'Subtle vibration on selection, confirmation, and warnings.',
         },
         devices: {
           heading: 'Signed-in devices',

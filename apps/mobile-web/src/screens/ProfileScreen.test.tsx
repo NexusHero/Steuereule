@@ -2,9 +2,10 @@
 // ProfilScreen.tsx exists, mirroring the pattern OnboardingScreen.test.tsx already
 // established for the same live GET/PUT /v1/profile contract.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { Platform } from 'react-native'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
+import { ThemeProvider, isHapticsEnabled, setHapticsEnabled } from '@steuereule/ui'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import { getProfileControllerGetProfileQueryKey } from '@steuereule/api-client'
@@ -371,5 +372,50 @@ describe('ProfilScreen — Darstellung (Slice 6)', () => {
     expect(screen.getByText('System')).toBeTruthy()
     expect(screen.getByText('Always light')).toBeTruthy()
     expect(screen.getByText('Always dark')).toBeTruthy()
+  })
+})
+
+describe('ProfilScreen — Haptik (Slice 7)', () => {
+  const originalOs = Platform.OS
+
+  afterEach(() => {
+    ;(Platform as { OS: typeof Platform.OS }).OS = originalOs
+    localStorage.clear()
+    setHapticsEnabled(true)
+  })
+
+  it('hides profil-haptik on web', async () => {
+    ;(Platform as { OS: typeof Platform.OS }).OS = 'web'
+    mockSavedProfile()
+    renderProfile()
+    await screen.findByText('Anna Beispiel')
+    expect(screen.queryByTestId('profil-haptik')).toBeNull()
+  })
+
+  it('shows profil-haptik on native and persists changes only when toggled', async () => {
+    ;(Platform as { OS: typeof Platform.OS }).OS = 'ios'
+    mockSavedProfile()
+    renderProfile()
+    await screen.findByText('Anna Beispiel')
+
+    expect(screen.getByText('Haptisches Feedback')).toBeTruthy()
+    const switchEl = screen.getByTestId('profil-haptik')
+    expect(localStorage.getItem('steuereule.haptics')).toBeNull()
+
+    const checkbox = switchEl.querySelector('input[type="checkbox"]') as HTMLInputElement
+    expect(checkbox.checked).toBe(true)
+    fireEvent.click(checkbox)
+
+    expect(localStorage.getItem('steuereule.haptics')).toBe('false')
+    expect(isHapticsEnabled()).toBe(false)
+    expect(checkbox.checked).toBe(false)
+  })
+
+  it('renders haptics label in English on native', async () => {
+    ;(Platform as { OS: typeof Platform.OS }).OS = 'ios'
+    mockSavedProfile()
+    renderProfile({ lng: 'en' })
+    await screen.findByText('Anna Beispiel')
+    expect(screen.getByText('Haptic feedback')).toBeTruthy()
   })
 })

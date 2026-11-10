@@ -17,6 +17,7 @@ import { APP_NS } from '../../i18n/resources'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { makePrivacyStyles } from '../privacy/styles'
 import { ErrorState, LoadingState } from '../shared/ScreenState'
+import { triggerSaveErrorHaptic, warnOnHttpError } from '../shared/saveFeedback'
 import { germanToIso, isoToGerman, toDraft, zuPutDto, type MasterDataDraft } from './masterDataMapping'
 
 export interface MasterDataScreenProps {
@@ -67,6 +68,7 @@ export function MasterDataScreen({ onBack, taxYear = CURRENT_TAX_YEAR, onRecordP
 
   function submit() {
     if (form.religion !== null && !form.religionConsent) {
+      triggerSaveErrorHaptic()
       setMessage({ kind: 'fehler', text: t('stammdaten.saveError.einwilligung') })
       return
     }
@@ -79,10 +81,14 @@ export function MasterDataScreen({ onBack, taxYear = CURRENT_TAX_YEAR, onRecordP
             setDraft(null)
             setMessage({ kind: 'ok', text: t('stammdaten.gespeichert') })
           } else {
+            triggerSaveErrorHaptic()
             setMessage({ kind: 'fehler', text: t('stammdaten.saveError.validation') })
           }
         },
-        onError: () => setMessage({ kind: 'fehler', text: t('stammdaten.saveError.network') }),
+        onError: () => {
+          triggerSaveErrorHaptic()
+          setMessage({ kind: 'fehler', text: t('stammdaten.saveError.network') })
+        },
       },
     )
   }
@@ -201,7 +207,16 @@ function TaxYearLinkSection({
   }
 
   const selectKind = (kind: 'zusammen' | 'einzel') => {
-    setLink.mutate({ jahr: taxYear, data: { filingType: kind } }, { onSuccess: invalidate })
+    setLink.mutate(
+      { jahr: taxYear, data: { filingType: kind } },
+      {
+        onSuccess: (res) => {
+          warnOnHttpError(res.status)
+          invalidate()
+        },
+        onError: triggerSaveErrorHaptic,
+      },
+    )
   }
 
   const redeemCode = () => {
@@ -215,9 +230,15 @@ function TaxYearLinkSection({
           if (answer.status === 200) {
             setCode('')
             invalidate()
-          } else setJoinError(joinErrorText(answer.data))
+          } else {
+            triggerSaveErrorHaptic()
+            setJoinError(joinErrorText(answer.data))
+          }
         },
-        onError: () => setJoinError('Das hat nicht geklappt. Prüf die Verbindung und versuch es noch mal.'),
+        onError: () => {
+          triggerSaveErrorHaptic()
+          setJoinError('Das hat nicht geklappt. Prüf die Verbindung und versuch es noch mal.')
+        },
       },
     )
   }
@@ -234,7 +255,13 @@ function TaxYearLinkSection({
           beruf: occupationB || null,
         },
       },
-      { onSuccess: invalidate },
+      {
+        onSuccess: (res) => {
+          warnOnHttpError(res.status)
+          invalidate()
+        },
+        onError: triggerSaveErrorHaptic,
+      },
     )
   }
 

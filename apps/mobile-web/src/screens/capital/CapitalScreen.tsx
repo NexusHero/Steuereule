@@ -25,6 +25,7 @@ import { CatalogScreen } from '../catalog/CatalogScreen'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
 import { usePendingMutations } from '../shared/usePendingMutations'
+import { watchSaveResult } from '../shared/saveFeedback'
 
 export interface CapitalScreenProps {
   readonly onDone?: () => void
@@ -81,7 +82,7 @@ export function CapitalScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX
   }
 
   function send(field: CapitalFieldId, data: KapitalFeldDto) {
-    track(setField.mutateAsync({ jahr: taxYear, feld: field, data }).then(invalidate))
+    track(watchSaveResult(setField.mutateAsync({ jahr: taxYear, feld: field, data })).then(invalidate))
   }
 
   return (
@@ -106,7 +107,7 @@ export function CapitalScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX
               <Chip
                 key={inhaber}
                 active={(response.inhaber ?? 'A') === inhaber}
-                onPress={() => track(setOwner.mutateAsync({ jahr: taxYear, data: { inhaber } }).then(invalidate))}
+                onPress={() => track(watchSaveResult(setOwner.mutateAsync({ jahr: taxYear, data: { inhaber } })).then(invalidate))}
                 testID={`kapital-inhaber-${inhaber}`}
               >
                 {tr(`kapital.inhaber.${inhaber}`)}

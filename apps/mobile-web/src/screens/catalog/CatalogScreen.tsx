@@ -27,6 +27,7 @@ import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import type { CatalogEntryParam } from '../../navigation/routes'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
+import { triggerSaveErrorHaptic } from '../shared/saveFeedback'
 
 function collectFollowUpStepIds(stepId: EntryStepId, acc = new Set<EntryStepId>()): ReadonlySet<EntryStepId> {
   if (acc.has(stepId)) return acc
@@ -182,10 +183,12 @@ export function CatalogScreen({ entry, onDone = () => {}, onBack, taxYear = CURR
             return
           }
           setConflict(true)
+          triggerSaveErrorHaptic()
           setHistory([])
           setSeeded(false)
           void interviewQuery.refetch()
         } catch {
+          triggerSaveErrorHaptic()
           setAnswers(previousAnswers)
           setHistory(previousHistory)
         } finally {

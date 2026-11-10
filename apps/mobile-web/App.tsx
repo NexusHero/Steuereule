@@ -50,10 +50,12 @@ import { ShellStateProvider, useShellState } from './src/navigation/ShellState'
 import { SubmissionGateProvider, useSubmissionGate } from './src/navigation/SubmissionGateContext'
 import { AppTabs } from './src/navigation/AppTabs'
 import { AppearanceProvider, resolveThemeMode, useAppearance } from './src/lib/appearance'
+import { syncHapticsPreferenceFromStorage } from './src/lib/hapticsPreference'
 
 const i18n = createAppI18n('de')
 const queryClient = new QueryClient({ defaultOptions: APP_QUERY_DEFAULTS })
 followNativeAppFocus()
+syncHapticsPreferenceFromStorage()
 
 const apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://localhost:3000'
 configureApiClient({ baseUrl: apiBaseUrl })
@@ -63,6 +65,10 @@ const authClient = createAppAuthClient(apiBaseUrl)
 const RootStack = createNativeStackNavigator<RootStackParamList>()
 
 export default function App() {
+  useEffect(() => {
+    syncHapticsPreferenceFromStorage()
+  }, [])
+
   return (
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>
