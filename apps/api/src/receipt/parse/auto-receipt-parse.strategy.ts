@@ -346,6 +346,7 @@ export class AutoReceiptParseStrategy implements DocumentParseStrategy {
       reason: proposalMeta.reason,
       sourceId: proposalMeta.sourceId,
       summaryText: proposalMeta.summaryText,
+      receiptId: dto.receiptId ?? null,
       engine:
         mode === 'vision_ocr' && visionSlot
           ? { mode: 'langgraph', provider: visionSlot.provider, model: visionSlot.model }

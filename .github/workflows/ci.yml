@@ -806,6 +806,11 @@ jobs:
             "${WEB_ORIGIN}/"
       - name: Cross-origin browser smoke — signup, login, get-session, PUT /v1/profile
         run: node e2e/cross-origin/run.mjs
+      - name: Self-hosted OCR smoke (ADR-0060) — worker, WASM core and deu data load same-origin and read text
+        # Needs only WEB_ORIGIN: no account, no API. Injects the app's own tesseract.js build into
+        # the served origin and OCRs a rendered LStB row with the self-hosted paths; fails on any
+        # request that leaves the origin (the CDN fallback tesseract.js uses by default).
+        run: node e2e/ocr/self-hosted-ocr.mjs
       - name: Responsive breakpoint layout gate (ADR-0014) — real browser, s/m/l assertions
         # Shares this job's already-running API + statically-served web bundle (see the
         # job header comment above for why this rides here rather than its own job).

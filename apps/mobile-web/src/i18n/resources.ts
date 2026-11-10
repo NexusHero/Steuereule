@@ -769,6 +769,7 @@ export const appResources = {
           },
           error: {
             unsupportedFile: 'Bitte wähle eine PDF-, JPEG-, PNG- oder WebP-Datei aus.',
+            readFailed: 'Die Datei ließ sich auf deinem Gerät nicht lesen (beschädigt oder passwortgeschützt?). Trag die Werte bitte von Hand ein.',
             emptyOcr: 'Auf dem Dokument konnte kein lesbarer Text erkannt werden. Bitte prüfe die Datei oder trag die Werte manuell ein.',
             parseFailed: 'Die Lohnsteuerbescheinigung konnte gerade nicht ausgewertet werden. Bitte versuch es noch mal.',
             confirmFailed: 'Die Werte konnten nicht gespeichert werden. Bitte prüf die Verbindung und versuch es noch mal.',
@@ -1590,6 +1591,7 @@ export const appResources = {
           },
           receiptFailure: {
             unsupported_file: 'Bitte wähle ein PDF oder ein Foto (JPEG, PNG, WebP).',
+            read_failed: 'Die Datei ließ sich auf deinem Gerät nicht lesen (beschädigt oder passwortgeschützt?). Das Original ist trotzdem in deinen Belegen gespeichert.',
             empty_text: 'Auf dem Beleg war kein lesbarer Text. Versuch ein schärferes Foto oder trag die Werte von Hand ein.',
             parse_failed: 'Der Beleg konnte gerade nicht geprüft werden. Bitte versuch es noch mal.',
           },
@@ -2404,6 +2406,7 @@ export const appResources = {
           },
           error: {
             unsupportedFile: 'Please select a PDF, JPEG, PNG, or WebP file.',
+            readFailed: 'The file could not be read on your device (damaged or password-protected?). Please enter the values by hand.',
             emptyOcr: 'No readable text could be detected on the document. Please check the file or enter the values manually.',
             parseFailed: 'The wage tax statement could not be parsed right now. Please try again.',
             confirmFailed: 'The values could not be saved. Please check your connection and try again.',
@@ -3226,6 +3229,7 @@ export const appResources = {
           },
           receiptFailure: {
             unsupported_file: 'Please choose a PDF or a photo (JPEG, PNG, WebP).',
+            read_failed: 'The file could not be read on your device (damaged or password-protected?). The original is still stored in your receipts.',
             empty_text: 'No readable text on the receipt. Try a sharper photo or enter the values by hand.',
             parse_failed: 'The receipt could not be checked right now. Please try again.',
           },

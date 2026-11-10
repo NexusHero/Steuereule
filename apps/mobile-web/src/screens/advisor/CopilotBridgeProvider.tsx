@@ -559,6 +559,10 @@ export function CopilotBridgeProvider({
           queryClient.invalidateQueries({ queryKey: getReceiptControllerListQueryKey() }),
         ])
         return result
+      } catch {
+        // Never leave the chat silent: any unexpected failure becomes a visible notice.
+        setReceiptNotice(tr('advisor.chat.receiptFailure.parse_failed'))
+        return null
       } finally {
         setParsingReceipt(false)
         setReceiptPhase(null)
