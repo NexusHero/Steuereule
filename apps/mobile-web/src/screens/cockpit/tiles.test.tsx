@@ -14,6 +14,7 @@ import {
   TILES,
   hasAnswersForEntry,
   nextStepTile,
+  partitionTiles,
   tileById,
   tileHintSeverity,
   tilesForFinding,
@@ -95,8 +96,8 @@ function completeCommute(): CommuteResponseDto {
   }
 }
 
-describe('cockpit tiles (§ 2.2–2.4)', () => {
-  it('defines all 10 slice-2 tiles with unique IDs and title keys', () => {
+describe('cockpit tiles (§ 2.2–2.4 & Slice 5 § 5.2)', () => {
+  it('defines all 13 tiles with unique IDs, title keys, and persona rules', () => {
     const ids = TILES.map((t) => t.id)
     expect(ids).toEqual([
       'lstb',
@@ -109,40 +110,82 @@ describe('cockpit tiles (§ 2.2–2.4)', () => {
       'kapital',
       'vermietung',
       'kinder',
+      'alleinerziehend',
+      'haushalt',
+      'gesundheit',
     ])
     for (const tile of TILES) {
       expect(tile.titleKey).toBe(`cockpit.kachel.${tile.id}.titel`)
+      expect(tile.personas === 'all' || Array.isArray(tile.personas)).toBe(true)
     }
   })
 
-  describe('visibility rules per path and kinder answer', () => {
-    it('shows lstb and arbeitsweg (not ch/rente/kinder) for angestellte without children', () => {
-      const ids = visibleTiles(baseFacts()).map((t) => t.id)
-      expect(ids).toEqual(['lstb', 'lebenslagen', 'einkuenfte', 'sonderausgaben', 'arbeitsweg', 'kapital', 'vermietung'])
+  describe('persona visibility & Weitere Themen partitioning (§ 5.2 & § 5.7)', () => {
+    it('places angestellt tiles in main and all remaining non-flagged tiles in more (booster flag false)', () => {
+      const part = partitionTiles(baseFacts({ boosterEnabled: false }))
+      expect(part.main.map((t) => t.id)).toEqual(['lstb', 'lebenslagen', 'einkuenfte', 'sonderausgaben', 'arbeitsweg'])
+      expect(part.more.map((t) => t.id)).toEqual(['ch', 'rente', 'kapital', 'vermietung', 'kinder', 'alleinerziehend'])
+      expect(visibleTiles(baseFacts({ boosterEnabled: false })).map((t) => t.id)).toEqual(part.main.map((t) => t.id))
     })
 
-    it('shows ch and arbeitsweg (not lstb/rente) for ch cross-border workers', () => {
-      const ids = visibleTiles(
-        baseFacts({ path: 'ch', answers: { job: 'Angestellt', ausland: 'Ja, in die Schweiz', kinder: 'Nein' } }),
-      ).map((t) => t.id)
-      expect(ids).toEqual(['ch', 'lebenslagen', 'einkuenfte', 'sonderausgaben', 'arbeitsweg', 'kapital', 'vermietung'])
+    it('exposes haushalt in main and gesundheit in more/main when boosterEnabled is true', () => {
+      const emp = partitionTiles(baseFacts({ boosterEnabled: true }))
+      expect(emp.main.map((t) => t.id)).toEqual([
+        'lstb',
+        'lebenslagen',
+        'einkuenfte',
+        'sonderausgaben',
+        'arbeitsweg',
+        'haushalt',
+      ])
+      expect(emp.more.map((t) => t.id)).toContain('gesundheit')
+
+      const retiree = partitionTiles(
+        baseFacts({ path: 'rente', answers: { job: 'Rente', ausland: 'Nein', kinder: 'Nein' }, boosterEnabled: true }),
+      )
+      expect(retiree.main.map((t) => t.id)).toEqual(['rente', 'einkuenfte', 'sonderausgaben', 'kapital', 'haushalt', 'gesundheit'])
     })
 
-    it('shows rente and hides lstb/ch/arbeitsweg for pensioners', () => {
-      const ids = visibleTiles(
-        baseFacts({ path: 'rente', answers: { job: 'Rente', ausland: 'Nein', kinder: 'Nein' } }),
-      ).map((t) => t.id)
-      expect(ids).toEqual(['rente', 'lebenslagen', 'einkuenfte', 'sonderausgaben', 'kapital', 'vermietung'])
+    it('shows ch, lebenslagen, einkuenfte, sonderausgaben, arbeitsweg in main for grenzgaenger', () => {
+      const part = partitionTiles(
+        baseFacts({ path: 'ch', answers: { job: 'Angestellt', ausland: 'Ja, in die Schweiz', kinder: 'Nein' }, boosterEnabled: false }),
+      )
+      expect(part.main.map((t) => t.id)).toEqual(['ch', 'lebenslagen', 'einkuenfte', 'sonderausgaben', 'arbeitsweg'])
+      expect(part.more.map((t) => t.id)).toContain('lstb')
     })
 
-    it('shows kinder tile when interview answer kinder is not Nein', () => {
-      const ids = visibleTiles(baseFacts({ answers: { kinder: '1 Kind' } })).map((t) => t.id)
-      expect(ids).toContain('kinder')
+    it('shows rente and kapital in main and arbeitsweg in more for rentner', () => {
+      const part = partitionTiles(
+        baseFacts({ path: 'rente', answers: { job: 'Rente', ausland: 'Nein', kinder: 'Nein' }, boosterEnabled: false }),
+      )
+      expect(part.main.map((t) => t.id)).toEqual(['rente', 'einkuenfte', 'sonderausgaben', 'kapital'])
+      expect(part.more.map((t) => t.id)).toContain('arbeitsweg')
     })
 
-    it('hides kinder tile when interview answer kinder is missing or Nein', () => {
-      expect(visibleTiles(baseFacts({ answers: {} })).map((t) => t.id)).not.toContain('kinder')
-      expect(visibleTiles(baseFacts({ answers: { kinder: 'Nein' } })).map((t) => t.id)).not.toContain('kinder')
+    it('adds vermietung to main for vermieter', () => {
+      const part = partitionTiles(
+        baseFacts({ answers: { job: 'Angestellt', ausland: 'Nein', kinder: 'Nein', einkuenfte: 'Vermietung' }, boosterEnabled: false }),
+      )
+      expect(part.main.map((t) => t.id)).toContain('vermietung')
+    })
+
+    it('adds kinder (and not alleinerziehend) to main when married with child, and both when single parent', () => {
+      const marriedParent = partitionTiles(
+        baseFacts({ answers: { job: 'Angestellt', ausland: 'Nein', kinder: '1 Kind', familienstand: 'Verheiratet' }, boosterEnabled: false }),
+      )
+      expect(marriedParent.main.map((t) => t.id)).toContain('kinder')
+      expect(marriedParent.main.map((t) => t.id)).not.toContain('alleinerziehend')
+      expect(marriedParent.more.map((t) => t.id)).toContain('alleinerziehend')
+
+      const singleParent = partitionTiles(
+        baseFacts({
+          answers: { job: 'Angestellt', ausland: 'Nein', kinder: '1 Kind', familienstand: 'Geschieden oder getrennt' },
+          boosterEnabled: true,
+        }),
+      )
+      expect(singleParent.main.map((t) => t.id)).toContain('kinder')
+      expect(singleParent.main.map((t) => t.id)).toContain('alleinerziehend')
+      expect(singleParent.main.map((t) => t.id)).toContain('gesundheit')
     })
   })
 
@@ -285,6 +328,29 @@ describe('cockpit tiles (§ 2.2–2.4)', () => {
       }
       expect(tileById('kinder').status(baseFacts({ children: emptyChildren }))).toBe('offen')
       expect(tileById('kinder').status(baseFacts({ children: oneChild }))).toBe('erledigt')
+
+      expect(tileById('alleinerziehend').status(baseFacts({ answers: {} }))).toBe('offen')
+      expect(
+        tileById('alleinerziehend').status(baseFacts({ answers: { 'ae-weitere-person': 'Nein', 'ae-haushaltsgemeinschaft': 'Nein' } })),
+      ).toBe('erledigt')
+
+      expect(tileById('haushalt').status(baseFacts({ answers: {} }))).toBe('offen')
+      expect(tileById('haushalt').status(baseFacts({ answers: { 'haushalt-gate': 'Nein' } }))).toBe('erledigt')
+      expect(
+        tileById('haushalt').status(
+          baseFacts({
+            answers: {
+              'haushalt-gate': 'Ja',
+              'haushalt-dienstleistung-betrag': '100',
+              'haushalt-handwerker-betrag': AMOUNT_LATER,
+              'haushalt-minijob-betrag': '0',
+            },
+          }),
+        ),
+      ).toBe('betrag-offen')
+
+      expect(tileById('gesundheit').status(baseFacts({ answers: {} }))).toBe('offen')
+      expect(tileById('gesundheit').status(baseFacts({ answers: { 'gesundheit-gate': 'Nein' } }))).toBe('erledigt')
     })
   })
 
@@ -376,6 +442,7 @@ describe('cockpit tiles (§ 2.2–2.4)', () => {
       expect(
         tilesForFinding({ kind: 'betrag-spaeter', steps: ['dhf-miete', 'umzug-kosten', 'spenden-betrag'] }),
       ).toEqual(['lebenslagen', 'sonderausgaben'])
+      expect(tilesForFinding({ kind: 'betrag-spaeter', steps: ['haushalt-handwerker-betrag'] })).toEqual(['haushalt'])
       expect(tilesForFinding({ kind: 'betrag-spaeter', steps: [] })).toEqual(['abgabe'])
       expect(tilesForFinding({ kind: 'gated-einkunftsart', incomeType: 'Kapital' })).toEqual(['einkuenfte'])
       expect(tilesForFinding({ kind: 'gated-einkunftsart', incomeType: 'Vermietung' })).toEqual(['einkuenfte'])

@@ -15,7 +15,14 @@ import { CockpitSheet } from './CockpitSheet'
 import { useYearGuard } from './guards'
 import type { CatalogEntryParam, CockpitStackParamList } from './routes'
 
-const CATALOG_ENTRIES: readonly CatalogEntryParam[] = ['lebenslagen', 'einkuenfte', 'sonderausgaben']
+const CATALOG_ENTRIES: readonly CatalogEntryParam[] = [
+  'lebenslagen',
+  'einkuenfte',
+  'sonderausgaben',
+  'alleinerziehend',
+  'haushalt',
+  'gesundheit',
+]
 
 type Props<T extends keyof CockpitStackParamList> = NativeStackScreenProps<CockpitStackParamList, T>
 

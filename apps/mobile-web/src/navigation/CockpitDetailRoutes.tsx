@@ -99,7 +99,11 @@ export function PartnerRoute({ navigation, route }: Props<'Partner'>) {
   }, [year, activePartner, navigation])
 
   if (year === null || activePartner === null) return null
-  const backToMasterData = () => navigation.navigate('CockpitMasterData', { year }, { pop: true })
+  const cameFromMasterData = navigation.getState().routes.some((r) => r.name === 'CockpitMasterData')
+  const closePartner = () =>
+    cameFromMasterData
+      ? navigation.navigate('CockpitMasterData', { year }, { pop: true })
+      : navigation.navigate('CockpitHome', undefined, { pop: true })
 
   return (
     <RequiresAccount>
@@ -112,11 +116,11 @@ export function PartnerRoute({ navigation, route }: Props<'Partner'>) {
               setTaxYear(nextYear)
               navigation.setParams({ year: nextYear })
             }}
-            onDone={backToMasterData}
-            onBack={backToMasterData}
+            onDone={closePartner}
+            onBack={closePartner}
           />
         ) : (
-          <WorkdaysScreen taxYear={year} partnerName={activePartner.name} onDone={backToMasterData} onBack={backToMasterData} />
+          <WorkdaysScreen taxYear={year} partnerName={activePartner.name} onDone={closePartner} onBack={closePartner} />
         )}
       </CockpitSheet>
     </RequiresAccount>
