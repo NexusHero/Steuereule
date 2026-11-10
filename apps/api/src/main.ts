@@ -10,7 +10,7 @@ import { AppModule } from './app.module.js'
 import { BETTER_AUTH_BUNDLE, type BetterAuthBundle } from './auth/auth.tokens.js'
 import { mountBetterAuthHandler } from './auth/mount-better-auth.js'
 import { validationExceptionFactory } from './common/validation-exception-factory.js'
-import { assertDatabaseMigrated } from './config/assert-database-migrated.js'
+import { assertDatabaseMigrated, assertKeystoreMigrated } from './config/assert-database-migrated.js'
 import { assertDatabaseReachable } from './config/assert-database-reachable.js'
 import { assertEnvNotFileSourced } from './config/assert-env-not-file-sourced.js'
 import { resolveTrustedProxies } from './config/trusted-proxies.js'
@@ -85,6 +85,7 @@ async function bootstrap(): Promise<void> {
   await assertDatabaseReachable()
 
   await assertDatabaseMigrated()
+  await assertKeystoreMigrated()
 
   const app = await buildApp()
   const port = Number(process.env.PORT ?? 3000)

@@ -22,7 +22,6 @@ const HANDLED_ELSEWHERE: Record<string, string> = {
   OauthConsent: 'cascades off User',
   DeviceCode: 'deleted by its own step',
   LegalHold: 'the retention record itself — must outlive the erasure it justifies',
-  UserEncryptionKey: 'crypto-shredded alongside taxData (retained only when taxData is under LegalHold)',
 }
 
 function lowerFirst(name: string): string {

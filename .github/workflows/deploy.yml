@@ -56,6 +56,7 @@ jobs:
       EMAIL_FROM: ${{ vars.EMAIL_FROM }}
       TRUSTED_PROXIES: ${{ vars.TRUSTED_PROXIES || '169.254.0.0/16' }}
       SQL_INSTANCE: ${{ vars.GCP_SQL_INSTANCE }}
+      KEYSTORE_SQL_INSTANCE: ${{ vars.GCP_KEYSTORE_SQL_INSTANCE }}
       API_SA: ${{ vars.GCP_RUNTIME_SA }}
       WEB_SA: ${{ vars.GCP_WEB_SA }}
     steps:
@@ -63,7 +64,7 @@ jobs:
         id: gate
         run: |
           missing=""
-          for name in GCP_PROJECT_ID GCP_WIF_PROVIDER GCP_DEPLOYER_SA GCP_RUNTIME_SA GCP_WEB_SA GCP_SQL_INSTANCE APP_DOMAIN EMAIL_FROM; do
+          for name in GCP_PROJECT_ID GCP_WIF_PROVIDER GCP_DEPLOYER_SA GCP_RUNTIME_SA GCP_WEB_SA GCP_SQL_INSTANCE GCP_KEYSTORE_SQL_INSTANCE APP_DOMAIN EMAIL_FROM; do
             [ -n "${!name}" ] || missing="$missing $name"
           done
           if [ -n "$missing" ]; then
@@ -83,6 +84,7 @@ jobs:
           GCP_RUNTIME_SA: ${{ vars.GCP_RUNTIME_SA }}
           GCP_WEB_SA: ${{ vars.GCP_WEB_SA }}
           GCP_SQL_INSTANCE: ${{ vars.GCP_SQL_INSTANCE }}
+          GCP_KEYSTORE_SQL_INSTANCE: ${{ vars.GCP_KEYSTORE_SQL_INSTANCE }}
           APP_DOMAIN: ${{ vars.APP_DOMAIN }}
           EMAIL_FROM: ${{ vars.EMAIL_FROM }}
 
@@ -123,13 +125,13 @@ jobs:
         if: steps.gate.outputs.ready == 'true'
         run: |
           secrets=""
-          for name in DATABASE_URL GUEST_SESSION_SECRET PRISMA_FIELD_ENCRYPTION_KEY BETTER_AUTH_SECRET BREVO_API_KEY \
+          for name in DATABASE_URL GUEST_SESSION_SECRET PRISMA_FIELD_ENCRYPTION_KEY KEYSTORE_DATABASE_URL KEYSTORE_MASTER_KEY BETTER_AUTH_SECRET BREVO_API_KEY \
                       GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET STRIPE_SECRET_KEY STRIPE_WEBHOOK_SECRET; do
             if [ -n "$(gcloud secrets versions list "$name" --filter=state=enabled --limit=1 --format='value(name)')" ]; then
               secrets="$secrets,$name=$name:latest"
             fi
           done
-          for required in DATABASE_URL GUEST_SESSION_SECRET PRISMA_FIELD_ENCRYPTION_KEY BETTER_AUTH_SECRET BREVO_API_KEY; do
+          for required in DATABASE_URL GUEST_SESSION_SECRET PRISMA_FIELD_ENCRYPTION_KEY KEYSTORE_DATABASE_URL KEYSTORE_MASTER_KEY BETTER_AUTH_SECRET BREVO_API_KEY; do
             case "$secrets," in
               *",$required="*) ;;
               *) echo "::error::Secret $required has no enabled version — run scripts/infra/gcp-setup.sh."; exit 1 ;;
@@ -160,8 +162,8 @@ jobs:
           gcloud run jobs deploy steuereule-migrate \
             --image "$API_IMAGE" --region "$REGION" \
             --service-account "$API_SA" \
-            --set-cloudsql-instances "$SQL_INSTANCE" \
-            --set-secrets "DATABASE_URL=DATABASE_URL:latest" \
+            --set-cloudsql-instances "$SQL_INSTANCE,$KEYSTORE_SQL_INSTANCE" \
+            --set-secrets "DATABASE_URL=DATABASE_URL:latest,KEYSTORE_DATABASE_URL=KEYSTORE_DATABASE_URL:latest" \
             --command sh --args="-c,cd /repo && pnpm --filter @steuereule/api migrate:deploy" \
             --max-retries 0 --task-timeout 600s \
             --execute-now --wait
@@ -172,7 +174,7 @@ jobs:
           gcloud run deploy steuereule-api \
             --image "$API_IMAGE" --region "$REGION" \
             --service-account "$API_SA" \
-            --add-cloudsql-instances "$SQL_INSTANCE" \
+            --add-cloudsql-instances "$SQL_INSTANCE,$KEYSTORE_SQL_INSTANCE" \
             --set-secrets "$API_SECRETS" \
             --set-env-vars "^@^NODE_ENV=production@BETTER_AUTH_URL=$API_ORIGIN@CORS_ALLOWED_ORIGINS=$WEB_ORIGIN@WEB_APP_URL=$WEB_ORIGIN@TRUSTED_PROXIES=$TRUSTED_PROXIES@EMAIL_FROM=$EMAIL_FROM" \
             --cpu 1 --memory 2Gi --cpu-boost \

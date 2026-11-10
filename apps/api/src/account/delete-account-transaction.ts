@@ -80,8 +80,6 @@ export async function deleteAccountTransaction(
       await tx.taxYearLink.deleteMany({
         where: { OR: [{ personAUserId: userId }, { personBUserId: userId }] },
       })
-      // Crypto-shredding: destroy per-user DEK alongside taxData erasure (ADR-0008 / Art. 17 DSGVO)
-      await tx.userEncryptionKey.deleteMany({ where: { userId } })
     }
     await tx.deviceCode.deleteMany({ where: { userId } })
 

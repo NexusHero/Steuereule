@@ -1,5 +1,6 @@
 import { readdirSync } from 'node:fs'
 import { PrismaClient } from '@prisma/client'
+import { resolveKeystoreDatabaseUrl } from '../keystore/keystore-config.js'
 import { resolveDatabaseUrl } from './database-url.js'
 import { disconnectQuietly, redactCause, withTimeout } from './assert-database-reachable.js'
 
@@ -69,4 +70,17 @@ export async function assertDatabaseMigrated(options: AssertDatabaseMigratedOpti
         `are not applied (${missing.join(', ')}) — refusing to start. ${REFUSAL_ADVICE}`,
     )
   }
+}
+
+const KEYSTORE_MIGRATIONS_DIR = new URL('../../prisma/keystore/migrations/', import.meta.url)
+
+/**
+ * Same refusal for the keystore database (ADR-0059): without its table the first receipt
+ * upload would fail, and account deletion could not shred a key.
+ */
+export async function assertKeystoreMigrated(env: NodeJS.ProcessEnv = process.env): Promise<void> {
+  await assertDatabaseMigrated({
+    env: { ...env, DATABASE_URL: resolveKeystoreDatabaseUrl(env) },
+    expected: listExpectedMigrations(KEYSTORE_MIGRATIONS_DIR),
+  })
 }

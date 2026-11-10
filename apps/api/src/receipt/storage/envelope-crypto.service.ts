@@ -1,8 +1,8 @@
-import { createCipheriv, createDecipheriv, createHash, hkdfSync, randomBytes } from 'node:crypto'
+import { createCipheriv, createDecipheriv, createHmac, hkdfSync, randomBytes } from 'node:crypto'
 import { Inject, Injectable, Optional } from '@nestjs/common'
-import { resolveFieldEncryptionKey, type FieldEncryptionKeys } from '../../prisma/field-encryption-key.js'
+import { resolveKeystoreMasterKeys, type KeystoreMasterKeys } from '../../keystore/keystore-config.js'
 
-export const FIELD_ENCRYPTION_KEYS_PROVIDER = Symbol('FIELD_ENCRYPTION_KEYS_PROVIDER')
+export const KEYSTORE_MASTER_KEYS_PROVIDER = Symbol('KEYSTORE_MASTER_KEYS_PROVIDER')
 
 const DEK_LENGTH_BYTES = 32
 const GCM_IV_LENGTH_BYTES = 12
@@ -12,7 +12,8 @@ export interface EncryptedBlob {
   readonly iv: Buffer
   readonly authTag: Buffer
   readonly cipherBytes: Buffer
-  readonly sha256: string
+  /** HMAC-SHA256 of the plaintext under a key derived from the user's DEK — not a plain hash. */
+  readonly contentMac: string
 }
 
 /**
@@ -20,24 +21,25 @@ export interface EncryptedBlob {
  *
  * - Each user gets an independent random 256-bit Data Encryption Key (DEK).
  * - Each DEK is wrapped via AES-256-GCM under a user-scoped KEK derived with HKDF-SHA256
- *   from PRISMA_FIELD_ENCRYPTION_KEY (with fallback to PRISMA_FIELD_DECRYPTION_KEYS for rotation).
+ *   from KEYSTORE_MASTER_KEY (KEYSTORE_MASTER_KEY_PREVIOUS still unwraps during a rotation).
+ * - The wrapped DEK lives in the separate keystore database (ADR-0059), never next to the files.
  * - Each receipt binary is encrypted with AES-256-GCM and authenticated with AAD `userId:receiptId`.
- * - Deleting UserEncryptionKey crypto-shreds all encrypted blobs of that user irrevocably.
+ * - Destroying the user's keystore row crypto-shreds all encrypted blobs of that user.
  */
 @Injectable()
 export class EnvelopeCryptoService {
-  private readonly keysProvider: () => FieldEncryptionKeys
+  private readonly keysProvider: () => KeystoreMasterKeys
 
   constructor(
-    @Optional() @Inject(FIELD_ENCRYPTION_KEYS_PROVIDER) keysProvider?: () => FieldEncryptionKeys,
+    @Optional() @Inject(KEYSTORE_MASTER_KEYS_PROVIDER) keysProvider?: () => KeystoreMasterKeys,
   ) {
-    this.keysProvider = keysProvider ?? (() => resolveFieldEncryptionKey())
+    this.keysProvider = keysProvider ?? (() => resolveKeystoreMasterKeys())
   }
 
-  private deriveKek(masterKeyMaterial: string, userId: string): Buffer {
+  private deriveKek(masterKey: Buffer, userId: string): Buffer {
     const raw = hkdfSync(
       'sha256',
-      Buffer.from(masterKeyMaterial, 'utf8'),
+      masterKey,
       KEK_SALT,
       Buffer.from(`user-dek:${userId}`, 'utf8'),
       DEK_LENGTH_BYTES,
@@ -47,8 +49,7 @@ export class EnvelopeCryptoService {
 
   generateWrappedDek(userId: string, keyVersion = 1): string {
     const dek = randomBytes(DEK_LENGTH_BYTES)
-    const { encryptionKey } = this.keysProvider()
-    const kek = this.deriveKek(encryptionKey, userId)
+    const kek = this.deriveKek(this.keysProvider().current, userId)
     try {
       const iv = randomBytes(GCM_IV_LENGTH_BYTES)
       const cipher = createCipheriv('aes-256-gcm', kek, iv)
@@ -71,8 +72,8 @@ export class EnvelopeCryptoService {
     const tag = Buffer.from(parts[2]!, 'base64')
     const ciphertext = Buffer.from(parts[3]!, 'base64')
 
-    const { encryptionKey, decryptionKeys } = this.keysProvider()
-    const candidateMasters = [encryptionKey, ...decryptionKeys]
+    const { current, previous } = this.keysProvider()
+    const candidateMasters = [current, ...previous]
 
     let lastError: unknown = null
     for (const master of candidateMasters) {
@@ -105,8 +106,10 @@ export class EnvelopeCryptoService {
       cipher.setAAD(Buffer.from(`${input.userId}:${input.receiptId}`, 'utf8'))
       const cipherBytes = Buffer.concat([cipher.update(input.plainBytes), cipher.final()])
       const authTag = cipher.getAuthTag()
-      const sha256 = createHash('sha256').update(input.plainBytes).digest('hex')
-      return { iv, authTag, cipherBytes, sha256 }
+      const macKey = Buffer.from(hkdfSync('sha256', dek, KEK_SALT, 'content-mac', DEK_LENGTH_BYTES))
+      const contentMac = createHmac('sha256', macKey).update(input.plainBytes).digest('hex')
+      macKey.fill(0)
+      return { iv, authTag, cipherBytes, contentMac }
     } finally {
       dek.fill(0)
     }

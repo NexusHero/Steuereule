@@ -27,3 +27,8 @@ output "image_registry" {
   description = "Registry prefix for the API and web images."
   value       = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.images.repository_id}"
 }
+
+output "keystore_sql_connection_name" {
+  value       = google_sql_database_instance.keystore.connection_name
+  description = "GitHub repo variable GCP_KEYSTORE_SQL_INSTANCE; also the socket path in KEYSTORE_DATABASE_URL (ADR-0059)."
+}

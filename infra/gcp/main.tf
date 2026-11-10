@@ -15,6 +15,8 @@ locals {
     "DATABASE_URL",
     "GUEST_SESSION_SECRET",
     "PRISMA_FIELD_ENCRYPTION_KEY",
+    "KEYSTORE_DATABASE_URL",
+    "KEYSTORE_MASTER_KEY",
     "BETTER_AUTH_SECRET",
     "BREVO_API_KEY",
   ]
@@ -100,6 +102,49 @@ resource "google_sql_database_instance" "postgres" {
 resource "google_sql_database" "app" {
   name     = "steuereule"
   instance = google_sql_database_instance.postgres.name
+}
+
+# Receipt-file keystore (ADR-0059). A separate instance ON PURPOSE: Cloud SQL backups are
+# per instance, and crypto-shredding only reaches the tax-data backups if the keys expire
+# from their own backups sooner. Retention here (2 backups, 1 day PITR) is therefore
+# deliberately shorter than the tax-data instance above (7 / 7).
+resource "google_sql_database_instance" "keystore" {
+  name                = "steuereule-beta-keystore"
+  database_version    = "POSTGRES_16"
+  region              = var.region
+  deletion_protection = true
+
+  settings {
+    tier              = var.db_tier
+    edition           = "ENTERPRISE"
+    availability_type = "ZONAL"
+    disk_type         = "PD_SSD"
+    disk_size         = 10
+    disk_autoresize   = false
+
+    backup_configuration {
+      enabled                        = true
+      point_in_time_recovery_enabled = true
+      start_time                     = "02:30"
+      transaction_log_retention_days = 1
+
+      backup_retention_settings {
+        retained_backups = 2
+      }
+    }
+
+    ip_configuration {
+      ipv4_enabled = true
+      ssl_mode     = "ENCRYPTED_ONLY"
+    }
+  }
+
+  depends_on = [google_project_service.enabled]
+}
+
+resource "google_sql_database" "keystore" {
+  name     = "steuereule_keystore"
+  instance = google_sql_database_instance.keystore.name
 }
 
 resource "google_secret_manager_secret" "app" {

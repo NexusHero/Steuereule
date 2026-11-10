@@ -3,7 +3,7 @@ import type { AllowedReceiptMimeType } from './magic-bytes.js'
 export interface StoredReceiptMeta {
   readonly mimeType: AllowedReceiptMimeType
   readonly byteLength: number
-  readonly sha256: string
+  readonly contentMac: string
 }
 
 export interface StoredReceiptObject {

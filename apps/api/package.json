@@ -5,9 +5,9 @@
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "postinstall": "prisma generate",
-    "prisma:generate": "prisma generate",
-    "migrate:deploy": "prisma migrate deploy",
+    "postinstall": "prisma generate && prisma generate --schema prisma/keystore/schema.prisma",
+    "prisma:generate": "prisma generate && prisma generate --schema prisma/keystore/schema.prisma",
+    "migrate:deploy": "node scripts/migrate-deploy.mjs",
     "start": "pnpm run build && node dist/main.js",
     "test": "vitest run --config vitest.config.ts",
     "test:integration": "vitest run --config vitest.integration.config.ts",
