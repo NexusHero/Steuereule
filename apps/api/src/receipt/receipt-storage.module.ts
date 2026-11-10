@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common'
+import { KeystoreModule } from '../keystore/keystore.module.js'
 import { PrismaModule } from '../prisma/prisma.module.js'
 import { RECEIPT_REPOSITORY } from './receipt.repository.js'
 import { PrismaReceiptRepository } from './receipt.repository.prisma.js'
@@ -7,7 +8,7 @@ import { PostgresByteaStorageAdapter } from './storage/postgres-bytea-storage.ad
 import { STORAGE_PORT } from './storage/storage.port.js'
 
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, KeystoreModule],
   providers: [
     EnvelopeCryptoService,
     PostgresByteaStorageAdapter,

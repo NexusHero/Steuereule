@@ -60,6 +60,7 @@ import { FakeChSalaryCertificateRepository } from '../fakes/fake-ch-salary-certi
 import { CROSS_BORDER_SALARY_STATEMENT_REPOSITORY } from '../../src/ch-salary-certificate/ch-salary-certificate.repository.js'
 import { RECEIPT_REPOSITORY } from '../../src/receipt/receipt.repository.js'
 import { STORAGE_PORT } from '../../src/receipt/storage/storage.port.js'
+import { USER_KEY_STORE } from '../../src/keystore/user-key-store.js'
 import { FakeReceiptRepository } from '../fakes/fake-receipt.repository.js'
 import { InMemoryStorageAdapter } from '../fakes/in-memory-storage.adapter.js'
 
@@ -155,6 +156,8 @@ export async function buildTestApp(options?: {
     .useValue(advisorRepository)
     .overrideProvider(STORAGE_PORT)
     .useValue(storageAdapter)
+    .overrideProvider(USER_KEY_STORE)
+    .useValue(storageAdapter.keys)
     .overrideProvider(INTERVIEW_ANSWER_REPOSITORY)
     .useValue(interviewRepository)
     .overrideProvider(PROVENANCE_REPOSITORY)

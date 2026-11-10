@@ -5,6 +5,7 @@ import { ProfileModule } from '../profile/profile.module.js'
 import { FreshAuthChecker } from '../auth/fresh-auth.js'
 import { AccountDeletionController } from './account-deletion.controller.js'
 import { AccountExportController } from './account-export.controller.js'
+import { KeystoreModule } from '../keystore/keystore.module.js'
 import { PrismaAccountDeletionRepository } from './account-deletion.repository.prisma.js'
 import { ACCOUNT_DELETION_REPOSITORY } from './account-deletion.repository.js'
 import { AccountDeletionService } from './account-deletion.service.js'
@@ -17,7 +18,7 @@ import { TAX_DATA_EXPORT_REPOSITORY } from './tax-data-export.repository.js'
 import { PrismaTaxDataExportRepository } from './tax-data-export.repository.prisma.js'
 
 @Module({
-  imports: [PrismaModule, AuditModule, ProfileModule],
+  imports: [PrismaModule, AuditModule, ProfileModule, KeystoreModule],
   controllers: [AccountDeletionController, AccountExportController],
   providers: [
     AccountDeletionService,

@@ -1,0 +1,23 @@
+// Keystore database (ADR-0059). Holds only the per-user data encryption keys (DEKs) of the
+// receipt files, wrapped under KEYSTORE_MASTER_KEY. It lives in its own database with a
+// SHORTER backup retention than the tax-data database, so deleting a key here makes the
+// receipt ciphertext unreadable in every tax-data backup once the keystore backups expire.
+
+generator keystore {
+  provider = "prisma-client-js"
+  output   = "../../node_modules/@prisma-keystore/client"
+}
+
+datasource keystore {
+  provider = "postgresql"
+  url      = env("KEYSTORE_DATABASE_URL")
+}
+
+model UserDataKey {
+  userId     String   @id
+  wrappedDek String
+  keyVersion Int      @default(1)
+  createdAt  DateTime @default(now())
+
+  @@map("NutzerSchluessel")
+}

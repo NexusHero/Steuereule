@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { resolveKeystoreMasterKeys } from '../src/keystore/keystore-config.js'
 import { EnvelopeCryptoService } from '../src/receipt/storage/envelope-crypto.service.js'
 import {
   MAX_RECEIPT_FILE_BYTES,
@@ -90,11 +91,14 @@ describe('EnvelopeCryptoService & StoragePort', () => {
     ).toThrow()
   })
 
-  it('supports KEK key rotation via PRISMA_FIELD_DECRYPTION_KEYS fallback', () => {
-    const oldMaster = 'k1.aesgcm256.OLDKEY1234567890123456789012345678'
-    const newMaster = 'k2.aesgcm256.NEWKEY1234567890123456789012345678'
+  it('supports KEK rotation via KEYSTORE_MASTER_KEY_PREVIOUS', () => {
+    const oldKeys = resolveKeystoreMasterKeys({ KEYSTORE_MASTER_KEY: 'old-master' } as NodeJS.ProcessEnv)
+    const rotatedKeys = resolveKeystoreMasterKeys({
+      KEYSTORE_MASTER_KEY: 'new-master',
+      KEYSTORE_MASTER_KEY_PREVIOUS: 'old-master',
+    } as NodeJS.ProcessEnv)
 
-    const writer = new EnvelopeCryptoService(() => ({ encryptionKey: oldMaster, decryptionKeys: [] }))
+    const writer = new EnvelopeCryptoService(() => oldKeys)
     const wrappedDek = writer.generateWrappedDek('user-rot', 1)
     const blob = writer.encryptForUser({
       userId: 'user-rot',
@@ -104,10 +108,7 @@ describe('EnvelopeCryptoService & StoragePort', () => {
       plainBytes: PDF_HEADER,
     })
 
-    const rotatedReader = new EnvelopeCryptoService(() => ({
-      encryptionKey: newMaster,
-      decryptionKeys: [oldMaster],
-    }))
+    const rotatedReader = new EnvelopeCryptoService(() => rotatedKeys)
     const recovered = rotatedReader.decryptForUser({
       userId: 'user-rot',
       receiptId: 'rec-rot',
@@ -137,11 +138,20 @@ describe('EnvelopeCryptoService & StoragePort', () => {
     expect(raw).not.toBeNull()
     expect(raw!.cipherBytes.toString('utf8')).not.toContain('%PDF-1.7')
 
-    // Shred user's DEK (simulating deleteAccountTransaction deleting UserEncryptionKey)
-    storage.cryptoShredUser('user-shred')
+    // Shred the user's DEK in the keystore database (account deletion, ADR-0059)
+    await storage.cryptoShredUser('user-shred')
 
     // Ciphertext blob is STILL present in raw storage, yet unrecoverable
     expect(storage.rawEntryForTest('user-shred', 'rec-shred')).not.toBeNull()
     expect(await storage.get('user-shred', 'rec-shred')).toBeNull()
+  })
+
+  it('stores a keyed content MAC, never a plain hash a third party could recompute', async () => {
+    const storage = new InMemoryStorageAdapter()
+    const meta = await storage.put({ userId: 'user-mac', receiptId: 'rec-mac', buffer: PDF_HEADER, mimeType: 'application/pdf' })
+    const plainSha256 = (await import('node:crypto')).createHash('sha256').update(PDF_HEADER).digest('hex')
+
+    expect(meta.contentMac).toMatch(/^[0-9a-f]{64}$/)
+    expect(meta.contentMac).not.toBe(plainSha256)
   })
 })

@@ -193,6 +193,7 @@ TOTAL_STAGES=12
 ENV_FILE="infra/gcp/.env.beta"
 REGION="europe-west4"
 SQL_INSTANCE_NAME="steuereule-beta"
+KEYSTORE_SQL_INSTANCE_NAME="steuereule-beta-keystore"
 TOFU_DIR="infra/gcp"
 
 TOFU="$(command -v tofu || command -v terraform || true)"
@@ -281,6 +282,7 @@ else
   warn "Abgebrochen, nichts angelegt."; exit 1
 fi
 SQL_CONNECTION="$(tofu_output sql_connection_name)"
+KEYSTORE_SQL_CONNECTION="$(tofu_output keystore_sql_connection_name)"
 
 stage "Domain und Absender"
 say "Web läuft unter www.<domain>, die API unter api.<domain> (ADR-0053: gleiche Site für Cookies)."
@@ -295,6 +297,7 @@ warn "Vorhandene Werte bleiben unangetastet — ein neuer PRISMA_FIELD_ENCRYPTIO
 ensure_generated_secret GUEST_SESSION_SECRET "$(openssl rand -base64 48)"
 ensure_generated_secret BETTER_AUTH_SECRET "$(openssl rand -base64 48)"
 ensure_generated_secret PRISMA_FIELD_ENCRYPTION_KEY "k1.aesgcm256.$(openssl rand -base64 32)"
+ensure_generated_secret KEYSTORE_MASTER_KEY "$(openssl rand -base64 48)"
 pause
 
 stage "Datenbank-Benutzer"
@@ -305,6 +308,15 @@ else
   gcloud sql users create steuereule --instance "$SQL_INSTANCE_NAME" --project "$GCP_PROJECT_ID" --password "$DB_PASSWORD" >/dev/null
   put_secret DATABASE_URL "postgresql://steuereule:${DB_PASSWORD}@localhost/steuereule?host=/cloudsql/${SQL_CONNECTION}&connection_limit=5"
   unset DB_PASSWORD
+fi
+# Keystore (ADR-0059): own instance, own user, own password — never the tax-data credentials.
+if secret_has_value KEYSTORE_DATABASE_URL; then
+  note "KEYSTORE_DATABASE_URL ist bereits gesetzt, Benutzer bleibt unverändert."
+else
+  KEYSTORE_DB_PASSWORD="$(openssl rand -hex 24)"
+  gcloud sql users create steuereule_keystore --instance "$KEYSTORE_SQL_INSTANCE_NAME" --project "$GCP_PROJECT_ID" --password "$KEYSTORE_DB_PASSWORD" >/dev/null
+  put_secret KEYSTORE_DATABASE_URL "postgresql://steuereule_keystore:${KEYSTORE_DB_PASSWORD}@localhost/steuereule_keystore?host=/cloudsql/${KEYSTORE_SQL_CONNECTION}&connection_limit=2"
+  unset KEYSTORE_DB_PASSWORD
 fi
 pause
 
@@ -354,6 +366,7 @@ set_var GCP_DEPLOYER_SA "$(tofu_output deployer_service_account)"
 set_var GCP_RUNTIME_SA "$(tofu_output api_runtime_service_account)"
 set_var GCP_WEB_SA "$(tofu_output web_runtime_service_account)"
 set_var GCP_SQL_INSTANCE "$SQL_CONNECTION"
+set_var GCP_KEYSTORE_SQL_INSTANCE "$KEYSTORE_SQL_CONNECTION"
 set_var APP_DOMAIN "$APP_DOMAIN"
 set_var EMAIL_FROM "$EMAIL_FROM"
 pause

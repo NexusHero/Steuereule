@@ -1,4 +1,5 @@
 import { EnvelopeCryptoService } from '../../src/receipt/storage/envelope-crypto.service.js'
+import { InMemoryUserKeyStore } from './in-memory-user-key-store.js'
 import type { PutReceiptFileInput, StoragePort, StoredReceiptMeta, StoredReceiptObject } from '../../src/receipt/storage/storage.port.js'
 
 interface StoredEntry {
@@ -6,7 +7,7 @@ interface StoredEntry {
   receiptId: string
   mimeType: PutReceiptFileInput['mimeType']
   byteLength: number
-  sha256: string
+  contentMac: string
   iv: Buffer
   authTag: Buffer
   cipherBytes: Buffer
@@ -19,22 +20,21 @@ interface StoredEntry {
  */
 export class InMemoryStorageAdapter implements StoragePort {
   private readonly crypto = new EnvelopeCryptoService()
-  private readonly userKeys = new Map<string, { wrappedDek: string; keyVersion: number }>()
   private readonly blobs = new Map<string, StoredEntry>()
+
+  constructor(readonly keys: InMemoryUserKeyStore = new InMemoryUserKeyStore()) {}
 
   private key(userId: string, receiptId: string): string {
     return `${userId}:${receiptId}`
   }
 
   async put(input: PutReceiptFileInput): Promise<StoredReceiptMeta> {
-    let userKey = this.userKeys.get(input.userId)
-    if (!userKey) {
-      userKey = {
+    const userKey =
+      (await this.keys.find(input.userId)) ??
+      (await this.keys.createIfAbsent(input.userId, {
         wrappedDek: this.crypto.generateWrappedDek(input.userId, 1),
         keyVersion: 1,
-      }
-      this.userKeys.set(input.userId, userKey)
-    }
+      }))
 
     const encrypted = this.crypto.encryptForUser({
       userId: input.userId,
@@ -49,7 +49,7 @@ export class InMemoryStorageAdapter implements StoragePort {
       receiptId: input.receiptId,
       mimeType: input.mimeType,
       byteLength: input.buffer.length,
-      sha256: encrypted.sha256,
+      contentMac: encrypted.contentMac,
       iv: encrypted.iv,
       authTag: encrypted.authTag,
       cipherBytes: encrypted.cipherBytes,
@@ -59,13 +59,13 @@ export class InMemoryStorageAdapter implements StoragePort {
     return {
       mimeType: input.mimeType,
       byteLength: input.buffer.length,
-      sha256: encrypted.sha256,
+      contentMac: encrypted.contentMac,
     }
   }
 
   async get(userId: string, receiptId: string): Promise<StoredReceiptObject | null> {
     const entry = this.blobs.get(this.key(userId, receiptId))
-    const userKey = this.userKeys.get(userId)
+    const userKey = await this.keys.find(userId)
     if (!entry || !userKey) return null
 
     const buffer = this.crypto.decryptForUser({
@@ -82,7 +82,7 @@ export class InMemoryStorageAdapter implements StoragePort {
       meta: {
         mimeType: entry.mimeType,
         byteLength: entry.byteLength,
-        sha256: entry.sha256,
+        contentMac: entry.contentMac,
       },
       buffer,
     }
@@ -91,7 +91,7 @@ export class InMemoryStorageAdapter implements StoragePort {
   async getMeta(userId: string, receiptId: string): Promise<StoredReceiptMeta | null> {
     const entry = this.blobs.get(this.key(userId, receiptId))
     if (!entry) return null
-    return { mimeType: entry.mimeType, byteLength: entry.byteLength, sha256: entry.sha256 }
+    return { mimeType: entry.mimeType, byteLength: entry.byteLength, contentMac: entry.contentMac }
   }
 
   async delete(userId: string, receiptId: string): Promise<boolean> {
@@ -99,8 +99,8 @@ export class InMemoryStorageAdapter implements StoragePort {
   }
 
   /** Simulates Art. 17 crypto-shredding: deletes per-user DEK while leaving raw ciphertext blobs intact. */
-  cryptoShredUser(userId: string): void {
-    this.userKeys.delete(userId)
+  async cryptoShredUser(userId: string): Promise<void> {
+    await this.keys.destroy(userId)
   }
 
   /** Exposes raw ciphertext entry so tests can assert plaintext bytes are absent at rest. */

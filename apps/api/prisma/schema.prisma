@@ -1166,29 +1166,16 @@ model AdvisorChatMessage {
   @@map("BeraterNachricht")
 }
 
-// Per-user data encryption key (DEK) wrapped by HKDF-SHA256 KEK derived from
-// resolveFieldEncryptionKey() (ADR-0008). Destroyed in deleteAccountTransaction for
-// crypto-shredding unless taxData is under LegalHold.
-model UserEncryptionKey {
-  id         String   @id @default(uuid())
-  userId     String   @unique
-  wrappedDek String
-  keyVersion Int      @default(1)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-
-  @@map("NutzerSchluessel")
-}
-
 // AES-256-GCM envelope-encrypted original receipt files (PDF/JPEG/PNG/WebP).
-// Binary cipherBytes/iv/authTag use per-user DEK + AAD (userId:receiptId).
+// Binary cipherBytes/iv/authTag use the per-user DEK from the keystore database (ADR-0059)
+// + AAD (userId:receiptId). contentMac is an HMAC under that DEK, never a plain hash.
 model ReceiptFile {
   id          String   @id @default(uuid())
   receiptId   String   @unique @map("belegId")
   userId      String
   mimeType    String
   byteLength  Int      @map("dateigroesse")
-  sha256      String
+  contentMac  String   @map("inhaltsMac")
   iv          Bytes
   authTag     Bytes
   cipherBytes Bytes    @map("verschluesselteDaten")

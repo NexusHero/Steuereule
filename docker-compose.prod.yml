@@ -29,6 +29,11 @@ x-api-env: &api-env
   DATABASE_URL: postgresql://${POSTGRES_USER:-steuereule}:${POSTGRES_PASSWORD:-steuereule}@postgres:5432/${POSTGRES_DB:-steuereule}
   GUEST_SESSION_SECRET: ${GUEST_SESSION_SECRET}
   PRISMA_FIELD_ENCRYPTION_KEY: ${PRISMA_FIELD_ENCRYPTION_KEY}
+  # Receipt-file keys live in their own database (ADR-0059). This local stack keeps it on the
+  # same Postgres server for simplicity; the real deployment uses a separate Cloud SQL
+  # instance with a shorter backup retention, which is what makes crypto-shredding reach backups.
+  KEYSTORE_DATABASE_URL: postgresql://${POSTGRES_USER:-steuereule}:${POSTGRES_PASSWORD:-steuereule}@postgres:5432/${POSTGRES_DB:-steuereule}_keystore
+  KEYSTORE_MASTER_KEY: ${KEYSTORE_MASTER_KEY}
   BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
   # The API's OWN origin — same value it listens on (PORT below), used to build absolute
   # verification/reset links (resolveBetterAuthUrl).

@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common'
+import { USER_KEY_STORE, type UserKeyStore, type WrappedUserKey } from '../../keystore/user-key-store.js'
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../../prisma/encrypted-prisma.provider.js'
 import { EnvelopeCryptoService } from './envelope-crypto.service.js'
 import type { AllowedReceiptMimeType } from './magic-bytes.js'
@@ -9,21 +10,14 @@ export class PostgresByteaStorageAdapter implements StoragePort {
   constructor(
     @Inject(ENCRYPTED_PRISMA) private readonly prisma: EncryptedPrismaClient,
     @Inject(EnvelopeCryptoService) private readonly crypto: EnvelopeCryptoService,
+    @Inject(USER_KEY_STORE) private readonly keys: UserKeyStore,
   ) {}
 
-  private async ensureUserKey(userId: string): Promise<{ wrappedDek: string; keyVersion: number }> {
-    const existing = await this.prisma.userEncryptionKey.findUnique({ where: { userId } })
-    if (existing !== null) {
-      return { wrappedDek: existing.wrappedDek, keyVersion: existing.keyVersion }
-    }
+  private async ensureUserKey(userId: string): Promise<WrappedUserKey> {
+    const existing = await this.keys.find(userId)
+    if (existing !== null) return existing
     const keyVersion = 1
-    const wrappedDek = this.crypto.generateWrappedDek(userId, keyVersion)
-    const created = await this.prisma.userEncryptionKey.upsert({
-      where: { userId },
-      update: {},
-      create: { userId, wrappedDek, keyVersion },
-    })
-    return { wrappedDek: created.wrappedDek, keyVersion: created.keyVersion }
+    return this.keys.createIfAbsent(userId, { wrappedDek: this.crypto.generateWrappedDek(userId, keyVersion), keyVersion })
   }
 
   async put(input: PutReceiptFileInput): Promise<StoredReceiptMeta> {
@@ -41,7 +35,7 @@ export class PostgresByteaStorageAdapter implements StoragePort {
       update: {
         mimeType: input.mimeType,
         byteLength: input.buffer.length,
-        sha256: encrypted.sha256,
+        contentMac: encrypted.contentMac,
         iv: new Uint8Array(encrypted.iv),
         authTag: new Uint8Array(encrypted.authTag),
         cipherBytes: new Uint8Array(encrypted.cipherBytes),
@@ -52,7 +46,7 @@ export class PostgresByteaStorageAdapter implements StoragePort {
         userId: input.userId,
         mimeType: input.mimeType,
         byteLength: input.buffer.length,
-        sha256: encrypted.sha256,
+        contentMac: encrypted.contentMac,
         iv: new Uint8Array(encrypted.iv),
         authTag: new Uint8Array(encrypted.authTag),
         cipherBytes: new Uint8Array(encrypted.cipherBytes),
@@ -63,14 +57,14 @@ export class PostgresByteaStorageAdapter implements StoragePort {
     return {
       mimeType: input.mimeType,
       byteLength: input.buffer.length,
-      sha256: encrypted.sha256,
+      contentMac: encrypted.contentMac,
     }
   }
 
   async get(userId: string, receiptId: string): Promise<StoredReceiptObject | null> {
     const [fileRow, keyRow] = await Promise.all([
       this.prisma.receiptFile.findFirst({ where: { receiptId, userId } }),
-      this.prisma.userEncryptionKey.findUnique({ where: { userId } }),
+      this.keys.find(userId),
     ])
 
     // If either row or per-user DEK is missing (e.g. crypto-shredding), payload cannot be recovered.
@@ -92,7 +86,7 @@ export class PostgresByteaStorageAdapter implements StoragePort {
       meta: {
         mimeType: fileRow.mimeType as AllowedReceiptMimeType,
         byteLength: fileRow.byteLength,
-        sha256: fileRow.sha256,
+        contentMac: fileRow.contentMac,
       },
       buffer: plainBytes,
     }
@@ -101,13 +95,13 @@ export class PostgresByteaStorageAdapter implements StoragePort {
   async getMeta(userId: string, receiptId: string): Promise<StoredReceiptMeta | null> {
     const fileRow = await this.prisma.receiptFile.findFirst({
       where: { receiptId, userId },
-      select: { mimeType: true, byteLength: true, sha256: true },
+      select: { mimeType: true, byteLength: true, contentMac: true },
     })
     if (fileRow === null) return null
     return {
       mimeType: fileRow.mimeType as AllowedReceiptMimeType,
       byteLength: fileRow.byteLength,
-      sha256: fileRow.sha256,
+      contentMac: fileRow.contentMac,
     }
   }
 
