@@ -802,6 +802,44 @@ describe('App', () => {
       expect(screen.getByRole('tab', { name: 'Cockpit' })).toBeTruthy()
     })
 
+    it('Slice 4: auto-saves focused LStB input on Escape without prior blur and returns to Cockpit', async () => {
+      mockSignedInSession()
+      mockCompletedEmployeeInterview(2026)
+      const putPayloads: { feld: string; body: unknown }[] = []
+      server.use(
+        http.put('*/v1/steuerjahre/:jahr/lstb/:feld', async ({ params, request }) => {
+          putPayloads.push({ feld: String(params.feld), body: await request.json() })
+          return HttpResponse.json(
+            {
+              bruttoarbeitslohn: { kind: 'erfasst', value: 64000 },
+              lohnsteuer: { kind: 'offen' },
+              sozialversicherung: { kind: 'offen' },
+              state: { kind: 'unvollstaendig', open: ['lohnsteuer', 'sozialversicherung'], unclear: [] },
+            },
+            { status: 200 },
+          )
+        }),
+      )
+
+      window.history.pushState({}, '', '/app')
+      const { default: App } = await import('./App')
+      render(<App />)
+
+      fireEvent.click(await screen.findByTestId('cockpit-weiter'))
+      const grossInput = (await screen.findByTestId('lstb-bruttoarbeitslohn')) as HTMLInputElement
+      grossInput.focus()
+      expect(document.activeElement).toBe(grossInput)
+      fireEvent.change(grossInput, { target: { value: '64000' } })
+
+      fireEvent.keyDown(grossInput, { key: 'Escape', code: 'Escape', keyCode: 27 })
+
+      await waitFor(() =>
+        expect(putPayloads).toEqual([{ feld: 'bruttoarbeitslohn', body: { kind: 'erfasst', value: 64000 } }]),
+      )
+      await waitFor(() => expect(screen.queryByTestId('sheet-schliessen')).toBeNull())
+      expect(screen.getByRole('tab', { name: 'Cockpit' })).toBeTruthy()
+    })
+
     it('Slice 4: does not PUT LStB fields on Sheet close when a scan draft is staged', async () => {
       mockSignedInSession()
       mockCompletedEmployeeInterview(2026)
