@@ -78,15 +78,6 @@ export class ParseReceiptDto {
 
   @ApiPropertyOptional({
     type: String,
-    description: 'Base64-encoded image/PDF content for vision_ocr extraction (max ~5 MB).',
-  })
-  @IsOptional()
-  @IsString()
-  @MaxLength(7_000_000)
-  imageBase64?: string
-
-  @ApiPropertyOptional({
-    type: String,
     enum: ALLOWED_RECEIPT_PARSE_MIME_TYPES,
     example: 'application/pdf',
   })

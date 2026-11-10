@@ -284,14 +284,14 @@ export class ReceiptParseService {
   }
 
   private assertValidReceiptPayload(dto: ParseReceiptDto): void {
-    if (dto.imageBase64 && (!dto.mimeType || !ALLOWED_RECEIPT_PARSE_MIME_TYPES.includes(dto.mimeType))) {
+    if (dto.mimeType && !ALLOWED_RECEIPT_PARSE_MIME_TYPES.includes(dto.mimeType)) {
       throw new InvalidInputError(
         'RECEIPT_MIME_INVALID',
-        'Ungültiger oder fehlender Dateityp (erlaubt sind JPEG, PNG, WebP oder PDF).',
+        'Ungültiger Dateityp (erlaubt sind JPEG, PNG, WebP oder PDF).',
       )
     }
-    if (!dto.rawText?.trim() && !dto.imageBase64?.trim() && !dto.fileName.trim()) {
-      throw new InvalidInputError('RECEIPT_EMPTY', 'Bitte gib einen Belegtext oder ein Belegbild an.')
+    if (!dto.rawText?.trim() && !dto.fileName.trim()) {
+      throw new InvalidInputError('RECEIPT_EMPTY', 'Bitte gib einen Belegtext an.')
     }
   }
 
@@ -364,24 +364,16 @@ export class ReceiptParseService {
       visionModel = null
     }
 
-    const sendImage = visionSlot?.allowsDocumentImages === true && Boolean(dto.imageBase64) && dto.mimeType?.startsWith('image/') === true
     const knownNames = await this.advisorService.knownNamesForScrubbing(userId, dto.taxYear)
     const safeText = dto.rawText ? scrubUserMessagePii(dto.rawText, knownNames) : ''
 
-    // Without an approved image path and without text there is nothing the model may see.
-    if (visionModel && (sendImage || safeText.length > 0)) {
+    // Text only (ADR-0051): document pixels never reach a model. Without text there is nothing to send.
+    if (visionModel && safeText.length > 0) {
       try {
         // Single-shot and isolated: no chat history, no profile, no tools, and no file name
         // (users name files after themselves).
         const context = `Steuerjahr-Kontext: ${dto.taxYear}`
-        const userMessage = sendImage
-          ? new HumanMessage({
-              content: [
-                { type: 'text', text: safeText ? `${context}\nExtrahierter Text:\n${safeText}` : context },
-                { type: 'image_url', image_url: { url: `data:${dto.mimeType};base64,${dto.imageBase64}` } },
-              ],
-            })
-          : new HumanMessage(`${context}\nBelegtext:\n${safeText}`)
+        const userMessage = new HumanMessage(`${context}\nBelegtext:\n${safeText}`)
 
         const aiResult = await visionModel.invoke([new SystemMessage(STAGE1_ISOLATED_SYSTEM_PROMPT), userMessage], {
           signal: AbortSignal.timeout(RECEIPT_EXTRACTION_TIMEOUT_MS),
@@ -495,8 +487,6 @@ export class ReceiptParseService {
           const scrubbedText = scrubDocumentTextPii(rawText, knownNames)
           checkPiiFree({ text: scrubbedText })
 
-          // Stage 2 for LStB is strictly text-only: NEVER attach raw images (even if imageBase64 was sent)
-          // because LStB pixels contain Steuer-ID, eTIN, employer, and Steuerklasse.
           const userMessage = new HumanMessage(
             `Steuerjahr-Kontext: ${dto.taxYear}\nGeschwärzter OCR-Text einer Lohnsteuerbescheinigung:\n${scrubbedText}`,
           )
