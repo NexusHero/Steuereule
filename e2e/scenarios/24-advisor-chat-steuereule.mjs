@@ -213,7 +213,9 @@ export async function runScenario24(browser, webOrigin) {
     if (req.url().includes('tracker.example')) imageRequests.push(req.url())
   })
   await page.route('**/advisor/session', async (route) => {
-    const res = await route.fetch()
+    // The page may move on while this read is in flight; a late answer is irrelevant then.
+    const res = await route.fetch().catch(() => null)
+    if (res === null) return
     const json = await res.json()
     json.messages = [
       ...json.messages,
@@ -236,7 +238,7 @@ export async function runScenario24(browser, webOrigin) {
   if (!mdText.includes('Punkt eins') || !mdText.includes('Spenden')) fail('[Scenario 24] Markdown list/table content missing')
   if ((await md.locator('a[href^="javascript:"]').count()) !== 0) fail('[Scenario 24] A javascript: link must never become a link')
   if (imageRequests.length > 0) fail('[Scenario 24] Markdown images must never be fetched')
-  await page.unroute('**/advisor/session')
+  await page.unroute('**/advisor/session', { behavior: 'ignoreErrors' })
   console.log('[Scenario 24] ✅ Markdown rendered (bold, list, table); javascript: link inert; no image fetched')
 
   // Return to Cockpit and verify estimate is still healthy

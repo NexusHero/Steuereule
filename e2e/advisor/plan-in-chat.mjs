@@ -97,7 +97,9 @@ async function main() {
     await page.locator('[data-testid="advisor-streaming-message"]').waitFor({ state: 'visible', timeout: 5_000 })
     const now = new Date().toISOString()
     await page.route('**/advisor/session', async (route) => {
-      const res = await route.fetch()
+      // The page may close while this read is in flight; a late answer is irrelevant then.
+      const res = await route.fetch().catch(() => null)
+      if (res === null) return
       const json = await res.json()
       json.messages = [
         { id: 'stub-u1', role: 'user', content: 'Was hab ich vergessen?', meta: null, createdAt: now },
@@ -117,7 +119,7 @@ async function main() {
     console.log(`[${TAG}] ✅ Row B — finished plan collapses to „2 Schritte erledigt ▸“ above the answer and expands`)
 
     // Row C — Stop in the middle of a plan: finished steps stay, the running one is aborted (AC 14).
-    await page.unroute('**/advisor/session')
+    await page.unroute('**/advisor/session', { behavior: 'ignoreErrors' })
     const input = page.locator('[data-testid="advisor-chat-input"]')
     await input.fill('Prüf bitte Arbeitsweg und Riester')
     await input.press('Enter')
@@ -135,6 +137,7 @@ async function main() {
     if (planWrites.length > 0) fail(`Row D: the plan must not write without a click, saw ${planWrites.join(', ')}`)
     console.log(`[${TAG}] ✅ Row D — no write request while the plan ran`)
 
+    await page.unrouteAll({ behavior: 'ignoreErrors' })
     await ctx.close()
     console.log(`[${TAG}] PASS — live plan, collapse, Stop mid-plan and zero-write verified.`)
   } finally {
