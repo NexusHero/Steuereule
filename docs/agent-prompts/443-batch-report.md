@@ -355,4 +355,55 @@ Gezielte lokale Prüfung nach allen Slice-5-Änderungen (Stand `4a63d23` + E2E-S
 
 ---
 
+## Slice 6 — Dark Mode
+
+### 1. Status
+**fertig** *(lokal geprüft mit Lint, Typecheck sowie `@steuereule/tokens`, `@steuereule/ui` und allen neuen/betroffenen `@steuereule/mobile-web`-Unit-Tests gemäß Nutzervorgabe; vollständiges `pnpm -r test` sowie die E2E-Läufe inkl. `dark-mode` erfolgen in der Cloud-CI)*
+
+### 2. Branch und letzter Commit-Hash
+- Branch: `feat/443-s6-dark-mode` (abgezweigt von `feat/443-s5-persona-boosters` bei `d60e6a2234b312aeddfdba177f541e41b7e46918`)
+- Letzter Code-/Test-Commit vor diesem Bericht-Commit: `a6a16cfef27fc11ebdf8645e9f9daf5a3c4bd219` (`test(e2e): add dark-mode appearance and persistence e2e gate`); davor `048eec5` (Palette & WCAG-Kontrasttest), `76c9cec` (`inkOnFunke` in `@steuereule/ui`) und `3d827b1` (App-Präferenz, Profile-UI & Kontrastkorrekturen). Dieser Bericht folgt unmittelbar als Abschluss-Commit auf `feat/443-s6-dark-mode`.
+
+### 3. Geänderte und neue Dateien
+- `finanzo-funke-design-system/project/tokens/dunkel.css` & `finanzo-funke-design-system/project/_ds_manifest.json`: prüfen die 6 in `dunkel.css` fehlenden `colors.css`-Farben (`--funke`, `--funke-hell`, `--ki`, `--ok`, `--warn`, `--fehler`) und definieren `--fehler: #e96a61` (30-%-Mischung von `#e0362c` Richtung `--fehler-weich` `#fde3de`) für WCAG-AA-Textkontrast ≥ 4,5:1 auf `grund` (`5,92:1`), `karte` (`5,28:1`) und `fehlerWeich` (`5,14:1`); die übrigen 5 Farben bleiben unverändert (`--funke`/`--funke-hell` als Marken-Limettengrün, `--ki` als Marken-/Rahmenfarbe neben Text-Token `--ki-tinte: #cfc4ff`, `--ok` mit `5,32:1`/`4,74:1`, `--warn` mit `6,19:1`/`5,52:1`).
+- `packages/tokens/dist/{theme.ts,tokens.css}`: per `pnpm --filter @steuereule/tokens build` aus dem aktualisierten Manifest neu generiert.
+- `packages/tokens/src/contrast.test.ts`: prüft rechnerisch alle Dark-Mode-Text-auf-Fläche-Kontrastpaare (`>= 4.5:1`), `funke` (`>= 4.5:1`), Licht-/Dunkel-Hardschatten (`shadow.hart*.shadowColor`) und schützt `--fehler: #e96a61` per TDD.
+- `packages/ui/src/theme/useTheme.ts` & `packages/ui/src/index.ts`: exportieren `inkOnFunke(t)` (`t.color.nacht` `#0d0f08` im Dark Mode, `t.color.tinte` `#191b12` im Light Mode), da im Dark Mode `t.color.tinte` (`#f2f0e3`) auf Limetten-Flächen (`t.color.funke` `#c9f229`) unlesbar weiß-auf-limette wäre.
+- `packages/ui/src/components/{Button,Chip,Option,Sticker,TabBar}.tsx` & `dark-mode.test.tsx`: verwenden `inkOnFunke(t)` für Text/Labels auf `funke`-Flächen und testen dies in `light` & `dark`; Prüfung auf feste Hex/`rgba(`-Werte in `packages/ui/src` ergab 0 harte Farbliterale.
+- `apps/mobile-web/src/lib/appearance.tsx` & `appearance.test.tsx`: kapseln `AppearancePreference` (`'system' | 'light' | 'dark'`), `APPEARANCE_STORAGE_KEY = 'steuereule.appearance'`, `readAppearancePreference` / `writeAppearancePreference` (mit `try/catch`, ohne Schreibzugriff beim Initialisieren/Lesen), `resolveThemeMode`, `AppearanceProvider` und `useAppearance`.
+- `apps/mobile-web/src/test-setup.ts`: leert nach jedem Test zusätzlich `localStorage`, damit `steuereule.appearance` zwischen Tests nicht durchblutet.
+- `apps/mobile-web/src/icons/AppleG.tsx` & `apps/mobile-web/src/screens/shared/SocialSignInSection.tsx`: ersetzen `#1d1d1f` im Apple-Logo durch die Prop `color` (Standard `useTheme().color.tinte`, explizit aus `t.color.tinte` gereicht); `GoogleG.tsx` bleibt unverändert.
+- `apps/mobile-web/App.tsx` & `apps/mobile-web/src/App.appearance.test.tsx`: binden `AppearanceProvider`, lesen `RN.useColorScheme()` + Präferenz für `<ThemeProvider mode={mode}>` und `<StatusBar style={mode === 'dark' ? 'light' : 'dark'} />`, setzen Root-Background & `NavigationContainer theme` aus `useTheme()` und synchronisieren `document.body.style.backgroundColor = t.color.grund` sowie `document.documentElement.style.colorScheme` im Web.
+- `apps/mobile-web/src/i18n/resources.ts`, `apps/mobile-web/src/screens/profile/{ProfileAppearanceSection,ProfileView}.tsx` & `ProfileScreen.test.tsx`: ergänzen i18n (`profil.darstellung.{titel,system,hell,dunkel}`, `de` & `en`) sowie den Profil-Abschnitt „Darstellung“ mit `Option`-Buttons (`profil-darstellung-system`, `profil-darstellung-hell`, `profil-darstellung-dunkel`), der sofort wirkt und erst bei Klick persistiert.
+- `apps/mobile-web/src/navigation/AppTabs.tsx`, `apps/mobile-web/src/screens/{LoginScreen,RegistrationScreen}.tsx`, `login/loginStyles.ts`, `profile/styles.ts`, `workdays/WorkdaysScreen.tsx`, `deadlines/DeadlinesBanner.tsx`, `interview/styles.ts`, `onboarding/styles.ts`, `funnel/KontoWandScreen.tsx`, `pension/PensionerScreen.tsx` & `advisor/{AdvisorChatPanel,InMaskAdvisorCompanion,OwlModeScreen}.tsx`: stellen Text-/Icon-Farben auf `funke`-Flächen auf `inkOnFunke(t)` und KI-Texte auf `t.color.kiTinte` um, sodass Dark- und Light-Kontraste stimmen.
+- `e2e/responsive/dark-mode.mjs` & `e2e/package.json`: ergänzen das E2E-Skript `dark-mode` (`colorScheme: 'dark'`, Prüfung von Cockpit, Sheet-Maske und Profil auf dunklen `grund`, Wechsel auf `Immer hell` und Prüfung nach Reload).
+- `docs/agent-prompts/443-batch-report.md`: ergänzt diesen Abschnitt Slice 6.
+
+### 4. Abweichungen vom Auftrag
+- **`_ds_manifest.json` mitgepflegt:** Da `@steuereule/tokens` (`build.ts` und `generated.test.ts`) seine Tokens aus `finanzo-funke-design-system/project/_ds_manifest.json` erzeugt, wurde `--fehler: #e96a61` neben `dunkel.css` auch 1:1 im Manifest eingetragen.
+- **Erweiterte Dark-Mode-Kontrastkorrekturen (`inkOnFunke(t)` & `kiTinte`):** In mehreren App-Screens und `packages/ui` lag bisher `t.color.tinte` (im Dark-Mode helles `#f2f0e3`) bzw. `t.color.funkeTinte` (`#d9f077`) direkt auf Limetten-Hintergrund (`t.color.funke` `#c9f229`), sowie `t.color.ki` auf violettem Grund. Diese Stellen wurden systematisch auf `inkOnFunke(t)` bzw. `t.color.kiTinte` umgestellt.
+- **Modulare Dateibenennung (`appearance.tsx`, `ProfileAppearanceSection.tsx`):** `appearance.tsx` trägt `.tsx` wegen des `AppearanceContext.Provider`-JSX; `ProfileAppearanceSection.tsx` hält die Dateilängen gemäß A5 unter ~300 Zeilen.
+- **Lokale Verifikation gemäß Nutzervorgabe:** Statt vollständigem `pnpm -r test` und lokalem E2E-Lauf wurden `pnpm lint`, `pnpm -r typecheck`, `node --check e2e/responsive/dark-mode.mjs` sowie alle `@steuereule/tokens`-, `@steuereule/ui`- und neuen/betroffenen `@steuereule/mobile-web`-Tests ausgeführt; Gesamtsuite und E2E folgen in der Cloud-CI.
+
+### 5. Angepasste bestehende Tests/Szenarien
+- **`apps/mobile-web/src/screens/ProfileScreen.test.tsx`:** Bestehende Tests unverändert; `describe('ProfilScreen — Darstellung (Slice 6)')` ergänzt (prüft Standard `System` ohne initiales Schreiben in `localStorage`, sofortigen Wechsel auf `dark`/`light` sowie deutsche/englische Texte).
+
+### 6. Ergebnis jedes Gate-Befehls (A2)
+Verifiziert nach Abschluss der Änderungen (Code-Stand `a6a16cfef27fc11ebdf8645e9f9daf5a3c4bd219`):
+- `pnpm lint`: **grün** (`oxlint --deny-warnings`: 0 warnings, 0 errors auf 914 Dateien).
+- `pnpm -r typecheck`: **grün** (alle 8 Workspace-Projekte ohne Fehler).
+- Gezielte Unit- & Komponenten-Tests: **grün**:
+  - `@steuereule/tokens`: **49/49** (inkl. neuem `contrast.test.ts`).
+  - `@steuereule/ui`: **75/75** (inkl. neuem `dark-mode.test.tsx`).
+  - `@steuereule/mobile-web` (`App.test.tsx`, `appearance.test.tsx`, `App.appearance.test.tsx`, `ProfileScreen.test.tsx`, `LoginScreen.test.tsx`, `RegistrationScreen.test.tsx`, `OwlModeScreen.test.tsx`): **173/173** sowie (`WorkdaysScreen.test.tsx`, `PensionerScreen.test.tsx`): **12/12**.
+- `node --check e2e/responsive/dark-mode.mjs`: **grün**.
+- Vollständiges `pnpm -r test`: **nicht lokal ausgeführt** (gemäß Nutzervorgabe in die Cloud-CI verschoben).
+- `node e2e/scenarios/run-all-scenarios.mjs`, `no-client-persistence`, `breakpoint-layout`, `dark-mode`: **nicht lokal ausgeführt** (gemäß Nutzervorgabe in die Cloud-CI verschoben).
+
+### 7. Offene Fragen
+1. **Light-Mode-Semantikfarben (`ok`, `warn`, `fehler`):** Im Audit von `packages/tokens/src/contrast.test.ts` liegen `ok` (`#1f9d55`), `warn` (`#e07b00`) und `fehler` (`#e0362c`) auf hellen Light-Mode-Hintergründen (`#f4f2e9` / `#ffffff`) unter `4,5:1` (`~3,1–4,0:1`), während im Dark-Mode mit `--fehler: #e96a61` alle geprüften Paare `>= 4,5:1` erfüllen. Sollen für den Light-Mode in einem eigenen Token-Ticket abgedunkelte Text-Semantik-Tokens ergänzt werden?
+2. **Dark-Mode-Umschalter in `@steuereule/ui`-`Gallery`:** Soll die UI-Galerie in `packages/ui/src/gallery/Gallery.tsx` für manuelles Prüfen künftig ebenfalls einen `light`/`dark`-Umschalter erhalten?
+
+---
+
 *(Teil D „Gesamt“ folgt am Ende des Batches nach Slice 7.)*
