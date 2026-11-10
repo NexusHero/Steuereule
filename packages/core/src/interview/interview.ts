@@ -133,6 +133,34 @@ export const QUESTION_ORDER: readonly MinimalGateQuestionId[] = ['job', 'ausland
 
 export const GATE_ACKNOWLEDGED = 'weiter'
 
+export const AMOUNT_LATER = 'spaeter'
+
+export const LATER_ALLOWED_STEPS = [
+  'dhf-miete',
+  'umzug-kosten',
+  'spenden-betrag',
+  'kv-pv-betrag',
+  'pv-betrag',
+  'kv-wahl-betrag',
+  'riester-betrag',
+] as const
+
+const LATER_ALLOWED_SET: ReadonlySet<string> = new Set<string>(LATER_ALLOWED_STEPS)
+
+export function laterAmountSteps(answers: Answers): readonly EntryStepId[] {
+  return Object.entries(answers)
+    .filter(([step, value]) => Object.hasOwn(QUESTIONS, step) && value === AMOUNT_LATER)
+    .map(([step]) => step as EntryStepId)
+}
+
+export function amountFromAnswer(value: string | undefined): number | null {
+  if (value === undefined || value === AMOUNT_LATER) return null
+  const trimmed = value.trim()
+  if (!/^-?\d+$/.test(trimmed)) return null
+  const n = Number(trimmed)
+  return Number.isSafeInteger(n) ? n : null
+}
+
 export type ValueForm =
   | { readonly kind: 'enum'; readonly values: readonly string[] }
   | { readonly kind: 'integer'; readonly min: number; readonly max: number }
@@ -480,5 +508,6 @@ function isAccepted(form: ValueForm, value: string): boolean {
 export function isValidAnswer(step: EntryStepId, value: string): boolean {
   const decl = Object.hasOwn(QUESTIONS, step) ? QUESTIONS[step] : undefined
   if (decl === undefined) return false
+  if (value === AMOUNT_LATER) return LATER_ALLOWED_SET.has(step)
   return isAccepted(decl.form, value)
 }

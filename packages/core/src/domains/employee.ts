@@ -1,4 +1,4 @@
-import type { Answers } from '../interview/interview'
+import { amountFromAnswer, type Answers } from '../interview/interview'
 import { gatedIncomeTypes, type IncomeType } from './income-types'
 import { wageTaxCertificateStatus, type WageTaxCertificateData } from './lstb'
 import { deductibleBasicProvision, healthInsuranceFromAnswers } from './health-insurance'
@@ -15,23 +15,18 @@ export interface EmployeeAnswerFigures {
   readonly wageReplacementAmount: number
 }
 
-function intFrom(value: string | undefined): number {
-  if (value === undefined) return 0
-  const n = Number(value)
-  return Number.isFinite(n) ? n : 0
-}
-
 export function employeeFromAnswers(answers: Answers): EmployeeAnswerFigures {
-  const sideJob = answers.nebenjob === 'Midijob' || answers.nebenjob === 'Nebenjob' ? intFrom(answers['nebenjob-brutto']) : 0
+  const amount = (value: string | undefined) => amountFromAnswer(value) ?? 0
+  const sideJob = answers.nebenjob === 'Midijob' || answers.nebenjob === 'Nebenjob' ? amount(answers['nebenjob-brutto']) : 0
   return {
     sideJobGross: sideJob,
-    relocationCosts: answers.umzug === 'Ja' ? intFrom(answers['umzug-kosten']) : 0,
-    donations: answers.spenden === 'Ja' ? intFrom(answers['spenden-betrag']) : 0,
+    relocationCosts: answers.umzug === 'Ja' ? amount(answers['umzug-kosten']) : 0,
+    donations: answers.spenden === 'Ja' ? amount(answers['spenden-betrag']) : 0,
     healthCareContributions: deductibleBasicProvision(healthInsuranceFromAnswers(answers)),
-    riester: answers.riester === 'Ja' ? intFrom(answers['riester-betrag']) : 0,
-    doubleHouseholdRent: answers.dhf === 'Ja' ? intFrom(answers['dhf-miete']) : 0,
-    severanceAmount: answers.abfindung === 'Ja' ? intFrom(answers['abfindung-betrag']) : 0,
-    wageReplacementAmount: answers.lohnersatz === 'Ja' ? intFrom(answers['lohnersatz-betrag']) : 0,
+    riester: answers.riester === 'Ja' ? amount(answers['riester-betrag']) : 0,
+    doubleHouseholdRent: answers.dhf === 'Ja' ? amount(answers['dhf-miete']) : 0,
+    severanceAmount: answers.abfindung === 'Ja' ? amount(answers['abfindung-betrag']) : 0,
+    wageReplacementAmount: answers.lohnersatz === 'Ja' ? amount(answers['lohnersatz-betrag']) : 0,
   }
 }
 
