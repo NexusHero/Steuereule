@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   cockpitRange,
   isPointValue,
+  widenForLaterAmounts,
   UNCERTAINTY_PER_ITEM,
   UNCERTAINTY_PER_CONFLICT,
 } from './cockpit'
@@ -73,5 +74,20 @@ describe('isPointValue', () => {
 
   it('false_when_bounds_differ', () => {
     expect(isPointValue({ from: 1227, to: 1587 })).toBe(false)
+  })
+})
+
+describe('widenForLaterAmounts', () => {
+  it('keeps the range unchanged when count is 0', () => {
+    expect(widenForLaterAmounts({ from: 400, to: 450 }, 0)).toStrictEqual({ from: 400, to: 450 })
+  })
+
+  it('adds UNCERTAINTY_PER_ITEM per open amount to `to` while keeping `from` unchanged', () => {
+    expect(widenForLaterAmounts({ from: 400, to: 450 }, 1)).toStrictEqual({ from: 400, to: 450 + UNCERTAINTY_PER_ITEM })
+    expect(widenForLaterAmounts({ from: 400, to: 450 }, 3)).toStrictEqual({ from: 400, to: 450 + 3 * UNCERTAINTY_PER_ITEM })
+  })
+
+  it('throws a RangeError when count is negative', () => {
+    expect(() => widenForLaterAmounts({ from: 400, to: 450 }, -1)).toThrow(RangeError)
   })
 })

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
+  AMOUNT_LATER,
+  amountFromAnswer,
   buildStepIndex,
   ENTRIES,
   entryForStep,
@@ -8,6 +10,8 @@ import {
   isReachableFor,
   isValidAnswer,
   JOB_VALUES,
+  LATER_ALLOWED_STEPS,
+  laterAmountSteps,
   nextStep,
   nextStepFor,
   QUESTIONS,
@@ -675,5 +679,48 @@ describe('Berufsprofil — the occupation group, asked where the advice lives', 
   it('accepts only the declared occupation groups', () => {
     expect(isValidAnswer('beruf', 'Pflege & Gesundheit')).toBe(true)
     expect(isValidAnswer('beruf', 'Astronaut')).toBe(false)
+  })
+})
+
+describe('AMOUNT_LATER ("Betrag später eintragen", Ticket #443 Slice 2)', () => {
+  it('accepts AMOUNT_LATER only for LATER_ALLOWED_STEPS and rejects forbidden integer steps', () => {
+    expect(AMOUNT_LATER).toBe('spaeter')
+    for (const step of LATER_ALLOWED_STEPS) {
+      expect(isValidAnswer(step, AMOUNT_LATER)).toBe(true)
+    }
+    for (const forbidden of [
+      'weg',
+      'tage',
+      'ch-nichtrueckkehrtage',
+      'abfindung-betrag',
+      'lohnersatz-betrag',
+      'nebenjob-brutto',
+      'riester-einnahmen-vorjahr',
+      'spenden',
+    ] as const) {
+      expect(isValidAnswer(forbidden, AMOUNT_LATER)).toBe(false)
+    }
+  })
+
+  it('laterAmountSteps returns every declared step answered with AMOUNT_LATER', () => {
+    expect(laterAmountSteps({})).toEqual([])
+    expect(
+      laterAmountSteps({
+        spenden: 'Ja',
+        'spenden-betrag': AMOUNT_LATER,
+        umzug: 'Ja',
+        'umzug-kosten': '450',
+        riester: 'Ja',
+        'riester-betrag': AMOUNT_LATER,
+      }),
+    ).toEqual(['spenden-betrag', 'riester-betrag'])
+  })
+
+  it('amountFromAnswer parses integers and returns null for undefined or AMOUNT_LATER', () => {
+    expect(amountFromAnswer(undefined)).toBeNull()
+    expect(amountFromAnswer(AMOUNT_LATER)).toBeNull()
+    expect(amountFromAnswer('')).toBeNull()
+    expect(amountFromAnswer('0')).toBe(0)
+    expect(amountFromAnswer('650')).toBe(650)
   })
 })
