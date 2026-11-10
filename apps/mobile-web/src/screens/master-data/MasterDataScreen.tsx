@@ -104,7 +104,7 @@ export function MasterDataScreen({ onBack, taxYear = CURRENT_TAX_YEAR, onRecordP
       {textField('beruf')}
       {textField('strasse')}
       <View style={{ flexDirection: 'row', gap: theme.space.s3 }}>
-        <View style={{ flex: 1 }}>{textField('hausnummer')}</View>
+        <View style={{ flex: 1 }}>{textField('hausnummer', 'numeric')}</View>
         <View style={{ flex: 1 }}>{textField('hausnummerZusatz')}</View>
       </View>
       {textField('plz', 'numeric')}

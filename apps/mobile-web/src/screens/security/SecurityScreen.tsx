@@ -192,7 +192,7 @@ export function SecurityScreen({ onBack }: SecurityScreenProps) {
               <Text style={styles.sectionBody}>{tr('sicherheit.enable.backupCodes')}</Text>
               <Text style={styles.codes}>{stage.setup.backupCodes.join('  ')}</Text>
               <Feld label={tr('sicherheit.enable.codeLabel')} error={stage.error}>
-                <Input type="text" value={code} onChange={setCode} placeholder="123456" onSubmit={() => void submitCode()} />
+                <Input type="numeric" value={code} onChange={setCode} placeholder="123456" onSubmit={() => void submitCode()} />
               </Feld>
               <Button onPress={() => void submitCode()} disabled={stage.busy || !code}>
                 {stage.busy ? tr('sicherheit.busy') : tr('sicherheit.enable.verify')}

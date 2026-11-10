@@ -25,6 +25,11 @@ describe('Input', () => {
     expect(screen.getByTestId('num').getAttribute('inputmode')).toBe('numeric')
   })
 
+  it('does not set numeric inputmode on plain text inputs', () => {
+    renderUi(<Input type="text" value="" onChange={() => {}} testID="txt" />)
+    expect(screen.getByTestId('txt').getAttribute('inputmode')).not.toBe('numeric')
+  })
+
   it('renders mono/tabular-nums for tax-number fields', () => {
     renderUi(<Input value="12 345" onChange={() => {}} testID="mono" mono />)
     const el = screen.getByTestId('mono') as HTMLElement
