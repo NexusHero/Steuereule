@@ -1,5 +1,6 @@
 import { Pressable, Text, type ViewStyle, type TextStyle, type StyleProp } from 'react-native'
 import { type ReactNode } from 'react'
+import { hapticLight } from '../lib/haptics'
 import { inkOnFunke, useTheme } from '../theme/useTheme'
 
 export interface OptionProps {
@@ -36,7 +37,10 @@ export function Option({ selected = false, onPress, style, children, testID }: O
       testID={testID}
       accessibilityRole="button"
       aria-pressed={selected}
-      onPress={onPress}
+      onPress={() => {
+        void hapticLight()
+        onPress?.()
+      }}
       style={({ pressed }) => [
         container,
         pressed && !selected && { transform: [{ translateX: -1 }, { translateY: -1 }], ...t.shadow.hartS },
