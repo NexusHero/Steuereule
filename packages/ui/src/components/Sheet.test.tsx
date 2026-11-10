@@ -163,6 +163,40 @@ describe('Sheet', () => {
     expect(onClose).toHaveBeenCalledOnce()
   })
 
+  it('keeps_Tab_focus_inside_the_sheet_and_wraps_around', () => {
+    renderUi(
+      <Sheet onClose={() => {}} closeLabel="Schließen">
+        <Input testID="sheet-first-input" value="1" onChange={() => {}} />
+        <Input testID="sheet-last-input" value="2" onChange={() => {}} />
+      </Sheet>,
+    )
+    const close = screen.getByTestId('sheet-schliessen')
+    const last = screen.getByTestId('sheet-last-input')
+
+    last.focus()
+    fireEvent.keyDown(last, { key: 'Tab' })
+    expect(document.activeElement).toBe(close)
+
+    close.focus()
+    fireEvent.keyDown(close, { key: 'Tab', shiftKey: true })
+    expect(document.activeElement).toBe(last)
+  })
+
+  it('returns_focus_to_the_opener_when_the_sheet_unmounts', () => {
+    const opener = document.createElement('button')
+    document.body.appendChild(opener)
+    opener.focus()
+    const { unmount } = renderUi(
+      <Sheet onClose={() => {}} closeLabel="Schließen">
+        <Text>Inhalt</Text>
+      </Sheet>,
+    )
+    screen.getByTestId('sheet-schliessen').focus()
+    unmount()
+    expect(document.activeElement).toBe(opener)
+    opener.remove()
+  })
+
   it('closes_on_grabber_drag_gt_120px_and_ignores_shorter_drag', () => {
     setViewportWidth(375)
     const onClose = vi.fn()
