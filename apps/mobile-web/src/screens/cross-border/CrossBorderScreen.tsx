@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
@@ -54,6 +54,9 @@ export function CrossBorderScreen({ onDone, onBack, taxYear = CURRENT_TAX_YEAR }
   const [interviewAnswers, setInterviewAnswers] = useState<Answers>({})
   const [seeded, setSeeded] = useState(false)
   const { track, flushThen: finish, saveFailed } = usePendingMutations()
+  // The CH answers depend on each other (Tage is only reachable after Wohnsitz): posting them in
+  // parallel let the second one overtake the first and come back 409 ANSWER_UNREACHABLE.
+  const answerQueue = useRef<Promise<unknown>>(Promise.resolve())
 
   function invalidateCertificate(): void {
     void queryClient.invalidateQueries({ queryKey: getChSalaryCertificateControllerGetQueryKey(taxYear) })
@@ -90,8 +93,10 @@ export function CrossBorderScreen({ onDone, onBack, taxYear = CURRENT_TAX_YEAR }
   function answer(questionId: EntryQuestionId, value: string) {
     const previous = interviewAnswers
     setInterviewAnswers((a) => ({ ...a, [questionId]: value }))
+    const post = answerQueue.current.then(() => postAnswer.mutateAsync({ jahr: taxYear, data: { questionId, value } }))
+    answerQueue.current = post.catch(() => {})
     track(
-      postAnswer.mutateAsync({ jahr: taxYear, data: { questionId, value } }).then(
+      post.then(
         (response) => {
           if (response.status === 200) {
             invalidateCertificate()
