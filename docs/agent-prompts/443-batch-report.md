@@ -176,3 +176,61 @@ Verifiziert auf dem abschließenden Code-/Test-Stand `f4cd8b96ed384fbb92d055bce6
 
 ### 7. Offene Fragen
 - **keine** (alle Rückfragen aus dem früheren Stopp-Bericht wurden in PR #449 / `443-batch-all-slices.md` vollständig geklärt; PR #449 R1 bleibt gezielt für Slice 4 § 4.2 vorgemerkt).
+
+---
+
+## Slice 3 — Abgabe-Gate
+
+### 1. Status
+**fertig**
+
+### 2. Branch und letzter Commit-Hash
+- Branch: `feat/443-s3-submission-gate` (abgezweigt von `feat/443-s2-hub-cockpit` bei `53d7dd2`)
+- Letzter Code-/Test-Commit vor diesem Bericht-Commit: `09809dcb0b99b004109f17744cc7f3c4f5de342b` (`test(e2e): route submission, comparison, and printout flows through submission gate`); umfasst davor `4b64081` (`usePlausibility`), `25f9cb2` (`FINDING_TILE`), `4f2aa8e` (Live-Kachel-Hinweise), `c91731c` (`SubmissionGateContext` & `SubmissionScreen`), `a983f99` (Cockpit-Abgabe-Kachel & `PrintoutRoute`-Gate) sowie `f0af412` (Stabilisierung `CockpitScreen.test.tsx`). Dieser Bericht folgt unmittelbar als Abschluss-Commit auf `feat/443-s3-submission-gate`.
+
+### 3. Geänderte und neue Dateien
+- `apps/mobile-web/App.tsx`: sperrt `PrintoutRoute` über das Abgabe-Gate (`usePlausibility` + `useSubmissionGate`, Rückkehr von Stripe `?zahlung=...` nur bei bestandenem Gate), leitet andernfalls per `navigation.replace('App', { screen: 'Cockpit', params: { screen: 'Submission', params: { year } } })` um und setzt beim Ausloggen `resetSubmissionGate()` zurück.
+- `apps/mobile-web/App.test.tsx`: ergänzt Tests für Umleitung von `/app/steuerjahr/2025/ausdruck` bei Conflict (`lstb-offen`), Notice-Bestätigung inkl. Reset nach Re-Mount sowie Stripe-Rückkehr-URL; passt den bisherigen Printout-Smoke-Test um eine vollständige LStB an das Gate an.
+- `apps/mobile-web/src/i18n/resources.ts`: ergänzt i18n-Texte (`de` & `en`) für `cockpit.kachel.hinweis.*`, `cockpit.abgabe.*` und `abgabe.*`.
+- `apps/mobile-web/src/navigation/CockpitStack.tsx`: registriert `Submission` (`SubmissionRoute`) und verdrahtet `onOpenSubmission` im `CockpitHomeRoute`.
+- `apps/mobile-web/src/navigation/CockpitTunnelRoutes.tsx`: implementiert `SubmissionRoute` unter `RequiresAccount` mit Navigation auf Kachel-Ziele (`onOpenTile`), `CockpitHome` und Root-`Printout`.
+- `apps/mobile-web/src/navigation/ShellState.tsx`: bindet `SubmissionGateProvider` in die App-Shell ein und reicht `confirmNotices`, `areNoticesConfirmed` und `resetSubmissionGate` über `useShellState()` durch.
+- `apps/mobile-web/src/navigation/SubmissionGateContext.tsx`: neuer schlanker Context für die In-Memory-Bestätigung von Plausibilitäts-Hinweisen je Steuerjahr und `Notice['kind']`-Menge (nach Reload automatisch zurückgesetzt).
+- `apps/mobile-web/src/navigation/linking.ts`: ergänzt URL-Mapping `Submission: 'abgabe'` unter `steuerjahr/:year`.
+- `apps/mobile-web/src/navigation/linking.test.tsx`: ergänzt den URL-Roundtrip-Test für `/app/steuerjahr/2025/abgabe`.
+- `apps/mobile-web/src/screens/cockpit/CockpitScreen.tsx`: berechnet `usePlausibility` für das gewählte Steuerjahr, berechnet Kachel-Hinweisstufen (`blocker`/`warnung`), routet `cockpit-weiter` (wenn alle Kacheln erledigt) sowie `cockpit-ausdruck` und die neue Abgabe-Kachel auf `onOpenSubmission`.
+- `apps/mobile-web/src/screens/cockpit/CockpitScreen.test.tsx`: ergänzt Tests für Kachel-Blocker-/Warn-Hinweise, `cockpit-abgabe-vorbereiten`, Umleitung von `cockpit-ausdruck` auf `Submission` und `act`-Flush im Rentner-`cockpit-weiter`-Test.
+- `apps/mobile-web/src/screens/cockpit/CockpitTiles.tsx`: rendert je Kachel optionale Hinweis-Labels (`cockpit-kachel-<id>-hinweis`, Fehlerfarbe aus `useTheme()` bei Blocker) sowie die breite Abgabe-Kachel `cockpit-abgabe-vorbereiten` unter den übrigen Kacheln.
+- `apps/mobile-web/src/screens/cockpit/tiles.ts`: ergänzt `FINDING_TILE: Record<Conflict['kind'] | Notice['kind'], TileId | 'abgabe'>`, `tilesForFinding` und `tileHintSeverity`.
+- `apps/mobile-web/src/screens/cockpit/tiles.test.tsx`: testet jede einzelne Zuordnung von `Conflict['kind']` und `Notice['kind']` in `FINDING_TILE`, `tilesForFinding` (inkl. `betrag-spaeter` über Antwort-Einträge) sowie `tileHintSeverity`.
+- `apps/mobile-web/src/screens/filing-type-comparison/FilingTypeComparisonScreen.tsx`: ergänzt optionale `embedded`-Prop, damit die Komponente ohne äußeren Screen-Wrapper und Appbar direkt in `SubmissionScreen` eingebettet werden kann.
+- `apps/mobile-web/src/screens/plausibility/PlausibilityScreen.tsx`: bezieht Konflikte, Hinweise, Stammdaten-Lücke und Retry direkt über `usePlausibility` bei unverändertem Verhalten.
+- `apps/mobile-web/src/screens/plausibility/usePlausibility.ts`: neuer Hook für `usePlausibility(taxYear) → { status, conflicts, notices, missingPersonalDetails, answers, retry }` (mit pfadabhängiger LStB-Auswertung).
+- `apps/mobile-web/src/screens/plausibility/usePlausibility.test.tsx`: neue Testsuite für Lade-, Fehler-, Einreichbar-, Konflikt- und Hinweis-Zustände sowie CH-/Rentner-Pfad ohne deutsche LStB.
+- `apps/mobile-web/src/screens/shared/BackButton.tsx`: ergänzt optionale `testID`-Prop für eindeutige Zurück-Buttons (`abgabe-zurueck`).
+- `apps/mobile-web/src/screens/submission/SubmissionScreen.tsx`: neuer Screen für das dreistufige Abgabe-Gate (Plausibilität mit Kachel-Buttons & `gate-warnung-bestaetigen`, Veranlagungsartenvergleich nur bei verheiratet + Zusammenveranlagung mit `abgabe-vergleich-ueberspringen`, Ausdruck-Button `abgabe-zum-ausdruck`).
+- `apps/mobile-web/src/screens/submission/SubmissionScreen.test.tsx`: neue TDD-Testsuite für Conflict-Sperre, Notice-Bestätigung inkl. erneuter Bestätigungspflicht bei neuem Hinweis, bedingten Veranlagungsvergleich und `abgabe-zum-ausdruck`.
+- `e2e/scenarios/{01,03,04,05,06,07,08,14,16,18,21,24}`: stellen direkte `/plausibilitaet`-Navigation und `cockpit-ausdruck`-Übergänge auf das Abgabe-Gate um; Szenario `08` prüft den gesperrten Direktaufruf `/app/steuerjahr/2025/ausdruck` bei offener LStB.
+- `docs/agent-prompts/443-batch-report.md`: dokumentiert Slice 3 in diesem Abschnitt.
+
+### 4. Abweichungen vom Auftrag
+- **Pfad-bewusste LStB-Prüfung in `usePlausibility.ts`:** Das bisherige `fold()` in `PlausibilityScreen.tsx` erzeugte für CH-Grenzgänger (Szenario `03`) und Rentner (Szenario `05`) mangels deutscher LStB immer den Konflikt `lstb-offen`. Ohne verbotene Änderungen an `packages/core` wertet `usePlausibility` für Nicht-`angestellte`-Pfade (sofern kein expliziter LStB-Widerspruch vorliegt) eine leere LStB als `vollstaendig`, damit Rentner und CH-Grenzgänger über das Abgabe-Gate zum Ausdruck gelangen können (siehe Offene Fragen).
+- **Modulare Ergänzungen (`SubmissionGateContext.tsx`, `BackButton.tsx` `testID`, `PlausibilityHookResult`-Felder):** Um das 300-Zeilen-Limit (A5) einzuhalten und `SubmissionScreen`/`SubmissionRoute` typsicher mit den nötigen Gate-Daten (`missingPersonalDetails`, `answers`, `retry`, `abgabe-zurueck`) zu versorgen, wurden der Gate-State in `SubmissionGateContext.tsx` gekapselt und `BackButton` um optionales `testID` erweitert.
+- **Lokale E2E-Portkonfiguration:** Ausführungsmodus `ATTACH` auf `localhost:5434` wie oben beschrieben.
+
+### 5. Angepasste bestehende Tests/Szenarien
+- **`apps/mobile-web/App.test.tsx`:** Im bestehenden Test `keeps /app/steuerjahr/2025/ausdruck mapped to the root Printout screen when plausibility gate passes` wurde ein gültiges LStB-Mock ergänzt, weil ein leerer LStB-Stand ab Slice 3 berechtigt auf `Submission` umleitet (der unberechtigte Direktaufruf wird durch zwei neue Gate-Tests direkt darunter geprüft).
+- **`apps/mobile-web/src/screens/cockpit/CockpitScreen.test.tsx`:** Im Rentner-Test (`completes without lstb...`) wird vor `fireEvent.click(cockpit-weiter)` über `waitFor(...)` und `await act(async () => {})` das passive `useEffect`-Update von `react-native-web`s `PressResponder` abgewartet, nachdem der Button asynchron von `rente` auf `Abgabe vorbereiten` gewechselt hat.
+- **`e2e/scenarios/{01,03,04,05,06,07,08,14,16,18,21,24}`:** Reine Navigationsanpassungen gemäß § 3.6 von direkten `/plausibilitaet`-Aufrufen bzw. direktem `cockpit-ausdruck → Printout` auf `cockpit-abgabe-vorbereiten` → `abgabe-zum-ausdruck` (inkl. Veranlagungsvergleich bei `verheiratet` + `zusammen` in `03`, `04`, `14`, `21` sowie Direkt-URL-Sperre in `08`). Alle Eingabewerte, Euro-Beträge und PDF-Prüfungen blieben unverändert.
+
+### 6. Ergebnis jedes Gate-Befehls (A2)
+Verifiziert auf `09809dcb0b99b004109f17744cc7f3c4f5de342b`:
+- `pnpm lint`: **grün** (`oxlint --deny-warnings`: 0 warnings, 0 errors auf 889 Dateien).
+- `pnpm -r typecheck`: **grün** (alle 8 geprüften Workspace-Projekte ohne Fehler).
+- `pnpm -r test`: **grün** (`apps/website` 5/5, `packages/api-client` 12/12, `packages/tokens` 45/45, `packages/core` 702/702, `packages/ui` 63/63, `apps/api` 881/881, `apps/mobile-web` 67 Dateien / 762 passed). Zusätzlich `pnpm register-check`: **PASS**; `pnpm adr-check`: **PASS**.
+- `node e2e/scenarios/run-all-scenarios.mjs` (über `ATTACH` an `localhost:5434` / `:3301` / `:4173`): **grün** (`ALL 24 SCENARIOS PASSED WITH ZERO FINDINGS OR REGRESSIONS!`).
+- `pnpm --filter @steuereule/e2e no-client-persistence` (über `ATTACH`): **grün** (`PASS — localStorage: {} · sessionStorage: {}` an allen 5 Checkpoints).
+- `pnpm --filter @steuereule/e2e breakpoint-layout` (über `ATTACH`): **grün** (`PASS — all breakpoint layout assertions succeeded` über 375–1920 px).
+
+### 7. Offene Fragen
+1. Soll `packages/core/src/interview/plausibility.ts` (`checkPlausibility`) in einem eigenen Issue pfad-bewusst gemacht werden, sodass Grenzgänger CH und Rentner ohne deutsche LStB fachlich bereits im Core kein `lstb-offen` erzeugen (statt der Workaround-Prüfung in `usePlausibility.ts`)?
