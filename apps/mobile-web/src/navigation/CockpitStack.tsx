@@ -80,6 +80,7 @@ function InterviewRoute({ navigation, route }: Props<'Interview'>) {
       onDone={(answers) => {
         const path = pathFromAnswers(answers)
         setFunnelPath(path)
+        navigation.navigate('CockpitHome', undefined, { pop: true })
         setPendingPath(path)
       }}
     />
