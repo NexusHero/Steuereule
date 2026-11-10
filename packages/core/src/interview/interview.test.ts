@@ -724,3 +724,42 @@ describe('AMOUNT_LATER ("Betrag später eintragen", Ticket #443 Slice 2)', () =>
     expect(amountFromAnswer('650')).toBe(650)
   })
 })
+
+describe('Ticket #443 Slice 5 — haushalt & gesundheit catalogue entries', () => {
+  it('walks haushalt steps and finishes immediately on Nein', () => {
+    expect(nextStepFor(ENTRIES.haushalt, {})).toEqual({ kind: 'question', id: 'haushalt-gate' })
+    expect(nextStepFor(ENTRIES.haushalt, { 'haushalt-gate': 'Nein' })).toEqual({ kind: 'done' })
+    expect(nextStepFor(ENTRIES.haushalt, { 'haushalt-gate': 'Ja' })).toEqual({
+      kind: 'question',
+      id: 'haushalt-dienstleistung-betrag',
+    })
+    expect(
+      nextStepFor(ENTRIES.haushalt, {
+        'haushalt-gate': 'Ja',
+        'haushalt-dienstleistung-betrag': AMOUNT_LATER,
+      }),
+    ).toEqual({ kind: 'question', id: 'haushalt-handwerker-betrag' })
+    expect(
+      nextStepFor(ENTRIES.haushalt, {
+        'haushalt-gate': 'Ja',
+        'haushalt-dienstleistung-betrag': '1200',
+        'haushalt-handwerker-betrag': '3000',
+        'haushalt-minijob-betrag': '500',
+      }),
+    ).toEqual({ kind: 'done' })
+  })
+
+  it('walks gesundheit steps and supports integer medical amounts', () => {
+    expect(nextStepFor(ENTRIES.gesundheit, {})).toEqual({ kind: 'question', id: 'gesundheit-gate' })
+    expect(nextStepFor(ENTRIES.gesundheit, { 'gesundheit-gate': 'Nein' })).toEqual({ kind: 'done' })
+    expect(nextStepFor(ENTRIES.gesundheit, { 'gesundheit-gate': 'Ja' })).toEqual({
+      kind: 'question',
+      id: 'gesundheit-betrag',
+    })
+    expect(isValidAnswer('gesundheit-betrag', '2500')).toBe(true)
+    expect(isValidAnswer('gesundheit-betrag', AMOUNT_LATER)).toBe(false)
+    expect(
+      nextStepFor(ENTRIES.gesundheit, { 'gesundheit-gate': 'Ja', 'gesundheit-betrag': '2500' }),
+    ).toEqual({ kind: 'done' })
+  })
+})
