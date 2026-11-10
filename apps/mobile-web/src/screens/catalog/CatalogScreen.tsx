@@ -4,7 +4,9 @@ import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { Button, Input, Option, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
 import {
+  AMOUNT_LATER,
   ENTRIES,
+  LATER_ALLOWED_STEPS,
   QUESTIONS,
   nextStepFor,
   remainingStepsFor,
@@ -16,6 +18,8 @@ import {
   useInterviewControllerGetInterview,
   useInterviewControllerPostAnswer,
   getCockpitControllerGetCockpitSummaryQueryKey,
+  getInterviewControllerGetInterviewQueryKey,
+  getTaxEstimateControllerGetQueryKey,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { integerFrom } from '../shared/integer'
@@ -49,6 +53,16 @@ function clearStepAndFollowUps(answers: Answers, stepId: EntryStepId): Answers {
   const next: Answers = { ...answers }
   for (const id of toDelete) {
     delete next[id]
+  }
+  return next
+}
+
+const LATER_ALLOWED_SET: ReadonlySet<EntryStepId> = new Set<EntryStepId>(LATER_ALLOWED_STEPS)
+
+function clearLaterAnswers(answers: Answers, walked: readonly EntryStepId[]): Answers {
+  const next: Answers = { ...answers }
+  for (const id of walked) {
+    if (next[id] === AMOUNT_LATER) delete next[id]
   }
   return next
 }
@@ -97,13 +111,19 @@ export function CatalogScreen({ entry, onDone = () => {}, onBack, taxYear = CURR
       const loaded = interviewQuery.data.data.answers as Answers
       const walked = walkedStepsFor(ENTRIES[entry], loaded)
       if (revisit && nextStepFor(ENTRIES[entry], loaded).kind === 'done' && walked.length > 0) {
-        const last = walked[walked.length - 1]
-        if (last !== undefined) {
-          setHistory(walked.slice(0, -1))
-          setAnswers(clearStepAndFollowUps(loaded, last))
+        const firstLaterIdx = walked.findIndex((id) => loaded[id] === AMOUNT_LATER)
+        if (firstLaterIdx !== -1) {
+          setHistory(walked.slice(0, firstLaterIdx))
+          setAnswers(clearLaterAnswers(loaded, walked))
         } else {
-          setHistory(walked)
-          setAnswers(loaded)
+          const last = walked[walked.length - 1]
+          if (last !== undefined) {
+            setHistory(walked.slice(0, -1))
+            setAnswers(clearStepAndFollowUps(loaded, last))
+          } else {
+            setHistory(walked)
+            setAnswers(loaded)
+          }
         }
       } else {
         setHistory(walked)
@@ -152,6 +172,12 @@ export function CatalogScreen({ entry, onDone = () => {}, onBack, taxYear = CURR
           const response = await postAnswer.mutateAsync({ jahr: taxYear, data: { questionId: stepId, value } })
           if (response.status === 200) {
             void queryClient.invalidateQueries({ queryKey: getCockpitControllerGetCockpitSummaryQueryKey(taxYear) })
+            void queryClient.invalidateQueries({ queryKey: getTaxEstimateControllerGetQueryKey(taxYear) })
+            void queryClient.invalidateQueries({ queryKey: getInterviewControllerGetInterviewQueryKey(taxYear), exact: true })
+            void queryClient.invalidateQueries({
+              queryKey: getInterviewControllerGetInterviewQueryKey(taxYear, { eintrag: entry }),
+              refetchType: 'none',
+            })
             return
           }
           setConflict(true)
@@ -219,6 +245,7 @@ function IntegerFollowUp({ step, onAnswer }: { readonly step: EntryStepId; reado
   const styles = makeStyles(t)
   const [text, setText] = useState('')
   const rawValue = integerFrom(text)
+  const canEnterLater = LATER_ALLOWED_SET.has(step)
 
   function submit() {
     if (rawValue !== null) onAnswer(String(rawValue))
@@ -239,6 +266,16 @@ function IntegerFollowUp({ step, onAnswer }: { readonly step: EntryStepId; reado
       <Button onPress={submit} disabled={rawValue === null} style={styles.weiter} testID={`katalog-submit-${step}`}>
         {tr('katalog.weiter')}
       </Button>
+      {canEnterLater ? (
+        <Button
+          variant="leise"
+          onPress={() => onAnswer(AMOUNT_LATER)}
+          style={styles.later}
+          testID={`katalog-later-${step}`}
+        >
+          {tr('katalog.amountLater')}
+        </Button>
+      ) : null}
     </View>
   )
 }
@@ -265,5 +302,6 @@ function makeStyles(t: UiTheme) {
     marginBottom: t.space.s4,
   }
   const next: ViewStyle = { marginTop: t.space.s4 }
-  return { screen, wideScreen, headerRow, stepPill, conflict, heading, weiter: next }
+  const later: ViewStyle = { marginTop: t.space.s2 }
+  return { screen, wideScreen, headerRow, stepPill, conflict, heading, weiter: next, later }
 }
