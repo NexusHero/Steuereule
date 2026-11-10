@@ -121,13 +121,23 @@ export async function runScenario04(browser, webOrigin, sql) {
   await page.locator('[data-testid="stammdaten-speichern"]').click()
   await page.waitForTimeout(400)
 
+  await page.locator('[data-testid="stammdaten-zurueck"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await page.locator('[data-testid="stammdaten-zurueck"]').click()
+
+  await page.locator('[data-testid="cockpit-bereich-du"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await page.locator('[data-testid="cockpit-bereich-partner"]', { hasText: s.sabine.firstName }).waitFor({ state: 'visible', timeout: 10_000 })
+
   await page.locator('[data-testid="partner-lstb"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="partner-lstb"]').click()
   await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').waitFor({ state: 'visible', timeout: 10_000 })
+  if (page.url().includes(s.sabine.firstName)) {
+    fail(`Partner name leaked into URL: ${page.url()}`)
+  }
   await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').fill(String(s.sabine.lstb.grossWage))
   await page.locator('[data-testid="lstb-lohnsteuer"]').fill(String(s.sabine.lstb.wageTax))
   await page.locator('[data-testid="lstb-sozialversicherung"]').fill(String(s.sabine.lstb.socialSecurity))
   await page.locator('[data-testid="lstb-weiter"]').click()
+  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
 
   await page.locator('[data-testid="partner-arbeitsweg"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="partner-arbeitsweg"]').click()
@@ -140,9 +150,7 @@ export async function runScenario04(browser, webOrigin, sql) {
   await page.locator(`[data-testid="arbeitstage-transport-${s.sabine.commute.transport}"]`).click()
   await page.locator('[data-testid="arbeitstage-arbeitsort"]').fill(s.sabine.commute.workplace)
   await page.locator('[data-testid="arbeitstage-weiter"]').click()
-
-  await page.locator('[data-testid="stammdaten-zurueck"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="stammdaten-zurueck"]').click()
+  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
 
   await page.locator('[data-testid="cockpit-kapital"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="cockpit-kapital"]').click()

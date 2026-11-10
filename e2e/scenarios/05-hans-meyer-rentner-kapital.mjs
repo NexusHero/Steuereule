@@ -66,6 +66,13 @@ export async function runScenario05(browser, webOrigin, sql) {
   await page.getByRole('button', { name: 'Weiter', exact: true }).click()
   await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
 
+  await page.locator('[data-testid="cockpit-kachel-kapital"]').waitFor({ state: 'visible', timeout: 10_000 })
+  if (await page.locator('[data-testid="cockpit-kachel-arbeitsweg"]').isVisible()) {
+    fail('Expected arbeitsweg tile collapsed under Weitere Themen for retiree in Scenario 05')
+  }
+  await page.locator('[data-testid="cockpit-weitere-themen"]').click()
+  await page.locator('[data-testid="cockpit-kachel-arbeitsweg"]').waitFor({ state: 'visible', timeout: 10_000 })
+
   const capitalBtn = page.locator('[data-testid="cockpit-kapital"]')
   await capitalBtn.waitFor({ state: 'visible', timeout: 10_000 })
   await capitalBtn.click()
