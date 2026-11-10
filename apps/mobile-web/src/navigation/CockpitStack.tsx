@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { createNativeStackNavigator, type NativeStackScreenProps } from '@react-navigation/native-stack'
 import { CockpitScreen } from '../screens/cockpit/CockpitScreen'
+import type { TileDefinition } from '../screens/cockpit/tiles'
+import { useAccountSession } from '../auth/useAccountSession'
 import { InterviewScreen } from '../screens/interview/InterviewScreen'
 import { AccountWallScreen, pathFromAnswers } from '../screens/funnel/KontoWandScreen'
 import { useShellState } from './ShellState'
@@ -31,6 +33,7 @@ type Props<T extends keyof CockpitStackParamList> = NativeStackScreenProps<Cockp
 function CockpitHomeRoute({ navigation }: Props<'CockpitHome'>) {
   const { taxYear, setTaxYear, setFunnelPath, setPendingPath, switchToTab, consumeStartInterview, onOpenPrintout, onOpenConfirmation } =
     useShellState()
+  const { state: sessionState } = useAccountSession()
   const [redirecting, setRedirecting] = useState(() => consumeStartInterview())
 
   useEffect(() => {
@@ -41,10 +44,41 @@ function CockpitHomeRoute({ navigation }: Props<'CockpitHome'>) {
 
   if (redirecting) return null
 
+  const openTile = (tile: TileDefinition, revisit: boolean) => {
+    const r = tile.route
+    switch (r.screen) {
+      case 'Lstb':
+        navigation.navigate('Lstb', { year: taxYear })
+        return
+      case 'CrossBorder':
+        navigation.navigate('CrossBorder', { year: taxYear })
+        return
+      case 'Pension':
+        navigation.navigate('Pension', { year: taxYear })
+        return
+      case 'Catalog':
+        navigation.navigate('Catalog', revisit ? { year: taxYear, entry: r.entry, revisit: true } : { year: taxYear, entry: r.entry })
+        return
+      case 'Workdays':
+        navigation.navigate('Workdays', { year: taxYear })
+        return
+      case 'Capital':
+        navigation.navigate('Capital', { year: taxYear })
+        return
+      case 'Rental':
+        navigation.navigate('Rental', { year: taxYear })
+        return
+      case 'Children':
+        navigation.navigate('Children', { year: taxYear })
+        return
+    }
+  }
+
   return (
     <CockpitScreen
       key={taxYear}
       taxYear={taxYear}
+      isSignedIn={sessionState.status === 'signed-in'}
       onYearChange={setTaxYear}
       onOpenInterview={() => navigation.navigate('Interview', { year: taxYear })}
       onOpenAssessment={() => navigation.navigate('Assessment', { year: taxYear })}
@@ -53,6 +87,7 @@ function CockpitHomeRoute({ navigation }: Props<'CockpitHome'>) {
       onOpenKinder={() => navigation.navigate('Children', { year: taxYear })}
       onOpenOwlMode={() => switchToTab('Owl')}
       onOpenMasterData={() => navigation.navigate('CockpitMasterData', { year: taxYear })}
+      onOpenTile={openTile}
       onContinuePath={(path) => {
         setFunnelPath(path)
         setPendingPath(path)

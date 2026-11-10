@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
 import { Button, Card, Chip, HerkunftsChip, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme, type Breakpoint } from '@steuereule/ui'
 import { DeadlinesBanner } from '../deadlines/DeadlinesBanner'
-import { formatEuro, formatEuroRange, UNCERTAINTY_PER_ITEM } from '@steuereule/core'
+import { formatEuro, formatEuroRange, UNCERTAINTY_PER_ITEM, type Answers } from '@steuereule/core'
 import {
   useCockpitControllerGetCockpitSummary,
   useConfirmationControllerGet,
@@ -22,12 +22,15 @@ import { APP_NS } from '../../i18n/resources'
 import { SELECTABLE_TAX_YEARS, CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { pathFromAnswers, type FunnelPath } from '../funnel/KontoWandScreen'
+import { CockpitTiles, tileRevisitFlag, useCockpitTileFacts } from './CockpitTiles'
+import { nextStepTile, type TileDefinition, type TileFacts } from './tiles'
 
 
 const SELECTABLE_YEARS = SELECTABLE_TAX_YEARS
 
 export interface CockpitScreenProps {
   readonly taxYear?: number
+  readonly isSignedIn?: boolean
   readonly onOpenInterview?: () => void
   readonly onOpenAssessment?: () => void
   readonly onOpenCapital?: () => void
@@ -37,6 +40,7 @@ export interface CockpitScreenProps {
   readonly onOpenPrintout?: (year: number) => void
   readonly onOpenConfirmation?: (year: number) => void
   readonly onContinuePath?: (path: FunnelPath) => void
+  readonly onOpenTile?: (tile: TileDefinition, revisit: boolean) => void
   readonly onYearChange?: (year: number) => void
   readonly onOpenMasterData?: () => void
 }
@@ -48,6 +52,7 @@ interface Next {
 
 export function CockpitScreen({
   taxYear = CURRENT_TAX_YEAR,
+  isSignedIn = true,
   onOpenInterview = () => {},
   onOpenAssessment = () => {},
   onOpenCapital = () => {},
@@ -57,6 +62,7 @@ export function CockpitScreen({
   onOpenPrintout,
   onOpenConfirmation,
   onContinuePath,
+  onOpenTile,
   onYearChange,
   onOpenMasterData,
 }: CockpitScreenProps) {
@@ -72,6 +78,10 @@ export function CockpitScreen({
   const confirmationQuery = useConfirmationControllerGet(year)
   const interviewQuery = useInterviewControllerGetInterview(year)
   const masterDataQuery = useMasterDataControllerRead()
+  const interview = interviewQuery.data?.status === 200 ? interviewQuery.data.data : null
+  const answers = (interview?.answers ?? {}) as Answers
+  const path = interview?.nextStep.kind === 'done' ? pathFromAnswers(interview.answers) : null
+  const tileFacts = useCockpitTileFacts(year, isSignedIn, path, answers)
 
   if (query.isPending) {
     return <LoadingState bp={bp} label={tr('cockpit.loading')} />
@@ -96,8 +106,6 @@ export function CockpitScreen({
     },
   }
   const isRefreshing = query.isFetching && !pulling
-  const interview = interviewQuery.data?.status === 200 ? interviewQuery.data.data : null
-  const path = interview?.nextStep.kind === 'done' ? pathFromAnswers(interview.answers) : null
   const missingDetails = masterDataQuery.data?.status === 200 ? masterDataQuery.data.data.missing.length : 0
   const masterData: Next | null =
     // Stays reachable once complete: it is also the way back to the Veranlagungsart and the partner.
@@ -107,10 +115,19 @@ export function CockpitScreen({
           label: missingDetails > 0 ? tr('cockpit.stammdatenErgaenzen', { anzahl: missingDetails }) : tr('cockpit.stammdatenAnsehen'),
           onPress: onOpenMasterData,
         }
+  const openTile = onOpenTile ?? (() => {})
+  const nextTile = tileFacts !== null ? nextStepTile(tileFacts) : null
   const next: Next | null =
-    path !== null && onContinuePath
-      ? { label: tr('cockpit.weiterMitDeinemWeg', { pfad: tr(`funnel.kontoWand.pfad.${path}`) }), onPress: () => onContinuePath(path) }
-      : null
+    tileFacts !== null
+      ? nextTile !== null
+        ? {
+            label: tr('cockpit.naechsterSchritt', { titel: tr(nextTile.titleKey) }),
+            onPress: () => openTile(nextTile, tileRevisitFlag(nextTile, tileFacts.answers)),
+          }
+        : null
+      : path !== null && onContinuePath
+        ? { label: tr('cockpit.weiterMitDeinemWeg', { pfad: tr(`funnel.kontoWand.pfad.${path}`) }), onPress: () => onContinuePath(path) }
+        : null
 
   if (summary === null) {
     return (
@@ -120,6 +137,8 @@ export function CockpitScreen({
         refresh={refresh}
         isRefreshing={isRefreshing}
         next={next}
+        tileFacts={tileFacts}
+        onOpenTile={openTile}
         masterData={masterData}
         onOpenInterview={onOpenInterview}
         onOpenAssessment={onOpenAssessment}
@@ -142,6 +161,8 @@ export function CockpitScreen({
       refresh={refresh}
       isRefreshing={isRefreshing}
       next={next}
+      tileFacts={tileFacts}
+      onOpenTile={openTile}
       masterData={masterData}
       onOpenInterview={onOpenInterview}
       onOpenAssessment={onOpenAssessment}
@@ -220,6 +241,8 @@ interface CockpitEmptyProps {
   readonly refresh: PullToRefresh
   readonly isRefreshing: boolean
   readonly next: Next | null
+  readonly tileFacts: TileFacts | null
+  readonly onOpenTile: (tile: TileDefinition, revisit: boolean) => void
   readonly masterData: Next | null
   readonly onOpenInterview: () => void
   readonly onOpenAssessment: () => void
@@ -280,7 +303,7 @@ function EuleBannerNotice() {
   )
 }
 
-function CockpitEmpty({ year, onYearChange, refresh, isRefreshing, next, masterData, onOpenInterview, onOpenAssessment, onOpenCapital, onOpenRental, onOpenKinder, onOpenOwlMode, bp }: CockpitEmptyProps) {
+function CockpitEmpty({ year, onYearChange, refresh, isRefreshing, next, tileFacts, onOpenTile, masterData, onOpenInterview, onOpenAssessment, onOpenCapital, onOpenRental, onOpenKinder, onOpenOwlMode, bp }: CockpitEmptyProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
@@ -300,11 +323,12 @@ function CockpitEmpty({ year, onYearChange, refresh, isRefreshing, next, masterD
           <Button onPress={next.onPress} style={styles.cta} testID="cockpit-weiter">
             {next.label}
           </Button>
-        ) : (
+        ) : tileFacts === null ? (
           <Button onPress={onOpenInterview} style={styles.cta} testID="cockpit-interview">
             {tr('cockpit.answerQuestions')}
           </Button>
-        )}
+        ) : null}
+        {tileFacts !== null ? <CockpitTiles facts={tileFacts} onOpenTile={onOpenTile} /> : null}
         {onOpenOwlMode ? <View style={styles.berater}><OwlAdvisorCard onOpen={onOpenOwlMode} testID="cockpit-empty-eulen-modus" /></View> : null}
         {masterData ? (
           <Button variant="ghost" onPress={masterData.onPress} style={styles.secondaryCta} testID="cockpit-stammdaten">
@@ -377,6 +401,8 @@ interface CockpitLoadedProps {
   readonly refresh: PullToRefresh
   readonly isRefreshing: boolean
   readonly next: Next | null
+  readonly tileFacts: TileFacts | null
+  readonly onOpenTile: (tile: TileDefinition, revisit: boolean) => void
   readonly masterData: Next | null
   readonly onOpenInterview: () => void
   readonly onOpenAssessment: () => void
@@ -388,7 +414,7 @@ interface CockpitLoadedProps {
   readonly bp: Breakpoint
 }
 
-function CockpitLoaded({ summary, year, onYearChange, confirmation, onOpenConfirmation, refresh, isRefreshing, next, masterData, onOpenInterview, onOpenAssessment, onOpenCapital, onOpenRental, onOpenKinder, onOpenOwlMode, onOpenPrintout, bp }: CockpitLoadedProps) {
+function CockpitLoaded({ summary, year, onYearChange, confirmation, onOpenConfirmation, refresh, isRefreshing, next, tileFacts, onOpenTile, masterData, onOpenInterview, onOpenAssessment, onOpenCapital, onOpenRental, onOpenKinder, onOpenOwlMode, onOpenPrintout, bp }: CockpitLoadedProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
@@ -419,11 +445,12 @@ function CockpitLoaded({ summary, year, onYearChange, confirmation, onOpenConfir
         <Button onPress={next.onPress} style={styles.cta} testID="cockpit-weiter">
           {next.label}
         </Button>
-      ) : hasOpenItems ? (
+      ) : hasOpenItems && tileFacts === null ? (
         <Button onPress={onOpenInterview} style={styles.cta} testID="cockpit-interview">
           {tr('cockpit.answerQuestions')}
         </Button>
       ) : null}
+      {tileFacts !== null ? <CockpitTiles facts={tileFacts} onOpenTile={onOpenTile} /> : null}
       {onOpenOwlMode ? <View style={styles.berater}><OwlAdvisorCard onOpen={onOpenOwlMode} /></View> : null}
       {masterData ? (
         <Button variant="ghost" onPress={masterData.onPress} style={styles.secondaryCta} testID="cockpit-stammdaten">
