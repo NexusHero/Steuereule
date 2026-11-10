@@ -43,6 +43,11 @@ describe('selectLstbRelevantLines — allowlist for the text fallback (ADR-0058)
     }
   })
 
+  it('finds a wrapped amount across a blank line, exactly like the deterministic parser', () => {
+    const selected = selectLstbRelevantLines('4. Einbehaltene Lohnsteuer\n\n7.600,00\nErika Mustermann')
+    expect(selected.split('\n')).toEqual(['4. Einbehaltene Lohnsteuer', '7.600,00'])
+  })
+
   it('does not carry a wrapped non-amount continuation line (e.g. an employer name)', () => {
     const selected = selectLstbRelevantLines('25. Arbeitnehmerbeiträge zur gesetzlichen Krankenversicherung\nAcme Robotics GmbH')
     expect(selected).not.toContain('Acme')

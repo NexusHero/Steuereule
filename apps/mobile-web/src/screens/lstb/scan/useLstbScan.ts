@@ -98,9 +98,11 @@ export function useLstbScan({ taxYear, person }: { readonly taxYear: number; rea
           tr(
             captured.failure === 'unsupported_file'
               ? 'lstb.scan.error.unsupportedFile'
-              : captured.failure === 'empty_text'
-                ? 'lstb.scan.error.emptyOcr'
-                : 'lstb.scan.error.parseFailed',
+              : captured.failure === 'read_failed'
+                ? 'lstb.scan.error.readFailed'
+                : captured.failure === 'empty_text'
+                  ? 'lstb.scan.error.emptyOcr'
+                  : 'lstb.scan.error.parseFailed',
           ),
         )
         return

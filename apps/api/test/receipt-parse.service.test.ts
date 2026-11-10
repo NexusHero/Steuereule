@@ -401,6 +401,35 @@ describe('ReceiptParseService — Two-Stage Receipt Isolation (#446 Slice 3)', (
   })
 })
 
+describe('ReceiptParseService — generic receipts keep their Beleg (#444 AC 13)', () => {
+  it('links the staged proposal to the uploaded Beleg, so it survives a reload and applies with beleg provenance', async () => {
+    const h = buildTestHarness([
+      JSON.stringify({
+        vendorCategory: 'spende',
+        receiptDate: '2025-11-02',
+        amountEur: 120,
+        suggestedScreen: 'interview',
+        suggestedField: 'spenden-betrag',
+        suggestedValue: '120',
+        summary: 'Spende 120 €.',
+        taxYear: 2025,
+      }),
+    ])
+    const beleg = await h.receiptRepo.create('user-r9', { fileName: 'spende.pdf' })
+
+    const res = await h.parseService.parseReceipt('user-r9', {
+      taxYear: 2025,
+      fileName: 'spende.pdf',
+      receiptId: beleg.id,
+      rawText: 'Zuwendungsbestätigung über 120 EUR',
+    })
+
+    expect(res.stagedAction?.receiptId).toBe(beleg.id)
+    const [stored] = await h.advisorRepo.listForUserAndYear('user-r9', 2025)
+    expect(stored?.meta?.action?.receiptId).toBe(beleg.id)
+  })
+})
+
 describe('ReceiptParseService — Two-Stage LStB Cascade (#444)', () => {
   it('Stage 1 parses standard LStB deterministically at 0 EUR (no LLM call) with Zero-Write staging', async () => {
     const h = buildTestHarness(['SHOULD_NOT_BE_CALLED'], true)

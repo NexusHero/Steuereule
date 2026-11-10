@@ -538,7 +538,8 @@ const AMOUNT_ONLY_LINE = /^\s*\d{1,3}(?:[.\s]\d{3})*(?:[,.]\d{1,2})?\s*(?:€|EU
 
 /**
  * Allowlist for the text fallback (ADR-0058): keeps only the certificate rows 3, 4, 23–27
- * (plus a wrapped amount-only continuation line) and a synthetic year header. Everything
+ * (plus a wrapped amount-only continuation line, found with the parser's own look-ahead) and a
+ * synthetic year header. Everything
  * else — name, address, employer, Steuer-ID, eTIN, Steuerklasse — never leaves the server,
  * whether or not a scrubber would have recognised it.
  */
@@ -554,10 +555,17 @@ export function selectLstbRelevantLines(rawText: string): string {
     const row = classifyLine(line)
     if (row === null || row === 'other') continue
     kept.push(line)
-    const next = lines[i + 1]?.trim()
-    if (next !== undefined && AMOUNT_ONLY_LINE.test(next)) {
-      kept.push(next)
-      i += 1
+    // Same look-ahead as the deterministic parser: up to 2 lines, blank lines skipped,
+    // stopping at the next certificate row. Only a pure amount line is ever carried along.
+    for (let offset = 1; offset <= 2 && i + offset < lines.length; offset += 1) {
+      const next = lines[i + offset]!.trim()
+      if (!next) continue
+      if (classifyLine(next) !== null) break
+      if (AMOUNT_ONLY_LINE.test(next)) {
+        kept.push(next)
+        i += offset
+      }
+      break
     }
   }
   return kept.join('\n')

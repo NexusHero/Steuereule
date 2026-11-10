@@ -65,4 +65,13 @@ describe('captureReceipt — the one receipt pipeline', () => {
     expect(await captureReceipt(pdf, { taxYear: 2025, deps: d })).toEqual({ ok: false, failure: 'empty_text' })
     expect(d.parse).not.toHaveBeenCalled()
   })
+
+  it('turns a file the device cannot read into a failure instead of throwing', async () => {
+    const d = deps(LSTB_TEXT)
+    ;(d as { extractText: unknown }).extractText = vi.fn(async () => {
+      throw new Error('Invalid PDF structure')
+    })
+    expect(await captureReceipt(pdf, { taxYear: 2025, deps: d })).toEqual({ ok: false, failure: 'read_failed' })
+    expect(d.parse).not.toHaveBeenCalled()
+  })
 })

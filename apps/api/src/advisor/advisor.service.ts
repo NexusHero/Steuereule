@@ -479,6 +479,8 @@ export class AdvisorService {
       readonly sourceId: OwlSourceId
       readonly summaryText: string
       readonly engine: AdvisorEngineInfo
+      /** The stored Beleg this proposal was read from: applying it records `{ kind: 'beleg' }` provenance. */
+      readonly receiptId?: string | null | undefined
     },
   ): Promise<{ action: AdvisorActionProposal; assistantMessage: AdvisorChatMessageDto }> {
     assertAiWritable(input.screen, input.field)
@@ -510,6 +512,7 @@ export class AdvisorService {
       reason: input.reason,
       sourceId: input.sourceId,
       paragraph: ADVISOR_LEGAL_SOURCES[input.sourceId].paragraph,
+      ...(input.receiptId ? { receiptId: input.receiptId } : {}),
     }
 
     const enrichedMeta = await this.enrichDraftsWithRawBaseline(userId, taxYear, {

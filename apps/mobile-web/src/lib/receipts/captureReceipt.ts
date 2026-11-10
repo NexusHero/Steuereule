@@ -10,7 +10,8 @@ import { detectDocumentMimeType, extractDocumentTextOnDevice, type OcrStage } fr
 /** Visible progress of one receipt capture. */
 export type CapturePhase = 'uploading' | OcrStage | 'parsing'
 
-export type CaptureFailure = 'unsupported_file' | 'empty_text' | 'parse_failed'
+/** `read_failed`: the device could not read the file (damaged/encrypted PDF, OCR engine did not start). */
+export type CaptureFailure = 'unsupported_file' | 'read_failed' | 'empty_text' | 'parse_failed'
 
 export type CaptureResult =
   | {
@@ -66,13 +67,18 @@ export async function captureReceipt(file: File, options: CaptureReceiptOptions)
     // Reading and parsing still help without the stored original (e.g. offline upload error).
   }
 
-  const extracted = await deps.extractText(file, {
-    fileName: file.name,
-    mimeType: file.type,
-    onProgress: (progress) => {
-      if (progress.stage !== 'done') options.onPhase?.(progress.stage)
-    },
-  })
+  let extracted: Awaited<ReturnType<CaptureReceiptDeps['extractText']>>
+  try {
+    extracted = await deps.extractText(file, {
+      fileName: file.name,
+      mimeType: file.type,
+      onProgress: (progress) => {
+        if (progress.stage !== 'done') options.onPhase?.(progress.stage)
+      },
+    })
+  } catch {
+    return { ok: false, failure: 'read_failed' }
+  }
   if (extracted.text.trim().length === 0) return { ok: false, failure: 'empty_text' }
 
   const kind = options.kind ?? classifyDocumentKind(extracted.text)
