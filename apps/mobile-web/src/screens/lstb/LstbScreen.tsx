@@ -262,6 +262,7 @@ export function LstbScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YE
           fileName: file.name,
           ...(uploadedReceiptId !== null ? { receiptId: uploadedReceiptId } : {}),
           rawText: ocrResult.text,
+          textSource: ocrResult.kind === 'pdf' && !ocrResult.usedOcrFallback ? 'pdf_text' : 'ocr',
           stageDraft: true,
           ...(params ? { person: 'B' } : {}),
         },

@@ -141,6 +141,7 @@ describe('HTTP E2E (no-DB): Beleg upload/download/delete, LStB parse & atomic LS
       payload: {
         taxYear: 2025,
         kind: 'lstb',
+        textSource: 'pdf_text',
         fileName: 'LStB_2025.pdf',
         receiptId: uploaded.id,
         rawText: [

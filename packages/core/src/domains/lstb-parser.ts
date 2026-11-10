@@ -16,6 +16,8 @@ export type LstbFieldReason =
   | 'partial_sv_lines'
   /** Suggested by the text fallback: never green, always needs the user's confirmation. */
   | 'llm_suggested'
+  /** Read from a photo or scanned page via OCR, which confuses digits (8/3, 1/7) — never green. */
+  | 'ocr_source'
 
 /** One summand of a field's calculation, e.g. line 23a with its printed amount. Formatting is the UI's job. */
 export interface LstbCalculationTerm {
@@ -647,6 +649,25 @@ export function applyLstbTextFallback(
     taxYear: stage1.taxYear,
     fields,
     svBreakdown: svFromFallback ? merged.svBreakdown : stage1.svBreakdown,
+    unresolvedFields: (Object.keys(fields) as WageTaxCertificateFieldId[]).filter((id) => fields[id].status === 'pruefen'),
+  }
+}
+
+/**
+ * Text that came from OCR (photo, scanned PDF) is not trusted to be green (ADR-0060, AC 4):
+ * every `ok` field becomes `pruefen` with reason `ocr_source`. Only a PDF text layer can be green.
+ */
+export function capOcrSourcedExtraction(result: LstbExtractionResult): LstbExtractionResult {
+  const cap = (field: LstbExtractedField): LstbExtractedField =>
+    field.status === 'ok' ? { ...field, status: 'pruefen', reason: 'ocr_source' } : field
+  const fields = {
+    bruttoarbeitslohn: cap(result.fields.bruttoarbeitslohn),
+    lohnsteuer: cap(result.fields.lohnsteuer),
+    sozialversicherung: cap(result.fields.sozialversicherung),
+  }
+  return {
+    ...result,
+    fields,
     unresolvedFields: (Object.keys(fields) as WageTaxCertificateFieldId[]).filter((id) => fields[id].status === 'pruefen'),
   }
 }

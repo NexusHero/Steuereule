@@ -82,6 +82,16 @@ export class ParseReceiptDto {
 
   @ApiPropertyOptional({
     type: String,
+    enum: ['pdf_text', 'ocr'],
+    example: 'pdf_text',
+    description: 'How rawText was produced on the device: a PDF text layer, or OCR of a photo/scan (never green, ADR-0060).',
+  })
+  @IsOptional()
+  @IsIn(['pdf_text', 'ocr'])
+  textSource?: 'pdf_text' | 'ocr'
+
+  @ApiPropertyOptional({
+    type: String,
     enum: ALLOWED_RECEIPT_PARSE_MIME_TYPES,
     example: 'application/pdf',
   })
@@ -142,7 +152,7 @@ export class LstbExtractedFieldDto {
   @ApiProperty({
     type: String,
     nullable: true,
-    enum: ['missing', 'unreadable', 'plausibility_conflict', 'partial_sv_lines', 'llm_suggested'],
+    enum: ['missing', 'unreadable', 'plausibility_conflict', 'partial_sv_lines', 'llm_suggested', 'ocr_source'],
     example: null,
   })
   reason!: LstbFieldReason | null

@@ -742,6 +742,7 @@ export const appResources = {
               plausibility_conflict: 'Wert passt rechnerisch nicht zum Bruttoarbeitslohn — bitte prüfen.',
               partial_sv_lines: 'Nur ein Teil der SV-Zeilen (23, 25, 26, 27) erkannt — Summe bitte prüfen.',
               llm_suggested: 'Vorschlag der Texterkennung — bitte mit deinem Beleg vergleichen.',
+              ocr_source: 'Aus Foto oder Scan gelesen — bitte jede Ziffer mit deinem Beleg vergleichen.',
             },
           },
           yearConflict: {
@@ -2263,6 +2264,7 @@ export const appResources = {
               plausibility_conflict: 'Value does not reconcile with gross pay — please verify.',
               partial_sv_lines: 'Only some social-insurance lines (23, 25, 26, 27) detected — please check sum.',
               llm_suggested: 'Suggested by text recognition — please compare with your certificate.',
+              ocr_source: 'Read from a photo or scan — please compare every digit with your certificate.',
             },
           },
           yearConflict: {

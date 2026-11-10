@@ -27,6 +27,17 @@ export const ParseReceiptDtoPerson = {
   B: 'B',
 } as const;
 
+/**
+ * How rawText was produced on the device: a PDF text layer, or OCR of a photo/scan (never green, ADR-0060).
+ */
+export type ParseReceiptDtoTextSource = typeof ParseReceiptDtoTextSource[keyof typeof ParseReceiptDtoTextSource];
+
+
+export const ParseReceiptDtoTextSource = {
+  pdf_text: 'pdf_text',
+  ocr: 'ocr',
+} as const;
+
 export type ParseReceiptDtoMimeType = typeof ParseReceiptDtoMimeType[keyof typeof ParseReceiptDtoMimeType];
 
 
@@ -47,6 +58,8 @@ export interface ParseReceiptDto {
   receiptId?: string;
   /** Taxpayer slot when parsing a partner LStB (ADR-0054). */
   person?: ParseReceiptDtoPerson;
+  /** How rawText was produced on the device: a PDF text layer, or OCR of a photo/scan (never green, ADR-0060). */
+  textSource?: ParseReceiptDtoTextSource;
   mimeType?: ParseReceiptDtoMimeType;
   /** Stages an unconfirmed pending draft in Eulen-Modus when true (default true). */
   stageDraft?: boolean;
@@ -180,6 +193,7 @@ export const AdvisorActionProposalDtoFieldReason = {
   plausibility_conflict: 'plausibility_conflict',
   partial_sv_lines: 'partial_sv_lines',
   llm_suggested: 'llm_suggested',
+  ocr_source: 'ocr_source',
 } as const;
 
 export type AdvisorActionProposalDtoCompanionFields = {[key: string]: string};
@@ -321,6 +335,7 @@ export const AdvisorMaxPathProposalDtoFieldReason = {
   plausibility_conflict: 'plausibility_conflict',
   partial_sv_lines: 'partial_sv_lines',
   llm_suggested: 'llm_suggested',
+  ocr_source: 'ocr_source',
 } as const;
 
 export type AdvisorMaxPathProposalDtoCompanionFields = {[key: string]: string};
@@ -467,6 +482,7 @@ export const LstbExtractedFieldDtoReason = {
   plausibility_conflict: 'plausibility_conflict',
   partial_sv_lines: 'partial_sv_lines',
   llm_suggested: 'llm_suggested',
+  ocr_source: 'ocr_source',
 } as const;
 
 export interface LstbExtractedFieldDto {

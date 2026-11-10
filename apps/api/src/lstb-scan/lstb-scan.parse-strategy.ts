@@ -4,6 +4,7 @@ import { Inject, Injectable, Optional, type OnModuleInit } from '@nestjs/common'
 import { z } from 'zod'
 import {
   applyLstbTextFallback,
+  capOcrSourcedExtraction,
   parseLstbTextDeterministically,
   scrubDocumentTextPii,
   selectLstbRelevantLines,
@@ -100,7 +101,9 @@ export class LstbScanParseStrategy implements DocumentParseStrategy, OnModuleIni
 
   async parse(userId: string, dto: ParseReceiptDto): Promise<ParseReceiptResponseDto> {
     const rawText = dto.rawText ?? ''
-    const stage1 = parseLstbTextDeterministically(rawText)
+    const parsed = parseLstbTextDeterministically(rawText)
+    // Only a PDF text layer may produce green values; OCR text is capped to `pruefen` (ADR-0060).
+    const stage1 = dto.textSource === 'pdf_text' ? parsed : capOcrSourcedExtraction(parsed)
     let extraction: LstbExtractionResult = stage1
     let stage: 'deterministic' | 'llm_text_fallback' = 'deterministic'
     let mode: 'vision_ocr' | 'deterministic_fallback' = 'deterministic_fallback'
@@ -108,7 +111,9 @@ export class LstbScanParseStrategy implements DocumentParseStrategy, OnModuleIni
 
     let securityBlocked = false
 
-    if (stage1.unresolvedFields.length > 0 && rawText.trim().length > 0) {
+    // The fallback can only fill empty fields, so it is only worth a call when one is empty.
+    const hasEmptyField = Object.values(stage1.fields).some((field) => field.value === null)
+    if (hasEmptyField && rawText.trim().length > 0) {
       const resolved = await this.resolveVisionSlotAndModel()
       if (resolved.visionModel && resolved.visionSlot) {
         const knownNames = await this.advisorService.knownNamesForScrubbing(userId, dto.taxYear)
