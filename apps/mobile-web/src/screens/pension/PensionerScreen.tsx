@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { ScrollView, View, Text, Pressable, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { Button, Feld, Input, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
+import { Button, Feld, Input, inkOnFunke, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
 import {
   getCockpitControllerGetCockpitSummaryQueryKey,
   getPensionControllerGetQueryKey,
@@ -219,7 +219,7 @@ function makeStyles(t: UiTheme) {
   }
   const kindButtonActive: ViewStyle = { backgroundColor: t.color.funke, borderColor: t.color.funke }
   const kindLabel: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.s }
-  const kindLabelActive: TextStyle = { color: t.color.tinte, fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: t.size.s }
+  const kindLabelActive: TextStyle = { color: inkOnFunke(t), fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: t.size.s }
   const fieldRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s3 }
   const unclearButton: ViewStyle = {
     paddingHorizontal: t.space.s3,

@@ -1,5 +1,5 @@
 import { type ViewStyle, type TextStyle } from 'react-native'
-import { WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
+import { WIDE_CONTENT_MAX_WIDTH, inkOnFunke, type UiTheme } from '@steuereule/ui'
 
 export function makeOnboardingStyles(t: UiTheme) {
   const screen: ViewStyle = {
@@ -28,7 +28,7 @@ export function makeOnboardingStyles(t: UiTheme) {
   }
   const mark: TextStyle = {
     backgroundColor: t.color.funke,
-    color: t.color.tinte,
+    color: inkOnFunke(t),
     paddingHorizontal: t.space.s2,
     borderRadius: t.radius.s,
     overflow: 'hidden',

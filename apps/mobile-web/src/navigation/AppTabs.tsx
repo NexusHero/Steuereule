@@ -8,7 +8,7 @@ import {
   type TabNavigationState,
 } from '@react-navigation/native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { OwlGlyph, TabBar, TAB_ICON_PATHS, tabBarClearance, useTheme, type TabItem } from '@steuereule/ui'
+import { OwlGlyph, TabBar, TAB_ICON_PATHS, inkOnFunke, tabBarClearance, useTheme, type TabItem } from '@steuereule/ui'
 import { APP_NS } from '../i18n/resources'
 import { TabIcon } from '../icons/TabIcon'
 import { useAccountSession } from '../auth/useAccountSession'
@@ -81,7 +81,7 @@ function FloatingTabBar({ state, navigation, insets }: BottomTabBarProps) {
 
   const activeRouteName = (state.routes[state.index]?.name ?? 'Cockpit') as TabRouteName
   const activeTab = TAB_ID_FOR_ROUTE[activeRouteName]
-  const iconColor = (id: TabId) => (id === activeTab ? t.color.tinte : t.color.tinte2)
+  const iconColor = (id: TabId) => (id === activeTab ? inkOnFunke(t) : t.color.tinte2)
 
   const tabs: TabItem[] = [
     { id: 'cockpit', label: tr('tabs.cockpit'), icon: <TabIcon path={TAB_ICON_PATHS.cockpit} color={iconColor('cockpit')} /> },

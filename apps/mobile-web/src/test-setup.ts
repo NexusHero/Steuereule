@@ -158,11 +158,12 @@ afterEach(() => {
 })
 afterAll(() => server.close())
 
-// The chosen tax year and funnel path live in session storage (sessionMemory.ts); never let them leak between tests.
-import { afterEach as clearSessionAfterEach } from 'vitest'
-clearSessionAfterEach(() => {
+// The chosen tax year, funnel path (sessionStorage), and UI preferences (localStorage) must never leak between tests.
+import { afterEach as clearStorageAfterEach } from 'vitest'
+clearStorageAfterEach(() => {
   try {
     sessionStorage.clear()
+    localStorage.clear()
   } catch {
     // no storage in this environment
   }

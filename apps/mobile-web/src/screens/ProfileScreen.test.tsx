@@ -336,3 +336,40 @@ describe('ProfilScreen — Erklärungs-Stammdaten entry (ADR-0050)', () => {
     expect(onOpenMasterData).toHaveBeenCalled()
   })
 })
+
+describe('ProfilScreen — Darstellung (Slice 6)', () => {
+  afterEach(() => {
+    localStorage.clear()
+  })
+
+  it('renders System / Immer hell / Immer dunkel and persists only on change', async () => {
+    mockSavedProfile()
+    renderProfile()
+    await screen.findByText('Anna Beispiel')
+
+    expect(screen.getByText('Darstellung')).toBeTruthy()
+    const systemOpt = screen.getByTestId('profil-darstellung-system')
+    const hellOpt = screen.getByTestId('profil-darstellung-hell')
+    const dunkelOpt = screen.getByTestId('profil-darstellung-dunkel')
+    expect(systemOpt.getAttribute('aria-pressed')).toBe('true')
+    expect(localStorage.getItem('steuereule.appearance')).toBeNull()
+
+    fireEvent.click(dunkelOpt)
+    expect(localStorage.getItem('steuereule.appearance')).toBe('dark')
+    expect(dunkelOpt.getAttribute('aria-pressed')).toBe('true')
+
+    fireEvent.click(hellOpt)
+    expect(localStorage.getItem('steuereule.appearance')).toBe('light')
+    expect(hellOpt.getAttribute('aria-pressed')).toBe('true')
+  })
+
+  it('renders Darstellung options in English', async () => {
+    mockSavedProfile()
+    renderProfile({ lng: 'en' })
+    await screen.findByText('Anna Beispiel')
+    expect(screen.getByText('Appearance')).toBeTruthy()
+    expect(screen.getByText('System')).toBeTruthy()
+    expect(screen.getByText('Always light')).toBeTruthy()
+    expect(screen.getByText('Always dark')).toBeTruthy()
+  })
+})

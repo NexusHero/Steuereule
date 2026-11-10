@@ -267,6 +267,12 @@ export const appResources = {
         sicherheit: {
           rowLabel: 'Sicherheit (Zwei-Faktor)',
         },
+        darstellung: {
+          titel: 'Darstellung',
+          system: 'System',
+          hell: 'Immer hell',
+          dunkel: 'Immer dunkel',
+        },
         devices: {
           heading: 'Angemeldete Geräte',
           loading: 'Geräte werden geladen …',
@@ -1888,6 +1894,12 @@ export const appResources = {
         },
         sicherheit: {
           rowLabel: 'Security (two-factor)',
+        },
+        darstellung: {
+          titel: 'Appearance',
+          system: 'System',
+          hell: 'Always light',
+          dunkel: 'Always dark',
         },
         devices: {
           heading: 'Signed-in devices',

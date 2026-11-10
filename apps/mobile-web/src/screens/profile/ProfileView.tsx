@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Card, Chip, useTheme, type Breakpoint } from '@steuereule/ui'
 import { APP_NS } from '../../i18n/resources'
 import { makeProfileStyles } from './styles'
+import { ProfileAppearanceSection } from './ProfileAppearanceSection'
 import { AssistantsListSection } from './AssistentenListSection'
 import { DeviceListSection } from '../device/DeviceListSection'
 import type { OnboardingProfile } from '../onboarding/profileMapping'
@@ -71,6 +72,8 @@ export function ProfileView({ profile, onEdit, justSaved, bp, onOpenPrivacy, onO
           <Text style={styles.datenRowArrow} aria-hidden={true}>→</Text>
         </Pressable>
       </Card>
+
+      <ProfileAppearanceSection />
 
       <AssistantsListSection />
 

@@ -2,7 +2,7 @@ import { useRef, useState, type ReactNode } from 'react'
 import { Pressable, ScrollView, Text, TextInput, View, type TextStyle, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { AiChip, Button, Card, Chip, Option, useBreakpoint, useTheme, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
+import { AiChip, Button, Card, Chip, Option, inkOnFunke, useBreakpoint, useTheme, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
 import {
   evaluateAdvisorTurn,
   formatEuro,
@@ -1192,7 +1192,7 @@ function makeStyles(t: UiTheme) {
       fontFamily: t.font.text,
       fontWeight: t.weight.fett,
       fontSize: t.size.xs,
-      color: t.color.ki,
+      color: t.color.kiTinte,
     } as TextStyle,
     dockInputRow: {
       flexDirection: 'row',
@@ -1235,7 +1235,7 @@ function makeStyles(t: UiTheme) {
       fontFamily: t.font.text,
       fontWeight: t.weight.schwer,
       fontSize: t.size.s,
-      color: t.color.tinte,
+      color: inkOnFunke(t),
     } as TextStyle,
     drawerHeader: {
       flexDirection: 'row',
@@ -1261,7 +1261,7 @@ function makeStyles(t: UiTheme) {
       fontFamily: t.font.text,
       fontWeight: t.weight.fett,
       fontSize: t.size.xs,
-      color: t.color.ki,
+      color: t.color.kiTinte,
     } as TextStyle,
     paneContent: {
       paddingVertical: t.space.s3,
@@ -1420,7 +1420,7 @@ function makeStyles(t: UiTheme) {
       fontFamily: t.font.text,
       fontWeight: t.weight.fett,
       fontSize: t.size.xs,
-      color: t.color.ki,
+      color: t.color.kiTinte,
     } as TextStyle,
     hero: { flexDirection: 'row', alignItems: 'center', gap: t.space.s4, marginBottom: t.space.s5 } as ViewStyle,
     heroCopy: { flex: 1, flexShrink: 1 } as ViewStyle,

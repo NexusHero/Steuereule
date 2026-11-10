@@ -1,5 +1,5 @@
 import { type ViewStyle, type TextStyle } from 'react-native'
-import { WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
+import { WIDE_CONTENT_MAX_WIDTH, inkOnFunke, type UiTheme } from '@steuereule/ui'
 
 export function makeProfileStyles(t: UiTheme) {
   const screen: ViewStyle = {
@@ -39,7 +39,7 @@ export function makeProfileStyles(t: UiTheme) {
     fontFamily: t.font.display,
     fontWeight: t.weight.schwer,
     fontSize: t.size.xl,
-    color: t.color.tinte,
+    color: inkOnFunke(t),
   }
   const name: TextStyle = { fontFamily: t.font.text, fontWeight: t.weight.schwer, fontSize: t.size.l, color: t.color.funke }
   const idLine: TextStyle = {
