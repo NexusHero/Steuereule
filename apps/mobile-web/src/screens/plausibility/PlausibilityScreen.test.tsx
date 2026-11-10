@@ -93,4 +93,30 @@ describe('PlausibilitaetScreen', () => {
 
     expect(await screen.findByText('Eine Einkunftsart können wir noch nicht rechnen.')).toBeTruthy()
   })
+
+  it('shows the betrag-spaeter Notice without blocking when an allowlisted step is "spaeter"', async () => {
+    server.use(
+      http.get(`*/v1/steuerjahre/${TAX_YEAR}/lstb`, () =>
+        HttpResponse.json(
+          {
+            bruttoarbeitslohn: { kind: 'erfasst', value: 50000 },
+            lohnsteuer: { kind: 'erfasst', value: 8000 },
+            sozialversicherung: { kind: 'erfasst', value: 9000 },
+            state: { kind: 'vollstaendig', bruttoarbeitslohn: 50000, lohnsteuer: 8000, sozialversicherung: 9000 },
+          },
+          { status: 200 },
+        ),
+      ),
+      http.get(`*/v1/steuerjahre/${TAX_YEAR}/interview`, () =>
+        HttpResponse.json(
+          { answers: { job: 'Angestellt', dhf: 'Ja', 'dhf-miete': 'spaeter' }, nextStep: { kind: 'done' }, openItems: 0 },
+          { status: 200 },
+        ),
+      ),
+    )
+    renderPlausibility()
+
+    expect(await screen.findByText('Mindestens ein Betrag ist noch mit „Später eintragen“ markiert.')).toBeTruthy()
+    expect(screen.getByText('Alles klar — keine Widersprüche, nichts mehr offen.')).toBeTruthy()
+  })
 })

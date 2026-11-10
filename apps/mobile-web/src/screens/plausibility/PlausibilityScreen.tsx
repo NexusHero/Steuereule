@@ -137,6 +137,7 @@ function fold(data: WageTaxCertificateData, answers: Answers) {
       gated: facts.gated,
     }),
     recordedNotCalculated: facts.recordedNotCalculated,
+    answers,
   }
 }
 
