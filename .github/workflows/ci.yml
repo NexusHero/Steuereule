@@ -845,6 +845,10 @@ jobs:
         # The model is stubbed inside the page (controllable SSE stream); sign-in, session and the
         # apply endpoints are the real stack. Needs DATABASE_URL (job env) to verify the sign-up.
         run: node e2e/advisor/plan-in-chat.mjs
+      - name: Dictation gate (#451 slice 5, ADR-0061) — WebGPU gating, consent before download, pinned + checksum-verified model, no audio out
+        # Stubs only WebGPU/memory/microphone and answers Hugging Face with non-matching bytes, so
+        # it never downloads the real model. Needs DATABASE_URL (job env) to verify the sign-up.
+        run: node e2e/advisor/dictation.mjs
       - name: Visibility-refetch gate (#223) — live re-read of email verification, both screens
         # Needs DATABASE_URL (already set in this job's env, above) to flip `emailVerified`
         # directly — there is no mail client in this environment (#224 is the still-manual,

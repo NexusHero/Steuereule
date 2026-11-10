@@ -277,6 +277,11 @@ export const appResources = {
           titel: 'Haptisches Feedback',
           beschreibung: 'Kurze Vibration bei Auswahl, Bestätigung und Warnungen.',
         },
+        sprachmodell: {
+          titel: 'Sprachmodell für das Diktieren',
+          beschreibung: 'Auf diesem Gerät liegt das Sprachmodell (ca. {{megabytes}} MB) im Browser-Speicher. Es enthält keine Daten von dir. Nach dem Löschen wird es beim nächsten Diktat wieder geladen, nur mit deiner Zustimmung.',
+          loeschen: 'Sprachmodell löschen',
+        },
         devices: {
           heading: 'Angemeldete Geräte',
           loading: 'Geräte werden geladen …',
@@ -1558,6 +1563,24 @@ export const appResources = {
         },
       },
       advisor: {
+        dictation: {
+          start: '🎙 Diktieren',
+          stop: '■ Fertig',
+          startAria: 'Diktat starten',
+          stopAria: 'Diktat beenden und in Text umwandeln',
+          recording: 'Ich höre zu … Tipp auf „Fertig“, wenn du fertig bist.',
+          transcribing: 'Wird auf deinem Gerät in Text umgewandelt …',
+          downloading: 'Sprachmodell wird geladen … {{percent}} %',
+          consentTitle: 'Sprachmodell für das Diktieren laden?',
+          consentBody: 'Für das Diktieren lädt die App einmalig ein Sprachmodell (ca. {{megabytes}} MB) von Hugging Face (USA) und dessen Download-Servern. Hugging Face sieht dabei deine IP-Adresse und den Zeitpunkt. Danach bleibt das Modell auf diesem Gerät gespeichert; du kannst es im Profil löschen.',
+          consentPrivacy: 'Dein Ton verlässt nie dein Gerät. Der erkannte Text landet im Eingabefeld, und du schickst ihn selbst ab.',
+          consentAccept: 'Laden und diktieren',
+          consentDecline: 'Nicht jetzt',
+          checksum: 'Das geladene Sprachmodell stimmt nicht mit der geprüften Fassung überein. Der Download wurde verworfen, es wurde nichts gespeichert.',
+          downloadFailed: 'Das Sprachmodell ließ sich gerade nicht laden. Bitte versuch es später noch mal.',
+          micDenied: 'Ohne Zugriff aufs Mikrofon kann ich nicht zuhören. Du kannst ihn in den Browser-Einstellungen erlauben.',
+          failed: 'Das Diktat hat nicht geklappt. Bitte versuch es noch mal oder tipp deine Frage.',
+        },
         plan: {
           heading: 'Plan der Eule',
           summary: '{{count}} von {{total}} Schritten erledigt',
@@ -1958,6 +1981,11 @@ export const appResources = {
         haptik: {
           titel: 'Haptic feedback',
           beschreibung: 'Subtle vibration on selection, confirmation, and warnings.',
+        },
+        sprachmodell: {
+          titel: 'Speech model for dictation',
+          beschreibung: 'The speech model (about {{megabytes}} MB) is stored in this browser. It contains none of your data. After deleting it, it is loaded again on your next dictation, only with your consent.',
+          loeschen: 'Delete speech model',
         },
         devices: {
           heading: 'Signed-in devices',
@@ -3241,6 +3269,24 @@ export const appResources = {
         },
       },
       advisor: {
+        dictation: {
+          start: '🎙 Dictate',
+          stop: '■ Done',
+          startAria: 'Start dictation',
+          stopAria: 'Stop dictation and turn it into text',
+          recording: 'Listening … tap “Done” when you are finished.',
+          transcribing: 'Turning it into text on your device …',
+          downloading: 'Loading the speech model … {{percent}} %',
+          consentTitle: 'Load the speech model for dictation?',
+          consentBody: 'To dictate, the app loads a speech model once (about {{megabytes}} MB) from Hugging Face (USA) and its download servers. Hugging Face sees your IP address and the time of the download. Afterwards the model stays on this device; you can delete it in your profile.',
+          consentPrivacy: 'Your voice never leaves your device. The recognised text lands in the input field and you send it yourself.',
+          consentAccept: 'Load and dictate',
+          consentDecline: 'Not now',
+          checksum: 'The downloaded speech model does not match the verified version. The download was discarded and nothing was stored.',
+          downloadFailed: 'The speech model could not be loaded right now. Please try again later.',
+          micDenied: 'Without microphone access I cannot listen. You can allow it in your browser settings.',
+          failed: 'Dictation did not work. Please try again or type your question.',
+        },
         plan: {
           heading: 'The Owl’s plan',
           summary: '{{count}} of {{total}} steps done',

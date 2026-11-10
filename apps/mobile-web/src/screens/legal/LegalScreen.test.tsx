@@ -99,3 +99,10 @@ describe('OSM attribution (#451 slice 3, decision 8)', () => {
     expect(screen.getByText(/© OpenStreetMap-Mitwirkende, verfügbar unter der Open Database License \(ODbL\) 1\.0/)).toBeTruthy()
   })
 })
+
+describe('privacy policy: dictation model (#451 slice 5)', () => {
+  it('names Hugging Face (USA), the IP address and the consent basis', () => {
+    renderPage('datenschutz')
+    expect(screen.getByText(/Sprachmodell für das Diktieren \(nur wenn du zustimmst\): .*Hugging Face, Inc\. \(USA\).*Dabei erhält Hugging Face deine IP-Adresse/)).toBeTruthy()
+  })
+})

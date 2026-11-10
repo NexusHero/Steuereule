@@ -29,7 +29,9 @@
       "react-dom": "19.0.0",
       "react-native": "0.79.5",
       "react-i18next": "15.7.4",
-      "i18next": "24.2.3"
+      "i18next": "24.2.3",
+      "@huggingface/transformers>onnxruntime-node": "-",
+      "@huggingface/transformers>sharp": "-"
     },
     "onlyBuiltDependencies": [
       "@bundled-es-modules/glob",

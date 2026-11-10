@@ -52,3 +52,5 @@ apps/api/prisma/.generated-test-schema-*.prisma
 # Self-hosted OCR assets (ADR-0060) — copied from node_modules by apps/mobile-web's
 # postinstall and verified against apps/mobile-web/ocr-assets.lock.json; never committed.
 apps/mobile-web/public/ocr/
+# #451 slice 5 / ADR-0061: dictation runtime copied by scripts/dictation-assets.mjs, never committed.
+apps/mobile-web/public/dictation/

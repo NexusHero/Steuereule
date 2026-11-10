@@ -1,0 +1,6 @@
+{
+  "dictation-worker.mjs": "4fccacbb66f87a8ba4c97fb955bc0b9f5b621685cb434a338b19954746260ac7",
+  "transformers.min.js": "8b5a3171f8876bab2b1820a7d65eb87628e3d30bb5ea85b9dd398e76eb34decb",
+  "ort/ort-wasm-simd-threaded.asyncify.mjs": "134a6762affdbcd869e0671782d68c9d832c23997697b2fa21d39f9b9d7b47eb",
+  "ort/ort-wasm-simd-threaded.asyncify.wasm": "176f28db8187735fe7695cae57f743e7e2ba650788509fa357ae91402daf3244"
+}

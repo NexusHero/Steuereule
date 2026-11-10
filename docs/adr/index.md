@@ -78,7 +78,7 @@ The ADRs **justify** the architecture; the [living arc42 document](../arc42/READ
 | 0058 | LStB-Textfallback: Allowlist, Belegprüfung, nie grün | Accepted |
 | 0059 | Eigene Keystore-Datenbank für Beleg-Schlüssel (Crypto-Shredding bis in die Backups) | Accepted |
 | 0060 | On-Device-OCR im Web, selbst gehostet, OCR-Werte nie grün | Accepted |
-| 0061 | Diktieren Stufe 2: Herkunft des Sprachmodells (Abweichung von ADR-0060?) | Proposed |
+| 0061 | Diktieren Stufe 2: Sprachmodell von Hugging Face, gepinnt und geprüft (Abweichung von ADR-0060) | Accepted |
 
 See also the [Tech Radar](./tech-radar.md).
 

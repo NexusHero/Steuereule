@@ -1,8 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Linking, Pressable, Text, TextInput, View, type TextStyle, type ViewStyle } from 'react-native'
 import { ChatComposer } from './chat/ChatComposer'
 import { ThinkingIndicator } from './chat/ThinkingIndicator'
 import { DictationHint } from './chat/DictationHint'
+import { DictationBar } from './chat/DictationBar'
+import { browserDictationEngine, type DictationEngine } from '../../lib/dictation/engine'
 import { MarkdownMessage } from './chat/MarkdownMessage'
 import { copyToClipboard } from './chat/clipboard'
 import { plainTextForCopy } from './chat/markdownLinks'
@@ -33,6 +35,8 @@ export interface AdvisorChatPanelProps {
   readonly chatError?: string | null | undefined
   readonly basisMode?: boolean | undefined
   readonly onSendMessage: (text: string, options?: ChatSendOptions) => Promise<void> | void
+  /** On-device dictation (#451 slice 5); the browser engine unless a test passes its own. */
+  readonly dictationEngine?: DictationEngine | undefined
   /** The plan of the current or last answer (#451 slice 6). */
   readonly plan?: AdvisorPlanView | null | undefined
   /** Stops the running answer; without it the chat offers no Stop (e.g. the non-streaming companion). */
@@ -343,6 +347,7 @@ export function AdvisorChatPanel({
   onStop,
   abortedTurn = null,
   plan = null,
+  dictationEngine = browserDictationEngine,
   onApplyAction,
   onUndoAction,
   onInspectMask,
@@ -364,6 +369,18 @@ export function AdvisorChatPanel({
   const [receiptFileName, setReceiptFileName] = useState('beleg.pdf')
   const [receiptRawText, setReceiptRawText] = useState('')
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [dictationSupported, setDictationSupported] = useState(false)
+
+  useEffect(() => {
+    let alive = true
+    void dictationEngine
+      .support()
+      .then((result) => alive && setDictationSupported(result.supported))
+      .catch(() => {})
+    return () => {
+      alive = false
+    }
+  }, [dictationEngine])
   const [editingId, setEditingId] = useState<string | null>(null)
 
   async function handleSubmit(rawText?: string, quickAction?: AdvisorQuickAction) {
@@ -750,7 +767,15 @@ export function AdvisorChatPanel({
         </Card>
       ) : null}
 
-      <DictationHint />
+      {dictationSupported ? (
+        <DictationBar
+          engine={dictationEngine}
+          disabled={isSending}
+          onTranscript={(text) => setInputText((prev) => (prev.trim() ? `${prev.trimEnd()} ${text}` : text))}
+        />
+      ) : (
+        <DictationHint />
+      )}
 
       {/* Chat Input Bar */}
       <View style={[styles.inputRow, compact && styles.inputRowCompact]}>
