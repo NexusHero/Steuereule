@@ -8,6 +8,7 @@ import {
   fail,
   registerAndOnboard,
   selectTaxYear2025,
+  nextStep,
   runStandaloneScenario,
 } from './helpers/scenario-harness.mjs'
 
@@ -85,9 +86,11 @@ export async function runScenario02(browser, webOrigin, _sql, { keepOpen = false
   await pageMarkus.waitForTimeout(500)
 
   await pageMarkus.locator('[data-testid="ch-lohnausweis-weiter"]').click()
+  await nextStep(pageMarkus)
 
   await pageMarkus.locator('[data-testid="katalog-option-einkuenfte-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
   await pageMarkus.locator('[data-testid="katalog-option-einkuenfte-Nein"]').click()
+  await nextStep(pageMarkus)
 
   await pageMarkus.locator('[data-testid="katalog-option-spenden-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
   await pageMarkus.locator('[data-testid="katalog-option-spenden-Nein"]').click()
@@ -95,6 +98,7 @@ export async function runScenario02(browser, webOrigin, _sql, { keepOpen = false
   await pageMarkus.locator('[data-testid="katalog-option-kv-pv-Nein"]').click()
   await pageMarkus.locator('[data-testid="katalog-option-riester-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
   await pageMarkus.locator('[data-testid="katalog-option-riester-Nein"]').click()
+  await nextStep(pageMarkus)
 
   await pageMarkus.locator('[data-testid="arbeitstage-urlaub"]').waitFor({ state: 'visible', timeout: 10_000 })
   await pageMarkus.locator('[data-testid="arbeitstage-urlaub"]').fill(String(s.markus.commute.vacationDays))

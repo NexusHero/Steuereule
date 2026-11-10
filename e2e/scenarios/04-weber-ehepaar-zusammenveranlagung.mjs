@@ -8,6 +8,7 @@ import {
   fail,
   registerAndOnboard,
   selectTaxYear2025,
+  nextStep,
   assertEstimate,
   unlockTaxYearInDb,
   confirmAnnexesIfPresent,
@@ -50,12 +51,14 @@ export async function runScenario04(browser, webOrigin, sql) {
   await page.locator('[data-testid="lstb-lohnsteuer"]').fill(String(s.thomas.lstb.wageTax))
   await page.locator('[data-testid="lstb-sozialversicherung"]').fill(String(s.thomas.lstb.socialSecurity))
   await page.locator('[data-testid="lstb-weiter"]').click()
+  await nextStep(page)
 
   for (const step of ['dhf', 'umzug', 'abfindung', 'lohnersatz', 'nebenjob']) {
     const opt = page.locator(`[data-testid="katalog-option-${step}-Nein"]`)
     await opt.waitFor({ state: 'visible', timeout: 10_000 })
     await opt.click()
   }
+  await nextStep(page)
 
   await page.locator('[data-testid="katalog-option-einkuenfte-Beides"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="katalog-option-einkuenfte-Beides"]').click()
@@ -63,6 +66,7 @@ export async function runScenario04(browser, webOrigin, sql) {
   await page.locator('[data-testid="katalog-option-kap-depot-Deutscher Broker"]').click()
   await page.locator('[data-testid="katalog-option-vermietung-art-Mehrere"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="katalog-option-vermietung-art-Mehrere"]').click()
+  await nextStep(page)
 
   await page.locator('[data-testid="katalog-option-spenden-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="katalog-option-spenden-Nein"]').click()
@@ -70,6 +74,7 @@ export async function runScenario04(browser, webOrigin, sql) {
   await page.locator('[data-testid="katalog-option-kv-pv-Nein"]').click()
   await page.locator('[data-testid="katalog-option-riester-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="katalog-option-riester-Nein"]').click()
+  await nextStep(page)
 
   await page.locator('[data-testid="arbeitstage-urlaub"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="arbeitstage-urlaub"]').fill(String(s.thomas.commute.vacationDays))
@@ -81,6 +86,8 @@ export async function runScenario04(browser, webOrigin, sql) {
   await page.locator('[data-testid="arbeitstage-arbeitsort"]').fill(s.thomas.commute.workplace)
   await page.locator('[data-testid="arbeitstage-weiter"]').click()
 
+  await page.locator('[data-testid="cockpit-kacheln"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await page.goto(`${webOrigin}/app/steuerjahr/2025/plausibilitaet`, { waitUntil: 'networkidle' })
   await page.locator('[data-testid="plausibilitaet-weiter"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="plausibilitaet-weiter"]').click()
   await page.locator('[data-testid="verheiratet-ja"]').waitFor({ state: 'visible', timeout: 10_000 })

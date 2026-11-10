@@ -6,6 +6,7 @@ import {
   guardAgainst429,
   fail,
   registerAndOnboard,
+  openTile,
   runStandaloneScenario,
 } from './helpers/scenario-harness.mjs'
 
@@ -59,15 +60,18 @@ export async function runScenario15(browser, webOrigin) {
 
   await page.locator('[data-testid="ch-lohnausweis-weiter"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="ch-lohnausweis-weiter"]').click()
+  await openTile(page, 'einkuenfte')
 
   await page.locator('[data-testid="katalog-option-einkuenfte-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="katalog-option-einkuenfte-Nein"]').click()
+  await openTile(page, 'sonderausgaben')
 
   for (const step of ['spenden', 'kv-pv', 'riester']) {
     const opt = page.locator(`[data-testid="katalog-option-${step}-Nein"]`)
     await opt.waitFor({ state: 'visible', timeout: 10_000 })
     await opt.click()
   }
+  await openTile(page, 'arbeitsweg')
 
   await page.locator('[data-testid="arbeitstage-km"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="arbeitstage-km"]').fill('10')

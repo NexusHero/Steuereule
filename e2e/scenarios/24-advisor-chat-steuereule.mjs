@@ -7,6 +7,7 @@ import {
   fail,
   registerAndOnboard,
   selectTaxYear2025,
+  nextStep,
   assertCockpitEstimate,
   runStandaloneScenario,
 } from './helpers/scenario-harness.mjs'
@@ -44,16 +45,20 @@ export async function runScenario24(browser, webOrigin) {
   await page.locator('[data-testid="lstb-lohnsteuer"]').fill('12800')
   await page.locator('[data-testid="lstb-sozialversicherung"]').fill('13200')
   await page.locator('[data-testid="lstb-weiter"]').click()
+  await nextStep(page)
 
   await page.locator('[data-testid="katalog-option-dhf-Nein"]').click()
   await page.locator('[data-testid="katalog-option-umzug-Nein"]').click()
   await page.locator('[data-testid="katalog-option-abfindung-Nein"]').click()
   await page.locator('[data-testid="katalog-option-lohnersatz-Nein"]').click()
   await page.locator('[data-testid="katalog-option-nebenjob-Nein"]').click()
+  await nextStep(page)
   await page.locator('[data-testid="katalog-option-einkuenfte-Nein"]').click()
+  await nextStep(page)
   await page.locator('[data-testid="katalog-option-spenden-Nein"]').click()
   await page.locator('[data-testid="katalog-option-kv-pv-Nein"]').click()
   await page.locator('[data-testid="katalog-option-riester-Nein"]').click()
+  await nextStep(page)
 
   await page.locator('[data-testid="arbeitstage-urlaub"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="arbeitstage-urlaub"]').fill('25')
@@ -65,6 +70,8 @@ export async function runScenario24(browser, webOrigin) {
   await page.locator('[data-testid="arbeitstage-arbeitsort"]').fill('München')
   await page.locator('[data-testid="arbeitstage-weiter"]').click()
 
+  await page.locator('[data-testid="cockpit-kacheln"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await page.goto(`${webOrigin}/app/steuerjahr/2025/plausibilitaet`, { waitUntil: 'networkidle' })
   await page.locator('[data-testid="plausibilitaet-weiter"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="plausibilitaet-weiter"]').click()
   await page.locator('[data-testid="verheiratet-nein"]').click()
