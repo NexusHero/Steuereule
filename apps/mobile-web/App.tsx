@@ -217,6 +217,7 @@ function AppRoute({ navigation, route }: NativeStackScreenProps<RootStackParamLi
       onSignedOut={() => {
         queryClient.clear()
         navigation.replace('Login')
+        rememberReturnTo(null)
       }}
     >
       <TabbedShell />
