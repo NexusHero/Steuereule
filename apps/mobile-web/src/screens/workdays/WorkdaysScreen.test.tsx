@@ -8,21 +8,25 @@ import { ThemeProvider } from '@steuereule/ui'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { weekdaysInYear } from '@steuereule/core'
 import { http, HttpResponse } from 'msw'
+import { getCommuteControllerGetQueryKey, getCockpitControllerGetCockpitSummaryQueryKey, getTaxEstimateControllerGetQueryKey } from '@steuereule/api-client'
 import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { WorkdaysScreen } from './WorkdaysScreen'
 
-function renderWorkdays(onDone: () => void = () => {}, taxYear = 2026) {
+function renderWorkdays(onDone: () => void = () => {}, taxYear = 2026, queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } }), onBack?: () => void) {
   const i18n = createAppI18n('de')
-  return render(
-    <QueryClientProvider client={new QueryClient()}>
-      <I18nextProvider i18n={i18n}>
-        <ThemeProvider mode="light">
-          <WorkdaysScreen taxYear={taxYear} onDone={onDone} />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
-  )
+  return {
+    queryClient,
+    ...render(
+      <QueryClientProvider client={queryClient}>
+        <I18nextProvider i18n={i18n}>
+          <ThemeProvider mode="light">
+            <WorkdaysScreen taxYear={taxYear} onDone={onDone} {...(onBack ? { onBack } : {})} />
+          </ThemeProvider>
+        </I18nextProvider>
+      </QueryClientProvider>,
+    ),
+  }
 }
 
 describe('ArbeitstageScreen', () => {
@@ -111,5 +115,35 @@ describe('ArbeitstageScreen', () => {
         workplace: '79539 Lörrach, Hauptstraße 1',
       },
     ])
+  })
+
+  it('invalidates commute, cockpitSummary, and taxEstimate after saving before calling onDone', async () => {
+    let commuteGetCount = 0
+    server.use(
+      http.get('*/v1/steuerjahre/2025/arbeitsweg', () => {
+        commuteGetCount += 1
+        return HttpResponse.json({ inputs: null, workdays: null, commuterAllowance: null })
+      }),
+      http.put('*/v1/steuerjahre/2025/arbeitsweg', () => HttpResponse.json({ inputs: null, workdays: null, commuterAllowance: null })),
+    )
+    const onDone = vi.fn()
+    const onBack = vi.fn()
+    const { queryClient } = renderWorkdays(onDone, 2025, undefined, onBack)
+    const commuteKey = getCommuteControllerGetQueryKey(2025)
+    const summaryKey = getCockpitControllerGetCockpitSummaryQueryKey(2025)
+    const estimateKey = getTaxEstimateControllerGetQueryKey(2025)
+    queryClient.setQueryData(commuteKey, { status: 200, data: { inputs: null, workdays: null, commuterAllowance: null }, headers: new Headers() })
+    queryClient.setQueryData(summaryKey, { status: 200, data: null, headers: new Headers() })
+    queryClient.setQueryData(estimateKey, { status: 200, data: { kind: 'offen' }, headers: new Headers() })
+
+    await screen.findByLabelText('Urlaubstage')
+    fireEvent.click(screen.getByLabelText('Zurück'))
+    expect(onBack).toHaveBeenCalledOnce()
+
+    fireEvent.click(screen.getByTestId('arbeitstage-weiter'))
+    await waitFor(() => expect(onDone).toHaveBeenCalledOnce())
+    await waitFor(() => expect(commuteGetCount).toBeGreaterThanOrEqual(2))
+    expect(queryClient.getQueryState(summaryKey)?.isInvalidated).toBe(true)
+    expect(queryClient.getQueryState(estimateKey)?.isInvalidated).toBe(true)
   })
 })

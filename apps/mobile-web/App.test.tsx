@@ -819,9 +819,13 @@ describe('App', () => {
       await waitFor(() => expect(window.sessionStorage.getItem('steuereule.returnTo')).toBeNull())
     })
 
-    it('tunnel unchanged: LStB onDone -> Catalog lebenslagen -> onDone -> Catalog einkuenfte -> onBack -> lebenslagen with revisit', async () => {
+    it('hub cockpit (§ 2.1): LStB, Catalog, CrossBorder, and Workdays return to CockpitHome on onDone and onBack', async () => {
       mockSignedInSession()
       const interviewAnswers: Record<string, string> = {
+        job: 'Angestellt',
+        ausland: 'Nein',
+        kinder: 'Nein',
+        familienstand: 'Ledig',
         dhf: 'Nein',
         umzug: 'Nein',
         abfindung: 'Nein',
@@ -840,6 +844,30 @@ describe('App', () => {
           interviewAnswers[body.questionId] = body.value
           return HttpResponse.json({ nextStep: { kind: 'done' }, openItems: 0 }, { status: 200 })
         }),
+        http.get('*/v1/steuerjahre/2025/ch-lohnausweis', () =>
+          HttpResponse.json({
+            fields: [],
+            bemerkungen: null,
+            exchangeRate: null,
+            status: null,
+            items: [],
+            foldStatus: null,
+            nGre: {
+              arbeitgeberName: null,
+              arbeitgeberStrasse: null,
+              arbeitgeberPlzOrt: null,
+              familienzulagenChf: null,
+              krankentaggeldChf: null,
+              pkArbeitnehmerChf: null,
+              pkArbeitgeberChf: null,
+              krankentaggeldArbeitgeberProzent: null,
+              krankentaggeldArbeitgeberChf: null,
+              nbuvArbeitgeberProzent: null,
+              nbuvArbeitgeberChf: null,
+              specialCases: null,
+            },
+          }),
+        ),
       )
 
       window.history.pushState({}, '', '/app/steuerjahr/2025/lstb')
@@ -847,14 +875,30 @@ describe('App', () => {
       render(<App />)
 
       fireEvent.click(await screen.findByTestId('lstb-weiter'))
+      await screen.findByText('Steuerjahr')
+      await waitFor(() => expect(window.location.pathname).toBe('/app'))
+
+      window.history.pushState({}, '', '/app/steuerjahr/2025/katalog/lebenslagen')
+      render(<App />)
       fireEvent.click(await screen.findByTestId('katalog-option-nebenjob-Minijob'))
+      await waitFor(() => expect(screen.getAllByText('Steuerjahr').length).toBeGreaterThan(0))
 
-      expect(await screen.findByTestId('katalog-option-einkuenfte-Kapitalerträge')).toBeTruthy()
-      expect(window.location.search).toBe('')
-
-      fireEvent.click(screen.getByLabelText('Zurück'))
-      expect(await screen.findByTestId('katalog-option-nebenjob-Minijob')).toBeTruthy()
-      await waitFor(() => expect(window.location.pathname + window.location.search).toBe('/app/steuerjahr/2025/katalog/lebenslagen?revisit=1'))
+      // Back from CrossBorder returns to CockpitHome
+      server.use(
+        http.get('*/v1/steuerjahre/2025/interview', () =>
+          HttpResponse.json({
+            answers: { 'ch-wohnsitz': 'Deutschland', 'ch-nichtrueckkehrtage': '10' },
+            nextStep: { kind: 'done' },
+            openItems: 0,
+          }),
+        ),
+      )
+      window.history.pushState({}, '', '/app/steuerjahr/2025/schweiz')
+      render(<App />)
+      await screen.findByTestId('ch-lohnausweis-weiter')
+      const backButtons = screen.getAllByLabelText('Zurück')
+      fireEvent.click(backButtons[backButtons.length - 1]!)
+      await waitFor(() => expect(window.location.pathname).toBe('/app'))
     })
 
     it('keeps /app/steuerjahr/2025/ausdruck mapped to the root Printout screen', async () => {

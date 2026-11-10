@@ -4,7 +4,7 @@
 // what rendered (the question, or the mask's derived status + fold) — never merely that "something"
 // rendered. The derived Grenzgänger-Status and the fold come from the server's response, never
 // recomputed in the client.
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
 import { ThemeProvider } from '@steuereule/ui'
@@ -25,14 +25,14 @@ function makeTestQueryClient() {
   return new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
 }
 
-function renderScreen(onDone: () => void = () => {}) {
+function renderScreen(onDone: () => void = () => {}, onBack?: () => void) {
   const i18n = createAppI18n('de')
   const queryClient = makeTestQueryClient()
   return render(
     <QueryClientProvider client={queryClient}>
       <I18nextProvider i18n={i18n}>
         <ThemeProvider mode="light">
-          <CrossBorderScreen onDone={onDone} taxYear={TAX_YEAR} />
+          <CrossBorderScreen onDone={onDone} {...(onBack ? { onBack } : {})} taxYear={TAX_YEAR} />
         </ThemeProvider>
       </I18nextProvider>
     </QueryClientProvider>,
@@ -321,6 +321,7 @@ describe('GrenzgaengerScreen — Vorsorge außerhalb des Lohns', () => {
 
     await waitFor(() => expect(bodies).toEqual([{ krankenkasseChf: 4200 }, { saeule3aChf: 7000 }]))
   })
+})
 
 describe('GrenzgaengerScreen accessibility', () => {
   it('gives every Lohnausweis Ziffer a name screen readers can announce, not just the placeholder', async () => {
@@ -331,4 +332,36 @@ describe('GrenzgaengerScreen accessibility', () => {
     expect(screen.getByLabelText('Ziffer 12 · Quellensteuerabzug')).toBeTruthy()
   })
 })
+
+describe('GrenzgaengerScreen — onBack & saving race safety', () => {
+  it('renders BackButton in Lohnausweis step when onBack is given and awaits in-flight save before calling onDone', async () => {
+    let releasePut: () => void = () => {}
+    const putPending = new Promise<void>((resolve) => {
+      releasePut = resolve
+    })
+    server.use(
+      http.get(INTERVIEW_URL, () => HttpResponse.json(DONE_CH_INTERVIEW, { status: 200 })),
+      http.put(`${CH_URL}/:feld`, async () => {
+        await putPending
+        return HttpResponse.json(EMPTY_CH, { status: 200 })
+      }),
+    )
+    const onDone = vi.fn()
+    const onBack = vi.fn()
+    renderScreen(onDone, onBack)
+
+    const lohn = await screen.findByTestId('ch-feld-lohn')
+    fireEvent.click(screen.getByLabelText('Zurück'))
+    expect(onBack).toHaveBeenCalledOnce()
+
+    fireEvent.change(lohn, { target: { value: '90000' } })
+    fireEvent.blur(lohn)
+    fireEvent.click(screen.getByTestId('ch-lohnausweis-weiter'))
+
+    await new Promise((r) => setTimeout(r, 20))
+    expect(onDone).not.toHaveBeenCalled()
+
+    releasePut()
+    await waitFor(() => expect(onDone).toHaveBeenCalledOnce())
+  })
 })

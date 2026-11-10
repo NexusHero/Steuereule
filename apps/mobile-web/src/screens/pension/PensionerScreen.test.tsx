@@ -1,16 +1,16 @@
 // Rentner-Screen (REQ-022, ticket 10.4) — renders the Rentenart picker + the Jahresbetrag from
 // GET, sends whole numbers via PUT, and shows the derived taxable share with its § 22 Herkunft.
 // Honest loading/error states. The client stays dumb: the fold comes from the server.
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
 import { ThemeProvider } from '@steuereule/ui'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
+import { getCockpitControllerGetCockpitSummaryQueryKey, getTaxEstimateControllerGetQueryKey, type PensionResponseDto } from '@steuereule/api-client'
 import { createAppI18n } from '../../i18n/app-i18n'
 import { PensionerScreen } from './PensionerScreen'
 import { server } from '../../test-msw-server'
-import type { PensionResponseDto } from '@steuereule/api-client'
 
 const TAX_YEAR = 2026
 const PENSION_URL = `*/v1/steuerjahre/${TAX_YEAR}/rente`
@@ -24,18 +24,20 @@ const STATUTORY_PENSION: PensionResponseDto = {
   status: { kind: 'bestimmt', einnahmen: 16000, vorsorgeaufwand: 0, anrechnung: 0 },
 }
 
-function renderPensioner() {
+function renderPensioner(onDone: () => void = () => {}, queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } }), onBack?: () => void) {
   const i18n = createAppI18n('de')
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={i18n}>
-        <ThemeProvider mode="light">
-          <PensionerScreen taxYear={TAX_YEAR} onDone={() => {}} />
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>,
-  )
+  return {
+    queryClient,
+    ...render(
+      <QueryClientProvider client={queryClient}>
+        <I18nextProvider i18n={i18n}>
+          <ThemeProvider mode="light">
+            <PensionerScreen taxYear={TAX_YEAR} onDone={onDone} {...(onBack ? { onBack } : {})} />
+          </ThemeProvider>
+        </I18nextProvider>
+      </QueryClientProvider>,
+    ),
+  }
 }
 
 describe('RentnerScreen', () => {
@@ -94,5 +96,39 @@ describe('RentnerScreen', () => {
 
     await waitFor(() => expect(body).toEqual({ kind: 'unklar' }))
     expect(url).toContain('/rente/jahresbetrag')
+  })
+
+  it('awaits in-flight mutation before calling onDone and invalidates cockpitSummary and taxEstimate', async () => {
+    let releasePut: () => void = () => {}
+    const putPending = new Promise<void>((resolve) => {
+      releasePut = resolve
+    })
+    server.use(
+      http.put(`${PENSION_URL}/art`, async () => {
+        await putPending
+        return HttpResponse.json(STATUTORY_PENSION, { status: 200 })
+      }),
+    )
+    const onDone = vi.fn()
+    const onBack = vi.fn()
+    const { queryClient } = renderPensioner(onDone, undefined, onBack)
+    const summaryKey = getCockpitControllerGetCockpitSummaryQueryKey(TAX_YEAR)
+    const estimateKey = getTaxEstimateControllerGetQueryKey(TAX_YEAR)
+    queryClient.setQueryData(summaryKey, { status: 200, data: null, headers: new Headers() })
+    queryClient.setQueryData(estimateKey, { status: 200, data: { kind: 'offen' }, headers: new Headers() })
+
+    await screen.findByText('Gesetzliche Rente')
+    fireEvent.click(screen.getByLabelText('Zurück'))
+    expect(onBack).toHaveBeenCalledOnce()
+
+    fireEvent.click(screen.getByText('Gesetzliche Rente'))
+    fireEvent.click(screen.getByText('Weiter'))
+    await new Promise((r) => setTimeout(r, 20))
+    expect(onDone).not.toHaveBeenCalled()
+
+    releasePut()
+    await waitFor(() => expect(onDone).toHaveBeenCalledOnce())
+    expect(queryClient.getQueryState(summaryKey)?.isInvalidated).toBe(true)
+    expect(queryClient.getQueryState(estimateKey)?.isInvalidated).toBe(true)
   })
 })

@@ -2,7 +2,14 @@ import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
 import { ThemeProvider } from '@steuereule/ui'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { http, HttpResponse } from 'msw'
+import {
+  getCockpitControllerGetCockpitSummaryQueryKey,
+  getTaxEstimateControllerGetQueryKey,
+} from '@steuereule/api-client'
 import { createAppI18n } from '../../i18n/app-i18n'
+import { server } from '../../test-msw-server'
 import { ChildrenScreen } from './ChildrenScreen'
 
 const KINDER_FIXTURE = [
@@ -222,5 +229,72 @@ describe('KinderScreen', () => {
     await waitFor(() => {
       expect(onSave).toHaveBeenCalledWith('kind-ch-1', expect.objectContaining({ swissFamilyAllowanceEur: '2800' }))
     })
+  })
+
+  it('invalidates children, cockpitSummary, and taxEstimate on save and awaits in-flight save before onDone', async () => {
+    let childrenGetCount = 0
+    let releasePost: () => void = () => {}
+    const postPending = new Promise<void>((resolve) => {
+      releasePost = resolve
+    })
+    server.use(
+      http.get('*/v1/steuerjahre/2025/kinder', () => {
+        childrenGetCount += 1
+        return HttpResponse.json({
+          kinder: childrenGetCount > 1 ? KINDER_FIXTURE : [],
+          count: childrenGetCount > 1 ? 1 : 0,
+          childBenefitSum: childrenGetCount > 1 ? 3000 : 0,
+          totalAllowance: childrenGetCount > 1 ? 9600 : 0,
+          swissFamilyAllowanceSum: 0,
+          differentialChildBenefitSum: 0,
+        })
+      }),
+      http.post('*/v1/steuerjahre/2025/kinder', async () => {
+        await postPending
+        return HttpResponse.json(
+          {
+            kinder: KINDER_FIXTURE,
+            count: 1,
+            childBenefitSum: 3000,
+            totalAllowance: 9600,
+            swissFamilyAllowanceSum: 0,
+            differentialChildBenefitSum: 0,
+          },
+          { status: 201 },
+        )
+      }),
+    )
+    const i18n = createAppI18n('de')
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+    const summaryKey = getCockpitControllerGetCockpitSummaryQueryKey(2025)
+    const estimateKey = getTaxEstimateControllerGetQueryKey(2025)
+    queryClient.setQueryData(summaryKey, { status: 200, data: null, headers: new Headers() })
+    queryClient.setQueryData(estimateKey, { status: 200, data: { kind: 'offen' }, headers: new Headers() })
+
+    const onDone = vi.fn()
+    render(
+      <QueryClientProvider client={queryClient}>
+        <I18nextProvider i18n={i18n}>
+          <ThemeProvider mode="light">
+            <ChildrenScreen taxYear={2025} onDone={onDone} />
+          </ThemeProvider>
+        </I18nextProvider>
+      </QueryClientProvider>,
+    )
+
+    fireEvent.change(await screen.findByLabelText('Vorname'), { target: { value: 'Lina' } })
+    fireEvent.change(screen.getByLabelText('Nachname'), { target: { value: 'Muster' } })
+    fireEvent.change(screen.getByLabelText('Geburtsdatum'), { target: { value: '12.05.2016' } })
+    fireEvent.click(screen.getByTestId('kind-speichern'))
+    fireEvent.click(screen.getByTestId('kinder-weiter'))
+
+    await new Promise((r) => setTimeout(r, 20))
+    expect(onDone).not.toHaveBeenCalled()
+
+    releasePost()
+    await waitFor(() => expect(onDone).toHaveBeenCalledOnce())
+    expect(childrenGetCount).toBeGreaterThanOrEqual(2)
+    expect(queryClient.getQueryState(summaryKey)?.isInvalidated).toBe(true)
+    expect(queryClient.getQueryState(estimateKey)?.isInvalidated).toBe(true)
   })
 })

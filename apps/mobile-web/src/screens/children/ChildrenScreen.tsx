@@ -18,6 +18,8 @@ import {
 } from '@steuereule/core'
 import {
   getChildrenControllerListQueryKey,
+  getCockpitControllerGetCockpitSummaryQueryKey,
+  getTaxEstimateControllerGetQueryKey,
   useChildrenControllerCreate,
   useChildrenControllerDelete,
   useChildrenControllerList,
@@ -28,6 +30,7 @@ import { APP_NS } from '../../i18n/resources'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
 import { ErrorState, LoadingState } from '../shared/ScreenState'
+import { usePendingMutations } from '../shared/usePendingMutations'
 
 export interface ChildItem {
   id: string
@@ -128,6 +131,7 @@ function ConnectedKinderScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TA
   const masterData = useMasterDataControllerRead()
   const married = masterData.data?.status === 200 && masterData.data.data.familienstand === 'verheiratet'
   const [householdQuestions, setHouseholdQuestions] = useState(false)
+  const { track, flushThen } = usePendingMutations()
 
   if (query.isPending) {
     return <LoadingState bp={bp} label={tr('kinder.loading', 'Kinder werden geladen …')} />
@@ -145,7 +149,11 @@ function ConnectedKinderScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TA
   }
 
   const invalidate = async () => {
-    await queryClient.invalidateQueries({ queryKey: getChildrenControllerListQueryKey(taxYear) })
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: getChildrenControllerListQueryKey(taxYear) }),
+      queryClient.invalidateQueries({ queryKey: getCockpitControllerGetCockpitSummaryQueryKey(taxYear) }),
+      queryClient.invalidateQueries({ queryKey: getTaxEstimateControllerGetQueryKey(taxYear) }),
+    ])
   }
 
   if (householdQuestions) {
@@ -161,21 +169,33 @@ function ConnectedKinderScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TA
 
   return (
     <KinderScreenView
-      onDone={onDone}
-      {...(onBack ? { onBack } : {})}
+      onDone={() => flushThen(onDone)}
+      {...(onBack ? { onBack: () => flushThen(onBack) } : {})}
       taxYear={taxYear}
       initialKinder={query.data.data.kinder}
-      onAddChild={async (data) => {
-        await createChild.mutateAsync({ jahr: taxYear, data })
-        await invalidate()
+      onAddChild={(data) => {
+        const task = (async () => {
+          await createChild.mutateAsync({ jahr: taxYear, data })
+          await invalidate()
+        })()
+        track(task)
+        return task
       }}
-      onSaveChild={async (id, data) => {
-        await updateChild.mutateAsync({ jahr: taxYear, id, data })
-        await invalidate()
+      onSaveChild={(id, data) => {
+        const task = (async () => {
+          await updateChild.mutateAsync({ jahr: taxYear, id, data })
+          await invalidate()
+        })()
+        track(task)
+        return task
       }}
-      onDeleteChild={async (id) => {
-        await deleteChild.mutateAsync({ jahr: taxYear, id })
-        await invalidate()
+      onDeleteChild={(id) => {
+        const task = (async () => {
+          await deleteChild.mutateAsync({ jahr: taxYear, id })
+          await invalidate()
+        })()
+        track(task)
+        return task
       }}
       onSingleParentQuestions={() => setHouseholdQuestions(true)}
       married={married}
@@ -305,7 +325,7 @@ function KinderScreenView({
   return (
     <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="kinder-screen">
       <View style={styles.headerRow}>
-        {onBack ? <BackButton accessibilityLabel={tr('kinder.back', 'Zurück')} onPress={onBack} /> : <BackButtonSpacer />}
+        {onBack ? <BackButton accessibilityLabel={tr('kinder.back', 'Zurück')} onPress={() => onBack()} /> : <BackButtonSpacer />}
       </View>
       <Text style={styles.heading}>{tr('kinder.heading', 'Kinder & Anlage Kind')}</Text>
       <Text style={styles.help}>
@@ -595,7 +615,7 @@ function KinderScreenView({
         </Button>
       ) : null}
 
-      <Button onPress={onDone} style={styles.cta} testID="kinder-weiter">
+      <Button onPress={() => onDone()} style={styles.cta} testID="kinder-weiter">
         {tr('kinder.done', 'Weiter')}
       </Button>
     </ScrollView>

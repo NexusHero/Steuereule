@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { ScrollView, View, Text, Pressable, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
+import { useQueryClient } from '@tanstack/react-query'
 import { Button, Chip, Feld, Input, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
 import {
   GERMAN_STATES,
@@ -13,7 +14,14 @@ import {
   type HolidayRegion,
   type IsoWeekday,
 } from '@steuereule/core'
-import { useCommuteControllerGet, useCommuteControllerPut, type CommuteInputsDto } from '@steuereule/api-client'
+import {
+  getCockpitControllerGetCockpitSummaryQueryKey,
+  getCommuteControllerGetQueryKey,
+  getTaxEstimateControllerGetQueryKey,
+  useCommuteControllerGet,
+  useCommuteControllerPut,
+  type CommuteInputsDto,
+} from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
@@ -64,6 +72,7 @@ function WorkdaysForm({
   const t = useTheme()
   const styles = makeStyles(t)
   const { t: tr } = useTranslation(APP_NS)
+  const queryClient = useQueryClient()
   const save = useCommuteControllerPut()
 
   const [workdays, setWorkdays] = useState<readonly IsoWeekday[]>((saved?.workdays as IsoWeekday[] | undefined) ?? [1, 2, 3, 4, 5])
@@ -122,7 +131,17 @@ function WorkdaysForm({
         ...(partnerName === undefined ? {} : { params: { person: 'B' as const } }),
       },
       {
-        onSuccess: (response) => (response.status === 200 ? onDone() : setError(true)),
+        onSuccess: (response) => {
+          if (response.status === 200) {
+            const params = partnerName === undefined ? undefined : ({ person: 'B' } as const)
+            void queryClient.invalidateQueries({ queryKey: getCommuteControllerGetQueryKey(taxYear, params) })
+            void queryClient.invalidateQueries({ queryKey: getCockpitControllerGetCockpitSummaryQueryKey(taxYear) })
+            void queryClient.invalidateQueries({ queryKey: getTaxEstimateControllerGetQueryKey(taxYear) })
+            onDone()
+          } else {
+            setError(true)
+          }
+        },
         onError: () => setError(true),
       },
     )
@@ -131,7 +150,7 @@ function WorkdaysForm({
   return (
     <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="screen-container">
       <View style={styles.headerRow}>
-        {onBack ? <BackButton accessibilityLabel={tr('arbeitstage.back')} onPress={onBack} /> : <BackButtonSpacer />}
+        {onBack ? <BackButton accessibilityLabel={tr('arbeitstage.back')} onPress={() => onBack()} /> : <BackButtonSpacer />}
       </View>
 
       <Text style={styles.heading}>{partnerName === undefined ? tr('arbeitstage.heading') : tr('arbeitstage.headingPartner', { name: partnerName })}</Text>
