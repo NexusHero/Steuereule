@@ -406,4 +406,92 @@ Verifiziert nach Abschluss der Änderungen (Code-Stand `a6a16cfef27fc11ebdf8645e
 
 ---
 
-*(Teil D „Gesamt“ folgt am Ende des Batches nach Slice 7.)*
+## Slice 7 — Tastatur & Haptik
+
+### 1. Status
+**fertig** *(lokal geprüft mit Lint, Typecheck sowie allen neuen/betroffenen `@steuereule/ui`- und `@steuereule/mobile-web`-Unit-/Integrations-Tests gemäß Nutzervorgabe; vollständiges `pnpm -r test` und die E2E-Läufe erfolgen in der Cloud-CI)*
+
+### 2. Branch und letzter Commit-Hash
+- Branch: `feat/443-s7-keyboard-haptics` (abgezweigt von `feat/443-s6-dark-mode` bei `53b7f5f9109e9345386fefcdf92676900d7cda8d`)
+- Letzter Code-/Test-Commit vor diesem Bericht-Commit: `f60a305a7f56fdbeb131b63528af6b8c0f326e49` (`feat(haptics): wire haptics preferences, profile toggle, cockpit and save feedback`); davor `05ff729aa4883af28f4478c0ed4463e427eefab3` (Tastatur `inputmode="numeric"` & `KeyboardAvoidingView` im `Sheet`) und `d7f96e3063e2b3ba2af30ceb4cd9da90f759dc2c` (`expo-haptics`, `packages/ui/src/lib/haptics.ts` & UI-Primitiven). Dieser Bericht folgt unmittelbar als Abschluss-Commit auf `feat/443-s7-keyboard-haptics`.
+
+### 3. Geänderte und neue Dateien
+- `packages/ui/package.json` & `pnpm-lock.yaml`: ergänzt `expo-haptics` in der zu Expo SDK 53 passenden Version **`~14.1.4`** (`apps/mobile-web/node_modules/expo/bundledNativeModules.json`).
+- `packages/ui/src/lib/haptics.ts` & `haptics.test.tsx`: implementiert und testet `hapticSelection`, `hapticLight`, `hapticMedium`, `hapticSuccess`, `hapticWarning`, `setHapticsEnabled` und `isHapticsEnabled` (auf `Platform.OS === 'web'` strikter No-Op ohne dynamischen Import von `expo-haptics`; auf Native Prüfung auf `AccessibilityInfo.isReduceMotionEnabled()`, Nutzereinstellung sowie stilles Abfangen etwaiger Haptik-Fehler).
+- `packages/ui/src/index.ts`: exportiert die 7 Haptik-Symbole aus `@steuereule/ui`.
+- `packages/ui/src/components/Button.tsx`, `Option.tsx` & `TabBar.tsx`: lösen bei `Button` (`variant="primaer"`) `hapticMedium()`, bei `Option` `hapticLight()` und bei aktivem Tab-Wechsel in `TabBar` (`tab.id !== active`) `hapticSelection()` aus.
+- `packages/ui/src/components/Sheet.tsx` & `Sheet.test.tsx`: umschließen den Sheet-Inhalt mit `KeyboardAvoidingView` (`behavior={sheetKeyboardBehavior(Platform.OS)}`: `'padding'` auf iOS, `undefined` sonst) und testen dieses Verhalten plattformabhängig.
+- `packages/ui/src/components/form-controls.test.tsx`: ergänzt den Unit-Test, dass `<Input type="numeric">` im Web `inputmode="numeric"` rendert.
+- `apps/mobile-web/src/screens/LoginScreen.tsx` & `LoginScreen.test.tsx`: stellt das 2FA-TOTP-Eingabefeld (`totp`) auf `type="numeric"` um und testet `inputmode="numeric"`.
+- `apps/mobile-web/src/screens/security/SecurityScreen.tsx` & `SecurityScreen.test.tsx`: stellt das 2FA-Einrichtungs-Codefeld (`code` beim TOTP-Setup) auf `type="numeric"` um und testet `inputmode="numeric"`.
+- `apps/mobile-web/src/screens/master-data/MasterDataScreen.tsx` & `MasterDataScreen.test.tsx`: stellt `stammdaten-hausnummer` auf `type="numeric"` um (`stammdaten-plz` hatte bereits `numeric`), testet `inputmode="numeric"` und löst bei Validierungs-, Einwilligungs-, Kopplungs- und Netzwerkfehlern `hapticWarning()` aus.
+- `apps/mobile-web/src/lib/hapticsPreference.ts` & `hapticsPreference.test.tsx`: kapseln Lesen/Schreiben des `localStorage`-Keys `steuereule.haptics` (`try/catch`, Standard `true`, schreibt **nie** beim Start/Lesen) inkl. Unit-Tests bei blockiertem Storage.
+- `apps/mobile-web/App.tsx`: synchronisiert die gespeicherte Haptik-Präferenz beim Start (Modulinitialisierung + `useEffect`) per `syncHapticsPreference()` ohne Schreibzugriff auf `localStorage`.
+- `apps/mobile-web/src/i18n/resources.ts`, `apps/mobile-web/src/screens/profile/ProfileHapticsSection.tsx`, `ProfileView.tsx` & `ProfileScreen.test.tsx`: ergänzen Abschnitt „Haptisches Feedback“ (`profil-haptik`) ausschließlich auf nativen Plattformen (im Web ausgeblendet; schreibt `steuereule.haptics` und ruft `setHapticsEnabled` erst beim Umschalten auf; inkl. `de`/`en`-Texten und Unit-Tests).
+- `apps/mobile-web/src/screens/shared/saveFeedback.ts`: bündelt `triggerSaveErrorHaptic`, `warnOnHttpError` und `watchSaveResult` für einheitliche `hapticWarning()`-Auslösung bei fehlgeschlagenen PUT/POST/DELETE-Speichervorgängen (HTTP-Fehlerstatus wie 4xx/5xx sowie Netzwerk-Rejects).
+- `apps/mobile-web/src/screens/cockpit/{CockpitScreen.tsx,CockpitTiles.tsx,CockpitPartnerSection.tsx,tiles.ts}`: lösen beim Steuerjahr-Wechsel `hapticSelection()` und bei Statusübergängen settled-Kacheln (`!pending`, vorher `!== 'erledigt'` → neu `'erledigt'`, je Jahr separat verfolgt inkl. Partnerkacheln `partner-lstb`/`partner-arbeitsweg`) `hapticSuccess()` aus.
+- `apps/mobile-web/src/screens/{submission/SubmissionScreen.tsx,plausibility/PlausibilityScreen.tsx}`: lösen `hapticWarning()` aus, sobald erstmals im gewählten Steuerjahr ein blockierender Konflikt im Abgabe-Gate oder Plausibilitäts-Screen angezeigt wird.
+- `apps/mobile-web/src/screens/{OnboardingScreen.tsx,ProfileScreen.tsx,assessment/AssessmentScreen.tsx,capital/CapitalScreen.tsx,catalog/CatalogScreen.tsx,children/ChildrenScreen.tsx,confirmation/ConfirmationScreen.tsx,cross-border/CrossBorderScreen.tsx,interview/InterviewScreen.tsx,lstb/LstbScreen.tsx,pension/PensionerScreen.tsx,receipts/ReceiptsScreen.tsx,rental/RentalScreen.tsx,workdays/WorkdaysScreen.tsx}`: lösen bei Speicher-, Validierungs-, Lösch-, Upload- und 409-Konfliktfehlern `hapticWarning()` aus.
+- `apps/mobile-web/src/lib/hapticsWiring.test.tsx`: testet App-Haptik-Integration für Jahr-Wechsel (`hapticSelection`), Kachel- und Partnerkachel-Abschluss (`hapticSuccess`), Submission-/Plausibilitäts-Konflikt (`hapticWarning`) sowie Speicherfehler in Workdays, Katalog (409) und Stammdaten (`hapticWarning`).
+
+#### Vollständige Prüfung aller `<Input>`/`TextInput`-Felder in `apps/mobile-web/src` (§ 7.1)
+- **Neu auf `type="numeric"` umgestellt (3 Felder):**
+  1. `apps/mobile-web/src/screens/LoginScreen.tsx`: 2FA-Einmalcode (`totp`, vorher implizit `text`).
+  2. `apps/mobile-web/src/screens/security/SecurityScreen.tsx`: 2FA-Bestätigungscode bei TOTP-Aktivierung (`code`, vorher implizit `text`).
+  3. `apps/mobile-web/src/screens/master-data/MasterDataScreen.tsx`: Hausnummer (`stammdaten-hausnummer`, vorher implizit `text`; `hausnummerZusatz` bleibt `text` für z. B. `"a"`).
+- **Bereits vorab auf `type="numeric"` (geprüft, unverändert):** `OnboardingScreen` (Steuer-ID), `ProfileEdit` (Steuer-ID), `MasterDataScreen` (`plz`), `LstbScreen`, `CrossBorderScreen` (alle CHF/EUR-Felder + manueller Wechselkurs), `PensionerScreen` (Rentenbeträge + Jahr), `CatalogScreen` (alle Betragsschritte), `WorkdaysScreen` (Urlaubs-/Krankheits-/Homeoffice-/Feiertage & Entfernung), `CapitalScreen`, `RentalScreen` (alle Beträge, PLZ, Wohnfläche, Einheiten, Anteil A), `ChildrenScreen` (`kind-steuerid`, Kindergeld, Kinderzulage, KV/PV), `AssessmentScreen` (Bescheid-Felder & Betragseinspruch), `ReceiptsScreen` (abw. Steuerjahr), `FilingTypeComparisonScreen` (Stempel-PIN/Steuerwert).
+- **Bewusst auf `type="text"` belassen (alphanumerisch / Trennzeichen nötig):** Datumsfelder (`TT.MM.JJJJ` / `JJJJ-MM-TT` in `MasterDataScreen`, `ChildrenScreen`, `AssessmentScreen`, `ConfirmationScreen`), Monatsfeld `JJJJ-MM` (`ch-wechselkurs-monat` in `CrossBorderScreen`), `+49`-Telefonnummer & `DE...`-IBAN (`MasterDataScreen`), Hex-Kopplungscode (`kopplung-code` in `MasterDataScreen`), kombinierte Straße+Hausnummer (`vermietung-adresse`), Text-/Namen-/E-Mail-/Passwort-/Chat-Eingaben.
+
+### 4. Abweichungen vom Auftrag
+- **Manuelle Installation von `expo-haptics@~14.1.4` statt `npx expo install`:** `pnpm --filter @steuereule/ui exec npx expo install expo-haptics` installiert/auflöst über `packages/ui` ohne eigenes `expo`-Paket nicht direkt; gemäß expliziter Fallback-Anweisung in § 7.2 wurde exakt die zu Expo SDK 53 passende gebündelte Version `~14.1.4` in `packages/ui/package.json` eingetragen und per `pnpm install` aufgelöst.
+- **Test-Mock-Ziel in `hapticsWiring.test.tsx`:** Da `expo-haptics` unter pnpm ausschließlich in `packages/ui` (nicht in `apps/mobile-web`) deklariert ist, löst ein `vi.mock('expo-haptics')` aus `apps/mobile-web` heraus den dynamischen Import innerhalb von `packages/ui/src/lib/haptics.ts` nicht auf denselben Modulpfad auf. Die nativen `expo-haptics`-Grenzen (Web-No-Op, Reduce-Motion, deaktivierte Präferenz, Native-Calls, Fehler-Schlucken, UI-Primitiven) sind vollständig in `packages/ui/src/lib/haptics.test.tsx` geprüft; `apps/mobile-web/src/lib/hapticsWiring.test.tsx` spioniert direkt auf die `@steuereule/ui`-Haptik-Exporte (unter Durchreichen an `actual`).
+- **Lokale Verifikation gemäß Nutzervorgabe:** Statt vollständigem `pnpm -r test` und E2E-Läufen wurden lokal `pnpm lint`, `pnpm -r typecheck` sowie alle neuen und direkt geänderten Unit-/Integrations-Tests ausgeführt; Gesamtsuite und E2E erfolgen in der Cloud-CI.
+
+### 5. Angepasste bestehende Tests/Szenarien
+- **`packages/ui/src/components/form-controls.test.tsx`, `Sheet.test.tsx`, `apps/mobile-web/src/screens/LoginScreen.test.tsx`, `SecurityScreen.test.tsx`, `master-data/MasterDataScreen.test.tsx`, `ProfileScreen.test.tsx`:** Bestehende Tests unverändert; lediglich um `inputmode="numeric"`-, `KeyboardAvoidingView`- (`Sheet`) und `profil-haptik`-Tests erweitert.
+
+### 6. Ergebnis jedes Gate-Befehls (A2)
+Gezielte lokale Prüfung über die Commits `05ff729`, `d7f96e3` und abschließend auf `f60a305a7f56fdbeb131b63528af6b8c0f326e49`:
+- `pnpm lint`: **grün** (`oxlint --deny-warnings`: 0 warnings, 0 errors auf 921 Dateien).
+- `pnpm -r typecheck`: **grün** (alle 8 Workspace-Projekte ohne Fehler).
+- Neue & direkt geänderte Unit-/Integrations-Tests: **grün**:
+  - `@steuereule/ui` (`haptics.test.tsx`, `Sheet.test.tsx`, `form-controls.test.tsx` in Commits `05ff729` / `d7f96e3`): **29/29** (`haptics.test.tsx`), **15/15** (`Sheet` + `form-controls`).
+  - `@steuereule/mobile-web` auf `f60a305`: `hapticsPreference.test.tsx` (**3/3**), `hapticsWiring.test.tsx` (**7/7**), `ProfileScreen.test.tsx` (**24/24**), `App.test.tsx` (**41/41**); sowie vorab auf `05ff729` `LoginScreen.test.tsx`, `SecurityScreen.test.tsx` und `MasterDataScreen.test.tsx` (**grün**).
+- Vollständiges `pnpm -r test`: **nicht lokal ausgeführt** (gemäß Nutzervorgabe in die Cloud-CI verschoben).
+- `node e2e/scenarios/run-all-scenarios.mjs`, `no-client-persistence`, `breakpoint-layout`, `dark-mode`: **nicht lokal ausgeführt** (gemäß Nutzervorgabe in die Cloud-CI verschoben).
+
+### 7. Offene Fragen
+- **keine**.
+
+---
+
+## Gesamt (Teil D)
+
+### Branches und letzte Commit-Hashes
+Alle 7 Branches bauen streng aufeinander auf; es wurde **nichts** gepusht, geöffnet oder gemergt:
+
+| Slice | Branch | Letzter Commit-Hash (Head des Branches) | Hinweise |
+| :--- | :--- | :--- | :--- |
+| 1 Navigation | `feat/443-s1-navigation` | `405f6c78621bb65e8516b137dd78fba14a06707b` | inkl. Abschluss-Berichts-Commit |
+| 2 Hub-Cockpit | `feat/443-s2-hub-cockpit` | `53d7dd236505d733a2e0ab61187256df076fdbab` | inkl. Abschluss-Berichts-Commit |
+| 3 Abgabe-Gate | `feat/443-s3-submission-gate` | `b6d6e4c48fcd80baaf3c76135218cfc9bb48f7e3` | inkl. Abschluss-Berichts-Commit |
+| 4 Sheets | `feat/443-s4-sheets` | `81be5c206134e68f8ecb4c58133fa97d15ca42a1` | inkl. Abschluss-Berichts-Commit |
+| 5 Persona-Booster | `feat/443-s5-persona-boosters` | `d60e6a2234b312aeddfdba177f541e41b7e46918` | inkl. Abschluss-Berichts-Commit |
+| 6 Dark Mode | `feat/443-s6-dark-mode` | `53b7f5f9109e9345386fefcdf92676900d7cda8d` | inkl. Abschluss-Berichts-Commit |
+| 7 Tastatur & Haptik | `feat/443-s7-keyboard-haptics` | Code/Tests `f60a305a7f56fdbeb131b63528af6b8c0f326e49` + unmittelbar folgender Berichts-Commit (`HEAD`) | Code/Tests vollständig vor diesem Commit |
+
+### Konsolidierte Liste aller offenen Fragen (Slices 1–7)
+1. **Slice 1 — Gastzugang auf `ProfileHome` und `Privacy`:** Sollen `ProfileHome` (`/app/profil`) und `Privacy` (`/app/profil/datenschutz`) wie bisher für Gäste zugänglich bleiben (DSGVO-Transparenz & bestehende Gast-Tests in `App.test.tsx`), oder künftig ebenfalls hinter `<RequiresAccount>` auf `AccountWall` geleitet werden?
+2. **Slice 1 — `@react-navigation`-Versionsabgleich:** `@react-navigation/bottom-tabs` ist auf `~7.18.14` passend zu `@react-navigation/native@7.3.14` gepinnt (`7.21.0` war laufzeit-inkompatibel). Soll `@react-navigation/native` in einem eigenen Ticket hochgezogen werden?
+3. **Slice 3 — Pfad-bewusste LStB-Prüfung im Core (`checkPlausibility`):** Soll `packages/core/src/interview/plausibility.ts` fachlich pfad-bewusst gemacht werden, damit CH-Grenzgänger und Rentner ohne deutsche LStB bereits im Core kein `lstb-offen` erzeugen (statt der Workaround-Prüfung in `apps/mobile-web/src/screens/plausibility/usePlausibility.ts`)?
+4. **Slice 5 — Druckschablonen für § 35a / § 33 (§ 5.7):** `apps/api/src/printout/felder-2025.json` und `printout-values.ts` enthalten noch keine Feldmappings für `anlage-haushaltsnahe-aufwendungen` und `anlage-aussergewoehnliche-belastungen` (Feature-Flag `HOUSEHOLD_AND_HEALTH_BOOSTERS = false` in API & Mobile-Web).
+5. **Slice 5 — § 24b Entlastungsbetrag im regulären `zvE` (Option 1):** `singleParentReliefEur` (`4.260 €`) wird vorerst ausschließlich innerhalb der GdE-Berechnung für § 33 (`extraordinaryBurdens`) abgezogen, um bestehende Rückerstattungs-/Szenario-07-Erwartungen stabil zu halten; soll § 24b künftig auch direkt im regulären `zvE` Alleinerziehender abgezogen werden?
+6. **Slice 6 — Light-Mode-Semantikfarben (`ok`, `warn`, `fehler`):** Im Contrast-Audit (`packages/tokens/src/contrast.test.ts`) liegen `--ok` (`#1f9d55`), `--warn` (`#e07b00`) und `--fehler` (`#e0362c`) im Light Mode auf `#f4f2e9`/`#ffffff` bei `~3,1–4,0:1` (< `4,5:1`), während im Dark Mode mit `--fehler: #e96a61` alle geprüften Paare `>= 4,5:1` erfüllen. Sollen in einem separaten Token-Ticket abgedunkelte Light-Mode-Text-Tokens ergänzt werden?
+7. **Slice 6 — `Gallery`-Dark-Mode-Umschalter:** Soll `packages/ui/src/gallery/Gallery.tsx` für manuelles Review einen `light`/`dark`-Umschalter erhalten?
+*(Slices 2, 4 und 7 hatten keine weiteren offenen Fragen.)*
+
+### Lokal ausgeführte vs. in die Cloud-CI verschobene Gate-Befehle
+- **Slices 1–4:** Alle Gate-Befehle (`pnpm lint`, `pnpm -r typecheck`, vollständiges `pnpm -r test` sowie `node e2e/scenarios/run-all-scenarios.mjs`, `no-client-persistence` und `breakpoint-layout` über `ATTACH` an `localhost:5434` / `:3301` / `:4173`) wurden lokal vollständig grün verifiziert.
+- **Slices 5–7 (gemäß ausdrücklicher Nutzervorgabe):**
+  - **Lokal grün ausgeführt:** `pnpm lint`, `pnpm -r typecheck`, `node --check e2e/responsive/dark-mode.mjs` (Slice 6) sowie alle neuen und direkt betroffenen Unit-/Komponenten-/Integrations-Tests der jeweiligen Slices (`@steuereule/core`, `@steuereule/api`, `@steuereule/tokens`, `@steuereule/ui`, `@steuereule/mobile-web`).
+  - **Nicht lokal ausgeführt (in Cloud-CI verschoben):** vollständiges `pnpm -r test` auf den Branches `feat/443-s5-persona-boosters`, `feat/443-s6-dark-mode` und `feat/443-s7-keyboard-haptics` sowie `node e2e/scenarios/run-all-scenarios.mjs`, `pnpm --filter @steuereule/e2e no-client-persistence`, `pnpm --filter @steuereule/e2e breakpoint-layout` und `pnpm --filter @steuereule/e2e dark-mode`.
