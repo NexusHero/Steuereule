@@ -9,6 +9,7 @@ import {
   useCockpitControllerGetCockpitSummary,
   useConfirmationControllerGet,
   useInterviewControllerGetInterview,
+  useLinkControllerGet,
   useMasterDataControllerRead,
   useTaxEstimateControllerGet,
   type TaxEstimateDto,
@@ -19,11 +20,13 @@ import {
 import { OwlAdvisorCard } from '../advisor/OwlAdvisorCard'
 import { useOptionalCopilotBridge } from '../advisor/CopilotBridgeProvider'
 import { APP_NS } from '../../i18n/resources'
+import type { PartnerAreaParam } from '../../navigation/routes'
 import { SELECTABLE_TAX_YEARS, CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { pathFromAnswers, type FunnelPath } from '../funnel/KontoWandScreen'
 import { usePlausibility } from '../plausibility/usePlausibility'
 import { CockpitTiles, tileRevisitFlag, useCockpitTileFacts } from './CockpitTiles'
+import { derivePersonas } from './personas'
 import { nextStepTile, type TileDefinition, type TileFacts } from './tiles'
 
 
@@ -43,6 +46,7 @@ export interface CockpitScreenProps {
   readonly onOpenConfirmation?: (year: number) => void
   readonly onContinuePath?: (path: FunnelPath) => void
   readonly onOpenTile?: (tile: TileDefinition, revisit: boolean) => void
+  readonly onOpenPartner?: (area: PartnerAreaParam, name: string) => void
   readonly onYearChange?: (year: number) => void
   readonly onOpenMasterData?: () => void
 }
@@ -66,6 +70,7 @@ export function CockpitScreen({
   onOpenConfirmation,
   onContinuePath,
   onOpenTile,
+  onOpenPartner,
   onYearChange,
   onOpenMasterData,
 }: CockpitScreenProps) {
@@ -81,10 +86,16 @@ export function CockpitScreen({
   const confirmationQuery = useConfirmationControllerGet(year)
   const interviewQuery = useInterviewControllerGetInterview(year)
   const masterDataQuery = useMasterDataControllerRead()
+  const masterDataValue = masterDataQuery.data?.status === 200 ? masterDataQuery.data.data : null
   const interview = interviewQuery.data?.status === 200 ? interviewQuery.data.data : null
   const answers = (interview?.answers ?? {}) as Answers
   const path = interview?.nextStep.kind === 'done' ? pathFromAnswers(interview.answers) : null
-  const tileFacts = useCockpitTileFacts(year, isSignedIn, path, answers)
+  const personas = derivePersonas(answers, masterDataValue)
+  const linkQuery = useLinkControllerGet(year, { query: { enabled: isSignedIn && path !== null && personas.has('verheiratet') } })
+  const linkData = linkQuery.data?.status === 200 ? linkQuery.data.data : null
+  const isJointMarried = personas.has('verheiratet') && linkData?.filingType === 'zusammen' && !linkData.personBHasOwnAccount
+  const partnerName = linkData?.personB?.firstName?.trim() || tr('cockpit.bereich.partnerFallback')
+  const tileFacts = useCockpitTileFacts(year, isSignedIn, path, answers, masterDataValue)
   const plausibility = usePlausibility(year, { enabled: isSignedIn })
   const findings: PlausibilityFindings =
     plausibility.status === 'ready'
@@ -150,8 +161,12 @@ export function CockpitScreen({
         isRefreshing={isRefreshing}
         next={next}
         tileFacts={tileFacts}
+        isSignedIn={isSignedIn}
+        isJointMarried={isJointMarried}
+        partnerName={partnerName}
         findings={findings}
         onOpenTile={openTile}
+        {...(onOpenPartner ? { onOpenPartner } : {})}
         {...(submissionHandler ? { onOpenSubmission: () => submissionHandler(year) } : {})}
         masterData={masterData}
         onOpenInterview={onOpenInterview}
@@ -176,8 +191,12 @@ export function CockpitScreen({
       isRefreshing={isRefreshing}
       next={next}
       tileFacts={tileFacts}
+      isSignedIn={isSignedIn}
+      isJointMarried={isJointMarried}
+      partnerName={partnerName}
       findings={findings}
       onOpenTile={openTile}
+      {...(onOpenPartner ? { onOpenPartner } : {})}
       {...(submissionHandler ? { onOpenSubmission: () => submissionHandler(year) } : {})}
       masterData={masterData}
       onOpenInterview={onOpenInterview}
@@ -263,8 +282,12 @@ interface CockpitEmptyProps {
   readonly isRefreshing: boolean
   readonly next: Next | null
   readonly tileFacts: TileFacts | null
+  readonly isSignedIn: boolean
+  readonly isJointMarried: boolean
+  readonly partnerName: string
   readonly findings: PlausibilityFindings
   readonly onOpenTile: (tile: TileDefinition, revisit: boolean) => void
+  readonly onOpenPartner?: (area: PartnerAreaParam, name: string) => void
   readonly onOpenSubmission?: () => void
   readonly masterData: Next | null
   readonly onOpenInterview: () => void
@@ -326,7 +349,7 @@ function EuleBannerNotice() {
   )
 }
 
-function CockpitEmpty({ year, onYearChange, refresh, isRefreshing, next, tileFacts, findings, onOpenTile, onOpenSubmission, masterData, onOpenInterview, onOpenAssessment, onOpenCapital, onOpenRental, onOpenKinder, onOpenOwlMode, bp }: CockpitEmptyProps) {
+function CockpitEmpty({ year, onYearChange, refresh, isRefreshing, next, tileFacts, isSignedIn, isJointMarried, partnerName, findings, onOpenTile, onOpenPartner, onOpenSubmission, masterData, onOpenInterview, onOpenAssessment, onOpenCapital, onOpenRental, onOpenKinder, onOpenOwlMode, bp }: CockpitEmptyProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
@@ -354,9 +377,14 @@ function CockpitEmpty({ year, onYearChange, refresh, isRefreshing, next, tileFac
         {tileFacts !== null ? (
           <CockpitTiles
             facts={tileFacts}
+            year={year}
+            isSignedIn={isSignedIn}
+            isJointMarried={isJointMarried}
+            partnerName={partnerName}
             conflicts={findings.conflicts}
             notices={findings.notices}
             onOpenTile={onOpenTile}
+            {...(onOpenPartner ? { onOpenPartner } : {})}
             {...(onOpenSubmission ? { onOpenSubmission } : {})}
           />
         ) : null}
@@ -433,8 +461,12 @@ interface CockpitLoadedProps {
   readonly isRefreshing: boolean
   readonly next: Next | null
   readonly tileFacts: TileFacts | null
+  readonly isSignedIn: boolean
+  readonly isJointMarried: boolean
+  readonly partnerName: string
   readonly findings: PlausibilityFindings
   readonly onOpenTile: (tile: TileDefinition, revisit: boolean) => void
+  readonly onOpenPartner?: (area: PartnerAreaParam, name: string) => void
   readonly onOpenSubmission?: () => void
   readonly masterData: Next | null
   readonly onOpenInterview: () => void
@@ -447,7 +479,7 @@ interface CockpitLoadedProps {
   readonly bp: Breakpoint
 }
 
-function CockpitLoaded({ summary, year, onYearChange, confirmation, onOpenConfirmation, refresh, isRefreshing, next, tileFacts, findings, onOpenTile, onOpenSubmission, masterData, onOpenInterview, onOpenAssessment, onOpenCapital, onOpenRental, onOpenKinder, onOpenOwlMode, onOpenPrintout, bp }: CockpitLoadedProps) {
+function CockpitLoaded({ summary, year, onYearChange, confirmation, onOpenConfirmation, refresh, isRefreshing, next, tileFacts, isSignedIn, isJointMarried, partnerName, findings, onOpenTile, onOpenPartner, onOpenSubmission, masterData, onOpenInterview, onOpenAssessment, onOpenCapital, onOpenRental, onOpenKinder, onOpenOwlMode, onOpenPrintout, bp }: CockpitLoadedProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
@@ -486,9 +518,14 @@ function CockpitLoaded({ summary, year, onYearChange, confirmation, onOpenConfir
       {tileFacts !== null ? (
         <CockpitTiles
           facts={tileFacts}
+          year={year}
+          isSignedIn={isSignedIn}
+          isJointMarried={isJointMarried}
+          partnerName={partnerName}
           conflicts={findings.conflicts}
           notices={findings.notices}
           onOpenTile={onOpenTile}
+          {...(onOpenPartner ? { onOpenPartner } : {})}
           {...(onOpenSubmission ? { onOpenSubmission } : {})}
         />
       ) : null}

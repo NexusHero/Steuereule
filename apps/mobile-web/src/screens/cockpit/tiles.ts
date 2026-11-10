@@ -17,11 +17,14 @@ import type {
   KapitalResponseDto,
   LstbFieldDto,
   LstbResponseDto,
+  MasterDataResponseDto,
   PensionResponseDto,
   RentalResponseDto,
 } from '@steuereule/api-client'
+import { HOUSEHOLD_AND_HEALTH_BOOSTERS } from '../../config/features'
 import type { CatalogEntryParam } from '../../navigation/routes'
 import type { FunnelPath } from '../funnel/KontoWandScreen'
+import { derivePersonas, type Persona } from './personas'
 
 export type TileId =
   | 'lstb'
@@ -34,6 +37,9 @@ export type TileId =
   | 'kapital'
   | 'vermietung'
   | 'kinder'
+  | 'alleinerziehend'
+  | 'haushalt'
+  | 'gesundheit'
 
 export type TileStatus = 'offen' | 'erledigt' | 'betrag-offen'
 
@@ -50,6 +56,8 @@ export type TileRoute =
 export interface TileFacts {
   readonly path: FunnelPath
   readonly answers: Answers
+  readonly masterData?: MasterDataResponseDto | null | undefined
+  readonly boosterEnabled?: boolean | undefined
   readonly lstb?: LstbResponseDto | null | undefined
   readonly ch?: ChSalaryCertificateResponseDto | null | undefined
   readonly pension?: PensionResponseDto | null | undefined
@@ -63,6 +71,7 @@ export interface TileDefinition {
   readonly id: TileId
   readonly titleKey: `cockpit.kachel.${TileId}.titel`
   readonly route: TileRoute
+  readonly personas: 'all' | readonly Persona[]
   readonly isVisible: (facts: TileFacts) => boolean
   readonly status: (facts: TileFacts) => TileStatus
 }
@@ -86,7 +95,8 @@ export const TILES: readonly TileDefinition[] = [
     id: 'lstb',
     titleKey: 'cockpit.kachel.lstb.titel',
     route: { screen: 'Lstb' },
-    isVisible: (f) => f.path === 'angestellte',
+    personas: ['angestellt'],
+    isVisible: () => true,
     status: (f) => {
       if (!f.lstb) return 'offen'
       const result = wageTaxCertificateStatus({
@@ -101,20 +111,23 @@ export const TILES: readonly TileDefinition[] = [
     id: 'ch',
     titleKey: 'cockpit.kachel.ch.titel',
     route: { screen: 'CrossBorder' },
-    isVisible: (f) => f.path === 'ch',
+    personas: ['grenzgaenger'],
+    isVisible: () => true,
     status: (f) => (f.ch?.foldStatus?.kind === 'bestimmt' && f.ch.exchangeRate !== null ? 'erledigt' : 'offen'),
   },
   {
     id: 'rente',
     titleKey: 'cockpit.kachel.rente.titel',
     route: { screen: 'Pension' },
-    isVisible: (f) => f.path === 'rente',
+    personas: ['rentner'],
+    isVisible: () => true,
     status: (f) => (f.pension?.status.kind === 'bestimmt' ? 'erledigt' : 'offen'),
   },
   {
     id: 'lebenslagen',
     titleKey: 'cockpit.kachel.lebenslagen.titel',
     route: { screen: 'Catalog', entry: 'lebenslagen' },
+    personas: ['angestellt', 'grenzgaenger'],
     isVisible: () => true,
     status: (f) => catalogStatus('lebenslagen', f.answers),
   },
@@ -122,6 +135,7 @@ export const TILES: readonly TileDefinition[] = [
     id: 'einkuenfte',
     titleKey: 'cockpit.kachel.einkuenfte.titel',
     route: { screen: 'Catalog', entry: 'einkuenfte' },
+    personas: 'all',
     isVisible: () => true,
     status: (f) => catalogStatus('einkuenfte', f.answers),
   },
@@ -129,6 +143,7 @@ export const TILES: readonly TileDefinition[] = [
     id: 'sonderausgaben',
     titleKey: 'cockpit.kachel.sonderausgaben.titel',
     route: { screen: 'Catalog', entry: 'sonderausgaben' },
+    personas: 'all',
     isVisible: () => true,
     status: (f) => catalogStatus('sonderausgaben', f.answers),
   },
@@ -136,13 +151,15 @@ export const TILES: readonly TileDefinition[] = [
     id: 'arbeitsweg',
     titleKey: 'cockpit.kachel.arbeitsweg.titel',
     route: { screen: 'Workdays' },
-    isVisible: (f) => f.path !== 'rente',
+    personas: ['angestellt', 'grenzgaenger'],
+    isVisible: () => true,
     status: (f) => (f.commute?.inputs != null && f.commute.workdays != null ? 'erledigt' : 'offen'),
   },
   {
     id: 'kapital',
     titleKey: 'cockpit.kachel.kapital.titel',
     route: { screen: 'Capital' },
+    personas: ['rentner'],
     isVisible: () => true,
     status: (f) => (f.capital?.status.kind === 'bestimmt' ? 'erledigt' : 'offen'),
   },
@@ -150,6 +167,7 @@ export const TILES: readonly TileDefinition[] = [
     id: 'vermietung',
     titleKey: 'cockpit.kachel.vermietung.titel',
     route: { screen: 'Rental' },
+    personas: ['vermieter'],
     isVisible: () => true,
     status: (f) => (f.rental?.status.kind === 'bestimmt' ? 'erledigt' : 'offen'),
   },
@@ -157,8 +175,33 @@ export const TILES: readonly TileDefinition[] = [
     id: 'kinder',
     titleKey: 'cockpit.kachel.kinder.titel',
     route: { screen: 'Children' },
-    isVisible: (f) => f.answers.kinder !== undefined && f.answers.kinder !== 'Nein',
+    personas: ['eltern'],
+    isVisible: () => true,
     status: (f) => (f.children !== undefined && f.children !== null && f.children.kinder.length > 0 ? 'erledigt' : 'offen'),
+  },
+  {
+    id: 'alleinerziehend',
+    titleKey: 'cockpit.kachel.alleinerziehend.titel',
+    route: { screen: 'Catalog', entry: 'alleinerziehend' },
+    personas: ['alleinerziehend'],
+    isVisible: () => true,
+    status: (f) => catalogStatus('alleinerziehend', f.answers),
+  },
+  {
+    id: 'haushalt',
+    titleKey: 'cockpit.kachel.haushalt.titel',
+    route: { screen: 'Catalog', entry: 'haushalt' },
+    personas: 'all',
+    isVisible: (f) => f.boosterEnabled ?? HOUSEHOLD_AND_HEALTH_BOOSTERS,
+    status: (f) => catalogStatus('haushalt', f.answers),
+  },
+  {
+    id: 'gesundheit',
+    titleKey: 'cockpit.kachel.gesundheit.titel',
+    route: { screen: 'Catalog', entry: 'gesundheit' },
+    personas: ['rentner', 'eltern', 'alleinerziehend'],
+    isVisible: (f) => f.boosterEnabled ?? HOUSEHOLD_AND_HEALTH_BOOSTERS,
+    status: (f) => catalogStatus('gesundheit', f.answers),
   },
 ]
 
@@ -170,8 +213,28 @@ export function tileById(id: TileId): TileDefinition {
   return TILES_BY_ID[id]
 }
 
+export interface PartitionedTiles {
+  readonly main: readonly TileDefinition[]
+  readonly more: readonly TileDefinition[]
+}
+
+export function partitionTiles(facts: TileFacts): PartitionedTiles {
+  const personas = derivePersonas(facts.answers, facts.masterData)
+  const main: TileDefinition[] = []
+  const more: TileDefinition[] = []
+  for (const tile of TILES) {
+    if (!tile.isVisible(facts)) continue
+    if (tile.personas === 'all' || tile.personas.some((p) => personas.has(p))) {
+      main.push(tile)
+    } else {
+      more.push(tile)
+    }
+  }
+  return { main, more }
+}
+
 export function visibleTiles(facts: TileFacts): readonly TileDefinition[] {
-  return TILES.filter((tile) => tile.isVisible(facts))
+  return partitionTiles(facts).main
 }
 
 export const NEXT_STEP_ORDER: Readonly<Record<FunnelPath, readonly TileId[]>> = {

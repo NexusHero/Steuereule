@@ -1,7 +1,13 @@
 import type { NavigatorScreenParams } from '@react-navigation/native'
 import type { LegalPage } from '../screens/legal/texts'
 
-export type CatalogEntryParam = 'lebenslagen' | 'einkuenfte' | 'sonderausgaben'
+export type CatalogEntryParam =
+  | 'lebenslagen'
+  | 'einkuenfte'
+  | 'sonderausgaben'
+  | 'alleinerziehend'
+  | 'haushalt'
+  | 'gesundheit'
 export type PartnerAreaParam = 'lstb' | 'arbeitsweg'
 
 export type CockpitStackParamList = {

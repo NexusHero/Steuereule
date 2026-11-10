@@ -24,6 +24,7 @@ import {
 import { APP_NS } from '../../i18n/resources'
 import { integerFrom } from '../shared/integer'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
+import type { CatalogEntryParam } from '../../navigation/routes'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
 
@@ -83,7 +84,7 @@ function walkedStepsFor(entry: CatalogueEntry, answers: Answers): readonly Entry
 }
 
 export interface CatalogScreenProps {
-  readonly entry: 'lebenslagen' | 'einkuenfte' | 'sonderausgaben' | 'alleinerziehend'
+  readonly entry: CatalogEntryParam
   readonly onDone?: () => void
   readonly onBack?: () => void
   readonly taxYear?: number
@@ -211,6 +212,7 @@ export function CatalogScreen({ entry, onDone = () => {}, onBack, taxYear = CURR
 
   const step = current.id as EntryStepId
   const decl = QUESTIONS[step]
+  const hint = tr(`katalog.hints.${step}`, { defaultValue: '' })
   const handleBack = history.length > 0 ? back : onBack
 
   return (
@@ -225,6 +227,7 @@ export function CatalogScreen({ entry, onDone = () => {}, onBack, taxYear = CURR
       {conflict ? <Text style={styles.conflict}>{tr('katalog.conflict')}</Text> : null}
 
       <Text style={styles.heading}>{tr(`katalog.questions.${step}`, { defaultValue: step })}</Text>
+      {hint !== '' ? <Text style={styles.hint} testID={`katalog-hinweis-${step}`}>{hint}</Text> : null}
 
       {decl.form.kind === 'enum' ? (
         decl.form.values.map((value) => (
@@ -301,7 +304,13 @@ function makeStyles(t: UiTheme) {
     color: t.color.tinte,
     marginBottom: t.space.s4,
   }
+  const hint: TextStyle = {
+    fontFamily: t.font.text,
+    fontSize: t.size.s,
+    color: t.color.tinte2,
+    marginBottom: t.space.s4,
+  }
   const next: ViewStyle = { marginTop: t.space.s4 }
   const later: ViewStyle = { marginTop: t.space.s2 }
-  return { screen, wideScreen, headerRow, stepPill, conflict, heading, weiter: next, later }
+  return { screen, wideScreen, headerRow, stepPill, conflict, heading, hint, weiter: next, later }
 }

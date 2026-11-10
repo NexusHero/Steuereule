@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Pressable, Text, View, type TextStyle, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { Card, useBreakpoint, useTheme, type UiTheme } from '@steuereule/ui'
@@ -10,16 +11,21 @@ import {
   useLstbControllerGetLstb,
   usePensionControllerGet,
   useRentalControllerGet,
+  type MasterDataResponseDto,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
+import type { PartnerAreaParam } from '../../navigation/routes'
 import type { FunnelPath } from '../funnel/KontoWandScreen'
-import { hasAnswersForEntry, tileHintSeverity, visibleTiles, type TileDefinition, type TileFacts, type TileStatus } from './tiles'
+import { CockpitPartnerSection } from './CockpitPartnerSection'
+import { derivePersonas } from './personas'
+import { hasAnswersForEntry, partitionTiles, tileHintSeverity, type TileDefinition, type TileFacts, type TileStatus } from './tiles'
 
 export function useCockpitTileFacts(
   year: number,
   enabled: boolean,
   path: FunnelPath | null,
   answers: Answers,
+  masterData?: MasterDataResponseDto | null,
 ): TileFacts | null {
   const active = enabled && path !== null
   const lstb = useLstbControllerGetLstb(year, undefined, { query: { enabled: active && path === 'angestellte' } })
@@ -36,6 +42,7 @@ export function useCockpitTileFacts(
   return {
     path,
     answers,
+    masterData: masterData ?? null,
     lstb: lstb.data?.status === 200 ? lstb.data.data : null,
     ch: ch.data?.status === 200 ? ch.data.data : null,
     pension: pension.data?.status === 200 ? pension.data.data : null,
@@ -52,52 +59,104 @@ export function tileRevisitFlag(tile: TileDefinition, answers: Answers): boolean
 
 export interface CockpitTilesProps {
   readonly facts: TileFacts
+  readonly year?: number
+  readonly isSignedIn?: boolean
+  readonly isJointMarried?: boolean
+  readonly partnerName?: string
   readonly conflicts?: readonly Conflict[]
   readonly notices?: readonly Notice[]
   readonly onOpenTile: (tile: TileDefinition, revisit: boolean) => void
   readonly onOpenSubmission?: () => void
+  readonly onOpenPartner?: (area: PartnerAreaParam, name: string) => void
 }
 
-export function CockpitTiles({ facts, conflicts = [], notices = [], onOpenTile, onOpenSubmission }: CockpitTilesProps) {
+export function CockpitTiles({
+  facts,
+  year,
+  isSignedIn = false,
+  isJointMarried = false,
+  partnerName,
+  conflicts = [],
+  notices = [],
+  onOpenTile,
+  onOpenSubmission,
+  onOpenPartner,
+}: CockpitTilesProps) {
   const bp = useBreakpoint()
   const t = useTheme()
   const styles = makeStyles(t)
   const { t: tr } = useTranslation(APP_NS)
-  const tiles = visibleTiles(facts)
+  const [moreExpanded, setMoreExpanded] = useState(false)
+
+  const personas = derivePersonas(facts.answers, facts.masterData)
+  const { main, more } = partitionTiles(facts)
+  const boosterTitleKey = personas.has('grenzgaenger')
+    ? 'cockpit.boosterUeberschrift.nachzahlung'
+    : 'cockpit.boosterUeberschrift.erstattung'
+
+  function renderTile(tile: TileDefinition) {
+    const status = tile.status(facts)
+    const revisit = tileRevisitFlag(tile, facts.answers)
+    const severity = tileHintSeverity(tile.id, conflicts, notices)
+    return (
+      <Pressable
+        key={tile.id}
+        accessibilityRole="button"
+        onPress={() => onOpenTile(tile, revisit)}
+        style={bp === 's' ? styles.tileWrapNarrow : styles.tileWrapWide}
+        testID={`cockpit-kachel-${tile.id}`}
+      >
+        <Card variant="default" style={styles.card}>
+          <Text style={styles.title}>{tr(tile.titleKey)}</Text>
+          <Text style={statusStyle(status, styles)} testID={`cockpit-kachel-${tile.id}-status`}>
+            {statusLabel(status, tr)}
+          </Text>
+          {severity !== null ? (
+            <Text
+              style={severity === 'blocker' ? styles.hintBlocker : styles.hintWarning}
+              testID={`cockpit-kachel-${tile.id}-hinweis`}
+            >
+              {tr(severity === 'blocker' ? 'cockpit.kachel.hinweis.blocker' : 'cockpit.kachel.hinweis.warnung')}
+            </Text>
+          ) : null}
+        </Card>
+      </Pressable>
+    )
+  }
 
   return (
     <View style={styles.section} testID="cockpit-kacheln">
-      <View style={styles.grid}>
-        {tiles.map((tile) => {
-          const status = tile.status(facts)
-          const revisit = tileRevisitFlag(tile, facts.answers)
-          const severity = tileHintSeverity(tile.id, conflicts, notices)
-          return (
-            <Pressable
-              key={tile.id}
-              accessibilityRole="button"
-              onPress={() => onOpenTile(tile, revisit)}
-              style={bp === 's' ? styles.tileWrapNarrow : styles.tileWrapWide}
-              testID={`cockpit-kachel-${tile.id}`}
-            >
-              <Card variant="default" style={styles.card}>
-                <Text style={styles.title}>{tr(tile.titleKey)}</Text>
-                <Text style={statusStyle(status, styles)} testID={`cockpit-kachel-${tile.id}-status`}>
-                  {statusLabel(status, tr)}
-                </Text>
-                {severity !== null ? (
-                  <Text
-                    style={severity === 'blocker' ? styles.hintBlocker : styles.hintWarning}
-                    testID={`cockpit-kachel-${tile.id}-hinweis`}
-                  >
-                    {tr(severity === 'blocker' ? 'cockpit.kachel.hinweis.blocker' : 'cockpit.kachel.hinweis.warnung')}
-                  </Text>
-                ) : null}
-              </Card>
-            </Pressable>
-          )
-        })}
-      </View>
+      <Text style={styles.boosterHeading} testID="cockpit-booster-ueberschrift">
+        {tr(boosterTitleKey)}
+      </Text>
+      {isJointMarried ? (
+        <Text style={styles.sectionHeading} testID="cockpit-bereich-du">
+          {tr('cockpit.bereich.du')}
+        </Text>
+      ) : null}
+      <View style={styles.grid}>{main.map(renderTile)}</View>
+      {more.length > 0 ? (
+        <View style={styles.moreBlock}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ expanded: moreExpanded }}
+            onPress={() => setMoreExpanded((v) => !v)}
+            style={styles.moreToggle}
+            testID="cockpit-weitere-themen"
+          >
+            <Text style={styles.moreToggleText}>{`${tr('cockpit.weitereThemen')} ${moreExpanded ? '▲' : '▼'}`}</Text>
+          </Pressable>
+          {moreExpanded ? <View style={styles.grid}>{more.map(renderTile)}</View> : null}
+        </View>
+      ) : null}
+      {isJointMarried && year !== undefined && onOpenPartner ? (
+        <CockpitPartnerSection
+          year={year}
+          partnerName={partnerName ?? tr('cockpit.bereich.partnerFallback')}
+          enabled={isSignedIn}
+          onOpenPartner={onOpenPartner}
+        />
+      ) : null}
       <Pressable
         accessibilityRole="button"
         onPress={onOpenSubmission}
@@ -179,6 +238,26 @@ function makeStyles(t: UiTheme) {
   }
   const hintBlocker: TextStyle = { ...hintBase, color: t.color.fehler }
   const hintWarning: TextStyle = { ...hintBase, color: t.color.warn }
+  const boosterHeading: TextStyle = {
+    fontFamily: t.font.display,
+    fontWeight: t.weight.schwer,
+    fontSize: t.size.xl,
+    color: t.color.tinte,
+  }
+  const sectionHeading: TextStyle = {
+    fontFamily: t.font.display,
+    fontWeight: t.weight.fett,
+    fontSize: t.size.m,
+    color: t.color.tinte2,
+  }
+  const moreBlock: ViewStyle = { width: '100%', gap: t.space.s2 }
+  const moreToggle: ViewStyle = { alignSelf: 'flex-start', paddingVertical: t.space.s1 }
+  const moreToggleText: TextStyle = {
+    fontFamily: t.font.text,
+    fontWeight: t.weight.fett,
+    fontSize: t.size.s,
+    color: t.color.tinte2,
+  }
 
   return {
     section,
@@ -194,5 +273,10 @@ function makeStyles(t: UiTheme) {
     statusLater,
     hintBlocker,
     hintWarning,
+    boosterHeading,
+    sectionHeading,
+    moreBlock,
+    moreToggle,
+    moreToggleText,
   }
 }
