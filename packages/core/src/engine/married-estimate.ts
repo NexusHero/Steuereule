@@ -1,5 +1,7 @@
 import type { Range, TaxEstimate } from './tax-estimate'
 import { childTaxAllowance } from '../domains/children'
+import { applyHouseholdTaxReduction } from '../domains/household-services'
+import { calculateExtraordinaryBurden, type BurdenChildrenBracket } from '../domains/extraordinary-burdens'
 import { isSupportedIncomeTaxYear, soliExemptionLimits, solidaritaetszuschlag, splittingTariff } from '../math/tarif'
 import { getTaxYearParameters } from '../math/tax-parameters'
 
@@ -40,6 +42,12 @@ export interface MarriedEstimateInput {
   readonly donations: number
   /** At least one spouse belongs to a church levying Kirchensteuer. */
   readonly churchMember: boolean
+  /** § 35a EStG joint tax reduction in EUR (optional, defaults to 0). */
+  readonly householdReductionEur?: number | undefined
+  /** § 33 EStG joint medical expenses in EUR (optional, defaults to 0). */
+  readonly healthExpensesEur?: number | undefined
+  /** Optional § 33 Abs. 3 children bracket override when count distinguishes 2 from 3+ elsewhere. */
+  readonly childrenBracket?: BurdenChildrenBracket | undefined
 }
 
 export type MarriedEstimate =
@@ -95,12 +103,27 @@ export function estimateMarriedCouple(input: MarriedEstimateInput): MarriedEstim
   const params = getTaxYearParameters(input.year)
   const spouses = [input.a, ...(input.b ? [input.b] : [])].map((s) => spouseFigures(s, input.year))
   const income = spouses.reduce((sum, s) => sum + s.income, 0) + input.rentalSurplus
+  const gdeEur = Math.max(0, income)
+  const bracket: BurdenChildrenBracket =
+    input.childrenBracket ?? (input.children >= 3 ? '3+' : input.children >= 1 ? '1-2' : '0')
+  const deductibleBurdenEur =
+    (input.healthExpensesEur ?? 0) > 0
+      ? Math.round(
+          calculateExtraordinaryBurden({
+            year: input.year,
+            gdeEur,
+            expensesEur: input.healthExpensesEur ?? 0,
+            filing: 'zusammen',
+            childrenBracket: bracket,
+          }).deductibleEur,
+        )
+      : 0
   const provision = {
     from: spouses.reduce((sum, s) => sum + s.provision.from, 0),
     to: spouses.reduce((sum, s) => sum + s.provision.to, 0),
   }
   const specialExpenses = Math.max(params.lumpSums.specialExpensesJoint, input.donations)
-  const taxableIncome = (deduction: number) => Math.max(0, income - deduction - specialExpenses)
+  const taxableIncome = (deduction: number) => Math.max(0, income - deduction - specialExpenses - deductibleBurdenEur)
   const zve = { from: taxableIncome(provision.to), to: taxableIncome(provision.from) }
 
   const allowance = input.children * childTaxAllowance(input.year)
@@ -108,7 +131,11 @@ export function estimateMarriedCouple(input: MarriedEstimateInput): MarriedEstim
   const withBenefit = (z: number) => splittingTariff(z, 0, input.year)
   // Günstigerprüfung: the allowance only wins when it saves more tax than the Kindergeld paid out.
   const childAllowanceUsed = allowance > 0 && withBenefit(zve.to) - withAllowance(zve.to) > input.childBenefit
-  const incomeTaxFor = (z: number) => (childAllowanceUsed ? withAllowance(z) + input.childBenefit : withBenefit(z))
+  const reductionEur = input.householdReductionEur ?? 0
+  const reducedTariffTaxFor = (z: number) =>
+    applyHouseholdTaxReduction(childAllowanceUsed ? withAllowance(z) : withBenefit(z), reductionEur)
+  const incomeTaxFor = (z: number) =>
+    childAllowanceUsed ? reducedTariffTaxFor(z) + input.childBenefit : reducedTariffTaxFor(z)
   const incomeTax = { from: incomeTaxFor(zve.from), to: incomeTaxFor(zve.to) }
 
   // Soli and Kirchensteuer are always measured on the tax after the child allowances (§ 3 Abs. 2 SolZG, § 51a EStG).

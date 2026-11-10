@@ -42,6 +42,14 @@ export type SpecialExpenseQuestionId =
 
 export type SingleParentQuestionId = 'ae-weitere-person' | 'ae-haushaltsgemeinschaft'
 
+export type HouseholdQuestionId =
+  | 'haushalt-gate'
+  | 'haushalt-dienstleistung-betrag'
+  | 'haushalt-handwerker-betrag'
+  | 'haushalt-minijob-betrag'
+
+export type HealthQuestionId = 'gesundheit-gate' | 'gesundheit-betrag'
+
 /** Asked where the advice lives (the Eule tab), not in the Minimal-Gate — value first (ADR-0045). */
 export type ProfessionQuestionId = 'beruf'
 
@@ -65,6 +73,8 @@ export type EntryQuestionId =
   | SpecialExpenseQuestionId
   | SegmentChQuestionId
   | SingleParentQuestionId
+  | HouseholdQuestionId
+  | HealthQuestionId
   | ProfessionQuestionId
 export type EntryGateId = MinimalGateGateId | SegmentTwoGateId
 
@@ -143,6 +153,9 @@ export const LATER_ALLOWED_STEPS = [
   'pv-betrag',
   'kv-wahl-betrag',
   'riester-betrag',
+  'haushalt-dienstleistung-betrag',
+  'haushalt-handwerker-betrag',
+  'haushalt-minijob-betrag',
 ] as const
 
 const LATER_ALLOWED_SET: ReadonlySet<string> = new Set<string>(LATER_ALLOWED_STEPS)
@@ -294,6 +307,22 @@ export const QUESTIONS: Readonly<Record<EntryStepId, QuestionDeclaration>> = {
   },
   'ae-weitere-person': { id: 'ae-weitere-person', kind: 'question', form: { kind: 'enum', values: YES_NO_VALUES } },
   'ae-haushaltsgemeinschaft': { id: 'ae-haushaltsgemeinschaft', kind: 'question', form: { kind: 'enum', values: YES_NO_VALUES } },
+  'haushalt-gate': {
+    id: 'haushalt-gate',
+    kind: 'question',
+    form: { kind: 'enum', values: YES_NO_VALUES },
+    followUps: { Ja: ['haushalt-dienstleistung-betrag', 'haushalt-handwerker-betrag', 'haushalt-minijob-betrag'] },
+  },
+  'haushalt-dienstleistung-betrag': { id: 'haushalt-dienstleistung-betrag', kind: 'question', form: { kind: 'integer', min: 0, max: 1000000 } },
+  'haushalt-handwerker-betrag': { id: 'haushalt-handwerker-betrag', kind: 'question', form: { kind: 'integer', min: 0, max: 1000000 } },
+  'haushalt-minijob-betrag': { id: 'haushalt-minijob-betrag', kind: 'question', form: { kind: 'integer', min: 0, max: 1000000 } },
+  'gesundheit-gate': {
+    id: 'gesundheit-gate',
+    kind: 'question',
+    form: { kind: 'enum', values: YES_NO_VALUES },
+    followUps: { Ja: ['gesundheit-betrag'] },
+  },
+  'gesundheit-betrag': { id: 'gesundheit-betrag', kind: 'question', form: { kind: 'integer', min: 0, max: 1000000 } },
   'riester-einnahmen-vorjahr': { id: 'riester-einnahmen-vorjahr', kind: 'question', form: { kind: 'integer', min: 0, max: 1000000 } },
 
   'ch-wohnsitz': { id: 'ch-wohnsitz', kind: 'question', form: { kind: 'enum', values: CH_RESIDENCE_VALUES } },
@@ -308,6 +337,8 @@ export type EntryId =
   | 'sonderausgaben'
   | 'segment-ch'
   | 'alleinerziehend'
+  | 'haushalt'
+  | 'gesundheit'
   | 'berufsprofil'
 
 export interface CatalogueEntry {
@@ -330,6 +361,8 @@ export const ENTRIES: Readonly<Record<EntryId, CatalogueEntry>> = {
   },
   'segment-ch': { id: 'segment-ch', steps: ['ch-wohnsitz', 'ch-nichtrueckkehrtage'] },
   alleinerziehend: { id: 'alleinerziehend', steps: ['ae-weitere-person', 'ae-haushaltsgemeinschaft'] },
+  haushalt: { id: 'haushalt', steps: ['haushalt-gate'] },
+  gesundheit: { id: 'gesundheit', steps: ['gesundheit-gate'] },
   /** The occupation group for the owl's profession tips — one question, asked in the Eule tab. */
   berufsprofil: { id: 'berufsprofil', steps: ['beruf'] },
 }

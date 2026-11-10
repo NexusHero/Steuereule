@@ -85,6 +85,31 @@ export interface ProvisionParameters {
   readonly maxOtherProvisionEmployeeEur: number
 }
 
+/** § 35a EStG: Steuerermäßigung für haushaltsnahe Beschäftigungsverhältnisse, Dienstleistungen und Handwerkerleistungen. */
+export interface HouseholdServicesParameters {
+  /** § 35a Abs. 1 EStG: Geringfügige Beschäftigung (20 %, max. 510 €). */
+  readonly minijobRate: number
+  readonly minijobMaxEur: number
+  /** § 35a Abs. 2 EStG: Haushaltsnahe Dienstleistungen & Pflege (20 %, max. 4.000 €). */
+  readonly servicesRate: number
+  readonly servicesMaxEur: number
+  /** § 35a Abs. 3 EStG: Handwerkerleistungen (20 %, max. 1.200 €). */
+  readonly craftsmenRate: number
+  readonly craftsmenMaxEur: number
+}
+
+/** § 33 Abs. 3 EStG (stufenweise nach BFH VI R 75/14): Zumutbare Belastung. */
+export interface ReasonableBurdenParameters {
+  readonly tier1MaxGdeEur: number
+  readonly tier2MaxGdeEur: number
+  readonly rates: {
+    readonly singleNoChildren: readonly [number, number, number]
+    readonly jointNoChildren: readonly [number, number, number]
+    readonly oneOrTwoChildren: readonly [number, number, number]
+    readonly threeOrMoreChildren: readonly [number, number, number]
+  }
+}
+
 /**
  * Vollständiges, typisiertes Parameterset aller steuerlichen Kennzahlen, Tarife
  * und Freibeträge für ein bestimmtes Veranlagungsjahr.
@@ -116,6 +141,10 @@ export interface TaxYearParameters {
   readonly provision: ProvisionParameters
   /** § 10 Abs. 4 EStG: Höchstbetrag für sonstige Vorsorgeaufwendungen (Selbstzahler / Grenzgänger: 2.800 €). */
   readonly maxOtherProvisionEur: number
+  /** § 35a EStG: Haushaltsnahe Aufwendungen und Handwerkerleistungen. */
+  readonly householdServices: HouseholdServicesParameters
+  /** § 33 Abs. 3 EStG: Zumutbare Belastung (BFH VI R 75/14). */
+  readonly reasonableBurden: ReasonableBurdenParameters
 }
 
 const STATIC_BEA_EUR = 2928
@@ -196,6 +225,24 @@ function buildParametersForYear(year: IncomeTaxYear): TaxYearParameters {
       maxOtherProvisionEmployeeEur: 1900,
     },
     maxOtherProvisionEur: 2800,
+    householdServices: {
+      minijobRate: 0.2,
+      minijobMaxEur: 510,
+      servicesRate: 0.2,
+      servicesMaxEur: 4000,
+      craftsmenRate: 0.2,
+      craftsmenMaxEur: 1200,
+    },
+    reasonableBurden: {
+      tier1MaxGdeEur: 15340,
+      tier2MaxGdeEur: 51130,
+      rates: {
+        singleNoChildren: [0.05, 0.06, 0.07],
+        jointNoChildren: [0.04, 0.05, 0.06],
+        oneOrTwoChildren: [0.02, 0.03, 0.04],
+        threeOrMoreChildren: [0.01, 0.01, 0.02],
+      },
+    },
   }
 }
 
