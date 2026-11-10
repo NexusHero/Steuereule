@@ -155,6 +155,8 @@ const COPY = {
   ...FLOW_COPY,
   loginGoogle: 'Weiter mit Google',
   loginGuest: 'Erstmal als Gast umschauen',
+  // The empty Cockpit's heading (CockpitEmpty) — what a fresh guest without answers sees at /app.
+  cockpitEmpty: 'Noch keine Angaben.',
   // ADR-0045 (value-first funnel): a guest lands in the Minimal-Gate, then the Konto-Wand.
   job: 'Angestellt',
   nein: 'Nein',
@@ -561,9 +563,11 @@ async function testGuestReload(browser, webOrigin) {
           'a real data-scoping concern on its own (REQ-002).',
       )
     }
-    // A fresh guest has no answers: the interview shows the FIRST question — never the answered state.
-    await page.getByText(COPY.job).waitFor({ state: 'visible', timeout: 10_000 }).catch(() => {
-      fail('Row D (control): after the cookie clear the fresh guest did not see the empty job question — the positive assertion above is not calibrated.')
+    // A fresh guest has no answers: /app restores the EMPTY Cockpit ("Noch keine Angaben", entry point
+    // "Fragen beantworten") — never the previous guest's answered state checked above.
+    await page.getByText(COPY.cockpitEmpty, { exact: true }).waitFor({ state: 'visible', timeout: 10_000 }).catch(async () => {
+      const bodyText = await page.evaluate(() => document.body.innerText.slice(0, 600))
+      fail(`Row D (control): after the cookie clear the fresh guest did not see the empty Cockpit — the positive assertion above is not calibrated. Page (${page.url()}) shows: ${JSON.stringify(bodyText)}`)
     })
     console.log('[return-visit] Row D (control): clearing the guest cookie correctly produces a fresh, empty guest identity on reload — the positive assertion above is real, not vacuous.')
   } finally {
