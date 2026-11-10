@@ -548,6 +548,49 @@ describe('CockpitScreen — Kinder & Eulen-Modus entries', () => {
       expect(screen.getByTestId('cockpit-bescheid')).toBeTruthy()
       expect(screen.getByTestId('cockpit-ausdruck')).toBeTruthy()
     })
+
+    it('renders red blocker hint for conflicts and warning hint for notices without conflicts (§ 3.3)', async () => {
+      mockCockpit(LOADED_SUMMARY)
+      mockInterview({
+        job: 'Angestellt',
+        ausland: 'Nein',
+        kinder: 'Nein',
+        familienstand: 'Ledig',
+        dhf: 'Ja',
+        'dhf-miete': 'spaeter',
+        umzug: 'Nein',
+        abfindung: 'Nein',
+        lohnersatz: 'Nein',
+        nebenjob: 'Nein',
+      })
+      renderCockpit({ isSignedIn: true, onOpenTile: vi.fn() })
+
+      const lstbHint = await screen.findByTestId('cockpit-kachel-lstb-hinweis')
+      expect(lstbHint.textContent).toBe('Muss vor der Abgabe geklärt werden')
+
+      const lifeHint = screen.getByTestId('cockpit-kachel-lebenslagen-hinweis')
+      expect(lifeHint.textContent).toBe('Bitte prüfen')
+
+      expect(getComputedStyle(lstbHint).color).not.toBe(getComputedStyle(lifeHint).color)
+      expect(screen.queryByTestId('cockpit-kachel-sonderausgaben-hinweis')).toBeNull()
+    })
+
+    it('shows blocker hint on einkuenfte tile for gated income category (§ 3.3)', async () => {
+      mockCockpit(LOADED_SUMMARY)
+      mockInterview({
+        job: 'Angestellt',
+        ausland: 'Nein',
+        kinder: 'Nein',
+        familienstand: 'Ledig',
+        einkuenfte: 'Kapitalerträge',
+        'kap-depot': 'Krypto',
+        'kap-gate': 'Ja',
+      })
+      renderCockpit({ isSignedIn: true, onOpenTile: vi.fn() })
+
+      const incomeHint = await screen.findByTestId('cockpit-kachel-einkuenfte-hinweis')
+      expect(incomeHint.textContent).toBe('Muss vor der Abgabe geklärt werden')
+    })
   })
 })
 

@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
 import { Button, Card, Chip, HerkunftsChip, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme, type Breakpoint } from '@steuereule/ui'
 import { DeadlinesBanner } from '../deadlines/DeadlinesBanner'
-import { formatEuro, formatEuroRange, UNCERTAINTY_PER_ITEM, type Answers } from '@steuereule/core'
+import { formatEuro, formatEuroRange, UNCERTAINTY_PER_ITEM, type Answers, type Conflict, type Notice } from '@steuereule/core'
 import {
   useCockpitControllerGetCockpitSummary,
   useConfirmationControllerGet,
@@ -22,6 +22,7 @@ import { APP_NS } from '../../i18n/resources'
 import { SELECTABLE_TAX_YEARS, CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { pathFromAnswers, type FunnelPath } from '../funnel/KontoWandScreen'
+import { usePlausibility } from '../plausibility/usePlausibility'
 import { CockpitTiles, tileRevisitFlag, useCockpitTileFacts } from './CockpitTiles'
 import { nextStepTile, type TileDefinition, type TileFacts } from './tiles'
 
@@ -82,6 +83,11 @@ export function CockpitScreen({
   const answers = (interview?.answers ?? {}) as Answers
   const path = interview?.nextStep.kind === 'done' ? pathFromAnswers(interview.answers) : null
   const tileFacts = useCockpitTileFacts(year, isSignedIn, path, answers)
+  const plausibility = usePlausibility(year, { enabled: isSignedIn })
+  const findings: PlausibilityFindings =
+    plausibility.status === 'ready'
+      ? { conflicts: plausibility.conflicts, notices: plausibility.notices }
+      : { conflicts: [], notices: [] }
 
   if (query.isPending) {
     return <LoadingState bp={bp} label={tr('cockpit.loading')} />
@@ -138,6 +144,7 @@ export function CockpitScreen({
         isRefreshing={isRefreshing}
         next={next}
         tileFacts={tileFacts}
+        findings={findings}
         onOpenTile={openTile}
         masterData={masterData}
         onOpenInterview={onOpenInterview}
@@ -162,6 +169,7 @@ export function CockpitScreen({
       isRefreshing={isRefreshing}
       next={next}
       tileFacts={tileFacts}
+      findings={findings}
       onOpenTile={openTile}
       masterData={masterData}
       onOpenInterview={onOpenInterview}
@@ -174,6 +182,11 @@ export function CockpitScreen({
       bp={bp}
     />
   )
+}
+
+interface PlausibilityFindings {
+  readonly conflicts: readonly Conflict[]
+  readonly notices: readonly Notice[]
 }
 
 interface PullToRefresh {
@@ -242,6 +255,7 @@ interface CockpitEmptyProps {
   readonly isRefreshing: boolean
   readonly next: Next | null
   readonly tileFacts: TileFacts | null
+  readonly findings: PlausibilityFindings
   readonly onOpenTile: (tile: TileDefinition, revisit: boolean) => void
   readonly masterData: Next | null
   readonly onOpenInterview: () => void
@@ -303,7 +317,7 @@ function EuleBannerNotice() {
   )
 }
 
-function CockpitEmpty({ year, onYearChange, refresh, isRefreshing, next, tileFacts, onOpenTile, masterData, onOpenInterview, onOpenAssessment, onOpenCapital, onOpenRental, onOpenKinder, onOpenOwlMode, bp }: CockpitEmptyProps) {
+function CockpitEmpty({ year, onYearChange, refresh, isRefreshing, next, tileFacts, findings, onOpenTile, masterData, onOpenInterview, onOpenAssessment, onOpenCapital, onOpenRental, onOpenKinder, onOpenOwlMode, bp }: CockpitEmptyProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
@@ -328,7 +342,14 @@ function CockpitEmpty({ year, onYearChange, refresh, isRefreshing, next, tileFac
             {tr('cockpit.answerQuestions')}
           </Button>
         ) : null}
-        {tileFacts !== null ? <CockpitTiles facts={tileFacts} onOpenTile={onOpenTile} /> : null}
+        {tileFacts !== null ? (
+          <CockpitTiles
+            facts={tileFacts}
+            conflicts={findings.conflicts}
+            notices={findings.notices}
+            onOpenTile={onOpenTile}
+          />
+        ) : null}
         {onOpenOwlMode ? <View style={styles.berater}><OwlAdvisorCard onOpen={onOpenOwlMode} testID="cockpit-empty-eulen-modus" /></View> : null}
         {masterData ? (
           <Button variant="ghost" onPress={masterData.onPress} style={styles.secondaryCta} testID="cockpit-stammdaten">
@@ -402,6 +423,7 @@ interface CockpitLoadedProps {
   readonly isRefreshing: boolean
   readonly next: Next | null
   readonly tileFacts: TileFacts | null
+  readonly findings: PlausibilityFindings
   readonly onOpenTile: (tile: TileDefinition, revisit: boolean) => void
   readonly masterData: Next | null
   readonly onOpenInterview: () => void
@@ -414,7 +436,7 @@ interface CockpitLoadedProps {
   readonly bp: Breakpoint
 }
 
-function CockpitLoaded({ summary, year, onYearChange, confirmation, onOpenConfirmation, refresh, isRefreshing, next, tileFacts, onOpenTile, masterData, onOpenInterview, onOpenAssessment, onOpenCapital, onOpenRental, onOpenKinder, onOpenOwlMode, onOpenPrintout, bp }: CockpitLoadedProps) {
+function CockpitLoaded({ summary, year, onYearChange, confirmation, onOpenConfirmation, refresh, isRefreshing, next, tileFacts, findings, onOpenTile, masterData, onOpenInterview, onOpenAssessment, onOpenCapital, onOpenRental, onOpenKinder, onOpenOwlMode, onOpenPrintout, bp }: CockpitLoadedProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
@@ -450,7 +472,14 @@ function CockpitLoaded({ summary, year, onYearChange, confirmation, onOpenConfir
           {tr('cockpit.answerQuestions')}
         </Button>
       ) : null}
-      {tileFacts !== null ? <CockpitTiles facts={tileFacts} onOpenTile={onOpenTile} /> : null}
+      {tileFacts !== null ? (
+        <CockpitTiles
+          facts={tileFacts}
+          conflicts={findings.conflicts}
+          notices={findings.notices}
+          onOpenTile={onOpenTile}
+        />
+      ) : null}
       {onOpenOwlMode ? <View style={styles.berater}><OwlAdvisorCard onOpen={onOpenOwlMode} /></View> : null}
       {masterData ? (
         <Button variant="ghost" onPress={masterData.onPress} style={styles.secondaryCta} testID="cockpit-stammdaten">
