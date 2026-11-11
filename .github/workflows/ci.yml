@@ -938,6 +938,10 @@ jobs:
         run: node e2e/scenarios/four-scenarios.mjs
       - name: BFSG / WCAG 2.1 AA Accessibility Gate (@axe-core/playwright across key screens)
         run: node e2e/a11y/bfsg-wcag-audit.mjs
+      - name: Deep-link matrix (#450 Teil 4, #443 AC 2/3) — every route with load, reload, back, forward; guest deep links
+        # Paces its own get-session reads against better-auth's rolling window. DATABASE_URL (job env)
+        # verifies the sign-up.
+        run: node e2e/navigation/deep-links.mjs
       - name: Real-Session Load & Latency Budget Gate (0% error rate, p95 <= 250ms)
         run: node scripts/loadtest/loadtest.mjs --concurrency 5 --iterations 5 --url "${API_ORIGIN}" --origin "${WEB_ORIGIN}" --max-p95 250
       - name: Restart the API with the fake KiPort (#450 D8 — AI_FAKE_KI only outside production)
