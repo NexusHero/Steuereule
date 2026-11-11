@@ -1,12 +1,16 @@
 import { useEffect, useState } from 'react'
-import { Linking, Pressable, Text, TextInput, View, type TextStyle, type ViewStyle } from 'react-native'
+import { Linking, Pressable, ScrollView, Text, TextInput, View, type TextStyle, type ViewStyle } from 'react-native'
 import { ChatComposer } from './chat/ChatComposer'
 import { ThinkingIndicator } from './chat/ThinkingIndicator'
 import { DictationHint } from './chat/DictationHint'
 import { DictationBar } from './chat/DictationBar'
 import { browserDictationEngine, type DictationEngine } from '../../lib/dictation/engine'
 import { MarkdownMessage } from './chat/MarkdownMessage'
+import { OwlMark } from '../../marks/OwlMark'
+import { useStickToBottom } from './chat/useStickToBottom'
 import { copyToClipboard } from './chat/clipboard'
+import { FeedbackButtons } from './chat/FeedbackButtons'
+import { ThoughtBlock } from './chat/ThoughtBlock'
 import { plainTextForCopy } from './chat/markdownLinks'
 import type { AbortedTurn, AdvisorPlanView } from './CopilotBridgeProvider'
 import { PlanChecklist } from './chat/PlanChecklist'
@@ -18,6 +22,8 @@ import {
   formatEuro,
   type AdvisorActionProposal,
   type AdvisorChatMessageView,
+  type AdvisorFeedbackRating,
+  type AdvisorFeedbackReason,
   type AdvisorLegalSource,
   type AdvisorQuickAction,
   type AdvisorTwoPathsProposal,
@@ -32,6 +38,16 @@ export interface AdvisorChatPanelProps {
   readonly isSending?: boolean | undefined
   readonly streamSteps?: readonly string[] | undefined
   readonly streamedText?: string | undefined
+  /** The reasoning summary of the running answer, as far as it has arrived (#476). */
+  readonly streamedReasoning?: string | undefined
+  /** The question of the running turn; shown until `messages` contains it. */
+  readonly pendingUserMessage?: AdvisorChatMessageView | null | undefined
+  /** True while the connection to a running answer is being restored. */
+  readonly reconnecting?: boolean | undefined
+  /** Stores a rating; without it the chat offers none (e.g. the local preview). */
+  readonly onRateMessage?:
+    | ((messageId: string, rating: AdvisorFeedbackRating | null, reason?: AdvisorFeedbackReason) => Promise<void> | void)
+    | undefined
   readonly chatError?: string | null | undefined
   readonly basisMode?: boolean | undefined
   readonly onSendMessage: (text: string, options?: ChatSendOptions) => Promise<void> | void
@@ -55,7 +71,15 @@ export interface AdvisorChatPanelProps {
   readonly receiptNotice?: string | null | undefined
   readonly isParsingReceipt?: boolean | undefined
   readonly compact?: boolean | undefined
+  /**
+   * `panel` (default): a card among other content, scrolled by its surroundings. `page`: the chat
+   * is the screen, with its own scrolling conversation in a reading column and a fixed composer.
+   */
+  readonly variant?: 'panel' | 'page' | undefined
 }
+
+/** Width of the reading column in the page variant. */
+export const CHAT_COLUMN_MAX_WIDTH = 760
 
 /** How a message is sent: a quick start, or replacing the latest turn (regenerate / edit, #451 1b). */
 export interface ChatSendOptions {
@@ -336,11 +360,15 @@ function TwoPathsCardView({
 
 export function AdvisorChatPanel({
   greeting,
-  messages,
+  messages: allMessages,
   quickChips = [],
   isSending = false,
   streamSteps = [],
   streamedText = '',
+  streamedReasoning = '',
+  pendingUserMessage = null,
+  reconnecting = false,
+  onRateMessage,
   chatError = null,
   basisMode = false,
   onSendMessage,
@@ -358,7 +386,9 @@ export function AdvisorChatPanel({
   receiptNotice = null,
   isParsingReceipt = false,
   compact = false,
+  variant = 'panel',
 }: AdvisorChatPanelProps) {
+  const pageScroll = useStickToBottom()
   const theme = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(theme)
@@ -391,6 +421,12 @@ export function AdvisorChatPanel({
     }
     await (quickAction ? onSendMessage(text, { quickAction }) : onSendMessage(text))
   }
+
+  // An answer that is still being written is shown by the live bubble, not from the stored list.
+  const messages = allMessages.filter((m) => !(m.role === 'assistant' && m.status === 'streaming'))
+  const showPendingUser = isSending && pendingUserMessage !== null && !messages.some((m) => m.id === pendingUserMessage.id)
+  const lastMessage = messages.at(-1)
+  const lastIsStoredInterrupted = lastMessage?.role === 'assistant' && (lastMessage.status === 'aborted' || lastMessage.status === 'failed')
 
   // The plan sits above the answer it belongs to: the live one, the stopped one, or the last one.
   const lastAssistantIndex = messages.reduce((last, m, i) => (m.role === 'assistant' ? i : last), -1)
@@ -432,8 +468,10 @@ export function AdvisorChatPanel({
     setReceiptOpen(false)
   }
 
-  return (
-    <View style={styles.container} testID="advisor-chat-panel">
+  const isEmpty = messages.length === 0 && !isSending && abortedTurn === null
+
+  const header = (
+    <>
       <View style={styles.chatHeader}>
         <AiChip style={styles.sender} testID="eule-sender-chat">
           {tr('advisor.chat.sender', 'Die Eule')}
@@ -447,7 +485,22 @@ export function AdvisorChatPanel({
             )}
         </Text>
       </View>
+    </>
+  )
 
+  // The page variant greets an empty chat with the owl; once there is a conversation it needs no header.
+  const pageIntro = isEmpty ? (
+    <View style={styles.emptyState} testID="advisor-empty-state">
+      <OwlMark variant="tinte" size={72} />
+      <Text style={styles.emptyTitle} role="heading" aria-level={2}>
+        {tr('advisor.chat.emptyTitle')}
+      </Text>
+      <Text style={styles.emptyHelp}>{greeting ?? tr('advisor.chat.help')}</Text>
+    </View>
+  ) : null
+
+  const body = (
+    <>
       {/* Quick-Starter Chips */}
       {quickChips.length > 0 && messages.length === 0 ? (
         <View style={styles.quickChipsRow} testID="advisor-quick-chips">
@@ -488,6 +541,20 @@ export function AdvisorChatPanel({
                 </Pressable>
               ) : null}
             </View>
+          ) : msg.status === 'aborted' || msg.status === 'failed' ? (
+            <Card key={msg.id} style={styles.assistantBubble} testID={msg.status === 'aborted' ? 'advisor-message-aborted' : 'advisor-message-failed'}>
+              <View style={styles.assistantBubbleHeader}>
+                <AiChip>{tr('advisor.chat.sender', 'Die Eule')}</AiChip>
+                <Text style={styles.abortedBadge}>{tr(msg.status === 'aborted' ? 'advisor.chat.aborted' : 'advisor.chat.failed')}</Text>
+              </View>
+              <ThoughtBlock reasoning={msg.reasoning} steps={msg.meta?.steps} />
+              {msg.content.length > 0 ? <MarkdownMessage content={msg.content} onSelectSource={setSelectedSource} /> : null}
+              {index === messages.length - 1 && canReplace ? (
+                <Pressable accessibilityRole="button" onPress={regenerate} style={styles.choicePill} testID="advisor-retry">
+                  <Text style={styles.choicePillText}>{tr('advisor.chat.retry')}</Text>
+                </Pressable>
+              ) : null}
+            </Card>
           ) : (
             <View key={msg.id}>
             {planAboveLastAnswer && index === lastAssistantIndex ? <PlanChecklist plan={plan} /> : null}
@@ -495,6 +562,7 @@ export function AdvisorChatPanel({
               <View style={styles.assistantBubbleHeader}>
                 <AiChip>{tr('advisor.chat.sender', 'Die Eule')}</AiChip>
               </View>
+              <ThoughtBlock reasoning={msg.reasoning} steps={msg.meta?.steps} />
               <MarkdownMessage content={msg.content} onSelectSource={setSelectedSource} />
 
               {/* Source Pills when sources are in meta */}
@@ -596,12 +664,31 @@ export function AdvisorChatPanel({
                   {tr('advisor.chat.copied')}
                 </Text>
               ) : null}
+              {onRateMessage ? (
+                <FeedbackButtons feedback={msg.feedback} onRate={(rating, reason) => onRateMessage(msg.id, rating, reason)} />
+              ) : null}
             </Card>
             </View>
           ),
         )}
 
+        {showPendingUser ? (
+          <View style={styles.userTurn}>
+            <View style={styles.userBubble} testID="advisor-user-message">
+              <Text style={styles.userBubbleText}>{pendingUserMessage.content}</Text>
+            </View>
+          </View>
+        ) : null}
+
         {plan !== null && (isSending || abortedTurn !== null) ? <PlanChecklist plan={plan} /> : null}
+
+        {isSending ? <ThoughtBlock reasoning={streamedReasoning} steps={streamedReasoning.length > 0 ? streamSteps : []} live /> : null}
+
+        {isSending && reconnecting ? (
+          <Text style={styles.streamStepText} accessibilityLiveRegion="polite" aria-live="polite" testID="advisor-reconnecting">
+            {tr('advisor.chat.reconnecting')}
+          </Text>
+        ) : null}
 
         {isSending && streamedText.length > 0 ? (
           <Card style={styles.assistantBubble} testID="advisor-streaming-message">
@@ -616,7 +703,7 @@ export function AdvisorChatPanel({
           <ThinkingIndicator steps={streamSteps} />
         ) : null}
 
-        {abortedTurn && !isSending ? (
+        {abortedTurn && !isSending && !lastIsStoredInterrupted ? (
           <Card style={styles.assistantBubble} testID="advisor-message-aborted">
             <View style={styles.assistantBubbleHeader}>
               <AiChip>{tr('advisor.chat.sender', 'Die Eule')}</AiChip>
@@ -766,7 +853,11 @@ export function AdvisorChatPanel({
           </View>
         </Card>
       ) : null}
+    </>
+  )
 
+  const composer = (
+    <>
       {dictationSupported ? (
         <DictationBar
           engine={dictationEngine}
@@ -816,6 +907,31 @@ export function AdvisorChatPanel({
           />
         </View>
       </View>
+    </>
+  )
+
+  if (variant === 'page') {
+    // The conversation scrolls, the composer stays put: the chat owns the window (#476 decision 1).
+    return (
+      <View style={styles.pageRoot} testID="advisor-chat-panel">
+        <ScrollView {...pageScroll} style={styles.pageScroll} contentContainerStyle={styles.pageScrollContent} testID="advisor-chat-scroll">
+          <View style={styles.pageColumn}>
+            {pageIntro}
+            {body}
+          </View>
+        </ScrollView>
+        <View style={styles.pageComposerDock} testID="advisor-chat-composer-dock">
+          <View style={styles.pageColumn}>{composer}</View>
+        </View>
+      </View>
+    )
+  }
+
+  return (
+    <View style={styles.container} testID="advisor-chat-panel">
+      {header}
+      {body}
+      {composer}
     </View>
   )
 }
@@ -1216,6 +1332,21 @@ function makeStyles(t: UiTheme) {
       gap: t.space.s1,
     } as ViewStyle,
     composer: { flex: 1 } as ViewStyle,
+    pageRoot: { flex: 1, minHeight: 0 } as ViewStyle,
+    pageScroll: { flex: 1 } as ViewStyle,
+    pageScrollContent: { paddingHorizontal: t.space.s4, paddingTop: t.space.s4, paddingBottom: t.space.s3, flexGrow: 1 } as ViewStyle,
+    pageColumn: { width: '100%', maxWidth: CHAT_COLUMN_MAX_WIDTH, alignSelf: 'center' } as ViewStyle,
+    pageComposerDock: {
+      paddingHorizontal: t.space.s4,
+      paddingTop: t.space.s2,
+      paddingBottom: t.space.s3,
+      backgroundColor: t.color.grund,
+      borderTopWidth: 1,
+      borderTopColor: t.color.linieWeich,
+    } as ViewStyle,
+    emptyState: { alignItems: 'center', gap: t.space.s3, paddingVertical: t.space.s6, marginBottom: t.space.s3 } as ViewStyle,
+    emptyTitle: { fontFamily: t.font.display, fontWeight: t.weight.fett, fontSize: t.size.l, color: t.color.tinte, textAlign: 'center' } as TextStyle,
+    emptyHelp: { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.tinte2, textAlign: 'center', maxWidth: 520 } as TextStyle,
     userTurn: { alignItems: 'flex-end' } as ViewStyle,
     messageActions: { flexDirection: 'row', gap: t.space.s3, marginTop: t.space.s2 } as ViewStyle,
     messageAction: { paddingVertical: 2 } as ViewStyle,

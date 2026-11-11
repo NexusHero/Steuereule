@@ -366,7 +366,11 @@ export function CopilotBridgeProvider({
         setReconnecting(false)
         if (event === 'start') {
           const { runId, userMessage } = data as { runId?: unknown; userMessage?: unknown }
-          if (typeof runId === 'string') run.id = runId
+          if (typeof runId === 'string') {
+            run.id = runId
+            // A run this provider follows itself is never picked up a second time as "found running".
+            resumedRunsRef.current.add(runId)
+          }
           if (typeof userMessage === 'object' && userMessage !== null) setPendingUserMessage(userMessage as AdvisorChatMessageView)
         } else if (event === 'status' && 'text' in data) {
           const text = String((data as { text: unknown }).text)
