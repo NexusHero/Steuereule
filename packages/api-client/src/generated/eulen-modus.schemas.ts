@@ -419,11 +419,48 @@ export const AdvisorMessageMetaDtoSourcesItem = {
 
 export interface AdvisorMessageMetaDto {
   choices?: string[];
+  /** Steps the owl reported while working on this answer (#476). */
+  steps?: string[];
   action?: AdvisorActionProposalDto;
   actions?: AdvisorActionProposalDto[];
   lstbScan?: AdvisorLstbScanMetaDto;
   twoPaths?: AdvisorTwoPathsProposalDto;
   sources?: AdvisorMessageMetaDtoSourcesItem[];
+}
+
+/**
+ * Lifecycle of the message (#476). An aborted or failed answer keeps its partial text and carries no proposal.
+ */
+export type AdvisorChatMessageDtoStatus = typeof AdvisorChatMessageDtoStatus[keyof typeof AdvisorChatMessageDtoStatus];
+
+
+export const AdvisorChatMessageDtoStatus = {
+  streaming: 'streaming',
+  complete: 'complete',
+  aborted: 'aborted',
+  failed: 'failed',
+} as const;
+
+export type AdvisorMessageFeedbackDtoRating = typeof AdvisorMessageFeedbackDtoRating[keyof typeof AdvisorMessageFeedbackDtoRating];
+
+
+export const AdvisorMessageFeedbackDtoRating = {
+  up: 'up',
+  down: 'down',
+} as const;
+
+export type AdvisorMessageFeedbackDtoReason = typeof AdvisorMessageFeedbackDtoReason[keyof typeof AdvisorMessageFeedbackDtoReason];
+
+
+export const AdvisorMessageFeedbackDtoReason = {
+  falsch: 'falsch',
+  unklar: 'unklar',
+  nicht_hilfreich: 'nicht_hilfreich',
+} as const;
+
+export interface AdvisorMessageFeedbackDto {
+  rating: AdvisorMessageFeedbackDtoRating;
+  reason?: AdvisorMessageFeedbackDtoReason;
 }
 
 export interface AdvisorChatMessageDto {
@@ -433,6 +470,14 @@ export interface AdvisorChatMessageDto {
   /** @nullable */
   meta?: AdvisorMessageMetaDto | null;
   createdAt: string;
+  /** Lifecycle of the message (#476). An aborted or failed answer keeps its partial text and carries no proposal. */
+  status?: AdvisorChatMessageDtoStatus;
+  /** Reasoning summary of the provider; considerations of the model, not advice. */
+  reasoning?: string;
+  /** @nullable */
+  feedback?: AdvisorMessageFeedbackDto | null;
+  /** Present while status is streaming: the run to re-attach to. */
+  runId?: string;
 }
 
 export type ParsedLstbResponseDtoStage = typeof ParsedLstbResponseDtoStage[keyof typeof ParsedLstbResponseDtoStage];
@@ -612,6 +657,10 @@ export interface AdvisorSessionResponseDto {
   legalSources: AdvisorLegalSourceDto[];
 }
 
+export interface ClearAdvisorConversationResponseDto {
+  deletedMessages: number;
+}
+
 export type SendAdvisorMessageDtoActiveScreen = typeof SendAdvisorMessageDtoActiveScreen[keyof typeof SendAdvisorMessageDtoActiveScreen];
 
 
@@ -667,6 +716,45 @@ export interface SendAdvisorMessageResponseDto {
   mode: SendAdvisorMessageResponseDtoMode;
 }
 
+export interface StopAdvisorRunResponseDto {
+  /** false when the run had already ended. */
+  stopped: boolean;
+}
+
+/**
+ * null removes the rating.
+ * @nullable
+ */
+export type SetAdvisorFeedbackDtoRating = typeof SetAdvisorFeedbackDtoRating[keyof typeof SetAdvisorFeedbackDtoRating] | null;
+
+
+export const SetAdvisorFeedbackDtoRating = {
+  up: 'up',
+  down: 'down',
+} as const;
+
+/**
+ * Only kept with a thumbs down.
+ */
+export type SetAdvisorFeedbackDtoReason = typeof SetAdvisorFeedbackDtoReason[keyof typeof SetAdvisorFeedbackDtoReason];
+
+
+export const SetAdvisorFeedbackDtoReason = {
+  falsch: 'falsch',
+  unklar: 'unklar',
+  nicht_hilfreich: 'nicht_hilfreich',
+} as const;
+
+export interface SetAdvisorFeedbackDto {
+  /**
+     * null removes the rating.
+     * @nullable
+     */
+  rating: SetAdvisorFeedbackDtoRating;
+  /** Only kept with a thumbs down. */
+  reason?: SetAdvisorFeedbackDtoReason;
+}
+
 /**
  * Re-baselines fields after a stale conflict: provenance key → the value the field holds now (from the 409 details). The write remains a compare-and-set.
  */
@@ -707,4 +795,8 @@ export interface OwlCardsResponseDto {
   cards: OwlCardDto[];
   legalStatus: string;
 }
+
+export type AdvisorControllerRunEventsParams = {
+after?: number;
+};
 

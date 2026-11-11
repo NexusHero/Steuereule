@@ -82,7 +82,12 @@ export function buildAdvisorTestKit(engine?: AdvisorEnginePort): AdvisorTestKit 
 }
 
 /** A step of a scripted engine turn: an event, or a pause that only ends when the turn is aborted. */
-export type ScriptStep = AdvisorStreamEvent | { readonly waitForAbort: true } | { readonly fail: Error }
+export type ScriptStep =
+  | AdvisorStreamEvent
+  | { readonly waitForAbort: true }
+  | { readonly fail: Error }
+  /** Holds the turn until the test releases it. */
+  | { readonly waitFor: Promise<void> }
 
 export function doneEvent(result: Partial<AdvisorTurnResult> & { replyText: string }): AdvisorStreamEvent {
   return { event: 'done', data: { meta: {}, mode: 'langgraph', provider: 'fake', model: 'fake-1', ...result } satisfies AdvisorTurnResult }
@@ -98,6 +103,10 @@ export class ScriptedAdvisorEngine implements AdvisorEnginePort {
     this.requests.push(request)
     for (const step of this.script) {
       if ('fail' in step) throw step.fail
+      if ('waitFor' in step) {
+        await step.waitFor
+        continue
+      }
       if ('waitForAbort' in step) {
         await new Promise<void>((resolve) => {
           if (request.signal?.aborted) resolve()

@@ -8,6 +8,7 @@ import {
   SystemMessage,
   ToolMessage,
   type BaseMessage,
+  type UsageMetadata,
 } from '@langchain/core/messages'
 import { tool, type StructuredToolInterface } from '@langchain/core/tools'
 import { concat } from '@langchain/core/utils/stream'
@@ -27,6 +28,7 @@ import {
   type AdvisorStreamEvent,
   type AdvisorTurnRequest,
   type AdvisorTurnResult,
+  type AdvisorTurnUsage,
   type AdvisorTwoPathsProposal,
   type CaseDigest,
   type OwlSourceId,
@@ -74,7 +76,57 @@ function extractMessageText(content: unknown): string {
     .join('')
 }
 
-function buildSystemPrompt(digest: CaseDigest, activeScreen?: Screen): string {
+/**
+ * The reasoning summary a provider attached to a chunk, in any of the shapes they use: Anthropic and
+ * Gemini `thinking` parts, LangChain's standard `reasoning` blocks, OpenAI's summary list. Encrypted
+ * or redacted reasoning has no text and yields nothing.
+ */
+export function extractReasoningText(message: { content: unknown; additional_kwargs?: Record<string, unknown> | undefined }): string {
+  const fromSummary = (summary: unknown): string =>
+    Array.isArray(summary)
+      ? summary.map((item) => (item && typeof item === 'object' && typeof (item as { text?: unknown }).text === 'string' ? (item as { text: string }).text : '')).join('')
+      : ''
+
+  let text = ''
+  if (Array.isArray(message.content)) {
+    for (const part of message.content) {
+      if (!part || typeof part !== 'object') continue
+      const block = part as { type?: unknown; thinking?: unknown; reasoning?: unknown; summary?: unknown }
+      if (block.type === 'thinking' && typeof block.thinking === 'string') text += block.thinking
+      else if (block.type === 'reasoning' && typeof block.reasoning === 'string') text += block.reasoning
+      else if (block.type === 'reasoning') text += fromSummary(block.summary)
+    }
+  }
+  const kwargs = message.additional_kwargs
+  if (kwargs) {
+    const reasoning = kwargs.reasoning
+    if (reasoning && typeof reasoning === 'object') text += fromSummary((reasoning as { summary?: unknown }).summary)
+    if (typeof kwargs.reasoning_content === 'string') text += kwargs.reasoning_content
+  }
+  return text
+}
+
+function sumUsage(messages: readonly BaseMessage[]): AdvisorTurnUsage | undefined {
+  let seen = false
+  let inputTokens = 0
+  let outputTokens = 0
+  let cachedInputTokens = 0
+  for (const message of messages) {
+    const usage = (message as { usage_metadata?: UsageMetadata | undefined }).usage_metadata
+    if (!usage) continue
+    seen = true
+    inputTokens += usage.input_tokens ?? 0
+    outputTokens += usage.output_tokens ?? 0
+    cachedInputTokens += usage.input_token_details?.cache_read ?? 0
+  }
+  return seen ? { inputTokens, outputTokens, cachedInputTokens } : undefined
+}
+
+/**
+ * The part of the system prompt that is the same for every user and every turn. It comes first so
+ * providers can cache it as a prefix (#476); nothing case-specific may ever move in here.
+ */
+export function buildStableSystemPrompt(): string {
   const sourceCatalog = Object.values(ADVISOR_LEGAL_SOURCES)
     .map((s) => `- ${s.sourceId} (${s.paragraph}): ${s.title}`)
     .join('\n')
@@ -92,10 +144,41 @@ function buildSystemPrompt(digest: CaseDigest, activeScreen?: Screen): string {
     '',
     '5. Plan: Braucht eine Aufgabe mehrere Schritte (z. B. „Was hab ich vergessen?“ oder mehrere Bereiche prüfen), lege mit `plan_steps` eine kurze Liste an (höchstens 8 Schritte) und rufe `plan_steps` bei jedem Fortschritt mit der vollständigen Liste und neuen Status auf (`offen`, `laeuft`, `erledigt`). Einfache Fragen beantwortest du direkt, ohne Plan. Ein Plan schreibt nie etwas: Änderungen bleiben Entwürfe über `stage_field_draft`.',
     '',
+    '6. Gesprächsverlauf: Zeilen der Form `[Vorschlag „…“ → …: Status]` in früheren Antworten beschreiben deine eigenen Entwürfe und was der Nutzer damit gemacht hat. Wiederhole keinen Vorschlag, der schon übernommen oder verworfen wurde, und schreibe solche Zeilen nie selbst.',
+  ].join('\n')
+}
+
+function buildCaseSystemPrompt(digest: CaseDigest, activeScreen: Screen | undefined, planFirst: boolean): string {
+  return [
     `Aktive Maske: ${activeScreen ?? 'cockpit'}`,
     'PII-freier Fall-Überblick (CaseDigest):',
     JSON.stringify(digest),
+    ...(planFirst ? ['', 'Für diese Anfrage gilt: Rufe als Erstes `plan_steps` auf, bevor du irgendetwas anderes tust.'] : []),
   ].join('\n')
+}
+
+/**
+ * Stable rules first, the case second. Anthropic caches only what is marked, so there the stable
+ * block carries an explicit cache breakpoint; the other providers cache a repeated prefix on their own.
+ */
+export function buildSystemMessage(
+  provider: string,
+  digest: CaseDigest,
+  activeScreen?: Screen,
+  /** Ask for the plan in words, for models that cannot be forced to a tool (see `canForceTool`). */
+  planFirst = false,
+): SystemMessage {
+  const stable = buildStableSystemPrompt()
+  const caseSpecific = buildCaseSystemPrompt(digest, activeScreen, planFirst)
+  if (provider === 'anthropic') {
+    return new SystemMessage({
+      content: [
+        { type: 'text', text: stable, cache_control: { type: 'ephemeral' } },
+        { type: 'text', text: caseSpecific },
+      ],
+    })
+  }
+  return new SystemMessage(`${stable}\n\n${caseSpecific}`)
 }
 
 const AdvisorGraphState = Annotation.Root({
@@ -210,13 +293,14 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
     model: BaseChatModel,
     request: AdvisorTurnRequest,
     maxToolRounds: number,
+    canForceTool: boolean,
   ) {
     const tools = buildToolSchemas()
     const bind = typeof model.bindTools === 'function' ? model.bindTools.bind(model) : null
     const boundModel = bind ? bind([...tools]) : model
     // The quick start „Was hab ich vergessen?“ must open with a plan (decision 17): only the first
     // round is forced, later rounds are free to work through the steps and answer.
-    const planFirstModel = bind && request.planRequired ? bind([...tools], { tool_choice: 'plan_steps' }) : boundModel
+    const planFirstModel = bind && request.planRequired && canForceTool ? bind([...tools], { tool_choice: 'plan_steps' }) : boundModel
     const makeActionId = request.actionIdFactory ?? (newActionId)
 
     const agentNode = async (
@@ -230,6 +314,10 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
       const streamOrValue = await roundModel.stream(state.messages, config)
       for await (const chunk of streamOrValue) {
         if (chunk instanceof AIMessageChunk) {
+          const thought = extractReasoningText(chunk)
+          if (thought.length > 0) {
+            config?.writer?.({ event: 'reasoning', data: { text: thought } } satisfies AdvisorStreamEvent)
+          }
           const text = extractMessageText(chunk.content)
           if (text.length > 0) {
             config?.writer?.({ event: 'token', data: { text } } satisfies AdvisorStreamEvent)
@@ -603,7 +691,14 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
       return
     }
 
-    const systemMessage = new SystemMessage(buildSystemPrompt(request.digest, request.activeScreen))
+    // Anthropic rejects a forced tool call while extended thinking is on; the plan is then asked for in words.
+    const canForceTool = !(slotConfig.provider === 'anthropic' && slotConfig.reasoning === 'summary')
+    const systemMessage = buildSystemMessage(
+      slotConfig.provider,
+      request.digest,
+      request.activeScreen,
+      request.planRequired === true && !canForceTool,
+    )
     const historyMessages: BaseMessage[] = (request.history ?? []).map((entry) =>
       entry.role === 'user' ? new HumanMessage(entry.content) : new AIMessage(entry.content),
     )
@@ -611,6 +706,9 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
 
     let streamedTokenCount = 0
     let streamedText = ''
+    let reasoning = ''
+    let reasoningRound = 0
+    let lastReasoningRound = 0
     let finalMessages: BaseMessage[] = []
     let pendingAction: AdvisorActionProposal | null = null
     let pendingTwoPaths: AdvisorTwoPathsProposal | null = null
@@ -623,7 +721,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
       request.signal?.aborted ? 'client' : timeout.aborted ? 'timeout' : null
 
     try {
-      const graph = this.buildCompiledGraph(chatModel, request, limits.maxToolRounds)
+      const graph = this.buildCompiledGraph(chatModel, request, limits.maxToolRounds, canForceTool)
       const stream = await graph.stream(
         { messages: initialMessages },
         { streamMode: ['custom', 'updates'], signal },
@@ -636,6 +734,14 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
             streamedTokenCount++
             streamedText += ev.data.text
           }
+          if (ev.event === 'reasoning') {
+            // Thoughts of a later model round start a new paragraph instead of running into the last one.
+            const separator = reasoning.length > 0 && reasoningRound !== lastReasoningRound ? '\n\n' : ''
+            lastReasoningRound = reasoningRound
+            reasoning += separator + ev.data.text
+            yield separator.length > 0 ? { event: 'reasoning', data: { text: separator + ev.data.text } } : ev
+            continue
+          }
           yield ev
           continue
         }
@@ -646,6 +752,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
             if (!nodeUpdate) continue
             if (Array.isArray(nodeUpdate.messages)) {
               finalMessages = finalMessages.concat(nodeUpdate.messages)
+              reasoningRound += 1
             }
             if ('pendingAction' in nodeUpdate && nodeUpdate.pendingAction !== undefined) {
               pendingAction = nodeUpdate.pendingAction
@@ -704,6 +811,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
       yield { event: 'token', data: { text: replyText } }
     }
 
+    const usage = sumUsage(finalMessages)
     const meta: AdvisorMessageMeta = {
       ...(choices.length > 0 ? { choices } : {}),
       ...(pendingAction ? { action: pendingAction } : {}),
@@ -727,6 +835,8 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
       mode: 'langgraph',
       provider: slotConfig.provider,
       model: slotConfig.model,
+      ...(reasoning.trim().length > 0 ? { reasoning: reasoning.trim() } : {}),
+      ...(usage ? { usage } : {}),
     }
     yield { event: 'done', data: result }
   }
