@@ -22,7 +22,7 @@ export interface DocumentOcrResult {
 }
 
 export interface PdfJsLikePage {
-  getTextContent(): Promise<{ readonly items: readonly { readonly str?: string }[] }>
+  getTextContent(): Promise<{ readonly items: readonly PdfTextItem[] }>
   getViewport(params: { readonly scale: number }): { readonly width: number; readonly height: number }
   render(params: {
     readonly canvasContext: CanvasRenderingContext2D
@@ -34,6 +34,33 @@ export interface PdfJsLikeDocument {
   readonly numPages: number
   getPage(pageNumber: number): Promise<PdfJsLikePage>
   destroy?(): Promise<void>
+}
+
+/** The part of a pdf.js text item the line reconstruction needs (`transform[5]` is the baseline). */
+export interface PdfTextItem {
+  readonly str?: string
+  readonly hasEOL?: boolean
+  readonly transform?: readonly number[]
+}
+
+/** A line ends at pdf.js's own end-of-line mark or when the baseline moves by more than a pixel or two. */
+export function joinPdfTextItems(items: readonly PdfTextItem[]): string {
+  const lines: string[] = []
+  let current = ''
+  let baseline: number | null = null
+  const flush = () => {
+    if (current.trim() !== '') lines.push(current.trim())
+    current = ''
+  }
+  for (const item of items) {
+    const y = item.transform?.[5] ?? null
+    if (current !== '' && baseline !== null && y !== null && Math.abs(y - baseline) > 2) flush()
+    if (item.str !== undefined && item.str !== '') current += (current === '' || current.endsWith(' ') ? '' : ' ') + item.str
+    if (y !== null) baseline = y
+    if (item.hasEOL === true) flush()
+  }
+  flush()
+  return lines.join('\n')
 }
 
 export interface PdfJsLikeModule {
@@ -213,11 +240,7 @@ export async function extractDocumentTextOnDevice(
         options.onProgress?.({ stage: 'pdf_text', page: pageNo, totalPages: textLimit })
         const page = await pdfDoc.getPage(pageNo)
         const content = await page.getTextContent()
-        const line = content.items
-          .map((item) => item.str ?? '')
-          .filter((s) => s.length > 0)
-          .join(' ')
-          .trim()
+        const line = joinPdfTextItems(content.items)
         if (line) pageTexts.push(line)
       }
 

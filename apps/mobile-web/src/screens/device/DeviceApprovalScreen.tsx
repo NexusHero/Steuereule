@@ -30,7 +30,7 @@ export function DeviceApprovalScreen({ userCode }: DeviceApprovalScreenProps) {
   }
 
   if (pendingQuery.isError || pendingStatus !== 200) {
-    return <ErrorState bp={bp} heading={tr('device.approval.error.heading')} message={tr('device.approval.error.body')} />
+    return <ErrorState bp={bp} heading={tr('device.approval.error.heading')} message={tr('device.approval.error.body')} testID="geraet-code-ungueltig" />
   }
 
   const pending = pendingQuery.data.data
@@ -93,7 +93,7 @@ export function DeviceApprovalScreen({ userCode }: DeviceApprovalScreenProps) {
         </Text>
       ) : null}
 
-      <Button onPress={approve} disabled={approveState === 'approving'} style={styles.cta}>
+      <Button onPress={approve} disabled={approveState === 'approving'} style={styles.cta} testID="geraet-freigeben">
         {approveState === 'approving' ? (
           <View style={styles.submittingRow}>
             <ActivityIndicator size="small" color={t.color.tinte} />

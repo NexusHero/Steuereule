@@ -126,8 +126,12 @@ function findPersonKey(value: unknown): string | null {
   return null
 }
 
+// Record ids (receipt UUIDs) are no personal data, but a UUID like `ab12cdef-3f4e-…` has the IBAN
+// shape; they are blanked before the pattern checks (#450 P5: ~1 in 5 LStB scans failed on it).
+const UUID_REGEX = /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi
+
 export function checkPiiFree(payload: unknown): void {
-  const serialized = JSON.stringify(payload)
+  const serialized = JSON.stringify(payload).replace(UUID_REGEX, '<id>')
   if (IBAN_REGEX.test(serialized)) {
     throw new Error('PII boundary violation: IBAN detected in KI payload.')
   }

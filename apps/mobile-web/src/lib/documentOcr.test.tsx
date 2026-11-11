@@ -22,6 +22,37 @@ describe('documentOcr (on-device PDF & image OCR)', () => {
     await expect(extractDocumentTextOnDevice(htmlBlob, { fileName: 'evil.html' })).rejects.toThrow(/Unsupported document/)
   })
 
+  // #450 5D: pdf.js hands out text in pieces. The pieces were glued with one space, so a whole page
+  // became ONE line and the LStB parser read the last number of the page as the Lohnsteuer —
+  // a wrong value on a green field. A line ends where pdf.js says so (`hasEOL`) or the baseline moves.
+  it('keeps the lines of a PDF text layer apart (a page is not one long line)', async () => {
+    const pdfMod: PdfJsLikeModule = {
+      getDocument: () => ({
+        promise: Promise.resolve({
+          numPages: 1,
+          destroy: async () => {},
+          getPage: async () => ({
+            getTextContent: async () => ({
+              items: [
+                { str: '3. Bruttoarbeitslohn', hasEOL: false, transform: [10, 0, 0, 10, 40, 700] },
+                { str: '54.320,00', hasEOL: true, transform: [10, 0, 0, 10, 300, 700] },
+                // No hasEOL, but the baseline moved: a new line.
+                { str: '4. Einbehaltene Lohnsteuer', transform: [10, 0, 0, 10, 40, 686] },
+                { str: '9.810,00', transform: [10, 0, 0, 10, 300, 686] },
+              ],
+            }),
+            getViewport: () => ({ width: 800, height: 1000 }),
+            render: () => ({ promise: Promise.resolve() }),
+          }),
+        }),
+      }),
+    }
+    const res = await extractDocumentTextOnDevice(new Blob([new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d])], { type: 'application/pdf' }), {
+      deps: { loadPdfJs: async () => pdfMod },
+    })
+    expect(res.text).toBe('3. Bruttoarbeitslohn 54.320,00\n4. Einbehaltene Lohnsteuer 9.810,00')
+  })
+
   it('extracts digital PDF text without initializing Tesseract WASM', async () => {
     const createTesseractWorker = vi.fn()
     const destroy = vi.fn().mockResolvedValue(undefined)

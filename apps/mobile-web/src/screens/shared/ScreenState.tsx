@@ -54,18 +54,20 @@ interface ErrorStateProps extends ScreenStateProps {
   readonly message: string
   readonly retryLabel?: string
   readonly onRetry?: () => void
+  /** testID of the heading; defaults to `fehler-zustand`. */
+  readonly testID?: string
 }
 
-export function ErrorState({ bp, heading, message, retryLabel, onRetry }: ErrorStateProps) {
+export function ErrorState({ bp, heading, message, retryLabel, onRetry, testID = 'fehler-zustand' }: ErrorStateProps) {
   const t = useTheme()
   const styles = useScreenStateStyles(t)
   return (
     <View style={bp === 's' ? styles.centerScreen : styles.wideCenterScreen} testID="screen-container">
-      <Text style={styles.heading} accessibilityRole="alert">
+      <Text style={styles.heading} accessibilityRole="alert" testID={testID}>
         {heading}
       </Text>
       <Text style={styles.help}>{message}</Text>
-      {retryLabel !== undefined && onRetry !== undefined ? <Button onPress={onRetry}>{retryLabel}</Button> : null}
+      {retryLabel !== undefined && onRetry !== undefined ? <Button onPress={onRetry} testID="fehler-erneut-versuchen">{retryLabel}</Button> : null}
     </View>
   )
 }

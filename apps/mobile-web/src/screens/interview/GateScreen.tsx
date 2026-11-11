@@ -47,7 +47,9 @@ function BusinessGate({
       <Text style={styles.help}>{tr('interview.gewerbe.body1')}</Text>
       <Text style={styles.help}>{tr('interview.gewerbe.body2')}</Text>
       {passable ? (
-        <Option onPress={() => onAcknowledge(GATE_ACKNOWLEDGED)}>{tr('interview.gewerbe.prepareEmployeePart')}</Option>
+        <Option onPress={() => onAcknowledge(GATE_ACKNOWLEDGED)} testID={`interview-option-gewerbe-${GATE_ACKNOWLEDGED}`}>
+          {tr('interview.gewerbe.prepareEmployeePart')}
+        </Option>
       ) : null}
       <Pressable accessibilityRole="button" onPress={onBack} style={styles.gateBackLink}>
         <Text style={styles.gateBackLinkText}>{tr('interview.back')}</Text>
@@ -77,7 +79,9 @@ function ChOnlyGate({
       <Text style={styles.gateHeading}>{tr('interview.chOnly.heading')}</Text>
       <Text style={styles.help}>{tr('interview.chOnly.body1')}</Text>
       <Text style={styles.help}>{tr('interview.chOnly.body2')}</Text>
-      <Option onPress={() => onAcknowledge(GATE_ACKNOWLEDGED)}>{tr('interview.chOnly.continueWithoutForeign')}</Option>
+      <Option onPress={() => onAcknowledge(GATE_ACKNOWLEDGED)} testID={`interview-option-ch-only-${GATE_ACKNOWLEDGED}`}>
+        {tr('interview.chOnly.continueWithoutForeign')}
+      </Option>
       <Pressable accessibilityRole="button" onPress={onBack} style={styles.gateBackLink}>
         <Text style={styles.gateBackLinkText}>{tr('interview.back')}</Text>
       </Pressable>

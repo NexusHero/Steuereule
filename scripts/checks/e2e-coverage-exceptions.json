@@ -1,0 +1,10 @@
+{
+  "interviewPairs": {
+    "partner=*": "segment-2 is not in ADMITTED_ENTRY_IDS (apps/api interview.service.ts): users never see these steps; the commute comes from the Arbeitstage mask (#450 5J, cleanup topic for the core catalogue)",
+    "homeoffice=*": "segment-2, see partner=*",
+    "fortbildung=*": "segment-2, see partner=*",
+    "haushalt-gate=*": "HOUSEHOLD_AND_HEALTH_BOOSTERS is false (apps/api/src/config/features.ts): the entry is not admitted; the API rejects the answer until the flag is on",
+    "gesundheit-gate=*": "HOUSEHOLD_AND_HEALTH_BOOSTERS is false, see haushalt-gate=*"
+  },
+  "testIds": {}
+}

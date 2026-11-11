@@ -42,7 +42,7 @@ export function ProfessionPicker({ profession, onChoose, saving = false }: Profe
         <Text style={styles.summaryText}>
           {tr('eule.beruf.summary', { beruf: tr(PROFESSION_LABEL_KEYS[profession]), defaultValue: `Tipps für: ${profession}` })}
         </Text>
-        <Pressable accessibilityRole="button" onPress={() => setEditing(true)} hitSlop={12}>
+        <Pressable accessibilityRole="button" onPress={() => setEditing(true)} hitSlop={12} testID="beruf-aendern">
           <Text style={styles.change}>{tr('eule.beruf.change', 'Ändern')}</Text>
         </Pressable>
       </View>
