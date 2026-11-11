@@ -103,6 +103,22 @@ describe('ArbeitstageScreen', () => {
     expect(onDone).not.toHaveBeenCalled()
   })
 
+  it('„Weiter“ right after typing still moves on, although leaving the field already saves', async () => {
+    server.use(
+      http.put('*/v1/steuerjahre/2025/arbeitsweg', async () => {
+        await new Promise((resolve) => setTimeout(resolve, 30))
+        return HttpResponse.json({ inputs: null, workdays: null, commuterAllowance: null })
+      }),
+    )
+    const onDone = vi.fn()
+    renderWorkdays(onDone, 2025)
+    const km = await screen.findByLabelText('Einfache Entfernung in km')
+    fireEvent.change(km, { target: { value: '33' } })
+    fireEvent.blur(km)
+    fireEvent.click(screen.getByText('Weiter'))
+    await waitFor(() => expect(onDone).toHaveBeenCalledOnce())
+  })
+
   it('leaving a field without a change saves nothing', async () => {
     const bodies: unknown[] = []
     server.use(

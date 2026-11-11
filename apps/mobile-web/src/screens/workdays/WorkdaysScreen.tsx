@@ -175,7 +175,7 @@ function WorkdaysForm({
   const lastSaved = useRef<string | null>(null)
   if (lastSaved.current === null) lastSaved.current = JSON.stringify(formData())
 
-  function persist(onSaved?: () => void) {
+  function persist(onSaved?: () => void, onFailed?: () => void) {
     if (result?.kind === 'widerspruch') return
     setError(false)
     const data = formData()
@@ -197,18 +197,25 @@ function WorkdaysForm({
           } else {
             triggerSaveErrorHaptic()
             setError(true)
+            onFailed?.()
           }
         },
         onError: () => {
           triggerSaveErrorHaptic()
           setError(true)
+          onFailed?.()
         },
       },
     )
   }
 
+  // „Weiter“ waits only for its own save: a save started by leaving a field (the mouse-down on
+  // „Weiter“ blurs the input first) must not swallow the click.
+  const [moving, setMoving] = useState(false)
   function next() {
-    persist(onDone)
+    if (result?.kind === 'widerspruch') return
+    setMoving(true)
+    persist(onDone, () => setMoving(false))
   }
 
   /** Leaving a field (also when the sheet is closed) saves a changed, consistent form. */
@@ -313,7 +320,7 @@ function WorkdaysForm({
 
       <InMaskAdvisorCompanion screen="interview" taxYear={taxYear} />
 
-      <Button onPress={next} disabled={save.isPending || result?.kind === 'widerspruch'} style={styles.cta} testID="arbeitstage-weiter">
+      <Button onPress={next} disabled={moving || result?.kind === 'widerspruch'} style={styles.cta} testID="arbeitstage-weiter">
         {tr('arbeitstage.weiter')}
       </Button>
     </ScrollView>
