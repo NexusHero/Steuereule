@@ -261,6 +261,7 @@ export class AdvisorService {
       },
       catalogExpenses: {
         hasTraining: answerMap['fortbildung'] === 'Ja' || answerMap['katalog_fortbildung'] === 'ja',
+        trainingCostsEur: answerMap['fortbildung'] === 'Ja' ? amountFromAnswer(answerMap['fortbildung-kosten']) : null,
         relocationCostsEur: answerMap['umzug'] === 'Ja' ? amountFromAnswer(answerMap['umzug-kosten']) : null,
         donationsEur:
           answerMap['spenden'] === 'Ja'
@@ -1162,22 +1163,32 @@ export class AdvisorService {
       // the audit table keeps carrying no value-bearing column (REQ-004.5).
       const appliedAt = new Date().toISOString()
       const appliedActions: AdvisorActionProposal[] = []
+      // The first write to a record that does not exist yet creates it with its defaults (a commute
+      // record starts with Mon–Fri), so a sibling field of the same draft no longer holds the value
+      // it had when the draft was made. All baselines were checked above, inside this transaction;
+      // for a record this batch has already written to, the comparison uses what is there now.
+      const writtenRecords = new Set<string>()
       for (const { draft, writes } of plans) {
         const undoSnapshot: AdvisorUndoEntry[] = []
         const provenanceOverride = draft.action.receiptId
           ? ({ kind: 'beleg', receiptId: draft.action.receiptId } as const)
           : undefined
         for (const write of writes) {
+          const record = write.key.slice(0, write.key.lastIndexOf('.'))
+          const expected = writtenRecords.has(record)
+            ? ((await this.confirmationService.readRawValue(userId, taxYear, write.key)) ?? null)
+            : write.expected
           undoSnapshot.push(
             await this.confirmationService.writeConfirmedByAdvisor(
               userId,
               taxYear,
               write.key,
               write.newValue,
-              write.expected,
+              expected,
               provenanceOverride,
             ),
           )
+          writtenRecords.add(record)
         }
         const { undoneAt: _previousUndo, ...reapplicable } = draft.action
         appliedActions.push({

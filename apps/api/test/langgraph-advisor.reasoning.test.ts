@@ -351,6 +351,16 @@ describe('the owl knows the real field names (#476, found by playing a customer 
     expect(buildStableSystemPrompt()).toContain(describeAiWritableFields())
   })
 
+  it('offers the training cost amount and tells the model how to record it', () => {
+    expect(describeAiWritableFields()).toContain('fortbildung-kosten (ganze Zahl 0–100000)')
+    expect(validateStageTarget('interview', 'fortbildung-kosten')).toEqual({ ok: true, screen: 'interview' })
+    const prompt = buildStableSystemPrompt()
+    expect(prompt).toContain('`interview.fortbildung-kosten`')
+    // Found in the customer run: vacation and sick days were never asked for, so commute days were too high.
+    expect(prompt).toContain('`commute.vacationDays`')
+    expect(prompt).toContain('`commute.sickDays`')
+  })
+
   it('refuses a field name guessed from the case overview and names the valid ones', () => {
     const guessed = validateStageTarget('lstb', 'grossWageEur')
     expect(guessed.ok).toBe(false)

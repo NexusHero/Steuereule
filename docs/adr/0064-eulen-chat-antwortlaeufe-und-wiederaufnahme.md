@@ -183,11 +183,30 @@ ist 60 statt 25 Sekunden, weil mit Reasoning schon das erste Wort 10 bis 20 Seku
 Stand nach dem vierten Durchlauf: Lohnsteuerbescheinigung vollständig, Arbeitsweg 38 km mit Pkw,
 60 Homeoffice-Tage, Spende 300 €, Grundangaben; die Schätzung zeigt eine Erstattungsspanne.
 
-**Was der Lauf offen gelassen hat**
+**Zweite Runde (gleicher Tag): die offenen Punkte**
 
-- Die Fortbildungskosten (850 €) landen nirgends: Gespeichert wird nur „Fortbildung: Ja“. Die Eule
-  spricht trotzdem von „850 € Fortbildungskosten“.
-- Urlaubs- und Krankheitstage fragt die Eule nicht ab; sie bleiben 0, die Pendeltage sind damit zu hoch.
-- Zeit bis zum ersten Wort im Median 13,5 Sekunden; rund 110.000 Eingabe-Tokens für acht
-  Nachrichten, davon etwa 30 % aus dem Cache.
-- Stammdaten trägt der Nutzer weiter selbst ein (gewollt), die Interview-Frage „Ausland“ blieb offen.
+- **Fortbildungskosten als Betrag.** Neue Folgefrage `fortbildung-kosten` hinter „Fortbildung: Ja“.
+  Die Schätzung rechnet sie als Werbungskosten; die Eule trägt sie zusammen mit `fortbildung: Ja`
+  ein. Die Vorschau der Eule rechnet nicht mehr pauschal 450 € ein: Ohne Betrag nennt sie keine
+  Wirkung. Vorher versprach sie eine Erstattung, die in der Schätzung nie vorkam.
+- **Urlaubs- und Krankheitstage.** Die Eule fragt danach, bevor sie Pendeltage als fertig bezeichnet.
+- **Entwurf mit mehreren Feldern auf einem neuen Datensatz.** Das erste Feld legte den
+  Arbeitsweg-Datensatz mit Standardwerten an (Mo–Fr), das nächste Feld desselben Entwurfs wurde
+  dann als „zwischenzeitlich geändert“ abgelehnt. Innerhalb einer Übernahme vergleicht der Schreibweg
+  für einen Datensatz, den er selbst schon geschrieben hat, jetzt mit dem aktuellen Stand; die
+  Prüfung aller Ausgangswerte vor dem ersten Schreiben bleibt.
+
+Stand nach dem letzten Durchlauf (neun Nachrichten): Lohnsteuerbescheinigung vollständig; Arbeitsweg
+38 km mit Pkw, 30 Urlaubs- und 5 Krankheitstage, 60 Homeoffice-Tage, daraus 166 Pendeltage und
+2.397 € Entfernungspauschale; 850 € Fortbildung; 300 € Spende. Werbungskosten 3.607 €
+(2.397 + 360 + 850), Erstattungsspanne 2.355 bis 2.439 €.
+
+**Was offen bleibt**
+
+- Der Fortbildungsbetrag ist nur über die Eule eintragbar und sichtbar. Die Frage gehört zum
+  zweiten Interview-Abschnitt, der in der App noch keine Oberfläche hat (#321).
+- Zeit bis zum ersten Wort im Median rund 12 Sekunden; rund 115.000 Eingabe-Tokens für neun
+  Nachrichten, davon knapp 40 % aus dem Cache.
+- Stammdaten trägt der Nutzer weiter selbst ein (gewollt); die Interview-Frage „Ausland“ blieb offen.
+- Der Lauf hängt vom Modell ab: In einem von sechs Durchläufen wählte es für `transport` einen
+  ungültigen Wert, bevor die erlaubten Werte im Prompt standen. Das Skript berichtet, es prüft nicht.

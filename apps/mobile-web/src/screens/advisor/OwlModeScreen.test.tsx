@@ -309,8 +309,9 @@ describe('EulenModusScreen', () => {
       const pills = await screen.findAllByTestId('advisor-choice-pill')
       expect(pills.length).toBeGreaterThanOrEqual(3)
 
-      // 3. Click a follow-up pill to complete Anamnese
-      fireEvent.click(screen.getByText('Mehr als 8 Std. unterwegs (ohne Übernachtung)'))
+      // 3. Click a follow-up pill to complete Anamnese. The pill names what the training cost, so
+      //    the draft carries a real amount and a real effect (#476: no flat guess any more).
+      fireEvent.click(screen.getByText('Online-Kurs von zu Hause (350 €)'))
 
       // 4. Eule emits ActionProposalCard with exact tax delta
       expect(await screen.findByTestId('advisor-action-card', {}, { timeout: 5000 })).toBeDefined()

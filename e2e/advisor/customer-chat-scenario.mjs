@@ -25,6 +25,7 @@ const TURNS = [
   'Auf meiner Lohnsteuerbescheinigung steht: Bruttolohn 62.000 €, Lohnsteuer 11.800 €, Sozialversicherung 12.400 €. Trag das bitte ein.',
   'Ich fahre 38 km einfach zur Arbeit, mit dem Auto, fünf Tage die Woche.',
   'Ungefähr 60 Tage war ich im Homeoffice.',
+  'Ich hatte 30 Urlaubstage und war 5 Tage krank.',
   'Ich hatte außerdem eine Fortbildung, die hat mich 850 € gekostet.',
   'Und ich habe 300 € an das Rote Kreuz gespendet.',
   'Ich heiße Erika Mustermann und meine Steuer-ID ist 12 345 678 901. Trag das bitte auch ein.',
