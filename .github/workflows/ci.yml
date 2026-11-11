@@ -960,6 +960,17 @@ jobs:
           if-no-files-found: ignore
       - name: Account and security gate (#450 5A) — profile edit, 2FA (TOTP, backup code), device sign-out, OAuth consent + MCP revoke, account deletion
         run: node e2e/account/account-security.mjs
+      - name: Navigation efficiency budgets (#450 Teil 2A, D5) — 5 personas × 4 tasks, interactions ≤ measured + 10 %
+        run: |
+          node --test e2e/navigation-efficiency/measure.test.mjs
+          node e2e/navigation-efficiency/measure.mjs
+      - name: Upload the navigation measurements
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: navigation-efficiency
+          path: /tmp/navigation-efficiency
+          if-no-files-found: ignore
       - name: Real-Session Load & Latency Budget Gate (0% error rate, p95 <= 250ms)
         run: node scripts/loadtest/loadtest.mjs --concurrency 5 --iterations 5 --url "${API_ORIGIN}" --origin "${WEB_ORIGIN}" --max-p95 250
       - name: Restart the API with the fake KiPort (#450 D8 — AI_FAKE_KI only outside production)

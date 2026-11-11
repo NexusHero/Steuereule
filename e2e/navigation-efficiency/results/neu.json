@@ -1,0 +1,182 @@
+{
+  "variant": "neu",
+  "root": "/Users/suhaysevinc/source/Steuereule/.claude/worktrees/lucid-williamson-1cbcb1",
+  "measuredAt": "2026-11-11T10:43:35.772Z",
+  "personas": {
+    "lena": {
+      "erster-durchlauf": {
+        "interactions": 261,
+        "clicks": 43,
+        "keys": 218,
+        "screens": 30,
+        "ms": 16105,
+        "slowestInteractionMs": 80
+      },
+      "korrektur": {
+        "interactions": 7,
+        "clicks": 2,
+        "keys": 5,
+        "screens": 2,
+        "ms": 114,
+        "slowestInteractionMs": 48,
+        "maskOpenMs": 51
+      },
+      "unterbrechung": {
+        "interactions": 9,
+        "clicks": 5,
+        "keys": 4,
+        "screens": 3,
+        "ms": 1614,
+        "slowestInteractionMs": 32
+      },
+      "wiedereinstieg": {
+        "interactions": 0,
+        "clicks": 0,
+        "keys": 0,
+        "screens": 5,
+        "ms": 776,
+        "slowestInteractionMs": 0
+      }
+    },
+    "brenner": {
+      "erster-durchlauf": {
+        "interactions": 514,
+        "clicks": 51,
+        "keys": 463,
+        "screens": 25,
+        "ms": 6275,
+        "slowestInteractionMs": 80
+      },
+      "korrektur": {
+        "interactions": 8,
+        "clicks": 2,
+        "keys": 6,
+        "screens": 3,
+        "ms": 212,
+        "slowestInteractionMs": 32,
+        "maskOpenMs": 147
+      },
+      "unterbrechung": {
+        "interactions": 9,
+        "clicks": 5,
+        "keys": 4,
+        "screens": 3,
+        "ms": 1589,
+        "slowestInteractionMs": 32
+      },
+      "wiedereinstieg": {
+        "interactions": 0,
+        "clicks": 0,
+        "keys": 0,
+        "screens": 5,
+        "ms": 797,
+        "slowestInteractionMs": 0
+      }
+    },
+    "weber": {
+      "erster-durchlauf": {
+        "interactions": 528,
+        "clicks": 65,
+        "keys": 463,
+        "screens": 36,
+        "ms": 11515,
+        "slowestInteractionMs": 2296
+      },
+      "korrektur": {
+        "interactions": 7,
+        "clicks": 2,
+        "keys": 5,
+        "screens": 2,
+        "ms": 149,
+        "slowestInteractionMs": 48,
+        "maskOpenMs": 83
+      },
+      "unterbrechung": {
+        "interactions": 9,
+        "clicks": 5,
+        "keys": 4,
+        "screens": 3,
+        "ms": 1550,
+        "slowestInteractionMs": 32
+      },
+      "wiedereinstieg": {
+        "interactions": 0,
+        "clicks": 0,
+        "keys": 0,
+        "screens": 5,
+        "ms": 800,
+        "slowestInteractionMs": 0
+      }
+    },
+    "meyer": {
+      "erster-durchlauf": {
+        "interactions": 212,
+        "clicks": 31,
+        "keys": 181,
+        "screens": 25,
+        "ms": 5604,
+        "slowestInteractionMs": 56
+      },
+      "korrektur": {
+        "interactions": 6,
+        "clicks": 2,
+        "keys": 4,
+        "screens": 2,
+        "ms": 139,
+        "slowestInteractionMs": 32,
+        "maskOpenMs": 76
+      },
+      "unterbrechung": {
+        "interactions": 7,
+        "clicks": 5,
+        "keys": 2,
+        "screens": 3,
+        "ms": 1555,
+        "slowestInteractionMs": 32
+      },
+      "wiedereinstieg": {
+        "interactions": 0,
+        "clicks": 0,
+        "keys": 0,
+        "screens": 5,
+        "ms": 761,
+        "slowestInteractionMs": 0
+      }
+    },
+    "richter": {
+      "erster-durchlauf": {
+        "interactions": 219,
+        "clicks": 40,
+        "keys": 179,
+        "screens": 25,
+        "ms": 4226,
+        "slowestInteractionMs": 72
+      },
+      "korrektur": {
+        "interactions": 7,
+        "clicks": 2,
+        "keys": 5,
+        "screens": 2,
+        "ms": 116,
+        "slowestInteractionMs": 32,
+        "maskOpenMs": 49
+      },
+      "unterbrechung": {
+        "interactions": 9,
+        "clicks": 5,
+        "keys": 4,
+        "screens": 3,
+        "ms": 1546,
+        "slowestInteractionMs": 48
+      },
+      "wiedereinstieg": {
+        "interactions": 0,
+        "clicks": 0,
+        "keys": 0,
+        "screens": 5,
+        "ms": 747,
+        "slowestInteractionMs": 0
+      }
+    }
+  }
+}
