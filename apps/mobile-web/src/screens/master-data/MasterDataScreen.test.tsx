@@ -280,6 +280,235 @@ describe('StammdatenScreen PLZ → Ort (#451 slice 3)', () => {
   })
 })
 
+describe('StammdatenScreen address search (ADR-0064)', () => {
+  const value = (testId: string) => (screen.getByTestId(testId) as HTMLInputElement).value
+
+  it('fills street, house number, postal code and place from one picked suggestion', async () => {
+    let asked: unknown = null
+    server.use(
+      http.get('*/v1/stammdaten', () => HttpResponse.json(LEER)),
+      http.post('*/v1/adressen/suche', async ({ request }) => {
+        asked = await request.json()
+        return HttpResponse.json({
+          available: true,
+          houseNumber: '12a',
+          hits: [
+            { street: 'Hauptstraße', postalCode: '50667', city: 'Köln', state: 'NW' },
+            { street: 'Hauptstraße', postalCode: '51143', city: 'Köln', state: 'NW' },
+          ],
+        })
+      }),
+    )
+    renderScreen()
+    await screen.findByTestId('stammdaten-adresssuche')
+    input('stammdaten-adresssuche', 'Hauptstr. 12a, Köln')
+
+    const first = await screen.findByTestId('stammdaten-adresssuche-treffer-0')
+    expect(first.textContent).toBe('Hauptstraße 12a, 50667 Köln')
+    expect(asked).toEqual({ query: 'Hauptstr. 12a, Köln' })
+    fireEvent.click(first)
+
+    expect(value('stammdaten-strasse')).toBe('Hauptstraße')
+    expect(value('stammdaten-hausnummer')).toBe('12')
+    expect(value('stammdaten-hausnummerZusatz')).toBe('a')
+    expect(value('stammdaten-plz')).toBe('50667')
+    expect(value('stammdaten-wohnort')).toBe('Köln')
+    expect(value('stammdaten-adresssuche')).toBe('')
+    expect(screen.queryByTestId('stammdaten-adresssuche-treffer-0')).toBeNull()
+  })
+
+  it('sends the postal code the form already holds and keeps a typed house number when the search found none', async () => {
+    let asked: unknown = null
+    server.use(
+      http.get('*/v1/stammdaten', () => HttpResponse.json({ ...LEER, plz: '50667', hausnummer: '7' })),
+      http.post('*/v1/adressen/suche', async ({ request }) => {
+        asked = await request.json()
+        return HttpResponse.json({ available: true, houseNumber: null, hits: [{ street: 'Domkloster', postalCode: '50667', city: 'Köln', state: 'NW' }] })
+      }),
+    )
+    renderScreen()
+    await screen.findByTestId('stammdaten-adresssuche')
+    input('stammdaten-adresssuche', 'Domkl')
+    fireEvent.click(await screen.findByTestId('stammdaten-adresssuche-treffer-0'))
+    expect(asked).toEqual({ query: 'Domkl', postalCode: '50667' })
+    expect(value('stammdaten-strasse')).toBe('Domkloster')
+    expect(value('stammdaten-hausnummer')).toBe('7')
+  })
+
+  it('does not ask the server for fewer than three characters', async () => {
+    let calls = 0
+    server.use(
+      http.get('*/v1/stammdaten', () => HttpResponse.json(LEER)),
+      http.post('*/v1/adressen/suche', () => {
+        calls += 1
+        return HttpResponse.json({ available: true, houseNumber: null, hits: [] })
+      }),
+    )
+    renderScreen()
+    await screen.findByTestId('stammdaten-adresssuche')
+    input('stammdaten-adresssuche', 'Ha')
+    await new Promise((resolve) => setTimeout(resolve, 400))
+    expect(calls).toBe(0)
+  })
+
+  it('says so when nothing was found, and when the search is not available', async () => {
+    let available = true
+    server.use(
+      http.get('*/v1/stammdaten', () => HttpResponse.json(LEER)),
+      http.post('*/v1/adressen/suche', () => HttpResponse.json({ available, houseNumber: null, hits: [] })),
+    )
+    renderScreen()
+    await screen.findByTestId('stammdaten-adresssuche')
+    input('stammdaten-adresssuche', 'Gibtesnicht')
+    expect(await screen.findByText('Keine passende Straße gefunden. Trag die Adresse bitte unten ein.')).toBeTruthy()
+
+    available = false
+    input('stammdaten-adresssuche', 'Gibtesnichtx')
+    expect(await screen.findByText('Die Adresssuche ist gerade nicht verfügbar. Trag die Adresse bitte unten ein.')).toBeTruthy()
+  })
+
+  it('stays usable when the request fails', async () => {
+    server.use(
+      http.get('*/v1/stammdaten', () => HttpResponse.json(LEER)),
+      http.post('*/v1/adressen/suche', () => HttpResponse.error()),
+    )
+    renderScreen()
+    await screen.findByTestId('stammdaten-adresssuche')
+    input('stammdaten-adresssuche', 'Hauptstr')
+    expect(await screen.findByText('Die Adresssuche ist gerade nicht verfügbar. Trag die Adresse bitte unten ein.')).toBeTruthy()
+  })
+})
+
+describe('StammdatenScreen date fields', () => {
+  it('sets the dots of the birth date while typing and saves it as ISO', async () => {
+    let sent: unknown = null
+    server.use(
+      http.get('*/v1/stammdaten', () => HttpResponse.json(LEER)),
+      http.put('*/v1/stammdaten', async ({ request }) => {
+        sent = await request.json()
+        return HttpResponse.json({ ...LEER, geburtsdatum: '1990-04-12' })
+      }),
+    )
+    renderScreen()
+    const field = (await screen.findByTestId('stammdaten-geburtsdatum')) as HTMLInputElement
+    input('stammdaten-geburtsdatum', '12041990')
+    expect(field.value).toBe('12.04.1990')
+    expect(field.getAttribute('autocomplete')).toBe('bday')
+    fireEvent.click(screen.getByTestId('stammdaten-speichern'))
+    await screen.findByText('Gespeichert.')
+    expect((sent as { geburtsdatum: string }).geburtsdatum).toBe('1990-04-12')
+  })
+
+  it('takes a birth date picked in the calendar, which offers no day after today', async () => {
+    server.use(http.get('*/v1/stammdaten', () => HttpResponse.json(LEER)))
+    renderScreen()
+    await screen.findByTestId('stammdaten-geburtsdatum')
+    const calendar = screen.getByTestId('stammdaten-geburtsdatum-kalender')
+    expect(calendar.getAttribute('max')).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+    fireEvent.change(calendar, { target: { value: '1990-04-12' } })
+    expect((screen.getByTestId('stammdaten-geburtsdatum') as HTMLInputElement).value).toBe('12.04.1990')
+  })
+})
+
+describe('StammdatenScreen house number', () => {
+  const value = (testId: string) => (screen.getByTestId(testId) as HTMLInputElement).value
+
+  it('moves the letter of "12a" into the Zusatz field', async () => {
+    server.use(http.get('*/v1/stammdaten', () => HttpResponse.json(LEER)))
+    renderScreen()
+    await screen.findByTestId('stammdaten-hausnummer')
+    input('stammdaten-hausnummer', '12a')
+    expect(value('stammdaten-hausnummer')).toBe('12')
+    expect(value('stammdaten-hausnummerZusatz')).toBe('a')
+  })
+
+  it('leaves a Zusatz that is already there alone', async () => {
+    server.use(http.get('*/v1/stammdaten', () => HttpResponse.json({ ...LEER, hausnummerZusatz: 'Hinterhaus' })))
+    renderScreen()
+    await screen.findByTestId('stammdaten-hausnummer')
+    input('stammdaten-hausnummer', '12a')
+    expect(value('stammdaten-hausnummer')).toBe('12a')
+    expect(value('stammdaten-hausnummerZusatz')).toBe('Hinterhaus')
+  })
+})
+
+describe('StammdatenScreen Finanzamt suggestion', () => {
+  const office = () => (screen.getByTestId('stammdaten-finanzamt') as HTMLInputElement).value
+
+  it('suggests the Finanzamt of the postal code and takes it on a click', async () => {
+    server.use(http.get('*/v1/stammdaten', () => HttpResponse.json(LEER)))
+    renderScreen()
+    await screen.findByTestId('stammdaten-plz')
+    expect(screen.queryByTestId('stammdaten-finanzamt-vorschlaege')).toBeNull()
+    input('stammdaten-plz', '79539')
+    expect(screen.getByTestId('stammdaten-finanzamt-vorschlaege').textContent).toContain('Vorschlag aus deiner Postleitzahl')
+    fireEvent.click(screen.getByTestId('stammdaten-finanzamt-vorschlag-0'))
+    expect(office()).toBe('Finanzamt Lörrach')
+    expect(screen.queryByTestId('stammdaten-finanzamt-vorschlaege')).toBeNull()
+  })
+
+  it('offers every Finanzamt of a split postal code and says that the user has to choose', async () => {
+    server.use(http.get('*/v1/stammdaten', () => HttpResponse.json({ ...LEER, plz: '50667' })))
+    renderScreen()
+    const box = await screen.findByTestId('stammdaten-finanzamt-vorschlaege')
+    expect(box.textContent).toContain('teilen sich mehrere Finanzämter')
+    expect(screen.getByTestId('stammdaten-finanzamt-vorschlag-0').textContent).toBe('Finanzamt Köln-Altstadt')
+    expect(screen.getByTestId('stammdaten-finanzamt-vorschlag-1').textContent).toBe('Finanzamt Köln-Mitte')
+  })
+
+  it('never replaces a Finanzamt the user typed, it only keeps offering', async () => {
+    server.use(http.get('*/v1/stammdaten', () => HttpResponse.json({ ...LEER, plz: '79539', finanzamt: 'Finanzamt Freiburg-Stadt' })))
+    renderScreen()
+    await screen.findByTestId('stammdaten-finanzamt-vorschlaege')
+    expect(office()).toBe('Finanzamt Freiburg-Stadt')
+  })
+})
+
+describe('StammdatenScreen IBAN mask', () => {
+  it('shows a stored IBAN in blocks of four', async () => {
+    server.use(http.get('*/v1/stammdaten', () => HttpResponse.json({ ...LEER, iban: 'DE89370400440532013000' })))
+    renderScreen()
+    const field = (await screen.findByTestId('stammdaten-iban')) as HTMLInputElement
+    expect(field.value).toBe('DE89 3704 0044 0532 0130 00')
+  })
+
+  it('groups and upper-cases while typing, and says when the check digits fit', async () => {
+    server.use(http.get('*/v1/stammdaten', () => HttpResponse.json(LEER)))
+    renderScreen()
+    await screen.findByTestId('stammdaten-iban')
+    input('stammdaten-iban', 'de8937040044')
+    expect((screen.getByTestId('stammdaten-iban') as HTMLInputElement).value).toBe('DE89 3704 0044')
+    expect(screen.getByTestId('stammdaten-iban-pruefung').textContent).toBe('Die IBAN ist noch nicht vollständig.')
+    input('stammdaten-iban', 'de89370400440532013000')
+    expect(screen.getByTestId('stammdaten-iban-pruefung').textContent).toBe('Die IBAN ist gültig.')
+  })
+
+  it('names a wrong IBAN before saving', async () => {
+    server.use(http.get('*/v1/stammdaten', () => HttpResponse.json(LEER)))
+    renderScreen()
+    await screen.findByTestId('stammdaten-iban')
+    input('stammdaten-iban', 'DE89370400440532013001')
+    expect(screen.getByTestId('stammdaten-iban-pruefung').textContent).toBe('Diese IBAN stimmt nicht. Bitte prüf die Ziffern.')
+  })
+
+  it('saves the IBAN without the display spaces', async () => {
+    let sent: unknown = null
+    server.use(
+      http.get('*/v1/stammdaten', () => HttpResponse.json(LEER)),
+      http.put('*/v1/stammdaten', async ({ request }) => {
+        sent = await request.json()
+        return HttpResponse.json({ ...LEER, iban: 'DE89370400440532013000' })
+      }),
+    )
+    renderScreen()
+    await screen.findByTestId('stammdaten-iban')
+    input('stammdaten-iban', 'de89 3704 0044 0532 0130 00')
+    fireEvent.click(screen.getByTestId('stammdaten-speichern'))
+    await screen.findByText('Gespeichert.')
+    expect((sent as { iban: string }).iban).toBe('DE89370400440532013000')
+  })
+})
+
 describe('StammdatenScreen small helpers (#452 slice 5)', () => {
   it('names the bank of a German IBAN offline (AC 8)', async () => {
     server.use(http.get('*/v1/stammdaten', () => HttpResponse.json(LEER)))

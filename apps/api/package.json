@@ -12,7 +12,8 @@
     "test": "vitest run --config vitest.config.ts",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "typecheck": "tsc --noEmit -p tsconfig.check.json",
-    "openapi:spec": "tsx scripts/generate-openapi-spec.ts"
+    "openapi:spec": "tsx scripts/generate-openapi-spec.ts",
+    "streets:fetch": "tsx scripts/fetch-street-data.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

@@ -163,6 +163,24 @@ describe('VermietungScreen', () => {
     await waitFor(() => expect(bodies).toContainEqual({ plz: '01067', city: 'Dresden' }))
   })
 
+  it('fills the whole property address from one picked suggestion (ADR-0064)', async () => {
+    const bodies: unknown[] = []
+    server.use(http.get(RENTAL_URL, () => HttpResponse.json(FULL_PROPERTY, { status: 200 })))
+    server.use(
+      http.put(`${RENTAL_URL}/objekte/:objektId/adresse`, async ({ request }) => {
+        bodies.push(await request.json())
+        return HttpResponse.json(FULL_PROPERTY, { status: 200 })
+      }),
+      http.post('*/v1/adressen/suche', () =>
+        HttpResponse.json({ available: true, houseNumber: '12a', hits: [{ street: 'Hauptstraße', postalCode: '50667', city: 'Köln', state: 'NW' }] }),
+      ),
+    )
+    renderRental()
+    fireEvent.change(await screen.findByTestId('vermietung-0-adresssuche'), { target: { value: 'Hauptstr. 12a Köln' } })
+    fireEvent.click(await screen.findByTestId('vermietung-0-adresssuche-treffer-0'))
+    await waitFor(() => expect(bodies).toContainEqual({ strasse: 'Hauptstraße', hausnummer: '12a', plz: '50667', city: 'Köln' }))
+  })
+
   it('names the Verkauf/möbliert gate honestly and hides the add CTA', async () => {
     server.use(
       http.get(RENTAL_URL, () =>

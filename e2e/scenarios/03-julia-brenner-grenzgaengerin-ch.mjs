@@ -67,7 +67,7 @@ export async function runScenario03(browser, webOrigin, sql, markusSession = nul
   await pageJulia.locator('[data-testid="ch-feld-nettolohn"]').fill(String(s.julia.crossBorder.netWageChf))
   await pageJulia.locator('[data-testid="ch-feld-quellensteuer"]').fill(String(s.julia.crossBorder.withholdingTaxChf))
 
-  await pageJulia.locator('[data-testid="ch-wechselkurs-monat"]').fill(s.julia.crossBorder.exchangeRateMonth)
+  await pageJulia.locator(`[data-testid="ch-wechselkurs-monat-${s.julia.crossBorder.exchangeRateMonth.slice(5)}"]`).click()
   await pageJulia.locator('[data-testid="ch-wechselkurs-kurs"]').fill(s.julia.crossBorder.exchangeRate)
   await pageJulia.locator('[data-testid="ch-wechselkurs-speichern"]').click()
 

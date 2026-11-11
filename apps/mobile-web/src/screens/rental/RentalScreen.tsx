@@ -29,6 +29,7 @@ import { SaveFailedNotice } from '../shared/SaveFailedNotice'
 import { watchSaveResult } from '../shared/saveFeedback'
 import { PostalCodeHint } from '../shared/PostalCodeHint'
 import { prefillCity } from '../shared/postalCodePrefill'
+import { AddressSearch } from '../shared/AddressSearch'
 
 export interface RentalScreenProps {
   readonly onDone?: () => void
@@ -194,6 +195,16 @@ function PropertyCard({
         <Text style={{ fontFamily: t.font.display, fontWeight: t.weight.fett, fontSize: t.size.m, color: t.color.tinte, marginBottom: t.space.s2 }}>
           {tr('vermietung.adresseHeading', 'Objektadresse (für Anlage V)')}
         </Text>
+        <AddressSearch
+          postalCode={property.plz ?? ''}
+          testIDPrefix={`vermietung-${index}`}
+          onPick={(address) => {
+            // The picked place is the user's choice, so the PLZ prefill must not treat the Ort as its own.
+            setCityPrefill(null)
+            const hausnummer = address.houseNumber !== null ? `${address.houseNumber}${address.houseNumberSuffix ?? ''}` : null
+            onSendAddress?.({ strasse: address.street, ...(hausnummer ? { hausnummer } : {}), plz: address.postalCode, city: address.city })
+          }}
+        />
         <Feld label="Straße & Hausnummer">
           <Input
             value={[property.strasse, property.hausnummer].filter(Boolean).join(' ')}

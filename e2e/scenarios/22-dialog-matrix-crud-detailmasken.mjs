@@ -60,6 +60,7 @@ export async function runScenario22(browser, webOrigin) {
   await page.locator('[data-testid="kind-nachname"]').fill('Detailmaske')
   await page.locator('[data-testid="kind-geburtsdatum"]').fill('15.05.2016')
   await page.locator('[data-testid="kind-steuerid"]').fill('10234567890')
+  await page.locator('[data-testid="kind-weitere-angaben"]').click() // short form first: optional amounts open on request
   await page.locator('[data-testid="kind-kindergeld"]').fill('3060')
   await page.locator('[data-testid="kind-verhaeltnis-2"]').click() // Pflegekind
   await page.locator('[data-testid="kind-verhaeltnis-1"]').click() // Leibliches Kind
@@ -78,6 +79,7 @@ export async function runScenario22(browser, webOrigin) {
   await page.locator('[data-testid="kind-nachname"]').fill('Detailmaske')
   await page.locator('[data-testid="kind-geburtsdatum"]').fill('20.09.2020')
   await page.locator('[data-testid="kind-steuerid"]').fill('51234567891')
+  await page.locator('[data-testid="kind-weitere-angaben"]').click() // short form first: optional amounts open on request
   await page.locator('[data-testid="kind-kindergeld"]').fill('3060')
   await page.locator('[data-testid="kind-verhaeltnis-1"]').click()
   await page.locator('[data-testid="kind-inland-ja"]').click()
@@ -142,7 +144,7 @@ export async function runScenario22(browser, webOrigin) {
 
   await page.locator('text=Dein Steuerbescheid').waitFor({ state: 'visible', timeout: 10_000 })
   const datumInput = page.getByLabel(/Bescheiddatum/i)
-  await datumInput.fill('2026-05-15')
+  await datumInput.fill('15.05.2026')
   await datumInput.blur()
   await page.waitForTimeout(400)
 

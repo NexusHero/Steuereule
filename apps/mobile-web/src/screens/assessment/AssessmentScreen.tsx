@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { ScrollView, View, Text, Pressable, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { Button, Card, Feld, Input, Pill, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
+import { Button, Card, DateInput, Feld, germanDateToIso, Input, isoDateToGerman, Pill, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
 import { formatEuro } from '@steuereule/core'
 import {
   useAssessmentControllerGet,
@@ -204,25 +204,31 @@ function DateEditor({ date, onSet }: { readonly date: string | null; readonly on
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const s = makeStyles(t)
-  const [text, setText] = useState(date ?? '')
+  const [text, setText] = useState(isoDateToGerman(date ?? ''))
 
-  function commit() {
-    if (text !== date && /^\d{4}-\d{2}-\d{2}$/.test(text)) onSet(text)
+  function commit(value: string = text) {
+    const iso = germanDateToIso(value)
+    if (iso !== null && iso !== date) onSet(iso)
   }
 
   return (
     <Feld label={tr('bescheid.datum.label')}>
       <View style={s.feldRow}>
-        <Input
-          type="text"
-          mono
-          value={text}
-          onChange={setText}
-          placeholder="JJJJ-MM-TT"
-          onSubmit={commit}
-          onBlur={commit}
-          accessibilityLabel={tr('bescheid.datum.label')}
-        />
+        <View style={{ flex: 1 }}>
+          <DateInput
+            value={text}
+            onChange={(value) => {
+              setText(value)
+              // A complete date — picked in the calendar or typed to the last digit — is saved at once.
+              if (value.length === 10 && value !== text) commit(value)
+            }}
+            calendarLabel={tr('datum.kalender')}
+            onSubmit={() => commit()}
+            onBlur={() => commit()}
+            accessibilityLabel={tr('bescheid.datum.label')}
+            testID="bescheid-datum"
+          />
+        </View>
       </View>
     </Feld>
   )

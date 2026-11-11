@@ -4,6 +4,7 @@ import type {
   PutMasterDataDtoReligion,
   MasterDataResponseDto,
 } from '@steuereule/api-client'
+import { formatIban, normalizeIban } from '@steuereule/core'
 
 export interface MasterDataDraft {
   geburtsdatum: string
@@ -54,7 +55,7 @@ export function toDraft(status: MasterDataResponseDto): MasterDataDraft {
     religionConsent: status.religion !== null,
     familienstand: status.familienstand,
     familienstandSeit: isoToGerman(status.familienstandSeit),
-    iban: status.iban ?? '',
+    iban: formatIban(status.iban ?? ''),
     kontoinhaber: status.kontoinhaber ?? '',
     finanzamt: status.finanzamt ?? '',
     telefon: status.telefon ?? '',
@@ -74,7 +75,7 @@ export function zuPutDto(draft: MasterDataDraft): PutMasterDataDto {
     religionConsent: draft.religionConsent,
     familienstand: draft.familienstand as PutMasterDataDtoFamilienstand,
     familienstandSeit: draft.familienstand === 'ledig' ? null : germanToIso(draft.familienstandSeit),
-    iban: emptyToNull(draft.iban),
+    iban: emptyToNull(normalizeIban(draft.iban)),
     kontoinhaber: emptyToNull(draft.kontoinhaber),
     finanzamt: emptyToNull(draft.finanzamt),
     telefon: emptyToNull(draft.telefon),

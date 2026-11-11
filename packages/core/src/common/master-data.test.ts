@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   MARITAL_STATUSES,
+  checkIban,
+  formatIban,
   isValidIban,
   isValidPostalCode,
   isValidDate,
@@ -63,5 +65,29 @@ describe('closed vocabularies', () => {
 
   it('carries the Familienstände ESt 1 A Zeile 18 distinguishes', () => {
     expect(MARITAL_STATUSES).toEqual(['ledig', 'verheiratet', 'verwitwet', 'geschieden', 'dauernd-getrennt'])
+  })
+})
+
+describe('IBAN display and typing check', () => {
+  it('groups an IBAN in blocks of four, upper-cased', () => {
+    expect(formatIban('de89370400440532013000')).toBe('DE89 3704 0044 0532 0130 00')
+    expect(formatIban('DE89 37040044 0532')).toBe('DE89 3704 0044 0532')
+    expect(formatIban('DE89')).toBe('DE89')
+    expect(formatIban('')).toBe('')
+  })
+
+  it('drops characters an IBAN cannot contain and stops at 34', () => {
+    expect(formatIban('DE89-3704.0044')).toBe('DE89 3704 0044')
+    expect(formatIban('X'.repeat(40)).replace(/ /g, '')).toHaveLength(34)
+  })
+
+  it('tells empty, incomplete, valid and invalid apart while typing', () => {
+    expect(checkIban('')).toBe('empty')
+    expect(checkIban('DE89 3704')).toBe('incomplete')
+    expect(checkIban('DE89 3704 0044 0532 0130 00')).toBe('valid')
+    expect(checkIban('DE89 3704 0044 0532 0130 01')).toBe('invalid')
+    expect(checkIban('DE89 3704 0044 0532 0130 000')).toBe('invalid')
+    expect(checkIban('CH93 0076 2011 6238 5295 7')).toBe('valid')
+    expect(checkIban('CH93 0076')).toBe('incomplete')
   })
 })

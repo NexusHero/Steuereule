@@ -58,6 +58,167 @@ describe('KinderScreen', () => {
     expect(screen.getByText('Entlastungsbetrag für Alleinerziehende')).toBeTruthy()
   })
 
+  describe('less typing for a further child', () => {
+    const SIBLING = [
+      {
+        ...KINDER_FIXTURE[0]!,
+        kinship: '1' as const,
+        familyBenefitsOffice: 'Familienkasse Sachsen',
+        domesticResidenceAllYear: true,
+        otherParent: 'Inland' as const,
+        otherParentName: 'Muster, Max',
+        otherParentBirthDate: '1984-02-11',
+        otherParentAddress: 'Hauptstraße 3, 01067 Dresden',
+        otherParentKind: '1' as const,
+      },
+    ]
+
+    it('copies what siblings share on one click and still asks for the child\'s own data', async () => {
+      const onAdd = vi.fn().mockResolvedValue(undefined)
+      renderKinder({ initialKinder: SIBLING, onAddChild: onAdd })
+      fireEvent.click(screen.getByTestId('kind-neu'))
+      fireEvent.click(screen.getByTestId('kind-geschwister-0'))
+
+      expect((screen.getByLabelText('Nachname') as HTMLInputElement).value).toBe('Muster')
+      expect((screen.getByLabelText('Familienkasse') as HTMLInputElement).value).toBe('Familienkasse Sachsen')
+      expect((screen.getByLabelText('Adresse des anderen Elternteils') as HTMLInputElement).value).toBe('Hauptstraße 3, 01067 Dresden')
+      expect((screen.getByLabelText('Vorname') as HTMLInputElement).value).toBe('')
+      expect((screen.getByLabelText('Steuer-Identifikationsnummer') as HTMLInputElement).value).toBe('')
+      expect(screen.getByTestId('kind-geschwister').textContent).toContain('Von Lina übernommen')
+
+      fireEvent.change(screen.getByLabelText('Vorname'), { target: { value: 'Noah' } })
+      fireEvent.change(screen.getByLabelText('Geburtsdatum'), { target: { value: '02.09.2019' } })
+      fireEvent.click(screen.getByTestId('kind-speichern'))
+      await waitFor(() =>
+        expect(onAdd).toHaveBeenCalledWith(
+          expect.objectContaining({
+            firstName: 'Noah',
+            lastName: 'Muster',
+            kinship: '1',
+            familyBenefitsOffice: 'Familienkasse Sachsen',
+            domesticResidenceAllYear: true,
+            otherParent: 'Inland',
+            otherParentName: 'Muster, Max',
+            otherParentBirthDate: '1984-02-11',
+          }),
+        ),
+      )
+    })
+
+    it('offers no sibling to copy from for the first child or while editing one', () => {
+      const { unmount } = renderKinder({ initialKinder: [] })
+      expect(screen.queryByTestId('kind-geschwister')).toBeNull()
+      unmount()
+      renderKinder()
+      fireEvent.click(screen.getByLabelText('Kind Lina bearbeiten'))
+      expect(screen.queryByTestId('kind-geschwister')).toBeNull()
+    })
+
+    it('suggests the user\'s own last name for a new child, marked as a suggestion, never for an existing one', () => {
+      renderKinder({ suggestedLastName: 'Beispiel' })
+      fireEvent.click(screen.getByTestId('kind-neu'))
+      expect((screen.getByLabelText('Nachname') as HTMLInputElement).value).toBe('Beispiel')
+      expect(screen.getByTestId('kind-nachname-vorschlag')).toBeTruthy()
+
+      fireEvent.change(screen.getByLabelText('Nachname'), { target: { value: 'Anders' } })
+      expect(screen.queryByTestId('kind-nachname-vorschlag')).toBeNull()
+
+      fireEvent.click(screen.getByLabelText('Kind Lina bearbeiten'))
+      expect((screen.getByLabelText('Nachname') as HTMLInputElement).value).toBe('Muster')
+      expect(screen.queryByTestId('kind-nachname-vorschlag')).toBeNull()
+    })
+  })
+
+  describe('Familienkasse: pick instead of type', () => {
+    const office = () => (screen.getByLabelText('Familienkasse') as HTMLInputElement).value
+
+    it('offers the Familienkassen of the user\'s Bundesland and takes one on a click', () => {
+      renderKinder({ addressState: 'NW' })
+      fireEvent.click(screen.getByTestId('kind-neu'))
+      const box = screen.getByTestId('kind-familienkasse-vorschlaege')
+      expect(box.textContent).toContain('Vorschlag aus deiner Adresse')
+      expect(box.textContent).toContain('Nordrhein-Westfalen Nord')
+      expect(box.textContent).not.toContain('Sachsen')
+      fireEvent.click(screen.getByTestId('kind-familienkasse-vorschlag-2'))
+      expect(office()).toBe('Familienkasse Nordrhein-Westfalen West')
+      expect(screen.queryByTestId('kind-familienkasse-vorschlaege')).toBeNull()
+    })
+
+    it('offers every Familienkasse when the Bundesland is unknown, and narrows while typing', () => {
+      renderKinder()
+      fireEvent.click(screen.getByTestId('kind-neu'))
+      expect(screen.getByTestId('kind-familienkasse-vorschlag-13')).toBeTruthy()
+      fireEvent.change(screen.getByLabelText('Familienkasse'), { target: { value: 'hess' } })
+      expect(screen.getByTestId('kind-familienkasse-vorschlag-0').textContent).toBe('Hessen')
+      expect(screen.queryByTestId('kind-familienkasse-vorschlag-1')).toBeNull()
+    })
+
+    it('still accepts a Familienkasse that is not on the list', async () => {
+      const onAdd = vi.fn().mockResolvedValue(undefined)
+      renderKinder({ onAddChild: onAdd, addressState: 'SN' })
+      fireEvent.click(screen.getByTestId('kind-neu'))
+      fireEvent.change(screen.getByLabelText('Vorname'), { target: { value: 'Noah' } })
+      fireEvent.change(screen.getByLabelText('Nachname'), { target: { value: 'Brenner' } })
+      fireEvent.change(screen.getByLabelText('Geburtsdatum'), { target: { value: '02.09.2019' } })
+      fireEvent.change(screen.getByLabelText('Familienkasse'), { target: { value: 'Landesfamilienkasse Musterstadt' } })
+      expect(screen.queryByTestId('kind-familienkasse-vorschlaege')).toBeNull()
+      fireEvent.click(screen.getByTestId('kind-speichern'))
+      await waitFor(() => expect(onAdd).toHaveBeenCalledWith(expect.objectContaining({ familyBenefitsOffice: 'Landesfamilienkasse Musterstadt' })))
+    })
+  })
+
+  describe('short form first', () => {
+    const optional = ['Kindergeld', 'Schweizer Kinderzulage', 'Krankenversicherung des Kindes', 'Pflegeversicherung des Kindes']
+
+    it('asks a new child only for what the printout needs; the rest opens on request', () => {
+      renderKinder()
+      fireEvent.click(screen.getByTestId('kind-neu'))
+      for (const label of ['Vorname', 'Nachname', 'Geburtsdatum', 'Steuer-Identifikationsnummer', 'Familienkasse']) {
+        expect(screen.getByLabelText(label)).toBeTruthy()
+      }
+      expect(screen.getByTestId('kind-verhaeltnis-1')).toBeTruthy()
+      expect(screen.getByTestId('kind-inland-ja')).toBeTruthy()
+      for (const label of optional) expect(screen.queryByLabelText(label)).toBeNull()
+
+      fireEvent.click(screen.getByTestId('kind-weitere-angaben'))
+      for (const label of optional) expect(screen.getByLabelText(label)).toBeTruthy()
+    })
+
+    it('shows the spouse relationship to married people right away, to others only among the further details', () => {
+      const { unmount } = renderKinder({ married: true })
+      fireEvent.click(screen.getByTestId('kind-neu'))
+      expect(screen.getByTestId('kind-verhaeltnis-b-1')).toBeTruthy()
+      unmount()
+
+      renderKinder()
+      fireEvent.click(screen.getByTestId('kind-neu'))
+      expect(screen.queryByTestId('kind-verhaeltnis-b-1')).toBeNull()
+      fireEvent.click(screen.getByTestId('kind-weitere-angaben'))
+      expect(screen.getByTestId('kind-verhaeltnis-b-1')).toBeTruthy()
+    })
+
+    it('opens the further details by itself when the child already has one of them', () => {
+      renderKinder()
+      fireEvent.click(screen.getByLabelText('Kind Lina bearbeiten'))
+      expect((screen.getByLabelText('Kindergeld') as HTMLInputElement).value).toBe('3000')
+    })
+
+    it('keeps a value typed into the further details when they are folded again', async () => {
+      const onAdd = vi.fn().mockResolvedValue(undefined)
+      renderKinder({ onAddChild: onAdd })
+      fireEvent.click(screen.getByTestId('kind-neu'))
+      fireEvent.change(screen.getByLabelText('Vorname'), { target: { value: 'Noah' } })
+      fireEvent.change(screen.getByLabelText('Nachname'), { target: { value: 'Brenner' } })
+      fireEvent.change(screen.getByLabelText('Geburtsdatum'), { target: { value: '02.09.2019' } })
+      fireEvent.click(screen.getByTestId('kind-weitere-angaben'))
+      fireEvent.change(screen.getByLabelText('Kindergeld'), { target: { value: '3060' } })
+      fireEvent.click(screen.getByTestId('kind-weitere-angaben'))
+      expect(screen.queryByLabelText('Kindergeld')).toBeNull()
+      fireEvent.click(screen.getByTestId('kind-speichern'))
+      await waitFor(() => expect(onAdd).toHaveBeenCalledWith(expect.objectContaining({ childBenefitClaimEur: '3060' })))
+    })
+  })
+
   it("saves the child's health and care insurance the parents pay (Anlage Kind Z. 27/28)", async () => {
     const onAdd = vi.fn().mockResolvedValue(undefined)
     renderKinder({ onAddChild: onAdd })
@@ -65,6 +226,7 @@ describe('KinderScreen', () => {
     fireEvent.change(screen.getByLabelText('Vorname'), { target: { value: 'Noah' } })
     fireEvent.change(screen.getByLabelText('Nachname'), { target: { value: 'Brenner' } })
     fireEvent.change(screen.getByLabelText('Geburtsdatum'), { target: { value: '02.09.2019' } })
+    fireEvent.click(screen.getByTestId('kind-weitere-angaben'))
     fireEvent.change(screen.getByLabelText('Krankenversicherung des Kindes'), { target: { value: '1080' } })
     fireEvent.click(screen.getByTestId('kind-speichern'))
 
@@ -73,7 +235,7 @@ describe('KinderScreen', () => {
 
   it('allows adding a new child', async () => {
     const onAdd = vi.fn().mockResolvedValue(undefined)
-    renderKinder({ onAddChild: onAdd })
+    renderKinder({ onAddChild: onAdd, married: true })
 
     const newBtn = screen.getByTestId('kind-neu')
     fireEvent.click(newBtn)
@@ -145,6 +307,24 @@ describe('KinderScreen', () => {
       )
     })
     await waitFor(() => expect(screen.queryByText(/Für den Ausdruck fehlen noch Angaben/)).toBeNull())
+  })
+
+  it('fills the other parent\'s address from one picked suggestion (ADR-0064)', async () => {
+    server.use(
+      http.post('*/v1/adressen/suche', () =>
+        HttpResponse.json({ available: true, houseNumber: '3', hits: [{ street: 'Hauptstraße', postalCode: '01067', city: 'Dresden', state: 'SN' }] }),
+      ),
+    )
+    const onSave = vi.fn().mockResolvedValue(undefined)
+    renderKinder({ onSaveChild: onSave })
+    fireEvent.click(screen.getByLabelText('Kind Lina bearbeiten'))
+    expect(screen.queryByTestId('kind-ae-adresssuche')).toBeNull()
+    fireEvent.click(screen.getByTestId('kind-ae-Inland'))
+    fireEvent.change(screen.getByTestId('kind-ae-adresssuche'), { target: { value: 'Hauptstr 3 Dresden' } })
+    fireEvent.click(await screen.findByTestId('kind-ae-adresssuche-treffer-0'))
+    expect((screen.getByLabelText('Adresse des anderen Elternteils') as HTMLInputElement).value).toBe('Hauptstraße 3, 01067 Dresden')
+    fireEvent.click(screen.getByTestId('kind-speichern'))
+    await waitFor(() => expect(onSave).toHaveBeenCalledWith('kind-1', expect.objectContaining({ otherParentAddress: 'Hauptstraße 3, 01067 Dresden' })))
   })
 
   it('captures the other parent for single parents (Anlage Kind Zeilen 11–15)', async () => {

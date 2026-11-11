@@ -58,7 +58,7 @@ export async function runScenario02(browser, webOrigin, _sql, { keepOpen = false
   await pageMarkus.locator('[data-testid="ch-feld-nettolohn"]').fill(String(s.markus.crossBorder.netWageChf))
   await pageMarkus.locator('[data-testid="ch-feld-quellensteuer"]').fill(String(s.markus.crossBorder.withholdingTaxChf))
 
-  await pageMarkus.locator('[data-testid="ch-wechselkurs-monat"]').fill(s.markus.crossBorder.exchangeRateMonth)
+  await pageMarkus.locator(`[data-testid="ch-wechselkurs-monat-${s.markus.crossBorder.exchangeRateMonth.slice(5)}"]`).click()
   await pageMarkus.locator('[data-testid="ch-wechselkurs-kurs"]').fill(s.markus.crossBorder.exchangeRate)
   await pageMarkus.locator('[data-testid="ch-wechselkurs-speichern"]').click()
 
@@ -122,6 +122,8 @@ export async function runScenario02(browser, webOrigin, _sql, { keepOpen = false
     await pageMarkus.locator('[data-testid="kind-nachname"]').fill(child.lastName)
     await pageMarkus.locator('[data-testid="kind-geburtsdatum"]').fill(child.birthDate)
     await pageMarkus.locator('[data-testid="kind-steuerid"]').fill(child.taxId)
+    // Short form first: the optional amounts open on request.
+    await pageMarkus.locator('[data-testid="kind-weitere-angaben"]').click()
     await pageMarkus.locator('[data-testid="kind-schweizer-kinderzulage"]').fill(String(child.swissAllowanceEur))
     await pageMarkus.locator('[data-testid="kind-kindergeld"]').fill(String(child.childBenefitEur))
     await pageMarkus.locator('[data-testid="kind-verhaeltnis-1"]').click()
