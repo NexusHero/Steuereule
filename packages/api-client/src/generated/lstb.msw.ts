@@ -18,6 +18,7 @@ import type {
 } from 'msw';
 
 import type {
+  LstbChurchTaxDto,
   LstbResponseDto
 } from './lstb.schemas';
 
@@ -27,6 +28,10 @@ export const getLstbControllerGetLstbResponseMock = (overrideResponse: Partial<E
 export const getLstbScanControllerConfirmScanResponseMock = (overrideResponse: Partial<Extract<LstbResponseDto, object>> = {}): LstbResponseDto => ({bruttoarbeitslohn: {kind: faker.helpers.arrayElement(['erfasst','offen','unklar'] as const), value: faker.number.float({fractionDigits: 2})}, lohnsteuer: {kind: faker.helpers.arrayElement(['erfasst','offen','unklar'] as const), value: faker.number.float({fractionDigits: 2})}, sozialversicherung: {kind: faker.helpers.arrayElement(['erfasst','offen','unklar'] as const), value: faker.number.float({fractionDigits: 2})}, state: {kind: faker.helpers.arrayElement(['unvollstaendig','widerspruch','vollstaendig'] as const), open: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), unclear: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), conflicts: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({kind: faker.helpers.arrayElement(['lohnsteuer-uebersteigt-brutto','sozialversicherung-uebersteigt-brutto'] as const), lohnsteuer: faker.number.float({fractionDigits: 2}), bruttoarbeitslohn: faker.number.float({fractionDigits: 2}), sozialversicherung: faker.number.float({fractionDigits: 2})})), bruttoarbeitslohn: faker.number.float({fractionDigits: 2}), lohnsteuer: faker.number.float({fractionDigits: 2}), sozialversicherung: faker.number.float({fractionDigits: 2})}, ...overrideResponse})
 
 export const getLstbControllerSetFieldResponseMock = (overrideResponse: Partial<Extract<LstbResponseDto, object>> = {}): LstbResponseDto => ({bruttoarbeitslohn: {kind: faker.helpers.arrayElement(['erfasst','offen','unklar'] as const), value: faker.number.float({fractionDigits: 2})}, lohnsteuer: {kind: faker.helpers.arrayElement(['erfasst','offen','unklar'] as const), value: faker.number.float({fractionDigits: 2})}, sozialversicherung: {kind: faker.helpers.arrayElement(['erfasst','offen','unklar'] as const), value: faker.number.float({fractionDigits: 2})}, state: {kind: faker.helpers.arrayElement(['unvollstaendig','widerspruch','vollstaendig'] as const), open: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), unclear: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), conflicts: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({kind: faker.helpers.arrayElement(['lohnsteuer-uebersteigt-brutto','sozialversicherung-uebersteigt-brutto'] as const), lohnsteuer: faker.number.float({fractionDigits: 2}), bruttoarbeitslohn: faker.number.float({fractionDigits: 2}), sozialversicherung: faker.number.float({fractionDigits: 2})})), bruttoarbeitslohn: faker.number.float({fractionDigits: 2}), lohnsteuer: faker.number.float({fractionDigits: 2}), sozialversicherung: faker.number.float({fractionDigits: 2})}, ...overrideResponse})
+
+export const getLstbControllerGetChurchTaxResponseMock = (overrideResponse: Partial<Extract<LstbChurchTaxDto, object>> = {}): LstbChurchTaxDto => ({kirchensteuer: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), kirchensteuerEhegatte: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), ...overrideResponse})
+
+export const getLstbControllerSetChurchTaxResponseMock = (overrideResponse: Partial<Extract<LstbChurchTaxDto, object>> = {}): LstbChurchTaxDto => ({kirchensteuer: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), kirchensteuerEhegatte: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), ...overrideResponse})
 
 
 export const getLstbControllerGetLstbMockHandler = (overrideResponse?: LstbResponseDto | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<LstbResponseDto> | LstbResponseDto), options?: RequestHandlerOptions) => {
@@ -64,8 +69,34 @@ export const getLstbControllerSetFieldMockHandler = (overrideResponse?: LstbResp
       })
   }, options)
 }
+
+export const getLstbControllerGetChurchTaxMockHandler = (overrideResponse?: LstbChurchTaxDto | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<LstbChurchTaxDto> | LstbChurchTaxDto), options?: RequestHandlerOptions) => {
+  return http.get('*/v1/steuerjahre/:jahr/lstb-kirchensteuer', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getLstbControllerGetChurchTaxResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getLstbControllerSetChurchTaxMockHandler = (overrideResponse?: LstbChurchTaxDto | ((info: Parameters<Parameters<typeof http.put>[1]>[0]) => Promise<LstbChurchTaxDto> | LstbChurchTaxDto), options?: RequestHandlerOptions) => {
+  return http.put('*/v1/steuerjahre/:jahr/lstb-kirchensteuer', async (info: Parameters<Parameters<typeof http.put>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getLstbControllerSetChurchTaxResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
 export const getSteuerEuleAPIMock = () => [
   getLstbControllerGetLstbMockHandler(),
   getLstbScanControllerConfirmScanMockHandler(),
-  getLstbControllerSetFieldMockHandler()
+  getLstbControllerSetFieldMockHandler(),
+  getLstbControllerGetChurchTaxMockHandler(),
+  getLstbControllerSetChurchTaxMockHandler()
 ]

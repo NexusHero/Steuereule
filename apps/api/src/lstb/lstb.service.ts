@@ -19,6 +19,7 @@ import type { LstbFieldDto } from './dto/lstb-field.dto.js'
 import type { LstbResponseDto } from './dto/lstb-response.dto.js'
 import type { LstbConflictDto } from './dto/lstb-conflict.dto.js'
 import type { LstbStatusDto } from './dto/lstb-state.dto.js'
+import type { LstbChurchTaxDto } from './dto/lstb-church-tax.dto.js'
 import { wageTaxCertificateDataFrom } from './lstb-data.js'
 
 const LSTB_FIELD_IDS: readonly WageTaxCertificateFieldId[] = ['bruttoarbeitslohn', 'lohnsteuer', 'sozialversicherung']
@@ -106,6 +107,27 @@ export class LstbService {
     return toResponse(next)
   }
 
+  /** Church tax lines of the LStB (Zeilen 6 und 7). */
+  async getChurchTax(userId: string, taxYear: number): Promise<LstbChurchTaxDto> {
+    const record = await this.repository.findForUserAndYear(userId, taxYear)
+    if (record !== null) await this.auditService.append({ userId, action: 'READ', resource: 'lstb' })
+    return churchTaxDtoFrom(record)
+  }
+
+  async setChurchTax(userId: string, taxYear: number, dto: LstbChurchTaxDto): Promise<LstbChurchTaxDto> {
+    for (const value of [dto.kirchensteuer, dto.kirchensteuerEhegatte]) {
+      if (value !== null && value !== undefined && !isValidAmount(value)) {
+        throw new InvalidInputError('FIELD_VALUE_INVALID', 'Kirchensteuer requires a non-negative whole-euro amount or null.')
+      }
+    }
+    const serialize = (value: number | null | undefined) => (value === null || value === undefined ? null : String(value))
+    const record = await this.repository.setChurchTax(userId, taxYear, {
+      kirchensteuer: serialize(dto.kirchensteuer),
+      kirchensteuerEhegatte: serialize(dto.kirchensteuerEhegatte),
+    })
+    return churchTaxDtoFrom(record)
+  }
+
   /** Values already captured for the year — a scan must never overwrite them silently (ADR-0008). */
   async existingValues(userId: string, taxYear: number): Promise<ExistingLstbValues> {
     const data = wageTaxCertificateDataFrom(await this.repository.findForUserAndYear(userId, taxYear))
@@ -176,4 +198,13 @@ export class LstbService {
     }
     return toResponse(candidate)
   }
+}
+
+/** Stored whole-euro strings → numbers; anything unreadable counts as not entered. */
+export function churchTaxDtoFrom(record: { kirchensteuer?: string | null; kirchensteuerEhegatte?: string | null } | null): LstbChurchTaxDto {
+  const parse = (value: string | null | undefined): number | null => {
+    if (value === null || value === undefined || !/^\d+$/.test(value)) return null
+    return Number(value)
+  }
+  return { kirchensteuer: parse(record?.kirchensteuer), kirchensteuerEhegatte: parse(record?.kirchensteuerEhegatte) }
 }

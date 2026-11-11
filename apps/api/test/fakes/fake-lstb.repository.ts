@@ -4,7 +4,7 @@
 // LstbZustand is left to LstbService (as in production, the repository stores facts, never
 // the derived state — ADR-014/048).
 import type { WageTaxCertificateFieldId } from '@steuereule/core'
-import type { WageTaxCertificateRecord, WageTaxCertificateRepository } from '../../src/lstb/lstb.repository.js'
+import type { WageTaxCertificateChurchTax, WageTaxCertificateRecord, WageTaxCertificateRepository } from '../../src/lstb/lstb.repository.js'
 
 function key(userId: string, taxYear: number): string {
   return `${userId}::${taxYear}`
@@ -28,6 +28,14 @@ export class FakeLstbRepository implements WageTaxCertificateRepository {
       sozialversicherung: null,
     }
     const updated: WageTaxCertificateRecord = { ...record, [field]: value }
+    this.store.set(k, updated)
+    return Promise.resolve(updated)
+  }
+
+  setChurchTax(userId: string, taxYear: number, values: WageTaxCertificateChurchTax): Promise<WageTaxCertificateRecord> {
+    const k = key(userId, taxYear)
+    const record: WageTaxCertificateRecord = this.store.get(k) ?? { userId, taxYear, bruttoarbeitslohn: null, lohnsteuer: null, sozialversicherung: null }
+    const updated: WageTaxCertificateRecord = { ...record, ...values }
     this.store.set(k, updated)
     return Promise.resolve(updated)
   }

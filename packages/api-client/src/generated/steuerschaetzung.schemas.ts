@@ -29,6 +29,40 @@ export interface RangeDto {
   to: number;
 }
 
+export type ChurchTaxEstimateDtoKind = typeof ChurchTaxEstimateDtoKind[keyof typeof ChurchTaxEstimateDtoKind];
+
+
+export const ChurchTaxEstimateDtoKind = {
+  none: 'none',
+  offen: 'offen',
+  spanne: 'spanne',
+} as const;
+
+/**
+ * Why the church tax is open (kind "offen").
+ */
+export type ChurchTaxEstimateDtoReason = typeof ChurchTaxEstimateDtoReason[keyof typeof ChurchTaxEstimateDtoReason];
+
+
+export const ChurchTaxEstimateDtoReason = {
+  'konfession-fehlt': 'konfession-fehlt',
+  'kappung-unbekannt': 'kappung-unbekannt',
+  'kirchgeld-unbekannt': 'kirchgeld-unbekannt',
+  'einbehalt-fehlt': 'einbehalt-fehlt',
+} as const;
+
+export interface ChurchTaxEstimateDto {
+  kind: ChurchTaxEstimateDtoKind;
+  /** Why the church tax is open (kind "offen"). */
+  reason?: ChurchTaxEstimateDtoReason;
+  /** Church tax due for the year (kind "spanne"). */
+  due?: RangeDto;
+  /** Church tax withheld per LStB (Zeilen 6 und 7). */
+  withheld?: number;
+  /** The church would cap the tax on application (Kappung auf Antrag). */
+  capOnApplication?: boolean;
+}
+
 export interface TaxEstimateDto {
   kind: TaxEstimateDtoKind;
   /** Positive = Erstattung, negative = Nachzahlung. */
@@ -42,6 +76,7 @@ export interface TaxEstimateDto {
   anrechnung?: number;
   /** True when church tax applies but is not part of the estimate. */
   churchTaxOpen?: boolean;
+  churchTax?: ChurchTaxEstimateDto;
   missing?: string[];
   reason?: TaxEstimateDtoReason;
   /** Number of deferred catalog deduction amounts. */

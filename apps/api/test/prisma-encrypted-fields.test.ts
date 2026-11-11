@@ -82,6 +82,8 @@ const EXPECTED_ENCRYPTED_FIELDS: ExpectedEncryptedField[] = [
   { model: 'Lstb', field: 'bruttoarbeitslohn', encrypt: true, strictDecryption: true },
   { model: 'Lstb', field: 'lohnsteuer', encrypt: true, strictDecryption: true },
   { model: 'Lstb', field: 'sozialversicherung', encrypt: true, strictDecryption: true },
+  { model: 'Lstb', field: 'kirchensteuer', encrypt: true, strictDecryption: true },
+  { model: 'Lstb', field: 'kirchensteuerEhegatte', encrypt: true, strictDecryption: true },
   { model: 'ChSalaryCertificate', field: 'lohn', encrypt: true, strictDecryption: true },
   { model: 'ChSalaryCertificate', field: 'gehaltsnebenleistungen', encrypt: true, strictDecryption: true },
   { model: 'ChSalaryCertificate', field: 'irregularBenefits', encrypt: true, strictDecryption: true },

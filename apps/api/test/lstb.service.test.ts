@@ -26,6 +26,24 @@ describe('LstbService', () => {
     service = new LstbService(repository, new AuditService(auditRepository), markings)
   })
 
+  describe('church tax lines (Zeilen 6 und 7, ADR-0063)', () => {
+    it('are not entered until the user enters them', async () => {
+      expect(await service.getChurchTax(USER_ID, 2025)).toEqual({ kirchensteuer: null, kirchensteuerEhegatte: null })
+    })
+
+    it('stores whole euros next to the three required fields, without touching them', async () => {
+      await service.setField(USER_ID, 2025, 'lohnsteuer', { kind: 'erfasst', value: 6100 })
+      expect(await service.setChurchTax(USER_ID, 2025, { kirchensteuer: 540, kirchensteuerEhegatte: null })).toEqual({ kirchensteuer: 540, kirchensteuerEhegatte: null })
+      expect(await service.getChurchTax(USER_ID, 2025)).toEqual({ kirchensteuer: 540, kirchensteuerEhegatte: null })
+      expect((await service.getState(USER_ID, 2025)).lohnsteuer).toEqual({ kind: 'erfasst', value: 6100 })
+    })
+
+    it('rejects negative or fractional amounts', async () => {
+      await expect(service.setChurchTax(USER_ID, 2025, { kirchensteuer: -1, kirchensteuerEhegatte: null })).rejects.toThrow(/whole-euro/)
+      await expect(service.setChurchTax(USER_ID, 2025, { kirchensteuer: 10.5, kirchensteuerEhegatte: null })).rejects.toThrow(/whole-euro/)
+    })
+  })
+
   describe('getState — the honest empty mask', () => {
     it('a fresh tax year returns every field offen, unvollstaendig, no READ audit entry', async () => {
       const state = await service.getState(USER_ID, TAX_YEAR)

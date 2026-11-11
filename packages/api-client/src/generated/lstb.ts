@@ -26,7 +26,10 @@ import type {
 
 import type {
   ConfirmLstbScanDto,
+  LstbChurchTaxDto,
+  LstbControllerGetChurchTaxParams,
   LstbControllerGetLstbParams,
+  LstbControllerSetChurchTaxParams,
   LstbControllerSetFieldParams,
   LstbFieldDto,
   LstbResponseDto,
@@ -372,5 +375,228 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getLstbControllerSetFieldMutationOptions(options), queryClient);
+    }
+
+export type lstbControllerGetChurchTaxResponse200 = {
+  data: LstbChurchTaxDto
+  status: 200
+}
+
+export type lstbControllerGetChurchTaxResponse401 = {
+  data: void
+  status: 401
+}
+
+export type lstbControllerGetChurchTaxResponseSuccess = (lstbControllerGetChurchTaxResponse200) & {
+  headers: Headers;
+};
+export type lstbControllerGetChurchTaxResponseError = (lstbControllerGetChurchTaxResponse401) & {
+  headers: Headers;
+};
+
+export type lstbControllerGetChurchTaxResponse = (lstbControllerGetChurchTaxResponseSuccess | lstbControllerGetChurchTaxResponseError)
+
+export const getLstbControllerGetChurchTaxUrl = (jahr: number,
+    params?: LstbControllerGetChurchTaxParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/v1/steuerjahre/${jahr}/lstb-kirchensteuer?${stringifiedParams}` : `/v1/steuerjahre/${jahr}/lstb-kirchensteuer`
+}
+
+export const lstbControllerGetChurchTax = async (jahr: number,
+    params?: LstbControllerGetChurchTaxParams, options?: RequestInit): Promise<lstbControllerGetChurchTaxResponse> => {
+
+  return httpClient<lstbControllerGetChurchTaxResponse>(getLstbControllerGetChurchTaxUrl(jahr,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getLstbControllerGetChurchTaxQueryKey = (jahr: number,
+    params?: LstbControllerGetChurchTaxParams,) => {
+    return [
+    `/v1/steuerjahre/${jahr}/lstb-kirchensteuer`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getLstbControllerGetChurchTaxQueryOptions = <TData = Awaited<ReturnType<typeof lstbControllerGetChurchTax>>, TError = void>(jahr: number,
+    params?: LstbControllerGetChurchTaxParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof lstbControllerGetChurchTax>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getLstbControllerGetChurchTaxQueryKey(jahr,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof lstbControllerGetChurchTax>>> = ({ signal }) => lstbControllerGetChurchTax(jahr,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: jahr !== null && jahr !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof lstbControllerGetChurchTax>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type LstbControllerGetChurchTaxQueryResult = NonNullable<Awaited<ReturnType<typeof lstbControllerGetChurchTax>>>
+export type LstbControllerGetChurchTaxQueryError = void
+
+
+export function useLstbControllerGetChurchTax<TData = Awaited<ReturnType<typeof lstbControllerGetChurchTax>>, TError = void>(
+ jahr: number,
+    params: undefined |  LstbControllerGetChurchTaxParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof lstbControllerGetChurchTax>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof lstbControllerGetChurchTax>>,
+          TError,
+          Awaited<ReturnType<typeof lstbControllerGetChurchTax>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useLstbControllerGetChurchTax<TData = Awaited<ReturnType<typeof lstbControllerGetChurchTax>>, TError = void>(
+ jahr: number,
+    params?: LstbControllerGetChurchTaxParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof lstbControllerGetChurchTax>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof lstbControllerGetChurchTax>>,
+          TError,
+          Awaited<ReturnType<typeof lstbControllerGetChurchTax>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useLstbControllerGetChurchTax<TData = Awaited<ReturnType<typeof lstbControllerGetChurchTax>>, TError = void>(
+ jahr: number,
+    params?: LstbControllerGetChurchTaxParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof lstbControllerGetChurchTax>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useLstbControllerGetChurchTax<TData = Awaited<ReturnType<typeof lstbControllerGetChurchTax>>, TError = void>(
+ jahr: number,
+    params?: LstbControllerGetChurchTaxParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof lstbControllerGetChurchTax>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getLstbControllerGetChurchTaxQueryOptions(jahr,params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type lstbControllerSetChurchTaxResponse200 = {
+  data: LstbChurchTaxDto
+  status: 200
+}
+
+export type lstbControllerSetChurchTaxResponse401 = {
+  data: void
+  status: 401
+}
+
+export type lstbControllerSetChurchTaxResponseSuccess = (lstbControllerSetChurchTaxResponse200) & {
+  headers: Headers;
+};
+export type lstbControllerSetChurchTaxResponseError = (lstbControllerSetChurchTaxResponse401) & {
+  headers: Headers;
+};
+
+export type lstbControllerSetChurchTaxResponse = (lstbControllerSetChurchTaxResponseSuccess | lstbControllerSetChurchTaxResponseError)
+
+export const getLstbControllerSetChurchTaxUrl = (jahr: number,
+    params?: LstbControllerSetChurchTaxParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/v1/steuerjahre/${jahr}/lstb-kirchensteuer?${stringifiedParams}` : `/v1/steuerjahre/${jahr}/lstb-kirchensteuer`
+}
+
+export const lstbControllerSetChurchTax = async (jahr: number,
+    lstbChurchTaxDto: LstbChurchTaxDto,
+    params?: LstbControllerSetChurchTaxParams, options?: RequestInit): Promise<lstbControllerSetChurchTaxResponse> => {
+
+  return httpClient<lstbControllerSetChurchTaxResponse>(getLstbControllerSetChurchTaxUrl(jahr,params),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(lstbChurchTaxDto)
+  }
+);}
+
+
+
+
+
+export const getLstbControllerSetChurchTaxMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof lstbControllerSetChurchTax>>, TError,{jahr: number;data: LstbChurchTaxDto;params?: LstbControllerSetChurchTaxParams}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof lstbControllerSetChurchTax>>, TError,{jahr: number;data: LstbChurchTaxDto;params?: LstbControllerSetChurchTaxParams}, TContext> => {
+
+const mutationKey = ['lstbControllerSetChurchTax'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof lstbControllerSetChurchTax>>, {jahr: number;data: LstbChurchTaxDto;params?: LstbControllerSetChurchTaxParams}> = (props) => {
+          const {jahr,data,params} = props ?? {};
+
+          return  lstbControllerSetChurchTax(jahr,data,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type LstbControllerSetChurchTaxMutationResult = NonNullable<Awaited<ReturnType<typeof lstbControllerSetChurchTax>>>
+    export type LstbControllerSetChurchTaxMutationBody = LstbChurchTaxDto
+    export type LstbControllerSetChurchTaxMutationError = void
+
+    export const useLstbControllerSetChurchTax = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof lstbControllerSetChurchTax>>, TError,{jahr: number;data: LstbChurchTaxDto;params?: LstbControllerSetChurchTaxParams}, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof lstbControllerSetChurchTax>>,
+        TError,
+        {jahr: number;data: LstbChurchTaxDto;params?: LstbControllerSetChurchTaxParams},
+        TContext
+      > => {
+      return useMutation(getLstbControllerSetChurchTaxMutationOptions(options), queryClient);
     }
 

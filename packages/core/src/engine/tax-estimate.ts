@@ -103,6 +103,8 @@ export interface CrossBorderEstimateInput {
   readonly singleParentChildren?: number | undefined
   /** § 33 Abs. 3 EStG children bracket (defaults to '0'). */
   readonly childrenBracket?: BurdenChildrenBracket | undefined
+  /** Kirchensteuer facts; a Grenzgänger CH has no German church tax withheld (`withheld` is ignored). */
+  readonly churchTax?: Omit<ChurchTaxInput, 'withheld'> | undefined
 }
 
 /**
@@ -164,6 +166,7 @@ export function taxEstimateCrossBorder(e: CrossBorderEstimateInput): TaxEstimate
     singleParent: e.singleParent,
     singleParentChildren: e.singleParentChildren,
     childrenBracket: e.childrenBracket,
+    churchTax: e.churchTax ? { ...e.churchTax, withheld: 0 } : undefined,
   })
 }
 

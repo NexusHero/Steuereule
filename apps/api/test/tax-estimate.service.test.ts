@@ -240,3 +240,76 @@ describe('SteuerschaetzungService', () => {
     })
   })
 })
+
+describe('Kirchensteuer in the estimate (#450 Teil 6F, ADR-0063)', () => {
+  const LSTB = { userId: 'u', taxYear: 2025, bruttoarbeitslohn: '45000', lohnsteuer: '6100', sozialversicherung: '9200' }
+
+  it('single in Berlin, evangelisch: 9 % due, the LStB church tax credited, and churchTaxOpen is false', async () => {
+    const { lstb, interview, stammdaten, service } = setup()
+    interview.seed('u', 2025, { ...EMPLOYED, familienstand: 'Ledig' })
+    await stammdaten.save('u', { familienstand: 'ledig', religion: 'EV', plz: '10115' } as MasterDataRecord)
+    lstb.seed({ ...LSTB, kirchensteuer: '540' })
+
+    const status = range(await service.getState('u', 2025))
+
+    expect(status.churchTaxOpen).toBe(false)
+    if (status.churchTax?.kind !== 'spanne') throw new Error('expected church tax')
+    expect(status.churchTax.withheld).toBe(540)
+    expect(status.churchTax.due.to).toBe(Math.floor(status.incomeTax.to * 0.09))
+    expect(status.specialExpenses).toBe(540)
+  })
+
+  it('single in München, katholisch: 8 %', async () => {
+    const { lstb, interview, stammdaten, service } = setup()
+    interview.seed('u', 2025, { ...EMPLOYED, familienstand: 'Ledig' })
+    await stammdaten.save('u', { familienstand: 'ledig', religion: 'RK', plz: '80331' } as MasterDataRecord)
+    lstb.seed({ ...LSTB, kirchensteuer: '480' })
+
+    const status = range(await service.getState('u', 2025))
+
+    if (status.churchTax?.kind !== 'spanne') throw new Error('expected church tax')
+    expect(status.churchTax.due.to).toBe(Math.floor(status.incomeTax.to * 0.08))
+  })
+
+  it('no church: no church tax and no hint', async () => {
+    const { lstb, interview, stammdaten, service } = setup()
+    interview.seed('u', 2025, { ...EMPLOYED, familienstand: 'Ledig' })
+    await stammdaten.save('u', { familienstand: 'ledig', religion: 'VD', plz: '10115' } as MasterDataRecord)
+    lstb.seed(LSTB)
+
+    const status = range(await service.getState('u', 2025))
+
+    expect(status.churchTax).toEqual({ kind: 'none' })
+    expect(status.churchTaxOpen).toBe(false)
+  })
+
+  it('confession not entered: honest "offen", never a silent 0 €', async () => {
+    const { lstb, interview, service } = setup()
+    interview.seed('u', 2025, { ...EMPLOYED, familienstand: 'Ledig' })
+    lstb.seed(LSTB)
+
+    const status = range(await service.getState('u', 2025))
+
+    expect(status.churchTax).toEqual({ kind: 'offen', reason: 'konfession-fehlt' })
+    expect(status.churchTaxOpen).toBe(true)
+  })
+
+  it('married, one spouse without a church (glaubensverschieden): church tax only on the member side', async () => {
+    const env = setup()
+    env.interview.seed('a', 2025, EMPLOYED)
+    env.interview.seed('spouse_a_2025', 2025, {})
+    await env.stammdaten.save('a', { familienstand: 'verheiratet', religion: 'EV', plz: '01067' } as MasterDataRecord)
+    await env.stammdaten.save('spouse_a_2025', { familienstand: 'verheiratet', religion: 'VD' } as MasterDataRecord)
+    await env.kopplung.upsert('a', 2025, { personBUserId: 'spouse_a_2025', filingType: 'zusammen' })
+    env.lstb.seed({ userId: 'a', taxYear: 2025, bruttoarbeitslohn: '82000', lohnsteuer: '9890', sozialversicherung: '15473', kirchensteuer: '890' })
+    env.lstb.seed({ userId: 'spouse_a_2025', taxYear: 2025, bruttoarbeitslohn: '48000', lohnsteuer: '10420', sozialversicherung: '10008' })
+
+    const status = range(await env.service.getState('a', 2025))
+
+    if (status.churchTax?.kind !== 'spanne') throw new Error('expected church tax')
+    expect(status.churchTax.withheld).toBe(890)
+    // Less than 9 % of the whole joint tax: only A's share counts (or the Kirchgeld, if higher).
+    expect(status.churchTax.due.to).toBeLessThan(Math.floor(status.incomeTax.to * 0.09))
+    expect(status.churchTax.due.to).toBeGreaterThan(0)
+  })
+})
