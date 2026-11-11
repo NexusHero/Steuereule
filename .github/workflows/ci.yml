@@ -756,6 +756,9 @@ jobs:
       # #450 5C / D7: the test unlock (a fake payment provider, only ever outside production and without
       # Stripe keys) so the printout gate can pay and download without Stripe.
       PAYMENT_FAKE_PROVIDER: '1'
+      # ADR-0065: a handful of streets so the address search answers in this job (smart inputs gate).
+      # Production data is fetched with `streets:fetch`; this fixture never leaves the test jobs.
+      STREET_DATA_PATH: ${{ github.workspace }}/e2e/fixtures/streets.sample.csv
       EXPO_PUBLIC_API_BASE_URL: http://localhost:3301
     steps:
       - uses: actions/checkout@v5
@@ -844,6 +847,10 @@ jobs:
         # Fails on any request to a host other than API_ORIGIN/WEB_ORIGIN (decision 7: the postal
         # code never leaves the device). Needs DATABASE_URL (job env) to verify the sign-up.
         run: node e2e/advisor/input-aids.mjs
+      - name: Smart inputs gate (ADR-0065) — IBAN mask, date field, address search on our own server, Finanzamt/Familienkasse suggestions
+        # Runs against the API booted above with STREET_DATA_PATH (job env) pointing at the street
+        # fixture. Fails on any request to a host other than API_ORIGIN/WEB_ORIGIN.
+        run: node e2e/forms/smart-inputs.mjs
       - name: Plan-in-chat gate (#451 slice 6) — live checklist, collapse, Stop mid-plan, no write without a click
         # The model is stubbed inside the page (controllable SSE stream); sign-in, session and the
         # apply endpoints are the real stack. Needs DATABASE_URL (job env) to verify the sign-up.

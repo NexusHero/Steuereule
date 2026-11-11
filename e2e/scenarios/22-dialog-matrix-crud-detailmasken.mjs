@@ -143,7 +143,7 @@ export async function runScenario22(browser, webOrigin) {
   await page.locator('[data-testid="cockpit-bescheid"]').click()
 
   await page.locator('text=Dein Steuerbescheid').waitFor({ state: 'visible', timeout: 10_000 })
-  const datumInput = page.getByLabel(/Bescheiddatum/i)
+  const datumInput = page.locator('[data-testid="bescheid-datum"]')
   await datumInput.fill('15.05.2026')
   await datumInput.blur()
   await page.waitForTimeout(400)

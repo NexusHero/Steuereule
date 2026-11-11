@@ -242,8 +242,8 @@ export async function confirmAnnexesIfPresent(page) {
  * Trusting the click alone left the rate unsaved and the printout locked several screens later.
  */
 export async function saveExchangeRate(page, month, rate) {
+  await page.locator('[data-testid="ch-wechselkurs-monat"]').waitFor({ state: 'visible', timeout: 10_000 })
   const chip = page.locator(`[data-testid="ch-wechselkurs-monat-${month.slice(5)}"]`)
-  await chip.waitFor({ state: 'visible', timeout: 10_000 })
   for (let attempt = 0; attempt < 3; attempt += 1) {
     await chip.click()
     await page.locator('[data-testid="ch-wechselkurs-kurs"]').fill(rate)
