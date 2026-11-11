@@ -126,7 +126,8 @@ jobs:
         run: |
           secrets=""
           for name in DATABASE_URL GUEST_SESSION_SECRET PRISMA_FIELD_ENCRYPTION_KEY KEYSTORE_DATABASE_URL KEYSTORE_MASTER_KEY BETTER_AUTH_SECRET BREVO_API_KEY \
-                      GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET STRIPE_SECRET_KEY STRIPE_WEBHOOK_SECRET; do
+                      GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET STRIPE_SECRET_KEY STRIPE_WEBHOOK_SECRET \
+                      GEMINI_API_KEY ANTHROPIC_API_KEY OPENAI_API_KEY REDIS_URL; do
             if [ -n "$(gcloud secrets versions list "$name" --filter=state=enabled --limit=1 --format='value(name)')" ]; then
               secrets="$secrets,$name=$name:latest"
             fi
@@ -168,9 +169,22 @@ jobs:
             --max-retries 0 --task-timeout 600s \
             --execute-now --wait
 
+      # ADR-0064: an owl answer keeps running after its HTTP response has ended (stop, resume, a
+      # reader that left). `--no-cpu-throttling` keeps the CPU allocated for that; with throttling
+      # the run would freeze the moment the request ends. `--session-affinity` keeps a client on
+      # the instance that holds its run while there is no shared Redis.
       - name: Deploy API
         if: steps.gate.outputs.ready == 'true'
+        env:
+          VPC_NETWORK: ${{ vars.GCP_VPC_NETWORK }}
+          VPC_SUBNET: ${{ vars.GCP_VPC_SUBNET }}
         run: |
+          # A private Redis (Memorystore) is only reachable through the VPC; without the two
+          # repository variables the API keeps its public egress and runs without Redis.
+          vpc_flags=()
+          if [ -n "$VPC_NETWORK" ] && [ -n "$VPC_SUBNET" ]; then
+            vpc_flags=(--network "$VPC_NETWORK" --subnet "$VPC_SUBNET" --vpc-egress private-ranges-only)
+          fi
           gcloud run deploy steuereule-api \
             --image "$API_IMAGE" --region "$REGION" \
             --service-account "$API_SA" \
@@ -178,7 +192,9 @@ jobs:
             --set-secrets "$API_SECRETS" \
             --set-env-vars "^@^NODE_ENV=production@BETTER_AUTH_URL=$API_ORIGIN@CORS_ALLOWED_ORIGINS=$WEB_ORIGIN@WEB_APP_URL=$WEB_ORIGIN@TRUSTED_PROXIES=$TRUSTED_PROXIES@EMAIL_FROM=$EMAIL_FROM" \
             --cpu 1 --memory 2Gi --cpu-boost \
+            --no-cpu-throttling --session-affinity \
             --min-instances 0 --max-instances 10 --concurrency 80 --timeout 120 \
+            "${vpc_flags[@]}" \
             --allow-unauthenticated
 
       - name: Build and push web image

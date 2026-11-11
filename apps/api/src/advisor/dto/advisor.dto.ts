@@ -30,6 +30,8 @@ import {
   type AdvisorChatMessageView,
   type AdvisorLegalSource,
   type AdvisorLstbScanMeta,
+  type AdvisorAnswerNotice,
+  type AdvisorAnswerNoticeKind,
   type AdvisorEffectKind,
   type AdvisorMessageMeta,
   type AdvisorNotStaged,
@@ -241,6 +243,14 @@ export class AdvisorLstbScanMetaDto implements AdvisorLstbScanMeta {
   actionIds!: readonly string[]
 }
 
+export class AdvisorAnswerNoticeDto implements AdvisorAnswerNotice {
+  @ApiProperty({ type: String, enum: ['unbacked-amount', 'claims-write', 'nothing-prepared', 'invented-source', 'out-of-scope'] })
+  kind!: AdvisorAnswerNoticeKind
+
+  @ApiProperty({ type: String, example: 'Die Eule trägt nichts selbst ein.' })
+  text!: string
+}
+
 export class AdvisorNotStagedDto implements AdvisorNotStaged {
   @ApiProperty({ type: String, example: 'Mieteinnahmen' })
   label!: string
@@ -264,6 +274,12 @@ export class AdvisorMessageMetaDto implements AdvisorMessageMeta {
     description: 'Drafts the owl tried to prepare in this answer and could not, with the reason (ADR-0066).',
   })
   notStaged?: readonly AdvisorNotStagedDto[] | undefined
+
+  @ApiPropertyOptional({
+    type: () => [AdvisorAnswerNoticeDto],
+    description: 'What the check of the finished answer found: a figure the app did not compute, a claim to have written something, an unknown source (ADR-0066).',
+  })
+  notices?: readonly AdvisorAnswerNoticeDto[] | undefined
 
   @ApiPropertyOptional({ type: AdvisorActionProposalDto })
   action?: AdvisorActionProposalDto | undefined

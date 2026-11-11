@@ -7324,6 +7324,29 @@
           "reason"
         ]
       },
+      "AdvisorAnswerNoticeDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "unbacked-amount",
+              "claims-write",
+              "nothing-prepared",
+              "invented-source",
+              "out-of-scope"
+            ]
+          },
+          "text": {
+            "type": "string",
+            "example": "Die Eule trägt nichts selbst ein."
+          }
+        },
+        "required": [
+          "kind",
+          "text"
+        ]
+      },
       "AdvisorLstbScanMetaDto": {
         "type": "object",
         "properties": {
@@ -7623,6 +7646,13 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/AdvisorNotStagedDto"
+            }
+          },
+          "notices": {
+            "description": "What the check of the finished answer found: a figure the app did not compute, a claim to have written something, an unknown source (ADR-0066).",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdvisorAnswerNoticeDto"
             }
           },
           "action": {

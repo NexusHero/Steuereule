@@ -23,6 +23,8 @@ export interface AdvisorRunEntry {
  * readers follow from any sequence number, on any API instance when the log lives in Redis.
  */
 export interface AdvisorRunLog {
+  /** True when every instance sees the same runs. A local log cannot tell a lost run from one on another instance. */
+  readonly shared: boolean
   open(info: AdvisorRunInfo): Promise<void>
   info(runId: string): Promise<AdvisorRunInfo | null>
   append(runId: string, event: AdvisorStreamEvent): Promise<number>
@@ -45,6 +47,7 @@ interface MemoryRun {
 
 /** Single-instance log: correct for one API process, and the stand-in wherever Redis is absent. */
 export class InMemoryAdvisorRunLog implements AdvisorRunLog {
+  readonly shared = false
   private readonly runs = new Map<string, MemoryRun>()
   private readonly stopListeners = new Map<string, Set<() => void>>()
 

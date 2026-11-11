@@ -1779,6 +1779,7 @@ export const appResources = {
             parse_failed: 'Der Beleg konnte gerade nicht geprüft werden. Bitte versuch es noch mal.',
           },
           notStaged: { title: 'Nicht vorbereitet', openMask: 'Maske öffnen' },
+          notices: { title: 'Hinweis der App zu dieser Antwort' },
           lstbScan: {
             title: 'Lohnsteuerbescheinigung erkannt',
             notRead: 'nicht gelesen',
@@ -3601,6 +3602,7 @@ export const appResources = {
             parse_failed: 'The receipt could not be checked right now. Please try again.',
           },
           notStaged: { title: 'Not prepared', openMask: 'Open the form' },
+          notices: { title: 'Note from the app on this answer' },
           lstbScan: {
             title: 'Wage tax statement recognised',
             notRead: 'not read',

@@ -12,6 +12,9 @@ const RUN_NOT_FOUND = 'Diese Antwort läuft nicht (mehr).'
  * event to the run log and ends on its own; closing a tab or losing the network ends nothing. Only
  * an explicit stop does.
  */
+/** Longer than any turn may run (`AI_TURN_TIMEOUT_MS` is capped at 120 s). */
+export const ORPHAN_GRACE_MS = 180_000
+
 @Injectable()
 export class AdvisorRunService implements OnApplicationShutdown {
   private readonly logger = new Logger('AdvisorRun')
@@ -84,6 +87,9 @@ export class AdvisorRunService implements OnApplicationShutdown {
     for (const message of messages) {
       if (message.status !== 'streaming') continue
       if (message.runId !== null && (await this.log.info(message.runId)) !== null) continue
+      // Without a shared log (no Redis) an unknown run may simply live on another instance. No run
+      // outlasts the turn budget, so only an answer older than that is certainly lost.
+      if (!this.log.shared && Date.now() - message.createdAt.getTime() < ORPHAN_GRACE_MS) continue
       await this.advisorRepo.finishMessage(message.id, userId, {
         content: message.content,
         meta: message.meta,

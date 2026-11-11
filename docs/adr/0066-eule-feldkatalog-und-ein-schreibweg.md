@@ -1,9 +1,9 @@
-# ADR-0066 — Eule: ein Feldkatalog, eine Wertprüfung, ehrliche Vorschau
+# ADR-0066 — Eule: ein Feldkatalog, eine Wertprüfung, ehrliche Vorschau, geprüfte Antwort
 
 - **Status:** Accepted
 - **Date:** 2026-11-11
 - **Deciders:** NexusHero (Product Owner), Steuereule Engineering
-- **Applies to:** `packages/core/src/interview/{field-catalog,record-handles,ki-port,advisor}.ts`, `apps/api/src/ki/{langgraph-advisor.engine,advisor-safety}.ts`, `apps/api/src/advisor/advisor.service.ts`, `apps/api/src/confirmation/confirmation.service.ts`, `apps/api/test/live/`, `.github/workflows/ai-eval-nightly.yml`
+- **Applies to:** `packages/core/src/interview/{field-catalog,record-handles,advisor-answer-check,ki-port,advisor}.ts`, `.github/workflows/deploy.yml`, `infra/gcp/`, `apps/api/src/ki/{langgraph-advisor.engine,advisor-safety}.ts`, `apps/api/src/advisor/advisor.service.ts`, `apps/api/src/confirmation/confirmation.service.ts`, `apps/api/test/live/`, `.github/workflows/ai-eval-nightly.yml`
 - **Ergänzt:** ADR-0038 (KI-Port, Zero-Write), ADR-0051 (Eulen-Modus), ADR-0064 (Antwort-Läufe)
 - **Nummer:** 0065 ist von einem parallelen Zweig belegt (Adresssuche), deshalb 0066.
 
@@ -100,6 +100,39 @@ Grenzen (unsinniger Wert, Stammdaten, kein Objekt). Das läuft im Nightly-Workfl
 einen Bericht; rot wird der Job erst mit `AI_EVAL_ENFORCE=1`, weil das Modell nicht deterministisch
 ist. Deterministisch und im normalen CI geprüft wird dagegen: Kein Feld mit fester Form nimmt
 Unsinn an (`advisor-field-coverage.integration.test.ts`).
+
+### 7. Der fertige Antworttext wird geprüft, ohne Modell
+
+Der Prompt bittet das Modell, sich an Regeln zu halten; `checkAdvisorAnswer` findet die Antworten,
+in denen es das nicht getan hat. Geprüft wird nach jeder Antwort, rein mit Regeln:
+
+- ein Euro-Betrag als Wirkung („bringt dir 450 € Erstattung“), den weder ein Werkzeug berechnet
+  noch der Nutzer genannt hat und der in keinem Entwurf steht,
+- „Ich habe … eingetragen“: Die Eule schreibt nie selbst,
+- „Ich habe … vorbereitet“, ohne dass ein Entwurf existiert,
+- eine Quellenangabe, die es im Quellenkatalog nicht gibt,
+- ein Thema außerhalb der privaten Einkommensteuer (Gewerbe-, Umsatzsteuer, Bilanz), bei dem der
+  Verweis an Steuerberatung oder Lohnsteuerhilfeverein fehlt.
+
+Der Text bleibt, wie er geschrieben wurde. Die App setzt einen Hinweis darunter
+(`meta.notices`). Ein lesbarer Hinweis ist besser als eine stillschweigend veränderte Antwort,
+und der Text ist beim Streamen ohnehin schon zu sehen. Die Prüfung erkennt Muster, kein
+inhaltlich falsches Steuerrecht; dafür bleibt die nächtliche Auswertung zuständig.
+
+### 8. Betrieb auf Cloud Run
+
+- **CPU bleibt zugeteilt** (`--no-cpu-throttling`): Eine Antwort läuft weiter, nachdem die
+  HTTP-Antwort beendet ist (ADR-0064). Mit gedrosselter CPU friert sie in dem Moment ein.
+- **Session-Affinität** (`--session-affinity`): Solange es kein gemeinsames Redis gibt, liegt ein
+  Lauf nur auf der Instanz, die ihn ausführt. Die Affinität hält den Client dort.
+- **Ohne gemeinsames Protokoll gilt ein unbekannter Lauf erst nach 3 Minuten als verloren.** Vorher
+  kann er auf einer anderen Instanz laufen; die Antwort als fehlgeschlagen zu markieren, wäre
+  falsch. Kein Lauf lebt länger als das Zeitbudget einer Antwort (höchstens 120 s).
+- **Redis ist vorbereitet, aber aus** (`enable_redis` in `infra/gcp`): Die kleinste
+  Memorystore-Instanz kostet mehr als das Monatsbudget der Beta. Einschalten, sobald regelmäßig
+  mehr als eine Instanz den Chat bedient; jedes andere Redis geht über das Secret `REDIS_URL`.
+- **Modell-Schlüssel** (`GEMINI_API_KEY`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`) sind optionale
+  Secrets des Deployments. Ohne einen davon antwortet die Eule aus den eingebauten Regeln.
 
 ## Folgen
 

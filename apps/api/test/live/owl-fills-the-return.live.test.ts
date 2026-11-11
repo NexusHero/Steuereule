@@ -45,6 +45,8 @@ describe.skipIf(!KEY)('the owl fills the return through the chat (live model)', 
   let rentals: RentalRepository
   const users: string[] = []
   const outcomes = new Map<string, Outcome>()
+  /** Notices of the answer check during the scenario that is running. */
+  let noticed: string[] = []
 
   beforeAll(async () => {
     // The app reads the provider from the environment; the nightly key has its own name so that
@@ -98,6 +100,9 @@ describe.skipIf(!KEY)('the owl fills the return through the chat (live model)', 
     expect(response.mode, 'the turn must be answered by the model').toBe('langgraph')
     const meta = (response.assistantMessage.meta ?? {}) as AdvisorMessageMeta
     const drafts = [...(meta.action ? [meta.action] : []), ...(meta.actions ?? [])]
+    // What the answer check found goes into the report: a notice on an ordinary answer is either
+    // the model misbehaving or the check being too eager, and both are worth seeing.
+    for (const notice of meta.notices ?? []) noticed.push(`${notice.kind}: „${response.assistantMessage.content.replace(/\s+/g, ' ').slice(0, 140)}“`)
     return { reply: response.assistantMessage.content, drafts, meta }
   }
 
@@ -117,8 +122,10 @@ describe.skipIf(!KEY)('the owl fills the return through the chat (live model)', 
       const outcome = outcomes.get(name) ?? { area, scenario: name, passed: false, attempts: 0, detail: '' }
       outcomes.set(name, outcome)
       outcome.attempts += 1
+      noticed = []
       try {
-        outcome.detail = (await run()) ?? ''
+        const detail = (await run()) ?? ''
+        outcome.detail = [detail, ...noticed].filter((part) => part !== '').join(' · ')
         outcome.passed = true
       } catch (error) {
         outcome.passed = false

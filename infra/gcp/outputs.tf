@@ -32,3 +32,8 @@ output "keystore_sql_connection_name" {
   value       = google_sql_database_instance.keystore.connection_name
   description = "GitHub repo variable GCP_KEYSTORE_SQL_INSTANCE; also the socket path in KEYSTORE_DATABASE_URL (ADR-0059)."
 }
+
+output "redis_host" {
+  description = "Private address of the Redis instance; empty while enable_redis is false."
+  value       = var.enable_redis ? google_redis_instance.runs[0].host : ""
+}

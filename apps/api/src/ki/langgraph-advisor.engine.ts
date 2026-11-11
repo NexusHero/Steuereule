@@ -19,6 +19,7 @@ import {
   ADVISOR_LEGAL_SOURCES,
   ADVISOR_PLAN_MAX_STEPS,
   ADVISOR_PLAN_STEP_STATUSES,
+  checkAdvisorAnswer,
   checkAdvisorInputBoundary,
   describeRecordHandles,
   evaluateAdvisorTurn,
@@ -248,6 +249,30 @@ interface RejectedDraft {
 const MAX_DRAFTS_PER_TURN = 8
 
 const draftKey = (draft: Pick<AdvisorActionProposal, 'screen' | 'field' | 'instance'>): string => `${draft.screen}|${draft.instance ?? ''}|${draft.field}`
+
+const FIGURE_KEYS = new Set(['beforeRefundEur', 'afterRefundEur', 'deltaEur'])
+
+/** Every euro figure a tool reported in this turn, wherever it sits in the tool's answer. */
+export function computedFiguresOf(messages: readonly BaseMessage[]): number[] {
+  const figures: number[] = []
+  const walk = (value: unknown): void => {
+    if (Array.isArray(value)) return value.forEach(walk)
+    if (value === null || typeof value !== 'object') return
+    for (const [key, entry] of Object.entries(value)) {
+      if (FIGURE_KEYS.has(key) && typeof entry === 'number') figures.push(entry)
+      else walk(entry)
+    }
+  }
+  for (const message of messages) {
+    if (!(message instanceof ToolMessage) || typeof message.content !== 'string') continue
+    try {
+      walk(JSON.parse(message.content))
+    } catch {
+      // a tool answer that is not JSON carries no figures
+    }
+  }
+  return figures
+}
 
 /** The reason of a tool error without its machine prefix (`UNKNOWN_FIELD: …`). */
 const humanReason = (error: string): string => error.replace(/^[A-Z_]+:\s*/, '')
@@ -1007,6 +1032,14 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
 
     const usage = sumUsage(finalMessages)
     const notStaged = unresolvedRejections(rejectedDrafts, pendingActions)
+    // The finished text is checked without a model; what it finds, the app says under the answer.
+    const notices = checkAdvisorAnswer({
+      replyText,
+      userMessage: request.message,
+      drafts: [...pendingActions, ...(pendingTwoPaths ? [pendingTwoPaths.safePath, pendingTwoPaths.maxPath] : [])],
+      notStagedCount: notStaged.length,
+      computedFigures: computedFiguresOf(finalMessages),
+    })
     const meta: AdvisorMessageMeta = {
       ...(choices.length > 0 ? { choices } : {}),
       // One draft keeps its place as `action`; several travel as `actions` and are reviewed together.
@@ -1015,6 +1048,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
       ...(pendingTwoPaths ? { twoPaths: pendingTwoPaths } : {}),
       ...(sources.length > 0 ? { sources } : {}),
       ...(notStaged.length > 0 ? { notStaged } : {}),
+      ...(notices.length > 0 ? { notices } : {}),
     }
 
     if (meta.choices && meta.choices.length > 0) {

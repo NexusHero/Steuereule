@@ -201,6 +201,14 @@ describe('AdvisorChatPanel: several drafts in one answer (ADR-0066)', () => {
     expect(screen.queryByTestId('advisor-action-delta')).toBeNull()
   })
 
+  it('shows what the check of the answer found, under the answer', () => {
+    renderPanel({
+      messages: [owl('a1', 'Ich habe es eingetragen.', { meta: { notices: [{ kind: 'claims-write', text: 'Die Eule trägt nichts selbst ein.' }] } })],
+    })
+    expect(screen.getByTestId('advisor-answer-notices').textContent).toContain('Hinweis der App')
+    expect(screen.getByTestId('advisor-answer-notice-claims-write').textContent).toContain('trägt nichts selbst ein')
+  })
+
   it('keeps the scanned certificate in its own review card', () => {
     renderPanel({
       messages: [owl('a1', 'Erkannt.', { meta: { lstbScan: {} as NonNullable<AdvisorChatMessageView['meta']>['lstbScan'], actions: [draft('d1', 'Bruttolohn', '62000')] } })],

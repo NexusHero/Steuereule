@@ -267,6 +267,22 @@ export interface AdvisorNotStagedDto {
   screen?: string;
 }
 
+export type AdvisorAnswerNoticeDtoKind = typeof AdvisorAnswerNoticeDtoKind[keyof typeof AdvisorAnswerNoticeDtoKind];
+
+
+export const AdvisorAnswerNoticeDtoKind = {
+  'unbacked-amount': 'unbacked-amount',
+  'claims-write': 'claims-write',
+  'nothing-prepared': 'nothing-prepared',
+  'invented-source': 'invented-source',
+  'out-of-scope': 'out-of-scope',
+} as const;
+
+export interface AdvisorAnswerNoticeDto {
+  kind: AdvisorAnswerNoticeDtoKind;
+  text: string;
+}
+
 export type AdvisorLstbScanMetaDtoStage = typeof AdvisorLstbScanMetaDtoStage[keyof typeof AdvisorLstbScanMetaDtoStage];
 
 
@@ -460,6 +476,8 @@ export interface AdvisorMessageMetaDto {
   steps?: string[];
   /** Drafts the owl tried to prepare in this answer and could not, with the reason (ADR-0066). */
   notStaged?: AdvisorNotStagedDto[];
+  /** What the check of the finished answer found: a figure the app did not compute, a claim to have written something, an unknown source (ADR-0066). */
+  notices?: AdvisorAnswerNoticeDto[];
   action?: AdvisorActionProposalDto;
   actions?: AdvisorActionProposalDto[];
   lstbScan?: AdvisorLstbScanMetaDto;

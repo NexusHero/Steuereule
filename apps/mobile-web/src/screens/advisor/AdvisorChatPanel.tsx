@@ -678,6 +678,18 @@ export function AdvisorChatPanel({
                 </View>
               ) : null}
 
+              {/* What the check of the finished answer found: said by the app, the text stays as written */}
+              {msg.meta?.notices && msg.meta.notices.length > 0 ? (
+                <View style={styles.notStagedBox} testID="advisor-answer-notices" accessibilityRole="alert">
+                  <Text style={styles.notStagedTitle}>{tr('advisor.chat.notices.title', 'Hinweis der App zu dieser Antwort')}</Text>
+                  {msg.meta.notices.map((notice) => (
+                    <Text key={notice.kind} style={styles.notStagedLine} testID={`advisor-answer-notice-${notice.kind}`}>
+                      {notice.text}
+                    </Text>
+                  ))}
+                </View>
+              ) : null}
+
               {/* Scanned LStB: several staged fields at once */}
               {msg.meta?.lstbScan && msg.meta.actions && msg.meta.actions.length > 0 ? (
                 <ScannedCertificateCardView actions={msg.meta.actions} onInspectMask={onInspectMask} styles={styles} />

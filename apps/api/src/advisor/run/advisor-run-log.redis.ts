@@ -18,6 +18,8 @@ const infoKey = (runId: string): string => `steuereule:advisor:run:${runId}:info
  * that another one executes. Event payloads are transient and expire with the stream.
  */
 export class RedisAdvisorRunLog implements AdvisorRunLog {
+  readonly shared = true
+
   private readonly seqByRun = new Map<string, number>()
   private readonly stopListeners = new Map<string, Set<() => void>>()
   private subscriber: Redis | null = null

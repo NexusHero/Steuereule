@@ -651,3 +651,29 @@ describe('the effect of a draft comes from the app\'s estimate (ADR-0066)', () =
     expect(toolResult).toContain('\\"deltaEur\\":120')
   })
 })
+
+describe('the finished answer is checked without a model (ADR-0066 §7)', () => {
+  const engineWith = (model: ChunkedChatModel) => new LangGraphAdvisorEngine(runtime('google-genai'), () => model)
+  const simulate = chunkOf({ content: '', tool_call_chunks: [{ name: 'simulate_tax_delta', args: JSON.stringify({ screen: 'commute', field: 'homeOfficeDays', newValue: '60' }), index: 0, id: 'c0' }] })
+
+  it('says so when the text names an effect no tool computed', async () => {
+    const { result } = await run(engineWith(new ChunkedChatModel([[answer('Das bringt dir rund 450 € Erstattung.')]])))
+    expect(result.meta.notices?.map((n) => n.kind)).toEqual(['unbacked-amount'])
+  })
+
+  it('accepts a figure a tool reported in this turn', async () => {
+    const model = new ChunkedChatModel([[simulate], [answer('Das bringt dir 120 € Erstattung.')]])
+    const { result } = await run(engineWith(model), { previewEffect: async () => ({ kind: 'computed', beforeRefundEur: 100, afterRefundEur: 220, deltaEur: 120 }) })
+    expect(result.meta.notices).toBeUndefined()
+  })
+
+  it('corrects a claim to have written something', async () => {
+    const { result } = await run(engineWith(new ChunkedChatModel([[answer('Ich habe deine Homeoffice-Tage eingetragen.')]])))
+    expect(result.meta.notices?.map((n) => n.kind)).toContain('claims-write')
+  })
+
+  it('leaves an ordinary answer without notices', async () => {
+    const { result } = await run(engineWith(new ChunkedChatModel([[answer('Die Entfernungspauschale gilt für die einfache Strecke.')]])))
+    expect(result.meta.notices).toBeUndefined()
+  })
+})

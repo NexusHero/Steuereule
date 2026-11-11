@@ -1,7 +1,7 @@
 import type { AdvisorStreamEvent } from '@steuereule/core'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { InMemoryAdvisorRunLog, type AdvisorRunEntry } from '../src/advisor/run/advisor-run-log.js'
-import { AdvisorRunService } from '../src/advisor/run/advisor-run.service.js'
+import { AdvisorRunService, ORPHAN_GRACE_MS } from '../src/advisor/run/advisor-run.service.js'
 import { buildAdvisorTestKit, doneEvent, ScriptedAdvisorEngine, type ScriptStep } from './fakes/advisor-test-kit.js'
 
 const USER = 'user-run-1'
@@ -109,9 +109,28 @@ describe('AdvisorRunService: answers detached from the connection (#476)', () =>
       userId: USER, taxYear: YEAR, role: 'assistant', content: 'halb', meta: null, status: 'streaming', runId: 'lost-run',
     })
 
+    // Without a shared log the run may be alive on another instance: a fresh answer is left alone.
+    const fresh = await runs.getSession(USER, YEAR)
+    expect(fresh.messages[1]).toMatchObject({ id: orphan.id, status: 'streaming' })
+
+    vi.useFakeTimers()
+    try {
+      vi.setSystemTime(Date.now() + ORPHAN_GRACE_MS + 1_000)
+      const session = await runs.getSession(USER, YEAR)
+      expect(session.messages[1]).toMatchObject({ id: orphan.id, status: 'failed', content: 'halb' })
+      expect(session.messages[1]!.runId).toBeUndefined()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('with a shared log, an unknown run is lost at once', async () => {
+    const { runs, advisorRepo, log } = build([])
+    ;(log as { shared: boolean }).shared = true
+    await advisorRepo.createMessage({ userId: USER, taxYear: YEAR, role: 'user', content: 'q', meta: null })
+    await advisorRepo.createMessage({ userId: USER, taxYear: YEAR, role: 'assistant', content: 'halb', meta: null, status: 'streaming', runId: 'lost-run' })
     const session = await runs.getSession(USER, YEAR)
-    expect(session.messages[1]).toMatchObject({ id: orphan.id, status: 'failed', content: 'halb' })
-    expect(session.messages[1]!.runId).toBeUndefined()
+    expect(session.messages[1]).toMatchObject({ status: 'failed' })
   })
 
   it('offers a running answer for re-attachment in the session', async () => {

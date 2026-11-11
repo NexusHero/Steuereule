@@ -1,4 +1,5 @@
 import { LEGAL_STATUS_DATE, type OwlSourceId } from './owl-mode'
+import type { AdvisorAnswerNotice } from './advisor-answer-check'
 import { isSupportedIncomeTaxYear } from '../math/tarif'
 import { getTaxYearParameters } from '../math/tax-parameters'
 import type { Marking, Screen } from './marking'
@@ -178,6 +179,8 @@ export interface AdvisorMessageMeta {
   readonly lstbScan?: AdvisorLstbScanMeta | undefined
   readonly twoPaths?: AdvisorTwoPathsProposal | undefined
   readonly sources?: readonly OwlSourceId[] | undefined
+  /** What the check of the finished answer found; shown by the app under the answer (ADR-0066 §7). */
+  readonly notices?: readonly AdvisorAnswerNotice[] | undefined
   /** Server-internal: which engine produced the turn, kept with the drafts it proposed. */
   readonly engine?: AdvisorEngineInfo | undefined
   /** Server-internal: the turn was regenerated or edited away (#451 slice 1b); hidden from the chat. */

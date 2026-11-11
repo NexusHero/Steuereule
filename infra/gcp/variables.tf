@@ -31,3 +31,15 @@ variable "db_tier" {
   type        = string
   default     = "db-f1-micro"
 }
+
+variable "enable_redis" {
+  description = "Create a Memorystore instance for the owl's answer runs and the rate limiter, and store its URL in the secret REDIS_URL. Costs roughly 35 EUR a month; raise monthly_budget_eur with it."
+  type        = bool
+  default     = false
+}
+
+variable "vpc_network" {
+  description = "VPC the Redis instance lives in. The API reaches it through Direct VPC egress: set the repository variables GCP_VPC_NETWORK and GCP_VPC_SUBNET to the same network."
+  type        = string
+  default     = "default"
+}
