@@ -1,4 +1,7 @@
-import type { Range, TaxEstimate } from './tax-estimate'
+import type { EstimateChurchTax, Range, TaxEstimate } from './tax-estimate'
+import { churchTaxMixedMarriage, churchTaxOnIncome, type ChurchMembership, type ChurchTaxAmount } from '../domains/church-tax'
+import type { GermanState } from '../common/postal-codes'
+import { incomeTax as basicTariff } from '../math/tarif'
 import { childTaxAllowance } from '../domains/children'
 import { applyHouseholdTaxReduction } from '../domains/household-services'
 import { calculateExtraordinaryBurden, type BurdenChildrenBracket } from '../domains/extraordinary-burdens'
@@ -40,8 +43,8 @@ export interface MarriedEstimateInput {
   readonly childBenefit: number
   readonly rentalSurplus: number
   readonly donations: number
-  /** At least one spouse belongs to a church levying Kirchensteuer. */
-  readonly churchMember: boolean
+  /** Kirchensteuer facts of both spouses; without them church tax stays out of the estimate. */
+  readonly churchTax?: MarriedChurchTaxInput | undefined
   /** § 35a EStG joint tax reduction in EUR (optional, defaults to 0). */
   readonly householdReductionEur?: number | undefined
   /** § 33 EStG joint medical expenses in EUR (optional, defaults to 0). */
@@ -50,19 +53,29 @@ export interface MarriedEstimateInput {
   readonly childrenBracket?: BurdenChildrenBracket | undefined
 }
 
+export interface SpouseChurchTax {
+  readonly membership: ChurchMembership
+  /** LStB Zeilen 6 + 7 of this spouse; null = not entered (ignored for a Grenzgänger: nothing withheld in DE). */
+  readonly withheld: number | null
+}
+
+export interface MarriedChurchTaxInput {
+  /** Shared residence of the couple. */
+  readonly state: GermanState | null
+  readonly postalCode: string | null
+  readonly a: SpouseChurchTax
+  readonly b: SpouseChurchTax
+}
+
 export type MarriedEstimate =
-  | (Extract<TaxEstimate, { kind: 'spanne' }> & {
+  | (Omit<Extract<TaxEstimate, { kind: 'spanne' }>, 'churchTax'> & {
       readonly childAllowanceUsed: boolean
-      readonly churchTax: Range
-      /** German wage tax was withheld, and with it Kirchensteuer we do not know — then it stays out of the result. */
-      readonly churchTaxOpen: boolean
+      readonly churchTax: EstimateChurchTax
     })
   | { readonly kind: 'nicht-moeglich'; readonly reason: 'jahr-ohne-tarif' }
 
 /** Deductible share of German employee social security (see steuerschaetzung.ts). */
 const SOCIAL_SECURITY_DEDUCTIBLE: Range = { from: 0.91, to: 0.93 }
-/** Kirchensteuer is 8 % in Baden-Württemberg and Bayern, 9 % elsewhere — a range until the Land is known. */
-const CHURCH_TAX_RATE: Range = { from: 0.08, to: 0.09 }
 
 interface SpouseFigures {
   readonly income: number
@@ -122,7 +135,9 @@ export function estimateMarriedCouple(input: MarriedEstimateInput): MarriedEstim
     from: spouses.reduce((sum, s) => sum + s.provision.from, 0),
     to: spouses.reduce((sum, s) => sum + s.provision.to, 0),
   }
-  const specialExpenses = Math.max(params.lumpSums.specialExpensesJoint, input.donations)
+  // § 10 Abs. 1 Nr. 4 EStG: the church tax withheld in the year is a Sonderausgabe.
+  const withheld = withheldChurchTax(input)
+  const specialExpenses = Math.max(params.lumpSums.specialExpensesJoint, input.donations + (withheld ?? 0))
   const taxableIncome = (deduction: number) => Math.max(0, income - deduction - specialExpenses - deductibleBurdenEur)
   const zve = { from: taxableIncome(provision.to), to: taxableIncome(provision.from) }
 
@@ -144,11 +159,17 @@ export function estimateMarriedCouple(input: MarriedEstimateInput): MarriedEstim
     from: solidaritaetszuschlag(withAllowance(zve.from), exemptionLimit),
     to: solidaritaetszuschlag(withAllowance(zve.to), exemptionLimit),
   }
-  const churchTax = input.churchMember
-    ? { from: Math.round(withAllowance(zve.from) * CHURCH_TAX_RATE.from), to: Math.round(withAllowance(zve.to) * CHURCH_TAX_RATE.to) }
-    : { from: 0, to: 0 }
-  const churchTaxOpen = input.churchMember && [input.a, input.b].some((s) => s?.kind === 'employee')
-  const churchTaxDue = churchTaxOpen ? { from: 0, to: 0 } : churchTax
+  const churchBasis = (z: number) => applyHouseholdTaxReduction(withAllowance(z), reductionEur)
+  const churchTax = coupleChurchTax(input, spouses, {
+    basis: { from: churchBasis(zve.from), to: churchBasis(zve.to) },
+    zvE: zve,
+    kirchgeldBase: { from: Math.max(0, zve.from - allowance), to: Math.max(0, zve.to - allowance) },
+    withheld,
+  })
+  const churchBalance =
+    churchTax.kind === 'spanne'
+      ? { from: churchTax.withheld - churchTax.due.to, to: churchTax.withheld - churchTax.due.from }
+      : { from: 0, to: 0 }
 
   const credit = spouses.reduce((sum, s) => sum + s.credit, 0)
   return {
@@ -161,11 +182,77 @@ export function estimateMarriedCouple(input: MarriedEstimateInput): MarriedEstim
     solidaritaetszuschlag: soli,
     anrechnung: credit,
     result: {
-      from: credit - incomeTax.to - soli.to - churchTaxDue.to,
-      to: credit - incomeTax.from - soli.from - churchTaxDue.from,
+      from: credit - incomeTax.to - soli.to + churchBalance.from,
+      to: credit - incomeTax.from - soli.from + churchBalance.to,
     },
     childAllowanceUsed,
     churchTax,
-    churchTaxOpen,
   }
+}
+
+/** Church tax withheld from both spouses' wages (LStB Zeilen 6 + 7); null when a member employee has not entered it. */
+function withheldChurchTax(input: MarriedEstimateInput): number | null {
+  const church = input.churchTax
+  if (!church) return 0
+  let sum = 0
+  for (const [income, facts] of [
+    [input.a, church.a],
+    [input.b, church.b],
+  ] as const) {
+    if (income?.kind !== 'employee') continue
+    if (facts.withheld === null) {
+      if (facts.membership.kind === 'member') return null
+      continue
+    }
+    sum += facts.withheld
+  }
+  return sum
+}
+
+function toEstimate(amount: ChurchTaxAmount, withheld: number | null): EstimateChurchTax {
+  if (amount.kind !== 'spanne') return amount
+  if (withheld === null) return { kind: 'offen', reason: 'einbehalt-fehlt' }
+  return { kind: 'spanne', due: amount.due, withheld, capOnApplication: amount.capOnApplication }
+}
+
+/**
+ * Both members: church tax on the joint tax (konfessionsverschieden: the same total, split halbteilig
+ * between the churches). One member: church tax on the member's share, compared with the besonderes
+ * Kirchgeld (glaubensverschieden). Shares follow the tax each spouse would pay on their own income.
+ */
+function coupleChurchTax(
+  input: MarriedEstimateInput,
+  spouses: readonly SpouseFigures[],
+  amounts: { readonly basis: Range; readonly zvE: Range; readonly kirchgeldBase: Range; readonly withheld: number | null },
+): EstimateChurchTax {
+  const church = input.churchTax
+  if (!church) return { kind: 'none' }
+  const { a, b } = church
+  if (a.membership.kind === 'unknown' || b.membership.kind === 'unknown') return { kind: 'offen', reason: 'konfession-fehlt' }
+  if (a.membership.kind === 'none' && b.membership.kind === 'none') return { kind: 'none' }
+  const common = { year: input.year, state: church.state, postalCode: church.postalCode, basis: amounts.basis, zvE: amounts.zvE }
+  if (a.membership.kind === 'member' && b.membership.kind === 'member') {
+    const forA = churchTaxOnIncome({ ...common, membership: a.membership })
+    const forB = churchTaxOnIncome({ ...common, membership: b.membership })
+    if (forA.kind !== 'spanne') return toEstimate(forA, amounts.withheld)
+    if (forB.kind !== 'spanne') return toEstimate(forB, amounts.withheld)
+    return toEstimate(
+      {
+        kind: 'spanne',
+        due: { from: Math.min(forA.due.from, forB.due.from), to: Math.max(forA.due.to, forB.due.to) },
+        capOnApplication: forA.capOnApplication || forB.capOnApplication,
+      },
+      amounts.withheld,
+    )
+  }
+  const memberIsA = a.membership.kind === 'member'
+  const membership = memberIsA ? a.membership : b.membership
+  const ownTax = (index: number) => basicTariff(Math.max(0, spouses[index]?.income ?? 0), input.year as never)
+  const taxA = ownTax(0)
+  const taxB = ownTax(1)
+  const share = taxA + taxB === 0 ? 0.5 : (memberIsA ? taxA : taxB) / (taxA + taxB)
+  return toEstimate(
+    churchTaxMixedMarriage({ ...common, membership, memberShare: { from: share, to: share }, kirchgeldBase: amounts.kirchgeldBase }),
+    amounts.withheld,
+  )
 }

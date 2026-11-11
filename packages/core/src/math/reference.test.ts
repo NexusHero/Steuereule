@@ -135,7 +135,7 @@ const UNUSED_ON_PURPOSE: Readonly<Record<string, string>> = {
   beaAllowanceEur: 'Bestandteil von childAllowanceTotalEur, das gerechnet wird',
   maxOtherProvisionSingleEur: 'gleich maxOtherProvisionEur (2.800 €), das die Grenzgänger-Schätzung liest',
   maxOtherProvisionEmployeeEur: 'Vereinfachung: Angestellte rechnen die Vorsorge über den absetzbaren SV-Anteil (91–93 %), ohne Höchstbetrag 1.900 €',
-  churchTaxReductionShare: 'Kirchensteuer bei der Abgeltungsteuer — Rechenweg folgt mit dem Kirchensteuer-Ticket (#450 6F)',
+  churchTaxReductionShare: 'steckt in der exakten Formel des § 32d Abs. 1 Satz 4 EStG, ESt = e / (4 + k) (flatRateTaxWithChurchTax)',
 }
 
 function sourceFiles(dir: string): string[] {

@@ -1,3 +1,4 @@
+import { flatRateTaxWithChurchTax } from '../domains/church-tax'
 import {
   incomeTax,
   isSupportedIncomeTaxYear,
@@ -104,14 +105,15 @@ export function mostFavourableCheck(input: MostFavourableCheckInput): MostFavour
 
   const saversAllowance = assessmentType === 'einzel' ? params.lumpSums.saverSingle : params.lumpSums.saverJoint
   const assessmentBase = Math.max(0, kapitalertraege - saversAllowance)
-  const flatRateTaxAmount = Math.floor(params.capital.flatRateTaxRate * assessmentBase)
+  // § 32d Abs. 1 Satz 4 EStG: ESt = e / (4 + k) — the church tax (k) is deducted inside the formula,
+  // which is the same as lowering the 25 % by churchTaxReductionShare (25 %) of the church tax.
+  const flatRate = flatRateTaxWithChurchTax(assessmentBase, factor)
+  const flatRateTaxAmount = factor === 0 ? Math.floor(params.capital.flatRateTaxRate * assessmentBase) : flatRate.incomeTax
 
   const soliExemptionLimit = assessmentType === 'einzel' ? params.soliLimits.single : params.soliLimits.joint
   const soliFlatRate = solidaritaetszuschlag(flatRateTaxAmount, soliExemptionLimit)
 
-  const churchTaxFlatRate = kirchensteuer(flatRateTaxAmount, factor)
-  const reduction = Math.floor(params.capital.churchTaxReductionShare * churchTaxFlatRate)
-  const flatRateTax = flatRateTaxAmount - reduction + churchTaxFlatRate + soliFlatRate
+  const flatRateTax = flatRateTaxAmount + flatRate.churchTax + soliFlatRate
 
   const personal = personalTax(input, year, factor)
 

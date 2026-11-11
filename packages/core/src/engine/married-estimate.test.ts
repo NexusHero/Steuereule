@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { estimateMarriedCouple, type MarriedEstimateInput } from './married-estimate'
 import { splittingTariff } from '../math/tarif'
+import { kirchgeldFor } from '../domains/church-tax'
 
 const EMPLOYEE_A = { kind: 'employee', grossWage: 82000, wageTax: 9890, socialSecurity: 15473, commuteAllowance: 1017, selfPaidHealthCare: 0 } as const
 const EMPLOYEE_B = { kind: 'employee', grossWage: 48000, wageTax: 10420, socialSecurity: 10008, commuteAllowance: 550, selfPaidHealthCare: 0 } as const
@@ -13,8 +14,12 @@ const WEBER: MarriedEstimateInput = {
   childBenefit: 0,
   rentalSurplus: 24600,
   donations: 0,
-  churchMember: false,
 }
+
+const EV = { kind: 'member', church: 'EV' } as const
+const NONE = { kind: 'none' } as const
+const church = (a: object, b: object, state: 'BE' | 'SN' | 'BY' | null = 'BE') =>
+  ({ state, postalCode: null, a, b }) as NonNullable<MarriedEstimateInput['churchTax']>
 
 function range(input: MarriedEstimateInput) {
   const result = estimateMarriedCouple(input)
@@ -47,19 +52,75 @@ describe('estimateMarriedCouple (ADR-0054)', () => {
     expect(high.incomeTax.from).toBe(splittingTariff(z - 2 * 9600, 0, 2025) + 6120)
   })
 
-  it('two Grenzgänger: credits the Swiss withholding tax, no German Kirchensteuer withheld so it is part of the result', () => {
+  it('two Grenzgänger: no German church tax was withheld, so the church tax due lowers the result', () => {
     const crossBorder = (wage: number, withholding: number) =>
       ({ kind: 'crossBorder', wageEur: wage, swissWithholdingEur: withholding, pensionContributionsEur: 11709, otherProvisionEur: 3905, commuteAllowance: 6509, selfPaidHealthCare: 3000 }) as const
-    const r = range({ ...WEBER, a: crossBorder(134310, 6286), b: crossBorder(117150, 5272), rentalSurplus: 0, children: 2, childBenefit: 624, churchMember: true })
+    const r = range({
+      ...WEBER,
+      a: crossBorder(134310, 6286),
+      b: crossBorder(117150, 5272),
+      rentalSurplus: 0,
+      children: 2,
+      childBenefit: 624,
+      churchTax: church({ membership: EV, withheld: null }, { membership: EV, withheld: null }, null),
+    })
     expect(r.anrechnung).toBe(6286 + 5272)
-    expect(r.churchTaxOpen).toBe(false)
-    expect(r.churchTax.from).toBeGreaterThan(0)
+    if (r.churchTax.kind !== 'spanne') throw new Error('expected church tax')
+    expect(r.churchTax.withheld).toBe(0)
+    expect(r.churchTax.due.from).toBeGreaterThan(0)
     expect(r.result.to).toBeLessThan(0)
   })
 
-  it('leaves Kirchensteuer out of the result when German wage tax (and with it unknown Kirchensteuer) was withheld', () => {
-    const r = range({ ...WEBER, churchMember: true })
-    expect(r.churchTaxOpen).toBe(true)
+  it('both members (Berlin): 9 % on the joint tax, the withheld church tax credited and deducted as Sonderausgabe', () => {
+    const r = range({ ...WEBER, churchTax: church({ membership: EV, withheld: 800 }, { membership: EV, withheld: 900 }) })
+    expect(r.specialExpenses).toBe(1700)
+    if (r.churchTax.kind !== 'spanne') throw new Error('expected church tax')
+    expect(r.churchTax.withheld).toBe(1700)
+    expect(r.churchTax.due).toEqual({ from: Math.floor(r.incomeTax.from * 0.09), to: Math.floor(r.incomeTax.to * 0.09) })
+    const credit = 9890 + 10420
+    expect(r.result.from).toBe(credit - r.incomeTax.to - r.solidaritaetszuschlag.to + 1700 - r.churchTax.due.to)
+  })
+
+  it('§ 51a Abs. 2: the church tax is measured after the child allowances even when the Kindergeld wins', () => {
+    const base = { ...WEBER, rentalSurplus: 0, a: { ...EMPLOYEE_A, grossWage: 40000 }, b: null, children: 2, childBenefit: 6120 }
+    const churchFacts = church({ membership: EV, withheld: 300 }, { membership: EV, withheld: null })
+    const r = range({ ...base, churchTax: churchFacts })
+    expect(r.childAllowanceUsed).toBe(false)
+    if (r.churchTax.kind !== 'spanne') throw new Error('expected church tax')
+    const z = r.taxableIncome.to
+    expect(r.churchTax.due.to).toBe(Math.floor(splittingTariff(z - 2 * 9600, 0, 2025) * 0.09))
+    expect(r.churchTax.due.to).toBeLessThan(Math.floor(r.incomeTax.to * 0.09))
+  })
+
+  it('glaubensverschieden (Sachsen): church tax on the member share, or the besonderes Kirchgeld if higher', () => {
+    const r = range({
+      ...WEBER,
+      a: { ...EMPLOYEE_A, grossWage: 20000, wageTax: 0 },
+      b: { ...EMPLOYEE_B, grossWage: 110000, wageTax: 30000 },
+      rentalSurplus: 0,
+      churchTax: church({ membership: EV, withheld: 0 }, { membership: NONE, withheld: null }, 'SN'),
+    })
+    if (r.churchTax.kind !== 'spanne') throw new Error('expected church tax')
+    // A earns little: their share of the joint tax is small (≈ 110 €), so the Kirchgeld of the step is due.
+    expect(r.churchTax.due.to).toBe(kirchgeldFor(2025, r.taxableIncome.to))
+    expect(r.churchTax.due.to).toBeGreaterThanOrEqual(540)
+  })
+
+  it('a spouse with unknown confession: "offen"; the church tax due stays out, the paid one is still a Sonderausgabe', () => {
+    const r = range({ ...WEBER, churchTax: church({ membership: EV, withheld: 800 }, { membership: { kind: 'unknown' }, withheld: null }) })
+    expect(r.churchTax).toEqual({ kind: 'offen', reason: 'konfession-fehlt' })
+    expect(r.specialExpenses).toBe(800)
+    expect(r.result.from).toBeGreaterThan(range(WEBER).result.from)
+  })
+
+  it('a member employee without the LStB church tax line: "offen"', () => {
+    const r = range({ ...WEBER, churchTax: church({ membership: EV, withheld: null }, { membership: EV, withheld: 900 }) })
+    expect(r.churchTax).toEqual({ kind: 'offen', reason: 'einbehalt-fehlt' })
+  })
+
+  it('both without a church: none', () => {
+    const r = range({ ...WEBER, churchTax: church({ membership: NONE, withheld: null }, { membership: NONE, withheld: null }) })
+    expect(r.churchTax).toEqual({ kind: 'none' })
     expect(r.result).toEqual(range(WEBER).result)
   })
 
