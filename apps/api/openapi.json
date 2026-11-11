@@ -7290,6 +7290,23 @@
           "sourceId"
         ]
       },
+      "AdvisorNotStagedDto": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string",
+            "example": "Mieteinnahmen"
+          },
+          "reason": {
+            "type": "string",
+            "example": "Es gibt noch kein Vermietungsobjekt."
+          }
+        },
+        "required": [
+          "label",
+          "reason"
+        ]
+      },
       "AdvisorLstbScanMetaDto": {
         "type": "object",
         "properties": {
@@ -7570,6 +7587,13 @@
             "type": "array",
             "items": {
               "type": "string"
+            }
+          },
+          "notStaged": {
+            "description": "Drafts the owl tried to prepare in this answer and could not, with the reason (ADR-0065).",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdvisorNotStagedDto"
             }
           },
           "action": {

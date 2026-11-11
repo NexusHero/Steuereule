@@ -31,6 +31,7 @@ import {
   type AdvisorLegalSource,
   type AdvisorLstbScanMeta,
   type AdvisorMessageMeta,
+  type AdvisorNotStaged,
   type AdvisorTwoPathsProposal,
   type LstbExtractedFieldStatus,
   type LstbFieldReason,
@@ -229,12 +230,26 @@ export class AdvisorLstbScanMetaDto implements AdvisorLstbScanMeta {
   actionIds!: readonly string[]
 }
 
+export class AdvisorNotStagedDto implements AdvisorNotStaged {
+  @ApiProperty({ type: String, example: 'Mieteinnahmen' })
+  label!: string
+
+  @ApiProperty({ type: String, example: 'Es gibt noch kein Vermietungsobjekt.' })
+  reason!: string
+}
+
 export class AdvisorMessageMetaDto implements AdvisorMessageMeta {
   @ApiPropertyOptional({ type: [String] })
   choices?: readonly string[] | undefined
 
   @ApiPropertyOptional({ type: [String], description: 'Steps the owl reported while working on this answer (#476).' })
   steps?: readonly string[] | undefined
+
+  @ApiPropertyOptional({
+    type: () => [AdvisorNotStagedDto],
+    description: 'Drafts the owl tried to prepare in this answer and could not, with the reason (ADR-0065).',
+  })
+  notStaged?: readonly AdvisorNotStagedDto[] | undefined
 
   @ApiPropertyOptional({ type: AdvisorActionProposalDto })
   action?: AdvisorActionProposalDto | undefined

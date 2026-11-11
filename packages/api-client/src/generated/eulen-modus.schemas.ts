@@ -245,6 +245,11 @@ export const AdvisorChatMessageDtoRole = {
   assistant: 'assistant',
 } as const;
 
+export interface AdvisorNotStagedDto {
+  label: string;
+  reason: string;
+}
+
 export type AdvisorLstbScanMetaDtoStage = typeof AdvisorLstbScanMetaDtoStage[keyof typeof AdvisorLstbScanMetaDtoStage];
 
 
@@ -421,6 +426,8 @@ export interface AdvisorMessageMetaDto {
   choices?: string[];
   /** Steps the owl reported while working on this answer (#476). */
   steps?: string[];
+  /** Drafts the owl tried to prepare in this answer and could not, with the reason (ADR-0065). */
+  notStaged?: AdvisorNotStagedDto[];
   action?: AdvisorActionProposalDto;
   actions?: AdvisorActionProposalDto[];
   lstbScan?: AdvisorLstbScanMetaDto;

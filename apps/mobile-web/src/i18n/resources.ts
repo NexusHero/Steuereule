@@ -1775,6 +1775,7 @@ export const appResources = {
             empty_text: 'Auf dem Beleg war kein lesbarer Text. Versuch ein schärferes Foto oder trag die Werte von Hand ein.',
             parse_failed: 'Der Beleg konnte gerade nicht geprüft werden. Bitte versuch es noch mal.',
           },
+          notStaged: { title: 'Nicht vorbereitet' },
           lstbScan: {
             title: 'Lohnsteuerbescheinigung erkannt',
             notRead: 'nicht gelesen',
@@ -3593,6 +3594,7 @@ export const appResources = {
             empty_text: 'No readable text on the receipt. Try a sharper photo or enter the values by hand.',
             parse_failed: 'The receipt could not be checked right now. Please try again.',
           },
+          notStaged: { title: 'Not prepared' },
           lstbScan: {
             title: 'Wage tax statement recognised',
             notRead: 'not read',

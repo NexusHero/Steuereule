@@ -249,8 +249,8 @@ function tidyAmount(raw: string): string | null {
   return /^\d+$/.test(withoutGrouping) ? String(Number(withoutGrouping)) : null
 }
 
-const fold = (text: string): string =>
-  text
+const fold = (input: string): string =>
+  input
     .toLowerCase()
     .replace(/ä/g, 'ae')
     .replace(/ö/g, 'oe')

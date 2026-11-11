@@ -23,6 +23,7 @@ import {
   toProviderToolSchema,
   extractReasoningText,
   LangGraphAdvisorEngine,
+  unresolvedRejections,
 } from '../src/ki/langgraph-advisor.engine.js'
 import { AI_WRITABLE_FIELDS, describeAiWritableFields, validateStageTarget } from '../src/ki/advisor-safety.js'
 
@@ -437,5 +438,91 @@ describe('values are checked against the field catalogue before a draft exists (
     ])
     const { result } = await run(new LangGraphAdvisorEngine(runtime('google-genai'), () => model))
     expect(result.meta.action).toBeUndefined()
+  })
+})
+
+describe('several drafts in one answer (ADR-0065)', () => {
+  const call = (index: number, args: Record<string, unknown>) => ({ name: 'stage_field_draft', args: JSON.stringify(args), index, id: `c${index}` })
+  const stageAll = (...calls: Array<Record<string, unknown>>): AIMessageChunk => chunkOf({ content: '', tool_call_chunks: calls.map((args, i) => call(i, args)) })
+
+  const HOMEOFFICE = { screen: 'commute', field: 'homeOfficeDays', newValue: '30', label: 'Homeoffice-Tage' }
+  const HANDWERKER = { screen: 'interview', field: 'haushalt-handwerker-betrag', newValue: '5000', label: 'Handwerkerkosten', companionFields: { 'haushalt-gate': 'Ja' } }
+  const SPENDEN = { screen: 'interview', field: 'spenden-betrag', newValue: '200', label: 'Spenden', companionFields: { spenden: 'Ja' } }
+
+  it('keeps every draft of one message: three things said, three drafts made', async () => {
+    // The customer run: „30 Tage Homeoffice, 5.000 € Handwerker, 200 € Spenden“ left one draft and a
+    // reply that claimed three.
+    const model = new ChunkedChatModel([[stageAll(HOMEOFFICE, HANDWERKER, SPENDEN)], [answer('Drei Entwürfe.')]])
+    const { events, result } = await run(new LangGraphAdvisorEngine(runtime('google-genai'), () => model))
+
+    expect(result.meta.action).toBeUndefined()
+    expect(result.meta.actions?.map((a) => `${a.screen}.${a.field}=${a.newValue}`)).toEqual([
+      'commute.homeOfficeDays=30',
+      'interview.haushalt-handwerker-betrag=5000',
+      'interview.spenden-betrag=200',
+    ])
+    expect(new Set(result.meta.actions?.map((a) => a.actionId)).size).toBe(3)
+    expect(events.filter((e) => e.event === 'action')).toHaveLength(3)
+  })
+
+  it('collects drafts over several tool rounds too', async () => {
+    const model = new ChunkedChatModel([[stageAll(HOMEOFFICE)], [stageAll(SPENDEN)], [answer('Zwei Entwürfe.')]])
+    const { result } = await run(new LangGraphAdvisorEngine(runtime('google-genai'), () => model))
+    expect(result.meta.actions).toHaveLength(2)
+  })
+
+  it('keeps a single draft where it always was', async () => {
+    const model = new ChunkedChatModel([[stageAll(SPENDEN)], [answer('Ein Entwurf.')]])
+    const { result } = await run(new LangGraphAdvisorEngine(runtime('google-genai'), () => model))
+    expect(result.meta.action?.field).toBe('spenden-betrag')
+    expect(result.meta.actions).toBeUndefined()
+  })
+
+  it('treats a second draft for the same field as a correction, not as a second draft', async () => {
+    const model = new ChunkedChatModel([[stageAll(HOMEOFFICE)], [stageAll({ ...HOMEOFFICE, newValue: '45' })], [answer('Korrigiert.')]])
+    const { result } = await run(new LangGraphAdvisorEngine(runtime('google-genai'), () => model))
+    expect(result.meta.action?.newValue).toBe('45')
+    expect(result.meta.actions).toBeUndefined()
+  })
+
+  it('says under the answer what could not be prepared, when the model does not get it right', async () => {
+    const model = new ChunkedChatModel([
+      [stageAll(SPENDEN, { screen: 'rente', field: 'rentenart', newValue: 'Gesetzliche Altersrente', label: 'Rentenart' })],
+      [answer('Ich habe beides vorbereitet.')],
+    ])
+    const { result } = await run(new LangGraphAdvisorEngine(runtime('google-genai'), () => model))
+    expect(result.meta.action?.field).toBe('spenden-betrag')
+    expect(result.meta.notStaged).toHaveLength(1)
+    expect(result.meta.notStaged![0]).toMatchObject({ label: 'Rentenart' })
+    expect(result.meta.notStaged![0]!.reason).toContain('GesetzlicheRente')
+    expect(result.meta.notStaged![0]!.reason).not.toMatch(/^[A-Z_]+:/)
+  })
+
+  it('forgets a refusal once the corrected draft went through', async () => {
+    const model = new ChunkedChatModel([
+      [stageAll({ screen: 'rente', field: 'rentenart', newValue: 'Gesetzliche Altersrente', label: 'Rentenart' })],
+      [stageAll({ screen: 'rente', field: 'rentenart', newValue: 'GesetzlicheRente', label: 'Rentenart' })],
+      [answer('Vorbereitet.')],
+    ])
+    const { result } = await run(new LangGraphAdvisorEngine(runtime('google-genai'), () => model))
+    expect(result.meta.action?.newValue).toBe('GesetzlicheRente')
+    expect(result.meta.notStaged).toBeUndefined()
+  })
+
+  it('stops a model that keeps producing drafts', async () => {
+    const many = Array.from({ length: 10 }, (_, i) => ({ screen: 'chLohnausweis', field: ['lohn', 'gehaltsnebenleistungen', 'unregelmaessige-leistungen', 'kapitalleistungen', 'beteiligungsrechte', 'sitzungsgelder', 'andere-leistungen', 'bruttolohn-total', 'ahv-beitraege', 'berufliche-vorsorge'][i]!, newValue: '100', label: `Feld ${i}` }))
+    const model = new ChunkedChatModel([[stageAll(...many)], [answer('Viele.')]])
+    const { result } = await run(new LangGraphAdvisorEngine(runtime('google-genai'), () => model))
+    expect(result.meta.actions).toHaveLength(8)
+  })
+})
+
+describe('unresolvedRejections', () => {
+  it('lists each refused draft once', () => {
+    const rejected = [
+      { label: 'Miete', screen: 'vermietung', reason: 'kein Objekt' },
+      { label: 'Miete', screen: 'vermietung', reason: 'kein Objekt' },
+    ]
+    expect(unresolvedRejections(rejected, [])).toEqual([{ label: 'Miete', reason: 'kein Objekt' }])
   })
 })

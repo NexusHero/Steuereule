@@ -10,7 +10,7 @@ import { AI_WRITABLE_FIELDS } from '../src/ki/advisor-safety.js'
 
 describe('field catalogue and write path describe the same fields (ADR-0065)', () => {
   it.each(SCREENS)('screen %s: catalogue and writable fields are identical', (screen) => {
-    expect([...fieldsOfScreen(screen).map((spec) => spec.field)].sort()).toEqual([...WRITABLE_FIELDS_BY_SCREEN[screen]].sort())
+    expect(fieldsOfScreen(screen).map((spec) => spec.field).sort()).toEqual([...WRITABLE_FIELDS_BY_SCREEN[screen]].sort())
   })
 
   it('agrees with the commute repository on the means of transport', () => {

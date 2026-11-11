@@ -25,6 +25,7 @@ import {
   type AdvisorActionProposal,
   type AdvisorEnginePort,
   type AdvisorMessageMeta,
+  type AdvisorNotStaged,
   type AdvisorStreamEvent,
   type AdvisorTurnRequest,
   type AdvisorTurnResult,
@@ -144,7 +145,7 @@ export function buildStableSystemPrompt(): string {
     '',
     '5. Plan: Braucht eine Aufgabe mehrere Schritte (z. B. „Was hab ich vergessen?“ oder mehrere Bereiche prüfen), lege mit `plan_steps` eine kurze Liste an (höchstens 8 Schritte) und rufe `plan_steps` bei jedem Fortschritt mit der vollständigen Liste und neuen Status auf (`offen`, `laeuft`, `erledigt`). Einfache Fragen beantwortest du direkt, ohne Plan. Ein Plan schreibt nie etwas: Änderungen bleiben Entwürfe über `stage_field_draft`.',
     '',
-    '6. Felder: Für `screen` und `field` gelten ausschließlich die folgenden Namen. Die Namen im Fall-Überblick (CaseDigest) sind KEINE Feldnamen. Gehören mehrere Werte zusammen (z. B. die drei Beträge der Lohnsteuerbescheinigung), lege EINEN Entwurf an und gib die übrigen als `companionFields` mit (höchstens 3). Meldet ein Werkzeug UNKNOWN_FIELD, nimm einen Namen aus der Liste, die es nennt.',
+    '6. Felder: Für `screen` und `field` gelten ausschließlich die folgenden Namen. Die Namen im Fall-Überblick (CaseDigest) sind KEINE Feldnamen. Gehören mehrere Werte derselben Maske zusammen (z. B. die drei Beträge der Lohnsteuerbescheinigung), lege EINEN Entwurf an und gib die übrigen als `companionFields` mit (höchstens 3). Nennt der Nutzer Angaben für verschiedene Masken oder mehr Felder, rufe `stage_field_draft` für jede Gruppe einzeln auf: Alle Entwürfe einer Antwort stehen nebeneinander und werden gemeinsam freigegeben. Zähle in deinem Text nur Entwürfe auf, für die das Werkzeug `ok: true` gemeldet hat; was abgelehnt wurde, nennst du als nicht vorbereitet, mit dem Grund. Meldet ein Werkzeug UNKNOWN_FIELD, nimm einen Namen aus der Liste, die es nennt.',
     describeAiWritableFields(),
     '',
     '7. Arbeitsweise: `stage_field_draft` und `propose_two_paths` rechnen die Steuerwirkung selbst aus; rufe `simulate_tax_delta` nur auf, wenn du Varianten vergleichen willst, ohne einen Entwurf anzulegen. Behaupte nie, einen Entwurf vorbereitet zu haben, wenn das Werkzeug nicht `ok: true` gemeldet hat. Schließe jede Antwort mit einem kurzen Text ab.',
@@ -199,9 +200,15 @@ const AdvisorGraphState = Annotation.Root({
     reducer: (_left, right) => right,
     default: () => 0,
   }),
-  pendingAction: Annotation<AdvisorActionProposal | null>({
+  /** Every draft of this answer, in the order they were made; a later one for the same field replaces the earlier. */
+  pendingActions: Annotation<AdvisorActionProposal[]>({
     reducer: (_left, right) => right,
-    default: () => null,
+    default: () => [],
+  }),
+  /** Drafts the model asked for and did not get, with the screen they aimed at. */
+  rejectedDrafts: Annotation<RejectedDraft[]>({
+    reducer: (_left, right) => right,
+    default: () => [],
   }),
   pendingTwoPaths: Annotation<AdvisorTwoPathsProposal | null>({
     reducer: (_left, right) => right,
@@ -216,6 +223,37 @@ const AdvisorGraphState = Annotation.Root({
     default: () => [],
   }),
 })
+
+interface RejectedDraft {
+  readonly label: string
+  readonly screen: string
+  readonly reason: string
+}
+
+/** More drafts in one answer than anyone can review are a sign the model is looping. */
+const MAX_DRAFTS_PER_TURN = 8
+
+const draftKey = (draft: Pick<AdvisorActionProposal, 'screen' | 'field' | 'instance'>): string => `${draft.screen}|${draft.instance ?? ''}|${draft.field}`
+
+/** The reason of a tool error without its machine prefix (`UNKNOWN_FIELD: …`). */
+const humanReason = (error: string): string => error.replace(/^[A-Z_]+:\s*/, '')
+
+/**
+ * What the answer has to admit: a refused draft the model did not manage to replace. A refusal
+ * counts as resolved when a later draft has the same label or went to the same screen, because
+ * that is what a corrected retry looks like.
+ */
+export function unresolvedRejections(rejected: readonly RejectedDraft[], staged: readonly AdvisorActionProposal[]): AdvisorNotStaged[] {
+  const seen = new Set<string>()
+  const open: AdvisorNotStaged[] = []
+  for (const draft of rejected) {
+    if (staged.some((action) => action.label === draft.label || action.screen === draft.screen)) continue
+    if (seen.has(draft.label)) continue
+    seen.add(draft.label)
+    open.push({ label: draft.label, reason: draft.reason })
+  }
+  return open
+}
 
 const draftTargetSchema = z.object({
   screen: z.string().max(40),
@@ -386,7 +424,8 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
           : []
 
       const toolMessages: ToolMessage[] = []
-      let pendingAction = state.pendingAction
+      let pendingActions = state.pendingActions
+      let rejectedDrafts = state.rejectedDrafts
       let pendingTwoPaths = state.pendingTwoPaths
       let choices = state.choices
       const sources: OwlSourceId[] = []
@@ -423,6 +462,10 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
           }
           toolMessages.push(toolResult(callId, tc.name, { ok: false, error: target.error }))
         }
+        /** Refuses a draft: the model gets the reason, and the answer will carry it unless a retry succeeds. */
+        const refuseDraft = (label: string, screen: string, error: string): void => {
+          rejectedDrafts = [...rejectedDrafts, { label, screen, reason: humanReason(error) }]
+        }
 
         if (tc.name === 'simulate_tax_delta') {
           const args = parseArgs(TOOL_ARG_SCHEMAS.simulate_tax_delta)
@@ -453,6 +496,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
 
           const target = validateStageTarget(screen, field)
           if (!target.ok) {
+            refuseDraft(label, screen, target.error)
             rejectTarget(target)
             continue
           }
@@ -460,11 +504,18 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
             toolMessages.push(toolResult(callId, tc.name, { ok: false, error: `INVALID_ARGUMENTS: höchstens ${MAX_COMPANION_FIELDS} Begleitfelder.` }))
             continue
           }
+          if (pendingActions.length >= MAX_DRAFTS_PER_TURN) {
+            const error = `TOO_MANY_DRAFTS: höchstens ${MAX_DRAFTS_PER_TURN} Entwürfe pro Antwort. Bitte den Nutzer erst diese prüfen lassen.`
+            refuseDraft(label, screen, error)
+            toolMessages.push(toolResult(callId, tc.name, { ok: false, error }))
+            continue
+          }
           // Companion fields are written with the same rights as the main field, so they pass the same gate.
           const lockedCompanion = rawCompanions
             .map(([companionField]) => validateStageTarget(screen, companionField))
             .find((check): check is Extract<StageTargetCheck, { ok: false }> => !check.ok)
           if (lockedCompanion) {
+            refuseDraft(label, screen, lockedCompanion.error)
             rejectTarget(lockedCompanion)
             continue
           }
@@ -473,6 +524,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
           const checkedValues = [[field.trim(), args.newValue] as const, ...rawCompanions].map(([name, value]) => ({ name, check: checkStageValue(screen, name, value) }))
           const badValue = checkedValues.find((entry) => !entry.check.ok)
           if (badValue && !badValue.check.ok) {
+            refuseDraft(label, screen, badValue.check.error)
             toolMessages.push(toolResult(callId, tc.name, { ok: false, error: badValue.check.error }))
             continue
           }
@@ -504,7 +556,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
           const sim = simulateAdvisorFieldDelta(request.digest, target.screen, cleanField, newValue)
           sources.push(sourceId)
 
-          pendingAction = {
+          const stagedAction: AdvisorActionProposal = {
             actionId: makeActionId(),
             status: 'pending',
             screen: target.screen,
@@ -523,7 +575,10 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
             paragraph: ADVISOR_LEGAL_SOURCES[sourceId].paragraph,
           }
 
-          toolMessages.push(toolResult(callId, tc.name, { ok: true, stagedAction: pendingAction }))
+          // Several drafts in one answer stand side by side; a second one for the same field is a correction.
+          pendingActions = [...pendingActions.filter((existing) => draftKey(existing) !== draftKey(stagedAction)), stagedAction]
+
+          toolMessages.push(toolResult(callId, tc.name, { ok: true, stagedAction, draftsInThisAnswer: pendingActions.length }))
           continue
         }
 
@@ -655,7 +710,8 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
       return {
         messages: toolMessages,
         toolRounds: state.toolRounds + 1,
-        pendingAction,
+        pendingActions,
+        rejectedDrafts,
         pendingTwoPaths,
         choices,
         sources,
@@ -770,7 +826,8 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
     let reasoningRound = 0
     let lastReasoningRound = 0
     let finalMessages: BaseMessage[] = []
-    let pendingAction: AdvisorActionProposal | null = null
+    let pendingActions: AdvisorActionProposal[] = []
+    let rejectedDrafts: RejectedDraft[] = []
     let pendingTwoPaths: AdvisorTwoPathsProposal | null = null
     let choices: string[] = []
     let sources: OwlSourceId[] = []
@@ -814,8 +871,11 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
               finalMessages = finalMessages.concat(nodeUpdate.messages)
               reasoningRound += 1
             }
-            if ('pendingAction' in nodeUpdate && nodeUpdate.pendingAction !== undefined) {
-              pendingAction = nodeUpdate.pendingAction
+            if (Array.isArray(nodeUpdate.pendingActions)) {
+              pendingActions = nodeUpdate.pendingActions
+            }
+            if (Array.isArray(nodeUpdate.rejectedDrafts)) {
+              rejectedDrafts = nodeUpdate.rejectedDrafts
             }
             if ('pendingTwoPaths' in nodeUpdate && nodeUpdate.pendingTwoPaths !== undefined) {
               pendingTwoPaths = nodeUpdate.pendingTwoPaths
@@ -866,9 +926,11 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
     let replyText = (streamedText || lastAiText).trim()
 
     if (replyText.length === 0) {
-      replyText = pendingAction
-        ? `Ich habe den Entwurf „${pendingAction.label}“ als unverbindlichen Vorschlag vorbereitet.`
-        : pendingTwoPaths
+      replyText = pendingActions.length === 1
+        ? `Ich habe den Entwurf „${pendingActions[0]!.label}“ als unverbindlichen Vorschlag vorbereitet.`
+        : pendingActions.length > 1
+          ? `Ich habe ${pendingActions.length} Entwürfe als unverbindliche Vorschläge vorbereitet.`
+          : pendingTwoPaths
           ? `Ich habe zwei steuerliche Wege für „${pendingTwoPaths.title}“ vorbereitet.`
           : 'Ich habe deine Steuerakte geprüft.'
     }
@@ -878,18 +940,22 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
     }
 
     const usage = sumUsage(finalMessages)
+    const notStaged = unresolvedRejections(rejectedDrafts, pendingActions)
     const meta: AdvisorMessageMeta = {
       ...(choices.length > 0 ? { choices } : {}),
-      ...(pendingAction ? { action: pendingAction } : {}),
+      // One draft keeps its place as `action`; several travel as `actions` and are reviewed together.
+      ...(pendingActions.length === 1 ? { action: pendingActions[0]! } : {}),
+      ...(pendingActions.length > 1 ? { actions: pendingActions } : {}),
       ...(pendingTwoPaths ? { twoPaths: pendingTwoPaths } : {}),
       ...(sources.length > 0 ? { sources } : {}),
+      ...(notStaged.length > 0 ? { notStaged } : {}),
     }
 
     if (meta.choices && meta.choices.length > 0) {
       yield { event: 'choices', data: { choices: meta.choices } }
     }
-    if (meta.action) {
-      yield { event: 'action', data: meta.action }
+    for (const action of pendingActions) {
+      yield { event: 'action', data: action }
     }
     if (meta.twoPaths) {
       yield { event: 'twoPaths', data: meta.twoPaths }
