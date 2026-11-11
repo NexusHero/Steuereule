@@ -153,31 +153,22 @@ async function main() {
     console.log(`[${TAG}] ✅ Row E — „Maske ansehen“ embeds the mask inline and returns to the drafts`)
     await ctx.close()
 
-    // Row F — tablet drawer and mobile dock; the chat answers there too.
-    {
-      const tablet = await signIn(browser, webOrigin, user.email, 'm')
-      await openEule(tablet.page)
-      await tablet.page.locator('[data-testid="eule-tablet-chat-toggle"]').click()
-      await tablet.page.locator('[data-testid="eule-tablet-drawer"]').waitFor({ state: 'visible', timeout: 10_000 })
-      await ask(tablet.page, 'Hallo Eule')
-      await tablet.page.locator('[data-testid="advisor-assistant-message"]', { hasText: 'Test-Eule' }).last().waitFor({ state: 'visible', timeout: 15_000 })
-      await tablet.page.locator('[data-testid="eule-tablet-drawer-close"]').click()
-      await tablet.page.locator('[data-testid="eule-tablet-drawer"]').waitFor({ state: 'hidden', timeout: 10_000 })
-      await tablet.ctx.close()
-
-      const mobile = await signIn(browser, webOrigin, user.email, 's')
-      await openEule(mobile.page)
-      const dock = mobile.page.locator('[data-testid="eule-mobile-dock"]')
-      await dock.waitFor({ state: 'visible', timeout: 10_000 })
-      await mobile.page.locator('[data-testid="eule-mobile-maximize-btn"]').click()
-      await mobile.page.locator('[data-testid="eule-mobile-sheet"]').waitFor({ state: 'visible', timeout: 10_000 })
-      await ask(mobile.page, 'Hallo Eule')
-      await mobile.page.locator('[data-testid="advisor-assistant-message"]', { hasText: 'Test-Eule' }).last().waitFor({ state: 'visible', timeout: 15_000 })
-      await mobile.page.locator('[data-testid="eule-mobile-minimize-btn"]').click()
-      await dock.waitFor({ state: 'visible', timeout: 10_000 })
-      await mobile.ctx.close()
+    // Row F — tablet and phone: the chat is the screen and answers; the workbench is a sheet that
+    // opens from the title bar and never covers the chat unasked (#476).
+    for (const bp of ['m', 's']) {
+      const narrow = await signIn(browser, webOrigin, user.email, bp)
+      await openEule(narrow.page)
+      await ask(narrow.page, 'Hallo Eule')
+      await narrow.page.locator('[data-testid="advisor-assistant-message"]', { hasText: 'Test-Eule' }).last().waitFor({ state: 'visible', timeout: 15_000 })
+      if (await narrow.page.locator('[data-testid="eule-workbench-sheet"]').isVisible().catch(() => false)) {
+        fail(`Row F (${bp}): the workbench must not cover the chat by itself`)
+      }
+      await narrow.page.locator('[data-testid="eule-hints-pill"]').click()
+      await narrow.page.locator('[data-testid="eule-workbench-sheet"]').waitFor({ state: 'visible', timeout: 10_000 })
+      await narrow.page.locator('[data-testid="eule-hints-pill"]').click({ force: true }).catch(() => {})
+      await narrow.ctx.close()
     }
-    console.log(`[${TAG}] ✅ Row F — tablet drawer and mobile dock open, answer and close`)
+    console.log(`[${TAG}] ✅ Row F — tablet and phone: the chat answers, the workbench opens as a sheet on request`)
 
     // Row G — a guest gets the account prompt.
     {

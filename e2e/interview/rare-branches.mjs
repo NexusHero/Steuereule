@@ -120,6 +120,9 @@ async function main() {
       guardAgainst429(page, fail, '/api/auth/')
       await browserLogin(page, webOrigin, user.email, TAG)
       await page.goto(`${webOrigin}/app/eule`, { waitUntil: 'networkidle' })
+      // The occupation group lives in the owl's settings, opened from the title bar (#476).
+      await page.locator('[data-testid="eule-settings-btn"]').click()
+      await page.locator('[data-testid="eule-settings-sheet"]').waitFor({ state: 'visible', timeout: 10_000 })
       const professions = [
         ['beruf', 'IT & Software'],
         ['beruf', 'Pflege & Gesundheit'],

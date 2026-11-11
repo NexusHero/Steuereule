@@ -33,7 +33,7 @@ Stand: 11.11.2026. Jede Zeile nennt die Datei, die den Punkt prüft. **Lücke** 
 | `lookupPostalCode` inkl. mehrdeutiger PLZ | Unit `packages/core/src/common/postal-codes.test.ts`; E2E `input-aids.mjs` Row C/D |
 | Prüfsumme des Diktat-Modells | `apps/mobile-web/scripts/dictation-model-lock.mjs` (Build), Unit `lib/dictation/modelStore.test.tsx` |
 | PLZ-Vorbelegung und Ändern, Autofill-Attribute | E2E `input-aids.mjs` Row A–E |
-| Mobile-Dock sendet nicht mit Enter | Unit `chatKeys.test.tsx` (Plattform „mobil“). **Lücke:** kein E2E auf dem Dock |
+| Enter sendet auf dem Handy nicht | Unit `chatKeys.test.tsx` (Plattform „mobil“), E2E `advisor/chat-experience.mjs` Row G. Seit #476 gibt es kein Dock mehr; geprüft wird die Eingabe des Chats selbst |
 | Kein externer Host bei PLZ-Lookup und Diktat Stufe 1; Stufe 2 nur Hugging Face nach Zustimmung | E2E `input-aids.mjs` Row G, `advisor/dictation.mjs` |
 | Plan im Chat (Checkliste, zuklappen, Stop, kein PUT ohne Klick) | E2E `advisor/plan-in-chat.mjs`, Engine-Test `apps/api/test/langgraph-advisor.plan.test.ts` |
 
@@ -57,5 +57,5 @@ Stand: 11.11.2026. Jede Zeile nennt die Datei, die den Punkt prüft. **Lücke** 
 
 1. **Sheet schließt ohne zu speichern:** Die Katalog-Betragsfelder und die Arbeitstage-Maske speichern nur über „Weiter“. Wer einen Betrag tippt und das Sheet schließt, verliert ihn. Das widerspricht #443 AC 7. Die LStB-Maske speichert dagegen beim Verlassen des Felds, und dort hält AC 7.
 2. **Zurück-Falle nach dem Interview:** Ist das Interview abgeschlossen, springt `/interview` per `navigate` zur nächsten Maske. Browser-Zurück landet wieder im Interview und damit erneut in der LStB. Mit `replace` wäre die Falle weg.
-3. **Lücken ohne Test:** Gnadensplitting-Auswahl (#452), Mobile-Dock und Enter im E2E (#451).
+3. **Lücken ohne Test:** Gnadensplitting-Auswahl (#452). (Enter auf dem Handy ist seit #476 durch `chat-experience.mjs` Row G abgedeckt.)
 4. **Noch offen in Teil 4:** Visuelle Regression (375 px und 1280 px, hell und dunkel) und axe je Screen in beiden Themes mit Tastatur-Bedienung der Sheets. Sie folgen als eigener PR.

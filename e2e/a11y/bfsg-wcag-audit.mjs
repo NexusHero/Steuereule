@@ -84,17 +84,16 @@ async function main() {
     await selectTaxYear2025(page)
     await assertScreenAccessible(page, 'CockpitScreen')
 
-    // 3. OwlModeScreen (Desktop Split-Pane on 'l' or 2-tab Hinweise + Advisor Chat on mobile)
+    // 3. OwlModeScreen: the chat as the main surface, then the workbench opened from the title bar
     await page.getByRole('tab', { name: 'Eule' }).click()
     await page.locator('[data-testid="eule-privacy-badge"]').waitFor({ state: 'visible', timeout: 10_000 })
-    await assertScreenAccessible(page, 'OwlModeScreen (Hinweise)')
-
-    const fragenTab = page.locator('[data-testid="eule-tab-fragen"]')
-    if (await fragenTab.isVisible().catch(() => false)) {
-      await fragenTab.click()
-    }
     await page.locator('[data-testid="advisor-chat-panel"]').waitFor({ state: 'visible', timeout: 10_000 })
     await assertScreenAccessible(page, 'OwlModeScreen (AdvisorChatPanel)')
+
+    // The workbench (hints, drafts) opens from the title bar (#476); audit it where it is shown.
+    await page.locator('[data-testid="eule-hints-pill"]').click()
+    await page.locator('[data-testid="eule-workbench-panel"], [data-testid="eule-workbench-sheet"]').first().waitFor({ state: 'visible', timeout: 10_000 })
+    await assertScreenAccessible(page, 'OwlModeScreen (Hinweise)')
 
     // 4. BelegeScreen
     await page.getByRole('tab', { name: 'Belege' }).click()
