@@ -119,16 +119,20 @@ export function DateInput({ value, onChange, calendarLabel, accessibilityLabel, 
         />
       </View>
       {Platform.OS === 'web' ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={calendarLabel}
-          onPress={openCalendar}
-          style={button}
-          {...(testID ? { testID: `${testID}-kalender-oeffnen` } : {})}
-        >
-          <View style={sheet}>
-            <View style={sheetHead} />
-          </View>
+        // The date input sits next to the button, never inside it: a control nested in a button
+        // is invalid for assistive technology (WCAG 4.1.2, axe "nested-interactive").
+        <View style={{ width: BUTTON_SIZE, height: BUTTON_SIZE }}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={calendarLabel}
+            onPress={openCalendar}
+            style={button}
+            {...(testID ? { testID: `${testID}-kalender-oeffnen` } : {})}
+          >
+            <View style={sheet}>
+              <View style={sheetHead} />
+            </View>
+          </Pressable>
           {createElement('input', {
             ref: calendar,
             type: 'date',
@@ -144,7 +148,7 @@ export function DateInput({ value, onChange, calendarLabel, accessibilityLabel, 
               if (picked !== '') onChange(picked)
             },
           })}
-        </Pressable>
+        </View>
       ) : null}
     </View>
   )

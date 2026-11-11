@@ -67,6 +67,13 @@ describe('DateInput', () => {
     expect(calendar.getAttribute('type')).toBe('date')
   })
 
+  it('never nests the calendar input inside the button (axe nested-interactive)', () => {
+    renderUi(<DateInput value="" onChange={() => {}} calendarLabel="Kalender öffnen" testID="datum" />)
+    const button = screen.getByLabelText('Kalender öffnen')
+    expect(button.querySelector('input')).toBeNull()
+    expect(button.contains(screen.getByTestId('datum-kalender'))).toBe(false)
+  })
+
   it('keeps the calendar input out of the tab order and away from screen readers; the button is the way in', () => {
     renderUi(<DateInput value="" onChange={() => {}} calendarLabel="Kalender öffnen" testID="datum" />)
     const calendar = screen.getByTestId('datum-kalender')
