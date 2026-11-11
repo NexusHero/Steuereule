@@ -6,5 +6,8 @@
     "haushalt-gate=*": "HOUSEHOLD_AND_HEALTH_BOOSTERS is false (apps/api/src/config/features.ts): the entry is not admitted; the API rejects the answer until the flag is on",
     "gesundheit-gate=*": "HOUSEHOLD_AND_HEALTH_BOOSTERS is false, see haushalt-gate=*"
   },
-  "testIds": {}
+  "testIds": {
+    "microphone": "not a testID: the name of the icon in DictationBar's `isRecording ? 'stop' : 'microphone'`, picked up by the ternary scan next to a testID",
+    "stop": "not a testID: icon name, see microphone"
+  }
 }
