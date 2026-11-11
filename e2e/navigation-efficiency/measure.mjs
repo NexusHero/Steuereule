@@ -24,7 +24,6 @@ const VARIANT = process.env.NAV_VARIANT ?? 'neu'
 const ROOT = resolve(process.env.NAV_ROOT ?? join(HERE, '..', '..'))
 const REPORT_DIR = process.env.NAV_REPORT_DIR ?? '/tmp/navigation-efficiency'
 const PASSWORD = 'Sicheres-Passwort-1!'
-const YEAR = 2025
 const BUDGET_SLACK = 0.1
 
 // Import the harness of the measured commit, so each variant runs with its own helpers.
