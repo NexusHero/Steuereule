@@ -27,10 +27,11 @@ export function LegalScreen({ page, operator, onBack, onPage }: LegalScreenProps
           accessibilityLabel={t('rechtliches.back')}
           onPress={onBack}
           style={styles.backButton}
+          testID="rechtliches-zurueck"
         >
           <Text style={styles.backGlyph}>←</Text>
         </Pressable>
-        <Text style={styles.appbarTitle} accessibilityRole="header">
+        <Text style={styles.appbarTitle} accessibilityRole="header" testID={`rechtliches-seite-${page}`}>
           {PAGE_TITLES[page]}
         </Text>
       </View>

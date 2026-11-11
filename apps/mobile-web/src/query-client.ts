@@ -18,4 +18,9 @@ export const APP_QUERY_DEFAULTS = {
     retry: QUERY_RETRY_COUNT,
     retryDelay: retryDelayMs,
   },
+  // #450 5E: no offline queue — a save is attempted now and fails visibly, it is never parked until
+  // the browser comes back online (that left "Weiter" without effect and without any notice).
+  mutations: {
+    networkMode: 'always',
+  },
 } as const

@@ -26,7 +26,7 @@ export function LegalLinks({ onPage, current }: LegalLinksProps) {
             {PAGE_TITLES[page]}
           </Text>
         ) : (
-          <Pressable key={page} accessibilityRole="link" onPress={() => onPage(page)}>
+          <Pressable key={page} accessibilityRole="link" onPress={() => onPage(page)} testID={`rechtliches-link-${page}`}>
             <Text style={{ ...text, textDecorationLine: 'underline' }}>{PAGE_TITLES[page]}</Text>
           </Pressable>
         ),

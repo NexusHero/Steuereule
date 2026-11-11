@@ -92,13 +92,11 @@ export async function runScenario08(browser, webOrigin) {
   const bescheidBtn = page.locator('[data-testid="cockpit-bescheid"]')
   await bescheidBtn.waitFor({ state: 'visible', timeout: 10_000 })
   await bescheidBtn.click()
-  await page.locator('text=Dein Steuerbescheid').waitFor({ state: 'visible', timeout: 10_000 })
-  const steuerFeld = page.getByLabel(/Festgesetzte Einkommensteuer/i)
-  if (await steuerFeld.count()) {
-    await steuerFeld.fill('15000')
-    await steuerFeld.blur()
-  }
-  await page.locator('text=←').first().click()
+  await page.locator('[data-testid="bescheid-heading"]').waitFor({ state: 'visible', timeout: 10_000 })
+  const steuerFeld = page.locator('[data-testid="bescheid-feld-festgesetzteSteuer"]')
+  await steuerFeld.fill('15000')
+  await steuerFeld.blur()
+  await page.locator('[data-testid="bescheid-zurueck"]').click()
   await page.locator('[data-testid="cockpit-interview"], [data-testid="cockpit-weiter"], [data-testid="cockpit-bescheid"]').first().waitFor({ state: 'visible', timeout: 10_000 })
 
   const rentalBtn = page.locator('[data-testid="cockpit-vermietung"]')
@@ -110,20 +108,18 @@ export async function runScenario08(browser, webOrigin) {
   await page.locator('[data-testid="cockpit-interview"], [data-testid="cockpit-weiter"], [data-testid="cockpit-bescheid"]').first().waitFor({ state: 'visible', timeout: 10_000 })
 
   await page.goto(`${webOrigin}/rechtliches/impressum`, { waitUntil: 'networkidle' })
-  await page.locator('text=Angaben gemäß § 5 DDG').first().waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('text=Datenschutzerklärung').last().click()
-  await page.locator('text=1. Verantwortlicher').first().waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('text=AGB & Widerruf').last().click()
-  await page.locator('text=§ 1 Geltungsbereich').first().waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('text=Wichtige Hinweise').last().click()
-  await page.locator('text=Keine Steuerberatung').first().waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('text=←').first().click()
+  await page.locator('[data-testid="rechtliches-seite-impressum"]').waitFor({ state: 'visible', timeout: 10_000 })
+  for (const legalPage of ['datenschutz', 'agb', 'hinweise']) {
+    await page.locator(`[data-testid="rechtliches-link-${legalPage}"]`).click()
+    await page.locator(`[data-testid="rechtliches-seite-${legalPage}"]`).waitFor({ state: 'visible', timeout: 10_000 })
+  }
+  await page.locator('[data-testid="rechtliches-zurueck"]').click()
   await page.waitForTimeout(500)
 
   await page.goto(`${webOrigin}/device`, { waitUntil: 'networkidle' })
-  await page.locator('text=Kein Code angegeben').waitFor({ state: 'visible', timeout: 10_000 })
+  await page.locator('[data-testid="geraet-code-fehlt"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.goto(`${webOrigin}/device?user_code=TEST-1234`, { waitUntil: 'networkidle' })
-  await page.locator('text=Code ungültig oder abgelaufen').waitFor({ state: 'visible', timeout: 10_000 })
+  await page.locator('[data-testid="geraet-code-ungueltig"]').waitFor({ state: 'visible', timeout: 10_000 })
 
   for (const width of [375, 768, 1280]) {
     await page.setViewportSize({ width, height: 800 })

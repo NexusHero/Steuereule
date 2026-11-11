@@ -36,7 +36,7 @@ export function DeviceScreen({ userCode }: DeviceScreenProps) {
   }
 
   if (!userCode) {
-    return <ErrorState bp={bp} heading={tr('device.missingCode.heading')} message={tr('device.missingCode.body')} />
+    return <ErrorState bp={bp} heading={tr('device.missingCode.heading')} message={tr('device.missingCode.body')} testID="geraet-code-fehlt" />
   }
 
   return <DeviceApprovalScreen userCode={userCode} />

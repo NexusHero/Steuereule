@@ -46,6 +46,26 @@ describe('extractLstbTaxYear', () => {
 })
 
 describe('parseLstbTextDeterministically', () => {
+  // #450 D3: tesseract read the decimal comma of a dimmed photo as a low quote with a space
+  // ("5.051 ‚76"); the line was dropped and the SV sum came out 5.051 € short.
+  it('reads an OCR decimal comma that came out as a quote or with a space before it', () => {
+    const ocr = [
+      'Ausdruck der elektronischen Lohnsteuerbescheinigung für 2025',
+      '23a Arbeitnehmeranteil zur gesetzlichen Rentenversicherung 5.051 ‚76',
+      "25. Arbeitnehmerbeiträge zur gesetzlichen Krankenversicherung 4.182 ,64",
+      "26. Arbeitnehmerbeiträge zur sozialen Pflegeversicherung 977'76",
+      '27. Arbeitnehmerbeiträge zur Arbeitslosenversicherung 706,16',
+    ].join('\n')
+    const res = parseLstbTextDeterministically(ocr)
+    expect(res.fields.sozialversicherung.calculation).toEqual([
+      { line: '23a', amount: 5051.76 },
+      { line: '25', amount: 4182.64 },
+      { line: '26', amount: 977.76 },
+      { line: '27', amount: 706.16 },
+    ])
+    expect(res.fields.sozialversicherung.value).toBe(10918)
+  })
+
   it('extracts a clean official German LStB deterministically without needing LLM fallback', () => {
     const cleanLstb = [
       'Ausdruck der elektronischen Lohnsteuerbescheinigung für 2025',

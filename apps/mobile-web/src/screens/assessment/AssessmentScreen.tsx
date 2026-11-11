@@ -91,9 +91,9 @@ export function AssessmentScreen({ onDone = () => {}, onBack, taxYear = CURRENT_
   return (
     <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="screen-container">
       <View style={styles.headerRow}>
-        {onBack ? <BackButton accessibilityLabel={tr('bescheid.back')} onPress={onBack} /> : <BackButtonSpacer />}
+        {onBack ? <BackButton accessibilityLabel={tr('bescheid.back')} onPress={onBack} testID="bescheid-zurueck" /> : <BackButtonSpacer />}
       </View>
-      <Text style={styles.heading}>{tr('bescheid.heading')}</Text>
+      <Text style={styles.heading} testID="bescheid-heading">{tr('bescheid.heading')}</Text>
       <Text style={styles.help}>{tr('bescheid.help')}</Text>
 
       <FristBanner frist={response.frist} />
@@ -120,7 +120,7 @@ export function AssessmentScreen({ onDone = () => {}, onBack, taxYear = CURRENT_
         onAppeal={(reason) => setAppeal.mutate({ jahr: taxYear, data: { reason } }, mutationCallbacks)}
       />
 
-      <Button onPress={onDone} style={styles.cta}>
+      <Button onPress={onDone} style={styles.cta} testID="bescheid-fertig">
         {tr('bescheid.done')}
       </Button>
     </ScrollView>
@@ -191,8 +191,9 @@ function AssessmentFieldEditor({
           onSubmit={commit}
           onBlur={commit}
           accessibilityLabel={`${label} (${tr('bescheid.feld.placeholder')})`}
+          testID={`bescheid-feld-${fieldId}`}
         />
-        <Pressable accessibilityRole="button" onPress={onUnclear} style={s.unklarButton}>
+        <Pressable accessibilityRole="button" onPress={onUnclear} style={s.unklarButton} testID={`bescheid-unklar-${fieldId}`}>
           <Text style={kind === 'unklar' ? s.unklarActive : s.unklarLabel}>{tr('bescheid.feld.unklar')}</Text>
         </Pressable>
       </View>

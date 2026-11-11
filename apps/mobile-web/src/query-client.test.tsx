@@ -113,3 +113,32 @@ describe('#307 — a failing first-paint query settles into an honest state in s
     expect(attempts).toBe(1)
   })
 })
+
+// #450 5E — offline, a save must fail visibly. TanStack pauses mutations while `onlineManager` says
+// "offline" (networkMode 'online'), so the save promise never settled: "Weiter" did nothing and no
+// "Speichern fehlgeschlagen" ever appeared. The app has no offline queue, so a save is attempted
+// now and an honest failure is the right answer.
+describe('#450 5E — a save while offline fails instead of hanging', () => {
+  it('rejects the mutation although the browser reports offline', async () => {
+    const { MutationObserver, onlineManager } = await import('@tanstack/react-query')
+    const client = clientUnderTest()
+    onlineManager.setOnline(false)
+    try {
+      const observer = new MutationObserver(client, {
+        mutationFn: async () => {
+          throw new Error('Failed to fetch')
+        },
+      })
+      const outcome = await Promise.race([
+        observer.mutate().then(
+          () => 'resolved',
+          () => 'rejected',
+        ),
+        new Promise<string>((resolve) => setTimeout(() => resolve('hung'), 500)),
+      ])
+      expect(outcome).toBe('rejected')
+    } finally {
+      onlineManager.setOnline(true)
+    }
+  })
+})
