@@ -48,16 +48,16 @@ interface ExportFormatRowProps {
   readonly onPress: () => void
 }
 
-function ExportFormatRow({ tr, label, hint, state, onPress }: ExportFormatRowProps) {
+function ExportFormatRow({ tr, format, label, hint, state, onPress }: ExportFormatRowProps) {
   const t = useTheme()
   const styles = makePrivacyStyles(t)
   return (
     <View style={styles.exportRow}>
-      <Button variant="ghost" onPress={onPress} disabled={state === 'loading'}>
+      <Button variant="ghost" onPress={onPress} disabled={state === 'loading'} testID={`export-${format}`}>
         {state === 'loading' ? tr('datenschutz.export.preparing') : label}
       </Button>
       <Text style={styles.hint}>{hint}</Text>
-      {state === 'success' ? <Text style={styles.successNote}>{tr('datenschutz.export.success')}</Text> : null}
+      {state === 'success' ? <Text style={styles.successNote} testID={`export-${format}-erfolg`}>{tr('datenschutz.export.success')}</Text> : null}
       {state === 'error' ? (
         <Text style={styles.errorNote} accessibilityRole="alert">
           {tr('datenschutz.export.error')}

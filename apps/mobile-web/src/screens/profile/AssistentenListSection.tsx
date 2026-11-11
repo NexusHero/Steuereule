@@ -89,7 +89,7 @@ export function AssistantsListSection() {
                 {tr('profil.assistenten.revoking')}
               </Button>
             ) : (
-              <Chip onPress={() => handleRevoke(assistant.clientId)}>{tr('profil.assistenten.revoke')}</Chip>
+              <Chip onPress={() => handleRevoke(assistant.clientId)} testID={`assistent-widerrufen-${assistant.clientId}`}>{tr('profil.assistenten.revoke')}</Chip>
             )}
           </View>
         )

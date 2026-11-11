@@ -159,14 +159,14 @@ export function SecurityScreen({ onBack }: SecurityScreenProps) {
           {stage.kind === 'idle' && !twoFactorEnabled ? (
             <Card style={styles.card}>
               <Text style={styles.sectionBody}>{tr('sicherheit.enable.explainer')}</Text>
-              <Button onPress={() => setStage({ kind: 'enable-password', error: '', busy: false })}>{tr('sicherheit.enable.start')}</Button>
+              <Button onPress={() => setStage({ kind: 'enable-password', error: '', busy: false })} testID="zweifaktor-einrichten">{tr('sicherheit.enable.start')}</Button>
             </Card>
           ) : null}
 
           {stage.kind === 'idle' && twoFactorEnabled ? (
             <Card style={styles.card}>
               <Text style={styles.sectionBody}>{tr('sicherheit.disable.explainer')}</Text>
-              <Button variant="ghost" onPress={() => setStage({ kind: 'disable-password', error: '', busy: false })}>
+              <Button variant="ghost" onPress={() => setStage({ kind: 'disable-password', error: '', busy: false })} testID="zweifaktor-abschalten">
                 {tr('sicherheit.disable.start')}
               </Button>
             </Card>
@@ -176,9 +176,9 @@ export function SecurityScreen({ onBack }: SecurityScreenProps) {
             <Card style={styles.card}>
               <Text style={styles.sectionTitle}>{tr('sicherheit.enable.passwordTitle')}</Text>
               <Feld label={tr('sicherheit.password')} error={stage.error}>
-                <Input type="password" value={password} onChange={setPassword} placeholder="••••••••" autoComplete="current-password" onSubmit={() => void submitEnablePassword()} />
+                <Input type="password" value={password} onChange={setPassword} placeholder="••••••••" autoComplete="current-password" testID="zweifaktor-passwort" onSubmit={() => void submitEnablePassword()} />
               </Feld>
-              <Button onPress={() => void submitEnablePassword()} disabled={stage.busy || !password}>
+              <Button onPress={() => void submitEnablePassword()} disabled={stage.busy || !password} testID="zweifaktor-passwort-weiter">
                 {stage.busy ? tr('sicherheit.busy') : tr('sicherheit.enable.confirm')}
               </Button>
             </Card>
@@ -188,13 +188,13 @@ export function SecurityScreen({ onBack }: SecurityScreenProps) {
             <Card style={styles.card}>
               <Text style={styles.sectionTitle}>{tr('sicherheit.enable.setupTitle')}</Text>
               <QrMark value={stage.setup.totpURI} size={168} accessibilityLabel={tr('sicherheit.enable.qrLabel')} />
-              <Text style={styles.secret}>{stage.setup.totpURI}</Text>
+              <Text style={styles.secret} testID="zweifaktor-totp-uri">{stage.setup.totpURI}</Text>
               <Text style={styles.sectionBody}>{tr('sicherheit.enable.backupCodes')}</Text>
-              <Text style={styles.codes}>{stage.setup.backupCodes.join('  ')}</Text>
+              <Text style={styles.codes} testID="zweifaktor-backup-codes">{stage.setup.backupCodes.join('  ')}</Text>
               <Feld label={tr('sicherheit.enable.codeLabel')} error={stage.error}>
-                <Input type="numeric" value={code} onChange={setCode} placeholder="123456" autoComplete="one-time-code" onSubmit={() => void submitCode()} />
+                <Input type="numeric" value={code} onChange={setCode} placeholder="123456" autoComplete="one-time-code" testID="zweifaktor-code" onSubmit={() => void submitCode()} />
               </Feld>
-              <Button onPress={() => void submitCode()} disabled={stage.busy || !code}>
+              <Button onPress={() => void submitCode()} disabled={stage.busy || !code} testID="zweifaktor-code-bestaetigen">
                 {stage.busy ? tr('sicherheit.busy') : tr('sicherheit.enable.verify')}
               </Button>
             </Card>
@@ -204,9 +204,9 @@ export function SecurityScreen({ onBack }: SecurityScreenProps) {
             <Card style={styles.card}>
               <Text style={styles.sectionTitle}>{tr('sicherheit.disable.passwordTitle')}</Text>
               <Feld label={tr('sicherheit.password')} error={stage.error}>
-                <Input type="password" value={password} onChange={setPassword} placeholder="••••••••" autoComplete="current-password" onSubmit={() => void submitDisablePassword()} />
+                <Input type="password" value={password} onChange={setPassword} placeholder="••••••••" autoComplete="current-password" testID="zweifaktor-passwort" onSubmit={() => void submitDisablePassword()} />
               </Feld>
-              <Button onPress={() => void submitDisablePassword()} disabled={stage.busy || !password}>
+              <Button onPress={() => void submitDisablePassword()} disabled={stage.busy || !password} testID="zweifaktor-abschalten-bestaetigen">
                 {stage.busy ? tr('sicherheit.busy') : tr('sicherheit.disable.confirm')}
               </Button>
             </Card>
