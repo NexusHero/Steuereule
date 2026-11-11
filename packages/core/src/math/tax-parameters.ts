@@ -51,6 +51,8 @@ export interface ChildrenParameters {
   readonly childAllowanceTotalEur: number
   /** § 24b EStG: Entlastungsbetrag für Alleinerziehende. */
   readonly singleParentReliefEur: number
+  /** § 24b Abs. 2 Satz 2 EStG: Erhöhung des Entlastungsbetrags je weiterem Kind. */
+  readonly singleParentAdditionalChildEur: number
 }
 
 /** § 149 Abs. 2 AO / § 152 AO / § 169 AO: Gesetzliche Abgabefristen und Verspätungszuschläge. */
@@ -162,13 +164,16 @@ const FILING_DEADLINES_BY_YEAR: Readonly<Record<IncomeTaxYear, string>> = {
   2023: '2024-09-02',
   2024: '2025-07-31',
   2025: '2026-07-31',
-  2026: '2027-07-31',
+  // 31.07.2027 is a Saturday: § 108 Abs. 3 AO moves the deadline to Monday 02.08.2027 (#450 Teil 6).
+  2026: '2027-08-02',
 }
 
 const VOLUNTARY_FILING_DEADLINES_BY_YEAR: Readonly<Record<IncomeTaxYear, string>> = {
   2022: '2026-12-31',
   2023: '2027-12-31',
-  2024: '2028-12-31',
+  // 31.12.2028 is a Sunday and 01.01.2029 a holiday: the Festsetzungsfrist ends on 02.01.2029
+  // (§ 108 Abs. 3 AO, BFH 20.01.2016 – VI R 14/15).
+  2024: '2029-01-02',
   2025: '2029-12-31',
   2026: '2030-12-31',
 }
@@ -207,6 +212,7 @@ function buildParametersForYear(year: IncomeTaxYear): TaxYearParameters {
       beaAllowanceEur: STATIC_BEA_EUR,
       childAllowanceTotalEur: childData.childAllowanceOnly + STATIC_BEA_EUR,
       singleParentReliefEur: childData.singleParentRelief,
+      singleParentAdditionalChildEur: 240,
     },
     deadlines: {
       standardFilingDeadline: FILING_DEADLINES_BY_YEAR[year],

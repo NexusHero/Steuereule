@@ -8952,7 +8952,7 @@
         "properties": {
           "filingDeadline": {
             "type": "string",
-            "example": "2027-07-31",
+            "example": "2027-08-02",
             "description": "Die Abgabefrist (§ 149 Abs. 2 AO), ISO yyyy-mm-dd."
           },
           "today": {

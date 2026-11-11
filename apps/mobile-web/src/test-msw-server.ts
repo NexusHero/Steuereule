@@ -172,7 +172,7 @@ export const EMPTY_RENTAL_RESPONSE: RentalResponseDto = {
  * EMPTY_* responses.
  */
 export const EMPTY_DEADLINES_RESPONSE: DeadlinesResponseDto = {
-  filingDeadline: '2027-07-31',
+  filingDeadline: '2027-08-02',
   today: '2026-10-25',
   level: 'keine',
   remainingDays: 279,

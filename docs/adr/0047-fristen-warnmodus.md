@@ -28,7 +28,7 @@ read-only-API-Modul, ein Banner im Cockpit:
 
 1. **Abgabefrist als explizites Regelwerk (`abgabefristFuer`)** — § 149 Abs. 2 AO: 31. Juli des
    Folgejahres (generell seit VZ 2018). Eine explizite Tabelle je Jahr (2024 → 31.07.2025,
-   2025 → 31.07.2026, 2026 → 31.07.2027), zitiert, im Test gepinnt — nie aus „aktuellen" Werten
+   2025 → 31.07.2026, 2026 → 02.08.2027, weil der 31.07.2027 ein Samstag ist, § 108 Abs. 3 AO), zitiert, im Test gepinnt — nie aus „aktuellen" Werten
    abgeleitet (Produkt-ADR-022). Ein Jahr außerhalb der Tabelle WIRFT (throw, don't approximate —
    dieselbe Regel wie tarif.ts); die rückwirkenden Jahre (bis 4) kommen mit 10.8 dazu, dann
    wächst die Tabelle.

@@ -10,6 +10,7 @@ import {
   openSalaryCertificateFields,
   commuterAllowance,
   taxEstimateEmployee,
+  homeOfficeAllowance,
   taxEstimateCrossBorder,
   depreciationRatePercent,
   claimMonths,
@@ -88,15 +89,19 @@ export class TaxEstimateService {
     }
 
     const numbers = employeeFromAnswers(answers)
-    const allowance = commuterAllowanceFrom(year, path)
+    const allowance = commuterAllowanceFrom(year, path) + homeOfficeAllowanceFrom(year, path)
     const churchTaxOpen = masterData?.religion !== undefined && masterData?.religion !== null && masterData.religion !== 'VD'
     const laterCount = countLaterAmounts(answers, boostersEnabled)
+    // § 24b EStG: not married, at least one child, and no other adult in the household (Abs. 3).
     const singleParent =
       answers.kinder !== undefined &&
       answers.kinder !== 'Nein' &&
       (answers.familienstand === 'Ledig' ||
         answers.familienstand === 'Geschieden oder getrennt' ||
-        answers.familienstand === 'Verwitwet')
+        answers.familienstand === 'Verwitwet') &&
+      answers['ae-weitere-person'] !== 'Ja' &&
+      answers['ae-haushaltsgemeinschaft'] !== 'Ja'
+    const singleParentChildren = singleParent ? await this.childrenForRelief(userId, year, answers) : 0
     const childrenBracket = burdenChildrenBracket(answers.kinder)
     const householdReductionEur = boostersEnabled ? householdServicesFromAnswers(answers, year).totalReductionEur : 0
     const healthExpensesEur = boostersEnabled ? extraordinaryBurdenFromAnswers(answers) : 0
@@ -140,6 +145,7 @@ export class TaxEstimateService {
           householdReductionEur,
           healthExpensesEur,
           singleParent,
+          singleParentChildren,
           childrenBracket,
         }),
         churchTaxOpen,
@@ -163,12 +169,20 @@ export class TaxEstimateService {
           householdReductionEur,
           healthExpensesEur,
           singleParent,
+          singleParentChildren,
           childrenBracket,
         }),
         churchTaxOpen,
         laterCount,
       )
     }, { 'tax.year': year, 'user.id': userId })
+  }
+
+  /** § 24b Abs. 2 Satz 2: the recorded children, else what the interview says (1 or "2 oder mehr" → 2). */
+  private async childrenForRelief(userId: string, year: number, answers: Answers): Promise<number> {
+    const recorded = this.kinder ? (await this.kinder.listForUserAndYear(userId, year)).length : 0
+    if (recorded > 0) return recorded
+    return answers.kinder === '2 oder mehr' ? 2 : 1
   }
 
   /** ADR-0054: a couple's estimate from both spouses' figures — only once the joint return for the year is set up. */
@@ -238,7 +252,7 @@ export class TaxEstimateService {
     const answers = answersFrom(interviewRows)
     const laterCount = countLaterAmounts(answers, boostersEnabled)
     const numbers = employeeFromAnswers(answers)
-    const allowance = commuterAllowanceFrom(year, path)
+    const allowance = commuterAllowanceFrom(year, path) + homeOfficeAllowanceFrom(year, path)
     if (chRecord && (answers.ausland === CH_FOREIGN || lstbRecord === null)) {
       const values = salaryCertificateValuesFromRecord(chRecord)
       const exchangeRate = exchangeRateFromRecord(chRecord)
@@ -354,6 +368,11 @@ function commuterAllowanceFrom(year: number, path: CommuteInputs | null): number
   } catch {
     return 0
   }
+}
+
+/** Homeoffice-Pauschale from the home-office days of the Arbeitstage mask (#450 Teil 6). */
+function homeOfficeAllowanceFrom(year: number, path: CommuteInputs | null): number {
+  return path?.homeOfficeDays ? homeOfficeAllowance(year, path.homeOfficeDays) : 0
 }
 
 function withEstimateExtras(estimate: TaxEstimate, churchTaxOpen: boolean, laterCount: number): TaxEstimateStatus {

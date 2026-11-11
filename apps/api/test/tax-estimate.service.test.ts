@@ -63,7 +63,8 @@ describe('SteuerschaetzungService', () => {
 
     const status = range(await service.getState('u', 2025))
 
-    expect(status.werbungskosten).toBe(2019)
+    // Entfernungspauschale 2.019 € plus Homeoffice-Pauschale 20 Tage × 6 € = 120 € (#450 Teil 6).
+    expect(status.werbungskosten).toBe(2019 + 120)
   })
 
   it('names what is still missing instead of estimating from an incomplete LStB', async () => {
@@ -207,5 +208,35 @@ describe('SteuerschaetzungService', () => {
     expect(widened.result.from).toBe(baseline.result.from)
     expect(widened.result.to).toBe(baseline.result.to + 2 * UNCERTAINTY_PER_ITEM)
     expect(widened.laterAmounts).toBe(2)
+  })
+
+  describe('§ 24b Entlastungsbetrag (#450 Teil 6)', () => {
+    const single = { ...EMPLOYED, familienstand: 'Ledig', kinder: '2 oder mehr' }
+
+    it('lowers the taxable income by 4.260 € + 240 € for the second child', async () => {
+      const base = setup()
+      base.interview.seed('u', 2025, { ...EMPLOYED, familienstand: 'Ledig' })
+      base.lstb.seed({ userId: 'u', taxYear: 2025, bruttoarbeitslohn: '45000', lohnsteuer: '6100', sozialversicherung: '9200' })
+      const without = range(await base.service.getState('u', 2025))
+
+      const parent = setup()
+      parent.interview.seed('u', 2025, single)
+      parent.lstb.seed({ userId: 'u', taxYear: 2025, bruttoarbeitslohn: '45000', lohnsteuer: '6100', sozialversicherung: '9200' })
+      const withRelief = range(await parent.service.getState('u', 2025))
+
+      expect(without.taxableIncome.from - withRelief.taxableIncome.from).toBe(4260 + 240)
+    })
+
+    it('grants no relief when another adult lives in the household (§ 24b Abs. 3)', async () => {
+      const base = setup()
+      base.interview.seed('u', 2025, { ...EMPLOYED, familienstand: 'Ledig' })
+      base.lstb.seed({ userId: 'u', taxYear: 2025, bruttoarbeitslohn: '45000', lohnsteuer: '6100', sozialversicherung: '9200' })
+      const without = range(await base.service.getState('u', 2025))
+
+      const shared = setup()
+      shared.interview.seed('u', 2025, { ...single, 'ae-haushaltsgemeinschaft': 'Ja' })
+      shared.lstb.seed({ userId: 'u', taxYear: 2025, bruttoarbeitslohn: '45000', lohnsteuer: '6100', sozialversicherung: '9200' })
+      expect(range(await shared.service.getState('u', 2025)).taxableIncome).toEqual(without.taxableIncome)
+    })
   })
 })

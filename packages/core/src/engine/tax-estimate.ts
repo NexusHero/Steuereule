@@ -36,8 +36,10 @@ export interface EmployeeEstimateInput {
   readonly householdReductionEur?: number | undefined
   /** § 33 EStG self-paid medical expenses in EUR (optional, defaults to 0). */
   readonly healthExpensesEur?: number | undefined
-  /** § 24b EStG single-parent status used when deriving GdE for § 33 reasonable burden. */
+  /** § 24b EStG: single parent — the Entlastungsbetrag lowers the taxable income (and the GdE for § 33). */
   readonly singleParent?: boolean | undefined
+  /** § 24b Abs. 2 Satz 2 EStG: children the relief counts (240 € more for each beyond the first; default 1). */
+  readonly singleParentChildren?: number | undefined
   /** § 33 Abs. 3 EStG children bracket (defaults to '0'). */
   readonly childrenBracket?: BurdenChildrenBracket | undefined
 }
@@ -61,8 +63,10 @@ export interface CrossBorderEstimateInput {
   readonly householdReductionEur?: number | undefined
   /** § 33 EStG self-paid medical expenses in EUR (optional, defaults to 0). */
   readonly healthExpensesEur?: number | undefined
-  /** § 24b EStG single-parent status used when deriving GdE for § 33 reasonable burden. */
+  /** § 24b EStG: single parent — the Entlastungsbetrag lowers the taxable income (and the GdE for § 33). */
   readonly singleParent?: boolean | undefined
+  /** § 24b Abs. 2 Satz 2 EStG: children the relief counts (240 € more for each beyond the first; default 1). */
+  readonly singleParentChildren?: number | undefined
   /** § 33 Abs. 3 EStG children bracket (defaults to '0'). */
   readonly childrenBracket?: BurdenChildrenBracket | undefined
 }
@@ -94,6 +98,7 @@ export function taxEstimateEmployee(e: EmployeeEstimateInput): TaxEstimate {
     householdReductionEur: e.householdReductionEur,
     healthExpensesEur: e.healthExpensesEur,
     singleParent: e.singleParent,
+    singleParentChildren: e.singleParentChildren,
     childrenBracket: e.childrenBracket,
   })
 }
@@ -122,6 +127,7 @@ export function taxEstimateCrossBorder(e: CrossBorderEstimateInput): TaxEstimate
     householdReductionEur: e.householdReductionEur,
     healthExpensesEur: e.healthExpensesEur,
     singleParent: e.singleParent,
+    singleParentChildren: e.singleParentChildren,
     childrenBracket: e.childrenBracket,
   })
 }
@@ -138,10 +144,14 @@ function estimate(input: {
   readonly householdReductionEur?: number | undefined
   readonly healthExpensesEur?: number | undefined
   readonly singleParent?: boolean | undefined
+  readonly singleParentChildren?: number | undefined
   readonly childrenBracket?: BurdenChildrenBracket | undefined
 }): TaxEstimate {
   const params = getTaxYearParameters(input.year)
-  const singleParentRelief = input.singleParent ? params.children.singleParentReliefEur : 0
+  const furtherChildren = Math.max(0, Math.floor(input.singleParentChildren ?? 1) - 1)
+  const singleParentRelief = input.singleParent
+    ? params.children.singleParentReliefEur + furtherChildren * params.children.singleParentAdditionalChildEur
+    : 0
   const gdeEur = Math.max(0, input.einnahmen - input.werbungskosten - singleParentRelief)
   const deductibleBurdenEur =
     (input.healthExpensesEur ?? 0) > 0
@@ -156,8 +166,9 @@ function estimate(input: {
         )
       : 0
   const specialExpenses = Math.max(input.specialExpensesLumpSum, input.donations)
+  // § 24b is deducted from the Summe der Einkünfte, so it lowers the zvE as well (#450 Teil 6).
   const zve = (provision: number) =>
-    Math.max(0, input.einnahmen - input.werbungskosten - provision - specialExpenses - deductibleBurdenEur)
+    Math.max(0, input.einnahmen - input.werbungskosten - singleParentRelief - provision - specialExpenses - deductibleBurdenEur)
   const taxableIncome = { from: zve(input.provision.to), to: zve(input.provision.from) }
   const reductionEur = input.householdReductionEur ?? 0
   const incomeTaxOwed = {
@@ -179,6 +190,17 @@ function estimate(input: {
       to: input.alreadyPaid(incomeTaxOwed.from) - soliRange.from,
     },
   }
+}
+
+/**
+ * Homeoffice-Pauschale (§ 4 Abs. 5 Satz 1 Nr. 6c EStG): per day worked at home, capped by days and
+ * euros of the year (2022: 5 € / 120 days / 600 €; from 2023: 6 € / 210 days / 1.260 €). It is part of
+ * the Werbungskosten, so it competes with the Arbeitnehmer-Pauschbetrag.
+ */
+export function homeOfficeAllowance(year: number, homeOfficeDays: number): number {
+  if (!isSupportedIncomeTaxYear(year) || !Number.isFinite(homeOfficeDays) || homeOfficeDays <= 0) return 0
+  const { dailyRateEur, maxDays, maxAnnualEur } = getTaxYearParameters(year).homeOffice
+  return Math.min(Math.min(Math.floor(homeOfficeDays), maxDays) * dailyRateEur, maxAnnualEur)
 }
 
 function soli(incomeTaxAmount: number, year: number): number {
