@@ -4,7 +4,7 @@ import type { BaseLanguageModelInput } from '@langchain/core/language_models/bas
 import { AIMessageChunk, type BaseMessage } from '@langchain/core/messages'
 import { ChatGenerationChunk, type ChatResult } from '@langchain/core/outputs'
 import type { Runnable } from '@langchain/core/runnables'
-import type { AdvisorStreamEvent, AdvisorTurnResult, CaseDigest } from '@steuereule/core'
+import { buildRecordHandles, type AdvisorPreviewTarget, type AdvisorStreamEvent, type AdvisorTurnRequest, type AdvisorTurnResult, type CaseDigest } from '@steuereule/core'
 import { Logger } from '@nestjs/common'
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
@@ -23,6 +23,7 @@ import {
   toProviderToolSchema,
   extractReasoningText,
   LangGraphAdvisorEngine,
+  unresolvedRejections,
 } from '../src/ki/langgraph-advisor.engine.js'
 import { AI_WRITABLE_FIELDS, describeAiWritableFields, validateStageTarget } from '../src/ki/advisor-safety.js'
 
@@ -88,7 +89,7 @@ function runtime(provider: AiProviderKind, extra: Partial<ResolvedAiSlotConfig> 
   }
 }
 
-async function run(engine: LangGraphAdvisorEngine, extra: { planRequired?: boolean } = {}) {
+async function run(engine: LangGraphAdvisorEngine, extra: Partial<Pick<AdvisorTurnRequest, 'planRequired' | 'records' | 'previewEffect'>> = {}) {
   const events: AdvisorStreamEvent[] = []
   for await (const ev of engine.streamTurn({ message: 'Lohnt sich mein Arbeitsweg?', digest, ...extra })) events.push(ev)
   const done = events.find((e) => e.event === 'done')
@@ -336,7 +337,9 @@ describe('the owl knows the real field names (#476, found by playing a customer 
     expect(catalog).toContain('weg (ganze Zahl 0–999)')
     expect(catalog).toContain('kind [braucht `instance`]')
     // The model wrote „Pkw“; the mask only takes the exact values.
-    expect(catalog).toContain('transport („pkw“ | „oepnv“ | „andere“, genau so geschrieben)')
+    expect(catalog).toContain('transport („pkw“ | „oepnv“ | „andere“)')
+    expect(catalog).toContain('registeredWithMeAllYear („true“ | „false“)')
+    expect(catalog).toContain('rentenart („GesetzlicheRente“')
   })
 
   it('offers no protected screen and no protected field', () => {
@@ -397,5 +400,254 @@ describe('the owl knows the real field names (#476, found by playing a customer 
     const model = new ChunkedChatModel([[answer('Antwort.')]])
     await run(new LangGraphAdvisorEngine(runtime('google-genai'), () => model))
     expect(model.toolChoices).toContain('none')
+  })
+})
+
+describe('values are checked against the field catalogue before a draft exists (ADR-0066)', () => {
+  const stage = (args: Record<string, unknown>): AIMessageChunk =>
+    chunkOf({ content: '', tool_call_chunks: [{ name: 'stage_field_draft', args: JSON.stringify({ label: 'Entwurf', ...args }), index: 0, id: 'c1' }] })
+
+  it('stores the tidied value in the draft, for the main field and for companions', async () => {
+    const model = new ChunkedChatModel([
+      [stage({ screen: 'commute', field: 'oneWayKm', newValue: '38', companionFields: { transport: 'Pkw', workdays: '1, 2,3,4,5' } })],
+      [answer('Entwurf angelegt.')],
+    ])
+    const { result } = await run(new LangGraphAdvisorEngine(runtime('google-genai'), () => model))
+    expect(result.meta.action).toMatchObject({ field: 'oneWayKm', newValue: '38', companionFields: { transport: 'pkw', workdays: '1,2,3,4,5' } })
+  })
+
+  it('turns an amount written with separators and currency into plain digits', async () => {
+    const model = new ChunkedChatModel([[stage({ screen: 'lstb', field: 'bruttoarbeitslohn', newValue: '62.000 €' })], [answer('ok')]])
+    const { result } = await run(new LangGraphAdvisorEngine(runtime('google-genai'), () => model))
+    expect(result.meta.action?.newValue).toBe('62000')
+  })
+
+  it('makes no draft for a value the field cannot hold, and tells the model why', async () => {
+    const model = new ChunkedChatModel([[stage({ screen: 'rente', field: 'rentenart', newValue: 'Gesetzliche Altersrente' })], [answer('Das ging nicht.')]])
+    const { result } = await run(new LangGraphAdvisorEngine(runtime('google-genai'), () => model))
+    expect(result.meta.action).toBeUndefined()
+    const toolResult = String(model.seenMessages[1]!.at(-1)!.content)
+    expect(toolResult).toContain('INVALID_VALUE')
+    expect(toolResult).toContain('GesetzlicheRente')
+  })
+
+  it('refuses the whole draft when one companion value is wrong', async () => {
+    const model = new ChunkedChatModel([
+      [stage({ screen: 'commute', field: 'oneWayKm', newValue: '38', companionFields: { transport: 'Fahrrad' } })],
+      [answer('Das ging nicht.')],
+    ])
+    const { result } = await run(new LangGraphAdvisorEngine(runtime('google-genai'), () => model))
+    expect(result.meta.action).toBeUndefined()
+  })
+})
+
+describe('several drafts in one answer (ADR-0066)', () => {
+  const call = (index: number, args: Record<string, unknown>) => ({ name: 'stage_field_draft', args: JSON.stringify(args), index, id: `c${index}` })
+  const stageAll = (...calls: Array<Record<string, unknown>>): AIMessageChunk => chunkOf({ content: '', tool_call_chunks: calls.map((args, i) => call(i, args)) })
+
+  const HOMEOFFICE = { screen: 'commute', field: 'homeOfficeDays', newValue: '30', label: 'Homeoffice-Tage' }
+  const HANDWERKER = { screen: 'interview', field: 'haushalt-handwerker-betrag', newValue: '5000', label: 'Handwerkerkosten', companionFields: { 'haushalt-gate': 'Ja' } }
+  const SPENDEN = { screen: 'interview', field: 'spenden-betrag', newValue: '200', label: 'Spenden', companionFields: { spenden: 'Ja' } }
+
+  it('keeps every draft of one message: three things said, three drafts made', async () => {
+    // The customer run: „30 Tage Homeoffice, 5.000 € Handwerker, 200 € Spenden“ left one draft and a
+    // reply that claimed three.
+    const model = new ChunkedChatModel([[stageAll(HOMEOFFICE, HANDWERKER, SPENDEN)], [answer('Drei Entwürfe.')]])
+    const { events, result } = await run(new LangGraphAdvisorEngine(runtime('google-genai'), () => model))
+
+    expect(result.meta.action).toBeUndefined()
+    expect(result.meta.actions?.map((a) => `${a.screen}.${a.field}=${a.newValue}`)).toEqual([
+      'commute.homeOfficeDays=30',
+      'interview.haushalt-handwerker-betrag=5000',
+      'interview.spenden-betrag=200',
+    ])
+    expect(new Set(result.meta.actions?.map((a) => a.actionId)).size).toBe(3)
+    expect(events.filter((e) => e.event === 'action')).toHaveLength(3)
+  })
+
+  it('collects drafts over several tool rounds too', async () => {
+    const model = new ChunkedChatModel([[stageAll(HOMEOFFICE)], [stageAll(SPENDEN)], [answer('Zwei Entwürfe.')]])
+    const { result } = await run(new LangGraphAdvisorEngine(runtime('google-genai'), () => model))
+    expect(result.meta.actions).toHaveLength(2)
+  })
+
+  it('keeps a single draft where it always was', async () => {
+    const model = new ChunkedChatModel([[stageAll(SPENDEN)], [answer('Ein Entwurf.')]])
+    const { result } = await run(new LangGraphAdvisorEngine(runtime('google-genai'), () => model))
+    expect(result.meta.action?.field).toBe('spenden-betrag')
+    expect(result.meta.actions).toBeUndefined()
+  })
+
+  it('treats a second draft for the same field as a correction, not as a second draft', async () => {
+    const model = new ChunkedChatModel([[stageAll(HOMEOFFICE)], [stageAll({ ...HOMEOFFICE, newValue: '45' })], [answer('Korrigiert.')]])
+    const { result } = await run(new LangGraphAdvisorEngine(runtime('google-genai'), () => model))
+    expect(result.meta.action?.newValue).toBe('45')
+    expect(result.meta.actions).toBeUndefined()
+  })
+
+  it('says under the answer what could not be prepared, when the model does not get it right', async () => {
+    const model = new ChunkedChatModel([
+      [stageAll(SPENDEN, { screen: 'rente', field: 'rentenart', newValue: 'Gesetzliche Altersrente', label: 'Rentenart' })],
+      [answer('Ich habe beides vorbereitet.')],
+    ])
+    const { result } = await run(new LangGraphAdvisorEngine(runtime('google-genai'), () => model))
+    expect(result.meta.action?.field).toBe('spenden-betrag')
+    expect(result.meta.notStaged).toHaveLength(1)
+    expect(result.meta.notStaged![0]).toMatchObject({ label: 'Rentenart' })
+    expect(result.meta.notStaged![0]!.reason).toContain('GesetzlicheRente')
+    expect(result.meta.notStaged![0]!.reason).not.toMatch(/^[A-Z_]+:/)
+  })
+
+  it('forgets a refusal once the corrected draft went through', async () => {
+    const model = new ChunkedChatModel([
+      [stageAll({ screen: 'rente', field: 'rentenart', newValue: 'Gesetzliche Altersrente', label: 'Rentenart' })],
+      [stageAll({ screen: 'rente', field: 'rentenart', newValue: 'GesetzlicheRente', label: 'Rentenart' })],
+      [answer('Vorbereitet.')],
+    ])
+    const { result } = await run(new LangGraphAdvisorEngine(runtime('google-genai'), () => model))
+    expect(result.meta.action?.newValue).toBe('GesetzlicheRente')
+    expect(result.meta.notStaged).toBeUndefined()
+  })
+
+  it('stops a model that keeps producing drafts', async () => {
+    const many = Array.from({ length: 10 }, (_, i) => ({ screen: 'chLohnausweis', field: ['lohn', 'gehaltsnebenleistungen', 'unregelmaessige-leistungen', 'kapitalleistungen', 'beteiligungsrechte', 'sitzungsgelder', 'andere-leistungen', 'bruttolohn-total', 'ahv-beitraege', 'berufliche-vorsorge'][i]!, newValue: '100', label: `Feld ${i}` }))
+    const model = new ChunkedChatModel([[stageAll(...many)], [answer('Viele.')]])
+    const { result } = await run(new LangGraphAdvisorEngine(runtime('google-genai'), () => model))
+    expect(result.meta.actions).toHaveLength(8)
+  })
+})
+
+describe('unresolvedRejections', () => {
+  it('lists each refused draft once', () => {
+    const rejected = [
+      { label: 'Miete', screen: 'vermietung', reason: 'kein Objekt' },
+      { label: 'Miete', screen: 'vermietung', reason: 'kein Objekt' },
+    ]
+    expect(unresolvedRejections(rejected, [])).toEqual([{ label: 'Miete', reason: 'kein Objekt' }])
+  })
+})
+
+describe('rental objects and children by their neutral name (ADR-0066)', () => {
+  const stage = (args: Record<string, unknown>): AIMessageChunk =>
+    chunkOf({ content: '', tool_call_chunks: [{ name: 'stage_field_draft', args: JSON.stringify(args), index: 0, id: 'c0' }] })
+  const RENT = { screen: 'vermietung', field: 'mieteinnahmen', newValue: '9600', label: 'Mieteinnahmen' }
+  const two = { vermietung: buildRecordHandles('vermietung', ['rent-a', 'rent-b']) }
+  const engineWith = (model: ChunkedChatModel) => new LangGraphAdvisorEngine(runtime('google-genai'), () => model)
+
+  it('puts the stored record behind „Objekt 2“ into the draft', async () => {
+    const model = new ChunkedChatModel([[stage({ ...RENT, instance: 'Objekt 2' })], [answer('Vorbereitet.')]])
+    const { result } = await run(engineWith(model), { records: two })
+    expect(result.meta.action).toMatchObject({ screen: 'vermietung', field: 'mieteinnahmen', instance: 'rent-b', newValue: '9600', label: 'Mieteinnahmen (Objekt 2)' })
+  })
+
+  it('never shows the model the id', async () => {
+    const model = new ChunkedChatModel([[stage({ ...RENT, instance: 'Objekt 2' })], [answer('Vorbereitet.')]])
+    await run(engineWith(model), { records: two })
+    const seen = JSON.stringify(model.seenMessages.map((round) => round.map((m) => m.content)))
+    expect(seen).toContain('Objekt 1, Objekt 2')
+    expect(seen).not.toContain('rent-a')
+    expect(seen).not.toContain('rent-b')
+  })
+
+  it('needs no name while there is one record', async () => {
+    const model = new ChunkedChatModel([[stage(RENT)], [answer('Vorbereitet.')]])
+    const { result } = await run(engineWith(model), { records: { vermietung: buildRecordHandles('vermietung', ['only']) } })
+    expect(result.meta.action?.instance).toBe('only')
+  })
+
+  it('asks instead of guessing when several records fit', async () => {
+    const model = new ChunkedChatModel([[stage(RENT)], [answer('Für welches Objekt?')]])
+    const { result } = await run(engineWith(model), { records: two })
+    expect(result.meta.action).toBeUndefined()
+    // A question to the user is not a failure to report.
+    expect(result.meta.notStaged).toBeUndefined()
+    expect(JSON.stringify(model.seenMessages[1]!.map((m) => m.content))).toContain('RECORD_REQUIRED')
+  })
+
+  it('refuses an invented record', async () => {
+    const model = new ChunkedChatModel([[stage({ ...RENT, instance: 'Ferienwohnung Sylt' })], [answer('Hm.')]])
+    const { result } = await run(engineWith(model), { records: two })
+    expect(result.meta.action).toBeUndefined()
+    expect(result.meta.notStaged?.[0]?.reason).toContain('Objekt 1, Objekt 2')
+  })
+
+  it('sends the user to the mask when no record exists: the owl creates none', async () => {
+    const model = new ChunkedChatModel([[stage({ ...RENT, instance: 'Objekt 1' })], [answer('Lege das Objekt bitte an.')]])
+    const { events, result } = await run(engineWith(model))
+    expect(result.meta.action).toBeUndefined()
+    expect(result.meta.notStaged).toEqual([{ label: 'Mieteinnahmen', reason: expect.stringContaining('Maske Vermietung'), screen: 'vermietung' }])
+    expect(events.find((e) => e.event === 'ui_command')?.data).toMatchObject({ openMask: 'vermietung' })
+  })
+
+  it('addresses a child the same way, and tidies „Ja“ into the stored form', async () => {
+    const model = new ChunkedChatModel([
+      [stage({ screen: 'kind', field: 'childBenefitToMeAllYear', newValue: 'Ja', label: 'Kindergeld ganzjährig', instance: 'Kind 1' })],
+      [answer('Vorbereitet.')],
+    ])
+    const { result } = await run(engineWith(model), { records: { kind: buildRecordHandles('kind', ['child-1']) } })
+    expect(result.meta.action).toMatchObject({ screen: 'kind', instance: 'child-1', newValue: 'true' })
+  })
+
+  it('ignores an instance on a mask that has only one record per case', async () => {
+    const model = new ChunkedChatModel([[stage({ screen: 'commute', field: 'homeOfficeDays', newValue: '30', label: 'Homeoffice-Tage', instance: '1' })], [answer('Vorbereitet.')]])
+    const { result } = await run(engineWith(model))
+    expect(result.meta.action?.instance).toBeNull()
+  })
+})
+
+describe('the effect of a draft comes from the app\'s estimate (ADR-0066)', () => {
+  const stage = (args: Record<string, unknown>): AIMessageChunk =>
+    chunkOf({ content: '', tool_call_chunks: [{ name: 'stage_field_draft', args: JSON.stringify(args), index: 0, id: 'c0' }] })
+  const SPENDEN = { screen: 'interview', field: 'spenden-betrag', newValue: '300', label: 'Spenden', companionFields: { spenden: 'Ja' } }
+  const engineWith = (model: ChunkedChatModel) => new LangGraphAdvisorEngine(runtime('google-genai'), () => model)
+
+  it('takes the figures from the estimate and marks them as computed', async () => {
+    const asked: AdvisorPreviewTarget[] = []
+    const model = new ChunkedChatModel([[stage(SPENDEN)], [answer('Vorbereitet.')]])
+    const { result } = await run(engineWith(model), {
+      previewEffect: async (target) => {
+        asked.push(target)
+        return { kind: 'computed', beforeRefundEur: 2000, afterRefundEur: 2096, deltaEur: 96 }
+      },
+    })
+    expect(result.meta.action).toMatchObject({ effect: 'computed', beforeRefundEur: 2000, afterRefundEur: 2096, deltaEur: 96 })
+    // The whole draft is previewed, the gate before the amount it opens.
+    expect(asked).toEqual([{ screen: 'interview', instance: null, values: [['spenden', 'Ja'], ['spenden-betrag', '300']] }])
+    expect(JSON.stringify(model.seenMessages[1]!.map((m) => m.content))).toContain('\\"deltaEur\\":96')
+  })
+
+  it('shows no figure when the estimate cannot say, and tells why', async () => {
+    const model = new ChunkedChatModel([[stage(SPENDEN)], [answer('Vorbereitet.')]])
+    const { result } = await run(engineWith(model), {
+      previewEffect: async () => ({ kind: 'not-computable', hint: 'Wirkung erst berechenbar, wenn die Lohnsteuerbescheinigung da ist.' }),
+    })
+    expect(result.meta.action).toMatchObject({ effect: 'not-computable', deltaEur: 0, beforeRefundEur: 0, afterRefundEur: 0, effectHint: expect.stringContaining('Lohnsteuerbescheinigung') })
+  })
+
+  it('still makes the draft when the preview breaks, without inventing a figure', async () => {
+    const model = new ChunkedChatModel([[stage(SPENDEN)], [answer('Vorbereitet.')]])
+    const { result } = await run(engineWith(model), {
+      previewEffect: async () => {
+        throw new Error('database away')
+      },
+    })
+    expect(result.meta.action).toMatchObject({ newValue: '300', effect: 'not-computable', deltaEur: 0 })
+  })
+
+  it('keeps the approximation, unmarked, where no estimate is offered', async () => {
+    const model = new ChunkedChatModel([[stage(SPENDEN)], [answer('Vorbereitet.')]])
+    const { result } = await run(engineWith(model))
+    expect(result.meta.action?.effect).toBeUndefined()
+  })
+
+  it('answers a what-if question from the estimate as well', async () => {
+    const model = new ChunkedChatModel([
+      [chunkOf({ content: '', tool_call_chunks: [{ name: 'simulate_tax_delta', args: JSON.stringify({ screen: 'commute', field: 'homeOfficeDays', newValue: '60' }), index: 0, id: 'c0' }] })],
+      [answer('Das brächte 120 €.')],
+    ])
+    await run(engineWith(model), { previewEffect: async () => ({ kind: 'computed', beforeRefundEur: 100, afterRefundEur: 220, deltaEur: 120 }) })
+    const toolResult = JSON.stringify(model.seenMessages[1]!.map((m) => m.content))
+    expect(toolResult).toContain('\\"effect\\":\\"computed\\"')
+    expect(toolResult).toContain('\\"deltaEur\\":120')
   })
 })

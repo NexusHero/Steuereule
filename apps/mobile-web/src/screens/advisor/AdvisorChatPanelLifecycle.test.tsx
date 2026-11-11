@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
 import { ThemeProvider } from '@steuereule/ui'
-import type { AdvisorChatMessageView } from '@steuereule/core'
+import type { AdvisorActionProposal, AdvisorChatMessageView } from '@steuereule/core'
 import { createAppI18n } from '../../i18n/app-i18n'
 import { AdvisorChatPanel, type AdvisorChatPanelProps } from './AdvisorChatPanel'
 
@@ -137,5 +137,75 @@ describe('AdvisorChatPanel: line of thought and rating on stored answers (#476)'
   it('offers no rating where the chat cannot store one', () => {
     renderPanel({ messages: [user('u1', 'Frage'), owl('a1', 'Antwort.')] })
     expect(screen.queryByTestId('advisor-feedback')).toBeNull()
+  })
+})
+
+describe('AdvisorChatPanel: several drafts in one answer (ADR-0066)', () => {
+  const draft = (actionId: string, label: string, newValue: string): AdvisorActionProposal => ({
+    actionId, status: 'pending', screen: 'commute', field: `f-${actionId}`, instance: null, label,
+    previousValue: null, newValue, beforeRefundEur: 0, afterRefundEur: 0, deltaEur: 0, reason: 'vom Nutzer genannt',
+    sourceId: 'estg-9' as AdvisorActionProposal['sourceId'],
+  })
+
+  it('shows one card per draft, each applied on its own', () => {
+    const onApplyAction = vi.fn()
+    renderPanel({
+      messages: [user('u1', 'Drei Dinge'), owl('a1', 'Drei Entwürfe.', { meta: { actions: [draft('d1', 'Homeoffice-Tage', '30'), draft('d2', 'Handwerkerkosten', '5000'), draft('d3', 'Spenden', '200')] } })],
+      onApplyAction,
+    })
+    const cards = screen.getAllByTestId('advisor-action-card')
+    expect(cards).toHaveLength(3)
+    expect(cards.map((c) => c.textContent).join(' ')).toContain('Handwerkerkosten')
+    fireEvent.click(screen.getAllByTestId('advisor-action-apply-btn')[1]!)
+    expect(onApplyAction).toHaveBeenCalledWith('d2')
+  })
+
+  it('says what could not be prepared, with the reason', () => {
+    renderPanel({
+      messages: [user('u1', 'Miete 9600'), owl('a1', 'Ich habe es vorbereitet.', { meta: { notStaged: [{ label: 'Mieteinnahmen', reason: 'Es gibt noch kein Vermietungsobjekt.' }] } })],
+    })
+    const notice = screen.getByTestId('advisor-not-staged')
+    expect(notice.textContent).toContain('Nicht vorbereitet')
+    expect(notice.textContent).toContain('Mieteinnahmen: Es gibt noch kein Vermietungsobjekt.')
+  })
+
+  it('offers the way into the mask when a record has to be created first', () => {
+    const onInspectMask = vi.fn()
+    renderPanel({
+      messages: [user('u1', 'Miete 9600'), owl('a1', 'Lege das Objekt bitte an.', { meta: { notStaged: [{ label: 'Mieteinnahmen', reason: 'Es ist noch kein Vermietungsobjekt angelegt.', screen: 'vermietung' }] } })],
+      onInspectMask,
+    })
+    fireEvent.click(screen.getByTestId('advisor-not-staged-open-mask'))
+    expect(onInspectMask).toHaveBeenCalledWith('vermietung')
+  })
+
+  it('shows a computed effect in either direction, and says when nothing changes', () => {
+    renderPanel({
+      messages: [owl('a1', 'Drei.', { meta: { actions: [
+        { ...draft('d1', 'Spenden', '300'), effect: 'computed', deltaEur: 96 },
+        { ...draft('d2', 'Homeoffice-Tage', '0'), effect: 'computed', deltaEur: -120 },
+        { ...draft('d3', 'Fortbildung', '100'), effect: 'computed', deltaEur: 0 },
+      ] } })],
+    })
+    expect(screen.getByTestId('advisor-action-delta').textContent).toContain('96')
+    expect(screen.getByTestId('advisor-action-delta-negative').textContent).toContain('120')
+    expect(screen.getByTestId('advisor-action-effect-none').textContent).toContain('Ändert die Schätzung nicht')
+  })
+
+  it('shows no figure for an effect that cannot be computed yet, and the reason', () => {
+    renderPanel({
+      messages: [owl('a1', 'Vorbereitet.', { meta: { action: { ...draft('d1', 'Spenden', '300'), effect: 'not-computable', effectHint: 'Wirkung erst berechenbar, wenn die Lohnsteuerbescheinigung da ist.' } } })],
+    })
+    expect(screen.getByTestId('advisor-action-effect-open').textContent).toContain('Wirkung noch offen')
+    expect(screen.getByTestId('advisor-action-effect-hint').textContent).toContain('Lohnsteuerbescheinigung')
+    expect(screen.queryByTestId('advisor-action-delta')).toBeNull()
+  })
+
+  it('keeps the scanned certificate in its own review card', () => {
+    renderPanel({
+      messages: [owl('a1', 'Erkannt.', { meta: { lstbScan: {} as NonNullable<AdvisorChatMessageView['meta']>['lstbScan'], actions: [draft('d1', 'Bruttolohn', '62000')] } })],
+    })
+    expect(screen.getByTestId('advisor-lstb-scan-card')).toBeTruthy()
+    expect(screen.queryByTestId('advisor-action-card')).toBeNull()
   })
 })

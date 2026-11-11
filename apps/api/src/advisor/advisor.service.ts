@@ -11,6 +11,7 @@ import {
   provenanceKey,
   scrubUserMessagePii,
   simulateAdvisorFieldDelta,
+  buildRecordHandles,
   type AdvisorActionProposal,
   type AdvisorEngineInfo,
   type AdvisorEnginePort,
@@ -19,6 +20,9 @@ import {
   type AdvisorHistoryEntry,
   type AdvisorMessageFeedback,
   type AdvisorMessageMeta,
+  type AdvisorPreviewEffect,
+  type AdvisorPreviewTarget,
+  type AdvisorRecordHandles,
   type AdvisorStreamEvent,
   type AdvisorTurnResult,
   type AdvisorTurnUsage,
@@ -39,6 +43,7 @@ import {
   DEFAULT_AI_TURN_LIMITS,
   type AiRuntimeConfigService,
 } from '../ki/ai-runtime-config.service.js'
+import { TaxEstimateService, type TaxEstimateStatus } from '../tax-estimate/tax-estimate.service.js'
 import { TRANSACTION_RUNNER, passThroughTransactionRunner, type TransactionRunner } from '../prisma/transaction.js'
 import { CAPITAL_REPOSITORY, type CapitalRepository } from '../capital/capital.repository.js'
 import {
@@ -148,6 +153,29 @@ function describeLstbCalculation(terms: readonly LstbCalculationTerm[]): string 
   return `Aus Lohnsteuerbescheinigung: ${terms.map((t) => `Zeile ${t.line} (${EURO.format(t.amount)})`).join(' + ')}`
 }
 
+/** Thrown on purpose at the end of an effect preview: the transaction must never commit. */
+class PreviewRollback extends Error {}
+
+const midpoint = (state: Extract<TaxEstimateStatus, { kind: 'spanne' }>): number => Math.round((state.result.from + state.result.to) / 2)
+
+/** Turns the two estimates of a preview into what the draft card says; honest when there is no figure. */
+export function effectFromEstimates(states: { readonly before: TaxEstimateStatus; readonly after: TaxEstimateStatus } | null): AdvisorPreviewEffect {
+  if (states === null) return { kind: 'not-computable', hint: 'Die Wirkung lässt sich gerade nicht berechnen.' }
+  const { before, after } = states
+  if (before.kind === 'spanne' && after.kind === 'spanne') {
+    const beforeRefundEur = midpoint(before)
+    const afterRefundEur = midpoint(after)
+    return { kind: 'computed', beforeRefundEur, afterRefundEur, deltaEur: afterRefundEur - beforeRefundEur }
+  }
+  if (after.kind === 'spanne') {
+    return { kind: 'not-computable', hint: 'Mit dieser Angabe wird die Schätzung erstmals möglich; einen Unterschied zu vorher gibt es deshalb noch nicht.' }
+  }
+  if (after.kind === 'offen') {
+    return { kind: 'not-computable', hint: 'Wirkung erst berechenbar, wenn die Angaben für die Schätzung vollständig sind (z. B. die Lohnsteuerbescheinigung).' }
+  }
+  return { kind: 'not-computable', hint: 'Für deine Lebenslage gibt es noch keine automatische Schätzung; die Wirkung kann ich deshalb nicht beziffern.' }
+}
+
 @Injectable()
 export class AdvisorService {
   private readonly logger = new Logger('AdvisorTurn')
@@ -170,7 +198,38 @@ export class AdvisorService {
     @Optional() @Inject(ADVISOR_ENGINE) private readonly advisorEngine?: AdvisorEnginePort,
     @Optional() @Inject(AI_RUNTIME_CONFIG_SERVICE) private readonly runtimeConfig?: AiRuntimeConfigService,
     @Optional() @Inject(TRANSACTION_RUNNER) private readonly transactions: TransactionRunner = passThroughTransactionRunner,
+    @Optional() @Inject(TaxEstimateService) private readonly taxEstimate?: TaxEstimateService,
   ) {}
+
+  /**
+   * What a draft would do to the refund, by the app's own estimate: once for the stored return,
+   * once with the draft's fields written — inside a transaction that is always rolled back, so
+   * the preview runs through the very write path „Übernehmen“ uses and leaves nothing behind.
+   * Only offered where a real transaction exists; in-memory setups keep the approximation.
+   */
+  previewEffectFor(userId: string, taxYear: number): ((target: AdvisorPreviewTarget) => Promise<AdvisorPreviewEffect>) | undefined {
+    const estimate = this.taxEstimate
+    if (!estimate || this.transactions === passThroughTransactionRunner) return undefined
+    return async (target) => {
+      let states: { before: TaxEstimateStatus; after: TaxEstimateStatus } | null = null
+      try {
+        await this.transactions.run(async () => {
+          const before = await estimate.getState(userId, taxYear)
+          for (const [field, value] of target.values) {
+            await this.confirmationService.writeConfirmedByAdvisor(userId, taxYear, provenanceKey(target.screen, field, target.instance ?? undefined), value)
+          }
+          states = { before, after: await estimate.getState(userId, taxYear) }
+          throw new PreviewRollback()
+        })
+      } catch (error) {
+        if (!(error instanceof PreviewRollback)) {
+          this.logger.warn(`effect preview failed for ${target.screen}: ${error instanceof Error ? error.message.slice(0, 200) : String(error)}`)
+          return { kind: 'not-computable', hint: 'Die Wirkung lässt sich gerade nicht berechnen.' }
+        }
+      }
+      return effectFromEstimates(states)
+    }
+  }
 
   /** Names of the user and their children, so free text can be scrubbed before it reaches any model. */
   async knownNamesForScrubbing(userId: string, taxYear: number): Promise<string[]> {
@@ -188,6 +247,21 @@ export class AdvisorService {
       }
     }
     return names
+  }
+
+  /**
+   * The stored rental objects and children under the neutral names the owl uses for them. Only the
+   * names go to the model; the ids stay here and are filled into a draft when it is staged.
+   */
+  async loadRecordHandles(userId: string, taxYear: number): Promise<AdvisorRecordHandles> {
+    const [children, rentals] = await Promise.all([
+      this.childRepo ? this.childRepo.listForUserAndYear(userId, taxYear) : Promise.resolve([]),
+      this.rentalRepo ? this.rentalRepo.listForUserAndYear(userId, taxYear) : Promise.resolve([]),
+    ])
+    return {
+      vermietung: buildRecordHandles('vermietung', rentals.map((rental) => rental.id)),
+      kind: buildRecordHandles('kind', children.map((child) => child.id)),
+    }
   }
 
   async buildCaseDigest(userId: string, taxYear: number): Promise<CaseDigest> {
@@ -523,6 +597,8 @@ export class AdvisorService {
         actionIdFactory,
         signal,
         planRequired: dto.quickAction === 'forgotten_check',
+        records: await this.loadRecordHandles(userId, taxYear),
+        previewEffect: this.previewEffectFor(userId, taxYear),
       })) {
         if (ev.event === 'token') {
           firstTokenMs ??= Date.now() - startedAt

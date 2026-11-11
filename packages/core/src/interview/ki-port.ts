@@ -2,6 +2,7 @@ import type { Item, Source } from '../engine/berechnung'
 import type { IncomeType } from '../domains/income-types'
 import type { AdvisorActionProposal, AdvisorChatMessageView, AdvisorMessageMeta, AdvisorTwoPathsProposal, CaseDigest } from './advisor'
 import type { Screen } from './marking'
+import type { AdvisorRecordHandles } from './record-handles'
 
 /** The schema the LLM must answer. */
 export interface AiProposal {
@@ -26,7 +27,26 @@ export interface AdvisorTurnRequest {
   readonly signal?: AbortSignal | undefined
   /** The „Was hab ich vergessen?“ quick start always opens with a plan (#451 decision 17). */
   readonly planRequired?: boolean | undefined
+  /** The stored records of the per-record masks under their neutral names; ids never reach the model. */
+  readonly records?: AdvisorRecordHandles | undefined
+  /**
+   * What a draft would do to the refund, worked out by the app's own estimate. Without it the
+   * engine falls back to the approximation over the digest.
+   */
+  readonly previewEffect?: ((target: AdvisorPreviewTarget) => Promise<AdvisorPreviewEffect>) | undefined
 }
+
+/** The fields one draft would write, main field and companions alike. */
+export interface AdvisorPreviewTarget {
+  readonly screen: Screen
+  readonly instance: string | null
+  /** In write order: companions (the gate of an amount) first, the main field last. */
+  readonly values: ReadonlyArray<readonly [field: string, value: string]>
+}
+
+export type AdvisorPreviewEffect =
+  | { readonly kind: 'computed'; readonly beforeRefundEur: number; readonly afterRefundEur: number; readonly deltaEur: number }
+  | { readonly kind: 'not-computable'; readonly hint: string }
 
 /** Token counts of one turn, summed over all model rounds. */
 export interface AdvisorTurnUsage {

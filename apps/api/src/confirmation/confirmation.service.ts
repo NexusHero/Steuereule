@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common'
 import { ConflictError, InvalidInputError, NotFoundError } from '../common/domain-error.js'
 import {
+  validateFieldValue,
   ANNEXES,
   YEAR_INDEPENDENT,
   annexOf,
@@ -128,12 +129,20 @@ export class ConfirmationService {
   ): Promise<AdvisorUndoEntry> {
     const a = this.address(key, taxYear)
     assertAiWritable(a.screen, a.field, key)
+    // The catalogue's value check on the write itself (ADR-0066): a draft made before a rule
+    // existed, or by a path that skipped the check, still cannot store a value the field cannot hold.
+    let valueToStore = newValue
+    if (newValue !== null) {
+      const check = validateFieldValue(a.screen, a.field, newValue)
+      if (!check.ok) throw new InvalidInputError('FIELD_VALUE_INVALID', `"${key}": ${check.reason}`)
+      valueToStore = check.value
+    }
     const previousValue = await this.currentValue(userId, a)
     if (expectedCurrentValue !== undefined && previousValue !== expectedCurrentValue) {
       throw staleValueConflict(key, previousValue)
     }
     const existing = await this.repository.find(userId, a.taxYear, key)
-    await this.writeValue(userId, a, newValue)
+    await this.writeValue(userId, a, valueToStore)
     await this.repository.save(userId, a.taxYear, {
       key,
       provenance: provenanceOverride ?? { kind: 'assistent', name: 'SteuerEule' },
@@ -143,7 +152,7 @@ export class ConfirmationService {
     return {
       key,
       previousValue,
-      appliedValue: newValue,
+      appliedValue: valueToStore,
       previousMarking:
         existing === null ? null : { provenance: existing.provenance, confirmed: existing.confirmed, proposal: existing.proposal },
     }

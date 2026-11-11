@@ -153,6 +153,17 @@ export const AdvisorActionProposalDtoScreen = {
   assessment: 'assessment',
 } as const;
 
+/**
+ * computed: the three euro figures come from the app's own estimate. not-computable: there is no figure, see effectHint. Absent: approximation.
+ */
+export type AdvisorActionProposalDtoEffect = typeof AdvisorActionProposalDtoEffect[keyof typeof AdvisorActionProposalDtoEffect];
+
+
+export const AdvisorActionProposalDtoEffect = {
+  computed: 'computed',
+  'not-computable': 'not-computable',
+} as const;
+
 export type AdvisorActionProposalDtoSourceId = typeof AdvisorActionProposalDtoSourceId[keyof typeof AdvisorActionProposalDtoSourceId];
 
 
@@ -226,6 +237,10 @@ export interface AdvisorActionProposalDto {
   beforeRefundEur: number;
   afterRefundEur: number;
   deltaEur: number;
+  /** computed: the three euro figures come from the app's own estimate. not-computable: there is no figure, see effectHint. Absent: approximation. */
+  effect?: AdvisorActionProposalDtoEffect;
+  /** Why the effect cannot be put in euros yet. */
+  effectHint?: string;
   reason: string;
   sourceId: AdvisorActionProposalDtoSourceId;
   paragraph?: string;
@@ -244,6 +259,13 @@ export const AdvisorChatMessageDtoRole = {
   user: 'user',
   assistant: 'assistant',
 } as const;
+
+export interface AdvisorNotStagedDto {
+  label: string;
+  reason: string;
+  /** The mask where the user can enter it by hand. */
+  screen?: string;
+}
 
 export type AdvisorLstbScanMetaDtoStage = typeof AdvisorLstbScanMetaDtoStage[keyof typeof AdvisorLstbScanMetaDtoStage];
 
@@ -298,6 +320,17 @@ export const AdvisorMaxPathProposalDtoScreen = {
   vermietung: 'vermietung',
   kind: 'kind',
   assessment: 'assessment',
+} as const;
+
+/**
+ * computed: the three euro figures come from the app's own estimate. not-computable: there is no figure, see effectHint. Absent: approximation.
+ */
+export type AdvisorMaxPathProposalDtoEffect = typeof AdvisorMaxPathProposalDtoEffect[keyof typeof AdvisorMaxPathProposalDtoEffect];
+
+
+export const AdvisorMaxPathProposalDtoEffect = {
+  computed: 'computed',
+  'not-computable': 'not-computable',
 } as const;
 
 export type AdvisorMaxPathProposalDtoSourceId = typeof AdvisorMaxPathProposalDtoSourceId[keyof typeof AdvisorMaxPathProposalDtoSourceId];
@@ -368,6 +401,10 @@ export interface AdvisorMaxPathProposalDto {
   beforeRefundEur: number;
   afterRefundEur: number;
   deltaEur: number;
+  /** computed: the three euro figures come from the app's own estimate. not-computable: there is no figure, see effectHint. Absent: approximation. */
+  effect?: AdvisorMaxPathProposalDtoEffect;
+  /** Why the effect cannot be put in euros yet. */
+  effectHint?: string;
   reason: string;
   sourceId: AdvisorMaxPathProposalDtoSourceId;
   paragraph?: string;
@@ -421,6 +458,8 @@ export interface AdvisorMessageMetaDto {
   choices?: string[];
   /** Steps the owl reported while working on this answer (#476). */
   steps?: string[];
+  /** Drafts the owl tried to prepare in this answer and could not, with the reason (ADR-0066). */
+  notStaged?: AdvisorNotStagedDto[];
   action?: AdvisorActionProposalDto;
   actions?: AdvisorActionProposalDto[];
   lstbScan?: AdvisorLstbScanMetaDto;

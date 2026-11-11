@@ -7212,6 +7212,18 @@
             "type": "number",
             "example": 85
           },
+          "effect": {
+            "type": "string",
+            "enum": [
+              "computed",
+              "not-computable"
+            ],
+            "description": "computed: the three euro figures come from the app's own estimate. not-computable: there is no figure, see effectHint. Absent: approximation."
+          },
+          "effectHint": {
+            "type": "string",
+            "description": "Why the effect cannot be put in euros yet."
+          },
           "reason": {
             "type": "string",
             "example": "Sonderausgabenabzug nach § 10b EStG."
@@ -7288,6 +7300,28 @@
           "deltaEur",
           "reason",
           "sourceId"
+        ]
+      },
+      "AdvisorNotStagedDto": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string",
+            "example": "Mieteinnahmen"
+          },
+          "reason": {
+            "type": "string",
+            "example": "Es gibt noch kein Vermietungsobjekt."
+          },
+          "screen": {
+            "type": "string",
+            "description": "The mask where the user can enter it by hand.",
+            "example": "vermietung"
+          }
+        },
+        "required": [
+          "label",
+          "reason"
         ]
       },
       "AdvisorLstbScanMetaDto": {
@@ -7437,6 +7471,18 @@
             "type": "number",
             "example": 85
           },
+          "effect": {
+            "type": "string",
+            "enum": [
+              "computed",
+              "not-computable"
+            ],
+            "description": "computed: the three euro figures come from the app's own estimate. not-computable: there is no figure, see effectHint. Absent: approximation."
+          },
+          "effectHint": {
+            "type": "string",
+            "description": "Why the effect cannot be put in euros yet."
+          },
           "reason": {
             "type": "string",
             "example": "Sonderausgabenabzug nach § 10b EStG."
@@ -7570,6 +7616,13 @@
             "type": "array",
             "items": {
               "type": "string"
+            }
+          },
+          "notStaged": {
+            "description": "Drafts the owl tried to prepare in this answer and could not, with the reason (ADR-0066).",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdvisorNotStagedDto"
             }
           },
           "action": {

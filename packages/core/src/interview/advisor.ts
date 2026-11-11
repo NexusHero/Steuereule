@@ -101,6 +101,8 @@ export const ADVISOR_LEGAL_SOURCES: Readonly<Record<OwlSourceId, AdvisorLegalSou
   },
 }
 
+export type AdvisorEffectKind = 'computed' | 'not-computable'
+
 export interface AdvisorActionProposal {
   readonly actionId: string
   readonly status: AdvisorActionStatus
@@ -122,6 +124,14 @@ export interface AdvisorActionProposal {
   readonly beforeRefundEur: number
   readonly afterRefundEur: number
   readonly deltaEur: number
+  /**
+   * Where the euro figures come from. `computed`: the app's own estimate, once for the stored
+   * return and once with this draft applied. `not-computable`: the estimate cannot say (the hint
+   * tells the user why), and the three figures above are 0. Absent: the rough approximation of
+   * the path without a database (ADR-0066).
+   */
+  readonly effect?: AdvisorEffectKind | undefined
+  readonly effectHint?: string | undefined
   readonly reason: string
   readonly sourceId: OwlSourceId
   readonly paragraph?: string | undefined
@@ -174,6 +184,19 @@ export interface AdvisorMessageMeta {
   readonly replaced?: true | undefined
   /** The steps the owl reported while working (status and tool labels), kept with the answer (#476). */
   readonly steps?: readonly string[] | undefined
+  /**
+   * What the owl tried to prepare in this answer and could not (ADR-0066). Shown under the answer,
+   * so the text can never claim a draft that does not exist without the user seeing it.
+   */
+  readonly notStaged?: readonly AdvisorNotStaged[] | undefined
+}
+
+export interface AdvisorNotStaged {
+  readonly label: string
+  /** Why, in the user's language. */
+  readonly reason: string
+  /** The mask where the user can do it by hand; the chat offers to open it. */
+  readonly screen?: Screen | undefined
 }
 
 /**

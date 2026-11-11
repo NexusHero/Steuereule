@@ -30,7 +30,9 @@ import {
   type AdvisorChatMessageView,
   type AdvisorLegalSource,
   type AdvisorLstbScanMeta,
+  type AdvisorEffectKind,
   type AdvisorMessageMeta,
+  type AdvisorNotStaged,
   type AdvisorTwoPathsProposal,
   type LstbExtractedFieldStatus,
   type LstbFieldReason,
@@ -160,6 +162,16 @@ export class AdvisorActionProposalDto implements AdvisorActionProposal {
   @ApiProperty({ type: Number, example: 85 })
   deltaEur!: number
 
+  @ApiPropertyOptional({
+    type: String,
+    enum: ['computed', 'not-computable'],
+    description: 'computed: the three euro figures come from the app\'s own estimate. not-computable: there is no figure, see effectHint. Absent: approximation.',
+  })
+  effect?: AdvisorEffectKind | undefined
+
+  @ApiPropertyOptional({ type: String, description: 'Why the effect cannot be put in euros yet.' })
+  effectHint?: string | undefined
+
   @ApiProperty({ type: String, example: 'Sonderausgabenabzug nach § 10b EStG.' })
   reason!: string
 
@@ -229,12 +241,29 @@ export class AdvisorLstbScanMetaDto implements AdvisorLstbScanMeta {
   actionIds!: readonly string[]
 }
 
+export class AdvisorNotStagedDto implements AdvisorNotStaged {
+  @ApiProperty({ type: String, example: 'Mieteinnahmen' })
+  label!: string
+
+  @ApiProperty({ type: String, example: 'Es gibt noch kein Vermietungsobjekt.' })
+  reason!: string
+
+  @ApiPropertyOptional({ type: String, description: 'The mask where the user can enter it by hand.', example: 'vermietung' })
+  screen?: Screen | undefined
+}
+
 export class AdvisorMessageMetaDto implements AdvisorMessageMeta {
   @ApiPropertyOptional({ type: [String] })
   choices?: readonly string[] | undefined
 
   @ApiPropertyOptional({ type: [String], description: 'Steps the owl reported while working on this answer (#476).' })
   steps?: readonly string[] | undefined
+
+  @ApiPropertyOptional({
+    type: () => [AdvisorNotStagedDto],
+    description: 'Drafts the owl tried to prepare in this answer and could not, with the reason (ADR-0066).',
+  })
+  notStaged?: readonly AdvisorNotStagedDto[] | undefined
 
   @ApiPropertyOptional({ type: AdvisorActionProposalDto })
   action?: AdvisorActionProposalDto | undefined

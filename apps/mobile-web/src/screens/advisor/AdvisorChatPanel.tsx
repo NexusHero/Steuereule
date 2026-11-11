@@ -155,7 +155,19 @@ function ActionProposalCardView({
     <View style={styles.actionCard} testID={`${testIDPrefix}-card`}>
       <View style={styles.actionHeader}>
         <Text style={styles.actionLabel}>{action.label}</Text>
-        {action.deltaEur > 0 ? (
+        {action.effect === 'not-computable' ? (
+          <Text style={styles.pauschbetragBadge} testID={`${testIDPrefix}-effect-open`}>
+            {tr('advisor.chat.effectOpen', 'Wirkung noch offen')}
+          </Text>
+        ) : action.effect === 'computed' && action.deltaEur < 0 ? (
+          <Text style={styles.pauschbetragBadge} testID={`${testIDPrefix}-delta-negative`}>
+            {tr('advisor.chat.taxEffectNegative', { amount: formatEuro(Math.abs(action.deltaEur)), defaultValue: `−${formatEuro(Math.abs(action.deltaEur))} Erstattung` })}
+          </Text>
+        ) : action.effect === 'computed' && action.deltaEur === 0 ? (
+          <Text style={styles.pauschbetragBadge} testID={`${testIDPrefix}-effect-none`}>
+            {tr('advisor.chat.effectNone', 'Ändert die Schätzung nicht')}
+          </Text>
+        ) : action.deltaEur > 0 ? (
           <Text style={styles.actionDeltaBadge} testID={`${testIDPrefix}-delta`}>
             {tr('advisor.chat.taxEffect', {
               amount: formatEuro(action.deltaEur),
@@ -168,6 +180,12 @@ function ActionProposalCardView({
           </Text>
         ) : null}
       </View>
+
+      {action.effect === 'not-computable' && action.effectHint ? (
+        <Text style={styles.actionReason} testID={`${testIDPrefix}-effect-hint`}>
+          {action.effectHint}
+        </Text>
+      ) : null}
 
       {receiptLinked ? (
         <Text style={styles.receiptLinkedBadge} testID={`${testIDPrefix}-receipt-badge`}>
@@ -618,6 +636,46 @@ export function AdvisorChatPanel({
                   onSelectSource={setSelectedSource}
                   styles={styles}
                 />
+              ) : null}
+
+              {/* Several drafts in one answer: one card each, applied one by one or together */}
+              {!msg.meta?.lstbScan
+                ? (msg.meta?.actions ?? []).map((action) => (
+                    <ActionProposalCardView
+                      key={action.actionId}
+                      action={action}
+                      onApply={onApplyAction}
+                      onUndo={onUndoAction}
+                      onInspectMask={onInspectMask}
+                      receiptLinked={receiptLinkedActionIds?.has(action.actionId)}
+                      onSelectSource={setSelectedSource}
+                      styles={styles}
+                    />
+                  ))
+                : null}
+
+              {/* What the owl tried to prepare and could not: said by the app, not left to the model */}
+              {msg.meta?.notStaged && msg.meta.notStaged.length > 0 ? (
+                <View style={styles.notStagedBox} testID="advisor-not-staged" accessibilityRole="alert">
+                  <Text style={styles.notStagedTitle}>{tr('advisor.chat.notStaged.title', 'Nicht vorbereitet')}</Text>
+                  {msg.meta.notStaged.map((item, i) => (
+                    <View key={`${item.label}-${i}`} style={styles.notStagedItem}>
+                      <Text style={styles.notStagedLine}>
+                        {item.label}: {item.reason}
+                      </Text>
+                      {item.screen && onInspectMask ? (
+                        <Pressable
+                          accessibilityRole="button"
+                          onPress={() => onInspectMask(item.screen!)}
+                          style={styles.inspectMaskBtn}
+                          testID="advisor-not-staged-open-mask"
+                        >
+                          <Text style={styles.inspectMaskText}>{tr('advisor.chat.notStaged.openMask', 'Maske öffnen')}</Text>
+                        </Pressable>
+                      ) : null}
+                    </View>
+                  ))}
+                </View>
               ) : null}
 
               {/* Scanned LStB: several staged fields at once */}
@@ -1092,6 +1150,30 @@ function makeStyles(t: UiTheme) {
     choicePillText: {
       fontFamily: t.font.text,
       fontWeight: t.weight.fett,
+      fontSize: t.size.s,
+      color: t.color.tinte,
+    } as TextStyle,
+    notStagedBox: {
+      marginTop: t.space.s3,
+      padding: t.space.s3,
+      borderRadius: t.radius.m,
+      backgroundColor: t.color.fehlerWeich,
+      borderLeftWidth: 3,
+      borderLeftColor: t.color.warn,
+      gap: t.space.s1,
+    } as ViewStyle,
+    notStagedItem: {
+      gap: t.space.s2,
+      alignItems: 'flex-start',
+    } as ViewStyle,
+    notStagedTitle: {
+      fontFamily: t.font.text,
+      fontWeight: t.weight.fett,
+      fontSize: t.size.s,
+      color: t.color.tinte,
+    } as TextStyle,
+    notStagedLine: {
+      fontFamily: t.font.text,
       fontSize: t.size.s,
       color: t.color.tinte,
     } as TextStyle,
