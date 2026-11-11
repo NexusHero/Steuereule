@@ -110,9 +110,9 @@ async function main() {
     for (const id of ['eule-topbar', 'eule-topbar-title', 'eule-legal-status', 'eule-chat-main', 'advisor-empty-state', 'advisor-chat-scroll', 'advisor-chat-composer-dock']) {
       await see(page, id, 'Row A')
     }
-    const main = await byId(page, 'eule-chat-main').boundingBox()
+    const chatBox = await byId(page, 'eule-chat-main').boundingBox()
     const viewport = page.viewportSize()
-    if (!main || !viewport || main.width < viewport.width * 0.9) fail(`Row A: the chat should own the window, is ${main?.width}px of ${viewport?.width}px`)
+    if (!chatBox || !viewport || chatBox.width < viewport.width * 0.9) fail(`Row A: the chat should own the window, is ${chatBox?.width}px of ${viewport?.width}px`)
     console.log(`[${TAG}] ✅ Row A — top bar, legal status, empty state and composer dock; the chat spans the window`)
 
     // Row B — the privacy notice moved behind the badge.
