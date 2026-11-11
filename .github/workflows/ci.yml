@@ -998,6 +998,16 @@ jobs:
         with:
           name: e2e-coverage-gaps
           path: /tmp/e2e-coverage
+      - name: Navigation efficiency budgets (#450 Teil 2A, D5) — 5 personas × 4 tasks, interactions ≤ measured + 10 %
+        run: |
+          node --test e2e/navigation-efficiency/measure.test.mjs
+          node e2e/navigation-efficiency/measure.mjs
+      - name: Upload the navigation measurements
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: navigation-efficiency
+          path: /tmp/navigation-efficiency
           if-no-files-found: ignore
       - name: Real-Session Load & Latency Budget Gate (0% error rate, p95 <= 250ms)
         run: node scripts/loadtest/loadtest.mjs --concurrency 5 --iterations 5 --url "${API_ORIGIN}" --origin "${WEB_ORIGIN}" --max-p95 250
