@@ -90,7 +90,7 @@ export function DeviceListSection({ onCurrentSessionRevoked }: DeviceListSection
                 {tr('profil.devices.revoking')}
               </Button>
             ) : (
-              <Chip onPress={() => revoke(session)}>{tr('profil.devices.signOut')}</Chip>
+              <Chip onPress={() => revoke(session)} testID={session.isCurrent ? 'geraet-abmelden-aktuell' : 'geraet-abmelden'}>{tr('profil.devices.signOut')}</Chip>
             )}
           </View>
         )
