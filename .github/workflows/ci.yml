@@ -853,6 +853,10 @@ jobs:
         # Two real accounts driven through the API with their own sessions, plus the Kinder mask in
         # the browser. Needs DATABASE_URL (job env) to verify the sign-ups.
         run: node e2e/household/household.mjs
+      - name: Church tax gate (#450 6F, ADR-0063) — the six 6F personas, Zeile 6 in the LStB mask, cockpit hints
+        # Real accounts through the API with their own sessions; Zeile 6 typed in the browser and the
+        # cockpit hint read there. Needs DATABASE_URL (job env) to verify the sign-ups.
+        run: node e2e/church-tax/church-tax.mjs
       - name: Visibility-refetch gate (#223) — live re-read of email verification, both screens
         # Needs DATABASE_URL (already set in this job's env, above) to flip `emailVerified`
         # directly — there is no mail client in this environment (#224 is the still-manual,
