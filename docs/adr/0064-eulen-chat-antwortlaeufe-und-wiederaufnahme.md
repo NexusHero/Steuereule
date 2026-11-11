@@ -151,6 +151,43 @@ Erklärung. Solange eine Antwort läuft, wird das Leeren abgelehnt (409).
 - Gedächtnis: `packages/core/src/interview/advisor-history.test.ts`.
 - Client: `chat/runStream.test.tsx`, `CopilotBridgeResume.test.tsx`, `AdvisorChatPanelLifecycle.test.tsx`.
 
-**Nicht nachgewiesen:** Reasoning, Prompt-Caching und Token-Zählung gegen die echten Schnittstellen
-von Anthropic, Google und OpenAI. Die Tests laufen gegen nachgestellte Modelle in den Formen, die
-die installierten LangChain-Pakete dokumentieren.
+**Nicht nachgewiesen:** Anthropic und OpenAI. Gegen Gemini siehe Nachtrag.
+
+## Nachtrag (11.11.2026): Lauf gegen das echte Modell
+
+Mit einem echten Gemini-Schlüssel (`gemini-3.8-flash`) liefen `scripts/ai-eval/reasoning-check.ts`
+und ein Kundenszenario im Browser (`e2e/advisor/customer-chat-scenario.mjs`): ein neuer Kunde, acht
+Nachrichten, der jeden Vorschlag übernimmt. Im ersten Durchlauf stand danach **nichts** in der
+Erklärung. Vier Ursachen, alle schon vor #476 vorhanden und hier behoben:
+
+1. **Werkzeug-Schema.** Jedes `z.record` erzeugt `propertyNames`; Gemini antwortet darauf mit 400,
+   und die Engine fiel ohne Spur auf die deterministische Antwort zurück. Das Modell bekommt das
+   Schema jetzt ohne solche Schlüsselwörter (`toProviderToolSchema`); fehlgeschlagene Modellaufrufe
+   werden geloggt.
+2. **Feldnamen.** Das Modell kannte die Feldnamen der Masken nicht und leitete sie aus dem
+   CaseDigest ab (`grossWageEur` statt `bruttoarbeitslohn`). Solche Entwürfe ließen sich nicht
+   übernehmen. Der stabile Teil des Systemprompts nennt jetzt alle Felder, die die Eule vorschlagen
+   darf (aus `WRITABLE_FIELDS_BY_SCREEN`, ohne die geschützten), samt erlaubter Werte; ein
+   unbekanntes Feld wird schon beim Entwurf mit der Liste der gültigen abgelehnt.
+3. **Übernehmen ohne Rückmeldung.** Scheiterte die Übernahme, passierte auf dem Bildschirm nichts.
+   Der Chat zeigt jetzt die Meldung des Servers.
+4. **Datenschutz-Wächter.** Der Fingerprint eines Eulen-Hinweises ist ein 16-stelliger Hex-Hash
+   und kann die Form einer IBAN haben. Er hängt am Hinweis, nicht am Nutzer: Jeder mit dem Hinweis
+   „Fortbildung ohne Fahrt“ für 2026 verlor den Chat an „IBAN detected“. `checkPiiFree` nimmt genau
+   diese Form im Feld `fingerprint` jetzt aus.
+
+Dazu zwei Anpassungen am Ablauf: Nach der letzten Werkzeug-Runde muss das Modell in Worten antworten
+(sonst endete die Antwort als „Ich habe deine Steuerakte geprüft.“), und das Zeitlimit je Antwort
+ist 60 statt 25 Sekunden, weil mit Reasoning schon das erste Wort 10 bis 20 Sekunden brauchte.
+
+Stand nach dem vierten Durchlauf: Lohnsteuerbescheinigung vollständig, Arbeitsweg 38 km mit Pkw,
+60 Homeoffice-Tage, Spende 300 €, Grundangaben; die Schätzung zeigt eine Erstattungsspanne.
+
+**Was der Lauf offen gelassen hat**
+
+- Die Fortbildungskosten (850 €) landen nirgends: Gespeichert wird nur „Fortbildung: Ja“. Die Eule
+  spricht trotzdem von „850 € Fortbildungskosten“.
+- Urlaubs- und Krankheitstage fragt die Eule nicht ab; sie bleiben 0, die Pendeltage sind damit zu hoch.
+- Zeit bis zum ersten Wort im Median 13,5 Sekunden; rund 110.000 Eingabe-Tokens für acht
+  Nachrichten, davon etwa 30 % aus dem Cache.
+- Stammdaten trägt der Nutzer weiter selbst ein (gewollt), die Interview-Frage „Ausland“ blieb offen.

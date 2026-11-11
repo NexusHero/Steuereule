@@ -61,3 +61,16 @@ describe('RagKiAdapter & PII-Schranke (ADR-048 / ADR-0051)', () => {
     await expect(adapter.explainSource('__proto__')).rejects.toThrow(/Unbekannte Rechtsquelle/)
   })
 })
+
+describe('checkPiiFree and record ids that look like an IBAN (#476)', () => {
+  it('lets the fingerprint of an owl hint through, whatever its hex digits happen to be', () => {
+    // The real fingerprint that stopped a customer's chat: two letters, two digits, twelve more.
+    const digest = { openOwlHints: [{ id: 'eule-ml-fortbildung-2026', fingerprint: 'cc570711f2b86475', title: 'Fortbildung' }] }
+    expect(() => checkPiiFree(digest)).not.toThrow()
+  })
+
+  it('still stops a real IBAN, in free text and even in a field called fingerprint', () => {
+    expect(() => checkPiiFree({ message: 'Meine IBAN ist DE89 3704 0044 0532 0130 00' })).toThrow(/IBAN/)
+    expect(() => checkPiiFree({ openOwlHints: [{ fingerprint: 'DE89370400440532013000' }] })).toThrow(/IBAN/)
+  })
+})

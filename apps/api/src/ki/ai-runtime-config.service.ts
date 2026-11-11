@@ -25,7 +25,11 @@ export interface ResolvedAiSlotConfig {
 export type AiReasoningMode = 'off' | 'summary'
 export const DEFAULT_REASONING_BUDGET_TOKENS = 2048
 
-/** Per-turn budget of the Eulen-Modus agent (#446: max. 5 steps, 25 s, daily quota). */
+/**
+ * Per-turn budget of the Eulen-Modus agent (#446: max. 5 steps, daily quota). The time limit was
+ * 25 s; measured against the real model with reasoning on, the first word alone took 10 to 20 s and
+ * two of eight ordinary questions ran into it (#476), so it is 60 s now.
+ */
 export interface AiTurnLimits {
   readonly turnTimeoutMs: number
   readonly maxToolRounds: number
@@ -33,7 +37,7 @@ export interface AiTurnLimits {
 }
 
 export const DEFAULT_AI_TURN_LIMITS: AiTurnLimits = {
-  turnTimeoutMs: 25_000,
+  turnTimeoutMs: 60_000,
   maxToolRounds: 5,
   dailyMessageLimit: 50,
 }

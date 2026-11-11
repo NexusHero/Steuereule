@@ -613,12 +613,15 @@ export function CopilotBridgeProvider({
           })
           return false
         }
+        // A draft that cannot be written must say so; a button that does nothing is the worst answer.
+        setChatError(extractErrorMessage(res.data) ?? tr('advisor.chat.applyFailed'))
         return false
       } catch {
+        setChatError(tr('advisor.chat.applyFailed'))
         return false
       }
     },
-    [isAuthenticated, queryClient, recordAppliedActions, taxYear],
+    [isAuthenticated, queryClient, recordAppliedActions, taxYear, tr],
   )
 
   const undoSingleAction = useCallback(

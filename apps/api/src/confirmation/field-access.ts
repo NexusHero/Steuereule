@@ -119,6 +119,26 @@ const CHILD_ACCESS_FIELDS = [
   'swissFamilyAllowanceEur',
 ] as const
 
+/**
+ * Every field a screen can take through the confirmation path, without touching a repository.
+ * The same lists `fieldAccessFrom` serves; whoever proposes a write (the owl, a receipt) can check
+ * a name against them before a draft exists that could never be applied.
+ */
+export const WRITABLE_FIELDS_BY_SCREEN: Readonly<Record<Screen, readonly string[]>> = {
+  lstb: WAGE_TAX_CERTIFICATE_FIELDS,
+  rente: PENSION_ACCESS_FIELDS,
+  kapital: CAPITAL_FIELDS,
+  vermietung: RENTAL_FIELDS,
+  profil: PROFILE_ACCESS_FIELDS,
+  stammdaten: MASTER_DATA_FIELDS,
+  kopplung: LINK_ACCESS_FIELDS,
+  interview: INTERVIEW_ACCESS_FIELDS,
+  chLohnausweis: CH_SALARY_ACCESS_FIELDS,
+  kind: CHILD_ACCESS_FIELDS,
+  commute: COMMUTE_ACCESS_FIELDS,
+  assessment: ASSESSMENT_ACCESS_FIELDS,
+}
+
 export function fieldAccessFrom({
   lstb,
   pension,

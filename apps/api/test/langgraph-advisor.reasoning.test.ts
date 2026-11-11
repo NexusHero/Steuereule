@@ -24,6 +24,7 @@ import {
   extractReasoningText,
   LangGraphAdvisorEngine,
 } from '../src/ki/langgraph-advisor.engine.js'
+import { AI_WRITABLE_FIELDS, describeAiWritableFields, validateStageTarget } from '../src/ki/advisor-safety.js'
 
 const digest: CaseDigest = {
   taxYear: 2025,
@@ -186,7 +187,8 @@ describe('system prompt built for provider-side caching (#476)', () => {
     const stable = buildStableSystemPrompt()
     expect(stable).toBe(buildStableSystemPrompt())
     expect(stable).not.toContain('65000')
-    expect(stable).not.toContain('CaseDigest')
+    expect(stable).not.toContain('PII-freier Fall-Überblick')
+    expect(stable).not.toContain('"grossWageEur"')
     expect(stable).not.toContain('Aktive Maske')
   })
 
@@ -321,5 +323,69 @@ describe('tool schemas as the providers accept them (#476)', () => {
     } finally {
       Logger.prototype.warn = original
     }
+  })
+})
+
+describe('the owl knows the real field names (#476, found by playing a customer against Gemini)', () => {
+  it('lists the fields of every screen it may write, with the allowed answers of interview questions', () => {
+    const catalog = describeAiWritableFields()
+    expect(catalog).toContain('- lstb: ')
+    expect(catalog).toContain('bruttoarbeitslohn')
+    expect(catalog).toContain('oneWayKm')
+    expect(catalog).toMatch(/homeoffice \(„[^“]+“ \|/)
+    expect(catalog).toContain('weg (ganze Zahl 0–999)')
+    expect(catalog).toContain('kind [braucht `instance`]')
+    // The model wrote „Pkw“; the mask only takes the exact values.
+    expect(catalog).toContain('transport („pkw“ | „oepnv“ | „andere“, genau so geschrieben)')
+  })
+
+  it('offers no protected screen and no protected field', () => {
+    const catalog = describeAiWritableFields()
+    for (const forbidden of ['- profil', '- stammdaten', '- kopplung', 'steuerId', 'iban', 'firstName']) {
+      expect(catalog, forbidden).not.toContain(forbidden)
+    }
+    expect(AI_WRITABLE_FIELDS.profil).toBeUndefined()
+  })
+
+  it('puts the list into the stable, cacheable part of the system prompt', () => {
+    expect(buildStableSystemPrompt()).toContain(describeAiWritableFields())
+  })
+
+  it('refuses a field name guessed from the case overview and names the valid ones', () => {
+    const guessed = validateStageTarget('lstb', 'grossWageEur')
+    expect(guessed.ok).toBe(false)
+    if (!guessed.ok) {
+      expect(guessed.error).toContain('UNKNOWN_FIELD')
+      expect(guessed.error).toContain('bruttoarbeitslohn')
+      expect(guessed.locked).toBeUndefined()
+    }
+    expect(validateStageTarget('lstb', 'bruttoarbeitslohn')).toEqual({ ok: true, screen: 'lstb' })
+    expect(validateStageTarget('commute', 'oneWayKm')).toEqual({ ok: true, screen: 'commute' })
+  })
+
+  it('still treats a protected field as locked, not as unknown', () => {
+    const locked = validateStageTarget('lstb', 'steuerId')
+    expect(locked.ok).toBe(false)
+    if (!locked.ok) expect(locked.error).toContain('AI_WRITE_FORBIDDEN')
+  })
+
+  it('never leaves a draft behind for a field that does not exist', async () => {
+    const guess = chunkOf({
+      content: '',
+      tool_call_chunks: [{ name: 'stage_field_draft', args: JSON.stringify({ screen: 'lstb', field: 'grossWageEur', newValue: '62000', label: 'Bruttolohn' }), index: 0, id: 'c1' }],
+    })
+    const model = new ChunkedChatModel([[guess], [answer('Das Feld gibt es so nicht.')]])
+    const { events, result } = await run(new LangGraphAdvisorEngine(runtime('google-genai'), () => model))
+    expect(events.some((e) => e.event === 'action')).toBe(false)
+    expect(result.meta.action).toBeUndefined()
+    // The model was told which names exist.
+    const toolResult = model.seenMessages[1]!.at(-1)!
+    expect(String(toolResult.content)).toContain('bruttoarbeitslohn')
+  })
+
+  it('makes the model answer in words once the tool rounds are used up', async () => {
+    const model = new ChunkedChatModel([[answer('Antwort.')]])
+    await run(new LangGraphAdvisorEngine(runtime('google-genai'), () => model))
+    expect(model.toolChoices).toContain('none')
   })
 })

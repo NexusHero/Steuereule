@@ -46,7 +46,7 @@ import {
   createChatModelFromConfig,
   type ChatModelFactory,
 } from './chat-model.factory.js'
-import { normalizeSourceId, validateStageTarget, type StageTargetCheck } from './advisor-safety.js'
+import { describeAiWritableFields, normalizeSourceId, validateStageTarget, type StageTargetCheck } from './advisor-safety.js'
 import { checkPiiFree } from './ki.adapter.js'
 
 export const ADVISOR_ENGINE = Symbol('ADVISOR_ENGINE')
@@ -144,7 +144,14 @@ export function buildStableSystemPrompt(): string {
     '',
     '5. Plan: Braucht eine Aufgabe mehrere Schritte (z. B. „Was hab ich vergessen?“ oder mehrere Bereiche prüfen), lege mit `plan_steps` eine kurze Liste an (höchstens 8 Schritte) und rufe `plan_steps` bei jedem Fortschritt mit der vollständigen Liste und neuen Status auf (`offen`, `laeuft`, `erledigt`). Einfache Fragen beantwortest du direkt, ohne Plan. Ein Plan schreibt nie etwas: Änderungen bleiben Entwürfe über `stage_field_draft`.',
     '',
-    '6. Gesprächsverlauf: Zeilen der Form `[Vorschlag „…“ → …: Status]` in früheren Antworten beschreiben deine eigenen Entwürfe und was der Nutzer damit gemacht hat. Wiederhole keinen Vorschlag, der schon übernommen oder verworfen wurde, und schreibe solche Zeilen nie selbst.',
+    '6. Felder: Für `screen` und `field` gelten ausschließlich die folgenden Namen. Die Namen im Fall-Überblick (CaseDigest) sind KEINE Feldnamen. Gehören mehrere Werte zusammen (z. B. die drei Beträge der Lohnsteuerbescheinigung), lege EINEN Entwurf an und gib die übrigen als `companionFields` mit (höchstens 3). Meldet ein Werkzeug UNKNOWN_FIELD, nimm einen Namen aus der Liste, die es nennt.',
+    describeAiWritableFields(),
+    '',
+    '7. Arbeitsweise: `stage_field_draft` und `propose_two_paths` rechnen die Steuerwirkung selbst aus; rufe `simulate_tax_delta` nur auf, wenn du Varianten vergleichen willst, ohne einen Entwurf anzulegen. Behaupte nie, einen Entwurf vorbereitet zu haben, wenn das Werkzeug nicht `ok: true` gemeldet hat. Schließe jede Antwort mit einem kurzen Text ab.',
+    '',
+    '8. Ton: Du duzt den Nutzer durchgehend, freundlich und knapp.',
+    '',
+    '9. Gesprächsverlauf: Zeilen der Form `[Vorschlag „…“ → …: Status]` in früheren Antworten beschreiben deine eigenen Entwürfe und was der Nutzer damit gemacht hat. Wiederhole keinen Vorschlag, der schon übernommen oder verworfen wurde, und schreibe solche Zeilen nie selbst.',
   ].join('\n')
 }
 
@@ -324,6 +331,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
     // The quick start „Was hab ich vergessen?“ must open with a plan (decision 17): only the first
     // round is forced, later rounds are free to work through the steps and answer.
     const planFirstModel = bind && request.planRequired && canForceTool ? bind([...tools], { tool_choice: 'plan_steps' }) : boundModel
+    const answerOnlyModel = bind ? bind([...tools], { tool_choice: 'none' }) : model
     const makeActionId = request.actionIdFactory ?? (newActionId)
 
     const agentNode = async (
@@ -333,7 +341,9 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
       let aggregated: AIMessageChunk | null = null
       let lastFallbackMsg: AIMessage | null = null
 
-      const roundModel = state.toolRounds === 0 ? planFirstModel : boundModel
+      // After the last tool round the model has to answer in words: with tools still on offer it
+      // may ask for yet another one, and the turn would end without any text.
+      const roundModel = state.toolRounds === 0 ? planFirstModel : state.toolRounds >= maxToolRounds ? answerOnlyModel : boundModel
       const streamOrValue = await roundModel.stream(state.messages, config)
       for await (const chunk of streamOrValue) {
         if (chunk instanceof AIMessageChunk) {

@@ -592,6 +592,10 @@ export class AdvisorService {
       yield { event: 'error', data: { code: 'ADVISOR_TURN_FAILED', message: TURN_FAILED_MESSAGE } }
     } catch (error) {
       if (finished) throw error
+      // The client only hears "broke off"; operations need the reason, without any message content.
+      if (!signal?.aborted) {
+        this.logger.error(`advisor turn ${runId} failed: ${error instanceof Error ? `${error.name}: ${error.message.slice(0, 400)}` : String(error).slice(0, 400)}`)
+      }
       await finish(signal?.aborted ? 'aborted' : 'failed', text, {})
       yield {
         event: 'error',
