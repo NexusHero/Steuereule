@@ -169,6 +169,16 @@ describe('AdvisorChatPanel: several drafts in one answer (ADR-0065)', () => {
     expect(notice.textContent).toContain('Mieteinnahmen: Es gibt noch kein Vermietungsobjekt.')
   })
 
+  it('offers the way into the mask when a record has to be created first', () => {
+    const onInspectMask = vi.fn()
+    renderPanel({
+      messages: [user('u1', 'Miete 9600'), owl('a1', 'Lege das Objekt bitte an.', { meta: { notStaged: [{ label: 'Mieteinnahmen', reason: 'Es ist noch kein Vermietungsobjekt angelegt.', screen: 'vermietung' }] } })],
+      onInspectMask,
+    })
+    fireEvent.click(screen.getByTestId('advisor-not-staged-open-mask'))
+    expect(onInspectMask).toHaveBeenCalledWith('vermietung')
+  })
+
   it('keeps the scanned certificate in its own review card', () => {
     renderPanel({
       messages: [owl('a1', 'Erkannt.', { meta: { lstbScan: {} as NonNullable<AdvisorChatMessageView['meta']>['lstbScan'], actions: [draft('d1', 'Bruttolohn', '62000')] } })],

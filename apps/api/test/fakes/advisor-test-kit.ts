@@ -25,6 +25,8 @@ import { FakeRentalRepository } from './fake-rental.repository.js'
 export interface AdvisorTestKit {
   readonly advisorRepo: InMemoryAdvisorRepository
   readonly interviewRepo: FakeInterviewAnswerRepository
+  readonly rentalRepo: FakeRentalRepository
+  readonly childRepo: FakeChildRepository
   readonly service: AdvisorService
 }
 
@@ -35,6 +37,7 @@ export function buildAdvisorTestKit(engine?: AdvisorEnginePort): AdvisorTestKit 
   const lstbRepo = new FakeLstbRepository()
   const chRepo = new FakeChSalaryCertificateRepository()
   const childRepo = new FakeChildRepository()
+  const rentalRepo = new FakeRentalRepository()
   const profileRepo = new FakeProfileRepository()
   const commuteRepo = new FakeCommuteRepository()
   const assessmentRepo = new FakeAssessmentRepository()
@@ -43,7 +46,7 @@ export function buildAdvisorTestKit(engine?: AdvisorEnginePort): AdvisorTestKit 
     lstb: lstbRepo,
     pension: new FakePensionRepository(),
     capital: new FakeCapitalRepository(),
-    rental: new FakeRentalRepository(),
+    rental: rentalRepo,
     profile: profileRepo,
     masterData: new FakeMasterDataRepository(),
     link: new FakeLinkRepository(),
@@ -73,12 +76,12 @@ export function buildAdvisorTestKit(engine?: AdvisorEnginePort): AdvisorTestKit 
     chRepo,
     commuteRepo,
     childRepo,
-    new FakeRentalRepository(),
+    rentalRepo,
     new FakeCapitalRepository(),
     profileRepo,
     engine,
   )
-  return { advisorRepo, interviewRepo, service }
+  return { advisorRepo, interviewRepo, rentalRepo, childRepo, service }
 }
 
 /** A step of a scripted engine turn: an event, or a pause that only ends when the turn is aborted. */

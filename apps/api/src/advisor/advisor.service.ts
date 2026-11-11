@@ -11,6 +11,7 @@ import {
   provenanceKey,
   scrubUserMessagePii,
   simulateAdvisorFieldDelta,
+  buildRecordHandles,
   type AdvisorActionProposal,
   type AdvisorEngineInfo,
   type AdvisorEnginePort,
@@ -19,6 +20,7 @@ import {
   type AdvisorHistoryEntry,
   type AdvisorMessageFeedback,
   type AdvisorMessageMeta,
+  type AdvisorRecordHandles,
   type AdvisorStreamEvent,
   type AdvisorTurnResult,
   type AdvisorTurnUsage,
@@ -188,6 +190,21 @@ export class AdvisorService {
       }
     }
     return names
+  }
+
+  /**
+   * The stored rental objects and children under the neutral names the owl uses for them. Only the
+   * names go to the model; the ids stay here and are filled into a draft when it is staged.
+   */
+  async loadRecordHandles(userId: string, taxYear: number): Promise<AdvisorRecordHandles> {
+    const [children, rentals] = await Promise.all([
+      this.childRepo ? this.childRepo.listForUserAndYear(userId, taxYear) : Promise.resolve([]),
+      this.rentalRepo ? this.rentalRepo.listForUserAndYear(userId, taxYear) : Promise.resolve([]),
+    ])
+    return {
+      vermietung: buildRecordHandles('vermietung', rentals.map((rental) => rental.id)),
+      kind: buildRecordHandles('kind', children.map((child) => child.id)),
+    }
   }
 
   async buildCaseDigest(userId: string, taxYear: number): Promise<CaseDigest> {
@@ -523,6 +540,7 @@ export class AdvisorService {
         actionIdFactory,
         signal,
         planRequired: dto.quickAction === 'forgotten_check',
+        records: await this.loadRecordHandles(userId, taxYear),
       })) {
         if (ev.event === 'token') {
           firstTokenMs ??= Date.now() - startedAt

@@ -248,6 +248,8 @@ export const AdvisorChatMessageDtoRole = {
 export interface AdvisorNotStagedDto {
   label: string;
   reason: string;
+  /** The mask where the user can enter it by hand. */
+  screen?: string;
 }
 
 export type AdvisorLstbScanMetaDtoStage = typeof AdvisorLstbScanMetaDtoStage[keyof typeof AdvisorLstbScanMetaDtoStage];

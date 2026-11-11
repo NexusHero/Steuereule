@@ -20,12 +20,16 @@ import {
   ADVISOR_PLAN_MAX_STEPS,
   ADVISOR_PLAN_STEP_STATUSES,
   checkAdvisorInputBoundary,
+  describeRecordHandles,
   evaluateAdvisorTurn,
+  fieldSpec,
+  resolveRecordHandle,
   simulateAdvisorFieldDelta,
   type AdvisorActionProposal,
   type AdvisorEnginePort,
   type AdvisorMessageMeta,
   type AdvisorNotStaged,
+  type AdvisorRecordHandles,
   type AdvisorStreamEvent,
   type AdvisorTurnRequest,
   type AdvisorTurnResult,
@@ -33,6 +37,7 @@ import {
   type AdvisorTwoPathsProposal,
   type CaseDigest,
   type OwlSourceId,
+  type RecordHandleResolution,
   type Screen,
 } from '@steuereule/core'
 import {
@@ -151,6 +156,7 @@ export function buildStableSystemPrompt(): string {
     '7. Arbeitsweise: `stage_field_draft` und `propose_two_paths` rechnen die Steuerwirkung selbst aus; rufe `simulate_tax_delta` nur auf, wenn du Varianten vergleichen willst, ohne einen Entwurf anzulegen. Behaupte nie, einen Entwurf vorbereitet zu haben, wenn das Werkzeug nicht `ok: true` gemeldet hat. Schließe jede Antwort mit einem kurzen Text ab.',
     '',
     '10. Vollständigkeit vor Tempo: (a) Arbeitsweg: Frage nach Urlaubs- und Krankheitstagen (`commute.vacationDays`, `commute.sickDays`), bevor du Pendeltage oder eine Entfernungspauschale als fertig bezeichnest; ohne sie rechnet die App mit 0 Tagen und überschätzt die Pauschale. Sage das, wenn die Angaben fehlen. (b) Fortbildung: Nennt der Nutzer Kosten, lege den Entwurf auf `interview.fortbildung-kosten` an und gib `fortbildung: "Ja"` als companionField mit. Ohne Betrag vermerkst du nur `fortbildung` = „Ja“ und fragst nach den Kosten; nenne dafür keine Erstattungswirkung. (c) Nenne Beträge nur dann als erfasst, wenn ein Entwurf dafür `ok: true` gemeldet hat.',
+    '11. Vermietung und Kinder haben mehrere Einträge. Gib bei `stage_field_draft` für die Masken `vermietung` und `kind` als `instance` den Namen des Eintrags an, genau wie er unter „Angelegte Einträge“ steht (z. B. „Objekt 1“, „Kind 2“). Gibt es nur einen Eintrag, darfst du `instance` weglassen. Gibt es mehrere und der Nutzer hat nicht gesagt, welcher gemeint ist, frage nach. Ist keiner angelegt, kannst du nichts vorbereiten: Einträge legt der Nutzer selbst in der Maske an – sag ihm das, die App öffnet die Maske. Erfinde keine Einträge und keine anderen Namen.',
     '',
     '8. Ton: Du duzt den Nutzer durchgehend, freundlich und knapp.',
     '',
@@ -158,11 +164,13 @@ export function buildStableSystemPrompt(): string {
   ].join('\n')
 }
 
-function buildCaseSystemPrompt(digest: CaseDigest, activeScreen: Screen | undefined, planFirst: boolean): string {
+function buildCaseSystemPrompt(digest: CaseDigest, activeScreen: Screen | undefined, planFirst: boolean, records?: AdvisorRecordHandles): string {
   return [
     `Aktive Maske: ${activeScreen ?? 'cockpit'}`,
     'PII-freier Fall-Überblick (CaseDigest):',
     JSON.stringify(digest),
+    'Angelegte Einträge (für `instance`):',
+    describeRecordHandles(records),
     ...(planFirst ? ['', 'Für diese Anfrage gilt: Rufe als Erstes `plan_steps` auf, bevor du irgendetwas anderes tust.'] : []),
   ].join('\n')
 }
@@ -177,9 +185,10 @@ export function buildSystemMessage(
   activeScreen?: Screen,
   /** Ask for the plan in words, for models that cannot be forced to a tool (see `canForceTool`). */
   planFirst = false,
+  records?: AdvisorRecordHandles,
 ): SystemMessage {
   const stable = buildStableSystemPrompt()
-  const caseSpecific = buildCaseSystemPrompt(digest, activeScreen, planFirst)
+  const caseSpecific = buildCaseSystemPrompt(digest, activeScreen, planFirst, records)
   if (provider === 'anthropic') {
     return new SystemMessage({
       content: [
@@ -228,6 +237,8 @@ interface RejectedDraft {
   readonly label: string
   readonly screen: string
   readonly reason: string
+  /** Set when the user can do it by hand in that mask (a record that has to be created first). */
+  readonly openScreen?: Screen | undefined
 }
 
 /** More drafts in one answer than anyone can review are a sign the model is looping. */
@@ -250,7 +261,7 @@ export function unresolvedRejections(rejected: readonly RejectedDraft[], staged:
     if (staged.some((action) => action.label === draft.label || action.screen === draft.screen)) continue
     if (seen.has(draft.label)) continue
     seen.add(draft.label)
-    open.push({ label: draft.label, reason: draft.reason })
+    open.push({ label: draft.label, reason: draft.reason, ...(draft.openScreen ? { screen: draft.openScreen } : {}) })
   }
   return open
 }
@@ -261,6 +272,7 @@ const draftTargetSchema = z.object({
   newValue: z.string().max(200),
   label: z.string().max(160),
   reason: z.string().max(400).default(''),
+  instance: z.string().max(80).nullable().optional(),
 })
 
 /** One schema per tool: the model sees it via bindTools, and toolsNode parses every call with it. */
@@ -271,7 +283,6 @@ const TOOL_ARG_SCHEMAS = {
     newValue: z.string().max(200),
   }),
   stage_field_draft: draftTargetSchema.extend({
-    instance: z.string().max(80).nullable().optional(),
     sourceId: z.string().max(40).default('estg-9-1'),
     companionFields: z.record(z.string().max(100), z.string().max(200)).optional(),
   }),
@@ -463,8 +474,16 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
           toolMessages.push(toolResult(callId, tc.name, { ok: false, error: target.error }))
         }
         /** Refuses a draft: the model gets the reason, and the answer will carry it unless a retry succeeds. */
-        const refuseDraft = (label: string, screen: string, error: string): void => {
-          rejectedDrafts = [...rejectedDrafts, { label, screen, reason: humanReason(error) }]
+        const refuseDraft = (label: string, screen: string, error: string, openScreen?: Screen): void => {
+          rejectedDrafts = [...rejectedDrafts, { label, screen, reason: humanReason(error), ...(openScreen ? { openScreen } : {}) }]
+        }
+        /**
+         * Which stored record a draft is for. Masks with one record per case take no instance at
+         * all; the others are addressed by their neutral name, and the id is filled in here.
+         */
+        const resolveInstance = (screen: Screen, field: string, raw: string | null | undefined): RecordHandleResolution | { ok: true; id: null; handle: null } => {
+          if (!fieldSpec(screen, field)?.perInstance) return { ok: true, id: null, handle: null }
+          return resolveRecordHandle(screen, request.records?.[screen] ?? [], raw)
         }
 
         if (tc.name === 'simulate_tax_delta') {
@@ -490,7 +509,6 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
           const args = parseArgs(TOOL_ARG_SCHEMAS.stage_field_draft)
           if (args === null) continue
           const { screen, field, label, reason } = args
-          const instance = args.instance && args.instance.trim().length > 0 ? args.instance.trim() : null
           const sourceId = normalizeSourceId(args.sourceId)
           const rawCompanions = Object.entries(args.companionFields ?? {}).map(([k, v]) => [k.trim(), v] as const)
 
@@ -504,6 +522,19 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
             toolMessages.push(toolResult(callId, tc.name, { ok: false, error: `INVALID_ARGUMENTS: höchstens ${MAX_COMPANION_FIELDS} Begleitfelder.` }))
             continue
           }
+          const record = resolveInstance(target.screen, field.trim(), args.instance)
+          if (!record.ok) {
+            const error = `${record.code}: ${record.reason}`
+            // No record yet: the user creates it in the mask, and the chat offers the way there.
+            // Which of several: that is a question for the user, not something to report as failed.
+            if (record.code !== 'RECORD_REQUIRED') refuseDraft(label, screen, error, record.code === 'NO_RECORD' ? target.screen : undefined)
+            if (record.code === 'NO_RECORD') {
+              config?.writer?.({ event: 'ui_command', data: { openMask: target.screen, focus: field.trim() } } satisfies AdvisorStreamEvent)
+            }
+            toolMessages.push(toolResult(callId, tc.name, { ok: false, error }))
+            continue
+          }
+          const instance = record.id
           if (pendingActions.length >= MAX_DRAFTS_PER_TURN) {
             const error = `TOO_MANY_DRAFTS: höchstens ${MAX_DRAFTS_PER_TURN} Entwürfe pro Antwort. Bitte den Nutzer erst diese prüfen lassen.`
             refuseDraft(label, screen, error)
@@ -563,7 +594,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
             field: cleanField,
             instance,
             ...(companionFields ? { companionFields } : {}),
-            label,
+            label: record.handle && !label.includes(record.handle) ? `${label} (${record.handle})` : label,
             previousValue: sim.previousValue,
             expectedPreviousValue: sim.previousValue,
             newValue,
@@ -578,7 +609,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
           // Several drafts in one answer stand side by side; a second one for the same field is a correction.
           pendingActions = [...pendingActions.filter((existing) => draftKey(existing) !== draftKey(stagedAction)), stagedAction]
 
-          toolMessages.push(toolResult(callId, tc.name, { ok: true, stagedAction, draftsInThisAnswer: pendingActions.length }))
+          toolMessages.push(toolResult(callId, tc.name, { ok: true, stagedAction: { ...stagedAction, instance: record.handle }, draftsInThisAnswer: pendingActions.length }))
           continue
         }
 
@@ -612,6 +643,14 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
           const safeNewValue = safeValue.value
           const maxNewValue = maxValue.value
 
+          // Two paths name no record: fine while there is exactly one, a question for the user otherwise.
+          const safeRecord = resolveInstance(safeCheck.screen, safeField, rawSafe.instance)
+          const maxRecord = resolveInstance(maxCheck.screen, maxField, rawMax.instance)
+          const missingRecord = !safeRecord.ok ? safeRecord : !maxRecord.ok ? maxRecord : null
+          if (!safeRecord.ok || !maxRecord.ok || missingRecord) {
+            toolMessages.push(toolResult(callId, tc.name, { ok: false, error: missingRecord ? `${missingRecord.code}: ${missingRecord.reason}` : '' }))
+            continue
+          }
           try {
             checkPiiFree({ safeNewValue, maxNewValue, title, safeLabel: rawSafe.label, maxLabel: rawMax.label })
           } catch (error) {
@@ -641,7 +680,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
               status: 'pending',
               screen: safeCheck.screen,
               field: safeField,
-              instance: null,
+              instance: safeRecord.id,
               label: rawSafe.label,
               previousValue: safeSim.previousValue,
               expectedPreviousValue: safeSim.previousValue,
@@ -658,7 +697,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
               status: 'pending',
               screen: maxCheck.screen,
               field: maxField,
-              instance: null,
+              instance: maxRecord.id,
               label: rawMax.label,
               previousValue: maxSim.previousValue,
               expectedPreviousValue: maxSim.previousValue,
@@ -814,6 +853,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
       request.digest,
       request.activeScreen,
       request.planRequired === true && !canForceTool,
+      request.records,
     )
     const historyMessages: BaseMessage[] = (request.history ?? []).map((entry) =>
       entry.role === 'user' ? new HumanMessage(entry.content) : new AIMessage(entry.content),

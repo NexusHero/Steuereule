@@ -236,6 +236,9 @@ export class AdvisorNotStagedDto implements AdvisorNotStaged {
 
   @ApiProperty({ type: String, example: 'Es gibt noch kein Vermietungsobjekt.' })
   reason!: string
+
+  @ApiPropertyOptional({ type: String, description: 'The mask where the user can enter it by hand.', example: 'vermietung' })
+  screen?: Screen | undefined
 }
 
 export class AdvisorMessageMetaDto implements AdvisorMessageMeta {

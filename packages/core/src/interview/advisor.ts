@@ -185,6 +185,8 @@ export interface AdvisorNotStaged {
   readonly label: string
   /** Why, in the user's language. */
   readonly reason: string
+  /** The mask where the user can do it by hand; the chat offers to open it. */
+  readonly screen?: Screen | undefined
 }
 
 /**

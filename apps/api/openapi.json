@@ -7300,6 +7300,11 @@
           "reason": {
             "type": "string",
             "example": "Es gibt noch kein Vermietungsobjekt."
+          },
+          "screen": {
+            "type": "string",
+            "description": "The mask where the user can enter it by hand.",
+            "example": "vermietung"
           }
         },
         "required": [

@@ -4,7 +4,7 @@ import type { BaseLanguageModelInput } from '@langchain/core/language_models/bas
 import { AIMessageChunk, type BaseMessage } from '@langchain/core/messages'
 import { ChatGenerationChunk, type ChatResult } from '@langchain/core/outputs'
 import type { Runnable } from '@langchain/core/runnables'
-import type { AdvisorStreamEvent, AdvisorTurnResult, CaseDigest } from '@steuereule/core'
+import { buildRecordHandles, type AdvisorRecordHandles, type AdvisorStreamEvent, type AdvisorTurnResult, type CaseDigest } from '@steuereule/core'
 import { Logger } from '@nestjs/common'
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
@@ -89,7 +89,7 @@ function runtime(provider: AiProviderKind, extra: Partial<ResolvedAiSlotConfig> 
   }
 }
 
-async function run(engine: LangGraphAdvisorEngine, extra: { planRequired?: boolean } = {}) {
+async function run(engine: LangGraphAdvisorEngine, extra: { planRequired?: boolean; records?: AdvisorRecordHandles } = {}) {
   const events: AdvisorStreamEvent[] = []
   for await (const ev of engine.streamTurn({ message: 'Lohnt sich mein Arbeitsweg?', digest, ...extra })) events.push(ev)
   const done = events.find((e) => e.event === 'done')
@@ -524,5 +524,73 @@ describe('unresolvedRejections', () => {
       { label: 'Miete', screen: 'vermietung', reason: 'kein Objekt' },
     ]
     expect(unresolvedRejections(rejected, [])).toEqual([{ label: 'Miete', reason: 'kein Objekt' }])
+  })
+})
+
+describe('rental objects and children by their neutral name (ADR-0066)', () => {
+  const stage = (args: Record<string, unknown>): AIMessageChunk =>
+    chunkOf({ content: '', tool_call_chunks: [{ name: 'stage_field_draft', args: JSON.stringify(args), index: 0, id: 'c0' }] })
+  const RENT = { screen: 'vermietung', field: 'mieteinnahmen', newValue: '9600', label: 'Mieteinnahmen' }
+  const two = { vermietung: buildRecordHandles('vermietung', ['rent-a', 'rent-b']) }
+  const engineWith = (model: ChunkedChatModel) => new LangGraphAdvisorEngine(runtime('google-genai'), () => model)
+
+  it('puts the stored record behind „Objekt 2“ into the draft', async () => {
+    const model = new ChunkedChatModel([[stage({ ...RENT, instance: 'Objekt 2' })], [answer('Vorbereitet.')]])
+    const { result } = await run(engineWith(model), { records: two })
+    expect(result.meta.action).toMatchObject({ screen: 'vermietung', field: 'mieteinnahmen', instance: 'rent-b', newValue: '9600', label: 'Mieteinnahmen (Objekt 2)' })
+  })
+
+  it('never shows the model the id', async () => {
+    const model = new ChunkedChatModel([[stage({ ...RENT, instance: 'Objekt 2' })], [answer('Vorbereitet.')]])
+    await run(engineWith(model), { records: two })
+    const seen = JSON.stringify(model.seenMessages.map((round) => round.map((m) => m.content)))
+    expect(seen).toContain('Objekt 1, Objekt 2')
+    expect(seen).not.toContain('rent-a')
+    expect(seen).not.toContain('rent-b')
+  })
+
+  it('needs no name while there is one record', async () => {
+    const model = new ChunkedChatModel([[stage(RENT)], [answer('Vorbereitet.')]])
+    const { result } = await run(engineWith(model), { records: { vermietung: buildRecordHandles('vermietung', ['only']) } })
+    expect(result.meta.action?.instance).toBe('only')
+  })
+
+  it('asks instead of guessing when several records fit', async () => {
+    const model = new ChunkedChatModel([[stage(RENT)], [answer('Für welches Objekt?')]])
+    const { result } = await run(engineWith(model), { records: two })
+    expect(result.meta.action).toBeUndefined()
+    // A question to the user is not a failure to report.
+    expect(result.meta.notStaged).toBeUndefined()
+    expect(JSON.stringify(model.seenMessages[1]!.map((m) => m.content))).toContain('RECORD_REQUIRED')
+  })
+
+  it('refuses an invented record', async () => {
+    const model = new ChunkedChatModel([[stage({ ...RENT, instance: 'Ferienwohnung Sylt' })], [answer('Hm.')]])
+    const { result } = await run(engineWith(model), { records: two })
+    expect(result.meta.action).toBeUndefined()
+    expect(result.meta.notStaged?.[0]?.reason).toContain('Objekt 1, Objekt 2')
+  })
+
+  it('sends the user to the mask when no record exists: the owl creates none', async () => {
+    const model = new ChunkedChatModel([[stage({ ...RENT, instance: 'Objekt 1' })], [answer('Lege das Objekt bitte an.')]])
+    const { events, result } = await run(engineWith(model))
+    expect(result.meta.action).toBeUndefined()
+    expect(result.meta.notStaged).toEqual([{ label: 'Mieteinnahmen', reason: expect.stringContaining('Maske Vermietung'), screen: 'vermietung' }])
+    expect(events.find((e) => e.event === 'ui_command')?.data).toMatchObject({ openMask: 'vermietung' })
+  })
+
+  it('addresses a child the same way, and tidies „Ja“ into the stored form', async () => {
+    const model = new ChunkedChatModel([
+      [stage({ screen: 'kind', field: 'childBenefitToMeAllYear', newValue: 'Ja', label: 'Kindergeld ganzjährig', instance: 'Kind 1' })],
+      [answer('Vorbereitet.')],
+    ])
+    const { result } = await run(engineWith(model), { records: { kind: buildRecordHandles('kind', ['child-1']) } })
+    expect(result.meta.action).toMatchObject({ screen: 'kind', instance: 'child-1', newValue: 'true' })
+  })
+
+  it('ignores an instance on a mask that has only one record per case', async () => {
+    const model = new ChunkedChatModel([[stage({ screen: 'commute', field: 'homeOfficeDays', newValue: '30', label: 'Homeoffice-Tage', instance: '1' })], [answer('Vorbereitet.')]])
+    const { result } = await run(engineWith(model))
+    expect(result.meta.action?.instance).toBeNull()
   })
 })

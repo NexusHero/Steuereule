@@ -641,9 +641,21 @@ export function AdvisorChatPanel({
                 <View style={styles.notStagedBox} testID="advisor-not-staged" accessibilityRole="alert">
                   <Text style={styles.notStagedTitle}>{tr('advisor.chat.notStaged.title', 'Nicht vorbereitet')}</Text>
                   {msg.meta.notStaged.map((item, i) => (
-                    <Text key={`${item.label}-${i}`} style={styles.notStagedLine}>
-                      {item.label}: {item.reason}
-                    </Text>
+                    <View key={`${item.label}-${i}`} style={styles.notStagedItem}>
+                      <Text style={styles.notStagedLine}>
+                        {item.label}: {item.reason}
+                      </Text>
+                      {item.screen && onInspectMask ? (
+                        <Pressable
+                          accessibilityRole="button"
+                          onPress={() => onInspectMask(item.screen!)}
+                          style={styles.inspectMaskBtn}
+                          testID="advisor-not-staged-open-mask"
+                        >
+                          <Text style={styles.inspectMaskText}>{tr('advisor.chat.notStaged.openMask', 'Maske öffnen')}</Text>
+                        </Pressable>
+                      ) : null}
+                    </View>
                   ))}
                 </View>
               ) : null}
@@ -1131,6 +1143,10 @@ function makeStyles(t: UiTheme) {
       borderLeftWidth: 3,
       borderLeftColor: t.color.warn,
       gap: t.space.s1,
+    } as ViewStyle,
+    notStagedItem: {
+      gap: t.space.s2,
+      alignItems: 'flex-start',
     } as ViewStyle,
     notStagedTitle: {
       fontFamily: t.font.text,

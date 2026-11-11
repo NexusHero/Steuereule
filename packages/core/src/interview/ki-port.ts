@@ -2,6 +2,7 @@ import type { Item, Source } from '../engine/berechnung'
 import type { IncomeType } from '../domains/income-types'
 import type { AdvisorActionProposal, AdvisorChatMessageView, AdvisorMessageMeta, AdvisorTwoPathsProposal, CaseDigest } from './advisor'
 import type { Screen } from './marking'
+import type { AdvisorRecordHandles } from './record-handles'
 
 /** The schema the LLM must answer. */
 export interface AiProposal {
@@ -26,6 +27,8 @@ export interface AdvisorTurnRequest {
   readonly signal?: AbortSignal | undefined
   /** The „Was hab ich vergessen?“ quick start always opens with a plan (#451 decision 17). */
   readonly planRequired?: boolean | undefined
+  /** The stored records of the per-record masks under their neutral names; ids never reach the model. */
+  readonly records?: AdvisorRecordHandles | undefined
 }
 
 /** Token counts of one turn, summed over all model rounds. */
