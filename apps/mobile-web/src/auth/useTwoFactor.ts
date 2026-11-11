@@ -11,6 +11,7 @@ export interface TotpSetup {
 export interface UseTwoFactorResult {
   readonly enable: (password: string) => Promise<TotpSetup | string>
   readonly verifyTotp: (code: string) => Promise<string | null>
+  readonly verifyBackupCode: (code: string) => Promise<string | null>
   readonly disable: (password: string) => Promise<string | null>
 }
 
@@ -19,6 +20,7 @@ interface TwoFactorClientSurface {
   twoFactor: {
     enable: (input: { password: string }) => Promise<{ data?: { totpURI: string; backupCodes: string[] } | null; error: AuthErrorLike | null }>
     verifyTotp: (input: { code: string }) => Promise<{ data?: unknown | null; error: AuthErrorLike | null }>
+    verifyBackupCode: (input: { code: string }) => Promise<{ data?: unknown | null; error: AuthErrorLike | null }>
     disable: (input: { password: string }) => Promise<{ data?: unknown | null; error: AuthErrorLike | null }>
   }
 }
@@ -59,6 +61,17 @@ export function useTwoFactor(): UseTwoFactorResult {
     }
   }
 
+  /** A one-time backup code from the 2FA setup, when the authenticator app is not at hand. */
+  async function verifyBackupCode(code: string): Promise<string | null> {
+    try {
+      const { error } = await authClient.twoFactor.verifyBackupCode({ code })
+      if (error) return translate(error.code)
+      return null
+    } catch {
+      return t('auth.errGeneric')
+    }
+  }
+
   async function disable(password: string): Promise<string | null> {
     try {
       const { error } = await authClient.twoFactor.disable({ password })
@@ -69,5 +82,5 @@ export function useTwoFactor(): UseTwoFactorResult {
     }
   }
 
-  return { enable, verifyTotp, disable }
+  return { enable, verifyTotp, verifyBackupCode, disable }
 }

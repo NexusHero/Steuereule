@@ -282,9 +282,14 @@ function IntegerFollowUp({
   const [takenOver, setTakenOver] = useState(false)
   const rawValue = integerFrom(text)
   const canEnterLater = LATER_ALLOWED_SET.has(step)
+  // Leaving the field saves the amount (#443 AC 7: closing the sheet must not lose it); the button
+  // and Enter save the same answer, so it is sent once.
+  const sent = useRef(false)
 
   function submit() {
-    if (rawValue !== null) onAnswer(String(rawValue))
+    if (rawValue === null || sent.current) return
+    sent.current = true
+    onAnswer(String(rawValue))
   }
 
   return (
@@ -317,6 +322,7 @@ function IntegerFollowUp({
         }}
         placeholder={tr('katalog.amountPlaceholder')}
         onSubmit={submit}
+        onBlur={submit}
         accessibilityLabel={`${tr(`katalog.questions.${step}`, { defaultValue: step })} (${tr('katalog.amountPlaceholder')})`}
         testID={`katalog-input-${step}`}
       />

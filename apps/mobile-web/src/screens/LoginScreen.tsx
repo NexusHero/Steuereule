@@ -205,12 +205,14 @@ function TwoFactorChallenge({ email, onDone }: { readonly email: string; readonl
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  // Without the authenticator app: one of the backup codes shown at the 2FA setup (#450 Teil 5A).
+  const [useBackupCode, setUseBackupCode] = useState(false)
 
   async function submit() {
     if (!code) return
     setBusy(true)
     setError('')
-    const err = await twoFactor.verifyTotp(code)
+    const err = useBackupCode ? await twoFactor.verifyBackupCode(code.trim()) : await twoFactor.verifyTotp(code)
     if (err) {
       setError(err)
       setBusy(false)
@@ -219,19 +221,32 @@ function TwoFactorChallenge({ email, onDone }: { readonly email: string; readonl
     onDone()
   }
 
+  function switchMode() {
+    setUseBackupCode((v) => !v)
+    setCode('')
+    setError('')
+  }
+
   return (
     <View style={{ gap: t.space.s4 }}>
       <Text style={{ fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size['2xl'], color: t.color.tinte }}>
         {tr('login.twoFactor.heading')}
       </Text>
       <Text style={{ fontFamily: t.font.text, fontSize: t.size.s, color: t.color.tinte2 }}>
-        {tr('login.twoFactor.body', { email })}
+        {useBackupCode ? tr('login.twoFactor.backupBody') : tr('login.twoFactor.body', { email })}
       </Text>
-      <Feld label={tr('login.twoFactor.codeLabel')} error={error}>
-        <Input type="numeric" value={code} onChange={setCode} placeholder="123456" autoComplete="one-time-code" onSubmit={() => void submit()} testID="login-zweifaktor-code" />
+      <Feld label={useBackupCode ? tr('login.twoFactor.backupLabel') : tr('login.twoFactor.codeLabel')} error={error}>
+        {useBackupCode ? (
+          <Input type="text" value={code} onChange={setCode} autoComplete="one-time-code" onSubmit={() => void submit()} accessibilityLabel={tr('login.twoFactor.backupLabel')} testID="login-zweifaktor-backup-code" />
+        ) : (
+          <Input type="numeric" value={code} onChange={setCode} placeholder="123456" autoComplete="one-time-code" onSubmit={() => void submit()} accessibilityLabel={tr('login.twoFactor.codeLabel')} testID="login-zweifaktor-code" />
+        )}
       </Feld>
       <Button onPress={() => void submit()} disabled={busy || !code} testID="login-zweifaktor-bestaetigen">
         {busy ? tr('login.submitting') : tr('login.twoFactor.submit')}
+      </Button>
+      <Button variant="ghost" onPress={switchMode} testID="login-zweifaktor-modus">
+        {useBackupCode ? tr('login.twoFactor.useApp') : tr('login.twoFactor.useBackup')}
       </Button>
     </View>
   )

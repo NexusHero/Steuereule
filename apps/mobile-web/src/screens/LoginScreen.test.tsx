@@ -245,6 +245,32 @@ describe('LoginScreen', () => {
     await waitFor(() => expect(onDone).toHaveBeenCalledOnce())
   })
 
+  it('signs in with a backup code when the authenticator app is not at hand (#450 5A)', async () => {
+    const codes: string[] = []
+    server.use(
+      http.post(`${BASE_URL}/api/auth/sign-in/email`, () => HttpResponse.json({ twoFactorRedirect: true, twoFactorMethods: ['totp'] })),
+      http.post(`${BASE_URL}/api/auth/two-factor/verify-backup-code`, async ({ request }) => {
+        const body = (await request.json()) as { code: string }
+        codes.push(body.code)
+        if (body.code !== 'AbCd-1234') return HttpResponse.json({ message: 'Invalid code' }, { status: 401 })
+        return HttpResponse.json({ token: 'tok_1', user: { id: 'u1', email: 'a@b.de', emailVerified: true, name: '' } })
+      }),
+    )
+    const onDone = vi.fn()
+    renderLogin({ onDone })
+    fillCredentials('a@b.de', 'geheim-123')
+    fireEvent.click(screen.getByText('Einloggen'))
+    await screen.findByText('Zweiter Faktor')
+
+    fireEvent.click(screen.getByText('Authenticator-App nicht zur Hand? Wiederherstellungscode verwenden'))
+    const backup = screen.getByLabelText('Wiederherstellungscode')
+    fireEvent.change(backup, { target: { value: ' AbCd-1234 ' } })
+    fireEvent.click(screen.getByText('Bestätigen'))
+
+    await waitFor(() => expect(onDone).toHaveBeenCalledOnce())
+    expect(codes).toEqual(['AbCd-1234'])
+  })
+
   it('shows the honest, generic loading state while the sign-in request is in flight', async () => {
     server.use(
       http.post(`${BASE_URL}/api/auth/sign-in/email`, async () => {

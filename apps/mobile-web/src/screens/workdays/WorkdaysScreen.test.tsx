@@ -84,6 +84,55 @@ describe('ArbeitstageScreen', () => {
     expect(await screen.findByText('1.175 €')).toBeTruthy()
   })
 
+  it('saves a changed field when it is left, without moving on — closing the sheet keeps it (#443 AC 7)', async () => {
+    const bodies: { oneWayKm: number | null }[] = []
+    server.use(
+      http.put('*/v1/steuerjahre/2025/arbeitsweg', async ({ request }) => {
+        bodies.push((await request.json()) as { oneWayKm: number | null })
+        return HttpResponse.json({ inputs: null, workdays: null, commuterAllowance: null })
+      }),
+    )
+    const onDone = vi.fn()
+    renderWorkdays(onDone, 2025)
+
+    const km = await screen.findByLabelText('Einfache Entfernung in km')
+    fireEvent.change(km, { target: { value: '33' } })
+    fireEvent.blur(km)
+
+    await waitFor(() => expect(bodies.map((b) => b.oneWayKm)).toEqual([33]))
+    expect(onDone).not.toHaveBeenCalled()
+  })
+
+  it('„Weiter“ right after typing still moves on, although leaving the field already saves', async () => {
+    server.use(
+      http.put('*/v1/steuerjahre/2025/arbeitsweg', async () => {
+        await new Promise((resolve) => setTimeout(resolve, 30))
+        return HttpResponse.json({ inputs: null, workdays: null, commuterAllowance: null })
+      }),
+    )
+    const onDone = vi.fn()
+    renderWorkdays(onDone, 2025)
+    const km = await screen.findByLabelText('Einfache Entfernung in km')
+    fireEvent.change(km, { target: { value: '33' } })
+    fireEvent.blur(km)
+    fireEvent.click(screen.getByText('Weiter'))
+    await waitFor(() => expect(onDone).toHaveBeenCalledOnce())
+  })
+
+  it('leaving a field without a change saves nothing', async () => {
+    const bodies: unknown[] = []
+    server.use(
+      http.put('*/v1/steuerjahre/2025/arbeitsweg', async ({ request }) => {
+        bodies.push(await request.json())
+        return HttpResponse.json({ inputs: null, workdays: null, commuterAllowance: null })
+      }),
+    )
+    renderWorkdays(() => {}, 2025)
+    fireEvent.blur(await screen.findByLabelText('Urlaubstage'))
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(bodies).toEqual([])
+  })
+
   it('saves the facts before moving on', async () => {
     const bodies: unknown[] = []
     server.use(
