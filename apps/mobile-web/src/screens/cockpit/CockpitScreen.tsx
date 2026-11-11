@@ -668,6 +668,9 @@ function makeStyles(t: UiTheme) {
     justifyContent: 'flex-end',
     gap: t.space.s1,
     maxWidth: '55%',
+    // Without shrinking, the chips pushed past the right edge at 375 px (#450 Teil 4).
+    flexShrink: 1,
+    minWidth: 0,
   }
   const takeoverRow: ViewStyle = {
     flexDirection: 'row',

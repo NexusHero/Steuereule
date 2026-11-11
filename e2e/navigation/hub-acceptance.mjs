@@ -93,26 +93,51 @@ async function main() {
     await confirm.click()
     console.log(`[${TAG}] ✅ AC 6 — warnings unlock after one confirmation; a new warning locks again`)
 
-    // AC 7 — closing the LStB sheet saves the typed amount without leaving the field.
-    // FINDINGS (#450 Teil 4), listed in the PR as a follow-up and not asserted here: the catalog
-    // amount fields (save only on „Weiter“) and the Arbeitstage form (saves only on „Weiter“) drop a
-    // typed value when their sheet is closed.
-    await page.goto(`${webOrigin}/app`, { waitUntil: 'networkidle' })
-    await page.locator('[data-testid="cockpit-kachel-lstb"]').click()
-    const gross = page.locator('[data-testid="lstb-bruttoarbeitslohn"]')
-    await gross.waitFor({ state: 'visible', timeout: 10_000 })
-    await gross.fill('2100')
-    await page.locator('[data-testid="sheet-schliessen"]').click()
-    await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
-    const deadline = Date.now() + 10_000
-    let stored = null
-    while (Date.now() < deadline) {
-      stored = (await call(user.api, 'GET', `/v1/steuerjahre/${YEAR}/lstb`)).bruttoarbeitslohn
-      if (stored?.value === 2100) break
-      await page.waitForTimeout(250)
+    // AC 7 — closing a sheet saves the amount typed without leaving the field: LStB, a catalog
+    // amount and the Arbeitstage form (the last two lost it before #450 Teil 4).
+    const until = async (read, expected, message) => {
+      const deadline = Date.now() + 10_000
+      let value = null
+      while (Date.now() < deadline) {
+        value = await read()
+        if (value === expected) return
+        await page.waitForTimeout(250)
+      }
+      fail(`${message}, stored ${JSON.stringify(value)}`)
     }
-    if (stored?.value !== 2100) fail(`AC 7: closing the LStB sheet must save 2.100 € typed without leaving the field, stored ${JSON.stringify(stored)}`)
-    console.log(`[${TAG}] ✅ AC 7 — closing the LStB sheet saved 2.100 € typed without leaving the field`)
+    const typeAndClose = async (tile, field, text) => {
+      await page.goto(`${webOrigin}/app`, { waitUntil: 'networkidle' })
+      await page.locator(`[data-testid="cockpit-kachel-${tile}"]`).click()
+      const input = page.locator(`[data-testid="${field}"]`)
+      await input.waitFor({ state: 'visible', timeout: 10_000 })
+      await input.fill(text)
+      await page.locator('[data-testid="sheet-schliessen"]').click()
+      await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
+    }
+    await typeAndClose('lstb', 'lstb-bruttoarbeitslohn', '2100')
+    await until(async () => (await call(user.api, 'GET', `/v1/steuerjahre/${YEAR}/lstb`)).bruttoarbeitslohn?.value, 2100, 'AC 7: LStB sheet must save 2.100 €')
+    await typeAndClose('arbeitsweg', 'arbeitstage-km', '33')
+    await until(async () => (await call(user.api, 'GET', `/v1/steuerjahre/${YEAR}/arbeitsweg`)).inputs?.oneWayKm, 33, 'AC 7: Arbeitstage sheet must save 33 km')
+    await page.goto(`${webOrigin}/app`, { waitUntil: 'networkidle' })
+    await page.locator('[data-testid="cockpit-kachel-sonderausgaben"]').click()
+    await page.locator('[data-testid="katalog-option-spenden-Ja"]').click()
+    const donation = page.locator('[data-testid="katalog-input-spenden-betrag"]')
+    await donation.waitFor({ state: 'visible', timeout: 10_000 })
+    await donation.fill('250')
+    await page.locator('[data-testid="sheet-schliessen"]').click()
+    await until(async () => (await call(user.api, 'GET', `/v1/steuerjahre/${YEAR}/interview`)).answers?.['spenden-betrag'], '250', 'AC 7: catalog sheet must save 250 €')
+    console.log(`[${TAG}] ✅ AC 7 — LStB (2.100 €), Arbeitstage (33 km) and a catalog amount (250 €) survive closing the sheet`)
+
+    // 375 px: the tax-year chips stay inside the screen.
+    await page.setViewportSize({ width: 375, height: 812 })
+    await page.goto(`${webOrigin}/app`, { waitUntil: 'networkidle' })
+    await page.locator('[data-testid="jahr-2026"]').waitFor({ state: 'visible', timeout: 10_000 })
+    const overflow = await page.evaluate(() =>
+      [...document.querySelectorAll('[data-testid^="jahr-"]')].map((el) => el.getBoundingClientRect().right).filter((right) => right > window.innerWidth + 0.5),
+    )
+    if (overflow.length > 0) fail(`375 px: ${overflow.length} tax-year chips reach past the right edge`)
+    await page.setViewportSize({ width: 1280, height: 800 })
+    console.log(`[${TAG}] ✅ 375 px — every tax-year chip stays inside the screen`)
 
     // AC 1 — typed input and scroll position survive a tab switch (a full-screen mask: the sheets are
     // modal, the tab bar is not reachable while one is open).
@@ -135,7 +160,7 @@ async function main() {
 
     await ctx.close()
     await user.api.dispose()
-    console.log(`[${TAG}] PASS — #443 AC 1, AC 6 and AC 7 verified in the browser.`)
+    console.log(`[${TAG}] PASS — #443 AC 1, AC 6, AC 7 and the 375 px year chips verified in the browser.`)
   } finally {
     await closeBrowser(browser)
     await stop()

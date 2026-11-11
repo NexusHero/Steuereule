@@ -84,6 +84,9 @@ function InterviewRoute({ navigation, route }: Props<'Interview'>) {
       taxYear={year}
       onDone={(answers) => {
         const path = pathFromAnswers(answers)
+        // The finished interview leaves the history before the next mask opens: Back from that mask
+        // then leads to the cockpit, not into the interview that forwards again (#450 Teil 4).
+        if (navigation.canGoBack()) navigation.pop()
         setFunnelPath(path)
         setPendingPath(path)
       }}

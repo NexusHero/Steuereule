@@ -15,9 +15,8 @@ const YEAR = 2026
 /** Every path of linking.ts with real parameters. `lands` names a deliberate redirect, with the reason. */
 export const ROUTES = [
   { path: '/app' },
-  // FINDING (#450 Teil 4): a completed interview forwards to the next mask with navigate(), so the
-  // browser back button lands in the forward again. Recorded as an exception until it is fixed.
-  { path: `/app/steuerjahr/${YEAR}/interview`, lands: `/app/steuerjahr/${YEAR}/lstb`, reason: 'interview complete → next step', backTrap: true },
+  // A completed interview forwards to the next mask and leaves the history, so Back leads to the cockpit.
+  { path: `/app/steuerjahr/${YEAR}/interview`, lands: `/app/steuerjahr/${YEAR}/lstb`, reason: 'interview complete → next step' },
   { path: '/app/konto-wand' },
   { path: `/app/steuerjahr/${YEAR}/lstb` },
   { path: `/app/steuerjahr/${YEAR}/rente` },
@@ -150,7 +149,7 @@ async function main() {
       await page.reload({ waitUntil: 'networkidle' })
       await expectScreen(page, route, 'reload')
       // Back to the cockpit and forward again (not for the cockpit itself).
-      if (route.path === '/app' || route.backTrap) {
+      if (route.path === '/app') {
         console.log(`[${TAG}] ✅ ${route.path}`)
         continue
       }

@@ -90,6 +90,46 @@ describe('KatalogScreen', () => {
     await waitFor(() => expect(bodies).toEqual([{ questionId: 'dhf-miete', value: '650' }]))
   })
 
+  it('saves a typed amount when the field is left — closing the sheet must not lose it (#443 AC 7)', async () => {
+    const bodies: unknown[] = []
+    server.use(
+      http.get(`*/v1/steuerjahre/${TAX_YEAR}/interview`, () =>
+        HttpResponse.json({ answers: { dhf: 'Ja' }, nextStep: { kind: 'question', id: 'dhf-miete' }, openItems: 4 }, { status: 200 }),
+      ),
+      http.post(`*/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, async ({ request }) => {
+        bodies.push(await request.json())
+        return HttpResponse.json({ nextStep: { kind: 'question', id: 'umzug' }, openItems: 3 }, { status: 200 })
+      }),
+    )
+    renderCatalog('lebenslagen')
+    const rent = await screen.findByLabelText('Monatliche Miete am Arbeitsort (Ganzzahlige Euro)')
+
+    fireEvent.change(rent, { target: { value: '650' } })
+    fireEvent.blur(rent)
+    fireEvent.blur(rent)
+
+    // Sent once, even when the field loses the focus twice.
+    await waitFor(() => expect(bodies).toEqual([{ questionId: 'dhf-miete', value: '650' }]))
+  })
+
+  it('an empty field left without typing sends nothing', async () => {
+    const bodies: unknown[] = []
+    server.use(
+      http.get(`*/v1/steuerjahre/${TAX_YEAR}/interview`, () =>
+        HttpResponse.json({ answers: { dhf: 'Ja' }, nextStep: { kind: 'question', id: 'dhf-miete' }, openItems: 4 }, { status: 200 }),
+      ),
+      http.post(`*/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, async ({ request }) => {
+        bodies.push(await request.json())
+        return HttpResponse.json({ nextStep: { kind: 'question', id: 'umzug' }, openItems: 3 }, { status: 200 })
+      }),
+    )
+    renderCatalog('lebenslagen')
+    const rent = await screen.findByLabelText('Monatliche Miete am Arbeitsort (Ganzzahlige Euro)')
+    fireEvent.blur(rent)
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(bodies).toEqual([])
+  })
+
   it('renders the first Sonderausgabe question for eintrag=sonderausgaben', async () => {
     server.use(
       http.get(`*/v1/steuerjahre/${TAX_YEAR}/interview`, () =>

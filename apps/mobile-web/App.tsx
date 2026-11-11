@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import * as RN from 'react-native'
 import { StatusBar } from 'expo-status-bar'
 import { I18nextProvider, useTranslation } from 'react-i18next'
@@ -315,7 +315,16 @@ function AppRoute({ navigation, route }: NativeStackScreenProps<RootStackParamLi
 function TabbedShell() {
   const { state: sessionState } = useAccountSession()
   const linkTo = useLinkTo()
-  const { taxYear, pendingPath, setPendingPath, setFunnelPath, focusedTab, switchToTab, openCockpitScreen } = useShellState()
+  const { taxYear, pendingPath, setPendingPath, setFunnelPath, focusedTab, switchToTab, openCockpitScreen, onSignedOut } = useShellState()
+
+  // Signed out elsewhere (another device revoked this session, or it expired) while the app is open:
+  // leave for the sign-in instead of carrying on as a guest (#450 Teil 5A).
+  const previousStatus = useRef(sessionState.status)
+  useEffect(() => {
+    const before = previousStatus.current
+    previousStatus.current = sessionState.status
+    if (before === 'signed-in' && sessionState.status === 'signed-out') onSignedOut()
+  }, [sessionState.status, onSignedOut])
 
   useEffect(() => {
     if (pendingPath === null) return

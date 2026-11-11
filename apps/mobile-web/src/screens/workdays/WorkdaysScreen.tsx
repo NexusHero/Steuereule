@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { ScrollView, View, Text, Pressable, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
@@ -160,33 +160,40 @@ function WorkdaysForm({
     setTakenOver(true)
   }
 
-  function next() {
+  const formData = () => ({
+    workdays: [...workdays],
+    vacationDays: input.vacationDays,
+    sickDays: input.sickDays,
+    homeOfficeDays: input.homeOfficeDays,
+    oneWayKm,
+    transport,
+    workplace: workplace.trim() === '' ? null : workplace.trim(),
+    publicHolidays: publicHolidays.trim() === '' ? null : int(publicHolidays),
+    publicHolidayRegion: region,
+  })
+  // What was last loaded or saved — leaving a field saves only real changes (#443 AC 7).
+  const lastSaved = useRef<string | null>(null)
+  if (lastSaved.current === null) lastSaved.current = JSON.stringify(formData())
+
+  function persist(onSaved?: () => void) {
     if (result?.kind === 'widerspruch') return
     setError(false)
+    const data = formData()
     save.mutate(
       {
         jahr: taxYear,
-        data: {
-          workdays: [...workdays],
-          vacationDays: input.vacationDays,
-          sickDays: input.sickDays,
-          homeOfficeDays: input.homeOfficeDays,
-          oneWayKm,
-          transport,
-          workplace: workplace.trim() === '' ? null : workplace.trim(),
-          publicHolidays: publicHolidays.trim() === '' ? null : int(publicHolidays),
-          publicHolidayRegion: region,
-        },
+        data,
         ...(partnerName === undefined ? {} : { params: { person: 'B' as const } }),
       },
       {
         onSuccess: (response) => {
           if (response.status === 200) {
+            lastSaved.current = JSON.stringify(data)
             const params = partnerName === undefined ? undefined : ({ person: 'B' } as const)
             void queryClient.invalidateQueries({ queryKey: getCommuteControllerGetQueryKey(taxYear, params) })
             void queryClient.invalidateQueries({ queryKey: getCockpitControllerGetCockpitSummaryQueryKey(taxYear) })
             void queryClient.invalidateQueries({ queryKey: getTaxEstimateControllerGetQueryKey(taxYear) })
-            onDone()
+            onSaved?.()
           } else {
             triggerSaveErrorHaptic()
             setError(true)
@@ -198,6 +205,16 @@ function WorkdaysForm({
         },
       },
     )
+  }
+
+  function next() {
+    persist(onDone)
+  }
+
+  /** Leaving a field (also when the sheet is closed) saves a changed, consistent form. */
+  function saveOnLeave() {
+    if (lastSaved.current === null || JSON.stringify(formData()) === lastSaved.current) return
+    persist()
   }
 
   return (
@@ -237,13 +254,13 @@ function WorkdaysForm({
       </View>
 
       <Feld label={tr('arbeitstage.urlaub')}>
-        <Input type="numeric" mono value={vacation} onChange={setVacation} placeholder={tr('arbeitstage.daysPlaceholder')} accessibilityLabel={tr('arbeitstage.urlaub')} testID="arbeitstage-urlaub" />
+        <Input type="numeric" mono value={vacation} onChange={setVacation} placeholder={tr('arbeitstage.daysPlaceholder')} accessibilityLabel={tr('arbeitstage.urlaub')} testID="arbeitstage-urlaub" onBlur={saveOnLeave} />
       </Feld>
       <Feld label={tr('arbeitstage.krank')}>
-        <Input type="numeric" mono value={sick} onChange={setSick} placeholder={tr('arbeitstage.daysPlaceholder')} accessibilityLabel={tr('arbeitstage.krank')} testID="arbeitstage-krank" />
+        <Input type="numeric" mono value={sick} onChange={setSick} placeholder={tr('arbeitstage.daysPlaceholder')} accessibilityLabel={tr('arbeitstage.krank')} testID="arbeitstage-krank" onBlur={saveOnLeave} />
       </Feld>
       <Feld label={tr('arbeitstage.homeoffice')}>
-        <Input type="numeric" mono value={homeOffice} onChange={setHomeOffice} placeholder={tr('arbeitstage.daysPlaceholder')} accessibilityLabel={tr('arbeitstage.homeoffice')} testID="arbeitstage-homeoffice" />
+        <Input type="numeric" mono value={homeOffice} onChange={setHomeOffice} placeholder={tr('arbeitstage.daysPlaceholder')} accessibilityLabel={tr('arbeitstage.homeoffice')} testID="arbeitstage-homeoffice" onBlur={saveOnLeave} />
       </Feld>
 
       <Feld label={tr('arbeitstage.feiertage.region')}>
@@ -276,7 +293,7 @@ function WorkdaysForm({
 
       <Text style={styles.sectionLabel}>{tr('arbeitstage.weg.titel')}</Text>
       <Feld label={tr('arbeitstage.weg.km')}>
-        <Input type="numeric" mono value={km} onChange={setKm} placeholder="0" accessibilityLabel={tr('arbeitstage.weg.km')} testID="arbeitstage-km" />
+        <Input type="numeric" mono value={km} onChange={setKm} placeholder="0" accessibilityLabel={tr('arbeitstage.weg.km')} testID="arbeitstage-km" onBlur={saveOnLeave} />
       </Feld>
       <Feld label={tr('arbeitstage.weg.verkehrsmittel')}>
         <View style={styles.weekdayRow}>
@@ -288,7 +305,7 @@ function WorkdaysForm({
         </View>
       </Feld>
       <Feld label={tr('arbeitstage.weg.arbeitsort')}>
-        <Input type="text" value={workplace} onChange={setWorkplace} placeholder={tr('arbeitstage.weg.arbeitsortPlaceholder')} accessibilityLabel={tr('arbeitstage.weg.arbeitsort')} testID="arbeitstage-arbeitsort" />
+        <Input type="text" value={workplace} onChange={setWorkplace} placeholder={tr('arbeitstage.weg.arbeitsortPlaceholder')} accessibilityLabel={tr('arbeitstage.weg.arbeitsort')} testID="arbeitstage-arbeitsort" onBlur={saveOnLeave} />
       </Feld>
       {allowance !== null ? <Row label={tr('arbeitstage.weg.pauschale')} value={formatEuro(allowance)} /> : null}
 
