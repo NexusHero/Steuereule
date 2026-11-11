@@ -1,7 +1,8 @@
 import { Inject, Injectable, Optional } from '@nestjs/common'
 
 export type AiTaskSlot = 'advisor_chat' | 'vision_ocr' | 'fallback'
-export type AiProviderKind = 'google-genai' | 'anthropic' | 'openai' | 'deterministic'
+/** `fake`: the scripted FakeKiChatModel, only with AI_FAKE_KI=1 outside production (#450 D8). */
+export type AiProviderKind = 'google-genai' | 'anthropic' | 'openai' | 'deterministic' | 'fake'
 
 export interface ResolvedAiSlotConfig {
   readonly slot: AiTaskSlot
@@ -48,6 +49,7 @@ const DEFAULT_MODEL_BY_PROVIDER: Readonly<Record<AiProviderKind, string>> = {
   anthropic: 'claude-sonnet-4-5',
   openai: 'gpt-4o-mini',
   deterministic: 'deterministic-fallback',
+  fake: 'fake-ki-script',
 }
 
 function isTruthyFlag(raw: string | undefined): boolean {
@@ -109,7 +111,7 @@ export class EnvAiRuntimeConfigService implements AiRuntimeConfigService {
   }
 
   private resolveApiKey(provider: AiProviderKind, slot: AiTaskSlot): string | null {
-    if (provider === 'deterministic') return null
+    if (provider === 'deterministic' || provider === 'fake') return null
     if (slot === 'vision_ocr' && this.env.AI_VISION_API_KEY?.trim()) {
       return this.env.AI_VISION_API_KEY.trim()
     }
@@ -139,6 +141,11 @@ export class EnvAiRuntimeConfigService implements AiRuntimeConfigService {
         model: DEFAULT_MODEL_BY_PROVIDER.deterministic,
         apiKey: null,
       }
+    }
+
+    // #450 D8: CI and tests chat with the scripted fake model; production refuses the flag at startup.
+    if (slot === 'advisor_chat' && isTruthyFlag(this.env.AI_FAKE_KI) && this.env.NODE_ENV !== 'production') {
+      return { slot, enabled: true, provider: 'fake', model: DEFAULT_MODEL_BY_PROVIDER.fake, apiKey: null }
     }
 
     let explicitProvider: AiProviderKind | null = null

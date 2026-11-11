@@ -51,6 +51,12 @@ suggestions.
   right call — ADR-008 says "die verworfene Quelle bleibt im Verlauf", which this slice treats as
   the caller's persistence concern, not the core's.
 
+## Nachtrag 2026-11-11: Fake-Modell hinter dem KiPort für CI und Tests (#450 Teil 1A, Entscheidung D8)
+
+- `apps/api/src/ki/fake-chat-model.ts` beantwortet den Chat nach einem festen Skript, über Stichwörter in der Frage. Daraus entstehen Tool-Aufrufe wie `stage_field_draft`. Die Browser-Gates testen damit die App, nicht ein Modell.
+- **Einschalten:** nur mit `AI_FAKE_KI=1` und außerhalb von Produktion. `assertFakeKiNotInProduction` lässt die API mit dem Flag in Produktion nicht starten. Als Providername (`AI_ADVISOR_PROVIDER=fake`) ist es nicht wählbar.
+- **Rechenweg:** Die Anwendung bleibt dieselbe wie mit einem echten Modell, also LangGraph-Schleife, PII-Gate, Entwurf statt Schreiben. Nur die Antwort des Modells ist fest.
+
 ## Alternatives considered
 
 - **Let the KI write Posten directly.** Rejected: Produkt-ADR-014 rules it out — numbers the user

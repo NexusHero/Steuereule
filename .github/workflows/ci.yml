@@ -940,6 +940,16 @@ jobs:
         run: node e2e/a11y/bfsg-wcag-audit.mjs
       - name: Real-Session Load & Latency Budget Gate (0% error rate, p95 <= 250ms)
         run: node scripts/loadtest/loadtest.mjs --concurrency 5 --iterations 5 --url "${API_ORIGIN}" --origin "${WEB_ORIGIN}" --max-p95 250
+      - name: Restart the API with the fake KiPort (#450 D8 — AI_FAKE_KI only outside production)
+        # Last in the job on purpose: every gate above talks to the API without the fake model.
+        working-directory: apps/api
+        run: |
+          kill "$(cat /tmp/steuereule-api-cross-origin.pid)" 2>/dev/null || true
+          AI_FAKE_KI=1 node --import tsx dist/main.js > /tmp/steuereule-api-cross-origin.log 2>&1 &
+          echo $! > /tmp/steuereule-api-cross-origin.pid
+          curl --fail --silent --show-error --retry 30 --retry-delay 1 --retry-all-errors --retry-connrefused "${API_ORIGIN}/v1/profile"
+      - name: Eulen-Modus gate with the fake KiPort (#450 1A, 5F) — no write without a click, apply/undo, Alle übernehmen, conflict, inline mask, drawer/dock, guest
+        run: node e2e/advisor/owl-mode-fake-ki.mjs
       - name: API log (on failure)
         if: failure()
         run: cat /tmp/steuereule-api-cross-origin.log || true

@@ -3,13 +3,15 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai'
 import { ChatOpenAI } from '@langchain/openai'
 import type { ResolvedAiSlotConfig } from './ai-runtime-config.service.js'
+import { FakeKiChatModel } from './fake-chat-model.js'
 
 export const CHAT_MODEL_FACTORY = Symbol('CHAT_MODEL_FACTORY')
 
 export type ChatModelFactory = (config: ResolvedAiSlotConfig) => BaseChatModel | null
 
 export function createChatModelFromConfig(config: ResolvedAiSlotConfig): BaseChatModel | null {
-  if (!config.enabled || config.provider === 'deterministic' || !config.apiKey) {
+  if (config.enabled && config.provider === 'fake') return new FakeKiChatModel()
+  if (!config.enabled || config.provider === 'deterministic' || config.provider === 'fake' || !config.apiKey) {
     return null
   }
 
