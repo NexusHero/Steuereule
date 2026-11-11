@@ -20,8 +20,25 @@ jobs:
   ai-eval:
     name: Eule against the real model — amounts vs core, StBerG, sources, injection, PII, consistency, TTFT
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
+    # The chat scenarios (ADR-0066) apply drafts and read the stored values back, so they need a database.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: steuereule
+          POSTGRES_PASSWORD: steuereule
+          POSTGRES_DB: steuereule
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U steuereule -d steuereule"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
     env:
+      DATABASE_URL: postgres://steuereule:steuereule@localhost:5432/steuereule
+      TRUSTED_PROXIES: none
       AI_EVAL_GEMINI_API_KEY: ${{ secrets.AI_EVAL_GEMINI_API_KEY }}
       AI_EVAL_ENFORCE: ${{ vars.AI_EVAL_ENFORCE || '0' }}
       AI_EVAL_COST_CAP_EUR: '5'
@@ -58,6 +75,18 @@ jobs:
       - name: Check reasoning, usage and caching against the real model
         if: steps.key.outputs.present == 'true'
         run: pnpm --filter @steuereule/api exec node --import tsx scripts/ai-eval/reasoning-check.ts
+      # ADR-0066: one customer sentence per area of the return, against the real model and a real
+      # database — is the right field filled with the right value? A report like the evaluation
+      # above: red scenarios fail the job only once AI_EVAL_ENFORCE is 1.
+      - name: Prepare the database for the chat scenarios
+        if: always() && steps.key.outputs.present == 'true'
+        run: |
+          pnpm --filter @steuereule/api prisma:generate
+          pnpm --filter @steuereule/api migrate:deploy
+      - name: The owl fills the return through the chat
+        if: always() && steps.key.outputs.present == 'true'
+        continue-on-error: ${{ env.AI_EVAL_ENFORCE != '1' }}
+        run: pnpm --filter @steuereule/api test:live
       - name: Upload the report
         if: always() && steps.key.outputs.present == 'true'
         uses: actions/upload-artifact@v4
