@@ -1,4 +1,5 @@
 import './config/env-snapshot.js'
+import { assertFakeKiNotInProduction } from './ki/fake-chat-model.js'
 import 'reflect-metadata'
 import fastifyCookie from '@fastify/cookie'
 import fastifyMultipart from '@fastify/multipart'
@@ -81,6 +82,7 @@ export async function buildApp(): Promise<NestFastifyApplication> {
 
 async function bootstrap(): Promise<void> {
   assertEnvNotFileSourced()
+  assertFakeKiNotInProduction()
 
   await assertDatabaseReachable()
 
