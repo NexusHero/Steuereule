@@ -336,7 +336,9 @@ describe('the owl knows the real field names (#476, found by playing a customer 
     expect(catalog).toContain('weg (ganze Zahl 0–999)')
     expect(catalog).toContain('kind [braucht `instance`]')
     // The model wrote „Pkw“; the mask only takes the exact values.
-    expect(catalog).toContain('transport („pkw“ | „oepnv“ | „andere“, genau so geschrieben)')
+    expect(catalog).toContain('transport („pkw“ | „oepnv“ | „andere“)')
+    expect(catalog).toContain('registeredWithMeAllYear („true“ | „false“)')
+    expect(catalog).toContain('rentenart („GesetzlicheRente“')
   })
 
   it('offers no protected screen and no protected field', () => {
@@ -397,5 +399,43 @@ describe('the owl knows the real field names (#476, found by playing a customer 
     const model = new ChunkedChatModel([[answer('Antwort.')]])
     await run(new LangGraphAdvisorEngine(runtime('google-genai'), () => model))
     expect(model.toolChoices).toContain('none')
+  })
+})
+
+describe('values are checked against the field catalogue before a draft exists (ADR-0065)', () => {
+  const stage = (args: Record<string, unknown>): AIMessageChunk =>
+    chunkOf({ content: '', tool_call_chunks: [{ name: 'stage_field_draft', args: JSON.stringify({ label: 'Entwurf', ...args }), index: 0, id: 'c1' }] })
+
+  it('stores the tidied value in the draft, for the main field and for companions', async () => {
+    const model = new ChunkedChatModel([
+      [stage({ screen: 'commute', field: 'oneWayKm', newValue: '38', companionFields: { transport: 'Pkw', workdays: '1, 2,3,4,5' } })],
+      [answer('Entwurf angelegt.')],
+    ])
+    const { result } = await run(new LangGraphAdvisorEngine(runtime('google-genai'), () => model))
+    expect(result.meta.action).toMatchObject({ field: 'oneWayKm', newValue: '38', companionFields: { transport: 'pkw', workdays: '1,2,3,4,5' } })
+  })
+
+  it('turns an amount written with separators and currency into plain digits', async () => {
+    const model = new ChunkedChatModel([[stage({ screen: 'lstb', field: 'bruttoarbeitslohn', newValue: '62.000 €' })], [answer('ok')]])
+    const { result } = await run(new LangGraphAdvisorEngine(runtime('google-genai'), () => model))
+    expect(result.meta.action?.newValue).toBe('62000')
+  })
+
+  it('makes no draft for a value the field cannot hold, and tells the model why', async () => {
+    const model = new ChunkedChatModel([[stage({ screen: 'rente', field: 'rentenart', newValue: 'Gesetzliche Altersrente' })], [answer('Das ging nicht.')]])
+    const { result } = await run(new LangGraphAdvisorEngine(runtime('google-genai'), () => model))
+    expect(result.meta.action).toBeUndefined()
+    const toolResult = String(model.seenMessages[1]!.at(-1)!.content)
+    expect(toolResult).toContain('INVALID_VALUE')
+    expect(toolResult).toContain('GesetzlicheRente')
+  })
+
+  it('refuses the whole draft when one companion value is wrong', async () => {
+    const model = new ChunkedChatModel([
+      [stage({ screen: 'commute', field: 'oneWayKm', newValue: '38', companionFields: { transport: 'Fahrrad' } })],
+      [answer('Das ging nicht.')],
+    ])
+    const { result } = await run(new LangGraphAdvisorEngine(runtime('google-genai'), () => model))
+    expect(result.meta.action).toBeUndefined()
   })
 })

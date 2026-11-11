@@ -46,7 +46,7 @@ import {
   createChatModelFromConfig,
   type ChatModelFactory,
 } from './chat-model.factory.js'
-import { describeAiWritableFields, normalizeSourceId, validateStageTarget, type StageTargetCheck } from './advisor-safety.js'
+import { checkStageValue, describeAiWritableFields, normalizeSourceId, validateStageTarget, type StageTargetCheck } from './advisor-safety.js'
 import { checkPiiFree } from './ki.adapter.js'
 
 export const ADVISOR_ENGINE = Symbol('ADVISOR_ENGINE')
@@ -433,7 +433,12 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
             rejectTarget(target)
             continue
           }
-          const sim = simulateAdvisorFieldDelta(request.digest, target.screen, field.trim(), newValue)
+          const simValue = checkStageValue(target.screen, field, newValue)
+          if (!simValue.ok) {
+            toolMessages.push(toolResult(callId, tc.name, { ok: false, error: simValue.error }))
+            continue
+          }
+          const sim = simulateAdvisorFieldDelta(request.digest, target.screen, field.trim(), simValue.value)
           toolMessages.push(new ToolMessage({ tool_call_id: callId, name: tc.name, content: JSON.stringify({ ok: true, ...sim }) }))
           continue
         }
@@ -441,28 +446,42 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
         if (tc.name === 'stage_field_draft') {
           const args = parseArgs(TOOL_ARG_SCHEMAS.stage_field_draft)
           if (args === null) continue
-          const { screen, field, newValue, label, reason } = args
+          const { screen, field, label, reason } = args
           const instance = args.instance && args.instance.trim().length > 0 ? args.instance.trim() : null
           const sourceId = normalizeSourceId(args.sourceId)
-          const companionEntries = Object.entries(args.companionFields ?? {}).map(([k, v]) => [k.trim(), v] as const)
+          const rawCompanions = Object.entries(args.companionFields ?? {}).map(([k, v]) => [k.trim(), v] as const)
 
           const target = validateStageTarget(screen, field)
           if (!target.ok) {
             rejectTarget(target)
             continue
           }
-          if (companionEntries.length > MAX_COMPANION_FIELDS) {
+          if (rawCompanions.length > MAX_COMPANION_FIELDS) {
             toolMessages.push(toolResult(callId, tc.name, { ok: false, error: `INVALID_ARGUMENTS: höchstens ${MAX_COMPANION_FIELDS} Begleitfelder.` }))
             continue
           }
           // Companion fields are written with the same rights as the main field, so they pass the same gate.
-          const lockedCompanion = companionEntries
+          const lockedCompanion = rawCompanions
             .map(([companionField]) => validateStageTarget(screen, companionField))
             .find((check): check is Extract<StageTargetCheck, { ok: false }> => !check.ok)
           if (lockedCompanion) {
             rejectTarget(lockedCompanion)
             continue
           }
+          // Every value is checked against the field catalogue and stored in its tidied form: a
+          // draft that could not be applied is refused here, with the reason, instead of being made.
+          const checkedValues = [[field.trim(), args.newValue] as const, ...rawCompanions].map(([name, value]) => ({ name, check: checkStageValue(screen, name, value) }))
+          const badValue = checkedValues.find((entry) => !entry.check.ok)
+          if (badValue && !badValue.check.ok) {
+            toolMessages.push(toolResult(callId, tc.name, { ok: false, error: badValue.check.error }))
+            continue
+          }
+          const tidy = (name: string): string => {
+            const entry = checkedValues.find((candidate) => candidate.name === name)!
+            return entry.check.ok ? entry.check.value : ''
+          }
+          const newValue = tidy(field.trim())
+          const companionEntries = rawCompanions.map(([name]) => [name, tidy(name)] as const)
           const companionFields = companionEntries.length > 0 ? Object.fromEntries(companionEntries) : undefined
 
           try {
@@ -528,9 +547,15 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
           }
 
           const safeField = rawSafe.field.trim()
-          const safeNewValue = rawSafe.newValue
           const maxField = rawMax.field.trim()
-          const maxNewValue = rawMax.newValue
+          const safeValue = checkStageValue(safeCheck.screen, safeField, rawSafe.newValue)
+          const maxValue = checkStageValue(maxCheck.screen, maxField, rawMax.newValue)
+          if (!safeValue.ok || !maxValue.ok) {
+            toolMessages.push(toolResult(callId, tc.name, { ok: false, error: !safeValue.ok ? safeValue.error : !maxValue.ok ? maxValue.error : '' }))
+            continue
+          }
+          const safeNewValue = safeValue.value
+          const maxNewValue = maxValue.value
 
           try {
             checkPiiFree({ safeNewValue, maxNewValue, title, safeLabel: rawSafe.label, maxLabel: rawMax.label })

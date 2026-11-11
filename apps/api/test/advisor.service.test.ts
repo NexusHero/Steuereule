@@ -166,6 +166,36 @@ describe('AdvisorService (In-App Steuerberater Agent "Deine Eule")', () => {
     expect((await commuteRepo.findForUserAndYear(USER, YEAR))?.oneWayKm).toBe(20)
   })
 
+  describe('the value check on the write itself (ADR-0065)', () => {
+    const storedDraft = (actionId: string, field: string, newValue: string) =>
+      advisorRepo.createMessage({
+        userId: USER,
+        taxYear: YEAR,
+        role: 'assistant',
+        content: 'Entwurf.',
+        meta: {
+          action: {
+            actionId, status: 'pending', screen: 'lstb', field, instance: null, label: 'Lohn',
+            previousValue: '65000', expectedPreviousValue: '65000', newValue,
+            beforeRefundEur: 0, afterRefundEur: 0, deltaEur: 0, reason: 'r', sourceId: 'estg-9-1',
+          },
+        },
+      })
+
+    it('stores the tidied value of a draft that was made in a looser form', async () => {
+      await storedDraft('act-loose', 'bruttoarbeitslohn', '70.000 €')
+      const applied = await advisorService.applyAction(USER, YEAR, 'act-loose')
+      expect(applied.action.status).toBe('applied')
+      expect((await lstbRepo.findForUserAndYear(USER, YEAR))?.bruttoarbeitslohn).toBe('70000')
+    })
+
+    it('refuses a stored draft whose value the field cannot hold, and writes nothing', async () => {
+      await storedDraft('act-nonsense', 'bruttoarbeitslohn', 'xyz-unsinn')
+      await expect(advisorService.applyAction(USER, YEAR, 'act-nonsense')).rejects.toMatchObject({ code: 'FIELD_VALUE_INVALID' })
+      expect((await lstbRepo.findForUserAndYear(USER, YEAR))?.bruttoarbeitslohn).toBe('65000')
+    })
+  })
+
   it('carries stated training costs into the CaseDigest, and none while the question is unanswered (#476)', async () => {
     expect((await advisorService.buildCaseDigest(USER, YEAR)).catalogExpenses.trainingCostsEur).toBeNull()
     await interviewRepo.write({ userId: USER, taxYear: YEAR, questionId: 'fortbildung', value: 'Ja', openItems: 0 })

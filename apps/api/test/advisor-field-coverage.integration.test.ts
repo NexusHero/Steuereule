@@ -4,7 +4,7 @@
 // values is a field the owl would produce a dead draft for.
 import { NestFactory } from '@nestjs/core'
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify'
-import { QUESTIONS, provenanceKey, type Screen } from '@steuereule/core'
+import { QUESTIONS, fieldSpec, provenanceKey, type Screen } from '@steuereule/core'
 import { randomUUID } from 'node:crypto'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { AppModule } from '../src/app.module.js'
@@ -17,7 +17,7 @@ import { RENTAL_REPOSITORY, type RentalRepository } from '../src/rental/rental.r
 const YEAR = 2025
 
 /** Values a model would plausibly send; the first one a field accepts counts. */
-const GENERIC_CANDIDATES = ['1200', '12', '2025-06-30', 'Ja', 'true', 'pkw', '1,2,3,4,5', 'BY', 'Muster GmbH', 'gesetzlich', 'altersrente']
+const GENERIC_CANDIDATES = ['1200', '12', '2025-06-30', 'true', 'pkw', '1,2,3,4,5', 'BY', 'GesetzlicheRente', '1', 'Inland', '1995', '2019']
 
 function candidatesFor(screen: Screen, field: string): string[] {
   if (screen === 'interview') {
@@ -113,12 +113,14 @@ describe('every field the owl is told about can be written (#476)', () => {
     expect(results.length).toBeGreaterThan(100)
   })
 
-  it('refuses a value that cannot be right on the screens that already check their input', () => {
-    // One invalid interview answer used to make every later read of that user's interview fail.
-    // The remaining screens (lstb, rente, kapital, vermietung, chLohnausweis, kind) still store
-    // whatever they are given on this path; the report above lists them. That is known and open.
-    const guardedScreens = ['interview.', 'commute.', 'assessment.']
-    expect(unguarded.filter((key) => guardedScreens.some((prefix) => key.startsWith(prefix)))).toEqual([])
+  it('refuses a value that cannot be right on every field with a fixed form (ADR-0065)', () => {
+    // One invalid interview answer used to make every later read of that user's interview fail,
+    // and 51 further fields stored whatever they were given. Free text is the only exception left.
+    const fixedForm = unguarded.filter((key) => {
+      const [screenPart, field] = [key.slice(0, key.lastIndexOf('.')), key.slice(key.lastIndexOf('.') + 1)]
+      return fieldSpec(screenPart.split(':')[0]!, field)?.value.kind !== 'text'
+    })
+    expect(fixedForm).toEqual([])
   })
 
   it('lists no field to the model that can never be written', () => {
