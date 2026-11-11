@@ -134,15 +134,15 @@ describe('ChatComposer height in a browser (#476)', () => {
   it('grows with the text, stops at five lines, and shrinks again when text is removed', () => {
     withBrowserTextarea((value) => Math.max(1, value.split('\n').length), () => {
       render(<Host platform="desktop" onSend={vi.fn()} />)
-      const input = screen.getByTestId('input')
+      const textarea = screen.getByTestId('input')
 
-      fireEvent.change(input, { target: { value: 'eins\nzwei\ndrei' } })
+      fireEvent.change(textarea, { target: { value: 'eins\nzwei\ndrei' } })
       expect(heightOf()).toBe(3 * 20 + 24)
 
-      fireEvent.change(input, { target: { value: Array.from({ length: 9 }, (_, i) => `Zeile ${i}`).join('\n') } })
+      fireEvent.change(textarea, { target: { value: Array.from({ length: 9 }, (_, i) => `Zeile ${i}`).join('\n') } })
       expect(heightOf()).toBe(5 * 20 + 24)
 
-      fireEvent.change(input, { target: { value: 'eins' } })
+      fireEvent.change(textarea, { target: { value: 'eins' } })
       expect(heightOf()).toBe(44)
     })
   })
