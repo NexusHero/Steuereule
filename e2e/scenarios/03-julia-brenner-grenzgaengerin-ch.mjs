@@ -10,6 +10,7 @@ import {
   registerAndOnboard,
   selectTaxYear2025,
   nextStep,
+  saveExchangeRate,
   assertEstimate,
   unlockTaxYearInDb,
   confirmAnnexesIfPresent,
@@ -67,9 +68,7 @@ export async function runScenario03(browser, webOrigin, sql, markusSession = nul
   await pageJulia.locator('[data-testid="ch-feld-nettolohn"]').fill(String(s.julia.crossBorder.netWageChf))
   await pageJulia.locator('[data-testid="ch-feld-quellensteuer"]').fill(String(s.julia.crossBorder.withholdingTaxChf))
 
-  await pageJulia.locator(`[data-testid="ch-wechselkurs-monat-${s.julia.crossBorder.exchangeRateMonth.slice(5)}"]`).click()
-  await pageJulia.locator('[data-testid="ch-wechselkurs-kurs"]').fill(s.julia.crossBorder.exchangeRate)
-  await pageJulia.locator('[data-testid="ch-wechselkurs-speichern"]').click()
+  await saveExchangeRate(pageJulia, s.julia.crossBorder.exchangeRateMonth, s.julia.crossBorder.exchangeRate)
 
   await pageJulia.locator('[data-testid="ch-vorsorge-krankenkasseChf"]').fill(String(s.julia.crossBorder.healthCareEur))
   await pageJulia.locator('[data-testid="ch-vorsorge-krankenkasseChf"]').blur()

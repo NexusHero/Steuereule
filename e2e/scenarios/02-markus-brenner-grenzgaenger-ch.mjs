@@ -9,6 +9,7 @@ import {
   registerAndOnboard,
   selectTaxYear2025,
   nextStep,
+  saveExchangeRate,
   runStandaloneScenario,
 } from './helpers/scenario-harness.mjs'
 
@@ -58,9 +59,7 @@ export async function runScenario02(browser, webOrigin, _sql, { keepOpen = false
   await pageMarkus.locator('[data-testid="ch-feld-nettolohn"]').fill(String(s.markus.crossBorder.netWageChf))
   await pageMarkus.locator('[data-testid="ch-feld-quellensteuer"]').fill(String(s.markus.crossBorder.withholdingTaxChf))
 
-  await pageMarkus.locator(`[data-testid="ch-wechselkurs-monat-${s.markus.crossBorder.exchangeRateMonth.slice(5)}"]`).click()
-  await pageMarkus.locator('[data-testid="ch-wechselkurs-kurs"]').fill(s.markus.crossBorder.exchangeRate)
-  await pageMarkus.locator('[data-testid="ch-wechselkurs-speichern"]').click()
+  await saveExchangeRate(pageMarkus, s.markus.crossBorder.exchangeRateMonth, s.markus.crossBorder.exchangeRate)
 
   await pageMarkus.locator('[data-testid="ch-vorsorge-krankenkasseChf"]').fill(String(s.markus.crossBorder.healthCareEur))
   await pageMarkus.locator('[data-testid="ch-vorsorge-krankenkasseChf"]').blur()
