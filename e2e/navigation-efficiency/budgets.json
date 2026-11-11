@@ -1,0 +1,32 @@
+{
+  "lena": {
+    "erster-durchlauf": 288,
+    "korrektur": 8,
+    "unterbrechung": 10,
+    "wiedereinstieg": 0
+  },
+  "brenner": {
+    "erster-durchlauf": 566,
+    "korrektur": 9,
+    "unterbrechung": 10,
+    "wiedereinstieg": 0
+  },
+  "weber": {
+    "erster-durchlauf": 581,
+    "korrektur": 8,
+    "unterbrechung": 10,
+    "wiedereinstieg": 0
+  },
+  "meyer": {
+    "erster-durchlauf": 234,
+    "korrektur": 7,
+    "unterbrechung": 8,
+    "wiedereinstieg": 0
+  },
+  "richter": {
+    "erster-durchlauf": 241,
+    "korrektur": 8,
+    "unterbrechung": 10,
+    "wiedereinstieg": 0
+  }
+}
