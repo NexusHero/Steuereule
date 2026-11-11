@@ -217,6 +217,43 @@ describe('LstbScreen', () => {
     expect(urls[0]).toMatch(/\/lstb\?person=B$/)
   })
 
+  it('saves the church tax of Zeile 6 on blur, without touching the three required fields (#450 6F)', async () => {
+    const puts: unknown[] = []
+    server.use(
+      http.put('*/v1/steuerjahre/:jahr/lstb-kirchensteuer', async ({ request }) => {
+        const body = await request.json()
+        puts.push(body)
+        return HttpResponse.json(body, { status: 200 })
+      }),
+    )
+    renderLstb()
+    const line6 = await screen.findByLabelText('Kirchensteuer des Arbeitnehmers (Zeile 6) (Ganzzahlige Euro)')
+
+    fireEvent.change(line6, { target: { value: '540' } })
+    fireEvent.blur(line6)
+
+    await waitFor(() => expect(puts).toEqual([{ kirchensteuer: 540, kirchensteuerEhegatte: null }]))
+  })
+
+  it('an emptied church tax line is stored as not entered, never as 0 €', async () => {
+    const puts: unknown[] = []
+    server.use(
+      http.get('*/v1/steuerjahre/:jahr/lstb-kirchensteuer', () => HttpResponse.json({ kirchensteuer: 540, kirchensteuerEhegatte: null })),
+      http.put('*/v1/steuerjahre/:jahr/lstb-kirchensteuer', async ({ request }) => {
+        const body = await request.json()
+        puts.push(body)
+        return HttpResponse.json(body, { status: 200 })
+      }),
+    )
+    renderLstb()
+    const line6 = await screen.findByDisplayValue('540')
+
+    fireEvent.change(line6, { target: { value: '' } })
+    fireEvent.blur(line6)
+
+    await waitFor(() => expect(puts).toEqual([{ kirchensteuer: null, kirchensteuerEhegatte: null }]))
+  })
+
   it('never turns an untouched empty field into 0 € when it loses focus', async () => {
     const puts: unknown[] = []
     server.use(http.put(`${LSTB_URL}/:feld`, () => { puts.push(1); return HttpResponse.json({}, { status: 200 }) }))

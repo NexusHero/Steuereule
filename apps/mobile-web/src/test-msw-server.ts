@@ -235,6 +235,11 @@ export const server = setupServer(
   http.put('*/v1/steuerjahre/:jahr/lstb/:feld', () =>
     HttpResponse.json(EMPTY_LSTB_RESPONSE, { status: 200 }),
   ),
+  // #450 Teil 6F — the optional church tax lines (Zeilen 6 und 7): nothing entered by default.
+  http.get('*/v1/steuerjahre/:jahr/lstb-kirchensteuer', () =>
+    HttpResponse.json({ kirchensteuer: null, kirchensteuerEhegatte: null }, { status: 200 }),
+  ),
+  http.put('*/v1/steuerjahre/:jahr/lstb-kirchensteuer', async ({ request }) => HttpResponse.json(await request.json(), { status: 200 })),
   // REQ-021 (ticket 16) — the CH-Lohnausweis guided mask + fold: empty `offen` mask by default,
   // same "fresh tax year" honesty as the interview/LStB defaults.
   getChSalaryCertificateControllerGetMockHandler(EMPTY_CH_SALARY_CERTIFICATE_RESPONSE),

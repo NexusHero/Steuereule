@@ -25,6 +25,7 @@ import { InMaskAdvisorCompanion } from '../advisor/InMaskAdvisorCompanion'
 import { FIELDS, type FieldId, type StagedFieldDraft } from './scan/lstbScanDraft'
 import { LstbScanPanel } from './scan/LstbScanPanel'
 import { useLstbScan } from './scan/useLstbScan'
+import { ChurchTaxLines } from './ChurchTaxLines'
 
 export interface LstbScreenProps {
   readonly onDone?: () => void
@@ -108,6 +109,8 @@ export function LstbScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YE
       })}
 
       <StateNotice response={response} />
+
+      <ChurchTaxLines taxYear={taxYear} params={params} track={track} />
 
       <InMaskAdvisorCompanion screen="lstb" taxYear={taxYear} />
 

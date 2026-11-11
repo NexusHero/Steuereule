@@ -706,6 +706,38 @@ describe('CockpitScreen — die voraussichtliche Erstattung als ehrliche Spanne 
     expect(screen.getByText('Kirchensteuer ist in der Schätzung noch nicht enthalten.')).toBeTruthy()
   })
 
+  it('says why the church tax is open and what to enter (#450 6F)', async () => {
+    mockCockpit(LOADED_SUMMARY)
+    server.use(
+      http.get(ESTIMATE_URL, () =>
+        HttpResponse.json({ kind: 'spanne', result: { from: 300, to: 400 }, churchTaxOpen: true, churchTax: { kind: 'offen', reason: 'einbehalt-fehlt' } }),
+      ),
+    )
+    renderCockpit()
+
+    expect(
+      await screen.findByText('Kirchensteuer offen: Trag die einbehaltene Kirchensteuer (Zeile 6) aus der Lohnsteuerbescheinigung ein.'),
+    ).toBeTruthy()
+  })
+
+  it('no hint once the church tax is part of the estimate, unless the church could cap it on application', async () => {
+    mockCockpit(LOADED_SUMMARY)
+    server.use(
+      http.get(ESTIMATE_URL, () =>
+        HttpResponse.json({
+          kind: 'spanne',
+          result: { from: 300, to: 400 },
+          churchTaxOpen: false,
+          churchTax: { kind: 'spanne', due: { from: 900, to: 950 }, withheld: 1000, capOnApplication: true },
+        }),
+      ),
+    )
+    renderCockpit()
+
+    expect(await screen.findByText('Bei hohem Einkommen kann deine Kirche die Kirchensteuer auf Antrag kappen.')).toBeTruthy()
+    expect(screen.queryByText('Kirchensteuer ist in der Schätzung noch nicht enthalten.')).toBeNull()
+  })
+
   it('says how many details the estimate still needs', async () => {
     mockCockpit(LOADED_SUMMARY)
     server.use(http.get(ESTIMATE_URL, () => HttpResponse.json({ kind: 'offen', missing: ['lohnsteuer', 'sozialversicherung'] })))
