@@ -411,7 +411,9 @@ function extractTrailingAmount(line: string, isRowHeader: boolean): number | nul
   if (isRowHeader) {
     sanitized = sanitized.replace(/^(?:Zeile\s+)?\d{1,2}\s*[a-c]?[.)]?(?=\s+[A-Za-zÄÖÜäöüß(])\s*/i, '')
   }
-  sanitized = sanitized.trim()
+  // OCR of a photo turns the decimal comma at the end of the line into a quote, or splits it off
+  // with a space ("5.051 ‚76", "4.182 ,64", "977'76"); only the last two digits of the line qualify.
+  sanitized = sanitized.trim().replace(/(\d)\s*[,‚'’`´]\s*(\d{2})(\s*(?:€|EUR|Euro)?)$/i, '$1,$2$3')
 
   if (!sanitized) return null
 

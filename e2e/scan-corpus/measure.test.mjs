@@ -32,11 +32,11 @@ test('a negative document fails on a green amount and on the wrong outcome', () 
   assert.equal(score(year, { kind: 'draft', ms: 1, fields: {} }).problems.length, 1)
 })
 
-test('digital PDFs need 100 %; a photo variant below 95 % passes only at or above its floor', () => {
-  const photo = (correct) => ({ file: 'p.jpg', variant: 'foto-x', correct, total: 10, wrongButSure: 0, ms: 1000, problems: [] })
-  assert.equal(evaluate([photo(7)], { zeroWriteViolations: 0, externalRequests: 0, floor: { 'foto-x': 0.7 } }).violations.length, 0)
-  assert.equal(evaluate([photo(6)], { zeroWriteViolations: 0, externalRequests: 0, floor: { 'foto-x': 0.7 } }).violations.length, 1)
-  const digital = { ...photo(9), variant: 'digital-pdf' }
-  assert.equal(evaluate([digital], { zeroWriteViolations: 0, externalRequests: 0, floor: { 'digital-pdf': 0 } }).violations.length, 1)
-  assert.equal(evaluate([photo(10)], { zeroWriteViolations: 1, externalRequests: 1 }).violations.length, 2)
+test('digital PDFs need 100 %; every other variant needs 95 % (D3), no exceptions', () => {
+  const photo = (correct) => ({ file: 'p.jpg', variant: 'foto-x', correct, total: 20, wrongButSure: 0, ms: 1000, problems: [] })
+  assert.equal(evaluate([photo(19)], { zeroWriteViolations: 0, externalRequests: 0 }).violations.length, 0)
+  assert.equal(evaluate([photo(18)], { zeroWriteViolations: 0, externalRequests: 0 }).violations.length, 1)
+  const digital = { ...photo(19), variant: 'digital-pdf' }
+  assert.equal(evaluate([digital], { zeroWriteViolations: 0, externalRequests: 0 }).violations.length, 1)
+  assert.equal(evaluate([photo(20)], { zeroWriteViolations: 1, externalRequests: 1 }).violations.length, 2)
 })

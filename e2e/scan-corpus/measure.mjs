@@ -91,10 +91,9 @@ export function score(entry, outcome) {
 /**
  * Aggregates per variant and checks the thresholds; returns { rows, violations }.
  * Hard everywhere: "falsch, aber sicher" = 0, Zero-Write, On-Device, the time budgets, the negative
- * cases and 100 % on the digital PDF. A photo variant below the 95 % target (D3) fails only when it
- * drops below its committed `floor` (accuracy-floor.json) — the gap is reported, never hidden.
+ * cases, 100 % on the digital PDF and 95 % on every other variant (D3).
  */
-export function evaluate(results, { zeroWriteViolations, externalRequests, floor = {} }) {
+export function evaluate(results, { zeroWriteViolations, externalRequests }) {
   const byVariant = new Map()
   for (const r of results) {
     const row = byVariant.get(r.variant) ?? { variant: r.variant, documents: 0, correct: 0, total: 0, wrongButSure: 0, maxMs: 0, problems: [] }
@@ -112,13 +111,11 @@ export function evaluate(results, { zeroWriteViolations, externalRequests, floor
     const textPdf = row.variant === 'digital-pdf' || row.variant === 'mehrseitig'
     const minAccuracy = row.variant === 'digital-pdf' ? THRESHOLDS.accuracyDigital : THRESHOLDS.accuracyOther
     const budgetMs = textPdf ? THRESHOLDS.textPdfMs : THRESHOLDS.scanMs
-    const allowed = row.variant === 'digital-pdf' ? minAccuracy : Math.min(minAccuracy, floor[row.variant] ?? minAccuracy)
-    if (accuracy !== null && accuracy + 1e-9 < allowed) violations.push(`${row.variant}: accuracy ${(accuracy * 100).toFixed(1)} % < ${(allowed * 100).toFixed(1)} %`)
-    const belowTarget = accuracy !== null && accuracy + 1e-9 < minAccuracy
+    if (accuracy !== null && accuracy + 1e-9 < minAccuracy) violations.push(`${row.variant}: accuracy ${(accuracy * 100).toFixed(1)} % < ${(minAccuracy * 100).toFixed(1)} %`)
     if (row.wrongButSure > THRESHOLDS.wrongButSure) violations.push(`${row.variant}: ${row.wrongButSure} × "falsch, aber sicher"`)
     if (!row.variant.startsWith('negativ') && row.maxMs > budgetMs) violations.push(`${row.variant}: ${row.maxMs} ms > ${budgetMs} ms`)
     if (row.variant.startsWith('negativ') && row.problems.length > 0) violations.push(...row.problems)
-    return { ...row, accuracy, minAccuracy, budgetMs, floor: floor[row.variant] ?? null, belowTarget }
+    return { ...row, accuracy, minAccuracy, budgetMs }
   })
   if (zeroWriteViolations > THRESHOLDS.zeroWriteViolations) violations.push(`Zero-Write: ${zeroWriteViolations} value(s) stored before "Werte übernehmen"`)
   if (externalRequests > THRESHOLDS.externalRequests) violations.push(`On-Device: ${externalRequests} request(s) left the app's origins`)
@@ -129,15 +126,13 @@ function markdown(rows, extra) {
   const lines = [
     '# Scan-Korpus: Kennzahlen je Variante (#450 Teil 3B)',
     '',
-    '| Variante | Dokumente | Felder richtig | Genauigkeit | Ziel (D3) | Untergrenze | „falsch, aber sicher“ | max. Zeit | Budget |',
-    '| :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |',
+    '| Variante | Dokumente | Felder richtig | Genauigkeit | Ziel (D3) | „falsch, aber sicher“ | max. Zeit | Budget |',
+    '| :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |',
     ...rows.map((r) =>
-      `| ${r.variant} | ${r.documents} | ${r.total === 0 ? '–' : `${r.correct}/${r.total}`} | ${r.accuracy === null ? '–' : `${(r.accuracy * 100).toFixed(1)} %`} | ${r.variant.startsWith('negativ') ? '–' : `${r.minAccuracy * 100} %`} | ${r.floor === null ? '–' : `${(r.floor * 100).toFixed(1)} %`} | ${r.wrongButSure} | ${(r.maxMs / 1000).toFixed(1)} s | ${r.variant.startsWith('negativ') ? '–' : `${r.budgetMs / 1000} s`} |`,
+      `| ${r.variant} | ${r.documents} | ${r.total === 0 ? '–' : `${r.correct}/${r.total}`} | ${r.accuracy === null ? '–' : `${(r.accuracy * 100).toFixed(1)} %`} | ${r.variant.startsWith('negativ') ? '–' : `${r.minAccuracy * 100} %`} | ${r.wrongButSure} | ${(r.maxMs / 1000).toFixed(1)} s | ${r.variant.startsWith('negativ') ? '–' : `${r.budgetMs / 1000} s`} |`,
     ),
     '',
     `Zero-Write-Verstöße: ${extra.zeroWriteViolations} · Requests an fremde Hosts: ${extra.externalRequests}`,
-    '',
-    ...(rows.some((r) => r.belowTarget) ? ['**Unter dem Ziel von 95 % (Fund, nicht versteckt):** ' + rows.filter((r) => r.belowTarget).map((r) => `${r.variant} ${(r.accuracy * 100).toFixed(1)} %`).join(', ')] : []),
     '',
     ...(extra.violations.length === 0 ? ['**Alle Schwellwerte eingehalten.**'] : ['**Verstöße:**', ...extra.violations.map((v) => `- ${v}`)]),
   ]
@@ -223,8 +218,7 @@ async function main() {
       }
     }
 
-    const floor = JSON.parse(await readFile(join(HERE, 'accuracy-floor.json'), 'utf8'))
-    const { rows, violations } = evaluate(results, { zeroWriteViolations, externalRequests: external.length, floor: only ? {} : floor })
+    const { rows, violations } = evaluate(results, { zeroWriteViolations, externalRequests: external.length })
     await mkdir(REPORT_DIR, { recursive: true })
     await writeFile(join(REPORT_DIR, 'scan-corpus-report.json'), JSON.stringify({ thresholds: THRESHOLDS, rows, results, external, violations }, null, 2) + '\n')
     const md = markdown(rows, { zeroWriteViolations, externalRequests: external.length, violations })
