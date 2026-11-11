@@ -239,8 +239,12 @@ export async function confirmAnnexesIfPresent(page) {
 export async function downloadAndVerifyPdf(page, expectedFields) {
   const downloadButton = page.locator('[data-testid="ausdruck-herunterladen-bearbeitbar"]')
   await downloadButton.waitFor({ state: 'visible', timeout: 15_000 })
-  const isDisabled = await downloadButton.isDisabled().catch(() => false)
-  if (isDisabled) {
+  // The button is disabled while the printout check is still loading — wait for it, fail only after the timeout.
+  const enabled = await page
+    .waitForFunction((el) => el !== null && !el.hasAttribute('disabled') && el.getAttribute('aria-disabled') !== 'true', await downloadButton.elementHandle(), { timeout: 15_000 })
+    .then(() => true)
+    .catch(() => false)
+  if (!enabled) {
     const errorCard = await page.locator('[data-testid="screen-container"]').first().innerText().catch(() => '')
     fail(`downloadAndVerifyPdf: download button is disabled. Screen content:\n${errorCard}`)
   }
