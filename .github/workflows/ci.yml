@@ -942,6 +942,8 @@ jobs:
         # Paces its own get-session reads against better-auth's rolling window. DATABASE_URL (job env)
         # verifies the sign-up.
         run: node e2e/navigation/deep-links.mjs
+      - name: Hub acceptance gate (#450 Teil 4, #443 AC 1/6/7) — tab switch keeps input, submission gate, sheet auto-save
+        run: node e2e/navigation/hub-acceptance.mjs
       - name: Real-Session Load & Latency Budget Gate (0% error rate, p95 <= 250ms)
         run: node scripts/loadtest/loadtest.mjs --concurrency 5 --iterations 5 --url "${API_ORIGIN}" --origin "${WEB_ORIGIN}" --max-p95 250
       - name: Restart the API with the fake KiPort (#450 D8 — AI_FAKE_KI only outside production)
