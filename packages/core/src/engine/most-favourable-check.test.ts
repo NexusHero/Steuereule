@@ -31,8 +31,8 @@ describe('guenstigerpruefung — the two amounts (Ebene 2, exakt gegeben die Ein
   })
 
   it('folds Kirchensteuer into both sides, including the § 32d Abs. 1 Satz 4 Ermäßigung', () => {
-    // Abgeltung: 99.000 × 25 % = 24.750; Soli (Milderungszone) 523; KiSt 2.227, Ermäßigung 25 % = 556
-    // → 24.750 − 556 + 2.227 + 523 = 26.944.
+    // Abgeltung (§ 32d Abs. 1 Satz 4): ESt = 99.000 / 4,09 = 24.205; KiSt 9 % = 2.178;
+    // Soli (Milderungszone) 11,9 % × (24.205 − 20.350) = 458 → 24.205 + 2.178 + 458 = 26.841.
     const result = mostFavourableCheck({
       kapitalertraege: 100000,
       remainingZvE: 300000,
@@ -41,10 +41,10 @@ describe('guenstigerpruefung — the two amounts (Ebene 2, exakt gegeben die Ein
       progressionClause: { kind: 'keine' },
       churchTaxFactor: 0.09,
     })
-    expect(result.flatRateTax).toBe(26944)
+    expect(result.flatRateTax).toBe(26841)
     // Persönlich: (160.529 − 115.529) + (8.829 − 6.354) + 4.050 = 45.000 + 2.475 + 4.050 = 51.525.
     expect(result.personal).toBe(51525)
-    expect(result.delta).toBe(24581)
+    expect(result.delta).toBe(51525 - 26841)
     if (result.provenance) {
       expect(result.provenance.components).toEqual(['einkommensteuer', 'solidaritaetszuschlag', 'kirchensteuer'])
     }

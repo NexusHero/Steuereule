@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common'
 import type { WageTaxCertificateFieldId } from '@steuereule/core'
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
-import type { WageTaxCertificateRecord, WageTaxCertificateRepository } from './lstb.repository.js'
+import type { WageTaxCertificateChurchTax, WageTaxCertificateRecord, WageTaxCertificateRepository } from './lstb.repository.js'
 
 function toRecord(row: {
   userId: string
@@ -9,6 +9,8 @@ function toRecord(row: {
   bruttoarbeitslohn: string | null
   lohnsteuer: string | null
   sozialversicherung: string | null
+  kirchensteuer?: string | null
+  kirchensteuerEhegatte?: string | null
 }): WageTaxCertificateRecord {
   return {
     userId: row.userId,
@@ -16,6 +18,8 @@ function toRecord(row: {
     bruttoarbeitslohn: row.bruttoarbeitslohn,
     lohnsteuer: row.lohnsteuer,
     sozialversicherung: row.sozialversicherung,
+    kirchensteuer: row.kirchensteuer ?? null,
+    kirchensteuerEhegatte: row.kirchensteuerEhegatte ?? null,
   }
 }
 
@@ -52,6 +56,19 @@ export class PrismaLstbRepository implements WageTaxCertificateRepository {
       this.prisma.taxDataAccessLog.create({
         data: { userId, action: 'WRITE', resource: 'lstb' },
       }),
+    ])
+    return toRecord(row)
+  }
+
+  async setChurchTax(userId: string, taxYear: number, values: WageTaxCertificateChurchTax): Promise<WageTaxCertificateRecord> {
+    const data = { kirchensteuer: values.kirchensteuer, kirchensteuerEhegatte: values.kirchensteuerEhegatte }
+    const [row] = await this.prisma.$transaction([
+      this.prisma.lstb.upsert({
+        where: { userId_taxYear: { userId, taxYear } },
+        create: { userId, taxYear, bruttoarbeitslohn: null, lohnsteuer: null, sozialversicherung: null, ...data },
+        update: data,
+      }),
+      this.prisma.taxDataAccessLog.create({ data: { userId, action: 'WRITE', resource: 'lstb' } }),
     ])
     return toRecord(row)
   }

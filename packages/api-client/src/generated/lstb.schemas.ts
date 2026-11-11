@@ -89,6 +89,19 @@ export interface ConfirmLstbScanDto {
   actionIds?: string[];
 }
 
+export interface LstbChurchTaxDto {
+  /**
+     * Zeile 6: einbehaltene Kirchensteuer des Arbeitnehmers, ganze Euro.
+     * @nullable
+     */
+  kirchensteuer: number | null;
+  /**
+     * Zeile 7: Kirchensteuer des Ehegatten (nur konfessionsverschiedene Ehe), ganze Euro.
+     * @nullable
+     */
+  kirchensteuerEhegatte: number | null;
+}
+
 export type LstbControllerGetLstbParams = {
 /**
  * B: Person A reads the figures of a partner without an own account (ADR-0054).
@@ -130,6 +143,36 @@ export type LstbControllerSetFieldPerson = typeof LstbControllerSetFieldPerson[k
 
 
 export const LstbControllerSetFieldPerson = {
+  A: 'A',
+  B: 'B',
+} as const;
+
+export type LstbControllerGetChurchTaxParams = {
+/**
+ * B: Person A reads the figures of a partner without an own account (ADR-0054).
+ */
+person?: LstbControllerGetChurchTaxPerson;
+};
+
+export type LstbControllerGetChurchTaxPerson = typeof LstbControllerGetChurchTaxPerson[keyof typeof LstbControllerGetChurchTaxPerson];
+
+
+export const LstbControllerGetChurchTaxPerson = {
+  A: 'A',
+  B: 'B',
+} as const;
+
+export type LstbControllerSetChurchTaxParams = {
+/**
+ * B: Person A records the figures of a partner without an own account (ADR-0054).
+ */
+person?: LstbControllerSetChurchTaxPerson;
+};
+
+export type LstbControllerSetChurchTaxPerson = typeof LstbControllerSetChurchTaxPerson[keyof typeof LstbControllerSetChurchTaxPerson];
+
+
+export const LstbControllerSetChurchTaxPerson = {
   A: 'A',
   B: 'B',
 } as const;

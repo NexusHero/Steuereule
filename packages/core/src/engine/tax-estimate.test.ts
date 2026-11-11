@@ -180,3 +180,61 @@ describe('Homeoffice-Pauschale (§ 4 Abs. 5 Satz 1 Nr. 6c EStG, #450 Teil 6)', (
     expect(homeOfficeAllowance(2025, 0)).toBe(0)
   })
 })
+
+describe('Kirchensteuer in the single estimate (#450 Teil 6F)', () => {
+  const berlinEv = { membership: { kind: 'member', church: 'EV' } as const, state: 'BE' as const, postalCode: '10115', withheld: 540, children: 0 }
+
+  it('credits the withheld church tax against the church tax due, and deducts it as Sonderausgabe', () => {
+    const estimate = taxEstimateEmployee({ ...EMPLOYED, churchTax: berlinEv })
+    if (estimate.kind !== 'spanne') throw new Error('expected a range')
+    // § 10 Abs. 1 Nr. 4: 200 € donations + 540 € church tax paid
+    expect(estimate.specialExpenses).toBe(740)
+    const zveBest = 45000 - 1230 - Math.round(9200 * 0.93) - 740
+    const zveWorst = 45000 - 1230 - Math.round(9200 * 0.91) - 740
+    const dueBest = Math.floor(incomeTax(zveBest, 2025) * 0.09)
+    const dueWorst = Math.floor(incomeTax(zveWorst, 2025) * 0.09)
+    expect(estimate.churchTax).toEqual({ kind: 'spanne', due: { from: dueBest, to: dueWorst }, withheld: 540, capOnApplication: false })
+    expect(estimate.result).toEqual({
+      from: 6100 - incomeTax(zveWorst, 2025) + 540 - dueWorst,
+      to: 6100 - incomeTax(zveBest, 2025) + 540 - dueBest,
+    })
+  })
+
+  it('no church member: no church tax, the result as before', () => {
+    const without = taxEstimateEmployee(EMPLOYED)
+    const none = taxEstimateEmployee({ ...EMPLOYED, churchTax: { ...berlinEv, membership: { kind: 'none' }, withheld: null } })
+    if (without.kind !== 'spanne' || none.kind !== 'spanne') throw new Error('expected a range')
+    expect(none.churchTax).toEqual({ kind: 'none' })
+    expect(none.result).toEqual(without.result)
+  })
+
+  it('unknown confession: "offen", and the church tax stays out of the result', () => {
+    const without = taxEstimateEmployee(EMPLOYED)
+    const open = taxEstimateEmployee({ ...EMPLOYED, churchTax: { ...berlinEv, membership: { kind: 'unknown' }, withheld: null } })
+    if (without.kind !== 'spanne' || open.kind !== 'spanne') throw new Error('expected a range')
+    expect(open.churchTax).toEqual({ kind: 'offen', reason: 'konfession-fehlt' })
+    expect(open.result).toEqual(without.result)
+  })
+
+  it('a member without the LStB church tax line: "offen", not a silent 0 € credit', () => {
+    const open = taxEstimateEmployee({ ...EMPLOYED, churchTax: { ...berlinEv, withheld: null } })
+    if (open.kind !== 'spanne') throw new Error('expected a range')
+    expect(open.churchTax).toEqual({ kind: 'offen', reason: 'einbehalt-fehlt' })
+  })
+
+  it('Bayern: 8 %', () => {
+    const estimate = taxEstimateEmployee({ ...EMPLOYED, churchTax: { ...berlinEv, state: 'BY', postalCode: '80331', membership: { kind: 'member', church: 'RK' } } })
+    if (estimate.kind !== 'spanne' || estimate.churchTax?.kind !== 'spanne') throw new Error('expected a range')
+    expect(estimate.churchTax.due.to).toBe(Math.floor(estimate.incomeTax.to * 0.08))
+  })
+
+  it('§ 51a Abs. 2: with children the church tax is measured on the tax after the child allowances', () => {
+    const noKids = taxEstimateEmployee({ ...EMPLOYED, churchTax: berlinEv })
+    const twoKids = taxEstimateEmployee({ ...EMPLOYED, churchTax: { ...berlinEv, children: 2 } })
+    if (noKids.kind !== 'spanne' || twoKids.kind !== 'spanne') throw new Error('expected a range')
+    if (noKids.churchTax?.kind !== 'spanne' || twoKids.churchTax?.kind !== 'spanne') throw new Error('expected church tax')
+    // The income tax itself is unchanged (Kindergeld), only the church tax basis drops.
+    expect(twoKids.incomeTax).toEqual(noKids.incomeTax)
+    expect(twoKids.churchTax.due.to).toBeLessThan(noKids.churchTax.due.to)
+  })
+})

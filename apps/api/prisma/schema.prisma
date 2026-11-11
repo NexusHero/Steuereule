@@ -496,6 +496,10 @@ model Lstb {
   lohnsteuer         String? /// @encrypted?mode=strict
   /// Arbeitnehmer-Anteil der SV-Beiträge (Zeilen 22/23). Encrypted at rest; same state encoding.
   sozialversicherung String? /// @encrypted?mode=strict
+  /// Einbehaltene Kirchensteuer des Arbeitnehmers (Zeile 6), whole euros; null = not entered (ADR-0063).
+  kirchensteuer         String? /// @encrypted?mode=strict
+  /// Kirchensteuer des Ehegatten, nur bei konfessionsverschiedener Ehe (Zeile 7); null = not entered.
+  kirchensteuerEhegatte String? /// @encrypted?mode=strict
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 

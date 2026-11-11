@@ -291,6 +291,110 @@
         ]
       }
     },
+    "/v1/steuerjahre/{jahr}/lstb-kirchensteuer": {
+      "get": {
+        "operationId": "LstbController_getChurchTax",
+        "parameters": [
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "B: Person A reads the figures of a partner without an own account (ADR-0054).",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (Steuerjahr).",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Church tax withheld per LStB, Zeilen 6 und 7 (ADR-0063).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LstbChurchTaxDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          }
+        },
+        "tags": [
+          "lstb"
+        ]
+      },
+      "put": {
+        "operationId": "LstbController_setChurchTax",
+        "parameters": [
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "B: Person A records the figures of a partner without an own account (ADR-0054).",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (Steuerjahr).",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LstbChurchTaxDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The stored church tax lines.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LstbChurchTaxDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          }
+        },
+        "tags": [
+          "lstb"
+        ]
+      }
+    },
     "/v1/steuerjahre/{jahr}/kopplung": {
       "get": {
         "operationId": "LinkController_get",
@@ -4033,6 +4137,27 @@
           "state"
         ]
       },
+      "LstbChurchTaxDto": {
+        "type": "object",
+        "properties": {
+          "kirchensteuer": {
+            "type": "number",
+            "nullable": true,
+            "example": 540,
+            "description": "Zeile 6: einbehaltene Kirchensteuer des Arbeitnehmers, ganze Euro."
+          },
+          "kirchensteuerEhegatte": {
+            "type": "number",
+            "nullable": true,
+            "example": null,
+            "description": "Zeile 7: Kirchensteuer des Ehegatten (nur konfessionsverschiedene Ehe), ganze Euro."
+          }
+        },
+        "required": [
+          "kirchensteuer",
+          "kirchensteuerEhegatte"
+        ]
+      },
       "LinkPersonBDto": {
         "type": "object",
         "properties": {
@@ -5925,6 +6050,48 @@
           "to"
         ]
       },
+      "ChurchTaxEstimateDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "none",
+              "offen",
+              "spanne"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "konfession-fehlt",
+              "kappung-unbekannt",
+              "kirchgeld-unbekannt",
+              "einbehalt-fehlt"
+            ],
+            "description": "Why the church tax is open (kind \"offen\")."
+          },
+          "due": {
+            "description": "Church tax due for the year (kind \"spanne\").",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RangeDto"
+              }
+            ]
+          },
+          "withheld": {
+            "type": "number",
+            "description": "Church tax withheld per LStB (Zeilen 6 und 7)."
+          },
+          "capOnApplication": {
+            "type": "boolean",
+            "description": "The church would cap the tax on application (Kappung auf Antrag)."
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
       "TaxEstimateDto": {
         "type": "object",
         "properties": {
@@ -5966,6 +6133,9 @@
           "churchTaxOpen": {
             "type": "boolean",
             "description": "True when church tax applies but is not part of the estimate."
+          },
+          "churchTax": {
+            "$ref": "#/components/schemas/ChurchTaxEstimateDto"
           },
           "missing": {
             "type": "array",

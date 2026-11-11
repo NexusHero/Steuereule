@@ -2,10 +2,40 @@ import { incomeTax, isSupportedIncomeTaxYear, soliExemptionLimits, solidaritaets
 import { getTaxYearParameters } from '../math/tax-parameters'
 import { applyHouseholdTaxReduction } from '../domains/household-services'
 import { calculateExtraordinaryBurden, type BurdenChildrenBracket } from '../domains/extraordinary-burdens'
+import { churchTaxOnIncome, type ChurchMembership } from '../domains/church-tax'
+import { childTaxAllowance } from '../domains/children'
+import type { GermanState } from '../common/postal-codes'
 
 export interface Range {
   readonly from: number
   readonly to: number
+}
+
+/** Kirchensteuer in the estimate (#450 Teil 6F, ADR-0063). */
+export type EstimateChurchTax =
+  | { readonly kind: 'none' }
+  | {
+      readonly kind: 'offen'
+      readonly reason: 'konfession-fehlt' | 'kappung-unbekannt' | 'kirchgeld-unbekannt' | 'einbehalt-fehlt'
+    }
+  | {
+      readonly kind: 'spanne'
+      readonly due: Range
+      /** Church tax already withheld (LStB Zeilen 6 und 7) — credited like the wage tax. */
+      readonly withheld: number
+      readonly capOnApplication: boolean
+    }
+
+/** What the estimate needs to know about the church tax of one person. */
+export interface ChurchTaxInput {
+  readonly membership: ChurchMembership
+  /** Bundesland of residence (from the PLZ in the master data); null = unknown → rate 8–9 %. */
+  readonly state: GermanState | null
+  readonly postalCode: string | null
+  /** LStB Zeilen 6 + 7; null = not entered yet. */
+  readonly withheld: number | null
+  /** Children with a Kinderfreibetrag — § 51a Abs. 2 EStG measures the church tax after them. */
+  readonly children: number
 }
 
 export type TaxEstimate =
@@ -20,6 +50,8 @@ export type TaxEstimate =
       readonly anrechnung: number
       /** Positive = Erstattung, negative = Nachzahlung. */
       readonly result: Range
+      /** Present when the caller passed the church tax facts. */
+      readonly churchTax?: EstimateChurchTax
     }
   | { readonly kind: 'nicht-moeglich'; readonly reason: 'jahr-ohne-tarif' }
 
@@ -42,6 +74,8 @@ export interface EmployeeEstimateInput {
   readonly singleParentChildren?: number | undefined
   /** § 33 Abs. 3 EStG children bracket (defaults to '0'). */
   readonly childrenBracket?: BurdenChildrenBracket | undefined
+  /** Kirchensteuer facts; without them the estimate leaves church tax out (as before #450 6F). */
+  readonly churchTax?: ChurchTaxInput | undefined
 }
 
 /** The EUR lines of the Anlage N-Gre (anlageNGreBetraege) plus what the user pays outside the salary. */
@@ -69,6 +103,8 @@ export interface CrossBorderEstimateInput {
   readonly singleParentChildren?: number | undefined
   /** § 33 Abs. 3 EStG children bracket (defaults to '0'). */
   readonly childrenBracket?: BurdenChildrenBracket | undefined
+  /** Kirchensteuer facts; a Grenzgänger CH has no German church tax withheld (`withheld` is ignored). */
+  readonly churchTax?: Omit<ChurchTaxInput, 'withheld'> | undefined
 }
 
 /**
@@ -100,6 +136,7 @@ export function taxEstimateEmployee(e: EmployeeEstimateInput): TaxEstimate {
     singleParent: e.singleParent,
     singleParentChildren: e.singleParentChildren,
     childrenBracket: e.childrenBracket,
+    churchTax: e.churchTax,
   })
 }
 
@@ -129,6 +166,7 @@ export function taxEstimateCrossBorder(e: CrossBorderEstimateInput): TaxEstimate
     singleParent: e.singleParent,
     singleParentChildren: e.singleParentChildren,
     childrenBracket: e.childrenBracket,
+    churchTax: e.churchTax ? { ...e.churchTax, withheld: 0 } : undefined,
   })
 }
 
@@ -146,6 +184,7 @@ function estimate(input: {
   readonly singleParent?: boolean | undefined
   readonly singleParentChildren?: number | undefined
   readonly childrenBracket?: BurdenChildrenBracket | undefined
+  readonly churchTax?: ChurchTaxInput | undefined
 }): TaxEstimate {
   const params = getTaxYearParameters(input.year)
   const furtherChildren = Math.max(0, Math.floor(input.singleParentChildren ?? 1) - 1)
@@ -165,7 +204,10 @@ function estimate(input: {
           }).deductibleEur,
         )
       : 0
-  const specialExpenses = Math.max(input.specialExpensesLumpSum, input.donations)
+  // § 10 Abs. 1 Nr. 4 EStG: church tax paid in the year (here: withheld with the wage) is a Sonderausgabe.
+  const church = input.churchTax
+  const churchTaxPaid = church?.membership.kind === 'member' ? (church.withheld ?? 0) : 0
+  const specialExpenses = Math.max(input.specialExpensesLumpSum, input.donations + churchTaxPaid)
   // § 24b is deducted from the Summe der Einkünfte, so it lowers the zvE as well (#450 Teil 6).
   const zve = (provision: number) =>
     Math.max(0, input.einnahmen - input.werbungskosten - singleParentRelief - provision - specialExpenses - deductibleBurdenEur)
@@ -176,6 +218,11 @@ function estimate(input: {
     to: applyHouseholdTaxReduction(incomeTax(taxableIncome.to, input.year), reductionEur),
   }
   const soliRange = { from: soli(incomeTaxOwed.from, input.year), to: soli(incomeTaxOwed.to, input.year) }
+  const churchTax = church ? estimateChurchTax(input.year, church, taxableIncome, reductionEur) : undefined
+  const churchBalance =
+    churchTax?.kind === 'spanne'
+      ? { from: churchTax.withheld - churchTax.due.to, to: churchTax.withheld - churchTax.due.from }
+      : { from: 0, to: 0 }
   return {
     kind: 'spanne',
     werbungskosten: input.werbungskosten,
@@ -186,10 +233,34 @@ function estimate(input: {
     solidaritaetszuschlag: soliRange,
     anrechnung: input.anrechnung,
     result: {
-      from: input.alreadyPaid(incomeTaxOwed.to) - soliRange.to,
-      to: input.alreadyPaid(incomeTaxOwed.from) - soliRange.from,
+      from: input.alreadyPaid(incomeTaxOwed.to) - soliRange.to + churchBalance.from,
+      to: input.alreadyPaid(incomeTaxOwed.from) - soliRange.from + churchBalance.to,
     },
+    ...(churchTax ? { churchTax } : {}),
   }
+}
+
+/**
+ * Church tax of one single person: § 51a Abs. 2 EStG measures it on the tax after the child
+ * allowances, even where Kindergeld wins. A single parent gets half or the whole allowance (transfer),
+ * so the basis is a range between both.
+ */
+function estimateChurchTax(year: number, church: ChurchTaxInput, zvE: Range, reductionEur: number): EstimateChurchTax {
+  const perChild = childTaxAllowance(year)
+  const children = Math.max(0, Math.floor(church.children))
+  const basisFor = (z: number, allowance: number) =>
+    applyHouseholdTaxReduction(incomeTax(Math.max(0, z - children * allowance), year), reductionEur)
+  const amount = churchTaxOnIncome({
+    year,
+    membership: church.membership,
+    state: church.state,
+    postalCode: church.postalCode,
+    basis: { from: basisFor(zvE.from, perChild), to: basisFor(zvE.to, perChild / 2) },
+    zvE,
+  })
+  if (amount.kind !== 'spanne') return amount
+  if (church.withheld === null) return { kind: 'offen', reason: 'einbehalt-fehlt' }
+  return { kind: 'spanne', due: amount.due, withheld: church.withheld, capOnApplication: amount.capOnApplication }
 }
 
 /**

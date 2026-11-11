@@ -237,7 +237,14 @@ function Refund({ year }: { readonly year: number }) {
     <>
       <Text style={styles.refundLater} testID="cockpit-erstattung">{refundText(estimate, tr, i18n.language)}</Text>
       {estimate?.kind === 'spanne' && estimate.churchTaxOpen ? (
-        <Text style={styles.refundLater}>{tr('cockpit.erstattung.kirchensteuer')}</Text>
+        <Text style={styles.refundLater} testID="cockpit-kirchensteuer-offen">
+          {estimate.churchTax?.kind === 'offen' && estimate.churchTax.reason
+            ? tr(`cockpit.erstattung.kirchensteuerOffen.${estimate.churchTax.reason}`)
+            : tr('cockpit.erstattung.kirchensteuer')}
+        </Text>
+      ) : null}
+      {estimate?.kind === 'spanne' && estimate.churchTax?.kind === 'spanne' && estimate.churchTax.capOnApplication ? (
+        <Text style={styles.refundLater} testID="cockpit-kirchensteuer-kappung">{tr('cockpit.erstattung.kirchensteuerKappung')}</Text>
       ) : null}
     </>
   )

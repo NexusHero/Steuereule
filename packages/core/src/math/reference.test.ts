@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest'
 import { GERMAN_STATES, publicHolidays } from '../common/public-holidays'
 import { TAX_YEARS, incomeTax, soliExemptionLimits, solidaritaetszuschlag, splittingTariff, zoneBoundaries, type IncomeTaxYear } from './tarif'
 import { getTaxYearParameters } from './tax-parameters'
+import { churchTaxOnIncome } from '../domains/church-tax'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const YEARS = Object.keys(TAX_YEARS).map(Number) as IncomeTaxYear[]
@@ -64,6 +65,22 @@ describe('6A — tarifliche Einkommensteuer gegen den BMF-Rechner', () => {
         .map((c) => ({ zvE: c.zvE, bmf: c.soli, core: solidaritaetszuschlag(c.incomeTax, c.splitting ? limits.joint : limits.single) }))
         .filter((c) => c.bmf - c.core < 0 || c.bmf - c.core >= 1 || (c.bmf === 0) !== (c.core === 0))
       expect(wrong).toEqual([])
+    })
+  }
+})
+
+// 6F: the BMF form has no church tax (only its wage tax calculator does), so the reference is the BMF
+// income tax of the fixture with the officially published rate and Kappung of the Land.
+describe('6F — Kirchensteuer auf die BMF-Einkommensteuer', () => {
+  const ev = { kind: 'member', church: 'EV' } as const
+  for (const year of YEARS) {
+    it(`${year}: Berlin 9 % with the 3 % cap, Bayern 8 % without a cap, rounded down to the euro`, () => {
+      for (const c of fixture(year).cases.filter((x) => !x.splitting)) {
+        const at = (state: 'BE' | 'BY') =>
+          churchTaxOnIncome({ year, membership: ev, state, postalCode: null, basis: { from: c.incomeTax, to: c.incomeTax }, zvE: { from: c.zvE, to: c.zvE } })
+        expect(at('BE'), `${year} BE ${c.zvE}`).toMatchObject({ due: { to: Math.min(Math.floor(c.incomeTax * 0.09), Math.floor(c.zvE * 0.03)) } })
+        expect(at('BY'), `${year} BY ${c.zvE}`).toMatchObject({ due: { to: Math.floor(c.incomeTax * 0.08) } })
+      }
     })
   }
 })
@@ -135,7 +152,7 @@ const UNUSED_ON_PURPOSE: Readonly<Record<string, string>> = {
   beaAllowanceEur: 'Bestandteil von childAllowanceTotalEur, das gerechnet wird',
   maxOtherProvisionSingleEur: 'gleich maxOtherProvisionEur (2.800 €), das die Grenzgänger-Schätzung liest',
   maxOtherProvisionEmployeeEur: 'Vereinfachung: Angestellte rechnen die Vorsorge über den absetzbaren SV-Anteil (91–93 %), ohne Höchstbetrag 1.900 €',
-  churchTaxReductionShare: 'Kirchensteuer bei der Abgeltungsteuer — Rechenweg folgt mit dem Kirchensteuer-Ticket (#450 6F)',
+  churchTaxReductionShare: 'steckt in der exakten Formel des § 32d Abs. 1 Satz 4 EStG, ESt = e / (4 + k) (flatRateTaxWithChurchTax)',
 }
 
 function sourceFiles(dir: string): string[] {
