@@ -753,6 +753,9 @@ jobs:
       # BETTER_AUTH_URL/API_ORIGIN — so the device-authorization QR (if exercised here)
       # would point at the actually-served static export, not the API.
       WEB_APP_URL: http://localhost:4173
+      # #450 5C / D7: the test unlock (a fake payment provider, only ever outside production and without
+      # Stripe keys) so the printout gate can pay and download without Stripe.
+      PAYMENT_FAKE_PROVIDER: '1'
       EXPO_PUBLIC_API_BASE_URL: http://localhost:3301
     steps:
       - uses: actions/checkout@v5
@@ -960,6 +963,29 @@ jobs:
           if-no-files-found: ignore
       - name: Account and security gate (#450 5A) — profile edit, 2FA (TOTP, backup code), device sign-out, OAuth consent + MCP revoke, account deletion
         run: node e2e/account/account-security.mjs
+      - name: Confirmation screen and plausibility step (#450 5B) — proposals accept/dismiss, Anlage confirm, change, continue
+        run: node e2e/submission/confirmation.mjs
+      - name: Sheet dismissal (#450 5H) — close button, backdrop, Escape, grabber; every way saves the typed amount
+        run: node e2e/sheets/sheet-dismissal.mjs
+      - name: Deadline banners and failure states (#450 5E) — Fristen-Banner levels, 500 / offline on interview, LStB load and save
+        run: node e2e/errors/deadlines-and-faults.mjs
+      - name: Rare interview answers (#450 5G/5J) — widowed, § 24b household questions, passable gates, Schweiz residence, Berufsprofil
+        run: node e2e/interview/rare-branches.mjs
+      - name: Printout pay and download without Stripe (#450 5C) — fake payment provider, signed webhook, both PDFs
+        run: node e2e/printout/printout-unlock.mjs
+      - name: Uploads with synthetic documents (#450 5D) — Belege upload/preview/delete, LStB scan with overwrite and year dialogs
+        run: node e2e/uploads/receipts-and-lstb-scan.mjs
+      - name: E2E coverage ratchet (#450 5I) — testIDs and interview pairs without an E2E hit may only shrink
+        run: |
+          node --test scripts/checks/e2e-coverage-ratchet.test.mjs
+          pnpm --filter @steuereule/api exec node --import tsx ../../scripts/checks/e2e-coverage-ratchet.mjs
+      - name: Upload the E2E coverage gaps
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-coverage-gaps
+          path: /tmp/e2e-coverage
+          if-no-files-found: ignore
       - name: Real-Session Load & Latency Budget Gate (0% error rate, p95 <= 250ms)
         run: node scripts/loadtest/loadtest.mjs --concurrency 5 --iterations 5 --url "${API_ORIGIN}" --origin "${WEB_ORIGIN}" --max-p95 250
       - name: Restart the API with the fake KiPort (#450 D8 — AI_FAKE_KI only outside production)

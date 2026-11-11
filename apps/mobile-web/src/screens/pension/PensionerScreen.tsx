@@ -79,9 +79,9 @@ export function PensionerScreen({ onDone = () => {}, onBack, taxYear = CURRENT_T
   return (
     <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="screen-container">
       <View style={styles.headerRow}>
-        {onBack ? <BackButton accessibilityLabel={tr('rente.back')} onPress={() => flushThen(onBack)} /> : <BackButtonSpacer />}
+        {onBack ? <BackButton accessibilityLabel={tr('rente.back')} onPress={() => flushThen(onBack)} testID="rente-zurueck" /> : <BackButtonSpacer />}
       </View>
-      <Text style={styles.heading}>{tr('rente.heading')}</Text>
+      <Text style={styles.heading} testID="rente-heading">{tr('rente.heading')}</Text>
       <Text style={styles.help}>{tr('rente.help')}</Text>
 
       <Text style={styles.sectionHeading}>{tr('rente.artHeading')}</Text>
