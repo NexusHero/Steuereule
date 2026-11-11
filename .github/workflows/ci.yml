@@ -956,6 +956,9 @@ jobs:
         run: node e2e/visual/visual-regression.mjs
       - name: Upload the visual regression screenshots and diffs
         if: always()
+        # Diagnostics, not a gate: an outage of the artifact service must not fail the job and
+        # skip every gate after it (seen on 2026-11-11: "Failed to CreateArtifact").
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: visual-regression
@@ -981,6 +984,9 @@ jobs:
           pnpm --filter @steuereule/api exec node --import tsx ../../scripts/checks/e2e-coverage-ratchet.mjs
       - name: Upload the E2E coverage gaps
         if: always()
+        # Diagnostics, not a gate: an outage of the artifact service must not fail the job and
+        # skip every gate after it (seen on 2026-11-11: "Failed to CreateArtifact").
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: e2e-coverage-gaps
@@ -991,6 +997,9 @@ jobs:
           node e2e/navigation-efficiency/measure.mjs
       - name: Upload the navigation measurements
         if: always()
+        # Diagnostics, not a gate: an outage of the artifact service must not fail the job and
+        # skip every gate after it (seen on 2026-11-11: "Failed to CreateArtifact").
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: navigation-efficiency
