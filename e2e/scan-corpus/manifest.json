@@ -1,0 +1,364 @@
+[
+  {
+    "file": "datev-digital.pdf",
+    "variant": "digital-pdf",
+    "layout": "datev",
+    "kind": "lstb",
+    "year": 2025,
+    "expected": {
+      "bruttoarbeitslohn": 54320,
+      "lohnsteuer": 9810,
+      "sozialversicherung": 10918.32
+    }
+  },
+  {
+    "file": "datev-scan.pdf",
+    "variant": "scan-pdf",
+    "layout": "datev",
+    "kind": "lstb",
+    "year": 2025,
+    "expected": {
+      "bruttoarbeitslohn": 54320,
+      "lohnsteuer": 9810,
+      "sozialversicherung": 10918.32
+    }
+  },
+  {
+    "file": "datev-foto-schief.jpg",
+    "variant": "foto-schief",
+    "layout": "datev",
+    "kind": "lstb",
+    "year": 2025,
+    "expected": {
+      "bruttoarbeitslohn": 54320,
+      "lohnsteuer": 9810,
+      "sozialversicherung": 10918.32
+    },
+    "absent": []
+  },
+  {
+    "file": "datev-foto-dunkel.jpg",
+    "variant": "foto-dunkel",
+    "layout": "datev",
+    "kind": "lstb",
+    "year": 2025,
+    "expected": {
+      "bruttoarbeitslohn": 54320,
+      "lohnsteuer": 9810,
+      "sozialversicherung": 10918.32
+    },
+    "absent": []
+  },
+  {
+    "file": "datev-foto-schatten.jpg",
+    "variant": "foto-schatten",
+    "layout": "datev",
+    "kind": "lstb",
+    "year": 2025,
+    "expected": {
+      "bruttoarbeitslohn": 54320,
+      "lohnsteuer": 9810,
+      "sozialversicherung": 10918.32
+    },
+    "absent": []
+  },
+  {
+    "file": "datev-foto-gedreht.jpg",
+    "variant": "foto-gedreht",
+    "layout": "datev",
+    "kind": "lstb",
+    "year": 2025,
+    "expected": {
+      "bruttoarbeitslohn": 54320,
+      "lohnsteuer": 9810,
+      "sozialversicherung": 10918.32
+    },
+    "absent": []
+  },
+  {
+    "file": "datev-foto-komprimiert.jpg",
+    "variant": "foto-komprimiert",
+    "layout": "datev",
+    "kind": "lstb",
+    "year": 2025,
+    "expected": {
+      "bruttoarbeitslohn": 54320,
+      "lohnsteuer": 9810,
+      "sozialversicherung": 10918.32
+    },
+    "absent": []
+  },
+  {
+    "file": "datev-foto-angeschnitten.jpg",
+    "variant": "foto-angeschnitten",
+    "layout": "datev",
+    "kind": "lstb",
+    "year": 2025,
+    "expected": {
+      "bruttoarbeitslohn": 54320,
+      "lohnsteuer": 9810
+    },
+    "absent": [
+      "sozialversicherung"
+    ]
+  },
+  {
+    "file": "sap-digital.pdf",
+    "variant": "digital-pdf",
+    "layout": "sap",
+    "kind": "lstb",
+    "year": 2025,
+    "expected": {
+      "bruttoarbeitslohn": 38760,
+      "lohnsteuer": 5214,
+      "sozialversicherung": 7887.66
+    }
+  },
+  {
+    "file": "sap-scan.pdf",
+    "variant": "scan-pdf",
+    "layout": "sap",
+    "kind": "lstb",
+    "year": 2025,
+    "expected": {
+      "bruttoarbeitslohn": 38760,
+      "lohnsteuer": 5214,
+      "sozialversicherung": 7887.66
+    }
+  },
+  {
+    "file": "sap-foto-schief.jpg",
+    "variant": "foto-schief",
+    "layout": "sap",
+    "kind": "lstb",
+    "year": 2025,
+    "expected": {
+      "bruttoarbeitslohn": 38760,
+      "lohnsteuer": 5214,
+      "sozialversicherung": 7887.66
+    },
+    "absent": []
+  },
+  {
+    "file": "sap-foto-dunkel.jpg",
+    "variant": "foto-dunkel",
+    "layout": "sap",
+    "kind": "lstb",
+    "year": 2025,
+    "expected": {
+      "bruttoarbeitslohn": 38760,
+      "lohnsteuer": 5214,
+      "sozialversicherung": 7887.66
+    },
+    "absent": []
+  },
+  {
+    "file": "sap-foto-schatten.jpg",
+    "variant": "foto-schatten",
+    "layout": "sap",
+    "kind": "lstb",
+    "year": 2025,
+    "expected": {
+      "bruttoarbeitslohn": 38760,
+      "lohnsteuer": 5214,
+      "sozialversicherung": 7887.66
+    },
+    "absent": []
+  },
+  {
+    "file": "sap-foto-gedreht.jpg",
+    "variant": "foto-gedreht",
+    "layout": "sap",
+    "kind": "lstb",
+    "year": 2025,
+    "expected": {
+      "bruttoarbeitslohn": 38760,
+      "lohnsteuer": 5214,
+      "sozialversicherung": 7887.66
+    },
+    "absent": []
+  },
+  {
+    "file": "sap-foto-komprimiert.jpg",
+    "variant": "foto-komprimiert",
+    "layout": "sap",
+    "kind": "lstb",
+    "year": 2025,
+    "expected": {
+      "bruttoarbeitslohn": 38760,
+      "lohnsteuer": 5214,
+      "sozialversicherung": 7887.66
+    },
+    "absent": []
+  },
+  {
+    "file": "sap-foto-angeschnitten.jpg",
+    "variant": "foto-angeschnitten",
+    "layout": "sap",
+    "kind": "lstb",
+    "year": 2025,
+    "expected": {
+      "bruttoarbeitslohn": 38760,
+      "lohnsteuer": 5214
+    },
+    "absent": [
+      "sozialversicherung"
+    ]
+  },
+  {
+    "file": "personio-digital.pdf",
+    "variant": "digital-pdf",
+    "layout": "personio",
+    "kind": "lstb",
+    "year": 2025,
+    "expected": {
+      "bruttoarbeitslohn": 71900,
+      "lohnsteuer": 15377,
+      "sozialversicherung": 14391.7
+    }
+  },
+  {
+    "file": "personio-scan.pdf",
+    "variant": "scan-pdf",
+    "layout": "personio",
+    "kind": "lstb",
+    "year": 2025,
+    "expected": {
+      "bruttoarbeitslohn": 71900,
+      "lohnsteuer": 15377,
+      "sozialversicherung": 14391.7
+    }
+  },
+  {
+    "file": "personio-foto-schief.jpg",
+    "variant": "foto-schief",
+    "layout": "personio",
+    "kind": "lstb",
+    "year": 2025,
+    "expected": {
+      "bruttoarbeitslohn": 71900,
+      "lohnsteuer": 15377,
+      "sozialversicherung": 14391.7
+    },
+    "absent": []
+  },
+  {
+    "file": "personio-foto-dunkel.jpg",
+    "variant": "foto-dunkel",
+    "layout": "personio",
+    "kind": "lstb",
+    "year": 2025,
+    "expected": {
+      "bruttoarbeitslohn": 71900,
+      "lohnsteuer": 15377,
+      "sozialversicherung": 14391.7
+    },
+    "absent": []
+  },
+  {
+    "file": "personio-foto-schatten.jpg",
+    "variant": "foto-schatten",
+    "layout": "personio",
+    "kind": "lstb",
+    "year": 2025,
+    "expected": {
+      "bruttoarbeitslohn": 71900,
+      "lohnsteuer": 15377,
+      "sozialversicherung": 14391.7
+    },
+    "absent": []
+  },
+  {
+    "file": "personio-foto-gedreht.jpg",
+    "variant": "foto-gedreht",
+    "layout": "personio",
+    "kind": "lstb",
+    "year": 2025,
+    "expected": {
+      "bruttoarbeitslohn": 71900,
+      "lohnsteuer": 15377,
+      "sozialversicherung": 14391.7
+    },
+    "absent": []
+  },
+  {
+    "file": "personio-foto-komprimiert.jpg",
+    "variant": "foto-komprimiert",
+    "layout": "personio",
+    "kind": "lstb",
+    "year": 2025,
+    "expected": {
+      "bruttoarbeitslohn": 71900,
+      "lohnsteuer": 15377,
+      "sozialversicherung": 14391.7
+    },
+    "absent": []
+  },
+  {
+    "file": "personio-foto-angeschnitten.jpg",
+    "variant": "foto-angeschnitten",
+    "layout": "personio",
+    "kind": "lstb",
+    "year": 2025,
+    "expected": {
+      "bruttoarbeitslohn": 71900,
+      "lohnsteuer": 15377
+    },
+    "absent": [
+      "sozialversicherung"
+    ]
+  },
+  {
+    "file": "datev-mehrseitig.pdf",
+    "variant": "mehrseitig",
+    "layout": "datev",
+    "kind": "lstb",
+    "year": 2025,
+    "expected": {
+      "bruttoarbeitslohn": 54320,
+      "lohnsteuer": 9810,
+      "sozialversicherung": 10918.32
+    }
+  },
+  {
+    "file": "negativ-lohnabrechnung.pdf",
+    "variant": "negativ-lohnabrechnung",
+    "layout": "payslip",
+    "kind": "negative",
+    "expectation": "no-green-value"
+  },
+  {
+    "file": "negativ-falsches-jahr.pdf",
+    "variant": "negativ-falsches-jahr",
+    "layout": "datev",
+    "kind": "negative",
+    "expectation": "year-conflict",
+    "year": 2023
+  },
+  {
+    "file": "negativ-ch-lohnausweis.pdf",
+    "variant": "negativ-ch-lohnausweis",
+    "layout": "ch",
+    "kind": "negative",
+    "expectation": "no-green-value"
+  },
+  {
+    "file": "negativ-kaputt.pdf",
+    "variant": "negativ-kaputt",
+    "layout": "broken",
+    "kind": "negative",
+    "expectation": "read-error"
+  },
+  {
+    "file": "negativ-prompt-injection.pdf",
+    "variant": "negativ-prompt-injection",
+    "layout": "datev",
+    "kind": "lstb",
+    "year": 2025,
+    "expected": {
+      "bruttoarbeitslohn": 38760,
+      "lohnsteuer": 5214,
+      "sozialversicherung": 7887.66
+    }
+  }
+]

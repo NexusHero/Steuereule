@@ -34,7 +34,11 @@ export function LstbScanPanel({ scan, taxYear, onSwitchTaxYear }: LstbScanPanelP
       >
         {scan.busyPhase !== null ? tr(`lstb.scan.progress.${scan.busyPhase}`) : tr('lstb.scan.cta')}
       </ReceiptPickerButton>
-      {scan.error !== null && <Text style={styles.scanErrorText}>{scan.error}</Text>}
+      {scan.error !== null && (
+        <Text style={styles.scanErrorText} accessibilityRole="alert" testID="lstb-scan-error">
+          {scan.error}
+        </Text>
+      )}
     </Card>
 
     {scan.yearConflict !== null && (

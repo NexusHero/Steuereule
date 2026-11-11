@@ -210,6 +210,61 @@ describe('documentOcr (on-device PDF & image OCR)', () => {
     expect(terminate).toHaveBeenCalledOnce()
   })
 
+  // #450 D3: a photo is flattened, turned upright, straightened and made black and white before the
+  // OCR sees it (imagePreprocess.ts); the OCR gets that prepared canvas, not the raw file.
+  it('hands the OCR the prepared photo, not the raw file', async () => {
+    const terminate = vi.fn().mockResolvedValue(undefined)
+    const recognize = vi.fn().mockResolvedValue({
+      data: { text: '3. Bruttoarbeitslohn 54.320,00\n4. Einbehaltene Lohnsteuer 9.810,00\n25. Krankenversicherung 3.100,80' },
+    })
+    // A dim grey photo: paper 90, one dark line of "ink" 20.
+    const width = 40
+    const height = 20
+    const rgba = new Uint8ClampedArray(width * height * 4)
+    for (let i = 0; i < width * height; i++) {
+      const v = Math.floor(i / width) === 10 && i % width > 4 && i % width < 35 ? 20 : 90
+      rgba.set([v, v, v, 255], i * 4)
+    }
+    const painted: Uint8ClampedArray[] = []
+    const createCanvas = (w: number, h: number) =>
+      ({
+        width: w,
+        height: h,
+        getContext: () => ({
+          createImageData: (cw: number, ch: number) => ({ data: new Uint8ClampedArray(cw * ch * 4), width: cw, height: ch }),
+          putImageData: (img: { data: Uint8ClampedArray }) => painted.push(img.data),
+        }),
+      }) as unknown as HTMLCanvasElement
+
+    const jpeg = new Blob([new Uint8Array([0xff, 0xd8, 0xff, 0xe0])], { type: 'image/jpeg' })
+    const res = await extractDocumentTextOnDevice(jpeg, {
+      deps: {
+        createTesseractWorker: async () => ({ recognize, terminate }),
+        decodeImage: async () => ({ data: rgba, width, height }),
+        createCanvas,
+      },
+    })
+
+    expect(res.text).toContain('Bruttoarbeitslohn 54.320,00')
+    expect(recognize).toHaveBeenCalledOnce()
+    expect(recognize.mock.calls[0]![0]).not.toBe(jpeg)
+    // The dim paper became white, the line black: only 0 and 255 reach the OCR.
+    const values = new Set(Array.from(painted[0]!).filter((_, i) => i % 4 !== 3))
+    expect([...values].sort((a, b) => a - b)).toEqual([0, 255])
+    expect(terminate).toHaveBeenCalledOnce()
+  })
+
+  it('falls back to the raw file when the photo cannot be decoded on this device', async () => {
+    const terminate = vi.fn().mockResolvedValue(undefined)
+    const recognize = vi.fn().mockResolvedValue({ data: { text: '4. Lohnsteuer 9.840,00' } })
+    const jpeg = new Blob([new Uint8Array([0xff, 0xd8, 0xff, 0xe0])], { type: 'image/jpeg' })
+    const res = await extractDocumentTextOnDevice(jpeg, {
+      deps: { createTesseractWorker: async () => ({ recognize, terminate }), decodeImage: async () => null },
+    })
+    expect(res.text).toBe('4. Lohnsteuer 9.840,00')
+    expect(recognize).toHaveBeenCalledWith(jpeg)
+  })
+
   it('uses native blob.arrayBuffer() fast path when available (browser runtime)', async () => {
     const pngBytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a])
     const nativeBlob = {

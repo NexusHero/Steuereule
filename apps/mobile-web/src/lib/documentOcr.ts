@@ -1,3 +1,5 @@
+import { recognizePhoto, type GrayImage, type RgbaImage } from './imagePreprocess'
+
 const ALLOWED_PDF_MIME = 'application/pdf'
 const ALLOWED_IMAGE_MIMES = new Set(['image/jpeg', 'image/png', 'image/webp'])
 const MAX_PDF_TEXT_PAGES = 5
@@ -83,6 +85,8 @@ export interface OcrDependencies {
     options?: { readonly logger?: (msg: { readonly status?: string; readonly progress?: number }) => void },
   ) => Promise<TesseractLikeWorker>
   readonly createCanvas?: (width: number, height: number) => HTMLCanvasElement
+  /** Decodes a photo into pixels for the preprocessing; null where the device cannot. */
+  readonly decodeImage?: (file: Blob) => Promise<RgbaImage | null>
 }
 
 export interface ExtractDocumentTextOptions {
@@ -196,6 +200,38 @@ function defaultCreateCanvas(width: number, height: number): HTMLCanvasElement {
   return canvas
 }
 
+async function defaultDecodeImage(file: Blob): Promise<RgbaImage | null> {
+  if (typeof createImageBitmap !== 'function' || typeof document === 'undefined') return null
+  const bitmap = await createImageBitmap(file)
+  try {
+    const canvas = defaultCreateCanvas(bitmap.width, bitmap.height)
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return null
+    ctx.drawImage(bitmap, 0, 0)
+    const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height)
+    return { data: pixels.data, width: pixels.width, height: pixels.height }
+  } finally {
+    bitmap.close()
+  }
+}
+
+/** Paints a grey image onto a canvas, the input tesseract takes. */
+function grayToCanvas(img: GrayImage, createCanvas: (width: number, height: number) => HTMLCanvasElement): HTMLCanvasElement {
+  const canvas = createCanvas(img.width, img.height)
+  const ctx = canvas.getContext('2d')
+  if (!ctx) throw new Error('Could not obtain 2D canvas context for photo OCR.')
+  const out = ctx.createImageData(img.width, img.height)
+  for (let i = 0; i < img.data.length; i++) {
+    const v = img.data[i]!
+    out.data[i * 4] = v
+    out.data[i * 4 + 1] = v
+    out.data[i * 4 + 2] = v
+    out.data[i * 4 + 3] = 255
+  }
+  ctx.putImageData(out, 0, 0)
+  return canvas
+}
+
 function countNonWhitespaceChars(text: string): number {
   return text.replace(/\s+/g, '').length
 }
@@ -204,7 +240,8 @@ function countNonWhitespaceChars(text: string): number {
  * Extracts text strictly on-device (no image or PDF ever leaves the browser for OCR):
  * - PDF: reads text layer via pdfjs-dist (up to 5 pages); if sparse (< 40 chars, scanned PDF),
  *   renders pages (up to 3) to <canvas> and OCRs locally via tesseract.js (deu+eng).
- * - Image (JPEG/PNG/WebP): runs local WASM OCR via tesseract.js (deu+eng).
+ * - Image (JPEG/PNG/WebP): prepares the photo (imagePreprocess.ts) and runs local WASM OCR via
+ *   tesseract.js (deu+eng).
  */
 export async function extractDocumentTextOnDevice(
   file: Blob,
@@ -313,12 +350,20 @@ export async function extractDocumentTextOnDevice(
     },
   })
   try {
-    const res = await worker.recognize(file)
+    // #450 D3: flatten, turn upright, straighten and binarise the photo first (imagePreprocess.ts).
+    // A device that cannot decode the photo into pixels still gets the plain OCR of the file.
+    const decodeImage = options.deps?.decodeImage ?? defaultDecodeImage
+    const createCanvas = options.deps?.createCanvas ?? defaultCreateCanvas
+    const pixels = await decodeImage(file).catch(() => null)
+    const text =
+      pixels === null
+        ? (await worker.recognize(file)).data.text
+        : await recognizePhoto(pixels, async (prepared) => (await worker.recognize(grayToCanvas(prepared, createCanvas))).data.text)
     options.onProgress?.({ stage: 'done', progress: 1 })
     return {
       kind: 'image',
       mimeType,
-      text: res.data.text.trim(),
+      text: text.trim(),
       usedOcrFallback: false,
       pagesProcessed: 1,
     }

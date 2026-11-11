@@ -975,6 +975,19 @@ jobs:
         run: node e2e/printout/printout-unlock.mjs
       - name: Uploads with synthetic documents (#450 5D) — Belege upload/preview/delete, LStB scan with overwrite and year dialogs
         run: node e2e/uploads/receipts-and-lstb-scan.mjs
+      - name: Scan corpus metrics (#450 Teil 3B) — accuracy per variant, "falsch, aber sicher" = 0, Zero-Write, on-device, time budgets
+        run: |
+          node --test e2e/scan-corpus/measure.test.mjs
+          node e2e/scan-corpus/measure.mjs
+      - name: Upload the scan corpus report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scan-corpus-report
+          path: /tmp/scan-corpus
+          if-no-files-found: ignore
+      - name: Scan flows (#450 Teil 3C) — chat and Belege upload, field-by-field confirm, tab switch, reload, delete
+        run: node e2e/scan-corpus/flows.mjs
       - name: E2E coverage ratchet (#450 5I) — testIDs and interview pairs without an E2E hit may only shrink
         run: |
           node --test scripts/checks/e2e-coverage-ratchet.test.mjs

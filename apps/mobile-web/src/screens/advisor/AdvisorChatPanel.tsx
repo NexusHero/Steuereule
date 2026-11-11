@@ -655,6 +655,7 @@ export function AdvisorChatPanel({
               onFile={(file) => void onAttachReceiptFile(file)}
               disabled={isParsingReceipt}
               testID="advisor-receipt-file"
+              inputTestID="advisor-receipt-file-input"
               unsupportedHint={tr('advisor.chat.receiptNativeHint', 'Kamera-Scan folgt in der App — lade im Web ein PDF oder Foto hoch.')}
             >
               {isParsingReceipt
