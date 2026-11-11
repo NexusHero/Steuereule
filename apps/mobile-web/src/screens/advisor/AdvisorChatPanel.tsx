@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Linking, Pressable, ScrollView, Text, TextInput, View, type TextStyle, type ViewStyle } from 'react-native'
 import { ChatComposer } from './chat/ChatComposer'
 import { ThinkingIndicator } from './chat/ThinkingIndicator'
@@ -8,6 +8,7 @@ import { browserDictationEngine, type DictationEngine } from '../../lib/dictatio
 import { MarkdownMessage } from './chat/MarkdownMessage'
 import { OwlMark } from '../../marks/OwlMark'
 import { useStickToBottom } from './chat/useStickToBottom'
+import { ChatIcon } from '../../icons/ChatIcon'
 import { copyToClipboard } from './chat/clipboard'
 import { FeedbackButtons } from './chat/FeedbackButtons'
 import { ThoughtBlock } from './chat/ThoughtBlock'
@@ -858,59 +859,68 @@ export function AdvisorChatPanel({
 
   const composer = (
     <>
-      {dictationSupported ? (
-        <DictationBar
-          engine={dictationEngine}
-          disabled={isSending}
-          onTranscript={(text) => setInputText((prev) => (prev.trim() ? `${prev.trimEnd()} ${text}` : text))}
-        />
-      ) : (
-        <DictationHint />
-      )}
-
-      {/* Chat Input Bar */}
-      <View style={[styles.inputRow, compact && styles.inputRowCompact]}>
-        {onAttachReceipt || onAttachReceiptFile ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={tr('advisor.chat.attachReceiptAria', 'Beleg anhängen')}
-            onPress={() => setReceiptOpen((prev) => !prev)}
-            style={styles.attachButton}
-            testID="advisor-receipt-attach-btn"
+      {(() => {
+        const inputBar = (microphone?: ReactNode) => (
+          <View style={styles.composer}>
+            {editingId !== null ? (
+              <View style={styles.editBanner} testID="advisor-edit-banner">
+                <Text style={styles.messageActionText}>{tr('advisor.chat.editing')}</Text>
+                <Pressable accessibilityRole="button" onPress={cancelEdit} testID="advisor-edit-cancel">
+                  <Text style={styles.messageActionText}>{tr('advisor.chat.editCancel')}</Text>
+                </Pressable>
+              </View>
+            ) : null}
+            <ChatComposer
+              value={inputText}
+              onChangeText={setInputText}
+              onSend={(text) => {
+                setInputText('')
+                const replaceFromMessageId = editingId
+                setEditingId(null)
+                void (replaceFromMessageId ? onSendMessage(text, { replaceFromMessageId }) : onSendMessage(text))
+              }}
+              onStop={onStop}
+              sending={isSending}
+              placeholder={
+                compact
+                  ? tr('advisor.chat.inputPlaceholderShort')
+                  : tr('advisor.chat.inputPlaceholder', 'Frag deine Eule (z. B. Fortbildung, Laptop, Spenden, Endprüfung) …')
+              }
+              inputTestID="advisor-chat-input"
+              sendTestID="advisor-chat-send"
+              leading={
+                onAttachReceipt || onAttachReceiptFile ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={tr('advisor.chat.attachReceiptAria', 'Beleg anhängen')}
+                    onPress={() => setReceiptOpen((prev) => !prev)}
+                    style={styles.attachButton}
+                    testID="advisor-receipt-attach-btn"
+                  >
+                    <ChatIcon name="attach" color={theme.color.tinte} />
+                  </Pressable>
+                ) : undefined
+              }
+              trailing={microphone}
+            />
+          </View>
+        )
+        // With dictation the microphone sits inside the input; its consent and status show above it.
+        return dictationSupported ? (
+          <DictationBar
+            engine={dictationEngine}
+            disabled={isSending}
+            onTranscript={(text) => setInputText((prev) => (prev.trim() ? `${prev.trimEnd()} ${text}` : text))}
           >
-            <Text style={styles.attachButtonText}>📎</Text>
-          </Pressable>
-        ) : null}
-        <View style={styles.composer}>
-          {editingId !== null ? (
-            <View style={styles.editBanner} testID="advisor-edit-banner">
-              <Text style={styles.messageActionText}>{tr('advisor.chat.editing')}</Text>
-              <Pressable accessibilityRole="button" onPress={cancelEdit} testID="advisor-edit-cancel">
-                <Text style={styles.messageActionText}>{tr('advisor.chat.editCancel')}</Text>
-              </Pressable>
-            </View>
-          ) : null}
-          <ChatComposer
-            value={inputText}
-            onChangeText={setInputText}
-            onSend={(text) => {
-              setInputText('')
-              const replaceFromMessageId = editingId
-              setEditingId(null)
-              void (replaceFromMessageId ? onSendMessage(text, { replaceFromMessageId }) : onSendMessage(text))
-            }}
-            onStop={onStop}
-            sending={isSending}
-            placeholder={
-              compact
-                ? tr('advisor.chat.inputPlaceholderShort')
-                : tr('advisor.chat.inputPlaceholder', 'Frag deine Eule (z. B. Fortbildung, Laptop, Spenden, Endprüfung) …')
-            }
-            inputTestID="advisor-chat-input"
-            sendTestID="advisor-chat-send"
-          />
-        </View>
-      </View>
+            {inputBar}
+          </DictationBar>
+        ) : (
+          <>
+            <DictationHint />
+            {inputBar()}
+          </>
+        )
+      })()}
     </>
   )
 
@@ -1364,14 +1374,7 @@ function makeStyles(t: UiTheme) {
       color: t.color.tinte2,
       marginLeft: t.space.s2,
     } as TextStyle,
-    attachButton: {
-      paddingHorizontal: t.space.s3,
-      paddingVertical: t.space.s3,
-      borderRadius: t.radius.m,
-      borderWidth: 1,
-      borderColor: t.color.linieWeich,
-      backgroundColor: t.color.karte,
-    } as ViewStyle,
+    attachButton: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' } as ViewStyle,
     attachButtonText: {
       fontSize: t.size.m,
       color: t.color.tinte,

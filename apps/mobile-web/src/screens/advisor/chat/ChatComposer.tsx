@@ -12,7 +12,8 @@ import {
   type ViewStyle,
 } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { Button, inkOnFunke, useTheme, type UiTheme } from '@steuereule/ui'
+import { inkOnFunke, useTheme, type UiTheme } from '@steuereule/ui'
+import { ChatIcon } from '../../../icons/ChatIcon'
 import { APP_NS } from '../../../i18n/resources'
 import { chatKeyAction, clampComposerHeight, detectChatInputPlatform, type ChatInputPlatform } from './chatKeys'
 
@@ -31,6 +32,8 @@ export interface ChatComposerProps {
   readonly sendTestID: string
   readonly stopTestID?: string | undefined
   readonly leading?: ReactNode
+  /** Sits between the text and the send button, e.g. the dictation microphone. */
+  readonly trailing?: ReactNode
   readonly variant?: 'panel' | 'dock' | undefined
   /** Test seam; detected from the device otherwise. */
   readonly platform?: ChatInputPlatform | undefined
@@ -51,6 +54,7 @@ export function ChatComposer({
   sendTestID,
   stopTestID = 'advisor-chat-stop',
   leading,
+  trailing,
   variant = 'panel',
   platform: platformOverride,
 }: ChatComposerProps) {
@@ -111,86 +115,122 @@ export function ChatComposer({
     return () => document.removeEventListener('keydown', listener)
   }, [canStop, onStop])
 
+  const input = (
+    <TextInput
+      accessibilityLabel={placeholder}
+      value={value}
+      onChangeText={onChangeText}
+      placeholder={placeholder}
+      placeholderTextColor={t.color.tinte2}
+      multiline
+      blurOnSubmit={false}
+      onKeyPress={handleKeyPress}
+      ref={inputRef}
+      {...(onWeb
+        ? {}
+        : { onContentSizeChange: (e: NativeSyntheticEvent<TextInputContentSizeChangeEventData>) => setHeight(clampComposerHeight(e.nativeEvent.contentSize.height, LINE_HEIGHT)) })}
+      enterKeyHint={platform === 'desktop' ? 'send' : 'enter'}
+      returnKeyType="default"
+      autoComplete="off"
+      style={[styles.input, { height: height + styles.inputPadding }]}
+      testID={inputTestID}
+    />
+  )
+
+  if (variant === 'dock') {
+    return (
+      <View style={styles.row}>
+        {leading}
+        {input}
+        {canStop ? (
+          <Pressable accessibilityRole="button" accessibilityLabel={tr('advisor.chat.stopAria')} onPress={onStop} style={styles.dockSend} testID={stopTestID}>
+            <Text style={styles.dockSendText}>{tr('advisor.chat.stopButton')}</Text>
+          </Pressable>
+        ) : (
+          <Pressable accessibilityRole="button" disabled={sending || value.trim().length === 0} onPress={submit} style={styles.dockSend} testID={sendTestID}>
+            <Text style={styles.dockSendText}>{tr('advisor.chat.sendButton', 'Fragen')}</Text>
+          </Pressable>
+        )}
+      </View>
+    )
+  }
+
+  // One box, one line: attachment, text, microphone and send sit together and the box grows with
+  // the text (#476). Send and Stop are the same round button.
+  const cannotSend = sending || value.trim().length === 0
   return (
-    <View style={styles.row}>
+    <View style={styles.box}>
       {leading}
-      <TextInput
-        accessibilityLabel={placeholder}
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor={t.color.tinte2}
-        multiline
-        blurOnSubmit={false}
-        onKeyPress={handleKeyPress}
-        ref={inputRef}
-        {...(onWeb
-          ? {}
-          : { onContentSizeChange: (e: NativeSyntheticEvent<TextInputContentSizeChangeEventData>) => setHeight(clampComposerHeight(e.nativeEvent.contentSize.height, LINE_HEIGHT)) })}
-        enterKeyHint={platform === 'desktop' ? 'send' : 'enter'}
-        returnKeyType="default"
-        autoComplete="off"
-        style={[styles.input, { height: height + styles.inputPadding }]}
-        testID={inputTestID}
-      />
+      {input}
+      {trailing}
       {canStop ? (
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={tr('advisor.chat.stopAria')}
           onPress={onStop}
-          style={variant === 'dock' ? styles.dockSend : styles.stop}
+          style={[styles.round, styles.roundStop]}
           testID={stopTestID}
         >
-          <Text style={variant === 'dock' ? styles.dockSendText : styles.stopText}>{tr('advisor.chat.stopButton')}</Text>
-        </Pressable>
-      ) : variant === 'dock' ? (
-        <Pressable
-          accessibilityRole="button"
-          disabled={sending || value.trim().length === 0}
-          onPress={submit}
-          style={styles.dockSend}
-          testID={sendTestID}
-        >
-          <Text style={styles.dockSendText}>{tr('advisor.chat.sendButton', 'Fragen')}</Text>
+          <ChatIcon name="stop" color={t.color.karte} size={18} />
         </Pressable>
       ) : (
-        <Button onPress={submit} disabled={sending || value.trim().length === 0} style={styles.button} testID={sendTestID}>
-          {tr('advisor.chat.sendButton', 'Fragen')}
-        </Button>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={tr('advisor.chat.sendButton', 'Fragen')}
+          accessibilityState={{ disabled: cannotSend }}
+          disabled={cannotSend}
+          onPress={submit}
+          style={[styles.round, styles.roundSend, cannotSend && styles.roundDisabled]}
+          testID={sendTestID}
+        >
+          <ChatIcon name="send" color={inkOnFunke(t)} />
+        </Pressable>
       )}
     </View>
   )
 }
 
+/** Diameter of the round buttons inside the composer; the box is this plus its padding at one line. */
+export const COMPOSER_BUTTON_SIZE = 36
+
 function makeStyles(t: UiTheme, variant: 'panel' | 'dock') {
-  const padding = variant === 'dock' ? t.space.s2 : t.space.s3
+  const dock = variant === 'dock'
+  // Inside the box the text carries only enough padding to centre one line next to the buttons.
+  const padding = dock ? t.space.s2 : (COMPOSER_BUTTON_SIZE - LINE_HEIGHT) / 2
   return {
     inputPadding: padding * 2,
     row: { flexDirection: 'row', alignItems: 'flex-end', gap: t.space.s2 } as ViewStyle,
+    box: {
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      gap: t.space.s2,
+      padding: t.space.s2,
+      borderRadius: t.radius.lg,
+      borderWidth: 1.5,
+      borderColor: t.color.linie,
+      backgroundColor: t.color.karte,
+    } as ViewStyle,
     input: {
       flex: 1,
-      backgroundColor: variant === 'dock' ? t.color.grund : t.color.karte,
-      borderWidth: 1,
-      borderColor: variant === 'dock' ? t.color.linieWeich : t.color.linie,
-      borderRadius: variant === 'dock' ? t.radius.s : t.radius.m,
-      paddingHorizontal: t.space.s3,
+      ...(dock
+        ? { backgroundColor: t.color.grund, borderWidth: 1, borderColor: t.color.linieWeich, borderRadius: t.radius.s, paddingHorizontal: t.space.s3 }
+        : { backgroundColor: 'transparent', borderWidth: 0, paddingHorizontal: t.space.s1, outlineStyle: 'none' }),
       paddingVertical: padding,
       fontFamily: t.font.text,
-      fontSize: variant === 'dock' ? t.size.s : t.size.m,
+      fontSize: dock ? t.size.s : t.size.m,
       lineHeight: LINE_HEIGHT,
       color: t.color.tinte,
     } as TextStyle,
-    button: { width: 'auto', paddingHorizontal: t.space.s4 } as ViewStyle,
-    stop: {
-      minHeight: 52,
+    round: {
+      width: COMPOSER_BUTTON_SIZE,
+      height: COMPOSER_BUTTON_SIZE,
+      borderRadius: COMPOSER_BUTTON_SIZE / 2,
+      alignItems: 'center',
       justifyContent: 'center',
-      paddingHorizontal: t.space.s4,
-      borderRadius: t.radius.pille,
-      borderWidth: 2,
-      borderColor: t.color.tinte,
-      backgroundColor: t.color.karte,
     } as ViewStyle,
-    stopText: { fontFamily: t.font.text, fontWeight: t.weight.schwer, fontSize: t.size.m, color: t.color.tinte } as TextStyle,
+    roundSend: { backgroundColor: t.color.funke, borderWidth: 1.5, borderColor: t.color.tinte } as ViewStyle,
+    roundStop: { backgroundColor: t.color.tinte } as ViewStyle,
+    roundDisabled: { opacity: 0.4 } as ViewStyle,
     dockSend: {
       paddingHorizontal: t.space.s3,
       paddingVertical: t.space.s2,
