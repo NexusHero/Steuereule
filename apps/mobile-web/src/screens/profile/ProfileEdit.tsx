@@ -32,6 +32,7 @@ export function ProfileEdit({ draft, onChange, onSave, onCancel, isSaving, saveE
       <Feld label={tr('profil.firstNameLabel')}>
         <Input
           value={draft.firstName}
+          testID="profil-vorname"
           onChange={onChange('firstName')}
           placeholder={tr('profil.firstNamePlaceholder')}
           accessibilityLabel={tr('profil.firstNameLabel')}
@@ -41,6 +42,7 @@ export function ProfileEdit({ draft, onChange, onSave, onCancel, isSaving, saveE
       <Feld label={tr('profil.lastNameLabel')}>
         <Input
           value={draft.lastName}
+          testID="profil-nachname"
           onChange={onChange('lastName')}
           placeholder={tr('profil.lastNamePlaceholder')}
           accessibilityLabel={tr('profil.lastNameLabel')}
@@ -52,6 +54,7 @@ export function ProfileEdit({ draft, onChange, onSave, onCancel, isSaving, saveE
           type="numeric"
           mono
           value={draft.steuerId}
+          testID="profil-steuer-id"
           onChange={(value) => onChange('steuerId')(formatTaxId(value))}
           placeholder={tr('profil.steuerIdPlaceholder')}
           accessibilityLabel={tr('profil.steuerIdLabel')}
@@ -66,6 +69,7 @@ export function ProfileEdit({ draft, onChange, onSave, onCancel, isSaving, saveE
           type="numeric"
           mono
           value={draft.taxNumber}
+          testID="profil-steuernummer"
           onChange={(value) => onChange('taxNumber')(sanitizeTaxNumberInput(value))}
           placeholder={tr('profil.steuerNrPlaceholder')}
           accessibilityLabel={tr('profil.steuerNrLabel')}
@@ -78,10 +82,10 @@ export function ProfileEdit({ draft, onChange, onSave, onCancel, isSaving, saveE
         </Text>
       ) : null}
 
-      <Button onPress={onSave} disabled={!canSave || isSaving} style={styles.cta}>
+      <Button onPress={onSave} disabled={!canSave || isSaving} style={styles.cta} testID="profil-speichern">
         {isSaving ? tr('profil.saving') : tr('profil.save')}
       </Button>
-      <Button variant="ghost" onPress={onCancel} disabled={isSaving} style={styles.cancelButton}>
+      <Button variant="ghost" onPress={onCancel} disabled={isSaving} style={styles.cancelButton} testID="profil-abbrechen">
         {tr('profil.cancel')}
       </Button>
     </ScrollView>

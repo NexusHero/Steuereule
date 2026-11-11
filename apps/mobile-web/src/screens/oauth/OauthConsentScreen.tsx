@@ -151,6 +151,7 @@ export function OauthConsentScreen({
             disabled={submitting}
             onPress={() => void handleDecision(true)}
             style={styles.actionBtn}
+            testID="oauth-erlauben"
           >
             {submitting ? tr('oauthConsent.processing') : tr('oauthConsent.allow')}
           </Button>
@@ -160,6 +161,7 @@ export function OauthConsentScreen({
             disabled={submitting}
             onPress={() => void handleDecision(false)}
             style={styles.actionBtn}
+            testID="oauth-ablehnen"
           >
             {tr('oauthConsent.deny')}
           </Button>

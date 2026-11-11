@@ -39,22 +39,22 @@ export function ProfileView({ profile, onEdit, justSaved, bp, onOpenPrivacy, onO
             <Text style={styles.avatarText}>{initial}</Text>
           </View>
           <View style={styles.summaryTextCol}>
-            <Text style={styles.name}>{fullName || tr('profil.namePlaceholder')}</Text>
-            <Text style={styles.idLine}>{profile.steuerId ? profile.steuerId : tr('profil.emptyNote')}</Text>
+            <Text style={styles.name} testID="profil-name">{fullName || tr('profil.namePlaceholder')}</Text>
+            <Text style={styles.idLine} testID="profil-steuerid">{profile.steuerId ? profile.steuerId : tr('profil.emptyNote')}</Text>
           </View>
-          <Chip onPress={onEdit}>{tr('profil.edit')}</Chip>
+          <Chip onPress={onEdit} testID="profil-bearbeiten">{tr('profil.edit')}</Chip>
         </View>
       </Card>
 
       {justSaved ? (
-        <Text style={styles.savedNotice} accessibilityLiveRegion="polite">
+        <Text style={styles.savedNotice} accessibilityLiveRegion="polite" testID="profil-gespeichert">
           {tr('profil.savedNotice')}
         </Text>
       ) : null}
 
       {onOpenMasterData ? (
         <Card style={styles.datenCard}>
-          <Pressable accessibilityRole="button" onPress={onOpenMasterData} style={styles.datenRow}>
+          <Pressable accessibilityRole="button" onPress={onOpenMasterData} style={styles.datenRow} testID="profil-stammdaten">
             <Text style={styles.datenRowLabel}>{tr('stammdaten.rowLabel')}</Text>
             <Text style={styles.datenRowArrow} aria-hidden={true}>→</Text>
           </Pressable>
@@ -62,14 +62,14 @@ export function ProfileView({ profile, onEdit, justSaved, bp, onOpenPrivacy, onO
       ) : null}
 
       <Card style={styles.datenCard}>
-        <Pressable accessibilityRole="button" onPress={onOpenPrivacy} style={styles.datenRow}>
+        <Pressable accessibilityRole="button" onPress={onOpenPrivacy} style={styles.datenRow} testID="profil-datenschutz">
           <Text style={styles.datenRowLabel}>{tr('profil.deineDaten.rowLabel')}</Text>
           <Text style={styles.datenRowArrow} aria-hidden={true}>→</Text>
         </Pressable>
       </Card>
 
       <Card style={styles.datenCard}>
-        <Pressable accessibilityRole="button" onPress={onOpenSecurity} style={styles.datenRow}>
+        <Pressable accessibilityRole="button" onPress={onOpenSecurity} style={styles.datenRow} testID="profil-sicherheit">
           <Text style={styles.datenRowLabel}>{tr('profil.sicherheit.rowLabel')}</Text>
           <Text style={styles.datenRowArrow} aria-hidden={true}>→</Text>
         </Pressable>

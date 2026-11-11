@@ -45,7 +45,7 @@ export function DeleteSection({
 
       {flow.kind === 'closed' ? (
         <View style={styles.buttonSpacer}>
-          <Button variant="ghost" onPress={onOpen}>
+          <Button variant="ghost" onPress={onOpen} testID="konto-loeschen-oeffnen">
             <Text style={styles.dangerLabel}>{tr('datenschutz.delete.openButton')}</Text>
           </Button>
         </View>
@@ -57,18 +57,18 @@ export function DeleteSection({
           <Text style={styles.warningBody}>{tr('datenschutz.delete.offer.warning1')}</Text>
           <Text style={styles.warningBody}>{tr('datenschutz.delete.offer.warning2')}</Text>
           <View style={styles.buttonSpacer}>
-            <Button variant="leise" onPress={onExportFirst}>
+            <Button variant="leise" onPress={onExportFirst} testID="konto-loeschen-erst-exportieren">
               {tr('datenschutz.delete.offer.exportFirstButton')}
             </Button>
           </View>
           {flow.exported ? <Text style={styles.successNote}>{tr('datenschutz.delete.offer.exportedNote')}</Text> : null}
           <View style={styles.buttonSpacer}>
-            <Button variant="ghost" onPress={onContinueWithoutExport}>
+            <Button variant="ghost" onPress={onContinueWithoutExport} testID="konto-loeschen-ohne-export">
               {tr('datenschutz.delete.offer.continueButton')}
             </Button>
           </View>
           <View style={styles.buttonSpacer}>
-            <Button variant="ghost" onPress={onCancel}>
+            <Button variant="ghost" onPress={onCancel} testID="konto-loeschen-abbrechen-angebot">
               {tr('datenschutz.delete.offer.cancelButton')}
             </Button>
           </View>
@@ -85,12 +85,12 @@ export function DeleteSection({
             </Text>
           ) : null}
           <View style={styles.buttonSpacer}>
-            <Button variant="ghost" onPress={onConfirmDelete}>
+            <Button variant="ghost" onPress={onConfirmDelete} testID="konto-loeschen-bestaetigen">
               <Text style={styles.dangerLabel}>{tr('datenschutz.delete.confirm.confirmButton')}</Text>
             </Button>
           </View>
           <View style={styles.buttonSpacer}>
-            <Button variant="ghost" onPress={onCancel}>
+            <Button variant="ghost" onPress={onCancel} testID="konto-loeschen-abbrechen-bestaetigung">
               {tr('datenschutz.delete.confirm.cancelButton')}
             </Button>
           </View>
@@ -102,7 +102,7 @@ export function DeleteSection({
           <Text style={styles.offerHeading}>{tr('datenschutz.delete.password.heading')}</Text>
           <Text style={styles.warningBody}>{tr('datenschutz.delete.password.explain')}</Text>
           <Feld label={tr('datenschutz.delete.password.label')}>
-            <Input type="password" value={password} onChange={onPasswordChange} accessibilityLabel={tr('datenschutz.delete.password.label')} autoComplete="current-password" />
+            <Input type="password" value={password} onChange={onPasswordChange} accessibilityLabel={tr('datenschutz.delete.password.label')} autoComplete="current-password" testID="konto-loeschen-passwort" />
           </Feld>
           {flow.error === 'wrong' ? (
             <Text style={styles.errorNote} accessibilityRole="alert">
@@ -120,12 +120,12 @@ export function DeleteSection({
             </Text>
           ) : null}
           <View style={styles.buttonSpacer}>
-            <Button variant="ghost" onPress={onSubmitPassword} disabled={password.trim() === ''}>
+            <Button variant="ghost" onPress={onSubmitPassword} disabled={password.trim() === ''} testID="konto-loeschen-endgueltig">
               <Text style={styles.dangerLabel}>{tr('datenschutz.delete.password.submitButton')}</Text>
             </Button>
           </View>
           <View style={styles.buttonSpacer}>
-            <Button variant="ghost" onPress={onCancel}>
+            <Button variant="ghost" onPress={onCancel} testID="konto-loeschen-abbrechen-passwort">
               {tr('datenschutz.delete.password.cancelButton')}
             </Button>
           </View>

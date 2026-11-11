@@ -13,10 +13,15 @@ export async function mountBetterAuthHandler(app: NestFastifyApplication, auth: 
   const handler = toNodeHandler(auth)
 
   await fastify.register(async (authScope) => {
-    authScope.removeContentTypeParser('application/json')
-    authScope.addContentTypeParser('application/json', (_request, payload, done) => {
-      done(null, payload)
-    })
+    // better-auth reads the raw body itself. Hand JSON and form bodies through unread: OAuth clients
+    // post the token request as application/x-www-form-urlencoded (RFC 6749 § 4.1.3), and a stream a
+    // parser already consumed arrives empty (#450 5A).
+    for (const contentType of ['application/json', 'application/x-www-form-urlencoded']) {
+      if (authScope.hasContentTypeParser(contentType)) authScope.removeContentTypeParser(contentType)
+      authScope.addContentTypeParser(contentType, (_request, payload, done) => {
+        done(null, payload)
+      })
+    }
 
     authScope.all(`${BETTER_AUTH_PATH_PREFIX}*`, async (request, reply) => {
       applyRawCorsHeaders(request.headers.origin, reply.raw)

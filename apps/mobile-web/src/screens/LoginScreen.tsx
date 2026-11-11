@@ -228,9 +228,9 @@ function TwoFactorChallenge({ email, onDone }: { readonly email: string; readonl
         {tr('login.twoFactor.body', { email })}
       </Text>
       <Feld label={tr('login.twoFactor.codeLabel')} error={error}>
-        <Input type="numeric" value={code} onChange={setCode} placeholder="123456" autoComplete="one-time-code" onSubmit={() => void submit()} />
+        <Input type="numeric" value={code} onChange={setCode} placeholder="123456" autoComplete="one-time-code" onSubmit={() => void submit()} testID="login-zweifaktor-code" />
       </Feld>
-      <Button onPress={() => void submit()} disabled={busy || !code}>
+      <Button onPress={() => void submit()} disabled={busy || !code} testID="login-zweifaktor-bestaetigen">
         {busy ? tr('login.submitting') : tr('login.twoFactor.submit')}
       </Button>
     </View>
