@@ -54,6 +54,10 @@ jobs:
       - name: Run the evaluation
         if: steps.key.outputs.present == 'true'
         run: pnpm --filter @steuereule/api exec node --import tsx scripts/ai-eval/run.ts
+      # #476: reasoning summaries, token usage and prompt-cache hits, which unit tests can only imitate.
+      - name: Check reasoning, usage and caching against the real model
+        if: steps.key.outputs.present == 'true'
+        run: pnpm --filter @steuereule/api exec node --import tsx scripts/ai-eval/reasoning-check.ts
       - name: Upload the report
         if: always() && steps.key.outputs.present == 'true'
         uses: actions/upload-artifact@v4
