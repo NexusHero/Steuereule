@@ -5,7 +5,9 @@ import { AIMessageChunk, type BaseMessage } from '@langchain/core/messages'
 import { ChatGenerationChunk, type ChatResult } from '@langchain/core/outputs'
 import type { Runnable } from '@langchain/core/runnables'
 import type { AdvisorStreamEvent, AdvisorTurnResult, CaseDigest } from '@steuereule/core'
+import { Logger } from '@nestjs/common'
 import { describe, expect, it } from 'vitest'
+import { z } from 'zod'
 import {
   DEFAULT_AI_TURN_LIMITS,
   EnvAiRuntimeConfigService,
@@ -17,6 +19,8 @@ import { createChatModelFromConfig } from '../src/ki/chat-model.factory.js'
 import {
   buildStableSystemPrompt,
   buildSystemMessage,
+  buildToolSchemas,
+  toProviderToolSchema,
   extractReasoningText,
   LangGraphAdvisorEngine,
 } from '../src/ki/langgraph-advisor.engine.js'
@@ -269,5 +273,53 @@ describe('reasoning configuration (#476)', () => {
     expect(anthropic.thinking.type).toBe('disabled')
     const gemini = createChatModelFromConfig(slot('google-genai')) as unknown as { thinkingConfig?: unknown }
     expect(gemini.thinkingConfig).toBeUndefined()
+  })
+})
+
+describe('tool schemas as the providers accept them (#476)', () => {
+  const containsKey = (node: unknown, key: string): boolean => {
+    if (Array.isArray(node)) return node.some((item) => containsKey(item, key))
+    if (node === null || typeof node !== 'object') return false
+    return Object.entries(node as Record<string, unknown>).some(([k, v]) => k === key || containsKey(v, key))
+  }
+
+  it('hands no tool to the model with a keyword Gemini rejects', () => {
+    // Found against the real API: `propertyNames` (from z.record) made Gemini answer 400, and every
+    // turn fell back to the deterministic engine without a trace.
+    for (const tool of buildToolSchemas()) {
+      expect(containsKey(tool.schema, 'propertyNames'), `${tool.name} carries propertyNames`).toBe(false)
+      expect(containsKey(tool.schema, '$schema'), `${tool.name} carries $schema`).toBe(false)
+    }
+  })
+
+  it('keeps the shape of a record field, so the model still knows what to send', () => {
+    const schema = toProviderToolSchema(z.object({ companionFields: z.record(z.string().max(100), z.string().max(200)).optional() }))
+    expect(schema).toEqual({
+      type: 'object',
+      properties: { companionFields: { type: 'object', additionalProperties: { type: 'string', maxLength: 200 } } },
+      additionalProperties: false,
+    })
+  })
+
+  it('logs why a model call failed instead of falling back in silence', async () => {
+    const warnings: string[] = []
+    const original = Logger.prototype.warn
+    Logger.prototype.warn = function (message: unknown) {
+      warnings.push(String(message))
+    }
+    try {
+      const failing = new ChunkedChatModel([])
+      failing._streamResponseChunks = (() => ({
+        [Symbol.asyncIterator]: () => ({
+          next: () => Promise.reject(new Error('[400] Invalid JSON payload received. Unknown name "propertyNames"')),
+        }),
+      })) as never
+      const { result } = await run(new LangGraphAdvisorEngine(runtime('google-genai'), () => failing))
+      expect(result.mode).toBe('deterministic_fallback')
+      expect(warnings.join('\n')).toContain('google-genai/test-model')
+      expect(warnings.join('\n')).toContain('propertyNames')
+    } finally {
+      Logger.prototype.warn = original
+    }
   })
 })

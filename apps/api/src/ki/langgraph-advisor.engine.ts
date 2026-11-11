@@ -13,7 +13,7 @@ import {
 import { tool, type StructuredToolInterface } from '@langchain/core/tools'
 import { concat } from '@langchain/core/utils/stream'
 import { Annotation, END, START, StateGraph, type LangGraphRunnableConfig } from '@langchain/langgraph'
-import { Inject, Injectable, Optional } from '@nestjs/common'
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common'
 import { z } from 'zod'
 import {
   ADVISOR_LEGAL_SOURCES,
@@ -263,10 +263,32 @@ const TOOL_DESCRIPTIONS: Readonly<Record<ToolName, string>> = {
     'Zeigt dem Nutzer deinen Plan als Checkliste (höchstens 8 Schritte, Status offen/laeuft/erledigt). Immer die vollständige Liste senden. Schreibt nichts in die Akte.',
 }
 
+/** JSON Schema keywords at least one provider's function-calling API rejects outright. */
+const UNSUPPORTED_SCHEMA_KEYWORDS: ReadonlySet<string> = new Set(['$schema', 'propertyNames'])
+
+/**
+ * The tool schema as the model gets to see it. Gemini answers 400 to `propertyNames` (which every
+ * `z.record` produces), and a rejected schema silently sent every turn to the deterministic
+ * fallback. Nothing is lost by leaving such keywords out here: toolsNode validates every call
+ * against the full Zod schema anyway.
+ */
+export function toProviderToolSchema(schema: z.ZodType): Record<string, unknown> {
+  const strip = (node: unknown): unknown => {
+    if (Array.isArray(node)) return node.map(strip)
+    if (node === null || typeof node !== 'object') return node
+    return Object.fromEntries(
+      Object.entries(node as Record<string, unknown>)
+        .filter(([key]) => !UNSUPPORTED_SCHEMA_KEYWORDS.has(key))
+        .map(([key, value]) => [key, strip(value)]),
+    )
+  }
+  return strip(z.toJSONSchema(schema)) as Record<string, unknown>
+}
+
 // The bodies are never invoked: toolsNode executes the calls itself so it can update graph state.
-function buildToolSchemas(): readonly StructuredToolInterface[] {
+export function buildToolSchemas(): readonly StructuredToolInterface[] {
   return (Object.keys(TOOL_ARG_SCHEMAS) as ToolName[]).map((name) =>
-    tool(async () => '', { name, description: TOOL_DESCRIPTIONS[name], schema: TOOL_ARG_SCHEMAS[name] }),
+    tool(async () => '', { name, description: TOOL_DESCRIPTIONS[name], schema: toProviderToolSchema(TOOL_ARG_SCHEMAS[name]) }),
   )
 }
 
@@ -281,6 +303,7 @@ function toolResult(callId: string, name: string, payload: Record<string, unknow
 @Injectable()
 export class LangGraphAdvisorEngine implements AdvisorEnginePort {
   private readonly resolveChatModel: ChatModelFactory
+  private readonly logger = new Logger('AdvisorEngine')
 
   constructor(
     @Inject(AI_RUNTIME_CONFIG_SERVICE) private readonly runtimeConfig: AiRuntimeConfigService,
@@ -769,8 +792,14 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
           }
         }
       }
-    } catch {
+    } catch (error) {
       const aborted = abortReason()
+      // A failed model call used to vanish into the fallback; operations need to see why (#476).
+      if (aborted !== 'client') {
+        this.logger.warn(
+          `advisor turn failed (${slotConfig.provider}/${slotConfig.model}, ${aborted ?? 'error'}): ${error instanceof Error ? error.message.slice(0, 500) : String(error).slice(0, 500)}`,
+        )
+      }
       // Nobody is listening any more; persisting a turn for a closed connection would only cost money.
       if (aborted === 'client') return
       if (streamedTokenCount === 0) {
