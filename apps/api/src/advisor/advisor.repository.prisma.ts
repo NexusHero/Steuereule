@@ -1,19 +1,43 @@
 import { Inject, Injectable } from '@nestjs/common'
-import type { AdvisorMessageMeta } from '@steuereule/core'
+import {
+  ADVISOR_FEEDBACK_RATINGS,
+  ADVISOR_FEEDBACK_REASONS,
+  ADVISOR_MESSAGE_STATUSES,
+  type AdvisorFeedbackRating,
+  type AdvisorFeedbackReason,
+  type AdvisorMessageFeedback,
+  type AdvisorMessageMeta,
+  type AdvisorMessageStatus,
+} from '@steuereule/core'
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
 import {
   matchesActionId,
   type AdvisorChatMessageRecord,
+  type AdvisorMessageUsage,
   type AdvisorRepository,
   type CreateAdvisorMessageInput,
+  type FinishAdvisorMessageInput,
 } from './advisor.repository.js'
 
-function parseMeta(metaJson: string | null): AdvisorMessageMeta | null {
-  if (!metaJson) return null
+function parseJson<T>(json: string | null): T | null {
+  if (!json) return null
   try {
-    return JSON.parse(metaJson) as AdvisorMessageMeta
+    return JSON.parse(json) as T
   } catch {
     return null
+  }
+}
+
+function toStatus(raw: string): AdvisorMessageStatus {
+  return (ADVISOR_MESSAGE_STATUSES as readonly string[]).includes(raw) ? (raw as AdvisorMessageStatus) : 'complete'
+}
+
+function toFeedback(rating: string | null, reason: string | null): AdvisorMessageFeedback | null {
+  if (!rating || !(ADVISOR_FEEDBACK_RATINGS as readonly string[]).includes(rating)) return null
+  const knownReason = reason !== null && (ADVISOR_FEEDBACK_REASONS as readonly string[]).includes(reason)
+  return {
+    rating: rating as AdvisorFeedbackRating,
+    ...(knownReason ? { reason: reason as AdvisorFeedbackReason } : {}),
   }
 }
 
@@ -25,6 +49,12 @@ function toRecord(row: {
   content: string
   metaJson: string | null
   createdAt: Date
+  status: string
+  reasoning: string | null
+  runId: string | null
+  feedbackRating: string | null
+  feedbackReason: string | null
+  usageJson: string | null
 }): AdvisorChatMessageRecord {
   return {
     id: row.id,
@@ -32,8 +62,13 @@ function toRecord(row: {
     taxYear: row.taxYear,
     role: row.role === 'user' ? 'user' : 'assistant',
     content: row.content,
-    meta: parseMeta(row.metaJson),
+    meta: parseJson<AdvisorMessageMeta>(row.metaJson),
     createdAt: row.createdAt,
+    status: toStatus(row.status),
+    reasoning: row.reasoning,
+    runId: row.runId,
+    feedback: toFeedback(row.feedbackRating, row.feedbackReason),
+    usage: parseJson<AdvisorMessageUsage>(row.usageJson),
   }
 }
 
@@ -68,6 +103,8 @@ export class PrismaAdvisorRepository implements AdvisorRepository {
           role: input.role,
           content: input.content,
           metaJson: input.meta ? JSON.stringify(input.meta) : null,
+          status: input.status ?? 'complete',
+          runId: input.runId ?? null,
         },
       }),
       this.prisma.taxDataAccessLog.create({
@@ -99,5 +136,47 @@ export class PrismaAdvisorRepository implements AdvisorRepository {
       throw new Error('Unauthorized message update')
     }
     return toRecord(row)
+  }
+
+  async findMessage(id: string, userId: string): Promise<AdvisorChatMessageRecord | null> {
+    const row = await this.prisma.advisorChatMessage.findFirst({ where: { id, userId } })
+    return row ? toRecord(row) : null
+  }
+
+  async finishMessage(id: string, userId: string, input: FinishAdvisorMessageInput): Promise<AdvisorChatMessageRecord> {
+    // Scoped by owner in the WHERE clause, so a foreign id changes nothing instead of being rolled back.
+    const { count } = await this.prisma.advisorChatMessage.updateMany({
+      where: { id, userId },
+      data: {
+        content: input.content,
+        metaJson: input.meta ? JSON.stringify(input.meta) : null,
+        status: input.status,
+        reasoning: input.reasoning,
+        runId: null,
+        usageJson: input.usage ? JSON.stringify(input.usage) : null,
+      },
+    })
+    const row = count === 1 ? await this.prisma.advisorChatMessage.findFirst({ where: { id, userId } }) : null
+    if (!row) throw new Error(`AdvisorChatMessage ${id} not found`)
+    return toRecord(row)
+  }
+
+  async setFeedback(id: string, userId: string, feedback: AdvisorMessageFeedback | null): Promise<AdvisorChatMessageRecord | null> {
+    const { count } = await this.prisma.advisorChatMessage.updateMany({
+      where: { id, userId },
+      data: { feedbackRating: feedback?.rating ?? null, feedbackReason: feedback?.reason ?? null },
+    })
+    if (count !== 1) return null
+    return this.findMessage(id, userId)
+  }
+
+  async deleteForUserAndYear(userId: string, taxYear: number): Promise<number> {
+    const [{ count }] = await this.prisma.$transaction([
+      this.prisma.advisorChatMessage.deleteMany({ where: { userId, taxYear } }),
+      this.prisma.taxDataAccessLog.create({
+        data: { userId, action: 'WRITE', resource: 'berater_nachricht_loeschen' },
+      }),
+    ])
+    return count
   }
 }

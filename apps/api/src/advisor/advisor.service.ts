@@ -1,9 +1,11 @@
+import { randomUUID } from 'node:crypto'
 import { newActionId } from '../common/action-id.js'
-import { Inject, Injectable, Optional } from '@nestjs/common'
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common'
 import {
   ADVISOR_LEGAL_SOURCES,
   PROFESSION_VALUES,
   amountFromAnswer,
+  buildAdvisorHistory,
   evaluateAdvisorTurn,
   homeOfficeDaysFromInterview,
   provenanceKey,
@@ -12,10 +14,14 @@ import {
   type AdvisorActionProposal,
   type AdvisorEngineInfo,
   type AdvisorEnginePort,
+  type AdvisorFeedbackRating,
+  type AdvisorFeedbackReason,
   type AdvisorHistoryEntry,
+  type AdvisorMessageFeedback,
   type AdvisorMessageMeta,
   type AdvisorStreamEvent,
   type AdvisorTurnResult,
+  type AdvisorTurnUsage,
   type AdvisorUndoEntry,
   type CaseDigest,
   type LstbCalculationTerm,
@@ -51,11 +57,13 @@ import { WAGE_TAX_CERTIFICATE_REPOSITORY, type WageTaxCertificateRepository } fr
 import { OwlModeService } from '../owl-mode/owl-mode.service.js'
 import { PROFILE_REPOSITORY, type ProfileRepository } from '../profile/profile.repository.js'
 import { RENTAL_REPOSITORY, type RentalRepository } from '../rental/rental.repository.js'
-import { ConflictError, InvalidInputError, NotFoundError, TooManyRequestsError, UnavailableError } from '../common/domain-error.js'
+import { ConflictError, DomainError, InvalidInputError, NotFoundError, TooManyRequestsError, UnavailableError } from '../common/domain-error.js'
 import {
   ADVISOR_REPOSITORY,
   type AdvisorChatMessageRecord,
+  type AdvisorMessageUsage,
   type AdvisorRepository,
+  type FinishAdvisorMessageInput,
 } from './advisor.repository.js'
 import type {
   AdvisorActionMutationResponseDto,
@@ -113,7 +121,23 @@ function toMessageDto(record: AdvisorChatMessageRecord): AdvisorChatMessageDto {
     content: record.content,
     meta: record.meta ? toPublicMeta(record.meta) : null,
     createdAt: record.createdAt.toISOString(),
+    status: record.status,
+    ...(record.reasoning !== null ? { reasoning: record.reasoning } : {}),
+    feedback: record.feedback,
+    ...(record.runId !== null ? { runId: record.runId } : {}),
   }
+}
+
+const TURN_FAILED_MESSAGE = 'Die Antwort der Eule ist unterwegs abgebrochen. Bitte versuche es erneut.'
+
+/** A turn after its checks: both messages exist, the model has not been called yet. */
+export interface PreparedAdvisorTurn {
+  readonly runId: string
+  readonly userMessage: AdvisorChatMessageRecord
+  readonly assistantMessageId: string
+  readonly scrubbedUserText: string
+  readonly history: readonly AdvisorHistoryEntry[]
+  readonly dto: SendAdvisorMessageDto
 }
 
 const EURO = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 2 })
@@ -126,6 +150,8 @@ function describeLstbCalculation(terms: readonly LstbCalculationTerm[]): string 
 
 @Injectable()
 export class AdvisorService {
+  private readonly logger = new Logger('AdvisorTurn')
+
   constructor(
     @Inject(ADVISOR_REPOSITORY) private readonly advisorRepo: AdvisorRepository,
     @Inject(OwlModeService) private readonly owlModeService: OwlModeService,
@@ -320,13 +346,11 @@ export class AdvisorService {
     return finalResponse
   }
 
-  async *streamMessage(
-    userId: string,
-    taxYear: number,
-    dto: SendAdvisorMessageDto,
-    signal?: AbortSignal,
-  ): AsyncIterable<AdvisorStreamEvent> {
-    // The quota is checked before the stream opens, so a 429 still reaches the client as plain HTTP.
+  /**
+   * Everything that can still fail as plain HTTP (quota) and everything the turn needs up front.
+   * Both messages exist afterwards: the question, and the answer as `streaming` (#476).
+   */
+  async prepareTurn(userId: string, taxYear: number, dto: SendAdvisorMessageDto): Promise<PreparedAdvisorTurn> {
     const { dailyMessageLimit } = this.runtimeConfig ? await this.runtimeConfig.resolveLimits() : DEFAULT_AI_TURN_LIMITS
     const startOfDayUtc = new Date()
     startOfDayUtc.setUTCHours(0, 0, 0, 0)
@@ -338,25 +362,29 @@ export class AdvisorService {
       )
     }
 
-    // 2. Ensure Eulen-Modus is enabled when user actively chats with the Eule
+    // Ensure Eulen-Modus is enabled when user actively chats with the Eule
     const setting = await this.owlModeService.getSetting(userId)
     if (!setting.enabled) {
       await this.owlModeService.setSetting(userId, true)
     }
 
-    // 3. Double PII Shield: scrub known names, Steuer-IDs, IBANs, emails, and phones from user free-text & history
+    // Double PII Shield: scrub known names, Steuer-IDs, IBANs, emails, and phones from user free-text & history
     const knownNames = await this.knownNamesForScrubbing(userId, taxYear)
     const scrubbedUserText = scrubUserMessagePii(dto.message.trim(), knownNames)
     if (dto.replaceFromMessageId !== undefined) {
       await this.replaceLatestTurn(userId, taxYear, dto.replaceFromMessageId)
     }
-    const priorRecords = (await this.advisorRepo.listForUserAndYear(userId, taxYear)).filter((m) => !m.meta?.replaced)
-    const history: AdvisorHistoryEntry[] = priorRecords.slice(-10).map((msg) => ({
-      role: msg.role,
-      content: scrubUserMessagePii(msg.content, knownNames),
-    }))
+    const priorRecords = await this.advisorRepo.listForUserAndYear(userId, taxYear)
+    const history = buildAdvisorHistory(
+      priorRecords.map((msg) => ({
+        role: msg.role,
+        content: scrubUserMessagePii(msg.content, knownNames),
+        meta: msg.meta,
+        status: msg.status,
+      })),
+    )
 
-    // 4. Persist user message
+    const runId = randomUUID()
     const userMessage = await this.advisorRepo.createMessage({
       userId,
       taxYear,
@@ -364,111 +392,250 @@ export class AdvisorService {
       content: scrubbedUserText,
       meta: null,
     })
+    const assistantMessage = await this.advisorRepo.createMessage({
+      userId,
+      taxYear,
+      role: 'assistant',
+      content: '',
+      meta: null,
+      status: 'streaming',
+      runId,
+    })
 
-    // 5. Build PII-free CaseDigest & stream Zero-Write advisor turn via LangGraph engine (with deterministic fallback)
-    const digest = await this.buildCaseDigest(userId, taxYear)
-    const actionIdFactory = newActionId
+    return { runId, userMessage, assistantMessageId: assistantMessage.id, scrubbedUserText, history, dto }
+  }
 
-    if (!this.advisorEngine) {
-      const turn = evaluateAdvisorTurn({
+  async *streamMessage(
+    userId: string,
+    taxYear: number,
+    dto: SendAdvisorMessageDto,
+    signal?: AbortSignal,
+  ): AsyncIterable<AdvisorStreamEvent> {
+    // The quota is checked before the stream opens, so a 429 still reaches the client as plain HTTP.
+    const turn = await this.prepareTurn(userId, taxYear, dto)
+    yield* this.executeTurn(userId, taxYear, turn, signal)
+  }
+
+  /**
+   * Runs a prepared turn to one of its final states. Whatever happens (stop, timeout, a thrown
+   * error, a consumer that walks away), the answer never stays `streaming`.
+   */
+  async *executeTurn(
+    userId: string,
+    taxYear: number,
+    turn: PreparedAdvisorTurn,
+    signal?: AbortSignal,
+  ): AsyncIterable<AdvisorStreamEvent> {
+    const startedAt = Date.now()
+    const { runId, userMessage, assistantMessageId, scrubbedUserText, dto } = turn
+    let text = ''
+    let reasoning = ''
+    const steps: string[] = []
+    let firstTokenMs: number | null = null
+    let finished = false
+
+    const finish = async (
+      status: FinishAdvisorMessageInput['status'],
+      content: string,
+      meta: AdvisorMessageMeta,
+      usage?: AdvisorTurnUsage,
+    ): Promise<AdvisorChatMessageRecord> => {
+      finished = true
+      const fullMeta: AdvisorMessageMeta = { ...meta, ...(steps.length > 0 ? { steps } : {}) }
+      const usageRecord: AdvisorMessageUsage = { ...usage, traceId: runId, firstTokenMs, durationMs: Date.now() - startedAt }
+      const record = await this.advisorRepo.finishMessage(assistantMessageId, userId, {
+        content,
+        meta: Object.keys(fullMeta).length > 0 ? fullMeta : null,
+        status,
+        reasoning: reasoning.length > 0 ? reasoning : null,
+        usage: usageRecord,
+      })
+      this.logger.log(
+        JSON.stringify({
+          msg: 'advisor_turn',
+          traceId: runId,
+          status,
+          engine: meta.engine?.mode ?? null,
+          provider: meta.engine?.provider ?? null,
+          model: meta.engine?.model ?? null,
+          firstTokenMs,
+          durationMs: usageRecord.durationMs,
+          inputTokens: usage?.inputTokens ?? null,
+          outputTokens: usage?.outputTokens ?? null,
+          cachedInputTokens: usage?.cachedInputTokens ?? null,
+        }),
+      )
+      return record
+    }
+
+    const doneWith = (assistant: AdvisorChatMessageRecord, mode: SendAdvisorMessageResponseDto['mode']): AdvisorStreamEvent => ({
+      event: 'done',
+      data: {
+        userMessage: toMessageDto(userMessage),
+        assistantMessage: toMessageDto(assistant),
+        mode,
+      } satisfies SendAdvisorMessageResponseDto,
+    })
+
+    try {
+      yield { event: 'start', data: { runId, userMessage: toMessageDto(userMessage), assistantMessageId } }
+
+      // Build PII-free CaseDigest & stream Zero-Write advisor turn via LangGraph engine (with deterministic fallback)
+      const digest = await this.buildCaseDigest(userId, taxYear)
+      const actionIdFactory = newActionId
+
+      if (!this.advisorEngine) {
+        const fallback = evaluateAdvisorTurn({
+          message: scrubbedUserText,
+          activeScreen: dto.activeScreen,
+          digest,
+          actionIdFactory,
+        })
+
+        const enrichedMeta = await this.enrichDraftsWithRawBaseline(userId, taxYear, fallback.meta)
+        await this.supersedePendingDraftsForSameTargets(userId, taxYear, this.collectPendingTargetKeys(enrichedMeta))
+
+        const status = 'Eule prüft deine Akte & Paragraphen …'
+        steps.push(status)
+        yield { event: 'status', data: { text: status } }
+        firstTokenMs = Date.now() - startedAt
+        yield { event: 'token', data: { text: fallback.replyText } }
+        if (enrichedMeta.choices && enrichedMeta.choices.length > 0) {
+          yield { event: 'choices', data: { choices: enrichedMeta.choices } }
+        }
+        if (enrichedMeta.action) {
+          yield { event: 'action', data: toPublicAction(enrichedMeta.action) }
+        }
+        if (enrichedMeta.twoPaths) {
+          yield { event: 'twoPaths', data: toPublicMeta({ twoPaths: enrichedMeta.twoPaths }).twoPaths! }
+        }
+        const assistant = await finish('complete', fallback.replyText, { ...enrichedMeta, engine: DETERMINISTIC_ENGINE })
+        yield doneWith(assistant, 'deterministic_fallback')
+        return
+      }
+
+      for await (const ev of this.advisorEngine.streamTurn({
         message: scrubbedUserText,
         activeScreen: dto.activeScreen,
         digest,
+        history: turn.history,
         actionIdFactory,
-      })
+        signal,
+        planRequired: dto.quickAction === 'forgotten_check',
+      })) {
+        if (ev.event === 'token') {
+          firstTokenMs ??= Date.now() - startedAt
+          text += ev.data.text
+        } else if (ev.event === 'reasoning') {
+          reasoning += ev.data.text
+        } else if (ev.event === 'status') {
+          steps.push(ev.data.text)
+        } else if (ev.event === 'tool') {
+          steps.push(ev.data.label)
+        }
 
-      const enrichedMeta = await this.enrichDraftsWithRawBaseline(userId, taxYear, turn.meta)
-      await this.supersedePendingDraftsForSameTargets(userId, taxYear, this.collectPendingTargetKeys(enrichedMeta))
+        if (ev.event === 'action') {
+          const enriched = await this.enrichSingleDraft(userId, taxYear, ev.data)
+          yield { event: 'action', data: toPublicAction(enriched) }
+          continue
+        }
 
-      const assistantMessage = await this.advisorRepo.createMessage({
-        userId,
-        taxYear,
-        role: 'assistant',
-        content: turn.replyText,
-        meta: { ...enrichedMeta, engine: DETERMINISTIC_ENGINE },
-      })
+        if (ev.event === 'twoPaths') {
+          const [safePath, maxPath] = await Promise.all([
+            this.enrichSingleDraft(userId, taxYear, ev.data.safePath),
+            this.enrichSingleDraft(userId, taxYear, ev.data.maxPath),
+          ])
+          yield {
+            event: 'twoPaths',
+            data: {
+              ...ev.data,
+              safePath: toPublicAction(safePath),
+              maxPath: toPublicAction({ ...maxPath, evidenceHint: ev.data.maxPath.evidenceHint }),
+            },
+          }
+          continue
+        }
 
-      const response: SendAdvisorMessageResponseDto = {
-        userMessage: toMessageDto(userMessage),
-        assistantMessage: toMessageDto(assistantMessage),
-        mode: 'deterministic_fallback',
+        if (ev.event === 'error') {
+          // Half an answer is kept for the record, but never as if it were complete.
+          await finish('failed', text, {})
+          yield ev
+          return
+        }
+
+        if (ev.event === 'done') {
+          const turnResult = ev.data as AdvisorTurnResult
+          const enrichedMeta = await this.enrichDraftsWithRawBaseline(userId, taxYear, turnResult.meta)
+          await this.supersedePendingDraftsForSameTargets(userId, taxYear, this.collectPendingTargetKeys(enrichedMeta))
+
+          const engine: AdvisorEngineInfo = {
+            mode: turnResult.mode,
+            ...(turnResult.provider !== undefined ? { provider: turnResult.provider } : {}),
+            ...(turnResult.model !== undefined ? { model: turnResult.model } : {}),
+          }
+          if (reasoning.length === 0 && turnResult.reasoning) reasoning = turnResult.reasoning
+          const assistant = await finish('complete', turnResult.replyText, { ...enrichedMeta, engine }, turnResult.usage)
+          yield doneWith(assistant, turnResult.mode)
+          return
+        }
+
+        yield ev
       }
 
-      yield { event: 'status', data: { text: 'Eule prüft deine Akte & Paragraphen …' } }
-      yield { event: 'token', data: { text: response.assistantMessage.content } }
-      if (enrichedMeta.choices && enrichedMeta.choices.length > 0) {
-        yield { event: 'choices', data: { choices: enrichedMeta.choices } }
+      // The engine ended without a verdict: a stop keeps the partial text, anything else is a failure.
+      if (signal?.aborted) {
+        const assistant = await finish('aborted', text, {})
+        yield doneWith(assistant, 'langgraph')
+        return
       }
-      if (enrichedMeta.action) {
-        yield { event: 'action', data: toPublicAction(enrichedMeta.action) }
+      await finish('failed', text, {})
+      yield { event: 'error', data: { code: 'ADVISOR_TURN_FAILED', message: TURN_FAILED_MESSAGE } }
+    } catch (error) {
+      if (finished) throw error
+      await finish(signal?.aborted ? 'aborted' : 'failed', text, {})
+      yield {
+        event: 'error',
+        data:
+          error instanceof DomainError
+            ? { code: error.code, message: error.message }
+            : { code: 'ADVISOR_TURN_FAILED', message: TURN_FAILED_MESSAGE },
       }
-      if (enrichedMeta.twoPaths) {
-        yield { event: 'twoPaths', data: toPublicMeta({ twoPaths: enrichedMeta.twoPaths }).twoPaths! }
-      }
-      yield { event: 'done', data: response }
-      return
+    } finally {
+      // The consumer stopped reading (connection gone, loop left): nothing may stay `streaming`.
+      if (!finished) await finish('aborted', text, {}).catch(() => {})
     }
+  }
 
-    for await (const ev of this.advisorEngine.streamTurn({
-      message: scrubbedUserText,
-      activeScreen: dto.activeScreen,
-      digest,
-      history,
-      actionIdFactory,
-      signal,
-      planRequired: dto.quickAction === 'forgotten_check',
-    })) {
-      if (ev.event === 'action') {
-        const enriched = await this.enrichSingleDraft(userId, taxYear, ev.data)
-        yield { event: 'action', data: toPublicAction(enriched) }
-        continue
-      }
-
-      if (ev.event === 'twoPaths') {
-        const [safePath, maxPath] = await Promise.all([
-          this.enrichSingleDraft(userId, taxYear, ev.data.safePath),
-          this.enrichSingleDraft(userId, taxYear, ev.data.maxPath),
-        ])
-        yield {
-          event: 'twoPaths',
-          data: {
-            ...ev.data,
-            safePath: toPublicAction(safePath),
-            maxPath: toPublicAction({ ...maxPath, evidenceHint: ev.data.maxPath.evidenceHint }),
-          },
-        }
-        continue
-      }
-
-      if (ev.event === 'done') {
-        const turnResult = ev.data as AdvisorTurnResult
-        const enrichedMeta = await this.enrichDraftsWithRawBaseline(userId, taxYear, turnResult.meta)
-        await this.supersedePendingDraftsForSameTargets(userId, taxYear, this.collectPendingTargetKeys(enrichedMeta))
-
-        const engine: AdvisorEngineInfo = {
-          mode: turnResult.mode,
-          ...(turnResult.provider !== undefined ? { provider: turnResult.provider } : {}),
-          ...(turnResult.model !== undefined ? { model: turnResult.model } : {}),
-        }
-        const assistantMessage = await this.advisorRepo.createMessage({
-          userId,
-          taxYear,
-          role: 'assistant',
-          content: turnResult.replyText,
-          meta: { ...enrichedMeta, engine },
-        })
-
-        const response: SendAdvisorMessageResponseDto = {
-          userMessage: toMessageDto(userMessage),
-          assistantMessage: toMessageDto(assistantMessage),
-          mode: turnResult.mode,
-        }
-        yield { event: 'done', data: response }
-        continue
-      }
-
-      yield ev
+  async setFeedback(
+    userId: string,
+    taxYear: number,
+    messageId: string,
+    dto: { readonly rating: AdvisorFeedbackRating | null; readonly reason?: AdvisorFeedbackReason | undefined },
+  ): Promise<AdvisorChatMessageDto> {
+    const message = await this.advisorRepo.findMessage(messageId, userId)
+    if (!message || message.taxYear !== taxYear) {
+      throw new NotFoundError('ADVISOR_MESSAGE_NOT_FOUND', 'Diese Nachricht gibt es nicht (mehr).')
     }
+    if (message.role !== 'assistant' || message.status === 'streaming') {
+      throw new InvalidInputError('ADVISOR_FEEDBACK_NOT_RATEABLE', 'Bewerten lassen sich nur fertige Antworten der Eule.')
+    }
+    const feedback: AdvisorMessageFeedback | null =
+      dto.rating === null
+        ? null
+        : { rating: dto.rating, ...(dto.rating === 'down' && dto.reason !== undefined ? { reason: dto.reason } : {}) }
+    const updated = await this.advisorRepo.setFeedback(messageId, userId, feedback)
+    if (!updated) throw new NotFoundError('ADVISOR_MESSAGE_NOT_FOUND', 'Diese Nachricht gibt es nicht (mehr).')
+    return toMessageDto(updated)
+  }
+
+  /**
+   * Deletes the conversation of one tax year. Values already applied to the return stay; proposals
+   * that were still open disappear with the messages that carried them.
+   */
+  async clearConversation(userId: string, taxYear: number): Promise<{ deletedMessages: number }> {
+    const deletedMessages = await this.advisorRepo.deleteForUserAndYear(userId, taxYear)
+    await this.auditService.append({ userId, action: 'WRITE', resource: 'berater_verlauf_geloescht' })
+    return { deletedMessages }
   }
 
   /**

@@ -172,6 +172,27 @@ export interface AdvisorMessageMeta {
   readonly engine?: AdvisorEngineInfo | undefined
   /** Server-internal: the turn was regenerated or edited away (#451 slice 1b); hidden from the chat. */
   readonly replaced?: true | undefined
+  /** The steps the owl reported while working (status and tool labels), kept with the answer (#476). */
+  readonly steps?: readonly string[] | undefined
+}
+
+/**
+ * Lifecycle of a chat message (#476). An assistant message exists from the moment its turn starts:
+ * `streaming` while the run is alive, then exactly one of the three final states.
+ */
+export const ADVISOR_MESSAGE_STATUSES = ['streaming', 'complete', 'aborted', 'failed'] as const
+export type AdvisorMessageStatus = (typeof ADVISOR_MESSAGE_STATUSES)[number]
+
+export const ADVISOR_FEEDBACK_RATINGS = ['up', 'down'] as const
+export type AdvisorFeedbackRating = (typeof ADVISOR_FEEDBACK_RATINGS)[number]
+
+/** Why an answer got a thumbs down; a fixed list so no free text leaves the encrypted history. */
+export const ADVISOR_FEEDBACK_REASONS = ['falsch', 'unklar', 'nicht_hilfreich'] as const
+export type AdvisorFeedbackReason = (typeof ADVISOR_FEEDBACK_REASONS)[number]
+
+export interface AdvisorMessageFeedback {
+  readonly rating: AdvisorFeedbackRating
+  readonly reason?: AdvisorFeedbackReason | undefined
 }
 
 export interface AdvisorChatMessageView {
@@ -180,6 +201,13 @@ export interface AdvisorChatMessageView {
   readonly content: string
   readonly meta: AdvisorMessageMeta | null
   readonly createdAt: string
+  /** Absent on rows written before #476; read as `complete`. */
+  readonly status?: AdvisorMessageStatus | undefined
+  /** The provider's reasoning summary for this answer, if the model supplied one. */
+  readonly reasoning?: string | undefined
+  readonly feedback?: AdvisorMessageFeedback | null | undefined
+  /** Set while `status` is `streaming`: the run a client can re-attach to. */
+  readonly runId?: string | undefined
 }
 
 export interface CaseDigest {

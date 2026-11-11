@@ -1,6 +1,6 @@
 import type { Item, Source } from '../engine/berechnung'
 import type { IncomeType } from '../domains/income-types'
-import type { AdvisorActionProposal, AdvisorMessageMeta, AdvisorTwoPathsProposal, CaseDigest } from './advisor'
+import type { AdvisorActionProposal, AdvisorChatMessageView, AdvisorMessageMeta, AdvisorTwoPathsProposal, CaseDigest } from './advisor'
 import type { Screen } from './marking'
 
 /** The schema the LLM must answer. */
@@ -28,12 +28,23 @@ export interface AdvisorTurnRequest {
   readonly planRequired?: boolean | undefined
 }
 
+/** Token counts of one turn, summed over all model rounds. */
+export interface AdvisorTurnUsage {
+  readonly inputTokens: number
+  readonly outputTokens: number
+  /** Input tokens the provider served from its prompt cache. */
+  readonly cachedInputTokens: number
+}
+
 export interface AdvisorTurnResult {
   readonly replyText: string
   readonly meta: AdvisorMessageMeta
   readonly mode: 'langgraph' | 'deterministic_fallback'
   readonly provider?: string | undefined
   readonly model?: string | undefined
+  /** Reasoning summaries of all rounds, joined; absent when the model supplied none. */
+  readonly reasoning?: string | undefined
+  readonly usage?: AdvisorTurnUsage | undefined
 }
 
 /** Status of one step of the owl's visible plan (#451 slice 6). */
@@ -51,7 +62,14 @@ export const ADVISOR_QUICK_ACTIONS = ['forgotten_check'] as const
 export type AdvisorQuickAction = (typeof ADVISOR_QUICK_ACTIONS)[number]
 
 export type AdvisorStreamEvent =
+  /** First event of a run: the ids a client needs to render, stop and re-attach (#476). */
+  | {
+      readonly event: 'start'
+      readonly data: { readonly runId: string; readonly userMessage: AdvisorChatMessageView; readonly assistantMessageId: string }
+    }
   | { readonly event: 'status'; readonly data: { readonly text: string } }
+  /** A piece of the provider's reasoning summary; never the answer itself. */
+  | { readonly event: 'reasoning'; readonly data: { readonly text: string } }
   | { readonly event: 'tool'; readonly data: { readonly name: string; readonly label: string } }
   | { readonly event: 'token'; readonly data: { readonly text: string } }
   | { readonly event: 'choices'; readonly data: { readonly choices: readonly string[] } }

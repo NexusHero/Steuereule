@@ -10,12 +10,20 @@ import {
   IsOptional,
   IsString,
   MaxLength,
+  ValidateIf,
   ValidateNested,
   registerDecorator,
 } from 'class-validator'
 import {
+  ADVISOR_FEEDBACK_RATINGS,
+  ADVISOR_FEEDBACK_REASONS,
+  ADVISOR_MESSAGE_STATUSES,
   ADVISOR_QUICK_ACTIONS,
   SCREENS,
+  type AdvisorFeedbackRating,
+  type AdvisorFeedbackReason,
+  type AdvisorMessageFeedback,
+  type AdvisorMessageStatus,
   type AdvisorQuickAction,
   type AdvisorActionProposal,
   type AdvisorActionStatus,
@@ -225,6 +233,9 @@ export class AdvisorMessageMetaDto implements AdvisorMessageMeta {
   @ApiPropertyOptional({ type: [String] })
   choices?: readonly string[] | undefined
 
+  @ApiPropertyOptional({ type: [String], description: 'Steps the owl reported while working on this answer (#476).' })
+  steps?: readonly string[] | undefined
+
   @ApiPropertyOptional({ type: AdvisorActionProposalDto })
   action?: AdvisorActionProposalDto | undefined
 
@@ -239,6 +250,14 @@ export class AdvisorMessageMetaDto implements AdvisorMessageMeta {
 
   @ApiPropertyOptional({ type: [String], enum: OWL_SOURCE_IDS })
   sources?: readonly OwlSourceId[] | undefined
+}
+
+export class AdvisorMessageFeedbackDto implements AdvisorMessageFeedback {
+  @ApiProperty({ type: String, enum: ADVISOR_FEEDBACK_RATINGS })
+  rating!: AdvisorFeedbackRating
+
+  @ApiPropertyOptional({ type: String, enum: ADVISOR_FEEDBACK_REASONS })
+  reason?: AdvisorFeedbackReason | undefined
 }
 
 export class AdvisorChatMessageDto implements AdvisorChatMessageView {
@@ -256,6 +275,44 @@ export class AdvisorChatMessageDto implements AdvisorChatMessageView {
 
   @ApiProperty({ type: String, example: '2026-11-07T09:00:00.000Z' })
   createdAt!: string
+
+  @ApiPropertyOptional({
+    type: String,
+    enum: ADVISOR_MESSAGE_STATUSES,
+    description: 'Lifecycle of the message (#476). An aborted or failed answer keeps its partial text and carries no proposal.',
+  })
+  status?: AdvisorMessageStatus | undefined
+
+  @ApiPropertyOptional({ type: String, description: 'Reasoning summary of the provider; considerations of the model, not advice.' })
+  reasoning?: string | undefined
+
+  @ApiPropertyOptional({ type: () => AdvisorMessageFeedbackDto, nullable: true })
+  feedback?: AdvisorMessageFeedbackDto | null | undefined
+
+  @ApiPropertyOptional({ type: String, description: 'Present while status is streaming: the run to re-attach to.' })
+  runId?: string | undefined
+}
+
+export class SetAdvisorFeedbackDto {
+  @ApiProperty({ type: String, enum: ADVISOR_FEEDBACK_RATINGS, nullable: true, description: 'null removes the rating.' })
+  @ValidateIf((_object, value) => value !== null)
+  @IsIn(ADVISOR_FEEDBACK_RATINGS)
+  rating!: AdvisorFeedbackRating | null
+
+  @ApiPropertyOptional({ type: String, enum: ADVISOR_FEEDBACK_REASONS, description: 'Only kept with a thumbs down.' })
+  @IsOptional()
+  @IsIn(ADVISOR_FEEDBACK_REASONS)
+  reason?: AdvisorFeedbackReason | undefined
+}
+
+export class ClearAdvisorConversationResponseDto {
+  @ApiProperty({ type: Number, example: 12 })
+  deletedMessages!: number
+}
+
+export class StopAdvisorRunResponseDto {
+  @ApiProperty({ type: Boolean, description: 'false when the run had already ended.' })
+  stopped!: boolean
 }
 
 export class AdvisorSessionResponseDto {

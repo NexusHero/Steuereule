@@ -1238,6 +1238,16 @@ model AdvisorChatMessage {
   content   String   @map("inhalt") /// @encrypted?mode=strict
   metaJson  String?  @map("metaDaten") /// @encrypted?mode=strict
   createdAt DateTime @default(now())
+  /// Lifecycle of the message (#476): streaming, complete, aborted or failed.
+  status         String  @default("complete")
+  /// Reasoning summary the provider returned for this answer, field-encrypted like the text.
+  reasoning      String? @map("gedankengang") /// @encrypted?mode=strict
+  /// The run that produces this answer; lets a client re-attach while status is streaming.
+  runId          String? @map("laufId")
+  feedbackRating String? @map("bewertung")
+  feedbackReason String? @map("bewertungGrund")
+  /// Token counts, timings and trace id of the turn as JSON. No message content.
+  usageJson      String? @map("verbrauch")
 
   @@index([userId, taxYear, createdAt])
   @@map("BeraterNachricht")
