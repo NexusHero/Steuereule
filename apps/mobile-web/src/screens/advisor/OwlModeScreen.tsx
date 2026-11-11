@@ -1108,7 +1108,7 @@ function makeStyles(t: UiTheme) {
     sidePanelContent: { padding: t.space.s4 } as ViewStyle,
     panelHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: t.space.s3 } as ViewStyle,
     panelTitle: { fontFamily: t.font.display, fontWeight: t.weight.fett, fontSize: t.size.m, color: t.color.tinte } as TextStyle,
-    sheetBody: { gap: t.space.s3 } as ViewStyle,
+    sheetBody: { gap: t.space.s3, paddingHorizontal: t.space.s4, paddingBottom: t.space.s4 } as ViewStyle,
     sheetTitle: { fontFamily: t.font.display, fontWeight: t.weight.fett, fontSize: t.size.m, color: t.color.tinte } as TextStyle,
     clearCard: { gap: t.space.s2 } as ViewStyle,
     clearTitle: { fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: t.size.s, color: t.color.tinte } as TextStyle,

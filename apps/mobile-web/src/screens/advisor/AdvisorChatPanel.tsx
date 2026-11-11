@@ -503,7 +503,7 @@ export function AdvisorChatPanel({
     <>
       {/* Quick-Starter Chips */}
       {quickChips.length > 0 && messages.length === 0 ? (
-        <View style={styles.quickChipsRow} testID="advisor-quick-chips">
+        <View style={[styles.quickChipsRow, variant === 'page' && styles.quickChipsRowCentered]} testID="advisor-quick-chips">
           {quickChips.map((entry) => {
             const chip = typeof entry === 'string' ? { label: entry, testID: undefined, quickAction: undefined } : entry
             return (
@@ -901,7 +901,11 @@ export function AdvisorChatPanel({
             }}
             onStop={onStop}
             sending={isSending}
-            placeholder={tr('advisor.chat.inputPlaceholder', 'Frag deine Eule (z. B. Fortbildung, Laptop, Spenden, Endprüfung) …')}
+            placeholder={
+              compact
+                ? tr('advisor.chat.inputPlaceholderShort')
+                : tr('advisor.chat.inputPlaceholder', 'Frag deine Eule (z. B. Fortbildung, Laptop, Spenden, Endprüfung) …')
+            }
             inputTestID="advisor-chat-input"
             sendTestID="advisor-chat-send"
           />
@@ -1332,6 +1336,7 @@ function makeStyles(t: UiTheme) {
       gap: t.space.s1,
     } as ViewStyle,
     composer: { flex: 1 } as ViewStyle,
+    quickChipsRowCentered: { justifyContent: 'center' } as ViewStyle,
     pageRoot: { flex: 1, minHeight: 0 } as ViewStyle,
     pageScroll: { flex: 1 } as ViewStyle,
     pageScrollContent: { paddingHorizontal: t.space.s4, paddingTop: t.space.s4, paddingBottom: t.space.s3, flexGrow: 1 } as ViewStyle,

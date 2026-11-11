@@ -98,3 +98,63 @@ describe('ChatComposer (#451 slice 1)', () => {
     expect(onSend).not.toHaveBeenCalled()
   })
 })
+
+describe('ChatComposer height in a browser (#476)', () => {
+  /**
+   * A textarea like a real one: its scrollHeight is the text plus padding, and never smaller than
+   * the box. That second property is what made the input ratchet up to five lines on its own.
+   */
+  function withBrowserTextarea(linesOf: (value: string) => number, run: () => void) {
+    const PADDING = 24
+    const descriptor = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'scrollHeight')
+    Object.defineProperty(HTMLTextAreaElement.prototype, 'scrollHeight', {
+      configurable: true,
+      get(this: HTMLTextAreaElement) {
+        const content = linesOf(this.value) * 20 + PADDING
+        return Math.max(content, Number.parseFloat(this.style.height) || 0)
+      },
+    })
+    try {
+      run()
+    } finally {
+      if (descriptor) Object.defineProperty(HTMLTextAreaElement.prototype, 'scrollHeight', descriptor)
+      else delete (HTMLTextAreaElement.prototype as unknown as Record<string, unknown>).scrollHeight
+    }
+  }
+
+  const heightOf = (): number => Number.parseFloat((screen.getByTestId('input') as HTMLTextAreaElement).style.height)
+
+  it('is one line while empty, however long the placeholder wraps', () => {
+    withBrowserTextarea(() => 4, () => {
+      render(<Host platform="desktop" onSend={vi.fn()} />)
+      expect(heightOf()).toBe(44)
+    })
+  })
+
+  it('grows with the text, stops at five lines, and shrinks again when text is removed', () => {
+    withBrowserTextarea((value) => Math.max(1, value.split('\n').length), () => {
+      render(<Host platform="desktop" onSend={vi.fn()} />)
+      const input = screen.getByTestId('input')
+
+      fireEvent.change(input, { target: { value: 'eins\nzwei\ndrei' } })
+      expect(heightOf()).toBe(3 * 20 + 24)
+
+      fireEvent.change(input, { target: { value: Array.from({ length: 9 }, (_, i) => `Zeile ${i}`).join('\n') } })
+      expect(heightOf()).toBe(5 * 20 + 24)
+
+      fireEvent.change(input, { target: { value: 'eins' } })
+      expect(heightOf()).toBe(44)
+    })
+  })
+
+  it('does not grow by itself when the same text is rendered again', () => {
+    withBrowserTextarea(() => 1, () => {
+      const view = render(<Host platform="desktop" onSend={vi.fn()} />)
+      fireEvent.change(screen.getByTestId('input'), { target: { value: 'eins' } })
+      const first = heightOf()
+      view.rerender(<Host platform="desktop" onSend={vi.fn()} />)
+      view.rerender(<Host platform="desktop" onSend={vi.fn()} />)
+      expect(heightOf()).toBe(first)
+    })
+  })
+})

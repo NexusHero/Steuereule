@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
   Platform,
   Pressable,
@@ -6,6 +6,7 @@ import {
   TextInput,
   View,
   type NativeSyntheticEvent,
+  type TextInputContentSizeChangeEventData,
   type TextInputKeyPressEventData,
   type TextStyle,
   type ViewStyle,
@@ -58,7 +59,28 @@ export function ChatComposer({
   const { t: tr } = useTranslation(APP_NS)
   const platform = useMemo(() => platformOverride ?? detectChatInputPlatform(Platform.OS), [platformOverride])
   const [height, setHeight] = useState(LINE_HEIGHT)
+  const inputRef = useRef<TextInput>(null)
   const canStop = sending && onStop !== undefined
+  const onWeb = Platform.OS === 'web'
+
+  // In a browser the reported content size is the textarea's scrollHeight: it includes the padding
+  // and is never smaller than the box itself, so feeding it back made the input grow to its
+  // maximum and stay there. Measure the text with the box collapsed instead.
+  useLayoutEffect(() => {
+    if (!onWeb) return
+    const element = inputRef.current as unknown as HTMLTextAreaElement | null
+    if (!element || typeof element.scrollHeight !== 'number' || !element.style) return
+    // An empty input is one line; a long placeholder that wraps must not make it taller.
+    if (value.length === 0) {
+      setHeight(LINE_HEIGHT)
+      return
+    }
+    const previous = element.style.height
+    element.style.height = '0px'
+    const contentHeight = element.scrollHeight - styles.inputPadding
+    element.style.height = previous
+    setHeight(clampComposerHeight(contentHeight, LINE_HEIGHT))
+  }, [onWeb, value, styles.inputPadding])
 
   function submit() {
     const text = value.trim()
@@ -101,7 +123,10 @@ export function ChatComposer({
         multiline
         blurOnSubmit={false}
         onKeyPress={handleKeyPress}
-        onContentSizeChange={(e) => setHeight(clampComposerHeight(e.nativeEvent.contentSize.height, LINE_HEIGHT))}
+        ref={inputRef}
+        {...(onWeb
+          ? {}
+          : { onContentSizeChange: (e: NativeSyntheticEvent<TextInputContentSizeChangeEventData>) => setHeight(clampComposerHeight(e.nativeEvent.contentSize.height, LINE_HEIGHT)) })}
         enterKeyHint={platform === 'desktop' ? 'send' : 'enter'}
         returnKeyType="default"
         autoComplete="off"

@@ -96,7 +96,7 @@ export function OwlTopBar({
             style={styles.chip}
             testID="eule-settings-btn"
           >
-            <Text style={styles.chipText}>⚙︎</Text>
+            <Text style={styles.chipText}>{compact ? '⋯' : tr('eule.workspace.topbar.settings')}</Text>
           </Pressable>
         ) : null}
       </View>
