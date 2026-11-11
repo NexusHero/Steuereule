@@ -154,8 +154,14 @@ async function main() {
         await a.page.waitForFunction((n) => document.querySelectorAll('[data-testid="geraet-abmelden"]').length < n, count, { timeout: 10_000 })
       }
       if ((await a.page.locator('[data-testid="geraet-abmelden-aktuell"]').count()) !== 1) fail('Row C: the current device must stay listed')
-      // The signed-out device has no session any more. FINDING (#450 5A): the app then keeps showing
-      // the cockpit as a guest instead of leading to the sign-in.
+      // The still-open app on B notices on its next session read (focus) and leads to the sign-in
+      // instead of carrying on as a guest (#469).
+      await b.page.evaluate(() => {
+        document.dispatchEvent(new Event('visibilitychange'))
+        window.dispatchEvent(new Event('focus'))
+      })
+      await b.page.getByPlaceholder(FLOW_COPY.loginEmailPlaceholder).waitFor({ state: 'visible', timeout: 20_000 })
+      // And it has no session any more, nor any account data.
       const session = await b.ctx.request.get(`${apiOrigin}/api/auth/get-session`, { headers: { origin: webOrigin } })
       const body = await session.json().catch(() => null)
       if (body !== null && body?.session) fail(`Row C: the signed-out device must have no session, got ${JSON.stringify(body).slice(0, 120)}`)
@@ -164,7 +170,7 @@ async function main() {
       if (data.ok() && profile?.firstName) fail('Row C: the signed-out device must not read the account profile')
       await a.ctx.close()
       await b.ctx.close()
-      console.log(`[${TAG}] ✅ Row C — the other device signed out; it has no session and reads no account data`)
+      console.log(`[${TAG}] ✅ Row C — the other device signed out; the open app goes to the sign-in, has no session and reads no account data`)
     }
 
     // Row D — OAuth consent (deny, allow), token on MCP, revoke in the profile.
