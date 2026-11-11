@@ -10,7 +10,8 @@ Stand: 11.11.2026. Ergänzt [abdeckung-450-teil4.md](abdeckung-450-teil4.md). **
 | 5C | Ausdruck: bezahlen (Fake-Zahlungsanbieter), Webhook mit Signatur, beide Downloads | `e2e/printout/printout-unlock.mjs`, Unit `apps/api/test/fake-payment-provider.test.ts` | E2E, CI |
 | 5D | Belege: Upload, Vorschau, Löschen mit Bestätigung | `e2e/uploads/receipts-and-lstb-scan.mjs` | E2E, CI |
 | 5D | LStB-Scan: Entwurf, Zero-Write, Felder bestätigen, „überschreiben?“ (bestätigen und abbrechen), „falsches Jahr“ (abbrechen und wechseln) | dieselbe Datei, synthetische PDFs aus `e2e/fixtures/synthetic-documents.mjs` | E2E, CI |
-| 5D | **Lücke:** Beleg im Eulen-Chat (`advisor-receipt-*`), Foto-Scan (OCR) | folgt mit dem Scan-Korpus (P5) | |
+| 5D / 3C | Beleg im Eulen-Chat, Foto-Scan (OCR), Felder einzeln bestätigen, Tab-Wechsel, Reload, Löschen | `e2e/scan-corpus/flows.mjs` | E2E, CI |
+| 3A/3B | Scan-Korpus, Kennzahlen je Variante | `e2e/scan-corpus/` (siehe README dort) | E2E, CI |
 | 5E | Fristen-Banner `abgelaufen`, `warnung`, keins | `e2e/errors/deadlines-and-faults.mjs` | E2E, CI |
 | 5E | 500 auf Interview-Antwort, LStB laden (Fehler-Screen, „Erneut versuchen“), LStB speichern (Hinweis, Eingabe bleibt), offline | dieselbe Datei | E2E, CI |
 | 5F | Eulen-Modus | `e2e/advisor/owl-mode-fake-ki.mjs` (früherer PR) | E2E, CI |
