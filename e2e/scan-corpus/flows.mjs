@@ -40,6 +40,11 @@ async function main() {
       await page.locator('[data-testid="lstb-scan-card"]').waitFor({ state: 'visible', timeout: 15_000 })
     }
 
+    // POST /v1/belege/parse allows 15 per minute and the corpus metrics run right before this gate:
+    // start after a full quiet window instead of inheriting their bucket.
+    console.log(`[${TAG}] waiting 61000 ms so the parse bucket of the previous gate has emptied`)
+    await page.waitForTimeout(61_000)
+
     // --- Tab Belege: the original is stored, encrypted, in the inbox ------------------------------
     await page.goto(`${webOrigin}/app/belege`, { waitUntil: 'networkidle' })
     await page.locator('[data-testid="belege-file-input"]').setInputFiles(await file('sap-digital.pdf', 'application/pdf'))

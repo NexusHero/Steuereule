@@ -30,8 +30,10 @@ export const THRESHOLDS = {
   scanMs: 20_000,
 }
 const WAIT_MS = 90_000
-// POST /v1/belege/parse allows 15 requests per minute (receipt-parse.controller.ts); stay below it.
-const PARSE_LIMIT = { max: 14, windowMs: 61_000 }
+// POST /v1/belege/parse allows 15 requests per minute per client (receipt-parse.controller.ts). The
+// bucket is shared with every gate before this one (5D uploads parse right before), so the run starts
+// after a full quiet window and keeps a margin; a 429 shows up as "konnte nicht ausgewertet werden".
+const PARSE_LIMIT = { max: 12, windowMs: 61_000 }
 
 const MIME = { pdf: 'application/pdf', jpg: 'image/jpeg', png: 'image/png' }
 
@@ -188,6 +190,8 @@ async function main() {
     const results = []
     let zeroWriteViolations = 0
     const parses = []
+    console.log(`[${TAG}] waiting ${PARSE_LIMIT.windowMs} ms so the parse bucket of the previous gates has emptied`)
+    await page.waitForTimeout(PARSE_LIMIT.windowMs)
     for (const entry of entries) {
       while (parses.length >= PARSE_LIMIT.max && Date.now() - parses[parses.length - PARSE_LIMIT.max] < PARSE_LIMIT.windowMs) {
         await page.waitForTimeout(PARSE_LIMIT.windowMs - (Date.now() - parses[parses.length - PARSE_LIMIT.max]) + 100)
