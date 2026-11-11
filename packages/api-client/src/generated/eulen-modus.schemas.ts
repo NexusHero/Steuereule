@@ -153,6 +153,17 @@ export const AdvisorActionProposalDtoScreen = {
   assessment: 'assessment',
 } as const;
 
+/**
+ * computed: the three euro figures come from the app's own estimate. not-computable: there is no figure, see effectHint. Absent: approximation.
+ */
+export type AdvisorActionProposalDtoEffect = typeof AdvisorActionProposalDtoEffect[keyof typeof AdvisorActionProposalDtoEffect];
+
+
+export const AdvisorActionProposalDtoEffect = {
+  computed: 'computed',
+  'not-computable': 'not-computable',
+} as const;
+
 export type AdvisorActionProposalDtoSourceId = typeof AdvisorActionProposalDtoSourceId[keyof typeof AdvisorActionProposalDtoSourceId];
 
 
@@ -226,6 +237,10 @@ export interface AdvisorActionProposalDto {
   beforeRefundEur: number;
   afterRefundEur: number;
   deltaEur: number;
+  /** computed: the three euro figures come from the app's own estimate. not-computable: there is no figure, see effectHint. Absent: approximation. */
+  effect?: AdvisorActionProposalDtoEffect;
+  /** Why the effect cannot be put in euros yet. */
+  effectHint?: string;
   reason: string;
   sourceId: AdvisorActionProposalDtoSourceId;
   paragraph?: string;
@@ -307,6 +322,17 @@ export const AdvisorMaxPathProposalDtoScreen = {
   assessment: 'assessment',
 } as const;
 
+/**
+ * computed: the three euro figures come from the app's own estimate. not-computable: there is no figure, see effectHint. Absent: approximation.
+ */
+export type AdvisorMaxPathProposalDtoEffect = typeof AdvisorMaxPathProposalDtoEffect[keyof typeof AdvisorMaxPathProposalDtoEffect];
+
+
+export const AdvisorMaxPathProposalDtoEffect = {
+  computed: 'computed',
+  'not-computable': 'not-computable',
+} as const;
+
 export type AdvisorMaxPathProposalDtoSourceId = typeof AdvisorMaxPathProposalDtoSourceId[keyof typeof AdvisorMaxPathProposalDtoSourceId];
 
 
@@ -375,6 +401,10 @@ export interface AdvisorMaxPathProposalDto {
   beforeRefundEur: number;
   afterRefundEur: number;
   deltaEur: number;
+  /** computed: the three euro figures come from the app's own estimate. not-computable: there is no figure, see effectHint. Absent: approximation. */
+  effect?: AdvisorMaxPathProposalDtoEffect;
+  /** Why the effect cannot be put in euros yet. */
+  effectHint?: string;
   reason: string;
   sourceId: AdvisorMaxPathProposalDtoSourceId;
   paragraph?: string;

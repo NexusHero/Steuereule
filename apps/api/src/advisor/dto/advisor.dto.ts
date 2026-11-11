@@ -30,6 +30,7 @@ import {
   type AdvisorChatMessageView,
   type AdvisorLegalSource,
   type AdvisorLstbScanMeta,
+  type AdvisorEffectKind,
   type AdvisorMessageMeta,
   type AdvisorNotStaged,
   type AdvisorTwoPathsProposal,
@@ -160,6 +161,16 @@ export class AdvisorActionProposalDto implements AdvisorActionProposal {
 
   @ApiProperty({ type: Number, example: 85 })
   deltaEur!: number
+
+  @ApiPropertyOptional({
+    type: String,
+    enum: ['computed', 'not-computable'],
+    description: 'computed: the three euro figures come from the app\'s own estimate. not-computable: there is no figure, see effectHint. Absent: approximation.',
+  })
+  effect?: AdvisorEffectKind | undefined
+
+  @ApiPropertyOptional({ type: String, description: 'Why the effect cannot be put in euros yet.' })
+  effectHint?: string | undefined
 
   @ApiProperty({ type: String, example: 'Sonderausgabenabzug nach § 10b EStG.' })
   reason!: string

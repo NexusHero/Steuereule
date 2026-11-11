@@ -29,6 +29,8 @@ import {
   type AdvisorEnginePort,
   type AdvisorMessageMeta,
   type AdvisorNotStaged,
+  type AdvisorPreviewEffect,
+  type AdvisorPreviewTarget,
   type AdvisorRecordHandles,
   type AdvisorStreamEvent,
   type AdvisorTurnRequest,
@@ -157,6 +159,7 @@ export function buildStableSystemPrompt(): string {
     '',
     '10. Vollständigkeit vor Tempo: (a) Arbeitsweg: Frage nach Urlaubs- und Krankheitstagen (`commute.vacationDays`, `commute.sickDays`), bevor du Pendeltage oder eine Entfernungspauschale als fertig bezeichnest; ohne sie rechnet die App mit 0 Tagen und überschätzt die Pauschale. Sage das, wenn die Angaben fehlen. (b) Fortbildung: Nennt der Nutzer Kosten, lege den Entwurf auf `interview.fortbildung-kosten` an und gib `fortbildung: "Ja"` als companionField mit. Ohne Betrag vermerkst du nur `fortbildung` = „Ja“ und fragst nach den Kosten; nenne dafür keine Erstattungswirkung. (c) Nenne Beträge nur dann als erfasst, wenn ein Entwurf dafür `ok: true` gemeldet hat.',
     '11. Vermietung und Kinder haben mehrere Einträge. Gib bei `stage_field_draft` für die Masken `vermietung` und `kind` als `instance` den Namen des Eintrags an, genau wie er unter „Angelegte Einträge“ steht (z. B. „Objekt 1“, „Kind 2“). Gibt es nur einen Eintrag, darfst du `instance` weglassen. Gibt es mehrere und der Nutzer hat nicht gesagt, welcher gemeint ist, frage nach. Ist keiner angelegt, kannst du nichts vorbereiten: Einträge legt der Nutzer selbst in der Maske an – sag ihm das, die App öffnet die Maske. Erfinde keine Einträge und keine anderen Namen.',
+    '12. Wirkung: Die Werkzeuge melden zu jedem Entwurf `effect`. Bei `computed` stammen `beforeRefundEur`, `afterRefundEur` und `deltaEur` aus der Schätzung der App – nenne genau diese Zahlen und keine anderen. Bei `not-computable` gibt es keine Zahl: Nenne dann keinen Euro-Betrag als Wirkung, sondern gib `effectHint` sinngemäß wieder. Eine Wirkung von 0 € heißt, dass sich die Schätzung durch die Angabe nicht ändert – sag das so.',
     '',
     '8. Ton: Du duzt den Nutzer durchgehend, freundlich und knapp.',
     '',
@@ -486,6 +489,28 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
           return resolveRecordHandle(screen, request.records?.[screen] ?? [], raw)
         }
 
+        /**
+         * The euro effect of a draft: from the app's own estimate where the caller offers it, and
+         * never a made-up figure when the estimate cannot say. The approximation over the digest
+         * only remains for setups without a database behind the engine.
+         */
+        const effectOf = async (
+          target: AdvisorPreviewTarget,
+          approximation: { beforeRefundEur: number; afterRefundEur: number; deltaEur: number },
+        ): Promise<Pick<AdvisorActionProposal, 'beforeRefundEur' | 'afterRefundEur' | 'deltaEur' | 'effect' | 'effectHint'>> => {
+          if (!request.previewEffect) return approximation
+          let preview: AdvisorPreviewEffect
+          try {
+            preview = await request.previewEffect(target)
+          } catch {
+            preview = { kind: 'not-computable', hint: 'Die Wirkung lässt sich gerade nicht berechnen.' }
+          }
+          if (preview.kind === 'computed') {
+            return { beforeRefundEur: preview.beforeRefundEur, afterRefundEur: preview.afterRefundEur, deltaEur: preview.deltaEur, effect: 'computed' }
+          }
+          return { beforeRefundEur: 0, afterRefundEur: 0, deltaEur: 0, effect: 'not-computable', effectHint: preview.hint }
+        }
+
         if (tc.name === 'simulate_tax_delta') {
           const args = parseArgs(TOOL_ARG_SCHEMAS.simulate_tax_delta)
           if (args === null) continue
@@ -501,7 +526,11 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
             continue
           }
           const sim = simulateAdvisorFieldDelta(request.digest, target.screen, field.trim(), simValue.value)
-          toolMessages.push(new ToolMessage({ tool_call_id: callId, name: tc.name, content: JSON.stringify({ ok: true, ...sim }) }))
+          const simRecord = resolveInstance(target.screen, field.trim(), null)
+          const simEffect = simRecord.ok
+            ? await effectOf({ screen: target.screen, instance: simRecord.id, values: [[field.trim(), simValue.value]] }, sim)
+            : ({ beforeRefundEur: 0, afterRefundEur: 0, deltaEur: 0, effect: 'not-computable', effectHint: simRecord.reason } as const)
+          toolMessages.push(new ToolMessage({ tool_call_id: callId, name: tc.name, content: JSON.stringify({ ok: true, previousValue: sim.previousValue, ...simEffect }) }))
           continue
         }
 
@@ -585,6 +614,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
 
           const cleanField = field.trim()
           const sim = simulateAdvisorFieldDelta(request.digest, target.screen, cleanField, newValue)
+          const effect = await effectOf({ screen: target.screen, instance, values: [...companionEntries, [cleanField, newValue]] }, sim)
           sources.push(sourceId)
 
           const stagedAction: AdvisorActionProposal = {
@@ -598,9 +628,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
             previousValue: sim.previousValue,
             expectedPreviousValue: sim.previousValue,
             newValue,
-            beforeRefundEur: sim.beforeRefundEur,
-            afterRefundEur: sim.afterRefundEur,
-            deltaEur: sim.deltaEur,
+            ...effect,
             reason,
             sourceId,
             paragraph: ADVISOR_LEGAL_SOURCES[sourceId].paragraph,
@@ -669,6 +697,8 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
 
           const safeSim = simulateAdvisorFieldDelta(request.digest, safeCheck.screen, safeField, safeNewValue)
           const maxSim = simulateAdvisorFieldDelta(request.digest, maxCheck.screen, maxField, maxNewValue)
+          const safeEffect = await effectOf({ screen: safeCheck.screen, instance: safeRecord.id, values: [[safeField, safeNewValue]] }, safeSim)
+          const maxEffect = await effectOf({ screen: maxCheck.screen, instance: maxRecord.id, values: [[maxField, maxNewValue]] }, maxSim)
           const baseActionId = makeActionId()
           sources.push(sourceId)
 
@@ -685,9 +715,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
               previousValue: safeSim.previousValue,
               expectedPreviousValue: safeSim.previousValue,
               newValue: safeNewValue,
-              beforeRefundEur: safeSim.beforeRefundEur,
-              afterRefundEur: safeSim.afterRefundEur,
-              deltaEur: safeSim.deltaEur,
+              ...safeEffect,
               reason: rawSafe.reason,
               sourceId,
               paragraph: ADVISOR_LEGAL_SOURCES[sourceId].paragraph,
@@ -702,9 +730,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
               previousValue: maxSim.previousValue,
               expectedPreviousValue: maxSim.previousValue,
               newValue: maxNewValue,
-              beforeRefundEur: maxSim.beforeRefundEur,
-              afterRefundEur: maxSim.afterRefundEur,
-              deltaEur: maxSim.deltaEur,
+              ...maxEffect,
               reason: rawMax.reason,
               evidenceHint: rawMax.evidenceHint,
               sourceId,

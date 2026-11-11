@@ -155,7 +155,19 @@ function ActionProposalCardView({
     <View style={styles.actionCard} testID={`${testIDPrefix}-card`}>
       <View style={styles.actionHeader}>
         <Text style={styles.actionLabel}>{action.label}</Text>
-        {action.deltaEur > 0 ? (
+        {action.effect === 'not-computable' ? (
+          <Text style={styles.pauschbetragBadge} testID={`${testIDPrefix}-effect-open`}>
+            {tr('advisor.chat.effectOpen', 'Wirkung noch offen')}
+          </Text>
+        ) : action.effect === 'computed' && action.deltaEur < 0 ? (
+          <Text style={styles.pauschbetragBadge} testID={`${testIDPrefix}-delta-negative`}>
+            {tr('advisor.chat.taxEffectNegative', { amount: formatEuro(Math.abs(action.deltaEur)), defaultValue: `−${formatEuro(Math.abs(action.deltaEur))} Erstattung` })}
+          </Text>
+        ) : action.effect === 'computed' && action.deltaEur === 0 ? (
+          <Text style={styles.pauschbetragBadge} testID={`${testIDPrefix}-effect-none`}>
+            {tr('advisor.chat.effectNone', 'Ändert die Schätzung nicht')}
+          </Text>
+        ) : action.deltaEur > 0 ? (
           <Text style={styles.actionDeltaBadge} testID={`${testIDPrefix}-delta`}>
             {tr('advisor.chat.taxEffect', {
               amount: formatEuro(action.deltaEur),
@@ -168,6 +180,12 @@ function ActionProposalCardView({
           </Text>
         ) : null}
       </View>
+
+      {action.effect === 'not-computable' && action.effectHint ? (
+        <Text style={styles.actionReason} testID={`${testIDPrefix}-effect-hint`}>
+          {action.effectHint}
+        </Text>
+      ) : null}
 
       {receiptLinked ? (
         <Text style={styles.receiptLinkedBadge} testID={`${testIDPrefix}-receipt-badge`}>

@@ -29,7 +29,24 @@ export interface AdvisorTurnRequest {
   readonly planRequired?: boolean | undefined
   /** The stored records of the per-record masks under their neutral names; ids never reach the model. */
   readonly records?: AdvisorRecordHandles | undefined
+  /**
+   * What a draft would do to the refund, worked out by the app's own estimate. Without it the
+   * engine falls back to the approximation over the digest.
+   */
+  readonly previewEffect?: ((target: AdvisorPreviewTarget) => Promise<AdvisorPreviewEffect>) | undefined
 }
+
+/** The fields one draft would write, main field and companions alike. */
+export interface AdvisorPreviewTarget {
+  readonly screen: Screen
+  readonly instance: string | null
+  /** In write order: companions (the gate of an amount) first, the main field last. */
+  readonly values: ReadonlyArray<readonly [field: string, value: string]>
+}
+
+export type AdvisorPreviewEffect =
+  | { readonly kind: 'computed'; readonly beforeRefundEur: number; readonly afterRefundEur: number; readonly deltaEur: number }
+  | { readonly kind: 'not-computable'; readonly hint: string }
 
 /** Token counts of one turn, summed over all model rounds. */
 export interface AdvisorTurnUsage {

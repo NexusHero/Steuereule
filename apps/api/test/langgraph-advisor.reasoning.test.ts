@@ -4,7 +4,7 @@ import type { BaseLanguageModelInput } from '@langchain/core/language_models/bas
 import { AIMessageChunk, type BaseMessage } from '@langchain/core/messages'
 import { ChatGenerationChunk, type ChatResult } from '@langchain/core/outputs'
 import type { Runnable } from '@langchain/core/runnables'
-import { buildRecordHandles, type AdvisorRecordHandles, type AdvisorStreamEvent, type AdvisorTurnResult, type CaseDigest } from '@steuereule/core'
+import { buildRecordHandles, type AdvisorPreviewTarget, type AdvisorStreamEvent, type AdvisorTurnRequest, type AdvisorTurnResult, type CaseDigest } from '@steuereule/core'
 import { Logger } from '@nestjs/common'
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
@@ -89,7 +89,7 @@ function runtime(provider: AiProviderKind, extra: Partial<ResolvedAiSlotConfig> 
   }
 }
 
-async function run(engine: LangGraphAdvisorEngine, extra: { planRequired?: boolean; records?: AdvisorRecordHandles } = {}) {
+async function run(engine: LangGraphAdvisorEngine, extra: Partial<Pick<AdvisorTurnRequest, 'planRequired' | 'records' | 'previewEffect'>> = {}) {
   const events: AdvisorStreamEvent[] = []
   for await (const ev of engine.streamTurn({ message: 'Lohnt sich mein Arbeitsweg?', digest, ...extra })) events.push(ev)
   const done = events.find((e) => e.event === 'done')
@@ -592,5 +592,62 @@ describe('rental objects and children by their neutral name (ADR-0066)', () => {
     const model = new ChunkedChatModel([[stage({ screen: 'commute', field: 'homeOfficeDays', newValue: '30', label: 'Homeoffice-Tage', instance: '1' })], [answer('Vorbereitet.')]])
     const { result } = await run(engineWith(model))
     expect(result.meta.action?.instance).toBeNull()
+  })
+})
+
+describe('the effect of a draft comes from the app\'s estimate (ADR-0066)', () => {
+  const stage = (args: Record<string, unknown>): AIMessageChunk =>
+    chunkOf({ content: '', tool_call_chunks: [{ name: 'stage_field_draft', args: JSON.stringify(args), index: 0, id: 'c0' }] })
+  const SPENDEN = { screen: 'interview', field: 'spenden-betrag', newValue: '300', label: 'Spenden', companionFields: { spenden: 'Ja' } }
+  const engineWith = (model: ChunkedChatModel) => new LangGraphAdvisorEngine(runtime('google-genai'), () => model)
+
+  it('takes the figures from the estimate and marks them as computed', async () => {
+    const asked: AdvisorPreviewTarget[] = []
+    const model = new ChunkedChatModel([[stage(SPENDEN)], [answer('Vorbereitet.')]])
+    const { result } = await run(engineWith(model), {
+      previewEffect: async (target) => {
+        asked.push(target)
+        return { kind: 'computed', beforeRefundEur: 2000, afterRefundEur: 2096, deltaEur: 96 }
+      },
+    })
+    expect(result.meta.action).toMatchObject({ effect: 'computed', beforeRefundEur: 2000, afterRefundEur: 2096, deltaEur: 96 })
+    // The whole draft is previewed, the gate before the amount it opens.
+    expect(asked).toEqual([{ screen: 'interview', instance: null, values: [['spenden', 'Ja'], ['spenden-betrag', '300']] }])
+    expect(JSON.stringify(model.seenMessages[1]!.map((m) => m.content))).toContain('\\"deltaEur\\":96')
+  })
+
+  it('shows no figure when the estimate cannot say, and tells why', async () => {
+    const model = new ChunkedChatModel([[stage(SPENDEN)], [answer('Vorbereitet.')]])
+    const { result } = await run(engineWith(model), {
+      previewEffect: async () => ({ kind: 'not-computable', hint: 'Wirkung erst berechenbar, wenn die Lohnsteuerbescheinigung da ist.' }),
+    })
+    expect(result.meta.action).toMatchObject({ effect: 'not-computable', deltaEur: 0, beforeRefundEur: 0, afterRefundEur: 0, effectHint: expect.stringContaining('Lohnsteuerbescheinigung') })
+  })
+
+  it('still makes the draft when the preview breaks, without inventing a figure', async () => {
+    const model = new ChunkedChatModel([[stage(SPENDEN)], [answer('Vorbereitet.')]])
+    const { result } = await run(engineWith(model), {
+      previewEffect: async () => {
+        throw new Error('database away')
+      },
+    })
+    expect(result.meta.action).toMatchObject({ newValue: '300', effect: 'not-computable', deltaEur: 0 })
+  })
+
+  it('keeps the approximation, unmarked, where no estimate is offered', async () => {
+    const model = new ChunkedChatModel([[stage(SPENDEN)], [answer('Vorbereitet.')]])
+    const { result } = await run(engineWith(model))
+    expect(result.meta.action?.effect).toBeUndefined()
+  })
+
+  it('answers a what-if question from the estimate as well', async () => {
+    const model = new ChunkedChatModel([
+      [chunkOf({ content: '', tool_call_chunks: [{ name: 'simulate_tax_delta', args: JSON.stringify({ screen: 'commute', field: 'homeOfficeDays', newValue: '60' }), index: 0, id: 'c0' }] })],
+      [answer('Das brächte 120 €.')],
+    ])
+    await run(engineWith(model), { previewEffect: async () => ({ kind: 'computed', beforeRefundEur: 100, afterRefundEur: 220, deltaEur: 120 }) })
+    const toolResult = JSON.stringify(model.seenMessages[1]!.map((m) => m.content))
+    expect(toolResult).toContain('\\"effect\\":\\"computed\\"')
+    expect(toolResult).toContain('\\"deltaEur\\":120')
   })
 })

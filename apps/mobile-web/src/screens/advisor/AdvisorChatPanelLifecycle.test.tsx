@@ -179,6 +179,28 @@ describe('AdvisorChatPanel: several drafts in one answer (ADR-0065)', () => {
     expect(onInspectMask).toHaveBeenCalledWith('vermietung')
   })
 
+  it('shows a computed effect in either direction, and says when nothing changes', () => {
+    renderPanel({
+      messages: [owl('a1', 'Drei.', { meta: { actions: [
+        { ...draft('d1', 'Spenden', '300'), effect: 'computed', deltaEur: 96 },
+        { ...draft('d2', 'Homeoffice-Tage', '0'), effect: 'computed', deltaEur: -120 },
+        { ...draft('d3', 'Fortbildung', '100'), effect: 'computed', deltaEur: 0 },
+      ] } })],
+    })
+    expect(screen.getByTestId('advisor-action-delta').textContent).toContain('96')
+    expect(screen.getByTestId('advisor-action-delta-negative').textContent).toContain('120')
+    expect(screen.getByTestId('advisor-action-effect-none').textContent).toContain('Ändert die Schätzung nicht')
+  })
+
+  it('shows no figure for an effect that cannot be computed yet, and the reason', () => {
+    renderPanel({
+      messages: [owl('a1', 'Vorbereitet.', { meta: { action: { ...draft('d1', 'Spenden', '300'), effect: 'not-computable', effectHint: 'Wirkung erst berechenbar, wenn die Lohnsteuerbescheinigung da ist.' } } })],
+    })
+    expect(screen.getByTestId('advisor-action-effect-open').textContent).toContain('Wirkung noch offen')
+    expect(screen.getByTestId('advisor-action-effect-hint').textContent).toContain('Lohnsteuerbescheinigung')
+    expect(screen.queryByTestId('advisor-action-delta')).toBeNull()
+  })
+
   it('keeps the scanned certificate in its own review card', () => {
     renderPanel({
       messages: [owl('a1', 'Erkannt.', { meta: { lstbScan: {} as NonNullable<AdvisorChatMessageView['meta']>['lstbScan'], actions: [draft('d1', 'Bruttolohn', '62000')] } })],

@@ -7212,6 +7212,18 @@
             "type": "number",
             "example": 85
           },
+          "effect": {
+            "type": "string",
+            "enum": [
+              "computed",
+              "not-computable"
+            ],
+            "description": "computed: the three euro figures come from the app's own estimate. not-computable: there is no figure, see effectHint. Absent: approximation."
+          },
+          "effectHint": {
+            "type": "string",
+            "description": "Why the effect cannot be put in euros yet."
+          },
           "reason": {
             "type": "string",
             "example": "Sonderausgabenabzug nach § 10b EStG."
@@ -7458,6 +7470,18 @@
           "deltaEur": {
             "type": "number",
             "example": 85
+          },
+          "effect": {
+            "type": "string",
+            "enum": [
+              "computed",
+              "not-computable"
+            ],
+            "description": "computed: the three euro figures come from the app's own estimate. not-computable: there is no figure, see effectHint. Absent: approximation."
+          },
+          "effectHint": {
+            "type": "string",
+            "description": "Why the effect cannot be put in euros yet."
           },
           "reason": {
             "type": "string",

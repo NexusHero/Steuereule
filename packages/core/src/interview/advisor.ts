@@ -101,6 +101,8 @@ export const ADVISOR_LEGAL_SOURCES: Readonly<Record<OwlSourceId, AdvisorLegalSou
   },
 }
 
+export type AdvisorEffectKind = 'computed' | 'not-computable'
+
 export interface AdvisorActionProposal {
   readonly actionId: string
   readonly status: AdvisorActionStatus
@@ -122,6 +124,14 @@ export interface AdvisorActionProposal {
   readonly beforeRefundEur: number
   readonly afterRefundEur: number
   readonly deltaEur: number
+  /**
+   * Where the euro figures come from. `computed`: the app's own estimate, once for the stored
+   * return and once with this draft applied. `not-computable`: the estimate cannot say (the hint
+   * tells the user why), and the three figures above are 0. Absent: the rough approximation of
+   * the path without a database (ADR-0066).
+   */
+  readonly effect?: AdvisorEffectKind | undefined
+  readonly effectHint?: string | undefined
   readonly reason: string
   readonly sourceId: OwlSourceId
   readonly paragraph?: string | undefined
