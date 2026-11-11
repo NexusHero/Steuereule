@@ -3,7 +3,7 @@ import { ForbiddenError } from '../common/domain-error.js'
 
 /**
  * Which fields the Eulen-Modus may never write is part of the field catalogue in the core
- * (ADR-0065). Both the proposal path (tool validation) and the write path (ConfirmationService)
+ * (ADR-0066). Both the proposal path (tool validation) and the write path (ConfirmationService)
  * go through here, so a draft that slipped past proposal validation still cannot be applied.
  */
 export { AI_FORBIDDEN_FIELDS, AI_FORBIDDEN_SCREENS }

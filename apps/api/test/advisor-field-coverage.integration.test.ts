@@ -113,7 +113,7 @@ describe('every field the owl is told about can be written (#476)', () => {
     expect(results.length).toBeGreaterThan(100)
   })
 
-  it('refuses a value that cannot be right on every field with a fixed form (ADR-0065)', () => {
+  it('refuses a value that cannot be right on every field with a fixed form (ADR-0066)', () => {
     // One invalid interview answer used to make every later read of that user's interview fail,
     // and 51 further fields stored whatever they were given. Free text is the only exception left.
     const fixedForm = unguarded.filter((key) => {

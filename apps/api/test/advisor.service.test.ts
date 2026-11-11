@@ -166,7 +166,7 @@ describe('AdvisorService (In-App Steuerberater Agent "Deine Eule")', () => {
     expect((await commuteRepo.findForUserAndYear(USER, YEAR))?.oneWayKm).toBe(20)
   })
 
-  describe('the value check on the write itself (ADR-0065)', () => {
+  describe('the value check on the write itself (ADR-0066)', () => {
     const storedDraft = (actionId: string, field: string, newValue: string) =>
       advisorRepo.createMessage({
         userId: USER,

@@ -1,4 +1,4 @@
-// The field catalogue (ADR-0065): one description per field of the return — which screen it
+// The field catalogue (ADR-0066): one description per field of the return — which screen it
 // belongs to, what a value has to look like, whether it hangs on a row (a child, a rental
 // property), and whether the owl may propose it. Everything that needs to know a field reads this
 // list: the value check on the owl's write path, the check when a draft is made, and the field

@@ -129,7 +129,7 @@ export class ConfirmationService {
   ): Promise<AdvisorUndoEntry> {
     const a = this.address(key, taxYear)
     assertAiWritable(a.screen, a.field, key)
-    // The catalogue's value check on the write itself (ADR-0065): a draft made before a rule
+    // The catalogue's value check on the write itself (ADR-0066): a draft made before a rule
     // existed, or by a path that skipped the check, still cannot store a value the field cannot hold.
     let valueToStore = newValue
     if (newValue !== null) {

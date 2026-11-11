@@ -1,4 +1,4 @@
-// ADR-0065: the field catalogue in the core and the fields the screens can actually write must be
+// ADR-0066: the field catalogue in the core and the fields the screens can actually write must be
 // the same set. A field added to a screen without a catalogue line fails here, before anyone can
 // propose or store a value for it unchecked.
 import { fieldSpec, fieldsOfScreen, SCREENS } from '@steuereule/core'
@@ -8,7 +8,7 @@ import { AI_FORBIDDEN_FIELDS, AI_FORBIDDEN_SCREENS, isAiWritable } from '../src/
 import { WRITABLE_FIELDS_BY_SCREEN } from '../src/confirmation/field-access.js'
 import { AI_WRITABLE_FIELDS } from '../src/ki/advisor-safety.js'
 
-describe('field catalogue and write path describe the same fields (ADR-0065)', () => {
+describe('field catalogue and write path describe the same fields (ADR-0066)', () => {
   it.each(SCREENS)('screen %s: catalogue and writable fields are identical', (screen) => {
     expect(fieldsOfScreen(screen).map((spec) => spec.field).sort()).toEqual([...WRITABLE_FIELDS_BY_SCREEN[screen]].sort())
   })

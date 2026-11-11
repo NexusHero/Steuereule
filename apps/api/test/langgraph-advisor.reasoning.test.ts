@@ -403,7 +403,7 @@ describe('the owl knows the real field names (#476, found by playing a customer 
   })
 })
 
-describe('values are checked against the field catalogue before a draft exists (ADR-0065)', () => {
+describe('values are checked against the field catalogue before a draft exists (ADR-0066)', () => {
   const stage = (args: Record<string, unknown>): AIMessageChunk =>
     chunkOf({ content: '', tool_call_chunks: [{ name: 'stage_field_draft', args: JSON.stringify({ label: 'Entwurf', ...args }), index: 0, id: 'c1' }] })
 
@@ -441,7 +441,7 @@ describe('values are checked against the field catalogue before a draft exists (
   })
 })
 
-describe('several drafts in one answer (ADR-0065)', () => {
+describe('several drafts in one answer (ADR-0066)', () => {
   const call = (index: number, args: Record<string, unknown>) => ({ name: 'stage_field_draft', args: JSON.stringify(args), index, id: `c${index}` })
   const stageAll = (...calls: Array<Record<string, unknown>>): AIMessageChunk => chunkOf({ content: '', tool_call_chunks: calls.map((args, i) => call(i, args)) })
 

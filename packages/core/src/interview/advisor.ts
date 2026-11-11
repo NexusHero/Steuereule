@@ -185,7 +185,7 @@ export interface AdvisorMessageMeta {
   /** The steps the owl reported while working (status and tool labels), kept with the answer (#476). */
   readonly steps?: readonly string[] | undefined
   /**
-   * What the owl tried to prepare in this answer and could not (ADR-0065). Shown under the answer,
+   * What the owl tried to prepare in this answer and could not (ADR-0066). Shown under the answer,
    * so the text can never claim a draft that does not exist without the user seeing it.
    */
   readonly notStaged?: readonly AdvisorNotStaged[] | undefined

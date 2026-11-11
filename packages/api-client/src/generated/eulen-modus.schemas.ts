@@ -458,7 +458,7 @@ export interface AdvisorMessageMetaDto {
   choices?: string[];
   /** Steps the owl reported while working on this answer (#476). */
   steps?: string[];
-  /** Drafts the owl tried to prepare in this answer and could not, with the reason (ADR-0065). */
+  /** Drafts the owl tried to prepare in this answer and could not, with the reason (ADR-0066). */
   notStaged?: AdvisorNotStagedDto[];
   action?: AdvisorActionProposalDto;
   actions?: AdvisorActionProposalDto[];

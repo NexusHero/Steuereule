@@ -7619,7 +7619,7 @@
             }
           },
           "notStaged": {
-            "description": "Drafts the owl tried to prepare in this answer and could not, with the reason (ADR-0065).",
+            "description": "Drafts the owl tried to prepare in this answer and could not, with the reason (ADR-0066).",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/AdvisorNotStagedDto"

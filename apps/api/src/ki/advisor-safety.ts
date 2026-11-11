@@ -22,7 +22,7 @@ export type StageTargetCheck =
   | { readonly ok: true; readonly screen: Screen }
   | { readonly ok: false; readonly error: string; readonly locked?: { readonly screen: Screen; readonly field: string } }
 
-/** What the owl may propose a value for: every catalogue field that is not protected (ADR-0065). */
+/** What the owl may propose a value for: every catalogue field that is not protected (ADR-0066). */
 export const AI_WRITABLE_FIELDS: Readonly<Partial<Record<Screen, readonly string[]>>> = Object.fromEntries(
   SCREENS.filter((screen) => !AI_FORBIDDEN_SCREENS.has(screen)).map((screen) => [
     screen,

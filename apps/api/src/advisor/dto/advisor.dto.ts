@@ -261,7 +261,7 @@ export class AdvisorMessageMetaDto implements AdvisorMessageMeta {
 
   @ApiPropertyOptional({
     type: () => [AdvisorNotStagedDto],
-    description: 'Drafts the owl tried to prepare in this answer and could not, with the reason (ADR-0065).',
+    description: 'Drafts the owl tried to prepare in this answer and could not, with the reason (ADR-0066).',
   })
   notStaged?: readonly AdvisorNotStagedDto[] | undefined
 

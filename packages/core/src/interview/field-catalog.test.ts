@@ -13,7 +13,7 @@ import { SCREENS } from './marking'
 
 const ok = (value: string) => ({ ok: true, value })
 
-describe('field catalogue (ADR-0065)', () => {
+describe('field catalogue (ADR-0066)', () => {
   it('describes every screen, and every field exactly once', () => {
     expect(new Set(FIELD_CATALOG.map((f) => f.screen))).toEqual(new Set(SCREENS))
     const keys = FIELD_CATALOG.map((f) => `${f.screen}.${f.field}`)

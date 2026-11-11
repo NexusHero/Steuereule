@@ -95,7 +95,7 @@ function extractPendingDrafts(messages: readonly AdvisorChatMessageView[]): read
   for (const msg of messages) {
     const candidates: AdvisorActionProposal[] = []
     if (msg.meta?.action) candidates.push(msg.meta.action)
-    // Several drafts in one answer (ADR-0065). A scanned certificate keeps its own review flow.
+    // Several drafts in one answer (ADR-0066). A scanned certificate keeps its own review flow.
     if (msg.meta?.actions && !msg.meta.lstbScan) candidates.push(...msg.meta.actions)
     if (msg.meta?.twoPaths) {
       candidates.push(msg.meta.twoPaths.safePath, msg.meta.twoPaths.maxPath)

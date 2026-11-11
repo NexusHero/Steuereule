@@ -140,7 +140,7 @@ describe('AdvisorChatPanel: line of thought and rating on stored answers (#476)'
   })
 })
 
-describe('AdvisorChatPanel: several drafts in one answer (ADR-0065)', () => {
+describe('AdvisorChatPanel: several drafts in one answer (ADR-0066)', () => {
   const draft = (actionId: string, label: string, newValue: string): AdvisorActionProposal => ({
     actionId, status: 'pending', screen: 'commute', field: `f-${actionId}`, instance: null, label,
     previousValue: null, newValue, beforeRefundEur: 0, afterRefundEur: 0, deltaEur: 0, reason: 'vom Nutzer genannt',
