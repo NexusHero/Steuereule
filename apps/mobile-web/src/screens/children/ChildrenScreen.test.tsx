@@ -309,7 +309,7 @@ describe('KinderScreen', () => {
     await waitFor(() => expect(screen.queryByText(/Für den Ausdruck fehlen noch Angaben/)).toBeNull())
   })
 
-  it('fills the other parent\'s address from one picked suggestion (ADR-0064)', async () => {
+  it('fills the other parent\'s address from one picked suggestion (ADR-0065)', async () => {
     server.use(
       http.post('*/v1/adressen/suche', () =>
         HttpResponse.json({ available: true, houseNumber: '3', hits: [{ street: 'Hauptstraße', postalCode: '01067', city: 'Dresden', state: 'SN' }] }),

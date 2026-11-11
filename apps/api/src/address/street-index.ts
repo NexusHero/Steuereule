@@ -1,4 +1,4 @@
-// In-memory street search over the OpenStreetMap street extract (ADR-0064). The data is the same
+// In-memory street search over the OpenStreetMap street extract (ADR-0065). The data is the same
 // file the PLZ table is built from (scripts/plz-data/build-postal-codes.mjs): one row per street
 // with its postal code, place and Regionalschlüssel. It carries no house numbers and no
 // coordinates, so a hit fills Straße, PLZ and Ort — the house number is whatever the user typed.

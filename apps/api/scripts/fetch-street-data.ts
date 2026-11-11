@@ -1,4 +1,4 @@
-// Downloads the street data the address search answers from (ADR-0064): the OpenStreetMap street
+// Downloads the street data the address search answers from (ADR-0065): the OpenStreetMap street
 // extract published by the OpenPLZ API project (ODbL 1.0) — the very file the bundled PLZ table is
 // built from (scripts/plz-data/build-postal-codes.mjs), pinned to the same commit.
 //

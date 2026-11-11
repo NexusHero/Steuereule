@@ -54,5 +54,5 @@ apps/api/prisma/.generated-test-schema-*.prisma
 apps/mobile-web/public/ocr/
 # #451 slice 5 / ADR-0061: dictation runtime copied by scripts/dictation-assets.mjs, never committed.
 apps/mobile-web/public/dictation/
-# Street data for the address search (ADR-0064): fetched by `streets:fetch`, pinned by checksum, never committed.
+# Street data for the address search (ADR-0065): fetched by `streets:fetch`, pinned by checksum, never committed.
 apps/api/data/

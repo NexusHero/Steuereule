@@ -280,7 +280,7 @@ describe('StammdatenScreen PLZ → Ort (#451 slice 3)', () => {
   })
 })
 
-describe('StammdatenScreen address search (ADR-0064)', () => {
+describe('StammdatenScreen address search (ADR-0065)', () => {
   const value = (testId: string) => (screen.getByTestId(testId) as HTMLInputElement).value
 
   it('fills street, house number, postal code and place from one picked suggestion', async () => {

@@ -360,7 +360,7 @@ export default defineConfig({
       },
     },
   },
-  // ADR-0064 — address search on our own server (street → postal code, place, Bundesland).
+  // ADR-0065 — address search on our own server (street → postal code, place, Bundesland).
   adressen: {
     input: { target: '../../apps/api/openapi.json', filters: { tags: ['adressen'] } },
     output: {

@@ -34,7 +34,7 @@ type SearchState =
   | { readonly kind: 'unavailable' }
 
 /**
- * One line for the whole address (ADR-0064): the streets come from our own server, a pick fills
+ * One line for the whole address (ADR-0065): the streets come from our own server, a pick fills
  * Straße, Hausnummer, PLZ and Ort. The fields below stay editable and are the fallback whenever
  * the search has no answer.
  */

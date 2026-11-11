@@ -163,7 +163,7 @@ describe('VermietungScreen', () => {
     await waitFor(() => expect(bodies).toContainEqual({ plz: '01067', city: 'Dresden' }))
   })
 
-  it('fills the whole property address from one picked suggestion (ADR-0064)', async () => {
+  it('fills the whole property address from one picked suggestion (ADR-0065)', async () => {
     const bodies: unknown[] = []
     server.use(http.get(RENTAL_URL, () => HttpResponse.json(FULL_PROPERTY, { status: 200 })))
     server.use(

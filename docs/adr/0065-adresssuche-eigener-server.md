@@ -1,4 +1,4 @@
-# ADR-0064 — Adresssuche über den eigenen Server (Abweichung von #451 Entscheidung 7 und 8)
+# ADR-0065 — Adresssuche über den eigenen Server (Abweichung von #451 Entscheidung 7 und 8)
 
 - **Status:** Accepted
 - **Date:** 2026-11-11
