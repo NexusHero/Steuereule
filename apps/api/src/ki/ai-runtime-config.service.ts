@@ -27,7 +27,7 @@ export type AiReasoningMode = 'off' | 'summary'
 /** How much the model thinks before it answers, where the provider offers a level (Gemini). */
 export const AI_THINKING_LEVELS = ['low', 'medium', 'high'] as const
 export type AiThinkingLevel = (typeof AI_THINKING_LEVELS)[number]
-export const DEFAULT_THINKING_LEVEL: AiThinkingLevel = 'low'
+export const DEFAULT_THINKING_LEVEL: AiThinkingLevel = 'medium'
 export const DEFAULT_REASONING_BUDGET_TOKENS = 2048
 
 /**
@@ -198,9 +198,10 @@ export class EnvAiRuntimeConfigService implements AiRuntimeConfigService {
 
     const baseUrl = validateHttpsBaseUrl(this.env.AI_BASE_URL ?? this.env.OPENAI_BASE_URL)
     const rawLevel = this.env.AI_ADVISOR_THINKING_LEVEL?.trim().toLowerCase()
-    // Measured against Gemini (scripts/ai-eval/latency-check.ts): at the model's own level the first
-    // word took 10 to 11 s, at `low` 3 to 6 s, with the same drafts. `auto` hands the choice back
-    // to the model.
+    // Measured against Gemini (scripts/ai-eval/latency-check.ts), time to the first answer word:
+    // low 3 to 6 s, medium 6 to 9 s, the model's own choice 10 to 13 s, high 13 to 20 s. With the
+    // thoughts shown the first sign of life comes after about 3 s at every level. Medium is the
+    // product decision (#481): thoroughness over the last seconds. `auto` hands the choice back.
     const thinkingLevel: AiThinkingLevel | undefined =
       rawLevel === 'auto' ? undefined : (AI_THINKING_LEVELS as readonly string[]).includes(rawLevel ?? '') ? (rawLevel as AiThinkingLevel) : DEFAULT_THINKING_LEVEL
     const rawTemp = this.env.AI_TEMPERATURE?.trim()

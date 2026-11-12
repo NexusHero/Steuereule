@@ -247,11 +247,12 @@ describe('reasoning configuration (#476)', () => {
     expect((await env({ AI_ADVISOR_REASONING: 'off' }).resolveSlot('advisor_chat')).reasoning).toBeUndefined()
   })
 
-  it('thinks briefly by default, so the first word comes sooner', async () => {
-    expect((await env({}).resolveSlot('advisor_chat')).thinkingLevel).toBe('low')
+  it('thinks at the medium level by default (#481)', async () => {
+    expect((await env({}).resolveSlot('advisor_chat')).thinkingLevel).toBe('medium')
     expect((await env({ AI_ADVISOR_THINKING_LEVEL: 'high' }).resolveSlot('advisor_chat')).thinkingLevel).toBe('high')
     expect((await env({ AI_ADVISOR_THINKING_LEVEL: 'auto' }).resolveSlot('advisor_chat')).thinkingLevel).toBeUndefined()
-    expect((await env({ AI_ADVISOR_THINKING_LEVEL: 'unsinn' }).resolveSlot('advisor_chat')).thinkingLevel).toBe('low')
+    expect((await env({ AI_ADVISOR_THINKING_LEVEL: 'unsinn' }).resolveSlot('advisor_chat')).thinkingLevel).toBe('medium')
+    expect((await env({ AI_ADVISOR_THINKING_LEVEL: 'low' }).resolveSlot('advisor_chat')).thinkingLevel).toBe('low')
     expect((await env({}).resolveSlot('vision_ocr')).thinkingLevel).toBeUndefined()
   })
 

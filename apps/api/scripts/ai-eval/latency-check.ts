@@ -21,12 +21,16 @@ const QUESTIONS = [
   ['draft', 'Ich habe 300 € gespendet. Trag das bitte ein.'],
 ] as const
 
-const SETTINGS: ReadonlyArray<readonly [string, Record<string, string>]> = [
-  ['thoughts shown, level default', { AI_ADVISOR_REASONING: 'summary' }],
-  ['thoughts shown, level low', { AI_ADVISOR_REASONING: 'summary', AI_ADVISOR_THINKING_LEVEL: 'low' }],
-  ['thoughts hidden, level default', { AI_ADVISOR_REASONING: 'off' }],
-  ['thoughts hidden, level low', { AI_ADVISOR_REASONING: 'off', AI_ADVISOR_THINKING_LEVEL: 'low' }],
+const ALL_SETTINGS: ReadonlyArray<readonly [string, Record<string, string>]> = [
+  ['thoughts shown, level low', { AI_ADVISOR_THINKING_LEVEL: 'low' }],
+  ['thoughts shown, level medium', { AI_ADVISOR_THINKING_LEVEL: 'medium' }],
+  ['thoughts shown, level high', { AI_ADVISOR_THINKING_LEVEL: 'high' }],
+  ['thoughts shown, model decides', { AI_ADVISOR_THINKING_LEVEL: 'auto' }],
+  ['thoughts hidden, level medium', { AI_ADVISOR_REASONING: 'off', AI_ADVISOR_THINKING_LEVEL: 'medium' }],
 ]
+// LATENCY_ONLY=medium,low narrows the run to the settings whose label contains one of the words.
+const only = (process.env.LATENCY_ONLY ?? '').split(',').map((word) => word.trim()).filter((word) => word !== '')
+const SETTINGS = only.length === 0 ? ALL_SETTINGS : ALL_SETTINGS.filter(([label]) => only.some((word) => label.includes(word)))
 
 const median = (values: number[]): number => [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)] ?? Number.NaN
 
