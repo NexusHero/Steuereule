@@ -871,6 +871,26 @@ export interface StopAdvisorRunResponseDto {
   stopped: boolean;
 }
 
+export type AdvisorSearchHitDtoRole = typeof AdvisorSearchHitDtoRole[keyof typeof AdvisorSearchHitDtoRole];
+
+
+export const AdvisorSearchHitDtoRole = {
+  user: 'user',
+  assistant: 'assistant',
+} as const;
+
+export interface AdvisorSearchHitDto {
+  conversationId: string;
+  /** @nullable */
+  conversationTitle: string | null;
+  /** Absent when only the title of the conversation matched. */
+  messageId?: string;
+  role?: AdvisorSearchHitDtoRole;
+  /** The matching passage with some text around it. */
+  snippet: string;
+  at: string;
+}
+
 export interface SaveAdvisorNoteDto {
   /** @maxLength 200 */
   text: string;
@@ -975,5 +995,12 @@ conversationId?: string;
 
 export type AdvisorControllerRunEventsParams = {
 after?: number;
+};
+
+export type AdvisorControllerSearchParams = {
+/**
+ * At least two characters; case and accents are ignored.
+ */
+q: string;
 };
 

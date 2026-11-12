@@ -87,6 +87,7 @@ import type {
   AdvisorContextDto,
   AdvisorConversationDto,
   AdvisorNoteDto,
+  AdvisorSearchHitDto,
   AdvisorSessionResponseDto,
   ApplyBatchActionsDto,
   ApplyBatchActionsResponseDto,
@@ -227,6 +228,30 @@ function contextOf(conversation: AdvisorConversationRecord, records: readonly Ad
     ...(covered.length > 0 ? { summarizedUntilMessageId: covered[covered.length - 1]!.id } : {}),
     canSummarize: summaryCut(sources) > 0,
   }
+}
+
+const SEARCH_MIN_CHARS = 2
+const SEARCH_MAX_HITS = 30
+const SNIPPET_CONTEXT_CHARS = 60
+
+/** Case and accents do not matter to a search: „Küchentisch“ is found by „kuchentisch“. The length stays the same. */
+export function searchKey(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[äáàâ]/g, 'a')
+    .replace(/[öóòô]/g, 'o')
+    .replace(/[üúùû]/g, 'u')
+    .replace(/[éèê]/g, 'e')
+    .replace(/\s/g, ' ')
+    .trim()
+}
+
+/** The passage around a hit, on one line, with an ellipsis where text was cut. */
+export function snippetAround(text: string, at: number, length: number): string {
+  const offset = text.length - text.trimStart().length
+  const start = Math.max(0, at + offset - SNIPPET_CONTEXT_CHARS)
+  const end = Math.min(text.length, at + offset + length + SNIPPET_CONTEXT_CHARS)
+  return `${start > 0 ? '…' : ''}${text.slice(start, end).replace(/\s+/g, ' ').trim()}${end < text.length ? '…' : ''}`
 }
 
 function toNoteDto(note: AdvisorNoteRecord): AdvisorNoteDto {
@@ -528,6 +553,42 @@ export class AdvisorService {
     }
     await this.auditService.append({ userId, action: 'WRITE', resource: 'berater_gespraech_zusammengefasst' })
     return contextOf(compacted, await this.advisorRepo.listForConversation(compacted.id, userId), await this.knownNamesForScrubbing(userId, taxYear))
+  }
+
+  /**
+   * Searches the conversations of one tax year (#481): titles and messages, newest hit first.
+   * Messages are encrypted at rest, so the search runs here over the decrypted text; a year holds
+   * at most 50 conversations, which keeps that small.
+   */
+  async searchConversations(userId: string, taxYear: number, rawQuery: string): Promise<AdvisorSearchHitDto[]> {
+    const query = searchKey(rawQuery)
+    if (query.length < SEARCH_MIN_CHARS) return []
+    const [conversations, messages] = await Promise.all([
+      this.advisorRepo.listConversations(userId, taxYear),
+      this.advisorRepo.listForUserAndYear(userId, taxYear),
+    ])
+    const titles = new Map(conversations.map((c) => [c.id, c.title]))
+    const hits: AdvisorSearchHitDto[] = []
+    for (const conversation of conversations) {
+      if (conversation.title !== null && searchKey(conversation.title).includes(query)) {
+        hits.push({ conversationId: conversation.id, conversationTitle: conversation.title, snippet: conversation.title, at: conversation.lastUsedAt.toISOString() })
+      }
+    }
+    for (const message of messages) {
+      if (message.meta?.replaced || !titles.has(message.conversationId)) continue
+      const at = searchKey(message.content).indexOf(query)
+      if (at === -1) continue
+      hits.push({
+        conversationId: message.conversationId,
+        conversationTitle: titles.get(message.conversationId) ?? null,
+        messageId: message.id,
+        role: message.role,
+        snippet: snippetAround(message.content, at, query.length),
+        at: message.createdAt.toISOString(),
+      })
+    }
+    await this.auditService.append({ userId, action: 'READ', resource: 'berater_suche' })
+    return hits.sort((a, b) => b.at.localeCompare(a.at)).slice(0, SEARCH_MAX_HITS)
   }
 
   // ── Project notes (#481) ──────────────────────────────────────────────────────────────────

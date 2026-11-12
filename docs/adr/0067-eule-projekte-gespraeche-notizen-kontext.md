@@ -45,6 +45,11 @@ Ein Gespräch ist ein eigener Kontext: Das Modell sieht nur dessen Verlauf.
 - Es antwortet immer nur ein Gespräch gleichzeitig; während einer Antwort ist der Wechsel
   gesperrt. Paralleles Arbeiten in mehreren Gesprächen wurde bewusst nicht gebaut.
 
+Eine Suche findet Text in den Titeln und Nachrichten aller Gespräche des Jahres; Groß- und
+Kleinschreibung und Umlaute spielen keine Rolle. Die Nachrichten liegen verschlüsselt in der
+Datenbank, deshalb sucht der Server über den entschlüsselten Text des einen Nutzers und Jahres
+(höchstens 50 Gespräche) statt in der Datenbank.
+
 Auf breiten Bildschirmen steht die Liste in einer Seitenleiste links vom Chat. Sie startet offen
 und merkt sich, wenn sie eingeklappt wurde. Auf schmalen Bildschirmen öffnet derselbe Inhalt als
 Sheet.

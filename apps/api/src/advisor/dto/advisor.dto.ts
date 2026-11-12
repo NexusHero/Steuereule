@@ -417,6 +417,26 @@ export class SaveAdvisorNoteDto {
   text!: string
 }
 
+export class AdvisorSearchHitDto {
+  @ApiProperty({ type: String })
+  conversationId!: string
+
+  @ApiProperty({ type: String, nullable: true })
+  conversationTitle!: string | null
+
+  @ApiPropertyOptional({ type: String, description: 'Absent when only the title of the conversation matched.' })
+  messageId?: string | undefined
+
+  @ApiPropertyOptional({ type: String, enum: ['user', 'assistant'] })
+  role?: 'user' | 'assistant' | undefined
+
+  @ApiProperty({ type: String, description: 'The matching passage with some text around it.' })
+  snippet!: string
+
+  @ApiProperty({ type: String, format: 'date-time' })
+  at!: string
+}
+
 export class AdvisorContextDto {
   @ApiProperty({ type: Number, description: 'Estimated tokens of the summary so far plus every message since.' })
   usedTokens!: number

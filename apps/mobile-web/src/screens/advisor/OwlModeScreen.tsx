@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Pressable, ScrollView, Text, View, type TextStyle, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
@@ -23,6 +23,7 @@ import {
   getOwlModeControllerGetCardsQueryKey,
   getOwlModeControllerGetSettingQueryKey,
   useAdvisorControllerApplyAction,
+  advisorControllerSearch,
   useAdvisorControllerClearConversation,
   useAdvisorControllerCreateNote,
   useAdvisorControllerDeleteNote,
@@ -62,7 +63,7 @@ import { MasterDataScreen } from '../master-data/MasterDataScreen'
 import { OwlTopBar } from './OwlTopBar'
 import { ProfessionPicker } from './ProfessionPicker'
 import { AdvisorChatPanel, sendOptionsToDto, type AdvisorChatPanelProps, type ChatSendOptions } from './AdvisorChatPanel'
-import { ConversationList, type ConversationSummary } from './chat/ConversationList'
+import { ConversationList, type ConversationSearchHit, type ConversationSummary } from './chat/ConversationList'
 import { ProjectNotes, type ProjectNote } from './chat/ProjectNotes'
 import { readOwlSidebarOpen, writeOwlSidebarOpen } from '../../lib/owlSidebarPreference'
 import { invalidateAllTaxQueries, useOptionalCopilotBridge, type OwlViewMode } from './CopilotBridgeProvider'
@@ -96,6 +97,7 @@ export interface OwlModeScreenProps {
   readonly onNewConversation?: (() => Promise<void>) | undefined
   readonly onRenameConversation?: ((id: string, title: string) => Promise<void>) | undefined
   readonly onDeleteConversation?: ((id: string) => Promise<void>) | undefined
+  readonly onSearchConversations?: ((query: string) => Promise<readonly ConversationSearchHit[]>) | undefined
   /** How full the context of the open conversation is (#481). */
   readonly context?: AdvisorChatPanelProps['context']
   readonly onSummarize?: (() => Promise<void>) | undefined
@@ -304,6 +306,14 @@ function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CURRENT_T
   const conversationId = bridge ? bridge.conversationId : localConversationId
   const selectConversation = (id: string | null) => (bridge ? bridge.setConversationId(id) : setLocalConversationId(id))
   const sessionQuery = useAdvisorControllerGetSession(taxYear, conversationId ? { conversationId } : undefined, { query: { retry: false } })
+  const searchConversations = useCallback(
+    async (query: string) => {
+      const response = await advisorControllerSearch(taxYear, { q: query })
+      if (response.status !== 200) throw new Error(`search failed (HTTP ${response.status})`)
+      return response.data
+    },
+    [taxYear],
+  )
   const createConversationMutation = useAdvisorControllerCreateConversation()
   const renameConversationMutation = useAdvisorControllerRenameConversation()
   const deleteConversationMutation = useAdvisorControllerDeleteConversation()
@@ -425,6 +435,7 @@ function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CURRENT_T
         await invalidate()
       }}
       conversations={session?.conversations}
+      onSearchConversations={searchConversations}
       activeConversationId={session?.conversationId ?? null}
       onSelectConversation={(id) => selectConversation(id)}
       onNewConversation={async () => {
@@ -582,6 +593,7 @@ function OwlModeScreenView({
   onNewConversation,
   onRenameConversation,
   onDeleteConversation,
+  onSearchConversations,
   context,
   onSummarize,
   notes,
@@ -1159,6 +1171,7 @@ function OwlModeScreenView({
         onDelete={async (id) => {
           await onDeleteConversation?.(id)
         }}
+        onSearch={onSearchConversations}
       />
       {notes && onAddNote && onEditNote && onDeleteNote ? <ProjectNotes notes={notes} onAdd={onAddNote} onEdit={onEditNote} onDelete={onDeleteNote} /> : null}
     </View>

@@ -31,8 +31,10 @@ import type {
   AdvisorControllerClearConversationParams,
   AdvisorControllerGetSessionParams,
   AdvisorControllerRunEventsParams,
+  AdvisorControllerSearchParams,
   AdvisorConversationDto,
   AdvisorNoteDto,
+  AdvisorSearchHitDto,
   AdvisorSessionResponseDto,
   ApplyBatchActionsDto,
   ApplyBatchActionsResponseDto,
@@ -802,6 +804,134 @@ export const useAdvisorControllerStopRun = <TError = void,
       > => {
       return useMutation(getAdvisorControllerStopRunMutationOptions(options), queryClient);
     }
+
+export type advisorControllerSearchResponse200 = {
+  data: AdvisorSearchHitDto[]
+  status: 200
+}
+
+export type advisorControllerSearchResponseSuccess = (advisorControllerSearchResponse200) & {
+  headers: Headers;
+};
+;
+
+export type advisorControllerSearchResponse = (advisorControllerSearchResponseSuccess)
+
+export const getAdvisorControllerSearchUrl = (jahr: number,
+    params: AdvisorControllerSearchParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/v1/steuerjahre/${jahr}/advisor/search?${stringifiedParams}` : `/v1/steuerjahre/${jahr}/advisor/search`
+}
+
+/**
+ * @summary Search the conversations of this tax year: titles and messages, newest hit first (#481)
+ */
+export const advisorControllerSearch = async (jahr: number,
+    params: AdvisorControllerSearchParams, options?: RequestInit): Promise<advisorControllerSearchResponse> => {
+
+  return httpClient<advisorControllerSearchResponse>(getAdvisorControllerSearchUrl(jahr,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getAdvisorControllerSearchQueryKey = (jahr: number,
+    params?: AdvisorControllerSearchParams,) => {
+    return [
+    `/v1/steuerjahre/${jahr}/advisor/search`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getAdvisorControllerSearchQueryOptions = <TData = Awaited<ReturnType<typeof advisorControllerSearch>>, TError = unknown>(jahr: number,
+    params: AdvisorControllerSearchParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof advisorControllerSearch>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getAdvisorControllerSearchQueryKey(jahr,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof advisorControllerSearch>>> = ({ signal }) => advisorControllerSearch(jahr,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: jahr !== null && jahr !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof advisorControllerSearch>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type AdvisorControllerSearchQueryResult = NonNullable<Awaited<ReturnType<typeof advisorControllerSearch>>>
+export type AdvisorControllerSearchQueryError = unknown
+
+
+export function useAdvisorControllerSearch<TData = Awaited<ReturnType<typeof advisorControllerSearch>>, TError = unknown>(
+ jahr: number,
+    params: AdvisorControllerSearchParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof advisorControllerSearch>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof advisorControllerSearch>>,
+          TError,
+          Awaited<ReturnType<typeof advisorControllerSearch>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useAdvisorControllerSearch<TData = Awaited<ReturnType<typeof advisorControllerSearch>>, TError = unknown>(
+ jahr: number,
+    params: AdvisorControllerSearchParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof advisorControllerSearch>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof advisorControllerSearch>>,
+          TError,
+          Awaited<ReturnType<typeof advisorControllerSearch>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useAdvisorControllerSearch<TData = Awaited<ReturnType<typeof advisorControllerSearch>>, TError = unknown>(
+ jahr: number,
+    params: AdvisorControllerSearchParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof advisorControllerSearch>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Search the conversations of this tax year: titles and messages, newest hit first (#481)
+ */
+
+export function useAdvisorControllerSearch<TData = Awaited<ReturnType<typeof advisorControllerSearch>>, TError = unknown>(
+ jahr: number,
+    params: AdvisorControllerSearchParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof advisorControllerSearch>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getAdvisorControllerSearchQueryOptions(jahr,params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export type advisorControllerListNotesResponse200 = {
   data: AdvisorNoteDto[]

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Pressable, Text, TextInput, View, type TextStyle, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { Button, useTheme, type UiTheme } from '@steuereule/ui'
@@ -12,6 +12,19 @@ export interface ConversationSummary {
   readonly lastUsedAt: string
 }
 
+/** One place where the search text occurs: in a message, or in the title of a conversation. */
+export interface ConversationSearchHit {
+  readonly conversationId: string
+  readonly conversationTitle: string | null
+  readonly messageId?: string | undefined
+  readonly role?: 'user' | 'assistant' | undefined
+  readonly snippet: string
+  readonly at: string
+}
+
+const SEARCH_MIN_CHARS = 2
+const SEARCH_DELAY_MS = 250
+
 export interface ConversationListProps {
   readonly conversations: readonly ConversationSummary[]
   readonly activeId: string | null
@@ -21,6 +34,8 @@ export interface ConversationListProps {
   readonly onNew: () => Promise<void> | void
   readonly onRename: (id: string, title: string) => Promise<void>
   readonly onDelete: (id: string) => Promise<void>
+  /** Searches titles and messages of the year; without it the list has no search field. */
+  readonly onSearch?: ((query: string) => Promise<readonly ConversationSearchHit[]>) | undefined
 }
 
 type RowState = { kind: 'idle' } | { kind: 'renaming'; draft: string } | { kind: 'confirm-delete' } | { kind: 'failed' }
@@ -29,11 +44,36 @@ type RowState = { kind: 'idle' } | { kind: 'renaming'; draft: string } | { kind:
  * The conversations of one tax year (#481). The return is the project and exists on its own; the
  * user only ever starts, opens, renames or deletes conversations.
  */
-export function ConversationList({ conversations, activeId, canSwitch, onSelect, onNew, onRename, onDelete }: ConversationListProps) {
+export function ConversationList({ conversations, activeId, canSwitch, onSelect, onNew, onRename, onDelete, onSearch }: ConversationListProps) {
   const t = useTheme()
   const styles = makeStyles(t)
   const { t: tr, i18n } = useTranslation(APP_NS)
   const [rows, setRows] = useState<Readonly<Record<string, RowState>>>({})
+  const [query, setQuery] = useState('')
+  const [search, setSearch] = useState<{ readonly kind: 'idle' } | { readonly kind: 'searching' } | { readonly kind: 'done'; readonly hits: readonly ConversationSearchHit[] } | { readonly kind: 'failed' }>({ kind: 'idle' })
+  const searching = query.trim().length >= SEARCH_MIN_CHARS
+
+  // Search as the user types, a moment after the last keystroke; a slower earlier answer never
+  // overwrites a newer one.
+  useEffect(() => {
+    if (!onSearch || !searching) {
+      setSearch({ kind: 'idle' })
+      return
+    }
+    let current = true
+    setSearch({ kind: 'searching' })
+    const timer = setTimeout(() => {
+      onSearch(query.trim()).then(
+        (hits) => current && setSearch({ kind: 'done', hits }),
+        () => current && setSearch({ kind: 'failed' }),
+      )
+    }, SEARCH_DELAY_MS)
+    return () => {
+      current = false
+      clearTimeout(timer)
+    }
+  }, [onSearch, query, searching])
+
   const stateOf = (id: string): RowState => rows[id] ?? { kind: 'idle' }
   const setState = (id: string, state: RowState) => setRows((prev) => ({ ...prev, [id]: state }))
 
@@ -59,7 +99,57 @@ export function ConversationList({ conversations, activeId, canSwitch, onSelect,
         {tr('advisor.chat.conversations.new')}
       </Button>
 
-      {conversations.map((conversation) => {
+      {onSearch ? (
+        <TextInput
+          accessibilityLabel={tr('advisor.chat.conversations.searchAria')}
+          placeholder={tr('advisor.chat.conversations.searchPlaceholder')}
+          placeholderTextColor={t.color.tinte2}
+          value={query}
+          onChangeText={setQuery}
+          maxLength={100}
+          style={styles.input}
+          testID="eule-conversation-search"
+        />
+      ) : null}
+
+      {searching ? (
+        <View style={styles.wrap} testID="eule-conversation-search-results">
+          {search.kind === 'searching' ? <Text style={styles.help}>{tr('advisor.chat.conversations.searching')}</Text> : null}
+          {search.kind === 'failed' ? (
+            <Text style={styles.failed} role="alert" testID="eule-conversation-search-failed">
+              {tr('advisor.chat.conversations.failed')}
+            </Text>
+          ) : null}
+          {search.kind === 'done' && search.hits.length === 0 ? (
+            <Text style={styles.help} testID="eule-conversation-search-empty">
+              {tr('advisor.chat.conversations.searchEmpty', { query: query.trim() })}
+            </Text>
+          ) : null}
+          {search.kind === 'done'
+            ? search.hits.map((hit, index) => (
+                <Pressable
+                  key={`${hit.conversationId}-${hit.messageId ?? 'title'}-${index}`}
+                  accessibilityRole="button"
+                  disabled={!canSwitch}
+                  onPress={() => {
+                    setQuery('')
+                    if (hit.conversationId !== activeId) onSelect(hit.conversationId)
+                  }}
+                  style={styles.row}
+                  testID="eule-conversation-search-hit"
+                >
+                  <Text style={styles.meta}>
+                    {hit.conversationTitle ?? tr('advisor.chat.conversations.untitled', { date: dateOf(hit.at) })}
+                    {hit.role ? ` · ${tr(hit.role === 'user' ? 'advisor.chat.conversations.hitUser' : 'advisor.chat.conversations.hitOwl')}` : ` · ${tr('advisor.chat.conversations.hitTitle')}`}
+                  </Text>
+                  <Text style={styles.snippet}>{hit.snippet}</Text>
+                </Pressable>
+              ))
+            : null}
+        </View>
+      ) : null}
+
+      {searching ? null : conversations.map((conversation) => {
         const state = stateOf(conversation.id)
         const active = conversation.id === activeId
         return (
@@ -165,6 +255,7 @@ function makeStyles(t: UiTheme) {
     name: { fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: t.size.m, color: t.color.tinte } as TextStyle,
     nameActive: { color: t.color.kiTinte } as TextStyle,
     meta: { fontFamily: t.font.text, fontSize: t.size.xs, color: t.color.tinte2 } as TextStyle,
+    snippet: { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.tinte } as TextStyle,
     actions: { flexDirection: 'row', gap: t.space.s4 } as ViewStyle,
     link: { minHeight: 44, justifyContent: 'center' } as ViewStyle,
     linkText: { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.kiTinte, textDecorationLine: 'underline' } as TextStyle,

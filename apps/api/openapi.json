@@ -2252,6 +2252,50 @@
         ]
       }
     },
+    "/v1/steuerjahre/{jahr}/advisor/search": {
+      "get": {
+        "operationId": "AdvisorController_search",
+        "parameters": [
+          {
+            "name": "q",
+            "required": true,
+            "in": "query",
+            "description": "At least two characters; case and accents are ignored.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AdvisorSearchHitDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Search the conversations of this tax year: titles and messages, newest hit first (#481)",
+        "tags": [
+          "eulen-modus"
+        ]
+      }
+    },
     "/v1/steuerjahre/{jahr}/advisor/notes": {
       "get": {
         "operationId": "AdvisorController_listNotes",
@@ -8951,6 +8995,43 @@
         },
         "required": [
           "deletedMessages"
+        ]
+      },
+      "AdvisorSearchHitDto": {
+        "type": "object",
+        "properties": {
+          "conversationId": {
+            "type": "string"
+          },
+          "conversationTitle": {
+            "type": "string",
+            "nullable": true
+          },
+          "messageId": {
+            "type": "string",
+            "description": "Absent when only the title of the conversation matched."
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "user",
+              "assistant"
+            ]
+          },
+          "snippet": {
+            "type": "string",
+            "description": "The matching passage with some text around it."
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "conversationId",
+          "conversationTitle",
+          "snippet",
+          "at"
         ]
       },
       "SaveAdvisorNoteDto": {

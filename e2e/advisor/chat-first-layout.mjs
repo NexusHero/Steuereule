@@ -210,6 +210,23 @@ async function main() {
     await page.waitForFunction(() => document.querySelector('[data-testid="advisor-chat-scroll"]')?.textContent?.includes('Frage zum Arbeitsweg'), null, { timeout: 10_000 }).catch(() => fail('Row G: opening the first conversation should show its messages'))
     if ((await chatText()).includes('Frage zur Vermietung')) fail('Row G: the first conversation must not show the messages of the second')
 
+    // Search over the conversations of the year: nothing found, a failed search, and a hit in the
+    // other conversation that opens it.
+    const search = byId(page, 'eule-conversation-search')
+    await search.fill('gewerbesteuer')
+    await see(page, 'eule-conversation-search-results', 'Row G')
+    await see(page, 'eule-conversation-search-empty', 'Row G')
+    await page.route('**/advisor/search*', (route) => route.fulfill({ status: 500, contentType: 'application/json', body: '{"code":"INTERNAL"}' }))
+    await search.fill('vermietung')
+    await see(page, 'eule-conversation-search-failed', 'Row G')
+    await page.unroute('**/advisor/search*')
+    await search.fill('zur vermiet')
+    await see(page, 'eule-conversation-search-hit', 'Row G')
+    if (!(await textOf(page, 'eule-conversation-search-hit')).includes('Frage zur Vermietung')) fail('Row G: the hit should show the passage that was found')
+    await byId(page, 'eule-conversation-search-hit').first().click()
+    await page.waitForFunction(() => document.querySelector('[data-testid="advisor-chat-scroll"]')?.textContent?.includes('Frage zur Vermietung'), null, { timeout: 10_000 }).catch(() => fail('Row G: a hit should open its conversation'))
+    await rowCountIs(2, 'after a hit was opened the list of conversations is back')
+
     // Delete the other one: a second, explicit step, and it can be cancelled. A failed delete says so.
     const other = page.locator('[data-testid="eule-conversation-row"]', { hasText: 'Meine Wohnung' })
     await other.locator('[data-testid="eule-conversation-delete"]').click()
@@ -228,7 +245,7 @@ async function main() {
     await rowCountIs(1, 'the deleted conversation should leave the list')
     const left = sql(`SELECT count(*) FROM "BeraterGespraech" g JOIN "User" u ON u.id = g."userId" WHERE u.email = '${email}'`)
     if (String(left).trim() !== '1') fail(`Row G: one conversation should be left in the database, found ${String(left).trim()}`)
-    console.log(`[${TAG}] ✅ Row G — new conversation, own messages each, named after the first question, rename, switch, delete after a second step`)
+    console.log(`[${TAG}] ✅ Row G — new conversation, own messages each, named after the first question, rename, switch, search, delete after a second step`)
 
     // Row H — the notes of the tax year, in the same sidebar: add, change, delete by hand.
     await see(page, 'eule-notes', 'Row H')

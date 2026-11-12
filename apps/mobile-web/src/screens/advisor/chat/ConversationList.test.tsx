@@ -82,4 +82,57 @@ describe('ConversationList (#481)', () => {
     fireEvent.click(screen.getByTestId('eule-conversation-delete-confirm'))
     expect((await screen.findByTestId('eule-conversation-failed')).textContent).toContain('nicht geklappt')
   })
+
+  describe('search', () => {
+    const HITS = [
+      { conversationId: 'c1', conversationTitle: null, messageId: 'm1', role: 'user' as const, snippet: 'Ich arbeite am Küchentisch', at: '2026-01-15T10:00:00.000Z' },
+      { conversationId: 'c2', conversationTitle: 'Vermietung Musterweg', snippet: 'Vermietung Musterweg', at: '2026-03-05T10:00:00.000Z' },
+    ]
+
+    it('has no search field without a search', () => {
+      renderList()
+      expect(screen.queryByTestId('eule-conversation-search')).toBeNull()
+    })
+
+    it('shows the hits instead of the list, with where each one was found', async () => {
+      const onSearch = vi.fn().mockResolvedValue(HITS)
+      renderList({ onSearch })
+      fireEvent.change(screen.getByTestId('eule-conversation-search'), { target: { value: 'küchen' } })
+      const hits = await screen.findAllByTestId('eule-conversation-search-hit')
+      expect(onSearch).toHaveBeenCalledWith('küchen')
+      expect(hits[0]!.textContent).toContain('Ich arbeite am Küchentisch')
+      expect(hits[0]!.textContent).toContain('deine Frage')
+      expect(hits[1]!.textContent).toContain('Titel')
+      expect(screen.queryByTestId('eule-conversation-row')).toBeNull()
+    })
+
+    it('opens the conversation of a hit and returns to the list', async () => {
+      const { onSelect } = renderList({ onSearch: vi.fn().mockResolvedValue(HITS) })
+      fireEvent.change(screen.getByTestId('eule-conversation-search'), { target: { value: 'küchen' } })
+      fireEvent.click((await screen.findAllByTestId('eule-conversation-search-hit'))[0]!)
+      expect(onSelect).toHaveBeenCalledWith('c1')
+      expect(screen.getAllByTestId('eule-conversation-row')).toHaveLength(2)
+    })
+
+    it('does not search for a single letter', async () => {
+      const onSearch = vi.fn().mockResolvedValue([])
+      renderList({ onSearch })
+      fireEvent.change(screen.getByTestId('eule-conversation-search'), { target: { value: 'k' } })
+      await new Promise((resolve) => setTimeout(resolve, 350))
+      expect(onSearch).not.toHaveBeenCalled()
+      expect(screen.getAllByTestId('eule-conversation-row')).toHaveLength(2)
+    })
+
+    it('says so when nothing was found', async () => {
+      renderList({ onSearch: vi.fn().mockResolvedValue([]) })
+      fireEvent.change(screen.getByTestId('eule-conversation-search'), { target: { value: 'gewerbe' } })
+      expect((await screen.findByTestId('eule-conversation-search-empty')).textContent).toContain('gewerbe')
+    })
+
+    it('reports a failed search', async () => {
+      renderList({ onSearch: vi.fn().mockRejectedValue(new Error('offline')) })
+      fireEvent.change(screen.getByTestId('eule-conversation-search'), { target: { value: 'gewerbe' } })
+      expect(await screen.findByTestId('eule-conversation-search-failed')).toBeTruthy()
+    })
+  })
 })

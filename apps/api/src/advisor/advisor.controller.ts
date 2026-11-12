@@ -54,6 +54,7 @@ import {
   AdvisorContextDto,
   AdvisorConversationDto,
   AdvisorNoteDto,
+  AdvisorSearchHitDto,
   DeleteAdvisorNoteResponseDto,
   SaveAdvisorNoteDto,
   ClearAdvisorConversationResponseDto,
@@ -261,6 +262,17 @@ export class AdvisorController {
     @Query('conversationId') conversationId?: string,
   ): Promise<ClearAdvisorConversationResponseDto> {
     return this.runs.clearConversation(userId, year, conversationId || undefined)
+  }
+
+  @Get('search')
+  @RequiresAccount()
+  @ForbidAssistant()
+  @ApiOperation({ summary: 'Search the conversations of this tax year: titles and messages, newest hit first (#481)' })
+  @ApiParam({ name: 'jahr', type: Number, example: 2025 })
+  @ApiQuery({ name: 'q', type: String, description: 'At least two characters; case and accents are ignored.' })
+  @ApiOkResponse({ type: [AdvisorSearchHitDto] })
+  search(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number, @Query('q') query?: string): Promise<AdvisorSearchHitDto[]> {
+    return this.service.searchConversations(userId, year, (query ?? '').slice(0, 100))
   }
 
   @Get('notes')

@@ -2,7 +2,7 @@
 // return (and with it every draft), not each other's messages.
 import type { AdvisorStreamEvent } from '@steuereule/core'
 import { describe, expect, it } from 'vitest'
-import { MAX_CONVERSATIONS_PER_YEAR, titleFrom } from '../src/advisor/advisor.service.js'
+import { MAX_CONVERSATIONS_PER_YEAR, searchKey, snippetAround, titleFrom } from '../src/advisor/advisor.service.js'
 import { InMemoryAdvisorRunLog } from '../src/advisor/run/advisor-run-log.js'
 import { AdvisorRunService } from '../src/advisor/run/advisor-run.service.js'
 import { buildAdvisorTestKit, collect, doneEvent, ScriptedAdvisorEngine, type ScriptStep } from './fakes/advisor-test-kit.js'
@@ -388,5 +388,73 @@ describe('project notes (#481)', () => {
     await expect(service.createNote(USER, YEAR, 'x'.repeat(201))).rejects.toMatchObject({ code: 'ADVISOR_NOTE_INVALID' })
     for (let i = 0; i < 20; i += 1) await service.createNote(USER, YEAR, `Notiz Nummer ${i}`)
     await expect(service.createNote(USER, YEAR, 'eine zu viel')).rejects.toMatchObject({ code: 'ADVISOR_NOTE_LIMIT' })
+  })
+})
+
+describe('searching the conversations of a tax year (#481)', () => {
+  async function twoConversations() {
+    const kit = build(answer('Die Entfernungspauschale gilt für die einfache Strecke zum Küchentisch-Büro.'))
+    const first = (await kit.service.getSession(USER, YEAR)).conversationId
+    await collect(kit.service.streamMessage(USER, YEAR, { message: 'Mein Arbeitsweg sind 38 km', conversationId: first }))
+    const second = await kit.service.createConversation(USER, YEAR)
+    await collect(kit.service.streamMessage(USER, YEAR, { message: 'Ich vermiete eine Wohnung in Köln', conversationId: second.id }))
+    return { ...kit, first, second: second.id }
+  }
+
+  it('finds a word in a question, and says in which conversation', async () => {
+    const { service, second } = await twoConversations()
+    const hits = await service.searchConversations(USER, YEAR, 'wohnung')
+    expect(hits.some((h) => h.conversationId === second && h.role === 'user' && h.snippet.includes('Wohnung'))).toBe(true)
+    expect(hits.every((h) => h.conversationId === second)).toBe(true)
+  })
+
+  it('finds answers too, in every conversation, newest first', async () => {
+    const { service, first, second } = await twoConversations()
+    const hits = await service.searchConversations(USER, YEAR, 'Entfernungspauschale')
+    expect(hits.map((h) => h.conversationId)).toEqual([second, first])
+    expect(hits.every((h) => h.role === 'assistant')).toBe(true)
+  })
+
+  it('ignores case and accents', async () => {
+    const { service } = await twoConversations()
+    expect(await service.searchConversations(USER, YEAR, 'KUCHENTISCH')).not.toHaveLength(0)
+    expect(await service.searchConversations(USER, YEAR, 'köln')).not.toHaveLength(0)
+    expect(await service.searchConversations(USER, YEAR, 'koln')).not.toHaveLength(0)
+  })
+
+  it('finds a conversation by its title', async () => {
+    const { service, first } = await twoConversations()
+    await service.renameConversation(USER, YEAR, first, 'Pendeln ins Büro')
+    const hits = await service.searchConversations(USER, YEAR, 'pendeln')
+    expect(hits).toEqual([expect.objectContaining({ conversationId: first, conversationTitle: 'Pendeln ins Büro' })])
+    expect(hits[0]!.messageId).toBeUndefined()
+  })
+
+  it('needs two characters, and finds nothing for nothing', async () => {
+    const { service } = await twoConversations()
+    expect(await service.searchConversations(USER, YEAR, 'a')).toEqual([])
+    expect(await service.searchConversations(USER, YEAR, '   ')).toEqual([])
+    expect(await service.searchConversations(USER, YEAR, 'gewerbesteuererklärung')).toEqual([])
+  })
+
+  it('stays inside the user and the tax year', async () => {
+    const { service } = await twoConversations()
+    expect(await service.searchConversations('someone-else', YEAR, 'wohnung')).toEqual([])
+    expect(await service.searchConversations(USER, YEAR - 1, 'wohnung')).toEqual([])
+  })
+
+  it('does not find a question that was replaced, or a deleted conversation', async () => {
+    const { service, runs, second } = await twoConversations()
+    await runs.deleteConversation(USER, YEAR, second)
+    expect(await service.searchConversations(USER, YEAR, 'wohnung')).toEqual([])
+  })
+
+  it('shows the passage around the hit, cut with an ellipsis', () => {
+    const text = `${'a'.repeat(100)} Küchentisch ${'b'.repeat(100)}`
+    const snippet = snippetAround(text, searchKey(text).indexOf('kuchentisch'), 'kuchentisch'.length)
+    expect(snippet).toContain('Küchentisch')
+    expect(snippet.startsWith('…')).toBe(true)
+    expect(snippet.endsWith('…')).toBe(true)
+    expect(snippet.length).toBeLessThan(160)
   })
 })
