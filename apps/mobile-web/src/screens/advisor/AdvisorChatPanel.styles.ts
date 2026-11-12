@@ -35,6 +35,9 @@ export function makeStyles(t: UiTheme) {
       marginBottom: t.space.s4,
     } as ViewStyle,
     quickChipButton: {
+      // A long chip wraps inside the column instead of running past the edge of a phone.
+      maxWidth: '100%',
+      flexShrink: 1,
       paddingVertical: t.space.s2,
       paddingHorizontal: t.space.s3,
       borderRadius: t.radius.pille,
@@ -43,6 +46,8 @@ export function makeStyles(t: UiTheme) {
       borderColor: t.color.ki,
     } as ViewStyle,
     quickChipText: {
+      flexShrink: 1,
+      textAlign: 'center',
       fontFamily: t.font.text,
       fontWeight: t.weight.fett,
       fontSize: t.size.s,
