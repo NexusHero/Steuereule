@@ -8894,13 +8894,39 @@
           "lastUsedAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "answering": {
+            "type": "boolean",
+            "description": "An answer is being written in this conversation right now; several conversations can answer at the same time (#503)."
           }
         },
         "required": [
           "id",
           "title",
           "createdAt",
-          "lastUsedAt"
+          "lastUsedAt",
+          "answering"
+        ]
+      },
+      "AdvisorProjectDto": {
+        "type": "object",
+        "properties": {
+          "taxYear": {
+            "type": "number",
+            "example": 2025,
+            "description": "The tax year is the project."
+          },
+          "conversations": {
+            "description": "The conversations of that year, most recently used first.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdvisorConversationDto"
+            }
+          }
+        },
+        "required": [
+          "taxYear",
+          "conversations"
         ]
       },
       "AdvisorContextDto": {
@@ -9072,6 +9098,13 @@
               "$ref": "#/components/schemas/AdvisorConversationDto"
             }
           },
+          "projects": {
+            "description": "Every tax year with its conversations, newest year first; the list of the sidebar (#503).",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdvisorProjectDto"
+            }
+          },
           "context": {
             "description": "How full the context of this conversation is (#481).",
             "allOf": [
@@ -9120,6 +9153,7 @@
           "openCards",
           "conversationId",
           "conversations",
+          "projects",
           "context",
           "notes",
           "situation",

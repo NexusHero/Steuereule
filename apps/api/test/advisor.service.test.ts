@@ -675,6 +675,33 @@ describe('AdvisorService (In-App Steuerberater Agent "Deine Eule")', () => {
     expect(seen).toEqual([true, false])
   })
 
+  describe('tax years as projects, conversations side by side (#503)', () => {
+    it('lists every year that has conversations, newest first, and always the open one', async () => {
+      await advisorService.sendMessage(USER, YEAR - 1, { message: 'Frage zum Vorjahr' })
+      const session = await advisorService.getSession(USER, YEAR)
+      expect(session.projects.map((project) => project.taxYear)).toEqual([YEAR, YEAR - 1])
+      expect(session.projects[1]!.conversations).toHaveLength(1)
+      expect(session.projects[1]!.conversations[0]!.title).toBe('Frage zum Vorjahr')
+    })
+
+    it('marks a conversation that is answering, lets another one answer next to it, and refuses a second answer in the same', async () => {
+      const first = (await advisorService.getSession(USER, YEAR)).conversationId
+      // An answer that has been started and not finished: the turn is prepared, nothing is streamed yet.
+      await advisorService.prepareTurn(USER, YEAR, { message: 'Erste Frage', conversationId: first })
+      const second = (await advisorService.createConversation(USER, YEAR)).id
+
+      const session = await advisorService.getSession(USER, YEAR, second)
+      const byId = new Map(session.projects[0]!.conversations.map((c) => [c.id, c.answering]))
+      expect(byId.get(first)).toBe(true)
+      expect(byId.get(second)).toBe(false)
+
+      await expect(advisorService.prepareTurn(USER, YEAR, { message: 'Zweite Frage', conversationId: first })).rejects.toMatchObject({ code: 'ADVISOR_CONVERSATION_BUSY' })
+      // The other conversation is free: its answer runs at the same time.
+      const answered = await advisorService.sendMessage(USER, YEAR, { message: 'Bitte 300 € Spenden eintragen', conversationId: second })
+      expect(answered.assistantMessage.status).toBe('complete')
+    })
+  })
+
   describe('the household’s situation (#501)', () => {
     it('is empty at first, is stored for every year, and reaches the engine', async () => {
       expect((await advisorService.getSession(USER, YEAR)).situation).toEqual({ text: '', updatedAt: null })

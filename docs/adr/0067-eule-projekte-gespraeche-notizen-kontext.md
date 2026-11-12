@@ -42,8 +42,9 @@ Ein Gespräch ist ein eigener Kontext: Das Modell sieht nur dessen Verlauf.
 - Gespräche und Notizen sind privat je Nutzer, auch bei Zusammenveranlagung.
 - Schnellstarts laufen im offenen Gespräch.
 - Der bestehende Verlauf eines Jahres wird in der Migration das erste Gespräch.
-- Es antwortet immer nur ein Gespräch gleichzeitig; während einer Antwort ist der Wechsel
-  gesperrt. Paralleles Arbeiten in mehreren Gesprächen wurde bewusst nicht gebaut.
+- ~~Es antwortet immer nur ein Gespräch gleichzeitig; während einer Antwort ist der Wechsel
+  gesperrt.~~ Seit ADR-0071 antworten Gespräche gleichzeitig; ein Gespräch hat weiterhin nur eine
+  Antwort zur selben Zeit.
 
 Eine Suche findet Text in den Titeln und Nachrichten aller Gespräche des Jahres; Groß- und
 Kleinschreibung und Umlaute spielen keine Rolle. Die Nachrichten liegen verschlüsselt in der

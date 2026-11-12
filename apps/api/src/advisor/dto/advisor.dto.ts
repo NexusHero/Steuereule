@@ -453,6 +453,17 @@ export class AdvisorConversationDto {
 
   @ApiProperty({ type: String, format: 'date-time' })
   lastUsedAt!: string
+
+  @ApiProperty({ type: Boolean, description: 'An answer is being written in this conversation right now; several conversations can answer at the same time (#503).' })
+  answering!: boolean
+}
+
+export class AdvisorProjectDto {
+  @ApiProperty({ type: Number, example: 2025, description: 'The tax year is the project.' })
+  taxYear!: number
+
+  @ApiProperty({ type: () => [AdvisorConversationDto], description: 'The conversations of that year, most recently used first.' })
+  conversations!: readonly AdvisorConversationDto[]
 }
 
 export class AdvisorNoteDto {
@@ -576,6 +587,9 @@ export class AdvisorSessionResponseDto {
 
   @ApiProperty({ type: () => [AdvisorConversationDto], description: 'Every conversation of this tax year, most recently used first.' })
   conversations!: readonly AdvisorConversationDto[]
+
+  @ApiProperty({ type: () => [AdvisorProjectDto], description: 'Every tax year with its conversations, newest year first; the list of the sidebar (#503).' })
+  projects!: readonly AdvisorProjectDto[]
 
   @ApiProperty({ type: () => AdvisorContextDto, description: 'How full the context of this conversation is (#481).' })
   context!: AdvisorContextDto

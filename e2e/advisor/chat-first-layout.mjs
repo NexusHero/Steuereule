@@ -565,6 +565,38 @@ async function main() {
     if ((await byId(page, 'advisor-receipt-queue-item').count()) !== 1) fail('Row T: a waiting file should be removable from the queue')
     console.log(`[${TAG}] ✅ Row T — several files: queued one after another, named, removable`)
 
+    // Row P — tax years as projects (#503): the open year heads the list, the other years with
+    // conversations sit below it, a conversation that is answering says so, and opening one of
+    // another year asks for that year. Last on this page, because it leaves the year switched.
+    await page.unrouteAll({ behavior: 'ignoreErrors' })
+    await page.route('**/advisor/session*', async (route) => {
+      if (route.request().method() !== 'GET') return route.fallback()
+      const res = await route.fetch().catch(() => null)
+      if (res === null) return
+      const json = await res.json()
+      const year = json.projects[0].taxYear
+      json.conversations = json.conversations.map((c, i) => ({ ...c, answering: i === 0 }))
+      json.projects = [
+        { taxYear: year, conversations: json.conversations },
+        { taxYear: year - 1, conversations: [{ id: 'stub-old-year', title: 'Umzug nach Köln', createdAt: now, lastUsedAt: now, answering: false }] },
+      ]
+      await route.fulfill({ response: res, json })
+    })
+    await page.reload({ waitUntil: 'networkidle' })
+    await see(page, 'eule-project-heading', 'Row P', 20_000)
+    const openYear = Number((await textOf(page, 'eule-project-heading')).replace(/\D/g, ''))
+    if (!Number.isInteger(openYear) || openYear < 2020) fail(`Row P: the list should be headed by the open tax year, reads "${await textOf(page, 'eule-project-heading')}"`)
+    await see(page, 'eule-conversation-answering', 'Row P')
+    await see(page, 'eule-project', 'Row P')
+    if (!(await textOf(page, 'eule-project')).includes(String(openYear - 1))) fail('Row P: the other year should be listed as its own project')
+    if ((await byId(page, 'eule-project-conversation').count()) !== 0) fail('Row P: another year starts closed')
+    await byId(page, 'eule-project-toggle').click()
+    await see(page, 'eule-project-conversation', 'Row P')
+    const otherYearAsked = page.waitForRequest((request) => request.url().includes(`/steuerjahre/${openYear - 1}/advisor/session`) && request.url().includes('stub-old-year'), { timeout: 15_000 })
+    await byId(page, 'eule-project-conversation').click()
+    await otherYearAsked.catch(() => fail('Row P: opening a conversation of another year should open that year with that conversation'))
+    console.log(`[${TAG}] ✅ Row P — tax years as projects: open year on top, other years below, answering marked, another year opens with its conversation`)
+
     await page.unrouteAll({ behavior: 'ignoreErrors' })
     await ctx.close()
 

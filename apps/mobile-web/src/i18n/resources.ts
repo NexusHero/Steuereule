@@ -1899,6 +1899,10 @@ export const appResources = {
             change: { added: 'Gemerkt', replaced: 'Notiz aktualisiert', removed: 'Notiz entfernt' },
           },
           conversations: {
+            project: 'Steuerjahr {{year}}',
+            answering: 'antwortet gerade …',
+            count_one: '{{count}} Gespräch',
+            count_other: '{{count}} Gespräche',
             title: 'Gespräche',
             help: 'Alle Gespräche gehören zu deiner Steuererklärung dieses Jahres. Jedes kennt deine Angaben, aber nicht den Verlauf der anderen.',
             new: 'Neues Gespräch',
@@ -3862,6 +3866,10 @@ export const appResources = {
             change: { added: 'Noted', replaced: 'Note updated', removed: 'Note removed' },
           },
           conversations: {
+            project: 'Tax year {{year}}',
+            answering: 'answering …',
+            count_one: '{{count}} conversation',
+            count_other: '{{count}} conversations',
             title: 'Conversations',
             help: 'Every conversation belongs to your tax return of this year. Each one knows your entries, but not what was said in the others.',
             new: 'New conversation',

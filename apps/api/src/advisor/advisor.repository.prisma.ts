@@ -111,6 +111,15 @@ export class PrismaAdvisorRepository implements AdvisorRepository {
     return rows.map(toRecord)
   }
 
+  async listAllConversations(userId: string): Promise<AdvisorConversationRecord[]> {
+    return this.prisma.advisorConversation.findMany({ where: { userId }, orderBy: { lastUsedAt: 'desc' } })
+  }
+
+  async answeringConversationIds(userId: string, since: Date): Promise<string[]> {
+    const rows = await this.prisma.advisorChatMessage.findMany({ where: { userId, status: 'streaming', createdAt: { gte: since } }, select: { conversationId: true }, distinct: ['conversationId'] })
+    return rows.map((row) => row.conversationId).filter((id): id is string => id !== null)
+  }
+
   async listConversations(userId: string, taxYear: number): Promise<AdvisorConversationRecord[]> {
     return this.prisma.advisorConversation.findMany({ where: { userId, taxYear }, orderBy: { lastUsedAt: 'desc' } })
   }

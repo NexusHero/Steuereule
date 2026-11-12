@@ -749,6 +749,15 @@ export interface AdvisorConversationDto {
   title: string | null;
   createdAt: string;
   lastUsedAt: string;
+  /** An answer is being written in this conversation right now; several conversations can answer at the same time (#503). */
+  answering: boolean;
+}
+
+export interface AdvisorProjectDto {
+  /** The tax year is the project. */
+  taxYear: number;
+  /** The conversations of that year, most recently used first. */
+  conversations: AdvisorConversationDto[];
 }
 
 /**
@@ -840,6 +849,8 @@ export interface AdvisorSessionResponseDto {
   conversationId: string;
   /** Every conversation of this tax year, most recently used first. */
   conversations: AdvisorConversationDto[];
+  /** Every tax year with its conversations, newest year first; the list of the sidebar (#503). */
+  projects: AdvisorProjectDto[];
   /** How full the context of this conversation is (#481). */
   context: AdvisorContextDto;
   /** The project notes of this tax year; every conversation reads them. */

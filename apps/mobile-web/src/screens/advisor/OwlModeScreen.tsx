@@ -19,7 +19,7 @@ import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { OwlTopBar } from './OwlTopBar'
 import { ProfessionPicker } from './ProfessionPicker'
 import { AdvisorChatPanel, type AdvisorChatPanelProps, type ChatSendOptions } from './AdvisorChatPanel'
-import { ConversationList, type ConversationSearchHit, type ConversationSummary } from './chat/ConversationList'
+import { ConversationList, type ConversationProject, type ConversationSearchHit, type ConversationSummary } from './chat/ConversationList'
 import { ProjectNotes, type ProjectNote } from './chat/ProjectNotes'
 import { Situation } from './chat/Situation'
 import { ConnectionDetails, type ConnectionView } from './chat/ConnectionStatus'
@@ -58,6 +58,9 @@ export interface OwlModeScreenProps {
   readonly conversations?: readonly ConversationSummary[] | undefined
   readonly activeConversationId?: string | null | undefined
   readonly onSelectConversation?: ((id: string) => void) | undefined
+  /** Every tax year with its conversations: the years are the projects of the sidebar (#503). */
+  readonly projects?: readonly ConversationProject[] | undefined
+  readonly onSelectConversationInYear?: ((taxYear: number, id: string) => void) | undefined
   readonly onNewConversation?: (() => Promise<void>) | undefined
   readonly onRenameConversation?: ((id: string, title: string) => Promise<void>) | undefined
   readonly onDeleteConversation?: ((id: string) => Promise<void>) | undefined
@@ -152,6 +155,8 @@ export function OwlModeScreenView({
   conversations,
   activeConversationId,
   onSelectConversation,
+  projects,
+  onSelectConversationInYear,
   onNewConversation,
   onRenameConversation,
   onDeleteConversation,
@@ -195,7 +200,9 @@ export function OwlModeScreenView({
   const activeCard = cards[activeIndex]
   const pendingDrafts = extractPendingDrafts(displayedMessages)
   const viewMode = bridge ? bridge.owlViewMode : localViewMode
-  const effectiveSending = isSending || (bridge?.streaming ?? false)
+  // With the bridge every conversation has its own answer (#503): the open one is busy only while
+  // its own answer is written, whatever is running elsewhere.
+  const effectiveSending = bridge && bridge.isAuthenticated && !onSendMessage ? bridge.streaming : isSending || (bridge?.streaming ?? false)
 
   // The workbench opens by itself only when there is something to check: on a wide screen for
   // drafts and masks, on a narrow one only for a mask the reader asked to see, because there it
@@ -729,7 +736,14 @@ export function OwlModeScreenView({
       <ConversationList
         conversations={conversations ?? []}
         activeId={activeConversationId ?? null}
-        canSwitch={!effectiveSending}
+        canSwitch
+        activeYear={taxYear}
+        projects={projects}
+        answeringIds={bridge?.answeringConversationIds}
+        onSelectInYear={(year, id) => {
+          onSelectConversationInYear?.(year, id)
+          afterSwitch()
+        }}
         onSelect={(id) => {
           onSelectConversation?.(id)
           afterSwitch()

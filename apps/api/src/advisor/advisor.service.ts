@@ -53,7 +53,7 @@ import { WAGE_TAX_CERTIFICATE_REPOSITORY, type WageTaxCertificateRepository } fr
 import { OwlModeService } from '../owl-mode/owl-mode.service.js'
 import { PROFILE_REPOSITORY, type ProfileRepository } from '../profile/profile.repository.js'
 import { RENTAL_REPOSITORY, type RentalRepository } from '../rental/rental.repository.js'
-import { DomainError, InvalidInputError, NotFoundError, TooManyRequestsError, UnavailableError } from '../common/domain-error.js'
+import { ConflictError, DomainError, InvalidInputError, NotFoundError, TooManyRequestsError, UnavailableError } from '../common/domain-error.js'
 import {
   ADVISOR_REPOSITORY,
   type AdvisorChatMessageRecord,
@@ -77,7 +77,7 @@ import type {
   SendAdvisorMessageDto,
   SendAdvisorMessageResponseDto,
 } from './dto/advisor.dto.js'
-import { toPublicAction, toPublicMeta, toMessageDto, PreparedAdvisorTurn, titleFrom, liveMessages, historySources, contextOf, toNoteDto, toConversationDto } from './advisor-shared.js'
+import { ANSWERING_WINDOW_MS, projectsOf, toPublicAction, toPublicMeta, toMessageDto, PreparedAdvisorTurn, titleFrom, liveMessages, historySources, contextOf, toNoteDto, toConversationDto } from './advisor-shared.js'
 import { AdvisorConversations } from './advisor-conversations.js'
 import { AdvisorProjectNotes } from './advisor-project-notes.js'
 import { AdvisorCaseFacts } from './advisor-case-facts.js'
@@ -333,6 +333,8 @@ export class AdvisorService {
       resource: 'berater_sitzung',
     })
 
+    const allConversations = await this.advisorRepo.listAllConversations(userId)
+    const answering = new Set(await this.advisorRepo.answeringConversationIds(userId, new Date(Date.now() - ANSWERING_WINDOW_MS)))
     const openCount = cardsRes.cards.length
     const greeting =
       openCount > 0
@@ -344,7 +346,8 @@ export class AdvisorService {
       greeting,
       openCards: cardsRes.cards,
       conversationId: conversation.id,
-      conversations: conversations.map(toConversationDto),
+      conversations: conversations.map((c) => toConversationDto(c, answering.has(c.id))),
+      projects: projectsOf(taxYear, allConversations, answering),
       context: contextOf(conversation, history, await this.knownNamesForScrubbing(userId, taxYear)),
       notes: notes.map(toNoteDto),
       situation: await this.notes.getSituation(userId),
@@ -403,6 +406,11 @@ export class AdvisorService {
     const knownNames = await this.knownNamesForScrubbing(userId, taxYear)
     const scrubbedUserText = scrubUserMessagePii(dto.message.trim(), knownNames)
     const conversation = await this.conversationFor(userId, taxYear, dto.conversationId)
+    // Conversations answer side by side (#503), but one conversation has one answer at a time:
+    // two would write into the same history in an order nobody chose.
+    if ((await this.advisorRepo.answeringConversationIds(userId, new Date(Date.now() - ANSWERING_WINDOW_MS))).includes(conversation.id)) {
+      throw new ConflictError('ADVISOR_CONVERSATION_BUSY', 'In diesem Gespräch schreibt die Eule gerade schon an einer Antwort. Warte kurz oder stoppe sie.')
+    }
     if (dto.replaceFromMessageId !== undefined) {
       await this.replaceLatestTurn(userId, conversation.id, dto.replaceFromMessageId)
     }

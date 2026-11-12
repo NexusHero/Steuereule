@@ -11,6 +11,14 @@ export interface ConversationSummary {
   readonly title: string | null
   readonly createdAt: string
   readonly lastUsedAt: string
+  /** An answer is being written in it right now, on this or another device. */
+  readonly answering?: boolean | undefined
+}
+
+/** A tax year with its conversations: the year is the project (#503). */
+export interface ConversationProject {
+  readonly taxYear: number
+  readonly conversations: readonly ConversationSummary[]
 }
 
 /** One place where the search text occurs: in a message, or in the title of a conversation. */
@@ -35,6 +43,14 @@ export interface ConversationListProps {
   readonly onNew: () => Promise<void> | void
   readonly onRename: (id: string, title: string) => Promise<void>
   readonly onDelete: (id: string) => Promise<void>
+  /** The tax year that is open; its conversations are `conversations`. */
+  readonly activeYear?: number | undefined
+  /** Every tax year with conversations; the other years are listed below the open one (#503). */
+  readonly projects?: readonly ConversationProject[] | undefined
+  /** Opens a conversation of another tax year, which switches the app to that year. */
+  readonly onSelectInYear?: ((taxYear: number, id: string) => void) | undefined
+  /** The conversations this device is following an answer in; they answer side by side. */
+  readonly answeringIds?: readonly string[] | undefined
   /** Searches titles and messages of the year; without it the list has no search field. */
   readonly onSearch?: ((query: string) => Promise<readonly ConversationSearchHit[]>) | undefined
 }
@@ -45,7 +61,7 @@ type RowState = { kind: 'idle' } | { kind: 'renaming'; draft: string } | { kind:
  * The conversations of one tax year (#481). The return is the project and exists on its own; the
  * user only ever starts, opens, renames or deletes conversations.
  */
-export function ConversationList({ conversations, activeId, canSwitch, onSelect, onNew, onRename, onDelete, onSearch }: ConversationListProps) {
+export function ConversationList({ conversations, activeId, canSwitch, onSelect, onNew, onRename, onDelete, onSearch, activeYear, projects = [], onSelectInYear, answeringIds = [] }: ConversationListProps) {
   const t = useTheme()
   const styles = makeStyles(t)
   const { t: tr, i18n } = useTranslation(APP_NS)
@@ -53,6 +69,9 @@ export function ConversationList({ conversations, activeId, canSwitch, onSelect,
   const [query, setQuery] = useState('')
   const [search, setSearch] = useState<{ readonly kind: 'idle' } | { readonly kind: 'searching' } | { readonly kind: 'done'; readonly hits: readonly ConversationSearchHit[] } | { readonly kind: 'failed' }>({ kind: 'idle' })
   const searching = query.trim().length >= SEARCH_MIN_CHARS
+  const [openYears, setOpenYears] = useState<ReadonlySet<number>>(new Set())
+  const otherYears = projects.filter((project) => project.taxYear !== activeYear && project.conversations.length > 0)
+  const isAnswering = (conversation: ConversationSummary): boolean => conversation.answering === true || answeringIds.includes(conversation.id)
 
   // Search as the user types, a moment after the last keystroke; a slower earlier answer never
   // overwrites a newer one.
@@ -92,8 +111,8 @@ export function ConversationList({ conversations, activeId, canSwitch, onSelect,
 
   return (
     <View style={styles.wrap} testID="eule-conversations">
-      <Text style={styles.heading} role="heading" aria-level={2}>
-        {tr('advisor.chat.conversations.title')}
+      <Text style={styles.heading} role="heading" aria-level={2} testID="eule-project-heading">
+        {activeYear === undefined ? tr('advisor.chat.conversations.title') : tr('advisor.chat.conversations.project', { year: activeYear })}
       </Text>
       <Text style={styles.help}>{tr('advisor.chat.conversations.help')}</Text>
       <Button onPress={() => void onNew()} disabled={!canSwitch} testID="eule-conversation-new">
@@ -191,6 +210,11 @@ export function ConversationList({ conversations, activeId, canSwitch, onSelect,
                   {active ? `${tr('advisor.chat.conversations.current')} · ` : ''}
                   {dateOf(conversation.lastUsedAt)}
                 </Text>
+                {isAnswering(conversation) ? (
+                  <Text style={styles.answering} testID="eule-conversation-answering">
+                    {tr('advisor.chat.conversations.answering')}
+                  </Text>
+                ) : null}
               </Pressable>
             )}
 
@@ -216,7 +240,8 @@ export function ConversationList({ conversations, activeId, canSwitch, onSelect,
                 </Pressable>
                 <Pressable
                   accessibilityRole="button"
-                  disabled={!canSwitch}
+                  // A conversation is not deleted from under the answer that is being written in it.
+                  disabled={!canSwitch || isAnswering(conversation)}
                   onPress={() => setState(conversation.id, { kind: 'confirm-delete' })}
                   style={styles.link}
                   testID="eule-conversation-delete"
@@ -234,6 +259,44 @@ export function ConversationList({ conversations, activeId, canSwitch, onSelect,
           </View>
         )
       })}
+
+      {searching
+        ? null
+        : otherYears.map((project) => {
+            const open = openYears.has(project.taxYear)
+            return (
+              <View key={project.taxYear} style={styles.wrap} testID="eule-project">
+                <Pressable
+                  accessibilityRole="button"
+                  aria-expanded={open}
+                  onPress={() => setOpenYears((prev) => { const next = new Set(prev); if (open) next.delete(project.taxYear); else next.add(project.taxYear); return next })}
+                  style={styles.projectHeader}
+                  testID="eule-project-toggle"
+                >
+                  <Text style={styles.projectTitle}>{`${open ? '▾' : '▸'} ${tr('advisor.chat.conversations.project', { year: project.taxYear })}`}</Text>
+                  <Text style={styles.meta}>{tr('advisor.chat.conversations.count', { count: project.conversations.length })}</Text>
+                </Pressable>
+                {open
+                  ? project.conversations.map((conversation) => (
+                      <Pressable
+                        key={conversation.id}
+                        accessibilityRole="button"
+                        disabled={!canSwitch || !onSelectInYear}
+                        onPress={() => onSelectInYear?.(project.taxYear, conversation.id)}
+                        style={styles.row}
+                        testID="eule-project-conversation"
+                      >
+                        <Text style={styles.name} numberOfLines={2}>
+                          {nameOf(conversation)}
+                        </Text>
+                        <Text style={styles.meta}>{dateOf(conversation.lastUsedAt)}</Text>
+                        {isAnswering(conversation) ? <Text style={styles.answering}>{tr('advisor.chat.conversations.answering')}</Text> : null}
+                      </Pressable>
+                    ))
+                  : null}
+              </View>
+            )
+          })}
     </View>
   )
 }
@@ -281,6 +344,9 @@ function makeStyles(t: UiTheme) {
       fontSize: t.size.m,
       color: t.color.tinte,
     } as TextStyle,
+    answering: { fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: t.size.xs, color: t.color.kiTinte } as TextStyle,
+    projectHeader: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: t.space.s2 } as ViewStyle,
+    projectTitle: { fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: t.size.m, color: t.color.tinte } as TextStyle,
     confirm: { flexBasis: '100%', fontFamily: t.font.text, fontSize: t.size.s, color: t.color.tinte } as TextStyle,
   }
 }

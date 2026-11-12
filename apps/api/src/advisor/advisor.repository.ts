@@ -96,6 +96,10 @@ export interface AdvisorRepository {
   listForConversation(conversationId: string, userId: string): Promise<AdvisorChatMessageRecord[]>
   /** Most recently used first. */
   listConversations(userId: string, taxYear: number): Promise<AdvisorConversationRecord[]>
+  /** The conversations of every tax year, most recently used first: the years are the projects (#503). */
+  listAllConversations(userId: string): Promise<AdvisorConversationRecord[]>
+  /** The conversations in which an answer is being written right now (started after `since`). */
+  answeringConversationIds(userId: string, since: Date): Promise<string[]>
   /** Null when the conversation does not exist or belongs to someone else. */
   findConversation(id: string, userId: string): Promise<AdvisorConversationRecord | null>
   createConversation(userId: string, taxYear: number, title?: string | null): Promise<AdvisorConversationRecord>
@@ -155,6 +159,14 @@ export class InMemoryAdvisorRepository implements AdvisorRepository {
     return this.rows
       .filter((r) => r.conversationId === conversationId && r.userId === userId)
       .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
+  }
+
+  async listAllConversations(userId: string): Promise<AdvisorConversationRecord[]> {
+    return this.conversations.filter((c) => c.userId === userId).sort((a, b) => b.lastUsedAt.getTime() - a.lastUsedAt.getTime())
+  }
+
+  async answeringConversationIds(userId: string, since: Date): Promise<string[]> {
+    return [...new Set(this.rows.filter((r) => r.userId === userId && r.status === 'streaming' && r.createdAt >= since).map((r) => r.conversationId))]
   }
 
   async listConversations(userId: string, taxYear: number): Promise<AdvisorConversationRecord[]> {
