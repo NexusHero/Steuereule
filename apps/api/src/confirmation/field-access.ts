@@ -7,9 +7,11 @@ import {
   SALARY_CERTIFICATE_AMOUNT_FIELDS,
   QUESTIONS,
   calculateWorkdays,
+  isValidAnswer,
   isValidAssessmentAmount,
   serializeAssessmentField,
   type AssessmentField,
+  type EntryStepId,
   type CapitalFieldId,
   type IsoWeekday,
   type WageTaxCertificateFieldId,
@@ -118,6 +120,26 @@ const CHILD_ACCESS_FIELDS = [
   'careEur',
   'swissFamilyAllowanceEur',
 ] as const
+
+/**
+ * Every field a screen can take through the confirmation path, without touching a repository.
+ * The same lists `fieldAccessFrom` serves; whoever proposes a write (the owl, a receipt) can check
+ * a name against them before a draft exists that could never be applied.
+ */
+export const WRITABLE_FIELDS_BY_SCREEN: Readonly<Record<Screen, readonly string[]>> = {
+  lstb: WAGE_TAX_CERTIFICATE_FIELDS,
+  rente: PENSION_ACCESS_FIELDS,
+  kapital: CAPITAL_FIELDS,
+  vermietung: RENTAL_FIELDS,
+  profil: PROFILE_ACCESS_FIELDS,
+  stammdaten: MASTER_DATA_FIELDS,
+  kopplung: LINK_ACCESS_FIELDS,
+  interview: INTERVIEW_ACCESS_FIELDS,
+  chLohnausweis: CH_SALARY_ACCESS_FIELDS,
+  kind: CHILD_ACCESS_FIELDS,
+  commute: COMMUTE_ACCESS_FIELDS,
+  assessment: ASSESSMENT_ACCESS_FIELDS,
+}
 
 export function fieldAccessFrom({
   lstb,
@@ -297,6 +319,12 @@ export function fieldAccessFrom({
         return Object.fromEntries(rows.map((r) => [r.questionId, r.value]))
       },
       async write(userId, taxYear, _instance, field, value) {
+        // The interview's own endpoint checks every answer; this path did not. One value outside
+        // the accepted set (say „angestellt“ for „Angestellt“) made every later read of that
+        // user's interview fail (#476). Null and '' take an answer back and stay allowed.
+        if (value !== null && value !== '' && !isValidAnswer(field as EntryStepId, value)) {
+          throw new InvalidInputError('FIELD_VALUE_INVALID', `"${value}" is not an accepted answer for "${field}".`)
+        }
         await interview.write({
           userId,
           taxYear,

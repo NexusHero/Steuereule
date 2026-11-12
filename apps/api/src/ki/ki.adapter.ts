@@ -130,8 +130,16 @@ function findPersonKey(value: unknown): string | null {
 // shape; they are blanked before the pattern checks (#450 P5: ~1 in 5 LStB scans failed on it).
 const UUID_REGEX = /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi
 
+// The fingerprint of an owl hint is a hex hash, and one like `cc570711f2b86475` has the IBAN shape
+// too (two letters, two digits, then enough characters). It is derived from the hint, not from the
+// user: everyone who got the 2026 hint "Fortbildung ohne Fahrt" lost the chat to "IBAN detected"
+// from that moment on (#476, found by playing a customer against the real model).
+// Exactly the shape the core produces (16 lowercase hex characters): an IBAN is longer, so one that
+// somehow ended up in such a field is still caught.
+const FINGERPRINT_REGEX = /"fingerprint":"[0-9a-f]{16}"/g
+
 export function checkPiiFree(payload: unknown): void {
-  const serialized = JSON.stringify(payload).replace(UUID_REGEX, '<id>')
+  const serialized = JSON.stringify(payload).replace(UUID_REGEX, '<id>').replace(FINGERPRINT_REGEX, '"fingerprint":"<id>"')
   if (IBAN_REGEX.test(serialized)) {
     throw new Error('PII boundary violation: IBAN detected in KI payload.')
   }

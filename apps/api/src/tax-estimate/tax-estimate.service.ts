@@ -172,7 +172,7 @@ export class TaxEstimateService {
           lohnsteuer: state.lohnsteuer,
           sozialversicherung: state.sozialversicherung,
           commuterAllowance: allowance,
-          otherIncomeRelatedExpenses: numbers.relocationCosts,
+          otherIncomeRelatedExpenses: numbers.relocationCosts + numbers.trainingCosts,
           donations: numbers.donations,
           selfPaidKvPv: numbers.healthCareContributions,
           householdReductionEur,
@@ -332,7 +332,7 @@ export class TaxEstimateService {
         grossWage: state.bruttoarbeitslohn,
         wageTax: state.lohnsteuer,
         socialSecurity: state.sozialversicherung,
-        commuteAllowance: allowance + numbers.relocationCosts,
+        commuteAllowance: allowance + numbers.relocationCosts + numbers.trainingCosts,
         selfPaidHealthCare: numbers.healthCareContributions,
       },
     }

@@ -10,19 +10,31 @@ import {
   IsOptional,
   IsString,
   MaxLength,
+  ValidateIf,
   ValidateNested,
   registerDecorator,
 } from 'class-validator'
 import {
+  ADVISOR_FEEDBACK_RATINGS,
+  ADVISOR_FEEDBACK_REASONS,
+  ADVISOR_MESSAGE_STATUSES,
   ADVISOR_QUICK_ACTIONS,
   SCREENS,
+  type AdvisorFeedbackRating,
+  type AdvisorFeedbackReason,
+  type AdvisorMessageFeedback,
+  type AdvisorMessageStatus,
   type AdvisorQuickAction,
   type AdvisorActionProposal,
   type AdvisorActionStatus,
   type AdvisorChatMessageView,
   type AdvisorLegalSource,
   type AdvisorLstbScanMeta,
+  type AdvisorAnswerNotice,
+  type AdvisorAnswerNoticeKind,
+  type AdvisorEffectKind,
   type AdvisorMessageMeta,
+  type AdvisorNotStaged,
   type AdvisorTwoPathsProposal,
   type LstbExtractedFieldStatus,
   type LstbFieldReason,
@@ -152,6 +164,16 @@ export class AdvisorActionProposalDto implements AdvisorActionProposal {
   @ApiProperty({ type: Number, example: 85 })
   deltaEur!: number
 
+  @ApiPropertyOptional({
+    type: String,
+    enum: ['computed', 'not-computable'],
+    description: 'computed: the three euro figures come from the app\'s own estimate. not-computable: there is no figure, see effectHint. Absent: approximation.',
+  })
+  effect?: AdvisorEffectKind | undefined
+
+  @ApiPropertyOptional({ type: String, description: 'Why the effect cannot be put in euros yet.' })
+  effectHint?: string | undefined
+
   @ApiProperty({ type: String, example: 'Sonderausgabenabzug nach § 10b EStG.' })
   reason!: string
 
@@ -221,9 +243,43 @@ export class AdvisorLstbScanMetaDto implements AdvisorLstbScanMeta {
   actionIds!: readonly string[]
 }
 
+export class AdvisorAnswerNoticeDto implements AdvisorAnswerNotice {
+  @ApiProperty({ type: String, enum: ['unbacked-amount', 'claims-write', 'nothing-prepared', 'invented-source', 'out-of-scope'] })
+  kind!: AdvisorAnswerNoticeKind
+
+  @ApiProperty({ type: String, example: 'Die Eule trägt nichts selbst ein.' })
+  text!: string
+}
+
+export class AdvisorNotStagedDto implements AdvisorNotStaged {
+  @ApiProperty({ type: String, example: 'Mieteinnahmen' })
+  label!: string
+
+  @ApiProperty({ type: String, example: 'Es gibt noch kein Vermietungsobjekt.' })
+  reason!: string
+
+  @ApiPropertyOptional({ type: String, description: 'The mask where the user can enter it by hand.', example: 'vermietung' })
+  screen?: Screen | undefined
+}
+
 export class AdvisorMessageMetaDto implements AdvisorMessageMeta {
   @ApiPropertyOptional({ type: [String] })
   choices?: readonly string[] | undefined
+
+  @ApiPropertyOptional({ type: [String], description: 'Steps the owl reported while working on this answer (#476).' })
+  steps?: readonly string[] | undefined
+
+  @ApiPropertyOptional({
+    type: () => [AdvisorNotStagedDto],
+    description: 'Drafts the owl tried to prepare in this answer and could not, with the reason (ADR-0066).',
+  })
+  notStaged?: readonly AdvisorNotStagedDto[] | undefined
+
+  @ApiPropertyOptional({
+    type: () => [AdvisorAnswerNoticeDto],
+    description: 'What the check of the finished answer found: a figure the app did not compute, a claim to have written something, an unknown source (ADR-0066).',
+  })
+  notices?: readonly AdvisorAnswerNoticeDto[] | undefined
 
   @ApiPropertyOptional({ type: AdvisorActionProposalDto })
   action?: AdvisorActionProposalDto | undefined
@@ -241,6 +297,14 @@ export class AdvisorMessageMetaDto implements AdvisorMessageMeta {
   sources?: readonly OwlSourceId[] | undefined
 }
 
+export class AdvisorMessageFeedbackDto implements AdvisorMessageFeedback {
+  @ApiProperty({ type: String, enum: ADVISOR_FEEDBACK_RATINGS })
+  rating!: AdvisorFeedbackRating
+
+  @ApiPropertyOptional({ type: String, enum: ADVISOR_FEEDBACK_REASONS })
+  reason?: AdvisorFeedbackReason | undefined
+}
+
 export class AdvisorChatMessageDto implements AdvisorChatMessageView {
   @ApiProperty({ type: String, example: 'msg-123' })
   id!: string
@@ -256,6 +320,44 @@ export class AdvisorChatMessageDto implements AdvisorChatMessageView {
 
   @ApiProperty({ type: String, example: '2026-11-07T09:00:00.000Z' })
   createdAt!: string
+
+  @ApiPropertyOptional({
+    type: String,
+    enum: ADVISOR_MESSAGE_STATUSES,
+    description: 'Lifecycle of the message (#476). An aborted or failed answer keeps its partial text and carries no proposal.',
+  })
+  status?: AdvisorMessageStatus | undefined
+
+  @ApiPropertyOptional({ type: String, description: 'Reasoning summary of the provider; considerations of the model, not advice.' })
+  reasoning?: string | undefined
+
+  @ApiPropertyOptional({ type: () => AdvisorMessageFeedbackDto, nullable: true })
+  feedback?: AdvisorMessageFeedbackDto | null | undefined
+
+  @ApiPropertyOptional({ type: String, description: 'Present while status is streaming: the run to re-attach to.' })
+  runId?: string | undefined
+}
+
+export class SetAdvisorFeedbackDto {
+  @ApiProperty({ type: String, enum: ADVISOR_FEEDBACK_RATINGS, nullable: true, description: 'null removes the rating.' })
+  @ValidateIf((_object, value) => value !== null)
+  @IsIn(ADVISOR_FEEDBACK_RATINGS)
+  rating!: AdvisorFeedbackRating | null
+
+  @ApiPropertyOptional({ type: String, enum: ADVISOR_FEEDBACK_REASONS, description: 'Only kept with a thumbs down.' })
+  @IsOptional()
+  @IsIn(ADVISOR_FEEDBACK_REASONS)
+  reason?: AdvisorFeedbackReason | undefined
+}
+
+export class ClearAdvisorConversationResponseDto {
+  @ApiProperty({ type: Number, example: 12 })
+  deletedMessages!: number
+}
+
+export class StopAdvisorRunResponseDto {
+  @ApiProperty({ type: Boolean, description: 'false when the run had already ended.' })
+  stopped!: boolean
 }
 
 export class AdvisorSessionResponseDto {

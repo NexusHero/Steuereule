@@ -14,5 +14,6 @@ import { TaxEstimateService } from './tax-estimate.service.js'
   imports: [LstbModule, InterviewModule, ChSalaryCertificateModule, MasterDataModule, CommuteModule, LinkModule, ChildrenModule, RentalModule],
   controllers: [TaxEstimateController],
   providers: [TaxEstimateService],
+  exports: [TaxEstimateService],
 })
 export class TaxEstimateModule {}

@@ -2017,6 +2017,39 @@
         "tags": [
           "eulen-modus"
         ]
+      },
+      "delete": {
+        "operationId": "AdvisorController_clearConversation",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClearAdvisorConversationResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "An answer is still running."
+          }
+        },
+        "summary": "Clear the conversation of this tax year; values already applied to the return stay",
+        "tags": [
+          "eulen-modus"
+        ]
       }
     },
     "/v1/steuerjahre/{jahr}/advisor/chat": {
@@ -2065,6 +2098,7 @@
     },
     "/v1/steuerjahre/{jahr}/advisor/stream": {
       "post": {
+        "description": "Starts a run that continues on the server even if this connection drops. Every event carries its sequence number as SSE id; the first event (`start`) names the run. Re-attach with GET runs/{runId}/events.",
         "operationId": "AdvisorController_streamMessage",
         "parameters": [
           {
@@ -2102,6 +2136,149 @@
             "description": "Requires account."
           }
         },
+        "summary": "Ask the owl and follow the answer as server-sent events",
+        "tags": [
+          "eulen-modus"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/advisor/runs/{runId}/events": {
+      "get": {
+        "description": "Server-sent events after the given sequence number (`Last-Event-ID` header or `after` query). Ends when the run has ended.",
+        "operationId": "AdvisorController_runEvents",
+        "parameters": [
+          {
+            "name": "after",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": 12,
+              "type": "number"
+            }
+          },
+          {
+            "name": "runId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "text/event-stream"
+          },
+          "404": {
+            "description": "No such run for this user (or it has expired)."
+          }
+        },
+        "summary": "Re-attach to a running or just finished answer",
+        "tags": [
+          "eulen-modus"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/advisor/runs/{runId}/stop": {
+      "post": {
+        "operationId": "AdvisorController_stopRun",
+        "parameters": [
+          {
+            "name": "runId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StopAdvisorRunResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such run for this user (or it has expired)."
+          }
+        },
+        "summary": "Stop a running answer; the text so far is kept as aborted, without proposals",
+        "tags": [
+          "eulen-modus"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/advisor/messages/{messageId}/feedback": {
+      "put": {
+        "operationId": "AdvisorController_setFeedback",
+        "parameters": [
+          {
+            "name": "messageId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetAdvisorFeedbackDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdvisorChatMessageDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such message for this user and year."
+          }
+        },
+        "summary": "Rate an answer of the owl (thumbs up/down, optional reason); null removes the rating",
         "tags": [
           "eulen-modus"
         ]
@@ -7035,6 +7212,18 @@
             "type": "number",
             "example": 85
           },
+          "effect": {
+            "type": "string",
+            "enum": [
+              "computed",
+              "not-computable"
+            ],
+            "description": "computed: the three euro figures come from the app's own estimate. not-computable: there is no figure, see effectHint. Absent: approximation."
+          },
+          "effectHint": {
+            "type": "string",
+            "description": "Why the effect cannot be put in euros yet."
+          },
           "reason": {
             "type": "string",
             "example": "Sonderausgabenabzug nach § 10b EStG."
@@ -7111,6 +7300,51 @@
           "deltaEur",
           "reason",
           "sourceId"
+        ]
+      },
+      "AdvisorNotStagedDto": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string",
+            "example": "Mieteinnahmen"
+          },
+          "reason": {
+            "type": "string",
+            "example": "Es gibt noch kein Vermietungsobjekt."
+          },
+          "screen": {
+            "type": "string",
+            "description": "The mask where the user can enter it by hand.",
+            "example": "vermietung"
+          }
+        },
+        "required": [
+          "label",
+          "reason"
+        ]
+      },
+      "AdvisorAnswerNoticeDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "unbacked-amount",
+              "claims-write",
+              "nothing-prepared",
+              "invented-source",
+              "out-of-scope"
+            ]
+          },
+          "text": {
+            "type": "string",
+            "example": "Die Eule trägt nichts selbst ein."
+          }
+        },
+        "required": [
+          "kind",
+          "text"
         ]
       },
       "AdvisorLstbScanMetaDto": {
@@ -7260,6 +7494,18 @@
             "type": "number",
             "example": 85
           },
+          "effect": {
+            "type": "string",
+            "enum": [
+              "computed",
+              "not-computable"
+            ],
+            "description": "computed: the three euro figures come from the app's own estimate. not-computable: there is no figure, see effectHint. Absent: approximation."
+          },
+          "effectHint": {
+            "type": "string",
+            "description": "Why the effect cannot be put in euros yet."
+          },
           "reason": {
             "type": "string",
             "example": "Sonderausgabenabzug nach § 10b EStG."
@@ -7388,6 +7634,27 @@
               "type": "string"
             }
           },
+          "steps": {
+            "description": "Steps the owl reported while working on this answer (#476).",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "notStaged": {
+            "description": "Drafts the owl tried to prepare in this answer and could not, with the reason (ADR-0066).",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdvisorNotStagedDto"
+            }
+          },
+          "notices": {
+            "description": "What the check of the finished answer found: a figure the app did not compute, a claim to have written something, an unknown source (ADR-0066).",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdvisorAnswerNoticeDto"
+            }
+          },
           "action": {
             "$ref": "#/components/schemas/AdvisorActionProposalDto"
           },
@@ -7422,6 +7689,29 @@
           }
         }
       },
+      "AdvisorMessageFeedbackDto": {
+        "type": "object",
+        "properties": {
+          "rating": {
+            "type": "string",
+            "enum": [
+              "up",
+              "down"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "falsch",
+              "unklar",
+              "nicht_hilfreich"
+            ]
+          }
+        },
+        "required": [
+          "rating"
+        ]
+      },
       "AdvisorChatMessageDto": {
         "type": "object",
         "properties": {
@@ -7453,6 +7743,33 @@
           "createdAt": {
             "type": "string",
             "example": "2026-11-07T09:00:00.000Z"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "streaming",
+              "complete",
+              "aborted",
+              "failed"
+            ],
+            "description": "Lifecycle of the message (#476). An aborted or failed answer keeps its partial text and carries no proposal."
+          },
+          "reasoning": {
+            "type": "string",
+            "description": "Reasoning summary of the provider; considerations of the model, not advice."
+          },
+          "feedback": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AdvisorMessageFeedbackDto"
+              }
+            ]
+          },
+          "runId": {
+            "type": "string",
+            "description": "Present while status is streaming: the run to re-attach to."
           }
         },
         "required": [
@@ -7975,6 +8292,56 @@
           "userMessage",
           "assistantMessage",
           "mode"
+        ]
+      },
+      "StopAdvisorRunResponseDto": {
+        "type": "object",
+        "properties": {
+          "stopped": {
+            "type": "boolean",
+            "description": "false when the run had already ended."
+          }
+        },
+        "required": [
+          "stopped"
+        ]
+      },
+      "ClearAdvisorConversationResponseDto": {
+        "type": "object",
+        "properties": {
+          "deletedMessages": {
+            "type": "number",
+            "example": 12
+          }
+        },
+        "required": [
+          "deletedMessages"
+        ]
+      },
+      "SetAdvisorFeedbackDto": {
+        "type": "object",
+        "properties": {
+          "rating": {
+            "type": "string",
+            "enum": [
+              "up",
+              "down"
+            ],
+            "nullable": true,
+            "description": "null removes the rating."
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "falsch",
+              "unklar",
+              "nicht_hilfreich"
+            ],
+            "description": "Only kept with a thumbs down."
+          }
+        },
+        "required": [
+          "rating"
         ]
       },
       "ApplyBatchActionItemDto": {

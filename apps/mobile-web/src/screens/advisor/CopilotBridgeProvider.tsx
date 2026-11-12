@@ -5,8 +5,11 @@ import type { AdvisorActionProposal, AdvisorChatMessageView, AdvisorPlanStepStat
 import {
   advisorControllerApplyAction,
   advisorControllerApplyBatch,
+  advisorControllerGetSession,
+  advisorControllerStopRun,
   advisorControllerUndoAction,
   getAdvisorControllerGetSessionQueryKey,
+  getAdvisorControllerRunEventsUrl,
   getAdvisorControllerStreamMessageUrl,
   getApiClientBaseUrl,
   getAssessmentControllerGetQueryKey,
@@ -32,6 +35,16 @@ import {
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { captureReceipt, type CapturePhase, type CaptureResult } from '../../lib/receipts/captureReceipt'
+import { createFrameBatcher } from './chat/frameBatcher'
+import { followRun, type RunFrame } from './chat/runStream'
+
+/** The answer this provider is currently following. */
+interface ActiveRun {
+  /** Known from the `start` event, or up front when re-attaching. */
+  id: string | null
+  /** Set by Stop; tells a user's stop apart from a request that was merely superseded. */
+  stopped: boolean
+}
 
 export type CopilotMode = 'cockpit' | 'eulen-modus'
 
@@ -124,6 +137,14 @@ export interface CopilotBridgeContextValue {
   readonly streaming: boolean
   readonly streamSteps: readonly string[]
   readonly streamedText: string
+  /** The reasoning summary of the running answer, as far as it has arrived (#476). */
+  readonly streamedReasoning: string
+  /** The question of the running turn, known from its first event; shown until the session has it. */
+  readonly pendingUserMessage: AdvisorChatMessageView | null
+  /** True while the connection to a running answer is being restored. */
+  readonly reconnecting: boolean
+  /** Follows an answer that was found still running, e.g. after a reload. */
+  readonly resumeRun: (runId: string) => Promise<StreamOutcome>
   /** True when the last answer came from the deterministic engine because no model answered. */
   readonly basisMode: boolean
   readonly chatError: string | null
@@ -236,26 +257,6 @@ export async function invalidateAllTaxQueries(queryClient: QueryClient, taxYear:
   ])
 }
 
-function parseSseBlock(block: string): { event: string; data: unknown } | null {
-  const lines = block.split(/\r?\n/)
-  let eventName = 'message'
-  const dataLines: string[] = []
-  for (const line of lines) {
-    if (line.startsWith('event:')) {
-      eventName = line.slice(6).trim()
-    } else if (line.startsWith('data:')) {
-      dataLines.push(line.slice(5).trimStart())
-    }
-  }
-  if (dataLines.length === 0) return null
-  const rawJson = dataLines.join('\n')
-  try {
-    return { event: eventName, data: JSON.parse(rawJson) as unknown }
-  } catch {
-    return null
-  }
-}
-
 export function CopilotBridgeProvider({
   mode,
   onModeChange,
@@ -273,7 +274,12 @@ export function CopilotBridgeProvider({
   const [chatError, setChatError] = useState<string | null>(null)
   const [abortedTurn, setAbortedTurn] = useState<AbortedTurn | null>(null)
   const [plan, setPlan] = useState<AdvisorPlanView | null>(null)
+  const [streamedReasoning, setStreamedReasoning] = useState('')
+  const [pendingUserMessage, setPendingUserMessage] = useState<AdvisorChatMessageView | null>(null)
+  const [reconnecting, setReconnecting] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
+  const runRef = useRef<ActiveRun | null>(null)
+  const resumedRunsRef = useRef<Set<string>>(new Set())
   const [batchApplying, setBatchApplying] = useState(false)
   const [staleConflict, setStaleConflict] = useState<StaleConflictState | null>(null)
   const [parsingReceipt, setParsingReceipt] = useState(false)
@@ -317,33 +323,154 @@ export function CopilotBridgeProvider({
     [receiptLinkedActionIds],
   )
 
-  const sendStreamingMessage = useCallback(
-    async (message: string, activeScreen?: Screen, options?: SendStreamingOptions): Promise<StreamOutcome> => {
-      if (!isAuthenticated) return null
+  /**
+   * Follows one answer to its end: a new one (`question` set) or one found still running. The
+   * answer lives on the server, so a dropped connection is re-attached, not treated as an abort.
+   */
+  const followAnswer = useCallback(
+    async (question: string | null, open: (signal: AbortSignal) => Promise<Response>, knownRunId?: string): Promise<StreamOutcome> => {
       abortRef.current?.abort()
       const controller = new AbortController()
       abortRef.current = controller
+      const run: ActiveRun = { id: knownRunId ?? null, stopped: false }
+      runRef.current = run
       let partialText = ''
-      // The server drops an aborted turn without storing it; only the text read so far survives,
-      // never a proposal (#451 decision 2). The user message was stored, so re-read the session.
-      const markAborted = (): 'aborted' => {
-        setAbortedTurn({ question: message, partialText })
-        setPlan(abortPlan)
-        void queryClient.invalidateQueries({ queryKey: getAdvisorControllerGetSessionQueryKey(taxYear) })
+      let failed = false
+      let doneResponse: SendAdvisorMessageResponseDto | null = null
+      const sessionKey = getAdvisorControllerGetSessionQueryKey(taxYear)
+      const textBatcher = createFrameBatcher((text) => setStreamedText((prev) => prev + text))
+      const reasoningBatcher = createFrameBatcher((text) => setStreamedReasoning((prev) => prev + text))
+
+      // Only a stop the user asked for leaves an aborted bubble; a superseded request just ends.
+      const endAborted = async (): Promise<'aborted'> => {
+        if (run.stopped) {
+          if (question !== null) setAbortedTurn({ question, partialText })
+          setPlan(abortPlan)
+        }
+        await queryClient.invalidateQueries({ queryKey: sessionKey })
         return 'aborted'
       }
+
       setChatError(null)
       setAbortedTurn(null)
       setPlan(null)
       setStreamSteps([])
       setStreamedText('')
+      setStreamedReasoning('')
+      setPendingUserMessage(null)
+      setReconnecting(false)
       setStreaming(true)
 
+      const onFrame = ({ event, data }: RunFrame): void => {
+        if (typeof data !== 'object' || data === null) return
+        setReconnecting(false)
+        if (event === 'start') {
+          const { runId, userMessage } = data as { runId?: unknown; userMessage?: unknown }
+          if (typeof runId === 'string') {
+            run.id = runId
+            // A run this provider follows itself is never picked up a second time as "found running".
+            resumedRunsRef.current.add(runId)
+          }
+          if (typeof userMessage === 'object' && userMessage !== null) setPendingUserMessage(userMessage as AdvisorChatMessageView)
+        } else if (event === 'status' && 'text' in data) {
+          const text = String((data as { text: unknown }).text)
+          setStreamSteps((prev) => [...prev, text])
+        } else if (event === 'tool' && 'label' in data) {
+          const label = String((data as { label: unknown }).label)
+          setStreamSteps((prev) => [...prev, label])
+        } else if (event === 'token' && 'text' in data) {
+          const chunk = String((data as { text: unknown }).text)
+          partialText += chunk
+          textBatcher.push(chunk)
+        } else if (event === 'reasoning' && 'text' in data) {
+          reasoningBatcher.push(String((data as { text: unknown }).text))
+        } else if (event === 'plan') {
+          const steps = parsePlanSteps(data)
+          if (steps && steps.length > 0) setPlan({ steps, finished: false })
+        } else if (event === 'ui_command' && 'openMask' in data) {
+          const { openMask, focus } = data as { openMask: Screen; focus?: unknown }
+          openMaskPreview(openMask, typeof focus === 'string' ? focus : undefined)
+        } else if (event === 'error') {
+          failed = true
+          textBatcher.cancel()
+          setStreamedText('')
+          setChatError(extractErrorMessage(data) ?? tr('advisor.chat.turnFailed'))
+        } else if (event === 'done') {
+          doneResponse = data as SendAdvisorMessageResponseDto
+          setBasisMode(doneResponse.mode === 'deterministic_fallback')
+          setPlan((prev) => (prev === null ? null : { ...prev, finished: true }))
+        }
+      }
+
       try {
-        const url = `${getApiClientBaseUrl()}${getAdvisorControllerStreamMessageUrl(taxYear)}`
-        const response = await fetch(url, {
-          method: 'POST',
+        const result = await followRun({
+          open: () => open(controller.signal),
+          resume: (runId, afterSeq) =>
+            fetch(`${getApiClientBaseUrl()}${getAdvisorControllerRunEventsUrl(taxYear, runId)}`, {
+              signal: controller.signal,
+              credentials: 'include',
+              headers: { Accept: 'text/event-stream', 'Last-Event-ID': String(afterSeq) },
+            }),
+          onFrame,
           signal: controller.signal,
+          runId: knownRunId,
+          onReconnecting: () => setReconnecting(true),
+        })
+        textBatcher.flush()
+        reasoningBatcher.flush()
+
+        if (result.kind === 'aborted') return await endAborted()
+        if (result.kind === 'http-error') {
+          setChatError(extractErrorMessage(result.body) ?? `HTTP ${result.status}`)
+          return null
+        }
+        if (result.kind === 'lost') {
+          // The answer may well have finished on the server; the stored conversation knows.
+          setChatError(tr('advisor.chat.connectionLost'))
+          await queryClient.invalidateQueries({ queryKey: sessionKey })
+          return null
+        }
+
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: sessionKey }),
+          queryClient.invalidateQueries({ queryKey: getOwlModeControllerGetSettingQueryKey() }),
+          queryClient.invalidateQueries({ queryKey: getOwlModeControllerGetCardsQueryKey(taxYear) }),
+        ])
+        if (failed) return null
+        const finished = doneResponse as SendAdvisorMessageResponseDto | null
+        if (finished?.userMessage && finished.assistantMessage) {
+          return [
+            finished.userMessage as unknown as AdvisorChatMessageView,
+            finished.assistantMessage as unknown as AdvisorChatMessageView,
+          ]
+        }
+        return []
+      } catch (error) {
+        if (controller.signal.aborted) return await endAborted()
+        setChatError(error instanceof Error ? error.message : tr('advisor.chat.connectionLost'))
+        return null
+      } finally {
+        textBatcher.cancel()
+        reasoningBatcher.cancel()
+        if (abortRef.current === controller) {
+          abortRef.current = null
+          runRef.current = null
+          setPendingUserMessage(null)
+          setReconnecting(false)
+          setStreaming(false)
+        }
+      }
+    },
+    [openMaskPreview, queryClient, taxYear, tr],
+  )
+
+  const sendStreamingMessage = useCallback(
+    async (message: string, activeScreen?: Screen, options?: SendStreamingOptions): Promise<StreamOutcome> => {
+      if (!isAuthenticated) return null
+      return followAnswer(message, (signal) =>
+        fetch(`${getApiClientBaseUrl()}${getAdvisorControllerStreamMessageUrl(taxYear)}`, {
+          method: 'POST',
+          signal,
           credentials: 'include',
           headers: {
             'Content-Type': 'application/json',
@@ -355,116 +482,57 @@ export function CopilotBridgeProvider({
             ...(options?.quickAction ? { quickAction: options.quickAction } : {}),
             ...(options?.replaceFromMessageId ? { replaceFromMessageId: options.replaceFromMessageId } : {}),
           }),
-        })
-
-        if (!response.ok) {
-          const textBody = await response.text().catch(() => '')
-          let parsed: unknown = null
-          try {
-            parsed = textBody ? JSON.parse(textBody) : null
-          } catch {
-            parsed = null
-          }
-          setChatError(extractErrorMessage(parsed) ?? `HTTP ${response.status}`)
-          return null
-        }
-
-        const contentType = response.headers.get('content-type') ?? ''
-        let doneResponse: SendAdvisorMessageResponseDto | null = null
-
-        const handleSseEvent = (parsedEvent: { event: string; data: unknown }) => {
-          const { event, data } = parsedEvent
-          if (event === 'status' && typeof data === 'object' && data !== null && 'text' in data) {
-            const text = String((data as { text: unknown }).text)
-            setStreamSteps((prev) => [...prev, text])
-          } else if (event === 'tool' && typeof data === 'object' && data !== null && 'label' in data) {
-            const label = String((data as { label: unknown }).label)
-            setStreamSteps((prev) => [...prev, label])
-          } else if (event === 'token' && typeof data === 'object' && data !== null && 'text' in data) {
-            const chunk = String((data as { text: unknown }).text)
-            partialText += chunk
-            setStreamedText((prev) => prev + chunk)
-          } else if (event === 'plan') {
-            const steps = parsePlanSteps(data)
-            if (steps && steps.length > 0) setPlan({ steps, finished: false })
-          } else if (event === 'ui_command' && typeof data === 'object' && data !== null && 'openMask' in data) {
-            const { openMask, focus } = data as { openMask: Screen; focus?: unknown }
-            openMaskPreview(openMask, typeof focus === 'string' ? focus : undefined)
-          } else if (event === 'error' && typeof data === 'object' && data !== null) {
-            setStreamedText('')
-            setChatError(extractErrorMessage(data) ?? 'Die Antwort der Eule ist unterwegs abgebrochen.')
-          } else if (event === 'done' && typeof data === 'object' && data !== null) {
-            doneResponse = data as SendAdvisorMessageResponseDto
-            setBasisMode(doneResponse.mode === 'deterministic_fallback')
-            setPlan((prev) => (prev === null ? null : { ...prev, finished: true }))
-          }
-        }
-
-        if (contentType.includes('text/event-stream')) {
-          if (response.body && typeof response.body.getReader === 'function') {
-            const reader = response.body.getReader()
-            // Cancelling the reader closes the stream even where the fetch implementation does not
-            // tie the body to the abort signal; the server then sees the connection close.
-            controller.signal.addEventListener('abort', () => void reader.cancel().catch(() => {}), { once: true })
-            const decoder = new TextDecoder()
-            let buffer = ''
-            for (;;) {
-              const { value, done } = await reader.read()
-              if (done) break
-              buffer += decoder.decode(value, { stream: true })
-              const parts = buffer.split(/\r?\n\r?\n/)
-              buffer = parts.pop() ?? ''
-              for (const part of parts) {
-                const parsed = parseSseBlock(part)
-                if (parsed) handleSseEvent(parsed)
-              }
-            }
-            if (buffer.trim()) {
-              const parsed = parseSseBlock(buffer)
-              if (parsed) handleSseEvent(parsed)
-            }
-          } else {
-            const fullText = await response.text()
-            for (const part of fullText.split(/\r?\n\r?\n/)) {
-              const parsed = parseSseBlock(part)
-              if (parsed) handleSseEvent(parsed)
-            }
-          }
-        } else {
-          doneResponse = (await response.json()) as SendAdvisorMessageResponseDto
-        }
-        if (controller.signal.aborted) return markAborted()
-
-        await Promise.all([
-          queryClient.invalidateQueries({ queryKey: getAdvisorControllerGetSessionQueryKey(taxYear) }),
-          queryClient.invalidateQueries({ queryKey: getOwlModeControllerGetSettingQueryKey() }),
-          queryClient.invalidateQueries({ queryKey: getOwlModeControllerGetCardsQueryKey(taxYear) }),
-        ])
-
-        if (doneResponse?.userMessage && doneResponse?.assistantMessage) {
-          return [
-            doneResponse.userMessage as unknown as AdvisorChatMessageView,
-            doneResponse.assistantMessage as unknown as AdvisorChatMessageView,
-          ]
-        }
-        return []
-      } catch (error) {
-        if (controller.signal.aborted) return markAborted()
-        setChatError(error instanceof Error ? error.message : 'Verbindung unterbrochen.')
-        return null
-      } finally {
-        if (abortRef.current === controller) {
-          abortRef.current = null
-          setStreaming(false)
-        }
-      }
+        }),
+      )
     },
-    [isAuthenticated, openMaskPreview, queryClient, taxYear],
+    [followAnswer, isAuthenticated, taxYear],
   )
 
+  const resumeRun = useCallback(
+    async (runId: string): Promise<StreamOutcome> => {
+      // One attempt per run: a run that cannot be followed must not be retried on every render.
+      if (!isAuthenticated || resumedRunsRef.current.has(runId) || abortRef.current !== null) return null
+      resumedRunsRef.current.add(runId)
+      return followAnswer(
+        null,
+        (signal) =>
+          fetch(`${getApiClientBaseUrl()}${getAdvisorControllerRunEventsUrl(taxYear, runId)}`, {
+            signal,
+            credentials: 'include',
+            headers: { Accept: 'text/event-stream' },
+          }),
+        runId,
+      )
+    },
+    [followAnswer, isAuthenticated, taxYear],
+  )
+
+  /**
+   * Stop is the only thing that ends an answer (#476): the connection is closed and the server is
+   * told to stop the run, which stores the text so far as aborted.
+   */
   const stopStreaming = useCallback(() => {
+    const run = runRef.current
+    if (run === null) return
+    run.stopped = true
     abortRef.current?.abort()
-  }, [])
+    void (async () => {
+      try {
+        let runId = run.id
+        if (runId === null) {
+          // Stopped before the first event arrived: the session knows which answer is running.
+          const session = await advisorControllerGetSession(taxYear)
+          const running = session.status === 200 ? session.data.messages.find((m) => m.status === 'streaming') : undefined
+          runId = running?.runId ?? null
+        }
+        if (runId !== null) await advisorControllerStopRun(taxYear, runId)
+      } catch {
+        // Offline or already ended: the conversation shows whatever state the answer reached.
+      } finally {
+        await queryClient.invalidateQueries({ queryKey: getAdvisorControllerGetSessionQueryKey(taxYear) })
+      }
+    })()
+  }, [queryClient, taxYear])
 
   const applyAllPending = useCallback(
     async (
@@ -545,12 +613,15 @@ export function CopilotBridgeProvider({
           })
           return false
         }
+        // A draft that cannot be written must say so; a button that does nothing is the worst answer.
+        setChatError(extractErrorMessage(res.data) ?? tr('advisor.chat.applyFailed'))
         return false
       } catch {
+        setChatError(tr('advisor.chat.applyFailed'))
         return false
       }
     },
-    [isAuthenticated, queryClient, recordAppliedActions, taxYear],
+    [isAuthenticated, queryClient, recordAppliedActions, taxYear, tr],
   )
 
   const undoSingleAction = useCallback(
@@ -684,6 +755,10 @@ export function CopilotBridgeProvider({
       streaming,
       streamSteps,
       streamedText,
+      streamedReasoning,
+      pendingUserMessage,
+      reconnecting,
+      resumeRun,
       basisMode,
       chatError,
       clearChatError: () => setChatError(null),
@@ -722,6 +797,10 @@ export function CopilotBridgeProvider({
       streaming,
       streamSteps,
       streamedText,
+      streamedReasoning,
+      pendingUserMessage,
+      reconnecting,
+      resumeRun,
       basisMode,
       chatError,
       sendStreamingMessage,

@@ -118,6 +118,92 @@ describe('AdvisorService (In-App Steuerberater Agent "Deine Eule")', () => {
     await interviewRepo.write({ userId: USER, taxYear: YEAR - 1, questionId: 'spenden-betrag', value: '200', openItems: 0 })
   })
 
+  it('applies a draft with several fields to a commute record that does not exist yet (#476)', async () => {
+    // Found against the real model: the first field created the record with its defaults (Mon–Fri),
+    // and the next field of the same draft was then refused as "changed in the meantime".
+    await advisorRepo.createMessage({
+      userId: USER,
+      taxYear: YEAR,
+      role: 'assistant',
+      content: 'Entwurf.',
+      meta: {
+        action: {
+          actionId: 'act-commute-new', status: 'pending', screen: 'commute', field: 'oneWayKm', instance: null,
+          companionFields: { transport: 'pkw', workdays: '1,2,3,4,5' },
+          companionExpectedValues: { transport: null, workdays: null },
+          label: 'Arbeitsweg', previousValue: null, expectedPreviousValue: null, newValue: '38',
+          beforeRefundEur: 0, afterRefundEur: 600, deltaEur: 600, reason: 'r', sourceId: 'estg-9-1',
+        },
+      },
+    })
+
+    const applied = await advisorService.applyAction(USER, YEAR, 'act-commute-new')
+    expect(applied.action.status).toBe('applied')
+    expect(await commuteRepo.findForUserAndYear(USER, YEAR)).toMatchObject({ oneWayKm: 38, transport: 'pkw', workdays: [1, 2, 3, 4, 5] })
+
+    // Undo takes the values back again.
+    const undone = await advisorService.undoAction(USER, YEAR, 'act-commute-new')
+    expect(undone.action.status).toBe('undone')
+    expect((await commuteRepo.findForUserAndYear(USER, YEAR))?.oneWayKm ?? null).toBeNull()
+  })
+
+  it('still refuses a draft whose field someone changed after it was made', async () => {
+    await commuteRepo.save(USER, YEAR, { workdays: [1, 2, 3, 4, 5], vacationDays: 0, sickDays: 0, homeOfficeDays: 0, oneWayKm: 20, transport: 'pkw', workplace: null })
+    await advisorRepo.createMessage({
+      userId: USER,
+      taxYear: YEAR,
+      role: 'assistant',
+      content: 'Entwurf.',
+      meta: {
+        action: {
+          actionId: 'act-commute-stale', status: 'pending', screen: 'commute', field: 'oneWayKm', instance: null,
+          label: 'Arbeitsweg', previousValue: '12', expectedPreviousValue: '12', newValue: '38',
+          beforeRefundEur: 0, afterRefundEur: 600, deltaEur: 600, reason: 'r', sourceId: 'estg-9-1',
+        },
+      },
+    })
+    await expect(advisorService.applyAction(USER, YEAR, 'act-commute-stale')).rejects.toMatchObject({ code: 'ADVISOR_ACTION_STALE_CONFLICT' })
+    expect((await commuteRepo.findForUserAndYear(USER, YEAR))?.oneWayKm).toBe(20)
+  })
+
+  describe('the value check on the write itself (ADR-0066)', () => {
+    const storedDraft = (actionId: string, field: string, newValue: string) =>
+      advisorRepo.createMessage({
+        userId: USER,
+        taxYear: YEAR,
+        role: 'assistant',
+        content: 'Entwurf.',
+        meta: {
+          action: {
+            actionId, status: 'pending', screen: 'lstb', field, instance: null, label: 'Lohn',
+            previousValue: '65000', expectedPreviousValue: '65000', newValue,
+            beforeRefundEur: 0, afterRefundEur: 0, deltaEur: 0, reason: 'r', sourceId: 'estg-9-1',
+          },
+        },
+      })
+
+    it('stores the tidied value of a draft that was made in a looser form', async () => {
+      await storedDraft('act-loose', 'bruttoarbeitslohn', '70.000 €')
+      const applied = await advisorService.applyAction(USER, YEAR, 'act-loose')
+      expect(applied.action.status).toBe('applied')
+      expect((await lstbRepo.findForUserAndYear(USER, YEAR))?.bruttoarbeitslohn).toBe('70000')
+    })
+
+    it('refuses a stored draft whose value the field cannot hold, and writes nothing', async () => {
+      await storedDraft('act-nonsense', 'bruttoarbeitslohn', 'xyz-unsinn')
+      await expect(advisorService.applyAction(USER, YEAR, 'act-nonsense')).rejects.toMatchObject({ code: 'FIELD_VALUE_INVALID' })
+      expect((await lstbRepo.findForUserAndYear(USER, YEAR))?.bruttoarbeitslohn).toBe('65000')
+    })
+  })
+
+  it('carries stated training costs into the CaseDigest, and none while the question is unanswered (#476)', async () => {
+    expect((await advisorService.buildCaseDigest(USER, YEAR)).catalogExpenses.trainingCostsEur).toBeNull()
+    await interviewRepo.write({ userId: USER, taxYear: YEAR, questionId: 'fortbildung', value: 'Ja', openItems: 0 })
+    await interviewRepo.write({ userId: USER, taxYear: YEAR, questionId: 'fortbildung-kosten', value: '850', openItems: 0 })
+    const digest = await advisorService.buildCaseDigest(USER, YEAR)
+    expect(digest.catalogExpenses).toMatchObject({ hasTraining: true, trainingCostsEur: 850 })
+  })
+
   it('builds a 100% PII-free CaseDigest and scrubs user free-text names, Steuer-IDs, and IBANs', async () => {
     const digest = await advisorService.buildCaseDigest(USER, YEAR)
     const serialized = JSON.stringify(digest)
@@ -515,6 +601,7 @@ describe('AdvisorService (In-App Steuerberater Agent "Deine Eule")', () => {
 
     expect(digest.catalogExpenses).toEqual({
       hasTraining: false,
+      trainingCostsEur: null,
       relocationCostsEur: null,
       donationsEur: null,
       selfPaidKvPvEur: null,

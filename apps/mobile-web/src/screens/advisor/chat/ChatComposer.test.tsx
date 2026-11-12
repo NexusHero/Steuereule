@@ -98,3 +98,90 @@ describe('ChatComposer (#451 slice 1)', () => {
     expect(onSend).not.toHaveBeenCalled()
   })
 })
+
+describe('ChatComposer height in a browser (#476)', () => {
+  /**
+   * A textarea like a real one: its scrollHeight is the text plus padding, and never smaller than
+   * the box. That second property is what made the input ratchet up to five lines on its own.
+   */
+  function withBrowserTextarea(linesOf: (value: string) => number, run: () => void) {
+    const PADDING = 16
+    const descriptor = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'scrollHeight')
+    Object.defineProperty(HTMLTextAreaElement.prototype, 'scrollHeight', {
+      configurable: true,
+      get(this: HTMLTextAreaElement) {
+        const content = linesOf(this.value) * 20 + PADDING
+        return Math.max(content, Number.parseFloat(this.style.height) || 0)
+      },
+    })
+    try {
+      run()
+    } finally {
+      if (descriptor) Object.defineProperty(HTMLTextAreaElement.prototype, 'scrollHeight', descriptor)
+      else delete (HTMLTextAreaElement.prototype as unknown as Record<string, unknown>).scrollHeight
+    }
+  }
+
+  /** One line of text, exactly as tall as the round buttons beside it. */
+  const ONE_LINE = 36
+  const heightOf = (): number => Number.parseFloat((screen.getByTestId('input') as HTMLTextAreaElement).style.height)
+
+  it('is one line while empty, however long the placeholder wraps', () => {
+    withBrowserTextarea(() => 4, () => {
+      render(<Host platform="desktop" onSend={vi.fn()} />)
+      expect(heightOf()).toBe(ONE_LINE)
+    })
+  })
+
+  it('grows with the text, stops at five lines, and shrinks again when text is removed', () => {
+    withBrowserTextarea((value) => Math.max(1, value.split('\n').length), () => {
+      render(<Host platform="desktop" onSend={vi.fn()} />)
+      const textarea = screen.getByTestId('input')
+
+      fireEvent.change(textarea, { target: { value: 'eins\nzwei\ndrei' } })
+      expect(heightOf()).toBe(3 * 20 + 16)
+
+      fireEvent.change(textarea, { target: { value: Array.from({ length: 9 }, (_, i) => `Zeile ${i}`).join('\n') } })
+      expect(heightOf()).toBe(5 * 20 + 16)
+
+      fireEvent.change(textarea, { target: { value: 'eins' } })
+      expect(heightOf()).toBe(ONE_LINE)
+    })
+  })
+
+  it('does not grow by itself when the same text is rendered again', () => {
+    withBrowserTextarea(() => 1, () => {
+      const view = render(<Host platform="desktop" onSend={vi.fn()} />)
+      fireEvent.change(screen.getByTestId('input'), { target: { value: 'eins' } })
+      const first = heightOf()
+      view.rerender(<Host platform="desktop" onSend={vi.fn()} />)
+      view.rerender(<Host platform="desktop" onSend={vi.fn()} />)
+      expect(heightOf()).toBe(first)
+    })
+  })
+})
+
+describe('ChatComposer as one box (#476)', () => {
+  it('sends with a round icon button that still has a spoken name', () => {
+    const onSend = vi.fn()
+    render(<Host platform="desktop" onSend={onSend} />)
+    const send = screen.getByTestId('send')
+    expect(send.getAttribute('aria-label')).toBe('Fragen')
+    expect(send.textContent).toBe('')
+    expect(send.getAttribute('aria-disabled')).toBe('true')
+
+    fireEvent.change(screen.getByTestId('input'), { target: { value: 'Hallo' } })
+    fireEvent.click(screen.getByTestId('send'))
+    expect(onSend).toHaveBeenCalledWith('Hallo')
+  })
+
+  it('turns the same button into Stop while the owl answers', () => {
+    const onStop = vi.fn()
+    render(<Host platform="desktop" sending onSend={vi.fn()} onStop={onStop} />)
+    expect(screen.queryByTestId('send')).toBeNull()
+    const stop = screen.getByTestId('advisor-chat-stop')
+    expect(stop.getAttribute('aria-label')).toBe('Antwort stoppen')
+    fireEvent.click(stop)
+    expect(onStop).toHaveBeenCalled()
+  })
+})

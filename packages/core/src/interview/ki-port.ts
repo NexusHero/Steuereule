@@ -1,7 +1,8 @@
 import type { Item, Source } from '../engine/berechnung'
 import type { IncomeType } from '../domains/income-types'
-import type { AdvisorActionProposal, AdvisorMessageMeta, AdvisorTwoPathsProposal, CaseDigest } from './advisor'
+import type { AdvisorActionProposal, AdvisorChatMessageView, AdvisorMessageMeta, AdvisorTwoPathsProposal, CaseDigest } from './advisor'
 import type { Screen } from './marking'
+import type { AdvisorRecordHandles } from './record-handles'
 
 /** The schema the LLM must answer. */
 export interface AiProposal {
@@ -26,6 +27,33 @@ export interface AdvisorTurnRequest {
   readonly signal?: AbortSignal | undefined
   /** The „Was hab ich vergessen?“ quick start always opens with a plan (#451 decision 17). */
   readonly planRequired?: boolean | undefined
+  /** The stored records of the per-record masks under their neutral names; ids never reach the model. */
+  readonly records?: AdvisorRecordHandles | undefined
+  /**
+   * What a draft would do to the refund, worked out by the app's own estimate. Without it the
+   * engine falls back to the approximation over the digest.
+   */
+  readonly previewEffect?: ((target: AdvisorPreviewTarget) => Promise<AdvisorPreviewEffect>) | undefined
+}
+
+/** The fields one draft would write, main field and companions alike. */
+export interface AdvisorPreviewTarget {
+  readonly screen: Screen
+  readonly instance: string | null
+  /** In write order: companions (the gate of an amount) first, the main field last. */
+  readonly values: ReadonlyArray<readonly [field: string, value: string]>
+}
+
+export type AdvisorPreviewEffect =
+  | { readonly kind: 'computed'; readonly beforeRefundEur: number; readonly afterRefundEur: number; readonly deltaEur: number }
+  | { readonly kind: 'not-computable'; readonly hint: string }
+
+/** Token counts of one turn, summed over all model rounds. */
+export interface AdvisorTurnUsage {
+  readonly inputTokens: number
+  readonly outputTokens: number
+  /** Input tokens the provider served from its prompt cache. */
+  readonly cachedInputTokens: number
 }
 
 export interface AdvisorTurnResult {
@@ -34,6 +62,9 @@ export interface AdvisorTurnResult {
   readonly mode: 'langgraph' | 'deterministic_fallback'
   readonly provider?: string | undefined
   readonly model?: string | undefined
+  /** Reasoning summaries of all rounds, joined; absent when the model supplied none. */
+  readonly reasoning?: string | undefined
+  readonly usage?: AdvisorTurnUsage | undefined
 }
 
 /** Status of one step of the owl's visible plan (#451 slice 6). */
@@ -51,7 +82,14 @@ export const ADVISOR_QUICK_ACTIONS = ['forgotten_check'] as const
 export type AdvisorQuickAction = (typeof ADVISOR_QUICK_ACTIONS)[number]
 
 export type AdvisorStreamEvent =
+  /** First event of a run: the ids a client needs to render, stop and re-attach (#476). */
+  | {
+      readonly event: 'start'
+      readonly data: { readonly runId: string; readonly userMessage: AdvisorChatMessageView; readonly assistantMessageId: string }
+    }
   | { readonly event: 'status'; readonly data: { readonly text: string } }
+  /** A piece of the provider's reasoning summary; never the answer itself. */
+  | { readonly event: 'reasoning'; readonly data: { readonly text: string } }
   | { readonly event: 'tool'; readonly data: { readonly name: string; readonly label: string } }
   | { readonly event: 'token'; readonly data: { readonly text: string } }
   | { readonly event: 'choices'; readonly data: { readonly choices: readonly string[] } }

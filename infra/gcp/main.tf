@@ -26,6 +26,13 @@ locals {
     "GOOGLE_CLIENT_SECRET",
     "STRIPE_SECRET_KEY",
     "STRIPE_WEBHOOK_SECRET",
+    # The owl answers from the built-in rules until one provider key has a value (ADR-0064).
+    "GEMINI_API_KEY",
+    "ANTHROPIC_API_KEY",
+    "OPENAI_API_KEY",
+    # Shared run log and rate limiter. Without it the API still works: answers resume on the
+    # instance that runs them, and Cloud Run session affinity keeps a client on that instance.
+    "REDIS_URL",
   ]
 }
 
@@ -269,4 +276,38 @@ resource "google_billing_budget" "monthly" {
   }
 
   depends_on = [google_project_service.enabled]
+}
+
+# ── Redis for the owl's answer runs (ADR-0064, ADR-0066 §8) ──────────────────────────────────
+# Off by default: the smallest Memorystore instance costs more per month than the whole beta
+# budget. Turn it on once more than one API instance regularly serves the chat. Any other Redis
+# works as well: put its URL into the secret REDIS_URL and leave this off.
+resource "google_project_service" "redis" {
+  count              = var.enable_redis ? 1 : 0
+  service            = "redis.googleapis.com"
+  disable_on_destroy = false
+}
+
+data "google_compute_network" "default" {
+  count = var.enable_redis ? 1 : 0
+  name  = var.vpc_network
+}
+
+resource "google_redis_instance" "runs" {
+  count              = var.enable_redis ? 1 : 0
+  name               = "steuereule-runs"
+  tier               = "BASIC"
+  memory_size_gb     = 1
+  region             = var.region
+  redis_version      = "REDIS_7_2"
+  authorized_network = data.google_compute_network.default[0].id
+  connect_mode       = "DIRECT_PEERING"
+
+  depends_on = [google_project_service.redis]
+}
+
+resource "google_secret_manager_secret_version" "redis_url" {
+  count       = var.enable_redis ? 1 : 0
+  secret      = google_secret_manager_secret.app["REDIS_URL"].id
+  secret_data = "redis://${google_redis_instance.runs[0].host}:${google_redis_instance.runs[0].port}"
 }

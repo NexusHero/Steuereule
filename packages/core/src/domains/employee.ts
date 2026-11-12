@@ -7,6 +7,8 @@ import { deductibleBasicProvision, healthInsuranceFromAnswers } from './health-i
 export interface EmployeeAnswerFigures {
   readonly sideJobGross: number
   readonly relocationCosts: number
+  /** Costs of professional training the user paid themselves (#476). */
+  readonly trainingCosts: number
   readonly donations: number
   readonly healthCareContributions: number
   readonly riester: number
@@ -21,6 +23,7 @@ export function employeeFromAnswers(answers: Answers): EmployeeAnswerFigures {
   return {
     sideJobGross: sideJob,
     relocationCosts: answers.umzug === 'Ja' ? amount(answers['umzug-kosten']) : 0,
+    trainingCosts: answers.fortbildung === 'Ja' ? amount(answers['fortbildung-kosten']) : 0,
     donations: answers.spenden === 'Ja' ? amount(answers['spenden-betrag']) : 0,
     healthCareContributions: deductibleBasicProvision(healthInsuranceFromAnswers(answers)),
     riester: answers.riester === 'Ja' ? amount(answers['riester-betrag']) : 0,
@@ -116,7 +119,7 @@ export function employeeFromData(data: WageTaxCertificateData, answers: Answers)
 
   return {
     einnahmen,
-    werbungskosten: numbers.relocationCosts,
+    werbungskosten: numbers.relocationCosts + numbers.trainingCosts,
     specialExpenses: numbers.donations + numbers.healthCareContributions + numbers.riester,
     openItems,
     conflicts: employed && state.kind === 'widerspruch' ? state.conflicts.length : 0,

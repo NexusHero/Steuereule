@@ -155,6 +155,7 @@ const EXPECTED_ENCRYPTED_FIELDS: ExpectedEncryptedField[] = [
   { model: 'Assessment', field: 'erstattung', encrypt: true, strictDecryption: true },
   { model: 'AdvisorChatMessage', field: 'content', encrypt: true, strictDecryption: true },
   { model: 'AdvisorChatMessage', field: 'metaJson', encrypt: true, strictDecryption: true },
+  { model: 'AdvisorChatMessage', field: 'reasoning', encrypt: true, strictDecryption: true },
 ].sort(byModelField)
 
 // prisma-field-encryption's hash annotation (`@encryption:hash(field)`, dist/dmmf.js:79)

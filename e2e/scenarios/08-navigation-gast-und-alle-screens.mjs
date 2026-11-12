@@ -52,7 +52,8 @@ export async function runScenario08(browser, webOrigin) {
   await selectTaxYear2025(page)
 
   await page.getByRole('tab', { name: 'Eule' }).click()
-  await page.locator('text=Mandantengeheimnis aktiv').waitFor({ state: 'visible', timeout: 10_000 })
+  // #476: the chat owns the screen; the privacy notice moved from the page into the top bar.
+  await page.getByTestId('eule-privacy-badge').waitFor({ state: 'visible', timeout: 10_000 })
 
   await page.getByRole('tab', { name: 'Belege' }).click()
   await page.locator('text=Beleg hochladen (PDF / Foto)').waitFor({ state: 'visible', timeout: 10_000 })

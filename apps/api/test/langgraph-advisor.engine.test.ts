@@ -13,6 +13,8 @@ import { describe, expect, it } from 'vitest'
 import type { AdvisorStreamEvent, CaseDigest } from '@steuereule/core'
 import { AdvisorController, FastifyThrottlerGuard } from '../src/advisor/advisor.controller.js'
 import { AdvisorService } from '../src/advisor/advisor.service.js'
+import { InMemoryAdvisorRunLog } from '../src/advisor/run/advisor-run-log.js'
+import { AdvisorRunService } from '../src/advisor/run/advisor-run.service.js'
 import { InMemoryAdvisorRepository } from '../src/advisor/advisor.repository.js'
 import { AuditService } from '../src/audit/audit.service.js'
 import { BETTER_AUTH_BUNDLE } from '../src/auth/auth.tokens.js'
@@ -541,6 +543,7 @@ describe('AiRuntimeConfigService & LangGraphAdvisorEngine (#446 Slice 2)', () =>
       controllers: [AdvisorController],
       providers: [
         { provide: AdvisorService, useValue: service },
+        { provide: AdvisorRunService, useValue: new AdvisorRunService(service, new InMemoryAdvisorRunLog(), advisorRepo) },
         {
           provide: BETTER_AUTH_BUNDLE,
           useValue: {

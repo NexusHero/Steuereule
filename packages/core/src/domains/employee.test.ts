@@ -17,6 +17,7 @@ describe('employeeFromAnswers — the catalogue answers feed the Rechenkern', ()
     expect(employeeFromAnswers({})).toEqual({
       sideJobGross: 0,
       relocationCosts: 0,
+      trainingCosts: 0,
       donations: 0,
       healthCareContributions: 0,
       riester: 0,
@@ -41,6 +42,7 @@ describe('employeeFromAnswers — the catalogue answers feed the Rechenkern', ()
     expect(employeeFromAnswers(answers)).toEqual({
       sideJobGross: 0,
       relocationCosts: 800,
+      trainingCosts: 0,
       donations: 0,
       healthCareContributions: 0,
       riester: 0,
@@ -69,6 +71,7 @@ describe('employeeFromAnswers — the catalogue answers feed the Rechenkern', ()
     expect(figures).toEqual({
       sideJobGross: 0,
       relocationCosts: 0,
+      trainingCosts: 0,
       donations: 0,
       healthCareContributions: 0,
       riester: 0,
@@ -230,5 +233,11 @@ describe('Lebenslagen/Sonderausgaben catalogue entries — one walker, one regis
     expect(nextStepFor(entry, prefix)).toEqual({ kind: 'question', id: 'nebenjob' })
     expect(nextStepFor(entry, { ...prefix, nebenjob: 'Minijob' })).toEqual({ kind: 'done' })
     expect(nextStepFor(entry, { ...prefix, nebenjob: 'Nebenjob' })).toEqual({ kind: 'question', id: 'nebenjob-brutto' })
+  })
+
+  it('counts training costs only when the training question says „Ja“ (#476)', () => {
+    expect(employeeFromAnswers({ fortbildung: 'Ja', 'fortbildung-kosten': '850' }).trainingCosts).toBe(850)
+    expect(employeeFromAnswers({ fortbildung: 'Nein', 'fortbildung-kosten': '850' }).trainingCosts).toBe(0)
+    expect(employeeFromAnswers({ fortbildung: 'Ja' }).trainingCosts).toBe(0)
   })
 })
