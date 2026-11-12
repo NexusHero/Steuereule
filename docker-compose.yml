@@ -28,6 +28,22 @@ services:
       timeout: 5s
       retries: 10
 
+  # Shared run log for the owl's answers and shared rate-limit counters (ADR-0064), the same Redis
+  # the cluster runs. The API only uses it when REDIS_URL is set (see .env.example); without the
+  # variable everything stays in the API process, which is enough for one local instance.
+  redis:
+    image: redis:7-alpine
+    command: ['redis-server', '--appendonly', 'yes']
+    ports:
+      - '${REDIS_PORT:-6379}:6379'
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   # Local inbox for every mail the API sends (verification, password reset).
   # Web UI: http://localhost:8025 · SMTP: localhost:1025
   mailpit:
@@ -40,3 +56,4 @@ volumes:
   # Named volume so data survives `docker compose stop`/`up` (only `down -v` clears it) —
   # the PO's local stack keeps its seeded data across restarts.
   postgres-data:
+  redis-data:
