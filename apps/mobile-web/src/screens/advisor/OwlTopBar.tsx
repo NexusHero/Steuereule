@@ -1,3 +1,4 @@
+import { ConnectionChip, type ConnectionView } from './chat/ConnectionStatus'
 import { Pressable, Text, View, type TextStyle, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useTheme, type UiTheme } from '@steuereule/ui'
@@ -22,6 +23,9 @@ export interface OwlTopBarProps {
   readonly onOpenConversations?: (() => void) | undefined
   /** Whether the list it opens is showing right now (sidebar or sheet). */
   readonly conversationsExpanded?: boolean | undefined
+  /** The status of the connection (#488): a dot and a word, tapped for details. */
+  readonly connection?: ConnectionView | undefined
+  readonly onOpenConnection?: (() => void) | undefined
   /** Phone width: icons only, no legal status line. */
   readonly compact?: boolean | undefined
 }
@@ -48,6 +52,8 @@ export function OwlTopBar({
   onOpenSettings,
   onOpenConversations,
   conversationsExpanded = false,
+  connection,
+  onOpenConnection,
   legalStatusDate,
   compact = false,
 }: OwlTopBarProps) {
@@ -70,6 +76,7 @@ export function OwlTopBar({
       </View>
 
       <View style={styles.side}>
+        {connection && onOpenConnection ? <ConnectionChip view={connection} compact={compact} onPress={onOpenConnection} /> : null}
         {compact ? null : (
           <Text style={styles.legal} testID="eule-legal-status">
             {tr('eule.workspace.topbar.legalStatus', { date: formatDate(legalStatusDate, i18n.language) })}

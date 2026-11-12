@@ -27,6 +27,7 @@ import type {
 import type {
   AdvisorActionMutationResponseDto,
   AdvisorChatMessageDto,
+  AdvisorConnectionDto,
   AdvisorContextDto,
   AdvisorControllerClearConversationParams,
   AdvisorControllerGetSessionParams,
@@ -804,6 +805,119 @@ export const useAdvisorControllerStopRun = <TError = void,
       > => {
       return useMutation(getAdvisorControllerStopRunMutationOptions(options), queryClient);
     }
+
+export type advisorControllerConnectionResponse200 = {
+  data: AdvisorConnectionDto
+  status: 200
+}
+
+export type advisorControllerConnectionResponseSuccess = (advisorControllerConnectionResponse200) & {
+  headers: Headers;
+};
+;
+
+export type advisorControllerConnectionResponse = (advisorControllerConnectionResponseSuccess)
+
+export const getAdvisorControllerConnectionUrl = (jahr: number,) => {
+
+
+
+
+  return `/v1/steuerjahre/${jahr}/advisor/connection`
+}
+
+/**
+ * @summary Whether the owl can reach its language model right now (#488); the provider is asked at most once a minute
+ */
+export const advisorControllerConnection = async (jahr: number, options?: RequestInit): Promise<advisorControllerConnectionResponse> => {
+
+  return httpClient<advisorControllerConnectionResponse>(getAdvisorControllerConnectionUrl(jahr),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getAdvisorControllerConnectionQueryKey = (jahr: number,) => {
+    return [
+    `/v1/steuerjahre/${jahr}/advisor/connection`
+    ] as const;
+    }
+
+
+export const getAdvisorControllerConnectionQueryOptions = <TData = Awaited<ReturnType<typeof advisorControllerConnection>>, TError = unknown>(jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof advisorControllerConnection>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getAdvisorControllerConnectionQueryKey(jahr);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof advisorControllerConnection>>> = ({ signal }) => advisorControllerConnection(jahr, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: jahr !== null && jahr !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof advisorControllerConnection>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type AdvisorControllerConnectionQueryResult = NonNullable<Awaited<ReturnType<typeof advisorControllerConnection>>>
+export type AdvisorControllerConnectionQueryError = unknown
+
+
+export function useAdvisorControllerConnection<TData = Awaited<ReturnType<typeof advisorControllerConnection>>, TError = unknown>(
+ jahr: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof advisorControllerConnection>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof advisorControllerConnection>>,
+          TError,
+          Awaited<ReturnType<typeof advisorControllerConnection>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useAdvisorControllerConnection<TData = Awaited<ReturnType<typeof advisorControllerConnection>>, TError = unknown>(
+ jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof advisorControllerConnection>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof advisorControllerConnection>>,
+          TError,
+          Awaited<ReturnType<typeof advisorControllerConnection>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useAdvisorControllerConnection<TData = Awaited<ReturnType<typeof advisorControllerConnection>>, TError = unknown>(
+ jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof advisorControllerConnection>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Whether the owl can reach its language model right now (#488); the provider is asked at most once a minute
+ */
+
+export function useAdvisorControllerConnection<TData = Awaited<ReturnType<typeof advisorControllerConnection>>, TError = unknown>(
+ jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof advisorControllerConnection>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getAdvisorControllerConnectionQueryOptions(jahr,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export type advisorControllerSearchResponse200 = {
   data: AdvisorSearchHitDto[]

@@ -33,6 +33,8 @@ import {
   type AdvisorAnswerNotice,
   type AdvisorAnswerNoticeKind,
   type AdvisorContextLevel,
+  type AdvisorConnection,
+  type AdvisorConnectionState,
   type AdvisorEffectKind,
   type AdvisorModelFailure,
   type AdvisorModelFailureReason,
@@ -279,6 +281,23 @@ export class AdvisorModelFailureDto implements AdvisorModelFailure {
 
   @ApiPropertyOptional({ type: String, description: 'Provider and HTTP status, e.g. "Gemini · HTTP 429". Never message text.' })
   detail?: string | undefined
+}
+
+export class AdvisorConnectionDto implements AdvisorConnection {
+  @ApiProperty({ type: String, enum: ['connected', 'degraded', 'unavailable', 'rules-only'] })
+  state!: AdvisorConnectionState
+
+  @ApiProperty({ type: String, nullable: true, example: 'Gemini' })
+  provider!: string | null
+
+  @ApiProperty({ type: String, nullable: true, example: 'gemini-3.8-flash' })
+  model!: string | null
+
+  @ApiPropertyOptional({ type: () => AdvisorModelFailureDto, description: 'Why it is not connected, or only degraded.' })
+  failure?: AdvisorModelFailureDto | undefined
+
+  @ApiProperty({ type: String, format: 'date-time' })
+  checkedAt!: string
 }
 
 export class AdvisorNotStagedDto implements AdvisorNotStaged {
