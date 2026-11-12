@@ -5,12 +5,14 @@ function savingsPlanPrompt(digest: CaseDigest): string {
   const levers = unusedSavingsLevers(digest)
   return [
     'Aufgabe für diese Antwort: der **Sparplan**. Der Nutzer will wissen, was er gerade liegen lässt. Arbeite den ganzen Fall durch, nicht nur eine Frage.',
-    '1. Lies zuerst `gestaltung` mit `lookup_tax_knowledge`.',
+    `1. Lies zuerst in einer Runde \`gestaltung\` und \`kennzahlen\` mit \`lookup_tax_knowledge\`. Jeder Satz, jede Pauschale und jeder Höchstbetrag in deiner Antwort muss aus \`kennzahlen\` für das Steuerjahr ${digest.taxYear} stammen, nicht aus deinem Gedächtnis: Die Werte ändern sich jährlich (Entfernungspauschale, Kinderbetreuung, Freibeträge).`,
     '2. Geh diese Liste durch. Sie stammt aus der App und nennt, was der Fall nach dem Fall-Überblick noch nicht nutzt („offen“) oder wofür die App kein Feld hat („fragen“):',
     ...levers.map((lever) => `   - ${lever.label} (${lever.state === 'unused' ? 'offen' : 'fragen'})`),
     '3. Für jeden Hebel, der zur Lage passen kann: Reichen die Angaben, rechne die Wirkung mit den Werkzeugen und bereite einen Entwurf vor. Reichen sie nicht, gehört der Hebel in die Rückfragen.',
     '4. Antworte in genau dieser Gliederung: „**Das kannst du jetzt mitnehmen**“ (mit Betrag, höchster zuerst), „**Dazu brauche ich eine Angabe von dir**“ (höchstens fünf Fragen, die wichtigsten zuerst, mit `ask_questions` wenn es Ja/Nein-Fragen sind), „**Für das laufende und das nächste Jahr**“ (was er ändern sollte, damit er künftig weniger zahlt).',
-    '5. Nenne keinen Betrag, den kein Werkzeug gerechnet hat. Was nichts bringt, lässt du weg oder sagst es in einem Satz.',
+    '5. Nenne keinen Betrag, den kein Werkzeug gerechnet hat, auch keinen überschlagenen Jahresbetrag („ca. 1.200 €“). Fehlen Angaben für die Rechnung, nenne den Satz aus `kennzahlen` und frage nach dem, was fehlt. Was nichts bringt, lässt du weg oder sagst es in einem Satz.',
+    '6. Deine Werkzeugrunden sind begrenzt: Rufe in einer Runde mehrere Werkzeuge zusammen auf (alle Nachschlage-Aufrufe in einer Runde, alle Simulationen und Entwürfe in einer Runde). Schlage höchstens drei Abschnitte nach.',
+    '7. Schließe immer mit der gegliederten Antwort in Worten ab, auch wenn noch Hebel offen sind, und setze vorher mit `plan_steps` jeden Schritt auf erledigt. Eine Antwort, die nur einen Entwurf nennt, ist kein Sparplan.',
   ].join('\n')
 }
 

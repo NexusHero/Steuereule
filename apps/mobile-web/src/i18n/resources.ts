@@ -1749,8 +1749,8 @@ export const appResources = {
             aria: 'Turbo-Modus',
             hintOff: 'Aus: Die Eule bereitet Änderungen vor und wartet auf deinen Klick.',
             hintOn: 'An: Die Eule übernimmt Änderungen sofort und beschreibt sie. Jede lässt sich rückgängig machen.',
-            summary_one: 'Turbo: Die Eule hat {{count}} Änderung direkt übernommen. Du kannst sie unten rückgängig machen.',
-            summary_other: 'Turbo: Die Eule hat {{count}} Änderungen direkt übernommen. Du kannst sie unten rückgängig machen.',
+            summary_one: 'Turbo: Die Eule hat {{count}} Änderung direkt übernommen. Du kannst sie an ihrer Karte rückgängig machen.',
+            summary_other: 'Turbo: Die Eule hat {{count}} Änderungen direkt übernommen. Du kannst jede an ihrer Karte rückgängig machen.',
           },
           thought: {
             heading: 'Gedankengang',
@@ -3716,8 +3716,8 @@ export const appResources = {
             aria: 'Turbo mode',
             hintOff: 'Off: the owl prepares changes and waits for your click.',
             hintOn: 'On: the owl applies changes at once and describes them. Each can be undone.',
-            summary_one: 'Turbo: the owl applied {{count}} change directly. You can undo it below.',
-            summary_other: 'Turbo: the owl applied {{count}} changes directly. You can undo them below.',
+            summary_one: 'Turbo: the owl applied {{count}} change directly. You can undo it on its card.',
+            summary_other: 'Turbo: the owl applied {{count}} changes directly. You can undo each on its card.',
           },
           thought: {
             heading: 'Line of thought',

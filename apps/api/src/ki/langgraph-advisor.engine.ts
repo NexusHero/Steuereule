@@ -95,6 +95,14 @@ function sumUsage(messages: readonly BaseMessage[]): AdvisorTurnUsage | undefine
   return seen ? { inputTokens, outputTokens, cachedInputTokens } : undefined
 }
 
+/**
+ * The savings plan and the assessment check look things up, plan, calculate and draft before they
+ * answer. Seen against the real model: with the five rounds of a question the plan ended on a
+ * draft and never reached its answer.
+ */
+export const TASK_TOOL_ROUNDS = 10
+export const TASK_TIMEOUT_MS = 120_000
+
 @Injectable()
 export class LangGraphAdvisorEngine implements AdvisorEnginePort {
   private readonly resolveChatModel: ChatModelFactory
@@ -319,13 +327,15 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
     let situationSuggestions: string[] = []
     let sources: OwlSourceId[] = []
 
-    const timeout = AbortSignal.timeout(limits.turnTimeoutMs)
+    // A task works through the whole case: it needs more rounds and more time than one question.
+    const maxToolRounds = request.task ? Math.max(limits.maxToolRounds, TASK_TOOL_ROUNDS) : limits.maxToolRounds
+    const timeout = AbortSignal.timeout(request.task ? Math.max(limits.turnTimeoutMs, TASK_TIMEOUT_MS) : limits.turnTimeoutMs)
     const signal = request.signal ? AbortSignal.any([request.signal, timeout]) : timeout
     const abortReason = (): 'client' | 'timeout' | null =>
       request.signal?.aborted ? 'client' : timeout.aborted ? 'timeout' : null
 
     try {
-      const graph = this.buildCompiledGraph(chatModel, request, limits.maxToolRounds, canForceTool)
+      const graph = this.buildCompiledGraph(chatModel, request, maxToolRounds, canForceTool)
       const stream = await graph.stream(
         { messages: initialMessages },
         { streamMode: ['custom', 'updates'], signal },

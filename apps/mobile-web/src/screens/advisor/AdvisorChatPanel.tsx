@@ -97,6 +97,9 @@ export interface AdvisorChatPanelProps {
   readonly variant?: 'panel' | 'page' | undefined
 }
 
+/** Below this width the input shows its short hint; the long one needs two lines there. */
+const NARROW_COMPOSER_WIDTH = 560
+
 /** Width of the reading column in the page variant. */
 export const CHAT_COLUMN_MAX_WIDTH = 760
 
@@ -197,6 +200,8 @@ export function AdvisorChatPanel({
     }
   }, [dictationEngine])
   const [editingId, setEditingId] = useState<string | null>(null)
+  // With the workbench open the chat column is narrow: the long hint would wrap and be cut off.
+  const [composerNarrow, setComposerNarrow] = useState(false)
   // A skill is chosen per session and starts off: the plain chat stays the default.
   const [skill, setSkill] = useState<AdvisorSkillId | null>(null)
   // Off in every new chat: the careful way is the default, Turbo is chosen per session.
@@ -771,7 +776,7 @@ export function AdvisorChatPanel({
     <>
       {(() => {
         const inputBar = (microphone?: ReactNode) => (
-          <View style={styles.composer}>
+          <View style={styles.composer} onLayout={(event) => setComposerNarrow(event.nativeEvent.layout.width < NARROW_COMPOSER_WIDTH)}>
             {editingId !== null ? (
               <View style={styles.editBanner} testID="advisor-edit-banner">
                 <Text style={styles.messageActionText}>{tr('advisor.chat.editing')}</Text>
@@ -812,7 +817,7 @@ export function AdvisorChatPanel({
               onStop={onStop}
               sending={isSending}
               placeholder={
-                compact
+                compact || composerNarrow
                   ? tr('advisor.chat.inputPlaceholderShort')
                   : tr('advisor.chat.inputPlaceholder', 'Frag deine Eule (z. B. Fortbildung, Laptop, Spenden, Endprüfung) …')
               }

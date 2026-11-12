@@ -202,7 +202,8 @@ export function OwlModeScreenView({
   const viewMode = bridge ? bridge.owlViewMode : localViewMode
   // With the bridge every conversation has its own answer (#503): the open one is busy only while
   // its own answer is written, whatever is running elsewhere.
-  const effectiveSending = bridge && bridge.isAuthenticated && !onSendMessage ? bridge.streaming : isSending || (bridge?.streaming ?? false)
+  // The screen's own flag covers the whole screen, so it only counts where no bridge follows the answer.
+  const effectiveSending = bridge && bridge.isAuthenticated ? bridge.streaming : isSending
 
   // The workbench opens by itself only when there is something to check: on a wide screen for
   // drafts and masks, on a narrow one only for a mask the reader asked to see, because there it
