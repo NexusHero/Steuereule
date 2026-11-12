@@ -34,6 +34,7 @@ import { AuditService } from '../audit/audit.service.js'
 import { checkPiiFree } from '../ki/ki.adapter.js'
 import { ADVISOR_ENGINE } from '../ki/langgraph-advisor.engine.js'
 import { AI_RUNTIME_CONFIG_SERVICE, DEFAULT_AI_TURN_LIMITS, type AiRuntimeConfigService } from '../ki/ai-runtime-config.service.js'
+import { ModelConnectionService } from '../ki/model-connection.service.js'
 import { TaxEstimateService, type TaxEstimateStatus } from '../tax-estimate/tax-estimate.service.js'
 import { TRANSACTION_RUNNER, passThroughTransactionRunner, type TransactionRunner } from '../prisma/transaction.js'
 import { CAPITAL_REPOSITORY, type CapitalRepository } from '../capital/capital.repository.js'
@@ -62,6 +63,7 @@ import {
 import type {
   AdvisorActionMutationResponseDto,
   AdvisorChatMessageDto,
+  AdvisorConnectionDto,
   AdvisorContextDto,
   AdvisorConversationDto,
   AdvisorNoteDto,
@@ -139,6 +141,7 @@ export class AdvisorService {
     @Optional() @Inject(AI_RUNTIME_CONFIG_SERVICE) private readonly runtimeConfig?: AiRuntimeConfigService,
     @Optional() @Inject(TRANSACTION_RUNNER) private readonly transactions: TransactionRunner = passThroughTransactionRunner,
     @Optional() @Inject(TaxEstimateService) private readonly taxEstimate?: TaxEstimateService,
+    @Optional() @Inject(ModelConnectionService) private readonly modelConnection?: ModelConnectionService,
   ) {}
 
   // The service is the front door; each theme lives in its own part.
@@ -166,6 +169,13 @@ export class AdvisorService {
 
   async conversationFor(userId: string, taxYear: number, conversationId?: string): Promise<AdvisorConversationRecord> {
     return this.conversations.conversationFor(userId, taxYear, conversationId)
+  }
+
+  /** Whether the owl can reach its language model right now (#488). */
+  async connection(): Promise<AdvisorConnectionDto> {
+    return (
+      (await this.modelConnection?.check()) ?? { state: 'rules-only', provider: null, model: null, checkedAt: new Date().toISOString() }
+    )
   }
 
   async listConversations(userId: string, taxYear: number): Promise<AdvisorConversationDto[]> {
@@ -570,6 +580,7 @@ export class AdvisorService {
         }
 
         if (ev.event === 'error') {
+          this.modelConnection?.recordTurn(ev.data.failure ?? null)
           // Half an answer is kept for the record, but never as if it were complete.
           await finish('failed', text, ev.data.failure ? { modelFailure: ev.data.failure } : {})
           yield ev
@@ -578,6 +589,8 @@ export class AdvisorService {
 
         if (ev.event === 'done') {
           const turnResult = ev.data as AdvisorTurnResult
+          // What the model did this turn is the best news about the connection there is.
+          if (turnResult.mode === 'langgraph' || turnResult.meta.modelFailure) this.modelConnection?.recordTurn(turnResult.meta.modelFailure ?? null)
           const enrichedMeta = await this.drafts.enrichDraftsWithRawBaseline(userId, taxYear, turnResult.meta)
           await this.drafts.supersedePendingDraftsForSameTargets(userId, taxYear, this.drafts.collectPendingTargetKeys(enrichedMeta))
 

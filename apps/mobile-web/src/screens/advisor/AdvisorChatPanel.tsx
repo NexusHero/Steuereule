@@ -703,6 +703,10 @@ export function AdvisorChatPanel({
                 </Pressable>
               </View>
             ) : null}
+            {/* The switches sit above the input, not in it: inside they squeezed the text into two clipped lines. */}
+            <View style={styles.switchRow} testID="advisor-composer-switches">
+              <TurboToggle on={turbo} onChange={setTurbo} disabled={isSending} />
+            </View>
             <ChatComposer
               value={inputText}
               onChangeText={setInputText}
@@ -736,7 +740,6 @@ export function AdvisorChatPanel({
               }
               trailing={
                 <>
-                  <TurboToggle on={turbo} onChange={setTurbo} disabled={isSending} />
                   {context ? <ContextRing context={context} onSummarize={onSummarize} busy={isSending} /> : null}
                   {microphone}
                 </>

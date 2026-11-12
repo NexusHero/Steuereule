@@ -17,6 +17,7 @@ import { FakeLinkRepository } from './fake-link.repository.js'
 import { FakeLstbRepository } from './fake-lstb.repository.js'
 import { FakeMarkingRepository } from './fake-marking.repository.js'
 import { FakeMasterDataRepository } from './fake-master-data.repository.js'
+import type { ModelConnectionService } from '../../src/ki/model-connection.service.js'
 import { FakeOwlCardDismissalRepository, FakeOwlSettingRepository } from './fake-owl-mode.repository.js'
 import { FakePensionRepository } from './fake-pension.repository.js'
 import { FakeProfileRepository } from './fake-profile.repository.js'
@@ -31,7 +32,7 @@ export interface AdvisorTestKit {
 }
 
 /** An AdvisorService on in-memory fakes; pass an engine to exercise the model path. */
-export function buildAdvisorTestKit(engine?: AdvisorEnginePort): AdvisorTestKit {
+export function buildAdvisorTestKit(engine?: AdvisorEnginePort, modelConnection?: ModelConnectionService): AdvisorTestKit {
   const advisorRepo = new InMemoryAdvisorRepository()
   const interviewRepo = new FakeInterviewAnswerRepository()
   const lstbRepo = new FakeLstbRepository()
@@ -80,6 +81,10 @@ export function buildAdvisorTestKit(engine?: AdvisorEnginePort): AdvisorTestKit 
     new FakeCapitalRepository(),
     profileRepo,
     engine,
+    undefined,
+    undefined,
+    undefined,
+    modelConnection,
   )
   return { advisorRepo, interviewRepo, rentalRepo, childRepo, service }
 }

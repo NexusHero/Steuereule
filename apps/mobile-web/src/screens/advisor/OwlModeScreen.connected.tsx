@@ -1,5 +1,6 @@
 // The owl screen wired to the API: loads the session of the tax year and turns every action of
 // the view into a request.
+import type { AdvisorConnection } from '@steuereule/core'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
@@ -17,6 +18,7 @@ import {
   useAdvisorControllerDeleteNote,
   useAdvisorControllerUndoNoteChange,
   useAdvisorControllerUpdateNote,
+  useAdvisorControllerConnection,
   useAdvisorControllerCreateConversation,
   useAdvisorControllerDeleteConversation,
   useAdvisorControllerRenameConversation,
@@ -39,6 +41,7 @@ import { sendOptionsToDto } from './AdvisorChatPanel'
 import { invalidateAllTaxQueries, useOptionalCopilotBridge } from './CopilotBridgeProvider'
 import { OwlModeScreenView } from './OwlModeScreen'
 import type { OwlModeScreenProps } from './OwlModeScreen'
+import type { ConnectionView } from './chat/ConnectionStatus'
 
 /** The answer when the API said 200; otherwise it throws, so the caller's failure state shows. */
 export function expectOk<R extends { readonly status: number }>(response: R, what: string): Extract<R, { readonly status: 200 }> {
@@ -69,6 +72,15 @@ export function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CU
     },
     [taxYear],
   )
+  // Whether the owl reaches its model, asked again every minute while the screen is open (#488).
+  const connectionQuery = useAdvisorControllerConnection(taxYear, { query: { retry: false, refetchInterval: 60_000, refetchOnWindowFocus: true } })
+  const connectionView: ConnectionView = connectionQuery.isError
+    ? { kind: 'offline' }
+    : connectionQuery.data?.status === 200
+      ? { kind: 'model', connection: connectionQuery.data.data as AdvisorConnection }
+      : connectionQuery.isPending
+        ? { kind: 'checking' }
+        : { kind: 'offline' }
   const createConversationMutation = useAdvisorControllerCreateConversation()
   const renameConversationMutation = useAdvisorControllerRenameConversation()
   const deleteConversationMutation = useAdvisorControllerDeleteConversation()
@@ -183,6 +195,8 @@ export function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CU
         expectOk(await undoNoteChangeMutation.mutateAsync({ jahr: taxYear, messageId, index }), 'note change not undone')
         await invalidate()
       }}
+      connection={connectionView}
+      onRecheckConnection={() => connectionQuery.refetch()}
       conversations={session?.conversations}
       onSearchConversations={searchConversations}
       activeConversationId={session?.conversationId ?? null}

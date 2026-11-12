@@ -443,6 +443,7 @@ export function makeStyles(t: UiTheme) {
     messageActions: { flexDirection: 'row', gap: t.space.s3, marginTop: t.space.s2 } as ViewStyle,
     messageAction: { paddingVertical: 2 } as ViewStyle,
     messageActionText: { fontFamily: t.font.text, fontSize: t.size.xs, color: t.color.tinte2, fontWeight: t.weight.fett } as TextStyle,
+    switchRow: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: t.space.s2, marginBottom: t.space.s1 } as ViewStyle,
     editBanner: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: t.space.s1 } as ViewStyle,
     srOnly: { position: 'absolute', width: 1, height: 1, overflow: 'hidden', opacity: 0 } as TextStyle,
     abortedBadge: {
