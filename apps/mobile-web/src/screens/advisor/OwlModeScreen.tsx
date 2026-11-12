@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Pressable, ScrollView, Text, View, type TextStyle, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
@@ -8,7 +8,6 @@ import {
   formatEuro,
   LEGAL_STATUS_DATE,
   PROFESSION_VALUES,
-  type AdvisorActionProposal,
   type AdvisorChatMessageView,
   type AdvisorFeedbackRating,
   type AdvisorFeedbackReason,
@@ -46,20 +45,7 @@ import {
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
-import { BackButton } from '../shared/BackButton'
 import { ErrorState, LoadingState } from '../shared/ScreenState'
-import { OwlMark } from '../../marks/OwlMark'
-import { useOwlEntrance } from '../../marks/useOwlEntrance'
-import { LstbScreen } from '../lstb/LstbScreen'
-import { WorkdaysScreen } from '../workdays/WorkdaysScreen'
-import { CrossBorderScreen } from '../cross-border/CrossBorderScreen'
-import { PensionerScreen } from '../pension/PensionerScreen'
-import { CapitalScreen } from '../capital/CapitalScreen'
-import { RentalScreen } from '../rental/RentalScreen'
-import { ChildrenScreen } from '../children/ChildrenScreen'
-import { AssessmentScreen } from '../assessment/AssessmentScreen'
-import { CatalogScreen } from '../catalog/CatalogScreen'
-import { MasterDataScreen } from '../master-data/MasterDataScreen'
 import { OwlTopBar } from './OwlTopBar'
 import { ProfessionPicker } from './ProfessionPicker'
 import { AdvisorChatPanel, sendOptionsToDto, type AdvisorChatPanelProps, type ChatSendOptions } from './AdvisorChatPanel'
@@ -67,6 +53,9 @@ import { ConversationList, type ConversationSearchHit, type ConversationSummary 
 import { ProjectNotes, type ProjectNote } from './chat/ProjectNotes'
 import { readOwlSidebarOpen, writeOwlSidebarOpen } from '../../lib/owlSidebarPreference'
 import { invalidateAllTaxQueries, useOptionalCopilotBridge, type OwlViewMode } from './CopilotBridgeProvider'
+import { GuestOwlGate } from './OwlGuestGate'
+import { InlineMaskView } from './OwlInlineMask'
+import { extractPendingDrafts, updateActionStatusInMessage } from './owlDrafts'
 
 export interface OwlModeScreenProps {
   readonly onDone?: () => void
@@ -112,7 +101,7 @@ export interface OwlModeScreenProps {
   readonly onLogin?: (() => void) | undefined
 }
 
-const AI_MANUAL_ONLY_SCREENS: ReadonlySet<Screen> = new Set<Screen>(['profil', 'stammdaten', 'kopplung'])
+export const AI_MANUAL_ONLY_SCREENS: ReadonlySet<Screen> = new Set<Screen>(['profil', 'stammdaten', 'kopplung'])
 
 /** The answer when the API said 200; otherwise it throws, so the caller's failure state shows. */
 function expectOk<R extends { readonly status: number }>(response: R, what: string): Extract<R, { readonly status: 200 }> {
@@ -122,74 +111,6 @@ function expectOk<R extends { readonly status: number }>(response: R, what: stri
 
 function professionFrom(value: string | undefined): Profession | null {
   return (PROFESSION_VALUES as readonly string[]).includes(value ?? '') ? (value as Profession) : null
-}
-
-function extractPendingDrafts(messages: readonly AdvisorChatMessageView[]): readonly AdvisorActionProposal[] {
-  const seen = new Set<string>()
-  const drafts: AdvisorActionProposal[] = []
-  for (const msg of messages) {
-    const candidates: AdvisorActionProposal[] = []
-    if (msg.meta?.action) candidates.push(msg.meta.action)
-    // Several drafts in one answer (ADR-0066). A scanned certificate keeps its own review flow.
-    if (msg.meta?.actions && !msg.meta.lstbScan) candidates.push(...msg.meta.actions)
-    if (msg.meta?.twoPaths) {
-      candidates.push(msg.meta.twoPaths.safePath, msg.meta.twoPaths.maxPath)
-    }
-    for (const candidate of candidates) {
-      if (candidate.status === 'pending' && !seen.has(candidate.actionId)) {
-        seen.add(candidate.actionId)
-        drafts.push(candidate)
-      }
-    }
-  }
-  return drafts
-}
-
-function updateActionStatusInMessage(
-  msg: AdvisorChatMessageView,
-  actionId: string,
-  status: AdvisorActionProposal['status'],
-): AdvisorChatMessageView {
-  if (!msg.meta) return msg
-  if (msg.meta.action?.actionId === actionId) {
-    return {
-      ...msg,
-      meta: { ...msg.meta, action: { ...msg.meta.action, status } },
-    }
-  }
-  if (msg.meta.actions?.some((a) => a.actionId === actionId)) {
-    return {
-      ...msg,
-      meta: { ...msg.meta, actions: msg.meta.actions.map((a) => (a.actionId === actionId ? { ...a, status } : a)) },
-    }
-  }
-  if (msg.meta.twoPaths) {
-    if (msg.meta.twoPaths.safePath.actionId === actionId) {
-      return {
-        ...msg,
-        meta: {
-          ...msg.meta,
-          twoPaths: {
-            ...msg.meta.twoPaths,
-            safePath: { ...msg.meta.twoPaths.safePath, status },
-          },
-        },
-      }
-    }
-    if (msg.meta.twoPaths.maxPath.actionId === actionId) {
-      return {
-        ...msg,
-        meta: {
-          ...msg.meta,
-          twoPaths: {
-            ...msg.meta.twoPaths,
-            maxPath: { ...msg.meta.twoPaths.maxPath, status },
-          },
-        },
-      }
-    }
-  }
-  return msg
 }
 
 const DEFAULT_LOCAL_DIGEST: CaseDigest = {
@@ -238,66 +159,6 @@ export function OwlModeScreen(props: OwlModeScreenProps) {
     return <OwlModeScreenView {...props} initialCards={props.initialCards} />
   }
   return <ConnectedOwlModeScreen {...props} />
-}
-
-function GuestOwlGate({ onDone = () => {}, onBack, onRegister, onLogin }: OwlModeScreenProps) {
-  const bp = useBreakpoint()
-  const t = useTheme()
-  const styles = makeStyles(t)
-  const { t: tr } = useTranslation(APP_NS)
-  const owl = useOwlEntrance()
-
-  return (
-    <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="eulen-modus-screen">
-      {onBack ? (
-        <View style={styles.headerRow}>
-          <BackButton accessibilityLabel={tr('eule.back', 'Zurück')} onPress={onBack} />
-        </View>
-      ) : null}
-
-      <View style={styles.hero} testID="eule-hero">
-        <OwlMark variant="tinte" size={72} {...owl} />
-        <View style={styles.heroCopy}>
-          <Text style={styles.heroTitle} role="heading" aria-level={1}>
-            {tr('eule.heroTitle', 'Deine Eule')}
-          </Text>
-          <Text style={styles.help}>
-            {tr('eule.heroBody', 'Sie kennt dein Steuerjahr und sagt dir, wo Geld liegen bleibt — mit Rechtsgrundlage, damit du selbst entscheidest.')}
-          </Text>
-          <View style={styles.privacyBadge} testID="eule-privacy-badge">
-            <Text style={styles.privacyBadgeText}>
-              🔒 Mandantengeheimnis aktiv — Keine Klarnamen, Steuer-IDs oder IBANs an KI
-            </Text>
-          </View>
-        </View>
-      </View>
-
-      <Card variant="ai" style={styles.guestCard} testID="eule-guest-konto-wand">
-        <Text style={styles.guestTitle}>{tr('eule.guest.title', 'Eulen-Modus erfordert ein kostenloses Konto')}</Text>
-        <Text style={styles.guestBody}>
-          {tr(
-            'eule.guest.body',
-            'Für die KI-Steuerberatung und Belegprüfung speichern wir deine Entwürfe verschlüsselt in deinem Konto. Als Gast startet hier kein KI-Abruf.',
-          )}
-        </Text>
-        <View style={styles.guestActions}>
-          {onRegister ? (
-            <Button onPress={onRegister} testID="eule-guest-register-btn">
-              {tr('eule.guest.register', 'Konto anlegen')}
-            </Button>
-          ) : null}
-          {onLogin ? (
-            <Button variant="ghost" onPress={onLogin} testID="eule-guest-login-btn">
-              {tr('eule.guest.login', 'Einloggen')}
-            </Button>
-          ) : null}
-          <Button variant="leise" onPress={onDone} testID="eule-guest-back-btn">
-            {tr('eule.fertig', 'Zurück zum Cockpit')}
-          </Button>
-        </View>
-      </Card>
-    </ScrollView>
-  )
 }
 
 function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YEAR, onAcceptPath }: OwlModeScreenProps) {
@@ -482,86 +343,6 @@ function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CURRENT_T
         await invalidate()
       }}
     />
-  )
-}
-
-function InlineMaskView({
-  screen,
-  field,
-  taxYear,
-  onBack,
-  styles,
-}: {
-  readonly screen: Screen
-  readonly field?: string | undefined
-  readonly taxYear: number
-  readonly onBack: () => void
-  readonly styles: ReturnType<typeof makeStyles>
-}) {
-  const { t: tr } = useTranslation(APP_NS)
-  const isManualOnly = AI_MANUAL_ONLY_SCREENS.has(screen)
-
-  function renderMask(): ReactNode {
-    if (isManualOnly) {
-      return (
-        <View>
-          <Card variant="default" style={styles.manualNoticeCard} testID="eule-manual-only-notice">
-            <Text style={styles.manualNoticeText}>
-              {tr(
-                'eule.workspace.manualNotice',
-                'Diese Maske enthält Stammdaten und ist für automatische KI-Änderungen gesperrt (Manuelle Eingabe).',
-              )}
-            </Text>
-          </Card>
-          {screen === 'stammdaten' || screen === 'kopplung' ? (
-            <MasterDataScreen taxYear={taxYear} onBack={onBack} />
-          ) : null}
-        </View>
-      )
-    }
-
-    switch (screen) {
-      case 'lstb':
-        return <LstbScreen taxYear={taxYear} onDone={onBack} onBack={onBack} />
-      case 'commute':
-        return <WorkdaysScreen taxYear={taxYear} onDone={onBack} onBack={onBack} />
-      case 'chLohnausweis':
-        return <CrossBorderScreen taxYear={taxYear} onDone={onBack} />
-      case 'rente':
-        return <PensionerScreen taxYear={taxYear} onDone={onBack} onBack={onBack} />
-      case 'kapital':
-        return <CapitalScreen taxYear={taxYear} onDone={onBack} onBack={onBack} />
-      case 'vermietung':
-        return <RentalScreen taxYear={taxYear} onDone={onBack} onBack={onBack} />
-      case 'kind':
-        return <ChildrenScreen taxYear={taxYear} onDone={onBack} onBack={onBack} />
-      case 'assessment':
-        return <AssessmentScreen taxYear={taxYear} onDone={onBack} onBack={onBack} />
-      case 'interview':
-        return <CatalogScreen entry="sonderausgaben" taxYear={taxYear} revisit onDone={onBack} onBack={onBack} />
-    }
-  }
-
-  return (
-    <View style={styles.inlineMaskWrap} testID="eule-inline-mask-view">
-      <Pressable
-        accessibilityRole="button"
-        onPress={onBack}
-        style={styles.backToStageBtn}
-        testID="eule-back-to-stage-btn"
-      >
-        <Text style={styles.backToStageText}>
-          {tr('eule.workspace.backToStage', '← Zurück zu den Eulen-Änderungen')}
-        </Text>
-      </Pressable>
-      <View style={styles.inlineMaskFocusBanner} testID="eule-inline-mask-focus-banner">
-        <Text style={styles.inlineMaskFocusText}>
-          {tr('eule.workspace.maskFocus', '🦉 Eulen-Fokus · Prüfe deine Maske')}
-          {field ? ` · ${field}` : ''}
-        </Text>
-      </View>
-      {renderMask()}
-    </View>
   )
 }
 
@@ -1257,7 +1038,7 @@ function OwlModeScreenView({
   )
 }
 
-function makeStyles(t: UiTheme) {
+export function makeStyles(t: UiTheme) {
   const kiColor = t.color.ki
   const kiBg = t.color.kiWeich
 
