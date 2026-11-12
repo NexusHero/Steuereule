@@ -56,6 +56,49 @@ describe('skills (#495)', () => {
   })
 })
 
+describe('/grill-me (#495)', () => {
+  it('typed and sent, switches the interview on and starts it', () => {
+    const { onSendMessage } = renderPanel()
+    send('/grill-me')
+    expect(onSendMessage).toHaveBeenCalledWith('Starte das Berater-Interview und frag mich durch meine Erklärung.', { skill: 'berater-interview' })
+    expect(screen.getByTestId('advisor-skills-toggle').textContent).toBe('Berater-Interview')
+    // The skill stays on for what follows.
+    send('Ja')
+    expect(onSendMessage).toHaveBeenLastCalledWith('Ja', { skill: 'berater-interview' })
+  })
+
+  it('sends what follows the command as the first message', () => {
+    const { onSendMessage } = renderPanel()
+    send('/grill-me fang bei den Kindern an')
+    expect(onSendMessage).toHaveBeenCalledWith('fang bei den Kindern an', { skill: 'berater-interview' })
+  })
+
+  it('offers the command while it is being typed, and runs it on a tap', () => {
+    const { onSendMessage } = renderPanel()
+    fireEvent.change(screen.getByTestId('advisor-chat-input'), { target: { value: '/gr' } })
+    expect(screen.getByTestId('advisor-slash-item').textContent).toContain('/grill-me')
+    fireEvent.click(screen.getByTestId('advisor-slash-item'))
+    expect(onSendMessage).toHaveBeenCalledWith(expect.stringContaining('Berater-Interview'), { skill: 'berater-interview' })
+    expect(screen.queryByTestId('advisor-slash-menu')).toBeNull()
+  })
+
+  it('carries Turbo along when both are on', () => {
+    const { onSendMessage } = renderPanel()
+    fireEvent.click(screen.getByTestId('advisor-turbo-toggle'))
+    send('/grill-me')
+    expect(onSendMessage).toHaveBeenLastCalledWith(expect.any(String), { skill: 'berater-interview', turbo: true })
+    send('Ja')
+    expect(onSendMessage).toHaveBeenLastCalledWith('Ja', { skill: 'berater-interview', turbo: true })
+  })
+
+  it('names an unknown command and sends nothing to the owl', () => {
+    const { onSendMessage } = renderPanel()
+    send('/zauber')
+    expect(onSendMessage).not.toHaveBeenCalled()
+    expect(screen.getByTestId('advisor-slash-unknown').textContent).toContain('/grill-me')
+  })
+})
+
 describe('question round (#495)', () => {
   it('needs every question answered before it can be sent, and sends one line per question', () => {
     const { onSendMessage } = renderPanel(ASKED)

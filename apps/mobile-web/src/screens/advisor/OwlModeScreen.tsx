@@ -21,6 +21,7 @@ import { ProfessionPicker } from './ProfessionPicker'
 import { AdvisorChatPanel, type AdvisorChatPanelProps, type ChatSendOptions } from './AdvisorChatPanel'
 import { ConversationList, type ConversationSearchHit, type ConversationSummary } from './chat/ConversationList'
 import { ProjectNotes, type ProjectNote } from './chat/ProjectNotes'
+import { ConnectionDetails, type ConnectionView } from './chat/ConnectionStatus'
 import { readOwlSidebarOpen, writeOwlSidebarOpen } from '../../lib/owlSidebarPreference'
 import { useOptionalCopilotBridge, type OwlViewMode } from './CopilotBridgeProvider'
 import { GuestOwlGate } from './OwlGuestGate'
@@ -63,6 +64,9 @@ export interface OwlModeScreenProps {
   /** How full the context of the open conversation is (#481). */
   readonly context?: AdvisorChatPanelProps['context']
   readonly onSummarize?: (() => Promise<void>) | undefined
+  /** The status of the connection to the model and the server (#488); without it the top bar shows none. */
+  readonly connection?: ConnectionView | undefined
+  readonly onRecheckConnection?: (() => Promise<unknown> | void) | undefined
   /** The project notes of this tax year (#481); without them the screen shows no notes. */
   readonly notes?: readonly ProjectNote[] | undefined
   readonly onAddNote?: ((text: string) => Promise<void>) | undefined
@@ -150,6 +154,8 @@ export function OwlModeScreenView({
   onSearchConversations,
   context,
   onSummarize,
+  connection,
+  onRecheckConnection,
   notes,
   onAddNote,
   onEditNote,
@@ -165,6 +171,8 @@ export function OwlModeScreenView({
   // null: the workbench follows what needs attention; otherwise the reader's own choice stands.
   const [panelChoice, setPanelChoice] = useState<'open' | 'closed' | null>(null)
   const [privacyOpen, setPrivacyOpen] = useState(false)
+  const [connectionOpen, setConnectionOpen] = useState(false)
+  const [rechecking, setRechecking] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [conversationsOpen, setConversationsOpen] = useState(false)
   // Desktop: the conversations and notes sit in a sidebar that remembers whether it was collapsed.
@@ -753,6 +761,8 @@ export function OwlModeScreenView({
             : undefined
         }
         conversationsExpanded={wide ? sidebarOpen : conversationsOpen}
+        connection={connection && bridge?.reconnecting ? { kind: 'restoring' } : connection}
+        onOpenConnection={connection ? () => setConnectionOpen(true) : undefined}
         legalStatusDate={LEGAL_STATUS_DATE}
         compact={bp === 's'}
       />
@@ -778,6 +788,19 @@ export function OwlModeScreenView({
       {panelOpen && !wide ? (
         <Sheet onClose={closePanel} closeLabel={tr('eule.workspace.topbar.panelClose')} testID="eule-workbench-sheet">
           {workbench}
+        </Sheet>
+      ) : null}
+
+      {connectionOpen && connection ? (
+        <Sheet onClose={() => setConnectionOpen(false)} closeLabel={tr('eule.workspace.topbar.privacyClose')} testID="eule-connection-sheet">
+          <ConnectionDetails
+            view={bridge?.reconnecting ? { kind: 'restoring' } : connection}
+            rechecking={rechecking}
+            onRecheck={() => {
+              setRechecking(true)
+              void Promise.resolve(onRecheckConnection?.()).finally(() => setRechecking(false))
+            }}
+          />
         </Sheet>
       ) : null}
 

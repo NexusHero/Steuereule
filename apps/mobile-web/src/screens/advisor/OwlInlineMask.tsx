@@ -3,7 +3,7 @@ import { type ReactNode } from 'react'
 import { Pressable, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { Card } from '@steuereule/ui'
-import { type Screen } from '@steuereule/core'
+import { locateQuestion, type Screen } from '@steuereule/core'
 import { APP_NS } from '../../i18n/resources'
 import { LstbScreen } from '../lstb/LstbScreen'
 import { WorkdaysScreen } from '../workdays/WorkdaysScreen'
@@ -13,7 +13,7 @@ import { CapitalScreen } from '../capital/CapitalScreen'
 import { RentalScreen } from '../rental/RentalScreen'
 import { ChildrenScreen } from '../children/ChildrenScreen'
 import { AssessmentScreen } from '../assessment/AssessmentScreen'
-import { CatalogScreen } from '../catalog/CatalogScreen'
+import { CatalogScreen, type CatalogScreenEntry } from '../catalog/CatalogScreen'
 import { MasterDataScreen } from '../master-data/MasterDataScreen'
 import { AI_MANUAL_ONLY_SCREENS, makeStyles } from './OwlModeScreen'
 
@@ -32,6 +32,8 @@ export function InlineMaskView({
 }) {
   const { t: tr } = useTranslation(APP_NS)
   const isManualOnly = AI_MANUAL_ONLY_SCREENS.has(screen)
+  // The interview is several pages; the field says which one the draft is about (#488).
+  const located = screen === 'interview' && field ? locateQuestion(field) : null
 
   function renderMask(): ReactNode {
     if (isManualOnly) {
@@ -70,7 +72,13 @@ export function InlineMaskView({
       case 'assessment':
         return <AssessmentScreen taxYear={taxYear} onDone={onBack} onBack={onBack} />
       case 'interview':
-        return <CatalogScreen entry="sonderausgaben" taxYear={taxYear} revisit onDone={onBack} onBack={onBack} />
+        return located ? (
+          <CatalogScreen entry={located.entry as CatalogScreenEntry} focusStep={located.step} taxYear={taxYear} revisit onDone={onBack} onBack={onBack} />
+        ) : (
+          <Card variant="default" style={styles.manualNoticeCard} testID="eule-inline-mask-unplaced">
+            <Text style={styles.manualNoticeText}>{tr('eule.workspace.maskUnplaced', 'Diese Angabe steht im Interview. Öffne dort die passende Frage.')}</Text>
+          </Card>
+        )
     }
   }
 

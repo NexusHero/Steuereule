@@ -14,6 +14,8 @@
 //   H  the notes of the tax year: add, change, delete by hand
 //   I  the context ring: fill level, no summary of a short conversation
 //   K  the latest answer came from the rules: "try again" asks the same question in place of that turn
+//   L  the connection status in the top bar: connected, model unreachable, server unreachable
+//   M  Turbo: off at first, sends the flag, an answer the owl applied itself says so
 //   J  on a phone the project content opens as a sheet
 //
 // The stack is real (sign-in, session, rating, clearing). Rows E and F stub what only a model
@@ -413,6 +415,65 @@ async function main() {
     if (sentBody.message !== 'Lohnt sich ein Fahrtenbuch?' || sentBody.replaceFromMessageId !== 'stub-uk') fail(`Row K: retry should ask the same question in place of the turn, sent ${JSON.stringify(sentBody)}`)
     console.log(`[${TAG}] ✅ Row K — "Noch einmal mit dem Sprachmodell versuchen" asks the same question again in place of the rule-based turn`)
 
+    // Row L — the status of the connection (#488): a dot and a word in the top bar, details on a tap,
+    // and it tells the model being unreachable from the server being unreachable.
+    await page.unroute('**/advisor/session*')
+    await page.route('**/advisor/connection', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ state: 'connected', provider: 'Gemini', model: 'gemini-test', checkedAt: new Date().toISOString() }) }))
+    await page.reload({ waitUntil: 'networkidle' })
+    await see(page, 'eule-connection-chip', 'Row L', 20_000)
+    await see(page, 'eule-connection-dot-ok', 'Row L')
+    if ((await textOf(page, 'eule-connection-label')) !== 'Verbunden · Gemini') fail(`Row L: connected should read "Verbunden · Gemini", reads "${await textOf(page, 'eule-connection-label')}"`)
+    await byId(page, 'eule-connection-chip').click()
+    await see(page, 'eule-connection-sheet', 'Row L')
+    await see(page, 'eule-connection-details', 'Row L')
+    if (!(await textOf(page, 'eule-connection-model')).includes('gemini-test')) fail('Row L: the details should name the model')
+
+    // The model stops answering: a new check says why, in words.
+    await page.unroute('**/advisor/connection')
+    await page.route('**/advisor/connection', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ state: 'unavailable', provider: 'Gemini', model: 'gemini-test', failure: { reason: 'quota', detail: 'Gemini · HTTP 429' }, checkedAt: new Date().toISOString() }) }))
+    await byId(page, 'eule-connection-recheck').click()
+    await see(page, 'eule-connection-dot-bad', 'Row L')
+    if (!(await textOf(page, 'eule-connection-failure')).includes('Kontingent')) fail('Row L: the details should give the reason the model is unreachable')
+    if ((await textOf(page, 'eule-connection-label')) !== 'Sprachmodell nicht erreichbar') fail('Row L: the chip should say the model is unreachable')
+
+    // The server stops answering at all: that is another sentence.
+    await page.unroute('**/advisor/connection')
+    await page.route('**/advisor/connection', (route) => route.abort('connectionrefused'))
+    await byId(page, 'eule-connection-recheck').click()
+    await page.waitForFunction(() => document.querySelector('[data-testid="eule-connection-label"]')?.textContent === 'Keine Verbindung zum Server', null, { timeout: 15_000 }).catch(() => fail('Row L: an unreachable server should read "Keine Verbindung zum Server"'))
+    await page.keyboard.press('Escape')
+    console.log(`[${TAG}] ✅ Row L — connection status: connected, model unreachable with its reason, server unreachable`)
+    await page.unroute('**/advisor/connection')
+
+    // Row M — Turbo (#491): off at first; on, the message carries the flag; an answer the owl applied
+    // itself says so and shows what it applied.
+    await page.unroute('**/advisor/session*')
+    await page.route('**/advisor/session*', async (route) => {
+      if (route.request().method() !== 'GET') return route.fallback()
+      const res = await route.fetch().catch(() => null)
+      if (res === null) return
+      const json = await res.json()
+      const applied = { actionId: 'turbo-1', status: 'applied', screen: 'interview', field: 'spenden-betrag', instance: null, label: 'Spenden', previousValue: '100', newValue: '300', beforeRefundEur: 0, afterRefundEur: 0, deltaEur: 0, reason: 'Stub', sourceId: 'estg-10b', appliedAt: now }
+      json.messages = [
+        { id: 'turbo-u1', role: 'user', content: 'Bitte 300 € Spenden eintragen', meta: null, createdAt: now, status: 'complete', feedback: null },
+        { id: 'turbo-a1', role: 'assistant', content: 'Erledigt.', meta: { action: applied, turbo: true }, createdAt: now, status: 'complete', feedback: null },
+      ]
+      await route.fulfill({ response: res, json })
+    })
+    await page.reload({ waitUntil: 'networkidle' })
+    await see(page, 'advisor-turbo-summary', 'Row M', 20_000)
+    if (!(await textOf(page, 'advisor-turbo-summary')).includes('1 Änderung direkt übernommen')) fail('Row M: the answer should say how many changes the owl applied')
+    await see(page, 'advisor-composer-switches', 'Row M')
+    const toggle = byId(page, 'advisor-turbo-toggle')
+    if ((await toggle.getAttribute('aria-checked')) !== 'false') fail('Row M: Turbo must start off')
+    await toggle.click()
+    if ((await toggle.getAttribute('aria-checked')) !== 'true') fail('Row M: the switch should turn Turbo on')
+    const sent = page.waitForRequest((request) => request.method() === 'POST' && /advisor\/(stream|runs)/.test(request.url()) && (request.postData() ?? '').includes('"turbo":true'), { timeout: 15_000 })
+    await byId(page, 'advisor-chat-input').fill('Danke')
+    await byId(page, 'advisor-chat-send').click()
+    await sent.catch(() => fail('Row M: with Turbo on, the message should carry turbo:true'))
+    console.log(`[${TAG}] ✅ Row M — Turbo: off at first, flag on send, the applied answer says so`)
+
     // Row S — skills (#495): off at first, listed, switchable; a round of questions has answers to
     // tap, needs every question answered, and goes out as one message with the skill attached.
     await page.unroute('**/advisor/session*')
@@ -442,7 +503,17 @@ async function main() {
     const roundSent = page.waitForRequest((request) => request.method() === 'POST' && /advisor\/(stream|runs)/.test(request.url()) && (request.postData() ?? '').includes('"skill":"berater-interview"') && (request.postData() ?? '').includes('1: Ja'), { timeout: 15_000 })
     await byId(page, 'advisor-question-submit').click()
     await roundSent.catch(() => fail('Row S: the answers should go out as one message with the skill attached'))
-    console.log(`[${TAG}] ✅ Row S — skills: listed and switchable, a round needs all answers and sends them with the skill`)
+
+    // /grill-me, as one knows it from other assistants: offered while typing, an unknown command is named.
+    await byId(page, 'advisor-chat-input').fill('/zauber')
+    await byId(page, 'advisor-chat-send').click()
+    if (!(await textOf(page, 'advisor-slash-unknown')).includes('/grill-me')) fail('Row S: an unknown command should name the ones there are')
+    await byId(page, 'advisor-chat-input').fill('/gr')
+    await see(page, 'advisor-slash-menu', 'Row S')
+    const started = page.waitForRequest((request) => request.method() === 'POST' && /advisor\/(stream|runs)/.test(request.url()) && (request.postData() ?? '').includes('"skill":"berater-interview"') && (request.postData() ?? '').includes('Berater-Interview'), { timeout: 15_000 })
+    await byId(page, 'advisor-slash-item').click()
+    await started.catch(() => fail('Row S: /grill-me should start the interview with the skill attached'))
+    console.log(`[${TAG}] ✅ Row S — skills: listed and switchable, a round needs all answers and sends them with the skill; /grill-me starts it`)
 
     await page.unrouteAll({ behavior: 'ignoreErrors' })
     await ctx.close()

@@ -531,6 +531,8 @@ export interface AdvisorMessageMetaDto {
   noteChanges?: AdvisorNoteChangeDto[];
   /** A round of questions with answers to tap, from the interview skill (#495). */
   questionRound?: AdvisorQuestionRoundDto;
+  /** Turbo mode: the owl applied the drafts of this answer itself; each can be undone. */
+  turbo?: boolean;
   /** Why the language model did not answer this turn, when it did not (#487): the answer then comes from fixed rules or is missing. */
   modelFailure?: AdvisorModelFailureDto;
   action?: AdvisorActionProposalDto;
@@ -885,6 +887,8 @@ export interface SendAdvisorMessageDto {
   activeScreen?: SendAdvisorMessageDtoActiveScreen;
   /** A skill the user switched on for this message (#495). */
   skill?: SendAdvisorMessageDtoSkill;
+  /** Turbo mode: the owl applies the drafts of this answer itself instead of waiting for a click. Off by default. */
+  turbo?: boolean;
   /** Quick start that shapes the turn: forgotten_check always opens with a visible plan (#451). */
   quickAction?: SendAdvisorMessageDtoQuickAction;
   /** Regenerate or edit-and-resend (#451): the id of the latest user message. That turn is replaced; its pending proposals are dismissed, never applied. */
@@ -914,6 +918,27 @@ export interface SendAdvisorMessageResponseDto {
 export interface StopAdvisorRunResponseDto {
   /** false when the run had already ended. */
   stopped: boolean;
+}
+
+export type AdvisorConnectionDtoState = typeof AdvisorConnectionDtoState[keyof typeof AdvisorConnectionDtoState];
+
+
+export const AdvisorConnectionDtoState = {
+  connected: 'connected',
+  degraded: 'degraded',
+  unavailable: 'unavailable',
+  'rules-only': 'rules-only',
+} as const;
+
+export interface AdvisorConnectionDto {
+  state: AdvisorConnectionDtoState;
+  /** @nullable */
+  provider: string | null;
+  /** @nullable */
+  model: string | null;
+  /** Why it is not connected, or only degraded. */
+  failure?: AdvisorModelFailureDto;
+  checkedAt: string;
 }
 
 export type AdvisorSearchHitDtoRole = typeof AdvisorSearchHitDtoRole[keyof typeof AdvisorSearchHitDtoRole];

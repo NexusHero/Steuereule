@@ -8,6 +8,7 @@ import {
   advisorControllerGetSession,
   advisorControllerStopRun,
   advisorControllerUndoAction,
+  getAdvisorControllerConnectionQueryKey,
   getAdvisorControllerGetSessionQueryKey,
   getAdvisorControllerRunEventsUrl,
   getAdvisorControllerStreamMessageUrl,
@@ -97,6 +98,7 @@ export interface SendStreamingOptions {
   /** Regenerate / edit-and-resend: the latest user message whose turn the answer replaces. */
   readonly replaceFromMessageId?: string | undefined
   readonly skill?: AdvisorSkillId | undefined
+  readonly turbo?: boolean | undefined
 }
 
 /** Marks the running step of a stopped plan as aborted; finished steps stay as they are. */
@@ -243,6 +245,8 @@ function extractErrorMessage(payload: unknown): string | null {
 export async function invalidateAllTaxQueries(queryClient: QueryClient, taxYear: number): Promise<void> {
   await Promise.all([
     queryClient.invalidateQueries({ queryKey: getAdvisorControllerGetSessionQueryKey(taxYear) }),
+    // A turn just found out whether the model answers (#488).
+    queryClient.invalidateQueries({ queryKey: getAdvisorControllerConnectionQueryKey(taxYear) }),
     queryClient.invalidateQueries({ queryKey: getOwlModeControllerGetSettingQueryKey() }),
     queryClient.invalidateQueries({ queryKey: getOwlModeControllerGetCardsQueryKey(taxYear) }),
     queryClient.invalidateQueries({ queryKey: getCockpitControllerGetCockpitSummaryQueryKey(taxYear) }),
@@ -498,6 +502,7 @@ export function CopilotBridgeProvider({
             ...(options?.quickAction ? { quickAction: options.quickAction } : {}),
             ...(options?.replaceFromMessageId ? { replaceFromMessageId: options.replaceFromMessageId } : {}),
             ...(options?.skill ? { skill: options.skill } : {}),
+            ...(options?.turbo ? { turbo: true } : {}),
             ...(conversationIdRef.current ? { conversationId: conversationIdRef.current } : {}),
           }),
         }),

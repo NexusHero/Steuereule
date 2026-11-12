@@ -42,3 +42,20 @@ export function describeModelFailure(reason: AdvisorModelFailureReason): Advisor
 export function fallbackNotice(failure: AdvisorModelFailure): string {
   return `${describeModelFailure(failure.reason).text} Diese Antwort kommt deshalb aus festen Regeln und kann ungenauer sein.`
 }
+
+/**
+ * Whether the owl can reach its language model right now (#488). `connected`: it answered a check;
+ * `degraded`: it answers, but the last turn failed a moment ago; `unavailable`: the check failed;
+ * `rules-only`: no model is set up, the fixed rules answer.
+ */
+export type AdvisorConnectionState = 'connected' | 'degraded' | 'unavailable' | 'rules-only'
+
+export interface AdvisorConnection {
+  readonly state: AdvisorConnectionState
+  /** Display name of the provider, e.g. "Gemini". Null for the fixed rules. */
+  readonly provider: string | null
+  readonly model: string | null
+  /** Why it is not connected or only degraded. */
+  readonly failure?: AdvisorModelFailure | undefined
+  readonly checkedAt: string
+}
