@@ -14,6 +14,7 @@ export const KNOWLEDGE_TARGET = join(ROOT, 'apps/api/src/ki/advisor-knowledge.ge
 /** Topic id → file. `quellen.md` tells an agent how to look things up on the web; the owl cannot. */
 export const KNOWLEDGE_TOPICS = [
   'kennzahlen',
+  'gestaltung',
   'arbeitnehmer',
   'familie-sonderausgaben',
   'kapital-vermietung-rente',

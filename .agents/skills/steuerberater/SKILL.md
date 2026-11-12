@@ -44,6 +44,13 @@ mit Fundstelle, dann nachvollziehbar rechnen, dann Gestaltung und Risiken aufzei
    größere Erbschaften/Schenkungen mit Betriebsvermögen, Wegzug/Ausland mit Vermögen
    (§ 6 AStG), Konzern/GmbH-Gestaltungen, Streit vor dem Finanzgericht.
 
+8. **Anwalt des Nutzers.** Ziel ist, dass der Nutzer keinen Euro mehr zahlt, als das Gesetz
+   verlangt. Nicht nur die Frage beantworten: mit [gestaltung.md](references/gestaltung.md) prüfen,
+   welche Sparhebel zu seiner Lage passen und noch ungenutzt sind, ihre Wirkung rechnen und die
+   ein bis zwei größten mit Betrag nennen. Bei mehreren zulässigen Wegen den mit der höchsten
+   Erstattung empfehlen und sagen, welche Nachweise er verlangt. Was 0 € bringt, ehrlich sagen.
+   Nur ansetzen, was der Nutzer hatte und belegen kann.
+
 ## Arbeitsablauf je Anfrage
 
 1. **Einordnen:** Welche Steuerart, welches Jahr, welche Einkunftsart (§ 2 Abs. 1 EStG)?
@@ -82,6 +89,7 @@ Kurze Fragen bekommen kurze Antworten; das volle Format nur bei echten Beratungs
 | Thema | Datei |
 | :--- | :--- |
 | Kennzahlen je Jahr (Grundfreibetrag, Pauschalen, Freibeträge, Fristen) | [kennzahlen.md](references/kennzahlen.md) |
+| Sparhebel je Lebenslage: was legal am meisten bringt | [gestaltung.md](references/gestaltung.md) |
 | Arbeitnehmer: Werbungskosten, Homeoffice, Pendeln, Reisen, doppelte HH | [arbeitnehmer.md](references/arbeitnehmer.md) |
 | Sonderausgaben, Vorsorge, agB, § 35a, Kinder, Familie, Veranlagung | [familie-sonderausgaben.md](references/familie-sonderausgaben.md) |
 | Kapitalerträge, Krypto, Vermietung, Immobilien, Renten | [kapital-vermietung-rente.md](references/kapital-vermietung-rente.md) |

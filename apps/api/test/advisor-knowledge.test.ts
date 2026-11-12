@@ -101,6 +101,8 @@ describe('advisor stance (#499)', () => {
     expect(prompt).toContain('compute_income_tax')
     expect(prompt).toContain('kein zugelassener Steuerberater')
     expect(prompt).toContain('§ 371 AO')
+    expect(prompt).toContain('keinen Euro mehr zahlt, als das Gesetz verlangt')
+    expect(prompt).toContain('Der Nutzen der App')
     expect(prompt).not.toContain('Nur private Einkommensteuererklärung')
   })
 })

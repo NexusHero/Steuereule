@@ -158,7 +158,7 @@ export const TOOL_DESCRIPTIONS: Readonly<Record<ToolName, string>> = {
   ask_questions:
     'Stellt dem Nutzer eine Runde von 1 bis 4 Fragen, jede mit 2 bis 4 antippbaren Antworten und deiner Empfehlung. Nur im Skill „Berater-Interview“ verwenden. Schreibt nichts in die Akte.',
   lookup_tax_knowledge:
-    'Liest einen Abschnitt des geprüften Steuerwissens: kennzahlen (Beträge je Jahr), arbeitnehmer, familie-sonderausgaben, kapital-vermietung-rente, selbststaendige-ust, grenzgaenger-ausland, erbschaft-schenkung, verfahren. Vor jeder fachlichen Aussage zu einem dieser Themen aufrufen.',
+    'Liest einen Abschnitt des geprüften Steuerwissens: kennzahlen (Beträge je Jahr), gestaltung (Sparhebel je Lebenslage), arbeitnehmer, familie-sonderausgaben, kapital-vermietung-rente, selbststaendige-ust, grenzgaenger-ausland, erbschaft-schenkung, verfahren. Vor jeder fachlichen Aussage zu einem dieser Themen aufrufen.',
   compute_income_tax:
     'Rechnet mit dem Rechenkern der App die tarifliche Einkommensteuer (§ 32a EStG), Soli und Kirchensteuer für ein zu versteuerndes Einkommen, auf Wunsch mit Splitting; `extraDeduction` zeigt, was ein zusätzlicher Abzug spart. Nie im Kopf rechnen.',
   lookup_legal_source: 'Ruft Wortlaut, Paragraph und Rechtsstand einer EStG/AO-Rechtsquelle aus dem verifizierten Katalog ab.',
