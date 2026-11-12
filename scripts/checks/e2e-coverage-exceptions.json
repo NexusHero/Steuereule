@@ -8,6 +8,7 @@
   },
   "testIds": {
     "microphone": "not a testID: the name of the icon in DictationBar's `isRecording ? 'stop' : 'microphone'`, picked up by the ternary scan next to a testID",
-    "stop": "not a testID: icon name, see microphone"
+    "stop": "not a testID: icon name, see microphone",
+    "eule-inline-mask-unplaced": "the notice for a question that is on no page of the workbench: every question the owl may draft is placed (locate-question.test.ts checks that every question of the interview has a page), so the browser can never reach it; it is covered by OwlInlineMask.test.tsx (#488)"
   }
 }
