@@ -1,5 +1,11 @@
 # Verfahrensrecht: Fristen, Bescheidprüfung, Einspruch, Änderung
 
+> **Stand:** 12.11.2026 · geprüft für die Steuerjahre 2023–2026. Beträge und Fristen des
+> geltenden Rechts (Stand 2026) sind mit dem Gesetzestext (gesetze-im-internet.de) abgeglichen; Werte
+> früherer Jahre stammen aus dem Rechenkern der App oder sind nicht einzeln belegt. **„(nicht belegt)“** = Verwaltungspraxis oder
+> Rechtsprechung, die nicht am Gesetzestext geprüft wurde: als unsicher nennen. **„prüfen“** = vor
+> Verwendung bestätigen.
+
 ## Abgabe
 - **Pflichtveranlagung** (§ 46 Abs. 2 EStG, § 25 Abs. 3 EStG / § 149 AO): Fristen siehe
   kennzahlen.md. Fristverlängerung formlos begründet beantragen (§ 109 AO).

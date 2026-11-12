@@ -37,6 +37,17 @@ schlägt im Netz nach); die Eule kann nichts davon.
    einen zugelassenen Steuerberater in den Fällen aus B8, und die Prüfung „Betrag nicht von der
    App berechnet“.
 
+7. **Maßstab ist die Eule für zahlende Nutzer.** Jede Datei des Wissens trägt „Stand: Datum,
+   geprüft für die Steuerjahre X–Y“. Die Beträge des geltenden Rechts sind am Gesetzestext
+   abgeglichen (12.11.2026: 109 Stellen in EStG, UStG, AO, GewStG, ErbStG, SolZG). Was nicht am
+   Gesetz belegt ist (Verwaltungspraxis, Rechtsprechung), bleibt mit „(nicht belegt)“ stehen, und
+   die Eule nennt es als unsicher. Ein Test schlägt an, sobald der Rechenkern ein Steuerjahr
+   kennt, für das das Wissen nicht geprüft ist.
+8. **Bewährung von Hand.** `pnpm --filter @steuereule/api test:eval` stellt 21 typische
+   Beratungsfragen an das echte Modell und prüft, was eine gute Antwort enthalten muss (Norm,
+   Betrag, Rückfrage, nachgeschlagen, gerechnet). Kein Gate, kein nächtlicher Lauf: Er läuft, wenn
+   der Skill oder der Prompt sich ändert.
+
 ## Offen und Risiken
 
 - **Rechtlich ungeprüft.** Geschäftsmäßige Hilfeleistung in Steuersachen ist nach dem

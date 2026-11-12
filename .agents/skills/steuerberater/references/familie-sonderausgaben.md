@@ -1,5 +1,11 @@
 # Sonderausgaben, außergewöhnliche Belastungen, § 35a, Kinder, Veranlagung
 
+> **Stand:** 12.11.2026 · geprüft für die Steuerjahre 2023–2026. Beträge und Fristen des
+> geltenden Rechts (Stand 2026) sind mit dem Gesetzestext (gesetze-im-internet.de) abgeglichen; Werte
+> früherer Jahre stammen aus dem Rechenkern der App oder sind nicht einzeln belegt. **„(nicht belegt)“** = Verwaltungspraxis oder
+> Rechtsprechung, die nicht am Gesetzestext geprüft wurde: als unsicher nennen. **„prüfen“** = vor
+> Verwendung bestätigen.
+
 ## Vorsorgeaufwendungen (§ 10 Abs. 1 Nr. 2, 3, 3a; Abs. 3, 4)
 - **Basisversorgung Alter** (gesetzliche RV, berufsständische Versorgung, Rürup/Basisrente):
   seit 2023 zu 100 % bis zum Höchstbetrag (Bezug: Höchstbeitrag knappschaftliche RV, jährlich
@@ -10,7 +16,7 @@
 - **Sonstige Vorsorge** (Wahlleistungen, ALV, BU, Unfall, Haftpflicht, Risiko-LV):
   nur innerhalb 1.900/2.800 € — die Basis-KV/PV füllt diesen Rahmen meist schon aus →
   weitere Versicherungen bringen oft **0 €**. Ehrlich sagen.
-- Vorauszahlung Basis-KV bis zum 2,5-Fachen des Jahresbeitrags (§ 10 Abs. 1 Nr. 3 S. 4)
+- Vorauszahlung Basis-KV bis zum **Dreifachen** des Jahresbeitrags (§ 10 Abs. 1 Nr. 3 S. 5; bis 2019 das 2,5-Fache)
   als Gestaltung bei hohem Einkommen im laufenden Jahr.
 - **Riester** (§ 10a): Sonderausgabenabzug bis 2.100 € inkl. Zulage; Günstigerprüfung
   gegen Zulage automatisch. Anlage AV.
@@ -57,7 +63,7 @@
 - **Günstigerprüfung § 31**: Finanzamt prüft, ob Kinderfreibetrag + BEA (9.600 € 2025 /
   9.756 € 2026 je Kind bei Zusammenveranlagung) mehr bringt als das Kindergeld; dann wird
   Kindergeld der Steuer hinzugerechnet. Faustregel: lohnt ab ca. 80.000–100.000 € zvE
-  (zusammen) — immer mit dem Script rechnen.
+  (zusammen, nicht belegt) — immer rechnen, nie schätzen.
 - Soli und KiSt werden **immer** mit Kinderfreibeträgen berechnet (§ 51a Abs. 2 EStG).
 - Volljährige Kinder bis 25: Erstausbildung/Erststudium, oder Zweitausbildung mit
   Erwerbstätigkeit ≤ 20 Std./Woche (§ 32 Abs. 4 S. 2–3). Ohne Ausbildung bis 21 arbeitssuchend.
@@ -69,7 +75,7 @@
 
 ## Veranlagungsart (§§ 26–26b, 32a Abs. 5–6)
 - **Zusammenveranlagung** mit Splitting: Vorteil bei unterschiedlich hohen Einkommen
-  (max. bei Alleinverdiener). Script: `--splitting` vs. zwei Einzelberechnungen.
+  (max. bei Alleinverdiener). Splittingtarif gegen zwei Einzelberechnungen rechnen.
 - **Einzelveranlagung** (§ 26a) sinnvoll bei: Lohnersatzleistungen eines Partners
   (Progressionsvorbehalt), Abfindung mit Fünftelregelung, hohen § 33-Kosten eines Partners,
   Verlusten, Insolvenz. Immer **beide Varianten rechnen**.

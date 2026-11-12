@@ -1,5 +1,11 @@
 # Arbeitnehmer (Einkünfte aus nichtselbstständiger Arbeit, § 19 EStG)
 
+> **Stand:** 12.11.2026 · geprüft für die Steuerjahre 2023–2026. Beträge und Fristen des
+> geltenden Rechts (Stand 2026) sind mit dem Gesetzestext (gesetze-im-internet.de) abgeglichen; Werte
+> früherer Jahre stammen aus dem Rechenkern der App oder sind nicht einzeln belegt. **„(nicht belegt)“** = Verwaltungspraxis oder
+> Rechtsprechung, die nicht am Gesetzestext geprüft wurde: als unsicher nennen. **„prüfen“** = vor
+> Verwendung bestätigen.
+
 Werbungskosten (§ 9 EStG) wirken nur, soweit sie zusammen den Arbeitnehmer-Pauschbetrag
 (1.230 €) übersteigen. Immer zuerst summieren, dann entscheiden, ob Einzelnachweis lohnt.
 
@@ -32,7 +38,7 @@ Werbungskosten (§ 9 EStG) wirken nur, soweit sie zusammen den Arbeitnehmer-Paus
 - Computer, Laptop, Tablet, Peripherie, Software: Nutzungsdauer 1 Jahr möglich → voller Abzug
   im Anschaffungsjahr (BMF 22.02.2022).
 - Privatnutzung: bei untergeordneter Privatnutzung (<10 %) voll; bei gemischter Nutzung
-  Aufteilung; Verwaltung akzeptiert bei Computern oft 50 % ohne Nachweis.
+  Aufteilung; Verwaltung akzeptiert bei Computern oft 50 % ohne Nachweis (nicht belegt).
 - Typisch: Fachliteratur, Berufskleidung (nur typische, nicht bürgerliche Kleidung) und deren
   Reinigung, Werkzeug, Diensthandy-Anteil, Internet (pauschal 20 % der Kosten, max. 20 €/Monat
   ohne Einzelnachweis, R 9.1 Abs. 5 LStR).
@@ -40,7 +46,7 @@ Werbungskosten (§ 9 EStG) wirken nur, soweit sie zusammen den Arbeitnehmer-Paus
 ## Weitere Werbungskosten
 - Fortbildung/Umschulung/Studium als Zweitausbildung (Erstausbildung nur Sonderausgaben
   bis 6.000 €, § 10 Abs. 1 Nr. 7; § 9 Abs. 6).
-- Bewerbungskosten (Pauschalen von FG akzeptiert: 2,50 € je Mappe, 8,50 € per Post — nicht gesetzlich).
+- Bewerbungskosten (Pauschalen von FG akzeptiert: 2,50 € je Mappe, 8,50 € per Post — nicht gesetzlich, nicht belegt).
 - Gewerkschafts- und Berufsverbandsbeiträge.
 - Kontoführung: pauschal 16 € (Verwaltungspraxis, nicht gesetzlich; „Sicherer Weg“ = ansetzen,
   wird in der Praxis meist akzeptiert).
@@ -64,8 +70,9 @@ Werbungskosten (§ 9 EStG) wirken nur, soweit sie zusammen den Arbeitnehmer-Paus
 
 ## Lohnsteuer-Themen
 - **Steuerklassen** bei Ehe: IV/IV (Standard), III/V (Liquiditätsvorteil, aber Pflichtveranlagung,
-  Wirkung auf Lohnersatzleistungen wie Elterngeld/ALG!), IV/IV mit Faktor (§ 39f). Ab 2030 ist
-  der Wegfall von III/V geplant (prüfen). Die Jahressteuer hängt nicht von der Klasse ab.
+  Wirkung auf Lohnersatzleistungen wie Elterngeld/ALG!), IV/IV mit Faktor (§ 39f). Ein Wegfall von
+  III/V war geplant, ist aber nicht Gesetz geworden (nicht belegt). Die Jahressteuer hängt nicht
+  von der Klasse ab.
 - **Pflichtveranlagung** (§ 46 Abs. 2): u. a. Nebeneinkünfte > 410 €, Lohnersatz > 410 €
   (Progressionsvorbehalt), III/V oder Faktor, mehrere Arbeitgeber, Freibetrag auf der
   Lohnsteuerkarte, Abfindung mit Fünftelregelung.
@@ -73,5 +80,6 @@ Werbungskosten (§ 9 EStG) wirken nur, soweit sie zusammen den Arbeitnehmer-Paus
   Lohnsteuerabzug, prüfen) — zusammengeballter Zufluss in einem Jahr nötig.
 - **Lohnsteuer-Freibetrag** (§ 39a) beantragen, wenn Werbungskosten > 600 € über Pauschale.
 - **Sachbezüge**: 50-€-Freigrenze/Monat, Jobticket, E-Bike/Firmenwagen (1 %-/0,25 %-Regel E-Auto),
-  Inflationsprämie, Erholungsbeihilfe — steuerfrei/pauschal vs. steuerpflichtig unterscheiden.
+  Erholungsbeihilfe — steuerfrei/pauschal vs. steuerpflichtig unterscheiden. (Die
+  Inflationsausgleichsprämie war nur bis Ende 2024 steuerfrei.)
 - **Arbeitnehmersparzulage, Riester-Zulage** separat prüfen.

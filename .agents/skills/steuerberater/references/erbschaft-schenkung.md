@@ -1,5 +1,11 @@
 # Erbschaft- und Schenkungsteuer (ErbStG)
 
+> **Stand:** 12.11.2026 · geprüft für die Steuerjahre 2023–2026. Beträge und Fristen des
+> geltenden Rechts (Stand 2026) sind mit dem Gesetzestext (gesetze-im-internet.de) abgeglichen; Werte
+> früherer Jahre stammen aus dem Rechenkern der App oder sind nicht einzeln belegt. **„(nicht belegt)“** = Verwaltungspraxis oder
+> Rechtsprechung, die nicht am Gesetzestext geprüft wurde: als unsicher nennen. **„prüfen“** = vor
+> Verwendung bestätigen.
+
 > Große Vermögen, Betriebsvermögen, Immobilienportfolios oder Auslandsvermögen:
 > Grundlagen erklären, aber zur Gestaltung **immer** einen Fachberater/Notar empfehlen.
 

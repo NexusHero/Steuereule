@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { AIMessage, ToolMessage, type BaseMessage } from '@langchain/core/messages'
 import { describe, expect, it } from 'vitest'
-import { getTaxYearParameters, incomeTax } from '@steuereule/core'
+import { TAX_YEARS, getTaxYearParameters, incomeTax } from '@steuereule/core'
 import { KNOWLEDGE_TARGET, renderKnowledgeModule } from '../scripts/generate-advisor-knowledge.js'
 import { computeIncomeTax } from '../src/ki/advisor-income-tax.js'
 import { ADVISOR_KNOWLEDGE, ADVISOR_KNOWLEDGE_TOPICS } from '../src/ki/advisor-knowledge.generated.js'
@@ -48,6 +48,17 @@ describe('tax knowledge of the owl (#499)', () => {
       expect(incomeTax(row[i]! + 100, year), String(year)).toBeGreaterThan(0)
     })
     expect(getTaxYearParameters(2025).lumpSums).toBeDefined()
+  })
+
+  it('says for which tax years each section was checked, and covers every year the tax core knows from 2023 on', () => {
+    const coreYears = Object.keys(TAX_YEARS).map(Number).filter((year) => year >= 2023)
+    for (const topic of ADVISOR_KNOWLEDGE_TOPICS) {
+      const stand = /\*\*Stand:\*\* (\d{2}\.\d{2}\.\d{4}) · geprüft für die Steuerjahre (\d{4})–(\d{4})/.exec(ADVISOR_KNOWLEDGE[topic].text)
+      expect(stand, `${topic} needs a „Stand“ line`).not.toBeNull()
+      const [from, to] = [Number(stand![2]), Number(stand![3])]
+      // A new tariff year in the core means: check the knowledge again and move the range.
+      for (const year of coreYears) expect(year >= from && year <= to, `${topic} is not checked for ${year}`).toBe(true)
+    }
   })
 
   it('reads a topic on request and refuses one that does not exist', async () => {

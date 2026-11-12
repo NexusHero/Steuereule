@@ -1,5 +1,11 @@
 # Selbstständige, Gewerbetreibende, Umsatzsteuer
 
+> **Stand:** 12.11.2026 · geprüft für die Steuerjahre 2023–2026. Beträge und Fristen des
+> geltenden Rechts (Stand 2026) sind mit dem Gesetzestext (gesetze-im-internet.de) abgeglichen; Werte
+> früherer Jahre stammen aus dem Rechenkern der App oder sind nicht einzeln belegt. **„(nicht belegt)“** = Verwaltungspraxis oder
+> Rechtsprechung, die nicht am Gesetzestext geprüft wurde: als unsicher nennen. **„prüfen“** = vor
+> Verwendung bestätigen.
+
 ## Einordnung
 - **Freiberuf** (§ 18: Katalogberufe wie Ingenieur, Arzt, Journalist, IT-Berater mit
   ingenieursähnlicher Tätigkeit, künstlerisch/wissenschaftlich/lehrend) → keine GewSt.
@@ -31,7 +37,7 @@
 - **Kleinunternehmer § 19** (ab 2025): Vorjahr ≤ 25.000 € und laufendes Jahr ≤ 100.000 €.
   Keine USt ausweisen („Steuerbefreit gemäß § 19 UStG“), kein Vorsteuerabzug. Verzicht
   (Option) bindet 5 Jahre — lohnt bei hohen Anfangsinvestitionen oder B2B-Kunden.
-  Seit 2025 grundsätzlich keine USt-Jahreserklärung mehr für Kleinunternehmer (prüfen).
+  Grundsätzlich keine USt-Jahreserklärung mehr für Kleinunternehmer (ab Besteuerungszeitraum 2024, nicht belegt, prüfen).
 - **Regelbesteuerung**: Voranmeldungen monatlich/vierteljährlich (Gründer: im Gründungsjahr
   und Folgejahr vierteljährlich seit 2021–2026, prüfen); Dauerfristverlängerung (+1 Monat,
   Sondervorauszahlung 1/11 bei monatlich).
@@ -57,7 +63,9 @@
 - Rücklagen-Faustregel: 30–40 % des Gewinns für ESt/Soli/KiSt + USt nie als Einnahme ansehen.
 
 ## Pflichten
-- Aufbewahrung: Bücher, Jahresabschlüsse, Buchungsbelege 8 Jahre (seit 2025, vorher 10),
-  Handels-/Geschäftsbriefe 6 Jahre (§ 147 AO, prüfen). Kassenführung (TSE) bei Bargeld.
+- Aufbewahrung (§ 147 Abs. 3 AO): Bücher, Aufzeichnungen, Inventare, Jahresabschlüsse
+  **10 Jahre**; Buchungsbelege **8 Jahre** (seit 2025, vorher 10); Handels-/Geschäftsbriefe und
+  sonstige Unterlagen 6 Jahre. Die Frist läuft nicht ab, solange die Festsetzungsfrist offen ist.
+  Kassenführung (TSE) bei Bargeld.
 - Fragebogen zur steuerlichen Erfassung über ELSTER bei Gründung (innerhalb 1 Monat).
 - Erklärungen elektronisch Pflicht (EÜR, USt, GewSt, ESt mit Gewinneinkünften).

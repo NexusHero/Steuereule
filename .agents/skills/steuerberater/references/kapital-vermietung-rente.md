@@ -1,5 +1,11 @@
 # Kapitalerträge, Krypto, Vermietung, Immobilien, Renten
 
+> **Stand:** 12.11.2026 · geprüft für die Steuerjahre 2023–2026. Beträge und Fristen des
+> geltenden Rechts (Stand 2026) sind mit dem Gesetzestext (gesetze-im-internet.de) abgeglichen; Werte
+> früherer Jahre stammen aus dem Rechenkern der App oder sind nicht einzeln belegt. **„(nicht belegt)“** = Verwaltungspraxis oder
+> Rechtsprechung, die nicht am Gesetzestext geprüft wurde: als unsicher nennen. **„prüfen“** = vor
+> Verwendung bestätigen.
+
 ## Kapitalerträge (§ 20, § 32d, § 43 ff. EStG; InvStG)
 - **Abgeltungsteuer** 25 % + Soli 5,5 % + ggf. KiSt (KiSt mindert die KapESt: Satz 24,45 %
   bei 9 %, 24,51 % bei 8 %). Abgeltende Wirkung bei deutschen Banken.
@@ -10,8 +16,8 @@
   Verlustverrechnung zwischen Banken (Verlustbescheinigung bis 15.12. beantragen),
   ausländische Quellensteuer anrechnen, KiSt nicht einbehalten.
 - **Verlusttöpfe**: Aktienveräußerungsverluste nur mit Aktiengewinnen (§ 20 Abs. 6 S. 4).
-  Termingeschäfts-/Forderungsausfall-Verlustbeschränkung (20.000 €) wurde ab 2024
-  abgeschafft (JStG 2024) — für alte Jahre Einspruch/Verlustvortrag prüfen.
+  Die Verlustbeschränkung für Termingeschäfte und Forderungsausfälle (20.000 €) ist mit dem
+  JStG 2024 entfallen, und zwar für alle noch offenen Fälle (nicht belegt) — alte Jahre prüfen.
 - **Investmentfonds**: Teilfreistellung (Aktienfonds ≥ 51 % Aktien: 30 %, Mischfonds 15 %,
   Immobilienfonds 60/80 %); **Vorabpauschale** jährlich (Basiszins × 0,7 × Wert, gedeckelt
   durch Wertzuwachs + Ausschüttungen); wird beim Verkauf angerechnet — bei ausländischen

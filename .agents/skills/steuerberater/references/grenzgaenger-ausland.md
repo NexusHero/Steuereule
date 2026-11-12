@@ -1,5 +1,11 @@
 # Grenzgänger Schweiz & Auslandsbezug
 
+> **Stand:** 12.11.2026 · geprüft für die Steuerjahre 2023–2026. Beträge und Fristen des
+> geltenden Rechts (Stand 2026) sind mit dem Gesetzestext (gesetze-im-internet.de) abgeglichen; Werte
+> früherer Jahre stammen aus dem Rechenkern der App oder sind nicht einzeln belegt. **„(nicht belegt)“** = Verwaltungspraxis oder
+> Rechtsprechung, die nicht am Gesetzestext geprüft wurde: als unsicher nennen. **„prüfen“** = vor
+> Verwendung bestätigen.
+
 ## Grenzgänger nach Art. 15a DBA Deutschland–Schweiz
 - **Voraussetzung**: Wohnsitz in DE, Arbeitsort in CH, **regelmäßige Rückkehr** an den Wohnsitz.
   Grenzgängereigenschaft entfällt, wenn an **mehr als 60 Arbeitstagen** im Jahr wegen der
@@ -7,8 +13,13 @@
   Nachweis: Bescheinigung des Arbeitgebers (Formular Gre-3) bzw. Ansässigkeitsbescheinigung
   Gre-1 für die CH-Quellensteuer.
 - **Besteuerung**: Wohnsitzstaat DE besteuert den Lohn; CH erhebt Quellensteuer max. **4,5 %**
-  des Bruttolohns. Diese wird auf die deutsche ESt angerechnet (§ 34c, Anlage N-AUS bzw.
-  Grenzgänger-Zeilen; nur bis zur Höhe der deutschen Steuer auf diese Einkünfte).
+  des Bruttolohns. Diese wird auf die deutsche ESt angerechnet **wie einbehaltene Lohnsteuer**
+  (Art. 15a Abs. 3 Buchst. a DBA: entsprechend § 36 EStG, **unter Ausschluss von § 34c**; BMF
+  vom 08.02.2018, BStBl I 2018, 270). Sie ist also keine ausländische Steuer im
+  Festsetzungsverfahren, und eine Kappung auf die anteilige deutsche Steuer wie bei § 34c gibt es
+  nicht (nicht belegt: aus dem Wortlaut gefolgert). Erklärt wird in der **Anlage N-Gre**.
+  Voraussetzung für die 4,5 %: Ansässigkeitsbescheinigung Gre-1; ohne sie behält die Schweiz
+  mehr ein.
 - **Kein Lohnsteuerabzug in DE** → **Pflichtveranlagung**, Vorauszahlungen werden festgesetzt.
 - **Umrechnung CHF → EUR**: Monatsdurchschnittskurse (BMF-Umsatzsteuer-Umrechnungskurse)
   oder Jahresdurchschnitt; Methode einheitlich.
@@ -19,13 +30,13 @@
 - **Sozialversicherung**: AHV/IV/EO, ALV → Vorsorgeaufwand (AHV = Basisversorgung § 10 Abs. 1
   Nr. 2a). **Pensionskasse (BVG)**: obligatorische Beiträge als Altersvorsorge
   (Basisversorgung), überobligatorische Teile/Einkäufe umstritten bzw. nach Rechtsprechung
-  differenziert → prüfen und ggf. Zwei-Wege-Darstellung. **Säule 3a** in DE nicht abziehbar.
+  differenziert (nicht belegt) → prüfen und ggf. Zwei-Wege-Darstellung. **Säule 3a** in DE nicht abziehbar.
 - **Krankenversicherung**: Optionsrecht (KVG in CH oder GKV/PKV in DE); Beiträge als
   Basis-KV § 10 Abs. 1 Nr. 3 abziehbar; NBU (Nichtberufsunfall) → sonstige Vorsorge.
 - **Werbungskosten**: Entfernungspauschale zum Arbeitsort in CH, Vignette nur anteilig/
   nicht neben der Pauschale, Arbeitsmittel, Homeoffice-Tage (Achtung: Homeoffice-Tage in DE
   können das Besteuerungsrecht/die Quellensteuer und die SV-Zuständigkeit berühren —
-  Verständigungsvereinbarung DE-CH zu Homeoffice ab 2024, prüfen).
+  Verständigungsvereinbarung DE-CH zu Homeoffice ab 2024, nicht belegt, prüfen).
 - **Kapitalleistungen aus der Pensionskasse/Säule 3a** bei Auszahlung: CH-Quellensteuer,
   in DE Besteuerung nach § 22 Nr. 5 bzw. § 20 je nach Ursprung — komplexer Fall, Primärquellen
   (BFH-Rechtsprechung) prüfen, ggf. echten Berater empfehlen.
