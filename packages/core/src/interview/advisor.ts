@@ -185,6 +185,8 @@ export interface AdvisorMessageMeta {
   readonly notices?: readonly AdvisorAnswerNotice[] | undefined
   /** What the owl changed in the project notes in this answer; each change can be undone (#481). */
   readonly noteChanges?: readonly AdvisorNoteChange[] | undefined
+  /** Turbo mode: the owl applied the drafts of this answer itself, without a click; each can be undone. */
+  readonly turbo?: true | undefined
   /** Why the model did not answer this turn, when it did not (#487). */
   readonly modelFailure?: AdvisorModelFailure | undefined
   /** Server-internal: which engine produced the turn, kept with the drafts it proposed. */

@@ -85,15 +85,23 @@ function walkedStepsFor(entry: CatalogueEntry, answers: Answers): readonly Entry
   }
 }
 
+/** The pages of the cockpit's tunnel, and the ones only the interview and the owl workbench show. */
+export type CatalogScreenEntry = CatalogEntryParam | 'minimal-gate' | 'segment-2' | 'segment-ch' | 'berufsprofil'
+
 export interface CatalogScreenProps {
-  readonly entry: CatalogEntryParam
+  readonly entry: CatalogScreenEntry
+  /**
+   * With `revisit`: opens the page at this step instead of at its last one, so a link from the owl
+   * ("Maske ansehen") lands on the question the draft is about (#488).
+   */
+  readonly focusStep?: EntryStepId | undefined
   readonly onDone?: () => void
   readonly onBack?: () => void
   readonly taxYear?: number
   readonly revisit?: boolean
 }
 
-export function CatalogScreen({ entry, onDone = () => {}, onBack, taxYear = CURRENT_TAX_YEAR, revisit = false }: CatalogScreenProps) {
+export function CatalogScreen({ entry, focusStep, onDone = () => {}, onBack, taxYear = CURRENT_TAX_YEAR, revisit = false }: CatalogScreenProps) {
   const bp = useBreakpoint()
   const t = useTheme()
   const styles = makeStyles(t)
@@ -116,7 +124,11 @@ export function CatalogScreen({ entry, onDone = () => {}, onBack, taxYear = CURR
     if (!seeded && interviewQuery.isFetchedAfterMount && interviewQuery.data?.status === 200) {
       const loaded = interviewQuery.data.data.answers as Answers
       const walked = walkedStepsFor(ENTRIES[entry], loaded)
-      if (revisit && nextStepFor(ENTRIES[entry], loaded).kind === 'done' && walked.length > 0) {
+      const focusIndex = revisit && focusStep !== undefined ? walked.indexOf(focusStep) : -1
+      if (focusIndex !== -1 && focusStep !== undefined) {
+        setHistory(walked.slice(0, focusIndex))
+        setAnswers(clearStepAndFollowUps(loaded, focusStep))
+      } else if (revisit && nextStepFor(ENTRIES[entry], loaded).kind === 'done' && walked.length > 0) {
         const firstLaterIdx = walked.findIndex((id) => loaded[id] === AMOUNT_LATER)
         if (firstLaterIdx !== -1) {
           setHistory(walked.slice(0, firstLaterIdx))
@@ -137,7 +149,7 @@ export function CatalogScreen({ entry, onDone = () => {}, onBack, taxYear = CURR
       }
       setSeeded(true)
     }
-  }, [seeded, interviewQuery.isFetchedAfterMount, interviewQuery.data, entry, revisit])
+  }, [seeded, interviewQuery.isFetchedAfterMount, interviewQuery.data, entry, revisit, focusStep])
 
   const current = seeded ? nextStepFor(ENTRIES[entry], answers) : null
 

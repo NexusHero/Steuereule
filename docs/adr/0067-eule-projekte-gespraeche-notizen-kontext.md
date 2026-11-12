@@ -126,6 +126,20 @@ Schlüssel wird dem Nutzer als Sache des Betreibers genannt. Der Hinweis steht i
 Antwort und bleibt nach dem Neuladen. Bricht der Strom mitten in der Antwort ab, nennt auch der
 Fehler den Grund.
 
+### 8. Turbo: die Eule übernimmt selbst und zeigt es
+
+Ein Schalter „Turbo“ am Eingabefeld (aus in jeder neuen Sitzung, #491). Aus bleibt alles wie in
+ADR-0038: Die Eule bereitet Entwürfe vor und wartet auf den Klick. An, übernimmt der Server die
+offenen Entwürfe einer Antwort, sobald sie fertig und gespeichert ist, in einem Schritt, genau wie
+„Alle übernehmen“: mit Prüfung gegen zwischenzeitliche Änderungen, Herkunft „Assistent: SteuerEule“,
+Prüfpfad und Rückgängig.
+
+- Die Karten bleiben sichtbar, jetzt als „Übernommen“ mit altem und neuem Wert; darüber sagt eine
+  Zeile, wie viele Änderungen die Eule übernommen hat (`meta.turbo`).
+- Was nicht passt (Feld zwischenzeitlich geändert, Konflikt, abgelehnter Wert), wird nicht erzwungen:
+  Alle Entwürfe bleiben offen. „Zwei Wege“ wartet immer auf eine Wahl.
+- Das ist die zweite bewusste Ausnahme von Zero-Write, diesmal auf Wunsch des Nutzers je Nachricht.
+
 ### 9. Fällt das Modell aus, antwortet ein zweites (#493)
 
 Jeder Anbieter-Client wiederholt kurze Fehler (429, 503, abgerissene Verbindung) zweimal mit Wartezeit.

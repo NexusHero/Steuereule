@@ -270,6 +270,39 @@ describe('AdvisorService (In-App Steuerberater Agent "Deine Eule")', () => {
     expect(markingRepo.all().find((m) => m.key === 'interview.spenden-betrag')).toBeUndefined()
   })
 
+  describe('turbo mode', () => {
+    beforeEach(async () => {
+      await interviewRepo.write({ userId: USER, taxYear: YEAR, questionId: 'spenden', value: 'Ja', openItems: 0 })
+      await interviewRepo.write({ userId: USER, taxYear: YEAR, questionId: 'spenden-betrag', value: '100', openItems: 0 })
+    })
+
+    it('applies the drafts of the answer without a click, marks the answer and can be undone', async () => {
+      const res = await advisorService.sendMessage(USER, YEAR, { message: 'Bitte 300 € Spenden eintragen', turbo: true })
+      const action = res.assistantMessage.meta?.action
+      expect(action?.status).toBe('applied')
+      expect(action?.previousValue).toBe('100')
+      expect(res.assistantMessage.meta?.turbo).toBe(true)
+      const rows = await interviewRepo.findAllForUserAndYear(USER, YEAR)
+      expect(rows.find((r) => r.questionId === 'spenden-betrag')?.value).toBe('300')
+      expect(markingRepo.all().find((m) => m.key === 'interview.spenden-betrag')).toMatchObject({ provenance: { kind: 'assistent', name: 'SteuerEule' } })
+
+      const undone = await advisorService.undoAction(USER, YEAR, action!.actionId)
+      expect(undone.action.status).toBe('undone')
+      const after = await interviewRepo.findAllForUserAndYear(USER, YEAR)
+      expect(after.find((r) => r.questionId === 'spenden-betrag')?.value).toBe('100')
+    })
+
+    it('stays Zero-Write when turbo is off or not asked for', async () => {
+      const off = await advisorService.sendMessage(USER, YEAR, { message: 'Bitte 300 € Spenden eintragen', turbo: false })
+      expect(off.assistantMessage.meta?.action?.status).toBe('pending')
+      expect(off.assistantMessage.meta?.turbo).toBeUndefined()
+      const none = await advisorService.sendMessage(USER, YEAR, { message: 'Bitte 400 € Spenden eintragen' })
+      expect(none.assistantMessage.meta?.action?.status).toBe('pending')
+      const rows = await interviewRepo.findAllForUserAndYear(USER, YEAR)
+      expect(rows.find((r) => r.questionId === 'spenden-betrag')?.value).toBe('100')
+    })
+  })
+
   it('supports Two-Paths comparison and applying either path', async () => {
     const chatRes = await advisorService.sendMessage(USER, YEAR, {
       message: 'Homeoffice vs. Arbeitszimmer prüfen',
