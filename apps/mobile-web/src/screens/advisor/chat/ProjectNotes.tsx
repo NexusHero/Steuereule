@@ -3,6 +3,7 @@ import { Pressable, Text, TextInput, View, type TextStyle, type ViewStyle } from
 import { useTranslation } from 'react-i18next'
 import { Button, useTheme, type UiTheme } from '@steuereule/ui'
 import { APP_NS } from '../../../i18n/resources'
+import { makeSidePanelStyles } from './sidePanelStyles'
 
 export const NOTE_MAX_CHARS = 200
 
@@ -173,16 +174,11 @@ export function NoteChangeHints({ changes, onUndo }: NoteChangeHintsProps) {
 
 function makeStyles(t: UiTheme) {
   return {
-    wrap: { gap: t.space.s3 } as ViewStyle,
-    heading: { fontFamily: t.font.display, fontWeight: t.weight.fett, fontSize: t.size.l, color: t.color.tinte } as TextStyle,
-    help: { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.tinte2 } as TextStyle,
+    ...makeSidePanelStyles(t),
     empty: { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.tinte2, fontStyle: 'italic' } as TextStyle,
     row: { padding: t.space.s3, borderRadius: t.radius.m, borderWidth: 1, borderColor: t.color.linie, backgroundColor: t.color.karte, gap: t.space.s2 } as ViewStyle,
     text: { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.tinte } as TextStyle,
-    meta: { fontFamily: t.font.text, fontSize: t.size.xs, color: t.color.tinte2 } as TextStyle,
     actions: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: t.space.s3 } as ViewStyle,
-    link: { minHeight: 44, justifyContent: 'center' } as ViewStyle,
-    linkText: { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.kiTinte, textDecorationLine: 'underline' } as TextStyle,
     editor: { gap: t.space.s2 } as ViewStyle,
     input: {
       minHeight: 72,
@@ -195,7 +191,6 @@ function makeStyles(t: UiTheme) {
       fontSize: t.size.s,
       color: t.color.tinte,
     } as TextStyle,
-    failed: { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.fehler } as TextStyle,
     hints: { marginTop: t.space.s3, gap: t.space.s2 } as ViewStyle,
     hint: {
       flexDirection: 'row',

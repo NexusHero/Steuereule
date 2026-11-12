@@ -3,6 +3,7 @@ import { Pressable, Text, TextInput, View, type TextStyle, type ViewStyle } from
 import { useTranslation } from 'react-i18next'
 import { Button, useTheme, type UiTheme } from '@steuereule/ui'
 import { APP_NS } from '../../../i18n/resources'
+import { makeSidePanelStyles } from './sidePanelStyles'
 
 export interface ConversationSummary {
   readonly id: string
@@ -239,9 +240,7 @@ export function ConversationList({ conversations, activeId, canSwitch, onSelect,
 
 function makeStyles(t: UiTheme) {
   return {
-    wrap: { gap: t.space.s3 } as ViewStyle,
-    heading: { fontFamily: t.font.display, fontWeight: t.weight.fett, fontSize: t.size.l, color: t.color.tinte } as TextStyle,
-    help: { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.tinte2 } as TextStyle,
+    ...makeSidePanelStyles(t),
     row: {
       padding: t.space.s3,
       borderRadius: t.radius.m,
@@ -254,11 +253,8 @@ function makeStyles(t: UiTheme) {
     open: { gap: t.space.s1, minHeight: 44, justifyContent: 'center' } as ViewStyle,
     name: { fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: t.size.m, color: t.color.tinte } as TextStyle,
     nameActive: { color: t.color.kiTinte } as TextStyle,
-    meta: { fontFamily: t.font.text, fontSize: t.size.xs, color: t.color.tinte2 } as TextStyle,
     snippet: { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.tinte } as TextStyle,
     actions: { flexDirection: 'row', gap: t.space.s4 } as ViewStyle,
-    link: { minHeight: 44, justifyContent: 'center' } as ViewStyle,
-    linkText: { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.kiTinte, textDecorationLine: 'underline' } as TextStyle,
     editLine: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: t.space.s2 } as ViewStyle,
     input: {
       flexGrow: 1,
@@ -286,6 +282,5 @@ function makeStyles(t: UiTheme) {
       color: t.color.tinte,
     } as TextStyle,
     confirm: { flexBasis: '100%', fontFamily: t.font.text, fontSize: t.size.s, color: t.color.tinte } as TextStyle,
-    failed: { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.fehler } as TextStyle,
   }
 }
