@@ -303,6 +303,25 @@ export interface AdvisorNoteChangeDto {
   undone?: boolean;
 }
 
+export type AdvisorModelFailureDtoReason = typeof AdvisorModelFailureDtoReason[keyof typeof AdvisorModelFailureDtoReason];
+
+
+export const AdvisorModelFailureDtoReason = {
+  'not-configured': 'not-configured',
+  quota: 'quota',
+  unavailable: 'unavailable',
+  timeout: 'timeout',
+  network: 'network',
+  blocked: 'blocked',
+  unknown: 'unknown',
+} as const;
+
+export interface AdvisorModelFailureDto {
+  reason: AdvisorModelFailureDtoReason;
+  /** Provider and HTTP status, e.g. "Gemini · HTTP 429". Never message text. */
+  detail?: string;
+}
+
 export type AdvisorLstbScanMetaDtoStage = typeof AdvisorLstbScanMetaDtoStage[keyof typeof AdvisorLstbScanMetaDtoStage];
 
 
@@ -500,6 +519,8 @@ export interface AdvisorMessageMetaDto {
   notices?: AdvisorAnswerNoticeDto[];
   /** What the owl changed in the project notes in this answer; each change can be undone (#481). */
   noteChanges?: AdvisorNoteChangeDto[];
+  /** Why the language model did not answer this turn, when it did not (#486): the answer then comes from fixed rules or is missing. */
+  modelFailure?: AdvisorModelFailureDto;
   action?: AdvisorActionProposalDto;
   actions?: AdvisorActionProposalDto[];
   lstbScan?: AdvisorLstbScanMetaDto;

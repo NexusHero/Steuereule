@@ -813,3 +813,47 @@ describe('the owl keeps project notes itself (#481)', () => {
     expect(JSON.stringify(over.seenMessages[1]!.map((m) => m.content))).toContain('TOO_MANY_NOTES')
   })
 })
+
+describe('a model that does not answer says why (#486)', () => {
+  /** A model that streams `before` and then fails with `error`. */
+  class FailingModel extends BaseChatModel {
+    constructor(private readonly before: string[], private readonly error: Error) {
+      super({})
+    }
+    _llmType(): string {
+      return 'failing-test'
+    }
+    override bindTools(_tools: BindToolsInput[]): Runnable<BaseLanguageModelInput, AIMessageChunk, BaseChatModelCallOptions> {
+      return this as unknown as Runnable<BaseLanguageModelInput, AIMessageChunk, BaseChatModelCallOptions>
+    }
+    async _generate(): Promise<ChatResult> {
+      throw this.error
+    }
+    override async *_streamResponseChunks(): AsyncGenerator<ChatGenerationChunk> {
+      for (const text of this.before) yield new ChatGenerationChunk({ text, message: new AIMessageChunk({ content: text }) })
+      throw this.error
+    }
+  }
+  const quota = new Error('[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/x:streamGenerateContent?alt=sse: [429 Too Many Requests] Resource has been exhausted')
+  const engineWith = (model: BaseChatModel) => new LangGraphAdvisorEngine(runtime('google-genai'), () => model)
+
+  it('answers from the rules when the model fails before the first word, and keeps the reason with the answer', async () => {
+    const { result, events } = await run(engineWith(new FailingModel([], quota)))
+    expect(result.mode).toBe('deterministic_fallback')
+    expect(result.meta.modelFailure).toEqual({ reason: 'quota', detail: 'Gemini · HTTP 429' })
+    expect(events.some((e) => e.event === 'error')).toBe(false)
+  })
+
+  it('ends with an error that names the reason when the model breaks off halfway', async () => {
+    const { events } = await run(engineWith(new FailingModel(['Die Entfernungs'], new Error('[GoogleGenerativeAI Error]: Error reading from the stream'))))
+    const error = events.find((e) => e.event === 'error')
+    expect(error?.data).toMatchObject({ code: 'ADVISOR_TURN_FAILED', failure: { reason: 'network', detail: 'Gemini' } })
+    expect(error).toBeDefined()
+    expect((error!.data as { message: string }).message).toContain('Verbindung zum Sprachmodell')
+  })
+
+  it('does not blame the model when no model is configured at all', async () => {
+    const { result } = await run(new LangGraphAdvisorEngine(runtime('deterministic'), () => new FailingModel([], quota)))
+    expect(result.meta.modelFailure).toBeUndefined()
+  })
+})
