@@ -29,6 +29,7 @@ import {
   getLinkControllerGetMockHandler,
   getOwlModeControllerGetSettingMockHandler,
   getOwlModeControllerGetCardsMockHandler,
+  getAdvisorControllerConnectionMockHandler,
   getAdvisorControllerGetSessionMockHandler,
   getAssistantsControllerListConnectedMockHandler,
 } from '@steuereule/api-client/msw'
@@ -269,6 +270,7 @@ export const server = setupServer(
   http.put('*/v1/steuerjahre/:jahr/kopplung/person-b', () => HttpResponse.json(EMPTY_LINK_RESPONSE, { status: 200 })),
   getOwlModeControllerGetSettingMockHandler(EMPTY_OWL_SETTING_RESPONSE),
   getOwlModeControllerGetCardsMockHandler(EMPTY_OWL_CARDS_RESPONSE),
+  getAdvisorControllerConnectionMockHandler({ state: 'connected', provider: 'Gemini', model: 'gemini-test', checkedAt: '2026-01-01T00:00:00.000Z' }),
   getAdvisorControllerGetSessionMockHandler({
     enabled: false,
     greeting: 'Hallo! Ich bin deine SteuerEule.',

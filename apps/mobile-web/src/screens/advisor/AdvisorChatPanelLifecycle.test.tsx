@@ -218,6 +218,23 @@ describe('AdvisorChatPanel: several drafts in one answer (ADR-0066)', () => {
     expect(screen.getByTestId('advisor-context-ring')).toBeTruthy()
   })
 
+  it('shows why the model did not answer under a rule-based answer, and under a failed one (#487)', () => {
+    const onSendMessage = vi.fn()
+    renderPanel({
+      messages: [user('u1', 'Frage'), owl('a1', 'Ich habe deine Akte im Blick.', { meta: { modelFailure: { reason: 'quota', detail: 'Gemini · HTTP 429' } } })],
+      onSendMessage,
+    })
+    expect(screen.getByTestId('advisor-model-failure-text').textContent).toContain('Kontingent')
+    fireEvent.click(screen.getByTestId('advisor-model-failure-retry'))
+    expect(onSendMessage).toHaveBeenCalledWith('Frage', { replaceFromMessageId: 'u1' })
+  })
+
+  it('names the reason of a failed answer', () => {
+    renderPanel({ messages: [user('u1', 'Frage'), owl('a1', 'halb', { status: 'failed', meta: { modelFailure: { reason: 'network', detail: 'Gemini' } } })] })
+    expect(screen.getByTestId('advisor-message-failed').textContent).toContain('Verbindung zum Sprachmodell')
+    expect(screen.getByTestId('advisor-retry')).toBeTruthy()
+  })
+
   it('keeps the scanned certificate in its own review card', () => {
     renderPanel({
       messages: [owl('a1', 'Erkannt.', { meta: { lstbScan: {} as NonNullable<AdvisorChatMessageView['meta']>['lstbScan'], actions: [draft('d1', 'Bruttolohn', '62000')] } })],

@@ -2252,6 +2252,38 @@
         ]
       }
     },
+    "/v1/steuerjahre/{jahr}/advisor/connection": {
+      "get": {
+        "operationId": "AdvisorController_connection",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdvisorConnectionDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Whether the owl can reach its language model right now (#488); the provider is asked at most once a minute",
+        "tags": [
+          "eulen-modus"
+        ]
+      }
+    },
     "/v1/steuerjahre/{jahr}/advisor/search": {
       "get": {
         "operationId": "AdvisorController_search",
@@ -7954,6 +7986,30 @@
           "questions"
         ]
       },
+      "AdvisorModelFailureDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "enum": [
+              "not-configured",
+              "quota",
+              "unavailable",
+              "timeout",
+              "network",
+              "blocked",
+              "unknown"
+            ]
+          },
+          "detail": {
+            "type": "string",
+            "description": "Provider and HTTP status, e.g. \"Gemini · HTTP 429\". Never message text."
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
       "AdvisorLstbScanMetaDto": {
         "type": "object",
         "properties": {
@@ -8274,6 +8330,18 @@
             "allOf": [
               {
                 "$ref": "#/components/schemas/AdvisorQuestionRoundDto"
+              }
+            ]
+          },
+          "turbo": {
+            "type": "boolean",
+            "description": "Turbo mode: the owl applied the drafts of this answer itself; each can be undone."
+          },
+          "modelFailure": {
+            "description": "Why the language model did not answer this turn, when it did not (#487): the answer then comes from fixed rules or is missing.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AdvisorModelFailureDto"
               }
             ]
           },
@@ -9016,6 +9084,10 @@
             ],
             "description": "A skill the user switched on for this message (#495)."
           },
+          "turbo": {
+            "type": "boolean",
+            "description": "Turbo mode: the owl applies the drafts of this answer itself instead of waiting for a click. Off by default."
+          },
           "quickAction": {
             "type": "string",
             "enum": [
@@ -9082,6 +9154,48 @@
         },
         "required": [
           "deletedMessages"
+        ]
+      },
+      "AdvisorConnectionDto": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": [
+              "connected",
+              "degraded",
+              "unavailable",
+              "rules-only"
+            ]
+          },
+          "provider": {
+            "type": "string",
+            "nullable": true,
+            "example": "Gemini"
+          },
+          "model": {
+            "type": "string",
+            "nullable": true,
+            "example": "gemini-3.8-flash"
+          },
+          "failure": {
+            "description": "Why it is not connected, or only degraded.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AdvisorModelFailureDto"
+              }
+            ]
+          },
+          "checkedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "state",
+          "provider",
+          "model",
+          "checkedAt"
         ]
       },
       "AdvisorSearchHitDto": {

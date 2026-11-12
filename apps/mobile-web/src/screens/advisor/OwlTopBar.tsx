@@ -1,3 +1,4 @@
+import { ConnectionChip, type ConnectionView } from './chat/ConnectionStatus'
 import { Pressable, Text, View, type TextStyle, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useTheme, type UiTheme } from '@steuereule/ui'
@@ -22,6 +23,9 @@ export interface OwlTopBarProps {
   readonly onOpenConversations?: (() => void) | undefined
   /** Whether the list it opens is showing right now (sidebar or sheet). */
   readonly conversationsExpanded?: boolean | undefined
+  /** The status of the connection (#488): a dot and a word, tapped for details. */
+  readonly connection?: ConnectionView | undefined
+  readonly onOpenConnection?: (() => void) | undefined
   /** Phone width: icons only, no legal status line. */
   readonly compact?: boolean | undefined
 }
@@ -48,6 +52,8 @@ export function OwlTopBar({
   onOpenSettings,
   onOpenConversations,
   conversationsExpanded = false,
+  connection,
+  onOpenConnection,
   legalStatusDate,
   compact = false,
 }: OwlTopBarProps) {
@@ -61,15 +67,16 @@ export function OwlTopBar({
 
   return (
     <View style={styles.bar} testID="eule-topbar">
-      <View style={styles.side}>
+      <View style={styles.brand}>
         {onBack ? <BackButton accessibilityLabel={tr('eule.back', 'Zurück')} onPress={onBack} /> : null}
         <OwlMark variant="tinte" size={28} />
-        <Text style={styles.title} role="heading" aria-level={1} testID="eule-topbar-title">
+        <Text style={styles.title} numberOfLines={1} role="heading" aria-level={1} testID="eule-topbar-title">
           {tr('eule.workspace.topbar.title')}
         </Text>
       </View>
 
       <View style={styles.side}>
+        {connection && onOpenConnection ? <ConnectionChip view={connection} compact={compact} onPress={onOpenConnection} /> : null}
         {compact ? null : (
           <Text style={styles.legal} testID="eule-legal-status">
             {tr('eule.workspace.topbar.legalStatus', { date: formatDate(legalStatusDate, i18n.language) })}
@@ -136,6 +143,8 @@ function makeStyles(t: UiTheme) {
       backgroundColor: t.color.grund,
     } as ViewStyle,
     side: { flexDirection: 'row', alignItems: 'center', gap: t.space.s2, flexShrink: 1 } as ViewStyle,
+    // The name of the screen never gives way: on a phone the controls on the right shrink instead.
+    brand: { flexDirection: 'row', alignItems: 'center', gap: t.space.s2, flexShrink: 0 } as ViewStyle,
     title: { fontFamily: t.font.display, fontWeight: t.weight.fett, fontSize: t.size.m, color: t.color.tinte } as TextStyle,
     legal: { fontFamily: t.font.text, fontSize: t.size.xs, color: t.color.tinte2, marginRight: t.space.s1 } as TextStyle,
     chip: {

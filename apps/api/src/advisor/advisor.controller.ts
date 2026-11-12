@@ -59,6 +59,7 @@ import {
   AdvisorSessionResponseDto,
   ApplyBatchActionsDto,
   ApplyBatchActionsResponseDto,
+  AdvisorConnectionDto,
   AdvisorContextDto,
   AdvisorConversationDto,
   AdvisorNoteDto,
@@ -258,6 +259,14 @@ export class AdvisorController {
     @Query('conversationId') conversationId?: string,
   ): Promise<ClearAdvisorConversationResponseDto> {
     return this.runs.clearConversation(userId, year, conversationId || undefined)
+  }
+
+  @Get('connection')
+  @OwlRoute()
+  @ApiOperation({ summary: 'Whether the owl can reach its language model right now (#488); the provider is asked at most once a minute' })
+  @ApiOkResponse({ type: AdvisorConnectionDto })
+  connection(): Promise<AdvisorConnectionDto> {
+    return this.service.connection()
   }
 
   @Get('search')

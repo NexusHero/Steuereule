@@ -4,6 +4,7 @@ import {
   ArrayMaxSize,
   ArrayMinSize,
   IsArray,
+  IsBoolean,
   IsIn,
   IsNotEmpty,
   IsObject,
@@ -34,7 +35,11 @@ import {
   type AdvisorAnswerNotice,
   type AdvisorAnswerNoticeKind,
   type AdvisorContextLevel,
+  type AdvisorConnection,
+  type AdvisorConnectionState,
   type AdvisorEffectKind,
+  type AdvisorModelFailure,
+  type AdvisorModelFailureReason,
   type AdvisorNoteChange,
   type AdvisorNoteChangeKind,
   type AdvisorMessageMeta,
@@ -275,6 +280,31 @@ export class AdvisorNoteChangeDto implements AdvisorNoteChange {
   undone?: true | undefined
 }
 
+export class AdvisorModelFailureDto implements AdvisorModelFailure {
+  @ApiProperty({ type: String, enum: ['not-configured', 'quota', 'unavailable', 'timeout', 'network', 'blocked', 'unknown'] })
+  reason!: AdvisorModelFailureReason
+
+  @ApiPropertyOptional({ type: String, description: 'Provider and HTTP status, e.g. "Gemini · HTTP 429". Never message text.' })
+  detail?: string | undefined
+}
+
+export class AdvisorConnectionDto implements AdvisorConnection {
+  @ApiProperty({ type: String, enum: ['connected', 'degraded', 'unavailable', 'rules-only'] })
+  state!: AdvisorConnectionState
+
+  @ApiProperty({ type: String, nullable: true, example: 'Gemini' })
+  provider!: string | null
+
+  @ApiProperty({ type: String, nullable: true, example: 'gemini-3.8-flash' })
+  model!: string | null
+
+  @ApiPropertyOptional({ type: () => AdvisorModelFailureDto, description: 'Why it is not connected, or only degraded.' })
+  failure?: AdvisorModelFailureDto | undefined
+
+  @ApiProperty({ type: String, format: 'date-time' })
+  checkedAt!: string
+}
+
 export class AdvisorNotStagedDto implements AdvisorNotStaged {
   @ApiProperty({ type: String, example: 'Mieteinnahmen' })
   label!: string
@@ -329,6 +359,15 @@ export class AdvisorMessageMetaDto implements AdvisorMessageMeta {
 
   @ApiPropertyOptional({ type: () => AdvisorQuestionRoundDto, description: 'A round of questions with answers to tap, from the interview skill (#495).' })
   questionRound?: AdvisorQuestionRoundDto | undefined
+
+  @ApiPropertyOptional({ type: Boolean, description: 'Turbo mode: the owl applied the drafts of this answer itself; each can be undone.' })
+  turbo?: true | undefined
+
+  @ApiPropertyOptional({
+    type: () => AdvisorModelFailureDto,
+    description: 'Why the language model did not answer this turn, when it did not (#487): the answer then comes from fixed rules or is missing.',
+  })
+  modelFailure?: AdvisorModelFailureDto | undefined
 
   @ApiPropertyOptional({ type: AdvisorActionProposalDto })
   action?: AdvisorActionProposalDto | undefined
@@ -553,6 +592,11 @@ export class SendAdvisorMessageDto {
   @IsOptional()
   @IsIn(ADVISOR_SKILL_IDS)
   skill?: AdvisorSkillId | undefined
+
+  @ApiPropertyOptional({ type: Boolean, description: 'Turbo mode: the owl applies the drafts of this answer itself instead of waiting for a click. Off by default.' })
+  @IsOptional()
+  @IsBoolean()
+  turbo?: boolean | undefined
 
   @ApiPropertyOptional({
     type: String,

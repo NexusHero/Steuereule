@@ -280,6 +280,25 @@ export class AdvisorDrafts {
     return conflicts
   }
 
+  /**
+   * Turbo mode: applies every pending draft of one answer as one batch, as if the user had tapped
+   * "apply all". Nothing is forced: a stale field, a clash or a refused write leaves all drafts as
+   * they are, pending, for the user to decide. Two-path proposals always wait for a choice.
+   */
+  async applyPendingOf(userId: string, taxYear: number, message: AdvisorChatMessageRecord): Promise<AdvisorChatMessageRecord | null> {
+    const pending = [message.meta?.action, ...(message.meta?.actions ?? [])].filter((a): a is AdvisorActionProposal => a?.status === 'pending')
+    if (pending.length === 0) return null
+    try {
+      await this.applyBatch(userId, taxYear, { drafts: pending.map((a) => ({ actionId: a.actionId })) })
+    } catch (error) {
+      if (error instanceof ConflictError || error instanceof InvalidInputError || error instanceof NotFoundError) return null
+      throw error
+    }
+    const applied = await this.advisorRepo.findMessage(message.id, userId)
+    if (!applied?.meta) return null
+    return this.advisorRepo.updateMessageMeta(applied.id, userId, { ...applied.meta, turbo: true })
+  }
+
   async applyAction(userId: string, taxYear: number, actionId: string): Promise<AdvisorActionMutationResponseDto> {
     const result = await this.applyBatch(userId, taxYear, { drafts: [{ actionId }] })
     return { message: result.messages[0]!, action: result.actions[0]! }
