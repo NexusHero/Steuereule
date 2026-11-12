@@ -249,6 +249,16 @@ jobs:
           --health-interval=5s
           --health-timeout=5s
           --health-retries=10
+      # The cluster runs the owl's run log on Redis (ADR-0064); one step below exercises that path.
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=10
     env:
       DATABASE_URL: postgres://steuereule:steuereule@localhost:5432/steuereule
       # Synthetic, dev-only (ADR-0012) — vitest.integration.config.ts already sets
@@ -291,6 +301,12 @@ jobs:
         run: pnpm --filter @steuereule/api exec playwright-core install chromium --with-deps
       - name: Integration + acceptance tests — encryption/audit + REQ-005/006/009/010/011 (ADR-0012/ADR-0013)
         run: pnpm --filter @steuereule/api test:integration
+      - name: Owl run log on Redis Streams (ADR-0064) — replay, stop across instances, expiry
+        # Its own step with REDIS_URL set only here: with the variable on the whole tier the rate
+        # limiter would share its counters across all test files and they would throttle each other.
+        env:
+          REDIS_URL: redis://localhost:6379
+        run: pnpm --filter @steuereule/api exec vitest run --config vitest.integration.config.ts test/advisor-run-log.redis.integration.test.ts
 
   # Real gate (#221, and the register-ownership decision landing via #251) — turns
   # docs/requirements/register.md and docs/adr/ from a
@@ -756,6 +772,9 @@ jobs:
       # #450 5C / D7: the test unlock (a fake payment provider, only ever outside production and without
       # Stripe keys) so the printout gate can pay and download without Stripe.
       PAYMENT_FAKE_PROVIDER: '1'
+      # ADR-0065: a handful of streets so the address search answers in this job (smart inputs gate).
+      # Production data is fetched with `streets:fetch`; this fixture never leaves the test jobs.
+      STREET_DATA_PATH: ${{ github.workspace }}/e2e/fixtures/streets.sample.csv
       EXPO_PUBLIC_API_BASE_URL: http://localhost:3301
     steps:
       - uses: actions/checkout@v5
@@ -844,6 +863,10 @@ jobs:
         # Fails on any request to a host other than API_ORIGIN/WEB_ORIGIN (decision 7: the postal
         # code never leaves the device). Needs DATABASE_URL (job env) to verify the sign-up.
         run: node e2e/advisor/input-aids.mjs
+      - name: Smart inputs gate (ADR-0065) — IBAN mask, date field, address search on our own server, Finanzamt/Familienkasse suggestions
+        # Runs against the API booted above with STREET_DATA_PATH (job env) pointing at the street
+        # fixture. Fails on any request to a host other than API_ORIGIN/WEB_ORIGIN.
+        run: node e2e/forms/smart-inputs.mjs
       - name: Plan-in-chat gate (#451 slice 6) — live checklist, collapse, Stop mid-plan, no write without a click
         # The model is stubbed inside the page (controllable SSE stream); sign-in, session and the
         # apply endpoints are the real stack. Needs DATABASE_URL (job env) to verify the sign-up.

@@ -73,6 +73,13 @@ cmd_dev() {
   info "Migrationen anwenden"
   pnpm --filter @steuereule/api migrate:deploy >/dev/null
 
+  # Adresssuche (ADR-0065): Straßendaten einmalig laden (~55 MB). Ohne sie läuft alles, nur die Suche fehlt.
+  export STREET_DATA_PATH="$PWD/apps/api/data/streets.csv"
+  if [[ ! -f "$STREET_DATA_PATH" ]]; then
+    info "Straßendaten für die Adresssuche laden (einmalig, ~55 MB)"
+    pnpm --filter @steuereule/api streets:fetch >/dev/null || info "Straßendaten nicht geladen – die Adresssuche bleibt aus."
+  fi
+
   info "API bauen und starten (Log: $DEV_API_LOG)"
   mkdir -p "$(dirname "$DEV_API_LOG")"
   pnpm --filter @steuereule/api build >/dev/null

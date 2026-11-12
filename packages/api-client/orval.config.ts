@@ -360,6 +360,21 @@ export default defineConfig({
       },
     },
   },
+  // ADR-0065 — address search on our own server (street → postal code, place, Bundesland).
+  adressen: {
+    input: { target: '../../apps/api/openapi.json', filters: { tags: ['adressen'] } },
+    output: {
+      target: './src/generated/adressen.ts',
+      mode: 'split',
+      client: 'react-query',
+      httpClient: 'fetch',
+      mock: true,
+      override: {
+        mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        mock: { required: true },
+      },
+    },
+  },
   // ADR-0050 — Erklärungs-Stammdaten for the Hauptvordruck ESt 1 A.
   stammdaten: {
     input: { target: '../../apps/api/openapi.json', filters: { tags: ['stammdaten'] } },

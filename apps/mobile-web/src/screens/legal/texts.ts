@@ -1,4 +1,4 @@
-import { BANK_CODE_SOURCE, POSTAL_CODE_SOURCE } from '@steuereule/core'
+import { BANK_CODE_SOURCE, POSTAL_CODE_SOURCE, TAX_OFFICE_SOURCE } from '@steuereule/core'
 export type LegalPage = 'impressum' | 'datenschutz' | 'agb' | 'hinweise'
 
 export const LEGAL_PAGES: readonly LegalPage[] = ['impressum', 'datenschutz', 'agb', 'hinweise']
@@ -208,6 +208,8 @@ export const NOTICES: readonly Section[] = [
     paragraphs: [
       `Postleitzahlen, Orte und Bundesländer: © OpenStreetMap-Mitwirkende, verfügbar unter der Open Database License (ODbL) 1.0 (opendatacommons.org/licenses/odbl/1-0/). Auszug des Projekts OpenPLZ API, Stand ${POSTAL_CODE_SOURCE.retrieved}.`,
       'Die Zuordnung läuft auf deinem Gerät. Deine Postleitzahl wird dafür nirgendwohin geschickt.',
+      'Adresssuche: Die Straßennamen stammen aus derselben Quelle. Was du in das Suchfeld tippst, geht an den Server von SteuerEule, wird dort nur für die Antwort verwendet und nicht gespeichert. Kein anderer Anbieter erhält deine Eingabe.',
+      `Finanzamt-Vorschlag zur Postleitzahl: Finanzamtsverzeichnis „GemFA“ des Bundeszentralamts für Steuern, Stand ${TAX_OFFICE_SOURCE.stand}. Auch diese Zuordnung läuft auf deinem Gerät.`,
       `Banknamen zur IBAN: Bankleitzahlendatei der Deutschen Bundesbank, gültig ${BANK_CODE_SOURCE.valid}. Auch diese Zuordnung läuft auf deinem Gerät.`,
     ],
   },

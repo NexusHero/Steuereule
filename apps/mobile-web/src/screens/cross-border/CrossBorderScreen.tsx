@@ -39,6 +39,9 @@ export interface CrossBorderScreenProps {
 
 const SEGMENT_CH = ENTRIES['segment-ch']
 
+/** The exchange rate is the official rate of one month of the tax year — picked, not typed. */
+const MONTH_NUMBERS = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'] as const
+
 export function CrossBorderScreen({ onDone, onBack, taxYear = CURRENT_TAX_YEAR }: CrossBorderScreenProps) {
   const bp = useBreakpoint()
   const { t: tr } = useTranslation(APP_NS)
@@ -233,7 +236,7 @@ function SalaryCertificateStep({
   readonly bp: Breakpoint
 }) {
   const t = useTheme()
-  const { t: tr } = useTranslation(APP_NS)
+  const { t: tr, i18n } = useTranslation(APP_NS)
   const styles = makeStyles(t)
   const [month, setMonth] = useState(salaryCertificate.exchangeRate?.month ?? "")
   const [rateError, setRateError] = useState(false)
@@ -258,7 +261,16 @@ function SalaryCertificateStep({
       <Text style={styles.sectionTitle}>{tr('grenzgaenger.lohnausweis.wechselkurs.title')}</Text>
       <Text style={styles.help}>{tr('grenzgaenger.lohnausweis.wechselkurs.help')}</Text>
       <Feld label={tr('grenzgaenger.lohnausweis.wechselkurs.monat')}>
-        <Input type="text" value={month} onChange={setMonth} placeholder={`${taxYear}-12`} accessibilityLabel={tr('grenzgaenger.lohnausweis.wechselkurs.monat')} testID="ch-wechselkurs-monat" />
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.s2 }} testID="ch-wechselkurs-monat">
+          {MONTH_NUMBERS.map((number) => {
+            const value = `${taxYear}-${number}`
+            return (
+              <Chip key={number} active={month === value} onPress={() => setMonth(value)} testID={`ch-wechselkurs-monat-${number}`}>
+                {new Date(Date.UTC(taxYear, Number(number) - 1, 1)).toLocaleString(i18n.language, { month: 'short', timeZone: 'UTC' })}
+              </Chip>
+            )
+          })}
+        </View>
       </Feld>
       <Feld label={tr('grenzgaenger.lohnausweis.wechselkurs.kurs')}>
         <Input type="numeric" value={rate} onChange={setRate} placeholder="1,07" accessibilityLabel={tr('grenzgaenger.lohnausweis.wechselkurs.kurs')} testID="ch-wechselkurs-kurs" />

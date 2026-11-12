@@ -2,9 +2,9 @@ import { useState } from 'react'
 import { Pressable, ScrollView, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { Button, Card, Chip, Feld, Input, Option, useBreakpoint, useTheme, type InputAutoComplete } from '@steuereule/ui'
+import { Button, Card, Chip, DateInput, Feld, Input, Option, useBreakpoint, useTheme, type InputAutoComplete } from '@steuereule/ui'
 import {
-  bankNameForIban, formatGermanDate, MARITAL_STATUSES, RELIGION_KEYS } from '@steuereule/core'
+  bankNameForIban, checkIban, suggestTaxOffices, formatGermanDate, formatIban, MARITAL_STATUSES, RELIGION_KEYS } from '@steuereule/core'
 import {
   getLinkControllerGetQueryKey,
   useLinkControllerGet,
@@ -24,6 +24,8 @@ import { PostalCodeHint } from '../shared/PostalCodeHint'
 import { TaxIdHint } from '../shared/TaxIdHint'
 import { PartnerLinkStatus } from './PartnerLinkStatus'
 import { prefillCity } from '../shared/postalCodePrefill'
+import { AddressSearch } from '../shared/AddressSearch'
+import { todayIso } from '../shared/today'
 
 export interface MasterDataScreenProps {
   readonly onBack: () => void
@@ -42,6 +44,9 @@ const MASTER_DATA_AUTOFILL: Partial<Record<TextField, InputAutoComplete>> = {
   plz: 'postal-code',
   wohnort: 'address-level2',
 }
+
+/** Shows the grouping the mask produces; zeros so nobody mistakes it for a real account. */
+const IBAN_PLACEHOLDER = 'DE00 0000 0000 0000 0000 00'
 
 export function MasterDataScreen({ onBack, taxYear = CURRENT_TAX_YEAR, onRecordPartner }: MasterDataScreenProps) {
   const bp = useBreakpoint()
@@ -73,6 +78,12 @@ export function MasterDataScreen({ onBack, taxYear = CURRENT_TAX_YEAR, onRecordP
   const set = (patch: Partial<MasterDataDraft>) => {
     setMessage(null)
     const next = { ...form, ...patch }
+    // "12a" typed or pasted into the number belongs in two fields; a Zusatz already there is kept.
+    const numberWithSuffix = patch.hausnummer !== undefined ? /^(\d+)\s*([a-zA-Z])$/.exec(patch.hausnummer.trim()) : null
+    if (numberWithSuffix && next.hausnummerZusatz.trim() === '') {
+      next.hausnummer = numberWithSuffix[1]!
+      next.hausnummerZusatz = numberWithSuffix[2]!
+    }
     if (patch.plz !== undefined) {
       // #451 slice 3: a postal code with one place fills the Ort; a typed Ort is never overwritten.
       const { city, prefill } = prefillCity({ plz: next.plz, city: next.wohnort, lastPrefill: cityPrefill })
@@ -81,6 +92,10 @@ export function MasterDataScreen({ onBack, taxYear = CURRENT_TAX_YEAR, onRecordP
     }
     setDraft(next)
   }
+  const ibanCheck = checkIban(form.iban)
+  // Offered until the field holds one of them; a Finanzamt the user typed themselves is never replaced.
+  const taxOfficesOfPostalCode = suggestTaxOffices(form.plz)
+  const taxOfficeSuggestions = taxOfficesOfPostalCode.includes(form.finanzamt.trim()) ? [] : taxOfficesOfPostalCode
   const textField = (field: TextField, type: 'text' | 'numeric' = 'text') => (
     <Feld label={t(`stammdaten.${field}`)}>
       <Input
@@ -89,6 +104,20 @@ export function MasterDataScreen({ onBack, taxYear = CURRENT_TAX_YEAR, onRecordP
         onChange={(value) => set({ [field]: value })}
         accessibilityLabel={t(`stammdaten.${field}`)}
         {...(MASTER_DATA_AUTOFILL[field] ? { autoComplete: MASTER_DATA_AUTOFILL[field] } : {})}
+        testID={`stammdaten-${field}`}
+      />
+    </Feld>
+  )
+
+  const dateField = (field: 'geburtsdatum' | 'familienstandSeit') => (
+    <Feld label={t(`stammdaten.${field}`)}>
+      <DateInput
+        value={form[field]}
+        onChange={(value) => set({ [field]: value })}
+        calendarLabel={t('datum.kalender')}
+        accessibilityLabel={t(`stammdaten.${field}`)}
+        max={todayIso()}
+        {...(field === 'geburtsdatum' ? { autoComplete: 'bday' as const } : {})}
         testID={`stammdaten-${field}`}
       />
     </Feld>
@@ -134,8 +163,23 @@ export function MasterDataScreen({ onBack, taxYear = CURRENT_TAX_YEAR, onRecordP
         {status.missing.length === 0 ? t('stammdaten.vollstaendig') : t('stammdaten.fehlendHinweis', { anzahl: status.missing.length })}
       </Text>
 
-      {textField('geburtsdatum')}
+      {dateField('geburtsdatum')}
       {textField('beruf')}
+      <AddressSearch
+        postalCode={form.plz}
+        testIDPrefix="stammdaten"
+        onPick={(address) => {
+          // The picked place is the user's choice, so the PLZ prefill must not treat the Ort as its own.
+          setCityPrefill(null)
+          set({
+            strasse: address.street,
+            plz: address.postalCode,
+            wohnort: address.city,
+            // A house number typed into the search wins; without one, what the form holds stays.
+            ...(address.houseNumber !== null ? { hausnummer: address.houseNumber, hausnummerZusatz: address.houseNumberSuffix ?? '' } : {}),
+          })
+        }}
+      />
       {textField('strasse')}
       <View style={{ flexDirection: 'row', gap: theme.space.s3 }}>
         <View style={{ flex: 1 }}>{textField('hausnummer', 'numeric')}</View>
@@ -165,7 +209,7 @@ export function MasterDataScreen({ onBack, taxYear = CURRENT_TAX_YEAR, onRecordP
           ))}
         </View>
       </Feld>
-      {form.familienstand !== null && form.familienstand !== 'ledig' ? textField('familienstandSeit') : null}
+      {form.familienstand !== null && form.familienstand !== 'ledig' ? dateField('familienstandSeit') : null}
       {form.familienstand === 'verheiratet' ? <TaxYearLinkSection taxYear={taxYear} {...(onRecordPartner ? { onRecordPartner } : {})} /> : null}
 
       <Feld label={t('stammdaten.religion')}>
@@ -188,7 +232,22 @@ export function MasterDataScreen({ onBack, taxYear = CURRENT_TAX_YEAR, onRecordP
         </Option>
       ) : null}
 
-      {textField('iban')}
+      <Feld label={t('stammdaten.iban')}>
+        <Input
+          mono
+          autoCapitalize="characters"
+          value={form.iban}
+          onChange={(value) => set({ iban: formatIban(value) })}
+          placeholder={IBAN_PLACEHOLDER}
+          accessibilityLabel={t('stammdaten.iban')}
+          testID="stammdaten-iban"
+        />
+      </Feld>
+      {ibanCheck !== 'empty' ? (
+        <Text style={ibanCheck === 'invalid' ? styles.errorNote : styles.hint} accessibilityLiveRegion="polite" testID="stammdaten-iban-pruefung">
+          {t(`stammdaten.ibanPruefung.${ibanCheck}`)}
+        </Text>
+      ) : null}
       {bankNameForIban(form.iban) ? (
         <Text style={styles.hint} testID="stammdaten-iban-bank">
           {t('stammdaten.bankAusIban', { bank: bankNameForIban(form.iban) })}
@@ -196,6 +255,18 @@ export function MasterDataScreen({ onBack, taxYear = CURRENT_TAX_YEAR, onRecordP
       ) : null}
       {textField('kontoinhaber')}
       {textField('finanzamt')}
+      {taxOfficeSuggestions.length > 0 ? (
+        <View style={{ gap: theme.space.s2, marginTop: -theme.space.s2, marginBottom: theme.space.s3 }} testID="stammdaten-finanzamt-vorschlaege">
+          <Text style={styles.hint}>{t(taxOfficeSuggestions.length === 1 ? 'stammdaten.finanzamtVorschlag.einer' : 'stammdaten.finanzamtVorschlag.mehrere')}</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.space.s2 }}>
+            {taxOfficeSuggestions.map((office, index) => (
+              <Chip key={office} active={false} onPress={() => set({ finanzamt: office })} testID={`stammdaten-finanzamt-vorschlag-${index}`}>
+                {office}
+              </Chip>
+            ))}
+          </View>
+        </View>
+      ) : null}
       {textField('telefon')}
 
       {message ? (
@@ -228,6 +299,7 @@ function TaxYearLinkSection({
   readonly onRecordPartner?: (area: 'lstb' | 'arbeitsweg', name: string) => void
 }) {
   const theme = useTheme()
+  const { t } = useTranslation(APP_NS)
   const queryClient = useQueryClient()
   const linkQuery = useLinkControllerGet(taxYear)
   const setLink = useLinkControllerSet()
@@ -345,7 +417,13 @@ function TaxYearLinkSection({
             <TaxIdHint value={taxIdB} testID="personb-steuerid-hinweis" />
           </Feld>
           <Feld label="Geburtsdatum Partner (TT.MM.JJJJ)">
-            <Input value={birthDateB || isoToGerman(personB?.geburtsdatum ?? null)} onChange={setBirthDateB} autoComplete="off" testID="personb-geburtsdatum" />
+            <DateInput
+              value={birthDateB || isoToGerman(personB?.geburtsdatum ?? null)}
+              onChange={setBirthDateB}
+              calendarLabel={t('datum.kalender')}
+              max={todayIso()}
+              testID="personb-geburtsdatum"
+            />
           </Feld>
           <Feld label="Beruf Partner">
             <Input value={occupationB || (personB?.beruf ?? '')} onChange={setOccupationB} testID="personb-beruf" />

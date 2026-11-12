@@ -92,6 +92,7 @@ export async function runScenario07(browser, webOrigin) {
   await page.locator('[data-testid="kind-nachname"]').fill('Richter')
   await page.locator('[data-testid="kind-geburtsdatum"]').fill('12.04.2019')
   await page.locator('[data-testid="kind-steuerid"]').fill('91234567890')
+  await page.locator('[data-testid="kind-weitere-angaben"]').click() // short form first: optional amounts open on request
   await page.locator('[data-testid="kind-kindergeld"]').fill('3060')
   await page.locator('[data-testid="kind-verhaeltnis-1"]').click()
   await page.locator('[data-testid="kind-familienkasse"]').fill('Familienkasse Nordrhein-Westfalen')

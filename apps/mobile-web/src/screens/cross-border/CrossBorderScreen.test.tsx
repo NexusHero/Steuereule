@@ -318,9 +318,7 @@ describe('GrenzgaengerScreen — Wechselkurs', () => {
       }),
     )
     renderScreen()
-    const month = await screen.findByTestId('ch-wechselkurs-monat')
-
-    fireEvent.change(month, { target: { value: '2026-12' } })
+    fireEvent.click(await screen.findByTestId('ch-wechselkurs-monat-12'))
     fireEvent.change(screen.getByTestId('ch-wechselkurs-kurs'), { target: { value: '1,07' } })
     fireEvent.click(screen.getByText('Kurs speichern'))
 
@@ -333,7 +331,7 @@ describe('GrenzgaengerScreen — Wechselkurs', () => {
 
     fireEvent.click(await screen.findByText('Kurs speichern'))
 
-    expect(await screen.findByText('Bitte Monat (JJJJ-MM) und Kurs eintragen, z. B. 1,07.')).toBeTruthy()
+    expect(await screen.findByText('Bitte Monat wählen und Kurs eintragen, z. B. 1,07.')).toBeTruthy()
   })
 })
 

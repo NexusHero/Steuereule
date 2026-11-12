@@ -17,6 +17,7 @@ export {
   type Provenance as Herkunft,
 } from './components/HerkunftsChip'
 export { Input, type InputProps, type InputType } from './components/Input'
+export { DateInput, germanDateToIso, isoDateToGerman, maskGermanDate, type DateInputProps } from './components/DateInput'
 export { Field as Feld, type FieldProps as FeldProps } from './components/Field'
 export { Chip, type ChipProps, type ChipVariant } from './components/Chip'
 export { Option, type OptionProps } from './components/Option'
