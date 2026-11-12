@@ -107,7 +107,7 @@ export function ConversationList({ conversations, activeId, canSwitch, onSelect,
           value={query}
           onChangeText={setQuery}
           maxLength={100}
-          style={styles.input}
+          style={styles.search}
           testID="eule-conversation-search"
         />
       ) : null}
@@ -263,6 +263,18 @@ function makeStyles(t: UiTheme) {
     input: {
       flexGrow: 1,
       flexBasis: 180,
+      minHeight: 44,
+      paddingHorizontal: t.space.s3,
+      borderRadius: t.radius.m,
+      borderWidth: 1,
+      borderColor: t.color.linie,
+      backgroundColor: t.color.grund,
+      fontFamily: t.font.text,
+      fontSize: t.size.m,
+      color: t.color.tinte,
+    } as TextStyle,
+    // One line, full width: the rename field's flex-basis is a width there and would be a height here.
+    search: {
       minHeight: 44,
       paddingHorizontal: t.space.s3,
       borderRadius: t.radius.m,

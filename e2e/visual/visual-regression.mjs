@@ -41,8 +41,8 @@ const SCREENS = [
   { name: 'profil', path: '/app/profil' },
   { name: 'impressum', path: '/rechtliches/impressum' },
 ]
-/** Content that changes from run to run (e-mail, today's deadline text, version strings). */
-const MASKS = ['[data-testid^="fristen-banner"]', '[data-testid="profil-email"]', '[data-testid="profil-name"]', '[data-testid="app-version"]']
+/** Content that changes from run to run (e-mail, today's deadline text, version strings, the date an untitled conversation is listed under). */
+const MASKS = ['[data-testid="eule-conversation-row"]', '[data-testid^="fristen-banner"]', '[data-testid="profil-email"]', '[data-testid="profil-name"]', '[data-testid="app-version"]']
 const FREEZE_CSS = '*, *::before, *::after { animation: none !important; transition: none !important; caret-color: transparent !important; }'
 
 async function account(apiOrigin, webOrigin, sql) {
