@@ -515,6 +515,23 @@ async function main() {
     await started.catch(() => fail('Row S: /grill-me should start the interview with the skill attached'))
     console.log(`[${TAG}] ✅ Row S — skills: listed and switchable, a round needs all answers and sends them with the skill; /grill-me starts it`)
 
+    // Row T — several files at once (#497): read one after another, the waiting ones are named and can
+    // be taken out. The first upload is held back, so the queue can be seen.
+    await page.unroute('**/advisor/session*')
+    await page.route('**/belege/upload*', async (route) => {
+      if (route.request().method() !== 'POST') return route.fallback()
+      await new Promise((resolve) => setTimeout(resolve, 4000))
+      return route.fallback()
+    })
+    await page.reload({ waitUntil: 'networkidle' })
+    await byId(page, 'advisor-receipt-attach-btn').click()
+    await byId(page, 'advisor-receipt-file-input').setInputFiles(['a.pdf', 'b.jpg', 'c.png'].map((name) => ({ name, mimeType: name.endsWith('.pdf') ? 'application/pdf' : name.endsWith('.jpg') ? 'image/jpeg' : 'image/png', buffer: Buffer.from([1, 2, 3]) })))
+    await see(page, 'advisor-receipt-queue', 'Row T', 10_000)
+    if ((await byId(page, 'advisor-receipt-queue-item').count()) !== 2) fail('Row T: the two waiting files should be listed')
+    await byId(page, 'advisor-receipt-queue-item').first().click()
+    if ((await byId(page, 'advisor-receipt-queue-item').count()) !== 1) fail('Row T: a waiting file should be removable from the queue')
+    console.log(`[${TAG}] ✅ Row T — several files: queued one after another, named, removable`)
+
     await page.unrouteAll({ behavior: 'ignoreErrors' })
     await ctx.close()
 

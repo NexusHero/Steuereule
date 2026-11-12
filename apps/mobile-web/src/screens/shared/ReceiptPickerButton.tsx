@@ -6,6 +6,8 @@ export const RECEIPT_ACCEPT = 'application/pdf,image/jpeg,image/png,image/webp'
 
 export interface ReceiptPickerButtonProps {
   readonly onFile: (file: File) => void
+  /** Lets the user choose several files at once; `onFile` then runs once per file, in the order chosen. */
+  readonly multiple?: boolean | undefined
   readonly disabled?: boolean | undefined
   readonly testID: string
   readonly children: ReactNode
@@ -20,6 +22,7 @@ export interface ReceiptPickerButtonProps {
 /** One file picker for PDFs and photos, shared by the LStB mask, the Belege inbox and the chat. */
 export function ReceiptPickerButton({
   onFile,
+  multiple,
   disabled,
   testID,
   children,
@@ -44,12 +47,13 @@ export function ReceiptPickerButton({
         ref={inputRef}
         type="file"
         accept={RECEIPT_ACCEPT}
+        multiple={multiple === true}
         data-testid={inputTestID ?? `${testID}-input`}
         style={{ display: 'none' }}
         onChange={(event) => {
-          const file = event.target.files?.[0]
+          const files = Array.from(event.target.files ?? [])
           event.target.value = ''
-          if (file) onFile(file)
+          for (const file of multiple === true ? files : files.slice(0, 1)) onFile(file)
         }}
       />
       <Button
