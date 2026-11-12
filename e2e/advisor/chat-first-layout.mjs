@@ -9,6 +9,7 @@
 //      states, "Nicht vorbereitet" with the way into the mask, the app's notice on the answer,
 //      a rating that cannot be stored
 //   F  a dropped connection: the chat says it is re-attaching and finishes the answer
+//   G  several conversations in one tax year: new, own messages each, rename, switch, delete
 //
 // The stack is real (sign-in, session, rating, clearing). Rows E and F stub what only a model
 // could produce: E replaces the stored conversation, F drops the stream on purpose.
@@ -145,23 +146,71 @@ async function main() {
     await see(page, 'eule-clear-confirm', 'Row D')
     await byId(page, 'eule-clear-cancel-btn').click()
     await gone(page, 'eule-clear-confirm', 'Row D')
-    await page.route('**/advisor/session', async (route) => {
+    await page.route('**/advisor/session*', async (route) => {
       if (route.request().method() === 'DELETE') await route.fulfill({ status: 500, contentType: 'application/json', body: '{"code":"INTERNAL"}' })
       else await route.fallback()
     })
     await byId(page, 'eule-clear-conversation-btn').click()
     await byId(page, 'eule-clear-confirm-btn').click()
     await see(page, 'eule-clear-failed', 'Row D')
-    await page.unroute('**/advisor/session')
+    await page.unroute('**/advisor/session*')
     await byId(page, 'eule-clear-confirm-btn').click()
     await gone(page, 'eule-clear-confirm', 'Row D')
     await page.keyboard.press('Escape')
     await see(page, 'advisor-empty-state', 'Row D')
     console.log(`[${TAG}] ✅ Row D — cancel keeps the conversation, a failed clear says so, the real one empties the chat`)
 
+    // Row G — several conversations in one tax year (#481): each has its own messages.
+    const ask = async (text) => {
+      const before = await byId(page, 'advisor-assistant-message').count()
+      await input.fill(text)
+      await input.press('Enter')
+      await page.waitForFunction((n) => document.querySelectorAll('[data-testid="advisor-assistant-message"]').length > n, before, { timeout: 30_000 }).catch(() => fail(`Row G: no answer to "${text}"`))
+      await see(page, 'advisor-chat-send', 'Row G', 15_000)
+    }
+    const chatText = async () => (await byId(page, 'advisor-chat-scroll').innerText()).replace(/\s+/g, ' ')
+    await ask('Frage zum Arbeitsweg')
+    await byId(page, 'eule-conversations-btn').click()
+    await see(page, 'eule-conversations-sheet', 'Row G')
+    if (!(await textOf(page, 'eule-conversation-row')).includes('Frage zum Arbeitsweg')) fail('Row G: a conversation should be named after its first question')
+    await byId(page, 'eule-conversation-new').click()
+    await gone(page, 'eule-conversations', 'Row G')
+    await see(page, 'advisor-empty-state', 'Row G')
+    await ask('Frage zur Vermietung')
+    if ((await chatText()).includes('Frage zum Arbeitsweg')) fail('Row G: a new conversation must not show the messages of the other one')
+
+    await byId(page, 'eule-conversations-btn').click()
+    if ((await byId(page, 'eule-conversation-row').count()) !== 2) fail(`Row G: two conversations expected, found ${await byId(page, 'eule-conversation-row').count()}`)
+    // The one used last comes first and is the open one; rename it.
+    await byId(page, 'eule-conversation-rename').first().click()
+    await byId(page, 'eule-conversation-rename-input').fill('Meine Wohnung')
+    await byId(page, 'eule-conversation-rename-save').click()
+    await page.waitForFunction(() => document.querySelector('[data-testid="eule-conversation-row"]')?.textContent?.includes('Meine Wohnung'), null, { timeout: 10_000 }).catch(() => fail('Row G: the new name should show in the list'))
+
+    // Open the other one: its own messages are back.
+    await byId(page, 'eule-conversation-open').nth(1).click()
+    await gone(page, 'eule-conversations', 'Row G')
+    await page.waitForFunction(() => document.querySelector('[data-testid="advisor-chat-scroll"]')?.textContent?.includes('Frage zum Arbeitsweg'), null, { timeout: 10_000 }).catch(() => fail('Row G: opening the first conversation should show its messages'))
+    if ((await chatText()).includes('Frage zur Vermietung')) fail('Row G: the first conversation must not show the messages of the second')
+
+    // Delete the other one: a second, explicit step, and it can be cancelled.
+    await byId(page, 'eule-conversations-btn').click()
+    const others = page.locator('[data-testid="eule-conversation-row"]', { hasText: 'Meine Wohnung' })
+    await others.locator('[data-testid="eule-conversation-delete"]').click()
+    await byId(page, 'eule-conversation-delete-cancel').click()
+    if ((await byId(page, 'eule-conversation-row').count()) !== 2) fail('Row G: cancelling must keep the conversation')
+    await others.locator('[data-testid="eule-conversation-delete"]').click()
+    await byId(page, 'eule-conversation-delete-confirm').click()
+    await page.waitForFunction(() => document.querySelectorAll('[data-testid="eule-conversation-row"]').length === 1, null, { timeout: 10_000 }).catch(() => fail('Row G: the deleted conversation should leave the list'))
+    const left = sql(`SELECT count(*) FROM "BeraterGespraech" g JOIN "User" u ON u.id = g."userId" WHERE u.email = '${email}'`)
+    if (String(left).trim() !== '1') fail(`Row G: one conversation should be left in the database, found ${String(left).trim()}`)
+    await page.keyboard.press('Escape')
+    await gone(page, 'eule-conversations', 'Row G')
+    console.log(`[${TAG}] ✅ Row G — new conversation, own messages each, named after the first question, rename, switch, delete after a second step`)
+
     // Row E — a stored answer with everything attached.
     const now = new Date().toISOString()
-    await page.route('**/advisor/session', async (route) => {
+    await page.route('**/advisor/session*', async (route) => {
       if (route.request().method() !== 'GET') return route.fallback()
       const res = await route.fetch().catch(() => null)
       if (res === null) return
