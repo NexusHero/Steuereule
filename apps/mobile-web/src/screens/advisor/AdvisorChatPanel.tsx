@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Linking, Pressable, ScrollView, Text, TextInput, View } from 'react-native'
 import { ChatComposer } from './chat/ChatComposer'
 import { ThinkingIndicator } from './chat/ThinkingIndicator'
@@ -83,7 +83,8 @@ export interface AdvisorChatPanelProps {
   readonly receiptLinkedActionIds?: ReadonlySet<string> | undefined
   readonly onAttachReceipt?: ((input: { readonly fileName: string; readonly rawText: string }) => Promise<void> | void) | undefined
   /** Upload a PDF or photo: stored encrypted, read on the device, parsed (#444). */
-  readonly onAttachReceiptFile?: ((file: File) => Promise<void> | void) | undefined
+  /** Resolves when the file has been read: several files are read one after another (#497). */
+  readonly onAttachReceiptFile?: ((file: File) => Promise<void>) | undefined
   /** Visible progress text of the running receipt capture, if any. */
   readonly receiptProgress?: string | null | undefined
   readonly receiptNotice?: string | null | undefined
@@ -167,6 +168,18 @@ export function AdvisorChatPanel({
   const [inputText, setInputText] = useState('')
   const [selectedSource, setSelectedSource] = useState<AdvisorLegalSource | null>(null)
   const [receiptOpen, setReceiptOpen] = useState(false)
+  // Several files at once are read one after another: each reading shows its own progress and ends in its own drafts.
+  const [fileQueue, setFileQueue] = useState<readonly File[]>([])
+  const readingRef = useRef(false)
+  useEffect(() => {
+    const next = fileQueue[0]
+    if (next === undefined || readingRef.current || isParsingReceipt || !onAttachReceiptFile) return
+    readingRef.current = true
+    void Promise.resolve(onAttachReceiptFile(next)).finally(() => {
+      readingRef.current = false
+      setFileQueue((prev) => prev.slice(1))
+    })
+  }, [fileQueue, isParsingReceipt, onAttachReceiptFile])
   const [receiptTextOpen, setReceiptTextOpen] = useState(false)
   const [receiptFileName, setReceiptFileName] = useState('beleg.pdf')
   const [receiptRawText, setReceiptRawText] = useState('')
@@ -618,7 +631,8 @@ export function AdvisorChatPanel({
         <Card style={styles.receiptPanel} testID="advisor-receipt-panel">
           {onAttachReceiptFile ? (
             <ReceiptPickerButton
-              onFile={(file) => void onAttachReceiptFile(file)}
+              multiple
+              onFile={(file) => setFileQueue((prev) => [...prev, file])}
               disabled={isParsingReceipt}
               testID="advisor-receipt-file"
               inputTestID="advisor-receipt-file-input"
@@ -628,6 +642,23 @@ export function AdvisorChatPanel({
                 ? (receiptProgress ?? tr('advisor.chat.parsingReceipt', 'Beleg wird geprüft …'))
                 : tr('advisor.chat.receiptFileCta', 'PDF oder Foto auswählen')}
             </ReceiptPickerButton>
+          ) : null}
+          {fileQueue.length > 1 ? (
+            <View style={styles.choicesRow} testID="advisor-receipt-queue">
+              <Text style={styles.actionReason}>{tr('advisor.chat.receiptQueue', { count: fileQueue.length - 1 })}</Text>
+              {fileQueue.slice(1).map((file, i) => (
+                <Pressable
+                  key={`${file.name}-${i}`}
+                  accessibilityRole="button"
+                  accessibilityLabel={tr('advisor.chat.receiptQueueRemove', { name: file.name })}
+                  onPress={() => setFileQueue((prev) => prev.filter((queued, qi) => qi === 0 || queued !== file))}
+                  style={styles.choicePill}
+                  testID="advisor-receipt-queue-item"
+                >
+                  <Text style={styles.choicePillText}>{`${file.name} ✕`}</Text>
+                </Pressable>
+              ))}
+            </View>
           ) : null}
           <Text style={styles.actionReason}>
             {tr('advisor.chat.receiptPrivacy', 'Der Text wird auf deinem Gerät gelesen. Das Bild geht an keine KI; das Original liegt verschlüsselt in deinen Belegen.')}

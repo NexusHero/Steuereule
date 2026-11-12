@@ -48,6 +48,34 @@ describe('AdvisorChatPanel — receipts in the chat', () => {
     expect(screen.getByText(/Das Bild geht an keine KI/)).toBeTruthy()
   })
 
+  it('reads several picked files one after another, and lets a waiting one be taken out of the queue', async () => {
+    const gates: Array<() => void> = []
+    const onFile = vi.fn(() => new Promise<void>((resolve) => gates.push(resolve)))
+    renderPanel(<AdvisorChatPanel messages={[]} onSendMessage={vi.fn()} onAttachReceiptFile={onFile} />)
+
+    fireEvent.click(screen.getByTestId('advisor-receipt-attach-btn'))
+    const a = new File([new Uint8Array([1])], 'a.pdf', { type: 'application/pdf' })
+    const b = new File([new Uint8Array([2])], 'b.jpg', { type: 'image/jpeg' })
+    const c = new File([new Uint8Array([3])], 'c.png', { type: 'image/png' })
+    fireEvent.change(screen.getByTestId('advisor-receipt-file-input'), { target: { files: [a, b, c] } })
+
+    // Only the first is being read; the other two wait, named.
+    await waitFor(() => expect(onFile).toHaveBeenCalledTimes(1))
+    expect(onFile).toHaveBeenLastCalledWith(a)
+    expect(screen.getByTestId('advisor-receipt-queue').textContent).toContain('2 weitere Dateien')
+
+    // Taking b out leaves c.
+    fireEvent.click(screen.getAllByTestId('advisor-receipt-queue-item')[0]!)
+    expect(screen.getAllByTestId('advisor-receipt-queue-item')).toHaveLength(1)
+
+    gates.shift()!()
+    await waitFor(() => expect(onFile).toHaveBeenCalledTimes(2))
+    expect(onFile).toHaveBeenLastCalledWith(c)
+    gates.shift()!()
+    await waitFor(() => expect(screen.queryByTestId('advisor-receipt-queue')).toBeNull())
+    expect(onFile).toHaveBeenCalledTimes(2)
+  })
+
   it('shows progress while a receipt is read and the outcome notice afterwards', () => {
     renderPanel(
       <AdvisorChatPanel
