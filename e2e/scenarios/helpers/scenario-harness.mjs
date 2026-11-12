@@ -235,6 +235,27 @@ export async function confirmAnnexesIfPresent(page) {
   }
 }
 
+/**
+ * Picks the exchange-rate month (`YYYY-MM`), types the rate and saves — and only returns once the
+ * server has answered the save. The month chips sit below fields that save on blur; the screen can
+ * still be settling when the click lands, and a missed month means the save button sends nothing.
+ * Trusting the click alone left the rate unsaved and the printout locked several screens later.
+ */
+export async function saveExchangeRate(page, month, rate) {
+  await page.locator('[data-testid="ch-wechselkurs-monat"]').waitFor({ state: 'visible', timeout: 10_000 })
+  const chip = page.locator(`[data-testid="ch-wechselkurs-monat-${month.slice(5)}"]`)
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    await chip.click()
+    await page.locator('[data-testid="ch-wechselkurs-kurs"]').fill(rate)
+    const [response] = await Promise.all([
+      page.waitForResponse((res) => res.request().method() === 'PUT' && res.url().includes('/wechselkurs'), { timeout: 5_000 }).catch(() => null),
+      page.locator('[data-testid="ch-wechselkurs-speichern"]').click(),
+    ])
+    if (response?.ok()) return
+  }
+  fail(`saveExchangeRate: the exchange rate for ${month} was not saved after three attempts`)
+}
+
 /** Downloads the editable PDF and verifies expected PDF form field values. */
 export async function downloadAndVerifyPdf(page, expectedFields) {
   const downloadButton = page.locator('[data-testid="ausdruck-herunterladen-bearbeitbar"]')
@@ -245,7 +266,8 @@ export async function downloadAndVerifyPdf(page, expectedFields) {
     .then(() => true)
     .catch(() => false)
   if (!enabled) {
-    const errorCard = await page.locator('[data-testid="screen-container"]').first().innerText().catch(() => '')
+    // The printout screen is the last container; the first one is the step underneath it and says nothing about why.
+    const errorCard = await page.locator('[data-testid="screen-container"]').last().innerText().catch(() => '')
     fail(`downloadAndVerifyPdf: download button is disabled. Screen content:\n${errorCard}`)
   }
 

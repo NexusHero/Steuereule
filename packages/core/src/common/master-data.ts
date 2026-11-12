@@ -34,6 +34,29 @@ export function isValidIban(value: string): boolean {
   return remainder === 1
 }
 
+/** Longest IBAN any country issues (ISO 13616). */
+const IBAN_MAX_LENGTH = 34
+/** Shortest IBAN any country issues (Norway). */
+const IBAN_MIN_LENGTH = 15
+const GERMAN_IBAN_LENGTH = 22
+
+/** The IBAN as it is printed on a bank card: upper-cased, in blocks of four. */
+export function formatIban(value: string): string {
+  const compact = value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, IBAN_MAX_LENGTH)
+  return compact.replace(/(.{4})(?=.)/g, '$1 ')
+}
+
+export type IbanCheck = 'empty' | 'incomplete' | 'valid' | 'invalid'
+
+/** What to tell the user while the IBAN is being typed — never "invalid" for one that is just unfinished. */
+export function checkIban(value: string): IbanCheck {
+  const iban = normalizeIban(value)
+  if (iban === '') return 'empty'
+  const expected = iban.startsWith('DE') ? GERMAN_IBAN_LENGTH : IBAN_MIN_LENGTH
+  if (iban.length < expected) return 'incomplete'
+  return isValidIban(iban) ? 'valid' : 'invalid'
+}
+
 export function isValidPostalCode(value: string): boolean {
   return /^\d{5}$/.test(value)
 }

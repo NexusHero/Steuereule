@@ -21,6 +21,8 @@ export interface InputProps {
    * the browser's memory. Text fields without a hint leave the browser's own heuristics alone.
    */
   readonly autoComplete?: InputAutoComplete
+  /** `characters` for codes that are written in capitals (IBAN). Defaults to `none`. */
+  readonly autoCapitalize?: 'none' | 'characters'
 }
 
 const KEYBOARD_TYPE: Record<InputType, 'default' | 'email-address' | 'number-pad'> = {
@@ -42,6 +44,7 @@ export function Input({
   onFocus,
   onBlur,
   autoComplete,
+  autoCapitalize = 'none',
 }: InputProps) {
   const t = useTheme()
   const [isFocused, setIsFocused] = useState(false)
@@ -75,7 +78,7 @@ export function Input({
       placeholderTextColor={t.color.tinte2}
       secureTextEntry={type === 'password'}
       keyboardType={KEYBOARD_TYPE[type]}
-      autoCapitalize="none"
+      autoCapitalize={autoCapitalize}
       autoCorrect={false}
       onSubmitEditing={onSubmit}
       onFocus={() => {

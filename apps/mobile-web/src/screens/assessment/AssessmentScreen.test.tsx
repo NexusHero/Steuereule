@@ -6,7 +6,7 @@
 // flow (Grund-Auswahl) appears only when the server allows it, and there is NO „Korrigieren"
 // button after the Bescheid (ADR-009/ADR-032).
 import { describe, it, expect } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
 import { ThemeProvider } from '@steuereule/ui'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -94,6 +94,26 @@ describe('BescheidScreen', () => {
     renderAssessment()
     await screen.findByText('Dein Steuerbescheid')
     expect(screen.getByText('Alles stimmt überein ✓')).toBeTruthy()
+  })
+
+  it('takes the Bescheiddatum typed the German way, or picked in the calendar, and saves it as ISO', async () => {
+    const sent: unknown[] = []
+    mockAssessment(emptyAssessment())
+    server.use(
+      http.put('*/v1/steuerjahre/2026/bescheid/datum', async ({ request }) => {
+        sent.push(await request.json())
+        return HttpResponse.json(emptyAssessment(), { status: 200 })
+      }),
+    )
+    renderAssessment()
+    const field = (await screen.findByTestId('bescheid-datum')) as HTMLInputElement
+    fireEvent.change(field, { target: { value: '15052026' } })
+    expect(field.value).toBe('15.05.2026')
+    await waitFor(() => expect(sent).toEqual([{ date: '2026-05-15' }]))
+
+    fireEvent.change(screen.getByTestId('bescheid-datum-kalender'), { target: { value: '2026-05-20' } })
+    expect(field.value).toBe('20.05.2026')
+    await waitFor(() => expect(sent).toEqual([{ date: '2026-05-15' }, { date: '2026-05-20' }]))
   })
 
   it('shows the § 355 AO Fristen-Countdown from the Bescheiddatum', async () => {

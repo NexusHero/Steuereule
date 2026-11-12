@@ -473,8 +473,25 @@ export const appResources = {
         ],
         hinweisEdaten: 'Lohnsteuer, Sozialversicherung und andere „e“-Zeilen liegen dem Finanzamt bereits vom Arbeitgeber vor und bleiben leer. Nur den Bruttoarbeitslohn (Anlage N, Zeile 5) tragen wir zur Kontrolle ein.',
       },
+      adresssuche: {
+        label: 'Adresse suchen',
+        placeholder: 'z. B. Hauptstr. 12, Köln',
+        hinweis: 'Tipp Straße und Ort ein. Wir füllen Straße, Postleitzahl und Ort für dich aus.',
+        treffer: 'Adresse übernehmen: {{adresse}}',
+        keineTreffer: 'Keine passende Straße gefunden. Trag die Adresse bitte unten ein.',
+        nichtVerfuegbar: 'Die Adresssuche ist gerade nicht verfügbar. Trag die Adresse bitte unten ein.',
+      },
       stammdaten: {
         bankAusIban: 'Bank: {{bank}} (aus der IBAN)',
+        finanzamtVorschlag: {
+          einer: 'Vorschlag aus deiner Postleitzahl. Vergleich ihn mit deinem letzten Steuerbescheid.',
+          mehrere: 'Deine Postleitzahl teilen sich mehrere Finanzämter. Welches zuständig ist, steht auf deinem letzten Steuerbescheid.',
+        },
+        ibanPruefung: {
+          incomplete: 'Die IBAN ist noch nicht vollständig.',
+          valid: 'Die IBAN ist gültig.',
+          invalid: 'Diese IBAN stimmt nicht. Bitte prüf die Ziffern.',
+        },
         rowLabel: 'Angaben für die Steuererklärung',
         title: 'Angaben für die Erklärung',
         back: 'Zurück',
@@ -570,6 +587,7 @@ export const appResources = {
           beendetAb: 'Die Verknüpfung endet mit {{year}}.',
         },
       },
+      datum: { kalender: 'Kalender öffnen' },
       plz: {
         fromPostalCode: 'aus deiner PLZ',
         choose: 'Welcher Ort gehört zu deiner PLZ?',
@@ -1386,7 +1404,7 @@ export const appResources = {
           unklar: 'unlesbar',
         },
         datum: {
-          label: 'Bescheiddatum (JJJJ-MM-TT)',
+          label: 'Bescheiddatum (TT.MM.JJJJ)',
         },
         frist: {
           nochKeinDatum: 'Trag das Bescheiddatum ein, damit wir deine Einspruchsfrist zählen.',
@@ -1495,10 +1513,10 @@ export const appResources = {
           wechselkurs: {
             title: 'Wechselkurs',
             help: 'Nimm den amtlichen Monatskurs aus der BMF-Tabelle „Umsatzsteuer-Umrechnungskurse“ (bundesfinanzministerium.de) — ein abweichender, tatsächlicher Kurs braucht einen Beleg.',
-            monat: 'Monat (JJJJ-MM)',
+            monat: 'Monat',
             kurs: 'Kurs (EUR pro 1 CHF)',
             speichern: 'Kurs speichern',
-            fehlt: 'Bitte Monat (JJJJ-MM) und Kurs eintragen, z. B. 1,07.',
+            fehlt: 'Bitte Monat wählen und Kurs eintragen, z. B. 1,07.',
           },
           status: {
             label: 'Status',
@@ -2295,8 +2313,25 @@ export const appResources = {
         ],
         hinweisEdaten: 'Income tax, social security and other “e” lines are already reported by your employer and stay empty. Only the gross wage (Anlage N, line 5) is filled in, as a cross-check.',
       },
+      adresssuche: {
+        label: 'Search address',
+        placeholder: 'e.g. Hauptstr. 12, Köln',
+        hinweis: 'Type street and town. We fill in street, postcode and town for you.',
+        treffer: 'Use address: {{adresse}}',
+        keineTreffer: 'No matching street found. Please enter the address below.',
+        nichtVerfuegbar: 'The address search is not available right now. Please enter the address below.',
+      },
       stammdaten: {
         bankAusIban: 'Bank: {{bank}} (from the IBAN)',
+        finanzamtVorschlag: {
+          einer: 'Suggested from your postcode. Compare it with your last tax assessment.',
+          mehrere: 'Several tax offices share your postcode. Your last tax assessment names the one responsible.',
+        },
+        ibanPruefung: {
+          incomplete: 'The IBAN is not complete yet.',
+          valid: 'The IBAN is valid.',
+          invalid: 'This IBAN is not correct. Please check the digits.',
+        },
         rowLabel: 'Details for your tax return',
         title: 'Return details',
         back: 'Back',
@@ -2392,6 +2427,7 @@ export const appResources = {
           beendetAb: 'The link ends with {{year}}.',
         },
       },
+      datum: { kalender: 'Open calendar' },
       plz: {
         fromPostalCode: 'from your postcode',
         choose: 'Which place belongs to your postcode?',
@@ -3208,7 +3244,7 @@ export const appResources = {
           unklar: 'unreadable',
         },
         datum: {
-          label: 'Assessment date (YYYY-MM-DD)',
+          label: 'Assessment date (DD.MM.YYYY)',
         },
         frist: {
           nochKeinDatum: 'Enter the assessment date so we can count your appeal deadline.',
@@ -3318,10 +3354,10 @@ export const appResources = {
           wechselkurs: {
             title: 'Exchange rate',
             help: 'Use the official monthly rate from the BMF table “Umsatzsteuer-Umrechnungskurse” (bundesfinanzministerium.de) — a different, actual rate needs a receipt.',
-            monat: 'Month (YYYY-MM)',
+            monat: 'Month',
             kurs: 'Rate (EUR per 1 CHF)',
             speichern: 'Save rate',
-            fehlt: 'Please enter the month (YYYY-MM) and the rate, e.g. 1.07.',
+            fehlt: 'Please pick the month and enter the rate, e.g. 1.07.',
           },
           status: {
             label: 'Status',

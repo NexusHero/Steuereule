@@ -14,6 +14,7 @@ import { TakeoverModule } from './takeover/takeover.module.js'
 import { ConfirmationModule } from './confirmation/confirmation.module.js'
 import { ChSalaryCertificateModule } from './ch-salary-certificate/ch-salary-certificate.module.js'
 import { CockpitModule } from './cockpit/cockpit.module.js'
+import { AddressModule } from './address/address.module.js'
 import { DeviceModule } from './device/device.module.js'
 import { HealthModule } from './health/health.module.js'
 import { InterviewModule } from './interview/interview.module.js'
@@ -52,6 +53,7 @@ import { DomainErrorFilter } from './common/domain-error.filter.js'
     AssessmentModule,
     AccountModule,
     AssistantsModule,
+    AddressModule,
     DeviceModule,
     HealthModule,
     FilingTypeComparisonModule,

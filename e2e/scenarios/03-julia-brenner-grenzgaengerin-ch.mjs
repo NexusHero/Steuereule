@@ -10,6 +10,7 @@ import {
   registerAndOnboard,
   selectTaxYear2025,
   nextStep,
+  saveExchangeRate,
   assertEstimate,
   unlockTaxYearInDb,
   confirmAnnexesIfPresent,
@@ -67,9 +68,7 @@ export async function runScenario03(browser, webOrigin, sql, markusSession = nul
   await pageJulia.locator('[data-testid="ch-feld-nettolohn"]').fill(String(s.julia.crossBorder.netWageChf))
   await pageJulia.locator('[data-testid="ch-feld-quellensteuer"]').fill(String(s.julia.crossBorder.withholdingTaxChf))
 
-  await pageJulia.locator('[data-testid="ch-wechselkurs-monat"]').fill(s.julia.crossBorder.exchangeRateMonth)
-  await pageJulia.locator('[data-testid="ch-wechselkurs-kurs"]').fill(s.julia.crossBorder.exchangeRate)
-  await pageJulia.locator('[data-testid="ch-wechselkurs-speichern"]').click()
+  await saveExchangeRate(pageJulia, s.julia.crossBorder.exchangeRateMonth, s.julia.crossBorder.exchangeRate)
 
   await pageJulia.locator('[data-testid="ch-vorsorge-krankenkasseChf"]').fill(String(s.julia.crossBorder.healthCareEur))
   await pageJulia.locator('[data-testid="ch-vorsorge-krankenkasseChf"]').blur()
@@ -131,7 +130,13 @@ export async function runScenario03(browser, webOrigin, sql, markusSession = nul
   await pageJulia.locator('[data-testid="kopplung-code"]').fill(invitationCode)
   await pageJulia.locator('[data-testid="kopplung-beitreten"]').click()
   await pageJulia.waitForTimeout(500)
-  await pageJulia.locator('[data-testid="stammdaten-speichern"]').click()
+  // Closing the context aborts a save still in flight; Julia's birth date would then be missing and
+  // the joint printout locked ("personB"). Wait for the server's answer before leaving.
+  const [saved] = await Promise.all([
+    pageJulia.waitForResponse((res) => res.request().method() === 'PUT' && res.url().includes('/v1/stammdaten'), { timeout: 10_000 }),
+    pageJulia.locator('[data-testid="stammdaten-speichern"]').click(),
+  ])
+  if (!saved.ok()) fail(`Scenario 03: saving Julia's Stammdaten answered HTTP ${saved.status()}`)
   await ctxJulia.close()
 
   await pageMarkus.reload()
