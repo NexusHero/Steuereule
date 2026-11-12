@@ -13,6 +13,7 @@ import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypte
 import {
   matchesActionId,
   type AdvisorChatMessageRecord,
+  type AdvisorConversationChange,
   type AdvisorConversationRecord,
   type AdvisorMessageUsage,
   type AdvisorRepository,
@@ -120,7 +121,7 @@ export class PrismaAdvisorRepository implements AdvisorRepository {
     return latest ?? this.createConversation(userId, taxYear)
   }
 
-  async updateConversation(id: string, userId: string, change: { title?: string | null; lastUsedAt?: Date }): Promise<AdvisorConversationRecord | null> {
+  async updateConversation(id: string, userId: string, change: AdvisorConversationChange): Promise<AdvisorConversationRecord | null> {
     const { count } = await this.prisma.advisorConversation.updateMany({ where: { id, userId }, data: change })
     return count === 1 ? this.findConversation(id, userId) : null
   }

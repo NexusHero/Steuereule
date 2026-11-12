@@ -20,6 +20,17 @@ export interface AdvisorConversationRecord {
   readonly title: string | null
   readonly createdAt: Date
   readonly lastUsedAt: Date
+  /** What the conversation said up to `summaryUntil`; the model reads this instead of those messages. */
+  readonly summary: string | null
+  readonly summaryUntil: Date | null
+}
+
+/** What may change on a conversation after it was created. */
+export interface AdvisorConversationChange {
+  readonly title?: string | null
+  readonly lastUsedAt?: Date
+  readonly summary?: string | null
+  readonly summaryUntil?: Date | null
 }
 
 export interface AdvisorChatMessageRecord {
@@ -73,7 +84,7 @@ export interface AdvisorRepository {
   /** The conversation of that year used last; created when the year has none yet. */
   defaultConversation(userId: string, taxYear: number): Promise<AdvisorConversationRecord>
   /** Null when the conversation does not exist or belongs to someone else. */
-  updateConversation(id: string, userId: string, change: { title?: string | null; lastUsedAt?: Date }): Promise<AdvisorConversationRecord | null>
+  updateConversation(id: string, userId: string, change: AdvisorConversationChange): Promise<AdvisorConversationRecord | null>
   /** Deletes the conversation with its messages; returns how many messages went, null when not found. */
   deleteConversation(id: string, userId: string): Promise<number | null>
   /** Empties one conversation and keeps it; returns how many messages went. */
@@ -129,7 +140,7 @@ export class InMemoryAdvisorRepository implements AdvisorRepository {
 
   async createConversation(userId: string, taxYear: number, title: string | null = null): Promise<AdvisorConversationRecord> {
     const at = this.now()
-    const conversation: AdvisorConversationRecord = { id: randomUUID(), userId, taxYear, title, createdAt: at, lastUsedAt: at }
+    const conversation: AdvisorConversationRecord = { id: randomUUID(), userId, taxYear, title, createdAt: at, lastUsedAt: at, summary: null, summaryUntil: null }
     this.conversations.push(conversation)
     return conversation
   }
@@ -138,7 +149,7 @@ export class InMemoryAdvisorRepository implements AdvisorRepository {
     return (await this.listConversations(userId, taxYear))[0] ?? this.createConversation(userId, taxYear)
   }
 
-  async updateConversation(id: string, userId: string, change: { title?: string | null; lastUsedAt?: Date }): Promise<AdvisorConversationRecord | null> {
+  async updateConversation(id: string, userId: string, change: AdvisorConversationChange): Promise<AdvisorConversationRecord | null> {
     const index = this.conversations.findIndex((c) => c.id === id && c.userId === userId)
     if (index === -1) return null
     // Two touches within one millisecond still need an order; the in-memory clock never repeats.
@@ -182,7 +193,8 @@ export class InMemoryAdvisorRepository implements AdvisorRepository {
       role: input.role,
       content: input.content,
       meta: input.meta,
-      createdAt: new Date(),
+      // Never two messages at the same instant: the summary boundary is a point in time.
+      createdAt: this.now(),
       status: input.status ?? 'complete',
       reasoning: null,
       runId: input.runId ?? null,

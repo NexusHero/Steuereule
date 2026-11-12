@@ -1261,14 +1261,18 @@ model AdvisorChatMessage {
 /// One conversation with the owl (#481). The tax return of a year is the project; it holds any
 /// number of conversations, which all see the same return but not each other's messages.
 model AdvisorConversation {
-  id         String               @id @default(uuid())
-  userId     String
-  taxYear    Int                  @map("steuerjahr")
+  id           String               @id @default(uuid())
+  userId       String
+  taxYear      Int                  @map("steuerjahr")
   /// From the user's first question, so field-encrypted like the messages. Null until then.
-  title      String?              @map("titel") /// @encrypted?mode=strict
-  createdAt  DateTime             @default(now())
-  lastUsedAt DateTime             @default(now()) @map("zuletztBenutzt")
-  messages   AdvisorChatMessage[]
+  title        String?              @map("titel") /// @encrypted?mode=strict
+  createdAt    DateTime             @default(now())
+  lastUsedAt   DateTime             @default(now()) @map("zuletztBenutzt")
+  /// What the older part of the conversation said, once its context was full. The model reads this
+  /// instead of the messages up to `summaryUntil`; the user still sees every message.
+  summary      String?              @map("zusammenfassung") /// @encrypted?mode=strict
+  summaryUntil DateTime?            @map("zusammengefasstBis")
+  messages     AdvisorChatMessage[]
 
   @@index([userId, taxYear, lastUsedAt])
   @@map("BeraterGespraech")

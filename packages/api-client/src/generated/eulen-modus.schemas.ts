@@ -692,6 +692,37 @@ export interface AdvisorConversationDto {
   lastUsedAt: string;
 }
 
+/**
+ * warn: will be summarised soon. full: summarised before the next answer.
+ */
+export type AdvisorContextDtoLevel = typeof AdvisorContextDtoLevel[keyof typeof AdvisorContextDtoLevel];
+
+
+export const AdvisorContextDtoLevel = {
+  ok: 'ok',
+  warn: 'warn',
+  full: 'full',
+} as const;
+
+export interface AdvisorContextDto {
+  /** Estimated tokens of the summary so far plus every message since. */
+  usedTokens: number;
+  maxTokens: number;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  percent: number;
+  /** warn: will be summarised soon. full: summarised before the next answer. */
+  level: AdvisorContextDtoLevel;
+  /** What the summarised part of the conversation said. */
+  summary?: string;
+  /** The last message the summary covers; the chat draws its dividing line after it. */
+  summarizedUntilMessageId?: string;
+  /** False while there is too little to summarise. */
+  canSummarize: boolean;
+}
+
 export type AdvisorLegalSourceDtoSourceId = typeof AdvisorLegalSourceDtoSourceId[keyof typeof AdvisorLegalSourceDtoSourceId];
 
 
@@ -724,6 +755,8 @@ export interface AdvisorSessionResponseDto {
   conversationId: string;
   /** Every conversation of this tax year, most recently used first. */
   conversations: AdvisorConversationDto[];
+  /** How full the context of this conversation is (#481). */
+  context: AdvisorContextDto;
   messages: AdvisorChatMessageDto[];
   quickChips: string[];
   legalSources: AdvisorLegalSourceDto[];

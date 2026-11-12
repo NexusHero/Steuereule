@@ -34,6 +34,11 @@ import {
   type Profession,
   type Screen,
   type WageTaxCertificateFieldId,
+  advisorContextUsage,
+  fallbackSummary,
+  summaryCut,
+  transcriptForSummary,
+  type AdvisorHistorySource,
 } from '@steuereule/core'
 import { AuditService } from '../audit/audit.service.js'
 import { checkPiiFree } from '../ki/ki.adapter.js'
@@ -74,6 +79,7 @@ import {
 import type {
   AdvisorActionMutationResponseDto,
   AdvisorChatMessageDto,
+  AdvisorContextDto,
   AdvisorConversationDto,
   AdvisorSessionResponseDto,
   ApplyBatchActionsDto,
@@ -145,6 +151,9 @@ export interface PreparedAdvisorTurn {
   readonly scrubbedUserText: string
   readonly history: readonly AdvisorHistoryEntry[]
   readonly dto: SendAdvisorMessageDto
+  readonly conversationId: string
+  /** The context of the conversation is full: its older part is summarised before the model is asked. */
+  readonly needsSummary: boolean
 }
 
 const EURO = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 2 })
@@ -190,6 +199,28 @@ export function titleFrom(text: string): string | null {
   const cut = oneLine.slice(0, TITLE_MAX_LENGTH)
   const lastSpace = cut.lastIndexOf(' ')
   return `${(lastSpace > TITLE_MAX_LENGTH / 2 ? cut.slice(0, lastSpace) : cut).trimEnd()}…`
+}
+
+/** The messages the model still reads verbatim: everything after the summarised part. */
+function liveMessages(conversation: AdvisorConversationRecord, records: readonly AdvisorChatMessageRecord[]): AdvisorChatMessageRecord[] {
+  const until = conversation.summaryUntil
+  return until === null ? [...records] : records.filter((record) => record.createdAt.getTime() > until.getTime())
+}
+
+function historySources(records: readonly AdvisorChatMessageRecord[], knownNames: readonly string[]): AdvisorHistorySource[] {
+  return records.map((msg) => ({ role: msg.role, content: scrubUserMessagePii(msg.content, [...knownNames]), meta: msg.meta, status: msg.status }))
+}
+
+function contextOf(conversation: AdvisorConversationRecord, records: readonly AdvisorChatMessageRecord[], knownNames: readonly string[]): AdvisorContextDto {
+  const live = liveMessages(conversation, records)
+  const sources = historySources(live, knownNames)
+  const covered = records.filter((record) => !live.includes(record))
+  return {
+    ...advisorContextUsage(sources, conversation.summary),
+    ...(conversation.summary ? { summary: conversation.summary } : {}),
+    ...(covered.length > 0 ? { summarizedUntilMessageId: covered[covered.length - 1]!.id } : {}),
+    canSummarize: summaryCut(sources) > 0,
+  }
 }
 
 function toConversationDto(conversation: AdvisorConversationRecord): AdvisorConversationDto {
@@ -448,6 +479,47 @@ export class AdvisorService {
     return { deletedMessages }
   }
 
+  /**
+   * Condenses the older part of a conversation into its summary (#481) and returns the conversation
+   * as it stands afterwards. The newest turns stay verbatim; without a model the summary lists the
+   * questions and what became of the proposals, so a full conversation never blocks.
+   */
+  private async compact(userId: string, taxYear: number, conversation: AdvisorConversationRecord, exceptIds: readonly string[], signal?: AbortSignal): Promise<AdvisorConversationRecord> {
+    const knownNames = await this.knownNamesForScrubbing(userId, taxYear)
+    const live = liveMessages(conversation, await this.advisorRepo.listForConversation(conversation.id, userId)).filter((m) => !exceptIds.includes(m.id))
+    const sources = historySources(live, knownNames)
+    const cut = summaryCut(sources)
+    if (cut === 0) return conversation
+    const older = sources.slice(0, cut)
+    const fromModel = this.advisorEngine?.summarize
+      ? await this.advisorEngine.summarize({ transcript: transcriptForSummary(older), previousSummary: conversation.summary, signal })
+      : null
+    const summary = scrubUserMessagePii(fromModel ?? fallbackSummary(older, conversation.summary), knownNames)
+    const updated = await this.advisorRepo.updateConversation(conversation.id, userId, { summary, summaryUntil: live[cut - 1]!.createdAt })
+    return updated ?? conversation
+  }
+
+  /** Summarises before an answer and returns the history the model gets afterwards. */
+  private async summarizeForTurn(userId: string, taxYear: number, turn: PreparedAdvisorTurn, signal?: AbortSignal): Promise<readonly AdvisorHistoryEntry[]> {
+    const conversation = await this.conversationFor(userId, taxYear, turn.conversationId)
+    const thisTurn = [turn.userMessage.id, turn.assistantMessageId]
+    const compacted = await this.compact(userId, taxYear, conversation, thisTurn, signal)
+    const knownNames = await this.knownNamesForScrubbing(userId, taxYear)
+    const live = liveMessages(compacted, await this.advisorRepo.listForConversation(compacted.id, userId)).filter((m) => !thisTurn.includes(m.id))
+    return buildAdvisorHistory(historySources(live, knownNames), { summary: compacted.summary })
+  }
+
+  /** "Jetzt zusammenfassen": the user tidies the context before it is full. */
+  async summarizeConversation(userId: string, taxYear: number, conversationId?: string): Promise<AdvisorContextDto> {
+    const conversation = await this.conversationFor(userId, taxYear, conversationId)
+    const compacted = await this.compact(userId, taxYear, conversation, [])
+    if (compacted.summaryUntil?.getTime() === conversation.summaryUntil?.getTime()) {
+      throw new ConflictError('ADVISOR_NOTHING_TO_SUMMARIZE', 'Dieses Gespräch ist noch zu kurz, um es zusammenzufassen.')
+    }
+    await this.auditService.append({ userId, action: 'WRITE', resource: 'berater_gespraech_zusammengefasst' })
+    return contextOf(compacted, await this.advisorRepo.listForConversation(compacted.id, userId), await this.knownNamesForScrubbing(userId, taxYear))
+  }
+
   async getSession(userId: string, taxYear: number, conversationId?: string): Promise<AdvisorSessionResponseDto> {
     const conversation = await this.conversationFor(userId, taxYear, conversationId)
     const [setting, cardsRes, history, conversations] = await Promise.all([
@@ -475,6 +547,7 @@ export class AdvisorService {
       openCards: cardsRes.cards,
       conversationId: conversation.id,
       conversations: conversations.map(toConversationDto),
+      context: contextOf(conversation, history, await this.knownNamesForScrubbing(userId, taxYear)),
       messages: history.filter((m) => !m.meta?.replaced).map(toMessageDto),
       quickChips: [
         'Kanzlei-Endprüfung starten',
@@ -534,20 +607,16 @@ export class AdvisorService {
       await this.replaceLatestTurn(userId, conversation.id, dto.replaceFromMessageId)
     }
     // The model sees this conversation only; what the conversations share is the return itself.
-    const priorRecords = await this.advisorRepo.listForConversation(conversation.id, userId)
+    const priorRecords = liveMessages(conversation, await this.advisorRepo.listForConversation(conversation.id, userId))
+    const sources = historySources(priorRecords, knownNames)
+    // A full context is summarised before the answer, once the stream is open (see executeTurn).
+    const needsSummary = advisorContextUsage(sources, conversation.summary).level === 'full'
     await this.advisorRepo.updateConversation(conversation.id, userId, {
       lastUsedAt: new Date(),
       // The first question names the conversation.
       ...(conversation.title === null ? { title: titleFrom(scrubbedUserText) } : {}),
     })
-    const history = buildAdvisorHistory(
-      priorRecords.map((msg) => ({
-        role: msg.role,
-        content: scrubUserMessagePii(msg.content, knownNames),
-        meta: msg.meta,
-        status: msg.status,
-      })),
-    )
+    const history = buildAdvisorHistory(sources, { summary: conversation.summary })
 
     const runId = randomUUID()
     const userMessage = await this.advisorRepo.createMessage({
@@ -569,7 +638,7 @@ export class AdvisorService {
       runId,
     })
 
-    return { runId, userMessage, assistantMessageId: assistantMessage.id, scrubbedUserText, history, dto }
+    return { runId, userMessage, assistantMessageId: assistantMessage.id, scrubbedUserText, history, dto, conversationId: conversation.id, needsSummary }
   }
 
   async *streamMessage(
@@ -647,6 +716,14 @@ export class AdvisorService {
     try {
       yield { event: 'start', data: { runId, userMessage: toMessageDto(userMessage), assistantMessageId } }
 
+      let history = turn.history
+      if (turn.needsSummary) {
+        const status = 'Die Eule fasst den älteren Verlauf zusammen …'
+        steps.push(status)
+        yield { event: 'status', data: { text: status } }
+        history = await this.summarizeForTurn(userId, taxYear, turn, signal)
+      }
+
       // Build PII-free CaseDigest & stream Zero-Write advisor turn via LangGraph engine (with deterministic fallback)
       const digest = await this.buildCaseDigest(userId, taxYear)
       const actionIdFactory = newActionId
@@ -685,7 +762,7 @@ export class AdvisorService {
         message: scrubbedUserText,
         activeScreen: dto.activeScreen,
         digest,
-        history: turn.history,
+        history,
         actionIdFactory,
         signal,
         planRequired: dto.quickAction === 'forgotten_check',
@@ -808,7 +885,7 @@ export class AdvisorService {
   async clearConversation(userId: string, taxYear: number, conversationId?: string): Promise<{ deletedMessages: number }> {
     const conversation = await this.conversationFor(userId, taxYear, conversationId)
     const deletedMessages = await this.advisorRepo.deleteMessagesOfConversation(conversation.id, userId)
-    await this.advisorRepo.updateConversation(conversation.id, userId, { title: null })
+    await this.advisorRepo.updateConversation(conversation.id, userId, { title: null, summary: null, summaryUntil: null })
     await this.auditService.append({ userId, action: 'WRITE', resource: 'berater_verlauf_geloescht' })
     return { deletedMessages }
   }

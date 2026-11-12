@@ -17,9 +17,20 @@ export interface AdvisorHistorySource {
 export interface AdvisorHistoryBudget {
   /** Upper bound for the whole history, in estimated tokens. */
   readonly maxTokens?: number | undefined
+  /**
+   * What an earlier summary of this conversation says (#481). It stands for everything the caller
+   * left out of `messages`, and counts against the budget like any other text.
+   */
+  readonly summary?: string | null | undefined
 }
 
-export const DEFAULT_ADVISOR_HISTORY_TOKENS = 3000
+/** The context of one conversation: how much of its past the model is shown verbatim. */
+export const DEFAULT_ADVISOR_HISTORY_TOKENS = 6000
+/** From here on the chat warns that the conversation is about to be summarised. */
+export const ADVISOR_CONTEXT_WARN_PERCENT = 80
+/** After a summary, the newest turns stay verbatim up to this share of the context. */
+const KEEP_AFTER_SUMMARY_SHARE = 0.25
+const SUMMARY_HEADING = 'Zusammenfassung des bisherigen Gesprächs:'
 const NOTE_SHARE = 0.25
 const NOTE_HEADING = 'Früherer Gesprächsverlauf (gekürzt):'
 const QUESTION_PREVIEW_CHARS = 100
@@ -87,7 +98,8 @@ export function buildAdvisorHistory(
   messages: readonly AdvisorHistorySource[],
   budget: AdvisorHistoryBudget = {},
 ): AdvisorHistoryEntry[] {
-  const maxTokens = budget.maxTokens ?? DEFAULT_ADVISOR_HISTORY_TOKENS
+  const summaryEntry = summaryAsEntry(budget.summary)
+  const maxTokens = Math.max(0, (budget.maxTokens ?? DEFAULT_ADVISOR_HISTORY_TOKENS) - (summaryEntry ? estimateAdvisorTokens(summaryEntry.content) : 0))
   const windowBudget = Math.floor(maxTokens * (1 - NOTE_SHARE))
 
   const window: AdvisorHistoryEntry[] = []
@@ -112,5 +124,79 @@ export function buildAdvisorHistory(
   }
 
   const note = buildNote(messages.slice(0, cut), maxTokens - windowBudget)
-  return note ? [{ role: 'user', content: note }, ...window] : window
+  return [...(summaryEntry ? [summaryEntry] : []), ...(note ? [{ role: 'user' as const, content: note }] : []), ...window]
+}
+
+function summaryAsEntry(summary: string | null | undefined): AdvisorHistoryEntry | null {
+  const text = summary?.trim() ?? ''
+  return text === '' ? null : { role: 'user', content: `${SUMMARY_HEADING}\n${text}` }
+}
+
+export type AdvisorContextLevel = 'ok' | 'warn' | 'full'
+
+export interface AdvisorContextUsage {
+  readonly usedTokens: number
+  readonly maxTokens: number
+  /** 0 to 100; a conversation over its budget still reads 100. */
+  readonly percent: number
+  readonly level: AdvisorContextLevel
+}
+
+/**
+ * How full the context of a conversation is (#481): the summary so far plus every message since.
+ * At `full` the older part has to be summarised before the model can be shown all of it again.
+ */
+export function advisorContextUsage(messages: readonly AdvisorHistorySource[], summary: string | null = null, maxTokens = DEFAULT_ADVISOR_HISTORY_TOKENS): AdvisorContextUsage {
+  const summaryEntry = summaryAsEntry(summary)
+  const usedTokens =
+    (summaryEntry ? estimateAdvisorTokens(summaryEntry.content) : 0) +
+    messages.reduce((sum, source) => {
+      const entry = toEntry(source)
+      return sum + (entry ? estimateAdvisorTokens(entry.content) : 0)
+    }, 0)
+  const percent = Math.min(100, Math.round((usedTokens / maxTokens) * 100))
+  return { usedTokens, maxTokens, percent, level: usedTokens >= maxTokens ? 'full' : percent >= ADVISOR_CONTEXT_WARN_PERCENT ? 'warn' : 'ok' }
+}
+
+/**
+ * Where a conversation is cut for a summary: how many of its messages (from the start) go into
+ * the summary. The newest turns stay verbatim, and the cut never separates a question from its
+ * answer. 0 means there is nothing worth summarising yet.
+ */
+export function summaryCut(messages: readonly AdvisorHistorySource[], maxTokens = DEFAULT_ADVISOR_HISTORY_TOKENS): number {
+  const keepBudget = Math.floor(maxTokens * KEEP_AFTER_SUMMARY_SHARE)
+  let kept = 0
+  let cut = messages.length
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    const entry = toEntry(messages[i]!)
+    const cost = entry ? estimateAdvisorTokens(entry.content) : 0
+    // Always keep the latest question with its answer, whatever it costs.
+    if (kept + cost > keepBudget && cut < messages.length && messages[cut]!.role === 'user') break
+    kept += cost
+    cut = i
+  }
+  // Start what is kept at a question.
+  while (cut < messages.length && messages[cut]!.role !== 'user') cut += 1
+  return cut >= messages.length ? 0 : cut
+}
+
+/** The part of a conversation that is to be summarised, as plain text for the summariser. */
+export function transcriptForSummary(older: readonly AdvisorHistorySource[]): string {
+  return older
+    .map((source) => {
+      const entry = toEntry(source)
+      return entry ? `${entry.role === 'user' ? 'Nutzer' : 'Eule'}: ${entry.content}` : null
+    })
+    .filter((line): line is string => line !== null)
+    .join('\n')
+}
+
+/**
+ * A summary without a model: the questions that came up and what became of the proposals. Used
+ * when no model answers, so a full conversation never blocks.
+ */
+export function fallbackSummary(older: readonly AdvisorHistorySource[], previous: string | null, maxTokens = DEFAULT_ADVISOR_HISTORY_TOKENS): string {
+  const note = buildNote(older, Math.floor(maxTokens * KEEP_AFTER_SUMMARY_SHARE))
+  const lines = note ? note.split('\n').slice(1) : []
+  return [...(previous?.trim() ? [previous.trim()] : []), ...lines].join('\n')
 }

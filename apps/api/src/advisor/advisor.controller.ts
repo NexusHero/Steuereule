@@ -50,6 +50,7 @@ import {
   AdvisorSessionResponseDto,
   ApplyBatchActionsDto,
   ApplyBatchActionsResponseDto,
+  AdvisorContextDto,
   AdvisorConversationDto,
   ClearAdvisorConversationResponseDto,
   RenameAdvisorConversationDto,
@@ -296,6 +297,24 @@ export class AdvisorController {
     @Body() dto: RenameAdvisorConversationDto,
   ): Promise<AdvisorConversationDto> {
     return this.service.renameConversation(userId, year, conversationId, dto.title)
+  }
+
+  @Post('conversations/:conversationId/summarize')
+  @HttpCode(200)
+  @RequiresAccount()
+  @ForbidAssistant()
+  @ApiOperation({ summary: 'Summarise the older part of a conversation now, before its context is full' })
+  @ApiParam({ name: 'jahr', type: Number, example: 2025 })
+  @ApiParam({ name: 'conversationId', type: String })
+  @ApiOkResponse({ type: AdvisorContextDto })
+  @ApiNotFoundResponse({ description: 'No such conversation in this tax year.' })
+  @ApiConflictResponse({ description: 'Too short to summarise, or an answer is still running.' })
+  summarizeConversation(
+    @CurrentUser() userId: string,
+    @Param('jahr', ParseTaxYearPipe) year: number,
+    @Param('conversationId') conversationId: string,
+  ): Promise<AdvisorContextDto> {
+    return this.runs.summarizeConversation(userId, year, conversationId)
   }
 
   @Delete('conversations/:conversationId')

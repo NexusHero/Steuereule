@@ -184,3 +184,111 @@ describe('titleFrom', () => {
     expect(titleFrom('   ')).toBeNull()
   })
 })
+
+describe('a full conversation is summarised (#481)', () => {
+  const LONG = 'x'.repeat(2400)
+  const longAnswer = answer(`Antwort ${LONG}`)
+
+  /** A scripted engine that can also summarise; `summaries` records what it was asked to condense. */
+  function buildWithSummary(reply: string | null) {
+    const engine = new ScriptedAdvisorEngine(longAnswer)
+    const asked: Array<{ transcript: string; previousSummary: string | null }> = []
+    const summarising = Object.assign(engine, {
+      summarize: async (input: { transcript: string; previousSummary: string | null }) => {
+        asked.push(input)
+        return reply
+      },
+    })
+    const kit = buildAdvisorTestKit(summarising)
+    const runs = new AdvisorRunService(kit.service, new InMemoryAdvisorRunLog(), kit.advisorRepo)
+    return { ...kit, engine, asked, runs }
+  }
+
+  async function fill(service: ReturnType<typeof build>['service'], turns: number) {
+    for (let i = 1; i <= turns; i += 1) await collect(service.streamMessage(USER, YEAR, { message: `Frage ${i} ${LONG}` }))
+  }
+
+  it('reports how full the context is, and that a short conversation cannot be summarised', async () => {
+    const { service } = buildWithSummary('Zusammenfassung.')
+    expect((await service.getSession(USER, YEAR)).context).toMatchObject({ percent: 0, level: 'ok', canSummarize: false })
+    await fill(service, 2)
+    const { context } = await service.getSession(USER, YEAR)
+    expect(context.percent).toBeGreaterThan(30)
+    expect(context.level).toBe('ok')
+  })
+
+  it('summarises on its own before the answer once the context is full, and says so', async () => {
+    const { service, engine, asked } = buildWithSummary('Der Nutzer hat mehrere lange Fragen gestellt.')
+    await fill(service, 5)
+    expect((await service.getSession(USER, YEAR)).context.level).toBe('full')
+    expect(asked).toHaveLength(0)
+
+    const events = await collect(service.streamMessage(USER, YEAR, { message: 'Und jetzt?' }))
+    expect(events.some((e) => e.event === 'status' && e.data.text.includes('fasst den älteren Verlauf zusammen'))).toBe(true)
+    expect(asked).toHaveLength(1)
+    expect(asked[0]!.transcript).toContain('Nutzer: Frage 1')
+    // The model gets the summary instead of the old turns, and still the newest ones verbatim.
+    const history = engine.requests.at(-1)!.history!
+    expect(history[0]!.content).toContain('Der Nutzer hat mehrere lange Fragen gestellt.')
+    expect(JSON.stringify(history)).not.toContain('Frage 1 ')
+    expect(JSON.stringify(history)).toContain('Frage 5 ')
+
+    const { context, messages } = await service.getSession(USER, YEAR)
+    expect(context.level).not.toBe('full')
+    expect(context.summary).toBe('Der Nutzer hat mehrere lange Fragen gestellt.')
+    // The user still sees every message; the dividing line sits after the last summarised one.
+    expect(messages).toHaveLength(12)
+    expect(messages.map((m) => m.id)).toContain(context.summarizedUntilMessageId)
+  })
+
+  it('carries an earlier summary on instead of starting over', async () => {
+    const { service, asked } = buildWithSummary('Stand der Dinge.')
+    await fill(service, 6)
+    await fill(service, 6)
+    expect(asked.length).toBeGreaterThanOrEqual(2)
+    expect(asked.at(-1)!.previousSummary).toBe('Stand der Dinge.')
+  })
+
+  it('summarises on request before the context is full', async () => {
+    const { service, runs, asked } = buildWithSummary('Kurzfassung.')
+    await fill(service, 3)
+    const id = (await service.getSession(USER, YEAR)).conversationId
+    const context = await runs.summarizeConversation(USER, YEAR, id)
+    expect(asked).toHaveLength(1)
+    expect(context.summary).toBe('Kurzfassung.')
+    expect(context.percent).toBeLessThan(60)
+  })
+
+  it('refuses to summarise what is too short', async () => {
+    const { service, runs } = buildWithSummary('Kurzfassung.')
+    await collect(service.streamMessage(USER, YEAR, { message: 'Hallo' }))
+    const id = (await service.getSession(USER, YEAR)).conversationId
+    await expect(runs.summarizeConversation(USER, YEAR, id)).rejects.toMatchObject({ code: 'ADVISOR_NOTHING_TO_SUMMARIZE' })
+  })
+
+  it('never blocks without a model: the summary then lists the questions', async () => {
+    const { service } = buildWithSummary(null)
+    await fill(service, 5)
+    await collect(service.streamMessage(USER, YEAR, { message: 'Und jetzt?' }))
+    const { context } = await service.getSession(USER, YEAR)
+    expect(context.level).not.toBe('full')
+    expect(context.summary).toContain('Frage: Frage 1')
+  })
+
+  it('keeps identifiers out of a summary, whatever the model wrote', async () => {
+    const { service } = buildWithSummary('Konto DE89370400440532013000 genannt.')
+    await fill(service, 5)
+    await collect(service.streamMessage(USER, YEAR, { message: 'Und jetzt?' }))
+    expect((await service.getSession(USER, YEAR)).context.summary).not.toContain('DE89370400440532013000')
+  })
+
+  it('forgets the summary when the conversation is emptied', async () => {
+    const { service, runs } = buildWithSummary('Kurzfassung.')
+    await fill(service, 3)
+    const id = (await service.getSession(USER, YEAR)).conversationId
+    await runs.summarizeConversation(USER, YEAR, id)
+    await runs.clearConversation(USER, YEAR, id)
+    expect((await service.getSession(USER, YEAR, id)).context).toMatchObject({ percent: 0, canSummarize: false })
+    expect((await service.getSession(USER, YEAR, id)).context.summary).toBeUndefined()
+  })
+})

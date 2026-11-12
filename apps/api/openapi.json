@@ -2417,6 +2417,52 @@
         ]
       }
     },
+    "/v1/steuerjahre/{jahr}/advisor/conversations/{conversationId}/summarize": {
+      "post": {
+        "operationId": "AdvisorController_summarizeConversation",
+        "parameters": [
+          {
+            "name": "conversationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdvisorContextDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such conversation in this tax year."
+          },
+          "409": {
+            "description": "Too short to summarise, or an answer is still running."
+          }
+        },
+        "summary": "Summarise the older part of a conversation now, before its context is full",
+        "tags": [
+          "eulen-modus"
+        ]
+      }
+    },
     "/v1/steuerjahre/{jahr}/advisor/messages/{messageId}/feedback": {
       "put": {
         "operationId": "AdvisorController_setFeedback",
@@ -8350,6 +8396,51 @@
           "lastUsedAt"
         ]
       },
+      "AdvisorContextDto": {
+        "type": "object",
+        "properties": {
+          "usedTokens": {
+            "type": "number",
+            "description": "Estimated tokens of the summary so far plus every message since."
+          },
+          "maxTokens": {
+            "type": "number"
+          },
+          "percent": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "level": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "warn",
+              "full"
+            ],
+            "description": "warn: will be summarised soon. full: summarised before the next answer."
+          },
+          "summary": {
+            "type": "string",
+            "description": "What the summarised part of the conversation said."
+          },
+          "summarizedUntilMessageId": {
+            "type": "string",
+            "description": "The last message the summary covers; the chat draws its dividing line after it."
+          },
+          "canSummarize": {
+            "type": "boolean",
+            "description": "False while there is too little to summarise."
+          }
+        },
+        "required": [
+          "usedTokens",
+          "maxTokens",
+          "percent",
+          "level",
+          "canSummarize"
+        ]
+      },
       "AdvisorLegalSourceDto": {
         "type": "object",
         "properties": {
@@ -8426,6 +8517,14 @@
               "$ref": "#/components/schemas/AdvisorConversationDto"
             }
           },
+          "context": {
+            "description": "How full the context of this conversation is (#481).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AdvisorContextDto"
+              }
+            ]
+          },
           "messages": {
             "type": "array",
             "items": {
@@ -8451,6 +8550,7 @@
           "openCards",
           "conversationId",
           "conversations",
+          "context",
           "messages",
           "quickChips",
           "legalSources"

@@ -27,6 +27,7 @@ import type {
 import type {
   AdvisorActionMutationResponseDto,
   AdvisorChatMessageDto,
+  AdvisorContextDto,
   AdvisorControllerClearConversationParams,
   AdvisorControllerGetSessionParams,
   AdvisorControllerRunEventsParams,
@@ -1190,6 +1191,103 @@ export const useAdvisorControllerDeleteConversation = <TError = void,
         TContext
       > => {
       return useMutation(getAdvisorControllerDeleteConversationMutationOptions(options), queryClient);
+    }
+
+export type advisorControllerSummarizeConversationResponse200 = {
+  data: AdvisorContextDto
+  status: 200
+}
+
+export type advisorControllerSummarizeConversationResponse404 = {
+  data: void
+  status: 404
+}
+
+export type advisorControllerSummarizeConversationResponse409 = {
+  data: void
+  status: 409
+}
+
+export type advisorControllerSummarizeConversationResponseSuccess = (advisorControllerSummarizeConversationResponse200) & {
+  headers: Headers;
+};
+export type advisorControllerSummarizeConversationResponseError = (advisorControllerSummarizeConversationResponse404 | advisorControllerSummarizeConversationResponse409) & {
+  headers: Headers;
+};
+
+export type advisorControllerSummarizeConversationResponse = (advisorControllerSummarizeConversationResponseSuccess | advisorControllerSummarizeConversationResponseError)
+
+export const getAdvisorControllerSummarizeConversationUrl = (jahr: number,
+    conversationId: string,) => {
+
+
+
+
+  return `/v1/steuerjahre/${jahr}/advisor/conversations/${conversationId}/summarize`
+}
+
+/**
+ * @summary Summarise the older part of a conversation now, before its context is full
+ */
+export const advisorControllerSummarizeConversation = async (jahr: number,
+    conversationId: string, options?: RequestInit): Promise<advisorControllerSummarizeConversationResponse> => {
+
+  return httpClient<advisorControllerSummarizeConversationResponse>(getAdvisorControllerSummarizeConversationUrl(jahr,conversationId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getAdvisorControllerSummarizeConversationMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof advisorControllerSummarizeConversation>>, TError,{jahr: number;conversationId: string}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof advisorControllerSummarizeConversation>>, TError,{jahr: number;conversationId: string}, TContext> => {
+
+const mutationKey = ['advisorControllerSummarizeConversation'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof advisorControllerSummarizeConversation>>, {jahr: number;conversationId: string}> = (props) => {
+          const {jahr,conversationId} = props ?? {};
+
+          return  advisorControllerSummarizeConversation(jahr,conversationId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AdvisorControllerSummarizeConversationMutationResult = NonNullable<Awaited<ReturnType<typeof advisorControllerSummarizeConversation>>>
+
+    export type AdvisorControllerSummarizeConversationMutationError = void
+
+    /**
+ * @summary Summarise the older part of a conversation now, before its context is full
+ */
+export const useAdvisorControllerSummarizeConversation = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof advisorControllerSummarizeConversation>>, TError,{jahr: number;conversationId: string}, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof advisorControllerSummarizeConversation>>,
+        TError,
+        {jahr: number;conversationId: string},
+        TContext
+      > => {
+      return useMutation(getAdvisorControllerSummarizeConversationMutationOptions(options), queryClient);
     }
 
 export type advisorControllerSetFeedbackResponse200 = {

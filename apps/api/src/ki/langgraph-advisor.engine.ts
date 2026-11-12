@@ -34,6 +34,7 @@ import {
   type AdvisorPreviewTarget,
   type AdvisorRecordHandles,
   type AdvisorStreamEvent,
+  type AdvisorSummaryRequest,
   type AdvisorTurnRequest,
   type AdvisorTurnResult,
   type AdvisorTurnUsage,
@@ -249,6 +250,15 @@ interface RejectedDraft {
 const MAX_DRAFTS_PER_TURN = 8
 
 const draftKey = (draft: Pick<AdvisorActionProposal, 'screen' | 'field' | 'instance'>): string => `${draft.screen}|${draft.instance ?? ''}|${draft.field}`
+
+const SUMMARY_MAX_CHARS = 2400
+const SUMMARY_INSTRUCTIONS = [
+  'Du fasst den älteren Teil eines Gesprächs zwischen einem Nutzer und der SteuerEule (Assistent für die private Einkommensteuererklärung) zusammen.',
+  'Die Zusammenfassung ersetzt diesen Teil im Gedächtnis des Assistenten. Schreibe deshalb nur, was im Verlauf wirklich steht, und erfinde nichts dazu.',
+  'Halte fest: (1) Angaben und Zahlen, die der Nutzer genannt hat, (2) was besprochen und entschieden wurde, mit dem Grund, (3) welche Vorschläge es gab und was aus ihnen wurde (übernommen, verworfen, offen), (4) offene Fragen.',
+  'Führe eine bisherige Zusammenfassung fort, statt sie zu wiederholen; bei Widerspruch gilt die neuere Aussage.',
+  'Keine Namen, Adressen, Steuer-IDs, IBANs oder Geburtsdaten. Keine Anrede, keine Einleitung. Stichpunkte auf Deutsch, höchstens 1.500 Zeichen.',
+].join('\n')
 
 const FIGURE_KEYS = new Set(['beforeRefundEur', 'afterRefundEur', 'deltaEur'])
 
@@ -1071,6 +1081,40 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
       ...(usage ? { usage } : {}),
     }
     yield { event: 'done', data: result }
+  }
+
+  /**
+   * One plain model call without tools. The model is told to keep to what was said: a summary is
+   * the only memory of the older conversation, so an invented detail would be read as a fact later.
+   */
+  async summarize(input: AdvisorSummaryRequest): Promise<string | null> {
+    try {
+      checkPiiFree({ transcript: input.transcript, previousSummary: input.previousSummary ?? '' })
+      if (await this.runtimeConfig.isKillSwitchActive()) return null
+      const slotConfig = await this.runtimeConfig.resolveSlot('advisor_chat')
+      if (!slotConfig.enabled || slotConfig.provider === 'deterministic' || slotConfig.provider === 'fake') return null
+      // A summary needs no line of thought: the plain, quick variant of the same model.
+      const { reasoning: _reasoning, reasoningBudgetTokens: _budget, ...plain } = slotConfig
+      const model = this.resolveChatModel({ ...plain, thinkingLevel: 'low' })
+      if (!model) return null
+      const { turnTimeoutMs } = await this.runtimeConfig.resolveLimits()
+      const response = await model.invoke(
+        [
+          new SystemMessage(SUMMARY_INSTRUCTIONS),
+          new HumanMessage(
+            [...(input.previousSummary ? ['Bisherige Zusammenfassung:', input.previousSummary, ''] : []), 'Gesprächsverlauf:', input.transcript].join('\n'),
+          ),
+        ],
+        { signal: input.signal ? AbortSignal.any([input.signal, AbortSignal.timeout(turnTimeoutMs)]) : AbortSignal.timeout(turnTimeoutMs) },
+      )
+      const text = extractMessageText(response.content).trim()
+      if (text === '') return null
+      checkPiiFree({ summary: text })
+      return text.slice(0, SUMMARY_MAX_CHARS)
+    } catch (error) {
+      this.logger.warn(`conversation summary failed: ${error instanceof Error ? error.message.slice(0, 300) : String(error).slice(0, 300)}`)
+      return null
+    }
   }
 
   async runTurn(request: AdvisorTurnRequest): Promise<AdvisorTurnResult> {

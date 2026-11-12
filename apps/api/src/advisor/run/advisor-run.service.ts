@@ -2,7 +2,7 @@ import { Inject, Injectable, Logger, type OnApplicationShutdown } from '@nestjs/
 import { ConflictError, NotFoundError } from '../../common/domain-error.js'
 import { ADVISOR_REPOSITORY, type AdvisorRepository } from '../advisor.repository.js'
 import { AdvisorService, type PreparedAdvisorTurn } from '../advisor.service.js'
-import type { AdvisorSessionResponseDto, SendAdvisorMessageDto } from '../dto/advisor.dto.js'
+import type { AdvisorContextDto, AdvisorSessionResponseDto, SendAdvisorMessageDto } from '../dto/advisor.dto.js'
 import { ADVISOR_RUN_LOG, type AdvisorRunEntry, type AdvisorRunLog } from './advisor-run-log.js'
 
 const RUN_NOT_FOUND = 'Diese Antwort läuft nicht (mehr).'
@@ -118,6 +118,11 @@ export class AdvisorRunService implements OnApplicationShutdown {
   async clearConversation(userId: string, taxYear: number, conversationId?: string): Promise<{ deletedMessages: number }> {
     await this.refuseWhileAnswering(userId, taxYear, conversationId, 'den Verlauf leerst')
     return this.advisor.clearConversation(userId, taxYear, conversationId)
+  }
+
+  async summarizeConversation(userId: string, taxYear: number, conversationId: string): Promise<AdvisorContextDto> {
+    await this.refuseWhileAnswering(userId, taxYear, conversationId, 'das Gespräch zusammenfasst')
+    return this.advisor.summarizeConversation(userId, taxYear, conversationId)
   }
 
   async deleteConversation(userId: string, taxYear: number, conversationId: string): Promise<{ deletedMessages: number }> {

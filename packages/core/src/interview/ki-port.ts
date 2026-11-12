@@ -107,9 +107,22 @@ export interface AdvisorUiCommand {
   readonly focus: string
 }
 
+export interface AdvisorSummaryRequest {
+  /** The part of the conversation to condense, as plain dialogue; already free of personal data. */
+  readonly transcript: string
+  /** What an earlier summary of the same conversation says; the new one has to carry it on. */
+  readonly previousSummary: string | null
+  readonly signal?: AbortSignal | undefined
+}
+
 export interface AdvisorEnginePort {
   runTurn(input: AdvisorTurnRequest): Promise<AdvisorTurnResult>
   streamTurn(input: AdvisorTurnRequest): AsyncIterable<AdvisorStreamEvent>
+  /**
+   * Condenses the older part of a conversation (#481). Null when no model is available or its
+   * answer cannot be used; the caller then falls back to a summary without a model.
+   */
+  summarize?(input: AdvisorSummaryRequest): Promise<string | null>
 }
 
 /** The KI port in domain language. */

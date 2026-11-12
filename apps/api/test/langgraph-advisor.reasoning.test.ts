@@ -691,3 +691,59 @@ describe('the finished answer is checked without a model (ADR-0066 §7)', () => 
     expect(result.meta.notices).toBeUndefined()
   })
 })
+
+describe('summarising a conversation (#481)', () => {
+  /** A model that answers a plain call with one prepared text and remembers what it was shown. */
+  class OneShotModel extends BaseChatModel {
+    readonly seen: string[] = []
+    constructor(private readonly reply: string) {
+      super({})
+    }
+    _llmType(): string {
+      return 'one-shot-test'
+    }
+    async _generate(messages: BaseMessage[]): Promise<ChatResult> {
+      this.seen.push(messages.map((m) => String(m.content)).join('\n---\n'))
+      const message = new AIMessageChunk({ content: this.reply })
+      return { generations: [{ text: this.reply, message }] }
+    }
+  }
+  const TRANSCRIPT = 'Nutzer: Mein Arbeitsweg sind 38 km.\nEule: Vorbereitet. [Vorschlag „Entfernung“ → 38: übernommen]'
+
+  it('asks the model without tools and returns its summary', async () => {
+    const model = new OneShotModel('- Arbeitsweg 38 km, übernommen')
+    const engine = new LangGraphAdvisorEngine(runtime('google-genai'), () => model)
+    expect(await engine.summarize({ transcript: TRANSCRIPT, previousSummary: 'Früher: 300 € Spende.' })).toBe('- Arbeitsweg 38 km, übernommen')
+    expect(model.seen[0]).toContain('erfinde nichts dazu')
+    expect(model.seen[0]).toContain('Früher: 300 € Spende.')
+    expect(model.seen[0]).toContain('38 km')
+  })
+
+  it('asks for the quick variant of the model: no line of thought for a summary', async () => {
+    const configs: ResolvedAiSlotConfig[] = []
+    const engine = new LangGraphAdvisorEngine(runtime('google-genai', { reasoning: 'summary', thinkingLevel: 'medium' }), (config) => {
+      configs.push(config)
+      return new OneShotModel('Kurz.')
+    })
+    await engine.summarize({ transcript: TRANSCRIPT, previousSummary: null })
+    expect(configs[0]).toMatchObject({ thinkingLevel: 'low' })
+    expect(configs[0]!.reasoning).toBeUndefined()
+  })
+
+  it('has no summary without a real model', async () => {
+    const engine = new LangGraphAdvisorEngine(runtime('deterministic'), () => new OneShotModel('x'))
+    expect(await engine.summarize({ transcript: TRANSCRIPT, previousSummary: null })).toBeNull()
+  })
+
+  it('throws away a summary that carries an identifier', async () => {
+    const engine = new LangGraphAdvisorEngine(runtime('google-genai'), () => new OneShotModel('IBAN DE89370400440532013000 genannt'))
+    expect(await engine.summarize({ transcript: TRANSCRIPT, previousSummary: null })).toBeNull()
+  })
+
+  it('has no summary when the model fails, instead of failing the turn', async () => {
+    const engine = new LangGraphAdvisorEngine(runtime('google-genai'), () => {
+      throw new Error('provider away')
+    })
+    expect(await engine.summarize({ transcript: TRANSCRIPT, previousSummary: null })).toBeNull()
+  })
+})

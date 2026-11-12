@@ -7,6 +7,8 @@ CREATE TABLE "BeraterGespraech" (
     "titel" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "zuletztBenutzt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "zusammenfassung" TEXT,
+    "zusammengefasstBis" TIMESTAMP(3),
 
     CONSTRAINT "BeraterGespraech_pkey" PRIMARY KEY ("id")
 );

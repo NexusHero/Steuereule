@@ -32,6 +32,7 @@ import {
   type AdvisorLstbScanMeta,
   type AdvisorAnswerNotice,
   type AdvisorAnswerNoticeKind,
+  type AdvisorContextLevel,
   type AdvisorEffectKind,
   type AdvisorMessageMeta,
   type AdvisorNotStaged,
@@ -364,6 +365,29 @@ export class AdvisorConversationDto {
   lastUsedAt!: string
 }
 
+export class AdvisorContextDto {
+  @ApiProperty({ type: Number, description: 'Estimated tokens of the summary so far plus every message since.' })
+  usedTokens!: number
+
+  @ApiProperty({ type: Number })
+  maxTokens!: number
+
+  @ApiProperty({ type: Number, minimum: 0, maximum: 100 })
+  percent!: number
+
+  @ApiProperty({ type: String, enum: ['ok', 'warn', 'full'], description: 'warn: will be summarised soon. full: summarised before the next answer.' })
+  level!: AdvisorContextLevel
+
+  @ApiPropertyOptional({ type: String, description: 'What the summarised part of the conversation said.' })
+  summary?: string | undefined
+
+  @ApiPropertyOptional({ type: String, description: 'The last message the summary covers; the chat draws its dividing line after it.' })
+  summarizedUntilMessageId?: string | undefined
+
+  @ApiProperty({ type: Boolean, description: 'False while there is too little to summarise.' })
+  canSummarize!: boolean
+}
+
 export class RenameAdvisorConversationDto {
   @ApiProperty({ type: String, example: 'Vermietung Musterstraße' })
   @IsString()
@@ -400,6 +424,9 @@ export class AdvisorSessionResponseDto {
 
   @ApiProperty({ type: () => [AdvisorConversationDto], description: 'Every conversation of this tax year, most recently used first.' })
   conversations!: readonly AdvisorConversationDto[]
+
+  @ApiProperty({ type: () => AdvisorContextDto, description: 'How full the context of this conversation is (#481).' })
+  context!: AdvisorContextDto
 
   @ApiProperty({ type: [AdvisorChatMessageDto] })
   messages!: readonly AdvisorChatMessageDto[]
