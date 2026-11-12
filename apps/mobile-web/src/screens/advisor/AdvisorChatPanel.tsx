@@ -80,7 +80,8 @@ export interface AdvisorChatPanelProps {
   readonly receiptLinkedActionIds?: ReadonlySet<string> | undefined
   readonly onAttachReceipt?: ((input: { readonly fileName: string; readonly rawText: string }) => Promise<void> | void) | undefined
   /** Upload a PDF or photo: stored encrypted, read on the device, parsed (#444). */
-  readonly onAttachReceiptFile?: ((file: File) => Promise<void> | void) | undefined
+  /** Resolves when the file has been read: several files are read one after another (#497). */
+  readonly onAttachReceiptFile?: ((file: File) => Promise<void>) | undefined
   /** Visible progress text of the running receipt capture, if any. */
   readonly receiptProgress?: string | null | undefined
   readonly receiptNotice?: string | null | undefined
