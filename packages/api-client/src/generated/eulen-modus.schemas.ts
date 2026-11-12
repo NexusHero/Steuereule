@@ -920,6 +920,27 @@ export interface StopAdvisorRunResponseDto {
   stopped: boolean;
 }
 
+export type AdvisorConnectionDtoState = typeof AdvisorConnectionDtoState[keyof typeof AdvisorConnectionDtoState];
+
+
+export const AdvisorConnectionDtoState = {
+  connected: 'connected',
+  degraded: 'degraded',
+  unavailable: 'unavailable',
+  'rules-only': 'rules-only',
+} as const;
+
+export interface AdvisorConnectionDto {
+  state: AdvisorConnectionDtoState;
+  /** @nullable */
+  provider: string | null;
+  /** @nullable */
+  model: string | null;
+  /** Why it is not connected, or only degraded. */
+  failure?: AdvisorModelFailureDto;
+  checkedAt: string;
+}
+
 export type AdvisorSearchHitDtoRole = typeof AdvisorSearchHitDtoRole[keyof typeof AdvisorSearchHitDtoRole];
 
 

@@ -14,6 +14,7 @@
 //   H  the notes of the tax year: add, change, delete by hand
 //   I  the context ring: fill level, no summary of a short conversation
 //   K  the latest answer came from the rules: "try again" asks the same question in place of that turn
+//   L  the connection status in the top bar: connected, model unreachable, server unreachable
 //   M  Turbo: off at first, sends the flag, an answer the owl applied itself says so
 //   J  on a phone the project content opens as a sheet
 //
@@ -414,6 +415,36 @@ async function main() {
     if (sentBody.message !== 'Lohnt sich ein Fahrtenbuch?' || sentBody.replaceFromMessageId !== 'stub-uk') fail(`Row K: retry should ask the same question in place of the turn, sent ${JSON.stringify(sentBody)}`)
     console.log(`[${TAG}] ✅ Row K — "Noch einmal mit dem Sprachmodell versuchen" asks the same question again in place of the rule-based turn`)
 
+    // Row L — the status of the connection (#488): a dot and a word in the top bar, details on a tap,
+    // and it tells the model being unreachable from the server being unreachable.
+    await page.unroute('**/advisor/session*')
+    await page.route('**/advisor/connection', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ state: 'connected', provider: 'Gemini', model: 'gemini-test', checkedAt: new Date().toISOString() }) }))
+    await page.reload({ waitUntil: 'networkidle' })
+    await see(page, 'eule-connection-chip', 'Row L', 20_000)
+    await see(page, 'eule-connection-dot-ok', 'Row L')
+    if ((await textOf(page, 'eule-connection-label')) !== 'Verbunden · Gemini') fail(`Row L: connected should read "Verbunden · Gemini", reads "${await textOf(page, 'eule-connection-label')}"`)
+    await byId(page, 'eule-connection-chip').click()
+    await see(page, 'eule-connection-sheet', 'Row L')
+    await see(page, 'eule-connection-details', 'Row L')
+    if (!(await textOf(page, 'eule-connection-model')).includes('gemini-test')) fail('Row L: the details should name the model')
+
+    // The model stops answering: a new check says why, in words.
+    await page.unroute('**/advisor/connection')
+    await page.route('**/advisor/connection', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ state: 'unavailable', provider: 'Gemini', model: 'gemini-test', failure: { reason: 'quota', detail: 'Gemini · HTTP 429' }, checkedAt: new Date().toISOString() }) }))
+    await byId(page, 'eule-connection-recheck').click()
+    await see(page, 'eule-connection-dot-bad', 'Row L')
+    if (!(await textOf(page, 'eule-connection-failure')).includes('Kontingent')) fail('Row L: the details should give the reason the model is unreachable')
+    if ((await textOf(page, 'eule-connection-label')) !== 'Sprachmodell nicht erreichbar') fail('Row L: the chip should say the model is unreachable')
+
+    // The server stops answering at all: that is another sentence.
+    await page.unroute('**/advisor/connection')
+    await page.route('**/advisor/connection', (route) => route.abort('connectionrefused'))
+    await byId(page, 'eule-connection-recheck').click()
+    await page.waitForFunction(() => document.querySelector('[data-testid="eule-connection-label"]')?.textContent === 'Keine Verbindung zum Server', null, { timeout: 15_000 }).catch(() => fail('Row L: an unreachable server should read "Keine Verbindung zum Server"'))
+    await page.keyboard.press('Escape')
+    console.log(`[${TAG}] ✅ Row L — connection status: connected, model unreachable with its reason, server unreachable`)
+    await page.unroute('**/advisor/connection')
+
     // Row M — Turbo (#491): off at first; on, the message carries the flag; an answer the owl applied
     // itself says so and shows what it applied.
     await page.unroute('**/advisor/session*')
@@ -432,6 +463,7 @@ async function main() {
     await page.reload({ waitUntil: 'networkidle' })
     await see(page, 'advisor-turbo-summary', 'Row M', 20_000)
     if (!(await textOf(page, 'advisor-turbo-summary')).includes('1 Änderung direkt übernommen')) fail('Row M: the answer should say how many changes the owl applied')
+    await see(page, 'advisor-composer-switches', 'Row M')
     const toggle = byId(page, 'advisor-turbo-toggle')
     if ((await toggle.getAttribute('aria-checked')) !== 'false') fail('Row M: Turbo must start off')
     await toggle.click()

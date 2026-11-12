@@ -8,6 +8,7 @@ import {
   advisorControllerGetSession,
   advisorControllerStopRun,
   advisorControllerUndoAction,
+  getAdvisorControllerConnectionQueryKey,
   getAdvisorControllerGetSessionQueryKey,
   getAdvisorControllerRunEventsUrl,
   getAdvisorControllerStreamMessageUrl,
@@ -244,6 +245,8 @@ function extractErrorMessage(payload: unknown): string | null {
 export async function invalidateAllTaxQueries(queryClient: QueryClient, taxYear: number): Promise<void> {
   await Promise.all([
     queryClient.invalidateQueries({ queryKey: getAdvisorControllerGetSessionQueryKey(taxYear) }),
+    // A turn just found out whether the model answers (#488).
+    queryClient.invalidateQueries({ queryKey: getAdvisorControllerConnectionQueryKey(taxYear) }),
     queryClient.invalidateQueries({ queryKey: getOwlModeControllerGetSettingQueryKey() }),
     queryClient.invalidateQueries({ queryKey: getOwlModeControllerGetCardsQueryKey(taxYear) }),
     queryClient.invalidateQueries({ queryKey: getCockpitControllerGetCockpitSummaryQueryKey(taxYear) }),

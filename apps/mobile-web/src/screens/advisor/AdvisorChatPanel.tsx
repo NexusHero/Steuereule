@@ -755,6 +755,11 @@ export function AdvisorChatPanel({
                 {tr('advisor.chat.skills.unknownCommand', { command: unknownCommand, commands: Object.keys(ADVISOR_SKILL_COMMANDS).map((name) => `/${name}`).join(', ') })}
               </Text>
             ) : null}
+            {/* The switches sit above the input, not in it: inside they squeezed the text into two clipped lines. */}
+            <View style={styles.switchRow} testID="advisor-composer-switches">
+              <SkillsMenu active={skill} onChange={setSkill} disabled={isSending} />
+              <TurboToggle on={turbo} onChange={setTurbo} disabled={isSending} />
+            </View>
             <ChatComposer
               value={inputText}
               onChangeText={setInputText}
@@ -789,8 +794,6 @@ export function AdvisorChatPanel({
               }
               trailing={
                 <>
-                  <SkillsMenu active={skill} onChange={setSkill} disabled={isSending} />
-                  <TurboToggle on={turbo} onChange={setTurbo} disabled={isSending} />
                   {context ? <ContextRing context={context} onSummarize={onSummarize} busy={isSending} /> : null}
                   {microphone}
                 </>
