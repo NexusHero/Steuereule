@@ -31,6 +31,8 @@ export async function registerAndOnboard(
   webOrigin,
   callerLabel = 'scenario',
 ) {
+  // Count requests from the start, so that later waits know when the page is really quiet.
+  watchRequests(page)
   await waitForBucketHeadroom(AUTH_BUCKET, 'auth', callerLabel)
   await skipSplash(page, webOrigin)
 
@@ -91,11 +93,50 @@ const TILE_READY_CSS = {
 
 const ANY_TILE_CSS = Object.values(TILE_READY_CSS).join(', ')
 
+/** Requests in flight per page, counted from the first time the page is watched. */
+const inFlight = new WeakMap()
+
+function watchRequests(page) {
+  let state = inFlight.get(page)
+  if (state) return state
+  state = { open: new Set(), lastChange: Date.now() }
+  const touch = () => (state.lastChange = Date.now())
+  // Long-lived streams (SSE) never finish and must not hold the cockpit back.
+  const counts = (request) => !['eventsource', 'websocket'].includes(request.resourceType())
+  page.on('request', (request) => {
+    if (!counts(request)) return
+    state.open.add(request)
+    touch()
+  })
+  const done = (request) => {
+    if (state.open.delete(request)) touch()
+  }
+  page.on('requestfinished', done)
+  page.on('requestfailed', done)
+  inFlight.set(page, state)
+  return state
+}
+
+/**
+ * Waits until the page has had no request in flight for `quietMs`. `waitForLoadState('networkidle')`
+ * does not do that in a single-page app: it is a milestone of the first load and returns at once
+ * afterwards, so the cockpit was clicked while it was still refetching and opened the wrong mask.
+ */
+export async function waitForNetworkQuiet(page, quietMs = 400, timeoutMs = 15_000) {
+  const state = watchRequests(page)
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    if (state.open.size === 0 && Date.now() - state.lastChange >= quietMs) return
+    await page.waitForTimeout(50)
+  }
+}
+
 async function waitForCockpitSettled(page) {
+  watchRequests(page)
   await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 15_000 })
   await page.locator('[data-testid="cockpit-kacheln"]').waitFor({ state: 'visible', timeout: 15_000 })
-  await page.waitForTimeout(100)
-  await page.waitForLoadState('networkidle').catch(() => {})
+  // The mask that was just left saves, the cockpit refetches: only then does "Weiter" know the next step.
+  await waitForNetworkQuiet(page)
 }
 
 function tileReadyLocator(page, tileId) {
@@ -148,7 +189,8 @@ export async function assertEstimate(page, label, { direction, contains } = {}) 
   await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 15_000 })
   const locator = page.locator('[data-testid="cockpit-erstattung"]')
   await locator.waitFor({ state: 'visible', timeout: 10_000 })
-  await page.waitForLoadState('networkidle').catch(() => {})
+  // The figure is read once the cockpit has refetched after the last mask, not while it still shows the old one.
+  await waitForNetworkQuiet(page)
   const check = (text) => {
     const named = direction === undefined ? ['Erstattung', 'Nachzahlung'].some((w) => text.includes(w)) : text.includes(direction)
     if (!named) return `expected a ${direction ?? 'refund or back-payment'} estimate`
@@ -178,7 +220,8 @@ export async function assertCockpitEstimate(page, label, { direction, minAmount,
   await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 15_000 })
   const locator = page.locator('[data-testid="cockpit-erstattung"]')
   await locator.waitFor({ state: 'visible', timeout: 10_000 })
-  await page.waitForLoadState('networkidle').catch(() => {})
+  // The figure is read once the cockpit has refetched after the last mask, not while it still shows the old one.
+  await waitForNetworkQuiet(page)
 
   const check = (text) => {
     if (expectedText !== undefined) {
