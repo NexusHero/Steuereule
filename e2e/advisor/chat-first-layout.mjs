@@ -463,6 +463,7 @@ async function main() {
     await page.reload({ waitUntil: 'networkidle' })
     await see(page, 'advisor-turbo-summary', 'Row M', 20_000)
     if (!(await textOf(page, 'advisor-turbo-summary')).includes('1 Änderung direkt übernommen')) fail('Row M: the answer should say how many changes the owl applied')
+    await see(page, 'advisor-composer-switches', 'Row M')
     const toggle = byId(page, 'advisor-turbo-toggle')
     if ((await toggle.getAttribute('aria-checked')) !== 'false') fail('Row M: Turbo must start off')
     await toggle.click()
