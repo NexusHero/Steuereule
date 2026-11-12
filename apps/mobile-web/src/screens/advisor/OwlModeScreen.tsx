@@ -24,6 +24,9 @@ import {
   getOwlModeControllerGetSettingQueryKey,
   useAdvisorControllerApplyAction,
   useAdvisorControllerClearConversation,
+  useAdvisorControllerCreateConversation,
+  useAdvisorControllerDeleteConversation,
+  useAdvisorControllerRenameConversation,
   useAdvisorControllerGetSession,
   useAdvisorControllerSendMessage,
   useAdvisorControllerSetFeedback,
@@ -54,6 +57,7 @@ import { MasterDataScreen } from '../master-data/MasterDataScreen'
 import { OwlTopBar } from './OwlTopBar'
 import { ProfessionPicker } from './ProfessionPicker'
 import { AdvisorChatPanel, sendOptionsToDto, type ChatSendOptions } from './AdvisorChatPanel'
+import { ConversationList, type ConversationSummary } from './chat/ConversationList'
 import { invalidateAllTaxQueries, useOptionalCopilotBridge, type OwlViewMode } from './CopilotBridgeProvider'
 
 export interface OwlModeScreenProps {
@@ -78,6 +82,13 @@ export interface OwlModeScreenProps {
     | undefined
   /** Deletes this year's conversation on the server; rejects when it could not. */
   readonly onClearConversation?: (() => Promise<void>) | undefined
+  /** The conversations of this tax year (#481); without them the screen shows no list. */
+  readonly conversations?: readonly ConversationSummary[] | undefined
+  readonly activeConversationId?: string | null | undefined
+  readonly onSelectConversation?: ((id: string) => void) | undefined
+  readonly onNewConversation?: (() => Promise<void>) | undefined
+  readonly onRenameConversation?: ((id: string, title: string) => Promise<void>) | undefined
+  readonly onDeleteConversation?: ((id: string) => Promise<void>) | undefined
   readonly isGuest?: boolean | undefined
   readonly onRegister?: (() => void) | undefined
   readonly onLogin?: (() => void) | undefined
@@ -272,7 +283,14 @@ function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CURRENT_T
   const bridge = useOptionalCopilotBridge()
   const settingQuery = useOwlModeControllerGetSetting()
   const cardsQuery = useOwlModeControllerGetCards(taxYear)
-  const sessionQuery = useAdvisorControllerGetSession(taxYear, { query: { retry: false } })
+  // Null = the conversation used last; the server decides which one that is (#481).
+  const [localConversationId, setLocalConversationId] = useState<string | null>(null)
+  const conversationId = bridge ? bridge.conversationId : localConversationId
+  const selectConversation = (id: string | null) => (bridge ? bridge.setConversationId(id) : setLocalConversationId(id))
+  const sessionQuery = useAdvisorControllerGetSession(taxYear, conversationId ? { conversationId } : undefined, { query: { retry: false } })
+  const createConversationMutation = useAdvisorControllerCreateConversation()
+  const renameConversationMutation = useAdvisorControllerRenameConversation()
+  const deleteConversationMutation = useAdvisorControllerDeleteConversation()
   const sendMessageMutation = useAdvisorControllerSendMessage()
   const applyActionMutation = useAdvisorControllerApplyAction()
   const setFeedbackMutation = useAdvisorControllerSetFeedback()
@@ -322,10 +340,8 @@ function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CURRENT_T
     ...(k.paths && k.paths.length === 2 ? { paths: [k.paths[0]!, k.paths[1]!] as const } : { paths: undefined }),
   }))
 
-  const serverMessages =
-    sessionQuery.data?.status === 200
-      ? (sessionQuery.data.data.messages as unknown as readonly AdvisorChatMessageView[])
-      : undefined
+  const session = sessionQuery.data?.status === 200 ? sessionQuery.data.data : undefined
+  const serverMessages = session ? (session.messages as unknown as readonly AdvisorChatMessageView[]) : undefined
 
   return (
     <OwlModeScreenView
@@ -359,8 +375,29 @@ function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CURRENT_T
         if (response.status !== 200) throw new Error(`rating not stored (HTTP ${response.status})`)
         await queryClient.invalidateQueries({ queryKey: getAdvisorControllerGetSessionQueryKey(taxYear) })
       }}
+      conversations={session?.conversations}
+      activeConversationId={session?.conversationId ?? null}
+      onSelectConversation={(id) => selectConversation(id)}
+      onNewConversation={async () => {
+        const response = await createConversationMutation.mutateAsync({ jahr: taxYear })
+        if (response.status !== 200) throw new Error(`conversation not created (HTTP ${response.status})`)
+        selectConversation(response.data.id)
+        await invalidate()
+      }}
+      onRenameConversation={async (id, title) => {
+        const response = await renameConversationMutation.mutateAsync({ jahr: taxYear, conversationId: id, data: { title } })
+        if (response.status !== 200) throw new Error(`conversation not renamed (HTTP ${response.status})`)
+        await invalidate()
+      }}
+      onDeleteConversation={async (id) => {
+        const response = await deleteConversationMutation.mutateAsync({ jahr: taxYear, conversationId: id })
+        if (response.status !== 200) throw new Error(`conversation not deleted (HTTP ${response.status})`)
+        // The open one is gone: back to whichever was used last.
+        if (id === session?.conversationId) selectConversation(null)
+        await invalidate()
+      }}
       onClearConversation={async () => {
-        const response = await clearConversationMutation.mutateAsync({ jahr: taxYear })
+        const response = await clearConversationMutation.mutateAsync({ jahr: taxYear, ...(session ? { params: { conversationId: session.conversationId } } : {}) })
         if (response.status !== 200) throw new Error(`conversation not cleared (HTTP ${response.status})`)
         await invalidate()
       }}
@@ -490,6 +527,12 @@ function OwlModeScreenView({
   onUndoAction,
   onRateMessage,
   onClearConversation,
+  conversations,
+  activeConversationId,
+  onSelectConversation,
+  onNewConversation,
+  onRenameConversation,
+  onDeleteConversation,
 }: OwlModeScreenProps & { readonly initialCards: readonly OwlCardsDisplay[] }) {
   const bp = useBreakpoint()
   const t = useTheme()
@@ -501,6 +544,7 @@ function OwlModeScreenView({
   const [panelChoice, setPanelChoice] = useState<'open' | 'closed' | null>(null)
   const [privacyOpen, setPrivacyOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [conversationsOpen, setConversationsOpen] = useState(false)
   const [clearState, setClearState] = useState<'closed' | 'confirm' | 'clearing' | 'failed'>('closed')
   const [cards, setCards] = useState<readonly OwlCardsDisplay[]>(initialCards)
   const [activeIndex, setActiveIndex] = useState(0)
@@ -1045,6 +1089,7 @@ function OwlModeScreenView({
         onTogglePanel={() => (panelOpen ? closePanel() : setPanelChoice('open'))}
         onOpenPrivacy={() => setPrivacyOpen(true)}
         onOpenSettings={onToggleOptIn || onChooseProfession || onClearConversation ? () => setSettingsOpen(true) : undefined}
+        onOpenConversations={conversations && onSelectConversation ? () => setConversationsOpen(true) : undefined}
         legalStatusDate={LEGAL_STATUS_DATE}
         compact={bp === 's'}
       />
@@ -1077,6 +1122,30 @@ function OwlModeScreenView({
               {tr('eule.workspace.topbar.privacyBody')}
             </Text>
           </View>
+        </Sheet>
+      ) : null}
+
+      {conversationsOpen ? (
+        <Sheet onClose={() => setConversationsOpen(false)} closeLabel={tr('eule.workspace.topbar.conversationsClose')} testID="eule-conversations-sheet">
+          <ConversationList
+            conversations={conversations ?? []}
+            activeId={activeConversationId ?? null}
+            canSwitch={!effectiveSending}
+            onSelect={(id) => {
+              onSelectConversation?.(id)
+              setConversationsOpen(false)
+            }}
+            onNew={async () => {
+              await onNewConversation?.()
+              setConversationsOpen(false)
+            }}
+            onRename={async (id, title) => {
+              await onRenameConversation?.(id, title)
+            }}
+            onDelete={async (id) => {
+              await onDeleteConversation?.(id)
+            }}
+          />
         </Sheet>
       ) : null}
 

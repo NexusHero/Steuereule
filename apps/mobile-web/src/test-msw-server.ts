@@ -273,6 +273,8 @@ export const server = setupServer(
     enabled: false,
     greeting: 'Hallo! Ich bin deine SteuerEule.',
     openCards: [],
+    conversationId: 'conversation-1',
+    conversations: [{ id: 'conversation-1', title: null, createdAt: '2026-01-01T00:00:00.000Z', lastUsedAt: '2026-01-01T00:00:00.000Z' }],
     messages: [],
     quickChips: ['Kanzlei-Endprüfung starten', 'Homeoffice vs. Arbeitszimmer prüfen'],
     legalSources: [],
