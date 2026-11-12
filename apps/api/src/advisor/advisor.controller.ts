@@ -1,4 +1,5 @@
 import {
+  applyDecorators,
   Body,
   Controller,
   Delete,
@@ -28,6 +29,13 @@ import {
 } from '@nestjs/swagger'
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler'
 import type { FastifyReply } from 'fastify'
+
+/**
+ * What every route of the owl shares: it needs a signed-in account, an assistant token may not
+ * call it, and it lives under a tax year.
+ */
+const OwlRoute = (): MethodDecorator =>
+  applyDecorators(RequiresAccount(), ForbidAssistant(), ApiParam({ name: 'jahr', type: Number, example: 2025 }))
 
 @Injectable()
 export class FastifyThrottlerGuard extends ThrottlerGuard {
@@ -79,9 +87,7 @@ export class AdvisorController {
   ) {}
 
   @Get('session')
-  @RequiresAccount()
-  @ForbidAssistant()
-  @ApiParam({ name: 'jahr', type: Number, example: 2025 })
+  @OwlRoute()
   @ApiOkResponse({ type: AdvisorSessionResponseDto })
   @ApiUnauthorizedResponse({ description: 'Requires account.' })
   @ApiQuery({ name: 'conversationId', required: false, type: String, description: 'Which conversation to load; without it the one used last.' })
@@ -159,11 +165,9 @@ export class AdvisorController {
 
   @Post('chat')
   @HttpCode(200)
-  @RequiresAccount()
-  @ForbidAssistant()
+  @OwlRoute()
   @UseGuards(FastifyThrottlerGuard)
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
-  @ApiParam({ name: 'jahr', type: Number, example: 2025 })
   @ApiBody({ type: SendAdvisorMessageDto })
   @ApiOkResponse({ type: SendAdvisorMessageResponseDto })
   @ApiUnauthorizedResponse({ description: 'Requires account.' })
@@ -184,8 +188,7 @@ export class AdvisorController {
 
   @Post('stream')
   @HttpCode(200)
-  @RequiresAccount()
-  @ForbidAssistant()
+  @OwlRoute()
   @UseGuards(FastifyThrottlerGuard)
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @ApiOperation({
@@ -193,7 +196,6 @@ export class AdvisorController {
     description:
       'Starts a run that continues on the server even if this connection drops. Every event carries its sequence number as SSE id; the first event (`start`) names the run. Re-attach with GET runs/{runId}/events.',
   })
-  @ApiParam({ name: 'jahr', type: Number, example: 2025 })
   @ApiBody({ type: SendAdvisorMessageDto })
   @ApiOkResponse({ type: SendAdvisorMessageResponseDto })
   @ApiUnauthorizedResponse({ description: 'Requires account.' })
@@ -207,13 +209,11 @@ export class AdvisorController {
   }
 
   @Get('runs/:runId/events')
-  @RequiresAccount()
-  @ForbidAssistant()
+  @OwlRoute()
   @ApiOperation({
     summary: 'Re-attach to a running or just finished answer',
     description: 'Server-sent events after the given sequence number (`Last-Event-ID` header or `after` query). Ends when the run has ended.',
   })
-  @ApiParam({ name: 'jahr', type: Number, example: 2025 })
   @ApiParam({ name: 'runId', type: String })
   @ApiQuery({ name: 'after', type: Number, required: false, example: 12 })
   @ApiOkResponse({ description: 'text/event-stream' })
@@ -233,10 +233,8 @@ export class AdvisorController {
 
   @Post('runs/:runId/stop')
   @HttpCode(200)
-  @RequiresAccount()
-  @ForbidAssistant()
+  @OwlRoute()
   @ApiOperation({ summary: 'Stop a running answer; the text so far is kept as aborted, without proposals' })
-  @ApiParam({ name: 'jahr', type: Number, example: 2025 })
   @ApiParam({ name: 'runId', type: String })
   @ApiOkResponse({ type: StopAdvisorRunResponseDto })
   @ApiNotFoundResponse({ description: 'No such run for this user (or it has expired).' })
@@ -249,10 +247,8 @@ export class AdvisorController {
   }
 
   @Delete('session')
-  @RequiresAccount()
-  @ForbidAssistant()
+  @OwlRoute()
   @ApiOperation({ summary: 'Clear the conversation of this tax year; values already applied to the return stay' })
-  @ApiParam({ name: 'jahr', type: Number, example: 2025 })
   @ApiOkResponse({ type: ClearAdvisorConversationResponseDto })
   @ApiConflictResponse({ description: 'An answer is still running.' })
   @ApiQuery({ name: 'conversationId', required: false, type: String, description: 'Which conversation to empty; without it the one used last.' })
@@ -265,10 +261,8 @@ export class AdvisorController {
   }
 
   @Get('search')
-  @RequiresAccount()
-  @ForbidAssistant()
+  @OwlRoute()
   @ApiOperation({ summary: 'Search the conversations of this tax year: titles and messages, newest hit first (#481)' })
-  @ApiParam({ name: 'jahr', type: Number, example: 2025 })
   @ApiQuery({ name: 'q', type: String, description: 'At least two characters; case and accents are ignored.' })
   @ApiOkResponse({ type: [AdvisorSearchHitDto] })
   search(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number, @Query('q') query?: string): Promise<AdvisorSearchHitDto[]> {
@@ -276,10 +270,8 @@ export class AdvisorController {
   }
 
   @Get('notes')
-  @RequiresAccount()
-  @ForbidAssistant()
+  @OwlRoute()
   @ApiOperation({ summary: 'The project notes of this tax year (#481)' })
-  @ApiParam({ name: 'jahr', type: Number, example: 2025 })
   @ApiOkResponse({ type: [AdvisorNoteDto] })
   listNotes(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number): Promise<AdvisorNoteDto[]> {
     return this.service.listNotes(userId, year)
@@ -287,10 +279,8 @@ export class AdvisorController {
 
   @Post('notes')
   @HttpCode(200)
-  @RequiresAccount()
-  @ForbidAssistant()
+  @OwlRoute()
   @ApiOperation({ summary: 'Add a project note by hand' })
-  @ApiParam({ name: 'jahr', type: Number, example: 2025 })
   @ApiBody({ type: SaveAdvisorNoteDto })
   @ApiOkResponse({ type: AdvisorNoteDto })
   @ApiConflictResponse({ description: 'The tax year already holds the maximum number of notes.' })
@@ -299,10 +289,8 @@ export class AdvisorController {
   }
 
   @Put('notes/:noteId')
-  @RequiresAccount()
-  @ForbidAssistant()
+  @OwlRoute()
   @ApiOperation({ summary: 'Change the text of a project note' })
-  @ApiParam({ name: 'jahr', type: Number, example: 2025 })
   @ApiParam({ name: 'noteId', type: String })
   @ApiBody({ type: SaveAdvisorNoteDto })
   @ApiOkResponse({ type: AdvisorNoteDto })
@@ -317,10 +305,8 @@ export class AdvisorController {
   }
 
   @Delete('notes/:noteId')
-  @RequiresAccount()
-  @ForbidAssistant()
+  @OwlRoute()
   @ApiOperation({ summary: 'Delete a project note' })
-  @ApiParam({ name: 'jahr', type: Number, example: 2025 })
   @ApiParam({ name: 'noteId', type: String })
   @ApiOkResponse({ type: DeleteAdvisorNoteResponseDto })
   @ApiNotFoundResponse({ description: 'No such note in this tax year.' })
@@ -330,10 +316,8 @@ export class AdvisorController {
 
   @Post('messages/:messageId/note-changes/:index/undo')
   @HttpCode(200)
-  @RequiresAccount()
-  @ForbidAssistant()
+  @OwlRoute()
   @ApiOperation({ summary: 'Take back one change the owl made to the project notes in an answer' })
-  @ApiParam({ name: 'jahr', type: Number, example: 2025 })
   @ApiParam({ name: 'messageId', type: String })
   @ApiParam({ name: 'index', type: Number, description: 'Position of the change in the answer.' })
   @ApiOkResponse({ type: AdvisorChatMessageDto })
@@ -349,10 +333,8 @@ export class AdvisorController {
   }
 
   @Get('conversations')
-  @RequiresAccount()
-  @ForbidAssistant()
+  @OwlRoute()
   @ApiOperation({ summary: 'The conversations of this tax year, most recently used first (#481)' })
-  @ApiParam({ name: 'jahr', type: Number, example: 2025 })
   @ApiOkResponse({ type: [AdvisorConversationDto] })
   listConversations(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number): Promise<AdvisorConversationDto[]> {
     return this.service.listConversations(userId, year)
@@ -360,10 +342,8 @@ export class AdvisorController {
 
   @Post('conversations')
   @HttpCode(200)
-  @RequiresAccount()
-  @ForbidAssistant()
+  @OwlRoute()
   @ApiOperation({ summary: 'Start a new conversation; an empty one that already exists is reused' })
-  @ApiParam({ name: 'jahr', type: Number, example: 2025 })
   @ApiOkResponse({ type: AdvisorConversationDto })
   @ApiConflictResponse({ description: 'The tax year already holds the maximum number of conversations.' })
   createConversation(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number): Promise<AdvisorConversationDto> {
@@ -371,10 +351,8 @@ export class AdvisorController {
   }
 
   @Put('conversations/:conversationId')
-  @RequiresAccount()
-  @ForbidAssistant()
+  @OwlRoute()
   @ApiOperation({ summary: 'Rename a conversation' })
-  @ApiParam({ name: 'jahr', type: Number, example: 2025 })
   @ApiParam({ name: 'conversationId', type: String })
   @ApiBody({ type: RenameAdvisorConversationDto })
   @ApiOkResponse({ type: AdvisorConversationDto })
@@ -390,10 +368,8 @@ export class AdvisorController {
 
   @Post('conversations/:conversationId/summarize')
   @HttpCode(200)
-  @RequiresAccount()
-  @ForbidAssistant()
+  @OwlRoute()
   @ApiOperation({ summary: 'Summarise the older part of a conversation now, before its context is full' })
-  @ApiParam({ name: 'jahr', type: Number, example: 2025 })
   @ApiParam({ name: 'conversationId', type: String })
   @ApiOkResponse({ type: AdvisorContextDto })
   @ApiNotFoundResponse({ description: 'No such conversation in this tax year.' })
@@ -407,10 +383,8 @@ export class AdvisorController {
   }
 
   @Delete('conversations/:conversationId')
-  @RequiresAccount()
-  @ForbidAssistant()
+  @OwlRoute()
   @ApiOperation({ summary: 'Delete a conversation with its messages; values already applied to the return stay' })
-  @ApiParam({ name: 'jahr', type: Number, example: 2025 })
   @ApiParam({ name: 'conversationId', type: String })
   @ApiOkResponse({ type: ClearAdvisorConversationResponseDto })
   @ApiNotFoundResponse({ description: 'No such conversation in this tax year.' })
@@ -424,10 +398,8 @@ export class AdvisorController {
   }
 
   @Put('messages/:messageId/feedback')
-  @RequiresAccount()
-  @ForbidAssistant()
+  @OwlRoute()
   @ApiOperation({ summary: 'Rate an answer of the owl (thumbs up/down, optional reason); null removes the rating' })
-  @ApiParam({ name: 'jahr', type: Number, example: 2025 })
   @ApiParam({ name: 'messageId', type: String })
   @ApiBody({ type: SetAdvisorFeedbackDto })
   @ApiOkResponse({ type: AdvisorChatMessageDto })
@@ -443,9 +415,7 @@ export class AdvisorController {
 
   @Post('actions/apply-batch')
   @HttpCode(200)
-  @RequiresAccount()
-  @ForbidAssistant()
-  @ApiParam({ name: 'jahr', type: Number, example: 2025 })
+  @OwlRoute()
   @ApiBody({ type: ApplyBatchActionsDto })
   @ApiOkResponse({ type: ApplyBatchActionsResponseDto })
   @ApiUnauthorizedResponse({ description: 'Requires account.' })
@@ -459,9 +429,7 @@ export class AdvisorController {
 
   @Post('actions/:actionId/apply')
   @HttpCode(200)
-  @RequiresAccount()
-  @ForbidAssistant()
-  @ApiParam({ name: 'jahr', type: Number, example: 2025 })
+  @OwlRoute()
   @ApiParam({ name: 'actionId', type: String, example: 'act-123456' })
   @ApiOkResponse({ type: AdvisorActionMutationResponseDto })
   @ApiUnauthorizedResponse({ description: 'Requires account.' })
@@ -475,9 +443,7 @@ export class AdvisorController {
 
   @Post('actions/:actionId/undo')
   @HttpCode(200)
-  @RequiresAccount()
-  @ForbidAssistant()
-  @ApiParam({ name: 'jahr', type: Number, example: 2025 })
+  @OwlRoute()
   @ApiParam({ name: 'actionId', type: String, example: 'act-123456' })
   @ApiOkResponse({ type: AdvisorActionMutationResponseDto })
   @ApiUnauthorizedResponse({ description: 'Requires account.' })
@@ -491,9 +457,7 @@ export class AdvisorController {
 
   @Post('actions/:actionId/dismiss')
   @HttpCode(200)
-  @RequiresAccount()
-  @ForbidAssistant()
-  @ApiParam({ name: 'jahr', type: Number, example: 2025 })
+  @OwlRoute()
   @ApiParam({ name: 'actionId', type: String, example: 'act-123456' })
   @ApiOkResponse({ type: AdvisorActionMutationResponseDto })
   @ApiUnauthorizedResponse({ description: 'Requires account.' })

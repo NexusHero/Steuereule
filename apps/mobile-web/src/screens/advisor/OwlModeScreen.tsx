@@ -114,6 +114,12 @@ export interface OwlModeScreenProps {
 
 const AI_MANUAL_ONLY_SCREENS: ReadonlySet<Screen> = new Set<Screen>(['profil', 'stammdaten', 'kopplung'])
 
+/** The answer when the API said 200; otherwise it throws, so the caller's failure state shows. */
+function expectOk<R extends { readonly status: number }>(response: R, what: string): Extract<R, { readonly status: 200 }> {
+  if (response.status !== 200) throw new Error(`${what} (HTTP ${response.status})`)
+  return response as Extract<R, { readonly status: 200 }>
+}
+
 function professionFrom(value: string | undefined): Profession | null {
   return (PROFESSION_VALUES as readonly string[]).includes(value ?? '') ? (value as Profession) : null
 }
@@ -308,8 +314,7 @@ function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CURRENT_T
   const sessionQuery = useAdvisorControllerGetSession(taxYear, conversationId ? { conversationId } : undefined, { query: { retry: false } })
   const searchConversations = useCallback(
     async (query: string) => {
-      const response = await advisorControllerSearch(taxYear, { q: query })
-      if (response.status !== 200) throw new Error(`search failed (HTTP ${response.status})`)
+      const response = expectOk(await advisorControllerSearch(taxYear, { q: query }), 'search failed')
       return response.data
     },
     [taxYear],
@@ -393,8 +398,7 @@ function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CURRENT_T
       {...(onAcceptPath ? { onAcceptPath } : {})}
       profession={interviewAnswers === undefined ? undefined : professionFrom(interviewAnswers['beruf'])}
       onChooseProfession={async (profession) => {
-        const response = await postAnswer.mutateAsync({ jahr: taxYear, data: { questionId: 'beruf', value: profession } })
-        if (response.status !== 200) throw new Error(`profession not stored (HTTP ${response.status})`)
+        expectOk(await postAnswer.mutateAsync({ jahr: taxYear, data: { questionId: 'beruf', value: profession } }), 'profession not stored')
         await invalidate()
       }}
       onRateMessage={async (messageId, rating, reason) => {
@@ -409,29 +413,24 @@ function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CURRENT_T
       context={session?.context}
       onSummarize={async () => {
         if (!session) return
-        const response = await summarizeConversationMutation.mutateAsync({ jahr: taxYear, conversationId: session.conversationId })
-        if (response.status !== 200) throw new Error(`conversation not summarised (HTTP ${response.status})`)
+        expectOk(await summarizeConversationMutation.mutateAsync({ jahr: taxYear, conversationId: session.conversationId }), 'conversation not summarised')
         await invalidate()
       }}
       notes={session?.notes}
       onAddNote={async (text) => {
-        const response = await createNoteMutation.mutateAsync({ jahr: taxYear, data: { text } })
-        if (response.status !== 200) throw new Error(`note not stored (HTTP ${response.status})`)
+        expectOk(await createNoteMutation.mutateAsync({ jahr: taxYear, data: { text } }), 'note not stored')
         await invalidate()
       }}
       onEditNote={async (id, text) => {
-        const response = await updateNoteMutation.mutateAsync({ jahr: taxYear, noteId: id, data: { text } })
-        if (response.status !== 200) throw new Error(`note not changed (HTTP ${response.status})`)
+        expectOk(await updateNoteMutation.mutateAsync({ jahr: taxYear, noteId: id, data: { text } }), 'note not changed')
         await invalidate()
       }}
       onDeleteNote={async (id) => {
-        const response = await deleteNoteMutation.mutateAsync({ jahr: taxYear, noteId: id })
-        if (response.status !== 200) throw new Error(`note not deleted (HTTP ${response.status})`)
+        expectOk(await deleteNoteMutation.mutateAsync({ jahr: taxYear, noteId: id }), 'note not deleted')
         await invalidate()
       }}
       onUndoNoteChange={async (messageId, index) => {
-        const response = await undoNoteChangeMutation.mutateAsync({ jahr: taxYear, messageId, index })
-        if (response.status !== 200) throw new Error(`note change not undone (HTTP ${response.status})`)
+        expectOk(await undoNoteChangeMutation.mutateAsync({ jahr: taxYear, messageId, index }), 'note change not undone')
         await invalidate()
       }}
       conversations={session?.conversations}
@@ -439,26 +438,22 @@ function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CURRENT_T
       activeConversationId={session?.conversationId ?? null}
       onSelectConversation={(id) => selectConversation(id)}
       onNewConversation={async () => {
-        const response = await createConversationMutation.mutateAsync({ jahr: taxYear })
-        if (response.status !== 200) throw new Error(`conversation not created (HTTP ${response.status})`)
+        const response = expectOk(await createConversationMutation.mutateAsync({ jahr: taxYear }), 'conversation not created')
         selectConversation(response.data.id)
         await invalidate()
       }}
       onRenameConversation={async (id, title) => {
-        const response = await renameConversationMutation.mutateAsync({ jahr: taxYear, conversationId: id, data: { title } })
-        if (response.status !== 200) throw new Error(`conversation not renamed (HTTP ${response.status})`)
+        expectOk(await renameConversationMutation.mutateAsync({ jahr: taxYear, conversationId: id, data: { title } }), 'conversation not renamed')
         await invalidate()
       }}
       onDeleteConversation={async (id) => {
-        const response = await deleteConversationMutation.mutateAsync({ jahr: taxYear, conversationId: id })
-        if (response.status !== 200) throw new Error(`conversation not deleted (HTTP ${response.status})`)
+        expectOk(await deleteConversationMutation.mutateAsync({ jahr: taxYear, conversationId: id }), 'conversation not deleted')
         // The open one is gone: back to whichever was used last.
         if (id === session?.conversationId) selectConversation(null)
         await invalidate()
       }}
       onClearConversation={async () => {
-        const response = await clearConversationMutation.mutateAsync({ jahr: taxYear, ...(session ? { params: { conversationId: session.conversationId } } : {}) })
-        if (response.status !== 200) throw new Error(`conversation not cleared (HTTP ${response.status})`)
+        expectOk(await clearConversationMutation.mutateAsync({ jahr: taxYear, ...(session ? { params: { conversationId: session.conversationId } } : {}) }), 'conversation not cleared')
         await invalidate()
       }}
       onSendMessage={async (text, options) => {

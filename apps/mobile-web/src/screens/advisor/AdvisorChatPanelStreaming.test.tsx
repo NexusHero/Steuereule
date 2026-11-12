@@ -1,18 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { createAppI18n } from '../../i18n/app-i18n'
+import { fireEvent, screen } from '@testing-library/react'
 import { AdvisorChatPanel, type AdvisorChatPanelProps } from './AdvisorChatPanel'
+import { renderInApp } from '../../test-render'
 
 function renderPanel(props: Partial<AdvisorChatPanelProps>) {
-  return render(
-    <I18nextProvider i18n={createAppI18n('de')}>
-      <ThemeProvider mode="light">
-        <AdvisorChatPanel messages={[]} onSendMessage={vi.fn()} {...props} />
-      </ThemeProvider>
-    </I18nextProvider>,
-  )
+  return renderInApp(<AdvisorChatPanel messages={[]} onSendMessage={vi.fn()} {...props} />)
 }
 
 describe('AdvisorChatPanel live answer (#451 slice 1)', () => {

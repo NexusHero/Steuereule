@@ -1,19 +1,11 @@
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
+import { fireEvent, screen } from '@testing-library/react'
 import type { AdvisorActionProposal, AdvisorChatMessageView } from '@steuereule/core'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { AdvisorChatPanel, type AdvisorChatPanelProps } from './AdvisorChatPanel'
+import { renderInApp } from '../../test-render'
 
 function renderPanel(props: Partial<AdvisorChatPanelProps>) {
-  return render(
-    <I18nextProvider i18n={createAppI18n('de')}>
-      <ThemeProvider mode="light">
-        <AdvisorChatPanel messages={[]} onSendMessage={vi.fn()} {...props} />
-      </ThemeProvider>
-    </I18nextProvider>,
-  )
+  return renderInApp(<AdvisorChatPanel messages={[]} onSendMessage={vi.fn()} {...props} />)
 }
 
 const user = (id: string, content: string): AdvisorChatMessageView => ({ id, role: 'user', content, meta: null, createdAt: '2026-11-11T10:00:00.000Z', status: 'complete' })

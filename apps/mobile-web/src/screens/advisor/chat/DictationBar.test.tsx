@@ -1,11 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { createAppI18n } from '../../../i18n/app-i18n'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { AdvisorChatPanel } from '../AdvisorChatPanel'
 import type { DictationEngine } from '../../../lib/dictation/engine'
 import { ModelChecksumError } from '../../../lib/dictation/modelStore'
+import { renderInApp } from '../../../test-render'
 
 function fakeEngine(over: Partial<DictationEngine> = {}) {
   const engine: DictationEngine = {
@@ -21,13 +19,7 @@ function fakeEngine(over: Partial<DictationEngine> = {}) {
 }
 
 function renderPanel(engine: DictationEngine, onSendMessage = vi.fn()) {
-  render(
-    <I18nextProvider i18n={createAppI18n('de')}>
-      <ThemeProvider mode="light">
-        <AdvisorChatPanel messages={[]} onSendMessage={onSendMessage} dictationEngine={engine} />
-      </ThemeProvider>
-    </I18nextProvider>,
-  )
+  renderInApp(<AdvisorChatPanel messages={[]} onSendMessage={onSendMessage} dictationEngine={engine} />)
   return { onSendMessage }
 }
 
