@@ -1,9 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { createAppI18n } from '../../../i18n/app-i18n'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { ConversationList, type ConversationListProps } from './ConversationList'
+import { renderInApp } from '../../../test-render'
 
 const conversations = [
   { id: 'c2', title: 'Vermietung Musterweg', createdAt: '2026-03-02T10:00:00.000Z', lastUsedAt: '2026-03-05T10:00:00.000Z' },
@@ -12,13 +10,7 @@ const conversations = [
 
 function renderList(props: Partial<ConversationListProps> = {}) {
   const handlers = { onSelect: vi.fn(), onNew: vi.fn(), onRename: vi.fn().mockResolvedValue(undefined), onDelete: vi.fn().mockResolvedValue(undefined) }
-  render(
-    <I18nextProvider i18n={createAppI18n('de')}>
-      <ThemeProvider mode="light">
-        <ConversationList conversations={conversations} activeId="c2" canSwitch {...handlers} {...props} />
-      </ThemeProvider>
-    </I18nextProvider>,
-  )
+  renderInApp(<ConversationList conversations={conversations} activeId="c2" canSwitch {...handlers} {...props} />)
   return handlers
 }
 

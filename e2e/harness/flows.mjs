@@ -43,6 +43,13 @@ export async function skipSplash(page, webOrigin) {
 /** Registers a real account via the API directly (not through the UI) — every caller needs a
  *  provisioned account before it starts driving the browser, and doing that through the UI on
  *  every call would spend rate-limit budget and page time on a step no row is actually testing. */
+/** Fills the login form the page is showing and submits it; the caller waits for where it leads. */
+export async function submitLogin(page, email, password) {
+  await page.getByPlaceholder(FLOW_COPY.loginEmailPlaceholder).fill(email)
+  await page.getByPlaceholder(FLOW_COPY.loginPasswordPlaceholder).fill(password)
+  await page.getByRole('button', { name: FLOW_COPY.loginSubmit }).click()
+}
+
 export async function signUpOutOfBand(apiOrigin, webOrigin, email, password) {
   const res = await fetch(`${apiOrigin}/api/auth/sign-up/email`, {
     method: 'POST',

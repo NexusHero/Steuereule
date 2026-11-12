@@ -5,7 +5,7 @@ import { request as playwrightRequest } from 'playwright-core'
 import { launchBrowser, closeBrowser, newContextAtBreakpoint, guardAgainst429 } from '../harness/browser.mjs'
 import { startStack } from '../harness/stack.mjs'
 import { fail, waitForBucketHeadroom } from '../harness/rate-limit.mjs'
-import { FLOW_COPY, skipSplash, signUpOutOfBand } from '../harness/flows.mjs'
+import { FLOW_COPY, skipSplash, signUpOutOfBand, submitLogin } from '../harness/flows.mjs'
 
 const AUTH_BUCKET = { windowMs: 10_000, max: 3, shared: true }
 const PASSWORD = 'Sicheres-Passwort-1!'
@@ -73,9 +73,7 @@ async function call(api, method, path, data) {
 
 async function login(page, email) {
   await waitForBucketHeadroom(AUTH_BUCKET, 'sign-in/email', TAG)
-  await page.getByPlaceholder(FLOW_COPY.loginEmailPlaceholder).fill(email)
-  await page.getByPlaceholder(FLOW_COPY.loginPasswordPlaceholder).fill(PASSWORD)
-  await page.getByRole('button', { name: FLOW_COPY.loginSubmit }).click()
+  await submitLogin(page, email, PASSWORD)
 }
 
 const pathOf = (page) => new URL(page.url()).pathname.replace(/\/$/, '') || '/'

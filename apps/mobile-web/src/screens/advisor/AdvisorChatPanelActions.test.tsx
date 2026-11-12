@@ -1,10 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import type { AdvisorChatMessageView } from '@steuereule/core'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { AdvisorChatPanel, type AdvisorChatPanelProps } from './AdvisorChatPanel'
+import { renderInApp } from '../../test-render'
 
 const TURN: AdvisorChatMessageView[] = [
   { id: 'u1', role: 'user', content: 'Was ist mit Spenden?', meta: null, createdAt: '2026-11-10T10:00:00Z' },
@@ -15,13 +13,7 @@ const TURN: AdvisorChatMessageView[] = [
 
 function renderPanel(props: Partial<AdvisorChatPanelProps>) {
   const onSendMessage = vi.fn()
-  render(
-    <I18nextProvider i18n={createAppI18n('de')}>
-      <ThemeProvider mode="light">
-        <AdvisorChatPanel messages={TURN} onSendMessage={onSendMessage} {...props} />
-      </ThemeProvider>
-    </I18nextProvider>,
-  )
+  renderInApp(<AdvisorChatPanel messages={TURN} onSendMessage={onSendMessage} {...props} />)
   return { onSendMessage }
 }
 

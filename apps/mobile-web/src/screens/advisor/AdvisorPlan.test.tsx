@@ -9,6 +9,7 @@ import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { AdvisorChatPanel, type AdvisorChatPanelProps } from './AdvisorChatPanel'
 import { abortPlan, CopilotBridgeProvider, useCopilotBridge, type CopilotMode } from './CopilotBridgeProvider'
+import { renderInApp } from '../../test-render'
 
 const encoder = new TextEncoder()
 const sse = (event: string, data: unknown) => encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)
@@ -30,13 +31,7 @@ function Providers({ children }: { readonly children: React.ReactNode }) {
 }
 
 function renderPanel(props: Partial<AdvisorChatPanelProps>) {
-  return render(
-    <I18nextProvider i18n={createAppI18n('de')}>
-      <ThemeProvider mode="light">
-        <AdvisorChatPanel messages={[]} onSendMessage={vi.fn()} {...props} />
-      </ThemeProvider>
-    </I18nextProvider>,
-  )
+  return renderInApp(<AdvisorChatPanel messages={[]} onSendMessage={vi.fn()} {...props} />)
 }
 
 describe('plan checklist (#451 slice 6, AC 11–14)', () => {

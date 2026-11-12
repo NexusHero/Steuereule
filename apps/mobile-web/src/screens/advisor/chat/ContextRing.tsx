@@ -4,6 +4,7 @@ import { Circle, Svg } from 'react-native-svg'
 import { useTranslation } from 'react-i18next'
 import { Button, useTheme, type UiTheme } from '@steuereule/ui'
 import { APP_NS } from '../../../i18n/resources'
+import { makeSidePanelStyles } from './sidePanelStyles'
 
 export interface ContextRingState {
   /** 0 to 100. */
@@ -147,6 +148,7 @@ export function SummaryDivider({ summary }: SummaryDividerProps) {
 
 function makeStyles(t: UiTheme) {
   return {
+    ...makeSidePanelStyles(t),
     anchor: { position: 'relative' } as ViewStyle,
     button: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' } as ViewStyle,
     popover: {
@@ -164,7 +166,6 @@ function makeStyles(t: UiTheme) {
     } as ViewStyle,
     title: { fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: t.size.s, color: t.color.tinte } as TextStyle,
     body: { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.tinte2 } as TextStyle,
-    failed: { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.fehler } as TextStyle,
     divider: { gap: t.space.s2, marginVertical: t.space.s2 } as ViewStyle,
     dividerLine: { flexDirection: 'row', alignItems: 'center', gap: t.space.s2 } as ViewStyle,
     rule: { flex: 1, height: 1, backgroundColor: t.color.linie } as ViewStyle,

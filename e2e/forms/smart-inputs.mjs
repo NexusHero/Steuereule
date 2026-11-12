@@ -8,7 +8,7 @@
 import { launchBrowser, closeBrowser, newContextAtBreakpoint, guardAgainst429 } from '../harness/browser.mjs'
 import { startStack } from '../harness/stack.mjs'
 import { fail, waitForBucketHeadroom } from '../harness/rate-limit.mjs'
-import { FLOW_COPY, skipSplash, signUpOutOfBand } from '../harness/flows.mjs'
+import { skipSplash, signUpOutOfBand, submitLogin } from '../harness/flows.mjs'
 
 const AUTH_BUCKET = { windowMs: 10_000, max: 3, shared: true }
 const TEST_PASSWORD = 'Sicheres-Passwort-1!'
@@ -75,9 +75,7 @@ async function main() {
 
     await skipSplash(page, webOrigin)
     await waitForBucketHeadroom(AUTH_BUCKET, 'sign-in/email', TAG)
-    await page.getByPlaceholder(FLOW_COPY.loginEmailPlaceholder).fill(email)
-    await page.getByPlaceholder(FLOW_COPY.loginPasswordPlaceholder).fill(TEST_PASSWORD)
-    await page.getByRole('button', { name: FLOW_COPY.loginSubmit }).click()
+    await submitLogin(page, email, TEST_PASSWORD)
     await page.waitForURL((u) => u.pathname === '/app', { timeout: 15_000 })
 
     // The child's last name is suggested from the profile, so the profile needs one.

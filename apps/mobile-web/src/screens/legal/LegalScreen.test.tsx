@@ -1,10 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { createAppI18n } from '../../i18n/app-i18n'
+import { fireEvent, screen } from '@testing-library/react'
 import { LegalScreen } from './LegalScreen'
 import { operatorFromEnv, content, LEGAL_PAGES, type Operator, type LegalPage } from './texts'
+import { renderInApp } from '../../test-render'
 
 const OPERATOR: Operator = {
   name: 'Eule GmbH',
@@ -15,13 +13,7 @@ const OPERATOR: Operator = {
 function renderPage(page: LegalPage, operator: Operator | null = OPERATOR) {
   const onBack = vi.fn()
   const onPage = vi.fn()
-  render(
-    <I18nextProvider i18n={createAppI18n('de')}>
-      <ThemeProvider mode="light">
-        <LegalScreen page={page} operator={operator} onBack={onBack} onPage={onPage} />
-      </ThemeProvider>
-    </I18nextProvider>,
-  )
+  renderInApp(<LegalScreen page={page} operator={operator} onBack={onBack} onPage={onPage} />)
   return { onBack, onSeite: onPage }
 }
 

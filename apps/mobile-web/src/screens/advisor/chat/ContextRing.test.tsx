@@ -1,18 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { createAppI18n } from '../../../i18n/app-i18n'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { ContextRing, SummaryDivider, type ContextRingProps } from './ContextRing'
+import { renderInApp } from '../../../test-render'
 
 function renderRing(props: Partial<ContextRingProps> = {}) {
-  return render(
-    <I18nextProvider i18n={createAppI18n('de')}>
-      <ThemeProvider mode="light">
-        <ContextRing context={{ percent: 42, level: 'ok', canSummarize: true }} {...props} />
-      </ThemeProvider>
-    </I18nextProvider>,
-  )
+  return renderInApp(<ContextRing context={{ percent: 42, level: 'ok', canSummarize: true }} {...props} />)
 }
 
 describe('ContextRing (#481)', () => {
@@ -67,13 +59,7 @@ describe('ContextRing (#481)', () => {
 
 describe('SummaryDivider (#481)', () => {
   const renderDivider = (summary?: string) =>
-    render(
-      <I18nextProvider i18n={createAppI18n('de')}>
-        <ThemeProvider mode="light">
-          <SummaryDivider summary={summary} />
-        </ThemeProvider>
-      </I18nextProvider>,
-    )
+    renderInApp(<SummaryDivider summary={summary} />)
 
   it('marks where the summarised part ends and shows the summary on request', () => {
     renderDivider('- Arbeitsweg 38 km, übernommen')

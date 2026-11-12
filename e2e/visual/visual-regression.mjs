@@ -16,7 +16,7 @@ import { request as playwrightRequest } from 'playwright-core'
 import { launchBrowser, closeBrowser, guardAgainst429 } from '../harness/browser.mjs'
 import { startStack } from '../harness/stack.mjs'
 import { fail, waitForBucketHeadroom } from '../harness/rate-limit.mjs'
-import { FLOW_COPY, skipSplash, signUpOutOfBand } from '../harness/flows.mjs'
+import { skipSplash, signUpOutOfBand, submitLogin } from '../harness/flows.mjs'
 
 const AUTH_BUCKET = { windowMs: 10_000, max: 3, shared: true }
 const PASSWORD = 'Sicheres-Passwort-1!'
@@ -98,9 +98,7 @@ async function main() {
         guardAgainst429(page, fail, '/api/auth/')
         await skipSplash(page, webOrigin)
         await waitForBucketHeadroom(AUTH_BUCKET, 'sign-in/email', TAG)
-        await page.getByPlaceholder(FLOW_COPY.loginEmailPlaceholder).fill(user.email)
-        await page.getByPlaceholder(FLOW_COPY.loginPasswordPlaceholder).fill(PASSWORD)
-        await page.getByRole('button', { name: FLOW_COPY.loginSubmit }).click()
+        await submitLogin(page, user.email, PASSWORD)
         await page.waitForURL((u) => u.pathname === '/app', { timeout: 15_000 })
         for (const screen of SCREENS) {
           await page.goto(`${webOrigin}${screen.path}`, { waitUntil: 'networkidle' })

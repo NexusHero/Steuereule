@@ -1,10 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
-import { act, fireEvent, render, screen } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { createAppI18n } from '../../i18n/app-i18n'
+import { act, fireEvent, screen } from '@testing-library/react'
 import type { DictationEngine } from '../../lib/dictation/engine'
 import { ProfileDictationModelSection } from './ProfileDictationModelSection'
+import { renderInApp } from '../../test-render'
 
 function engineWith(stored: boolean): DictationEngine {
   let cached = stored
@@ -21,13 +19,7 @@ function engineWith(stored: boolean): DictationEngine {
 }
 
 function renderSection(engine: DictationEngine) {
-  render(
-    <I18nextProvider i18n={createAppI18n('de')}>
-      <ThemeProvider mode="light">
-        <ProfileDictationModelSection engine={engine} />
-      </ThemeProvider>
-    </I18nextProvider>,
-  )
+  renderInApp(<ProfileDictationModelSection engine={engine} />)
 }
 
 describe('„Sprachmodell löschen“ (#451 slice 5)', () => {
