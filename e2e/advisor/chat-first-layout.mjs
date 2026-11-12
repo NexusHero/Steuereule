@@ -442,7 +442,17 @@ async function main() {
     const roundSent = page.waitForRequest((request) => request.method() === 'POST' && /advisor\/(stream|runs)/.test(request.url()) && (request.postData() ?? '').includes('"skill":"berater-interview"') && (request.postData() ?? '').includes('1: Ja'), { timeout: 15_000 })
     await byId(page, 'advisor-question-submit').click()
     await roundSent.catch(() => fail('Row S: the answers should go out as one message with the skill attached'))
-    console.log(`[${TAG}] ✅ Row S — skills: listed and switchable, a round needs all answers and sends them with the skill`)
+
+    // /grill-me, as one knows it from other assistants: offered while typing, an unknown command is named.
+    await byId(page, 'advisor-chat-input').fill('/zauber')
+    await byId(page, 'advisor-chat-send').click()
+    if (!(await textOf(page, 'advisor-slash-unknown')).includes('/grill-me')) fail('Row S: an unknown command should name the ones there are')
+    await byId(page, 'advisor-chat-input').fill('/gr')
+    await see(page, 'advisor-slash-menu', 'Row S')
+    const started = page.waitForRequest((request) => request.method() === 'POST' && /advisor\/(stream|runs)/.test(request.url()) && (request.postData() ?? '').includes('"skill":"berater-interview"') && (request.postData() ?? '').includes('Berater-Interview'), { timeout: 15_000 })
+    await byId(page, 'advisor-slash-item').click()
+    await started.catch(() => fail('Row S: /grill-me should start the interview with the skill attached'))
+    console.log(`[${TAG}] ✅ Row S — skills: listed and switchable, a round needs all answers and sends them with the skill; /grill-me starts it`)
 
     await page.unrouteAll({ behavior: 'ignoreErrors' })
     await ctx.close()

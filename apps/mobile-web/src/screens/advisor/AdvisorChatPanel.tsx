@@ -23,6 +23,9 @@ import { AiChip, Button, Card, useTheme } from '@steuereule/ui'
 import { ReceiptPickerButton } from '../shared/ReceiptPickerButton'
 import {
   ADVISOR_LEGAL_SOURCES,
+  ADVISOR_SKILL_COMMANDS,
+  matchingSkillCommands,
+  parseSkillCommand,
   type AdvisorChatMessageView,
   type AdvisorFeedbackRating,
   type AdvisorFeedbackReason,
@@ -176,6 +179,23 @@ export function AdvisorChatPanel({
   // A skill is chosen per session and starts off: the plain chat stays the default.
   const [skill, setSkill] = useState<AdvisorSkillId | null>(null)
   const send = (text: string, options?: ChatSendOptions) => (skill ? onSendMessage(text, { ...options, skill }) : options ? onSendMessage(text, options) : onSendMessage(text))
+  const [unknownCommand, setUnknownCommand] = useState<string | null>(null)
+  const slashCommands = matchingSkillCommands(inputText)
+
+  /** `/grill-me` switches the skill on and starts it; an unknown command is named, never sent to the owl. */
+  function runCommand(text: string): boolean {
+    const command = parseSkillCommand(text)
+    if (command === null) return false
+    setInputText('')
+    if (command.kind === 'unknown') {
+      setUnknownCommand(command.command)
+      return true
+    }
+    setUnknownCommand(null)
+    setSkill(command.skill)
+    void onSendMessage(command.rest || tr(`advisor.chat.skills.items.${command.skill}.start`), { skill: command.skill })
+    return true
+  }
 
   async function handleSubmit(rawText?: string, quickAction?: AdvisorQuickAction) {
     const text = (rawText ?? inputText).trim()
@@ -707,10 +727,25 @@ export function AdvisorChatPanel({
                 </Pressable>
               </View>
             ) : null}
+            {slashCommands.length > 0 ? (
+              <View style={styles.choicesRow} testID="advisor-slash-menu">
+                {slashCommands.map((command) => (
+                  <Pressable key={command} accessibilityRole="button" onPress={() => runCommand(`/${command}`)} style={styles.choicePill} testID="advisor-slash-item">
+                    <Text style={styles.choicePillText}>{`/${command} · ${tr(`advisor.chat.skills.items.${ADVISOR_SKILL_COMMANDS[command]!}.title`)}`}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            ) : null}
+            {unknownCommand !== null ? (
+              <Text style={styles.actionReason} role="alert" testID="advisor-slash-unknown">
+                {tr('advisor.chat.skills.unknownCommand', { command: unknownCommand, commands: Object.keys(ADVISOR_SKILL_COMMANDS).map((name) => `/${name}`).join(', ') })}
+              </Text>
+            ) : null}
             <ChatComposer
               value={inputText}
               onChangeText={setInputText}
               onSend={(text) => {
+                if (runCommand(text)) return
                 setInputText('')
                 const replaceFromMessageId = editingId
                 setEditingId(null)

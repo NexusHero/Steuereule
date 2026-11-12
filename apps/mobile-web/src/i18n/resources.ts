@@ -1721,13 +1721,15 @@ export const appResources = {
             label: 'Skills',
             aria: 'Skills der Eule',
             title: 'Skills',
-            help: 'Eine Arbeitsweise für die Eule, die du an- und ausschaltest. Sie ändert, wie die Eule fragt, nicht was sie eintragen darf.',
+            help: 'Eine Arbeitsweise für die Eule, die du an- und ausschaltest. Sie ändert, wie die Eule fragt, nicht was sie eintragen darf. Im Chat startest du das Berater-Interview auch mit /grill-me.',
+            unknownCommand: 'Den Befehl /{{command}} gibt es nicht. Verfügbar: {{commands}}',
             on: 'An',
             off: 'Aus',
             items: {
               'berater-interview': {
                 title: 'Berater-Interview',
                 description: 'Die Eule fragt dich Runde für Runde durch deine Erklärung, mit Antworten zum Antippen, bis nichts Wesentliches mehr offen ist.',
+                start: 'Starte das Berater-Interview und frag mich durch meine Erklärung.',
               },
             },
           },
@@ -3632,13 +3634,15 @@ export const appResources = {
             label: 'Skills',
             aria: 'Owl skills',
             title: 'Skills',
-            help: 'A way of working for the owl that you switch on and off. It changes how she asks, not what she may enter.',
+            help: 'A way of working for the owl that you switch on and off. It changes how she asks, not what she may enter. In the chat, /grill-me starts the advisor interview too.',
+            unknownCommand: 'There is no command /{{command}}. Available: {{commands}}',
             on: 'On',
             off: 'Off',
             items: {
               'berater-interview': {
                 title: 'Advisor interview',
                 description: 'The owl takes you through your return round by round, with answers to tap, until nothing important is left open.',
+                start: 'Start the advisor interview and take me through my return.',
               },
             },
           },
