@@ -140,6 +140,17 @@ Prüfpfad und Rückgängig.
   Alle Entwürfe bleiben offen. „Zwei Wege“ wartet immer auf eine Wahl.
 - Das ist die zweite bewusste Ausnahme von Zero-Write, diesmal auf Wunsch des Nutzers je Nachricht.
 
+### 9. Fällt das Modell aus, antwortet ein zweites (#493)
+
+Jeder Anbieter-Client wiederholt kurze Fehler (429, 503, abgerissene Verbindung) zweimal mit Wartezeit.
+Scheitert der Aufruf trotzdem, bevor das erste Wort da ist, fragt die Eule das Modell des Slots
+`fallback` (`AI_FALLBACK_PROVIDER`, `_MODEL`, `_API_KEY`), einmal, mit eigenem Zeitlimit. Der
+Gedankengang steht dort: „Gemini antwortet nicht. Die Eule fragt Claude …“. Das Ergebnis nennt das
+Modell, das geantwortet hat, und den Fehler des ersten (`primaryFailure`), den die Verbindungsanzeige
+mitzählt. Kein Zweitmodell eingerichtet, oder dasselbe Modell mit demselben Schlüssel, oder eine
+blockierte Frage: Es antworten wie bisher die festen Regeln, mit dem Grund. Mitten in einer Antwort
+wird nicht gewechselt; dort bleibt der Abbruch ehrlich sichtbar.
+
 ## Folgen
 
 - Ein Gespräch löschen entfernt seine Nachrichten und die darin noch offenen Entwürfe;
