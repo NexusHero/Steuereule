@@ -1,6 +1,6 @@
 import type { AdvisorModelFailure, AdvisorModelFailureReason } from '@steuereule/core'
 
-const providerName = (provider: string): string => (provider === 'google-genai' ? 'Gemini' : provider === 'anthropic' ? 'Claude' : provider === 'openai' ? 'OpenAI' : provider)
+export const providerName = (provider: string): string => (provider === 'google-genai' ? 'Gemini' : provider === 'anthropic' ? 'Claude' : provider === 'openai' ? 'OpenAI' : provider)
 
 /** The HTTP status of a provider error: its own field, or the `[429 Too Many Requests]` the Google SDK writes into the message. */
 function statusOf(error: unknown, message: string): number | undefined {

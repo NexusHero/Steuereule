@@ -69,6 +69,8 @@ export interface AdvisorTurnResult {
   /** Reasoning summaries of all rounds, joined; absent when the model supplied none. */
   readonly reasoning?: string | undefined
   readonly usage?: AdvisorTurnUsage | undefined
+  /** Set when the first model failed before its first word and the fallback model answered instead (#493). */
+  readonly primaryFailure?: AdvisorModelFailure | undefined
 }
 
 /** Status of one step of the owl's visible plan (#451 slice 6). */
