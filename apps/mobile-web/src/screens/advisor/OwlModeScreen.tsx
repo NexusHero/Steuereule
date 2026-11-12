@@ -27,6 +27,7 @@ import {
   useAdvisorControllerCreateConversation,
   useAdvisorControllerDeleteConversation,
   useAdvisorControllerRenameConversation,
+  useAdvisorControllerSummarizeConversation,
   useAdvisorControllerGetSession,
   useAdvisorControllerSendMessage,
   useAdvisorControllerSetFeedback,
@@ -56,7 +57,7 @@ import { CatalogScreen } from '../catalog/CatalogScreen'
 import { MasterDataScreen } from '../master-data/MasterDataScreen'
 import { OwlTopBar } from './OwlTopBar'
 import { ProfessionPicker } from './ProfessionPicker'
-import { AdvisorChatPanel, sendOptionsToDto, type ChatSendOptions } from './AdvisorChatPanel'
+import { AdvisorChatPanel, sendOptionsToDto, type AdvisorChatPanelProps, type ChatSendOptions } from './AdvisorChatPanel'
 import { ConversationList, type ConversationSummary } from './chat/ConversationList'
 import { invalidateAllTaxQueries, useOptionalCopilotBridge, type OwlViewMode } from './CopilotBridgeProvider'
 
@@ -89,6 +90,9 @@ export interface OwlModeScreenProps {
   readonly onNewConversation?: (() => Promise<void>) | undefined
   readonly onRenameConversation?: ((id: string, title: string) => Promise<void>) | undefined
   readonly onDeleteConversation?: ((id: string) => Promise<void>) | undefined
+  /** How full the context of the open conversation is (#481). */
+  readonly context?: AdvisorChatPanelProps['context']
+  readonly onSummarize?: (() => Promise<void>) | undefined
   readonly isGuest?: boolean | undefined
   readonly onRegister?: (() => void) | undefined
   readonly onLogin?: (() => void) | undefined
@@ -291,6 +295,7 @@ function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CURRENT_T
   const createConversationMutation = useAdvisorControllerCreateConversation()
   const renameConversationMutation = useAdvisorControllerRenameConversation()
   const deleteConversationMutation = useAdvisorControllerDeleteConversation()
+  const summarizeConversationMutation = useAdvisorControllerSummarizeConversation()
   const sendMessageMutation = useAdvisorControllerSendMessage()
   const applyActionMutation = useAdvisorControllerApplyAction()
   const setFeedbackMutation = useAdvisorControllerSetFeedback()
@@ -374,6 +379,13 @@ function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CURRENT_T
         })
         if (response.status !== 200) throw new Error(`rating not stored (HTTP ${response.status})`)
         await queryClient.invalidateQueries({ queryKey: getAdvisorControllerGetSessionQueryKey(taxYear) })
+      }}
+      context={session?.context}
+      onSummarize={async () => {
+        if (!session) return
+        const response = await summarizeConversationMutation.mutateAsync({ jahr: taxYear, conversationId: session.conversationId })
+        if (response.status !== 200) throw new Error(`conversation not summarised (HTTP ${response.status})`)
+        await invalidate()
       }}
       conversations={session?.conversations}
       activeConversationId={session?.conversationId ?? null}
@@ -533,6 +545,8 @@ function OwlModeScreenView({
   onNewConversation,
   onRenameConversation,
   onDeleteConversation,
+  context,
+  onSummarize,
 }: OwlModeScreenProps & { readonly initialCards: readonly OwlCardsDisplay[] }) {
   const bp = useBreakpoint()
   const t = useTheme()
@@ -757,6 +771,8 @@ function OwlModeScreenView({
           'Spenden aus dem Vorjahr prüfen',
         ]}
         isSending={effectiveSending}
+        context={context}
+        onSummarize={onSummarize}
         streamSteps={bridge?.streamSteps}
         streamedText={bridge?.streamedText}
         streamedReasoning={bridge?.streamedReasoning}

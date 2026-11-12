@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { Linking, Pressable, ScrollView, Text, TextInput, View, type TextStyle, type ViewStyle } from 'react-native'
 import { ChatComposer } from './chat/ChatComposer'
 import { ThinkingIndicator } from './chat/ThinkingIndicator'
-import { DictationHint } from './chat/DictationHint'
+import { ContextRing, SummaryDivider, type ContextRingState } from './chat/ContextRing'
 import { DictationBar } from './chat/DictationBar'
 import { browserDictationEngine, type DictationEngine } from '../../lib/dictation/engine'
 import { MarkdownMessage } from './chat/MarkdownMessage'
@@ -45,6 +45,9 @@ export interface AdvisorChatPanelProps {
   readonly pendingUserMessage?: AdvisorChatMessageView | null | undefined
   /** True while the connection to a running answer is being restored. */
   readonly reconnecting?: boolean | undefined
+  /** How full the context of this conversation is, and where its summarised part ends (#481). */
+  readonly context?: (ContextRingState & { readonly summary?: string | undefined; readonly summarizedUntilMessageId?: string | undefined }) | undefined
+  readonly onSummarize?: (() => Promise<void>) | undefined
   /** Stores a rating; without it the chat offers none (e.g. the local preview). */
   readonly onRateMessage?:
     | ((messageId: string, rating: AdvisorFeedbackRating | null, reason?: AdvisorFeedbackReason) => Promise<void> | void)
@@ -387,6 +390,8 @@ export function AdvisorChatPanel({
   streamedReasoning = '',
   pendingUserMessage = null,
   reconnecting = false,
+  context,
+  onSummarize,
   onRateMessage,
   chatError = null,
   basisMode = false,
@@ -542,7 +547,7 @@ export function AdvisorChatPanel({
 
       {/* Conversation History */}
       <View style={styles.messagesList}>
-        {messages.map((msg, index) =>
+        {messages.flatMap((msg, index) => [
           msg.role === 'user' ? (
             <View key={msg.id} style={styles.userTurn}>
               <View style={styles.userBubble} testID="advisor-user-message">
@@ -741,7 +746,9 @@ export function AdvisorChatPanel({
             </Card>
             </View>
           ),
-        )}
+          // The summarised part ends here; everything above stays readable (#481).
+          context?.summarizedUntilMessageId === msg.id ? <SummaryDivider key="summary-divider" summary={context.summary} /> : null,
+        ])}
 
         {showPendingUser ? (
           <View style={styles.userTurn}>
@@ -972,7 +979,12 @@ export function AdvisorChatPanel({
                   </Pressable>
                 ) : undefined
               }
-              trailing={microphone}
+              trailing={
+                <>
+                  {context ? <ContextRing context={context} onSummarize={onSummarize} busy={isSending} /> : null}
+                  {microphone}
+                </>
+              }
             />
           </View>
         )
@@ -986,10 +998,7 @@ export function AdvisorChatPanel({
             {inputBar}
           </DictationBar>
         ) : (
-          <>
-            <DictationHint />
-            {inputBar()}
-          </>
+          inputBar()
         )
       })()}
     </>

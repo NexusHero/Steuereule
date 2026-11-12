@@ -58,14 +58,14 @@ async function main() {
     await signUpOutOfBand(apiOrigin, webOrigin, email, TEST_PASSWORD)
     sql(`UPDATE "User" SET "emailVerified" = true WHERE email = '${email}'`)
 
-    // Row A — without WebGPU there is no mic, only the step-1 hint, and nothing goes to Hugging Face.
+    // Row A — without WebGPU there is no mic (and since #481 no tip banner), and nothing goes to Hugging Face.
     {
       const ctx = await newContextAtBreakpoint(browser, 'l')
       const page = await ctx.newPage()
       guardAgainst429(page, fail, '/api/auth/')
       const seen = watchHosts(page, own)
       await signIn(page, webOrigin, email)
-      await page.locator('[data-testid="advisor-dictation-hint"]').waitFor({ state: 'visible', timeout: 10_000 })
+      await page.locator('[data-testid="advisor-chat-input"]').waitFor({ state: 'visible', timeout: 10_000 })
       if ((await page.locator('[data-testid="advisor-dictation-mic"]').count()) !== 0) fail('Row A: no mic without WebGPU')
       if (seen.hf.length > 0) fail(`Row A: nothing may go to Hugging Face, saw ${seen.hf[0]}`)
       console.log(`[${TAG}] ✅ Row A — no WebGPU: no mic, the step-1 hint, no request to Hugging Face`)
