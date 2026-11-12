@@ -143,7 +143,8 @@ describe('conversations answer side by side (#503)', () => {
     act(() => screen.getByTestId('send').click())
     await waitFor(() => expect(screen.getByTestId('text').textContent).toBe('ohne Gespräch '))
     act(() => screen.getByTestId('adopt').click())
-    expect(screen.getByTestId('conversation').textContent).toBe('conv-adopted')
+    // Adopting files the answer, it does not choose the conversation: the session is not loaded again.
+    expect(screen.getByTestId('conversation').textContent).toBe('none')
     expect(screen.getByTestId('text').textContent).toBe('ohne Gespräch ')
     expect(screen.getByTestId('streaming').textContent).toBe('true')
     expect(screen.getByTestId('answering').textContent).toBe('conv-adopted')

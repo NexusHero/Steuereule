@@ -309,6 +309,12 @@ export function CopilotBridgeProvider({
   const [streams, setStreams] = useState<Readonly<Record<string, ConversationStream>>>({})
   const [basisMode, setBasisMode] = useState(false)
   const [conversationId, setConversationIdState] = useState<string | null>(null)
+  // The conversation the server opened when none was chosen. It files that conversation's answer,
+  // but it is never requested by id: that would load the same session a second time (#503).
+  const [defaultConversationId, setDefaultConversationId] = useState<string | null>(null)
+  const defaultIdRef = useRef<string | null>(null)
+  /** Where the open conversation's answer is filed. */
+  const keyOfOpen = (): string => conversationIdRef.current ?? defaultIdRef.current ?? PENDING_CONVERSATION
   // The stream request reads the id at send time; a ref keeps a send from using a stale one.
   const conversationIdRef = useRef<string | null>(null)
   const controllersRef = useRef<Map<string, AbortController>>(new Map())
@@ -340,22 +346,22 @@ export function CopilotBridgeProvider({
   const openScope = useMemo(
     () => ({
       get key() {
-        return conversationIdRef.current ?? PENDING_CONVERSATION
+        return keyOfOpen()
       },
     }),
     [],
   )
   const { setChatError: setOpenChatError, setAbortedTurn: setOpenAbortedTurn } = useMemo(() => settersFor(openScope), [settersFor, openScope])
-  const { streaming, streamSteps, streamedText, streamedReasoning, chatError, abortedTurn, plan, pendingUserMessage, reconnecting } = streams[conversationId ?? PENDING_CONVERSATION] ?? IDLE_STREAM
+  const { streaming, streamSteps, streamedText, streamedReasoning, chatError, abortedTurn, plan, pendingUserMessage, reconnecting } = streams[conversationId ?? defaultConversationId ?? PENDING_CONVERSATION] ?? IDLE_STREAM
   const answeringConversationIds = useMemo(() => Object.keys(streams).filter((key) => key !== PENDING_CONVERSATION && streams[key]!.streaming), [streams])
 
   const setConversationId = useCallback((id: string | null) => {
     conversationIdRef.current = id
     setConversationIdState(id)
   }, [])
-  /** The screen learned which conversation is open: what was asked before it knew moves there. */
+  /** The screen learned which conversation the server opened: what was asked before it knew moves there. */
   const adoptConversationId = useCallback((id: string) => {
-    if (conversationIdRef.current !== null) return
+    if (conversationIdRef.current !== null || defaultIdRef.current === id) return
     for (const scope of scopesRef.current) if (scope.key === PENDING_CONVERSATION) scope.key = id
     for (const registry of [controllersRef.current, runsRef.current] as Map<string, unknown>[]) {
       const entry = registry.get(PENDING_CONVERSATION)
@@ -368,8 +374,8 @@ export function CopilotBridgeProvider({
       const { [PENDING_CONVERSATION]: pending, ...rest } = prev
       return pending === undefined ? prev : { ...rest, [id]: pending }
     })
-    conversationIdRef.current = id
-    setConversationIdState(id)
+    defaultIdRef.current = id
+    setDefaultConversationId(id)
   }, [])
   // The year changed from outside the owl (not by opening one of its conversations): the open
   // conversation belongs to the other year, so the year's last used one is shown.
@@ -379,6 +385,8 @@ export function CopilotBridgeProvider({
     expectedYearRef.current = taxYear
     conversationIdRef.current = null
     setConversationIdState(null)
+    defaultIdRef.current = null
+    setDefaultConversationId(null)
   }, [taxYear])
   /** Opens a conversation of another tax year: the year is the project, so the whole app switches to it. */
   const openConversationInYear = useCallback(
@@ -441,7 +449,7 @@ export function CopilotBridgeProvider({
   const followAnswer = useCallback(
     async (question: string | null, open: (signal: AbortSignal) => Promise<Response>, knownRunId?: string): Promise<StreamOutcome> => {
       // The answer belongs to the conversation that is open now, wherever the user goes meanwhile.
-      const scope = { key: conversationIdRef.current ?? PENDING_CONVERSATION }
+      const scope = { key: keyOfOpen() }
       scopesRef.current.add(scope)
       const { setStreaming, setStreamSteps, setStreamedText, setStreamedReasoning, setChatError, setAbortedTurn, setPlan, setPendingUserMessage, setReconnecting } = settersFor(scope)
       controllersRef.current.get(scope.key)?.abort()
@@ -610,7 +618,7 @@ export function CopilotBridgeProvider({
   const resumeRun = useCallback(
     async (runId: string): Promise<StreamOutcome> => {
       // One attempt per run: a run that cannot be followed must not be retried on every render.
-      if (!isAuthenticated || resumedRunsRef.current.has(runId) || controllersRef.current.has(conversationIdRef.current ?? PENDING_CONVERSATION)) return null
+      if (!isAuthenticated || resumedRunsRef.current.has(runId) || controllersRef.current.has(keyOfOpen())) return null
       resumedRunsRef.current.add(runId)
       return followAnswer(
         null,
@@ -631,7 +639,7 @@ export function CopilotBridgeProvider({
    * told to stop the run, which stores the text so far as aborted.
    */
   const stopStreaming = useCallback(() => {
-    const key = conversationIdRef.current ?? PENDING_CONVERSATION
+    const key = keyOfOpen()
     const run = runsRef.current.get(key)
     if (run === undefined) return
     run.stopped = true
