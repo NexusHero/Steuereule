@@ -1,6 +1,7 @@
 import { LEGAL_STATUS_DATE, type OwlSourceId } from './owl-mode'
 import type { AdvisorAnswerNotice } from './advisor-answer-check'
 import type { AdvisorNoteChange } from './advisor-notes'
+import type { AdvisorQuestionRound } from './advisor-skills'
 import { isSupportedIncomeTaxYear } from '../math/tarif'
 import { getTaxYearParameters } from '../math/tax-parameters'
 import type { Marking, Screen } from './marking'
@@ -184,6 +185,8 @@ export interface AdvisorMessageMeta {
   readonly notices?: readonly AdvisorAnswerNotice[] | undefined
   /** What the owl changed in the project notes in this answer; each change can be undone (#481). */
   readonly noteChanges?: readonly AdvisorNoteChange[] | undefined
+  /** A round of questions with answers to tap, from the interview skill (#495). */
+  readonly questionRound?: AdvisorQuestionRound | undefined
   /** Server-internal: which engine produced the turn, kept with the drafts it proposed. */
   readonly engine?: AdvisorEngineInfo | undefined
   /** Server-internal: the turn was regenerated or edited away (#451 slice 1b); hidden from the chat. */

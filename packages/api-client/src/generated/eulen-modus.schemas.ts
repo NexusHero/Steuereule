@@ -303,6 +303,16 @@ export interface AdvisorNoteChangeDto {
   undone?: boolean;
 }
 
+export interface AdvisorRoundQuestionDto {
+  text: string;
+  options: string[];
+  recommended?: string;
+}
+
+export interface AdvisorQuestionRoundDto {
+  questions: AdvisorRoundQuestionDto[];
+}
+
 export type AdvisorLstbScanMetaDtoStage = typeof AdvisorLstbScanMetaDtoStage[keyof typeof AdvisorLstbScanMetaDtoStage];
 
 
@@ -500,6 +510,8 @@ export interface AdvisorMessageMetaDto {
   notices?: AdvisorAnswerNoticeDto[];
   /** What the owl changed in the project notes in this answer; each change can be undone (#481). */
   noteChanges?: AdvisorNoteChangeDto[];
+  /** A round of questions with answers to tap, from the interview skill (#495). */
+  questionRound?: AdvisorQuestionRoundDto;
   action?: AdvisorActionProposalDto;
   actions?: AdvisorActionProposalDto[];
   lstbScan?: AdvisorLstbScanMetaDto;
@@ -828,6 +840,16 @@ export const SendAdvisorMessageDtoActiveScreen = {
 } as const;
 
 /**
+ * A skill the user switched on for this message (#495).
+ */
+export type SendAdvisorMessageDtoSkill = typeof SendAdvisorMessageDtoSkill[keyof typeof SendAdvisorMessageDtoSkill];
+
+
+export const SendAdvisorMessageDtoSkill = {
+  'berater-interview': 'berater-interview',
+} as const;
+
+/**
  * Quick start that shapes the turn: forgotten_check always opens with a visible plan (#451).
  */
 export type SendAdvisorMessageDtoQuickAction = typeof SendAdvisorMessageDtoQuickAction[keyof typeof SendAdvisorMessageDtoQuickAction];
@@ -840,6 +862,8 @@ export const SendAdvisorMessageDtoQuickAction = {
 export interface SendAdvisorMessageDto {
   message: string;
   activeScreen?: SendAdvisorMessageDtoActiveScreen;
+  /** A skill the user switched on for this message (#495). */
+  skill?: SendAdvisorMessageDtoSkill;
   /** Quick start that shapes the turn: forgotten_check always opens with a visible plan (#451). */
   quickAction?: SendAdvisorMessageDtoQuickAction;
   /** Regenerate or edit-and-resend (#451): the id of the latest user message. That turn is replaced; its pending proposals are dismissed, never applied. */

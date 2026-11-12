@@ -7,10 +7,12 @@ import {
   describeRecordHandles,
   type AdvisorNoteHandle,
   type AdvisorRecordHandles,
+  type AdvisorSkillId,
   type CaseDigest,
   type Screen,
 } from '@steuereule/core'
 import { describeAiWritableFields } from './advisor-safety.js'
+import { skillPrompt } from './advisor-skills.js'
 
 /**
  * The part of the system prompt that is the same for every user and every turn. It comes first so
@@ -50,7 +52,7 @@ export function buildStableSystemPrompt(): string {
   ].join('\n')
 }
 
-export function buildCaseSystemPrompt(digest: CaseDigest, activeScreen: Screen | undefined, planFirst: boolean, records?: AdvisorRecordHandles, notes?: readonly AdvisorNoteHandle[]): string {
+export function buildCaseSystemPrompt(digest: CaseDigest, activeScreen: Screen | undefined, planFirst: boolean, records?: AdvisorRecordHandles, notes?: readonly AdvisorNoteHandle[], skill?: AdvisorSkillId): string {
   return [
     `Aktive Maske: ${activeScreen ?? 'cockpit'}`,
     'PII-freier Fall-Überblick (CaseDigest):',
@@ -58,6 +60,7 @@ export function buildCaseSystemPrompt(digest: CaseDigest, activeScreen: Screen |
     'Angelegte Einträge (für `instance`):',
     describeRecordHandles(records),
     describeNotesForPrompt(notes ?? []),
+    ...(skill ? ['', skillPrompt(skill)] : []),
     ...(planFirst ? ['', 'Für diese Anfrage gilt: Rufe als Erstes `plan_steps` auf, bevor du irgendetwas anderes tust.'] : []),
   ].join('\n')
 }
@@ -74,9 +77,10 @@ export function buildSystemMessage(
   planFirst = false,
   records?: AdvisorRecordHandles,
   notes?: readonly AdvisorNoteHandle[],
+  skill?: AdvisorSkillId,
 ): SystemMessage {
   const stable = buildStableSystemPrompt()
-  const caseSpecific = buildCaseSystemPrompt(digest, activeScreen, planFirst, records, notes)
+  const caseSpecific = buildCaseSystemPrompt(digest, activeScreen, planFirst, records, notes, skill)
   if (provider === 'anthropic') {
     return new SystemMessage({
       content: [

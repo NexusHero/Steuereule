@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import type { AdvisorActionProposal, AdvisorChatMessageView, AdvisorPlanStepStatus, AdvisorQuickAction, Screen } from '@steuereule/core'
+import type { AdvisorActionProposal, AdvisorChatMessageView, AdvisorPlanStepStatus, AdvisorQuickAction, AdvisorSkillId, Screen } from '@steuereule/core'
 import {
   advisorControllerApplyAction,
   advisorControllerApplyBatch,
@@ -96,6 +96,7 @@ export interface SendStreamingOptions {
   readonly quickAction?: AdvisorQuickAction | undefined
   /** Regenerate / edit-and-resend: the latest user message whose turn the answer replaces. */
   readonly replaceFromMessageId?: string | undefined
+  readonly skill?: AdvisorSkillId | undefined
 }
 
 /** Marks the running step of a stopped plan as aborted; finished steps stay as they are. */
@@ -496,6 +497,7 @@ export function CopilotBridgeProvider({
             ...(activeScreen ? { activeScreen } : {}),
             ...(options?.quickAction ? { quickAction: options.quickAction } : {}),
             ...(options?.replaceFromMessageId ? { replaceFromMessageId: options.replaceFromMessageId } : {}),
+            ...(options?.skill ? { skill: options.skill } : {}),
             ...(conversationIdRef.current ? { conversationId: conversationIdRef.current } : {}),
           }),
         }),

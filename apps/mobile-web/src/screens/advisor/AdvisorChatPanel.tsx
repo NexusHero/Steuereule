@@ -4,6 +4,8 @@ import { ChatComposer } from './chat/ChatComposer'
 import { ThinkingIndicator } from './chat/ThinkingIndicator'
 import { ContextRing, SummaryDivider, type ContextRingState } from './chat/ContextRing'
 import { NoteChangeHints } from './chat/ProjectNotes'
+import { QuestionRound } from './chat/QuestionRound'
+import { SkillsMenu } from './chat/SkillsMenu'
 import { DictationBar } from './chat/DictationBar'
 import { browserDictationEngine, type DictationEngine } from '../../lib/dictation/engine'
 import { MarkdownMessage } from './chat/MarkdownMessage'
@@ -27,6 +29,7 @@ import {
   type AdvisorLegalSource,
   type AdvisorQuickAction,
   type Screen,
+  type AdvisorSkillId,
 } from '@steuereule/core'
 import { APP_NS } from '../../i18n/resources'
 import { ActionProposalCardView, ScannedCertificateCardView, TwoPathsCardView } from './chat/ProposalCards'
@@ -92,11 +95,14 @@ export const CHAT_COLUMN_MAX_WIDTH = 760
 export interface ChatSendOptions {
   readonly quickAction?: AdvisorQuickAction | undefined
   readonly replaceFromMessageId?: string | undefined
+  /** The skill that is on for this message (#495). */
+  readonly skill?: AdvisorSkillId | undefined
 }
 
 /** The options as request fields, without keys that are unset (the DTO forbids explicit undefined). */
-export function sendOptionsToDto(options: ChatSendOptions | undefined): { quickAction?: AdvisorQuickAction; replaceFromMessageId?: string } {
+export function sendOptionsToDto(options: ChatSendOptions | undefined): { quickAction?: AdvisorQuickAction; replaceFromMessageId?: string; skill?: AdvisorSkillId } {
   return {
+    ...(options?.skill ? { skill: options.skill } : {}),
     ...(options?.quickAction ? { quickAction: options.quickAction } : {}),
     ...(options?.replaceFromMessageId ? { replaceFromMessageId: options.replaceFromMessageId } : {}),
   }
@@ -166,6 +172,9 @@ export function AdvisorChatPanel({
     }
   }, [dictationEngine])
   const [editingId, setEditingId] = useState<string | null>(null)
+  // A skill is chosen per session and starts off: the plain chat stays the default.
+  const [skill, setSkill] = useState<AdvisorSkillId | null>(null)
+  const send = (text: string, options?: ChatSendOptions) => (skill ? onSendMessage(text, { ...options, skill }) : options ? onSendMessage(text, options) : onSendMessage(text))
 
   async function handleSubmit(rawText?: string, quickAction?: AdvisorQuickAction) {
     const text = (rawText ?? inputText).trim()
@@ -173,7 +182,7 @@ export function AdvisorChatPanel({
     if (rawText === undefined) {
       setInputText('')
     }
-    await (quickAction ? onSendMessage(text, { quickAction }) : onSendMessage(text))
+    await (quickAction ? send(text, { quickAction }) : send(text))
   }
 
   // An answer that is still being written is shown by the live bubble, not from the stored list.
@@ -197,7 +206,7 @@ export function AdvisorChatPanel({
 
   function regenerate() {
     if (!canReplace || lastUser === null) return
-    void onSendMessage(lastUser.content, { replaceFromMessageId: lastUser.id })
+    void send(lastUser.content, { replaceFromMessageId: lastUser.id })
   }
 
   function startEdit() {
@@ -338,6 +347,10 @@ export function AdvisorChatPanel({
                     )
                   })}
                 </View>
+              ) : null}
+
+              {msg.meta?.questionRound ? (
+                <QuestionRound round={msg.meta.questionRound} open={index === messages.length - 1 && !isSending} onSubmit={(text) => void send(text)} />
               ) : null}
 
               {/* Mandanten-Anamnese Follow-up Choice Pills */}
@@ -690,7 +703,7 @@ export function AdvisorChatPanel({
                 setInputText('')
                 const replaceFromMessageId = editingId
                 setEditingId(null)
-                void (replaceFromMessageId ? onSendMessage(text, { replaceFromMessageId }) : onSendMessage(text))
+                void (replaceFromMessageId ? send(text, { replaceFromMessageId }) : send(text))
               }}
               onStop={onStop}
               sending={isSending}
@@ -716,6 +729,7 @@ export function AdvisorChatPanel({
               }
               trailing={
                 <>
+                  <SkillsMenu active={skill} onChange={setSkill} disabled={isSending} />
                   {context ? <ContextRing context={context} onSummarize={onSummarize} busy={isSending} /> : null}
                   {microphone}
                 </>

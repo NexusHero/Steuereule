@@ -16,6 +16,7 @@ import {
 } from 'class-validator'
 import {
   ADVISOR_FEEDBACK_RATINGS,
+  ADVISOR_SKILL_IDS,
   ADVISOR_FEEDBACK_REASONS,
   ADVISOR_MESSAGE_STATUSES,
   ADVISOR_QUICK_ACTIONS,
@@ -38,6 +39,9 @@ import {
   type AdvisorNoteChangeKind,
   type AdvisorMessageMeta,
   type AdvisorNotStaged,
+  type AdvisorQuestionRound,
+  type AdvisorRoundQuestion,
+  type AdvisorSkillId,
   type AdvisorTwoPathsProposal,
   type LstbExtractedFieldStatus,
   type LstbFieldReason,
@@ -282,6 +286,22 @@ export class AdvisorNotStagedDto implements AdvisorNotStaged {
   screen?: Screen | undefined
 }
 
+export class AdvisorRoundQuestionDto implements AdvisorRoundQuestion {
+  @ApiProperty({ type: String })
+  text!: string
+
+  @ApiProperty({ type: [String] })
+  options!: readonly string[]
+
+  @ApiPropertyOptional({ type: String })
+  recommended?: string | undefined
+}
+
+export class AdvisorQuestionRoundDto implements AdvisorQuestionRound {
+  @ApiProperty({ type: () => [AdvisorRoundQuestionDto] })
+  questions!: readonly AdvisorRoundQuestionDto[]
+}
+
 export class AdvisorMessageMetaDto implements AdvisorMessageMeta {
   @ApiPropertyOptional({ type: [String] })
   choices?: readonly string[] | undefined
@@ -306,6 +326,9 @@ export class AdvisorMessageMetaDto implements AdvisorMessageMeta {
     description: 'What the owl changed in the project notes in this answer; each change can be undone (#481).',
   })
   noteChanges?: readonly AdvisorNoteChangeDto[] | undefined
+
+  @ApiPropertyOptional({ type: () => AdvisorQuestionRoundDto, description: 'A round of questions with answers to tap, from the interview skill (#495).' })
+  questionRound?: AdvisorQuestionRoundDto | undefined
 
   @ApiPropertyOptional({ type: AdvisorActionProposalDto })
   action?: AdvisorActionProposalDto | undefined
@@ -525,6 +548,11 @@ export class SendAdvisorMessageDto {
   @IsString()
   @IsIn(SCREENS)
   activeScreen?: Screen | undefined
+
+  @ApiPropertyOptional({ type: String, enum: ADVISOR_SKILL_IDS, description: 'A skill the user switched on for this message (#495).' })
+  @IsOptional()
+  @IsIn(ADVISOR_SKILL_IDS)
+  skill?: AdvisorSkillId | undefined
 
   @ApiPropertyOptional({
     type: String,

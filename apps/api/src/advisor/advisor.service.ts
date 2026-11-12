@@ -520,6 +520,7 @@ export class AdvisorService {
         actionIdFactory,
         signal,
         planRequired: dto.quickAction === 'forgotten_check',
+        ...(dto.skill ? { skill: dto.skill } : {}),
         records: await this.loadRecordHandles(userId, taxYear),
         previewEffect: this.previewEffectFor(userId, taxYear),
         notes: buildNoteHandles(await this.advisorRepo.listNotes(userId, taxYear)),

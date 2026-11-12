@@ -1717,6 +1717,25 @@ export const appResources = {
           reconnecting: 'Verbindung wird wiederhergestellt …',
           failed: 'nicht fertig geworden',
           emptyTitle: 'Womit kann die Eule helfen?',
+          skills: {
+            label: 'Skills',
+            aria: 'Skills der Eule',
+            title: 'Skills',
+            help: 'Eine Arbeitsweise für die Eule, die du an- und ausschaltest. Sie ändert, wie die Eule fragt, nicht was sie eintragen darf.',
+            on: 'An',
+            off: 'Aus',
+            items: {
+              'berater-interview': {
+                title: 'Berater-Interview',
+                description: 'Die Eule fragt dich Runde für Runde durch deine Erklärung, mit Antworten zum Antippen, bis nichts Wesentliches mehr offen ist.',
+              },
+            },
+          },
+          round: {
+            recommended: 'Empfohlen',
+            takeRecommended: 'Empfehlungen übernehmen',
+            submit: 'Antworten senden',
+          },
           thought: {
             heading: 'Gedankengang',
             headingLive: 'Die Eule denkt nach …',
@@ -3608,6 +3627,25 @@ export const appResources = {
           reconnecting: 'Restoring the connection …',
           failed: 'not finished',
           emptyTitle: 'What can the owl help with?',
+          skills: {
+            label: 'Skills',
+            aria: 'Owl skills',
+            title: 'Skills',
+            help: 'A way of working for the owl that you switch on and off. It changes how she asks, not what she may enter.',
+            on: 'On',
+            off: 'Off',
+            items: {
+              'berater-interview': {
+                title: 'Advisor interview',
+                description: 'The owl takes you through your return round by round, with answers to tap, until nothing important is left open.',
+              },
+            },
+          },
+          round: {
+            recommended: 'Recommended',
+            takeRecommended: 'Take the recommendations',
+            submit: 'Send answers',
+          },
           thought: {
             heading: 'Line of thought',
             headingLive: 'The owl is thinking …',

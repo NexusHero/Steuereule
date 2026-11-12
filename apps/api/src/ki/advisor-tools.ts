@@ -12,6 +12,7 @@ export const TOOL_LABELS: Readonly<Record<string, string>> = {
   stage_field_draft: 'Bereite sicheren Entwurf vor …',
   propose_two_paths: 'Vergleiche Zwei-Wege-Strategien …',
   ask_clarification: 'Prüfe Rückfragen …',
+  ask_questions: 'Bereite die nächsten Fragen vor …',
   lookup_legal_source: 'Prüfe EStG-Paragraph …',
   plan_steps: 'Plane die nächsten Schritte …',
   remember_note: 'Merke mir das für dieses Steuerjahr …',
@@ -105,6 +106,18 @@ export const TOOL_ARG_SCHEMAS = {
   ask_clarification: z.object({
     choices: z.array(z.string().max(120)).min(1).max(4),
   }),
+  ask_questions: z.object({
+    questions: z
+      .array(
+        z.object({
+          text: z.string().min(1).max(240),
+          options: z.array(z.string().min(1).max(80)).min(2).max(4),
+          recommended: z.string().max(80).optional(),
+        }),
+      )
+      .min(1)
+      .max(4),
+  }),
   lookup_legal_source: z.object({
     sourceId: z.string().max(40),
   }),
@@ -129,6 +142,8 @@ export const TOOL_DESCRIPTIONS: Readonly<Record<ToolName, string>> = {
   propose_two_paths:
     'Stellt zwei Alternativen (Sicher-Weg vs. Maximal-Weg mit Nachweishinweis) zur Auswahl durch den Nutzer gegenüber.',
   ask_clarification: 'Schlägt 2 bis 4 anklickbare Quick-Chips als nächste Rückfragen im Chat vor.',
+  ask_questions:
+    'Stellt dem Nutzer eine Runde von 1 bis 4 Fragen, jede mit 2 bis 4 antippbaren Antworten und deiner Empfehlung. Nur im Skill „Berater-Interview“ verwenden. Schreibt nichts in die Akte.',
   lookup_legal_source: 'Ruft Wortlaut, Paragraph und Rechtsstand einer EStG/AO-Rechtsquelle aus dem verifizierten Katalog ab.',
   plan_steps:
     'Zeigt dem Nutzer deinen Plan als Checkliste (höchstens 8 Schritte, Status offen/laeuft/erledigt). Immer die vollständige Liste senden. Schreibt nichts in die Akte.',

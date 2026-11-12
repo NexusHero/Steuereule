@@ -374,6 +374,37 @@ async function main() {
     if (resumes < 3) fail(`Row F: the chat should have re-attached until it got through, tried ${resumes} times`)
     console.log(`[${TAG}] ✅ Row F — a dropped stream shows "Verbindung wird wiederhergestellt", resumes after the last event and finishes`)
 
+    // Row S — skills (#495): off at first, listed, switchable; a round of questions has answers to
+    // tap, needs every question answered, and goes out as one message with the skill attached.
+    await page.unroute('**/advisor/session*')
+    const roundNow = new Date().toISOString()
+    await page.route('**/advisor/session*', async (route) => {
+      if (route.request().method() !== 'GET') return route.fallback()
+      const res = await route.fetch().catch(() => null)
+      if (res === null) return
+      const json = await res.json()
+      json.messages = [
+        { id: 'round-u1', role: 'user', content: 'Fang an', meta: null, createdAt: roundNow, status: 'complete', feedback: null },
+        { id: 'round-a1', role: 'assistant', content: 'Erste Runde:', meta: { questionRound: { questions: [{ text: 'Hattest du Fortbildungskosten?', options: ['Ja', 'Nein'], recommended: 'Ja' }, { text: 'Gab es einen Umzug?', options: ['Ja', 'Nein'] }] } }, createdAt: roundNow, status: 'complete', feedback: null },
+      ]
+      await route.fulfill({ response: res, json })
+    })
+    await page.reload({ waitUntil: 'networkidle' })
+    await see(page, 'advisor-question-round', 'Row S', 20_000)
+    if ((await byId(page, 'advisor-question').count()) !== 2) fail('Row S: both questions of the round should be shown')
+    if (!(await textOf(page, 'advisor-question-round')).includes('Empfohlen')) fail('Row S: the owl’s pick should be marked')
+    if (!(await byId(page, 'advisor-question-submit').isDisabled())) fail('Row S: a round with open questions must not be sendable')
+    await byId(page, 'advisor-question-take-recommended').click()
+    await byId(page, 'advisor-question-option').nth(3).click()
+    await byId(page, 'advisor-skills-toggle').click()
+    await see(page, 'advisor-skills-panel', 'Row S')
+    await byId(page, 'advisor-skill-berater-interview').click()
+    if ((await textOf(page, 'advisor-skills-toggle')) !== 'Berater-Interview') fail('Row S: the switched-on skill should name itself')
+    const roundSent = page.waitForRequest((request) => request.method() === 'POST' && /advisor\/(stream|runs)/.test(request.url()) && (request.postData() ?? '').includes('"skill":"berater-interview"') && (request.postData() ?? '').includes('1: Ja'), { timeout: 15_000 })
+    await byId(page, 'advisor-question-submit').click()
+    await roundSent.catch(() => fail('Row S: the answers should go out as one message with the skill attached'))
+    console.log(`[${TAG}] ✅ Row S — skills: listed and switchable, a round needs all answers and sends them with the skill`)
+
     await page.unrouteAll({ behavior: 'ignoreErrors' })
     await ctx.close()
 
