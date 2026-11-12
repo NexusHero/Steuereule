@@ -19,7 +19,7 @@
 import { launchBrowser, closeBrowser, newContextAtBreakpoint, guardAgainst429 } from '../harness/browser.mjs'
 import { startStack } from '../harness/stack.mjs'
 import { fail, waitForBucketHeadroom } from '../harness/rate-limit.mjs'
-import { FLOW_COPY, skipSplash, signUpOutOfBand } from '../harness/flows.mjs'
+import { skipSplash, signUpOutOfBand, submitLogin } from '../harness/flows.mjs'
 
 const AUTH_BUCKET = { windowMs: 10_000, max: 3, shared: true }
 const TEST_PASSWORD = 'Sicheres-Passwort-1!'
@@ -108,9 +108,7 @@ async function main() {
 
     await skipSplash(page, webOrigin)
     await waitForBucketHeadroom(AUTH_BUCKET, 'sign-in/email', TAG)
-    await page.getByPlaceholder(FLOW_COPY.loginEmailPlaceholder).fill(email)
-    await page.getByPlaceholder(FLOW_COPY.loginPasswordPlaceholder).fill(TEST_PASSWORD)
-    await page.getByRole('button', { name: FLOW_COPY.loginSubmit }).click()
+    await submitLogin(page, email, TEST_PASSWORD)
     await page.waitForURL((u) => u.pathname === '/app', { timeout: 15_000 })
     await page.getByRole('tab', { name: 'Eule' }).click()
 
@@ -385,9 +383,7 @@ async function main() {
     guardAgainst429(small, fail, '/api/auth/')
     await skipSplash(small, webOrigin)
     await waitForBucketHeadroom(AUTH_BUCKET, 'sign-in/email', TAG)
-    await small.getByPlaceholder(FLOW_COPY.loginEmailPlaceholder).fill(email)
-    await small.getByPlaceholder(FLOW_COPY.loginPasswordPlaceholder).fill(TEST_PASSWORD)
-    await small.getByRole('button', { name: FLOW_COPY.loginSubmit }).click()
+    await submitLogin(small, email, TEST_PASSWORD)
     await small.waitForURL((u) => u.pathname === '/app', { timeout: 15_000 })
     await small.getByRole('tab', { name: 'Eule' }).click()
     await see(small, 'eule-chat-main', 'Row J', 20_000)

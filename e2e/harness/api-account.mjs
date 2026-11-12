@@ -4,7 +4,7 @@
 // (better-auth counts per path in a rolling 10 s window).
 import { request as playwrightRequest } from 'playwright-core'
 import { fail, waitForBucketHeadroom } from './rate-limit.mjs'
-import { FLOW_COPY, skipSplash, signUpOutOfBand } from './flows.mjs'
+import { skipSplash, signUpOutOfBand, submitLogin } from './flows.mjs'
 
 export const PASSWORD = 'Sicheres-Passwort-1!'
 const AUTH_BUCKET = { windowMs: 10_000, max: 3, shared: true }
@@ -43,9 +43,7 @@ export async function putLstb(api, year, gross, wageTax, social) {
 export async function browserLogin(page, webOrigin, email, tag) {
   await skipSplash(page, webOrigin)
   await waitForBucketHeadroom(AUTH_BUCKET, 'sign-in/email', tag)
-  await page.getByPlaceholder(FLOW_COPY.loginEmailPlaceholder).fill(email)
-  await page.getByPlaceholder(FLOW_COPY.loginPasswordPlaceholder).fill(PASSWORD)
-  await page.getByRole('button', { name: FLOW_COPY.loginSubmit }).click()
+  await submitLogin(page, email, PASSWORD)
   await page.waitForURL((u) => u.pathname === '/app', { timeout: 15_000 })
 }
 

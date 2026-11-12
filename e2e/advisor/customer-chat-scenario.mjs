@@ -13,7 +13,7 @@ import { writeFile, mkdir } from 'node:fs/promises'
 import { request as playwrightRequest } from 'playwright-core'
 import { launchBrowser, closeBrowser, newContextAtBreakpoint } from '../harness/browser.mjs'
 import { startStack } from '../harness/stack.mjs'
-import { FLOW_COPY, skipSplash, signUpOutOfBand } from '../harness/flows.mjs'
+import { skipSplash, signUpOutOfBand, submitLogin } from '../harness/flows.mjs'
 
 const PASSWORD = 'Sicheres-Passwort-1!'
 const YEAR = 2026
@@ -50,9 +50,7 @@ async function main() {
   const page = await ctx.newPage()
   await skipSplash(page, webOrigin)
   await sleep(11_000)
-  await page.getByPlaceholder(FLOW_COPY.loginEmailPlaceholder).fill(email)
-  await page.getByPlaceholder(FLOW_COPY.loginPasswordPlaceholder).fill(PASSWORD)
-  await page.getByRole('button', { name: FLOW_COPY.loginSubmit }).click()
+  await submitLogin(page, email, PASSWORD)
   await page.waitForURL((u) => u.pathname === '/app', { timeout: 20_000 })
   await page.getByRole('tab', { name: 'Eule' }).click()
   await page.locator('[data-testid="advisor-chat-input"]').waitFor({ state: 'visible', timeout: 15_000 })
