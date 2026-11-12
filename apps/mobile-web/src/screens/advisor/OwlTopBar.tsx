@@ -20,6 +20,8 @@ export interface OwlTopBarProps {
   readonly legalStatusDate: string
   /** Opens the conversations of this tax year; absent where there is no list to show. */
   readonly onOpenConversations?: (() => void) | undefined
+  /** Whether the list it opens is showing right now (sidebar or sheet). */
+  readonly conversationsExpanded?: boolean | undefined
   /** Phone width: icons only, no legal status line. */
   readonly compact?: boolean | undefined
 }
@@ -45,6 +47,7 @@ export function OwlTopBar({
   onOpenPrivacy,
   onOpenSettings,
   onOpenConversations,
+  conversationsExpanded = false,
   legalStatusDate,
   compact = false,
 }: OwlTopBarProps) {
@@ -95,8 +98,9 @@ export function OwlTopBar({
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={tr('eule.workspace.topbar.conversationsAria')}
+            aria-expanded={conversationsExpanded}
             onPress={onOpenConversations}
-            style={styles.chip}
+            style={[styles.chip, conversationsExpanded && styles.chipActive]}
             testID="eule-conversations-btn"
           >
             <Text style={styles.chipText}>{compact ? '☰' : tr('eule.workspace.topbar.conversations')}</Text>

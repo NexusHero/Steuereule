@@ -24,6 +24,10 @@ import {
   getOwlModeControllerGetSettingQueryKey,
   useAdvisorControllerApplyAction,
   useAdvisorControllerClearConversation,
+  useAdvisorControllerCreateNote,
+  useAdvisorControllerDeleteNote,
+  useAdvisorControllerUndoNoteChange,
+  useAdvisorControllerUpdateNote,
   useAdvisorControllerCreateConversation,
   useAdvisorControllerDeleteConversation,
   useAdvisorControllerRenameConversation,
@@ -59,6 +63,8 @@ import { OwlTopBar } from './OwlTopBar'
 import { ProfessionPicker } from './ProfessionPicker'
 import { AdvisorChatPanel, sendOptionsToDto, type AdvisorChatPanelProps, type ChatSendOptions } from './AdvisorChatPanel'
 import { ConversationList, type ConversationSummary } from './chat/ConversationList'
+import { ProjectNotes, type ProjectNote } from './chat/ProjectNotes'
+import { readOwlSidebarOpen, writeOwlSidebarOpen } from '../../lib/owlSidebarPreference'
 import { invalidateAllTaxQueries, useOptionalCopilotBridge, type OwlViewMode } from './CopilotBridgeProvider'
 
 export interface OwlModeScreenProps {
@@ -93,6 +99,12 @@ export interface OwlModeScreenProps {
   /** How full the context of the open conversation is (#481). */
   readonly context?: AdvisorChatPanelProps['context']
   readonly onSummarize?: (() => Promise<void>) | undefined
+  /** The project notes of this tax year (#481); without them the screen shows no notes. */
+  readonly notes?: readonly ProjectNote[] | undefined
+  readonly onAddNote?: ((text: string) => Promise<void>) | undefined
+  readonly onEditNote?: ((id: string, text: string) => Promise<void>) | undefined
+  readonly onDeleteNote?: ((id: string) => Promise<void>) | undefined
+  readonly onUndoNoteChange?: ((messageId: string, index: number) => Promise<void>) | undefined
   readonly isGuest?: boolean | undefined
   readonly onRegister?: (() => void) | undefined
   readonly onLogin?: (() => void) | undefined
@@ -296,6 +308,10 @@ function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CURRENT_T
   const renameConversationMutation = useAdvisorControllerRenameConversation()
   const deleteConversationMutation = useAdvisorControllerDeleteConversation()
   const summarizeConversationMutation = useAdvisorControllerSummarizeConversation()
+  const createNoteMutation = useAdvisorControllerCreateNote()
+  const updateNoteMutation = useAdvisorControllerUpdateNote()
+  const deleteNoteMutation = useAdvisorControllerDeleteNote()
+  const undoNoteChangeMutation = useAdvisorControllerUndoNoteChange()
   const sendMessageMutation = useAdvisorControllerSendMessage()
   const applyActionMutation = useAdvisorControllerApplyAction()
   const setFeedbackMutation = useAdvisorControllerSetFeedback()
@@ -385,6 +401,27 @@ function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CURRENT_T
         if (!session) return
         const response = await summarizeConversationMutation.mutateAsync({ jahr: taxYear, conversationId: session.conversationId })
         if (response.status !== 200) throw new Error(`conversation not summarised (HTTP ${response.status})`)
+        await invalidate()
+      }}
+      notes={session?.notes}
+      onAddNote={async (text) => {
+        const response = await createNoteMutation.mutateAsync({ jahr: taxYear, data: { text } })
+        if (response.status !== 200) throw new Error(`note not stored (HTTP ${response.status})`)
+        await invalidate()
+      }}
+      onEditNote={async (id, text) => {
+        const response = await updateNoteMutation.mutateAsync({ jahr: taxYear, noteId: id, data: { text } })
+        if (response.status !== 200) throw new Error(`note not changed (HTTP ${response.status})`)
+        await invalidate()
+      }}
+      onDeleteNote={async (id) => {
+        const response = await deleteNoteMutation.mutateAsync({ jahr: taxYear, noteId: id })
+        if (response.status !== 200) throw new Error(`note not deleted (HTTP ${response.status})`)
+        await invalidate()
+      }}
+      onUndoNoteChange={async (messageId, index) => {
+        const response = await undoNoteChangeMutation.mutateAsync({ jahr: taxYear, messageId, index })
+        if (response.status !== 200) throw new Error(`note change not undone (HTTP ${response.status})`)
         await invalidate()
       }}
       conversations={session?.conversations}
@@ -547,6 +584,11 @@ function OwlModeScreenView({
   onDeleteConversation,
   context,
   onSummarize,
+  notes,
+  onAddNote,
+  onEditNote,
+  onDeleteNote,
+  onUndoNoteChange,
 }: OwlModeScreenProps & { readonly initialCards: readonly OwlCardsDisplay[] }) {
   const bp = useBreakpoint()
   const t = useTheme()
@@ -559,6 +601,8 @@ function OwlModeScreenView({
   const [privacyOpen, setPrivacyOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [conversationsOpen, setConversationsOpen] = useState(false)
+  // Desktop: the conversations and notes sit in a sidebar that remembers whether it was collapsed.
+  const [sidebarOpen, setSidebarOpen] = useState(readOwlSidebarOpen)
   const [clearState, setClearState] = useState<'closed' | 'confirm' | 'clearing' | 'failed'>('closed')
   const [cards, setCards] = useState<readonly OwlCardsDisplay[]>(initialCards)
   const [activeIndex, setActiveIndex] = useState(0)
@@ -773,6 +817,7 @@ function OwlModeScreenView({
         isSending={effectiveSending}
         context={context}
         onSummarize={onSummarize}
+        onUndoNoteChange={onUndoNoteChange}
         streamSteps={bridge?.streamSteps}
         streamedText={bridge?.streamedText}
         streamedReasoning={bridge?.streamedReasoning}
@@ -1093,6 +1138,32 @@ function OwlModeScreenView({
     </>
   )
 
+  /** The project of the tax year: its conversations and its notes. Sidebar on desktop, sheet elsewhere. */
+  const projectPanel = (afterSwitch: () => void) => (
+    <View style={styles.projectPanel}>
+      <ConversationList
+        conversations={conversations ?? []}
+        activeId={activeConversationId ?? null}
+        canSwitch={!effectiveSending}
+        onSelect={(id) => {
+          onSelectConversation?.(id)
+          afterSwitch()
+        }}
+        onNew={async () => {
+          await onNewConversation?.()
+          afterSwitch()
+        }}
+        onRename={async (id, title) => {
+          await onRenameConversation?.(id, title)
+        }}
+        onDelete={async (id) => {
+          await onDeleteConversation?.(id)
+        }}
+      />
+      {notes && onAddNote && onEditNote && onDeleteNote ? <ProjectNotes notes={notes} onAdd={onAddNote} onEdit={onEditNote} onDelete={onDeleteNote} /> : null}
+    </View>
+  )
+
   // One layout for every width (#476): the chat is the screen. The workbench is a side panel on a
   // wide screen and a sheet over the chat everywhere else, and only there when it is needed.
   return (
@@ -1105,12 +1176,27 @@ function OwlModeScreenView({
         onTogglePanel={() => (panelOpen ? closePanel() : setPanelChoice('open'))}
         onOpenPrivacy={() => setPrivacyOpen(true)}
         onOpenSettings={onToggleOptIn || onChooseProfession || onClearConversation ? () => setSettingsOpen(true) : undefined}
-        onOpenConversations={conversations && onSelectConversation ? () => setConversationsOpen(true) : undefined}
+        onOpenConversations={
+          conversations && onSelectConversation
+            ? () => {
+                if (!wide) return setConversationsOpen(true)
+                writeOwlSidebarOpen(!sidebarOpen)
+                setSidebarOpen(!sidebarOpen)
+              }
+            : undefined
+        }
+        conversationsExpanded={wide ? sidebarOpen : conversationsOpen}
         legalStatusDate={LEGAL_STATUS_DATE}
         compact={bp === 's'}
       />
 
       <View style={styles.body}>
+        {wide && sidebarOpen && conversations && onSelectConversation ? (
+          <ScrollView style={styles.projectSidebar} contentContainerStyle={styles.projectSidebarContent} testID="eule-project-sidebar">
+            {projectPanel(() => {})}
+          </ScrollView>
+        ) : null}
+
         <View style={styles.chatMain} testID="eule-chat-main">
           {renderChatPanel(bp === 's')}
         </View>
@@ -1141,27 +1227,9 @@ function OwlModeScreenView({
         </Sheet>
       ) : null}
 
-      {conversationsOpen ? (
+      {conversationsOpen && !wide ? (
         <Sheet onClose={() => setConversationsOpen(false)} closeLabel={tr('eule.workspace.topbar.conversationsClose')} testID="eule-conversations-sheet">
-          <ConversationList
-            conversations={conversations ?? []}
-            activeId={activeConversationId ?? null}
-            canSwitch={!effectiveSending}
-            onSelect={(id) => {
-              onSelectConversation?.(id)
-              setConversationsOpen(false)
-            }}
-            onNew={async () => {
-              await onNewConversation?.()
-              setConversationsOpen(false)
-            }}
-            onRename={async (id, title) => {
-              await onRenameConversation?.(id, title)
-            }}
-            onDelete={async (id) => {
-              await onDeleteConversation?.(id)
-            }}
-          />
+          {projectPanel(() => setConversationsOpen(false))}
         </Sheet>
       ) : null}
 
@@ -1189,6 +1257,17 @@ function makeStyles(t: UiTheme) {
     root: { flex: 1, minHeight: 0, backgroundColor: t.color.grund } as ViewStyle,
     body: { flex: 1, minHeight: 0, flexDirection: 'row' } as ViewStyle,
     chatMain: { flex: 1, minWidth: 0, minHeight: 0 } as ViewStyle,
+    projectSidebar: {
+      flexGrow: 0,
+      flexShrink: 0,
+      flexBasis: 300,
+      maxWidth: '28%',
+      borderRightWidth: 1,
+      borderRightColor: t.color.linie,
+      backgroundColor: t.color.grund,
+    } as ViewStyle,
+    projectSidebarContent: { padding: t.space.s4 } as ViewStyle,
+    projectPanel: { gap: t.space.s6 } as ViewStyle,
     sidePanel: {
       flexGrow: 0,
       flexShrink: 0,

@@ -3,6 +3,7 @@ import { Linking, Pressable, ScrollView, Text, TextInput, View, type TextStyle, 
 import { ChatComposer } from './chat/ChatComposer'
 import { ThinkingIndicator } from './chat/ThinkingIndicator'
 import { ContextRing, SummaryDivider, type ContextRingState } from './chat/ContextRing'
+import { NoteChangeHints } from './chat/ProjectNotes'
 import { DictationBar } from './chat/DictationBar'
 import { browserDictationEngine, type DictationEngine } from '../../lib/dictation/engine'
 import { MarkdownMessage } from './chat/MarkdownMessage'
@@ -48,6 +49,8 @@ export interface AdvisorChatPanelProps {
   /** How full the context of this conversation is, and where its summarised part ends (#481). */
   readonly context?: (ContextRingState & { readonly summary?: string | undefined; readonly summarizedUntilMessageId?: string | undefined }) | undefined
   readonly onSummarize?: (() => Promise<void>) | undefined
+  /** Takes back one change the owl made to the project notes in an answer (#481). */
+  readonly onUndoNoteChange?: ((messageId: string, index: number) => Promise<void>) | undefined
   /** Stores a rating; without it the chat offers none (e.g. the local preview). */
   readonly onRateMessage?:
     | ((messageId: string, rating: AdvisorFeedbackRating | null, reason?: AdvisorFeedbackReason) => Promise<void> | void)
@@ -392,6 +395,7 @@ export function AdvisorChatPanel({
   reconnecting = false,
   context,
   onSummarize,
+  onUndoNoteChange,
   onRateMessage,
   chatError = null,
   basisMode = false,
@@ -693,6 +697,11 @@ export function AdvisorChatPanel({
                     </Text>
                   ))}
                 </View>
+              ) : null}
+
+              {/* What the owl noted, replaced or forgot in this answer; each change can be taken back */}
+              {msg.meta?.noteChanges && msg.meta.noteChanges.length > 0 ? (
+                <NoteChangeHints changes={msg.meta.noteChanges} onUndo={onUndoNoteChange ? (index) => onUndoNoteChange(msg.id, index) : undefined} />
               ) : null}
 
               {/* Scanned LStB: several staged fields at once */}
