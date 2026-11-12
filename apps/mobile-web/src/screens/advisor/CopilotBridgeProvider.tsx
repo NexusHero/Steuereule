@@ -97,6 +97,7 @@ export interface SendStreamingOptions {
   /** Regenerate / edit-and-resend: the latest user message whose turn the answer replaces. */
   readonly replaceFromMessageId?: string | undefined
   readonly skill?: AdvisorSkillId | undefined
+  readonly turbo?: boolean | undefined
 }
 
 /** Marks the running step of a stopped plan as aborted; finished steps stay as they are. */
@@ -498,6 +499,7 @@ export function CopilotBridgeProvider({
             ...(options?.quickAction ? { quickAction: options.quickAction } : {}),
             ...(options?.replaceFromMessageId ? { replaceFromMessageId: options.replaceFromMessageId } : {}),
             ...(options?.skill ? { skill: options.skill } : {}),
+            ...(options?.turbo ? { turbo: true } : {}),
             ...(conversationIdRef.current ? { conversationId: conversationIdRef.current } : {}),
           }),
         }),

@@ -6,6 +6,7 @@ import { ContextRing, SummaryDivider, type ContextRingState } from './chat/Conte
 import { NoteChangeHints } from './chat/ProjectNotes'
 import { QuestionRound } from './chat/QuestionRound'
 import { SkillsMenu } from './chat/SkillsMenu'
+import { TurboSummary, TurboToggle } from './chat/TurboToggle'
 import { DictationBar } from './chat/DictationBar'
 import { browserDictationEngine, type DictationEngine } from '../../lib/dictation/engine'
 import { MarkdownMessage } from './chat/MarkdownMessage'
@@ -101,12 +102,15 @@ export interface ChatSendOptions {
   readonly replaceFromMessageId?: string | undefined
   /** The skill that is on for this message (#495). */
   readonly skill?: AdvisorSkillId | undefined
+  /** Turbo mode: the owl applies the drafts of this answer itself. */
+  readonly turbo?: boolean | undefined
 }
 
 /** The options as request fields, without keys that are unset (the DTO forbids explicit undefined). */
-export function sendOptionsToDto(options: ChatSendOptions | undefined): { quickAction?: AdvisorQuickAction; replaceFromMessageId?: string; skill?: AdvisorSkillId } {
+export function sendOptionsToDto(options: ChatSendOptions | undefined): { quickAction?: AdvisorQuickAction; replaceFromMessageId?: string; skill?: AdvisorSkillId; turbo?: boolean } {
   return {
     ...(options?.skill ? { skill: options.skill } : {}),
+    ...(options?.turbo ? { turbo: true } : {}),
     ...(options?.quickAction ? { quickAction: options.quickAction } : {}),
     ...(options?.replaceFromMessageId ? { replaceFromMessageId: options.replaceFromMessageId } : {}),
   }
@@ -178,7 +182,15 @@ export function AdvisorChatPanel({
   const [editingId, setEditingId] = useState<string | null>(null)
   // A skill is chosen per session and starts off: the plain chat stays the default.
   const [skill, setSkill] = useState<AdvisorSkillId | null>(null)
-  const send = (text: string, options?: ChatSendOptions) => (skill ? onSendMessage(text, { ...options, skill }) : options ? onSendMessage(text, options) : onSendMessage(text))
+  // Off in every new chat: the careful way is the default, Turbo is chosen per session.
+  const [turbo, setTurbo] = useState(false)
+  /** What is switched on at the input travels with every message; a plain message stays plain. */
+  const withSwitches = (options: ChatSendOptions | undefined, activeSkill: AdvisorSkillId | null): ChatSendOptions | undefined =>
+    activeSkill || turbo ? { ...options, ...(activeSkill ? { skill: activeSkill } : {}), ...(turbo ? { turbo: true } : {}) } : options
+  const send = (text: string, options?: ChatSendOptions) => {
+    const merged = withSwitches(options, skill)
+    return merged ? onSendMessage(text, merged) : onSendMessage(text)
+  }
   const [unknownCommand, setUnknownCommand] = useState<string | null>(null)
   const slashCommands = matchingSkillCommands(inputText)
 
@@ -193,7 +205,7 @@ export function AdvisorChatPanel({
     }
     setUnknownCommand(null)
     setSkill(command.skill)
-    void onSendMessage(command.rest || tr(`advisor.chat.skills.items.${command.skill}.start`), { skill: command.skill })
+    void onSendMessage(command.rest || tr(`advisor.chat.skills.items.${command.skill}.start`), withSwitches(undefined, command.skill))
     return true
   }
 
@@ -468,6 +480,8 @@ export function AdvisorChatPanel({
                   ))}
                 </View>
               ) : null}
+
+              {msg.meta?.turbo ? <TurboSummary count={[msg.meta.action, ...(msg.meta.actions ?? [])].filter((a) => a?.status === 'applied' || a?.status === 'undone').length} /> : null}
 
               {/* What the owl noted, replaced or forgot in this answer; each change can be taken back */}
               {msg.meta?.noteChanges && msg.meta.noteChanges.length > 0 ? (
@@ -776,6 +790,7 @@ export function AdvisorChatPanel({
               trailing={
                 <>
                   <SkillsMenu active={skill} onChange={setSkill} disabled={isSending} />
+                  <TurboToggle on={turbo} onChange={setTurbo} disabled={isSending} />
                   {context ? <ContextRing context={context} onSummarize={onSummarize} busy={isSending} /> : null}
                   {microphone}
                 </>

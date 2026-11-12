@@ -8301,6 +8301,10 @@
               }
             ]
           },
+          "turbo": {
+            "type": "boolean",
+            "description": "Turbo mode: the owl applied the drafts of this answer itself; each can be undone."
+          },
           "modelFailure": {
             "description": "Why the language model did not answer this turn, when it did not (#487): the answer then comes from fixed rules or is missing.",
             "allOf": [
@@ -9047,6 +9051,10 @@
               "berater-interview"
             ],
             "description": "A skill the user switched on for this message (#495)."
+          },
+          "turbo": {
+            "type": "boolean",
+            "description": "Turbo mode: the owl applies the drafts of this answer itself instead of waiting for a click. Off by default."
           },
           "quickAction": {
             "type": "string",

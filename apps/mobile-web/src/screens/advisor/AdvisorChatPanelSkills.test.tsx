@@ -82,6 +82,15 @@ describe('/grill-me (#495)', () => {
     expect(screen.queryByTestId('advisor-slash-menu')).toBeNull()
   })
 
+  it('carries Turbo along when both are on', () => {
+    const { onSendMessage } = renderPanel()
+    fireEvent.click(screen.getByTestId('advisor-turbo-toggle'))
+    send('/grill-me')
+    expect(onSendMessage).toHaveBeenLastCalledWith(expect.any(String), { skill: 'berater-interview', turbo: true })
+    send('Ja')
+    expect(onSendMessage).toHaveBeenLastCalledWith('Ja', { skill: 'berater-interview', turbo: true })
+  })
+
   it('names an unknown command and sends nothing to the owl', () => {
     const { onSendMessage } = renderPanel()
     send('/zauber')

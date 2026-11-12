@@ -188,6 +188,8 @@ export interface AdvisorMessageMeta {
   readonly noteChanges?: readonly AdvisorNoteChange[] | undefined
   /** A round of questions with answers to tap, from the interview skill (#495). */
   readonly questionRound?: AdvisorQuestionRound | undefined
+  /** Turbo mode: the owl applied the drafts of this answer itself, without a click; each can be undone. */
+  readonly turbo?: true | undefined
   /** Why the model did not answer this turn, when it did not (#487). */
   readonly modelFailure?: AdvisorModelFailure | undefined
   /** Server-internal: which engine produced the turn, kept with the drafts it proposed. */
