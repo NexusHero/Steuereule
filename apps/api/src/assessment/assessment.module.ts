@@ -13,6 +13,6 @@ import { AssessmentService } from './assessment.service.js'
   imports: [PrismaModule, AuditModule, LstbModule, InterviewModule, ChSalaryCertificateModule],
   controllers: [AssessmentController],
   providers: [AssessmentService, { provide: ASSESSMENT_REPOSITORY, useClass: PrismaAssessmentRepository }],
-  exports: [ASSESSMENT_REPOSITORY],
+  exports: [ASSESSMENT_REPOSITORY, AssessmentService],
 })
 export class AssessmentModule {}

@@ -295,6 +295,8 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
       request.records,
       request.notes,
       request.skill,
+      request.task,
+      request.assessment,
     )
     const historyMessages: BaseMessage[] = (request.history ?? []).map((entry) =>
       entry.role === 'user' ? new HumanMessage(entry.content) : new AIMessage(entry.content),

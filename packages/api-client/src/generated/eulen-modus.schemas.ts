@@ -880,6 +880,8 @@ export type SendAdvisorMessageDtoQuickAction = typeof SendAdvisorMessageDtoQuick
 
 export const SendAdvisorMessageDtoQuickAction = {
   forgotten_check: 'forgotten_check',
+  savings_plan: 'savings_plan',
+  assessment_check: 'assessment_check',
 } as const;
 
 export interface SendAdvisorMessageDto {

@@ -675,6 +675,27 @@ describe('AdvisorService (In-App Steuerberater Agent "Deine Eule")', () => {
     expect(seen).toEqual([true, false])
   })
 
+  it('hands the savings plan and the assessment check to the engine as tasks, the second with the notice as far as there is one (#501)', async () => {
+    const seen: Array<{ task: unknown; plan: unknown; assessment: unknown }> = []
+    const recordingEngine: AdvisorEnginePort = {
+      async runTurn() {
+        throw new Error('not used')
+      },
+      async *streamTurn(request) {
+        seen.push({ task: request.task, plan: request.planRequired, assessment: request.assessment })
+        yield { event: 'done', data: { replyText: 'Ok.', meta: {}, mode: 'langgraph' } }
+      },
+    }
+    const withEngine = new AdvisorService(advisorRepo, owlModeService, confirmationService, new AuditService(auditRepo), interviewRepo, lstbRepo, chRepo, commuteRepo, childRepo, new FakeRentalRepository(), new FakeCapitalRepository(), profileRepo, recordingEngine)
+    await withEngine.sendMessage(USER, YEAR, { message: 'Sparplan', quickAction: 'savings_plan' })
+    await withEngine.sendMessage(USER, YEAR, { message: 'Bescheid prüfen', quickAction: 'assessment_check' })
+    await withEngine.sendMessage(USER, YEAR, { message: 'Hallo' })
+    expect(seen[0]).toEqual({ task: 'savings-plan', plan: true, assessment: undefined })
+    // Without the assessment service or a recorded notice the owl is told so, and invents nothing.
+    expect(seen[1]).toMatchObject({ task: 'assessment-check', plan: true, assessment: { recorded: false, deviations: [] } })
+    expect(seen[2]).toEqual({ task: undefined, plan: false, assessment: undefined })
+  })
+
   describe('replace a turn: regenerate and edit-and-resend (#451 slice 1b)', () => {
     beforeEach(async () => {
       await interviewRepo.write({ userId: USER, taxYear: YEAR, questionId: 'spenden', value: 'Ja', openItems: 0 })

@@ -382,7 +382,10 @@ export function OwlModeScreenView({
       <AdvisorChatPanel
         messages={displayedMessages}
         quickChips={[
+          // First what an adviser would do unasked: go through the whole case for money left on the table.
+          { label: tr('advisor.chat.savingsPlanChip'), testID: 'advisor-chip-sparplan', quickAction: 'savings_plan' },
           { label: tr('advisor.chat.forgottenChip'), testID: 'advisor-chip-vergessen', quickAction: 'forgotten_check' },
+          { label: tr('advisor.chat.assessmentChip'), testID: 'advisor-chip-bescheid', quickAction: 'assessment_check' },
           'Kanzlei-Endprüfung starten',
           'Homeoffice vs. Arbeitszimmer prüfen',
           'Fortbildung & Reisekosten klären',

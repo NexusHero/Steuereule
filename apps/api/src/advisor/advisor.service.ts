@@ -9,6 +9,7 @@ import {
   scrubUserMessagePii,
   simulateAdvisorFieldDelta,
   type AdvisorActionProposal,
+  type AdvisorAssessmentBrief,
   type AdvisorEngineInfo,
   type AdvisorEnginePort,
   type AdvisorFeedbackRating,
@@ -34,6 +35,7 @@ import { AuditService } from '../audit/audit.service.js'
 import { checkPiiFree } from '../ki/ki.adapter.js'
 import { ADVISOR_ENGINE } from '../ki/langgraph-advisor.engine.js'
 import { AI_RUNTIME_CONFIG_SERVICE, DEFAULT_AI_TURN_LIMITS, type AiRuntimeConfigService } from '../ki/ai-runtime-config.service.js'
+import { AssessmentService } from '../assessment/assessment.service.js'
 import { ModelConnectionService } from '../ki/model-connection.service.js'
 import { TaxEstimateService, type TaxEstimateStatus } from '../tax-estimate/tax-estimate.service.js'
 import { TRANSACTION_RUNNER, passThroughTransactionRunner, type TransactionRunner } from '../prisma/transaction.js'
@@ -142,6 +144,7 @@ export class AdvisorService {
     @Optional() @Inject(TRANSACTION_RUNNER) private readonly transactions: TransactionRunner = passThroughTransactionRunner,
     @Optional() @Inject(TaxEstimateService) private readonly taxEstimate?: TaxEstimateService,
     @Optional() @Inject(ModelConnectionService) private readonly modelConnection?: ModelConnectionService,
+    @Optional() @Inject(AssessmentService) private readonly assessmentService?: AssessmentService,
   ) {}
 
   // The service is the front door; each theme lives in its own part.
@@ -232,6 +235,21 @@ export class AdvisorService {
 
   async buildCaseDigest(userId: string, taxYear: number): Promise<CaseDigest> {
     return this.facts.buildCaseDigest(userId, taxYear)
+  }
+
+  /** The tax office's notice against the return, as the assessment check needs it: figures only, nothing that names a person. */
+  private async assessmentBrief(userId: string, taxYear: number): Promise<AdvisorAssessmentBrief> {
+    const empty: AdvisorAssessmentBrief = { recorded: false, status: 'nicht erfasst', deviations: [], calculationIncomplete: false, appealDaysLeft: null }
+    if (!this.assessmentService) return empty
+    const state = await this.assessmentService.getState(userId, taxYear).catch(() => null)
+    if (state === null || !state.fields.some((field) => field.kind === 'erfasst')) return empty
+    return {
+      recorded: true,
+      status: state.status,
+      deviations: state.reconciliation.deviations.map((d) => ({ field: d.field, assessedEur: d.assessment, calculatedEur: d.calculated, differenceEur: d.difference })),
+      calculationIncomplete: state.reconciliation.calculationIncomplete,
+      appealDaysLeft: state.frist.remainingDays,
+    }
   }
 
   /**
@@ -534,6 +552,7 @@ export class AdvisorService {
         return
       }
 
+      const task = dto.quickAction === 'savings_plan' ? ('savings-plan' as const) : dto.quickAction === 'assessment_check' ? ('assessment-check' as const) : undefined
       for await (const ev of this.advisorEngine.streamTurn({
         message: scrubbedUserText,
         activeScreen: dto.activeScreen,
@@ -541,7 +560,10 @@ export class AdvisorService {
         history,
         actionIdFactory,
         signal,
-        planRequired: dto.quickAction === 'forgotten_check',
+        // Every quick start is work in several steps: the plan shows the user what the owl is doing.
+        planRequired: dto.quickAction !== undefined,
+        ...(task ? { task } : {}),
+        ...(task === 'assessment-check' ? { assessment: await this.assessmentBrief(userId, taxYear) } : {}),
         ...(dto.skill ? { skill: dto.skill } : {}),
         records: await this.loadRecordHandles(userId, taxYear),
         previewEffect: this.previewEffectFor(userId, taxYear),

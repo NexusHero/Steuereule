@@ -5,6 +5,7 @@ import type { Screen } from './marking'
 import type { AdvisorRecordHandles } from './record-handles'
 import type { AdvisorNoteHandle } from './advisor-notes'
 import type { AdvisorSkillId } from './advisor-skills'
+import type { AdvisorAssessmentBrief, AdvisorTask } from './advisor-tasks'
 import type { AdvisorModelFailure } from './advisor-failure'
 
 /** The schema the LLM must answer. */
@@ -39,6 +40,10 @@ export interface AdvisorTurnRequest {
   readonly previewEffect?: ((target: AdvisorPreviewTarget) => Promise<AdvisorPreviewEffect>) | undefined
   /** The project notes of the tax year under their neutral names (#481). */
   readonly notes?: readonly AdvisorNoteHandle[] | undefined
+  /** Work the owl does on her own initiative in this turn (#501). */
+  readonly task?: AdvisorTask | undefined
+  /** The tax office's notice against the return, for the assessment check. */
+  readonly assessment?: AdvisorAssessmentBrief | undefined
   /** The skill the user switched on for this message (#495). */
   readonly skill?: AdvisorSkillId | undefined
 }
@@ -87,7 +92,7 @@ export interface AdvisorPlanStep {
 }
 
 /** Quick starts that change how the turn runs, sent alongside the message. */
-export const ADVISOR_QUICK_ACTIONS = ['forgotten_check'] as const
+export const ADVISOR_QUICK_ACTIONS = ['forgotten_check', 'savings_plan', 'assessment_check'] as const
 export type AdvisorQuickAction = (typeof ADVISOR_QUICK_ACTIONS)[number]
 
 export type AdvisorStreamEvent =

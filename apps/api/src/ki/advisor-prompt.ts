@@ -7,12 +7,15 @@ import {
   describeRecordHandles,
   type AdvisorNoteHandle,
   type AdvisorRecordHandles,
+  type AdvisorAssessmentBrief,
   type AdvisorSkillId,
+  type AdvisorTask,
   type CaseDigest,
   type Screen,
 } from '@steuereule/core'
 import { describeAiWritableFields } from './advisor-safety.js'
 import { skillPrompt } from './advisor-skills.js'
+import { taskPrompt } from './advisor-tasks.js'
 import { ADVISOR_STANCE } from './advisor-stance.js'
 
 /**
@@ -55,7 +58,7 @@ export function buildStableSystemPrompt(): string {
   ].join('\n')
 }
 
-export function buildCaseSystemPrompt(digest: CaseDigest, activeScreen: Screen | undefined, planFirst: boolean, records?: AdvisorRecordHandles, notes?: readonly AdvisorNoteHandle[], skill?: AdvisorSkillId): string {
+export function buildCaseSystemPrompt(digest: CaseDigest, activeScreen: Screen | undefined, planFirst: boolean, records?: AdvisorRecordHandles, notes?: readonly AdvisorNoteHandle[], skill?: AdvisorSkillId, task?: AdvisorTask, assessment?: AdvisorAssessmentBrief): string {
   return [
     `Aktive Maske: ${activeScreen ?? 'cockpit'}`,
     'PII-freier Fall-Überblick (CaseDigest):',
@@ -64,6 +67,7 @@ export function buildCaseSystemPrompt(digest: CaseDigest, activeScreen: Screen |
     describeRecordHandles(records),
     describeNotesForPrompt(notes ?? []),
     ...(skill ? ['', skillPrompt(skill)] : []),
+    ...(task ? ['', taskPrompt(task, digest, assessment)] : []),
     ...(planFirst ? ['', 'Für diese Anfrage gilt: Rufe als Erstes `plan_steps` auf, bevor du irgendetwas anderes tust.'] : []),
   ].join('\n')
 }
@@ -81,9 +85,11 @@ export function buildSystemMessage(
   records?: AdvisorRecordHandles,
   notes?: readonly AdvisorNoteHandle[],
   skill?: AdvisorSkillId,
+  task?: AdvisorTask,
+  assessment?: AdvisorAssessmentBrief,
 ): SystemMessage {
   const stable = buildStableSystemPrompt()
-  const caseSpecific = buildCaseSystemPrompt(digest, activeScreen, planFirst, records, notes, skill)
+  const caseSpecific = buildCaseSystemPrompt(digest, activeScreen, planFirst, records, notes, skill, task, assessment)
   if (provider === 'anthropic') {
     return new SystemMessage({
       content: [

@@ -535,6 +535,24 @@ async function main() {
     await see(small, 'eule-notes', 'Row J')
     await small.keyboard.press('Escape')
     await gone(small, 'eule-conversation-row', 'Row J')
+
+    // What an adviser does unasked is one tap away on an empty chat (#501): the savings plan and the
+    // check of the tax office's notice. The chip sends its quick action.
+    await small.route('**/advisor/session*', async (route) => {
+      if (route.request().method() !== 'GET') return route.fallback()
+      const res = await route.fetch().catch(() => null)
+      if (res === null) return
+      const json = await res.json()
+      json.messages = []
+      await route.fulfill({ response: res, json })
+    })
+    await small.reload({ waitUntil: 'networkidle' })
+    await see(small, 'advisor-chip-sparplan', 'Row J', 20_000)
+    await see(small, 'advisor-chip-bescheid', 'Row J')
+    const planAsked = small.waitForRequest((request) => request.method() === 'POST' && /advisor\/(stream|runs)/.test(request.url()) && (request.postData() ?? '').includes('"quickAction":"savings_plan"'), { timeout: 15_000 })
+    await byId(small, 'advisor-chip-sparplan').click()
+    await planAsked.catch(() => fail('Row J: the savings plan chip should send quickAction=savings_plan'))
+    await small.unrouteAll({ behavior: 'ignoreErrors' })
     await phone.close()
     console.log(`[${TAG}] ✅ Row J — on a phone the conversations and notes open as a sheet`)
 
