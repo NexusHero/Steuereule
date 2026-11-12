@@ -249,6 +249,16 @@ jobs:
           --health-interval=5s
           --health-timeout=5s
           --health-retries=10
+      # The cluster runs the owl's run log on Redis (ADR-0064); one step below exercises that path.
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=10
     env:
       DATABASE_URL: postgres://steuereule:steuereule@localhost:5432/steuereule
       # Synthetic, dev-only (ADR-0012) — vitest.integration.config.ts already sets
@@ -291,6 +301,12 @@ jobs:
         run: pnpm --filter @steuereule/api exec playwright-core install chromium --with-deps
       - name: Integration + acceptance tests — encryption/audit + REQ-005/006/009/010/011 (ADR-0012/ADR-0013)
         run: pnpm --filter @steuereule/api test:integration
+      - name: Owl run log on Redis Streams (ADR-0064) — replay, stop across instances, expiry
+        # Its own step with REDIS_URL set only here: with the variable on the whole tier the rate
+        # limiter would share its counters across all test files and they would throttle each other.
+        env:
+          REDIS_URL: redis://localhost:6379
+        run: pnpm --filter @steuereule/api exec vitest run --config vitest.integration.config.ts test/advisor-run-log.redis.integration.test.ts
 
   # Real gate (#221, and the register-ownership decision landing via #251) — turns
   # docs/requirements/register.md and docs/adr/ from a
