@@ -4,6 +4,7 @@ import type { AdvisorActionProposal, AdvisorChatMessageView, AdvisorMessageMeta,
 import type { Screen } from './marking'
 import type { AdvisorRecordHandles } from './record-handles'
 import type { AdvisorNoteHandle } from './advisor-notes'
+import type { AdvisorSkillId } from './advisor-skills'
 import type { AdvisorModelFailure } from './advisor-failure'
 
 /** The schema the LLM must answer. */
@@ -38,6 +39,8 @@ export interface AdvisorTurnRequest {
   readonly previewEffect?: ((target: AdvisorPreviewTarget) => Promise<AdvisorPreviewEffect>) | undefined
   /** The project notes of the tax year under their neutral names (#481). */
   readonly notes?: readonly AdvisorNoteHandle[] | undefined
+  /** The skill the user switched on for this message (#495). */
+  readonly skill?: AdvisorSkillId | undefined
 }
 
 /** The fields one draft would write, main field and companions alike. */

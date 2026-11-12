@@ -4,6 +4,8 @@ import { ChatComposer } from './chat/ChatComposer'
 import { ThinkingIndicator } from './chat/ThinkingIndicator'
 import { ContextRing, SummaryDivider, type ContextRingState } from './chat/ContextRing'
 import { NoteChangeHints } from './chat/ProjectNotes'
+import { QuestionRound } from './chat/QuestionRound'
+import { SkillsMenu } from './chat/SkillsMenu'
 import { TurboSummary, TurboToggle } from './chat/TurboToggle'
 import { DictationBar } from './chat/DictationBar'
 import { browserDictationEngine, type DictationEngine } from '../../lib/dictation/engine'
@@ -22,12 +24,16 @@ import { AiChip, Button, Card, useTheme } from '@steuereule/ui'
 import { ReceiptPickerButton } from '../shared/ReceiptPickerButton'
 import {
   ADVISOR_LEGAL_SOURCES,
+  ADVISOR_SKILL_COMMANDS,
+  matchingSkillCommands,
+  parseSkillCommand,
   type AdvisorChatMessageView,
   type AdvisorFeedbackRating,
   type AdvisorFeedbackReason,
   type AdvisorLegalSource,
   type AdvisorQuickAction,
   type Screen,
+  type AdvisorSkillId,
 } from '@steuereule/core'
 import { APP_NS } from '../../i18n/resources'
 import { ModelFailureNotice } from './chat/ModelFailureNotice'
@@ -94,13 +100,16 @@ export const CHAT_COLUMN_MAX_WIDTH = 760
 export interface ChatSendOptions {
   readonly quickAction?: AdvisorQuickAction | undefined
   readonly replaceFromMessageId?: string | undefined
+  /** The skill that is on for this message (#495). */
+  readonly skill?: AdvisorSkillId | undefined
   /** Turbo mode: the owl applies the drafts of this answer itself. */
   readonly turbo?: boolean | undefined
 }
 
 /** The options as request fields, without keys that are unset (the DTO forbids explicit undefined). */
-export function sendOptionsToDto(options: ChatSendOptions | undefined): { quickAction?: AdvisorQuickAction; replaceFromMessageId?: string; turbo?: boolean } {
+export function sendOptionsToDto(options: ChatSendOptions | undefined): { quickAction?: AdvisorQuickAction; replaceFromMessageId?: string; skill?: AdvisorSkillId; turbo?: boolean } {
   return {
+    ...(options?.skill ? { skill: options.skill } : {}),
     ...(options?.turbo ? { turbo: true } : {}),
     ...(options?.quickAction ? { quickAction: options.quickAction } : {}),
     ...(options?.replaceFromMessageId ? { replaceFromMessageId: options.replaceFromMessageId } : {}),
@@ -171,9 +180,34 @@ export function AdvisorChatPanel({
     }
   }, [dictationEngine])
   const [editingId, setEditingId] = useState<string | null>(null)
+  // A skill is chosen per session and starts off: the plain chat stays the default.
+  const [skill, setSkill] = useState<AdvisorSkillId | null>(null)
   // Off in every new chat: the careful way is the default, Turbo is chosen per session.
   const [turbo, setTurbo] = useState(false)
-  const send = (text: string, options?: ChatSendOptions) => (turbo ? onSendMessage(text, { ...options, turbo: true }) : options ? onSendMessage(text, options) : onSendMessage(text))
+  /** What is switched on at the input travels with every message; a plain message stays plain. */
+  const withSwitches = (options: ChatSendOptions | undefined, activeSkill: AdvisorSkillId | null): ChatSendOptions | undefined =>
+    activeSkill || turbo ? { ...options, ...(activeSkill ? { skill: activeSkill } : {}), ...(turbo ? { turbo: true } : {}) } : options
+  const send = (text: string, options?: ChatSendOptions) => {
+    const merged = withSwitches(options, skill)
+    return merged ? onSendMessage(text, merged) : onSendMessage(text)
+  }
+  const [unknownCommand, setUnknownCommand] = useState<string | null>(null)
+  const slashCommands = matchingSkillCommands(inputText)
+
+  /** `/grill-me` switches the skill on and starts it; an unknown command is named, never sent to the owl. */
+  function runCommand(text: string): boolean {
+    const command = parseSkillCommand(text)
+    if (command === null) return false
+    setInputText('')
+    if (command.kind === 'unknown') {
+      setUnknownCommand(command.command)
+      return true
+    }
+    setUnknownCommand(null)
+    setSkill(command.skill)
+    void onSendMessage(command.rest || tr(`advisor.chat.skills.items.${command.skill}.start`), withSwitches(undefined, command.skill))
+    return true
+  }
 
   async function handleSubmit(rawText?: string, quickAction?: AdvisorQuickAction) {
     const text = (rawText ?? inputText).trim()
@@ -347,6 +381,10 @@ export function AdvisorChatPanel({
                     )
                   })}
                 </View>
+              ) : null}
+
+              {msg.meta?.questionRound ? (
+                <QuestionRound round={msg.meta.questionRound} open={index === messages.length - 1 && !isSending} onSubmit={(text) => void send(text)} />
               ) : null}
 
               {/* Mandanten-Anamnese Follow-up Choice Pills */}
@@ -703,14 +741,30 @@ export function AdvisorChatPanel({
                 </Pressable>
               </View>
             ) : null}
+            {slashCommands.length > 0 ? (
+              <View style={styles.choicesRow} testID="advisor-slash-menu">
+                {slashCommands.map((command) => (
+                  <Pressable key={command} accessibilityRole="button" onPress={() => runCommand(`/${command}`)} style={styles.choicePill} testID="advisor-slash-item">
+                    <Text style={styles.choicePillText}>{`/${command} · ${tr(`advisor.chat.skills.items.${ADVISOR_SKILL_COMMANDS[command]!}.title`)}`}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            ) : null}
+            {unknownCommand !== null ? (
+              <Text style={styles.actionReason} role="alert" testID="advisor-slash-unknown">
+                {tr('advisor.chat.skills.unknownCommand', { command: unknownCommand, commands: Object.keys(ADVISOR_SKILL_COMMANDS).map((name) => `/${name}`).join(', ') })}
+              </Text>
+            ) : null}
             {/* The switches sit above the input, not in it: inside they squeezed the text into two clipped lines. */}
             <View style={styles.switchRow} testID="advisor-composer-switches">
+              <SkillsMenu active={skill} onChange={setSkill} disabled={isSending} />
               <TurboToggle on={turbo} onChange={setTurbo} disabled={isSending} />
             </View>
             <ChatComposer
               value={inputText}
               onChangeText={setInputText}
               onSend={(text) => {
+                if (runCommand(text)) return
                 setInputText('')
                 const replaceFromMessageId = editingId
                 setEditingId(null)

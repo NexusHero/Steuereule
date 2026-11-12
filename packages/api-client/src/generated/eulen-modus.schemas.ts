@@ -303,6 +303,16 @@ export interface AdvisorNoteChangeDto {
   undone?: boolean;
 }
 
+export interface AdvisorRoundQuestionDto {
+  text: string;
+  options: string[];
+  recommended?: string;
+}
+
+export interface AdvisorQuestionRoundDto {
+  questions: AdvisorRoundQuestionDto[];
+}
+
 export type AdvisorModelFailureDtoReason = typeof AdvisorModelFailureDtoReason[keyof typeof AdvisorModelFailureDtoReason];
 
 
@@ -519,6 +529,8 @@ export interface AdvisorMessageMetaDto {
   notices?: AdvisorAnswerNoticeDto[];
   /** What the owl changed in the project notes in this answer; each change can be undone (#481). */
   noteChanges?: AdvisorNoteChangeDto[];
+  /** A round of questions with answers to tap, from the interview skill (#495). */
+  questionRound?: AdvisorQuestionRoundDto;
   /** Turbo mode: the owl applied the drafts of this answer itself; each can be undone. */
   turbo?: boolean;
   /** Why the language model did not answer this turn, when it did not (#487): the answer then comes from fixed rules or is missing. */
@@ -851,6 +863,16 @@ export const SendAdvisorMessageDtoActiveScreen = {
 } as const;
 
 /**
+ * A skill the user switched on for this message (#495).
+ */
+export type SendAdvisorMessageDtoSkill = typeof SendAdvisorMessageDtoSkill[keyof typeof SendAdvisorMessageDtoSkill];
+
+
+export const SendAdvisorMessageDtoSkill = {
+  'berater-interview': 'berater-interview',
+} as const;
+
+/**
  * Quick start that shapes the turn: forgotten_check always opens with a visible plan (#451).
  */
 export type SendAdvisorMessageDtoQuickAction = typeof SendAdvisorMessageDtoQuickAction[keyof typeof SendAdvisorMessageDtoQuickAction];
@@ -863,6 +885,8 @@ export const SendAdvisorMessageDtoQuickAction = {
 export interface SendAdvisorMessageDto {
   message: string;
   activeScreen?: SendAdvisorMessageDtoActiveScreen;
+  /** A skill the user switched on for this message (#495). */
+  skill?: SendAdvisorMessageDtoSkill;
   /** Turbo mode: the owl applies the drafts of this answer itself instead of waiting for a click. Off by default. */
   turbo?: boolean;
   /** Quick start that shapes the turn: forgotten_check always opens with a visible plan (#451). */

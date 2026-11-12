@@ -17,6 +17,7 @@ import {
   type AdvisorNoteChange,
   type AdvisorPreviewEffect,
   type AdvisorPreviewTarget,
+  type AdvisorQuestionRound,
   type AdvisorStreamEvent,
   type AdvisorTurnRequest,
   type AdvisorTwoPathsProposal,
@@ -48,6 +49,10 @@ export const AdvisorGraphState = Annotation.Root({
     default: () => [],
   }),
   pendingTwoPaths: Annotation<AdvisorTwoPathsProposal | null>({
+    reducer: (_left, right) => right,
+    default: () => null,
+  }),
+  questionRound: Annotation<AdvisorQuestionRound | null>({
     reducer: (_left, right) => right,
     default: () => null,
   }),
@@ -87,6 +92,7 @@ export async function runToolRound(
   let rejectedDrafts = state.rejectedDrafts
   let pendingTwoPaths = state.pendingTwoPaths
   let choices = state.choices
+  let questionRound = state.questionRound
   let noteChanges = state.noteChanges
   const sources: OwlSourceId[] = []
 
@@ -388,6 +394,19 @@ export async function runToolRound(
       continue
     }
 
+    if (tc.name === 'ask_questions') {
+      const args = parseArgs(TOOL_ARG_SCHEMAS.ask_questions)
+      if (args === null) continue
+      questionRound = {
+        questions: args.questions.map((q) => {
+          const options = q.options.map((o) => o.trim()).filter((o) => o.length > 0)
+          return { text: q.text.trim(), options, ...(q.recommended !== undefined && options.includes(q.recommended.trim()) ? { recommended: q.recommended.trim() } : {}) }
+        }),
+      }
+      toolMessages.push(toolResult(callId, tc.name, { ok: true, questions: questionRound.questions.length }))
+      continue
+    }
+
     if (tc.name === 'ask_clarification') {
       const args = parseArgs(TOOL_ARG_SCHEMAS.ask_clarification)
       if (args === null) continue
@@ -484,6 +503,7 @@ export async function runToolRound(
     rejectedDrafts,
     pendingTwoPaths,
     choices,
+    questionRound,
     noteChanges,
     sources,
   }

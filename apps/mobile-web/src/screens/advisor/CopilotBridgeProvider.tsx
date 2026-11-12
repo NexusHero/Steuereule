@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import type { AdvisorActionProposal, AdvisorChatMessageView, AdvisorPlanStepStatus, AdvisorQuickAction, Screen } from '@steuereule/core'
+import type { AdvisorActionProposal, AdvisorChatMessageView, AdvisorPlanStepStatus, AdvisorQuickAction, AdvisorSkillId, Screen } from '@steuereule/core'
 import {
   advisorControllerApplyAction,
   advisorControllerApplyBatch,
@@ -97,6 +97,7 @@ export interface SendStreamingOptions {
   readonly quickAction?: AdvisorQuickAction | undefined
   /** Regenerate / edit-and-resend: the latest user message whose turn the answer replaces. */
   readonly replaceFromMessageId?: string | undefined
+  readonly skill?: AdvisorSkillId | undefined
   readonly turbo?: boolean | undefined
 }
 
@@ -500,6 +501,7 @@ export function CopilotBridgeProvider({
             ...(activeScreen ? { activeScreen } : {}),
             ...(options?.quickAction ? { quickAction: options.quickAction } : {}),
             ...(options?.replaceFromMessageId ? { replaceFromMessageId: options.replaceFromMessageId } : {}),
+            ...(options?.skill ? { skill: options.skill } : {}),
             ...(options?.turbo ? { turbo: true } : {}),
             ...(conversationIdRef.current ? { conversationId: conversationIdRef.current } : {}),
           }),

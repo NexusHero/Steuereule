@@ -1,6 +1,7 @@
 import { LEGAL_STATUS_DATE, type OwlSourceId } from './owl-mode'
 import type { AdvisorAnswerNotice } from './advisor-answer-check'
 import type { AdvisorNoteChange } from './advisor-notes'
+import type { AdvisorQuestionRound } from './advisor-skills'
 import type { AdvisorModelFailure } from './advisor-failure'
 import { isSupportedIncomeTaxYear } from '../math/tarif'
 import { getTaxYearParameters } from '../math/tax-parameters'
@@ -185,6 +186,8 @@ export interface AdvisorMessageMeta {
   readonly notices?: readonly AdvisorAnswerNotice[] | undefined
   /** What the owl changed in the project notes in this answer; each change can be undone (#481). */
   readonly noteChanges?: readonly AdvisorNoteChange[] | undefined
+  /** A round of questions with answers to tap, from the interview skill (#495). */
+  readonly questionRound?: AdvisorQuestionRound | undefined
   /** Turbo mode: the owl applied the drafts of this answer itself, without a click; each can be undone. */
   readonly turbo?: true | undefined
   /** Why the model did not answer this turn, when it did not (#487). */

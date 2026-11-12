@@ -7951,6 +7951,41 @@
           "text"
         ]
       },
+      "AdvisorRoundQuestionDto": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "recommended": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "options"
+        ]
+      },
+      "AdvisorQuestionRoundDto": {
+        "type": "object",
+        "properties": {
+          "questions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdvisorRoundQuestionDto"
+            }
+          }
+        },
+        "required": [
+          "questions"
+        ]
+      },
       "AdvisorModelFailureDto": {
         "type": "object",
         "properties": {
@@ -8289,6 +8324,14 @@
             "items": {
               "$ref": "#/components/schemas/AdvisorNoteChangeDto"
             }
+          },
+          "questionRound": {
+            "description": "A round of questions with answers to tap, from the interview skill (#495).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AdvisorQuestionRoundDto"
+              }
+            ]
           },
           "turbo": {
             "type": "boolean",
@@ -9033,6 +9076,13 @@
               "assessment"
             ],
             "example": "interview"
+          },
+          "skill": {
+            "type": "string",
+            "enum": [
+              "berater-interview"
+            ],
+            "description": "A skill the user switched on for this message (#495)."
           },
           "turbo": {
             "type": "boolean",

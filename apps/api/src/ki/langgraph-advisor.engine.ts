@@ -14,6 +14,7 @@ import {
   type AdvisorModelFailure,
   type AdvisorMessageMeta,
   type AdvisorNoteChange,
+  type AdvisorQuestionRound,
   type AdvisorStreamEvent,
   type AdvisorSummaryRequest,
   type AdvisorTurnRequest,
@@ -293,6 +294,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
       request.planRequired === true && !canForceTool,
       request.records,
       request.notes,
+      request.skill,
     )
     const historyMessages: BaseMessage[] = (request.history ?? []).map((entry) =>
       entry.role === 'user' ? new HumanMessage(entry.content) : new AIMessage(entry.content),
@@ -310,6 +312,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
     let noteChanges: AdvisorNoteChange[] = []
     let pendingTwoPaths: AdvisorTwoPathsProposal | null = null
     let choices: string[] = []
+    let questionRound: AdvisorQuestionRound | null = null
     let sources: OwlSourceId[] = []
 
     const timeout = AbortSignal.timeout(limits.turnTimeoutMs)
@@ -362,6 +365,9 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
             }
             if (Array.isArray(nodeUpdate.choices)) {
               choices = nodeUpdate.choices
+            }
+            if (nodeUpdate.questionRound) {
+              questionRound = nodeUpdate.questionRound
             }
             if (Array.isArray(nodeUpdate.noteChanges)) {
               noteChanges = nodeUpdate.noteChanges
@@ -446,6 +452,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
     })
     const meta: AdvisorMessageMeta = {
       ...(choices.length > 0 ? { choices } : {}),
+      ...(questionRound ? { questionRound } : {}),
       // One draft keeps its place as `action`; several travel as `actions` and are reviewed together.
       ...(pendingActions.length === 1 ? { action: pendingActions[0]! } : {}),
       ...(pendingActions.length > 1 ? { actions: pendingActions } : {}),
