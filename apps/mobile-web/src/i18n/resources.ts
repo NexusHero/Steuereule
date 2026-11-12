@@ -1718,6 +1718,14 @@ export const appResources = {
           reconnecting: 'Verbindung wird wiederhergestellt …',
           failed: 'nicht fertig geworden',
           emptyTitle: 'Womit kann die Eule helfen?',
+          turbo: {
+            label: 'Turbo',
+            aria: 'Turbo-Modus',
+            hintOff: 'Aus: Die Eule bereitet Änderungen vor und wartet auf deinen Klick.',
+            hintOn: 'An: Die Eule übernimmt Änderungen sofort und beschreibt sie. Jede lässt sich rückgängig machen.',
+            summary_one: 'Turbo: Die Eule hat {{count}} Änderung direkt übernommen. Du kannst sie unten rückgängig machen.',
+            summary_other: 'Turbo: Die Eule hat {{count}} Änderungen direkt übernommen. Du kannst sie unten rückgängig machen.',
+          },
           thought: {
             heading: 'Gedankengang',
             headingLive: 'Die Eule denkt nach …',
@@ -3635,6 +3643,14 @@ export const appResources = {
           reconnecting: 'Restoring the connection …',
           failed: 'not finished',
           emptyTitle: 'What can the owl help with?',
+          turbo: {
+            label: 'Turbo',
+            aria: 'Turbo mode',
+            hintOff: 'Off: the owl prepares changes and waits for your click.',
+            hintOn: 'On: the owl applies changes at once and describes them. Each can be undone.',
+            summary_one: 'Turbo: the owl applied {{count}} change directly. You can undo it below.',
+            summary_other: 'Turbo: the owl applied {{count}} changes directly. You can undo them below.',
+          },
           thought: {
             heading: 'Line of thought',
             headingLive: 'The owl is thinking …',
