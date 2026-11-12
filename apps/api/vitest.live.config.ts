@@ -20,7 +20,8 @@ export default defineConfig({
     retry: 1,
     env: {
       GUEST_SESSION_SECRET: 'live-test-secret',
-      PRISMA_FIELD_ENCRYPTION_KEY: 'k1.aesgcm256.88HQ6liBiB7TuT9O1FcbkSPqheUyhJj9cPwirUr8njs=',
+      // The documented synthetic dev key (ADR-0008), the one the secret scan knows as harmless.
+      PRISMA_FIELD_ENCRYPTION_KEY: 'k1.aesgcm256.MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=',
       BETTER_AUTH_SECRET: 'live-test-better-auth-secret-0123456789',
       BETTER_AUTH_URL: 'http://localhost:3000',
       NODE_ENV: 'test',
