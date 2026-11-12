@@ -24,10 +24,13 @@ export interface AdvisorAnswerCheckInput {
   readonly computedFigures: readonly number[]
 }
 
-const SENTENCE = /[^.!?\n]+[.!?]?/g
+/** Ends of sentences; a dot inside a number („1.230 €“) is none. */
+const SENTENCE_END = /[!?\n]+|\.(?!\d)/
 const EURO_AMOUNT = /(\d{1,3}(?:\.\d{3})+|\d+)(?:,(\d{1,2}))?\s*(?:€|euro\b|eur\b)/gi
 const ANY_NUMBER = /\d{1,3}(?:\.\d{3})+|\d+/g
 const EFFECT_WORDS = /erstattung|ersparnis|\bsparst\b|\bspart\b|steuervorteil|zurück\s?(?:bekomm|erh[aä]lt|erstattet)|bringt (?:dir|das|es)|weniger steuern?|steuerlast sinkt|mehr zurück/i
+const RATE_AFTER = /^\s*(?:pro\b|je\b|\/|im Jahr\b|jährlich\b)/i
+const CAP_BEFORE = /(?:bis zu|höchstens|maximal|max\.|begrenzt auf|gedeckelt auf|Pauschbetrag von|Pauschale von)\s*$/i
 const FIRST_PERSON = /\bich\s+hab(?:e)?\b/i
 const WRITE_CLAIM = /\b(?:eingetragen|gespeichert|übernommen|geändert|aktualisiert|hinterlegt)\b/i
 const PREPARED_CLAIM = /\bvorbereitet\b|\bentw[uü]rfe?\b[^.!?\n]{0,30}\b(?:angelegt|erstellt)\b/i
@@ -64,7 +67,7 @@ const euro = (value: number): string => `${value.toLocaleString('de-DE')} €`
 
 export function checkAdvisorAnswer(input: AdvisorAnswerCheckInput): AdvisorAnswerNotice[] {
   const notices: AdvisorAnswerNotice[] = []
-  const sentences = input.replyText.match(SENTENCE) ?? []
+  const sentences = input.replyText.split(SENTENCE_END).filter((sentence) => sentence.trim() !== '')
 
   // 1. A euro effect the app did not work out. Amounts the user named, the drafts hold or a tool
   //    computed are fine; so is any amount outside a sentence about the effect (limits, flat rates).
@@ -74,7 +77,13 @@ export function checkAdvisorAnswer(input: AdvisorAnswerCheckInput): AdvisorAnswe
     if (!EFFECT_WORDS.test(sentence)) continue
     for (const match of sentence.matchAll(EURO_AMOUNT)) {
       const value = germanInteger(match[1]!)
-      if (value > 0 && !backed.has(value)) unbacked.add(value)
+      if (value <= 0 || backed.has(value)) continue
+      // A rate („6 € pro Tag“) or a cap („bis zu 1.260 €“) explains the law; it is no claim about
+      // what this user gets.
+      const before = sentence.slice(Math.max(0, match.index - 16), match.index)
+      const after = sentence.slice(match.index + match[0].length, match.index + match[0].length + 14)
+      if (RATE_AFTER.test(after) || CAP_BEFORE.test(before)) continue
+      unbacked.add(value)
     }
   }
   if (unbacked.size > 0) {

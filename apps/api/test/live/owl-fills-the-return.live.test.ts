@@ -68,7 +68,7 @@ describe.skipIf(!KEY)('the owl fills the return through the chat (live model)', 
   afterAll(async () => {
     const tables = prisma as unknown as Record<string, { deleteMany(args: unknown): Promise<unknown> } | undefined>
     for (const userId of users) {
-      for (const table of ['advisorChatMessage', 'marking', 'interviewAnswer', 'taxDataAccessLog', 'commute', 'lstb', 'pension', 'capital', 'child', 'rentalProperty', 'taxYear']) {
+      for (const table of ['advisorChatMessage', 'advisorConversation', 'advisorNote', 'marking', 'interviewAnswer', 'taxDataAccessLog', 'commute', 'lstb', 'pension', 'capital', 'child', 'rentalProperty', 'taxYear']) {
         await tables[table]?.deleteMany({ where: { userId } }).catch(() => {})
       }
     }
@@ -228,6 +228,33 @@ describe.skipIf(!KEY)('the owl fills the return through the chat (live model)', 
     await applyAll(user, turn)
     expect(euros(await stored(user, 'kapital.kapitalertraege'))).toBe(2400)
     expect(euros(await stored(user, 'kapital.kapitalertragsteuer'))).toBe(350)
+  })
+
+  // ── The project of a tax year (#481) ─────────────────────────────────────────────────────
+
+  scenario('Projekt', 'something settled in one conversation is known in the next', async () => {
+    const user = await customer({ employee: true })
+    await say(user, 'Zur Info: Ein Arbeitszimmer habe ich nicht, ich arbeite zu Hause am Küchentisch. Bitte merk dir das für dieses Jahr.')
+    const notes = await advisor.listNotes(user, YEAR)
+    expect(notes.length, 'the owl should have kept a note').toBeGreaterThan(0)
+    expect(notes.map((n) => n.text).join(' ')).toMatch(/Arbeitszimmer|Küchentisch/i)
+
+    const second = await advisor.createConversation(user, YEAR)
+    const response = await advisor.sendMessage(user, YEAR, { message: 'Kann ich ein häusliches Arbeitszimmer absetzen?', conversationId: second.id })
+    expect(response.mode).toBe('langgraph')
+    expect(response.assistantMessage.content, 'the second conversation should know what the first settled').toMatch(/Küchentisch|kein(?:en)? (?:eigene[ns] |separate[ns] )?(?:Raum|Arbeitszimmer)|Tagespauschale|Homeoffice-Pauschale/i)
+    return `${notes.length} note(s): „${notes[0]!.text.slice(0, 80)}“`
+  })
+
+  scenario('Projekt', 'a long conversation is summarised and goes on', async () => {
+    const user = await customer({ employee: true })
+    const filler = 'Hier noch ein paar Einzelheiten dazu, damit das Gespräch länger wird. '.repeat(60)
+    for (let i = 1; i <= 6; i += 1) await say(user, `Frage ${i}: Was muss ich bei Werbungskosten beachten? ${filler}`)
+    const session = await advisor.getSession(user, YEAR)
+    expect(session.context.summary, 'the older part should be summarised by now').toBeTruthy()
+    expect(session.context.level).not.toBe('full')
+    expect(session.messages.length).toBe(12)
+    return `summary of ${session.context.summary!.length} characters, context at ${session.context.percent} %`
   })
 
   // ── What the owl must not do ─────────────────────────────────────────────────────────────
