@@ -518,7 +518,7 @@ async function main() {
     // Row T — several files at once (#497): read one after another, the waiting ones are named and can
     // be taken out. The first upload is held back, so the queue can be seen.
     await page.unroute('**/advisor/session*')
-    await page.route('**/receipts*', async (route) => {
+    await page.route('**/belege/upload*', async (route) => {
       if (route.request().method() !== 'POST') return route.fallback()
       await new Promise((resolve) => setTimeout(resolve, 4000))
       return route.fallback()
