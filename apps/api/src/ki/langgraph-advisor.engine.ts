@@ -24,7 +24,7 @@ import {
 } from '@steuereule/core'
 import { AI_RUNTIME_CONFIG_SERVICE, DEFAULT_AI_TURN_LIMITS, type AiRuntimeConfigService, type AiTurnLimits, type ResolvedAiSlotConfig } from './ai-runtime-config.service.js'
 import { CHAT_MODEL_FACTORY, createChatModelFromConfig, type ChatModelFactory } from './chat-model.factory.js'
-import { classifyModelFailure } from './advisor-failure.js'
+import { classifyModelFailure, providerName } from './advisor-failure.js'
 import { checkPiiFree } from './ki.adapter.js'
 import { buildSystemMessage, SUMMARY_MAX_CHARS, SUMMARY_INSTRUCTIONS } from './advisor-prompt.js'
 import { buildToolSchemas, RejectedDraft, computedFiguresOf, unresolvedRejections } from './advisor-tools.js'
@@ -218,6 +218,22 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
     yield { event: 'done', data: result }
   }
 
+  /**
+   * The model to ask when the first one fails: the fallback slot, if it is set up and is not the
+   * same model with the same key (asking the same thing again helps nobody).
+   */
+  private async resolveFailover(primary: ResolvedAiSlotConfig): Promise<{ readonly config: ResolvedAiSlotConfig; readonly model: BaseChatModel } | null> {
+    try {
+      const config = await this.runtimeConfig.resolveSlot('fallback')
+      if (!config.enabled || config.provider === 'deterministic') return null
+      if (config.provider === primary.provider && config.model === primary.model && config.apiKey === primary.apiKey) return null
+      const model = this.resolveChatModel(config)
+      return model ? { config, model } : null
+    } catch {
+      return null
+    }
+  }
+
   async *streamTurn(request: AdvisorTurnRequest): AsyncIterable<AdvisorStreamEvent> {
     // Zero-trust PII gate before ANY LLM or fallback branch runs
     checkPiiFree({
@@ -254,6 +270,20 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
       return
     }
 
+    yield* this.runModelTurn(request, slotConfig, chatModel, limits, true)
+  }
+
+  /**
+   * One turn with one model. When that model fails before its first word, the fallback slot (a
+   * model of another provider, or another model of the same one) answers instead, once (#493).
+   */
+  private async *runModelTurn(
+    request: AdvisorTurnRequest,
+    slotConfig: ResolvedAiSlotConfig,
+    chatModel: BaseChatModel,
+    limits: AiTurnLimits,
+    canFailOver: boolean,
+  ): AsyncIterable<AdvisorStreamEvent> {
     // Anthropic rejects a forced tool call while extended thinking is on; the plan is then asked for in words.
     const canForceTool = !(slotConfig.provider === 'anthropic' && slotConfig.reasoning === 'summary')
     const systemMessage = buildSystemMessage(
@@ -353,6 +383,16 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
       // Nobody is listening any more; persisting a turn for a closed connection would only cost money.
       if (aborted === 'client') return
       const failure = classifyModelFailure(error, aborted === 'timeout' ? 'timeout' : 'error', slotConfig.provider)
+      if (streamedTokenCount === 0 && canFailOver && failure.reason !== 'blocked') {
+        const next = await this.resolveFailover(slotConfig)
+        if (next) {
+          yield { event: 'status', data: { text: `${providerName(slotConfig.provider)} antwortet nicht. Die Eule fragt ${providerName(next.config.provider)} …` } }
+          for await (const ev of this.runModelTurn(request, next.config, next.model, limits, false)) {
+            yield ev.event === 'done' ? { event: 'done', data: { ...(ev.data as AdvisorTurnResult), primaryFailure: failure } } : ev
+          }
+          return
+        }
+      }
       if (streamedTokenCount === 0) {
         yield* this.emitFallbackTurn(request, undefined, failure)
         return

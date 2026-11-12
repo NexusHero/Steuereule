@@ -126,6 +126,17 @@ Schlüssel wird dem Nutzer als Sache des Betreibers genannt. Der Hinweis steht i
 Antwort und bleibt nach dem Neuladen. Bricht der Strom mitten in der Antwort ab, nennt auch der
 Fehler den Grund.
 
+### 9. Fällt das Modell aus, antwortet ein zweites (#493)
+
+Jeder Anbieter-Client wiederholt kurze Fehler (429, 503, abgerissene Verbindung) zweimal mit Wartezeit.
+Scheitert der Aufruf trotzdem, bevor das erste Wort da ist, fragt die Eule das Modell des Slots
+`fallback` (`AI_FALLBACK_PROVIDER`, `_MODEL`, `_API_KEY`), einmal, mit eigenem Zeitlimit. Der
+Gedankengang steht dort: „Gemini antwortet nicht. Die Eule fragt Claude …“. Das Ergebnis nennt das
+Modell, das geantwortet hat, und den Fehler des ersten (`primaryFailure`), den die Verbindungsanzeige
+mitzählt. Kein Zweitmodell eingerichtet, oder dasselbe Modell mit demselben Schlüssel, oder eine
+blockierte Frage: Es antworten wie bisher die festen Regeln, mit dem Grund. Mitten in einer Antwort
+wird nicht gewechselt; dort bleibt der Abbruch ehrlich sichtbar.
+
 ## Folgen
 
 - Ein Gespräch löschen entfernt seine Nachrichten und die darin noch offenen Entwürfe;
