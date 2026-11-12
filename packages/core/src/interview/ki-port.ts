@@ -4,6 +4,7 @@ import type { AdvisorActionProposal, AdvisorChatMessageView, AdvisorMessageMeta,
 import type { Screen } from './marking'
 import type { AdvisorRecordHandles } from './record-handles'
 import type { AdvisorNoteHandle } from './advisor-notes'
+import type { AdvisorModelFailure } from './advisor-failure'
 
 /** The schema the LLM must answer. */
 export interface AiProposal {
@@ -101,7 +102,7 @@ export type AdvisorStreamEvent =
   | { readonly event: 'ui_command'; readonly data: AdvisorUiCommand }
   /** The full current plan (never a diff), sent whenever the model updates it. */
   | { readonly event: 'plan'; readonly data: { readonly steps: readonly AdvisorPlanStep[] } }
-  | { readonly event: 'error'; readonly data: { readonly code: string; readonly message: string } }
+  | { readonly event: 'error'; readonly data: { readonly code: string; readonly message: string; readonly failure?: AdvisorModelFailure } }
   | { readonly event: 'done'; readonly data: unknown }
 
 /** Tells the workbench to open a mask itself, e.g. when the model aimed at a field it may never write. */

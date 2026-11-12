@@ -34,6 +34,8 @@ import {
   type AdvisorAnswerNoticeKind,
   type AdvisorContextLevel,
   type AdvisorEffectKind,
+  type AdvisorModelFailure,
+  type AdvisorModelFailureReason,
   type AdvisorNoteChange,
   type AdvisorNoteChangeKind,
   type AdvisorMessageMeta,
@@ -271,6 +273,14 @@ export class AdvisorNoteChangeDto implements AdvisorNoteChange {
   undone?: true | undefined
 }
 
+export class AdvisorModelFailureDto implements AdvisorModelFailure {
+  @ApiProperty({ type: String, enum: ['not-configured', 'quota', 'unavailable', 'timeout', 'network', 'blocked', 'unknown'] })
+  reason!: AdvisorModelFailureReason
+
+  @ApiPropertyOptional({ type: String, description: 'Provider and HTTP status, e.g. "Gemini · HTTP 429". Never message text.' })
+  detail?: string | undefined
+}
+
 export class AdvisorNotStagedDto implements AdvisorNotStaged {
   @ApiProperty({ type: String, example: 'Mieteinnahmen' })
   label!: string
@@ -306,6 +316,12 @@ export class AdvisorMessageMetaDto implements AdvisorMessageMeta {
     description: 'What the owl changed in the project notes in this answer; each change can be undone (#481).',
   })
   noteChanges?: readonly AdvisorNoteChangeDto[] | undefined
+
+  @ApiPropertyOptional({
+    type: () => AdvisorModelFailureDto,
+    description: 'Why the language model did not answer this turn, when it did not (#487): the answer then comes from fixed rules or is missing.',
+  })
+  modelFailure?: AdvisorModelFailureDto | undefined
 
   @ApiPropertyOptional({ type: AdvisorActionProposalDto })
   action?: AdvisorActionProposalDto | undefined
