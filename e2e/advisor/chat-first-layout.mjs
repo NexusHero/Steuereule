@@ -306,6 +306,24 @@ async function main() {
     if ((await byId(page, 'eule-situation-input').inputValue()) !== 'Verheiratet, zwei Kinder. Hauskauf für 2027 geplant.') fail('Row U: the stored situation should be there after a reload')
     console.log(`[${TAG}] ✅ Row U — the situation is stored once, survives a reload, and a failed save says so`)
 
+    // Row R — the line between the list and the chat can be dragged (#503): the list gets wider, the
+    // chat gives way, and the width is remembered.
+    await see(page, 'eule-resize-sidebar', 'Row R')
+    const widthOf = async (id) => (await byId(page, id).boundingBox())?.width ?? 0
+    const sidebarBefore = await widthOf('eule-project-sidebar')
+    const grip = await byId(page, 'eule-resize-sidebar').boundingBox()
+    if (grip === null) fail('Row R: the line next to the list should be there to grab')
+    await page.mouse.move(grip.x + grip.width / 2, grip.y + grip.height / 2)
+    await page.mouse.down()
+    await page.mouse.move(grip.x + grip.width / 2 + 90, grip.y + grip.height / 2, { steps: 6 })
+    await page.mouse.up()
+    const sidebarAfter = await widthOf('eule-project-sidebar')
+    if (Math.abs(sidebarAfter - sidebarBefore - 90) > 12) fail(`Row R: dragging the line 90px should widen the list by about that, went from ${sidebarBefore} to ${sidebarAfter}`)
+    await page.reload({ waitUntil: 'networkidle' })
+    await see(page, 'eule-project-sidebar', 'Row R', 20_000)
+    if (Math.abs((await widthOf('eule-project-sidebar')) - sidebarAfter) > 2) fail('Row R: the dragged width should be remembered after a reload')
+    console.log(`[${TAG}] ✅ Row R — the list is resized by dragging its line, and the width is remembered`)
+
     // Row I — the context ring in the composer: says how full the conversation is; too short to summarise.
     await byId(page, 'advisor-context-ring').click()
     await see(page, 'advisor-context-popover', 'Row I')
@@ -329,6 +347,8 @@ async function main() {
     })
     await page.reload({ waitUntil: 'networkidle' })
     await see(page, 'advisor-thought', 'Row E', 20_000)
+    // Drafts open the workbench at the side; its line can be grabbed too.
+    await see(page, 'eule-resize-workbench', 'Row E')
     if ((await byId(page, 'advisor-thought-body').count()) !== 0) fail('Row E: the line of thought of a finished answer starts collapsed')
     await byId(page, 'advisor-thought-toggle').click()
     for (const id of ['advisor-thought-body', 'advisor-thought-step', 'advisor-thought-reasoning', 'advisor-thought-note']) await see(page, id, 'Row E')

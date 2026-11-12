@@ -13,10 +13,8 @@ export function makeStyles(t: UiTheme) {
     projectSidebar: {
       flexGrow: 0,
       flexShrink: 0,
-      flexBasis: 300,
-      maxWidth: '28%',
-      borderRightWidth: 1,
-      borderRightColor: t.color.linie,
+      // The width comes from the screen (the user drags the line next to it); the line is the handle.
+      flexBasis: 280,
       backgroundColor: t.color.grund,
     } as ViewStyle,
     projectSidebarContent: { padding: t.space.s4 } as ViewStyle,
@@ -24,11 +22,9 @@ export function makeStyles(t: UiTheme) {
     sidePanel: {
       flexGrow: 0,
       flexShrink: 0,
-      flexBasis: 460,
-      maxWidth: '42%',
-      borderLeftWidth: 1,
-      borderLeftColor: t.color.kiLinie,
-      backgroundColor: t.color.karte,
+      flexBasis: 400,
+      // Quiet: the workbench is at the side of the conversation, not its stage.
+      backgroundColor: t.color.grund,
     } as ViewStyle,
     sidePanelContent: { padding: t.space.s4 } as ViewStyle,
     panelHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: t.space.s3 } as ViewStyle,
@@ -268,9 +264,9 @@ export function makeStyles(t: UiTheme) {
       marginVertical: t.space.s4,
     } as ViewStyle,
     emptyTitle: {
-      fontFamily: t.font.display,
+      fontFamily: t.font.text,
       fontWeight: t.weight.fett,
-      fontSize: t.size.l,
+      fontSize: t.size.m,
       color: t.color.tinte,
       marginBottom: t.space.s2,
       textAlign: 'center',

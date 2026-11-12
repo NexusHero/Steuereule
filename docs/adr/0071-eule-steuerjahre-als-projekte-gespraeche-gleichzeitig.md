@@ -32,6 +32,14 @@ die nebeneinander antworten.
    Geräts und aus dem Server (`answering`), also auch für eine Antwort von einem anderen Gerät. Ein
    Gespräch, das antwortet, lässt sich nicht löschen.
 
+6. **Der Chat ist die Bühne, die Ränder sind leise.** Die Linien zwischen Liste, Chat und Werkbank
+   lassen sich ziehen (Breite je Gerät gemerkt, Pfeiltasten gehen auch); der Chat behält immer
+   mindestens 380 px. Liste und Werkbank tragen keine Hauptknöpfe mehr: „Neues Gespräch“,
+   „Änderung übernehmen“ und „Zurück zum Cockpit“ sind leise Knöpfe, die Werkbank hat keinen
+   farbigen Rahmen. Der eine laute Knopf je Entwurf bleibt in der Antwort im Chat.
+7. **Übernehmen aus der Werkbank bleibt im Gespräch.** Vorher sprang die App danach ins Cockpit;
+   das Cockpit zeigt das Ergebnis jetzt, wenn der Nutzer selbst dorthin geht.
+
 ## Folgen
 
 - Gleichzeitige Antworten sind gleichzeitige Modellaufrufe. Das Tageskontingent zählt weiter je

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Pressable, ScrollView, Text, View } from 'react-native'
+import { Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { AiChip, Button, Card, Chip, Option, Sheet, useBreakpoint, useTheme } from '@steuereule/ui'
 import {
@@ -23,7 +23,8 @@ import { ConversationList, type ConversationProject, type ConversationSearchHit,
 import { ProjectNotes, type ProjectNote } from './chat/ProjectNotes'
 import { Situation } from './chat/Situation'
 import { ConnectionDetails, type ConnectionView } from './chat/ConnectionStatus'
-import { readOwlSidebarOpen, writeOwlSidebarOpen } from '../../lib/owlSidebarPreference'
+import { OWL_CHAT_MIN_WIDTH, OWL_PANEL_WIDTHS, readOwlPanelWidth, readOwlSidebarOpen, writeOwlPanelWidth, writeOwlSidebarOpen } from '../../lib/owlSidebarPreference'
+import { ResizeHandle } from './chat/ResizeHandle'
 import { useOptionalCopilotBridge, type OwlViewMode } from './CopilotBridgeProvider'
 import { GuestOwlGate } from './OwlGuestGate'
 import { InlineMaskView } from './OwlInlineMask'
@@ -188,6 +189,10 @@ export function OwlModeScreenView({
   const [conversationsOpen, setConversationsOpen] = useState(false)
   // Desktop: the conversations and notes sit in a sidebar that remembers whether it was collapsed.
   const [sidebarOpen, setSidebarOpen] = useState(readOwlSidebarOpen)
+  // The user drags the lines next to the chat: the side panels give way, the chat gets the room.
+  const [sidebarWidth, setSidebarWidth] = useState(() => readOwlPanelWidth('sidebar'))
+  const [workbenchWidth, setWorkbenchWidth] = useState(() => readOwlPanelWidth('workbench'))
+  const { width: windowWidth } = useWindowDimensions()
   const [clearState, setClearState] = useState<'closed' | 'confirm' | 'clearing' | 'failed'>('closed')
   const [cards, setCards] = useState<readonly OwlCardsDisplay[]>(initialCards)
   const [activeIndex, setActiveIndex] = useState(0)
@@ -371,7 +376,7 @@ export function OwlModeScreenView({
     if (pendingDrafts.length === 0) return
     if (bridge) {
       const acknowledgedConflict = acceptCurrentValues ? (bridge.staleConflict ?? undefined) : undefined
-      const ok = await bridge.applyAllPending(pendingDrafts, acknowledgedConflict ? { acknowledgedConflict } : undefined)
+      const ok = await bridge.applyAllPending(pendingDrafts, { stay: true, ...(acknowledgedConflict ? { acknowledgedConflict } : {}) })
       if (ok) {
         for (const d of pendingDrafts) {
           setLocalMessages((prev) => prev.map((m) => updateActionStatusInMessage(m, d.actionId, 'applied')))
@@ -550,7 +555,7 @@ export function OwlModeScreenView({
         ) : null}
 
         {pendingDrafts.length > 0 ? (
-          <Card variant="ai" style={styles.draftStageCard} testID="eule-draft-stage">
+          <Card style={styles.draftStageCard} testID="eule-draft-stage">
             <Text style={styles.draftSectionTitle}>
               {tr('eule.workspace.draftStageTitle', {
                 count: pendingDrafts.length,
@@ -597,6 +602,8 @@ export function OwlModeScreenView({
               })}
             </View>
             <Button
+              // Quiet on purpose: the conversation is the stage, the same drafts have their own button there.
+              variant="leise"
               onPress={() => void handleBatchApply(false)}
               disabled={bridge?.batchApplying ?? false}
               testID="eule-batch-apply-btn"
@@ -604,10 +611,10 @@ export function OwlModeScreenView({
               {bridge?.batchApplying
                 ? tr('eule.workspace.applying', 'Wird übernommen …')
                 : pendingDrafts.length === 1
-                  ? tr('eule.workspace.applyOne', '✓ Änderung übernehmen & ins Cockpit')
+                  ? tr('eule.workspace.applyOne', '✓ Änderung übernehmen')
                   : tr('eule.workspace.applyAll', {
                       count: pendingDrafts.length,
-                      defaultValue: `✓ ${pendingDrafts.length} Änderungen übernehmen & ins Cockpit`,
+                      defaultValue: `✓ ${pendingDrafts.length} Änderungen übernehmen`,
                     })}
             </Button>
           </Card>
@@ -702,7 +709,7 @@ export function OwlModeScreenView({
           </View>
         ) : null}
 
-        <Button onPress={onDone} style={styles.cta}>
+        <Button variant="ghost" onPress={onDone} style={styles.cta}>
           {tr('eule.fertig', 'Zurück zum Cockpit')}
         </Button>
       </>
@@ -768,6 +775,14 @@ export function OwlModeScreenView({
 
   // One layout for every width (#476): the chat is the screen. The workbench is a side panel on a
   // wide screen and a sheet over the chat everywhere else, and only there when it is needed.
+  // What the panels may take: the chat keeps its minimum, whatever was dragged or remembered.
+  const showSidebar = Boolean(wide && sidebarOpen && conversations && onSelectConversation)
+  const showWorkbench = panelOpen && wide
+  const sidebarMax = Math.min(OWL_PANEL_WIDTHS.sidebar.max, windowWidth - OWL_CHAT_MIN_WIDTH - (showWorkbench ? workbenchWidth : 0))
+  const sidebarShown = Math.max(OWL_PANEL_WIDTHS.sidebar.min, Math.min(sidebarWidth, sidebarMax))
+  const workbenchMax = Math.min(OWL_PANEL_WIDTHS.workbench.max, windowWidth - OWL_CHAT_MIN_WIDTH - (showSidebar ? sidebarShown : 0))
+  const workbenchShown = Math.max(OWL_PANEL_WIDTHS.workbench.min, Math.min(workbenchWidth, workbenchMax))
+
   return (
     <View style={styles.root} testID="eulen-modus-screen">
       <OwlTopBar
@@ -795,20 +810,44 @@ export function OwlModeScreenView({
       />
 
       <View style={styles.body}>
-        {wide && sidebarOpen && conversations && onSelectConversation ? (
-          <ScrollView style={styles.projectSidebar} contentContainerStyle={styles.projectSidebarContent} testID="eule-project-sidebar">
-            {projectPanel(() => {})}
-          </ScrollView>
+        {showSidebar ? (
+          <>
+            <ScrollView style={[styles.projectSidebar, { flexBasis: sidebarShown }]} contentContainerStyle={styles.projectSidebarContent} testID="eule-project-sidebar">
+              {projectPanel(() => {})}
+            </ScrollView>
+            <ResizeHandle
+              width={sidebarShown}
+              min={OWL_PANEL_WIDTHS.sidebar.min}
+              max={sidebarMax}
+              panel="left"
+              onResize={setSidebarWidth}
+              onCommit={(next) => writeOwlPanelWidth('sidebar', next)}
+              label={tr('eule.workspace.resizeSidebar')}
+              testID="eule-resize-sidebar"
+            />
+          </>
         ) : null}
 
         <View style={styles.chatMain} testID="eule-chat-main">
           {renderChatPanel(bp === 's')}
         </View>
 
-        {panelOpen && wide ? (
-          <ScrollView style={styles.sidePanel} contentContainerStyle={styles.sidePanelContent} testID="eule-workbench-panel">
-            {workbench}
-          </ScrollView>
+        {showWorkbench ? (
+          <>
+            <ResizeHandle
+              width={workbenchShown}
+              min={OWL_PANEL_WIDTHS.workbench.min}
+              max={workbenchMax}
+              panel="right"
+              onResize={setWorkbenchWidth}
+              onCommit={(next) => writeOwlPanelWidth('workbench', next)}
+              label={tr('eule.workspace.resizeWorkbench')}
+              testID="eule-resize-workbench"
+            />
+            <ScrollView style={[styles.sidePanel, { flexBasis: workbenchShown }]} contentContainerStyle={styles.sidePanelContent} testID="eule-workbench-panel">
+              {workbench}
+            </ScrollView>
+          </>
         ) : null}
       </View>
 

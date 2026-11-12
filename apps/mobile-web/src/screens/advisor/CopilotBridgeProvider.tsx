@@ -192,7 +192,7 @@ export interface CopilotBridgeContextValue {
   readonly clearStaleConflict: () => void
   readonly applyAllPending: (
     drafts: readonly AdvisorActionProposal[],
-    options?: { readonly acknowledgedConflict?: StaleConflictState | undefined },
+    options?: { readonly acknowledgedConflict?: StaleConflictState | undefined; /** Stay in the owl instead of jumping to the cockpit. */ readonly stay?: boolean | undefined },
   ) => Promise<boolean>
   readonly applySingleAction: (actionId: string) => Promise<boolean>
   readonly undoSingleAction: (actionId: string) => Promise<boolean>
@@ -657,7 +657,7 @@ export function CopilotBridgeProvider({
   const applyAllPending = useCallback(
     async (
       drafts: readonly AdvisorActionProposal[],
-      options?: { readonly acknowledgedConflict?: StaleConflictState | undefined },
+      options?: { readonly acknowledgedConflict?: StaleConflictState | undefined; /** Stay in the owl instead of jumping to the cockpit. */ readonly stay?: boolean | undefined },
     ): Promise<boolean> => {
       if (!isAuthenticated || drafts.length === 0) return false
       setBatchApplying(true)
@@ -684,7 +684,8 @@ export function CopilotBridgeProvider({
           })
           await invalidateAllTaxQueries(queryClient, taxYear)
           setOwlViewMode({ kind: 'stage' })
-          onModeChange('cockpit')
+          // From the owl's workbench the user stays in the conversation; the cockpit shows the result when they go there.
+          if (!options?.stay) onModeChange('cockpit')
           return true
         }
 

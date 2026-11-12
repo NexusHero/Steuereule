@@ -115,7 +115,8 @@ export function ConversationList({ conversations, activeId, canSwitch, onSelect,
         {activeYear === undefined ? tr('advisor.chat.conversations.title') : tr('advisor.chat.conversations.project', { year: activeYear })}
       </Text>
       <Text style={styles.help}>{tr('advisor.chat.conversations.help')}</Text>
-      <Button onPress={() => void onNew()} disabled={!canSwitch} testID="eule-conversation-new">
+      {/* Quiet on purpose: the list sits at the side of the conversation and must not outshine it. */}
+      <Button variant="leise" onPress={() => void onNew()} disabled={!canSwitch} testID="eule-conversation-new">
         {tr('advisor.chat.conversations.new')}
       </Button>
 

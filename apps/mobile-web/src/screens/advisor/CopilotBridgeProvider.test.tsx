@@ -843,7 +843,9 @@ describe('Slice 4: CopilotBridgeProvider & 3-Breakpoint OwlMode Workspace', () =
     expect(await screen.findByTestId('eule-receipt-result')).toBeTruthy()
     expect(screen.getByText(/Sensibler Inhalt geschwärzt/)).toBeTruthy()
 
-    // Click Batch Apply -> hits 409 -> Dismiss -> Click Batch Apply -> hits 409 -> Force Apply -> returns to Cockpit
+    // Click Batch Apply -> hits 409 -> Dismiss -> Click Batch Apply -> hits 409 -> Force Apply.
+    // Applying from the workbench keeps the user in the conversation; the cockpit shows the result
+    // once they go there.
     fireEvent.click(screen.getByTestId('eule-batch-apply-btn'))
     expect(await screen.findByTestId('eule-stale-conflict-banner')).toBeTruthy()
     fireEvent.click(screen.getByTestId('eule-conflict-dismiss-btn'))
@@ -852,6 +854,11 @@ describe('Slice 4: CopilotBridgeProvider & 3-Breakpoint OwlMode Workspace', () =
     fireEvent.click(screen.getByTestId('eule-batch-apply-btn'))
     expect(await screen.findByTestId('eule-stale-conflict-banner')).toBeTruthy()
     fireEvent.click(screen.getByTestId('eule-force-apply-btn'))
+    await waitFor(() => expect(screen.queryByTestId('eule-stale-conflict-banner')).toBeNull())
+    expect(screen.getByTestId('eulen-modus-screen')).toBeTruthy()
+    expect(screen.queryByTestId('cockpit-eule-banner')).toBeNull()
+
+    fireEvent.click(screen.getByText('Zurück zum Cockpit'))
     const banner = await screen.findByTestId('cockpit-eule-banner')
     expect(banner).toBeTruthy()
     expect(screen.getByTestId('cockpit-provenance-chip').textContent).toContain('Beleg + Eule')
