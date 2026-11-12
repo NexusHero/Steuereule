@@ -8,6 +8,9 @@ import { DEFAULT_REASONING_BUDGET_TOKENS, type ResolvedAiSlotConfig } from './ai
 const MIN_ANSWER_TOKENS = 2048
 import { FakeKiChatModel } from './fake-chat-model.js'
 
+/** Short provider hiccups (429, 503, a dropped connection) are retried with a back-off before a turn counts as failed. */
+export const CHAT_MODEL_MAX_RETRIES = 2
+
 export const CHAT_MODEL_FACTORY = Symbol('CHAT_MODEL_FACTORY')
 
 export type ChatModelFactory = (config: ResolvedAiSlotConfig) => BaseChatModel | null
@@ -30,6 +33,7 @@ export function createChatModelFromConfig(config: ResolvedAiSlotConfig): BaseCha
       return new ChatGoogleGenerativeAI({
         model: config.model,
         apiKey: config.apiKey,
+        maxRetries: CHAT_MODEL_MAX_RETRIES,
         temperature,
         ...(config.maxTokens !== undefined ? { maxOutputTokens: config.maxTokens } : {}),
         ...(withReasoning || config.thinkingLevel !== undefined
@@ -47,6 +51,7 @@ export function createChatModelFromConfig(config: ResolvedAiSlotConfig): BaseCha
         return new ChatAnthropic({
           model: config.model,
           apiKey: config.apiKey,
+          maxRetries: CHAT_MODEL_MAX_RETRIES,
           thinking: { type: 'enabled', budget_tokens: reasoningBudget },
           maxTokens: Math.max(config.maxTokens ?? 0, reasoningBudget + MIN_ANSWER_TOKENS),
         })
@@ -54,6 +59,7 @@ export function createChatModelFromConfig(config: ResolvedAiSlotConfig): BaseCha
       return new ChatAnthropic({
         model: config.model,
         apiKey: config.apiKey,
+        maxRetries: CHAT_MODEL_MAX_RETRIES,
         temperature,
         ...(config.maxTokens !== undefined ? { maxTokens: config.maxTokens } : {}),
       })
@@ -61,6 +67,7 @@ export function createChatModelFromConfig(config: ResolvedAiSlotConfig): BaseCha
       return new ChatOpenAI({
         model: config.model,
         apiKey: config.apiKey,
+        maxRetries: CHAT_MODEL_MAX_RETRIES,
         temperature,
         ...(config.maxTokens !== undefined ? { maxTokens: config.maxTokens } : {}),
         ...(config.baseUrl !== undefined ? { configuration: { baseURL: config.baseUrl } } : {}),

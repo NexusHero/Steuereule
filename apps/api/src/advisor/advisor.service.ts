@@ -591,7 +591,7 @@ export class AdvisorService {
         if (ev.event === 'done') {
           const turnResult = ev.data as AdvisorTurnResult
           // What the model did this turn is the best news about the connection there is.
-          if (turnResult.mode === 'langgraph' || turnResult.meta.modelFailure) this.modelConnection?.recordTurn(turnResult.meta.modelFailure ?? null)
+          if (turnResult.mode === 'langgraph' || turnResult.meta.modelFailure) this.modelConnection?.recordTurn(turnResult.primaryFailure ?? turnResult.meta.modelFailure ?? null)
           const enrichedMeta = await this.drafts.enrichDraftsWithRawBaseline(userId, taxYear, turnResult.meta)
           await this.drafts.supersedePendingDraftsForSameTargets(userId, taxYear, this.drafts.collectPendingTargetKeys(enrichedMeta))
 

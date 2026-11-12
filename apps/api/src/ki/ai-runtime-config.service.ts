@@ -65,7 +65,7 @@ const VALID_PROVIDERS: ReadonlySet<string> = new Set<AiProviderKind>([
 
 const DEFAULT_MODEL_BY_PROVIDER: Readonly<Record<AiProviderKind, string>> = {
   'google-genai': 'gemini-3.8-flash',
-  anthropic: 'claude-sonnet-4-5',
+  anthropic: 'claude-sonnet-5-5',
   openai: 'gpt-4o-mini',
   deterministic: 'deterministic-fallback',
   fake: 'fake-ki-script',
