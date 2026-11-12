@@ -242,9 +242,22 @@ describe('reasoning configuration (#476)', () => {
   const env = (extra: Record<string, string>) =>
     new EnvAiRuntimeConfigService({ AI_ADVISOR_PROVIDER: 'anthropic', ANTHROPIC_API_KEY: 'test-only-key', ...extra })
 
-  it('is off unless asked for', async () => {
-    expect((await env({}).resolveSlot('advisor_chat')).reasoning).toBeUndefined()
+  it('is on unless switched off (#481)', async () => {
+    expect((await env({}).resolveSlot('advisor_chat')).reasoning).toBe('summary')
     expect((await env({ AI_ADVISOR_REASONING: 'off' }).resolveSlot('advisor_chat')).reasoning).toBeUndefined()
+  })
+
+  it('thinks briefly by default, so the first word comes sooner', async () => {
+    expect((await env({}).resolveSlot('advisor_chat')).thinkingLevel).toBe('low')
+    expect((await env({ AI_ADVISOR_THINKING_LEVEL: 'high' }).resolveSlot('advisor_chat')).thinkingLevel).toBe('high')
+    expect((await env({ AI_ADVISOR_THINKING_LEVEL: 'auto' }).resolveSlot('advisor_chat')).thinkingLevel).toBeUndefined()
+    expect((await env({ AI_ADVISOR_THINKING_LEVEL: 'unsinn' }).resolveSlot('advisor_chat')).thinkingLevel).toBe('low')
+    expect((await env({}).resolveSlot('vision_ocr')).thinkingLevel).toBeUndefined()
+  })
+
+  it('hands Gemini the level and the wish to see the thoughts', () => {
+    const model = createChatModelFromConfig({ slot: 'advisor_chat', enabled: true, provider: 'google-genai', model: 'test-model', apiKey: 'test-only-key', reasoning: 'summary', thinkingLevel: 'low' }) as unknown as { thinkingConfig?: unknown }
+    expect(model.thinkingConfig).toEqual({ includeThoughts: true, thinkingLevel: 'LOW' })
   })
 
   it('applies to the chat slot only', async () => {

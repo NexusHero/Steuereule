@@ -12,6 +12,8 @@ export const CHAT_MODEL_FACTORY = Symbol('CHAT_MODEL_FACTORY')
 
 export type ChatModelFactory = (config: ResolvedAiSlotConfig) => BaseChatModel | null
 
+const THINKING_LEVEL = { low: 'LOW', medium: 'MEDIUM', high: 'HIGH' } as const
+
 export function createChatModelFromConfig(config: ResolvedAiSlotConfig): BaseChatModel | null {
   if (config.enabled && config.provider === 'fake') return new FakeKiChatModel()
   if (!config.enabled || config.provider === 'deterministic' || config.provider === 'fake' || !config.apiKey) {
@@ -30,7 +32,14 @@ export function createChatModelFromConfig(config: ResolvedAiSlotConfig): BaseCha
         apiKey: config.apiKey,
         temperature,
         ...(config.maxTokens !== undefined ? { maxOutputTokens: config.maxTokens } : {}),
-        ...(withReasoning ? { thinkingConfig: { includeThoughts: true } } : {}),
+        ...(withReasoning || config.thinkingLevel !== undefined
+          ? {
+              thinkingConfig: {
+                ...(withReasoning ? { includeThoughts: true } : {}),
+                ...(config.thinkingLevel !== undefined ? { thinkingLevel: THINKING_LEVEL[config.thinkingLevel] } : {}),
+              },
+            }
+          : {}),
       })
     case 'anthropic':
       if (withReasoning) {
