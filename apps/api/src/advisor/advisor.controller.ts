@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Headers,
   HttpCode,
@@ -8,18 +9,23 @@ import {
   Injectable,
   Param,
   Post,
+  Put,
+  Query,
   Res,
   UseGuards,
 } from '@nestjs/common'
 import {
   ApiBody,
+  ApiConflictResponse,
+  ApiNotFoundResponse,
   ApiOkResponse,
+  ApiOperation,
   ApiParam,
+  ApiQuery,
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger'
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler'
-import type { AdvisorStreamEvent } from '@steuereule/core'
 import type { FastifyReply } from 'fastify'
 
 @Injectable()
@@ -33,7 +39,6 @@ export class FastifyThrottlerGuard extends ThrottlerGuard {
   }
 }
 import { CurrentUser } from '../auth/current-user.decorator.js'
-import { DomainError } from '../common/domain-error.js'
 import { ForbidAssistant } from '../auth/forbid-assistant.guard.js'
 import { RequiresAccount } from '../auth/requires-account.guard.js'
 import { UserContextGuard } from '../auth/user-context.guard.js'
@@ -41,18 +46,29 @@ import { ParseTaxYearPipe } from '../cockpit/parse-tax-year.pipe.js'
 import { AdvisorService } from './advisor.service.js'
 import {
   AdvisorActionMutationResponseDto,
+  AdvisorChatMessageDto,
   AdvisorSessionResponseDto,
   ApplyBatchActionsDto,
   ApplyBatchActionsResponseDto,
+  ClearAdvisorConversationResponseDto,
   SendAdvisorMessageDto,
   SendAdvisorMessageResponseDto,
+  SetAdvisorFeedbackDto,
+  StopAdvisorRunResponseDto,
 } from './dto/advisor.dto.js'
+import type { AdvisorRunEntry } from './run/advisor-run-log.js'
+import { AdvisorRunService } from './run/advisor-run.service.js'
+
+const SSE_HEARTBEAT_MS = 15_000
 
 @ApiTags('eulen-modus')
 @Controller('v1/steuerjahre/:jahr/advisor')
 @UseGuards(UserContextGuard)
 export class AdvisorController {
-  constructor(@Inject(AdvisorService) private readonly service: AdvisorService) {}
+  constructor(
+    @Inject(AdvisorService) private readonly service: AdvisorService,
+    @Inject(AdvisorRunService) private readonly runs: AdvisorRunService,
+  ) {}
 
   @Get('session')
   @RequiresAccount()
@@ -64,21 +80,21 @@ export class AdvisorController {
     @CurrentUser() userId: string,
     @Param('jahr', ParseTaxYearPipe) year: number,
   ): Promise<AdvisorSessionResponseDto> {
-    return this.service.getSession(userId, year)
+    return this.runs.getSession(userId, year)
   }
 
   /**
-   * Errors before the first event (quota, auth) still become plain HTTP errors via the filter;
-   * after the headers are out they can only travel as an SSE `error` event.
+   * Writes run events as SSE, each with its sequence number as `id:` so a client can resume with
+   * `Last-Event-ID`. Closing the connection only ends this reader, never the run (#476).
    */
-  private async writeSseStream(
-    openStream: (signal: AbortSignal) => AsyncIterable<AdvisorStreamEvent>,
+  private async writeRunEvents(
+    open: (signal: AbortSignal) => Promise<AsyncIterable<AdvisorRunEntry>>,
     reply: FastifyReply,
   ): Promise<void> {
     const disconnect = new AbortController()
     reply.raw.once('close', () => disconnect.abort())
-    const iterator = openStream(disconnect.signal)[Symbol.asyncIterator]()
-    const first = await iterator.next()
+    // Errors up to here (quota, unknown run) are still plain HTTP errors via the filter.
+    const entries = await open(disconnect.signal)
 
     // Forward Fastify-managed headers (CORS, Vary, Helmet) onto reply.raw before hijacking the response.
     const existingHeaders: Record<string, number | string | string[]> = {}
@@ -94,36 +110,40 @@ export class AdvisorController {
       'Content-Type': 'text/event-stream; charset=utf-8',
       'Cache-Control': 'no-cache, no-transform',
       Connection: 'keep-alive',
+      // Proxies must pass events through as they come.
+      'X-Accel-Buffering': 'no',
     })
 
-    const sendEvent = (event: string, data: unknown) => {
-      if (!reply.raw.writableEnded && !reply.raw.destroyed) {
-        reply.raw.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)
-      }
-    }
+    const writable = (): boolean => !reply.raw.writableEnded && !reply.raw.destroyed
+    // A comment line every few seconds keeps idle proxies from cutting a slow answer.
+    const heartbeat = setInterval(() => {
+      if (writable()) reply.raw.write(': ping\n\n')
+    }, SSE_HEARTBEAT_MS)
 
     try {
-      if (!first.done) {
-        sendEvent(first.value.event, first.value.data)
+      for await (const { seq, event } of entries) {
+        if (!writable()) break
+        reply.raw.write(`id: ${seq}\nevent: ${event.event}\ndata: ${JSON.stringify(event.data)}\n\n`)
       }
-      while (!reply.raw.destroyed) {
-        const next = await iterator.next()
-        if (next.done) break
-        sendEvent(next.value.event, next.value.data)
+    } catch {
+      if (writable()) {
+        reply.raw.write(
+          `event: error\ndata: ${JSON.stringify({ code: 'ADVISOR_STREAM_FAILED', message: 'Die Verbindung zur Eule ist abgebrochen. Bitte versuche es erneut.' })}\n\n`,
+        )
       }
-    } catch (error) {
-      sendEvent(
-        'error',
-        error instanceof DomainError
-          ? { code: error.code, message: error.message }
-          : { code: 'ADVISOR_STREAM_FAILED', message: 'Die Verbindung zur Eule ist abgebrochen. Bitte versuche es erneut.' },
-      )
     } finally {
-      await iterator.return?.().catch(() => {})
+      clearInterval(heartbeat)
       if (!reply.raw.writableEnded) {
         reply.raw.end()
       }
     }
+  }
+
+  private streamNewRun(userId: string, year: number, dto: SendAdvisorMessageDto, reply: FastifyReply): Promise<void> {
+    return this.writeRunEvents(async (signal) => {
+      const { runId } = await this.runs.start(userId, year, dto)
+      return this.runs.events(userId, runId, 0, signal)
+    }, reply)
   }
 
   @Post('chat')
@@ -144,7 +164,7 @@ export class AdvisorController {
     @Res({ passthrough: true }) reply?: FastifyReply,
   ): Promise<SendAdvisorMessageResponseDto | void> {
     if (accept?.includes('text/event-stream') && reply) {
-      await this.writeSseStream((signal) => this.service.streamMessage(userId, year, dto, signal), reply)
+      await this.streamNewRun(userId, year, dto, reply)
       return
     }
 
@@ -157,6 +177,11 @@ export class AdvisorController {
   @ForbidAssistant()
   @UseGuards(FastifyThrottlerGuard)
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @ApiOperation({
+    summary: 'Ask the owl and follow the answer as server-sent events',
+    description:
+      'Starts a run that continues on the server even if this connection drops. Every event carries its sequence number as SSE id; the first event (`start`) names the run. Re-attach with GET runs/{runId}/events.',
+  })
   @ApiParam({ name: 'jahr', type: Number, example: 2025 })
   @ApiBody({ type: SendAdvisorMessageDto })
   @ApiOkResponse({ type: SendAdvisorMessageResponseDto })
@@ -167,7 +192,81 @@ export class AdvisorController {
     @Body() dto: SendAdvisorMessageDto,
     @Res({ passthrough: true }) reply: FastifyReply,
   ): Promise<void> {
-    await this.writeSseStream((signal) => this.service.streamMessage(userId, year, dto, signal), reply)
+    await this.streamNewRun(userId, year, dto, reply)
+  }
+
+  @Get('runs/:runId/events')
+  @RequiresAccount()
+  @ForbidAssistant()
+  @ApiOperation({
+    summary: 'Re-attach to a running or just finished answer',
+    description: 'Server-sent events after the given sequence number (`Last-Event-ID` header or `after` query). Ends when the run has ended.',
+  })
+  @ApiParam({ name: 'jahr', type: Number, example: 2025 })
+  @ApiParam({ name: 'runId', type: String })
+  @ApiQuery({ name: 'after', type: Number, required: false, example: 12 })
+  @ApiOkResponse({ description: 'text/event-stream' })
+  @ApiNotFoundResponse({ description: 'No such run for this user (or it has expired).' })
+  async runEvents(
+    @CurrentUser() userId: string,
+    @Param('jahr', ParseTaxYearPipe) _year: number,
+    @Param('runId') runId: string,
+    @Query('after') after: string | undefined,
+    @Headers('last-event-id') lastEventId: string | undefined,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ): Promise<void> {
+    const parsed = Number.parseInt(lastEventId ?? after ?? '0', 10)
+    const afterSeq = Number.isSafeInteger(parsed) && parsed > 0 ? parsed : 0
+    await this.writeRunEvents((signal) => this.runs.events(userId, runId, afterSeq, signal), reply)
+  }
+
+  @Post('runs/:runId/stop')
+  @HttpCode(200)
+  @RequiresAccount()
+  @ForbidAssistant()
+  @ApiOperation({ summary: 'Stop a running answer; the text so far is kept as aborted, without proposals' })
+  @ApiParam({ name: 'jahr', type: Number, example: 2025 })
+  @ApiParam({ name: 'runId', type: String })
+  @ApiOkResponse({ type: StopAdvisorRunResponseDto })
+  @ApiNotFoundResponse({ description: 'No such run for this user (or it has expired).' })
+  stopRun(
+    @CurrentUser() userId: string,
+    @Param('jahr', ParseTaxYearPipe) _year: number,
+    @Param('runId') runId: string,
+  ): Promise<StopAdvisorRunResponseDto> {
+    return this.runs.stop(userId, runId)
+  }
+
+  @Delete('session')
+  @RequiresAccount()
+  @ForbidAssistant()
+  @ApiOperation({ summary: 'Clear the conversation of this tax year; values already applied to the return stay' })
+  @ApiParam({ name: 'jahr', type: Number, example: 2025 })
+  @ApiOkResponse({ type: ClearAdvisorConversationResponseDto })
+  @ApiConflictResponse({ description: 'An answer is still running.' })
+  clearConversation(
+    @CurrentUser() userId: string,
+    @Param('jahr', ParseTaxYearPipe) year: number,
+  ): Promise<ClearAdvisorConversationResponseDto> {
+    return this.runs.clearConversation(userId, year)
+  }
+
+  @Put('messages/:messageId/feedback')
+  @RequiresAccount()
+  @ForbidAssistant()
+  @ApiOperation({ summary: 'Rate an answer of the owl (thumbs up/down, optional reason); null removes the rating' })
+  @ApiParam({ name: 'jahr', type: Number, example: 2025 })
+  @ApiParam({ name: 'messageId', type: String })
+  @ApiBody({ type: SetAdvisorFeedbackDto })
+  @ApiOkResponse({ type: AdvisorChatMessageDto })
+  @ApiNotFoundResponse({ description: 'No such message for this user and year.' })
+  setFeedback(
+    @CurrentUser() userId: string,
+    @Param('jahr', ParseTaxYearPipe) year: number,
+    @Param('messageId') messageId: string,
+    @Body() dto: SetAdvisorFeedbackDto,
+  ): Promise<AdvisorChatMessageDto> {
+    return this.service.setFeedback(userId, year, messageId, dto)
   }
 
   @Post('actions/apply-batch')

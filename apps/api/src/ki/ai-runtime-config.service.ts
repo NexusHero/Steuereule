@@ -13,9 +13,23 @@ export interface ResolvedAiSlotConfig {
   readonly baseUrl?: string | undefined
   readonly temperature?: number | undefined
   readonly maxTokens?: number | undefined
+  /**
+   * `summary` asks the provider for a reasoning summary to show as the owl's line of thought (#476).
+   * Off by default: it needs a model that supports it and costs extra tokens.
+   */
+  readonly reasoning?: AiReasoningMode | undefined
+  /** Token budget for reasoning where the provider takes one. */
+  readonly reasoningBudgetTokens?: number | undefined
 }
 
-/** Per-turn budget of the Eulen-Modus agent (#446: max. 5 steps, 25 s, daily quota). */
+export type AiReasoningMode = 'off' | 'summary'
+export const DEFAULT_REASONING_BUDGET_TOKENS = 2048
+
+/**
+ * Per-turn budget of the Eulen-Modus agent (#446: max. 5 steps, daily quota). The time limit was
+ * 25 s; measured against the real model with reasoning on, the first word alone took 10 to 20 s and
+ * two of eight ordinary questions ran into it (#476), so it is 60 s now.
+ */
 export interface AiTurnLimits {
   readonly turnTimeoutMs: number
   readonly maxToolRounds: number
@@ -23,7 +37,7 @@ export interface AiTurnLimits {
 }
 
 export const DEFAULT_AI_TURN_LIMITS: AiTurnLimits = {
-  turnTimeoutMs: 25_000,
+  turnTimeoutMs: 60_000,
   maxToolRounds: 5,
   dailyMessageLimit: 50,
 }
@@ -190,6 +204,13 @@ export class EnvAiRuntimeConfigService implements AiRuntimeConfigService {
       apiKey,
       ...(baseUrl !== undefined ? { baseUrl } : {}),
       ...(temperature !== undefined ? { temperature } : {}),
+      // Only the chat shows a line of thought; OCR and the fallback slot never pay for one.
+      ...(slot === 'advisor_chat' && this.env.AI_ADVISOR_REASONING?.trim().toLowerCase() === 'summary'
+        ? {
+            reasoning: 'summary' as const,
+            reasoningBudgetTokens: positiveIntOr(this.env.AI_ADVISOR_REASONING_BUDGET, DEFAULT_REASONING_BUDGET_TOKENS, 16_000),
+          }
+        : {}),
     }
   }
 }

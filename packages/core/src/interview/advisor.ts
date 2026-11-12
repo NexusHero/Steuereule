@@ -1,4 +1,5 @@
 import { LEGAL_STATUS_DATE, type OwlSourceId } from './owl-mode'
+import type { AdvisorAnswerNotice } from './advisor-answer-check'
 import { isSupportedIncomeTaxYear } from '../math/tarif'
 import { getTaxYearParameters } from '../math/tax-parameters'
 import type { Marking, Screen } from './marking'
@@ -101,6 +102,8 @@ export const ADVISOR_LEGAL_SOURCES: Readonly<Record<OwlSourceId, AdvisorLegalSou
   },
 }
 
+export type AdvisorEffectKind = 'computed' | 'not-computable'
+
 export interface AdvisorActionProposal {
   readonly actionId: string
   readonly status: AdvisorActionStatus
@@ -122,6 +125,14 @@ export interface AdvisorActionProposal {
   readonly beforeRefundEur: number
   readonly afterRefundEur: number
   readonly deltaEur: number
+  /**
+   * Where the euro figures come from. `computed`: the app's own estimate, once for the stored
+   * return and once with this draft applied. `not-computable`: the estimate cannot say (the hint
+   * tells the user why), and the three figures above are 0. Absent: the rough approximation of
+   * the path without a database (ADR-0066).
+   */
+  readonly effect?: AdvisorEffectKind | undefined
+  readonly effectHint?: string | undefined
   readonly reason: string
   readonly sourceId: OwlSourceId
   readonly paragraph?: string | undefined
@@ -168,10 +179,46 @@ export interface AdvisorMessageMeta {
   readonly lstbScan?: AdvisorLstbScanMeta | undefined
   readonly twoPaths?: AdvisorTwoPathsProposal | undefined
   readonly sources?: readonly OwlSourceId[] | undefined
+  /** What the check of the finished answer found; shown by the app under the answer (ADR-0066 §7). */
+  readonly notices?: readonly AdvisorAnswerNotice[] | undefined
   /** Server-internal: which engine produced the turn, kept with the drafts it proposed. */
   readonly engine?: AdvisorEngineInfo | undefined
   /** Server-internal: the turn was regenerated or edited away (#451 slice 1b); hidden from the chat. */
   readonly replaced?: true | undefined
+  /** The steps the owl reported while working (status and tool labels), kept with the answer (#476). */
+  readonly steps?: readonly string[] | undefined
+  /**
+   * What the owl tried to prepare in this answer and could not (ADR-0066). Shown under the answer,
+   * so the text can never claim a draft that does not exist without the user seeing it.
+   */
+  readonly notStaged?: readonly AdvisorNotStaged[] | undefined
+}
+
+export interface AdvisorNotStaged {
+  readonly label: string
+  /** Why, in the user's language. */
+  readonly reason: string
+  /** The mask where the user can do it by hand; the chat offers to open it. */
+  readonly screen?: Screen | undefined
+}
+
+/**
+ * Lifecycle of a chat message (#476). An assistant message exists from the moment its turn starts:
+ * `streaming` while the run is alive, then exactly one of the three final states.
+ */
+export const ADVISOR_MESSAGE_STATUSES = ['streaming', 'complete', 'aborted', 'failed'] as const
+export type AdvisorMessageStatus = (typeof ADVISOR_MESSAGE_STATUSES)[number]
+
+export const ADVISOR_FEEDBACK_RATINGS = ['up', 'down'] as const
+export type AdvisorFeedbackRating = (typeof ADVISOR_FEEDBACK_RATINGS)[number]
+
+/** Why an answer got a thumbs down; a fixed list so no free text leaves the encrypted history. */
+export const ADVISOR_FEEDBACK_REASONS = ['falsch', 'unklar', 'nicht_hilfreich'] as const
+export type AdvisorFeedbackReason = (typeof ADVISOR_FEEDBACK_REASONS)[number]
+
+export interface AdvisorMessageFeedback {
+  readonly rating: AdvisorFeedbackRating
+  readonly reason?: AdvisorFeedbackReason | undefined
 }
 
 export interface AdvisorChatMessageView {
@@ -180,6 +227,13 @@ export interface AdvisorChatMessageView {
   readonly content: string
   readonly meta: AdvisorMessageMeta | null
   readonly createdAt: string
+  /** Absent on rows written before #476; read as `complete`. */
+  readonly status?: AdvisorMessageStatus | undefined
+  /** The provider's reasoning summary for this answer, if the model supplied one. */
+  readonly reasoning?: string | undefined
+  readonly feedback?: AdvisorMessageFeedback | null | undefined
+  /** Set while `status` is `streaming`: the run a client can re-attach to. */
+  readonly runId?: string | undefined
 }
 
 export interface CaseDigest {
@@ -208,6 +262,8 @@ export interface CaseDigest {
   }
   readonly catalogExpenses: {
     readonly hasTraining: boolean
+    /** What the training cost, once the user has said so; null while only „Ja“ is known (#476). */
+    readonly trainingCostsEur?: number | null | undefined
     readonly relocationCostsEur: number | null
     readonly donationsEur: number | null
     readonly selfPaidKvPvEur: number | null
@@ -292,7 +348,9 @@ function computeRefundMidpoint(digest: CaseDigest): number {
   const commuteDays = Math.max(0, workdays - hoDays)
   const commuterAllowance = commuterAllowanceFrom(commuteDays, distanceKm, digest.taxYear)
   const hoAllowance = Math.min(hoDays, hoMaxDays) * hoRate
-  const trainingAllowance = digest.catalogExpenses.hasTraining ? 450 : 0
+  // Only what the user actually stated counts. A flat guess here once promised a refund the real
+  // estimate never paid out (#476).
+  const trainingAllowance = digest.catalogExpenses.hasTraining ? (digest.catalogExpenses.trainingCostsEur ?? 0) : 0
   const otherExpenses =
     hoAllowance +
     trainingAllowance +
@@ -323,6 +381,10 @@ function readCurrentValueFromDigest(digest: CaseDigest, screen: Screen, field: s
     if (field === 'weg') return digest.commuteAndWorkdays.distanceKm !== null ? String(digest.commuteAndWorkdays.distanceKm) : null
     if (field === 'tage') return digest.commuteAndWorkdays.workdays !== null ? String(digest.commuteAndWorkdays.workdays) : null
     if (field === 'fortbildung') return digest.catalogExpenses.hasTraining ? 'Ja' : 'Nein'
+    if (field === 'fortbildung-kosten') {
+      const costs = digest.catalogExpenses.trainingCostsEur
+      return costs !== null && costs !== undefined ? String(costs) : null
+    }
     if (field === 'umzug-kosten') return digest.catalogExpenses.relocationCostsEur !== null ? String(digest.catalogExpenses.relocationCostsEur) : null
     if (field === 'dhf-miete') return digest.catalogExpenses.doubleHouseholdRentEur !== null ? String(digest.catalogExpenses.doubleHouseholdRentEur) : null
     if (field === 'riester-betrag') return digest.catalogExpenses.riesterEur !== null ? String(digest.catalogExpenses.riesterEur) : null
@@ -398,6 +460,13 @@ function applyCandidateToDigest(digest: CaseDigest, screen: Screen, field: strin
       return {
         ...digest,
         commuteAndWorkdays: { ...digest.commuteAndWorkdays, workdays: parsedNum },
+      }
+    }
+    if (field === 'fortbildung-kosten') {
+      // An amount only makes sense with the question answered „Ja“; a draft carries both.
+      return {
+        ...digest,
+        catalogExpenses: { ...digest.catalogExpenses, hasTraining: true, trainingCostsEur: parsedNum },
       }
     }
     if (field === 'fortbildung') {
@@ -724,7 +793,12 @@ export function evaluateAdvisorTurn(input: {
       extractFirstEuroAmount(message) !== null
 
     if (hasDetails) {
-      const sim = simulateAdvisorFieldDelta(digest, 'interview', 'fortbildung', 'Ja')
+      // With an amount the draft records what the training cost; without one it only notes that
+      // there was a training, and promises no effect it cannot calculate (#476).
+      const statedCosts = extractFirstEuroAmount(message)
+      const trainingField = statedCosts !== null ? 'fortbildung-kosten' : 'fortbildung'
+      const trainingValue = statedCosts !== null ? String(statedCosts) : 'Ja'
+      const sim = simulateAdvisorFieldDelta(digest, 'interview', trainingField, trainingValue)
       return {
         replyText: `Ausgezeichnet. Bei einer beruflichen Fortbildung zählen neben der Kursgebühr nach [estg-9-1-4a] jeder gefahrene Kilometer (0,30 € für Hin- **und** Rückfahrt) sowie nach [estg-9-4a] die Verpflegungspauschalen (14 € ab > 8 Std. Abwesenheit bzw. 28 € bei vollen 24-Stunden-Tagen). Ich habe die Fortbildungskosten für deine Werbungskosten vorbereitet:`,
         meta: {
@@ -733,12 +807,13 @@ export function evaluateAdvisorTurn(input: {
             actionId: makeActionId(),
             status: 'pending',
             screen: 'interview',
-            field: 'fortbildung',
+            field: trainingField,
             instance: null,
-            label: 'Berufliche Fortbildungskosten aktivieren',
-            previousValue: digest.catalogExpenses.hasTraining ? 'Ja' : 'Nein',
+            ...(statedCosts !== null ? { companionFields: { fortbildung: 'Ja' } } : {}),
+            label: statedCosts !== null ? 'Fortbildungskosten' : 'Berufliche Fortbildung vermerken',
+            previousValue: statedCosts !== null ? sim.previousValue : digest.catalogExpenses.hasTraining ? 'Ja' : 'Nein',
             expectedPreviousValue: sim.previousValue,
-            newValue: 'Ja',
+            newValue: trainingValue,
             beforeRefundEur: sim.beforeRefundEur,
             afterRefundEur: sim.afterRefundEur,
             deltaEur: sim.deltaEur,

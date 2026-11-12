@@ -443,7 +443,7 @@ describe('Slice 4: CopilotBridgeProvider & 3-Breakpoint OwlMode Workspace', () =
     expect(onDone).toHaveBeenCalledTimes(1)
   })
 
-  it('renders 3 responsive breakpoints: Desktop (1280px split 62/38 + collapse), Tablet (820px + drawer), Mobile (390px 80/20 dock + maximize)', async () => {
+  it('gives the chat the window at every width: workbench as a side panel on desktop, as a sheet on tablet and phone (#476)', async () => {
     const session = {
       enabled: true,
       greeting: 'Hallo!',
@@ -468,7 +468,7 @@ describe('Slice 4: CopilotBridgeProvider & 3-Breakpoint OwlMode Workspace', () =
       http.get('*/v1/steuerjahre/2025/advisor/session', () => HttpResponse.json(session)),
     )
 
-    // 1. Desktop (l = 1280px)
+    // 1. Desktop (l = 1280px): a waiting draft opens the workbench beside the chat by itself.
     setViewportWidth(1280)
     const { unmount } = render(
       <BridgeHarness initialMode="eulen-modus">
@@ -476,46 +476,48 @@ describe('Slice 4: CopilotBridgeProvider & 3-Breakpoint OwlMode Workspace', () =
       </BridgeHarness>,
     )
 
-    await screen.findByTestId('eule-desktop-split')
-    expect(screen.getByTestId('eule-desktop-workbench')).toBeTruthy()
-    expect(screen.getByTestId('eule-desktop-chat-pane')).toBeTruthy()
+    await screen.findByTestId('eule-workbench-panel')
+    expect(screen.getByTestId('eule-chat-main')).toBeTruthy()
+    expect(screen.getByTestId('advisor-chat-input')).toBeTruthy()
     expect(screen.getByTestId('eule-draft-stage')).toBeTruthy()
+    expect(screen.getByTestId('eule-hints-pill').textContent).toContain('1 Entwurf')
 
-    fireEvent.click(screen.getByTestId('eule-desktop-chat-toggle'))
-    expect(screen.queryByTestId('eule-desktop-chat-pane')).toBeNull()
-    fireEvent.click(screen.getByTestId('eule-desktop-chat-toggle'))
-    expect(screen.getByTestId('eule-desktop-chat-pane')).toBeTruthy()
+    // Closing it is the reader's choice and it stays closed; the chat remains.
+    fireEvent.click(screen.getByTestId('eule-workbench-close'))
+    expect(screen.queryByTestId('eule-workbench-panel')).toBeNull()
+    expect(screen.getByTestId('advisor-chat-input')).toBeTruthy()
+    fireEvent.click(screen.getByTestId('eule-hints-pill'))
+    expect(screen.getByTestId('eule-workbench-panel')).toBeTruthy()
     unmount()
 
-    // 2. Tablet (m = 820px)
+    // 2. Tablet (m = 820px): the chat fills the screen; the workbench never covers it unasked.
     setViewportWidth(820)
     const tablet = render(
       <BridgeHarness initialMode="eulen-modus">
         <OwlModeScreen taxYear={2025} />
       </BridgeHarness>,
     )
-    await screen.findByTestId('eule-tablet-workspace')
-    expect(screen.queryByTestId('eule-tablet-drawer')).toBeNull()
-    fireEvent.click(screen.getByTestId('eule-tablet-chat-toggle'))
-    expect(await screen.findByTestId('eule-tablet-drawer')).toBeTruthy()
-    fireEvent.click(screen.getByTestId('eule-tablet-drawer-close'))
-    expect(screen.queryByTestId('eule-tablet-drawer')).toBeNull()
+    await screen.findByTestId('advisor-action-card')
+    expect(screen.queryByTestId('eule-workbench-sheet')).toBeNull()
+    expect(screen.queryByTestId('eule-workbench-panel')).toBeNull()
+    fireEvent.click(screen.getByTestId('eule-hints-pill'))
+    expect(await screen.findByTestId('eule-workbench-sheet')).toBeTruthy()
+    expect(screen.getByTestId('eule-draft-stage')).toBeTruthy()
     tablet.unmount()
 
-    // 3. Mobile (s = 390px) — 80/20 bottom dock, NEVER auto-maximized!
+    // 3. Phone (s = 390px): the same, with the composer always on screen (no dock, no tabs).
     setViewportWidth(390)
     render(
       <BridgeHarness initialMode="eulen-modus">
         <OwlModeScreen taxYear={2025} />
       </BridgeHarness>,
     )
-    await screen.findByTestId('eule-mobile-dock')
-    expect(screen.queryByTestId('eule-mobile-sheet')).toBeNull()
-    fireEvent.click(screen.getByTestId('eule-mobile-maximize-btn'))
-    expect(await screen.findByTestId('eule-mobile-sheet')).toBeTruthy()
-    fireEvent.click(screen.getByTestId('eule-mobile-minimize-btn'))
-    expect(screen.queryByTestId('eule-mobile-sheet')).toBeNull()
-    expect(screen.getByTestId('eule-mobile-dock')).toBeTruthy()
+    await screen.findByTestId('advisor-action-card')
+    expect(screen.getByTestId('advisor-chat-input')).toBeTruthy()
+    expect(screen.queryByTestId('eule-workbench-sheet')).toBeNull()
+    expect(screen.queryByRole('tab')).toBeNull()
+    fireEvent.click(screen.getByTestId('eule-hints-pill'))
+    expect(await screen.findByTestId('eule-workbench-sheet')).toBeTruthy()
   })
 
   it('opens inline Maske ansehen inside left workbench, suppresses InMaskAdvisorCompanion (#443/#446), and shows honest Pauschbetrag & conflict UI', async () => {
@@ -855,7 +857,7 @@ describe('Slice 4: CopilotBridgeProvider & 3-Breakpoint OwlMode Workspace', () =
     expect(screen.getByTestId('cockpit-provenance-chip').textContent).toContain('Beleg + Eule')
   })
 
-  it('exercises mobile dock input/send/receipt buttons and all InlineMaskView screens without crashes', async () => {
+  it('exercises every InlineMaskView screen from the phone workbench sheet and sends from the chat underneath', async () => {
     setViewportWidth(390)
     const masksToTest: Array<{ screen: AdvisorActionProposal['screen']; expectedTestId?: string; expectedText?: RegExp }> = [
       { screen: 'commute' },
@@ -898,7 +900,8 @@ describe('Slice 4: CopilotBridgeProvider & 3-Breakpoint OwlMode Workspace', () =
       </BridgeHarness>,
     )
 
-    // Inspect each mask screen inline and return to stage
+    // On a phone the workbench is a sheet: open it, inspect each mask inline and return to the drafts.
+    fireEvent.click(await screen.findByTestId('eule-hints-pill'))
     for (const m of masksToTest) {
       fireEvent.click(await screen.findByTestId(`draft-inspect-act-${m.screen}`))
       expect(await screen.findByTestId('eule-inline-mask-view')).toBeTruthy()
@@ -907,16 +910,22 @@ describe('Slice 4: CopilotBridgeProvider & 3-Breakpoint OwlMode Workspace', () =
       }
       fireEvent.click(screen.getByTestId('eule-back-to-stage-btn'))
       expect(screen.queryByTestId('eule-inline-mask-view')).toBeNull()
+      // Back from a mask is back to the drafts, not out of the workbench.
+      expect(screen.getByTestId('eule-workbench-sheet')).toBeTruthy()
     }
 
-    // Mobile dock: receipt button maximizes sheet; minimize returns to dock; dock input + send opens sheet and streams
-    fireEvent.click(screen.getByTestId('eule-mobile-dock-receipt-btn'))
-    expect(await screen.findByTestId('eule-mobile-sheet')).toBeTruthy()
-    fireEvent.click(screen.getByTestId('eule-mobile-minimize-btn'))
-    expect(await screen.findByTestId('eule-mobile-dock')).toBeTruthy()
-
-    fireEvent.change(screen.getByTestId('eule-mobile-dock-input'), { target: { value: 'Kurze Frage' } })
-    fireEvent.click(screen.getByTestId('eule-mobile-dock-send-btn'))
-    expect(await screen.findByTestId('eule-mobile-sheet')).toBeTruthy()
+    // The chat is the screen underneath: its composer sends straight away, no dock to maximize.
+    fireEvent.click(screen.getByTestId('eule-hints-pill'))
+    expect(screen.queryByTestId('eule-workbench-sheet')).toBeNull()
+    let streamRequests = 0
+    server.use(
+      http.post('*/v1/steuerjahre/2025/advisor/stream', () => {
+        streamRequests += 1
+        return makeSseStreamResponse([{ event: 'done', data: { userMessage: null, assistantMessage: null } }])
+      }),
+    )
+    fireEvent.change(screen.getByTestId('advisor-chat-input'), { target: { value: 'Kurze Frage' } })
+    fireEvent.click(screen.getByTestId('advisor-chat-send'))
+    await waitFor(() => expect(streamRequests).toBe(1))
   })
 })

@@ -181,19 +181,24 @@ describe('DevMLOps Backend Red-Team & Egress Boundary Suite', () => {
     })
     const action = turn2.assistantMessage.meta?.action
     expect(action).toBeDefined()
-    expect(action?.field).toBe('fortbildung')
-    expect(action?.newValue).toBe('Ja')
+    // The chip names an amount, so the draft records what the training cost (#476), and answers
+    // the question it depends on in the same step.
+    expect(action?.field).toBe('fortbildung-kosten')
+    expect(action?.newValue).toBe('350')
+    expect(action?.companionFields).toEqual({ fortbildung: 'Ja' })
 
     // Apply -> Undo -> Re-Apply round-trip
     const applied = await advisorService.applyAction(USER_A, YEAR, action!.actionId)
     expect(applied.action.status).toBe('applied')
     const rowsAfterApply = await interviewRepo.findAllForUserAndYear(USER_A, YEAR)
     expect(rowsAfterApply.find((r) => r.questionId === 'fortbildung')?.value).toBe('Ja')
+    expect(rowsAfterApply.find((r) => r.questionId === 'fortbildung-kosten')?.value).toBe('350')
 
     const undone = await advisorService.undoAction(USER_A, YEAR, action!.actionId)
     expect(undone.action.status).toBe('undone')
     const rowsAfterUndo = await interviewRepo.findAllForUserAndYear(USER_A, YEAR)
     expect(rowsAfterUndo.find((r) => r.questionId === 'fortbildung')).toBeUndefined()
+    expect(rowsAfterUndo.find((r) => r.questionId === 'fortbildung-kosten')).toBeUndefined()
 
     const reapplied = await advisorService.applyAction(USER_A, YEAR, action!.actionId)
     expect(reapplied.action.status).toBe('applied')

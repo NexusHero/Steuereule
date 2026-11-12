@@ -189,6 +189,26 @@ describe('SteuerschaetzungService', () => {
     expect(widened.laterAmounts).toBe(1)
   })
 
+  it('counts stated training costs as Werbungskosten, and nothing for a bare „Ja“ (#476)', async () => {
+    const estimateWith = async (answers: Record<string, string>) => {
+      const env = setup()
+      // Relocation costs lift the employee above the Pauschbetrag, so every further euro shows.
+      env.interview.seed('a', 2025, { ...EMPLOYED, umzug: 'Ja', 'umzug-kosten': '2000', ...answers })
+      env.lstb.seed({ userId: 'a', taxYear: 2025, bruttoarbeitslohn: '62000', lohnsteuer: '11800', sozialversicherung: '12400' })
+      return range(await env.service.getState('a', 2025))
+    }
+
+    const without = await estimateWith({})
+    const yesOnly = await estimateWith({ fortbildung: 'Ja' })
+    const withCosts = await estimateWith({ fortbildung: 'Ja', 'fortbildung-kosten': '850' })
+    const deniedButAmountLeft = await estimateWith({ fortbildung: 'Nein', 'fortbildung-kosten': '850' })
+
+    expect(yesOnly.werbungskosten).toBe(without.werbungskosten)
+    expect(withCosts.werbungskosten).toBe(without.werbungskosten + 850)
+    expect(withCosts.result.from).toBeGreaterThan(without.result.from)
+    expect(deniedButAmountLeft.werbungskosten).toBe(without.werbungskosten)
+  })
+
   it('sums AMOUNT_LATER answers from both spouses in a joint couple estimate', async () => {
     const setupCouple = async (aLater: boolean, bLater: boolean) => {
       const env = setup()

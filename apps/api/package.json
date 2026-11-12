@@ -11,6 +11,7 @@
     "start": "pnpm run build && node dist/main.js",
     "test": "vitest run --config vitest.config.ts",
     "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:live": "vitest run --config vitest.live.config.ts",
     "typecheck": "tsc --noEmit -p tsconfig.check.json",
     "openapi:spec": "tsx scripts/generate-openapi-spec.ts",
     "streets:fetch": "tsx scripts/fetch-street-data.ts"
@@ -44,6 +45,7 @@
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
     "fastify": "^5.10.0",
+    "ioredis": "^5.11.1",
     "nodemailer": "^7.0.13",
     "pdf-lib": "1.17.1",
     "playwright-core": "1.56.1",

@@ -84,7 +84,7 @@ describe('Advisor Engine ("Deine Eule")', () => {
     expect(turn.meta.action).toBeUndefined()
   })
 
-  it('emits an ActionProposal with exact tax delta once Fortbildung details are provided', () => {
+  it('notes a training without an amount, and promises no refund it cannot calculate (#476)', () => {
     const turn = evaluateAdvisorTurn({
       message: 'Mehr als 8 Std. unterwegs (ohne Übernachtung)',
       digest: sampleDigest,
@@ -95,7 +95,29 @@ describe('Advisor Engine ("Deine Eule")', () => {
     expect(turn.meta.action?.screen).toBe('interview')
     expect(turn.meta.action?.field).toBe('fortbildung')
     expect(turn.meta.action?.newValue).toBe('Ja')
+    // A flat 450 € used to be assumed here; the real estimate never contained it.
+    expect(turn.meta.action?.deltaEur).toBe(0)
+  })
+
+  it('records what the training cost when the amount is given, with its exact effect (#476)', () => {
+    const turn = evaluateAdvisorTurn({
+      message: 'Ich hatte eine Fortbildung, die hat mich 850 € gekostet.',
+      digest: sampleDigest,
+      actionIdFactory: () => 'act-test-2',
+    })
+    expect(turn.meta.action?.field).toBe('fortbildung-kosten')
+    expect(turn.meta.action?.newValue).toBe('850')
+    expect(turn.meta.action?.companionFields).toEqual({ fortbildung: 'Ja' })
     expect(turn.meta.action?.deltaEur).toBeGreaterThan(0)
+  })
+
+  it('simulates training costs from the stated amount: more costs, more refund, none without an amount (#476)', () => {
+    const none = simulateAdvisorFieldDelta(sampleDigest, 'interview', 'fortbildung', 'Ja')
+    const some = simulateAdvisorFieldDelta(sampleDigest, 'interview', 'fortbildung-kosten', '850')
+    const more = simulateAdvisorFieldDelta(sampleDigest, 'interview', 'fortbildung-kosten', '2000')
+    expect(none.deltaEur).toBe(0)
+    expect(some.deltaEur).toBeGreaterThan(0)
+    expect(more.deltaEur).toBeGreaterThan(some.deltaEur)
   })
 
   it('emits a Two-Paths comparison for Homeoffice vs. Arbeitszimmer', () => {

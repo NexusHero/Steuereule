@@ -8,28 +8,39 @@ import {
   SystemMessage,
   ToolMessage,
   type BaseMessage,
+  type UsageMetadata,
 } from '@langchain/core/messages'
 import { tool, type StructuredToolInterface } from '@langchain/core/tools'
 import { concat } from '@langchain/core/utils/stream'
 import { Annotation, END, START, StateGraph, type LangGraphRunnableConfig } from '@langchain/langgraph'
-import { Inject, Injectable, Optional } from '@nestjs/common'
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common'
 import { z } from 'zod'
 import {
   ADVISOR_LEGAL_SOURCES,
   ADVISOR_PLAN_MAX_STEPS,
   ADVISOR_PLAN_STEP_STATUSES,
+  checkAdvisorAnswer,
   checkAdvisorInputBoundary,
+  describeRecordHandles,
   evaluateAdvisorTurn,
+  fieldSpec,
+  resolveRecordHandle,
   simulateAdvisorFieldDelta,
   type AdvisorActionProposal,
   type AdvisorEnginePort,
   type AdvisorMessageMeta,
+  type AdvisorNotStaged,
+  type AdvisorPreviewEffect,
+  type AdvisorPreviewTarget,
+  type AdvisorRecordHandles,
   type AdvisorStreamEvent,
   type AdvisorTurnRequest,
   type AdvisorTurnResult,
+  type AdvisorTurnUsage,
   type AdvisorTwoPathsProposal,
   type CaseDigest,
   type OwlSourceId,
+  type RecordHandleResolution,
   type Screen,
 } from '@steuereule/core'
 import {
@@ -44,7 +55,7 @@ import {
   createChatModelFromConfig,
   type ChatModelFactory,
 } from './chat-model.factory.js'
-import { normalizeSourceId, validateStageTarget, type StageTargetCheck } from './advisor-safety.js'
+import { checkStageValue, describeAiWritableFields, normalizeSourceId, validateStageTarget, type StageTargetCheck } from './advisor-safety.js'
 import { checkPiiFree } from './ki.adapter.js'
 
 export const ADVISOR_ENGINE = Symbol('ADVISOR_ENGINE')
@@ -74,7 +85,57 @@ function extractMessageText(content: unknown): string {
     .join('')
 }
 
-function buildSystemPrompt(digest: CaseDigest, activeScreen?: Screen): string {
+/**
+ * The reasoning summary a provider attached to a chunk, in any of the shapes they use: Anthropic and
+ * Gemini `thinking` parts, LangChain's standard `reasoning` blocks, OpenAI's summary list. Encrypted
+ * or redacted reasoning has no text and yields nothing.
+ */
+export function extractReasoningText(message: { content: unknown; additional_kwargs?: Record<string, unknown> | undefined }): string {
+  const fromSummary = (summary: unknown): string =>
+    Array.isArray(summary)
+      ? summary.map((item) => (item && typeof item === 'object' && typeof (item as { text?: unknown }).text === 'string' ? (item as { text: string }).text : '')).join('')
+      : ''
+
+  let text = ''
+  if (Array.isArray(message.content)) {
+    for (const part of message.content) {
+      if (!part || typeof part !== 'object') continue
+      const block = part as { type?: unknown; thinking?: unknown; reasoning?: unknown; summary?: unknown }
+      if (block.type === 'thinking' && typeof block.thinking === 'string') text += block.thinking
+      else if (block.type === 'reasoning' && typeof block.reasoning === 'string') text += block.reasoning
+      else if (block.type === 'reasoning') text += fromSummary(block.summary)
+    }
+  }
+  const kwargs = message.additional_kwargs
+  if (kwargs) {
+    const reasoning = kwargs.reasoning
+    if (reasoning && typeof reasoning === 'object') text += fromSummary((reasoning as { summary?: unknown }).summary)
+    if (typeof kwargs.reasoning_content === 'string') text += kwargs.reasoning_content
+  }
+  return text
+}
+
+function sumUsage(messages: readonly BaseMessage[]): AdvisorTurnUsage | undefined {
+  let seen = false
+  let inputTokens = 0
+  let outputTokens = 0
+  let cachedInputTokens = 0
+  for (const message of messages) {
+    const usage = (message as { usage_metadata?: UsageMetadata | undefined }).usage_metadata
+    if (!usage) continue
+    seen = true
+    inputTokens += usage.input_tokens ?? 0
+    outputTokens += usage.output_tokens ?? 0
+    cachedInputTokens += usage.input_token_details?.cache_read ?? 0
+  }
+  return seen ? { inputTokens, outputTokens, cachedInputTokens } : undefined
+}
+
+/**
+ * The part of the system prompt that is the same for every user and every turn. It comes first so
+ * providers can cache it as a prefix (#476); nothing case-specific may ever move in here.
+ */
+export function buildStableSystemPrompt(): string {
   const sourceCatalog = Object.values(ADVISOR_LEGAL_SOURCES)
     .map((s) => `- ${s.sourceId} (${s.paragraph}): ${s.title}`)
     .join('\n')
@@ -92,10 +153,55 @@ function buildSystemPrompt(digest: CaseDigest, activeScreen?: Screen): string {
     '',
     '5. Plan: Braucht eine Aufgabe mehrere Schritte (z. B. „Was hab ich vergessen?“ oder mehrere Bereiche prüfen), lege mit `plan_steps` eine kurze Liste an (höchstens 8 Schritte) und rufe `plan_steps` bei jedem Fortschritt mit der vollständigen Liste und neuen Status auf (`offen`, `laeuft`, `erledigt`). Einfache Fragen beantwortest du direkt, ohne Plan. Ein Plan schreibt nie etwas: Änderungen bleiben Entwürfe über `stage_field_draft`.',
     '',
+    '6. Felder: Für `screen` und `field` gelten ausschließlich die folgenden Namen. Die Namen im Fall-Überblick (CaseDigest) sind KEINE Feldnamen. Gehören mehrere Werte derselben Maske zusammen (z. B. die drei Beträge der Lohnsteuerbescheinigung), lege EINEN Entwurf an und gib die übrigen als `companionFields` mit (höchstens 3). Nennt der Nutzer Angaben für verschiedene Masken oder mehr Felder, rufe `stage_field_draft` für jede Gruppe einzeln auf: Alle Entwürfe einer Antwort stehen nebeneinander und werden gemeinsam freigegeben. Zähle in deinem Text nur Entwürfe auf, für die das Werkzeug `ok: true` gemeldet hat; was abgelehnt wurde, nennst du als nicht vorbereitet, mit dem Grund. Meldet ein Werkzeug UNKNOWN_FIELD, nimm einen Namen aus der Liste, die es nennt.',
+    describeAiWritableFields(),
+    '',
+    '7. Arbeitsweise: `stage_field_draft` und `propose_two_paths` rechnen die Steuerwirkung selbst aus; rufe `simulate_tax_delta` nur auf, wenn du Varianten vergleichen willst, ohne einen Entwurf anzulegen. Behaupte nie, einen Entwurf vorbereitet zu haben, wenn das Werkzeug nicht `ok: true` gemeldet hat. Schließe jede Antwort mit einem kurzen Text ab.',
+    '',
+    '10. Vollständigkeit vor Tempo: (a) Arbeitsweg: Frage nach Urlaubs- und Krankheitstagen (`commute.vacationDays`, `commute.sickDays`), bevor du Pendeltage oder eine Entfernungspauschale als fertig bezeichnest; ohne sie rechnet die App mit 0 Tagen und überschätzt die Pauschale. Sage das, wenn die Angaben fehlen. (b) Fortbildung: Nennt der Nutzer Kosten, lege den Entwurf auf `interview.fortbildung-kosten` an und gib `fortbildung: "Ja"` als companionField mit. Ohne Betrag vermerkst du nur `fortbildung` = „Ja“ und fragst nach den Kosten; nenne dafür keine Erstattungswirkung. (c) Nenne Beträge nur dann als erfasst, wenn ein Entwurf dafür `ok: true` gemeldet hat.',
+    '11. Vermietung und Kinder haben mehrere Einträge. Gib bei `stage_field_draft` für die Masken `vermietung` und `kind` als `instance` den Namen des Eintrags an, genau wie er unter „Angelegte Einträge“ steht (z. B. „Objekt 1“, „Kind 2“). Gibt es nur einen Eintrag, darfst du `instance` weglassen. Gibt es mehrere und der Nutzer hat nicht gesagt, welcher gemeint ist, frage nach. Ist keiner angelegt, kannst du nichts vorbereiten: Einträge legt der Nutzer selbst in der Maske an – sag ihm das, die App öffnet die Maske. Erfinde keine Einträge und keine anderen Namen.',
+    '12. Wirkung: Die Werkzeuge melden zu jedem Entwurf `effect`. Bei `computed` stammen `beforeRefundEur`, `afterRefundEur` und `deltaEur` aus der Schätzung der App – nenne genau diese Zahlen und keine anderen. Bei `not-computable` gibt es keine Zahl: Nenne dann keinen Euro-Betrag als Wirkung, sondern gib `effectHint` sinngemäß wieder. Eine Wirkung von 0 € heißt, dass sich die Schätzung durch die Angabe nicht ändert – sag das so.',
+    '',
+    '8. Ton: Du duzt den Nutzer durchgehend, freundlich und knapp.',
+    '',
+    '9. Gesprächsverlauf: Zeilen der Form `[Vorschlag „…“ → …: Status]` in früheren Antworten beschreiben deine eigenen Entwürfe und was der Nutzer damit gemacht hat. Wiederhole keinen Vorschlag, der schon übernommen oder verworfen wurde, und schreibe solche Zeilen nie selbst.',
+  ].join('\n')
+}
+
+function buildCaseSystemPrompt(digest: CaseDigest, activeScreen: Screen | undefined, planFirst: boolean, records?: AdvisorRecordHandles): string {
+  return [
     `Aktive Maske: ${activeScreen ?? 'cockpit'}`,
     'PII-freier Fall-Überblick (CaseDigest):',
     JSON.stringify(digest),
+    'Angelegte Einträge (für `instance`):',
+    describeRecordHandles(records),
+    ...(planFirst ? ['', 'Für diese Anfrage gilt: Rufe als Erstes `plan_steps` auf, bevor du irgendetwas anderes tust.'] : []),
   ].join('\n')
+}
+
+/**
+ * Stable rules first, the case second. Anthropic caches only what is marked, so there the stable
+ * block carries an explicit cache breakpoint; the other providers cache a repeated prefix on their own.
+ */
+export function buildSystemMessage(
+  provider: string,
+  digest: CaseDigest,
+  activeScreen?: Screen,
+  /** Ask for the plan in words, for models that cannot be forced to a tool (see `canForceTool`). */
+  planFirst = false,
+  records?: AdvisorRecordHandles,
+): SystemMessage {
+  const stable = buildStableSystemPrompt()
+  const caseSpecific = buildCaseSystemPrompt(digest, activeScreen, planFirst, records)
+  if (provider === 'anthropic') {
+    return new SystemMessage({
+      content: [
+        { type: 'text', text: stable, cache_control: { type: 'ephemeral' } },
+        { type: 'text', text: caseSpecific },
+      ],
+    })
+  }
+  return new SystemMessage(`${stable}\n\n${caseSpecific}`)
 }
 
 const AdvisorGraphState = Annotation.Root({
@@ -107,9 +213,15 @@ const AdvisorGraphState = Annotation.Root({
     reducer: (_left, right) => right,
     default: () => 0,
   }),
-  pendingAction: Annotation<AdvisorActionProposal | null>({
+  /** Every draft of this answer, in the order they were made; a later one for the same field replaces the earlier. */
+  pendingActions: Annotation<AdvisorActionProposal[]>({
     reducer: (_left, right) => right,
-    default: () => null,
+    default: () => [],
+  }),
+  /** Drafts the model asked for and did not get, with the screen they aimed at. */
+  rejectedDrafts: Annotation<RejectedDraft[]>({
+    reducer: (_left, right) => right,
+    default: () => [],
   }),
   pendingTwoPaths: Annotation<AdvisorTwoPathsProposal | null>({
     reducer: (_left, right) => right,
@@ -125,12 +237,70 @@ const AdvisorGraphState = Annotation.Root({
   }),
 })
 
+interface RejectedDraft {
+  readonly label: string
+  readonly screen: string
+  readonly reason: string
+  /** Set when the user can do it by hand in that mask (a record that has to be created first). */
+  readonly openScreen?: Screen | undefined
+}
+
+/** More drafts in one answer than anyone can review are a sign the model is looping. */
+const MAX_DRAFTS_PER_TURN = 8
+
+const draftKey = (draft: Pick<AdvisorActionProposal, 'screen' | 'field' | 'instance'>): string => `${draft.screen}|${draft.instance ?? ''}|${draft.field}`
+
+const FIGURE_KEYS = new Set(['beforeRefundEur', 'afterRefundEur', 'deltaEur'])
+
+/** Every euro figure a tool reported in this turn, wherever it sits in the tool's answer. */
+export function computedFiguresOf(messages: readonly BaseMessage[]): number[] {
+  const figures: number[] = []
+  const walk = (value: unknown): void => {
+    if (Array.isArray(value)) return value.forEach(walk)
+    if (value === null || typeof value !== 'object') return
+    for (const [key, entry] of Object.entries(value)) {
+      if (FIGURE_KEYS.has(key) && typeof entry === 'number') figures.push(entry)
+      else walk(entry)
+    }
+  }
+  for (const message of messages) {
+    if (!(message instanceof ToolMessage) || typeof message.content !== 'string') continue
+    try {
+      walk(JSON.parse(message.content))
+    } catch {
+      // a tool answer that is not JSON carries no figures
+    }
+  }
+  return figures
+}
+
+/** The reason of a tool error without its machine prefix (`UNKNOWN_FIELD: …`). */
+const humanReason = (error: string): string => error.replace(/^[A-Z_]+:\s*/, '')
+
+/**
+ * What the answer has to admit: a refused draft the model did not manage to replace. A refusal
+ * counts as resolved when a later draft has the same label or went to the same screen, because
+ * that is what a corrected retry looks like.
+ */
+export function unresolvedRejections(rejected: readonly RejectedDraft[], staged: readonly AdvisorActionProposal[]): AdvisorNotStaged[] {
+  const seen = new Set<string>()
+  const open: AdvisorNotStaged[] = []
+  for (const draft of rejected) {
+    if (staged.some((action) => action.label === draft.label || action.screen === draft.screen)) continue
+    if (seen.has(draft.label)) continue
+    seen.add(draft.label)
+    open.push({ label: draft.label, reason: draft.reason, ...(draft.openScreen ? { screen: draft.openScreen } : {}) })
+  }
+  return open
+}
+
 const draftTargetSchema = z.object({
   screen: z.string().max(40),
   field: z.string().max(100),
   newValue: z.string().max(200),
   label: z.string().max(160),
   reason: z.string().max(400).default(''),
+  instance: z.string().max(80).nullable().optional(),
 })
 
 /** One schema per tool: the model sees it via bindTools, and toolsNode parses every call with it. */
@@ -141,7 +311,6 @@ const TOOL_ARG_SCHEMAS = {
     newValue: z.string().max(200),
   }),
   stage_field_draft: draftTargetSchema.extend({
-    instance: z.string().max(80).nullable().optional(),
     sourceId: z.string().max(40).default('estg-9-1'),
     companionFields: z.record(z.string().max(100), z.string().max(200)).optional(),
   }),
@@ -180,10 +349,32 @@ const TOOL_DESCRIPTIONS: Readonly<Record<ToolName, string>> = {
     'Zeigt dem Nutzer deinen Plan als Checkliste (höchstens 8 Schritte, Status offen/laeuft/erledigt). Immer die vollständige Liste senden. Schreibt nichts in die Akte.',
 }
 
+/** JSON Schema keywords at least one provider's function-calling API rejects outright. */
+const UNSUPPORTED_SCHEMA_KEYWORDS: ReadonlySet<string> = new Set(['$schema', 'propertyNames'])
+
+/**
+ * The tool schema as the model gets to see it. Gemini answers 400 to `propertyNames` (which every
+ * `z.record` produces), and a rejected schema silently sent every turn to the deterministic
+ * fallback. Nothing is lost by leaving such keywords out here: toolsNode validates every call
+ * against the full Zod schema anyway.
+ */
+export function toProviderToolSchema(schema: z.ZodType): Record<string, unknown> {
+  const strip = (node: unknown): unknown => {
+    if (Array.isArray(node)) return node.map(strip)
+    if (node === null || typeof node !== 'object') return node
+    return Object.fromEntries(
+      Object.entries(node as Record<string, unknown>)
+        .filter(([key]) => !UNSUPPORTED_SCHEMA_KEYWORDS.has(key))
+        .map(([key, value]) => [key, strip(value)]),
+    )
+  }
+  return strip(z.toJSONSchema(schema)) as Record<string, unknown>
+}
+
 // The bodies are never invoked: toolsNode executes the calls itself so it can update graph state.
-function buildToolSchemas(): readonly StructuredToolInterface[] {
+export function buildToolSchemas(): readonly StructuredToolInterface[] {
   return (Object.keys(TOOL_ARG_SCHEMAS) as ToolName[]).map((name) =>
-    tool(async () => '', { name, description: TOOL_DESCRIPTIONS[name], schema: TOOL_ARG_SCHEMAS[name] }),
+    tool(async () => '', { name, description: TOOL_DESCRIPTIONS[name], schema: toProviderToolSchema(TOOL_ARG_SCHEMAS[name]) }),
   )
 }
 
@@ -198,6 +389,7 @@ function toolResult(callId: string, name: string, payload: Record<string, unknow
 @Injectable()
 export class LangGraphAdvisorEngine implements AdvisorEnginePort {
   private readonly resolveChatModel: ChatModelFactory
+  private readonly logger = new Logger('AdvisorEngine')
 
   constructor(
     @Inject(AI_RUNTIME_CONFIG_SERVICE) private readonly runtimeConfig: AiRuntimeConfigService,
@@ -210,13 +402,15 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
     model: BaseChatModel,
     request: AdvisorTurnRequest,
     maxToolRounds: number,
+    canForceTool: boolean,
   ) {
     const tools = buildToolSchemas()
     const bind = typeof model.bindTools === 'function' ? model.bindTools.bind(model) : null
     const boundModel = bind ? bind([...tools]) : model
     // The quick start „Was hab ich vergessen?“ must open with a plan (decision 17): only the first
     // round is forced, later rounds are free to work through the steps and answer.
-    const planFirstModel = bind && request.planRequired ? bind([...tools], { tool_choice: 'plan_steps' }) : boundModel
+    const planFirstModel = bind && request.planRequired && canForceTool ? bind([...tools], { tool_choice: 'plan_steps' }) : boundModel
+    const answerOnlyModel = bind ? bind([...tools], { tool_choice: 'none' }) : model
     const makeActionId = request.actionIdFactory ?? (newActionId)
 
     const agentNode = async (
@@ -226,10 +420,16 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
       let aggregated: AIMessageChunk | null = null
       let lastFallbackMsg: AIMessage | null = null
 
-      const roundModel = state.toolRounds === 0 ? planFirstModel : boundModel
+      // After the last tool round the model has to answer in words: with tools still on offer it
+      // may ask for yet another one, and the turn would end without any text.
+      const roundModel = state.toolRounds === 0 ? planFirstModel : state.toolRounds >= maxToolRounds ? answerOnlyModel : boundModel
       const streamOrValue = await roundModel.stream(state.messages, config)
       for await (const chunk of streamOrValue) {
         if (chunk instanceof AIMessageChunk) {
+          const thought = extractReasoningText(chunk)
+          if (thought.length > 0) {
+            config?.writer?.({ event: 'reasoning', data: { text: thought } } satisfies AdvisorStreamEvent)
+          }
           const text = extractMessageText(chunk.content)
           if (text.length > 0) {
             config?.writer?.({ event: 'token', data: { text } } satisfies AdvisorStreamEvent)
@@ -263,7 +463,8 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
           : []
 
       const toolMessages: ToolMessage[] = []
-      let pendingAction = state.pendingAction
+      let pendingActions = state.pendingActions
+      let rejectedDrafts = state.rejectedDrafts
       let pendingTwoPaths = state.pendingTwoPaths
       let choices = state.choices
       const sources: OwlSourceId[] = []
@@ -300,6 +501,40 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
           }
           toolMessages.push(toolResult(callId, tc.name, { ok: false, error: target.error }))
         }
+        /** Refuses a draft: the model gets the reason, and the answer will carry it unless a retry succeeds. */
+        const refuseDraft = (label: string, screen: string, error: string, openScreen?: Screen): void => {
+          rejectedDrafts = [...rejectedDrafts, { label, screen, reason: humanReason(error), ...(openScreen ? { openScreen } : {}) }]
+        }
+        /**
+         * Which stored record a draft is for. Masks with one record per case take no instance at
+         * all; the others are addressed by their neutral name, and the id is filled in here.
+         */
+        const resolveInstance = (screen: Screen, field: string, raw: string | null | undefined): RecordHandleResolution | { ok: true; id: null; handle: null } => {
+          if (!fieldSpec(screen, field)?.perInstance) return { ok: true, id: null, handle: null }
+          return resolveRecordHandle(screen, request.records?.[screen] ?? [], raw)
+        }
+
+        /**
+         * The euro effect of a draft: from the app's own estimate where the caller offers it, and
+         * never a made-up figure when the estimate cannot say. The approximation over the digest
+         * only remains for setups without a database behind the engine.
+         */
+        const effectOf = async (
+          target: AdvisorPreviewTarget,
+          approximation: { beforeRefundEur: number; afterRefundEur: number; deltaEur: number },
+        ): Promise<Pick<AdvisorActionProposal, 'beforeRefundEur' | 'afterRefundEur' | 'deltaEur' | 'effect' | 'effectHint'>> => {
+          if (!request.previewEffect) return approximation
+          let preview: AdvisorPreviewEffect
+          try {
+            preview = await request.previewEffect(target)
+          } catch {
+            preview = { kind: 'not-computable', hint: 'Die Wirkung lässt sich gerade nicht berechnen.' }
+          }
+          if (preview.kind === 'computed') {
+            return { beforeRefundEur: preview.beforeRefundEur, afterRefundEur: preview.afterRefundEur, deltaEur: preview.deltaEur, effect: 'computed' }
+          }
+          return { beforeRefundEur: 0, afterRefundEur: 0, deltaEur: 0, effect: 'not-computable', effectHint: preview.hint }
+        }
 
         if (tc.name === 'simulate_tax_delta') {
           const args = parseArgs(TOOL_ARG_SCHEMAS.simulate_tax_delta)
@@ -310,36 +545,80 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
             rejectTarget(target)
             continue
           }
-          const sim = simulateAdvisorFieldDelta(request.digest, target.screen, field.trim(), newValue)
-          toolMessages.push(new ToolMessage({ tool_call_id: callId, name: tc.name, content: JSON.stringify({ ok: true, ...sim }) }))
+          const simValue = checkStageValue(target.screen, field, newValue)
+          if (!simValue.ok) {
+            toolMessages.push(toolResult(callId, tc.name, { ok: false, error: simValue.error }))
+            continue
+          }
+          const sim = simulateAdvisorFieldDelta(request.digest, target.screen, field.trim(), simValue.value)
+          const simRecord = resolveInstance(target.screen, field.trim(), null)
+          const simEffect = simRecord.ok
+            ? await effectOf({ screen: target.screen, instance: simRecord.id, values: [[field.trim(), simValue.value]] }, sim)
+            : ({ beforeRefundEur: 0, afterRefundEur: 0, deltaEur: 0, effect: 'not-computable', effectHint: simRecord.reason } as const)
+          toolMessages.push(new ToolMessage({ tool_call_id: callId, name: tc.name, content: JSON.stringify({ ok: true, previousValue: sim.previousValue, ...simEffect }) }))
           continue
         }
 
         if (tc.name === 'stage_field_draft') {
           const args = parseArgs(TOOL_ARG_SCHEMAS.stage_field_draft)
           if (args === null) continue
-          const { screen, field, newValue, label, reason } = args
-          const instance = args.instance && args.instance.trim().length > 0 ? args.instance.trim() : null
+          const { screen, field, label, reason } = args
           const sourceId = normalizeSourceId(args.sourceId)
-          const companionEntries = Object.entries(args.companionFields ?? {}).map(([k, v]) => [k.trim(), v] as const)
+          const rawCompanions = Object.entries(args.companionFields ?? {}).map(([k, v]) => [k.trim(), v] as const)
 
           const target = validateStageTarget(screen, field)
           if (!target.ok) {
+            refuseDraft(label, screen, target.error)
             rejectTarget(target)
             continue
           }
-          if (companionEntries.length > MAX_COMPANION_FIELDS) {
+          if (rawCompanions.length > MAX_COMPANION_FIELDS) {
             toolMessages.push(toolResult(callId, tc.name, { ok: false, error: `INVALID_ARGUMENTS: höchstens ${MAX_COMPANION_FIELDS} Begleitfelder.` }))
             continue
           }
+          const record = resolveInstance(target.screen, field.trim(), args.instance)
+          if (!record.ok) {
+            const error = `${record.code}: ${record.reason}`
+            // No record yet: the user creates it in the mask, and the chat offers the way there.
+            // Which of several: that is a question for the user, not something to report as failed.
+            if (record.code !== 'RECORD_REQUIRED') refuseDraft(label, screen, error, record.code === 'NO_RECORD' ? target.screen : undefined)
+            if (record.code === 'NO_RECORD') {
+              config?.writer?.({ event: 'ui_command', data: { openMask: target.screen, focus: field.trim() } } satisfies AdvisorStreamEvent)
+            }
+            toolMessages.push(toolResult(callId, tc.name, { ok: false, error }))
+            continue
+          }
+          const instance = record.id
+          if (pendingActions.length >= MAX_DRAFTS_PER_TURN) {
+            const error = `TOO_MANY_DRAFTS: höchstens ${MAX_DRAFTS_PER_TURN} Entwürfe pro Antwort. Bitte den Nutzer erst diese prüfen lassen.`
+            refuseDraft(label, screen, error)
+            toolMessages.push(toolResult(callId, tc.name, { ok: false, error }))
+            continue
+          }
           // Companion fields are written with the same rights as the main field, so they pass the same gate.
-          const lockedCompanion = companionEntries
+          const lockedCompanion = rawCompanions
             .map(([companionField]) => validateStageTarget(screen, companionField))
             .find((check): check is Extract<StageTargetCheck, { ok: false }> => !check.ok)
           if (lockedCompanion) {
+            refuseDraft(label, screen, lockedCompanion.error)
             rejectTarget(lockedCompanion)
             continue
           }
+          // Every value is checked against the field catalogue and stored in its tidied form: a
+          // draft that could not be applied is refused here, with the reason, instead of being made.
+          const checkedValues = [[field.trim(), args.newValue] as const, ...rawCompanions].map(([name, value]) => ({ name, check: checkStageValue(screen, name, value) }))
+          const badValue = checkedValues.find((entry) => !entry.check.ok)
+          if (badValue && !badValue.check.ok) {
+            refuseDraft(label, screen, badValue.check.error)
+            toolMessages.push(toolResult(callId, tc.name, { ok: false, error: badValue.check.error }))
+            continue
+          }
+          const tidy = (name: string): string => {
+            const entry = checkedValues.find((candidate) => candidate.name === name)!
+            return entry.check.ok ? entry.check.value : ''
+          }
+          const newValue = tidy(field.trim())
+          const companionEntries = rawCompanions.map(([name]) => [name, tidy(name)] as const)
           const companionFields = companionEntries.length > 0 ? Object.fromEntries(companionEntries) : undefined
 
           try {
@@ -360,28 +639,30 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
 
           const cleanField = field.trim()
           const sim = simulateAdvisorFieldDelta(request.digest, target.screen, cleanField, newValue)
+          const effect = await effectOf({ screen: target.screen, instance, values: [...companionEntries, [cleanField, newValue]] }, sim)
           sources.push(sourceId)
 
-          pendingAction = {
+          const stagedAction: AdvisorActionProposal = {
             actionId: makeActionId(),
             status: 'pending',
             screen: target.screen,
             field: cleanField,
             instance,
             ...(companionFields ? { companionFields } : {}),
-            label,
+            label: record.handle && !label.includes(record.handle) ? `${label} (${record.handle})` : label,
             previousValue: sim.previousValue,
             expectedPreviousValue: sim.previousValue,
             newValue,
-            beforeRefundEur: sim.beforeRefundEur,
-            afterRefundEur: sim.afterRefundEur,
-            deltaEur: sim.deltaEur,
+            ...effect,
             reason,
             sourceId,
             paragraph: ADVISOR_LEGAL_SOURCES[sourceId].paragraph,
           }
 
-          toolMessages.push(toolResult(callId, tc.name, { ok: true, stagedAction: pendingAction }))
+          // Several drafts in one answer stand side by side; a second one for the same field is a correction.
+          pendingActions = [...pendingActions.filter((existing) => draftKey(existing) !== draftKey(stagedAction)), stagedAction]
+
+          toolMessages.push(toolResult(callId, tc.name, { ok: true, stagedAction: { ...stagedAction, instance: record.handle }, draftsInThisAnswer: pendingActions.length }))
           continue
         }
 
@@ -405,10 +686,24 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
           }
 
           const safeField = rawSafe.field.trim()
-          const safeNewValue = rawSafe.newValue
           const maxField = rawMax.field.trim()
-          const maxNewValue = rawMax.newValue
+          const safeValue = checkStageValue(safeCheck.screen, safeField, rawSafe.newValue)
+          const maxValue = checkStageValue(maxCheck.screen, maxField, rawMax.newValue)
+          if (!safeValue.ok || !maxValue.ok) {
+            toolMessages.push(toolResult(callId, tc.name, { ok: false, error: !safeValue.ok ? safeValue.error : !maxValue.ok ? maxValue.error : '' }))
+            continue
+          }
+          const safeNewValue = safeValue.value
+          const maxNewValue = maxValue.value
 
+          // Two paths name no record: fine while there is exactly one, a question for the user otherwise.
+          const safeRecord = resolveInstance(safeCheck.screen, safeField, rawSafe.instance)
+          const maxRecord = resolveInstance(maxCheck.screen, maxField, rawMax.instance)
+          const missingRecord = !safeRecord.ok ? safeRecord : !maxRecord.ok ? maxRecord : null
+          if (!safeRecord.ok || !maxRecord.ok || missingRecord) {
+            toolMessages.push(toolResult(callId, tc.name, { ok: false, error: missingRecord ? `${missingRecord.code}: ${missingRecord.reason}` : '' }))
+            continue
+          }
           try {
             checkPiiFree({ safeNewValue, maxNewValue, title, safeLabel: rawSafe.label, maxLabel: rawMax.label })
           } catch (error) {
@@ -427,6 +722,8 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
 
           const safeSim = simulateAdvisorFieldDelta(request.digest, safeCheck.screen, safeField, safeNewValue)
           const maxSim = simulateAdvisorFieldDelta(request.digest, maxCheck.screen, maxField, maxNewValue)
+          const safeEffect = await effectOf({ screen: safeCheck.screen, instance: safeRecord.id, values: [[safeField, safeNewValue]] }, safeSim)
+          const maxEffect = await effectOf({ screen: maxCheck.screen, instance: maxRecord.id, values: [[maxField, maxNewValue]] }, maxSim)
           const baseActionId = makeActionId()
           sources.push(sourceId)
 
@@ -438,14 +735,12 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
               status: 'pending',
               screen: safeCheck.screen,
               field: safeField,
-              instance: null,
+              instance: safeRecord.id,
               label: rawSafe.label,
               previousValue: safeSim.previousValue,
               expectedPreviousValue: safeSim.previousValue,
               newValue: safeNewValue,
-              beforeRefundEur: safeSim.beforeRefundEur,
-              afterRefundEur: safeSim.afterRefundEur,
-              deltaEur: safeSim.deltaEur,
+              ...safeEffect,
               reason: rawSafe.reason,
               sourceId,
               paragraph: ADVISOR_LEGAL_SOURCES[sourceId].paragraph,
@@ -455,14 +750,12 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
               status: 'pending',
               screen: maxCheck.screen,
               field: maxField,
-              instance: null,
+              instance: maxRecord.id,
               label: rawMax.label,
               previousValue: maxSim.previousValue,
               expectedPreviousValue: maxSim.previousValue,
               newValue: maxNewValue,
-              beforeRefundEur: maxSim.beforeRefundEur,
-              afterRefundEur: maxSim.afterRefundEur,
-              deltaEur: maxSim.deltaEur,
+              ...maxEffect,
               reason: rawMax.reason,
               evidenceHint: rawMax.evidenceHint,
               sourceId,
@@ -507,7 +800,8 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
       return {
         messages: toolMessages,
         toolRounds: state.toolRounds + 1,
-        pendingAction,
+        pendingActions,
+        rejectedDrafts,
         pendingTwoPaths,
         choices,
         sources,
@@ -603,7 +897,15 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
       return
     }
 
-    const systemMessage = new SystemMessage(buildSystemPrompt(request.digest, request.activeScreen))
+    // Anthropic rejects a forced tool call while extended thinking is on; the plan is then asked for in words.
+    const canForceTool = !(slotConfig.provider === 'anthropic' && slotConfig.reasoning === 'summary')
+    const systemMessage = buildSystemMessage(
+      slotConfig.provider,
+      request.digest,
+      request.activeScreen,
+      request.planRequired === true && !canForceTool,
+      request.records,
+    )
     const historyMessages: BaseMessage[] = (request.history ?? []).map((entry) =>
       entry.role === 'user' ? new HumanMessage(entry.content) : new AIMessage(entry.content),
     )
@@ -611,8 +913,12 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
 
     let streamedTokenCount = 0
     let streamedText = ''
+    let reasoning = ''
+    let reasoningRound = 0
+    let lastReasoningRound = 0
     let finalMessages: BaseMessage[] = []
-    let pendingAction: AdvisorActionProposal | null = null
+    let pendingActions: AdvisorActionProposal[] = []
+    let rejectedDrafts: RejectedDraft[] = []
     let pendingTwoPaths: AdvisorTwoPathsProposal | null = null
     let choices: string[] = []
     let sources: OwlSourceId[] = []
@@ -623,7 +929,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
       request.signal?.aborted ? 'client' : timeout.aborted ? 'timeout' : null
 
     try {
-      const graph = this.buildCompiledGraph(chatModel, request, limits.maxToolRounds)
+      const graph = this.buildCompiledGraph(chatModel, request, limits.maxToolRounds, canForceTool)
       const stream = await graph.stream(
         { messages: initialMessages },
         { streamMode: ['custom', 'updates'], signal },
@@ -636,6 +942,14 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
             streamedTokenCount++
             streamedText += ev.data.text
           }
+          if (ev.event === 'reasoning') {
+            // Thoughts of a later model round start a new paragraph instead of running into the last one.
+            const separator = reasoning.length > 0 && reasoningRound !== lastReasoningRound ? '\n\n' : ''
+            lastReasoningRound = reasoningRound
+            reasoning += separator + ev.data.text
+            yield separator.length > 0 ? { event: 'reasoning', data: { text: separator + ev.data.text } } : ev
+            continue
+          }
           yield ev
           continue
         }
@@ -646,9 +960,13 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
             if (!nodeUpdate) continue
             if (Array.isArray(nodeUpdate.messages)) {
               finalMessages = finalMessages.concat(nodeUpdate.messages)
+              reasoningRound += 1
             }
-            if ('pendingAction' in nodeUpdate && nodeUpdate.pendingAction !== undefined) {
-              pendingAction = nodeUpdate.pendingAction
+            if (Array.isArray(nodeUpdate.pendingActions)) {
+              pendingActions = nodeUpdate.pendingActions
+            }
+            if (Array.isArray(nodeUpdate.rejectedDrafts)) {
+              rejectedDrafts = nodeUpdate.rejectedDrafts
             }
             if ('pendingTwoPaths' in nodeUpdate && nodeUpdate.pendingTwoPaths !== undefined) {
               pendingTwoPaths = nodeUpdate.pendingTwoPaths
@@ -662,8 +980,14 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
           }
         }
       }
-    } catch {
+    } catch (error) {
       const aborted = abortReason()
+      // A failed model call used to vanish into the fallback; operations need to see why (#476).
+      if (aborted !== 'client') {
+        this.logger.warn(
+          `advisor turn failed (${slotConfig.provider}/${slotConfig.model}, ${aborted ?? 'error'}): ${error instanceof Error ? error.message.slice(0, 500) : String(error).slice(0, 500)}`,
+        )
+      }
       // Nobody is listening any more; persisting a turn for a closed connection would only cost money.
       if (aborted === 'client') return
       if (streamedTokenCount === 0) {
@@ -693,9 +1017,11 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
     let replyText = (streamedText || lastAiText).trim()
 
     if (replyText.length === 0) {
-      replyText = pendingAction
-        ? `Ich habe den Entwurf „${pendingAction.label}“ als unverbindlichen Vorschlag vorbereitet.`
-        : pendingTwoPaths
+      replyText = pendingActions.length === 1
+        ? `Ich habe den Entwurf „${pendingActions[0]!.label}“ als unverbindlichen Vorschlag vorbereitet.`
+        : pendingActions.length > 1
+          ? `Ich habe ${pendingActions.length} Entwürfe als unverbindliche Vorschläge vorbereitet.`
+          : pendingTwoPaths
           ? `Ich habe zwei steuerliche Wege für „${pendingTwoPaths.title}“ vorbereitet.`
           : 'Ich habe deine Steuerakte geprüft.'
     }
@@ -704,18 +1030,32 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
       yield { event: 'token', data: { text: replyText } }
     }
 
+    const usage = sumUsage(finalMessages)
+    const notStaged = unresolvedRejections(rejectedDrafts, pendingActions)
+    // The finished text is checked without a model; what it finds, the app says under the answer.
+    const notices = checkAdvisorAnswer({
+      replyText,
+      userMessage: request.message,
+      drafts: [...pendingActions, ...(pendingTwoPaths ? [pendingTwoPaths.safePath, pendingTwoPaths.maxPath] : [])],
+      notStagedCount: notStaged.length,
+      computedFigures: computedFiguresOf(finalMessages),
+    })
     const meta: AdvisorMessageMeta = {
       ...(choices.length > 0 ? { choices } : {}),
-      ...(pendingAction ? { action: pendingAction } : {}),
+      // One draft keeps its place as `action`; several travel as `actions` and are reviewed together.
+      ...(pendingActions.length === 1 ? { action: pendingActions[0]! } : {}),
+      ...(pendingActions.length > 1 ? { actions: pendingActions } : {}),
       ...(pendingTwoPaths ? { twoPaths: pendingTwoPaths } : {}),
       ...(sources.length > 0 ? { sources } : {}),
+      ...(notStaged.length > 0 ? { notStaged } : {}),
+      ...(notices.length > 0 ? { notices } : {}),
     }
 
     if (meta.choices && meta.choices.length > 0) {
       yield { event: 'choices', data: { choices: meta.choices } }
     }
-    if (meta.action) {
-      yield { event: 'action', data: meta.action }
+    for (const action of pendingActions) {
+      yield { event: 'action', data: action }
     }
     if (meta.twoPaths) {
       yield { event: 'twoPaths', data: meta.twoPaths }
@@ -727,6 +1067,8 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
       mode: 'langgraph',
       provider: slotConfig.provider,
       model: slotConfig.model,
+      ...(reasoning.trim().length > 0 ? { reasoning: reasoning.trim() } : {}),
+      ...(usage ? { usage } : {}),
     }
     yield { event: 'done', data: result }
   }

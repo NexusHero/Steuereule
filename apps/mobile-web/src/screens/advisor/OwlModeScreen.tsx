@@ -1,16 +1,17 @@
-import { useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Pressable, ScrollView, Text, View, type TextStyle, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { ChatComposer } from './chat/ChatComposer'
-import { useStickToBottom } from './chat/useStickToBottom'
-import { AiChip, Button, Card, Chip, Option, useBreakpoint, useTheme, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
+import { AiChip, Button, Card, Chip, Option, Sheet, useBreakpoint, useTheme, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
 import {
   evaluateAdvisorTurn,
   formatEuro,
+  LEGAL_STATUS_DATE,
   PROFESSION_VALUES,
   type AdvisorActionProposal,
   type AdvisorChatMessageView,
+  type AdvisorFeedbackRating,
+  type AdvisorFeedbackReason,
   type CaseDigest,
   type OwlCardsDisplay,
   type Profession,
@@ -22,8 +23,10 @@ import {
   getOwlModeControllerGetCardsQueryKey,
   getOwlModeControllerGetSettingQueryKey,
   useAdvisorControllerApplyAction,
+  useAdvisorControllerClearConversation,
   useAdvisorControllerGetSession,
   useAdvisorControllerSendMessage,
+  useAdvisorControllerSetFeedback,
   useAdvisorControllerUndoAction,
   useInterviewControllerGetInterview,
   useInterviewControllerPostAnswer,
@@ -48,6 +51,7 @@ import { ChildrenScreen } from '../children/ChildrenScreen'
 import { AssessmentScreen } from '../assessment/AssessmentScreen'
 import { CatalogScreen } from '../catalog/CatalogScreen'
 import { MasterDataScreen } from '../master-data/MasterDataScreen'
+import { OwlTopBar } from './OwlTopBar'
 import { ProfessionPicker } from './ProfessionPicker'
 import { AdvisorChatPanel, sendOptionsToDto, type ChatSendOptions } from './AdvisorChatPanel'
 import { invalidateAllTaxQueries, useOptionalCopilotBridge, type OwlViewMode } from './CopilotBridgeProvider'
@@ -68,6 +72,12 @@ export interface OwlModeScreenProps {
   readonly onSendMessage?: ((text: string, options?: ChatSendOptions) => Promise<void> | void) | undefined
   readonly onApplyAction?: ((actionId: string) => Promise<void> | void) | undefined
   readonly onUndoAction?: ((actionId: string) => Promise<void> | void) | undefined
+  /** Stores a thumbs up/down for an answer; without it the chat offers no rating. */
+  readonly onRateMessage?:
+    | ((messageId: string, rating: AdvisorFeedbackRating | null, reason?: AdvisorFeedbackReason) => Promise<void> | void)
+    | undefined
+  /** Deletes this year's conversation on the server; rejects when it could not. */
+  readonly onClearConversation?: (() => Promise<void>) | undefined
   readonly isGuest?: boolean | undefined
   readonly onRegister?: (() => void) | undefined
   readonly onLogin?: (() => void) | undefined
@@ -85,6 +95,8 @@ function extractPendingDrafts(messages: readonly AdvisorChatMessageView[]): read
   for (const msg of messages) {
     const candidates: AdvisorActionProposal[] = []
     if (msg.meta?.action) candidates.push(msg.meta.action)
+    // Several drafts in one answer (ADR-0066). A scanned certificate keeps its own review flow.
+    if (msg.meta?.actions && !msg.meta.lstbScan) candidates.push(...msg.meta.actions)
     if (msg.meta?.twoPaths) {
       candidates.push(msg.meta.twoPaths.safePath, msg.meta.twoPaths.maxPath)
     }
@@ -108,6 +120,12 @@ function updateActionStatusInMessage(
     return {
       ...msg,
       meta: { ...msg.meta, action: { ...msg.meta.action, status } },
+    }
+  }
+  if (msg.meta.actions?.some((a) => a.actionId === actionId)) {
+    return {
+      ...msg,
+      meta: { ...msg.meta, actions: msg.meta.actions.map((a) => (a.actionId === actionId ? { ...a, status } : a)) },
     }
   }
   if (msg.meta.twoPaths) {
@@ -257,6 +275,8 @@ function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CURRENT_T
   const sessionQuery = useAdvisorControllerGetSession(taxYear, { query: { retry: false } })
   const sendMessageMutation = useAdvisorControllerSendMessage()
   const applyActionMutation = useAdvisorControllerApplyAction()
+  const setFeedbackMutation = useAdvisorControllerSetFeedback()
+  const clearConversationMutation = useAdvisorControllerClearConversation()
   const undoActionMutation = useAdvisorControllerUndoAction()
   const setSetting = useOwlModeControllerSetSetting()
   const dismissCard = useOwlModeControllerDismissCard()
@@ -328,6 +348,20 @@ function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CURRENT_T
       onChooseProfession={async (profession) => {
         const response = await postAnswer.mutateAsync({ jahr: taxYear, data: { questionId: 'beruf', value: profession } })
         if (response.status !== 200) throw new Error(`profession not stored (HTTP ${response.status})`)
+        await invalidate()
+      }}
+      onRateMessage={async (messageId, rating, reason) => {
+        const response = await setFeedbackMutation.mutateAsync({
+          jahr: taxYear,
+          messageId,
+          data: { rating, ...(reason !== undefined ? { reason } : {}) },
+        })
+        if (response.status !== 200) throw new Error(`rating not stored (HTTP ${response.status})`)
+        await queryClient.invalidateQueries({ queryKey: getAdvisorControllerGetSessionQueryKey(taxYear) })
+      }}
+      onClearConversation={async () => {
+        const response = await clearConversationMutation.mutateAsync({ jahr: taxYear })
+        if (response.status !== 200) throw new Error(`conversation not cleared (HTTP ${response.status})`)
         await invalidate()
       }}
       onSendMessage={async (text, options) => {
@@ -454,20 +488,20 @@ function OwlModeScreenView({
   onSendMessage,
   onApplyAction,
   onUndoAction,
+  onRateMessage,
+  onClearConversation,
 }: OwlModeScreenProps & { readonly initialCards: readonly OwlCardsDisplay[] }) {
   const bp = useBreakpoint()
   const t = useTheme()
   const styles = makeStyles(t)
   const { t: tr } = useTranslation(APP_NS)
-  const owl = useOwlEntrance()
   const bridge = useOptionalCopilotBridge()
 
-  const [tab, setTab] = useState<'fragen' | 'eule'>('eule')
-  const [desktopChatOpen, setDesktopChatOpen] = useState(true)
-  const [tabletDrawerOpen, setTabletDrawerOpen] = useState(false)
-  const [mobileSheetOpen, setMobileSheetOpen] = useState(false)
-  const [dockInput, setDockInput] = useState('')
-  const chatScroll = useStickToBottom()
+  // null: the workbench follows what needs attention; otherwise the reader's own choice stands.
+  const [panelChoice, setPanelChoice] = useState<'open' | 'closed' | null>(null)
+  const [privacyOpen, setPrivacyOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [clearState, setClearState] = useState<'closed' | 'confirm' | 'clearing' | 'failed'>('closed')
   const [cards, setCards] = useState<readonly OwlCardsDisplay[]>(initialCards)
   const [activeIndex, setActiveIndex] = useState(0)
   const [localMessages, setLocalMessages] = useState<readonly AdvisorChatMessageView[]>(initialMessages ?? [])
@@ -480,6 +514,50 @@ function OwlModeScreenView({
   const pendingDrafts = extractPendingDrafts(displayedMessages)
   const viewMode = bridge ? bridge.owlViewMode : localViewMode
   const effectiveSending = isSending || (bridge?.streaming ?? false)
+
+  // The workbench opens by itself only when there is something to check: on a wide screen for
+  // drafts and masks, on a narrow one only for a mask the reader asked to see, because there it
+  // covers the chat (#476 decision 2).
+  const wide = bp === 'l'
+  const needsAttention = viewMode.kind === 'mask' || (wide && pendingDrafts.length > 0) || (wide && Boolean(bridge?.staleConflict))
+  const panelOpen = panelChoice === null ? needsAttention : panelChoice === 'open'
+  const openMask = viewMode.kind === 'mask' ? viewMode.screen : null
+  const draftCount = pendingDrafts.length
+  const seenAttention = useRef({ mask: openMask, drafts: draftCount })
+  useEffect(() => {
+    // Only something new to check (another mask, one more draft) overrides the reader's own choice;
+    // going back from a mask or applying a draft never closes or reopens the workbench by itself.
+    const seen = seenAttention.current
+    const grew = (openMask !== null && openMask !== seen.mask) || (wide && draftCount > seen.drafts)
+    seenAttention.current = { mask: openMask, drafts: draftCount }
+    if (grew) setPanelChoice(null)
+  }, [openMask, draftCount, wide])
+
+  // An answer that is still being written (after a reload, or on another device) is followed again.
+  const runningRunId = displayedMessages.find((m) => m.role === 'assistant' && m.status === 'streaming')?.runId
+  const resumeRun = bridge?.resumeRun
+  const bridgeStreaming = bridge?.streaming ?? false
+  useEffect(() => {
+    if (resumeRun && runningRunId !== undefined && !bridgeStreaming) void resumeRun(runningRunId)
+  }, [resumeRun, runningRunId, bridgeStreaming])
+
+  function closePanel() {
+    if (viewMode.kind === 'mask') handleReturnToStage()
+    setPanelChoice('closed')
+  }
+
+  async function confirmClear() {
+    if (!onClearConversation) return
+    setClearState('clearing')
+    try {
+      await onClearConversation()
+      setLocalMessages([])
+      setClearState('closed')
+      setSettingsOpen(false)
+    } catch {
+      setClearState('failed')
+    }
+  }
 
   function handleInspectMask(screen: Screen, field?: string) {
     if (bridge) {
@@ -570,9 +648,8 @@ function OwlModeScreenView({
   }
 
   async function handleClarifyCardWithEule(card: OwlCardsDisplay) {
-    if (bp === 's') setTab('fragen')
-    else if (bp === 'm') setTabletDrawerOpen(true)
-    else setDesktopChatOpen(true)
+    // On a narrow screen the workbench covers the chat: step aside so the answer can be read.
+    if (!wide) setPanelChoice('closed')
     await handleSendChat(`${card.title}: ${card.message}`)
   }
 
@@ -638,6 +715,11 @@ function OwlModeScreenView({
         isSending={effectiveSending}
         streamSteps={bridge?.streamSteps}
         streamedText={bridge?.streamedText}
+        streamedReasoning={bridge?.streamedReasoning}
+        pendingUserMessage={bridge?.pendingUserMessage}
+        reconnecting={bridge?.reconnecting}
+        onRateMessage={onRateMessage}
+        variant="page"
         chatError={bridge?.chatError}
         basisMode={bridge?.basisMode}
         onSendMessage={handleSendChat}
@@ -658,42 +740,53 @@ function OwlModeScreenView({
     )
   }
 
-  function renderHeroAndSettings() {
+  function renderSettings() {
     return (
-      <>
-        <View style={styles.hero} testID="eule-hero">
-          <OwlMark variant="tinte" size={72} {...owl} />
-          <View style={styles.heroCopy}>
-            <Text style={styles.heroTitle} role="heading" aria-level={1}>
-              {tr('eule.heroTitle', 'Deine Eule')}
-            </Text>
-            <Text style={styles.help}>
-              {tr('eule.heroBody', 'Sie kennt dein Steuerjahr und sagt dir, wo Geld liegen bleibt — mit Rechtsgrundlage, damit du selbst entscheidest.')}
-            </Text>
-            <View style={styles.privacyBadge} testID="eule-privacy-badge">
-              <Text style={styles.privacyBadgeText}>
-                🔒 Mandantengeheimnis aktiv — Keine Klarnamen, Steuer-IDs oder IBANs an KI
-              </Text>
-            </View>
-          </View>
-        </View>
-
+      <View style={styles.sheetBody}>
+        <Text style={styles.sheetTitle} role="heading" aria-level={2}>
+          {tr('eule.workspace.topbar.settingsTitle')}
+        </Text>
         {profession !== undefined && onChooseProfession ? (
           <ProfessionPicker profession={profession} onChoose={onChooseProfession} />
         ) : null}
 
         {onToggleOptIn ? (
-          <View style={{ marginBottom: t.space.s4 }}>
-            <Option
-              selected={optInEnabled}
-              onPress={() => void onToggleOptIn(!optInEnabled)}
-              testID="eulen-modus-opt-in"
-            >
-              {tr('eule.optInLabel', 'Eulen-Modus aktivieren (proaktive Hinweise ab 50 €, keine personenbezogenen Daten an KI)')}
-            </Option>
-          </View>
+          <Option selected={optInEnabled} onPress={() => void onToggleOptIn(!optInEnabled)} testID="eulen-modus-opt-in">
+            {tr('eule.optInLabel', 'Eulen-Modus aktivieren (proaktive Hinweise ab 50 €, keine personenbezogenen Daten an KI)')}
+          </Option>
         ) : null}
-      </>
+
+        {onClearConversation ? (
+          clearState === 'closed' ? (
+            <Button
+              variant="leise"
+              onPress={() => setClearState('confirm')}
+              disabled={effectiveSending || displayedMessages.length === 0}
+              testID="eule-clear-conversation-btn"
+            >
+              {tr('advisor.chat.clear.button')}
+            </Button>
+          ) : (
+            <Card style={styles.clearCard} testID="eule-clear-confirm">
+              <Text style={styles.clearTitle}>{tr('advisor.chat.clear.confirmTitle')}</Text>
+              <Text style={styles.help}>{tr('advisor.chat.clear.confirmBody')}</Text>
+              {clearState === 'failed' ? (
+                <Text style={styles.conflictText} role="alert" testID="eule-clear-failed">
+                  {tr('advisor.chat.clear.failed')}
+                </Text>
+              ) : null}
+              <View style={styles.conflictActions}>
+                <Button onPress={() => void confirmClear()} disabled={clearState === 'clearing'} style={{ flex: 1 }} testID="eule-clear-confirm-btn">
+                  {tr('advisor.chat.clear.confirm')}
+                </Button>
+                <Button variant="ghost" onPress={() => setClearState('closed')} style={{ flex: 1 }} testID="eule-clear-cancel-btn">
+                  {tr('advisor.chat.clear.cancel')}
+                </Button>
+              </View>
+            </Card>
+          )
+        ) : null}
+      </View>
     )
   }
 
@@ -704,7 +797,11 @@ function OwlModeScreenView({
           screen={viewMode.screen}
           field={viewMode.field}
           taxYear={taxYear}
-          onBack={handleReturnToStage}
+          onBack={() => {
+            // Back from a mask means back to the drafts, not out of the workbench.
+            setPanelChoice('open')
+            handleReturnToStage()
+          }}
           styles={styles}
         />
       )
@@ -914,200 +1011,87 @@ function OwlModeScreenView({
     )
   }
 
-  // 1. Desktop (bp === 'l', >= 1280px): 62/38 split pane with collapsible right chat panel
-  if (bp === 'l') {
-    return (
-      <View style={styles.desktopRoot} testID="eulen-modus-screen">
-        <View style={styles.workspaceToolbar}>
-          {onBack ? <BackButton accessibilityLabel={tr('eule.back', 'Zurück')} onPress={onBack} /> : <View />}
+  const workbench = (
+    <>
+      <View style={styles.panelHeader}>
+        <Text style={styles.panelTitle} role="heading" aria-level={2}>
+          {tr('eule.workspace.topbar.panelTitle')}
+        </Text>
+        {wide ? (
           <Pressable
             accessibilityRole="button"
-            onPress={() => setDesktopChatOpen((prev) => !prev)}
+            accessibilityLabel={tr('eule.workspace.topbar.panelClose')}
+            onPress={closePanel}
             style={styles.toolbarToggleBtn}
-            testID="eule-desktop-chat-toggle"
+            testID="eule-workbench-close"
           >
-            <Text style={styles.toolbarToggleText}>
-              {desktopChatOpen
-                ? tr('eule.workspace.chatHide', 'Chat ausblenden')
-                : tr('eule.workspace.chatShow', '💬 Chat einblenden')}
-            </Text>
+            <Text style={styles.toolbarToggleText}>✕</Text>
           </Pressable>
-        </View>
-
-        <View style={styles.desktopSplit} testID="eule-desktop-split">
-          <ScrollView
-            style={desktopChatOpen ? styles.desktopWorkbenchSplit : styles.desktopWorkbenchFull}
-            contentContainerStyle={styles.paneContent}
-            testID="eule-desktop-workbench"
-          >
-            {renderHeroAndSettings()}
-            {renderWorkbenchBody()}
-          </ScrollView>
-
-          {desktopChatOpen ? (
-            <ScrollView
-              {...chatScroll}
-              style={styles.desktopChatPane}
-              contentContainerStyle={styles.paneContent}
-              testID="eule-desktop-chat-pane"
-            >
-              {renderChatPanel(false)}
-            </ScrollView>
-          ) : null}
-        </View>
-      </View>
-    )
-  }
-
-  // 2. Tablet (bp === 'm', 768–1279px): full-width workbench + slide-over chat drawer
-  if (bp === 'm') {
-    return (
-      <View style={styles.tabletRoot} testID="eulen-modus-screen">
-        <ScrollView contentContainerStyle={styles.wideScreen} testID="eule-tablet-workspace">
-          <View style={styles.workspaceToolbar}>
-            {onBack ? <BackButton accessibilityLabel={tr('eule.back', 'Zurück')} onPress={onBack} /> : <View />}
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => setTabletDrawerOpen(true)}
-              style={styles.toolbarToggleBtn}
-              testID="eule-tablet-chat-toggle"
-            >
-              <Text style={styles.toolbarToggleText}>{tr('eule.workspace.tabletChatOpen', '🦉 Chat')}</Text>
-            </Pressable>
-          </View>
-          {renderHeroAndSettings()}
-          {renderWorkbenchBody()}
-        </ScrollView>
-
-        {tabletDrawerOpen ? (
-          <View style={styles.tabletDrawerOverlay} testID="eule-tablet-drawer">
-            <View style={styles.drawerHeader}>
-              <AiChip>{tr('eule.sender', 'Die Eule')}</AiChip>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => setTabletDrawerOpen(false)}
-                style={styles.toolbarToggleBtn}
-                testID="eule-tablet-drawer-close"
-              >
-                <Text style={styles.toolbarToggleText}>{tr('eule.workspace.tabletChatClose', '✕ Schließen')}</Text>
-              </Pressable>
-            </View>
-            <ScrollView {...chatScroll} contentContainerStyle={styles.paneContent}>
-              {renderChatPanel(true)}
-            </ScrollView>
-          </View>
         ) : null}
       </View>
-    )
-  }
+      {renderWorkbenchBody()}
+    </>
+  )
 
-  // 3. Mobile (bp === 's', < 768px): workbench + sticky 20% dock (never auto-maximized)
+  // One layout for every width (#476): the chat is the screen. The workbench is a side panel on a
+  // wide screen and a sheet over the chat everywhere else, and only there when it is needed.
   return (
-    <View style={styles.mobileRoot} testID="eulen-modus-screen">
-      {mobileSheetOpen ? (
-        <View style={styles.mobileSheet} testID="eule-mobile-sheet">
-          <View style={styles.drawerHeader}>
-            <AiChip>{tr('eule.sender', 'Die Eule')}</AiChip>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => setMobileSheetOpen(false)}
-              style={styles.toolbarToggleBtn}
-              testID="eule-mobile-minimize-btn"
-            >
-              <Text style={styles.toolbarToggleText}>{tr('eule.workspace.minimize', '▾ Verkleinern')}</Text>
-            </Pressable>
-          </View>
-          <ScrollView {...chatScroll} contentContainerStyle={styles.paneContent}>
-            {renderChatPanel(true)}
-          </ScrollView>
+    <View style={styles.root} testID="eulen-modus-screen">
+      <OwlTopBar
+        onBack={onBack}
+        hintCount={cards.length}
+        draftCount={pendingDrafts.length}
+        panelOpen={panelOpen}
+        onTogglePanel={() => (panelOpen ? closePanel() : setPanelChoice('open'))}
+        onOpenPrivacy={() => setPrivacyOpen(true)}
+        onOpenSettings={onToggleOptIn || onChooseProfession || onClearConversation ? () => setSettingsOpen(true) : undefined}
+        legalStatusDate={LEGAL_STATUS_DATE}
+        compact={bp === 's'}
+      />
+
+      <View style={styles.body}>
+        <View style={styles.chatMain} testID="eule-chat-main">
+          {renderChatPanel(bp === 's')}
         </View>
-      ) : (
-        <>
-          <ScrollView contentContainerStyle={styles.screen}>
-            {onBack ? (
-              <View style={styles.headerRow}>
-                <BackButton accessibilityLabel={tr('eule.back', 'Zurück')} onPress={onBack} />
-              </View>
-            ) : null}
 
-            {renderHeroAndSettings()}
-
-            <View style={styles.tabBar} accessibilityRole="tablist" role="tablist">
-              <Pressable
-                accessibilityRole="tab"
-                accessibilityState={{ selected: tab === 'fragen' }}
-                onPress={() => setTab('fragen')}
-                style={[styles.tabButton, tab === 'fragen' && styles.tabButtonActive]}
-                testID="eule-tab-fragen"
-              >
-                <Text style={[styles.tabText, tab === 'fragen' && styles.tabTextActive]}>
-                  {tr('eule.tabFragen', 'Fragen an die Eule')}
-                </Text>
-              </Pressable>
-              <Pressable
-                accessibilityRole="tab"
-                accessibilityState={{ selected: tab === 'eule' }}
-                onPress={() => setTab('eule')}
-                style={[styles.tabButton, tab === 'eule' && styles.tabButtonActive]}
-                testID="eule-tab-eule"
-              >
-                <Text style={[styles.tabText, tab === 'eule' && styles.tabTextActive]}>
-                  {tr('eule.tabEule', 'Eule fragt dich')} · {cards.length}
-                </Text>
-              </Pressable>
-            </View>
-
-            {tab === 'fragen' ? renderChatPanel(true) : renderWorkbenchBody()}
+        {panelOpen && wide ? (
+          <ScrollView style={styles.sidePanel} contentContainerStyle={styles.sidePanelContent} testID="eule-workbench-panel">
+            {workbench}
           </ScrollView>
+        ) : null}
+      </View>
 
-          {tab === 'eule' ? (
-            <View style={styles.mobileDock} testID="eule-mobile-dock">
-              <View style={styles.dockHeader}>
-                <Text style={styles.dockTitle}>🦉 {tr('eule.sender', 'Die Eule')}</Text>
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={() => setMobileSheetOpen(true)}
-                  style={styles.dockMaximizeBtn}
-                  testID="eule-mobile-maximize-btn"
-                >
-                  <Text style={styles.dockMaximizeText}>{tr('eule.workspace.maximize', '⤢ Maximieren')}</Text>
-                </Pressable>
-              </View>
-              <View style={styles.dockInputRow}>
-                {handleAttachReceipt ? (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={tr('advisor.chat.attachReceiptAria', 'Beleg anhängen')}
-                    onPress={() => setMobileSheetOpen(true)}
-                    style={styles.dockReceiptBtn}
-                    testID="eule-mobile-dock-receipt-btn"
-                  >
-                    <Text style={styles.dockReceiptText}>📎</Text>
-                  </Pressable>
-                ) : null}
-                <View style={styles.dockComposer}>
-                  <ChatComposer
-                    value={dockInput}
-                    onChangeText={setDockInput}
-                    onSend={(q) => {
-                      setDockInput('')
-                      setMobileSheetOpen(true)
-                      void handleSendChat(q)
-                    }}
-                    onStop={bridge?.stopStreaming}
-                    sending={effectiveSending}
-                    placeholder={tr('eule.workspace.dockPlaceholder', 'Kurze Frage an die Eule …')}
-                    inputTestID="eule-mobile-dock-input"
-                    sendTestID="eule-mobile-dock-send-btn"
-                    stopTestID="eule-mobile-dock-stop-btn"
-                    variant="dock"
-                  />
-                </View>
-              </View>
-            </View>
-          ) : null}
-        </>
-      )}
+      {panelOpen && !wide ? (
+        <Sheet onClose={closePanel} closeLabel={tr('eule.workspace.topbar.panelClose')} testID="eule-workbench-sheet">
+          {workbench}
+        </Sheet>
+      ) : null}
+
+      {privacyOpen ? (
+        <Sheet onClose={() => setPrivacyOpen(false)} closeLabel={tr('eule.workspace.topbar.privacyClose')} testID="eule-privacy-sheet">
+          <View style={styles.sheetBody}>
+            <Text style={styles.sheetTitle} role="heading" aria-level={2}>
+              {tr('eule.workspace.topbar.privacyTitle')}
+            </Text>
+            <Text style={styles.help} testID="eule-privacy-text">
+              {tr('eule.workspace.topbar.privacyBody')}
+            </Text>
+          </View>
+        </Sheet>
+      ) : null}
+
+      {settingsOpen ? (
+        <Sheet
+          onClose={() => {
+            setSettingsOpen(false)
+            setClearState('closed')
+          }}
+          closeLabel={tr('eule.workspace.topbar.settingsClose')}
+          testID="eule-settings-sheet"
+        >
+          {renderSettings()}
+        </Sheet>
+      ) : null}
     </View>
   )
 }
@@ -1117,129 +1101,25 @@ function makeStyles(t: UiTheme) {
   const kiBg = t.color.kiWeich
 
   return {
-    desktopRoot: {
-      flex: 1,
-      backgroundColor: t.color.grund,
-      maxWidth: WIDE_CONTENT_MAX_WIDTH,
-      width: '100%',
-      alignSelf: 'center',
-      paddingHorizontal: t.space.s5,
-      paddingTop: t.space.s4,
-    } as ViewStyle,
-    desktopSplit: {
-      flex: 1,
-      flexDirection: 'row',
-      gap: t.space.s5,
-      alignItems: 'stretch',
-    } as ViewStyle,
-    desktopWorkbenchSplit: {
-      flex: 62,
-    } as ViewStyle,
-    desktopWorkbenchFull: {
-      flex: 1,
-    } as ViewStyle,
-    desktopChatPane: {
-      flex: 38,
+    root: { flex: 1, minHeight: 0, backgroundColor: t.color.grund } as ViewStyle,
+    body: { flex: 1, minHeight: 0, flexDirection: 'row' } as ViewStyle,
+    chatMain: { flex: 1, minWidth: 0, minHeight: 0 } as ViewStyle,
+    sidePanel: {
+      flexGrow: 0,
+      flexShrink: 0,
+      flexBasis: 460,
+      maxWidth: '42%',
+      borderLeftWidth: 1,
+      borderLeftColor: t.color.kiLinie,
       backgroundColor: t.color.karte,
-      borderRadius: t.radius.m,
-      borderWidth: 1.5,
-      borderColor: t.color.kiLinie,
-      paddingHorizontal: t.space.s4,
-      marginBottom: t.space.s4,
     } as ViewStyle,
-    tabletRoot: {
-      flex: 1,
-      backgroundColor: t.color.grund,
-      position: 'relative',
-    } as ViewStyle,
-    tabletDrawerOverlay: {
-      position: 'absolute',
-      top: 0,
-      right: 0,
-      bottom: 0,
-      width: '55%',
-      maxWidth: 460,
-      backgroundColor: t.color.karte,
-      borderLeftWidth: 2,
-      borderColor: t.color.ki,
-      padding: t.space.s4,
-      ...t.shadow.hartL,
-    } as ViewStyle,
-    mobileRoot: {
-      flex: 1,
-      backgroundColor: t.color.grund,
-    } as ViewStyle,
-    mobileSheet: {
-      flex: 1,
-      marginTop: t.space.s4,
-      backgroundColor: t.color.karte,
-      borderTopLeftRadius: t.radius.lg,
-      borderTopRightRadius: t.radius.lg,
-      borderWidth: 2,
-      borderColor: t.color.ki,
-      padding: t.space.s4,
-    } as ViewStyle,
-    mobileDock: {
-      backgroundColor: t.color.karte,
-      borderTopWidth: 2,
-      borderColor: t.color.ki,
-      paddingHorizontal: t.space.s4,
-      paddingVertical: t.space.s3,
-      gap: t.space.s2,
-    } as ViewStyle,
-    dockHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-    } as ViewStyle,
-    dockTitle: {
-      fontFamily: t.font.display,
-      fontWeight: t.weight.fett,
-      fontSize: t.size.s,
-      color: t.color.tinte,
-    } as TextStyle,
-    dockMaximizeBtn: {
-      paddingVertical: 4,
-      paddingHorizontal: t.space.s2,
-      borderRadius: t.radius.s,
-      backgroundColor: t.color.kiWeich,
-    } as ViewStyle,
-    dockMaximizeText: {
-      fontFamily: t.font.text,
-      fontWeight: t.weight.fett,
-      fontSize: t.size.xs,
-      color: t.color.kiTinte,
-    } as TextStyle,
-    dockInputRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: t.space.s2,
-    } as ViewStyle,
-    dockComposer: { flex: 1 } as ViewStyle,
-    dockReceiptBtn: {
-      paddingHorizontal: t.space.s2,
-      paddingVertical: t.space.s2,
-      borderRadius: t.radius.s,
-      borderWidth: 1,
-      borderColor: t.color.linieWeich,
-      backgroundColor: t.color.grund,
-    } as ViewStyle,
-    dockReceiptText: {
-      fontSize: t.size.m,
-      color: t.color.tinte,
-    } as TextStyle,
-    drawerHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: t.space.s3,
-    } as ViewStyle,
-    workspaceToolbar: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: t.space.s3,
-    } as ViewStyle,
+    sidePanelContent: { padding: t.space.s4 } as ViewStyle,
+    panelHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: t.space.s3 } as ViewStyle,
+    panelTitle: { fontFamily: t.font.display, fontWeight: t.weight.fett, fontSize: t.size.m, color: t.color.tinte } as TextStyle,
+    sheetBody: { gap: t.space.s3, paddingHorizontal: t.space.s4, paddingBottom: t.space.s4 } as ViewStyle,
+    sheetTitle: { fontFamily: t.font.display, fontWeight: t.weight.fett, fontSize: t.size.m, color: t.color.tinte } as TextStyle,
+    clearCard: { gap: t.space.s2 } as ViewStyle,
+    clearTitle: { fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: t.size.s, color: t.color.tinte } as TextStyle,
     toolbarToggleBtn: {
       paddingHorizontal: t.space.s3,
       paddingVertical: t.space.s2,
@@ -1254,9 +1134,6 @@ function makeStyles(t: UiTheme) {
       fontSize: t.size.xs,
       color: t.color.kiTinte,
     } as TextStyle,
-    paneContent: {
-      paddingVertical: t.space.s3,
-    } as ViewStyle,
     guestCard: {
       marginTop: t.space.s3,
       gap: t.space.s3,
@@ -1457,32 +1334,6 @@ function makeStyles(t: UiTheme) {
     headerRow: {
       marginBottom: t.space.s4,
     } as ViewStyle,
-    tabBar: {
-      flexDirection: 'row',
-      backgroundColor: t.color.karte,
-      borderRadius: t.radius.m,
-      padding: 4,
-      marginBottom: t.space.s5,
-    } as ViewStyle,
-    tabButton: {
-      flex: 1,
-      paddingVertical: t.space.s2,
-      alignItems: 'center',
-      borderRadius: t.radius.s,
-    } as ViewStyle,
-    tabButtonActive: {
-      backgroundColor: t.color.grund,
-    } as ViewStyle,
-    tabText: {
-      fontFamily: t.font.text,
-      fontSize: t.size.m,
-      color: t.color.tinte2,
-    } as TextStyle,
-    tabTextActive: {
-      fontFamily: t.font.display,
-      fontWeight: t.weight.fett,
-      color: t.color.tinte,
-    } as TextStyle,
     help: {
       fontFamily: t.font.text,
       fontSize: t.size.m,

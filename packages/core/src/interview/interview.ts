@@ -8,6 +8,7 @@ export type SegmentTwoQuestionId =
   | 'weg'
   | 'tage'
   | 'fortbildung'
+  | 'fortbildung-kosten'
   | 'einkuenfte'
   | 'kap-depot'
   | 'vermietung-art'
@@ -228,7 +229,9 @@ export const QUESTIONS: Readonly<Record<EntryStepId, QuestionDeclaration>> = {
   homeoffice: { id: 'homeoffice', kind: 'question', form: { kind: 'enum', values: HOME_OFFICE_VALUES } },
   weg: { id: 'weg', kind: 'question', form: { kind: 'integer', min: 0, max: 999 } },
   tage: { id: 'tage', kind: 'question', form: { kind: 'integer', min: 0, max: 366 } },
-  fortbildung: { id: 'fortbildung', kind: 'question', form: { kind: 'enum', values: TRAINING_VALUES } },
+  fortbildung: { id: 'fortbildung', kind: 'question', form: { kind: 'enum', values: TRAINING_VALUES }, followUps: { Ja: ['fortbildung-kosten'] } },
+  /** What the training cost in whole euros (fees, materials, travel): Werbungskosten, § 9 Abs. 1 EStG (#476). */
+  'fortbildung-kosten': { id: 'fortbildung-kosten', kind: 'question', form: { kind: 'integer', min: 0, max: 100000 } },
   einkuenfte: {
     id: 'einkuenfte',
     kind: 'question',

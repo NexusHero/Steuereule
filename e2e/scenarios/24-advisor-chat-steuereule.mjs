@@ -80,15 +80,10 @@ export async function runScenario24(browser, webOrigin) {
 
   await assertCockpitEstimate(page, 'Scenario 24 Baseline', { direction: 'Erstattung' })
 
-  // 2. Navigate to Eule tab & verify privacy badge + split-pane chat (or tab switch on mobile)
+  // 2. Navigate to Eule tab & verify the privacy entry in the title bar and the chat as the main surface
   await page.getByRole('tab', { name: 'Eule' }).click()
   await page.locator('[data-testid="eule-privacy-badge"]').waitFor({ state: 'visible', timeout: 10_000 })
-  const fragenTab = page.locator('[data-testid="eule-tab-fragen"]')
-  if (await fragenTab.isVisible().catch(() => false)) {
-    await fragenTab.click()
-  } else {
-    await page.locator('[data-testid="eule-desktop-split"]').waitFor({ state: 'visible', timeout: 10_000 })
-  }
+  // The chat is the screen at every width (#476): no tab to switch to, no split to wait for.
   await page.locator('[data-testid="advisor-chat-panel"]').waitFor({ state: 'visible', timeout: 10_000 })
 
   // 3. Turn 1: Ask Eule to record 400 € donations -> verify Law Chip Modal + Action Apply & Undo
@@ -230,7 +225,6 @@ export async function runScenario24(browser, webOrigin) {
     await route.fulfill({ response: res, json })
   })
   await page.reload({ waitUntil: 'networkidle' })
-  if (await fragenTab.isVisible().catch(() => false)) await fragenTab.click()
   const md = assistantMessages.last()
   await md.waitFor({ state: 'visible', timeout: 10_000 })
   const mdText = await md.innerText()
