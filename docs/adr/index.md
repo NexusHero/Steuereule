@@ -83,6 +83,7 @@ The ADRs **justify** the architecture; the [living arc42 document](../arc42/READ
 | 0063 | Kirchensteuer in der Schätzung: Satz, Kappung, besonderes Kirchgeld, Abgeltungsteuer | Accepted |
 | 0064 | Eulen-Chat: Antwort-Läufe, losgelöst von der Verbindung, mit Wiederaufnahme | Accepted |
 | 0066 | Eule: ein Feldkatalog, eine Wertprüfung, ehrliche Vorschau | Accepted |
+| 0067 | Eule: Steuerjahr als Projekt, mehrere Gespräche, Projektnotizen, Kontext mit Zusammenfassung | Accepted |
 
 See also the [Tech Radar](./tech-radar.md).
 

@@ -324,11 +324,11 @@ describe('project notes (#481)', () => {
   it('takes an added note back', async () => {
     const { service } = build(noting([{ kind: 'added', text: 'Voreilig gemerkt.' }]))
     await collect(service.streamMessage(USER, YEAR, { message: 'Hallo' }))
-    const answer = (await service.getSession(USER, YEAR)).messages.at(-1)!
-    const undone = await service.undoNoteChange(USER, YEAR, answer.id, 0)
+    const reply = (await service.getSession(USER, YEAR)).messages.at(-1)!
+    const undone = await service.undoNoteChange(USER, YEAR, reply.id, 0)
     expect(undone.meta!.noteChanges![0]!.undone).toBe(true)
     expect((await service.getSession(USER, YEAR)).notes).toEqual([])
-    await expect(service.undoNoteChange(USER, YEAR, answer.id, 0)).rejects.toMatchObject({ code: 'ADVISOR_NOTE_CHANGE_UNDONE' })
+    await expect(service.undoNoteChange(USER, YEAR, reply.id, 0)).rejects.toMatchObject({ code: 'ADVISOR_NOTE_CHANGE_UNDONE' })
   })
 
   /** A kit whose script is filled in after the notes it refers to exist. */
@@ -343,10 +343,10 @@ describe('project notes (#481)', () => {
     script.push(...noting([{ kind: 'replaced', noteId: note.id, text: 'Arbeitsweg 40 km.' }]))
     await collect(service.streamMessage(USER, YEAR, { message: 'Es sind doch 40 km.' }))
     expect((await service.listNotes(USER, YEAR)).map((n) => n.text)).toEqual(['Arbeitsweg 40 km.'])
-    const answer = (await service.getSession(USER, YEAR)).messages.at(-1)!
-    expect(answer.meta!.noteChanges![0]).toMatchObject({ kind: 'replaced', previousText: 'Arbeitsweg 38 km.' })
+    const reply = (await service.getSession(USER, YEAR)).messages.at(-1)!
+    expect(reply.meta!.noteChanges![0]).toMatchObject({ kind: 'replaced', previousText: 'Arbeitsweg 38 km.' })
 
-    await service.undoNoteChange(USER, YEAR, answer.id, 0)
+    await service.undoNoteChange(USER, YEAR, reply.id, 0)
     expect((await service.listNotes(USER, YEAR)).map((n) => n.text)).toEqual(['Arbeitsweg 38 km.'])
   })
 
@@ -357,8 +357,8 @@ describe('project notes (#481)', () => {
     await collect(service.streamMessage(USER, YEAR, { message: 'Das hat sich erledigt.' }))
     expect(await service.listNotes(USER, YEAR)).toEqual([])
 
-    const answer = (await service.getSession(USER, YEAR)).messages.at(-1)!
-    await service.undoNoteChange(USER, YEAR, answer.id, 0)
+    const reply = (await service.getSession(USER, YEAR)).messages.at(-1)!
+    await service.undoNoteChange(USER, YEAR, reply.id, 0)
     expect((await service.listNotes(USER, YEAR)).map((n) => n.text)).toEqual(['Gilt nicht mehr.'])
   })
 

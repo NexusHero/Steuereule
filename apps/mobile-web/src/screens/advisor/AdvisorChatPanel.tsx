@@ -701,7 +701,7 @@ export function AdvisorChatPanel({
 
               {/* What the owl noted, replaced or forgot in this answer; each change can be taken back */}
               {msg.meta?.noteChanges && msg.meta.noteChanges.length > 0 ? (
-                <NoteChangeHints changes={msg.meta.noteChanges} onUndo={onUndoNoteChange ? (index) => onUndoNoteChange(msg.id, index) : undefined} />
+                <NoteChangeHints changes={msg.meta.noteChanges} onUndo={onUndoNoteChange ? (changeIndex) => onUndoNoteChange(msg.id, changeIndex) : undefined} />
               ) : null}
 
               {/* Scanned LStB: several staged fields at once */}

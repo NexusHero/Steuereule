@@ -10,6 +10,9 @@
 //      a rating that cannot be stored
 //   F  a dropped connection: the chat says it is re-attaching and finishes the answer
 //   G  several conversations in one tax year: new, own messages each, rename, switch, delete
+//   H  the notes of the tax year: add, change, delete by hand
+//   I  the context ring: fill level, no summary of a short conversation
+//   J  on a phone the project content opens as a sheet
 //
 // The stack is real (sign-in, session, rating, clearing). Rows E and F stub what only a model
 // could produce: E replaces the stored conversation, F drops the stream on purpose.
@@ -79,6 +82,10 @@ function storedAnswer(now) {
         ],
         notStaged: [{ label: 'Mieteinnahmen', reason: 'Es ist noch kein Vermietungsobjekt angelegt.', screen: 'vermietung' }],
         notices: [{ kind: 'claims-write', text: 'Die Eule trägt nichts selbst ein. Ein Wert steht erst in deiner Erklärung, wenn du einen Entwurf übernimmst.' }],
+        noteChanges: [
+          { kind: 'added', noteId: 'stub-note', text: 'Arbeitszimmer geprüft: lohnt sich nicht.' },
+          { kind: 'removed', text: 'Gilt nicht mehr.', undone: true },
+        ],
       },
     },
   ]
@@ -111,10 +118,22 @@ async function main() {
     for (const id of ['eule-topbar', 'eule-topbar-title', 'eule-legal-status', 'eule-chat-main', 'advisor-empty-state', 'advisor-chat-scroll', 'advisor-chat-composer-dock']) {
       await see(page, id, 'Row A')
     }
-    const chatBox = await byId(page, 'eule-chat-main').boundingBox()
+    // The project sidebar (#481) starts open beside the chat; collapsed, the chat owns the window,
+    // and the choice survives a reload.
     const viewport = page.viewportSize()
-    if (!chatBox || !viewport || chatBox.width < viewport.width * 0.9) fail(`Row A: the chat should own the window, is ${chatBox?.width}px of ${viewport?.width}px`)
-    console.log(`[${TAG}] ✅ Row A — top bar, legal status, empty state and composer dock; the chat spans the window`)
+    const chatWidth = async () => (await byId(page, 'eule-chat-main').boundingBox())?.width ?? 0
+    await see(page, 'eule-project-sidebar', 'Row A')
+    await see(page, 'eule-conversations', 'Row A')
+    if (!viewport || (await chatWidth()) < viewport.width * 0.6) fail(`Row A: beside the sidebar the chat should still be the main area, is ${await chatWidth()}px of ${viewport?.width}px`)
+    await byId(page, 'eule-conversations-btn').click()
+    await gone(page, 'eule-project-sidebar', 'Row A')
+    if ((await chatWidth()) < viewport.width * 0.9) fail(`Row A: with the sidebar collapsed the chat should own the window, is ${await chatWidth()}px of ${viewport.width}px`)
+    await page.reload({ waitUntil: 'networkidle' })
+    await see(page, 'eule-chat-main', 'Row A', 20_000)
+    if ((await byId(page, 'eule-project-sidebar').count()) !== 0) fail('Row A: a collapsed sidebar should stay collapsed after a reload')
+    await byId(page, 'eule-conversations-btn').click()
+    await see(page, 'eule-project-sidebar', 'Row A')
+    console.log(`[${TAG}] ✅ Row A — top bar, legal status, empty state, composer dock; sidebar open beside the chat, collapsed it stays collapsed`)
 
     // Row B — the privacy notice moved behind the badge.
     await byId(page, 'eule-privacy-badge').click()
@@ -160,7 +179,8 @@ async function main() {
     await see(page, 'advisor-empty-state', 'Row D')
     console.log(`[${TAG}] ✅ Row D — cancel keeps the conversation, a failed clear says so, the real one empties the chat`)
 
-    // Row G — several conversations in one tax year (#481): each has its own messages.
+    // Row G — several conversations in one tax year (#481): each has its own messages. On this
+    // width the list lives in the sidebar.
     const ask = async (text) => {
       const before = await byId(page, 'advisor-assistant-message').count()
       await input.fill(text)
@@ -169,18 +189,16 @@ async function main() {
       await see(page, 'advisor-chat-send', 'Row G', 15_000)
     }
     const chatText = async () => (await byId(page, 'advisor-chat-scroll').innerText()).replace(/\s+/g, ' ')
+    const rows = () => byId(page, 'eule-conversation-row')
+    const rowCountIs = (n, why) => page.waitForFunction((count) => document.querySelectorAll('[data-testid="eule-conversation-row"]').length === count, n, { timeout: 10_000 }).catch(() => fail(`Row G: ${why}`))
     await ask('Frage zum Arbeitsweg')
-    await byId(page, 'eule-conversations-btn').click()
-    await see(page, 'eule-conversations-sheet', 'Row G')
-    if (!(await textOf(page, 'eule-conversation-row')).includes('Frage zum Arbeitsweg')) fail('Row G: a conversation should be named after its first question')
+    await page.waitForFunction(() => document.querySelector('[data-testid="eule-conversation-row"]')?.textContent?.includes('Frage zum Arbeitsweg'), null, { timeout: 10_000 }).catch(() => fail('Row G: a conversation should be named after its first question'))
     await byId(page, 'eule-conversation-new').click()
-    await gone(page, 'eule-conversations', 'Row G')
     await see(page, 'advisor-empty-state', 'Row G')
     await ask('Frage zur Vermietung')
     if ((await chatText()).includes('Frage zum Arbeitsweg')) fail('Row G: a new conversation must not show the messages of the other one')
+    await rowCountIs(2, 'two conversations expected in the list')
 
-    await byId(page, 'eule-conversations-btn').click()
-    if ((await byId(page, 'eule-conversation-row').count()) !== 2) fail(`Row G: two conversations expected, found ${await byId(page, 'eule-conversation-row').count()}`)
     // The one used last comes first and is the open one; rename it.
     await byId(page, 'eule-conversation-rename').first().click()
     await byId(page, 'eule-conversation-rename-input').fill('Meine Wohnung')
@@ -189,24 +207,65 @@ async function main() {
 
     // Open the other one: its own messages are back.
     await byId(page, 'eule-conversation-open').nth(1).click()
-    await gone(page, 'eule-conversations', 'Row G')
     await page.waitForFunction(() => document.querySelector('[data-testid="advisor-chat-scroll"]')?.textContent?.includes('Frage zum Arbeitsweg'), null, { timeout: 10_000 }).catch(() => fail('Row G: opening the first conversation should show its messages'))
     if ((await chatText()).includes('Frage zur Vermietung')) fail('Row G: the first conversation must not show the messages of the second')
 
-    // Delete the other one: a second, explicit step, and it can be cancelled.
-    await byId(page, 'eule-conversations-btn').click()
-    const others = page.locator('[data-testid="eule-conversation-row"]', { hasText: 'Meine Wohnung' })
-    await others.locator('[data-testid="eule-conversation-delete"]').click()
+    // Delete the other one: a second, explicit step, and it can be cancelled. A failed delete says so.
+    const other = page.locator('[data-testid="eule-conversation-row"]', { hasText: 'Meine Wohnung' })
+    await other.locator('[data-testid="eule-conversation-delete"]').click()
     await byId(page, 'eule-conversation-delete-cancel').click()
-    if ((await byId(page, 'eule-conversation-row').count()) !== 2) fail('Row G: cancelling must keep the conversation')
-    await others.locator('[data-testid="eule-conversation-delete"]').click()
+    if ((await rows().count()) !== 2) fail('Row G: cancelling must keep the conversation')
+    await page.route('**/advisor/conversations/*', async (route) => {
+      if (route.request().method() === 'DELETE') await route.fulfill({ status: 500, contentType: 'application/json', body: '{"code":"INTERNAL"}' })
+      else await route.fallback()
+    })
+    await other.locator('[data-testid="eule-conversation-delete"]').click()
     await byId(page, 'eule-conversation-delete-confirm').click()
-    await page.waitForFunction(() => document.querySelectorAll('[data-testid="eule-conversation-row"]').length === 1, null, { timeout: 10_000 }).catch(() => fail('Row G: the deleted conversation should leave the list'))
+    await see(page, 'eule-conversation-failed', 'Row G')
+    await page.unroute('**/advisor/conversations/*')
+    await other.locator('[data-testid="eule-conversation-delete"]').click()
+    await byId(page, 'eule-conversation-delete-confirm').click()
+    await rowCountIs(1, 'the deleted conversation should leave the list')
     const left = sql(`SELECT count(*) FROM "BeraterGespraech" g JOIN "User" u ON u.id = g."userId" WHERE u.email = '${email}'`)
     if (String(left).trim() !== '1') fail(`Row G: one conversation should be left in the database, found ${String(left).trim()}`)
-    await page.keyboard.press('Escape')
-    await gone(page, 'eule-conversations', 'Row G')
     console.log(`[${TAG}] ✅ Row G — new conversation, own messages each, named after the first question, rename, switch, delete after a second step`)
+
+    // Row H — the notes of the tax year, in the same sidebar: add, change, delete by hand.
+    await see(page, 'eule-notes', 'Row H')
+    await see(page, 'eule-notes-empty', 'Row H')
+    await byId(page, 'eule-note-add').click()
+    await byId(page, 'eule-note-cancel').click()
+    await gone(page, 'eule-note-input', 'Row H')
+    await byId(page, 'eule-note-add').click()
+    await byId(page, 'eule-note-input').fill('Fahrtenbuch reiche ich nach.')
+    await byId(page, 'eule-note-save').click()
+    await see(page, 'eule-note-row', 'Row H')
+    if (!(await textOf(page, 'eule-note-row')).includes('Fahrtenbuch reiche ich nach.')) fail('Row H: the new note should be listed')
+    await byId(page, 'eule-note-edit').click()
+    await byId(page, 'eule-note-input').fill('Fahrtenbuch ist nachgereicht.')
+    await byId(page, 'eule-note-save').click()
+    await page.waitForFunction(() => document.querySelector('[data-testid="eule-note-row"]')?.textContent?.includes('ist nachgereicht'), null, { timeout: 10_000 }).catch(() => fail('Row H: the changed text should show'))
+    const storedNotes = sql(`SELECT count(*) FROM "BeraterNotiz" n JOIN "User" u ON u.id = n."userId" WHERE u.email = '${email}'`)
+    if (String(storedNotes).trim() !== '1') fail(`Row H: the note should be stored once, found ${String(storedNotes).trim()}`)
+    await page.route('**/advisor/notes/*', async (route) => {
+      if (route.request().method() === 'DELETE') await route.fulfill({ status: 500, contentType: 'application/json', body: '{"code":"INTERNAL"}' })
+      else await route.fallback()
+    })
+    await byId(page, 'eule-note-delete').click()
+    await see(page, 'eule-note-failed', 'Row H')
+    await page.unroute('**/advisor/notes/*')
+    await byId(page, 'eule-note-delete').click()
+    await see(page, 'eule-notes-empty', 'Row H')
+    console.log(`[${TAG}] ✅ Row H — a note added, changed and deleted by hand; a failed delete says so`)
+
+    // Row I — the context ring in the composer: says how full the conversation is; too short to summarise.
+    await byId(page, 'advisor-context-ring').click()
+    await see(page, 'advisor-context-popover', 'Row I')
+    if (!/\d+ %/.test(await textOf(page, 'advisor-context-percent'))) fail('Row I: the ring should name how full the context is')
+    if (!(await byId(page, 'advisor-context-summarize').isDisabled())) fail('Row I: a short conversation offers no summary yet')
+    await byId(page, 'advisor-context-ring').click()
+    await gone(page, 'advisor-context-popover', 'Row I')
+    console.log(`[${TAG}] ✅ Row I — the context ring names the fill level and offers no summary of a short conversation`)
 
     // Row E — a stored answer with everything attached.
     const now = new Date().toISOString()
@@ -216,6 +275,8 @@ async function main() {
       if (res === null) return
       const json = await res.json()
       json.messages = storedAnswer(now)
+      // The first message is already summarised: the dividing line sits after it.
+      json.context = { usedTokens: 5200, maxTokens: 6000, percent: 87, level: 'warn', canSummarize: true, summary: '- Nutzer wollte mehrere Angaben eintragen', summarizedUntilMessageId: 'stub-u1' }
       await route.fulfill({ response: res, json })
     })
     await page.reload({ waitUntil: 'networkidle' })
@@ -238,6 +299,25 @@ async function main() {
     // The stored answer does not exist on the server, so its rating cannot be saved.
     await byId(page, 'advisor-feedback-up').first().click()
     await see(page, 'advisor-feedback-failed', 'Row E')
+
+    // What the owl noted in this answer, with a way back; the stored answer is a stub, so undo fails honestly.
+    await see(page, 'advisor-note-changes', 'Row E')
+    if ((await byId(page, 'advisor-note-change').count()) !== 2) fail('Row E: both note changes of the answer should be shown')
+    if (!(await textOf(page, 'advisor-note-change')).includes('Gemerkt: Arbeitszimmer geprüft')) fail('Row E: the answer should say what the owl noted')
+    await see(page, 'advisor-note-change-undone', 'Row E')
+    await byId(page, 'advisor-note-change-undo').click()
+    await see(page, 'advisor-note-change-failed', 'Row E')
+
+    // The summarised part ends at a dividing line; the summary opens on request. An almost full
+    // context offers "Jetzt zusammenfassen"; on the real, short conversation that fails honestly.
+    await see(page, 'advisor-summary-divider', 'Row E')
+    await byId(page, 'advisor-summary-toggle').click()
+    if (!(await textOf(page, 'advisor-summary-text')).includes('mehrere Angaben')) fail('Row E: the dividing line should open the summary')
+    await byId(page, 'advisor-context-ring').click()
+    if (!(await textOf(page, 'advisor-context-percent')).includes('87 %')) fail('Row E: the ring should show the fill level of the conversation')
+    await byId(page, 'advisor-context-summarize').click()
+    await see(page, 'advisor-context-failed', 'Row E')
+    await byId(page, 'advisor-context-ring').click()
 
     await byId(page, 'advisor-not-staged-open-mask').click()
     await see(page, 'eule-workbench-close', 'Row E')
@@ -281,6 +361,29 @@ async function main() {
 
     await page.unrouteAll({ behavior: 'ignoreErrors' })
     await ctx.close()
+
+    // Row J — on a phone the same project content opens as a sheet.
+    const phone = await newContextAtBreakpoint(browser, 's')
+    const small = await phone.newPage()
+    guardAgainst429(small, fail, '/api/auth/')
+    await skipSplash(small, webOrigin)
+    await waitForBucketHeadroom(AUTH_BUCKET, 'sign-in/email', TAG)
+    await small.getByPlaceholder(FLOW_COPY.loginEmailPlaceholder).fill(email)
+    await small.getByPlaceholder(FLOW_COPY.loginPasswordPlaceholder).fill(TEST_PASSWORD)
+    await small.getByRole('button', { name: FLOW_COPY.loginSubmit }).click()
+    await small.waitForURL((u) => u.pathname === '/app', { timeout: 15_000 })
+    await small.getByRole('tab', { name: 'Eule' }).click()
+    await see(small, 'eule-chat-main', 'Row J', 20_000)
+    if ((await byId(small, 'eule-project-sidebar').count()) !== 0) fail('Row J: no sidebar on a phone')
+    await byId(small, 'eule-conversations-btn').click()
+    await see(small, 'eule-conversations-sheet', 'Row J')
+    await see(small, 'eule-conversation-row', 'Row J')
+    await see(small, 'eule-notes', 'Row J')
+    await small.keyboard.press('Escape')
+    await gone(small, 'eule-conversation-row', 'Row J')
+    await phone.close()
+    console.log(`[${TAG}] ✅ Row J — on a phone the conversations and notes open as a sheet`)
+
     console.log(`[${TAG}] PASS — chat-first layout, sheets, rating, clearing, attached notices and re-attachment verified.`)
   } finally {
     await closeBrowser(browser)
