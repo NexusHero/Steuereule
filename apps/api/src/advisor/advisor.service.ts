@@ -39,6 +39,10 @@ import {
   summaryCut,
   transcriptForSummary,
   type AdvisorHistorySource,
+  ADVISOR_NOTES_MAX,
+  buildNoteHandles,
+  tidyNoteText,
+  type AdvisorNoteChange,
 } from '@steuereule/core'
 import { AuditService } from '../audit/audit.service.js'
 import { checkPiiFree } from '../ki/ki.adapter.js'
@@ -73,6 +77,7 @@ import {
   type AdvisorChatMessageRecord,
   type AdvisorConversationRecord,
   type AdvisorMessageUsage,
+  type AdvisorNoteRecord,
   type AdvisorRepository,
   type FinishAdvisorMessageInput,
 } from './advisor.repository.js'
@@ -81,6 +86,7 @@ import type {
   AdvisorChatMessageDto,
   AdvisorContextDto,
   AdvisorConversationDto,
+  AdvisorNoteDto,
   AdvisorSessionResponseDto,
   ApplyBatchActionsDto,
   ApplyBatchActionsResponseDto,
@@ -221,6 +227,10 @@ function contextOf(conversation: AdvisorConversationRecord, records: readonly Ad
     ...(covered.length > 0 ? { summarizedUntilMessageId: covered[covered.length - 1]!.id } : {}),
     canSummarize: summaryCut(sources) > 0,
   }
+}
+
+function toNoteDto(note: AdvisorNoteRecord): AdvisorNoteDto {
+  return { id: note.id, text: note.text, author: note.author, updatedAt: note.updatedAt.toISOString() }
 }
 
 function toConversationDto(conversation: AdvisorConversationRecord): AdvisorConversationDto {
@@ -520,13 +530,99 @@ export class AdvisorService {
     return contextOf(compacted, await this.advisorRepo.listForConversation(compacted.id, userId), await this.knownNamesForScrubbing(userId, taxYear))
   }
 
+  // ── Project notes (#481) ──────────────────────────────────────────────────────────────────
+
+  async listNotes(userId: string, taxYear: number): Promise<AdvisorNoteDto[]> {
+    return (await this.advisorRepo.listNotes(userId, taxYear)).map(toNoteDto)
+  }
+
+  /** A note text as it may be stored: one line, within the length, without names or identifiers. */
+  private async storableNoteText(userId: string, taxYear: number, raw: string): Promise<string> {
+    const scrubbed = scrubUserMessagePii(raw, await this.knownNamesForScrubbing(userId, taxYear))
+    const text = tidyNoteText(scrubbed)
+    if (!text.ok) throw new InvalidInputError('ADVISOR_NOTE_INVALID', text.reason)
+    return text.text
+  }
+
+  async createNote(userId: string, taxYear: number, raw: string): Promise<AdvisorNoteDto> {
+    const text = await this.storableNoteText(userId, taxYear, raw)
+    if ((await this.advisorRepo.listNotes(userId, taxYear)).length >= ADVISOR_NOTES_MAX) {
+      throw new ConflictError('ADVISOR_NOTE_LIMIT', `Für ein Steuerjahr sind höchstens ${ADVISOR_NOTES_MAX} Notizen möglich. Lösche eine, die nicht mehr gilt.`)
+    }
+    return toNoteDto(await this.advisorRepo.createNote(userId, taxYear, text, 'user'))
+  }
+
+  private async ownNote(userId: string, taxYear: number, noteId: string): Promise<AdvisorNoteRecord> {
+    const note = await this.advisorRepo.findNote(noteId, userId)
+    if (!note || note.taxYear !== taxYear) throw new NotFoundError('ADVISOR_NOTE_NOT_FOUND', 'Diese Notiz gibt es nicht (mehr).')
+    return note
+  }
+
+  async updateNote(userId: string, taxYear: number, noteId: string, raw: string): Promise<AdvisorNoteDto> {
+    const note = await this.ownNote(userId, taxYear, noteId)
+    const updated = await this.advisorRepo.updateNote(note.id, userId, await this.storableNoteText(userId, taxYear, raw), 'user')
+    return toNoteDto(updated ?? note)
+  }
+
+  async deleteNote(userId: string, taxYear: number, noteId: string): Promise<{ deleted: true }> {
+    const note = await this.ownNote(userId, taxYear, noteId)
+    await this.advisorRepo.deleteNote(note.id, userId)
+    return { deleted: true }
+  }
+
+  /**
+   * Stores what the owl decided to note, replace or forget in an answer. The owl writes notes on
+   * its own; the answer carries every change so the user sees it and can take it back.
+   */
+  private async applyNoteChanges(userId: string, taxYear: number, changes: readonly AdvisorNoteChange[] | undefined): Promise<AdvisorNoteChange[]> {
+    const applied: AdvisorNoteChange[] = []
+    for (const change of changes ?? []) {
+      if (change.kind === 'added') {
+        if ((await this.advisorRepo.listNotes(userId, taxYear)).length >= ADVISOR_NOTES_MAX) continue
+        const note = await this.advisorRepo.createNote(userId, taxYear, change.text, 'owl')
+        applied.push({ ...change, noteId: note.id })
+      } else if (change.noteId !== undefined) {
+        const note = await this.advisorRepo.findNote(change.noteId, userId)
+        if (!note || note.taxYear !== taxYear) continue
+        if (change.kind === 'replaced') {
+          await this.advisorRepo.updateNote(note.id, userId, change.text, 'owl')
+          applied.push({ ...change, previousText: note.text })
+        } else {
+          await this.advisorRepo.deleteNote(note.id, userId)
+          applied.push({ ...change, text: note.text })
+        }
+      }
+    }
+    return applied
+  }
+
+  /** "Rückgängig" under an answer: takes back one change the owl made to the notes. */
+  async undoNoteChange(userId: string, taxYear: number, messageId: string, index: number): Promise<AdvisorChatMessageDto> {
+    const message = await this.advisorRepo.findMessage(messageId, userId)
+    const change = message?.taxYear === taxYear ? message.meta?.noteChanges?.[index] : undefined
+    if (!message || !change) throw new NotFoundError('ADVISOR_NOTE_CHANGE_NOT_FOUND', 'Diese Änderung gibt es nicht (mehr).')
+    if (change.undone) throw new ConflictError('ADVISOR_NOTE_CHANGE_UNDONE', 'Diese Änderung wurde bereits zurückgenommen.')
+
+    let noteId = change.noteId
+    if (change.kind === 'added') {
+      if (noteId !== undefined) await this.advisorRepo.deleteNote(noteId, userId)
+    } else if (change.kind === 'replaced') {
+      if (noteId !== undefined && change.previousText !== undefined) await this.advisorRepo.updateNote(noteId, userId, change.previousText, 'owl')
+    } else {
+      noteId = (await this.advisorRepo.createNote(userId, taxYear, change.text, 'owl')).id
+    }
+    const noteChanges = message.meta!.noteChanges!.map((entry, i) => (i === index ? { ...entry, noteId, undone: true as const } : entry))
+    return toMessageDto(await this.advisorRepo.updateMessageMeta(message.id, userId, { ...message.meta, noteChanges }))
+  }
+
   async getSession(userId: string, taxYear: number, conversationId?: string): Promise<AdvisorSessionResponseDto> {
     const conversation = await this.conversationFor(userId, taxYear, conversationId)
-    const [setting, cardsRes, history, conversations] = await Promise.all([
+    const [setting, cardsRes, history, conversations, notes] = await Promise.all([
       this.owlModeService.getSetting(userId),
       this.owlModeService.getCards(userId, taxYear),
       this.advisorRepo.listForConversation(conversation.id, userId),
       this.advisorRepo.listConversations(userId, taxYear),
+      this.advisorRepo.listNotes(userId, taxYear),
     ])
 
     await this.auditService.append({
@@ -548,6 +644,7 @@ export class AdvisorService {
       conversationId: conversation.id,
       conversations: conversations.map(toConversationDto),
       context: contextOf(conversation, history, await this.knownNamesForScrubbing(userId, taxYear)),
+      notes: notes.map(toNoteDto),
       messages: history.filter((m) => !m.meta?.replaced).map(toMessageDto),
       quickChips: [
         'Kanzlei-Endprüfung starten',
@@ -768,6 +865,7 @@ export class AdvisorService {
         planRequired: dto.quickAction === 'forgotten_check',
         records: await this.loadRecordHandles(userId, taxYear),
         previewEffect: this.previewEffectFor(userId, taxYear),
+        notes: buildNoteHandles(await this.advisorRepo.listNotes(userId, taxYear)),
       })) {
         if (ev.event === 'token') {
           firstTokenMs ??= Date.now() - startedAt
@@ -820,7 +918,14 @@ export class AdvisorService {
             ...(turnResult.model !== undefined ? { model: turnResult.model } : {}),
           }
           if (reasoning.length === 0 && turnResult.reasoning) reasoning = turnResult.reasoning
-          const assistant = await finish('complete', turnResult.replyText, { ...enrichedMeta, engine }, turnResult.usage)
+          const noteChanges = await this.applyNoteChanges(userId, taxYear, enrichedMeta.noteChanges)
+          const { noteChanges: _asProposed, ...metaWithoutNotes } = enrichedMeta
+          const assistant = await finish(
+            'complete',
+            turnResult.replyText,
+            { ...metaWithoutNotes, ...(noteChanges.length > 0 ? { noteChanges } : {}), engine },
+            turnResult.usage,
+          )
           yield doneWith(assistant, turnResult.mode)
           return
         }

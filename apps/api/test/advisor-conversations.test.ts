@@ -292,3 +292,101 @@ describe('a full conversation is summarised (#481)', () => {
     expect((await service.getSession(USER, YEAR, id)).context.summary).toBeUndefined()
   })
 })
+
+describe('project notes (#481)', () => {
+  const noting = (changes: Array<{ kind: 'added' | 'replaced' | 'removed'; text: string; noteId?: string; previousText?: string }>, text = 'Gemerkt.'): ScriptStep[] => [
+    token(text),
+    doneEvent({ replyText: text, meta: { noteChanges: changes } }),
+  ]
+
+  it('stores what the owl notes without a click, and says so under the answer', async () => {
+    const { service } = build(noting([{ kind: 'added', text: 'Arbeitszimmer geprüft: lohnt sich nicht.' }]))
+    await collect(service.streamMessage(USER, YEAR, { message: 'Lohnt sich ein Arbeitszimmer?' }))
+    const session = await service.getSession(USER, YEAR)
+    expect(session.notes.map((n) => n.text)).toEqual(['Arbeitszimmer geprüft: lohnt sich nicht.'])
+    expect(session.notes[0]!.author).toBe('owl')
+    const change = session.messages.at(-1)!.meta!.noteChanges![0]!
+    expect(change).toMatchObject({ kind: 'added', text: 'Arbeitszimmer geprüft: lohnt sich nicht.', noteId: session.notes[0]!.id })
+  })
+
+  it('shows the notes of the year to the model in every conversation, by name', async () => {
+    const { service, engine } = build(noting([{ kind: 'added', text: 'Fahrtenbuch wird nachgereicht.' }]))
+    await collect(service.streamMessage(USER, YEAR, { message: 'Erstes Gespräch' }))
+    const second = await service.createConversation(USER, YEAR)
+    await collect(service.streamMessage(USER, YEAR, { message: 'Zweites Gespräch', conversationId: second.id }))
+    expect(engine.requests[0]!.notes).toEqual([])
+    expect(engine.requests[1]!.notes).toEqual([{ handle: 'Notiz 1', id: expect.any(String), text: 'Fahrtenbuch wird nachgereicht.' }])
+    // Another year starts without them.
+    await collect(service.streamMessage(USER, YEAR + 1, { message: 'Neues Jahr' }))
+    expect(engine.requests[2]!.notes).toEqual([])
+  })
+
+  it('takes an added note back', async () => {
+    const { service } = build(noting([{ kind: 'added', text: 'Voreilig gemerkt.' }]))
+    await collect(service.streamMessage(USER, YEAR, { message: 'Hallo' }))
+    const answer = (await service.getSession(USER, YEAR)).messages.at(-1)!
+    const undone = await service.undoNoteChange(USER, YEAR, answer.id, 0)
+    expect(undone.meta!.noteChanges![0]!.undone).toBe(true)
+    expect((await service.getSession(USER, YEAR)).notes).toEqual([])
+    await expect(service.undoNoteChange(USER, YEAR, answer.id, 0)).rejects.toMatchObject({ code: 'ADVISOR_NOTE_CHANGE_UNDONE' })
+  })
+
+  /** A kit whose script is filled in after the notes it refers to exist. */
+  function buildLate() {
+    const script: ScriptStep[] = []
+    return { ...build(script), script }
+  }
+
+  it('replaces a note and can restore what it said before', async () => {
+    const { service, advisorRepo, script } = buildLate()
+    const note = await advisorRepo.createNote(USER, YEAR, 'Arbeitsweg 38 km.', 'owl')
+    script.push(...noting([{ kind: 'replaced', noteId: note.id, text: 'Arbeitsweg 40 km.' }]))
+    await collect(service.streamMessage(USER, YEAR, { message: 'Es sind doch 40 km.' }))
+    expect((await service.listNotes(USER, YEAR)).map((n) => n.text)).toEqual(['Arbeitsweg 40 km.'])
+    const answer = (await service.getSession(USER, YEAR)).messages.at(-1)!
+    expect(answer.meta!.noteChanges![0]).toMatchObject({ kind: 'replaced', previousText: 'Arbeitsweg 38 km.' })
+
+    await service.undoNoteChange(USER, YEAR, answer.id, 0)
+    expect((await service.listNotes(USER, YEAR)).map((n) => n.text)).toEqual(['Arbeitsweg 38 km.'])
+  })
+
+  it('lets the owl forget a note, and brings it back on undo', async () => {
+    const { service, advisorRepo, script } = buildLate()
+    const note = await advisorRepo.createNote(USER, YEAR, 'Gilt nicht mehr.', 'owl')
+    script.push(...noting([{ kind: 'removed', noteId: note.id, text: 'Gilt nicht mehr.' }]))
+    await collect(service.streamMessage(USER, YEAR, { message: 'Das hat sich erledigt.' }))
+    expect(await service.listNotes(USER, YEAR)).toEqual([])
+
+    const answer = (await service.getSession(USER, YEAR)).messages.at(-1)!
+    await service.undoNoteChange(USER, YEAR, answer.id, 0)
+    expect((await service.listNotes(USER, YEAR)).map((n) => n.text)).toEqual(['Gilt nicht mehr.'])
+  })
+
+  it('ignores a change to a note of another year or another user', async () => {
+    const { service, advisorRepo, script } = buildLate()
+    const foreign = await advisorRepo.createNote('someone-else', YEAR, 'Fremde Notiz.', 'owl')
+    script.push(...noting([{ kind: 'removed', noteId: foreign.id, text: 'x' }]))
+    await collect(service.streamMessage(USER, YEAR, { message: 'Hallo' }))
+    expect((await service.listNotes('someone-else', YEAR)).map((n) => n.text)).toEqual(['Fremde Notiz.'])
+    expect((await service.getSession(USER, YEAR)).messages.at(-1)!.meta?.noteChanges).toBeUndefined()
+  })
+
+  it('lets the user add, change and delete notes; the text loses identifiers', async () => {
+    const { service } = build()
+    const note = await service.createNote(USER, YEAR, '  Konto DE89370400440532013000\n für Erstattung ')
+    expect(note.author).toBe('user')
+    expect(note.text).not.toContain('DE89370400440532013000')
+    const changed = await service.updateNote(USER, YEAR, note.id, 'Erstattung auf das Girokonto.')
+    expect(changed.text).toBe('Erstattung auf das Girokonto.')
+    await service.deleteNote(USER, YEAR, note.id)
+    expect(await service.listNotes(USER, YEAR)).toEqual([])
+    await expect(service.updateNote(USER, YEAR, note.id, 'x')).rejects.toMatchObject({ code: 'ADVISOR_NOTE_NOT_FOUND' })
+  })
+
+  it('refuses a note that is too long, and more notes than a year may hold', async () => {
+    const { service } = build()
+    await expect(service.createNote(USER, YEAR, 'x'.repeat(201))).rejects.toMatchObject({ code: 'ADVISOR_NOTE_INVALID' })
+    for (let i = 0; i < 20; i += 1) await service.createNote(USER, YEAR, `Notiz Nummer ${i}`)
+    await expect(service.createNote(USER, YEAR, 'eine zu viel')).rejects.toMatchObject({ code: 'ADVISOR_NOTE_LIMIT' })
+  })
+})

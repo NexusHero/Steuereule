@@ -21,6 +21,10 @@ import {
   ADVISOR_PLAN_STEP_STATUSES,
   checkAdvisorAnswer,
   checkAdvisorInputBoundary,
+  ADVISOR_NOTES_MAX,
+  describeNotesForPrompt,
+  resolveNoteHandle,
+  tidyNoteText,
   describeRecordHandles,
   evaluateAdvisorTurn,
   fieldSpec,
@@ -29,6 +33,8 @@ import {
   type AdvisorActionProposal,
   type AdvisorEnginePort,
   type AdvisorMessageMeta,
+  type AdvisorNoteChange,
+  type AdvisorNoteHandle,
   type AdvisorNotStaged,
   type AdvisorPreviewEffect,
   type AdvisorPreviewTarget,
@@ -70,6 +76,9 @@ const TOOL_LABELS: Readonly<Record<string, string>> = {
   ask_clarification: 'Prüfe Rückfragen …',
   lookup_legal_source: 'Prüfe EStG-Paragraph …',
   plan_steps: 'Plane die nächsten Schritte …',
+  remember_note: 'Merke mir das für dieses Steuerjahr …',
+  replace_note: 'Aktualisiere eine Notiz …',
+  forget_note: 'Entferne eine überholte Notiz …',
 }
 
 function extractMessageText(content: unknown): string {
@@ -162,6 +171,7 @@ export function buildStableSystemPrompt(): string {
     '10. Vollständigkeit vor Tempo: (a) Arbeitsweg: Frage nach Urlaubs- und Krankheitstagen (`commute.vacationDays`, `commute.sickDays`), bevor du Pendeltage oder eine Entfernungspauschale als fertig bezeichnest; ohne sie rechnet die App mit 0 Tagen und überschätzt die Pauschale. Sage das, wenn die Angaben fehlen. (b) Fortbildung: Nennt der Nutzer Kosten, lege den Entwurf auf `interview.fortbildung-kosten` an und gib `fortbildung: "Ja"` als companionField mit. Ohne Betrag vermerkst du nur `fortbildung` = „Ja“ und fragst nach den Kosten; nenne dafür keine Erstattungswirkung. (c) Nenne Beträge nur dann als erfasst, wenn ein Entwurf dafür `ok: true` gemeldet hat.',
     '11. Vermietung und Kinder haben mehrere Einträge. Gib bei `stage_field_draft` für die Masken `vermietung` und `kind` als `instance` den Namen des Eintrags an, genau wie er unter „Angelegte Einträge“ steht (z. B. „Objekt 1“, „Kind 2“). Gibt es nur einen Eintrag, darfst du `instance` weglassen. Gibt es mehrere und der Nutzer hat nicht gesagt, welcher gemeint ist, frage nach. Ist keiner angelegt, kannst du nichts vorbereiten: Einträge legt der Nutzer selbst in der Maske an – sag ihm das, die App öffnet die Maske. Erfinde keine Einträge und keine anderen Namen.',
     '12. Wirkung: Die Werkzeuge melden zu jedem Entwurf `effect`. Bei `computed` stammen `beforeRefundEur`, `afterRefundEur` und `deltaEur` aus der Schätzung der App – nenne genau diese Zahlen und keine anderen. Bei `not-computable` gibt es keine Zahl: Nenne dann keinen Euro-Betrag als Wirkung, sondern gib `effectHint` sinngemäß wieder. Eine Wirkung von 0 € heißt, dass sich die Schätzung durch die Angabe nicht ändert – sag das so.',
+    '13. Projektnotizen: Sie sind dein Gedächtnis über alle Gespräche dieses Steuerjahres. Halte mit `remember_note` fest, was besprochen oder entschieden wurde und in keinem Feld der Erklärung steht (z. B. „Arbeitszimmer geprüft: lohnt sich nicht, weil kein eigener Raum“, „Nutzer will Fahrtenbuch nachreichen“). Notiere nichts, was schon als Wert in der Erklärung steht, keine Smalltalk-Details und keine persönlichen Daten. Ändert sich etwas, nutze `replace_note`; gilt es nicht mehr, `forget_note`. Sparsam: höchstens eine oder zwei Notizen pro Antwort. Erwähne im Text kurz, was du dir gemerkt hast.',
     '',
     '8. Ton: Du duzt den Nutzer durchgehend, freundlich und knapp.',
     '',
@@ -169,13 +179,14 @@ export function buildStableSystemPrompt(): string {
   ].join('\n')
 }
 
-function buildCaseSystemPrompt(digest: CaseDigest, activeScreen: Screen | undefined, planFirst: boolean, records?: AdvisorRecordHandles): string {
+function buildCaseSystemPrompt(digest: CaseDigest, activeScreen: Screen | undefined, planFirst: boolean, records?: AdvisorRecordHandles, notes?: readonly AdvisorNoteHandle[]): string {
   return [
     `Aktive Maske: ${activeScreen ?? 'cockpit'}`,
     'PII-freier Fall-Überblick (CaseDigest):',
     JSON.stringify(digest),
     'Angelegte Einträge (für `instance`):',
     describeRecordHandles(records),
+    describeNotesForPrompt(notes ?? []),
     ...(planFirst ? ['', 'Für diese Anfrage gilt: Rufe als Erstes `plan_steps` auf, bevor du irgendetwas anderes tust.'] : []),
   ].join('\n')
 }
@@ -191,9 +202,10 @@ export function buildSystemMessage(
   /** Ask for the plan in words, for models that cannot be forced to a tool (see `canForceTool`). */
   planFirst = false,
   records?: AdvisorRecordHandles,
+  notes?: readonly AdvisorNoteHandle[],
 ): SystemMessage {
   const stable = buildStableSystemPrompt()
-  const caseSpecific = buildCaseSystemPrompt(digest, activeScreen, planFirst, records)
+  const caseSpecific = buildCaseSystemPrompt(digest, activeScreen, planFirst, records, notes)
   if (provider === 'anthropic') {
     return new SystemMessage({
       content: [
@@ -229,6 +241,10 @@ const AdvisorGraphState = Annotation.Root({
     default: () => null,
   }),
   choices: Annotation<string[]>({
+    reducer: (_left, right) => right,
+    default: () => [],
+  }),
+  noteChanges: Annotation<AdvisorNoteChange[]>({
     reducer: (_left, right) => right,
     default: () => [],
   }),
@@ -342,6 +358,9 @@ const TOOL_ARG_SCHEMAS = {
       .min(1)
       .max(ADVISOR_PLAN_MAX_STEPS),
   }),
+  remember_note: z.object({ text: z.string().min(1).max(400) }),
+  replace_note: z.object({ note: z.string().min(1).max(60), text: z.string().min(1).max(400) }),
+  forget_note: z.object({ note: z.string().min(1).max(60) }),
 } as const
 
 type ToolName = keyof typeof TOOL_ARG_SCHEMAS
@@ -357,6 +376,10 @@ const TOOL_DESCRIPTIONS: Readonly<Record<ToolName, string>> = {
   lookup_legal_source: 'Ruft Wortlaut, Paragraph und Rechtsstand einer EStG/AO-Rechtsquelle aus dem verifizierten Katalog ab.',
   plan_steps:
     'Zeigt dem Nutzer deinen Plan als Checkliste (höchstens 8 Schritte, Status offen/laeuft/erledigt). Immer die vollständige Liste senden. Schreibt nichts in die Akte.',
+  remember_note:
+    'Hält eine Projektnotiz für dieses Steuerjahr fest: eine Entscheidung oder ein Umstand aus dem Gespräch, der in keinem Feld der Erklärung steht. Ein Satz, höchstens 200 Zeichen, ohne persönliche Daten. Gilt danach in jedem Gespräch.',
+  replace_note: 'Ersetzt den Text einer vorhandenen Projektnotiz (Angabe wie „Notiz 2“), wenn sie überholt oder korrigiert ist.',
+  forget_note: 'Entfernt eine vorhandene Projektnotiz (Angabe wie „Notiz 2“), wenn sie nicht mehr gilt.',
 }
 
 /** JSON Schema keywords at least one provider's function-calling API rejects outright. */
@@ -477,6 +500,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
       let rejectedDrafts = state.rejectedDrafts
       let pendingTwoPaths = state.pendingTwoPaths
       let choices = state.choices
+      let noteChanges = state.noteChanges
       const sources: OwlSourceId[] = []
 
       for (const tc of toolCalls) {
@@ -785,6 +809,65 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
           continue
         }
 
+        if (tc.name === 'remember_note' || tc.name === 'replace_note' || tc.name === 'forget_note') {
+          // The notes as they stand after what this answer has already changed.
+          const gone = new Set(noteChanges.filter((change) => change.kind === 'removed').map((change) => change.noteId))
+          const added = noteChanges.filter((change) => change.kind === 'added').length
+          const known = (request.notes ?? []).filter((note) => !gone.has(note.id))
+          const refuse = (error: string) => toolMessages.push(toolResult(callId, tc.name, { ok: false, error }))
+
+          if (tc.name === 'forget_note') {
+            const args = parseArgs(TOOL_ARG_SCHEMAS.forget_note)
+            if (args === null) continue
+            const note = resolveNoteHandle(known, args.note)
+            if (!note) {
+              refuse(`UNKNOWN_NOTE: „${args.note}“ gibt es nicht. Vorhanden: ${known.map((n) => n.handle).join(', ') || 'keine'}.`)
+              continue
+            }
+            noteChanges = [...noteChanges.filter((change) => change.noteId !== note.id), { kind: 'removed', noteId: note.id, text: note.text }]
+            toolMessages.push(toolResult(callId, tc.name, { ok: true, removed: note.handle }))
+            continue
+          }
+
+          // One parse per call: a failed parse has already answered the call with its error.
+          const replaceArgs = tc.name === 'replace_note' ? parseArgs(TOOL_ARG_SCHEMAS.replace_note) : null
+          const args = tc.name === 'replace_note' ? replaceArgs : parseArgs(TOOL_ARG_SCHEMAS.remember_note)
+          if (args === null) continue
+          const text = tidyNoteText(args.text)
+          if (!text.ok) {
+            refuse(`INVALID_NOTE: ${text.reason}`)
+            continue
+          }
+          try {
+            checkPiiFree({ note: text.text })
+          } catch {
+            refuse('INVALID_NOTE: Eine Notiz darf keine persönlichen Daten enthalten (Namen, Adressen, Steuer-ID, IBAN, Geburtsdatum).')
+            continue
+          }
+          if (replaceArgs !== null) {
+            const note = resolveNoteHandle(known, replaceArgs.note)
+            if (!note) {
+              refuse(`UNKNOWN_NOTE: „${replaceArgs.note}“ gibt es nicht. Vorhanden: ${known.map((n) => n.handle).join(', ') || 'keine'}.`)
+              continue
+            }
+            const before = noteChanges.find((change) => change.noteId === note.id)?.previousText ?? note.text
+            noteChanges = [...noteChanges.filter((change) => change.noteId !== note.id), { kind: 'replaced', noteId: note.id, text: text.text, previousText: before }]
+            toolMessages.push(toolResult(callId, tc.name, { ok: true, replaced: note.handle }))
+            continue
+          }
+          if (known.length + added >= ADVISOR_NOTES_MAX) {
+            refuse(`TOO_MANY_NOTES: höchstens ${ADVISOR_NOTES_MAX} Notizen. Ersetze oder entferne zuerst eine überholte.`)
+            continue
+          }
+          if ([...known.map((n) => n.text), ...noteChanges.filter((c) => c.kind === 'added').map((c) => c.text)].some((existing) => existing.toLowerCase() === text.text.toLowerCase())) {
+            toolMessages.push(toolResult(callId, tc.name, { ok: true, alreadyNoted: true }))
+            continue
+          }
+          noteChanges = [...noteChanges, { kind: 'added', text: text.text }]
+          toolMessages.push(toolResult(callId, tc.name, { ok: true, noted: text.text }))
+          continue
+        }
+
         if (tc.name === 'plan_steps') {
           const args = parseArgs(TOOL_ARG_SCHEMAS.plan_steps)
           if (args === null) continue
@@ -814,6 +897,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
         rejectedDrafts,
         pendingTwoPaths,
         choices,
+        noteChanges,
         sources,
       }
     }
@@ -915,6 +999,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
       request.activeScreen,
       request.planRequired === true && !canForceTool,
       request.records,
+      request.notes,
     )
     const historyMessages: BaseMessage[] = (request.history ?? []).map((entry) =>
       entry.role === 'user' ? new HumanMessage(entry.content) : new AIMessage(entry.content),
@@ -929,6 +1014,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
     let finalMessages: BaseMessage[] = []
     let pendingActions: AdvisorActionProposal[] = []
     let rejectedDrafts: RejectedDraft[] = []
+    let noteChanges: AdvisorNoteChange[] = []
     let pendingTwoPaths: AdvisorTwoPathsProposal | null = null
     let choices: string[] = []
     let sources: OwlSourceId[] = []
@@ -983,6 +1069,9 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
             }
             if (Array.isArray(nodeUpdate.choices)) {
               choices = nodeUpdate.choices
+            }
+            if (Array.isArray(nodeUpdate.noteChanges)) {
+              noteChanges = nodeUpdate.noteChanges
             }
             if (Array.isArray(nodeUpdate.sources)) {
               sources = [...new Set([...sources, ...nodeUpdate.sources])]
@@ -1059,6 +1148,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
       ...(sources.length > 0 ? { sources } : {}),
       ...(notStaged.length > 0 ? { notStaged } : {}),
       ...(notices.length > 0 ? { notices } : {}),
+      ...(noteChanges.length > 0 ? { noteChanges } : {}),
     }
 
     if (meta.choices && meta.choices.length > 0) {

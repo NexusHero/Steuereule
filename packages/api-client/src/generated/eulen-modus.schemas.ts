@@ -283,6 +283,26 @@ export interface AdvisorAnswerNoticeDto {
   text: string;
 }
 
+export type AdvisorNoteChangeDtoKind = typeof AdvisorNoteChangeDtoKind[keyof typeof AdvisorNoteChangeDtoKind];
+
+
+export const AdvisorNoteChangeDtoKind = {
+  added: 'added',
+  replaced: 'replaced',
+  removed: 'removed',
+} as const;
+
+export interface AdvisorNoteChangeDto {
+  kind: AdvisorNoteChangeDtoKind;
+  noteId?: string;
+  /** The text after the change; for a removed note, the text that went. */
+  text: string;
+  /** What a replaced note said before. */
+  previousText?: string;
+  /** True once the user took the change back. */
+  undone?: boolean;
+}
+
 export type AdvisorLstbScanMetaDtoStage = typeof AdvisorLstbScanMetaDtoStage[keyof typeof AdvisorLstbScanMetaDtoStage];
 
 
@@ -478,6 +498,8 @@ export interface AdvisorMessageMetaDto {
   notStaged?: AdvisorNotStagedDto[];
   /** What the check of the finished answer found: a figure the app did not compute, a claim to have written something, an unknown source (ADR-0066). */
   notices?: AdvisorAnswerNoticeDto[];
+  /** What the owl changed in the project notes in this answer; each change can be undone (#481). */
+  noteChanges?: AdvisorNoteChangeDto[];
   action?: AdvisorActionProposalDto;
   actions?: AdvisorActionProposalDto[];
   lstbScan?: AdvisorLstbScanMetaDto;
@@ -723,6 +745,25 @@ export interface AdvisorContextDto {
   canSummarize: boolean;
 }
 
+/**
+ * Who wrote the current text.
+ */
+export type AdvisorNoteDtoAuthor = typeof AdvisorNoteDtoAuthor[keyof typeof AdvisorNoteDtoAuthor];
+
+
+export const AdvisorNoteDtoAuthor = {
+  owl: 'owl',
+  user: 'user',
+} as const;
+
+export interface AdvisorNoteDto {
+  id: string;
+  text: string;
+  /** Who wrote the current text. */
+  author: AdvisorNoteDtoAuthor;
+  updatedAt: string;
+}
+
 export type AdvisorLegalSourceDtoSourceId = typeof AdvisorLegalSourceDtoSourceId[keyof typeof AdvisorLegalSourceDtoSourceId];
 
 
@@ -757,6 +798,8 @@ export interface AdvisorSessionResponseDto {
   conversations: AdvisorConversationDto[];
   /** How full the context of this conversation is (#481). */
   context: AdvisorContextDto;
+  /** The project notes of this tax year; every conversation reads them. */
+  notes: AdvisorNoteDto[];
   messages: AdvisorChatMessageDto[];
   quickChips: string[];
   legalSources: AdvisorLegalSourceDto[];
@@ -826,6 +869,15 @@ export interface SendAdvisorMessageResponseDto {
 export interface StopAdvisorRunResponseDto {
   /** false when the run had already ended. */
   stopped: boolean;
+}
+
+export interface SaveAdvisorNoteDto {
+  /** @maxLength 200 */
+  text: string;
+}
+
+export interface DeleteAdvisorNoteResponseDto {
+  deleted: boolean;
 }
 
 export interface RenameAdvisorConversationDto {

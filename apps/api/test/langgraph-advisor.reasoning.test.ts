@@ -89,7 +89,7 @@ function runtime(provider: AiProviderKind, extra: Partial<ResolvedAiSlotConfig> 
   }
 }
 
-async function run(engine: LangGraphAdvisorEngine, extra: Partial<Pick<AdvisorTurnRequest, 'planRequired' | 'records' | 'previewEffect'>> = {}) {
+async function run(engine: LangGraphAdvisorEngine, extra: Partial<Pick<AdvisorTurnRequest, 'planRequired' | 'records' | 'previewEffect' | 'notes'>> = {}) {
   const events: AdvisorStreamEvent[] = []
   for await (const ev of engine.streamTurn({ message: 'Lohnt sich mein Arbeitsweg?', digest, ...extra })) events.push(ev)
   const done = events.find((e) => e.event === 'done')
@@ -745,5 +745,71 @@ describe('summarising a conversation (#481)', () => {
       throw new Error('provider away')
     })
     expect(await engine.summarize({ transcript: TRANSCRIPT, previousSummary: null })).toBeNull()
+  })
+})
+
+describe('the owl keeps project notes itself (#481)', () => {
+  const callTool = (name: string, args: Record<string, unknown>, index = 0) => ({ name, args: JSON.stringify(args), index, id: `n${index}` })
+  const tools = (...calls: Array<ReturnType<typeof callTool>>): AIMessageChunk => chunkOf({ content: '', tool_call_chunks: calls })
+  const engineWith = (model: ChunkedChatModel) => new LangGraphAdvisorEngine(runtime('google-genai'), () => model)
+  const NOTES = [
+    { handle: 'Notiz 1', id: 'note-id-aaa', text: 'Arbeitsweg 38 km.' },
+    { handle: 'Notiz 2', id: 'note-id-bbb', text: 'Fahrtenbuch wird nachgereicht.' },
+  ]
+
+  it('notes something new, tidied to one line', async () => {
+    const model = new ChunkedChatModel([[tools(callTool('remember_note', { text: '  Arbeitszimmer geprüft:\n lohnt sich nicht ' }))], [answer('Gemerkt.')]])
+    const { result } = await run(engineWith(model), { notes: NOTES })
+    expect(result.meta.noteChanges).toEqual([{ kind: 'added', text: 'Arbeitszimmer geprüft: lohnt sich nicht' }])
+  })
+
+  it('tells the model the notes of the year by name, never by id', async () => {
+    const model = new ChunkedChatModel([[answer('Hallo.')]])
+    await run(engineWith(model), { notes: NOTES })
+    const seen = JSON.stringify(model.seenMessages[0]!.map((m) => m.content))
+    expect(seen).toContain('Notiz 2: Fahrtenbuch wird nachgereicht.')
+    expect(seen).not.toContain('note-id-bbb')
+  })
+
+  it('replaces and forgets a note by its name', async () => {
+    const model = new ChunkedChatModel([
+      [tools(callTool('replace_note', { note: 'Notiz 1', text: 'Arbeitsweg 40 km.' }, 0), callTool('forget_note', { note: 'Notiz 2' }, 1))],
+      [answer('Aktualisiert.')],
+    ])
+    const { result } = await run(engineWith(model), { notes: NOTES })
+    expect(result.meta.noteChanges).toEqual([
+      { kind: 'replaced', noteId: 'note-id-aaa', text: 'Arbeitsweg 40 km.', previousText: 'Arbeitsweg 38 km.' },
+      { kind: 'removed', noteId: 'note-id-bbb', text: 'Fahrtenbuch wird nachgereicht.' },
+    ])
+  })
+
+  it('refuses a note it does not know, one with an identifier, and one too long', async () => {
+    const model = new ChunkedChatModel([
+      [
+        tools(
+          callTool('forget_note', { note: 'Notiz 9' }, 0),
+          callTool('remember_note', { text: 'Konto DE89370400440532013000' }, 1),
+          callTool('remember_note', { text: 'x'.repeat(250) }, 2),
+        ),
+      ],
+      [answer('Hm.')],
+    ])
+    const { result } = await run(engineWith(model), { notes: NOTES })
+    expect(result.meta.noteChanges).toBeUndefined()
+    const toolResults = JSON.stringify(model.seenMessages[1]!.map((m) => m.content))
+    expect(toolResults).toContain('UNKNOWN_NOTE')
+    expect(toolResults).toContain('persönlichen Daten')
+    expect(toolResults).toContain('höchstens 200 Zeichen')
+  })
+
+  it('does not note the same thing twice, and stops at the limit', async () => {
+    const twice = new ChunkedChatModel([[tools(callTool('remember_note', { text: 'Arbeitsweg 38 km.' }))], [answer('Schon bekannt.')]])
+    expect((await run(engineWith(twice), { notes: NOTES })).result.meta.noteChanges).toBeUndefined()
+
+    const full = Array.from({ length: 20 }, (_, i) => ({ handle: `Notiz ${i + 1}`, id: `n-${i}`, text: `Notiz ${i}` }))
+    const over = new ChunkedChatModel([[tools(callTool('remember_note', { text: 'Noch eine.' }))], [answer('Voll.')]])
+    const { result } = await run(engineWith(over), { notes: full })
+    expect(result.meta.noteChanges).toBeUndefined()
+    expect(JSON.stringify(over.seenMessages[1]!.map((m) => m.content))).toContain('TOO_MANY_NOTES')
   })
 })

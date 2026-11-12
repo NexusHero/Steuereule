@@ -34,6 +34,8 @@ import {
   type AdvisorAnswerNoticeKind,
   type AdvisorContextLevel,
   type AdvisorEffectKind,
+  type AdvisorNoteChange,
+  type AdvisorNoteChangeKind,
   type AdvisorMessageMeta,
   type AdvisorNotStaged,
   type AdvisorTwoPathsProposal,
@@ -252,6 +254,23 @@ export class AdvisorAnswerNoticeDto implements AdvisorAnswerNotice {
   text!: string
 }
 
+export class AdvisorNoteChangeDto implements AdvisorNoteChange {
+  @ApiProperty({ type: String, enum: ['added', 'replaced', 'removed'] })
+  kind!: AdvisorNoteChangeKind
+
+  @ApiPropertyOptional({ type: String })
+  noteId?: string | undefined
+
+  @ApiProperty({ type: String, description: 'The text after the change; for a removed note, the text that went.' })
+  text!: string
+
+  @ApiPropertyOptional({ type: String, description: 'What a replaced note said before.' })
+  previousText?: string | undefined
+
+  @ApiPropertyOptional({ type: Boolean, description: 'True once the user took the change back.' })
+  undone?: true | undefined
+}
+
 export class AdvisorNotStagedDto implements AdvisorNotStaged {
   @ApiProperty({ type: String, example: 'Mieteinnahmen' })
   label!: string
@@ -281,6 +300,12 @@ export class AdvisorMessageMetaDto implements AdvisorMessageMeta {
     description: 'What the check of the finished answer found: a figure the app did not compute, a claim to have written something, an unknown source (ADR-0066).',
   })
   notices?: readonly AdvisorAnswerNoticeDto[] | undefined
+
+  @ApiPropertyOptional({
+    type: () => [AdvisorNoteChangeDto],
+    description: 'What the owl changed in the project notes in this answer; each change can be undone (#481).',
+  })
+  noteChanges?: readonly AdvisorNoteChangeDto[] | undefined
 
   @ApiPropertyOptional({ type: AdvisorActionProposalDto })
   action?: AdvisorActionProposalDto | undefined
@@ -365,6 +390,33 @@ export class AdvisorConversationDto {
   lastUsedAt!: string
 }
 
+export class AdvisorNoteDto {
+  @ApiProperty({ type: String })
+  id!: string
+
+  @ApiProperty({ type: String, example: 'Arbeitszimmer geprüft: lohnt sich nicht, weil kein eigener Raum.' })
+  text!: string
+
+  @ApiProperty({ type: String, enum: ['owl', 'user'], description: 'Who wrote the current text.' })
+  author!: 'owl' | 'user'
+
+  @ApiProperty({ type: String, format: 'date-time' })
+  updatedAt!: string
+}
+
+export class DeleteAdvisorNoteResponseDto {
+  @ApiProperty({ type: Boolean })
+  deleted!: true
+}
+
+export class SaveAdvisorNoteDto {
+  @ApiProperty({ type: String, maxLength: 200 })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(400)
+  text!: string
+}
+
 export class AdvisorContextDto {
   @ApiProperty({ type: Number, description: 'Estimated tokens of the summary so far plus every message since.' })
   usedTokens!: number
@@ -427,6 +479,9 @@ export class AdvisorSessionResponseDto {
 
   @ApiProperty({ type: () => AdvisorContextDto, description: 'How full the context of this conversation is (#481).' })
   context!: AdvisorContextDto
+
+  @ApiProperty({ type: () => [AdvisorNoteDto], description: 'The project notes of this tax year; every conversation reads them.' })
+  notes!: readonly AdvisorNoteDto[]
 
   @ApiProperty({ type: [AdvisorChatMessageDto] })
   messages!: readonly AdvisorChatMessageDto[]

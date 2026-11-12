@@ -3,6 +3,7 @@ import type { IncomeType } from '../domains/income-types'
 import type { AdvisorActionProposal, AdvisorChatMessageView, AdvisorMessageMeta, AdvisorTwoPathsProposal, CaseDigest } from './advisor'
 import type { Screen } from './marking'
 import type { AdvisorRecordHandles } from './record-handles'
+import type { AdvisorNoteHandle } from './advisor-notes'
 
 /** The schema the LLM must answer. */
 export interface AiProposal {
@@ -34,6 +35,8 @@ export interface AdvisorTurnRequest {
    * engine falls back to the approximation over the digest.
    */
   readonly previewEffect?: ((target: AdvisorPreviewTarget) => Promise<AdvisorPreviewEffect>) | undefined
+  /** The project notes of the tax year under their neutral names (#481). */
+  readonly notes?: readonly AdvisorNoteHandle[] | undefined
 }
 
 /** The fields one draft would write, main field and companions alike. */

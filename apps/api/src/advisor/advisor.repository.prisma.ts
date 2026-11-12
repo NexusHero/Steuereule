@@ -16,6 +16,8 @@ import {
   type AdvisorConversationChange,
   type AdvisorConversationRecord,
   type AdvisorMessageUsage,
+  type AdvisorNoteAuthor,
+  type AdvisorNoteRecord,
   type AdvisorRepository,
   type CreateAdvisorMessageInput,
   type FinishAdvisorMessageInput,
@@ -77,6 +79,10 @@ function toRecord(row: {
   }
 }
 
+function toNote(row: { id: string; userId: string; taxYear: number; text: string; author: string; createdAt: Date; updatedAt: Date }): AdvisorNoteRecord {
+  return { ...row, author: row.author === 'user' ? 'user' : 'owl' }
+}
+
 @Injectable()
 export class PrismaAdvisorRepository implements AdvisorRepository {
   constructor(@Inject(ENCRYPTED_PRISMA) private readonly prisma: EncryptedPrismaClient) {}
@@ -134,6 +140,33 @@ export class PrismaAdvisorRepository implements AdvisorRepository {
       this.prisma.taxDataAccessLog.create({ data: { userId, action: 'WRITE', resource: 'berater_gespraech_loeschen' } }),
     ])
     return messages.count
+  }
+
+  async listNotes(userId: string, taxYear: number): Promise<AdvisorNoteRecord[]> {
+    return (await this.prisma.advisorNote.findMany({ where: { userId, taxYear }, orderBy: { createdAt: 'asc' } })).map(toNote)
+  }
+
+  async findNote(id: string, userId: string): Promise<AdvisorNoteRecord | null> {
+    const row = await this.prisma.advisorNote.findFirst({ where: { id, userId } })
+    return row ? toNote(row) : null
+  }
+
+  async createNote(userId: string, taxYear: number, text: string, author: AdvisorNoteAuthor): Promise<AdvisorNoteRecord> {
+    const [row] = await this.prisma.$transaction([
+      this.prisma.advisorNote.create({ data: { userId, taxYear, text, author } }),
+      this.prisma.taxDataAccessLog.create({ data: { userId, action: 'WRITE', resource: 'berater_notiz' } }),
+    ])
+    return toNote(row)
+  }
+
+  async updateNote(id: string, userId: string, text: string, author: AdvisorNoteAuthor): Promise<AdvisorNoteRecord | null> {
+    const { count } = await this.prisma.advisorNote.updateMany({ where: { id, userId }, data: { text, author, updatedAt: new Date() } })
+    return count === 1 ? this.findNote(id, userId) : null
+  }
+
+  async deleteNote(id: string, userId: string): Promise<boolean> {
+    const { count } = await this.prisma.advisorNote.deleteMany({ where: { id, userId } })
+    return count === 1
   }
 
   async deleteMessagesOfConversation(id: string, userId: string): Promise<number> {

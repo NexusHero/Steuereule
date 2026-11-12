@@ -2252,6 +2252,233 @@
         ]
       }
     },
+    "/v1/steuerjahre/{jahr}/advisor/notes": {
+      "get": {
+        "operationId": "AdvisorController_listNotes",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AdvisorNoteDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "The project notes of this tax year (#481)",
+        "tags": [
+          "eulen-modus"
+        ]
+      },
+      "post": {
+        "operationId": "AdvisorController_createNote",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveAdvisorNoteDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdvisorNoteDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The tax year already holds the maximum number of notes."
+          }
+        },
+        "summary": "Add a project note by hand",
+        "tags": [
+          "eulen-modus"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/advisor/notes/{noteId}": {
+      "put": {
+        "operationId": "AdvisorController_updateNote",
+        "parameters": [
+          {
+            "name": "noteId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveAdvisorNoteDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdvisorNoteDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such note in this tax year."
+          }
+        },
+        "summary": "Change the text of a project note",
+        "tags": [
+          "eulen-modus"
+        ]
+      },
+      "delete": {
+        "operationId": "AdvisorController_deleteNote",
+        "parameters": [
+          {
+            "name": "noteId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteAdvisorNoteResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such note in this tax year."
+          }
+        },
+        "summary": "Delete a project note",
+        "tags": [
+          "eulen-modus"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/advisor/messages/{messageId}/note-changes/{index}/undo": {
+      "post": {
+        "operationId": "AdvisorController_undoNoteChange",
+        "parameters": [
+          {
+            "name": "index",
+            "required": true,
+            "in": "path",
+            "description": "Position of the change in the answer.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "messageId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdvisorChatMessageDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such change."
+          },
+          "409": {
+            "description": "Already taken back."
+          }
+        },
+        "summary": "Take back one change the owl made to the project notes in an answer",
+        "tags": [
+          "eulen-modus"
+        ]
+      }
+    },
     "/v1/steuerjahre/{jahr}/advisor/conversations": {
       "get": {
         "operationId": "AdvisorController_listConversations",
@@ -7579,6 +7806,38 @@
           "text"
         ]
       },
+      "AdvisorNoteChangeDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "added",
+              "replaced",
+              "removed"
+            ]
+          },
+          "noteId": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string",
+            "description": "The text after the change; for a removed note, the text that went."
+          },
+          "previousText": {
+            "type": "string",
+            "description": "What a replaced note said before."
+          },
+          "undone": {
+            "type": "boolean",
+            "description": "True once the user took the change back."
+          }
+        },
+        "required": [
+          "kind",
+          "text"
+        ]
+      },
       "AdvisorLstbScanMetaDto": {
         "type": "object",
         "properties": {
@@ -7885,6 +8144,13 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/AdvisorAnswerNoticeDto"
+            }
+          },
+          "noteChanges": {
+            "description": "What the owl changed in the project notes in this answer; each change can be undone (#481).",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdvisorNoteChangeDto"
             }
           },
           "action": {
@@ -8441,6 +8707,36 @@
           "canSummarize"
         ]
       },
+      "AdvisorNoteDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string",
+            "example": "Arbeitszimmer geprüft: lohnt sich nicht, weil kein eigener Raum."
+          },
+          "author": {
+            "type": "string",
+            "enum": [
+              "owl",
+              "user"
+            ],
+            "description": "Who wrote the current text."
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "text",
+          "author",
+          "updatedAt"
+        ]
+      },
       "AdvisorLegalSourceDto": {
         "type": "object",
         "properties": {
@@ -8525,6 +8821,13 @@
               }
             ]
           },
+          "notes": {
+            "description": "The project notes of this tax year; every conversation reads them.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdvisorNoteDto"
+            }
+          },
           "messages": {
             "type": "array",
             "items": {
@@ -8551,6 +8854,7 @@
           "conversationId",
           "conversations",
           "context",
+          "notes",
           "messages",
           "quickChips",
           "legalSources"
@@ -8647,6 +8951,29 @@
         },
         "required": [
           "deletedMessages"
+        ]
+      },
+      "SaveAdvisorNoteDto": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 200
+          }
+        },
+        "required": [
+          "text"
+        ]
+      },
+      "DeleteAdvisorNoteResponseDto": {
+        "type": "object",
+        "properties": {
+          "deleted": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "deleted"
         ]
       },
       "RenameAdvisorConversationDto": {

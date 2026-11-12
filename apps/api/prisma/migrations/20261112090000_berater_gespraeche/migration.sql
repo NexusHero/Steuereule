@@ -32,3 +32,18 @@ WHERE g."userId" = n."userId" AND g."steuerjahr" = n."steuerjahr";
 CREATE INDEX "BeraterNachricht_gespraechId_createdAt_idx" ON "BeraterNachricht"("gespraechId", "createdAt");
 
 ALTER TABLE "BeraterNachricht" ADD CONSTRAINT "BeraterNachricht_gespraechId_fkey" FOREIGN KEY ("gespraechId") REFERENCES "BeraterGespraech"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- Project notes of a tax year: read by every conversation of that year.
+CREATE TABLE "BeraterNotiz" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "steuerjahr" INTEGER NOT NULL,
+    "inhalt" TEXT NOT NULL,
+    "verfasser" TEXT NOT NULL DEFAULT 'owl',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "geaendertAm" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "BeraterNotiz_pkey" PRIMARY KEY ("id")
+);
+
+CREATE INDEX "BeraterNotiz_userId_steuerjahr_createdAt_idx" ON "BeraterNotiz"("userId", "steuerjahr", "createdAt");

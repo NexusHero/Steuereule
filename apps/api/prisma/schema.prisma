@@ -1278,6 +1278,22 @@ model AdvisorConversation {
   @@map("BeraterGespraech")
 }
 
+/// A project note of one tax year (#481): something settled in a conversation that is no value of
+/// the return. Every conversation of the year reads the notes; the owl keeps them itself.
+model AdvisorNote {
+  id        String   @id @default(uuid())
+  userId    String
+  taxYear   Int      @map("steuerjahr")
+  text      String   @map("inhalt") /// @encrypted?mode=strict
+  /// Who wrote the current text: the owl, or the user by editing it.
+  author    String   @default("owl") @map("verfasser")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @map("geaendertAm")
+
+  @@index([userId, taxYear, createdAt])
+  @@map("BeraterNotiz")
+}
+
 // AES-256-GCM envelope-encrypted original receipt files (PDF/JPEG/PNG/WebP).
 // Binary cipherBytes/iv/authTag use the per-user DEK from the keystore database (ADR-0059)
 // + AAD (userId:receiptId). contentMac is an HMAC under that DEK, never a plain hash.

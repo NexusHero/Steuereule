@@ -32,15 +32,18 @@ import type {
   AdvisorControllerGetSessionParams,
   AdvisorControllerRunEventsParams,
   AdvisorConversationDto,
+  AdvisorNoteDto,
   AdvisorSessionResponseDto,
   ApplyBatchActionsDto,
   ApplyBatchActionsResponseDto,
   ClearAdvisorConversationResponseDto,
+  DeleteAdvisorNoteResponseDto,
   OwlCardsResponseDto,
   OwlSettingResponseDto,
   ParseReceiptDto,
   ParseReceiptResponseDto,
   RenameAdvisorConversationDto,
+  SaveAdvisorNoteDto,
   SendAdvisorMessageDto,
   SendAdvisorMessageResponseDto,
   SetAdvisorFeedbackDto,
@@ -798,6 +801,494 @@ export const useAdvisorControllerStopRun = <TError = void,
         TContext
       > => {
       return useMutation(getAdvisorControllerStopRunMutationOptions(options), queryClient);
+    }
+
+export type advisorControllerListNotesResponse200 = {
+  data: AdvisorNoteDto[]
+  status: 200
+}
+
+export type advisorControllerListNotesResponseSuccess = (advisorControllerListNotesResponse200) & {
+  headers: Headers;
+};
+;
+
+export type advisorControllerListNotesResponse = (advisorControllerListNotesResponseSuccess)
+
+export const getAdvisorControllerListNotesUrl = (jahr: number,) => {
+
+
+
+
+  return `/v1/steuerjahre/${jahr}/advisor/notes`
+}
+
+/**
+ * @summary The project notes of this tax year (#481)
+ */
+export const advisorControllerListNotes = async (jahr: number, options?: RequestInit): Promise<advisorControllerListNotesResponse> => {
+
+  return httpClient<advisorControllerListNotesResponse>(getAdvisorControllerListNotesUrl(jahr),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getAdvisorControllerListNotesQueryKey = (jahr: number,) => {
+    return [
+    `/v1/steuerjahre/${jahr}/advisor/notes`
+    ] as const;
+    }
+
+
+export const getAdvisorControllerListNotesQueryOptions = <TData = Awaited<ReturnType<typeof advisorControllerListNotes>>, TError = unknown>(jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof advisorControllerListNotes>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getAdvisorControllerListNotesQueryKey(jahr);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof advisorControllerListNotes>>> = ({ signal }) => advisorControllerListNotes(jahr, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: jahr !== null && jahr !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof advisorControllerListNotes>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type AdvisorControllerListNotesQueryResult = NonNullable<Awaited<ReturnType<typeof advisorControllerListNotes>>>
+export type AdvisorControllerListNotesQueryError = unknown
+
+
+export function useAdvisorControllerListNotes<TData = Awaited<ReturnType<typeof advisorControllerListNotes>>, TError = unknown>(
+ jahr: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof advisorControllerListNotes>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof advisorControllerListNotes>>,
+          TError,
+          Awaited<ReturnType<typeof advisorControllerListNotes>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useAdvisorControllerListNotes<TData = Awaited<ReturnType<typeof advisorControllerListNotes>>, TError = unknown>(
+ jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof advisorControllerListNotes>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof advisorControllerListNotes>>,
+          TError,
+          Awaited<ReturnType<typeof advisorControllerListNotes>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useAdvisorControllerListNotes<TData = Awaited<ReturnType<typeof advisorControllerListNotes>>, TError = unknown>(
+ jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof advisorControllerListNotes>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary The project notes of this tax year (#481)
+ */
+
+export function useAdvisorControllerListNotes<TData = Awaited<ReturnType<typeof advisorControllerListNotes>>, TError = unknown>(
+ jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof advisorControllerListNotes>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getAdvisorControllerListNotesQueryOptions(jahr,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type advisorControllerCreateNoteResponse200 = {
+  data: AdvisorNoteDto
+  status: 200
+}
+
+export type advisorControllerCreateNoteResponse409 = {
+  data: void
+  status: 409
+}
+
+export type advisorControllerCreateNoteResponseSuccess = (advisorControllerCreateNoteResponse200) & {
+  headers: Headers;
+};
+export type advisorControllerCreateNoteResponseError = (advisorControllerCreateNoteResponse409) & {
+  headers: Headers;
+};
+
+export type advisorControllerCreateNoteResponse = (advisorControllerCreateNoteResponseSuccess | advisorControllerCreateNoteResponseError)
+
+export const getAdvisorControllerCreateNoteUrl = (jahr: number,) => {
+
+
+
+
+  return `/v1/steuerjahre/${jahr}/advisor/notes`
+}
+
+/**
+ * @summary Add a project note by hand
+ */
+export const advisorControllerCreateNote = async (jahr: number,
+    saveAdvisorNoteDto: SaveAdvisorNoteDto, options?: RequestInit): Promise<advisorControllerCreateNoteResponse> => {
+
+  return httpClient<advisorControllerCreateNoteResponse>(getAdvisorControllerCreateNoteUrl(jahr),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(saveAdvisorNoteDto)
+  }
+);}
+
+
+
+
+
+export const getAdvisorControllerCreateNoteMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof advisorControllerCreateNote>>, TError,{jahr: number;data: SaveAdvisorNoteDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof advisorControllerCreateNote>>, TError,{jahr: number;data: SaveAdvisorNoteDto}, TContext> => {
+
+const mutationKey = ['advisorControllerCreateNote'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof advisorControllerCreateNote>>, {jahr: number;data: SaveAdvisorNoteDto}> = (props) => {
+          const {jahr,data} = props ?? {};
+
+          return  advisorControllerCreateNote(jahr,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AdvisorControllerCreateNoteMutationResult = NonNullable<Awaited<ReturnType<typeof advisorControllerCreateNote>>>
+    export type AdvisorControllerCreateNoteMutationBody = SaveAdvisorNoteDto
+    export type AdvisorControllerCreateNoteMutationError = void
+
+    /**
+ * @summary Add a project note by hand
+ */
+export const useAdvisorControllerCreateNote = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof advisorControllerCreateNote>>, TError,{jahr: number;data: SaveAdvisorNoteDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof advisorControllerCreateNote>>,
+        TError,
+        {jahr: number;data: SaveAdvisorNoteDto},
+        TContext
+      > => {
+      return useMutation(getAdvisorControllerCreateNoteMutationOptions(options), queryClient);
+    }
+
+export type advisorControllerUpdateNoteResponse200 = {
+  data: AdvisorNoteDto
+  status: 200
+}
+
+export type advisorControllerUpdateNoteResponse404 = {
+  data: void
+  status: 404
+}
+
+export type advisorControllerUpdateNoteResponseSuccess = (advisorControllerUpdateNoteResponse200) & {
+  headers: Headers;
+};
+export type advisorControllerUpdateNoteResponseError = (advisorControllerUpdateNoteResponse404) & {
+  headers: Headers;
+};
+
+export type advisorControllerUpdateNoteResponse = (advisorControllerUpdateNoteResponseSuccess | advisorControllerUpdateNoteResponseError)
+
+export const getAdvisorControllerUpdateNoteUrl = (jahr: number,
+    noteId: string,) => {
+
+
+
+
+  return `/v1/steuerjahre/${jahr}/advisor/notes/${noteId}`
+}
+
+/**
+ * @summary Change the text of a project note
+ */
+export const advisorControllerUpdateNote = async (jahr: number,
+    noteId: string,
+    saveAdvisorNoteDto: SaveAdvisorNoteDto, options?: RequestInit): Promise<advisorControllerUpdateNoteResponse> => {
+
+  return httpClient<advisorControllerUpdateNoteResponse>(getAdvisorControllerUpdateNoteUrl(jahr,noteId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(saveAdvisorNoteDto)
+  }
+);}
+
+
+
+
+
+export const getAdvisorControllerUpdateNoteMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof advisorControllerUpdateNote>>, TError,{jahr: number;noteId: string;data: SaveAdvisorNoteDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof advisorControllerUpdateNote>>, TError,{jahr: number;noteId: string;data: SaveAdvisorNoteDto}, TContext> => {
+
+const mutationKey = ['advisorControllerUpdateNote'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof advisorControllerUpdateNote>>, {jahr: number;noteId: string;data: SaveAdvisorNoteDto}> = (props) => {
+          const {jahr,noteId,data} = props ?? {};
+
+          return  advisorControllerUpdateNote(jahr,noteId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AdvisorControllerUpdateNoteMutationResult = NonNullable<Awaited<ReturnType<typeof advisorControllerUpdateNote>>>
+    export type AdvisorControllerUpdateNoteMutationBody = SaveAdvisorNoteDto
+    export type AdvisorControllerUpdateNoteMutationError = void
+
+    /**
+ * @summary Change the text of a project note
+ */
+export const useAdvisorControllerUpdateNote = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof advisorControllerUpdateNote>>, TError,{jahr: number;noteId: string;data: SaveAdvisorNoteDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof advisorControllerUpdateNote>>,
+        TError,
+        {jahr: number;noteId: string;data: SaveAdvisorNoteDto},
+        TContext
+      > => {
+      return useMutation(getAdvisorControllerUpdateNoteMutationOptions(options), queryClient);
+    }
+
+export type advisorControllerDeleteNoteResponse200 = {
+  data: DeleteAdvisorNoteResponseDto
+  status: 200
+}
+
+export type advisorControllerDeleteNoteResponse404 = {
+  data: void
+  status: 404
+}
+
+export type advisorControllerDeleteNoteResponseSuccess = (advisorControllerDeleteNoteResponse200) & {
+  headers: Headers;
+};
+export type advisorControllerDeleteNoteResponseError = (advisorControllerDeleteNoteResponse404) & {
+  headers: Headers;
+};
+
+export type advisorControllerDeleteNoteResponse = (advisorControllerDeleteNoteResponseSuccess | advisorControllerDeleteNoteResponseError)
+
+export const getAdvisorControllerDeleteNoteUrl = (jahr: number,
+    noteId: string,) => {
+
+
+
+
+  return `/v1/steuerjahre/${jahr}/advisor/notes/${noteId}`
+}
+
+/**
+ * @summary Delete a project note
+ */
+export const advisorControllerDeleteNote = async (jahr: number,
+    noteId: string, options?: RequestInit): Promise<advisorControllerDeleteNoteResponse> => {
+
+  return httpClient<advisorControllerDeleteNoteResponse>(getAdvisorControllerDeleteNoteUrl(jahr,noteId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getAdvisorControllerDeleteNoteMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof advisorControllerDeleteNote>>, TError,{jahr: number;noteId: string}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof advisorControllerDeleteNote>>, TError,{jahr: number;noteId: string}, TContext> => {
+
+const mutationKey = ['advisorControllerDeleteNote'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof advisorControllerDeleteNote>>, {jahr: number;noteId: string}> = (props) => {
+          const {jahr,noteId} = props ?? {};
+
+          return  advisorControllerDeleteNote(jahr,noteId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AdvisorControllerDeleteNoteMutationResult = NonNullable<Awaited<ReturnType<typeof advisorControllerDeleteNote>>>
+
+    export type AdvisorControllerDeleteNoteMutationError = void
+
+    /**
+ * @summary Delete a project note
+ */
+export const useAdvisorControllerDeleteNote = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof advisorControllerDeleteNote>>, TError,{jahr: number;noteId: string}, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof advisorControllerDeleteNote>>,
+        TError,
+        {jahr: number;noteId: string},
+        TContext
+      > => {
+      return useMutation(getAdvisorControllerDeleteNoteMutationOptions(options), queryClient);
+    }
+
+export type advisorControllerUndoNoteChangeResponse200 = {
+  data: AdvisorChatMessageDto
+  status: 200
+}
+
+export type advisorControllerUndoNoteChangeResponse404 = {
+  data: void
+  status: 404
+}
+
+export type advisorControllerUndoNoteChangeResponse409 = {
+  data: void
+  status: 409
+}
+
+export type advisorControllerUndoNoteChangeResponseSuccess = (advisorControllerUndoNoteChangeResponse200) & {
+  headers: Headers;
+};
+export type advisorControllerUndoNoteChangeResponseError = (advisorControllerUndoNoteChangeResponse404 | advisorControllerUndoNoteChangeResponse409) & {
+  headers: Headers;
+};
+
+export type advisorControllerUndoNoteChangeResponse = (advisorControllerUndoNoteChangeResponseSuccess | advisorControllerUndoNoteChangeResponseError)
+
+export const getAdvisorControllerUndoNoteChangeUrl = (jahr: number,
+    messageId: string,
+    index: number,) => {
+
+
+
+
+  return `/v1/steuerjahre/${jahr}/advisor/messages/${messageId}/note-changes/${index}/undo`
+}
+
+/**
+ * @summary Take back one change the owl made to the project notes in an answer
+ */
+export const advisorControllerUndoNoteChange = async (jahr: number,
+    messageId: string,
+    index: number, options?: RequestInit): Promise<advisorControllerUndoNoteChangeResponse> => {
+
+  return httpClient<advisorControllerUndoNoteChangeResponse>(getAdvisorControllerUndoNoteChangeUrl(jahr,messageId,index),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getAdvisorControllerUndoNoteChangeMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof advisorControllerUndoNoteChange>>, TError,{jahr: number;messageId: string;index: number}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof advisorControllerUndoNoteChange>>, TError,{jahr: number;messageId: string;index: number}, TContext> => {
+
+const mutationKey = ['advisorControllerUndoNoteChange'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof advisorControllerUndoNoteChange>>, {jahr: number;messageId: string;index: number}> = (props) => {
+          const {jahr,messageId,index} = props ?? {};
+
+          return  advisorControllerUndoNoteChange(jahr,messageId,index,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AdvisorControllerUndoNoteChangeMutationResult = NonNullable<Awaited<ReturnType<typeof advisorControllerUndoNoteChange>>>
+
+    export type AdvisorControllerUndoNoteChangeMutationError = void
+
+    /**
+ * @summary Take back one change the owl made to the project notes in an answer
+ */
+export const useAdvisorControllerUndoNoteChange = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof advisorControllerUndoNoteChange>>, TError,{jahr: number;messageId: string;index: number}, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof advisorControllerUndoNoteChange>>,
+        TError,
+        {jahr: number;messageId: string;index: number},
+        TContext
+      > => {
+      return useMutation(getAdvisorControllerUndoNoteChangeMutationOptions(options), queryClient);
     }
 
 export type advisorControllerListConversationsResponse200 = {

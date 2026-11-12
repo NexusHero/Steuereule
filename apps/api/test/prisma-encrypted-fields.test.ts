@@ -158,6 +158,7 @@ const EXPECTED_ENCRYPTED_FIELDS: ExpectedEncryptedField[] = [
   { model: 'AdvisorChatMessage', field: 'reasoning', encrypt: true, strictDecryption: true },
   { model: 'AdvisorConversation', field: 'title', encrypt: true, strictDecryption: true },
   { model: 'AdvisorConversation', field: 'summary', encrypt: true, strictDecryption: true },
+  { model: 'AdvisorNote', field: 'text', encrypt: true, strictDecryption: true },
 ].sort(byModelField)
 
 // prisma-field-encryption's hash annotation (`@encryption:hash(field)`, dist/dmmf.js:79)
@@ -214,6 +215,7 @@ const EXPECTED_CURSORS: Record<string, string> = {
   Jwks: 'id',
   AdvisorChatMessage: 'id',
   AdvisorConversation: 'id',
+  AdvisorNote: 'id',
   ReceiptFile: 'id',
 }
 
