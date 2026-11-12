@@ -6,6 +6,7 @@
 //   * On-Device: no request leaves the app's own two origins (hard 0)
 //   * time until the draft is shown (D4: text PDF ≤ 2 s, scan/photo ≤ 20 s)
 // The report goes to $SCAN_CORPUS_REPORT_DIR (default /tmp/scan-corpus) as JSON and Markdown.
+import { waitForNetworkQuiet } from '../scenarios/helpers/scenario-harness.mjs'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -199,6 +200,11 @@ async function main() {
       parses.push(Date.now())
       await page.goto(`${webOrigin}/app/steuerjahr/${YEAR}/lstb`, { waitUntil: 'networkidle' })
       await page.locator('[data-testid="lstb-scan-card"]').waitFor({ state: 'visible', timeout: 15_000 })
+      // Every document starts from an empty mask: a draft still on screen here is the previous one's.
+      await waitForNetworkQuiet(page)
+      if (await page.locator('[data-testid="lstb-scan-draft-banner"]').isVisible()) {
+        throw new Error(`${entry.file}: the draft of the previous document is still there; its discard did not reach the server`)
+      }
       const ext = entry.file.split('.').pop()
       const buffer = await readFile(join(HERE, 'files', entry.file))
       const started = Date.now()
@@ -217,6 +223,9 @@ async function main() {
       if (outcome.kind === 'draft') {
         await page.locator('[data-testid="lstb-scan-discard"]').click()
         await page.locator('[data-testid="lstb-scan-draft-banner"]').waitFor({ state: 'detached', timeout: 15_000 })
+        // The banner goes at once, the server learns it field by field afterwards. Navigating on
+        // before that aborted those requests and the draft came back with the next document.
+        await waitForNetworkQuiet(page)
       } else if (outcome.kind === 'year-conflict') {
         await page.locator('[data-testid="lstb-year-conflict-cancel"]').click()
       }
