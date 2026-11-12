@@ -32,6 +32,7 @@ import {
   type AdvisorSkillId,
 } from '@steuereule/core'
 import { APP_NS } from '../../i18n/resources'
+import { ModelFailureNotice } from './chat/ModelFailureNotice'
 import { ActionProposalCardView, ScannedCertificateCardView, TwoPathsCardView } from './chat/ProposalCards'
 import { makeStyles } from './AdvisorChatPanel.styles'
 export { makeStyles } from './AdvisorChatPanel.styles'
@@ -312,6 +313,7 @@ export function AdvisorChatPanel({
               </View>
               <ThoughtBlock reasoning={msg.reasoning} steps={msg.meta?.steps} />
               {msg.content.length > 0 ? <MarkdownMessage content={msg.content} onSelectSource={setSelectedSource} /> : null}
+              {msg.meta?.modelFailure ? <ModelFailureNotice failure={msg.meta.modelFailure} answeredByRules={false} /> : null}
               {index === messages.length - 1 && canReplace ? (
                 <Pressable accessibilityRole="button" onPress={regenerate} style={styles.choicePill} testID="advisor-retry">
                   <Text style={styles.choicePillText}>{tr('advisor.chat.retry')}</Text>
@@ -424,6 +426,15 @@ export function AdvisorChatPanel({
                     </View>
                   ))}
                 </View>
+              ) : null}
+
+              {/* The model did not answer: the rules did, and the reason stays with the answer (#487) */}
+              {msg.meta?.modelFailure ? (
+                <ModelFailureNotice
+                  failure={msg.meta.modelFailure}
+                  answeredByRules
+                  onRetry={index === messages.length - 1 && canReplace ? regenerate : undefined}
+                />
               ) : null}
 
               {/* What the check of the finished answer found: said by the app, the text stays as written */}

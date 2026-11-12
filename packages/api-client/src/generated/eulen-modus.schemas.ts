@@ -313,6 +313,25 @@ export interface AdvisorQuestionRoundDto {
   questions: AdvisorRoundQuestionDto[];
 }
 
+export type AdvisorModelFailureDtoReason = typeof AdvisorModelFailureDtoReason[keyof typeof AdvisorModelFailureDtoReason];
+
+
+export const AdvisorModelFailureDtoReason = {
+  'not-configured': 'not-configured',
+  quota: 'quota',
+  unavailable: 'unavailable',
+  timeout: 'timeout',
+  network: 'network',
+  blocked: 'blocked',
+  unknown: 'unknown',
+} as const;
+
+export interface AdvisorModelFailureDto {
+  reason: AdvisorModelFailureDtoReason;
+  /** Provider and HTTP status, e.g. "Gemini · HTTP 429". Never message text. */
+  detail?: string;
+}
+
 export type AdvisorLstbScanMetaDtoStage = typeof AdvisorLstbScanMetaDtoStage[keyof typeof AdvisorLstbScanMetaDtoStage];
 
 
@@ -512,6 +531,8 @@ export interface AdvisorMessageMetaDto {
   noteChanges?: AdvisorNoteChangeDto[];
   /** A round of questions with answers to tap, from the interview skill (#495). */
   questionRound?: AdvisorQuestionRoundDto;
+  /** Why the language model did not answer this turn, when it did not (#487): the answer then comes from fixed rules or is missing. */
+  modelFailure?: AdvisorModelFailureDto;
   action?: AdvisorActionProposalDto;
   actions?: AdvisorActionProposalDto[];
   lstbScan?: AdvisorLstbScanMetaDto;

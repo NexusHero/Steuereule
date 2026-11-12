@@ -1,5 +1,6 @@
 import './config/env-snapshot.js'
 import { assertFakeKiNotInProduction } from './ki/fake-chat-model.js'
+import { installProviderRejectionGuard } from './ki/provider-rejections.js'
 import 'reflect-metadata'
 import fastifyCookie from '@fastify/cookie'
 import fastifyMultipart from '@fastify/multipart'
@@ -81,6 +82,7 @@ export async function buildApp(): Promise<NestFastifyApplication> {
 }
 
 async function bootstrap(): Promise<void> {
+  installProviderRejectionGuard()
   assertEnvNotFileSourced()
   assertFakeKiNotInProduction()
 

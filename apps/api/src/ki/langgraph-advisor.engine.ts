@@ -7,9 +7,11 @@ import { Inject, Injectable, Logger, Optional } from '@nestjs/common'
 import {
   checkAdvisorAnswer,
   checkAdvisorInputBoundary,
+  describeModelFailure,
   evaluateAdvisorTurn,
   type AdvisorActionProposal,
   type AdvisorEnginePort,
+  type AdvisorModelFailure,
   type AdvisorMessageMeta,
   type AdvisorNoteChange,
   type AdvisorQuestionRound,
@@ -23,6 +25,7 @@ import {
 } from '@steuereule/core'
 import { AI_RUNTIME_CONFIG_SERVICE, DEFAULT_AI_TURN_LIMITS, type AiRuntimeConfigService, type AiTurnLimits, type ResolvedAiSlotConfig } from './ai-runtime-config.service.js'
 import { CHAT_MODEL_FACTORY, createChatModelFromConfig, type ChatModelFactory } from './chat-model.factory.js'
+import { classifyModelFailure } from './advisor-failure.js'
 import { checkPiiFree } from './ki.adapter.js'
 import { buildSystemMessage, SUMMARY_MAX_CHARS, SUMMARY_INSTRUCTIONS } from './advisor-prompt.js'
 import { buildToolSchemas, RejectedDraft, computedFiguresOf, unresolvedRejections } from './advisor-tools.js'
@@ -183,8 +186,10 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
   private async *emitFallbackTurn(
     request: AdvisorTurnRequest,
     override?: { replyText: string; meta: AdvisorMessageMeta },
+    /** Set when the rules answer because the model could not: the answer says so instead of passing as the model's. */
+    failure?: AdvisorModelFailure,
   ): AsyncIterable<AdvisorStreamEvent> {
-    const turn =
+    const evaluated =
       override ??
       evaluateAdvisorTurn({
         message: request.message,
@@ -192,6 +197,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
         digest: request.digest,
         actionIdFactory: request.actionIdFactory,
       })
+    const turn = failure ? { ...evaluated, meta: { ...evaluated.meta, modelFailure: failure } } : evaluated
 
     yield { event: 'token', data: { text: turn.replyText } }
     if (turn.meta.choices && turn.meta.choices.length > 0) {
@@ -352,17 +358,19 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
       }
       // Nobody is listening any more; persisting a turn for a closed connection would only cost money.
       if (aborted === 'client') return
+      const failure = classifyModelFailure(error, aborted === 'timeout' ? 'timeout' : 'error', slotConfig.provider)
       if (streamedTokenCount === 0) {
-        yield* this.emitFallbackTurn(request)
+        yield* this.emitFallbackTurn(request, undefined, failure)
         return
       }
       // Half an answer must not be stored as if it were complete: the client discards it.
       yield {
         event: 'error',
-        data:
-          aborted === 'timeout'
-            ? { code: 'ADVISOR_TURN_TIMEOUT', message: 'Die Eule hat zu lange gebraucht. Bitte stelle deine Frage erneut.' }
-            : { code: 'ADVISOR_TURN_FAILED', message: 'Die Antwort der Eule ist unterwegs abgebrochen. Bitte versuche es erneut.' },
+        data: {
+          code: aborted === 'timeout' ? 'ADVISOR_TURN_TIMEOUT' : 'ADVISOR_TURN_FAILED',
+          message: `Die Antwort ist unterwegs abgebrochen. ${describeModelFailure(failure.reason).text}`,
+          failure,
+        },
       }
       return
     }

@@ -7954,6 +7954,30 @@
           "questions"
         ]
       },
+      "AdvisorModelFailureDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "enum": [
+              "not-configured",
+              "quota",
+              "unavailable",
+              "timeout",
+              "network",
+              "blocked",
+              "unknown"
+            ]
+          },
+          "detail": {
+            "type": "string",
+            "description": "Provider and HTTP status, e.g. \"Gemini · HTTP 429\". Never message text."
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
       "AdvisorLstbScanMetaDto": {
         "type": "object",
         "properties": {
@@ -8274,6 +8298,14 @@
             "allOf": [
               {
                 "$ref": "#/components/schemas/AdvisorQuestionRoundDto"
+              }
+            ]
+          },
+          "modelFailure": {
+            "description": "Why the language model did not answer this turn, when it did not (#487): the answer then comes from fixed rules or is missing.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AdvisorModelFailureDto"
               }
             ]
           },
