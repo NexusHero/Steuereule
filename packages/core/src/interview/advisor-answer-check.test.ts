@@ -74,13 +74,9 @@ describe('checkAdvisorAnswer', () => {
     expect(notices[0]!.text).not.toContain('[estg-10b]')
   })
 
-  describe('topics outside the private income tax return', () => {
-    it('adds the referral the answer left out', () => {
-      expect(check({ userMessage: 'Wie mache ich meine Umsatzsteuer-Voranmeldung?', replyText: 'Du trägst die Umsätze in Zeile 81 ein.' })).toEqual(['out-of-scope'])
-    })
-
-    it('is silent when the owl sent the user on itself', () => {
-      expect(check({ userMessage: 'Was ist mit Gewerbesteuer?', replyText: 'Dazu darf ich nicht beraten, bitte wende dich an eine Steuerberaterin.' })).toEqual([])
+  describe('topics outside the private income tax return (#499)', () => {
+    it('are answered without a notice: the owl advises on them now', () => {
+      expect(check({ userMessage: 'Wie mache ich meine Umsatzsteuer-Voranmeldung?', replyText: 'Du trägst die Umsätze in Zeile 81 ein.' })).toEqual([])
     })
   })
 })

@@ -14,6 +14,7 @@
     "test:live": "vitest run --config vitest.live.config.ts",
     "typecheck": "tsc --noEmit -p tsconfig.check.json",
     "openapi:spec": "tsx scripts/generate-openapi-spec.ts",
+    "knowledge:generate": "tsx scripts/generate-advisor-knowledge.ts",
     "streets:fetch": "tsx scripts/fetch-street-data.ts"
   },
   "prisma": {

@@ -1,5 +1,6 @@
 // The tools the owl may call: their names, argument schemas and descriptions as the model sees
 // them, and the small rules around drafts (what counts as the same draft, what a refusal leaves behind).
+import { ADVISOR_KNOWLEDGE_TOPICS } from './advisor-knowledge.generated.js'
 import { ToolMessage, type BaseMessage } from '@langchain/core/messages'
 import { tool, type StructuredToolInterface } from '@langchain/core/tools'
 import { z } from 'zod'
@@ -13,6 +14,8 @@ export const TOOL_LABELS: Readonly<Record<string, string>> = {
   propose_two_paths: 'Vergleiche Zwei-Wege-Strategien …',
   ask_clarification: 'Prüfe Rückfragen …',
   ask_questions: 'Bereite die nächsten Fragen vor …',
+  lookup_tax_knowledge: 'Schlage im Steuerwissen nach …',
+  compute_income_tax: 'Rechne die Einkommensteuer nach Tarif …',
   lookup_legal_source: 'Prüfe EStG-Paragraph …',
   plan_steps: 'Plane die nächsten Schritte …',
   remember_note: 'Merke mir das für dieses Steuerjahr …',
@@ -33,7 +36,7 @@ export const MAX_DRAFTS_PER_TURN = 8
 
 export const draftKey = (draft: Pick<AdvisorActionProposal, 'screen' | 'field' | 'instance'>): string => `${draft.screen}|${draft.instance ?? ''}|${draft.field}`
 
-export const FIGURE_KEYS = new Set(['beforeRefundEur', 'afterRefundEur', 'deltaEur'])
+export const FIGURE_KEYS = new Set(['beforeRefundEur', 'afterRefundEur', 'deltaEur', 'incomeTaxEur', 'soliEur', 'churchTaxEur', 'totalEur', 'savingEur'])
 
 /** Every euro figure a tool reported in this turn, wherever it sits in the tool's answer. */
 export function computedFiguresOf(messages: readonly BaseMessage[]): number[] {
@@ -118,6 +121,16 @@ export const TOOL_ARG_SCHEMAS = {
       .min(1)
       .max(4),
   }),
+  lookup_tax_knowledge: z.object({
+    topic: z.enum(ADVISOR_KNOWLEDGE_TOPICS),
+  }),
+  compute_income_tax: z.object({
+    year: z.number().int(),
+    taxableIncome: z.number().min(0).max(100_000_000),
+    splitting: z.boolean().default(false),
+    churchTaxRate: z.union([z.literal(0), z.literal(0.08), z.literal(0.09)]).default(0),
+    extraDeduction: z.number().min(0).max(100_000_000).default(0),
+  }),
   lookup_legal_source: z.object({
     sourceId: z.string().max(40),
   }),
@@ -144,6 +157,10 @@ export const TOOL_DESCRIPTIONS: Readonly<Record<ToolName, string>> = {
   ask_clarification: 'Schlägt 2 bis 4 anklickbare Quick-Chips als nächste Rückfragen im Chat vor.',
   ask_questions:
     'Stellt dem Nutzer eine Runde von 1 bis 4 Fragen, jede mit 2 bis 4 antippbaren Antworten und deiner Empfehlung. Nur im Skill „Berater-Interview“ verwenden. Schreibt nichts in die Akte.',
+  lookup_tax_knowledge:
+    'Liest einen Abschnitt des geprüften Steuerwissens: kennzahlen (Beträge je Jahr), arbeitnehmer, familie-sonderausgaben, kapital-vermietung-rente, selbststaendige-ust, grenzgaenger-ausland, erbschaft-schenkung, verfahren. Vor jeder fachlichen Aussage zu einem dieser Themen aufrufen.',
+  compute_income_tax:
+    'Rechnet mit dem Rechenkern der App die tarifliche Einkommensteuer (§ 32a EStG), Soli und Kirchensteuer für ein zu versteuerndes Einkommen, auf Wunsch mit Splitting; `extraDeduction` zeigt, was ein zusätzlicher Abzug spart. Nie im Kopf rechnen.',
   lookup_legal_source: 'Ruft Wortlaut, Paragraph und Rechtsstand einer EStG/AO-Rechtsquelle aus dem verifizierten Katalog ab.',
   plan_steps:
     'Zeigt dem Nutzer deinen Plan als Checkliste (höchstens 8 Schritte, Status offen/laeuft/erledigt). Immer die vollständige Liste senden. Schreibt nichts in die Akte.',

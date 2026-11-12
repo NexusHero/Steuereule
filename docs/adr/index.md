@@ -86,6 +86,7 @@ The ADRs **justify** the architecture; the [living arc42 document](../arc42/READ
 | 0066 | Eule: ein Feldkatalog, eine Wertprüfung, ehrliche Vorschau | Accepted |
 | 0067 | Eule: Steuerjahr als Projekt, mehrere Gespräche, Projektnotizen, Kontext mit Zusammenfassung | Accepted |
 | 0068 | Eule: Skills und Fragerunden | Accepted |
+| 0069 | Eule: Beraterhaltung immer, Steuerwissen zum Nachschlagen, alle Steuerthemen | Accepted |
 
 See also the [Tech Radar](./tech-radar.md).
 
