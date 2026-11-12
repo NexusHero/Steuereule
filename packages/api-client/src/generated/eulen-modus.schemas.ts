@@ -283,6 +283,26 @@ export interface AdvisorAnswerNoticeDto {
   text: string;
 }
 
+export type AdvisorNoteChangeDtoKind = typeof AdvisorNoteChangeDtoKind[keyof typeof AdvisorNoteChangeDtoKind];
+
+
+export const AdvisorNoteChangeDtoKind = {
+  added: 'added',
+  replaced: 'replaced',
+  removed: 'removed',
+} as const;
+
+export interface AdvisorNoteChangeDto {
+  kind: AdvisorNoteChangeDtoKind;
+  noteId?: string;
+  /** The text after the change; for a removed note, the text that went. */
+  text: string;
+  /** What a replaced note said before. */
+  previousText?: string;
+  /** True once the user took the change back. */
+  undone?: boolean;
+}
+
 export type AdvisorLstbScanMetaDtoStage = typeof AdvisorLstbScanMetaDtoStage[keyof typeof AdvisorLstbScanMetaDtoStage];
 
 
@@ -478,6 +498,8 @@ export interface AdvisorMessageMetaDto {
   notStaged?: AdvisorNotStagedDto[];
   /** What the check of the finished answer found: a figure the app did not compute, a claim to have written something, an unknown source (ADR-0066). */
   notices?: AdvisorAnswerNoticeDto[];
+  /** What the owl changed in the project notes in this answer; each change can be undone (#481). */
+  noteChanges?: AdvisorNoteChangeDto[];
   action?: AdvisorActionProposalDto;
   actions?: AdvisorActionProposalDto[];
   lstbScan?: AdvisorLstbScanMetaDto;
@@ -681,6 +703,67 @@ export interface OwlCardDto {
   appealDeadline?: string;
 }
 
+export interface AdvisorConversationDto {
+  id: string;
+  /**
+     * From the first question; null while nothing has been asked.
+     * @nullable
+     */
+  title: string | null;
+  createdAt: string;
+  lastUsedAt: string;
+}
+
+/**
+ * warn: will be summarised soon. full: summarised before the next answer.
+ */
+export type AdvisorContextDtoLevel = typeof AdvisorContextDtoLevel[keyof typeof AdvisorContextDtoLevel];
+
+
+export const AdvisorContextDtoLevel = {
+  ok: 'ok',
+  warn: 'warn',
+  full: 'full',
+} as const;
+
+export interface AdvisorContextDto {
+  /** Estimated tokens of the summary so far plus every message since. */
+  usedTokens: number;
+  maxTokens: number;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  percent: number;
+  /** warn: will be summarised soon. full: summarised before the next answer. */
+  level: AdvisorContextDtoLevel;
+  /** What the summarised part of the conversation said. */
+  summary?: string;
+  /** The last message the summary covers; the chat draws its dividing line after it. */
+  summarizedUntilMessageId?: string;
+  /** False while there is too little to summarise. */
+  canSummarize: boolean;
+}
+
+/**
+ * Who wrote the current text.
+ */
+export type AdvisorNoteDtoAuthor = typeof AdvisorNoteDtoAuthor[keyof typeof AdvisorNoteDtoAuthor];
+
+
+export const AdvisorNoteDtoAuthor = {
+  owl: 'owl',
+  user: 'user',
+} as const;
+
+export interface AdvisorNoteDto {
+  id: string;
+  text: string;
+  /** Who wrote the current text. */
+  author: AdvisorNoteDtoAuthor;
+  updatedAt: string;
+}
+
 export type AdvisorLegalSourceDtoSourceId = typeof AdvisorLegalSourceDtoSourceId[keyof typeof AdvisorLegalSourceDtoSourceId];
 
 
@@ -709,6 +792,14 @@ export interface AdvisorSessionResponseDto {
   enabled: boolean;
   greeting: string;
   openCards: OwlCardDto[];
+  /** The conversation these messages belong to (#481). */
+  conversationId: string;
+  /** Every conversation of this tax year, most recently used first. */
+  conversations: AdvisorConversationDto[];
+  /** How full the context of this conversation is (#481). */
+  context: AdvisorContextDto;
+  /** The project notes of this tax year; every conversation reads them. */
+  notes: AdvisorNoteDto[];
   messages: AdvisorChatMessageDto[];
   quickChips: string[];
   legalSources: AdvisorLegalSourceDto[];
@@ -753,6 +844,8 @@ export interface SendAdvisorMessageDto {
   quickAction?: SendAdvisorMessageDtoQuickAction;
   /** Regenerate or edit-and-resend (#451): the id of the latest user message. That turn is replaced; its pending proposals are dismissed, never applied. */
   replaceFromMessageId?: string;
+  /** The conversation the question belongs to (#481). Without it: the one used last in this tax year. */
+  conversationId?: string;
 }
 
 /**
@@ -776,6 +869,39 @@ export interface SendAdvisorMessageResponseDto {
 export interface StopAdvisorRunResponseDto {
   /** false when the run had already ended. */
   stopped: boolean;
+}
+
+export type AdvisorSearchHitDtoRole = typeof AdvisorSearchHitDtoRole[keyof typeof AdvisorSearchHitDtoRole];
+
+
+export const AdvisorSearchHitDtoRole = {
+  user: 'user',
+  assistant: 'assistant',
+} as const;
+
+export interface AdvisorSearchHitDto {
+  conversationId: string;
+  /** @nullable */
+  conversationTitle: string | null;
+  /** Absent when only the title of the conversation matched. */
+  messageId?: string;
+  role?: AdvisorSearchHitDtoRole;
+  /** The matching passage with some text around it. */
+  snippet: string;
+  at: string;
+}
+
+export interface SaveAdvisorNoteDto {
+  /** @maxLength 200 */
+  text: string;
+}
+
+export interface DeleteAdvisorNoteResponseDto {
+  deleted: boolean;
+}
+
+export interface RenameAdvisorConversationDto {
+  title: string;
 }
 
 /**
@@ -853,7 +979,28 @@ export interface OwlCardsResponseDto {
   legalStatus: string;
 }
 
+export type AdvisorControllerGetSessionParams = {
+/**
+ * Which conversation to load; without it the one used last.
+ */
+conversationId?: string;
+};
+
+export type AdvisorControllerClearConversationParams = {
+/**
+ * Which conversation to empty; without it the one used last.
+ */
+conversationId?: string;
+};
+
 export type AdvisorControllerRunEventsParams = {
 after?: number;
+};
+
+export type AdvisorControllerSearchParams = {
+/**
+ * At least two characters; case and accents are ignored.
+ */
+q: string;
 };
 

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Pressable, ScrollView, Text, View, type TextStyle, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
@@ -23,7 +23,16 @@ import {
   getOwlModeControllerGetCardsQueryKey,
   getOwlModeControllerGetSettingQueryKey,
   useAdvisorControllerApplyAction,
+  advisorControllerSearch,
   useAdvisorControllerClearConversation,
+  useAdvisorControllerCreateNote,
+  useAdvisorControllerDeleteNote,
+  useAdvisorControllerUndoNoteChange,
+  useAdvisorControllerUpdateNote,
+  useAdvisorControllerCreateConversation,
+  useAdvisorControllerDeleteConversation,
+  useAdvisorControllerRenameConversation,
+  useAdvisorControllerSummarizeConversation,
   useAdvisorControllerGetSession,
   useAdvisorControllerSendMessage,
   useAdvisorControllerSetFeedback,
@@ -53,7 +62,10 @@ import { CatalogScreen } from '../catalog/CatalogScreen'
 import { MasterDataScreen } from '../master-data/MasterDataScreen'
 import { OwlTopBar } from './OwlTopBar'
 import { ProfessionPicker } from './ProfessionPicker'
-import { AdvisorChatPanel, sendOptionsToDto, type ChatSendOptions } from './AdvisorChatPanel'
+import { AdvisorChatPanel, sendOptionsToDto, type AdvisorChatPanelProps, type ChatSendOptions } from './AdvisorChatPanel'
+import { ConversationList, type ConversationSearchHit, type ConversationSummary } from './chat/ConversationList'
+import { ProjectNotes, type ProjectNote } from './chat/ProjectNotes'
+import { readOwlSidebarOpen, writeOwlSidebarOpen } from '../../lib/owlSidebarPreference'
 import { invalidateAllTaxQueries, useOptionalCopilotBridge, type OwlViewMode } from './CopilotBridgeProvider'
 
 export interface OwlModeScreenProps {
@@ -78,6 +90,23 @@ export interface OwlModeScreenProps {
     | undefined
   /** Deletes this year's conversation on the server; rejects when it could not. */
   readonly onClearConversation?: (() => Promise<void>) | undefined
+  /** The conversations of this tax year (#481); without them the screen shows no list. */
+  readonly conversations?: readonly ConversationSummary[] | undefined
+  readonly activeConversationId?: string | null | undefined
+  readonly onSelectConversation?: ((id: string) => void) | undefined
+  readonly onNewConversation?: (() => Promise<void>) | undefined
+  readonly onRenameConversation?: ((id: string, title: string) => Promise<void>) | undefined
+  readonly onDeleteConversation?: ((id: string) => Promise<void>) | undefined
+  readonly onSearchConversations?: ((query: string) => Promise<readonly ConversationSearchHit[]>) | undefined
+  /** How full the context of the open conversation is (#481). */
+  readonly context?: AdvisorChatPanelProps['context']
+  readonly onSummarize?: (() => Promise<void>) | undefined
+  /** The project notes of this tax year (#481); without them the screen shows no notes. */
+  readonly notes?: readonly ProjectNote[] | undefined
+  readonly onAddNote?: ((text: string) => Promise<void>) | undefined
+  readonly onEditNote?: ((id: string, text: string) => Promise<void>) | undefined
+  readonly onDeleteNote?: ((id: string) => Promise<void>) | undefined
+  readonly onUndoNoteChange?: ((messageId: string, index: number) => Promise<void>) | undefined
   readonly isGuest?: boolean | undefined
   readonly onRegister?: (() => void) | undefined
   readonly onLogin?: (() => void) | undefined
@@ -272,7 +301,27 @@ function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CURRENT_T
   const bridge = useOptionalCopilotBridge()
   const settingQuery = useOwlModeControllerGetSetting()
   const cardsQuery = useOwlModeControllerGetCards(taxYear)
-  const sessionQuery = useAdvisorControllerGetSession(taxYear, { query: { retry: false } })
+  // Null = the conversation used last; the server decides which one that is (#481).
+  const [localConversationId, setLocalConversationId] = useState<string | null>(null)
+  const conversationId = bridge ? bridge.conversationId : localConversationId
+  const selectConversation = (id: string | null) => (bridge ? bridge.setConversationId(id) : setLocalConversationId(id))
+  const sessionQuery = useAdvisorControllerGetSession(taxYear, conversationId ? { conversationId } : undefined, { query: { retry: false } })
+  const searchConversations = useCallback(
+    async (query: string) => {
+      const response = await advisorControllerSearch(taxYear, { q: query })
+      if (response.status !== 200) throw new Error(`search failed (HTTP ${response.status})`)
+      return response.data
+    },
+    [taxYear],
+  )
+  const createConversationMutation = useAdvisorControllerCreateConversation()
+  const renameConversationMutation = useAdvisorControllerRenameConversation()
+  const deleteConversationMutation = useAdvisorControllerDeleteConversation()
+  const summarizeConversationMutation = useAdvisorControllerSummarizeConversation()
+  const createNoteMutation = useAdvisorControllerCreateNote()
+  const updateNoteMutation = useAdvisorControllerUpdateNote()
+  const deleteNoteMutation = useAdvisorControllerDeleteNote()
+  const undoNoteChangeMutation = useAdvisorControllerUndoNoteChange()
   const sendMessageMutation = useAdvisorControllerSendMessage()
   const applyActionMutation = useAdvisorControllerApplyAction()
   const setFeedbackMutation = useAdvisorControllerSetFeedback()
@@ -322,10 +371,8 @@ function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CURRENT_T
     ...(k.paths && k.paths.length === 2 ? { paths: [k.paths[0]!, k.paths[1]!] as const } : { paths: undefined }),
   }))
 
-  const serverMessages =
-    sessionQuery.data?.status === 200
-      ? (sessionQuery.data.data.messages as unknown as readonly AdvisorChatMessageView[])
-      : undefined
+  const session = sessionQuery.data?.status === 200 ? sessionQuery.data.data : undefined
+  const serverMessages = session ? (session.messages as unknown as readonly AdvisorChatMessageView[]) : undefined
 
   return (
     <OwlModeScreenView
@@ -359,8 +406,58 @@ function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CURRENT_T
         if (response.status !== 200) throw new Error(`rating not stored (HTTP ${response.status})`)
         await queryClient.invalidateQueries({ queryKey: getAdvisorControllerGetSessionQueryKey(taxYear) })
       }}
+      context={session?.context}
+      onSummarize={async () => {
+        if (!session) return
+        const response = await summarizeConversationMutation.mutateAsync({ jahr: taxYear, conversationId: session.conversationId })
+        if (response.status !== 200) throw new Error(`conversation not summarised (HTTP ${response.status})`)
+        await invalidate()
+      }}
+      notes={session?.notes}
+      onAddNote={async (text) => {
+        const response = await createNoteMutation.mutateAsync({ jahr: taxYear, data: { text } })
+        if (response.status !== 200) throw new Error(`note not stored (HTTP ${response.status})`)
+        await invalidate()
+      }}
+      onEditNote={async (id, text) => {
+        const response = await updateNoteMutation.mutateAsync({ jahr: taxYear, noteId: id, data: { text } })
+        if (response.status !== 200) throw new Error(`note not changed (HTTP ${response.status})`)
+        await invalidate()
+      }}
+      onDeleteNote={async (id) => {
+        const response = await deleteNoteMutation.mutateAsync({ jahr: taxYear, noteId: id })
+        if (response.status !== 200) throw new Error(`note not deleted (HTTP ${response.status})`)
+        await invalidate()
+      }}
+      onUndoNoteChange={async (messageId, index) => {
+        const response = await undoNoteChangeMutation.mutateAsync({ jahr: taxYear, messageId, index })
+        if (response.status !== 200) throw new Error(`note change not undone (HTTP ${response.status})`)
+        await invalidate()
+      }}
+      conversations={session?.conversations}
+      onSearchConversations={searchConversations}
+      activeConversationId={session?.conversationId ?? null}
+      onSelectConversation={(id) => selectConversation(id)}
+      onNewConversation={async () => {
+        const response = await createConversationMutation.mutateAsync({ jahr: taxYear })
+        if (response.status !== 200) throw new Error(`conversation not created (HTTP ${response.status})`)
+        selectConversation(response.data.id)
+        await invalidate()
+      }}
+      onRenameConversation={async (id, title) => {
+        const response = await renameConversationMutation.mutateAsync({ jahr: taxYear, conversationId: id, data: { title } })
+        if (response.status !== 200) throw new Error(`conversation not renamed (HTTP ${response.status})`)
+        await invalidate()
+      }}
+      onDeleteConversation={async (id) => {
+        const response = await deleteConversationMutation.mutateAsync({ jahr: taxYear, conversationId: id })
+        if (response.status !== 200) throw new Error(`conversation not deleted (HTTP ${response.status})`)
+        // The open one is gone: back to whichever was used last.
+        if (id === session?.conversationId) selectConversation(null)
+        await invalidate()
+      }}
       onClearConversation={async () => {
-        const response = await clearConversationMutation.mutateAsync({ jahr: taxYear })
+        const response = await clearConversationMutation.mutateAsync({ jahr: taxYear, ...(session ? { params: { conversationId: session.conversationId } } : {}) })
         if (response.status !== 200) throw new Error(`conversation not cleared (HTTP ${response.status})`)
         await invalidate()
       }}
@@ -490,6 +587,20 @@ function OwlModeScreenView({
   onUndoAction,
   onRateMessage,
   onClearConversation,
+  conversations,
+  activeConversationId,
+  onSelectConversation,
+  onNewConversation,
+  onRenameConversation,
+  onDeleteConversation,
+  onSearchConversations,
+  context,
+  onSummarize,
+  notes,
+  onAddNote,
+  onEditNote,
+  onDeleteNote,
+  onUndoNoteChange,
 }: OwlModeScreenProps & { readonly initialCards: readonly OwlCardsDisplay[] }) {
   const bp = useBreakpoint()
   const t = useTheme()
@@ -501,6 +612,9 @@ function OwlModeScreenView({
   const [panelChoice, setPanelChoice] = useState<'open' | 'closed' | null>(null)
   const [privacyOpen, setPrivacyOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [conversationsOpen, setConversationsOpen] = useState(false)
+  // Desktop: the conversations and notes sit in a sidebar that remembers whether it was collapsed.
+  const [sidebarOpen, setSidebarOpen] = useState(readOwlSidebarOpen)
   const [clearState, setClearState] = useState<'closed' | 'confirm' | 'clearing' | 'failed'>('closed')
   const [cards, setCards] = useState<readonly OwlCardsDisplay[]>(initialCards)
   const [activeIndex, setActiveIndex] = useState(0)
@@ -713,6 +827,9 @@ function OwlModeScreenView({
           'Spenden aus dem Vorjahr prüfen',
         ]}
         isSending={effectiveSending}
+        context={context}
+        onSummarize={onSummarize}
+        onUndoNoteChange={onUndoNoteChange}
         streamSteps={bridge?.streamSteps}
         streamedText={bridge?.streamedText}
         streamedReasoning={bridge?.streamedReasoning}
@@ -1033,6 +1150,33 @@ function OwlModeScreenView({
     </>
   )
 
+  /** The project of the tax year: its conversations and its notes. Sidebar on desktop, sheet elsewhere. */
+  const projectPanel = (afterSwitch: () => void) => (
+    <View style={styles.projectPanel}>
+      <ConversationList
+        conversations={conversations ?? []}
+        activeId={activeConversationId ?? null}
+        canSwitch={!effectiveSending}
+        onSelect={(id) => {
+          onSelectConversation?.(id)
+          afterSwitch()
+        }}
+        onNew={async () => {
+          await onNewConversation?.()
+          afterSwitch()
+        }}
+        onRename={async (id, title) => {
+          await onRenameConversation?.(id, title)
+        }}
+        onDelete={async (id) => {
+          await onDeleteConversation?.(id)
+        }}
+        onSearch={onSearchConversations}
+      />
+      {notes && onAddNote && onEditNote && onDeleteNote ? <ProjectNotes notes={notes} onAdd={onAddNote} onEdit={onEditNote} onDelete={onDeleteNote} /> : null}
+    </View>
+  )
+
   // One layout for every width (#476): the chat is the screen. The workbench is a side panel on a
   // wide screen and a sheet over the chat everywhere else, and only there when it is needed.
   return (
@@ -1045,11 +1189,27 @@ function OwlModeScreenView({
         onTogglePanel={() => (panelOpen ? closePanel() : setPanelChoice('open'))}
         onOpenPrivacy={() => setPrivacyOpen(true)}
         onOpenSettings={onToggleOptIn || onChooseProfession || onClearConversation ? () => setSettingsOpen(true) : undefined}
+        onOpenConversations={
+          conversations && onSelectConversation
+            ? () => {
+                if (!wide) return setConversationsOpen(true)
+                writeOwlSidebarOpen(!sidebarOpen)
+                setSidebarOpen(!sidebarOpen)
+              }
+            : undefined
+        }
+        conversationsExpanded={wide ? sidebarOpen : conversationsOpen}
         legalStatusDate={LEGAL_STATUS_DATE}
         compact={bp === 's'}
       />
 
       <View style={styles.body}>
+        {wide && sidebarOpen && conversations && onSelectConversation ? (
+          <ScrollView style={styles.projectSidebar} contentContainerStyle={styles.projectSidebarContent} testID="eule-project-sidebar">
+            {projectPanel(() => {})}
+          </ScrollView>
+        ) : null}
+
         <View style={styles.chatMain} testID="eule-chat-main">
           {renderChatPanel(bp === 's')}
         </View>
@@ -1080,6 +1240,12 @@ function OwlModeScreenView({
         </Sheet>
       ) : null}
 
+      {conversationsOpen && !wide ? (
+        <Sheet onClose={() => setConversationsOpen(false)} closeLabel={tr('eule.workspace.topbar.conversationsClose')} testID="eule-conversations-sheet">
+          {projectPanel(() => setConversationsOpen(false))}
+        </Sheet>
+      ) : null}
+
       {settingsOpen ? (
         <Sheet
           onClose={() => {
@@ -1104,6 +1270,17 @@ function makeStyles(t: UiTheme) {
     root: { flex: 1, minHeight: 0, backgroundColor: t.color.grund } as ViewStyle,
     body: { flex: 1, minHeight: 0, flexDirection: 'row' } as ViewStyle,
     chatMain: { flex: 1, minWidth: 0, minHeight: 0 } as ViewStyle,
+    projectSidebar: {
+      flexGrow: 0,
+      flexShrink: 0,
+      flexBasis: 300,
+      maxWidth: '28%',
+      borderRightWidth: 1,
+      borderRightColor: t.color.linie,
+      backgroundColor: t.color.grund,
+    } as ViewStyle,
+    projectSidebarContent: { padding: t.space.s4 } as ViewStyle,
+    projectPanel: { gap: t.space.s6 } as ViewStyle,
     sidePanel: {
       flexGrow: 0,
       flexShrink: 0,

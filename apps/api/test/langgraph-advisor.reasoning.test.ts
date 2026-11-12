@@ -89,7 +89,7 @@ function runtime(provider: AiProviderKind, extra: Partial<ResolvedAiSlotConfig> 
   }
 }
 
-async function run(engine: LangGraphAdvisorEngine, extra: Partial<Pick<AdvisorTurnRequest, 'planRequired' | 'records' | 'previewEffect'>> = {}) {
+async function run(engine: LangGraphAdvisorEngine, extra: Partial<Pick<AdvisorTurnRequest, 'planRequired' | 'records' | 'previewEffect' | 'notes'>> = {}) {
   const events: AdvisorStreamEvent[] = []
   for await (const ev of engine.streamTurn({ message: 'Lohnt sich mein Arbeitsweg?', digest, ...extra })) events.push(ev)
   const done = events.find((e) => e.event === 'done')
@@ -242,9 +242,23 @@ describe('reasoning configuration (#476)', () => {
   const env = (extra: Record<string, string>) =>
     new EnvAiRuntimeConfigService({ AI_ADVISOR_PROVIDER: 'anthropic', ANTHROPIC_API_KEY: 'test-only-key', ...extra })
 
-  it('is off unless asked for', async () => {
-    expect((await env({}).resolveSlot('advisor_chat')).reasoning).toBeUndefined()
+  it('is on unless switched off (#481)', async () => {
+    expect((await env({}).resolveSlot('advisor_chat')).reasoning).toBe('summary')
     expect((await env({ AI_ADVISOR_REASONING: 'off' }).resolveSlot('advisor_chat')).reasoning).toBeUndefined()
+  })
+
+  it('thinks at the medium level by default (#481)', async () => {
+    expect((await env({}).resolveSlot('advisor_chat')).thinkingLevel).toBe('medium')
+    expect((await env({ AI_ADVISOR_THINKING_LEVEL: 'high' }).resolveSlot('advisor_chat')).thinkingLevel).toBe('high')
+    expect((await env({ AI_ADVISOR_THINKING_LEVEL: 'auto' }).resolveSlot('advisor_chat')).thinkingLevel).toBeUndefined()
+    expect((await env({ AI_ADVISOR_THINKING_LEVEL: 'unsinn' }).resolveSlot('advisor_chat')).thinkingLevel).toBe('medium')
+    expect((await env({ AI_ADVISOR_THINKING_LEVEL: 'low' }).resolveSlot('advisor_chat')).thinkingLevel).toBe('low')
+    expect((await env({}).resolveSlot('vision_ocr')).thinkingLevel).toBeUndefined()
+  })
+
+  it('hands Gemini the level and the wish to see the thoughts', () => {
+    const model = createChatModelFromConfig({ slot: 'advisor_chat', enabled: true, provider: 'google-genai', model: 'test-model', apiKey: 'test-only-key', reasoning: 'summary', thinkingLevel: 'low' }) as unknown as { thinkingConfig?: unknown }
+    expect(model.thinkingConfig).toEqual({ includeThoughts: true, thinkingLevel: 'LOW' })
   })
 
   it('applies to the chat slot only', async () => {
@@ -675,5 +689,127 @@ describe('the finished answer is checked without a model (ADR-0066 §7)', () => 
   it('leaves an ordinary answer without notices', async () => {
     const { result } = await run(engineWith(new ChunkedChatModel([[answer('Die Entfernungspauschale gilt für die einfache Strecke.')]])))
     expect(result.meta.notices).toBeUndefined()
+  })
+})
+
+describe('summarising a conversation (#481)', () => {
+  /** A model that answers a plain call with one prepared text and remembers what it was shown. */
+  class OneShotModel extends BaseChatModel {
+    readonly seen: string[] = []
+    constructor(private readonly reply: string) {
+      super({})
+    }
+    _llmType(): string {
+      return 'one-shot-test'
+    }
+    async _generate(messages: BaseMessage[]): Promise<ChatResult> {
+      this.seen.push(messages.map((m) => String(m.content)).join('\n---\n'))
+      const message = new AIMessageChunk({ content: this.reply })
+      return { generations: [{ text: this.reply, message }] }
+    }
+  }
+  const TRANSCRIPT = 'Nutzer: Mein Arbeitsweg sind 38 km.\nEule: Vorbereitet. [Vorschlag „Entfernung“ → 38: übernommen]'
+
+  it('asks the model without tools and returns its summary', async () => {
+    const model = new OneShotModel('- Arbeitsweg 38 km, übernommen')
+    const engine = new LangGraphAdvisorEngine(runtime('google-genai'), () => model)
+    expect(await engine.summarize({ transcript: TRANSCRIPT, previousSummary: 'Früher: 300 € Spende.' })).toBe('- Arbeitsweg 38 km, übernommen')
+    expect(model.seen[0]).toContain('erfinde nichts dazu')
+    expect(model.seen[0]).toContain('Früher: 300 € Spende.')
+    expect(model.seen[0]).toContain('38 km')
+  })
+
+  it('asks for the quick variant of the model: no line of thought for a summary', async () => {
+    const configs: ResolvedAiSlotConfig[] = []
+    const engine = new LangGraphAdvisorEngine(runtime('google-genai', { reasoning: 'summary', thinkingLevel: 'medium' }), (config) => {
+      configs.push(config)
+      return new OneShotModel('Kurz.')
+    })
+    await engine.summarize({ transcript: TRANSCRIPT, previousSummary: null })
+    expect(configs[0]).toMatchObject({ thinkingLevel: 'low' })
+    expect(configs[0]!.reasoning).toBeUndefined()
+  })
+
+  it('has no summary without a real model', async () => {
+    const engine = new LangGraphAdvisorEngine(runtime('deterministic'), () => new OneShotModel('x'))
+    expect(await engine.summarize({ transcript: TRANSCRIPT, previousSummary: null })).toBeNull()
+  })
+
+  it('throws away a summary that carries an identifier', async () => {
+    const engine = new LangGraphAdvisorEngine(runtime('google-genai'), () => new OneShotModel('IBAN DE89370400440532013000 genannt'))
+    expect(await engine.summarize({ transcript: TRANSCRIPT, previousSummary: null })).toBeNull()
+  })
+
+  it('has no summary when the model fails, instead of failing the turn', async () => {
+    const engine = new LangGraphAdvisorEngine(runtime('google-genai'), () => {
+      throw new Error('provider away')
+    })
+    expect(await engine.summarize({ transcript: TRANSCRIPT, previousSummary: null })).toBeNull()
+  })
+})
+
+describe('the owl keeps project notes itself (#481)', () => {
+  const callTool = (name: string, args: Record<string, unknown>, index = 0) => ({ name, args: JSON.stringify(args), index, id: `n${index}` })
+  const tools = (...calls: Array<ReturnType<typeof callTool>>): AIMessageChunk => chunkOf({ content: '', tool_call_chunks: calls })
+  const engineWith = (model: ChunkedChatModel) => new LangGraphAdvisorEngine(runtime('google-genai'), () => model)
+  const NOTES = [
+    { handle: 'Notiz 1', id: 'note-id-aaa', text: 'Arbeitsweg 38 km.' },
+    { handle: 'Notiz 2', id: 'note-id-bbb', text: 'Fahrtenbuch wird nachgereicht.' },
+  ]
+
+  it('notes something new, tidied to one line', async () => {
+    const model = new ChunkedChatModel([[tools(callTool('remember_note', { text: '  Arbeitszimmer geprüft:\n lohnt sich nicht ' }))], [answer('Gemerkt.')]])
+    const { result } = await run(engineWith(model), { notes: NOTES })
+    expect(result.meta.noteChanges).toEqual([{ kind: 'added', text: 'Arbeitszimmer geprüft: lohnt sich nicht' }])
+  })
+
+  it('tells the model the notes of the year by name, never by id', async () => {
+    const model = new ChunkedChatModel([[answer('Hallo.')]])
+    await run(engineWith(model), { notes: NOTES })
+    const seen = JSON.stringify(model.seenMessages[0]!.map((m) => m.content))
+    expect(seen).toContain('Notiz 2: Fahrtenbuch wird nachgereicht.')
+    expect(seen).not.toContain('note-id-bbb')
+  })
+
+  it('replaces and forgets a note by its name', async () => {
+    const model = new ChunkedChatModel([
+      [tools(callTool('replace_note', { note: 'Notiz 1', text: 'Arbeitsweg 40 km.' }, 0), callTool('forget_note', { note: 'Notiz 2' }, 1))],
+      [answer('Aktualisiert.')],
+    ])
+    const { result } = await run(engineWith(model), { notes: NOTES })
+    expect(result.meta.noteChanges).toEqual([
+      { kind: 'replaced', noteId: 'note-id-aaa', text: 'Arbeitsweg 40 km.', previousText: 'Arbeitsweg 38 km.' },
+      { kind: 'removed', noteId: 'note-id-bbb', text: 'Fahrtenbuch wird nachgereicht.' },
+    ])
+  })
+
+  it('refuses a note it does not know, one with an identifier, and one too long', async () => {
+    const model = new ChunkedChatModel([
+      [
+        tools(
+          callTool('forget_note', { note: 'Notiz 9' }, 0),
+          callTool('remember_note', { text: 'Konto DE89370400440532013000' }, 1),
+          callTool('remember_note', { text: 'x'.repeat(250) }, 2),
+        ),
+      ],
+      [answer('Hm.')],
+    ])
+    const { result } = await run(engineWith(model), { notes: NOTES })
+    expect(result.meta.noteChanges).toBeUndefined()
+    const toolResults = JSON.stringify(model.seenMessages[1]!.map((m) => m.content))
+    expect(toolResults).toContain('UNKNOWN_NOTE')
+    expect(toolResults).toContain('persönlichen Daten')
+    expect(toolResults).toContain('höchstens 200 Zeichen')
+  })
+
+  it('does not note the same thing twice, and stops at the limit', async () => {
+    const twice = new ChunkedChatModel([[tools(callTool('remember_note', { text: 'Arbeitsweg 38 km.' }))], [answer('Schon bekannt.')]])
+    expect((await run(engineWith(twice), { notes: NOTES })).result.meta.noteChanges).toBeUndefined()
+
+    const full = Array.from({ length: 20 }, (_, i) => ({ handle: `Notiz ${i + 1}`, id: `n-${i}`, text: `Notiz ${i}` }))
+    const over = new ChunkedChatModel([[tools(callTool('remember_note', { text: 'Noch eine.' }))], [answer('Voll.')]])
+    const { result } = await run(engineWith(over), { notes: full })
+    expect(result.meta.noteChanges).toBeUndefined()
+    expect(JSON.stringify(over.seenMessages[1]!.map((m) => m.content))).toContain('TOO_MANY_NOTES')
   })
 })

@@ -28,6 +28,15 @@ describe('checkAdvisorAnswer', () => {
       expect(check({ replyText: 'Der Arbeitnehmer-Pauschbetrag beträgt 1.230 €. Pro Homeoffice-Tag gibt es 6 €, höchstens 1.260 € im Jahr.' })).toEqual([])
     })
 
+    it('does not take a rate or a cap of the law for a claim about this user', () => {
+      expect(check({ replyText: 'Jeder Homeoffice-Tag bringt dir 6 € pro Tag, das spart Steuern.' })).toEqual([])
+      expect(check({ replyText: 'Die Ersparnis ist auf höchstens 1.200 € begrenzt.' })).toEqual([])
+      expect(check({ replyText: 'Du sparst bis zu 1.260 € im Jahr.' })).toEqual([])
+      expect(check({ replyText: 'Handwerkerleistungen bringen dir eine Ersparnis von maximal 1.200 €.' })).toEqual([])
+      // A figure stated as this user's saving is still a claim.
+      expect(check({ replyText: 'Damit sparst du 1.000 € Steuern.' })).toEqual(['unbacked-amount'])
+    })
+
     it('reads German thousands', () => {
       expect(check({ replyText: 'Du bekommst 2.341 € zurück erstattet.', drafts: [draft] })).toEqual([])
       expect(check({ replyText: 'Du bekommst 2.431 € zurück erstattet.', drafts: [draft] })).toEqual(['unbacked-amount'])

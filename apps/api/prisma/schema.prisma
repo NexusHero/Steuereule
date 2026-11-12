@@ -437,26 +437,26 @@ model LegalHold {
 /// a tax identifier (the ADR-0008 ruling that put InterviewAnswer.value in the clear was
 /// about uniqueness/lookup; here it is about the derived-state rule, same instinct).
 model Receipt {
-  id                String    @id @default(uuid())
+  id                String       @id @default(uuid())
   /// Scoping key — same trusted userId as Profile.userId (ADR-0007). Never read from the
   /// request path/query/body.
   userId            String
   /// Original filename/storage key. Encrypted at rest (ADR-0008).
-  fileName          String    @map("dateiname") /// @encrypted?mode=strict
+  fileName          String       @map("dateiname") /// @encrypted?mode=strict
   /// Document type (ADR-029): one of belegart.ts's `Belegart` values (Lohnausweis,
   /// Quellensteuer, Pensionskasse, Saeule3a, Krankenkasse, Familienzulage, Sonstiges) —
   /// null is the pre-CH undifferentiated receipt (not yet classified); 'Sonstiges' is an
   /// explicitly chosen generic receipt. A plain discriminator, not a tax fact: left in the
   /// clear (no field-level protection, same reasoning as the dates) so the inbox can group
   /// by it without decrypting.
-  kind              String?   @map("art")
+  kind              String?      @map("art")
   /// Invoice date (Rechnungsdatum). Clear — the suggestion rule reads it without decrypting.
   belegdatum        DateTime?
   /// Payment date (Zahlungsdatum) — § 11 Zufluss fixes the year, not the invoice date.
   zahlungsdatum     DateTime?
   /// The CONFIRMED year (a tap has happened). Null while unbound/suggested. The
   /// suggestion itself is derived, never stored.
-  taxYear           Int?      @map("steuerjahr")
+  taxYear           Int?         @map("steuerjahr")
   /// ADR-008 "bei meinem Jahr bleiben": whether the user explicitly dismissed the
   /// date-derived suggestion to keep their own confirmed year — a persisted FACT (not the
   /// derived state), so `zuordnungAusDaten` can resolve the conflict without silently
@@ -484,24 +484,24 @@ model Receipt {
 /// to Profile's Steuer-ID via the same userId — unlike TaxYear (counts only) or the Beleg dates
 /// (needed clear for the suggestion rule).
 model Lstb {
-  id                 String   @id @default(uuid())
+  id                    String   @id @default(uuid())
   /// Scoping key — same trusted userId as Profile.userId (ADR-0007). Never read from the
   /// request path/query/body.
-  userId             String
+  userId                String
   /// The tax year these figures belong to (same granularity as TaxYear/InterviewAnswer).
-  taxYear            Int      @map("steuerjahr")
+  taxYear               Int      @map("steuerjahr")
   /// Bruttoarbeitslohn (Zeile 3). Encrypted at rest (ADR-0008); null=offen, "unklar"=unreadable.
-  bruttoarbeitslohn  String? /// @encrypted?mode=strict
+  bruttoarbeitslohn     String? /// @encrypted?mode=strict
   /// Einbehaltene Lohnsteuer (Zeile 4). Encrypted at rest; same state encoding.
-  lohnsteuer         String? /// @encrypted?mode=strict
+  lohnsteuer            String? /// @encrypted?mode=strict
   /// Arbeitnehmer-Anteil der SV-Beiträge (Zeilen 22/23). Encrypted at rest; same state encoding.
-  sozialversicherung String? /// @encrypted?mode=strict
+  sozialversicherung    String? /// @encrypted?mode=strict
   /// Einbehaltene Kirchensteuer des Arbeitnehmers (Zeile 6), whole euros; null = not entered (ADR-0063).
   kirchensteuer         String? /// @encrypted?mode=strict
   /// Kirchensteuer des Ehegatten, nur bei konfessionsverschiedener Ehe (Zeile 7); null = not entered.
   kirchensteuerEhegatte String? /// @encrypted?mode=strict
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
   @@unique([userId, taxYear])
 }
@@ -956,15 +956,15 @@ model TaxYearMembership {
 /// The spouse link without a year (ADR-0062 §3): valid from `validFromYear` until a partner ends it
 /// with `endedFromYear`. It survives a change of the Veranlagungsart, which stays per year.
 model PartnerLink {
-  id              String   @id @default(uuid())
-  personAUserId   String   @unique @map("personANutzerId")
+  id             String   @id @default(uuid())
+  personAUserId  String   @unique @map("personANutzerId")
   /// Own account of person B, or '' while B has none.
-  personBUserId   String   @default("") @map("personBNutzerId")
-  spousePersonId  String?  @map("partnerPersonId")
-  validFromYear   Int      @map("gueltigAb")
-  endedFromYear   Int?     @map("beendetAb")
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  personBUserId  String   @default("") @map("personBNutzerId")
+  spousePersonId String?  @map("partnerPersonId")
+  validFromYear  Int      @map("gueltigAb")
+  endedFromYear  Int?     @map("beendetAb")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   @@index([personBUserId])
   @@map("PartnerVerknuepfung")
@@ -1231,26 +1231,67 @@ model Commute {
 /// Agent ("Deine Eule", product ADR-037 / ADR-048 / ADR-0052). Both the message text (`content`)
 /// and the structured action/choices metadata (`metaJson`) are field-encrypted at rest (ADR-0008).
 model AdvisorChatMessage {
+  id             String               @id @default(uuid())
+  userId         String
+  taxYear        Int                  @map("steuerjahr")
+  role           String               @map("rolle")
+  content        String               @map("inhalt") /// @encrypted?mode=strict
+  metaJson       String?              @map("metaDaten") /// @encrypted?mode=strict
+  createdAt      DateTime             @default(now())
+  /// Lifecycle of the message (#476): streaming, complete, aborted or failed.
+  status         String               @default("complete")
+  /// Reasoning summary the provider returned for this answer, field-encrypted like the text.
+  reasoning      String?              @map("gedankengang") /// @encrypted?mode=strict
+  /// The run that produces this answer; lets a client re-attach while status is streaming.
+  runId          String?              @map("laufId")
+  feedbackRating String?              @map("bewertung")
+  feedbackReason String?              @map("bewertungGrund")
+  /// Token counts, timings and trace id of the turn as JSON. No message content.
+  usageJson      String?              @map("verbrauch")
+  /// The conversation this message belongs to (#481). Nullable only for the migration's sake:
+  /// every message written by the app carries one.
+  conversationId String?              @map("gespraechId")
+  conversation   AdvisorConversation? @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([userId, taxYear, createdAt])
+  @@index([conversationId, createdAt])
+  @@map("BeraterNachricht")
+}
+
+/// One conversation with the owl (#481). The tax return of a year is the project; it holds any
+/// number of conversations, which all see the same return but not each other's messages.
+model AdvisorConversation {
+  id           String               @id @default(uuid())
+  userId       String
+  taxYear      Int                  @map("steuerjahr")
+  /// From the user's first question, so field-encrypted like the messages. Null until then.
+  title        String?              @map("titel") /// @encrypted?mode=strict
+  createdAt    DateTime             @default(now())
+  lastUsedAt   DateTime             @default(now()) @map("zuletztBenutzt")
+  /// What the older part of the conversation said, once its context was full. The model reads this
+  /// instead of the messages up to `summaryUntil`; the user still sees every message.
+  summary      String?              @map("zusammenfassung") /// @encrypted?mode=strict
+  summaryUntil DateTime?            @map("zusammengefasstBis")
+  messages     AdvisorChatMessage[]
+
+  @@index([userId, taxYear, lastUsedAt])
+  @@map("BeraterGespraech")
+}
+
+/// A project note of one tax year (#481): something settled in a conversation that is no value of
+/// the return. Every conversation of the year reads the notes; the owl keeps them itself.
+model AdvisorNote {
   id        String   @id @default(uuid())
   userId    String
   taxYear   Int      @map("steuerjahr")
-  role      String   @map("rolle")
-  content   String   @map("inhalt") /// @encrypted?mode=strict
-  metaJson  String?  @map("metaDaten") /// @encrypted?mode=strict
+  text      String   @map("inhalt") /// @encrypted?mode=strict
+  /// Who wrote the current text: the owl, or the user by editing it.
+  author    String   @default("owl") @map("verfasser")
   createdAt DateTime @default(now())
-  /// Lifecycle of the message (#476): streaming, complete, aborted or failed.
-  status         String  @default("complete")
-  /// Reasoning summary the provider returned for this answer, field-encrypted like the text.
-  reasoning      String? @map("gedankengang") /// @encrypted?mode=strict
-  /// The run that produces this answer; lets a client re-attach while status is streaming.
-  runId          String? @map("laufId")
-  feedbackRating String? @map("bewertung")
-  feedbackReason String? @map("bewertungGrund")
-  /// Token counts, timings and trace id of the turn as JSON. No message content.
-  usageJson      String? @map("verbrauch")
+  updatedAt DateTime @default(now()) @map("geaendertAm")
 
   @@index([userId, taxYear, createdAt])
-  @@map("BeraterNachricht")
+  @@map("BeraterNotiz")
 }
 
 // AES-256-GCM envelope-encrypted original receipt files (PDF/JPEG/PNG/WebP).
@@ -1273,4 +1314,3 @@ model ReceiptFile {
   @@index([userId])
   @@map("BelegDatei")
 }
-

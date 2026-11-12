@@ -34,6 +34,15 @@ import {
   type Profession,
   type Screen,
   type WageTaxCertificateFieldId,
+  advisorContextUsage,
+  fallbackSummary,
+  summaryCut,
+  transcriptForSummary,
+  type AdvisorHistorySource,
+  ADVISOR_NOTES_MAX,
+  buildNoteHandles,
+  tidyNoteText,
+  type AdvisorNoteChange,
 } from '@steuereule/core'
 import { AuditService } from '../audit/audit.service.js'
 import { checkPiiFree } from '../ki/ki.adapter.js'
@@ -66,13 +75,19 @@ import { ConflictError, DomainError, InvalidInputError, NotFoundError, TooManyRe
 import {
   ADVISOR_REPOSITORY,
   type AdvisorChatMessageRecord,
+  type AdvisorConversationRecord,
   type AdvisorMessageUsage,
+  type AdvisorNoteRecord,
   type AdvisorRepository,
   type FinishAdvisorMessageInput,
 } from './advisor.repository.js'
 import type {
   AdvisorActionMutationResponseDto,
   AdvisorChatMessageDto,
+  AdvisorContextDto,
+  AdvisorConversationDto,
+  AdvisorNoteDto,
+  AdvisorSearchHitDto,
   AdvisorSessionResponseDto,
   ApplyBatchActionsDto,
   ApplyBatchActionsResponseDto,
@@ -143,6 +158,9 @@ export interface PreparedAdvisorTurn {
   readonly scrubbedUserText: string
   readonly history: readonly AdvisorHistoryEntry[]
   readonly dto: SendAdvisorMessageDto
+  readonly conversationId: string
+  /** The context of the conversation is full: its older part is summarised before the model is asked. */
+  readonly needsSummary: boolean
 }
 
 const EURO = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 2 })
@@ -174,6 +192,79 @@ export function effectFromEstimates(states: { readonly before: TaxEstimateStatus
     return { kind: 'not-computable', hint: 'Wirkung erst berechenbar, wenn die Angaben für die Schätzung vollständig sind (z. B. die Lohnsteuerbescheinigung).' }
   }
   return { kind: 'not-computable', hint: 'Für deine Lebenslage gibt es noch keine automatische Schätzung; die Wirkung kann ich deshalb nicht beziffern.' }
+}
+
+/** More conversations in one year than anyone can keep apart are a list nobody reads. */
+export const MAX_CONVERSATIONS_PER_YEAR = 50
+const TITLE_MAX_LENGTH = 60
+
+/** A conversation title from free text: one line, cut at a word where possible. */
+export function titleFrom(text: string): string | null {
+  const oneLine = text.replace(/\s+/g, ' ').trim()
+  if (oneLine === '') return null
+  if (oneLine.length <= TITLE_MAX_LENGTH) return oneLine
+  const cut = oneLine.slice(0, TITLE_MAX_LENGTH)
+  const lastSpace = cut.lastIndexOf(' ')
+  return `${(lastSpace > TITLE_MAX_LENGTH / 2 ? cut.slice(0, lastSpace) : cut).trimEnd()}…`
+}
+
+/** The messages the model still reads verbatim: everything after the summarised part. */
+function liveMessages(conversation: AdvisorConversationRecord, records: readonly AdvisorChatMessageRecord[]): AdvisorChatMessageRecord[] {
+  const until = conversation.summaryUntil
+  return until === null ? [...records] : records.filter((record) => record.createdAt.getTime() > until.getTime())
+}
+
+function historySources(records: readonly AdvisorChatMessageRecord[], knownNames: readonly string[]): AdvisorHistorySource[] {
+  return records.map((msg) => ({ role: msg.role, content: scrubUserMessagePii(msg.content, [...knownNames]), meta: msg.meta, status: msg.status }))
+}
+
+function contextOf(conversation: AdvisorConversationRecord, records: readonly AdvisorChatMessageRecord[], knownNames: readonly string[]): AdvisorContextDto {
+  const live = liveMessages(conversation, records)
+  const sources = historySources(live, knownNames)
+  const covered = records.filter((record) => !live.includes(record))
+  return {
+    ...advisorContextUsage(sources, conversation.summary),
+    ...(conversation.summary ? { summary: conversation.summary } : {}),
+    ...(covered.length > 0 ? { summarizedUntilMessageId: covered[covered.length - 1]!.id } : {}),
+    canSummarize: summaryCut(sources) > 0,
+  }
+}
+
+const SEARCH_MIN_CHARS = 2
+const SEARCH_MAX_HITS = 30
+const SNIPPET_CONTEXT_CHARS = 60
+
+/** Case and accents do not matter to a search: „Küchentisch“ is found by „kuchentisch“. The length stays the same. */
+export function searchKey(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[äáàâ]/g, 'a')
+    .replace(/[öóòô]/g, 'o')
+    .replace(/[üúùû]/g, 'u')
+    .replace(/[éèê]/g, 'e')
+    .replace(/\s/g, ' ')
+    .trim()
+}
+
+/** The passage around a hit, on one line, with an ellipsis where text was cut. */
+export function snippetAround(text: string, at: number, length: number): string {
+  const offset = text.length - text.trimStart().length
+  const start = Math.max(0, at + offset - SNIPPET_CONTEXT_CHARS)
+  const end = Math.min(text.length, at + offset + length + SNIPPET_CONTEXT_CHARS)
+  return `${start > 0 ? '…' : ''}${text.slice(start, end).replace(/\s+/g, ' ').trim()}${end < text.length ? '…' : ''}`
+}
+
+function toNoteDto(note: AdvisorNoteRecord): AdvisorNoteDto {
+  return { id: note.id, text: note.text, author: note.author, updatedAt: note.updatedAt.toISOString() }
+}
+
+function toConversationDto(conversation: AdvisorConversationRecord): AdvisorConversationDto {
+  return {
+    id: conversation.id,
+    title: conversation.title,
+    createdAt: conversation.createdAt.toISOString(),
+    lastUsedAt: conversation.lastUsedAt.toISOString(),
+  }
 }
 
 @Injectable()
@@ -369,11 +460,230 @@ export class AdvisorService {
     return digest
   }
 
-  async getSession(userId: string, taxYear: number): Promise<AdvisorSessionResponseDto> {
-    const [setting, cardsRes, history] = await Promise.all([
+  /**
+   * The conversation a request is about (#481). Without an id it is the one used last in that
+   * year, created when the year has none: the project of a tax return exists as soon as it is opened.
+   */
+  async conversationFor(userId: string, taxYear: number, conversationId?: string): Promise<AdvisorConversationRecord> {
+    if (conversationId === undefined) return this.advisorRepo.defaultConversation(userId, taxYear)
+    const conversation = await this.advisorRepo.findConversation(conversationId, userId)
+    if (!conversation || conversation.taxYear !== taxYear) {
+      throw new NotFoundError('ADVISOR_CONVERSATION_NOT_FOUND', 'Dieses Gespräch gibt es nicht (mehr).')
+    }
+    return conversation
+  }
+
+  async listConversations(userId: string, taxYear: number): Promise<AdvisorConversationDto[]> {
+    await this.advisorRepo.defaultConversation(userId, taxYear)
+    return (await this.advisorRepo.listConversations(userId, taxYear)).map(toConversationDto)
+  }
+
+  async createConversation(userId: string, taxYear: number): Promise<AdvisorConversationDto> {
+    const existing = await this.advisorRepo.listConversations(userId, taxYear)
+    // A conversation nobody has written in yet is the new one: no pile of empty conversations.
+    for (const conversation of existing) {
+      if ((await this.advisorRepo.listForConversation(conversation.id, userId)).length === 0) {
+        const reused = await this.advisorRepo.updateConversation(conversation.id, userId, { lastUsedAt: new Date() })
+        return toConversationDto(reused ?? conversation)
+      }
+    }
+    if (existing.length >= MAX_CONVERSATIONS_PER_YEAR) {
+      throw new ConflictError(
+        'ADVISOR_CONVERSATION_LIMIT',
+        `In einem Steuerjahr sind höchstens ${MAX_CONVERSATIONS_PER_YEAR} Gespräche möglich. Lösche eines, das du nicht mehr brauchst.`,
+      )
+    }
+    return toConversationDto(await this.advisorRepo.createConversation(userId, taxYear))
+  }
+
+  async renameConversation(userId: string, taxYear: number, conversationId: string, title: string): Promise<AdvisorConversationDto> {
+    const conversation = await this.conversationFor(userId, taxYear, conversationId)
+    const knownNames = await this.knownNamesForScrubbing(userId, taxYear)
+    const updated = await this.advisorRepo.updateConversation(conversation.id, userId, { title: titleFrom(scrubUserMessagePii(title, knownNames)) })
+    return toConversationDto(updated ?? conversation)
+  }
+
+  /**
+   * Deletes a conversation with its messages. Values already applied to the return stay; drafts
+   * that were still open in it disappear.
+   */
+  async deleteConversation(userId: string, taxYear: number, conversationId: string): Promise<{ deletedMessages: number }> {
+    const conversation = await this.conversationFor(userId, taxYear, conversationId)
+    const deletedMessages = (await this.advisorRepo.deleteConversation(conversation.id, userId)) ?? 0
+    await this.auditService.append({ userId, action: 'WRITE', resource: 'berater_gespraech_geloescht' })
+    return { deletedMessages }
+  }
+
+  /**
+   * Condenses the older part of a conversation into its summary (#481) and returns the conversation
+   * as it stands afterwards. The newest turns stay verbatim; without a model the summary lists the
+   * questions and what became of the proposals, so a full conversation never blocks.
+   */
+  private async compact(userId: string, taxYear: number, conversation: AdvisorConversationRecord, exceptIds: readonly string[], signal?: AbortSignal): Promise<AdvisorConversationRecord> {
+    const knownNames = await this.knownNamesForScrubbing(userId, taxYear)
+    const live = liveMessages(conversation, await this.advisorRepo.listForConversation(conversation.id, userId)).filter((m) => !exceptIds.includes(m.id))
+    const sources = historySources(live, knownNames)
+    const cut = summaryCut(sources)
+    if (cut === 0) return conversation
+    const older = sources.slice(0, cut)
+    const fromModel = this.advisorEngine?.summarize
+      ? await this.advisorEngine.summarize({ transcript: transcriptForSummary(older), previousSummary: conversation.summary, signal })
+      : null
+    const summary = scrubUserMessagePii(fromModel ?? fallbackSummary(older, conversation.summary), knownNames)
+    const updated = await this.advisorRepo.updateConversation(conversation.id, userId, { summary, summaryUntil: live[cut - 1]!.createdAt })
+    return updated ?? conversation
+  }
+
+  /** Summarises before an answer and returns the history the model gets afterwards. */
+  private async summarizeForTurn(userId: string, taxYear: number, turn: PreparedAdvisorTurn, signal?: AbortSignal): Promise<readonly AdvisorHistoryEntry[]> {
+    const conversation = await this.conversationFor(userId, taxYear, turn.conversationId)
+    const thisTurn = [turn.userMessage.id, turn.assistantMessageId]
+    const compacted = await this.compact(userId, taxYear, conversation, thisTurn, signal)
+    const knownNames = await this.knownNamesForScrubbing(userId, taxYear)
+    const live = liveMessages(compacted, await this.advisorRepo.listForConversation(compacted.id, userId)).filter((m) => !thisTurn.includes(m.id))
+    return buildAdvisorHistory(historySources(live, knownNames), { summary: compacted.summary })
+  }
+
+  /** "Jetzt zusammenfassen": the user tidies the context before it is full. */
+  async summarizeConversation(userId: string, taxYear: number, conversationId?: string): Promise<AdvisorContextDto> {
+    const conversation = await this.conversationFor(userId, taxYear, conversationId)
+    const compacted = await this.compact(userId, taxYear, conversation, [])
+    if (compacted.summaryUntil?.getTime() === conversation.summaryUntil?.getTime()) {
+      throw new ConflictError('ADVISOR_NOTHING_TO_SUMMARIZE', 'Dieses Gespräch ist noch zu kurz, um es zusammenzufassen.')
+    }
+    await this.auditService.append({ userId, action: 'WRITE', resource: 'berater_gespraech_zusammengefasst' })
+    return contextOf(compacted, await this.advisorRepo.listForConversation(compacted.id, userId), await this.knownNamesForScrubbing(userId, taxYear))
+  }
+
+  /**
+   * Searches the conversations of one tax year (#481): titles and messages, newest hit first.
+   * Messages are encrypted at rest, so the search runs here over the decrypted text; a year holds
+   * at most 50 conversations, which keeps that small.
+   */
+  async searchConversations(userId: string, taxYear: number, rawQuery: string): Promise<AdvisorSearchHitDto[]> {
+    const query = searchKey(rawQuery)
+    if (query.length < SEARCH_MIN_CHARS) return []
+    const [conversations, messages] = await Promise.all([
+      this.advisorRepo.listConversations(userId, taxYear),
+      this.advisorRepo.listForUserAndYear(userId, taxYear),
+    ])
+    const titles = new Map(conversations.map((c) => [c.id, c.title]))
+    const hits: AdvisorSearchHitDto[] = []
+    for (const conversation of conversations) {
+      if (conversation.title !== null && searchKey(conversation.title).includes(query)) {
+        hits.push({ conversationId: conversation.id, conversationTitle: conversation.title, snippet: conversation.title, at: conversation.lastUsedAt.toISOString() })
+      }
+    }
+    for (const message of messages) {
+      if (message.meta?.replaced || !titles.has(message.conversationId)) continue
+      const at = searchKey(message.content).indexOf(query)
+      if (at === -1) continue
+      hits.push({
+        conversationId: message.conversationId,
+        conversationTitle: titles.get(message.conversationId) ?? null,
+        messageId: message.id,
+        role: message.role,
+        snippet: snippetAround(message.content, at, query.length),
+        at: message.createdAt.toISOString(),
+      })
+    }
+    await this.auditService.append({ userId, action: 'READ', resource: 'berater_suche' })
+    return hits.sort((a, b) => b.at.localeCompare(a.at)).slice(0, SEARCH_MAX_HITS)
+  }
+
+  // ── Project notes (#481) ──────────────────────────────────────────────────────────────────
+
+  async listNotes(userId: string, taxYear: number): Promise<AdvisorNoteDto[]> {
+    return (await this.advisorRepo.listNotes(userId, taxYear)).map(toNoteDto)
+  }
+
+  /** A note text as it may be stored: one line, within the length, without names or identifiers. */
+  private async storableNoteText(userId: string, taxYear: number, raw: string): Promise<string> {
+    const scrubbed = scrubUserMessagePii(raw, await this.knownNamesForScrubbing(userId, taxYear))
+    const text = tidyNoteText(scrubbed)
+    if (!text.ok) throw new InvalidInputError('ADVISOR_NOTE_INVALID', text.reason)
+    return text.text
+  }
+
+  async createNote(userId: string, taxYear: number, raw: string): Promise<AdvisorNoteDto> {
+    const text = await this.storableNoteText(userId, taxYear, raw)
+    if ((await this.advisorRepo.listNotes(userId, taxYear)).length >= ADVISOR_NOTES_MAX) {
+      throw new ConflictError('ADVISOR_NOTE_LIMIT', `Für ein Steuerjahr sind höchstens ${ADVISOR_NOTES_MAX} Notizen möglich. Lösche eine, die nicht mehr gilt.`)
+    }
+    return toNoteDto(await this.advisorRepo.createNote(userId, taxYear, text, 'user'))
+  }
+
+  private async ownNote(userId: string, taxYear: number, noteId: string): Promise<AdvisorNoteRecord> {
+    const note = await this.advisorRepo.findNote(noteId, userId)
+    if (!note || note.taxYear !== taxYear) throw new NotFoundError('ADVISOR_NOTE_NOT_FOUND', 'Diese Notiz gibt es nicht (mehr).')
+    return note
+  }
+
+  async updateNote(userId: string, taxYear: number, noteId: string, raw: string): Promise<AdvisorNoteDto> {
+    const note = await this.ownNote(userId, taxYear, noteId)
+    const updated = await this.advisorRepo.updateNote(note.id, userId, await this.storableNoteText(userId, taxYear, raw), 'user')
+    return toNoteDto(updated ?? note)
+  }
+
+  async deleteNote(userId: string, taxYear: number, noteId: string): Promise<{ deleted: true }> {
+    const note = await this.ownNote(userId, taxYear, noteId)
+    await this.advisorRepo.deleteNote(note.id, userId)
+    return { deleted: true }
+  }
+
+  /**
+   * Stores what the owl decided to note, replace or forget in an answer. The owl writes notes on
+   * its own; the answer carries every change so the user sees it and can take it back.
+   */
+  private async applyNoteChanges(userId: string, taxYear: number, changes: readonly AdvisorNoteChange[] | undefined): Promise<AdvisorNoteChange[]> {
+    const applied: AdvisorNoteChange[] = []
+    for (const change of changes ?? []) {
+      if (change.kind === 'added') {
+        if ((await this.advisorRepo.listNotes(userId, taxYear)).length >= ADVISOR_NOTES_MAX) continue
+        const note = await this.advisorRepo.createNote(userId, taxYear, change.text, 'owl')
+        applied.push({ ...change, noteId: note.id })
+      } else if (change.noteId !== undefined) {
+        const note = await this.advisorRepo.findNote(change.noteId, userId)
+        if (!note || note.taxYear !== taxYear) continue
+        if (change.kind === 'replaced') {
+          await this.advisorRepo.updateNote(note.id, userId, change.text, 'owl')
+          applied.push({ ...change, previousText: note.text })
+        } else {
+          await this.advisorRepo.deleteNote(note.id, userId)
+          applied.push({ ...change, text: note.text })
+        }
+      }
+    }
+    return applied
+  }
+
+  /** "Rückgängig" under an answer: takes back one change the owl made to the notes. */
+  async undoNoteChange(userId: string, taxYear: number, messageId: string, index: number): Promise<AdvisorChatMessageDto> {
+    const message = await this.advisorRepo.findMessage(messageId, userId)
+    const change = message?.taxYear === taxYear ? message.meta?.noteChanges?.[index] : undefined
+    if (!message || !change) throw new NotFoundError('ADVISOR_NOTE_CHANGE_NOT_FOUND', 'Diese Änderung gibt es nicht (mehr).')
+    if (change.undone) throw new ConflictError('ADVISOR_NOTE_CHANGE_UNDONE', 'Diese Änderung wurde bereits zurückgenommen.')
+
+    let noteId = change.noteId
+    if (change.kind === 'added') {
+      if (noteId !== undefined) await this.advisorRepo.deleteNote(noteId, userId)
+    } else if (change.kind === 'replaced') {
+      if (noteId !== undefined && change.previousText !== undefined) await this.advisorRepo.updateNote(noteId, userId, change.previousText, 'owl')
+    } else {
+      noteId = (await this.advisorRepo.createNote(userId, taxYear, change.text, 'owl')).id
+    }
+    const noteChanges = message.meta!.noteChanges!.map((entry, i) => (i === index ? { ...entry, noteId, undone: true as const } : entry))
+    return toMessageDto(await this.advisorRepo.updateMessageMeta(message.id, userId, { ...message.meta, noteChanges }))
+  }
+
+  async getSession(userId: string, taxYear: number, conversationId?: string): Promise<AdvisorSessionResponseDto> {
+    const conversation = await this.conversationFor(userId, taxYear, conversationId)
+    const [setting, cardsRes, history, conversations, notes] = await Promise.all([
       this.owlModeService.getSetting(userId),
       this.owlModeService.getCards(userId, taxYear),
-      this.advisorRepo.listForUserAndYear(userId, taxYear),
+      this.advisorRepo.listForConversation(conversation.id, userId),
+      this.advisorRepo.listConversations(userId, taxYear),
+      this.advisorRepo.listNotes(userId, taxYear),
     ])
 
     await this.auditService.append({
@@ -392,6 +702,10 @@ export class AdvisorService {
       enabled: setting.enabled,
       greeting,
       openCards: cardsRes.cards,
+      conversationId: conversation.id,
+      conversations: conversations.map(toConversationDto),
+      context: contextOf(conversation, history, await this.knownNamesForScrubbing(userId, taxYear)),
+      notes: notes.map(toNoteDto),
       messages: history.filter((m) => !m.meta?.replaced).map(toMessageDto),
       quickChips: [
         'Kanzlei-Endprüfung starten',
@@ -446,23 +760,27 @@ export class AdvisorService {
     // Double PII Shield: scrub known names, Steuer-IDs, IBANs, emails, and phones from user free-text & history
     const knownNames = await this.knownNamesForScrubbing(userId, taxYear)
     const scrubbedUserText = scrubUserMessagePii(dto.message.trim(), knownNames)
+    const conversation = await this.conversationFor(userId, taxYear, dto.conversationId)
     if (dto.replaceFromMessageId !== undefined) {
-      await this.replaceLatestTurn(userId, taxYear, dto.replaceFromMessageId)
+      await this.replaceLatestTurn(userId, conversation.id, dto.replaceFromMessageId)
     }
-    const priorRecords = await this.advisorRepo.listForUserAndYear(userId, taxYear)
-    const history = buildAdvisorHistory(
-      priorRecords.map((msg) => ({
-        role: msg.role,
-        content: scrubUserMessagePii(msg.content, knownNames),
-        meta: msg.meta,
-        status: msg.status,
-      })),
-    )
+    // The model sees this conversation only; what the conversations share is the return itself.
+    const priorRecords = liveMessages(conversation, await this.advisorRepo.listForConversation(conversation.id, userId))
+    const sources = historySources(priorRecords, knownNames)
+    // A full context is summarised before the answer, once the stream is open (see executeTurn).
+    const needsSummary = advisorContextUsage(sources, conversation.summary).level === 'full'
+    await this.advisorRepo.updateConversation(conversation.id, userId, {
+      lastUsedAt: new Date(),
+      // The first question names the conversation.
+      ...(conversation.title === null ? { title: titleFrom(scrubbedUserText) } : {}),
+    })
+    const history = buildAdvisorHistory(sources, { summary: conversation.summary })
 
     const runId = randomUUID()
     const userMessage = await this.advisorRepo.createMessage({
       userId,
       taxYear,
+      conversationId: conversation.id,
       role: 'user',
       content: scrubbedUserText,
       meta: null,
@@ -470,6 +788,7 @@ export class AdvisorService {
     const assistantMessage = await this.advisorRepo.createMessage({
       userId,
       taxYear,
+      conversationId: conversation.id,
       role: 'assistant',
       content: '',
       meta: null,
@@ -477,7 +796,7 @@ export class AdvisorService {
       runId,
     })
 
-    return { runId, userMessage, assistantMessageId: assistantMessage.id, scrubbedUserText, history, dto }
+    return { runId, userMessage, assistantMessageId: assistantMessage.id, scrubbedUserText, history, dto, conversationId: conversation.id, needsSummary }
   }
 
   async *streamMessage(
@@ -555,6 +874,14 @@ export class AdvisorService {
     try {
       yield { event: 'start', data: { runId, userMessage: toMessageDto(userMessage), assistantMessageId } }
 
+      let history = turn.history
+      if (turn.needsSummary) {
+        const status = 'Die Eule fasst den älteren Verlauf zusammen …'
+        steps.push(status)
+        yield { event: 'status', data: { text: status } }
+        history = await this.summarizeForTurn(userId, taxYear, turn, signal)
+      }
+
       // Build PII-free CaseDigest & stream Zero-Write advisor turn via LangGraph engine (with deterministic fallback)
       const digest = await this.buildCaseDigest(userId, taxYear)
       const actionIdFactory = newActionId
@@ -593,12 +920,13 @@ export class AdvisorService {
         message: scrubbedUserText,
         activeScreen: dto.activeScreen,
         digest,
-        history: turn.history,
+        history,
         actionIdFactory,
         signal,
         planRequired: dto.quickAction === 'forgotten_check',
         records: await this.loadRecordHandles(userId, taxYear),
         previewEffect: this.previewEffectFor(userId, taxYear),
+        notes: buildNoteHandles(await this.advisorRepo.listNotes(userId, taxYear)),
       })) {
         if (ev.event === 'token') {
           firstTokenMs ??= Date.now() - startedAt
@@ -651,7 +979,14 @@ export class AdvisorService {
             ...(turnResult.model !== undefined ? { model: turnResult.model } : {}),
           }
           if (reasoning.length === 0 && turnResult.reasoning) reasoning = turnResult.reasoning
-          const assistant = await finish('complete', turnResult.replyText, { ...enrichedMeta, engine }, turnResult.usage)
+          const noteChanges = await this.applyNoteChanges(userId, taxYear, enrichedMeta.noteChanges)
+          const { noteChanges: _asProposed, ...metaWithoutNotes } = enrichedMeta
+          const assistant = await finish(
+            'complete',
+            turnResult.replyText,
+            { ...metaWithoutNotes, ...(noteChanges.length > 0 ? { noteChanges } : {}), engine },
+            turnResult.usage,
+          )
           yield doneWith(assistant, turnResult.mode)
           return
         }
@@ -710,11 +1045,13 @@ export class AdvisorService {
   }
 
   /**
-   * Deletes the conversation of one tax year. Values already applied to the return stay; proposals
+   * Empties one conversation and keeps it. Values already applied to the return stay; proposals
    * that were still open disappear with the messages that carried them.
    */
-  async clearConversation(userId: string, taxYear: number): Promise<{ deletedMessages: number }> {
-    const deletedMessages = await this.advisorRepo.deleteForUserAndYear(userId, taxYear)
+  async clearConversation(userId: string, taxYear: number, conversationId?: string): Promise<{ deletedMessages: number }> {
+    const conversation = await this.conversationFor(userId, taxYear, conversationId)
+    const deletedMessages = await this.advisorRepo.deleteMessagesOfConversation(conversation.id, userId)
+    await this.advisorRepo.updateConversation(conversation.id, userId, { title: null, summary: null, summaryUntil: null })
     await this.auditService.append({ userId, action: 'WRITE', resource: 'berater_verlauf_geloescht' })
     return { deletedMessages }
   }
@@ -724,8 +1061,8 @@ export class AdvisorService {
    * leave the chat. Proposals still pending there are dismissed so they can never be applied;
    * applied ones stay applied (their undo still works from the cockpit history).
    */
-  private async replaceLatestTurn(userId: string, taxYear: number, userMessageId: string): Promise<void> {
-    const visible = (await this.advisorRepo.listForUserAndYear(userId, taxYear)).filter((m) => !m.meta?.replaced)
+  private async replaceLatestTurn(userId: string, conversationId: string, userMessageId: string): Promise<void> {
+    const visible = (await this.advisorRepo.listForConversation(conversationId, userId)).filter((m) => !m.meta?.replaced)
     const lastUserIndex = visible.map((m) => m.role).lastIndexOf('user')
     if (lastUserIndex === -1 || visible[lastUserIndex]!.id !== userMessageId) {
       throw new InvalidInputError('ADVISOR_REPLACE_NOT_LATEST', 'Nur die letzte Frage lässt sich neu stellen oder bearbeiten.')

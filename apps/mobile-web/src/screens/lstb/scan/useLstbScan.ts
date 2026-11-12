@@ -56,7 +56,7 @@ export function useLstbScan({ taxYear, person }: { readonly taxYear: number; rea
   const params = person === 'B' ? ({ person: 'B' } as const) : undefined
   const confirmScan = useLstbScanControllerConfirmScan()
   const dismissAction = useAdvisorControllerDismissAction()
-  const advisorSessionQuery = useAdvisorControllerGetSession(taxYear, { query: { retry: false } })
+  const advisorSessionQuery = useAdvisorControllerGetSession(taxYear, undefined, { query: { retry: false } })
 
   const [stagedScan, setStagedScan] = useState<StagedLstbScanDraft | null>(null)
   const [locallyDismissed, setLocallyDismissed] = useState(false)

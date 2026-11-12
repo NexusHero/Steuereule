@@ -1,0 +1,49 @@
+-- #481: several conversations per tax return. The existing conversation of a year becomes the
+-- first one; nothing is lost and no message changes.
+CREATE TABLE "BeraterGespraech" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "steuerjahr" INTEGER NOT NULL,
+    "titel" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "zuletztBenutzt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "zusammenfassung" TEXT,
+    "zusammengefasstBis" TIMESTAMP(3),
+
+    CONSTRAINT "BeraterGespraech_pkey" PRIMARY KEY ("id")
+);
+
+CREATE INDEX "BeraterGespraech_userId_steuerjahr_zuletztBenutzt_idx" ON "BeraterGespraech"("userId", "steuerjahr", "zuletztBenutzt");
+
+ALTER TABLE "BeraterNachricht" ADD COLUMN "gespraechId" TEXT;
+
+-- One conversation per user and year that already has messages. The title stays empty: it is an
+-- encrypted field, and the app shows such a conversation under its date.
+INSERT INTO "BeraterGespraech" ("id", "userId", "steuerjahr", "createdAt", "zuletztBenutzt")
+SELECT gen_random_uuid()::text, "userId", "steuerjahr", MIN("createdAt"), MAX("createdAt")
+FROM "BeraterNachricht"
+GROUP BY "userId", "steuerjahr";
+
+UPDATE "BeraterNachricht" n
+SET "gespraechId" = g."id"
+FROM "BeraterGespraech" g
+WHERE g."userId" = n."userId" AND g."steuerjahr" = n."steuerjahr";
+
+CREATE INDEX "BeraterNachricht_gespraechId_createdAt_idx" ON "BeraterNachricht"("gespraechId", "createdAt");
+
+ALTER TABLE "BeraterNachricht" ADD CONSTRAINT "BeraterNachricht_gespraechId_fkey" FOREIGN KEY ("gespraechId") REFERENCES "BeraterGespraech"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- Project notes of a tax year: read by every conversation of that year.
+CREATE TABLE "BeraterNotiz" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "steuerjahr" INTEGER NOT NULL,
+    "inhalt" TEXT NOT NULL,
+    "verfasser" TEXT NOT NULL DEFAULT 'owl',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "geaendertAm" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "BeraterNotiz_pkey" PRIMARY KEY ("id")
+);
+
+CREATE INDEX "BeraterNotiz_userId_steuerjahr_createdAt_idx" ON "BeraterNotiz"("userId", "steuerjahr", "createdAt");

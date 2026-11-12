@@ -32,7 +32,10 @@ import {
   type AdvisorLstbScanMeta,
   type AdvisorAnswerNotice,
   type AdvisorAnswerNoticeKind,
+  type AdvisorContextLevel,
   type AdvisorEffectKind,
+  type AdvisorNoteChange,
+  type AdvisorNoteChangeKind,
   type AdvisorMessageMeta,
   type AdvisorNotStaged,
   type AdvisorTwoPathsProposal,
@@ -251,6 +254,23 @@ export class AdvisorAnswerNoticeDto implements AdvisorAnswerNotice {
   text!: string
 }
 
+export class AdvisorNoteChangeDto implements AdvisorNoteChange {
+  @ApiProperty({ type: String, enum: ['added', 'replaced', 'removed'] })
+  kind!: AdvisorNoteChangeKind
+
+  @ApiPropertyOptional({ type: String })
+  noteId?: string | undefined
+
+  @ApiProperty({ type: String, description: 'The text after the change; for a removed note, the text that went.' })
+  text!: string
+
+  @ApiPropertyOptional({ type: String, description: 'What a replaced note said before.' })
+  previousText?: string | undefined
+
+  @ApiPropertyOptional({ type: Boolean, description: 'True once the user took the change back.' })
+  undone?: true | undefined
+}
+
 export class AdvisorNotStagedDto implements AdvisorNotStaged {
   @ApiProperty({ type: String, example: 'Mieteinnahmen' })
   label!: string
@@ -280,6 +300,12 @@ export class AdvisorMessageMetaDto implements AdvisorMessageMeta {
     description: 'What the check of the finished answer found: a figure the app did not compute, a claim to have written something, an unknown source (ADR-0066).',
   })
   notices?: readonly AdvisorAnswerNoticeDto[] | undefined
+
+  @ApiPropertyOptional({
+    type: () => [AdvisorNoteChangeDto],
+    description: 'What the owl changed in the project notes in this answer; each change can be undone (#481).',
+  })
+  noteChanges?: readonly AdvisorNoteChangeDto[] | undefined
 
   @ApiPropertyOptional({ type: AdvisorActionProposalDto })
   action?: AdvisorActionProposalDto | undefined
@@ -350,6 +376,98 @@ export class SetAdvisorFeedbackDto {
   reason?: AdvisorFeedbackReason | undefined
 }
 
+export class AdvisorConversationDto {
+  @ApiProperty({ type: String })
+  id!: string
+
+  @ApiProperty({ type: String, nullable: true, description: 'From the first question; null while nothing has been asked.', example: 'Lohnt sich mein Arbeitsweg?' })
+  title!: string | null
+
+  @ApiProperty({ type: String, format: 'date-time' })
+  createdAt!: string
+
+  @ApiProperty({ type: String, format: 'date-time' })
+  lastUsedAt!: string
+}
+
+export class AdvisorNoteDto {
+  @ApiProperty({ type: String })
+  id!: string
+
+  @ApiProperty({ type: String, example: 'Arbeitszimmer geprüft: lohnt sich nicht, weil kein eigener Raum.' })
+  text!: string
+
+  @ApiProperty({ type: String, enum: ['owl', 'user'], description: 'Who wrote the current text.' })
+  author!: 'owl' | 'user'
+
+  @ApiProperty({ type: String, format: 'date-time' })
+  updatedAt!: string
+}
+
+export class DeleteAdvisorNoteResponseDto {
+  @ApiProperty({ type: Boolean })
+  deleted!: true
+}
+
+export class SaveAdvisorNoteDto {
+  @ApiProperty({ type: String, maxLength: 200 })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(400)
+  text!: string
+}
+
+export class AdvisorSearchHitDto {
+  @ApiProperty({ type: String })
+  conversationId!: string
+
+  @ApiProperty({ type: String, nullable: true })
+  conversationTitle!: string | null
+
+  @ApiPropertyOptional({ type: String, description: 'Absent when only the title of the conversation matched.' })
+  messageId?: string | undefined
+
+  @ApiPropertyOptional({ type: String, enum: ['user', 'assistant'] })
+  role?: 'user' | 'assistant' | undefined
+
+  @ApiProperty({ type: String, description: 'The matching passage with some text around it.' })
+  snippet!: string
+
+  @ApiProperty({ type: String, format: 'date-time' })
+  at!: string
+}
+
+export class AdvisorContextDto {
+  @ApiProperty({ type: Number, description: 'Estimated tokens of the summary so far plus every message since.' })
+  usedTokens!: number
+
+  @ApiProperty({ type: Number })
+  maxTokens!: number
+
+  @ApiProperty({ type: Number, minimum: 0, maximum: 100 })
+  percent!: number
+
+  @ApiProperty({ type: String, enum: ['ok', 'warn', 'full'], description: 'warn: will be summarised soon. full: summarised before the next answer.' })
+  level!: AdvisorContextLevel
+
+  @ApiPropertyOptional({ type: String, description: 'What the summarised part of the conversation said.' })
+  summary?: string | undefined
+
+  @ApiPropertyOptional({ type: String, description: 'The last message the summary covers; the chat draws its dividing line after it.' })
+  summarizedUntilMessageId?: string | undefined
+
+  @ApiProperty({ type: Boolean, description: 'False while there is too little to summarise.' })
+  canSummarize!: boolean
+}
+
+export class RenameAdvisorConversationDto {
+  @ApiProperty({ type: String, example: 'Vermietung Musterstraße' })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(120)
+  title!: string
+}
+
 export class ClearAdvisorConversationResponseDto {
   @ApiProperty({ type: Number, example: 12 })
   deletedMessages!: number
@@ -372,6 +490,18 @@ export class AdvisorSessionResponseDto {
 
   @ApiProperty({ type: [OwlCardDto] })
   openCards!: readonly OwlCardDto[]
+
+  @ApiProperty({ type: String, description: 'The conversation these messages belong to (#481).' })
+  conversationId!: string
+
+  @ApiProperty({ type: () => [AdvisorConversationDto], description: 'Every conversation of this tax year, most recently used first.' })
+  conversations!: readonly AdvisorConversationDto[]
+
+  @ApiProperty({ type: () => AdvisorContextDto, description: 'How full the context of this conversation is (#481).' })
+  context!: AdvisorContextDto
+
+  @ApiProperty({ type: () => [AdvisorNoteDto], description: 'The project notes of this tax year; every conversation reads them.' })
+  notes!: readonly AdvisorNoteDto[]
 
   @ApiProperty({ type: [AdvisorChatMessageDto] })
   messages!: readonly AdvisorChatMessageDto[]
@@ -414,6 +544,15 @@ export class SendAdvisorMessageDto {
   @IsString()
   @MaxLength(64)
   replaceFromMessageId?: string | undefined
+
+  @ApiPropertyOptional({
+    type: String,
+    description: 'The conversation the question belongs to (#481). Without it: the one used last in this tax year.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  conversationId?: string | undefined
 }
 
 export class SendAdvisorMessageResponseDto {

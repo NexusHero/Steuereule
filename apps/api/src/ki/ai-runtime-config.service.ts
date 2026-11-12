@@ -20,9 +20,14 @@ export interface ResolvedAiSlotConfig {
   readonly reasoning?: AiReasoningMode | undefined
   /** Token budget for reasoning where the provider takes one. */
   readonly reasoningBudgetTokens?: number | undefined
+  readonly thinkingLevel?: AiThinkingLevel | undefined
 }
 
 export type AiReasoningMode = 'off' | 'summary'
+/** How much the model thinks before it answers, where the provider offers a level (Gemini). */
+export const AI_THINKING_LEVELS = ['low', 'medium', 'high'] as const
+export type AiThinkingLevel = (typeof AI_THINKING_LEVELS)[number]
+export const DEFAULT_THINKING_LEVEL: AiThinkingLevel = 'medium'
 export const DEFAULT_REASONING_BUDGET_TOKENS = 2048
 
 /**
@@ -192,6 +197,13 @@ export class EnvAiRuntimeConfigService implements AiRuntimeConfigService {
     }
 
     const baseUrl = validateHttpsBaseUrl(this.env.AI_BASE_URL ?? this.env.OPENAI_BASE_URL)
+    const rawLevel = this.env.AI_ADVISOR_THINKING_LEVEL?.trim().toLowerCase()
+    // Measured against Gemini (scripts/ai-eval/latency-check.ts), time to the first answer word:
+    // low 3 to 6 s, medium 6 to 9 s, the model's own choice 10 to 13 s, high 13 to 20 s. With the
+    // thoughts shown the first sign of life comes after about 3 s at every level. Medium is the
+    // product decision (#481): thoroughness over the last seconds. `auto` hands the choice back.
+    const thinkingLevel: AiThinkingLevel | undefined =
+      rawLevel === 'auto' ? undefined : (AI_THINKING_LEVELS as readonly string[]).includes(rawLevel ?? '') ? (rawLevel as AiThinkingLevel) : DEFAULT_THINKING_LEVEL
     const rawTemp = this.env.AI_TEMPERATURE?.trim()
     const parsedTemp = rawTemp ? Number.parseFloat(rawTemp) : undefined
     const temperature = parsedTemp !== undefined && Number.isFinite(parsedTemp) ? parsedTemp : undefined
@@ -205,12 +217,15 @@ export class EnvAiRuntimeConfigService implements AiRuntimeConfigService {
       ...(baseUrl !== undefined ? { baseUrl } : {}),
       ...(temperature !== undefined ? { temperature } : {}),
       // Only the chat shows a line of thought; OCR and the fallback slot never pay for one.
-      ...(slot === 'advisor_chat' && this.env.AI_ADVISOR_REASONING?.trim().toLowerCase() === 'summary'
+      // The chat shows the owl's line of thought unless it is switched off (#481): a wait the user
+      // can watch is a shorter wait. Set AI_ADVISOR_REASONING=off to save the tokens.
+      ...(slot === 'advisor_chat' && this.env.AI_ADVISOR_REASONING?.trim().toLowerCase() !== 'off'
         ? {
             reasoning: 'summary' as const,
             reasoningBudgetTokens: positiveIntOr(this.env.AI_ADVISOR_REASONING_BUDGET, DEFAULT_REASONING_BUDGET_TOKENS, 16_000),
           }
         : {}),
+      ...(slot === 'advisor_chat' && thinkingLevel !== undefined ? { thinkingLevel } : {}),
     }
   }
 }

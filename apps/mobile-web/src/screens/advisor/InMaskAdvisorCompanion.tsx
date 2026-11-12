@@ -108,7 +108,7 @@ export function InMaskAdvisorCompanion({
   const chipKeys = SCREEN_QUICK_CHIP_KEYS[screen] ?? SCREEN_QUICK_CHIP_KEYS.interview ?? []
   const quickChips = chipKeys.map((key) => tr(`advisor.companion.chips.${key}`))
 
-  const sessionQuery = useAdvisorControllerGetSession(taxYear, {
+  const sessionQuery = useAdvisorControllerGetSession(taxYear, undefined, {
     query: { enabled: open && !insideOwlWorkspace, retry: false },
   })
   const sendMutation = useAdvisorControllerSendMessage()

@@ -32,10 +32,11 @@ function renderPanel(engine: DictationEngine, onSendMessage = vi.fn()) {
 }
 
 describe('dictation step 2 (#451 slice 5, AC 8)', () => {
-  it('shows the mic only on a supported device; otherwise the step-1 hint stays', async () => {
+  it('shows the mic only on a supported device; otherwise the composer stays bare (#481: no tip banner)', async () => {
     renderPanel(fakeEngine({ support: async () => ({ supported: false, reason: 'no-webgpu' }) }))
-    await waitFor(() => expect(screen.getByTestId('advisor-dictation-hint')).toBeTruthy())
+    await waitFor(() => expect(screen.getByTestId('advisor-chat-input')).toBeTruthy())
     expect(screen.queryByTestId('advisor-dictation-mic')).toBeNull()
+    expect(screen.queryByTestId('advisor-dictation-hint')).toBeNull()
   })
 
   it('asks for consent naming Hugging Face, the size and the IP address before any download', async () => {

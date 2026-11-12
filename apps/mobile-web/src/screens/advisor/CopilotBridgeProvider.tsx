@@ -143,6 +143,9 @@ export interface CopilotBridgeContextValue {
   readonly pendingUserMessage: AdvisorChatMessageView | null
   /** True while the connection to a running answer is being restored. */
   readonly reconnecting: boolean
+  /** The conversation the chat is in (#481); null = the one used last in this tax year. */
+  readonly conversationId: string | null
+  readonly setConversationId: (id: string | null) => void
   /** Follows an answer that was found still running, e.g. after a reload. */
   readonly resumeRun: (runId: string) => Promise<StreamOutcome>
   /** True when the last answer came from the deterministic engine because no model answered. */
@@ -276,7 +279,19 @@ export function CopilotBridgeProvider({
   const [plan, setPlan] = useState<AdvisorPlanView | null>(null)
   const [streamedReasoning, setStreamedReasoning] = useState('')
   const [pendingUserMessage, setPendingUserMessage] = useState<AdvisorChatMessageView | null>(null)
+  const setConversationId = useCallback((id: string | null) => {
+    conversationIdRef.current = id
+    setConversationIdState(id)
+    // What was left of an answer belongs to the conversation it was given in.
+    setChatError(null)
+    setAbortedTurn(null)
+    setPlan(null)
+    setPendingUserMessage(null)
+  }, [])
   const [reconnecting, setReconnecting] = useState(false)
+  const [conversationId, setConversationIdState] = useState<string | null>(null)
+  // The stream request reads the id at send time; a ref keeps a send from using a stale one.
+  const conversationIdRef = useRef<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
   const runRef = useRef<ActiveRun | null>(null)
   const resumedRunsRef = useRef<Set<string>>(new Set())
@@ -481,6 +496,7 @@ export function CopilotBridgeProvider({
             ...(activeScreen ? { activeScreen } : {}),
             ...(options?.quickAction ? { quickAction: options.quickAction } : {}),
             ...(options?.replaceFromMessageId ? { replaceFromMessageId: options.replaceFromMessageId } : {}),
+            ...(conversationIdRef.current ? { conversationId: conversationIdRef.current } : {}),
           }),
         }),
       )
@@ -758,6 +774,8 @@ export function CopilotBridgeProvider({
       streamedReasoning,
       pendingUserMessage,
       reconnecting,
+      conversationId,
+      setConversationId,
       resumeRun,
       basisMode,
       chatError,
@@ -800,6 +818,8 @@ export function CopilotBridgeProvider({
       streamedReasoning,
       pendingUserMessage,
       reconnecting,
+      conversationId,
+      setConversationId,
       resumeRun,
       basisMode,
       chatError,

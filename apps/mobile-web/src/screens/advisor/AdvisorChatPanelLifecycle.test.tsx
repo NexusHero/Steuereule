@@ -209,6 +209,23 @@ describe('AdvisorChatPanel: several drafts in one answer (ADR-0066)', () => {
     expect(screen.getByTestId('advisor-answer-notice-claims-write').textContent).toContain('trägt nichts selbst ein')
   })
 
+  it('draws the dividing line after the last summarised message, and keeps every message (#481)', () => {
+    renderPanel({
+      messages: [user('u1', 'Alte Frage'), owl('a1', 'Alte Antwort'), user('u2', 'Neue Frage'), owl('a2', 'Neue Antwort')],
+      context: { percent: 30, level: 'ok', canSummarize: false, summary: 'Kurzfassung.', summarizedUntilMessageId: 'a1' },
+    })
+    expect(screen.getAllByTestId('advisor-assistant-message')).toHaveLength(2)
+    const divider = screen.getByTestId('advisor-summary-divider')
+    const [older, newer] = screen.getAllByTestId('advisor-assistant-message')
+    expect(older!.compareDocumentPosition(divider) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(divider.compareDocumentPosition(newer!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('shows the context ring in the composer', () => {
+    renderPanel({ messages: [], context: { percent: 12, level: 'ok', canSummarize: false } })
+    expect(screen.getByTestId('advisor-context-ring')).toBeTruthy()
+  })
+
   it('keeps the scanned certificate in its own review card', () => {
     renderPanel({
       messages: [owl('a1', 'Erkannt.', { meta: { lstbScan: {} as NonNullable<AdvisorChatMessageView['meta']>['lstbScan'], actions: [draft('d1', 'Bruttolohn', '62000')] } })],

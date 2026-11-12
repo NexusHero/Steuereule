@@ -205,9 +205,11 @@ describe('AiRuntimeConfigService & LangGraphAdvisorEngine (#446 Slice 2)', () =>
     } | null
     expect(explicitGemini?.temperature).toBe(0.4)
 
+    // With the line of thought on (the default since #481) these providers take no temperature.
     const anthropicConfig = new EnvAiRuntimeConfigService({
       AI_ADVISOR_PROVIDER: 'anthropic',
       ANTHROPIC_API_KEY: 'test-anthropic-key',
+      AI_ADVISOR_REASONING: 'off',
     })
     const anthropicModel = createChatModelFromConfig(await anthropicConfig.resolveSlot('advisor_chat')) as {
       temperature?: number
@@ -217,6 +219,7 @@ describe('AiRuntimeConfigService & LangGraphAdvisorEngine (#446 Slice 2)', () =>
     const openAiConfig = new EnvAiRuntimeConfigService({
       AI_ADVISOR_PROVIDER: 'openai',
       OPENAI_API_KEY: 'test-openai-key',
+      AI_ADVISOR_REASONING: 'off',
     })
     const openAiModel = createChatModelFromConfig(await openAiConfig.resolveSlot('advisor_chat')) as {
       temperature?: number

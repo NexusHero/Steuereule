@@ -95,24 +95,20 @@ async function main() {
     if (values.length === 0 || values.some((v) => v !== 'off')) fail(`Row E: every amount field must have autocomplete="off", got ${JSON.stringify(values)}`)
     console.log(`[${TAG}] ✅ Row E — ${values.length} amount fields in Kapital carry autocomplete="off"`)
 
-    // Row F — the dictation hint is shown once and stays dismissed; no microphone button yet (AC 7, AC 10).
+    // Row F — nothing but the field around the composer (#481 removed the dictation tip banner);
+    // without WebGPU there is no microphone button either (AC 10).
     await page.goto(`${webOrigin}/app/eule`, { waitUntil: 'networkidle' })
-    const hint = page.locator('[data-testid="advisor-dictation-hint"]')
-    await hint.waitFor({ state: 'visible', timeout: 10_000 })
-    if ((await page.locator('[data-testid="advisor-dictation-mic"]').count()) !== 0) fail('Row F: no microphone button before slice 5 (AC 10)')
-    await page.locator('[data-testid="advisor-dictation-hint-dismiss"]').click()
-    await hint.waitFor({ state: 'detached', timeout: 5_000 })
-    await page.reload({ waitUntil: 'networkidle' })
-    await page.locator('[data-testid="advisor-chat-panel"]').waitFor({ state: 'visible', timeout: 10_000 })
-    if ((await hint.count()) !== 0) fail('Row F: a dismissed dictation hint must stay dismissed after a reload')
-    console.log(`[${TAG}] ✅ Row F — dictation hint visible, dismissed once, stays away`)
+    await page.locator('[data-testid="advisor-chat-input"]').waitFor({ state: 'visible', timeout: 10_000 })
+    if ((await page.locator('[data-testid="advisor-dictation-hint"]').count()) !== 0) fail('Row F: the dictation tip banner is gone since #481')
+    if ((await page.locator('[data-testid="advisor-dictation-mic"]').count()) !== 0) fail('Row F: no microphone button without on-device dictation (AC 10)')
+    console.log(`[${TAG}] ✅ Row F — no tip banner above the composer, no microphone without on-device dictation`)
 
     // Row G — nothing above talked to a third host (decision 7).
     if (foreign.length > 0) fail(`Row G: requests left the app's origins: ${foreign.slice(0, 5).join(', ')}`)
     console.log(`[${TAG}] ✅ Row G — no request to any host but the app's own two origins`)
 
     await ctx.close()
-    console.log(`[${TAG}] PASS — autofill, PLZ prefill and dictation hint verified, all on-device.`)
+    console.log(`[${TAG}] PASS — autofill, PLZ prefill and a bare composer verified, all on-device.`)
   } finally {
     await closeBrowser(browser)
     await stop()
