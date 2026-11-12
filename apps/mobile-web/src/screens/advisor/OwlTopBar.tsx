@@ -67,10 +67,10 @@ export function OwlTopBar({
 
   return (
     <View style={styles.bar} testID="eule-topbar">
-      <View style={styles.side}>
+      <View style={styles.brand}>
         {onBack ? <BackButton accessibilityLabel={tr('eule.back', 'Zurück')} onPress={onBack} /> : null}
         <OwlMark variant="tinte" size={28} />
-        <Text style={styles.title} role="heading" aria-level={1} testID="eule-topbar-title">
+        <Text style={styles.title} numberOfLines={1} role="heading" aria-level={1} testID="eule-topbar-title">
           {tr('eule.workspace.topbar.title')}
         </Text>
       </View>
@@ -143,6 +143,8 @@ function makeStyles(t: UiTheme) {
       backgroundColor: t.color.grund,
     } as ViewStyle,
     side: { flexDirection: 'row', alignItems: 'center', gap: t.space.s2, flexShrink: 1 } as ViewStyle,
+    // The name of the screen never gives way: on a phone the controls on the right shrink instead.
+    brand: { flexDirection: 'row', alignItems: 'center', gap: t.space.s2, flexShrink: 0 } as ViewStyle,
     title: { fontFamily: t.font.display, fontWeight: t.weight.fett, fontSize: t.size.m, color: t.color.tinte } as TextStyle,
     legal: { fontFamily: t.font.text, fontSize: t.size.xs, color: t.color.tinte2, marginRight: t.space.s1 } as TextStyle,
     chip: {

@@ -55,7 +55,7 @@ export function ConnectionChip({ view, compact, onPress }: { readonly view: Conn
       accessibilityRole="button"
       accessibilityLabel={tr('advisor.chat.connection.aria', { status: label })}
       onPress={onPress}
-      style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.s2, minHeight: 44, paddingHorizontal: t.space.s3, justifyContent: 'center' }}
+      style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.s2, minHeight: 44, paddingHorizontal: compact ? t.space.s1 : t.space.s3, justifyContent: 'center' }}
       testID="eule-connection-chip"
     >
       <View style={dot(t, tone)} testID={`eule-connection-dot-${tone}`} />
