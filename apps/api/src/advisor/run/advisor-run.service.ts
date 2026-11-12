@@ -5,7 +5,7 @@ import { AdvisorService, type PreparedAdvisorTurn } from '../advisor.service.js'
 import type { AdvisorContextDto, AdvisorSessionResponseDto, SendAdvisorMessageDto } from '../dto/advisor.dto.js'
 import { ADVISOR_RUN_LOG, type AdvisorRunEntry, type AdvisorRunLog } from './advisor-run-log.js'
 
-const RUN_NOT_FOUND = 'Diese Antwort läuft nicht (mehr).'
+const RUN_NOT_FOUND = 'Diese Antwort wurde unterbrochen, vermutlich weil der Server neu gestartet wurde. Stelle die Frage bitte noch einmal.'
 
 /**
  * Runs answers detached from the HTTP connection (#476). A run starts with a question, writes every

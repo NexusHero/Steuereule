@@ -1805,6 +1805,7 @@ export const appResources = {
             parse_failed: 'Der Beleg konnte gerade nicht geprüft werden. Bitte versuch es noch mal.',
           },
           notStaged: { title: 'Nicht vorbereitet', openMask: 'Maske öffnen' },
+          modelFailure: { title: 'Das Sprachmodell hat nicht geantwortet', detail: 'Technisch: {{detail}}', retry: 'Noch einmal mit dem Sprachmodell versuchen' },
           context: {
             aria: 'Kontext dieses Gesprächs: {{percent}} % belegt',
             title: 'Kontext: {{percent}} % belegt',
@@ -3704,6 +3705,7 @@ export const appResources = {
             parse_failed: 'The receipt could not be checked right now. Please try again.',
           },
           notStaged: { title: 'Not prepared', openMask: 'Open the form' },
+          modelFailure: { title: 'The language model did not answer', detail: 'Technical: {{detail}}', retry: 'Try the language model again' },
           context: {
             aria: 'Context of this conversation: {{percent}} % used',
             title: 'Context: {{percent}} % used',

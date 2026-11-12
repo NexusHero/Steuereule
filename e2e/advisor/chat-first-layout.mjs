@@ -8,10 +8,12 @@
 //   E  a stored answer with everything attached: line of thought, effect of a draft in all three
 //      states, "Nicht vorbereitet" with the way into the mask, the app's notice on the answer,
 //      a rating that cannot be stored
+//      (E also: an answer of the fixed rules names why the model did not answer)
 //   F  a dropped connection: the chat says it is re-attaching and finishes the answer
 //   G  several conversations in one tax year: new, own messages each, rename, switch, delete
 //   H  the notes of the tax year: add, change, delete by hand
 //   I  the context ring: fill level, no summary of a short conversation
+//   K  the latest answer came from the rules: "try again" asks the same question in place of that turn
 //   M  Turbo: off at first, sends the flag, an answer the owl applied itself says so
 //   J  on a phone the project content opens as a sheet
 //
@@ -66,6 +68,15 @@ const draft = (actionId, label, extra) => ({
 /** What only a model could have produced, as a stored answer. */
 function storedAnswer(now) {
   return [
+    { id: 'stub-u0', role: 'user', content: 'Frage, auf die das Modell nicht antwortete', meta: null, createdAt: now, status: 'complete' },
+    {
+      id: 'stub-a0',
+      role: 'assistant',
+      content: 'Ich habe deine Akte im Blick.',
+      createdAt: now,
+      status: 'complete',
+      meta: { modelFailure: { reason: 'quota', detail: 'Gemini · HTTP 429' } },
+    },
     { id: 'stub-u1', role: 'user', content: 'Trag bitte alles ein.', meta: null, createdAt: now, status: 'complete' },
     {
       id: 'stub-a1',
@@ -316,6 +327,12 @@ async function main() {
     await byId(page, 'advisor-feedback-up').first().click()
     await see(page, 'advisor-feedback-failed', 'Row E')
 
+    // An answer from the fixed rules says why the model did not answer, and what failed technically (#487).
+    await see(page, 'advisor-model-failure', 'Row E')
+    const failureText = await textOf(page, 'advisor-model-failure-text')
+    if (!failureText.includes('Kontingent') || !failureText.includes('festen Regeln')) fail(`Row E: the answer of the rules should say why the model did not answer, says "${failureText}"`)
+    if (!(await textOf(page, 'advisor-model-failure-detail')).includes('HTTP 429')) fail('Row E: the technical detail should be shown')
+
     // What the owl noted in this answer, with a way back; the stored answer is a stub, so undo fails honestly.
     await see(page, 'advisor-note-changes', 'Row E')
     if ((await byId(page, 'advisor-note-change').count()) !== 2) fail('Row E: both note changes of the answer should be shown')
@@ -375,9 +392,31 @@ async function main() {
     if (resumes < 3) fail(`Row F: the chat should have re-attached until it got through, tried ${resumes} times`)
     console.log(`[${TAG}] ✅ Row F — a dropped stream shows "Verbindung wird wiederhergestellt", resumes after the last event and finishes`)
 
+    // Row K — the latest answer came from the rules because the model was overloaded: "try again"
+    // asks the same question in place of that turn (#487).
+    await page.unroute('**/advisor/session*')
+    await page.route('**/advisor/session*', async (route) => {
+      if (route.request().method() !== 'GET') return route.fallback()
+      const res = await route.fetch().catch(() => null)
+      if (res === null) return
+      const json = await res.json()
+      json.messages = [
+        { id: 'stub-uk', role: 'user', content: 'Lohnt sich ein Fahrtenbuch?', meta: null, createdAt: now, status: 'complete' },
+        { id: 'stub-ak', role: 'assistant', content: 'Ich habe deine Akte im Blick.', createdAt: now, status: 'complete', meta: { modelFailure: { reason: 'unavailable', detail: 'Gemini · HTTP 503' } } },
+      ]
+      await route.fulfill({ response: res, json })
+    })
+    await page.reload({ waitUntil: 'networkidle' })
+    await see(page, 'advisor-model-failure-retry', 'Row K', 20_000)
+    const retried = page.waitForRequest((req) => req.url().includes('/advisor/stream') && req.method() === 'POST', { timeout: 10_000 })
+    await byId(page, 'advisor-model-failure-retry').click()
+    const sentBody = JSON.parse((await retried).postData() ?? '{}')
+    if (sentBody.message !== 'Lohnt sich ein Fahrtenbuch?' || sentBody.replaceFromMessageId !== 'stub-uk') fail(`Row K: retry should ask the same question in place of the turn, sent ${JSON.stringify(sentBody)}`)
+    console.log(`[${TAG}] ✅ Row K — "Noch einmal mit dem Sprachmodell versuchen" asks the same question again in place of the rule-based turn`)
+
     // Row M — Turbo (#491): off at first; on, the message carries the flag; an answer the owl applied
     // itself says so and shows what it applied.
-    await page.unroute('**/advisor/connection')
+    await page.unroute('**/advisor/session*')
     await page.route('**/advisor/session*', async (route) => {
       if (route.request().method() !== 'GET') return route.fallback()
       const res = await route.fetch().catch(() => null)

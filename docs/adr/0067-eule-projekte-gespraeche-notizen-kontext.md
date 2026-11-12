@@ -114,6 +114,18 @@ Mittel ist die Entscheidung des Product Owners: Gründlichkeit vor den letzten S
 Das Banner mit dem Diktier-Tipp ist entfernt. Das Mikrofon-Symbol erscheint weiterhin dort, wo
 das Diktieren auf dem Gerät möglich ist (ADR-0061).
 
+### 7. Wenn das Sprachmodell nicht antwortet, sagt die Eule warum
+
+Ein Anbieterfehler ist kein stiller Wechsel zu den eingebauten Regeln und kein nacktes „abgebrochen“.
+Die API ordnet ihn einem Grund zu (Schlüssel oder Modell abgelehnt, Kontingent, überlastet,
+Zeitüberschreitung, Verbindung, blockiert, unbekannt) und hängt ihn als `meta.modelFailure` an die
+Antwort. Die Oberfläche zeigt darunter einen Hinweis mit dem Grund, dass die Antwort aus festen Regeln
+kommt, und der technischen Angabe „Anbieter · HTTP-Status“. Meldungstexte des Anbieters verlassen den
+Server nicht. „Noch einmal versuchen“ erscheint nur, wo Wiederholen helfen kann; ein abgelehnter
+Schlüssel wird dem Nutzer als Sache des Betreibers genannt. Der Hinweis steht in der gespeicherten
+Antwort und bleibt nach dem Neuladen. Bricht der Strom mitten in der Antwort ab, nennt auch der
+Fehler den Grund.
+
 ### 8. Turbo: die Eule übernimmt selbst und zeigt es
 
 Ein Schalter „Turbo“ am Eingabefeld (aus in jeder neuen Sitzung, #491). Aus bleibt alles wie in

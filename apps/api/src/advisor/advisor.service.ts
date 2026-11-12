@@ -571,7 +571,7 @@ export class AdvisorService {
 
         if (ev.event === 'error') {
           // Half an answer is kept for the record, but never as if it were complete.
-          await finish('failed', text, {})
+          await finish('failed', text, ev.data.failure ? { modelFailure: ev.data.failure } : {})
           yield ev
           return
         }
