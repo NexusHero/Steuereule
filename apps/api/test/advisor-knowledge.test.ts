@@ -89,6 +89,11 @@ describe('tariff sums from the tax core (#499)', () => {
     expect(computeIncomeTax({ year: 2026, taxableIncome: 48000, splitting: false, churchTaxRate: 0, extraDeduction: 1500 })).toMatchObject({ incomeTaxEur: 9852, savingEur: 512 })
   })
 
+  it('refuses a church tax rate that does not exist', async () => {
+    expect((await callTool('compute_income_tax', { year: 2025, taxableIncome: 48000, churchTaxRate: 0.05 })).ok).toBe(false)
+    expect((await callTool('compute_income_tax', { year: 2025, taxableIncome: 48000, churchTaxRate: 0.09 })).ok).toBe(true)
+  })
+
   it('knows no tariff for a year the core does not have', async () => {
     expect(computeIncomeTax({ year: 2019, taxableIncome: 48000, splitting: false, churchTaxRate: 0, extraDeduction: 0 })).toBeNull()
     expect((await callTool('compute_income_tax', { year: 2019, taxableIncome: 48000 })).ok).toBe(false)

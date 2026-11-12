@@ -130,7 +130,8 @@ export const TOOL_ARG_SCHEMAS = {
     year: z.number().int(),
     taxableIncome: z.number().min(0).max(100_000_000),
     splitting: z.boolean().default(false),
-    churchTaxRate: z.union([z.literal(0), z.literal(0.08), z.literal(0.09)]).default(0),
+    // A plain number, not a union of literals: Gemini answers 400 to the `const` such a union turns into.
+    churchTaxRate: z.number().min(0).max(0.09).default(0),
     extraDeduction: z.number().min(0).max(100_000_000).default(0),
   }),
   lookup_legal_source: z.object({

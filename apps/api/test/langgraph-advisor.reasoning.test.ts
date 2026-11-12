@@ -309,6 +309,16 @@ describe('tool schemas as the providers accept them (#476)', () => {
     }
   })
 
+  it('hands no tool to the model with a keyword that cannot be left out without losing the shape', () => {
+    // Found against the real API: a union of number literals became `anyOf` with `const`, Gemini
+    // answered 400 ("Unknown name const"), and with the tool in every request the owl answered
+    // from the rules only. `const` cannot be stripped like `propertyNames`: write the schema
+    // without literals and check the value in the tool. (`anyOf` itself is accepted.)
+    for (const tool of buildToolSchemas()) {
+      expect(containsKey(tool.schema, 'const'), `${tool.name} carries const`).toBe(false)
+    }
+  })
+
   it('keeps the shape of a record field, so the model still knows what to send', () => {
     const schema = toProviderToolSchema(z.object({ companionFields: z.record(z.string().max(100), z.string().max(200)).optional() }))
     expect(schema).toEqual({

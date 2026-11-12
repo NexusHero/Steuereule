@@ -441,7 +441,11 @@ export async function runToolRound(
     if (tc.name === 'compute_income_tax') {
       const args = parseArgs(TOOL_ARG_SCHEMAS.compute_income_tax)
       if (args === null) continue
-      const result = computeIncomeTax(args)
+      if (args.churchTaxRate !== 0 && args.churchTaxRate !== 0.08 && args.churchTaxRate !== 0.09) {
+        toolMessages.push(toolResult(callId, tc.name, { ok: false, error: 'Der Kirchensteuersatz ist 0, 0.08 (Bayern, Baden-Württemberg) oder 0.09.' }))
+        continue
+      }
+      const result = computeIncomeTax({ ...args, churchTaxRate: args.churchTaxRate })
       toolMessages.push(toolResult(callId, tc.name, result === null ? { ok: false, error: `Für das Jahr ${args.year} kennt der Rechenkern keinen Tarif.` } : { ok: true, ...result }))
       continue
     }
