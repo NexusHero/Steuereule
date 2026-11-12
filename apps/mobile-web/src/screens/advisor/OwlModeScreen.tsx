@@ -21,6 +21,7 @@ import { ProfessionPicker } from './ProfessionPicker'
 import { AdvisorChatPanel, type AdvisorChatPanelProps, type ChatSendOptions } from './AdvisorChatPanel'
 import { ConversationList, type ConversationSearchHit, type ConversationSummary } from './chat/ConversationList'
 import { ProjectNotes, type ProjectNote } from './chat/ProjectNotes'
+import { Situation } from './chat/Situation'
 import { ConnectionDetails, type ConnectionView } from './chat/ConnectionStatus'
 import { readOwlSidebarOpen, writeOwlSidebarOpen } from '../../lib/owlSidebarPreference'
 import { useOptionalCopilotBridge, type OwlViewMode } from './CopilotBridgeProvider'
@@ -73,6 +74,9 @@ export interface OwlModeScreenProps {
   readonly onEditNote?: ((id: string, text: string) => Promise<void>) | undefined
   readonly onDeleteNote?: ((id: string) => Promise<void>) | undefined
   readonly onUndoNoteChange?: ((messageId: string, index: number) => Promise<void>) | undefined
+  /** The user's own description of the household's situation; the owl reads it in every conversation (#501). */
+  readonly situation?: string | undefined
+  readonly onSaveSituation?: ((text: string) => Promise<void>) | undefined
   readonly isGuest?: boolean | undefined
   readonly onRegister?: (() => void) | undefined
   readonly onLogin?: (() => void) | undefined
@@ -161,6 +165,8 @@ export function OwlModeScreenView({
   onEditNote,
   onDeleteNote,
   onUndoNoteChange,
+  situation,
+  onSaveSituation,
 }: OwlModeScreenProps & { readonly initialCards: readonly OwlCardsDisplay[] }) {
   const bp = useBreakpoint()
   const t = useTheme()
@@ -395,6 +401,7 @@ export function OwlModeScreenView({
         context={context}
         onSummarize={onSummarize}
         onUndoNoteChange={onUndoNoteChange}
+        onAcceptSituationSuggestion={onSaveSituation ? (text) => onSaveSituation([situation?.trim() ?? '', text].filter((part) => part !== '').join('\n')) : undefined}
         streamSteps={bridge?.streamSteps}
         streamedText={bridge?.streamedText}
         streamedReasoning={bridge?.streamedReasoning}
@@ -738,6 +745,7 @@ export function OwlModeScreenView({
         }}
         onSearch={onSearchConversations}
       />
+      {situation !== undefined && onSaveSituation ? <Situation text={situation} onSave={onSaveSituation} /> : null}
       {notes && onAddNote && onEditNote && onDeleteNote ? <ProjectNotes notes={notes} onAdd={onAddNote} onEdit={onEditNote} onDelete={onDeleteNote} /> : null}
     </View>
   )

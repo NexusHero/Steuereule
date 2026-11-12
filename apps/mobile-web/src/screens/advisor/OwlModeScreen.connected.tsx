@@ -17,6 +17,7 @@ import {
   useAdvisorControllerCreateNote,
   useAdvisorControllerDeleteNote,
   useAdvisorControllerUndoNoteChange,
+  useAdvisorControllerSaveSituation,
   useAdvisorControllerUpdateNote,
   useAdvisorControllerConnection,
   useAdvisorControllerCreateConversation,
@@ -89,6 +90,7 @@ export function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CU
   const updateNoteMutation = useAdvisorControllerUpdateNote()
   const deleteNoteMutation = useAdvisorControllerDeleteNote()
   const undoNoteChangeMutation = useAdvisorControllerUndoNoteChange()
+  const saveSituationMutation = useAdvisorControllerSaveSituation()
   const sendMessageMutation = useAdvisorControllerSendMessage()
   const applyActionMutation = useAdvisorControllerApplyAction()
   const setFeedbackMutation = useAdvisorControllerSetFeedback()
@@ -193,6 +195,11 @@ export function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CU
       }}
       onUndoNoteChange={async (messageId, index) => {
         expectOk(await undoNoteChangeMutation.mutateAsync({ jahr: taxYear, messageId, index }), 'note change not undone')
+        await invalidate()
+      }}
+      situation={session ? (session.situation?.text ?? '') : undefined}
+      onSaveSituation={async (text) => {
+        expectOk(await saveSituationMutation.mutateAsync({ jahr: taxYear, data: { text } }), 'situation not stored')
         await invalidate()
       }}
       connection={connectionView}

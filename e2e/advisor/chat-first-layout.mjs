@@ -286,6 +286,26 @@ async function main() {
     await see(page, 'eule-notes-empty', 'Row H')
     console.log(`[${TAG}] ✅ Row H — a note added, changed and deleted by hand; a failed delete says so`)
 
+    // Row U — "Unsere Situation" (#501): the household in the user's own words, in the same sidebar.
+    // A failed save says so; a stored text is there after a reload, once, for the user and not the year.
+    await see(page, 'eule-situation', 'Row U')
+    await page.route('**/advisor/situation', async (route) => {
+      if (route.request().method() === 'PUT') await route.fulfill({ status: 500, contentType: 'application/json', body: '{"code":"INTERNAL"}' })
+      else await route.fallback()
+    })
+    await byId(page, 'eule-situation-input').fill('Verheiratet, zwei Kinder. Hauskauf für 2027 geplant.')
+    await byId(page, 'eule-situation-save').click()
+    await see(page, 'eule-situation-failed', 'Row U')
+    await page.unroute('**/advisor/situation')
+    await byId(page, 'eule-situation-save').click()
+    await see(page, 'eule-situation-saved', 'Row U')
+    const storedSituations = sql(`SELECT count(*) FROM "BeraterSituation" s JOIN "User" u ON u.id = s."userId" WHERE u.email = '${email}'`)
+    if (String(storedSituations).trim() !== '1') fail(`Row U: the situation should be stored once, found ${String(storedSituations).trim()}`)
+    await page.reload({ waitUntil: 'networkidle' })
+    await see(page, 'eule-situation-input', 'Row U', 20_000)
+    if ((await byId(page, 'eule-situation-input').inputValue()) !== 'Verheiratet, zwei Kinder. Hauskauf für 2027 geplant.') fail('Row U: the stored situation should be there after a reload')
+    console.log(`[${TAG}] ✅ Row U — the situation is stored once, survives a reload, and a failed save says so`)
+
     // Row I — the context ring in the composer: says how full the conversation is; too short to summarise.
     await byId(page, 'advisor-context-ring').click()
     await see(page, 'advisor-context-popover', 'Row I')
@@ -485,12 +505,25 @@ async function main() {
       const json = await res.json()
       json.messages = [
         { id: 'round-u1', role: 'user', content: 'Fang an', meta: null, createdAt: roundNow, status: 'complete', feedback: null },
-        { id: 'round-a1', role: 'assistant', content: 'Erste Runde:', meta: { questionRound: { questions: [{ text: 'Hattest du Fortbildungskosten?', options: ['Ja', 'Nein'], recommended: 'Ja' }, { text: 'Gab es einen Umzug?', options: ['Ja', 'Nein'] }] } }, createdAt: roundNow, status: 'complete', feedback: null },
+        { id: 'round-a1', role: 'assistant', content: 'Erste Runde:', meta: { situationSuggestions: ['Elternzeit ab März 2027.'], questionRound: { questions: [{ text: 'Hattest du Fortbildungskosten?', options: ['Ja', 'Nein'], recommended: 'Ja' }, { text: 'Gab es einen Umzug?', options: ['Ja', 'Nein'] }] } }, createdAt: roundNow, status: 'complete', feedback: null },
       ]
       await route.fulfill({ response: res, json })
     })
     await page.reload({ waitUntil: 'networkidle' })
     await see(page, 'advisor-question-round', 'Row S', 20_000)
+
+    // What the owl would add to "Unsere Situation": nothing is stored without a tap, a failed one says so.
+    await see(page, 'advisor-situation-suggestions', 'Row S')
+    if (!(await textOf(page, 'advisor-situation-suggestion')).includes('Elternzeit ab März 2027.')) fail('Row S: the suggestion should be shown under the answer')
+    await page.route('**/advisor/situation', async (route) => {
+      if (route.request().method() === 'PUT') await route.fulfill({ status: 500, contentType: 'application/json', body: '{"code":"INTERNAL"}' })
+      else await route.fallback()
+    })
+    await byId(page, 'advisor-situation-suggestion-accept').click()
+    await see(page, 'advisor-situation-suggestion-failed', 'Row S')
+    await page.unroute('**/advisor/situation')
+    await byId(page, 'advisor-situation-suggestion-accept').click()
+    await see(page, 'advisor-situation-suggestion-taken', 'Row S')
     if ((await byId(page, 'advisor-question').count()) !== 2) fail('Row S: both questions of the round should be shown')
     if (!(await textOf(page, 'advisor-question-round')).includes('Empfohlen')) fail('Row S: the owl’s pick should be marked')
     if (!(await byId(page, 'advisor-question-submit').isDisabled())) fail('Row S: a round with open questions must not be sendable')

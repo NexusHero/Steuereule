@@ -37,6 +37,7 @@ import type {
   AdvisorNoteDto,
   AdvisorSearchHitDto,
   AdvisorSessionResponseDto,
+  AdvisorSituationDto,
   ApplyBatchActionsDto,
   ApplyBatchActionsResponseDto,
   ClearAdvisorConversationResponseDto,
@@ -47,6 +48,7 @@ import type {
   ParseReceiptResponseDto,
   RenameAdvisorConversationDto,
   SaveAdvisorNoteDto,
+  SaveAdvisorSituationDto,
   SendAdvisorMessageDto,
   SendAdvisorMessageResponseDto,
   SetAdvisorFeedbackDto,
@@ -1046,6 +1048,90 @@ export function useAdvisorControllerSearch<TData = Awaited<ReturnType<typeof adv
 
 
 
+
+export type advisorControllerSaveSituationResponse200 = {
+  data: AdvisorSituationDto
+  status: 200
+}
+
+export type advisorControllerSaveSituationResponseSuccess = (advisorControllerSaveSituationResponse200) & {
+  headers: Headers;
+};
+;
+
+export type advisorControllerSaveSituationResponse = (advisorControllerSaveSituationResponseSuccess)
+
+export const getAdvisorControllerSaveSituationUrl = (jahr: number,) => {
+
+
+
+
+  return `/v1/steuerjahre/${jahr}/advisor/situation`
+}
+
+/**
+ * @summary Save the user’s own description of the household’s situation; the owl reads it in every conversation (#501)
+ */
+export const advisorControllerSaveSituation = async (jahr: number,
+    saveAdvisorSituationDto: SaveAdvisorSituationDto, options?: RequestInit): Promise<advisorControllerSaveSituationResponse> => {
+
+  return httpClient<advisorControllerSaveSituationResponse>(getAdvisorControllerSaveSituationUrl(jahr),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(saveAdvisorSituationDto)
+  }
+);}
+
+
+
+
+
+export const getAdvisorControllerSaveSituationMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof advisorControllerSaveSituation>>, TError,{jahr: number;data: SaveAdvisorSituationDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof advisorControllerSaveSituation>>, TError,{jahr: number;data: SaveAdvisorSituationDto}, TContext> => {
+
+const mutationKey = ['advisorControllerSaveSituation'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof advisorControllerSaveSituation>>, {jahr: number;data: SaveAdvisorSituationDto}> = (props) => {
+          const {jahr,data} = props ?? {};
+
+          return  advisorControllerSaveSituation(jahr,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AdvisorControllerSaveSituationMutationResult = NonNullable<Awaited<ReturnType<typeof advisorControllerSaveSituation>>>
+    export type AdvisorControllerSaveSituationMutationBody = SaveAdvisorSituationDto
+    export type AdvisorControllerSaveSituationMutationError = unknown
+
+    /**
+ * @summary Save the user’s own description of the household’s situation; the owl reads it in every conversation (#501)
+ */
+export const useAdvisorControllerSaveSituation = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof advisorControllerSaveSituation>>, TError,{jahr: number;data: SaveAdvisorSituationDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof advisorControllerSaveSituation>>,
+        TError,
+        {jahr: number;data: SaveAdvisorSituationDto},
+        TContext
+      > => {
+      return useMutation(getAdvisorControllerSaveSituationMutationOptions(options), queryClient);
+    }
 
 export type advisorControllerListNotesResponse200 = {
   data: AdvisorNoteDto[]

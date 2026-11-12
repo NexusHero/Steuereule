@@ -675,6 +675,43 @@ describe('AdvisorService (In-App Steuerberater Agent "Deine Eule")', () => {
     expect(seen).toEqual([true, false])
   })
 
+  describe('the household’s situation (#501)', () => {
+    it('is empty at first, is stored for every year, and reaches the engine', async () => {
+      expect((await advisorService.getSession(USER, YEAR)).situation).toEqual({ text: '', updatedAt: null })
+      const saved = await advisorService.saveSituation(USER, YEAR, '  Wir bauen 2027 ein Haus.  ')
+      expect(saved.text).toBe('Wir bauen 2027 ein Haus.')
+      // One text per user: another tax year reads the same.
+      expect((await advisorService.getSession(USER, YEAR - 1)).situation.text).toBe('Wir bauen 2027 ein Haus.')
+
+      const seen: Array<string | undefined> = []
+      const recordingEngine: AdvisorEnginePort = {
+        async runTurn() {
+          throw new Error('not used')
+        },
+        async *streamTurn(request) {
+          seen.push(request.situation)
+          yield { event: 'done', data: { replyText: 'Ok.', meta: {}, mode: 'langgraph' } }
+        },
+      }
+      const withEngine = new AdvisorService(advisorRepo, owlModeService, confirmationService, new AuditService(auditRepo), interviewRepo, lstbRepo, chRepo, commuteRepo, childRepo, new FakeRentalRepository(), new FakeCapitalRepository(), profileRepo, recordingEngine)
+      await withEngine.sendMessage(USER, YEAR, { message: 'Hallo' })
+      expect(seen).toEqual(['Wir bauen 2027 ein Haus.'])
+    })
+
+    it('stores no name and no identifier', async () => {
+      await profileRepo.upsert(USER, { firstName: 'Markus', lastName: 'Brenner', steuerId: null, steuernummer: null })
+      const saved = await advisorService.saveSituation(USER, YEAR, 'Markus Brenner zahlt mit IBAN DE89370400440532013000 den Kredit.')
+      expect(saved.text).not.toContain('Brenner')
+      expect(saved.text).not.toContain('DE89370400440532013000')
+    })
+
+    it('refuses a text that is too long, and an empty one clears it', async () => {
+      await expect(advisorService.saveSituation(USER, YEAR, 'a'.repeat(1600))).rejects.toThrow(/höchstens 1500/)
+      await advisorService.saveSituation(USER, YEAR, 'Etwas.')
+      expect((await advisorService.saveSituation(USER, YEAR, '')).text).toBe('')
+    })
+  })
+
   it('hands the savings plan and the assessment check to the engine as tasks, the second with the notice as far as there is one (#501)', async () => {
     const seen: Array<{ task: unknown; plan: unknown; assessment: unknown }> = []
     const recordingEngine: AdvisorEnginePort = {

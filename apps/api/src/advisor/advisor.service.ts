@@ -69,6 +69,7 @@ import type {
   AdvisorContextDto,
   AdvisorConversationDto,
   AdvisorNoteDto,
+  AdvisorSituationDto,
   AdvisorSearchHitDto,
   AdvisorSessionResponseDto,
   ApplyBatchActionsDto,
@@ -203,6 +204,10 @@ export class AdvisorService {
 
   async searchConversations(userId: string, taxYear: number, rawQuery: string): Promise<AdvisorSearchHitDto[]> {
     return this.conversations.searchConversations(userId, taxYear, rawQuery)
+  }
+
+  async saveSituation(userId: string, taxYear: number, raw: string): Promise<AdvisorSituationDto> {
+    return this.notes.saveSituation(userId, taxYear, raw)
   }
 
   async listNotes(userId: string, taxYear: number): Promise<AdvisorNoteDto[]> {
@@ -342,6 +347,7 @@ export class AdvisorService {
       conversations: conversations.map(toConversationDto),
       context: contextOf(conversation, history, await this.knownNamesForScrubbing(userId, taxYear)),
       notes: notes.map(toNoteDto),
+      situation: await this.notes.getSituation(userId),
       messages: history.filter((m) => !m.meta?.replaced).map(toMessageDto),
       quickChips: [
         'Kanzlei-Endprüfung starten',
@@ -563,6 +569,7 @@ export class AdvisorService {
         // Every quick start is work in several steps: the plan shows the user what the owl is doing.
         planRequired: dto.quickAction !== undefined,
         ...(task ? { task } : {}),
+        situation: (await this.notes.getSituation(userId)).text,
         ...(task === 'assessment-check' ? { assessment: await this.assessmentBrief(userId, taxYear) } : {}),
         ...(dto.skill ? { skill: dto.skill } : {}),
         records: await this.loadRecordHandles(userId, taxYear),

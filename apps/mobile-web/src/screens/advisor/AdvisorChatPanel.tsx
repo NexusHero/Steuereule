@@ -5,6 +5,7 @@ import { ThinkingIndicator } from './chat/ThinkingIndicator'
 import { ContextRing, SummaryDivider, type ContextRingState } from './chat/ContextRing'
 import { NoteChangeHints } from './chat/ProjectNotes'
 import { QuestionRound } from './chat/QuestionRound'
+import { SituationSuggestions } from './chat/Situation'
 import { SkillsMenu } from './chat/SkillsMenu'
 import { TurboSummary, TurboToggle } from './chat/TurboToggle'
 import { DictationBar } from './chat/DictationBar'
@@ -59,6 +60,8 @@ export interface AdvisorChatPanelProps {
   readonly onSummarize?: (() => Promise<void>) | undefined
   /** Takes back one change the owl made to the project notes in an answer (#481). */
   readonly onUndoNoteChange?: ((messageId: string, index: number) => Promise<void>) | undefined
+  /** Adds a sentence the owl suggested to the user's description of the situation (#501). */
+  readonly onAcceptSituationSuggestion?: ((text: string) => Promise<void>) | undefined
   /** Stores a rating; without it the chat offers none (e.g. the local preview). */
   readonly onRateMessage?:
     | ((messageId: string, rating: AdvisorFeedbackRating | null, reason?: AdvisorFeedbackReason) => Promise<void> | void)
@@ -136,6 +139,7 @@ export function AdvisorChatPanel({
   context,
   onSummarize,
   onUndoNoteChange,
+  onAcceptSituationSuggestion,
   onRateMessage,
   chatError = null,
   basisMode = false,
@@ -486,6 +490,10 @@ export function AdvisorChatPanel({
               {/* What the owl noted, replaced or forgot in this answer; each change can be taken back */}
               {msg.meta?.noteChanges && msg.meta.noteChanges.length > 0 ? (
                 <NoteChangeHints changes={msg.meta.noteChanges} onUndo={onUndoNoteChange ? (changeIndex) => onUndoNoteChange(msg.id, changeIndex) : undefined} />
+              ) : null}
+
+              {msg.meta?.situationSuggestions && msg.meta.situationSuggestions.length > 0 && onAcceptSituationSuggestion ? (
+                <SituationSuggestions suggestions={msg.meta.situationSuggestions} onAccept={onAcceptSituationSuggestion} />
               ) : null}
 
               {/* Scanned LStB: several staged fields at once */}

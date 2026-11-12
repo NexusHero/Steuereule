@@ -5,6 +5,7 @@ import {
   ADVISOR_LEGAL_SOURCES,
   describeNotesForPrompt,
   describeRecordHandles,
+  describeSituationForPrompt,
   type AdvisorNoteHandle,
   type AdvisorRecordHandles,
   type AdvisorAssessmentBrief,
@@ -58,8 +59,10 @@ export function buildStableSystemPrompt(): string {
   ].join('\n')
 }
 
-export function buildCaseSystemPrompt(digest: CaseDigest, activeScreen: Screen | undefined, planFirst: boolean, records?: AdvisorRecordHandles, notes?: readonly AdvisorNoteHandle[], skill?: AdvisorSkillId, task?: AdvisorTask, assessment?: AdvisorAssessmentBrief): string {
+export function buildCaseSystemPrompt(digest: CaseDigest, activeScreen: Screen | undefined, planFirst: boolean, records?: AdvisorRecordHandles, notes?: readonly AdvisorNoteHandle[], skill?: AdvisorSkillId, task?: AdvisorTask, assessment?: AdvisorAssessmentBrief, situation?: string): string {
   return [
+    describeSituationForPrompt(digest, situation),
+    '',
     `Aktive Maske: ${activeScreen ?? 'cockpit'}`,
     'PII-freier Fall-Überblick (CaseDigest):',
     JSON.stringify(digest),
@@ -87,9 +90,10 @@ export function buildSystemMessage(
   skill?: AdvisorSkillId,
   task?: AdvisorTask,
   assessment?: AdvisorAssessmentBrief,
+  situation?: string,
 ): SystemMessage {
   const stable = buildStableSystemPrompt()
-  const caseSpecific = buildCaseSystemPrompt(digest, activeScreen, planFirst, records, notes, skill, task, assessment)
+  const caseSpecific = buildCaseSystemPrompt(digest, activeScreen, planFirst, records, notes, skill, task, assessment, situation)
   if (provider === 'anthropic') {
     return new SystemMessage({
       content: [

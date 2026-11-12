@@ -18,6 +18,7 @@ import {
   type AdvisorMessageUsage,
   type AdvisorNoteAuthor,
   type AdvisorNoteRecord,
+  type AdvisorSituationRecord,
   type AdvisorRepository,
   type CreateAdvisorMessageInput,
   type FinishAdvisorMessageInput,
@@ -140,6 +141,20 @@ export class PrismaAdvisorRepository implements AdvisorRepository {
       this.prisma.taxDataAccessLog.create({ data: { userId, action: 'WRITE', resource: 'berater_gespraech_loeschen' } }),
     ])
     return messages.count
+  }
+
+  async findSituation(userId: string): Promise<AdvisorSituationRecord | null> {
+    const row = await this.prisma.advisorSituation.findUnique({ where: { userId } })
+    return row ? { text: row.text, updatedAt: row.updatedAt } : null
+  }
+
+  async saveSituation(userId: string, text: string): Promise<AdvisorSituationRecord> {
+    const updatedAt = new Date()
+    const [row] = await this.prisma.$transaction([
+      this.prisma.advisorSituation.upsert({ where: { userId }, create: { userId, text, updatedAt }, update: { text, updatedAt } }),
+      this.prisma.taxDataAccessLog.create({ data: { userId, action: 'WRITE', resource: 'berater_situation' } }),
+    ])
+    return { text: row.text, updatedAt: row.updatedAt }
   }
 
   async listNotes(userId: string, taxYear: number): Promise<AdvisorNoteRecord[]> {

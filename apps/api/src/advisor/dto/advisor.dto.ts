@@ -357,6 +357,9 @@ export class AdvisorMessageMetaDto implements AdvisorMessageMeta {
   })
   noteChanges?: readonly AdvisorNoteChangeDto[] | undefined
 
+  @ApiPropertyOptional({ type: [String], description: 'Additions to the description of the situation the owl suggests; taken over with a tap (#501).' })
+  situationSuggestions?: readonly string[] | undefined
+
   @ApiPropertyOptional({ type: () => AdvisorQuestionRoundDto, description: 'A round of questions with answers to tap, from the interview skill (#495).' })
   questionRound?: AdvisorQuestionRoundDto | undefined
 
@@ -471,6 +474,21 @@ export class DeleteAdvisorNoteResponseDto {
   deleted!: true
 }
 
+export class AdvisorSituationDto {
+  @ApiProperty({ type: String, description: 'The user’s own description of the household’s situation; empty while nothing was written (#501).' })
+  text!: string
+
+  @ApiProperty({ type: String, format: 'date-time', nullable: true })
+  updatedAt!: string | null
+}
+
+export class SaveAdvisorSituationDto {
+  @ApiProperty({ type: String, maxLength: 1500, description: 'Empty clears the description.' })
+  @IsString()
+  @MaxLength(3000)
+  text!: string
+}
+
 export class SaveAdvisorNoteDto {
   @ApiProperty({ type: String, maxLength: 200 })
   @IsString()
@@ -564,6 +582,9 @@ export class AdvisorSessionResponseDto {
 
   @ApiProperty({ type: () => [AdvisorNoteDto], description: 'The project notes of this tax year; every conversation reads them.' })
   notes!: readonly AdvisorNoteDto[]
+
+  @ApiProperty({ type: () => AdvisorSituationDto, description: 'The user’s own description of the situation; applies in every conversation of every year (#501).' })
+  situation!: AdvisorSituationDto
 
   @ApiProperty({ type: [AdvisorChatMessageDto] })
   messages!: readonly AdvisorChatMessageDto[]

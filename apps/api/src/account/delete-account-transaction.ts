@@ -44,6 +44,7 @@ export function taxDataTables(tx: TransactionClient): UserKeyedTable[] {
     // After its messages: they reference the conversation (#481).
     tx.advisorConversation,
     tx.advisorNote,
+    tx.advisorSituation,
   ]
 }
 

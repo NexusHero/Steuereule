@@ -40,6 +40,8 @@ export interface AdvisorTurnRequest {
   readonly previewEffect?: ((target: AdvisorPreviewTarget) => Promise<AdvisorPreviewEffect>) | undefined
   /** The project notes of the tax year under their neutral names (#481). */
   readonly notes?: readonly AdvisorNoteHandle[] | undefined
+  /** The user's own description of the household's situation; applies in every conversation (#501). */
+  readonly situation?: string | undefined
   /** Work the owl does on her own initiative in this turn (#501). */
   readonly task?: AdvisorTask | undefined
   /** The tax office's notice against the return, for the assessment check. */

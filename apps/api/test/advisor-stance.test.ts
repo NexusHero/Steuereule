@@ -126,6 +126,20 @@ describe('the advisor stance is in every model call (#499, #501)', () => {
   })
 })
 
+describe('the situation is the start of every case prompt (#501)', () => {
+  it('comes first, with the user’s own words', () => {
+    const text = buildCaseSystemPrompt(DIGEST, undefined, false, undefined, undefined, undefined, undefined, undefined, 'Wir bauen 2027 ein Haus.')
+    expect(text.startsWith('Situation des Haushalts')).toBe(true)
+    expect(text).toContain('Wir bauen 2027 ein Haus.')
+  })
+
+  it('reaches the model in a turn', async () => {
+    const model = new RecordingModel()
+    await turn(new LangGraphAdvisorEngine(runtime('google-genai'), () => model), { situation: 'Elternzeit ab März 2026.' })
+    expect(systemText(model.seen[0]!)).toContain('Elternzeit ab März 2026.')
+  })
+})
+
 describe('tasks of the owl (#501)', () => {
   const prompt = (task: 'savings-plan' | 'assessment-check', assessment?: AdvisorAssessmentBrief) => buildCaseSystemPrompt(DIGEST, undefined, true, undefined, undefined, undefined, task, assessment)
 

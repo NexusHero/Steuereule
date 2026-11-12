@@ -279,6 +279,7 @@ export const server = setupServer(
     conversations: [{ id: 'conversation-1', title: null, createdAt: '2026-01-01T00:00:00.000Z', lastUsedAt: '2026-01-01T00:00:00.000Z' }],
     context: { usedTokens: 0, maxTokens: 6000, percent: 0, level: 'ok', canSummarize: false },
     notes: [],
+    situation: { text: '', updatedAt: null },
     messages: [],
     quickChips: ['Kanzlei-Endprüfung starten', 'Homeoffice vs. Arbeitszimmer prüfen'],
     legalSources: [],

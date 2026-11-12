@@ -186,6 +186,8 @@ export interface AdvisorMessageMeta {
   readonly notices?: readonly AdvisorAnswerNotice[] | undefined
   /** What the owl changed in the project notes in this answer; each change can be undone (#481). */
   readonly noteChanges?: readonly AdvisorNoteChange[] | undefined
+  /** Additions to the user's own description of the situation the owl suggests; taken over with a tap (#501). */
+  readonly situationSuggestions?: readonly string[] | undefined
   /** A round of questions with answers to tap, from the interview skill (#495). */
   readonly questionRound?: AdvisorQuestionRound | undefined
   /** Turbo mode: the owl applied the drafts of this answer itself, without a click; each can be undone. */
@@ -282,6 +284,8 @@ export interface CaseDigest {
     readonly doubleHouseholdRentEur: number | null
   }
   readonly childrenCount: number
+  /** Ages of the children at the end of the tax year, as far as a birth date is known (#501). */
+  readonly childrenAges?: readonly number[] | undefined
   readonly rentalObjectsCount: number
   readonly capitalGainEur: number | null
   readonly priorYearComparison: {

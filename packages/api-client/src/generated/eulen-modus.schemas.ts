@@ -529,6 +529,8 @@ export interface AdvisorMessageMetaDto {
   notices?: AdvisorAnswerNoticeDto[];
   /** What the owl changed in the project notes in this answer; each change can be undone (#481). */
   noteChanges?: AdvisorNoteChangeDto[];
+  /** Additions to the description of the situation the owl suggests; taken over with a tap (#501). */
+  situationSuggestions?: string[];
   /** A round of questions with answers to tap, from the interview skill (#495). */
   questionRound?: AdvisorQuestionRoundDto;
   /** Turbo mode: the owl applied the drafts of this answer itself; each can be undone. */
@@ -799,6 +801,13 @@ export interface AdvisorNoteDto {
   updatedAt: string;
 }
 
+export interface AdvisorSituationDto {
+  /** The user’s own description of the household’s situation; empty while nothing was written (#501). */
+  text: string;
+  /** @nullable */
+  updatedAt: string | null;
+}
+
 export type AdvisorLegalSourceDtoSourceId = typeof AdvisorLegalSourceDtoSourceId[keyof typeof AdvisorLegalSourceDtoSourceId];
 
 
@@ -835,6 +844,8 @@ export interface AdvisorSessionResponseDto {
   context: AdvisorContextDto;
   /** The project notes of this tax year; every conversation reads them. */
   notes: AdvisorNoteDto[];
+  /** The user’s own description of the situation; applies in every conversation of every year (#501). */
+  situation: AdvisorSituationDto;
   messages: AdvisorChatMessageDto[];
   quickChips: string[];
   legalSources: AdvisorLegalSourceDto[];
@@ -961,6 +972,14 @@ export interface AdvisorSearchHitDto {
   /** The matching passage with some text around it. */
   snippet: string;
   at: string;
+}
+
+export interface SaveAdvisorSituationDto {
+  /**
+     * Empty clears the description.
+     * @maxLength 1500
+     */
+  text: string;
 }
 
 export interface SaveAdvisorNoteDto {
