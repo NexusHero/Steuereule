@@ -3,7 +3,7 @@ import { fireEvent, screen } from '@testing-library/react'
 import { renderInApp } from '../../../test-render'
 import { ModelFailureNotice } from './ModelFailureNotice'
 
-describe('ModelFailureNotice (#486)', () => {
+describe('ModelFailureNotice (#487)', () => {
   it('says why the model did not answer, that the answer came from rules, and what failed technically', () => {
     renderInApp(<ModelFailureNotice failure={{ reason: 'quota', detail: 'Gemini · HTTP 429' }} answeredByRules onRetry={vi.fn()} />)
     expect(screen.getByTestId('advisor-model-failure-text').textContent).toContain('Kontingent')

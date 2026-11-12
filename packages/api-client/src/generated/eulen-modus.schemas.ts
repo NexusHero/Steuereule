@@ -519,7 +519,7 @@ export interface AdvisorMessageMetaDto {
   notices?: AdvisorAnswerNoticeDto[];
   /** What the owl changed in the project notes in this answer; each change can be undone (#481). */
   noteChanges?: AdvisorNoteChangeDto[];
-  /** Why the language model did not answer this turn, when it did not (#486): the answer then comes from fixed rules or is missing. */
+  /** Why the language model did not answer this turn, when it did not (#487): the answer then comes from fixed rules or is missing. */
   modelFailure?: AdvisorModelFailureDto;
   action?: AdvisorActionProposalDto;
   actions?: AdvisorActionProposalDto[];

@@ -8259,7 +8259,7 @@
             }
           },
           "modelFailure": {
-            "description": "Why the language model did not answer this turn, when it did not (#486): the answer then comes from fixed rules or is missing.",
+            "description": "Why the language model did not answer this turn, when it did not (#487): the answer then comes from fixed rules or is missing.",
             "allOf": [
               {
                 "$ref": "#/components/schemas/AdvisorModelFailureDto"

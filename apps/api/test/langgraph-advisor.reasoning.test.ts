@@ -814,7 +814,7 @@ describe('the owl keeps project notes itself (#481)', () => {
   })
 })
 
-describe('a model that does not answer says why (#486)', () => {
+describe('a model that does not answer says why (#487)', () => {
   /** A model that streams `before` and then fails with `error`. */
   class FailingModel extends BaseChatModel {
     constructor(private readonly before: string[], private readonly error: Error) {

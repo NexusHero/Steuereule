@@ -319,7 +319,7 @@ export class AdvisorMessageMetaDto implements AdvisorMessageMeta {
 
   @ApiPropertyOptional({
     type: () => AdvisorModelFailureDto,
-    description: 'Why the language model did not answer this turn, when it did not (#486): the answer then comes from fixed rules or is missing.',
+    description: 'Why the language model did not answer this turn, when it did not (#487): the answer then comes from fixed rules or is missing.',
   })
   modelFailure?: AdvisorModelFailureDto | undefined
 

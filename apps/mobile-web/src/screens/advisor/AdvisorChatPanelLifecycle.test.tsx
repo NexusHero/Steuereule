@@ -218,7 +218,7 @@ describe('AdvisorChatPanel: several drafts in one answer (ADR-0066)', () => {
     expect(screen.getByTestId('advisor-context-ring')).toBeTruthy()
   })
 
-  it('shows why the model did not answer under a rule-based answer, and under a failed one (#486)', () => {
+  it('shows why the model did not answer under a rule-based answer, and under a failed one (#487)', () => {
     const onSendMessage = vi.fn()
     renderPanel({
       messages: [user('u1', 'Frage'), owl('a1', 'Ich habe deine Akte im Blick.', { meta: { modelFailure: { reason: 'quota', detail: 'Gemini · HTTP 429' } } })],

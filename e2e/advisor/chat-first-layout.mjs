@@ -326,7 +326,7 @@ async function main() {
     await byId(page, 'advisor-feedback-up').first().click()
     await see(page, 'advisor-feedback-failed', 'Row E')
 
-    // An answer from the fixed rules says why the model did not answer, and what failed technically (#486).
+    // An answer from the fixed rules says why the model did not answer, and what failed technically (#487).
     await see(page, 'advisor-model-failure', 'Row E')
     const failureText = await textOf(page, 'advisor-model-failure-text')
     if (!failureText.includes('Kontingent') || !failureText.includes('festen Regeln')) fail(`Row E: the answer of the rules should say why the model did not answer, says "${failureText}"`)
@@ -392,7 +392,7 @@ async function main() {
     console.log(`[${TAG}] ✅ Row F — a dropped stream shows "Verbindung wird wiederhergestellt", resumes after the last event and finishes`)
 
     // Row K — the latest answer came from the rules because the model was overloaded: "try again"
-    // asks the same question in place of that turn (#486).
+    // asks the same question in place of that turn (#487).
     await page.unroute('**/advisor/session*')
     await page.route('**/advisor/session*', async (route) => {
       if (route.request().method() !== 'GET') return route.fallback()

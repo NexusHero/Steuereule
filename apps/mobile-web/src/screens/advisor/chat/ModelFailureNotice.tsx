@@ -14,7 +14,7 @@ export interface ModelFailureNoticeProps {
 }
 
 /**
- * Says why the language model did not answer (#486), in words, and keeps saying it after a reload.
+ * Says why the language model did not answer (#487), in words, and keeps saying it after a reload.
  * A refused key is no use retrying, so there the button is left out.
  */
 export function ModelFailureNotice({ failure, answeredByRules, onRetry }: ModelFailureNoticeProps) {

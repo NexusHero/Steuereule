@@ -1,5 +1,5 @@
 /**
- * Why the language model did not answer (#486). The user is told the reason in plain words, so a
+ * Why the language model did not answer (#487). The user is told the reason in plain words, so a
  * failed turn is no longer a silent switch to the built-in rules or a bare "broke off".
  */
 export const ADVISOR_MODEL_FAILURE_REASONS = ['not-configured', 'quota', 'unavailable', 'timeout', 'network', 'blocked', 'unknown'] as const

@@ -415,7 +415,7 @@ export function AdvisorChatPanel({
                 </View>
               ) : null}
 
-              {/* The model did not answer: the rules did, and the reason stays with the answer (#486) */}
+              {/* The model did not answer: the rules did, and the reason stays with the answer (#487) */}
               {msg.meta?.modelFailure ? (
                 <ModelFailureNotice
                   failure={msg.meta.modelFailure}

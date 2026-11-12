@@ -4,7 +4,7 @@ import { classifyModelFailure } from '../src/ki/advisor-failure.js'
 const google = (status: string, text: string) =>
   new Error(`[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:streamGenerateContent?alt=sse: [${status}] ${text}`)
 
-describe('classifyModelFailure (#486)', () => {
+describe('classifyModelFailure (#487)', () => {
   it.each([
     ['an invalid key', google('400 Bad Request', 'API key not valid. Please pass a valid API key.'), 'not-configured', 'Gemini · HTTP 400'],
     ['a key without permission', google('403 Forbidden', 'Permission denied'), 'not-configured', 'Gemini · HTTP 403'],
