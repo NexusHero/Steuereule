@@ -350,6 +350,28 @@ export class SetAdvisorFeedbackDto {
   reason?: AdvisorFeedbackReason | undefined
 }
 
+export class AdvisorConversationDto {
+  @ApiProperty({ type: String })
+  id!: string
+
+  @ApiProperty({ type: String, nullable: true, description: 'From the first question; null while nothing has been asked.', example: 'Lohnt sich mein Arbeitsweg?' })
+  title!: string | null
+
+  @ApiProperty({ type: String, format: 'date-time' })
+  createdAt!: string
+
+  @ApiProperty({ type: String, format: 'date-time' })
+  lastUsedAt!: string
+}
+
+export class RenameAdvisorConversationDto {
+  @ApiProperty({ type: String, example: 'Vermietung Musterstraße' })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(120)
+  title!: string
+}
+
 export class ClearAdvisorConversationResponseDto {
   @ApiProperty({ type: Number, example: 12 })
   deletedMessages!: number
@@ -372,6 +394,12 @@ export class AdvisorSessionResponseDto {
 
   @ApiProperty({ type: [OwlCardDto] })
   openCards!: readonly OwlCardDto[]
+
+  @ApiProperty({ type: String, description: 'The conversation these messages belong to (#481).' })
+  conversationId!: string
+
+  @ApiProperty({ type: () => [AdvisorConversationDto], description: 'Every conversation of this tax year, most recently used first.' })
+  conversations!: readonly AdvisorConversationDto[]
 
   @ApiProperty({ type: [AdvisorChatMessageDto] })
   messages!: readonly AdvisorChatMessageDto[]
@@ -414,6 +442,15 @@ export class SendAdvisorMessageDto {
   @IsString()
   @MaxLength(64)
   replaceFromMessageId?: string | undefined
+
+  @ApiPropertyOptional({
+    type: String,
+    description: 'The conversation the question belongs to (#481). Without it: the one used last in this tax year.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  conversationId?: string | undefined
 }
 
 export class SendAdvisorMessageResponseDto {

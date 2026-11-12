@@ -11,10 +11,22 @@ export interface AdvisorMessageUsage extends Partial<AdvisorTurnUsage> {
   readonly durationMs: number
 }
 
+/** One conversation with the owl inside the project of a tax year (#481). */
+export interface AdvisorConversationRecord {
+  readonly id: string
+  readonly userId: string
+  readonly taxYear: number
+  /** Null until the first question has been asked. */
+  readonly title: string | null
+  readonly createdAt: Date
+  readonly lastUsedAt: Date
+}
+
 export interface AdvisorChatMessageRecord {
   readonly id: string
   readonly userId: string
   readonly taxYear: number
+  readonly conversationId: string
   readonly role: 'user' | 'assistant'
   readonly content: string
   readonly meta: AdvisorMessageMeta | null
@@ -35,6 +47,8 @@ export interface CreateAdvisorMessageInput {
   /** Defaults to `complete`. */
   readonly status?: AdvisorMessageStatus | undefined
   readonly runId?: string | undefined
+  /** Defaults to the conversation of that year used last (created when there is none). */
+  readonly conversationId?: string | undefined
 }
 
 /** The final state of an answer that was created as `streaming`. */
@@ -47,7 +61,23 @@ export interface FinishAdvisorMessageInput {
 }
 
 export interface AdvisorRepository {
+  /** Every message of the year, across all its conversations: drafts belong to the return. */
   listForUserAndYear(userId: string, taxYear: number): Promise<AdvisorChatMessageRecord[]>
+  /** The messages of one conversation, oldest first. */
+  listForConversation(conversationId: string, userId: string): Promise<AdvisorChatMessageRecord[]>
+  /** Most recently used first. */
+  listConversations(userId: string, taxYear: number): Promise<AdvisorConversationRecord[]>
+  /** Null when the conversation does not exist or belongs to someone else. */
+  findConversation(id: string, userId: string): Promise<AdvisorConversationRecord | null>
+  createConversation(userId: string, taxYear: number, title?: string | null): Promise<AdvisorConversationRecord>
+  /** The conversation of that year used last; created when the year has none yet. */
+  defaultConversation(userId: string, taxYear: number): Promise<AdvisorConversationRecord>
+  /** Null when the conversation does not exist or belongs to someone else. */
+  updateConversation(id: string, userId: string, change: { title?: string | null; lastUsedAt?: Date }): Promise<AdvisorConversationRecord | null>
+  /** Deletes the conversation with its messages; returns how many messages went, null when not found. */
+  deleteConversation(id: string, userId: string): Promise<number | null>
+  /** Empties one conversation and keeps it; returns how many messages went. */
+  deleteMessagesOfConversation(id: string, userId: string): Promise<number>
   countUserMessagesSince(userId: string, since: Date): Promise<number>
   createMessage(input: CreateAdvisorMessageInput): Promise<AdvisorChatMessageRecord>
   findMessageByActionId(userId: string, taxYear: number, actionId: string): Promise<AdvisorChatMessageRecord | null>
@@ -57,7 +87,7 @@ export interface AdvisorRepository {
   finishMessage(id: string, userId: string, input: FinishAdvisorMessageInput): Promise<AdvisorChatMessageRecord>
   /** Null when the message does not exist or belongs to someone else. */
   setFeedback(id: string, userId: string, feedback: AdvisorMessageFeedback | null): Promise<AdvisorChatMessageRecord | null>
-  /** Deletes the whole conversation of one tax year; returns how many messages went. */
+  /** Deletes every conversation of one tax year; returns how many messages went. */
   deleteForUserAndYear(userId: string, taxYear: number): Promise<number>
 }
 
@@ -72,6 +102,63 @@ export function matchesActionId(meta: AdvisorMessageMeta | null, actionId: strin
 
 export class InMemoryAdvisorRepository implements AdvisorRepository {
   private rows: AdvisorChatMessageRecord[] = []
+  private conversations: AdvisorConversationRecord[] = []
+  /** Keeps "used last" stable for conversations touched within the same millisecond. */
+  private clock = 0
+
+  private now(): Date {
+    this.clock = Math.max(this.clock + 1, Date.now())
+    return new Date(this.clock)
+  }
+
+  async listForConversation(conversationId: string, userId: string): Promise<AdvisorChatMessageRecord[]> {
+    return this.rows
+      .filter((r) => r.conversationId === conversationId && r.userId === userId)
+      .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
+  }
+
+  async listConversations(userId: string, taxYear: number): Promise<AdvisorConversationRecord[]> {
+    return this.conversations
+      .filter((c) => c.userId === userId && c.taxYear === taxYear)
+      .sort((a, b) => b.lastUsedAt.getTime() - a.lastUsedAt.getTime())
+  }
+
+  async findConversation(id: string, userId: string): Promise<AdvisorConversationRecord | null> {
+    return this.conversations.find((c) => c.id === id && c.userId === userId) ?? null
+  }
+
+  async createConversation(userId: string, taxYear: number, title: string | null = null): Promise<AdvisorConversationRecord> {
+    const at = this.now()
+    const conversation: AdvisorConversationRecord = { id: randomUUID(), userId, taxYear, title, createdAt: at, lastUsedAt: at }
+    this.conversations.push(conversation)
+    return conversation
+  }
+
+  async defaultConversation(userId: string, taxYear: number): Promise<AdvisorConversationRecord> {
+    return (await this.listConversations(userId, taxYear))[0] ?? this.createConversation(userId, taxYear)
+  }
+
+  async updateConversation(id: string, userId: string, change: { title?: string | null; lastUsedAt?: Date }): Promise<AdvisorConversationRecord | null> {
+    const index = this.conversations.findIndex((c) => c.id === id && c.userId === userId)
+    if (index === -1) return null
+    // Two touches within one millisecond still need an order; the in-memory clock never repeats.
+    const updated = { ...this.conversations[index]!, ...change, ...(change.lastUsedAt ? { lastUsedAt: this.now() } : {}) }
+    this.conversations[index] = updated
+    return updated
+  }
+
+  async deleteConversation(id: string, userId: string): Promise<number | null> {
+    if (!(await this.findConversation(id, userId))) return null
+    const deleted = await this.deleteMessagesOfConversation(id, userId)
+    this.conversations = this.conversations.filter((c) => c.id !== id)
+    return deleted
+  }
+
+  async deleteMessagesOfConversation(id: string, userId: string): Promise<number> {
+    const before = this.rows.length
+    this.rows = this.rows.filter((r) => !(r.conversationId === id && r.userId === userId))
+    return before - this.rows.length
+  }
 
   async listForUserAndYear(userId: string, taxYear: number): Promise<AdvisorChatMessageRecord[]> {
     return this.rows
@@ -86,10 +173,12 @@ export class InMemoryAdvisorRepository implements AdvisorRepository {
   }
 
   async createMessage(input: CreateAdvisorMessageInput): Promise<AdvisorChatMessageRecord> {
+    const conversationId = input.conversationId ?? (await this.defaultConversation(input.userId, input.taxYear)).id
     const record: AdvisorChatMessageRecord = {
       id: randomUUID(),
       userId: input.userId,
       taxYear: input.taxYear,
+      conversationId,
       role: input.role,
       content: input.content,
       meta: input.meta,
@@ -150,6 +239,7 @@ export class InMemoryAdvisorRepository implements AdvisorRepository {
   async deleteForUserAndYear(userId: string, taxYear: number): Promise<number> {
     const before = this.rows.length
     this.rows = this.rows.filter((r) => !(r.userId === userId && r.taxYear === taxYear))
+    this.conversations = this.conversations.filter((c) => !(c.userId === userId && c.taxYear === taxYear))
     return before - this.rows.length
   }
 }

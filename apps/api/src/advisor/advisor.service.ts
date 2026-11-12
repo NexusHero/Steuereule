@@ -66,6 +66,7 @@ import { ConflictError, DomainError, InvalidInputError, NotFoundError, TooManyRe
 import {
   ADVISOR_REPOSITORY,
   type AdvisorChatMessageRecord,
+  type AdvisorConversationRecord,
   type AdvisorMessageUsage,
   type AdvisorRepository,
   type FinishAdvisorMessageInput,
@@ -73,6 +74,7 @@ import {
 import type {
   AdvisorActionMutationResponseDto,
   AdvisorChatMessageDto,
+  AdvisorConversationDto,
   AdvisorSessionResponseDto,
   ApplyBatchActionsDto,
   ApplyBatchActionsResponseDto,
@@ -174,6 +176,29 @@ export function effectFromEstimates(states: { readonly before: TaxEstimateStatus
     return { kind: 'not-computable', hint: 'Wirkung erst berechenbar, wenn die Angaben für die Schätzung vollständig sind (z. B. die Lohnsteuerbescheinigung).' }
   }
   return { kind: 'not-computable', hint: 'Für deine Lebenslage gibt es noch keine automatische Schätzung; die Wirkung kann ich deshalb nicht beziffern.' }
+}
+
+/** More conversations in one year than anyone can keep apart are a list nobody reads. */
+export const MAX_CONVERSATIONS_PER_YEAR = 50
+const TITLE_MAX_LENGTH = 60
+
+/** A conversation title from free text: one line, cut at a word where possible. */
+export function titleFrom(text: string): string | null {
+  const oneLine = text.replace(/\s+/g, ' ').trim()
+  if (oneLine === '') return null
+  if (oneLine.length <= TITLE_MAX_LENGTH) return oneLine
+  const cut = oneLine.slice(0, TITLE_MAX_LENGTH)
+  const lastSpace = cut.lastIndexOf(' ')
+  return `${(lastSpace > TITLE_MAX_LENGTH / 2 ? cut.slice(0, lastSpace) : cut).trimEnd()}…`
+}
+
+function toConversationDto(conversation: AdvisorConversationRecord): AdvisorConversationDto {
+  return {
+    id: conversation.id,
+    title: conversation.title,
+    createdAt: conversation.createdAt.toISOString(),
+    lastUsedAt: conversation.lastUsedAt.toISOString(),
+  }
 }
 
 @Injectable()
@@ -369,11 +394,67 @@ export class AdvisorService {
     return digest
   }
 
-  async getSession(userId: string, taxYear: number): Promise<AdvisorSessionResponseDto> {
-    const [setting, cardsRes, history] = await Promise.all([
+  /**
+   * The conversation a request is about (#481). Without an id it is the one used last in that
+   * year, created when the year has none: the project of a tax return exists as soon as it is opened.
+   */
+  async conversationFor(userId: string, taxYear: number, conversationId?: string): Promise<AdvisorConversationRecord> {
+    if (conversationId === undefined) return this.advisorRepo.defaultConversation(userId, taxYear)
+    const conversation = await this.advisorRepo.findConversation(conversationId, userId)
+    if (!conversation || conversation.taxYear !== taxYear) {
+      throw new NotFoundError('ADVISOR_CONVERSATION_NOT_FOUND', 'Dieses Gespräch gibt es nicht (mehr).')
+    }
+    return conversation
+  }
+
+  async listConversations(userId: string, taxYear: number): Promise<AdvisorConversationDto[]> {
+    await this.advisorRepo.defaultConversation(userId, taxYear)
+    return (await this.advisorRepo.listConversations(userId, taxYear)).map(toConversationDto)
+  }
+
+  async createConversation(userId: string, taxYear: number): Promise<AdvisorConversationDto> {
+    const existing = await this.advisorRepo.listConversations(userId, taxYear)
+    // A conversation nobody has written in yet is the new one: no pile of empty conversations.
+    for (const conversation of existing) {
+      if ((await this.advisorRepo.listForConversation(conversation.id, userId)).length === 0) {
+        const reused = await this.advisorRepo.updateConversation(conversation.id, userId, { lastUsedAt: new Date() })
+        return toConversationDto(reused ?? conversation)
+      }
+    }
+    if (existing.length >= MAX_CONVERSATIONS_PER_YEAR) {
+      throw new ConflictError(
+        'ADVISOR_CONVERSATION_LIMIT',
+        `In einem Steuerjahr sind höchstens ${MAX_CONVERSATIONS_PER_YEAR} Gespräche möglich. Lösche eines, das du nicht mehr brauchst.`,
+      )
+    }
+    return toConversationDto(await this.advisorRepo.createConversation(userId, taxYear))
+  }
+
+  async renameConversation(userId: string, taxYear: number, conversationId: string, title: string): Promise<AdvisorConversationDto> {
+    const conversation = await this.conversationFor(userId, taxYear, conversationId)
+    const knownNames = await this.knownNamesForScrubbing(userId, taxYear)
+    const updated = await this.advisorRepo.updateConversation(conversation.id, userId, { title: titleFrom(scrubUserMessagePii(title, knownNames)) })
+    return toConversationDto(updated ?? conversation)
+  }
+
+  /**
+   * Deletes a conversation with its messages. Values already applied to the return stay; drafts
+   * that were still open in it disappear.
+   */
+  async deleteConversation(userId: string, taxYear: number, conversationId: string): Promise<{ deletedMessages: number }> {
+    const conversation = await this.conversationFor(userId, taxYear, conversationId)
+    const deletedMessages = (await this.advisorRepo.deleteConversation(conversation.id, userId)) ?? 0
+    await this.auditService.append({ userId, action: 'WRITE', resource: 'berater_gespraech_geloescht' })
+    return { deletedMessages }
+  }
+
+  async getSession(userId: string, taxYear: number, conversationId?: string): Promise<AdvisorSessionResponseDto> {
+    const conversation = await this.conversationFor(userId, taxYear, conversationId)
+    const [setting, cardsRes, history, conversations] = await Promise.all([
       this.owlModeService.getSetting(userId),
       this.owlModeService.getCards(userId, taxYear),
-      this.advisorRepo.listForUserAndYear(userId, taxYear),
+      this.advisorRepo.listForConversation(conversation.id, userId),
+      this.advisorRepo.listConversations(userId, taxYear),
     ])
 
     await this.auditService.append({
@@ -392,6 +473,8 @@ export class AdvisorService {
       enabled: setting.enabled,
       greeting,
       openCards: cardsRes.cards,
+      conversationId: conversation.id,
+      conversations: conversations.map(toConversationDto),
       messages: history.filter((m) => !m.meta?.replaced).map(toMessageDto),
       quickChips: [
         'Kanzlei-Endprüfung starten',
@@ -446,10 +529,17 @@ export class AdvisorService {
     // Double PII Shield: scrub known names, Steuer-IDs, IBANs, emails, and phones from user free-text & history
     const knownNames = await this.knownNamesForScrubbing(userId, taxYear)
     const scrubbedUserText = scrubUserMessagePii(dto.message.trim(), knownNames)
+    const conversation = await this.conversationFor(userId, taxYear, dto.conversationId)
     if (dto.replaceFromMessageId !== undefined) {
-      await this.replaceLatestTurn(userId, taxYear, dto.replaceFromMessageId)
+      await this.replaceLatestTurn(userId, conversation.id, dto.replaceFromMessageId)
     }
-    const priorRecords = await this.advisorRepo.listForUserAndYear(userId, taxYear)
+    // The model sees this conversation only; what the conversations share is the return itself.
+    const priorRecords = await this.advisorRepo.listForConversation(conversation.id, userId)
+    await this.advisorRepo.updateConversation(conversation.id, userId, {
+      lastUsedAt: new Date(),
+      // The first question names the conversation.
+      ...(conversation.title === null ? { title: titleFrom(scrubbedUserText) } : {}),
+    })
     const history = buildAdvisorHistory(
       priorRecords.map((msg) => ({
         role: msg.role,
@@ -463,6 +553,7 @@ export class AdvisorService {
     const userMessage = await this.advisorRepo.createMessage({
       userId,
       taxYear,
+      conversationId: conversation.id,
       role: 'user',
       content: scrubbedUserText,
       meta: null,
@@ -470,6 +561,7 @@ export class AdvisorService {
     const assistantMessage = await this.advisorRepo.createMessage({
       userId,
       taxYear,
+      conversationId: conversation.id,
       role: 'assistant',
       content: '',
       meta: null,
@@ -710,11 +802,13 @@ export class AdvisorService {
   }
 
   /**
-   * Deletes the conversation of one tax year. Values already applied to the return stay; proposals
+   * Empties one conversation and keeps it. Values already applied to the return stay; proposals
    * that were still open disappear with the messages that carried them.
    */
-  async clearConversation(userId: string, taxYear: number): Promise<{ deletedMessages: number }> {
-    const deletedMessages = await this.advisorRepo.deleteForUserAndYear(userId, taxYear)
+  async clearConversation(userId: string, taxYear: number, conversationId?: string): Promise<{ deletedMessages: number }> {
+    const conversation = await this.conversationFor(userId, taxYear, conversationId)
+    const deletedMessages = await this.advisorRepo.deleteMessagesOfConversation(conversation.id, userId)
+    await this.advisorRepo.updateConversation(conversation.id, userId, { title: null })
     await this.auditService.append({ userId, action: 'WRITE', resource: 'berater_verlauf_geloescht' })
     return { deletedMessages }
   }
@@ -724,8 +818,8 @@ export class AdvisorService {
    * leave the chat. Proposals still pending there are dismissed so they can never be applied;
    * applied ones stay applied (their undo still works from the cockpit history).
    */
-  private async replaceLatestTurn(userId: string, taxYear: number, userMessageId: string): Promise<void> {
-    const visible = (await this.advisorRepo.listForUserAndYear(userId, taxYear)).filter((m) => !m.meta?.replaced)
+  private async replaceLatestTurn(userId: string, conversationId: string, userMessageId: string): Promise<void> {
+    const visible = (await this.advisorRepo.listForConversation(conversationId, userId)).filter((m) => !m.meta?.replaced)
     const lastUserIndex = visible.map((m) => m.role).lastIndexOf('user')
     if (lastUserIndex === -1 || visible[lastUserIndex]!.id !== userMessageId) {
       throw new InvalidInputError('ADVISOR_REPLACE_NOT_LATEST', 'Nur die letzte Frage lässt sich neu stellen oder bearbeiten.')

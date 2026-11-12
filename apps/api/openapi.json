@@ -1990,6 +1990,15 @@
         "operationId": "AdvisorController_getSession",
         "parameters": [
           {
+            "name": "conversationId",
+            "required": false,
+            "in": "query",
+            "description": "Which conversation to load; without it the one used last.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "jahr",
             "required": true,
             "in": "path",
@@ -2012,6 +2021,9 @@
           },
           "401": {
             "description": "Requires account."
+          },
+          "404": {
+            "description": "No such conversation in this tax year."
           }
         },
         "tags": [
@@ -2021,6 +2033,15 @@
       "delete": {
         "operationId": "AdvisorController_clearConversation",
         "parameters": [
+          {
+            "name": "conversationId",
+            "required": false,
+            "in": "query",
+            "description": "Which conversation to empty; without it the one used last.",
+            "schema": {
+              "type": "string"
+            }
+          },
           {
             "name": "jahr",
             "required": true,
@@ -2226,6 +2247,171 @@
           }
         },
         "summary": "Stop a running answer; the text so far is kept as aborted, without proposals",
+        "tags": [
+          "eulen-modus"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/advisor/conversations": {
+      "get": {
+        "operationId": "AdvisorController_listConversations",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AdvisorConversationDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "The conversations of this tax year, most recently used first (#481)",
+        "tags": [
+          "eulen-modus"
+        ]
+      },
+      "post": {
+        "operationId": "AdvisorController_createConversation",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdvisorConversationDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The tax year already holds the maximum number of conversations."
+          }
+        },
+        "summary": "Start a new conversation; an empty one that already exists is reused",
+        "tags": [
+          "eulen-modus"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/advisor/conversations/{conversationId}": {
+      "put": {
+        "operationId": "AdvisorController_renameConversation",
+        "parameters": [
+          {
+            "name": "conversationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenameAdvisorConversationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdvisorConversationDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such conversation in this tax year."
+          }
+        },
+        "summary": "Rename a conversation",
+        "tags": [
+          "eulen-modus"
+        ]
+      },
+      "delete": {
+        "operationId": "AdvisorController_deleteConversation",
+        "parameters": [
+          {
+            "name": "conversationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClearAdvisorConversationResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such conversation in this tax year."
+          },
+          "409": {
+            "description": "An answer is still running in it."
+          }
+        },
+        "summary": "Delete a conversation with its messages; values already applied to the return stay",
         "tags": [
           "eulen-modus"
         ]
@@ -8136,6 +8322,34 @@
           "sourceTranslated"
         ]
       },
+      "AdvisorConversationDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string",
+            "nullable": true,
+            "description": "From the first question; null while nothing has been asked.",
+            "example": "Lohnt sich mein Arbeitsweg?"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastUsedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "createdAt",
+          "lastUsedAt"
+        ]
+      },
       "AdvisorLegalSourceDto": {
         "type": "object",
         "properties": {
@@ -8201,6 +8415,17 @@
               "$ref": "#/components/schemas/OwlCardDto"
             }
           },
+          "conversationId": {
+            "type": "string",
+            "description": "The conversation these messages belong to (#481)."
+          },
+          "conversations": {
+            "description": "Every conversation of this tax year, most recently used first.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdvisorConversationDto"
+            }
+          },
           "messages": {
             "type": "array",
             "items": {
@@ -8224,6 +8449,8 @@
           "enabled",
           "greeting",
           "openCards",
+          "conversationId",
+          "conversations",
           "messages",
           "quickChips",
           "legalSources"
@@ -8264,6 +8491,10 @@
           "replaceFromMessageId": {
             "type": "string",
             "description": "Regenerate or edit-and-resend (#451): the id of the latest user message. That turn is replaced; its pending proposals are dismissed, never applied."
+          },
+          "conversationId": {
+            "type": "string",
+            "description": "The conversation the question belongs to (#481). Without it: the one used last in this tax year."
           }
         },
         "required": [
@@ -8316,6 +8547,18 @@
         },
         "required": [
           "deletedMessages"
+        ]
+      },
+      "RenameAdvisorConversationDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "example": "Vermietung Musterstraße"
+          }
+        },
+        "required": [
+          "title"
         ]
       },
       "SetAdvisorFeedbackDto": {

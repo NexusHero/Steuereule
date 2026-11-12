@@ -681,6 +681,17 @@ export interface OwlCardDto {
   appealDeadline?: string;
 }
 
+export interface AdvisorConversationDto {
+  id: string;
+  /**
+     * From the first question; null while nothing has been asked.
+     * @nullable
+     */
+  title: string | null;
+  createdAt: string;
+  lastUsedAt: string;
+}
+
 export type AdvisorLegalSourceDtoSourceId = typeof AdvisorLegalSourceDtoSourceId[keyof typeof AdvisorLegalSourceDtoSourceId];
 
 
@@ -709,6 +720,10 @@ export interface AdvisorSessionResponseDto {
   enabled: boolean;
   greeting: string;
   openCards: OwlCardDto[];
+  /** The conversation these messages belong to (#481). */
+  conversationId: string;
+  /** Every conversation of this tax year, most recently used first. */
+  conversations: AdvisorConversationDto[];
   messages: AdvisorChatMessageDto[];
   quickChips: string[];
   legalSources: AdvisorLegalSourceDto[];
@@ -753,6 +768,8 @@ export interface SendAdvisorMessageDto {
   quickAction?: SendAdvisorMessageDtoQuickAction;
   /** Regenerate or edit-and-resend (#451): the id of the latest user message. That turn is replaced; its pending proposals are dismissed, never applied. */
   replaceFromMessageId?: string;
+  /** The conversation the question belongs to (#481). Without it: the one used last in this tax year. */
+  conversationId?: string;
 }
 
 /**
@@ -776,6 +793,10 @@ export interface SendAdvisorMessageResponseDto {
 export interface StopAdvisorRunResponseDto {
   /** false when the run had already ended. */
   stopped: boolean;
+}
+
+export interface RenameAdvisorConversationDto {
+  title: string;
 }
 
 /**
@@ -852,6 +873,20 @@ export interface OwlCardsResponseDto {
   cards: OwlCardDto[];
   legalStatus: string;
 }
+
+export type AdvisorControllerGetSessionParams = {
+/**
+ * Which conversation to load; without it the one used last.
+ */
+conversationId?: string;
+};
+
+export type AdvisorControllerClearConversationParams = {
+/**
+ * Which conversation to empty; without it the one used last.
+ */
+conversationId?: string;
+};
 
 export type AdvisorControllerRunEventsParams = {
 after?: number;

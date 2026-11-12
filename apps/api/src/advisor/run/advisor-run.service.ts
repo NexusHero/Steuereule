@@ -100,18 +100,29 @@ export class AdvisorRunService implements OnApplicationShutdown {
     }
   }
 
-  async getSession(userId: string, taxYear: number): Promise<AdvisorSessionResponseDto> {
+  async getSession(userId: string, taxYear: number, conversationId?: string): Promise<AdvisorSessionResponseDto> {
     await this.reconcileOrphans(userId, taxYear)
-    return this.advisor.getSession(userId, taxYear)
+    return this.advisor.getSession(userId, taxYear, conversationId)
   }
 
-  async clearConversation(userId: string, taxYear: number): Promise<{ deletedMessages: number }> {
+  /** An answer that is still being written would lose the message it writes into. */
+  private async refuseWhileAnswering(userId: string, taxYear: number, conversationId: string | undefined, what: string): Promise<void> {
     await this.reconcileOrphans(userId, taxYear)
-    const messages = await this.advisorRepo.listForUserAndYear(userId, taxYear)
+    const conversation = await this.advisor.conversationFor(userId, taxYear, conversationId)
+    const messages = await this.advisorRepo.listForConversation(conversation.id, userId)
     if (messages.some((m) => m.status === 'streaming')) {
-      throw new ConflictError('ADVISOR_RUN_ACTIVE', 'Die Eule antwortet gerade noch. Stoppe die Antwort, bevor du den Verlauf leerst.')
+      throw new ConflictError('ADVISOR_RUN_ACTIVE', `Die Eule antwortet gerade noch. Stoppe die Antwort, bevor du ${what}.`)
     }
-    return this.advisor.clearConversation(userId, taxYear)
+  }
+
+  async clearConversation(userId: string, taxYear: number, conversationId?: string): Promise<{ deletedMessages: number }> {
+    await this.refuseWhileAnswering(userId, taxYear, conversationId, 'den Verlauf leerst')
+    return this.advisor.clearConversation(userId, taxYear, conversationId)
+  }
+
+  async deleteConversation(userId: string, taxYear: number, conversationId: string): Promise<{ deletedMessages: number }> {
+    await this.refuseWhileAnswering(userId, taxYear, conversationId, 'das Gespräch löschst')
+    return this.advisor.deleteConversation(userId, taxYear, conversationId)
   }
 
   /** On shutdown every run of this instance ends as aborted instead of staying `streaming`. */

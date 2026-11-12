@@ -50,7 +50,9 @@ import {
   AdvisorSessionResponseDto,
   ApplyBatchActionsDto,
   ApplyBatchActionsResponseDto,
+  AdvisorConversationDto,
   ClearAdvisorConversationResponseDto,
+  RenameAdvisorConversationDto,
   SendAdvisorMessageDto,
   SendAdvisorMessageResponseDto,
   SetAdvisorFeedbackDto,
@@ -76,11 +78,14 @@ export class AdvisorController {
   @ApiParam({ name: 'jahr', type: Number, example: 2025 })
   @ApiOkResponse({ type: AdvisorSessionResponseDto })
   @ApiUnauthorizedResponse({ description: 'Requires account.' })
+  @ApiQuery({ name: 'conversationId', required: false, type: String, description: 'Which conversation to load; without it the one used last.' })
+  @ApiNotFoundResponse({ description: 'No such conversation in this tax year.' })
   getSession(
     @CurrentUser() userId: string,
     @Param('jahr', ParseTaxYearPipe) year: number,
+    @Query('conversationId') conversationId?: string,
   ): Promise<AdvisorSessionResponseDto> {
-    return this.runs.getSession(userId, year)
+    return this.runs.getSession(userId, year, conversationId || undefined)
   }
 
   /**
@@ -244,11 +249,70 @@ export class AdvisorController {
   @ApiParam({ name: 'jahr', type: Number, example: 2025 })
   @ApiOkResponse({ type: ClearAdvisorConversationResponseDto })
   @ApiConflictResponse({ description: 'An answer is still running.' })
+  @ApiQuery({ name: 'conversationId', required: false, type: String, description: 'Which conversation to empty; without it the one used last.' })
   clearConversation(
     @CurrentUser() userId: string,
     @Param('jahr', ParseTaxYearPipe) year: number,
+    @Query('conversationId') conversationId?: string,
   ): Promise<ClearAdvisorConversationResponseDto> {
-    return this.runs.clearConversation(userId, year)
+    return this.runs.clearConversation(userId, year, conversationId || undefined)
+  }
+
+  @Get('conversations')
+  @RequiresAccount()
+  @ForbidAssistant()
+  @ApiOperation({ summary: 'The conversations of this tax year, most recently used first (#481)' })
+  @ApiParam({ name: 'jahr', type: Number, example: 2025 })
+  @ApiOkResponse({ type: [AdvisorConversationDto] })
+  listConversations(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number): Promise<AdvisorConversationDto[]> {
+    return this.service.listConversations(userId, year)
+  }
+
+  @Post('conversations')
+  @HttpCode(200)
+  @RequiresAccount()
+  @ForbidAssistant()
+  @ApiOperation({ summary: 'Start a new conversation; an empty one that already exists is reused' })
+  @ApiParam({ name: 'jahr', type: Number, example: 2025 })
+  @ApiOkResponse({ type: AdvisorConversationDto })
+  @ApiConflictResponse({ description: 'The tax year already holds the maximum number of conversations.' })
+  createConversation(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number): Promise<AdvisorConversationDto> {
+    return this.service.createConversation(userId, year)
+  }
+
+  @Put('conversations/:conversationId')
+  @RequiresAccount()
+  @ForbidAssistant()
+  @ApiOperation({ summary: 'Rename a conversation' })
+  @ApiParam({ name: 'jahr', type: Number, example: 2025 })
+  @ApiParam({ name: 'conversationId', type: String })
+  @ApiBody({ type: RenameAdvisorConversationDto })
+  @ApiOkResponse({ type: AdvisorConversationDto })
+  @ApiNotFoundResponse({ description: 'No such conversation in this tax year.' })
+  renameConversation(
+    @CurrentUser() userId: string,
+    @Param('jahr', ParseTaxYearPipe) year: number,
+    @Param('conversationId') conversationId: string,
+    @Body() dto: RenameAdvisorConversationDto,
+  ): Promise<AdvisorConversationDto> {
+    return this.service.renameConversation(userId, year, conversationId, dto.title)
+  }
+
+  @Delete('conversations/:conversationId')
+  @RequiresAccount()
+  @ForbidAssistant()
+  @ApiOperation({ summary: 'Delete a conversation with its messages; values already applied to the return stay' })
+  @ApiParam({ name: 'jahr', type: Number, example: 2025 })
+  @ApiParam({ name: 'conversationId', type: String })
+  @ApiOkResponse({ type: ClearAdvisorConversationResponseDto })
+  @ApiNotFoundResponse({ description: 'No such conversation in this tax year.' })
+  @ApiConflictResponse({ description: 'An answer is still running in it.' })
+  deleteConversation(
+    @CurrentUser() userId: string,
+    @Param('jahr', ParseTaxYearPipe) year: number,
+    @Param('conversationId') conversationId: string,
+  ): Promise<ClearAdvisorConversationResponseDto> {
+    return this.runs.deleteConversation(userId, year, conversationId)
   }
 
   @Put('messages/:messageId/feedback')

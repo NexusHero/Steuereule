@@ -13,6 +13,7 @@ import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypte
 import {
   matchesActionId,
   type AdvisorChatMessageRecord,
+  type AdvisorConversationRecord,
   type AdvisorMessageUsage,
   type AdvisorRepository,
   type CreateAdvisorMessageInput,
@@ -55,11 +56,14 @@ function toRecord(row: {
   feedbackRating: string | null
   feedbackReason: string | null
   usageJson: string | null
+  conversationId: string | null
 }): AdvisorChatMessageRecord {
   return {
     id: row.id,
     userId: row.userId,
     taxYear: row.taxYear,
+    // Every message carries a conversation since the migration of #481.
+    conversationId: row.conversationId ?? '',
     role: row.role === 'user' ? 'user' : 'assistant',
     content: row.content,
     meta: parseJson<AdvisorMessageMeta>(row.metaJson),
@@ -94,10 +98,57 @@ export class PrismaAdvisorRepository implements AdvisorRepository {
     })
   }
 
+  async listForConversation(conversationId: string, userId: string): Promise<AdvisorChatMessageRecord[]> {
+    const rows = await this.prisma.advisorChatMessage.findMany({ where: { conversationId, userId }, orderBy: { createdAt: 'asc' } })
+    return rows.map(toRecord)
+  }
+
+  async listConversations(userId: string, taxYear: number): Promise<AdvisorConversationRecord[]> {
+    return this.prisma.advisorConversation.findMany({ where: { userId, taxYear }, orderBy: { lastUsedAt: 'desc' } })
+  }
+
+  async findConversation(id: string, userId: string): Promise<AdvisorConversationRecord | null> {
+    return this.prisma.advisorConversation.findFirst({ where: { id, userId } })
+  }
+
+  async createConversation(userId: string, taxYear: number, title: string | null = null): Promise<AdvisorConversationRecord> {
+    return this.prisma.advisorConversation.create({ data: { userId, taxYear, title } })
+  }
+
+  async defaultConversation(userId: string, taxYear: number): Promise<AdvisorConversationRecord> {
+    const latest = await this.prisma.advisorConversation.findFirst({ where: { userId, taxYear }, orderBy: { lastUsedAt: 'desc' } })
+    return latest ?? this.createConversation(userId, taxYear)
+  }
+
+  async updateConversation(id: string, userId: string, change: { title?: string | null; lastUsedAt?: Date }): Promise<AdvisorConversationRecord | null> {
+    const { count } = await this.prisma.advisorConversation.updateMany({ where: { id, userId }, data: change })
+    return count === 1 ? this.findConversation(id, userId) : null
+  }
+
+  async deleteConversation(id: string, userId: string): Promise<number | null> {
+    if (!(await this.findConversation(id, userId))) return null
+    const [messages] = await this.prisma.$transaction([
+      this.prisma.advisorChatMessage.deleteMany({ where: { conversationId: id, userId } }),
+      this.prisma.advisorConversation.deleteMany({ where: { id, userId } }),
+      this.prisma.taxDataAccessLog.create({ data: { userId, action: 'WRITE', resource: 'berater_gespraech_loeschen' } }),
+    ])
+    return messages.count
+  }
+
+  async deleteMessagesOfConversation(id: string, userId: string): Promise<number> {
+    const [{ count }] = await this.prisma.$transaction([
+      this.prisma.advisorChatMessage.deleteMany({ where: { conversationId: id, userId } }),
+      this.prisma.taxDataAccessLog.create({ data: { userId, action: 'WRITE', resource: 'berater_nachricht_loeschen' } }),
+    ])
+    return count
+  }
+
   async createMessage(input: CreateAdvisorMessageInput): Promise<AdvisorChatMessageRecord> {
+    const conversationId = input.conversationId ?? (await this.defaultConversation(input.userId, input.taxYear)).id
     const [row] = await this.prisma.$transaction([
       this.prisma.advisorChatMessage.create({
         data: {
+          conversationId,
           userId: input.userId,
           taxYear: input.taxYear,
           role: input.role,
@@ -173,6 +224,7 @@ export class PrismaAdvisorRepository implements AdvisorRepository {
   async deleteForUserAndYear(userId: string, taxYear: number): Promise<number> {
     const [{ count }] = await this.prisma.$transaction([
       this.prisma.advisorChatMessage.deleteMany({ where: { userId, taxYear } }),
+      this.prisma.advisorConversation.deleteMany({ where: { userId, taxYear } }),
       this.prisma.taxDataAccessLog.create({
         data: { userId, action: 'WRITE', resource: 'berater_nachricht_loeschen' },
       }),

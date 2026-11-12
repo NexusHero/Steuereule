@@ -47,7 +47,7 @@ export class PrismaTaxDataExportRepository implements TaxDataExportRepository {
 
   async findAllForUser(userId: string): Promise<ExportTaxDataEntry[]> {
     const where = { userId }
-    const [taxYears, answers, receiptFiles, receipts, lstb, ch, pension, capital, commute, rental, assessments, markings, yearTakeovers, masterData, kinder, links, owlSetting, owlDismissals, advisorMessages] =
+    const [taxYears, answers, receiptFiles, receipts, lstb, ch, pension, capital, commute, rental, assessments, markings, yearTakeovers, masterData, kinder, links, owlSetting, owlDismissals, advisorMessages, advisorConversations] =
       await Promise.all([
         this.prisma.taxYear.findMany({ where }),
         this.prisma.interviewAnswer.findMany({ where }),
@@ -70,6 +70,7 @@ export class PrismaTaxDataExportRepository implements TaxDataExportRepository {
         this.prisma.owlSetting.findMany({ where }),
         this.prisma.owlCardDismissal.findMany({ where }),
         this.prisma.advisorChatMessage.findMany({ where }),
+        this.prisma.advisorConversation.findMany({ where }),
       ])
     // ADR-0062: household people are sealed under their own key — the export shows them readable.
     const household = await this.prisma.householdPerson.findMany({ where: { householdUserId: userId }, include: { memberships: true } })
@@ -109,6 +110,7 @@ export class PrismaTaxDataExportRepository implements TaxDataExportRepository {
       ...links.map((row) => toExportEntry('Steuerjahr-Kopplung', 'TaxYearLink', row)),
       ...owlSetting.map((row) => toExportEntry('Eulen-Modus-Einstellung', 'OwlSetting', row)),
       ...owlDismissals.map((row) => toExportEntry('Eulen-Modus-Kartenverwurf', 'OwlCardDismissal', row)),
+      ...advisorConversations.map((row) => toExportEntry('Steuerberater-Chat (Gespräche)', 'AdvisorConversation', row)),
       ...advisorMessages.map((row) => toExportEntry('Steuerberater-Chat', 'AdvisorChatMessage', row)),
       ...householdRows.map((row) => toExportEntry('Haushalt (Person)', 'HouseholdPerson', row)),
       ...partnerLinks.map((row) => toExportEntry('Partner-Verknüpfung', 'PartnerLink', row)),
