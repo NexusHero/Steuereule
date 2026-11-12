@@ -4,6 +4,7 @@ import {
   ArrayMaxSize,
   ArrayMinSize,
   IsArray,
+  IsBoolean,
   IsIn,
   IsNotEmpty,
   IsObject,
@@ -307,6 +308,9 @@ export class AdvisorMessageMetaDto implements AdvisorMessageMeta {
   })
   noteChanges?: readonly AdvisorNoteChangeDto[] | undefined
 
+  @ApiPropertyOptional({ type: Boolean, description: 'Turbo mode: the owl applied the drafts of this answer itself; each can be undone.' })
+  turbo?: true | undefined
+
   @ApiPropertyOptional({ type: AdvisorActionProposalDto })
   action?: AdvisorActionProposalDto | undefined
 
@@ -525,6 +529,11 @@ export class SendAdvisorMessageDto {
   @IsString()
   @IsIn(SCREENS)
   activeScreen?: Screen | undefined
+
+  @ApiPropertyOptional({ type: Boolean, description: 'Turbo mode: the owl applies the drafts of this answer itself instead of waiting for a click. Off by default.' })
+  @IsOptional()
+  @IsBoolean()
+  turbo?: boolean | undefined
 
   @ApiPropertyOptional({
     type: String,

@@ -12,6 +12,7 @@
 //   G  several conversations in one tax year: new, own messages each, rename, switch, delete
 //   H  the notes of the tax year: add, change, delete by hand
 //   I  the context ring: fill level, no summary of a short conversation
+//   M  Turbo: off at first, sends the flag, an answer the owl applied itself says so
 //   J  on a phone the project content opens as a sheet
 //
 // The stack is real (sign-in, session, rating, clearing). Rows E and F stub what only a model
@@ -373,6 +374,34 @@ async function main() {
     await gone(page, 'advisor-reconnecting', 'Row F', 20_000)
     if (resumes < 3) fail(`Row F: the chat should have re-attached until it got through, tried ${resumes} times`)
     console.log(`[${TAG}] ✅ Row F — a dropped stream shows "Verbindung wird wiederhergestellt", resumes after the last event and finishes`)
+
+    // Row M — Turbo (#491): off at first; on, the message carries the flag; an answer the owl applied
+    // itself says so and shows what it applied.
+    await page.unroute('**/advisor/connection')
+    await page.route('**/advisor/session*', async (route) => {
+      if (route.request().method() !== 'GET') return route.fallback()
+      const res = await route.fetch().catch(() => null)
+      if (res === null) return
+      const json = await res.json()
+      const applied = { actionId: 'turbo-1', status: 'applied', screen: 'interview', field: 'spenden-betrag', instance: null, label: 'Spenden', previousValue: '100', newValue: '300', beforeRefundEur: 0, afterRefundEur: 0, deltaEur: 0, reason: 'Stub', sourceId: 'estg-10b', appliedAt: now }
+      json.messages = [
+        { id: 'turbo-u1', role: 'user', content: 'Bitte 300 € Spenden eintragen', meta: null, createdAt: now, status: 'complete', feedback: null },
+        { id: 'turbo-a1', role: 'assistant', content: 'Erledigt.', meta: { action: applied, turbo: true }, createdAt: now, status: 'complete', feedback: null },
+      ]
+      await route.fulfill({ response: res, json })
+    })
+    await page.reload({ waitUntil: 'networkidle' })
+    await see(page, 'advisor-turbo-summary', 'Row M', 20_000)
+    if (!(await textOf(page, 'advisor-turbo-summary')).includes('1 Änderung direkt übernommen')) fail('Row M: the answer should say how many changes the owl applied')
+    const toggle = byId(page, 'advisor-turbo-toggle')
+    if ((await toggle.getAttribute('aria-checked')) !== 'false') fail('Row M: Turbo must start off')
+    await toggle.click()
+    if ((await toggle.getAttribute('aria-checked')) !== 'true') fail('Row M: the switch should turn Turbo on')
+    const sent = page.waitForRequest((request) => request.method() === 'POST' && /advisor\/(stream|runs)/.test(request.url()) && (request.postData() ?? '').includes('"turbo":true'), { timeout: 15_000 })
+    await byId(page, 'advisor-chat-input').fill('Danke')
+    await byId(page, 'advisor-chat-send').click()
+    await sent.catch(() => fail('Row M: with Turbo on, the message should carry turbo:true'))
+    console.log(`[${TAG}] ✅ Row M — Turbo: off at first, flag on send, the applied answer says so`)
 
     await page.unrouteAll({ behavior: 'ignoreErrors' })
     await ctx.close()

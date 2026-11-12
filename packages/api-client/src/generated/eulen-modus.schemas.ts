@@ -500,6 +500,8 @@ export interface AdvisorMessageMetaDto {
   notices?: AdvisorAnswerNoticeDto[];
   /** What the owl changed in the project notes in this answer; each change can be undone (#481). */
   noteChanges?: AdvisorNoteChangeDto[];
+  /** Turbo mode: the owl applied the drafts of this answer itself; each can be undone. */
+  turbo?: boolean;
   action?: AdvisorActionProposalDto;
   actions?: AdvisorActionProposalDto[];
   lstbScan?: AdvisorLstbScanMetaDto;
@@ -840,6 +842,8 @@ export const SendAdvisorMessageDtoQuickAction = {
 export interface SendAdvisorMessageDto {
   message: string;
   activeScreen?: SendAdvisorMessageDtoActiveScreen;
+  /** Turbo mode: the owl applies the drafts of this answer itself instead of waiting for a click. Off by default. */
+  turbo?: boolean;
   /** Quick start that shapes the turn: forgotten_check always opens with a visible plan (#451). */
   quickAction?: SendAdvisorMessageDtoQuickAction;
   /** Regenerate or edit-and-resend (#451): the id of the latest user message. That turn is replaced; its pending proposals are dismissed, never applied. */

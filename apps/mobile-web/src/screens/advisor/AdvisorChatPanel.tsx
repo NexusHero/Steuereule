@@ -4,6 +4,7 @@ import { ChatComposer } from './chat/ChatComposer'
 import { ThinkingIndicator } from './chat/ThinkingIndicator'
 import { ContextRing, SummaryDivider, type ContextRingState } from './chat/ContextRing'
 import { NoteChangeHints } from './chat/ProjectNotes'
+import { TurboSummary, TurboToggle } from './chat/TurboToggle'
 import { DictationBar } from './chat/DictationBar'
 import { browserDictationEngine, type DictationEngine } from '../../lib/dictation/engine'
 import { MarkdownMessage } from './chat/MarkdownMessage'
@@ -92,11 +93,14 @@ export const CHAT_COLUMN_MAX_WIDTH = 760
 export interface ChatSendOptions {
   readonly quickAction?: AdvisorQuickAction | undefined
   readonly replaceFromMessageId?: string | undefined
+  /** Turbo mode: the owl applies the drafts of this answer itself. */
+  readonly turbo?: boolean | undefined
 }
 
 /** The options as request fields, without keys that are unset (the DTO forbids explicit undefined). */
-export function sendOptionsToDto(options: ChatSendOptions | undefined): { quickAction?: AdvisorQuickAction; replaceFromMessageId?: string } {
+export function sendOptionsToDto(options: ChatSendOptions | undefined): { quickAction?: AdvisorQuickAction; replaceFromMessageId?: string; turbo?: boolean } {
   return {
+    ...(options?.turbo ? { turbo: true } : {}),
     ...(options?.quickAction ? { quickAction: options.quickAction } : {}),
     ...(options?.replaceFromMessageId ? { replaceFromMessageId: options.replaceFromMessageId } : {}),
   }
@@ -166,6 +170,9 @@ export function AdvisorChatPanel({
     }
   }, [dictationEngine])
   const [editingId, setEditingId] = useState<string | null>(null)
+  // Off in every new chat: the careful way is the default, Turbo is chosen per session.
+  const [turbo, setTurbo] = useState(false)
+  const send = (text: string, options?: ChatSendOptions) => (turbo ? onSendMessage(text, { ...options, turbo: true }) : options ? onSendMessage(text, options) : onSendMessage(text))
 
   async function handleSubmit(rawText?: string, quickAction?: AdvisorQuickAction) {
     const text = (rawText ?? inputText).trim()
@@ -173,7 +180,7 @@ export function AdvisorChatPanel({
     if (rawText === undefined) {
       setInputText('')
     }
-    await (quickAction ? onSendMessage(text, { quickAction }) : onSendMessage(text))
+    await (quickAction ? send(text, { quickAction }) : send(text))
   }
 
   // An answer that is still being written is shown by the live bubble, not from the stored list.
@@ -197,7 +204,7 @@ export function AdvisorChatPanel({
 
   function regenerate() {
     if (!canReplace || lastUser === null) return
-    void onSendMessage(lastUser.content, { replaceFromMessageId: lastUser.id })
+    void send(lastUser.content, { replaceFromMessageId: lastUser.id })
   }
 
   function startEdit() {
@@ -424,6 +431,8 @@ export function AdvisorChatPanel({
                   ))}
                 </View>
               ) : null}
+
+              {msg.meta?.turbo ? <TurboSummary count={[msg.meta.action, ...(msg.meta.actions ?? [])].filter((a) => a?.status === 'applied' || a?.status === 'undone').length} /> : null}
 
               {/* What the owl noted, replaced or forgot in this answer; each change can be taken back */}
               {msg.meta?.noteChanges && msg.meta.noteChanges.length > 0 ? (
@@ -690,7 +699,7 @@ export function AdvisorChatPanel({
                 setInputText('')
                 const replaceFromMessageId = editingId
                 setEditingId(null)
-                void (replaceFromMessageId ? onSendMessage(text, { replaceFromMessageId }) : onSendMessage(text))
+                void (replaceFromMessageId ? send(text, { replaceFromMessageId }) : send(text))
               }}
               onStop={onStop}
               sending={isSending}
@@ -716,6 +725,7 @@ export function AdvisorChatPanel({
               }
               trailing={
                 <>
+                  <TurboToggle on={turbo} onChange={setTurbo} disabled={isSending} />
                   {context ? <ContextRing context={context} onSummarize={onSummarize} busy={isSending} /> : null}
                   {microphone}
                 </>

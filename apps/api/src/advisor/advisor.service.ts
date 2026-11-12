@@ -224,6 +224,18 @@ export class AdvisorService {
     return this.facts.buildCaseDigest(userId, taxYear)
   }
 
+  /**
+   * Turbo mode: the owl applies what it prepared in this answer. The answer is already saved and
+   * complete, so a failed apply only leaves the drafts to the user.
+   */
+  private async applyTurbo(userId: string, taxYear: number, runId: string, dto: SendAdvisorMessageDto, assistant: AdvisorChatMessageRecord): Promise<AdvisorChatMessageRecord | null> {
+    if (!dto.turbo) return null
+    return this.drafts.applyPendingOf(userId, taxYear, assistant).catch((error: unknown) => {
+      this.logger.warn(`turbo apply for ${runId} failed: ${error instanceof Error ? error.name : 'unknown'}`)
+      return null
+    })
+  }
+
   async applyAction(userId: string, taxYear: number, actionId: string): Promise<AdvisorActionMutationResponseDto> {
     return this.drafts.applyAction(userId, taxYear, actionId)
   }
@@ -508,7 +520,7 @@ export class AdvisorService {
           yield { event: 'twoPaths', data: toPublicMeta({ twoPaths: enrichedMeta.twoPaths }).twoPaths! }
         }
         const assistant = await finish('complete', fallback.replyText, { ...enrichedMeta, engine: DETERMINISTIC_ENGINE })
-        yield doneWith(assistant, 'deterministic_fallback')
+        yield doneWith((await this.applyTurbo(userId, taxYear, runId, dto, assistant)) ?? assistant, 'deterministic_fallback')
         return
       }
 
@@ -583,7 +595,8 @@ export class AdvisorService {
             { ...metaWithoutNotes, ...(noteChanges.length > 0 ? { noteChanges } : {}), engine },
             turnResult.usage,
           )
-          yield doneWith(assistant, turnResult.mode)
+          const turbo = await this.applyTurbo(userId, taxYear, runId, dto, assistant)
+          yield doneWith(turbo ?? assistant, turnResult.mode)
           return
         }
 

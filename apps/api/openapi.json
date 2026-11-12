@@ -8234,6 +8234,10 @@
               "$ref": "#/components/schemas/AdvisorNoteChangeDto"
             }
           },
+          "turbo": {
+            "type": "boolean",
+            "description": "Turbo mode: the owl applied the drafts of this answer itself; each can be undone."
+          },
           "action": {
             "$ref": "#/components/schemas/AdvisorActionProposalDto"
           },
@@ -8965,6 +8969,10 @@
               "assessment"
             ],
             "example": "interview"
+          },
+          "turbo": {
+            "type": "boolean",
+            "description": "Turbo mode: the owl applies the drafts of this answer itself instead of waiting for a click. Off by default."
           },
           "quickAction": {
             "type": "string",
