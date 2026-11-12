@@ -364,10 +364,10 @@ describe('AiRuntimeConfigService & LangGraphAdvisorEngine (#446 Slice 2)', () =>
     expect(neverCalledModel.invokeCount).toBe(0)
 
     const blockedScope = await engineWithGuard.runTurn({
-      message: 'Kannst du meine Gewerbesteuer berechnen?',
+      message: 'Gib mir eine verbindliche Rechtsauskunft zu meiner Gewerbesteuer.',
       digest: sampleDigest,
     })
-    expect(blockedScope.replyText).toContain('außerhalb des Unterstützungsrahmens')
+    expect(blockedScope.replyText).toContain('verbindliche Rechtsauskunft')
     expect(neverCalledModel.invokeCount).toBe(0)
 
     // Upstream failure triggers deterministic fallback instead of 500

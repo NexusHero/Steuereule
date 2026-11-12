@@ -36,8 +36,6 @@ const WRITE_CLAIM = /\b(?:eingetragen|gespeichert|übernommen|geändert|aktualis
 const PREPARED_CLAIM = /\bvorbereitet\b|\bentw[uü]rfe?\b[^.!?\n]{0,30}\b(?:angelegt|erstellt)\b/i
 /** Words that turn a claim into a condition, a negation or a look back. */
 const NOT_A_CLAIM = /\bnicht\b|\bnichts\b|\bkein(?:e|en)?\b|\berst\b|\bsobald\b|\bwenn\b|\bnachdem\b|\bkannst\b|\bvorhin\b|\bbereits\b|\bzuvor\b|\bschon\b/i
-const OUT_OF_SCOPE = /gewerbesteuer|umsatzsteuer|ustva|voranmeldung|körperschaftsteuer|\bbilanz(?:ierung)?\b|\bgmbh\b/i
-const REFERRAL = /steuerberat|lohnsteuerhilfe/i
 const INLINE_SOURCE = /\[([a-z]+(?:-[0-9a-z]+)+)\]/g
 
 const germanInteger = (digits: string): number => Number(digits.replace(/\./g, ''))
@@ -111,11 +109,6 @@ export function checkAdvisorAnswer(input: AdvisorAnswerCheckInput): AdvisorAnswe
   const invented = [...new Set([...input.replyText.matchAll(INLINE_SOURCE)].map((m) => m[1]!))].filter((id) => !Object.hasOwn(ADVISOR_LEGAL_SOURCES, id))
   if (invented.length > 0) {
     notices.push({ kind: 'invented-source', text: `Die Quellenangabe ${invented.map((id) => `[${id}]`).join(', ')} gibt es im Quellenkatalog der App nicht. Bitte prüfe diese Aussage selbst.` })
-  }
-
-  // 5. Outside the private income tax return, the owl has to send the user on (StBerG).
-  if (OUT_OF_SCOPE.test(input.userMessage) && input.replyText.trim().length > 0 && !REFERRAL.test(input.replyText)) {
-    notices.push({ kind: 'out-of-scope', text: 'Dieses Thema gehört nicht zur privaten Einkommensteuererklärung. Die Eule darf dazu nicht beraten; wende dich bitte an eine Steuerberatung oder einen Lohnsteuerhilfeverein.' })
   }
 
   return notices

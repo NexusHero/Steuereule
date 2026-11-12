@@ -27,6 +27,8 @@ import {
 } from '@steuereule/core'
 import { checkStageValue, normalizeSourceId, validateStageTarget, type StageTargetCheck } from './advisor-safety.js'
 import { checkPiiFree } from './ki.adapter.js'
+import { ADVISOR_KNOWLEDGE } from './advisor-knowledge.generated.js'
+import { computeIncomeTax } from './advisor-income-tax.js'
 import { MAX_COMPANION_FIELDS, TOOL_LABELS, TOOL_ARG_SCHEMAS, isToolName, toolResult, RejectedDraft, MAX_DRAFTS_PER_TURN, draftKey, humanReason } from './advisor-tools.js'
 
 export const AdvisorGraphState = Annotation.Root({
@@ -404,6 +406,22 @@ export async function runToolRound(
         }),
       }
       toolMessages.push(toolResult(callId, tc.name, { ok: true, questions: questionRound.questions.length }))
+      continue
+    }
+
+    if (tc.name === 'lookup_tax_knowledge') {
+      const args = parseArgs(TOOL_ARG_SCHEMAS.lookup_tax_knowledge)
+      if (args === null) continue
+      const entry = ADVISOR_KNOWLEDGE[args.topic]
+      toolMessages.push(toolResult(callId, tc.name, { ok: true, topic: args.topic, title: entry.title, text: entry.text }))
+      continue
+    }
+
+    if (tc.name === 'compute_income_tax') {
+      const args = parseArgs(TOOL_ARG_SCHEMAS.compute_income_tax)
+      if (args === null) continue
+      const result = computeIncomeTax(args)
+      toolMessages.push(toolResult(callId, tc.name, result === null ? { ok: false, error: `Für das Jahr ${args.year} kennt der Rechenkern keinen Tarif.` } : { ok: true, ...result }))
       continue
     }
 

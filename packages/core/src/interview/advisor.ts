@@ -586,10 +586,9 @@ const OFF_TOPIC_PATTERNS = [
   /krypto.*verstecken|schwarzgeld|steuerhinterziehung|belege?\s+fälschen|fiktive\s+rechnung/i,
 ]
 
-const STBERG_OUT_OF_SCOPE_PATTERNS = [
-  /\b(gewerbesteuer|umsatzsteuervoranmeldung|bilanzierung|gmbh-gründung|erbschaftsteuer|schenkungsteuer)\b/i,
-  /\b(verbindliche\s+rechtsauskunft|rechtsverbindliche\s+beratung)\b/i,
-]
+// Topics are no longer a boundary (#499, ADR-0069): the owl advises on the user's own tax matters
+// with looked-up knowledge. What stays out is the promise of a binding legal opinion.
+const STBERG_OUT_OF_SCOPE_PATTERNS = [/\b(verbindliche\s+rechtsauskunft|rechtsverbindliche\s+beratung)\b/i]
 
 export function checkAdvisorInputBoundary(message: string): {
   readonly replyText: string
@@ -608,7 +607,7 @@ export function checkAdvisorInputBoundary(message: string): {
   if (STBERG_OUT_OF_SCOPE_PATTERNS.some((rx) => rx.test(message))) {
     return {
       replyText:
-        'Dieser Bereich (Gewerbesteuer, Bilanzierung, Umsatzsteuervoranmeldung, Erbschaftsteuer oder eine rechtsverbindliche Einzelfallberatung nach dem Steuerberatungsgesetz) liegt außerhalb des Unterstützungsrahmens von SteuerEule. Für diese Sachverhalte wende dich bitte an eine Steuerberaterin, einen Steuerberater oder einen Lohnsteuerhilfeverein. Für deine private Einkommensteuererklärung (Anlage N, N-Gre, R, KAP, V, Kind und Sonderausgaben) helfe ich dir gerne weiter.',
+        'Eine verbindliche Rechtsauskunft oder rechtsverbindliche Beratung im Sinne des Steuerberatungsgesetzes kann ich nicht geben; dafür wende dich bitte an eine Steuerberaterin oder einen Steuerberater. Ich erkläre dir aber gern die Rechtslage und rechne mit dir durch, was sie für deine Erklärung bedeutet.',
       meta: {
         choices: ['Kanzlei-Endprüfung starten', 'Homeoffice-Pauschale prüfen', 'Spenden aus dem Vorjahr prüfen'],
       },

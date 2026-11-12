@@ -152,8 +152,9 @@ export async function runScenario24(browser, webOrigin) {
   await page.locator('[data-testid="advisor-path-safe-card"]').first().waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="advisor-path-max-card"]').first().waitFor({ state: 'visible', timeout: 10_000 })
 
-  // 6. Turn 4: StBerG out-of-scope / adversarial prompt -> verify refusal without hallucinated action
-  await chatInput.fill('Kannst du meine Bilanzierung und Umsatzsteuervoranmeldung erstellen?')
+  // 6. Turn 4: a binding legal opinion is still refused with the reference to the StBerG. Tax topics
+  //    outside the return are no boundary any more (#499, ADR-0069), the promise of a binding opinion is.
+  await chatInput.fill('Gib mir eine verbindliche Rechtsauskunft zu meiner Umsatzsteuervoranmeldung.')
   await chatSend.click()
 
   await page.locator('text=Steuerberatungsgesetz').first().waitFor({ state: 'visible', timeout: 10_000 })
