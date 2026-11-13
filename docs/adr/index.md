@@ -96,6 +96,7 @@ The ADRs **justify** the architecture; the [living arc42 document](../arc42/READ
 | 0076 | Weitere Werbungskosten, Kinderbetreuung und der Arbeitgeberanteil der Prämien | Accepted |
 | 0077 | Krankheitskosten (§ 33) und haushaltsnahe Aufwendungen (§ 35a) eingeschaltet | Accepted |
 | 0078 | Handwerkerrechnungen lesen (§ 35a Abs. 3 EStG) | Accepted |
+| 0079 | Wechseljahr: deutscher und Schweizer Lohn in einem Jahr, zwei Arbeitswege | Accepted |
 
 See also the [Tech Radar](./tech-radar.md).
 

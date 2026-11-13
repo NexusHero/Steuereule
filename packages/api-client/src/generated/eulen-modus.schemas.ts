@@ -190,6 +190,7 @@ export const AdvisorActionProposalDtoSourceId = {
   'estg-9-6': 'estg-9-6',
   'estg-10b': 'estg-10b',
   'estg-10-1-5': 'estg-10-1-5',
+  'estg-35a': 'estg-35a',
   'ao-355': 'ao-355',
 } as const;
 
@@ -490,6 +491,7 @@ export const AdvisorMaxPathProposalDtoSourceId = {
   'estg-9-6': 'estg-9-6',
   'estg-10b': 'estg-10b',
   'estg-10-1-5': 'estg-10-1-5',
+  'estg-35a': 'estg-35a',
   'ao-355': 'ao-355',
 } as const;
 
@@ -576,6 +578,7 @@ export const AdvisorTwoPathsProposalDtoSourceId = {
   'estg-9-6': 'estg-9-6',
   'estg-10b': 'estg-10b',
   'estg-10-1-5': 'estg-10-1-5',
+  'estg-35a': 'estg-35a',
   'ao-355': 'ao-355',
 } as const;
 
@@ -598,6 +601,7 @@ export const AdvisorMessageMetaDtoSourcesItem = {
   'estg-9-6': 'estg-9-6',
   'estg-10b': 'estg-10b',
   'estg-10-1-5': 'estg-10-1-5',
+  'estg-35a': 'estg-35a',
   'ao-355': 'ao-355',
 } as const;
 
@@ -1096,6 +1100,7 @@ export const AdvisorLegalSourceDtoSourceId = {
   'estg-9-6': 'estg-9-6',
   'estg-10b': 'estg-10b',
   'estg-10-1-5': 'estg-10-1-5',
+  'estg-35a': 'estg-35a',
   'ao-355': 'ao-355',
 } as const;
 

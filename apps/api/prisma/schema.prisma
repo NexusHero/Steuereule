@@ -1231,6 +1231,15 @@ model Commute {
   /// a count and a region code.
   publicHolidays         Int?     @map("feiertage")
   publicHolidayRegion    String?  @map("feiertageRegion")
+  /// The period of this way to work (DD.MM.YYYY) when it did not last the whole year; a change of
+  /// job brings a second way with its own period (ADR-0079).
+  periodFrom             String?  @map("zeitraumVon")
+  periodTo               String?  @map("zeitraumBis")
+  secondOneWayKm         Int?     @map("zweiterWegKm")
+  secondTransport        String?  @map("zweiterWegVerkehrsmittel")
+  secondWorkplace        String?  @map("zweiterWegOrt") /// @encrypted?mode=strict
+  secondFrom             String?  @map("zweiterWegVon")
+  secondTo               String?  @map("zweiterWegBis")
   /// Further Werbungskosten of this person (Anlage N / N-Gre), whole euros; null = not entered.
   /// Zeile 53 / 48 (Kz 310): professional bodies, e.g. a trade union.
   professionalBodiesEur  String?  @map("berufsverbaendeEur") /// @encrypted?mode=strict

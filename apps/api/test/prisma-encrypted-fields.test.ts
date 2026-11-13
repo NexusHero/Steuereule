@@ -123,6 +123,7 @@ const EXPECTED_ENCRYPTED_FIELDS: ExpectedEncryptedField[] = [
   { model: 'Capital', field: 'solidaritaetszuschlag', encrypt: true, strictDecryption: true },
   { model: 'Capital', field: 'kirchensteuer', encrypt: true, strictDecryption: true },
   { model: 'Commute', field: 'workplace', encrypt: true, strictDecryption: true },
+  { model: 'Commute', field: 'secondWorkplace', encrypt: true, strictDecryption: true },
   { model: 'Commute', field: 'professionalBodiesEur', encrypt: true, strictDecryption: true },
   { model: 'Commute', field: 'professionalBodiesNote', encrypt: true, strictDecryption: true },
   { model: 'Commute', field: 'workEquipmentEur', encrypt: true, strictDecryption: true },

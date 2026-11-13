@@ -171,6 +171,35 @@ describe('SteuerschaetzungService', () => {
     expect(status.result.to).toBeLessThan(0)
   })
 
+  it('adds a German employer’s certificate of the same year to a Grenzgänger’s Swiss wage (change of job, ADR-0079)', async () => {
+    const seed = (env: ReturnType<typeof setup>) => {
+      env.interview.seed('u', 2025, { ...EMPLOYED, ausland: 'Ja, in die Schweiz', 'ch-wohnsitz': 'Deutschland', 'ch-nichtrueckkehrtage': '0' })
+      env.ch.seed({
+        userId: 'u',
+        taxYear: 2025,
+        fields: { 'bruttolohn-total': '20000', 'ahv-beitraege': '1480', 'berufliche-vorsorge': '1200', quellensteuer: '900' } as CrossBorderSalaryStatementRecord['fields'],
+        bemerkungen: null,
+        saeule3aChf: null,
+        krankenkasseChf: null,
+        exchangeRateMonth: '2025',
+        exchangeRateValue: 1.065,
+        exchangeRateMode: 'jahresdurchschnitt',
+        exchangeRateReceiptId: null,
+        nGre: { familienzulagenChf: 0, krankentaggeldChf: 0, pkArbeitnehmerChf: 470, pkArbeitgeberChf: 470 } as unknown as CrossBorderSalaryStatementRecord['nGre'],
+      })
+    }
+    const swissOnly = setup()
+    seed(swissOnly)
+    const both = setup()
+    seed(both)
+    both.lstb.seed({ userId: 'u', taxYear: 2025, bruttoarbeitslohn: '70000', lohnsteuer: '15000', sozialversicherung: '14000' })
+
+    const a = range(await swissOnly.service.getState('u', 2025))
+    const b = range(await both.service.getState('u', 2025))
+    expect(b.anrechnung).toBe(a.anrechnung + 15000)
+    expect(b.taxableIncome.from).toBeGreaterThan(a.taxableIncome.from + 50000)
+  })
+
   it('names the missing Pensionskasse Obligatorium instead of guessing the Altersvorsorge', async () => {
     const { interview, ch, service } = setup()
     interview.seed('u', 2025, { ...EMPLOYED, ausland: 'Ja, in die Schweiz', 'ch-wohnsitz': 'Deutschland', 'ch-nichtrueckkehrtage': '0' })

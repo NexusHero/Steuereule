@@ -558,6 +558,138 @@
       }
     },
     {
+      "id": "anlN.wegVon",
+      "formular": "anlage-n",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 411.6,
+        "y": 587.9,
+        "breite": 54.5,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlN.wegBis",
+      "formular": "anlage-n",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 480.5,
+        "y": 587.9,
+        "breite": 54.8,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlN.weg2Art",
+      "formular": "anlage-n",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 39.1,
+        "y": 381.1,
+        "breite": 12.1,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlN.weg2Ort",
+      "formular": "anlage-n",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 154.6,
+        "y": 376.7,
+        "breite": 240.8,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlN.weg2Von",
+      "formular": "anlage-n",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 411.6,
+        "y": 376.7,
+        "breite": 54.8,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlN.weg2Bis",
+      "formular": "anlage-n",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 480.5,
+        "y": 376.7,
+        "breite": 54.8,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlN.weg2TageJeWoche",
+      "formular": "anlage-n",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 96.1,
+        "y": 347.4,
+        "breite": 40.9,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlN.weg2FreieTage",
+      "formular": "anlage-n",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 244.4,
+        "y": 347.4,
+        "breite": 40.7,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlN.kz130Tage",
+      "formular": "anlage-n",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 473.6,
+        "y": 326.8,
+        "breite": 40.6,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlN.kz131",
+      "formular": "anlage-n",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 473.6,
+        "y": 306.5,
+        "breite": 40.6,
+        "hoehe": 15.9
+      }
+    },
+    {
+      "id": "anlN.kz132",
+      "formular": "anlage-n",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 473.6,
+        "y": 286.4,
+        "breite": 40.6,
+        "hoehe": 15.8
+      }
+    },
+    {
       "id": "anlR.name",
       "formular": "anlage-r",
       "seite": 1,
@@ -1561,6 +1693,138 @@
       "kasten": {
         "x": 473.6,
         "y": 382.7,
+        "breite": 40.6,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlNGre.wegVon",
+      "formular": "anlage-n-gre",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 411.6,
+        "y": 472.6,
+        "breite": 55.1,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlNGre.wegBis",
+      "formular": "anlage-n-gre",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 480.5,
+        "y": 472.6,
+        "breite": 55.1,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlNGre.weg2Art",
+      "formular": "anlage-n-gre",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 39.1,
+        "y": 265.8,
+        "breite": 12.1,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlNGre.weg2Ort",
+      "formular": "anlage-n-gre",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 154.6,
+        "y": 261.2,
+        "breite": 240.8,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlNGre.weg2Von",
+      "formular": "anlage-n-gre",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 411.6,
+        "y": 261.2,
+        "breite": 55.1,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlNGre.weg2Bis",
+      "formular": "anlage-n-gre",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 480.5,
+        "y": 261.2,
+        "breite": 55.1,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlNGre.weg2TageJeWoche",
+      "formular": "anlage-n-gre",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 96.1,
+        "y": 232,
+        "breite": 40.7,
+        "hoehe": 15.9
+      }
+    },
+    {
+      "id": "anlNGre.weg2FreieTage",
+      "formular": "anlage-n-gre",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 244.5,
+        "y": 232,
+        "breite": 40.7,
+        "hoehe": 15.9
+      }
+    },
+    {
+      "id": "anlNGre.kz130Tage",
+      "formular": "anlage-n-gre",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 473.6,
+        "y": 211.8,
+        "breite": 40.6,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlNGre.kz131",
+      "formular": "anlage-n-gre",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 473.6,
+        "y": 191.6,
+        "breite": 40.6,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlNGre.kz132",
+      "formular": "anlage-n-gre",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 473.6,
+        "y": 171.3,
         "breite": 40.6,
         "hoehe": 15.8
       }

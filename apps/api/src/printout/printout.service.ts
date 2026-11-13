@@ -14,7 +14,9 @@ import {
   type CrossBorderStatus,
   type HealthInsurance,
   effectivePublicHolidays,
+  commuteDaysByWay,
 } from '@steuereule/core'
+import { waysToWork } from '../commute/ways-to-work.js'
 import { COMMUTE_REPOSITORY, type CommuteInputs, type CommuteRepository } from '../commute/commute.repository.js'
 import { AuditService } from '../audit/audit.service.js'
 import { CROSS_BORDER_SALARY_STATEMENT_REPOSITORY, type CrossBorderSalaryStatementRecord, type CrossBorderSalaryStatementRepository } from '../ch-salary-certificate/ch-salary-certificate.repository.js'
@@ -328,13 +330,25 @@ function commuteFacts(year: number, inputs: CommuteInputs | null): CommuteFacts 
     publicHolidays: effectivePublicHolidays(year, inputs),
   })
   if (result.kind !== 'bestimmt') return null
+  // Two ways after a change of job share the year's commute days by the time each lasted (ADR-0079).
+  const ways = waysToWork(inputs)
+  const days = commuteDaysByWay(year, inputs.workdays, result.commuteDays, ways)
+  const hasFirst = inputs.oneWayKm !== null && inputs.transport !== null
+  const secondWay = hasFirst ? ways[1] : ways[0]
+  const secondDays = hasFirst ? days[1] : days[0]
   return {
     workdaysPerWeek: inputs.workdays.length,
     daysOff: inputs.vacationDays + inputs.sickDays + inputs.homeOfficeDays,
-    commuteDays: result.commuteDays,
+    commuteDays: hasFirst ? (days[0] ?? result.commuteDays) : result.commuteDays,
     oneWayKm: inputs.oneWayKm,
     withCar: inputs.transport === 'pkw',
     workplace: inputs.workplace,
+    from: inputs.periodFrom ?? null,
+    to: inputs.periodTo ?? null,
+    second:
+      secondWay && secondDays !== undefined
+        ? { commuteDays: secondDays, oneWayKm: secondWay.oneWayKm, withCar: secondWay.withCar, workplace: inputs.secondWorkplace ?? null, from: secondWay.from, to: secondWay.to }
+        : null,
     workExpenses,
   }
 }

@@ -1145,6 +1145,16 @@ export const appResources = {
           arbeitsort: 'Arbeitsort (PLZ, Ort, Straße)',
           arbeitsortPlaceholder: '79539 Lörrach, Hauptstraße 1',
           pauschale: 'Entfernungspauschale',
+          wechsel: {
+            frage: 'Arbeitsstelle im Jahr gewechselt?',
+            ja: 'Ja, im Jahr gewechselt',
+            hilfe: 'Dann zählen beide Wege, jeder für seine Zeit. Bei einem Wechsel in die Schweiz kommt der neue Weg in die Anlage N-Gre.',
+            bis: 'Bisheriger Weg bis',
+            titel: 'Neuer Weg zur Arbeit',
+            ab: 'Neuer Weg ab',
+            datumPlaceholder: 'TT.MM.JJJJ',
+            datumFehler: 'Bitte als TT.MM.JJJJ eingeben.',
+          },
         },
       },
       abgabe: {
@@ -3159,6 +3169,16 @@ export const appResources = {
           arbeitsort: 'Workplace (postcode, town, street)',
           arbeitsortPlaceholder: '79539 Lörrach, Hauptstraße 1',
           pauschale: 'Commuting allowance',
+          wechsel: {
+            frage: 'Changed jobs during the year?',
+            ja: 'Yes, changed during the year',
+            hilfe: 'Then both ways count, each for its own time. After a move to a Swiss employer the new way goes into the Anlage N-Gre.',
+            bis: 'Previous way until',
+            titel: 'New way to work',
+            ab: 'New way from',
+            datumPlaceholder: 'DD.MM.YYYY',
+            datumFehler: 'Please enter as DD.MM.YYYY.',
+          },
         },
       },
       abgabe: {

@@ -32,6 +32,22 @@ export type SpouseIncome =
       readonly commuteAllowance: number
       readonly selfPaidHealthCare: number
     }
+  | {
+      /**
+       * A year with both: a German employer with a Lohnsteuerbescheinigung and a Swiss one as a
+       * Grenzgänger (a change of job). One Arbeitnehmer-Pauschbetrag, both credits (ADR-0079).
+       */
+      readonly kind: 'mixed'
+      readonly grossWage: number
+      readonly wageTax: number
+      readonly socialSecurity: number
+      readonly wageEur: number
+      readonly swissWithholdingEur: number
+      readonly pensionContributionsEur: number
+      readonly otherProvisionEur: number
+      readonly commuteAllowance: number
+      readonly selfPaidHealthCare: number
+    }
 
 export interface MarriedEstimateInput {
   readonly year: number
@@ -104,6 +120,17 @@ function spouseFigures(s: SpouseIncome, year: number): SpouseFigures {
     Math.min(params.maxOtherProvisionEur, s.selfPaidHealthCare + s.otherProvisionEur),
   )
   const werbungskosten = Math.max(params.lumpSums.employee, s.commuteAllowance)
+  if (s.kind === 'mixed') {
+    return {
+      werbungskosten,
+      income: s.grossWage + s.wageEur - werbungskosten,
+      provision: {
+        from: Math.round(s.socialSecurity * SOCIAL_SECURITY_DEDUCTIBLE.from) + s.pensionContributionsEur + s.selfPaidHealthCare,
+        to: Math.round(s.socialSecurity * SOCIAL_SECURITY_DEDUCTIBLE.to) + s.pensionContributionsEur + other,
+      },
+      credit: s.wageTax + solidaritaetszuschlag(s.wageTax, soliExemptionLimits(year as never).single) + s.swissWithholdingEur,
+    }
+  }
   return {
     werbungskosten,
     income: s.wageEur - werbungskosten,

@@ -510,6 +510,38 @@ describe('ausdruckWerte', () => {
       })
     })
 
+    it('splits a change from a German to a Swiss employer: first way in the Anlage N, second in the N-Gre (ADR-0079)', () => {
+      const { values } = printoutValues({
+        ...FACTS,
+        bruttoarbeitslohn: '40000',
+        chSalaryCertificate: CH,
+        commute: {
+          workdaysPerWeek: 5, daysOff: 30, commuteDays: 180, oneWayKm: 12, withCar: true, workplace: '78000 Musterstadt',
+          from: '01.01.2025', to: '31.10.2025',
+          second: { commuteDays: 36, oneWayKm: 80, withCar: true, workplace: '4058 Basel', from: '01.11.2025', to: '31.12.2025' },
+          workExpenses: { professionalBodiesEur: null, professionalBodiesNote: null, workEquipmentEur: null, workEquipmentNote: null, accountFeesEur: 16, otherWorkExpensesEur: null, otherWorkExpensesNote: null },
+        },
+      })
+      expect(values).toMatchObject({
+        'anlN.kz110Tage': '180', 'anlN.kz111': '12', 'anlN.wegVon': '01.01.', 'anlN.wegBis': '31.10.', 'anlN.kz380': '16',
+        'anlNGre.kz110Tage': '36', 'anlNGre.kz111': '80', 'anlNGre.wegOrt': '4058 Basel', 'anlNGre.wegVon': '01.11.', 'anlNGre.wegBis': '31.12.',
+      })
+      expect(values['anlN.kz131']).toBeUndefined()
+      expect(values['anlNGre.kz380']).toBeUndefined()
+    })
+
+    it('prints two ways in one form as its 1. and 2. Angabe when both are German', () => {
+      const { values } = printoutValues({
+        ...FACTS,
+        commute: {
+          workdaysPerWeek: 5, daysOff: 30, commuteDays: 150, oneWayKm: 12, withCar: true, workplace: '78000 Musterstadt', from: null, to: '31.07.2025',
+          second: { commuteDays: 66, oneWayKm: 30, withCar: false, workplace: '79000 Beispielort', from: '01.08.2025', to: null },
+        },
+      })
+      expect(values).toMatchObject({ 'anlN.kz110Tage': '150', 'anlN.wegBis': '31.07.', 'anlN.weg2Art': '1', 'anlN.kz130Tage': '66', 'anlN.kz131': '30', 'anlN.weg2Von': '01.08.' })
+      expect(values['anlN.kz132']).toBeUndefined()
+    })
+
     it('prints a cross-border commuter’s further Werbungskosten in the Anlage N-Gre (Z. 48–51, 57–59)', () => {
       const { values } = printoutValues({
         ...FACTS,

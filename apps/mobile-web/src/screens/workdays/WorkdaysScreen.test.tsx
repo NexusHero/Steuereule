@@ -169,6 +169,11 @@ describe('ArbeitstageScreen', () => {
         accountFeesEur: null,
         otherWorkExpensesEur: null,
         otherWorkExpensesNote: null,
+        periodTo: null,
+        secondOneWayKm: null,
+        secondTransport: null,
+        secondWorkplace: null,
+        secondFrom: null,
       },
     ])
   })
@@ -189,6 +194,45 @@ describe('ArbeitstageScreen', () => {
     fireEvent.click(screen.getByText('Weiter'))
     await waitFor(() => expect(onDone).toHaveBeenCalledOnce())
     expect(bodies.at(-1)).toMatchObject({ workEquipmentEur: 110, workEquipmentNote: 'Berufskleidung', accountFeesEur: 16, professionalBodiesEur: null })
+  })
+
+  it('saves a change of job during the year as a second way with its dates (ADR-0079)', async () => {
+    const bodies: Record<string, unknown>[] = []
+    server.use(
+      http.put('*/v1/steuerjahre/2025/arbeitsweg', async ({ request }) => {
+        bodies.push((await request.json()) as Record<string, unknown>)
+        return HttpResponse.json({ inputs: null, workdays: null, commuterAllowance: null }, { status: 200 })
+      }),
+    )
+    const onDone = vi.fn()
+    renderWorkdays(onDone, 2025)
+    fireEvent.change(await screen.findByTestId('arbeitstage-km'), { target: { value: '12' } })
+    fireEvent.click(screen.getByTestId('arbeitstage-transport-pkw'))
+    fireEvent.click(screen.getByTestId('arbeitsweg-wechsel'))
+    fireEvent.change(screen.getByTestId('arbeitsweg-bis'), { target: { value: '31.10.2025' } })
+    fireEvent.change(screen.getByTestId('arbeitsweg-zweiter-ab'), { target: { value: '01.11.2025' } })
+    fireEvent.change(screen.getByTestId('arbeitsweg-zweiter-km'), { target: { value: '80' } })
+    fireEvent.click(screen.getByTestId('arbeitsweg-zweiter-transport-pkw'))
+    fireEvent.click(screen.getByText('Weiter'))
+    await waitFor(() => expect(onDone).toHaveBeenCalledOnce())
+    expect(bodies.at(-1)).toMatchObject({ oneWayKm: 12, periodTo: '31.10.2025', secondOneWayKm: 80, secondTransport: 'pkw', secondFrom: '01.11.2025' })
+  })
+
+  it('holds back a half-typed date instead of saving it', async () => {
+    const bodies: unknown[] = []
+    server.use(
+      http.put('*/v1/steuerjahre/2025/arbeitsweg', async ({ request }) => {
+        bodies.push(await request.json())
+        return HttpResponse.json({ inputs: null, workdays: null, commuterAllowance: null }, { status: 200 })
+      }),
+    )
+    renderWorkdays(() => {}, 2025)
+    fireEvent.click(await screen.findByTestId('arbeitsweg-wechsel'))
+    fireEvent.change(screen.getByTestId('arbeitsweg-bis'), { target: { value: '31.10.' } })
+    fireEvent.click(screen.getByText('Weiter'))
+
+    expect(await screen.findByText('Bitte als TT.MM.JJJJ eingeben.')).toBeTruthy()
+    expect(bodies).toHaveLength(0)
   })
 
   it('invalidates commute, cockpitSummary, and taxEstimate after saving before calling onDone', async () => {

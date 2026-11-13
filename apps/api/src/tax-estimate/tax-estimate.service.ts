@@ -10,7 +10,6 @@ import {
   gatedIncomeTypes,
   wageTaxCertificateStatus,
   openSalaryCertificateFields,
-  commuterAllowance,
   taxEstimateEmployee,
   homeOfficeAllowance,
   churchMembership,
@@ -37,6 +36,7 @@ import {
 } from '@steuereule/core'
 import { HOUSEHOLD_AND_HEALTH_BOOSTERS } from '../config/features.js'
 import { COMMUTE_REPOSITORY, type CommuteInputs, type CommuteRepository } from '../commute/commute.repository.js'
+import { allowanceOverWays } from '../commute/ways-to-work.js'
 import { CROSS_BORDER_SALARY_STATEMENT_REPOSITORY, type CrossBorderSalaryStatementRepository } from '../ch-salary-certificate/ch-salary-certificate.repository.js'
 import { crossBorderStatusFromAnswers, salaryCertificateValuesFromRecord, exchangeRateFromRecord, nGreInputFromRecord } from '../ch-salary-certificate/salary-certificate-data.js'
 import { INTERVIEW_ANSWER_REPOSITORY, type InterviewAnswerRepository } from '../interview/interview-answer.repository.js'
@@ -133,9 +133,12 @@ export class TaxEstimateService {
       if (missing.length > 0 || exchangeRate === null || !chRecord) return { kind: 'offen', missing }
       const rows = annexNGreAmounts(nGreInputFromRecord(chRecord, exchangeRate)).eur
       const krankenkasseChf = chRecord?.krankenkasseChf === null || chRecord?.krankenkasseChf === undefined ? 0 : Number(chRecord.krankenkasseChf)
+      // A change of job during the year: the German employer's certificate counts as well (ADR-0079).
+      const germanWage = completeGermanWage(lstbRecord)
       return withEstimateExtras(
         taxEstimateCrossBorder({
           year,
+          ...(germanWage ? { germanWage: { gross: germanWage.bruttoarbeitslohn, wageTax: germanWage.lohnsteuer, socialSecurity: germanWage.sozialversicherung } } : {}),
           wageEur: rows.z23,
           withholdingTaxEur: rows.z25,
           retirementProvisionEur: rows.z85,
@@ -290,6 +293,25 @@ export class TaxEstimateService {
       if (missing.length > 0 || exchangeRate === null) return { kind: 'offen', missing }
       const rows = annexNGreAmounts(nGreInputFromRecord(chRecord, exchangeRate)).eur
       const krankenkasseChf = chRecord.krankenkasseChf === null || chRecord.krankenkasseChf === undefined ? 0 : Number(chRecord.krankenkasseChf)
+      const germanWage = completeGermanWage(lstbRecord)
+      const crossBorder = {
+        wageEur: rows.z23,
+        swissWithholdingEur: rows.z25,
+        pensionContributionsEur: rows.z85,
+        otherProvisionEur: rows.z82,
+        commuteAllowance: allowance + numbers.relocationCosts + numbers.trainingCosts,
+        selfPaidHealthCare: Math.round(chfToEur(krankenkasseChf, exchangeRate.rate)) + numbers.healthCareContributions,
+      }
+      if (germanWage) {
+        // A change of job during the year: both employers' wages and both credits (ADR-0079).
+        return {
+          kind: 'ok',
+          donations: numbers.donations,
+          laterCount,
+          answers,
+          spouse: { kind: 'mixed', grossWage: germanWage.bruttoarbeitslohn, wageTax: germanWage.lohnsteuer, socialSecurity: germanWage.sozialversicherung, ...crossBorder },
+        }
+      }
       return {
         kind: 'ok',
         donations: numbers.donations,
@@ -325,6 +347,13 @@ export class TaxEstimateService {
       },
     }
   }
+}
+
+/** The German certificate of the year when it is complete and consistent; otherwise it stays out. */
+function completeGermanWage(record: Parameters<typeof wageTaxCertificateDataFrom>[0] | null) {
+  if (record === null) return null
+  const state = wageTaxCertificateStatus(wageTaxCertificateDataFrom(record))
+  return state.kind === 'vollstaendig' ? state : null
 }
 
 function countLaterAmounts(answers: Answers, boostersEnabled: boolean): number {
@@ -364,7 +393,7 @@ function specialCircumstance(answers: Answers): boolean {
 }
 
 function commuterAllowanceFrom(year: number, path: CommuteInputs | null): number {
-  if (path === null || path.oneWayKm === null || path.transport === null) return 0
+  if (path === null) return 0
   const days = calculateWorkdays({
     year,
     workdays: path.workdays,
@@ -375,7 +404,7 @@ function commuterAllowanceFrom(year: number, path: CommuteInputs | null): number
   })
   if (days.kind !== 'bestimmt') return 0
   try {
-    return commuterAllowance({ oneWayKm: path.oneWayKm, days: days.commuteDays, year, withCar: path.transport === 'pkw' })
+    return allowanceOverWays(year, path, days.commuteDays) ?? 0
   } catch {
     return 0
   }

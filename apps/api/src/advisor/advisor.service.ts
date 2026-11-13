@@ -1117,11 +1117,12 @@ export class AdvisorService {
   /** Values of receipt drafts still waiting on this screen (newest first wins), for the fields that add up. */
   private async pendingReceiptValues(userId: string, taxYear: number, screen: Screen): Promise<Map<string, string>> {
     const values = new Map<string, string>()
-    for (const message of [...(await this.advisorRepo.listForUserAndYear(userId, taxYear))].reverse()) {
+    // Oldest to newest, so a newer draft overwrites an older one.
+    for (const message of await this.advisorRepo.listForUserAndYear(userId, taxYear)) {
       const action = message.meta?.action
       if (!action || action.status !== 'pending' || action.screen !== screen || action.person === 'B') continue
-      if (!values.has(action.field)) values.set(action.field, action.newValue)
-      for (const [field, value] of Object.entries(action.companionFields ?? {})) if (!values.has(field)) values.set(field, value)
+      values.set(action.field, action.newValue)
+      for (const [field, value] of Object.entries(action.companionFields ?? {})) values.set(field, value)
     }
     return values
   }

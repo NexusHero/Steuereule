@@ -1,6 +1,6 @@
-import { WORK_EXPENSE_AMOUNT_FIELDS, WORK_EXPENSE_NOTE_FIELDS, type CommuteInputs, type CommuteRepository } from '../../src/commute/commute.repository.js'
+import { WAY_TEXT_FIELDS, WORK_EXPENSE_AMOUNT_FIELDS, WORK_EXPENSE_NOTE_FIELDS, type CommuteInputs, type CommuteRepository } from '../../src/commute/commute.repository.js'
 
-const WORK_EXPENSE_KEYS: ReadonlySet<string> = new Set([...WORK_EXPENSE_AMOUNT_FIELDS, ...WORK_EXPENSE_NOTE_FIELDS])
+const WORK_EXPENSE_KEYS: ReadonlySet<string> = new Set([...WORK_EXPENSE_AMOUNT_FIELDS, ...WORK_EXPENSE_NOTE_FIELDS, ...WAY_TEXT_FIELDS, 'secondOneWayKm'])
 
 export class FakeCommuteRepository implements CommuteRepository {
   private readonly store = new Map<string, CommuteInputs>()

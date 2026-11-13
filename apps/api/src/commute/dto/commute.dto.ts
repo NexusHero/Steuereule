@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
-import { ArrayMaxSize, ArrayUnique, IsArray, IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator'
+import { ArrayMaxSize, ArrayUnique, IsArray, IsIn, IsInt, IsOptional, IsString, Matches, Max, MaxLength, Min } from 'class-validator'
 import { MEANS_OF_TRANSPORT, type MeansOfTransport } from '../commute.repository.js'
 
 export class CommuteInputsDto {
@@ -106,6 +106,44 @@ export class CommuteInputsDto {
   @IsString()
   @MaxLength(100)
   otherWorkExpensesNote?: string | null
+
+  @ApiPropertyOptional({ type: String, nullable: true, example: '01.01.2024', description: 'This way to work from (DD.MM.YYYY), when not the whole year (ADR-0079).' })
+  @IsOptional()
+  @Matches(/^\d{2}\.\d{2}\.\d{4}$/)
+  periodFrom?: string | null
+
+  @ApiPropertyOptional({ type: String, nullable: true, example: '31.10.2024', description: 'This way to work until (DD.MM.YYYY).' })
+  @IsOptional()
+  @Matches(/^\d{2}\.\d{2}\.\d{4}$/)
+  periodTo?: string | null
+
+  @ApiPropertyOptional({ type: Number, nullable: true, example: 87, description: 'A second way to work after a change of job: one-way km.' })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(999)
+  secondOneWayKm?: number | null
+
+  @ApiPropertyOptional({ type: String, enum: MEANS_OF_TRANSPORT, nullable: true })
+  @IsOptional()
+  @IsIn(MEANS_OF_TRANSPORT)
+  secondTransport?: MeansOfTransport | null
+
+  @ApiPropertyOptional({ type: String, nullable: true, example: '8050 Zürich, Birchstrasse 155' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  secondWorkplace?: string | null
+
+  @ApiPropertyOptional({ type: String, nullable: true, example: '01.11.2024' })
+  @IsOptional()
+  @Matches(/^\d{2}\.\d{2}\.\d{4}$/)
+  secondFrom?: string | null
+
+  @ApiPropertyOptional({ type: String, nullable: true, example: '31.12.2024' })
+  @IsOptional()
+  @Matches(/^\d{2}\.\d{2}\.\d{4}$/)
+  secondTo?: string | null
 }
 
 export class WorkdaysDto {

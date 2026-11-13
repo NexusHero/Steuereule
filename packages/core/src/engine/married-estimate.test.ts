@@ -152,3 +152,31 @@ describe('Werbungskosten of the couple', () => {
     expect(estimateMarriedCouple({ ...WEBER, a: crossBorder, b: EMPLOYEE_B })).toMatchObject({ werbungskosten: 6900 + 1230 })
   })
 })
+
+describe('a change of job from a German to a Swiss employer (ADR-0079)', () => {
+  const cross = { kind: 'crossBorder', wageEur: 21000, swissWithholdingEur: 940, pensionContributionsEur: 1400, otherProvisionEur: 280, commuteAllowance: 0, selfPaidHealthCare: 0 } as const
+  const mixed = {
+    kind: 'mixed',
+    grossWage: 70000,
+    wageTax: 15000,
+    socialSecurity: 14000,
+    wageEur: cross.wageEur,
+    swissWithholdingEur: cross.swissWithholdingEur,
+    pensionContributionsEur: cross.pensionContributionsEur,
+    otherProvisionEur: cross.otherProvisionEur,
+    commuteAllowance: 3000,
+    selfPaidHealthCare: 0,
+  } as const
+
+  it('taxes both wages and credits both the German wage tax and the Swiss withholding tax', () => {
+    const both = range({ ...WEBER, rentalSurplus: 0, a: mixed })
+    const swissOnly = range({ ...WEBER, rentalSurplus: 0, a: { ...cross, commuteAllowance: 3000 } })
+    expect(both.taxableIncome.from).toBeGreaterThan(swissOnly.taxableIncome.from + 50000)
+    expect(both.anrechnung).toBe(swissOnly.anrechnung + 15000)
+  })
+
+  it('takes the Arbeitnehmer-Pauschbetrag once for the person, not once per employer', () => {
+    const lowCommute = range({ ...WEBER, rentalSurplus: 0, a: { ...mixed, commuteAllowance: 0 } })
+    expect(lowCommute.werbungskosten).toBe(1230 + 1230)
+  })
+})

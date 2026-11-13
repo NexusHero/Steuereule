@@ -247,6 +247,7 @@ interface NGreResult {
 function nGreValues(
   ch: ChSalaryCertificateFacts | null | undefined,
   commute: CommuteFacts | null | undefined,
+  hasGermanWage: boolean,
   role: 'A' | 'B',
   header: { name: string | null; firstName: string | null; beruf: string | null; steuernummer: string | null },
 ): NGreResult | null {
@@ -296,7 +297,7 @@ function nGreValues(
     values[`anlNGre.${rows[1]}Arbeitgeber`] = String(teil.employerChf)
     values[`anlNGre.${rows[1]}Arbeitnehmer`] = String(teil.employeeChf)
   }
-  Object.assign(values, commuteValues(commute, 'anlNGre'))
+  Object.assign(values, commuteValues(commute, 'anlNGre', waysInNGre(commute, hasGermanWage)))
   set('anlNGre.arbeitgeberName', ch.arbeitgeberName)
   set('anlNGre.arbeitgeberStrasse', ch.arbeitgeberStrasse)
   set('anlNGre.arbeitgeberPlzOrt', ch.arbeitgeberPlzOrt)
@@ -321,9 +322,29 @@ export interface CommuteFacts {
   oneWayKm: number | null
   withCar: boolean
   workplace: string | null
+  /** When this way did not last the whole year (DD.MM.YYYY) (ADR-0079). */
+  from?: string | null
+  to?: string | null
+  /** A second way after a change of job, with its share of the commute days. */
+  second?: SecondWayFacts | null
   /** Further Werbungskosten of the same person (ADR-0076), whole euros and what they were. */
   workExpenses?: WorkExpenseFacts | null
 }
+
+export interface SecondWayFacts {
+  commuteDays: number
+  oneWayKm: number
+  withCar: boolean
+  workplace: string | null
+  from: string | null
+  to: string | null
+}
+
+/**
+ * Which ways a form gets: both (1. and 2. Angabe), or for someone who changed from a German to a Swiss
+ * employer the first way in the Anlage N and the second in the Anlage N-Gre (ADR-0079).
+ */
+export type WaysInForm = 'all' | 'first' | 'second'
 
 export interface WorkExpenseFacts {
   professionalBodiesEur: number | null
@@ -367,21 +388,67 @@ function workExpenseValues(x: WorkExpenseFacts | null | undefined, prefix: 'anlN
   return values
 }
 
-/** Anlage N Z. 27–31 and Anlage N-Gre Z. 32–36 ask the same facts under their own field prefix. */
-function commuteValues(a: CommuteFacts | null | undefined, prefix: 'anlN' | 'anlNGre' = 'anlN'): Record<string, string> {
-  if (!a) return {}
-  if (a.oneWayKm === null) return workExpenseValues(a.workExpenses, prefix)
+/** The form's vom/bis boxes take day and month („01.11.“); the year is the tax year. */
+const dayAndMonth = (date: string | null | undefined): string | null => (date && /^\d{2}\.\d{2}\./.test(date) ? date.slice(0, 6) : null)
+
+interface OneWay {
+  commuteDays: number
+  oneWayKm: number
+  withCar: boolean
+  workplace: string | null
+  from: string | null
+  to: string | null
+}
+
+/** One way in the 1. Angabe (Kz 110–112) or the 2. Angabe (Kz 130–132) of the form. */
+function wayValues(way: OneWay, workdaysPerWeek: number, daysOff: number, prefix: 'anlN' | 'anlNGre', slot: 1 | 2): Record<string, string> {
+  const [w, kzDays, kzKm, kzCar] = slot === 1 ? ['weg', 'kz110Tage', 'kz111', 'kz112'] : ['weg2', 'kz130Tage', 'kz131', 'kz132']
   const values: Record<string, string> = {
-    ...workExpenseValues(a.workExpenses, prefix),
-    [`${prefix}.wegArt`]: '1',
-    [`${prefix}.wegTageJeWoche`]: String(a.workdaysPerWeek),
-    [`${prefix}.wegFreieTage`]: String(a.daysOff),
-    [`${prefix}.kz110Tage`]: String(a.commuteDays),
-    [`${prefix}.kz111`]: String(a.oneWayKm),
+    [`${prefix}.${w}Art`]: '1',
+    [`${prefix}.${w}TageJeWoche`]: String(workdaysPerWeek),
+    [`${prefix}.${w}FreieTage`]: String(daysOff),
+    [`${prefix}.${kzDays}`]: String(way.commuteDays),
+    [`${prefix}.${kzKm}`]: String(way.oneWayKm),
   }
-  if (a.workplace) values[`${prefix}.wegOrt`] = a.workplace
-  if (a.withCar) values[`${prefix}.kz112`] = String(a.oneWayKm)
+  if (way.workplace) values[`${prefix}.${w}Ort`] = way.workplace
+  if (way.withCar) values[`${prefix}.${kzCar}`] = String(way.oneWayKm)
+  const from = dayAndMonth(way.from)
+  const to = dayAndMonth(way.to)
+  if (from) values[`${prefix}.${w}Von`] = from
+  if (to) values[`${prefix}.${w}Bis`] = to
   return values
+}
+
+/**
+ * Anlage N Z. 27–42 and Anlage N-Gre Z. 32–46 ask the same facts under their own field prefix. The further
+ * Werbungskosten go with the first way, so a person split over two forms has them once.
+ */
+function commuteValues(a: CommuteFacts | null | undefined, prefix: 'anlN' | 'anlNGre' = 'anlN', ways: WaysInForm = 'all'): Record<string, string> {
+  if (!a) return {}
+  const values: Record<string, string> = ways === 'second' ? {} : workExpenseValues(a.workExpenses, prefix)
+  const first: OneWay | null =
+    a.oneWayKm === null ? null : { commuteDays: a.commuteDays, oneWayKm: a.oneWayKm, withCar: a.withCar, workplace: a.workplace, from: a.from ?? null, to: a.to ?? null }
+  const second = a.second ?? null
+  if (ways === 'second') {
+    if (second) Object.assign(values, wayValues(second, a.workdaysPerWeek, a.daysOff, prefix, 1))
+    return values
+  }
+  if (first) Object.assign(values, wayValues(first, a.workdaysPerWeek, a.daysOff, prefix, 1))
+  if (ways === 'all' && second) Object.assign(values, wayValues(second, a.workdaysPerWeek, a.daysOff, prefix, first ? 2 : 1))
+  return values
+}
+
+/**
+ * A person with a German and a Swiss wage in one year: the way while employed in Germany belongs to the
+ * Anlage N, the one after the change to the N-Gre. Without a second way the one way goes to the N-Gre only.
+ */
+function waysInAnlageN(commute: CommuteFacts | null | undefined, ch: ChSalaryCertificateFacts | null | undefined): WaysInForm | null {
+  if (!ch || ch.grossWageChf === null) return 'all'
+  return commute?.second ? 'first' : null
+}
+
+function waysInNGre(commute: CommuteFacts | null | undefined, hasGermanWage: boolean): WaysInForm {
+  return hasGermanWage && commute?.second ? 'second' : 'all'
 }
 
 const optionalNumber = (value: string | null): number | undefined => {
@@ -565,14 +632,16 @@ export function printoutValues(facts: PrintoutFacts): PrintoutValues {
   if (hasGrossA && !hasGrossB) {
     values['anlN.kz110'] = gross!
     values['anlN.personA'] = true
-    Object.assign(values, commuteValues(facts.commute))
+    const waysA = waysInAnlageN(facts.commute, facts.chSalaryCertificate)
+    if (waysA) Object.assign(values, commuteValues(facts.commute, 'anlN', waysA))
     set('anlN.name', profile.lastName)
     set('anlN.vorname', profile.firstName)
     set('anlN.steuernummer', profile.steuernummer)
   } else if (hasGrossB) {
     const nInstances: FieldValues[] = []
     if (hasGrossA) {
-      const nA: Record<string, string | true> = { 'anlN.kz110': gross!, 'anlN.personA': true, ...commuteValues(facts.commute) }
+      const waysA = waysInAnlageN(facts.commute, facts.chSalaryCertificate)
+      const nA: Record<string, string | true> = { 'anlN.kz110': gross!, 'anlN.personA': true, ...(waysA ? commuteValues(facts.commute, 'anlN', waysA) : {}) }
       if (profile.lastName) nA['anlN.name'] = profile.lastName
       if (profile.firstName) nA['anlN.vorname'] = profile.firstName
       if (profile.steuernummer) nA['anlN.steuernummer'] = profile.steuernummer
@@ -581,7 +650,8 @@ export function printoutValues(facts: PrintoutFacts): PrintoutValues {
     const b = facts.link?.personB
     const nB: Record<string, string | true> = { 'anlN.kz110': grossB!, 'anlN.personB': true }
     // B's commute belongs to their Anlage N unless they are a Grenzgänger (then it is in their N-Gre).
-    if (!b?.chSalaryCertificate) Object.assign(nB, commuteValues(b?.commute))
+    const waysB = waysInAnlageN(b?.commute, b?.chSalaryCertificate)
+    if (waysB) Object.assign(nB, commuteValues(b?.commute, 'anlN', waysB))
     if (b?.lastName) nB['anlN.name'] = b.lastName
     if (b?.firstName) nB['anlN.vorname'] = b.firstName
     if (profile.steuernummer) nB['anlN.steuernummer'] = profile.steuernummer
@@ -664,13 +734,13 @@ export function printoutValues(facts: PrintoutFacts): PrintoutValues {
 
   // Anlage N-Gre: one per Grenzgänger. A couple where both commute to Switzerland gets two instances.
   const personB = facts.link?.filingType === 'zusammen' ? facts.link.personB : null
-  const nGreA = nGreValues(facts.chSalaryCertificate, facts.commute, 'A', {
+  const nGreA = nGreValues(facts.chSalaryCertificate, facts.commute, hasGrossA, 'A', {
     name: profile.lastName,
     firstName: profile.firstName,
     beruf: sd?.beruf ?? null,
     steuernummer: profile.steuernummer,
   })
-  const nGreB = nGreValues(personB?.chSalaryCertificate, personB?.commute, 'B', {
+  const nGreB = nGreValues(personB?.chSalaryCertificate, personB?.commute, hasGrossB, 'B', {
     name: personB?.lastName ?? null,
     firstName: personB?.firstName ?? null,
     beruf: personB?.beruf ?? null,

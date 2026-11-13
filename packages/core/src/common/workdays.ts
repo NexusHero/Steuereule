@@ -162,3 +162,51 @@ export function commuterAllowance(input: CommuterAllowanceInput): number {
   const amount = Math.round(days * (firstKm * rateFirst + additionalKm * rateAdditional))
   return withCar ? amount : Math.min(amount, maxCap)
 }
+
+/** One way to work in a year, valid from/to (DD.MM.YYYY; null = start/end of the year) (ADR-0079). */
+export interface WayToWork {
+  readonly oneWayKm: number
+  readonly withCar: boolean
+  readonly from: string | null
+  readonly to: string | null
+}
+
+function dayIndex(year: number, date: string | null, fallback: number): number {
+  const m = date ? /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(date) : null
+  if (!m) return fallback
+  const y = Number(m[3])
+  if (y < year) return 0
+  if (y > year) return calendarDaysInYear(year) - 1
+  return Math.round((Date.UTC(year, Number(m[2]) - 1, Number(m[1])) - Date.UTC(year, 0, 1)) / 86_400_000)
+}
+
+/** Working weekdays between two dates of the year, both included. */
+export function weekdaysInPeriod(year: number, workdays: readonly IsoWeekday[], from: string | null, to: string | null): number {
+  const set = new Set(workdays)
+  const first = dayIndex(year, from, 0)
+  const last = dayIndex(year, to, calendarDaysInYear(year) - 1)
+  let count = 0
+  for (let d = first; d <= last; d++) if (set.has(isoWeekdayAt(year, d))) count++
+  return count
+}
+
+/**
+ * The year's commute days shared among the ways to work by the weekdays each one lasted; days off and
+ * home office are known only for the year, so they fall evenly. One way without dates keeps all days.
+ */
+export function commuteDaysByWay(year: number, workdays: readonly IsoWeekday[], commuteDays: number, ways: readonly Pick<WayToWork, 'from' | 'to'>[]): number[] {
+  if (ways.length === 0) return []
+  if (ways.length === 1 && ways[0]!.from === null && ways[0]!.to === null) return [commuteDays]
+  const yearWeekdays = weekdaysInYear(year, workdays)
+  if (yearWeekdays === 0) return ways.map(() => 0)
+  const shares = ways.map((w) => Math.round((commuteDays * weekdaysInPeriod(year, workdays, w.from, w.to)) / yearWeekdays))
+  const excess = shares.reduce((s, n) => s + n, 0) - commuteDays
+  if (excess > 0) shares[shares.length - 1] = Math.max(0, shares.at(-1)! - excess)
+  return shares
+}
+
+/** The allowance for each way to work (§ 9 Abs. 1 Nr. 4 EStG), in the order given. */
+export function commuterAllowanceByWay(year: number, workdays: readonly IsoWeekday[], commuteDays: number, ways: readonly WayToWork[]): { days: number; allowance: number }[] {
+  const days = commuteDaysByWay(year, workdays, commuteDays, ways)
+  return ways.map((w, i) => ({ days: days[i]!, allowance: commuterAllowance({ oneWayKm: w.oneWayKm, days: days[i]!, year, withCar: w.withCar }) }))
+}

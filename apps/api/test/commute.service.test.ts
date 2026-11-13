@@ -52,6 +52,21 @@ describe('ArbeitswegService', () => {
     expect(withValue.commuterAllowance!).toBeLessThan(without.commuterAllowance!)
   })
 
+  it('adds a second way after a change of job, each for its share of the commute days (ADR-0079)', async () => {
+    const service = new CommuteService(fakeRepository())
+
+    const status = await service.save('user-1', 2025, {
+      ...INPUTS,
+      periodTo: '31.10.2025',
+      secondOneWayKm: 80,
+      secondTransport: 'pkw',
+      secondFrom: '01.11.2025',
+    })
+
+    // 206 commute days by weekdays (218 until October, 43 after, of 261): 172 on 30 km, 34 on 80 km.
+    expect(status.commuterAllowance).toBe(Math.round(172 * (20 * 0.3 + 10 * 0.38)) + Math.round(34 * (20 * 0.3 + 60 * 0.38)))
+  })
+
   it('leaves the Pauschale open until distance and means of travel are known', async () => {
     const service = new CommuteService(fakeRepository())
 

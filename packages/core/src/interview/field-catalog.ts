@@ -49,6 +49,7 @@ export const AI_FORBIDDEN_SCREENS: ReadonlySet<Screen> = new Set<Screen>(['profi
 /** Field names that identify a person or a third party, on whatever screen they appear. */
 export const AI_FORBIDDEN_FIELDS: ReadonlySet<string> = new Set([
   'workplace',
+  'secondWorkplace',
   'steuerId',
   'taxId',
   'idnr',
@@ -148,6 +149,12 @@ const DECLARED: Readonly<Record<Screen, { readonly perInstance: boolean; readonl
       accountFeesEur: amount,
       otherWorkExpensesEur: amount,
       otherWorkExpensesNote: text(100),
+      periodFrom: text(10),
+      periodTo: text(10),
+      secondOneWayKm: integer(0, 999),
+      secondTransport: oneOf(['pkw', 'oepnv', 'andere']),
+      secondFrom: text(10),
+      secondTo: text(10),
     },
   },
   chLohnausweis: {
@@ -245,6 +252,12 @@ const HINTS: Readonly<Partial<Record<Screen, Readonly<Record<string, string>>>>>
     workEquipmentEur: 'Werbungskosten: Arbeitsmittel und typische Berufskleidung (Kz 320), Euro im Jahr; was es war, in workEquipmentNote',
     accountFeesEur: 'Werbungskosten: Kontoführungsgebühren (Kz 380); ohne Nachweis akzeptiert das Finanzamt 16 € im Jahr',
     otherWorkExpensesEur: 'Werbungskosten: Sonstiges wie Bewerbungen (Kz 380), Euro im Jahr; was es war, in otherWorkExpensesNote',
+    periodFrom: 'Arbeitsweg gilt erst ab diesem Tag, TT.MM.JJJJ; leer = ab Jahresbeginn',
+    periodTo: 'Arbeitsweg gilt nur bis zu diesem Tag (z. B. Arbeitgeberwechsel), TT.MM.JJJJ; leer = bis Jahresende',
+    secondOneWayKm: 'zweiter Arbeitsweg nach einem Arbeitgeberwechsel im Jahr: einfache Entfernung in km',
+    secondTransport: 'Verkehrsmittel des zweiten Arbeitswegs',
+    secondFrom: 'zweiter Arbeitsweg ab, TT.MM.JJJJ (meist der Tag nach periodTo)',
+    secondTo: 'zweiter Arbeitsweg bis, TT.MM.JJJJ; leer = bis Jahresende',
   },
   chLohnausweis: {
     'berufliche-vorsorge': 'Lohnausweis Ziffer 10: alle Arbeitnehmerbeiträge an die Pensionskasse, obligatorisch und überobligatorisch zusammen',

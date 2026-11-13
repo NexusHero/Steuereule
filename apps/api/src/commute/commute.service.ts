@@ -1,7 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { calculateWorkdays, commuterAllowance, effectivePublicHolidays } from '@steuereule/core'
+import { calculateWorkdays, effectivePublicHolidays } from '@steuereule/core'
 import { InvalidInputError } from '../common/domain-error.js'
 import { COMMUTE_REPOSITORY, type CommuteInputs, type CommuteRepository } from './commute.repository.js'
+import { allowanceOverWays } from './ways-to-work.js'
 
 export interface CommuteStatus {
   readonly inputs: CommuteInputs | null
@@ -39,9 +40,6 @@ function status(taxYear: number, inputs: CommuteInputs): CommuteStatus {
     throw new InvalidInputError('ARBEITSTAGE_WIDERSPRUCH', `The days off exceed the working days (${result.conflict.kind}).`)
   }
   const { weekdays, workdays, commuteDays } = result
-  const allowance =
-    inputs.oneWayKm === null || inputs.transport === null
-      ? null
-      : commuterAllowance({ oneWayKm: inputs.oneWayKm, days: commuteDays, year: taxYear, withCar: inputs.transport === 'pkw' })
+  const allowance = allowanceOverWays(taxYear, inputs, commuteDays)
   return { inputs, workdays: { weekdays, workdays, commuteDays }, commuterAllowance: allowance }
 }

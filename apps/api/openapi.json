@@ -6858,6 +6858,48 @@
             "nullable": true,
             "example": "Berufskleidung",
             "description": "What the other expenses were (Anlage N Zeile 63)."
+          },
+          "periodFrom": {
+            "type": "string",
+            "nullable": true,
+            "example": "01.01.2024",
+            "description": "This way to work from (DD.MM.YYYY), when not the whole year (ADR-0079)."
+          },
+          "periodTo": {
+            "type": "string",
+            "nullable": true,
+            "example": "31.10.2024",
+            "description": "This way to work until (DD.MM.YYYY)."
+          },
+          "secondOneWayKm": {
+            "type": "number",
+            "nullable": true,
+            "example": 87,
+            "description": "A second way to work after a change of job: one-way km."
+          },
+          "secondTransport": {
+            "type": "string",
+            "enum": [
+              "pkw",
+              "oepnv",
+              "andere"
+            ],
+            "nullable": true
+          },
+          "secondWorkplace": {
+            "type": "string",
+            "nullable": true,
+            "example": "8050 Zürich, Birchstrasse 155"
+          },
+          "secondFrom": {
+            "type": "string",
+            "nullable": true,
+            "example": "01.11.2024"
+          },
+          "secondTo": {
+            "type": "string",
+            "nullable": true,
+            "example": "31.12.2024"
           }
         },
         "required": [
@@ -8025,6 +8067,7 @@
               "estg-9-6",
               "estg-10b",
               "estg-10-1-5",
+              "estg-35a",
               "ao-355"
             ],
             "example": "estg-10b"
@@ -8484,6 +8527,7 @@
               "estg-9-6",
               "estg-10b",
               "estg-10-1-5",
+              "estg-35a",
               "ao-355"
             ],
             "example": "estg-10b"
@@ -8576,6 +8620,7 @@
               "estg-9-6",
               "estg-10b",
               "estg-10-1-5",
+              "estg-35a",
               "ao-355"
             ],
             "example": "estg-4-5-6c"
@@ -8695,6 +8740,7 @@
                 "estg-9-6",
                 "estg-10b",
                 "estg-10-1-5",
+                "estg-35a",
                 "ao-355"
               ]
             }
@@ -9605,6 +9651,7 @@
               "estg-9-6",
               "estg-10b",
               "estg-10-1-5",
+              "estg-35a",
               "ao-355"
             ],
             "example": "estg-9-1-4a"

@@ -72,7 +72,15 @@ const COMMUTE_ACCESS_FIELDS = [
   'publicHolidayRegion',
   ...WORK_EXPENSE_AMOUNT_FIELDS,
   ...WORK_EXPENSE_NOTE_FIELDS,
+  'periodFrom',
+  'periodTo',
+  'secondOneWayKm',
+  'secondTransport',
+  'secondFrom',
+  'secondTo',
 ] as const
+const COMMUTE_DATE_FIELDS: ReadonlySet<string> = new Set(['periodFrom', 'periodTo', 'secondFrom', 'secondTo'])
+const GERMAN_DATE_RE = /^\d{2}\.\d{2}\.\d{4}$/
 const ASSESSMENT_ACCESS_FIELDS = [...ASSESSMENT_FIELD_IDS, 'assessmentDate'] as const
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 const INTEGER_RE = /^-?\d+$/
@@ -460,6 +468,12 @@ export function fieldAccessFrom({
           publicHolidayRegion: r.publicHolidayRegion ?? null,
           ...Object.fromEntries(WORK_EXPENSE_AMOUNT_FIELDS.map((f) => [f, r[f] === null || r[f] === undefined ? null : String(r[f])])),
           ...Object.fromEntries(WORK_EXPENSE_NOTE_FIELDS.map((f) => [f, r[f] ?? null])),
+          periodFrom: r.periodFrom ?? null,
+          periodTo: r.periodTo ?? null,
+          secondOneWayKm: r.secondOneWayKm === null || r.secondOneWayKm === undefined ? null : String(r.secondOneWayKm),
+          secondTransport: r.secondTransport ?? null,
+          secondFrom: r.secondFrom ?? null,
+          secondTo: r.secondTo ?? null,
         }
       },
       async write(userId, taxYear, _instance, field, value) {
@@ -534,7 +548,25 @@ export function fieldAccessFrom({
             updated = { ...current, publicHolidayRegion: trimmed === '' ? null : trimmed }
             break
           }
+          case 'secondOneWayKm':
+            updated = { ...current, secondOneWayKm: parseBoundedInt(value, 0, 999, 'secondOneWayKm') }
+            break
+          case 'secondTransport': {
+            if (value !== null && !MEANS_OF_TRANSPORT.includes(value as MeansOfTransport)) {
+              throw new InvalidInputError('FIELD_VALUE_INVALID', `"secondTransport" must be one of: ${MEANS_OF_TRANSPORT.join(', ')}.`)
+            }
+            updated = { ...current, secondTransport: value as MeansOfTransport | null }
+            break
+          }
           default: {
+            if (COMMUTE_DATE_FIELDS.has(field)) {
+              const trimmed = value === null ? null : value.trim()
+              if (trimmed !== null && trimmed !== '' && !GERMAN_DATE_RE.test(trimmed)) {
+                throw new InvalidInputError('FIELD_VALUE_INVALID', `"${field}" must be a date DD.MM.YYYY.`)
+              }
+              updated = { ...current, [field]: trimmed === '' ? null : trimmed }
+              break
+            }
             if ((WORK_EXPENSE_AMOUNT_FIELDS as readonly string[]).includes(field)) {
               updated = { ...current, [field]: parseBoundedInt(value, 0, 1_000_000, field) }
               break

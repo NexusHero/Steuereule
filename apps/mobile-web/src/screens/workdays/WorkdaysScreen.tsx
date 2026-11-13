@@ -10,7 +10,7 @@ import {
   calculateWorkdays,
   formatEuro,
   holidaysOnWorkdays,
-  commuterAllowance,
+  commuterAllowanceByWay,
   type GermanState,
   type HolidayRegion,
   type IsoWeekday,
@@ -101,6 +101,13 @@ function WorkdaysForm({
   const [km, setKm] = useState(textFrom(saved?.oneWayKm))
   const [transport, setTransport] = useState<Transport | null>(saved?.transport ?? null)
   const [workplace, setWorkplace] = useState(saved?.workplace ?? '')
+  // A change of job during the year (ADR-0079): the first way ends, a second one starts.
+  const [changed, setChanged] = useState(saved?.secondOneWayKm != null || Boolean(saved?.periodTo))
+  const [firstUntil, setFirstUntil] = useState(saved?.periodTo ?? '')
+  const [secondKm, setSecondKm] = useState(textFrom(saved?.secondOneWayKm))
+  const [secondTransport, setSecondTransport] = useState<Transport | null>(saved?.secondTransport ?? null)
+  const [secondWorkplace, setSecondWorkplace] = useState(saved?.secondWorkplace ?? '')
+  const [secondFrom, setSecondFrom] = useState(saved?.secondFrom ?? '')
   // Further Werbungskosten of this person (ADR-0076): amount and, where the form asks, what it was.
   const [bodies, setBodies] = useState(textFrom(saved?.professionalBodiesEur))
   const [bodiesNote, setBodiesNote] = useState(saved?.professionalBodiesNote ?? '')
@@ -140,10 +147,13 @@ function WorkdaysForm({
   }
   const result = workdays.length > 0 ? calculateWorkdays(input) : null
   const oneWayKm = integerFrom(km)
-  const allowance =
-    result?.kind === 'bestimmt' && oneWayKm !== null && transport !== null
-      ? allowanceOrNull(oneWayKm, result.commuteDays, taxYear, transport === 'pkw')
-      : null
+  const secondOneWayKm = changed ? integerFrom(secondKm) : null
+  const datesValid = !changed || (validDate(firstUntil) && validDate(secondFrom))
+  const ways = [
+    ...(oneWayKm !== null && transport !== null ? [{ oneWayKm, withCar: transport === 'pkw', from: null, to: changed ? dateOrNull(firstUntil) : null }] : []),
+    ...(secondOneWayKm !== null && secondTransport !== null ? [{ oneWayKm: secondOneWayKm, withCar: secondTransport === 'pkw', from: dateOrNull(secondFrom), to: null }] : []),
+  ]
+  const allowance = result?.kind === 'bestimmt' && ways.length > 0 && datesValid ? allowanceOrNull(taxYear, workdays, result.commuteDays, ways) : null
 
   const [takenOver, setTakenOver] = useState(false)
 
@@ -185,13 +195,18 @@ function WorkdaysForm({
     accountFeesEur: euros(accountFees),
     otherWorkExpensesEur: euros(other),
     otherWorkExpensesNote: note(otherNote),
+    periodTo: changed ? dateOrNull(firstUntil) : null,
+    secondOneWayKm,
+    secondTransport: changed ? secondTransport : null,
+    secondWorkplace: changed ? note(secondWorkplace) : null,
+    secondFrom: changed ? dateOrNull(secondFrom) : null,
   })
   // What was last loaded or saved — leaving a field saves only real changes (#443 AC 7).
   const lastSaved = useRef<string | null>(null)
   if (lastSaved.current === null) lastSaved.current = JSON.stringify(formData())
 
   function persist(onSaved?: () => void, onFailed?: () => void) {
-    if (result?.kind === 'widerspruch') return
+    if (result?.kind === 'widerspruch' || !datesValid) return
     setError(false)
     const data = formData()
     save.mutate(
@@ -228,7 +243,7 @@ function WorkdaysForm({
   // „Weiter“ blurs the input first) must not swallow the click.
   const [moving, setMoving] = useState(false)
   function next() {
-    if (result?.kind === 'widerspruch') return
+    if (result?.kind === 'widerspruch' || !datesValid) return
     setMoving(true)
     persist(onDone, () => setMoving(false))
   }
@@ -329,6 +344,42 @@ function WorkdaysForm({
       <Feld label={tr('arbeitstage.weg.arbeitsort')}>
         <Input type="text" value={workplace} onChange={setWorkplace} placeholder={tr('arbeitstage.weg.arbeitsortPlaceholder')} accessibilityLabel={tr('arbeitstage.weg.arbeitsort')} testID="arbeitstage-arbeitsort" onBlur={saveOnLeave} />
       </Feld>
+
+      <Feld label={tr('arbeitstage.weg.wechsel.frage')}>
+        <View style={styles.weekdayRow}>
+          <Chip active={changed} onPress={() => setChanged(!changed)} testID="arbeitsweg-wechsel">
+            {tr('arbeitstage.weg.wechsel.ja')}
+          </Chip>
+        </View>
+      </Feld>
+      {changed ? (
+        <>
+          <Text style={styles.regionHint}>{tr('arbeitstage.weg.wechsel.hilfe')}</Text>
+          <Feld label={tr('arbeitstage.weg.wechsel.bis')}>
+            <Input type="text" mono value={firstUntil} onChange={setFirstUntil} placeholder={tr('arbeitstage.weg.wechsel.datumPlaceholder')} accessibilityLabel={tr('arbeitstage.weg.wechsel.bis')} testID="arbeitsweg-bis" onBlur={saveOnLeave} />
+          </Feld>
+          <Text style={styles.sectionLabel}>{tr('arbeitstage.weg.wechsel.titel')}</Text>
+          <Feld label={tr('arbeitstage.weg.wechsel.ab')}>
+            <Input type="text" mono value={secondFrom} onChange={setSecondFrom} placeholder={tr('arbeitstage.weg.wechsel.datumPlaceholder')} accessibilityLabel={tr('arbeitstage.weg.wechsel.ab')} testID="arbeitsweg-zweiter-ab" onBlur={saveOnLeave} />
+          </Feld>
+          {!datesValid ? <Text style={styles.widerspruchBody}>{tr('arbeitstage.weg.wechsel.datumFehler')}</Text> : null}
+          <Feld label={tr('arbeitstage.weg.km')}>
+            <Input type="numeric" mono value={secondKm} onChange={setSecondKm} placeholder="0" accessibilityLabel={`${tr('arbeitstage.weg.wechsel.titel')}: ${tr('arbeitstage.weg.km')}`} testID="arbeitsweg-zweiter-km" onBlur={saveOnLeave} />
+          </Feld>
+          <Feld label={tr('arbeitstage.weg.verkehrsmittel')}>
+            <View style={styles.weekdayRow}>
+              {TRANSPORT.map((means) => (
+                <Chip key={means} active={secondTransport === means} onPress={() => setSecondTransport(means)} testID={`arbeitsweg-zweiter-transport-${means}`}>
+                  {tr(`arbeitstage.weg.mittel.${means}`)}
+                </Chip>
+              ))}
+            </View>
+          </Feld>
+          <Feld label={tr('arbeitstage.weg.arbeitsort')}>
+            <Input type="text" value={secondWorkplace} onChange={setSecondWorkplace} placeholder={tr('arbeitstage.weg.arbeitsortPlaceholder')} accessibilityLabel={`${tr('arbeitstage.weg.wechsel.titel')}: ${tr('arbeitstage.weg.arbeitsort')}`} testID="arbeitsweg-zweiter-ort" onBlur={saveOnLeave} />
+          </Feld>
+        </>
+      ) : null}
       {allowance !== null ? <Row label={tr('arbeitstage.weg.pauschale')} value={formatEuro(allowance)} /> : null}
 
       <Text style={styles.sectionLabel}>{tr('arbeitstage.weitere.titel')}</Text>
@@ -373,12 +424,23 @@ function textFrom(value: number | null | undefined): string {
   return value === null || value === undefined || value === 0 ? '' : String(value)
 }
 
-function allowanceOrNull(oneWayKm: number, days: number, year: number, withCar: boolean): number | null {
+function allowanceOrNull(year: number, workdays: readonly IsoWeekday[], days: number, ways: Parameters<typeof commuterAllowanceByWay>[3]): number | null {
   try {
-    return commuterAllowance({ oneWayKm, days, year, withCar })
+    return commuterAllowanceByWay(year, workdays, days, ways).reduce((sum, w) => sum + w.allowance, 0)
   } catch {
     return null
   }
+}
+
+const GERMAN_DATE = /^\d{2}\.\d{2}\.\d{4}$/
+
+/** Empty, or a date as TT.MM.JJJJ. */
+function validDate(s: string): boolean {
+  return s.trim() === '' || GERMAN_DATE.test(s.trim())
+}
+
+function dateOrNull(s: string): string | null {
+  return GERMAN_DATE.test(s.trim()) ? s.trim() : null
 }
 
 function Result({ result }: { readonly result: ReturnType<typeof calculateWorkdays> }) {

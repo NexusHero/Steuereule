@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common'
 import type { IsoWeekday } from '@steuereule/core'
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
-import { MEANS_OF_TRANSPORT, WORK_EXPENSE_AMOUNT_FIELDS, WORK_EXPENSE_NOTE_FIELDS, type CommuteInputs, type CommuteRepository, type MeansOfTransport } from './commute.repository.js'
+import { MEANS_OF_TRANSPORT, WAY_TEXT_FIELDS, WORK_EXPENSE_AMOUNT_FIELDS, WORK_EXPENSE_NOTE_FIELDS, type CommuteInputs, type CommuteRepository, type MeansOfTransport } from './commute.repository.js'
 
 interface CommuteRow {
   workdays: string
@@ -20,6 +20,13 @@ interface CommuteRow {
   accountFeesEur?: string | null
   otherWorkExpensesEur?: string | null
   otherWorkExpensesNote?: string | null
+  periodFrom?: string | null
+  periodTo?: string | null
+  secondOneWayKm?: number | null
+  secondTransport?: string | null
+  secondWorkplace?: string | null
+  secondFrom?: string | null
+  secondTo?: string | null
 }
 
 const wholeEuros = (raw: string | null | undefined): number | null => (raw !== null && raw !== undefined && /^\d+$/.test(raw) ? Number(raw) : null)
@@ -37,6 +44,13 @@ function inputsFrom(row: CommuteRow): CommuteInputs {
     publicHolidayRegion: row.publicHolidayRegion ?? null,
     ...Object.fromEntries(WORK_EXPENSE_AMOUNT_FIELDS.map((f) => [f, wholeEuros(row[f])])),
     ...Object.fromEntries(WORK_EXPENSE_NOTE_FIELDS.map((f) => [f, row[f] ?? null])),
+    periodFrom: row.periodFrom ?? null,
+    periodTo: row.periodTo ?? null,
+    secondOneWayKm: row.secondOneWayKm ?? null,
+    secondTransport: MEANS_OF_TRANSPORT.includes(row.secondTransport as MeansOfTransport) ? (row.secondTransport as MeansOfTransport) : null,
+    secondWorkplace: row.secondWorkplace ?? null,
+    secondFrom: row.secondFrom ?? null,
+    secondTo: row.secondTo ?? null,
   }
 }
 
@@ -65,6 +79,9 @@ export class PrismaCommuteRepository implements CommuteRepository {
         WORK_EXPENSE_AMOUNT_FIELDS.filter((f) => inputs[f] !== undefined).map((f) => [f, inputs[f] === null ? null : String(inputs[f])]),
       ),
       ...Object.fromEntries(WORK_EXPENSE_NOTE_FIELDS.filter((f) => inputs[f] !== undefined).map((f) => [f, inputs[f] ?? null])),
+      // The period and the second way: likewise kept when a save does not carry them.
+      ...Object.fromEntries(WAY_TEXT_FIELDS.filter((f) => inputs[f] !== undefined).map((f) => [f, inputs[f] ?? null])),
+      ...(inputs.secondOneWayKm !== undefined ? { secondOneWayKm: inputs.secondOneWayKm } : {}),
     }
     const [row] = await this.prisma.$transaction([
       this.prisma.commute.upsert({
