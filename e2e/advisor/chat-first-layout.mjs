@@ -178,7 +178,10 @@ async function main() {
     await see(page, 'advisor-feedback-thanks', 'Row C')
     await byId(page, 'advisor-feedback-down').first().click()
     await see(page, 'advisor-feedback-reasons', 'Row C')
+    // Down is stored at once, the reason follows in a second request: wait for that one to be answered.
+    const reasonStored = page.waitForResponse((res) => res.url().includes('/feedback') && res.request().method() === 'PUT' && (res.request().postData() ?? '').includes('unklar'), { timeout: 15_000 })
     await byId(page, 'advisor-feedback-reason-unklar').first().click()
+    await reasonStored.catch(() => fail('Row C: choosing a reason should store it'))
     await see(page, 'advisor-feedback-thanks', 'Row C')
     const stored = sql(`SELECT bewertung || ':' || coalesce("bewertungGrund", '') FROM "BeraterNachricht" m JOIN "User" u ON u.id = m."userId" WHERE u.email = '${email}' AND m.rolle = 'assistant'`)
     if (!String(stored).includes('down:unklar')) fail(`Row C: the rating should be stored as down/unklar, the database says "${String(stored).trim()}"`)
