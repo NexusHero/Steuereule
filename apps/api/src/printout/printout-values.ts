@@ -141,6 +141,12 @@ export interface ChSalaryCertificateFacts {
   krankentaggeldChf: string | null
   pkArbeitnehmerChf: string | null
   pkArbeitgeberChf: string | null
+  /** Lohnausweis Ziffer 10: all employee pension contributions. */
+  pkArbeitnehmerGesamtChf: string | null
+  /** All employer pension contributions; above pkArbeitgeberChf = Zeile 20. */
+  pkArbeitgeberGesamtChf: string | null
+  /** Tax-free Krankentaggeld contained in Ziffer 8 (Zeilen 9/76). */
+  steuerfreiesKrankentaggeldChf: string | null
   krankentaggeldArbeitgeberProzent: string | null
   krankentaggeldArbeitgeberChf: string | null
   nbuvArbeitgeberProzent: string | null
@@ -171,6 +177,8 @@ function nbuvEmployeeChf(ch: ChSalaryCertificateFacts): number | null {
     krankentaggeldChf: 0,
     pkArbeitnehmerChf: 0,
     pkArbeitgeberChf: 0,
+    steuerfreiesKrankentaggeldChf: optionalNumber(ch.steuerfreiesKrankentaggeldChf),
+    nbuvArbeitgeberProzent: optionalNumber(ch.nbuvArbeitgeberProzent),
     rate: ch.rate,
   }).split.nbuv.employeeChf
 }
@@ -258,6 +266,9 @@ function nGreValues(
     krankentaggeldChf: Number(ch.krankentaggeldChf),
     pkArbeitnehmerChf: Number(ch.pkArbeitnehmerChf),
     pkArbeitgeberChf: Number(ch.pkArbeitgeberChf),
+    pkArbeitnehmerGesamtChf: optionalNumber(ch.pkArbeitnehmerGesamtChf),
+    pkArbeitgeberGesamtChf: optionalNumber(ch.pkArbeitgeberGesamtChf),
+    steuerfreiesKrankentaggeldChf: optionalNumber(ch.steuerfreiesKrankentaggeldChf),
     rate: ch.rate!,
     krankentaggeldArbeitgeberProzent: optionalNumber(ch.krankentaggeldArbeitgeberProzent),
     krankentaggeldArbeitgeberChf: optionalNumber(ch.krankentaggeldArbeitgeberChf),
@@ -265,8 +276,8 @@ function nGreValues(
     nbuvArbeitgeberChf: optionalNumber(ch.nbuvArbeitgeberChf),
   })
   for (const row of Object.keys(chf) as NGreRow[]) {
-    // Z. 18/19 only apply when the employer pays part of a premium; an empty line stays empty.
-    if ((row === 'z18' || row === 'z19') && chf[row] === 0) continue
+    // Z. 9 and 18–20 only apply when there is such an amount; an empty line stays empty.
+    if ((row === 'z9' || row === 'z18' || row === 'z19' || row === 'z20') && chf[row] === 0) continue
     values[`anlNGre.${row}Chf`] = String(chf[row])
     values[`anlNGre.${row}Eur`] = String(eur[row])
   }

@@ -65,6 +65,8 @@ const EMPTY_CH: ChSalaryCertificateResponseDto = {
     krankentaggeldChf: null,
     pkArbeitnehmerChf: null,
     pkArbeitgeberChf: null,
+    pkArbeitgeberGesamtChf: null,
+    steuerfreiesKrankentaggeldChf: null,
     krankentaggeldArbeitgeberProzent: null,
     krankentaggeldArbeitgeberChf: null,
     nbuvArbeitgeberProzent: null,
@@ -93,6 +95,8 @@ const FOLDED_CH: ChSalaryCertificateResponseDto = {
     krankentaggeldChf: null,
     pkArbeitnehmerChf: null,
     pkArbeitgeberChf: null,
+    pkArbeitgeberGesamtChf: null,
+    steuerfreiesKrankentaggeldChf: null,
     krankentaggeldArbeitgeberProzent: null,
     krankentaggeldArbeitgeberChf: null,
     nbuvArbeitgeberProzent: null,
@@ -230,6 +234,31 @@ describe('GrenzgaengerScreen — Anlage N-Gre facts', () => {
     await waitFor(() => expect(bodies).toEqual([{ arbeitgeberName: 'Muster AG' }, { pkArbeitgeberChf: 6000 }, { specialCases: false }]))
   })
 
+  it('saves the employer pension total next to its Obligatorium and the tax-free Krankentaggeld paid out', async () => {
+    const bodies: unknown[] = []
+    server.use(http.get(INTERVIEW_URL, () => HttpResponse.json(DONE_CH_INTERVIEW, { status: 200 })))
+    server.use(
+      http.put(`${CH_URL}/n-gre`, async ({ request }) => {
+        bodies.push(await request.json())
+        return HttpResponse.json(EMPTY_CH, { status: 200 })
+      }),
+    )
+    renderScreen()
+    expect(await screen.findByText('Pensionskasse – alle Beiträge des Arbeitgebers, obligatorisch und überobligatorisch (CHF)')).toBeTruthy()
+    for (const [id, value] of [
+      ['ch-ngre-pkArbeitgeberGesamtChf', '7186'],
+      ['ch-ngre-pkArbeitgeberChf', '2892'],
+      ['ch-ngre-steuerfreiesKrankentaggeldChf', '3853'],
+    ] as const) {
+      const input = screen.getByTestId(id)
+      fireEvent.change(input, { target: { value } })
+      fireEvent.keyDown(input, { key: 'Enter' })
+    }
+    await waitFor(() =>
+      expect(bodies).toEqual([{ pkArbeitgeberGesamtChf: 7186 }, { pkArbeitgeberChf: 2892 }, { steuerfreiesKrankentaggeldChf: 3853 }]),
+    )
+  })
+
   it('asks who pays the Krankentaggeld premium and, only at 100 %, the employer amount', async () => {
     const bodies: unknown[] = []
     let stored = EMPTY_CH
@@ -257,11 +286,12 @@ describe('GrenzgaengerScreen — Anlage N-Gre facts', () => {
     expect(await screen.findByTestId('ch-ngre-krankentaggeldArbeitgeberChf')).toBeTruthy()
   })
 
-  it('no longer lists employer Krankentaggeld/NBUV contributions as a case the printout cannot cover', async () => {
+  it('no longer lists Krankentaggeld, employer Krankentaggeld/NBUV contributions or the Überobligatorium as cases the printout cannot cover', async () => {
     server.use(http.get(INTERVIEW_URL, () => HttpResponse.json(DONE_CH_INTERVIEW, { status: 200 })))
     server.use(http.get(CH_URL, () => HttpResponse.json(EMPTY_CH, { status: 200 })))
     renderScreen()
-    expect(await screen.findByText(/Überobligatorium oder einen Firmenwagen\?$/)).toBeTruthy()
+    const question = await screen.findByText(/Spesenpauschalen oder einen Firmenwagen\?$/)
+    expect(question.textContent).not.toMatch(/Krankentag|Überobligatorium/)
     expect(screen.queryByText(/Krankentaggeld\/NBUV/)).toBeNull()
   })
 
@@ -325,13 +355,30 @@ describe('GrenzgaengerScreen — Wechselkurs', () => {
     await waitFor(() => expect(bodies).toEqual([{ month: '2026-12', rate: 1.07, mode: 'amtlich' }]))
   })
 
+  it('offers the Jahresdurchschnittskurs instead of a month and saves it for the year', async () => {
+    const bodies: unknown[] = []
+    server.use(http.get(INTERVIEW_URL, () => HttpResponse.json(DONE_CH_INTERVIEW, { status: 200 })))
+    server.use(
+      http.put(`${CH_URL}/wechselkurs`, async ({ request }) => {
+        bodies.push(await request.json())
+        return HttpResponse.json(EMPTY_CH, { status: 200 })
+      }),
+    )
+    renderScreen()
+    fireEvent.click(await screen.findByTestId('ch-wechselkurs-jahresdurchschnitt'))
+    fireEvent.change(screen.getByTestId('ch-wechselkurs-kurs'), { target: { value: '1,065' } })
+    fireEvent.click(screen.getByText('Kurs speichern'))
+
+    await waitFor(() => expect(bodies).toEqual([{ month: `${TAX_YEAR}`, rate: 1.065, mode: 'jahresdurchschnitt' }]))
+  })
+
   it('says what is missing instead of silently doing nothing', async () => {
     server.use(http.get(INTERVIEW_URL, () => HttpResponse.json(DONE_CH_INTERVIEW, { status: 200 })))
     renderScreen()
 
     fireEvent.click(await screen.findByText('Kurs speichern'))
 
-    expect(await screen.findByText('Bitte Monat wählen und Kurs eintragen, z. B. 1,07.')).toBeTruthy()
+    expect(await screen.findByText('Bitte Monat oder Jahresdurchschnitt wählen und Kurs eintragen, z. B. 1,07.')).toBeTruthy()
   })
 })
 

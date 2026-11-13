@@ -41,22 +41,23 @@ export interface SalaryCertificateFieldDto {
 }
 
 /**
- * The rate mode (ADR-012).
+ * The rate mode (ADR-012, ADR-0072).
  */
 export type ExchangeRateDtoMode = typeof ExchangeRateDtoMode[keyof typeof ExchangeRateDtoMode];
 
 
 export const ExchangeRateDtoMode = {
   amtlich: 'amtlich',
+  jahresdurchschnitt: 'jahresdurchschnitt',
   tatsaechlich: 'tatsaechlich',
 } as const;
 
 export interface ExchangeRateDto {
-  /** yyyy-mm the rate applies to. */
+  /** yyyy-mm the rate applies to; yyyy for the Jahresdurchschnittskurs. */
   month: string;
   /** EUR per 1 CHF, strictly positive. */
   rate: number;
-  /** The rate mode (ADR-012). */
+  /** The rate mode (ADR-012, ADR-0072). */
   mode: ExchangeRateDtoMode;
   /** Beleg id — required iff modus === "tatsaechlich". */
   receiptId?: string;
@@ -148,6 +149,10 @@ export interface NGreDetailsDto {
   pkArbeitnehmerChf: number | null;
   /** @nullable */
   pkArbeitgeberChf: number | null;
+  /** @nullable */
+  pkArbeitgeberGesamtChf: number | null;
+  /** @nullable */
+  steuerfreiesKrankentaggeldChf: number | null;
   /** @nullable */
   krankentaggeldArbeitgeberProzent: number | null;
   /** @nullable */
@@ -251,7 +256,7 @@ export interface PutNGreDto {
      */
   familienzulagenChf?: number | null;
   /**
-     * Whole CHF — employee Krankentaggeld contributions (Zeile 80).
+     * Whole CHF — employee Krankentaggeld premium (Zeile 80), not the Taggeld paid out.
      * @nullable
      */
   krankentaggeldChf?: number | null;
@@ -265,6 +270,16 @@ export interface PutNGreDto {
      * @nullable
      */
   pkArbeitgeberChf?: number | null;
+  /**
+     * Whole CHF — all employer pension contributions; the part above the Obligatorium is taxable wage (Zeile 20).
+     * @nullable
+     */
+  pkArbeitgeberGesamtChf?: number | null;
+  /**
+     * Whole CHF — tax-free Krankentaggeld paid out and contained in Ziffer 8 (Zeilen 9/76).
+     * @nullable
+     */
+  steuerfreiesKrankentaggeldChf?: number | null;
   /**
      * Employer share of the Krankentaggeld premium in percent, 0–100 (Zeilen 18, 95, 96).
      * @nullable
@@ -286,29 +301,30 @@ export interface PutNGreDto {
      */
   nbuvArbeitgeberChf?: number | null;
   /**
-     * Any of N-Gre Zeilen 7, 9–14, 16, 17 or 20–22 applies.
+     * Any of N-Gre Zeilen 7, 10–14, 16, 17, 21 or 22 applies.
      * @nullable
      */
   specialCases?: boolean | null;
 }
 
 /**
- * The rate mode (ADR-012).
+ * The rate mode (ADR-012, ADR-0072).
  */
 export type PutExchangeRateDtoMode = typeof PutExchangeRateDtoMode[keyof typeof PutExchangeRateDtoMode];
 
 
 export const PutExchangeRateDtoMode = {
   amtlich: 'amtlich',
+  jahresdurchschnitt: 'jahresdurchschnitt',
   tatsaechlich: 'tatsaechlich',
 } as const;
 
 export interface PutExchangeRateDto {
-  /** yyyy-mm the rate applies to. */
+  /** yyyy-mm the rate applies to; yyyy for the Jahresdurchschnittskurs. */
   month: string;
   /** EUR per 1 CHF, strictly positive. */
   rate: number;
-  /** The rate mode (ADR-012). */
+  /** The rate mode (ADR-012, ADR-0072). */
   mode: PutExchangeRateDtoMode;
   /** Beleg id — required iff modus === "tatsaechlich". */
   receiptId?: string;

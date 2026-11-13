@@ -11,6 +11,8 @@ export interface NGreDetails {
   krankentaggeldChf: string | null
   pkArbeitnehmerChf: string | null
   pkArbeitgeberChf: string | null
+  pkArbeitgeberGesamtChf: string | null
+  steuerfreiesKrankentaggeldChf: string | null
   krankentaggeldArbeitgeberProzent: string | null
   krankentaggeldArbeitgeberChf: string | null
   nbuvArbeitgeberProzent: string | null
@@ -26,6 +28,8 @@ export const EMPTY_N_GRE: NGreDetails = {
   krankentaggeldChf: null,
   pkArbeitnehmerChf: null,
   pkArbeitgeberChf: null,
+  pkArbeitgeberGesamtChf: null,
+  steuerfreiesKrankentaggeldChf: null,
   krankentaggeldArbeitgeberProzent: null,
   krankentaggeldArbeitgeberChf: null,
   nbuvArbeitgeberProzent: null,

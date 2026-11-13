@@ -128,3 +128,23 @@ describe('describeFieldForPrompt', () => {
     expect(describeFieldForPrompt(fieldSpec('rente', 'rentenart')!)).toContain('„GesetzlicheRente“')
   })
 })
+
+describe('the Swiss pension split and the tax-free Krankentaggeld in the catalogue', () => {
+  it('lets the owl write the employer total and the paid-out Krankentaggeld', () => {
+    for (const field of ['pkArbeitgeberGesamtChf', 'steuerfreiesKrankentaggeldChf', 'pkArbeitnehmerChf', 'pkArbeitgeberChf']) {
+      expect(fieldSpec('chLohnausweis', field)?.aiWritable, field).toBe(true)
+    }
+    expect(validateFieldValue('chLohnausweis', 'pkArbeitgeberGesamtChf', "7'186 CHF")).toEqual(ok('7186'))
+  })
+
+  it('tells the model which pension field holds what, so "7.186, davon obligatorisch 2.892" lands in two fields without arithmetic', () => {
+    expect(describeFieldForPrompt(fieldSpec('chLohnausweis', 'berufliche-vorsorge')!)).toContain('obligatorisch und überobligatorisch zusammen')
+    expect(describeFieldForPrompt(fieldSpec('chLohnausweis', 'pkArbeitnehmerChf')!)).toContain('nur der obligatorische BVG-Teil')
+    expect(describeFieldForPrompt(fieldSpec('chLohnausweis', 'pkArbeitgeberChf')!)).toContain('nur der obligatorische BVG-Teil')
+    expect(describeFieldForPrompt(fieldSpec('chLohnausweis', 'pkArbeitgeberGesamtChf')!)).toContain('alle Arbeitgeberbeiträge')
+    expect(describeFieldForPrompt(fieldSpec('chLohnausweis', 'krankentaggeldChf')!)).toContain('nicht das ausgezahlte Taggeld')
+    expect(describeFieldForPrompt(fieldSpec('chLohnausweis', 'steuerfreiesKrankentaggeldChf')!)).toBe(
+      'steuerfreiesKrankentaggeldChf (Betrag, ganze Zahl; ausgezahltes steuerfreies Krankentaggeld, im Bruttolohn Ziffer 8 enthalten, N-Gre Zeile 9)',
+    )
+  })
+})

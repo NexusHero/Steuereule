@@ -1,6 +1,6 @@
 # Grenzgänger Schweiz & Auslandsbezug
 
-> **Stand:** 12.11.2026 · geprüft für die Steuerjahre 2023–2026. Beträge und Fristen des
+> **Stand:** 13.11.2026 · geprüft für die Steuerjahre 2023–2026. Beträge und Fristen des
 > geltenden Rechts (Stand 2026) sind mit dem Gesetzestext (gesetze-im-internet.de) abgeglichen; Werte
 > früherer Jahre stammen aus dem Rechenkern der App oder sind nicht einzeln belegt. **„(nicht belegt)“** = Verwaltungspraxis oder
 > Rechtsprechung, die nicht am Gesetzestext geprüft wurde: als unsicher nennen. **„prüfen“** = vor
@@ -21,8 +21,10 @@
   Voraussetzung für die 4,5 %: Ansässigkeitsbescheinigung Gre-1; ohne sie behält die Schweiz
   mehr ein.
 - **Kein Lohnsteuerabzug in DE** → **Pflichtveranlagung**, Vorauszahlungen werden festgesetzt.
-- **Umrechnung CHF → EUR**: Monatsdurchschnittskurse (BMF-Umsatzsteuer-Umrechnungskurse)
-  oder Jahresdurchschnitt; Methode einheitlich.
+- **Umrechnung CHF → EUR**: Monatskurse (BMF-Umsatzsteuer-Umrechnungskurse) oder aus
+  Vereinfachungsgründen der Jahresdurchschnittskurs, den die Anlage N-Gre unter Zeile 25 druckt
+  (2025: 100 CHF = 106,50 €; 2024: 104,50 €; 2023: 102,50 €; 2022: 99,00 €). Der Nutzer wählt;
+  Steuerberater nehmen meist den Jahresdurchschnitt. Methode einheitlich.
 - **Lohnausweis-Positionen**: Bruttolohn inkl. Boni, Fringe Benefits (Geschäftswagen,
   Verpflegung), Pauschalspesen (in DE oft steuerpflichtig, wenn nicht als Auslagenersatz
   nachweisbar!), Kinderzulagen (CH-Familienzulagen → mindern deutsches Kindergeld auf
@@ -31,6 +33,29 @@
   Nr. 2a). **Pensionskasse (BVG)**: obligatorische Beiträge als Altersvorsorge
   (Basisversorgung), überobligatorische Teile/Einkäufe umstritten bzw. nach Rechtsprechung
   differenziert (nicht belegt) → prüfen und ggf. Zwei-Wege-Darstellung. **Säule 3a** in DE nicht abziehbar.
+- **Pensionskasse in der Maske eintragen** (chLohnausweis): Felder getrennt nach Gesamtbetrag und
+  obligatorischem BVG-Teil, damit du nie rechnen musst.
+  - Arbeitnehmer: Gesamtbeitrag → `berufliche-vorsorge` (Lohnausweis Ziffer 10), davon obligatorisch →
+    `pkArbeitnehmerChf` (Zeile 84).
+  - Arbeitgeber: Gesamtbeitrag → `pkArbeitgeberGesamtChf`, davon obligatorisch → `pkArbeitgeberChf`
+    (Zeile 87). Den überobligatorischen Teil (Säule 2b) rechnet die App und druckt ihn als
+    steuerpflichtigen Arbeitslohn in Zeile 20.
+  - Beispiel: „Arbeitgeberbeiträge 7.186,20 CHF, davon obligatorisch 2.892 CHF“ → zwei Entwürfe:
+    `pkArbeitgeberGesamtChf` = 7186 und `pkArbeitgeberChf` = 2892. Nie den Gesamtbetrag in
+    `pkArbeitnehmerChf`/`pkArbeitgeberChf` schreiben. Rappen auf ganze Franken runden.
+  - Ist der obligatorische Teil unbekannt: nachfragen (Vorsorgeausweis der Pensionskasse, oft
+    „Altersgutschrift BVG“), nicht schätzen.
+- **NBUV**: Zahlt der Arbeitgeber die NBUV-Prämie zu 100 %, ist der Arbeitnehmeranteil 0
+  (`nbuvArbeitgeberProzent` = 100, Arbeitgeberbetrag in `nbuvArbeitgeberChf`).
+- **Krankentaggeld**: Zwei verschiedene Dinge. Die Prämie des Arbeitnehmers →
+  `krankentaggeldChf` (Zeile 80). Das ausgezahlte Taggeld (z. B. „KK-Taggeld Verrechnung“ im
+  Zusatzblatt zum Lohnausweis), das im Bruttolohn steckt → `steuerfreiesKrankentaggeldChf`
+  (Zeile 9, auch Zeile 76). Steuerfrei nach § 3 Nr. 2 Buchst. e i. V. m. Nr. 1 Buchst. a EStG, wenn
+  der Arbeitnehmer einen eigenen Anspruch gegen die Versicherung hat; hat allein der Arbeitgeber
+  das Forderungsrecht, ist es Arbeitslohn und gehört nicht in Zeile 9. Progressionsvorbehalt:
+  Die Anleitung zur Anlage N-Gre nennt für Zeile 9 keinen; FG Baden-Württemberg 14 K 2647/18 vom
+  08.05.2019: Taggeld aus einer Kollektivversicherung nach VVG nicht unter § 32b. Für Taggeld nach
+  KVG offen (nicht belegt) → als unsicher nennen.
 - **Krankenversicherung**: Optionsrecht (KVG in CH oder GKV/PKV in DE); Beiträge als
   Basis-KV § 10 Abs. 1 Nr. 3 abziehbar; NBU (Nichtberufsunfall) → sonstige Vorsorge.
 - **Werbungskosten**: Entfernungspauschale zum Arbeitsort in CH, Vignette nur anteilig/

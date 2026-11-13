@@ -89,3 +89,65 @@ describe('Anlage N-Gre — employer share of Krankentaggeld and NBUV (Zeilen 18,
   })
 })
 })
+
+describe('Anlage N-Gre — pension split into Obligatorium (Säule 2a) and Überobligatorium (Säule 2b)', () => {
+  // Hand-computed after the adviser's return: employer total 7.186 CHF, of which 2.892 CHF BVG-Obligatorium.
+  const PENSION: NGreInput = { ...INPUT, pkArbeitnehmerChf: 2892, pkArbeitgeberChf: 2892, pkArbeitnehmerGesamtChf: 7186, pkArbeitgeberGesamtChf: 7186 }
+
+  it('prints the employer Überobligatorium as taxable wage (Zeile 20) and adds it to Zeile 23', () => {
+    const { chf } = annexNGreAmounts(PENSION)
+    // 7186 − 2892 = 4294; Zeile 23 = 100000 − 2400 + 4294 = 101894
+    expect(chf).toMatchObject({ z20: 4294, z15: 97600, z23: 101894 })
+  })
+
+  it('keeps only the Obligatorium in Zeilen 84 and 87 and their sums 85 and 88', () => {
+    const { chf } = annexNGreAmounts(PENSION)
+    expect(chf).toMatchObject({ z84: 2892, z85: 4929 + 2892, z87: 2892, z88: 4929 + 2892 })
+  })
+
+  it('exposes the split for both sides', () => {
+    expect(annexNGreAmounts(PENSION).pension).toEqual({
+      employee: { mandatoryChf: 2892, overMandatoryChf: 4294 },
+      employer: { mandatoryChf: 2892, overMandatoryChf: 4294 },
+    })
+  })
+
+  it('without a total there is no Überobligatorium, and a total below the Obligatorium never goes negative', () => {
+    expect(annexNGreAmounts(INPUT).chf.z20).toBe(0)
+    expect(annexNGreAmounts({ ...PENSION, pkArbeitgeberGesamtChf: 2000 }).chf.z20).toBe(0)
+  })
+
+  it('converts Zeile 20 with the rate: 4294 × 1,065 = 4573', () => {
+    expect(annexNGreAmounts(PENSION).eur.z20).toBe(4573)
+  })
+})
+
+describe('Anlage N-Gre — NBUV paid entirely by the employer (Zeilen 97/98)', () => {
+  it('prints 0 as the employee share even though Ziffer 9 holds more than AHV/IV/EO/ALV', () => {
+    // Without the fix the 353 CHF residue of Ziffer 9 (see above) was printed as the employee share.
+    const { chf, split } = annexNGreAmounts({ ...INPUT, nbuvArbeitgeberProzent: 100, nbuvArbeitgeberChf: 540 })
+    expect(split.nbuv).toEqual({ employerPercent: 100, employeePercent: 0, employerChf: 540, employeeChf: 0 })
+    // Zeile 19 = 540, Zeile 81 = 50 % of 540 = 270
+    expect(chf).toMatchObject({ z19: 540, z81: 270, z23: 97600 + 540 })
+  })
+
+  it('treats the Krankentaggeld premium the same way', () => {
+    const { split } = annexNGreAmounts({ ...INPUT, krankentaggeldArbeitgeberProzent: 100, krankentaggeldArbeitgeberChf: 800 })
+    expect(split.dailySicknessAllowance).toMatchObject({ employeeChf: 0, employerChf: 800 })
+  })
+})
+
+describe('Anlage N-Gre — tax-free Krankentaggeld (Zeilen 9 and 76)', () => {
+  it('subtracts it from the wage (Zeile 9 → 15, 23) and from the social-contribution base (Zeile 76 → 77)', () => {
+    const { chf } = annexNGreAmounts({ ...INPUT, steuerfreiesKrankentaggeldChf: 3853 })
+    // Zeile 15 = 100000 − 2400 − 3853 = 93747; Zeile 76 = 2400 + 3853 = 6253
+    expect(chf).toMatchObject({ z9: 3853, z15: 93747, z23: 93747, z76: 6253, z77: 93747 })
+    // AHV/IV 5,05 % of 93747 = 4734,2 → 4734
+    expect(chf.z83).toBe(4734)
+  })
+
+  it('is 0 when not given', () => {
+    expect(annexNGreAmounts(INPUT).chf).toMatchObject({ z9: 0, z76: 2400 })
+  })
+})
+

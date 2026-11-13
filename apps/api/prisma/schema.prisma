@@ -569,19 +569,24 @@ model ChSalaryCertificate {
   krankentaggeldChf                String? /// @encrypted?mode=strict
   pkArbeitnehmerChf                String? /// @encrypted?mode=strict
   pkArbeitgeberChf                 String? /// @encrypted?mode=strict
+  /// All employer pension contributions (Obligatorium + Überobligatorium); the part above
+  /// pkArbeitgeberChf is taxable wage on N-Gre Zeile 20 (ADR-0072). Whole CHF, null = not entered.
+  pkArbeitgeberGesamtChf           String? /// @encrypted?mode=strict
+  /// Tax-free Krankentaggeld paid out and contained in Ziffer 8 (N-Gre Zeilen 9/76). Whole CHF.
+  steuerfreiesKrankentaggeldChf    String? /// @encrypted?mode=strict
   /// Who pays the Kollektivkrankentaggeld / NBUV premium (N-Gre Zeilen 18/19, 95–98): employer share in
   /// percent (0–100), plus the employer CHF only when it pays everything; null = not entered.
   krankentaggeldArbeitgeberProzent String? /// @encrypted?mode=strict
   krankentaggeldArbeitgeberChf     String? /// @encrypted?mode=strict
   nbuvArbeitgeberProzent           String? /// @encrypted?mode=strict
   nbuvArbeitgeberChf               String? /// @encrypted?mode=strict
-  /// Any of N-Gre Zeilen 7, 9–14, 16, 17, 20–22 applies — not printable yet.
+  /// Any of N-Gre Zeilen 7, 10–14, 16, 17, 21, 22 applies — not printable yet.
   nGreSonderfaelle                 Boolean?
-  /// Wechselkurs-Monat (yyyy-mm) the CHF→EUR conversion applies to (ADR-012).
+  /// Wechselkurs-Monat (yyyy-mm), or the year (yyyy) for the Jahresdurchschnittskurs (ADR-012, ADR-0072).
   exchangeRateMonth                String?  @map("wechselkursMonat")
   /// Wechselkurs-Kurs (EUR per 1 CHF, strictly positive) — public BMF rate, clear.
   exchangeRateValue                Float?   @map("wechselkursKurs")
-  /// Wechselkurs-Modus (amtlich | tatsaechlich). Clear.
+  /// Wechselkurs-Modus (amtlich | jahresdurchschnitt | tatsaechlich). Clear.
   exchangeRateMode                 String?  @map("wechselkursModus")
   /// Beleg id for a tatsächlicher Kurs (ADR-012: "ohne Beleg kein tatsächlicher Kurs"). Clear.
   exchangeRateReceiptId            String?  @map("wechselkursBelegId")
