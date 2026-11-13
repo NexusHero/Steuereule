@@ -85,6 +85,8 @@ export interface ConfirmLstbScanDto {
   receiptId?: string;
   /** Must be true to overwrite already captured LStB fields (ADR-0008). */
   overwriteExisting?: boolean;
+  /** Adds the values to a certificate already captured for the year (second employer, later payment) instead of replacing it. The same certificate twice is refused (409 LSTB_SAME_CERTIFICATE). */
+  addToExisting?: boolean;
   /** Staged advisor actionIds fulfilled by this confirmation. */
   actionIds?: string[];
 }

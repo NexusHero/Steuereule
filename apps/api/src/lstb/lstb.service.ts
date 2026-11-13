@@ -153,17 +153,28 @@ export class LstbService {
     userId: string,
     taxYear: number,
     values: ScannedLstbValues,
-    options: { readonly receiptId: string | null; readonly overwriteExisting: boolean },
+    options: {
+      readonly receiptId: string | null
+      readonly overwriteExisting: boolean
+      /** A further certificate of the same year (second employer, a later payment): add, never replace. */
+      readonly addToExisting?: boolean
+    },
   ): Promise<LstbResponseDto> {
     for (const id of LSTB_FIELD_IDS) {
       if (!isValidAmount(values[id])) {
         throw new InvalidInputError('FIELD_VALUE_INVALID', `Field "${id}" requires a non-negative whole-euro integer.`)
       }
     }
+    const current = await this.existingValues(userId, taxYear)
+    const adding = options.addToExisting === true && current.hasExisting
+    if (adding && LSTB_FIELD_IDS.every((id) => current.existing[id] === values[id])) {
+      throw new ConflictError('LSTB_SAME_CERTIFICATE', 'Diese Lohnsteuerbescheinigung ist schon erfasst.', { existing: current.existing })
+    }
+    const total = (id: WageTaxCertificateFieldId): number => values[id] + (adding ? (current.existing[id] ?? 0) : 0)
     const candidate: WageTaxCertificateData = {
-      bruttoarbeitslohn: { kind: 'erfasst', value: values.bruttoarbeitslohn },
-      lohnsteuer: { kind: 'erfasst', value: values.lohnsteuer },
-      sozialversicherung: { kind: 'erfasst', value: values.sozialversicherung },
+      bruttoarbeitslohn: { kind: 'erfasst', value: total('bruttoarbeitslohn') },
+      lohnsteuer: { kind: 'erfasst', value: total('lohnsteuer') },
+      sozialversicherung: { kind: 'erfasst', value: total('sozialversicherung') },
     }
     const candidateStatus = wageTaxCertificateStatus(candidate)
     if (candidateStatus.kind === 'widerspruch') {
@@ -174,8 +185,7 @@ export class LstbService {
       )
     }
 
-    const current = await this.existingValues(userId, taxYear)
-    if (current.hasExisting && !options.overwriteExisting) {
+    if (current.hasExisting && !options.overwriteExisting && !adding) {
       throw new ConflictError(
         'LSTB_EXISTING_VALUES_CONFLICT',
         'Für dieses Steuerjahr liegen bereits LStB-Werte vor. Bestehende Werte ersetzen oder abbrechen?',
@@ -185,7 +195,10 @@ export class LstbService {
 
     for (const id of LSTB_FIELD_IDS) {
       await this.repository.setField(userId, taxYear, id, serializeWageTaxCertificateField(candidate[id]))
-      if (options.receiptId !== null) {
+      if (adding) {
+        // A sum of two certificates is no single receipt's figure: the user's own, confirmed.
+        await this.markings.save(userId, taxYear, { key: provenanceKey('lstb', id), provenance: { kind: 'nutzer' }, confirmed: true, proposal: null })
+      } else if (options.receiptId !== null) {
         await this.markings.save(userId, taxYear, {
           key: provenanceKey('lstb', id),
           provenance: { kind: 'beleg', receiptId: options.receiptId },

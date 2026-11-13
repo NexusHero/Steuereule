@@ -128,7 +128,7 @@ export function extractLstbTaxYear(rawText: string): number | null {
   if (!rawText) return null
 
   const highPriorityPatterns = [
-    /Lohnsteuerbescheinigung\s+(?:für\s+(?:das\s+)?)?(?:Kalenderjahr\s+)?(20\d{2})\b/i,
+    /Lohnsteuerbescheinigung\s+(?:f(?:ü|ue|u|ii|i)r\s+(?:das\s+)?)?(?:Kalenderjahr\s+)?(20\d{2})\b/i,
     /(?:für\s+das\s+Kalenderjahr|Kalenderjahr)\s*[:-]?\s*(20\d{2})\b/i,
     /Bescheinigungszeitraum[^\n]*?(20\d{2})\b/i,
     /Zeitraum\s*[:-]?\s*\d{2}\.\d{2}\.(20\d{2})\s*(?:-|bis)\s*\d{2}\.\d{2}\.(20\d{2})\b/i,
@@ -362,8 +362,39 @@ export function evaluateLstbExtraction(input: LstbExtractionInput): LstbExtracti
 type TargetRowKey = '3' | '4' | '23a' | '23b' | '23' | '25' | '26' | '27'
 type MatchedRowKey = TargetRowKey | 'other'
 
-function classifyLine(rawLine: string): MatchedRowKey | null {
+/** Lower case without umlauts or "ß", so OCR's "Arbeitnehmerbeitrage" still matches. */
+function foldOcr(text: string): string {
+  return text.toLowerCase().replace(/ä/g, 'a').replace(/ö/g, 'o').replace(/ü/g, 'u').replace(/ß/g, 'ss')
+}
+
+/** What the heading of a target row starts with, on folded OCR text (letters OCR confuses are loose). */
+const ROW_HEADINGS: readonly (readonly [RegExp, RegExp])[] = [
+  [/^0?3$/, /^brutto\s*arbeits/],
+  [/^0?4$/, /^einbe\S*\s+lohnst/],
+  [/^23\s*[ab]?$/, /^(?:arbeitnehmer|[ab]\)\s*zur)/],
+  [/^25$/, /^arbeitnehmer\S*\s+zur\s+gesetzlichen\s+kranken/],
+  [/^26$/, /^arbeitnehmer\S*\s+zur\s+sozialen\s+pflege/],
+  [/^27$/, /^arbeitnehmer\S*\s+zur\s+arbeits.{0,2}osen/],
+]
+
+/**
+ * A scan of the two-column form puts the left column's text (address, numbers) before the row
+ * number: "1,0 25. Arbeitnehmerbeiträge …". Returns the line from the target row's number on,
+ * when its heading follows; the line itself otherwise.
+ */
+function rowSegment(rawLine: string): string {
   const line = rawLine.trim()
+  for (const m of line.matchAll(/(?<=^|[\s|:;])(\d{1,2}\s*[ab]?)\.?\s+(?=\S)/g)) {
+    const start = m.index ?? 0
+    const number = m[1]!.trim()
+    const heading = foldOcr(line.slice((m.index ?? 0) + m[0].length))
+    if (ROW_HEADINGS.some(([num, head]) => num.test(number) && head.test(heading))) return line.slice(start).trimStart()
+  }
+  return line
+}
+
+function classifyLine(rawLine: string): MatchedRowKey | null {
+  const line = rowSegment(rawLine)
   if (!line) return null
   // Monetary amounts at start of line (e.g. "3.906,00", "6.450,00 EUR", "25,50") are never row numbers
   if (/^\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?(?:\s*(?:€|EUR|Euro))?\b/i.test(line)) return null
@@ -375,6 +406,8 @@ function classifyLine(rawLine: string): MatchedRowKey | null {
 
   if (/^(?:Zeile\s+)?23\s*a(?![\d])(?:\b|[.)])/i.test(line) || /^23\.\s*a\)/i.test(line)) return '23a'
   if (/^(?:Zeile\s+)?23\s*b(?![\d])(?:\b|[.)])/i.test(line) || /^23\.\s*b\)/i.test(line)) return '23b'
+  if (/^23\.?\s+\S*\s*a\)\s*zur\s+gesetzlichen\s+Rente/i.test(line)) return '23a'
+  if (/^23\.?\s+\S*\s*b\)/i.test(line)) return '23b'
   if (/^(?:Zeile\s+)?23(?!\s*[ab])(?![\d,]|\.\d)(?:\b|[.)])/i.test(line)) return '23'
   if (/^(?:Zeile\s+)?25(?![\d,]|\.\d)(?:\b|[.)])/i.test(line)) return '25'
   if (/^(?:Zeile\s+)?26(?![\d,]|\.\d)(?:\b|[.)])/i.test(line)) return '26'
@@ -392,9 +425,10 @@ function classifyLine(rawLine: string): MatchedRowKey | null {
   if (/\bEinbehaltene\s+Lohnsteuer\b/i.test(line)) return '4'
   if (/Arbeitnehmeranteil.*Rentenversicherung/i.test(line) && !/Arbeitgeber/i.test(line)) return '23a'
   if (/berufsständische/i.test(line) && /Arbeitnehmer/i.test(line)) return '23b'
-  if (/Arbeitnehmerbeiträge.*gesetzlichen\s+Krankenversicherung/i.test(line)) return '25'
-  if (/Arbeitnehmerbeiträge.*sozialen\s+Pflegeversicherung/i.test(line)) return '26'
-  if (/Arbeitnehmerbeiträge.*Arbeitslosenversicherung/i.test(line)) return '27'
+  const folded = foldOcr(line)
+  if (/arbeitnehmerbeitr\S*.*gesetzlichen\s+krankenvers/.test(folded)) return '25'
+  if (/arbeitnehmerbeitr\S*.*sozialen\s+pflegevers/.test(folded)) return '26'
+  if (/arbeitnehmerbeitr\S*.*arbeits.{0,2}osenvers/.test(folded)) return '27'
 
   return null
 }
@@ -404,7 +438,7 @@ function classifyLine(rawLine: string): MatchedRowKey | null {
  * "ohne 9. und 10." or "von 3." at the middle of official BMF headings.
  */
 function extractTrailingAmount(line: string, isRowHeader: boolean): number | null {
-  let sanitized = line.replace(
+  let sanitized = (isRowHeader ? rowSegment(line) : line).replace(
     /\b(?:ohne|nach|von|gemäß|zu|lt\.|Zeile|Nr\.|Abs\.)\s+\d+\.?(?:\s*(?:und|bis|,|\/)\s*\d+\.?)*/gi,
     ' ',
   )
@@ -414,6 +448,8 @@ function extractTrailingAmount(line: string, isRowHeader: boolean): number | nul
   // OCR of a photo turns the decimal comma at the end of the line into a quote, or splits it off
   // with a space ("5.051 ‚76", "4.182 ,64", "977'76"); only the last two digits of the line qualify.
   sanitized = sanitized.trim().replace(/(\d)\s*[,‚'’`´]\s*(\d{2})(\s*(?:€|EUR|Euro)?)$/i, '$1,$2$3')
+  // OCR also writes the thousands point as a comma: "61,234,56".
+  sanitized = sanitized.replace(/(^|\s)(\d{1,3}),(\d{3}),(\d{2})(?=\s*(?:€|EUR|Euro)?$)/i, '$1$2.$3,$4')
 
   if (!sanitized) return null
 
@@ -556,7 +592,8 @@ export function selectLstbRelevantLines(rawText: string): string {
     const line = lines[i]!.trim()
     const row = classifyLine(line)
     if (row === null || row === 'other') continue
-    kept.push(line)
+    // Only from the row number on: a scan's left column (name, street) never leaves the server.
+    kept.push(rowSegment(line))
     // Same look-ahead as the deterministic parser: up to 2 lines, blank lines skipped,
     // stopping at the next certificate row. Only a pure amount line is ever carried along.
     for (let offset = 1; offset <= 2 && i + offset < lines.length; offset += 1) {

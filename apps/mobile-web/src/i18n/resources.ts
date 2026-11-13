@@ -841,8 +841,10 @@ export const appResources = {
           },
           overwriteConflict: {
             title: 'Bestehende Werte ersetzen?',
-            body: 'Für {{jahr}} sind bereits Werte in der Lohnsteuerbescheinigung gespeichert. Möchtest du sie durch die erkannten Werte ersetzen?',
+            body: 'Für {{jahr}} sind bereits Werte in der Lohnsteuerbescheinigung gespeichert. Ersetzen, oder ist das eine weitere Bescheinigung (zweiter Arbeitgeber, spätere Zahlung), die dazukommt?',
             replace: 'Bestehende Werte ersetzen',
+            add: 'Als weitere Bescheinigung dazurechnen',
+            same: 'Diese Bescheinigung ist schon erfasst. Dazurechnen würde sie doppelt zählen.',
             cancel: 'Abbrechen',
           },
           error: {
@@ -2833,8 +2835,10 @@ export const appResources = {
           },
           overwriteConflict: {
             title: 'Replace existing values?',
-            body: 'Values for {{jahr}} are already saved in your wage tax statement. Do you want to replace them with the scanned values?',
+            body: 'Values for {{jahr}} are already saved in your wage tax statement. Replace them, or is this a further certificate (second employer, later payment) to add?',
             replace: 'Replace existing values',
+            add: 'Add as a further certificate',
+            same: 'This certificate is already saved. Adding it would count it twice.',
             cancel: 'Cancel',
           },
           error: {

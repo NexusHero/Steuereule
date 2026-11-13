@@ -181,6 +181,22 @@ describe('LstbService', () => {
       expect(overwritten.bruttoarbeitslohn).toEqual({ kind: 'erfasst', value: 54320 })
     })
 
+    it('adds a second certificate of the same year to the first, when the user asks for it', async () => {
+      repository.seed({ userId: USER_ID, taxYear: TAX_YEAR, bruttoarbeitslohn: '40000', lohnsteuer: '6000', sozialversicherung: '8000' })
+      const added = await service.applyScannedValues(USER_ID, TAX_YEAR, scanned, { receiptId: 'beleg-2', overwriteExisting: false, addToExisting: true })
+      expect(added.state).toEqual({ kind: 'vollstaendig', bruttoarbeitslohn: 94320, lohnsteuer: 15840, sozialversicherung: 18912 })
+      // A sum of two certificates is no longer one receipt's figure: the user's own, confirmed.
+      for (const m of markings.all()) expect(m.provenance).toEqual({ kind: 'nutzer' })
+    })
+
+    it('refuses to add the same certificate twice', async () => {
+      repository.seed({ userId: USER_ID, taxYear: TAX_YEAR, bruttoarbeitslohn: '54320', lohnsteuer: '9840', sozialversicherung: '10912' })
+      await expect(
+        service.applyScannedValues(USER_ID, TAX_YEAR, scanned, { receiptId: null, overwriteExisting: false, addToExisting: true }),
+      ).rejects.toMatchObject({ code: 'LSTB_SAME_CERTIFICATE' })
+      expect(await service.existingValues(USER_ID, TAX_YEAR)).toMatchObject({ existing: { bruttoarbeitslohn: 54320 } })
+    })
+
     it('rejects implausible values (LSt or SV > Brutto) cleanly before touching persistence', async () => {
       await expect(
         service.applyScannedValues(

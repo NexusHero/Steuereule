@@ -80,6 +80,11 @@ export function LstbScanPanel({ scan, taxYear, onSwitchTaxYear }: LstbScanPanelP
       <Card style={styles.conflictCard} testID="lstb-overwrite-conflict-modal">
         <Text style={styles.conflictHeading}>{tr('lstb.scan.overwriteConflict.title')}</Text>
         <Text style={styles.conflictBody}>{tr('lstb.scan.overwriteConflict.body', { jahr: taxYear })}</Text>
+        {scan.sameCertificate && (
+          <Text style={styles.conflictBody} testID="lstb-same-certificate">
+            {tr('lstb.scan.overwriteConflict.same')}
+          </Text>
+        )}
         <View style={styles.conflictActions}>
           <Button
             onPress={() => void scan.applyDraft(true)}
@@ -88,6 +93,15 @@ export function LstbScanPanel({ scan, taxYear, onSwitchTaxYear }: LstbScanPanelP
             testID="lstb-overwrite-confirm"
           >
             {tr('lstb.scan.overwriteConflict.replace')}
+          </Button>
+          <Button
+            variant="leise"
+            onPress={() => void scan.applyDraft(false, true)}
+            disabled={scan.confirming}
+            style={styles.compactButton}
+            testID="lstb-overwrite-add"
+          >
+            {tr('lstb.scan.overwriteConflict.add')}
           </Button>
           <Button
             variant="ghost"

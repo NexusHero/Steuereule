@@ -33,6 +33,11 @@ export class ConfirmLstbScanDto {
   @IsBoolean()
   overwriteExisting?: boolean
 
+  @ApiPropertyOptional({ type: Boolean, example: false, description: 'Adds the values to a certificate already captured for the year (second employer, later payment) instead of replacing it. The same certificate twice is refused (409 LSTB_SAME_CERTIFICATE).' })
+  @IsOptional()
+  @IsBoolean()
+  addToExisting?: boolean
+
   @ApiPropertyOptional({ type: [String], example: ['act-1', 'act-2', 'act-3'], description: 'Staged advisor actionIds fulfilled by this confirmation.' })
   @IsOptional()
   @IsArray()
