@@ -61,6 +61,7 @@ export function toMessageDto(record: AdvisorChatMessageRecord): AdvisorChatMessa
     ...(record.reasoning !== null ? { reasoning: record.reasoning } : {}),
     feedback: record.feedback,
     ...(record.runId !== null ? { runId: record.runId } : {}),
+    ...(record.role === 'assistant' && record.status !== 'streaming' && record.usage ? { durationMs: record.usage.durationMs } : {}),
   }
 }
 

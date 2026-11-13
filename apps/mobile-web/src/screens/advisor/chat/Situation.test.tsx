@@ -26,8 +26,8 @@ describe('Unsere Situation (#501)', () => {
 
   it('tells the user who reads it and that names are removed', () => {
     renderInApp(<Situation text="" onSave={vi.fn()} />)
-    expect(screen.getByTestId('eule-situation').textContent).toContain('zu Beginn jedes Gesprächs')
-    expect(screen.getByTestId('eule-situation').textContent).toContain('ohne Namen')
+    expect(screen.getByTestId('eule-situation').textContent).toContain('in jedem Gespräch mit')
+    expect(screen.getByTestId('eule-situation').textContent).toContain('Namen, Adressen und Steuernummern werden beim Speichern entfernt')
   })
 })
 

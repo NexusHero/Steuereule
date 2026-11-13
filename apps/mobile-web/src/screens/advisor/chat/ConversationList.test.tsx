@@ -20,7 +20,7 @@ describe('ConversationList (#481)', () => {
     const rows = screen.getAllByTestId('eule-conversation-row')
     expect(rows).toHaveLength(2)
     expect(rows[0]!.textContent).toContain('Vermietung Musterweg')
-    expect(rows[0]!.textContent).toContain('geöffnet')
+    expect(screen.getAllByTestId('eule-conversation-open')[0]!.getAttribute('aria-current')).toBe('true')
     expect(rows[1]!.textContent).toContain('Gespräch vom 15.01.2026')
   })
 
@@ -47,9 +47,18 @@ describe('ConversationList (#481)', () => {
     expect(onNew).not.toHaveBeenCalled()
   })
 
+  it('keeps renaming and deleting behind each line\'s "…"', () => {
+    renderList()
+    expect(screen.queryByTestId('eule-conversation-rename')).toBeNull()
+    fireEvent.click(screen.getAllByTestId('eule-conversation-menu')[1]!)
+    expect(screen.getAllByTestId('eule-conversation-rename')).toHaveLength(1)
+    expect(screen.getAllByTestId('eule-conversation-menu')[1]!.getAttribute('aria-expanded')).toBe('true')
+  })
+
   it('renames a conversation', async () => {
     const { onRename } = renderList()
-    fireEvent.click(screen.getAllByTestId('eule-conversation-rename')[1]!)
+    fireEvent.click(screen.getAllByTestId('eule-conversation-menu')[1]!)
+    fireEvent.click(screen.getByTestId('eule-conversation-rename'))
     fireEvent.change(screen.getByTestId('eule-conversation-rename-input'), { target: { value: 'Arbeitsweg' } })
     fireEvent.click(screen.getByTestId('eule-conversation-rename-save'))
     expect(onRename).toHaveBeenCalledWith('c1', 'Arbeitsweg')
@@ -58,74 +67,42 @@ describe('ConversationList (#481)', () => {
 
   it('deletes only after a second, explicit step', async () => {
     const { onDelete } = renderList()
-    fireEvent.click(screen.getAllByTestId('eule-conversation-delete')[0]!)
+    fireEvent.click(screen.getAllByTestId('eule-conversation-menu')[0]!)
+    fireEvent.click(screen.getByTestId('eule-conversation-delete'))
     expect(onDelete).not.toHaveBeenCalled()
     fireEvent.click(screen.getByTestId('eule-conversation-delete-cancel'))
     expect(screen.queryByTestId('eule-conversation-delete-confirm')).toBeNull()
 
-    fireEvent.click(screen.getAllByTestId('eule-conversation-delete')[0]!)
+    fireEvent.click(screen.getAllByTestId('eule-conversation-menu')[0]!)
+    fireEvent.click(screen.getByTestId('eule-conversation-delete'))
     fireEvent.click(screen.getByTestId('eule-conversation-delete-confirm'))
     await waitFor(() => expect(onDelete).toHaveBeenCalledWith('c2'))
   })
 
   it('says so when a change could not be stored', async () => {
     renderList({ onDelete: vi.fn().mockRejectedValue(new Error('offline')) })
-    fireEvent.click(screen.getAllByTestId('eule-conversation-delete')[0]!)
+    fireEvent.click(screen.getAllByTestId('eule-conversation-menu')[0]!)
+    fireEvent.click(screen.getByTestId('eule-conversation-delete'))
     fireEvent.click(screen.getByTestId('eule-conversation-delete-confirm'))
     expect((await screen.findByTestId('eule-conversation-failed')).textContent).toContain('nicht geklappt')
   })
 
-  describe('search', () => {
-    const HITS = [
-      { conversationId: 'c1', conversationTitle: null, messageId: 'm1', role: 'user' as const, snippet: 'Ich arbeite am Küchentisch', at: '2026-01-15T10:00:00.000Z' },
-      { conversationId: 'c2', conversationTitle: 'Vermietung Musterweg', snippet: 'Vermietung Musterweg', at: '2026-03-05T10:00:00.000Z' },
-    ]
+  it('offers the search as one quiet line that opens the dialog', () => {
+    const onOpenSearch = vi.fn()
+    renderList({ onOpenSearch })
+    expect(screen.queryByTestId('eule-conversation-search')).toBeNull()
+    fireEvent.click(screen.getByTestId('eule-conversation-search-open'))
+    expect(onOpenSearch).toHaveBeenCalledTimes(1)
+  })
 
-    it('has no search field without a search', () => {
-      renderList()
-      expect(screen.queryByTestId('eule-conversation-search')).toBeNull()
-    })
+  it('has no search line without a search', () => {
+    renderList()
+    expect(screen.queryByTestId('eule-conversation-search-open')).toBeNull()
+  })
 
-    it('shows the hits instead of the list, with where each one was found', async () => {
-      const onSearch = vi.fn().mockResolvedValue(HITS)
-      renderList({ onSearch })
-      fireEvent.change(screen.getByTestId('eule-conversation-search'), { target: { value: 'küchen' } })
-      const hits = await screen.findAllByTestId('eule-conversation-search-hit')
-      expect(onSearch).toHaveBeenCalledWith('küchen')
-      expect(hits[0]!.textContent).toContain('Ich arbeite am Küchentisch')
-      expect(hits[0]!.textContent).toContain('deine Frage')
-      expect(hits[1]!.textContent).toContain('Titel')
-      expect(screen.queryByTestId('eule-conversation-row')).toBeNull()
-    })
-
-    it('opens the conversation of a hit and returns to the list', async () => {
-      const { onSelect } = renderList({ onSearch: vi.fn().mockResolvedValue(HITS) })
-      fireEvent.change(screen.getByTestId('eule-conversation-search'), { target: { value: 'küchen' } })
-      fireEvent.click((await screen.findAllByTestId('eule-conversation-search-hit'))[0]!)
-      expect(onSelect).toHaveBeenCalledWith('c1')
-      expect(screen.getAllByTestId('eule-conversation-row')).toHaveLength(2)
-    })
-
-    it('does not search for a single letter', async () => {
-      const onSearch = vi.fn().mockResolvedValue([])
-      renderList({ onSearch })
-      fireEvent.change(screen.getByTestId('eule-conversation-search'), { target: { value: 'k' } })
-      await new Promise((resolve) => setTimeout(resolve, 350))
-      expect(onSearch).not.toHaveBeenCalled()
-      expect(screen.getAllByTestId('eule-conversation-row')).toHaveLength(2)
-    })
-
-    it('says so when nothing was found', async () => {
-      renderList({ onSearch: vi.fn().mockResolvedValue([]) })
-      fireEvent.change(screen.getByTestId('eule-conversation-search'), { target: { value: 'gewerbe' } })
-      expect((await screen.findByTestId('eule-conversation-search-empty')).textContent).toContain('gewerbe')
-    })
-
-    it('reports a failed search', async () => {
-      renderList({ onSearch: vi.fn().mockRejectedValue(new Error('offline')) })
-      fireEvent.change(screen.getByTestId('eule-conversation-search'), { target: { value: 'gewerbe' } })
-      expect(await screen.findByTestId('eule-conversation-search-failed')).toBeTruthy()
-    })
+  it('explains nothing: the list is the explanation', () => {
+    renderList({ activeYear: 2026 })
+    expect(screen.getByTestId('eule-conversations').textContent).not.toContain('Alle Gespräche gehören')
   })
 })
 
@@ -136,22 +113,40 @@ describe('tax years as projects (#503)', () => {
     { taxYear: 2024, conversations: [] },
   ]
 
-  it('names the open year as the project and lists the other years that have conversations, closed at first', () => {
+  it('names the open year and offers the other years with conversations in a menu', () => {
     renderList({ activeYear: 2026, projects })
     expect(screen.getByTestId('eule-project-heading').textContent).toBe('Steuerjahr 2026')
-    const others = screen.getAllByTestId('eule-project')
-    expect(others).toHaveLength(1)
-    expect(others[0]!.textContent).toContain('Steuerjahr 2025')
-    expect(others[0]!.textContent).toContain('1 Gespräch')
-    expect(screen.queryByTestId('eule-project-conversation')).toBeNull()
+    expect(screen.queryByTestId('eule-year-menu')).toBeNull()
+    fireEvent.click(screen.getByTestId('eule-year-menu-toggle'))
+    const options = screen.getAllByTestId('eule-year-option')
+    expect(options).toHaveLength(1)
+    expect(options[0]!.textContent).toContain('Steuerjahr 2025')
+    expect(options[0]!.textContent).toContain('1 Gespräch')
   })
 
-  it('opens a conversation of another year with its year', () => {
+  it('switches to another year at its most recent conversation', () => {
     const onSelectInYear = vi.fn()
-    renderList({ activeYear: 2026, projects, onSelectInYear })
-    fireEvent.click(screen.getByTestId('eule-project-toggle'))
-    fireEvent.click(screen.getByTestId('eule-project-conversation'))
-    expect(onSelectInYear).toHaveBeenCalledWith(2025, 'p1')
+    const twoIn2025 = [
+      ...projects.slice(0, 1),
+      {
+        taxYear: 2025,
+        conversations: [
+          { id: 'old', title: 'Alt', createdAt: '2025-01-01T10:00:00.000Z', lastUsedAt: '2025-01-02T10:00:00.000Z' },
+          { id: 'new', title: 'Neu', createdAt: '2025-06-01T10:00:00.000Z', lastUsedAt: '2025-06-02T10:00:00.000Z' },
+        ],
+      },
+    ]
+    renderList({ activeYear: 2026, projects: twoIn2025, onSelectInYear })
+    fireEvent.click(screen.getByTestId('eule-year-menu-toggle'))
+    fireEvent.click(screen.getByTestId('eule-year-option'))
+    expect(onSelectInYear).toHaveBeenCalledWith(2025, 'new')
+    expect(screen.queryByTestId('eule-year-menu')).toBeNull()
+  })
+
+  it('offers no menu while the open year is the only one', () => {
+    renderList({ activeYear: 2026, projects: projects.slice(0, 1) })
+    fireEvent.click(screen.getByTestId('eule-year-menu-toggle'))
+    expect(screen.queryByTestId('eule-year-menu')).toBeNull()
   })
 
   it('marks a conversation that is answering and does not offer to delete it', () => {
@@ -159,9 +154,12 @@ describe('tax years as projects (#503)', () => {
     const rows = screen.getAllByTestId('eule-conversation-row')
     expect(rows[1]!.textContent).toContain('antwortet gerade')
     expect(rows[0]!.textContent).not.toContain('antwortet gerade')
-    const deletes = screen.getAllByTestId('eule-conversation-delete')
-    expect((deletes[1] as HTMLButtonElement).disabled || deletes[1]!.getAttribute('aria-disabled') === 'true').toBe(true)
-    expect((deletes[0] as HTMLButtonElement).disabled || deletes[0]!.getAttribute('aria-disabled') === 'true').toBe(false)
+    const isDisabled = (el: HTMLElement) => (el as HTMLButtonElement).disabled || el.getAttribute('aria-disabled') === 'true'
+    fireEvent.click(screen.getAllByTestId('eule-conversation-menu')[1]!)
+    expect(isDisabled(screen.getByTestId('eule-conversation-delete'))).toBe(true)
+    fireEvent.click(screen.getAllByTestId('eule-conversation-menu')[1]!)
+    fireEvent.click(screen.getAllByTestId('eule-conversation-menu')[0]!)
+    expect(isDisabled(screen.getByTestId('eule-conversation-delete'))).toBe(false)
   })
 
   it('also marks one that the server says is answering, on another device', () => {

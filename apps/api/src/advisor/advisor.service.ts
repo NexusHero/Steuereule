@@ -30,6 +30,8 @@ import {
   type WageTaxCertificateFieldId,
   advisorContextUsage,
   buildNoteHandles,
+  foldThoughtEvent,
+  type AdvisorThoughtStep,
 } from '@steuereule/core'
 import { AuditService } from '../audit/audit.service.js'
 import { checkPiiFree } from '../ki/ki.adapter.js'
@@ -474,7 +476,7 @@ export class AdvisorService {
     const { runId, userMessage, assistantMessageId, scrubbedUserText, dto } = turn
     let text = ''
     let reasoning = ''
-    const steps: string[] = []
+    let steps: readonly AdvisorThoughtStep[] = []
     let firstTokenMs: number | null = null
     let finished = false
 
@@ -485,7 +487,7 @@ export class AdvisorService {
       usage?: AdvisorTurnUsage,
     ): Promise<AdvisorChatMessageRecord> => {
       finished = true
-      const fullMeta: AdvisorMessageMeta = { ...meta, ...(steps.length > 0 ? { steps } : {}) }
+      const fullMeta: AdvisorMessageMeta = { ...meta, ...(steps.length > 0 ? { thoughtSteps: steps } : {}) }
       const usageRecord: AdvisorMessageUsage = { ...usage, traceId: runId, firstTokenMs, durationMs: Date.now() - startedAt }
       const record = await this.advisorRepo.finishMessage(assistantMessageId, userId, {
         content,
@@ -526,9 +528,9 @@ export class AdvisorService {
 
       let history = turn.history
       if (turn.needsSummary) {
-        const status = 'Die Eule fasst den älteren Verlauf zusammen …'
-        steps.push(status)
-        yield { event: 'status', data: { text: status } }
+        const status: AdvisorStreamEvent = { event: 'status', data: { text: 'Die Eule fasst den älteren Verlauf zusammen …' } }
+        steps = foldThoughtEvent(steps, status)
+        yield status
         history = await this.conversations.summarizeForTurn(userId, taxYear, turn, signal)
       }
 
@@ -547,9 +549,9 @@ export class AdvisorService {
         const enrichedMeta = await this.drafts.enrichDraftsWithRawBaseline(userId, taxYear, fallback.meta)
         await this.drafts.supersedePendingDraftsForSameTargets(userId, taxYear, this.drafts.collectPendingTargetKeys(enrichedMeta))
 
-        const status = 'Eule prüft deine Akte & Paragraphen …'
-        steps.push(status)
-        yield { event: 'status', data: { text: status } }
+        const status: AdvisorStreamEvent = { event: 'status', data: { text: 'Eule prüft deine Akte & Paragraphen …' } }
+        steps = foldThoughtEvent(steps, status)
+        yield status
         firstTokenMs = Date.now() - startedAt
         yield { event: 'token', data: { text: fallback.replyText } }
         if (enrichedMeta.choices && enrichedMeta.choices.length > 0) {
@@ -589,10 +591,8 @@ export class AdvisorService {
           text += ev.data.text
         } else if (ev.event === 'reasoning') {
           reasoning += ev.data.text
-        } else if (ev.event === 'status') {
-          steps.push(ev.data.text)
-        } else if (ev.event === 'tool') {
-          steps.push(ev.data.label)
+        } else {
+          steps = foldThoughtEvent(steps, ev)
         }
 
         if (ev.event === 'action') {

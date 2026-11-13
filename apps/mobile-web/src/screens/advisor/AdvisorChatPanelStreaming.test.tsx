@@ -9,7 +9,7 @@ function renderPanel(props: Partial<AdvisorChatPanelProps>) {
 
 describe('AdvisorChatPanel live answer (#451 slice 1)', () => {
   it('shows the thinking owl with a server step before the first token', () => {
-    renderPanel({ isSending: true, streamSteps: ['Prüfe EStG-Paragraph …'] })
+    renderPanel({ isSending: true, streamSteps: [{ kind: 'tool', tool: 'lookup_legal_source', label: 'Prüfe EStG-Paragraph …' }] })
     expect(screen.getByTestId('advisor-thinking')).toBeTruthy()
     expect(screen.getByTestId('eule-thinking-phrase').textContent).toBe('Prüfe EStG-Paragraph …')
     // Announced once through a polite live region, not on every phrase.
@@ -17,10 +17,11 @@ describe('AdvisorChatPanel live answer (#451 slice 1)', () => {
     expect(screen.getByTestId('eule-thinking-phrase').getAttribute('aria-hidden')).toBe('true')
   })
 
-  it('grows the answer inside the assistant bubble once tokens arrive', () => {
+  it('grows the answer inside the assistant bubble once tokens arrive, under the still counting thinking line', () => {
     renderPanel({ isSending: true, streamedText: 'Du kannst bis zu 1.260 € ' })
     expect(screen.getByTestId('advisor-streaming-message').textContent).toContain('Du kannst bis zu 1.260 €')
-    expect(screen.queryByTestId('advisor-thinking')).toBeNull()
+    expect(screen.getByTestId('advisor-thought-toggle').textContent).toContain('Denkt nach')
+    expect(screen.getByTestId('advisor-streaming-message').textContent).not.toContain('Denkt nach')
   })
 
   it('offers Stop only while answering and only when the chat can stop', () => {

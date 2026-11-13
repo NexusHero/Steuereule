@@ -260,6 +260,25 @@ export const AdvisorChatMessageDtoRole = {
   assistant: 'assistant',
 } as const;
 
+export type AdvisorThoughtStepDtoKind = typeof AdvisorThoughtStepDtoKind[keyof typeof AdvisorThoughtStepDtoKind];
+
+
+export const AdvisorThoughtStepDtoKind = {
+  status: 'status',
+  tool: 'tool',
+} as const;
+
+export interface AdvisorThoughtStepDto {
+  kind: AdvisorThoughtStepDtoKind;
+  label: string;
+  /** The tool that ran, for its icon; only on tool steps. */
+  tool?: string;
+  /** What the tool found, without personal data. */
+  result?: string;
+  /** False when the tool refused. */
+  ok?: boolean;
+}
+
 export interface AdvisorNotStagedDto {
   label: string;
   reason: string;
@@ -523,6 +542,8 @@ export interface AdvisorMessageMetaDto {
   choices?: string[];
   /** Steps the owl reported while working on this answer (#476). */
   steps?: string[];
+  /** The steps with their kind and what each tool found; replaces steps on new answers. */
+  thoughtSteps?: AdvisorThoughtStepDto[];
   /** Drafts the owl tried to prepare in this answer and could not, with the reason (ADR-0066). */
   notStaged?: AdvisorNotStagedDto[];
   /** What the check of the finished answer found: a figure the app did not compute, a claim to have written something, an unknown source (ADR-0066). */
@@ -594,6 +615,8 @@ export interface AdvisorChatMessageDto {
   feedback?: AdvisorMessageFeedbackDto | null;
   /** Present while status is streaming: the run to re-attach to. */
   runId?: string;
+  /** How long the owl worked on a finished answer, in milliseconds. */
+  durationMs?: number;
 }
 
 export type ParsedLstbResponseDtoStage = typeof ParsedLstbResponseDtoStage[keyof typeof ParsedLstbResponseDtoStage];

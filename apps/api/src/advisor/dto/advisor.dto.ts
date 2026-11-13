@@ -52,6 +52,9 @@ import {
   type LstbFieldReason,
   type OwlSourceId,
   type Screen,
+  ADVISOR_THOUGHT_STEP_KINDS,
+  type AdvisorThoughtStep,
+  type AdvisorThoughtStepKind,
 } from '@steuereule/core'
 import { OwlCardDto } from '../../owl-mode/dto/owl-mode.dto.js'
 
@@ -332,12 +335,35 @@ export class AdvisorQuestionRoundDto implements AdvisorQuestionRound {
   questions!: readonly AdvisorRoundQuestionDto[]
 }
 
+export class AdvisorThoughtStepDto implements AdvisorThoughtStep {
+  @ApiProperty({ type: String, enum: ADVISOR_THOUGHT_STEP_KINDS })
+  kind!: AdvisorThoughtStepKind
+
+  @ApiProperty({ type: String, example: 'Prüfe EStG-Paragraph …' })
+  label!: string
+
+  @ApiPropertyOptional({ type: String, description: 'The tool that ran, for its icon; only on tool steps.' })
+  tool?: string | undefined
+
+  @ApiPropertyOptional({ type: String, example: '§ 4 Abs. 5 Nr. 6c EStG', description: 'What the tool found, without personal data.' })
+  result?: string | undefined
+
+  @ApiPropertyOptional({ type: Boolean, description: 'False when the tool refused.' })
+  ok?: boolean | undefined
+}
+
 export class AdvisorMessageMetaDto implements AdvisorMessageMeta {
   @ApiPropertyOptional({ type: [String] })
   choices?: readonly string[] | undefined
 
   @ApiPropertyOptional({ type: [String], description: 'Steps the owl reported while working on this answer (#476).' })
   steps?: readonly string[] | undefined
+
+  @ApiPropertyOptional({
+    type: () => [AdvisorThoughtStepDto],
+    description: 'The steps with their kind and what each tool found; replaces steps on new answers.',
+  })
+  thoughtSteps?: readonly AdvisorThoughtStepDto[] | undefined
 
   @ApiPropertyOptional({
     type: () => [AdvisorNotStagedDto],
@@ -427,6 +453,9 @@ export class AdvisorChatMessageDto implements AdvisorChatMessageView {
 
   @ApiPropertyOptional({ type: String, description: 'Present while status is streaming: the run to re-attach to.' })
   runId?: string | undefined
+
+  @ApiPropertyOptional({ type: Number, description: 'How long the owl worked on a finished answer, in milliseconds.' })
+  durationMs?: number | undefined
 }
 
 export class SetAdvisorFeedbackDto {

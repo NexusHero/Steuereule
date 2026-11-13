@@ -7916,6 +7916,39 @@
           "sourceId"
         ]
       },
+      "AdvisorThoughtStepDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "status",
+              "tool"
+            ]
+          },
+          "label": {
+            "type": "string",
+            "example": "Prüfe EStG-Paragraph …"
+          },
+          "tool": {
+            "type": "string",
+            "description": "The tool that ran, for its icon; only on tool steps."
+          },
+          "result": {
+            "type": "string",
+            "example": "§ 4 Abs. 5 Nr. 6c EStG",
+            "description": "What the tool found, without personal data."
+          },
+          "ok": {
+            "type": "boolean",
+            "description": "False when the tool refused."
+          }
+        },
+        "required": [
+          "kind",
+          "label"
+        ]
+      },
       "AdvisorNotStagedDto": {
         "type": "object",
         "properties": {
@@ -8346,6 +8379,13 @@
               "type": "string"
             }
           },
+          "thoughtSteps": {
+            "description": "The steps with their kind and what each tool found; replaces steps on new answers.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdvisorThoughtStepDto"
+            }
+          },
           "notStaged": {
             "description": "Drafts the owl tried to prepare in this answer and could not, with the reason (ADR-0066).",
             "type": "array",
@@ -8509,6 +8549,10 @@
           "runId": {
             "type": "string",
             "description": "Present while status is streaming: the run to re-attach to."
+          },
+          "durationMs": {
+            "type": "number",
+            "description": "How long the owl worked on a finished answer, in milliseconds."
           }
         },
         "required": [

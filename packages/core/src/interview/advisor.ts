@@ -3,6 +3,7 @@ import type { AdvisorAnswerNotice } from './advisor-answer-check'
 import type { AdvisorNoteChange } from './advisor-notes'
 import type { AdvisorQuestionRound } from './advisor-skills'
 import type { AdvisorModelFailure } from './advisor-failure'
+import type { AdvisorThoughtStep } from './advisor-thought'
 import { isSupportedIncomeTaxYear } from '../math/tarif'
 import { getTaxYearParameters } from '../math/tax-parameters'
 import type { Marking, Screen } from './marking'
@@ -200,6 +201,8 @@ export interface AdvisorMessageMeta {
   readonly replaced?: true | undefined
   /** The steps the owl reported while working (status and tool labels), kept with the answer (#476). */
   readonly steps?: readonly string[] | undefined
+  /** The same steps with their kind and, for tools, what each found; replaces `steps` on new answers. */
+  readonly thoughtSteps?: readonly AdvisorThoughtStep[] | undefined
   /**
    * What the owl tried to prepare in this answer and could not (ADR-0066). Shown under the answer,
    * so the text can never claim a draft that does not exist without the user seeing it.
@@ -247,6 +250,8 @@ export interface AdvisorChatMessageView {
   readonly feedback?: AdvisorMessageFeedback | null | undefined
   /** Set while `status` is `streaming`: the run a client can re-attach to. */
   readonly runId?: string | undefined
+  /** How long the owl worked on a finished answer, in milliseconds. */
+  readonly durationMs?: number | undefined
 }
 
 export interface CaseDigest {

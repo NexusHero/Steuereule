@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import type { AdvisorActionProposal, AdvisorChatMessageView, AdvisorPlanStepStatus, AdvisorQuickAction, AdvisorSkillId, Screen } from '@steuereule/core'
+import { foldThoughtEvent, type AdvisorActionProposal, type AdvisorChatMessageView, type AdvisorPlanStepStatus, type AdvisorQuickAction, type AdvisorSkillId, type AdvisorThoughtStep, type Screen } from '@steuereule/core'
 import {
   advisorControllerApplyAction,
   advisorControllerApplyBatch,
@@ -42,7 +42,7 @@ import { followRun, type RunFrame } from './chat/runStream'
 /** What one conversation shows of its answer while it is written, and what is left when it stops or fails. */
 interface ConversationStream {
   readonly streaming: boolean
-  readonly streamSteps: readonly string[]
+  readonly streamSteps: readonly AdvisorThoughtStep[]
   readonly streamedText: string
   readonly streamedReasoning: string
   readonly chatError: string | null
@@ -158,7 +158,7 @@ export interface CopilotBridgeContextValue {
   readonly openMaskPreview: (screen: Screen, field?: string) => void
   readonly returnToStage: () => void
   readonly streaming: boolean
-  readonly streamSteps: readonly string[]
+  readonly streamSteps: readonly AdvisorThoughtStep[]
   readonly streamedText: string
   /** The reasoning summary of the running answer, as far as it has arrived (#476). */
   readonly streamedReasoning: string
@@ -331,7 +331,7 @@ export function CopilotBridgeProvider({
   const settersFor = useCallback(
     (scope: { readonly key: string }) => ({
       setStreaming: (update: StreamUpdate<boolean>) => patchStream(scope.key, 'streaming', update),
-      setStreamSteps: (update: StreamUpdate<readonly string[]>) => patchStream(scope.key, 'streamSteps', update),
+      setStreamSteps: (update: StreamUpdate<readonly AdvisorThoughtStep[]>) => patchStream(scope.key, 'streamSteps', update),
       setStreamedText: (update: StreamUpdate<string>) => patchStream(scope.key, 'streamedText', update),
       setStreamedReasoning: (update: StreamUpdate<string>) => patchStream(scope.key, 'streamedReasoning', update),
       setChatError: (update: StreamUpdate<string | null>) => patchStream(scope.key, 'chatError', update),
@@ -497,10 +497,13 @@ export function CopilotBridgeProvider({
           if (typeof userMessage === 'object' && userMessage !== null) setPendingUserMessage(userMessage as AdvisorChatMessageView)
         } else if (event === 'status' && 'text' in data) {
           const text = String((data as { text: unknown }).text)
-          setStreamSteps((prev) => [...prev, text])
+          setStreamSteps((prev) => foldThoughtEvent(prev, { event: 'status', data: { text } }))
         } else if (event === 'tool' && 'label' in data) {
-          const label = String((data as { label: unknown }).label)
-          setStreamSteps((prev) => [...prev, label])
+          const { name, label } = data as { name?: unknown; label: unknown }
+          setStreamSteps((prev) => foldThoughtEvent(prev, { event: 'tool', data: { name: String(name ?? ''), label: String(label) } }))
+        } else if (event === 'tool_result' && 'result' in data) {
+          const { name, ok, result } = data as { name?: unknown; ok?: unknown; result: unknown }
+          setStreamSteps((prev) => foldThoughtEvent(prev, { event: 'tool_result', data: { name: String(name ?? ''), ok: ok === true, result: String(result) } }))
         } else if (event === 'token' && 'text' in data) {
           const chunk = String((data as { text: unknown }).text)
           partialText += chunk

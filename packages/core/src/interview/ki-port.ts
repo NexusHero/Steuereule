@@ -107,6 +107,8 @@ export type AdvisorStreamEvent =
   /** A piece of the provider's reasoning summary; never the answer itself. */
   | { readonly event: 'reasoning'; readonly data: { readonly text: string } }
   | { readonly event: 'tool'; readonly data: { readonly name: string; readonly label: string } }
+  /** What a tool found, after it ran: a few words without personal data, shown under its step. */
+  | { readonly event: 'tool_result'; readonly data: { readonly name: string; readonly ok: boolean; readonly result: string } }
   | { readonly event: 'token'; readonly data: { readonly text: string } }
   | { readonly event: 'choices'; readonly data: { readonly choices: readonly string[] } }
   | { readonly event: 'action'; readonly data: AdvisorActionProposal }

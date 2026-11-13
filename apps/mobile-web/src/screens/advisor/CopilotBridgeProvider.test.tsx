@@ -126,7 +126,7 @@ function BridgeProbe() {
     <div>
       <span data-testid="probe-mode">{bridge.mode}</span>
       <span data-testid="probe-inside">{String(bridge.insideOwlWorkspace)}</span>
-      <span data-testid="probe-steps">{bridge.streamSteps.join('|')}</span>
+      <span data-testid="probe-steps">{bridge.streamSteps.map((step) => (step.result ? `${step.label}=${step.result}` : step.label)).join('|')}</span>
       <span data-testid="probe-tokens">{bridge.streamedText}</span>
       <span data-testid="probe-prov">{bridge.bestTileProvenance(['interview', 'commute']) ?? 'none'}</span>
       <span data-testid="probe-banner">{bridge.cockpitBanner ? String(bridge.cockpitBanner.appliedCount) : 'none'}</span>
@@ -195,6 +195,7 @@ describe('Slice 4: CopilotBridgeProvider & 3-Breakpoint OwlMode Workspace', () =
         makeSseStreamResponse([
           { event: 'status', data: { text: 'Prüfe Akte' } },
           { event: 'tool', data: { name: 'calc', label: 'Werbungskosten gerechnet' } },
+          { event: 'tool_result', data: { name: 'calc', ok: true, result: '+125 €' } },
           { event: 'token', data: { text: '60 Homeoffice-Tage ' } },
           { event: 'token', data: { text: 'ergeben +125 €.' } },
           { event: 'action', data: PENDING_WORKDAYS_DRAFT },
@@ -247,7 +248,7 @@ describe('Slice 4: CopilotBridgeProvider & 3-Breakpoint OwlMode Workspace', () =
     fireEvent.click(screen.getByText('send-stream'))
     await waitFor(() => {
       expect(screen.getByTestId('probe-steps').textContent).toContain('Prüfe Akte')
-      expect(screen.getByTestId('probe-steps').textContent).toContain('Werbungskosten gerechnet')
+      expect(screen.getByTestId('probe-steps').textContent).toContain('Werbungskosten gerechnet=+125 €')
       expect(screen.getByTestId('probe-tokens').textContent).toContain('ergeben +125 €')
     })
 
@@ -480,7 +481,7 @@ describe('Slice 4: CopilotBridgeProvider & 3-Breakpoint OwlMode Workspace', () =
     expect(screen.getByTestId('eule-chat-main')).toBeTruthy()
     expect(screen.getByTestId('advisor-chat-input')).toBeTruthy()
     expect(screen.getByTestId('eule-draft-stage')).toBeTruthy()
-    expect(screen.getByTestId('eule-hints-pill').textContent).toContain('1 Entwurf')
+    expect(screen.getByTestId('eule-hints-pill').getAttribute('aria-label')).toContain('1 Entwurf')
 
     // Closing it is the reader's choice and it stays closed; the chat remains.
     fireEvent.click(screen.getByTestId('eule-workbench-close'))
@@ -595,7 +596,7 @@ describe('Slice 4: CopilotBridgeProvider & 3-Breakpoint OwlMode Workspace', () =
       <BridgeHarness initialMode="eulen-modus">
         <AdvisorChatPanel
           messages={[]}
-          streamSteps={['Schritt 1']}
+          streamSteps={[{ kind: 'status', label: 'Schritt 1' }]}
           streamedText="Live Antwort..."
           isSending
           chatError="Kurze Unterbrechung"
@@ -605,8 +606,8 @@ describe('Slice 4: CopilotBridgeProvider & 3-Breakpoint OwlMode Workspace', () =
       </BridgeHarness>,
     )
 
-    // #451 slice 1: once tokens arrive, the answer grows in the owl's bubble instead of the thinking box.
-    expect(screen.queryByTestId('advisor-thinking')).toBeNull()
+    // Once tokens arrive the answer grows in the owl's bubble; the thinking line stays above it, collapsed.
+    expect(screen.queryByTestId('advisor-thought-body')).toBeNull()
     expect(screen.getByTestId('advisor-streaming-message')).toBeTruthy()
     expect(screen.getByTestId('advisor-stream-token-preview').textContent).toContain('Live Antwort...')
     expect(screen.getByTestId('advisor-chat-error').textContent).toContain('Kurze Unterbrechung')
