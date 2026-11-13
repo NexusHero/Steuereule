@@ -10739,8 +10739,9 @@
           },
           "sozialversicherung": {
             "type": "number",
+            "nullable": true,
             "example": 10912,
-            "description": "SV-Arbeitnehmeranteil (Summe Zeilen 23/23a/23b, 25, 26 und 27) in whole EUR."
+            "description": "SV-Arbeitnehmeranteil (Summe Zeilen 23/23a/23b, 25, 26 und 27) in whole EUR. Absent or null when unreadable: the field stays open, or on a further certificate the recorded sum stands (ADR-0083)."
           },
           "receiptId": {
             "type": "string",
@@ -10772,8 +10773,7 @@
         },
         "required": [
           "bruttoarbeitslohn",
-          "lohnsteuer",
-          "sozialversicherung"
+          "lohnsteuer"
         ]
       },
       "DeleteAccountRequestDto": {

@@ -176,7 +176,7 @@ export function useLstbScan({ taxYear, person }: { readonly taxYear: number; rea
   async function applyDraft(overwriteExisting: boolean, addToExisting = false) {
     if (stagedScan === null) return
     const { bruttoarbeitslohn, lohnsteuer, sozialversicherung } = evaluateStagedDraft(stagedScan).values
-    if (bruttoarbeitslohn === null || lohnsteuer === null || sozialversicherung === null) return
+    if (bruttoarbeitslohn === null || lohnsteuer === null || !evaluateStagedDraft(stagedScan).readyToApply) return
 
     setError(null)
     try {
@@ -186,7 +186,7 @@ export function useLstbScan({ taxYear, person }: { readonly taxYear: number; rea
         data: {
           bruttoarbeitslohn,
           lohnsteuer,
-          sozialversicherung,
+          ...(sozialversicherung !== null ? { sozialversicherung } : {}),
           ...(stagedScan.receiptId !== null ? { receiptId: stagedScan.receiptId } : {}),
           ...(stagedScan.actionIds.length > 0 ? { actionIds: [...stagedScan.actionIds] } : {}),
           ...(overwriteExisting ? { overwriteExisting: true } : {}),
@@ -229,7 +229,7 @@ export function useLstbScan({ taxYear, person }: { readonly taxYear: number; rea
     evaluation,
     canApply:
       stagedScan !== null &&
-      evaluation.allIntegers &&
+      evaluation.readyToApply &&
       !evaluation.hasUnconfirmedYellow &&
       !evaluation.hasWiderspruch &&
       !confirmScan.isPending,

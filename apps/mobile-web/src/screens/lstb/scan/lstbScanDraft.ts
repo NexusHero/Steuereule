@@ -91,6 +91,10 @@ export function rehydrateDraftFromAdvisorMessages(
 export interface StagedDraftEvaluation {
   readonly values: Readonly<Record<FieldId, number | null>>
   readonly allIntegers: boolean
+  /** Gross wage and wage tax are whole numbers and the social insurance is one too or left empty (ADR-0083). */
+  readonly readyToApply: boolean
+  /** The social insurance could not be read and is left empty: it stays open, or the recorded sum stands. */
+  readonly socialInsuranceOpen: boolean
   readonly liveStatus: WageTaxCertificateStatus | null
   readonly hasWiderspruch: boolean
   readonly hasUnconfirmedYellow: boolean
@@ -105,19 +109,25 @@ export function evaluateStagedDraft(draft: StagedLstbScanDraft | null): StagedDr
   }
   const { bruttoarbeitslohn, lohnsteuer, sozialversicherung } = values
   const allIntegers = bruttoarbeitslohn !== null && lohnsteuer !== null && sozialversicherung !== null
-  const liveStatus = allIntegers
+  const socialInsuranceOpen = draft !== null && draft.fields.sozialversicherung.text.trim() === ''
+  const readyToApply = bruttoarbeitslohn !== null && lohnsteuer !== null && (sozialversicherung !== null || socialInsuranceOpen)
+  const liveStatus = readyToApply
     ? wageTaxCertificateStatus({
         bruttoarbeitslohn: { kind: 'erfasst', value: bruttoarbeitslohn },
         lohnsteuer: { kind: 'erfasst', value: lohnsteuer },
-        sozialversicherung: { kind: 'erfasst', value: sozialversicherung },
+        sozialversicherung: { kind: 'erfasst', value: sozialversicherung ?? 0 },
       })
     : null
   return {
     values,
     allIntegers,
+    readyToApply,
+    socialInsuranceOpen,
     liveStatus,
     hasWiderspruch: liveStatus?.kind === 'widerspruch',
+    // An empty social insurance is no yellow value to confirm: it is left open on purpose.
     hasUnconfirmedYellow:
-      draft !== null && FIELDS.some((f) => draft.fields[f.id].status === 'pruefen' && !draft.fields[f.id].confirmed),
+      draft !== null &&
+      FIELDS.some((f) => draft.fields[f.id].status === 'pruefen' && !draft.fields[f.id].confirmed && !(f.id === 'sozialversicherung' && socialInsuranceOpen)),
   }
 }

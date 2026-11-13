@@ -100,6 +100,7 @@ The ADRs **justify** the architecture; the [living arc42 document](../arc42/READ
 | 0080 | Spendenbestätigungen addieren, Schweizer Krankenkassen-Auszüge lesen | Accepted |
 | 0081 | Vorauszahlungen in der Schätzung | Accepted |
 | 0082 | Die Eule ändert erfasste Werte nur auf Wunsch | Accepted |
+| 0083 | Lohnsteuerbescheinigung ohne lesbare Sozialversicherung | Accepted |
 
 See also the [Tech Radar](./tech-radar.md).
 

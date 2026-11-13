@@ -79,8 +79,11 @@ export interface ConfirmLstbScanDto {
   bruttoarbeitslohn: number;
   /** Einbehaltene Lohnsteuer (Zeile 4) in whole EUR. */
   lohnsteuer: number;
-  /** SV-Arbeitnehmeranteil (Summe Zeilen 23/23a/23b, 25, 26 und 27) in whole EUR. */
-  sozialversicherung: number;
+  /**
+     * SV-Arbeitnehmeranteil (Summe Zeilen 23/23a/23b, 25, 26 und 27) in whole EUR. Absent or null when unreadable: the field stays open, or on a further certificate the recorded sum stands (ADR-0083).
+     * @nullable
+     */
+  sozialversicherung?: number | null;
   /** Optional receipt id for { kind: "beleg", receiptId } provenance. */
   receiptId?: string;
   /** Must be true to overwrite already captured LStB fields (ADR-0008). */

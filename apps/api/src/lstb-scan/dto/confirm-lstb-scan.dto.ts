@@ -13,14 +13,17 @@ export class ConfirmLstbScanDto {
   @Min(0)
   lohnsteuer!: number
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     type: Number,
+    nullable: true,
     example: 10912,
-    description: 'SV-Arbeitnehmeranteil (Summe Zeilen 23/23a/23b, 25, 26 und 27) in whole EUR.',
+    description:
+      'SV-Arbeitnehmeranteil (Summe Zeilen 23/23a/23b, 25, 26 und 27) in whole EUR. Absent or null when unreadable: the field stays open, or on a further certificate the recorded sum stands (ADR-0083).',
   })
+  @IsOptional()
   @IsInt()
   @Min(0)
-  sozialversicherung!: number
+  sozialversicherung?: number | null
 
   @ApiPropertyOptional({ type: String, example: 'beleg-123', description: 'Optional receipt id for { kind: "beleg", receiptId } provenance.' })
   @IsOptional()

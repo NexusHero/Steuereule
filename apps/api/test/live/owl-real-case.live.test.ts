@@ -167,15 +167,16 @@ describe.skipIf(!KEY || !CASE_FILE)('a real case through the chat (live model, b
           // The LStB goes through its mask's „Werte übernehmen“, as in the app: a second certificate of the
           // year is added to the first („Als weitere Bescheinigung dazurechnen“), never written over it.
           const { bruttoarbeitslohn, lohnsteuer, sozialversicherung } = lstb.fields
-          if (bruttoarbeitslohn?.value != null && lohnsteuer?.value != null && sozialversicherung?.value != null) {
+          // An unreadable social insurance is left empty, as a user would (ADR-0083): it stays open, or the recorded sum stands.
+          if (bruttoarbeitslohn?.value != null && lohnsteuer?.value != null) {
             await app.get(LstbScanService).confirm(userId, userId, year, {
               bruttoarbeitslohn: bruttoarbeitslohn.value,
               lohnsteuer: lohnsteuer.value,
-              sozialversicherung: sozialversicherung.value,
+              sozialversicherung: sozialversicherung?.value ?? null,
               actionIds: lstb.stagedActionIds,
               ...(lstb.existingLstbConflict.hasExisting ? { addToExisting: true } : {}),
             } as never)
-            log.push(`LStB übernommen${lstb.existingLstbConflict.hasExisting ? ' (dazugerechnet)' : ''}: ${bruttoarbeitslohn.value} / ${lohnsteuer.value} / ${sozialversicherung.value}\n`)
+            log.push(`LStB übernommen${lstb.existingLstbConflict.hasExisting ? ' (dazugerechnet)' : ''}: ${bruttoarbeitslohn.value} / ${lohnsteuer.value} / ${sozialversicherung?.value ?? 'SV offen'}\n`)
           } else {
             log.push(`LStB unvollständig gelesen, nichts übernommen: ${JSON.stringify(lstb.fields)}\n`)
           }

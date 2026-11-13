@@ -128,6 +128,10 @@ export function LstbScanPanel({ scan, taxYear, onSwitchTaxYear }: LstbScanPanelP
         </View>
         <Text style={styles.draftSubtitle}>{tr('lstb.scan.draftBanner.subtitle')}</Text>
 
+        {evaluation.socialInsuranceOpen && (
+          <Text style={styles.yellowWarningText} testID="lstb-scan-sv-offen">{tr('lstb.scan.draftBanner.socialInsuranceOpen')}</Text>
+        )}
+
         {evaluation.hasUnconfirmedYellow && (
           <Text style={styles.yellowWarningText}>{tr('lstb.scan.draftBanner.yellowBlocked')}</Text>
         )}

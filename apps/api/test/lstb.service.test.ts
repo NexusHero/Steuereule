@@ -189,6 +189,19 @@ describe('LstbService', () => {
       for (const m of markings.all()) expect(m.provenance).toEqual({ kind: 'nutzer' })
     })
 
+    it('adds a further certificate whose social insurance is unreadable: wage and tax add up, the SV sum stands (ADR-0083)', async () => {
+      repository.seed({ userId: USER_ID, taxYear: TAX_YEAR, bruttoarbeitslohn: '40000', lohnsteuer: '6000', sozialversicherung: '8000' })
+      const added = await service.applyScannedValues(USER_ID, TAX_YEAR, { bruttoarbeitslohn: 900, lohnsteuer: 300, sozialversicherung: null }, { receiptId: 'beleg-3', overwriteExisting: false, addToExisting: true })
+      expect(added.state).toEqual({ kind: 'vollstaendig', bruttoarbeitslohn: 40900, lohnsteuer: 6300, sozialversicherung: 8000 })
+      expect(markings.all().map((m) => m.key).sort()).toEqual(['lstb.bruttoarbeitslohn', 'lstb.lohnsteuer'])
+    })
+
+    it('takes a single certificate without readable social insurance and leaves that field open', async () => {
+      const taken = await service.applyScannedValues(USER_ID, TAX_YEAR, { bruttoarbeitslohn: 900, lohnsteuer: 300, sozialversicherung: null }, { receiptId: null, overwriteExisting: false })
+      expect(taken.state).toMatchObject({ kind: 'unvollstaendig' })
+      expect(await service.existingValues(USER_ID, TAX_YEAR)).toMatchObject({ existing: { bruttoarbeitslohn: 900, lohnsteuer: 300, sozialversicherung: null } })
+    })
+
     it('refuses to add the same certificate twice', async () => {
       repository.seed({ userId: USER_ID, taxYear: TAX_YEAR, bruttoarbeitslohn: '54320', lohnsteuer: '9840', sozialversicherung: '10912' })
       await expect(

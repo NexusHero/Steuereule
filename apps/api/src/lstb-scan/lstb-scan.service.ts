@@ -37,7 +37,7 @@ export class LstbScanService {
         {
           bruttoarbeitslohn: dto.bruttoarbeitslohn,
           lohnsteuer: dto.lohnsteuer,
-          sozialversicherung: dto.sozialversicherung,
+          sozialversicherung: dto.sozialversicherung ?? null,
         },
         { receiptId, overwriteExisting: dto.overwriteExisting === true, addToExisting: dto.addToExisting === true },
       )
