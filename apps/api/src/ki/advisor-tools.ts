@@ -159,7 +159,7 @@ export const TOOL_DESCRIPTIONS: Readonly<Record<ToolName, string>> = {
     'Stellt zwei Alternativen (Sicher-Weg vs. Maximal-Weg mit Nachweishinweis) zur Auswahl durch den Nutzer gegenüber.',
   ask_clarification: 'Schlägt 2 bis 4 anklickbare Quick-Chips als nächste Rückfragen im Chat vor.',
   ask_questions:
-    'Stellt dem Nutzer eine Runde von 1 bis 4 Fragen, jede mit 2 bis 4 antippbaren Antworten und deiner Empfehlung. Nur im Skill „Berater-Interview“ verwenden. Schreibt nichts in die Akte.',
+    'Stellt dem Nutzer eine Runde von 1 bis 4 Fragen, jede mit 2 bis 4 antippbaren Antworten und deiner Empfehlung. Nur im Skill „Berater-Interview“ und in der Eröffnung eines Gesprächs verwenden. Schreibt nichts in die Akte.',
   suggest_situation:
     'Schlägt dem Nutzer einen Satz für seine Beschreibung „Unsere Situation“ vor, wenn du etwas Dauerhaftes erfährst, das kein Formular fragt (z. B. „Hauskauf für 2027 geplant“). Ein Satz, ohne Namen und Kennungen. Der Nutzer übernimmt ihn mit einem Tipp; du speicherst nichts selbst.',
   lookup_tax_knowledge:

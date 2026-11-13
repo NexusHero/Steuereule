@@ -49,7 +49,8 @@ function makeStyles(t: UiTheme) {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 6,
-      maxWidth: 320,
+      // The slot decides the width: on a phone the chip shares the row with Skills and Turbo.
+      maxWidth: '100%',
       minHeight: 36,
       paddingHorizontal: t.space.s3,
       borderRadius: t.radius.pille,
@@ -59,6 +60,6 @@ function makeStyles(t: UiTheme) {
     } as ViewStyle,
     chipHover: { borderColor: t.color.linie } as ViewStyle,
     dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: t.color.ok } as ViewStyle,
-    label: { flexShrink: 1, fontFamily: t.font.text, fontWeight: t.weight.halb, fontSize: t.size.xs, color: t.color.tinte2 } as TextStyle,
+    label: { flexShrink: 1, maxWidth: 280, fontFamily: t.font.text, fontWeight: t.weight.halb, fontSize: t.size.xs, color: t.color.tinte2 } as TextStyle,
   }
 }

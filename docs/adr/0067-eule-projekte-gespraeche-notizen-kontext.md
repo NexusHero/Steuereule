@@ -181,6 +181,41 @@ folgt jetzt dem Aufbau, den Nutzer von Claude kennen:
   Nutzers, nie mit dem Grund einer Ablehnung. Die Dauer (`durationMs`) war schon gespeichert und
   geht jetzt mit der fertigen Antwort an die App; Kosten und Tokens bleiben beim Betrieb.
 
+### 11. Die Eule eröffnet das Gespräch (Nachtrag 13.11.2026)
+
+Ein neues Gespräch beginnt nicht mehr leer, wenn die App schon etwas über das Jahr weiß. Die Eule
+spricht zuerst, mit dem Steuerberater-Skill und dem Fall-Überblick, den sie ohnehin in jedem Zug
+bekommt. Der Überblick umfasst jetzt alles, was das Interview und die Masken kennen
+(`furtherFacts`: Rente, Summen der Vermietung, Kapital mit einbehaltener Steuer, Nebenjob,
+Lohnersatz, Abfindung, Krankheitskosten, haushaltsnahe Dienste, Fristen), weiter nur Beträge und
+Zählungen, nie Namen, Adressen oder Kennungen.
+
+- **Stufe ohne Modell:** Der Rechenkern bestimmt vor jedem Modellaufruf die Stufe.
+  - `empty`: nichts erfasst. Keine Eröffnung; der Chat bietet „Lass uns anfangen“ an, das das Berater-Interview startet.
+  - `partial`: etwas erfasst, aber kein Einkommen mit Betrag oder keine Angabe zur Veranlagung. Die Eule sagt kurz, was sie weiß, und fragt die Lücken als Fragerunde mit antippbaren Antworten ab.
+  - `ready`: mindestens ein Einkommen mit Betrag und die Veranlagung. Die Eule analysiert frei.
+- **Nur wenn sich etwas geändert hat:** Ein Fingerabdruck (FNV-1a) aus Fall-Überblick, eigener
+  Beschreibung und Notizen steht an jeder Eröffnung. Gleicht er dem der letzten Eröffnung des
+  Jahres, bleibt das neue Gespräch leer und verlinkt „Letzte Analyse vom … ansehen“.
+- **Zahlen aus dem Rechenkern:** Vor dem Modellaufruf rechnet die App die Kennzahlen der Eröffnung
+  (Ergebnis-Spanne der Schätzung, Entfernungs- und Homeoffice-Pauschale aus den erfassten Tagen,
+  Werbungskosten gegen den Arbeitnehmer-Pauschbetrag). Sie stehen im Prompt als die einzigen
+  Beträge, die die Eule nennen darf; jeden weiteren muss sie mit `compute_income_tax` oder
+  `simulate_tax_delta` rechnen. Die Antwort-Prüfung zählt die Kennzahlen als berechnet.
+- **Prüfung blockt:** Die Eröffnung wird zurückgehalten, bis sie geprüft ist. Nennt sie einen
+  Betrag, den die App nicht berechnet hat, wird sie einmal neu geschrieben, mit diesen Beträgen als
+  falsch benannt. Erst eine zweite Verfehlung erscheint, dann mit dem üblichen Hinweis.
+- **Keine Entwürfe:** Eine Eröffnung legt nie Entwürfe an, auch nicht mit Turbo. Entwürfe
+  entstehen aus der Antwort des Nutzers auf die Fragerunde.
+- Technisch ist die Eröffnung ein Zug mit `quickAction: 'opening'`. Die Frage dahinter ist ein
+  Platzhalter, den der Chat nicht zeigt (`meta.opening` an beiden Nachrichten); ohne Sprachmodell
+  gibt es keine Eröffnung.
+
+Die Ergebnisse der Werkzeuge im Gedankengang wiederholen ihr Label nicht mehr („Schlage im
+Steuerwissen nach: Kennzahlen je Steuerjahr“ statt „…: Gefunden: …“), und die Denk-Zusammenfassung
+erscheint als Überschriften und Absätze statt als rohes Markdown; die Eule wird gebeten, auf
+Deutsch zu denken.
+
 ## Folgen
 
 - Ein Gespräch löschen entfernt seine Nachrichten und die darin noch offenen Entwürfe;

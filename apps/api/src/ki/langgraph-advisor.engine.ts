@@ -306,6 +306,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
       request.task,
       request.assessment,
       request.situation,
+      request.opening,
     )
     const historyMessages: BaseMessage[] = (request.history ?? []).map((entry) =>
       entry.role === 'user' ? new HumanMessage(entry.content) : new AIMessage(entry.content),
@@ -465,7 +466,8 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
       userMessage: request.message,
       drafts: [...pendingActions, ...(pendingTwoPaths ? [pendingTwoPaths.safePath, pendingTwoPaths.maxPath] : [])],
       notStagedCount: notStaged.length,
-      computedFigures: computedFiguresOf(finalMessages),
+      // The opening's figures are the app's own calculation, so naming them is backed.
+      computedFigures: [...computedFiguresOf(finalMessages), ...(request.opening?.figures.map((figure) => figure.amountEur) ?? [])],
     })
     const meta: AdvisorMessageMeta = {
       ...(choices.length > 0 ? { choices } : {}),

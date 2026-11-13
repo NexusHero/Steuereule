@@ -60,6 +60,11 @@ export interface AdvisorChatPanelProps {
   readonly pendingUserMessage?: AdvisorChatMessageView | null | undefined
   /** True while the connection to a running answer is being restored. */
   readonly reconnecting?: boolean | undefined
+  /**
+   * How a new conversation starts (ADR-0067 §11): with nothing entered the chat offers to start
+   * the interview; when nothing changed since the last opening, it links to that one.
+   */
+  readonly opening?: AdvisorChatOpening | undefined
   /** How full the context of this conversation is, and where its summarised part ends (#481). */
   readonly context?: (ContextRingState & { readonly summary?: string | undefined; readonly summarizedUntilMessageId?: string | undefined }) | undefined
   readonly onSummarize?: (() => Promise<void>) | undefined
@@ -130,6 +135,16 @@ export function sendOptionsToDto(options: ChatSendOptions | undefined): { quickA
   }
 }
 
+export interface AdvisorChatOpening {
+  readonly stage: 'empty' | 'partial' | 'ready'
+  /** ISO date of the last opening of the year, when the chat should link to it instead of opening again. */
+  readonly lastOpeningAt?: string | undefined
+  readonly onOpenLast?: (() => void) | undefined
+}
+
+/** The hidden question of an opening: the owl speaks first, there is nothing the user said. */
+export const isOpeningPlaceholder = (message: AdvisorChatMessageView): boolean => message.role === 'user' && message.meta?.opening !== undefined
+
 /** A quick-start chip that also tells the server how to run the turn (e.g. always with a plan). */
 export interface AdvisorQuickChip {
   readonly label: string
@@ -149,6 +164,7 @@ export function AdvisorChatPanel({
   streamedReasoning = '',
   pendingUserMessage = null,
   reconnecting = false,
+  opening,
   context,
   onSummarize,
   onUndoNoteChange,
@@ -251,8 +267,8 @@ export function AdvisorChatPanel({
   }
 
   // An answer that is still being written is shown by the live bubble, not from the stored list.
-  const messages = allMessages.filter((m) => !(m.role === 'assistant' && m.status === 'streaming'))
-  const showPendingUser = isSending && pendingUserMessage !== null && !messages.some((m) => m.id === pendingUserMessage.id)
+  const messages = allMessages.filter((m) => !(m.role === 'assistant' && m.status === 'streaming') && !isOpeningPlaceholder(m))
+  const showPendingUser = isSending && pendingUserMessage !== null && !isOpeningPlaceholder(pendingUserMessage) && !messages.some((m) => m.id === pendingUserMessage.id)
   const lastMessage = messages.at(-1)
   const lastIsStoredInterrupted = lastMessage?.role === 'assistant' && (lastMessage.status === 'aborted' || lastMessage.status === 'failed')
 
@@ -329,9 +345,21 @@ export function AdvisorChatPanel({
 
   // The page shows the first few quick starts; the rest wait behind "Mehr …" so the input stays the eye's target.
   const chipsShown = variant === 'page' && !chipsExpanded ? quickChips.slice(0, PAGE_QUICK_CHIPS) : quickChips
+  // Nothing entered yet: the way in is the interview. Nothing changed since the last opening: link to it.
+  const openingChip =
+    isEmpty && opening?.stage === 'empty' ? (
+      <Pressable accessibilityRole="button" onPress={() => runCommand('/grill-me')} style={[styles.quickChipButton, styles.openingChip]} testID="advisor-opening-start">
+        <Text style={styles.quickChipText}>{tr('advisor.chat.opening.start')}</Text>
+      </Pressable>
+    ) : isEmpty && opening?.lastOpeningAt && opening.onOpenLast ? (
+      <Pressable accessibilityRole="button" onPress={opening.onOpenLast} style={[styles.quickChipButton, styles.openingChip]} testID="advisor-opening-last">
+        <Text style={styles.quickChipText}>{tr('advisor.chat.opening.last', { date: new Date(opening.lastOpeningAt).toLocaleDateString('de-DE') })}</Text>
+      </Pressable>
+    ) : null
   const quickChipRow =
     quickChips.length > 0 && messages.length === 0 ? (
       <View style={[styles.quickChipsRow, variant === 'page' && styles.quickChipsRowCentered]} testID="advisor-quick-chips">
+        {openingChip}
         {chipsShown.map((entry) => {
           const chip = typeof entry === 'string' ? { label: entry, testID: undefined, quickAction: undefined } : entry
           return (

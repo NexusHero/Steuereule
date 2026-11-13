@@ -289,7 +289,7 @@ describe('AiRuntimeConfigService & LangGraphAdvisorEngine (#446 Slice 2)', () =>
     const result = events.find((e) => e.event === 'tool_result')
     expect(result).toMatchObject({ event: 'tool_result', data: { name: 'stage_field_draft', ok: true } })
     if (result?.event === 'tool_result') {
-      expect(result.data.result).toMatch(/^Entwurf vorbereitet/)
+      expect(result.data.result).toMatch(/^fertig/)
       expect(result.data.result).not.toContain('Arbeitsweg')
     }
     expect(events.some((e) => e.event === 'token')).toBe(true)

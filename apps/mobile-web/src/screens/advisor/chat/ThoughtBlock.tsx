@@ -5,6 +5,7 @@ import { useTheme, type UiTheme } from '@steuereule/ui'
 import type { AdvisorThoughtStep } from '@steuereule/core'
 import { APP_NS } from '../../../i18n/resources'
 import { StrokeIcon, type StrokeIconName } from '../../../icons/StrokeIcon'
+import { reasoningBlocks } from './reasoningBlocks'
 import { ThinkingGlyph } from './ThinkingGlyph'
 import { THINKING_PHRASE_COUNT, THINKING_PHRASE_INTERVAL_MS, thinkingLabelAt } from './thinkingLabel'
 
@@ -133,9 +134,13 @@ export function ThoughtBlock({ reasoning, steps = [], durationMs, live = false }
             </View>
           ))}
           {text.length > 0 ? (
-            <Text style={styles.reasoning} testID="advisor-thought-reasoning">
-              {text}
-            </Text>
+            <View style={styles.reasoning} testID="advisor-thought-reasoning">
+              {reasoningBlocks(text).map((block, index) => (
+                <Text key={index} style={block.kind === 'heading' ? styles.reasoningHeading : styles.reasoningText}>
+                  {block.text}
+                </Text>
+              ))}
+            </View>
           ) : null}
           <Text style={styles.note} testID="advisor-thought-note">
             {tr('advisor.chat.thought.note')}
@@ -176,7 +181,9 @@ function makeStyles(t: UiTheme) {
     stepText: { flexShrink: 1, fontFamily: t.font.text, fontSize: t.size.s, lineHeight: 20, color: t.color.tinte2 } as TextStyle,
     stepResult: { color: t.color.tinte, fontWeight: t.weight.halb } as TextStyle,
     stepRefused: { color: t.color.tinte2, fontStyle: 'italic' } as TextStyle,
-    reasoning: { fontFamily: t.font.text, fontSize: t.size.s, lineHeight: 21, color: t.color.tinte2, fontStyle: 'italic', marginTop: t.space.s2 } as TextStyle,
+    reasoning: { marginTop: t.space.s2, gap: t.space.s1 } as ViewStyle,
+    reasoningHeading: { fontFamily: t.font.text, fontSize: t.size.s, fontWeight: t.weight.halb, color: t.color.tinte2, marginTop: t.space.s1 } as TextStyle,
+    reasoningText: { fontFamily: t.font.text, fontSize: t.size.s, lineHeight: 21, color: t.color.tinte2 } as TextStyle,
     note: { fontFamily: t.font.text, fontSize: t.size.xs, color: t.color.tinte2, marginTop: t.space.s1 } as TextStyle,
     srOnly: { position: 'absolute', width: 1, height: 1, overflow: 'hidden', opacity: 0 } as TextStyle,
   }

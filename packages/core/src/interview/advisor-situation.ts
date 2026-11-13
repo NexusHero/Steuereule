@@ -43,6 +43,7 @@ export function describeSituationForPrompt(digest: CaseDigest, ownText: string |
     `- Lohn: brutto ${euro(digest.lstbPersonA.grossWageEur)}; Arbeitsweg ${work.distanceKm === null ? 'keine Angabe' : `${work.distanceKm} km`}; Homeoffice-Tage ${work.homeOfficeDays ?? 'keine Angabe'}`,
     `- Grenzgänger Schweiz: ${digest.crossBorder.isCrossBorderCh ? 'ja' : 'nein'}`,
     `- Vermietung: ${digest.rentalObjectsCount === 0 ? 'keine' : `${digest.rentalObjectsCount} Objekt(e)`}; Kapitalerträge: ${euro(digest.capitalGainEur)}`,
+    ...describeFurtherFacts(digest),
   ]
   const own = (ownText ?? '').trim()
   lines.push(
@@ -51,4 +52,32 @@ export function describeSituationForPrompt(digest: CaseDigest, ownText: string |
       : `In eigenen Worten des Nutzers (gilt in jedem Gespräch und über alle Jahre):\n${own}`,
   )
   return lines.join('\n')
+}
+
+/** The further facts as short lines; only what is entered, so an empty case stays short. */
+function describeFurtherFacts(digest: CaseDigest): string[] {
+  const further = digest.furtherFacts
+  if (!further) return []
+  const lines: string[] = []
+  if (further.singleParent) lines.push('- Alleinerziehend: ja')
+  if (further.pension) lines.push(`- Rente: ${further.pension.kind ?? 'Art offen'}, ${euro(further.pension.annualEur)} im Jahr`)
+  const rentals = further.rentals
+  if (digest.rentalObjectsCount > 0) lines.push(`- Vermietung zusammen: Miete ${euro(rentals.rentEur)}, Werbungskosten ${euro(rentals.expensesEur)}, Schuldzinsen ${euro(rentals.loanInterestEur)}`)
+  const capital = further.capital
+  if (digest.capitalGainEur !== null || capital.depot !== null) {
+    lines.push(`- Kapital: Depot ${capital.depot ?? 'offen'}, einbehaltene Kapitalertragsteuer ${euro(capital.withheldTaxEur)}, genutzter Sparer-Pauschbetrag ${euro(capital.saverAllowanceUsedEur)}`)
+  }
+  const other: [string, number | null][] = [
+    ['Nebenjob brutto', further.sideJobGrossEur],
+    ['Lohnersatzleistungen (Progressionsvorbehalt)', further.wageReplacementEur],
+    ['Abfindung', further.severanceEur],
+    ['Krankheitskosten', further.healthCostsEur],
+    ['Haushaltsnahe Dienste und Handwerker', further.householdServicesEur],
+  ]
+  for (const [label, value] of other) if (value !== null) lines.push(`- ${label}: ${euro(value)}`)
+  if (further.filingDeadline) {
+    lines.push(`- Abgabefrist mit Pflicht: ${further.filingDeadline}; freiwillig (Antragsveranlagung) bis ${further.voluntaryFilingDeadline ?? 'offen'}`)
+  }
+  lines.push(`- Beantwortete Interviewfragen: ${further.answeredQuestions}${further.filingStatusAnswered ? '' : '; Veranlagung noch nicht gefragt'}`)
+  return lines
 }

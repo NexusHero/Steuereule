@@ -18,7 +18,7 @@ import { APP_NS } from '../../i18n/resources'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { OwlTopBar } from './OwlTopBar'
 import { ProfessionPicker } from './ProfessionPicker'
-import { AdvisorChatPanel, type AdvisorChatPanelProps, type ChatSendOptions } from './AdvisorChatPanel'
+import { AdvisorChatPanel, type AdvisorChatOpening, type AdvisorChatPanelProps, type ChatSendOptions } from './AdvisorChatPanel'
 import { ConversationList, type ConversationProject, type ConversationSearchHit, type ConversationSummary } from './chat/ConversationList'
 import { ProjectNotes, type ProjectNote } from './chat/ProjectNotes'
 import { Situation } from './chat/Situation'
@@ -84,6 +84,8 @@ export interface OwlModeScreenProps {
   /** The user's own description of the household's situation; the owl reads it in every conversation (#501). */
   readonly situation?: string | undefined
   readonly onSaveSituation?: ((text: string) => Promise<void>) | undefined
+  /** How a new conversation starts: the way into the interview, or a link to the last opening (ADR-0067 §11). */
+  readonly opening?: AdvisorChatOpening | undefined
   readonly isGuest?: boolean | undefined
   readonly onRegister?: (() => void) | undefined
   readonly onLogin?: (() => void) | undefined
@@ -183,6 +185,7 @@ export function OwlModeScreenView({
   onUndoNoteChange,
   situation,
   onSaveSituation,
+  opening,
 }: OwlModeScreenProps & { readonly initialCards: readonly OwlCardsDisplay[] }) {
   const bp = useBreakpoint()
   const t = useTheme()
@@ -425,6 +428,7 @@ export function OwlModeScreenView({
     return (
       <AdvisorChatPanel
         messages={displayedMessages}
+        opening={opening}
         situationChip={hasSituationDialog ? <SituationChip text={situation ?? ''} onPress={() => setSituationOpen(true)} /> : undefined}
         footnote={tr('eule.workspace.topbar.legalStatus', { date: formatLegalDate(LEGAL_STATUS_DATE, i18n.language) })}
         quickChips={[

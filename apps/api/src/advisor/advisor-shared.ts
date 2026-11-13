@@ -76,6 +76,8 @@ export interface PreparedAdvisorTurn {
   readonly conversationId: string
   /** The context of the conversation is full: its older part is summarised before the model is asked. */
   readonly needsSummary: boolean
+  /** Set when the owl opens this conversation itself (ADR-0067 §11). */
+  readonly opening?: { readonly marker: NonNullable<AdvisorMessageMeta['opening']>; readonly context: import('./advisor-opening.js').OpeningContext } | undefined
 }
 
 /** More conversations in one year than anyone can keep apart are a list nobody reads. */

@@ -7,6 +7,10 @@ import {
   type CaseDigest,
   type Profession,
   ageAtEndOfYear,
+  filingDeadlineFor,
+  isSupportedIncomeTaxYear,
+  voluntaryFilingDeadlineFor,
+  type CaseFurtherFacts,
 } from '@steuereule/core'
 import { checkPiiFree } from '../ki/ki.adapter.js'
 import { type CapitalRepository } from '../capital/capital.repository.js'
@@ -18,6 +22,7 @@ import { type InterviewAnswerRepository } from '../interview/interview-answer.re
 import { type WageTaxCertificateRepository } from '../lstb/lstb.repository.js'
 import { OwlModeService } from '../owl-mode/owl-mode.service.js'
 import { type ProfileRepository } from '../profile/profile.repository.js'
+import { type PensionRecord, type PensionRepository } from '../pension/pension.repository.js'
 import { type RentalRepository } from '../rental/rental.repository.js'
 import { parseNum } from './advisor-shared.js'
 
@@ -34,6 +39,7 @@ export class AdvisorCaseFacts {
     private readonly owlModeService: OwlModeService,
     private readonly profileRepo: ProfileRepository | undefined,
     private readonly rentalRepo: RentalRepository | undefined,
+    private readonly pensionRepo?: PensionRepository | undefined,
   ) {}
 
   /** Names of the user and their children, so free text can be scrubbed before it reaches any model. */
@@ -81,6 +87,7 @@ export class AdvisorCaseFacts {
       capitalRecord,
       owlCardsResponse,
       missingConfirmationsList,
+      pensionRecord,
     ] = await Promise.all([
       this.interviewRepo.findAllForUserAndYear(userId, taxYear),
       this.interviewRepo.findAllForUserAndYear(userId, taxYear - 1),
@@ -92,6 +99,7 @@ export class AdvisorCaseFacts {
       this.capitalRepo ? this.capitalRepo.findForUserAndYear(userId, taxYear) : Promise.resolve(null),
       this.owlModeService.getCards(userId, taxYear),
       this.confirmationService.missing(userId, taxYear),
+      this.pensionRepo ? this.pensionRepo.findForUserAndYear(userId, taxYear) : Promise.resolve(null),
     ])
 
     const answerMap: Record<string, string> = {}
@@ -167,11 +175,59 @@ export class AdvisorCaseFacts {
       })),
       printoutMissingFields: missingConfirmationsList,
       estimatedRefundEur: null,
+      furtherFacts: furtherFactsOf(taxYear, answerMap, pensionRecord, rentals, capitalRecord),
     }
 
     // Security gate: verify CaseDigest is 100% free of Steuer-IDs, IBANs, and personal keys
     checkPiiFree(digest)
 
     return digest
+  }
+}
+
+type Rental = Awaited<ReturnType<RentalRepository['listForUserAndYear']>>[number]
+type CapitalRecord = Awaited<ReturnType<CapitalRepository['findForUserAndYear']>>
+
+/** Sum of the entered figures; null while none of them is entered. */
+function sumEntered(values: readonly (number | null)[]): number | null {
+  const entered = values.filter((value): value is number => value !== null)
+  return entered.length === 0 ? null : entered.reduce((sum, value) => sum + value, 0)
+}
+
+/** A yes answer with its amount; null when the answer is not yes or the amount is not entered. */
+const amountIfYes = (answers: Readonly<Record<string, string>>, gate: string, amount: string): number | null =>
+  answers[gate] === 'Ja' ? amountFromAnswer(answers[amount]) : null
+
+/** The rest of the case in figures (#501 follow-up): no name, no address, no identifier. */
+export function furtherFactsOf(
+  taxYear: number,
+  answers: Readonly<Record<string, string>>,
+  pension: PensionRecord | null,
+  rentals: readonly Rental[],
+  capital: CapitalRecord,
+): CaseFurtherFacts {
+  const supported = isSupportedIncomeTaxYear(taxYear)
+  return {
+    answeredQuestions: Object.keys(answers).length,
+    filingStatusAnswered: answers['partner'] !== undefined || answers['familienstand'] !== undefined,
+    singleParent: answers['alleinerziehend'] === 'Ja',
+    pension: pension && (pension.rentenart !== null || pension.jahresbetrag !== null) ? { kind: pension.rentenart, annualEur: parseNum(pension.jahresbetrag) } : null,
+    rentals: {
+      rentEur: sumEntered(rentals.map((rental) => parseNum(rental.mieteinnahmen))),
+      expensesEur: sumEntered(rentals.map((rental) => parseNum(rental.werbungskosten))),
+      loanInterestEur: sumEntered(rentals.map((rental) => parseNum(rental.schuldzinsen))),
+    },
+    capital: {
+      withheldTaxEur: parseNum(capital?.kapitalertragsteuer),
+      saverAllowanceUsedEur: parseNum(capital?.sparerPauschbetrag),
+      depot: answers['kap-depot'] ?? null,
+    },
+    sideJobGrossEur: amountIfYes(answers, 'nebenjob', 'nebenjob-brutto'),
+    wageReplacementEur: amountIfYes(answers, 'lohnersatz', 'lohnersatz-betrag'),
+    severanceEur: amountIfYes(answers, 'abfindung', 'abfindung-betrag'),
+    healthCostsEur: amountFromAnswer(answers['gesundheit-betrag']),
+    householdServicesEur: sumEntered(['haushalt-dienstleistung-betrag', 'haushalt-handwerker-betrag', 'haushalt-minijob-betrag'].map((id) => amountFromAnswer(answers[id]))),
+    filingDeadline: supported ? filingDeadlineFor(taxYear) : null,
+    voluntaryFilingDeadline: supported ? voluntaryFilingDeadlineFor(taxYear) : null,
   }
 }

@@ -18,7 +18,7 @@ function mount(props: ThoughtBlockProps, language: 'de' | 'en' = 'de') {
 
 const status = (label: string): AdvisorThoughtStep => ({ kind: 'status', label })
 const LOOKUP: AdvisorThoughtStep = { kind: 'tool', tool: 'lookup_legal_source', label: 'Prüfe EStG-Paragraph …', result: '§ 4 Abs. 5 Nr. 6c EStG', ok: true }
-const DRAFT_REFUSED: AdvisorThoughtStep = { kind: 'tool', tool: 'stage_field_draft', label: 'Bereite sicheren Entwurf vor …', result: 'Nicht möglich', ok: false }
+const DRAFT_REFUSED: AdvisorThoughtStep = { kind: 'tool', tool: 'stage_field_draft', label: 'Bereite sicheren Entwurf vor …', result: 'nicht möglich', ok: false }
 
 describe('ThoughtBlock (#476, shaped like Claude)', () => {
   it('shows nothing for an answer without reasoning and with only the generic status line', () => {
@@ -58,7 +58,7 @@ describe('ThoughtBlock (#476, shaped like Claude)', () => {
   it('names a refused tool without its reason', () => {
     mount({ steps: [status('Prüfe Akte …'), DRAFT_REFUSED] })
     fireEvent.click(screen.getByTestId('advisor-thought-toggle'))
-    expect(screen.getAllByTestId('advisor-thought-step')[1]!.textContent).toBe('Bereite sicheren Entwurf vor: Nicht möglich')
+    expect(screen.getAllByTestId('advisor-thought-step')[1]!.textContent).toBe('Bereite sicheren Entwurf vor: nicht möglich')
   })
 
   it('counts up while the owl works, shows the current step and can be opened then too', () => {

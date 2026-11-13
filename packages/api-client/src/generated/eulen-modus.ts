@@ -35,6 +35,7 @@ import type {
   AdvisorControllerSearchParams,
   AdvisorConversationDto,
   AdvisorNoteDto,
+  AdvisorOpeningStateDto,
   AdvisorSearchHitDto,
   AdvisorSessionResponseDto,
   AdvisorSituationDto,
@@ -909,6 +910,119 @@ export function useAdvisorControllerConnection<TData = Awaited<ReturnType<typeof
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getAdvisorControllerConnectionQueryOptions(jahr,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type advisorControllerOpeningResponse200 = {
+  data: AdvisorOpeningStateDto
+  status: 200
+}
+
+export type advisorControllerOpeningResponseSuccess = (advisorControllerOpeningResponse200) & {
+  headers: Headers;
+};
+;
+
+export type advisorControllerOpeningResponse = (advisorControllerOpeningResponseSuccess)
+
+export const getAdvisorControllerOpeningUrl = (jahr: number,) => {
+
+
+
+
+  return `/v1/steuerjahre/${jahr}/advisor/opening`
+}
+
+/**
+ * @summary Whether a new conversation opens with the owl speaking first, and the last opening of the year (ADR-0067 §11)
+ */
+export const advisorControllerOpening = async (jahr: number, options?: RequestInit): Promise<advisorControllerOpeningResponse> => {
+
+  return httpClient<advisorControllerOpeningResponse>(getAdvisorControllerOpeningUrl(jahr),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getAdvisorControllerOpeningQueryKey = (jahr: number,) => {
+    return [
+    `/v1/steuerjahre/${jahr}/advisor/opening`
+    ] as const;
+    }
+
+
+export const getAdvisorControllerOpeningQueryOptions = <TData = Awaited<ReturnType<typeof advisorControllerOpening>>, TError = unknown>(jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof advisorControllerOpening>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getAdvisorControllerOpeningQueryKey(jahr);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof advisorControllerOpening>>> = ({ signal }) => advisorControllerOpening(jahr, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: jahr !== null && jahr !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof advisorControllerOpening>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type AdvisorControllerOpeningQueryResult = NonNullable<Awaited<ReturnType<typeof advisorControllerOpening>>>
+export type AdvisorControllerOpeningQueryError = unknown
+
+
+export function useAdvisorControllerOpening<TData = Awaited<ReturnType<typeof advisorControllerOpening>>, TError = unknown>(
+ jahr: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof advisorControllerOpening>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof advisorControllerOpening>>,
+          TError,
+          Awaited<ReturnType<typeof advisorControllerOpening>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useAdvisorControllerOpening<TData = Awaited<ReturnType<typeof advisorControllerOpening>>, TError = unknown>(
+ jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof advisorControllerOpening>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof advisorControllerOpening>>,
+          TError,
+          Awaited<ReturnType<typeof advisorControllerOpening>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useAdvisorControllerOpening<TData = Awaited<ReturnType<typeof advisorControllerOpening>>, TError = unknown>(
+ jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof advisorControllerOpening>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Whether a new conversation opens with the owl speaking first, and the last opening of the year (ADR-0067 §11)
+ */
+
+export function useAdvisorControllerOpening<TData = Awaited<ReturnType<typeof advisorControllerOpening>>, TError = unknown>(
+ jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof advisorControllerOpening>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getAdvisorControllerOpeningQueryOptions(jahr,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

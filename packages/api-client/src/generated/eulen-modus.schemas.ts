@@ -260,6 +260,20 @@ export const AdvisorChatMessageDtoRole = {
   assistant: 'assistant',
 } as const;
 
+export type AdvisorOpeningMarkerDtoStage = typeof AdvisorOpeningMarkerDtoStage[keyof typeof AdvisorOpeningMarkerDtoStage];
+
+
+export const AdvisorOpeningMarkerDtoStage = {
+  partial: 'partial',
+  ready: 'ready',
+} as const;
+
+export interface AdvisorOpeningMarkerDto {
+  /** Fingerprint of what the owl knew about the year when it opened (ADR-0067 §11). */
+  fingerprint: string;
+  stage: AdvisorOpeningMarkerDtoStage;
+}
+
 export type AdvisorThoughtStepDtoKind = typeof AdvisorThoughtStepDtoKind[keyof typeof AdvisorThoughtStepDtoKind];
 
 
@@ -300,6 +314,8 @@ export const AdvisorAnswerNoticeDtoKind = {
 export interface AdvisorAnswerNoticeDto {
   kind: AdvisorAnswerNoticeDtoKind;
   text: string;
+  /** For unbacked-amount: the amounts the app did not work out. */
+  amounts?: number[];
 }
 
 export type AdvisorNoteChangeDtoKind = typeof AdvisorNoteChangeDtoKind[keyof typeof AdvisorNoteChangeDtoKind];
@@ -539,6 +555,8 @@ export const AdvisorMessageMetaDtoSourcesItem = {
 } as const;
 
 export interface AdvisorMessageMetaDto {
+  /** Both messages of an opening carry it; the user message is a hidden placeholder. */
+  opening?: AdvisorOpeningMarkerDto;
   choices?: string[];
   /** Steps the owl reported while working on this answer (#476). */
   steps?: string[];
@@ -927,6 +945,7 @@ export const SendAdvisorMessageDtoQuickAction = {
   forgotten_check: 'forgotten_check',
   savings_plan: 'savings_plan',
   assessment_check: 'assessment_check',
+  opening: 'opening',
 } as const;
 
 export interface SendAdvisorMessageDto {
@@ -986,6 +1005,35 @@ export interface AdvisorConnectionDto {
   /** Why it is not connected, or only degraded. */
   failure?: AdvisorModelFailureDto;
   checkedAt: string;
+}
+
+/**
+ * What the app knows about the year: nothing, not enough for an analysis, or enough.
+ */
+export type AdvisorOpeningStateDtoStage = typeof AdvisorOpeningStateDtoStage[keyof typeof AdvisorOpeningStateDtoStage];
+
+
+export const AdvisorOpeningStateDtoStage = {
+  empty: 'empty',
+  partial: 'partial',
+  ready: 'ready',
+} as const;
+
+export interface AdvisorOpeningLastDto {
+  conversationId: string;
+  createdAt: string;
+}
+
+export interface AdvisorOpeningStateDto {
+  /** What the app knows about the year: nothing, not enough for an analysis, or enough. */
+  stage: AdvisorOpeningStateDtoStage;
+  /** True when a new conversation should open with the owl speaking first: something is entered and it changed since the last opening. */
+  shouldOpen: boolean;
+  /**
+     * The last opening of this year, to link to when nothing changed.
+     * @nullable
+     */
+  lastOpening?: AdvisorOpeningLastDto | null;
 }
 
 export type AdvisorSearchHitDtoRole = typeof AdvisorSearchHitDtoRole[keyof typeof AdvisorSearchHitDtoRole];

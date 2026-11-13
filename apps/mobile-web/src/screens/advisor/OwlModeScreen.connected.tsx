@@ -1,7 +1,7 @@
 // The owl screen wired to the API: loads the session of the tax year and turns every action of
 // the view into a request.
 import type { AdvisorConnection } from '@steuereule/core'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { useBreakpoint } from '@steuereule/ui'
@@ -20,6 +20,8 @@ import {
   useAdvisorControllerSaveSituation,
   useAdvisorControllerUpdateNote,
   useAdvisorControllerConnection,
+  useAdvisorControllerOpening,
+  getAdvisorControllerOpeningQueryKey,
   useAdvisorControllerCreateConversation,
   useAdvisorControllerDeleteConversation,
   useAdvisorControllerRenameConversation,
@@ -39,6 +41,9 @@ import { APP_NS } from '../../i18n/resources'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { ErrorState, LoadingState } from '../shared/ScreenState'
 import { sendOptionsToDto } from './AdvisorChatPanel'
+
+/** What the client sends to open a conversation; the server replaces it with its own placeholder. */
+const OPENING_MESSAGE = 'Eröffnung'
 import { invalidateAllTaxQueries, useOptionalCopilotBridge } from './CopilotBridgeProvider'
 import { OwlModeScreenView } from './OwlModeScreen'
 import type { OwlModeScreenProps } from './OwlModeScreen'
@@ -79,6 +84,24 @@ export function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CU
     },
     [taxYear],
   )
+  // A new, empty conversation: the owl opens it herself when the case changed since her last opening (ADR-0067 §11).
+  const openSession = sessionQuery.data?.status === 200 ? sessionQuery.data.data : undefined
+  const openIsEmpty = openSession !== undefined && openSession.messages.length === 0 && !(bridge?.streaming ?? false)
+  // Asked per conversation: each new one is opened (or not) by the state of the case at that moment.
+  const openingQuery = useAdvisorControllerOpening(taxYear, {
+    query: { queryKey: [...getAdvisorControllerOpeningQueryKey(taxYear), openSession?.conversationId ?? null], retry: false, enabled: openIsEmpty, staleTime: 0 },
+  })
+  const openingState = openingQuery.data?.status === 200 ? openingQuery.data.data : undefined
+  const openedConversationsRef = useRef(new Set<string>())
+  const sendStreaming = bridge?.sendStreamingMessage
+  const openConversationIdForOpening = openSession?.conversationId
+  useEffect(() => {
+    if (!sendStreaming || !openIsEmpty || openingState?.shouldOpen !== true || openConversationIdForOpening === undefined) return
+    // One attempt per conversation: a failed opening must not be retried on every render.
+    if (openedConversationsRef.current.has(openConversationIdForOpening)) return
+    openedConversationsRef.current.add(openConversationIdForOpening)
+    void sendStreaming(OPENING_MESSAGE, undefined, { quickAction: 'opening' })
+  }, [sendStreaming, openIsEmpty, openingState?.shouldOpen, openConversationIdForOpening])
   // Whether the owl reaches its model, asked again every minute while the screen is open (#488).
   const connectionQuery = useAdvisorControllerConnection(taxYear, { query: { retry: false, refetchInterval: 60_000, refetchOnWindowFocus: true } })
   const connectionView: ConnectionView = connectionQuery.isError
@@ -208,6 +231,16 @@ export function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CU
         expectOk(await saveSituationMutation.mutateAsync({ jahr: taxYear, data: { text } }), 'situation not stored')
         await invalidate()
       }}
+      opening={
+        openingState
+          ? {
+              stage: openingState.stage,
+              ...(!openingState.shouldOpen && openingState.lastOpening
+                ? { lastOpeningAt: openingState.lastOpening.createdAt, onOpenLast: () => selectConversation(openingState.lastOpening!.conversationId) }
+                : {}),
+            }
+          : undefined
+      }
       connection={connectionView}
       onRecheckConnection={() => connectionQuery.refetch()}
       conversations={session?.conversations}

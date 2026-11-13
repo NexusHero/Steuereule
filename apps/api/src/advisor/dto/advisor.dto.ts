@@ -264,6 +264,9 @@ export class AdvisorAnswerNoticeDto implements AdvisorAnswerNotice {
 
   @ApiProperty({ type: String, example: 'Die Eule trägt nichts selbst ein.' })
   text!: string
+
+  @ApiPropertyOptional({ type: [Number], description: 'For unbacked-amount: the amounts the app did not work out.' })
+  amounts?: readonly number[] | undefined
 }
 
 export class AdvisorNoteChangeDto implements AdvisorNoteChange {
@@ -352,7 +355,37 @@ export class AdvisorThoughtStepDto implements AdvisorThoughtStep {
   ok?: boolean | undefined
 }
 
+export class AdvisorOpeningMarkerDto {
+  @ApiProperty({ type: String, description: 'Fingerprint of what the owl knew about the year when it opened (ADR-0067 §11).' })
+  fingerprint!: string
+
+  @ApiProperty({ type: String, enum: ['partial', 'ready'] })
+  stage!: 'partial' | 'ready'
+}
+
+export class AdvisorOpeningLastDto {
+  @ApiProperty({ type: String })
+  conversationId!: string
+
+  @ApiProperty({ type: String, format: 'date-time' })
+  createdAt!: string
+}
+
+export class AdvisorOpeningStateDto {
+  @ApiProperty({ type: String, enum: ['empty', 'partial', 'ready'], description: 'What the app knows about the year: nothing, not enough for an analysis, or enough.' })
+  stage!: 'empty' | 'partial' | 'ready'
+
+  @ApiProperty({ type: Boolean, description: 'True when a new conversation should open with the owl speaking first: something is entered and it changed since the last opening.' })
+  shouldOpen!: boolean
+
+  @ApiPropertyOptional({ type: () => AdvisorOpeningLastDto, nullable: true, description: 'The last opening of this year, to link to when nothing changed.' })
+  lastOpening!: AdvisorOpeningLastDto | null
+}
+
 export class AdvisorMessageMetaDto implements AdvisorMessageMeta {
+  @ApiPropertyOptional({ type: () => AdvisorOpeningMarkerDto, description: 'Both messages of an opening carry it; the user message is a hidden placeholder.' })
+  opening?: AdvisorOpeningMarkerDto | undefined
+
   @ApiPropertyOptional({ type: [String] })
   choices?: readonly string[] | undefined
 

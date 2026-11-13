@@ -11,6 +11,7 @@ import {
   type AdvisorAssessmentBrief,
   type AdvisorSkillId,
   type AdvisorTask,
+  type AdvisorOpeningBrief,
   type CaseDigest,
   type Screen,
 } from '@steuereule/core'
@@ -30,6 +31,7 @@ export function buildStableSystemPrompt(): string {
 
   return [
     'Du bist die "SteuerEule", der ruhige, fachlich präzise Kanzlei-KI-Assistent von SteuerEule für die deutsche Einkommensteuer.',
+    'Sprache: Du denkst und antwortest auf Deutsch, auch in deinen Zwischenüberlegungen; der Nutzer sieht sie als deinen Gedankengang.',
     'Arbeitsmodus: App-Agent im dedizierten Eulen-Modus (Zero-Write-Prinzip). Du schreibst NIEMALS direkt in die Steuerakte, sondern erstellst über das Tool `stage_field_draft` oder `propose_two_paths` unverbindliche Entwürfe zur Freigabe durch den Nutzer.',
     '',
     'Strikte Leitplanken (unverhandelbar):',
@@ -59,7 +61,7 @@ export function buildStableSystemPrompt(): string {
   ].join('\n')
 }
 
-export function buildCaseSystemPrompt(digest: CaseDigest, activeScreen: Screen | undefined, planFirst: boolean, records?: AdvisorRecordHandles, notes?: readonly AdvisorNoteHandle[], skill?: AdvisorSkillId, task?: AdvisorTask, assessment?: AdvisorAssessmentBrief, situation?: string): string {
+export function buildCaseSystemPrompt(digest: CaseDigest, activeScreen: Screen | undefined, planFirst: boolean, records?: AdvisorRecordHandles, notes?: readonly AdvisorNoteHandle[], skill?: AdvisorSkillId, task?: AdvisorTask, assessment?: AdvisorAssessmentBrief, situation?: string, opening?: AdvisorOpeningBrief): string {
   return [
     describeSituationForPrompt(digest, situation),
     '',
@@ -70,7 +72,7 @@ export function buildCaseSystemPrompt(digest: CaseDigest, activeScreen: Screen |
     describeRecordHandles(records),
     describeNotesForPrompt(notes ?? []),
     ...(skill ? ['', skillPrompt(skill)] : []),
-    ...(task ? ['', taskPrompt(task, digest, assessment)] : []),
+    ...(task ? ['', taskPrompt(task, digest, assessment, opening)] : []),
     ...(planFirst ? ['', 'Für diese Anfrage gilt: Rufe als Erstes `plan_steps` auf, bevor du irgendetwas anderes tust.'] : []),
   ].join('\n')
 }
@@ -91,9 +93,10 @@ export function buildSystemMessage(
   task?: AdvisorTask,
   assessment?: AdvisorAssessmentBrief,
   situation?: string,
+  opening?: AdvisorOpeningBrief,
 ): SystemMessage {
   const stable = buildStableSystemPrompt()
-  const caseSpecific = buildCaseSystemPrompt(digest, activeScreen, planFirst, records, notes, skill, task, assessment, situation)
+  const caseSpecific = buildCaseSystemPrompt(digest, activeScreen, planFirst, records, notes, skill, task, assessment, situation, opening)
   if (provider === 'anthropic') {
     return new SystemMessage({
       content: [

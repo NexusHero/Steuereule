@@ -92,7 +92,7 @@ function storedAnswer(now) {
       meta: {
         thoughtSteps: [
           { kind: 'status', label: 'Akte geprüft' },
-          { kind: 'tool', tool: 'stage_field_draft', label: 'Bereite sicheren Entwurf vor …', result: 'Entwurf vorbereitet · −120 €', ok: true },
+          { kind: 'tool', tool: 'stage_field_draft', label: 'Bereite sicheren Entwurf vor …', result: 'fertig · −120 € Erstattung', ok: true },
         ],
         actions: [
           draft('d1', 'Homeoffice-Tage', { effect: 'computed', beforeRefundEur: 2000, afterRefundEur: 1880, deltaEur: -120 }),
@@ -389,7 +389,7 @@ async function main() {
     await byId(page, 'advisor-thought-toggle').click()
     for (const id of ['advisor-thought-body', 'advisor-thought-step', 'advisor-thought-result', 'advisor-thought-reasoning', 'advisor-thought-note']) await see(page, id, 'Row E')
     if ((await byId(page, 'advisor-thought-step').count()) !== 2) fail('Row E: both steps of the answer should be listed')
-    if (!(await textOf(page, 'advisor-thought-result')).includes('Entwurf vorbereitet')) fail('Row E: a tool step should say what it found')
+    if (!(await textOf(page, 'advisor-thought-result')).includes('fertig')) fail('Row E: a tool step should say what it found')
 
     if ((await byId(page, 'advisor-action-card').count()) !== 3) fail(`Row E: three drafts should be three cards, found ${await byId(page, 'advisor-action-card').count()}`)
     if (!(await textOf(page, 'advisor-action-delta-negative')).includes('120')) fail('Row E: a draft that costs refund should show the computed amount')
@@ -621,6 +621,50 @@ async function main() {
     await byId(page, 'advisor-receipt-queue-item').first().click()
     if ((await byId(page, 'advisor-receipt-queue-item').count()) !== 1) fail('Row T: a waiting file should be removable from the queue')
     console.log(`[${TAG}] ✅ Row T — several files: queued one after another, named, removable`)
+
+    // Row O — the owl opens a new conversation herself (ADR-0067 §11): the app says the case
+    // changed, so the empty chat starts an opening turn; its placeholder question is never shown.
+    // Nothing changed: no turn, a link to the last opening. Nothing entered: the way into the interview.
+    await page.unrouteAll({ behavior: 'ignoreErrors' })
+    const openingState = { stage: 'ready', shouldOpen: true, lastOpening: null }
+    await page.route('**/advisor/opening', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(openingState) }))
+    await page.route('**/advisor/stream', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'text/event-stream',
+        body: sse([
+          [1, 'start', { runId: 'stub-opening', userMessage: { id: 'stub-uo', role: 'user', content: 'Neues Gespräch', meta: { opening: { fingerprint: 'abcd1234', stage: 'ready' } }, createdAt: new Date().toISOString(), status: 'complete' }, assistantMessageId: 'stub-ao' }],
+          [2, 'token', { text: 'Dein Fall in Kürze: Homeoffice bringt dir 528 €.' }],
+          [3, 'done', { mode: 'langgraph', userMessage: null, assistantMessage: null }],
+        ]),
+      }),
+    )
+    await page.reload({ waitUntil: 'networkidle' })
+    const openingAsked = page.waitForRequest((request) => request.url().includes('/advisor/stream') && request.method() === 'POST', { timeout: 15_000 })
+    await byId(page, 'eule-conversation-new').click()
+    const openingBody = JSON.parse((await openingAsked.catch(() => fail('Row O: a new conversation of a changed case should open with the owl speaking'))).postData() ?? '{}')
+    if (openingBody.quickAction !== 'opening') fail(`Row O: the opening should be sent as quickAction "opening", sent ${JSON.stringify(openingBody)}`)
+    await page.waitForFunction(() => document.querySelector('[data-testid="advisor-chat-scroll"]')?.textContent?.includes('Dein Fall in Kürze'), null, { timeout: 10_000 }).catch(() => fail('Row O: the opening should be shown'))
+    if ((await byId(page, 'advisor-user-message').count()) !== 0) fail('Row O: the placeholder question of an opening must not be shown')
+
+    Object.assign(openingState, { shouldOpen: false, lastOpening: { conversationId: 'stub-last', createdAt: '2026-11-13T09:00:00.000Z' } })
+    let streamsAfter = 0
+    await page.unroute('**/advisor/stream')
+    await page.route('**/advisor/stream', (route) => {
+      streamsAfter += 1
+      return route.fulfill({ status: 500, body: '' })
+    })
+    // The stubbed opening left the conversation empty on the server, so it is still the open one: a reload asks again.
+    await page.reload({ waitUntil: 'networkidle' })
+    await see(page, 'advisor-opening-last', 'Row O', 15_000)
+    if (!(await textOf(page, 'advisor-opening-last')).includes('13.11.2026')) fail('Row O: the link should name the day of the last opening')
+    if (streamsAfter !== 0) fail('Row O: nothing changed, so no opening should be asked for')
+
+    Object.assign(openingState, { stage: 'empty', lastOpening: null })
+    await page.reload({ waitUntil: 'networkidle' })
+    await see(page, 'advisor-opening-start', 'Row O', 15_000)
+    if (!(await textOf(page, 'advisor-opening-start')).includes('Lass uns anfangen')) fail('Row O: an empty year should offer the way into the interview')
+    console.log(`[${TAG}] ✅ Row O — the owl opens a changed case herself without showing a question, links to her last opening otherwise, and an empty year starts with the interview`)
 
     // Row P — tax years as projects (#503): the open year heads the list, the other years with
     // conversations wait in its menu, a conversation that is answering says so, and choosing another

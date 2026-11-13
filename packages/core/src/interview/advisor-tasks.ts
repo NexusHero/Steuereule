@@ -5,7 +5,7 @@ import type { CaseDigest } from './advisor'
  * plan goes through every lever against the whole case, the assessment check compares the tax
  * office's notice with the return. Both are started with a quick action.
  */
-export const ADVISOR_TASKS = ['savings-plan', 'assessment-check'] as const
+export const ADVISOR_TASKS = ['savings-plan', 'assessment-check', 'opening'] as const
 export type AdvisorTask = (typeof ADVISOR_TASKS)[number]
 
 /** A way to save tax that the case, as far as the app can see, does not use yet. */

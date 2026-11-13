@@ -34,6 +34,8 @@ export function makeStyles(t: UiTheme) {
       gap: t.space.s2,
       marginBottom: t.space.s4,
     } as ViewStyle,
+    // The way in stands out from the quick starts beside it.
+    openingChip: { borderColor: t.color.tinte, borderWidth: 1.5 } as ViewStyle,
     quickChipButton: {
       // A long chip wraps inside the column instead of running past the edge of a phone.
       maxWidth: '100%',
@@ -456,7 +458,7 @@ export function makeStyles(t: UiTheme) {
     emptyComposer: { marginBottom: t.space.s4 } as ViewStyle,
     quickChipMore: { minHeight: 36, justifyContent: 'center', paddingHorizontal: t.space.s3 } as ViewStyle,
     quickChipMoreText: { fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: t.size.s, color: t.color.tinte2 } as TextStyle,
-    situationSlot: { flexGrow: 1, flexShrink: 1, alignItems: 'flex-start' } as ViewStyle,
+    situationSlot: { flexGrow: 1, flexShrink: 1, minWidth: 0, alignItems: 'flex-start' } as ViewStyle,
     footnote: { fontFamily: t.font.text, fontSize: t.size.xs, color: t.color.tinte2, textAlign: 'center', paddingBottom: t.space.s2 } as TextStyle,
     userTurn: { alignItems: 'flex-end' } as ViewStyle,
     messageActions: { flexDirection: 'row', gap: t.space.s3, marginTop: t.space.s2 } as ViewStyle,
