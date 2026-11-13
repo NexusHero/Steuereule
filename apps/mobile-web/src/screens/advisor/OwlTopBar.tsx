@@ -56,7 +56,7 @@ export function OwlTopBar({
   const waiting = [hints, drafts].filter((part): part is string => part !== null).join(' · ') || tr('eule.workspace.topbar.hintsNone')
   const count = hintCount + draftCount
 
-  const iconButton = (icon: StrokeIconName, label: string, onPress: () => void, testID: string, extra?: { readonly expanded?: boolean; readonly badge?: number }) => (
+  const iconButton = (icon: StrokeIconName, label: string, onPress: () => void, testID: string, extra?: { readonly expanded?: boolean; readonly badge?: number; readonly badgeTestID?: string }) => (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
@@ -67,7 +67,7 @@ export function OwlTopBar({
     >
       <StrokeIcon name={icon} color={t.color.tinte} />
       {extra?.badge ? (
-        <View style={styles.badge} testID={`${testID}-count`}>
+        <View style={styles.badge} testID={extra.badgeTestID}>
           <Text style={styles.badgeText}>{extra.badge > 9 ? '9+' : String(extra.badge)}</Text>
         </View>
       ) : null}
@@ -90,7 +90,7 @@ export function OwlTopBar({
       <View style={styles.side}>
         {connection && onOpenConnection ? <ConnectionChip view={connection} compact={compact} onPress={onOpenConnection} /> : null}
         {iconButton('lock', tr('eule.workspace.topbar.privacyAria'), onOpenPrivacy, 'eule-privacy-badge')}
-        {iconButton('bulb', `${tr('eule.workspace.topbar.hintsAria')}: ${waiting}`, onTogglePanel, 'eule-hints-pill', { expanded: panelOpen, badge: count })}
+        {iconButton('bulb', `${tr('eule.workspace.topbar.hintsAria')}: ${waiting}`, onTogglePanel, 'eule-hints-pill', { expanded: panelOpen, badge: count, badgeTestID: 'eule-hints-count' })}
         {onOpenSettings ? iconButton('settings', tr('eule.workspace.topbar.settingsAria'), onOpenSettings, 'eule-settings-btn') : null}
       </View>
     </View>

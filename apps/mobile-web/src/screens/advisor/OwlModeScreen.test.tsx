@@ -125,7 +125,7 @@ describe('EulenModusScreen', () => {
       setViewportWidth(390)
       renderScreen()
       expect(screen.getByTestId('eule-legal-status')).toBeDefined()
-      expect(screen.getByTestId('eule-hints-pill-count').textContent).toBe('2')
+      expect(screen.getByTestId('eule-hints-count').textContent).toBe('2')
     })
 
     it('says "no hints" instead of showing an empty count', () => {

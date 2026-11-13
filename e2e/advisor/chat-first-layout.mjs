@@ -247,6 +247,7 @@ async function main() {
     await gone(page, 'eule-search-sheet', 'Row G')
     await page.keyboard.press('Control+k')
     await see(page, 'eule-search-sheet', 'Row G')
+    await see(page, 'eule-conversation-search-dialog', 'Row G')
     const search = byId(page, 'eule-conversation-search')
     await search.fill('gewerbesteuer')
     await see(page, 'eule-conversation-search-results', 'Row G')
@@ -385,6 +386,8 @@ async function main() {
     })
     await page.reload({ waitUntil: 'networkidle' })
     await see(page, 'advisor-thought', 'Row E', 20_000)
+    // Drafts are waiting: the bulb in the top bar counts them.
+    await see(page, 'eule-hints-count', 'Row E')
     // Drafts open the workbench at the side; its line can be grabbed too.
     await see(page, 'eule-resize-workbench', 'Row E')
     if ((await byId(page, 'advisor-thought-body').count()) !== 0) fail('Row E: the line of thought of a finished answer starts collapsed')
@@ -741,6 +744,7 @@ async function main() {
     if ((await byId(small, 'advisor-chip-sparplan').count()) !== 0) fail('Row J: only four quick starts show before "Mehr …"')
     await byId(small, 'advisor-chips-more').click()
     await see(small, 'advisor-chip-sparplan', 'Row J')
+    for (const id of ['advisor-chip-homeoffice', 'advisor-chip-endpruefung', 'advisor-chip-fortbildung', 'advisor-chip-spenden']) await see(small, id, 'Row J')
     const planAsked = small.waitForRequest((request) => request.method() === 'POST' && /advisor\/(stream|runs)/.test(request.url()) && (request.postData() ?? '').includes('"quickAction":"savings_plan"'), { timeout: 15_000 })
     await byId(small, 'advisor-chip-sparplan').click()
     await planAsked.catch(() => fail('Row J: the savings plan chip should send quickAction=savings_plan'))
