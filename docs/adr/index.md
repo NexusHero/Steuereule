@@ -103,6 +103,7 @@ The ADRs **justify** the architecture; the [living arc42 document](../arc42/READ
 | 0083 | Lohnsteuerbescheinigung ohne lesbare Sozialversicherung | Accepted |
 | 0084 | Eine leere Antwort des Modells wird wiederholt und dann offen benannt | Accepted |
 | 0085 | Ausdruck für 2024, zu lange Angaben vor dem Bezahlen | Accepted |
+| 0086 | KV des Kindes ohne gewählten Kurs, Betreuungszeitraum aus dem Bescheid | Accepted |
 
 See also the [Tech Radar](./tech-radar.md).
 

@@ -7,6 +7,7 @@ import {
   looksLikeCraftsmanInvoice,
   looksLikeDonationReceipt,
   parseCraftsmanInvoice,
+  childcarePeriod,
   parseDonationReceipt,
   scrubDocumentTextPii,
   scrubUserMessagePii,
@@ -431,6 +432,30 @@ export class AutoReceiptParseStrategy implements DocumentParseStrategy {
         summary: note ? `${parsed.summary} ${note}`.trim() : parsed.summary,
       }
       countedItems = fresh.map(({ ref, amountKey }) => ({ ref, amountKey }))
+    }
+
+    // A childcare notice: the care period for Anlage Kind Zeile 67, for the year's only child (ADR-0086). The
+    // amount stays with the user: a notice states a monthly contribution, not what was paid.
+    const period = !securityBlocked && !invoice && !donation && dto.rawText ? childcarePeriod(dto.rawText, dto.taxYear) : null
+    const childId = period && (dto.stageDraft ?? true) ? await this.advisorService.onlyChildId(userId, dto.taxYear) : null
+    if (period && childId) {
+      const ocr = dto.textSource !== 'pdf_text'
+      const staged = await this.advisorService.stageDocumentDrafts(userId, dto.taxYear, {
+        screen: 'kind',
+        person: 'A',
+        digestUserId: userId,
+        receiptId: dto.receiptId ?? null,
+        engine: { mode: 'deterministic_fallback', provider: 'deterministic' },
+        summaryText: `Betreuungsbescheid gelesen: Betreuung vom ${period.from} bis ${period.to} (Anlage Kind Zeile 67). Den Betrag trag bitte ein, was ihr ${dto.taxYear} tatsächlich gezahlt habt; der Bescheid nennt nur den Monatsbeitrag.`,
+        sourceId: 'estg-10-1-5',
+        fields: [
+          { field: 'childcareFrom', label: 'Kinderbetreuung von', value: period.from, status: ocr ? 'pruefen' : 'ok', reason: ocr ? 'ocr_source' : null, instance: childId },
+          { field: 'childcareTo', label: 'Kinderbetreuung bis', value: period.to, status: 'pruefen', reason: null, instance: childId },
+        ],
+      })
+      checkPiiFree(parsed)
+      await this.auditService.append({ userId, action: 'READ', resource: 'beleg_analyse' })
+      return { mode, securityBlocked, parsed: { ...parsed, vendorCategory: 'kinderbetreuung' }, stagedAction: staged.actions[0] ?? null, assistantMessage: staged.assistantMessage }
     }
 
     // Security Firewall Bridge between Stage 1 (untrusted doc OCR) and Stage 2 (advisor staging):

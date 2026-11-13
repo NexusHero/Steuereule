@@ -85,11 +85,12 @@ describe('the health insurer’s statement', () => {
     expect(latest.find((d) => d.field === 'krankenkasseChf' && !d.person)?.newValue).toBe('3400')
   })
 
-  it('waits for the exchange rate before drafting the child’s premiums', async () => {
+  it('converts the child’s premiums at the official annual average while no rate is chosen, to be checked (ADR-0086)', async () => {
     const { kit, strategy } = await setUp(false)
     const res = await parse(strategy, family)
-    const all = (await kit.advisorRepo.listForUserAndYear(USER, YEAR)).flatMap((m) => m.meta?.actions ?? [])
-    expect(all.some((d) => d.field === 'healthBasicEur')).toBe(false)
-    expect(res.assistantMessage?.content).toContain('Wechselkurs')
+    const child = (await kit.advisorRepo.listForUserAndYear(USER, YEAR)).flatMap((m) => m.meta?.actions ?? []).find((d) => d.field === 'healthBasicEur')
+    // 300 CHF at the 2025 annual average 1,065.
+    expect(child).toMatchObject({ newValue: '320', confidenceStatus: 'pruefen' })
+    expect(res.assistantMessage?.content).toContain('amtlichen Jahresdurchschnitt')
   })
 })

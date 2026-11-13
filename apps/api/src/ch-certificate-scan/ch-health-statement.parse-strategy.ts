@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 import { Inject, Injectable, Optional, type OnModuleInit } from '@nestjs/common'
-import { chfToEur, insuredMember, parseChHealthStatement, type AdvisorCountedItem, type InsuredPremium } from '@steuereule/core'
+import { ANNUAL_AVERAGE_RATES, chfToEur, insuredMember, parseChHealthStatement, type AdvisorCountedItem, type InsuredPremium } from '@steuereule/core'
 import { AdvisorService } from '../advisor/advisor.service.js'
 import { AuditService } from '../audit/audit.service.js'
 import { CROSS_BORDER_SALARY_STATEMENT_REPOSITORY, type CrossBorderSalaryStatementRepository } from '../ch-salary-certificate/ch-salary-certificate.repository.js'
@@ -48,7 +48,11 @@ export class ChHealthStatementParseStrategy implements DocumentParseStrategy, On
       ...(household.B ? [{ key: 'B', firstName: household.B.firstName, lastName: household.B.lastName }] : []),
       ...kids.map((k) => ({ key: `kind:${k.id}`, firstName: k.firstName, lastName: k.lastName })),
     ]
-    const rateA = exchangeRateFromRecord((await this.chRepo?.findForUserAndYear(userId, dto.taxYear)) ?? null)
+    // The child's premiums are in euros: at the rate of the Lohnausweis, or — while none is chosen yet — at the
+    // official annual average the Anlage N-Gre prints, to be checked (ADR-0086).
+    const chosenRate = exchangeRateFromRecord((await this.chRepo?.findForUserAndYear(userId, dto.taxYear)) ?? null)?.rate ?? null
+    const averageRate = ANNUAL_AVERAGE_RATES[year] ?? null
+    const rateA = chosenRate ?? averageRate
 
     const notes: string[] = []
     const forA: Field[] = []
@@ -80,7 +84,11 @@ export class ChHealthStatementParseStrategy implements DocumentParseStrategy, On
           notes.push(`Für das Kind stehen ${chf} CHF Grundversicherung im Auszug. Den Betrag in Euro rechne ich, sobald der Wechselkurs im Lohnausweis steht.`)
           continue
         }
-        forA.push({ ...premiumField('healthBasicEur', Math.round(chfToEur(chf, rateA.rate)), dto, items), screen: 'kind', instance: childId })
+        if (chosenRate === null) {
+          notes.push(`Die Prämie des Kindes habe ich zum amtlichen Jahresdurchschnitt umgerechnet (100 CHF = ${(rateA * 100).toFixed(2).replace('.', ',')} €). Wählst du im Lohnausweis einen anderen Kurs, passe sie bitte an.`)
+        }
+        const field = premiumField('healthBasicEur', Math.round(chfToEur(chf, rateA)), dto, items)
+        forA.push({ ...field, ...(chosenRate === null ? { status: 'pruefen' as const } : {}), screen: 'kind', instance: childId })
       }
       if (person.selfBorneCents > 0) {
         notes.push(`Dazu ${Math.round(person.selfBorneCents / 100)} CHF selbst getragene Krankheitskosten (Franchise, Selbstbehalt); die zählen bei den Krankheitskosten, nicht hier.`)

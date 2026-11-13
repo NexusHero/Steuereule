@@ -1084,7 +1084,8 @@ export class AdvisorService {
       readonly fields: ReadonlyArray<{
         readonly field: string
         readonly label: string
-        readonly value: number
+        /** A whole amount, or a text such as a date for the fields that take one. */
+        readonly value: number | string
         readonly status: 'ok' | 'pruefen'
         readonly reason: LstbExtractedField['reason']
         /** Another mask than `screen` for this field (a child's Anlage Kind beside the parent's mask). */
@@ -1108,7 +1109,7 @@ export class AdvisorService {
     const added = await Promise.all(
       input.fields.map(async (item) => {
         const screen = item.screen ?? input.screen
-        if (!item.accumulate) return { value: item.value, before: null as number | null, counted: item.countedItems }
+        if (!item.accumulate || typeof item.value !== 'number') return { value: item.value, before: null as number | null, counted: item.countedItems }
         const target = { screen, field: item.field, person: input.person, instance: item.instance ?? null }
         const pending = await this.pendingDraftFor(userId, taxYear, target)
         const stored = pending
@@ -1191,6 +1192,12 @@ export class AdvisorService {
 
   private async pendingDraftFor(userId: string, taxYear: number, target: CountTarget): Promise<AdvisorActionProposal | undefined> {
     return (await this.draftsFor(userId, taxYear, target)).filter((a) => a.status === 'pending').at(-1)
+  }
+
+  /** The year's only child, for a receipt that can only be about it; null with none or several (then the user is asked). */
+  async onlyChildId(userId: string, taxYear: number): Promise<string | null> {
+    const children = (await this.childRepo?.listForUserAndYear(userId, taxYear)) ?? []
+    return children.length === 1 ? children[0]!.id : null
   }
 
   /** Values of receipt drafts still waiting on this screen (newest first wins), for the fields that add up. */

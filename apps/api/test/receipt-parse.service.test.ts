@@ -159,6 +159,7 @@ function buildTestHarness(responses: string[], visionEnabled = true) {
   return {
     advisorRepo,
     advisorService,
+    childRepo,
     interviewRepo,
     lstbRepo,
     receiptRepo,
@@ -737,5 +738,31 @@ describe('donation receipts add up, never twice (§ 10b, ADR-0080)', () => {
     expect(third.parsed.summary).toContain('schon über eine andere Bestätigung gezählt')
     const fourth = await h.parseService.parseReceipt('user-d2', { taxYear: 2024, fileName: 'd.pdf', rawText: other })
     expect(fourth.stagedAction).toMatchObject({ newValue: '1430' })
+  })
+})
+
+describe('childcare notices (ADR-0086)', () => {
+  const notice = 'Landratsamt Beispielkreis – Jugendamt\nKostenbeitragsbescheid Kindertagespflege\nDer Kostenbeitrag beträgt ab 01.09.2024 monatlich 250,00 EUR.'
+
+  it('drafts the care period for the only child, and leaves the amount to the user', async () => {
+    const h = buildTestHarness([], false)
+    const child = await h.childRepo.create('user-c1', 2024, { firstName: 'Lea', lastName: 'Muster', geburtsdatum: '2022-01-01' })
+    const res = await h.parseService.parseReceipt('user-c1', { taxYear: 2024, fileName: 'bescheid.pdf', rawText: notice, textSource: 'pdf_text' } as never)
+    const drafts = res.assistantMessage?.meta?.actions ?? []
+    expect(drafts.map((d) => [d.screen, d.instance, d.field, d.newValue])).toEqual([
+      ['kind', child.id, 'childcareFrom', '01.09.2024'],
+      ['kind', child.id, 'childcareTo', '31.12.2024'],
+    ])
+    expect(res.assistantMessage?.content).toContain('tatsächlich gezahlt')
+    await h.advisorService.applyBatch('user-c1', 2024, { drafts: drafts.map((d) => ({ actionId: d.actionId })) })
+    expect((await h.childRepo.listForUserAndYear('user-c1', 2024))[0]).toMatchObject({ childcareFrom: '01.09.2024', childcareTo: '31.12.2024' })
+  })
+
+  it('stages no period while it is unclear which child it is', async () => {
+    const h = buildTestHarness([], false)
+    await h.childRepo.create('user-c2', 2024, { firstName: 'Lea', lastName: 'Muster', geburtsdatum: '2022-01-01' })
+    await h.childRepo.create('user-c2', 2024, { firstName: 'Tom', lastName: 'Muster', geburtsdatum: '2020-01-01' })
+    const res = await h.parseService.parseReceipt('user-c2', { taxYear: 2024, fileName: 'bescheid.pdf', rawText: notice, textSource: 'pdf_text' } as never)
+    expect((res.assistantMessage?.meta?.actions ?? []).some((d) => d.field === 'childcareFrom')).toBe(false)
   })
 })
