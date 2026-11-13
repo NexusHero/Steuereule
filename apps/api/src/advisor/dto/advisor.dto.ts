@@ -93,6 +93,7 @@ const OWL_SOURCE_IDS: readonly OwlSourceId[] = [
   'estg-10b',
   'estg-10-1-5',
   'estg-35a',
+  'estg-10-1-3',
   'ao-355',
 ]
 

@@ -5,7 +5,9 @@ import { KiModule } from '../ki/ki.module.js'
 import { LinkModule } from '../link/link.module.js'
 import { ReceiptModule } from '../receipt/receipt.module.js'
 import { ChSalaryCertificateModule } from '../ch-salary-certificate/ch-salary-certificate.module.js'
+import { ChildrenModule } from '../children/children.module.js'
 import { ChCertificateScanParseStrategy } from './ch-certificate-scan.parse-strategy.js'
+import { ChHealthStatementParseStrategy } from './ch-health-statement.parse-strategy.js'
 import { ChPensionStatementParseStrategy, ChPremiumLetterParseStrategy } from './ch-letter.parse-strategy.js'
 
 /**
@@ -14,7 +16,7 @@ import { ChPensionStatementParseStrategy, ChPremiumLetterParseStrategy } from '.
  * registry; none of the modules it uses depends on it.
  */
 @Module({
-  imports: [AuditModule, KiModule, LinkModule, ReceiptModule, AdvisorModule, ChSalaryCertificateModule],
-  providers: [ChCertificateScanParseStrategy, ChPensionStatementParseStrategy, ChPremiumLetterParseStrategy],
+  imports: [AuditModule, KiModule, LinkModule, ReceiptModule, AdvisorModule, ChSalaryCertificateModule, ChildrenModule],
+  providers: [ChCertificateScanParseStrategy, ChPensionStatementParseStrategy, ChPremiumLetterParseStrategy, ChHealthStatementParseStrategy],
 })
 export class ChCertificateScanModule {}

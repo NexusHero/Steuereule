@@ -34,8 +34,8 @@ export function parseNum(raw: string | null | undefined): number | null {
 
 /** Strips the server-internal undo snapshot; the client never needs prior provenance rows. */
 export function toPublicAction<T extends AdvisorActionProposal>(action: T): T {
-  if (action.undoSnapshot === undefined) return action
-  const { undoSnapshot: _internal, ...rest } = action
+  if (action.undoSnapshot === undefined && action.countedItems === undefined) return action
+  const { undoSnapshot: _internal, countedItems: _items, ...rest } = action
   return rest as T
 }
 

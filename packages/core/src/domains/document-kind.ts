@@ -1,6 +1,7 @@
+import { looksLikeChHealthStatement } from './ch-health-statement'
 import { classifyChInsuranceLetter } from './ch-insurance-letters'
 /** Document kinds the parse endpoint has a strategy for (`auto` = generic receipt classifier). */
-export type DetectedDocumentKind = 'lstb' | 'chLohnausweis' | 'chPensionskasse' | 'chPraemien' | 'auto'
+export type DetectedDocumentKind = 'lstb' | 'chLohnausweis' | 'chPensionskasse' | 'chPraemien' | 'chKrankenkasse' | 'auto'
 
 const LSTB_TITLE = /lohnsteuerbescheinigung/i
 const LSTB_ROW_MARKERS = [
@@ -21,6 +22,8 @@ export function classifyDocumentKind(text: string): DetectedDocumentKind {
   // The Swiss salary certificate: its German and French title and the gross total; a receipt that
   // merely mentions a Lohnausweis is none.
   if (/Lohnausweis/i.test(text) && /Certificat\s+de\s+salaire/i.test(text) && /Bruttolohn\s+total/i.test(text)) return 'chLohnausweis'
+  // A Swiss health insurer's statement for the tax return (ADR-0080).
+  if (looksLikeChHealthStatement(text)) return 'chKrankenkasse'
   // The Swiss pension fund's statement and the employer's premium letter (ADR-0075).
   const letter = classifyChInsuranceLetter(text)
   if (letter !== null) return letter

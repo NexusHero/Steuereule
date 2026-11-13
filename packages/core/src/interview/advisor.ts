@@ -116,6 +116,15 @@ export const ADVISOR_LEGAL_SOURCES: Readonly<Record<OwlSourceId, AdvisorLegalSou
     legalStatusDate: LEGAL_SOURCES_CHECKED_ON,
     url: 'https://www.gesetze-im-internet.de/estg/__35a.html',
   },
+  'estg-10-1-3': {
+    sourceId: 'estg-10-1-3',
+    paragraph: '§ 10 Abs. 1 Nr. 3 EStG',
+    title: 'Beiträge zur Basis-Krankenversicherung',
+    summary:
+      'Beiträge zu einer Krankenversicherung, soweit sie eine Basisabsicherung bieten, sind als Sonderausgaben voll abziehbar; dazu gehört die Grundversicherung einer Schweizer Krankenkasse. Prämien für ein Kind zählen bei den Eltern, die sie tragen.',
+    legalStatusDate: LEGAL_SOURCES_CHECKED_ON,
+    url: 'https://www.gesetze-im-internet.de/estg/__10.html',
+  },
   'ao-355': {
     sourceId: 'ao-355',
     paragraph: '§ 355 Abs. 1 AO',
@@ -165,10 +174,20 @@ export interface AdvisorActionProposal {
   readonly paragraph?: string | undefined
   /** Optional receipt reference when a proposal originates from a scanned receipt (#444). */
   readonly receiptId?: string | undefined
+  /**
+   * Server-internal: the donations this draft counts, as hashed booking numbers and amount keys, so a
+   * repeated receipt or a copy is not counted again (ADR-0080). Never sent to the client.
+   */
+  readonly countedItems?: readonly AdvisorCountedItem[] | undefined
   readonly confidenceStatus?: LstbExtractedFieldStatus | undefined
   readonly sourceLines?: readonly string[] | undefined
   readonly calculation?: readonly LstbCalculationTerm[] | undefined
   readonly fieldReason?: LstbFieldReason | null | undefined
+}
+
+export interface AdvisorCountedItem {
+  readonly ref: string | null
+  readonly amountKey: string
 }
 
 export interface AdvisorUndoEntry {

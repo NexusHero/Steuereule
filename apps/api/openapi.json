@@ -7790,10 +7790,11 @@
               "lstb",
               "chLohnausweis",
               "chPensionskasse",
-              "chPraemien"
+              "chPraemien",
+              "chKrankenkasse"
             ],
             "example": "lstb",
-            "description": "Explicit document parser: \"lstb\" the German LStB, \"chLohnausweis\" the Swiss salary certificate, \"chPensionskasse\" a Swiss pension fund statement, \"chPraemien\" the employer letter on sickness-pay and NBU premiums; \"auto\" routes a recognised document to its reader."
+            "description": "Explicit document parser: \"lstb\" the German LStB, \"chLohnausweis\" the Swiss salary certificate, \"chPensionskasse\" a Swiss pension fund statement, \"chPraemien\" the employer letter on sickness-pay and NBU premiums, \"chKrankenkasse\" a Swiss health insurer statement for the tax return; \"auto\" routes a recognised document to its reader."
           },
           "receiptId": {
             "type": "string",
@@ -8068,6 +8069,7 @@
               "estg-10b",
               "estg-10-1-5",
               "estg-35a",
+              "estg-10-1-3",
               "ao-355"
             ],
             "example": "estg-10b"
@@ -8528,6 +8530,7 @@
               "estg-10b",
               "estg-10-1-5",
               "estg-35a",
+              "estg-10-1-3",
               "ao-355"
             ],
             "example": "estg-10b"
@@ -8621,6 +8624,7 @@
               "estg-10b",
               "estg-10-1-5",
               "estg-35a",
+              "estg-10-1-3",
               "ao-355"
             ],
             "example": "estg-4-5-6c"
@@ -8741,6 +8745,7 @@
                 "estg-10b",
                 "estg-10-1-5",
                 "estg-35a",
+                "estg-10-1-3",
                 "ao-355"
               ]
             }
@@ -9652,6 +9657,7 @@
               "estg-10b",
               "estg-10-1-5",
               "estg-35a",
+              "estg-10-1-3",
               "ao-355"
             ],
             "example": "estg-9-1-4a"

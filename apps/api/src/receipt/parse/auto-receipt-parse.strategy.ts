@@ -2,7 +2,21 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import { HumanMessage, SystemMessage } from '@langchain/core/messages'
 import { Inject, Injectable, Optional } from '@nestjs/common'
 import { z } from 'zod'
-import { looksLikeCraftsmanInvoice, parseCraftsmanInvoice, scrubDocumentTextPii, scrubUserMessagePii, type CraftsmanInvoiceRead, type OwlSourceId, type Screen } from '@steuereule/core'
+import { createHash } from 'node:crypto'
+import {
+  looksLikeCraftsmanInvoice,
+  looksLikeDonationReceipt,
+  parseCraftsmanInvoice,
+  parseDonationReceipt,
+  scrubDocumentTextPii,
+  scrubUserMessagePii,
+  uncountedDonations,
+  type AdvisorCountedItem,
+  type CraftsmanInvoiceRead,
+  type DonationItem,
+  type OwlSourceId,
+  type Screen,
+} from '@steuereule/core'
 import { AdvisorService } from '../../advisor/advisor.service.js'
 import { AuditService } from '../../audit/audit.service.js'
 import {
@@ -386,6 +400,39 @@ export class AutoReceiptParseStrategy implements DocumentParseStrategy {
       }
     }
 
+    // A Zuwendungsbestätigung: the donations it lists that are not counted yet (ADR-0080). A partner's own
+    // receipt repeating a joint booking, or a copy („Doppel“), adds nothing; the year is the year donated.
+    let countedItems: AdvisorCountedItem[] | undefined
+    const donation = !securityBlocked && !invoice && dto.rawText && looksLikeDonationReceipt(dto.rawText) ? parseDonationReceipt(dto.rawText) : null
+    // Without a readable amount the model's reading stands.
+    if (donation && donation.items.length > 0) {
+      const read = donation
+      const year = read.taxYear ?? parsed.taxYear ?? dto.taxYear
+      const hashed = read.items.map(hashDonation)
+      const counted = await this.advisorService.countedReceiptItems(userId, year, { screen: 'interview', field: 'spenden-betrag' })
+      const { fresh, repeated } = uncountedDonations(hashed, counted)
+      const freshEur = Math.round(fresh.reduce((sum, item) => sum + item.amountCents, 0) / 100)
+      const note =
+        repeated.length === 0
+          ? ''
+          : fresh.length === 0
+            ? read.isCopy
+              ? 'Das ist eine Zweitschrift einer Spendenbestätigung, die schon gezählt ist; sie kommt nicht noch einmal dazu.'
+              : 'Die Spenden auf dieser Bestätigung sind schon über eine andere Bestätigung gezählt; sie kommen nicht noch einmal dazu.'
+            : `${repeated.length === 1 ? 'Eine Spende darauf ist' : `${repeated.length} Spenden darauf sind`} schon über eine andere Bestätigung gezählt; dazu kommen nur ${freshEur} €.`
+      parsed = {
+        ...parsed,
+        vendorCategory: 'spende',
+        amountEur: read.totalEur ?? parsed.amountEur,
+        taxYear: year,
+        suggestedScreen: freshEur > 0 ? 'interview' : null,
+        suggestedField: freshEur > 0 ? 'spenden-betrag' : null,
+        suggestedValue: freshEur > 0 ? String(freshEur) : null,
+        summary: note ? `${parsed.summary} ${note}`.trim() : parsed.summary,
+      }
+      countedItems = fresh.map(({ ref, amountKey }) => ({ ref, amountKey }))
+    }
+
     // Security Firewall Bridge between Stage 1 (untrusted doc OCR) and Stage 2 (advisor staging):
     // Throws synchronously if IBAN, 11-digit Steuer-ID, or forbidden personal keys slipped into extracted payload!
     checkPiiFree(parsed)
@@ -425,6 +472,7 @@ export class AutoReceiptParseStrategy implements DocumentParseStrategy {
       sourceId: proposalMeta.sourceId,
       summaryText: proposalMeta.summaryText,
       receiptId: dto.receiptId ?? null,
+      ...(countedItems ? { countedItems } : {}),
       engine:
         mode === 'vision_ocr' && visionSlot
           ? { mode: 'langgraph', provider: visionSlot.provider, model: visionSlot.model }
@@ -439,4 +487,10 @@ export class AutoReceiptParseStrategy implements DocumentParseStrategy {
       assistantMessage: staged.assistantMessage,
     }
   }
+}
+
+/** Booking numbers and amount keys are stored only as hashes: enough to recognise them again (ADR-0080). */
+function hashDonation(item: DonationItem): DonationItem {
+  const hash = (value: string) => `0${createHash('sha256').update(`donation:${value}`).digest('hex').slice(0, 24)}`
+  return { ref: item.ref === null ? null : hash(item.ref), amountKey: hash(item.amountKey), amountCents: item.amountCents }
 }

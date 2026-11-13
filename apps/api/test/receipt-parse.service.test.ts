@@ -702,3 +702,40 @@ describe('craftsmen’s invoices (§ 35a, ADR-0078)', () => {
   })
 })
 
+
+describe('donation receipts add up, never twice (§ 10b, ADR-0080)', () => {
+  const head = ['Aussteller: Beispielhilfe e.V., Musterweg 1, 50000 Köln', 'Sammelbestätigung über Geldzuwendungen', 'im Sinne des § 10b des Einkommensteuergesetzes']
+  const joint = [
+    ...head,
+    'Datum: 16.07.2025',
+    'EUR 1.380,00*/*eins*drei*acht*null*/01.01.2024 bis 31.12.2024',
+    'D000000000001      05.02.2024   Geldzuwendung   nein                 EUR 1.000,00',
+    'D000000000002      05.06.2024   Geldzuwendung   nein                 EUR 120,00',
+    'D000000000003      30.09.2024   Geldzuwendung   nein                 EUR 260,00',
+    'Gesamtsumme                                                          EUR 1.380,00',
+  ].join('\n')
+  const own = [...head, 'Datum: 06.06.2025', 'EUR 120,00 01.01.2024 bis 31.12.2024', 'D000000000002      05.06.2024   Geldzuwendung   nein                 EUR 120,00', 'Gesamtsumme EUR 120,00'].join('\n')
+  const copy = [head[0], 'Sammelbestätigung (Doppel) über Geldzuwendungen', head[2], 'EUR 120.00 01.01.2024 bis 31.12.2024', 'Gesamtsumme EUR 120.00'].join('\n')
+  const other = ['Aussteller: Andere Hilfe e.V.', 'Bestätigung über Geldzuwendungen im Sinne des § 10b EStG', 'Betrag der Zuwendung - in Ziffern -', '50,00 €', 'Tag der Zuwendung: 03.03.2024'].join('\n')
+
+  it('drafts the year the donations were made, not the date the receipt was printed', async () => {
+    const h = buildTestHarness([], false)
+    const res = await h.parseService.parseReceipt('user-d1', { taxYear: 2025, fileName: 'spenden.pdf', rawText: joint })
+    expect(res.parsed.taxYear).toBe(2024)
+    expect(res.stagedAction).toMatchObject({ field: 'spenden-betrag', newValue: '1380', sourceId: 'estg-10b' })
+    expect(res.stagedAction).not.toHaveProperty('countedItems')
+  })
+
+  it('counts a partner’s own receipt and a copy of a donation already counted only once', async () => {
+    const h = buildTestHarness([], false)
+    await h.parseService.parseReceipt('user-d2', { taxYear: 2024, fileName: 'a.pdf', rawText: copy })
+    const second = await h.parseService.parseReceipt('user-d2', { taxYear: 2024, fileName: 'b.pdf', rawText: joint })
+    expect(second.stagedAction).toMatchObject({ newValue: '1380' })
+    expect(second.parsed.summary).toContain('dazu kommen nur 1260 €')
+    const third = await h.parseService.parseReceipt('user-d2', { taxYear: 2024, fileName: 'c.pdf', rawText: own })
+    expect(third.stagedAction).toBeNull()
+    expect(third.parsed.summary).toContain('schon über eine andere Bestätigung gezählt')
+    const fourth = await h.parseService.parseReceipt('user-d2', { taxYear: 2024, fileName: 'd.pdf', rawText: other })
+    expect(fourth.stagedAction).toMatchObject({ newValue: '1430' })
+  })
+})

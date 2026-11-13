@@ -339,7 +339,7 @@ export function applyChCertificateTextFallback(
 }
 
 /** Lower case without umlauts, also when written as "ue": "Jürgen" and "Juergen" are one name. */
-function foldName(text: string): string[] {
+export function foldName(text: string): string[] {
   return text
     .toLowerCase()
     .replace(/ä|ae/g, 'a')

@@ -6,7 +6,7 @@
  * OpenAPI spec version: 1.0
  */
 /**
- * Explicit document parser: "lstb" the German LStB, "chLohnausweis" the Swiss salary certificate, "chPensionskasse" a Swiss pension fund statement, "chPraemien" the employer letter on sickness-pay and NBU premiums; "auto" routes a recognised document to its reader.
+ * Explicit document parser: "lstb" the German LStB, "chLohnausweis" the Swiss salary certificate, "chPensionskasse" a Swiss pension fund statement, "chPraemien" the employer letter on sickness-pay and NBU premiums, "chKrankenkasse" a Swiss health insurer statement for the tax return; "auto" routes a recognised document to its reader.
  */
 export type ParseReceiptDtoKind = typeof ParseReceiptDtoKind[keyof typeof ParseReceiptDtoKind];
 
@@ -17,6 +17,7 @@ export const ParseReceiptDtoKind = {
   chLohnausweis: 'chLohnausweis',
   chPensionskasse: 'chPensionskasse',
   chPraemien: 'chPraemien',
+  chKrankenkasse: 'chKrankenkasse',
 } as const;
 
 /**
@@ -55,7 +56,7 @@ export interface ParseReceiptDto {
   taxYear: number;
   fileName: string;
   rawText?: string;
-  /** Explicit document parser: "lstb" the German LStB, "chLohnausweis" the Swiss salary certificate, "chPensionskasse" a Swiss pension fund statement, "chPraemien" the employer letter on sickness-pay and NBU premiums; "auto" routes a recognised document to its reader. */
+  /** Explicit document parser: "lstb" the German LStB, "chLohnausweis" the Swiss salary certificate, "chPensionskasse" a Swiss pension fund statement, "chPraemien" the employer letter on sickness-pay and NBU premiums, "chKrankenkasse" a Swiss health insurer statement for the tax return; "auto" routes a recognised document to its reader. */
   kind?: ParseReceiptDtoKind;
   /** Optional existing Beleg id owned by the caller to link provenance. */
   receiptId?: string;
@@ -191,6 +192,7 @@ export const AdvisorActionProposalDtoSourceId = {
   'estg-10b': 'estg-10b',
   'estg-10-1-5': 'estg-10-1-5',
   'estg-35a': 'estg-35a',
+  'estg-10-1-3': 'estg-10-1-3',
   'ao-355': 'ao-355',
 } as const;
 
@@ -492,6 +494,7 @@ export const AdvisorMaxPathProposalDtoSourceId = {
   'estg-10b': 'estg-10b',
   'estg-10-1-5': 'estg-10-1-5',
   'estg-35a': 'estg-35a',
+  'estg-10-1-3': 'estg-10-1-3',
   'ao-355': 'ao-355',
 } as const;
 
@@ -579,6 +582,7 @@ export const AdvisorTwoPathsProposalDtoSourceId = {
   'estg-10b': 'estg-10b',
   'estg-10-1-5': 'estg-10-1-5',
   'estg-35a': 'estg-35a',
+  'estg-10-1-3': 'estg-10-1-3',
   'ao-355': 'ao-355',
 } as const;
 
@@ -602,6 +606,7 @@ export const AdvisorMessageMetaDtoSourcesItem = {
   'estg-10b': 'estg-10b',
   'estg-10-1-5': 'estg-10-1-5',
   'estg-35a': 'estg-35a',
+  'estg-10-1-3': 'estg-10-1-3',
   'ao-355': 'ao-355',
 } as const;
 
@@ -1101,6 +1106,7 @@ export const AdvisorLegalSourceDtoSourceId = {
   'estg-10b': 'estg-10b',
   'estg-10-1-5': 'estg-10-1-5',
   'estg-35a': 'estg-35a',
+  'estg-10-1-3': 'estg-10-1-3',
   'ao-355': 'ao-355',
 } as const;
 

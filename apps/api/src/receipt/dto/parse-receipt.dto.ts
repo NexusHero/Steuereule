@@ -23,7 +23,7 @@ export const ALLOWED_RECEIPT_PARSE_MIME_TYPES = [
 ] as const
 
 /** Document kinds with a registered parse strategy (`auto` = generic receipt classifier). */
-export const DOCUMENT_KINDS = ['auto', 'lstb', 'chLohnausweis', 'chPensionskasse', 'chPraemien'] as const
+export const DOCUMENT_KINDS = ['auto', 'lstb', 'chLohnausweis', 'chPensionskasse', 'chPraemien', 'chKrankenkasse'] as const
 export type DocumentKind = (typeof DOCUMENT_KINDS)[number]
 
 export class ParseReceiptDto {
@@ -52,7 +52,7 @@ export class ParseReceiptDto {
     type: String,
     enum: DOCUMENT_KINDS,
     example: 'lstb',
-    description: 'Explicit document parser: "lstb" the German LStB, "chLohnausweis" the Swiss salary certificate, "chPensionskasse" a Swiss pension fund statement, "chPraemien" the employer letter on sickness-pay and NBU premiums; "auto" routes a recognised document to its reader.',
+    description: 'Explicit document parser: "lstb" the German LStB, "chLohnausweis" the Swiss salary certificate, "chPensionskasse" a Swiss pension fund statement, "chPraemien" the employer letter on sickness-pay and NBU premiums, "chKrankenkasse" a Swiss health insurer statement for the tax return; "auto" routes a recognised document to its reader.',
   })
   @IsOptional()
   @IsString()

@@ -17,6 +17,7 @@ import {
   type AdvisorHousehold,
   simulateAdvisorFieldDelta,
   type AdvisorActionProposal,
+  type AdvisorCountedItem,
   type AdvisorAssessmentBrief,
   type AdvisorEngineInfo,
   type AdvisorEnginePort,
@@ -107,7 +108,16 @@ const ACCUMULATING_KEYS: ReadonlySet<string> = new Set([
   'commute.otherWorkExpensesEur',
   'interview.haushalt-handwerker-betrag',
   'interview.haushalt-handwerker-rechnungsbetrag',
+  'interview.spenden-betrag',
 ])
+
+/** A field (of a person, of a child) whose receipts are counted so none counts twice. */
+export interface CountTarget {
+  readonly screen: Screen
+  readonly field: string
+  readonly person?: 'A' | 'B' | undefined
+  readonly instance?: string | null | undefined
+}
 
 const DETERMINISTIC_ENGINE: AdvisorEngineInfo = { mode: 'deterministic_fallback', provider: 'deterministic' }
 
@@ -870,6 +880,8 @@ export class AdvisorService {
       readonly engine: AdvisorEngineInfo
       /** The stored Beleg this proposal was read from: applying it records `{ kind: 'beleg' }` provenance. */
       readonly receiptId?: string | null | undefined
+      /** The donations this receipt adds (hashed, ADR-0080); the draft carries them with those still waiting. */
+      readonly countedItems?: readonly AdvisorCountedItem[] | undefined
     },
   ): Promise<{ action: AdvisorActionProposal; assistantMessage: AdvisorChatMessageDto }> {
     assertAiWritable(input.screen, input.field)
@@ -919,6 +931,9 @@ export class AdvisorService {
       sourceId: input.sourceId,
       paragraph: ADVISOR_LEGAL_SOURCES[input.sourceId].paragraph,
       ...(input.receiptId ? { receiptId: input.receiptId } : {}),
+      ...(input.countedItems
+        ? { countedItems: [...(adds ? await this.pendingCountedItems(userId, taxYear, { screen: input.screen, field: input.field }) : []), ...input.countedItems] }
+        : {}),
     }
 
     const enrichedMeta = await this.drafts.enrichDraftsWithRawBaseline(userId, taxYear, {
@@ -1068,30 +1083,60 @@ export class AdvisorService {
         readonly value: number
         readonly status: 'ok' | 'pruefen'
         readonly reason: LstbExtractedField['reason']
+        /** Another mask than `screen` for this field (a child's Anlage Kind beside the parent's mask). */
+        readonly screen?: Screen | undefined
+        /** The row this field belongs to (a child). */
+        readonly instance?: string | undefined
+        /** Add to what is recorded or waiting instead of replacing it (a second insurer in the year, ADR-0080). */
+        readonly accumulate?: boolean | undefined
+        /** What this document counts into the field, so it is not counted again. */
+        readonly countedItems?: readonly AdvisorCountedItem[] | undefined
       }>
     },
   ): Promise<{ actions: AdvisorActionProposal[]; assistantMessage: AdvisorChatMessageDto }> {
-    for (const item of input.fields) assertAiWritable(input.screen, item.field)
+    for (const item of input.fields) assertAiWritable(item.screen ?? input.screen, item.field)
     const setting = await this.owlModeService.getSetting(userId)
     if (!setting.enabled) await this.owlModeService.setSetting(userId, true)
 
     const digest = await this.buildCaseDigest(input.digestUserId, taxYear)
-    const rawActions: AdvisorActionProposal[] = input.fields.map((item) => {
-      const sim = simulateAdvisorFieldDelta(digest, input.screen, item.field, String(item.value))
+    // A field that adds up: this document's amount goes on top of the draft still waiting, or else of
+    // what is recorded, and the draft carries everything counted so far.
+    const added = await Promise.all(
+      input.fields.map(async (item) => {
+        const screen = item.screen ?? input.screen
+        if (!item.accumulate) return { value: item.value, before: null as number | null, counted: item.countedItems }
+        const target = { screen, field: item.field, person: input.person, instance: item.instance ?? null }
+        const pending = await this.pendingDraftFor(userId, taxYear, target)
+        const stored = pending
+          ? pending.newValue
+          : await this.confirmationService.readRawValue(input.digestUserId, taxYear, provenanceKey(screen, item.field, item.instance)).catch(() => null)
+        const before = stored !== null && /^\d+$/.test(stored) ? Number(stored) : null
+        return {
+          value: before === null ? item.value : before + item.value,
+          before,
+          counted: item.countedItems ? [...(pending?.countedItems ?? []), ...item.countedItems] : undefined,
+        }
+      }),
+    )
+    const rawActions: AdvisorActionProposal[] = input.fields.map((item, index) => {
+      const screen = item.screen ?? input.screen
+      const { value, before, counted } = added[index]!
+      const sim = simulateAdvisorFieldDelta(digest, screen, item.field, String(value))
       return {
         actionId: newActionId(),
         status: 'pending',
-        screen: input.screen,
+        screen,
         field: item.field,
-        instance: null,
+        instance: item.instance ?? null,
         label: item.label,
         previousValue: sim.previousValue,
         expectedPreviousValue: sim.previousValue,
-        newValue: String(item.value),
+        newValue: String(value),
         beforeRefundEur: sim.beforeRefundEur,
         afterRefundEur: sim.afterRefundEur,
         deltaEur: sim.deltaEur,
-        reason: 'Vom Beleg gelesen',
+        reason: before === null ? 'Vom Beleg gelesen' : `Vom Beleg gelesen: bisher ${before}, dazu ${item.value}.`,
+        ...(counted ? { countedItems: counted } : {}),
         sourceId: input.sourceId,
         paragraph: ADVISOR_LEGAL_SOURCES[input.sourceId].paragraph,
         ...(input.receiptId ? { receiptId: input.receiptId } : {}),
@@ -1112,6 +1157,36 @@ export class AdvisorService {
       meta: { ...enrichedMeta, engine: input.engine },
     })
     return { actions: (enrichedMeta.actions ?? []).map((a) => toPublicAction(a)), assistantMessage: toMessageDto(assistantMessage) }
+  }
+
+  /**
+   * What receipts already counted into a field that adds up (donations, a health insurer's premiums):
+   * in applied drafts and in the draft still waiting (ADR-0080).
+   */
+  async countedReceiptItems(userId: string, taxYear: number, target: CountTarget): Promise<AdvisorCountedItem[]> {
+    const items: AdvisorCountedItem[] = []
+    for (const action of await this.draftsFor(userId, taxYear, target)) if (action.status === 'applied') items.push(...(action.countedItems ?? []))
+    return [...items, ...((await this.pendingDraftFor(userId, taxYear, target))?.countedItems ?? [])]
+  }
+
+  private async pendingCountedItems(userId: string, taxYear: number, target: CountTarget): Promise<AdvisorCountedItem[]> {
+    return [...((await this.pendingDraftFor(userId, taxYear, target))?.countedItems ?? [])]
+  }
+
+  private async draftsFor(userId: string, taxYear: number, target: CountTarget): Promise<AdvisorActionProposal[]> {
+    return (await this.advisorRepo.listForUserAndYear(userId, taxYear))
+      .flatMap((m) => [...(m.meta?.action ? [m.meta.action] : []), ...(m.meta?.actions ?? [])])
+      .filter(
+        (a) =>
+          a.screen === target.screen &&
+          a.field === target.field &&
+          (a.person ?? 'A') === (target.person ?? 'A') &&
+          (a.instance ?? null) === (target.instance ?? null),
+      )
+  }
+
+  private async pendingDraftFor(userId: string, taxYear: number, target: CountTarget): Promise<AdvisorActionProposal | undefined> {
+    return (await this.draftsFor(userId, taxYear, target)).filter((a) => a.status === 'pending').at(-1)
   }
 
   /** Values of receipt drafts still waiting on this screen (newest first wins), for the fields that add up. */
