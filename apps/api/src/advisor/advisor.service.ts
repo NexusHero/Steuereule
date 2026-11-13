@@ -15,6 +15,8 @@ import {
   scrubUserMessagePii,
   PERSON_B_HANDLE,
   type AdvisorHousehold,
+  heldDraftsNote,
+  holdUnaskedOverwrites,
   simulateAdvisorFieldDelta,
   type AdvisorActionProposal,
   type AdvisorCountedItem,
@@ -714,6 +716,8 @@ export class AdvisorService {
 
         if (ev.event === 'action') {
           const enriched = await this.drafts.enrichSingleDraft(userId, taxYear, ev.data)
+          // A recorded value the user did not ask to change is not shown as a draft (ADR-0082).
+          if (holdUnaskedOverwrites([enriched], scrubbedUserText).kept.length === 0) continue
           yield { event: 'action', data: toPublicAction(enriched) }
           continue
         }
@@ -746,7 +750,7 @@ export class AdvisorService {
           const turnResult = ev.data as AdvisorTurnResult
           // What the model did this turn is the best news about the connection there is.
           if (turnResult.mode === 'langgraph' || turnResult.meta.modelFailure) this.modelConnection?.recordTurn(turnResult.primaryFailure ?? turnResult.meta.modelFailure ?? null)
-          const enrichedMeta = await this.drafts.enrichDraftsWithRawBaseline(userId, taxYear, turnResult.meta)
+          const { meta: enrichedMeta, note: heldNote } = guardModelDrafts(await this.drafts.enrichDraftsWithRawBaseline(userId, taxYear, turnResult.meta), scrubbedUserText)
           await this.drafts.supersedePendingDraftsForSameTargets(userId, taxYear, this.drafts.collectPendingTargetKeys(enrichedMeta))
 
           const engine: AdvisorEngineInfo = {
@@ -764,7 +768,7 @@ export class AdvisorService {
           const { noteChanges: _asProposed, interviewChanges: _stored, ...metaWithoutNotes } = enrichedMeta
           const assistant = await finish(
             'complete',
-            turnResult.replyText,
+            turnResult.replyText + heldNote,
             { ...metaWithoutNotes, ...(noteChanges.length > 0 ? { noteChanges } : {}), ...(turn.opening ? { opening: turn.opening.marker } : {}), engine },
             turnResult.usage,
           )
@@ -1224,4 +1228,24 @@ export class AdvisorService {
     }
   }
 
+}
+
+/**
+ * The model's drafts without the ones that would change a recorded value the user did not ask about, or
+ * write the value already there; the answer then says what was left as it was (ADR-0082).
+ */
+function guardModelDrafts(meta: AdvisorMessageMeta, userText: string): { meta: AdvisorMessageMeta; note: string } {
+  const drafts = [...(meta.action ? [meta.action] : []), ...(meta.actions ?? [])]
+  if (drafts.length === 0) return { meta, note: '' }
+  const { kept, held } = holdUnaskedOverwrites(drafts.map((d) => (d.person === 'B' ? { ...d, label: `${d.label} (Person B)` } : d)), userText)
+  const keep = new Set(kept.map((d) => d.actionId))
+  const { action, actions, ...rest } = meta
+  return {
+    meta: {
+      ...rest,
+      ...(action && keep.has(action.actionId) ? { action } : {}),
+      ...(actions ? { actions: actions.filter((a) => keep.has(a.actionId)) } : {}),
+    },
+    note: heldDraftsNote(held),
+  }
 }
