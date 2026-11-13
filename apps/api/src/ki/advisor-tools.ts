@@ -263,7 +263,9 @@ export const TOOL_DESCRIPTIONS: Readonly<Record<ToolName, string>> = {
 }
 
 /** JSON Schema keywords at least one provider's function-calling API rejects outright. */
-export const UNSUPPORTED_SCHEMA_KEYWORDS: ReadonlySet<string> = new Set(['$schema', 'propertyNames'])
+// `exclusiveMinimum`/`exclusiveMaximum` (from z.number().positive()) broke every turn of the
+// first eval after ADR-0069 §29: Gemini answered 400 for the whole tool list.
+export const UNSUPPORTED_SCHEMA_KEYWORDS: ReadonlySet<string> = new Set(['$schema', 'propertyNames', 'exclusiveMinimum', 'exclusiveMaximum'])
 
 /**
  * The tool schema as the model gets to see it. Gemini answers 400 to `propertyNames` (which every
