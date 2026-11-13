@@ -78,6 +78,9 @@ describe('EulenModusScreen', () => {
     it('opens on the chat itself: the greeting, the quick starts and the composer, with no tab to switch to', () => {
       renderScreen()
       expect(screen.getByTestId('advisor-empty-state').textContent).toContain('Womit kann die Eule helfen?')
+      // Four quick starts under the centred input; the rest wait behind "Mehr …".
+      expect(screen.queryByText('Fortbildung & Reisekosten klären')).toBeNull()
+      fireEvent.click(screen.getByTestId('advisor-chips-more'))
       expect(screen.getByText('Fortbildung & Reisekosten klären')).toBeDefined()
       expect(screen.getByTestId('advisor-chat-input')).toBeDefined()
       expect(screen.queryByRole('tab')).toBeNull()
@@ -87,7 +90,7 @@ describe('EulenModusScreen', () => {
     it('keeps the workbench closed until it is asked for, and says in the title bar how many hints wait', () => {
       renderScreen()
       expect(screen.queryByText('Homeoffice-Tagespauschale 6 €')).toBeNull()
-      expect(screen.getByTestId('eule-hints-pill').textContent).toContain('2 Hinweise')
+      expect(screen.getByTestId('eule-hints-pill').getAttribute('aria-label')).toContain('2 Hinweise')
       expect(screen.getByTestId('eule-hints-pill').getAttribute('aria-expanded')).toBe('false')
 
       openWorkbench()
@@ -114,19 +117,20 @@ describe('EulenModusScreen', () => {
       expect(screen.queryByTestId('eule-workbench-panel')).toBeNull()
     })
 
-    it('shows the legal status in the title bar, and drops it on a phone where the line is too short', () => {
+    it('shows the legal status as one quiet line under the chat, at every width', () => {
       const tablet = renderScreen()
-      expect(screen.getByTestId('eule-legal-status').textContent).toBe('Rechtsstand 01.01.2025')
+      expect(screen.getByTestId('eule-legal-status').textContent).toBe('Antworten nennen die Rechtsgrundlage · Rechtsstand 01.01.2025')
+      expect(screen.getByTestId('eule-topbar').textContent).not.toContain('Rechtsstand')
       tablet.unmount()
       setViewportWidth(390)
       renderScreen()
-      expect(screen.queryByTestId('eule-legal-status')).toBeNull()
-      expect(screen.getByTestId('eule-hints-pill').textContent).toContain('2')
+      expect(screen.getByTestId('eule-legal-status')).toBeDefined()
+      expect(screen.getByTestId('eule-hints-count').textContent).toBe('2')
     })
 
     it('says "no hints" instead of showing an empty count', () => {
       renderScreen({ initialCards: [] })
-      expect(screen.getByTestId('eule-hints-pill').textContent).toContain('Keine Hinweise')
+      expect(screen.getByTestId('eule-hints-pill').getAttribute('aria-label')).toContain('Keine Hinweise')
     })
   })
 
@@ -163,12 +167,13 @@ describe('EulenModusScreen', () => {
       expect(screen.queryByText('Du hast 50 Tage im Homeoffice gearbeitet.')).toBeNull()
     })
     // The count in the title bar follows.
-    expect(screen.getByTestId('eule-hints-pill').textContent).toContain('1 Hinweis')
+    expect(screen.getByTestId('eule-hints-pill').getAttribute('aria-label')).toContain('1 Hinweis')
   })
 
   it('signs every advisor surface with the owl (AiChip "Die Eule"), never the old B dot', async () => {
     renderScreen()
     expect(screen.getByTestId('eule-topbar-title').textContent).toBe('Die Eule')
+    fireEvent.click(screen.getByTestId('advisor-chips-more'))
     fireEvent.click(screen.getByText('Spenden aus dem Vorjahr prüfen'))
     expect((await screen.findByTestId('advisor-assistant-message')).textContent).toContain('Die Eule')
     expect(screen.getAllByTestId('owl-glyph').length).toBeGreaterThan(0)
@@ -303,7 +308,8 @@ describe('EulenModusScreen', () => {
       renderScreen()
 
       // 1. Click Quick-Starter chip for Fortbildung
-      fireEvent.click(screen.getByText('Fortbildung & Reisekosten klären'))
+      fireEvent.click(screen.getByTestId('advisor-chips-more'))
+    fireEvent.click(screen.getByText('Fortbildung & Reisekosten klären'))
 
       // 2. Eule asks Anamnese question with clickable choice pills
       const pills = await screen.findAllByTestId('advisor-choice-pill')
@@ -317,7 +323,7 @@ describe('EulenModusScreen', () => {
       expect(await screen.findByTestId('advisor-action-card', {}, { timeout: 5000 })).toBeDefined()
       expect(screen.getByTestId('advisor-action-delta').textContent).toContain('Steuer-Effekt')
       // A draft waits: the title bar counts it.
-      expect(screen.getByTestId('eule-hints-pill').textContent).toContain('1 Entwurf')
+      expect(screen.getByTestId('eule-hints-pill').getAttribute('aria-label')).toContain('1 Entwurf')
 
       // 5. Click "✓ Jetzt übernehmen" (1-click Apply)
       fireEvent.click(screen.getByTestId('advisor-action-apply-btn'))
@@ -330,7 +336,8 @@ describe('EulenModusScreen', () => {
 
     it('opens the interactive LawSourceModal when clicking a § LawChip', async () => {
       renderScreen()
-      fireEvent.click(screen.getByText('Spenden aus dem Vorjahr prüfen'))
+      fireEvent.click(screen.getByTestId('advisor-chips-more'))
+    fireEvent.click(screen.getByText('Spenden aus dem Vorjahr prüfen'))
 
       const lawChip = await screen.findByTestId('law-chip-estg-10b')
       fireEvent.click(lawChip)

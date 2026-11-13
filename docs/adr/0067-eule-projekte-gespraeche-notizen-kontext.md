@@ -52,8 +52,9 @@ Datenbank, deshalb sucht der Server über den entschlüsselten Text des einen Nu
 (höchstens 50 Gespräche) statt in der Datenbank.
 
 Auf breiten Bildschirmen steht die Liste in einer Seitenleiste links vom Chat. Sie startet offen
-und merkt sich, wenn sie eingeklappt wurde. Auf schmalen Bildschirmen öffnet derselbe Inhalt als
-Sheet.
+und merkt sich, wenn sie eingeklappt wurde. ~~Auf schmalen Bildschirmen öffnet derselbe Inhalt als
+Sheet.~~ Seit Abschnitt 10 öffnet sie unter 1280 px als Schublade von links, und die Suche ist ein
+Dialog.
 
 ### 3. Projektnotizen: Die Eule schreibt hier selbst
 
@@ -69,7 +70,7 @@ Was die Ausnahme tragbar macht:
 
 - Jede Änderung steht unter der Antwort („Gemerkt: …“, „Notiz aktualisiert: …“, „Notiz entfernt:
   …“) mit „Rückgängig“. Rückgängig stellt den vorherigen Text oder die entfernte Notiz wieder her.
-- Alle Notizen sind in der Seitenleiste sichtbar; der Nutzer kann jede ändern, löschen und eigene
+- Alle Notizen sind sichtbar (seit Abschnitt 10 hinter dem Situation-Chip im Eingabefeld); der Nutzer kann jede ändern, löschen und eigene
   hinzufügen.
 - Höchstens 20 Notizen je Jahr mit je 200 Zeichen, eine Zeile, keine personenbezogenen Daten
   (geprüft beim Anlegen durch das Modell und beim Speichern).
@@ -151,6 +152,70 @@ Modell, das geantwortet hat, und den Fehler des ersten (`primaryFailure`), den d
 mitzählt. Kein Zweitmodell eingerichtet, oder dasselbe Modell mit demselben Schlüssel, oder eine
 blockierte Frage: Es antworten wie bisher die festen Regeln, mit dem Grund. Mitten in einer Antwort
 wird nicht gewechselt; dort bleibt der Abbruch ehrlich sichtbar.
+
+### 10. Chat zuerst (Nachtrag 13.11.2026)
+
+Der Chat bekam neben Seitenleiste, Erklärtexten und Suchfeld zu wenig Aufmerksamkeit. Der Screen
+folgt jetzt dem Aufbau, den Nutzer von Claude kennen:
+
+- **Seitenleiste nur für Gespräche:** „Neues Gespräch“, „Suchen“ mit Lupe, „Steuerjahr 2026 ▾“
+  und je Gespräch eine Zeile. Umbenennen und Löschen liegen hinter dem „…“ der Zeile. Keine
+  Erklärtexte. Die anderen Jahre stehen im Menü des Steuerjahrs; ein anderes Jahr öffnet mit
+  seinem zuletzt genutzten Gespräch. Breite weiter ziehbar, Standard 260 px.
+- **Suche als Dialog** hinter der Lupe und mit Cmd/Ctrl+K, über dieselbe Suche des Servers.
+- **Unter 1280 px** öffnen die Gespräche als Schublade von links über das Symbol oben links.
+- **Situation und Notizen** stehen nicht mehr in der Seitenleiste, sondern hinter einem Chip im
+  Eingabefeld („Situation: …“, leer „Situation ergänzen“). Er öffnet „Was die Eule über euch weiß“
+  mit der Situation und den Notizen des Jahres.
+- **Kopfzeile:** Datenschutz, Hinweise (mit Zahl, wenn Hinweise oder Entwürfe warten) und
+  Einstellungen sind Symbole. Der Rechtsstand steht als eine Zeile unter dem Chat.
+- **Leerer Chat:** Frage und Eingabefeld in der Mitte, darunter vier Schnellstarts; die übrigen
+  klappt „Mehr …“ auf.
+- **Gedankengang wie bei Claude:** eine Zeile „Nachgedacht · 8 s · 4 Schritte“, aufklappbar zu
+  den Schritten mit Symbol und Ergebnis, darunter die Denk-Zusammenfassung. Während die Eule
+  arbeitet: „Denkt nach · 4 s“ mit dem aktuellen Schritt, ebenfalls aufklappbar. Die Schritte
+  werden strukturiert gespeichert (`meta.thoughtSteps`: Art, Werkzeug, Label, Ergebnis); ältere
+  Antworten mit reinen Textzeilen (`meta.steps`) zeigt die App weiter. Das Ergebnis eines Werkzeugs
+  kommt als eigenes Ereignis `tool_result` und wird auf dem Server aus einer festen Vorlage je
+  Werkzeug gebildet, nur aus Zahlen, Beträgen und Katalogtiteln: nie aus Text des Modells oder des
+  Nutzers, nie mit dem Grund einer Ablehnung. Die Dauer (`durationMs`) war schon gespeichert und
+  geht jetzt mit der fertigen Antwort an die App; Kosten und Tokens bleiben beim Betrieb.
+
+### 11. Die Eule eröffnet das Gespräch (Nachtrag 13.11.2026)
+
+Ein neues Gespräch beginnt nicht mehr leer, wenn die App schon etwas über das Jahr weiß. Die Eule
+spricht zuerst, mit dem Steuerberater-Skill und dem Fall-Überblick, den sie ohnehin in jedem Zug
+bekommt. Der Überblick umfasst jetzt alles, was das Interview und die Masken kennen
+(`furtherFacts`: Rente, Summen der Vermietung, Kapital mit einbehaltener Steuer, Nebenjob,
+Lohnersatz, Abfindung, Krankheitskosten, haushaltsnahe Dienste, Fristen), weiter nur Beträge und
+Zählungen, nie Namen, Adressen oder Kennungen.
+
+- **Stufe ohne Modell:** Der Rechenkern bestimmt vor jedem Modellaufruf die Stufe.
+  - `empty`: nichts erfasst. Keine Eröffnung; der Chat bietet „Lass uns anfangen“ an, das das Berater-Interview startet.
+  - `partial`: etwas erfasst, aber kein Einkommen mit Betrag oder keine Angabe zur Veranlagung. Die Eule sagt kurz, was sie weiß, und fragt die Lücken als Fragerunde mit antippbaren Antworten ab.
+  - `ready`: mindestens ein Einkommen mit Betrag und die Veranlagung. Die Eule analysiert frei.
+- **Nur wenn sich etwas geändert hat:** Ein Fingerabdruck (FNV-1a) aus Fall-Überblick, eigener
+  Beschreibung und Notizen steht an jeder Eröffnung. Gleicht er dem der letzten Eröffnung des
+  Jahres, bleibt das neue Gespräch leer und verlinkt „Letzte Analyse vom … ansehen“.
+- **Zahlen aus dem Rechenkern:** Vor dem Modellaufruf rechnet die App die Kennzahlen der Eröffnung
+  (Ergebnis-Spanne der Schätzung, Entfernungs- und Homeoffice-Pauschale aus den erfassten Tagen,
+  Werbungskosten gegen den Arbeitnehmer-Pauschbetrag). Sie stehen im Prompt als die einzigen
+  Beträge, die die Eule nennen darf; jeden weiteren muss sie mit `compute_income_tax` oder
+  `simulate_tax_delta` rechnen. Die Antwort-Prüfung zählt die Kennzahlen als berechnet.
+- **Prüfung blockt:** Die Eröffnung wird zurückgehalten, bis sie geprüft ist. Nennt sie einen
+  Betrag, den die App nicht berechnet hat, wird sie einmal neu geschrieben, mit diesen Beträgen als
+  falsch benannt. Erst eine zweite Verfehlung erscheint, dann mit dem üblichen Hinweis.
+- **Keine Entwürfe:** Eine Eröffnung legt nie Entwürfe an, auch nicht mit Turbo. Entwürfe
+  entstehen aus der Antwort des Nutzers auf die Fragerunde.
+- Ein eröffnetes Gespräch heißt „Einschätzung 2026“ (mit dem Steuerjahr), bis der Nutzer es umbenennt.
+- Technisch ist die Eröffnung ein Zug mit `quickAction: 'opening'`. Die Frage dahinter ist ein
+  Platzhalter, den der Chat nicht zeigt (`meta.opening` an beiden Nachrichten); ohne Sprachmodell
+  gibt es keine Eröffnung.
+
+Die Ergebnisse der Werkzeuge im Gedankengang wiederholen ihr Label nicht mehr („Schlage im
+Steuerwissen nach: Kennzahlen je Steuerjahr“ statt „…: Gefunden: …“), und die Denk-Zusammenfassung
+erscheint als Überschriften und Absätze statt als rohes Markdown; die Eule wird gebeten, auf
+Deutsch zu denken.
 
 ## Folgen
 

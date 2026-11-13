@@ -2284,6 +2284,38 @@
         ]
       }
     },
+    "/v1/steuerjahre/{jahr}/advisor/opening": {
+      "get": {
+        "operationId": "AdvisorController_opening",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdvisorOpeningStateDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Whether a new conversation opens with the owl speaking first, and the last opening of the year (ADR-0067 §11)",
+        "tags": [
+          "eulen-modus"
+        ]
+      }
+    },
     "/v1/steuerjahre/{jahr}/advisor/search": {
       "get": {
         "operationId": "AdvisorController_search",
@@ -7916,6 +7948,59 @@
           "sourceId"
         ]
       },
+      "AdvisorOpeningMarkerDto": {
+        "type": "object",
+        "properties": {
+          "fingerprint": {
+            "type": "string",
+            "description": "Fingerprint of what the owl knew about the year when it opened (ADR-0067 §11)."
+          },
+          "stage": {
+            "type": "string",
+            "enum": [
+              "partial",
+              "ready"
+            ]
+          }
+        },
+        "required": [
+          "fingerprint",
+          "stage"
+        ]
+      },
+      "AdvisorThoughtStepDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "status",
+              "tool"
+            ]
+          },
+          "label": {
+            "type": "string",
+            "example": "Prüfe EStG-Paragraph …"
+          },
+          "tool": {
+            "type": "string",
+            "description": "The tool that ran, for its icon; only on tool steps."
+          },
+          "result": {
+            "type": "string",
+            "example": "§ 4 Abs. 5 Nr. 6c EStG",
+            "description": "What the tool found, without personal data."
+          },
+          "ok": {
+            "type": "boolean",
+            "description": "False when the tool refused."
+          }
+        },
+        "required": [
+          "kind",
+          "label"
+        ]
+      },
       "AdvisorNotStagedDto": {
         "type": "object",
         "properties": {
@@ -7954,6 +8039,13 @@
           "text": {
             "type": "string",
             "example": "Die Eule trägt nichts selbst ein."
+          },
+          "amounts": {
+            "description": "For unbacked-amount: the amounts the app did not work out.",
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
           }
         },
         "required": [
@@ -8333,6 +8425,14 @@
       "AdvisorMessageMetaDto": {
         "type": "object",
         "properties": {
+          "opening": {
+            "description": "Both messages of an opening carry it; the user message is a hidden placeholder.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AdvisorOpeningMarkerDto"
+              }
+            ]
+          },
           "choices": {
             "type": "array",
             "items": {
@@ -8344,6 +8444,13 @@
             "type": "array",
             "items": {
               "type": "string"
+            }
+          },
+          "thoughtSteps": {
+            "description": "The steps with their kind and what each tool found; replaces steps on new answers.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdvisorThoughtStepDto"
             }
           },
           "notStaged": {
@@ -8509,6 +8616,10 @@
           "runId": {
             "type": "string",
             "description": "Present while status is streaming: the run to re-attach to."
+          },
+          "durationMs": {
+            "type": "number",
+            "description": "How long the owl worked on a finished answer, in milliseconds."
           }
         },
         "required": [
@@ -9203,7 +9314,8 @@
             "enum": [
               "forgotten_check",
               "savings_plan",
-              "assessment_check"
+              "assessment_check",
+              "opening"
             ],
             "description": "Quick start that shapes the turn: forgotten_check always opens with a visible plan (#451)."
           },
@@ -9308,6 +9420,54 @@
           "provider",
           "model",
           "checkedAt"
+        ]
+      },
+      "AdvisorOpeningLastDto": {
+        "type": "object",
+        "properties": {
+          "conversationId": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "conversationId",
+          "createdAt"
+        ]
+      },
+      "AdvisorOpeningStateDto": {
+        "type": "object",
+        "properties": {
+          "stage": {
+            "type": "string",
+            "enum": [
+              "empty",
+              "partial",
+              "ready"
+            ],
+            "description": "What the app knows about the year: nothing, not enough for an analysis, or enough."
+          },
+          "shouldOpen": {
+            "type": "boolean",
+            "description": "True when a new conversation should open with the owl speaking first: something is entered and it changed since the last opening."
+          },
+          "lastOpening": {
+            "nullable": true,
+            "description": "The last opening of this year, to link to when nothing changed.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AdvisorOpeningLastDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "stage",
+          "shouldOpen"
         ]
       },
       "AdvisorSearchHitDto": {

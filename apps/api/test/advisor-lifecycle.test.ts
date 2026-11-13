@@ -71,7 +71,7 @@ describe('AdvisorService message lifecycle (#476)', () => {
     const stored = (await advisorRepo.listForUserAndYear(USER, YEAR))[1]!
     expect(stored.status).toBe('aborted')
     expect(stored.content).toBe('Die Entfernungspau')
-    expect(stored.meta?.steps).toEqual(['Simuliere …'])
+    expect(stored.meta?.thoughtSteps).toMatchObject([{ kind: 'tool', label: 'Simuliere …' }])
   })
 
   it('marks the answer failed when the engine reports an error mid-way', async () => {
@@ -114,6 +114,7 @@ describe('AdvisorService message lifecycle (#476)', () => {
       { event: 'reasoning', data: { text: 'Erst die Pauschale ' } },
       { event: 'reasoning', data: { text: 'prüfen.' } },
       { event: 'tool', data: { name: 'lookup_legal_source', label: 'Prüfe EStG-Paragraph …' } },
+      { event: 'tool_result', data: { name: 'lookup_legal_source', ok: true, result: '§ 9 EStG' } },
       token('Antwort'),
       doneEvent({ replyText: 'Antwort', usage: { inputTokens: 1200, outputTokens: 80, cachedInputTokens: 900 } }),
     ])
@@ -122,8 +123,12 @@ describe('AdvisorService message lifecycle (#476)', () => {
 
     const response = doneData(events)
     expect(response.assistantMessage.reasoning).toBe('Erst die Pauschale prüfen.')
-    expect(response.assistantMessage.meta?.steps).toEqual(['Eule prüft …', 'Prüfe EStG-Paragraph …'])
-    // Cost and timing are for operations, not for the client.
+    expect(response.assistantMessage.meta?.thoughtSteps).toEqual([
+      { kind: 'status', label: 'Eule prüft …' },
+      { kind: 'tool', tool: 'lookup_legal_source', label: 'Prüfe EStG-Paragraph …', result: '§ 9 EStG', ok: true },
+    ])
+    // How long the owl worked is shown in the chat; what the turn cost stays with operations.
+    expect(response.assistantMessage.durationMs).toBeGreaterThanOrEqual(0)
     expect(JSON.stringify(response)).not.toContain('inputTokens')
 
     const stored = (await advisorRepo.listForUserAndYear(USER, YEAR))[1]!

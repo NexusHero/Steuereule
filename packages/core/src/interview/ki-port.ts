@@ -6,7 +6,9 @@ import type { AdvisorRecordHandles } from './record-handles'
 import type { AdvisorNoteHandle } from './advisor-notes'
 import type { AdvisorSkillId } from './advisor-skills'
 import type { AdvisorAssessmentBrief, AdvisorTask } from './advisor-tasks'
+import type { AdvisorOpeningBrief } from './advisor-opening'
 import type { AdvisorModelFailure } from './advisor-failure'
+import type { AdvisorTopicOutcome } from './advisor-topic'
 
 /** The schema the LLM must answer. */
 export interface AiProposal {
@@ -46,8 +48,15 @@ export interface AdvisorTurnRequest {
   readonly task?: AdvisorTask | undefined
   /** The tax office's notice against the return, for the assessment check. */
   readonly assessment?: AdvisorAssessmentBrief | undefined
+  /** How to open a new conversation and with which figures (ADR-0067 §11); with task `opening`. */
+  readonly opening?: AdvisorOpeningBrief | undefined
   /** The skill the user switched on for this message (#495). */
   readonly skill?: AdvisorSkillId | undefined
+  /**
+   * `skip` when the app wrote the message itself (an opening, a tapped choice): the topic guard only
+   * looks at typed text (ADR-0069). Anything else is checked.
+   */
+  readonly topicCheck?: 'check' | 'skip' | undefined
 }
 
 /** The fields one draft would write, main field and companions alike. */
@@ -81,6 +90,8 @@ export interface AdvisorTurnResult {
   readonly usage?: AdvisorTurnUsage | undefined
   /** Set when the first model failed before its first word and the fallback model answered instead (#493). */
   readonly primaryFailure?: AdvisorModelFailure | undefined
+  /** What the topic guard said; absent where no guard ran (the rules answered). */
+  readonly topic?: AdvisorTopicOutcome | undefined
 }
 
 /** Status of one step of the owl's visible plan (#451 slice 6). */
@@ -94,7 +105,7 @@ export interface AdvisorPlanStep {
 }
 
 /** Quick starts that change how the turn runs, sent alongside the message. */
-export const ADVISOR_QUICK_ACTIONS = ['forgotten_check', 'savings_plan', 'assessment_check'] as const
+export const ADVISOR_QUICK_ACTIONS = ['forgotten_check', 'savings_plan', 'assessment_check', 'opening'] as const
 export type AdvisorQuickAction = (typeof ADVISOR_QUICK_ACTIONS)[number]
 
 export type AdvisorStreamEvent =
@@ -107,6 +118,8 @@ export type AdvisorStreamEvent =
   /** A piece of the provider's reasoning summary; never the answer itself. */
   | { readonly event: 'reasoning'; readonly data: { readonly text: string } }
   | { readonly event: 'tool'; readonly data: { readonly name: string; readonly label: string } }
+  /** What a tool found, after it ran: a few words without personal data, shown under its step. */
+  | { readonly event: 'tool_result'; readonly data: { readonly name: string; readonly ok: boolean; readonly result: string } }
   | { readonly event: 'token'; readonly data: { readonly text: string } }
   | { readonly event: 'choices'; readonly data: { readonly choices: readonly string[] } }
   | { readonly event: 'action'; readonly data: AdvisorActionProposal }

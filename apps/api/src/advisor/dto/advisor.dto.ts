@@ -52,6 +52,9 @@ import {
   type LstbFieldReason,
   type OwlSourceId,
   type Screen,
+  ADVISOR_THOUGHT_STEP_KINDS,
+  type AdvisorThoughtStep,
+  type AdvisorThoughtStepKind,
 } from '@steuereule/core'
 import { OwlCardDto } from '../../owl-mode/dto/owl-mode.dto.js'
 
@@ -261,6 +264,9 @@ export class AdvisorAnswerNoticeDto implements AdvisorAnswerNotice {
 
   @ApiProperty({ type: String, example: 'Die Eule trägt nichts selbst ein.' })
   text!: string
+
+  @ApiPropertyOptional({ type: [Number], description: 'For unbacked-amount: the amounts the app did not work out.' })
+  amounts?: readonly number[] | undefined
 }
 
 export class AdvisorNoteChangeDto implements AdvisorNoteChange {
@@ -332,12 +338,65 @@ export class AdvisorQuestionRoundDto implements AdvisorQuestionRound {
   questions!: readonly AdvisorRoundQuestionDto[]
 }
 
+export class AdvisorThoughtStepDto implements AdvisorThoughtStep {
+  @ApiProperty({ type: String, enum: ADVISOR_THOUGHT_STEP_KINDS })
+  kind!: AdvisorThoughtStepKind
+
+  @ApiProperty({ type: String, example: 'Prüfe EStG-Paragraph …' })
+  label!: string
+
+  @ApiPropertyOptional({ type: String, description: 'The tool that ran, for its icon; only on tool steps.' })
+  tool?: string | undefined
+
+  @ApiPropertyOptional({ type: String, example: '§ 4 Abs. 5 Nr. 6c EStG', description: 'What the tool found, without personal data.' })
+  result?: string | undefined
+
+  @ApiPropertyOptional({ type: Boolean, description: 'False when the tool refused.' })
+  ok?: boolean | undefined
+}
+
+export class AdvisorOpeningMarkerDto {
+  @ApiProperty({ type: String, description: 'Fingerprint of what the owl knew about the year when it opened (ADR-0067 §11).' })
+  fingerprint!: string
+
+  @ApiProperty({ type: String, enum: ['partial', 'ready'] })
+  stage!: 'partial' | 'ready'
+}
+
+export class AdvisorOpeningLastDto {
+  @ApiProperty({ type: String })
+  conversationId!: string
+
+  @ApiProperty({ type: String, format: 'date-time' })
+  createdAt!: string
+}
+
+export class AdvisorOpeningStateDto {
+  @ApiProperty({ type: String, enum: ['empty', 'partial', 'ready'], description: 'What the app knows about the year: nothing, not enough for an analysis, or enough.' })
+  stage!: 'empty' | 'partial' | 'ready'
+
+  @ApiProperty({ type: Boolean, description: 'True when a new conversation should open with the owl speaking first: something is entered and it changed since the last opening.' })
+  shouldOpen!: boolean
+
+  @ApiPropertyOptional({ type: () => AdvisorOpeningLastDto, nullable: true, description: 'The last opening of this year, to link to when nothing changed.' })
+  lastOpening!: AdvisorOpeningLastDto | null
+}
+
 export class AdvisorMessageMetaDto implements AdvisorMessageMeta {
+  @ApiPropertyOptional({ type: () => AdvisorOpeningMarkerDto, description: 'Both messages of an opening carry it; the user message is a hidden placeholder.' })
+  opening?: AdvisorOpeningMarkerDto | undefined
+
   @ApiPropertyOptional({ type: [String] })
   choices?: readonly string[] | undefined
 
   @ApiPropertyOptional({ type: [String], description: 'Steps the owl reported while working on this answer (#476).' })
   steps?: readonly string[] | undefined
+
+  @ApiPropertyOptional({
+    type: () => [AdvisorThoughtStepDto],
+    description: 'The steps with their kind and what each tool found; replaces steps on new answers.',
+  })
+  thoughtSteps?: readonly AdvisorThoughtStepDto[] | undefined
 
   @ApiPropertyOptional({
     type: () => [AdvisorNotStagedDto],
@@ -427,6 +486,9 @@ export class AdvisorChatMessageDto implements AdvisorChatMessageView {
 
   @ApiPropertyOptional({ type: String, description: 'Present while status is streaming: the run to re-attach to.' })
   runId?: string | undefined
+
+  @ApiPropertyOptional({ type: Number, description: 'How long the owl worked on a finished answer, in milliseconds.' })
+  durationMs?: number | undefined
 }
 
 export class SetAdvisorFeedbackDto {

@@ -82,9 +82,10 @@ function makeStyles(t: UiTheme) {
     question: { gap: t.space.s2 } as ViewStyle,
     text: { fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: t.size.m, color: t.color.tinte } as TextStyle,
     options: { flexDirection: 'row', flexWrap: 'wrap', gap: t.space.s2 } as ViewStyle,
-    option: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: t.space.s2, paddingHorizontal: t.space.s3, borderRadius: t.radius.m, borderWidth: 1, borderColor: t.color.linie, backgroundColor: t.color.karte } as ViewStyle,
+    // A long answer wraps inside the round instead of running past its edge on a phone.
+    option: { minHeight: 44, maxWidth: '100%', flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: t.space.s2, paddingVertical: 6, paddingHorizontal: t.space.s3, borderRadius: t.radius.m, borderWidth: 1, borderColor: t.color.linie, backgroundColor: t.color.karte } as ViewStyle,
     optionOn: { borderColor: t.color.ki, backgroundColor: t.color.ki } as ViewStyle,
-    optionText: { fontFamily: t.font.text, fontSize: t.size.m, color: t.color.tinte } as TextStyle,
+    optionText: { flexShrink: 1, fontFamily: t.font.text, fontSize: t.size.m, color: t.color.tinte } as TextStyle,
     optionTextOn: { color: t.color.karte, fontWeight: t.weight.fett } as TextStyle,
     recommended: { fontFamily: t.font.text, fontSize: t.size.xs, color: t.color.kiTinte } as TextStyle,
     actions: { flexDirection: 'row', flexWrap: 'wrap', gap: t.space.s2 } as ViewStyle,

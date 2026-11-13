@@ -66,6 +66,7 @@ import {
   AdvisorSituationDto,
   SaveAdvisorSituationDto,
   AdvisorSearchHitDto,
+  AdvisorOpeningStateDto,
   DeleteAdvisorNoteResponseDto,
   SaveAdvisorNoteDto,
   ClearAdvisorConversationResponseDto,
@@ -269,6 +270,14 @@ export class AdvisorController {
   @ApiOkResponse({ type: AdvisorConnectionDto })
   connection(): Promise<AdvisorConnectionDto> {
     return this.service.connection()
+  }
+
+  @Get('opening')
+  @OwlRoute()
+  @ApiOperation({ summary: 'Whether a new conversation opens with the owl speaking first, and the last opening of the year (ADR-0067 §11)' })
+  @ApiOkResponse({ type: AdvisorOpeningStateDto })
+  opening(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number): Promise<AdvisorOpeningStateDto> {
+    return this.service.openingState(userId, year)
   }
 
   @Get('search')

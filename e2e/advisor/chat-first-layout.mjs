@@ -1,7 +1,8 @@
 // Chat-first owl gate (#476, #479). The chat owns the screen; what used to sit beside it lives in
 // the top bar and in sheets. This walks the parts no other gate touches:
 //
-//   A  layout: top bar, legal status, empty state, composer dock
+//   A  layout: top bar, legal status under the chat, empty state with the composer in the middle,
+//      a sidebar that holds conversations only
 //   B  privacy notice behind the top-bar badge
 //   C  a real answer can be rated: up, down with a reason
 //   D  clearing the conversation: cancel, a failed attempt, the real thing
@@ -10,13 +11,14 @@
 //      a rating that cannot be stored
 //      (E also: an answer of the fixed rules names why the model did not answer)
 //   F  a dropped connection: the chat says it is re-attaching and finishes the answer
-//   G  several conversations in one tax year: new, own messages each, rename, switch, delete
-//   H  the notes of the tax year: add, change, delete by hand
+//   G  several conversations in one tax year: new, own messages each, rename, switch, search in a
+//      dialog (also Ctrl+K), delete
+//   H  the notes of the tax year, behind the situation chip in the composer: add, change, delete
 //   I  the context ring: fill level, no summary of a short conversation
 //   K  the latest answer came from the rules: "try again" asks the same question in place of that turn
 //   L  the connection status in the top bar: connected, model unreachable, server unreachable
 //   M  Turbo: off at first, sends the flag, an answer the owl applied itself says so
-//   J  on a phone the project content opens as a sheet
+//   J  on a phone the conversations open as a drawer from the left
 //
 // The stack is real (sign-in, session, rating, clearing). Rows E and F stub what only a model
 // could produce: E replaces the stored conversation, F drops the stream on purpose.
@@ -86,8 +88,12 @@ function storedAnswer(now) {
       createdAt: now,
       status: 'complete',
       reasoning: 'Der Nutzer nennt mehrere Angaben; ich lege je einen Entwurf an.',
+      durationMs: 8200,
       meta: {
-        steps: ['Akte geprüft', 'Entwürfe angelegt'],
+        thoughtSteps: [
+          { kind: 'status', label: 'Akte geprüft' },
+          { kind: 'tool', tool: 'stage_field_draft', label: 'Bereite sicheren Entwurf vor …', result: 'fertig · −120 € Erstattung', ok: true },
+        ],
         actions: [
           draft('d1', 'Homeoffice-Tage', { effect: 'computed', beforeRefundEur: 2000, afterRefundEur: 1880, deltaEur: -120 }),
           draft('d2', 'Fortbildung', { effect: 'computed', beforeRefundEur: 2000, afterRefundEur: 2000, deltaEur: 0 }),
@@ -144,7 +150,15 @@ async function main() {
     if ((await byId(page, 'eule-project-sidebar').count()) !== 0) fail('Row A: a collapsed sidebar should stay collapsed after a reload')
     await byId(page, 'eule-conversations-btn').click()
     await see(page, 'eule-project-sidebar', 'Row A')
-    console.log(`[${TAG}] ✅ Row A — top bar, legal status, empty state, composer dock; sidebar open beside the chat, collapsed it stays collapsed`)
+    // Chat-first: the legal status sits under the chat, not in the top bar; the sidebar holds
+    // conversations only; the situation and the notes wait behind a chip in the composer.
+    if ((await textOf(page, 'eule-topbar')).includes('Rechtsstand')) fail('Row A: the legal status belongs under the chat, not in the top bar')
+    for (const id of ['eule-situation', 'eule-notes', 'eule-conversation-search']) {
+      if ((await byId(page, 'eule-project-sidebar').locator(`[data-testid="${id}"]`).count()) !== 0) fail(`Row A: "${id}" should not sit in the sidebar`)
+    }
+    await see(page, 'eule-conversation-search-open', 'Row A')
+    await see(page, 'eule-situation-chip', 'Row A')
+    console.log(`[${TAG}] ✅ Row A — top bar, legal status under the chat, empty state, composer; sidebar open beside the chat with conversations only, collapsed it stays collapsed`)
 
     // Row B — the privacy notice moved behind the badge.
     await byId(page, 'eule-privacy-badge').click()
@@ -164,7 +178,10 @@ async function main() {
     await see(page, 'advisor-feedback-thanks', 'Row C')
     await byId(page, 'advisor-feedback-down').first().click()
     await see(page, 'advisor-feedback-reasons', 'Row C')
+    // Down is stored at once, the reason follows in a second request: wait for that one to be answered.
+    const reasonStored = page.waitForResponse((res) => res.url().includes('/feedback') && res.request().method() === 'PUT' && (res.request().postData() ?? '').includes('unklar'), { timeout: 15_000 })
     await byId(page, 'advisor-feedback-reason-unklar').first().click()
+    await reasonStored.catch(() => fail('Row C: choosing a reason should store it'))
     await see(page, 'advisor-feedback-thanks', 'Row C')
     const stored = sql(`SELECT bewertung || ':' || coalesce("bewertungGrund", '') FROM "BeraterNachricht" m JOIN "User" u ON u.id = m."userId" WHERE u.email = '${email}' AND m.rolle = 'assistant'`)
     if (!String(stored).includes('down:unklar')) fail(`Row C: the rating should be stored as down/unklar, the database says "${String(stored).trim()}"`)
@@ -210,7 +227,8 @@ async function main() {
     if ((await chatText()).includes('Frage zum Arbeitsweg')) fail('Row G: a new conversation must not show the messages of the other one')
     await rowCountIs(2, 'two conversations expected in the list')
 
-    // The one used last comes first and is the open one; rename it.
+    // The one used last comes first and is the open one; rename it from its "…".
+    await byId(page, 'eule-conversation-menu').first().click()
     await byId(page, 'eule-conversation-rename').first().click()
     await byId(page, 'eule-conversation-rename-input').fill('Meine Wohnung')
     await byId(page, 'eule-conversation-rename-save').click()
@@ -221,8 +239,15 @@ async function main() {
     await page.waitForFunction(() => document.querySelector('[data-testid="advisor-chat-scroll"]')?.textContent?.includes('Frage zum Arbeitsweg'), null, { timeout: 10_000 }).catch(() => fail('Row G: opening the first conversation should show its messages'))
     if ((await chatText()).includes('Frage zur Vermietung')) fail('Row G: the first conversation must not show the messages of the second')
 
-    // Search over the conversations of the year: nothing found, a failed search, and a hit in the
-    // other conversation that opens it.
+    // Search over the conversations of the year, in a dialog behind the magnifier: Escape closes it,
+    // Ctrl+K opens it; nothing found, a failed search, and a hit in the other conversation that opens it.
+    await byId(page, 'eule-conversation-search-open').click()
+    await see(page, 'eule-search-sheet', 'Row G')
+    await page.keyboard.press('Escape')
+    await gone(page, 'eule-search-sheet', 'Row G')
+    await page.keyboard.press('Control+k')
+    await see(page, 'eule-search-sheet', 'Row G')
+    await see(page, 'eule-conversation-search-dialog', 'Row G')
     const search = byId(page, 'eule-conversation-search')
     await search.fill('gewerbesteuer')
     await see(page, 'eule-conversation-search-results', 'Row G')
@@ -236,29 +261,36 @@ async function main() {
     if (!(await textOf(page, 'eule-conversation-search-hit')).includes('Frage zur Vermietung')) fail('Row G: the hit should show the passage that was found')
     await byId(page, 'eule-conversation-search-hit').first().click()
     await page.waitForFunction(() => document.querySelector('[data-testid="advisor-chat-scroll"]')?.textContent?.includes('Frage zur Vermietung'), null, { timeout: 10_000 }).catch(() => fail('Row G: a hit should open its conversation'))
-    await rowCountIs(2, 'after a hit was opened the list of conversations is back')
+    await gone(page, 'eule-search-sheet', 'Row G')
+    await rowCountIs(2, 'the list of conversations stays as it was')
 
     // Delete the other one: a second, explicit step, and it can be cancelled. A failed delete says so.
     const other = page.locator('[data-testid="eule-conversation-row"]', { hasText: 'Meine Wohnung' })
-    await other.locator('[data-testid="eule-conversation-delete"]').click()
+    const deleteOther = async () => {
+      await other.locator('[data-testid="eule-conversation-menu"]').click()
+      await other.locator('[data-testid="eule-conversation-delete"]').click()
+    }
+    await deleteOther()
     await byId(page, 'eule-conversation-delete-cancel').click()
     if ((await rows().count()) !== 2) fail('Row G: cancelling must keep the conversation')
     await page.route('**/advisor/conversations/*', async (route) => {
       if (route.request().method() === 'DELETE') await route.fulfill({ status: 500, contentType: 'application/json', body: '{"code":"INTERNAL"}' })
       else await route.fallback()
     })
-    await other.locator('[data-testid="eule-conversation-delete"]').click()
+    await deleteOther()
     await byId(page, 'eule-conversation-delete-confirm').click()
     await see(page, 'eule-conversation-failed', 'Row G')
     await page.unroute('**/advisor/conversations/*')
-    await other.locator('[data-testid="eule-conversation-delete"]').click()
+    await deleteOther()
     await byId(page, 'eule-conversation-delete-confirm').click()
     await rowCountIs(1, 'the deleted conversation should leave the list')
     const left = sql(`SELECT count(*) FROM "BeraterGespraech" g JOIN "User" u ON u.id = g."userId" WHERE u.email = '${email}'`)
     if (String(left).trim() !== '1') fail(`Row G: one conversation should be left in the database, found ${String(left).trim()}`)
     console.log(`[${TAG}] ✅ Row G — new conversation, own messages each, named after the first question, rename, switch, search, delete after a second step`)
 
-    // Row H — the notes of the tax year, in the same sidebar: add, change, delete by hand.
+    // Row H — the notes of the tax year, behind the situation chip in the composer: add, change, delete by hand.
+    await byId(page, 'eule-situation-chip').click()
+    await see(page, 'eule-situation-sheet', 'Row H')
     await see(page, 'eule-notes', 'Row H')
     await see(page, 'eule-notes-empty', 'Row H')
     await byId(page, 'eule-note-add').click()
@@ -286,7 +318,7 @@ async function main() {
     await see(page, 'eule-notes-empty', 'Row H')
     console.log(`[${TAG}] ✅ Row H — a note added, changed and deleted by hand; a failed delete says so`)
 
-    // Row U — "Unsere Situation" (#501): the household in the user's own words, in the same sidebar.
+    // Row U — "Unsere Situation" (#501): the household in the user's own words, in the same dialog.
     // A failed save says so; a stored text is there after a reload, once, for the user and not the year.
     await see(page, 'eule-situation', 'Row U')
     await page.route('**/advisor/situation', async (route) => {
@@ -301,9 +333,16 @@ async function main() {
     await see(page, 'eule-situation-saved', 'Row U')
     const storedSituations = sql(`SELECT count(*) FROM "BeraterSituation" s JOIN "User" u ON u.id = s."userId" WHERE u.email = '${email}'`)
     if (String(storedSituations).trim() !== '1') fail(`Row U: the situation should be stored once, found ${String(storedSituations).trim()}`)
+    await page.keyboard.press('Escape')
+    await gone(page, 'eule-situation-sheet', 'Row U')
     await page.reload({ waitUntil: 'networkidle' })
-    await see(page, 'eule-situation-input', 'Row U', 20_000)
+    await see(page, 'eule-situation-chip', 'Row U', 20_000)
+    if (!(await textOf(page, 'eule-situation-chip')).includes('Verheiratet, zwei Kinder.')) fail('Row U: the chip should name the stored situation')
+    await byId(page, 'eule-situation-chip').click()
+    await see(page, 'eule-situation-input', 'Row U')
     if ((await byId(page, 'eule-situation-input').inputValue()) !== 'Verheiratet, zwei Kinder. Hauskauf für 2027 geplant.') fail('Row U: the stored situation should be there after a reload')
+    await page.keyboard.press('Escape')
+    await gone(page, 'eule-situation-sheet', 'Row U')
     console.log(`[${TAG}] ✅ Row U — the situation is stored once, survives a reload, and a failed save says so`)
 
     // Row R — the line between the list and the chat can be dragged (#503): the list gets wider, the
@@ -347,12 +386,16 @@ async function main() {
     })
     await page.reload({ waitUntil: 'networkidle' })
     await see(page, 'advisor-thought', 'Row E', 20_000)
+    // Drafts are waiting: the bulb in the top bar counts them.
+    await see(page, 'eule-hints-count', 'Row E')
     // Drafts open the workbench at the side; its line can be grabbed too.
     await see(page, 'eule-resize-workbench', 'Row E')
     if ((await byId(page, 'advisor-thought-body').count()) !== 0) fail('Row E: the line of thought of a finished answer starts collapsed')
+    if (!(await textOf(page, 'advisor-thought-toggle')).includes('Nachgedacht · 8 s · 2 Schritte')) fail(`Row E: the line should say how long and how many steps, reads "${await textOf(page, 'advisor-thought-toggle')}"`)
     await byId(page, 'advisor-thought-toggle').click()
-    for (const id of ['advisor-thought-body', 'advisor-thought-step', 'advisor-thought-reasoning', 'advisor-thought-note']) await see(page, id, 'Row E')
+    for (const id of ['advisor-thought-body', 'advisor-thought-step', 'advisor-thought-result', 'advisor-thought-reasoning', 'advisor-thought-note']) await see(page, id, 'Row E')
     if ((await byId(page, 'advisor-thought-step').count()) !== 2) fail('Row E: both steps of the answer should be listed')
+    if (!(await textOf(page, 'advisor-thought-result')).includes('fertig')) fail('Row E: a tool step should say what it found')
 
     if ((await byId(page, 'advisor-action-card').count()) !== 3) fail(`Row E: three drafts should be three cards, found ${await byId(page, 'advisor-action-card').count()}`)
     if (!(await textOf(page, 'advisor-action-delta-negative')).includes('120')) fail('Row E: a draft that costs refund should show the computed amount')
@@ -585,9 +628,53 @@ async function main() {
     if ((await byId(page, 'advisor-receipt-queue-item').count()) !== 1) fail('Row T: a waiting file should be removable from the queue')
     console.log(`[${TAG}] ✅ Row T — several files: queued one after another, named, removable`)
 
+    // Row O — the owl opens a new conversation herself (ADR-0067 §11): the app says the case
+    // changed, so the empty chat starts an opening turn; its placeholder question is never shown.
+    // Nothing changed: no turn, a link to the last opening. Nothing entered: the way into the interview.
+    await page.unrouteAll({ behavior: 'ignoreErrors' })
+    const openingState = { stage: 'ready', shouldOpen: true, lastOpening: null }
+    await page.route('**/advisor/opening', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(openingState) }))
+    await page.route('**/advisor/stream', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'text/event-stream',
+        body: sse([
+          [1, 'start', { runId: 'stub-opening', userMessage: { id: 'stub-uo', role: 'user', content: 'Neues Gespräch', meta: { opening: { fingerprint: 'abcd1234', stage: 'ready' } }, createdAt: new Date().toISOString(), status: 'complete' }, assistantMessageId: 'stub-ao' }],
+          [2, 'token', { text: 'Dein Fall in Kürze: Homeoffice bringt dir 528 €.' }],
+          [3, 'done', { mode: 'langgraph', userMessage: null, assistantMessage: null }],
+        ]),
+      }),
+    )
+    await page.reload({ waitUntil: 'networkidle' })
+    const openingAsked = page.waitForRequest((request) => request.url().includes('/advisor/stream') && request.method() === 'POST', { timeout: 15_000 })
+    await byId(page, 'eule-conversation-new').click()
+    const openingBody = JSON.parse((await openingAsked.catch(() => fail('Row O: a new conversation of a changed case should open with the owl speaking'))).postData() ?? '{}')
+    if (openingBody.quickAction !== 'opening') fail(`Row O: the opening should be sent as quickAction "opening", sent ${JSON.stringify(openingBody)}`)
+    await page.waitForFunction(() => document.querySelector('[data-testid="advisor-chat-scroll"]')?.textContent?.includes('Dein Fall in Kürze'), null, { timeout: 10_000 }).catch(() => fail('Row O: the opening should be shown'))
+    if ((await byId(page, 'advisor-user-message').count()) !== 0) fail('Row O: the placeholder question of an opening must not be shown')
+
+    Object.assign(openingState, { shouldOpen: false, lastOpening: { conversationId: 'stub-last', createdAt: '2026-11-13T09:00:00.000Z' } })
+    let streamsAfter = 0
+    await page.unroute('**/advisor/stream')
+    await page.route('**/advisor/stream', (route) => {
+      streamsAfter += 1
+      return route.fulfill({ status: 500, body: '' })
+    })
+    // The stubbed opening left the conversation empty on the server, so it is still the open one: a reload asks again.
+    await page.reload({ waitUntil: 'networkidle' })
+    await see(page, 'advisor-opening-last', 'Row O', 15_000)
+    if (!(await textOf(page, 'advisor-opening-last')).includes('13.11.2026')) fail('Row O: the link should name the day of the last opening')
+    if (streamsAfter !== 0) fail('Row O: nothing changed, so no opening should be asked for')
+
+    Object.assign(openingState, { stage: 'empty', lastOpening: null })
+    await page.reload({ waitUntil: 'networkidle' })
+    await see(page, 'advisor-opening-start', 'Row O', 15_000)
+    if (!(await textOf(page, 'advisor-opening-start')).includes('Lass uns anfangen')) fail('Row O: an empty year should offer the way into the interview')
+    console.log(`[${TAG}] ✅ Row O — the owl opens a changed case herself without showing a question, links to her last opening otherwise, and an empty year starts with the interview`)
+
     // Row P — tax years as projects (#503): the open year heads the list, the other years with
-    // conversations sit below it, a conversation that is answering says so, and opening one of
-    // another year asks for that year. Last on this page, because it leaves the year switched.
+    // conversations wait in its menu, a conversation that is answering says so, and choosing another
+    // year opens it at its latest conversation. Last on this page, because it leaves the year switched.
     await page.unrouteAll({ behavior: 'ignoreErrors' })
     await page.route('**/advisor/session*', async (route) => {
       if (route.request().method() !== 'GET') return route.fallback()
@@ -607,20 +694,19 @@ async function main() {
     const openYear = Number((await textOf(page, 'eule-project-heading')).replace(/\D/g, ''))
     if (!Number.isInteger(openYear) || openYear < 2020) fail(`Row P: the list should be headed by the open tax year, reads "${await textOf(page, 'eule-project-heading')}"`)
     await see(page, 'eule-conversation-answering', 'Row P')
-    await see(page, 'eule-project', 'Row P')
-    if (!(await textOf(page, 'eule-project')).includes(String(openYear - 1))) fail('Row P: the other year should be listed as its own project')
-    if ((await byId(page, 'eule-project-conversation').count()) !== 0) fail('Row P: another year starts closed')
-    await byId(page, 'eule-project-toggle').click()
-    await see(page, 'eule-project-conversation', 'Row P')
+    if ((await byId(page, 'eule-year-menu').count()) !== 0) fail('Row P: the year menu starts closed')
+    await byId(page, 'eule-year-menu-toggle').click()
+    await see(page, 'eule-year-option', 'Row P')
+    if (!(await textOf(page, 'eule-year-option')).includes(String(openYear - 1))) fail('Row P: the other year should be offered in the menu')
     const otherYearAsked = page.waitForRequest((request) => request.url().includes(`/steuerjahre/${openYear - 1}/advisor/session`) && request.url().includes('stub-old-year'), { timeout: 15_000 })
-    await byId(page, 'eule-project-conversation').click()
-    await otherYearAsked.catch(() => fail('Row P: opening a conversation of another year should open that year with that conversation'))
-    console.log(`[${TAG}] ✅ Row P — tax years as projects: open year on top, other years below, answering marked, another year opens with its conversation`)
+    await byId(page, 'eule-year-option').click()
+    await otherYearAsked.catch(() => fail('Row P: choosing another year should open that year at its latest conversation'))
+    console.log(`[${TAG}] ✅ Row P — tax years as projects: open year on top, other years in its menu, answering marked, another year opens at its conversation`)
 
     await page.unrouteAll({ behavior: 'ignoreErrors' })
     await ctx.close()
 
-    // Row J — on a phone the same project content opens as a sheet.
+    // Row J — on a phone the conversations open as a drawer from the left; the notes stay behind the chip.
     const phone = await newContextAtBreakpoint(browser, 's')
     const small = await phone.newPage()
     guardAgainst429(small, fail, '/api/auth/')
@@ -632,11 +718,15 @@ async function main() {
     await see(small, 'eule-chat-main', 'Row J', 20_000)
     if ((await byId(small, 'eule-project-sidebar').count()) !== 0) fail('Row J: no sidebar on a phone')
     await byId(small, 'eule-conversations-btn').click()
-    await see(small, 'eule-conversations-sheet', 'Row J')
+    await see(small, 'eule-conversations-drawer', 'Row J')
     await see(small, 'eule-conversation-row', 'Row J')
-    await see(small, 'eule-notes', 'Row J')
+    if ((await byId(small, 'eule-conversations-drawer').locator('[data-testid="eule-notes"]').count()) !== 0) fail('Row J: the notes do not belong in the drawer')
     await small.keyboard.press('Escape')
     await gone(small, 'eule-conversation-row', 'Row J')
+    await byId(small, 'eule-situation-chip').click()
+    await see(small, 'eule-notes', 'Row J')
+    await small.keyboard.press('Escape')
+    await gone(small, 'eule-notes', 'Row J')
 
     // What an adviser does unasked is one tap away on an empty chat (#501): the savings plan and the
     // check of the tax office's notice. The chip sends its quick action.
@@ -649,14 +739,18 @@ async function main() {
       await route.fulfill({ response: res, json })
     })
     await small.reload({ waitUntil: 'networkidle' })
-    await see(small, 'advisor-chip-sparplan', 'Row J', 20_000)
-    await see(small, 'advisor-chip-bescheid', 'Row J')
+    // Four quick starts show; the savings plan waits behind "Mehr …".
+    await see(small, 'advisor-chip-bescheid', 'Row J', 20_000)
+    if ((await byId(small, 'advisor-chip-sparplan').count()) !== 0) fail('Row J: only four quick starts show before "Mehr …"')
+    await byId(small, 'advisor-chips-more').click()
+    await see(small, 'advisor-chip-sparplan', 'Row J')
+    for (const id of ['advisor-chip-homeoffice', 'advisor-chip-endpruefung', 'advisor-chip-fortbildung', 'advisor-chip-spenden']) await see(small, id, 'Row J')
     const planAsked = small.waitForRequest((request) => request.method() === 'POST' && /advisor\/(stream|runs)/.test(request.url()) && (request.postData() ?? '').includes('"quickAction":"savings_plan"'), { timeout: 15_000 })
     await byId(small, 'advisor-chip-sparplan').click()
     await planAsked.catch(() => fail('Row J: the savings plan chip should send quickAction=savings_plan'))
     await small.unrouteAll({ behavior: 'ignoreErrors' })
     await phone.close()
-    console.log(`[${TAG}] ✅ Row J — on a phone the conversations and notes open as a sheet`)
+    console.log(`[${TAG}] ✅ Row J — on a phone the conversations open as a drawer, the notes behind the chip, four quick starts before "Mehr …"`)
 
     console.log(`[${TAG}] PASS — chat-first layout, sheets, rating, clearing, attached notices and re-attachment verified.`)
   } finally {

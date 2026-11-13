@@ -83,10 +83,16 @@ describe('AdvisorChatPanel: the running turn (#476)', () => {
   it('shows the line of thought live above the growing answer, apart from it', () => {
     renderPanel({
       isSending: true,
-      streamSteps: ['Prüfe Akte …', 'Simuliere …'],
+      streamSteps: [
+        { kind: 'status', label: 'Prüfe Akte …' },
+        { kind: 'tool', tool: 'simulate_tax_delta', label: 'Simuliere …' },
+      ],
       streamedReasoning: 'Erst die Pauschale prüfen.',
       streamedText: 'Ja, das lohnt sich.',
     })
+    // Collapsed while the owl works, like a finished answer; one tap opens it.
+    expect(screen.queryByTestId('advisor-thought-body')).toBeNull()
+    fireEvent.click(screen.getByTestId('advisor-thought-toggle'))
     expect(screen.getByTestId('advisor-thought-reasoning').textContent).toBe('Erst die Pauschale prüfen.')
     expect(screen.getByTestId('advisor-streaming-message').textContent).toContain('Ja, das lohnt sich.')
     expect(screen.getByTestId('advisor-streaming-message').textContent).not.toContain('Erst die Pauschale')
@@ -94,6 +100,7 @@ describe('AdvisorChatPanel: the running turn (#476)', () => {
 
   it('shows reasoning that arrives before the first word of the answer', () => {
     renderPanel({ isSending: true, streamedReasoning: 'Ich schaue in die Akte.' })
+    fireEvent.click(screen.getByTestId('advisor-thought-toggle'))
     expect(screen.getByTestId('advisor-thought-reasoning').textContent).toBe('Ich schaue in die Akte.')
     expect(screen.getByTestId('advisor-thinking')).toBeTruthy()
   })
@@ -109,7 +116,7 @@ describe('AdvisorChatPanel: line of thought and rating on stored answers (#476)'
     renderPanel({
       messages: [user('u1', 'Frage'), owl('a1', 'Antwort.', { reasoning: 'Erst die Pauschale prüfen.', meta: { steps: ['Prüfe Akte …', 'Simuliere …'] } })],
     })
-    expect(screen.getByTestId('advisor-thought-toggle').textContent).toContain('Gedankengang · 2 Schritte')
+    expect(screen.getByTestId('advisor-thought-toggle').textContent).toContain('Nachgedacht · 2 Schritte')
     expect(screen.queryByTestId('advisor-thought-body')).toBeNull()
     fireEvent.click(screen.getByTestId('advisor-thought-toggle'))
     expect(screen.getByTestId('advisor-thought-reasoning').textContent).toBe('Erst die Pauschale prüfen.')

@@ -18,10 +18,13 @@ import { APP_NS } from '../../i18n/resources'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { OwlTopBar } from './OwlTopBar'
 import { ProfessionPicker } from './ProfessionPicker'
-import { AdvisorChatPanel, type AdvisorChatPanelProps, type ChatSendOptions } from './AdvisorChatPanel'
+import { AdvisorChatPanel, type AdvisorChatOpening, type AdvisorChatPanelProps, type ChatSendOptions } from './AdvisorChatPanel'
 import { ConversationList, type ConversationProject, type ConversationSearchHit, type ConversationSummary } from './chat/ConversationList'
 import { ProjectNotes, type ProjectNote } from './chat/ProjectNotes'
 import { Situation } from './chat/Situation'
+import { SituationChip } from './chat/SituationChip'
+import { ConversationSearch } from './chat/ConversationSearch'
+import { OwlDrawer } from './chat/OwlDrawer'
 import { ConnectionDetails, type ConnectionView } from './chat/ConnectionStatus'
 import { OWL_CHAT_MIN_WIDTH, OWL_PANEL_WIDTHS, readOwlPanelWidth, readOwlSidebarOpen, writeOwlPanelWidth, writeOwlSidebarOpen } from '../../lib/owlSidebarPreference'
 import { ResizeHandle } from './chat/ResizeHandle'
@@ -81,6 +84,8 @@ export interface OwlModeScreenProps {
   /** The user's own description of the household's situation; the owl reads it in every conversation (#501). */
   readonly situation?: string | undefined
   readonly onSaveSituation?: ((text: string) => Promise<void>) | undefined
+  /** How a new conversation starts: the way into the interview, or a link to the last opening (ADR-0067 §11). */
+  readonly opening?: AdvisorChatOpening | undefined
   readonly isGuest?: boolean | undefined
   readonly onRegister?: (() => void) | undefined
   readonly onLogin?: (() => void) | undefined
@@ -122,6 +127,13 @@ const DEFAULT_LOCAL_DIGEST: CaseDigest = {
   openOwlHints: [],
   printoutMissingFields: ['stammdaten.iban'],
   estimatedRefundEur: 480,
+}
+
+/** The core keeps the legal status as DD.MM.YYYY; English readers get it unambiguous. */
+function formatLegalDate(germanDate: string, language: string): string {
+  if (language.startsWith('de')) return germanDate
+  const [day, month, year] = germanDate.split('.')
+  return day && month && year ? `${year}-${month}-${day}` : germanDate
 }
 
 export function OwlModeScreen(props: OwlModeScreenProps) {
@@ -173,11 +185,12 @@ export function OwlModeScreenView({
   onUndoNoteChange,
   situation,
   onSaveSituation,
+  opening,
 }: OwlModeScreenProps & { readonly initialCards: readonly OwlCardsDisplay[] }) {
   const bp = useBreakpoint()
   const t = useTheme()
   const styles = makeStyles(t)
-  const { t: tr } = useTranslation(APP_NS)
+  const { t: tr, i18n } = useTranslation(APP_NS)
   const bridge = useOptionalCopilotBridge()
 
   // null: the workbench follows what needs attention; otherwise the reader's own choice stands.
@@ -187,6 +200,21 @@ export function OwlModeScreenView({
   const [rechecking, setRechecking] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [conversationsOpen, setConversationsOpen] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [situationOpen, setSituationOpen] = useState(false)
+
+  // Cmd/Ctrl+K opens the search, as in Claude.
+  useEffect(() => {
+    if (!onSearchConversations || typeof window === 'undefined') return
+    function handleKeyDown(event: KeyboardEvent) {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault()
+        setSearchOpen(true)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [onSearchConversations])
   // Desktop: the conversations and notes sit in a sidebar that remembers whether it was collapsed.
   const [sidebarOpen, setSidebarOpen] = useState(readOwlSidebarOpen)
   // The user drags the lines next to the chat: the side panels give way, the chat gets the room.
@@ -400,15 +428,18 @@ export function OwlModeScreenView({
     return (
       <AdvisorChatPanel
         messages={displayedMessages}
+        opening={opening}
+        situationChip={hasSituationDialog ? <SituationChip text={situation ?? ''} onPress={() => setSituationOpen(true)} /> : undefined}
+        footnote={tr('eule.workspace.topbar.legalStatus', { date: formatLegalDate(LEGAL_STATUS_DATE, i18n.language) })}
         quickChips={[
-          // First what an adviser would do unasked: go through the whole case for money left on the table.
-          { label: tr('advisor.chat.savingsPlanChip'), testID: 'advisor-chip-sparplan', quickAction: 'savings_plan' },
+          // The first four show on an empty chat; the rest wait behind "Mehr …".
           { label: tr('advisor.chat.forgottenChip'), testID: 'advisor-chip-vergessen', quickAction: 'forgotten_check' },
           { label: tr('advisor.chat.assessmentChip'), testID: 'advisor-chip-bescheid', quickAction: 'assessment_check' },
-          'Kanzlei-Endprüfung starten',
-          'Homeoffice vs. Arbeitszimmer prüfen',
-          'Fortbildung & Reisekosten klären',
-          'Spenden aus dem Vorjahr prüfen',
+          { label: tr('advisor.chat.homeOfficeChip'), testID: 'advisor-chip-homeoffice' },
+          { label: tr('advisor.chat.finalReviewChip'), testID: 'advisor-chip-endpruefung' },
+          { label: tr('advisor.chat.savingsPlanChip'), testID: 'advisor-chip-sparplan', quickAction: 'savings_plan' },
+          { label: tr('advisor.chat.trainingChip'), testID: 'advisor-chip-fortbildung' },
+          { label: tr('advisor.chat.donationsChip'), testID: 'advisor-chip-spenden' },
         ]}
         isSending={effectiveSending}
         context={context}
@@ -766,12 +797,20 @@ export function OwlModeScreenView({
         onDelete={async (id) => {
           await onDeleteConversation?.(id)
         }}
-        onSearch={onSearchConversations}
+        onOpenSearch={
+          onSearchConversations
+            ? () => {
+                afterSwitch()
+                setSearchOpen(true)
+              }
+            : undefined
+        }
       />
-      {situation !== undefined && onSaveSituation ? <Situation text={situation} onSave={onSaveSituation} /> : null}
-      {notes && onAddNote && onEditNote && onDeleteNote ? <ProjectNotes notes={notes} onAdd={onAddNote} onEdit={onEditNote} onDelete={onDeleteNote} /> : null}
     </View>
   )
+
+  /** What the owl knows about the household and this year: behind the chip in the composer. */
+  const hasSituationDialog = (situation !== undefined && onSaveSituation !== undefined) || (notes !== undefined && onAddNote !== undefined && onEditNote !== undefined && onDeleteNote !== undefined)
 
   // One layout for every width (#476): the chat is the screen. The workbench is a side panel on a
   // wide screen and a sheet over the chat everywhere else, and only there when it is needed.
@@ -805,7 +844,6 @@ export function OwlModeScreenView({
         conversationsExpanded={wide ? sidebarOpen : conversationsOpen}
         connection={connection && bridge?.reconnecting ? { kind: 'restoring' } : connection}
         onOpenConnection={connection ? () => setConnectionOpen(true) : undefined}
-        legalStatusDate={LEGAL_STATUS_DATE}
         compact={bp === 's'}
       />
 
@@ -884,8 +922,33 @@ export function OwlModeScreenView({
       ) : null}
 
       {conversationsOpen && !wide ? (
-        <Sheet onClose={() => setConversationsOpen(false)} closeLabel={tr('eule.workspace.topbar.conversationsClose')} testID="eule-conversations-sheet">
+        <OwlDrawer onClose={() => setConversationsOpen(false)} closeLabel={tr('eule.workspace.topbar.conversationsClose')} testID="eule-conversations-drawer">
           {projectPanel(() => setConversationsOpen(false))}
+        </OwlDrawer>
+      ) : null}
+
+      {searchOpen && onSearchConversations ? (
+        <Sheet onClose={() => setSearchOpen(false)} closeLabel={tr('eule.workspace.topbar.conversationsClose')} testID="eule-search-sheet">
+          <ConversationSearch
+            onSearch={onSearchConversations}
+            canSwitch
+            onOpen={(id) => {
+              setSearchOpen(false)
+              if (id !== activeConversationId) onSelectConversation?.(id)
+            }}
+          />
+        </Sheet>
+      ) : null}
+
+      {situationOpen && hasSituationDialog ? (
+        <Sheet onClose={() => setSituationOpen(false)} closeLabel={tr('advisor.chat.situation.dialogClose')} testID="eule-situation-sheet">
+          <View style={styles.situationDialog}>
+            <Text style={styles.sheetTitle} role="heading" aria-level={2}>
+              {tr('advisor.chat.situation.dialogTitle')}
+            </Text>
+            {situation !== undefined && onSaveSituation ? <Situation text={situation} onSave={onSaveSituation} /> : null}
+            {notes && onAddNote && onEditNote && onDeleteNote ? <ProjectNotes notes={notes} onAdd={onAddNote} onEdit={onEditNote} onDelete={onDeleteNote} /> : null}
+          </View>
         </Sheet>
       ) : null}
 

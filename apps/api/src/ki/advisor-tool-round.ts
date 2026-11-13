@@ -27,6 +27,7 @@ import {
 } from '@steuereule/core'
 import { checkStageValue, normalizeSourceId, validateStageTarget, type StageTargetCheck } from './advisor-safety.js'
 import { checkPiiFree } from './ki.adapter.js'
+import { toolResultLine } from './advisor-tool-results.js'
 import { ADVISOR_KNOWLEDGE } from './advisor-knowledge.generated.js'
 import { computeIncomeTax } from './advisor-income-tax.js'
 import { MAX_COMPANION_FIELDS, TOOL_LABELS, TOOL_ARG_SCHEMAS, isToolName, toolResult, RejectedDraft, MAX_DRAFTS_PER_TURN, draftKey, humanReason } from './advisor-tools.js'
@@ -113,15 +114,23 @@ export async function runToolRound(
     } satisfies AdvisorStreamEvent)
 
     const callId = tc.id ?? `call-${randomUUID().slice(0, 8)}`
+    /** Answers the model and tells the user in a few words what the tool found. */
+    const answer = (payload: Record<string, unknown>): void => {
+      toolMessages.push(toolResult(callId, tc.name, payload))
+      config?.writer?.({
+        event: 'tool_result',
+        data: { name: tc.name, ok: payload.ok === true, result: toolResultLine(tc.name, payload) },
+      } satisfies AdvisorStreamEvent)
+    }
     if (!isToolName(tc.name)) {
-      toolMessages.push(toolResult(callId, tc.name, { ok: false, error: `UNKNOWN_TOOL: "${tc.name}" wird nicht unterstützt.` }))
+      answer({ ok: false, error: `UNKNOWN_TOOL: "${tc.name}" wird nicht unterstützt.` })
       continue
     }
     const parseArgs = <S extends z.ZodTypeAny>(schema: S): z.infer<S> | null => {
       const parsed = schema.safeParse(tc.args ?? {})
       if (parsed.success) return parsed.data as z.infer<S>
       const fields = parsed.error.issues.map((issue) => issue.path.join('.')).join(', ')
-      toolMessages.push(toolResult(callId, tc.name, { ok: false, error: `INVALID_ARGUMENTS: ${fields}` }))
+      answer({ ok: false, error: `INVALID_ARGUMENTS: ${fields}` })
       return null
     }
 
@@ -133,7 +142,7 @@ export async function runToolRound(
           data: { openMask: target.locked.screen, focus: target.locked.field },
         } satisfies AdvisorStreamEvent)
       }
-      toolMessages.push(toolResult(callId, tc.name, { ok: false, error: target.error }))
+      answer({ ok: false, error: target.error })
     }
     /** Refuses a draft: the model gets the reason, and the answer will carry it unless a retry succeeds. */
     const refuseDraft = (label: string, screen: string, error: string, openScreen?: Screen): void => {
@@ -181,7 +190,7 @@ export async function runToolRound(
       }
       const simValue = checkStageValue(target.screen, field, newValue)
       if (!simValue.ok) {
-        toolMessages.push(toolResult(callId, tc.name, { ok: false, error: simValue.error }))
+        answer({ ok: false, error: simValue.error })
         continue
       }
       const sim = simulateAdvisorFieldDelta(request.digest, target.screen, field.trim(), simValue.value)
@@ -189,7 +198,7 @@ export async function runToolRound(
       const simEffect = simRecord.ok
         ? await effectOf({ screen: target.screen, instance: simRecord.id, values: [[field.trim(), simValue.value]] }, sim)
         : ({ beforeRefundEur: 0, afterRefundEur: 0, deltaEur: 0, effect: 'not-computable', effectHint: simRecord.reason } as const)
-      toolMessages.push(new ToolMessage({ tool_call_id: callId, name: tc.name, content: JSON.stringify({ ok: true, previousValue: sim.previousValue, ...simEffect }) }))
+      answer({ ok: true, previousValue: sim.previousValue, ...simEffect })
       continue
     }
 
@@ -207,7 +216,7 @@ export async function runToolRound(
         continue
       }
       if (rawCompanions.length > MAX_COMPANION_FIELDS) {
-        toolMessages.push(toolResult(callId, tc.name, { ok: false, error: `INVALID_ARGUMENTS: höchstens ${MAX_COMPANION_FIELDS} Begleitfelder.` }))
+        answer({ ok: false, error: `INVALID_ARGUMENTS: höchstens ${MAX_COMPANION_FIELDS} Begleitfelder.` })
         continue
       }
       const record = resolveInstance(target.screen, field.trim(), args.instance)
@@ -219,14 +228,14 @@ export async function runToolRound(
         if (record.code === 'NO_RECORD') {
           config?.writer?.({ event: 'ui_command', data: { openMask: target.screen, focus: field.trim() } } satisfies AdvisorStreamEvent)
         }
-        toolMessages.push(toolResult(callId, tc.name, { ok: false, error }))
+        answer({ ok: false, error })
         continue
       }
       const instance = record.id
       if (pendingActions.length >= MAX_DRAFTS_PER_TURN) {
         const error = `TOO_MANY_DRAFTS: höchstens ${MAX_DRAFTS_PER_TURN} Entwürfe pro Antwort. Bitte den Nutzer erst diese prüfen lassen.`
         refuseDraft(label, screen, error)
-        toolMessages.push(toolResult(callId, tc.name, { ok: false, error }))
+        answer({ ok: false, error })
         continue
       }
       // Companion fields are written with the same rights as the main field, so they pass the same gate.
@@ -244,7 +253,7 @@ export async function runToolRound(
       const badValue = checkedValues.find((entry) => !entry.check.ok)
       if (badValue && !badValue.check.ok) {
         refuseDraft(label, screen, badValue.check.error)
-        toolMessages.push(toolResult(callId, tc.name, { ok: false, error: badValue.check.error }))
+        answer({ ok: false, error: badValue.check.error })
         continue
       }
       const tidy = (name: string): string => {
@@ -258,16 +267,7 @@ export async function runToolRound(
       try {
         checkPiiFree({ newValue, label, reason, companionFields: companionFields ?? {} })
       } catch (error) {
-        toolMessages.push(
-          new ToolMessage({
-            tool_call_id: callId,
-            name: tc.name,
-            content: JSON.stringify({
-              ok: false,
-              error: error instanceof Error ? error.message : 'PII boundary rejected draft payload.',
-            }),
-          }),
-        )
+        answer({ ok: false, error: error instanceof Error ? error.message : 'PII boundary rejected draft payload.' })
         continue
       }
 
@@ -296,7 +296,7 @@ export async function runToolRound(
       // Several drafts in one answer stand side by side; a second one for the same field is a correction.
       pendingActions = [...pendingActions.filter((existing) => draftKey(existing) !== draftKey(stagedAction)), stagedAction]
 
-      toolMessages.push(toolResult(callId, tc.name, { ok: true, stagedAction: { ...stagedAction, instance: record.handle }, draftsInThisAnswer: pendingActions.length }))
+      answer({ ok: true, stagedAction: { ...stagedAction, instance: record.handle }, draftsInThisAnswer: pendingActions.length })
       continue
     }
 
@@ -324,7 +324,7 @@ export async function runToolRound(
       const safeValue = checkStageValue(safeCheck.screen, safeField, rawSafe.newValue)
       const maxValue = checkStageValue(maxCheck.screen, maxField, rawMax.newValue)
       if (!safeValue.ok || !maxValue.ok) {
-        toolMessages.push(toolResult(callId, tc.name, { ok: false, error: !safeValue.ok ? safeValue.error : !maxValue.ok ? maxValue.error : '' }))
+        answer({ ok: false, error: !safeValue.ok ? safeValue.error : !maxValue.ok ? maxValue.error : '' })
         continue
       }
       const safeNewValue = safeValue.value
@@ -335,22 +335,13 @@ export async function runToolRound(
       const maxRecord = resolveInstance(maxCheck.screen, maxField, rawMax.instance)
       const missingRecord = !safeRecord.ok ? safeRecord : !maxRecord.ok ? maxRecord : null
       if (!safeRecord.ok || !maxRecord.ok || missingRecord) {
-        toolMessages.push(toolResult(callId, tc.name, { ok: false, error: missingRecord ? `${missingRecord.code}: ${missingRecord.reason}` : '' }))
+        answer({ ok: false, error: missingRecord ? `${missingRecord.code}: ${missingRecord.reason}` : '' })
         continue
       }
       try {
         checkPiiFree({ safeNewValue, maxNewValue, title, safeLabel: rawSafe.label, maxLabel: rawMax.label })
       } catch (error) {
-        toolMessages.push(
-          new ToolMessage({
-            tool_call_id: callId,
-            name: tc.name,
-            content: JSON.stringify({
-              ok: false,
-              error: error instanceof Error ? error.message : 'PII boundary rejected twoPaths payload.',
-            }),
-          }),
-        )
+        answer({ ok: false, error: error instanceof Error ? error.message : 'PII boundary rejected twoPaths payload.' })
         continue
       }
 
@@ -397,7 +388,7 @@ export async function runToolRound(
         },
       }
 
-      toolMessages.push(toolResult(callId, tc.name, { ok: true, twoPaths: pendingTwoPaths }))
+      answer({ ok: true, twoPaths: pendingTwoPaths })
       continue
     }
 
@@ -410,7 +401,7 @@ export async function runToolRound(
           return { text: q.text.trim(), options, ...(q.recommended !== undefined && options.includes(q.recommended.trim()) ? { recommended: q.recommended.trim() } : {}) }
         }),
       }
-      toolMessages.push(toolResult(callId, tc.name, { ok: true, questions: questionRound.questions.length }))
+      answer({ ok: true, questions: questionRound.questions.length })
       continue
     }
 
@@ -422,11 +413,11 @@ export async function runToolRound(
         // A suggestion is shown to the user and may be stored: it must not carry a name or an identifier.
         checkPiiFree({ text })
       } catch {
-        toolMessages.push(toolResult(callId, tc.name, { ok: false, error: 'Der Vorschlag enthält persönliche Daten. Formuliere ihn ohne Namen und Kennungen.' }))
+        answer({ ok: false, error: 'Der Vorschlag enthält persönliche Daten. Formuliere ihn ohne Namen und Kennungen.' })
         continue
       }
       if (situationSuggestions.length < 3 && !situationSuggestions.includes(text)) situationSuggestions.push(text)
-      toolMessages.push(toolResult(callId, tc.name, { ok: true, suggested: text }))
+      answer({ ok: true, suggested: text })
       continue
     }
 
@@ -434,7 +425,7 @@ export async function runToolRound(
       const args = parseArgs(TOOL_ARG_SCHEMAS.lookup_tax_knowledge)
       if (args === null) continue
       const entry = ADVISOR_KNOWLEDGE[args.topic]
-      toolMessages.push(toolResult(callId, tc.name, { ok: true, topic: args.topic, title: entry.title, text: entry.text }))
+      answer({ ok: true, topic: args.topic, title: entry.title, text: entry.text })
       continue
     }
 
@@ -442,11 +433,11 @@ export async function runToolRound(
       const args = parseArgs(TOOL_ARG_SCHEMAS.compute_income_tax)
       if (args === null) continue
       if (args.churchTaxRate !== 0 && args.churchTaxRate !== 0.08 && args.churchTaxRate !== 0.09) {
-        toolMessages.push(toolResult(callId, tc.name, { ok: false, error: 'Der Kirchensteuersatz ist 0, 0.08 (Bayern, Baden-Württemberg) oder 0.09.' }))
+        answer({ ok: false, error: 'Der Kirchensteuersatz ist 0, 0.08 (Bayern, Baden-Württemberg) oder 0.09.' })
         continue
       }
       const result = computeIncomeTax({ ...args, churchTaxRate: args.churchTaxRate })
-      toolMessages.push(toolResult(callId, tc.name, result === null ? { ok: false, error: `Für das Jahr ${args.year} kennt der Rechenkern keinen Tarif.` } : { ok: true, ...result }))
+      answer(result === null ? { ok: false, error: `Für das Jahr ${args.year} kennt der Rechenkern keinen Tarif.` } : { ok: true, ...result })
       continue
     }
 
@@ -454,7 +445,7 @@ export async function runToolRound(
       const args = parseArgs(TOOL_ARG_SCHEMAS.ask_clarification)
       if (args === null) continue
       choices = args.choices.map((c) => c.trim()).filter((c) => c.length > 0)
-      toolMessages.push(toolResult(callId, tc.name, { ok: true, choices }))
+      answer({ ok: true, choices })
       continue
     }
 
@@ -463,7 +454,7 @@ export async function runToolRound(
       const gone = new Set(noteChanges.filter((change) => change.kind === 'removed').map((change) => change.noteId))
       const added = noteChanges.filter((change) => change.kind === 'added').length
       const known = (request.notes ?? []).filter((note) => !gone.has(note.id))
-      const refuse = (error: string) => toolMessages.push(toolResult(callId, tc.name, { ok: false, error }))
+      const refuse = (error: string) => answer({ ok: false, error })
 
       if (tc.name === 'forget_note') {
         const args = parseArgs(TOOL_ARG_SCHEMAS.forget_note)
@@ -474,7 +465,7 @@ export async function runToolRound(
           continue
         }
         noteChanges = [...noteChanges.filter((change) => change.noteId !== note.id), { kind: 'removed', noteId: note.id, text: note.text }]
-        toolMessages.push(toolResult(callId, tc.name, { ok: true, removed: note.handle }))
+        answer({ ok: true, removed: note.handle })
         continue
       }
 
@@ -501,7 +492,7 @@ export async function runToolRound(
         }
         const before = noteChanges.find((change) => change.noteId === note.id)?.previousText ?? note.text
         noteChanges = [...noteChanges.filter((change) => change.noteId !== note.id), { kind: 'replaced', noteId: note.id, text: text.text, previousText: before }]
-        toolMessages.push(toolResult(callId, tc.name, { ok: true, replaced: note.handle }))
+        answer({ ok: true, replaced: note.handle })
         continue
       }
       if (known.length + added >= ADVISOR_NOTES_MAX) {
@@ -509,11 +500,11 @@ export async function runToolRound(
         continue
       }
       if ([...known.map((n) => n.text), ...noteChanges.filter((c) => c.kind === 'added').map((c) => c.text)].some((existing) => existing.toLowerCase() === text.text.toLowerCase())) {
-        toolMessages.push(toolResult(callId, tc.name, { ok: true, alreadyNoted: true }))
+        answer({ ok: true, alreadyNoted: true })
         continue
       }
       noteChanges = [...noteChanges, { kind: 'added', text: text.text }]
-      toolMessages.push(toolResult(callId, tc.name, { ok: true, noted: text.text }))
+      answer({ ok: true, noted: text.text })
       continue
     }
 
@@ -524,11 +515,11 @@ export async function runToolRound(
       try {
         checkPiiFree({ steps })
       } catch (error) {
-        toolMessages.push(toolResult(callId, tc.name, { ok: false, error: error instanceof Error ? error.message : 'PII boundary rejected plan.' }))
+        answer({ ok: false, error: error instanceof Error ? error.message : 'PII boundary rejected plan.' })
         continue
       }
       config?.writer?.({ event: 'plan', data: { steps } } satisfies AdvisorStreamEvent)
-      toolMessages.push(toolResult(callId, tc.name, { ok: true, shown: steps.length }))
+      answer({ ok: true, shown: steps.length })
       continue
     }
 
@@ -536,7 +527,7 @@ export async function runToolRound(
     if (lookupArgs === null) continue
     const sourceId = normalizeSourceId(lookupArgs.sourceId)
     sources.push(sourceId)
-    toolMessages.push(toolResult(callId, tc.name, { ok: true, source: ADVISOR_LEGAL_SOURCES[sourceId] }))
+    answer({ ok: true, source: ADVISOR_LEGAL_SOURCES[sourceId] })
   }
 
   return {

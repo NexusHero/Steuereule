@@ -12,13 +12,19 @@
 <p align="center">
   <a href="https://demo.steuereule.de"><img src="https://img.shields.io/badge/Live_Demo-Google_Cloud_Run-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white" alt="Live Demo on Google Cloud Run" /></a>
   <a href="docs/arc42/README.md"><img src="https://img.shields.io/badge/Architecture-arc42_Specification-191B12?style=for-the-badge&labelColor=C9F229&color=191B12" alt="arc42 Architecture" /></a>
-  <a href="docs/adr/"><img src="https://img.shields.io/badge/Decisions-58_ADRs-191B12?style=for-the-badge&labelColor=C9F229&color=191B12" alt="58 ADRs" /></a>
+  <a href="docs/adr/"><img src="https://img.shields.io/badge/Decisions-78_ADRs-191B12?style=for-the-badge&labelColor=C9F229&color=191B12" alt="78 ADRs" /></a>
   <img src="https://img.shields.io/badge/Tests-230%2B_Suites-1F9D55?style=for-the-badge" alt="230+ Test Suites" />
   <img src="https://img.shields.io/badge/Throughput-15.6M_ops%2Fsec-blue?style=for-the-badge" alt="15.6M ops/sec" />
   <img src="https://img.shields.io/badge/Security-AES--256--GCM_Field_Encryption-1F9D55?style=for-the-badge" alt="Security: AES-256-GCM" />
 </p>
 
 <p align="center">
+  <img src="images/screenshots/eule-eroeffnung.png" width="900" alt="The owl opens a new conversation with an analysis of the case: estimated refund 907–972 €, commute and home-office allowances, work expenses against the lump sum, each with its paragraph" />
+</p>
+<p align="center"><sub><b>The owl speaks first.</b> Open a conversation and she analyses your return before you ask. Every euro in the text comes from the deterministic engine, not the language model.</sub></p>
+
+<p align="center">
+  <a href="#-meet-the-owl">Meet the Owl</a> •
   <a href="#-codebase-tour-for-engineers">Codebase Tour</a> •
   <a href="#-engineering-highlights">Engineering Highlights</a> •
   <a href="#-high-throughput-benchmarks">Performance</a> •
@@ -28,6 +34,24 @@
   <a href="#-quickstart-in-60-seconds">Quickstart</a> •
   <a href="#-license">License</a>
 </p>
+
+---
+
+## 🦉 Meet the Owl
+
+The owl is a tax advisor in a chat, built like Claude: the conversation is the main surface, the return stays one click away. She works for the user's money, cites the law, and never writes into the return on her own.
+
+- **She opens the conversation.** With enough on file she analyses the case unasked: where the refund stands, what already counts, where money is still lying around. With gaps she says what she knows and asks for the rest as a round of tappable answers. With nothing on file she offers to start the interview. She only opens again when the case changed ([ADR-0067 §11](docs/adr/0067-eule-projekte-gespraeche-notizen-kontext.md)).
+- **Figures from the engine, words from the model.** The estimate, the commute and home-office allowances and the work expenses are computed by [`@steuereule/core`](packages/core/) before the model is asked; they are the only amounts she may name. Every answer is checked without a model, and an opening that names an amount the app did not compute is written again.
+- **`/grill-me`.** The Berater-Interview skill asks in rounds, each with tappable answers and her recommendation; the answers become drafts the user approves.
+- **Drafts, not writes.** Everything she prepares is a draft with its computed effect on the refund; nothing reaches the return without a click (or Turbo, visible and undoable).
+- **Thinking shown.** "Nachgedacht · 36 s · 4 Schritte" opens to the steps she took and what each tool found.
+- **Tax years as projects.** Conversations live in their year, side by side, with the household's situation and the year's notes as shared context; nothing that names a person reaches the model.
+
+| Empty chat, case unchanged | `/grill-me`: an interview round | On a phone |
+|:---:|:---:|:---:|
+| <img src="images/screenshots/eule-leer.png" width="300" alt="An empty conversation offering the last analysis and quick starts" /> | <img src="images/screenshots/eule-grill-me.png" width="300" alt="The Berater-Interview asks three questions with tappable answers and a recommendation" /> | <img src="images/screenshots/eule-handy.png" width="170" alt="The question round on a phone, answers wrapping inside the round" /> |
+| *Nothing changed since her last analysis: a link to it instead of a new one.* | *Rounds of questions with tappable answers and her recommendation.* | *Same chat, same rules, at 390 px.* |
 
 ---
 

@@ -1,6 +1,7 @@
 import { Inject, Injectable, Optional } from '@nestjs/common'
 
-export type AiTaskSlot = 'advisor_chat' | 'vision_ocr' | 'fallback'
+/** `advisor_guard`: the small model that checks a typed question's topic first (ADR-0069). */
+export type AiTaskSlot = 'advisor_chat' | 'vision_ocr' | 'fallback' | 'advisor_guard'
 /** `fake`: the scripted FakeKiChatModel, only with AI_FAKE_KI=1 outside production (#450 D8). */
 export type AiProviderKind = 'google-genai' | 'anthropic' | 'openai' | 'deterministic' | 'fake'
 
@@ -21,6 +22,8 @@ export interface ResolvedAiSlotConfig {
   /** Token budget for reasoning where the provider takes one. */
   readonly reasoningBudgetTokens?: number | undefined
   readonly thinkingLevel?: AiThinkingLevel | undefined
+  /** How long the slot's call may take before the caller gives up on it; set for the topic guard. */
+  readonly timeoutMs?: number | undefined
 }
 
 export type AiReasoningMode = 'off' | 'summary'
@@ -71,6 +74,17 @@ const DEFAULT_MODEL_BY_PROVIDER: Readonly<Record<AiProviderKind, string>> = {
   fake: 'fake-ki-script',
 }
 
+/**
+ * The topic guard only sorts a question into tax, grey zone or off topic: the small, quick model of
+ * each provider is enough, and it is asked before every typed question.
+ */
+const GUARD_MODEL_BY_PROVIDER: Readonly<Record<AiProviderKind, string>> = {
+  ...DEFAULT_MODEL_BY_PROVIDER,
+  anthropic: 'claude-haiku-5-5',
+}
+
+export const DEFAULT_GUARD_TIMEOUT_MS = 5_000
+
 function isTruthyFlag(raw: string | undefined): boolean {
   if (!raw) return false
   const normalized = raw.trim().toLowerCase()
@@ -99,7 +113,7 @@ function validateHttpsBaseUrl(raw: string | undefined): string | undefined {
 
 /**
  * Env-backed runtime config adapter for per-capability slots
- * (`advisor_chat`, `vision_ocr`, `fallback`) until a persistent admin
+ * (`advisor_chat`, `vision_ocr`, `fallback`, `advisor_guard`) until a persistent admin
  * backoffice configuration adapter (#445) lands.
  */
 @Injectable()
@@ -140,6 +154,9 @@ export class EnvAiRuntimeConfigService implements AiRuntimeConfigService {
     if (slot === 'fallback' && this.env.AI_FALLBACK_API_KEY?.trim()) {
       return this.env.AI_FALLBACK_API_KEY.trim()
     }
+    if (slot === 'advisor_guard' && this.env.AI_GUARD_API_KEY?.trim()) {
+      return this.env.AI_GUARD_API_KEY.trim()
+    }
 
     switch (provider) {
       case 'google-genai':
@@ -167,10 +184,18 @@ export class EnvAiRuntimeConfigService implements AiRuntimeConfigService {
       return { slot, enabled: true, provider: 'fake', model: DEFAULT_MODEL_BY_PROVIDER.fake, apiKey: null }
     }
 
+    // The scripted fake answers the chat only; the guard is off with it, so CI turns run as before.
+    if (slot === 'advisor_guard' && isTruthyFlag(this.env.AI_FAKE_KI) && this.env.NODE_ENV !== 'production') {
+      return { slot, enabled: false, provider: 'deterministic', model: DEFAULT_MODEL_BY_PROVIDER.deterministic, apiKey: null }
+    }
+
     let explicitProvider: AiProviderKind | null = null
     let explicitModel: string | undefined
 
-    if (slot === 'advisor_chat') {
+    if (slot === 'advisor_guard') {
+      explicitProvider = normalizeProvider(this.env.AI_GUARD_PROVIDER) ?? normalizeProvider(this.env.AI_ADVISOR_PROVIDER)
+      explicitModel = this.env.AI_GUARD_MODEL?.trim() || undefined
+    } else if (slot === 'advisor_chat') {
       explicitProvider = normalizeProvider(this.env.AI_ADVISOR_PROVIDER)
       explicitModel = this.env.AI_ADVISOR_MODEL?.trim() || undefined
     } else if (slot === 'vision_ocr') {
@@ -207,6 +232,21 @@ export class EnvAiRuntimeConfigService implements AiRuntimeConfigService {
     const rawTemp = this.env.AI_TEMPERATURE?.trim()
     const parsedTemp = rawTemp ? Number.parseFloat(rawTemp) : undefined
     const temperature = parsedTemp !== undefined && Number.isFinite(parsedTemp) ? parsedTemp : undefined
+
+    if (slot === 'advisor_guard') {
+      // A verdict, not prose: no creativity, no long thinking, and a short leash.
+      return {
+        slot,
+        enabled: true,
+        provider,
+        model: explicitModel ?? GUARD_MODEL_BY_PROVIDER[provider],
+        apiKey,
+        ...(baseUrl !== undefined ? { baseUrl } : {}),
+        temperature: 0,
+        thinkingLevel: 'low',
+        timeoutMs: positiveIntOr(this.env.AI_GUARD_TIMEOUT_MS, DEFAULT_GUARD_TIMEOUT_MS, 20_000),
+      }
+    }
 
     return {
       slot,

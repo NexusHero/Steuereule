@@ -61,6 +61,7 @@ export function toMessageDto(record: AdvisorChatMessageRecord): AdvisorChatMessa
     ...(record.reasoning !== null ? { reasoning: record.reasoning } : {}),
     feedback: record.feedback,
     ...(record.runId !== null ? { runId: record.runId } : {}),
+    ...(record.role === 'assistant' && record.status !== 'streaming' && record.usage ? { durationMs: record.usage.durationMs } : {}),
   }
 }
 
@@ -75,6 +76,13 @@ export interface PreparedAdvisorTurn {
   readonly conversationId: string
   /** The context of the conversation is full: its older part is summarised before the model is asked. */
   readonly needsSummary: boolean
+  /**
+   * The app wrote the message itself (an opening, a tapped choice of the last answer): the topic
+   * guard does not check it (ADR-0069 §Themengrenze).
+   */
+  readonly fromApp: boolean
+  /** Set when the owl opens this conversation itself (ADR-0067 §11). */
+  readonly opening?: { readonly marker: NonNullable<AdvisorMessageMeta['opening']>; readonly context: import('./advisor-opening.js').OpeningContext } | undefined
 }
 
 /** More conversations in one year than anyone can keep apart are a list nobody reads. */

@@ -5,6 +5,7 @@ import {
   ADVISOR_LEGAL_SOURCES,
   buildAdvisorHistory,
   evaluateAdvisorTurn,
+  isOfferedChoice,
   provenanceKey,
   scrubUserMessagePii,
   simulateAdvisorFieldDelta,
@@ -20,6 +21,7 @@ import {
   type AdvisorPreviewTarget,
   type AdvisorRecordHandles,
   type AdvisorStreamEvent,
+  type AdvisorTurnRequest,
   type AdvisorTurnResult,
   type AdvisorTurnUsage,
   type CaseDigest,
@@ -30,6 +32,8 @@ import {
   type WageTaxCertificateFieldId,
   advisorContextUsage,
   buildNoteHandles,
+  foldThoughtEvent,
+  type AdvisorThoughtStep,
 } from '@steuereule/core'
 import { AuditService } from '../audit/audit.service.js'
 import { checkPiiFree } from '../ki/ki.adapter.js'
@@ -40,6 +44,8 @@ import { ModelConnectionService } from '../ki/model-connection.service.js'
 import { TaxEstimateService, type TaxEstimateStatus } from '../tax-estimate/tax-estimate.service.js'
 import { TRANSACTION_RUNNER, passThroughTransactionRunner, type TransactionRunner } from '../prisma/transaction.js'
 import { CAPITAL_REPOSITORY, type CapitalRepository } from '../capital/capital.repository.js'
+import { PENSION_REPOSITORY, type PensionRepository } from '../pension/pension.repository.js'
+import { AdvisorOpening, OPENING_PLACEHOLDER, openingStream } from './advisor-opening.js'
 import {
   CROSS_BORDER_SALARY_STATEMENT_REPOSITORY,
   type CrossBorderSalaryStatementRepository,
@@ -76,6 +82,7 @@ import type {
   ApplyBatchActionsResponseDto,
   SendAdvisorMessageDto,
   SendAdvisorMessageResponseDto,
+  AdvisorOpeningStateDto,
 } from './dto/advisor.dto.js'
 import { ANSWERING_WINDOW_MS, projectsOf, toPublicAction, toPublicMeta, toMessageDto, PreparedAdvisorTurn, titleFrom, liveMessages, historySources, contextOf, toNoteDto, toConversationDto } from './advisor-shared.js'
 import { AdvisorConversations } from './advisor-conversations.js'
@@ -146,9 +153,27 @@ export class AdvisorService {
     @Optional() @Inject(TaxEstimateService) private readonly taxEstimate?: TaxEstimateService,
     @Optional() @Inject(ModelConnectionService) private readonly modelConnection?: ModelConnectionService,
     @Optional() @Inject(AssessmentService) private readonly assessmentService?: AssessmentService,
+    @Optional() @Inject(PENSION_REPOSITORY) private readonly pensionRepo?: PensionRepository,
   ) {}
 
   // The service is the front door; each theme lives in its own part.
+  private openingPart?: AdvisorOpening
+  private get opening(): AdvisorOpening {
+    return (this.openingPart ??= new AdvisorOpening(
+      this.advisorRepo,
+      (userId, taxYear) => this.buildCaseDigest(userId, taxYear),
+      async (userId) => (await this.notes.getSituation(userId)).text,
+      this.taxEstimate ? (userId, taxYear) => this.taxEstimate!.getState(userId, taxYear) : undefined,
+    ))
+  }
+
+  /** Whether a new conversation opens with the owl speaking first (ADR-0067 §11). */
+  async openingState(userId: string, taxYear: number): Promise<AdvisorOpeningStateDto> {
+    const state = await this.opening.state(userId, taxYear)
+    // Without a language model the fixed rules answer; they have nothing to open with.
+    return this.advisorEngine ? state : { ...state, shouldOpen: false }
+  }
+
   private conversationsPart?: AdvisorConversations
   private get conversations(): AdvisorConversations {
     return (this.conversationsPart ??= new AdvisorConversations(this.advisorEngine, this.advisorRepo, this.auditService, (...args) => this.facts.knownNamesForScrubbing(...args)))
@@ -161,7 +186,7 @@ export class AdvisorService {
 
   private factsPart?: AdvisorCaseFacts
   private get facts(): AdvisorCaseFacts {
-    return (this.factsPart ??= new AdvisorCaseFacts(this.capitalRepo, this.chRepo, this.childRepo, this.commuteRepo, this.confirmationService, this.interviewRepo, this.lstbRepo, this.owlModeService, this.profileRepo, this.rentalRepo))
+    return (this.factsPart ??= new AdvisorCaseFacts(this.capitalRepo, this.chRepo, this.childRepo, this.commuteRepo, this.confirmationService, this.interviewRepo, this.lstbRepo, this.owlModeService, this.profileRepo, this.rentalRepo, this.pensionRepo))
   }
 
   private draftsPart?: AdvisorDrafts
@@ -404,7 +429,8 @@ export class AdvisorService {
 
     // Double PII Shield: scrub known names, Steuer-IDs, IBANs, emails, and phones from user free-text & history
     const knownNames = await this.knownNamesForScrubbing(userId, taxYear)
-    const scrubbedUserText = scrubUserMessagePii(dto.message.trim(), knownNames)
+    const isOpening = dto.quickAction === 'opening'
+    const scrubbedUserText = isOpening ? OPENING_PLACEHOLDER : scrubUserMessagePii(dto.message.trim(), knownNames)
     const conversation = await this.conversationFor(userId, taxYear, dto.conversationId)
     // Conversations answer side by side (#503), but one conversation has one answer at a time:
     // two would write into the same history in an order nobody chose.
@@ -416,13 +442,16 @@ export class AdvisorService {
     }
     // The model sees this conversation only; what the conversations share is the return itself.
     const priorRecords = liveMessages(conversation, await this.advisorRepo.listForConversation(conversation.id, userId))
+    const opening = isOpening ? await this.prepareOpening(userId, taxYear, priorRecords.length) : undefined
+    const lastAnswer = priorRecords.filter((record) => record.role === 'assistant').at(-1)
+    const fromApp = isOpening || isOfferedChoice(dto.message, lastAnswer?.meta)
     const sources = historySources(priorRecords, knownNames)
     // A full context is summarised before the answer, once the stream is open (see executeTurn).
     const needsSummary = advisorContextUsage(sources, conversation.summary).level === 'full'
     await this.advisorRepo.updateConversation(conversation.id, userId, {
       lastUsedAt: new Date(),
-      // The first question names the conversation.
-      ...(conversation.title === null ? { title: titleFrom(scrubbedUserText) } : {}),
+      // The first question names the conversation; an opening names it after what it is.
+      ...(conversation.title === null ? { title: isOpening ? `Einschätzung ${taxYear}` : titleFrom(scrubbedUserText) } : {}),
     })
     const history = buildAdvisorHistory(sources, { summary: conversation.summary })
 
@@ -433,7 +462,7 @@ export class AdvisorService {
       conversationId: conversation.id,
       role: 'user',
       content: scrubbedUserText,
-      meta: null,
+      meta: opening ? { opening: opening.marker } : null,
     })
     const assistantMessage = await this.advisorRepo.createMessage({
       userId,
@@ -446,7 +475,15 @@ export class AdvisorService {
       runId,
     })
 
-    return { runId, userMessage, assistantMessageId: assistantMessage.id, scrubbedUserText, history, dto, conversationId: conversation.id, needsSummary }
+    return { runId, userMessage, assistantMessageId: assistantMessage.id, scrubbedUserText, history, dto, conversationId: conversation.id, needsSummary, fromApp, ...(opening ? { opening } : {}) }
+  }
+
+  /** An opening needs something to talk about and an empty conversation. */
+  private async prepareOpening(userId: string, taxYear: number, priorMessages: number): Promise<NonNullable<PreparedAdvisorTurn['opening']>> {
+    if (priorMessages > 0) throw new InvalidInputError('ADVISOR_OPENING_NOT_EMPTY', 'Die Eule eröffnet nur ein neues, leeres Gespräch.')
+    const context = await this.opening.context(userId, taxYear)
+    if (context.stage === 'empty') throw new InvalidInputError('ADVISOR_OPENING_NOTHING_KNOWN', 'Für dieses Steuerjahr ist noch nichts erfasst. Beginne mit dem Interview.')
+    return { marker: { fingerprint: context.fingerprint, stage: context.stage }, context }
   }
 
   async *streamMessage(
@@ -474,7 +511,7 @@ export class AdvisorService {
     const { runId, userMessage, assistantMessageId, scrubbedUserText, dto } = turn
     let text = ''
     let reasoning = ''
-    const steps: string[] = []
+    let steps: readonly AdvisorThoughtStep[] = []
     let firstTokenMs: number | null = null
     let finished = false
 
@@ -485,7 +522,7 @@ export class AdvisorService {
       usage?: AdvisorTurnUsage,
     ): Promise<AdvisorChatMessageRecord> => {
       finished = true
-      const fullMeta: AdvisorMessageMeta = { ...meta, ...(steps.length > 0 ? { steps } : {}) }
+      const fullMeta: AdvisorMessageMeta = { ...meta, ...(steps.length > 0 ? { thoughtSteps: steps } : {}) }
       const usageRecord: AdvisorMessageUsage = { ...usage, traceId: runId, firstTokenMs, durationMs: Date.now() - startedAt }
       const record = await this.advisorRepo.finishMessage(assistantMessageId, userId, {
         content,
@@ -502,6 +539,9 @@ export class AdvisorService {
           engine: meta.engine?.mode ?? null,
           provider: meta.engine?.provider ?? null,
           model: meta.engine?.model ?? null,
+          topicVerdict: meta.engine?.topic?.verdict ?? null,
+          topicCategory: meta.engine?.topic && 'category' in meta.engine.topic ? meta.engine.topic.category : null,
+          topicUnavailable: meta.engine?.topic && 'reason' in meta.engine.topic ? meta.engine.topic.reason : null,
           firstTokenMs,
           durationMs: usageRecord.durationMs,
           inputTokens: usage?.inputTokens ?? null,
@@ -526,9 +566,9 @@ export class AdvisorService {
 
       let history = turn.history
       if (turn.needsSummary) {
-        const status = 'Die Eule fasst den älteren Verlauf zusammen …'
-        steps.push(status)
-        yield { event: 'status', data: { text: status } }
+        const status: AdvisorStreamEvent = { event: 'status', data: { text: 'Die Eule fasst den älteren Verlauf zusammen …' } }
+        steps = foldThoughtEvent(steps, status)
+        yield status
         history = await this.conversations.summarizeForTurn(userId, taxYear, turn, signal)
       }
 
@@ -547,9 +587,9 @@ export class AdvisorService {
         const enrichedMeta = await this.drafts.enrichDraftsWithRawBaseline(userId, taxYear, fallback.meta)
         await this.drafts.supersedePendingDraftsForSameTargets(userId, taxYear, this.drafts.collectPendingTargetKeys(enrichedMeta))
 
-        const status = 'Eule prüft deine Akte & Paragraphen …'
-        steps.push(status)
-        yield { event: 'status', data: { text: status } }
+        const status: AdvisorStreamEvent = { event: 'status', data: { text: 'Eule prüft deine Akte & Paragraphen …' } }
+        steps = foldThoughtEvent(steps, status)
+        yield status
         firstTokenMs = Date.now() - startedAt
         yield { event: 'token', data: { text: fallback.replyText } }
         if (enrichedMeta.choices && enrichedMeta.choices.length > 0) {
@@ -567,7 +607,7 @@ export class AdvisorService {
       }
 
       const task = dto.quickAction === 'savings_plan' ? ('savings-plan' as const) : dto.quickAction === 'assessment_check' ? ('assessment-check' as const) : undefined
-      for await (const ev of this.advisorEngine.streamTurn({
+      const request: AdvisorTurnRequest = {
         message: scrubbedUserText,
         activeScreen: dto.activeScreen,
         digest,
@@ -580,19 +620,22 @@ export class AdvisorService {
         situation: (await this.notes.getSituation(userId)).text,
         ...(task === 'assessment-check' ? { assessment: await this.assessmentBrief(userId, taxYear) } : {}),
         ...(dto.skill ? { skill: dto.skill } : {}),
+        topicCheck: turn.fromApp ? 'skip' : 'check',
         records: await this.loadRecordHandles(userId, taxYear),
         previewEffect: this.previewEffectFor(userId, taxYear),
         notes: buildNoteHandles(await this.advisorRepo.listNotes(userId, taxYear)),
-      })) {
+      }
+      const events = turn.opening
+        ? openingStream(this.advisorEngine, request, await this.opening.brief(userId, taxYear, turn.opening.context))
+        : this.advisorEngine.streamTurn(request)
+      for await (const ev of events) {
         if (ev.event === 'token') {
           firstTokenMs ??= Date.now() - startedAt
           text += ev.data.text
         } else if (ev.event === 'reasoning') {
           reasoning += ev.data.text
-        } else if (ev.event === 'status') {
-          steps.push(ev.data.text)
-        } else if (ev.event === 'tool') {
-          steps.push(ev.data.label)
+        } else {
+          steps = foldThoughtEvent(steps, ev)
         }
 
         if (ev.event === 'action') {
@@ -636,6 +679,8 @@ export class AdvisorService {
             mode: turnResult.mode,
             ...(turnResult.provider !== undefined ? { provider: turnResult.provider } : {}),
             ...(turnResult.model !== undefined ? { model: turnResult.model } : {}),
+            // Counted per user and day from here, as verdict and category only, never the text (ADR-0069).
+            ...(turnResult.topic !== undefined ? { topic: turnResult.topic } : {}),
           }
           if (reasoning.length === 0 && turnResult.reasoning) reasoning = turnResult.reasoning
           const noteChanges = await this.notes.applyNoteChanges(userId, taxYear, enrichedMeta.noteChanges)
@@ -643,10 +688,11 @@ export class AdvisorService {
           const assistant = await finish(
             'complete',
             turnResult.replyText,
-            { ...metaWithoutNotes, ...(noteChanges.length > 0 ? { noteChanges } : {}), engine },
+            { ...metaWithoutNotes, ...(noteChanges.length > 0 ? { noteChanges } : {}), ...(turn.opening ? { opening: turn.opening.marker } : {}), engine },
             turnResult.usage,
           )
-          const turbo = await this.applyTurbo(userId, taxYear, runId, dto, assistant)
+          // An opening prepares no drafts, so there is nothing for Turbo to apply.
+          const turbo = turn.opening ? null : await this.applyTurbo(userId, taxYear, runId, dto, assistant)
           yield doneWith(turbo ?? assistant, turnResult.mode)
           return
         }

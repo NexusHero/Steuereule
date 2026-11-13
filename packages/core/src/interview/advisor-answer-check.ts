@@ -11,6 +11,8 @@ export interface AdvisorAnswerNotice {
   readonly kind: AdvisorAnswerNoticeKind
   /** For the user, in German. */
   readonly text: string
+  /** For `unbacked-amount`: the amounts the app did not work out, so an opening can be written again without them. */
+  readonly amounts?: readonly number[] | undefined
 }
 
 export interface AdvisorAnswerCheckInput {
@@ -88,6 +90,7 @@ export function checkAdvisorAnswer(input: AdvisorAnswerCheckInput): AdvisorAnswe
     notices.push({
       kind: 'unbacked-amount',
       text: `Diese Antwort nennt als Wirkung ${[...unbacked].map(euro).join(', ')}. Diesen Betrag hat die App nicht berechnet. Verlass dich auf die Zahlen in den Entwurfskarten und im Cockpit.`,
+      amounts: [...unbacked],
     })
   }
 

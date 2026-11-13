@@ -3,6 +3,8 @@ import type { AdvisorAnswerNotice } from './advisor-answer-check'
 import type { AdvisorNoteChange } from './advisor-notes'
 import type { AdvisorQuestionRound } from './advisor-skills'
 import type { AdvisorModelFailure } from './advisor-failure'
+import type { AdvisorThoughtStep } from './advisor-thought'
+import { topicRefusal, type AdvisorTopicOutcome } from './advisor-topic'
 import { isSupportedIncomeTaxYear } from '../math/tarif'
 import { getTaxYearParameters } from '../math/tax-parameters'
 import type { Marking, Screen } from './marking'
@@ -158,6 +160,8 @@ export interface AdvisorEngineInfo {
   readonly mode: 'langgraph' | 'deterministic_fallback'
   readonly provider?: string | undefined
   readonly model?: string | undefined
+  /** What the topic guard said about the question (ADR-0069): verdict and category, never the text. */
+  readonly topic?: AdvisorTopicOutcome | undefined
 }
 
 export interface AdvisorTwoPathsProposal {
@@ -198,8 +202,15 @@ export interface AdvisorMessageMeta {
   readonly engine?: AdvisorEngineInfo | undefined
   /** Server-internal: the turn was regenerated or edited away (#451 slice 1b); hidden from the chat. */
   readonly replaced?: true | undefined
+  /**
+   * Set on both messages of an opening (ADR-0067 §11): the user's placeholder is hidden in the chat,
+   * the answer is the owl's opening. The fingerprint tells whether the case changed since.
+   */
+  readonly opening?: { readonly fingerprint: string; readonly stage: 'partial' | 'ready' } | undefined
   /** The steps the owl reported while working (status and tool labels), kept with the answer (#476). */
   readonly steps?: readonly string[] | undefined
+  /** The same steps with their kind and, for tools, what each found; replaces `steps` on new answers. */
+  readonly thoughtSteps?: readonly AdvisorThoughtStep[] | undefined
   /**
    * What the owl tried to prepare in this answer and could not (ADR-0066). Shown under the answer,
    * so the text can never claim a draft that does not exist without the user seeing it.
@@ -247,6 +258,8 @@ export interface AdvisorChatMessageView {
   readonly feedback?: AdvisorMessageFeedback | null | undefined
   /** Set while `status` is `streaming`: the run a client can re-attach to. */
   readonly runId?: string | undefined
+  /** How long the owl worked on a finished answer, in milliseconds. */
+  readonly durationMs?: number | undefined
 }
 
 export interface CaseDigest {
@@ -301,6 +314,34 @@ export interface CaseDigest {
   }[]
   readonly printoutMissingFields: readonly string[]
   readonly estimatedRefundEur: number | null
+  /** Everything else the interview and the masks know, in figures only (#501 follow-up). */
+  readonly furtherFacts?: CaseFurtherFacts | undefined
+}
+
+/**
+ * The rest of the case beyond wage, commute and the catalogue: pension, rental and capital
+ * totals, other income, household costs and the deadlines. Amounts and counts only, never a
+ * name, an address or an identifier; null means not entered.
+ */
+export interface CaseFurtherFacts {
+  /** How many interview questions of this year have an answer: 0 means nothing was started. */
+  readonly answeredQuestions: number
+  /** Whether the user said how they are assessed (single or jointly), not just the default. */
+  readonly filingStatusAnswered: boolean
+  readonly singleParent: boolean
+  readonly pension: { readonly kind: string | null; readonly annualEur: number | null } | null
+  readonly rentals: { readonly rentEur: number | null; readonly expensesEur: number | null; readonly loanInterestEur: number | null }
+  readonly capital: { readonly withheldTaxEur: number | null; readonly saverAllowanceUsedEur: number | null; readonly depot: string | null }
+  readonly sideJobGrossEur: number | null
+  readonly wageReplacementEur: number | null
+  readonly severanceEur: number | null
+  readonly healthCostsEur: number | null
+  readonly householdServicesEur: number | null
+  /** Leave as entered in the Arbeitstage mask; null without the mask, so the owl never calls them missing when they are not. */
+  readonly leave?: { readonly vacationDays: number; readonly sickDays: number } | null | undefined
+  /** The statutory and the voluntary filing deadline (ISO dates), where the year is supported. */
+  readonly filingDeadline: string | null
+  readonly voluntaryFilingDeadline: string | null
 }
 
 function commuterAllowanceFrom(workdays: number, distanceKm: number, taxYear?: number): number {
@@ -322,6 +363,31 @@ function homeOfficeDaysForAnswer(answer: string | null, workdays: number, taxYea
   if (answer === '1–2 Tage pro Woche') return Math.min(Math.round(workdays * 0.3), maxDays)
   if (answer === 'Fast immer') return Math.min(workdays, maxDays)
   return 0
+}
+
+/** Commute and home-office allowances from what the user entered: no assumed distance, no assumed days (ADR-0067 §11). */
+export interface WorkAllowances {
+  readonly commuteDays: number
+  /** Entfernungspauschale for the days at the workplace; null while the distance is missing. */
+  readonly commuteEur: number | null
+  readonly homeOfficeDays: number
+  /** Homeoffice-Tagespauschale, capped by the year's maximum; 0 without home-office days. */
+  readonly homeOfficeEur: number
+}
+
+export function workAllowancesOf(digest: CaseDigest): WorkAllowances {
+  const params = isSupportedIncomeTaxYear(digest.taxYear) ? getTaxYearParameters(digest.taxYear) : null
+  const work = digest.commuteAndWorkdays
+  const workdays = work.workdays ?? 220
+  const homeOfficeDays = Math.min(work.homeOfficeDays ?? homeOfficeDaysForAnswer(work.homeOfficeAnswer, workdays, digest.taxYear), params?.homeOffice.maxDays ?? 210)
+  const commuteDays = Math.max(0, workdays - homeOfficeDays)
+  const rate = params?.homeOffice.dailyRateEur ?? 6
+  return {
+    commuteDays,
+    commuteEur: work.distanceKm === null ? null : commuterAllowanceFrom(commuteDays, work.distanceKm, digest.taxYear),
+    homeOfficeDays,
+    homeOfficeEur: Math.min(homeOfficeDays * rate, params?.homeOffice.maxAnnualEur ?? homeOfficeDays * rate),
+  }
 }
 
 function computeRefundMidpoint(digest: CaseDigest): number {
@@ -584,28 +650,21 @@ const PROMPT_INJECTION_PATTERNS = [
   /__proto__|constructor\.prototype/i,
 ]
 
-const OFF_TOPIC_PATTERNS = [
-  /kuchenrezept|pfannkuchen|backrezept/i,
-  /schreibe\s+ein\s+gedicht/i,
-  /krypto.*verstecken|schwarzgeld|steuerhinterziehung|belege?\s+fälschen|fiktive\s+rechnung/i,
-]
-
 // Topics are no longer a boundary (#499, ADR-0069): the owl advises on the user's own tax matters
 // with looked-up knowledge. What stays out is the promise of a binding legal opinion.
 const STBERG_OUT_OF_SCOPE_PATTERNS = [/\b(verbindliche\s+rechtsauskunft|rechtsverbindliche\s+beratung)\b/i]
 
-export function checkAdvisorInputBoundary(message: string): {
+/**
+ * The free first filter before any model runs. What is off topic is decided by the topic guard
+ * (ADR-0069 §Themengrenze); these patterns stay only for obvious attacks, as the safety net for when
+ * the guard is down and lets the turn through.
+ */
+export function checkAdvisorInputBoundary(message: string, digest: CaseDigest): {
   readonly replyText: string
   readonly meta: AdvisorMessageMeta
 } | null {
-  if (PROMPT_INJECTION_PATTERNS.some((rx) => rx.test(message)) || OFF_TOPIC_PATTERNS.some((rx) => rx.test(message))) {
-    return {
-      replyText:
-        'Ich bin deine SteuerEule und ausschließlich auf deine Einkommensteuererklärung (Anlage N, Anlage N-Gre, Sonderausgaben, Kinder, Kapital und Vermietung) spezialisiert. Systeminterne Anweisungen, Schlüssel oder steuerfremde Themen gebe ich grundsätzlich nicht aus. Wollen wir stattdessen deine offenen Steuer-Hinweise durchgehen?',
-      meta: {
-        choices: ['Kanzlei-Endprüfung starten', 'Homeoffice-Pauschale prüfen', 'Spenden aus dem Vorjahr prüfen'],
-      },
-    }
+  if (PROMPT_INJECTION_PATTERNS.some((rx) => rx.test(message))) {
+    return topicRefusal('de', digest)
   }
 
   if (STBERG_OUT_OF_SCOPE_PATTERNS.some((rx) => rx.test(message))) {
@@ -639,8 +698,8 @@ export function evaluateAdvisorTurn(input: {
   const makeActionId = input.actionIdFactory ?? (() => `act-${Date.now()}`)
   const lower = message.toLowerCase()
 
-  // 1. Security, Off-Topic & StBerG Scope Guardrail
-  const blocked = checkAdvisorInputBoundary(message)
+  // 1. Obvious attacks & StBerG scope guardrail (topics are the guard's job, ADR-0069)
+  const blocked = checkAdvisorInputBoundary(message, digest)
   if (blocked !== null) return blocked
 
   // 2. Kanzlei-Endprüfung (holistic pre-printout review)

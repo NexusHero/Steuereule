@@ -14,11 +14,12 @@ export function makeStyles(t: UiTheme) {
       flexGrow: 0,
       flexShrink: 0,
       // The width comes from the screen (the user drags the line next to it); the line is the handle.
-      flexBasis: 280,
+      flexBasis: 260,
       backgroundColor: t.color.grund,
     } as ViewStyle,
-    projectSidebarContent: { padding: t.space.s4 } as ViewStyle,
-    projectPanel: { gap: t.space.s6 } as ViewStyle,
+    projectSidebarContent: { paddingHorizontal: t.space.s2, paddingVertical: t.space.s3 } as ViewStyle,
+    projectPanel: { gap: t.space.s2 } as ViewStyle,
+    situationDialog: { gap: t.space.s5, paddingHorizontal: t.space.s4, paddingBottom: t.space.s4 } as ViewStyle,
     sidePanel: {
       flexGrow: 0,
       flexShrink: 0,

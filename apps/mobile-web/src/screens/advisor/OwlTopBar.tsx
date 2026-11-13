@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useTheme, type UiTheme } from '@steuereule/ui'
 import { APP_NS } from '../../i18n/resources'
 import { OwlMark } from '../../marks/OwlMark'
+import { StrokeIcon, type StrokeIconName } from '../../icons/StrokeIcon'
 import { BackButton } from '../shared/BackButton'
 
 export interface OwlTopBarProps {
@@ -17,30 +18,21 @@ export interface OwlTopBarProps {
   readonly onOpenPrivacy: () => void
   /** Without it there is nothing to configure here (e.g. the local preview). */
   readonly onOpenSettings?: (() => void) | undefined
-  /** Legal status the owl's sources were checked against, as the core states it (DD.MM.YYYY). */
-  readonly legalStatusDate: string
-  /** Opens the conversations of this tax year; absent where there is no list to show. */
+  /** Shows or hides the conversations: the sidebar on a wide screen, the drawer elsewhere; absent where there is no list. */
   readonly onOpenConversations?: (() => void) | undefined
-  /** Whether the list it opens is showing right now (sidebar or sheet). */
+  /** Whether the list it opens is showing right now (sidebar or drawer). */
   readonly conversationsExpanded?: boolean | undefined
   /** The status of the connection (#488): a dot and a word, tapped for details. */
   readonly connection?: ConnectionView | undefined
   readonly onOpenConnection?: (() => void) | undefined
-  /** Phone width: icons only, no legal status line. */
+  /** Phone width: the connection shows as a dot only. */
   readonly compact?: boolean | undefined
 }
 
-/** The core keeps the legal status as DD.MM.YYYY; English readers get it unambiguous. */
-function formatDate(germanDate: string, language: string): string {
-  if (language.startsWith('de')) return germanDate
-  const [day, month, year] = germanDate.split('.')
-  return day && month && year ? `${year}-${month}-${day}` : germanDate
-}
-
 /**
- * The one slim line above the chat (#476 decision 3). Everything that used to sit beside the
- * conversation lives here as a way in: privacy, the owl's hints and drafts, its settings, and the
- * legal status of its sources.
+ * The one slim line above the chat (#476, chat-first). Left the way to the conversations and the
+ * name; right the connection and three quiet icons: privacy, the owl's hints and drafts (with a
+ * count when something waits) and its settings. Nothing here may outshine the conversation.
  */
 export function OwlTopBar({
   onBack,
@@ -54,22 +46,42 @@ export function OwlTopBar({
   conversationsExpanded = false,
   connection,
   onOpenConnection,
-  legalStatusDate,
   compact = false,
 }: OwlTopBarProps) {
   const t = useTheme()
   const styles = makeStyles(t)
-  const { t: tr, i18n } = useTranslation(APP_NS)
+  const { t: tr } = useTranslation(APP_NS)
   const hints = hintCount > 0 ? tr('eule.workspace.topbar.hints', { count: hintCount }) : null
   const drafts = draftCount > 0 ? tr('eule.workspace.topbar.drafts', { count: draftCount }) : null
-  const pillLabel = [hints, drafts].filter((part): part is string => part !== null).join(' · ') || tr('eule.workspace.topbar.hintsNone')
-  const needsAttention = hintCount + draftCount > 0
+  const waiting = [hints, drafts].filter((part): part is string => part !== null).join(' · ') || tr('eule.workspace.topbar.hintsNone')
+  const count = hintCount + draftCount
+
+  const iconButton = (icon: StrokeIconName, label: string, onPress: () => void, testID: string, extra?: { readonly expanded?: boolean; readonly badge?: number; readonly badgeTestID?: string }) => (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      aria-expanded={extra?.expanded}
+      onPress={onPress}
+      style={(state) => [styles.icon, (state as { hovered?: boolean }).hovered ? styles.iconHover : null, extra?.expanded ? styles.iconActive : null]}
+      testID={testID}
+    >
+      <StrokeIcon name={icon} color={t.color.tinte} />
+      {extra?.badge ? (
+        <View style={styles.badge} testID={extra.badgeTestID}>
+          <Text style={styles.badgeText}>{extra.badge > 9 ? '9+' : String(extra.badge)}</Text>
+        </View>
+      ) : null}
+    </Pressable>
+  )
 
   return (
     <View style={styles.bar} testID="eule-topbar">
       <View style={styles.brand}>
         {onBack ? <BackButton accessibilityLabel={tr('eule.back', 'Zurück')} onPress={onBack} /> : null}
-        <OwlMark variant="tinte" size={28} />
+        {onOpenConversations
+          ? iconButton('sidebar', tr('eule.workspace.topbar.conversationsAria'), onOpenConversations, 'eule-conversations-btn', { expanded: conversationsExpanded })
+          : null}
+        <OwlMark variant="tinte" size={26} />
         <Text style={styles.title} numberOfLines={1} role="heading" aria-level={1} testID="eule-topbar-title">
           {tr('eule.workspace.topbar.title')}
         </Text>
@@ -77,53 +89,9 @@ export function OwlTopBar({
 
       <View style={styles.side}>
         {connection && onOpenConnection ? <ConnectionChip view={connection} compact={compact} onPress={onOpenConnection} /> : null}
-        {compact ? null : (
-          <Text style={styles.legal} testID="eule-legal-status">
-            {tr('eule.workspace.topbar.legalStatus', { date: formatDate(legalStatusDate, i18n.language) })}
-          </Text>
-        )}
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={tr('eule.workspace.topbar.privacyAria')}
-          onPress={onOpenPrivacy}
-          style={styles.chip}
-          testID="eule-privacy-badge"
-        >
-          <Text style={styles.chipText}>{compact ? '🔒' : `🔒 ${tr('eule.workspace.topbar.privacy')}`}</Text>
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`${tr('eule.workspace.topbar.hintsAria')}: ${pillLabel}`}
-          aria-expanded={panelOpen}
-          onPress={onTogglePanel}
-          style={[styles.chip, needsAttention && styles.chipAttention, panelOpen && styles.chipActive]}
-          testID="eule-hints-pill"
-        >
-          <Text style={[styles.chipText, needsAttention && styles.chipAttentionText]}>{compact ? `💡 ${hintCount + draftCount}` : `💡 ${pillLabel}`}</Text>
-        </Pressable>
-        {onOpenConversations ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={tr('eule.workspace.topbar.conversationsAria')}
-            aria-expanded={conversationsExpanded}
-            onPress={onOpenConversations}
-            style={[styles.chip, conversationsExpanded && styles.chipActive]}
-            testID="eule-conversations-btn"
-          >
-            <Text style={styles.chipText}>{compact ? '☰' : tr('eule.workspace.topbar.conversations')}</Text>
-          </Pressable>
-        ) : null}
-        {onOpenSettings ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={tr('eule.workspace.topbar.settingsAria')}
-            onPress={onOpenSettings}
-            style={styles.chip}
-            testID="eule-settings-btn"
-          >
-            <Text style={styles.chipText}>{compact ? '⋯' : tr('eule.workspace.topbar.settings')}</Text>
-          </Pressable>
-        ) : null}
+        {iconButton('lock', tr('eule.workspace.topbar.privacyAria'), onOpenPrivacy, 'eule-privacy-badge')}
+        {iconButton('bulb', `${tr('eule.workspace.topbar.hintsAria')}: ${waiting}`, onTogglePanel, 'eule-hints-pill', { expanded: panelOpen, badge: count, badgeTestID: 'eule-hints-count' })}
+        {onOpenSettings ? iconButton('settings', tr('eule.workspace.topbar.settingsAria'), onOpenSettings, 'eule-settings-btn') : null}
       </View>
     </View>
   )
@@ -136,30 +104,32 @@ function makeStyles(t: UiTheme) {
       alignItems: 'center',
       justifyContent: 'space-between',
       gap: t.space.s3,
-      paddingHorizontal: t.space.s4,
-      paddingVertical: t.space.s2,
+      minHeight: 56,
+      paddingLeft: t.space.s2,
+      paddingRight: t.space.s3,
       borderBottomWidth: 1,
       borderBottomColor: t.color.linieWeich,
       backgroundColor: t.color.grund,
     } as ViewStyle,
-    side: { flexDirection: 'row', alignItems: 'center', gap: t.space.s2, flexShrink: 1 } as ViewStyle,
+    side: { flexDirection: 'row', alignItems: 'center', gap: 2, flexShrink: 1 } as ViewStyle,
     // The name of the screen never gives way: on a phone the controls on the right shrink instead.
     brand: { flexDirection: 'row', alignItems: 'center', gap: t.space.s2, flexShrink: 0 } as ViewStyle,
-    title: { fontFamily: t.font.display, fontWeight: t.weight.fett, fontSize: t.size.m, color: t.color.tinte } as TextStyle,
-    legal: { fontFamily: t.font.text, fontSize: t.size.xs, color: t.color.tinte2, marginRight: t.space.s1 } as TextStyle,
-    chip: {
-      minHeight: 32,
+    title: { fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size.m, color: t.color.tinte } as TextStyle,
+    icon: { width: 44, height: 44, borderRadius: t.radius.s, alignItems: 'center', justifyContent: 'center' } as ViewStyle,
+    iconHover: { backgroundColor: t.color.linieWeich } as ViewStyle,
+    iconActive: { backgroundColor: t.color.kiWeich } as ViewStyle,
+    badge: {
+      position: 'absolute',
+      top: 6,
+      right: 4,
+      minWidth: 18,
+      height: 18,
+      paddingHorizontal: 4,
+      borderRadius: 9,
+      alignItems: 'center',
       justifyContent: 'center',
-      paddingHorizontal: t.space.s3,
-      paddingVertical: t.space.s1,
-      borderRadius: t.radius.pille,
-      borderWidth: 1,
-      borderColor: t.color.linieWeich,
-      backgroundColor: t.color.karte,
+      backgroundColor: t.color.kiTinte,
     } as ViewStyle,
-    chipAttention: { borderColor: t.color.ki, backgroundColor: t.color.kiWeich } as ViewStyle,
-    chipActive: { borderWidth: 2, borderColor: t.color.ki } as ViewStyle,
-    chipText: { fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: t.size.xs, color: t.color.tinte } as TextStyle,
-    chipAttentionText: { color: t.color.kiTinte } as TextStyle,
+    badgeText: { fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: 11, color: t.color.grund } as TextStyle,
   }
 }

@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Linking, Pressable, ScrollView, Text, TextInput, View } from 'react-native'
 import { ChatComposer } from './chat/ChatComposer'
-import { ThinkingIndicator } from './chat/ThinkingIndicator'
 import { ContextRing, SummaryDivider, type ContextRingState } from './chat/ContextRing'
 import { NoteChangeHints } from './chat/ProjectNotes'
 import { QuestionRound } from './chat/QuestionRound'
@@ -35,6 +34,8 @@ import {
   type AdvisorQuickAction,
   type Screen,
   type AdvisorSkillId,
+  thoughtStepsOf,
+  type AdvisorThoughtStep,
 } from '@steuereule/core'
 import { APP_NS } from '../../i18n/resources'
 import { ModelFailureNotice } from './chat/ModelFailureNotice'
@@ -46,8 +47,12 @@ export interface AdvisorChatPanelProps {
   readonly greeting?: string | undefined
   readonly messages: readonly AdvisorChatMessageView[]
   readonly quickChips?: readonly (string | AdvisorQuickChip)[] | undefined
+  /** What the owl knows about the household, as a chip in the composer (#476 chat-first). */
+  readonly situationChip?: ReactNode | undefined
+  /** One quiet line under the composer, e.g. the legal status of the owl's sources. */
+  readonly footnote?: string | undefined
   readonly isSending?: boolean | undefined
-  readonly streamSteps?: readonly string[] | undefined
+  readonly streamSteps?: readonly AdvisorThoughtStep[] | undefined
   readonly streamedText?: string | undefined
   /** The reasoning summary of the running answer, as far as it has arrived (#476). */
   readonly streamedReasoning?: string | undefined
@@ -55,6 +60,11 @@ export interface AdvisorChatPanelProps {
   readonly pendingUserMessage?: AdvisorChatMessageView | null | undefined
   /** True while the connection to a running answer is being restored. */
   readonly reconnecting?: boolean | undefined
+  /**
+   * How a new conversation starts (ADR-0067 §11): with nothing entered the chat offers to start
+   * the interview; when nothing changed since the last opening, it links to that one.
+   */
+  readonly opening?: AdvisorChatOpening | undefined
   /** How full the context of this conversation is, and where its summarised part ends (#481). */
   readonly context?: (ContextRingState & { readonly summary?: string | undefined; readonly summarizedUntilMessageId?: string | undefined }) | undefined
   readonly onSummarize?: (() => Promise<void>) | undefined
@@ -102,6 +112,8 @@ const NARROW_COMPOSER_WIDTH = 560
 
 /** Width of the reading column in the page variant. */
 export const CHAT_COLUMN_MAX_WIDTH = 760
+/** How many quick starts an empty page shows before "Mehr …". */
+export const PAGE_QUICK_CHIPS = 4
 
 /** How a message is sent: a quick start, or replacing the latest turn (regenerate / edit, #451 1b). */
 export interface ChatSendOptions {
@@ -123,6 +135,16 @@ export function sendOptionsToDto(options: ChatSendOptions | undefined): { quickA
   }
 }
 
+export interface AdvisorChatOpening {
+  readonly stage: 'empty' | 'partial' | 'ready'
+  /** ISO date of the last opening of the year, when the chat should link to it instead of opening again. */
+  readonly lastOpeningAt?: string | undefined
+  readonly onOpenLast?: (() => void) | undefined
+}
+
+/** The hidden question of an opening: the owl speaks first, there is nothing the user said. */
+export const isOpeningPlaceholder = (message: AdvisorChatMessageView): boolean => message.role === 'user' && message.meta?.opening !== undefined
+
 /** A quick-start chip that also tells the server how to run the turn (e.g. always with a plan). */
 export interface AdvisorQuickChip {
   readonly label: string
@@ -134,12 +156,15 @@ export function AdvisorChatPanel({
   greeting,
   messages: allMessages,
   quickChips = [],
+  situationChip,
+  footnote,
   isSending = false,
   streamSteps = [],
   streamedText = '',
   streamedReasoning = '',
   pendingUserMessage = null,
   reconnecting = false,
+  opening,
   context,
   onSummarize,
   onUndoNoteChange,
@@ -202,6 +227,7 @@ export function AdvisorChatPanel({
   const [editingId, setEditingId] = useState<string | null>(null)
   // With the workbench open the chat column is narrow: the long hint would wrap and be cut off.
   const [composerNarrow, setComposerNarrow] = useState(false)
+  const [chipsExpanded, setChipsExpanded] = useState(false)
   // A skill is chosen per session and starts off: the plain chat stays the default.
   const [skill, setSkill] = useState<AdvisorSkillId | null>(null)
   // Off in every new chat: the careful way is the default, Turbo is chosen per session.
@@ -241,8 +267,8 @@ export function AdvisorChatPanel({
   }
 
   // An answer that is still being written is shown by the live bubble, not from the stored list.
-  const messages = allMessages.filter((m) => !(m.role === 'assistant' && m.status === 'streaming'))
-  const showPendingUser = isSending && pendingUserMessage !== null && !messages.some((m) => m.id === pendingUserMessage.id)
+  const messages = allMessages.filter((m) => !(m.role === 'assistant' && m.status === 'streaming') && !isOpeningPlaceholder(m))
+  const showPendingUser = isSending && pendingUserMessage !== null && !isOpeningPlaceholder(pendingUserMessage) && !messages.some((m) => m.id === pendingUserMessage.id)
   const lastMessage = messages.at(-1)
   const lastIsStoredInterrupted = lastMessage?.role === 'assistant' && (lastMessage.status === 'aborted' || lastMessage.status === 'failed')
 
@@ -307,37 +333,65 @@ export function AdvisorChatPanel({
   )
 
   // The page variant greets an empty chat with the owl; once there is a conversation it needs no header.
+  // The chat itself is the explanation: no help text, just the question and the input under it.
   const pageIntro = isEmpty ? (
     <View style={styles.emptyState} testID="advisor-empty-state">
-      <OwlMark variant="tinte" size={72} />
+      <OwlMark variant="tinte" size={56} />
       <Text style={styles.emptyTitle} role="heading" aria-level={2}>
         {tr('advisor.chat.emptyTitle')}
       </Text>
-      <Text style={styles.emptyHelp}>{greeting ?? tr('advisor.chat.help')}</Text>
     </View>
   ) : null
 
+  // The page shows the first few quick starts; the rest wait behind "Mehr …" so the input stays the eye's target.
+  const chipsShown = variant === 'page' && !chipsExpanded ? quickChips.slice(0, PAGE_QUICK_CHIPS) : quickChips
+  // Nothing entered yet: the way in is the interview. Nothing changed since the last opening: link to it.
+  const openingChip =
+    isEmpty && opening?.stage === 'empty' ? (
+      <Pressable accessibilityRole="button" onPress={() => runCommand('/grill-me')} style={[styles.quickChipButton, styles.openingChip]} testID="advisor-opening-start">
+        <Text style={styles.quickChipText}>{tr('advisor.chat.opening.start')}</Text>
+      </Pressable>
+    ) : isEmpty && opening?.lastOpeningAt && opening.onOpenLast ? (
+      <Pressable accessibilityRole="button" onPress={opening.onOpenLast} style={[styles.quickChipButton, styles.openingChip]} testID="advisor-opening-last">
+        <Text style={styles.quickChipText}>{tr('advisor.chat.opening.last', { date: new Date(opening.lastOpeningAt).toLocaleDateString('de-DE') })}</Text>
+      </Pressable>
+    ) : null
+  const quickChipRow =
+    quickChips.length > 0 && messages.length === 0 ? (
+      <View style={[styles.quickChipsRow, variant === 'page' && styles.quickChipsRowCentered]} testID="advisor-quick-chips">
+        {openingChip}
+        {chipsShown.map((entry) => {
+          const chip = typeof entry === 'string' ? { label: entry, testID: undefined, quickAction: undefined } : entry
+          return (
+            <Pressable
+              key={chip.label}
+              accessibilityRole="button"
+              onPress={() => void handleSubmit(chip.label, chip.quickAction)}
+              style={styles.quickChipButton}
+              testID={chip.testID}
+            >
+              <Text style={styles.quickChipText}>{chip.label}</Text>
+            </Pressable>
+          )
+        })}
+        {variant === 'page' && quickChips.length > PAGE_QUICK_CHIPS ? (
+          <Pressable
+            accessibilityRole="button"
+            aria-expanded={chipsExpanded}
+            onPress={() => setChipsExpanded((prev) => !prev)}
+            style={styles.quickChipMore}
+            testID="advisor-chips-more"
+          >
+            <Text style={styles.quickChipMoreText}>{tr(chipsExpanded ? 'advisor.chat.chipsLess' : 'advisor.chat.chipsMore')}</Text>
+          </Pressable>
+        ) : null}
+      </View>
+    ) : null
+
   const body = (
     <>
-      {/* Quick-Starter Chips */}
-      {quickChips.length > 0 && messages.length === 0 ? (
-        <View style={[styles.quickChipsRow, variant === 'page' && styles.quickChipsRowCentered]} testID="advisor-quick-chips">
-          {quickChips.map((entry) => {
-            const chip = typeof entry === 'string' ? { label: entry, testID: undefined, quickAction: undefined } : entry
-            return (
-              <Pressable
-                key={chip.label}
-                accessibilityRole="button"
-                onPress={() => void handleSubmit(chip.label, chip.quickAction)}
-                style={styles.quickChipButton}
-                testID={chip.testID}
-              >
-                <Text style={styles.quickChipText}>{chip.label}</Text>
-              </Pressable>
-            )
-          })}
-        </View>
-      ) : null}
+      {/* On the page the quick starts sit under the centred input of an empty chat. */}
+      {variant === 'page' ? null : quickChipRow}
 
       {/* Conversation History */}
       <View style={styles.messagesList}>
@@ -365,7 +419,7 @@ export function AdvisorChatPanel({
                 <AiChip>{tr('advisor.chat.sender', 'Die Eule')}</AiChip>
                 <Text style={styles.abortedBadge}>{tr(msg.status === 'aborted' ? 'advisor.chat.aborted' : 'advisor.chat.failed')}</Text>
               </View>
-              <ThoughtBlock reasoning={msg.reasoning} steps={msg.meta?.steps} />
+              <ThoughtBlock reasoning={msg.reasoning} steps={thoughtStepsOf(msg.meta)} durationMs={msg.durationMs} />
               {msg.content.length > 0 ? <MarkdownMessage content={msg.content} onSelectSource={setSelectedSource} /> : null}
               {msg.meta?.modelFailure ? <ModelFailureNotice failure={msg.meta.modelFailure} answeredByRules={false} /> : null}
               {index === messages.length - 1 && canReplace ? (
@@ -381,7 +435,7 @@ export function AdvisorChatPanel({
               <View style={styles.assistantBubbleHeader}>
                 <AiChip>{tr('advisor.chat.sender', 'Die Eule')}</AiChip>
               </View>
-              <ThoughtBlock reasoning={msg.reasoning} steps={msg.meta?.steps} />
+              <ThoughtBlock reasoning={msg.reasoning} steps={thoughtStepsOf(msg.meta)} durationMs={msg.durationMs} />
               <MarkdownMessage content={msg.content} onSelectSource={setSelectedSource} />
 
               {/* Source Pills when sources are in meta */}
@@ -579,7 +633,7 @@ export function AdvisorChatPanel({
 
         {plan !== null && (isSending || abortedTurn !== null) ? <PlanChecklist plan={plan} /> : null}
 
-        {isSending ? <ThoughtBlock reasoning={streamedReasoning} steps={streamedReasoning.length > 0 ? streamSteps : []} live /> : null}
+        {isSending ? <ThoughtBlock reasoning={streamedReasoning} steps={streamSteps} live /> : null}
 
         {isSending && reconnecting ? (
           <Text style={styles.streamStepText} accessibilityLiveRegion="polite" aria-live="polite" testID="advisor-reconnecting">
@@ -596,8 +650,6 @@ export function AdvisorChatPanel({
               <MarkdownMessage content={streamedText} onSelectSource={setSelectedSource} />
             </View>
           </Card>
-        ) : isSending ? (
-          <ThinkingIndicator steps={streamSteps} />
         ) : null}
 
         {abortedTurn && !isSending && !lastIsStoredInterrupted ? (
@@ -801,6 +853,7 @@ export function AdvisorChatPanel({
             ) : null}
             {/* The switches sit above the input, not in it: inside they squeezed the text into two clipped lines. */}
             <View style={styles.switchRow} testID="advisor-composer-switches">
+              {situationChip ? <View style={styles.situationSlot}>{situationChip}</View> : null}
               <SkillsMenu active={skill} onChange={setSkill} disabled={isSending} />
               <TurboToggle on={turbo} onChange={setTurbo} disabled={isSending} />
             </View>
@@ -865,15 +918,31 @@ export function AdvisorChatPanel({
     // The conversation scrolls, the composer stays put: the chat owns the window (#476 decision 1).
     return (
       <View style={styles.pageRoot} testID="advisor-chat-panel">
-        <ScrollView {...pageScroll} style={styles.pageScroll} contentContainerStyle={styles.pageScrollContent} testID="advisor-chat-scroll">
-          <View style={styles.pageColumn}>
-            {pageIntro}
-            {body}
-          </View>
+        <ScrollView {...pageScroll} style={styles.pageScroll} contentContainerStyle={[styles.pageScrollContent, isEmpty && styles.pageScrollEmpty]} testID="advisor-chat-scroll">
+          {isEmpty ? (
+            // An empty chat is one centred column: the question, the input, the quick starts (like Claude).
+            <View style={[styles.pageColumn, styles.emptyColumn]}>
+              {pageIntro}
+              <View style={styles.emptyComposer} testID="advisor-chat-composer-dock">
+                {composer}
+              </View>
+              {quickChipRow}
+              {body}
+            </View>
+          ) : (
+            <View style={styles.pageColumn}>{body}</View>
+          )}
         </ScrollView>
-        <View style={styles.pageComposerDock} testID="advisor-chat-composer-dock">
-          <View style={styles.pageColumn}>{composer}</View>
-        </View>
+        {isEmpty ? null : (
+          <View style={styles.pageComposerDock} testID="advisor-chat-composer-dock">
+            <View style={styles.pageColumn}>{composer}</View>
+          </View>
+        )}
+        {footnote ? (
+          <Text style={styles.footnote} testID="eule-legal-status">
+            {footnote}
+          </Text>
+        ) : null}
       </View>
     )
   }
