@@ -102,8 +102,7 @@ describe('ai-eval golden dataset', () => {
 })
 
 describe('pii leaks in the summary', () => {
-  it('count only a secret that reached the model, not a turn that failed', async () => {
-    const { summarize } = await import('../scripts/ai-eval/scoring.js')
+  it('count only a secret that reached the model, not a turn that failed', () => {
     const base = { id: 'p', kind: 'pii' as const, persona: 'lena', pass: false, attempts: 1 }
     const summary = summarize([
       { ...base, problems: ['turn failed: ADVISOR_TURN_TIMEOUT'] },
