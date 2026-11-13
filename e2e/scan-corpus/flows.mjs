@@ -16,6 +16,7 @@ import { launchBrowser, closeBrowser, newContextAtBreakpoint, guardAgainst429 } 
 import { startStack } from '../harness/stack.mjs'
 import { fail } from '../harness/rate-limit.mjs'
 import { createAccount, call, answer, browserLogin, until } from '../harness/api-account.mjs'
+import { waitForNetworkQuiet } from '../scenarios/helpers/scenario-harness.mjs'
 
 const TAG = 'scan-flows'
 const HERE = dirname(fileURLToPath(import.meta.url))
@@ -60,8 +61,16 @@ async function main() {
     await page.goto(`${webOrigin}/app`, { waitUntil: 'networkidle' })
     await page.locator(`[data-testid="jahr-${YEAR}"]`).click()
     await page.getByRole('tab', { name: 'Eule' }).click()
-    await page.locator('[data-testid="advisor-receipt-attach-btn"]').click()
-    await page.locator('[data-testid="advisor-receipt-panel"]').waitFor({ state: 'visible', timeout: 10_000 })
+    // The year switch reloads the owl's session and cards; a click while they arrive can land on a
+    // screen that is rebuilt right after, closing the panel again. Wait, and try once more if so.
+    await page.locator('[data-testid="advisor-chat-input"]').waitFor({ state: 'visible', timeout: 20_000 })
+    await waitForNetworkQuiet(page)
+    const panel = page.locator('[data-testid="advisor-receipt-panel"]')
+    for (let attempt = 0; attempt < 3 && !(await panel.isVisible()); attempt += 1) {
+      await page.locator('[data-testid="advisor-receipt-attach-btn"]').click()
+      await panel.waitFor({ state: 'visible', timeout: 5_000 }).catch(() => {})
+    }
+    await panel.waitFor({ state: 'visible', timeout: 5_000 }).catch(() => fail('the receipt panel should open from the paper clip in the owl chat'))
     await page.locator('[data-testid="advisor-receipt-file-input"]').setInputFiles(await file('datev-digital.pdf', 'application/pdf'))
     await page.locator('[data-testid="advisor-lstb-scan-card"]').waitFor({ state: 'visible', timeout: 60_000 })
     for (const field of ['bruttoarbeitslohn', 'lohnsteuer', 'sozialversicherung']) {
