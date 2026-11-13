@@ -75,6 +75,13 @@ jobs:
       - name: Check reasoning, usage and caching against the real model
         if: steps.key.outputs.present == 'true'
         run: pnpm --filter @steuereule/api exec node --import tsx scripts/ai-eval/reasoning-check.ts
+      # ADR-0069 §Themengrenze: does the topic boundary hold? Refusal rate of ~40 attempts, false
+      # refusals of ~40 tax questions, and the owl's own rule with the guard down. Also run it by
+      # hand before every model change. Red fails the job only once AI_EVAL_ENFORCE is 1.
+      - name: The topic boundary holds
+        if: always() && steps.key.outputs.present == 'true'
+        continue-on-error: ${{ env.AI_EVAL_ENFORCE != '1' }}
+        run: pnpm --filter @steuereule/api test:eval -- test/eval/topic-guard.eval.test.ts
       # ADR-0066: one customer sentence per area of the return, against the real model and a real
       # database — is the right field filled with the right value? A report like the evaluation
       # above: red scenarios fail the job only once AI_EVAL_ENFORCE is 1.
