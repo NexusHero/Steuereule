@@ -9,6 +9,8 @@ import {
   type AdvisorMessageMeta,
   summaryCut,
   type AdvisorHistorySource,
+  type AdvisorPreviewEffect,
+  type AdvisorPreviewTarget,
 } from '@steuereule/core'
 import { type AdvisorChatMessageRecord, type AdvisorConversationRecord, type AdvisorNoteRecord } from './advisor.repository.js'
 import type { AdvisorChatMessageDto, AdvisorContextDto, AdvisorConversationDto, AdvisorNoteDto, AdvisorProjectDto, SendAdvisorMessageDto } from './dto/advisor.dto.js'
@@ -169,4 +171,15 @@ export function toConversationDto(conversation: AdvisorConversationRecord, answe
     createdAt: conversation.createdAt.toISOString(),
     lastUsedAt: conversation.lastUsedAt.toISOString(),
   }
+}
+
+/**
+ * The estimate leaves § 35a and § 33 out while their boosters are off (#443 slice 5). A draft there
+ * would show 0 € and read as "brings nothing", which is not true: say instead that it is not
+ * computed. Null when the estimate does count the draft.
+ */
+export function effectLeftOutOfEstimate(target: AdvisorPreviewTarget, boostersOn: boolean): AdvisorPreviewEffect | null {
+  if (boostersOn || target.screen !== 'interview') return null
+  if (!target.values.some(([field]) => /^(haushalt|gesundheit)-/.test(field))) return null
+  return { kind: 'not-computable', hint: 'Handwerker, haushaltsnahe Dienste und Krankheitskosten rechnet die Schätzung der App noch nicht ein. Die Angabe zählt trotzdem für die Erklärung.' }
 }

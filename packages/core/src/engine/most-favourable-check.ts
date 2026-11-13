@@ -79,11 +79,16 @@ function tariffOnBasis(basis: number, assessmentType: 'einzel' | 'zusammen', yea
   return splittingTariff(basis, 0, year)
 }
 
-function personalTax(input: MostFavourableCheckInput, year: IncomeTaxYear, factor: ChurchTaxFactor): number {
-  const { kapitalertraege, remainingZvE, assessmentType } = input
+/**
+ * The tax the capital income costs at the personal rate. Under the check the saver's allowance is
+ * deducted just as under the flat rate (§ 20 Abs. 9 EStG applies to all capital income): only the
+ * rest is added to the taxable income.
+ */
+function personalTax(input: MostFavourableCheckInput, assessmentBase: number, year: IncomeTaxYear, factor: ChurchTaxFactor): number {
+  const { remainingZvE, assessmentType } = input
   const exemptionLimit = assessmentType === 'einzel' ? soliExemptionLimits(year).single : soliExemptionLimits(year).joint
 
-  const incomeTaxWith = tariffOnBasis(remainingZvE + kapitalertraege, assessmentType, year)
+  const incomeTaxWith = tariffOnBasis(remainingZvE + assessmentBase, assessmentType, year)
   const incomeTaxWithout = tariffOnBasis(remainingZvE, assessmentType, year)
   const incomeTaxDifference = incomeTaxWith - incomeTaxWithout
 
@@ -115,7 +120,7 @@ export function mostFavourableCheck(input: MostFavourableCheckInput): MostFavour
 
   const flatRateTax = flatRateTaxAmount + flatRate.churchTax + soliFlatRate
 
-  const personal = personalTax(input, year, factor)
+  const personal = personalTax(input, assessmentBase, year, factor)
 
   const delta = personal - flatRateTax
 

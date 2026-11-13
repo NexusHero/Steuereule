@@ -107,6 +107,31 @@ describe('tariff sums from the tax core (#499)', () => {
     expect(computeIncomeTax({ year: 2026, taxableIncome: 48000, splitting: false, churchTaxRate: 0, extraDeduction: 1500 })).toMatchObject({ incomeTaxEur: 9852, savingEur: 512 })
   })
 
+  it('applies the progression clause to wage replacement benefits (§ 32b EStG)', async () => {
+    // 10.000 € Elterngeld lift the rate on 40.000 € to that of 50.000 € (10.691 €): 21,382 % → 8.552 €.
+    const result = computeIncomeTax({ year: 2025, taxableIncome: 40000, splitting: false, churchTaxRate: 0, extraDeduction: 0, wageReplacementEur: 10000 })
+    expect(result).toMatchObject({ incomeTaxEur: 8552, wageReplacementEur: 10000, withoutBenefitsEur: 7320 })
+    expect(await callTool('compute_income_tax', { year: 2025, taxableIncome: 40000, wageReplacementEur: 10000 })).toMatchObject({ ok: true, incomeTaxEur: 8552 })
+  })
+
+  it('compares joint and separate assessment with the app’s comparison, and stays open while benefits are unknown', async () => {
+    const clear = await callTool('compare_filing_types', { year: 2025, taxableIncomeA: 70000, taxableIncomeB: 10000, wageReplacementEur: 0 })
+    expect(clear).toMatchObject({ ok: true, outcome: 'joint' })
+    expect(Number(clear.savingEur)).toBeGreaterThan(0)
+    expect(Number(clear.separateTotalEur) - Number(clear.jointTotalEur)).toBe(clear.savingEur)
+    expect(await callTool('compare_filing_types', { year: 2025, taxableIncomeA: 70000, taxableIncomeB: 10000 })).toMatchObject({ ok: true, outcome: 'open' })
+    expect(await callTool('compare_filing_types', { year: 2025, taxableIncomeA: 40000, taxableIncomeB: 40000, wageReplacementEur: 0 })).toMatchObject({ ok: true, savingEur: 0 })
+  })
+
+  it('checks the flat-rate tax against the personal rate on capital income', async () => {
+    // Little other income: the personal rate is lower than 25 %.
+    const low = await callTool('check_capital_taxation', { year: 2025, capitalIncomeEur: 5000, otherTaxableIncome: 14000, wageReplacementEur: 0 })
+    expect(low).toMatchObject({ ok: true, outcome: 'personal', saverAllowanceEur: 1000 })
+    const high = await callTool('check_capital_taxation', { year: 2025, capitalIncomeEur: 5000, otherTaxableIncome: 90000, wageReplacementEur: 0 })
+    expect(high).toMatchObject({ ok: true, outcome: 'flat_rate' })
+    expect((await callTool('check_capital_taxation', { year: 2025, capitalIncomeEur: 5000, otherTaxableIncome: 14000, churchTaxRate: 0.05 })).ok).toBe(false)
+  })
+
   it('refuses a church tax rate that does not exist', async () => {
     expect((await callTool('compute_income_tax', { year: 2025, taxableIncome: 48000, churchTaxRate: 0.05 })).ok).toBe(false)
     expect((await callTool('compute_income_tax', { year: 2025, taxableIncome: 48000, churchTaxRate: 0.09 })).ok).toBe(true)

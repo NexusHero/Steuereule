@@ -126,6 +126,24 @@ im Repo und wird beim Bauen wörtlich eingelesen, nicht von Hand in TypeScript a
     behält sein eigenes `SKILL.md` (Python-Skript, Websuche) und liest `references/` per Symlink
     aus dem Ordner der Eule.
 
+## Rechnen statt Überschlagen (ergänzt 2026-11-13)
+
+22. **Neue Werkzeuge auf den geprüften Kern.** `compare_filing_types` (Zusammen- gegen
+    Einzelveranlagung, `filingTypeComparison`) und `check_capital_taxation` (Günstigerprüfung
+    § 32d Abs. 6, `mostFavourableCheck`). Ist unbekannt, ob es Lohnersatz gab, ist das Ergebnis
+    `open` statt einer geratenen Empfehlung.
+23. **Progressionsvorbehalt exakt.** `progressionClauseTax` im Kern wendet den besonderen
+    Steuersatz (§ 32b Abs. 2 EStG) an; `compute_income_tax` nimmt `wageReplacementEur`. Die alte
+    Anleitung im Wissen („zweimal rechnen“) war falsch und ist ersetzt. Wie das Finanzamt den
+    Satz rundet, ist nicht am Gesetz belegt; der Kern rechnet ihn ungerundet.
+24. **Fehler im Kern behoben:** Die Günstigerprüfung zog den Sparer-Pauschbetrag nur auf der
+    Seite der Abgeltungsteuer ab. § 20 Abs. 9 EStG gilt für beide Seiten; der persönliche Satz
+    wirkte dadurch zu teuer, auch in der Maske „Kapital“.
+25. **§ 35a und § 33 ehrlich.** Die Felder dafür gibt es, die Schätzung zählt sie aber nicht,
+    solange `HOUSEHOLD_AND_HEALTH_BOOSTERS` aus ist (#443 Slice 5, angehalten: GdE und
+    Druckmappings fehlen). Ein Entwurf dort zeigt deshalb „nicht berechenbar“ statt 0 €, und der
+    Sparplan fragt danach, wenn nichts eingetragen ist.
+
 ## Offen und Risiken
 
 - **Rechtlich ungeprüft.** Geschäftsmäßige Hilfeleistung in Steuersachen ist nach dem

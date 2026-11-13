@@ -134,7 +134,7 @@ describe('KapitalService', () => {
       if (result?.kind === 'eindeutig') {
         expect(result.recommendation).toBe('abgeltung')
         expect(result.flatRateTax).toBe(4750)
-        expect(result.delta).toBe(3732)
+        expect(result.delta).toBe(3262)
       }
       expect(result?.provenance).toEqual({
         kapitalertraege: 20000,

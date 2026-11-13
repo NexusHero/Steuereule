@@ -31,7 +31,7 @@ import { checkStageValue, normalizeSourceId, validateStageTarget, type StageTarg
 import { checkPiiFree } from './ki.adapter.js'
 import { toolResultLine } from './advisor-tool-results.js'
 import { ADVISOR_KNOWLEDGE } from './skills.generated.js'
-import { computeIncomeTax } from './advisor-income-tax.js'
+import { checkCapitalTaxation, compareFilingTypes, computeIncomeTax } from './advisor-income-tax.js'
 import { MAX_COMPANION_FIELDS, TOOL_LABELS, TOOL_ARG_SCHEMAS, isToolName, toolResult, RejectedDraft, MAX_DRAFTS_PER_TURN, draftKey, humanReason } from './advisor-tools.js'
 
 export const AdvisorGraphState = Annotation.Root({
@@ -457,6 +457,18 @@ export async function runToolRound(
       }
       const result = computeIncomeTax({ ...args, churchTaxRate: args.churchTaxRate })
       answer(result === null ? { ok: false, error: `Für das Jahr ${args.year} kennt der Rechenkern keinen Tarif.` } : { ok: true, ...result })
+      continue
+    }
+
+    if (tc.name === 'compare_filing_types' || tc.name === 'check_capital_taxation') {
+      const raw = tc.name === 'compare_filing_types' ? parseArgs(TOOL_ARG_SCHEMAS.compare_filing_types) : parseArgs(TOOL_ARG_SCHEMAS.check_capital_taxation)
+      if (raw === null) continue
+      if (raw.churchTaxRate !== 0 && raw.churchTaxRate !== 0.08 && raw.churchTaxRate !== 0.09) {
+        answer({ ok: false, error: 'Der Kirchensteuersatz ist 0, 0.08 (Bayern, Baden-Württemberg) oder 0.09.' })
+        continue
+      }
+      const result = 'taxableIncomeA' in raw ? compareFilingTypes({ ...raw, churchTaxRate: raw.churchTaxRate }) : checkCapitalTaxation({ ...raw, churchTaxRate: raw.churchTaxRate })
+      answer(result === null ? { ok: false, error: `Für das Jahr ${raw.year} kennt der Rechenkern keinen Tarif.` } : { ok: true, ...result })
       continue
     }
 

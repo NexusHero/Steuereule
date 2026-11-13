@@ -5913,12 +5913,12 @@
           },
           "personal": {
             "type": "number",
-            "example": 8482,
+            "example": 8012,
             "description": "The personal (tariff) tax on the capital income (only when kind !== \"nicht-anwendbar\")."
           },
           "delta": {
             "type": "number",
-            "example": 3732,
+            "example": 3262,
             "description": "persoenlich − abgeltung (only when kind !== \"nicht-anwendbar\")."
           },
           "uncertainty": {

@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import { HOUSEHOLD_AND_HEALTH_BOOSTERS } from '../config/features.js'
 import { newActionId } from '../common/action-id.js'
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common'
 import {
@@ -85,7 +86,7 @@ import type {
   SendAdvisorMessageResponseDto,
   AdvisorOpeningStateDto,
 } from './dto/advisor.dto.js'
-import { ANSWERING_WINDOW_MS, projectsOf, toPublicAction, toPublicMeta, toMessageDto, PreparedAdvisorTurn, titleFrom, liveMessages, historySources, contextOf, toNoteDto, toConversationDto } from './advisor-shared.js'
+import { ANSWERING_WINDOW_MS, effectLeftOutOfEstimate, projectsOf, toPublicAction, toPublicMeta, toMessageDto, PreparedAdvisorTurn, titleFrom, liveMessages, historySources, contextOf, toNoteDto, toConversationDto } from './advisor-shared.js'
 import { AdvisorConversations } from './advisor-conversations.js'
 import { AdvisorProjectNotes } from './advisor-project-notes.js'
 import { AdvisorCaseFacts } from './advisor-case-facts.js'
@@ -321,6 +322,10 @@ export class AdvisorService {
     const estimate = this.taxEstimate
     if (!estimate || this.transactions === passThroughTransactionRunner) return undefined
     return async (target) => {
+      // The estimate leaves § 35a and § 33 out while their boosters are off (#443 slice 5): a draft
+      // there would show 0 € and read as "brings nothing", which is not true.
+      const leftOut = effectLeftOutOfEstimate(target, HOUSEHOLD_AND_HEALTH_BOOSTERS)
+      if (leftOut) return leftOut
       let states: { before: TaxEstimateStatus; after: TaxEstimateStatus } | null = null
       try {
         await this.transactions.run(async () => {

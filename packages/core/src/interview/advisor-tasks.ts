@@ -40,10 +40,14 @@ export function unusedSavingsLevers(digest: CaseDigest): readonly SavingsLever[]
   if (digest.crossBorder.isCrossBorderCh) add('grenzgaenger', 'Grenzgänger: Quellensteuer, AHV, Pensionskasse, Krankenversicherung', 'unknown')
   if (digest.rentalObjectsCount > 0) add('vermietung', 'Vermietung: AfA, Erhaltungsaufwand verteilen, alle Werbungskosten', 'unknown')
 
+  const further = digest.furtherFacts
+  if (!further || further.householdServicesEur === null) add('haushaltsnah', 'Handwerker und haushaltsnahe Dienste (§ 35a), auch aus der Nebenkostenabrechnung: nichts angegeben')
+  if (!further || further.healthCostsEur === null) add('gesundheit', 'Krankheitskosten: nichts angegeben')
+  if (further && further.wageReplacementEur !== null && further.wageReplacementEur > 0) add('progressionsvorbehalt', 'Lohnersatz unter Progressionsvorbehalt: Nachzahlung möglich, bei Ehegatten Einzelveranlagung prüfen', 'unknown')
+
   // The app has no field for these: the owl has to ask.
-  add('haushaltsnah', 'Handwerker und haushaltsnahe Dienste (§ 35a), auch aus der Nebenkostenabrechnung', 'unknown')
   add('arbeitsmittel', 'Arbeitsmittel, Telefon und Internet, Kontoführung, Gewerkschaft', 'unknown')
-  add('gesundheit', 'Krankheitskosten, Pflege, Behinderung', 'unknown')
+  add('pflege-behinderung', 'Pflege, Behinderung (Pauschbeträge)', 'unknown')
   add('vorjahre', 'Offene Vorjahre: freiwillige Erklärung bis vier Jahre zurück', 'unknown')
   return levers
 }

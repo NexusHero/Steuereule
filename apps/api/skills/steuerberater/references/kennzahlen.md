@@ -94,8 +94,11 @@ Versorgungsbeginns, nicht das Steuerjahr.
   und Zuschuss dazu, Elterngeld, Verletztengeld, Übergangsgeld. Ebenso nach DBA freigestellte
   ausländische Einkünfte. **Nicht** darunter: Bürgergeld, Kindergeld, Wohngeld, Pflegegeld.
 - **Rechnung:** zvE + Lohnersatzleistungen → darauf den Tarif rechnen → der so ermittelte
-  Durchschnittssteuersatz wird auf das zvE (ohne die Leistungen) angewandt. Mit `compute_income_tax`
-  zweimal rechnen (einmal mit, einmal ohne), nie schätzen.
+  Durchschnittssteuersatz (besonderer Steuersatz, § 32b Abs. 2) wird auf das zvE (ohne die
+  Leistungen) angewandt. Zweimal den Tarif zu rechnen und die Differenz zu nehmen ist falsch. Die
+  Eule rechnet es mit `compute_income_tax` und `wageReplacementEur`, nie geschätzt. Beispiel 2025:
+  zvE 40.000 €, Elterngeld 10.000 € → Tarif auf 50.000 € = 10.691 € = 21,382 % → 8.552 € statt
+  7.320 € ohne Elterngeld.
 - **Folgen:** oft **Nachzahlung**, weil der Lohnsteuerabzug die Leistung nicht kennt. Mehr als
   410 € Lohnersatz im Jahr machen die Erklärung zur **Pflicht** (§ 46 Abs. 2 Nr. 1).
 - **Elterngeld:** vom Elterngeld wird der Arbeitnehmer-Pauschbetrag abgezogen, soweit er nicht

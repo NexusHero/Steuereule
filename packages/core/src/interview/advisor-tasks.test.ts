@@ -44,9 +44,21 @@ const ids = (digest: CaseDigest) => unusedSavingsLevers(digest).map((lever) => l
 describe('unused savings levers (#501)', () => {
   it('always asks about what the app has no field for', () => {
     const levers = unusedSavingsLevers(DIGEST)
-    for (const id of ['haushaltsnah', 'arbeitsmittel', 'gesundheit', 'vorjahre']) {
+    for (const id of ['arbeitsmittel', 'pflege-behinderung', 'vorjahre']) {
       expect(levers.find((lever) => lever.id === id)?.state, id).toBe('unknown')
     }
+  })
+
+  it('reads household services, health costs and wage replacement off the case, now that the app has fields for them', () => {
+    const further = { answeredQuestions: 5, filingStatusAnswered: true, singleParent: false, pension: null, rentals: { rentEur: null, expensesEur: null, loanInterestEur: null }, capital: { withheldTaxEur: null, saverAllowanceUsedEur: null, depot: null }, sideJobGrossEur: null, severanceEur: null, filingDeadline: null, voluntaryFilingDeadline: null }
+    const empty = unusedSavingsLevers({ ...DIGEST, furtherFacts: { ...further, wageReplacementEur: null, healthCostsEur: null, householdServicesEur: null } })
+    expect(empty.find((lever) => lever.id === 'haushaltsnah')?.state).toBe('unused')
+    expect(empty.find((lever) => lever.id === 'gesundheit')?.state).toBe('unused')
+    expect(empty.some((lever) => lever.id === 'progressionsvorbehalt')).toBe(false)
+    const filled = unusedSavingsLevers({ ...DIGEST, furtherFacts: { ...further, wageReplacementEur: 8000, healthCostsEur: 900, householdServicesEur: 1200 } })
+    expect(filled.map((lever) => lever.id)).not.toEqual(expect.arrayContaining(['haushaltsnah']))
+    expect(filled.some((lever) => lever.id === 'gesundheit')).toBe(false)
+    expect(filled.find((lever) => lever.id === 'progressionsvorbehalt')?.state).toBe('unknown')
   })
 
   it('names a field the case leaves empty, and stops naming it once it is filled', () => {

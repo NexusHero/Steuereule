@@ -17,6 +17,8 @@ export const TOOL_LABELS: Readonly<Record<string, string>> = {
   suggest_situation: 'Schlage eine Ergänzung zur Situation vor …',
   lookup_tax_knowledge: 'Schlage im Steuerwissen nach …',
   compute_income_tax: 'Rechne die Einkommensteuer nach Tarif …',
+  compare_filing_types: 'Vergleiche Zusammen- und Einzelveranlagung …',
+  check_capital_taxation: 'Prüfe Abgeltungsteuer gegen persönlichen Steuersatz …',
   lookup_legal_source: 'Prüfe EStG-Paragraph …',
   plan_steps: 'Plane die nächsten Schritte …',
   remember_note: 'Merke mir das für dieses Steuerjahr …',
@@ -38,7 +40,7 @@ export const MAX_DRAFTS_PER_TURN = 8
 
 export const draftKey = (draft: Pick<AdvisorActionProposal, 'screen' | 'field' | 'instance'>): string => `${draft.screen}|${draft.instance ?? ''}|${draft.field}`
 
-export const FIGURE_KEYS = new Set(['beforeRefundEur', 'afterRefundEur', 'deltaEur', 'incomeTaxEur', 'soliEur', 'churchTaxEur', 'totalEur', 'savingEur'])
+export const FIGURE_KEYS = new Set(['beforeRefundEur', 'afterRefundEur', 'deltaEur', 'incomeTaxEur', 'soliEur', 'churchTaxEur', 'totalEur', 'savingEur', 'withoutBenefitsEur', 'separateTotalEur', 'jointTotalEur', 'progressionClauseUpToEur', 'flatRateTotalEur', 'personalTotalEur'])
 
 /** Every euro figure a tool reported in this turn, wherever it sits in the tool's answer. */
 export function computedFiguresOf(messages: readonly BaseMessage[]): number[] {
@@ -137,6 +139,23 @@ export const TOOL_ARG_SCHEMAS = {
     // A plain number, not a union of literals: Gemini answers 400 to the `const` such a union turns into.
     churchTaxRate: z.number().min(0).max(0.09).default(0),
     extraDeduction: z.number().min(0).max(100_000_000).default(0),
+    wageReplacementEur: z.number().min(0).max(100_000_000).default(0),
+  }),
+  compare_filing_types: z.object({
+    year: z.number().int(),
+    taxableIncomeA: z.number().min(0).max(100_000_000),
+    taxableIncomeB: z.number().min(0).max(100_000_000),
+    churchTaxRate: z.number().min(0).max(0.09).default(0),
+    // Left out while unknown: unknown is not the same as none.
+    wageReplacementEur: z.number().min(0).max(100_000_000).optional(),
+  }),
+  check_capital_taxation: z.object({
+    year: z.number().int(),
+    capitalIncomeEur: z.number().min(0).max(100_000_000),
+    otherTaxableIncome: z.number().min(0).max(100_000_000),
+    joint: z.boolean().default(false),
+    churchTaxRate: z.number().min(0).max(0.09).default(0),
+    wageReplacementEur: z.number().min(0).max(100_000_000).optional(),
   }),
   lookup_legal_source: z.object({
     sourceId: z.string().max(40),
@@ -170,7 +189,11 @@ export const TOOL_DESCRIPTIONS: Readonly<Record<ToolName, string>> = {
   lookup_tax_knowledge:
     'Liest einen Abschnitt des geprüften Steuerwissens: kennzahlen (Beträge je Jahr), gestaltung (Sparhebel je Lebenslage), arbeitnehmer, familie-sonderausgaben, kapital-vermietung-rente, selbststaendige-ust, grenzgaenger-ausland, erbschaft-schenkung, verfahren. Vor jeder fachlichen Aussage zu einem dieser Themen aufrufen.',
   compute_income_tax:
-    'Rechnet mit dem Rechenkern der App die tarifliche Einkommensteuer (§ 32a EStG), Soli und Kirchensteuer für ein zu versteuerndes Einkommen, auf Wunsch mit Splitting; `extraDeduction` zeigt, was ein zusätzlicher Abzug spart. Nie im Kopf rechnen.',
+    'Rechnet mit dem Rechenkern der App die tarifliche Einkommensteuer (§ 32a EStG), Soli und Kirchensteuer für ein zu versteuerndes Einkommen, auf Wunsch mit Splitting; `extraDeduction` zeigt, was ein zusätzlicher Abzug spart. `wageReplacementEur`: steuerfreie Lohnersatzleistungen (Arbeitslosengeld, Elterngeld, Krankengeld, Kurzarbeitergeld …) unter Progressionsvorbehalt (§ 32b EStG); die App wendet den besonderen Steuersatz an und nennt mit `withoutBenefitsEur`, was ohne sie anfiele. Nie im Kopf rechnen.',
+  compare_filing_types:
+    'Vergleicht für Ehegatten Zusammen- und Einzelveranlagung (§§ 26, 26a EStG) mit dem Rechenkern der App: zu versteuerndes Einkommen je Ehegatte (A, B), Kirchensteuersatz, Lohnersatzleistungen beider zusammen. Lass `wageReplacementEur` weg, solange du nicht weißt, ob es welche gab; dann ist das Ergebnis `open`. `outcome`: `joint` oder `separate` (eindeutig, mit `savingEur`), `too_close` (der Progressionsvorbehalt kann es kippen), `open`.',
+  check_capital_taxation:
+    'Günstigerprüfung (§ 32d Abs. 6 EStG) mit dem Rechenkern der App: Abgeltungsteuer gegen persönlichen Steuersatz für Kapitalerträge (vor Sparer-Pauschbetrag) bei dem übrigen zu versteuernden Einkommen. `outcome`: `personal` (Antrag in Anlage KAP lohnt, mit `savingEur`), `flat_rate` (lohnt nicht), `too_close`, `open` (Lohnersatz unbekannt).',
   lookup_legal_source: 'Ruft Wortlaut, Paragraph und Rechtsstand einer EStG/AO-Rechtsquelle aus dem verifizierten Katalog ab.',
   plan_steps:
     'Zeigt dem Nutzer deinen Plan als Checkliste (höchstens 8 Schritte, Status offen/laeuft/erledigt). Immer die vollständige Liste senden. Schreibt nichts in die Akte.',
