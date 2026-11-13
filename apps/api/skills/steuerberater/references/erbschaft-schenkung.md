@@ -6,8 +6,9 @@
 > Rechtsprechung, die nicht am Gesetzestext geprüft wurde: als unsicher nennen. **„prüfen“** = vor
 > Verwendung bestätigen.
 
-> Große Vermögen, Betriebsvermögen, Immobilienportfolios oder Auslandsvermögen:
-> Grundlagen erklären, aber zur Gestaltung **immer** einen Fachberater/Notar empfehlen.
+> Große Vermögen, Betriebsvermögen, Immobilienportfolios oder Auslandsvermögen: selbst erklären
+> und rechnen, offen sagen, wo Bewertung und Verträge den Ausschlag geben und welche Gutachten oder
+> Unterlagen nötig sind. Übertragungen von Grundstücken brauchen einen Notar (Form, kein Verweis).
 
 ## Steuerklassen (§ 15) und persönliche Freibeträge (§ 16)
 | Erwerber | Klasse | Freibetrag |
@@ -48,7 +49,7 @@ Härteausgleich an den Stufengrenzen (§ 19 Abs. 3). (Werte prüfen, falls Refor
   niedrigeren gemeinen Wert belegen.
 - **Nießbrauchs-/Wohnrechtsvorbehalt** mindert den Schenkungswert (Kapitalwert nach § 14 BewG).
 - **Betriebsvermögen**: Regel-/Optionsverschonung 85 %/100 % (§§ 13a, 13b) mit
-  Lohnsummen- und Behaltensfristen — Fachberater.
+  Lohnsummen- und Behaltensfristen (Verstoß lässt die Verschonung rückwirkend entfallen: Fristen und Lohnsummen genau nennen).
 - **Anzeigepflicht** binnen 3 Monaten (§ 30), auch wenn keine Steuer anfällt; Finanzamt
   fordert dann ggf. Erklärung an.
 - **Gemischte Schenkung / Kettenschenkung / Oder-Konto**: Risiken (z. B. Einzahlungen eines

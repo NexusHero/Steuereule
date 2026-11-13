@@ -39,7 +39,7 @@
   Verständigungsvereinbarung DE-CH zu Homeoffice ab 2024, nicht belegt, prüfen).
 - **Kapitalleistungen aus der Pensionskasse/Säule 3a** bei Auszahlung: CH-Quellensteuer,
   in DE Besteuerung nach § 22 Nr. 5 bzw. § 20 je nach Ursprung — komplexer Fall, Primärquellen
-  (BFH-Rechtsprechung) prüfen, ggf. echten Berater empfehlen.
+  (BFH-Rechtsprechung) prüfen und offen sagen, wo die Rechtslage nicht geklärt ist.
 - **Schweizer Bankkonten/Depots**: Zinsen/Dividenden in DE steuerpflichtig (Anlage KAP),
   CH-Verrechnungssteuer 35 %: 15 % anrechenbar, 20 % per Formular 85 bei der ESTV zurückfordern.
 
@@ -51,6 +51,6 @@
 - **183-Tage-Regel** (Art. 15 OECD-MA) für Arbeitnehmer bei Entsendung.
 - **Fiktive unbeschränkte Steuerpflicht** (§ 1 Abs. 3): ≥ 90 % der Einkünfte in DE.
 - **Wegzug**: § 6 AStG (Beteiligungen ≥ 1 %), erweiterte beschränkte Steuerpflicht;
-  immer zum Fachberater.
+  Rechnung und Fristen genau erklären, offen auf die Haftungsrisiken hinweisen.
 - **Meldepflichten**: Auslandskonten werden über CRS automatisch gemeldet — vollständige
   Angabe empfehlen.

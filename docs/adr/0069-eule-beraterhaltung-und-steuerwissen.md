@@ -34,9 +34,9 @@ schlägt im Netz nach); die Eule kann nichts davon.
    App, und Zero-Write gilt unverändert. Entfernt sind die Ablehnung solcher Fragen vor dem
    Modellaufruf und der Hinweis „gehört nicht zur privaten Einkommensteuererklärung“.
 6. **Was bleibt:** keine verbindliche Rechtsauskunft (wird weiter vor dem Modell abgelehnt), keine
-   Hilfe bei Hinterziehung, der Schutz vor Prompt-Injection, die PII-Prüfung, der Verweis an
-   einen zugelassenen Steuerberater in den Fällen aus B8, und die Prüfung „Betrag nicht von der
-   App berechnet“.
+   Hilfe bei Hinterziehung, der Schutz vor Prompt-Injection, die PII-Prüfung und die Prüfung
+   „Betrag nicht von der App berechnet“. Der Verweis an einen Steuerberater in den Fällen aus B8
+   entfällt (Punkt 37).
 
 7. **Maßstab ist die Eule für zahlende Nutzer.** Jede Datei des Wissens trägt „Stand: Datum,
    geprüft für die Steuerjahre X–Y“. Die Beträge des geltenden Rechts sind am Gesetzestext
@@ -202,11 +202,27 @@ im Repo und wird beim Bauen wörtlich eingelesen, nicht von Hand in TypeScript a
     Rechtsstand-Datum der Eulen-Karten (`LEGAL_STATUS_DATE`, 01.01.2025) ist davon getrennt und
     nicht neu geprüft.
 
+## Selbst beraten statt verweisen (ergänzt 2026-11-13)
+
+37. **Entscheidung des Product Owners: Die Eule schickt niemanden zu einem anderen Berater.** Auch
+    Betriebsprüfung, Unternehmensverkauf, Erbschaften mit Betriebsvermögen, Wegzug, GmbH-Gestaltung
+    und ein Streit vor dem Finanzgericht erklärt und rechnet sie selbst (B8). Sie sagt offen, wo viel
+    Geld oder Haftung im Spiel ist und was sie nicht prüfen kann (Bewertung, Verträge, ungesehene
+    Unterlagen); einen Notar nennt sie, wo das Gesetz ihn vorschreibt, als Schritt.
+38. **Zwei Ausnahmen bleiben.** Selbstanzeige und Steuerstrafrecht: Verweis an einen Fachanwalt für
+    Steuerstrafrecht (B7), weil eine fehlerhafte Selbstanzeige die Straffreiheit verliert. Und weiter
+    keine verbindliche Rechtsauskunft, keine Vertretung beim Finanzamt, der Satz „kein zugelassener
+    Steuerberater“ bleibt; die feste Ablehnung davor verweist aber nicht mehr weiter, sondern bietet
+    an, die Rechtslage zu erklären und das Schreiben ans Finanzamt vorzubereiten.
+39. **Golden-Set.** Die `stberg`-Fälle verlangen jetzt eigene Beratung ohne Verweis (Metrik
+    „Beratung statt Verweis“, D1 bleibt ≥ 95 %); dazu je ein Fall für die zwei Ausnahmen.
+
 ## Offen und Risiken
 
 - **Rechtlich ungeprüft.** Geschäftsmäßige Hilfeleistung in Steuersachen ist nach dem
-  Steuerberatungsgesetz zugelassenen Personen vorbehalten. Punkt 5 ist die Entscheidung des
-  Product Owners vom 12.11.2026; eine rechtliche Prüfung vor dem Verkauf steht aus.
+  Steuerberatungsgesetz zugelassenen Personen vorbehalten. Punkt 5 und Punkt 37 sind Entscheidungen des
+  Product Owners vom 12./13.11.2026; eine rechtliche Prüfung vor dem Verkauf steht aus. Ohne
+  Verweis in schweren Fällen wiegt das schwerer.
 - Für Umsatzsteuer und Erbschaftsteuer gibt es keinen Rechner in der App. Die Eule zeigt dort
   Formel und Schritte und nennt es eine Überschlagsrechnung; die Prüfung der Antwort markiert
   Wirkungsbeträge, die kein Werkzeug gerechnet hat.

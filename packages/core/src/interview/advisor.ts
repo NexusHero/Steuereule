@@ -678,7 +678,7 @@ export function checkAdvisorInputBoundary(message: string, digest: CaseDigest): 
   if (STBERG_OUT_OF_SCOPE_PATTERNS.some((rx) => rx.test(message))) {
     return {
       replyText:
-        'Eine verbindliche Rechtsauskunft oder rechtsverbindliche Beratung im Sinne des Steuerberatungsgesetzes kann ich nicht geben; dafür wende dich bitte an eine Steuerberaterin oder einen Steuerberater. Ich erkläre dir aber gern die Rechtslage und rechne mit dir durch, was sie für deine Erklärung bedeutet.',
+        'Eine verbindliche Rechtsauskunft im Sinne des Steuerberatungsgesetzes oder eine Vertretung beim Finanzamt kann ich nicht übernehmen. Ich erkläre dir aber die Rechtslage genau, rechne mit dir durch, was sie für deine Erklärung bedeutet, und bereite mit dir vor, was du dem Finanzamt schreibst.',
       meta: {
         choices: ['Kanzlei-Endprüfung starten', 'Homeoffice-Pauschale prüfen', 'Spenden aus dem Vorjahr prüfen'],
       },
