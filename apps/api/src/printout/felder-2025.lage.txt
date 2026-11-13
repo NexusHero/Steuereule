@@ -77,12 +77,16 @@ anlNGre.z6Chf                  S1 Z6    ↑ CHF                          ← des
 anlNGre.z6Eur                  S1 Z6    ↑ EUR (ggf. umgerechnet *)     ← des Arbeitgebers nebst Anlagen CHF (bei Grenzgängern in die Schweiz: laut Zeile 8 des Loh…
 anlNGre.z8Chf                  S1 Z8    ↑                              ← − Kinder- und Ausbildungszulage
 anlNGre.z8Eur                  S1 Z8    ↑                              ← ,– ,– − − Kinder- und Ausbildungszulage
+anlNGre.z9Chf                  S1 Z9    ↑                              ← − Steuerfreies Krankentaggeld
+anlNGre.z9Eur                  S1 Z9    ↑                              ← ,– ,– − − Steuerfreies Krankentaggeld
 anlNGre.z15Chf                 S1 Z15   ↑                              ← = Verbleiben
 anlNGre.z15Eur                 S1 Z15   ↑                              ← ,– = = Verbleiben
 anlNGre.z18Chf                 S1 Z18   ↑                              ← Arbeitgeberbeiträge zur Kollektivkrankentag- + geldversicherung (vgl. Zeile 80)
 anlNGre.z18Eur                 S1 Z18   ↑                              ← Arbeitgeberbeiträge zur Kollektivkrankentag- ,– + + geldversicherung (vgl. Zeile 80)
 anlNGre.z19Chf                 S1 Z19   ↑                              ← + Arbeitgeberbeiträge zur NBUV (vgl. Zeile 81)
 anlNGre.z19Eur                 S1 Z19   ↑                              ← ,– ,– + + Arbeitgeberbeiträge zur NBUV (vgl. Zeile 81)
+anlNGre.z20Chf                 S1 Z20   ↑                              ← Beiträge des Arbeitgebers ins Überobligatorium + (Säule 2b der Schweizer Altersvorsorge)
+anlNGre.z20Eur                 S1 Z20   ↑                              ← Beiträge des Arbeitgebers ins Überobligatorium ,– + + (Säule 2b der Schweizer Altersvorso…
 anlNGre.z23Chf                 S1 Z23   ↑                              ← 116 Steuerpflichtiger Arbeitslohn
 anlNGre.z23Eur                 S1 Z23   ↑                              ← ,– 116 116 Steuerpflichtiger Arbeitslohn
 anlNGre.z25Chf                 S1 Z25   ↑ ,–                           ← In der Schweiz erhobene Abzugssteuer 135 (höchstens 4,5 % von Zeile 6)

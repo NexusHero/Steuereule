@@ -3,6 +3,7 @@ import { InvalidInputError } from '../common/domain-error.js'
 import {
   SALARY_CERTIFICATE_FIELDS,
   officialMonthlyRate,
+  annualAverageRate,
   chItemsAsCoreItems,
   deserializeSalaryCertificateField,
   gatedIncomeTypes,
@@ -107,6 +108,8 @@ function nGreToDto(n: NGreDetails): NGreDetailsDto {
     krankentaggeldChf: number(n.krankentaggeldChf),
     pkArbeitnehmerChf: number(n.pkArbeitnehmerChf),
     pkArbeitgeberChf: number(n.pkArbeitgeberChf),
+    pkArbeitgeberGesamtChf: number(n.pkArbeitgeberGesamtChf),
+    steuerfreiesKrankentaggeldChf: number(n.steuerfreiesKrankentaggeldChf),
     krankentaggeldArbeitgeberProzent: number(n.krankentaggeldArbeitgeberProzent),
     krankentaggeldArbeitgeberChf: number(n.krankentaggeldArbeitgeberChf),
     nbuvArbeitgeberProzent: number(n.nbuvArbeitgeberProzent),
@@ -222,7 +225,9 @@ export class ChSalaryCertificateService {
       rate =
         dto.mode === 'amtlich'
           ? officialMonthlyRate(dto.month, dto.rate)
-          : actualRate(dto.month, dto.rate, dto.receiptId ?? '')
+          : dto.mode === 'jahresdurchschnitt'
+            ? annualAverageRate(dto.month, dto.rate)
+            : actualRate(dto.month, dto.rate, dto.receiptId ?? '')
     } catch (error) {
       if (error instanceof RangeError) {
         throw new InvalidInputError('WECHSELKURS_INVALID', error.message)

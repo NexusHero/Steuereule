@@ -6323,7 +6323,7 @@
           "month": {
             "type": "string",
             "example": "2026-01",
-            "description": "yyyy-mm the rate applies to."
+            "description": "yyyy-mm the rate applies to; yyyy for the Jahresdurchschnittskurs."
           },
           "rate": {
             "type": "number",
@@ -6334,9 +6334,10 @@
             "type": "string",
             "enum": [
               "amtlich",
+              "jahresdurchschnitt",
               "tatsaechlich"
             ],
-            "description": "The rate mode (ADR-012)."
+            "description": "The rate mode (ADR-012, ADR-0072)."
           },
           "receiptId": {
             "type": "string",
@@ -6483,6 +6484,14 @@
             "type": "number",
             "nullable": true
           },
+          "pkArbeitgeberGesamtChf": {
+            "type": "number",
+            "nullable": true
+          },
+          "steuerfreiesKrankentaggeldChf": {
+            "type": "number",
+            "nullable": true
+          },
           "krankentaggeldArbeitgeberProzent": {
             "type": "number",
             "nullable": true
@@ -6512,6 +6521,8 @@
           "krankentaggeldChf",
           "pkArbeitnehmerChf",
           "pkArbeitgeberChf",
+          "pkArbeitgeberGesamtChf",
+          "steuerfreiesKrankentaggeldChf",
           "krankentaggeldArbeitgeberProzent",
           "krankentaggeldArbeitgeberChf",
           "nbuvArbeitgeberProzent",
@@ -6662,7 +6673,7 @@
           "krankentaggeldChf": {
             "type": "number",
             "nullable": true,
-            "description": "Whole CHF — employee Krankentaggeld contributions (Zeile 80)."
+            "description": "Whole CHF — employee Krankentaggeld premium (Zeile 80), not the Taggeld paid out."
           },
           "pkArbeitnehmerChf": {
             "type": "number",
@@ -6673,6 +6684,16 @@
             "type": "number",
             "nullable": true,
             "description": "Whole CHF — Säule 2a Obligatorium, employer (Zeile 87)."
+          },
+          "pkArbeitgeberGesamtChf": {
+            "type": "number",
+            "nullable": true,
+            "description": "Whole CHF — all employer pension contributions; the part above the Obligatorium is taxable wage (Zeile 20)."
+          },
+          "steuerfreiesKrankentaggeldChf": {
+            "type": "number",
+            "nullable": true,
+            "description": "Whole CHF — tax-free Krankentaggeld paid out and contained in Ziffer 8 (Zeilen 9/76)."
           },
           "krankentaggeldArbeitgeberProzent": {
             "type": "number",
@@ -6697,7 +6718,7 @@
           "specialCases": {
             "type": "boolean",
             "nullable": true,
-            "description": "Any of N-Gre Zeilen 7, 9–14, 16, 17 or 20–22 applies."
+            "description": "Any of N-Gre Zeilen 7, 10–14, 16, 17, 21 or 22 applies."
           }
         }
       },
@@ -6707,7 +6728,7 @@
           "month": {
             "type": "string",
             "example": "2026-01",
-            "description": "yyyy-mm the rate applies to."
+            "description": "yyyy-mm the rate applies to; yyyy for the Jahresdurchschnittskurs."
           },
           "rate": {
             "type": "number",
@@ -6718,9 +6739,10 @@
             "type": "string",
             "enum": [
               "amtlich",
+              "jahresdurchschnitt",
               "tatsaechlich"
             ],
-            "description": "The rate mode (ADR-012)."
+            "description": "The rate mode (ADR-012, ADR-0072)."
           },
           "receiptId": {
             "type": "string",

@@ -36,7 +36,7 @@ import {
 import { HOUSEHOLD_AND_HEALTH_BOOSTERS } from '../config/features.js'
 import { COMMUTE_REPOSITORY, type CommuteInputs, type CommuteRepository } from '../commute/commute.repository.js'
 import { CROSS_BORDER_SALARY_STATEMENT_REPOSITORY, type CrossBorderSalaryStatementRepository } from '../ch-salary-certificate/ch-salary-certificate.repository.js'
-import { crossBorderStatusFromAnswers, salaryCertificateValuesFromRecord, exchangeRateFromRecord } from '../ch-salary-certificate/salary-certificate-data.js'
+import { crossBorderStatusFromAnswers, salaryCertificateValuesFromRecord, exchangeRateFromRecord, nGreInputFromRecord } from '../ch-salary-certificate/salary-certificate-data.js'
 import { INTERVIEW_ANSWER_REPOSITORY, type InterviewAnswerRepository } from '../interview/interview-answer.repository.js'
 import { answersFrom } from '../interview/answers.js'
 import { WAGE_TAX_CERTIFICATE_REPOSITORY, type WageTaxCertificateRepository } from '../lstb/lstb.repository.js'
@@ -126,21 +126,8 @@ export class TaxEstimateService {
         ...(exchangeRate === null ? ['wechselkurs'] : []),
         ...(nGre?.pkArbeitnehmerChf === null || nGre?.pkArbeitnehmerChf === undefined ? ['pk-obligatorium'] : []),
       ]
-      if (missing.length > 0 || exchangeRate === null || nGre === undefined) return { kind: 'offen', missing }
-      const rows = annexNGreAmounts({
-        grossWageChf: values['bruttolohn-total'] ?? 0,
-        familienzulagenChf: Number(nGre.familienzulagenChf ?? 0),
-        ahvContributionsChf: values['ahv-beitraege'] ?? 0,
-        withholdingTaxChf: values.quellensteuer ?? 0,
-        krankentaggeldChf: Number(nGre.krankentaggeldChf ?? 0),
-        pkArbeitnehmerChf: Number(nGre.pkArbeitnehmerChf ?? 0),
-        pkArbeitgeberChf: Number(nGre.pkArbeitgeberChf ?? 0),
-        krankentaggeldArbeitgeberProzent: optionalNumber(nGre.krankentaggeldArbeitgeberProzent),
-        krankentaggeldArbeitgeberChf: optionalNumber(nGre.krankentaggeldArbeitgeberChf),
-        nbuvArbeitgeberProzent: optionalNumber(nGre.nbuvArbeitgeberProzent),
-        nbuvArbeitgeberChf: optionalNumber(nGre.nbuvArbeitgeberChf),
-        rate: exchangeRate.rate,
-      }).eur
+      if (missing.length > 0 || exchangeRate === null || !chRecord) return { kind: 'offen', missing }
+      const rows = annexNGreAmounts(nGreInputFromRecord(chRecord, exchangeRate)).eur
       const krankenkasseChf = chRecord?.krankenkasseChf === null || chRecord?.krankenkasseChf === undefined ? 0 : Number(chRecord.krankenkasseChf)
       return withEstimateExtras(
         taxEstimateCrossBorder({
@@ -288,20 +275,7 @@ export class TaxEstimateService {
       const missing = [...(exchangeRate === null ? ['wechselkurs'] : []), ...(nGre.pkArbeitnehmerChf === null ? ['pk-obligatorium'] : [])]
       if (values['bruttolohn-total'] === undefined) missing.unshift('bruttolohn-total')
       if (missing.length > 0 || exchangeRate === null) return { kind: 'offen', missing }
-      const rows = annexNGreAmounts({
-        grossWageChf: values['bruttolohn-total'] ?? 0,
-        familienzulagenChf: Number(nGre.familienzulagenChf ?? 0),
-        ahvContributionsChf: values['ahv-beitraege'] ?? 0,
-        withholdingTaxChf: values.quellensteuer ?? 0,
-        krankentaggeldChf: Number(nGre.krankentaggeldChf ?? 0),
-        pkArbeitnehmerChf: Number(nGre.pkArbeitnehmerChf ?? 0),
-        pkArbeitgeberChf: Number(nGre.pkArbeitgeberChf ?? 0),
-        krankentaggeldArbeitgeberProzent: optionalNumber(nGre.krankentaggeldArbeitgeberProzent),
-        krankentaggeldArbeitgeberChf: optionalNumber(nGre.krankentaggeldArbeitgeberChf),
-        nbuvArbeitgeberProzent: optionalNumber(nGre.nbuvArbeitgeberProzent),
-        nbuvArbeitgeberChf: optionalNumber(nGre.nbuvArbeitgeberChf),
-        rate: exchangeRate.rate,
-      }).eur
+      const rows = annexNGreAmounts(nGreInputFromRecord(chRecord, exchangeRate)).eur
       const krankenkasseChf = chRecord.krankenkasseChf === null || chRecord.krankenkasseChf === undefined ? 0 : Number(chRecord.krankenkasseChf)
       return {
         kind: 'ok',
@@ -372,10 +346,6 @@ function rentalSurplus(o: {
 }
 
 /** A stored optional number; absent and null both mean "not entered". */
-function optionalNumber(value: string | null | undefined): number | undefined {
-  return value === null || value === undefined ? undefined : Number(value)
-}
-
 function specialCircumstance(answers: Answers): boolean {
   return answers.dhf === 'Ja' || answers.abfindung === 'Ja' || answers.lohnersatz === 'Ja' || answers.nebenjob === 'Midijob' || answers.nebenjob === 'Nebenjob'
 }

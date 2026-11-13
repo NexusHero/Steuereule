@@ -37,6 +37,8 @@ export interface FieldSpec {
   readonly perInstance: boolean
   /** False for everything that identifies a person: the owl never proposes it. */
   readonly aiWritable: boolean
+  /** What belongs in the field, for the model, where the name alone is ambiguous (German, goes into the prompt). */
+  readonly hint?: string
 }
 
 const MAX_AMOUNT = 999_999_999
@@ -155,6 +157,8 @@ const DECLARED: Readonly<Record<Screen, { readonly perInstance: boolean; readonl
       krankentaggeldChf: amount,
       pkArbeitnehmerChf: amount,
       pkArbeitgeberChf: amount,
+      pkArbeitgeberGesamtChf: amount,
+      steuerfreiesKrankentaggeldChf: amount,
       krankentaggeldArbeitgeberProzent: percent,
       krankentaggeldArbeitgeberChf: amount,
       nbuvArbeitgeberProzent: percent,
@@ -212,14 +216,37 @@ const DECLARED: Readonly<Record<Screen, { readonly perInstance: boolean; readonl
   },
 }
 
+/**
+ * Fields whose name does not say what belongs in them. The Swiss pension fields are the reason this
+ * exists: a model that read "pkArbeitnehmerChf" wrote the whole contribution although the user said
+ * which part was obligatorisch (ADR-0072). Totals and the obligatorisch part go in separate fields,
+ * so a sentence like "7.186 CHF, davon obligatorisch 2.892 CHF" needs no arithmetic.
+ */
+const HINTS: Readonly<Partial<Record<Screen, Readonly<Record<string, string>>>>> = {
+  chLohnausweis: {
+    'berufliche-vorsorge': 'Lohnausweis Ziffer 10: alle Arbeitnehmerbeiträge an die Pensionskasse, obligatorisch und überobligatorisch zusammen',
+    pkArbeitnehmerChf: 'nur der obligatorische BVG-Teil (Säule 2a) der Arbeitnehmerbeiträge, N-Gre Zeile 84',
+    pkArbeitgeberChf: 'nur der obligatorische BVG-Teil (Säule 2a) der Arbeitgeberbeiträge, N-Gre Zeile 87',
+    pkArbeitgeberGesamtChf: 'alle Arbeitgeberbeiträge an die Pensionskasse, obligatorisch und überobligatorisch zusammen; den überobligatorischen Teil (Zeile 20) rechnet die App',
+    krankentaggeldChf: 'Prämie des Arbeitnehmers zur Krankentaggeldversicherung, N-Gre Zeile 80, nicht das ausgezahlte Taggeld',
+    steuerfreiesKrankentaggeldChf: 'ausgezahltes steuerfreies Krankentaggeld, im Bruttolohn Ziffer 8 enthalten, N-Gre Zeile 9',
+    nbuvArbeitgeberChf: 'Arbeitgeberanteil der NBUV-Prämie in CHF, nur nötig, wenn der Arbeitgeber 100 % zahlt',
+    krankentaggeldArbeitgeberChf: 'Arbeitgeberanteil der Krankentaggeld-Prämie in CHF, nur nötig, wenn der Arbeitgeber 100 % zahlt',
+  },
+}
+
 export const FIELD_CATALOG: readonly FieldSpec[] = SCREENS.flatMap((screen) =>
-  Object.entries(DECLARED[screen].fields).map(([field, value]) => ({
-    screen,
-    field,
-    value,
-    perInstance: DECLARED[screen].perInstance,
-    aiWritable: !AI_FORBIDDEN_SCREENS.has(screen) && !AI_FORBIDDEN_FIELDS.has(field),
-  })),
+  Object.entries(DECLARED[screen].fields).map(([field, value]) => {
+    const hint = HINTS[screen]?.[field]
+    return {
+      screen,
+      field,
+      value,
+      perInstance: DECLARED[screen].perInstance,
+      aiWritable: !AI_FORBIDDEN_SCREENS.has(screen) && !AI_FORBIDDEN_FIELDS.has(field),
+      ...(hint !== undefined ? { hint } : {}),
+    }
+  }),
 )
 
 const BY_KEY: ReadonlyMap<string, FieldSpec> = new Map(FIELD_CATALOG.map((spec) => [`${spec.screen}.${spec.field}`, spec]))
@@ -342,8 +369,13 @@ export function validateFieldValue(screen: string, field: string, raw: string): 
   return checkKind(spec.value, field, trimmed)
 }
 
-/** One line for the model: the field name and, where the name does not say it, what a value looks like. */
+/** One line for the model: the field name, what a value looks like and, where the name is ambiguous, what belongs in it. */
 export function describeFieldForPrompt(spec: FieldSpec): string {
+  const shape = describeShape(spec)
+  return spec.hint === undefined ? shape : `${shape.slice(0, -1)}; ${spec.hint})`
+}
+
+function describeShape(spec: FieldSpec): string {
   const { value } = spec
   switch (value.kind) {
     case 'amount':

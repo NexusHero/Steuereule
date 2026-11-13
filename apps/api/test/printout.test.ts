@@ -301,6 +301,9 @@ describe('ausdruckWerte', () => {
       krankentaggeldChf: '300',
       pkArbeitnehmerChf: '5000',
       pkArbeitgeberChf: '6000',
+      pkArbeitnehmerGesamtChf: null,
+      pkArbeitgeberGesamtChf: null,
+      steuerfreiesKrankentaggeldChf: null,
       krankentaggeldArbeitgeberProzent: '0',
       krankentaggeldArbeitgeberChf: null,
       nbuvArbeitgeberProzent: '0',
@@ -411,6 +414,50 @@ describe('ausdruckWerte', () => {
         'anlNGre.z96Arbeitnehmer': '900',
       })
       expect(values['anlNGre.z19Chf']).toBeUndefined()
+    })
+
+    it("prints the adviser's case: Säule 2b as wage (Z. 20), only the Obligatorium in Z. 84/87, NBUV paid by the employer, tax-free Krankentaggeld (Z. 9/76)", () => {
+      const { values, missing } = ngre({
+        pkArbeitnehmerGesamtChf: '7186',
+        pkArbeitnehmerChf: '2892',
+        pkArbeitgeberGesamtChf: '7186',
+        pkArbeitgeberChf: '2892',
+        steuerfreiesKrankentaggeldChf: '3853',
+        nbuvArbeitgeberProzent: '100',
+        nbuvArbeitgeberChf: '540',
+      })
+      expect(missing).toEqual([])
+      // Hand-computed, rate 1,065: Z. 15 = 100000 − 2400 − 3853 = 93747; Z. 20 = 7186 − 2892 = 4294;
+      // Z. 23 = 93747 + 540 + 4294 = 98581. EUR: 106500 − 2556 − 4103 = 99841; + 575 + 4573 = 104989.
+      expect(values).toMatchObject({
+        'anlNGre.z9Chf': '3853',
+        'anlNGre.z9Eur': '4103',
+        'anlNGre.z15Chf': '93747',
+        'anlNGre.z19Chf': '540',
+        'anlNGre.z20Chf': '4294',
+        'anlNGre.z20Eur': '4573',
+        'anlNGre.z23Chf': '98581',
+        'anlNGre.z23Eur': '104989',
+        // Z. 76 = Familienzulagen + Krankentaggeld = 2400 + 3853; AHV/IV 5,05 % of 93747 = 4734
+        'anlNGre.z76Chf': '6253',
+        'anlNGre.z76Eur': '6659',
+        'anlNGre.z77Chf': '93747',
+        'anlNGre.z83Chf': '4734',
+        'anlNGre.z84Chf': '2892',
+        'anlNGre.z85Chf': String(4734 + 2892),
+        'anlNGre.z87Chf': '2892',
+        'anlNGre.z88Chf': String(4734 + 2892),
+        'anlNGre.z97Arbeitgeber': '100',
+        'anlNGre.z97Arbeitnehmer': '0',
+        'anlNGre.z98Arbeitgeber': '540',
+        'anlNGre.z98Arbeitnehmer': '0',
+      })
+    })
+
+    it('leaves Zeilen 9 and 20 empty when there is nothing to print', () => {
+      const { values } = ngre({})
+      expect(values['anlNGre.z9Chf']).toBeUndefined()
+      expect(values['anlNGre.z20Chf']).toBeUndefined()
     })
 
     it('prints the commute in the Anlage N-Gre (Z. 32–36), not only in the Anlage N', () => {
@@ -881,6 +928,7 @@ describe('rendereVordrucke (real templates)', () => {
       status: 'echter-grenzgaenger', rate: 1.065, grossWageChf: '50000', ahvContributionsChf: '3300', withholdingTaxChf: '2250',
       arbeitgeberName: 'Muster AG', arbeitgeberStrasse: 'Bahnhofstrasse 1', arbeitgeberPlzOrt: '4051 Basel',
       familienzulagenChf: '0', krankentaggeldChf: '150', pkArbeitnehmerChf: '2500', pkArbeitgeberChf: '3000', specialCases: false,
+      pkArbeitnehmerGesamtChf: null, pkArbeitgeberGesamtChf: null, steuerfreiesKrankentaggeldChf: null,
       krankentaggeldArbeitgeberProzent: '0', krankentaggeldArbeitgeberChf: null, nbuvArbeitgeberProzent: '0', nbuvArbeitgeberChf: null,
     },
     specialExpenses: { donations: '200' },

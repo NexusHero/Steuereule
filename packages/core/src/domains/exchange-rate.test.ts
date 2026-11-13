@@ -5,6 +5,8 @@ import {
   allowedModes,
   actualRate,
   exchangeRateSource,
+  annualAverageRate,
+  ANNUAL_AVERAGE_RATES,
 } from './exchange-rate'
 
 // ADR-012/036 — the Wechselkurs: amtlich is the default (no Beleg), tatsächlich is only
@@ -68,5 +70,25 @@ describe('wechselkursQuelle — ADR-014/015 jede Zahl trägt Herkunft', () => {
 
   it('tatsächlich → beleg (the Kontoauszug)', () => {
     expect(exchangeRateSource(actualRate('2026-01', 0.92, 'beleg-7'))).toEqual({ kind: 'beleg', receiptId: 'beleg-7' })
+  })
+})
+
+describe('annualAverageRate — the Jahresdurchschnittskurs printed on Anlage N-Gre', () => {
+  it('knows the rate the form prints for each year (100 CHF = 106,50 € in 2025)', () => {
+    expect(ANNUAL_AVERAGE_RATES).toEqual({ 2022: 0.99, 2023: 1.025, 2024: 1.045, 2025: 1.065 })
+    expect(annualAverageRate('2025', 1.065)).toEqual({ month: '2025', rate: 1.065, mode: 'jahresdurchschnitt' })
+  })
+
+  it('takes a year, not a month, and a positive rate', () => {
+    expect(() => annualAverageRate('2025-01', 1.065)).toThrow(RangeError)
+    expect(() => annualAverageRate('2025', 0)).toThrow(RangeError)
+  })
+
+  it('keeps its own provenance', () => {
+    expect(exchangeRateSource(annualAverageRate('2025', 1.065))).toEqual({ kind: 'regel', rule: 'BMF-Jahresdurchschnittskurs' })
+  })
+
+  it('converts the adviser example: 4294 CHF × 1,065 = 4573,11 EUR', () => {
+    expect(chfToEur(4294, annualAverageRate('2025', 1.065).rate)).toBe(4573.11)
   })
 })

@@ -3,7 +3,7 @@ import { ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-na
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { Button, Card, Chip, Input, Feld, Option, Pill, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme, type Breakpoint } from '@steuereule/ui'
-import { ENTRIES, SALARY_CERTIFICATE_FIELDS, formatEuro, nextStepFor, type Answers, type EntryQuestionId } from '@steuereule/core'
+import { ANNUAL_AVERAGE_RATES, ENTRIES, SALARY_CERTIFICATE_FIELDS, formatEuro, nextStepFor, type Answers, type EntryQuestionId } from '@steuereule/core'
 import {
   useInterviewControllerGetInterview,
   useInterviewControllerPostAnswer,
@@ -39,7 +39,7 @@ export interface CrossBorderScreenProps {
 
 const SEGMENT_CH = ENTRIES['segment-ch']
 
-/** The exchange rate is the official rate of one month of the tax year — picked, not typed. */
+/** The exchange rate is the official rate of one month of the tax year, or the annual average — picked, not typed. */
 const MONTH_NUMBERS = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'] as const
 
 export function CrossBorderScreen({ onDone, onBack, taxYear = CURRENT_TAX_YEAR }: CrossBorderScreenProps) {
@@ -262,6 +262,17 @@ function SalaryCertificateStep({
       <Text style={styles.help}>{tr('grenzgaenger.lohnausweis.wechselkurs.help')}</Text>
       <Feld label={tr('grenzgaenger.lohnausweis.wechselkurs.monat')}>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.s2 }} testID="ch-wechselkurs-monat">
+          <Chip
+            active={month === String(taxYear)}
+            onPress={() => {
+              setMonth(String(taxYear))
+              const known = ANNUAL_AVERAGE_RATES[taxYear]
+              if (known !== undefined) setRate(String(known).replace('.', ','))
+            }}
+            testID="ch-wechselkurs-jahresdurchschnitt"
+          >
+            {tr('grenzgaenger.lohnausweis.wechselkurs.jahresdurchschnitt')}
+          </Chip>
           {MONTH_NUMBERS.map((number) => {
             const value = `${taxYear}-${number}`
             return (
@@ -275,15 +286,24 @@ function SalaryCertificateStep({
       <Feld label={tr('grenzgaenger.lohnausweis.wechselkurs.kurs')}>
         <Input type="numeric" value={rate} onChange={setRate} placeholder="1,07" accessibilityLabel={tr('grenzgaenger.lohnausweis.wechselkurs.kurs')} testID="ch-wechselkurs-kurs" />
       </Feld>
+      {month === String(taxYear) && ANNUAL_AVERAGE_RATES[taxYear] !== undefined ? (
+        <Text style={styles.help}>
+          {tr('grenzgaenger.lohnausweis.wechselkurs.jahresdurchschnittHinweis', {
+            jahr: taxYear,
+            eur: (ANNUAL_AVERAGE_RATES[taxYear]! * 100).toFixed(2).replace('.', ','),
+          })}
+        </Text>
+      ) : null}
       {rateError ? <Text style={styles.help}>{tr('grenzgaenger.lohnausweis.wechselkurs.fehlt')}</Text> : null}
       <Button
         variant="ghost"
         testID="ch-wechselkurs-speichern"
         onPress={() => {
           const n = Number(rate.trim().replace(',', '.'))
-          const valid = /^\d{4}-(0[1-9]|1[0-2])$/.test(month) && Number.isFinite(n) && n > 0
+          const annual = month === String(taxYear)
+          const valid = (annual || /^\d{4}-(0[1-9]|1[0-2])$/.test(month)) && Number.isFinite(n) && n > 0
           setRateError(!valid)
-          if (valid) onSetExchangeRate({ jahr: taxYear, data: { month, rate: n, mode: 'amtlich' } })
+          if (valid) onSetExchangeRate({ jahr: taxYear, data: { month, rate: n, mode: annual ? 'jahresdurchschnitt' : 'amtlich' } })
         }}
       >
         {tr('grenzgaenger.lohnausweis.wechselkurs.speichern')}
@@ -328,7 +348,14 @@ function SalaryCertificateStep({
 }
 
 const N_GRE_TEXT_FIELDS = ['arbeitgeberName', 'arbeitgeberStrasse', 'arbeitgeberPlzOrt'] as const
-const N_GRE_AMOUNT_FIELDS = ['familienzulagenChf', 'krankentaggeldChf', 'pkArbeitnehmerChf', 'pkArbeitgeberChf'] as const
+const N_GRE_AMOUNT_FIELDS = [
+  'familienzulagenChf',
+  'steuerfreiesKrankentaggeldChf',
+  'krankentaggeldChf',
+  'pkArbeitnehmerChf',
+  'pkArbeitgeberGesamtChf',
+  'pkArbeitgeberChf',
+] as const
 /** Who pays the premium (N-Gre Zeilen 18/19, 95–98); the CHF field only matters when the employer pays it all. */
 const PREMIUMS = [
   { prozent: 'krankentaggeldArbeitgeberProzent', chf: 'krankentaggeldArbeitgeberChf' },
