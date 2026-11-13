@@ -142,6 +142,8 @@ export function makeStyles(t: UiTheme) {
       gap: t.space.s2,
     } as ViewStyle,
     choicePill: {
+      // A long answer wraps inside the bubble instead of running past its edge on a phone.
+      maxWidth: '100%',
       paddingVertical: t.space.s2,
       paddingHorizontal: t.space.s3,
       borderRadius: t.radius.pille,
@@ -150,6 +152,7 @@ export function makeStyles(t: UiTheme) {
       borderColor: t.color.ki,
     } as ViewStyle,
     choicePillText: {
+      flexShrink: 1,
       fontFamily: t.font.text,
       fontWeight: t.weight.fett,
       fontSize: t.size.s,
