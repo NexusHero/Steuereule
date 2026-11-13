@@ -35,10 +35,11 @@ export class ReceiptParseService implements OnModuleInit {
         throw new NotFoundError('BELEG_NOT_FOUND', `Beleg "${dto.receiptId}" does not exist for this account.`)
       }
     }
-    // A Swiss salary certificate uploaded as a general receipt goes to its own reader, which reads
-    // every Ziffer instead of one field.
+    // A Swiss salary certificate, pension statement or premium letter uploaded as a general receipt
+    // goes to its own reader, which reads all its figures instead of one field.
     const requested = dto.kind ?? 'auto'
-    const kind = requested === 'auto' && looksLikeChSalaryCertificate(dto.rawText) && this.registry.resolve('chLohnausweis') ? 'chLohnausweis' : requested
+    const detected = requested === 'auto' ? classifyDocumentKind(dto.rawText ?? '') : requested
+    const kind = detected !== 'lstb' && detected !== requested && this.registry.resolve(detected) ? detected : requested
     const strategy = this.registry.resolve(kind)
     if (strategy === null) {
       throw new InvalidInputError('RECEIPT_KIND_UNSUPPORTED', `Belegart "${kind}" wird nicht unterstützt.`)

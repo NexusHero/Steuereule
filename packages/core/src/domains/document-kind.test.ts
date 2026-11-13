@@ -21,4 +21,9 @@ describe('classifyDocumentKind', () => {
     expect(classifyDocumentKind('Lohnausweis - Certificat de salaire - Certificato di salario\n8 Bruttolohn total / Rente = 100.000')).toBe('chLohnausweis')
     expect(classifyDocumentKind('Kopie Lohnausweis angefordert, Gebühr 20 CHF')).toBe('auto')
   })
+
+  it('routes the Swiss pension statement and the premium letter to their readers', () => {
+    expect(classifyDocumentKind("Pensionskasse Beispiel\nNachweis obligatorischer und überobligatorischer Beiträge\nSparbeitrag 1'000.00 1'000.00")).toBe('chPensionskasse')
+    expect(classifyDocumentKind('Bestätigung Krankentaggeld- und Nichtberufsunfallversicherung 2025\nKrankentaggeld: 412,35 CHF\nPrämien')).toBe('chPraemien')
+  })
 })

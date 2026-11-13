@@ -7640,10 +7640,12 @@
             "enum": [
               "auto",
               "lstb",
-              "chLohnausweis"
+              "chLohnausweis",
+              "chPensionskasse",
+              "chPraemien"
             ],
             "example": "lstb",
-            "description": "Explicit document parser: \"lstb\" the German LStB, \"chLohnausweis\" the Swiss salary certificate; \"auto\" routes a recognised certificate to its reader."
+            "description": "Explicit document parser: \"lstb\" the German LStB, \"chLohnausweis\" the Swiss salary certificate, \"chPensionskasse\" a Swiss pension fund statement, \"chPraemien\" the employer letter on sickness-pay and NBU premiums; \"auto\" routes a recognised document to its reader."
           },
           "receiptId": {
             "type": "string",
@@ -9046,6 +9048,115 @@
           "securityBlocked"
         ]
       },
+      "ChLetterFieldDto": {
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string",
+            "example": "pkArbeitgeberGesamtChf"
+          },
+          "value": {
+            "type": "number",
+            "example": 7362
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "pruefen"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "plausibility_conflict",
+              "ocr_source"
+            ]
+          }
+        },
+        "required": [
+          "field",
+          "value",
+          "status",
+          "reason"
+        ]
+      },
+      "ParsedChLetterResponseDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "chPensionskasse",
+              "chPraemien"
+            ]
+          },
+          "receiptId": {
+            "type": "string",
+            "nullable": true
+          },
+          "taxYearOnDocument": {
+            "type": "number",
+            "nullable": true,
+            "example": 2025
+          },
+          "yearConflict": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LstbYearConflictDto"
+              }
+            ]
+          },
+          "person": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "A",
+              "B"
+            ]
+          },
+          "personUnclear": {
+            "type": "boolean"
+          },
+          "personNotRecordable": {
+            "type": "boolean"
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChLetterFieldDto"
+            }
+          },
+          "missing": {
+            "description": "Fields the letter did not give; the owl asks for them.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "stagedActionIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "kind",
+          "receiptId",
+          "taxYearOnDocument",
+          "yearConflict",
+          "person",
+          "personUnclear",
+          "personNotRecordable",
+          "fields",
+          "missing",
+          "stagedActionIds"
+        ]
+      },
       "ParseReceiptResponseDto": {
         "type": "object",
         "properties": {
@@ -9097,6 +9208,15 @@
             "allOf": [
               {
                 "$ref": "#/components/schemas/ParsedChCertificateResponseDto"
+              }
+            ]
+          },
+          "chLetter": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ParsedChLetterResponseDto"
               }
             ]
           }

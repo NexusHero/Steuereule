@@ -4,7 +4,7 @@ import {
   type ParseReceiptDto,
   type ParseReceiptResponseDto,
 } from '@steuereule/api-client'
-import { classifyDocumentKind } from '@steuereule/core'
+import { classifyDocumentKind, type DetectedDocumentKind } from '@steuereule/core'
 import { detectDocumentMimeType, extractDocumentTextOnDevice, type OcrStage } from '../documentOcr'
 
 /** Visible progress of one receipt capture. */
@@ -16,7 +16,7 @@ export type CaptureFailure = 'unsupported_file' | 'read_failed' | 'empty_text' |
 export type CaptureResult =
   | {
       readonly ok: true
-      readonly kind: 'lstb' | 'chLohnausweis' | 'auto'
+      readonly kind: DetectedDocumentKind
       /** The stored Beleg (encrypted original), or null when the upload was not possible. */
       readonly receiptId: string | null
       readonly response: ParseReceiptResponseDto
@@ -26,7 +26,7 @@ export type CaptureResult =
 export interface CaptureReceiptOptions {
   readonly taxYear: number
   /** Force a strategy (the LStB mask); otherwise the text decides (chat, inbox). */
-  readonly kind?: 'lstb' | 'chLohnausweis' | 'auto' | undefined
+  readonly kind?: DetectedDocumentKind | undefined
   readonly person?: 'A' | 'B' | undefined
   /** The Beleg is already stored (parsing again after the user said whose it is): no second upload. */
   readonly receiptId?: string | null | undefined

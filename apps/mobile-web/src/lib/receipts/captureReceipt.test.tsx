@@ -45,6 +45,13 @@ describe('captureReceipt — the one receipt pipeline', () => {
     expect(d.parse.mock.calls[1]![0]).toMatchObject({ kind: 'chLohnausweis', person: 'B', receiptId: 'beleg-1' })
   })
 
+  it('routes the Swiss pension statement and the premium letter to their readers', async () => {
+    const pension = deps("Pensionskasse Beispiel\nNachweis obligatorischer und überobligatorischer Beiträge\nSparbeitrag 1'000.00 1'000.00")
+    expect(await captureReceipt(pdf, { taxYear: 2025, deps: pension })).toMatchObject({ ok: true, kind: 'chPensionskasse' })
+    const premiums = deps('Bestätigung Krankentaggeld- und Nichtberufsunfallversicherung 2025\nKrankentaggeld: 412,35 CHF\nPrämien')
+    expect(await captureReceipt(pdf, { taxYear: 2025, deps: premiums })).toMatchObject({ ok: true, kind: 'chPraemien' })
+  })
+
   it('sends only extracted text — never the file or image bytes — to the parse endpoint', async () => {
     const d = deps('Rechnung Monitor 349,00 EUR', 'image')
     const photo = new File([new Uint8Array([0xff, 0xd8, 0xff])], 'quittung.jpg', { type: 'image/jpeg' })

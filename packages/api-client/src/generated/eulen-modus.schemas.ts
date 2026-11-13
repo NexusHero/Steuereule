@@ -6,7 +6,7 @@
  * OpenAPI spec version: 1.0
  */
 /**
- * Explicit document parser: "lstb" the German LStB, "chLohnausweis" the Swiss salary certificate; "auto" routes a recognised certificate to its reader.
+ * Explicit document parser: "lstb" the German LStB, "chLohnausweis" the Swiss salary certificate, "chPensionskasse" a Swiss pension fund statement, "chPraemien" the employer letter on sickness-pay and NBU premiums; "auto" routes a recognised document to its reader.
  */
 export type ParseReceiptDtoKind = typeof ParseReceiptDtoKind[keyof typeof ParseReceiptDtoKind];
 
@@ -15,6 +15,8 @@ export const ParseReceiptDtoKind = {
   auto: 'auto',
   lstb: 'lstb',
   chLohnausweis: 'chLohnausweis',
+  chPensionskasse: 'chPensionskasse',
+  chPraemien: 'chPraemien',
 } as const;
 
 /**
@@ -53,7 +55,7 @@ export interface ParseReceiptDto {
   taxYear: number;
   fileName: string;
   rawText?: string;
-  /** Explicit document parser: "lstb" the German LStB, "chLohnausweis" the Swiss salary certificate; "auto" routes a recognised certificate to its reader. */
+  /** Explicit document parser: "lstb" the German LStB, "chLohnausweis" the Swiss salary certificate, "chPensionskasse" a Swiss pension fund statement, "chPraemien" the employer letter on sickness-pay and NBU premiums; "auto" routes a recognised document to its reader. */
   kind?: ParseReceiptDtoKind;
   /** Optional existing Beleg id owned by the caller to link provenance. */
   receiptId?: string;
@@ -874,6 +876,70 @@ export interface ParsedChCertificateResponseDto {
   securityBlocked: boolean;
 }
 
+export type ParsedChLetterResponseDtoKind = typeof ParsedChLetterResponseDtoKind[keyof typeof ParsedChLetterResponseDtoKind];
+
+
+export const ParsedChLetterResponseDtoKind = {
+  chPensionskasse: 'chPensionskasse',
+  chPraemien: 'chPraemien',
+} as const;
+
+/**
+ * @nullable
+ */
+export type ParsedChLetterResponseDtoPerson = typeof ParsedChLetterResponseDtoPerson[keyof typeof ParsedChLetterResponseDtoPerson] | null;
+
+
+export const ParsedChLetterResponseDtoPerson = {
+  A: 'A',
+  B: 'B',
+} as const;
+
+export type ChLetterFieldDtoStatus = typeof ChLetterFieldDtoStatus[keyof typeof ChLetterFieldDtoStatus];
+
+
+export const ChLetterFieldDtoStatus = {
+  ok: 'ok',
+  pruefen: 'pruefen',
+} as const;
+
+/**
+ * @nullable
+ */
+export type ChLetterFieldDtoReason = typeof ChLetterFieldDtoReason[keyof typeof ChLetterFieldDtoReason] | null;
+
+
+export const ChLetterFieldDtoReason = {
+  plausibility_conflict: 'plausibility_conflict',
+  ocr_source: 'ocr_source',
+} as const;
+
+export interface ChLetterFieldDto {
+  field: string;
+  value: number;
+  status: ChLetterFieldDtoStatus;
+  /** @nullable */
+  reason: ChLetterFieldDtoReason;
+}
+
+export interface ParsedChLetterResponseDto {
+  kind: ParsedChLetterResponseDtoKind;
+  /** @nullable */
+  receiptId: string | null;
+  /** @nullable */
+  taxYearOnDocument: number | null;
+  /** @nullable */
+  yearConflict: LstbYearConflictDto | null;
+  /** @nullable */
+  person: ParsedChLetterResponseDtoPerson;
+  personUnclear: boolean;
+  personNotRecordable: boolean;
+  fields: ChLetterFieldDto[];
+  /** Fields the letter did not give; the owl asks for them. */
+  missing: string[];
+  stagedActionIds: string[];
+}
+
 export interface ParseReceiptResponseDto {
   mode: ParseReceiptResponseDtoMode;
   securityBlocked: boolean;
@@ -886,6 +952,8 @@ export interface ParseReceiptResponseDto {
   lstb?: ParsedLstbResponseDto | null;
   /** @nullable */
   chLohnausweis?: ParsedChCertificateResponseDto | null;
+  /** @nullable */
+  chLetter?: ParsedChLetterResponseDto | null;
 }
 
 export type OwlCardDtoTrigger = typeof OwlCardDtoTrigger[keyof typeof OwlCardDtoTrigger];
