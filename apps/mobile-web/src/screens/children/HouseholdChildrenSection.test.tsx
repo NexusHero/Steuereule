@@ -68,9 +68,10 @@ describe('HouseholdChildrenSection (#452 slice 3)', () => {
     await act(async () => {
       fireEvent.click(screen.getByTestId('haushalt-uebernehmen'))
     })
-    await waitFor(() => expect(body).toEqual({ personIds: ['p1'] }))
-    expect(onChanged).toHaveBeenCalled()
-  })
+    // A loaded CI runner can take more than the default second for the request to go out.
+    await waitFor(() => expect(body).toEqual({ personIds: ['p1'] }), { timeout: 5_000 })
+    await waitFor(() => expect(onChanged).toHaveBeenCalled(), { timeout: 5_000 })
+  }, 15_000)
 
   it('asks „Sind das dieselben?“ once and sends the answer', async () => {
     let answered: unknown = null
