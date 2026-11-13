@@ -46,6 +46,8 @@ const ADMITTED_ENTRY_IDS: readonly EntryId[] = [
   'segment-ch',
   'alleinerziehend',
   'berufsprofil',
+  // Prepayments of the year (ADR-0081): the estimate credits them, the form does not ask for them.
+  'vorauszahlungen',
 ]
 
 /** § 35a / § 33 entries: answers are only taken once estimate and printout can use them (ADR-0032). */

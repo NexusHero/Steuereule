@@ -80,3 +80,14 @@ describe('InterviewService — Slice 5 haushalt & gesundheit entries', () => {
     expect(reloaded.answers['gesundheit-betrag']).toBe('4200')
   })
 })
+
+describe('InterviewService — prepayments (ADR-0081)', () => {
+  it('stores the prepayments through the interview, as the cockpit tile does', async () => {
+    const repository = new FakeInterviewAnswerRepository()
+    const service = new InterviewService(repository, new AuditService(new FakeAuditRepository()))
+    await service.postAnswer(USER_ID, TAX_YEAR, { questionId: 'vorauszahlungen-gate', value: 'Ja' })
+    await service.postAnswer(USER_ID, TAX_YEAR, { questionId: 'vorauszahlungen-betrag', value: '12000' })
+    const state = await service.getState(USER_ID, TAX_YEAR, 'vorauszahlungen')
+    expect(JSON.stringify(state)).toContain('12000')
+  })
+})
