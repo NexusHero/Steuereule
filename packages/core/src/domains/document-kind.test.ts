@@ -16,4 +16,9 @@ describe('classifyDocumentKind', () => {
     expect(classifyDocumentKind('Bitte Lohnsteuerbescheinigung nachreichen')).toBe('auto')
     expect(classifyDocumentKind('')).toBe('auto')
   })
+
+  it('routes a Swiss salary certificate to its own reader, not a mention of one', () => {
+    expect(classifyDocumentKind('Lohnausweis - Certificat de salaire - Certificato di salario\n8 Bruttolohn total / Rente = 100.000')).toBe('chLohnausweis')
+    expect(classifyDocumentKind('Kopie Lohnausweis angefordert, Gebühr 20 CHF')).toBe('auto')
+  })
 })

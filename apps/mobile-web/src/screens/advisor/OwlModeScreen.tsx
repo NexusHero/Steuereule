@@ -472,6 +472,7 @@ export function OwlModeScreenView({
         onAttachReceiptFile={bridge ? async (file) => void (await bridge.captureReceiptFile(file)) : undefined}
         receiptProgress={bridge?.receiptPhase ? tr(`advisor.chat.receiptProgress.${bridge.receiptPhase}`) : null}
         receiptNotice={bridge?.receiptNotice ?? null}
+        onChooseCertificateOwner={bridge?.certificateOwnerPending ? (person) => void bridge.chooseCertificateOwner(person) : undefined}
         isParsingReceipt={bridge?.parsingReceipt}
         compact={compact}
       />

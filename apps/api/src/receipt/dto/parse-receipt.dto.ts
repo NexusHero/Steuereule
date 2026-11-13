@@ -23,7 +23,7 @@ export const ALLOWED_RECEIPT_PARSE_MIME_TYPES = [
 ] as const
 
 /** Document kinds with a registered parse strategy (`auto` = generic receipt classifier). */
-export const DOCUMENT_KINDS = ['auto', 'lstb'] as const
+export const DOCUMENT_KINDS = ['auto', 'lstb', 'chLohnausweis'] as const
 export type DocumentKind = (typeof DOCUMENT_KINDS)[number]
 
 export class ParseReceiptDto {
@@ -50,9 +50,9 @@ export class ParseReceiptDto {
 
   @ApiPropertyOptional({
     type: String,
-    enum: ['auto', 'lstb'],
+    enum: DOCUMENT_KINDS,
     example: 'lstb',
-    description: 'Explicit document parser cascade: "lstb" uses deterministic two-stage German LStB extraction.',
+    description: 'Explicit document parser: "lstb" the German LStB, "chLohnausweis" the Swiss salary certificate; "auto" routes a recognised certificate to its reader.',
   })
   @IsOptional()
   @IsString()
@@ -222,6 +222,75 @@ export class ParsedLstbResponseDto {
   securityBlocked!: boolean
 }
 
+export class ChCertificateFieldDto {
+  @ApiProperty({ type: String, example: 'bruttolohn-total' })
+  field!: string
+
+  @ApiProperty({ type: String, example: '8' })
+  digit!: string
+
+  @ApiProperty({ type: Number, example: 121022, description: 'CHF as printed; negative where the certificate prints one.' })
+  value!: number
+
+  @ApiProperty({ type: String, enum: ['ok', 'pruefen'] })
+  status!: 'ok' | 'pruefen'
+
+  @ApiProperty({ type: String, nullable: true, enum: ['negative', 'plausibility_conflict', 'llm_suggested', 'ocr_source'] })
+  reason!: 'negative' | 'plausibility_conflict' | 'llm_suggested' | 'ocr_source' | null
+}
+
+export class ChCertificateChecksDto {
+  @ApiProperty({ type: String, enum: ['ok', 'conflict', 'unknown'], description: 'Ziffer 8 = Ziffern 1 to 7.' })
+  gross!: 'ok' | 'conflict' | 'unknown'
+
+  @ApiProperty({ type: String, enum: ['ok', 'conflict', 'unknown'], description: 'Ziffer 11 = 8 − 9 − 10.' })
+  net!: 'ok' | 'conflict' | 'unknown'
+}
+
+export class ParsedChCertificateResponseDto {
+  @ApiProperty({ type: String, enum: ['deterministic', 'llm_text_fallback'] })
+  stage!: 'deterministic' | 'llm_text_fallback'
+
+  @ApiProperty({ type: String, nullable: true })
+  receiptId!: string | null
+
+  @ApiProperty({ type: Number, nullable: true, example: 2025 })
+  taxYearOnDocument!: number | null
+
+  @ApiProperty({ type: LstbYearConflictDto, nullable: true })
+  yearConflict!: LstbYearConflictDto | null
+
+  @ApiProperty({ type: String, nullable: true, enum: ['A', 'B'], description: 'Whose certificate it is, by the name on it or the choice sent; null when unclear.' })
+  person!: 'A' | 'B' | null
+
+  @ApiProperty({ type: Boolean, description: 'The name fits neither person: ask whose it is and parse again with `person`.' })
+  personUnclear!: boolean
+
+  @ApiProperty({ type: Boolean, description: 'Person B keeps an own account: B uploads it there.' })
+  personNotRecordable!: boolean
+
+  @ApiProperty({ type: [ChCertificateFieldDto] })
+  fields!: ChCertificateFieldDto[]
+
+  @ApiProperty({ type: ChCertificateChecksDto })
+  checks!: ChCertificateChecksDto
+
+  @ApiProperty({ type: Boolean, description: 'Box G: canteen or lunch cheques.' })
+  canteen!: boolean
+
+  @ApiProperty({ type: Boolean, description: 'Box F: free transport between home and work.' })
+  freeTransport!: boolean
+
+  @ApiProperty({ type: [String], description: 'Ziffern every certificate carries that could not be read.' })
+  missing!: string[]
+
+  @ApiProperty({ type: [String] })
+  stagedActionIds!: string[]
+
+  @ApiProperty({ type: Boolean })
+  securityBlocked!: boolean
+}
+
 export class ParseReceiptResponseDto {
   @ApiProperty({ type: String, enum: ['vision_ocr', 'deterministic_fallback'], example: 'vision_ocr' })
   mode!: 'vision_ocr' | 'deterministic_fallback'
@@ -240,4 +309,7 @@ export class ParseReceiptResponseDto {
 
   @ApiPropertyOptional({ type: ParsedLstbResponseDto, nullable: true })
   lstb?: ParsedLstbResponseDto | null
+
+  @ApiPropertyOptional({ type: ParsedChCertificateResponseDto, nullable: true })
+  chLohnausweis?: ParsedChCertificateResponseDto | null
 }

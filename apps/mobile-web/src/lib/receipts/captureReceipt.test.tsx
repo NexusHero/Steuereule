@@ -35,6 +35,16 @@ describe('captureReceipt — the one receipt pipeline', () => {
     expect(phases.at(-1)).toBe('parsing')
   })
 
+  it('routes a Swiss salary certificate to its reader and, asked again with the owner, uploads it only once', async () => {
+    const d = deps('Lohnausweis - Certificat de salaire\n8 Bruttolohn total = 100.000')
+    const first = await captureReceipt(pdf, { taxYear: 2025, deps: d })
+    expect(first).toMatchObject({ ok: true, kind: 'chLohnausweis' })
+
+    await captureReceipt(pdf, { taxYear: 2025, deps: d, kind: 'chLohnausweis', person: 'B', receiptId: 'beleg-1' })
+    expect(d.upload).toHaveBeenCalledTimes(1)
+    expect(d.parse.mock.calls[1]![0]).toMatchObject({ kind: 'chLohnausweis', person: 'B', receiptId: 'beleg-1' })
+  })
+
   it('sends only extracted text — never the file or image bytes — to the parse endpoint', async () => {
     const d = deps('Rechnung Monitor 349,00 EUR', 'image')
     const photo = new File([new Uint8Array([0xff, 0xd8, 0xff])], 'quittung.jpg', { type: 'image/jpeg' })

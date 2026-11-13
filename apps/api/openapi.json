@@ -7639,10 +7639,11 @@
             "type": "string",
             "enum": [
               "auto",
-              "lstb"
+              "lstb",
+              "chLohnausweis"
             ],
             "example": "lstb",
-            "description": "Explicit document parser cascade: \"lstb\" uses deterministic two-stage German LStB extraction."
+            "description": "Explicit document parser: \"lstb\" the German LStB, \"chLohnausweis\" the Swiss salary certificate; \"auto\" routes a recognised certificate to its reader."
           },
           "receiptId": {
             "type": "string",
@@ -8880,6 +8881,171 @@
           "securityBlocked"
         ]
       },
+      "ChCertificateFieldDto": {
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string",
+            "example": "bruttolohn-total"
+          },
+          "digit": {
+            "type": "string",
+            "example": "8"
+          },
+          "value": {
+            "type": "number",
+            "example": 121022,
+            "description": "CHF as printed; negative where the certificate prints one."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "pruefen"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "negative",
+              "plausibility_conflict",
+              "llm_suggested",
+              "ocr_source"
+            ]
+          }
+        },
+        "required": [
+          "field",
+          "digit",
+          "value",
+          "status",
+          "reason"
+        ]
+      },
+      "ChCertificateChecksDto": {
+        "type": "object",
+        "properties": {
+          "gross": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "conflict",
+              "unknown"
+            ],
+            "description": "Ziffer 8 = Ziffern 1 to 7."
+          },
+          "net": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "conflict",
+              "unknown"
+            ],
+            "description": "Ziffer 11 = 8 − 9 − 10."
+          }
+        },
+        "required": [
+          "gross",
+          "net"
+        ]
+      },
+      "ParsedChCertificateResponseDto": {
+        "type": "object",
+        "properties": {
+          "stage": {
+            "type": "string",
+            "enum": [
+              "deterministic",
+              "llm_text_fallback"
+            ]
+          },
+          "receiptId": {
+            "type": "string",
+            "nullable": true
+          },
+          "taxYearOnDocument": {
+            "type": "number",
+            "nullable": true,
+            "example": 2025
+          },
+          "yearConflict": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LstbYearConflictDto"
+              }
+            ]
+          },
+          "person": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "A",
+              "B"
+            ],
+            "description": "Whose certificate it is, by the name on it or the choice sent; null when unclear."
+          },
+          "personUnclear": {
+            "type": "boolean",
+            "description": "The name fits neither person: ask whose it is and parse again with `person`."
+          },
+          "personNotRecordable": {
+            "type": "boolean",
+            "description": "Person B keeps an own account: B uploads it there."
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChCertificateFieldDto"
+            }
+          },
+          "checks": {
+            "$ref": "#/components/schemas/ChCertificateChecksDto"
+          },
+          "canteen": {
+            "type": "boolean",
+            "description": "Box G: canteen or lunch cheques."
+          },
+          "freeTransport": {
+            "type": "boolean",
+            "description": "Box F: free transport between home and work."
+          },
+          "missing": {
+            "description": "Ziffern every certificate carries that could not be read.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "stagedActionIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "securityBlocked": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "stage",
+          "receiptId",
+          "taxYearOnDocument",
+          "yearConflict",
+          "person",
+          "personUnclear",
+          "personNotRecordable",
+          "fields",
+          "checks",
+          "canteen",
+          "freeTransport",
+          "missing",
+          "stagedActionIds",
+          "securityBlocked"
+        ]
+      },
       "ParseReceiptResponseDto": {
         "type": "object",
         "properties": {
@@ -8922,6 +9088,15 @@
             "allOf": [
               {
                 "$ref": "#/components/schemas/ParsedLstbResponseDto"
+              }
+            ]
+          },
+          "chLohnausweis": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ParsedChCertificateResponseDto"
               }
             ]
           }

@@ -1004,6 +1004,89 @@ export class AdvisorService {
     }
   }
 
+  /**
+   * The names on record for Person A and, in a joint return, Person B: only to tell whose document
+   * an upload is. They never go into a draft, a message or a prompt.
+   */
+  async householdNames(
+    userId: string,
+    taxYear: number,
+  ): Promise<{ A: { firstName: string | null; lastName: string | null }; B: { firstName: string | null; lastName: string | null; recordable: boolean } | null }> {
+    const [profile, spouse] = await Promise.all([this.profileRepo?.findByUserId(userId), this.link?.spouseForAdvisor(userId, taxYear)])
+    return {
+      A: { firstName: profile?.firstName ?? null, lastName: profile?.lastName ?? null },
+      B: spouse ? { firstName: spouse.firstName, lastName: spouse.lastName, recordable: spouse.recordable } : null,
+    }
+  }
+
+  /**
+   * Drafts read from an uploaded document, for Person A or B, in one owl message (Zero-Write: nothing
+   * is written until the user applies them). The LStB scan has its own path; this one is for other
+   * forms such as the Swiss Lohnausweis.
+   */
+  async stageDocumentDrafts(
+    userId: string,
+    taxYear: number,
+    input: {
+      readonly screen: Screen
+      readonly person: 'A' | 'B'
+      readonly digestUserId: string
+      readonly receiptId: string | null
+      readonly engine: AdvisorEngineInfo
+      readonly summaryText: string
+      readonly sourceId: OwlSourceId
+      readonly fields: ReadonlyArray<{
+        readonly field: string
+        readonly label: string
+        readonly value: number
+        readonly status: 'ok' | 'pruefen'
+        readonly reason: LstbExtractedField['reason']
+      }>
+    },
+  ): Promise<{ actions: AdvisorActionProposal[]; assistantMessage: AdvisorChatMessageDto }> {
+    for (const item of input.fields) assertAiWritable(input.screen, item.field)
+    const setting = await this.owlModeService.getSetting(userId)
+    if (!setting.enabled) await this.owlModeService.setSetting(userId, true)
+
+    const digest = await this.buildCaseDigest(input.digestUserId, taxYear)
+    const rawActions: AdvisorActionProposal[] = input.fields.map((item) => {
+      const sim = simulateAdvisorFieldDelta(digest, input.screen, item.field, String(item.value))
+      return {
+        actionId: newActionId(),
+        status: 'pending',
+        screen: input.screen,
+        field: item.field,
+        instance: null,
+        label: item.label,
+        previousValue: sim.previousValue,
+        expectedPreviousValue: sim.previousValue,
+        newValue: String(item.value),
+        beforeRefundEur: sim.beforeRefundEur,
+        afterRefundEur: sim.afterRefundEur,
+        deltaEur: sim.deltaEur,
+        reason: 'Vom Beleg gelesen',
+        sourceId: input.sourceId,
+        paragraph: ADVISOR_LEGAL_SOURCES[input.sourceId].paragraph,
+        ...(input.receiptId ? { receiptId: input.receiptId } : {}),
+        ...(input.person === 'B' ? { person: 'B' as const } : {}),
+        confidenceStatus: item.status,
+        fieldReason: item.reason,
+      }
+    })
+    const initialMeta: AdvisorMessageMeta = { sources: [input.sourceId], actions: rawActions }
+    const enrichedMeta = await this.drafts.enrichDraftsWithRawBaseline(userId, taxYear, initialMeta)
+    checkPiiFree(enrichedMeta)
+    await this.drafts.supersedePendingDraftsForSameTargets(userId, taxYear, this.drafts.collectPendingTargetKeys(enrichedMeta))
+    const assistantMessage = await this.advisorRepo.createMessage({
+      userId,
+      taxYear,
+      role: 'assistant',
+      content: input.summaryText,
+      meta: { ...enrichedMeta, engine: input.engine },
+    })
+    return { actions: (enrichedMeta.actions ?? []).map((a) => toPublicAction(a)), assistantMessage: toMessageDto(assistantMessage) }
+  }
+
   async markLstbActionsApplied(userId: string, taxYear: number, actionIds: readonly string[]): Promise<void> {
     if (actionIds.length === 0) return
     const targetIds = new Set(actionIds)

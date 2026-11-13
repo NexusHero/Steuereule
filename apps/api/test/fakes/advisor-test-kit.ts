@@ -34,6 +34,7 @@ export interface AdvisorTestKit {
   readonly lstbRepo: FakeLstbRepository
   /** The joint return: set it up with `set` and `updatePersonB` to give the user a Person B. */
   readonly linkService: LinkService
+  readonly profileRepo: FakeProfileRepository
   readonly service: AdvisorService
 }
 
@@ -99,7 +100,7 @@ export function buildAdvisorTestKit(engine?: AdvisorEnginePort, modelConnection?
     pensionRepo,
     linkService,
   )
-  return { advisorRepo, interviewRepo, rentalRepo, childRepo, commuteRepo, chRepo, lstbRepo, linkService, service }
+  return { advisorRepo, interviewRepo, rentalRepo, childRepo, commuteRepo, chRepo, lstbRepo, linkService, profileRepo, service }
 }
 
 /** A step of a scripted engine turn: an event, or a pause that only ends when the turn is aborted. */

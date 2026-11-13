@@ -100,6 +100,8 @@ export interface AdvisorChatPanelProps {
   /** Visible progress text of the running receipt capture, if any. */
   readonly receiptProgress?: string | null | undefined
   readonly receiptNotice?: string | null | undefined
+  /** Set while a Swiss salary certificate waits for the user to say whose it is. */
+  readonly onChooseCertificateOwner?: ((person: 'A' | 'B') => void) | undefined
   readonly isParsingReceipt?: boolean | undefined
   readonly compact?: boolean | undefined
   /**
@@ -188,6 +190,7 @@ export function AdvisorChatPanel({
   onAttachReceiptFile,
   receiptProgress = null,
   receiptNotice = null,
+  onChooseCertificateOwner,
   isParsingReceipt = false,
   compact = false,
   variant = 'panel',
@@ -789,6 +792,16 @@ export function AdvisorChatPanel({
       {receiptNotice ? (
         <Card style={styles.receiptPanel} testID="advisor-receipt-notice">
           <Text style={styles.actionReason}>{receiptNotice}</Text>
+          {onChooseCertificateOwner ? (
+            <View style={styles.certificateOwnerRow}>
+              <Button variant="leise" onPress={() => onChooseCertificateOwner('A')} testID="advisor-certificate-owner-a">
+                {tr('advisor.chat.certificateOwnerA')}
+              </Button>
+              <Button variant="leise" onPress={() => onChooseCertificateOwner('B')} testID="advisor-certificate-owner-b">
+                {tr('advisor.chat.certificateOwnerB')}
+              </Button>
+            </View>
+          ) : null}
         </Card>
       ) : null}
 

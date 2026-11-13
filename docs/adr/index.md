@@ -91,6 +91,7 @@ The ADRs **justify** the architecture; the [living arc42 document](../arc42/READ
 | 0071 | Eule: Steuerjahre als Projekte in der Seitenleiste, Gespräche antworten gleichzeitig | Accepted |
 | 0072 | Anlage N-Gre: Pensionskasse nach Obligatorium/Überobligatorium, NBUV zu 100 % beim Arbeitgeber, steuerfreies Krankentaggeld, Jahresdurchschnittskurs | Accepted |
 | 0073 | Eule: Entwürfe für Person B in der Zusammenveranlagung | Accepted |
+| 0074 | Belege lesen: Schweizer Lohnausweis und gescannte Lohnsteuerbescheinigung | Accepted |
 
 See also the [Tech Radar](./tech-radar.md).
 

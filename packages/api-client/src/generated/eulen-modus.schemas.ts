@@ -6,7 +6,7 @@
  * OpenAPI spec version: 1.0
  */
 /**
- * Explicit document parser cascade: "lstb" uses deterministic two-stage German LStB extraction.
+ * Explicit document parser: "lstb" the German LStB, "chLohnausweis" the Swiss salary certificate; "auto" routes a recognised certificate to its reader.
  */
 export type ParseReceiptDtoKind = typeof ParseReceiptDtoKind[keyof typeof ParseReceiptDtoKind];
 
@@ -14,6 +14,7 @@ export type ParseReceiptDtoKind = typeof ParseReceiptDtoKind[keyof typeof ParseR
 export const ParseReceiptDtoKind = {
   auto: 'auto',
   lstb: 'lstb',
+  chLohnausweis: 'chLohnausweis',
 } as const;
 
 /**
@@ -52,7 +53,7 @@ export interface ParseReceiptDto {
   taxYear: number;
   fileName: string;
   rawText?: string;
-  /** Explicit document parser cascade: "lstb" uses deterministic two-stage German LStB extraction. */
+  /** Explicit document parser: "lstb" the German LStB, "chLohnausweis" the Swiss salary certificate; "auto" routes a recognised certificate to its reader. */
   kind?: ParseReceiptDtoKind;
   /** Optional existing Beleg id owned by the caller to link provenance. */
   receiptId?: string;
@@ -762,6 +763,117 @@ export interface ParsedLstbResponseDto {
   securityBlocked: boolean;
 }
 
+export type ParsedChCertificateResponseDtoStage = typeof ParsedChCertificateResponseDtoStage[keyof typeof ParsedChCertificateResponseDtoStage];
+
+
+export const ParsedChCertificateResponseDtoStage = {
+  deterministic: 'deterministic',
+  llm_text_fallback: 'llm_text_fallback',
+} as const;
+
+/**
+ * Whose certificate it is, by the name on it or the choice sent; null when unclear.
+ * @nullable
+ */
+export type ParsedChCertificateResponseDtoPerson = typeof ParsedChCertificateResponseDtoPerson[keyof typeof ParsedChCertificateResponseDtoPerson] | null;
+
+
+export const ParsedChCertificateResponseDtoPerson = {
+  A: 'A',
+  B: 'B',
+} as const;
+
+export type ChCertificateFieldDtoStatus = typeof ChCertificateFieldDtoStatus[keyof typeof ChCertificateFieldDtoStatus];
+
+
+export const ChCertificateFieldDtoStatus = {
+  ok: 'ok',
+  pruefen: 'pruefen',
+} as const;
+
+/**
+ * @nullable
+ */
+export type ChCertificateFieldDtoReason = typeof ChCertificateFieldDtoReason[keyof typeof ChCertificateFieldDtoReason] | null;
+
+
+export const ChCertificateFieldDtoReason = {
+  negative: 'negative',
+  plausibility_conflict: 'plausibility_conflict',
+  llm_suggested: 'llm_suggested',
+  ocr_source: 'ocr_source',
+} as const;
+
+export interface ChCertificateFieldDto {
+  field: string;
+  digit: string;
+  /** CHF as printed; negative where the certificate prints one. */
+  value: number;
+  status: ChCertificateFieldDtoStatus;
+  /** @nullable */
+  reason: ChCertificateFieldDtoReason;
+}
+
+/**
+ * Ziffer 8 = Ziffern 1 to 7.
+ */
+export type ChCertificateChecksDtoGross = typeof ChCertificateChecksDtoGross[keyof typeof ChCertificateChecksDtoGross];
+
+
+export const ChCertificateChecksDtoGross = {
+  ok: 'ok',
+  conflict: 'conflict',
+  unknown: 'unknown',
+} as const;
+
+/**
+ * Ziffer 11 = 8 − 9 − 10.
+ */
+export type ChCertificateChecksDtoNet = typeof ChCertificateChecksDtoNet[keyof typeof ChCertificateChecksDtoNet];
+
+
+export const ChCertificateChecksDtoNet = {
+  ok: 'ok',
+  conflict: 'conflict',
+  unknown: 'unknown',
+} as const;
+
+export interface ChCertificateChecksDto {
+  /** Ziffer 8 = Ziffern 1 to 7. */
+  gross: ChCertificateChecksDtoGross;
+  /** Ziffer 11 = 8 − 9 − 10. */
+  net: ChCertificateChecksDtoNet;
+}
+
+export interface ParsedChCertificateResponseDto {
+  stage: ParsedChCertificateResponseDtoStage;
+  /** @nullable */
+  receiptId: string | null;
+  /** @nullable */
+  taxYearOnDocument: number | null;
+  /** @nullable */
+  yearConflict: LstbYearConflictDto | null;
+  /**
+     * Whose certificate it is, by the name on it or the choice sent; null when unclear.
+     * @nullable
+     */
+  person: ParsedChCertificateResponseDtoPerson;
+  /** The name fits neither person: ask whose it is and parse again with `person`. */
+  personUnclear: boolean;
+  /** Person B keeps an own account: B uploads it there. */
+  personNotRecordable: boolean;
+  fields: ChCertificateFieldDto[];
+  checks: ChCertificateChecksDto;
+  /** Box G: canteen or lunch cheques. */
+  canteen: boolean;
+  /** Box F: free transport between home and work. */
+  freeTransport: boolean;
+  /** Ziffern every certificate carries that could not be read. */
+  missing: string[];
+  stagedActionIds: string[];
+  securityBlocked: boolean;
+}
+
 export interface ParseReceiptResponseDto {
   mode: ParseReceiptResponseDtoMode;
   securityBlocked: boolean;
@@ -772,6 +884,8 @@ export interface ParseReceiptResponseDto {
   assistantMessage?: AdvisorChatMessageDto | null;
   /** @nullable */
   lstb?: ParsedLstbResponseDto | null;
+  /** @nullable */
+  chLohnausweis?: ParsedChCertificateResponseDto | null;
 }
 
 export type OwlCardDtoTrigger = typeof OwlCardDtoTrigger[keyof typeof OwlCardDtoTrigger];

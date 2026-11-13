@@ -1837,6 +1837,10 @@ export const appResources = {
           receiptPasteText: 'Stattdessen Text einfügen',
           receiptPrivacy: 'Der Text wird auf deinem Gerät gelesen. Das Bild geht an keine KI; das Original liegt verschlüsselt in deinen Belegen.',
           receiptNativeHint: 'Kamera-Scan folgt in der App — lade im Web ein PDF oder Foto hoch.',
+          certificateWhose: 'Der Name auf diesem Lohnausweis passt zu keiner Person in deiner Erklärung. Wessen Lohnausweis ist das? Es wurde noch nichts übernommen.',
+          certificateOwnerA: 'Meiner',
+          certificateOwnerB: 'Von Person B',
+          certificatePersonBOwnAccount: 'Das ist der Lohnausweis von Person B. Person B hat ein eigenes Konto und lädt ihn dort hoch; hier wurde nichts übernommen.',
           receiptYearConflict: 'Diese Lohnsteuerbescheinigung gehört zum Steuerjahr {{documentYear}}, du bist gerade in {{activeYear}}. Wechsle oben ins Jahr {{documentYear}} und lade sie dort hoch — es wurde nichts übernommen.',
           receiptProgress: {
             uploading: 'Beleg wird verschlüsselt gespeichert …',
@@ -3832,6 +3836,10 @@ export const appResources = {
           receiptPasteText: 'Paste text instead',
           receiptPrivacy: 'The text is read on your device. The image never goes to an AI; the original is stored encrypted in your receipts.',
           receiptNativeHint: 'Camera scan is coming to the app — upload a PDF or photo on the web.',
+          certificateWhose: 'The name on this salary certificate fits nobody in your return. Whose certificate is it? Nothing was taken over yet.',
+          certificateOwnerA: 'Mine',
+          certificateOwnerB: 'Person B’s',
+          certificatePersonBOwnAccount: 'This is Person B’s salary certificate. Person B has an own account and uploads it there; nothing was taken over here.',
           receiptYearConflict: 'This wage tax statement belongs to tax year {{documentYear}}, you are in {{activeYear}}. Switch to {{documentYear}} above and upload it there — nothing was taken over.',
           receiptProgress: {
             uploading: 'Storing the receipt encrypted …',

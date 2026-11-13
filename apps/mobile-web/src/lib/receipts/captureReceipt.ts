@@ -16,7 +16,7 @@ export type CaptureFailure = 'unsupported_file' | 'read_failed' | 'empty_text' |
 export type CaptureResult =
   | {
       readonly ok: true
-      readonly kind: 'lstb' | 'auto'
+      readonly kind: 'lstb' | 'chLohnausweis' | 'auto'
       /** The stored Beleg (encrypted original), or null when the upload was not possible. */
       readonly receiptId: string | null
       readonly response: ParseReceiptResponseDto
@@ -26,8 +26,10 @@ export type CaptureResult =
 export interface CaptureReceiptOptions {
   readonly taxYear: number
   /** Force a strategy (the LStB mask); otherwise the text decides (chat, inbox). */
-  readonly kind?: 'lstb' | 'auto' | undefined
+  readonly kind?: 'lstb' | 'chLohnausweis' | 'auto' | undefined
   readonly person?: 'A' | 'B' | undefined
+  /** The Beleg is already stored (parsing again after the user said whose it is): no second upload. */
+  readonly receiptId?: string | null | undefined
   readonly onPhase?: ((phase: CapturePhase) => void) | undefined
   readonly deps?: Partial<CaptureReceiptDeps> | undefined
 }
@@ -58,13 +60,15 @@ export async function captureReceipt(file: File, options: CaptureReceiptOptions)
     return { ok: false, failure: 'unsupported_file' }
   }
 
-  options.onPhase?.('uploading')
-  let receiptId: string | null = null
-  try {
-    const uploaded = await deps.upload({ file, fileName: file.name, kind: 'Sonstiges' })
-    if (uploaded.ok) receiptId = uploaded.data.id
-  } catch {
-    // Reading and parsing still help without the stored original (e.g. offline upload error).
+  let receiptId: string | null = options.receiptId ?? null
+  if (options.receiptId === undefined) {
+    options.onPhase?.('uploading')
+    try {
+      const uploaded = await deps.upload({ file, fileName: file.name, kind: 'Sonstiges' })
+      if (uploaded.ok) receiptId = uploaded.data.id
+    } catch {
+      // Reading and parsing still help without the stored original (e.g. offline upload error).
+    }
   }
 
   let extracted: Awaited<ReturnType<CaptureReceiptDeps['extractText']>>
