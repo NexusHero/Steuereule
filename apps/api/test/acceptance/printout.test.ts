@@ -138,7 +138,8 @@ describe('Formular-Ausdruck (ADR-0050), against the real server', () => {
 
   it('a year without measured templates is a 404, not an empty PDF', async () => {
     const { cookie } = await signUp('ausdruck-jahr@example.com')
-    expect((await printout(cookie, 2024)).status).toBe(404)
+    // 2024 and 2025 are measured (ADR-0085); 2023 is not.
+    expect((await printout(cookie, 2023)).status).toBe(404)
   })
 
   it('a pension is printed on Anlage R: ESt 1 A + Anlage N + Anlage R = 8 pages', async () => {
