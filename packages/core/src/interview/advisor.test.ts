@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   ADVISOR_LEGAL_SOURCES,
   evaluateAdvisorTurn,
+  extractAmountNear,
   simulateAdvisorFieldDelta,
   type AdvisorActionStatus,
   type CaseDigest,
@@ -185,5 +186,20 @@ describe('Advisor Engine ("Deine Eule")', () => {
     expect(supersededStatus).toBe('superseded')
     expect(turn.meta.action?.paragraph).toBe('§ 10b EStG')
     expect(turn.meta.action?.expectedPreviousValue).toBeNull()
+  })
+})
+
+describe('the fallback takes the amount that belongs to the topic', () => {
+  it('reads the donation, not the wage named before it', () => {
+    expect(extractAmountNear('Bruttoarbeitslohn 46.800 €, Lohnsteuer 6.900 €. Ich habe 250 € gespendet und Handwerker für 900 € bezahlt.', /spend/i)).toBe(250)
+    expect(extractAmountNear('Beruflicher Umzug wegen Jobwechsel hat 1.800 € gekostet', /umzug/i)).toBe(1800)
+    expect(extractAmountNear('Ich bin Grenzgänger mit 126.000 CHF Lohn, die Krankenkasse kostet 4.200 CHF.', /krankenkasse/i)).toBe(4200)
+  })
+
+  it('drafts nothing when the part that names the topic has no amount', () => {
+    expect(extractAmountNear('Ich verdiene 46.800 € und habe auch gespendet.', /spend/i)).toBeNull()
+    const turn = evaluateAdvisorTurn({ message: 'Bruttolohn 46.800 €. Ich habe auch etwas gespendet.', digest: sampleDigest })
+    expect(turn.meta.action?.newValue).not.toBe('46800')
+    expect(evaluateAdvisorTurn({ message: 'Ich bin beruflich umgezogen.', digest: sampleDigest }).meta.action?.field).not.toBe('umzug-kosten')
   })
 })

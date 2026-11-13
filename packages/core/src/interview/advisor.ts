@@ -637,6 +637,23 @@ function extractFirstEuroAmount(text: string): number | null {
   return n
 }
 
+/**
+ * The amount that belongs to a topic: the first one in the part of the sentence that names it.
+ * "Brutto 46.800 €, 250 € gespendet" gives 250 for donations, not the wage. Null when that part has
+ * no amount: then the fallback asks instead of drafting a number that was meant for something else.
+ */
+export function extractAmountNear(text: string, topic: RegExp): number | null {
+  // A dot between digits is a thousands separator (1.800 €), not the end of a sentence.
+  // "und" joins two statements as often as a comma does ("46.800 € verdient und 250 € gespendet").
+  const parts = text.split(/(?<!\d)\.|\.(?!\d)|[;\n!?]|,(?!\d)|\s(?:und|sowie)\s/i)
+  const part = parts.find((candidate) => topic.test(candidate))
+  if (part === undefined) return null
+  const match = part.match(/(\d{1,3}(?:[.\s]\d{3})+|\d+)\s*(?:€|eur|euro|chf)/i)
+  if (!match || !match[1]) return null
+  const n = Number.parseInt(match[1].replace(/[.\s]/g, ''), 10)
+  return Number.isFinite(n) && n > 0 ? n : null
+}
+
 function extractKilometers(text: string): number | null {
   const match = text.match(/(\d{1,3})\s*(?:km|kilometer)/i)
   if (!match || !match[1]) return null
@@ -758,7 +775,7 @@ export function evaluateAdvisorTurn(input: {
 
   // 3. Spenden & Vorjahresvergleich (§ 10b EStG)
   if (lower.includes('spende') || lower.includes('zuwendung') || lower.includes('gemeinnützig')) {
-    const explicitAmount = extractFirstEuroAmount(message)
+    const explicitAmount = extractAmountNear(message, /spend|zuwendung|gemeinnützig/i)
     const priorYearDonations = digest.priorYearComparison.donationsEur ?? 200
     const usePriorYear = lower.includes('vorjahr') && !lower.includes('prüfen') && !lower.includes('klären')
     const targetAmount = explicitAmount ?? (usePriorYear ? priorYearDonations : null)
@@ -980,8 +997,9 @@ export function evaluateAdvisorTurn(input: {
   }
 
   // 7. Beruflicher Umzug (§ 9 Abs. 1 EStG)
-  if (lower.includes('umzug')) {
-    const amount = extractFirstEuroAmount(message) ?? 1500
+  const relocationAmount = lower.includes('umzug') ? extractAmountNear(message, /umzug|umgezogen/i) : null
+  if (relocationAmount !== null) {
+    const amount = relocationAmount
     const sim = simulateAdvisorFieldDelta(digest, 'interview', 'umzug-kosten', String(amount))
     return {
       replyText: `Ein beruflich veranlasster Umzug (z. B. Jobwechsel oder Verkürzung des täglichen Arbeitswegs um mindestens eine Stunde) ist nach [estg-9-1] in voller Höhe als Werbungskosten absetzbar. Ich habe den Ansatz über ${amount} € vorbereitet:`,
@@ -1049,7 +1067,7 @@ export function evaluateAdvisorTurn(input: {
     lower.includes('krankenkasse') ||
     activeScreen === 'chLohnausweis'
   ) {
-    const chfAmount = extractFirstEuroAmount(message)
+    const chfAmount = extractAmountNear(message, /krankenkasse|krankentaggeld|krankenversicherung/i)
     if (chfAmount !== null) {
       const sim = simulateAdvisorFieldDelta(digest, 'chLohnausweis', 'krankenkasseChf', String(chfAmount))
       return {
