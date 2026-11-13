@@ -5,6 +5,7 @@ import {
   ADVISOR_LEGAL_SOURCES,
   buildAdvisorHistory,
   evaluateAdvisorTurn,
+  isOfferedChoice,
   provenanceKey,
   scrubUserMessagePii,
   simulateAdvisorFieldDelta,
@@ -442,6 +443,8 @@ export class AdvisorService {
     // The model sees this conversation only; what the conversations share is the return itself.
     const priorRecords = liveMessages(conversation, await this.advisorRepo.listForConversation(conversation.id, userId))
     const opening = isOpening ? await this.prepareOpening(userId, taxYear, priorRecords.length) : undefined
+    const lastAnswer = priorRecords.filter((record) => record.role === 'assistant').at(-1)
+    const fromApp = isOpening || isOfferedChoice(dto.message, lastAnswer?.meta)
     const sources = historySources(priorRecords, knownNames)
     // A full context is summarised before the answer, once the stream is open (see executeTurn).
     const needsSummary = advisorContextUsage(sources, conversation.summary).level === 'full'
@@ -472,7 +475,7 @@ export class AdvisorService {
       runId,
     })
 
-    return { runId, userMessage, assistantMessageId: assistantMessage.id, scrubbedUserText, history, dto, conversationId: conversation.id, needsSummary, ...(opening ? { opening } : {}) }
+    return { runId, userMessage, assistantMessageId: assistantMessage.id, scrubbedUserText, history, dto, conversationId: conversation.id, needsSummary, fromApp, ...(opening ? { opening } : {}) }
   }
 
   /** An opening needs something to talk about and an empty conversation. */
@@ -536,6 +539,9 @@ export class AdvisorService {
           engine: meta.engine?.mode ?? null,
           provider: meta.engine?.provider ?? null,
           model: meta.engine?.model ?? null,
+          topicVerdict: meta.engine?.topic?.verdict ?? null,
+          topicCategory: meta.engine?.topic && 'category' in meta.engine.topic ? meta.engine.topic.category : null,
+          topicUnavailable: meta.engine?.topic && 'reason' in meta.engine.topic ? meta.engine.topic.reason : null,
           firstTokenMs,
           durationMs: usageRecord.durationMs,
           inputTokens: usage?.inputTokens ?? null,
@@ -614,6 +620,7 @@ export class AdvisorService {
         situation: (await this.notes.getSituation(userId)).text,
         ...(task === 'assessment-check' ? { assessment: await this.assessmentBrief(userId, taxYear) } : {}),
         ...(dto.skill ? { skill: dto.skill } : {}),
+        topicCheck: turn.fromApp ? 'skip' : 'check',
         records: await this.loadRecordHandles(userId, taxYear),
         previewEffect: this.previewEffectFor(userId, taxYear),
         notes: buildNoteHandles(await this.advisorRepo.listNotes(userId, taxYear)),
@@ -672,6 +679,8 @@ export class AdvisorService {
             mode: turnResult.mode,
             ...(turnResult.provider !== undefined ? { provider: turnResult.provider } : {}),
             ...(turnResult.model !== undefined ? { model: turnResult.model } : {}),
+            // Counted per user and day from here, as verdict and category only, never the text (ADR-0069).
+            ...(turnResult.topic !== undefined ? { topic: turnResult.topic } : {}),
           }
           if (reasoning.length === 0 && turnResult.reasoning) reasoning = turnResult.reasoning
           const noteChanges = await this.notes.applyNoteChanges(userId, taxYear, enrichedMeta.noteChanges)

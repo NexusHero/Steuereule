@@ -8,6 +8,7 @@ import type { AdvisorSkillId } from './advisor-skills'
 import type { AdvisorAssessmentBrief, AdvisorTask } from './advisor-tasks'
 import type { AdvisorOpeningBrief } from './advisor-opening'
 import type { AdvisorModelFailure } from './advisor-failure'
+import type { AdvisorTopicOutcome } from './advisor-topic'
 
 /** The schema the LLM must answer. */
 export interface AiProposal {
@@ -51,6 +52,11 @@ export interface AdvisorTurnRequest {
   readonly opening?: AdvisorOpeningBrief | undefined
   /** The skill the user switched on for this message (#495). */
   readonly skill?: AdvisorSkillId | undefined
+  /**
+   * `skip` when the app wrote the message itself (an opening, a tapped choice): the topic guard only
+   * looks at typed text (ADR-0069). Anything else is checked.
+   */
+  readonly topicCheck?: 'check' | 'skip' | undefined
 }
 
 /** The fields one draft would write, main field and companions alike. */
@@ -84,6 +90,8 @@ export interface AdvisorTurnResult {
   readonly usage?: AdvisorTurnUsage | undefined
   /** Set when the first model failed before its first word and the fallback model answered instead (#493). */
   readonly primaryFailure?: AdvisorModelFailure | undefined
+  /** What the topic guard said; absent where no guard ran (the rules answered). */
+  readonly topic?: AdvisorTopicOutcome | undefined
 }
 
 /** Status of one step of the owl's visible plan (#451 slice 6). */

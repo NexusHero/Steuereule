@@ -7,6 +7,7 @@ import { CHAT_MODEL_FACTORY, createChatModelFromConfig } from './chat-model.fact
 import { KI_PORT, RagKiAdapter } from './ki.adapter.js'
 import { ADVISOR_ENGINE, LangGraphAdvisorEngine } from './langgraph-advisor.engine.js'
 import { ModelConnectionService } from './model-connection.service.js'
+import { ADVISOR_TOPIC_GUARD, AdvisorTopicGuard } from './advisor-topic-guard.js'
 
 @Module({
   providers: [
@@ -23,6 +24,11 @@ import { ModelConnectionService } from './model-connection.service.js'
     {
       provide: CHAT_MODEL_FACTORY,
       useValue: createChatModelFromConfig,
+    },
+    AdvisorTopicGuard,
+    {
+      provide: ADVISOR_TOPIC_GUARD,
+      useExisting: AdvisorTopicGuard,
     },
     LangGraphAdvisorEngine,
     ModelConnectionService,

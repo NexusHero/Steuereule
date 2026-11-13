@@ -9,6 +9,7 @@ import {
   checkAdvisorInputBoundary,
   describeModelFailure,
   evaluateAdvisorTurn,
+  topicRefusal,
   type AdvisorActionProposal,
   type AdvisorEnginePort,
   type AdvisorModelFailure,
@@ -17,6 +18,7 @@ import {
   type AdvisorQuestionRound,
   type AdvisorStreamEvent,
   type AdvisorSummaryRequest,
+  type AdvisorTopicOutcome,
   type AdvisorTurnRequest,
   type AdvisorTurnResult,
   type AdvisorTurnUsage,
@@ -30,6 +32,7 @@ import { checkPiiFree } from './ki.adapter.js'
 import { buildSystemMessage, SUMMARY_MAX_CHARS, SUMMARY_INSTRUCTIONS } from './advisor-prompt.js'
 import { buildToolSchemas, RejectedDraft, computedFiguresOf, unresolvedRejections } from './advisor-tools.js'
 import { AdvisorGraphState, runToolRound } from './advisor-tool-round.js'
+import { ADVISOR_TOPIC_GUARD, type AdvisorTopicGuardPort } from './advisor-topic-guard.js'
 export { toProviderToolSchema, buildToolSchemas, computedFiguresOf, unresolvedRejections } from './advisor-tools.js'
 export { buildStableSystemPrompt, buildSystemMessage } from './advisor-prompt.js'
 
@@ -111,6 +114,8 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
   constructor(
     @Inject(AI_RUNTIME_CONFIG_SERVICE) private readonly runtimeConfig: AiRuntimeConfigService,
     @Optional() @Inject(CHAT_MODEL_FACTORY) modelFactory?: ChatModelFactory,
+    /** Without one no topic is checked: the owl's prompt rule and the attack patterns remain (ADR-0069). */
+    @Optional() @Inject(ADVISOR_TOPIC_GUARD) private readonly topicGuard?: AdvisorTopicGuardPort,
   ) {
     this.resolveChatModel = modelFactory ?? createChatModelFromConfig
   }
@@ -254,7 +259,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
     yield { event: 'status', data: { text: 'Eule prüft deine Akte & Paragraphen …' } }
 
     // Pre-LLM StBerG & prompt-injection boundary check
-    const boundary = checkAdvisorInputBoundary(request.message)
+    const boundary = checkAdvisorInputBoundary(request.message, request.digest)
     if (boundary !== null) {
       yield* this.emitFallbackTurn(request, boundary)
       return
@@ -279,7 +284,25 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
       return
     }
 
-    yield* this.runModelTurn(request, slotConfig, chatModel, limits, true)
+    // ADR-0069 §Themengrenze: a typed question is sorted before the owl answers, one after the other.
+    const topic = await this.checkTopic(request)
+    if (topic.verdict === 'off_topic') {
+      const refusal = topicRefusal(topic.language, request.digest)
+      for await (const ev of this.emitFallbackTurn(request, refusal)) {
+        yield ev.event === 'done' ? { event: 'done', data: { ...(ev.data as AdvisorTurnResult), topic } } : ev
+      }
+      return
+    }
+
+    for await (const ev of this.runModelTurn(request, slotConfig, chatModel, limits, true, topic.verdict === 'gray')) {
+      yield ev.event === 'done' ? { event: 'done', data: { ...(ev.data as AdvisorTurnResult), topic } } : ev
+    }
+  }
+
+  private async checkTopic(request: AdvisorTurnRequest): Promise<AdvisorTopicOutcome> {
+    if (request.topicCheck === 'skip') return { verdict: 'skipped' }
+    if (!this.topicGuard) return { verdict: 'unavailable', reason: 'not_configured' }
+    return this.topicGuard.check({ message: request.message, history: request.history ?? [] }, request.signal)
   }
 
   /**
@@ -292,6 +315,8 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
     chatModel: BaseChatModel,
     limits: AiTurnLimits,
     canFailOver: boolean,
+    /** The guard called the question a grey zone: only its tax side is answered. */
+    grayZone = false,
   ): AsyncIterable<AdvisorStreamEvent> {
     // Anthropic rejects a forced tool call while extended thinking is on; the plan is then asked for in words.
     const canForceTool = !(slotConfig.provider === 'anthropic' && slotConfig.reasoning === 'summary')
@@ -307,6 +332,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
       request.assessment,
       request.situation,
       request.opening,
+      grayZone,
     )
     const historyMessages: BaseMessage[] = (request.history ?? []).map((entry) =>
       entry.role === 'user' ? new HumanMessage(entry.content) : new AIMessage(entry.content),
@@ -411,7 +437,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
         const next = await this.resolveFailover(slotConfig)
         if (next) {
           yield { event: 'status', data: { text: `${providerName(slotConfig.provider)} antwortet nicht. Die Eule fragt ${providerName(next.config.provider)} …` } }
-          for await (const ev of this.runModelTurn(request, next.config, next.model, limits, false)) {
+          for await (const ev of this.runModelTurn(request, next.config, next.model, limits, false, grayZone)) {
             yield ev.event === 'done' ? { event: 'done', data: { ...(ev.data as AdvisorTurnResult), primaryFailure: failure } } : ev
           }
           return

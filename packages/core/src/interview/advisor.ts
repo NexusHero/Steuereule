@@ -4,6 +4,7 @@ import type { AdvisorNoteChange } from './advisor-notes'
 import type { AdvisorQuestionRound } from './advisor-skills'
 import type { AdvisorModelFailure } from './advisor-failure'
 import type { AdvisorThoughtStep } from './advisor-thought'
+import { topicRefusal, type AdvisorTopicOutcome } from './advisor-topic'
 import { isSupportedIncomeTaxYear } from '../math/tarif'
 import { getTaxYearParameters } from '../math/tax-parameters'
 import type { Marking, Screen } from './marking'
@@ -159,6 +160,8 @@ export interface AdvisorEngineInfo {
   readonly mode: 'langgraph' | 'deterministic_fallback'
   readonly provider?: string | undefined
   readonly model?: string | undefined
+  /** What the topic guard said about the question (ADR-0069): verdict and category, never the text. */
+  readonly topic?: AdvisorTopicOutcome | undefined
 }
 
 export interface AdvisorTwoPathsProposal {
@@ -647,28 +650,21 @@ const PROMPT_INJECTION_PATTERNS = [
   /__proto__|constructor\.prototype/i,
 ]
 
-const OFF_TOPIC_PATTERNS = [
-  /kuchenrezept|pfannkuchen|backrezept/i,
-  /schreibe\s+ein\s+gedicht/i,
-  /krypto.*verstecken|schwarzgeld|steuerhinterziehung|belege?\s+fälschen|fiktive\s+rechnung/i,
-]
-
 // Topics are no longer a boundary (#499, ADR-0069): the owl advises on the user's own tax matters
 // with looked-up knowledge. What stays out is the promise of a binding legal opinion.
 const STBERG_OUT_OF_SCOPE_PATTERNS = [/\b(verbindliche\s+rechtsauskunft|rechtsverbindliche\s+beratung)\b/i]
 
-export function checkAdvisorInputBoundary(message: string): {
+/**
+ * The free first filter before any model runs. What is off topic is decided by the topic guard
+ * (ADR-0069 §Themengrenze); these patterns stay only for obvious attacks, as the safety net for when
+ * the guard is down and lets the turn through.
+ */
+export function checkAdvisorInputBoundary(message: string, digest: CaseDigest): {
   readonly replyText: string
   readonly meta: AdvisorMessageMeta
 } | null {
-  if (PROMPT_INJECTION_PATTERNS.some((rx) => rx.test(message)) || OFF_TOPIC_PATTERNS.some((rx) => rx.test(message))) {
-    return {
-      replyText:
-        'Ich bin deine SteuerEule und ausschließlich auf deine Einkommensteuererklärung (Anlage N, Anlage N-Gre, Sonderausgaben, Kinder, Kapital und Vermietung) spezialisiert. Systeminterne Anweisungen, Schlüssel oder steuerfremde Themen gebe ich grundsätzlich nicht aus. Wollen wir stattdessen deine offenen Steuer-Hinweise durchgehen?',
-      meta: {
-        choices: ['Kanzlei-Endprüfung starten', 'Homeoffice-Pauschale prüfen', 'Spenden aus dem Vorjahr prüfen'],
-      },
-    }
+  if (PROMPT_INJECTION_PATTERNS.some((rx) => rx.test(message))) {
+    return topicRefusal('de', digest)
   }
 
   if (STBERG_OUT_OF_SCOPE_PATTERNS.some((rx) => rx.test(message))) {
@@ -702,8 +698,8 @@ export function evaluateAdvisorTurn(input: {
   const makeActionId = input.actionIdFactory ?? (() => `act-${Date.now()}`)
   const lower = message.toLowerCase()
 
-  // 1. Security, Off-Topic & StBerG Scope Guardrail
-  const blocked = checkAdvisorInputBoundary(message)
+  // 1. Obvious attacks & StBerG scope guardrail (topics are the guard's job, ADR-0069)
+  const blocked = checkAdvisorInputBoundary(message, digest)
   if (blocked !== null) return blocked
 
   // 2. Kanzlei-Endprüfung (holistic pre-printout review)
