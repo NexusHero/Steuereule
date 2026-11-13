@@ -568,7 +568,7 @@ async function main() {
       const json = await res.json()
       json.messages = [
         { id: 'round-u1', role: 'user', content: 'Fang an', meta: null, createdAt: roundNow, status: 'complete', feedback: null },
-        { id: 'round-a1', role: 'assistant', content: 'Erste Runde:', meta: { situationSuggestions: ['Elternzeit ab März 2027.'], questionRound: { questions: [{ text: 'Hattest du Fortbildungskosten?', options: ['Ja', 'Nein'], recommended: 'Ja' }, { text: 'Gab es einen Umzug?', options: ['Ja', 'Nein'] }] } }, createdAt: roundNow, status: 'complete', feedback: null },
+        { id: 'round-a1', role: 'assistant', content: 'Erste Runde:', meta: { situationSuggestions: ['Elternzeit ab März 2027.'], questionRound: { questions: [{ text: 'Sollen wir die Fortbildungskosten ansetzen?', kind: 'decision', options: ['Ja', 'Nein'], recommended: 'Ja', reason: 'Sie senken die Steuer.' }, { text: 'Gab es einen Umzug?', kind: 'fact', options: ['Ja', 'Nein'] }] } }, createdAt: roundNow, status: 'complete', feedback: null },
       ]
       await route.fulfill({ response: res, json })
     })
