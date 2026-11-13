@@ -21,7 +21,7 @@ function scriptedEngine(...turns: AdvisorStreamEvent[][]): AdvisorEnginePort & {
       requests.push(request)
       yield* turns[requests.length - 1] ?? []
     },
-  } as AdvisorEnginePort & { readonly requests: AdvisorTurnRequest[] }
+  } as unknown as AdvisorEnginePort & { readonly requests: AdvisorTurnRequest[] }
 }
 
 async function collect(stream: AsyncIterable<AdvisorStreamEvent>): Promise<AdvisorStreamEvent[]> {

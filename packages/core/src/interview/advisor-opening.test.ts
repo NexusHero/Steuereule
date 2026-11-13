@@ -73,7 +73,7 @@ describe('openingGaps', () => {
 describe('caseFingerprint', () => {
   it('stays the same for the same case, whatever the key order', () => {
     const a = digest(WAGE, { filingStatusAnswered: true })
-    const reordered = JSON.parse(JSON.stringify(a, Object.keys(a).toReversed())) as CaseDigest
+    const reordered = JSON.parse(JSON.stringify(a, Object.keys(a).reduceRight<string[]>((keys, key) => [...keys, key], []))) as CaseDigest
     expect(caseFingerprint(a, 'Pendle 38 km', ['Notiz'])).toBe(caseFingerprint({ ...reordered, ...a }, ' Pendle 38 km ', ['Notiz']))
   })
 
