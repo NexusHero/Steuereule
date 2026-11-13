@@ -282,6 +282,24 @@ describe('ReceiptParseService — Two-Stage Receipt Isolation (#446 Slice 3)', (
     ).rejects.toThrow(/PII|IBAN/i)
   })
 
+  it('drops a harmless target it does not write instead of blocking the receipt, and files a donation by its category', async () => {
+    const h = buildTestHarness([
+      JSON.stringify({
+        vendorCategory: 'spende',
+        receiptDate: '2026-01-31',
+        amountEur: 3135,
+        suggestedScreen: 'interview',
+        suggestedField: 'sonderausgaben-spenden',
+        suggestedValue: '3135',
+        summary: 'Sammelbestätigung über Spenden 2025',
+        taxYear: 2025,
+      }),
+    ])
+    const res = await h.parseService.parseReceipt('user-r6', { taxYear: 2025, fileName: 'spenden.pdf', rawText: 'Sammelbestätigung Geldzuwendungen 2025 Gesamt 3.135,00 EUR' })
+    expect(res.securityBlocked).toBe(false)
+    expect(res.stagedAction).toMatchObject({ screen: 'interview', field: 'spenden-betrag', newValue: '3135' })
+  })
+
   it('supports deterministic offline parsing when vision_ocr kill-switch is active and blocks workplace tampering', async () => {
     const h = buildTestHarness([], false)
 

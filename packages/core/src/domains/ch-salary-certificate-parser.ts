@@ -61,8 +61,11 @@ const DIGIT_IDS: Readonly<Record<number, SalaryCertificateAmountFieldId>> = {
 /** Every certificate prints these; one that is missing makes the read incomplete. */
 const EXPECTED: readonly SalaryCertificateAmountFieldId[] = ['lohn', 'bruttolohn-total', 'ahv-beitraege', 'berufliche-vorsorge', 'nettolohn', 'quellensteuer']
 
-/** Deductions are printed in a "−" column; a minus there is no negative figure. */
-const DEDUCTIONS: ReadonlySet<number> = new Set([9, 10])
+/**
+ * Deductions are printed with a "−": Ziffer 9 and 10 in their sign column, Ziffer 12 (withholding tax)
+ * often right against the figure ("-896"). A minus there is no negative figure.
+ */
+const DEDUCTIONS: ReadonlySet<number> = new Set([9, 10, 12])
 
 const GROSS_PARTS: readonly SalaryCertificateAmountFieldId[] = [
   'lohn',

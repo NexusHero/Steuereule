@@ -28,6 +28,7 @@ import { PrintoutService } from '../../src/printout/printout.service.js'
 import { PrismaService } from '../../src/prisma/prisma.service.js'
 import { ProfileService } from '../../src/profile/profile.service.js'
 import { InterviewService } from '../../src/interview/interview.service.js'
+import { LstbScanService } from '../../src/lstb-scan/lstb-scan.service.js'
 import { ReceiptParseService } from '../../src/receipt/receipt-parse.service.js'
 import { TaxEstimateService } from '../../src/tax-estimate/tax-estimate.service.js'
 
@@ -45,10 +46,15 @@ interface RealCase {
   readonly children?: readonly { readonly create: Record<string, unknown>; readonly userFields?: Record<string, unknown> }[]
   /** Messages to the owl, in order. */
   readonly chat: readonly string[]
+  /** Messages to the owl after the receipts were uploaded. */
+  readonly afterReceipts?: readonly string[]
   /** Messages sent when a case is resumed. */
   readonly followUp?: readonly string[]
-  /** Receipts as the app's upload sends them: file name and the text read from the document. */
-  readonly receipts?: readonly { readonly fileName: string; readonly textFile: string }[]
+  /**
+   * Receipts as the app's upload sends them: file name, the text read from the document, whether that
+   * text came from OCR, and whose it is — used only when the app asks („Wessen …?“), as a user would answer.
+   */
+  readonly receipts?: readonly { readonly fileName: string; readonly textFile: string; readonly ocr?: boolean; readonly owner?: 'A' | 'B' }[]
   /** What the user enters in the masks herself after the chat, per person: Swiss certificate fields, provision, N-Gre, commute. */
   readonly byHand?: {
     readonly A?: ByHand
@@ -93,6 +99,17 @@ describe.skipIf(!KEY || !CASE_FILE)('a real case through the chat (live model, b
 
     const link = app.get(LinkService)
     const childIds: string[] = []
+    /** One message to the owl; a failed answer (timeout, broken stream) is logged and tried once more, as a user would. */
+    const ask = async (message: string) => {
+      for (const attempt of [1, 2]) {
+        try {
+          return await advisor.sendMessage(userId, year, { message })
+        } catch (error) {
+          log.push(`## Kunde\n${message}\n`, `## Eule: FEHLER (Versuch ${attempt}): ${error instanceof Error ? error.message : String(error)}\n`)
+        }
+      }
+      return null
+    }
     const applyDrafts = async (drafts: readonly AdvisorActionProposal[]) => {
       const pending = drafts.filter((d) => d.status === 'pending')
       if (pending.length > 0) await advisor.applyBatch(userId, year, { drafts: pending.map((d) => ({ actionId: d.actionId })) })
@@ -114,7 +131,8 @@ describe.skipIf(!KEY || !CASE_FILE)('a real case through the chat (live model, b
 
     // ── The chat ──────────────────────────────────────────────────────────────────────
     for (const message of realCase.chat) {
-      const response = await advisor.sendMessage(userId, year, { message })
+      const response = await ask(message)
+      if (!response) continue
       const meta = (response.assistantMessage.meta ?? {}) as AdvisorMessageMeta
       const drafts = [...(meta.action ? [meta.action] : []), ...(meta.actions ?? [])]
       log.push(`## Kunde\n${message}\n`, `## Eule (${response.mode})\n${response.assistantMessage.content}\n`, `Entwürfe: ${drafts.map((d) => `${d.screen}${d.instance ? `:${d.instance}` : ''}.${d.field}=${d.newValue}`).join(', ') || '—'}`, (meta.notStaged ?? []).length > 0 ? `Nicht vorbereitet: ${(meta.notStaged ?? []).map((n) => `${n.label} (${n.reason})`).join('; ')}\n` : '')
@@ -124,11 +142,44 @@ describe.skipIf(!KEY || !CASE_FILE)('a real case through the chat (live model, b
     // ── Receipts, as the upload sends them ──────────────────────────────────────────────
     for (const receipt of realCase.receipts ?? []) {
       const rawText = readFileSync(receipt.textFile, 'utf8').slice(0, 32_000)
+      const textSource = receipt.ocr ? 'ocr' : 'pdf_text'
       try {
-        const parsed = await app.get(ReceiptParseService).parseReceipt(userId, { taxYear: year, fileName: receipt.fileName, rawText, textSource: 'pdf_text', stageDraft: true } as never)
-        const staged = parsed.stagedAction
-        log.push(`## Beleg ${receipt.fileName} (${parsed.mode})\nErkannt: ${JSON.stringify(parsed.parsed)}\nEntwurf: ${staged ? `${staged.screen}.${staged.field}=${staged.newValue}` : '—'}\n`)
-        if (staged) await applyDrafts([staged as never])
+        const parseService = app.get(ReceiptParseService)
+        let parsed = await parseService.parseReceipt(userId, { taxYear: year, fileName: receipt.fileName, rawText, textSource, stageDraft: true } as never)
+        const unclear = (parsed as { chLohnausweis?: { personUnclear?: boolean }; chLetter?: { personUnclear?: boolean } }).chLohnausweis?.personUnclear || (parsed as { chLetter?: { personUnclear?: boolean } }).chLetter?.personUnclear
+        if (unclear && receipt.owner) {
+          log.push(`## Beleg ${receipt.fileName}: App fragt „Wessen …?“, Antwort Person ${receipt.owner}`)
+          parsed = await parseService.parseReceipt(userId, { taxYear: year, fileName: receipt.fileName, rawText, textSource, stageDraft: true, person: receipt.owner } as never)
+        }
+        const actions = [...(parsed.assistantMessage?.meta?.actions ?? []), ...(parsed.assistantMessage?.meta?.action ? [parsed.assistantMessage.meta.action] : [])] as AdvisorActionProposal[]
+        const drafts = actions.length > 0 ? actions : parsed.stagedAction ? [parsed.stagedAction as unknown as AdvisorActionProposal] : []
+        const special = (parsed as { lstb?: unknown; chLohnausweis?: unknown; chLetter?: unknown })
+        log.push(
+          `## Beleg ${receipt.fileName} (${parsed.mode}, ${textSource})`,
+          `Erkannt: ${JSON.stringify(special.chLohnausweis ?? special.chLetter ?? special.lstb ?? parsed.parsed)}`,
+          `Eule: ${parsed.assistantMessage?.content ?? '—'}`,
+          `Entwürfe: ${drafts.map((d) => `${d.person === 'B' ? 'B:' : ''}${d.screen}.${d.field}=${d.newValue}`).join(', ') || '—'}\n`,
+        )
+        const lstb = parsed.lstb
+        if (lstb) {
+          // The LStB goes through its mask's „Werte übernehmen“, as in the app: a second certificate of the
+          // year is added to the first („Als weitere Bescheinigung dazurechnen“), never written over it.
+          const { bruttoarbeitslohn, lohnsteuer, sozialversicherung } = lstb.fields
+          if (bruttoarbeitslohn?.value != null && lohnsteuer?.value != null && sozialversicherung?.value != null) {
+            await app.get(LstbScanService).confirm(userId, userId, year, {
+              bruttoarbeitslohn: bruttoarbeitslohn.value,
+              lohnsteuer: lohnsteuer.value,
+              sozialversicherung: sozialversicherung.value,
+              actionIds: lstb.stagedActionIds,
+              ...(lstb.existingLstbConflict.hasExisting ? { addToExisting: true } : {}),
+            } as never)
+            log.push(`LStB übernommen${lstb.existingLstbConflict.hasExisting ? ' (dazugerechnet)' : ''}: ${bruttoarbeitslohn.value} / ${lohnsteuer.value} / ${sozialversicherung.value}\n`)
+          } else {
+            log.push(`LStB unvollständig gelesen, nichts übernommen: ${JSON.stringify(lstb.fields)}\n`)
+          }
+          continue
+        }
+        await applyDrafts(drafts)
       } catch (error) {
         log.push(`## Beleg ${receipt.fileName}: Fehler ${error instanceof Error ? error.message : String(error)}\n`)
       }
@@ -137,9 +188,10 @@ describe.skipIf(!KEY || !CASE_FILE)('a real case through the chat (live model, b
       for (const child of await prisma.child.findMany({ where: { userId, taxYear: year }, orderBy: { createdAt: 'asc' } })) childIds.push(child.id)
     }
 
-    // ── Follow-up messages, also on resume ──────────────────────────────────────────────
-    for (const message of RESUME ? (realCase.followUp ?? []) : []) {
-      const response = await advisor.sendMessage(userId, year, { message })
+    // ── Follow-up messages: after the uploads, and on resume ─────────────────────────────
+    for (const message of RESUME ? (realCase.followUp ?? []) : (realCase.afterReceipts ?? [])) {
+      const response = await ask(message)
+      if (!response) continue
       const meta = (response.assistantMessage.meta ?? {}) as AdvisorMessageMeta
       const drafts = [...(meta.action ? [meta.action] : []), ...(meta.actions ?? [])]
       log.push(`## Kunde\n${message}\n`, `## Eule (${response.mode})\n${response.assistantMessage.content}\n`, `Entwürfe: ${drafts.map((d) => `${d.screen}.${d.field}=${d.newValue}`).join(', ') || '—'}\n`)
@@ -174,8 +226,16 @@ describe.skipIf(!KEY || !CASE_FILE)('a real case through the chat (live model, b
     for (const row of await prisma.marking.findMany({ where: { userId, taxYear: year } })) {
       stored[row.itemKey] = await confirmation.readRawValue(userId, year, row.itemKey)
     }
+    // Person B's figures live under B's data user; without a printout (2024) they are the comparison.
+    if (realCase.personB) {
+      const b = await link.dataUser(userId, year, 'B')
+      for (const row of await prisma.marking.findMany({ where: { userId: b, taxYear: year } })) {
+        stored[`B:${row.itemKey}`] = await confirmation.readRawValue(b, year, row.itemKey)
+      }
+    }
     const printout = app.get(PrintoutService)
-    const { missing } = await printout.check(userId, year)
+    // Years without measured forms (2024) have no printout; the comparison then uses the stored fields.
+    const { missing } = await printout.check(userId, year).catch((error: unknown) => ({ missing: [`kein Ausdruck: ${error instanceof Error ? error.message : String(error)}`] }))
     const estimate = await app.get(TaxEstimateService).getState(userId, year)
     let fields: Record<string, string> = {}
     if (missing.length === 0) {

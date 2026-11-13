@@ -247,8 +247,13 @@ export class AutoReceiptParseStrategy implements DocumentParseStrategy {
       const allowedFields = targetCheck.ok ? SAFE_RECEIPT_TARGETS[targetCheck.screen] : undefined
       const cleanField = (raw.suggestedField ?? '').trim()
 
-      if (!targetCheck.ok || !allowedFields || !allowedFields.includes(cleanField)) {
+      if (!targetCheck.ok && 'locked' in targetCheck && targetCheck.locked) {
+        // A target holding personal data (profile, master data, IBAN, workplace): an injection, blocked.
         securityBlocked = true
+      } else if (!targetCheck.ok || !allowedFields || !allowedFields.includes(cleanField)) {
+        // A harmless target the receipt path does not write (another name for a field, a mask it does not
+        // serve): the suggestion is dropped and the category decides below. Blocking the whole receipt
+        // here lost real donations in the real-case test.
       } else {
         suggestedScreen = targetCheck.screen
         suggestedField = cleanField
@@ -259,6 +264,13 @@ export class AutoReceiptParseStrategy implements DocumentParseStrategy {
     const summaryText = securityBlocked
       ? 'Der Beleg enthielt unzulässige Schreibziele; der Änderungsvorschlag wurde aus Sicherheitsgründen blockiert.'
       : scrubUserMessagePii(raw.summary.trim().slice(0, 400), [...knownNames]) || 'Beleg ausgewertet.'
+
+    // A donation with its amount always has its place, whatever field name the model chose.
+    if (!securityBlocked && suggestedScreen === null && raw.vendorCategory === 'spende' && raw.amountEur !== null && raw.amountEur !== undefined && raw.amountEur > 0) {
+      suggestedScreen = 'interview'
+      suggestedField = 'spenden-betrag'
+      suggestedValue = String(Math.round(raw.amountEur))
+    }
 
     // A model that files work tools under training gets corrected: they are Kz 320 (ADR-0076).
     // Only a plain „Ja“ or amount is corrected; anything else stays for the PII firewall to judge.

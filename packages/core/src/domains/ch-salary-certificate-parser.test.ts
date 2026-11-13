@@ -116,7 +116,8 @@ describe('parseChSalaryCertificateText', () => {
     ].join('\n')
     const read = parseChSalaryCertificateText(ocr)
     expect(read.taxYear).toBe(2024)
-    expect(read.amounts).toMatchObject({ lohn: 19900, 'bruttolohn-total': 19900, 'ahv-beitraege': 1347, 'berufliche-vorsorge': 1181, nettolohn: 17372, quellensteuer: -896 })
+    // The withholding tax is a deduction: its "-" is no negative figure (the adviser files 896).
+    expect(read.amounts).toMatchObject({ lohn: 19900, 'bruttolohn-total': 19900, 'ahv-beitraege': 1347, 'berufliche-vorsorge': 1181, nettolohn: 17372, quellensteuer: 896 })
     expect(read.checks).toEqual({ gross: 'ok', net: 'ok' })
   })
 
