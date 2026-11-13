@@ -434,6 +434,8 @@ export const appResources = {
         kapitalErgaenzen: 'Kapital-Angaben ergänzen',
         fehlendGrenzgaenger: 'Für die Anlage N-Gre fehlen noch Angaben: Lohnausweis, Wechselkurs, Arbeitgeber, Familienzulagen, Krankentaggeld, Pensionskasse oder die Frage nach Sonderfällen.',
         grenzgaengerErgaenzen: 'Grenzgänger-Angaben ergänzen',
+        fehlendZuLang: 'Diese Angaben sind zu lang für ihr Feld im Vordruck (dort gilt mindestens 10 pt Schrift). Bitte kürzen: {{felder}}.',
+        feldNamen: { anlKind_z67Text: 'Kinderbetreuung: Art und Anbieter (Anlage Kind)', anlN_wegOrt: 'Arbeitsort (Anlage N)', anlNGre_wegOrt: 'Arbeitsort (Anlage N-Gre)' },
         anlageNochNicht: 'Für deine {{anlage}} gibt es den Ausdruck noch nicht. Ohne sie wäre deine Erklärung unvollständig – deshalb drucken wir noch nicht.',
         anlagen: {
           anlageV: 'Vermietung (Anlage V)',
@@ -2459,6 +2461,8 @@ export const appResources = {
         fehlendVermietung: 'Anlage V still needs details about your rental: rent, expenses (0 counts), the address and whether the depreciation is as last year.',
         vermietungErgaenzen: 'Complete rental details',
         fehlendKapital: 'Anlage KAP still needs details: where your depot is, your capital income, the allowance used and, at a German bank, the withheld taxes.',
+        fehlendZuLang: 'These entries are too long for their box on the form (it requires at least 10 pt). Please shorten: {{felder}}.',
+        feldNamen: { anlKind_z67Text: 'Childcare: kind and provider (Anlage Kind)', anlN_wegOrt: 'Workplace (Anlage N)', anlNGre_wegOrt: 'Workplace (Anlage N-Gre)' },
         kapitalErgaenzen: 'Complete capital details',
         fehlendGrenzgaenger: 'Anlage N-Gre still needs details: Lohnausweis, exchange rate, employer, family allowances, sickness insurance, pension fund or the special-cases question.',
         grenzgaengerErgaenzen: 'Complete cross-border details',

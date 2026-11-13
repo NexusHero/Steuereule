@@ -9,7 +9,9 @@ import { describe, expect, it } from 'vitest'
 import { printoutValues, type PrintoutFacts, type ChSalaryCertificateFacts } from '../src/printout/printout-values.js'
 import felder2025 from '../src/printout/felder-2025.json' with { type: 'json' }
 import manifest from '../src/printout/vordrucke-2025.json' with { type: 'json' }
-import { FIELD_SETS, renderForms, OverflowError } from '../src/printout/form-renderer.js'
+import felder2024 from '../src/printout/felder-2024.json' with { type: 'json' }
+import manifest2024 from '../src/printout/vordrucke-2024.json' with { type: 'json' }
+import { FIELD_SETS, forYear, renderForms, OverflowError } from '../src/printout/form-renderer.js'
 
 const TEMPLATES = new URL('../assets/vordrucke/2025/', import.meta.url)
 
@@ -510,6 +512,16 @@ describe('ausdruckWerte', () => {
       })
     })
 
+    it('prints a 2024 return, cross-border commuter included, on the 2024 forms; the occupation line it lacks is left out', async () => {
+      const templates2024 = new URL('../assets/vordrucke/2024/', import.meta.url)
+      const res = printoutValues({ ...FACTS, taxYear: 2024, bruttoarbeitslohn: null, chSalaryCertificate: CH })
+      const values = forYear(2024, res.values)
+      expect(Object.keys(values)).not.toContain('anlNGre.beruf')
+      const pdf = await renderForms(FIELD_SETS[2024]!, values, { templatesDirectory: templates2024, instances: res.instances, editable: true })
+      const form = (await PDFDocument.load(pdf)).getForm()
+      expect(form.getTextField('anlNGre.z23Eur').getText()).toBe(String(res.values['anlNGre.z23Eur']))
+    })
+
     it('splits a change from a German to a Swiss employer: first way in the Anlage N, second in the N-Gre (ADR-0079)', () => {
       const { values } = printoutValues({
         ...FACTS,
@@ -958,6 +970,14 @@ describe('rendereVordrucke (real templates)', () => {
     for (const [formular, sha256] of Object.entries(felder2025.vorlagen)) {
       expect(sha256).toBe((manifest as Record<string, { sha256: string }>)[formular]!.sha256)
       expect(createHash('sha256').update(readFileSync(new URL(`${formular}.pdf`, TEMPLATES))).digest('hex')).toBe(sha256)
+    }
+  })
+
+  it('the 2024 positions belong to exactly the pinned 2024 templates (ADR-0085)', () => {
+    const templates2024 = new URL('../assets/vordrucke/2024/', import.meta.url)
+    for (const [formular, sha256] of Object.entries(felder2024.vorlagen)) {
+      expect(sha256).toBe((manifest2024 as Record<string, { sha256: string }>)[formular]!.sha256)
+      expect(createHash('sha256').update(readFileSync(new URL(`${formular}.pdf`, templates2024))).digest('hex')).toBe(sha256)
     }
   })
 

@@ -220,7 +220,7 @@ const DECLARED: Readonly<Record<Screen, { readonly perInstance: boolean; readonl
       careEur: { kind: 'amount', max: 9_999_999 },
       swissFamilyAllowanceEur: { kind: 'amount', max: 9_999_999 },
       childcareEur: { kind: 'amount', max: 9_999_999 },
-      childcareProvider: text(120),
+      childcareProvider: text(45),
       childcareFrom: text(10),
       childcareTo: text(10),
     },
@@ -243,7 +243,7 @@ const DECLARED: Readonly<Record<Screen, { readonly perInstance: boolean; readonl
 const HINTS: Readonly<Partial<Record<Screen, Readonly<Record<string, string>>>>> = {
   kind: {
     childcareEur: 'Kinderbetreuungskosten, die die Eltern gezahlt haben (Kita, Tagesmutter, Hort), Euro im Jahr, ohne Verpflegung; Anlage Kind Kz 51',
-    childcareProvider: 'Art der Betreuung und Name/Anschrift des Anbieters, z. B. „Kindergarten, Gemeinde …“',
+    childcareProvider: 'Art der Betreuung und Anbieter, kurz (höchstens 45 Zeichen, sonst passt es nicht in Zeile 67), z. B. „Kita, Gemeinde Musterdorf“',
     childcareFrom: 'Beginn der Betreuung im Jahr, TT.MM.JJJJ',
     childcareTo: 'Ende der Betreuung im Jahr, TT.MM.JJJJ',
   },

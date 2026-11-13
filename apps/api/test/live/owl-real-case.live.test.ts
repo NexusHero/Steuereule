@@ -219,6 +219,8 @@ describe.skipIf(!KEY || !CASE_FILE)('a real case through the chat (live model, b
       if (entries.commute) await app.get(CommuteService).save(who, year, entries.commute as never)
       log.push(`## Von Hand (Person ${person})\n${JSON.stringify(entries)}\n`)
     }
+    // A resumed case finds its children in the database.
+    if (childIds.length === 0) childIds.push(...(await app.get(ChildrenService).list(userId, year)).kinder.map((k) => k.id))
     for (const [i, child] of (realCase.children ?? []).entries()) {
       if (child.userFields) await app.get(ChildrenService).update(userId, year, childIds[i]!, child.userFields as never)
     }
@@ -244,7 +246,12 @@ describe.skipIf(!KEY || !CASE_FILE)('a real case through the chat (live model, b
     if (missing.length === 0) {
       await prisma.unlock.deleteMany({ where: { userId, taxYear: year } })
       await prisma.unlock.create({ data: { userId, taxYear: year, stripeCheckoutSessionId: `cs_${userId}`, status: 'bezahlt', paidAt: new Date() } })
-      const pdf = await printout.create(userId, year, { editable: true })
+      const pdf = await printout.create(userId, year, { editable: true }).catch((error: unknown) => {
+        // A value too long for its box names the field; the rest of the result is still written.
+        const response = (error as { getResponse?: () => unknown }).getResponse?.()
+        writeFileSync(join(OUT, 'result.json'), JSON.stringify({ missing, estimate, stored, printoutError: response ?? String(error) }, null, 2))
+        throw error
+      })
       writeFileSync(join(OUT, 'ausdruck.pdf'), pdf)
       const form = (await PDFDocument.load(pdf)).getForm()
       fields = Object.fromEntries(

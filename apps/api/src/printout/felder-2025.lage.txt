@@ -45,6 +45,17 @@ anlN.wegFreieTage              S2 Z28   ↑                              ← Url
 anlN.kz110Tage                 S2 Z29   ↑ 1 =                          ← je Woche Dienstreisetage mindestens 50 und Merkzeichen „G“ 110 aufgesucht an Tagen
 anlN.kz111                     S2 Z30   ↑ 1 =                          ← aufgesucht an Tagen 111 einfache Entfernung in Kilometern (auf volle Kilometer abgerundet)
 anlN.kz112                     S2 Z31   ↑                              ← einfache Entfernung in Kilometern (auf volle Kilometer abgerundet) 112 davon mit eigenem …
+anlN.wegVon                    S2 Z27   ↑ vom                          ← PLZ, Ort und Straße 1 = erste Tätigkeitsstätte 2 = Sammelpunkt / weit- räumiges Tätigkeit…
+anlN.wegBis                    S2 Z27   ↑ bis                          ← vom PLZ, Ort und Straße 1 = erste Tätigkeitsstätte 2 = Sammelpunkt / weit- räumiges Tätig…
+anlN.weg2Art                   S2 Z35   ↑ (2.                          ← 
+anlN.weg2Ort                   S2 Z35   ↑ PLZ, Ort und Straße          ← = erste Tätigkeitsstätte = Sammelpunkt / weit- räumiges Tätigkeitsgebiet
+anlN.weg2Von                   S2 Z35   ↑ vom                          ← PLZ, Ort und Straße = erste Tätigkeitsstätte = Sammelpunkt / weit- räumiges Tätigkeitsgeb…
+anlN.weg2Bis                   S2 Z35   ↑ bis                          ← vom PLZ, Ort und Straße = erste Tätigkeitsstätte = Sammelpunkt / weit- räumiges Tätigkeit…
+anlN.weg2TageJeWoche           S2 Z36   ↑ Tätigkeitsgebiet             ← Arbeitstage je Woche
+anlN.weg2FreieTage             S2 Z36   ↑                              ← Urlaubs-, Krankheits-, Arbeitstage Heimarbeits- und je Woche Dienstreisetage
+anlN.kz130Tage                 S2 Z37   ↑ 1 =                          ← je Woche Dienstreisetage mindestens 50 und Merkzeichen „G“ 130 aufgesucht an Tagen
+anlN.kz131                     S2 Z38   ↑ 1 =                          ← aufgesucht an Tagen 131 einfache Entfernung in Kilometern (auf volle Kilometer abgerundet)
+anlN.kz132                     S2 Z39   ↑                              ← einfache Entfernung in Kilometern (auf volle Kilometer abgerundet) 132 davon mit eigenem …
 anlR.name                      S1 Z1    ↑ Name                         ← 
 anlR.vorname                   S1 Z2    ↑ Vorname                      ← 
 anlR.steuernummer              S1 Z3    ↑                              ← Steuernummer
@@ -129,6 +140,17 @@ anlNGre.wegFreieTage           S2 Z33   ↑                              ← Url
 anlNGre.kz110Tage              S2 Z34   ↑ 1 = Ja                       ← je Woche Dienstreisetage mindestens 50 und Merkzeichen „G“ 110 aufgesucht an Tagen
 anlNGre.kz111                  S2 Z35   ↑ 1 = Ja                       ← aufgesucht an Tagen 111 einfache Entfernung in Kilometern (auf volle Kilometer abgerundet)
 anlNGre.kz112                  S2 Z36   ↑                              ← einfache Entfernung in Kilometern (auf volle Kilometer abgerundet) 112 davon mit eigenem …
+anlNGre.wegVon                 S2 Z32   ↑ vom                          ← PLZ, Ort und Straße = erste Tätigkeitsstätte = Sammelpunkt / weit- räumiges Tätigkeitsgeb…
+anlNGre.wegBis                 S2 Z32   ↑ bis                          ← vom PLZ, Ort und Straße = erste Tätigkeitsstätte = Sammelpunkt / weit- räumiges Tätigkeit…
+anlNGre.weg2Art                S2 Z40   ↑                              ← 
+anlNGre.weg2Ort                S2 Z40   ↑ PLZ, Ort und Straße          ← = erste Tätigkeitsstätte = Sammelpunkt / weit- räumiges Tätigkeitsgebiet
+anlNGre.weg2Von                S2 Z40   ↑ vom                          ← PLZ, Ort und Straße = erste Tätigkeitsstätte = Sammelpunkt / weit- räumiges Tätigkeitsgeb…
+anlNGre.weg2Bis                S2 Z40   ↑ bis                          ← vom PLZ, Ort und Straße = erste Tätigkeitsstätte = Sammelpunkt / weit- räumiges Tätigkeit…
+anlNGre.weg2TageJeWoche        S2 Z41   ↑ Tätigkeitsgebiet             ← Arbeitstage je Woche
+anlNGre.weg2FreieTage          S2 Z41   ↑                              ← Urlaubs-, Krankheits-, Arbeitstage Heimarbeits- und je Woche Dienstreisetage
+anlNGre.kz130Tage              S2 Z42   ↑ 1 = Ja                       ← je Woche Dienstreisetage mindestens 50 und Merkzeichen „G“ 130 aufgesucht an Tagen
+anlNGre.kz131                  S2 Z43   ↑ 1 = Ja                       ← aufgesucht an Tagen 131 einfache Entfernung in Kilometern (auf volle Kilometer abgerundet)
+anlNGre.kz132                  S2 Z44   ↑                              ← einfache Entfernung in Kilometern (auf volle Kilometer abgerundet) 132 davon mit eigenem …
 anlNGre.z95Arbeitgeber         S5 Z95   ↑ Versicherungsprämien?        ← Wer bezahlt die Arbeitgeber (in %)
 anlNGre.z95Arbeitnehmer        S5 Z95   ↑ der Versicherung             ← Wer bezahlt die Versicherungsprämien? Arbeitgeber (in %) Arbeitnehmer (in %)
 anlNGre.z96Arbeitgeber         S5 Z96   ↑ in                           ← Wie hoch sind die Anteil des Arbeitgebers in CHF
@@ -231,3 +253,44 @@ anlVor.kz433                   S2 Z28   ↑ EUR                          ← Bei
 anlVor.kz434                   S2 Z29   ↑ EUR                          ← ,– rung vergleichbar ist (nur Basisabsicherung, keine Wahlleistungen) In Zeile 28 enthalt…
 anlVor.kz435                   S2 Z30   ↑                              ← Beiträge (abzüglich steuerfreier Zuschüsse ) – ohne Beträge laut Zeile 36 – zur sozialen …
 anlVor.kz439                   S2 Z33   ↑                              ← Über die Basisabsicherung hinausgehende Beiträge zu Krankenversi- cherungen und zusätzlic…
+anlN.z53Text                   S3 Z53   ↑ Bezeichnung der Verbände     ← 
+anlN.kz310                     S3 Z53   ↑ EUR                          ← Bezeichnung der Verbände 310
+anlN.z54Text                   S3 Z54   ↑ Art der Arbeitsmittel        ← 
+anlN.z54Eur                    S3 Z54   ↑ EUR                          ← Art der Arbeitsmittel
+anlN.kz320                     S3 Z56   ↑                              ← 320 = Summe
+anlN.z62Text                   S4 Z62   ↑ Sonstiges (z. B. Bewerbungs… ← 
+anlN.z62Eur                    S4 Z62   ↑ EUR                          ← Sonstiges (z. B. Bewerbungskosten, Kontoführungsgebühren) +
+anlN.z63Text                   S4 Z63   ↑ Sonstiges (z. B. Bewerbungs… ← 
+anlN.z63Eur                    S4 Z63   ↑                              ← +
+anlN.kz380                     S4 Z64   ↑                              ← 380 = Summe der weiteren Werbungskosten
+anlNGre.z48Text                S3 Z48   ↑ Bezeichnung der Verbände     ← 
+anlNGre.kz310                  S3 Z48   ↑ EUR                          ← Bezeichnung der Verbände 310
+anlNGre.z49Text                S3 Z49   ↑ Art der Arbeitsmittel        ← 
+anlNGre.z49Eur                 S3 Z49   ↑ EUR                          ← Art der Arbeitsmittel
+anlNGre.kz320                  S3 Z51   ↑                              ← 320 = Summe
+anlNGre.z57Text                S3 Z57   ↑ Sonstiges (z. B. Bewerbungs… ← 
+anlNGre.z57Eur                 S3 Z57   ↑ EUR                          ← Sonstiges (z. B. Bewerbungskosten, Kontoführungsgebühren) +
+anlNGre.z58Text                S3 Z58   ↑ Sonstiges (z. B. Bewerbungs… ← 
+anlNGre.z58Eur                 S3 Z58   ↑                              ← +
+anlNGre.kz380                  S3 Z59   ↑                              ← 380 = Summe der weiteren Werbungskosten
+anlKind.z67Text                S4 Z67   ↑ Art der Dienstleistung, Nam… ← 
+anlKind.z67Von                 S4 Z67   ↑ vom                          ← Art der Dienstleistung, Name und Anschrift des Dienstleisters
+anlKind.z67Bis                 S4 Z67   ↑ bis                          ← vom Art der Dienstleistung, Name und Anschrift des Dienstleisters
+anlKind.kz51                   S4 Z67   ↑ EUR                          ← vom bis Art der Dienstleistung, Name und Anschrift des Dienstleisters 51
+anlAgB.name                    S1 Z1    ↑ Name                         ← 
+anlAgB.vorname                 S1 Z2    ↑ Vorname                      ← 
+anlAgB.steuernummer            S1 Z3    ↑                              ← Steuernummer
+anlAgB.z23Text                 S2 Z23   ↑ Art der Aufwendungen         ← 
+anlAgB.kz302                   S2 Z24   ↑ EUR                          ← 302 Summe der Aufwendungen
+anlAgB.kz303                   S2 Z25   ↑ EUR                          ← Summe der Aufwendungen Summe der erhaltenen und / oder zu erwartenden Versicherungsleistu…
+anlHha.name                    S1 Z1    ↑ Name                         ← 
+anlHha.vorname                 S1 Z2    ↑ Vorname                      ← 
+anlHha.steuernummer            S1 Z3    ↑                              ← Steuernummer
+anlHha.z4Text                  S1 Z4    ↑ Art der Tätigkeit            ← 
+anlHha.kz202                   S1 Z4    ↑ EUR                          ← Art der Tätigkeit 202
+anlHha.z5Text                  S1 Z5    ↑ Art der Tätigkeit / Aufwend… ← 
+anlHha.kz212                   S1 Z5    ↑ EUR                          ← Art der Tätigkeit / Aufwendungen 212
+anlHha.z6Text                  S1 Z6    ↑ Art der Aufwendungen         ← 
+anlHha.z6Rechnung              S1 Z6    ↑ EUR                          ← Art der Aufwendungen
+anlHha.z6Lohn                  S1 Z6    ↑ EUR                          ← EUR Art der Aufwendungen ,–
+anlHha.kz214                   S1 Z9    ↑                              ← Summe steuerlich berücksichtigungsfähiger Lohnanteile, Maschinen- und Fahrtkosten inklusi…

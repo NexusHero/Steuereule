@@ -12,6 +12,7 @@
 //
 //   node scripts/vordrucke/vermessen.mjs 2025          (writes felder-<jahr>.json)
 //   node scripts/vordrucke/vermessen.mjs 2025 --check  (CI: fails when the checked-in file differs)
+//   node scripts/vordrucke/vermessen.mjs 2025 --alle   (lists every field that does not measure, writes nothing)
 import { execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { readFileSync, writeFileSync } from 'node:fs'
@@ -148,7 +149,26 @@ function findeKasten(daten, feld, anker) {
 }
 
 const vorlagen = {}
+const fehler = []
+const alle = process.argv.includes('--alle')
 const felder = spec.felder.map((feld) => {
+  if (alle) {
+    try {
+      return vermesse(feld)
+    } catch (error) {
+      fehler.push(error.message)
+      return null
+    }
+  }
+  return vermesse(feld)
+})
+if (alle) {
+  for (const f of fehler) console.error(f)
+  console.log(`${fehler.length} von ${spec.felder.length} Feldern lassen sich nicht vermessen.`)
+  process.exit(fehler.length > 0 ? 1 : 0)
+}
+
+function vermesse(feld) {
   const daten = seitendaten(feld.formular, feld.seite)
   const kasten = findeKasten(daten, feld, findeAnker(daten, feld))
   // Stored bottom-left origin (pdf-lib's coordinate system), rounded to 0.1 pt.
@@ -174,7 +194,7 @@ const felder = spec.felder.map((feld) => {
     kasten: { x: r(kasten.x0), y: r(daten.hoehe - kasten.y1), breite: r(kasten.x1 - kasten.x0), hoehe: r(kasten.y1 - kasten.y0) },
     ...(textAb === undefined ? {} : { textAb }),
   }
-})
+}
 
 const ziel = path.join(AUSDRUCK, `felder-${jahr}.json`)
 const inhalt = JSON.stringify({ jahr: Number(jahr), vorlagen, felder }, null, 2) + '\n'

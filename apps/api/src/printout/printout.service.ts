@@ -32,7 +32,7 @@ import { PENSION_REPOSITORY, type PensionRepository } from '../pension/pension.r
 import { MASTER_DATA_REPOSITORY, type MasterDataRepository } from '../master-data/master-data.repository.js'
 import { RENTAL_REPOSITORY, type RentalRepository } from '../rental/rental.repository.js'
 import { printoutValues, type CommuteFacts, type ChSalaryCertificateFacts, type PersonBFacts } from './printout-values.js'
-import { FIELD_SETS, renderForms, OverflowError } from './form-renderer.js'
+import { FIELD_SETS, forYear, renderForms, OverflowError, type FieldValues } from './form-renderer.js'
 
 export const TEMPLATES_BASE = Symbol('VORLAGEN_BASIS')
 
@@ -66,8 +66,31 @@ export class PrintoutService {
   ) {}
 
   async check(userId: string, year: number): Promise<{ missing: string[] }> {
-    if (!FIELD_SETS[year]) throw new NotFoundError('VORDRUCKE_MISSING', `No Vordrucke are available for tax year ${year} yet.`)
-    return { missing: (await this.collect(userId, year)).missing }
+    const fieldSet = FIELD_SETS[year]
+    if (!fieldSet) throw new NotFoundError('VORDRUCKE_MISSING', `No Vordrucke are available for tax year ${year} yet.`)
+    const { values, instances, missing } = await this.collect(userId, year)
+    // A value too long for its box (at the 10 pt the forms require) would fail only after payment: once
+    // nothing else is missing, it is named here, as „zuLang.<field>“, so the user shortens it first (ADR-0085).
+    if (missing.length > 0) return { missing }
+    return { missing: (await this.tooLong(year, values, instances)).map((id) => `zuLang.${id}`) }
+  }
+
+  private async tooLong(year: number, values: FieldValues, instances: Record<string, readonly FieldValues[]> | undefined): Promise<string[]> {
+    try {
+      await this.render(year, values, instances, false)
+      return []
+    } catch (error) {
+      if (error instanceof OverflowError) return [...new Set(error.fields)]
+      throw error
+    }
+  }
+
+  private render(year: number, values: FieldValues, instances: Record<string, readonly FieldValues[]> | undefined, editable: boolean): Promise<Uint8Array> {
+    return renderForms(FIELD_SETS[year]!, forYear(year, values), {
+      templatesDirectory: new URL(`${year}/`, this.templatesBase),
+      instances: instances ? Object.fromEntries(Object.entries(instances).map(([form, list]) => [form, list.map((v) => forYear(year, v))])) : instances,
+      editable,
+    })
   }
 
   async startCheckout(userId: string, year: number): Promise<{ checkoutUrl: string }> {
@@ -92,11 +115,7 @@ export class PrintoutService {
     }
 
     try {
-      const pdf = await renderForms(fieldSet, values, {
-        templatesDirectory: new URL(`${year}/`, this.templatesBase),
-        instances,
-        editable,
-      })
+      const pdf = await this.render(year, values, instances, editable)
       await this.audit.append({ userId, action: 'READ', resource: 'ausdruck' })
       return pdf
     } catch (error) {

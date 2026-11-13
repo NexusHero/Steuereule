@@ -75,8 +75,10 @@ export function PrintoutScreen({ year, payment, onBack, onCompleteDetails, onCom
   const annexes = missing.filter((key) => key.startsWith('anlage'))
   const unconfirmed = missing.filter((key) => key.startsWith('unbestaetigt.') && key !== 'unbestaetigt.personB').map((key) => key.slice('unbestaetigt.'.length))
   const personBUnconfirmed = missing.includes('unbestaetigt.personB')
+  // Values too long for their box at the 10 pt the forms require (ADR-0085): named, to be shortened.
+  const tooLong = missing.filter((key) => key.startsWith('zuLang.')).map((key) => key.slice('zuLang.'.length))
   const ownWay = new Set(['ehegatte', 'riester', 'kinder', 'vermietung', 'kapital', 'grenzgaenger'])
-  const masterDataMissing = missing.some((key) => !ownWay.has(key) && !key.startsWith('anlage') && !key.startsWith('unbestaetigt.'))
+  const masterDataMissing = missing.some((key) => !ownWay.has(key) && !key.startsWith('anlage') && !key.startsWith('unbestaetigt.') && !key.startsWith('zuLang.'))
   const locked = missing.length > 0
 
   function pay() {
@@ -138,6 +140,11 @@ export function PrintoutScreen({ year, payment, onBack, onCompleteDetails, onCom
             </>
           ) : null}
           {personBUnconfirmed ? <Text style={styles.sectionBody}>{t('ausdruck.fehlendPersonB')}</Text> : null}
+          {tooLong.length > 0 ? (
+            <Text style={styles.sectionBody} testID="ausdruck-zu-lang">
+              {t('ausdruck.fehlendZuLang', { felder: tooLong.map((id) => t(`ausdruck.feldNamen.${id.replace('.', '_')}`, { defaultValue: id })).join(', ') })}
+            </Text>
+          ) : null}
           {masterDataMissing || married ? (
             <Button variant="ghost" onPress={onCompleteDetails} testID="ausdruck-angaben-ergaenzen">
               {t('ausdruck.angabenErgaenzen')}
