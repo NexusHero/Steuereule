@@ -13,6 +13,7 @@ import {
   fieldSpec,
   resolveRecordHandle,
   simulateAdvisorFieldDelta,
+  checkDraftPerson,
   isInterviewAreaId,
   checkPrivateSale,
   checkSmallBusiness,
@@ -181,7 +182,12 @@ export async function runToolRound(
       target: AdvisorPreviewTarget,
       approximation: { beforeRefundEur: number; afterRefundEur: number; deltaEur: number },
     ): Promise<Pick<AdvisorActionProposal, 'beforeRefundEur' | 'afterRefundEur' | 'deltaEur' | 'effect' | 'effectHint'>> => {
-      if (!request.previewEffect) return approximation
+      if (!request.previewEffect) {
+        // The approximation only knows the user's own figures; for Person B it would be made up.
+        return target.person === 'B'
+          ? { beforeRefundEur: 0, afterRefundEur: 0, deltaEur: 0, effect: 'not-computable', effectHint: 'Die Wirkung für Person B zeigt erst die gemeinsame Schätzung.' }
+          : approximation
+      }
       let preview: AdvisorPreviewEffect
       try {
         preview = await request.previewEffect(target)
@@ -228,6 +234,15 @@ export async function runToolRound(
       if (!target.ok) {
         refuseDraft(label, screen, target.error)
         rejectTarget(target)
+        continue
+      }
+      // Person B only where the household has one A records for, and only on B's own masks.
+      const person = args.person
+      const personCheck = checkDraftPerson(request.household, person, target.screen)
+      if (!personCheck.ok) {
+        const error = `${personCheck.code}: ${personCheck.reason}`
+        refuseDraft(label, screen, error)
+        answer({ ok: false, error })
         continue
       }
       if (rawCompanions.length > MAX_COMPANION_FIELDS) {
@@ -287,8 +302,10 @@ export async function runToolRound(
       }
 
       const cleanField = field.trim()
-      const sim = simulateAdvisorFieldDelta(request.digest, target.screen, cleanField, newValue)
-      const effect = await effectOf({ screen: target.screen, instance, values: [...companionEntries, [cleanField, newValue]] }, sim)
+      const forB = person === 'B'
+      // The digest is the user's; Person B's previous value is read when the draft is stored.
+      const sim = forB ? { previousValue: null, beforeRefundEur: 0, afterRefundEur: 0, deltaEur: 0 } : simulateAdvisorFieldDelta(request.digest, target.screen, cleanField, newValue)
+      const effect = await effectOf({ screen: target.screen, instance, ...(forB ? { person } : {}), values: [...companionEntries, [cleanField, newValue]] }, sim)
       sources.push(sourceId)
 
       const stagedAction: AdvisorActionProposal = {
@@ -297,6 +314,7 @@ export async function runToolRound(
         screen: target.screen,
         field: cleanField,
         instance,
+        ...(forB ? { person } : {}),
         ...(companionFields ? { companionFields } : {}),
         label: record.handle && !label.includes(record.handle) ? `${label} (${record.handle})` : label,
         previousValue: sim.previousValue,
@@ -333,6 +351,15 @@ export async function runToolRound(
         rejectTarget(maxCheck)
         continue
       }
+      const safePersonCheck = checkDraftPerson(request.household, rawSafe.person, safeCheck.screen)
+      const maxPersonCheck = checkDraftPerson(request.household, rawMax.person, maxCheck.screen)
+      const personRefusal = !safePersonCheck.ok ? safePersonCheck : !maxPersonCheck.ok ? maxPersonCheck : null
+      if (personRefusal) {
+        answer({ ok: false, error: `${personRefusal.code}: ${personRefusal.reason}` })
+        continue
+      }
+      const safeForB = rawSafe.person === 'B'
+      const maxForB = rawMax.person === 'B'
 
       const safeField = rawSafe.field.trim()
       const maxField = rawMax.field.trim()
@@ -360,10 +387,11 @@ export async function runToolRound(
         continue
       }
 
-      const safeSim = simulateAdvisorFieldDelta(request.digest, safeCheck.screen, safeField, safeNewValue)
-      const maxSim = simulateAdvisorFieldDelta(request.digest, maxCheck.screen, maxField, maxNewValue)
-      const safeEffect = await effectOf({ screen: safeCheck.screen, instance: safeRecord.id, values: [[safeField, safeNewValue]] }, safeSim)
-      const maxEffect = await effectOf({ screen: maxCheck.screen, instance: maxRecord.id, values: [[maxField, maxNewValue]] }, maxSim)
+      const unknownForB = { previousValue: null, beforeRefundEur: 0, afterRefundEur: 0, deltaEur: 0 }
+      const safeSim = safeForB ? unknownForB : simulateAdvisorFieldDelta(request.digest, safeCheck.screen, safeField, safeNewValue)
+      const maxSim = maxForB ? unknownForB : simulateAdvisorFieldDelta(request.digest, maxCheck.screen, maxField, maxNewValue)
+      const safeEffect = await effectOf({ screen: safeCheck.screen, instance: safeRecord.id, ...(safeForB ? { person: 'B' as const } : {}), values: [[safeField, safeNewValue]] }, safeSim)
+      const maxEffect = await effectOf({ screen: maxCheck.screen, instance: maxRecord.id, ...(maxForB ? { person: 'B' as const } : {}), values: [[maxField, maxNewValue]] }, maxSim)
       const baseActionId = makeActionId()
       sources.push(sourceId)
 
@@ -376,6 +404,7 @@ export async function runToolRound(
           screen: safeCheck.screen,
           field: safeField,
           instance: safeRecord.id,
+          ...(safeForB ? { person: 'B' as const } : {}),
           label: rawSafe.label,
           previousValue: safeSim.previousValue,
           expectedPreviousValue: safeSim.previousValue,
@@ -391,6 +420,7 @@ export async function runToolRound(
           screen: maxCheck.screen,
           field: maxField,
           instance: maxRecord.id,
+          ...(maxForB ? { person: 'B' as const } : {}),
           label: rawMax.label,
           previousValue: maxSim.previousValue,
           expectedPreviousValue: maxSim.previousValue,

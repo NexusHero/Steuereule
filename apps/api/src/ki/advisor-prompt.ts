@@ -5,6 +5,8 @@ import {
   ADVISOR_LEGAL_SOURCES,
   describeNotesForPrompt,
   describeRecordHandles,
+  describeHouseholdForPrompt,
+  type AdvisorHousehold,
   describeSituationForPrompt,
   type AdvisorNoteHandle,
   type AdvisorRecordHandles,
@@ -58,6 +60,7 @@ export function buildStableSystemPrompt(): string {
     '11. Vermietung und Kinder haben mehrere Einträge. Gib bei `stage_field_draft` für die Masken `vermietung` und `kind` als `instance` den Namen des Eintrags an, genau wie er unter „Angelegte Einträge“ steht (z. B. „Objekt 1“, „Kind 2“). Gibt es nur einen Eintrag, darfst du `instance` weglassen. Gibt es mehrere und der Nutzer hat nicht gesagt, welcher gemeint ist, frage nach. Ist keiner angelegt, kannst du nichts vorbereiten: Einträge legt der Nutzer selbst in der Maske an – sag ihm das, die App öffnet die Maske. Erfinde keine Einträge und keine anderen Namen.',
     '12. Wirkung: Die Werkzeuge melden zu jedem Entwurf `effect`. Bei `computed` stammen `beforeRefundEur`, `afterRefundEur` und `deltaEur` aus der Schätzung der App – nenne genau diese Zahlen und keine anderen. Bei `not-computable` gibt es keine Zahl: Nenne dann keinen Euro-Betrag als Wirkung, sondern gib `effectHint` sinngemäß wieder. Eine Wirkung von 0 € heißt, dass sich die Schätzung durch die Angabe nicht ändert – sag das so.',
     '13. Projektnotizen: Sie sind dein Gedächtnis über alle Gespräche dieses Steuerjahres. Halte mit `remember_note` fest, was besprochen oder entschieden wurde und in keinem Feld der Erklärung steht (z. B. „Arbeitszimmer geprüft: lohnt sich nicht, weil kein eigener Raum“, „Nutzer will Fahrtenbuch nachreichen“). Notiere nichts, was schon als Wert in der Erklärung steht, keine Smalltalk-Details und keine persönlichen Daten. Ändert sich etwas, nutze `replace_note`; gilt es nicht mehr, `forget_note`. Sparsam: höchstens eine oder zwei Notizen pro Antwort. Erwähne im Text kurz, was du dir gemerkt hast.',
+    '14. Person B: In einer Zusammenveranlagung gehört alles, was der Nutzer über seine Ehefrau, seinen Ehemann oder seine Partnerin bzw. seinen Partner sagt („meine Frau verdient …“, „mein Mann fährt 24 km“, „Person B“), zu Person B. Solche Werte legst du mit `person: "B"` an, nie als Werte des Nutzers – auch wenn dieselbe Maske für den Nutzer leer ist. Was der Nutzer über sich selbst sagt, bekommt kein `person` (oder `person: "A"`). Ist unklar, wen eine Angabe betrifft, frage nach, bevor du einen Entwurf anlegst. Was unter „Haushalt“ steht, entscheidet, ob es Person B gibt und ob du für sie entwerfen darfst; Kinder, Vermietung, Kapital und das Interview gehören zur gemeinsamen Erklärung und bekommen kein `person`.',
     '',
     ADVISOR_STANCE_TEXT,
     '',
@@ -102,7 +105,7 @@ export function describeYearFigures(taxYear: number): string[] {
   return ['', `Werte für das Steuerjahr ${taxYear} aus der geprüften Tabelle \`kennzahlen\`. Sätze, Pauschalen und Höchstbeträge nennst du nur von hier, nie aus dem Gedächtnis; für Entwürfe rechnest du mit diesen Werten (z. B. Kindergeld im Jahr = Monatsbetrag × Monate):`, ...lines]
 }
 
-export function buildCaseSystemPrompt(digest: CaseDigest, activeScreen: Screen | undefined, planFirst: boolean, records?: AdvisorRecordHandles, notes?: readonly AdvisorNoteHandle[], skill?: AdvisorSkillId, task?: AdvisorTask, assessment?: AdvisorAssessmentBrief, situation?: string, opening?: AdvisorOpeningBrief, grayZone = false, interview?: InterviewProgress, today: string = new Date().toISOString().slice(0, 10)): string {
+export function buildCaseSystemPrompt(digest: CaseDigest, activeScreen: Screen | undefined, planFirst: boolean, records?: AdvisorRecordHandles, notes?: readonly AdvisorNoteHandle[], skill?: AdvisorSkillId, task?: AdvisorTask, assessment?: AdvisorAssessmentBrief, situation?: string, opening?: AdvisorOpeningBrief, grayZone = false, interview?: InterviewProgress, today: string = new Date().toISOString().slice(0, 10), household?: AdvisorHousehold): string {
   return [
     describeSituationForPrompt(digest, situation),
     '',
@@ -111,6 +114,7 @@ export function buildCaseSystemPrompt(digest: CaseDigest, activeScreen: Screen |
     JSON.stringify(digest),
     'Angelegte Einträge (für `instance`):',
     describeRecordHandles(records),
+    describeHouseholdForPrompt(household),
     describeNotesForPrompt(notes ?? []),
     ...describeUpcomingDates(digest.taxYear, today),
     ...describeYearFigures(digest.taxYear),
@@ -143,9 +147,11 @@ export function buildSystemMessage(
   grayZone = false,
   /** Which areas of the Berater-Interview are settled for this tax year. */
   interview?: InterviewProgress,
+  /** Whether there is a Person B the owl may draft for (ADR-0073). */
+  household?: AdvisorHousehold,
 ): SystemMessage {
   const stable = buildStableSystemPrompt()
-  const caseSpecific = buildCaseSystemPrompt(digest, activeScreen, planFirst, records, notes, skill, task, assessment, situation, opening, grayZone, interview)
+  const caseSpecific = buildCaseSystemPrompt(digest, activeScreen, planFirst, records, notes, skill, task, assessment, situation, opening, grayZone, interview, undefined, household)
   if (provider === 'anthropic') {
     return new SystemMessage({
       content: [

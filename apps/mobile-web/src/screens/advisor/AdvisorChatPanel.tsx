@@ -91,6 +91,8 @@ export interface AdvisorChatPanelProps {
   readonly onUndoAction?: ((actionId: string) => Promise<void> | void) | undefined
   readonly onInspectMask?: ((screen: Screen, field?: string) => void) | undefined
   readonly receiptLinkedActionIds?: ReadonlySet<string> | undefined
+  /** The spouse's first name: a draft for Person B says „für …“ (ADR-0073). */
+  readonly partnerName?: string | undefined
   readonly onAttachReceipt?: ((input: { readonly fileName: string; readonly rawText: string }) => Promise<void> | void) | undefined
   /** Upload a PDF or photo: stored encrypted, read on the device, parsed (#444). */
   /** Resolves when the file has been read: several files are read one after another (#497). */
@@ -181,6 +183,7 @@ export function AdvisorChatPanel({
   onUndoAction,
   onInspectMask,
   receiptLinkedActionIds,
+  partnerName,
   onAttachReceipt,
   onAttachReceiptFile,
   receiptProgress = null,
@@ -493,6 +496,7 @@ export function AdvisorChatPanel({
                   receiptLinked={receiptLinkedActionIds?.has(msg.meta.action.actionId)}
                   onSelectSource={setSelectedSource}
                   styles={styles}
+                  partnerName={partnerName}
                 />
               ) : null}
 
@@ -508,6 +512,7 @@ export function AdvisorChatPanel({
                       receiptLinked={receiptLinkedActionIds?.has(action.actionId)}
                       onSelectSource={setSelectedSource}
                       styles={styles}
+                      partnerName={partnerName}
                     />
                   ))
                 : null}
@@ -583,6 +588,7 @@ export function AdvisorChatPanel({
                   receiptLinkedActionIds={receiptLinkedActionIds}
                   onSelectSource={setSelectedSource}
                   styles={styles}
+                  partnerName={partnerName}
                 />
               ) : null}
 

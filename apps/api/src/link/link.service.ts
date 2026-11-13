@@ -108,6 +108,27 @@ export class LinkService {
     return row.personBUserId
   }
 
+  /**
+   * The spouse as the owl needs to know them (ADR-0073): whose data they are, whether the user may
+   * record figures for them, and the names only so they can be taken out of chat text. Null
+   * without a joint return with a Person B.
+   */
+  async spouseForAdvisor(
+    userId: string,
+    taxYear: number,
+  ): Promise<{ spouseUserId: string; recordable: boolean; firstName: string | null; lastName: string | null } | null> {
+    const row = await this.repository.findByUserAndYear(userId, taxYear)
+    if (!row || row.filingType !== 'zusammen' || !row.personBUserId) return null
+    const spouseUserId = row.personAUserId === userId ? row.personBUserId : row.personAUserId
+    const profile = await this.profileRepository.findByUserId(spouseUserId)
+    return {
+      spouseUserId,
+      recordable: row.personAUserId === userId && !hasOwnAccount(row),
+      firstName: profile?.firstName || null,
+      lastName: profile?.lastName || null,
+    }
+  }
+
   async set(userId: string, taxYear: number, dto: SetLinkDto, now = new Date()): Promise<LinkResponseDto> {
     const existing = await this.repository.findByUserAndYear(userId, taxYear)
     if (existing && existing.personAUserId !== userId) {

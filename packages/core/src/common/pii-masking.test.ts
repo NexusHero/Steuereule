@@ -8,6 +8,7 @@ import {
   maskEmployer,
   maskPhone,
   scrubUserMessagePii,
+  replaceNamesWith,
   scrubDocumentTextPii,
 } from './pii-masking'
 
@@ -176,5 +177,11 @@ describe('PII Masking (ADR-0052 §8 — Personenbezogene Daten: schreiben ja, le
       const scrubbed = scrubDocumentTextPii(doc)
       expect(scrubbed).toContain('50000 Bruttoarbeitslohn')
     })
+  })
+})
+
+describe('replaceNamesWith', () => {
+  it('puts the handle in place of the spouse’s name, also with umlauts at the start', () => {
+    expect(replaceNamesWith('Büsra fährt 24 km, Ümit nicht. Büsras Lohn', ['Büsra', 'Ümit Kaya'], 'Person B')).toBe('Person B fährt 24 km, Person B nicht. Büsras Lohn')
   })
 })

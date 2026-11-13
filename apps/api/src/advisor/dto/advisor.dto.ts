@@ -144,6 +144,14 @@ export class AdvisorActionProposalDto implements AdvisorActionProposal {
   @ApiPropertyOptional({ type: String, nullable: true, example: null })
   instance!: string | null
 
+  @ApiPropertyOptional({
+    type: String,
+    enum: ['A', 'B'],
+    example: 'B',
+    description: 'Whose fields the draft writes in a joint return (ADR-0073): B is the spouse whose figures the user records. Absent means the user.',
+  })
+  person?: 'A' | 'B' | undefined
+
   @ApiPropertyOptional({ type: Object, additionalProperties: { type: 'string' } })
   companionFields?: Readonly<Record<string, string>> | undefined
 

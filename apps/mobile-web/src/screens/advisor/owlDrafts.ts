@@ -22,6 +22,13 @@ export function extractPendingDrafts(messages: readonly AdvisorChatMessageView[]
   return drafts
 }
 
+/** Whether the conversation shows a draft for the spouse; only then is the spouse's name needed (ADR-0073). */
+export function hasPersonBDraft(messages: readonly AdvisorChatMessageView[] | undefined): boolean {
+  return (messages ?? []).some((msg) =>
+    [msg.meta?.action, ...(msg.meta?.actions ?? []), msg.meta?.twoPaths?.safePath, msg.meta?.twoPaths?.maxPath].some((action) => action?.person === 'B'),
+  )
+}
+
 export function updateActionStatusInMessage(
   msg: AdvisorChatMessageView,
   actionId: string,

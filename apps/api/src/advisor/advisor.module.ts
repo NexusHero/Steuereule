@@ -16,6 +16,7 @@ import { AssessmentModule } from '../assessment/assessment.module.js'
 import { TaxEstimateModule } from '../tax-estimate/tax-estimate.module.js'
 import { RentalModule } from '../rental/rental.module.js'
 import { PensionModule } from '../pension/pension.module.js'
+import { LinkModule } from '../link/link.module.js'
 import { AdvisorController } from './advisor.controller.js'
 import { ADVISOR_REPOSITORY } from './advisor.repository.js'
 import { PrismaAdvisorRepository } from './advisor.repository.prisma.js'
@@ -50,6 +51,7 @@ export function createAdvisorRunLog(env: NodeJS.ProcessEnv = process.env): Advis
     ChildrenModule,
     RentalModule,
     PensionModule,
+    LinkModule,
     CapitalModule,
     ProfileModule,
     TaxEstimateModule,

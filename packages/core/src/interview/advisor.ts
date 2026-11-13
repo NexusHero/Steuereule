@@ -14,6 +14,7 @@ import { topicRefusal, type AdvisorTopicOutcome } from './advisor-topic'
 import { isSupportedIncomeTaxYear } from '../math/tarif'
 import { getTaxYearParameters } from '../math/tax-parameters'
 import type { Marking, Screen } from './marking'
+import type { AdvisorPerson } from './advisor-household'
 import type { Profession } from './interview'
 import type { LstbCalculationTerm, LstbExtractedFieldStatus, LstbFieldReason } from '../domains/lstb-parser'
 import { taxEstimateCrossBorder, taxEstimateEmployee } from '../engine/tax-estimate'
@@ -121,6 +122,8 @@ export interface AdvisorActionProposal {
   readonly screen: Screen
   readonly field: string
   readonly instance: string | null
+  /** Whose fields the draft writes in a joint return (ADR-0073): `B` is the spouse; absent means the user (A). */
+  readonly person?: AdvisorPerson | undefined
   readonly companionFields?: Readonly<Record<string, string>> | undefined
   /** Raw values of the companion fields when the draft was created; the stale check compares against them. */
   readonly companionExpectedValues?: Readonly<Record<string, string | null>> | undefined
@@ -712,15 +715,46 @@ export function checkAdvisorInputBoundary(message: string, digest: CaseDigest): 
  * Handles multi-turn Anamnese (clickable follow-up pills), Two-Paths comparisons,
  * exact tax delta simulations, and Kanzlei-Endprüfung.
  */
+/**
+ * Words that put a sentence about someone other than the user: the spouse, a partner, a child.
+ * "Frau Müller" or "Partnerschaft" do not count; "meine Frau" and "Partner" do.
+ */
+const OTHER_PERSON_PATTERN =
+  /\b(?:(?:meine?|unsere?)\s+(?:frau|mann)\b|ehe(?:frau|mann|partner(?:in)?|gatt(?:e|in))\b|gatt(?:e|in)\b|partner(?:in)?\b|lebensgefährt(?:e|in)\b|kind(?:er)?\b|tochter\b|sohn\b|person\s+b\b)/i
+
+/** Whether a message talks about the spouse, a partner or a child rather than the user alone. */
+export function mentionsOtherPerson(message: string): boolean {
+  return OTHER_PERSON_PATTERN.test(message)
+}
+
+type AdvisorFallbackTurn = { readonly replyText: string; readonly meta: AdvisorMessageMeta }
+
+/**
+ * The fallback rules when the model cannot answer. They only know the user's own fields, so a
+ * sentence about the spouse, a partner or a child never becomes a draft: "Meine Frau fährt 24 km"
+ * must not land in the user's own commute. Such a turn gets an honest answer and no draft.
+ */
 export function evaluateAdvisorTurn(input: {
   readonly message: string
   readonly activeScreen?: Screen | undefined
   readonly digest: CaseDigest
   readonly actionIdFactory?: (() => string) | undefined
-}): {
-  readonly replyText: string
-  readonly meta: AdvisorMessageMeta
-} {
+}): AdvisorFallbackTurn {
+  const turn = evaluateOwnTurn(input)
+  if (!mentionsOtherPerson(input.message) || (turn.meta.action === undefined && turn.meta.twoPaths === undefined)) return turn
+  return {
+    replyText:
+      'Das klingt nach Angaben für deine Partnerin oder deinen Partner (Person B) oder für ein Kind. Gerade antworte ich nur mit meinen einfachen Regeln, und die tragen nichts für eine andere Person vor, damit nichts in deinen eigenen Feldern landet. Frag mich gleich noch einmal, oder trag es selbst in der Maske für Person B bzw. beim Kind ein.',
+    meta: { sources: turn.meta.sources ?? [] },
+  }
+}
+
+function evaluateOwnTurn(input: {
+  readonly message: string
+  readonly activeScreen?: Screen | undefined
+  readonly digest: CaseDigest
+  readonly actionIdFactory?: (() => string) | undefined
+}): AdvisorFallbackTurn {
   const { message, activeScreen, digest } = input
   const makeActionId = input.actionIdFactory ?? (() => `act-${Date.now()}`)
   const lower = message.toLowerCase()

@@ -646,7 +646,7 @@ describe('AdvisorService (In-App Steuerberater Agent "Deine Eule")', () => {
 
   it('hands the owl what still blocks the printout, in words, so „Fehlt noch etwas?“ names all of it', async () => {
     const printout = { check: async () => ({ missing: ['iban', 'grenzgaenger', 'kinder', 'anlageSO'] }) }
-    const withPrintout = new AdvisorService(advisorRepo, owlModeService, confirmationService, new AuditService(auditRepo), interviewRepo, lstbRepo, chRepo, commuteRepo, childRepo, new FakeRentalRepository(), new FakeCapitalRepository(), profileRepo, undefined, undefined, undefined, undefined, undefined, undefined, undefined, printout as never)
+    const withPrintout = new AdvisorService(advisorRepo, owlModeService, confirmationService, new AuditService(auditRepo), interviewRepo, lstbRepo, chRepo, commuteRepo, childRepo, new FakeRentalRepository(), new FakeCapitalRepository(), profileRepo, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, printout as never)
     const gaps = (await withPrintout.buildCaseDigest(USER, YEAR)).furtherFacts?.printoutGaps ?? []
     expect(gaps).toHaveLength(4)
     expect(gaps[0]).toContain('IBAN')
@@ -658,7 +658,7 @@ describe('AdvisorService (In-App Steuerberater Agent "Deine Eule")', () => {
 
   it('leaves the gaps out when the year has no printout to check', async () => {
     const printout = { check: async () => { throw new Error('no forms for this year') } }
-    const withPrintout = new AdvisorService(advisorRepo, owlModeService, confirmationService, new AuditService(auditRepo), interviewRepo, lstbRepo, chRepo, commuteRepo, childRepo, new FakeRentalRepository(), new FakeCapitalRepository(), profileRepo, undefined, undefined, undefined, undefined, undefined, undefined, undefined, printout as never)
+    const withPrintout = new AdvisorService(advisorRepo, owlModeService, confirmationService, new AuditService(auditRepo), interviewRepo, lstbRepo, chRepo, commuteRepo, childRepo, new FakeRentalRepository(), new FakeCapitalRepository(), profileRepo, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, printout as never)
     expect((await withPrintout.buildCaseDigest(USER, YEAR)).furtherFacts?.printoutGaps).toBeUndefined()
   })
 

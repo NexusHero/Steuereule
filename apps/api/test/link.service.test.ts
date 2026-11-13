@@ -171,3 +171,29 @@ describe('Kopplung DTOs', () => {
     expect(await validationErrors(LinkPersonBDto, { steuerId: null, religion: 'EV', religionConsent: true })).toEqual([])
   })
 })
+
+describe('the spouse as the owl sees them (ADR-0073)', () => {
+  it('is nobody without a joint return', async () => {
+    const { service } = setup()
+    expect(await service.spouseForAdvisor('user-a', year)).toBeNull()
+    await service.set('user-a', year, { filingType: 'einzel' })
+    expect(await service.spouseForAdvisor('user-a', year)).toBeNull()
+  })
+
+  it('is recordable by A while B has no account, with the names for scrubbing', async () => {
+    const { service } = setup()
+    await service.set('user-a', year, { filingType: 'zusammen' })
+    await service.updatePersonB('user-a', year, { firstName: 'Büsra', lastName: 'Yilmaz' })
+    const spouse = await service.spouseForAdvisor('user-a', year)
+    expect(spouse).toMatchObject({ recordable: true, firstName: 'Büsra', lastName: 'Yilmaz' })
+    expect(spouse?.spouseUserId).toBe(await service.dataUser('user-a', year, 'B'))
+  })
+
+  it('is not recordable once B joined with an own account, from either side', async () => {
+    const { service } = setup()
+    const link = await service.set('user-a', year, { filingType: 'zusammen' })
+    await service.joinWithCode('user-b', year, link.invitationCode!)
+    expect(await service.spouseForAdvisor('user-a', year)).toMatchObject({ spouseUserId: 'user-b', recordable: false })
+    expect(await service.spouseForAdvisor('user-b', year)).toMatchObject({ spouseUserId: 'user-a', recordable: false })
+  })
+})

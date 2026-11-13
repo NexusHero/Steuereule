@@ -203,3 +203,38 @@ describe('the fallback takes the amount that belongs to the topic', () => {
     expect(evaluateAdvisorTurn({ message: 'Ich bin beruflich umgezogen.', digest: sampleDigest }).meta.action?.field).not.toBe('umzug-kosten')
   })
 })
+
+describe('the fallback never drafts from a sentence about another person', () => {
+  const drafts = (message: string) => {
+    const turn = evaluateAdvisorTurn({ message, digest: sampleDigest })
+    return { action: turn.meta.action, twoPaths: turn.meta.twoPaths, reply: turn.replyText }
+  }
+
+  it("does not draft the wife's commute as the user's own", () => {
+    const turn = drafts('Meine Frau fährt jeden Tag 24 km zur Arbeit, Arbeitsweg einfach.')
+    expect(turn.action).toBeUndefined()
+    expect(turn.twoPaths).toBeUndefined()
+    expect(turn.reply).toMatch(/Partner|Person B/)
+  })
+
+  it.each([
+    'Mein Mann hat 24 km Arbeitsweg.',
+    'Meine Ehefrau ist Grenzgängerin, ihre Krankenkasse kostet 4.200 CHF.',
+    'Mein Partner hat 300 € gespendet.',
+    'Unser Kind hat einen Kurs für 350 € gemacht, Fortbildung online-kurs.',
+    'Person B pendelt 24 Kilometer, Arbeitsweg.',
+    'Meine Frau arbeitet fast immer im Homeoffice.',
+  ])('drafts nothing for "%s"', (message) => {
+    const turn = drafts(message)
+    expect(turn.action).toBeUndefined()
+    expect(turn.twoPaths).toBeUndefined()
+  })
+
+  it('still drafts the user’s own commute', () => {
+    expect(drafts('Mein Arbeitsweg ist 24 km einfach.').action?.newValue).toBe('24')
+  })
+
+  it('does not read "Frau Müller" or a word like "Partnerschaft" as the spouse', () => {
+    expect(drafts('Meine Vermieterin Frau Müller sagt, mein Arbeitsweg ist 24 km.').action?.newValue).toBe('24')
+  })
+})

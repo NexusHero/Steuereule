@@ -7826,6 +7826,15 @@
             "nullable": true,
             "example": null
           },
+          "person": {
+            "type": "string",
+            "enum": [
+              "A",
+              "B"
+            ],
+            "example": "B",
+            "description": "Whose fields the draft writes in a joint return (ADR-0073): B is the spouse whose figures the user records. Absent means the user."
+          },
           "companionFields": {
             "type": "object",
             "additionalProperties": {
@@ -8275,6 +8284,15 @@
             "type": "string",
             "nullable": true,
             "example": null
+          },
+          "person": {
+            "type": "string",
+            "enum": [
+              "A",
+              "B"
+            ],
+            "example": "B",
+            "description": "Whose fields the draft writes in a joint return (ADR-0073): B is the spouse whose figures the user records. Absent means the user."
           },
           "companionFields": {
             "type": "object",
