@@ -20,11 +20,14 @@ der Betreuung wurde darum geraten (ganzes Jahr statt ab dem Beginn laut Bescheid
    einem anderen Kurs anzupassen ist.
 2. **Betreuungszeitraum aus dem Bescheid:** Ein Bescheid oder eine Rechnung über Kinderbetreuung („ab …“, „vom …
    bis …“) ergibt den Zeitraum im Steuerjahr für Anlage Kind Zeile 67. Ein Beginn ohne Ende läuft bis zum Jahresende.
-   Der Entwurf geht an das einzige Kind des Jahres; bei mehreren Kindern entsteht keiner. Den Betrag liest die App
-   nicht, weil ein Bescheid nur einen Monatsbeitrag nennt; die Eule bittet um den tatsächlich gezahlten.
+   Folgt dem Beginn eine Befristung („befristet bis …“, „bis zum …“), endet der Zeitraum dort, auch im
+   Folgejahr. Der Entwurf geht an das einzige Kind des Jahres; bei mehreren an das Kind, dessen Vorname im
+   Bescheid steht. Passt keines oder mehr als eines, entsteht kein Entwurf, und die Eule bittet, den Zeitraum beim
+   Kind einzutragen. Den Betrag liest die App nicht, weil ein Bescheid nur einen Monatsbeitrag nennt; die Eule
+   bittet um den tatsächlich gezahlten.
 3. Dokument-Entwürfe dürfen Text tragen (Datum), nicht nur Beträge.
 
 ## Folgen
 
 - Echtfall 2024: Die KV des Kindes steht im Entwurf, der Betreuungszeitraum ist der aus dem Bescheid, wie beim Steuerberater.
-- Bei mehreren Kindern bleibt der Zeitraum Handarbeit, bis die Zuordnung per Rückfrage folgt.
+- Ein Bescheid aus dem Vorjahr mit Befristung ins neue Jahr ergibt auch im neuen Jahr den richtigen Zeitraum.

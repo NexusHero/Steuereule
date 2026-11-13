@@ -437,7 +437,16 @@ export class AutoReceiptParseStrategy implements DocumentParseStrategy {
     // A childcare notice: the care period for Anlage Kind Zeile 67, for the year's only child (ADR-0086). The
     // amount stays with the user: a notice states a monthly contribution, not what was paid.
     const period = !securityBlocked && !invoice && !donation && dto.rawText ? childcarePeriod(dto.rawText, dto.taxYear) : null
-    const childId = period && (dto.stageDraft ?? true) ? await this.advisorService.onlyChildId(userId, dto.taxYear) : null
+    const child = period && (dto.stageDraft ?? true) ? await this.advisorService.childForReceipt(userId, dto.taxYear, dto.rawText ?? '') : null
+    const childId = child?.id ?? null
+    if (period && child && child.children > 1 && childId === null) {
+      // Several children and the notice names none of them: no guess, the user assigns it.
+      parsed = {
+        ...parsed,
+        vendorCategory: 'kinderbetreuung',
+        summary: `Betreuungsbescheid gelesen: Betreuung vom ${period.from} bis ${period.to}. Für welches eurer Kinder er gilt, steht nicht eindeutig darin; trag den Zeitraum bitte beim Kind ein (Anlage Kind Zeile 67).`,
+      }
+    }
     if (period && childId) {
       const ocr = dto.textSource !== 'pdf_text'
       const staged = await this.advisorService.stageDocumentDrafts(userId, dto.taxYear, {

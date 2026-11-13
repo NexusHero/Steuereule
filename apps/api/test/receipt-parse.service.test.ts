@@ -764,5 +764,17 @@ describe('childcare notices (ADR-0086)', () => {
     await h.childRepo.create('user-c2', 2024, { firstName: 'Tom', lastName: 'Muster', geburtsdatum: '2020-01-01' })
     const res = await h.parseService.parseReceipt('user-c2', { taxYear: 2024, fileName: 'bescheid.pdf', rawText: notice, textSource: 'pdf_text' } as never)
     expect((res.assistantMessage?.meta?.actions ?? []).some((d) => d.field === 'childcareFrom')).toBe(false)
+    expect(res.parsed.summary).toContain('Für welches eurer Kinder')
+  })
+
+  it('drafts the period for the child the notice names, when there are several', async () => {
+    const h = buildTestHarness([], false)
+    await h.childRepo.create('user-c3', 2024, { firstName: 'Lea', lastName: 'Muster', geburtsdatum: '2022-01-01' })
+    const tom = await h.childRepo.create('user-c3', 2024, { firstName: 'Tom', lastName: 'Muster', geburtsdatum: '2020-01-01' })
+    const res = await h.parseService.parseReceipt('user-c3', { taxYear: 2024, fileName: 'bescheid.pdf', rawText: `${notice}\nKind: Tom Muster`, textSource: 'pdf_text' } as never)
+    expect((res.assistantMessage?.meta?.actions ?? []).map((d) => [d.instance, d.field])).toEqual([
+      [tom.id, 'childcareFrom'],
+      [tom.id, 'childcareTo'],
+    ])
   })
 })

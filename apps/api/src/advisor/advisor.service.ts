@@ -17,6 +17,7 @@ import {
   type AdvisorHousehold,
   heldDraftsNote,
   holdUnaskedOverwrites,
+  childNamedIn,
   simulateAdvisorFieldDelta,
   type AdvisorActionProposal,
   type AdvisorCountedItem,
@@ -1194,10 +1195,13 @@ export class AdvisorService {
     return (await this.draftsFor(userId, taxYear, target)).filter((a) => a.status === 'pending').at(-1)
   }
 
-  /** The year's only child, for a receipt that can only be about it; null with none or several (then the user is asked). */
-  async onlyChildId(userId: string, taxYear: number): Promise<string | null> {
+  /**
+   * The child a receipt is about: the only child of the year, or among several the one the document names
+   * (ADR-0086). Null when it stays unclear; `children` says how many there are, for the question to the user.
+   */
+  async childForReceipt(userId: string, taxYear: number, text: string): Promise<{ id: string | null; children: number }> {
     const children = (await this.childRepo?.listForUserAndYear(userId, taxYear)) ?? []
-    return children.length === 1 ? children[0]!.id : null
+    return { id: children.length === 0 ? null : childNamedIn(text, children), children: children.length }
   }
 
   /** Values of receipt drafts still waiting on this screen (newest first wins), for the fields that add up. */
