@@ -84,6 +84,14 @@ export const LEGAL_SOURCES: Readonly<Record<OwlSourceId | 'estg-32', LegalSource
       'Für jedes zu berücksichtigende Kind wird der Kinderfreibetrag samt Freibetrag für den Betreuungs- und Erziehungs- oder Ausbildungsbedarf (2025: 9.600 € bei Zusammenveranlagung) von Amts wegen mit dem Kindergeld verglichen (Günstigerprüfung).',
     url: 'https://www.gesetze-im-internet.de/estg/__32.html',
   },
+  'estg-35a': {
+    id: 'estg-35a',
+    paragraph: '§ 35a Abs. 3 EStG',
+    legalStatusDate: '13.11.2026',
+    translation:
+      'Für Handwerkerleistungen im Haushalt ermäßigt sich die Steuer um 20 % der Arbeitskosten (mit Umsatzsteuer), höchstens 1.200 € im Jahr; Material zählt nicht, gefördertes ist ausgeschlossen.',
+    url: 'https://www.gesetze-im-internet.de/estg/__35a.html',
+  },
   'ao-355': {
     id: 'ao-355',
     paragraph: '§ 355 Abs. 1 AO',

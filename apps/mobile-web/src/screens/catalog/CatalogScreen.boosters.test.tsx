@@ -61,6 +61,10 @@ describe('CatalogScreen — Slice 5 boosters (haushalt & gesundheit)', () => {
     await screen.findByTestId('katalog-input-haushalt-handwerker-betrag')
     fireEvent.click(screen.getByTestId('katalog-later-haushalt-handwerker-betrag'))
 
+    // The invoices' total behind the labour share (Z. 6 of the form, ADR-0078).
+    await screen.findByTestId('katalog-input-haushalt-handwerker-rechnungsbetrag')
+    fireEvent.click(screen.getByTestId('katalog-later-haushalt-handwerker-rechnungsbetrag'))
+
     const minijobInput = await screen.findByTestId('katalog-input-haushalt-minijob-betrag')
     fireEvent.change(minijobInput, { target: { value: '0' } })
     fireEvent.click(screen.getByTestId('katalog-submit-haushalt-minijob-betrag'))
@@ -70,6 +74,7 @@ describe('CatalogScreen — Slice 5 boosters (haushalt & gesundheit)', () => {
         { questionId: 'haushalt-gate', value: 'Ja' },
         { questionId: 'haushalt-dienstleistung-betrag', value: '1200' },
         { questionId: 'haushalt-handwerker-betrag', value: 'spaeter' },
+        { questionId: 'haushalt-handwerker-rechnungsbetrag', value: 'spaeter' },
         { questionId: 'haushalt-minijob-betrag', value: '0' },
       ]),
     )

@@ -3246,6 +3246,18 @@
       }
     },
     {
+      "id": "anlHha.z6Rechnung",
+      "formular": "anlage-haushaltsnahe-aufwendungen",
+      "seite": 1,
+      "art": "euro",
+      "kasten": {
+        "x": 335.8,
+        "y": 384.8,
+        "breite": 85.4,
+        "hoehe": 15.9
+      }
+    },
+    {
       "id": "anlHha.z6Lohn",
       "formular": "anlage-haushaltsnahe-aufwendungen",
       "seite": 1,

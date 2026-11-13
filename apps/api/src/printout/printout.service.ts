@@ -270,6 +270,7 @@ export class PrintoutService {
             minijobEur: answers['haushalt-gate'] === 'Ja' ? amountOf(answers['haushalt-minijob-betrag']) : null,
             servicesEur: answers['haushalt-gate'] === 'Ja' ? amountOf(answers['haushalt-dienstleistung-betrag']) : null,
             craftsmenLabourEur: answers['haushalt-gate'] === 'Ja' ? amountOf(answers['haushalt-handwerker-betrag']) : null,
+            craftsmenInvoicesEur: answers['haushalt-gate'] === 'Ja' ? amountOf(answers['haushalt-handwerker-rechnungsbetrag']) : null,
           }
         : null,
       riester:

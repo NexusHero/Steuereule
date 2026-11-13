@@ -2,7 +2,7 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import { HumanMessage, SystemMessage } from '@langchain/core/messages'
 import { Inject, Injectable, Optional } from '@nestjs/common'
 import { z } from 'zod'
-import { scrubDocumentTextPii, scrubUserMessagePii, type OwlSourceId, type Screen } from '@steuereule/core'
+import { looksLikeCraftsmanInvoice, parseCraftsmanInvoice, scrubDocumentTextPii, scrubUserMessagePii, type CraftsmanInvoiceRead, type OwlSourceId, type Screen } from '@steuereule/core'
 import { AdvisorService } from '../../advisor/advisor.service.js'
 import { AuditService } from '../../audit/audit.service.js'
 import {
@@ -46,7 +46,7 @@ const STAGE1_EXTRACTION_SCHEMA = z.object({
 const RECEIPT_EXTRACTION_TIMEOUT_MS = 20_000
 
 const SAFE_RECEIPT_TARGETS: Readonly<Record<string, readonly string[]>> = {
-  interview: ['spenden-betrag', 'fortbildung', 'umzug-kosten', 'dhf-miete', 'riester-betrag', 'homeoffice'],
+  interview: ['spenden-betrag', 'fortbildung', 'umzug-kosten', 'dhf-miete', 'riester-betrag', 'homeoffice', 'haushalt-handwerker-betrag'],
   lstb: ['bruttoarbeitslohn', 'lohnsteuer', 'sozialversicherung'],
   commute: ['oneWayKm', 'homeOfficeDays', 'workEquipmentEur', 'otherWorkExpensesEur'],
   chLohnausweis: ['krankenkasseChf', 'krankentaggeldChf', 'saeule3aChf'],
@@ -151,6 +151,31 @@ function extractDeterministically(dto: ParseReceiptDto): ParsedReceiptDataDto {
     suggestedValue,
     summary: describeReceipt(vendorCategory, amountEur, receiptDate),
     taxYear: Number.isFinite(derivedYear) ? derivedYear : dto.taxYear,
+  }
+}
+
+/**
+ * The draft for a craftsman's invoice: the labour share counts, with what it was read from, so the user
+ * can check it; the invoice total goes along for Z. 6 of the Anlage Haushaltsnahe Aufwendungen.
+ */
+function craftsmanProposal(invoice: CraftsmanInvoiceRead) {
+  const how =
+    invoice.source === 'stated'
+      ? 'wie auf der Rechnung ausgewiesen'
+      : `aus ${invoice.labourPositions.length === 1 ? 'der Position' : 'den Positionen'} ${invoice.labourPositions.map((p) => `„${p.text.slice(0, 60)}“`).join(', ')}${invoice.vatRate ? ` mit ${Math.round(invoice.vatRate * 100)} % Umsatzsteuer` : ''}`
+  const warnings = [
+    ...(invoice.subsidyHint ? ['Die Rechnung erwähnt eine Förderung (BAFA, KfW …): Für geförderte Maßnahmen gibt es die Ermäßigung nicht.'] : []),
+    'Zählt nur, wenn ihr per Überweisung bezahlt habt, und im Jahr der Zahlung.',
+  ]
+  return {
+    label: 'Handwerkerleistung: Lohnanteil (Summe im Jahr)',
+    reason: `Arbeitskosten ${invoice.labourEur} € ${how}; Material zählt nicht (§ 35a Abs. 3 EStG). ${warnings.join(' ')}`,
+    sourceId: 'estg-35a' as OwlSourceId,
+    companionFields: {
+      'haushalt-gate': 'Ja',
+      ...(invoice.invoiceTotalEur ? { 'haushalt-handwerker-rechnungsbetrag': String(invoice.invoiceTotalEur) } : {}),
+    },
+    summaryText: `Handwerkerrechnung über ${invoice.invoiceTotalEur ?? '?'} € erkannt, davon Arbeitskosten ${invoice.labourEur} € (${how}). Nach [estg-35a] ermäßigt das die Steuer um 20 % der Arbeitskosten. ${warnings.join(' ')} Bitte prüfe den Lohnanteil:`,
   }
 }
 
@@ -342,6 +367,25 @@ export class AutoReceiptParseStrategy implements DocumentParseStrategy {
       }
     }
 
+    // A craftsman's invoice: the labour share, read from the text by a fixed rule (§ 35a, ADR-0078),
+    // whatever field the model chose. An order confirmation or a quote gets no draft.
+    const invoice: CraftsmanInvoiceRead | null = !securityBlocked && dto.rawText && looksLikeCraftsmanInvoice(dto.rawText) ? parseCraftsmanInvoice(dto.rawText) : null
+    if (invoice) {
+      const labour = invoice.notAnInvoice ? null : invoice.labourEur
+      parsed = {
+        ...parsed,
+        vendorCategory: 'handwerker',
+        amountEur: invoice.invoiceTotalEur ?? parsed.amountEur,
+        suggestedScreen: labour ? 'interview' : null,
+        suggestedField: labour ? 'haushalt-handwerker-betrag' : null,
+        suggestedValue: labour ? String(labour) : null,
+        taxYear: invoice.taxYear ?? parsed.taxYear,
+        summary: invoice.notAnInvoice
+          ? 'Auftragsbestätigung oder Angebot eines Handwerkers: Für die Steuerermäßigung zählt erst die Rechnung, bezahlt per Überweisung. Lade bitte die Rechnung hoch.'
+          : parsed.summary,
+      }
+    }
+
     // Security Firewall Bridge between Stage 1 (untrusted doc OCR) and Stage 2 (advisor staging):
     // Throws synchronously if IBAN, 11-digit Steuer-ID, or forbidden personal keys slipped into extracted payload!
     checkPiiFree(parsed)
@@ -370,7 +414,7 @@ export class AutoReceiptParseStrategy implements DocumentParseStrategy {
     }
 
     const targetTaxYear = parsed.taxYear ?? dto.taxYear
-    const proposalMeta = proposalDetailsFor(parsed)
+    const proposalMeta = invoice?.labourEur ? craftsmanProposal(invoice) : proposalDetailsFor(parsed)
     const staged = await this.advisorService.stageReceiptProposal(userId, targetTaxYear, {
       screen: parsed.suggestedScreen,
       field: parsed.suggestedField,

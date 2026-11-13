@@ -751,6 +751,14 @@ describe('Ticket #443 Slice 5 — haushalt & gesundheit catalogue entries', () =
         'haushalt-gate': 'Ja',
         'haushalt-dienstleistung-betrag': '1200',
         'haushalt-handwerker-betrag': '3000',
+      }),
+    ).toEqual({ kind: 'question', id: 'haushalt-handwerker-rechnungsbetrag' })
+    expect(
+      nextStepFor(ENTRIES.haushalt, {
+        'haushalt-gate': 'Ja',
+        'haushalt-dienstleistung-betrag': '1200',
+        'haushalt-handwerker-betrag': '3000',
+        'haushalt-handwerker-rechnungsbetrag': '4200',
         'haushalt-minijob-betrag': '500',
       }),
     ).toEqual({ kind: 'done' })

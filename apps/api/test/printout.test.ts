@@ -532,12 +532,13 @@ describe('ausdruckWerte', () => {
   })
 
   it('prints medical costs in the Anlage Außergewöhnliche Belastungen and § 35a in the Anlage Haushaltsnahe Aufwendungen (ADR-0077)', () => {
-    const { values } = printoutValues({ ...FACTS, householdAndHealth: { healthCostsEur: 390, minijobEur: null, servicesEur: 240, craftsmenLabourEur: 350 } })
+    const { values } = printoutValues({ ...FACTS, householdAndHealth: { healthCostsEur: 390, minijobEur: null, servicesEur: 240, craftsmenLabourEur: 350, craftsmenInvoicesEur: 2938 } })
     expect(values).toMatchObject({
       'anlAgB.kz302': '390',
       'anlAgB.kz303': '0',
       'anlHha.kz212': '240',
       'anlHha.z6Text': 'Handwerkerleistungen',
+      'anlHha.z6Rechnung': '2938',
       'anlHha.z6Lohn': '350',
       'anlHha.kz214': '350',
     })

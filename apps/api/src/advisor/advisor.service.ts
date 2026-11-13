@@ -102,7 +102,12 @@ export type { PreparedAdvisorTurn } from './advisor-shared.js'
 
 
 /** Commute-mask fields that are a year's total of several receipts. */
-const ACCUMULATING_COMMUTE_FIELDS: ReadonlySet<string> = new Set(['workEquipmentEur', 'otherWorkExpensesEur'])
+const ACCUMULATING_KEYS: ReadonlySet<string> = new Set([
+  'commute.workEquipmentEur',
+  'commute.otherWorkExpensesEur',
+  'interview.haushalt-handwerker-betrag',
+  'interview.haushalt-handwerker-rechnungsbetrag',
+])
 
 const DETERMINISTIC_ENGINE: AdvisorEngineInfo = { mode: 'deterministic_fallback', provider: 'deterministic' }
 
@@ -877,11 +882,23 @@ export class AdvisorService {
     }
 
     const digest = await this.buildCaseDigest(userId, taxYear)
-    // A year's total built from several receipts (work tools, other Werbungskosten): this receipt adds
-    // to what is already recorded instead of replacing it (ADR-0076).
-    const previous = simulateAdvisorFieldDelta(digest, input.screen, input.field, input.newValue).previousValue
-    const adds = input.screen === 'commute' && ACCUMULATING_COMMUTE_FIELDS.has(input.field) && previous !== null && /^\d+$/.test(previous)
-    const newValue = adds ? String(Number(previous) + Number(input.newValue)) : input.newValue
+    // A year's total built from several receipts (work tools, other Werbungskosten, craftsmen): this
+    // receipt adds to what is recorded — or to the draft still waiting, which it replaces — instead of
+    // replacing it (ADR-0076, ADR-0078).
+    const pending = await this.pendingReceiptValues(userId, taxYear, input.screen)
+    const accumulate = async (field: string, value: string): Promise<{ value: string; before: string | null }> => {
+      const key = `${input.screen}.${field}`
+      if (!ACCUMULATING_KEYS.has(key) || !/^\d+$/.test(value)) return { value, before: null }
+      const base = pending.get(field) ?? (await this.confirmationService.readRawValue(userId, taxYear, key))
+      return base !== null && /^\d+$/.test(base) ? { value: String(Number(base) + Number(value)), before: base } : { value, before: null }
+    }
+    const main = await accumulate(input.field, input.newValue)
+    const newValue = main.value
+    const previous = main.before
+    const adds = previous !== null
+    const companionFields = input.companionFields
+      ? Object.fromEntries(await Promise.all(Object.entries(input.companionFields).map(async ([field, value]) => [field, (await accumulate(field, value)).value] as const)))
+      : undefined
     const sim = simulateAdvisorFieldDelta(digest, input.screen, input.field, newValue)
 
     const draft: AdvisorActionProposal = {
@@ -890,7 +907,7 @@ export class AdvisorService {
       screen: input.screen,
       field: input.field,
       instance: null,
-      ...(input.companionFields ? { companionFields: input.companionFields } : {}),
+      ...(companionFields ? { companionFields } : {}),
       label: input.label,
       previousValue: sim.previousValue,
       expectedPreviousValue: sim.previousValue,
@@ -1095,6 +1112,18 @@ export class AdvisorService {
       meta: { ...enrichedMeta, engine: input.engine },
     })
     return { actions: (enrichedMeta.actions ?? []).map((a) => toPublicAction(a)), assistantMessage: toMessageDto(assistantMessage) }
+  }
+
+  /** Values of receipt drafts still waiting on this screen (newest first wins), for the fields that add up. */
+  private async pendingReceiptValues(userId: string, taxYear: number, screen: Screen): Promise<Map<string, string>> {
+    const values = new Map<string, string>()
+    for (const message of [...(await this.advisorRepo.listForUserAndYear(userId, taxYear))].reverse()) {
+      const action = message.meta?.action
+      if (!action || action.status !== 'pending' || action.screen !== screen || action.person === 'B') continue
+      if (!values.has(action.field)) values.set(action.field, action.newValue)
+      for (const [field, value] of Object.entries(action.companionFields ?? {})) if (!values.has(field)) values.set(field, value)
+    }
+    return values
   }
 
   async markLstbActionsApplied(userId: string, taxYear: number, actionIds: readonly string[]): Promise<void> {

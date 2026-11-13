@@ -489,6 +489,8 @@ export interface HouseholdAndHealthFacts {
   minijobEur: number | null
   servicesEur: number | null
   craftsmenLabourEur: number | null
+  /** The invoices' totals behind the labour share (Z. 6, „Rechnungsbeträge“). */
+  craftsmenInvoicesEur?: number | null
 }
 
 export function printoutValues(facts: PrintoutFacts): PrintoutValues {
@@ -862,6 +864,7 @@ export function printoutValues(facts: PrintoutFacts): PrintoutValues {
       // Only the labour share is known; the invoice total stays for the user to add.
       values['anlHha.z6Text'] = 'Handwerkerleistungen'
       values['anlHha.z6Lohn'] = String(hh.craftsmenLabourEur)
+      if (hh.craftsmenInvoicesEur) values['anlHha.z6Rechnung'] = String(hh.craftsmenInvoicesEur)
       values['anlHha.kz214'] = String(hh.craftsmenLabourEur)
     }
   }

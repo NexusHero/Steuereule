@@ -47,6 +47,7 @@ export type HouseholdQuestionId =
   | 'haushalt-gate'
   | 'haushalt-dienstleistung-betrag'
   | 'haushalt-handwerker-betrag'
+  | 'haushalt-handwerker-rechnungsbetrag'
   | 'haushalt-minijob-betrag'
 
 export type HealthQuestionId = 'gesundheit-gate' | 'gesundheit-betrag'
@@ -156,6 +157,7 @@ export const LATER_ALLOWED_STEPS = [
   'riester-betrag',
   'haushalt-dienstleistung-betrag',
   'haushalt-handwerker-betrag',
+  'haushalt-handwerker-rechnungsbetrag',
   'haushalt-minijob-betrag',
 ] as const
 
@@ -323,10 +325,15 @@ export const QUESTIONS: Readonly<Record<EntryStepId, QuestionDeclaration>> = {
     id: 'haushalt-gate',
     kind: 'question',
     form: { kind: 'enum', values: YES_NO_VALUES },
-    followUps: { Ja: ['haushalt-dienstleistung-betrag', 'haushalt-handwerker-betrag', 'haushalt-minijob-betrag'] },
+    followUps: { Ja: ['haushalt-dienstleistung-betrag', 'haushalt-handwerker-betrag', 'haushalt-handwerker-rechnungsbetrag', 'haushalt-minijob-betrag'] },
   },
   'haushalt-dienstleistung-betrag': { id: 'haushalt-dienstleistung-betrag', kind: 'question', form: { kind: 'integer', min: 0, max: 1000000 } },
   'haushalt-handwerker-betrag': { id: 'haushalt-handwerker-betrag', kind: 'question', form: { kind: 'integer', min: 0, max: 1000000 } },
+  /**
+   * The invoices' totals behind the labour share (Anlage Haushaltsnahe Aufwendungen Z. 6), ADR-0078.
+   * Asked after the labour share; the craftsmen's invoices fill it on their own.
+   */
+  'haushalt-handwerker-rechnungsbetrag': { id: 'haushalt-handwerker-rechnungsbetrag', kind: 'question', form: { kind: 'integer', min: 0, max: 10000000 } },
   'haushalt-minijob-betrag': { id: 'haushalt-minijob-betrag', kind: 'question', form: { kind: 'integer', min: 0, max: 1000000 } },
   'gesundheit-gate': {
     id: 'gesundheit-gate',

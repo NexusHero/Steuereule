@@ -283,6 +283,7 @@
     { "id": "anlHha.z5Text", "formular": "anlage-haushaltsnahe-aufwendungen", "seite": 1, "anker": "5", "zeile": 5, "lage": "rechts", "art": "text", "nr": 1 },
     { "id": "anlHha.kz212", "formular": "anlage-haushaltsnahe-aufwendungen", "seite": 1, "anker": "212", "zeile": 5, "lage": "rechts", "art": "euro" },
     { "id": "anlHha.z6Text", "formular": "anlage-haushaltsnahe-aufwendungen", "seite": 1, "anker": "6", "zeile": 6, "lage": "rechts", "art": "text", "nr": 1 },
+    { "id": "anlHha.z6Rechnung", "formular": "anlage-haushaltsnahe-aufwendungen", "seite": 1, "anker": "6", "zeile": 6, "lage": "rechts", "art": "euro", "nr": 2 },
     { "id": "anlHha.z6Lohn", "formular": "anlage-haushaltsnahe-aufwendungen", "seite": 1, "anker": "6", "zeile": 6, "lage": "rechts", "art": "euro", "nr": 3 },
     { "id": "anlHha.kz214", "formular": "anlage-haushaltsnahe-aufwendungen", "seite": 1, "anker": "214", "zeile": 9, "lage": "rechts", "art": "euro" }
   ]

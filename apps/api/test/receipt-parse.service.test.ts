@@ -661,3 +661,44 @@ describe('ReceiptParseService — Two-Stage LStB Cascade (#444)', () => {
     ).rejects.toThrow(/does not exist/)
   })
 })
+
+describe('craftsmen’s invoices (§ 35a, ADR-0078)', () => {
+  const stated = [
+    'Zimmerei Beispiel GmbH Rechnung Nr. 4711 vom 12.08.2025',
+    '1 3,00 Std. Arbeitszeit Facharbeiter 58,00 174,00',
+    'Nettosumme in EUR 194,00',
+    'Endsumme in EUR : 230,86',
+    'Im oben aufgeführten Rechnungsbetrag von 230,86 € sind 207,06 € inkl. 19 % MwSt. Lohnkosten enthalten.',
+  ].join('\n')
+  const hours = [
+    'Beispiel Elektro GmbH Rechnung 2025-118, Datum 03.09.2025',
+    '1 10,50 Std. An- und Abfahrt, Teilmontage und Wiedermontage 70,00 735,00',
+    '2 1,00 Stck. Kabel und Installationsmaterial 90,00 90,00',
+    'Gesamtbetrag EUR 825,00',
+    'Mehrwertsteuer 19,00% EUR 156,75',
+    'Gesamtbetrag inkl. Steuer EUR 981,75',
+  ].join('\n')
+
+  it('drafts the labour share with the invoice total and the gate', async () => {
+    const h = buildTestHarness([], false)
+    const res = await h.parseService.parseReceipt('user-h1', { taxYear: 2025, fileName: 'zimmerei.pdf', rawText: stated })
+    expect(res.stagedAction).toMatchObject({ screen: 'interview', field: 'haushalt-handwerker-betrag', newValue: '207', sourceId: 'estg-35a' })
+    expect(res.stagedAction?.companionFields).toEqual({ 'haushalt-gate': 'Ja', 'haushalt-handwerker-rechnungsbetrag': '231' })
+  })
+
+  it('adds a second invoice to the first while that draft is still waiting', async () => {
+    const h = buildTestHarness([], false)
+    await h.parseService.parseReceipt('user-h2', { taxYear: 2025, fileName: 'zimmerei.pdf', rawText: stated })
+    const second = await h.parseService.parseReceipt('user-h2', { taxYear: 2025, fileName: 'elektro.pdf', rawText: hours })
+    expect(second.stagedAction).toMatchObject({ newValue: String(207 + 875) })
+    expect(second.stagedAction?.companionFields?.['haushalt-handwerker-rechnungsbetrag']).toBe(String(231 + 982))
+  })
+
+  it('stages nothing for an order confirmation and says so', async () => {
+    const h = buildTestHarness([], false)
+    const res = await h.parseService.parseReceipt('user-h3', { taxYear: 2025, fileName: 'ab.pdf', rawText: hours.replace('Rechnung 2025-118', 'Auftragsbestätigung AB-118') })
+    expect(res.stagedAction).toBeNull()
+    expect(res.parsed.summary).toContain('erst die Rechnung')
+  })
+})
+

@@ -107,6 +107,15 @@ export const ADVISOR_LEGAL_SOURCES: Readonly<Record<OwlSourceId, AdvisorLegalSou
     legalStatusDate: LEGAL_SOURCES_CHECKED_ON,
     url: 'https://www.gesetze-im-internet.de/estg/__10.html',
   },
+  'estg-35a': {
+    sourceId: 'estg-35a',
+    paragraph: '§ 35a Abs. 3 EStG',
+    title: 'Handwerkerleistungen im Haushalt',
+    summary:
+      'Für Handwerkerleistungen im eigenen Haushalt ermäßigt sich die Einkommensteuer um 20 % der Arbeitskosten einschließlich Maschinen- und Fahrtkosten und Umsatzsteuer, höchstens 1.200 € im Jahr; Material zählt nicht, öffentlich geförderte Maßnahmen sind ausgeschlossen, und es braucht eine Rechnung und eine Überweisung.',
+    legalStatusDate: LEGAL_SOURCES_CHECKED_ON,
+    url: 'https://www.gesetze-im-internet.de/estg/__35a.html',
+  },
   'ao-355': {
     sourceId: 'ao-355',
     paragraph: '§ 355 Abs. 1 AO',

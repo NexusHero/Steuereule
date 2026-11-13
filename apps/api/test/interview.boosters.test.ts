@@ -50,6 +50,10 @@ describe('InterviewService — Slice 5 haushalt & gesundheit entries', () => {
       questionId: 'haushalt-handwerker-betrag',
       value: AMOUNT_LATER,
     })
+    await service.postAnswer(USER_ID, TAX_YEAR, {
+      questionId: 'haushalt-handwerker-rechnungsbetrag',
+      value: AMOUNT_LATER,
+    })
     const done = await service.postAnswer(USER_ID, TAX_YEAR, {
       questionId: 'haushalt-minijob-betrag',
       value: '500',
