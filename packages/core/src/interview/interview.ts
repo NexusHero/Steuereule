@@ -52,6 +52,9 @@ export type HouseholdQuestionId =
 
 export type HealthQuestionId = 'gesundheit-gate' | 'gesundheit-betrag'
 
+/** Income tax prepayments of the year (§ 37 EStG), credited against the tax like withheld wage tax (ADR-0081). */
+export type PrepaymentQuestionId = 'vorauszahlungen-gate' | 'vorauszahlungen-betrag'
+
 /** Asked where the advice lives (the Eule tab), not in the Minimal-Gate — value first (ADR-0045). */
 export type ProfessionQuestionId = 'beruf'
 
@@ -77,6 +80,7 @@ export type EntryQuestionId =
   | SingleParentQuestionId
   | HouseholdQuestionId
   | HealthQuestionId
+  | PrepaymentQuestionId
   | ProfessionQuestionId
 export type EntryGateId = MinimalGateGateId | SegmentTwoGateId
 
@@ -159,6 +163,7 @@ export const LATER_ALLOWED_STEPS = [
   'haushalt-handwerker-betrag',
   'haushalt-handwerker-rechnungsbetrag',
   'haushalt-minijob-betrag',
+  'vorauszahlungen-betrag',
 ] as const
 
 const LATER_ALLOWED_SET: ReadonlySet<string> = new Set<string>(LATER_ALLOWED_STEPS)
@@ -342,6 +347,13 @@ export const QUESTIONS: Readonly<Record<EntryStepId, QuestionDeclaration>> = {
     followUps: { Ja: ['gesundheit-betrag'] },
   },
   'gesundheit-betrag': { id: 'gesundheit-betrag', kind: 'question', form: { kind: 'integer', min: 0, max: 1000000 } },
+  'vorauszahlungen-gate': {
+    id: 'vorauszahlungen-gate',
+    kind: 'question',
+    form: { kind: 'enum', values: YES_NO_VALUES },
+    followUps: { Ja: ['vorauszahlungen-betrag'] },
+  },
+  'vorauszahlungen-betrag': { id: 'vorauszahlungen-betrag', kind: 'question', form: { kind: 'integer', min: 0, max: 10000000 } },
   'riester-einnahmen-vorjahr': { id: 'riester-einnahmen-vorjahr', kind: 'question', form: { kind: 'integer', min: 0, max: 1000000 } },
 
   'ch-wohnsitz': { id: 'ch-wohnsitz', kind: 'question', form: { kind: 'enum', values: CH_RESIDENCE_VALUES } },
@@ -358,6 +370,7 @@ export type EntryId =
   | 'alleinerziehend'
   | 'haushalt'
   | 'gesundheit'
+  | 'vorauszahlungen'
   | 'berufsprofil'
 
 export interface CatalogueEntry {
@@ -382,6 +395,8 @@ export const ENTRIES: Readonly<Record<EntryId, CatalogueEntry>> = {
   alleinerziehend: { id: 'alleinerziehend', steps: ['ae-weitere-person', 'ae-haushaltsgemeinschaft'] },
   haushalt: { id: 'haushalt', steps: ['haushalt-gate'] },
   gesundheit: { id: 'gesundheit', steps: ['gesundheit-gate'] },
+  /** Prepayments the tax office set for the year (§ 37 EStG): they count against the tax like wage tax. */
+  vorauszahlungen: { id: 'vorauszahlungen', steps: ['vorauszahlungen-gate'] },
   /** The occupation group for the owl's profession tips — one question, asked in the Eule tab. */
   berufsprofil: { id: 'berufsprofil', steps: ['beruf'] },
 }

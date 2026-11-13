@@ -61,7 +61,7 @@ export function unusedSavingsLevers(digest: CaseDigest): readonly SavingsLever[]
   if (digest.capitalGainEur === null) add('kapital', 'Kapitalerträge: nichts angegeben (Freistellungsauftrag, Günstigerprüfung, Verluste)')
   if (digest.childrenCount > 0) add('kinder', 'Kinder: Betreuungskosten, Schulgeld, Günstigerprüfung, Entlastungsbetrag', 'unknown')
   if (digest.filingStatus === 'zusammen') add('veranlagungsart', 'Veranlagungsart: Zusammen- gegen Einzelveranlagung rechnen', 'unknown')
-  if (digest.crossBorder.isCrossBorderCh) add('grenzgaenger', 'Grenzgänger: Quellensteuer, AHV, Pensionskasse, Krankenversicherung', 'unknown')
+  if (digest.crossBorder.isCrossBorderCh) add('grenzgaenger', 'Grenzgänger: Quellensteuer, AHV, Pensionskasse, Krankenversicherung, Vorauszahlungen des Jahres (Kachel Vorauszahlungen)', 'unknown')
   if (digest.rentalObjectsCount > 0) add('vermietung', 'Vermietung: AfA, Erhaltungsaufwand verteilen, alle Werbungskosten', 'unknown')
 
   // Expenses just under the lump sum: a few forgotten items lift them over it. Far over it: the

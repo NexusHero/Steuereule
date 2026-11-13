@@ -57,6 +57,8 @@ export type TaxEstimateStatus =
       readonly churchTax?: EstimateChurchTax
       readonly jointAssessment?: boolean
       readonly laterAmounts?: number
+      /** Income tax prepayments of the year (§ 37 EStG), already part of the result (ADR-0081). */
+      readonly prepayments?: number
     })
   | { readonly kind: 'offen'; readonly missing: readonly string[] }
   | { readonly kind: 'nicht-moeglich'; readonly reason: string }
@@ -82,6 +84,16 @@ export class TaxEstimateService {
     year: number,
     boostersEnabled: boolean = HOUSEHOLD_AND_HEALTH_BOOSTERS,
   ): Promise<TaxEstimateStatus> {
+    const status = await this.calculate(userId, year, boostersEnabled)
+    if (status.kind !== 'spanne') return status
+    // Prepayments the tax office set for the year count against the tax like withheld wage tax (§ 36
+    // Abs. 2 Nr. 1 EStG); in a joint return there is one assessment, so they are asked once, of Person A.
+    const prepayments = amountAnswer(answersFrom(await this.interview.findAllForUserAndYear(userId, year)), 'vorauszahlungen')
+    if (prepayments === 0) return status
+    return { ...status, prepayments, result: { from: status.result.from + prepayments, to: status.result.to + prepayments } }
+  }
+
+  private async calculate(userId: string, year: number, boostersEnabled: boolean): Promise<TaxEstimateStatus> {
     return withSpan('tax_estimate.calculate', async () => {
       const [lstbRecord, interviewRows, chRecord, masterData, path] = await Promise.all([
       this.lstb.findForUserAndYear(userId, year),
@@ -454,4 +466,11 @@ function churchTaxInput(
     withheld,
     children,
   }
+}
+
+/** A whole-euro amount behind a „Ja“ gate; „später“, „Nein“ or nothing count as 0. */
+function amountAnswer(answers: Answers, gate: 'vorauszahlungen'): number {
+  if (answers[`${gate}-gate`] !== 'Ja') return 0
+  const value = answers[`${gate}-betrag`]
+  return value !== undefined && /^\d+$/.test(value) ? Number(value) : 0
 }

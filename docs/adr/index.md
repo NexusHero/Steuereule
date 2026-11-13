@@ -98,6 +98,7 @@ The ADRs **justify** the architecture; the [living arc42 document](../arc42/READ
 | 0078 | Handwerkerrechnungen lesen (§ 35a Abs. 3 EStG) | Accepted |
 | 0079 | Wechseljahr: deutscher und Schweizer Lohn in einem Jahr, zwei Arbeitswege | Accepted |
 | 0080 | Spendenbestätigungen addieren, Schweizer Krankenkassen-Auszüge lesen | Accepted |
+| 0081 | Vorauszahlungen in der Schätzung | Accepted |
 
 See also the [Tech Radar](./tech-radar.md).
 

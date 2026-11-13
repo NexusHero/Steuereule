@@ -48,6 +48,25 @@ describe('SteuerschaetzungService', () => {
     expect(status.result.from).toBeLessThan(status.result.to)
   })
 
+  it('credits the prepayments of the year against the tax (§ 37 EStG, ADR-0081)', async () => {
+    const { lstb, interview, service } = setup()
+    lstb.seed({ userId: 'u', taxYear: 2025, bruttoarbeitslohn: '45000', lohnsteuer: '6100', sozialversicherung: '9200' })
+    interview.seed('u', 2025, EMPLOYED)
+    const without = range(await service.getState('u', 2025))
+    interview.seed('u', 2025, { ...EMPLOYED, 'vorauszahlungen-gate': 'Ja', 'vorauszahlungen-betrag': '2400' })
+    const withPrepayments = range(await service.getState('u', 2025))
+
+    expect(withPrepayments.result).toEqual({ from: without.result.from + 2400, to: without.result.to + 2400 })
+    expect(withPrepayments).toMatchObject({ prepayments: 2400 })
+  })
+
+  it('ignores a prepayment amount behind a „Nein“', async () => {
+    const { lstb, interview, service } = setup()
+    lstb.seed({ userId: 'u', taxYear: 2025, bruttoarbeitslohn: '45000', lohnsteuer: '6100', sozialversicherung: '9200' })
+    interview.seed('u', 2025, { ...EMPLOYED, 'vorauszahlungen-gate': 'Nein', 'vorauszahlungen-betrag': '2400' })
+    expect(range(await service.getState('u', 2025))).not.toHaveProperty('prepayments')
+  })
+
   it('takes the Entfernungspauschale from the stored commute', async () => {
     const { lstb, interview, service } = setup({
       workdays: [1, 2, 3, 4, 5],

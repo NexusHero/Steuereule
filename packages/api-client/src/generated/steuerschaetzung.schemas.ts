@@ -81,5 +81,7 @@ export interface TaxEstimateDto {
   reason?: TaxEstimateDtoReason;
   /** Number of deferred catalog deduction amounts. */
   laterAmounts?: number;
+  /** Income tax prepayments of the year (§ 37 EStG), already included in the result (ADR-0081). */
+  prepayments?: number;
 }
 

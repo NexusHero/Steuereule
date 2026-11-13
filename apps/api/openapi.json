@@ -643,6 +643,7 @@
                 "alleinerziehend",
                 "haushalt",
                 "gesundheit",
+                "vorauszahlungen",
                 "berufsprofil"
               ],
               "type": "string"
@@ -7084,6 +7085,10 @@
           "laterAmounts": {
             "type": "number",
             "description": "Number of deferred catalog deduction amounts."
+          },
+          "prepayments": {
+            "type": "number",
+            "description": "Income tax prepayments of the year (§ 37 EStG), already included in the result (ADR-0081)."
           }
         },
         "required": [

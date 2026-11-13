@@ -1047,6 +1047,8 @@ export const appResources = {
           'haushalt-minijob-betrag': 'Aufwendungen für eine geringfügig Beschäftigte im Haushalt',
           'gesundheit-gate': 'Hattest du selbst bezahlte Krankheitskosten (Zuzahlungen, Brille, Zahnersatz, Medikamente auf Rezept)?',
           'gesundheit-betrag': 'Summe der selbst getragenen Kosten nach Erstattungen der Krankenkasse',
+          'vorauszahlungen-gate': 'Hast du für dieses Jahr Vorauszahlungen ans Finanzamt geleistet (Einkommensteuer, festgesetzt im letzten Bescheid)?',
+          'vorauszahlungen-betrag': 'Summe der gezahlten Vorauszahlungen im Jahr (Einkommensteuer, Soli und Kirchensteuer zusammen, €)',
           'riester-einnahmen-vorjahr': 'Beitragspflichtige Einnahmen im Vorjahr (steht in deiner Renteninformation bzw. der Meldebescheinigung zur Sozialversicherung)',
         },
         hints: {
@@ -1261,6 +1263,7 @@ export const appResources = {
           alleinerziehend: { titel: 'Alleinerziehend' },
           haushalt: { titel: 'Haushalt & Handwerker' },
           gesundheit: { titel: 'Gesundheit & Krankheitskosten' },
+          vorauszahlungen: { titel: 'Vorauszahlungen ans Finanzamt' },
           'partner-lstb': { titel: 'Lohnsteuerbescheinigung' },
           'partner-arbeitsweg': { titel: 'Arbeitstage & Weg' },
         },
@@ -3071,6 +3074,8 @@ export const appResources = {
           'haushalt-minijob-betrag': 'Expenses for a marginal domestic employee (Minijob)',
           'gesundheit-gate': 'Did you pay medical costs out of pocket (co-payments, glasses, dental prosthetics, prescription medication)?',
           'gesundheit-betrag': 'Total out-of-pocket medical costs after health-insurance reimbursements',
+          'vorauszahlungen-gate': 'Did you make prepayments to the tax office for this year (income tax, set in your last assessment)?',
+          'vorauszahlungen-betrag': 'Total prepayments paid in the year (income tax, solidarity surcharge and church tax together, €)',
           'riester-einnahmen-vorjahr': 'Contributory earnings in the previous year (see your pension statement or social-insurance notice)',
         },
         hints: {
@@ -3285,6 +3290,7 @@ export const appResources = {
           alleinerziehend: { titel: 'Single parent' },
           haushalt: { titel: 'Household & tradespeople' },
           gesundheit: { titel: 'Health & medical costs' },
+          vorauszahlungen: { titel: 'Prepayments to the tax office' },
           'partner-lstb': { titel: 'Wage tax certificate' },
           'partner-arbeitsweg': { titel: 'Workdays & commute' },
         },

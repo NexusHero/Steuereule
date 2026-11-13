@@ -40,6 +40,7 @@ export type TileId =
   | 'alleinerziehend'
   | 'haushalt'
   | 'gesundheit'
+  | 'vorauszahlungen'
 
 export type TileStatus = 'offen' | 'erledigt' | 'betrag-offen'
 
@@ -203,6 +204,15 @@ export const TILES: readonly TileDefinition[] = [
     personas: ['rentner', 'eltern', 'alleinerziehend'],
     isVisible: (f) => f.boosterEnabled ?? HOUSEHOLD_AND_HEALTH_BOOSTERS,
     status: (f) => catalogStatus('gesundheit', f.answers),
+  },
+  {
+    // Cross-border commuters and landlords pay income tax in advance as a rule (§ 37 EStG, ADR-0081).
+    id: 'vorauszahlungen',
+    titleKey: 'cockpit.kachel.vorauszahlungen.titel',
+    route: { screen: 'Catalog', entry: 'vorauszahlungen' },
+    personas: ['grenzgaenger', 'vermieter'],
+    isVisible: () => true,
+    status: (f) => catalogStatus('vorauszahlungen', f.answers),
   },
 ]
 
