@@ -54,6 +54,10 @@ export const AdvisorGraphState = Annotation.Root({
     reducer: (_left, right) => right,
     default: () => null,
   }),
+  situationSuggestions: Annotation<string[]>({
+    reducer: (_left, right) => right,
+    default: () => [],
+  }),
   questionRound: Annotation<AdvisorQuestionRound | null>({
     reducer: (_left, right) => right,
     default: () => null,
@@ -95,6 +99,7 @@ export async function runToolRound(
   let pendingTwoPaths = state.pendingTwoPaths
   let choices = state.choices
   let questionRound = state.questionRound
+  const situationSuggestions = [...(state.situationSuggestions ?? [])]
   let noteChanges = state.noteChanges
   const sources: OwlSourceId[] = []
 
@@ -409,6 +414,22 @@ export async function runToolRound(
       continue
     }
 
+    if (tc.name === 'suggest_situation') {
+      const args = parseArgs(TOOL_ARG_SCHEMAS.suggest_situation)
+      if (args === null) continue
+      const text = args.text.replace(/\s+/g, ' ').trim()
+      try {
+        // A suggestion is shown to the user and may be stored: it must not carry a name or an identifier.
+        checkPiiFree({ text })
+      } catch {
+        toolMessages.push(toolResult(callId, tc.name, { ok: false, error: 'Der Vorschlag enthält persönliche Daten. Formuliere ihn ohne Namen und Kennungen.' }))
+        continue
+      }
+      if (situationSuggestions.length < 3 && !situationSuggestions.includes(text)) situationSuggestions.push(text)
+      toolMessages.push(toolResult(callId, tc.name, { ok: true, suggested: text }))
+      continue
+    }
+
     if (tc.name === 'lookup_tax_knowledge') {
       const args = parseArgs(TOOL_ARG_SCHEMAS.lookup_tax_knowledge)
       if (args === null) continue
@@ -526,6 +547,7 @@ export async function runToolRound(
     pendingTwoPaths,
     choices,
     questionRound,
+    situationSuggestions,
     noteChanges,
     sources,
   }

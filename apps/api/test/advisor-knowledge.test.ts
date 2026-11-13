@@ -19,6 +19,7 @@ async function callTool(name: string, args: Record<string, unknown>): Promise<Re
     pendingTwoPaths: null,
     choices: [],
     questionRound: null,
+    situationSuggestions: [],
     noteChanges: [],
     sources: [],
   }
@@ -67,6 +68,13 @@ describe('tax knowledge of the owl (#499)', () => {
     expect(String(found.text)).toContain('Kleinunternehmer')
     const missing = await callTool('lookup_tax_knowledge', { topic: 'geheimnisse' })
     expect(missing.ok).toBe(false)
+  })
+})
+
+describe('suggestions for the situation (#501)', () => {
+  it('are collected for the user to take over, and refused when they name someone', async () => {
+    expect(await callTool('suggest_situation', { text: 'Hauskauf für 2027 geplant.' })).toMatchObject({ ok: true, suggested: 'Hauskauf für 2027 geplant.' })
+    expect((await callTool('suggest_situation', { text: 'Kredit läuft über IBAN DE89370400440532013000.' })).ok).toBe(false)
   })
 })
 

@@ -18,6 +18,7 @@ import {
   type AdvisorMessageUsage,
   type AdvisorNoteAuthor,
   type AdvisorNoteRecord,
+  type AdvisorSituationRecord,
   type AdvisorRepository,
   type CreateAdvisorMessageInput,
   type FinishAdvisorMessageInput,
@@ -110,6 +111,15 @@ export class PrismaAdvisorRepository implements AdvisorRepository {
     return rows.map(toRecord)
   }
 
+  async listAllConversations(userId: string): Promise<AdvisorConversationRecord[]> {
+    return this.prisma.advisorConversation.findMany({ where: { userId }, orderBy: { lastUsedAt: 'desc' } })
+  }
+
+  async answeringConversationIds(userId: string, since: Date): Promise<string[]> {
+    const rows = await this.prisma.advisorChatMessage.findMany({ where: { userId, status: 'streaming', createdAt: { gte: since } }, select: { conversationId: true }, distinct: ['conversationId'] })
+    return rows.map((row) => row.conversationId).filter((id): id is string => id !== null)
+  }
+
   async listConversations(userId: string, taxYear: number): Promise<AdvisorConversationRecord[]> {
     return this.prisma.advisorConversation.findMany({ where: { userId, taxYear }, orderBy: { lastUsedAt: 'desc' } })
   }
@@ -140,6 +150,20 @@ export class PrismaAdvisorRepository implements AdvisorRepository {
       this.prisma.taxDataAccessLog.create({ data: { userId, action: 'WRITE', resource: 'berater_gespraech_loeschen' } }),
     ])
     return messages.count
+  }
+
+  async findSituation(userId: string): Promise<AdvisorSituationRecord | null> {
+    const row = await this.prisma.advisorSituation.findUnique({ where: { userId } })
+    return row ? { text: row.text, updatedAt: row.updatedAt } : null
+  }
+
+  async saveSituation(userId: string, text: string): Promise<AdvisorSituationRecord> {
+    const updatedAt = new Date()
+    const [row] = await this.prisma.$transaction([
+      this.prisma.advisorSituation.upsert({ where: { userId }, create: { userId, text, updatedAt }, update: { text, updatedAt } }),
+      this.prisma.taxDataAccessLog.create({ data: { userId, action: 'WRITE', resource: 'berater_situation' } }),
+    ])
+    return { text: row.text, updatedAt: row.updatedAt }
   }
 
   async listNotes(userId: string, taxYear: number): Promise<AdvisorNoteRecord[]> {

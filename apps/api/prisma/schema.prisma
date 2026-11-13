@@ -1294,6 +1294,17 @@ model AdvisorNote {
   @@map("BeraterNotiz")
 }
 
+// The user's own description of the household's situation (#501): one text per user, read by the
+// owl in every conversation of every tax year. Names and identifiers are refused when it is saved.
+model AdvisorSituation {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  text      String   @map("inhalt") /// @encrypted?mode=strict
+  updatedAt DateTime @default(now()) @map("geaendertAm")
+
+  @@map("BeraterSituation")
+}
+
 // AES-256-GCM envelope-encrypted original receipt files (PDF/JPEG/PNG/WebP).
 // Binary cipherBytes/iv/authTag use the per-user DEK from the keystore database (ADR-0059)
 // + AAD (userId:receiptId). contentMac is an HMAC under that DEK, never a plain hash.

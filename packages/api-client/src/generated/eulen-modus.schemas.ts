@@ -529,6 +529,8 @@ export interface AdvisorMessageMetaDto {
   notices?: AdvisorAnswerNoticeDto[];
   /** What the owl changed in the project notes in this answer; each change can be undone (#481). */
   noteChanges?: AdvisorNoteChangeDto[];
+  /** Additions to the description of the situation the owl suggests; taken over with a tap (#501). */
+  situationSuggestions?: string[];
   /** A round of questions with answers to tap, from the interview skill (#495). */
   questionRound?: AdvisorQuestionRoundDto;
   /** Turbo mode: the owl applied the drafts of this answer itself; each can be undone. */
@@ -747,6 +749,15 @@ export interface AdvisorConversationDto {
   title: string | null;
   createdAt: string;
   lastUsedAt: string;
+  /** An answer is being written in this conversation right now; several conversations can answer at the same time (#503). */
+  answering: boolean;
+}
+
+export interface AdvisorProjectDto {
+  /** The tax year is the project. */
+  taxYear: number;
+  /** The conversations of that year, most recently used first. */
+  conversations: AdvisorConversationDto[];
 }
 
 /**
@@ -799,6 +810,13 @@ export interface AdvisorNoteDto {
   updatedAt: string;
 }
 
+export interface AdvisorSituationDto {
+  /** The user’s own description of the household’s situation; empty while nothing was written (#501). */
+  text: string;
+  /** @nullable */
+  updatedAt: string | null;
+}
+
 export type AdvisorLegalSourceDtoSourceId = typeof AdvisorLegalSourceDtoSourceId[keyof typeof AdvisorLegalSourceDtoSourceId];
 
 
@@ -831,10 +849,14 @@ export interface AdvisorSessionResponseDto {
   conversationId: string;
   /** Every conversation of this tax year, most recently used first. */
   conversations: AdvisorConversationDto[];
+  /** Every tax year with its conversations, newest year first; the list of the sidebar (#503). */
+  projects: AdvisorProjectDto[];
   /** How full the context of this conversation is (#481). */
   context: AdvisorContextDto;
   /** The project notes of this tax year; every conversation reads them. */
   notes: AdvisorNoteDto[];
+  /** The user’s own description of the situation; applies in every conversation of every year (#501). */
+  situation: AdvisorSituationDto;
   messages: AdvisorChatMessageDto[];
   quickChips: string[];
   legalSources: AdvisorLegalSourceDto[];
@@ -880,6 +902,8 @@ export type SendAdvisorMessageDtoQuickAction = typeof SendAdvisorMessageDtoQuick
 
 export const SendAdvisorMessageDtoQuickAction = {
   forgotten_check: 'forgotten_check',
+  savings_plan: 'savings_plan',
+  assessment_check: 'assessment_check',
 } as const;
 
 export interface SendAdvisorMessageDto {
@@ -959,6 +983,14 @@ export interface AdvisorSearchHitDto {
   /** The matching passage with some text around it. */
   snippet: string;
   at: string;
+}
+
+export interface SaveAdvisorSituationDto {
+  /**
+     * Empty clears the description.
+     * @maxLength 1500
+     */
+  text: string;
 }
 
 export interface SaveAdvisorNoteDto {

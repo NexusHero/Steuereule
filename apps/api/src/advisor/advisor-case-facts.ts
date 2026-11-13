@@ -6,6 +6,7 @@ import {
   type AdvisorRecordHandles,
   type CaseDigest,
   type Profession,
+  ageAtEndOfYear,
 } from '@steuereule/core'
 import { checkPiiFree } from '../ki/ki.adapter.js'
 import { type CapitalRepository } from '../capital/capital.repository.js'
@@ -150,6 +151,7 @@ export class AdvisorCaseFacts {
         doubleHouseholdRentEur: answerMap['dhf'] === 'Ja' ? amountFromAnswer(answerMap['dhf-miete']) : null,
       },
       childrenCount: children.length,
+      childrenAges: children.map((child) => ageAtEndOfYear(child.geburtsdatum, taxYear)).filter((age): age is number => age !== null),
       rentalObjectsCount: rentals.length,
       capitalGainEur: parseNum(capitalRecord?.kapitalertraege),
       priorYearComparison: {

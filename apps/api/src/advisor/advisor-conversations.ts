@@ -38,7 +38,7 @@ export class AdvisorConversations {
 
   async listConversations(userId: string, taxYear: number): Promise<AdvisorConversationDto[]> {
     await this.advisorRepo.defaultConversation(userId, taxYear)
-    return (await this.advisorRepo.listConversations(userId, taxYear)).map(toConversationDto)
+    return (await this.advisorRepo.listConversations(userId, taxYear)).map((conversation) => toConversationDto(conversation))
   }
 
   async createConversation(userId: string, taxYear: number): Promise<AdvisorConversationDto> {

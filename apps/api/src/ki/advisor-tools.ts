@@ -14,6 +14,7 @@ export const TOOL_LABELS: Readonly<Record<string, string>> = {
   propose_two_paths: 'Vergleiche Zwei-Wege-Strategien …',
   ask_clarification: 'Prüfe Rückfragen …',
   ask_questions: 'Bereite die nächsten Fragen vor …',
+  suggest_situation: 'Schlage eine Ergänzung zur Situation vor …',
   lookup_tax_knowledge: 'Schlage im Steuerwissen nach …',
   compute_income_tax: 'Rechne die Einkommensteuer nach Tarif …',
   lookup_legal_source: 'Prüfe EStG-Paragraph …',
@@ -121,6 +122,7 @@ export const TOOL_ARG_SCHEMAS = {
       .min(1)
       .max(4),
   }),
+  suggest_situation: z.object({ text: z.string().min(1).max(300) }),
   lookup_tax_knowledge: z.object({
     topic: z.enum(ADVISOR_KNOWLEDGE_TOPICS),
   }),
@@ -158,6 +160,8 @@ export const TOOL_DESCRIPTIONS: Readonly<Record<ToolName, string>> = {
   ask_clarification: 'Schlägt 2 bis 4 anklickbare Quick-Chips als nächste Rückfragen im Chat vor.',
   ask_questions:
     'Stellt dem Nutzer eine Runde von 1 bis 4 Fragen, jede mit 2 bis 4 antippbaren Antworten und deiner Empfehlung. Nur im Skill „Berater-Interview“ verwenden. Schreibt nichts in die Akte.',
+  suggest_situation:
+    'Schlägt dem Nutzer einen Satz für seine Beschreibung „Unsere Situation“ vor, wenn du etwas Dauerhaftes erfährst, das kein Formular fragt (z. B. „Hauskauf für 2027 geplant“). Ein Satz, ohne Namen und Kennungen. Der Nutzer übernimmt ihn mit einem Tipp; du speicherst nichts selbst.',
   lookup_tax_knowledge:
     'Liest einen Abschnitt des geprüften Steuerwissens: kennzahlen (Beträge je Jahr), gestaltung (Sparhebel je Lebenslage), arbeitnehmer, familie-sonderausgaben, kapital-vermietung-rente, selbststaendige-ust, grenzgaenger-ausland, erbschaft-schenkung, verfahren. Vor jeder fachlichen Aussage zu einem dieser Themen aufrufen.',
   compute_income_tax:

@@ -5,6 +5,7 @@ import { ThinkingIndicator } from './chat/ThinkingIndicator'
 import { ContextRing, SummaryDivider, type ContextRingState } from './chat/ContextRing'
 import { NoteChangeHints } from './chat/ProjectNotes'
 import { QuestionRound } from './chat/QuestionRound'
+import { SituationSuggestions } from './chat/Situation'
 import { SkillsMenu } from './chat/SkillsMenu'
 import { TurboSummary, TurboToggle } from './chat/TurboToggle'
 import { DictationBar } from './chat/DictationBar'
@@ -59,6 +60,8 @@ export interface AdvisorChatPanelProps {
   readonly onSummarize?: (() => Promise<void>) | undefined
   /** Takes back one change the owl made to the project notes in an answer (#481). */
   readonly onUndoNoteChange?: ((messageId: string, index: number) => Promise<void>) | undefined
+  /** Adds a sentence the owl suggested to the user's description of the situation (#501). */
+  readonly onAcceptSituationSuggestion?: ((text: string) => Promise<void>) | undefined
   /** Stores a rating; without it the chat offers none (e.g. the local preview). */
   readonly onRateMessage?:
     | ((messageId: string, rating: AdvisorFeedbackRating | null, reason?: AdvisorFeedbackReason) => Promise<void> | void)
@@ -93,6 +96,9 @@ export interface AdvisorChatPanelProps {
    */
   readonly variant?: 'panel' | 'page' | undefined
 }
+
+/** Below this width the input shows its short hint; the long one needs two lines there. */
+const NARROW_COMPOSER_WIDTH = 560
 
 /** Width of the reading column in the page variant. */
 export const CHAT_COLUMN_MAX_WIDTH = 760
@@ -137,6 +143,7 @@ export function AdvisorChatPanel({
   context,
   onSummarize,
   onUndoNoteChange,
+  onAcceptSituationSuggestion,
   onRateMessage,
   chatError = null,
   basisMode = false,
@@ -193,6 +200,8 @@ export function AdvisorChatPanel({
     }
   }, [dictationEngine])
   const [editingId, setEditingId] = useState<string | null>(null)
+  // With the workbench open the chat column is narrow: the long hint would wrap and be cut off.
+  const [composerNarrow, setComposerNarrow] = useState(false)
   // A skill is chosen per session and starts off: the plain chat stays the default.
   const [skill, setSkill] = useState<AdvisorSkillId | null>(null)
   // Off in every new chat: the careful way is the default, Turbo is chosen per session.
@@ -501,6 +510,10 @@ export function AdvisorChatPanel({
                 <NoteChangeHints changes={msg.meta.noteChanges} onUndo={onUndoNoteChange ? (changeIndex) => onUndoNoteChange(msg.id, changeIndex) : undefined} />
               ) : null}
 
+              {msg.meta?.situationSuggestions && msg.meta.situationSuggestions.length > 0 && onAcceptSituationSuggestion ? (
+                <SituationSuggestions suggestions={msg.meta.situationSuggestions} onAccept={onAcceptSituationSuggestion} />
+              ) : null}
+
               {/* Scanned LStB: several staged fields at once */}
               {msg.meta?.lstbScan && msg.meta.actions && msg.meta.actions.length > 0 ? (
                 <ScannedCertificateCardView actions={msg.meta.actions} onInspectMask={onInspectMask} styles={styles} />
@@ -763,7 +776,7 @@ export function AdvisorChatPanel({
     <>
       {(() => {
         const inputBar = (microphone?: ReactNode) => (
-          <View style={styles.composer}>
+          <View style={styles.composer} onLayout={(event) => setComposerNarrow(event.nativeEvent.layout.width < NARROW_COMPOSER_WIDTH)}>
             {editingId !== null ? (
               <View style={styles.editBanner} testID="advisor-edit-banner">
                 <Text style={styles.messageActionText}>{tr('advisor.chat.editing')}</Text>
@@ -804,7 +817,7 @@ export function AdvisorChatPanel({
               onStop={onStop}
               sending={isSending}
               placeholder={
-                compact
+                compact || composerNarrow
                   ? tr('advisor.chat.inputPlaceholderShort')
                   : tr('advisor.chat.inputPlaceholder', 'Frag deine Eule (z. B. Fortbildung, Laptop, Spenden, Endprüfung) …')
               }

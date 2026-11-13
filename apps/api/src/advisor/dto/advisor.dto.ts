@@ -357,6 +357,9 @@ export class AdvisorMessageMetaDto implements AdvisorMessageMeta {
   })
   noteChanges?: readonly AdvisorNoteChangeDto[] | undefined
 
+  @ApiPropertyOptional({ type: [String], description: 'Additions to the description of the situation the owl suggests; taken over with a tap (#501).' })
+  situationSuggestions?: readonly string[] | undefined
+
   @ApiPropertyOptional({ type: () => AdvisorQuestionRoundDto, description: 'A round of questions with answers to tap, from the interview skill (#495).' })
   questionRound?: AdvisorQuestionRoundDto | undefined
 
@@ -450,6 +453,17 @@ export class AdvisorConversationDto {
 
   @ApiProperty({ type: String, format: 'date-time' })
   lastUsedAt!: string
+
+  @ApiProperty({ type: Boolean, description: 'An answer is being written in this conversation right now; several conversations can answer at the same time (#503).' })
+  answering!: boolean
+}
+
+export class AdvisorProjectDto {
+  @ApiProperty({ type: Number, example: 2025, description: 'The tax year is the project.' })
+  taxYear!: number
+
+  @ApiProperty({ type: () => [AdvisorConversationDto], description: 'The conversations of that year, most recently used first.' })
+  conversations!: readonly AdvisorConversationDto[]
 }
 
 export class AdvisorNoteDto {
@@ -469,6 +483,21 @@ export class AdvisorNoteDto {
 export class DeleteAdvisorNoteResponseDto {
   @ApiProperty({ type: Boolean })
   deleted!: true
+}
+
+export class AdvisorSituationDto {
+  @ApiProperty({ type: String, description: 'The user’s own description of the household’s situation; empty while nothing was written (#501).' })
+  text!: string
+
+  @ApiProperty({ type: String, format: 'date-time', nullable: true })
+  updatedAt!: string | null
+}
+
+export class SaveAdvisorSituationDto {
+  @ApiProperty({ type: String, maxLength: 1500, description: 'Empty clears the description.' })
+  @IsString()
+  @MaxLength(3000)
+  text!: string
 }
 
 export class SaveAdvisorNoteDto {
@@ -559,11 +588,17 @@ export class AdvisorSessionResponseDto {
   @ApiProperty({ type: () => [AdvisorConversationDto], description: 'Every conversation of this tax year, most recently used first.' })
   conversations!: readonly AdvisorConversationDto[]
 
+  @ApiProperty({ type: () => [AdvisorProjectDto], description: 'Every tax year with its conversations, newest year first; the list of the sidebar (#503).' })
+  projects!: readonly AdvisorProjectDto[]
+
   @ApiProperty({ type: () => AdvisorContextDto, description: 'How full the context of this conversation is (#481).' })
   context!: AdvisorContextDto
 
   @ApiProperty({ type: () => [AdvisorNoteDto], description: 'The project notes of this tax year; every conversation reads them.' })
   notes!: readonly AdvisorNoteDto[]
+
+  @ApiProperty({ type: () => AdvisorSituationDto, description: 'The user’s own description of the situation; applies in every conversation of every year (#501).' })
+  situation!: AdvisorSituationDto
 
   @ApiProperty({ type: [AdvisorChatMessageDto] })
   messages!: readonly AdvisorChatMessageDto[]

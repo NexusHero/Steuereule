@@ -101,7 +101,12 @@ async function main() {
     // Row B — apply, then undo restores the exact previous value.
     await page.locator('[data-testid="eule-batch-apply-btn"]').click()
     await until(async () => (await commute(user.api)).oneWayKm === 38, 'Row B: apply must write 38 km')
-    // After „übernehmen“ the app returns to the cockpit with the „von deiner Eule übernommen“ banner.
+    // After „übernehmen“ the user stays in the conversation (#503); the cockpit shows the
+    // „von deiner Eule übernommen“ banner once they go there.
+    await page.locator('[data-testid="eulen-modus-screen"]').waitFor({ state: 'visible', timeout: 10_000 })
+    // The cockpit stays mounted behind the tab: its banner is in the page, but must not be what is shown.
+    if (await page.getByText('von deiner Eule übernommen').first().isVisible()) fail('Row B: applying must not jump to the cockpit')
+    await page.getByRole('tab', { name: 'Cockpit' }).click()
     await page.getByText('von deiner Eule übernommen').first().waitFor({ state: 'visible', timeout: 10_000 })
     await openEule(page)
     await page.locator('[data-testid="advisor-action-undo-btn"]:visible').first().click()

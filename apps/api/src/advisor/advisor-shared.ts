@@ -11,7 +11,7 @@ import {
   type AdvisorHistorySource,
 } from '@steuereule/core'
 import { type AdvisorChatMessageRecord, type AdvisorConversationRecord, type AdvisorNoteRecord } from './advisor.repository.js'
-import type { AdvisorChatMessageDto, AdvisorContextDto, AdvisorConversationDto, AdvisorNoteDto, SendAdvisorMessageDto } from './dto/advisor.dto.js'
+import type { AdvisorChatMessageDto, AdvisorContextDto, AdvisorConversationDto, AdvisorNoteDto, AdvisorProjectDto, SendAdvisorMessageDto } from './dto/advisor.dto.js'
 
 export interface ResolvedDraft {
   readonly messageRecord: AdvisorChatMessageRecord
@@ -78,6 +78,9 @@ export interface PreparedAdvisorTurn {
 }
 
 /** More conversations in one year than anyone can keep apart are a list nobody reads. */
+/** An answer older than this that is still `streaming` is an orphan, not a running answer: it must not block its conversation. */
+export const ANSWERING_WINDOW_MS = 5 * 60_000
+
 export const MAX_CONVERSATIONS_PER_YEAR = 50
 
 export const TITLE_MAX_LENGTH = 60
@@ -144,10 +147,17 @@ export function toNoteDto(note: AdvisorNoteRecord): AdvisorNoteDto {
   return { id: note.id, text: note.text, author: note.author, updatedAt: note.updatedAt.toISOString() }
 }
 
-export function toConversationDto(conversation: AdvisorConversationRecord): AdvisorConversationDto {
+/** The tax years as projects: every year that has conversations, and always the one that is open, newest first. */
+export function projectsOf(openYear: number, conversations: readonly AdvisorConversationRecord[], answering: ReadonlySet<string>): AdvisorProjectDto[] {
+  const years = [...new Set([openYear, ...conversations.map((c) => c.taxYear)])].sort((a, b) => b - a)
+  return years.map((taxYear) => ({ taxYear, conversations: conversations.filter((c) => c.taxYear === taxYear).map((c) => toConversationDto(c, answering.has(c.id))) }))
+}
+
+export function toConversationDto(conversation: AdvisorConversationRecord, answering = false): AdvisorConversationDto {
   return {
     id: conversation.id,
     title: conversation.title,
+    answering,
     createdAt: conversation.createdAt.toISOString(),
     lastUsedAt: conversation.lastUsedAt.toISOString(),
   }

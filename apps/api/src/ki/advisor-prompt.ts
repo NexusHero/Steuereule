@@ -5,14 +5,18 @@ import {
   ADVISOR_LEGAL_SOURCES,
   describeNotesForPrompt,
   describeRecordHandles,
+  describeSituationForPrompt,
   type AdvisorNoteHandle,
   type AdvisorRecordHandles,
+  type AdvisorAssessmentBrief,
   type AdvisorSkillId,
+  type AdvisorTask,
   type CaseDigest,
   type Screen,
 } from '@steuereule/core'
 import { describeAiWritableFields } from './advisor-safety.js'
 import { skillPrompt } from './advisor-skills.js'
+import { taskPrompt } from './advisor-tasks.js'
 import { ADVISOR_STANCE } from './advisor-stance.js'
 
 /**
@@ -55,8 +59,10 @@ export function buildStableSystemPrompt(): string {
   ].join('\n')
 }
 
-export function buildCaseSystemPrompt(digest: CaseDigest, activeScreen: Screen | undefined, planFirst: boolean, records?: AdvisorRecordHandles, notes?: readonly AdvisorNoteHandle[], skill?: AdvisorSkillId): string {
+export function buildCaseSystemPrompt(digest: CaseDigest, activeScreen: Screen | undefined, planFirst: boolean, records?: AdvisorRecordHandles, notes?: readonly AdvisorNoteHandle[], skill?: AdvisorSkillId, task?: AdvisorTask, assessment?: AdvisorAssessmentBrief, situation?: string): string {
   return [
+    describeSituationForPrompt(digest, situation),
+    '',
     `Aktive Maske: ${activeScreen ?? 'cockpit'}`,
     'PII-freier Fall-Überblick (CaseDigest):',
     JSON.stringify(digest),
@@ -64,6 +70,7 @@ export function buildCaseSystemPrompt(digest: CaseDigest, activeScreen: Screen |
     describeRecordHandles(records),
     describeNotesForPrompt(notes ?? []),
     ...(skill ? ['', skillPrompt(skill)] : []),
+    ...(task ? ['', taskPrompt(task, digest, assessment)] : []),
     ...(planFirst ? ['', 'Für diese Anfrage gilt: Rufe als Erstes `plan_steps` auf, bevor du irgendetwas anderes tust.'] : []),
   ].join('\n')
 }
@@ -81,9 +88,12 @@ export function buildSystemMessage(
   records?: AdvisorRecordHandles,
   notes?: readonly AdvisorNoteHandle[],
   skill?: AdvisorSkillId,
+  task?: AdvisorTask,
+  assessment?: AdvisorAssessmentBrief,
+  situation?: string,
 ): SystemMessage {
   const stable = buildStableSystemPrompt()
-  const caseSpecific = buildCaseSystemPrompt(digest, activeScreen, planFirst, records, notes, skill)
+  const caseSpecific = buildCaseSystemPrompt(digest, activeScreen, planFirst, records, notes, skill, task, assessment, situation)
   if (provider === 'anthropic') {
     return new SystemMessage({
       content: [

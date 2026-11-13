@@ -63,6 +63,8 @@ import {
   AdvisorContextDto,
   AdvisorConversationDto,
   AdvisorNoteDto,
+  AdvisorSituationDto,
+  SaveAdvisorSituationDto,
   AdvisorSearchHitDto,
   DeleteAdvisorNoteResponseDto,
   SaveAdvisorNoteDto,
@@ -276,6 +278,15 @@ export class AdvisorController {
   @ApiOkResponse({ type: [AdvisorSearchHitDto] })
   search(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number, @Query('q') query?: string): Promise<AdvisorSearchHitDto[]> {
     return this.service.searchConversations(userId, year, (query ?? '').slice(0, 100))
+  }
+
+  @Put('situation')
+  @OwlRoute()
+  @ApiOperation({ summary: 'Save the user’s own description of the household’s situation; the owl reads it in every conversation (#501)' })
+  @ApiBody({ type: SaveAdvisorSituationDto })
+  @ApiOkResponse({ type: AdvisorSituationDto })
+  saveSituation(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number, @Body() dto: SaveAdvisorSituationDto): Promise<AdvisorSituationDto> {
+    return this.service.saveSituation(userId, year, dto.text)
   }
 
   @Get('notes')

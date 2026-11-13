@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Pressable, ScrollView, Text, View } from 'react-native'
+import { Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { AiChip, Button, Card, Chip, Option, Sheet, useBreakpoint, useTheme } from '@steuereule/ui'
 import {
@@ -19,10 +19,12 @@ import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { OwlTopBar } from './OwlTopBar'
 import { ProfessionPicker } from './ProfessionPicker'
 import { AdvisorChatPanel, type AdvisorChatPanelProps, type ChatSendOptions } from './AdvisorChatPanel'
-import { ConversationList, type ConversationSearchHit, type ConversationSummary } from './chat/ConversationList'
+import { ConversationList, type ConversationProject, type ConversationSearchHit, type ConversationSummary } from './chat/ConversationList'
 import { ProjectNotes, type ProjectNote } from './chat/ProjectNotes'
+import { Situation } from './chat/Situation'
 import { ConnectionDetails, type ConnectionView } from './chat/ConnectionStatus'
-import { readOwlSidebarOpen, writeOwlSidebarOpen } from '../../lib/owlSidebarPreference'
+import { OWL_CHAT_MIN_WIDTH, OWL_PANEL_WIDTHS, readOwlPanelWidth, readOwlSidebarOpen, writeOwlPanelWidth, writeOwlSidebarOpen } from '../../lib/owlSidebarPreference'
+import { ResizeHandle } from './chat/ResizeHandle'
 import { useOptionalCopilotBridge, type OwlViewMode } from './CopilotBridgeProvider'
 import { GuestOwlGate } from './OwlGuestGate'
 import { InlineMaskView } from './OwlInlineMask'
@@ -57,6 +59,9 @@ export interface OwlModeScreenProps {
   readonly conversations?: readonly ConversationSummary[] | undefined
   readonly activeConversationId?: string | null | undefined
   readonly onSelectConversation?: ((id: string) => void) | undefined
+  /** Every tax year with its conversations: the years are the projects of the sidebar (#503). */
+  readonly projects?: readonly ConversationProject[] | undefined
+  readonly onSelectConversationInYear?: ((taxYear: number, id: string) => void) | undefined
   readonly onNewConversation?: (() => Promise<void>) | undefined
   readonly onRenameConversation?: ((id: string, title: string) => Promise<void>) | undefined
   readonly onDeleteConversation?: ((id: string) => Promise<void>) | undefined
@@ -73,6 +78,9 @@ export interface OwlModeScreenProps {
   readonly onEditNote?: ((id: string, text: string) => Promise<void>) | undefined
   readonly onDeleteNote?: ((id: string) => Promise<void>) | undefined
   readonly onUndoNoteChange?: ((messageId: string, index: number) => Promise<void>) | undefined
+  /** The user's own description of the household's situation; the owl reads it in every conversation (#501). */
+  readonly situation?: string | undefined
+  readonly onSaveSituation?: ((text: string) => Promise<void>) | undefined
   readonly isGuest?: boolean | undefined
   readonly onRegister?: (() => void) | undefined
   readonly onLogin?: (() => void) | undefined
@@ -148,6 +156,8 @@ export function OwlModeScreenView({
   conversations,
   activeConversationId,
   onSelectConversation,
+  projects,
+  onSelectConversationInYear,
   onNewConversation,
   onRenameConversation,
   onDeleteConversation,
@@ -161,6 +171,8 @@ export function OwlModeScreenView({
   onEditNote,
   onDeleteNote,
   onUndoNoteChange,
+  situation,
+  onSaveSituation,
 }: OwlModeScreenProps & { readonly initialCards: readonly OwlCardsDisplay[] }) {
   const bp = useBreakpoint()
   const t = useTheme()
@@ -177,6 +189,10 @@ export function OwlModeScreenView({
   const [conversationsOpen, setConversationsOpen] = useState(false)
   // Desktop: the conversations and notes sit in a sidebar that remembers whether it was collapsed.
   const [sidebarOpen, setSidebarOpen] = useState(readOwlSidebarOpen)
+  // The user drags the lines next to the chat: the side panels give way, the chat gets the room.
+  const [sidebarWidth, setSidebarWidth] = useState(() => readOwlPanelWidth('sidebar'))
+  const [workbenchWidth, setWorkbenchWidth] = useState(() => readOwlPanelWidth('workbench'))
+  const { width: windowWidth } = useWindowDimensions()
   const [clearState, setClearState] = useState<'closed' | 'confirm' | 'clearing' | 'failed'>('closed')
   const [cards, setCards] = useState<readonly OwlCardsDisplay[]>(initialCards)
   const [activeIndex, setActiveIndex] = useState(0)
@@ -189,7 +205,10 @@ export function OwlModeScreenView({
   const activeCard = cards[activeIndex]
   const pendingDrafts = extractPendingDrafts(displayedMessages)
   const viewMode = bridge ? bridge.owlViewMode : localViewMode
-  const effectiveSending = isSending || (bridge?.streaming ?? false)
+  // With the bridge every conversation has its own answer (#503): the open one is busy only while
+  // its own answer is written, whatever is running elsewhere.
+  // The screen's own flag covers the whole screen, so it only counts where no bridge follows the answer.
+  const effectiveSending = bridge && bridge.isAuthenticated ? bridge.streaming : isSending
 
   // The workbench opens by itself only when there is something to check: on a wide screen for
   // drafts and masks, on a narrow one only for a mask the reader asked to see, because there it
@@ -357,7 +376,7 @@ export function OwlModeScreenView({
     if (pendingDrafts.length === 0) return
     if (bridge) {
       const acknowledgedConflict = acceptCurrentValues ? (bridge.staleConflict ?? undefined) : undefined
-      const ok = await bridge.applyAllPending(pendingDrafts, acknowledgedConflict ? { acknowledgedConflict } : undefined)
+      const ok = await bridge.applyAllPending(pendingDrafts, { stay: true, ...(acknowledgedConflict ? { acknowledgedConflict } : {}) })
       if (ok) {
         for (const d of pendingDrafts) {
           setLocalMessages((prev) => prev.map((m) => updateActionStatusInMessage(m, d.actionId, 'applied')))
@@ -382,7 +401,10 @@ export function OwlModeScreenView({
       <AdvisorChatPanel
         messages={displayedMessages}
         quickChips={[
+          // First what an adviser would do unasked: go through the whole case for money left on the table.
+          { label: tr('advisor.chat.savingsPlanChip'), testID: 'advisor-chip-sparplan', quickAction: 'savings_plan' },
           { label: tr('advisor.chat.forgottenChip'), testID: 'advisor-chip-vergessen', quickAction: 'forgotten_check' },
+          { label: tr('advisor.chat.assessmentChip'), testID: 'advisor-chip-bescheid', quickAction: 'assessment_check' },
           'Kanzlei-Endprüfung starten',
           'Homeoffice vs. Arbeitszimmer prüfen',
           'Fortbildung & Reisekosten klären',
@@ -392,6 +414,7 @@ export function OwlModeScreenView({
         context={context}
         onSummarize={onSummarize}
         onUndoNoteChange={onUndoNoteChange}
+        onAcceptSituationSuggestion={onSaveSituation ? (text) => onSaveSituation([situation?.trim() ?? '', text].filter((part) => part !== '').join('\n')) : undefined}
         streamSteps={bridge?.streamSteps}
         streamedText={bridge?.streamedText}
         streamedReasoning={bridge?.streamedReasoning}
@@ -532,7 +555,7 @@ export function OwlModeScreenView({
         ) : null}
 
         {pendingDrafts.length > 0 ? (
-          <Card variant="ai" style={styles.draftStageCard} testID="eule-draft-stage">
+          <Card style={styles.draftStageCard} testID="eule-draft-stage">
             <Text style={styles.draftSectionTitle}>
               {tr('eule.workspace.draftStageTitle', {
                 count: pendingDrafts.length,
@@ -579,6 +602,8 @@ export function OwlModeScreenView({
               })}
             </View>
             <Button
+              // Quiet on purpose: the conversation is the stage, the same drafts have their own button there.
+              variant="leise"
               onPress={() => void handleBatchApply(false)}
               disabled={bridge?.batchApplying ?? false}
               testID="eule-batch-apply-btn"
@@ -586,10 +611,10 @@ export function OwlModeScreenView({
               {bridge?.batchApplying
                 ? tr('eule.workspace.applying', 'Wird übernommen …')
                 : pendingDrafts.length === 1
-                  ? tr('eule.workspace.applyOne', '✓ Änderung übernehmen & ins Cockpit')
+                  ? tr('eule.workspace.applyOne', '✓ Änderung übernehmen')
                   : tr('eule.workspace.applyAll', {
                       count: pendingDrafts.length,
-                      defaultValue: `✓ ${pendingDrafts.length} Änderungen übernehmen & ins Cockpit`,
+                      defaultValue: `✓ ${pendingDrafts.length} Änderungen übernehmen`,
                     })}
             </Button>
           </Card>
@@ -684,7 +709,7 @@ export function OwlModeScreenView({
           </View>
         ) : null}
 
-        <Button onPress={onDone} style={styles.cta}>
+        <Button variant="ghost" onPress={onDone} style={styles.cta}>
           {tr('eule.fertig', 'Zurück zum Cockpit')}
         </Button>
       </>
@@ -719,7 +744,14 @@ export function OwlModeScreenView({
       <ConversationList
         conversations={conversations ?? []}
         activeId={activeConversationId ?? null}
-        canSwitch={!effectiveSending}
+        canSwitch
+        activeYear={taxYear}
+        projects={projects}
+        answeringIds={bridge?.answeringConversationIds}
+        onSelectInYear={(year, id) => {
+          onSelectConversationInYear?.(year, id)
+          afterSwitch()
+        }}
         onSelect={(id) => {
           onSelectConversation?.(id)
           afterSwitch()
@@ -736,12 +768,21 @@ export function OwlModeScreenView({
         }}
         onSearch={onSearchConversations}
       />
+      {situation !== undefined && onSaveSituation ? <Situation text={situation} onSave={onSaveSituation} /> : null}
       {notes && onAddNote && onEditNote && onDeleteNote ? <ProjectNotes notes={notes} onAdd={onAddNote} onEdit={onEditNote} onDelete={onDeleteNote} /> : null}
     </View>
   )
 
   // One layout for every width (#476): the chat is the screen. The workbench is a side panel on a
   // wide screen and a sheet over the chat everywhere else, and only there when it is needed.
+  // What the panels may take: the chat keeps its minimum, whatever was dragged or remembered.
+  const showSidebar = Boolean(wide && sidebarOpen && conversations && onSelectConversation)
+  const showWorkbench = panelOpen && wide
+  const sidebarMax = Math.min(OWL_PANEL_WIDTHS.sidebar.max, windowWidth - OWL_CHAT_MIN_WIDTH - (showWorkbench ? workbenchWidth : 0))
+  const sidebarShown = Math.max(OWL_PANEL_WIDTHS.sidebar.min, Math.min(sidebarWidth, sidebarMax))
+  const workbenchMax = Math.min(OWL_PANEL_WIDTHS.workbench.max, windowWidth - OWL_CHAT_MIN_WIDTH - (showSidebar ? sidebarShown : 0))
+  const workbenchShown = Math.max(OWL_PANEL_WIDTHS.workbench.min, Math.min(workbenchWidth, workbenchMax))
+
   return (
     <View style={styles.root} testID="eulen-modus-screen">
       <OwlTopBar
@@ -769,20 +810,44 @@ export function OwlModeScreenView({
       />
 
       <View style={styles.body}>
-        {wide && sidebarOpen && conversations && onSelectConversation ? (
-          <ScrollView style={styles.projectSidebar} contentContainerStyle={styles.projectSidebarContent} testID="eule-project-sidebar">
-            {projectPanel(() => {})}
-          </ScrollView>
+        {showSidebar ? (
+          <>
+            <ScrollView style={[styles.projectSidebar, { flexBasis: sidebarShown }]} contentContainerStyle={styles.projectSidebarContent} testID="eule-project-sidebar">
+              {projectPanel(() => {})}
+            </ScrollView>
+            <ResizeHandle
+              width={sidebarShown}
+              min={OWL_PANEL_WIDTHS.sidebar.min}
+              max={sidebarMax}
+              panel="left"
+              onResize={setSidebarWidth}
+              onCommit={(next) => writeOwlPanelWidth('sidebar', next)}
+              label={tr('eule.workspace.resizeSidebar')}
+              testID="eule-resize-sidebar"
+            />
+          </>
         ) : null}
 
         <View style={styles.chatMain} testID="eule-chat-main">
           {renderChatPanel(bp === 's')}
         </View>
 
-        {panelOpen && wide ? (
-          <ScrollView style={styles.sidePanel} contentContainerStyle={styles.sidePanelContent} testID="eule-workbench-panel">
-            {workbench}
-          </ScrollView>
+        {showWorkbench ? (
+          <>
+            <ResizeHandle
+              width={workbenchShown}
+              min={OWL_PANEL_WIDTHS.workbench.min}
+              max={workbenchMax}
+              panel="right"
+              onResize={setWorkbenchWidth}
+              onCommit={(next) => writeOwlPanelWidth('workbench', next)}
+              label={tr('eule.workspace.resizeWorkbench')}
+              testID="eule-resize-workbench"
+            />
+            <ScrollView style={[styles.sidePanel, { flexBasis: workbenchShown }]} contentContainerStyle={styles.sidePanelContent} testID="eule-workbench-panel">
+              {workbench}
+            </ScrollView>
+          </>
         ) : null}
       </View>
 

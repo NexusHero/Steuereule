@@ -315,7 +315,7 @@ function AppRoute({ navigation, route }: NativeStackScreenProps<RootStackParamLi
 function TabbedShell() {
   const { state: sessionState } = useAccountSession()
   const linkTo = useLinkTo()
-  const { taxYear, pendingPath, setPendingPath, setFunnelPath, focusedTab, switchToTab, openCockpitScreen, onSignedOut } = useShellState()
+  const { taxYear, setTaxYear, pendingPath, setPendingPath, setFunnelPath, focusedTab, switchToTab, openCockpitScreen, onSignedOut } = useShellState()
 
   // Signed out elsewhere (another device revoked this session, or it expired) while the app is open:
   // leave for the sign-in instead of carrying on as a guest (#450 Teil 5A).
@@ -371,6 +371,7 @@ function TabbedShell() {
       mode={focusedTab === 'Owl' ? 'eulen-modus' : 'cockpit'}
       onModeChange={(next) => switchToTab(next === 'eulen-modus' ? 'Owl' : 'Cockpit')}
       taxYear={taxYear}
+      onSwitchYear={setTaxYear}
       isAuthenticated={sessionState.status === 'signed-in'}
     >
       <AppTabs />

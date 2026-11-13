@@ -9,6 +9,7 @@ import {
   scrubUserMessagePii,
   simulateAdvisorFieldDelta,
   type AdvisorActionProposal,
+  type AdvisorAssessmentBrief,
   type AdvisorEngineInfo,
   type AdvisorEnginePort,
   type AdvisorFeedbackRating,
@@ -34,6 +35,7 @@ import { AuditService } from '../audit/audit.service.js'
 import { checkPiiFree } from '../ki/ki.adapter.js'
 import { ADVISOR_ENGINE } from '../ki/langgraph-advisor.engine.js'
 import { AI_RUNTIME_CONFIG_SERVICE, DEFAULT_AI_TURN_LIMITS, type AiRuntimeConfigService } from '../ki/ai-runtime-config.service.js'
+import { AssessmentService } from '../assessment/assessment.service.js'
 import { ModelConnectionService } from '../ki/model-connection.service.js'
 import { TaxEstimateService, type TaxEstimateStatus } from '../tax-estimate/tax-estimate.service.js'
 import { TRANSACTION_RUNNER, passThroughTransactionRunner, type TransactionRunner } from '../prisma/transaction.js'
@@ -51,7 +53,7 @@ import { WAGE_TAX_CERTIFICATE_REPOSITORY, type WageTaxCertificateRepository } fr
 import { OwlModeService } from '../owl-mode/owl-mode.service.js'
 import { PROFILE_REPOSITORY, type ProfileRepository } from '../profile/profile.repository.js'
 import { RENTAL_REPOSITORY, type RentalRepository } from '../rental/rental.repository.js'
-import { DomainError, InvalidInputError, NotFoundError, TooManyRequestsError, UnavailableError } from '../common/domain-error.js'
+import { ConflictError, DomainError, InvalidInputError, NotFoundError, TooManyRequestsError, UnavailableError } from '../common/domain-error.js'
 import {
   ADVISOR_REPOSITORY,
   type AdvisorChatMessageRecord,
@@ -67,6 +69,7 @@ import type {
   AdvisorContextDto,
   AdvisorConversationDto,
   AdvisorNoteDto,
+  AdvisorSituationDto,
   AdvisorSearchHitDto,
   AdvisorSessionResponseDto,
   ApplyBatchActionsDto,
@@ -74,7 +77,7 @@ import type {
   SendAdvisorMessageDto,
   SendAdvisorMessageResponseDto,
 } from './dto/advisor.dto.js'
-import { toPublicAction, toPublicMeta, toMessageDto, PreparedAdvisorTurn, titleFrom, liveMessages, historySources, contextOf, toNoteDto, toConversationDto } from './advisor-shared.js'
+import { ANSWERING_WINDOW_MS, projectsOf, toPublicAction, toPublicMeta, toMessageDto, PreparedAdvisorTurn, titleFrom, liveMessages, historySources, contextOf, toNoteDto, toConversationDto } from './advisor-shared.js'
 import { AdvisorConversations } from './advisor-conversations.js'
 import { AdvisorProjectNotes } from './advisor-project-notes.js'
 import { AdvisorCaseFacts } from './advisor-case-facts.js'
@@ -142,6 +145,7 @@ export class AdvisorService {
     @Optional() @Inject(TRANSACTION_RUNNER) private readonly transactions: TransactionRunner = passThroughTransactionRunner,
     @Optional() @Inject(TaxEstimateService) private readonly taxEstimate?: TaxEstimateService,
     @Optional() @Inject(ModelConnectionService) private readonly modelConnection?: ModelConnectionService,
+    @Optional() @Inject(AssessmentService) private readonly assessmentService?: AssessmentService,
   ) {}
 
   // The service is the front door; each theme lives in its own part.
@@ -202,6 +206,10 @@ export class AdvisorService {
     return this.conversations.searchConversations(userId, taxYear, rawQuery)
   }
 
+  async saveSituation(userId: string, taxYear: number, raw: string): Promise<AdvisorSituationDto> {
+    return this.notes.saveSituation(userId, taxYear, raw)
+  }
+
   async listNotes(userId: string, taxYear: number): Promise<AdvisorNoteDto[]> {
     return this.notes.listNotes(userId, taxYear)
   }
@@ -232,6 +240,21 @@ export class AdvisorService {
 
   async buildCaseDigest(userId: string, taxYear: number): Promise<CaseDigest> {
     return this.facts.buildCaseDigest(userId, taxYear)
+  }
+
+  /** The tax office's notice against the return, as the assessment check needs it: figures only, nothing that names a person. */
+  private async assessmentBrief(userId: string, taxYear: number): Promise<AdvisorAssessmentBrief> {
+    const empty: AdvisorAssessmentBrief = { recorded: false, status: 'nicht erfasst', deviations: [], calculationIncomplete: false, appealDaysLeft: null }
+    if (!this.assessmentService) return empty
+    const state = await this.assessmentService.getState(userId, taxYear).catch(() => null)
+    if (state === null || !state.fields.some((field) => field.kind === 'erfasst')) return empty
+    return {
+      recorded: true,
+      status: state.status,
+      deviations: state.reconciliation.deviations.map((d) => ({ field: d.field, assessedEur: d.assessment, calculatedEur: d.calculated, differenceEur: d.difference })),
+      calculationIncomplete: state.reconciliation.calculationIncomplete,
+      appealDaysLeft: state.frist.remainingDays,
+    }
   }
 
   /**
@@ -310,6 +333,8 @@ export class AdvisorService {
       resource: 'berater_sitzung',
     })
 
+    const allConversations = await this.advisorRepo.listAllConversations(userId)
+    const answering = new Set(await this.advisorRepo.answeringConversationIds(userId, new Date(Date.now() - ANSWERING_WINDOW_MS)))
     const openCount = cardsRes.cards.length
     const greeting =
       openCount > 0
@@ -321,9 +346,11 @@ export class AdvisorService {
       greeting,
       openCards: cardsRes.cards,
       conversationId: conversation.id,
-      conversations: conversations.map(toConversationDto),
+      conversations: conversations.map((c) => toConversationDto(c, answering.has(c.id))),
+      projects: projectsOf(taxYear, allConversations, answering),
       context: contextOf(conversation, history, await this.knownNamesForScrubbing(userId, taxYear)),
       notes: notes.map(toNoteDto),
+      situation: await this.notes.getSituation(userId),
       messages: history.filter((m) => !m.meta?.replaced).map(toMessageDto),
       quickChips: [
         'Kanzlei-Endprüfung starten',
@@ -379,6 +406,11 @@ export class AdvisorService {
     const knownNames = await this.knownNamesForScrubbing(userId, taxYear)
     const scrubbedUserText = scrubUserMessagePii(dto.message.trim(), knownNames)
     const conversation = await this.conversationFor(userId, taxYear, dto.conversationId)
+    // Conversations answer side by side (#503), but one conversation has one answer at a time:
+    // two would write into the same history in an order nobody chose.
+    if ((await this.advisorRepo.answeringConversationIds(userId, new Date(Date.now() - ANSWERING_WINDOW_MS))).includes(conversation.id)) {
+      throw new ConflictError('ADVISOR_CONVERSATION_BUSY', 'In diesem Gespräch schreibt die Eule gerade schon an einer Antwort. Warte kurz oder stoppe sie.')
+    }
     if (dto.replaceFromMessageId !== undefined) {
       await this.replaceLatestTurn(userId, conversation.id, dto.replaceFromMessageId)
     }
@@ -534,6 +566,7 @@ export class AdvisorService {
         return
       }
 
+      const task = dto.quickAction === 'savings_plan' ? ('savings-plan' as const) : dto.quickAction === 'assessment_check' ? ('assessment-check' as const) : undefined
       for await (const ev of this.advisorEngine.streamTurn({
         message: scrubbedUserText,
         activeScreen: dto.activeScreen,
@@ -541,7 +574,11 @@ export class AdvisorService {
         history,
         actionIdFactory,
         signal,
-        planRequired: dto.quickAction === 'forgotten_check',
+        // Every quick start is work in several steps: the plan shows the user what the owl is doing.
+        planRequired: dto.quickAction !== undefined,
+        ...(task ? { task } : {}),
+        situation: (await this.notes.getSituation(userId)).text,
+        ...(task === 'assessment-check' ? { assessment: await this.assessmentBrief(userId, taxYear) } : {}),
         ...(dto.skill ? { skill: dto.skill } : {}),
         records: await this.loadRecordHandles(userId, taxYear),
         previewEffect: this.previewEffectFor(userId, taxYear),

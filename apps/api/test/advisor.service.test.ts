@@ -675,6 +675,91 @@ describe('AdvisorService (In-App Steuerberater Agent "Deine Eule")', () => {
     expect(seen).toEqual([true, false])
   })
 
+  describe('tax years as projects, conversations side by side (#503)', () => {
+    it('lists every year that has conversations, newest first, and always the open one', async () => {
+      await advisorService.sendMessage(USER, YEAR - 1, { message: 'Frage zum Vorjahr' })
+      const session = await advisorService.getSession(USER, YEAR)
+      expect(session.projects.map((project) => project.taxYear)).toEqual([YEAR, YEAR - 1])
+      expect(session.projects[1]!.conversations).toHaveLength(1)
+      expect(session.projects[1]!.conversations[0]!.title).toBe('Frage zum Vorjahr')
+    })
+
+    it('marks a conversation that is answering, lets another one answer next to it, and refuses a second answer in the same', async () => {
+      const first = (await advisorService.getSession(USER, YEAR)).conversationId
+      // An answer that has been started and not finished: the turn is prepared, nothing is streamed yet.
+      await advisorService.prepareTurn(USER, YEAR, { message: 'Erste Frage', conversationId: first })
+      const second = (await advisorService.createConversation(USER, YEAR)).id
+
+      const session = await advisorService.getSession(USER, YEAR, second)
+      const byId = new Map(session.projects[0]!.conversations.map((c) => [c.id, c.answering]))
+      expect(byId.get(first)).toBe(true)
+      expect(byId.get(second)).toBe(false)
+
+      await expect(advisorService.prepareTurn(USER, YEAR, { message: 'Zweite Frage', conversationId: first })).rejects.toMatchObject({ code: 'ADVISOR_CONVERSATION_BUSY' })
+      // The other conversation is free: its answer runs at the same time.
+      const answered = await advisorService.sendMessage(USER, YEAR, { message: 'Bitte 300 € Spenden eintragen', conversationId: second })
+      expect(answered.assistantMessage.status).toBe('complete')
+    })
+  })
+
+  describe('the household’s situation (#501)', () => {
+    it('is empty at first, is stored for every year, and reaches the engine', async () => {
+      expect((await advisorService.getSession(USER, YEAR)).situation).toEqual({ text: '', updatedAt: null })
+      const saved = await advisorService.saveSituation(USER, YEAR, '  Wir bauen 2027 ein Haus.  ')
+      expect(saved.text).toBe('Wir bauen 2027 ein Haus.')
+      // One text per user: another tax year reads the same.
+      expect((await advisorService.getSession(USER, YEAR - 1)).situation.text).toBe('Wir bauen 2027 ein Haus.')
+
+      const seen: Array<string | undefined> = []
+      const recordingEngine: AdvisorEnginePort = {
+        async runTurn() {
+          throw new Error('not used')
+        },
+        async *streamTurn(request) {
+          seen.push(request.situation)
+          yield { event: 'done', data: { replyText: 'Ok.', meta: {}, mode: 'langgraph' } }
+        },
+      }
+      const withEngine = new AdvisorService(advisorRepo, owlModeService, confirmationService, new AuditService(auditRepo), interviewRepo, lstbRepo, chRepo, commuteRepo, childRepo, new FakeRentalRepository(), new FakeCapitalRepository(), profileRepo, recordingEngine)
+      await withEngine.sendMessage(USER, YEAR, { message: 'Hallo' })
+      expect(seen).toEqual(['Wir bauen 2027 ein Haus.'])
+    })
+
+    it('stores no name and no identifier', async () => {
+      await profileRepo.upsert(USER, { firstName: 'Markus', lastName: 'Brenner', steuerId: null, steuernummer: null })
+      const saved = await advisorService.saveSituation(USER, YEAR, 'Markus Brenner zahlt mit IBAN DE89370400440532013000 den Kredit.')
+      expect(saved.text).not.toContain('Brenner')
+      expect(saved.text).not.toContain('DE89370400440532013000')
+    })
+
+    it('refuses a text that is too long, and an empty one clears it', async () => {
+      await expect(advisorService.saveSituation(USER, YEAR, 'a'.repeat(1600))).rejects.toThrow(/höchstens 1500/)
+      await advisorService.saveSituation(USER, YEAR, 'Etwas.')
+      expect((await advisorService.saveSituation(USER, YEAR, '')).text).toBe('')
+    })
+  })
+
+  it('hands the savings plan and the assessment check to the engine as tasks, the second with the notice as far as there is one (#501)', async () => {
+    const seen: Array<{ task: unknown; plan: unknown; assessment: unknown }> = []
+    const recordingEngine: AdvisorEnginePort = {
+      async runTurn() {
+        throw new Error('not used')
+      },
+      async *streamTurn(request) {
+        seen.push({ task: request.task, plan: request.planRequired, assessment: request.assessment })
+        yield { event: 'done', data: { replyText: 'Ok.', meta: {}, mode: 'langgraph' } }
+      },
+    }
+    const withEngine = new AdvisorService(advisorRepo, owlModeService, confirmationService, new AuditService(auditRepo), interviewRepo, lstbRepo, chRepo, commuteRepo, childRepo, new FakeRentalRepository(), new FakeCapitalRepository(), profileRepo, recordingEngine)
+    await withEngine.sendMessage(USER, YEAR, { message: 'Sparplan', quickAction: 'savings_plan' })
+    await withEngine.sendMessage(USER, YEAR, { message: 'Bescheid prüfen', quickAction: 'assessment_check' })
+    await withEngine.sendMessage(USER, YEAR, { message: 'Hallo' })
+    expect(seen[0]).toEqual({ task: 'savings-plan', plan: true, assessment: undefined })
+    // Without the assessment service or a recorded notice the owl is told so, and invents nothing.
+    expect(seen[1]).toMatchObject({ task: 'assessment-check', plan: true, assessment: { recorded: false, deviations: [] } })
+    expect(seen[2]).toEqual({ task: undefined, plan: false, assessment: undefined })
+  })
+
   describe('replace a turn: regenerate and edit-and-resend (#451 slice 1b)', () => {
     beforeEach(async () => {
       await interviewRepo.write({ userId: USER, taxYear: YEAR, questionId: 'spenden', value: 'Ja', openItems: 0 })

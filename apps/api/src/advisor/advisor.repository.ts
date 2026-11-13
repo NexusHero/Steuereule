@@ -84,6 +84,11 @@ export interface FinishAdvisorMessageInput {
   readonly usage: AdvisorMessageUsage | null
 }
 
+export interface AdvisorSituationRecord {
+  readonly text: string
+  readonly updatedAt: Date
+}
+
 export interface AdvisorRepository {
   /** Every message of the year, across all its conversations: drafts belong to the return. */
   listForUserAndYear(userId: string, taxYear: number): Promise<AdvisorChatMessageRecord[]>
@@ -91,6 +96,10 @@ export interface AdvisorRepository {
   listForConversation(conversationId: string, userId: string): Promise<AdvisorChatMessageRecord[]>
   /** Most recently used first. */
   listConversations(userId: string, taxYear: number): Promise<AdvisorConversationRecord[]>
+  /** The conversations of every tax year, most recently used first: the years are the projects (#503). */
+  listAllConversations(userId: string): Promise<AdvisorConversationRecord[]>
+  /** The conversations in which an answer is being written right now (started after `since`). */
+  answeringConversationIds(userId: string, since: Date): Promise<string[]>
   /** Null when the conversation does not exist or belongs to someone else. */
   findConversation(id: string, userId: string): Promise<AdvisorConversationRecord | null>
   createConversation(userId: string, taxYear: number, title?: string | null): Promise<AdvisorConversationRecord>
@@ -103,6 +112,9 @@ export interface AdvisorRepository {
   /** Empties one conversation and keeps it; returns how many messages went. */
   deleteMessagesOfConversation(id: string, userId: string): Promise<number>
   /** The project notes of a tax year, oldest first. */
+  /** The user's own description of the situation; null while nothing was written (#501). */
+  findSituation(userId: string): Promise<AdvisorSituationRecord | null>
+  saveSituation(userId: string, text: string): Promise<AdvisorSituationRecord>
   listNotes(userId: string, taxYear: number): Promise<AdvisorNoteRecord[]>
   findNote(id: string, userId: string): Promise<AdvisorNoteRecord | null>
   createNote(userId: string, taxYear: number, text: string, author: AdvisorNoteAuthor): Promise<AdvisorNoteRecord>
@@ -149,6 +161,14 @@ export class InMemoryAdvisorRepository implements AdvisorRepository {
       .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
   }
 
+  async listAllConversations(userId: string): Promise<AdvisorConversationRecord[]> {
+    return this.conversations.filter((c) => c.userId === userId).sort((a, b) => b.lastUsedAt.getTime() - a.lastUsedAt.getTime())
+  }
+
+  async answeringConversationIds(userId: string, since: Date): Promise<string[]> {
+    return [...new Set(this.rows.filter((r) => r.userId === userId && r.status === 'streaming' && r.createdAt >= since).map((r) => r.conversationId))]
+  }
+
   async listConversations(userId: string, taxYear: number): Promise<AdvisorConversationRecord[]> {
     return this.conversations
       .filter((c) => c.userId === userId && c.taxYear === taxYear)
@@ -184,6 +204,18 @@ export class InMemoryAdvisorRepository implements AdvisorRepository {
     const deleted = await this.deleteMessagesOfConversation(id, userId)
     this.conversations = this.conversations.filter((c) => c.id !== id)
     return deleted
+  }
+
+  private situations = new Map<string, AdvisorSituationRecord>()
+
+  async findSituation(userId: string): Promise<AdvisorSituationRecord | null> {
+    return this.situations.get(userId) ?? null
+  }
+
+  async saveSituation(userId: string, text: string): Promise<AdvisorSituationRecord> {
+    const record = { text, updatedAt: this.now() }
+    this.situations.set(userId, record)
+    return record
   }
 
   private notes: AdvisorNoteRecord[] = []

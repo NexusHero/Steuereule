@@ -286,6 +286,44 @@ async function main() {
     await see(page, 'eule-notes-empty', 'Row H')
     console.log(`[${TAG}] ✅ Row H — a note added, changed and deleted by hand; a failed delete says so`)
 
+    // Row U — "Unsere Situation" (#501): the household in the user's own words, in the same sidebar.
+    // A failed save says so; a stored text is there after a reload, once, for the user and not the year.
+    await see(page, 'eule-situation', 'Row U')
+    await page.route('**/advisor/situation', async (route) => {
+      if (route.request().method() === 'PUT') await route.fulfill({ status: 500, contentType: 'application/json', body: '{"code":"INTERNAL"}' })
+      else await route.fallback()
+    })
+    await byId(page, 'eule-situation-input').fill('Verheiratet, zwei Kinder. Hauskauf für 2027 geplant.')
+    await byId(page, 'eule-situation-save').click()
+    await see(page, 'eule-situation-failed', 'Row U')
+    await page.unroute('**/advisor/situation')
+    await byId(page, 'eule-situation-save').click()
+    await see(page, 'eule-situation-saved', 'Row U')
+    const storedSituations = sql(`SELECT count(*) FROM "BeraterSituation" s JOIN "User" u ON u.id = s."userId" WHERE u.email = '${email}'`)
+    if (String(storedSituations).trim() !== '1') fail(`Row U: the situation should be stored once, found ${String(storedSituations).trim()}`)
+    await page.reload({ waitUntil: 'networkidle' })
+    await see(page, 'eule-situation-input', 'Row U', 20_000)
+    if ((await byId(page, 'eule-situation-input').inputValue()) !== 'Verheiratet, zwei Kinder. Hauskauf für 2027 geplant.') fail('Row U: the stored situation should be there after a reload')
+    console.log(`[${TAG}] ✅ Row U — the situation is stored once, survives a reload, and a failed save says so`)
+
+    // Row R — the line between the list and the chat can be dragged (#503): the list gets wider, the
+    // chat gives way, and the width is remembered.
+    await see(page, 'eule-resize-sidebar', 'Row R')
+    const widthOf = async (id) => (await byId(page, id).boundingBox())?.width ?? 0
+    const sidebarBefore = await widthOf('eule-project-sidebar')
+    const grip = await byId(page, 'eule-resize-sidebar').boundingBox()
+    if (grip === null) fail('Row R: the line next to the list should be there to grab')
+    await page.mouse.move(grip.x + grip.width / 2, grip.y + grip.height / 2)
+    await page.mouse.down()
+    await page.mouse.move(grip.x + grip.width / 2 + 90, grip.y + grip.height / 2, { steps: 6 })
+    await page.mouse.up()
+    const sidebarAfter = await widthOf('eule-project-sidebar')
+    if (Math.abs(sidebarAfter - sidebarBefore - 90) > 12) fail(`Row R: dragging the line 90px should widen the list by about that, went from ${sidebarBefore} to ${sidebarAfter}`)
+    await page.reload({ waitUntil: 'networkidle' })
+    await see(page, 'eule-project-sidebar', 'Row R', 20_000)
+    if (Math.abs((await widthOf('eule-project-sidebar')) - sidebarAfter) > 2) fail('Row R: the dragged width should be remembered after a reload')
+    console.log(`[${TAG}] ✅ Row R — the list is resized by dragging its line, and the width is remembered`)
+
     // Row I — the context ring in the composer: says how full the conversation is; too short to summarise.
     await byId(page, 'advisor-context-ring').click()
     await see(page, 'advisor-context-popover', 'Row I')
@@ -309,6 +347,8 @@ async function main() {
     })
     await page.reload({ waitUntil: 'networkidle' })
     await see(page, 'advisor-thought', 'Row E', 20_000)
+    // Drafts open the workbench at the side; its line can be grabbed too.
+    await see(page, 'eule-resize-workbench', 'Row E')
     if ((await byId(page, 'advisor-thought-body').count()) !== 0) fail('Row E: the line of thought of a finished answer starts collapsed')
     await byId(page, 'advisor-thought-toggle').click()
     for (const id of ['advisor-thought-body', 'advisor-thought-step', 'advisor-thought-reasoning', 'advisor-thought-note']) await see(page, id, 'Row E')
@@ -485,12 +525,25 @@ async function main() {
       const json = await res.json()
       json.messages = [
         { id: 'round-u1', role: 'user', content: 'Fang an', meta: null, createdAt: roundNow, status: 'complete', feedback: null },
-        { id: 'round-a1', role: 'assistant', content: 'Erste Runde:', meta: { questionRound: { questions: [{ text: 'Hattest du Fortbildungskosten?', options: ['Ja', 'Nein'], recommended: 'Ja' }, { text: 'Gab es einen Umzug?', options: ['Ja', 'Nein'] }] } }, createdAt: roundNow, status: 'complete', feedback: null },
+        { id: 'round-a1', role: 'assistant', content: 'Erste Runde:', meta: { situationSuggestions: ['Elternzeit ab März 2027.'], questionRound: { questions: [{ text: 'Hattest du Fortbildungskosten?', options: ['Ja', 'Nein'], recommended: 'Ja' }, { text: 'Gab es einen Umzug?', options: ['Ja', 'Nein'] }] } }, createdAt: roundNow, status: 'complete', feedback: null },
       ]
       await route.fulfill({ response: res, json })
     })
     await page.reload({ waitUntil: 'networkidle' })
     await see(page, 'advisor-question-round', 'Row S', 20_000)
+
+    // What the owl would add to "Unsere Situation": nothing is stored without a tap, a failed one says so.
+    await see(page, 'advisor-situation-suggestions', 'Row S')
+    if (!(await textOf(page, 'advisor-situation-suggestion')).includes('Elternzeit ab März 2027.')) fail('Row S: the suggestion should be shown under the answer')
+    await page.route('**/advisor/situation', async (route) => {
+      if (route.request().method() === 'PUT') await route.fulfill({ status: 500, contentType: 'application/json', body: '{"code":"INTERNAL"}' })
+      else await route.fallback()
+    })
+    await byId(page, 'advisor-situation-suggestion-accept').click()
+    await see(page, 'advisor-situation-suggestion-failed', 'Row S')
+    await page.unroute('**/advisor/situation')
+    await byId(page, 'advisor-situation-suggestion-accept').click()
+    await see(page, 'advisor-situation-suggestion-taken', 'Row S')
     if ((await byId(page, 'advisor-question').count()) !== 2) fail('Row S: both questions of the round should be shown')
     if (!(await textOf(page, 'advisor-question-round')).includes('Empfohlen')) fail('Row S: the owl’s pick should be marked')
     if (!(await byId(page, 'advisor-question-submit').isDisabled())) fail('Row S: a round with open questions must not be sendable')
@@ -532,6 +585,38 @@ async function main() {
     if ((await byId(page, 'advisor-receipt-queue-item').count()) !== 1) fail('Row T: a waiting file should be removable from the queue')
     console.log(`[${TAG}] ✅ Row T — several files: queued one after another, named, removable`)
 
+    // Row P — tax years as projects (#503): the open year heads the list, the other years with
+    // conversations sit below it, a conversation that is answering says so, and opening one of
+    // another year asks for that year. Last on this page, because it leaves the year switched.
+    await page.unrouteAll({ behavior: 'ignoreErrors' })
+    await page.route('**/advisor/session*', async (route) => {
+      if (route.request().method() !== 'GET') return route.fallback()
+      const res = await route.fetch().catch(() => null)
+      if (res === null) return
+      const json = await res.json()
+      const year = json.projects[0].taxYear
+      json.conversations = json.conversations.map((c, i) => ({ ...c, answering: i === 0 }))
+      json.projects = [
+        { taxYear: year, conversations: json.conversations },
+        { taxYear: year - 1, conversations: [{ id: 'stub-old-year', title: 'Umzug nach Köln', createdAt: now, lastUsedAt: now, answering: false }] },
+      ]
+      await route.fulfill({ response: res, json })
+    })
+    await page.reload({ waitUntil: 'networkidle' })
+    await see(page, 'eule-project-heading', 'Row P', 20_000)
+    const openYear = Number((await textOf(page, 'eule-project-heading')).replace(/\D/g, ''))
+    if (!Number.isInteger(openYear) || openYear < 2020) fail(`Row P: the list should be headed by the open tax year, reads "${await textOf(page, 'eule-project-heading')}"`)
+    await see(page, 'eule-conversation-answering', 'Row P')
+    await see(page, 'eule-project', 'Row P')
+    if (!(await textOf(page, 'eule-project')).includes(String(openYear - 1))) fail('Row P: the other year should be listed as its own project')
+    if ((await byId(page, 'eule-project-conversation').count()) !== 0) fail('Row P: another year starts closed')
+    await byId(page, 'eule-project-toggle').click()
+    await see(page, 'eule-project-conversation', 'Row P')
+    const otherYearAsked = page.waitForRequest((request) => request.url().includes(`/steuerjahre/${openYear - 1}/advisor/session`) && request.url().includes('stub-old-year'), { timeout: 15_000 })
+    await byId(page, 'eule-project-conversation').click()
+    await otherYearAsked.catch(() => fail('Row P: opening a conversation of another year should open that year with that conversation'))
+    console.log(`[${TAG}] ✅ Row P — tax years as projects: open year on top, other years below, answering marked, another year opens with its conversation`)
+
     await page.unrouteAll({ behavior: 'ignoreErrors' })
     await ctx.close()
 
@@ -552,6 +637,24 @@ async function main() {
     await see(small, 'eule-notes', 'Row J')
     await small.keyboard.press('Escape')
     await gone(small, 'eule-conversation-row', 'Row J')
+
+    // What an adviser does unasked is one tap away on an empty chat (#501): the savings plan and the
+    // check of the tax office's notice. The chip sends its quick action.
+    await small.route('**/advisor/session*', async (route) => {
+      if (route.request().method() !== 'GET') return route.fallback()
+      const res = await route.fetch().catch(() => null)
+      if (res === null) return
+      const json = await res.json()
+      json.messages = []
+      await route.fulfill({ response: res, json })
+    })
+    await small.reload({ waitUntil: 'networkidle' })
+    await see(small, 'advisor-chip-sparplan', 'Row J', 20_000)
+    await see(small, 'advisor-chip-bescheid', 'Row J')
+    const planAsked = small.waitForRequest((request) => request.method() === 'POST' && /advisor\/(stream|runs)/.test(request.url()) && (request.postData() ?? '').includes('"quickAction":"savings_plan"'), { timeout: 15_000 })
+    await byId(small, 'advisor-chip-sparplan').click()
+    await planAsked.catch(() => fail('Row J: the savings plan chip should send quickAction=savings_plan'))
+    await small.unrouteAll({ behavior: 'ignoreErrors' })
     await phone.close()
     console.log(`[${TAG}] ✅ Row J — on a phone the conversations and notes open as a sheet`)
 

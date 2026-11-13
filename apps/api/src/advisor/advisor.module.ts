@@ -11,6 +11,7 @@ import { LstbModule } from '../lstb/lstb.module.js'
 import { OwlModeModule } from '../owl-mode/owl-mode.module.js'
 import { PrismaModule } from '../prisma/prisma.module.js'
 import { ProfileModule } from '../profile/profile.module.js'
+import { AssessmentModule } from '../assessment/assessment.module.js'
 import { TaxEstimateModule } from '../tax-estimate/tax-estimate.module.js'
 import { RentalModule } from '../rental/rental.module.js'
 import { AdvisorController } from './advisor.controller.js'
@@ -48,6 +49,7 @@ export function createAdvisorRunLog(env: NodeJS.ProcessEnv = process.env): Advis
     CapitalModule,
     ProfileModule,
     TaxEstimateModule,
+    AssessmentModule,
   ],
   controllers: [AdvisorController],
   providers: [

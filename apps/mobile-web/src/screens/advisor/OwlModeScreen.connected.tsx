@@ -1,7 +1,7 @@
 // The owl screen wired to the API: loads the session of the tax year and turns every action of
 // the view into a request.
 import type { AdvisorConnection } from '@steuereule/core'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { useBreakpoint } from '@steuereule/ui'
@@ -17,6 +17,7 @@ import {
   useAdvisorControllerCreateNote,
   useAdvisorControllerDeleteNote,
   useAdvisorControllerUndoNoteChange,
+  useAdvisorControllerSaveSituation,
   useAdvisorControllerUpdateNote,
   useAdvisorControllerConnection,
   useAdvisorControllerCreateConversation,
@@ -65,6 +66,12 @@ export function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CU
   const conversationId = bridge ? bridge.conversationId : localConversationId
   const selectConversation = (id: string | null) => (bridge ? bridge.setConversationId(id) : setLocalConversationId(id))
   const sessionQuery = useAdvisorControllerGetSession(taxYear, conversationId ? { conversationId } : undefined, { query: { retry: false } })
+  // The server decided which conversation is open: the bridge files this conversation's answer under its id.
+  const adoptConversationId = bridge?.adoptConversationId
+  const openConversationId = sessionQuery.data?.status === 200 ? sessionQuery.data.data.conversationId : undefined
+  useEffect(() => {
+    if (adoptConversationId && openConversationId !== undefined) adoptConversationId(openConversationId)
+  }, [adoptConversationId, openConversationId])
   const searchConversations = useCallback(
     async (query: string) => {
       const response = expectOk(await advisorControllerSearch(taxYear, { q: query }), 'search failed')
@@ -89,6 +96,7 @@ export function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CU
   const updateNoteMutation = useAdvisorControllerUpdateNote()
   const deleteNoteMutation = useAdvisorControllerDeleteNote()
   const undoNoteChangeMutation = useAdvisorControllerUndoNoteChange()
+  const saveSituationMutation = useAdvisorControllerSaveSituation()
   const sendMessageMutation = useAdvisorControllerSendMessage()
   const applyActionMutation = useAdvisorControllerApplyAction()
   const setFeedbackMutation = useAdvisorControllerSetFeedback()
@@ -195,12 +203,19 @@ export function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CU
         expectOk(await undoNoteChangeMutation.mutateAsync({ jahr: taxYear, messageId, index }), 'note change not undone')
         await invalidate()
       }}
+      situation={session ? (session.situation?.text ?? '') : undefined}
+      onSaveSituation={async (text) => {
+        expectOk(await saveSituationMutation.mutateAsync({ jahr: taxYear, data: { text } }), 'situation not stored')
+        await invalidate()
+      }}
       connection={connectionView}
       onRecheckConnection={() => connectionQuery.refetch()}
       conversations={session?.conversations}
       onSearchConversations={searchConversations}
       activeConversationId={session?.conversationId ?? null}
       onSelectConversation={(id) => selectConversation(id)}
+      projects={session?.projects}
+      onSelectConversationInYear={bridge ? (year, id) => bridge.openConversationInYear(year, id) : undefined}
       onNewConversation={async () => {
         const response = expectOk(await createConversationMutation.mutateAsync({ jahr: taxYear }), 'conversation not created')
         selectConversation(response.data.id)

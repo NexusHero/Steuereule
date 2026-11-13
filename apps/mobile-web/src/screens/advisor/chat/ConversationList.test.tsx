@@ -128,3 +128,50 @@ describe('ConversationList (#481)', () => {
     })
   })
 })
+
+describe('tax years as projects (#503)', () => {
+  const projects = [
+    { taxYear: 2026, conversations },
+    { taxYear: 2025, conversations: [{ id: 'p1', title: 'Umzug nach Köln', createdAt: '2025-06-01T10:00:00.000Z', lastUsedAt: '2025-06-02T10:00:00.000Z' }] },
+    { taxYear: 2024, conversations: [] },
+  ]
+
+  it('names the open year as the project and lists the other years that have conversations, closed at first', () => {
+    renderList({ activeYear: 2026, projects })
+    expect(screen.getByTestId('eule-project-heading').textContent).toBe('Steuerjahr 2026')
+    const others = screen.getAllByTestId('eule-project')
+    expect(others).toHaveLength(1)
+    expect(others[0]!.textContent).toContain('Steuerjahr 2025')
+    expect(others[0]!.textContent).toContain('1 Gespräch')
+    expect(screen.queryByTestId('eule-project-conversation')).toBeNull()
+  })
+
+  it('opens a conversation of another year with its year', () => {
+    const onSelectInYear = vi.fn()
+    renderList({ activeYear: 2026, projects, onSelectInYear })
+    fireEvent.click(screen.getByTestId('eule-project-toggle'))
+    fireEvent.click(screen.getByTestId('eule-project-conversation'))
+    expect(onSelectInYear).toHaveBeenCalledWith(2025, 'p1')
+  })
+
+  it('marks a conversation that is answering and does not offer to delete it', () => {
+    renderList({ activeYear: 2026, projects, answeringIds: ['c1'] })
+    const rows = screen.getAllByTestId('eule-conversation-row')
+    expect(rows[1]!.textContent).toContain('antwortet gerade')
+    expect(rows[0]!.textContent).not.toContain('antwortet gerade')
+    const deletes = screen.getAllByTestId('eule-conversation-delete')
+    expect((deletes[1] as HTMLButtonElement).disabled || deletes[1]!.getAttribute('aria-disabled') === 'true').toBe(true)
+    expect((deletes[0] as HTMLButtonElement).disabled || deletes[0]!.getAttribute('aria-disabled') === 'true').toBe(false)
+  })
+
+  it('also marks one that the server says is answering, on another device', () => {
+    renderList({ conversations: [{ ...conversations[0]!, answering: true }, conversations[1]!] })
+    expect(screen.getAllByTestId('eule-conversation-row')[0]!.textContent).toContain('antwortet gerade')
+  })
+
+  it('lets the user switch while an answer is written elsewhere', () => {
+    const { onSelect } = renderList({ answeringIds: ['c2'] })
+    fireEvent.click(screen.getAllByTestId('eule-conversation-open')[1]!)
+    expect(onSelect).toHaveBeenCalledWith('c1')
+  })
+})
