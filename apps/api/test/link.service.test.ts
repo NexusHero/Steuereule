@@ -183,9 +183,9 @@ describe('the spouse as the owl sees them (ADR-0073)', () => {
   it('is recordable by A while B has no account, with the names for scrubbing', async () => {
     const { service } = setup()
     await service.set('user-a', year, { filingType: 'zusammen' })
-    await service.updatePersonB('user-a', year, { firstName: 'Büsra', lastName: 'Yilmaz' })
+    await service.updatePersonB('user-a', year, { firstName: 'Gülay', lastName: 'Yilmaz' })
     const spouse = await service.spouseForAdvisor('user-a', year)
-    expect(spouse).toMatchObject({ recordable: true, firstName: 'Büsra', lastName: 'Yilmaz' })
+    expect(spouse).toMatchObject({ recordable: true, firstName: 'Gülay', lastName: 'Yilmaz' })
     expect(spouse?.spouseUserId).toBe(await service.dataUser('user-a', year, 'B'))
   })
 

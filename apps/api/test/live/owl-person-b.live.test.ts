@@ -59,13 +59,13 @@ describe.skipIf(!KEY)('the owl drafts the spouse’s figures for Person B (live 
     // What the user sets up in the masks himself: married, joint return, the wife without an account.
     await confirmation.writeConfirmedByAdvisor(userId, YEAR, 'interview.familienstand', 'Verheiratet')
     await link.set(userId, YEAR, { filingType: 'zusammen' })
-    await link.updatePersonB(userId, YEAR, { firstName: 'Büsra', lastName: 'Testfall' })
+    await link.updatePersonB(userId, YEAR, { firstName: 'Gülay', lastName: 'Testfall' })
     const spouse = await link.dataUser(userId, YEAR, 'B')
     users.push(spouse)
 
     const response = await advisor.sendMessage(userId, YEAR, {
       message:
-        'Meine Frau Büsra arbeitet als Grenzgängerin in Basel. Laut ihrem Lohnausweis 2025: Bruttolohn 84.000 CHF, Quellensteuer 3.780 CHF. Sie fährt 24 km einfach zur Arbeit. Bitte trag das für sie ein.',
+        'Meine Frau Gülay arbeitet als Grenzgängerin in Basel. Laut ihrem Lohnausweis 2025: Bruttolohn 84.000 CHF, Quellensteuer 3.780 CHF. Sie fährt 24 km einfach zur Arbeit. Bitte trag das für sie ein.',
     })
     expect(response.mode, 'the turn must be answered by the model').toBe('langgraph')
     const meta = (response.assistantMessage.meta ?? {}) as AdvisorMessageMeta
@@ -75,7 +75,7 @@ describe.skipIf(!KEY)('the owl drafts the spouse’s figures for Person B (live 
     expect(forB.map((draft) => `${draft.screen}.${draft.field}`)).toEqual(expect.arrayContaining(['commute.oneWayKm']))
     expect(forB.some((draft) => draft.screen === 'chLohnausweis')).toBe(true)
     // The model never saw her name.
-    expect(response.userMessage.content).not.toContain('Büsra')
+    expect(response.userMessage.content).not.toContain('Gülay')
 
     await advisor.applyBatch(userId, YEAR, { drafts: forB.map((draft) => ({ actionId: draft.actionId })) })
 

@@ -118,8 +118,8 @@ export function scrubUserMessagePii(
 
 /**
  * Replaces every part of the given names (first and last name, each part of a double name) with
- * a stand-in, as a whole word: „Büsra“ and „Ümit“ alike, never inside a longer word. The German
- * genitive counts as the name („Büsras Konto“): in the real-case test it carried the name to the model.
+ * a stand-in, as a whole word: „Gülay“ and „Ümit“ alike, never inside a longer word. The German
+ * genitive counts as the name („Gülays Konto“): in the real-case test it carried the name to the model.
  */
 export function replaceNamesWith(text: string, names: readonly string[], replacement: string): string {
   let replaced = text

@@ -63,10 +63,10 @@ function kitWith(rounds: AIMessageChunk[]): { kit: AdvisorTestKit; model: Script
 
 const commute = (oneWayKm: number) => ({ workdays: [1, 2, 3, 4, 5] as const, vacationDays: 0, sickDays: 0, homeOfficeDays: 0, oneWayKm, transport: null, workplace: null })
 
-/** A joint return in which A records B's figures; B is called Büsra. */
+/** A joint return in which A records B's figures; B is called Gülay. */
 async function jointReturn(kit: AdvisorTestKit): Promise<string> {
   await kit.linkService.set(USER, YEAR, { filingType: 'zusammen' })
-  await kit.linkService.updatePersonB(USER, YEAR, { firstName: 'Büsra', lastName: 'Yilmaz' })
+  await kit.linkService.updatePersonB(USER, YEAR, { firstName: 'Gülay', lastName: 'Yilmaz' })
   return kit.linkService.dataUser(USER, YEAR, 'B')
 }
 
@@ -82,7 +82,7 @@ describe('the owl drafts the spouse’s figures for Person B', () => {
     const spouse = await jointReturn(kit)
     await kit.commuteRepo.save(USER, YEAR, commute(12))
 
-    const events = await collect(kit.service.streamMessage(USER, YEAR, { message: 'Büsra fährt 24 km zur Arbeit und verdient 84.000 CHF in der Schweiz.' }))
+    const events = await collect(kit.service.streamMessage(USER, YEAR, { message: 'Gülay fährt 24 km zur Arbeit und verdient 84.000 CHF in der Schweiz.' }))
     const actions = metaOf(events).actions ?? [metaOf(events).action!]
     expect(actions.map((a) => [a.screen, a.field, a.person])).toEqual([
       ['commute', 'oneWayKm', 'B'],
@@ -93,7 +93,7 @@ describe('the owl drafts the spouse’s figures for Person B', () => {
     const seen = model.seen.join(' ')
     expect(seen).toContain('Person B fährt 24 km')
     expect(seen).toContain('Zusammenveranlagung mit Person B')
-    expect(seen).not.toContain('Büsra')
+    expect(seen).not.toContain('Gülay')
     expect(seen).not.toContain('Yilmaz')
 
     await kit.service.applyBatch(USER, YEAR, { drafts: actions.map((a) => ({ actionId: a.actionId })) })
@@ -200,8 +200,8 @@ describe('without the model, the rules never put the spouse’s figures into the
 describe('the spouse in the history the model reads (real-case test)', () => {
   it('is „Person B“, also in the genitive, never „[MANDANT]“; the user keeps the shared last name masked', async () => {
     const { historySources } = await import('../src/advisor/advisor-shared.js')
-    const records = [{ role: 'assistant', content: 'Für Büsra und Büsras Konto habe ich 16 € vorbereitet, Herr Muster.', meta: null, status: 'complete' }] as never
-    const [entry] = historySources(records, ['Kemal', 'Muster', 'Büsra'], ['Büsra'])
+    const records = [{ role: 'assistant', content: 'Für Gülay und Gülays Konto habe ich 16 € vorbereitet, Herr Muster.', meta: null, status: 'complete' }] as never
+    const [entry] = historySources(records, ['Kemal', 'Muster', 'Gülay'], ['Gülay'])
     expect(entry!.content).toBe('Für Person B und Person B Konto habe ich 16 € vorbereitet, Herr [MANDANT].')
   })
 })

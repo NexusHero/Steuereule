@@ -298,7 +298,7 @@ export class AutoReceiptParseStrategy implements DocumentParseStrategy {
         suggestedScreen = targetCheck.screen
         suggestedField = cleanField
         suggestedValue = raw.suggestedValue ? raw.suggestedValue.trim().slice(0, 120) : null
-        // Amounts are whole euros in every field a receipt fills; a model's „78564.97“ was refused on apply.
+        // Amounts are whole euros in every field a receipt fills; a model's „45678.90“ was refused on apply.
         if (suggestedValue !== null && /^\d+[.,]\d{1,2}$/.test(suggestedValue)) suggestedValue = String(Math.round(Number(suggestedValue.replace(',', '.'))))
       }
     }

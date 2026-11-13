@@ -29,10 +29,10 @@ const answerWith = (...actions: AdvisorActionProposal[]): AdvisorChatMessageView
 
 describe('a draft for Person B on the card', () => {
   it('names the spouse by first name, and the user’s own draft names nobody', () => {
-    renderInApp(<AdvisorChatPanel messages={answerWith(draft({ person: 'B' }), draft({ actionId: 'act-a', newValue: '12' }))} onSendMessage={vi.fn()} partnerName="Büsra" />)
+    renderInApp(<AdvisorChatPanel messages={answerWith(draft({ person: 'B' }), draft({ actionId: 'act-a', newValue: '12' }))} onSendMessage={vi.fn()} partnerName="Gülay" />)
     const badges = screen.getAllByTestId('advisor-action-person')
     expect(badges).toHaveLength(1)
-    expect(badges[0]!.textContent).toBe('für Büsra')
+    expect(badges[0]!.textContent).toBe('für Gülay')
   })
 
   it('says „Person B“ while the name is not known', () => {
