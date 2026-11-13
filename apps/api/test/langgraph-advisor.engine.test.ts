@@ -762,3 +762,23 @@ describe('LangGraphAdvisorEngine — turn budget and tool-argument hardening (#4
     expect(await new EnvAiRuntimeConfigService({}).resolveLimits()).toEqual(DEFAULT_AI_TURN_LIMITS)
   })
 })
+
+describe('a turn that comes back completely empty (ADR-0084)', () => {
+  it('asks once more and answers with what the second try says', async () => {
+    const model = new ScriptedChatModel([new AIMessage(''), new AIMessage('')])
+    const engine = new LangGraphAdvisorEngine(runtimeWithProvider('google-genai'), () => model)
+    const result = await engine.runTurn({ message: 'Unsere Tochter bekommt Kinderzulage, bitte eintragen.', digest: sampleDigest })
+    expect(result.mode).toBe('langgraph')
+    expect(result.replyText).toContain('Fertig.')
+    expect(result.replyText).not.toContain('Ich habe deine Steuerakte geprüft.')
+  })
+
+  it('says the model did not answer when it stays silent, instead of a stock sentence', async () => {
+    const model = new ScriptedChatModel(Array.from({ length: 20 }, () => new AIMessage('')))
+    const engine = new LangGraphAdvisorEngine(runtimeWithProvider('google-genai'), () => model)
+    const result = await engine.runTurn({ message: 'Unsere Tochter bekommt Kinderzulage, bitte eintragen.', digest: sampleDigest })
+    expect(result.mode).toBe('deterministic_fallback')
+    expect(result.meta.modelFailure).toMatchObject({ reason: 'unknown' })
+    expect(result.replyText).not.toContain('Ich habe deine Steuerakte geprüft.')
+  })
+})

@@ -101,6 +101,7 @@ The ADRs **justify** the architecture; the [living arc42 document](../arc42/READ
 | 0081 | Vorauszahlungen in der Schätzung | Accepted |
 | 0082 | Die Eule ändert erfasste Werte nur auf Wunsch | Accepted |
 | 0083 | Lohnsteuerbescheinigung ohne lesbare Sozialversicherung | Accepted |
+| 0084 | Eine leere Antwort des Modells wird wiederholt und dann offen benannt | Accepted |
 
 See also the [Tech Radar](./tech-radar.md).
 

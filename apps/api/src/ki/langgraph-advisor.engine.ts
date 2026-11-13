@@ -355,6 +355,8 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
     canFailOver: boolean,
     /** The guard called the question a grey zone: only its tax side is answered. */
     grayZone = false,
+    /** How often a turn that came back completely empty is asked again (ADR-0084). */
+    emptyRetries = 1,
   ): AsyncIterable<AdvisorStreamEvent> {
     // Anthropic rejects a forced tool call while extended thinking is on; the plan is then asked for in words.
     const canForceTool = !(slotConfig.provider === 'anthropic' && slotConfig.reasoning === 'summary')
@@ -518,6 +520,28 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
     }
     const lastAiText = lastAiMessage ? extractMessageText(lastAiMessage.content) : ''
     let replyText = (streamedText || lastAiText).trim()
+
+    // Found in the real case: a turn came back with nothing at all, not even after the nudge, and the stock
+    // sentence below made it look answered. Ask once more; if it stays silent, say so (ADR-0084).
+    const nothingAtAll =
+      replyText.length === 0 &&
+      streamedTokenCount === 0 &&
+      pendingActions.length === 0 &&
+      pendingTwoPaths === null &&
+      choices.length === 0 &&
+      questionRound === null &&
+      noteChanges.length === 0 &&
+      interviewChanges.length === 0
+    if (nothingAtAll) {
+      this.logger.warn(`advisor turn came back empty (${slotConfig.provider}/${slotConfig.model}), ${emptyRetries > 0 ? 'asking again' : 'giving up'}`)
+      if (emptyRetries > 0) {
+        yield { event: 'status', data: { text: 'Die Eule fragt noch einmal nach …' } }
+        yield* this.runModelTurn(request, slotConfig, chatModel, limits, canFailOver, grayZone, emptyRetries - 1)
+        return
+      }
+      yield* this.emitFallbackTurn(request, undefined, { reason: 'unknown', detail: 'empty answer' })
+      return
+    }
 
     if (replyText.length === 0) {
       replyText = pendingActions.length === 1
