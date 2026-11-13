@@ -640,6 +640,8 @@ describe('AdvisorService (In-App Steuerberater Agent "Deine Eule")', () => {
       selfPaidKvPvEur: null,
       riesterEur: null,
       doubleHouseholdRentEur: null,
+      workExpenses: { professionalBodiesEur: null, workEquipmentEur: null, accountFeesEur: null, otherWorkExpensesEur: null },
+      childcareDeductionEur: 0,
     })
     expect(digest.priorYearComparison.donationsEur).toBeNull()
   })

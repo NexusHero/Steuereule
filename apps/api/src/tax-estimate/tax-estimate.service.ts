@@ -3,6 +3,8 @@ import { withSpan } from '../telemetry/tracer.js'
 import {
   annexNGreAmounts,
   employeeFromAnswers,
+  furtherWorkExpensesEur,
+  childcareDeductionEur,
   calculateWorkdays,
   chfToEur,
   gatedIncomeTypes,
@@ -99,7 +101,9 @@ export class TaxEstimateService {
     }
 
     const numbers = employeeFromAnswers(answers)
-    const allowance = commuterAllowanceFrom(year, path) + homeOfficeAllowanceFrom(year, path)
+    const allowance = commuterAllowanceFrom(year, path) + homeOfficeAllowanceFrom(year, path) + furtherWorkExpensesEur(path)
+    // Kinderbetreuung is a Sonderausgabe like the donations (§ 10 Abs. 1 Nr. 5 EStG, ADR-0076).
+    const childcare = await this.childcareDeduction(userId, year)
     const laterCount = countLaterAmounts(answers, boostersEnabled)
     // § 24b EStG: not married, at least one child, and no other adult in the household (Abs. 3).
     const singleParent =
@@ -137,8 +141,9 @@ export class TaxEstimateService {
           retirementProvisionEur: rows.z85,
           otherProvisionEur: rows.z82,
           healthInsuranceEur: Math.round(chfToEur(krankenkasseChf, exchangeRate.rate)) + numbers.healthCareContributions,
-          commuterAllowance: allowance,
-          donations: numbers.donations,
+          // Training and relocation are Werbungskosten for a cross-border commuter as for anyone else.
+          commuterAllowance: allowance + numbers.relocationCosts + numbers.trainingCosts,
+          donations: numbers.donations + childcare,
           householdReductionEur,
           healthExpensesEur,
           singleParent,
@@ -161,7 +166,7 @@ export class TaxEstimateService {
           sozialversicherung: state.sozialversicherung,
           commuterAllowance: allowance,
           otherIncomeRelatedExpenses: numbers.relocationCosts + numbers.trainingCosts,
-          donations: numbers.donations,
+          donations: numbers.donations + childcare,
           selfPaidKvPv: numbers.healthCareContributions,
           householdReductionEur,
           healthExpensesEur,
@@ -176,6 +181,13 @@ export class TaxEstimateService {
   }
 
   /** § 24b Abs. 2 Satz 2: the recorded children, else what the interview says (1 or "2 oder mehr" → 2). */
+  /** The deductible childcare of all recorded children (80 %, at most 4.800 € each from 2025). */
+  private async childcareDeduction(userId: string, year: number): Promise<number> {
+    if (!this.kinder) return 0
+    const children = await this.kinder.listForUserAndYear(userId, year)
+    return children.reduce((sum, k) => sum + childcareDeductionEur(year, k.childcareEur ? Number(k.childcareEur) : null, k.geburtsdatum), 0)
+  }
+
   private async childrenForRelief(userId: string, year: number, answers: Answers): Promise<number> {
     const recorded = this.kinder ? (await this.kinder.listForUserAndYear(userId, year)).length : 0
     if (recorded > 0) return recorded
@@ -223,7 +235,8 @@ export class TaxEstimateService {
       children: kinder.length,
       childBenefit: kinder.reduce((sum, k) => sum + monthlyChildBenefitClaim(year) * claimMonths(k.geburtsdatum, year), 0),
       rentalSurplus: properties.reduce((sum, o) => sum + rentalSurplus(o), 0),
-      donations: a.donations + (b?.kind === 'ok' ? b.donations : 0),
+      // Childcare is the household's, recorded with the children of the user (A).
+      donations: a.donations + (b?.kind === 'ok' ? b.donations : 0) + (await this.childcareDeduction(userId, year)),
       churchTax: {
         state: churchA.state,
         postalCode: churchA.postalCode,
@@ -267,7 +280,7 @@ export class TaxEstimateService {
     const answers = answersFrom(interviewRows)
     const laterCount = countLaterAmounts(answers, boostersEnabled)
     const numbers = employeeFromAnswers(answers)
-    const allowance = commuterAllowanceFrom(year, path) + homeOfficeAllowanceFrom(year, path)
+    const allowance = commuterAllowanceFrom(year, path) + homeOfficeAllowanceFrom(year, path) + furtherWorkExpensesEur(path)
     if (chRecord && (answers.ausland === CH_FOREIGN || lstbRecord === null)) {
       const values = salaryCertificateValuesFromRecord(chRecord)
       const exchangeRate = exchangeRateFromRecord(chRecord)
@@ -288,7 +301,7 @@ export class TaxEstimateService {
           swissWithholdingEur: rows.z25,
           pensionContributionsEur: rows.z85,
           otherProvisionEur: rows.z82,
-          commuteAllowance: allowance,
+          commuteAllowance: allowance + numbers.relocationCosts + numbers.trainingCosts,
           selfPaidHealthCare: Math.round(chfToEur(krankenkasseChf, exchangeRate.rate)) + numbers.healthCareContributions,
         },
       }

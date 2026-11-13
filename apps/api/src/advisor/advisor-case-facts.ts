@@ -1,6 +1,7 @@
 import {
   PROFESSION_VALUES,
   amountFromAnswer,
+  childcareDeductionEur,
   homeOfficeDaysFromInterview,
   buildRecordHandles,
   type AdvisorRecordHandles,
@@ -179,6 +180,13 @@ export class AdvisorCaseFacts {
         selfPaidKvPvEur: answerMap['kv-pv'] === 'Ja' ? amountFromAnswer(answerMap['kv-pv-betrag']) : null,
         riesterEur: answerMap['riester'] === 'Ja' ? amountFromAnswer(answerMap['riester-betrag']) : null,
         doubleHouseholdRentEur: answerMap['dhf'] === 'Ja' ? amountFromAnswer(answerMap['dhf-miete']) : null,
+        workExpenses: {
+          professionalBodiesEur: commuteRecord?.professionalBodiesEur ?? null,
+          workEquipmentEur: commuteRecord?.workEquipmentEur ?? null,
+          accountFeesEur: commuteRecord?.accountFeesEur ?? null,
+          otherWorkExpensesEur: commuteRecord?.otherWorkExpensesEur ?? null,
+        },
+        childcareDeductionEur: children.reduce((sum, k) => sum + childcareDeductionEur(taxYear, k.childcareEur ? Number(k.childcareEur) : null, k.geburtsdatum), 0),
       },
       childrenCount: children.length,
       childrenAges: children.map((child) => ageAtEndOfYear(child.geburtsdatum, taxYear)).filter((age): age is number => age !== null),

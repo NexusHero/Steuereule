@@ -404,7 +404,7 @@ function NGreSection({ nGre, onSet }: { readonly nGre: NGreDetailsDto; readonly 
               else if (/^(0|[1-9]\d?|100)$/.test(text)) onSet({ [percent]: Number(text) })
             }}
           />
-          {nGre[percent] === 100 ? (
+          {nGre[percent] === null || nGre[percent] === 100 ? (
             <NGreInput
               label={tr(`grenzgaenger.nGre.felder.${chf}`)}
               initial={nGre[chf] === null ? '' : String(nGre[chf])}

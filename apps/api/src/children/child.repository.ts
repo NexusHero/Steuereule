@@ -15,6 +15,11 @@ export interface ChildDetails {
   healthBasicEur: string | null
   careEur: string | null
   swissFamilyAllowanceEur: string | null
+  /** Anlage Kind Zeile 67 (Kz 51): childcare paid, provider, period (ADR-0076); null = not entered. */
+  childcareEur?: string | null
+  childcareProvider?: string | null
+  childcareFrom?: string | null
+  childcareTo?: string | null
 }
 
 export interface ChildRecord extends ChildDetails {

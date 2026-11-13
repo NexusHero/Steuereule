@@ -60,6 +60,52 @@ export class CommuteInputsDto {
   @IsString()
   @MaxLength(8)
   publicHolidayRegion?: string | null
+
+  @ApiPropertyOptional({ type: Number, nullable: true, example: 110, description: 'Werbungskosten Kz 310: professional bodies, e.g. a trade union. Whole euros; omitted keeps what is stored.' })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(1_000_000)
+  professionalBodiesEur?: number | null
+
+  @ApiPropertyOptional({ type: String, nullable: true, example: 'Berufskleidung', description: 'Which bodies (Anlage N Zeile 53).' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  professionalBodiesNote?: string | null
+
+  @ApiPropertyOptional({ type: Number, nullable: true, example: 110, description: 'Werbungskosten Kz 320: work tools and typical work clothing. Whole euros; omitted keeps what is stored.' })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(1_000_000)
+  workEquipmentEur?: number | null
+
+  @ApiPropertyOptional({ type: String, nullable: true, example: 'Berufskleidung', description: 'What the work tools were (Anlage N Zeile 54).' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  workEquipmentNote?: string | null
+
+  @ApiPropertyOptional({ type: Number, nullable: true, example: 110, description: 'Werbungskosten Kz 380: account fees (16 € a year are accepted without proof). Whole euros; omitted keeps what is stored.' })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(1_000_000)
+  accountFeesEur?: number | null
+
+  @ApiPropertyOptional({ type: Number, nullable: true, example: 110, description: 'Werbungskosten Kz 380: other expenses, e.g. applications. Whole euros; omitted keeps what is stored.' })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(1_000_000)
+  otherWorkExpensesEur?: number | null
+
+  @ApiPropertyOptional({ type: String, nullable: true, example: 'Berufskleidung', description: 'What the other expenses were (Anlage N Zeile 63).' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  otherWorkExpensesNote?: string | null
 }
 
 export class WorkdaysDto {

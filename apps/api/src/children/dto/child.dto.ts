@@ -81,6 +81,27 @@ class ChildDetailsDto {
   @IsOptional()
   @Matches(/^\d{1,7}$/)
   swissFamilyAllowanceEur?: string | null
+
+  @ApiPropertyOptional({ type: String, nullable: true, example: '739', description: 'Zeile 67 (Kz 51): childcare the parents paid, whole euros (ADR-0076).' })
+  @IsOptional()
+  @Matches(/^\d{1,7}$/)
+  childcareEur?: string | null
+
+  @ApiPropertyOptional({ type: String, nullable: true, example: 'Kindergarten, Gemeinde Musterdorf, Hauptstr. 1', description: 'Zeile 67: kind of service, provider name and address.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  childcareProvider?: string | null
+
+  @ApiPropertyOptional({ type: String, nullable: true, example: '01.01.2025', description: 'Zeile 67: from (DD.MM.YYYY).' })
+  @IsOptional()
+  @Matches(/^\d{2}\.\d{2}\.\d{4}$/)
+  childcareFrom?: string | null
+
+  @ApiPropertyOptional({ type: String, nullable: true, example: '31.12.2025', description: 'Zeile 67: until (DD.MM.YYYY).' })
+  @IsOptional()
+  @Matches(/^\d{2}\.\d{2}\.\d{4}$/)
+  childcareTo?: string | null
 }
 
 export class CreateChildDto extends ChildDetailsDto {
@@ -213,6 +234,18 @@ export class ChildResponseDto {
 
   @ApiPropertyOptional({ type: String, nullable: true, example: '2748', description: 'Zeile 6 (Kz 15): Schweizer Kinderzulage in whole EUR.' })
   swissFamilyAllowanceEur?: string | null
+
+  @ApiPropertyOptional({ type: String, nullable: true })
+  childcareEur?: string | null
+
+  @ApiPropertyOptional({ type: String, nullable: true })
+  childcareProvider?: string | null
+
+  @ApiPropertyOptional({ type: String, nullable: true })
+  childcareFrom?: string | null
+
+  @ApiPropertyOptional({ type: String, nullable: true })
+  childcareTo?: string | null
 
   @ApiPropertyOptional({ type: String, nullable: true, example: '312', description: 'Differenz-Kindergeld der deutschen Familienkasse in whole EUR.' })
   differentialChildBenefitEur?: string | null

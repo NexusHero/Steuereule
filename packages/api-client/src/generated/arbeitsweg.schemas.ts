@@ -42,6 +42,41 @@ export interface CommuteInputsDto {
      * @nullable
      */
   publicHolidayRegion?: string | null;
+  /**
+     * Werbungskosten Kz 310: professional bodies, e.g. a trade union. Whole euros; omitted keeps what is stored.
+     * @nullable
+     */
+  professionalBodiesEur?: number | null;
+  /**
+     * Which bodies (Anlage N Zeile 53).
+     * @nullable
+     */
+  professionalBodiesNote?: string | null;
+  /**
+     * Werbungskosten Kz 320: work tools and typical work clothing. Whole euros; omitted keeps what is stored.
+     * @nullable
+     */
+  workEquipmentEur?: number | null;
+  /**
+     * What the work tools were (Anlage N Zeile 54).
+     * @nullable
+     */
+  workEquipmentNote?: string | null;
+  /**
+     * Werbungskosten Kz 380: account fees (16 € a year are accepted without proof). Whole euros; omitted keeps what is stored.
+     * @nullable
+     */
+  accountFeesEur?: number | null;
+  /**
+     * Werbungskosten Kz 380: other expenses, e.g. applications. Whole euros; omitted keeps what is stored.
+     * @nullable
+     */
+  otherWorkExpensesEur?: number | null;
+  /**
+     * What the other expenses were (Anlage N Zeile 63).
+     * @nullable
+     */
+  otherWorkExpensesNote?: string | null;
 }
 
 export interface WorkdaysDto {

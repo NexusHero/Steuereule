@@ -141,6 +141,13 @@ const DECLARED: Readonly<Record<Screen, { readonly perInstance: boolean; readonl
       transport: oneOf(['pkw', 'oepnv', 'andere']),
       publicHolidays: integer(0, 30),
       publicHolidayRegion: text(8),
+      professionalBodiesEur: amount,
+      professionalBodiesNote: text(100),
+      workEquipmentEur: amount,
+      workEquipmentNote: text(100),
+      accountFeesEur: amount,
+      otherWorkExpensesEur: amount,
+      otherWorkExpensesNote: text(100),
     },
   },
   chLohnausweis: {
@@ -205,6 +212,10 @@ const DECLARED: Readonly<Record<Screen, { readonly perInstance: boolean; readonl
       healthBasicEur: { kind: 'amount', max: 9_999_999 },
       careEur: { kind: 'amount', max: 9_999_999 },
       swissFamilyAllowanceEur: { kind: 'amount', max: 9_999_999 },
+      childcareEur: { kind: 'amount', max: 9_999_999 },
+      childcareProvider: text(120),
+      childcareFrom: text(10),
+      childcareTo: text(10),
     },
   },
   assessment: {
@@ -223,6 +234,18 @@ const DECLARED: Readonly<Record<Screen, { readonly perInstance: boolean; readonl
  * so a sentence like "7.186 CHF, davon obligatorisch 2.892 CHF" needs no arithmetic.
  */
 const HINTS: Readonly<Partial<Record<Screen, Readonly<Record<string, string>>>>> = {
+  kind: {
+    childcareEur: 'Kinderbetreuungskosten, die die Eltern gezahlt haben (Kita, Tagesmutter, Hort), Euro im Jahr, ohne Verpflegung; Anlage Kind Kz 51',
+    childcareProvider: 'Art der Betreuung und Name/Anschrift des Anbieters, z. B. „Kindergarten, Gemeinde …“',
+    childcareFrom: 'Beginn der Betreuung im Jahr, TT.MM.JJJJ',
+    childcareTo: 'Ende der Betreuung im Jahr, TT.MM.JJJJ',
+  },
+  commute: {
+    professionalBodiesEur: 'Werbungskosten: Beiträge zu Berufsverbänden, z. B. Gewerkschaft (Anlage N Kz 310), Euro im Jahr',
+    workEquipmentEur: 'Werbungskosten: Arbeitsmittel und typische Berufskleidung (Kz 320), Euro im Jahr; was es war, in workEquipmentNote',
+    accountFeesEur: 'Werbungskosten: Kontoführungsgebühren (Kz 380); ohne Nachweis akzeptiert das Finanzamt 16 € im Jahr',
+    otherWorkExpensesEur: 'Werbungskosten: Sonstiges wie Bewerbungen (Kz 380), Euro im Jahr; was es war, in otherWorkExpensesNote',
+  },
   chLohnausweis: {
     'berufliche-vorsorge': 'Lohnausweis Ziffer 10: alle Arbeitnehmerbeiträge an die Pensionskasse, obligatorisch und überobligatorisch zusammen',
     pkArbeitnehmerChf: 'nur der obligatorische BVG-Teil (Säule 2a) der Arbeitnehmerbeiträge, N-Gre Zeile 84',

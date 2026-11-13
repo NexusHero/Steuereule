@@ -242,6 +242,31 @@
     { "id": "anlVor.kz433", "formular": "anlage-vorsorgeaufwand", "seite": 2, "anker": "433", "zeile": 28, "lage": "rechts", "art": "euro" },
     { "id": "anlVor.kz434", "formular": "anlage-vorsorgeaufwand", "seite": 2, "anker": "434", "zeile": 29, "lage": "rechts", "art": "euro" },
     { "id": "anlVor.kz435", "formular": "anlage-vorsorgeaufwand", "seite": 2, "anker": "435", "zeile": 30, "lage": "rechts", "art": "euro" },
-    { "id": "anlVor.kz439", "formular": "anlage-vorsorgeaufwand", "seite": 2, "anker": "439", "zeile": 33, "lage": "rechts", "art": "euro" }
+    { "id": "anlVor.kz439", "formular": "anlage-vorsorgeaufwand", "seite": 2, "anker": "439", "zeile": 33, "lage": "rechts", "art": "euro" },
+
+    { "id": "anlN.z53Text", "formular": "anlage-n", "seite": 3, "anker": "53", "zeile": 53, "lage": "rechts", "art": "text", "nr": 1 },
+    { "id": "anlN.kz310", "formular": "anlage-n", "seite": 3, "anker": "310", "zeile": 53, "lage": "rechts", "art": "euro" },
+    { "id": "anlN.z54Text", "formular": "anlage-n", "seite": 3, "anker": "54", "zeile": 54, "lage": "rechts", "art": "text", "nr": 1 },
+    { "id": "anlN.z54Eur", "formular": "anlage-n", "seite": 3, "anker": "54", "zeile": 54, "lage": "rechts", "art": "euro", "nr": 2 },
+    { "id": "anlN.kz320", "formular": "anlage-n", "seite": 3, "anker": "320", "zeile": 56, "lage": "rechts", "art": "euro" },
+    { "id": "anlN.z62Text", "formular": "anlage-n", "seite": 4, "anker": "62", "zeile": 62, "lage": "rechts", "art": "text", "nr": 1 },
+    { "id": "anlN.z62Eur", "formular": "anlage-n", "seite": 4, "anker": "62", "zeile": 62, "lage": "rechts", "art": "euro", "nr": 2 },
+    { "id": "anlN.z63Text", "formular": "anlage-n", "seite": 4, "anker": "63", "zeile": 63, "lage": "rechts", "art": "text", "nr": 1 },
+    { "id": "anlN.z63Eur", "formular": "anlage-n", "seite": 4, "anker": "63", "zeile": 63, "lage": "rechts", "art": "euro", "nr": 2 },
+    { "id": "anlN.kz380", "formular": "anlage-n", "seite": 4, "anker": "380", "zeile": 64, "lage": "rechts", "art": "euro" },
+    { "id": "anlNGre.z48Text", "formular": "anlage-n-gre", "seite": 3, "anker": "48", "zeile": 48, "lage": "rechts", "art": "text", "nr": 1 },
+    { "id": "anlNGre.kz310", "formular": "anlage-n-gre", "seite": 3, "anker": "310", "zeile": 48, "lage": "rechts", "art": "euro" },
+    { "id": "anlNGre.z49Text", "formular": "anlage-n-gre", "seite": 3, "anker": "49", "zeile": 49, "lage": "rechts", "art": "text", "nr": 1 },
+    { "id": "anlNGre.z49Eur", "formular": "anlage-n-gre", "seite": 3, "anker": "49", "zeile": 49, "lage": "rechts", "art": "euro", "nr": 2 },
+    { "id": "anlNGre.kz320", "formular": "anlage-n-gre", "seite": 3, "anker": "320", "zeile": 51, "lage": "rechts", "art": "euro" },
+    { "id": "anlNGre.z57Text", "formular": "anlage-n-gre", "seite": 3, "anker": "57", "zeile": 57, "lage": "rechts", "art": "text", "nr": 1 },
+    { "id": "anlNGre.z57Eur", "formular": "anlage-n-gre", "seite": 3, "anker": "57", "zeile": 57, "lage": "rechts", "art": "euro", "nr": 2 },
+    { "id": "anlNGre.z58Text", "formular": "anlage-n-gre", "seite": 3, "anker": "58", "zeile": 58, "lage": "rechts", "art": "text", "nr": 1 },
+    { "id": "anlNGre.z58Eur", "formular": "anlage-n-gre", "seite": 3, "anker": "58", "zeile": 58, "lage": "rechts", "art": "euro", "nr": 2 },
+    { "id": "anlNGre.kz380", "formular": "anlage-n-gre", "seite": 3, "anker": "380", "zeile": 59, "lage": "rechts", "art": "euro" },
+    { "id": "anlKind.z67Text", "formular": "anlage-kind", "seite": 4, "anker": "67", "zeile": 67, "lage": "rechts", "art": "text", "nr": 1 },
+    { "id": "anlKind.z67Von", "formular": "anlage-kind", "seite": 4, "anker": "67", "zeile": 67, "lage": "rechts", "art": "text", "nr": 2 },
+    { "id": "anlKind.z67Bis", "formular": "anlage-kind", "seite": 4, "anker": "67", "zeile": 67, "lage": "rechts", "art": "text", "nr": 3 },
+    { "id": "anlKind.kz51", "formular": "anlage-kind", "seite": 4, "anker": "51", "zeile": 67, "lage": "rechts", "art": "euro" }
   ]
 }

@@ -162,8 +162,33 @@ describe('ArbeitstageScreen', () => {
         oneWayKm: 15,
         transport: 'pkw',
         workplace: '79539 Lörrach, Hauptstraße 1',
+        professionalBodiesEur: null,
+        professionalBodiesNote: null,
+        workEquipmentEur: null,
+        workEquipmentNote: null,
+        accountFeesEur: null,
+        otherWorkExpensesEur: null,
+        otherWorkExpensesNote: null,
       },
     ])
+  })
+
+  it('saves further Werbungskosten with what they were (ADR-0076)', async () => {
+    const bodies: Record<string, unknown>[] = []
+    server.use(
+      http.put('*/v1/steuerjahre/2025/arbeitsweg', async ({ request }) => {
+        bodies.push((await request.json()) as Record<string, unknown>)
+        return HttpResponse.json({ inputs: null, workdays: null, commuterAllowance: null }, { status: 200 })
+      }),
+    )
+    const onDone = vi.fn()
+    renderWorkdays(onDone, 2025)
+    fireEvent.change(await screen.findByTestId('werbungskosten-arbeitsmittel'), { target: { value: '110' } })
+    fireEvent.change(screen.getByTestId('werbungskosten-arbeitsmittel-art'), { target: { value: 'Berufskleidung' } })
+    fireEvent.change(screen.getByTestId('werbungskosten-kontofuehrung'), { target: { value: '16' } })
+    fireEvent.click(screen.getByText('Weiter'))
+    await waitFor(() => expect(onDone).toHaveBeenCalledOnce())
+    expect(bodies.at(-1)).toMatchObject({ workEquipmentEur: 110, workEquipmentNote: 'Berufskleidung', accountFeesEur: 16, professionalBodiesEur: null })
   })
 
   it('invalidates commute, cockpitSummary, and taxEstimate after saving before calling onDone', async () => {

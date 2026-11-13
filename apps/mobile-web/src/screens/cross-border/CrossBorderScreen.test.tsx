@@ -259,7 +259,7 @@ describe('GrenzgaengerScreen — Anlage N-Gre facts', () => {
     )
   })
 
-  it('asks who pays the Krankentaggeld premium and, only at 100 %, the employer amount', async () => {
+  it('asks who pays the Krankentaggeld premium and the employer amount while the share is open or 100 %', async () => {
     const bodies: unknown[] = []
     let stored = EMPTY_CH
     server.use(http.get(INTERVIEW_URL, () => HttpResponse.json(DONE_CH_INTERVIEW, { status: 200 })))
@@ -274,7 +274,8 @@ describe('GrenzgaengerScreen — Anlage N-Gre facts', () => {
     )
     renderScreen()
     const percent = await screen.findByTestId('ch-ngre-krankentaggeldArbeitgeberProzent')
-    expect(screen.queryByTestId('ch-ngre-krankentaggeldArbeitgeberChf')).toBeNull()
+    // An employer's premium letter gives the amount before anyone knows the share (ADR-0076).
+    expect(screen.getByTestId('ch-ngre-krankentaggeldArbeitgeberChf')).toBeTruthy()
 
     fireEvent.change(percent, { target: { value: '10' } })
     fireEvent.blur(percent)

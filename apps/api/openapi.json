@@ -6816,6 +6816,48 @@
             "nullable": true,
             "example": "BW",
             "description": "German state or Swiss canton the holiday suggestion came from."
+          },
+          "professionalBodiesEur": {
+            "type": "number",
+            "nullable": true,
+            "example": 110,
+            "description": "Werbungskosten Kz 310: professional bodies, e.g. a trade union. Whole euros; omitted keeps what is stored."
+          },
+          "professionalBodiesNote": {
+            "type": "string",
+            "nullable": true,
+            "example": "Berufskleidung",
+            "description": "Which bodies (Anlage N Zeile 53)."
+          },
+          "workEquipmentEur": {
+            "type": "number",
+            "nullable": true,
+            "example": 110,
+            "description": "Werbungskosten Kz 320: work tools and typical work clothing. Whole euros; omitted keeps what is stored."
+          },
+          "workEquipmentNote": {
+            "type": "string",
+            "nullable": true,
+            "example": "Berufskleidung",
+            "description": "What the work tools were (Anlage N Zeile 54)."
+          },
+          "accountFeesEur": {
+            "type": "number",
+            "nullable": true,
+            "example": 110,
+            "description": "Werbungskosten Kz 380: account fees (16 € a year are accepted without proof). Whole euros; omitted keeps what is stored."
+          },
+          "otherWorkExpensesEur": {
+            "type": "number",
+            "nullable": true,
+            "example": 110,
+            "description": "Werbungskosten Kz 380: other expenses, e.g. applications. Whole euros; omitted keeps what is stored."
+          },
+          "otherWorkExpensesNote": {
+            "type": "string",
+            "nullable": true,
+            "example": "Berufskleidung",
+            "description": "What the other expenses were (Anlage N Zeile 63)."
           }
         },
         "required": [
@@ -7121,6 +7163,22 @@
             "example": "2748",
             "description": "Zeile 6 (Kz 15): Schweizer Kinderzulage in whole EUR."
           },
+          "childcareEur": {
+            "type": "string",
+            "nullable": true
+          },
+          "childcareProvider": {
+            "type": "string",
+            "nullable": true
+          },
+          "childcareFrom": {
+            "type": "string",
+            "nullable": true
+          },
+          "childcareTo": {
+            "type": "string",
+            "nullable": true
+          },
           "differentialChildBenefitEur": {
             "type": "string",
             "nullable": true,
@@ -7297,6 +7355,30 @@
             "example": "2748",
             "description": "Zeile 6 (Kz 15): Schweizer Kinderzulage / Familienzulage in whole EUR."
           },
+          "childcareEur": {
+            "type": "string",
+            "nullable": true,
+            "example": "739",
+            "description": "Zeile 67 (Kz 51): childcare the parents paid, whole euros (ADR-0076)."
+          },
+          "childcareProvider": {
+            "type": "string",
+            "nullable": true,
+            "example": "Kindergarten, Gemeinde Musterdorf, Hauptstr. 1",
+            "description": "Zeile 67: kind of service, provider name and address."
+          },
+          "childcareFrom": {
+            "type": "string",
+            "nullable": true,
+            "example": "01.01.2025",
+            "description": "Zeile 67: from (DD.MM.YYYY)."
+          },
+          "childcareTo": {
+            "type": "string",
+            "nullable": true,
+            "example": "31.12.2025",
+            "description": "Zeile 67: until (DD.MM.YYYY)."
+          },
           "firstName": {
             "type": "string",
             "example": "Lina"
@@ -7424,6 +7506,30 @@
             "nullable": true,
             "example": "2748",
             "description": "Zeile 6 (Kz 15): Schweizer Kinderzulage / Familienzulage in whole EUR."
+          },
+          "childcareEur": {
+            "type": "string",
+            "nullable": true,
+            "example": "739",
+            "description": "Zeile 67 (Kz 51): childcare the parents paid, whole euros (ADR-0076)."
+          },
+          "childcareProvider": {
+            "type": "string",
+            "nullable": true,
+            "example": "Kindergarten, Gemeinde Musterdorf, Hauptstr. 1",
+            "description": "Zeile 67: kind of service, provider name and address."
+          },
+          "childcareFrom": {
+            "type": "string",
+            "nullable": true,
+            "example": "01.01.2025",
+            "description": "Zeile 67: from (DD.MM.YYYY)."
+          },
+          "childcareTo": {
+            "type": "string",
+            "nullable": true,
+            "example": "31.12.2025",
+            "description": "Zeile 67: until (DD.MM.YYYY)."
           },
           "firstName": {
             "type": "string",

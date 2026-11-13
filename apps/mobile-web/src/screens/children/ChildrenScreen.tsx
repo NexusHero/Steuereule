@@ -67,6 +67,10 @@ export interface ChildItem {
   healthBasicEur?: string | null
   careEur?: string | null
   swissFamilyAllowanceEur?: string | null
+  childcareEur?: string | null
+  childcareProvider?: string | null
+  childcareFrom?: string | null
+  childcareTo?: string | null
   differentialChildBenefitEur?: string | null
   totalClaimEur?: string | null
 }
@@ -93,6 +97,11 @@ export interface ChildInput {
   healthBasicEur: string | null
   careEur: string | null
   swissFamilyAllowanceEur?: string | null
+  /** Anlage Kind Zeile 67 (ADR-0076): childcare paid, provider, period as TT.MM.JJJJ. */
+  childcareEur?: string | null
+  childcareProvider?: string | null
+  childcareFrom?: string | null
+  childcareTo?: string | null
 }
 
 const OTHER_PARENT_LABEL: Record<OtherParentStatus, string> = {
@@ -261,6 +270,10 @@ function KinderScreenView({
   const [swissAllowance, setSwissAllowance] = useState('')
   const [kvBasis, setKvBasis] = useState('')
   const [pv, setPv] = useState('')
+  const [childcare, setChildcare] = useState('')
+  const [childcareProvider, setChildcareProvider] = useState('')
+  const [childcareFrom, setChildcareFrom] = useState('')
+  const [childcareTo, setChildcareTo] = useState('')
   const [relationship, setRelationship] = useState<ChildRelationship | null>(null)
   const [relationshipB, setRelationshipB] = useState<ChildRelationship | null>(null)
   const [familyBenefitsOffice, setFamilyBenefitsOffice] = useState('')
@@ -301,6 +314,10 @@ function KinderScreenView({
     setSwissAllowance(k?.swissFamilyAllowanceEur ?? '')
     setKvBasis(k?.healthBasicEur ?? '')
     setPv(k?.careEur ?? '')
+    setChildcare(k?.childcareEur ?? '')
+    setChildcareProvider(k?.childcareProvider ?? '')
+    setChildcareFrom(k?.childcareFrom ?? '')
+    setChildcareTo(k?.childcareTo ?? '')
     setRelationship(k?.kinship ?? null)
     setRelationshipB(k?.kinshipB ?? null)
     setFamilyBenefitsOffice(k?.familyBenefitsOffice ?? '')
@@ -315,7 +332,7 @@ function KinderScreenView({
     setChildBenefitToMe(k?.childBenefitToMeAllYear ?? null)
     setEdited(k?.id ?? null)
     setMoreOpen(
-      Boolean(k && (k.childBenefitClaimEur || k.swissFamilyAllowanceEur || k.healthBasicEur || k.careEur || (!married && k.kinshipB))),
+      Boolean(k && (k.childBenefitClaimEur || k.swissFamilyAllowanceEur || k.healthBasicEur || k.careEur || k.childcareEur || (!married && k.kinshipB))),
     )
   }
 
@@ -377,6 +394,10 @@ function KinderScreenView({
       healthBasicEur: /^\d+$/.test(kvBasis.trim()) ? kvBasis.trim() : null,
       careEur: /^\d+$/.test(pv.trim()) ? pv.trim() : null,
       swissFamilyAllowanceEur: /^\d+$/.test(swissAllowance.trim()) ? swissAllowance.trim() : null,
+      childcareEur: /^\d+$/.test(childcare.trim()) ? childcare.trim() : null,
+      childcareProvider: childcareProvider.trim().slice(0, 120) || null,
+      childcareFrom: /^\d{2}\.\d{2}\.\d{4}$/.test(childcareFrom.trim()) ? childcareFrom.trim() : null,
+      childcareTo: /^\d{2}\.\d{2}\.\d{4}$/.test(childcareTo.trim()) ? childcareTo.trim() : null,
     }
     try {
       if (edited) {
@@ -750,6 +771,18 @@ function KinderScreenView({
               </Feld>
               <Feld label="Pflegeversicherung des Kindes, die ihr zahlt (€ im Jahr, optional)">
                 <Input value={pv} onChange={setPv} placeholder="z.B. 0" type="numeric" accessibilityLabel="Pflegeversicherung des Kindes" />
+              </Feld>
+              <Feld label="Kinderbetreuung, die ihr bezahlt habt (Kita, Tagesmutter, Hort; ohne Essen; € im Jahr, optional)">
+                <Input value={childcare} onChange={setChildcare} placeholder="z.B. 739" type="numeric" accessibilityLabel="Kinderbetreuungskosten" testID="kind-betreuung" />
+              </Feld>
+              <Feld label="Art der Betreuung, Name und Anschrift des Anbieters">
+                <Input value={childcareProvider} onChange={setChildcareProvider} placeholder="z.B. Kindergarten, Gemeinde Musterdorf, Hauptstr. 1" accessibilityLabel="Anbieter der Kinderbetreuung" testID="kind-betreuung-anbieter" />
+              </Feld>
+              <Feld label="Betreut vom (TT.MM.JJJJ)">
+                <Input value={childcareFrom} onChange={setChildcareFrom} placeholder="01.01.2025" accessibilityLabel="Betreut vom" testID="kind-betreuung-von" />
+              </Feld>
+              <Feld label="Betreut bis (TT.MM.JJJJ)">
+                <Input value={childcareTo} onChange={setChildcareTo} placeholder="31.12.2025" accessibilityLabel="Betreut bis" testID="kind-betreuung-bis" />
               </Feld>
             </>
           ) : null}

@@ -295,8 +295,17 @@ describe('ReceiptParseService — Two-Stage Receipt Isolation (#446 Slice 3)', (
     expect(res.parsed.vendorCategory).toBe('arbeitsmittel')
     expect(res.parsed.amountEur).toBe(640)
     expect(res.stagedAction?.status).toBe('pending')
-    expect(res.stagedAction?.screen).toBe('interview')
-    expect(res.stagedAction?.field).toBe('fortbildung')
+    // Work tools are Kz 320 in the commute mask, not training (ADR-0076).
+    expect(res.stagedAction?.screen).toBe('commute')
+    expect(res.stagedAction?.field).toBe('workEquipmentEur')
+    expect(res.stagedAction?.newValue).toBe('640')
+  })
+
+  it('adds a second work-tool receipt to the year’s total instead of replacing it', async () => {
+    const h = buildTestHarness([], false)
+    await h.commuteRepo.save('user-r5', 2025, { workdays: [1, 2, 3, 4, 5], vacationDays: 0, sickDays: 0, homeOfficeDays: 0, oneWayKm: null, transport: null, workplace: null, workEquipmentEur: 110 })
+    const res = await h.parseService.parseReceipt('user-r5', { taxYear: 2025, fileName: 'monitor.pdf', rawText: 'Hardware Monitor 240 EUR vom 2025-07-03' })
+    expect(res.stagedAction).toMatchObject({ field: 'workEquipmentEur', previousValue: '110', newValue: '350' })
   })
 
   it('blocks commute.workplace tampering from Stage 1 and rejects disallowed receipt MIME types', async () => {

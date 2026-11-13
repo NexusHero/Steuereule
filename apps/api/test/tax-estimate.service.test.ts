@@ -67,6 +67,29 @@ describe('SteuerschaetzungService', () => {
     expect(status.werbungskosten).toBe(2019 + 120)
   })
 
+  it('adds the further Werbungskosten from the commute mask (ADR-0076)', async () => {
+    const path: CommuteInputs = { workdays: [1, 2, 3, 4, 5], vacationDays: 30, sickDays: 5, homeOfficeDays: 20, oneWayKm: 30, transport: 'pkw', workplace: null }
+    const { lstb, interview, service } = setup({ ...path, professionalBodiesEur: 120, workEquipmentEur: 110, accountFeesEur: 16, otherWorkExpensesEur: 40 })
+    interview.seed('u', 2025, EMPLOYED)
+    lstb.seed({ userId: 'u', taxYear: 2025, bruttoarbeitslohn: '45000', lohnsteuer: '6100', sozialversicherung: '9200' })
+
+    expect(range(await service.getState('u', 2025)).werbungskosten).toBe(2019 + 120 + 120 + 110 + 16 + 40)
+  })
+
+  it('counts childcare as a Sonderausgabe: 80 %, at most 4.800 € per child (ADR-0076)', async () => {
+    const { lstb, interview, kinder, service } = setup()
+    interview.seed('u', 2025, { ...EMPLOYED, kinder: '1' })
+    lstb.seed({ userId: 'u', taxYear: 2025, bruttoarbeitslohn: '45000', lohnsteuer: '6100', sozialversicherung: '9200' })
+    const child = await kinder.create('u', 2025, { firstName: 'Mia', lastName: 'Muster', geburtsdatum: '2021-03-14' } as never)
+    const without = range(await service.getState('u', 2025))
+    await kinder.update('u', 2025, child.id, { childcareEur: '1000' })
+
+    const withCare = range(await service.getState('u', 2025))
+    expect(withCare.specialExpenses).toBe(800)
+    // result is the refund: 800 € more Sonderausgaben raise it.
+    expect(withCare.result.to).toBeGreaterThan(without.result.to)
+  })
+
   it('names what is still missing instead of estimating from an incomplete LStB', async () => {
     const { lstb, interview, service } = setup()
     interview.seed('u', 2025, EMPLOYED)

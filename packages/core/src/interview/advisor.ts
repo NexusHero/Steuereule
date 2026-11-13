@@ -1,4 +1,5 @@
 import type { OwlSourceId } from './owl-mode'
+import { furtherWorkExpensesEur, type WorkExpenseAmounts } from '../domains/work-expenses'
 
 /**
  * When the summaries below were last read against the wording on gesetze-im-internet.de. The
@@ -18,6 +19,9 @@ import type { AdvisorPerson } from './advisor-household'
 import type { Profession } from './interview'
 import type { LstbCalculationTerm, LstbExtractedFieldStatus, LstbFieldReason } from '../domains/lstb-parser'
 import { taxEstimateCrossBorder, taxEstimateEmployee } from '../engine/tax-estimate'
+
+/** The commute mask's further Werbungskosten the owl can draft (ADR-0076). */
+const WORK_EXPENSE_FIELDS: ReadonlySet<string> = new Set(['professionalBodiesEur', 'workEquipmentEur', 'accountFeesEur', 'otherWorkExpensesEur'])
 
 export type AdvisorActionStatus = 'pending' | 'applied' | 'dismissed' | 'superseded' | 'undone'
 
@@ -306,6 +310,10 @@ export interface CaseDigest {
     readonly selfPaidKvPvEur: number | null
     readonly riesterEur: number | null
     readonly doubleHouseholdRentEur: number | null
+    /** Further Werbungskosten from the commute mask (ADR-0076): professional bodies, work tools, account fees, other. */
+    readonly workExpenses?: WorkExpenseAmounts | undefined
+    /** Deductible childcare of all children (80 %, at most 4.800 € each from 2025), a Sonderausgabe. */
+    readonly childcareDeductionEur?: number | undefined
   }
   readonly childrenCount: number
   /** Ages of the children at the end of the tax year, as far as a birth date is known (#501). */
@@ -448,6 +456,7 @@ function computeRefundMidpoint(digest: CaseDigest): number {
   const otherExpenses =
     hoAllowance +
     trainingAllowance +
+    furtherWorkExpensesEur(digest.catalogExpenses.workExpenses) +
     (digest.catalogExpenses.relocationCostsEur ?? 0) +
     (digest.catalogExpenses.doubleHouseholdRentEur ?? 0)
 
@@ -458,7 +467,7 @@ function computeRefundMidpoint(digest: CaseDigest): number {
     sozialversicherung: sv,
     commuterAllowance,
     otherIncomeRelatedExpenses: otherExpenses,
-    donations: (digest.catalogExpenses.donationsEur ?? 0) + (digest.catalogExpenses.riesterEur ?? 0),
+    donations: (digest.catalogExpenses.donationsEur ?? 0) + (digest.catalogExpenses.riesterEur ?? 0) + (digest.catalogExpenses.childcareDeductionEur ?? 0),
     selfPaidKvPv: digest.catalogExpenses.selfPaidKvPvEur ?? 0,
   })
   if (est.kind === 'spanne') {
@@ -491,6 +500,10 @@ function readCurrentValueFromDigest(digest: CaseDigest, screen: Screen, field: s
   if (screen === 'commute') {
     if (field === 'oneWayKm') return digest.commuteAndWorkdays.distanceKm !== null ? String(digest.commuteAndWorkdays.distanceKm) : null
     if (field === 'homeOfficeDays') return digest.commuteAndWorkdays.homeOfficeDays !== null ? String(digest.commuteAndWorkdays.homeOfficeDays) : null
+    if (WORK_EXPENSE_FIELDS.has(field)) {
+      const value = digest.catalogExpenses.workExpenses?.[field as keyof WorkExpenseAmounts]
+      return value === null || value === undefined ? null : String(value)
+    }
   }
   if (screen === 'chLohnausweis') {
     if (field === 'krankenkasseChf') return digest.crossBorder.healthInsuranceChf !== null ? String(digest.crossBorder.healthInsuranceChf) : null
@@ -516,6 +529,12 @@ function applyCandidateToDigest(digest: CaseDigest, screen: Screen, field: strin
     }
   }
   if (screen === 'commute') {
+    if (WORK_EXPENSE_FIELDS.has(field)) {
+      return {
+        ...digest,
+        catalogExpenses: { ...digest.catalogExpenses, workExpenses: { ...digest.catalogExpenses.workExpenses, [field]: Math.max(0, parsedNum) } },
+      }
+    }
     if (field === 'oneWayKm') {
       return {
         ...digest,

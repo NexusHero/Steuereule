@@ -68,7 +68,9 @@ function pensionSplit(mandatoryChf: number, totalChf: number | undefined): Pensi
  * nothing can be derived, so the given CHF amount is used.
  */
 function split(employeeChf: number, percent: number | undefined, employerChfGiven: number | undefined): PremiumSplit {
-  const employerPercent = Math.min(100, Math.max(0, percent ?? 0))
+  // Only the employer's amount is known (its premium letter) and the employee pays nothing: that is 100 %.
+  const derived = percent === undefined && employerChfGiven !== undefined && employerChfGiven > 0 && employeeChf === 0 ? 100 : percent
+  const employerPercent = Math.min(100, Math.max(0, derived ?? 0))
   const employerChf =
     employerChfGiven !== undefined
       ? employerChfGiven

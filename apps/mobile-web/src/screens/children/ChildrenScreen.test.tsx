@@ -233,6 +233,27 @@ describe('KinderScreen', () => {
     await waitFor(() => expect(onAdd).toHaveBeenCalledWith(expect.objectContaining({ healthBasicEur: '1080', careEur: null })))
   })
 
+  it('saves the childcare the parents paid with provider and period (Anlage Kind Z. 67, ADR-0076)', async () => {
+    const onAdd = vi.fn().mockResolvedValue(undefined)
+    renderKinder({ onAddChild: onAdd })
+    fireEvent.click(screen.getByTestId('kind-neu'))
+    fireEvent.change(screen.getByLabelText('Vorname'), { target: { value: 'Noah' } })
+    fireEvent.change(screen.getByLabelText('Nachname'), { target: { value: 'Brenner' } })
+    fireEvent.change(screen.getByLabelText('Geburtsdatum'), { target: { value: '02.09.2021' } })
+    fireEvent.click(screen.getByTestId('kind-weitere-angaben'))
+    fireEvent.change(screen.getByTestId('kind-betreuung'), { target: { value: '739' } })
+    fireEvent.change(screen.getByTestId('kind-betreuung-anbieter'), { target: { value: 'Kindergarten, Gemeinde Musterdorf' } })
+    fireEvent.change(screen.getByTestId('kind-betreuung-von'), { target: { value: '01.01.2025' } })
+    fireEvent.change(screen.getByTestId('kind-betreuung-bis'), { target: { value: '31.12' } })
+    fireEvent.click(screen.getByTestId('kind-speichern'))
+
+    await waitFor(() =>
+      expect(onAdd).toHaveBeenCalledWith(
+        expect.objectContaining({ childcareEur: '739', childcareProvider: 'Kindergarten, Gemeinde Musterdorf', childcareFrom: '01.01.2025', childcareTo: null }),
+      ),
+    )
+  })
+
   it('allows adding a new child', async () => {
     const onAdd = vi.fn().mockResolvedValue(undefined)
     renderKinder({ onAddChild: onAdd, married: true })

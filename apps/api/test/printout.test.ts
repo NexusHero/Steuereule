@@ -180,6 +180,40 @@ describe('ausdruckWerte', () => {
       expect(values['anlN.kz112']).toBeUndefined()
     })
 
+    const WORK_EXPENSES = {
+      professionalBodiesEur: 120,
+      professionalBodiesNote: 'Gewerkschaft',
+      workEquipmentEur: 110,
+      workEquipmentNote: 'Berufskleidung',
+      accountFeesEur: 16,
+      otherWorkExpensesEur: 40,
+      otherWorkExpensesNote: 'Bewerbungen',
+    }
+
+    it('prints the further Werbungskosten: Kz 310, 320 with what they were, and 380 with each line (ADR-0076)', () => {
+      const { values } = printoutValues({ ...FACTS, commute: { ...COMMUTE, workExpenses: WORK_EXPENSES } })
+      expect(values).toMatchObject({
+        'anlN.z53Text': 'Gewerkschaft',
+        'anlN.kz310': '120',
+        'anlN.z54Text': 'Berufskleidung',
+        'anlN.z54Eur': '110',
+        'anlN.kz320': '110',
+        'anlN.z62Text': 'Kontoführungsgebühren',
+        'anlN.z62Eur': '16',
+        'anlN.z63Text': 'Bewerbungen',
+        'anlN.z63Eur': '40',
+        'anlN.kz380': '56',
+      })
+    })
+
+    it('prints the further Werbungskosten also while the distance is unknown', () => {
+      const { values } = printoutValues({ ...FACTS, commute: { ...COMMUTE, oneWayKm: null, workExpenses: { ...WORK_EXPENSES, professionalBodiesEur: null, otherWorkExpensesEur: null } } })
+      expect(values['anlN.kz320']).toBe('110')
+      expect(values['anlN.kz380']).toBe('16')
+      expect(values['anlN.kz310']).toBeUndefined()
+      expect(values['anlN.kz111']).toBeUndefined()
+    })
+
     it('prints no commute lines while the distance is unknown', () => {
       const { values } = printoutValues({ ...FACTS, commute: { ...COMMUTE, oneWayKm: null } })
 
@@ -475,6 +509,26 @@ describe('ausdruckWerte', () => {
         'anlNGre.kz112': '80',
       })
     })
+
+    it('prints a cross-border commuter’s further Werbungskosten in the Anlage N-Gre (Z. 48–51, 57–59)', () => {
+      const { values } = printoutValues({
+        ...FACTS,
+        bruttoarbeitslohn: null,
+        chSalaryCertificate: CH,
+        commute: {
+          workdaysPerWeek: 5, daysOff: 35, commuteDays: 226, oneWayKm: 80, withCar: true, workplace: '4058 Basel',
+          workExpenses: { professionalBodiesEur: null, professionalBodiesNote: null, workEquipmentEur: 110, workEquipmentNote: null, accountFeesEur: 16, otherWorkExpensesEur: null, otherWorkExpensesNote: null },
+        },
+      })
+      expect(values).toMatchObject({ 'anlNGre.z49Text': 'Arbeitsmittel', 'anlNGre.z49Eur': '110', 'anlNGre.kz320': '110', 'anlNGre.z57Text': 'Kontoführungsgebühren', 'anlNGre.kz380': '16' })
+      expect(values['anlN.kz320']).toBeUndefined()
+    })
+  })
+
+  it('prints childcare in Anlage Kind Z. 67 with provider and period (ADR-0076)', () => {
+    const kind = { sequenceNumber: '1', firstName: 'Mia', lastName: 'Beispiel', geburtsdatum: '2021-03-14', taxId: '41234567890', childcareEur: '900', childcareProvider: 'Kindergarten, Gemeinde Musterdorf', childcareFrom: '01.01.2025', childcareTo: '31.12.2025' }
+    const { instances } = printoutValues({ ...FACTS, kinder: [kind] })
+    expect(instances?.['anlage-kind']?.[0]).toMatchObject({ 'anlKind.kz51': '900', 'anlKind.z67Text': 'Kindergarten, Gemeinde Musterdorf', 'anlKind.z67Von': '01.01.2025', 'anlKind.z67Bis': '31.12.2025' })
   })
 
   it("prints the child's KV/PV paid by the parents in Anlage Kind Z. 27/28", () => {

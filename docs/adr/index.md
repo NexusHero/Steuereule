@@ -93,6 +93,7 @@ The ADRs **justify** the architecture; the [living arc42 document](../arc42/READ
 | 0073 | Eule: Entwürfe für Person B in der Zusammenveranlagung | Accepted |
 | 0074 | Belege lesen: Schweizer Lohnausweis und gescannte Lohnsteuerbescheinigung | Accepted |
 | 0075 | Schweizer Briefe: Nachweis der Pensionskasse und Prämienbestätigung des Arbeitgebers | Accepted |
+| 0076 | Weitere Werbungskosten, Kinderbetreuung und der Arbeitgeberanteil der Prämien | Accepted |
 
 See also the [Tech Radar](./tech-radar.md).
 

@@ -129,6 +129,10 @@ describe('the advisor stance is in every model call (#499, #501)', () => {
     expect(text).toContain('Nennt der Nutzer stattdessen, an wie vielen Tagen er zur Arbeit gefahren ist')
     // Found by the eval: after a draft the owl answered with nothing but „draft prepared“.
     expect(text).toContain('Ein Entwurf ersetzt nie die Antwort')
+    // Further Werbungskosten and childcare have their fields (ADR-0076).
+    expect(text).toContain('commute.workEquipmentEur')
+    expect(text).toContain('commute.accountFeesEur')
+    expect(text).toContain('kind.childcareEur')
     // Laws change: a norm that carries the answer is read in today's wording first.
     expect(text).toContain('liest du vorher ihren heutigen Wortlaut mit `read_law_text`')
     expect(text).toContain('für dieses Jahr eine andere Fassung gelten kann')

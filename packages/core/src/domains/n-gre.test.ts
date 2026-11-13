@@ -83,6 +83,13 @@ describe('Anlage N-Gre — employer share of Krankentaggeld and NBUV (Zeilen 18,
     expect(chf).toMatchObject({ z18: 1200, z80: 1200 })
   })
 
+  it('counts the employer as paying 100 % when only its amount is known and the employee pays nothing', () => {
+    const { split } = annexNGreAmounts({ ...INPUT, krankentaggeldChf: 0, krankentaggeldArbeitgeberChf: 378 })
+    expect(split.dailySicknessAllowance).toEqual({ employerPercent: 100, employeePercent: 0, employerChf: 378, employeeChf: 0 })
+    // With an own premium the share stays open: the letter does not say it.
+    expect(annexNGreAmounts({ ...INPUT, krankentaggeldChf: 50, krankentaggeldArbeitgeberChf: 378 }).split.dailySicknessAllowance.employerPercent).toBe(0)
+  })
+
   it('converts the new lines to EUR like every other line', () => {
     const { eur } = annexNGreAmounts({ ...INPUT, krankentaggeldChf: 900, krankentaggeldArbeitgeberProzent: 10 })
     expect(eur).toMatchObject({ z18: Math.round(100 * 1.065), z80: Math.round(1000 * 1.065) })

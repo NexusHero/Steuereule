@@ -101,6 +101,14 @@ function WorkdaysForm({
   const [km, setKm] = useState(textFrom(saved?.oneWayKm))
   const [transport, setTransport] = useState<Transport | null>(saved?.transport ?? null)
   const [workplace, setWorkplace] = useState(saved?.workplace ?? '')
+  // Further Werbungskosten of this person (ADR-0076): amount and, where the form asks, what it was.
+  const [bodies, setBodies] = useState(textFrom(saved?.professionalBodiesEur))
+  const [bodiesNote, setBodiesNote] = useState(saved?.professionalBodiesNote ?? '')
+  const [tools, setTools] = useState(textFrom(saved?.workEquipmentEur))
+  const [toolsNote, setToolsNote] = useState(saved?.workEquipmentNote ?? '')
+  const [accountFees, setAccountFees] = useState(textFrom(saved?.accountFeesEur))
+  const [other, setOther] = useState(textFrom(saved?.otherWorkExpensesEur))
+  const [otherNote, setOtherNote] = useState(saved?.otherWorkExpensesNote ?? '')
   const savedRegion = (saved?.publicHolidayRegion as HolidayRegion | null | undefined) ?? null
   const [region, setRegion] = useState<HolidayRegion | null>(savedRegion ?? addressState)
   const [regionFromAddress, setRegionFromAddress] = useState(savedRegion === null && addressState !== null)
@@ -170,6 +178,13 @@ function WorkdaysForm({
     workplace: workplace.trim() === '' ? null : workplace.trim(),
     publicHolidays: publicHolidays.trim() === '' ? null : int(publicHolidays),
     publicHolidayRegion: region,
+    professionalBodiesEur: euros(bodies),
+    professionalBodiesNote: note(bodiesNote),
+    workEquipmentEur: euros(tools),
+    workEquipmentNote: note(toolsNote),
+    accountFeesEur: euros(accountFees),
+    otherWorkExpensesEur: euros(other),
+    otherWorkExpensesNote: note(otherNote),
   })
   // What was last loaded or saved — leaving a field saves only real changes (#443 AC 7).
   const lastSaved = useRef<string | null>(null)
@@ -316,6 +331,30 @@ function WorkdaysForm({
       </Feld>
       {allowance !== null ? <Row label={tr('arbeitstage.weg.pauschale')} value={formatEuro(allowance)} /> : null}
 
+      <Text style={styles.sectionLabel}>{tr('arbeitstage.weitere.titel')}</Text>
+      <Text style={styles.regionHint}>{tr('arbeitstage.weitere.hilfe')}</Text>
+      <Feld label={tr('arbeitstage.weitere.arbeitsmittel')}>
+        <Input type="numeric" mono value={tools} onChange={setTools} placeholder="0" accessibilityLabel={tr('arbeitstage.weitere.arbeitsmittel')} testID="werbungskosten-arbeitsmittel" onBlur={saveOnLeave} />
+      </Feld>
+      <Feld label={tr('arbeitstage.weitere.arbeitsmittelArt')}>
+        <Input type="text" value={toolsNote} onChange={setToolsNote} placeholder={tr('arbeitstage.weitere.arbeitsmittelArtPlaceholder')} accessibilityLabel={tr('arbeitstage.weitere.arbeitsmittelArt')} testID="werbungskosten-arbeitsmittel-art" onBlur={saveOnLeave} />
+      </Feld>
+      <Feld label={tr('arbeitstage.weitere.kontofuehrung')}>
+        <Input type="numeric" mono value={accountFees} onChange={setAccountFees} placeholder="16" accessibilityLabel={tr('arbeitstage.weitere.kontofuehrung')} testID="werbungskosten-kontofuehrung" onBlur={saveOnLeave} />
+      </Feld>
+      <Feld label={tr('arbeitstage.weitere.verbaende')}>
+        <Input type="numeric" mono value={bodies} onChange={setBodies} placeholder="0" accessibilityLabel={tr('arbeitstage.weitere.verbaende')} testID="werbungskosten-verbaende" onBlur={saveOnLeave} />
+      </Feld>
+      <Feld label={tr('arbeitstage.weitere.verbaendeArt')}>
+        <Input type="text" value={bodiesNote} onChange={setBodiesNote} placeholder={tr('arbeitstage.weitere.verbaendeArtPlaceholder')} accessibilityLabel={tr('arbeitstage.weitere.verbaendeArt')} testID="werbungskosten-verbaende-art" onBlur={saveOnLeave} />
+      </Feld>
+      <Feld label={tr('arbeitstage.weitere.sonstiges')}>
+        <Input type="numeric" mono value={other} onChange={setOther} placeholder="0" accessibilityLabel={tr('arbeitstage.weitere.sonstiges')} testID="werbungskosten-sonstiges" onBlur={saveOnLeave} />
+      </Feld>
+      <Feld label={tr('arbeitstage.weitere.sonstigesArt')}>
+        <Input type="text" value={otherNote} onChange={setOtherNote} placeholder={tr('arbeitstage.weitere.sonstigesArtPlaceholder')} accessibilityLabel={tr('arbeitstage.weitere.sonstigesArt')} testID="werbungskosten-sonstiges-art" onBlur={saveOnLeave} />
+      </Feld>
+
       {error ? <Text style={styles.widerspruchBody}>{tr('arbeitstage.speichernFehler')}</Text> : null}
 
       <InMaskAdvisorCompanion screen="interview" taxYear={taxYear} />
@@ -375,6 +414,17 @@ function Row({ label, value }: { readonly label: string; readonly value: string 
       <Text style={styles.resultValue}>{value}</Text>
     </View>
   )
+}
+
+/** Whole euros or null for an empty field. */
+function euros(s: string): number | null {
+  const digits = s.replace(/[^\d]/g, '')
+  return digits === '' ? null : Number(digits)
+}
+
+function note(s: string): string | null {
+  const t = s.trim()
+  return t === '' ? null : t.slice(0, 100)
 }
 
 function int(s: string): number {

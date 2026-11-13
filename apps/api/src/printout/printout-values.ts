@@ -52,6 +52,11 @@ export interface ChildFacts {
   registeredWithMeAllYear?: boolean | null
   childBenefitToMeAllYear?: boolean | null
   healthBasicEur?: string | null
+  /** Anlage Kind Zeile 67 (Kz 51): childcare, provider and period (ADR-0076). */
+  childcareEur?: string | null
+  childcareProvider?: string | null
+  childcareFrom?: string | null
+  childcareTo?: string | null
   careEur?: string | null
 }
 
@@ -316,12 +321,58 @@ export interface CommuteFacts {
   oneWayKm: number | null
   withCar: boolean
   workplace: string | null
+  /** Further Werbungskosten of the same person (ADR-0076), whole euros and what they were. */
+  workExpenses?: WorkExpenseFacts | null
+}
+
+export interface WorkExpenseFacts {
+  professionalBodiesEur: number | null
+  professionalBodiesNote: string | null
+  workEquipmentEur: number | null
+  workEquipmentNote: string | null
+  accountFeesEur: number | null
+  otherWorkExpensesEur: number | null
+  otherWorkExpensesNote: string | null
+}
+
+/** Where Anlage N and Anlage N-Gre ask for the further Werbungskosten: the same Kennzahlen in other lines. */
+const WORK_EXPENSE_LINES = {
+  anlN: { bodies: 'z53Text', tools: 'z54', sonstiges: ['z62', 'z63'] },
+  anlNGre: { bodies: 'z48Text', tools: 'z49', sonstiges: ['z57', 'z58'] },
+} as const
+
+/** Kz 310 (professional bodies), 320 (work tools) and 380 (account fees and other) with their lines. */
+function workExpenseValues(x: WorkExpenseFacts | null | undefined, prefix: 'anlN' | 'anlNGre'): Record<string, string> {
+  if (!x) return {}
+  const lines = WORK_EXPENSE_LINES[prefix]
+  const values: Record<string, string> = {}
+  if (x.professionalBodiesEur) {
+    values[`${prefix}.${lines.bodies}`] = x.professionalBodiesNote ?? 'Beiträge zu Berufsverbänden'
+    values[`${prefix}.kz310`] = String(x.professionalBodiesEur)
+  }
+  if (x.workEquipmentEur) {
+    values[`${prefix}.${lines.tools}Text`] = x.workEquipmentNote ?? 'Arbeitsmittel'
+    values[`${prefix}.${lines.tools}Eur`] = String(x.workEquipmentEur)
+    values[`${prefix}.kz320`] = String(x.workEquipmentEur)
+  }
+  const sonstiges = [
+    ...(x.accountFeesEur ? [['Kontoführungsgebühren', x.accountFeesEur] as const] : []),
+    ...(x.otherWorkExpensesEur ? [[x.otherWorkExpensesNote ?? 'Sonstige Werbungskosten', x.otherWorkExpensesEur] as const] : []),
+  ]
+  sonstiges.forEach(([text, eur], i) => {
+    values[`${prefix}.${lines.sonstiges[i]}Text`] = text
+    values[`${prefix}.${lines.sonstiges[i]}Eur`] = String(eur)
+  })
+  if (sonstiges.length > 0) values[`${prefix}.kz380`] = String(sonstiges.reduce((sum, [, eur]) => sum + eur, 0))
+  return values
 }
 
 /** Anlage N Z. 27–31 and Anlage N-Gre Z. 32–36 ask the same facts under their own field prefix. */
 function commuteValues(a: CommuteFacts | null | undefined, prefix: 'anlN' | 'anlNGre' = 'anlN'): Record<string, string> {
-  if (!a || a.oneWayKm === null) return {}
+  if (!a) return {}
+  if (a.oneWayKm === null) return workExpenseValues(a.workExpenses, prefix)
   const values: Record<string, string> = {
+    ...workExpenseValues(a.workExpenses, prefix),
     [`${prefix}.wegArt`]: '1',
     [`${prefix}.wegTageJeWoche`]: String(a.workdaysPerWeek),
     [`${prefix}.wegFreieTage`]: String(a.daysOff),
@@ -708,6 +759,13 @@ export function printoutValues(facts: PrintoutFacts): PrintoutValues {
       if (k.familyBenefitsOffice) kValues['anlKind.familienkasse'] = k.familyBenefitsOffice
       // Z. 27/28: KV/PV of the child the parents pay as policyholders — an empty or zero line stays empty.
       if (k.healthBasicEur && Number(k.healthBasicEur) > 0) kValues['anlKind.kz66'] = k.healthBasicEur
+      // Zeile 67: what the parents paid; the tax office applies the 80 % and the cap itself.
+      if (k.childcareEur && Number(k.childcareEur) > 0) {
+        kValues['anlKind.kz51'] = k.childcareEur
+        if (k.childcareProvider) kValues['anlKind.z67Text'] = k.childcareProvider
+        if (k.childcareFrom) kValues['anlKind.z67Von'] = k.childcareFrom
+        if (k.childcareTo) kValues['anlKind.z67Bis'] = k.childcareTo
+      }
       if (k.careEur && Number(k.careEur) > 0) kValues['anlKind.kz67'] = k.careEur
       const start = k.geburtsdatum?.startsWith(`${facts.taxYear}-`) ? k.geburtsdatum : `${facts.taxYear}-01-01`
       const end = `${facts.taxYear}-12-31`

@@ -48,7 +48,7 @@ const RECEIPT_EXTRACTION_TIMEOUT_MS = 20_000
 const SAFE_RECEIPT_TARGETS: Readonly<Record<string, readonly string[]>> = {
   interview: ['spenden-betrag', 'fortbildung', 'umzug-kosten', 'dhf-miete', 'riester-betrag', 'homeoffice'],
   lstb: ['bruttoarbeitslohn', 'lohnsteuer', 'sozialversicherung'],
-  commute: ['oneWayKm', 'homeOfficeDays'],
+  commute: ['oneWayKm', 'homeOfficeDays', 'workEquipmentEur', 'otherWorkExpensesEur'],
   chLohnausweis: ['krankenkasseChf', 'krankentaggeldChf', 'saeule3aChf'],
 }
 
@@ -118,9 +118,12 @@ function extractDeterministically(dto: ParseReceiptDto): ParsedReceiptDataDto {
     }
   } else if (/monitor|laptop|computer|hardware|drucker|schreibtisch|arbeitsmittel|büroausstattung/.test(combined)) {
     vendorCategory = 'arbeitsmittel'
-    suggestedScreen = 'interview'
-    suggestedField = 'fortbildung'
-    suggestedValue = 'Ja'
+    // Work tools are their own Werbungskosten (Kz 320), not training (ADR-0076).
+    if (amountEur !== null && amountEur > 0) {
+      suggestedScreen = 'commute'
+      suggestedField = 'workEquipmentEur'
+      suggestedValue = String(amountEur)
+    }
   } else if (/fortbildung|kurs|seminar|zertifikat|weiterbildung|konferenz/.test(combined)) {
     vendorCategory = 'fortbildung'
     suggestedScreen = 'interview'
@@ -181,6 +184,14 @@ function proposalDetailsFor(parsed: ParsedReceiptDataDto): {
           : 'Werbungskostenabzug für berufliche Fortbildung nach § 9 Abs. 1 Nr. 4a EStG.',
       sourceId,
       summaryText: `${summary} Nach [${sourceId}] habe ich den Werbungskosten-Entwurf für deine Akte vorbereitet:`,
+    }
+  }
+  if (parsed.suggestedScreen === 'commute' && parsed.suggestedField === 'workEquipmentEur') {
+    return {
+      label: 'Arbeitsmittel (Summe im Jahr)',
+      reason: 'Beruflich genutzte Arbeitsmittel als Werbungskosten nach § 9 Abs. 1 Satz 3 Nr. 6 EStG aus geprüftem Beleg.',
+      sourceId: 'estg-9-1-6',
+      summaryText: `${summary} Nach [estg-9-1-6] habe ich den Betrag zu deinen Arbeitsmitteln gerechnet:`,
     }
   }
   if (parsed.suggestedScreen === 'interview' && parsed.suggestedField === 'umzug-kosten') {
@@ -248,6 +259,15 @@ export class AutoReceiptParseStrategy implements DocumentParseStrategy {
     const summaryText = securityBlocked
       ? 'Der Beleg enthielt unzulässige Schreibziele; der Änderungsvorschlag wurde aus Sicherheitsgründen blockiert.'
       : scrubUserMessagePii(raw.summary.trim().slice(0, 400), [...knownNames]) || 'Beleg ausgewertet.'
+
+    // A model that files work tools under training gets corrected: they are Kz 320 (ADR-0076).
+    // Only a plain „Ja“ or amount is corrected; anything else stays for the PII firewall to judge.
+    const plainSuggestion = suggestedValue === null || suggestedValue === 'Ja' || /^\d+$/.test(suggestedValue)
+    if (!securityBlocked && plainSuggestion && raw.vendorCategory === 'arbeitsmittel' && raw.amountEur !== null && raw.amountEur !== undefined && raw.amountEur > 0) {
+      suggestedScreen = 'commute'
+      suggestedField = 'workEquipmentEur'
+      suggestedValue = String(Math.round(raw.amountEur))
+    }
 
     const parsed: ParsedReceiptDataDto = {
       vendorCategory: raw.vendorCategory,

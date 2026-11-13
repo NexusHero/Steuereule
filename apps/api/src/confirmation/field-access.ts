@@ -24,7 +24,7 @@ import {
 import { InvalidInputError } from '../common/domain-error.js'
 import type { AssessmentRepository } from '../assessment/assessment.repository.js'
 import type { CapitalRepository } from '../capital/capital.repository.js'
-import { MEANS_OF_TRANSPORT, type CommuteInputs, type CommuteRepository, type MeansOfTransport } from '../commute/commute.repository.js'
+import { MEANS_OF_TRANSPORT, WORK_EXPENSE_AMOUNT_FIELDS, WORK_EXPENSE_NOTE_FIELDS, type CommuteInputs, type CommuteRepository, type MeansOfTransport } from '../commute/commute.repository.js'
 import type { WageTaxCertificateRepository } from '../lstb/lstb.repository.js'
 import type { PensionRepository } from '../pension/pension.repository.js'
 import type { RentalRepository } from '../rental/rental.repository.js'
@@ -70,6 +70,8 @@ const COMMUTE_ACCESS_FIELDS = [
   'transport',
   'publicHolidays',
   'publicHolidayRegion',
+  ...WORK_EXPENSE_AMOUNT_FIELDS,
+  ...WORK_EXPENSE_NOTE_FIELDS,
 ] as const
 const ASSESSMENT_ACCESS_FIELDS = [...ASSESSMENT_FIELD_IDS, 'assessmentDate'] as const
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/
@@ -122,6 +124,10 @@ const CHILD_ACCESS_FIELDS = [
   'healthBasicEur',
   'careEur',
   'swissFamilyAllowanceEur',
+  'childcareEur',
+  'childcareProvider',
+  'childcareFrom',
+  'childcareTo',
 ] as const
 
 /**
@@ -418,6 +424,10 @@ export function fieldAccessFrom({
           healthBasicEur: c.healthBasicEur,
           careEur: c.careEur,
           swissFamilyAllowanceEur: c.swissFamilyAllowanceEur,
+          childcareEur: c.childcareEur ?? null,
+          childcareProvider: c.childcareProvider ?? null,
+          childcareFrom: c.childcareFrom ?? null,
+          childcareTo: c.childcareTo ?? null,
         }
       },
       async write(userId, taxYear, instance, field, value) {
@@ -448,6 +458,8 @@ export function fieldAccessFrom({
           transport: r.transport,
           publicHolidays: r.publicHolidays === null || r.publicHolidays === undefined ? null : String(r.publicHolidays),
           publicHolidayRegion: r.publicHolidayRegion ?? null,
+          ...Object.fromEntries(WORK_EXPENSE_AMOUNT_FIELDS.map((f) => [f, r[f] === null || r[f] === undefined ? null : String(r[f])])),
+          ...Object.fromEntries(WORK_EXPENSE_NOTE_FIELDS.map((f) => [f, r[f] ?? null])),
         }
       },
       async write(userId, taxYear, _instance, field, value) {
@@ -522,8 +534,19 @@ export function fieldAccessFrom({
             updated = { ...current, publicHolidayRegion: trimmed === '' ? null : trimmed }
             break
           }
-          default:
+          default: {
+            if ((WORK_EXPENSE_AMOUNT_FIELDS as readonly string[]).includes(field)) {
+              updated = { ...current, [field]: parseBoundedInt(value, 0, 1_000_000, field) }
+              break
+            }
+            if ((WORK_EXPENSE_NOTE_FIELDS as readonly string[]).includes(field)) {
+              const trimmed = value === null ? null : value.trim()
+              if (trimmed !== null && trimmed.length > 100) throw new InvalidInputError('FIELD_VALUE_INVALID', `"${field}" must be at most 100 characters.`)
+              updated = { ...current, [field]: trimmed === '' ? null : trimmed }
+              break
+            }
             return false
+          }
         }
 
         const workdaysRes = calculateWorkdays({

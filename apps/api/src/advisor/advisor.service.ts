@@ -101,6 +101,9 @@ export { MAX_CONVERSATIONS_PER_YEAR, searchKey, snippetAround, titleFrom } from 
 export type { PreparedAdvisorTurn } from './advisor-shared.js'
 
 
+/** Commute-mask fields that are a year's total of several receipts. */
+const ACCUMULATING_COMMUTE_FIELDS: ReadonlySet<string> = new Set(['workEquipmentEur', 'otherWorkExpensesEur'])
+
 const DETERMINISTIC_ENGINE: AdvisorEngineInfo = { mode: 'deterministic_fallback', provider: 'deterministic' }
 
 const TURN_FAILED_MESSAGE = 'Die Antwort der Eule ist unterwegs abgebrochen. Bitte versuche es erneut.'
@@ -872,7 +875,12 @@ export class AdvisorService {
     }
 
     const digest = await this.buildCaseDigest(userId, taxYear)
-    const sim = simulateAdvisorFieldDelta(digest, input.screen, input.field, input.newValue)
+    // A year's total built from several receipts (work tools, other Werbungskosten): this receipt adds
+    // to what is already recorded instead of replacing it (ADR-0076).
+    const previous = simulateAdvisorFieldDelta(digest, input.screen, input.field, input.newValue).previousValue
+    const adds = input.screen === 'commute' && ACCUMULATING_COMMUTE_FIELDS.has(input.field) && previous !== null && /^\d+$/.test(previous)
+    const newValue = adds ? String(Number(previous) + Number(input.newValue)) : input.newValue
+    const sim = simulateAdvisorFieldDelta(digest, input.screen, input.field, newValue)
 
     const draft: AdvisorActionProposal = {
       actionId: newActionId(),
@@ -884,11 +892,11 @@ export class AdvisorService {
       label: input.label,
       previousValue: sim.previousValue,
       expectedPreviousValue: sim.previousValue,
-      newValue: input.newValue,
+      newValue,
       beforeRefundEur: sim.beforeRefundEur,
       afterRefundEur: sim.afterRefundEur,
       deltaEur: sim.deltaEur,
-      reason: input.reason,
+      reason: adds ? `${input.reason} Bisher ${previous} €, dieser Beleg ${input.newValue} €.` : input.reason,
       sourceId: input.sourceId,
       paragraph: ADVISOR_LEGAL_SOURCES[input.sourceId].paragraph,
       ...(input.receiptId ? { receiptId: input.receiptId } : {}),

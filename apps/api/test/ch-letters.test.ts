@@ -46,7 +46,7 @@ async function setUp() {
   return {
     kit,
     pension: new ChPensionStatementParseStrategy(registry, kit.service, audit, kit.linkService, kit.chRepo),
-    premiums: new ChPremiumLetterParseStrategy(registry, kit.service, audit, kit.linkService),
+    premiums: new ChPremiumLetterParseStrategy(registry, kit.service, audit, kit.linkService, kit.chRepo),
   }
 }
 
@@ -116,6 +116,15 @@ describe('the employer’s premium letter', () => {
       'krankentaggeldArbeitgeberProzent',
       'nbuvArbeitgeberProzent',
     ])
+  })
+
+  it('drafts 100 % for sickness pay when the person’s own premium is 0 in the mask, and still asks about NBU', async () => {
+    const { kit, premiums } = await setUp()
+    await kit.chRepo.setNGre(USER, YEAR, { krankentaggeldChf: '0' } as never)
+    const res = await parse(premiums, premiumLetter('Kemal Muster', false))
+    expect((res.assistantMessage?.meta?.actions ?? []).map((d) => d.field)).toContain('krankentaggeldArbeitgeberProzent')
+    expect((res.assistantMessage?.meta?.actions ?? []).map((d) => d.field)).not.toContain('nbuvArbeitgeberProzent')
+    expect(res.assistantMessage?.content).toContain('die NBU-Prämie')
   })
 
   it('never offers a scan’s figures as read', async () => {

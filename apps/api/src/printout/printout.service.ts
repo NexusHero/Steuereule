@@ -221,6 +221,10 @@ export class PrintoutService {
         registeredWithMeAllYear: k.registeredWithMeAllYear,
         childBenefitToMeAllYear: k.childBenefitToMeAllYear,
         healthBasicEur: k.healthBasicEur,
+        childcareEur: k.childcareEur ?? null,
+        childcareProvider: k.childcareProvider ?? null,
+        childcareFrom: k.childcareFrom ?? null,
+        childcareTo: k.childcareTo ?? null,
         careEur: k.careEur,
       }
     })
@@ -296,6 +300,15 @@ function chSalaryCertificateFacts(ch: CrossBorderSalaryStatementRecord | null, a
 
 function commuteFacts(year: number, inputs: CommuteInputs | null): CommuteFacts | null {
   if (inputs === null) return null
+  const workExpenses = {
+    professionalBodiesEur: inputs.professionalBodiesEur ?? null,
+    professionalBodiesNote: inputs.professionalBodiesNote ?? null,
+    workEquipmentEur: inputs.workEquipmentEur ?? null,
+    workEquipmentNote: inputs.workEquipmentNote ?? null,
+    accountFeesEur: inputs.accountFeesEur ?? null,
+    otherWorkExpensesEur: inputs.otherWorkExpensesEur ?? null,
+    otherWorkExpensesNote: inputs.otherWorkExpensesNote ?? null,
+  }
   const result = calculateWorkdays({
     year,
     workdays: inputs.workdays,
@@ -312,6 +325,7 @@ function commuteFacts(year: number, inputs: CommuteInputs | null): CommuteFacts 
     oneWayKm: inputs.oneWayKm,
     withCar: inputs.transport === 'pkw',
     workplace: inputs.workplace,
+    workExpenses,
   }
 }
 

@@ -23,6 +23,11 @@ const LABELS: Readonly<Record<string, string>> = {
   nbuvArbeitgeberProzent: 'Arbeitgeber zahlt die NBU-Prämie zu (%)',
 }
 
+/** What the mask already holds for this person, as far as a letter needs it. */
+interface StoredFacts {
+  readonly krankentaggeldChf: string | null
+}
+
 interface LetterRead {
   readonly taxYear: number | null
   readonly fields: ChLetterFieldDto[]
@@ -51,7 +56,7 @@ abstract class ChLetterParseStrategy implements DocumentParseStrategy, OnModuleI
     this.registry.register(this)
   }
 
-  protected abstract read(rawText: string, ziffer10: number | null, fromOcr: boolean): LetterRead
+  protected abstract read(rawText: string, ziffer10: number | null, fromOcr: boolean, stored?: StoredFacts): LetterRead
 
   async parse(userId: string, dto: ParseReceiptDto): Promise<ParseReceiptResponseDto> {
     const rawText = dto.rawText ?? ''
@@ -64,7 +69,7 @@ abstract class ChLetterParseStrategy implements DocumentParseStrategy, OnModuleI
     const stored = dataUser ? await this.chRepo?.findForUserAndYear(dataUser, dto.taxYear) : null
     const ziffer10 = stored?.fields['berufliche-vorsorge'] ? Number(stored.fields['berufliche-vorsorge']) : null
 
-    const letter = this.read(rawText, Number.isFinite(ziffer10) ? ziffer10 : null, fromOcr)
+    const letter = this.read(rawText, Number.isFinite(ziffer10) ? ziffer10 : null, fromOcr, { krankentaggeldChf: stored?.nGre.krankentaggeldChf ?? null })
     checkPiiFree({ fields: letter.fields, missing: letter.missing })
     await this.auditService.append({ userId, action: 'READ', resource: 'beleg_analyse' })
     const yearConflict = letter.taxYear !== null && letter.taxYear !== dto.taxYear ? { documentYear: letter.taxYear, activeYear: dto.taxYear } : null
@@ -178,23 +183,27 @@ export class ChPremiumLetterParseStrategy extends ChLetterParseStrategy {
     @Inject(AdvisorService) advisorService: AdvisorService,
     @Inject(AuditService) auditService: AuditService,
     @Inject(LinkService) linkService: LinkService,
+    @Optional() @Inject(CROSS_BORDER_SALARY_STATEMENT_REPOSITORY) chRepo?: CrossBorderSalaryStatementRepository,
   ) {
-    super(registry, advisorService, auditService, linkService)
+    super(registry, advisorService, auditService, linkService, chRepo)
   }
 
-  protected read(rawText: string, _ziffer10: number | null, fromOcr: boolean): LetterRead {
+  protected read(rawText: string, _ziffer10: number | null, fromOcr: boolean, stored?: StoredFacts): LetterRead {
     const letter = parseChPremiumLetter(rawText)
+    // The employee's own sickness-pay premium is 0 in the mask: the employer pays it all.
+    const ownSicknessPremiumZero = stored?.krankentaggeldChf === '0'
     const fields: ChLetterFieldDto[] = []
     if (letter.sicknessPayChf !== null) fields.push(field('krankentaggeldArbeitgeberChf', letter.sicknessPayChf, fromOcr))
     if (letter.accidentChf !== null) fields.push(field('nbuvArbeitgeberChf', letter.accidentChf, fromOcr))
-    if (letter.employerPaysFull) {
-      if (letter.sicknessPayChf !== null) fields.push(field('krankentaggeldArbeitgeberProzent', 100, fromOcr))
-      if (letter.accidentChf !== null) fields.push(field('nbuvArbeitgeberProzent', 100, fromOcr))
-    }
+    if ((letter.employerPaysFull || ownSicknessPremiumZero) && letter.sicknessPayChf !== null) fields.push(field('krankentaggeldArbeitgeberProzent', 100, fromOcr))
+    if (letter.employerPaysFull && letter.accidentChf !== null) fields.push(field('nbuvArbeitgeberProzent', 100, fromOcr))
     const missing = [...(letter.sicknessPayChf === null ? ['krankentaggeldArbeitgeberChf'] : []), ...(letter.accidentChf === null ? ['nbuvArbeitgeberChf'] : [])]
     const notes = letter.employerPaysFull
       ? ['Laut Bestätigung zahlt der Arbeitgeber die vollen Prämien; einen Arbeitnehmeranteil gibt es dann nicht.']
-      : ['Die Bestätigung nennt, was der Arbeitgeber gezahlt hat, aber nicht, ob das die ganze Prämie ist. Zahlt dein Arbeitgeber sie ganz? Dann trag bei beiden 100 % ein; sonst den Anteil laut Lohnabrechnung.']
+      : [
+          ...(ownSicknessPremiumZero ? ['Beim Krankentaggeld zahlst du laut deinen Angaben nichts selbst; also trägt der Arbeitgeber 100 %.'] : []),
+          `Die Bestätigung nennt, was der Arbeitgeber gezahlt hat, aber nicht, ob das die ganze Prämie ist. Zahlt dein Arbeitgeber ${ownSicknessPremiumZero ? 'die NBU-Prämie' : 'sie'} ganz? Dann trag dort 100 % ein; sonst den Anteil laut Lohnabrechnung.`,
+        ]
     return { taxYear: letter.taxYear, fields, missing, notes }
   }
 }
