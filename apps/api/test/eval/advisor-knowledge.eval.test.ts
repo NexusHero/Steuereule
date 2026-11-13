@@ -100,6 +100,11 @@ const CASES: readonly Case[] = [
   { name: 'gift tax with the hardship relief', question: 'Ich möchte meiner Nichte 100.000 € schenken. Wie viel Schenkungsteuer fällt an? Es gab vorher keine Schenkungen.', must: [/13\.750/], tool: 'Rechne Schenkung' },
   { name: 'trade tax overview', question: 'Ich habe als Gewerbetreibender 80.000 € Gewinn, Hebesatz 490 %, keine Hinzurechnungen. Wie viel Gewerbesteuer zahle ich ungefähr?', must: [/9\.515/], tool: 'Überschlage die Gewerbesteuer' },
   { name: 'rental repairs against 15 %', question: 'Ich habe am 01.04.2024 eine Wohnung zum Vermieten gekauft, Anschaffungskosten des Gebäudes 200.000 €. Im Juni 2024 habe ich für 18.000 € netto renoviert. Wie viel kann ich noch renovieren, ohne dass es nur über die AfA geht?', must: [/12\.000/], tool: 'Prüfe die 15' },
+  { name: 'own home sold within ten years is tax free', question: 'Ich habe meine Eigentumswohnung im Mai 2021 gekauft, wohne seitdem selbst darin und verkaufe sie im Mai 2026 mit Gewinn. Muss ich den Gewinn versteuern?', must: [/steuerfrei|nicht steuerpflichtig|keine (?:Einkommen)?[Ss]teuer/i], tool: 'Prüfe die Spekulationsfrist' },
+  { name: 'small business limit crossed in the year', question: 'Ich hatte 2024 20.000 € Umsatz und 2025 bisher schon 110.000 €. Bin ich 2025 noch Kleinunternehmer?', must: [/100\.000/, /nicht mehr|überschritten|Regelbesteuerung/i], tool: 'Prüfe die Kleinunternehmer' },
+  { name: 'spouse inherits with both allowances', question: 'Mein Mann ist gestorben, ich erbe 1.000.050 €, ohne Familienheim und ohne Hausrat. Wie viel Erbschaftsteuer zahle ich?', must: [/26\.840/], tool: 'Rechne Schenkung' },
+  { name: 'reads § 35a before answering on craftsmen', question: 'Steht im Gesetz wirklich, dass bei Handwerkern nur die Arbeitskosten zählen? Bitte mit Wortlaut.', must: [/§\s*35a/], readsLaw: true },
+  { name: 'names the dates before the year ends', question: 'Was sollte ich steuerlich noch vor dem Jahresende erledigen?', must: [/Verlustbescheinigung|15\.\s?12/, /31\.\s?12/] },
   { name: 'reads the law before relying on it', question: 'Welche Voraussetzungen hat die Homeoffice-Tagespauschale laut Gesetz genau?', must: [/§\s*4 Abs\. 5/, /6\s*(?:€|Euro)/], readsLaw: true },
 ]
 

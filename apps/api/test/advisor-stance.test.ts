@@ -125,6 +125,8 @@ describe('the advisor stance is in every model call (#499, #501)', () => {
     expect(text).toContain('nur wenn sie günstiger sind als das Kindergeld (§ 31 EStG)')
     expect(text).toContain('Für die Erklärung dieses Nutzers gilt die Schätzung der App')
     expect(text).toContain('was das Finanzamt bei solchen Angaben typischerweise nachfragt')
+    // Found by the eval: after a draft the owl answered with nothing but „draft prepared“.
+    expect(text).toContain('Ein Entwurf ersetzt nie die Antwort')
     // Laws change: a norm that carries the answer is read in today's wording first.
     expect(text).toContain('liest du vorher ihren heutigen Wortlaut mit `read_law_text`')
     expect(text).toContain('für dieses Jahr eine andere Fassung gelten kann')
