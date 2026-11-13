@@ -484,7 +484,9 @@ export class AdvisorService {
     const isOpening = dto.quickAction === 'opening'
     // The spouse's name becomes the handle the owl drafts for („Person B“), not an anonymous stand-in.
     const spouse = isOpening ? null : await this.link?.spouseForAdvisor(userId, taxYear)
-    const spouseNames = [spouse?.firstName, spouse?.lastName].filter((name): name is string => !!name)
+    // A last name the couple shares stays a stand-in: it would turn the user into „Person B“ too.
+    const ownProfile = isOpening ? null : await this.profileRepo?.findByUserId(userId)
+    const spouseNames = [spouse?.firstName, spouse?.lastName !== ownProfile?.lastName ? spouse?.lastName : null].filter((name): name is string => !!name)
     const scrubbedUserText = isOpening ? OPENING_PLACEHOLDER : scrubUserMessagePii(replaceNamesWith(dto.message.trim(), spouseNames, PERSON_B_HANDLE), knownNames)
     const conversation = await this.conversationFor(userId, taxYear, dto.conversationId)
     // Conversations answer side by side (#503), but one conversation has one answer at a time:
@@ -500,7 +502,7 @@ export class AdvisorService {
     const opening = isOpening ? await this.prepareOpening(userId, taxYear, priorRecords.length) : undefined
     const lastAnswer = priorRecords.filter((record) => record.role === 'assistant').at(-1)
     const fromApp = isOpening || isOfferedChoice(dto.message, lastAnswer?.meta)
-    const sources = historySources(priorRecords, knownNames)
+    const sources = historySources(priorRecords, knownNames, spouseNames)
     // A full context is summarised before the answer, once the stream is open (see executeTurn).
     const needsSummary = advisorContextUsage(sources, conversation.summary).level === 'full'
     await this.advisorRepo.updateConversation(conversation.id, userId, {

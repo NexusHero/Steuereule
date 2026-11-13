@@ -182,6 +182,14 @@ describe('PII Masking (ADR-0052 §8 — Personenbezogene Daten: schreiben ja, le
 
 describe('replaceNamesWith', () => {
   it('puts the handle in place of the spouse’s name, also with umlauts at the start', () => {
-    expect(replaceNamesWith('Büsra fährt 24 km, Ümit nicht. Büsras Lohn', ['Büsra', 'Ümit Kaya'], 'Person B')).toBe('Person B fährt 24 km, Person B nicht. Büsras Lohn')
+    expect(replaceNamesWith('Büsra fährt 24 km, Ümit nicht. Büsras Lohn', ['Büsra', 'Ümit Kaya'], 'Person B')).toBe('Person B fährt 24 km, Person B nicht. Person B Lohn')
   })
 })
+
+describe('names in the genitive (real-case test)', () => {
+  it('replaces „Büsras Konto“ like „Büsra“, and leaves longer words alone', () => {
+    expect(replaceNamesWith('Büsras Konto und Büsra’s Arbeitgeber', ['Büsra'], 'Person B')).toBe('Person B Konto und Person B Arbeitgeber')
+    expect(replaceNamesWith('Busrasse', ['Busra'], 'X')).toBe('Busrasse')
+  })
+})
+

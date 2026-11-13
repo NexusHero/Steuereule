@@ -2,6 +2,8 @@
 // returns, and the small rules about titles, search and context. No state, no dependencies on the
 // service itself.
 import {
+  PERSON_B_HANDLE,
+  replaceNamesWith,
   advisorContextUsage,
   scrubUserMessagePii,
   type AdvisorActionProposal,
@@ -114,8 +116,17 @@ export function liveMessages(conversation: AdvisorConversationRecord, records: r
   return until === null ? [...records] : records.filter((record) => record.createdAt.getTime() > until.getTime())
 }
 
-export function historySources(records: readonly AdvisorChatMessageRecord[], knownNames: readonly string[]): AdvisorHistorySource[] {
-  return records.map((msg) => ({ role: msg.role, content: scrubUserMessagePii(msg.content, [...knownNames]), meta: msg.meta, status: msg.status }))
+/**
+ * The history as the model may read it: the spouse is „Person B“ (the handle the owl drafts for) and
+ * every other known name a stand-in. Masking the spouse as „[MANDANT]“ made the owl write that word back.
+ */
+export function historySources(records: readonly AdvisorChatMessageRecord[], knownNames: readonly string[], spouseNames: readonly string[] = []): AdvisorHistorySource[] {
+  return records.map((msg) => ({
+    role: msg.role,
+    content: scrubUserMessagePii(replaceNamesWith(msg.content, spouseNames, PERSON_B_HANDLE), [...knownNames]),
+    meta: msg.meta,
+    status: msg.status,
+  }))
 }
 
 export function contextOf(conversation: AdvisorConversationRecord, records: readonly AdvisorChatMessageRecord[], knownNames: readonly string[]): AdvisorContextDto {

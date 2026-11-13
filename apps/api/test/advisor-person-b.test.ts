@@ -196,3 +196,12 @@ describe('without the model, the rules never put the spouse’s figures into the
     expect(meta.twoPaths).toBeUndefined()
   })
 })
+
+describe('the spouse in the history the model reads (real-case test)', () => {
+  it('is „Person B“, also in the genitive, never „[MANDANT]“; the user keeps the shared last name masked', async () => {
+    const { historySources } = await import('../src/advisor/advisor-shared.js')
+    const records = [{ role: 'assistant', content: 'Für Büsra und Büsras Konto habe ich 16 € vorbereitet, Herr Muster.', meta: null, status: 'complete' }] as never
+    const [entry] = historySources(records, ['Kemal', 'Muster', 'Büsra'], ['Büsra'])
+    expect(entry!.content).toBe('Für Person B und Person B Konto habe ich 16 € vorbereitet, Herr [MANDANT].')
+  })
+})

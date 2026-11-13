@@ -118,7 +118,8 @@ export function scrubUserMessagePii(
 
 /**
  * Replaces every part of the given names (first and last name, each part of a double name) with
- * a stand-in, as a whole word: „Büsra“ and „Ümit“ alike, never inside a longer word.
+ * a stand-in, as a whole word: „Büsra“ and „Ümit“ alike, never inside a longer word. The German
+ * genitive counts as the name („Büsras Konto“): in the real-case test it carried the name to the model.
  */
 export function replaceNamesWith(text: string, names: readonly string[], replacement: string): string {
   let replaced = text
@@ -130,7 +131,7 @@ export function replaceNamesWith(text: string, names: readonly string[], replace
       .map((p) => p.trim())
       .filter((p) => p.length >= 2)
     for (const part of parts) {
-      const pattern = new RegExp(`(?<![\\p{L}\\p{N}_])${escapeRegExp(part)}(?![\\p{L}\\p{N}_])`, 'giu')
+      const pattern = new RegExp(`(?<![\\p{L}\\p{N}_])${escapeRegExp(part)}(?:s|['’]s)?(?![\\p{L}\\p{N}_])`, 'giu')
       replaced = replaced.replace(pattern, replacement)
     }
   }
