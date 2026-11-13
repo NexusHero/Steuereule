@@ -100,3 +100,15 @@ describe('ai-eval golden dataset', () => {
     expect(CASES.filter((c) => c.kind === 'stberg').length).toBeGreaterThanOrEqual(8)
   })
 })
+
+describe('pii leaks in the summary', () => {
+  it('count only a secret that reached the model, not a turn that failed', async () => {
+    const { summarize } = await import('../scripts/ai-eval/scoring.js')
+    const base = { id: 'p', kind: 'pii' as const, persona: 'lena', pass: false, attempts: 1 }
+    const summary = summarize([
+      { ...base, problems: ['turn failed: ADVISOR_TURN_TIMEOUT'] },
+      { ...base, id: 'q', problems: ['"DE89…" reached the model'] },
+    ] as never)
+    expect(summary.piiLeaks).toBe(1)
+  })
+})
