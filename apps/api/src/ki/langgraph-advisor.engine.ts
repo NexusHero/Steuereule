@@ -16,6 +16,7 @@ import {
   type AdvisorMessageMeta,
   type AdvisorNoteChange,
   type AdvisorQuestionRound,
+  type InterviewAreaChange,
   type AdvisorStreamEvent,
   type AdvisorSummaryRequest,
   type AdvisorTopicOutcome,
@@ -333,6 +334,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
       request.situation,
       request.opening,
       grayZone,
+      request.interview,
     )
     const historyMessages: BaseMessage[] = (request.history ?? []).map((entry) =>
       entry.role === 'user' ? new HumanMessage(entry.content) : new AIMessage(entry.content),
@@ -348,6 +350,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
     let pendingActions: AdvisorActionProposal[] = []
     let rejectedDrafts: RejectedDraft[] = []
     let noteChanges: AdvisorNoteChange[] = []
+    let interviewChanges: InterviewAreaChange[] = []
     let pendingTwoPaths: AdvisorTwoPathsProposal | null = null
     let choices: string[] = []
     let questionRound: AdvisorQuestionRound | null = null
@@ -415,6 +418,9 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
             }
             if (Array.isArray(nodeUpdate.noteChanges)) {
               noteChanges = nodeUpdate.noteChanges
+            }
+            if (Array.isArray(nodeUpdate.interviewChanges)) {
+              interviewChanges = nodeUpdate.interviewChanges
             }
             if (Array.isArray(nodeUpdate.sources)) {
               sources = [...new Set([...sources, ...nodeUpdate.sources])]
@@ -507,6 +513,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
       ...(notStaged.length > 0 ? { notStaged } : {}),
       ...(notices.length > 0 ? { notices } : {}),
       ...(noteChanges.length > 0 ? { noteChanges } : {}),
+      ...(interviewChanges.length > 0 ? { interviewChanges } : {}),
     }
 
     if (meta.choices && meta.choices.length > 0) {

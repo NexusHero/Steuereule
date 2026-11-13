@@ -2,9 +2,9 @@ import { readFileSync } from 'node:fs'
 import { AIMessage, ToolMessage, type BaseMessage } from '@langchain/core/messages'
 import { describe, expect, it } from 'vitest'
 import { TAX_YEARS, getTaxYearParameters, incomeTax } from '@steuereule/core'
-import { KNOWLEDGE_TARGET, renderKnowledgeModule } from '../scripts/generate-advisor-knowledge.js'
+import { SKILLS_TARGET, parseSkill, renderSkillsModule } from '../scripts/generate-skills.js'
 import { computeIncomeTax } from '../src/ki/advisor-income-tax.js'
-import { ADVISOR_KNOWLEDGE, ADVISOR_KNOWLEDGE_TOPICS } from '../src/ki/advisor-knowledge.generated.js'
+import { ADVISOR_KNOWLEDGE, ADVISOR_KNOWLEDGE_TOPICS } from '../src/ki/skills.generated.js'
 import { buildStableSystemPrompt } from '../src/ki/advisor-prompt.js'
 import { AdvisorGraphState, runToolRound } from '../src/ki/advisor-tool-round.js'
 import { computedFiguresOf } from '../src/ki/advisor-tools.js'
@@ -29,8 +29,9 @@ async function callTool(name: string, args: Record<string, unknown>): Promise<Re
 }
 
 describe('tax knowledge of the owl (#499)', () => {
-  it('ships exactly what the steuerberater skill says: the generated module is up to date', () => {
-    expect(readFileSync(KNOWLEDGE_TARGET, 'utf8')).toBe(renderKnowledgeModule())
+  it('ships exactly what the skill files say: the module is built from apps/api/skills', () => {
+    expect(readFileSync(SKILLS_TARGET, 'utf8')).toBe(renderSkillsModule())
+    expect(ADVISOR_KNOWLEDGE_TOPICS).not.toContain('quellen')
   })
 
   it('has every topic, with a title and text', () => {
@@ -68,6 +69,23 @@ describe('tax knowledge of the owl (#499)', () => {
     expect(String(found.text)).toContain('Kleinunternehmer')
     const missing = await callTool('lookup_tax_knowledge', { topic: 'geheimnisse' })
     expect(missing.ok).toBe(false)
+  })
+})
+
+describe('skill files', () => {
+  const skill = (frontmatter: string, body = 'Tu etwas.') => `---\n${frontmatter}\n---\n\n${body}\n`
+
+  it('reads the frontmatter and keeps the instructions word for word', () => {
+    expect(parseSkill(skill('name: x\ndescription: Ein Satz.\nactivation: user\ncommand: x\nreferences: [a, b]', 'Zeile 1\n\nZeile 2'), 'x')).toEqual({ name: 'x', description: 'Ein Satz.', activation: 'user', command: 'x', references: ['a', 'b'], body: 'Zeile 1\n\nZeile 2' })
+  })
+
+  it('refuses a skill the build cannot trust', () => {
+    expect(() => parseSkill('Nur Text', 'x')).toThrow(/frontmatter/)
+    expect(() => parseSkill(skill('name: y\ndescription: d\nactivation: user'), 'x')).toThrow(/folder name/)
+    expect(() => parseSkill(skill('name: x\ndescription: d\nactivation: sometimes'), 'x')).toThrow(/activation/)
+    expect(() => parseSkill(skill('name: x\nactivation: user'), 'x')).toThrow(/description/)
+    expect(() => parseSkill(skill('name: x\ndescription: d\nactivation: always\ncommand: x'), 'x')).toThrow(/command/)
+    expect(() => parseSkill(skill('name: x\ndescription: d\nactivation: user', ''), 'x')).toThrow(/empty/)
   })
 })
 

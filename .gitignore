@@ -56,3 +56,6 @@ apps/mobile-web/public/ocr/
 apps/mobile-web/public/dictation/
 # Street data for the address search (ADR-0065): fetched by `streets:fetch`, pinned by checksum, never committed.
 apps/api/data/
+
+# Built from apps/api/skills at install/build/typecheck/test (scripts/generate-skills.ts).
+apps/api/src/ki/skills.generated.ts

@@ -6,6 +6,7 @@ import {
   buildAdvisorHistory,
   evaluateAdvisorTurn,
   isOfferedChoice,
+  applyInterviewChanges,
   provenanceKey,
   scrubUserMessagePii,
   simulateAdvisorFieldDelta,
@@ -620,6 +621,7 @@ export class AdvisorService {
         situation: (await this.notes.getSituation(userId)).text,
         ...(task === 'assessment-check' ? { assessment: await this.assessmentBrief(userId, taxYear) } : {}),
         ...(dto.skill ? { skill: dto.skill } : {}),
+        ...(dto.skill === 'berater-interview' ? { interview: await this.advisorRepo.findInterview(userId, taxYear) } : {}),
         topicCheck: turn.fromApp ? 'skip' : 'check',
         records: await this.loadRecordHandles(userId, taxYear),
         previewEffect: this.previewEffectFor(userId, taxYear),
@@ -684,7 +686,10 @@ export class AdvisorService {
           }
           if (reasoning.length === 0 && turnResult.reasoning) reasoning = turnResult.reasoning
           const noteChanges = await this.notes.applyNoteChanges(userId, taxYear, enrichedMeta.noteChanges)
-          const { noteChanges: _asProposed, ...metaWithoutNotes } = enrichedMeta
+          if (enrichedMeta.interviewChanges && enrichedMeta.interviewChanges.length > 0) {
+            await this.advisorRepo.saveInterview(userId, taxYear, applyInterviewChanges(await this.advisorRepo.findInterview(userId, taxYear), enrichedMeta.interviewChanges))
+          }
+          const { noteChanges: _asProposed, interviewChanges: _stored, ...metaWithoutNotes } = enrichedMeta
           const assistant = await finish(
             'complete',
             turnResult.replyText,

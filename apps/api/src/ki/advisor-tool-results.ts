@@ -40,6 +40,7 @@ const TEMPLATES: Readonly<Record<string, (payload: Payload) => string>> = {
   remember_note: (p) => (p.alreadyNoted === true ? 'war schon notiert' : 'gemerkt'),
   replace_note: () => 'aktualisiert',
   forget_note: () => 'entfernt',
+  mark_interview_area: (p) => (p.status === 'not_applicable' ? 'trifft nicht zu' : p.status === 'open' ? 'wieder offen' : 'erledigt'),
 }
 
 /** The result line of one tool call; a refusal stays "nicht möglich", its reason goes to the model only. */

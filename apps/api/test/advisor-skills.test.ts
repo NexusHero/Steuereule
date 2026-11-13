@@ -5,7 +5,7 @@ import { ChatGenerationChunk, type ChatResult } from '@langchain/core/outputs'
 import type { Runnable } from '@langchain/core/runnables'
 import type { BaseLanguageModelInput } from '@langchain/core/language_models/base'
 import { describe, expect, it } from 'vitest'
-import { ADVISOR_SKILL_IDS, isAdvisorSkillId, type AdvisorTurnResult, type CaseDigest } from '@steuereule/core'
+import { ADVISOR_SKILL_IDS, INTERVIEW_AREA_IDS, isAdvisorSkillId, type AdvisorTurnResult, type CaseDigest } from '@steuereule/core'
 import { DEFAULT_AI_TURN_LIMITS, type AiRuntimeConfigService } from '../src/ki/ai-runtime-config.service.js'
 import { LangGraphAdvisorEngine } from '../src/ki/langgraph-advisor.engine.js'
 import { skillPrompt } from '../src/ki/advisor-skills.js'
@@ -90,8 +90,10 @@ const runtime: AiRuntimeConfigService = {
 
 const ROUND = {
   questions: [
-    { text: 'Hattest du Fortbildungskosten?', options: ['Ja', 'Nein'], recommended: 'Ja' },
-    { text: 'Gab es einen Umzug?', options: ['Ja', 'Nein', 'Teils'], recommended: 'Vielleicht' },
+    { text: 'Zusammen veranlagen?', options: ['Ja', 'Nein'], kind: 'decision', recommended: 'Ja', reason: 'Spart euch 340 €.' },
+    { text: 'Gab es einen Umzug?', options: ['Ja', 'Nein', 'Teils'], kind: 'decision', recommended: 'Vielleicht', reason: 'Weil.' },
+    { text: 'Hattest du Fortbildungskosten?', options: ['Ja', 'Nein'], recommended: 'Ja', reason: 'Meistens.' },
+    { text: 'Was davon hattest du?', options: ['Handwerker', 'Putzhilfe', 'Nichts davon'], kind: 'fact', multiple: true },
   ],
 }
 
@@ -102,12 +104,52 @@ async function run(model: ScriptedModel, skill?: 'berater-interview') {
 
 const systemText = (messages: BaseMessage[]): string => JSON.stringify(messages[0]!.content)
 
+describe('the interview keeps its standing per tax year', () => {
+  it('tells the model which areas are still open, only while the interview is on', async () => {
+    const on = new ScriptedModel([new AIMessage('Okay.')])
+    const engine = new LangGraphAdvisorEngine(runtime, () => on)
+    await engine.runTurn({ message: 'Weiter.', digest: DIGEST, skill: 'berater-interview', interview: { kinder: 'not_applicable', arbeit: 'done' } })
+    const text = systemText(on.seen[0]!)
+    expect(text).toContain('Stand des Interviews')
+    expect(text).toMatch(/Noch offen:\\n- grunddaten/)
+    expect(text).toMatch(/Trifft nicht zu:\\n- kinder/)
+    const off = new ScriptedModel([new AIMessage('Okay.')])
+    await new LangGraphAdvisorEngine(runtime, () => off).runTurn({ message: 'Hallo.', digest: DIGEST, interview: { kinder: 'done' } })
+    expect(systemText(off.seen[0]!)).not.toContain('Stand des Interviews')
+  })
+
+  it('reports the areas the owl settled in this answer, the last word per area winning', async () => {
+    const model = new ScriptedModel([
+      new AIMessage({
+        content: '',
+        tool_calls: [
+          { name: 'mark_interview_area', args: { area: 'kinder', status: 'done' }, id: 'm1', type: 'tool_call' },
+          { name: 'mark_interview_area', args: { area: 'kinder', status: 'not_applicable' }, id: 'm2', type: 'tool_call' },
+          { name: 'mark_interview_area', args: { area: 'geheim', status: 'done' }, id: 'm3', type: 'tool_call' },
+        ],
+      }),
+      new AIMessage('Kinder hast du keine, weiter mit der Arbeit.'),
+    ])
+    const result = await run(model, 'berater-interview')
+    expect(result.meta.interviewChanges).toEqual([{ area: 'kinder', status: 'not_applicable' }])
+  })
+})
+
 describe('skills (#495)', () => {
   it('knows its skills by id', () => {
     expect(ADVISOR_SKILL_IDS).toContain('berater-interview')
     expect(isAdvisorSkillId('berater-interview')).toBe(true)
     expect(isAdvisorSkillId('shell')).toBe(false)
     expect(skillPrompt('berater-interview')).toContain('ask_questions')
+  })
+
+  it('the interview works through the intake checklist of the steuerberater skill, without asking for personal data', () => {
+    const text = skillPrompt('berater-interview')
+    for (const area of INTERVIEW_AREA_IDS) expect(text).toContain(`${area}:`)
+    expect(text).toContain('Das Interview ist erst fertig, wenn unter „Noch offen“ kein Bereich mehr steht')
+    expect(text).toContain('du empfiehlst keine Antwort')
+    expect(text).toContain('Frage nie nach Namen, Steuer-ID, IBAN, Adresse oder Geburtsdatum')
+    expect(text).not.toContain('Geburtsdaten')
   })
 
   it('tells the model about the skill only while it is on', async () => {
@@ -119,15 +161,20 @@ describe('skills (#495)', () => {
     expect(systemText(off.seen[0]!)).not.toContain('Berater-Interview')
   })
 
-  it('turns a round of questions into answers to tap, and drops a recommendation that is not an answer', async () => {
+  it('turns a round of questions into answers to tap: a recommendation only on a decision, and only one of the answers', async () => {
     const model = new ScriptedModel([
       new AIMessage({ content: '', tool_calls: [{ name: 'ask_questions', args: ROUND, id: 'call-1', type: 'tool_call' }] }),
       new AIMessage('Los geht’s mit der ersten Runde.'),
     ])
     const result = await run(model, 'berater-interview')
-    expect(result.meta.questionRound?.questions).toHaveLength(2)
-    expect(result.meta.questionRound?.questions[0]).toEqual({ text: 'Hattest du Fortbildungskosten?', options: ['Ja', 'Nein'], recommended: 'Ja' })
-    expect(result.meta.questionRound?.questions[1]).toEqual({ text: 'Gab es einen Umzug?', options: ['Ja', 'Nein', 'Teils'] })
+    const questions = result.meta.questionRound?.questions
+    expect(questions).toHaveLength(4)
+    expect(questions?.[0]).toEqual({ text: 'Zusammen veranlagen?', options: ['Ja', 'Nein'], kind: 'decision', recommended: 'Ja', reason: 'Spart euch 340 €.' })
+    // A pick that is not an answer goes, and its reason with it.
+    expect(questions?.[1]).toEqual({ text: 'Gab es einen Umzug?', options: ['Ja', 'Nein', 'Teils'], kind: 'decision' })
+    // A fact never carries a recommendation, also when the model sends one.
+    expect(questions?.[2]).toEqual({ text: 'Hattest du Fortbildungskosten?', options: ['Ja', 'Nein'], kind: 'fact' })
+    expect(questions?.[3]).toEqual({ text: 'Was davon hattest du?', options: ['Handwerker', 'Putzhilfe', 'Nichts davon'], kind: 'fact', multiple: true })
   })
 
   it('refuses a round with too few answers instead of showing it', async () => {

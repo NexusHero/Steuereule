@@ -4,19 +4,19 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "postinstall": "prisma generate && prisma generate --schema prisma/keystore/schema.prisma",
+    "build": "pnpm run skills:generate && tsc -p tsconfig.json",
+    "postinstall": "prisma generate && prisma generate --schema prisma/keystore/schema.prisma && pnpm run skills:generate",
     "prisma:generate": "prisma generate && prisma generate --schema prisma/keystore/schema.prisma",
     "migrate:deploy": "node scripts/migrate-deploy.mjs",
     "start": "pnpm run build && node dist/main.js",
-    "test": "vitest run --config vitest.config.ts",
-    "test:integration": "vitest run --config vitest.integration.config.ts",
-    "test:live": "vitest run --config vitest.live.config.ts",
-    "test:eval": "vitest run --config vitest.eval.config.ts",
-    "typecheck": "tsc --noEmit -p tsconfig.check.json",
+    "test": "pnpm run skills:generate && vitest run --config vitest.config.ts",
+    "test:integration": "pnpm run skills:generate && vitest run --config vitest.integration.config.ts",
+    "test:live": "pnpm run skills:generate && vitest run --config vitest.live.config.ts",
+    "test:eval": "pnpm run skills:generate && vitest run --config vitest.eval.config.ts",
+    "typecheck": "pnpm run skills:generate && tsc --noEmit -p tsconfig.check.json",
     "openapi:spec": "tsx scripts/generate-openapi-spec.ts",
-    "knowledge:generate": "tsx scripts/generate-advisor-knowledge.ts",
-    "streets:fetch": "tsx scripts/fetch-street-data.ts"
+    "streets:fetch": "tsx scripts/fetch-street-data.ts",
+    "skills:generate": "tsx scripts/generate-skills.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

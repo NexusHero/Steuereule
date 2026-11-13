@@ -13,8 +13,10 @@ import {
   fieldSpec,
   resolveRecordHandle,
   simulateAdvisorFieldDelta,
+  isInterviewAreaId,
   type AdvisorActionProposal,
   type AdvisorNoteChange,
+  type InterviewAreaChange,
   type AdvisorPreviewEffect,
   type AdvisorPreviewTarget,
   type AdvisorQuestionRound,
@@ -28,7 +30,7 @@ import {
 import { checkStageValue, normalizeSourceId, validateStageTarget, type StageTargetCheck } from './advisor-safety.js'
 import { checkPiiFree } from './ki.adapter.js'
 import { toolResultLine } from './advisor-tool-results.js'
-import { ADVISOR_KNOWLEDGE } from './advisor-knowledge.generated.js'
+import { ADVISOR_KNOWLEDGE } from './skills.generated.js'
 import { computeIncomeTax } from './advisor-income-tax.js'
 import { MAX_COMPANION_FIELDS, TOOL_LABELS, TOOL_ARG_SCHEMAS, isToolName, toolResult, RejectedDraft, MAX_DRAFTS_PER_TURN, draftKey, humanReason } from './advisor-tools.js'
 
@@ -71,6 +73,10 @@ export const AdvisorGraphState = Annotation.Root({
     reducer: (_left, right) => right,
     default: () => [],
   }),
+  interviewChanges: Annotation<InterviewAreaChange[]>({
+    reducer: (_left, right) => right,
+    default: () => [],
+  }),
   sources: Annotation<OwlSourceId[]>({
     reducer: (left, right) => [...new Set([...left, ...right])],
     default: () => [],
@@ -102,6 +108,7 @@ export async function runToolRound(
   let questionRound = state.questionRound
   const situationSuggestions = [...(state.situationSuggestions ?? [])]
   let noteChanges = state.noteChanges
+  let interviewChanges = state.interviewChanges ?? []
   const sources: OwlSourceId[] = []
 
   for (const tc of toolCalls) {
@@ -398,10 +405,22 @@ export async function runToolRound(
       questionRound = {
         questions: args.questions.map((q) => {
           const options = q.options.map((o) => o.trim()).filter((o) => o.length > 0)
-          return { text: q.text.trim(), options, ...(q.recommended !== undefined && options.includes(q.recommended.trim()) ? { recommended: q.recommended.trim() } : {}) }
+          // A fact gets no recommendation: one tap on it would claim the fact for the user.
+          const recommended = q.kind === 'decision' && q.recommended !== undefined && options.includes(q.recommended.trim()) ? q.recommended.trim() : undefined
+          const reason = recommended !== undefined ? q.reason?.trim() : undefined
+          return { text: q.text.trim(), options, kind: q.kind, ...(q.multiple ? { multiple: true } : {}), ...(recommended !== undefined ? { recommended } : {}), ...(reason ? { reason } : {}) }
         }),
       }
       answer({ ok: true, questions: questionRound.questions.length })
+      continue
+    }
+
+    if (tc.name === 'mark_interview_area') {
+      const args = parseArgs(TOOL_ARG_SCHEMAS.mark_interview_area)
+      if (args === null) continue
+      if (!isInterviewAreaId(args.area)) continue
+      interviewChanges = [...interviewChanges.filter((change) => change.area !== args.area), { area: args.area, status: args.status }]
+      answer({ ok: true, area: args.area, status: args.status })
       continue
     }
 
@@ -540,6 +559,7 @@ export async function runToolRound(
     questionRound,
     situationSuggestions,
     noteChanges,
+    interviewChanges,
     sources,
   }
 }

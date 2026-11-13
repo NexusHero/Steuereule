@@ -1,7 +1,7 @@
 import { LEGAL_STATUS_DATE, type OwlSourceId } from './owl-mode'
 import type { AdvisorAnswerNotice } from './advisor-answer-check'
 import type { AdvisorNoteChange } from './advisor-notes'
-import type { AdvisorQuestionRound } from './advisor-skills'
+import type { AdvisorQuestionRound, InterviewAreaChange } from './advisor-skills'
 import type { AdvisorModelFailure } from './advisor-failure'
 import type { AdvisorThoughtStep } from './advisor-thought'
 import { topicRefusal, type AdvisorTopicOutcome } from './advisor-topic'
@@ -194,6 +194,8 @@ export interface AdvisorMessageMeta {
   readonly situationSuggestions?: readonly string[] | undefined
   /** A round of questions with answers to tap, from the interview skill (#495). */
   readonly questionRound?: AdvisorQuestionRound | undefined
+  /** Areas of the interview the owl marked as settled or reopened in this answer; stored, then dropped from the message. */
+  readonly interviewChanges?: readonly InterviewAreaChange[] | undefined
   /** Turbo mode: the owl applied the drafts of this answer itself, without a click; each can be undone. */
   readonly turbo?: true | undefined
   /** Why the model did not answer this turn, when it did not (#487). */

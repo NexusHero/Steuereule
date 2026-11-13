@@ -8097,8 +8097,25 @@
               "type": "string"
             }
           },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "fact",
+              "decision"
+            ],
+            "description": "`fact` gets no recommendation; `decision` does, with a reason. Missing on older rounds: read as fact."
+          },
+          "multiple": {
+            "type": "boolean",
+            "description": "More than one answer may be ticked."
+          },
           "recommended": {
-            "type": "string"
+            "type": "string",
+            "description": "The owl's pick, only on a decision."
+          },
+          "reason": {
+            "type": "string",
+            "description": "Why she recommends it, one short sentence."
           }
         },
         "required": [

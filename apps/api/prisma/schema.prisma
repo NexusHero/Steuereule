@@ -1294,6 +1294,20 @@ model AdvisorNote {
   @@map("BeraterNotiz")
 }
 
+// Where the Berater-Interview stands for one tax year: which areas of the checklist are settled
+// (`done`) or do not apply. Kept by the app so the interview neither asks twice nor stops early,
+// whatever the model remembers. Encrypted: "kinder: not_applicable" says something about the household.
+model AdvisorInterview {
+  id        String   @id @default(uuid())
+  userId    String
+  taxYear   Int      @map("steuerjahr")
+  progress  String   @map("stand") /// @encrypted?mode=strict
+  updatedAt DateTime @default(now()) @map("geaendertAm")
+
+  @@unique([userId, taxYear])
+  @@map("BeraterInterview")
+}
+
 // The user's own description of the household's situation (#501): one text per user, read by the
 // owl in every conversation of every tax year. Names and identifiers are refused when it is saved.
 model AdvisorSituation {

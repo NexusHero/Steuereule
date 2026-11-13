@@ -117,6 +117,16 @@ describe('the advisor stance is in every model call (#499, #501)', () => {
     }
   })
 
+  it('builds the taxable income openly and names what the tax office asks for (steuerberater skill)', async () => {
+    const model = new RecordingModel()
+    await turn(new LangGraphAdvisorEngine(runtime('google-genai'), () => model))
+    const text = systemText(model.seen[0]!)
+    expect(text).toContain('Gesamtbetrag der Einkünfte')
+    expect(text).toContain('nur wenn sie günstiger sind als das Kindergeld (§ 31 EStG)')
+    expect(text).toContain('Für die Erklärung dieses Nutzers gilt die Schätzung der App')
+    expect(text).toContain('was das Finanzamt bei solchen Angaben typischerweise nachfragt')
+  })
+
   it('also when the fallback model answers', async () => {
     const first = new RecordingModel(new Error('[503] overloaded'))
     const second = new RecordingModel()

@@ -4,7 +4,7 @@ import type { AdvisorActionProposal, AdvisorChatMessageView, AdvisorMessageMeta,
 import type { Screen } from './marking'
 import type { AdvisorRecordHandles } from './record-handles'
 import type { AdvisorNoteHandle } from './advisor-notes'
-import type { AdvisorSkillId } from './advisor-skills'
+import type { AdvisorSkillId, InterviewProgress } from './advisor-skills'
 import type { AdvisorAssessmentBrief, AdvisorTask } from './advisor-tasks'
 import type { AdvisorOpeningBrief } from './advisor-opening'
 import type { AdvisorModelFailure } from './advisor-failure'
@@ -52,6 +52,8 @@ export interface AdvisorTurnRequest {
   readonly opening?: AdvisorOpeningBrief | undefined
   /** The skill the user switched on for this message (#495). */
   readonly skill?: AdvisorSkillId | undefined
+  /** Which areas of the Berater-Interview are settled for this tax year; with that skill. */
+  readonly interview?: InterviewProgress | undefined
   /**
    * `skip` when the app wrote the message itself (an opening, a tapped choice): the topic guard only
    * looks at typed text (ADR-0069). Anything else is checked.

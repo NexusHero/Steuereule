@@ -675,6 +675,25 @@ describe('AdvisorService (In-App Steuerberater Agent "Deine Eule")', () => {
     expect(seen).toEqual([true, false])
   })
 
+  it('keeps where the interview stands per tax year: hands it to the next turn, stores what the owl settled, never in the message', async () => {
+    const seen: unknown[] = []
+    const engine: AdvisorEnginePort = {
+      async runTurn() {
+        throw new Error('not used')
+      },
+      async *streamTurn(request) {
+        seen.push(request.interview)
+        yield { event: 'done', data: { replyText: 'Weiter.', meta: { interviewChanges: [{ area: 'kinder', status: 'not_applicable' }] }, mode: 'langgraph' } }
+      },
+    }
+    const withEngine = new AdvisorService(advisorRepo, owlModeService, confirmationService, new AuditService(auditRepo), interviewRepo, lstbRepo, chRepo, commuteRepo, childRepo, new FakeRentalRepository(), new FakeCapitalRepository(), profileRepo, engine)
+    const first = await withEngine.sendMessage(USER, YEAR, { message: 'Fang an', skill: 'berater-interview' })
+    await withEngine.sendMessage(USER, YEAR, { message: 'Weiter', skill: 'berater-interview' })
+    expect(seen).toEqual([{}, { kinder: 'not_applicable' }])
+    expect(JSON.stringify(first)).not.toContain('interviewChanges')
+    expect(await advisorRepo.findInterview(USER, YEAR - 1)).toEqual({})
+  })
+
   describe('tax years as projects, conversations side by side (#503)', () => {
     it('lists every year that has conversations, newest first, and always the open one', async () => {
       await advisorService.sendMessage(USER, YEAR - 1, { message: 'Frage zum Vorjahr' })

@@ -1,10 +1,10 @@
 // The tools the owl may call: their names, argument schemas and descriptions as the model sees
 // them, and the small rules around drafts (what counts as the same draft, what a refusal leaves behind).
-import { ADVISOR_KNOWLEDGE_TOPICS } from './advisor-knowledge.generated.js'
+import { ADVISOR_KNOWLEDGE_TOPICS } from './skills.generated.js'
 import { ToolMessage, type BaseMessage } from '@langchain/core/messages'
 import { tool, type StructuredToolInterface } from '@langchain/core/tools'
 import { z } from 'zod'
-import { ADVISOR_PLAN_MAX_STEPS, ADVISOR_PLAN_STEP_STATUSES, type AdvisorActionProposal, type AdvisorNotStaged, type Screen } from '@steuereule/core'
+import { ADVISOR_PLAN_MAX_STEPS, ADVISOR_PLAN_STEP_STATUSES, ADVISOR_QUESTION_KINDS, INTERVIEW_AREA_IDS, INTERVIEW_AREA_STATUSES, type AdvisorActionProposal, type AdvisorNotStaged, type Screen } from '@steuereule/core'
 
 export const MAX_COMPANION_FIELDS = 3
 
@@ -22,6 +22,7 @@ export const TOOL_LABELS: Readonly<Record<string, string>> = {
   remember_note: 'Merke mir das für dieses Steuerjahr …',
   replace_note: 'Aktualisiere eine Notiz …',
   forget_note: 'Entferne eine überholte Notiz …',
+  mark_interview_area: 'Hake einen Bereich des Interviews ab …',
 }
 
 export interface RejectedDraft {
@@ -116,7 +117,10 @@ export const TOOL_ARG_SCHEMAS = {
         z.object({
           text: z.string().min(1).max(240),
           options: z.array(z.string().min(1).max(80)).min(2).max(4),
+          kind: z.enum(ADVISOR_QUESTION_KINDS).default('fact'),
+          multiple: z.boolean().default(false),
           recommended: z.string().max(80).optional(),
+          reason: z.string().max(160).optional(),
         }),
       )
       .min(1)
@@ -146,6 +150,7 @@ export const TOOL_ARG_SCHEMAS = {
   remember_note: z.object({ text: z.string().min(1).max(400) }),
   replace_note: z.object({ note: z.string().min(1).max(60), text: z.string().min(1).max(400) }),
   forget_note: z.object({ note: z.string().min(1).max(60) }),
+  mark_interview_area: z.object({ area: z.enum(INTERVIEW_AREA_IDS as [string, ...string[]]), status: z.enum(INTERVIEW_AREA_STATUSES) }),
 } as const
 
 export type ToolName = keyof typeof TOOL_ARG_SCHEMAS
@@ -159,7 +164,7 @@ export const TOOL_DESCRIPTIONS: Readonly<Record<ToolName, string>> = {
     'Stellt zwei Alternativen (Sicher-Weg vs. Maximal-Weg mit Nachweishinweis) zur Auswahl durch den Nutzer gegenüber.',
   ask_clarification: 'Schlägt 2 bis 4 anklickbare Quick-Chips als nächste Rückfragen im Chat vor.',
   ask_questions:
-    'Stellt dem Nutzer eine Runde von 1 bis 4 Fragen, jede mit 2 bis 4 antippbaren Antworten und deiner Empfehlung. Nur im Skill „Berater-Interview“ und in der Eröffnung eines Gesprächs verwenden. Schreibt nichts in die Akte.',
+    'Stellt dem Nutzer eine Runde von 1 bis 4 Fragen, jede mit 2 bis 4 antippbaren Antworten. `kind`: `fact` für Tatsachen (was er hatte oder tat), dann KEINE Empfehlung; `decision` für eine Entscheidung (z. B. Veranlagungsart), dann `recommended` (eine der Antworten) und `reason` (ein kurzer Satz, warum). `multiple: true`, wenn mehrere Antworten zutreffen können („Was davon hattest du?“, mit einer Antwort wie „Nichts davon“). Nur im Skill „Berater-Interview“ und in der Eröffnung eines Gesprächs verwenden. Schreibt nichts in die Akte.',
   suggest_situation:
     'Schlägt dem Nutzer einen Satz für seine Beschreibung „Unsere Situation“ vor, wenn du etwas Dauerhaftes erfährst, das kein Formular fragt (z. B. „Hauskauf für 2027 geplant“). Ein Satz, ohne Namen und Kennungen. Der Nutzer übernimmt ihn mit einem Tipp; du speicherst nichts selbst.',
   lookup_tax_knowledge:
@@ -173,6 +178,8 @@ export const TOOL_DESCRIPTIONS: Readonly<Record<ToolName, string>> = {
     'Hält eine Projektnotiz für dieses Steuerjahr fest: eine Entscheidung oder ein Umstand aus dem Gespräch, der in keinem Feld der Erklärung steht. Ein Satz, höchstens 200 Zeichen, ohne persönliche Daten. Gilt danach in jedem Gespräch.',
   replace_note: 'Ersetzt den Text einer vorhandenen Projektnotiz (Angabe wie „Notiz 2“), wenn sie überholt oder korrigiert ist.',
   forget_note: 'Entfernt eine vorhandene Projektnotiz (Angabe wie „Notiz 2“), wenn sie nicht mehr gilt.',
+  mark_interview_area:
+    'Hakt einen Bereich des Berater-Interviews für dieses Steuerjahr ab: `done`, wenn er gefragt und beantwortet ist; `not_applicable`, wenn der Nutzer nichts davon hat; `open`, wenn er doch wieder offen ist. Die App merkt sich den Stand über alle Gespräche. Schreibt nichts in die Akte.',
 }
 
 /** JSON Schema keywords at least one provider's function-calling API rejects outright. */

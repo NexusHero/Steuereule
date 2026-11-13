@@ -3,6 +3,8 @@ import {
   ADVISOR_FEEDBACK_RATINGS,
   ADVISOR_FEEDBACK_REASONS,
   ADVISOR_MESSAGE_STATUSES,
+  parseInterviewProgress,
+  type InterviewProgress,
   type AdvisorFeedbackRating,
   type AdvisorFeedbackReason,
   type AdvisorMessageFeedback,
@@ -164,6 +166,25 @@ export class PrismaAdvisorRepository implements AdvisorRepository {
       this.prisma.taxDataAccessLog.create({ data: { userId, action: 'WRITE', resource: 'berater_situation' } }),
     ])
     return { text: row.text, updatedAt: row.updatedAt }
+  }
+
+  async findInterview(userId: string, taxYear: number): Promise<InterviewProgress> {
+    const row = await this.prisma.advisorInterview.findUnique({ where: { userId_taxYear: { userId, taxYear } } })
+    if (!row) return {}
+    try {
+      return parseInterviewProgress(JSON.parse(row.progress))
+    } catch {
+      return {}
+    }
+  }
+
+  async saveInterview(userId: string, taxYear: number, progress: InterviewProgress): Promise<void> {
+    const updatedAt = new Date()
+    const text = JSON.stringify(progress)
+    await this.prisma.$transaction([
+      this.prisma.advisorInterview.upsert({ where: { userId_taxYear: { userId, taxYear } }, create: { userId, taxYear, progress: text, updatedAt }, update: { progress: text, updatedAt } }),
+      this.prisma.taxDataAccessLog.create({ data: { userId, action: 'WRITE', resource: 'berater_interview' } }),
+    ])
   }
 
   async listNotes(userId: string, taxYear: number): Promise<AdvisorNoteRecord[]> {

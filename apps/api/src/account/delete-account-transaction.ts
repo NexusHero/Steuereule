@@ -45,6 +45,7 @@ export function taxDataTables(tx: TransactionClient): UserKeyedTable[] {
     tx.advisorConversation,
     tx.advisorNote,
     tx.advisorSituation,
+    tx.advisorInterview,
   ]
 }
 

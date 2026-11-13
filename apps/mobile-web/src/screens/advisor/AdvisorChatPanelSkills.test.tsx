@@ -2,13 +2,12 @@ import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
 import type { AdvisorChatMessageView } from '@steuereule/core'
 import { AdvisorChatPanel, sendOptionsToDto } from './AdvisorChatPanel'
-import { answersToMessage } from './chat/QuestionRound'
 import { renderInApp } from '../../test-render'
 
 const ROUND = {
   questions: [
-    { text: 'Hattest du Fortbildungskosten?', options: ['Ja', 'Nein'], recommended: 'Ja' },
-    { text: 'Gab es einen Umzug?', options: ['Ja', 'Nein', 'Teils'] },
+    { text: 'Zusammen oder einzeln veranlagen?', options: ['Ja', 'Nein'], kind: 'decision' as const, recommended: 'Ja', reason: 'Spart euch 340 €.' },
+    { text: 'Gab es einen Umzug?', options: ['Ja', 'Nein', 'Teils'], kind: 'fact' as const },
   ],
 }
 
@@ -124,7 +123,28 @@ describe('question round (#495)', () => {
     expect(screen.queryByTestId('advisor-question-submit')).toBeNull()
   })
 
-  it('turns picks into a message', () => {
-    expect(answersToMessage(ROUND, ['Ja', null])).toBe('1: Ja\n2: —')
+  it('shows why the owl recommends a decision', () => {
+    renderPanel(ASKED)
+    expect(screen.getByTestId('advisor-question-reason').textContent).toBe('Spart euch 340 €.')
+  })
+
+  it('never recommends an answer to a fact, also on a round stored before facts had a kind', () => {
+    const old = { questions: [{ text: 'Hattest du Fortbildungskosten?', options: ['Ja', 'Nein'], recommended: 'Ja' }] }
+    renderPanel([ASKED[0]!, { ...ASKED[1]!, meta: { questionRound: old } }])
+    expect(screen.getByTestId('advisor-question-round').textContent).not.toContain('Empfohlen')
+    expect(screen.queryByTestId('advisor-question-take-recommended')).toBeNull()
+  })
+
+  it('lets several answers be ticked and sends them on one line', () => {
+    const multi = { questions: [{ text: 'Was davon hattest du?', options: ['Handwerker', 'Putzhilfe', 'Nichts davon'], kind: 'fact' as const, multiple: true }] }
+    const { onSendMessage } = renderPanel([ASKED[0]!, { ...ASKED[1]!, meta: { questionRound: multi } }])
+    const options = screen.getAllByTestId('advisor-question-option')
+    fireEvent.click(options[0]!)
+    fireEvent.click(options[1]!)
+    fireEvent.click(options[1]!)
+    fireEvent.click(options[1]!)
+    expect(options[0]!.getAttribute('aria-checked')).toBe('true')
+    fireEvent.click(screen.getByTestId('advisor-question-submit'))
+    expect(onSendMessage).toHaveBeenCalledWith('1: Handwerker, Putzhilfe')
   })
 })

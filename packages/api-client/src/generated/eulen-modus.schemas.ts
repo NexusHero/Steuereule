@@ -338,10 +338,28 @@ export interface AdvisorNoteChangeDto {
   undone?: boolean;
 }
 
+/**
+ * `fact` gets no recommendation; `decision` does, with a reason. Missing on older rounds: read as fact.
+ */
+export type AdvisorRoundQuestionDtoKind = typeof AdvisorRoundQuestionDtoKind[keyof typeof AdvisorRoundQuestionDtoKind];
+
+
+export const AdvisorRoundQuestionDtoKind = {
+  fact: 'fact',
+  decision: 'decision',
+} as const;
+
 export interface AdvisorRoundQuestionDto {
   text: string;
   options: string[];
+  /** `fact` gets no recommendation; `decision` does, with a reason. Missing on older rounds: read as fact. */
+  kind?: AdvisorRoundQuestionDtoKind;
+  /** More than one answer may be ticked. */
+  multiple?: boolean;
+  /** The owl's pick, only on a decision. */
   recommended?: string;
+  /** Why she recommends it, one short sentence. */
+  reason?: string;
 }
 
 export interface AdvisorQuestionRoundDto {

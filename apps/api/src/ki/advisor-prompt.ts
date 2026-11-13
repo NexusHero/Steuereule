@@ -10,6 +10,9 @@ import {
   type AdvisorRecordHandles,
   type AdvisorAssessmentBrief,
   type AdvisorSkillId,
+  type InterviewProgress,
+  INTERVIEW_AREAS,
+  interviewStanding,
   type AdvisorTask,
   type AdvisorOpeningBrief,
   type CaseDigest,
@@ -18,7 +21,7 @@ import {
 import { describeAiWritableFields } from './advisor-safety.js'
 import { skillPrompt } from './advisor-skills.js'
 import { taskPrompt } from './advisor-tasks.js'
-import { ADVISOR_STANCE } from './advisor-stance.js'
+import { ADVISOR_STANCE_TEXT } from './skills.generated.js'
 
 /**
  * The part of the system prompt that is the same for every user and every turn. It comes first so
@@ -54,7 +57,7 @@ export function buildStableSystemPrompt(): string {
     '12. Wirkung: Die Werkzeuge melden zu jedem Entwurf `effect`. Bei `computed` stammen `beforeRefundEur`, `afterRefundEur` und `deltaEur` aus der Schätzung der App – nenne genau diese Zahlen und keine anderen. Bei `not-computable` gibt es keine Zahl: Nenne dann keinen Euro-Betrag als Wirkung, sondern gib `effectHint` sinngemäß wieder. Eine Wirkung von 0 € heißt, dass sich die Schätzung durch die Angabe nicht ändert – sag das so.',
     '13. Projektnotizen: Sie sind dein Gedächtnis über alle Gespräche dieses Steuerjahres. Halte mit `remember_note` fest, was besprochen oder entschieden wurde und in keinem Feld der Erklärung steht (z. B. „Arbeitszimmer geprüft: lohnt sich nicht, weil kein eigener Raum“, „Nutzer will Fahrtenbuch nachreichen“). Notiere nichts, was schon als Wert in der Erklärung steht, keine Smalltalk-Details und keine persönlichen Daten. Ändert sich etwas, nutze `replace_note`; gilt es nicht mehr, `forget_note`. Sparsam: höchstens eine oder zwei Notizen pro Antwort. Erwähne im Text kurz, was du dir gemerkt hast.',
     '',
-    ...ADVISOR_STANCE,
+    ADVISOR_STANCE_TEXT,
     '',
     '8. Ton: Du duzt den Nutzer durchgehend, freundlich und knapp.',
     '',
@@ -66,7 +69,23 @@ export function buildStableSystemPrompt(): string {
 export const GRAY_ZONE_HINT =
   'Für diese Anfrage gilt (Grauzone): Die Frage geht über Steuern hinaus. Beantworte nur ihren steuerlichen Teil (z. B. Sparerpauschbetrag, Teilfreistellung, Abzugsfähigkeit) und sage in einem Satz, dass du zum Rest nichts sagst. Keine Anlage-, Kauf-, Rechts- oder Gesundheitsempfehlung.'
 
-export function buildCaseSystemPrompt(digest: CaseDigest, activeScreen: Screen | undefined, planFirst: boolean, records?: AdvisorRecordHandles, notes?: readonly AdvisorNoteHandle[], skill?: AdvisorSkillId, task?: AdvisorTask, assessment?: AdvisorAssessmentBrief, situation?: string, opening?: AdvisorOpeningBrief, grayZone = false): string {
+/** Where the interview stands for this tax year, kept by the app so the owl neither asks twice nor stops early. */
+export function describeInterviewStanding(progress: InterviewProgress = {}): string {
+  const standing = interviewStanding(progress)
+  const label = (id: string) => INTERVIEW_AREAS.find((area) => area.id === id)!.label
+  const list = (ids: readonly string[]) => (ids.length === 0 ? '– keiner' : ids.map((id) => `- ${id}: ${label(id)}`).join('\n'))
+  return [
+    'Stand des Interviews für dieses Steuerjahr (die App merkt ihn sich, hake mit `mark_interview_area` ab):',
+    'Noch offen:',
+    list(standing.open),
+    'Erledigt:',
+    list(standing.done),
+    'Trifft nicht zu:',
+    list(standing.notApplicable),
+  ].join('\n')
+}
+
+export function buildCaseSystemPrompt(digest: CaseDigest, activeScreen: Screen | undefined, planFirst: boolean, records?: AdvisorRecordHandles, notes?: readonly AdvisorNoteHandle[], skill?: AdvisorSkillId, task?: AdvisorTask, assessment?: AdvisorAssessmentBrief, situation?: string, opening?: AdvisorOpeningBrief, grayZone = false, interview?: InterviewProgress): string {
   return [
     describeSituationForPrompt(digest, situation),
     '',
@@ -77,6 +96,7 @@ export function buildCaseSystemPrompt(digest: CaseDigest, activeScreen: Screen |
     describeRecordHandles(records),
     describeNotesForPrompt(notes ?? []),
     ...(skill ? ['', skillPrompt(skill)] : []),
+    ...(skill === 'berater-interview' ? ['', describeInterviewStanding(interview)] : []),
     ...(task ? ['', taskPrompt(task, digest, assessment, opening)] : []),
     ...(planFirst ? ['', 'Für diese Anfrage gilt: Rufe als Erstes `plan_steps` auf, bevor du irgendetwas anderes tust.'] : []),
     ...(grayZone ? ['', GRAY_ZONE_HINT] : []),
@@ -102,9 +122,11 @@ export function buildSystemMessage(
   opening?: AdvisorOpeningBrief,
   /** The topic guard called the question a grey zone (ADR-0069). */
   grayZone = false,
+  /** Which areas of the Berater-Interview are settled for this tax year. */
+  interview?: InterviewProgress,
 ): SystemMessage {
   const stable = buildStableSystemPrompt()
-  const caseSpecific = buildCaseSystemPrompt(digest, activeScreen, planFirst, records, notes, skill, task, assessment, situation, opening, grayZone)
+  const caseSpecific = buildCaseSystemPrompt(digest, activeScreen, planFirst, records, notes, skill, task, assessment, situation, opening, grayZone, interview)
   if (provider === 'anthropic') {
     return new SystemMessage({
       content: [

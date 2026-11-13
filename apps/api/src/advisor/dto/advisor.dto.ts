@@ -45,6 +45,8 @@ import {
   type AdvisorMessageMeta,
   type AdvisorNotStaged,
   type AdvisorQuestionRound,
+  type AdvisorQuestionKind,
+  ADVISOR_QUESTION_KINDS,
   type AdvisorRoundQuestion,
   type AdvisorSkillId,
   type AdvisorTwoPathsProposal,
@@ -329,8 +331,17 @@ export class AdvisorRoundQuestionDto implements AdvisorRoundQuestion {
   @ApiProperty({ type: [String] })
   options!: readonly string[]
 
-  @ApiPropertyOptional({ type: String })
+  @ApiPropertyOptional({ type: String, enum: ADVISOR_QUESTION_KINDS, description: '`fact` gets no recommendation; `decision` does, with a reason. Missing on older rounds: read as fact.' })
+  kind?: AdvisorQuestionKind | undefined
+
+  @ApiPropertyOptional({ type: Boolean, description: 'More than one answer may be ticked.' })
+  multiple?: boolean | undefined
+
+  @ApiPropertyOptional({ type: String, description: 'The owl\'s pick, only on a decision.' })
   recommended?: string | undefined
+
+  @ApiPropertyOptional({ type: String, description: 'Why she recommends it, one short sentence.' })
+  reason?: string | undefined
 }
 
 export class AdvisorQuestionRoundDto implements AdvisorQuestionRound {

@@ -1752,6 +1752,7 @@ export const appResources = {
           round: {
             recommended: 'Empfohlen',
             takeRecommended: 'Empfehlungen übernehmen',
+            multiple: 'Mehrere Antworten möglich',
             submit: 'Antworten senden',
           },
           turbo: {
@@ -3738,6 +3739,7 @@ export const appResources = {
           round: {
             recommended: 'Recommended',
             takeRecommended: 'Take the recommendations',
+            multiple: 'You can pick more than one',
             submit: 'Send answers',
           },
           turbo: {

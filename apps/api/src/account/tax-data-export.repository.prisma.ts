@@ -47,7 +47,7 @@ export class PrismaTaxDataExportRepository implements TaxDataExportRepository {
 
   async findAllForUser(userId: string): Promise<ExportTaxDataEntry[]> {
     const where = { userId }
-    const [taxYears, answers, receiptFiles, receipts, lstb, ch, pension, capital, commute, rental, assessments, markings, yearTakeovers, masterData, kinder, links, owlSetting, owlDismissals, advisorMessages, advisorConversations, advisorNotes, advisorSituations] =
+    const [taxYears, answers, receiptFiles, receipts, lstb, ch, pension, capital, commute, rental, assessments, markings, yearTakeovers, masterData, kinder, links, owlSetting, owlDismissals, advisorMessages, advisorConversations, advisorNotes, advisorSituations, advisorInterviews] =
       await Promise.all([
         this.prisma.taxYear.findMany({ where }),
         this.prisma.interviewAnswer.findMany({ where }),
@@ -73,6 +73,7 @@ export class PrismaTaxDataExportRepository implements TaxDataExportRepository {
         this.prisma.advisorConversation.findMany({ where }),
         this.prisma.advisorNote.findMany({ where }),
         this.prisma.advisorSituation.findMany({ where }),
+        this.prisma.advisorInterview.findMany({ where }),
       ])
     // ADR-0062: household people are sealed under their own key — the export shows them readable.
     const household = await this.prisma.householdPerson.findMany({ where: { householdUserId: userId }, include: { memberships: true } })
@@ -116,6 +117,7 @@ export class PrismaTaxDataExportRepository implements TaxDataExportRepository {
       ...advisorMessages.map((row) => toExportEntry('Steuerberater-Chat', 'AdvisorChatMessage', row)),
       ...advisorNotes.map((row) => toExportEntry('Steuerberater-Chat (Projektnotizen)', 'AdvisorNote', row)),
       ...advisorSituations.map((row) => toExportEntry('Steuerberater-Chat (Unsere Situation)', 'AdvisorSituation', row)),
+      ...advisorInterviews.map((row) => toExportEntry('Steuerberater-Chat (Stand des Interviews)', 'AdvisorInterview', row)),
       ...householdRows.map((row) => toExportEntry('Haushalt (Person)', 'HouseholdPerson', row)),
       ...partnerLinks.map((row) => toExportEntry('Partner-Verknüpfung', 'PartnerLink', row)),
       ...mergeQuestions.map((row) => toExportEntry('Haushalt (Rückfrage „dieselben?“)', 'HouseholdMergeCandidate', row)),

@@ -20,9 +20,9 @@ schlägt im Netz nach); die Eule kann nichts davon.
    Fundstelle nennen, Steuerjahr festnageln, nie im Kopf rechnen, zwei Wege bei Spielraum, legal
    gestalten, ehrlich über Grenzen. Sie ist kein abschaltbarer Skill.
 2. **Das Wissen wird nachgeschlagen, nicht mitgeschickt.** `lookup_tax_knowledge` liefert einen
-   der acht Abschnitte. Die Quelle bleibt der Skill im Repo; `advisor-knowledge.generated.ts`
-   entsteht daraus (`pnpm --filter @steuereule/api run knowledge:generate`), ein Test schlägt
-   fehl, wenn beides auseinanderläuft. `quellen.md` (Nachschlagen im Netz) wird nicht ausgeliefert.
+   der Abschnitte. Die Quelle ist der Skill-Ordner `apps/api/skills/steuerberater/`; wie er in
+   den Code kommt, regelt „Skills als Dateien“ unten. `quellen.md` (Nachschlagen im Netz) wird
+   nicht ausgeliefert.
 3. **Gerechnet wird mit dem Rechenkern.** `compute_income_tax` rechnet Tarif, Soli und
    Kirchensteuer mit `packages/core/src/math`, nicht mit dem Python-Skript. Der Kern rundet Soli
    und Kirchensteuer auf volle Euro ab, das Skript auf Cent; die Einkommensteuer ist identisch.
@@ -103,6 +103,29 @@ Umschreibung kamen durch. Entscheidungen des Product Owners vom 13.11.2026:
     Grauzonenfragen fälschlich abgelehnt, und mit ausgefallenem Prüfer hält die Regel im Prompt.
     Die fertige Antwort wird nicht nachgeprüft: Sie ist beim Streamen schon gelesen.
 
+## Skills als Dateien (ergänzt 2026-11-13)
+
+Entscheidung des Product Owners: Ein Skill der Eule liegt wie bei Claude als Ordner mit Textdateien
+im Repo und wird beim Bauen wörtlich eingelesen, nicht von Hand in TypeScript abgeschrieben.
+
+18. **Ablage:** `apps/api/skills/<id>/SKILL.md` (Frontmatter `name`, `description`, `activation`,
+    `command`, `references`; darunter die Anweisungen) und `references/*.md`. Die Haltung ist der
+    Skill `steuerberater` mit `activation: always`; das Berater-Interview ist `berater-interview`
+    mit `activation: user` und `command: grill-me`. `advisor-stance.ts` und der handgeschriebene
+    Interview-Text entfallen.
+19. **Beim Bauen, nicht zur Laufzeit:** `scripts/generate-skills.ts` schreibt
+    `src/ki/skills.generated.ts` (nicht eingecheckt). Es läuft bei `install`, `build`,
+    `typecheck` und `test`. Ausgeliefert wird nur das gebaute Modul; zur Laufzeit liest die API
+    keine Skill-Datei. Der Drift-Test zwischen Skill und eingechecktem Modul entfällt damit.
+20. **Der Bau bricht ab, wenn ein Skill nicht stimmt:** Frontmatter fehlt oder ist unlesbar, `name`
+    ungleich Ordner, unbekannte `activation`, leere Anweisungen, eine Referenz ohne Datei, nicht
+    genau ein `always`-Skill, oder die `user`-Skills und ihre Befehle weichen von
+    `ADVISOR_SKILL_IDS`/`ADVISOR_SKILL_COMMANDS` in `packages/core` ab. Die Liste dort bleibt die
+    typisierte Quelle für API-Schema und Oberfläche.
+21. **Coding-Agent und Eule teilen das Wissen, nicht die Anweisungen.** `.agents/skills/steuerberater/`
+    behält sein eigenes `SKILL.md` (Python-Skript, Websuche) und liest `references/` per Symlink
+    aus dem Ordner der Eule.
+
 ## Offen und Risiken
 
 - **Rechtlich ungeprüft.** Geschäftsmäßige Hilfeleistung in Steuersachen ist nach dem
@@ -111,7 +134,7 @@ Umschreibung kamen durch. Entscheidungen des Product Owners vom 13.11.2026:
 - Für Umsatzsteuer und Erbschaftsteuer gibt es keinen Rechner in der App. Die Eule zeigt dort
   Formel und Schritte und nennt es eine Überschlagsrechnung; die Prüfung der Antwort markiert
   Wirkungsbeträge, die kein Werkzeug gerechnet hat.
-- Das Wissen ist so aktuell wie der Skill. Wer `references/*.md` ändert, muss neu generieren.
+- Das Wissen ist so aktuell wie der Skill; der Bau liest es jedes Mal neu ein.
 - Nicht gegen ein echtes Modell erprobt: ob das Modell zuverlässig nachschlägt, bevor es antwortet.
 - Die Themengrenze ist noch nicht gegen das echte Modell gemessen; die Schwellen (90 % / 5 %) sind
   Startwerte. Der Prüfer kostet jede getippte Nachricht einen kleinen Aufruf und etwa 0,3–1 s bis
