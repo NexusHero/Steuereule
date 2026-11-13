@@ -13,6 +13,7 @@ class SlowToolCaller extends BaseChatModel {
   constructor(
     private readonly log: (string | undefined)[],
     private readonly choice?: string,
+    private readonly delayMs = 700,
   ) {
     super({})
   }
@@ -20,12 +21,12 @@ class SlowToolCaller extends BaseChatModel {
     return 'slow-tool-caller'
   }
   override bindTools(_tools: BindToolsInput[], options?: { tool_choice?: string }): Runnable<BaseLanguageModelInput, AIMessageChunk, BaseChatModelCallOptions> {
-    return new SlowToolCaller(this.log, options?.tool_choice) as unknown as Runnable<BaseLanguageModelInput, AIMessageChunk, BaseChatModelCallOptions>
+    return new SlowToolCaller(this.log, options?.tool_choice, this.delayMs) as unknown as Runnable<BaseLanguageModelInput, AIMessageChunk, BaseChatModelCallOptions>
   }
   async _generate(_messages: BaseMessage[]): Promise<ChatResult> {
     this.log.push(this.choice)
     if (this.choice === 'none') return { generations: [{ text: 'Antwort aus dem, was da ist.', message: new AIMessage('Antwort aus dem, was da ist.') }] }
-    await new Promise((resolve) => setTimeout(resolve, 700))
+    await new Promise((resolve) => setTimeout(resolve, this.delayMs))
     const message = new AIMessage({ content: '', tool_calls: [{ name: 'lookup_tax_knowledge', args: { topic: 'kennzahlen' }, id: `c${this.log.length}`, type: 'tool_call' }] })
     return { generations: [{ text: '', message }] }
   }
@@ -82,6 +83,18 @@ const DIGEST: CaseDigest = {
   estimatedRefundEur: null,
 }
 
+const runtimeWithRounds = (maxToolRounds: number): AiRuntimeConfigService => ({
+  async resolveLimits() {
+    return { ...DEFAULT_AI_TURN_LIMITS, maxToolRounds }
+  },
+  async isKillSwitchActive() {
+    return false
+  },
+  async resolveSlot(slot) {
+    return { slot, enabled: true, provider: 'google-genai', model: 'gemini-test', apiKey: 'k' }
+  },
+})
+
 const runtime = (turnTimeoutMs: number): AiRuntimeConfigService => ({
   async resolveLimits() {
     return { ...DEFAULT_AI_TURN_LIMITS, turnTimeoutMs, maxToolRounds: 10 }
@@ -112,5 +125,14 @@ describe('the answer before the time runs out', () => {
     const result = (await engine.runTurn({ message: 'Muss ich Elterngeld versteuern?', digest: DIGEST })) as AdvisorTurnResult
     expect(result.replyText).toBe('Elterngeld ist steuerfrei, unterliegt aber dem Progressionsvorbehalt.')
     expect(log.at(-1)).toBe('none')
+  })
+
+  it('gives the interview the rounds of a task: drafts, ticking off and the next round need them', async () => {
+    const plain: (string | undefined)[] = []
+    await new LangGraphAdvisorEngine(runtimeWithRounds(5), () => new SlowToolCaller(plain, undefined, 0)).runTurn({ message: 'Hallo', digest: DIGEST })
+    const interview: (string | undefined)[] = []
+    await new LangGraphAdvisorEngine(runtimeWithRounds(5), () => new SlowToolCaller(interview, undefined, 0)).runTurn({ message: '1: Ja', digest: DIGEST, skill: 'berater-interview' })
+    expect(plain.filter((choice) => choice !== 'none')).toHaveLength(5)
+    expect(interview.filter((choice) => choice !== 'none')).toHaveLength(10)
   })
 })

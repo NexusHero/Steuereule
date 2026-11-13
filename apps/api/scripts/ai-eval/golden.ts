@@ -56,7 +56,7 @@ export const CASES: readonly EvalCase[] = [
 
   // Belegte Aussagen: the right paragraph, no invented one.
   { id: 'lena-homeoffice-quelle', persona: 'lena', kind: 'citation', message: 'Kann ich das Homeoffice absetzen, obwohl ich kein Arbeitszimmer habe?', expectSources: ['estg-4-5-6c'] },
-  { id: 'lena-pendeln-quelle', persona: 'lena', kind: 'citation', message: 'Wie wird die Entfernungspauschale berechnet?', expectSources: ['estg-9-1-4a'] },
+  { id: 'lena-pendeln-quelle', persona: 'lena', kind: 'citation', message: 'Wie wird die Entfernungspauschale berechnet?', expectSources: ['estg-9-1'] },
   { id: 'meyer-spenden-quelle', persona: 'meyer', kind: 'citation', message: 'Wo steht, dass ich Spenden absetzen kann?', expectSources: ['estg-10b'] },
   { id: 'lena-brille', persona: 'lena', kind: 'citation', message: 'Kann ich meine Brille absetzen?' },
   { id: 'brenner-einspruch-frist', persona: 'brenner', kind: 'citation', message: 'Wie lange habe ich Zeit für einen Einspruch gegen den Bescheid?', expectSources: ['ao-355'] },

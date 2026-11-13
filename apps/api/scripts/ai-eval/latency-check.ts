@@ -9,6 +9,10 @@ import type { AdvisorStreamEvent } from '@steuereule/core'
 import { EnvAiRuntimeConfigService } from '../../src/ki/ai-runtime-config.service.js'
 import { LangGraphAdvisorEngine } from '../../src/ki/langgraph-advisor.engine.js'
 import { PERSONAS } from './golden.js'
+import { installProviderRejectionGuard } from '../../src/ki/provider-rejections.js'
+
+// As in main.ts: a Gemini stream that breaks off after its turn ended must not end the run.
+installProviderRejectionGuard()
 
 const key = process.env.AI_EVAL_GEMINI_API_KEY?.trim()
 if (!key) {

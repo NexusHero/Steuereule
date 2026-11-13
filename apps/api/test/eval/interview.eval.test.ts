@@ -44,14 +44,17 @@ const DIGEST: CaseDigest = {
 
 interface Persona {
   readonly name: string
+  /** What the persona types when the owl asks for a number in words. */
+  readonly figures: string
   /** What the persona has: a question about it is answered yes, a matching option is ticked. */
   readonly has: readonly RegExp[]
 }
 
 const PERSONAS: readonly Persona[] = [
-  { name: 'single employee with little besides the job', has: [/arbeitsweg|pendel|fahr|entfernung|kilometer|km/i, /homeoffice/i, /krankenversicherung|kranken- und pflege/i, /arbeitstage/i] },
+  { name: 'single employee with little besides the job', figures: 'Zahlen: 18 km einfache Strecke, 28 Urlaubstage, 2 Krankheitstage, 40 Homeoffice-Tage.', has: [/arbeitsweg|pendel|fahr|entfernung|kilometer|km/i, /homeoffice/i, /krankenversicherung|kranken- und pflege/i, /arbeitstage/i] },
   {
     name: 'family with two children, craftsmen and a Riester contract',
+    figures: 'Zahlen: 25 km einfache Strecke, 30 Urlaubstage, 3 Krankheitstage, Handwerker 400 € Arbeitskosten, Spenden 150 €, Riester 1.200 € Eigenbeitrag, Kita 3.000 €.',
     has: [/kind/i, /kindergeld/i, /betreuung|kita/i, /handwerk|maler|reparatur/i, /riester/i, /verheiratet|ehe/i, /arbeitsweg|pendel|fahr|entfernung|km/i, /spende/i, /krankenversicherung|kranken- und pflege/i, /arbeitstage/i],
   },
 ]
@@ -96,6 +99,8 @@ async function interview(engine: LangGraphAdvisorEngine, persona: Persona): Prom
       break
     }
     message = roundAnswersToMessage(asked, asked.questions.map((question) => answer(question, persona)))
+    // A number asked for in words is typed, as a customer would.
+    if (/(km|kilometer|tage|betrag|€|euro|summe)[^?]{0,80}\?/i.test(reply)) message += `\n${persona.figures}`
     transcript.rounds.push({ asked, reply, answered: message, changes: done?.meta.interviewChanges ?? [] })
   }
   return transcript

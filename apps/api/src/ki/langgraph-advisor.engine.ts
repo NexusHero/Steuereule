@@ -393,8 +393,11 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
     let sources: OwlSourceId[] = []
 
     // A task works through the whole case: it needs more rounds and more time than one question.
-    const maxToolRounds = request.task ? Math.max(limits.maxToolRounds, TASK_TOOL_ROUNDS) : limits.maxToolRounds
-    const budgetMs = request.task ? Math.max(limits.turnTimeoutMs, TASK_TIMEOUT_MS) : limits.turnTimeoutMs
+    // The interview also does several things per answer (drafts, ticking areas off, the next
+    // round): with the budget of one question it ran out of rounds before the next round (eval).
+    const bigTurn = request.task !== undefined || request.skill === 'berater-interview'
+    const maxToolRounds = bigTurn ? Math.max(limits.maxToolRounds, TASK_TOOL_ROUNDS) : limits.maxToolRounds
+    const budgetMs = bigTurn ? Math.max(limits.turnTimeoutMs, TASK_TIMEOUT_MS) : limits.turnTimeoutMs
     const timeout = AbortSignal.timeout(budgetMs)
     const answerBy = Date.now() + Math.max(budgetMs - ANSWER_RESERVE_MS, budgetMs / 2)
     const signal = request.signal ? AbortSignal.any([request.signal, timeout]) : timeout
