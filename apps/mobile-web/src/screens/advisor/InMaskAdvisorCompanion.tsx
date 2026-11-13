@@ -28,6 +28,7 @@ import { APP_NS } from '../../i18n/resources'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { AdvisorChatPanel, sendOptionsToDto, type ChatSendOptions } from './AdvisorChatPanel'
 import { useOptionalCopilotBridge } from './CopilotBridgeProvider'
+import { usePartnerFirstName } from './usePartnerFirstName'
 
 export interface InMaskAdvisorCompanionProps {
   readonly screen: Screen
@@ -114,6 +115,10 @@ export function InMaskAdvisorCompanion({
   const sendMutation = useAdvisorControllerSendMessage()
   const applyMutation = useAdvisorControllerApplyAction()
   const undoMutation = useAdvisorControllerUndoAction()
+  const partnerName = usePartnerFirstName(
+    taxYear,
+    sessionQuery.data?.status === 200 ? (sessionQuery.data.data.messages as unknown as readonly AdvisorChatMessageView[]) : undefined,
+  )
 
   if (insideOwlWorkspace) {
     return null
@@ -277,6 +282,7 @@ export function InMaskAdvisorCompanion({
         onSendMessage={handleSendMessage}
         onApplyAction={handleApplyAction}
         onUndoAction={handleUndoAction}
+        partnerName={partnerName}
         compact
       />
     </Card>

@@ -1,4 +1,4 @@
-import { ADVISOR_LEGAL_SOURCES, provenanceKey, type AdvisorActionProposal, type AdvisorMessageMeta, type AdvisorUndoEntry } from '@steuereule/core'
+import { ADVISOR_LEGAL_SOURCES, draftPersonKey, provenanceKey, type AdvisorActionProposal, type AdvisorMessageMeta, type AdvisorPerson, type AdvisorUndoEntry } from '@steuereule/core'
 import { AuditService } from '../audit/audit.service.js'
 import { type TransactionRunner } from '../prisma/transaction.js'
 import { assertAiWritable } from '../confirmation/ai-write-policy.js'
@@ -8,6 +8,15 @@ import { type AdvisorChatMessageRecord, type AdvisorRepository } from './advisor
 import type { AdvisorActionMutationResponseDto, ApplyBatchActionsDto, ApplyBatchActionsResponseDto } from './dto/advisor.dto.js'
 import { ResolvedDraft, toPublicAction, toMessageDto } from './advisor-shared.js'
 
+/** Whose data a person's draft writes; `LinkService.dataUser` in the app (ADR-0054, ADR-0073). */
+export type DataUserResolver = (userId: string, taxYear: number, person: AdvisorPerson) => Promise<string>
+
+/** Without a household behind the service there is no Person B to write for. */
+const ownDataOnly: DataUserResolver = async (userId, _taxYear, person) => {
+  if (person === 'A') return userId
+  throw new InvalidInputError('NO_ACTIVE_ZUSAMMENVERANLAGUNG', 'There is no active Zusammenveranlagung.')
+}
+
 /** The life of a draft after the owl proposed it: baseline, superseding, applying with a compare-and-set, undo and dismissal. */
 export class AdvisorDrafts {
   constructor(
@@ -15,10 +24,17 @@ export class AdvisorDrafts {
     private readonly auditService: AuditService,
     private readonly confirmationService: ConfirmationService,
     private readonly transactions: TransactionRunner,
+    private readonly dataUserOf: DataUserResolver = ownDataOnly,
   ) {}
 
-  targetKeyOf(action: Pick<AdvisorActionProposal, 'screen' | 'field' | 'instance'>): string {
-    return provenanceKey(action.screen, action.field, action.instance ?? undefined)
+  /** What a draft aims at: the field, and for Person B that it is B's field, not the user's. */
+  targetKeyOf(action: Pick<AdvisorActionProposal, 'screen' | 'field' | 'instance' | 'person'>): string {
+    return draftPersonKey(action.person, provenanceKey(action.screen, action.field, action.instance ?? undefined))
+  }
+
+  /** The user whose fields the draft writes. A refusal (B has an own account now) reaches the client as it stands. */
+  async dataUserFor(userId: string, taxYear: number, action: Pick<AdvisorActionProposal, 'person'>): Promise<string> {
+    return this.dataUserOf(userId, taxYear, action.person ?? 'A')
   }
 
   collectPendingTargetKeys(meta: AdvisorMessageMeta | null): Set<string> {
@@ -39,18 +55,22 @@ export class AdvisorDrafts {
     draft: AdvisorActionProposal,
   ): Promise<AdvisorActionProposal> {
     assertAiWritable(draft.screen, draft.field)
-    const rawPreviousValue = await this.readBaseline(userId, taxYear, this.targetKeyOf(draft), draft.expectedPreviousValue)
+    const dataUserId = await this.dataUserFor(userId, taxYear, draft)
+    const key = provenanceKey(draft.screen, draft.field, draft.instance ?? undefined)
+    const rawPreviousValue = await this.readBaseline(dataUserId, taxYear, key, draft.expectedPreviousValue)
     let companionExpectedValues: Record<string, string | null> | undefined
     if (draft.companionFields) {
       companionExpectedValues = {}
       for (const companionField of Object.keys(draft.companionFields)) {
         assertAiWritable(draft.screen, companionField)
         const companionKey = provenanceKey(draft.screen, companionField, draft.instance ?? undefined)
-        companionExpectedValues[companionField] = (await this.readBaseline(userId, taxYear, companionKey, null)) ?? null
+        companionExpectedValues[companionField] = (await this.readBaseline(dataUserId, taxYear, companionKey, null)) ?? null
       }
     }
     return {
       ...draft,
+      // The engine only knows the user's own figures; Person B's previous value is read here.
+      ...(draft.person === 'B' ? { previousValue: rawPreviousValue ?? null } : {}),
       expectedPreviousValue: rawPreviousValue ?? null,
       ...(companionExpectedValues ? { companionExpectedValues } : {}),
       paragraph: draft.paragraph ?? ADVISOR_LEGAL_SOURCES[draft.sourceId].paragraph,
@@ -229,13 +249,19 @@ export class AdvisorDrafts {
     for (const companionField of Object.keys(action.companionFields ?? {})) assertAiWritable(action.screen, companionField)
   }
 
-  async resolveDraft(userId: string, taxYear: number, actionId: string): Promise<ResolvedDraft> {
+  async findDraft(userId: string, taxYear: number, actionId: string): Promise<Omit<ResolvedDraft, 'dataUserId'>> {
     const messageRecord = await this.advisorRepo.findMessageByActionId(userId, taxYear, actionId)
     const action = messageRecord?.meta ? this.findActionInMeta(messageRecord.meta, actionId) : null
     if (!messageRecord || !action) {
       throw new NotFoundError('ADVISOR_ACTION_NOT_FOUND', `Aktion "${actionId}" wurde nicht gefunden.`)
     }
-    return { messageRecord, action, key: this.targetKeyOf(action) }
+    return { messageRecord, action, key: provenanceKey(action.screen, action.field, action.instance ?? undefined) }
+  }
+
+  /** A draft about to touch the return, with whose data it writes. */
+  async resolveDraft(userId: string, taxYear: number, actionId: string): Promise<ResolvedDraft> {
+    const draft = await this.findDraft(userId, taxYear, actionId)
+    return { ...draft, dataUserId: await this.dataUserFor(userId, taxYear, draft.action) }
   }
 
   /**
@@ -266,14 +292,13 @@ export class AdvisorDrafts {
   }
 
   async collectStaleConflicts(
-    userId: string,
     taxYear: number,
-    plans: ReadonlyArray<{ actionId: string; writes: ReadonlyArray<{ key: string; expected: string | null }> }>,
+    plans: ReadonlyArray<{ actionId: string; dataUserId: string; writes: ReadonlyArray<{ key: string; expected: string | null }> }>,
   ): Promise<Array<{ actionId: string; key: string; currentValue: string | null }>> {
     const conflicts: Array<{ actionId: string; key: string; currentValue: string | null }> = []
     for (const plan of plans) {
       for (const write of plan.writes) {
-        const currentValue = (await this.confirmationService.readRawValue(userId, taxYear, write.key)) ?? null
+        const currentValue = (await this.confirmationService.readRawValue(plan.dataUserId, taxYear, write.key)) ?? null
         if (currentValue !== write.expected) conflicts.push({ actionId: plan.actionId, key: write.key, currentValue })
       }
     }
@@ -320,19 +345,21 @@ export class AdvisorDrafts {
       for (const item of dto.drafts) {
         const draft = await this.resolveDraft(userId, taxYear, item.actionId)
         this.assertActionApplicable(draft.action)
-        if (targetKeys.has(draft.key)) {
+        const targetKey = this.targetKeyOf(draft.action)
+        if (targetKeys.has(targetKey)) {
           throw new ConflictError('ADVISOR_BATCH_TARGET_CONFLICT', `Mehrere Entwürfe im Batch zielen auf dasselbe Feld "${draft.key}".`)
         }
-        targetKeys.add(draft.key)
+        targetKeys.add(targetKey)
         drafts.push(draft)
       }
 
       const plans = drafts.map((draft, i) => ({
         draft,
         actionId: draft.action.actionId,
+        dataUserId: draft.dataUserId,
         writes: this.writePlan(draft, dto.drafts[i]!.acknowledgedCurrentValues),
       }))
-      const conflicts = await this.collectStaleConflicts(userId, taxYear, plans)
+      const conflicts = await this.collectStaleConflicts(taxYear, plans)
       if (conflicts.length > 0) {
         const first = conflicts[0]!
         throw new ConflictError(
@@ -360,13 +387,13 @@ export class AdvisorDrafts {
           ? ({ kind: 'beleg', receiptId: draft.action.receiptId } as const)
           : undefined
         for (const write of writes) {
-          const record = write.key.slice(0, write.key.lastIndexOf('.'))
+          const record = `${draft.dataUserId}|${write.key.slice(0, write.key.lastIndexOf('.'))}`
           const expected = writtenRecords.has(record)
-            ? ((await this.confirmationService.readRawValue(userId, taxYear, write.key)) ?? null)
+            ? ((await this.confirmationService.readRawValue(draft.dataUserId, taxYear, write.key)) ?? null)
             : write.expected
           undoSnapshot.push(
             await this.confirmationService.writeConfirmedByAdvisor(
-              userId,
+              draft.dataUserId,
               taxYear,
               write.key,
               write.newValue,
@@ -421,7 +448,7 @@ export class AdvisorDrafts {
       ]
       // Main field first, companions after — the reverse of the apply order.
       for (let i = snapshot.length - 1; i >= 0; i -= 1) {
-        await this.confirmationService.restoreByAdvisor(userId, taxYear, snapshot[i]!)
+        await this.confirmationService.restoreByAdvisor(draft.dataUserId, taxYear, snapshot[i]!)
       }
 
       const { undoSnapshot: _consumed, ...rest } = draft.action
@@ -443,7 +470,7 @@ export class AdvisorDrafts {
 
   async dismissAction(userId: string, taxYear: number, actionId: string): Promise<AdvisorActionMutationResponseDto> {
     return this.transactions.run(async () => {
-      const draft = await this.resolveDraft(userId, taxYear, actionId)
+      const draft = await this.findDraft(userId, taxYear, actionId)
       this.assertActionApplicable(draft.action)
 
       let nextMeta = draft.messageRecord.meta!

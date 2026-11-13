@@ -12,6 +12,7 @@ import {
   isSupportedIncomeTaxYear,
   voluntaryFilingDeadlineFor,
   type CaseFurtherFacts,
+  type PersonBFigures,
 } from '@steuereule/core'
 import { checkPiiFree } from '../ki/ki.adapter.js'
 import { type CapitalRepository } from '../capital/capital.repository.js'
@@ -74,6 +75,24 @@ export class AdvisorCaseFacts {
       vermietung: buildRecordHandles('vermietung', rentals.map((rental) => rental.id)),
       kind: buildRecordHandles('kind', children.map((child) => child.id)),
     }
+  }
+
+  /** Person B's figures already entered (ADR-0073): amounts and kilometres only, nothing that names her or him. */
+  async personBFigures(spouseUserId: string, taxYear: number): Promise<PersonBFigures> {
+    const [lstb, ch, commute, pension] = await Promise.all([
+      this.lstbRepo ? this.lstbRepo.findForUserAndYear(spouseUserId, taxYear) : Promise.resolve(null),
+      this.chRepo ? this.chRepo.findForUserAndYear(spouseUserId, taxYear) : Promise.resolve(null),
+      this.commuteRepo ? this.commuteRepo.findForUserAndYear(spouseUserId, taxYear) : Promise.resolve(null),
+      this.pensionRepo ? this.pensionRepo.findForUserAndYear(spouseUserId, taxYear) : Promise.resolve(null),
+    ])
+    const figures: PersonBFigures = {
+      grossWageEur: parseNum(lstb?.bruttoarbeitslohn),
+      grossWageChf: parseNum(ch?.fields['bruttolohn-total']),
+      commuteKm: commute?.oneWayKm ?? null,
+      pensionAnnualEur: parseNum(pension?.jahresbetrag),
+    }
+    checkPiiFree(figures)
+    return figures
   }
 
   async buildCaseDigest(userId: string, taxYear: number): Promise<CaseDigest> {

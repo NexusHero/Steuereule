@@ -154,6 +154,17 @@ export const AdvisorActionProposalDtoScreen = {
 } as const;
 
 /**
+ * Whose fields the draft writes in a joint return (ADR-0073): B is the spouse whose figures the user records. Absent means the user.
+ */
+export type AdvisorActionProposalDtoPerson = typeof AdvisorActionProposalDtoPerson[keyof typeof AdvisorActionProposalDtoPerson];
+
+
+export const AdvisorActionProposalDtoPerson = {
+  A: 'A',
+  B: 'B',
+} as const;
+
+/**
  * computed: the three euro figures come from the app's own estimate. not-computable: there is no figure, see effectHint. Absent: approximation.
  */
 export type AdvisorActionProposalDtoEffect = typeof AdvisorActionProposalDtoEffect[keyof typeof AdvisorActionProposalDtoEffect];
@@ -221,6 +232,8 @@ export interface AdvisorActionProposalDto {
   field: string;
   /** @nullable */
   instance?: string | null;
+  /** Whose fields the draft writes in a joint return (ADR-0073): B is the spouse whose figures the user records. Absent means the user. */
+  person?: AdvisorActionProposalDtoPerson;
   companionFields?: AdvisorActionProposalDtoCompanionFields;
   /** Raw values of the companion fields when the draft was created (stale-check baseline). */
   companionExpectedValues?: AdvisorActionProposalDtoCompanionExpectedValues;
@@ -441,6 +454,17 @@ export const AdvisorMaxPathProposalDtoScreen = {
 } as const;
 
 /**
+ * Whose fields the draft writes in a joint return (ADR-0073): B is the spouse whose figures the user records. Absent means the user.
+ */
+export type AdvisorMaxPathProposalDtoPerson = typeof AdvisorMaxPathProposalDtoPerson[keyof typeof AdvisorMaxPathProposalDtoPerson];
+
+
+export const AdvisorMaxPathProposalDtoPerson = {
+  A: 'A',
+  B: 'B',
+} as const;
+
+/**
  * computed: the three euro figures come from the app's own estimate. not-computable: there is no figure, see effectHint. Absent: approximation.
  */
 export type AdvisorMaxPathProposalDtoEffect = typeof AdvisorMaxPathProposalDtoEffect[keyof typeof AdvisorMaxPathProposalDtoEffect];
@@ -503,6 +527,8 @@ export interface AdvisorMaxPathProposalDto {
   field: string;
   /** @nullable */
   instance?: string | null;
+  /** Whose fields the draft writes in a joint return (ADR-0073): B is the spouse whose figures the user records. Absent means the user. */
+  person?: AdvisorMaxPathProposalDtoPerson;
   companionFields?: AdvisorMaxPathProposalDtoCompanionFields;
   /** Raw values of the companion fields when the draft was created (stale-check baseline). */
   companionExpectedValues?: AdvisorMaxPathProposalDtoCompanionExpectedValues;

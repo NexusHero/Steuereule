@@ -18,7 +18,10 @@ import type { AdvisorChatMessageDto, AdvisorContextDto, AdvisorConversationDto, 
 export interface ResolvedDraft {
   readonly messageRecord: AdvisorChatMessageRecord
   readonly action: AdvisorActionProposal
+  /** The field key the draft writes (screen, instance, field), the same for A and B. */
   readonly key: string
+  /** Whose data the draft writes: the user, or Person B's record that A keeps (ADR-0073). */
+  readonly dataUserId: string
 }
 
 export function parseNum(raw: string | null | undefined): number | null {

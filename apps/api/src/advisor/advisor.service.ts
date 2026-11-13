@@ -9,7 +9,10 @@ import {
   isOfferedChoice,
   applyInterviewChanges,
   provenanceKey,
+  replaceNamesWith,
   scrubUserMessagePii,
+  PERSON_B_HANDLE,
+  type AdvisorHousehold,
   simulateAdvisorFieldDelta,
   type AdvisorActionProposal,
   type AdvisorAssessmentBrief,
@@ -61,6 +64,7 @@ import { WAGE_TAX_CERTIFICATE_REPOSITORY, type WageTaxCertificateRepository } fr
 import { OwlModeService } from '../owl-mode/owl-mode.service.js'
 import { PROFILE_REPOSITORY, type ProfileRepository } from '../profile/profile.repository.js'
 import { RENTAL_REPOSITORY, type RentalRepository } from '../rental/rental.repository.js'
+import { LinkService } from '../link/link.service.js'
 import { ConflictError, DomainError, InvalidInputError, NotFoundError, TooManyRequestsError, UnavailableError } from '../common/domain-error.js'
 import {
   ADVISOR_REPOSITORY,
@@ -156,6 +160,7 @@ export class AdvisorService {
     @Optional() @Inject(ModelConnectionService) private readonly modelConnection?: ModelConnectionService,
     @Optional() @Inject(AssessmentService) private readonly assessmentService?: AssessmentService,
     @Optional() @Inject(PENSION_REPOSITORY) private readonly pensionRepo?: PensionRepository,
+    @Optional() @Inject(LinkService) private readonly link?: LinkService,
   ) {}
 
   // The service is the front door; each theme lives in its own part.
@@ -178,12 +183,12 @@ export class AdvisorService {
 
   private conversationsPart?: AdvisorConversations
   private get conversations(): AdvisorConversations {
-    return (this.conversationsPart ??= new AdvisorConversations(this.advisorEngine, this.advisorRepo, this.auditService, (...args) => this.facts.knownNamesForScrubbing(...args)))
+    return (this.conversationsPart ??= new AdvisorConversations(this.advisorEngine, this.advisorRepo, this.auditService, (...args) => this.knownNamesForScrubbing(...args)))
   }
 
   private notesPart?: AdvisorProjectNotes
   private get notes(): AdvisorProjectNotes {
-    return (this.notesPart ??= new AdvisorProjectNotes(this.advisorRepo, (...args) => this.facts.knownNamesForScrubbing(...args)))
+    return (this.notesPart ??= new AdvisorProjectNotes(this.advisorRepo, (...args) => this.knownNamesForScrubbing(...args)))
   }
 
   private factsPart?: AdvisorCaseFacts
@@ -193,7 +198,14 @@ export class AdvisorService {
 
   private draftsPart?: AdvisorDrafts
   private get drafts(): AdvisorDrafts {
-    return (this.draftsPart ??= new AdvisorDrafts(this.advisorRepo, this.auditService, this.confirmationService, this.transactions))
+    const link = this.link
+    return (this.draftsPart ??= new AdvisorDrafts(
+      this.advisorRepo,
+      this.auditService,
+      this.confirmationService,
+      this.transactions,
+      link ? (userId, taxYear, person) => link.dataUser(userId, taxYear, person) : undefined,
+    ))
   }
 
   // ── Delegated to the parts ─────────────────────────────────────────────────────────────────
@@ -257,8 +269,26 @@ export class AdvisorService {
     return this.notes.undoNoteChange(userId, taxYear, messageId, index)
   }
 
+  /** Every name that must not reach a model: the user's, the children's and the spouse's. */
   async knownNamesForScrubbing(userId: string, taxYear: number): Promise<string[]> {
-    return this.facts.knownNamesForScrubbing(userId, taxYear)
+    const [own, spouse] = await Promise.all([this.facts.knownNamesForScrubbing(userId, taxYear), this.link?.spouseForAdvisor(userId, taxYear)])
+    return [...own, ...[spouse?.firstName, spouse?.lastName].filter((name): name is string => !!name)]
+  }
+
+  /**
+   * The household as the owl may know it (ADR-0073): whether there is a Person B, whether the user
+   * records B's figures, and B's figures already entered. No name, no id.
+   */
+  async advisorHousehold(userId: string, taxYear: number): Promise<AdvisorHousehold> {
+    const spouse = await this.link?.spouseForAdvisor(userId, taxYear)
+    if (!spouse) return { personB: null }
+    return {
+      personB: {
+        handle: PERSON_B_HANDLE,
+        recordable: spouse.recordable,
+        figures: spouse.recordable ? await this.facts.personBFigures(spouse.spouseUserId, taxYear) : null,
+      },
+    }
   }
 
   async loadRecordHandles(userId: string, taxYear: number): Promise<AdvisorRecordHandles> {
@@ -328,10 +358,12 @@ export class AdvisorService {
       if (leftOut) return leftOut
       let states: { before: TaxEstimateStatus; after: TaxEstimateStatus } | null = null
       try {
+        // Person B's fields are written where B's data lives; the estimate is the couple's, read for the user.
+        const dataUserId = await this.drafts.dataUserFor(userId, taxYear, target)
         await this.transactions.run(async () => {
           const before = await estimate.getState(userId, taxYear)
           for (const [field, value] of target.values) {
-            await this.confirmationService.writeConfirmedByAdvisor(userId, taxYear, provenanceKey(target.screen, field, target.instance ?? undefined), value)
+            await this.confirmationService.writeConfirmedByAdvisor(dataUserId, taxYear, provenanceKey(target.screen, field, target.instance ?? undefined), value)
           }
           states = { before, after: await estimate.getState(userId, taxYear) }
           throw new PreviewRollback()
@@ -436,7 +468,10 @@ export class AdvisorService {
     // Double PII Shield: scrub known names, Steuer-IDs, IBANs, emails, and phones from user free-text & history
     const knownNames = await this.knownNamesForScrubbing(userId, taxYear)
     const isOpening = dto.quickAction === 'opening'
-    const scrubbedUserText = isOpening ? OPENING_PLACEHOLDER : scrubUserMessagePii(dto.message.trim(), knownNames)
+    // The spouse's name becomes the handle the owl drafts for („Person B“), not an anonymous stand-in.
+    const spouse = isOpening ? null : await this.link?.spouseForAdvisor(userId, taxYear)
+    const spouseNames = [spouse?.firstName, spouse?.lastName].filter((name): name is string => !!name)
+    const scrubbedUserText = isOpening ? OPENING_PLACEHOLDER : scrubUserMessagePii(replaceNamesWith(dto.message.trim(), spouseNames, PERSON_B_HANDLE), knownNames)
     const conversation = await this.conversationFor(userId, taxYear, dto.conversationId)
     // Conversations answer side by side (#503), but one conversation has one answer at a time:
     // two would write into the same history in an order nobody chose.
@@ -629,6 +664,7 @@ export class AdvisorService {
         ...(dto.skill === 'berater-interview' ? { interview: await this.advisorRepo.findInterview(userId, taxYear) } : {}),
         topicCheck: turn.fromApp ? 'skip' : 'check',
         records: await this.loadRecordHandles(userId, taxYear),
+        household: await this.advisorHousehold(userId, taxYear),
         previewEffect: this.previewEffectFor(userId, taxYear),
         notes: buildNoteHandles(await this.advisorRepo.listNotes(userId, taxYear)),
       }

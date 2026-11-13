@@ -5,7 +5,7 @@ import { ToolMessage, type BaseMessage } from '@langchain/core/messages'
 import { LAW_IDS } from './law-text.js'
 import { tool, type StructuredToolInterface } from '@langchain/core/tools'
 import { z } from 'zod'
-import { GIFT_TAX_RELATIONS, PRIVATE_SALE_KINDS, ADVISOR_PLAN_MAX_STEPS, ADVISOR_PLAN_STEP_STATUSES, ADVISOR_QUESTION_KINDS, INTERVIEW_AREA_IDS, INTERVIEW_AREA_STATUSES, type AdvisorActionProposal, type AdvisorNotStaged, type Screen } from '@steuereule/core'
+import { ADVISOR_PERSONS, draftPersonKey, GIFT_TAX_RELATIONS, PRIVATE_SALE_KINDS, ADVISOR_PLAN_MAX_STEPS, ADVISOR_PLAN_STEP_STATUSES, ADVISOR_QUESTION_KINDS, INTERVIEW_AREA_IDS, INTERVIEW_AREA_STATUSES, type AdvisorActionProposal, type AdvisorNotStaged, type Screen } from '@steuereule/core'
 
 export const MAX_COMPANION_FIELDS = 3
 
@@ -45,7 +45,8 @@ export interface RejectedDraft {
 /** More drafts in one answer than anyone can review are a sign the model is looping. */
 export const MAX_DRAFTS_PER_TURN = 8
 
-export const draftKey = (draft: Pick<AdvisorActionProposal, 'screen' | 'field' | 'instance'>): string => `${draft.screen}|${draft.instance ?? ''}|${draft.field}`
+export const draftKey = (draft: Pick<AdvisorActionProposal, 'screen' | 'field' | 'instance' | 'person'>): string =>
+  draftPersonKey(draft.person, `${draft.screen}|${draft.instance ?? ''}|${draft.field}`)
 
 export const FIGURE_KEYS = new Set(['beforeRefundEur', 'afterRefundEur', 'deltaEur', 'incomeTaxEur', 'soliEur', 'churchTaxEur', 'totalEur', 'savingEur', 'withoutBenefitsEur', 'separateTotalEur', 'jointTotalEur', 'progressionClauseUpToEur', 'flatRateTotalEur', 'personalTotalEur', 'limitEur', 'withinWindowEur', 'roomLeftEur', 'exemptionLimitEur', 'personalAllowanceEur', 'maintenanceAllowanceEur', 'taxableEur', 'totalTaxEur', 'priorTaxEur', 'taxEur', 'tradeTaxEur', 'baseAmountEur', 'incomeTaxCreditEur', 'netBurdenEur', 'priorYearLimitEur', 'currentYearLimitEur'])
 
@@ -98,6 +99,8 @@ export const draftTargetSchema = z.object({
   label: z.string().max(160),
   reason: z.string().max(400).default(''),
   instance: z.string().max(80).nullable().optional(),
+  /** `B`: a value of the spouse in a joint return (ADR-0073); the user's own otherwise. */
+  person: z.enum(ADVISOR_PERSONS).default('A'),
 })
 
 /** One schema per tool: the model sees it via bindTools, and toolsNode parses every call with it. */
@@ -223,9 +226,9 @@ export const TOOL_DESCRIPTIONS: Readonly<Record<ToolName, string>> = {
   simulate_tax_delta:
     'Simuliert deterministisch die exakte Vorher/Nachher-Erstattungswirkung eines Feldes ohne etwas in der Datenbank zu ändern.',
   stage_field_draft:
-    'Erstellt einen unverbindlichen Feld-Entwurf (Status pending) zur Prüfung und Freigabe im Eulen-Modus. Rechnet das Steuerdelta deterministisch aus.',
+    'Erstellt einen unverbindlichen Feld-Entwurf (Status pending) zur Prüfung und Freigabe im Eulen-Modus. Rechnet das Steuerdelta deterministisch aus. `person`: `A` für den Nutzer selbst (Vorgabe), `B` für Angaben über Ehefrau, Ehemann oder Partner in der Zusammenveranlagung (nur Masken lstb, chLohnausweis, commute, rente und nur, wenn der Haushalt Person B nennt).',
   propose_two_paths:
-    'Stellt zwei Alternativen (Sicher-Weg vs. Maximal-Weg mit Nachweishinweis) zur Auswahl durch den Nutzer gegenüber.',
+    'Stellt zwei Alternativen (Sicher-Weg vs. Maximal-Weg mit Nachweishinweis) zur Auswahl durch den Nutzer gegenüber. `person` je Weg wie bei stage_field_draft.',
   ask_clarification: 'Schlägt 2 bis 4 anklickbare Quick-Chips als nächste Rückfragen im Chat vor.',
   ask_questions:
     'Stellt dem Nutzer eine Runde von 1 bis 4 Fragen, jede mit 2 bis 4 antippbaren Antworten. `kind`: `fact` für Tatsachen (was er hatte oder tat), dann KEINE Empfehlung; `decision` für eine Entscheidung (z. B. Veranlagungsart), dann `recommended` (eine der Antworten) und `reason` (ein kurzer Satz, warum). `multiple: true`, wenn mehrere Antworten zutreffen können („Was davon hattest du?“, mit einer Antwort wie „Nichts davon“). Nur im Skill „Berater-Interview“ und in der Eröffnung eines Gesprächs verwenden. Schreibt nichts in die Akte.',

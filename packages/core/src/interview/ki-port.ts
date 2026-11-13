@@ -3,6 +3,7 @@ import type { IncomeType } from '../domains/income-types'
 import type { AdvisorActionProposal, AdvisorChatMessageView, AdvisorMessageMeta, AdvisorTwoPathsProposal, CaseDigest } from './advisor'
 import type { Screen } from './marking'
 import type { AdvisorRecordHandles } from './record-handles'
+import type { AdvisorHousehold, AdvisorPerson } from './advisor-household'
 import type { AdvisorNoteHandle } from './advisor-notes'
 import type { AdvisorSkillId, InterviewProgress } from './advisor-skills'
 import type { AdvisorAssessmentBrief, AdvisorTask } from './advisor-tasks'
@@ -35,6 +36,8 @@ export interface AdvisorTurnRequest {
   readonly planRequired?: boolean | undefined
   /** The stored records of the per-record masks under their neutral names; ids never reach the model. */
   readonly records?: AdvisorRecordHandles | undefined
+  /** Whether there is a Person B the owl may draft for (ADR-0073); absent counts as no Person B. */
+  readonly household?: AdvisorHousehold | undefined
   /**
    * What a draft would do to the refund, worked out by the app's own estimate. Without it the
    * engine falls back to the approximation over the digest.
@@ -65,6 +68,8 @@ export interface AdvisorTurnRequest {
 export interface AdvisorPreviewTarget {
   readonly screen: Screen
   readonly instance: string | null
+  /** `B`: the fields are the spouse's (ADR-0073); absent means the user's own. */
+  readonly person?: AdvisorPerson | undefined
   /** In write order: companions (the gate of an amount) first, the main field last. */
   readonly values: ReadonlyArray<readonly [field: string, value: string]>
 }
