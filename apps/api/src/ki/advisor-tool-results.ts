@@ -58,6 +58,7 @@ const TEMPLATES: Readonly<Record<string, (payload: Payload) => string>> = {
     const tax = num(p.tradeTaxEur)
     return tax === null ? 'erledigt' : `${amount(tax)} Gewerbesteuer`
   },
+  read_law_text: (p) => (typeof p.norm === 'string' ? p.norm : 'gelesen'),
   lookup_legal_source: (p) => {
     const source = (p.source ?? {}) as Payload
     return typeof source.paragraph === 'string' ? source.paragraph : 'erledigt'

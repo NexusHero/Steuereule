@@ -39,6 +39,7 @@ import { checkPiiFree } from './ki.adapter.js'
 import { toolResultLine } from './advisor-tool-results.js'
 import { ADVISOR_KNOWLEDGE } from './skills.generated.js'
 import { checkCapitalTaxation, compareFilingTypes, computeIncomeTax } from './advisor-income-tax.js'
+import { readLawForOwl, type LawId } from './law-text.js'
 import { MAX_COMPANION_FIELDS, TOOL_LABELS, TOOL_ARG_SCHEMAS, isToolName, toolResult, RejectedDraft, MAX_DRAFTS_PER_TURN, draftKey, humanReason } from './advisor-tools.js'
 
 export const AdvisorGraphState = Annotation.Root({
@@ -521,6 +522,17 @@ export async function runToolRound(
         }
       } catch (error) {
         answer({ ok: false, error: error instanceof Error ? error.message : 'Ungültige Angaben.' })
+      }
+      continue
+    }
+
+    if (tc.name === 'read_law_text') {
+      const args = parseArgs(TOOL_ARG_SCHEMAS.read_law_text)
+      if (args === null) continue
+      try {
+        answer({ ok: true, ...(await readLawForOwl(args.law as LawId, args.paragraph, args)) })
+      } catch {
+        answer({ ok: false, error: 'gesetze-im-internet.de ist gerade nicht erreichbar. Stütze dich auf das nachgeschlagene Wissen und den Quellenkatalog und sage dazu, dass der Wortlaut nicht frisch gelesen wurde.' })
       }
       continue
     }

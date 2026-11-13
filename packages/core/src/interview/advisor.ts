@@ -1,4 +1,10 @@
-import { LEGAL_STATUS_DATE, type OwlSourceId } from './owl-mode'
+import type { OwlSourceId } from './owl-mode'
+
+/**
+ * When the summaries below were last read against the wording on gesetze-im-internet.de. The
+ * nightly law watch (apps/api/scripts/check-law-changes.ts) notices when one of these norms changes.
+ */
+export const LEGAL_SOURCES_CHECKED_ON = '13.11.2026'
 import type { AdvisorAnswerNotice } from './advisor-answer-check'
 import type { AdvisorNoteChange } from './advisor-notes'
 import type { AdvisorQuestionRound, InterviewAreaChange } from './advisor-skills'
@@ -30,7 +36,7 @@ export const ADVISOR_LEGAL_SOURCES: Readonly<Record<OwlSourceId, AdvisorLegalSou
     title: 'Homeoffice-Tagespauschale & Arbeitszimmer',
     summary:
       'Für jeden Kalendertag, an dem du überwiegend zu Hause arbeitest und keine erste Tätigkeitsstätte aufsuchst, sind 6 € pro Tag (maximal 1.260 € für bis zu 210 Tage im Jahr) als Werbungskosten abziehbar.',
-    legalStatusDate: LEGAL_STATUS_DATE,
+    legalStatusDate: LEGAL_SOURCES_CHECKED_ON,
     url: 'https://www.gesetze-im-internet.de/estg/__4.html',
   },
   'estg-9-1': {
@@ -39,7 +45,7 @@ export const ADVISOR_LEGAL_SOURCES: Readonly<Record<OwlSourceId, AdvisorLegalSou
     title: 'Werbungskosten & Entfernungspauschale',
     summary:
       'Werbungskosten sind Aufwendungen zur Erwerbung, Sicherung und Erhaltung der Einnahmen. Sie wirken sich steuermindernd aus, sobald sie zusammen den Arbeitnehmer-Pauschbetrag von 1.230 € überschreiten.',
-    legalStatusDate: LEGAL_STATUS_DATE,
+    legalStatusDate: LEGAL_SOURCES_CHECKED_ON,
     url: 'https://www.gesetze-im-internet.de/estg/__9.html',
   },
   'estg-9-1-4a': {
@@ -47,8 +53,8 @@ export const ADVISOR_LEGAL_SOURCES: Readonly<Record<OwlSourceId, AdvisorLegalSou
     paragraph: '§ 9 Abs. 1 Nr. 4a EStG',
     title: 'Reise- und Fahrtkosten bei Auswärtstätigkeit',
     summary:
-      'Fahrten zu einer Fortbildungsstätte oder auf Dienstreise sind keine Fahrten zur ersten Tätigkeitsstätte: Du kannst jeden gefahrenen Kilometer (Hin- und Rückfahrt) mit 0,30 € oder die tatsächlichen Ticketkosten ansetzen.',
-    legalStatusDate: LEGAL_STATUS_DATE,
+      'Fahrten zu einer Fortbildungsstätte oder auf Dienstreise sind keine Fahrten zur ersten Tätigkeitsstätte: Du kannst jeden gefahrenen Kilometer (Hin- und Rückfahrt) mit dem Satz des Bundesreisekostengesetzes (Pkw 0,30 €) oder die tatsächlichen Ticketkosten ansetzen.',
+    legalStatusDate: LEGAL_SOURCES_CHECKED_ON,
     url: 'https://www.gesetze-im-internet.de/estg/__9.html',
   },
   'estg-9-1-6': {
@@ -57,7 +63,7 @@ export const ADVISOR_LEGAL_SOURCES: Readonly<Record<OwlSourceId, AdvisorLegalSou
     title: 'Arbeitsmittel & Computerhardware',
     summary:
       'Beruflich genutzte Arbeitsmittel bis 800 € netto (952 € brutto) sowie Computerhardware und Software (BMF-Schreiben vom 22.02.2022) können im Jahr der Anschaffung in Höhe des beruflichen Nutzungsanteils sofort abgezogen werden.',
-    legalStatusDate: LEGAL_STATUS_DATE,
+    legalStatusDate: LEGAL_SOURCES_CHECKED_ON,
     url: 'https://www.gesetze-im-internet.de/estg/__9.html',
   },
   'estg-9-4a': {
@@ -66,7 +72,7 @@ export const ADVISOR_LEGAL_SOURCES: Readonly<Record<OwlSourceId, AdvisorLegalSou
     title: 'Verpflegungsmehraufwendungen',
     summary:
       'Bei beruflicher Auswärtstätigkeit oder Fortbildung außerhalb deiner Wohnung und ersten Tätigkeitsstätte gelten Pauschalen: 14 € ab mehr als 8 Stunden Abwesenheit (sowie für An- und Abreisetage bei Übernachtung) und 28 € für volle 24-Stunden-Tage.',
-    legalStatusDate: LEGAL_STATUS_DATE,
+    legalStatusDate: LEGAL_SOURCES_CHECKED_ON,
     url: 'https://www.gesetze-im-internet.de/estg/__9.html',
   },
   'estg-9-6': {
@@ -75,7 +81,7 @@ export const ADVISOR_LEGAL_SOURCES: Readonly<Record<OwlSourceId, AdvisorLegalSou
     title: 'Erst- und Zweitausbildung',
     summary:
       'Aufwendungen für eine Berufsausbildung oder ein Studium nach einer bereits abgeschlossenen ersten Ausbildung (Zweitausbildung, z. B. Master nach Bachelor) sind unbeschränkt als Werbungskosten abziehbar.',
-    legalStatusDate: LEGAL_STATUS_DATE,
+    legalStatusDate: LEGAL_SOURCES_CHECKED_ON,
     url: 'https://www.gesetze-im-internet.de/estg/__9.html',
   },
   'estg-10b': {
@@ -84,7 +90,7 @@ export const ADVISOR_LEGAL_SOURCES: Readonly<Record<OwlSourceId, AdvisorLegalSou
     title: 'Steuerbegünstigte Zuwendungen (Spenden)',
     summary:
       'Spenden und Mitgliedsbeiträge zur Förderung steuerbegünstigter Zwecke sind bis zu 20 % des Gesamtbetrags der Einkünfte direkt als Sonderausgaben abziehbar (bis 300 € je Einzelspende genügt der Kontoauszug als vereinfachter Nachweis).',
-    legalStatusDate: LEGAL_STATUS_DATE,
+    legalStatusDate: LEGAL_SOURCES_CHECKED_ON,
     url: 'https://www.gesetze-im-internet.de/estg/__10b.html',
   },
   'estg-10-1-5': {
@@ -92,8 +98,8 @@ export const ADVISOR_LEGAL_SOURCES: Readonly<Record<OwlSourceId, AdvisorLegalSou
     paragraph: '§ 10 Abs. 1 Nr. 5 EStG',
     title: 'Kinderbetreuungskosten',
     summary:
-      'Kinderbetreuungskosten für Kinder bis zum 14. Lebensjahr (Kita, Tagesmutter, Hort) sind als Sonderausgaben abziehbar, sofern eine Rechnung vorliegt und unbar gezahlt wurde.',
-    legalStatusDate: LEGAL_STATUS_DATE,
+      'Kinderbetreuungskosten für Kinder bis zum 14. Lebensjahr (Kita, Tagesmutter, Hort) sind zu 80 %, höchstens 4.800 € je Kind, als Sonderausgaben abziehbar (bis 2024: zwei Drittel, höchstens 4.000 €), sofern eine Rechnung vorliegt und unbar gezahlt wurde.',
+    legalStatusDate: LEGAL_SOURCES_CHECKED_ON,
     url: 'https://www.gesetze-im-internet.de/estg/__10.html',
   },
   'ao-355': {
@@ -102,7 +108,7 @@ export const ADVISOR_LEGAL_SOURCES: Readonly<Record<OwlSourceId, AdvisorLegalSou
     title: 'Einspruchsfrist gegen Steuerbescheide',
     summary:
       'Ein Einspruch gegen den Einkommensteuerbescheid ist innerhalb eines Monats nach Bekanntgabe des Bescheids beim Finanzamt einzulegen.',
-    legalStatusDate: LEGAL_STATUS_DATE,
+    legalStatusDate: LEGAL_SOURCES_CHECKED_ON,
     url: 'https://www.gesetze-im-internet.de/ao_1977/__355.html',
   },
 }

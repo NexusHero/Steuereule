@@ -179,6 +179,29 @@ im Repo und wird beim Bauen wörtlich eingelesen, nicht von Hand in TypeScript a
     Höhe gilt, und ob „in allen offenen Fällen“ (§ 52 Abs. 4 S. 10) auch die Beträge von § 3
     Nr. 26, 26a für frühere Jahre meint.
 
+## Gesetze ändern sich (ergänzt 2026-11-13)
+
+33. **Wächter.** `apps/api/scripts/check-law-changes.ts` liest jede Norm, die der Skill zitiert
+    oder der Quellenkatalog nennt (heute 102), von gesetze-im-internet.de und vergleicht Wortlaut
+    und Fußnoten mit dem Fingerabdruck in `skills/steuerberater/law-watch.json`. Nächtlich in CI
+    (`law-watch.yml`); bei einer Änderung öffnet er ein Issue oder ergänzt das offene. Angepasst
+    werden Skill und Rechenkern von Hand, danach `laws:check --update`. Ein Test schlägt an, wenn
+    der Skill eine Norm zitiert, die der Wächter noch nicht kennt.
+34. **Die Eule liest den Wortlaut.** `read_law_text` holt eine Norm (oder einen Absatz, eine
+    Nummer) von gesetze-im-internet.de: nur diese Seite, nur die gelisteten Steuergesetze, die
+    Adresse baut der Server. Der Text kommt als Daten mit Hinweis zurück, einen Tag zwischengespeichert,
+    auf 4.000 Zeichen gekürzt, mit den Anwendungshinweisen der Seite. B3 macht das Lesen zur
+    Pflicht, wenn eine Norm die Antwort trägt. Damit ist Punkt 2 („kein Netz“) für diese eine
+    Quelle aufgehoben.
+35. **Heute ist nicht das Steuerjahr.** Die Seite zeigt nur die geltende Fassung. Für ein früheres
+    Jahr sagt die Eule das dazu; welche Fassung gilt, regeln § 52 EStG und Art. 97 EGAO. Beträge
+    der Erklärung bleiben die der App: Ändert sich ein Gesetz, muss erst der Rechenkern folgen
+    (Punkt 33), sonst sagt die Eule etwas anderes, als die App rechnet.
+36. **Quellenkatalog geprüft.** Die neun Zusammenfassungen sind am 13.11.2026 gegen den Wortlaut
+    gelesen (`LEGAL_SOURCES_CHECKED_ON`); die Kinderbetreuung nennt jetzt 80 %/4.800 €. Das
+    Rechtsstand-Datum der Eulen-Karten (`LEGAL_STATUS_DATE`, 01.01.2025) ist davon getrennt und
+    nicht neu geprüft.
+
 ## Offen und Risiken
 
 - **Rechtlich ungeprüft.** Geschäftsmäßige Hilfeleistung in Steuersachen ist nach dem
@@ -193,6 +216,7 @@ im Repo und wird beim Bauen wörtlich eingelesen, nicht von Hand in TypeScript a
   Startwerte. Der Prüfer kostet jede getippte Nachricht einen kleinen Aufruf und etwa 0,3–1 s bis
   zum ersten Wort.
 - Mit Tricks in der Nachricht lässt sich auch der Prüfer täuschen. Dann bleibt die Regel im Prompt.
+- `read_law_text` hängt an einer fremden Seite: Ändert sie ihren Aufbau, schlagen Werkzeug und Wächter fehl (der Wächter meldet „nicht erreichbar“). Ob das Modell vor jeder tragenden Norm wirklich liest, ist noch nicht gegen das echte Modell gemessen.
 
 ## Verworfen
 

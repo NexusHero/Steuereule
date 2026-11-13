@@ -1,0 +1,61 @@
+# ADR-0069 §33 — does a law the owl relies on still read as it did when it was last checked?
+# Fetches every norm the steuerberater skill cites (and the owl's catalog of legal sources) from
+# gesetze-im-internet.de and compares the wording with apps/api/skills/steuerberater/law-watch.json.
+# On a change it opens an issue (or comments on the open one) with the norms to read. The job only
+# reports: updating the skill and the tax core stays a reviewed change.
+name: Law watch (nightly)
+
+on:
+  schedule:
+    - cron: '15 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: law-watch
+  cancel-in-progress: false
+
+jobs:
+  law-watch:
+    name: Cited norms against gesetze-im-internet.de
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      LAW_WATCH_REPORT: /tmp/law-watch.md
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Compare the norms
+        id: check
+        # Exit 1: a norm changed or is new. Exit 2: only some pages were unreachable (reported, not failed).
+        run: |
+          set +e
+          pnpm --filter @steuereule/api run laws:check
+          code=$?
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          cat "$LAW_WATCH_REPORT" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$code" = "1" ] || [ "$code" = "0" ] || [ "$code" = "2" ]; then exit 0; fi
+          exit "$code"
+      - name: Open or update the issue
+        if: steps.check.outputs.code == '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          title="Gesetzesänderung erkannt: Wissen der Eule prüfen"
+          number=$(gh issue list --state open --search "\"$title\" in:title" --json number --jq '.[0].number')
+          if [ -n "$number" ]; then
+            gh issue comment "$number" --body-file "$LAW_WATCH_REPORT"
+          else
+            gh issue create --title "$title" --body-file "$LAW_WATCH_REPORT"
+          fi

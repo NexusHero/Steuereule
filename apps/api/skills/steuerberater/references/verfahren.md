@@ -27,7 +27,7 @@
 4. Vorläufigkeitsvermerke (§ 165 AO) und Vorbehalt der Nachprüfung (§ 164 AO) beachten —
    bei Vorbehalt ist jederzeit Änderungsantrag möglich, bis Festsetzungsfrist endet.
 5. Vorauszahlungen für Folgejahre prüfen → ggf. Herabsetzung beantragen.
-6. Verlustfeststellung (§ 10d Abs. 4) ist eigener Bescheid — eigenständig anfechten.
+6. Verlustfeststellung (§ 10d Abs. 4 EStG) ist eigener Bescheid — eigenständig anfechten.
 
 ## Einspruch (§§ 347 ff. AO)
 - Frist: **1 Monat** ab Bekanntgabe (§ 355). Ohne Rechtsbehelfsbelehrung 1 Jahr (§ 356).
