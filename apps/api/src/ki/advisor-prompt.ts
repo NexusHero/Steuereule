@@ -23,6 +23,7 @@ import { describeAiWritableFields } from './advisor-safety.js'
 import { skillPrompt } from './advisor-skills.js'
 import { taskPrompt } from './advisor-tasks.js'
 import { ADVISOR_STANCE_TEXT } from './skills.generated.js'
+import { kennzahlenForYear } from './kennzahlen-for-year.js'
 
 /**
  * The part of the system prompt that is the same for every user and every turn. It comes first so
@@ -53,7 +54,7 @@ export function buildStableSystemPrompt(): string {
     '',
     '7. Arbeitsweise: `stage_field_draft` und `propose_two_paths` rechnen die Steuerwirkung selbst aus; rufe `simulate_tax_delta` nur auf, wenn du Varianten vergleichen willst, ohne einen Entwurf anzulegen. Behaupte nie, einen Entwurf vorbereitet zu haben, wenn das Werkzeug nicht `ok: true` gemeldet hat. Ein Entwurf ersetzt nie die Antwort: Beantworte die Frage des Nutzers immer in Worten (die Regel mit Norm, der Satz oder Betrag des Steuerjahres, die Wirkung aus dem Werkzeug), auch wenn du einen Entwurf vorbereitet hast; die Karte zeigt nur, was eingetragen würde. Ein Satz wie „Ich habe den Entwurf vorbereitet“ allein ist keine Antwort.',
     '',
-    '10. Vollständigkeit vor Tempo: (a) Arbeitsweg: Frage nach Urlaubs- und Krankheitstagen (`commute.vacationDays`, `commute.sickDays`), bevor du Pendeltage oder eine Entfernungspauschale als fertig bezeichnest; ohne sie rechnet die App mit 0 Tagen und überschätzt die Pauschale. Sage das, wenn die Angaben fehlen. (b) Fortbildung: Nennt der Nutzer Kosten, lege den Entwurf auf `interview.fortbildung-kosten` an und gib `fortbildung: "Ja"` als companionField mit. Ohne Betrag vermerkst du nur `fortbildung` = „Ja“ und fragst nach den Kosten; nenne dafür keine Erstattungswirkung. (c) Nenne Beträge nur dann als erfasst, wenn ein Entwurf dafür `ok: true` gemeldet hat.',
+    '10. Vollständigkeit vor Tempo: (a) Arbeitsweg: Frage nach Urlaubs- und Krankheitstagen (`commute.vacationDays`, `commute.sickDays`), bevor du Pendeltage oder eine Entfernungspauschale als fertig bezeichnest; ohne sie rechnet die App mit 0 Tagen und überschätzt die Pauschale. Sage das, wenn die Angaben fehlen. Nennt der Nutzer stattdessen, an wie vielen Tagen er zur Arbeit gefahren ist (z. B. „an 226 Tagen“), gibt es dafür kein Feld: Die App rechnet Fahrtage = Arbeitstage (Fall-Überblick `commuteAndWorkdays.workdays`, Feiertage schon abgezogen) − Urlaub − Krankheit − Homeoffice. Trage dann die Differenz zwischen diesen Arbeitstagen, seinen Fahrtagen und den Homeoffice-Tagen als `commute.vacationDays` ein (oder aufgeteilt auf Urlaub und Krankheit, wenn er beides nennt), und sage in einem Satz, wie du gerechnet hast. (b) Fortbildung: Nennt der Nutzer Kosten, lege den Entwurf auf `interview.fortbildung-kosten` an und gib `fortbildung: "Ja"` als companionField mit. Ohne Betrag vermerkst du nur `fortbildung` = „Ja“ und fragst nach den Kosten; nenne dafür keine Erstattungswirkung. (c) Nenne Beträge nur dann als erfasst, wenn ein Entwurf dafür `ok: true` gemeldet hat. (d) Fragt der Nutzer, ob noch etwas fehlt, nenne alle Punkte aus `furtherFacts.printoutGaps` (das ist, was den Ausdruck noch aufhält) und sage bei jedem, ob du ihn vorbereiten kannst oder wo der Nutzer ihn selbst einträgt.',
     '11. Vermietung und Kinder haben mehrere Einträge. Gib bei `stage_field_draft` für die Masken `vermietung` und `kind` als `instance` den Namen des Eintrags an, genau wie er unter „Angelegte Einträge“ steht (z. B. „Objekt 1“, „Kind 2“). Gibt es nur einen Eintrag, darfst du `instance` weglassen. Gibt es mehrere und der Nutzer hat nicht gesagt, welcher gemeint ist, frage nach. Ist keiner angelegt, kannst du nichts vorbereiten: Einträge legt der Nutzer selbst in der Maske an – sag ihm das, die App öffnet die Maske. Erfinde keine Einträge und keine anderen Namen.',
     '12. Wirkung: Die Werkzeuge melden zu jedem Entwurf `effect`. Bei `computed` stammen `beforeRefundEur`, `afterRefundEur` und `deltaEur` aus der Schätzung der App – nenne genau diese Zahlen und keine anderen. Bei `not-computable` gibt es keine Zahl: Nenne dann keinen Euro-Betrag als Wirkung, sondern gib `effectHint` sinngemäß wieder. Eine Wirkung von 0 € heißt, dass sich die Schätzung durch die Angabe nicht ändert – sag das so.',
     '13. Projektnotizen: Sie sind dein Gedächtnis über alle Gespräche dieses Steuerjahres. Halte mit `remember_note` fest, was besprochen oder entschieden wurde und in keinem Feld der Erklärung steht (z. B. „Arbeitszimmer geprüft: lohnt sich nicht, weil kein eigener Raum“, „Nutzer will Fahrtenbuch nachreichen“). Notiere nichts, was schon als Wert in der Erklärung steht, keine Smalltalk-Details und keine persönlichen Daten. Ändert sich etwas, nutze `replace_note`; gilt es nicht mehr, `forget_note`. Sparsam: höchstens eine oder zwei Notizen pro Antwort. Erwähne im Text kurz, was du dir gemerkt hast.',
@@ -94,6 +95,13 @@ export function describeUpcomingDates(taxYear: number, today: string): string[] 
   return ['', `Heute ist der ${german(today)}. Anstehende Termine (nenne sie, wenn sie zur Frage oder zum Ausblick passen):`, ...dates.map((entry) => `- ${german(entry.date)}: ${entry.label}`)]
 }
 
+/** The verified figures of the tax year, so a rate never comes from the model's memory. */
+export function describeYearFigures(taxYear: number): string[] {
+  const lines = kennzahlenForYear(taxYear)
+  if (lines.length === 0) return []
+  return ['', `Werte für das Steuerjahr ${taxYear} aus der geprüften Tabelle \`kennzahlen\`. Sätze, Pauschalen und Höchstbeträge nennst du nur von hier, nie aus dem Gedächtnis; für Entwürfe rechnest du mit diesen Werten (z. B. Kindergeld im Jahr = Monatsbetrag × Monate):`, ...lines]
+}
+
 export function buildCaseSystemPrompt(digest: CaseDigest, activeScreen: Screen | undefined, planFirst: boolean, records?: AdvisorRecordHandles, notes?: readonly AdvisorNoteHandle[], skill?: AdvisorSkillId, task?: AdvisorTask, assessment?: AdvisorAssessmentBrief, situation?: string, opening?: AdvisorOpeningBrief, grayZone = false, interview?: InterviewProgress, today: string = new Date().toISOString().slice(0, 10)): string {
   return [
     describeSituationForPrompt(digest, situation),
@@ -105,6 +113,7 @@ export function buildCaseSystemPrompt(digest: CaseDigest, activeScreen: Screen |
     describeRecordHandles(records),
     describeNotesForPrompt(notes ?? []),
     ...describeUpcomingDates(digest.taxYear, today),
+    ...describeYearFigures(digest.taxYear),
     ...(skill ? ['', skillPrompt(skill)] : []),
     ...(skill === 'berater-interview' ? ['', describeInterviewStanding(interview)] : []),
     ...(task ? ['', taskPrompt(task, digest, assessment, opening)] : []),

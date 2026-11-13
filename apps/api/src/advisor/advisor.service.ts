@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto'
+import { PrintoutService } from '../printout/printout.service.js'
+import { describePrintoutGap } from './advisor-printout-gaps.js'
 import { HOUSEHOLD_AND_HEALTH_BOOSTERS } from '../config/features.js'
 import { newActionId } from '../common/action-id.js'
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common'
@@ -156,6 +158,7 @@ export class AdvisorService {
     @Optional() @Inject(ModelConnectionService) private readonly modelConnection?: ModelConnectionService,
     @Optional() @Inject(AssessmentService) private readonly assessmentService?: AssessmentService,
     @Optional() @Inject(PENSION_REPOSITORY) private readonly pensionRepo?: PensionRepository,
+    @Optional() @Inject(PrintoutService) private readonly printout?: PrintoutService,
   ) {}
 
   // The service is the front door; each theme lives in its own part.
@@ -266,7 +269,15 @@ export class AdvisorService {
   }
 
   async buildCaseDigest(userId: string, taxYear: number): Promise<CaseDigest> {
-    return this.facts.buildCaseDigest(userId, taxYear)
+    const digest = await this.facts.buildCaseDigest(userId, taxYear)
+    if (!this.printout || !digest.furtherFacts) return digest
+    try {
+      const { missing } = await this.printout.check(userId, taxYear)
+      return { ...digest, furtherFacts: { ...digest.furtherFacts, printoutGaps: missing.map(describePrintoutGap) } }
+    } catch {
+      // A year without forms has no printout to check.
+      return digest
+    }
   }
 
   /** The tax office's notice against the return, as the assessment check needs it: figures only, nothing that names a person. */

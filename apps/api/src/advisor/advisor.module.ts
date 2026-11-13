@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common'
+import { PrintoutModule } from '../printout/printout.module.js'
 import { AuditModule } from '../audit/audit.module.js'
 import { CapitalModule } from '../capital/capital.module.js'
 import { ChSalaryCertificateModule } from '../ch-salary-certificate/ch-salary-certificate.module.js'
@@ -37,6 +38,7 @@ export function createAdvisorRunLog(env: NodeJS.ProcessEnv = process.env): Advis
 @Module({
   imports: [
     PrismaModule,
+    PrintoutModule,
     AuditModule,
     OwlModeModule,
     ConfirmationModule,

@@ -350,6 +350,8 @@ export interface CaseFurtherFacts {
   /** The statutory and the voluntary filing deadline (ISO dates), where the year is supported. */
   readonly filingDeadline: string | null
   readonly voluntaryFilingDeadline: string | null
+  /** What the printout still needs, in words (empty when it is complete; absent where the year has no forms). */
+  readonly printoutGaps?: readonly string[] | undefined
 }
 
 export function commuterAllowanceFrom(workdays: number, distanceKm: number, taxYear?: number): number {

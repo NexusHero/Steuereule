@@ -125,6 +125,8 @@ describe('the advisor stance is in every model call (#499, #501)', () => {
     expect(text).toContain('nur wenn sie günstiger sind als das Kindergeld (§ 31 EStG)')
     expect(text).toContain('Für die Erklärung dieses Nutzers gilt die Schätzung der App')
     expect(text).toContain('was das Finanzamt bei solchen Angaben typischerweise nachfragt')
+    // Real case: „an 226 Tagen gefahren“ has no field; the owl turns it into days off.
+    expect(text).toContain('Nennt der Nutzer stattdessen, an wie vielen Tagen er zur Arbeit gefahren ist')
     // Found by the eval: after a draft the owl answered with nothing but „draft prepared“.
     expect(text).toContain('Ein Entwurf ersetzt nie die Antwort')
     // Laws change: a norm that carries the answer is read in today's wording first.
@@ -152,6 +154,16 @@ describe('the situation is the start of every case prompt (#501)', () => {
     const model = new RecordingModel()
     await turn(new LangGraphAdvisorEngine(runtime('google-genai'), () => model), { situation: 'Elternzeit ab März 2026.' })
     expect(systemText(model.seen[0]!)).toContain('Elternzeit ab März 2026.')
+  })
+})
+
+describe('the figures of the tax year are in every case prompt', () => {
+  it('come from the verified table, for the year of the case', () => {
+    const text = buildCaseSystemPrompt(DIGEST, undefined, false)
+    expect(text).toContain('Werte für das Steuerjahr 2025')
+    expect(text).toContain('- Kindergeld je Kind/Monat: 255')
+    expect(text).toContain('- Kinderbetreuung: 80 %, max. 4.800')
+    expect(buildCaseSystemPrompt({ ...DIGEST, taxYear: 2024 }, undefined, false)).toContain('- Kinderbetreuung: 2/3, max. 4.000')
   })
 })
 
