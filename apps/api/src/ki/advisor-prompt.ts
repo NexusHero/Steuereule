@@ -12,6 +12,7 @@ import {
   type AdvisorSkillId,
   type InterviewProgress,
   INTERVIEW_AREAS,
+  upcomingTaxDates,
   interviewStanding,
   type AdvisorTask,
   type AdvisorOpeningBrief,
@@ -85,7 +86,15 @@ export function describeInterviewStanding(progress: InterviewProgress = {}): str
   ].join('\n')
 }
 
-export function buildCaseSystemPrompt(digest: CaseDigest, activeScreen: Screen | undefined, planFirst: boolean, records?: AdvisorRecordHandles, notes?: readonly AdvisorNoteHandle[], skill?: AdvisorSkillId, task?: AdvisorTask, assessment?: AdvisorAssessmentBrief, situation?: string, opening?: AdvisorOpeningBrief, grayZone = false, interview?: InterviewProgress): string {
+/** Dates of the coming weeks that can save or cost money, so the owl can point at them. */
+export function describeUpcomingDates(taxYear: number, today: string): string[] {
+  const dates = upcomingTaxDates(taxYear, today)
+  if (dates.length === 0) return []
+  const german = (iso: string) => `${iso.slice(8, 10)}.${iso.slice(5, 7)}.${iso.slice(0, 4)}`
+  return ['', `Heute ist der ${german(today)}. Anstehende Termine (nenne sie, wenn sie zur Frage oder zum Ausblick passen):`, ...dates.map((entry) => `- ${german(entry.date)}: ${entry.label}`)]
+}
+
+export function buildCaseSystemPrompt(digest: CaseDigest, activeScreen: Screen | undefined, planFirst: boolean, records?: AdvisorRecordHandles, notes?: readonly AdvisorNoteHandle[], skill?: AdvisorSkillId, task?: AdvisorTask, assessment?: AdvisorAssessmentBrief, situation?: string, opening?: AdvisorOpeningBrief, grayZone = false, interview?: InterviewProgress, today: string = new Date().toISOString().slice(0, 10)): string {
   return [
     describeSituationForPrompt(digest, situation),
     '',
@@ -95,6 +104,7 @@ export function buildCaseSystemPrompt(digest: CaseDigest, activeScreen: Screen |
     'Angelegte Einträge (für `instance`):',
     describeRecordHandles(records),
     describeNotesForPrompt(notes ?? []),
+    ...describeUpcomingDates(digest.taxYear, today),
     ...(skill ? ['', skillPrompt(skill)] : []),
     ...(skill === 'berater-interview' ? ['', describeInterviewStanding(interview)] : []),
     ...(task ? ['', taskPrompt(task, digest, assessment, opening)] : []),

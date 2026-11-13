@@ -14,6 +14,10 @@ import {
   resolveRecordHandle,
   simulateAdvisorFieldDelta,
   isInterviewAreaId,
+  checkPrivateSale,
+  checkRentalRepairs,
+  privateSalesExemptionLimit,
+  privateSalesWithinLimit,
   type AdvisorActionProposal,
   type AdvisorNoteChange,
   type InterviewAreaChange,
@@ -469,6 +473,34 @@ export async function runToolRound(
       }
       const result = 'taxableIncomeA' in raw ? compareFilingTypes({ ...raw, churchTaxRate: raw.churchTaxRate }) : checkCapitalTaxation({ ...raw, churchTaxRate: raw.churchTaxRate })
       answer(result === null ? { ok: false, error: `Für das Jahr ${raw.year} kennt der Rechenkern keinen Tarif.` } : { ok: true, ...result })
+      continue
+    }
+
+    if (tc.name === 'check_holding_period') {
+      const args = parseArgs(TOOL_ARG_SCHEMAS.check_holding_period)
+      if (args === null) continue
+      try {
+        const result = checkPrivateSale(args)
+        const year = Number(args.soldOn.slice(0, 4))
+        const limit =
+          args.totalGainsOfYearEur === undefined
+            ? {}
+            : { exemptionLimitEur: privateSalesExemptionLimit(year), withinExemptionLimit: privateSalesWithinLimit(args.totalGainsOfYearEur, year) }
+        answer({ ok: true, ...result, ...limit })
+      } catch (error) {
+        answer({ ok: false, error: error instanceof Error ? error.message : 'Ungültige Angaben.' })
+      }
+      continue
+    }
+
+    if (tc.name === 'check_rental_repairs') {
+      const args = parseArgs(TOOL_ARG_SCHEMAS.check_rental_repairs)
+      if (args === null) continue
+      try {
+        answer({ ok: true, ...checkRentalRepairs(args) })
+      } catch (error) {
+        answer({ ok: false, error: error instanceof Error ? error.message : 'Ungültige Angaben.' })
+      }
       continue
     }
 

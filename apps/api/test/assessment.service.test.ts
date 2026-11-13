@@ -79,10 +79,10 @@ describe('BescheidService', () => {
   })
 
   describe('setDatum — the § 355 AO Frist', () => {
-    it('sets the Bescheiddatum and derives the frist end (Bescheiddatum + 1 Monat)', async () => {
+    it('sets the Bescheiddatum and derives the frist end (one month after the notice counts as received: So 15.03. + 4 = Do 19.03., So 19.04. → Mo 20.04.)', async () => {
       const state = await service.setDate(USER_ID, YEAR, { date: '2026-03-15' })
       expect(state.assessmentDate).toBe('2026-03-15')
-      expect(state.frist.deadlineEnd).toBe('2026-04-15')
+      expect(state.frist.deadlineEnd).toBe('2026-04-20')
       expect(state.frist.remainingDays).toBeTypeOf('number')
     })
 

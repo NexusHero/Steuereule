@@ -1,5 +1,6 @@
 import type { CalculationStatus } from './berechnung'
 import type { EmployeeFacts } from '../domains/employee'
+import { GERMAN_STATES, publicHolidays, type HolidayRegion } from '../common/public-holidays'
 
 export type AssessmentAmountField = 'einnahmen' | 'vorsorgeaufwand' | 'anrechnung'
 export type AssessmentOnlyField = 'festgesetzteSteuer' | 'erstattung'
@@ -127,18 +128,58 @@ function daysInMonth(year: number, month: number): number {
   return new Date(Date.UTC(year, month, 0)).getUTCDate()
 }
 
-export function appealDeadlineEnd(assessmentDate: string): string {
-  const m = ISO_DATE_RE.exec(assessmentDate)
-  if (m === null) throw new RangeError(`einspruchsfristEnde: "${assessmentDate}" is not an ISO yyyy-mm-dd date`)
-  const year = Number(m[1]!)
-  const month = Number(m[2]!)
-  const tag = Number(m[3]!)
+const isoOf = (date: Date): string => date.toISOString().slice(0, 10)
+
+function parseIso(value: string, what: string): Date {
+  const m = ISO_DATE_RE.exec(value)
+  if (m === null) throw new RangeError(`${what}: "${value}" is not an ISO yyyy-mm-dd date`)
+  return new Date(Date.UTC(Number(m[1]!), Number(m[2]!) - 1, Number(m[3]!)))
+}
+
+/** Holidays every German state keeps; without the user's state only these move a deadline. */
+function holidaysOf(year: number, region: HolidayRegion | undefined): ReadonlySet<string> {
+  if (region) return new Set(publicHolidays(year, region))
+  const [first, ...rest] = GERMAN_STATES.map((state) => new Set(publicHolidays(year, state)))
+  return new Set([...first!].filter((day) => rest.every((set) => set.has(day))))
+}
+
+/** The day itself, or the next one that is not a Saturday, Sunday or holiday (§ 108 Abs. 3 AO). */
+export function nextWorkingDay(day: string, region?: HolidayRegion): string {
+  const date = parseIso(day, 'nextWorkingDay')
+  for (;;) {
+    const weekday = date.getUTCDay()
+    if (weekday !== 0 && weekday !== 6 && !holidaysOf(date.getUTCFullYear(), region).has(isoOf(date))) return isoOf(date)
+    date.setUTCDate(date.getUTCDate() + 1)
+  }
+}
+
+/**
+ * When a notice sent by post counts as received (§ 122 Abs. 2 Nr. 1 AO): the fourth day after it
+ * was posted for notices posted from 2025 on, the third day before. The date on the notice is taken
+ * as the day of posting, as advisers do. A deemed day on a weekend or holiday moves to the next
+ * working day (BFH, settled case law; not checked against the wording of the law here).
+ */
+export function noticeReceivedOn(assessmentDate: string, region?: HolidayRegion): string {
+  const date = parseIso(assessmentDate, 'noticeReceivedOn')
+  date.setUTCDate(date.getUTCDate() + (assessmentDate >= '2025-01-01' ? 4 : 3))
+  return nextWorkingDay(isoOf(date), region)
+}
+
+/**
+ * The last day for an objection (§ 355 Abs. 1 AO): one month after the notice counts as received,
+ * the same day number or the month's last day (§ 108 Abs. 1 AO, § 188 Abs. 2, 3 BGB), moved to the
+ * next working day (§ 108 Abs. 3 AO). Without the state only nationwide holidays count, so the day
+ * is never later than the real one.
+ */
+export function appealDeadlineEnd(assessmentDate: string, region?: HolidayRegion): string {
+  const received = parseIso(noticeReceivedOn(assessmentDate, region), 'appealDeadlineEnd')
+  const year = received.getUTCFullYear()
+  const month = received.getUTCMonth() + 1
+  const day = received.getUTCDate()
   const targetYear = month === 12 ? year + 1 : year
   const targetMonth = month === 12 ? 1 : month + 1
-  const targetDay = Math.min(tag, daysInMonth(targetYear, targetMonth))
-  const mm = String(targetMonth).padStart(2, '0')
-  const tt = String(targetDay).padStart(2, '0')
-  return `${targetYear}-${mm}-${tt}`
+  const targetDay = Math.min(day, daysInMonth(targetYear, targetMonth))
+  return nextWorkingDay(`${targetYear}-${String(targetMonth).padStart(2, '0')}-${String(targetDay).padStart(2, '0')}`, region)
 }
 
 function daysSince(iso: string): number {

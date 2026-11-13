@@ -4,7 +4,7 @@ import { ADVISOR_KNOWLEDGE_TOPICS } from './skills.generated.js'
 import { ToolMessage, type BaseMessage } from '@langchain/core/messages'
 import { tool, type StructuredToolInterface } from '@langchain/core/tools'
 import { z } from 'zod'
-import { ADVISOR_PLAN_MAX_STEPS, ADVISOR_PLAN_STEP_STATUSES, ADVISOR_QUESTION_KINDS, INTERVIEW_AREA_IDS, INTERVIEW_AREA_STATUSES, type AdvisorActionProposal, type AdvisorNotStaged, type Screen } from '@steuereule/core'
+import { PRIVATE_SALE_KINDS, ADVISOR_PLAN_MAX_STEPS, ADVISOR_PLAN_STEP_STATUSES, ADVISOR_QUESTION_KINDS, INTERVIEW_AREA_IDS, INTERVIEW_AREA_STATUSES, type AdvisorActionProposal, type AdvisorNotStaged, type Screen } from '@steuereule/core'
 
 export const MAX_COMPANION_FIELDS = 3
 
@@ -19,6 +19,8 @@ export const TOOL_LABELS: Readonly<Record<string, string>> = {
   compute_income_tax: 'Rechne die Einkommensteuer nach Tarif …',
   compare_filing_types: 'Vergleiche Zusammen- und Einzelveranlagung …',
   check_capital_taxation: 'Prüfe Abgeltungsteuer gegen persönlichen Steuersatz …',
+  check_holding_period: 'Prüfe die Spekulationsfrist …',
+  check_rental_repairs: 'Prüfe die 15-%-Grenze für Renovierungen …',
   lookup_legal_source: 'Prüfe EStG-Paragraph …',
   plan_steps: 'Plane die nächsten Schritte …',
   remember_note: 'Merke mir das für dieses Steuerjahr …',
@@ -40,7 +42,7 @@ export const MAX_DRAFTS_PER_TURN = 8
 
 export const draftKey = (draft: Pick<AdvisorActionProposal, 'screen' | 'field' | 'instance'>): string => `${draft.screen}|${draft.instance ?? ''}|${draft.field}`
 
-export const FIGURE_KEYS = new Set(['beforeRefundEur', 'afterRefundEur', 'deltaEur', 'incomeTaxEur', 'soliEur', 'churchTaxEur', 'totalEur', 'savingEur', 'withoutBenefitsEur', 'separateTotalEur', 'jointTotalEur', 'progressionClauseUpToEur', 'flatRateTotalEur', 'personalTotalEur'])
+export const FIGURE_KEYS = new Set(['beforeRefundEur', 'afterRefundEur', 'deltaEur', 'incomeTaxEur', 'soliEur', 'churchTaxEur', 'totalEur', 'savingEur', 'withoutBenefitsEur', 'separateTotalEur', 'jointTotalEur', 'progressionClauseUpToEur', 'flatRateTotalEur', 'personalTotalEur', 'limitEur', 'withinWindowEur', 'roomLeftEur', 'exemptionLimitEur'])
 
 /** Every euro figure a tool reported in this turn, wherever it sits in the tool's answer. */
 export function computedFiguresOf(messages: readonly BaseMessage[]): number[] {
@@ -157,6 +159,19 @@ export const TOOL_ARG_SCHEMAS = {
     churchTaxRate: z.number().min(0).max(0.09).default(0),
     wageReplacementEur: z.number().min(0).max(100_000_000).optional(),
   }),
+  check_holding_period: z.object({
+    kind: z.enum(PRIVATE_SALE_KINDS),
+    acquiredOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    soldOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    ownUseThroughout: z.boolean().optional(),
+    ownUseYearOfSaleAndTwoBefore: z.boolean().optional(),
+    totalGainsOfYearEur: z.number().min(-100_000_000).max(100_000_000).optional(),
+  }),
+  check_rental_repairs: z.object({
+    acquiredOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    buildingCostEur: z.number().positive().max(100_000_000),
+    repairs: z.array(z.object({ doneOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), netEur: z.number().min(0).max(100_000_000) })).max(30),
+  }),
   lookup_legal_source: z.object({
     sourceId: z.string().max(40),
   }),
@@ -194,6 +209,10 @@ export const TOOL_DESCRIPTIONS: Readonly<Record<ToolName, string>> = {
     'Vergleicht für Ehegatten Zusammen- und Einzelveranlagung (§§ 26, 26a EStG) mit dem Rechenkern der App: zu versteuerndes Einkommen je Ehegatte (A, B), Kirchensteuersatz, Lohnersatzleistungen beider zusammen. Lass `wageReplacementEur` weg, solange du nicht weißt, ob es welche gab; dann ist das Ergebnis `open`. `outcome`: `joint` oder `separate` (eindeutig, mit `savingEur`), `too_close` (der Progressionsvorbehalt kann es kippen), `open`.',
   check_capital_taxation:
     'Günstigerprüfung (§ 32d Abs. 6 EStG) mit dem Rechenkern der App: Abgeltungsteuer gegen persönlichen Steuersatz für Kapitalerträge (vor Sparer-Pauschbetrag) bei dem übrigen zu versteuernden Einkommen. `outcome`: `personal` (Antrag in Anlage KAP lohnt, mit `savingEur`), `flat_rate` (lohnt nicht), `too_close`, `open` (Lohnersatz unbekannt).',
+  check_holding_period:
+    'Prüft private Veräußerungsgeschäfte (§ 23 EStG): ob ein Verkauf innerhalb der Frist liegt (`crypto`, `gold`, `other`: ein Jahr; `property`: zehn Jahre), ab wann er steuerfrei wäre, und bei Immobilien die Ausnahme für die eigene Wohnung. Mit `totalGainsOfYearEur` (alle Gewinne aus § 23 im Jahr des Verkaufs) prüft es die Freigrenze. Daten im Format JJJJ-MM-TT.',
+  check_rental_repairs:
+    'Prüft für ein vermietetes Gebäude die 15-%-Grenze der anschaffungsnahen Herstellungskosten (§ 6 Abs. 1 Nr. 1a EStG): Netto-Kosten von Renovierungen in den drei Jahren nach dem Kauf gegen 15 % der Anschaffungskosten des Gebäudes (ohne Grund und Boden). Nennt, wie viel noch Platz ist und bis wann das Fenster läuft. Jährlich übliche Erhaltung zählt nicht mit.',
   lookup_legal_source: 'Ruft Wortlaut, Paragraph und Rechtsstand einer EStG/AO-Rechtsquelle aus dem verifizierten Katalog ab.',
   plan_steps:
     'Zeigt dem Nutzer deinen Plan als Checkliste (höchstens 8 Schritte, Status offen/laeuft/erledigt). Immer die vollständige Liste senden. Schreibt nichts in die Akte.',

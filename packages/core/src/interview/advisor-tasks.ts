@@ -1,4 +1,7 @@
-import type { CaseDigest } from './advisor'
+import { commuterAllowanceFrom, type CaseDigest } from './advisor'
+import { homeOfficeAllowance } from '../engine/tax-estimate'
+import { isSupportedIncomeTaxYear } from '../math/tarif'
+import { getTaxYearParameters } from '../math/tax-parameters'
 
 /**
  * Work the owl does on her own initiative instead of answering one question (#501): the savings
@@ -14,6 +17,27 @@ export interface SavingsLever {
   readonly label: string
   /** `unused`: the app sees the field empty. `unknown`: the app has no field for it, the owl has to ask. */
   readonly state: 'unused' | 'unknown'
+}
+
+/** How far apart the employee's expenses and the lump sum must be for a lever (§ 9a, § 39a Abs. 2 EStG). */
+export const LUMP_SUM_NEAR_EUR = 300
+export const WAGE_TAX_ALLOWANCE_MIN_EUR = 600
+
+/**
+ * The work-related expenses the case states, without any guess: commute only with distance and
+ * workdays, home office days, training, relocation, second household. Null when none is entered.
+ */
+export function enteredEmployeeExpenses(digest: CaseDigest): number | null {
+  const { commuteAndWorkdays: work, catalogExpenses: costs, taxYear } = digest
+  const parts: (number | null)[] = [
+    work.distanceKm !== null && work.workdays !== null ? commuterAllowanceFrom(Math.max(0, work.workdays - (work.homeOfficeDays ?? 0)), work.distanceKm, taxYear) : null,
+    work.homeOfficeDays !== null && work.homeOfficeDays > 0 ? homeOfficeAllowance(taxYear, work.homeOfficeDays) : null,
+    costs.hasTraining ? (costs.trainingCostsEur ?? null) : null,
+    costs.relocationCostsEur,
+    costs.doubleHouseholdRentEur,
+  ]
+  const entered = parts.filter((part): part is number => part !== null)
+  return entered.length === 0 ? null : entered.reduce((sum, part) => sum + part, 0)
 }
 
 /**
@@ -40,10 +64,21 @@ export function unusedSavingsLevers(digest: CaseDigest): readonly SavingsLever[]
   if (digest.crossBorder.isCrossBorderCh) add('grenzgaenger', 'Grenzgänger: Quellensteuer, AHV, Pensionskasse, Krankenversicherung', 'unknown')
   if (digest.rentalObjectsCount > 0) add('vermietung', 'Vermietung: AfA, Erhaltungsaufwand verteilen, alle Werbungskosten', 'unknown')
 
+  // Expenses just under the lump sum: a few forgotten items lift them over it. Far over it: the
+  // wage tax allowance brings the money monthly instead of with the notice.
+  const expenses = enteredEmployeeExpenses(digest)
+  const lumpSum = isSupportedIncomeTaxYear(digest.taxYear) ? getTaxYearParameters(digest.taxYear).lumpSums.employee : null
+  if (expenses !== null && lumpSum !== null && expenses < lumpSum && lumpSum - expenses <= LUMP_SUM_NEAR_EUR) {
+    add('pauschale-knapp', `Werbungskosten ${expenses} € knapp unter der Pauschale ${lumpSum} €: nach Vergessenem fragen (Arbeitsmittel, Telefon und Internet, Kontoführung, Gewerkschaft, Bewerbungen)`, 'unknown')
+  }
+  if (expenses !== null && lumpSum !== null && expenses - lumpSum > WAGE_TAX_ALLOWANCE_MIN_EUR) {
+    add('freibetrag-39a', `Werbungskosten ${expenses} € liegen mehr als ${WAGE_TAX_ALLOWANCE_MIN_EUR} € über der Pauschale: Lohnsteuer-Freibetrag für das laufende Jahr beantragen (§ 39a EStG)`, 'unknown')
+  }
+
   const further = digest.furtherFacts
   if (!further || further.householdServicesEur === null) add('haushaltsnah', 'Handwerker und haushaltsnahe Dienste (§ 35a), auch aus der Nebenkostenabrechnung: nichts angegeben')
   if (!further || further.healthCostsEur === null) add('gesundheit', 'Krankheitskosten: nichts angegeben')
-  if (further && further.wageReplacementEur !== null && further.wageReplacementEur > 0) add('progressionsvorbehalt', 'Lohnersatz unter Progressionsvorbehalt: Nachzahlung möglich, bei Ehegatten Einzelveranlagung prüfen', 'unknown')
+  if (further && further.wageReplacementEur !== null && further.wageReplacementEur > 0) add('progressionsvorbehalt', `Lohnersatz ${further.wageReplacementEur} € unter Progressionsvorbehalt: Nachzahlung möglich${further.wageReplacementEur > 410 ? ', Erklärung ist Pflicht (§ 46 Abs. 2 Nr. 1 EStG)' : ''}, bei Ehegatten Einzelveranlagung prüfen`, 'unknown')
 
   // The app has no field for these: the owl has to ask.
   add('arbeitsmittel', 'Arbeitsmittel, Telefon und Internet, Kontoführung, Gewerkschaft', 'unknown')

@@ -144,6 +144,22 @@ im Repo und wird beim Bauen wörtlich eingelesen, nicht von Hand in TypeScript a
     Druckmappings fehlen). Ein Entwurf dort zeigt deshalb „nicht berechenbar“ statt 0 €, und der
     Sparplan fragt danach, wenn nichts eingetragen ist.
 
+## Fristen, Termine und Prüfungen (ergänzt 2026-11-13)
+
+26. **Einspruchsfrist genau.** `appealDeadlineEnd` rechnet ab der Bekanntgabe: Bescheiddatum
+    plus vier Tage (ab 2025, vorher drei; § 122 Abs. 2 AO), ein Tag am Wochenende oder Feiertag
+    geht auf den nächsten Werktag, dann ein Monat, das Ende ebenso verschoben (§ 108 Abs. 3 AO).
+    Ohne Bundesland zählen nur bundesweite Feiertage, damit die Frist nie später ist als die
+    echte. Bisher: Bescheiddatum plus ein Monat, also bis zu einer Woche zu früh.
+27. **Termine.** Die Eule bekommt die festen Termine der nächsten 90 Tage
+    (`upcomingTaxDates`: Vorauszahlungen, Verlustbescheinigung 15.12., Zahlungen bis 31.12.,
+    Abgabefristen), nichts über den Fall Angenommenes.
+28. **Sparhebel mit Schwellen.** Liegen die eingetragenen Werbungskosten bis 300 € unter der
+    Pauschale, fragt der Sparplan nach Vergessenem; mehr als 600 € darüber schlägt er den
+    Lohnsteuer-Freibetrag (§ 39a) vor. Lohnersatz über 410 € nennt er als Pflichtveranlagung.
+29. **Neue Werkzeuge.** `check_holding_period` (§ 23 EStG: Fristen auf den Tag, eigene Wohnung,
+    Freigrenze 600/1.000 €) und `check_rental_repairs` (15-%-Grenze, § 6 Abs. 1 Nr. 1a EStG).
+
 ## Offen und Risiken
 
 - **Rechtlich ungeprüft.** Geschäftsmäßige Hilfeleistung in Steuersachen ist nach dem

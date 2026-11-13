@@ -44,6 +44,11 @@ const TEMPLATES: Readonly<Record<string, (payload: Payload) => string>> = {
     if (p.outcome === 'flat_rate') return 'Abgeltungsteuer bleibt günstiger'
     return p.outcome === 'too_close' ? 'zu knapp für eine Aussage' : 'offen: Lohnersatz unbekannt'
   },
+  check_holding_period: (p) => (p.taxable === true ? 'innerhalb der Frist' : 'steuerfrei'),
+  check_rental_repairs: (p) => {
+    const room = num(p.roomLeftEur)
+    return p.exceeds === true ? 'Grenze überschritten' : room !== null ? `noch ${amount(room)} Platz` : 'unter der Grenze'
+  },
   lookup_legal_source: (p) => {
     const source = (p.source ?? {}) as Payload
     return typeof source.paragraph === 'string' ? source.paragraph : 'erledigt'

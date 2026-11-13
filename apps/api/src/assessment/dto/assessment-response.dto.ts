@@ -31,7 +31,7 @@ export class AssessmentDeadlineDto {
   @ApiProperty({ type: String, nullable: true, description: 'Bescheiddatum (ISO yyyy-mm-dd), null until set.' })
   assessmentDate!: string | null
 
-  @ApiProperty({ type: String, nullable: true, description: 'Einspruchsfrist-Ende (Bescheiddatum + 1 Monat), null until the datum is set.' })
+  @ApiProperty({ type: String, nullable: true, description: 'Einspruchsfrist-Ende: one month after the notice counts as received (Bescheiddatum + 4 days, § 122 Abs. 2 AO; 3 before 2025), moved to a working day (§ 108 Abs. 3 AO). Null until the datum is set.' })
   deadlineEnd!: string | null
 
   @ApiProperty({ type: Number, nullable: true, description: 'Whole days left (negative = abgelaufen), null until the datum is set.' })

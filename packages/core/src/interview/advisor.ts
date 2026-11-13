@@ -346,7 +346,7 @@ export interface CaseFurtherFacts {
   readonly voluntaryFilingDeadline: string | null
 }
 
-function commuterAllowanceFrom(workdays: number, distanceKm: number, taxYear?: number): number {
+export function commuterAllowanceFrom(workdays: number, distanceKm: number, taxYear?: number): number {
   if (workdays <= 0 || distanceKm <= 0) return 0
   const commute =
     taxYear !== undefined && isSupportedIncomeTaxYear(taxYear)

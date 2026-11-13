@@ -8,6 +8,7 @@ import { ADVISOR_KNOWLEDGE, ADVISOR_KNOWLEDGE_TOPICS } from '../src/ki/skills.ge
 import { buildStableSystemPrompt } from '../src/ki/advisor-prompt.js'
 import { AdvisorGraphState, runToolRound } from '../src/ki/advisor-tool-round.js'
 import { computedFiguresOf } from '../src/ki/advisor-tools.js'
+import { toolResultLine } from '../src/ki/advisor-tool-results.js'
 
 async function callTool(name: string, args: Record<string, unknown>): Promise<Record<string, unknown>> {
   const state = {
@@ -130,6 +131,18 @@ describe('tariff sums from the tax core (#499)', () => {
     const high = await callTool('check_capital_taxation', { year: 2025, capitalIncomeEur: 5000, otherTaxableIncome: 90000, wageReplacementEur: 0 })
     expect(high).toMatchObject({ ok: true, outcome: 'flat_rate' })
     expect((await callTool('check_capital_taxation', { year: 2025, capitalIncomeEur: 5000, otherTaxableIncome: 14000, churchTaxRate: 0.05 })).ok).toBe(false)
+  })
+
+  it('checks the holding period of a private sale and the year’s exemption limit (§ 23 EStG)', async () => {
+    expect(await callTool('check_holding_period', { kind: 'crypto', acquiredOn: '2024-03-15', soldOn: '2025-03-15', totalGainsOfYearEur: 800 })).toMatchObject({ ok: true, taxable: true, taxFreeFrom: '2025-03-16', exemptionLimitEur: 1000, withinExemptionLimit: true })
+    expect(await callTool('check_holding_period', { kind: 'property', acquiredOn: '2020-05-01', soldOn: '2026-05-01', ownUseYearOfSaleAndTwoBefore: true })).toMatchObject({ ok: true, taxable: false, ownUseExempt: true })
+    expect((await callTool('check_holding_period', { kind: 'crypto', acquiredOn: '2025-03-16', soldOn: '2025-03-15' })).ok).toBe(false)
+  })
+
+  it('checks repairs after buying a rented building against the 15 % limit', async () => {
+    const result = await callTool('check_rental_repairs', { acquiredOn: '2024-04-01', buildingCostEur: 200000, repairs: [{ doneOn: '2024-06-01', netEur: 18000 }] })
+    expect(result).toMatchObject({ ok: true, limitEur: 30000, roomLeftEur: 12000, exceeds: false, windowEnd: '2027-04-01' })
+    expect(toolResultLine('check_rental_repairs', result)).toBe('noch 12.000 € Platz')
   })
 
   it('refuses a church tax rate that does not exist', async () => {

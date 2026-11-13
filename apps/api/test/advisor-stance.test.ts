@@ -150,6 +150,15 @@ describe('the situation is the start of every case prompt (#501)', () => {
   })
 })
 
+describe('dates that can save or cost money', () => {
+  it('are in the case prompt with today’s date, from the law only', () => {
+    const text = buildCaseSystemPrompt(DIGEST, undefined, false, undefined, undefined, undefined, undefined, undefined, undefined, undefined, false, undefined, '2026-11-13')
+    expect(text).toContain('Heute ist der 13.11.2026.')
+    expect(text).toContain('15.12.2026: Verlustbescheinigung')
+    expect(text).toContain('31.12.2026: Letzter Tag für Zahlungen, die noch für 2026 zählen')
+  })
+})
+
 describe('tasks of the owl (#501)', () => {
   const prompt = (task: 'savings-plan' | 'assessment-check', assessment?: AdvisorAssessmentBrief) => buildCaseSystemPrompt(DIGEST, undefined, true, undefined, undefined, undefined, task, assessment)
 
