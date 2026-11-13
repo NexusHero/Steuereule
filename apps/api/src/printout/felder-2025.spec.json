@@ -267,6 +267,23 @@
     { "id": "anlKind.z67Text", "formular": "anlage-kind", "seite": 4, "anker": "67", "zeile": 67, "lage": "rechts", "art": "text", "nr": 1 },
     { "id": "anlKind.z67Von", "formular": "anlage-kind", "seite": 4, "anker": "67", "zeile": 67, "lage": "rechts", "art": "text", "nr": 2 },
     { "id": "anlKind.z67Bis", "formular": "anlage-kind", "seite": 4, "anker": "67", "zeile": 67, "lage": "rechts", "art": "text", "nr": 3 },
-    { "id": "anlKind.kz51", "formular": "anlage-kind", "seite": 4, "anker": "51", "zeile": 67, "lage": "rechts", "art": "euro" }
+    { "id": "anlKind.kz51", "formular": "anlage-kind", "seite": 4, "anker": "51", "zeile": 67, "lage": "rechts", "art": "euro" },
+
+    { "id": "anlAgB.name", "formular": "anlage-aussergewoehnliche-belastungen", "seite": 1, "anker": "Name", "zeile": 1, "lage": "unter", "art": "text" },
+    { "id": "anlAgB.vorname", "formular": "anlage-aussergewoehnliche-belastungen", "seite": 1, "anker": "Vorname", "zeile": 2, "lage": "unter", "art": "text" },
+    { "id": "anlAgB.steuernummer", "formular": "anlage-aussergewoehnliche-belastungen", "seite": 1, "anker": "Steuernummer", "zeile": 3, "lage": "rechts", "art": "text" },
+    { "id": "anlAgB.z23Text", "formular": "anlage-aussergewoehnliche-belastungen", "seite": 2, "anker": "23", "zeile": 23, "lage": "rechts", "art": "text", "nr": 1 },
+    { "id": "anlAgB.kz302", "formular": "anlage-aussergewoehnliche-belastungen", "seite": 2, "anker": "302", "zeile": 24, "lage": "rechts", "art": "euro" },
+    { "id": "anlAgB.kz303", "formular": "anlage-aussergewoehnliche-belastungen", "seite": 2, "anker": "303", "zeile": 25, "lage": "rechts", "art": "euro" },
+    { "id": "anlHha.name", "formular": "anlage-haushaltsnahe-aufwendungen", "seite": 1, "anker": "Name", "zeile": 1, "lage": "unter", "art": "text" },
+    { "id": "anlHha.vorname", "formular": "anlage-haushaltsnahe-aufwendungen", "seite": 1, "anker": "Vorname", "zeile": 2, "lage": "unter", "art": "text" },
+    { "id": "anlHha.steuernummer", "formular": "anlage-haushaltsnahe-aufwendungen", "seite": 1, "anker": "Steuernummer", "zeile": 3, "lage": "rechts", "art": "text" },
+    { "id": "anlHha.z4Text", "formular": "anlage-haushaltsnahe-aufwendungen", "seite": 1, "anker": "4", "zeile": 4, "lage": "rechts", "art": "text", "nr": 1 },
+    { "id": "anlHha.kz202", "formular": "anlage-haushaltsnahe-aufwendungen", "seite": 1, "anker": "202", "zeile": 4, "lage": "rechts", "art": "euro" },
+    { "id": "anlHha.z5Text", "formular": "anlage-haushaltsnahe-aufwendungen", "seite": 1, "anker": "5", "zeile": 5, "lage": "rechts", "art": "text", "nr": 1 },
+    { "id": "anlHha.kz212", "formular": "anlage-haushaltsnahe-aufwendungen", "seite": 1, "anker": "212", "zeile": 5, "lage": "rechts", "art": "euro" },
+    { "id": "anlHha.z6Text", "formular": "anlage-haushaltsnahe-aufwendungen", "seite": 1, "anker": "6", "zeile": 6, "lage": "rechts", "art": "text", "nr": 1 },
+    { "id": "anlHha.z6Lohn", "formular": "anlage-haushaltsnahe-aufwendungen", "seite": 1, "anker": "6", "zeile": 6, "lage": "rechts", "art": "euro", "nr": 3 },
+    { "id": "anlHha.kz214", "formular": "anlage-haushaltsnahe-aufwendungen", "seite": 1, "anker": "214", "zeile": 9, "lage": "rechts", "art": "euro" }
   ]
 }

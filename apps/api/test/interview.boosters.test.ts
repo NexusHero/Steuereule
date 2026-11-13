@@ -13,9 +13,14 @@ class BoostersOnInterviewService extends InterviewService {
   protected override readonly boostersEnabled = true
 }
 
+/** The switch can still be turned off; then nothing is stored that estimate and printout would ignore. */
+class BoostersOffInterviewService extends InterviewService {
+  protected override readonly boostersEnabled = false
+}
+
 describe('InterviewService — Slice 5 boosters while the flag is off', () => {
   it('rejects haushalt and gesundheit answers so nothing is stored that estimate and printout ignore', async () => {
-    const service = new InterviewService(new FakeInterviewAnswerRepository(), new AuditService(new FakeAuditRepository()))
+    const service = new BoostersOffInterviewService(new FakeInterviewAnswerRepository(), new AuditService(new FakeAuditRepository()))
     await expect(service.postAnswer(USER_ID, TAX_YEAR, { questionId: 'haushalt-gate', value: 'Ja' })).rejects.toThrow()
     await expect(service.postAnswer(USER_ID, TAX_YEAR, { questionId: 'gesundheit-gate', value: 'Ja' })).rejects.toThrow()
   })

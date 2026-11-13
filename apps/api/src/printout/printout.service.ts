@@ -1,3 +1,4 @@
+import { HOUSEHOLD_AND_HEALTH_BOOSTERS } from '../config/features.js'
 import { HttpException, HttpStatus, Inject, Injectable, UnprocessableEntityException } from '@nestjs/common'
 import { NotFoundError } from '../common/domain-error.js'
 import {
@@ -263,6 +264,14 @@ export class PrintoutService {
         otherPerson: answers['ae-weitere-person'] ?? null,
         householdCommunity: answers['ae-haushaltsgemeinschaft'] ?? null,
       },
+      householdAndHealth: HOUSEHOLD_AND_HEALTH_BOOSTERS
+        ? {
+            healthCostsEur: answers['gesundheit-gate'] === 'Ja' ? amountOf(answers['gesundheit-betrag']) : null,
+            minijobEur: answers['haushalt-gate'] === 'Ja' ? amountOf(answers['haushalt-minijob-betrag']) : null,
+            servicesEur: answers['haushalt-gate'] === 'Ja' ? amountOf(answers['haushalt-dienstleistung-betrag']) : null,
+            craftsmenLabourEur: answers['haushalt-gate'] === 'Ja' ? amountOf(answers['haushalt-handwerker-betrag']) : null,
+          }
+        : null,
       riester:
         answers['riester'] === 'Ja'
           ? { kind: answers['riester-art'] ?? null, incomeLastYear: answers['riester-einnahmen-vorjahr'] ?? null }
@@ -345,4 +354,9 @@ function healthInsurances(
     list.push({ kind: 'ausland', basicHealthAmount: Math.round(chf * ch.exchangeRateValue), withSickPay: false, careInsuranceAmount: 0, optionalExtrasAmount: 0 })
   }
   return list
+}
+
+/** A whole-euro interview amount; „später“ and anything else is not printed. */
+function amountOf(answer: string | undefined): number | null {
+  return answer !== undefined && /^\d+$/.test(answer) && Number(answer) > 0 ? Number(answer) : null
 }

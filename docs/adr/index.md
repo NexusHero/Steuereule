@@ -94,6 +94,7 @@ The ADRs **justify** the architecture; the [living arc42 document](../arc42/READ
 | 0074 | Belege lesen: Schweizer Lohnausweis und gescannte Lohnsteuerbescheinigung | Accepted |
 | 0075 | Schweizer Briefe: Nachweis der Pensionskasse und Prämienbestätigung des Arbeitgebers | Accepted |
 | 0076 | Weitere Werbungskosten, Kinderbetreuung und der Arbeitgeberanteil der Prämien | Accepted |
+| 0077 | Krankheitskosten (§ 33) und haushaltsnahe Aufwendungen (§ 35a) eingeschaltet | Accepted |
 
 See also the [Tech Radar](./tech-radar.md).
 

@@ -50,6 +50,8 @@ const ORDER = [
   'anlage-v',
   'anlage-kind',
   'anlage-sonderausgaben',
+  'anlage-aussergewoehnliche-belastungen',
+  'anlage-haushaltsnahe-aufwendungen',
   'anlage-av',
   'anlage-vorsorgeaufwand',
 ]

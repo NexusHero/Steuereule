@@ -531,6 +531,24 @@ describe('ausdruckWerte', () => {
     expect(instances?.['anlage-kind']?.[0]).toMatchObject({ 'anlKind.kz51': '900', 'anlKind.z67Text': 'Kindergarten, Gemeinde Musterdorf', 'anlKind.z67Von': '01.01.2025', 'anlKind.z67Bis': '31.12.2025' })
   })
 
+  it('prints medical costs in the Anlage Außergewöhnliche Belastungen and § 35a in the Anlage Haushaltsnahe Aufwendungen (ADR-0077)', () => {
+    const { values } = printoutValues({ ...FACTS, householdAndHealth: { healthCostsEur: 390, minijobEur: null, servicesEur: 240, craftsmenLabourEur: 350 } })
+    expect(values).toMatchObject({
+      'anlAgB.kz302': '390',
+      'anlAgB.kz303': '0',
+      'anlHha.kz212': '240',
+      'anlHha.z6Text': 'Handwerkerleistungen',
+      'anlHha.z6Lohn': '350',
+      'anlHha.kz214': '350',
+    })
+    expect(values['anlHha.kz202']).toBeUndefined()
+  })
+
+  it('prints neither form while nothing was entered (or the switch is off)', () => {
+    const { values } = printoutValues({ ...FACTS, householdAndHealth: null })
+    expect(Object.keys(values).some((k) => k.startsWith('anlAgB.') || k.startsWith('anlHha.'))).toBe(false)
+  })
+
   it("prints the child's KV/PV paid by the parents in Anlage Kind Z. 27/28", () => {
     const kind = { sequenceNumber: '1', firstName: 'Mia', lastName: 'Beispiel', geburtsdatum: '2016-03-14', taxId: '41234567890', healthBasicEur: '1080', careEur: '0' }
     const { instances } = printoutValues({ ...FACTS, kinder: [kind] })

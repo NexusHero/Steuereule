@@ -417,6 +417,8 @@ export interface PrintoutFacts {
   kinder?: readonly ChildFacts[] | null
   specialExpenses?: SpecialExpensesFacts | null
   riester?: RiesterFacts | null
+  /** Medical costs (§ 33) and household services / craftsmen (§ 35a), whole euros as asked (ADR-0077). */
+  householdAndHealth?: HouseholdAndHealthFacts | null
   singleParent?: SingleParentFacts | null
   commute?: CommuteFacts | null
   /** Self-paid health and care insurance of Person A (Anlage Vorsorgeaufwand Z. 16–33). */
@@ -478,6 +480,15 @@ const SINCE_FIELD: Record<string, string> = {
   verwitwet: 'est1a.verwitwetSeit',
   geschieden: 'est1a.geschiedenSeit',
   'dauernd-getrennt': 'est1a.getrenntSeit',
+}
+
+export interface HouseholdAndHealthFacts {
+  /** Out-of-pocket medical costs after reimbursements (Anlage Außergewöhnliche Belastungen Z. 23–25). */
+  healthCostsEur: number | null
+  /** Anlage Haushaltsnahe Aufwendungen Z. 4 (Kz 202), Z. 5 (Kz 212), Z. 6/9 (Kz 214, labour only). */
+  minijobEur: number | null
+  servicesEur: number | null
+  craftsmenLabourEur: number | null
 }
 
 export function printoutValues(facts: PrintoutFacts): PrintoutValues {
@@ -823,6 +834,36 @@ export function printoutValues(facts: PrintoutFacts): PrintoutValues {
     set('anlVor.vorname', profile.firstName)
     set('anlVor.steuernummer', profile.steuernummer)
     Object.assign(values, provision)
+  }
+
+  const hh = facts.householdAndHealth
+  if (hh?.healthCostsEur) {
+    set('anlAgB.name', profile.lastName)
+    set('anlAgB.vorname', profile.firstName)
+    set('anlAgB.steuernummer', profile.steuernummer)
+    // The interview asks for the costs after reimbursements: the tax office gets that sum and 0.
+    values['anlAgB.z23Text'] = 'Krankheitskosten (selbst getragen)'
+    values['anlAgB.kz302'] = String(hh.healthCostsEur)
+    values['anlAgB.kz303'] = '0'
+  }
+  if (hh && (hh.minijobEur || hh.servicesEur || hh.craftsmenLabourEur)) {
+    set('anlHha.name', profile.lastName)
+    set('anlHha.vorname', profile.firstName)
+    set('anlHha.steuernummer', profile.steuernummer)
+    if (hh.minijobEur) {
+      values['anlHha.z4Text'] = 'Haushaltshilfe (Minijob)'
+      values['anlHha.kz202'] = String(hh.minijobEur)
+    }
+    if (hh.servicesEur) {
+      values['anlHha.z5Text'] = 'Haushaltsnahe Dienstleistungen'
+      values['anlHha.kz212'] = String(hh.servicesEur)
+    }
+    if (hh.craftsmenLabourEur) {
+      // Only the labour share is known; the invoice total stays for the user to add.
+      values['anlHha.z6Text'] = 'Handwerkerleistungen'
+      values['anlHha.z6Lohn'] = String(hh.craftsmenLabourEur)
+      values['anlHha.kz214'] = String(hh.craftsmenLabourEur)
+    }
   }
 
   if (facts.riester) {

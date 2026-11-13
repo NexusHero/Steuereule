@@ -10,7 +10,9 @@
     "anlage-kind": "bd4d1effb1361a34e598c0571e4a5018d9d2c300a8ace55473484a0187da74fe",
     "anlage-sonderausgaben": "4ba75d207fc697e034a5f81468c0e5c2f96f4ca8aad458df5fc28323ddec9cca",
     "anlage-av": "01301ebcbe345115003bfe163980685c1748fd0395555c0e58e956b88d0d27ab",
-    "anlage-vorsorgeaufwand": "688480e3eee525f7e90dacf38c6987053e36a0a18825770643d5c46b3b613d60"
+    "anlage-vorsorgeaufwand": "688480e3eee525f7e90dacf38c6987053e36a0a18825770643d5c46b3b613d60",
+    "anlage-aussergewoehnliche-belastungen": "b472c4a28e16669641531f8c1b08d94c314fef5abaeb7f2781048a4a9d537ccf",
+    "anlage-haushaltsnahe-aufwendungen": "ff51a19514692b9c8ade3e71e3f984726980b07d655146e7120ab8c7c21e9d7a"
   },
   "felder": [
     {
@@ -3073,6 +3075,198 @@
         "y": 404.2,
         "breite": 70.7,
         "hoehe": 15.9
+      }
+    },
+    {
+      "id": "anlAgB.name",
+      "formular": "anlage-aussergewoehnliche-belastungen",
+      "seite": 1,
+      "art": "text",
+      "kasten": {
+        "x": 61.7,
+        "y": 770.7,
+        "breite": 353.9,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlAgB.vorname",
+      "formular": "anlage-aussergewoehnliche-belastungen",
+      "seite": 1,
+      "art": "text",
+      "kasten": {
+        "x": 61.7,
+        "y": 744.4,
+        "breite": 353.9,
+        "hoehe": 15.9
+      }
+    },
+    {
+      "id": "anlAgB.steuernummer",
+      "formular": "anlage-aussergewoehnliche-belastungen",
+      "seite": 1,
+      "art": "text",
+      "kasten": {
+        "x": 147,
+        "y": 724.3,
+        "breite": 183,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlAgB.z23Text",
+      "formular": "anlage-aussergewoehnliche-belastungen",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 39.1,
+        "y": 644.1,
+        "breite": 495.9,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlAgB.kz302",
+      "formular": "anlage-aussergewoehnliche-belastungen",
+      "seite": 2,
+      "art": "euro",
+      "kasten": {
+        "x": 435.5,
+        "y": 616.4,
+        "breite": 85.6,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlAgB.kz303",
+      "formular": "anlage-aussergewoehnliche-belastungen",
+      "seite": 2,
+      "art": "euro",
+      "kasten": {
+        "x": 435.5,
+        "y": 595.4,
+        "breite": 85.6,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlHha.name",
+      "formular": "anlage-haushaltsnahe-aufwendungen",
+      "seite": 1,
+      "art": "text",
+      "kasten": {
+        "x": 61.7,
+        "y": 770.7,
+        "breite": 353.3,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlHha.vorname",
+      "formular": "anlage-haushaltsnahe-aufwendungen",
+      "seite": 1,
+      "art": "text",
+      "kasten": {
+        "x": 61.7,
+        "y": 744.4,
+        "breite": 353.3,
+        "hoehe": 15.9
+      }
+    },
+    {
+      "id": "anlHha.steuernummer",
+      "formular": "anlage-haushaltsnahe-aufwendungen",
+      "seite": 1,
+      "art": "text",
+      "kasten": {
+        "x": 147,
+        "y": 724.3,
+        "breite": 183,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlHha.z4Text",
+      "formular": "anlage-haushaltsnahe-aufwendungen",
+      "seite": 1,
+      "art": "text",
+      "kasten": {
+        "x": 61.7,
+        "y": 604.4,
+        "breite": 368.2,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlHha.kz202",
+      "formular": "anlage-haushaltsnahe-aufwendungen",
+      "seite": 1,
+      "art": "euro",
+      "kasten": {
+        "x": 459.5,
+        "y": 604.4,
+        "breite": 85.1,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlHha.z5Text",
+      "formular": "anlage-haushaltsnahe-aufwendungen",
+      "seite": 1,
+      "art": "text",
+      "kasten": {
+        "x": 61.7,
+        "y": 493.5,
+        "breite": 368.2,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlHha.kz212",
+      "formular": "anlage-haushaltsnahe-aufwendungen",
+      "seite": 1,
+      "art": "euro",
+      "kasten": {
+        "x": 459.5,
+        "y": 493.5,
+        "breite": 85.1,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlHha.z6Text",
+      "formular": "anlage-haushaltsnahe-aufwendungen",
+      "seite": 1,
+      "art": "text",
+      "kasten": {
+        "x": 61.7,
+        "y": 384.8,
+        "breite": 257,
+        "hoehe": 15.9
+      }
+    },
+    {
+      "id": "anlHha.z6Lohn",
+      "formular": "anlage-haushaltsnahe-aufwendungen",
+      "seite": 1,
+      "art": "euro",
+      "kasten": {
+        "x": 457.9,
+        "y": 384.8,
+        "breite": 85.4,
+        "hoehe": 15.9
+      }
+    },
+    {
+      "id": "anlHha.kz214",
+      "formular": "anlage-haushaltsnahe-aufwendungen",
+      "seite": 1,
+      "art": "euro",
+      "kasten": {
+        "x": 457.9,
+        "y": 319.7,
+        "breite": 85.4,
+        "hoehe": 15.8
       }
     }
   ]
