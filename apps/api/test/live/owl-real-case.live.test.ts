@@ -11,7 +11,7 @@
 // everything else goes through the owl. Delete the database afterwards.
 import { NestFactory } from '@nestjs/core'
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify'
-import type { AdvisorActionProposal, AdvisorMessageMeta } from '@steuereule/core'
+import { classifyDocumentKind, type AdvisorActionProposal, type AdvisorMessageMeta } from '@steuereule/core'
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { PDFCheckBox, PDFDocument, PDFTextField } from 'pdf-lib'
@@ -145,11 +145,13 @@ describe.skipIf(!KEY || !CASE_FILE)('a real case through the chat (live model, b
       const textSource = receipt.ocr ? 'ocr' : 'pdf_text'
       try {
         const parseService = app.get(ReceiptParseService)
-        let parsed = await parseService.parseReceipt(userId, { taxYear: year, fileName: receipt.fileName, rawText, textSource, stageDraft: true } as never)
+        // The app classifies on the device (captureReceipt): an LStB goes to its reader, not the generic one.
+        const kind = classifyDocumentKind(rawText)
+        let parsed = await parseService.parseReceipt(userId, { taxYear: year, fileName: receipt.fileName, rawText, textSource, kind, stageDraft: true } as never)
         const unclear = (parsed as { chLohnausweis?: { personUnclear?: boolean }; chLetter?: { personUnclear?: boolean } }).chLohnausweis?.personUnclear || (parsed as { chLetter?: { personUnclear?: boolean } }).chLetter?.personUnclear
         if (unclear && receipt.owner) {
           log.push(`## Beleg ${receipt.fileName}: App fragt „Wessen …?“, Antwort Person ${receipt.owner}`)
-          parsed = await parseService.parseReceipt(userId, { taxYear: year, fileName: receipt.fileName, rawText, textSource, stageDraft: true, person: receipt.owner } as never)
+          parsed = await parseService.parseReceipt(userId, { taxYear: year, fileName: receipt.fileName, rawText, textSource, kind, stageDraft: true, person: receipt.owner } as never)
         }
         const actions = [...(parsed.assistantMessage?.meta?.actions ?? []), ...(parsed.assistantMessage?.meta?.action ? [parsed.assistantMessage.meta.action] : [])] as AdvisorActionProposal[]
         const drafts = actions.length > 0 ? actions : parsed.stagedAction ? [parsed.stagedAction as unknown as AdvisorActionProposal] : []

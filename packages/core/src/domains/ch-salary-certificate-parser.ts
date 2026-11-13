@@ -166,7 +166,9 @@ function readHead(lines: readonly string[]) {
   if (hAt >= 0) {
     for (const l of lines.slice(hAt + 1, hAt + 6)) {
       const t = l.trim()
-      if (t && !/PERS[ÖO]NLICH|VERTRAULICH|CONFIDENTIEL|PERSONNEL|^(?:Herr|Frau|Monsieur|Madame|Signora?)$/i.test(t)) {
+      // A name: two or more words of letters. Scans put a postal barcode line here too („*38267*0004497…“).
+      const looksLikeName = /^[\p{L}'’.-]+(?:\s+[\p{L}'’.-]+)+$/u.test(t)
+      if (t && looksLikeName && !/PERS[ÖO]NLICH|VERTRAULICH|CONFIDENTIEL|PERSONNEL|^(?:Herr|Frau|Monsieur|Madame|Signora?)$/i.test(t)) {
         holder = t
         break
       }

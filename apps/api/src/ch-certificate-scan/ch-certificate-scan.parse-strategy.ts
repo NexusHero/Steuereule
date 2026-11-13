@@ -143,7 +143,9 @@ export class ChCertificateScanParseStrategy implements DocumentParseStrategy, On
     await this.auditService.append({ userId, action: 'READ', resource: 'beleg_analyse' })
 
     const household = await this.advisorService.householdNames(userId, dto.taxYear)
-    const person: 'A' | 'B' | null = dto.person ?? (household.B === null ? 'A' : certificateHolderPerson(read.holder, household))
+    // The name in box H; when that fits nobody, the one name of the household the whole form carries.
+    const person: 'A' | 'B' | null =
+      dto.person ?? (household.B === null ? 'A' : (certificateHolderPerson(read.holder, household) ?? certificateHolderPerson(rawText, household)))
     const personUnclear = person === null
     const personNotRecordable = person === 'B' && household.B?.recordable !== true
     const yearConflict = read.taxYear !== null && read.taxYear !== dto.taxYear ? { documentYear: read.taxYear, activeYear: dto.taxYear } : null

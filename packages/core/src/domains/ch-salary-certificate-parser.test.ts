@@ -127,6 +127,7 @@ describe('parseChSalaryCertificateText', () => {
       '| a xX Lohnausweis - Certificat de salaire - Certificato di salario',
       'p 2025 E 01.01.2025 31.12.2025 c X Repas a la cantine / chéques-repas',
       'H',
+      '*38267*0004497"16* Bas',
       'Frau',
       'Muster Anna',
       'Beispielweg 3',

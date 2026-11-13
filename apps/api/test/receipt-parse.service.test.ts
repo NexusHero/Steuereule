@@ -300,6 +300,12 @@ describe('ReceiptParseService — Two-Stage Receipt Isolation (#446 Slice 3)', (
     expect(res.stagedAction).toMatchObject({ screen: 'interview', field: 'spenden-betrag', newValue: '3135' })
   })
 
+  it('rounds a model’s decimal amount to whole euros, so the draft can be applied', async () => {
+    const h = buildTestHarness([JSON.stringify({ vendorCategory: 'sonstiges', amountEur: 650.4, suggestedScreen: 'interview', suggestedField: 'umzug-kosten', suggestedValue: '650.40', summary: 'Umzug', taxYear: 2025 })])
+    const res = await h.parseService.parseReceipt('user-r7', { taxYear: 2025, fileName: 'umzug.pdf', rawText: 'Spedition Umzug 650,40 EUR' })
+    expect(res.stagedAction?.newValue).toBe('650')
+  })
+
   it('supports deterministic offline parsing when vision_ocr kill-switch is active and blocks workplace tampering', async () => {
     const h = buildTestHarness([], false)
 
