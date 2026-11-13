@@ -49,6 +49,15 @@ const TEMPLATES: Readonly<Record<string, (payload: Payload) => string>> = {
     const room = num(p.roomLeftEur)
     return p.exceeds === true ? 'Grenze überschritten' : room !== null ? `noch ${amount(room)} Platz` : 'unter der Grenze'
   },
+  compute_gift_tax: (p) => {
+    const tax = num(p.taxEur)
+    return tax === null ? 'erledigt' : tax === 0 ? 'steuerfrei' : `${amount(tax)} Steuer`
+  },
+  check_small_business: (p) => (p.eligible === true ? 'Kleinunternehmer möglich' : 'Grenze überschritten'),
+  estimate_trade_tax: (p) => {
+    const tax = num(p.tradeTaxEur)
+    return tax === null ? 'erledigt' : `${amount(tax)} Gewerbesteuer`
+  },
   lookup_legal_source: (p) => {
     const source = (p.source ?? {}) as Payload
     return typeof source.paragraph === 'string' ? source.paragraph : 'erledigt'

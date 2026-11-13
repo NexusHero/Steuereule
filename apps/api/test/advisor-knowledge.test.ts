@@ -145,6 +145,13 @@ describe('tariff sums from the tax core (#499)', () => {
     expect(toolResultLine('check_rental_repairs', result)).toBe('noch 12.000 € Platz')
   })
 
+  it('computes gift and inheritance tax, and checks the small business rule and trade tax', async () => {
+    expect(await callTool('compute_gift_tax', { relation: 'child', onDeath: false, valueEur: 500000 })).toMatchObject({ ok: true, taxClass: 'I', taxEur: 11000 })
+    expect(await callTool('check_small_business', { year: 2025, priorYearTurnoverEur: 26000, currentYearTurnoverEur: 10000 })).toMatchObject({ ok: true, eligible: false, crossed: 'prior_year' })
+    expect(await callTool('estimate_trade_tax', { profitEur: 80050, multiplierPercent: 490 })).toMatchObject({ ok: true, tradeTaxEur: 9515, netBurdenEur: 1747 })
+    expect((await callTool('estimate_trade_tax', { profitEur: 80050, multiplierPercent: 150 })).ok).toBe(false)
+  })
+
   it('refuses a church tax rate that does not exist', async () => {
     expect((await callTool('compute_income_tax', { year: 2025, taxableIncome: 48000, churchTaxRate: 0.05 })).ok).toBe(false)
     expect((await callTool('compute_income_tax', { year: 2025, taxableIncome: 48000, churchTaxRate: 0.09 })).ok).toBe(true)

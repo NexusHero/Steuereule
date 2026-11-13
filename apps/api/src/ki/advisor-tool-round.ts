@@ -15,6 +15,9 @@ import {
   simulateAdvisorFieldDelta,
   isInterviewAreaId,
   checkPrivateSale,
+  checkSmallBusiness,
+  computeGiftTax,
+  estimateTradeTax,
   checkRentalRepairs,
   privateSalesExemptionLimit,
   privateSalesWithinLimit,
@@ -498,6 +501,24 @@ export async function runToolRound(
       if (args === null) continue
       try {
         answer({ ok: true, ...checkRentalRepairs(args) })
+      } catch (error) {
+        answer({ ok: false, error: error instanceof Error ? error.message : 'Ungültige Angaben.' })
+      }
+      continue
+    }
+
+    if (tc.name === 'compute_gift_tax' || tc.name === 'check_small_business' || tc.name === 'estimate_trade_tax') {
+      try {
+        if (tc.name === 'compute_gift_tax') {
+          const args = parseArgs(TOOL_ARG_SCHEMAS.compute_gift_tax)
+          if (args !== null) answer({ ok: true, ...computeGiftTax(args) })
+        } else if (tc.name === 'check_small_business') {
+          const args = parseArgs(TOOL_ARG_SCHEMAS.check_small_business)
+          if (args !== null) answer({ ok: true, ...checkSmallBusiness(args) })
+        } else {
+          const args = parseArgs(TOOL_ARG_SCHEMAS.estimate_trade_tax)
+          if (args !== null) answer({ ok: true, ...estimateTradeTax(args) })
+        }
       } catch (error) {
         answer({ ok: false, error: error instanceof Error ? error.message : 'Ungültige Angaben.' })
       }

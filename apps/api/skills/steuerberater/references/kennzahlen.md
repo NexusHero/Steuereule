@@ -30,7 +30,7 @@ BMF-Steuerrechner getestet ist. **„prüfen“** = vor Verwendung in einer Prim
 | Kinderfreibetrag (sächl. Existenzmin., beide Eltern) | 6.024 | 6.612 | 6.672 | 6.828 | § 32 Abs. 6 |
 | BEA-Freibetrag (beide Eltern) | 2.928 | 2.928 | 2.928 | 2.928 | § 32 Abs. 6 |
 | Entlastungsbetrag Alleinerziehende (1. Kind) | 4.260 | 4.260 | 4.260 | 4.260 | § 24b (+240 je weiteres Kind) |
-| Kinderbetreuung | 2/3, max. 4.000 | 2/3, max. 4.000 | 80 %, max. 4.800 | 80 %, max. 4.800 (prüfen) | § 10 Abs. 1 Nr. 5 |
+| Kinderbetreuung | 2/3, max. 4.000 | 2/3, max. 4.000 | 80 %, max. 4.800 | 80 %, max. 4.800 | § 10 Abs. 1 Nr. 5 (2026 am Gesetzestext belegt, 13.11.2026) |
 | Schulgeld | 30 %, max. 5.000 | ← | ← | ← | § 10 Abs. 1 Nr. 9 |
 
 ## Pauschbeträge & Werbungskosten
@@ -49,8 +49,8 @@ BMF-Steuerrechner getestet ist. **„prüfen“** = vor Verwendung in einer Prim
 | Kürzung gestellte Mahlzeit | Frühstück 20 %, Mittag/Abend je 40 % von 28 € | ← | ← | ← | § 9 Abs. 4a S. 8 |
 | Unterkunft doppelte Haushaltsführung | max. 1.000 €/Monat | ← | ← | ← | § 9 Abs. 1 S. 3 Nr. 5 |
 | GWG-Grenze (netto) | 800 € | ← | ← | ← | § 6 Abs. 2 |
-| Übungsleiterfreibetrag | 3.000 | 3.000 | 3.000 | 3.300 (prüfen) | § 3 Nr. 26 |
-| Ehrenamtspauschale | 840 | 840 | 840 | 960 (prüfen) | § 3 Nr. 26a |
+| Übungsleiterfreibetrag | 3.000 | 3.000 | 3.000 | 3.300 | § 3 Nr. 26 (3.300 am Gesetzestext belegt, 13.11.2026; § 52 Abs. 4 S. 10: die Fassung vom 22.12.2025 gilt „in allen offenen Fällen“ – ob das auch den Betrag für frühere Jahre betrifft, ist nicht belegt) |
+| Ehrenamtspauschale | 840 | 840 | 840 | 960 | § 3 Nr. 26a (960 belegt wie Übungsleiter, dieselbe offene Frage zu früheren Jahren) |
 | Freigrenze private Veräußerungsgeschäfte | 600 | 1.000 | 1.000 | 1.000 | § 23 Abs. 3 |
 | Freigrenze sonstige Leistungen | 256 | 256 | 256 | 256 | § 22 Nr. 3 |
 
@@ -64,7 +64,7 @@ BMF-Steuerrechner getestet ist. **„prüfen“** = vor Verwendung in einer Prim
 | Haushaltsnahe Dienstleistungen / Pflege | 20 %, max. 4.000 € | § 35a Abs. 2 |
 | Handwerkerleistungen (nur Arbeitskosten) | 20 %, max. 1.200 € | § 35a Abs. 3 |
 | Spenden | bis 20 % des Gesamtbetrags der Einkünfte; vereinfachter Nachweis bis 300 € | § 10b, § 50 EStDV |
-| Parteispenden | bis 2025: 50 % der Ausgaben, Ermäßigung höchstens 825/1.650 € (Ausgaben bis 1.650/3.300 €); ab 2026 Ermäßigung höchstens 1.650/3.300 € (nicht belegt: Jahr des Inkrafttretens prüfen); darüber Sonderausgaben nach § 10b Abs. 2 | § 34g |
+| Parteispenden | bis 2025: 50 % der Ausgaben, Ermäßigung höchstens 825/1.650 € (Ausgaben bis 1.650/3.300 €); geltendes Recht: Ermäßigung höchstens 1.650/3.300 € (am Gesetzestext belegt, 13.11.2026; ab welchem Jahr, ist nicht belegt – § 52 nennt keine Anwendungsregel); darüber Sonderausgaben nach § 10b Abs. 2 | § 34g |
 | Behinderten-Pauschbetrag | GdB 20: 384 € … GdB 100: 2.840 €; H/Bl/TBl: 7.400 € | § 33b Abs. 3 |
 | Pflege-Pauschbetrag | Pflegegrad 2: 600 €, 3: 1.100 €, 4/5/H: 1.800 € | § 33b Abs. 6 |
 | Unterhalt an Bedürftige | Höchstbetrag = Grundfreibetrag des Jahres + übernommene Basis-KV/PV; eigene Einkünfte > 624 € mindern | § 33a Abs. 1 |

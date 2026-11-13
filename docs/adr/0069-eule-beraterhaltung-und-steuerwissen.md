@@ -160,6 +160,25 @@ im Repo und wird beim Bauen wörtlich eingelesen, nicht von Hand in TypeScript a
 29. **Neue Werkzeuge.** `check_holding_period` (§ 23 EStG: Fristen auf den Tag, eigene Wohnung,
     Freigrenze 600/1.000 €) und `check_rental_repairs` (15-%-Grenze, § 6 Abs. 1 Nr. 1a EStG).
 
+## Schenkung, Selbstständige, Kennzahlen (ergänzt 2026-11-13)
+
+30. **Neue Rechner im Kern, als Werkzeuge der Eule:** `compute_gift_tax` (ErbStG: Klasse,
+    Freibeträge §§ 16, 17, Sätze mit Härteausgleich § 19 Abs. 3, zehn Jahre § 14; Befreiungen und
+    Bewertung bleiben Rückfrage), `check_small_business` (§ 19 UStG, Grenzen bis 2024 und ab 2025)
+    und `estimate_trade_tax` (Überschlag GewStG mit Anrechnung § 35 EStG, ohne Kappung an der
+    anteiligen Einkommensteuer). Damit entfällt die Überschlagsrechnung für diese Themen.
+31. **Kennzahlen gegen den Kern.** `advisor-kennzahlen.test.ts` liest die Tabelle des Skills und
+    vergleicht Soli-Freigrenzen, Kindergeld, Kinder- und BEA-Freibetrag, Entlastungsbetrag,
+    Pauschbeträge, Entfernungspauschale, Homeoffice, § 35a, sonstige Vorsorge und die Abgabefristen
+    2023–2026 mit `getTaxYearParameters`. Heute stimmt alles überein. Punkt 4 und „Verworfen:
+    Skill-Tabelle als maßgebliche Zahlenquelle“ gelten weiter: Der Kern rechnet, der Test findet
+    nur Abweichungen.
+32. **Belegt am 13.11.2026** (gesetze-im-internet.de): Kinderbetreuung 80 %, höchstens 4.800 €
+    (§ 10 Abs. 1 Nr. 5), Übungsleiter 3.300 € (§ 3 Nr. 26), Ehrenamt 960 € (§ 3 Nr. 26a),
+    Parteispenden höchstens 1.650/3.300 € (§ 34g). Offen bleibt, ab welchem Jahr § 34g in dieser
+    Höhe gilt, und ob „in allen offenen Fällen“ (§ 52 Abs. 4 S. 10) auch die Beträge von § 3
+    Nr. 26, 26a für frühere Jahre meint.
+
 ## Offen und Risiken
 
 - **Rechtlich ungeprüft.** Geschäftsmäßige Hilfeleistung in Steuersachen ist nach dem

@@ -4,7 +4,7 @@ import { ADVISOR_KNOWLEDGE_TOPICS } from './skills.generated.js'
 import { ToolMessage, type BaseMessage } from '@langchain/core/messages'
 import { tool, type StructuredToolInterface } from '@langchain/core/tools'
 import { z } from 'zod'
-import { PRIVATE_SALE_KINDS, ADVISOR_PLAN_MAX_STEPS, ADVISOR_PLAN_STEP_STATUSES, ADVISOR_QUESTION_KINDS, INTERVIEW_AREA_IDS, INTERVIEW_AREA_STATUSES, type AdvisorActionProposal, type AdvisorNotStaged, type Screen } from '@steuereule/core'
+import { GIFT_TAX_RELATIONS, PRIVATE_SALE_KINDS, ADVISOR_PLAN_MAX_STEPS, ADVISOR_PLAN_STEP_STATUSES, ADVISOR_QUESTION_KINDS, INTERVIEW_AREA_IDS, INTERVIEW_AREA_STATUSES, type AdvisorActionProposal, type AdvisorNotStaged, type Screen } from '@steuereule/core'
 
 export const MAX_COMPANION_FIELDS = 3
 
@@ -21,6 +21,9 @@ export const TOOL_LABELS: Readonly<Record<string, string>> = {
   check_capital_taxation: 'Prüfe Abgeltungsteuer gegen persönlichen Steuersatz …',
   check_holding_period: 'Prüfe die Spekulationsfrist …',
   check_rental_repairs: 'Prüfe die 15-%-Grenze für Renovierungen …',
+  compute_gift_tax: 'Rechne Schenkung- oder Erbschaftsteuer …',
+  check_small_business: 'Prüfe die Kleinunternehmerregelung …',
+  estimate_trade_tax: 'Überschlage die Gewerbesteuer …',
   lookup_legal_source: 'Prüfe EStG-Paragraph …',
   plan_steps: 'Plane die nächsten Schritte …',
   remember_note: 'Merke mir das für dieses Steuerjahr …',
@@ -42,7 +45,7 @@ export const MAX_DRAFTS_PER_TURN = 8
 
 export const draftKey = (draft: Pick<AdvisorActionProposal, 'screen' | 'field' | 'instance'>): string => `${draft.screen}|${draft.instance ?? ''}|${draft.field}`
 
-export const FIGURE_KEYS = new Set(['beforeRefundEur', 'afterRefundEur', 'deltaEur', 'incomeTaxEur', 'soliEur', 'churchTaxEur', 'totalEur', 'savingEur', 'withoutBenefitsEur', 'separateTotalEur', 'jointTotalEur', 'progressionClauseUpToEur', 'flatRateTotalEur', 'personalTotalEur', 'limitEur', 'withinWindowEur', 'roomLeftEur', 'exemptionLimitEur'])
+export const FIGURE_KEYS = new Set(['beforeRefundEur', 'afterRefundEur', 'deltaEur', 'incomeTaxEur', 'soliEur', 'churchTaxEur', 'totalEur', 'savingEur', 'withoutBenefitsEur', 'separateTotalEur', 'jointTotalEur', 'progressionClauseUpToEur', 'flatRateTotalEur', 'personalTotalEur', 'limitEur', 'withinWindowEur', 'roomLeftEur', 'exemptionLimitEur', 'personalAllowanceEur', 'maintenanceAllowanceEur', 'taxableEur', 'totalTaxEur', 'priorTaxEur', 'taxEur', 'tradeTaxEur', 'baseAmountEur', 'incomeTaxCreditEur', 'netBurdenEur', 'priorYearLimitEur', 'currentYearLimitEur'])
 
 /** Every euro figure a tool reported in this turn, wherever it sits in the tool's answer. */
 export function computedFiguresOf(messages: readonly BaseMessage[]): number[] {
@@ -172,6 +175,25 @@ export const TOOL_ARG_SCHEMAS = {
     buildingCostEur: z.number().positive().max(100_000_000),
     repairs: z.array(z.object({ doneOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), netEur: z.number().min(0).max(100_000_000) })).max(30),
   }),
+  compute_gift_tax: z.object({
+    relation: z.enum(GIFT_TAX_RELATIONS),
+    onDeath: z.boolean(),
+    valueEur: z.number().min(0).max(10_000_000_000),
+    priorGiftsEur: z.number().min(0).max(10_000_000_000).optional(),
+    childAge: z.number().int().min(0).max(120).optional(),
+  }),
+  check_small_business: z.object({
+    year: z.number().int(),
+    priorYearTurnoverEur: z.number().min(0).max(100_000_000),
+    currentYearTurnoverEur: z.number().min(0).max(100_000_000),
+  }),
+  estimate_trade_tax: z.object({
+    profitEur: z.number().min(-100_000_000).max(100_000_000),
+    additionsEur: z.number().min(0).max(100_000_000).optional(),
+    deductionsEur: z.number().min(0).max(100_000_000).optional(),
+    multiplierPercent: z.number().min(200).max(1500),
+    personalCompany: z.boolean().default(true),
+  }),
   lookup_legal_source: z.object({
     sourceId: z.string().max(40),
   }),
@@ -213,6 +235,12 @@ export const TOOL_DESCRIPTIONS: Readonly<Record<ToolName, string>> = {
     'Prüft private Veräußerungsgeschäfte (§ 23 EStG): ob ein Verkauf innerhalb der Frist liegt (`crypto`, `gold`, `other`: ein Jahr; `property`: zehn Jahre), ab wann er steuerfrei wäre, und bei Immobilien die Ausnahme für die eigene Wohnung. Mit `totalGainsOfYearEur` (alle Gewinne aus § 23 im Jahr des Verkaufs) prüft es die Freigrenze. Daten im Format JJJJ-MM-TT.',
   check_rental_repairs:
     'Prüft für ein vermietetes Gebäude die 15-%-Grenze der anschaffungsnahen Herstellungskosten (§ 6 Abs. 1 Nr. 1a EStG): Netto-Kosten von Renovierungen in den drei Jahren nach dem Kauf gegen 15 % der Anschaffungskosten des Gebäudes (ohne Grund und Boden). Nennt, wie viel noch Platz ist und bis wann das Fenster läuft. Jährlich übliche Erhaltung zählt nicht mit.',
+  compute_gift_tax:
+    'Rechnet Schenkung- oder Erbschaftsteuer (ErbStG) für einen Erwerb: Steuerklasse und persönlicher Freibetrag nach dem Verhältnis (`relation`), bei Erbschaft (`onDeath: true`) der Versorgungsfreibetrag (Ehegatte, Kind mit `childAge`), Steuersatz mit Härteausgleich, und mit `priorGiftsEur` die Schenkungen derselben Person in den letzten zehn Jahren (§ 14). `valueEur` ist der Wert nach Schulden und nach Befreiungen wie Familienheim oder Hausrat, die du vorher klärst. Kein Ersatz für die Bewertung von Immobilien oder Betriebsvermögen.',
+  check_small_business:
+    'Prüft die Kleinunternehmerregelung (§ 19 UStG): ab 2025 Vorjahresumsatz höchstens 25.000 € und laufendes Jahr höchstens 100.000 €, bis 2024 22.000 € und voraussichtlich 50.000 €. Sagt, welche Grenze überschritten ist.',
+  estimate_trade_tax:
+    'Überschlägt die Gewerbesteuer: Gewinn plus Hinzurechnungen minus Kürzungen, auf 100 € abgerundet, minus 24.500 € Freibetrag (Einzelunternehmen, Personengesellschaft), × 3,5 % Messzahl × Hebesatz der Gemeinde; dazu die Anrechnung auf die Einkommensteuer (§ 35 EStG, 4,0 × Messbetrag). Die Kappung der Anrechnung an der anteiligen Einkommensteuer ist nicht berücksichtigt; nenne es eine Überschlagsrechnung.',
   lookup_legal_source: 'Ruft Wortlaut, Paragraph und Rechtsstand einer EStG/AO-Rechtsquelle aus dem verifizierten Katalog ab.',
   plan_steps:
     'Zeigt dem Nutzer deinen Plan als Checkliste (höchstens 8 Schritte, Status offen/laeuft/erledigt). Immer die vollständige Liste senden. Schreibt nichts in die Akte.',
