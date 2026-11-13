@@ -25,18 +25,19 @@ export function SituationChip({ text, onPress }: SituationChipProps) {
   const { t: tr } = useTranslation(APP_NS)
   const summary = situationSummary(text)
   const filled = summary.length > 0
+  const label = filled ? tr('advisor.chat.situation.chip', { summary }) : tr('advisor.chat.situation.chipEmpty')
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={tr('advisor.chat.situation.chipAria')}
+      accessibilityLabel={tr('advisor.chat.situation.chipAria', { label })}
       onPress={onPress}
       style={(state) => [styles.chip, (state as { hovered?: boolean }).hovered ? styles.chipHover : null]}
       testID="eule-situation-chip"
     >
       {filled ? <View style={styles.dot} /> : <StrokeIcon name="plus" size={14} color={t.color.tinte2} strokeWidth={2.5} />}
       <Text style={styles.label} numberOfLines={1}>
-        {filled ? tr('advisor.chat.situation.chip', { summary }) : tr('advisor.chat.situation.chipEmpty')}
+        {label}
       </Text>
       {filled ? <StrokeIcon name="pencil" size={13} color={t.color.tinte2} /> : null}
     </Pressable>

@@ -93,6 +93,7 @@ export function ConversationList({ conversations, activeId, canSwitch, onSelect,
     }
   }
 
+  const yearHeading = activeYear === undefined ? tr('advisor.chat.conversations.title') : tr('advisor.chat.conversations.project', { year: activeYear })
   return (
     <View style={styles.list} testID="eule-conversations">
       <Pressable accessibilityRole="button" onPress={() => void onNew()} disabled={!canSwitch} style={hover(styles.action)} testID="eule-conversation-new">
@@ -112,7 +113,8 @@ export function ConversationList({ conversations, activeId, canSwitch, onSelect,
 
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={tr('advisor.chat.conversations.yearMenuAria')}
+        // The visible heading leads the name, so speech and voice control match what is on screen (WCAG 2.5.3).
+        accessibilityLabel={tr('advisor.chat.conversations.yearMenuAria', { heading: yearHeading })}
         aria-expanded={otherYears.length > 0 ? yearMenu : undefined}
         disabled={otherYears.length === 0}
         onPress={() => setYearMenu((prev) => !prev)}
@@ -120,7 +122,7 @@ export function ConversationList({ conversations, activeId, canSwitch, onSelect,
         testID="eule-year-menu-toggle"
       >
         <Text style={styles.yearText} role="heading" aria-level={2} testID="eule-project-heading">
-          {activeYear === undefined ? tr('advisor.chat.conversations.title') : tr('advisor.chat.conversations.project', { year: activeYear })}
+          {yearHeading}
         </Text>
         {otherYears.length > 0 ? <StrokeIcon name="chevronDown" size={14} color={t.color.tinte2} strokeWidth={2.5} /> : null}
       </Pressable>
