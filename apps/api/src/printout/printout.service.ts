@@ -12,6 +12,7 @@ import {
   type ChResidence,
   type CrossBorderStatus,
   type HealthInsurance,
+  effectivePublicHolidays,
 } from '@steuereule/core'
 import { COMMUTE_REPOSITORY, type CommuteInputs, type CommuteRepository } from '../commute/commute.repository.js'
 import { AuditService } from '../audit/audit.service.js'
@@ -298,7 +299,7 @@ function commuteFacts(year: number, inputs: CommuteInputs | null): CommuteFacts 
     vacationDays: inputs.vacationDays,
     sickDays: inputs.sickDays,
     homeOfficeDays: inputs.homeOfficeDays,
-    publicHolidays: inputs.publicHolidays ?? 0,
+    publicHolidays: effectivePublicHolidays(year, inputs),
   })
   if (result.kind !== 'bestimmt') return null
   return {

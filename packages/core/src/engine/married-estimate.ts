@@ -78,6 +78,8 @@ export type MarriedEstimate =
 const SOCIAL_SECURITY_DEDUCTIBLE: Range = { from: 0.91, to: 0.93 }
 
 interface SpouseFigures {
+  /** The larger of the lump sum and the commute allowance, deducted from the wage. */
+  readonly werbungskosten: number
   readonly income: number
   readonly provision: Range
   readonly credit: number
@@ -86,8 +88,10 @@ interface SpouseFigures {
 function spouseFigures(s: SpouseIncome, year: number): SpouseFigures {
   const params = getTaxYearParameters(year)
   if (s.kind === 'employee') {
+    const werbungskosten = Math.max(params.lumpSums.employee, s.commuteAllowance)
     return {
-      income: s.grossWage - Math.max(params.lumpSums.employee, s.commuteAllowance),
+      werbungskosten,
+      income: s.grossWage - werbungskosten,
       provision: {
         from: Math.round(s.socialSecurity * SOCIAL_SECURITY_DEDUCTIBLE.from) + s.selfPaidHealthCare,
         to: Math.round(s.socialSecurity * SOCIAL_SECURITY_DEDUCTIBLE.to) + s.selfPaidHealthCare,
@@ -99,8 +103,10 @@ function spouseFigures(s: SpouseIncome, year: number): SpouseFigures {
     s.selfPaidHealthCare,
     Math.min(params.maxOtherProvisionEur, s.selfPaidHealthCare + s.otherProvisionEur),
   )
+  const werbungskosten = Math.max(params.lumpSums.employee, s.commuteAllowance)
   return {
-    income: s.wageEur - Math.max(params.lumpSums.employee, s.commuteAllowance),
+    werbungskosten,
+    income: s.wageEur - werbungskosten,
     provision: { from: s.pensionContributionsEur + s.selfPaidHealthCare, to: s.pensionContributionsEur + other },
     credit: s.swissWithholdingEur,
   }
@@ -174,7 +180,8 @@ export function estimateMarriedCouple(input: MarriedEstimateInput): MarriedEstim
   const credit = spouses.reduce((sum, s) => sum + s.credit, 0)
   return {
     kind: 'spanne',
-    werbungskosten: 0,
+    // What was deducted for both spouses together; it was a fixed 0 before (real-case test).
+    werbungskosten: spouses.reduce((sum, s) => sum + s.werbungskosten, 0),
     provision,
     specialExpenses,
     taxableIncome: zve,

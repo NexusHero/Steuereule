@@ -31,6 +31,7 @@ import {
   type Answers,
   type SpouseIncome,
   type TaxEstimate,
+  effectivePublicHolidays,
 } from '@steuereule/core'
 import { HOUSEHOLD_AND_HEALTH_BOOSTERS } from '../config/features.js'
 import { COMMUTE_REPOSITORY, type CommuteInputs, type CommuteRepository } from '../commute/commute.repository.js'
@@ -387,7 +388,7 @@ function commuterAllowanceFrom(year: number, path: CommuteInputs | null): number
     vacationDays: path.vacationDays,
     sickDays: path.sickDays,
     homeOfficeDays: path.homeOfficeDays,
-    publicHolidays: path.publicHolidays ?? 0,
+    publicHolidays: effectivePublicHolidays(year, path),
   })
   if (days.kind !== 'bestimmt') return 0
   try {

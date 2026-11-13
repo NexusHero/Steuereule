@@ -143,3 +143,12 @@ describe('estimateMarriedCouple (ADR-0054)', () => {
     expect(highWithChildAllowance.incomeTax.from).toBeGreaterThan(6120)
   })
 })
+
+describe('Werbungskosten of the couple', () => {
+  it('reports what was deducted, the lump sum or the commute, per spouse', () => {
+    // Both commutes (1.017 €, 550 €) are below the 1.230 € lump sum: 2 × 1.230 €.
+    expect(estimateMarriedCouple(WEBER)).toMatchObject({ kind: 'spanne', werbungskosten: 2460 })
+    const crossBorder = { kind: 'crossBorder', wageEur: 130000, swissWithholdingEur: 5800, pensionContributionsEur: 9000, otherProvisionEur: 2000, commuteAllowance: 6900, selfPaidHealthCare: 2252 } as const
+    expect(estimateMarriedCouple({ ...WEBER, a: crossBorder, b: EMPLOYEE_B })).toMatchObject({ werbungskosten: 6900 + 1230 })
+  })
+})

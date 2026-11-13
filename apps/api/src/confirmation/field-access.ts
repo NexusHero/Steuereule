@@ -19,6 +19,7 @@ import {
   type PensionFieldId,
   type RentalFieldId,
   type SalaryCertificateAmountFieldId,
+  effectivePublicHolidays,
 } from '@steuereule/core'
 import { InvalidInputError } from '../common/domain-error.js'
 import type { AssessmentRepository } from '../assessment/assessment.repository.js'
@@ -529,7 +530,7 @@ export function fieldAccessFrom({
           vacationDays: updated.vacationDays,
           sickDays: updated.sickDays,
           homeOfficeDays: updated.homeOfficeDays,
-          publicHolidays: updated.publicHolidays ?? 0,
+          publicHolidays: effectivePublicHolidays(taxYear, updated),
         })
         if (workdaysRes.kind === 'widerspruch') {
           throw new InvalidInputError(

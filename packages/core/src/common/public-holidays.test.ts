@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { easterSunday, holidaysOnWorkdays, publicHolidays } from './public-holidays'
+import { easterSunday, effectivePublicHolidays, holidaysOnWorkdays, publicHolidays } from './public-holidays'
 
 const MO_FR = [1, 2, 3, 4, 5] as const
 
@@ -27,5 +27,16 @@ describe('publicHolidays', () => {
     expect(bs).toContain('2025-12-26')
     expect(bs).not.toContain('2025-06-19')
     expect(holidaysOnWorkdays(2025, 'BS', MO_FR)).toBe(9)
+  })
+})
+
+describe('the holidays to subtract from the commute days', () => {
+  const week = [1, 2, 3, 4, 5] as const
+  it('takes a confirmed count first, then the region, else none', () => {
+    expect(effectivePublicHolidays(2025, { workdays: week, publicHolidays: 9, publicHolidayRegion: 'BW' })).toBe(9)
+    // Scenario Lena (fixture): 261 weekdays − 11 BW holidays − 34 days off = 216 commute days.
+    expect(effectivePublicHolidays(2025, { workdays: week, publicHolidays: null, publicHolidayRegion: 'BW' })).toBe(11)
+    expect(effectivePublicHolidays(2025, { workdays: week, publicHolidayRegion: null })).toBe(0)
+    expect(effectivePublicHolidays(2025, { workdays: week, publicHolidayRegion: 'XX' })).toBe(0)
   })
 })

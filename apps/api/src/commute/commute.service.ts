@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { calculateWorkdays, commuterAllowance } from '@steuereule/core'
+import { calculateWorkdays, commuterAllowance, effectivePublicHolidays } from '@steuereule/core'
 import { InvalidInputError } from '../common/domain-error.js'
 import { COMMUTE_REPOSITORY, type CommuteInputs, type CommuteRepository } from './commute.repository.js'
 
@@ -33,7 +33,7 @@ function status(taxYear: number, inputs: CommuteInputs): CommuteStatus {
     vacationDays: inputs.vacationDays,
     sickDays: inputs.sickDays,
     homeOfficeDays: inputs.homeOfficeDays,
-    publicHolidays: inputs.publicHolidays ?? 0,
+    publicHolidays: effectivePublicHolidays(taxYear, inputs),
   })
   if (result.kind === 'widerspruch') {
     throw new InvalidInputError('ARBEITSTAGE_WIDERSPRUCH', `The days off exceed the working days (${result.conflict.kind}).`)

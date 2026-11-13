@@ -68,4 +68,12 @@ describe('ArbeitswegService', () => {
 
     await expect(save).rejects.toMatchObject({ code: 'ARBEITSTAGE_WIDERSPRUCH' })
   })
+
+  it('subtracts the holidays of the state when only the state is known (scenario Lena: 216 days)', async () => {
+    const service = new CommuteService(fakeRepository())
+    const status = await service.save('user-1', 2025, { ...INPUTS, oneWayKm: 70, vacationDays: 30, sickDays: 4, homeOfficeDays: 0, publicHolidays: null, publicHolidayRegion: 'BW' })
+    expect(status.workdays?.commuteDays).toBe(216)
+    // 216 × (20 × 0,30 € + 50 × 0,38 €) = 5.400 €, as the acceptance fixture computes by hand.
+    expect(status.commuterAllowance).toBe(5400)
+  })
 })

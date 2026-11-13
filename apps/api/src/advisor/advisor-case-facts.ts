@@ -12,6 +12,7 @@ import {
   isSupportedIncomeTaxYear,
   voluntaryFilingDeadlineFor,
   type CaseFurtherFacts,
+  effectivePublicHolidays,
 } from '@steuereule/core'
 import { checkPiiFree } from '../ki/ki.adapter.js'
 import { type CapitalRepository } from '../capital/capital.repository.js'
@@ -247,7 +248,7 @@ function workdaysFromMask(taxYear: number, commute: Awaited<ReturnType<CommuteRe
       vacationDays: commute.vacationDays,
       sickDays: commute.sickDays,
       homeOfficeDays: commute.homeOfficeDays,
-      publicHolidays: commute.publicHolidays ?? 0,
+      publicHolidays: effectivePublicHolidays(taxYear, commute),
     })
     return days.kind === 'bestimmt' && typeof days.workdays === 'number' ? days.workdays : null
   } catch {
