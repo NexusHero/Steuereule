@@ -71,3 +71,34 @@ describe('the household’s situation (#501)', () => {
     expect(text).not.toContain('noch nicht beschrieben')
   })
 })
+
+describe('describeSituationForPrompt: the further facts (ADR-0067 §11)', () => {
+  const further = {
+    answeredQuestions: 6,
+    filingStatusAnswered: true,
+    singleParent: false,
+    pension: null,
+    rentals: { rentEur: null, expensesEur: null, loanInterestEur: null },
+    capital: { withheldTaxEur: null, saverAllowanceUsedEur: null, depot: null },
+    sideJobGrossEur: null,
+    wageReplacementEur: null,
+    severanceEur: 20_000,
+    healthCostsEur: null,
+    householdServicesEur: null,
+    leave: { vacationDays: 30, sickDays: 3 },
+    filingDeadline: '2027-08-02',
+    voluntaryFilingDeadline: '2030-12-31',
+  }
+
+  it('says the leave days are entered, so the owl never calls them missing', () => {
+    const text = describeSituationForPrompt({ ...DIGEST, furtherFacts: further }, '')
+    expect(text).toContain('30 Urlaubs- und 3 Krankheitstagen (beides eingetragen)')
+  })
+
+  it('names only what is entered, and the deadlines', () => {
+    const text = describeSituationForPrompt({ ...DIGEST, furtherFacts: further }, '')
+    expect(text).toContain('Abfindung: rund 20000 €')
+    expect(text).not.toContain('Nebenjob')
+    expect(text).toContain('2027-08-02')
+  })
+})

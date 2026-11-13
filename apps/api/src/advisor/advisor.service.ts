@@ -447,8 +447,8 @@ export class AdvisorService {
     const needsSummary = advisorContextUsage(sources, conversation.summary).level === 'full'
     await this.advisorRepo.updateConversation(conversation.id, userId, {
       lastUsedAt: new Date(),
-      // The first question names the conversation; an opening is no question.
-      ...(conversation.title === null && !isOpening ? { title: titleFrom(scrubbedUserText) } : {}),
+      // The first question names the conversation; an opening names it after what it is.
+      ...(conversation.title === null ? { title: isOpening ? `Einschätzung ${taxYear}` : titleFrom(scrubbedUserText) } : {}),
     })
     const history = buildAdvisorHistory(sources, { summary: conversation.summary })
 

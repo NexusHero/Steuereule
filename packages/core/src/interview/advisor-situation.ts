@@ -75,6 +75,9 @@ function describeFurtherFacts(digest: CaseDigest): string[] {
     ['Haushaltsnahe Dienste und Handwerker', further.householdServicesEur],
   ]
   for (const [label, value] of other) if (value !== null) lines.push(`- ${label}: ${euro(value)}`)
+  if (further.leave) {
+    lines.push(`- Arbeitstage laut Maske: ${digest.commuteAndWorkdays.workdays ?? 'offen'} nach ${further.leave.vacationDays} Urlaubs- und ${further.leave.sickDays} Krankheitstagen (beides eingetragen)`)
+  }
   if (further.filingDeadline) {
     lines.push(`- Abgabefrist mit Pflicht: ${further.filingDeadline}; freiwillig (Antragsveranlagung) bis ${further.voluntaryFilingDeadline ?? 'offen'}`)
   }

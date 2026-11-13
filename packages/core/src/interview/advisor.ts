@@ -334,6 +334,8 @@ export interface CaseFurtherFacts {
   readonly severanceEur: number | null
   readonly healthCostsEur: number | null
   readonly householdServicesEur: number | null
+  /** Leave as entered in the Arbeitstage mask; null without the mask, so the owl never calls them missing when they are not. */
+  readonly leave?: { readonly vacationDays: number; readonly sickDays: number } | null | undefined
   /** The statutory and the voluntary filing deadline (ISO dates), where the year is supported. */
   readonly filingDeadline: string | null
   readonly voluntaryFilingDeadline: string | null

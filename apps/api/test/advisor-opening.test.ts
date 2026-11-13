@@ -130,6 +130,12 @@ describe('AdvisorOpening.state', () => {
     })
   })
 
+  it('does not start a second opening while the first is still being written', async () => {
+    const { fingerprint } = await openingWith(ready, []).context('u', 2026)
+    const running = { role: 'assistant' as const, status: 'streaming' as const, conversationId: 'c1', createdAt: new Date(), meta: { opening: { fingerprint, stage: 'ready' as const } } }
+    expect((await openingWith(ready, [running]).state('u', 2026)).shouldOpen).toBe(false)
+  })
+
   it('opens again once the case changed', async () => {
     const last = { role: 'assistant' as const, status: 'complete' as const, conversationId: 'c1', createdAt: new Date(), meta: { opening: { fingerprint: 'older000', stage: 'ready' as const } } }
     expect((await openingWith(ready, [last]).state('u', 2026)).shouldOpen).toBe(true)

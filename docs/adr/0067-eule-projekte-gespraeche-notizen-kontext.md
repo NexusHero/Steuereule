@@ -207,6 +207,7 @@ Zählungen, nie Namen, Adressen oder Kennungen.
   falsch benannt. Erst eine zweite Verfehlung erscheint, dann mit dem üblichen Hinweis.
 - **Keine Entwürfe:** Eine Eröffnung legt nie Entwürfe an, auch nicht mit Turbo. Entwürfe
   entstehen aus der Antwort des Nutzers auf die Fragerunde.
+- Ein eröffnetes Gespräch heißt „Einschätzung 2026“ (mit dem Steuerjahr), bis der Nutzer es umbenennt.
 - Technisch ist die Eröffnung ein Zug mit `quickAction: 'opening'`. Die Frage dahinter ist ein
   Platzhalter, den der Chat nicht zeigt (`meta.opening` an beiden Nachrichten); ohne Sprachmodell
   gibt es keine Eröffnung.

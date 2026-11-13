@@ -15,6 +15,7 @@ import {
 } from '@steuereule/core'
 import type { TaxEstimateStatus } from '../tax-estimate/tax-estimate.service.js'
 import type { AdvisorRepository } from './advisor.repository.js'
+import { ANSWERING_WINDOW_MS } from './advisor-shared.js'
 import type { AdvisorOpeningStateDto } from './dto/advisor.dto.js'
 
 /** What the user message of an opening says; it is hidden in the chat and only marks the turn. */
@@ -51,7 +52,9 @@ export class AdvisorOpening {
     let last: { conversationId: string; createdAt: Date; marker: OpeningMarker } | null = null
     for (const message of messages) {
       const marker = message.meta?.opening
-      if (message.role !== 'assistant' || message.status !== 'complete' || !marker || message.meta?.replaced || !message.conversationId) continue
+      // An opening still being written counts too: a second „Neues Gespräch“ meanwhile must not start another one.
+      const running = message.status === 'streaming' && Date.now() - message.createdAt.getTime() < ANSWERING_WINDOW_MS
+      if (message.role !== 'assistant' || (message.status !== 'complete' && !running) || !marker || message.meta?.replaced || !message.conversationId) continue
       if (last === null || message.createdAt > last.createdAt) last = { conversationId: message.conversationId, createdAt: message.createdAt, marker }
     }
     return last

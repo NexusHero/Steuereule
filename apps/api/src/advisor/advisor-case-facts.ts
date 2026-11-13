@@ -7,6 +7,7 @@ import {
   type CaseDigest,
   type Profession,
   ageAtEndOfYear,
+  calculateWorkdays,
   filingDeadlineFor,
   isSupportedIncomeTaxYear,
   voluntaryFilingDeadlineFor,
@@ -141,7 +142,8 @@ export class AdvisorCaseFacts {
         nonReturnDays: parseNum(answerMap['ch-nichtrueckkehrtage']),
       },
       commuteAndWorkdays: {
-        workdays: parseNum(answerMap['tage']) ?? 220,
+        // The Arbeitstage mask counts the year's own calendar, holidays and leave; the interview's answer is the fallback.
+        workdays: workdaysFromMask(taxYear, commuteRecord) ?? parseNum(answerMap['tage']) ?? 220,
         homeOfficeAnswer: answerMap['homeoffice'] ?? null,
         homeOfficeDays,
         distanceKm: commuteRecord?.oneWayKm ?? parseNum(answerMap['weg']),
@@ -175,7 +177,10 @@ export class AdvisorCaseFacts {
       })),
       printoutMissingFields: missingConfirmationsList,
       estimatedRefundEur: null,
-      furtherFacts: furtherFactsOf(taxYear, answerMap, pensionRecord, rentals, capitalRecord),
+      furtherFacts: {
+        ...furtherFactsOf(taxYear, answerMap, pensionRecord, rentals, capitalRecord),
+        leave: commuteRecord && commuteRecord.workdays.length > 0 ? { vacationDays: commuteRecord.vacationDays, sickDays: commuteRecord.sickDays } : null,
+      },
     }
 
     // Security gate: verify CaseDigest is 100% free of Steuer-IDs, IBANs, and personal keys
@@ -229,5 +234,23 @@ export function furtherFactsOf(
     householdServicesEur: sumEntered(['haushalt-dienstleistung-betrag', 'haushalt-handwerker-betrag', 'haushalt-minijob-betrag'].map((id) => amountFromAnswer(answers[id]))),
     filingDeadline: supported ? filingDeadlineFor(taxYear) : null,
     voluntaryFilingDeadline: supported ? voluntaryFilingDeadlineFor(taxYear) : null,
+  }
+}
+
+/** Working days of the year as the Arbeitstage mask counts them, the same figure the estimate uses; null without the mask. */
+function workdaysFromMask(taxYear: number, commute: Awaited<ReturnType<CommuteRepository['findForUserAndYear']>>): number | null {
+  if (!commute || commute.workdays.length === 0) return null
+  try {
+    const days = calculateWorkdays({
+      year: taxYear,
+      workdays: commute.workdays,
+      vacationDays: commute.vacationDays,
+      sickDays: commute.sickDays,
+      homeOfficeDays: commute.homeOfficeDays,
+      publicHolidays: commute.publicHolidays ?? 0,
+    })
+    return days.kind === 'bestimmt' && typeof days.workdays === 'number' ? days.workdays : null
+  } catch {
+    return null
   }
 }
