@@ -192,17 +192,19 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
         lastFallbackMsg ??
         new AIMessage('Ich habe deine Angaben geprüft, konnte aber keine Antwort erzeugen.')
 
-      // Found by the eval: after tool results Gemini sometimes ends with neither text nor a tool
+      // Found by the eval: Gemini sometimes ends a round with neither text nor a tool
       // call, and the user got a stock sentence ("Ich habe deine Steuerakte geprüft.") instead of
       // an answer. Ask once more, without tools, for the answer in words.
-      if (state.toolRounds > 0 && isEmptyEnding(finalMsg)) {
+      // Also in the first round: a model that says nothing at all is no better than one that went silent after tools.
+      if (isEmptyEnding(finalMsg)) {
         const nudge = new HumanMessage(ANSWER_NUDGE)
-        let retried: AIMessageChunk | null = null
+        let retried = null as BaseMessage | null
         for await (const chunk of await answerOnlyModel.stream([...state.messages, nudge], config)) {
-          if (!(chunk instanceof AIMessageChunk)) continue
-          const text = extractMessageText(chunk.content)
+          const text = extractMessageText((chunk as BaseMessage).content)
           if (text.length > 0) config?.writer?.({ event: 'token', data: { text } } satisfies AdvisorStreamEvent)
-          retried = retried ? concat(retried, chunk) : chunk
+          // A streaming model sends chunks, one that cannot stream sends the whole message once.
+          const piece = chunk as BaseMessage
+          retried = piece instanceof AIMessageChunk && retried instanceof AIMessageChunk ? concat(retried, piece) : piece
         }
         if (retried && extractMessageText(retried.content).trim().length > 0) finalMsg = retried
       }

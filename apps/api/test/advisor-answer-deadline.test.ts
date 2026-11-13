@@ -135,4 +135,29 @@ describe('the answer before the time runs out', () => {
     expect(plain.filter((choice) => choice !== 'none')).toHaveLength(5)
     expect(interview.filter((choice) => choice !== 'none')).toHaveLength(10)
   })
+
+  it('asks once more also when the model is silent in its very first round', async () => {
+    const log: (string | undefined)[] = []
+    /** Says nothing in its first round, with tools on offer; answers only when bound without tools. */
+    class SilentFirst extends BaseChatModel {
+      constructor(private readonly choice?: string) {
+        super({})
+      }
+      _llmType(): string {
+        return 'silent-first'
+      }
+      override bindTools(_tools: BindToolsInput[], options?: { tool_choice?: string }): Runnable<BaseLanguageModelInput, AIMessageChunk, BaseChatModelCallOptions> {
+        return new SilentFirst(options?.tool_choice) as unknown as Runnable<BaseLanguageModelInput, AIMessageChunk, BaseChatModelCallOptions>
+      }
+      async _generate(): Promise<ChatResult> {
+        log.push(this.choice)
+        const message = new AIMessage(this.choice === 'none' ? 'Elterngeld ist steuerfrei, unterliegt aber dem Progressionsvorbehalt.' : '')
+        return { generations: [{ text: String(message.content), message }] }
+      }
+    }
+    const engine = new LangGraphAdvisorEngine(runtime(60_000), () => new SilentFirst())
+    const result = (await engine.runTurn({ message: 'Fehlt noch etwas?', digest: DIGEST })) as AdvisorTurnResult
+    expect(result.replyText).toBe('Elterngeld ist steuerfrei, unterliegt aber dem Progressionsvorbehalt.')
+    expect(log).toEqual([undefined, 'none'])
+  })
 })
