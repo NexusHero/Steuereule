@@ -5,6 +5,8 @@ import { Button, Card, HerkunftsChip, Input, Option, useTheme, useBreakpoint, ty
 import { formatEuro } from '@steuereule/core'
 import {
   useFilingTypeComparisonControllerGetComparison,
+  useInterviewControllerGetInterview,
+  useMasterDataControllerRead,
   type FilingTypeComparisonControllerGetComparisonParams,
   type FilingTypeComparisonDto,
 } from '@steuereule/api-client'
@@ -31,7 +33,14 @@ export function FilingTypeComparisonScreen({
   const styles = makeStyles(t)
   const { t: tr } = useTranslation(APP_NS)
 
-  const [married, setMarried] = useState(false)
+  // Married is known from the master data or the basis page: start there, the user can still say otherwise.
+  const masterData = useMasterDataControllerRead()
+  const interview = useInterviewControllerGetInterview(taxYear)
+  const knownMarried =
+    (masterData.data?.status === 200 && masterData.data.data.familienstand === 'verheiratet') ||
+    (interview.data?.status === 200 && interview.data.data.answers.familienstand === 'Verheiratet')
+  const [choice, setMarried] = useState<boolean | null>(null)
+  const married = choice ?? knownMarried
   const [zveB, setZveB] = useState('')
   const zveBValue = Number(zveB)
   const ready = married && zveB !== '' && Number.isFinite(zveBValue) && zveBValue >= 0
@@ -54,10 +63,10 @@ export function FilingTypeComparisonScreen({
 
       <Text style={styles.label}>{tr('veranlagungsartenvergleich.verheiratetLabel')}</Text>
       <View style={styles.optionRow}>
-        <Option selected={married} onPress={() => setMarried(true)} testID="verheiratet-ja">
+        <Option selected={married} onPress={() => setMarried(true)} style={styles.rowOption} testID="verheiratet-ja">
           {tr('veranlagungsartenvergleich.ja')}
         </Option>
-        <Option selected={!married} onPress={() => setMarried(false)} testID="verheiratet-nein">
+        <Option selected={!married} onPress={() => setMarried(false)} style={styles.rowOption} testID="verheiratet-nein">
           {tr('veranlagungsartenvergleich.nein')}
         </Option>
       </View>
@@ -173,6 +182,8 @@ function makeStyles(t: UiTheme) {
   }
   const label: TextStyle = { ...t.type.label, color: t.color.tinte, marginBottom: t.space.s2 }
   const optionRow: ViewStyle = { flexDirection: 'row', gap: t.space.s3 }
+  // Two options side by side share the row; a full-width option would push the second out of its card.
+  const rowOption: ViewStyle = { flex: 1, width: 'auto' }
   const inputBlock: ViewStyle = { marginTop: t.space.s3 }
   const notice: TextStyle = { ...t.type.small, color: t.color.tinte2, marginTop: t.space.s3 }
   const resultBlock: ViewStyle = { marginTop: t.space.s5 }
@@ -180,5 +191,5 @@ function makeStyles(t: UiTheme) {
   const numberLabel: TextStyle = { ...t.type.meta, color: t.color.tinte2, textTransform: 'uppercase', letterSpacing: 0.08 * t.size.xs, marginBottom: t.space.s1 }
   const number: TextStyle = { ...t.type.headline, color: t.color.tinte, fontVariant: ['tabular-nums'], marginBottom: t.space.s2 }
   const doneCta: ViewStyle = { marginTop: t.space.s5 }
-  return { screen, wideScreen, embedded, headerRow, heading, label, optionRow, inputBlock, hinweis: notice, resultBlock, aussage: statement, zahlLabel: numberLabel, zahl: number, doneCta }
+  return { screen, wideScreen, embedded, headerRow, heading, label, optionRow, rowOption, inputBlock, hinweis: notice, resultBlock, aussage: statement, zahlLabel: numberLabel, zahl: number, doneCta }
 }
