@@ -68,6 +68,7 @@ export const InterviewControllerGetInterviewEintrag = {
   alleinerziehend: 'alleinerziehend',
   haushalt: 'haushalt',
   gesundheit: 'gesundheit',
+  vorauszahlungen: 'vorauszahlungen',
   berufsprofil: 'berufsprofil',
 } as const;
 

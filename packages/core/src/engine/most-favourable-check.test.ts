@@ -17,10 +17,11 @@ describe('guenstigerpruefung — the two amounts (Ebene 2, exakt gegeben die Ein
       progressionClause: { kind: 'keine' },
     })
     expect(result.flatRateTax).toBe(4750)
-    // Persönlich: (22.464 − 14.233) + Soli-Differenz (251 − 0, Milderungszone über der Freigrenze
-    // 20.350) = 8.231 + 251 = 8.482.
-    expect(result.personal).toBe(8482)
-    expect(result.delta).toBe(3732)
+    // Persönlich: auch hier mindert der Sparerpauschbetrag (§ 20 Abs. 9), also 19.000 auf 60.000:
+    // (22.044 − 14.233) + Soli-Differenz (201 − 0, Milderungszone über der Freigrenze 20.350)
+    // = 7.811 + 201 = 8.012. Gegengerechnet mit dem Rechner des steuerberater-Skills.
+    expect(result.personal).toBe(8012)
+    expect(result.delta).toBe(3262)
     expect(result.provenance).toEqual({
       kapitalertraege: 20000,
       remainingZvE: 60000,
@@ -42,9 +43,10 @@ describe('guenstigerpruefung — the two amounts (Ebene 2, exakt gegeben die Ein
       churchTaxFactor: 0.09,
     })
     expect(result.flatRateTax).toBe(26841)
-    // Persönlich: (160.529 − 115.529) + (8.829 − 6.354) + 4.050 = 45.000 + 2.475 + 4.050 = 51.525.
-    expect(result.personal).toBe(51525)
-    expect(result.delta).toBe(51525 - 26841)
+    // Persönlich (99.000 nach Sparerpauschbetrag auf 300.000): (160.079 − 115.529) + (8.804 − 6.354)
+    // + 9 % von 44.550 = 44.550 + 2.450 + 4.009 = 51.009.
+    expect(result.personal).toBe(51009)
+    expect(result.delta).toBe(51009 - 26841)
     if (result.provenance) {
       expect(result.provenance.components).toEqual(['einkommensteuer', 'solidaritaetszuschlag', 'kirchensteuer'])
     }
@@ -52,7 +54,7 @@ describe('guenstigerpruefung — the two amounts (Ebene 2, exakt gegeben die Ein
 
   it('computes the Zusammenveranlagung side via the Splitting tariff on the combined basis', () => {
     // Abgeltung: (20.000 − 2.000) × 25 % = 4.500; Soli 0 (unter der Freigrenze 40.700).
-    // Persönlich: splitting(80.000) − splitting(60.000) = 14.418 − 8.434 = 5.984.
+    // Persönlich: splitting(78.000) − splitting(60.000) = 13.788 − 8.434 = 5.354 (18.000 nach Sparerpauschbetrag).
     const result = mostFavourableCheck({
       kapitalertraege: 20000,
       remainingZvE: 60000,
@@ -61,8 +63,8 @@ describe('guenstigerpruefung — the two amounts (Ebene 2, exakt gegeben die Ein
       progressionClause: { kind: 'keine' },
     })
     expect(result.flatRateTax).toBe(4500)
-    expect(result.personal).toBe(5984)
-    expect(result.delta).toBe(1484)
+    expect(result.personal).toBe(5354)
+    expect(result.delta).toBe(854)
     expect(result.provenance.saversAllowance).toBe(2000)
     expect(result.provenance.assessmentType).toBe('zusammen')
   })
@@ -120,7 +122,7 @@ describe('guenstigerpruefung — the bounded verdict (ADR-0034 Entscheidung 2)',
     expect('recommendation' in result).toBe(false)
     // The two amounts are still exact — only the verdict is withheld.
     expect(result.flatRateTax).toBe(4750)
-    expect(result.personal).toBe(8482)
+    expect(result.personal).toBe(8012)
   })
 })
 

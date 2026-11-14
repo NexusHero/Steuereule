@@ -48,6 +48,25 @@ describe('SteuerschaetzungService', () => {
     expect(status.result.from).toBeLessThan(status.result.to)
   })
 
+  it('credits the prepayments of the year against the tax (§ 37 EStG, ADR-0081)', async () => {
+    const { lstb, interview, service } = setup()
+    lstb.seed({ userId: 'u', taxYear: 2025, bruttoarbeitslohn: '45000', lohnsteuer: '6100', sozialversicherung: '9200' })
+    interview.seed('u', 2025, EMPLOYED)
+    const without = range(await service.getState('u', 2025))
+    interview.seed('u', 2025, { ...EMPLOYED, 'vorauszahlungen-gate': 'Ja', 'vorauszahlungen-betrag': '2400' })
+    const withPrepayments = range(await service.getState('u', 2025))
+
+    expect(withPrepayments.result).toEqual({ from: without.result.from + 2400, to: without.result.to + 2400 })
+    expect(withPrepayments).toMatchObject({ prepayments: 2400 })
+  })
+
+  it('ignores a prepayment amount behind a „Nein“', async () => {
+    const { lstb, interview, service } = setup()
+    lstb.seed({ userId: 'u', taxYear: 2025, bruttoarbeitslohn: '45000', lohnsteuer: '6100', sozialversicherung: '9200' })
+    interview.seed('u', 2025, { ...EMPLOYED, 'vorauszahlungen-gate': 'Nein', 'vorauszahlungen-betrag': '2400' })
+    expect(range(await service.getState('u', 2025))).not.toHaveProperty('prepayments')
+  })
+
   it('takes the Entfernungspauschale from the stored commute', async () => {
     const { lstb, interview, service } = setup({
       workdays: [1, 2, 3, 4, 5],
@@ -65,6 +84,29 @@ describe('SteuerschaetzungService', () => {
 
     // Entfernungspauschale 2.019 € plus Homeoffice-Pauschale 20 Tage × 6 € = 120 € (#450 Teil 6).
     expect(status.werbungskosten).toBe(2019 + 120)
+  })
+
+  it('adds the further Werbungskosten from the commute mask (ADR-0076)', async () => {
+    const path: CommuteInputs = { workdays: [1, 2, 3, 4, 5], vacationDays: 30, sickDays: 5, homeOfficeDays: 20, oneWayKm: 30, transport: 'pkw', workplace: null }
+    const { lstb, interview, service } = setup({ ...path, professionalBodiesEur: 120, workEquipmentEur: 110, accountFeesEur: 16, otherWorkExpensesEur: 40 })
+    interview.seed('u', 2025, EMPLOYED)
+    lstb.seed({ userId: 'u', taxYear: 2025, bruttoarbeitslohn: '45000', lohnsteuer: '6100', sozialversicherung: '9200' })
+
+    expect(range(await service.getState('u', 2025)).werbungskosten).toBe(2019 + 120 + 120 + 110 + 16 + 40)
+  })
+
+  it('counts childcare as a Sonderausgabe: 80 %, at most 4.800 € per child (ADR-0076)', async () => {
+    const { lstb, interview, kinder, service } = setup()
+    interview.seed('u', 2025, { ...EMPLOYED, kinder: '1' })
+    lstb.seed({ userId: 'u', taxYear: 2025, bruttoarbeitslohn: '45000', lohnsteuer: '6100', sozialversicherung: '9200' })
+    const child = await kinder.create('u', 2025, { firstName: 'Mia', lastName: 'Muster', geburtsdatum: '2021-03-14' } as never)
+    const without = range(await service.getState('u', 2025))
+    await kinder.update('u', 2025, child.id, { childcareEur: '1000' })
+
+    const withCare = range(await service.getState('u', 2025))
+    expect(withCare.specialExpenses).toBe(800)
+    // result is the refund: 800 € more Sonderausgaben raise it.
+    expect(withCare.result.to).toBeGreaterThan(without.result.to)
   })
 
   it('names what is still missing instead of estimating from an incomplete LStB', async () => {
@@ -146,6 +188,35 @@ describe('SteuerschaetzungService', () => {
 
     expect(status.anrechnung).toBe(4334)
     expect(status.result.to).toBeLessThan(0)
+  })
+
+  it('adds a German employer’s certificate of the same year to a Grenzgänger’s Swiss wage (change of job, ADR-0079)', async () => {
+    const seed = (env: ReturnType<typeof setup>) => {
+      env.interview.seed('u', 2025, { ...EMPLOYED, ausland: 'Ja, in die Schweiz', 'ch-wohnsitz': 'Deutschland', 'ch-nichtrueckkehrtage': '0' })
+      env.ch.seed({
+        userId: 'u',
+        taxYear: 2025,
+        fields: { 'bruttolohn-total': '20000', 'ahv-beitraege': '1480', 'berufliche-vorsorge': '1200', quellensteuer: '900' } as CrossBorderSalaryStatementRecord['fields'],
+        bemerkungen: null,
+        saeule3aChf: null,
+        krankenkasseChf: null,
+        exchangeRateMonth: '2025',
+        exchangeRateValue: 1.065,
+        exchangeRateMode: 'jahresdurchschnitt',
+        exchangeRateReceiptId: null,
+        nGre: { familienzulagenChf: 0, krankentaggeldChf: 0, pkArbeitnehmerChf: 470, pkArbeitgeberChf: 470 } as unknown as CrossBorderSalaryStatementRecord['nGre'],
+      })
+    }
+    const swissOnly = setup()
+    seed(swissOnly)
+    const both = setup()
+    seed(both)
+    both.lstb.seed({ userId: 'u', taxYear: 2025, bruttoarbeitslohn: '70000', lohnsteuer: '15000', sozialversicherung: '14000' })
+
+    const a = range(await swissOnly.service.getState('u', 2025))
+    const b = range(await both.service.getState('u', 2025))
+    expect(b.anrechnung).toBe(a.anrechnung + 15000)
+    expect(b.taxableIncome.from).toBeGreaterThan(a.taxableIncome.from + 50000)
   })
 
   it('names the missing Pensionskasse Obligatorium instead of guessing the Altersvorsorge', async () => {

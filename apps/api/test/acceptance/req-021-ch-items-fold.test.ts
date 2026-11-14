@@ -187,6 +187,8 @@ describe('REQ-021 — the CH-Posten folding (Vorsorge + Quellensteuer-Anrechnung
       krankentaggeldChf: 300,
       pkArbeitnehmerChf: 5000,
       pkArbeitgeberChf: 6000,
+      pkArbeitgeberGesamtChf: 14000,
+      steuerfreiesKrankentaggeldChf: 3853,
       krankentaggeldArbeitgeberProzent: 10,
       specialCases: false,
     })
@@ -200,6 +202,8 @@ describe('REQ-021 — the CH-Posten folding (Vorsorge + Quellensteuer-Anrechnung
       krankentaggeldChf: 300,
       pkArbeitnehmerChf: 5000,
       pkArbeitgeberChf: 6000,
+      pkArbeitgeberGesamtChf: 14000,
+      steuerfreiesKrankentaggeldChf: 3853,
       krankentaggeldArbeitgeberProzent: 10,
       krankentaggeldArbeitgeberChf: null,
       nbuvArbeitgeberProzent: null,
@@ -208,6 +212,15 @@ describe('REQ-021 — the CH-Posten folding (Vorsorge + Quellensteuer-Anrechnung
     })
     expect((await putField(cookie, 'n-gre', { krankentaggeldArbeitgeberProzent: 101 })).status).toBe(400)
     expect((await putField(cookie, 'n-gre', { familienzulagenChf: -1 })).status).toBe(400)
+  })
+
+  it('takes the Jahresdurchschnittskurs (yyyy) and keeps its mode, but refuses a month in that mode', async () => {
+    const { cookie } = await signUp('jahresdurchschnitt@example.com')
+    const ok = await putExchangeRate(cookie, { month: '2025', rate: 1.065, mode: 'jahresdurchschnitt' })
+    expect(ok.status).toBe(200)
+    const body = (await ok.json()) as { exchangeRate: unknown }
+    expect(body.exchangeRate).toEqual({ month: '2025', rate: 1.065, mode: 'jahresdurchschnitt' })
+    expect((await putExchangeRate(cookie, { month: '2025-01', rate: 1.065, mode: 'jahresdurchschnitt' })).status).toBe(400)
   })
 
   it('a tatsächlicher Kurs without a Beleg is rejected (ADR-012: "ohne Beleg kein tatsächlicher Kurs")', async () => {

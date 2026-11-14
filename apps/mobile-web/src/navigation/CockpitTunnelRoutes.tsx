@@ -22,6 +22,7 @@ const CATALOG_ENTRIES: readonly CatalogEntryParam[] = [
   'alleinerziehend',
   'haushalt',
   'gesundheit',
+  'vorauszahlungen',
 ]
 
 type Props<T extends keyof CockpitStackParamList> = NativeStackScreenProps<CockpitStackParamList, T>

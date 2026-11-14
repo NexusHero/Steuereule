@@ -45,6 +45,8 @@ import {
   type AdvisorMessageMeta,
   type AdvisorNotStaged,
   type AdvisorQuestionRound,
+  type AdvisorQuestionKind,
+  ADVISOR_QUESTION_KINDS,
   type AdvisorRoundQuestion,
   type AdvisorSkillId,
   type AdvisorTwoPathsProposal,
@@ -90,6 +92,8 @@ const OWL_SOURCE_IDS: readonly OwlSourceId[] = [
   'estg-9-6',
   'estg-10b',
   'estg-10-1-5',
+  'estg-35a',
+  'estg-10-1-3',
   'ao-355',
 ]
 
@@ -141,6 +145,14 @@ export class AdvisorActionProposalDto implements AdvisorActionProposal {
 
   @ApiPropertyOptional({ type: String, nullable: true, example: null })
   instance!: string | null
+
+  @ApiPropertyOptional({
+    type: String,
+    enum: ['A', 'B'],
+    example: 'B',
+    description: 'Whose fields the draft writes in a joint return (ADR-0073): B is the spouse whose figures the user records. Absent means the user.',
+  })
+  person?: 'A' | 'B' | undefined
 
   @ApiPropertyOptional({ type: Object, additionalProperties: { type: 'string' } })
   companionFields?: Readonly<Record<string, string>> | undefined
@@ -329,8 +341,17 @@ export class AdvisorRoundQuestionDto implements AdvisorRoundQuestion {
   @ApiProperty({ type: [String] })
   options!: readonly string[]
 
-  @ApiPropertyOptional({ type: String })
+  @ApiPropertyOptional({ type: String, enum: ADVISOR_QUESTION_KINDS, description: '`fact` gets no recommendation; `decision` does, with a reason. Missing on older rounds: read as fact.' })
+  kind?: AdvisorQuestionKind | undefined
+
+  @ApiPropertyOptional({ type: Boolean, description: 'More than one answer may be ticked.' })
+  multiple?: boolean | undefined
+
+  @ApiPropertyOptional({ type: String, description: 'The owl\'s pick, only on a decision.' })
   recommended?: string | undefined
+
+  @ApiPropertyOptional({ type: String, description: 'Why she recommends it, one short sentence.' })
+  reason?: string | undefined
 }
 
 export class AdvisorQuestionRoundDto implements AdvisorQuestionRound {

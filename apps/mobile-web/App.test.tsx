@@ -1103,6 +1103,8 @@ describe('App', () => {
               krankentaggeldChf: null,
               pkArbeitnehmerChf: null,
               pkArbeitgeberChf: null,
+              pkArbeitgeberGesamtChf: null,
+              steuerfreiesKrankentaggeldChf: null,
               krankentaggeldArbeitgeberProzent: null,
               krankentaggeldArbeitgeberChf: null,
               nbuvArbeitgeberProzent: null,

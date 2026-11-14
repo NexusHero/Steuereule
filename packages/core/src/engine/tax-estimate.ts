@@ -81,6 +81,11 @@ export interface EmployeeEstimateInput {
 /** The EUR lines of the Anlage N-Gre (anlageNGreBetraege) plus what the user pays outside the salary. */
 export interface CrossBorderEstimateInput {
   readonly year: number
+  /**
+   * Wages of the same year from a German employer (Lohnsteuerbescheinigung), when the person changed to
+   * a Swiss employer during the year (ADR-0079): added to the income, the provision and the credit.
+   */
+  readonly germanWage?: { readonly gross: number; readonly wageTax: number; readonly socialSecurity: number } | undefined
   /** Z. 23: Arbeitslohn after Familienzulagen. */
   readonly wageEur: number
   /** Z. 25: creditable Swiss withholding tax, at most 4.5 %. */
@@ -148,18 +153,20 @@ export function taxEstimateCrossBorder(e: CrossBorderEstimateInput): TaxEstimate
     e.healthInsuranceEur,
     Math.min(params.maxOtherProvisionEur, e.healthInsuranceEur + e.otherProvisionEur),
   )
+  const german = e.germanWage
   const provision = {
-    from: e.retirementProvisionEur + e.healthInsuranceEur,
-    to: e.retirementProvisionEur + otherDeductible,
+    from: e.retirementProvisionEur + e.healthInsuranceEur + (german ? Math.round(german.socialSecurity * SV_DEDUCTIBLE.from) : 0),
+    to: e.retirementProvisionEur + otherDeductible + (german ? Math.round(german.socialSecurity * SV_DEDUCTIBLE.to) : 0),
   }
+  const credited = e.withholdingTaxEur + (german?.wageTax ?? 0)
   return estimate({
     year: e.year,
-    einnahmen: e.wageEur,
+    einnahmen: e.wageEur + (german?.gross ?? 0),
     werbungskosten: Math.max(params.lumpSums.employee, e.commuterAllowance),
     provision,
     donations: e.donations,
-    alreadyPaid: (taxAmount) => e.withholdingTaxEur - taxAmount,
-    anrechnung: e.withholdingTaxEur,
+    alreadyPaid: (taxAmount) => credited - taxAmount + (german ? soli(german.wageTax, e.year) : 0),
+    anrechnung: credited,
     specialExpensesLumpSum: params.lumpSums.specialExpensesSingle,
     householdReductionEur: e.householdReductionEur,
     healthExpensesEur: e.healthExpensesEur,

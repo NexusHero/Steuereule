@@ -568,7 +568,7 @@ async function main() {
       const json = await res.json()
       json.messages = [
         { id: 'round-u1', role: 'user', content: 'Fang an', meta: null, createdAt: roundNow, status: 'complete', feedback: null },
-        { id: 'round-a1', role: 'assistant', content: 'Erste Runde:', meta: { situationSuggestions: ['Elternzeit ab März 2027.'], questionRound: { questions: [{ text: 'Hattest du Fortbildungskosten?', options: ['Ja', 'Nein'], recommended: 'Ja' }, { text: 'Gab es einen Umzug?', options: ['Ja', 'Nein'] }] } }, createdAt: roundNow, status: 'complete', feedback: null },
+        { id: 'round-a1', role: 'assistant', content: 'Erste Runde:', meta: { situationSuggestions: ['Elternzeit ab März 2027.'], questionRound: { questions: [{ text: 'Sollen wir die Fortbildungskosten ansetzen?', kind: 'decision', options: ['Ja', 'Nein'], recommended: 'Ja', reason: 'Sie senken die Steuer.' }, { text: 'Gab es einen Umzug?', kind: 'fact', options: ['Ja', 'Nein'] }] } }, createdAt: roundNow, status: 'complete', feedback: null },
       ]
       await route.fulfill({ response: res, json })
     })
@@ -589,6 +589,8 @@ async function main() {
     await see(page, 'advisor-situation-suggestion-taken', 'Row S')
     if ((await byId(page, 'advisor-question').count()) !== 2) fail('Row S: both questions of the round should be shown')
     if (!(await textOf(page, 'advisor-question-round')).includes('Empfohlen')) fail('Row S: the owl’s pick should be marked')
+    // A decision shows why the owl recommends it; a fact is asked without a recommendation.
+    if ((await byId(page, 'advisor-question-reason').count()) !== 1 || !(await textOf(page, 'advisor-question-reason')).includes('Sie senken die Steuer.')) fail('Row S: the decision should say why the owl recommends it')
     if (!(await byId(page, 'advisor-question-submit').isDisabled())) fail('Row S: a round with open questions must not be sendable')
     await byId(page, 'advisor-question-take-recommended').click()
     await byId(page, 'advisor-question-option').nth(3).click()

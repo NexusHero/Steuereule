@@ -344,7 +344,7 @@ describe('EulenModusScreen', () => {
 
       const modal = await screen.findByTestId('law-source-modal')
       expect(modal.textContent).toContain('§ 10b EStG')
-      expect(modal.textContent).toContain('Rechtsstand: 01.01.2025')
+      expect(modal.textContent).toContain('Rechtsstand: 13.11.2026')
 
       fireEvent.click(screen.getByTestId('law-source-close'))
       expect(screen.queryByTestId('law-source-modal')).toBeNull()

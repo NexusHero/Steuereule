@@ -1,16 +1,27 @@
-import { LEGAL_STATUS_DATE, type OwlSourceId } from './owl-mode'
+import type { OwlSourceId } from './owl-mode'
+import { furtherWorkExpensesEur, type WorkExpenseAmounts } from '../domains/work-expenses'
+
+/**
+ * When the summaries below were last read against the wording on gesetze-im-internet.de. The
+ * nightly law watch (apps/api/scripts/check-law-changes.ts) notices when one of these norms changes.
+ */
+export const LEGAL_SOURCES_CHECKED_ON = '13.11.2026'
 import type { AdvisorAnswerNotice } from './advisor-answer-check'
 import type { AdvisorNoteChange } from './advisor-notes'
-import type { AdvisorQuestionRound } from './advisor-skills'
+import type { AdvisorQuestionRound, InterviewAreaChange } from './advisor-skills'
 import type { AdvisorModelFailure } from './advisor-failure'
 import type { AdvisorThoughtStep } from './advisor-thought'
 import { topicRefusal, type AdvisorTopicOutcome } from './advisor-topic'
 import { isSupportedIncomeTaxYear } from '../math/tarif'
 import { getTaxYearParameters } from '../math/tax-parameters'
 import type { Marking, Screen } from './marking'
+import type { AdvisorPerson } from './advisor-household'
 import type { Profession } from './interview'
 import type { LstbCalculationTerm, LstbExtractedFieldStatus, LstbFieldReason } from '../domains/lstb-parser'
 import { taxEstimateCrossBorder, taxEstimateEmployee } from '../engine/tax-estimate'
+
+/** The commute mask's further Werbungskosten the owl can draft (ADR-0076). */
+const WORK_EXPENSE_FIELDS: ReadonlySet<string> = new Set(['professionalBodiesEur', 'workEquipmentEur', 'accountFeesEur', 'otherWorkExpensesEur'])
 
 export type AdvisorActionStatus = 'pending' | 'applied' | 'dismissed' | 'superseded' | 'undone'
 
@@ -30,7 +41,7 @@ export const ADVISOR_LEGAL_SOURCES: Readonly<Record<OwlSourceId, AdvisorLegalSou
     title: 'Homeoffice-Tagespauschale & Arbeitszimmer',
     summary:
       'Für jeden Kalendertag, an dem du überwiegend zu Hause arbeitest und keine erste Tätigkeitsstätte aufsuchst, sind 6 € pro Tag (maximal 1.260 € für bis zu 210 Tage im Jahr) als Werbungskosten abziehbar.',
-    legalStatusDate: LEGAL_STATUS_DATE,
+    legalStatusDate: LEGAL_SOURCES_CHECKED_ON,
     url: 'https://www.gesetze-im-internet.de/estg/__4.html',
   },
   'estg-9-1': {
@@ -39,7 +50,7 @@ export const ADVISOR_LEGAL_SOURCES: Readonly<Record<OwlSourceId, AdvisorLegalSou
     title: 'Werbungskosten & Entfernungspauschale',
     summary:
       'Werbungskosten sind Aufwendungen zur Erwerbung, Sicherung und Erhaltung der Einnahmen. Sie wirken sich steuermindernd aus, sobald sie zusammen den Arbeitnehmer-Pauschbetrag von 1.230 € überschreiten.',
-    legalStatusDate: LEGAL_STATUS_DATE,
+    legalStatusDate: LEGAL_SOURCES_CHECKED_ON,
     url: 'https://www.gesetze-im-internet.de/estg/__9.html',
   },
   'estg-9-1-4a': {
@@ -47,8 +58,8 @@ export const ADVISOR_LEGAL_SOURCES: Readonly<Record<OwlSourceId, AdvisorLegalSou
     paragraph: '§ 9 Abs. 1 Nr. 4a EStG',
     title: 'Reise- und Fahrtkosten bei Auswärtstätigkeit',
     summary:
-      'Fahrten zu einer Fortbildungsstätte oder auf Dienstreise sind keine Fahrten zur ersten Tätigkeitsstätte: Du kannst jeden gefahrenen Kilometer (Hin- und Rückfahrt) mit 0,30 € oder die tatsächlichen Ticketkosten ansetzen.',
-    legalStatusDate: LEGAL_STATUS_DATE,
+      'Fahrten zu einer Fortbildungsstätte oder auf Dienstreise sind keine Fahrten zur ersten Tätigkeitsstätte: Du kannst jeden gefahrenen Kilometer (Hin- und Rückfahrt) mit dem Satz des Bundesreisekostengesetzes (Pkw 0,30 €) oder die tatsächlichen Ticketkosten ansetzen.',
+    legalStatusDate: LEGAL_SOURCES_CHECKED_ON,
     url: 'https://www.gesetze-im-internet.de/estg/__9.html',
   },
   'estg-9-1-6': {
@@ -57,7 +68,7 @@ export const ADVISOR_LEGAL_SOURCES: Readonly<Record<OwlSourceId, AdvisorLegalSou
     title: 'Arbeitsmittel & Computerhardware',
     summary:
       'Beruflich genutzte Arbeitsmittel bis 800 € netto (952 € brutto) sowie Computerhardware und Software (BMF-Schreiben vom 22.02.2022) können im Jahr der Anschaffung in Höhe des beruflichen Nutzungsanteils sofort abgezogen werden.',
-    legalStatusDate: LEGAL_STATUS_DATE,
+    legalStatusDate: LEGAL_SOURCES_CHECKED_ON,
     url: 'https://www.gesetze-im-internet.de/estg/__9.html',
   },
   'estg-9-4a': {
@@ -66,7 +77,7 @@ export const ADVISOR_LEGAL_SOURCES: Readonly<Record<OwlSourceId, AdvisorLegalSou
     title: 'Verpflegungsmehraufwendungen',
     summary:
       'Bei beruflicher Auswärtstätigkeit oder Fortbildung außerhalb deiner Wohnung und ersten Tätigkeitsstätte gelten Pauschalen: 14 € ab mehr als 8 Stunden Abwesenheit (sowie für An- und Abreisetage bei Übernachtung) und 28 € für volle 24-Stunden-Tage.',
-    legalStatusDate: LEGAL_STATUS_DATE,
+    legalStatusDate: LEGAL_SOURCES_CHECKED_ON,
     url: 'https://www.gesetze-im-internet.de/estg/__9.html',
   },
   'estg-9-6': {
@@ -75,7 +86,7 @@ export const ADVISOR_LEGAL_SOURCES: Readonly<Record<OwlSourceId, AdvisorLegalSou
     title: 'Erst- und Zweitausbildung',
     summary:
       'Aufwendungen für eine Berufsausbildung oder ein Studium nach einer bereits abgeschlossenen ersten Ausbildung (Zweitausbildung, z. B. Master nach Bachelor) sind unbeschränkt als Werbungskosten abziehbar.',
-    legalStatusDate: LEGAL_STATUS_DATE,
+    legalStatusDate: LEGAL_SOURCES_CHECKED_ON,
     url: 'https://www.gesetze-im-internet.de/estg/__9.html',
   },
   'estg-10b': {
@@ -84,7 +95,7 @@ export const ADVISOR_LEGAL_SOURCES: Readonly<Record<OwlSourceId, AdvisorLegalSou
     title: 'Steuerbegünstigte Zuwendungen (Spenden)',
     summary:
       'Spenden und Mitgliedsbeiträge zur Förderung steuerbegünstigter Zwecke sind bis zu 20 % des Gesamtbetrags der Einkünfte direkt als Sonderausgaben abziehbar (bis 300 € je Einzelspende genügt der Kontoauszug als vereinfachter Nachweis).',
-    legalStatusDate: LEGAL_STATUS_DATE,
+    legalStatusDate: LEGAL_SOURCES_CHECKED_ON,
     url: 'https://www.gesetze-im-internet.de/estg/__10b.html',
   },
   'estg-10-1-5': {
@@ -92,8 +103,26 @@ export const ADVISOR_LEGAL_SOURCES: Readonly<Record<OwlSourceId, AdvisorLegalSou
     paragraph: '§ 10 Abs. 1 Nr. 5 EStG',
     title: 'Kinderbetreuungskosten',
     summary:
-      'Kinderbetreuungskosten für Kinder bis zum 14. Lebensjahr (Kita, Tagesmutter, Hort) sind als Sonderausgaben abziehbar, sofern eine Rechnung vorliegt und unbar gezahlt wurde.',
-    legalStatusDate: LEGAL_STATUS_DATE,
+      'Kinderbetreuungskosten für Kinder bis zum 14. Lebensjahr (Kita, Tagesmutter, Hort) sind zu 80 %, höchstens 4.800 € je Kind, als Sonderausgaben abziehbar (bis 2024: zwei Drittel, höchstens 4.000 €), sofern eine Rechnung vorliegt und unbar gezahlt wurde.',
+    legalStatusDate: LEGAL_SOURCES_CHECKED_ON,
+    url: 'https://www.gesetze-im-internet.de/estg/__10.html',
+  },
+  'estg-35a': {
+    sourceId: 'estg-35a',
+    paragraph: '§ 35a Abs. 3 EStG',
+    title: 'Handwerkerleistungen im Haushalt',
+    summary:
+      'Für Handwerkerleistungen im eigenen Haushalt ermäßigt sich die Einkommensteuer um 20 % der Arbeitskosten einschließlich Maschinen- und Fahrtkosten und Umsatzsteuer, höchstens 1.200 € im Jahr; Material zählt nicht, öffentlich geförderte Maßnahmen sind ausgeschlossen, und es braucht eine Rechnung und eine Überweisung.',
+    legalStatusDate: LEGAL_SOURCES_CHECKED_ON,
+    url: 'https://www.gesetze-im-internet.de/estg/__35a.html',
+  },
+  'estg-10-1-3': {
+    sourceId: 'estg-10-1-3',
+    paragraph: '§ 10 Abs. 1 Nr. 3 EStG',
+    title: 'Beiträge zur Basis-Krankenversicherung',
+    summary:
+      'Beiträge zu einer Krankenversicherung, soweit sie eine Basisabsicherung bieten, sind als Sonderausgaben voll abziehbar; dazu gehört die Grundversicherung einer Schweizer Krankenkasse. Prämien für ein Kind zählen bei den Eltern, die sie tragen.',
+    legalStatusDate: LEGAL_SOURCES_CHECKED_ON,
     url: 'https://www.gesetze-im-internet.de/estg/__10.html',
   },
   'ao-355': {
@@ -102,7 +131,7 @@ export const ADVISOR_LEGAL_SOURCES: Readonly<Record<OwlSourceId, AdvisorLegalSou
     title: 'Einspruchsfrist gegen Steuerbescheide',
     summary:
       'Ein Einspruch gegen den Einkommensteuerbescheid ist innerhalb eines Monats nach Bekanntgabe des Bescheids beim Finanzamt einzulegen.',
-    legalStatusDate: LEGAL_STATUS_DATE,
+    legalStatusDate: LEGAL_SOURCES_CHECKED_ON,
     url: 'https://www.gesetze-im-internet.de/ao_1977/__355.html',
   },
 }
@@ -115,6 +144,8 @@ export interface AdvisorActionProposal {
   readonly screen: Screen
   readonly field: string
   readonly instance: string | null
+  /** Whose fields the draft writes in a joint return (ADR-0073): `B` is the spouse; absent means the user (A). */
+  readonly person?: AdvisorPerson | undefined
   readonly companionFields?: Readonly<Record<string, string>> | undefined
   /** Raw values of the companion fields when the draft was created; the stale check compares against them. */
   readonly companionExpectedValues?: Readonly<Record<string, string | null>> | undefined
@@ -143,10 +174,20 @@ export interface AdvisorActionProposal {
   readonly paragraph?: string | undefined
   /** Optional receipt reference when a proposal originates from a scanned receipt (#444). */
   readonly receiptId?: string | undefined
+  /**
+   * Server-internal: the donations this draft counts, as hashed booking numbers and amount keys, so a
+   * repeated receipt or a copy is not counted again (ADR-0080). Never sent to the client.
+   */
+  readonly countedItems?: readonly AdvisorCountedItem[] | undefined
   readonly confidenceStatus?: LstbExtractedFieldStatus | undefined
   readonly sourceLines?: readonly string[] | undefined
   readonly calculation?: readonly LstbCalculationTerm[] | undefined
   readonly fieldReason?: LstbFieldReason | null | undefined
+}
+
+export interface AdvisorCountedItem {
+  readonly ref: string | null
+  readonly amountKey: string
 }
 
 export interface AdvisorUndoEntry {
@@ -194,6 +235,8 @@ export interface AdvisorMessageMeta {
   readonly situationSuggestions?: readonly string[] | undefined
   /** A round of questions with answers to tap, from the interview skill (#495). */
   readonly questionRound?: AdvisorQuestionRound | undefined
+  /** Areas of the interview the owl marked as settled or reopened in this answer; stored, then dropped from the message. */
+  readonly interviewChanges?: readonly InterviewAreaChange[] | undefined
   /** Turbo mode: the owl applied the drafts of this answer itself, without a click; each can be undone. */
   readonly turbo?: true | undefined
   /** Why the model did not answer this turn, when it did not (#487). */
@@ -295,6 +338,10 @@ export interface CaseDigest {
     readonly selfPaidKvPvEur: number | null
     readonly riesterEur: number | null
     readonly doubleHouseholdRentEur: number | null
+    /** Further Werbungskosten from the commute mask (ADR-0076): professional bodies, work tools, account fees, other. */
+    readonly workExpenses?: WorkExpenseAmounts | undefined
+    /** Deductible childcare of all children (80 %, at most 4.800 € each from 2025), a Sonderausgabe. */
+    readonly childcareDeductionEur?: number | undefined
   }
   readonly childrenCount: number
   /** Ages of the children at the end of the tax year, as far as a birth date is known (#501). */
@@ -342,9 +389,11 @@ export interface CaseFurtherFacts {
   /** The statutory and the voluntary filing deadline (ISO dates), where the year is supported. */
   readonly filingDeadline: string | null
   readonly voluntaryFilingDeadline: string | null
+  /** What the printout still needs, in words (empty when it is complete; absent where the year has no forms). */
+  readonly printoutGaps?: readonly string[] | undefined
 }
 
-function commuterAllowanceFrom(workdays: number, distanceKm: number, taxYear?: number): number {
+export function commuterAllowanceFrom(workdays: number, distanceKm: number, taxYear?: number): number {
   if (workdays <= 0 || distanceKm <= 0) return 0
   const commute =
     taxYear !== undefined && isSupportedIncomeTaxYear(taxYear)
@@ -435,6 +484,7 @@ function computeRefundMidpoint(digest: CaseDigest): number {
   const otherExpenses =
     hoAllowance +
     trainingAllowance +
+    furtherWorkExpensesEur(digest.catalogExpenses.workExpenses) +
     (digest.catalogExpenses.relocationCostsEur ?? 0) +
     (digest.catalogExpenses.doubleHouseholdRentEur ?? 0)
 
@@ -445,7 +495,7 @@ function computeRefundMidpoint(digest: CaseDigest): number {
     sozialversicherung: sv,
     commuterAllowance,
     otherIncomeRelatedExpenses: otherExpenses,
-    donations: (digest.catalogExpenses.donationsEur ?? 0) + (digest.catalogExpenses.riesterEur ?? 0),
+    donations: (digest.catalogExpenses.donationsEur ?? 0) + (digest.catalogExpenses.riesterEur ?? 0) + (digest.catalogExpenses.childcareDeductionEur ?? 0),
     selfPaidKvPv: digest.catalogExpenses.selfPaidKvPvEur ?? 0,
   })
   if (est.kind === 'spanne') {
@@ -478,6 +528,10 @@ function readCurrentValueFromDigest(digest: CaseDigest, screen: Screen, field: s
   if (screen === 'commute') {
     if (field === 'oneWayKm') return digest.commuteAndWorkdays.distanceKm !== null ? String(digest.commuteAndWorkdays.distanceKm) : null
     if (field === 'homeOfficeDays') return digest.commuteAndWorkdays.homeOfficeDays !== null ? String(digest.commuteAndWorkdays.homeOfficeDays) : null
+    if (WORK_EXPENSE_FIELDS.has(field)) {
+      const value = digest.catalogExpenses.workExpenses?.[field as keyof WorkExpenseAmounts]
+      return value === null || value === undefined ? null : String(value)
+    }
   }
   if (screen === 'chLohnausweis') {
     if (field === 'krankenkasseChf') return digest.crossBorder.healthInsuranceChf !== null ? String(digest.crossBorder.healthInsuranceChf) : null
@@ -503,6 +557,12 @@ function applyCandidateToDigest(digest: CaseDigest, screen: Screen, field: strin
     }
   }
   if (screen === 'commute') {
+    if (WORK_EXPENSE_FIELDS.has(field)) {
+      return {
+        ...digest,
+        catalogExpenses: { ...digest.catalogExpenses, workExpenses: { ...digest.catalogExpenses.workExpenses, [field]: Math.max(0, parsedNum) } },
+      }
+    }
     if (field === 'oneWayKm') {
       return {
         ...digest,
@@ -629,6 +689,23 @@ function extractFirstEuroAmount(text: string): number | null {
   return n
 }
 
+/**
+ * The amount that belongs to a topic: the first one in the part of the sentence that names it.
+ * "Brutto 46.800 €, 250 € gespendet" gives 250 for donations, not the wage. Null when that part has
+ * no amount: then the fallback asks instead of drafting a number that was meant for something else.
+ */
+export function extractAmountNear(text: string, topic: RegExp): number | null {
+  // A dot between digits is a thousands separator (1.800 €), not the end of a sentence.
+  // "und" joins two statements as often as a comma does ("46.800 € verdient und 250 € gespendet").
+  const parts = text.split(/(?<!\d)\.|\.(?!\d)|[;\n!?]|,(?!\d)|\s(?:und|sowie)\s/i)
+  const part = parts.find((candidate) => topic.test(candidate))
+  if (part === undefined) return null
+  const match = part.match(/(\d{1,3}(?:[.\s]\d{3})+|\d+)\s*(?:€|eur|euro|chf)/i)
+  if (!match || !match[1]) return null
+  const n = Number.parseInt(match[1].replace(/[.\s]/g, ''), 10)
+  return Number.isFinite(n) && n > 0 ? n : null
+}
+
 function extractKilometers(text: string): number | null {
   const match = text.match(/(\d{1,3})\s*(?:km|kilometer)/i)
   if (!match || !match[1]) return null
@@ -670,7 +747,7 @@ export function checkAdvisorInputBoundary(message: string, digest: CaseDigest): 
   if (STBERG_OUT_OF_SCOPE_PATTERNS.some((rx) => rx.test(message))) {
     return {
       replyText:
-        'Eine verbindliche Rechtsauskunft oder rechtsverbindliche Beratung im Sinne des Steuerberatungsgesetzes kann ich nicht geben; dafür wende dich bitte an eine Steuerberaterin oder einen Steuerberater. Ich erkläre dir aber gern die Rechtslage und rechne mit dir durch, was sie für deine Erklärung bedeutet.',
+        'Eine verbindliche Rechtsauskunft im Sinne des Steuerberatungsgesetzes oder eine Vertretung beim Finanzamt kann ich nicht übernehmen. Ich erkläre dir aber die Rechtslage genau, rechne mit dir durch, was sie für deine Erklärung bedeutet, und bereite mit dir vor, was du dem Finanzamt schreibst.',
       meta: {
         choices: ['Kanzlei-Endprüfung starten', 'Homeoffice-Pauschale prüfen', 'Spenden aus dem Vorjahr prüfen'],
       },
@@ -685,15 +762,46 @@ export function checkAdvisorInputBoundary(message: string, digest: CaseDigest): 
  * Handles multi-turn Anamnese (clickable follow-up pills), Two-Paths comparisons,
  * exact tax delta simulations, and Kanzlei-Endprüfung.
  */
+/**
+ * Words that put a sentence about someone other than the user: the spouse, a partner, a child.
+ * "Frau Müller" or "Partnerschaft" do not count; "meine Frau" and "Partner" do.
+ */
+const OTHER_PERSON_PATTERN =
+  /\b(?:(?:meine?|unsere?)\s+(?:frau|mann)\b|ehe(?:frau|mann|partner(?:in)?|gatt(?:e|in))\b|gatt(?:e|in)\b|partner(?:in)?\b|lebensgefährt(?:e|in)\b|kind(?:er)?\b|tochter\b|sohn\b|person\s+b\b)/i
+
+/** Whether a message talks about the spouse, a partner or a child rather than the user alone. */
+export function mentionsOtherPerson(message: string): boolean {
+  return OTHER_PERSON_PATTERN.test(message)
+}
+
+type AdvisorFallbackTurn = { readonly replyText: string; readonly meta: AdvisorMessageMeta }
+
+/**
+ * The fallback rules when the model cannot answer. They only know the user's own fields, so a
+ * sentence about the spouse, a partner or a child never becomes a draft: "Meine Frau fährt 24 km"
+ * must not land in the user's own commute. Such a turn gets an honest answer and no draft.
+ */
 export function evaluateAdvisorTurn(input: {
   readonly message: string
   readonly activeScreen?: Screen | undefined
   readonly digest: CaseDigest
   readonly actionIdFactory?: (() => string) | undefined
-}): {
-  readonly replyText: string
-  readonly meta: AdvisorMessageMeta
-} {
+}): AdvisorFallbackTurn {
+  const turn = evaluateOwnTurn(input)
+  if (!mentionsOtherPerson(input.message) || (turn.meta.action === undefined && turn.meta.twoPaths === undefined)) return turn
+  return {
+    replyText:
+      'Das klingt nach Angaben für deine Partnerin oder deinen Partner (Person B) oder für ein Kind. Gerade antworte ich nur mit meinen einfachen Regeln, und die tragen nichts für eine andere Person vor, damit nichts in deinen eigenen Feldern landet. Frag mich gleich noch einmal, oder trag es selbst in der Maske für Person B bzw. beim Kind ein.',
+    meta: { sources: turn.meta.sources ?? [] },
+  }
+}
+
+function evaluateOwnTurn(input: {
+  readonly message: string
+  readonly activeScreen?: Screen | undefined
+  readonly digest: CaseDigest
+  readonly actionIdFactory?: (() => string) | undefined
+}): AdvisorFallbackTurn {
   const { message, activeScreen, digest } = input
   const makeActionId = input.actionIdFactory ?? (() => `act-${Date.now()}`)
   const lower = message.toLowerCase()
@@ -750,7 +858,7 @@ export function evaluateAdvisorTurn(input: {
 
   // 3. Spenden & Vorjahresvergleich (§ 10b EStG)
   if (lower.includes('spende') || lower.includes('zuwendung') || lower.includes('gemeinnützig')) {
-    const explicitAmount = extractFirstEuroAmount(message)
+    const explicitAmount = extractAmountNear(message, /spend|zuwendung|gemeinnützig/i)
     const priorYearDonations = digest.priorYearComparison.donationsEur ?? 200
     const usePriorYear = lower.includes('vorjahr') && !lower.includes('prüfen') && !lower.includes('klären')
     const targetAmount = explicitAmount ?? (usePriorYear ? priorYearDonations : null)
@@ -972,8 +1080,9 @@ export function evaluateAdvisorTurn(input: {
   }
 
   // 7. Beruflicher Umzug (§ 9 Abs. 1 EStG)
-  if (lower.includes('umzug')) {
-    const amount = extractFirstEuroAmount(message) ?? 1500
+  const relocationAmount = lower.includes('umzug') ? extractAmountNear(message, /umzug|umgezogen/i) : null
+  if (relocationAmount !== null) {
+    const amount = relocationAmount
     const sim = simulateAdvisorFieldDelta(digest, 'interview', 'umzug-kosten', String(amount))
     return {
       replyText: `Ein beruflich veranlasster Umzug (z. B. Jobwechsel oder Verkürzung des täglichen Arbeitswegs um mindestens eine Stunde) ist nach [estg-9-1] in voller Höhe als Werbungskosten absetzbar. Ich habe den Ansatz über ${amount} € vorbereitet:`,
@@ -1041,7 +1150,7 @@ export function evaluateAdvisorTurn(input: {
     lower.includes('krankenkasse') ||
     activeScreen === 'chLohnausweis'
   ) {
-    const chfAmount = extractFirstEuroAmount(message)
+    const chfAmount = extractAmountNear(message, /krankenkasse|krankentaggeld|krankenversicherung/i)
     if (chfAmount !== null) {
       const sim = simulateAdvisorFieldDelta(digest, 'chLohnausweis', 'krankenkasseChf', String(chfAmount))
       return {

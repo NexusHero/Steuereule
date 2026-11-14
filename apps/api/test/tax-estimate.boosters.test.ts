@@ -34,15 +34,15 @@ function setup() {
 }
 
 describe('TaxEstimateService — § 35a & § 33 boosters and ADR-0032 feature flag', () => {
-  it('ships with HOUSEHOLD_AND_HEALTH_BOOSTERS = false until § 35a/§ 33 printout forms exist', () => {
-    expect(HOUSEHOLD_AND_HEALTH_BOOSTERS).toBe(false)
+  it('ships with HOUSEHOLD_AND_HEALTH_BOOSTERS on, now that the § 33 and § 35a forms are printed (ADR-0077)', () => {
+    expect(HOUSEHOLD_AND_HEALTH_BOOSTERS).toBe(true)
   })
 
-  it('ignores haushalt & gesundheit answers (incl. AMOUNT_LATER) while HOUSEHOLD_AND_HEALTH_BOOSTERS is false', async () => {
+  it('ignores haushalt & gesundheit answers (incl. AMOUNT_LATER) while the switch is off', async () => {
     const baseEnv = setup()
     baseEnv.interview.seed('u', 2025, { job: 'Angestellt', ausland: 'Nein', kinder: 'Nein' })
     baseEnv.lstb.seed({ userId: 'u', taxYear: 2025, bruttoarbeitslohn: '45000', lohnsteuer: '6100', sozialversicherung: '9200' })
-    const baseline = range(await baseEnv.service.getState('u', 2025))
+    const baseline = range(await baseEnv.service.getState('u', 2025, false))
 
     const gatedEnv = setup()
     gatedEnv.interview.seed('u', 2025, {
@@ -55,7 +55,7 @@ describe('TaxEstimateService — § 35a & § 33 boosters and ADR-0032 feature fl
       'gesundheit-betrag': '5000',
     })
     gatedEnv.lstb.seed({ userId: 'u', taxYear: 2025, bruttoarbeitslohn: '45000', lohnsteuer: '6100', sozialversicherung: '9200' })
-    const ignored = range(await gatedEnv.service.getState('u', 2025))
+    const ignored = range(await gatedEnv.service.getState('u', 2025, false))
 
     expect(ignored).toEqual(baseline)
   })

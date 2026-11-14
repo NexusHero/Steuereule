@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import type { AdvisorMessageFeedback, AdvisorMessageMeta, AdvisorMessageStatus, AdvisorTurnUsage } from '@steuereule/core'
+import type { AdvisorMessageFeedback, AdvisorMessageMeta, AdvisorMessageStatus, AdvisorTurnUsage, InterviewProgress } from '@steuereule/core'
 
 export const ADVISOR_REPOSITORY = Symbol('ADVISOR_REPOSITORY')
 
@@ -116,6 +116,9 @@ export interface AdvisorRepository {
   findSituation(userId: string): Promise<AdvisorSituationRecord | null>
   saveSituation(userId: string, text: string): Promise<AdvisorSituationRecord>
   listNotes(userId: string, taxYear: number): Promise<AdvisorNoteRecord[]>
+  /** Where the Berater-Interview stands for the year; empty while nothing is settled. */
+  findInterview(userId: string, taxYear: number): Promise<InterviewProgress>
+  saveInterview(userId: string, taxYear: number, progress: InterviewProgress): Promise<void>
   findNote(id: string, userId: string): Promise<AdvisorNoteRecord | null>
   createNote(userId: string, taxYear: number, text: string, author: AdvisorNoteAuthor): Promise<AdvisorNoteRecord>
   /** Null when the note does not exist or belongs to someone else. */
@@ -207,6 +210,15 @@ export class InMemoryAdvisorRepository implements AdvisorRepository {
   }
 
   private situations = new Map<string, AdvisorSituationRecord>()
+  private interviews = new Map<string, InterviewProgress>()
+
+  async findInterview(userId: string, taxYear: number): Promise<InterviewProgress> {
+    return this.interviews.get(`${userId}:${taxYear}`) ?? {}
+  }
+
+  async saveInterview(userId: string, taxYear: number, progress: InterviewProgress): Promise<void> {
+    this.interviews.set(`${userId}:${taxYear}`, progress)
+  }
 
   async findSituation(userId: string): Promise<AdvisorSituationRecord | null> {
     return this.situations.get(userId) ?? null

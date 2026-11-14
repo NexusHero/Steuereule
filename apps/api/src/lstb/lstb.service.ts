@@ -24,7 +24,11 @@ import { wageTaxCertificateDataFrom } from './lstb-data.js'
 
 const LSTB_FIELD_IDS: readonly WageTaxCertificateFieldId[] = ['bruttoarbeitslohn', 'lohnsteuer', 'sozialversicherung']
 
-export type ScannedLstbValues = Readonly<Record<WageTaxCertificateFieldId, number>>
+/**
+ * Values read from a scanned LStB. The social insurance may be unreadable (null): it then stays open, and on a
+ * further certificate the sum already recorded stands (ADR-0083).
+ */
+export type ScannedLstbValues = Readonly<Record<'bruttoarbeitslohn' | 'lohnsteuer', number>> & { readonly sozialversicherung: number | null }
 
 export interface ExistingLstbValues {
   readonly hasExisting: boolean
@@ -153,17 +157,37 @@ export class LstbService {
     userId: string,
     taxYear: number,
     values: ScannedLstbValues,
-    options: { readonly receiptId: string | null; readonly overwriteExisting: boolean },
+    options: {
+      readonly receiptId: string | null
+      readonly overwriteExisting: boolean
+      /** A further certificate of the same year (second employer, a later payment): add, never replace. */
+      readonly addToExisting?: boolean
+    },
   ): Promise<LstbResponseDto> {
     for (const id of LSTB_FIELD_IDS) {
-      if (!isValidAmount(values[id])) {
+      const value = values[id]
+      if (id === 'sozialversicherung' && value === null) continue
+      if (value === null || !isValidAmount(value)) {
         throw new InvalidInputError('FIELD_VALUE_INVALID', `Field "${id}" requires a non-negative whole-euro integer.`)
       }
     }
+    const current = await this.existingValues(userId, taxYear)
+    const adding = options.addToExisting === true && current.hasExisting
+    const read = LSTB_FIELD_IDS.filter((id) => values[id] !== null)
+    if (adding && read.every((id) => current.existing[id] === values[id])) {
+      throw new ConflictError('LSTB_SAME_CERTIFICATE', 'Diese Lohnsteuerbescheinigung ist schon erfasst.', { existing: current.existing })
+    }
+    const total = (id: WageTaxCertificateFieldId): WageTaxCertificateFieldState => {
+      const value = values[id]
+      const before = adding ? current.existing[id] : null
+      // An unreadable value adds nothing: the recorded sum stands, or the field stays open.
+      if (value === null) return before !== null && before !== undefined ? { kind: 'erfasst', value: before } : { kind: 'offen' }
+      return { kind: 'erfasst', value: value + (before ?? 0) }
+    }
     const candidate: WageTaxCertificateData = {
-      bruttoarbeitslohn: { kind: 'erfasst', value: values.bruttoarbeitslohn },
-      lohnsteuer: { kind: 'erfasst', value: values.lohnsteuer },
-      sozialversicherung: { kind: 'erfasst', value: values.sozialversicherung },
+      bruttoarbeitslohn: total('bruttoarbeitslohn'),
+      lohnsteuer: total('lohnsteuer'),
+      sozialversicherung: total('sozialversicherung'),
     }
     const candidateStatus = wageTaxCertificateStatus(candidate)
     if (candidateStatus.kind === 'widerspruch') {
@@ -174,8 +198,7 @@ export class LstbService {
       )
     }
 
-    const current = await this.existingValues(userId, taxYear)
-    if (current.hasExisting && !options.overwriteExisting) {
+    if (current.hasExisting && !options.overwriteExisting && !adding) {
       throw new ConflictError(
         'LSTB_EXISTING_VALUES_CONFLICT',
         'Für dieses Steuerjahr liegen bereits LStB-Werte vor. Bestehende Werte ersetzen oder abbrechen?',
@@ -184,8 +207,15 @@ export class LstbService {
     }
 
     for (const id of LSTB_FIELD_IDS) {
+      // A further certificate without this value leaves the recorded one and its provenance as they are.
+      if (adding && values[id] === null) continue
       await this.repository.setField(userId, taxYear, id, serializeWageTaxCertificateField(candidate[id]))
-      if (options.receiptId !== null) {
+      if (values[id] === null) {
+        await this.markings.remove(userId, taxYear, [provenanceKey('lstb', id)])
+      } else if (adding) {
+        // A sum of two certificates is no single receipt's figure: the user's own, confirmed.
+        await this.markings.save(userId, taxYear, { key: provenanceKey('lstb', id), provenance: { kind: 'nutzer' }, confirmed: true, proposal: null })
+      } else if (options.receiptId !== null) {
         await this.markings.save(userId, taxYear, {
           key: provenanceKey('lstb', id),
           provenance: { kind: 'beleg', receiptId: options.receiptId },

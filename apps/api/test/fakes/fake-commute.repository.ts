@@ -1,4 +1,6 @@
-import type { CommuteInputs, CommuteRepository } from '../../src/commute/commute.repository.js'
+import { WAY_TEXT_FIELDS, WORK_EXPENSE_AMOUNT_FIELDS, WORK_EXPENSE_NOTE_FIELDS, type CommuteInputs, type CommuteRepository } from '../../src/commute/commute.repository.js'
+
+const WORK_EXPENSE_KEYS: ReadonlySet<string> = new Set([...WORK_EXPENSE_AMOUNT_FIELDS, ...WORK_EXPENSE_NOTE_FIELDS, ...WAY_TEXT_FIELDS, 'secondOneWayKm'])
 
 export class FakeCommuteRepository implements CommuteRepository {
   private readonly store = new Map<string, CommuteInputs>()
@@ -12,7 +14,11 @@ export class FakeCommuteRepository implements CommuteRepository {
   }
 
   async save(userId: string, taxYear: number, inputs: CommuteInputs): Promise<CommuteInputs> {
-    this.store.set(this.key(userId, taxYear), inputs)
-    return inputs
+    // Like the Prisma repository: further Werbungskosten left undefined keep what is stored.
+    const existing = this.store.get(this.key(userId, taxYear))
+    const kept = Object.fromEntries(Object.entries(existing ?? {}).filter(([k]) => WORK_EXPENSE_KEYS.has(k) && (inputs as unknown as Record<string, unknown>)[k] === undefined))
+    const saved = { ...inputs, ...kept }
+    this.store.set(this.key(userId, taxYear), saved)
+    return saved
   }
 }

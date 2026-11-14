@@ -117,6 +117,27 @@ describe('the advisor stance is in every model call (#499, #501)', () => {
     }
   })
 
+  it('builds the taxable income openly and names what the tax office asks for (steuerberater skill)', async () => {
+    const model = new RecordingModel()
+    await turn(new LangGraphAdvisorEngine(runtime('google-genai'), () => model))
+    const text = systemText(model.seen[0]!)
+    expect(text).toContain('Gesamtbetrag der Einkünfte')
+    expect(text).toContain('nur wenn sie günstiger sind als das Kindergeld (§ 31 EStG)')
+    expect(text).toContain('Für die Erklärung dieses Nutzers gilt die Schätzung der App')
+    expect(text).toContain('was das Finanzamt bei solchen Angaben typischerweise nachfragt')
+    // Real case: „an 226 Tagen gefahren“ has no field; the owl turns it into days off.
+    expect(text).toContain('Nennt der Nutzer stattdessen, an wie vielen Tagen er zur Arbeit gefahren ist')
+    // Found by the eval: after a draft the owl answered with nothing but „draft prepared“.
+    expect(text).toContain('Ein Entwurf ersetzt nie die Antwort')
+    // Further Werbungskosten and childcare have their fields (ADR-0076).
+    expect(text).toContain('commute.workEquipmentEur')
+    expect(text).toContain('commute.accountFeesEur')
+    expect(text).toContain('kind.childcareEur')
+    // Laws change: a norm that carries the answer is read in today's wording first.
+    expect(text).toContain('liest du vorher ihren heutigen Wortlaut mit `read_law_text`')
+    expect(text).toContain('für dieses Jahr eine andere Fassung gelten kann')
+  })
+
   it('also when the fallback model answers', async () => {
     const first = new RecordingModel(new Error('[503] overloaded'))
     const second = new RecordingModel()
@@ -137,6 +158,25 @@ describe('the situation is the start of every case prompt (#501)', () => {
     const model = new RecordingModel()
     await turn(new LangGraphAdvisorEngine(runtime('google-genai'), () => model), { situation: 'Elternzeit ab März 2026.' })
     expect(systemText(model.seen[0]!)).toContain('Elternzeit ab März 2026.')
+  })
+})
+
+describe('the figures of the tax year are in every case prompt', () => {
+  it('come from the verified table, for the year of the case', () => {
+    const text = buildCaseSystemPrompt(DIGEST, undefined, false)
+    expect(text).toContain('Werte für das Steuerjahr 2025')
+    expect(text).toContain('- Kindergeld je Kind/Monat: 255')
+    expect(text).toContain('- Kinderbetreuung: 80 %, max. 4.800')
+    expect(buildCaseSystemPrompt({ ...DIGEST, taxYear: 2024 }, undefined, false)).toContain('- Kinderbetreuung: 2/3, max. 4.000')
+  })
+})
+
+describe('dates that can save or cost money', () => {
+  it('are in the case prompt with today’s date, from the law only', () => {
+    const text = buildCaseSystemPrompt(DIGEST, undefined, false, undefined, undefined, undefined, undefined, undefined, undefined, undefined, false, undefined, '2026-11-13')
+    expect(text).toContain('Heute ist der 13.11.2026.')
+    expect(text).toContain('15.12.2026: Verlustbescheinigung')
+    expect(text).toContain('31.12.2026: Letzter Tag für Zahlungen, die noch für 2026 zählen')
   })
 })
 

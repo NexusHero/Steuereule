@@ -4,6 +4,7 @@ import {
   extractLstbTaxYear,
   parseGermanOcrAmount,
   parseLstbTextDeterministically,
+  selectLstbRelevantLines,
 } from './lstb-parser'
 
 describe('parseGermanOcrAmount', () => {
@@ -274,4 +275,61 @@ describe('parseLstbTextDeterministically', () => {
     expect(parsed.fields.lohnsteuer.reason).toBe('unreadable')
     expect(parsed.fields.sozialversicherung.reason).toBe('unreadable')
   })
+})
+
+// A scanned, two-column certificate as a phone's or a desktop OCR reads it: the left column's
+// text (address, numbers) lands before the row number, umlauts and "ß" come out wrong.
+// Invented figures, in the pattern of a real scan.
+describe('a scanned two-column certificate', () => {
+  const scan = [
+    'Ausdruck der elektronischen Lohnsteuerbescheinigung fur 2024 BEISPIEL',
+    'Nachstehende Daten wurden maschinell an die Finanzverwaltung Ubertragen |',
+    '1. Bescheinigungszeitraum:',
+    'sO 3. Bruttoarbeitsiohn einsch!. Sachbeztige ohne 9. und 10. ; 61.234,56',
+    '4. Einbehaltene Lohnsteuer von 3. 12.345,67',
+    'Beispiel GmbH / 12345 Musterstadt / Hauptstr. 1 xxxx',
+    'Herr 8. In 3. enthaltene Versorgungsbeztige',
+    '78 1 76Bl b 10. ErmaRigt besteuerter Arbeitslohn flir mehrere Kalenderjahre (ohne 9.)',
+    'Geburtsdatum: 01.02.1 990 19. Steuerpflichtige Entschadigungen und Arbeitslohn fur mehrere | |',
+    'Lohnzahlungszeitraum zugrunde gelegt: | 23. Arbeitnehmer- a) zur gesetzlichen Rentenversicherung 5.678,90',
+    '| 24. Steuertfreie _',
+    '8 1,0 25. Arbeitnehmerbeitrage zur gesetzlichen Krankenversicherung 4.321,09',
+    'StraRe: Musterstrabe 5 26. Arbeitnehmerbeitrage zur sozialen Pflegeversicherung 987,65',
+    '27. Arbeitnehmerbeitrage zur Arbeitsiosenversicherung 765,43',
+    'Jahreshinzu rech n ungsbetrag: 28. Beitrage zur privaten Kranken- und Pflege-Pflichtversicherung oder',
+  ].join('\n')
+
+  it('finds the row numbers behind the left column and reads all rows', () => {
+    const res = parseLstbTextDeterministically(scan)
+    expect(res.taxYear).toBe(2024)
+    expect(res.fields.bruttoarbeitslohn.value).toBe(61235)
+    expect(res.fields.lohnsteuer.value).toBe(12346)
+    expect(res.svBreakdown).toMatchObject({ line23a: 5678.9, line25: 4321.09, line26: 987.65, line27: 765.43 })
+    expect(res.fields.sozialversicherung.value).toBe(Math.round(5678.9 + 4321.09 + 987.65 + 765.43))
+  })
+
+  it('reads thousands that OCR wrote with a comma', () => {
+    const res = parseLstbTextDeterministically(scan.replace('; 61.234,56', 'i 61,234,56'))
+    expect(res.fields.bruttoarbeitslohn.value).toBe(61235)
+  })
+
+  it('does not take a number from the left column as a row', () => {
+    // "8." and "10." in the left text are other rows; "1,0" before row 25 is no amount of row 25.
+    const res = parseLstbTextDeterministically(scan)
+    expect(res.svBreakdown.line25).toBe(4321.09)
+  })
+
+  it('finds the year when OCR lost the umlaut of "für"', () => {
+    expect(extractLstbTaxYear('Ausdruck der elektronischen Lohnsteuerbescheinigung fiir 2023 X')).toBe(2023)
+    expect(extractLstbTaxYear('Ausdruck der elektronischen Lohnsteuerbescheinigung fur 2022')).toBe(2022)
+  })
+
+  it('hands the model only the rows, never the left column’s street or numbers', () => {
+    const kept = selectLstbRelevantLines(scan)
+    expect(kept).toContain('26. Arbeitnehmerbeitrage zur sozialen Pflegeversicherung 987,65')
+    expect(kept).not.toContain('Musterstrabe')
+    expect(kept).not.toContain('Lohnzahlungszeitraum')
+    expect(kept).not.toContain('Beispiel GmbH')
+  })
+
 })

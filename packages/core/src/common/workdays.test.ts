@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
+  commuteDaysByWay,
+  commuterAllowanceByWay,
+  weekdaysInPeriod,
   calculateWorkdays,
   isLeapYear,
   calendarDaysInYear,
@@ -150,5 +153,35 @@ describe('calculateWorkdays with public holidays (F4)', () => {
     const withValue = calculateWorkdays({ year: 2025, workdays: [1, 2, 3, 4, 5], vacationDays: 30, sickDays: 4, homeOfficeDays: 0, publicHolidays: 11 })
     if (without.kind !== 'bestimmt' || withValue.kind !== 'bestimmt') throw new Error('expected a result')
     expect(withValue.commuteDays).toBe(without.commuteDays - 11)
+  })
+})
+
+describe('commute days by way to work (ADR-0079)', () => {
+  const week = [1, 2, 3, 4, 5] as const
+  it('counts the weekdays of a period', () => {
+    // November and December 2024: 21 + 22 Monday–Friday days.
+    expect(weekdaysInPeriod(2024, [...week], '01.11.2024', '31.12.2024')).toBe(43)
+    expect(weekdaysInPeriod(2024, [...week], null, null)).toBe(weekdaysInYear(2024, [...week]))
+  })
+
+  it('keeps all days for a single way without dates', () => {
+    expect(commuteDaysByWay(2024, [...week], 200, [{ from: null, to: null }])).toEqual([200])
+  })
+
+  it('shares the days by the weekdays each way lasted', () => {
+    const [first, second] = commuteDaysByWay(2024, [...week], 220, [
+      { from: null, to: '31.10.2024' },
+      { from: '01.11.2024', to: null },
+    ])
+    expect(first! + second!).toBe(220)
+    expect(second).toBe(36)
+  })
+
+  it('gives each way its own allowance', () => {
+    const ways = commuterAllowanceByWay(2024, [...week], 220, [
+      { oneWayKm: 10, withCar: true, from: '01.01.2024', to: '31.10.2024' },
+      { oneWayKm: 50, withCar: true, from: '01.11.2024', to: '31.12.2024' },
+    ])
+    expect(ways[1]).toEqual({ days: 36, allowance: commuterAllowance({ oneWayKm: 50, days: 36, year: 2024, withCar: true }) })
   })
 })

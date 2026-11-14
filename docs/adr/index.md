@@ -89,6 +89,21 @@ The ADRs **justify** the architecture; the [living arc42 document](../arc42/READ
 | 0069 | Eule: Beraterhaltung immer, Steuerwissen zum Nachschlagen, alle Steuerthemen | Accepted |
 | 0070 | Eule: Sparplan, Ausblick, Bescheid-Check und „Unsere Situation“ | Accepted |
 | 0071 | Eule: Steuerjahre als Projekte in der Seitenleiste, Gespräche antworten gleichzeitig | Accepted |
+| 0072 | Anlage N-Gre: Pensionskasse nach Obligatorium/Überobligatorium, NBUV zu 100 % beim Arbeitgeber, steuerfreies Krankentaggeld, Jahresdurchschnittskurs | Accepted |
+| 0073 | Eule: Entwürfe für Person B in der Zusammenveranlagung | Accepted |
+| 0074 | Belege lesen: Schweizer Lohnausweis und gescannte Lohnsteuerbescheinigung | Accepted |
+| 0075 | Schweizer Briefe: Nachweis der Pensionskasse und Prämienbestätigung des Arbeitgebers | Accepted |
+| 0076 | Weitere Werbungskosten, Kinderbetreuung und der Arbeitgeberanteil der Prämien | Accepted |
+| 0077 | Krankheitskosten (§ 33) und haushaltsnahe Aufwendungen (§ 35a) eingeschaltet | Accepted |
+| 0078 | Handwerkerrechnungen lesen (§ 35a Abs. 3 EStG) | Accepted |
+| 0079 | Wechseljahr: deutscher und Schweizer Lohn in einem Jahr, zwei Arbeitswege | Accepted |
+| 0080 | Spendenbestätigungen addieren, Schweizer Krankenkassen-Auszüge lesen | Accepted |
+| 0081 | Vorauszahlungen in der Schätzung | Accepted |
+| 0082 | Die Eule ändert erfasste Werte nur auf Wunsch | Accepted |
+| 0083 | Lohnsteuerbescheinigung ohne lesbare Sozialversicherung | Accepted |
+| 0084 | Eine leere Antwort des Modells wird wiederholt und dann offen benannt | Accepted |
+| 0085 | Ausdruck für 2024, zu lange Angaben vor dem Bezahlen | Accepted |
+| 0086 | KV des Kindes ohne gewählten Kurs, Betreuungszeitraum aus dem Bescheid | Accepted |
 
 See also the [Tech Radar](./tech-radar.md).
 

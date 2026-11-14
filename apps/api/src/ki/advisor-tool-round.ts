@@ -13,8 +13,18 @@ import {
   fieldSpec,
   resolveRecordHandle,
   simulateAdvisorFieldDelta,
+  checkDraftPerson,
+  isInterviewAreaId,
+  checkPrivateSale,
+  checkSmallBusiness,
+  computeGiftTax,
+  estimateTradeTax,
+  checkRentalRepairs,
+  privateSalesExemptionLimit,
+  privateSalesWithinLimit,
   type AdvisorActionProposal,
   type AdvisorNoteChange,
+  type InterviewAreaChange,
   type AdvisorPreviewEffect,
   type AdvisorPreviewTarget,
   type AdvisorQuestionRound,
@@ -28,8 +38,9 @@ import {
 import { checkStageValue, normalizeSourceId, validateStageTarget, type StageTargetCheck } from './advisor-safety.js'
 import { checkPiiFree } from './ki.adapter.js'
 import { toolResultLine } from './advisor-tool-results.js'
-import { ADVISOR_KNOWLEDGE } from './advisor-knowledge.generated.js'
-import { computeIncomeTax } from './advisor-income-tax.js'
+import { ADVISOR_KNOWLEDGE } from './skills.generated.js'
+import { checkCapitalTaxation, compareFilingTypes, computeIncomeTax } from './advisor-income-tax.js'
+import { readLawForOwl, type LawId } from './law-text.js'
 import { MAX_COMPANION_FIELDS, TOOL_LABELS, TOOL_ARG_SCHEMAS, isToolName, toolResult, RejectedDraft, MAX_DRAFTS_PER_TURN, draftKey, humanReason } from './advisor-tools.js'
 
 export const AdvisorGraphState = Annotation.Root({
@@ -71,6 +82,10 @@ export const AdvisorGraphState = Annotation.Root({
     reducer: (_left, right) => right,
     default: () => [],
   }),
+  interviewChanges: Annotation<InterviewAreaChange[]>({
+    reducer: (_left, right) => right,
+    default: () => [],
+  }),
   sources: Annotation<OwlSourceId[]>({
     reducer: (left, right) => [...new Set([...left, ...right])],
     default: () => [],
@@ -102,6 +117,7 @@ export async function runToolRound(
   let questionRound = state.questionRound
   const situationSuggestions = [...(state.situationSuggestions ?? [])]
   let noteChanges = state.noteChanges
+  let interviewChanges = state.interviewChanges ?? []
   const sources: OwlSourceId[] = []
 
   for (const tc of toolCalls) {
@@ -166,7 +182,12 @@ export async function runToolRound(
       target: AdvisorPreviewTarget,
       approximation: { beforeRefundEur: number; afterRefundEur: number; deltaEur: number },
     ): Promise<Pick<AdvisorActionProposal, 'beforeRefundEur' | 'afterRefundEur' | 'deltaEur' | 'effect' | 'effectHint'>> => {
-      if (!request.previewEffect) return approximation
+      if (!request.previewEffect) {
+        // The approximation only knows the user's own figures; for Person B it would be made up.
+        return target.person === 'B'
+          ? { beforeRefundEur: 0, afterRefundEur: 0, deltaEur: 0, effect: 'not-computable', effectHint: 'Die Wirkung für Person B zeigt erst die gemeinsame Schätzung.' }
+          : approximation
+      }
       let preview: AdvisorPreviewEffect
       try {
         preview = await request.previewEffect(target)
@@ -213,6 +234,15 @@ export async function runToolRound(
       if (!target.ok) {
         refuseDraft(label, screen, target.error)
         rejectTarget(target)
+        continue
+      }
+      // Person B only where the household has one A records for, and only on B's own masks.
+      const person = args.person
+      const personCheck = checkDraftPerson(request.household, person, target.screen)
+      if (!personCheck.ok) {
+        const error = `${personCheck.code}: ${personCheck.reason}`
+        refuseDraft(label, screen, error)
+        answer({ ok: false, error })
         continue
       }
       if (rawCompanions.length > MAX_COMPANION_FIELDS) {
@@ -272,8 +302,10 @@ export async function runToolRound(
       }
 
       const cleanField = field.trim()
-      const sim = simulateAdvisorFieldDelta(request.digest, target.screen, cleanField, newValue)
-      const effect = await effectOf({ screen: target.screen, instance, values: [...companionEntries, [cleanField, newValue]] }, sim)
+      const forB = person === 'B'
+      // The digest is the user's; Person B's previous value is read when the draft is stored.
+      const sim = forB ? { previousValue: null, beforeRefundEur: 0, afterRefundEur: 0, deltaEur: 0 } : simulateAdvisorFieldDelta(request.digest, target.screen, cleanField, newValue)
+      const effect = await effectOf({ screen: target.screen, instance, ...(forB ? { person } : {}), values: [...companionEntries, [cleanField, newValue]] }, sim)
       sources.push(sourceId)
 
       const stagedAction: AdvisorActionProposal = {
@@ -282,6 +314,7 @@ export async function runToolRound(
         screen: target.screen,
         field: cleanField,
         instance,
+        ...(forB ? { person } : {}),
         ...(companionFields ? { companionFields } : {}),
         label: record.handle && !label.includes(record.handle) ? `${label} (${record.handle})` : label,
         previousValue: sim.previousValue,
@@ -318,6 +351,15 @@ export async function runToolRound(
         rejectTarget(maxCheck)
         continue
       }
+      const safePersonCheck = checkDraftPerson(request.household, rawSafe.person, safeCheck.screen)
+      const maxPersonCheck = checkDraftPerson(request.household, rawMax.person, maxCheck.screen)
+      const personRefusal = !safePersonCheck.ok ? safePersonCheck : !maxPersonCheck.ok ? maxPersonCheck : null
+      if (personRefusal) {
+        answer({ ok: false, error: `${personRefusal.code}: ${personRefusal.reason}` })
+        continue
+      }
+      const safeForB = rawSafe.person === 'B'
+      const maxForB = rawMax.person === 'B'
 
       const safeField = rawSafe.field.trim()
       const maxField = rawMax.field.trim()
@@ -345,10 +387,11 @@ export async function runToolRound(
         continue
       }
 
-      const safeSim = simulateAdvisorFieldDelta(request.digest, safeCheck.screen, safeField, safeNewValue)
-      const maxSim = simulateAdvisorFieldDelta(request.digest, maxCheck.screen, maxField, maxNewValue)
-      const safeEffect = await effectOf({ screen: safeCheck.screen, instance: safeRecord.id, values: [[safeField, safeNewValue]] }, safeSim)
-      const maxEffect = await effectOf({ screen: maxCheck.screen, instance: maxRecord.id, values: [[maxField, maxNewValue]] }, maxSim)
+      const unknownForB = { previousValue: null, beforeRefundEur: 0, afterRefundEur: 0, deltaEur: 0 }
+      const safeSim = safeForB ? unknownForB : simulateAdvisorFieldDelta(request.digest, safeCheck.screen, safeField, safeNewValue)
+      const maxSim = maxForB ? unknownForB : simulateAdvisorFieldDelta(request.digest, maxCheck.screen, maxField, maxNewValue)
+      const safeEffect = await effectOf({ screen: safeCheck.screen, instance: safeRecord.id, ...(safeForB ? { person: 'B' as const } : {}), values: [[safeField, safeNewValue]] }, safeSim)
+      const maxEffect = await effectOf({ screen: maxCheck.screen, instance: maxRecord.id, ...(maxForB ? { person: 'B' as const } : {}), values: [[maxField, maxNewValue]] }, maxSim)
       const baseActionId = makeActionId()
       sources.push(sourceId)
 
@@ -361,6 +404,7 @@ export async function runToolRound(
           screen: safeCheck.screen,
           field: safeField,
           instance: safeRecord.id,
+          ...(safeForB ? { person: 'B' as const } : {}),
           label: rawSafe.label,
           previousValue: safeSim.previousValue,
           expectedPreviousValue: safeSim.previousValue,
@@ -376,6 +420,7 @@ export async function runToolRound(
           screen: maxCheck.screen,
           field: maxField,
           instance: maxRecord.id,
+          ...(maxForB ? { person: 'B' as const } : {}),
           label: rawMax.label,
           previousValue: maxSim.previousValue,
           expectedPreviousValue: maxSim.previousValue,
@@ -398,10 +443,22 @@ export async function runToolRound(
       questionRound = {
         questions: args.questions.map((q) => {
           const options = q.options.map((o) => o.trim()).filter((o) => o.length > 0)
-          return { text: q.text.trim(), options, ...(q.recommended !== undefined && options.includes(q.recommended.trim()) ? { recommended: q.recommended.trim() } : {}) }
+          // A fact gets no recommendation: one tap on it would claim the fact for the user.
+          const recommended = q.kind === 'decision' && q.recommended !== undefined && options.includes(q.recommended.trim()) ? q.recommended.trim() : undefined
+          const reason = recommended !== undefined ? q.reason?.trim() : undefined
+          return { text: q.text.trim(), options, kind: q.kind, ...(q.multiple ? { multiple: true } : {}), ...(recommended !== undefined ? { recommended } : {}), ...(reason ? { reason } : {}) }
         }),
       }
       answer({ ok: true, questions: questionRound.questions.length })
+      continue
+    }
+
+    if (tc.name === 'mark_interview_area') {
+      const args = parseArgs(TOOL_ARG_SCHEMAS.mark_interview_area)
+      if (args === null) continue
+      if (!isInterviewAreaId(args.area)) continue
+      interviewChanges = [...interviewChanges.filter((change) => change.area !== args.area), { area: args.area, status: args.status }]
+      answer({ ok: true, area: args.area, status: args.status })
       continue
     }
 
@@ -438,6 +495,75 @@ export async function runToolRound(
       }
       const result = computeIncomeTax({ ...args, churchTaxRate: args.churchTaxRate })
       answer(result === null ? { ok: false, error: `Für das Jahr ${args.year} kennt der Rechenkern keinen Tarif.` } : { ok: true, ...result })
+      continue
+    }
+
+    if (tc.name === 'compare_filing_types' || tc.name === 'check_capital_taxation') {
+      const raw = tc.name === 'compare_filing_types' ? parseArgs(TOOL_ARG_SCHEMAS.compare_filing_types) : parseArgs(TOOL_ARG_SCHEMAS.check_capital_taxation)
+      if (raw === null) continue
+      if (raw.churchTaxRate !== 0 && raw.churchTaxRate !== 0.08 && raw.churchTaxRate !== 0.09) {
+        answer({ ok: false, error: 'Der Kirchensteuersatz ist 0, 0.08 (Bayern, Baden-Württemberg) oder 0.09.' })
+        continue
+      }
+      const result = 'taxableIncomeA' in raw ? compareFilingTypes({ ...raw, churchTaxRate: raw.churchTaxRate }) : checkCapitalTaxation({ ...raw, churchTaxRate: raw.churchTaxRate })
+      answer(result === null ? { ok: false, error: `Für das Jahr ${raw.year} kennt der Rechenkern keinen Tarif.` } : { ok: true, ...result })
+      continue
+    }
+
+    if (tc.name === 'check_holding_period') {
+      const args = parseArgs(TOOL_ARG_SCHEMAS.check_holding_period)
+      if (args === null) continue
+      try {
+        const result = checkPrivateSale(args)
+        const year = Number(args.soldOn.slice(0, 4))
+        const limit =
+          args.totalGainsOfYearEur === undefined
+            ? {}
+            : { exemptionLimitEur: privateSalesExemptionLimit(year), withinExemptionLimit: privateSalesWithinLimit(args.totalGainsOfYearEur, year) }
+        answer({ ok: true, ...result, ...limit })
+      } catch (error) {
+        answer({ ok: false, error: error instanceof Error ? error.message : 'Ungültige Angaben.' })
+      }
+      continue
+    }
+
+    if (tc.name === 'check_rental_repairs') {
+      const args = parseArgs(TOOL_ARG_SCHEMAS.check_rental_repairs)
+      if (args === null) continue
+      try {
+        answer({ ok: true, ...checkRentalRepairs(args) })
+      } catch (error) {
+        answer({ ok: false, error: error instanceof Error ? error.message : 'Ungültige Angaben.' })
+      }
+      continue
+    }
+
+    if (tc.name === 'compute_gift_tax' || tc.name === 'check_small_business' || tc.name === 'estimate_trade_tax') {
+      try {
+        if (tc.name === 'compute_gift_tax') {
+          const args = parseArgs(TOOL_ARG_SCHEMAS.compute_gift_tax)
+          if (args !== null) answer({ ok: true, ...computeGiftTax(args) })
+        } else if (tc.name === 'check_small_business') {
+          const args = parseArgs(TOOL_ARG_SCHEMAS.check_small_business)
+          if (args !== null) answer({ ok: true, ...checkSmallBusiness(args) })
+        } else {
+          const args = parseArgs(TOOL_ARG_SCHEMAS.estimate_trade_tax)
+          if (args !== null) answer({ ok: true, ...estimateTradeTax(args) })
+        }
+      } catch (error) {
+        answer({ ok: false, error: error instanceof Error ? error.message : 'Ungültige Angaben.' })
+      }
+      continue
+    }
+
+    if (tc.name === 'read_law_text') {
+      const args = parseArgs(TOOL_ARG_SCHEMAS.read_law_text)
+      if (args === null) continue
+      try {
+        answer({ ok: true, ...(await readLawForOwl(args.law as LawId, args.paragraph, args)) })
+      } catch {
+        answer({ ok: false, error: 'gesetze-im-internet.de ist gerade nicht erreichbar. Stütze dich auf das nachgeschlagene Wissen und den Quellenkatalog und sage dazu, dass der Wortlaut nicht frisch gelesen wurde.' })
+      }
       continue
     }
 
@@ -540,6 +666,7 @@ export async function runToolRound(
     questionRound,
     situationSuggestions,
     noteChanges,
+    interviewChanges,
     sources,
   }
 }

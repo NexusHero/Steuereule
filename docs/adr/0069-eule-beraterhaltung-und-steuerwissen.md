@@ -20,9 +20,9 @@ schlägt im Netz nach); die Eule kann nichts davon.
    Fundstelle nennen, Steuerjahr festnageln, nie im Kopf rechnen, zwei Wege bei Spielraum, legal
    gestalten, ehrlich über Grenzen. Sie ist kein abschaltbarer Skill.
 2. **Das Wissen wird nachgeschlagen, nicht mitgeschickt.** `lookup_tax_knowledge` liefert einen
-   der acht Abschnitte. Die Quelle bleibt der Skill im Repo; `advisor-knowledge.generated.ts`
-   entsteht daraus (`pnpm --filter @steuereule/api run knowledge:generate`), ein Test schlägt
-   fehl, wenn beides auseinanderläuft. `quellen.md` (Nachschlagen im Netz) wird nicht ausgeliefert.
+   der Abschnitte. Die Quelle ist der Skill-Ordner `apps/api/skills/steuerberater/`; wie er in
+   den Code kommt, regelt „Skills als Dateien“ unten. `quellen.md` (Nachschlagen im Netz) wird
+   nicht ausgeliefert.
 3. **Gerechnet wird mit dem Rechenkern.** `compute_income_tax` rechnet Tarif, Soli und
    Kirchensteuer mit `packages/core/src/math`, nicht mit dem Python-Skript. Der Kern rundet Soli
    und Kirchensteuer auf volle Euro ab, das Skript auf Cent; die Einkommensteuer ist identisch.
@@ -34,9 +34,9 @@ schlägt im Netz nach); die Eule kann nichts davon.
    App, und Zero-Write gilt unverändert. Entfernt sind die Ablehnung solcher Fragen vor dem
    Modellaufruf und der Hinweis „gehört nicht zur privaten Einkommensteuererklärung“.
 6. **Was bleibt:** keine verbindliche Rechtsauskunft (wird weiter vor dem Modell abgelehnt), keine
-   Hilfe bei Hinterziehung, der Schutz vor Prompt-Injection, die PII-Prüfung, der Verweis an
-   einen zugelassenen Steuerberater in den Fällen aus B8, und die Prüfung „Betrag nicht von der
-   App berechnet“.
+   Hilfe bei Hinterziehung, der Schutz vor Prompt-Injection, die PII-Prüfung und die Prüfung
+   „Betrag nicht von der App berechnet“. Der Verweis an einen Steuerberater in den Fällen aus B8
+   entfällt (Punkt 37).
 
 7. **Maßstab ist die Eule für zahlende Nutzer.** Jede Datei des Wissens trägt „Stand: Datum,
    geprüft für die Steuerjahre X–Y“. Die Beträge des geltenden Rechts sind am Gesetzestext
@@ -103,20 +103,136 @@ Umschreibung kamen durch. Entscheidungen des Product Owners vom 13.11.2026:
     Grauzonenfragen fälschlich abgelehnt, und mit ausgefallenem Prüfer hält die Regel im Prompt.
     Die fertige Antwort wird nicht nachgeprüft: Sie ist beim Streamen schon gelesen.
 
+## Skills als Dateien (ergänzt 2026-11-13)
+
+Entscheidung des Product Owners: Ein Skill der Eule liegt wie bei Claude als Ordner mit Textdateien
+im Repo und wird beim Bauen wörtlich eingelesen, nicht von Hand in TypeScript abgeschrieben.
+
+18. **Ablage:** `apps/api/skills/<id>/SKILL.md` (Frontmatter `name`, `description`, `activation`,
+    `command`, `references`; darunter die Anweisungen) und `references/*.md`. Die Haltung ist der
+    Skill `steuerberater` mit `activation: always`; das Berater-Interview ist `berater-interview`
+    mit `activation: user` und `command: grill-me`. `advisor-stance.ts` und der handgeschriebene
+    Interview-Text entfallen.
+19. **Beim Bauen, nicht zur Laufzeit:** `scripts/generate-skills.ts` schreibt
+    `src/ki/skills.generated.ts` (nicht eingecheckt). Es läuft bei `install`, `build`,
+    `typecheck` und `test`. Ausgeliefert wird nur das gebaute Modul; zur Laufzeit liest die API
+    keine Skill-Datei. Der Drift-Test zwischen Skill und eingechecktem Modul entfällt damit.
+20. **Der Bau bricht ab, wenn ein Skill nicht stimmt:** Frontmatter fehlt oder ist unlesbar, `name`
+    ungleich Ordner, unbekannte `activation`, leere Anweisungen, eine Referenz ohne Datei, nicht
+    genau ein `always`-Skill, oder die `user`-Skills und ihre Befehle weichen von
+    `ADVISOR_SKILL_IDS`/`ADVISOR_SKILL_COMMANDS` in `packages/core` ab. Die Liste dort bleibt die
+    typisierte Quelle für API-Schema und Oberfläche.
+21. **Coding-Agent und Eule teilen das Wissen, nicht die Anweisungen.** `.agents/skills/steuerberater/`
+    behält sein eigenes `SKILL.md` (Python-Skript, Websuche) und liest `references/` per Symlink
+    aus dem Ordner der Eule.
+
+## Rechnen statt Überschlagen (ergänzt 2026-11-13)
+
+22. **Neue Werkzeuge auf den geprüften Kern.** `compare_filing_types` (Zusammen- gegen
+    Einzelveranlagung, `filingTypeComparison`) und `check_capital_taxation` (Günstigerprüfung
+    § 32d Abs. 6, `mostFavourableCheck`). Ist unbekannt, ob es Lohnersatz gab, ist das Ergebnis
+    `open` statt einer geratenen Empfehlung.
+23. **Progressionsvorbehalt exakt.** `progressionClauseTax` im Kern wendet den besonderen
+    Steuersatz (§ 32b Abs. 2 EStG) an; `compute_income_tax` nimmt `wageReplacementEur`. Die alte
+    Anleitung im Wissen („zweimal rechnen“) war falsch und ist ersetzt. Wie das Finanzamt den
+    Satz rundet, ist nicht am Gesetz belegt; der Kern rechnet ihn ungerundet.
+24. **Fehler im Kern behoben:** Die Günstigerprüfung zog den Sparer-Pauschbetrag nur auf der
+    Seite der Abgeltungsteuer ab. § 20 Abs. 9 EStG gilt für beide Seiten; der persönliche Satz
+    wirkte dadurch zu teuer, auch in der Maske „Kapital“.
+25. **§ 35a und § 33 ehrlich.** Die Felder dafür gibt es, die Schätzung zählt sie aber nicht,
+    solange `HOUSEHOLD_AND_HEALTH_BOOSTERS` aus ist (#443 Slice 5, angehalten: GdE und
+    Druckmappings fehlen). Ein Entwurf dort zeigt deshalb „nicht berechenbar“ statt 0 €, und der
+    Sparplan fragt danach, wenn nichts eingetragen ist.
+
+## Fristen, Termine und Prüfungen (ergänzt 2026-11-13)
+
+26. **Einspruchsfrist genau.** `appealDeadlineEnd` rechnet ab der Bekanntgabe: Bescheiddatum
+    plus vier Tage (ab 2025, vorher drei; § 122 Abs. 2 AO), ein Tag am Wochenende oder Feiertag
+    geht auf den nächsten Werktag, dann ein Monat, das Ende ebenso verschoben (§ 108 Abs. 3 AO).
+    Ohne Bundesland zählen nur bundesweite Feiertage, damit die Frist nie später ist als die
+    echte. Bisher: Bescheiddatum plus ein Monat, also bis zu einer Woche zu früh.
+27. **Termine.** Die Eule bekommt die festen Termine der nächsten 90 Tage
+    (`upcomingTaxDates`: Vorauszahlungen, Verlustbescheinigung 15.12., Zahlungen bis 31.12.,
+    Abgabefristen), nichts über den Fall Angenommenes.
+28. **Sparhebel mit Schwellen.** Liegen die eingetragenen Werbungskosten bis 300 € unter der
+    Pauschale, fragt der Sparplan nach Vergessenem; mehr als 600 € darüber schlägt er den
+    Lohnsteuer-Freibetrag (§ 39a) vor. Lohnersatz über 410 € nennt er als Pflichtveranlagung.
+29. **Neue Werkzeuge.** `check_holding_period` (§ 23 EStG: Fristen auf den Tag, eigene Wohnung,
+    Freigrenze 600/1.000 €) und `check_rental_repairs` (15-%-Grenze, § 6 Abs. 1 Nr. 1a EStG).
+
+## Schenkung, Selbstständige, Kennzahlen (ergänzt 2026-11-13)
+
+30. **Neue Rechner im Kern, als Werkzeuge der Eule:** `compute_gift_tax` (ErbStG: Klasse,
+    Freibeträge §§ 16, 17, Sätze mit Härteausgleich § 19 Abs. 3, zehn Jahre § 14; Befreiungen und
+    Bewertung bleiben Rückfrage), `check_small_business` (§ 19 UStG, Grenzen bis 2024 und ab 2025)
+    und `estimate_trade_tax` (Überschlag GewStG mit Anrechnung § 35 EStG, ohne Kappung an der
+    anteiligen Einkommensteuer). Damit entfällt die Überschlagsrechnung für diese Themen.
+31. **Kennzahlen gegen den Kern.** `advisor-kennzahlen.test.ts` liest die Tabelle des Skills und
+    vergleicht Soli-Freigrenzen, Kindergeld, Kinder- und BEA-Freibetrag, Entlastungsbetrag,
+    Pauschbeträge, Entfernungspauschale, Homeoffice, § 35a, sonstige Vorsorge und die Abgabefristen
+    2023–2026 mit `getTaxYearParameters`. Heute stimmt alles überein. Punkt 4 und „Verworfen:
+    Skill-Tabelle als maßgebliche Zahlenquelle“ gelten weiter: Der Kern rechnet, der Test findet
+    nur Abweichungen.
+32. **Belegt am 13.11.2026** (gesetze-im-internet.de): Kinderbetreuung 80 %, höchstens 4.800 €
+    (§ 10 Abs. 1 Nr. 5), Übungsleiter 3.300 € (§ 3 Nr. 26), Ehrenamt 960 € (§ 3 Nr. 26a),
+    Parteispenden höchstens 1.650/3.300 € (§ 34g). Offen bleibt, ab welchem Jahr § 34g in dieser
+    Höhe gilt, und ob „in allen offenen Fällen“ (§ 52 Abs. 4 S. 10) auch die Beträge von § 3
+    Nr. 26, 26a für frühere Jahre meint.
+
+## Gesetze ändern sich (ergänzt 2026-11-13)
+
+33. **Wächter.** `apps/api/scripts/check-law-changes.ts` liest jede Norm, die der Skill zitiert
+    oder der Quellenkatalog nennt (heute 102), von gesetze-im-internet.de und vergleicht Wortlaut
+    und Fußnoten mit dem Fingerabdruck in `skills/steuerberater/law-watch.json`. Nächtlich in CI
+    (`law-watch.yml`); bei einer Änderung öffnet er ein Issue oder ergänzt das offene. Angepasst
+    werden Skill und Rechenkern von Hand, danach `laws:check --update`. Ein Test schlägt an, wenn
+    der Skill eine Norm zitiert, die der Wächter noch nicht kennt.
+34. **Die Eule liest den Wortlaut.** `read_law_text` holt eine Norm (oder einen Absatz, eine
+    Nummer) von gesetze-im-internet.de: nur diese Seite, nur die gelisteten Steuergesetze, die
+    Adresse baut der Server. Der Text kommt als Daten mit Hinweis zurück, einen Tag zwischengespeichert,
+    auf 4.000 Zeichen gekürzt, mit den Anwendungshinweisen der Seite. B3 macht das Lesen zur
+    Pflicht, wenn eine Norm die Antwort trägt. Damit ist Punkt 2 („kein Netz“) für diese eine
+    Quelle aufgehoben.
+35. **Heute ist nicht das Steuerjahr.** Die Seite zeigt nur die geltende Fassung. Für ein früheres
+    Jahr sagt die Eule das dazu; welche Fassung gilt, regeln § 52 EStG und Art. 97 EGAO. Beträge
+    der Erklärung bleiben die der App: Ändert sich ein Gesetz, muss erst der Rechenkern folgen
+    (Punkt 33), sonst sagt die Eule etwas anderes, als die App rechnet.
+36. **Quellenkatalog geprüft.** Die neun Zusammenfassungen sind am 13.11.2026 gegen den Wortlaut
+    gelesen (`LEGAL_SOURCES_CHECKED_ON`); die Kinderbetreuung nennt jetzt 80 %/4.800 €. Das
+    Rechtsstand-Datum der Eulen-Karten (`LEGAL_STATUS_DATE`, 01.01.2025) ist davon getrennt und
+    nicht neu geprüft.
+
+## Selbst beraten statt verweisen (ergänzt 2026-11-13)
+
+37. **Entscheidung des Product Owners: Die Eule schickt niemanden zu einem anderen Berater.** Auch
+    Betriebsprüfung, Unternehmensverkauf, Erbschaften mit Betriebsvermögen, Wegzug, GmbH-Gestaltung
+    und ein Streit vor dem Finanzgericht erklärt und rechnet sie selbst (B8). Sie sagt offen, wo viel
+    Geld oder Haftung im Spiel ist und was sie nicht prüfen kann (Bewertung, Verträge, ungesehene
+    Unterlagen); einen Notar nennt sie, wo das Gesetz ihn vorschreibt, als Schritt.
+38. **Zwei Ausnahmen bleiben.** Selbstanzeige und Steuerstrafrecht: Verweis an einen Fachanwalt für
+    Steuerstrafrecht (B7), weil eine fehlerhafte Selbstanzeige die Straffreiheit verliert. Und weiter
+    keine verbindliche Rechtsauskunft, keine Vertretung beim Finanzamt, der Satz „kein zugelassener
+    Steuerberater“ bleibt; die feste Ablehnung davor verweist aber nicht mehr weiter, sondern bietet
+    an, die Rechtslage zu erklären und das Schreiben ans Finanzamt vorzubereiten.
+39. **Golden-Set.** Die `stberg`-Fälle verlangen jetzt eigene Beratung ohne Verweis (Metrik
+    „Beratung statt Verweis“, D1 bleibt ≥ 95 %); dazu je ein Fall für die zwei Ausnahmen.
+
 ## Offen und Risiken
 
 - **Rechtlich ungeprüft.** Geschäftsmäßige Hilfeleistung in Steuersachen ist nach dem
-  Steuerberatungsgesetz zugelassenen Personen vorbehalten. Punkt 5 ist die Entscheidung des
-  Product Owners vom 12.11.2026; eine rechtliche Prüfung vor dem Verkauf steht aus.
+  Steuerberatungsgesetz zugelassenen Personen vorbehalten. Punkt 5 und Punkt 37 sind Entscheidungen des
+  Product Owners vom 12./13.11.2026; eine rechtliche Prüfung vor dem Verkauf steht aus. Ohne
+  Verweis in schweren Fällen wiegt das schwerer.
 - Für Umsatzsteuer und Erbschaftsteuer gibt es keinen Rechner in der App. Die Eule zeigt dort
   Formel und Schritte und nennt es eine Überschlagsrechnung; die Prüfung der Antwort markiert
   Wirkungsbeträge, die kein Werkzeug gerechnet hat.
-- Das Wissen ist so aktuell wie der Skill. Wer `references/*.md` ändert, muss neu generieren.
+- Das Wissen ist so aktuell wie der Skill; der Bau liest es jedes Mal neu ein.
 - Nicht gegen ein echtes Modell erprobt: ob das Modell zuverlässig nachschlägt, bevor es antwortet.
 - Die Themengrenze ist noch nicht gegen das echte Modell gemessen; die Schwellen (90 % / 5 %) sind
   Startwerte. Der Prüfer kostet jede getippte Nachricht einen kleinen Aufruf und etwa 0,3–1 s bis
   zum ersten Wort.
 - Mit Tricks in der Nachricht lässt sich auch der Prüfer täuschen. Dann bleibt die Regel im Prompt.
+- `read_law_text` hängt an einer fremden Seite: Ändert sie ihren Aufbau, schlagen Werkzeug und Wächter fehl (der Wächter meldet „nicht erreichbar“). Ob das Modell vor jeder tragenden Norm wirklich liest, ist noch nicht gegen das echte Modell gemessen.
 
 ## Verworfen
 

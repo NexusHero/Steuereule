@@ -1,3 +1,4 @@
+import { classifyDocumentKind } from '@steuereule/core'
 import { Inject, Injectable, type OnModuleInit } from '@nestjs/common'
 import { InvalidInputError, NotFoundError } from '../common/domain-error.js'
 import {
@@ -34,7 +35,11 @@ export class ReceiptParseService implements OnModuleInit {
         throw new NotFoundError('BELEG_NOT_FOUND', `Beleg "${dto.receiptId}" does not exist for this account.`)
       }
     }
-    const kind = dto.kind ?? 'auto'
+    // A Swiss salary certificate, pension statement or premium letter uploaded as a general receipt
+    // goes to its own reader, which reads all its figures instead of one field.
+    const requested = dto.kind ?? 'auto'
+    const detected = requested === 'auto' ? classifyDocumentKind(dto.rawText ?? '') : requested
+    const kind = detected !== 'lstb' && detected !== requested && this.registry.resolve(detected) ? detected : requested
     const strategy = this.registry.resolve(kind)
     if (strategy === null) {
       throw new InvalidInputError('RECEIPT_KIND_UNSUPPORTED', `Belegart "${kind}" wird nicht unterstützt.`)
@@ -50,4 +55,9 @@ export class ReceiptParseService implements OnModuleInit {
       throw new InvalidInputError('RECEIPT_EMPTY', 'Bitte gib einen Belegtext an.')
     }
   }
+}
+
+/** A Swiss salary certificate, by the same rule the app uses to route an upload. */
+export function looksLikeChSalaryCertificate(rawText: string | undefined): boolean {
+  return classifyDocumentKind(rawText ?? '') === 'chLohnausweis'
 }

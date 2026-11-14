@@ -30,10 +30,10 @@ export class MostFavourableCheckDto {
   @ApiPropertyOptional({ type: Number, example: 4750, description: 'Abgeltungsteuer + Soli + KiSt-Ermäßigung (only when kind !== "nicht-anwendbar").' })
   flatRateTax?: number
 
-  @ApiPropertyOptional({ type: Number, example: 8482, description: 'The personal (tariff) tax on the capital income (only when kind !== "nicht-anwendbar").' })
+  @ApiPropertyOptional({ type: Number, example: 8012, description: 'The personal (tariff) tax on the capital income (only when kind !== "nicht-anwendbar").' })
   personal?: number
 
-  @ApiPropertyOptional({ type: Number, example: 3732, description: 'persoenlich − abgeltung (only when kind !== "nicht-anwendbar").' })
+  @ApiPropertyOptional({ type: Number, example: 3262, description: 'persoenlich − abgeltung (only when kind !== "nicht-anwendbar").' })
   delta?: number
 
   @ApiPropertyOptional({ type: UncertaintyDto, description: 'The computed margin (only when kind !== "nicht-anwendbar").' })

@@ -640,8 +640,28 @@ describe('AdvisorService (In-App Steuerberater Agent "Deine Eule")', () => {
       selfPaidKvPvEur: null,
       riesterEur: null,
       doubleHouseholdRentEur: null,
+      workExpenses: { professionalBodiesEur: null, workEquipmentEur: null, accountFeesEur: null, otherWorkExpensesEur: null },
+      childcareDeductionEur: 0,
     })
     expect(digest.priorYearComparison.donationsEur).toBeNull()
+  })
+
+  it('hands the owl what still blocks the printout, in words, so „Fehlt noch etwas?“ names all of it', async () => {
+    const printout = { check: async () => ({ missing: ['iban', 'grenzgaenger', 'kinder', 'anlageSO'] }) }
+    const withPrintout = new AdvisorService(advisorRepo, owlModeService, confirmationService, new AuditService(auditRepo), interviewRepo, lstbRepo, chRepo, commuteRepo, childRepo, new FakeRentalRepository(), new FakeCapitalRepository(), profileRepo, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, printout as never)
+    const gaps = (await withPrintout.buildCaseDigest(USER, YEAR)).furtherFacts?.printoutGaps ?? []
+    expect(gaps).toHaveLength(4)
+    expect(gaps[0]).toContain('IBAN')
+    expect(gaps[1]).toContain('Wechselkurs')
+    expect(gaps[1]).toContain('Nichtrückkehrtage')
+    expect(gaps[2]).toContain('Familienkasse')
+    expect(gaps[3]).toContain('druckt die App noch nicht')
+  })
+
+  it('leaves the gaps out when the year has no printout to check', async () => {
+    const printout = { check: async () => { throw new Error('no forms for this year') } }
+    const withPrintout = new AdvisorService(advisorRepo, owlModeService, confirmationService, new AuditService(auditRepo), interviewRepo, lstbRepo, chRepo, commuteRepo, childRepo, new FakeRentalRepository(), new FakeCapitalRepository(), profileRepo, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, printout as never)
+    expect((await withPrintout.buildCaseDigest(USER, YEAR)).furtherFacts?.printoutGaps).toBeUndefined()
   })
 
   it('tells the engine to open with a plan only for the „Was hab ich vergessen?“ quick start (#451 slice 6)', async () => {
@@ -673,6 +693,25 @@ describe('AdvisorService (In-App Steuerberater Agent "Deine Eule")', () => {
     await withEngine.sendMessage(USER, YEAR, { message: 'Was hab ich vergessen?', quickAction: 'forgotten_check' })
     await withEngine.sendMessage(USER, YEAR, { message: 'Was hab ich vergessen?' })
     expect(seen).toEqual([true, false])
+  })
+
+  it('keeps where the interview stands per tax year: hands it to the next turn, stores what the owl settled, never in the message', async () => {
+    const seen: unknown[] = []
+    const engine: AdvisorEnginePort = {
+      async runTurn() {
+        throw new Error('not used')
+      },
+      async *streamTurn(request) {
+        seen.push(request.interview)
+        yield { event: 'done', data: { replyText: 'Weiter.', meta: { interviewChanges: [{ area: 'kinder', status: 'not_applicable' }] }, mode: 'langgraph' } }
+      },
+    }
+    const withEngine = new AdvisorService(advisorRepo, owlModeService, confirmationService, new AuditService(auditRepo), interviewRepo, lstbRepo, chRepo, commuteRepo, childRepo, new FakeRentalRepository(), new FakeCapitalRepository(), profileRepo, engine)
+    const first = await withEngine.sendMessage(USER, YEAR, { message: 'Fang an', skill: 'berater-interview' })
+    await withEngine.sendMessage(USER, YEAR, { message: 'Weiter', skill: 'berater-interview' })
+    expect(seen).toEqual([{}, { kinder: 'not_applicable' }])
+    expect(JSON.stringify(first)).not.toContain('interviewChanges')
+    expect(await advisorRepo.findInterview(USER, YEAR - 1)).toEqual({})
   })
 
   describe('tax years as projects, conversations side by side (#503)', () => {

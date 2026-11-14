@@ -91,6 +91,8 @@ export interface AdvisorChatPanelProps {
   readonly onUndoAction?: ((actionId: string) => Promise<void> | void) | undefined
   readonly onInspectMask?: ((screen: Screen, field?: string) => void) | undefined
   readonly receiptLinkedActionIds?: ReadonlySet<string> | undefined
+  /** The spouse's first name: a draft for Person B says „für …“ (ADR-0073). */
+  readonly partnerName?: string | undefined
   readonly onAttachReceipt?: ((input: { readonly fileName: string; readonly rawText: string }) => Promise<void> | void) | undefined
   /** Upload a PDF or photo: stored encrypted, read on the device, parsed (#444). */
   /** Resolves when the file has been read: several files are read one after another (#497). */
@@ -98,6 +100,8 @@ export interface AdvisorChatPanelProps {
   /** Visible progress text of the running receipt capture, if any. */
   readonly receiptProgress?: string | null | undefined
   readonly receiptNotice?: string | null | undefined
+  /** Set while a Swiss salary certificate waits for the user to say whose it is. */
+  readonly onChooseCertificateOwner?: ((person: 'A' | 'B') => void) | undefined
   readonly isParsingReceipt?: boolean | undefined
   readonly compact?: boolean | undefined
   /**
@@ -181,10 +185,12 @@ export function AdvisorChatPanel({
   onUndoAction,
   onInspectMask,
   receiptLinkedActionIds,
+  partnerName,
   onAttachReceipt,
   onAttachReceiptFile,
   receiptProgress = null,
   receiptNotice = null,
+  onChooseCertificateOwner,
   isParsingReceipt = false,
   compact = false,
   variant = 'panel',
@@ -493,6 +499,7 @@ export function AdvisorChatPanel({
                   receiptLinked={receiptLinkedActionIds?.has(msg.meta.action.actionId)}
                   onSelectSource={setSelectedSource}
                   styles={styles}
+                  partnerName={partnerName}
                 />
               ) : null}
 
@@ -508,6 +515,7 @@ export function AdvisorChatPanel({
                       receiptLinked={receiptLinkedActionIds?.has(action.actionId)}
                       onSelectSource={setSelectedSource}
                       styles={styles}
+                      partnerName={partnerName}
                     />
                   ))
                 : null}
@@ -583,6 +591,7 @@ export function AdvisorChatPanel({
                   receiptLinkedActionIds={receiptLinkedActionIds}
                   onSelectSource={setSelectedSource}
                   styles={styles}
+                  partnerName={partnerName}
                 />
               ) : null}
 
@@ -783,6 +792,16 @@ export function AdvisorChatPanel({
       {receiptNotice ? (
         <Card style={styles.receiptPanel} testID="advisor-receipt-notice">
           <Text style={styles.actionReason}>{receiptNotice}</Text>
+          {onChooseCertificateOwner ? (
+            <View style={styles.certificateOwnerRow}>
+              <Button variant="leise" onPress={() => onChooseCertificateOwner('A')} testID="advisor-certificate-owner-a">
+                {tr('advisor.chat.certificateOwnerA')}
+              </Button>
+              <Button variant="leise" onPress={() => onChooseCertificateOwner('B')} testID="advisor-certificate-owner-b">
+                {tr('advisor.chat.certificateOwnerB')}
+              </Button>
+            </View>
+          ) : null}
         </Card>
       ) : null}
 

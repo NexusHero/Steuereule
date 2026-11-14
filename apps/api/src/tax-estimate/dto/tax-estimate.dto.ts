@@ -68,4 +68,7 @@ export class TaxEstimateDto {
 
   @ApiProperty({ type: Number, required: false, description: 'Number of deferred catalog deduction amounts.' })
   laterAmounts?: number
+
+  @ApiProperty({ type: Number, required: false, description: 'Income tax prepayments of the year (§ 37 EStG), already included in the result (ADR-0081).' })
+  prepayments?: number
 }

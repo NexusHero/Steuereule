@@ -3,7 +3,7 @@
 // hint to answer only the tax side, anything else gets one fixed sentence that no model wrote and no
 // user can talk round.
 import type { AdvisorMessageMeta, CaseDigest } from './advisor'
-import type { AdvisorQuestionRound } from './advisor-skills'
+import { isRoundAnswer, type AdvisorQuestionRound } from './advisor-skills'
 
 export const ADVISOR_TOPIC_VERDICTS = ['tax', 'gray', 'off_topic'] as const
 export type AdvisorTopicVerdict = (typeof ADVISOR_TOPIC_VERDICTS)[number]
@@ -85,6 +85,7 @@ export function isOfferedChoice(
   if (!lastAssistantMeta) return false
   const text = message.trim()
   if (text.length === 0) return false
+  if (isRoundAnswer(text, lastAssistantMeta.questionRound)) return true
   const offered = [...(lastAssistantMeta.choices ?? []), ...(lastAssistantMeta.questionRound?.questions.flatMap((q) => q.options) ?? [])]
   return offered.some((option) => option.trim() === text)
 }

@@ -52,6 +52,11 @@ export interface ChildFacts {
   registeredWithMeAllYear?: boolean | null
   childBenefitToMeAllYear?: boolean | null
   healthBasicEur?: string | null
+  /** Anlage Kind Zeile 67 (Kz 51): childcare, provider and period (ADR-0076). */
+  childcareEur?: string | null
+  childcareProvider?: string | null
+  childcareFrom?: string | null
+  childcareTo?: string | null
   careEur?: string | null
 }
 
@@ -141,6 +146,12 @@ export interface ChSalaryCertificateFacts {
   krankentaggeldChf: string | null
   pkArbeitnehmerChf: string | null
   pkArbeitgeberChf: string | null
+  /** Lohnausweis Ziffer 10: all employee pension contributions. */
+  pkArbeitnehmerGesamtChf: string | null
+  /** All employer pension contributions; above pkArbeitgeberChf = Zeile 20. */
+  pkArbeitgeberGesamtChf: string | null
+  /** Tax-free Krankentaggeld contained in Ziffer 8 (Zeilen 9/76). */
+  steuerfreiesKrankentaggeldChf: string | null
   krankentaggeldArbeitgeberProzent: string | null
   krankentaggeldArbeitgeberChf: string | null
   nbuvArbeitgeberProzent: string | null
@@ -171,6 +182,8 @@ function nbuvEmployeeChf(ch: ChSalaryCertificateFacts): number | null {
     krankentaggeldChf: 0,
     pkArbeitnehmerChf: 0,
     pkArbeitgeberChf: 0,
+    steuerfreiesKrankentaggeldChf: optionalNumber(ch.steuerfreiesKrankentaggeldChf),
+    nbuvArbeitgeberProzent: optionalNumber(ch.nbuvArbeitgeberProzent),
     rate: ch.rate,
   }).split.nbuv.employeeChf
 }
@@ -234,6 +247,7 @@ interface NGreResult {
 function nGreValues(
   ch: ChSalaryCertificateFacts | null | undefined,
   commute: CommuteFacts | null | undefined,
+  hasGermanWage: boolean,
   role: 'A' | 'B',
   header: { name: string | null; firstName: string | null; beruf: string | null; steuernummer: string | null },
 ): NGreResult | null {
@@ -258,6 +272,9 @@ function nGreValues(
     krankentaggeldChf: Number(ch.krankentaggeldChf),
     pkArbeitnehmerChf: Number(ch.pkArbeitnehmerChf),
     pkArbeitgeberChf: Number(ch.pkArbeitgeberChf),
+    pkArbeitnehmerGesamtChf: optionalNumber(ch.pkArbeitnehmerGesamtChf),
+    pkArbeitgeberGesamtChf: optionalNumber(ch.pkArbeitgeberGesamtChf),
+    steuerfreiesKrankentaggeldChf: optionalNumber(ch.steuerfreiesKrankentaggeldChf),
     rate: ch.rate!,
     krankentaggeldArbeitgeberProzent: optionalNumber(ch.krankentaggeldArbeitgeberProzent),
     krankentaggeldArbeitgeberChf: optionalNumber(ch.krankentaggeldArbeitgeberChf),
@@ -265,8 +282,8 @@ function nGreValues(
     nbuvArbeitgeberChf: optionalNumber(ch.nbuvArbeitgeberChf),
   })
   for (const row of Object.keys(chf) as NGreRow[]) {
-    // Z. 18/19 only apply when the employer pays part of a premium; an empty line stays empty.
-    if ((row === 'z18' || row === 'z19') && chf[row] === 0) continue
+    // Z. 9 and 18–20 only apply when there is such an amount; an empty line stays empty.
+    if ((row === 'z9' || row === 'z18' || row === 'z19' || row === 'z20') && chf[row] === 0) continue
     values[`anlNGre.${row}Chf`] = String(chf[row])
     values[`anlNGre.${row}Eur`] = String(eur[row])
   }
@@ -280,7 +297,7 @@ function nGreValues(
     values[`anlNGre.${rows[1]}Arbeitgeber`] = String(teil.employerChf)
     values[`anlNGre.${rows[1]}Arbeitnehmer`] = String(teil.employeeChf)
   }
-  Object.assign(values, commuteValues(commute, 'anlNGre'))
+  Object.assign(values, commuteValues(commute, 'anlNGre', waysInNGre(commute, hasGermanWage)))
   set('anlNGre.arbeitgeberName', ch.arbeitgeberName)
   set('anlNGre.arbeitgeberStrasse', ch.arbeitgeberStrasse)
   set('anlNGre.arbeitgeberPlzOrt', ch.arbeitgeberPlzOrt)
@@ -305,21 +322,133 @@ export interface CommuteFacts {
   oneWayKm: number | null
   withCar: boolean
   workplace: string | null
+  /** When this way did not last the whole year (DD.MM.YYYY) (ADR-0079). */
+  from?: string | null
+  to?: string | null
+  /** A second way after a change of job, with its share of the commute days. */
+  second?: SecondWayFacts | null
+  /** Further Werbungskosten of the same person (ADR-0076), whole euros and what they were. */
+  workExpenses?: WorkExpenseFacts | null
 }
 
-/** Anlage N Z. 27–31 and Anlage N-Gre Z. 32–36 ask the same facts under their own field prefix. */
-function commuteValues(a: CommuteFacts | null | undefined, prefix: 'anlN' | 'anlNGre' = 'anlN'): Record<string, string> {
-  if (!a || a.oneWayKm === null) return {}
-  const values: Record<string, string> = {
-    [`${prefix}.wegArt`]: '1',
-    [`${prefix}.wegTageJeWoche`]: String(a.workdaysPerWeek),
-    [`${prefix}.wegFreieTage`]: String(a.daysOff),
-    [`${prefix}.kz110Tage`]: String(a.commuteDays),
-    [`${prefix}.kz111`]: String(a.oneWayKm),
+export interface SecondWayFacts {
+  commuteDays: number
+  oneWayKm: number
+  withCar: boolean
+  workplace: string | null
+  from: string | null
+  to: string | null
+}
+
+/**
+ * Which ways a form gets: both (1. and 2. Angabe), or for someone who changed from a German to a Swiss
+ * employer the first way in the Anlage N and the second in the Anlage N-Gre (ADR-0079).
+ */
+export type WaysInForm = 'all' | 'first' | 'second'
+
+export interface WorkExpenseFacts {
+  professionalBodiesEur: number | null
+  professionalBodiesNote: string | null
+  workEquipmentEur: number | null
+  workEquipmentNote: string | null
+  accountFeesEur: number | null
+  otherWorkExpensesEur: number | null
+  otherWorkExpensesNote: string | null
+}
+
+/** Where Anlage N and Anlage N-Gre ask for the further Werbungskosten: the same Kennzahlen in other lines. */
+const WORK_EXPENSE_LINES = {
+  anlN: { bodies: 'z53Text', tools: 'z54', sonstiges: ['z62', 'z63'] },
+  anlNGre: { bodies: 'z48Text', tools: 'z49', sonstiges: ['z57', 'z58'] },
+} as const
+
+/** Kz 310 (professional bodies), 320 (work tools) and 380 (account fees and other) with their lines. */
+function workExpenseValues(x: WorkExpenseFacts | null | undefined, prefix: 'anlN' | 'anlNGre'): Record<string, string> {
+  if (!x) return {}
+  const lines = WORK_EXPENSE_LINES[prefix]
+  const values: Record<string, string> = {}
+  if (x.professionalBodiesEur) {
+    values[`${prefix}.${lines.bodies}`] = x.professionalBodiesNote ?? 'Beiträge zu Berufsverbänden'
+    values[`${prefix}.kz310`] = String(x.professionalBodiesEur)
   }
-  if (a.workplace) values[`${prefix}.wegOrt`] = a.workplace
-  if (a.withCar) values[`${prefix}.kz112`] = String(a.oneWayKm)
+  if (x.workEquipmentEur) {
+    values[`${prefix}.${lines.tools}Text`] = x.workEquipmentNote ?? 'Arbeitsmittel'
+    values[`${prefix}.${lines.tools}Eur`] = String(x.workEquipmentEur)
+    values[`${prefix}.kz320`] = String(x.workEquipmentEur)
+  }
+  const sonstiges = [
+    ...(x.accountFeesEur ? [['Kontoführungsgebühren', x.accountFeesEur] as const] : []),
+    ...(x.otherWorkExpensesEur ? [[x.otherWorkExpensesNote ?? 'Sonstige Werbungskosten', x.otherWorkExpensesEur] as const] : []),
+  ]
+  sonstiges.forEach(([text, eur], i) => {
+    values[`${prefix}.${lines.sonstiges[i]}Text`] = text
+    values[`${prefix}.${lines.sonstiges[i]}Eur`] = String(eur)
+  })
+  if (sonstiges.length > 0) values[`${prefix}.kz380`] = String(sonstiges.reduce((sum, [, eur]) => sum + eur, 0))
   return values
+}
+
+/** The form's vom/bis boxes take day and month („01.11.“); the year is the tax year. */
+const dayAndMonth = (date: string | null | undefined): string | null => (date && /^\d{2}\.\d{2}\./.test(date) ? date.slice(0, 6) : null)
+
+interface OneWay {
+  commuteDays: number
+  oneWayKm: number
+  withCar: boolean
+  workplace: string | null
+  from: string | null
+  to: string | null
+}
+
+/** One way in the 1. Angabe (Kz 110–112) or the 2. Angabe (Kz 130–132) of the form. */
+function wayValues(way: OneWay, workdaysPerWeek: number, daysOff: number, prefix: 'anlN' | 'anlNGre', slot: 1 | 2): Record<string, string> {
+  const [w, kzDays, kzKm, kzCar] = slot === 1 ? ['weg', 'kz110Tage', 'kz111', 'kz112'] : ['weg2', 'kz130Tage', 'kz131', 'kz132']
+  const values: Record<string, string> = {
+    [`${prefix}.${w}Art`]: '1',
+    [`${prefix}.${w}TageJeWoche`]: String(workdaysPerWeek),
+    [`${prefix}.${w}FreieTage`]: String(daysOff),
+    [`${prefix}.${kzDays}`]: String(way.commuteDays),
+    [`${prefix}.${kzKm}`]: String(way.oneWayKm),
+  }
+  if (way.workplace) values[`${prefix}.${w}Ort`] = way.workplace
+  if (way.withCar) values[`${prefix}.${kzCar}`] = String(way.oneWayKm)
+  const from = dayAndMonth(way.from)
+  const to = dayAndMonth(way.to)
+  if (from) values[`${prefix}.${w}Von`] = from
+  if (to) values[`${prefix}.${w}Bis`] = to
+  return values
+}
+
+/**
+ * Anlage N Z. 27–42 and Anlage N-Gre Z. 32–46 ask the same facts under their own field prefix. The further
+ * Werbungskosten go with the first way, so a person split over two forms has them once.
+ */
+function commuteValues(a: CommuteFacts | null | undefined, prefix: 'anlN' | 'anlNGre' = 'anlN', ways: WaysInForm = 'all'): Record<string, string> {
+  if (!a) return {}
+  const values: Record<string, string> = ways === 'second' ? {} : workExpenseValues(a.workExpenses, prefix)
+  const first: OneWay | null =
+    a.oneWayKm === null ? null : { commuteDays: a.commuteDays, oneWayKm: a.oneWayKm, withCar: a.withCar, workplace: a.workplace, from: a.from ?? null, to: a.to ?? null }
+  const second = a.second ?? null
+  if (ways === 'second') {
+    if (second) Object.assign(values, wayValues(second, a.workdaysPerWeek, a.daysOff, prefix, 1))
+    return values
+  }
+  if (first) Object.assign(values, wayValues(first, a.workdaysPerWeek, a.daysOff, prefix, 1))
+  if (ways === 'all' && second) Object.assign(values, wayValues(second, a.workdaysPerWeek, a.daysOff, prefix, first ? 2 : 1))
+  return values
+}
+
+/**
+ * A person with a German and a Swiss wage in one year: the way while employed in Germany belongs to the
+ * Anlage N, the one after the change to the N-Gre. Without a second way the one way goes to the N-Gre only.
+ */
+function waysInAnlageN(commute: CommuteFacts | null | undefined, ch: ChSalaryCertificateFacts | null | undefined): WaysInForm | null {
+  if (!ch || ch.grossWageChf === null) return 'all'
+  return commute?.second ? 'first' : null
+}
+
+function waysInNGre(commute: CommuteFacts | null | undefined, hasGermanWage: boolean): WaysInForm {
+  return hasGermanWage && commute?.second ? 'second' : 'all'
 }
 
 const optionalNumber = (value: string | null): number | undefined => {
@@ -355,6 +484,8 @@ export interface PrintoutFacts {
   kinder?: readonly ChildFacts[] | null
   specialExpenses?: SpecialExpensesFacts | null
   riester?: RiesterFacts | null
+  /** Medical costs (§ 33) and household services / craftsmen (§ 35a), whole euros as asked (ADR-0077). */
+  householdAndHealth?: HouseholdAndHealthFacts | null
   singleParent?: SingleParentFacts | null
   commute?: CommuteFacts | null
   /** Self-paid health and care insurance of Person A (Anlage Vorsorgeaufwand Z. 16–33). */
@@ -416,6 +547,17 @@ const SINCE_FIELD: Record<string, string> = {
   verwitwet: 'est1a.verwitwetSeit',
   geschieden: 'est1a.geschiedenSeit',
   'dauernd-getrennt': 'est1a.getrenntSeit',
+}
+
+export interface HouseholdAndHealthFacts {
+  /** Out-of-pocket medical costs after reimbursements (Anlage Außergewöhnliche Belastungen Z. 23–25). */
+  healthCostsEur: number | null
+  /** Anlage Haushaltsnahe Aufwendungen Z. 4 (Kz 202), Z. 5 (Kz 212), Z. 6/9 (Kz 214, labour only). */
+  minijobEur: number | null
+  servicesEur: number | null
+  craftsmenLabourEur: number | null
+  /** The invoices' totals behind the labour share (Z. 6, „Rechnungsbeträge“). */
+  craftsmenInvoicesEur?: number | null
 }
 
 export function printoutValues(facts: PrintoutFacts): PrintoutValues {
@@ -490,14 +632,16 @@ export function printoutValues(facts: PrintoutFacts): PrintoutValues {
   if (hasGrossA && !hasGrossB) {
     values['anlN.kz110'] = gross!
     values['anlN.personA'] = true
-    Object.assign(values, commuteValues(facts.commute))
+    const waysA = waysInAnlageN(facts.commute, facts.chSalaryCertificate)
+    if (waysA) Object.assign(values, commuteValues(facts.commute, 'anlN', waysA))
     set('anlN.name', profile.lastName)
     set('anlN.vorname', profile.firstName)
     set('anlN.steuernummer', profile.steuernummer)
   } else if (hasGrossB) {
     const nInstances: FieldValues[] = []
     if (hasGrossA) {
-      const nA: Record<string, string | true> = { 'anlN.kz110': gross!, 'anlN.personA': true, ...commuteValues(facts.commute) }
+      const waysA = waysInAnlageN(facts.commute, facts.chSalaryCertificate)
+      const nA: Record<string, string | true> = { 'anlN.kz110': gross!, 'anlN.personA': true, ...(waysA ? commuteValues(facts.commute, 'anlN', waysA) : {}) }
       if (profile.lastName) nA['anlN.name'] = profile.lastName
       if (profile.firstName) nA['anlN.vorname'] = profile.firstName
       if (profile.steuernummer) nA['anlN.steuernummer'] = profile.steuernummer
@@ -506,7 +650,8 @@ export function printoutValues(facts: PrintoutFacts): PrintoutValues {
     const b = facts.link?.personB
     const nB: Record<string, string | true> = { 'anlN.kz110': grossB!, 'anlN.personB': true }
     // B's commute belongs to their Anlage N unless they are a Grenzgänger (then it is in their N-Gre).
-    if (!b?.chSalaryCertificate) Object.assign(nB, commuteValues(b?.commute))
+    const waysB = waysInAnlageN(b?.commute, b?.chSalaryCertificate)
+    if (waysB) Object.assign(nB, commuteValues(b?.commute, 'anlN', waysB))
     if (b?.lastName) nB['anlN.name'] = b.lastName
     if (b?.firstName) nB['anlN.vorname'] = b.firstName
     if (profile.steuernummer) nB['anlN.steuernummer'] = profile.steuernummer
@@ -589,13 +734,13 @@ export function printoutValues(facts: PrintoutFacts): PrintoutValues {
 
   // Anlage N-Gre: one per Grenzgänger. A couple where both commute to Switzerland gets two instances.
   const personB = facts.link?.filingType === 'zusammen' ? facts.link.personB : null
-  const nGreA = nGreValues(facts.chSalaryCertificate, facts.commute, 'A', {
+  const nGreA = nGreValues(facts.chSalaryCertificate, facts.commute, hasGrossA, 'A', {
     name: profile.lastName,
     firstName: profile.firstName,
     beruf: sd?.beruf ?? null,
     steuernummer: profile.steuernummer,
   })
-  const nGreB = nGreValues(personB?.chSalaryCertificate, personB?.commute, 'B', {
+  const nGreB = nGreValues(personB?.chSalaryCertificate, personB?.commute, hasGrossB, 'B', {
     name: personB?.lastName ?? null,
     firstName: personB?.firstName ?? null,
     beruf: personB?.beruf ?? null,
@@ -697,6 +842,13 @@ export function printoutValues(facts: PrintoutFacts): PrintoutValues {
       if (k.familyBenefitsOffice) kValues['anlKind.familienkasse'] = k.familyBenefitsOffice
       // Z. 27/28: KV/PV of the child the parents pay as policyholders — an empty or zero line stays empty.
       if (k.healthBasicEur && Number(k.healthBasicEur) > 0) kValues['anlKind.kz66'] = k.healthBasicEur
+      // Zeile 67: what the parents paid; the tax office applies the 80 % and the cap itself.
+      if (k.childcareEur && Number(k.childcareEur) > 0) {
+        kValues['anlKind.kz51'] = k.childcareEur
+        if (k.childcareProvider) kValues['anlKind.z67Text'] = k.childcareProvider
+        if (k.childcareFrom) kValues['anlKind.z67Von'] = k.childcareFrom
+        if (k.childcareTo) kValues['anlKind.z67Bis'] = k.childcareTo
+      }
       if (k.careEur && Number(k.careEur) > 0) kValues['anlKind.kz67'] = k.careEur
       const start = k.geburtsdatum?.startsWith(`${facts.taxYear}-`) ? k.geburtsdatum : `${facts.taxYear}-01-01`
       const end = `${facts.taxYear}-12-31`
@@ -754,6 +906,37 @@ export function printoutValues(facts: PrintoutFacts): PrintoutValues {
     set('anlVor.vorname', profile.firstName)
     set('anlVor.steuernummer', profile.steuernummer)
     Object.assign(values, provision)
+  }
+
+  const hh = facts.householdAndHealth
+  if (hh?.healthCostsEur) {
+    set('anlAgB.name', profile.lastName)
+    set('anlAgB.vorname', profile.firstName)
+    set('anlAgB.steuernummer', profile.steuernummer)
+    // The interview asks for the costs after reimbursements: the tax office gets that sum and 0.
+    values['anlAgB.z23Text'] = 'Krankheitskosten (selbst getragen)'
+    values['anlAgB.kz302'] = String(hh.healthCostsEur)
+    values['anlAgB.kz303'] = '0'
+  }
+  if (hh && (hh.minijobEur || hh.servicesEur || hh.craftsmenLabourEur)) {
+    set('anlHha.name', profile.lastName)
+    set('anlHha.vorname', profile.firstName)
+    set('anlHha.steuernummer', profile.steuernummer)
+    if (hh.minijobEur) {
+      values['anlHha.z4Text'] = 'Haushaltshilfe (Minijob)'
+      values['anlHha.kz202'] = String(hh.minijobEur)
+    }
+    if (hh.servicesEur) {
+      values['anlHha.z5Text'] = 'Haushaltsnahe Dienstleistungen'
+      values['anlHha.kz212'] = String(hh.servicesEur)
+    }
+    if (hh.craftsmenLabourEur) {
+      // Only the labour share is known; the invoice total stays for the user to add.
+      values['anlHha.z6Text'] = 'Handwerkerleistungen'
+      values['anlHha.z6Lohn'] = String(hh.craftsmenLabourEur)
+      if (hh.craftsmenInvoicesEur) values['anlHha.z6Rechnung'] = String(hh.craftsmenInvoicesEur)
+      values['anlHha.kz214'] = String(hh.craftsmenLabourEur)
+    }
   }
 
   if (facts.riester) {

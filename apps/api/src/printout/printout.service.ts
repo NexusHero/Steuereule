@@ -1,3 +1,4 @@
+import { HOUSEHOLD_AND_HEALTH_BOOSTERS } from '../config/features.js'
 import { HttpException, HttpStatus, Inject, Injectable, UnprocessableEntityException } from '@nestjs/common'
 import { NotFoundError } from '../common/domain-error.js'
 import {
@@ -12,7 +13,10 @@ import {
   type ChResidence,
   type CrossBorderStatus,
   type HealthInsurance,
+  effectivePublicHolidays,
+  commuteDaysByWay,
 } from '@steuereule/core'
+import { waysToWork } from '../commute/ways-to-work.js'
 import { COMMUTE_REPOSITORY, type CommuteInputs, type CommuteRepository } from '../commute/commute.repository.js'
 import { AuditService } from '../audit/audit.service.js'
 import { CROSS_BORDER_SALARY_STATEMENT_REPOSITORY, type CrossBorderSalaryStatementRecord, type CrossBorderSalaryStatementRepository } from '../ch-salary-certificate/ch-salary-certificate.repository.js'
@@ -28,7 +32,7 @@ import { PENSION_REPOSITORY, type PensionRepository } from '../pension/pension.r
 import { MASTER_DATA_REPOSITORY, type MasterDataRepository } from '../master-data/master-data.repository.js'
 import { RENTAL_REPOSITORY, type RentalRepository } from '../rental/rental.repository.js'
 import { printoutValues, type CommuteFacts, type ChSalaryCertificateFacts, type PersonBFacts } from './printout-values.js'
-import { FIELD_SETS, renderForms, OverflowError } from './form-renderer.js'
+import { FIELD_SETS, forYear, renderForms, OverflowError, type FieldValues } from './form-renderer.js'
 
 export const TEMPLATES_BASE = Symbol('VORLAGEN_BASIS')
 
@@ -62,8 +66,31 @@ export class PrintoutService {
   ) {}
 
   async check(userId: string, year: number): Promise<{ missing: string[] }> {
-    if (!FIELD_SETS[year]) throw new NotFoundError('VORDRUCKE_MISSING', `No Vordrucke are available for tax year ${year} yet.`)
-    return { missing: (await this.collect(userId, year)).missing }
+    const fieldSet = FIELD_SETS[year]
+    if (!fieldSet) throw new NotFoundError('VORDRUCKE_MISSING', `No Vordrucke are available for tax year ${year} yet.`)
+    const { values, instances, missing } = await this.collect(userId, year)
+    // A value too long for its box (at the 10 pt the forms require) would fail only after payment: once
+    // nothing else is missing, it is named here, as „zuLang.<field>“, so the user shortens it first (ADR-0085).
+    if (missing.length > 0) return { missing }
+    return { missing: (await this.tooLong(year, values, instances)).map((id) => `zuLang.${id}`) }
+  }
+
+  private async tooLong(year: number, values: FieldValues, instances: Record<string, readonly FieldValues[]> | undefined): Promise<string[]> {
+    try {
+      await this.render(year, values, instances, false)
+      return []
+    } catch (error) {
+      if (error instanceof OverflowError) return [...new Set(error.fields)]
+      throw error
+    }
+  }
+
+  private render(year: number, values: FieldValues, instances: Record<string, readonly FieldValues[]> | undefined, editable: boolean): Promise<Uint8Array> {
+    return renderForms(FIELD_SETS[year]!, forYear(year, values), {
+      templatesDirectory: new URL(`${year}/`, this.templatesBase),
+      instances: instances ? Object.fromEntries(Object.entries(instances).map(([form, list]) => [form, list.map((v) => forYear(year, v))])) : instances,
+      editable,
+    })
   }
 
   async startCheckout(userId: string, year: number): Promise<{ checkoutUrl: string }> {
@@ -88,11 +115,7 @@ export class PrintoutService {
     }
 
     try {
-      const pdf = await renderForms(fieldSet, values, {
-        templatesDirectory: new URL(`${year}/`, this.templatesBase),
-        instances,
-        editable,
-      })
+      const pdf = await this.render(year, values, instances, editable)
       await this.audit.append({ userId, action: 'READ', resource: 'ausdruck' })
       return pdf
     } catch (error) {
@@ -220,6 +243,10 @@ export class PrintoutService {
         registeredWithMeAllYear: k.registeredWithMeAllYear,
         childBenefitToMeAllYear: k.childBenefitToMeAllYear,
         healthBasicEur: k.healthBasicEur,
+        childcareEur: k.childcareEur ?? null,
+        childcareProvider: k.childcareProvider ?? null,
+        childcareFrom: k.childcareFrom ?? null,
+        childcareTo: k.childcareTo ?? null,
         careEur: k.careEur,
       }
     })
@@ -258,6 +285,15 @@ export class PrintoutService {
         otherPerson: answers['ae-weitere-person'] ?? null,
         householdCommunity: answers['ae-haushaltsgemeinschaft'] ?? null,
       },
+      householdAndHealth: HOUSEHOLD_AND_HEALTH_BOOSTERS
+        ? {
+            healthCostsEur: answers['gesundheit-gate'] === 'Ja' ? amountOf(answers['gesundheit-betrag']) : null,
+            minijobEur: answers['haushalt-gate'] === 'Ja' ? amountOf(answers['haushalt-minijob-betrag']) : null,
+            servicesEur: answers['haushalt-gate'] === 'Ja' ? amountOf(answers['haushalt-dienstleistung-betrag']) : null,
+            craftsmenLabourEur: answers['haushalt-gate'] === 'Ja' ? amountOf(answers['haushalt-handwerker-betrag']) : null,
+            craftsmenInvoicesEur: answers['haushalt-gate'] === 'Ja' ? amountOf(answers['haushalt-handwerker-rechnungsbetrag']) : null,
+          }
+        : null,
       riester:
         answers['riester'] === 'Ja'
           ? { kind: answers['riester-art'] ?? null, incomeLastYear: answers['riester-einnahmen-vorjahr'] ?? null }
@@ -282,6 +318,9 @@ function chSalaryCertificateFacts(ch: CrossBorderSalaryStatementRecord | null, a
     krankentaggeldChf: ch.nGre.krankentaggeldChf,
     pkArbeitnehmerChf: ch.nGre.pkArbeitnehmerChf,
     pkArbeitgeberChf: ch.nGre.pkArbeitgeberChf,
+    pkArbeitnehmerGesamtChf: ch.fields['berufliche-vorsorge'],
+    pkArbeitgeberGesamtChf: ch.nGre.pkArbeitgeberGesamtChf,
+    steuerfreiesKrankentaggeldChf: ch.nGre.steuerfreiesKrankentaggeldChf,
     krankentaggeldArbeitgeberProzent: ch.nGre.krankentaggeldArbeitgeberProzent,
     krankentaggeldArbeitgeberChf: ch.nGre.krankentaggeldArbeitgeberChf,
     nbuvArbeitgeberProzent: ch.nGre.nbuvArbeitgeberProzent,
@@ -292,22 +331,44 @@ function chSalaryCertificateFacts(ch: CrossBorderSalaryStatementRecord | null, a
 
 function commuteFacts(year: number, inputs: CommuteInputs | null): CommuteFacts | null {
   if (inputs === null) return null
+  const workExpenses = {
+    professionalBodiesEur: inputs.professionalBodiesEur ?? null,
+    professionalBodiesNote: inputs.professionalBodiesNote ?? null,
+    workEquipmentEur: inputs.workEquipmentEur ?? null,
+    workEquipmentNote: inputs.workEquipmentNote ?? null,
+    accountFeesEur: inputs.accountFeesEur ?? null,
+    otherWorkExpensesEur: inputs.otherWorkExpensesEur ?? null,
+    otherWorkExpensesNote: inputs.otherWorkExpensesNote ?? null,
+  }
   const result = calculateWorkdays({
     year,
     workdays: inputs.workdays,
     vacationDays: inputs.vacationDays,
     sickDays: inputs.sickDays,
     homeOfficeDays: inputs.homeOfficeDays,
-    publicHolidays: inputs.publicHolidays ?? 0,
+    publicHolidays: effectivePublicHolidays(year, inputs),
   })
   if (result.kind !== 'bestimmt') return null
+  // Two ways after a change of job share the year's commute days by the time each lasted (ADR-0079).
+  const ways = waysToWork(inputs)
+  const days = commuteDaysByWay(year, inputs.workdays, result.commuteDays, ways)
+  const hasFirst = inputs.oneWayKm !== null && inputs.transport !== null
+  const secondWay = hasFirst ? ways[1] : ways[0]
+  const secondDays = hasFirst ? days[1] : days[0]
   return {
     workdaysPerWeek: inputs.workdays.length,
     daysOff: inputs.vacationDays + inputs.sickDays + inputs.homeOfficeDays,
-    commuteDays: result.commuteDays,
+    commuteDays: hasFirst ? (days[0] ?? result.commuteDays) : result.commuteDays,
     oneWayKm: inputs.oneWayKm,
     withCar: inputs.transport === 'pkw',
     workplace: inputs.workplace,
+    from: inputs.periodFrom ?? null,
+    to: inputs.periodTo ?? null,
+    second:
+      secondWay && secondDays !== undefined
+        ? { commuteDays: secondDays, oneWayKm: secondWay.oneWayKm, withCar: secondWay.withCar, workplace: inputs.secondWorkplace ?? null, from: secondWay.from, to: secondWay.to }
+        : null,
+    workExpenses,
   }
 }
 
@@ -327,4 +388,9 @@ function healthInsurances(
     list.push({ kind: 'ausland', basicHealthAmount: Math.round(chf * ch.exchangeRateValue), withSickPay: false, careInsuranceAmount: 0, optionalExtrasAmount: 0 })
   }
   return list
+}
+
+/** A whole-euro interview amount; „später“ and anything else is not printed. */
+function amountOf(answer: string | undefined): number | null {
+  return answer !== undefined && /^\d+$/.test(answer) && Number(answer) > 0 ? Number(answer) : null
 }

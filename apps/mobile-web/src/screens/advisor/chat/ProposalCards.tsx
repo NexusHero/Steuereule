@@ -16,8 +16,11 @@ export function ActionProposalCardView({
   onSelectSource,
   styles,
   testIDPrefix = 'advisor-action',
+  partnerName,
 }: {
   readonly action: AdvisorActionProposal
+  /** The spouse's first name, for a draft that writes Person B's fields (ADR-0073). */
+  readonly partnerName?: string | undefined
   readonly onApply?: ((actionId: string) => Promise<void> | void) | undefined
   readonly onUndo?: ((actionId: string) => Promise<void> | void) | undefined
   readonly onInspectMask?: ((screen: Screen, field?: string) => void) | undefined
@@ -88,6 +91,12 @@ export function ActionProposalCardView({
       {action.effect === 'not-computable' && action.effectHint ? (
         <Text style={styles.actionReason} testID={`${testIDPrefix}-effect-hint`}>
           {action.effectHint}
+        </Text>
+      ) : null}
+
+      {action.person === 'B' ? (
+        <Text style={styles.receiptLinkedBadge} testID={`${testIDPrefix}-person`}>
+          {tr('advisor.chat.forPerson', { name: partnerName?.trim() || tr('advisor.chat.personBFallback', 'Person B'), defaultValue: `für ${partnerName?.trim() || 'Person B'}` })}
         </Text>
       ) : null}
 
@@ -242,8 +251,10 @@ export function TwoPathsCardView({
   receiptLinkedActionIds,
   onSelectSource,
   styles,
+  partnerName,
 }: {
   readonly twoPaths: AdvisorTwoPathsProposal
+  readonly partnerName?: string | undefined
   readonly onApply?: ((actionId: string) => Promise<void> | void) | undefined
   readonly onUndo?: ((actionId: string) => Promise<void> | void) | undefined
   readonly onInspectMask?: ((screen: Screen, field?: string) => void) | undefined
@@ -262,6 +273,7 @@ export function TwoPathsCardView({
         receiptLinked={receiptLinkedActionIds?.has(twoPaths.safePath.actionId)}
         onSelectSource={onSelectSource}
         styles={styles}
+        partnerName={partnerName}
         testIDPrefix="advisor-path-safe"
       />
       <View style={styles.maxPathWrapper}>
@@ -274,6 +286,7 @@ export function TwoPathsCardView({
           receiptLinked={receiptLinkedActionIds?.has(twoPaths.maxPath.actionId)}
           onSelectSource={onSelectSource}
           styles={styles}
+          partnerName={partnerName}
           testIDPrefix="advisor-path-max"
         />
       </View>

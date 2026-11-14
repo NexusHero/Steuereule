@@ -883,6 +883,10 @@ jobs:
         # Two real accounts driven through the API with their own sessions, plus the Kinder mask in
         # the browser. Needs DATABASE_URL (job env) to verify the sign-ups.
         run: node e2e/household/household.mjs
+      - name: Real-case additions gate (ADR-0076, ADR-0079–0086) — second way to work, Werbungskosten, childcare, annual rate, prepayments, too-long entries, „whose letter?“
+        # One account through the masks in the browser; the printout check is stubbed for the
+        # too-long case only. Needs DATABASE_URL (job env) to verify the sign-up.
+        run: node e2e/forms/real-case-additions.mjs
       - name: Church tax gate (#450 6F, ADR-0063) — the six 6F personas, Zeile 6 in the LStB mask, cockpit hints
         # Real accounts through the API with their own sessions; Zeile 6 typed in the browser and the
         # cockpit hint read there. Needs DATABASE_URL (job env) to verify the sign-ups.

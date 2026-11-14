@@ -108,6 +108,8 @@ const EXPECTED_ENCRYPTED_FIELDS: ExpectedEncryptedField[] = [
   { model: 'ChSalaryCertificate', field: 'krankentaggeldChf', encrypt: true, strictDecryption: true },
   { model: 'ChSalaryCertificate', field: 'pkArbeitnehmerChf', encrypt: true, strictDecryption: true },
   { model: 'ChSalaryCertificate', field: 'pkArbeitgeberChf', encrypt: true, strictDecryption: true },
+  { model: 'ChSalaryCertificate', field: 'pkArbeitgeberGesamtChf', encrypt: true, strictDecryption: true },
+  { model: 'ChSalaryCertificate', field: 'steuerfreiesKrankentaggeldChf', encrypt: true, strictDecryption: true },
   { model: 'ChSalaryCertificate', field: 'krankentaggeldArbeitgeberProzent', encrypt: true, strictDecryption: true },
   { model: 'ChSalaryCertificate', field: 'krankentaggeldArbeitgeberChf', encrypt: true, strictDecryption: true },
   { model: 'ChSalaryCertificate', field: 'nbuvArbeitgeberProzent', encrypt: true, strictDecryption: true },
@@ -121,6 +123,14 @@ const EXPECTED_ENCRYPTED_FIELDS: ExpectedEncryptedField[] = [
   { model: 'Capital', field: 'solidaritaetszuschlag', encrypt: true, strictDecryption: true },
   { model: 'Capital', field: 'kirchensteuer', encrypt: true, strictDecryption: true },
   { model: 'Commute', field: 'workplace', encrypt: true, strictDecryption: true },
+  { model: 'Commute', field: 'secondWorkplace', encrypt: true, strictDecryption: true },
+  { model: 'Commute', field: 'professionalBodiesEur', encrypt: true, strictDecryption: true },
+  { model: 'Commute', field: 'professionalBodiesNote', encrypt: true, strictDecryption: true },
+  { model: 'Commute', field: 'workEquipmentEur', encrypt: true, strictDecryption: true },
+  { model: 'Commute', field: 'workEquipmentNote', encrypt: true, strictDecryption: true },
+  { model: 'Commute', field: 'accountFeesEur', encrypt: true, strictDecryption: true },
+  { model: 'Commute', field: 'otherWorkExpensesEur', encrypt: true, strictDecryption: true },
+  { model: 'Commute', field: 'otherWorkExpensesNote', encrypt: true, strictDecryption: true },
   { model: 'Marking', field: 'proposalValue', encrypt: true, strictDecryption: true },
   { model: 'RentalProperty', field: 'mieteinnahmen', encrypt: true, strictDecryption: true },
   { model: 'RentalProperty', field: 'anschaffungskosten', encrypt: true, strictDecryption: true },
@@ -148,6 +158,10 @@ const EXPECTED_ENCRYPTED_FIELDS: ExpectedEncryptedField[] = [
   { model: 'Child', field: 'healthBasicEur', encrypt: true, strictDecryption: true },
   { model: 'Child', field: 'careEur', encrypt: true, strictDecryption: true },
   { model: 'Child', field: 'swissFamilyAllowanceEur', encrypt: true, strictDecryption: true },
+  { model: 'Child', field: 'childcareEur', encrypt: true, strictDecryption: true },
+  { model: 'Child', field: 'childcareProvider', encrypt: true, strictDecryption: true },
+  { model: 'Child', field: 'childcareFrom', encrypt: true, strictDecryption: true },
+  { model: 'Child', field: 'childcareTo', encrypt: true, strictDecryption: true },
   { model: 'Assessment', field: 'einnahmen', encrypt: true, strictDecryption: true },
   { model: 'Assessment', field: 'vorsorgeaufwand', encrypt: true, strictDecryption: true },
   { model: 'Assessment', field: 'anrechnung', encrypt: true, strictDecryption: true },
@@ -160,6 +174,7 @@ const EXPECTED_ENCRYPTED_FIELDS: ExpectedEncryptedField[] = [
   { model: 'AdvisorConversation', field: 'summary', encrypt: true, strictDecryption: true },
   { model: 'AdvisorNote', field: 'text', encrypt: true, strictDecryption: true },
   { model: 'AdvisorSituation', field: 'text', encrypt: true, strictDecryption: true },
+  { model: 'AdvisorInterview', field: 'progress', encrypt: true, strictDecryption: true },
 ].sort(byModelField)
 
 // prisma-field-encryption's hash annotation (`@encryption:hash(field)`, dist/dmmf.js:79)
@@ -218,6 +233,7 @@ const EXPECTED_CURSORS: Record<string, string> = {
   AdvisorConversation: 'id',
   AdvisorNote: 'id',
   AdvisorSituation: 'id',
+  AdvisorInterview: 'id',
   ReceiptFile: 'id',
 }
 

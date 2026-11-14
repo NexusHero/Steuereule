@@ -6,7 +6,7 @@
  * OpenAPI spec version: 1.0
  */
 /**
- * Explicit document parser cascade: "lstb" uses deterministic two-stage German LStB extraction.
+ * Explicit document parser: "lstb" the German LStB, "chLohnausweis" the Swiss salary certificate, "chPensionskasse" a Swiss pension fund statement, "chPraemien" the employer letter on sickness-pay and NBU premiums, "chKrankenkasse" a Swiss health insurer statement for the tax return; "auto" routes a recognised document to its reader.
  */
 export type ParseReceiptDtoKind = typeof ParseReceiptDtoKind[keyof typeof ParseReceiptDtoKind];
 
@@ -14,6 +14,10 @@ export type ParseReceiptDtoKind = typeof ParseReceiptDtoKind[keyof typeof ParseR
 export const ParseReceiptDtoKind = {
   auto: 'auto',
   lstb: 'lstb',
+  chLohnausweis: 'chLohnausweis',
+  chPensionskasse: 'chPensionskasse',
+  chPraemien: 'chPraemien',
+  chKrankenkasse: 'chKrankenkasse',
 } as const;
 
 /**
@@ -52,7 +56,7 @@ export interface ParseReceiptDto {
   taxYear: number;
   fileName: string;
   rawText?: string;
-  /** Explicit document parser cascade: "lstb" uses deterministic two-stage German LStB extraction. */
+  /** Explicit document parser: "lstb" the German LStB, "chLohnausweis" the Swiss salary certificate, "chPensionskasse" a Swiss pension fund statement, "chPraemien" the employer letter on sickness-pay and NBU premiums, "chKrankenkasse" a Swiss health insurer statement for the tax return; "auto" routes a recognised document to its reader. */
   kind?: ParseReceiptDtoKind;
   /** Optional existing Beleg id owned by the caller to link provenance. */
   receiptId?: string;
@@ -154,6 +158,17 @@ export const AdvisorActionProposalDtoScreen = {
 } as const;
 
 /**
+ * Whose fields the draft writes in a joint return (ADR-0073): B is the spouse whose figures the user records. Absent means the user.
+ */
+export type AdvisorActionProposalDtoPerson = typeof AdvisorActionProposalDtoPerson[keyof typeof AdvisorActionProposalDtoPerson];
+
+
+export const AdvisorActionProposalDtoPerson = {
+  A: 'A',
+  B: 'B',
+} as const;
+
+/**
  * computed: the three euro figures come from the app's own estimate. not-computable: there is no figure, see effectHint. Absent: approximation.
  */
 export type AdvisorActionProposalDtoEffect = typeof AdvisorActionProposalDtoEffect[keyof typeof AdvisorActionProposalDtoEffect];
@@ -176,6 +191,8 @@ export const AdvisorActionProposalDtoSourceId = {
   'estg-9-6': 'estg-9-6',
   'estg-10b': 'estg-10b',
   'estg-10-1-5': 'estg-10-1-5',
+  'estg-35a': 'estg-35a',
+  'estg-10-1-3': 'estg-10-1-3',
   'ao-355': 'ao-355',
 } as const;
 
@@ -221,6 +238,8 @@ export interface AdvisorActionProposalDto {
   field: string;
   /** @nullable */
   instance?: string | null;
+  /** Whose fields the draft writes in a joint return (ADR-0073): B is the spouse whose figures the user records. Absent means the user. */
+  person?: AdvisorActionProposalDtoPerson;
   companionFields?: AdvisorActionProposalDtoCompanionFields;
   /** Raw values of the companion fields when the draft was created (stale-check baseline). */
   companionExpectedValues?: AdvisorActionProposalDtoCompanionExpectedValues;
@@ -338,10 +357,28 @@ export interface AdvisorNoteChangeDto {
   undone?: boolean;
 }
 
+/**
+ * `fact` gets no recommendation; `decision` does, with a reason. Missing on older rounds: read as fact.
+ */
+export type AdvisorRoundQuestionDtoKind = typeof AdvisorRoundQuestionDtoKind[keyof typeof AdvisorRoundQuestionDtoKind];
+
+
+export const AdvisorRoundQuestionDtoKind = {
+  fact: 'fact',
+  decision: 'decision',
+} as const;
+
 export interface AdvisorRoundQuestionDto {
   text: string;
   options: string[];
+  /** `fact` gets no recommendation; `decision` does, with a reason. Missing on older rounds: read as fact. */
+  kind?: AdvisorRoundQuestionDtoKind;
+  /** More than one answer may be ticked. */
+  multiple?: boolean;
+  /** The owl's pick, only on a decision. */
   recommended?: string;
+  /** Why she recommends it, one short sentence. */
+  reason?: string;
 }
 
 export interface AdvisorQuestionRoundDto {
@@ -423,6 +460,17 @@ export const AdvisorMaxPathProposalDtoScreen = {
 } as const;
 
 /**
+ * Whose fields the draft writes in a joint return (ADR-0073): B is the spouse whose figures the user records. Absent means the user.
+ */
+export type AdvisorMaxPathProposalDtoPerson = typeof AdvisorMaxPathProposalDtoPerson[keyof typeof AdvisorMaxPathProposalDtoPerson];
+
+
+export const AdvisorMaxPathProposalDtoPerson = {
+  A: 'A',
+  B: 'B',
+} as const;
+
+/**
  * computed: the three euro figures come from the app's own estimate. not-computable: there is no figure, see effectHint. Absent: approximation.
  */
 export type AdvisorMaxPathProposalDtoEffect = typeof AdvisorMaxPathProposalDtoEffect[keyof typeof AdvisorMaxPathProposalDtoEffect];
@@ -445,6 +493,8 @@ export const AdvisorMaxPathProposalDtoSourceId = {
   'estg-9-6': 'estg-9-6',
   'estg-10b': 'estg-10b',
   'estg-10-1-5': 'estg-10-1-5',
+  'estg-35a': 'estg-35a',
+  'estg-10-1-3': 'estg-10-1-3',
   'ao-355': 'ao-355',
 } as const;
 
@@ -485,6 +535,8 @@ export interface AdvisorMaxPathProposalDto {
   field: string;
   /** @nullable */
   instance?: string | null;
+  /** Whose fields the draft writes in a joint return (ADR-0073): B is the spouse whose figures the user records. Absent means the user. */
+  person?: AdvisorMaxPathProposalDtoPerson;
   companionFields?: AdvisorMaxPathProposalDtoCompanionFields;
   /** Raw values of the companion fields when the draft was created (stale-check baseline). */
   companionExpectedValues?: AdvisorMaxPathProposalDtoCompanionExpectedValues;
@@ -529,6 +581,8 @@ export const AdvisorTwoPathsProposalDtoSourceId = {
   'estg-9-6': 'estg-9-6',
   'estg-10b': 'estg-10b',
   'estg-10-1-5': 'estg-10-1-5',
+  'estg-35a': 'estg-35a',
+  'estg-10-1-3': 'estg-10-1-3',
   'ao-355': 'ao-355',
 } as const;
 
@@ -551,6 +605,8 @@ export const AdvisorMessageMetaDtoSourcesItem = {
   'estg-9-6': 'estg-9-6',
   'estg-10b': 'estg-10b',
   'estg-10-1-5': 'estg-10-1-5',
+  'estg-35a': 'estg-35a',
+  'estg-10-1-3': 'estg-10-1-3',
   'ao-355': 'ao-355',
 } as const;
 
@@ -718,6 +774,181 @@ export interface ParsedLstbResponseDto {
   securityBlocked: boolean;
 }
 
+export type ParsedChCertificateResponseDtoStage = typeof ParsedChCertificateResponseDtoStage[keyof typeof ParsedChCertificateResponseDtoStage];
+
+
+export const ParsedChCertificateResponseDtoStage = {
+  deterministic: 'deterministic',
+  llm_text_fallback: 'llm_text_fallback',
+} as const;
+
+/**
+ * Whose certificate it is, by the name on it or the choice sent; null when unclear.
+ * @nullable
+ */
+export type ParsedChCertificateResponseDtoPerson = typeof ParsedChCertificateResponseDtoPerson[keyof typeof ParsedChCertificateResponseDtoPerson] | null;
+
+
+export const ParsedChCertificateResponseDtoPerson = {
+  A: 'A',
+  B: 'B',
+} as const;
+
+export type ChCertificateFieldDtoStatus = typeof ChCertificateFieldDtoStatus[keyof typeof ChCertificateFieldDtoStatus];
+
+
+export const ChCertificateFieldDtoStatus = {
+  ok: 'ok',
+  pruefen: 'pruefen',
+} as const;
+
+/**
+ * @nullable
+ */
+export type ChCertificateFieldDtoReason = typeof ChCertificateFieldDtoReason[keyof typeof ChCertificateFieldDtoReason] | null;
+
+
+export const ChCertificateFieldDtoReason = {
+  negative: 'negative',
+  plausibility_conflict: 'plausibility_conflict',
+  llm_suggested: 'llm_suggested',
+  ocr_source: 'ocr_source',
+} as const;
+
+export interface ChCertificateFieldDto {
+  field: string;
+  digit: string;
+  /** CHF as printed; negative where the certificate prints one. */
+  value: number;
+  status: ChCertificateFieldDtoStatus;
+  /** @nullable */
+  reason: ChCertificateFieldDtoReason;
+}
+
+/**
+ * Ziffer 8 = Ziffern 1 to 7.
+ */
+export type ChCertificateChecksDtoGross = typeof ChCertificateChecksDtoGross[keyof typeof ChCertificateChecksDtoGross];
+
+
+export const ChCertificateChecksDtoGross = {
+  ok: 'ok',
+  conflict: 'conflict',
+  unknown: 'unknown',
+} as const;
+
+/**
+ * Ziffer 11 = 8 − 9 − 10.
+ */
+export type ChCertificateChecksDtoNet = typeof ChCertificateChecksDtoNet[keyof typeof ChCertificateChecksDtoNet];
+
+
+export const ChCertificateChecksDtoNet = {
+  ok: 'ok',
+  conflict: 'conflict',
+  unknown: 'unknown',
+} as const;
+
+export interface ChCertificateChecksDto {
+  /** Ziffer 8 = Ziffern 1 to 7. */
+  gross: ChCertificateChecksDtoGross;
+  /** Ziffer 11 = 8 − 9 − 10. */
+  net: ChCertificateChecksDtoNet;
+}
+
+export interface ParsedChCertificateResponseDto {
+  stage: ParsedChCertificateResponseDtoStage;
+  /** @nullable */
+  receiptId: string | null;
+  /** @nullable */
+  taxYearOnDocument: number | null;
+  /** @nullable */
+  yearConflict: LstbYearConflictDto | null;
+  /**
+     * Whose certificate it is, by the name on it or the choice sent; null when unclear.
+     * @nullable
+     */
+  person: ParsedChCertificateResponseDtoPerson;
+  /** The name fits neither person: ask whose it is and parse again with `person`. */
+  personUnclear: boolean;
+  /** Person B keeps an own account: B uploads it there. */
+  personNotRecordable: boolean;
+  fields: ChCertificateFieldDto[];
+  checks: ChCertificateChecksDto;
+  /** Box G: canteen or lunch cheques. */
+  canteen: boolean;
+  /** Box F: free transport between home and work. */
+  freeTransport: boolean;
+  /** Ziffern every certificate carries that could not be read. */
+  missing: string[];
+  stagedActionIds: string[];
+  securityBlocked: boolean;
+}
+
+export type ParsedChLetterResponseDtoKind = typeof ParsedChLetterResponseDtoKind[keyof typeof ParsedChLetterResponseDtoKind];
+
+
+export const ParsedChLetterResponseDtoKind = {
+  chPensionskasse: 'chPensionskasse',
+  chPraemien: 'chPraemien',
+} as const;
+
+/**
+ * @nullable
+ */
+export type ParsedChLetterResponseDtoPerson = typeof ParsedChLetterResponseDtoPerson[keyof typeof ParsedChLetterResponseDtoPerson] | null;
+
+
+export const ParsedChLetterResponseDtoPerson = {
+  A: 'A',
+  B: 'B',
+} as const;
+
+export type ChLetterFieldDtoStatus = typeof ChLetterFieldDtoStatus[keyof typeof ChLetterFieldDtoStatus];
+
+
+export const ChLetterFieldDtoStatus = {
+  ok: 'ok',
+  pruefen: 'pruefen',
+} as const;
+
+/**
+ * @nullable
+ */
+export type ChLetterFieldDtoReason = typeof ChLetterFieldDtoReason[keyof typeof ChLetterFieldDtoReason] | null;
+
+
+export const ChLetterFieldDtoReason = {
+  plausibility_conflict: 'plausibility_conflict',
+  ocr_source: 'ocr_source',
+} as const;
+
+export interface ChLetterFieldDto {
+  field: string;
+  value: number;
+  status: ChLetterFieldDtoStatus;
+  /** @nullable */
+  reason: ChLetterFieldDtoReason;
+}
+
+export interface ParsedChLetterResponseDto {
+  kind: ParsedChLetterResponseDtoKind;
+  /** @nullable */
+  receiptId: string | null;
+  /** @nullable */
+  taxYearOnDocument: number | null;
+  /** @nullable */
+  yearConflict: LstbYearConflictDto | null;
+  /** @nullable */
+  person: ParsedChLetterResponseDtoPerson;
+  personUnclear: boolean;
+  personNotRecordable: boolean;
+  fields: ChLetterFieldDto[];
+  /** Fields the letter did not give; the owl asks for them. */
+  missing: string[];
+  stagedActionIds: string[];
+}
+
 export interface ParseReceiptResponseDto {
   mode: ParseReceiptResponseDtoMode;
   securityBlocked: boolean;
@@ -728,6 +959,10 @@ export interface ParseReceiptResponseDto {
   assistantMessage?: AdvisorChatMessageDto | null;
   /** @nullable */
   lstb?: ParsedLstbResponseDto | null;
+  /** @nullable */
+  chLohnausweis?: ParsedChCertificateResponseDto | null;
+  /** @nullable */
+  chLetter?: ParsedChLetterResponseDto | null;
 }
 
 export type OwlCardDtoTrigger = typeof OwlCardDtoTrigger[keyof typeof OwlCardDtoTrigger];
@@ -870,6 +1105,8 @@ export const AdvisorLegalSourceDtoSourceId = {
   'estg-9-6': 'estg-9-6',
   'estg-10b': 'estg-10b',
   'estg-10-1-5': 'estg-10-1-5',
+  'estg-35a': 'estg-35a',
+  'estg-10-1-3': 'estg-10-1-3',
   'ao-355': 'ao-355',
 } as const;
 

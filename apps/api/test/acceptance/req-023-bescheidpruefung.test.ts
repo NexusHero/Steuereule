@@ -145,9 +145,9 @@ describe('REQ-023 — Bescheidprüfung, against the real server', () => {
         { field: 'einnahmen', assessment: 48_000, calculated: 50_000, difference: -2_000 },
       ])
 
-      // The Frist is Bescheiddatum + 1 Monat.
+      // The Frist ends one month after the notice counts as received (Bescheiddatum + 4 days), on a working day.
       const date = await putDate(cookie, '2026-03-15')
-      expect(((await date.json()) as { frist: { deadlineEnd: string } }).frist.deadlineEnd).toBe('2026-04-15')
+      expect(((await date.json()) as { frist: { deadlineEnd: string } }).frist.deadlineEnd).toBe('2026-04-20')
 
       // eingegangen → geprüft is legal; geprüft → einspruch-eingelegt (with a Grund) is legal.
       const checked = await putStatus(cookie, 'geprüft')

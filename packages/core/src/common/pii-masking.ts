@@ -113,7 +113,17 @@ export function scrubUserMessagePii(
   scrubbed = scrubbed.replace(PHONE_TEXT_REGEX, '[KONTAKT-GESCHÜTZT]')
 
   // 2. Replace known names from the user's tax profile (first/last names, partner, children)
-  for (const rawName of knownNames) {
+  return replaceNamesWith(scrubbed, knownNames, '[MANDANT]')
+}
+
+/**
+ * Replaces every part of the given names (first and last name, each part of a double name) with
+ * a stand-in, as a whole word: „Gülay“ and „Ümit“ alike, never inside a longer word. The German
+ * genitive counts as the name („Gülays Konto“): in the real-case test it carried the name to the model.
+ */
+export function replaceNamesWith(text: string, names: readonly string[], replacement: string): string {
+  let replaced = text
+  for (const rawName of names) {
     if (!rawName) continue
     const parts = rawName
       .trim()
@@ -121,12 +131,11 @@ export function scrubUserMessagePii(
       .map((p) => p.trim())
       .filter((p) => p.length >= 2)
     for (const part of parts) {
-      const pattern = new RegExp(`\\b${escapeRegExp(part)}\\b`, 'gi')
-      scrubbed = scrubbed.replace(pattern, '[MANDANT]')
+      const pattern = new RegExp(`(?<![\\p{L}\\p{N}_])${escapeRegExp(part)}(?:s|['’]s)?(?![\\p{L}\\p{N}_])`, 'giu')
+      replaced = replaced.replace(pattern, replacement)
     }
   }
-
-  return scrubbed
+  return replaced
 }
 
 const ETIN_TEXT_REGEX = /\beTIN\s*[:-]?\s*[A-Z0-9\s-]{8,20}|\b[A-Z]{6}[0-9]{2}[A-Z0-9]{6}\b/gi

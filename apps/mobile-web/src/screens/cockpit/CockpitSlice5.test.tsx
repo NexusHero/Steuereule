@@ -58,7 +58,9 @@ describe('Cockpit Screen — Slice 5 Persona Boosters & Dual Cockpit', () => {
     expect(screen.getByTestId('cockpit-kachel-arbeitsweg')).toBeTruthy()
     expect(screen.queryByTestId('cockpit-kachel-kapital')).toBeNull()
     expect(screen.queryByTestId('cockpit-kachel-vermietung')).toBeNull()
-    expect(screen.queryByTestId('cockpit-kachel-haushalt')).toBeNull()
+    // The § 35a and § 33 boosters are on (ADR-0077): household costs concern everyone and sit up front;
+    // medical costs only for pensioners and parents, otherwise under „Weitere Themen“.
+    expect(screen.getByTestId('cockpit-kachel-haushalt')).toBeTruthy()
     expect(screen.queryByTestId('cockpit-kachel-gesundheit')).toBeNull()
 
     const moreToggle = screen.getByTestId('cockpit-weitere-themen')
@@ -67,8 +69,7 @@ describe('Cockpit Screen — Slice 5 Persona Boosters & Dual Cockpit', () => {
 
     const capitalTile = await screen.findByTestId('cockpit-kachel-kapital')
     expect(screen.getByTestId('cockpit-kachel-vermietung')).toBeTruthy()
-    expect(screen.queryByTestId('cockpit-kachel-haushalt')).toBeNull()
-    expect(screen.queryByTestId('cockpit-kachel-gesundheit')).toBeNull()
+    expect(screen.getByTestId('cockpit-kachel-gesundheit')).toBeTruthy()
 
     fireEvent.click(capitalTile)
     expect(onOpenTile).toHaveBeenCalledWith(expect.objectContaining({ id: 'kapital' }), false)

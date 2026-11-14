@@ -10,7 +10,9 @@
     "anlage-kind": "bd4d1effb1361a34e598c0571e4a5018d9d2c300a8ace55473484a0187da74fe",
     "anlage-sonderausgaben": "4ba75d207fc697e034a5f81468c0e5c2f96f4ca8aad458df5fc28323ddec9cca",
     "anlage-av": "01301ebcbe345115003bfe163980685c1748fd0395555c0e58e956b88d0d27ab",
-    "anlage-vorsorgeaufwand": "688480e3eee525f7e90dacf38c6987053e36a0a18825770643d5c46b3b613d60"
+    "anlage-vorsorgeaufwand": "688480e3eee525f7e90dacf38c6987053e36a0a18825770643d5c46b3b613d60",
+    "anlage-aussergewoehnliche-belastungen": "b472c4a28e16669641531f8c1b08d94c314fef5abaeb7f2781048a4a9d537ccf",
+    "anlage-haushaltsnahe-aufwendungen": "ff51a19514692b9c8ade3e71e3f984726980b07d655146e7120ab8c7c21e9d7a"
   },
   "felder": [
     {
@@ -556,6 +558,138 @@
       }
     },
     {
+      "id": "anlN.wegVon",
+      "formular": "anlage-n",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 411.6,
+        "y": 587.9,
+        "breite": 54.5,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlN.wegBis",
+      "formular": "anlage-n",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 480.5,
+        "y": 587.9,
+        "breite": 54.8,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlN.weg2Art",
+      "formular": "anlage-n",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 39.1,
+        "y": 381.1,
+        "breite": 12.1,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlN.weg2Ort",
+      "formular": "anlage-n",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 154.6,
+        "y": 376.7,
+        "breite": 240.8,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlN.weg2Von",
+      "formular": "anlage-n",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 411.6,
+        "y": 376.7,
+        "breite": 54.8,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlN.weg2Bis",
+      "formular": "anlage-n",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 480.5,
+        "y": 376.7,
+        "breite": 54.8,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlN.weg2TageJeWoche",
+      "formular": "anlage-n",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 96.1,
+        "y": 347.4,
+        "breite": 40.9,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlN.weg2FreieTage",
+      "formular": "anlage-n",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 244.4,
+        "y": 347.4,
+        "breite": 40.7,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlN.kz130Tage",
+      "formular": "anlage-n",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 473.6,
+        "y": 326.8,
+        "breite": 40.6,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlN.kz131",
+      "formular": "anlage-n",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 473.6,
+        "y": 306.5,
+        "breite": 40.6,
+        "hoehe": 15.9
+      }
+    },
+    {
+      "id": "anlN.kz132",
+      "formular": "anlage-n",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 473.6,
+        "y": 286.4,
+        "breite": 40.6,
+        "hoehe": 15.8
+      }
+    },
+    {
       "id": "anlR.name",
       "formular": "anlage-r",
       "seite": 1,
@@ -940,6 +1074,30 @@
       }
     },
     {
+      "id": "anlNGre.z9Chf",
+      "formular": "anlage-n-gre",
+      "seite": 1,
+      "art": "euro",
+      "kasten": {
+        "x": 266.9,
+        "y": 448.6,
+        "breite": 101.7,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlNGre.z9Eur",
+      "formular": "anlage-n-gre",
+      "seite": 1,
+      "art": "euro",
+      "kasten": {
+        "x": 425,
+        "y": 448.6,
+        "breite": 101.7,
+        "hoehe": 15.8
+      }
+    },
+    {
       "id": "anlNGre.z15Chf",
       "formular": "anlage-n-gre",
       "seite": 1,
@@ -1007,6 +1165,30 @@
       "kasten": {
         "x": 425,
         "y": 208.9,
+        "breite": 101.7,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlNGre.z20Chf",
+      "formular": "anlage-n-gre",
+      "seite": 1,
+      "art": "euro",
+      "kasten": {
+        "x": 266.9,
+        "y": 185.6,
+        "breite": 101.7,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlNGre.z20Eur",
+      "formular": "anlage-n-gre",
+      "seite": 1,
+      "art": "euro",
+      "kasten": {
+        "x": 425,
+        "y": 185.6,
         "breite": 101.7,
         "hoehe": 15.8
       }
@@ -1511,6 +1693,138 @@
       "kasten": {
         "x": 473.6,
         "y": 382.7,
+        "breite": 40.6,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlNGre.wegVon",
+      "formular": "anlage-n-gre",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 411.6,
+        "y": 472.6,
+        "breite": 55.1,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlNGre.wegBis",
+      "formular": "anlage-n-gre",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 480.5,
+        "y": 472.6,
+        "breite": 55.1,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlNGre.weg2Art",
+      "formular": "anlage-n-gre",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 39.1,
+        "y": 265.8,
+        "breite": 12.1,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlNGre.weg2Ort",
+      "formular": "anlage-n-gre",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 154.6,
+        "y": 261.2,
+        "breite": 240.8,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlNGre.weg2Von",
+      "formular": "anlage-n-gre",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 411.6,
+        "y": 261.2,
+        "breite": 55.1,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlNGre.weg2Bis",
+      "formular": "anlage-n-gre",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 480.5,
+        "y": 261.2,
+        "breite": 55.1,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlNGre.weg2TageJeWoche",
+      "formular": "anlage-n-gre",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 96.1,
+        "y": 232,
+        "breite": 40.7,
+        "hoehe": 15.9
+      }
+    },
+    {
+      "id": "anlNGre.weg2FreieTage",
+      "formular": "anlage-n-gre",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 244.5,
+        "y": 232,
+        "breite": 40.7,
+        "hoehe": 15.9
+      }
+    },
+    {
+      "id": "anlNGre.kz130Tage",
+      "formular": "anlage-n-gre",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 473.6,
+        "y": 211.8,
+        "breite": 40.6,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlNGre.kz131",
+      "formular": "anlage-n-gre",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 473.6,
+        "y": 191.6,
+        "breite": 40.6,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlNGre.kz132",
+      "formular": "anlage-n-gre",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 473.6,
+        "y": 171.3,
         "breite": 40.6,
         "hoehe": 15.8
       }
@@ -2736,6 +3050,498 @@
         "x": 449.7,
         "y": 444,
         "breite": 72.5,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlN.z53Text",
+      "formular": "anlage-n",
+      "seite": 3,
+      "art": "text",
+      "kasten": {
+        "x": 61.7,
+        "y": 492,
+        "breite": 382.4,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlN.kz310",
+      "formular": "anlage-n",
+      "seite": 3,
+      "art": "euro",
+      "kasten": {
+        "x": 473.6,
+        "y": 492,
+        "breite": 71.1,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlN.z54Text",
+      "formular": "anlage-n",
+      "seite": 3,
+      "art": "text",
+      "kasten": {
+        "x": 61.7,
+        "y": 437.3,
+        "breite": 382.4,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlN.z54Eur",
+      "formular": "anlage-n",
+      "seite": 3,
+      "art": "euro",
+      "kasten": {
+        "x": 471.5,
+        "y": 437.3,
+        "breite": 71.1,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlN.kz320",
+      "formular": "anlage-n",
+      "seite": 3,
+      "art": "euro",
+      "kasten": {
+        "x": 472.2,
+        "y": 392.4,
+        "breite": 71.1,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlN.z62Text",
+      "formular": "anlage-n",
+      "seite": 4,
+      "art": "text",
+      "kasten": {
+        "x": 39.1,
+        "y": 734,
+        "breite": 373.6,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlN.z62Eur",
+      "formular": "anlage-n",
+      "seite": 4,
+      "art": "euro",
+      "kasten": {
+        "x": 435.5,
+        "y": 734,
+        "breite": 85.6,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlN.z63Text",
+      "formular": "anlage-n",
+      "seite": 4,
+      "art": "text",
+      "kasten": {
+        "x": 39.1,
+        "y": 713.7,
+        "breite": 373.6,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlN.z63Eur",
+      "formular": "anlage-n",
+      "seite": 4,
+      "art": "euro",
+      "kasten": {
+        "x": 435.5,
+        "y": 713.7,
+        "breite": 85.6,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlN.kz380",
+      "formular": "anlage-n",
+      "seite": 4,
+      "art": "euro",
+      "kasten": {
+        "x": 435.5,
+        "y": 689,
+        "breite": 85.6,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlNGre.z48Text",
+      "formular": "anlage-n-gre",
+      "seite": 3,
+      "art": "text",
+      "kasten": {
+        "x": 61.7,
+        "y": 772.2,
+        "breite": 381.9,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlNGre.kz310",
+      "formular": "anlage-n-gre",
+      "seite": 3,
+      "art": "euro",
+      "kasten": {
+        "x": 473.6,
+        "y": 772.2,
+        "breite": 71.5,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlNGre.z49Text",
+      "formular": "anlage-n-gre",
+      "seite": 3,
+      "art": "text",
+      "kasten": {
+        "x": 61.7,
+        "y": 717.4,
+        "breite": 381.9,
+        "hoehe": 16
+      }
+    },
+    {
+      "id": "anlNGre.z49Eur",
+      "formular": "anlage-n-gre",
+      "seite": 3,
+      "art": "euro",
+      "kasten": {
+        "x": 471.5,
+        "y": 717.4,
+        "breite": 71.3,
+        "hoehe": 16
+      }
+    },
+    {
+      "id": "anlNGre.kz320",
+      "formular": "anlage-n-gre",
+      "seite": 3,
+      "art": "euro",
+      "kasten": {
+        "x": 471.5,
+        "y": 672.5,
+        "breite": 71.3,
+        "hoehe": 15.9
+      }
+    },
+    {
+      "id": "anlNGre.z57Text",
+      "formular": "anlage-n-gre",
+      "seite": 3,
+      "art": "text",
+      "kasten": {
+        "x": 61.7,
+        "y": 339.9,
+        "breite": 372.9,
+        "hoehe": 15.9
+      }
+    },
+    {
+      "id": "anlNGre.z57Eur",
+      "formular": "anlage-n-gre",
+      "seite": 3,
+      "art": "euro",
+      "kasten": {
+        "x": 457.9,
+        "y": 339.9,
+        "breite": 85.4,
+        "hoehe": 15.9
+      }
+    },
+    {
+      "id": "anlNGre.z58Text",
+      "formular": "anlage-n-gre",
+      "seite": 3,
+      "art": "text",
+      "kasten": {
+        "x": 61.7,
+        "y": 319.7,
+        "breite": 372.9,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlNGre.z58Eur",
+      "formular": "anlage-n-gre",
+      "seite": 3,
+      "art": "euro",
+      "kasten": {
+        "x": 457.2,
+        "y": 319.7,
+        "breite": 85.4,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlNGre.kz380",
+      "formular": "anlage-n-gre",
+      "seite": 3,
+      "art": "euro",
+      "kasten": {
+        "x": 457.9,
+        "y": 294.9,
+        "breite": 85.4,
+        "hoehe": 15.9
+      }
+    },
+    {
+      "id": "anlKind.z67Text",
+      "formular": "anlage-kind",
+      "seite": 4,
+      "art": "text",
+      "kasten": {
+        "x": 39.1,
+        "y": 403.2,
+        "breite": 239.1,
+        "hoehe": 17
+      }
+    },
+    {
+      "id": "anlKind.z67Von",
+      "formular": "anlage-kind",
+      "seite": 4,
+      "art": "text",
+      "kasten": {
+        "x": 295.4,
+        "y": 404.4,
+        "breite": 56,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlKind.z67Bis",
+      "formular": "anlage-kind",
+      "seite": 4,
+      "art": "text",
+      "kasten": {
+        "x": 364.3,
+        "y": 404.4,
+        "breite": 56,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlKind.kz51",
+      "formular": "anlage-kind",
+      "seite": 4,
+      "art": "euro",
+      "kasten": {
+        "x": 441.5,
+        "y": 404.2,
+        "breite": 70.7,
+        "hoehe": 15.9
+      }
+    },
+    {
+      "id": "anlAgB.name",
+      "formular": "anlage-aussergewoehnliche-belastungen",
+      "seite": 1,
+      "art": "text",
+      "kasten": {
+        "x": 61.7,
+        "y": 770.7,
+        "breite": 353.9,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlAgB.vorname",
+      "formular": "anlage-aussergewoehnliche-belastungen",
+      "seite": 1,
+      "art": "text",
+      "kasten": {
+        "x": 61.7,
+        "y": 744.4,
+        "breite": 353.9,
+        "hoehe": 15.9
+      }
+    },
+    {
+      "id": "anlAgB.steuernummer",
+      "formular": "anlage-aussergewoehnliche-belastungen",
+      "seite": 1,
+      "art": "text",
+      "kasten": {
+        "x": 147,
+        "y": 724.3,
+        "breite": 183,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlAgB.z23Text",
+      "formular": "anlage-aussergewoehnliche-belastungen",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 39.1,
+        "y": 644.1,
+        "breite": 495.9,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlAgB.kz302",
+      "formular": "anlage-aussergewoehnliche-belastungen",
+      "seite": 2,
+      "art": "euro",
+      "kasten": {
+        "x": 435.5,
+        "y": 616.4,
+        "breite": 85.6,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlAgB.kz303",
+      "formular": "anlage-aussergewoehnliche-belastungen",
+      "seite": 2,
+      "art": "euro",
+      "kasten": {
+        "x": 435.5,
+        "y": 595.4,
+        "breite": 85.6,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlHha.name",
+      "formular": "anlage-haushaltsnahe-aufwendungen",
+      "seite": 1,
+      "art": "text",
+      "kasten": {
+        "x": 61.7,
+        "y": 770.7,
+        "breite": 353.3,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlHha.vorname",
+      "formular": "anlage-haushaltsnahe-aufwendungen",
+      "seite": 1,
+      "art": "text",
+      "kasten": {
+        "x": 61.7,
+        "y": 744.4,
+        "breite": 353.3,
+        "hoehe": 15.9
+      }
+    },
+    {
+      "id": "anlHha.steuernummer",
+      "formular": "anlage-haushaltsnahe-aufwendungen",
+      "seite": 1,
+      "art": "text",
+      "kasten": {
+        "x": 147,
+        "y": 724.3,
+        "breite": 183,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlHha.z4Text",
+      "formular": "anlage-haushaltsnahe-aufwendungen",
+      "seite": 1,
+      "art": "text",
+      "kasten": {
+        "x": 61.7,
+        "y": 604.4,
+        "breite": 368.2,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlHha.kz202",
+      "formular": "anlage-haushaltsnahe-aufwendungen",
+      "seite": 1,
+      "art": "euro",
+      "kasten": {
+        "x": 459.5,
+        "y": 604.4,
+        "breite": 85.1,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlHha.z5Text",
+      "formular": "anlage-haushaltsnahe-aufwendungen",
+      "seite": 1,
+      "art": "text",
+      "kasten": {
+        "x": 61.7,
+        "y": 493.5,
+        "breite": 368.2,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlHha.kz212",
+      "formular": "anlage-haushaltsnahe-aufwendungen",
+      "seite": 1,
+      "art": "euro",
+      "kasten": {
+        "x": 459.5,
+        "y": 493.5,
+        "breite": 85.1,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlHha.z6Text",
+      "formular": "anlage-haushaltsnahe-aufwendungen",
+      "seite": 1,
+      "art": "text",
+      "kasten": {
+        "x": 61.7,
+        "y": 384.8,
+        "breite": 257,
+        "hoehe": 15.9
+      }
+    },
+    {
+      "id": "anlHha.z6Rechnung",
+      "formular": "anlage-haushaltsnahe-aufwendungen",
+      "seite": 1,
+      "art": "euro",
+      "kasten": {
+        "x": 335.8,
+        "y": 384.8,
+        "breite": 85.4,
+        "hoehe": 15.9
+      }
+    },
+    {
+      "id": "anlHha.z6Lohn",
+      "formular": "anlage-haushaltsnahe-aufwendungen",
+      "seite": 1,
+      "art": "euro",
+      "kasten": {
+        "x": 457.9,
+        "y": 384.8,
+        "breite": 85.4,
+        "hoehe": 15.9
+      }
+    },
+    {
+      "id": "anlHha.kz214",
+      "formular": "anlage-haushaltsnahe-aufwendungen",
+      "seite": 1,
+      "art": "euro",
+      "kasten": {
+        "x": 457.9,
+        "y": 319.7,
+        "breite": 85.4,
         "hoehe": 15.8
       }
     }

@@ -143,3 +143,40 @@ describe('estimateMarriedCouple (ADR-0054)', () => {
     expect(highWithChildAllowance.incomeTax.from).toBeGreaterThan(6120)
   })
 })
+
+describe('Werbungskosten of the couple', () => {
+  it('reports what was deducted, the lump sum or the commute, per spouse', () => {
+    // Both commutes (1.017 €, 550 €) are below the 1.230 € lump sum: 2 × 1.230 €.
+    expect(estimateMarriedCouple(WEBER)).toMatchObject({ kind: 'spanne', werbungskosten: 2460 })
+    const crossBorder = { kind: 'crossBorder', wageEur: 130000, swissWithholdingEur: 5800, pensionContributionsEur: 9000, otherProvisionEur: 2000, commuteAllowance: 6900, selfPaidHealthCare: 2252 } as const
+    expect(estimateMarriedCouple({ ...WEBER, a: crossBorder, b: EMPLOYEE_B })).toMatchObject({ werbungskosten: 6900 + 1230 })
+  })
+})
+
+describe('a change of job from a German to a Swiss employer (ADR-0079)', () => {
+  const cross = { kind: 'crossBorder', wageEur: 21000, swissWithholdingEur: 940, pensionContributionsEur: 1400, otherProvisionEur: 280, commuteAllowance: 0, selfPaidHealthCare: 0 } as const
+  const mixed = {
+    kind: 'mixed',
+    grossWage: 70000,
+    wageTax: 15000,
+    socialSecurity: 14000,
+    wageEur: cross.wageEur,
+    swissWithholdingEur: cross.swissWithholdingEur,
+    pensionContributionsEur: cross.pensionContributionsEur,
+    otherProvisionEur: cross.otherProvisionEur,
+    commuteAllowance: 3000,
+    selfPaidHealthCare: 0,
+  } as const
+
+  it('taxes both wages and credits both the German wage tax and the Swiss withholding tax', () => {
+    const both = range({ ...WEBER, rentalSurplus: 0, a: mixed })
+    const swissOnly = range({ ...WEBER, rentalSurplus: 0, a: { ...cross, commuteAllowance: 3000 } })
+    expect(both.taxableIncome.from).toBeGreaterThan(swissOnly.taxableIncome.from + 50000)
+    expect(both.anrechnung).toBe(swissOnly.anrechnung + 15000)
+  })
+
+  it('takes the Arbeitnehmer-Pauschbetrag once for the person, not once per employer', () => {
+    const lowCommute = range({ ...WEBER, rentalSurplus: 0, a: { ...mixed, commuteAllowance: 0 } })
+    expect(lowCommute.werbungskosten).toBe(1230 + 1230)
+  })
+})

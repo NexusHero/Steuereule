@@ -75,10 +75,43 @@ describe('Arbeitsweg, against the real server', () => {
 
     expect(put.status).toBe(200)
     expect(await get.json()).toEqual({
-      inputs: INPUTS,
+      inputs: expect.objectContaining(INPUTS),
       workdays: { weekdays: 261, workdays: 226, commuteDays: 206 },
       commuterAllowance: 2019,
     })
+  })
+
+  it('stores the further Werbungskosten and a second way after a change of job (ADR-0076, ADR-0079)', async () => {
+    const cookie = await signUp('wechsel@example.com')
+    const changed = {
+      ...INPUTS,
+      accountFeesEur: 16,
+      workEquipmentEur: 110,
+      workEquipmentNote: 'Berufskleidung',
+      periodTo: '31.10.2025',
+      secondOneWayKm: 80,
+      secondTransport: 'pkw',
+      secondWorkplace: '4058 Basel, Beispielstrasse 1',
+      secondFrom: '01.11.2025',
+    }
+
+    await fetch(`${baseUrl}/v1/steuerjahre/2025/arbeitsweg`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json', cookie, ...ORIGIN },
+      body: JSON.stringify(changed),
+    })
+    // A later save without the new fields keeps them.
+    await fetch(`${baseUrl}/v1/steuerjahre/2025/arbeitsweg`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json', cookie, ...ORIGIN },
+      body: JSON.stringify({ ...INPUTS, homeOfficeDays: 10 }),
+    })
+    const body = (await (await fetch(`${baseUrl}/v1/steuerjahre/2025/arbeitsweg`, { headers: { cookie } })).json()) as { inputs: Record<string, unknown>; commuterAllowance: number }
+    const [row] = await prisma.$queryRawUnsafe<{ zweiterWegOrt: string }[]>(`SELECT "zweiterWegOrt" FROM "Arbeitsweg"`)
+
+    expect(body.inputs).toMatchObject({ accountFeesEur: 16, workEquipmentEur: 110, periodTo: '31.10.2025', secondOneWayKm: 80, secondFrom: '01.11.2025', homeOfficeDays: 10 })
+    expect(body.commuterAllowance).toBeGreaterThan(2019)
+    expect(row!.zweiterWegOrt).not.toContain('Basel')
   })
 
   it('keeps the workplace address as ciphertext at rest', async () => {

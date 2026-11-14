@@ -96,6 +96,14 @@ export interface ChildResponseDto {
      * @nullable
      */
   swissFamilyAllowanceEur?: string | null;
+  /** @nullable */
+  childcareEur?: string | null;
+  /** @nullable */
+  childcareProvider?: string | null;
+  /** @nullable */
+  childcareFrom?: string | null;
+  /** @nullable */
+  childcareTo?: string | null;
   /**
      * Differenz-Kindergeld der deutschen Familienkasse in whole EUR.
      * @nullable
@@ -228,6 +236,26 @@ export interface CreateChildDto {
      * @nullable
      */
   swissFamilyAllowanceEur?: string | null;
+  /**
+     * Zeile 67 (Kz 51): childcare the parents paid, whole euros (ADR-0076).
+     * @nullable
+     */
+  childcareEur?: string | null;
+  /**
+     * Zeile 67: kind of service, provider name and address.
+     * @nullable
+     */
+  childcareProvider?: string | null;
+  /**
+     * Zeile 67: from (DD.MM.YYYY).
+     * @nullable
+     */
+  childcareFrom?: string | null;
+  /**
+     * Zeile 67: until (DD.MM.YYYY).
+     * @nullable
+     */
+  childcareTo?: string | null;
   firstName: string;
   lastName: string;
   /** ISO date YYYY-MM-DD */
@@ -345,6 +373,26 @@ export interface UpdateChildDto {
      * @nullable
      */
   swissFamilyAllowanceEur?: string | null;
+  /**
+     * Zeile 67 (Kz 51): childcare the parents paid, whole euros (ADR-0076).
+     * @nullable
+     */
+  childcareEur?: string | null;
+  /**
+     * Zeile 67: kind of service, provider name and address.
+     * @nullable
+     */
+  childcareProvider?: string | null;
+  /**
+     * Zeile 67: from (DD.MM.YYYY).
+     * @nullable
+     */
+  childcareFrom?: string | null;
+  /**
+     * Zeile 67: until (DD.MM.YYYY).
+     * @nullable
+     */
+  childcareTo?: string | null;
   firstName?: string;
   lastName?: string;
   geburtsdatum?: string;

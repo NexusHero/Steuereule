@@ -9,7 +9,9 @@ import { describe, expect, it } from 'vitest'
 import { printoutValues, type PrintoutFacts, type ChSalaryCertificateFacts } from '../src/printout/printout-values.js'
 import felder2025 from '../src/printout/felder-2025.json' with { type: 'json' }
 import manifest from '../src/printout/vordrucke-2025.json' with { type: 'json' }
-import { FIELD_SETS, renderForms, OverflowError } from '../src/printout/form-renderer.js'
+import felder2024 from '../src/printout/felder-2024.json' with { type: 'json' }
+import manifest2024 from '../src/printout/vordrucke-2024.json' with { type: 'json' }
+import { FIELD_SETS, forYear, renderForms, OverflowError } from '../src/printout/form-renderer.js'
 
 const TEMPLATES = new URL('../assets/vordrucke/2025/', import.meta.url)
 
@@ -180,6 +182,40 @@ describe('ausdruckWerte', () => {
       expect(values['anlN.kz112']).toBeUndefined()
     })
 
+    const WORK_EXPENSES = {
+      professionalBodiesEur: 120,
+      professionalBodiesNote: 'Gewerkschaft',
+      workEquipmentEur: 110,
+      workEquipmentNote: 'Berufskleidung',
+      accountFeesEur: 16,
+      otherWorkExpensesEur: 40,
+      otherWorkExpensesNote: 'Bewerbungen',
+    }
+
+    it('prints the further Werbungskosten: Kz 310, 320 with what they were, and 380 with each line (ADR-0076)', () => {
+      const { values } = printoutValues({ ...FACTS, commute: { ...COMMUTE, workExpenses: WORK_EXPENSES } })
+      expect(values).toMatchObject({
+        'anlN.z53Text': 'Gewerkschaft',
+        'anlN.kz310': '120',
+        'anlN.z54Text': 'Berufskleidung',
+        'anlN.z54Eur': '110',
+        'anlN.kz320': '110',
+        'anlN.z62Text': 'Kontoführungsgebühren',
+        'anlN.z62Eur': '16',
+        'anlN.z63Text': 'Bewerbungen',
+        'anlN.z63Eur': '40',
+        'anlN.kz380': '56',
+      })
+    })
+
+    it('prints the further Werbungskosten also while the distance is unknown', () => {
+      const { values } = printoutValues({ ...FACTS, commute: { ...COMMUTE, oneWayKm: null, workExpenses: { ...WORK_EXPENSES, professionalBodiesEur: null, otherWorkExpensesEur: null } } })
+      expect(values['anlN.kz320']).toBe('110')
+      expect(values['anlN.kz380']).toBe('16')
+      expect(values['anlN.kz310']).toBeUndefined()
+      expect(values['anlN.kz111']).toBeUndefined()
+    })
+
     it('prints no commute lines while the distance is unknown', () => {
       const { values } = printoutValues({ ...FACTS, commute: { ...COMMUTE, oneWayKm: null } })
 
@@ -301,6 +337,9 @@ describe('ausdruckWerte', () => {
       krankentaggeldChf: '300',
       pkArbeitnehmerChf: '5000',
       pkArbeitgeberChf: '6000',
+      pkArbeitnehmerGesamtChf: null,
+      pkArbeitgeberGesamtChf: null,
+      steuerfreiesKrankentaggeldChf: null,
       krankentaggeldArbeitgeberProzent: '0',
       krankentaggeldArbeitgeberChf: null,
       nbuvArbeitgeberProzent: '0',
@@ -413,6 +452,50 @@ describe('ausdruckWerte', () => {
       expect(values['anlNGre.z19Chf']).toBeUndefined()
     })
 
+    it("prints the adviser's case: Säule 2b as wage (Z. 20), only the Obligatorium in Z. 84/87, NBUV paid by the employer, tax-free Krankentaggeld (Z. 9/76)", () => {
+      const { values, missing } = ngre({
+        pkArbeitnehmerGesamtChf: '7186',
+        pkArbeitnehmerChf: '2892',
+        pkArbeitgeberGesamtChf: '7186',
+        pkArbeitgeberChf: '2892',
+        steuerfreiesKrankentaggeldChf: '3853',
+        nbuvArbeitgeberProzent: '100',
+        nbuvArbeitgeberChf: '540',
+      })
+      expect(missing).toEqual([])
+      // Hand-computed, rate 1,065: Z. 15 = 100000 − 2400 − 3853 = 93747; Z. 20 = 7186 − 2892 = 4294;
+      // Z. 23 = 93747 + 540 + 4294 = 98581. EUR: 106500 − 2556 − 4103 = 99841; + 575 + 4573 = 104989.
+      expect(values).toMatchObject({
+        'anlNGre.z9Chf': '3853',
+        'anlNGre.z9Eur': '4103',
+        'anlNGre.z15Chf': '93747',
+        'anlNGre.z19Chf': '540',
+        'anlNGre.z20Chf': '4294',
+        'anlNGre.z20Eur': '4573',
+        'anlNGre.z23Chf': '98581',
+        'anlNGre.z23Eur': '104989',
+        // Z. 76 = Familienzulagen + Krankentaggeld = 2400 + 3853; AHV/IV 5,05 % of 93747 = 4734
+        'anlNGre.z76Chf': '6253',
+        'anlNGre.z76Eur': '6659',
+        'anlNGre.z77Chf': '93747',
+        'anlNGre.z83Chf': '4734',
+        'anlNGre.z84Chf': '2892',
+        'anlNGre.z85Chf': String(4734 + 2892),
+        'anlNGre.z87Chf': '2892',
+        'anlNGre.z88Chf': String(4734 + 2892),
+        'anlNGre.z97Arbeitgeber': '100',
+        'anlNGre.z97Arbeitnehmer': '0',
+        'anlNGre.z98Arbeitgeber': '540',
+        'anlNGre.z98Arbeitnehmer': '0',
+      })
+    })
+
+    it('leaves Zeilen 9 and 20 empty when there is nothing to print', () => {
+      const { values } = ngre({})
+      expect(values['anlNGre.z9Chf']).toBeUndefined()
+      expect(values['anlNGre.z20Chf']).toBeUndefined()
+    })
+
     it('prints the commute in the Anlage N-Gre (Z. 32–36), not only in the Anlage N', () => {
       const { values } = printoutValues({
         ...FACTS,
@@ -428,6 +511,87 @@ describe('ausdruckWerte', () => {
         'anlNGre.kz112': '80',
       })
     })
+
+    it('prints a 2024 return, cross-border commuter included, on the 2024 forms; the occupation line it lacks is left out', async () => {
+      const templates2024 = new URL('../assets/vordrucke/2024/', import.meta.url)
+      const res = printoutValues({ ...FACTS, taxYear: 2024, bruttoarbeitslohn: null, chSalaryCertificate: CH })
+      const values = forYear(2024, res.values)
+      expect(Object.keys(values)).not.toContain('anlNGre.beruf')
+      const pdf = await renderForms(FIELD_SETS[2024]!, values, { templatesDirectory: templates2024, instances: res.instances, editable: true })
+      const form = (await PDFDocument.load(pdf)).getForm()
+      expect(form.getTextField('anlNGre.z23Eur').getText()).toBe(String(res.values['anlNGre.z23Eur']))
+    })
+
+    it('splits a change from a German to a Swiss employer: first way in the Anlage N, second in the N-Gre (ADR-0079)', () => {
+      const { values } = printoutValues({
+        ...FACTS,
+        bruttoarbeitslohn: '40000',
+        chSalaryCertificate: CH,
+        commute: {
+          workdaysPerWeek: 5, daysOff: 30, commuteDays: 180, oneWayKm: 12, withCar: true, workplace: '78000 Musterstadt',
+          from: '01.01.2025', to: '31.10.2025',
+          second: { commuteDays: 36, oneWayKm: 80, withCar: true, workplace: '4058 Basel', from: '01.11.2025', to: '31.12.2025' },
+          workExpenses: { professionalBodiesEur: null, professionalBodiesNote: null, workEquipmentEur: null, workEquipmentNote: null, accountFeesEur: 16, otherWorkExpensesEur: null, otherWorkExpensesNote: null },
+        },
+      })
+      expect(values).toMatchObject({
+        'anlN.kz110Tage': '180', 'anlN.kz111': '12', 'anlN.wegVon': '01.01.', 'anlN.wegBis': '31.10.', 'anlN.kz380': '16',
+        'anlNGre.kz110Tage': '36', 'anlNGre.kz111': '80', 'anlNGre.wegOrt': '4058 Basel', 'anlNGre.wegVon': '01.11.', 'anlNGre.wegBis': '31.12.',
+      })
+      expect(values['anlN.kz131']).toBeUndefined()
+      expect(values['anlNGre.kz380']).toBeUndefined()
+    })
+
+    it('prints two ways in one form as its 1. and 2. Angabe when both are German', () => {
+      const { values } = printoutValues({
+        ...FACTS,
+        commute: {
+          workdaysPerWeek: 5, daysOff: 30, commuteDays: 150, oneWayKm: 12, withCar: true, workplace: '78000 Musterstadt', from: null, to: '31.07.2025',
+          second: { commuteDays: 66, oneWayKm: 30, withCar: false, workplace: '79000 Beispielort', from: '01.08.2025', to: null },
+        },
+      })
+      expect(values).toMatchObject({ 'anlN.kz110Tage': '150', 'anlN.wegBis': '31.07.', 'anlN.weg2Art': '1', 'anlN.kz130Tage': '66', 'anlN.kz131': '30', 'anlN.weg2Von': '01.08.' })
+      expect(values['anlN.kz132']).toBeUndefined()
+    })
+
+    it('prints a cross-border commuter’s further Werbungskosten in the Anlage N-Gre (Z. 48–51, 57–59)', () => {
+      const { values } = printoutValues({
+        ...FACTS,
+        bruttoarbeitslohn: null,
+        chSalaryCertificate: CH,
+        commute: {
+          workdaysPerWeek: 5, daysOff: 35, commuteDays: 226, oneWayKm: 80, withCar: true, workplace: '4058 Basel',
+          workExpenses: { professionalBodiesEur: null, professionalBodiesNote: null, workEquipmentEur: 110, workEquipmentNote: null, accountFeesEur: 16, otherWorkExpensesEur: null, otherWorkExpensesNote: null },
+        },
+      })
+      expect(values).toMatchObject({ 'anlNGre.z49Text': 'Arbeitsmittel', 'anlNGre.z49Eur': '110', 'anlNGre.kz320': '110', 'anlNGre.z57Text': 'Kontoführungsgebühren', 'anlNGre.kz380': '16' })
+      expect(values['anlN.kz320']).toBeUndefined()
+    })
+  })
+
+  it('prints childcare in Anlage Kind Z. 67 with provider and period (ADR-0076)', () => {
+    const kind = { sequenceNumber: '1', firstName: 'Mia', lastName: 'Beispiel', geburtsdatum: '2021-03-14', taxId: '41234567890', childcareEur: '900', childcareProvider: 'Kindergarten, Gemeinde Musterdorf', childcareFrom: '01.01.2025', childcareTo: '31.12.2025' }
+    const { instances } = printoutValues({ ...FACTS, kinder: [kind] })
+    expect(instances?.['anlage-kind']?.[0]).toMatchObject({ 'anlKind.kz51': '900', 'anlKind.z67Text': 'Kindergarten, Gemeinde Musterdorf', 'anlKind.z67Von': '01.01.2025', 'anlKind.z67Bis': '31.12.2025' })
+  })
+
+  it('prints medical costs in the Anlage Außergewöhnliche Belastungen and § 35a in the Anlage Haushaltsnahe Aufwendungen (ADR-0077)', () => {
+    const { values } = printoutValues({ ...FACTS, householdAndHealth: { healthCostsEur: 390, minijobEur: null, servicesEur: 240, craftsmenLabourEur: 350, craftsmenInvoicesEur: 2938 } })
+    expect(values).toMatchObject({
+      'anlAgB.kz302': '390',
+      'anlAgB.kz303': '0',
+      'anlHha.kz212': '240',
+      'anlHha.z6Text': 'Handwerkerleistungen',
+      'anlHha.z6Rechnung': '2938',
+      'anlHha.z6Lohn': '350',
+      'anlHha.kz214': '350',
+    })
+    expect(values['anlHha.kz202']).toBeUndefined()
+  })
+
+  it('prints neither form while nothing was entered (or the switch is off)', () => {
+    const { values } = printoutValues({ ...FACTS, householdAndHealth: null })
+    expect(Object.keys(values).some((k) => k.startsWith('anlAgB.') || k.startsWith('anlHha.'))).toBe(false)
   })
 
   it("prints the child's KV/PV paid by the parents in Anlage Kind Z. 27/28", () => {
@@ -809,6 +973,14 @@ describe('rendereVordrucke (real templates)', () => {
     }
   })
 
+  it('the 2024 positions belong to exactly the pinned 2024 templates (ADR-0085)', () => {
+    const templates2024 = new URL('../assets/vordrucke/2024/', import.meta.url)
+    for (const [formular, sha256] of Object.entries(felder2024.vorlagen)) {
+      expect(sha256).toBe((manifest2024 as Record<string, { sha256: string }>)[formular]!.sha256)
+      expect(createHash('sha256').update(readFileSync(new URL(`${formular}.pdf`, templates2024))).digest('hex')).toBe(sha256)
+    }
+  })
+
   it('the printout carries no form field — the values are fixed page content', async () => {
     const pdf = await renderForms(FIELD_SETS[2025]!, printoutValues(FACTS).values, { templatesDirectory: TEMPLATES })
     expect((await PDFDocument.load(pdf)).getForm().getFields()).toHaveLength(0)
@@ -881,6 +1053,7 @@ describe('rendereVordrucke (real templates)', () => {
       status: 'echter-grenzgaenger', rate: 1.065, grossWageChf: '50000', ahvContributionsChf: '3300', withholdingTaxChf: '2250',
       arbeitgeberName: 'Muster AG', arbeitgeberStrasse: 'Bahnhofstrasse 1', arbeitgeberPlzOrt: '4051 Basel',
       familienzulagenChf: '0', krankentaggeldChf: '150', pkArbeitnehmerChf: '2500', pkArbeitgeberChf: '3000', specialCases: false,
+      pkArbeitnehmerGesamtChf: null, pkArbeitgeberGesamtChf: null, steuerfreiesKrankentaggeldChf: null,
       krankentaggeldArbeitgeberProzent: '0', krankentaggeldArbeitgeberChf: null, nbuvArbeitgeberProzent: '0', nbuvArbeitgeberChf: null,
     },
     specialExpenses: { donations: '200' },

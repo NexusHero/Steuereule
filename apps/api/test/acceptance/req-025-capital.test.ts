@@ -206,8 +206,8 @@ describe('REQ-025 — the Kapital vertical (Anlage KAP), against the real server
       kind: 'eindeutig',
       recommendation: 'abgeltung',
       flatRateTax: 4750,
-      personal: 8482,
-      delta: 3732,
+      personal: 8012,
+      delta: 3262,
       uncertainty: { kind: 'bestimmt', upperLimit: 0 },
       provenance: {
         kapitalertraege: 20000,

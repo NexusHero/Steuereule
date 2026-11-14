@@ -569,19 +569,24 @@ model ChSalaryCertificate {
   krankentaggeldChf                String? /// @encrypted?mode=strict
   pkArbeitnehmerChf                String? /// @encrypted?mode=strict
   pkArbeitgeberChf                 String? /// @encrypted?mode=strict
+  /// All employer pension contributions (Obligatorium + Überobligatorium); the part above
+  /// pkArbeitgeberChf is taxable wage on N-Gre Zeile 20 (ADR-0072). Whole CHF, null = not entered.
+  pkArbeitgeberGesamtChf           String? /// @encrypted?mode=strict
+  /// Tax-free Krankentaggeld paid out and contained in Ziffer 8 (N-Gre Zeilen 9/76). Whole CHF.
+  steuerfreiesKrankentaggeldChf    String? /// @encrypted?mode=strict
   /// Who pays the Kollektivkrankentaggeld / NBUV premium (N-Gre Zeilen 18/19, 95–98): employer share in
   /// percent (0–100), plus the employer CHF only when it pays everything; null = not entered.
   krankentaggeldArbeitgeberProzent String? /// @encrypted?mode=strict
   krankentaggeldArbeitgeberChf     String? /// @encrypted?mode=strict
   nbuvArbeitgeberProzent           String? /// @encrypted?mode=strict
   nbuvArbeitgeberChf               String? /// @encrypted?mode=strict
-  /// Any of N-Gre Zeilen 7, 9–14, 16, 17, 20–22 applies — not printable yet.
+  /// Any of N-Gre Zeilen 7, 10–14, 16, 17, 21, 22 applies — not printable yet.
   nGreSonderfaelle                 Boolean?
-  /// Wechselkurs-Monat (yyyy-mm) the CHF→EUR conversion applies to (ADR-012).
+  /// Wechselkurs-Monat (yyyy-mm), or the year (yyyy) for the Jahresdurchschnittskurs (ADR-012, ADR-0072).
   exchangeRateMonth                String?  @map("wechselkursMonat")
   /// Wechselkurs-Kurs (EUR per 1 CHF, strictly positive) — public BMF rate, clear.
   exchangeRateValue                Float?   @map("wechselkursKurs")
-  /// Wechselkurs-Modus (amtlich | tatsaechlich). Clear.
+  /// Wechselkurs-Modus (amtlich | jahresdurchschnitt | tatsaechlich). Clear.
   exchangeRateMode                 String?  @map("wechselkursModus")
   /// Beleg id for a tatsächlicher Kurs (ADR-012: "ohne Beleg kein tatsächlicher Kurs"). Clear.
   exchangeRateReceiptId            String?  @map("wechselkursBelegId")
@@ -888,6 +893,12 @@ model Child {
   careEur                  String?  @map("pvEur") /// @encrypted?mode=strict
   /// Anlage Kind Zeile 6 (Kz 15): Schweizer Kinderzulage / Familienzulage in whole EUR (converted from Lohnausweis).
   swissFamilyAllowanceEur  String?  @map("schweizerKinderzulageEur") /// @encrypted?mode=strict
+  /// Anlage Kind Zeile 67 (Kz 51): childcare paid by the parents in whole euros, the kind of service with
+  /// the provider's name and address, and the period (DD.MM.YYYY); null = not entered.
+  childcareEur             String?  @map("betreuungEur") /// @encrypted?mode=strict
+  childcareProvider        String?  @map("betreuungDienstleister") /// @encrypted?mode=strict
+  childcareFrom            String?  @map("betreuungVon") /// @encrypted?mode=strict
+  childcareTo              String?  @map("betreuungBis") /// @encrypted?mode=strict
   createdAt                DateTime @default(now())
   updatedAt                DateTime @updatedAt
 
@@ -1201,27 +1212,47 @@ model Jwks {
 /// One row per (userId, steuerjahr) — the commute facts for the Entfernungspauschale (Anlage N
 /// Zeilen 27–31): which weekdays are worked, days off, the one-way distance and how it is travelled.
 model Commute {
-  id                  String   @id @default(uuid())
+  id                     String   @id @default(uuid())
   /// Scoping key — same trusted userId as Lstb.userId (ADR-0007).
-  userId              String
-  taxYear             Int      @map("steuerjahr")
+  userId                 String
+  taxYear                Int      @map("steuerjahr")
   /// ISO weekdays worked, comma-separated ("1,2,3,4,5").
-  workdays            String   @map("arbeitstage")
-  vacationDays        Int      @default(0) @map("urlaubstage")
-  sickDays            Int      @default(0) @map("krankheitstage")
-  homeOfficeDays      Int      @default(0) @map("homeofficeTage")
+  workdays               String   @map("arbeitstage")
+  vacationDays           Int      @default(0) @map("urlaubstage")
+  sickDays               Int      @default(0) @map("krankheitstage")
+  homeOfficeDays         Int      @default(0) @map("homeofficeTage")
   /// One-way distance in full kilometres; null = not entered yet.
-  oneWayKm            Int?     @map("einfacheKm")
+  oneWayKm               Int?     @map("einfacheKm")
   /// "pkw" | "oepnv" | "andere"; null = not entered yet.
-  transport           String?  @map("verkehrsmittel")
+  transport              String?  @map("verkehrsmittel")
   /// PLZ, Ort und Straße der ersten Tätigkeitsstätte. Encrypted at rest (ADR-0008).
-  workplace           String?  @map("taetigkeitsstaette") /// @encrypted?mode=strict
+  workplace              String?  @map("taetigkeitsstaette") /// @encrypted?mode=strict
   /// Confirmed public holidays on working days (F4) and the state / canton they were suggested for. Clear —
   /// a count and a region code.
-  publicHolidays      Int?     @map("feiertage")
-  publicHolidayRegion String?  @map("feiertageRegion")
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  publicHolidays         Int?     @map("feiertage")
+  publicHolidayRegion    String?  @map("feiertageRegion")
+  /// The period of this way to work (DD.MM.YYYY) when it did not last the whole year; a change of
+  /// job brings a second way with its own period (ADR-0079).
+  periodFrom             String?  @map("zeitraumVon")
+  periodTo               String?  @map("zeitraumBis")
+  secondOneWayKm         Int?     @map("zweiterWegKm")
+  secondTransport        String?  @map("zweiterWegVerkehrsmittel")
+  secondWorkplace        String?  @map("zweiterWegOrt") /// @encrypted?mode=strict
+  secondFrom             String?  @map("zweiterWegVon")
+  secondTo               String?  @map("zweiterWegBis")
+  /// Further Werbungskosten of this person (Anlage N / N-Gre), whole euros; null = not entered.
+  /// Zeile 53 / 48 (Kz 310): professional bodies, e.g. a trade union.
+  professionalBodiesEur  String?  @map("berufsverbaendeEur") /// @encrypted?mode=strict
+  professionalBodiesNote String?  @map("berufsverbaendeArt") /// @encrypted?mode=strict
+  /// Zeilen 54–56 / 49–51 (Kz 320): work tools and typical work clothing, and what they were.
+  workEquipmentEur       String?  @map("arbeitsmittelEur") /// @encrypted?mode=strict
+  workEquipmentNote      String?  @map("arbeitsmittelArt") /// @encrypted?mode=strict
+  /// Zeilen 62–64 / 57–59 (Kz 380): account fees, and any other Werbungskosten with what they were.
+  accountFeesEur         String?  @map("kontofuehrungEur") /// @encrypted?mode=strict
+  otherWorkExpensesEur   String?  @map("sonstigeWerbungskostenEur") /// @encrypted?mode=strict
+  otherWorkExpensesNote  String?  @map("sonstigeWerbungskostenArt") /// @encrypted?mode=strict
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
 
   @@unique([userId, taxYear])
   @@map("Arbeitsweg")
@@ -1292,6 +1323,20 @@ model AdvisorNote {
 
   @@index([userId, taxYear, createdAt])
   @@map("BeraterNotiz")
+}
+
+// Where the Berater-Interview stands for one tax year: which areas of the checklist are settled
+// (`done`) or do not apply. Kept by the app so the interview neither asks twice nor stops early,
+// whatever the model remembers. Encrypted: "kinder: not_applicable" says something about the household.
+model AdvisorInterview {
+  id        String   @id @default(uuid())
+  userId    String
+  taxYear   Int      @map("steuerjahr")
+  progress  String   @map("stand") /// @encrypted?mode=strict
+  updatedAt DateTime @default(now()) @map("geaendertAm")
+
+  @@unique([userId, taxYear])
+  @@map("BeraterInterview")
 }
 
 // The user's own description of the household's situation (#501): one text per user, read by the

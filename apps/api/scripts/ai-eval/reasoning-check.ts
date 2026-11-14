@@ -18,6 +18,10 @@ import type { AdvisorStreamEvent, AdvisorTurnResult } from '@steuereule/core'
 import { EnvAiRuntimeConfigService, type AiProviderKind } from '../../src/ki/ai-runtime-config.service.js'
 import { LangGraphAdvisorEngine } from '../../src/ki/langgraph-advisor.engine.js'
 import { PERSONAS } from './golden.js'
+import { installProviderRejectionGuard } from '../../src/ki/provider-rejections.js'
+
+// As in main.ts: a Gemini stream that breaks off after its turn ended must not end the run.
+installProviderRejectionGuard()
 
 interface Target {
   readonly provider: AiProviderKind

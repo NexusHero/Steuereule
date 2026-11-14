@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { foldThoughtEvent, type AdvisorActionProposal, type AdvisorChatMessageView, type AdvisorPlanStepStatus, type AdvisorQuickAction, type AdvisorSkillId, type AdvisorThoughtStep, type Screen } from '@steuereule/core'
+import { foldThoughtEvent, type AdvisorActionProposal, type AdvisorChatMessageView, type AdvisorPlanStepStatus, type AdvisorQuickAction, type AdvisorSkillId, type AdvisorThoughtStep, type DetectedDocumentKind, type Screen } from '@steuereule/core'
 import {
   advisorControllerApplyAction,
   advisorControllerApplyBatch,
@@ -206,6 +206,9 @@ export interface CopilotBridgeContextValue {
   /** Plain-language outcome the chat shows after a capture (year conflict, unreadable file …). */
   readonly receiptNotice: string | null
   readonly clearReceiptNotice: () => void
+  /** A Swiss salary certificate whose name fits neither person waits for the user to say whose it is. */
+  readonly certificateOwnerPending: boolean
+  readonly chooseCertificateOwner: (person: 'A' | 'B') => Promise<void>
   readonly provenanceByScreen: Readonly<Partial<Record<Screen, TileProvenanceKind>>>
   readonly bestTileProvenance: (screens: readonly Screen[]) => TileProvenanceKind | null
   readonly cockpitBanner: CockpitBannerState | null
@@ -405,6 +408,7 @@ export function CopilotBridgeProvider({
   const [lastParsedReceipt, setLastParsedReceipt] = useState<ParseReceiptResponseDto | null>(null)
   const [receiptPhase, setReceiptPhase] = useState<CapturePhase | null>(null)
   const [receiptNotice, setReceiptNotice] = useState<string | null>(null)
+  const [certificateOwnerFile, setCertificateOwnerFile] = useState<{ file: File; receiptId: string | null; kind: DetectedDocumentKind } | null>(null)
   const [receiptLinkedActionIds, setReceiptLinkedActionIds] = useState<ReadonlySet<string>>(() => new Set())
   const [provenanceByScreen, setProvenanceByScreen] = useState<Readonly<Partial<Record<Screen, TileProvenanceKind>>>>({})
   const [cockpitBanner, setCockpitBanner] = useState<CockpitBannerState | null>(null)
@@ -817,19 +821,32 @@ export function CopilotBridgeProvider({
   )
 
   const captureReceiptFile = useCallback(
-    async (file: File): Promise<CaptureResult | null> => {
+    async (file: File, again?: { person: 'A' | 'B'; receiptId: string | null; kind: DetectedDocumentKind }): Promise<CaptureResult | null> => {
       if (!isAuthenticated) return null
       setParsingReceipt(true)
       setOpenChatError(null)
       setReceiptNotice(null)
+      setCertificateOwnerFile(null)
       try {
-        const result = await captureReceipt(file, { taxYear, onPhase: setReceiptPhase })
+        const result = await captureReceipt(file, {
+          taxYear,
+          onPhase: setReceiptPhase,
+          ...(again ? { kind: again.kind, person: again.person, receiptId: again.receiptId } : {}),
+        })
         if (!result.ok) {
           setReceiptNotice(tr(`advisor.chat.receiptFailure.${result.failure}`))
           return result
         }
         setLastParsedReceipt(result.response)
-        const yearConflict = result.response.lstb?.yearConflict ?? null
+        // A Swiss certificate or letter whose name fits nobody waits for the user to say whose it is.
+        const certificate = result.response.chLohnausweis ?? result.response.chLetter ?? null
+        if (certificate?.personUnclear) {
+          setCertificateOwnerFile({ file, receiptId: result.receiptId, kind: result.kind })
+          setReceiptNotice(tr(result.response.chLetter ? 'advisor.chat.letterWhose' : 'advisor.chat.certificateWhose'))
+        } else if (certificate?.personNotRecordable) {
+          setReceiptNotice(tr('advisor.chat.certificatePersonBOwnAccount'))
+        }
+        const yearConflict = result.response.lstb?.yearConflict ?? certificate?.yearConflict ?? null
         if (yearConflict !== null) {
           setReceiptNotice(
             tr('advisor.chat.receiptYearConflict', {
@@ -858,6 +875,14 @@ export function CopilotBridgeProvider({
       }
     },
     [isAuthenticated, queryClient, taxYear, tr],
+  )
+
+  const chooseCertificateOwner = useCallback(
+    async (person: 'A' | 'B') => {
+      if (certificateOwnerFile === null) return
+      await captureReceiptFile(certificateOwnerFile.file, { person, receiptId: certificateOwnerFile.receiptId, kind: certificateOwnerFile.kind })
+    },
+    [captureReceiptFile, certificateOwnerFile],
   )
 
   const bestTileProvenance = useCallback(
@@ -918,6 +943,8 @@ export function CopilotBridgeProvider({
       receiptPhase,
       receiptNotice,
       clearReceiptNotice: () => setReceiptNotice(null),
+      certificateOwnerPending: certificateOwnerFile !== null,
+      chooseCertificateOwner,
       provenanceByScreen,
       bestTileProvenance,
       cockpitBanner,
@@ -961,6 +988,8 @@ export function CopilotBridgeProvider({
       captureReceiptFile,
       receiptPhase,
       receiptNotice,
+      certificateOwnerFile,
+      chooseCertificateOwner,
       provenanceByScreen,
       bestTileProvenance,
       cockpitBanner,

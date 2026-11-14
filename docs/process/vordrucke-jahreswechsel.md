@@ -12,10 +12,17 @@ Voraussetzung: poppler (`pdftotext`, `pdftocairo`), z. B. `brew install poppler`
 1. **Vorlagen einchecken** — die NET-Vordrucke des Jahres von formulare-bfinv.de nach
    `apps/api/assets/vordrucke/<jahr>/`, Dateinamen wie im Vorjahr; `vordrucke-<jahr>.json` mit den
    Formularschlüsseln ergänzen.
-2. **Spec übernehmen** — `felder-<vorjahr>.spec.json` nach `felder-<jahr>.spec.json` kopieren.
-3. **Vermessen** — `node scripts/vordrucke/vermessen.mjs <jahr>`. Bricht das Skript bei einem Feld
-   ab, hat sich die Zeilennummer, Kennzahl oder Beschriftung geändert: im neuen Vordruck nachsehen und
-   den Anker in der Spec anpassen, nie Koordinaten eintragen.
+2. **Spec übernehmen** — `felder-<vorjahr>.spec.json` nach `felder-<jahr>.spec.json` kopieren, dann
+   `node scripts/vordrucke/zeilen-abgleich.mjs <vorjahr> <jahr>`: Es sucht für jedes Feld die Zeile des
+   neuen Vordrucks mit demselben Text und schreibt Zeile (und Seite) um. Wichtig, weil eine Zeilennummer
+   in beiden Jahren existieren kann und dann still in der falschen Zeile landet. Was es mit „prüfen“
+   meldet (gleich lautende Zeilen, leere Zeilen), im Vordruck nachsehen. Einmal ausführen, nicht zweimal.
+3. **Vermessen** — `node scripts/vordrucke/vermessen.mjs <jahr> --alle` listet jedes Feld, das sich
+   nicht vermessen lässt; danach `node scripts/vordrucke/vermessen.mjs <jahr>`. Hat sich eine
+   Zeilennummer, Kennzahl oder Beschriftung geändert: im neuen Vordruck nachsehen und den Anker in der
+   Spec anpassen, nie Koordinaten eintragen. Hat der Vordruck eines Jahres ein Feld nicht (2024: kein
+   Beruf in der Anlage N-Gre), das Feld aus der Spec nehmen und in `NOT_ON_FORM` (form-renderer.ts)
+   eintragen.
 4. **Lagebericht erzeugen und lesen** — `node scripts/vordrucke/lagebericht.mjs <jahr>` und
    `felder-<jahr>.lage.txt` gegen den Bericht des Vorjahres lesen: Steht jedes Feld in der Zeile,
    neben der Beschriftung und unter der Spalte, die sein Name verspricht? Ein Betrag neben

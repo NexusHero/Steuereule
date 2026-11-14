@@ -5,11 +5,17 @@ import {
   ADVISOR_LEGAL_SOURCES,
   describeNotesForPrompt,
   describeRecordHandles,
+  describeHouseholdForPrompt,
+  type AdvisorHousehold,
   describeSituationForPrompt,
   type AdvisorNoteHandle,
   type AdvisorRecordHandles,
   type AdvisorAssessmentBrief,
   type AdvisorSkillId,
+  type InterviewProgress,
+  INTERVIEW_AREAS,
+  upcomingTaxDates,
+  interviewStanding,
   type AdvisorTask,
   type AdvisorOpeningBrief,
   type CaseDigest,
@@ -18,7 +24,8 @@ import {
 import { describeAiWritableFields } from './advisor-safety.js'
 import { skillPrompt } from './advisor-skills.js'
 import { taskPrompt } from './advisor-tasks.js'
-import { ADVISOR_STANCE } from './advisor-stance.js'
+import { ADVISOR_STANCE_TEXT } from './skills.generated.js'
+import { kennzahlenForYear } from './kennzahlen-for-year.js'
 
 /**
  * The part of the system prompt that is the same for every user and every turn. It comes first so
@@ -47,14 +54,15 @@ export function buildStableSystemPrompt(): string {
     '6. Felder: Für `screen` und `field` gelten ausschließlich die folgenden Namen. Die Namen im Fall-Überblick (CaseDigest) sind KEINE Feldnamen. Gehören mehrere Werte derselben Maske zusammen (z. B. die drei Beträge der Lohnsteuerbescheinigung), lege EINEN Entwurf an und gib die übrigen als `companionFields` mit (höchstens 3). Nennt der Nutzer Angaben für verschiedene Masken oder mehr Felder, rufe `stage_field_draft` für jede Gruppe einzeln auf: Alle Entwürfe einer Antwort stehen nebeneinander und werden gemeinsam freigegeben. Zähle in deinem Text nur Entwürfe auf, für die das Werkzeug `ok: true` gemeldet hat; was abgelehnt wurde, nennst du als nicht vorbereitet, mit dem Grund. Meldet ein Werkzeug UNKNOWN_FIELD, nimm einen Namen aus der Liste, die es nennt.',
     describeAiWritableFields(),
     '',
-    '7. Arbeitsweise: `stage_field_draft` und `propose_two_paths` rechnen die Steuerwirkung selbst aus; rufe `simulate_tax_delta` nur auf, wenn du Varianten vergleichen willst, ohne einen Entwurf anzulegen. Behaupte nie, einen Entwurf vorbereitet zu haben, wenn das Werkzeug nicht `ok: true` gemeldet hat. Schließe jede Antwort mit einem kurzen Text ab.',
+    '7. Arbeitsweise: `stage_field_draft` und `propose_two_paths` rechnen die Steuerwirkung selbst aus; rufe `simulate_tax_delta` nur auf, wenn du Varianten vergleichen willst, ohne einen Entwurf anzulegen. Behaupte nie, einen Entwurf vorbereitet zu haben, wenn das Werkzeug nicht `ok: true` gemeldet hat. Ein Entwurf ersetzt nie die Antwort: Beantworte die Frage des Nutzers immer in Worten (die Regel mit Norm, der Satz oder Betrag des Steuerjahres, die Wirkung aus dem Werkzeug), auch wenn du einen Entwurf vorbereitet hast; die Karte zeigt nur, was eingetragen würde. Ein Satz wie „Ich habe den Entwurf vorbereitet“ allein ist keine Antwort.',
     '',
-    '10. Vollständigkeit vor Tempo: (a) Arbeitsweg: Frage nach Urlaubs- und Krankheitstagen (`commute.vacationDays`, `commute.sickDays`), bevor du Pendeltage oder eine Entfernungspauschale als fertig bezeichnest; ohne sie rechnet die App mit 0 Tagen und überschätzt die Pauschale. Sage das, wenn die Angaben fehlen. (b) Fortbildung: Nennt der Nutzer Kosten, lege den Entwurf auf `interview.fortbildung-kosten` an und gib `fortbildung: "Ja"` als companionField mit. Ohne Betrag vermerkst du nur `fortbildung` = „Ja“ und fragst nach den Kosten; nenne dafür keine Erstattungswirkung. (c) Nenne Beträge nur dann als erfasst, wenn ein Entwurf dafür `ok: true` gemeldet hat.',
+    '10. Vollständigkeit vor Tempo: (a) Arbeitsweg: Frage nach Urlaubs- und Krankheitstagen (`commute.vacationDays`, `commute.sickDays`), bevor du Pendeltage oder eine Entfernungspauschale als fertig bezeichnest; ohne sie rechnet die App mit 0 Tagen und überschätzt die Pauschale. Sage das, wenn die Angaben fehlen. Nennt der Nutzer stattdessen, an wie vielen Tagen er zur Arbeit gefahren ist (z. B. „an 226 Tagen“), gibt es dafür kein Feld: Die App rechnet Fahrtage = Arbeitstage (Fall-Überblick `commuteAndWorkdays.workdays`, Feiertage schon abgezogen) − Urlaub − Krankheit − Homeoffice. Trage dann die Differenz zwischen diesen Arbeitstagen, seinen Fahrtagen und den Homeoffice-Tagen als `commute.vacationDays` ein (oder aufgeteilt auf Urlaub und Krankheit, wenn er beides nennt), und sage in einem Satz, wie du gerechnet hast. (b) Fortbildung: Nennt der Nutzer Kosten, lege den Entwurf auf `interview.fortbildung-kosten` an und gib `fortbildung: "Ja"` als companionField mit. Ohne Betrag vermerkst du nur `fortbildung` = „Ja“ und fragst nach den Kosten; nenne dafür keine Erstattungswirkung. (c) Nenne Beträge nur dann als erfasst, wenn ein Entwurf dafür `ok: true` gemeldet hat. (e) Weitere Werbungskosten gehören in die Arbeitsweg-Maske der jeweiligen Person: Gewerkschaft oder Berufsverband → `commute.professionalBodiesEur`, Arbeitsmittel und typische Berufskleidung → `commute.workEquipmentEur` (was es war in `workEquipmentNote`), Kontoführung → `commute.accountFeesEur` (16 € akzeptiert das Finanzamt ohne Nachweis), Bewerbungen und Sonstiges → `commute.otherWorkExpensesEur` (was es war in `otherWorkExpensesNote`); jeweils die Summe im Jahr. Kinderbetreuung (Kita, Tagesmutter, Hort, ohne Verpflegung) → `kind.childcareEur` des Kindes mit `childcareProvider` (Art, Name, Anschrift) und `childcareFrom`/`childcareTo` (TT.MM.JJJJ); die App rechnet 80 %, höchstens 4.800 € je Kind. (d) Fragt der Nutzer, ob noch etwas fehlt, nenne alle Punkte aus `furtherFacts.printoutGaps` (das ist, was den Ausdruck noch aufhält) und sage bei jedem, ob du ihn vorbereiten kannst oder wo der Nutzer ihn selbst einträgt.',
     '11. Vermietung und Kinder haben mehrere Einträge. Gib bei `stage_field_draft` für die Masken `vermietung` und `kind` als `instance` den Namen des Eintrags an, genau wie er unter „Angelegte Einträge“ steht (z. B. „Objekt 1“, „Kind 2“). Gibt es nur einen Eintrag, darfst du `instance` weglassen. Gibt es mehrere und der Nutzer hat nicht gesagt, welcher gemeint ist, frage nach. Ist keiner angelegt, kannst du nichts vorbereiten: Einträge legt der Nutzer selbst in der Maske an – sag ihm das, die App öffnet die Maske. Erfinde keine Einträge und keine anderen Namen.',
     '12. Wirkung: Die Werkzeuge melden zu jedem Entwurf `effect`. Bei `computed` stammen `beforeRefundEur`, `afterRefundEur` und `deltaEur` aus der Schätzung der App – nenne genau diese Zahlen und keine anderen. Bei `not-computable` gibt es keine Zahl: Nenne dann keinen Euro-Betrag als Wirkung, sondern gib `effectHint` sinngemäß wieder. Eine Wirkung von 0 € heißt, dass sich die Schätzung durch die Angabe nicht ändert – sag das so.',
     '13. Projektnotizen: Sie sind dein Gedächtnis über alle Gespräche dieses Steuerjahres. Halte mit `remember_note` fest, was besprochen oder entschieden wurde und in keinem Feld der Erklärung steht (z. B. „Arbeitszimmer geprüft: lohnt sich nicht, weil kein eigener Raum“, „Nutzer will Fahrtenbuch nachreichen“). Notiere nichts, was schon als Wert in der Erklärung steht, keine Smalltalk-Details und keine persönlichen Daten. Ändert sich etwas, nutze `replace_note`; gilt es nicht mehr, `forget_note`. Sparsam: höchstens eine oder zwei Notizen pro Antwort. Erwähne im Text kurz, was du dir gemerkt hast.',
+    '14. Person B: In einer Zusammenveranlagung gehört alles, was der Nutzer über seine Ehefrau, seinen Ehemann oder seine Partnerin bzw. seinen Partner sagt („meine Frau verdient …“, „mein Mann fährt 24 km“, „Person B“), zu Person B. Solche Werte legst du mit `person: "B"` an, nie als Werte des Nutzers – auch wenn dieselbe Maske für den Nutzer leer ist. Was der Nutzer über sich selbst sagt, bekommt kein `person` (oder `person: "A"`). Ist unklar, wen eine Angabe betrifft, frage nach, bevor du einen Entwurf anlegst. Was unter „Haushalt“ steht, entscheidet, ob es Person B gibt und ob du für sie entwerfen darfst; Kinder, Vermietung, Kapital und das Interview gehören zur gemeinsamen Erklärung und bekommen kein `person`.',
     '',
-    ...ADVISOR_STANCE,
+    ADVISOR_STANCE_TEXT,
     '',
     '8. Ton: Du duzt den Nutzer durchgehend, freundlich und knapp.',
     '',
@@ -66,7 +74,38 @@ export function buildStableSystemPrompt(): string {
 export const GRAY_ZONE_HINT =
   'Für diese Anfrage gilt (Grauzone): Die Frage geht über Steuern hinaus. Beantworte nur ihren steuerlichen Teil (z. B. Sparerpauschbetrag, Teilfreistellung, Abzugsfähigkeit) und sage in einem Satz, dass du zum Rest nichts sagst. Keine Anlage-, Kauf-, Rechts- oder Gesundheitsempfehlung.'
 
-export function buildCaseSystemPrompt(digest: CaseDigest, activeScreen: Screen | undefined, planFirst: boolean, records?: AdvisorRecordHandles, notes?: readonly AdvisorNoteHandle[], skill?: AdvisorSkillId, task?: AdvisorTask, assessment?: AdvisorAssessmentBrief, situation?: string, opening?: AdvisorOpeningBrief, grayZone = false): string {
+/** Where the interview stands for this tax year, kept by the app so the owl neither asks twice nor stops early. */
+export function describeInterviewStanding(progress: InterviewProgress = {}): string {
+  const standing = interviewStanding(progress)
+  const label = (id: string) => INTERVIEW_AREAS.find((area) => area.id === id)!.label
+  const list = (ids: readonly string[]) => (ids.length === 0 ? '– keiner' : ids.map((id) => `- ${id}: ${label(id)}`).join('\n'))
+  return [
+    'Stand des Interviews für dieses Steuerjahr (die App merkt ihn sich, hake mit `mark_interview_area` ab):',
+    'Noch offen:',
+    list(standing.open),
+    'Erledigt:',
+    list(standing.done),
+    'Trifft nicht zu:',
+    list(standing.notApplicable),
+  ].join('\n')
+}
+
+/** Dates of the coming weeks that can save or cost money, so the owl can point at them. */
+export function describeUpcomingDates(taxYear: number, today: string): string[] {
+  const dates = upcomingTaxDates(taxYear, today)
+  if (dates.length === 0) return []
+  const german = (iso: string) => `${iso.slice(8, 10)}.${iso.slice(5, 7)}.${iso.slice(0, 4)}`
+  return ['', `Heute ist der ${german(today)}. Anstehende Termine (nenne sie, wenn sie zur Frage oder zum Ausblick passen):`, ...dates.map((entry) => `- ${german(entry.date)}: ${entry.label}`)]
+}
+
+/** The verified figures of the tax year, so a rate never comes from the model's memory. */
+export function describeYearFigures(taxYear: number): string[] {
+  const lines = kennzahlenForYear(taxYear)
+  if (lines.length === 0) return []
+  return ['', `Werte für das Steuerjahr ${taxYear} aus der geprüften Tabelle \`kennzahlen\`. Sätze, Pauschalen und Höchstbeträge nennst du nur von hier, nie aus dem Gedächtnis; für Entwürfe rechnest du mit diesen Werten (z. B. Kindergeld im Jahr = Monatsbetrag × Monate):`, ...lines]
+}
+
+export function buildCaseSystemPrompt(digest: CaseDigest, activeScreen: Screen | undefined, planFirst: boolean, records?: AdvisorRecordHandles, notes?: readonly AdvisorNoteHandle[], skill?: AdvisorSkillId, task?: AdvisorTask, assessment?: AdvisorAssessmentBrief, situation?: string, opening?: AdvisorOpeningBrief, grayZone = false, interview?: InterviewProgress, today: string = new Date().toISOString().slice(0, 10), household?: AdvisorHousehold): string {
   return [
     describeSituationForPrompt(digest, situation),
     '',
@@ -75,8 +114,12 @@ export function buildCaseSystemPrompt(digest: CaseDigest, activeScreen: Screen |
     JSON.stringify(digest),
     'Angelegte Einträge (für `instance`):',
     describeRecordHandles(records),
+    describeHouseholdForPrompt(household),
     describeNotesForPrompt(notes ?? []),
+    ...describeUpcomingDates(digest.taxYear, today),
+    ...describeYearFigures(digest.taxYear),
     ...(skill ? ['', skillPrompt(skill)] : []),
+    ...(skill === 'berater-interview' ? ['', describeInterviewStanding(interview)] : []),
     ...(task ? ['', taskPrompt(task, digest, assessment, opening)] : []),
     ...(planFirst ? ['', 'Für diese Anfrage gilt: Rufe als Erstes `plan_steps` auf, bevor du irgendetwas anderes tust.'] : []),
     ...(grayZone ? ['', GRAY_ZONE_HINT] : []),
@@ -102,9 +145,13 @@ export function buildSystemMessage(
   opening?: AdvisorOpeningBrief,
   /** The topic guard called the question a grey zone (ADR-0069). */
   grayZone = false,
+  /** Which areas of the Berater-Interview are settled for this tax year. */
+  interview?: InterviewProgress,
+  /** Whether there is a Person B the owl may draft for (ADR-0073). */
+  household?: AdvisorHousehold,
 ): SystemMessage {
   const stable = buildStableSystemPrompt()
-  const caseSpecific = buildCaseSystemPrompt(digest, activeScreen, planFirst, records, notes, skill, task, assessment, situation, opening, grayZone)
+  const caseSpecific = buildCaseSystemPrompt(digest, activeScreen, planFirst, records, notes, skill, task, assessment, situation, opening, grayZone, interview, undefined, household)
   if (provider === 'anthropic') {
     return new SystemMessage({
       content: [

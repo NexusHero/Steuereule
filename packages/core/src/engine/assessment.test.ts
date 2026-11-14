@@ -6,6 +6,7 @@ import {
   assessmentCalculationStatus,
   deserializeAssessmentField,
   appealDeadlineEnd,
+  noticeReceivedOn,
   reconcileAssessment,
   isAppealReason,
   isValidAssessmentAmount,
@@ -111,24 +112,51 @@ describe('korrigiereFassung — Kopie der eingereichten Fassung + Diff (ADR-009)
   })
 })
 
-describe('einspruchsfristEnde / verbleibendeEinspruchstage — § 355 AO, 1 Monat', () => {
-  it('adds one month', () => {
-    expect(appealDeadlineEnd('2026-03-15')).toBe('2026-04-15')
+describe('einspruchsfristEnde / verbleibendeEinspruchstage — § 355 AO, 1 Monat ab Bekanntgabe', () => {
+  it('counts the notice as received on the fourth day after posting from 2025 on, the third before (§ 122 Abs. 2 AO)', () => {
+    // Mo 16.03.2026 + 4 = Fr 20.03.2026.
+    expect(noticeReceivedOn('2026-03-16')).toBe('2026-03-20')
+    // Mo 11.03.2024 + 3 = Do 14.03.2024.
+    expect(noticeReceivedOn('2024-03-11')).toBe('2024-03-14')
   })
 
-  it('rolls over the year', () => {
-    expect(appealDeadlineEnd('2026-12-15')).toBe('2027-01-15')
+  it('moves a deemed day on a weekend or holiday to the next working day', () => {
+    // Mi 18.03.2026 + 4 = So 22.03.2026 → Mo 23.03.2026.
+    expect(noticeReceivedOn('2026-03-18')).toBe('2026-03-23')
+    // Fr 27.03.2026 + 4 = Di 31.03.2026, no shift; Mo 30.03.2026 + 4 = Fr 03.04.2026 = Karfreitag → Ostermontag 06.04. too → Di 07.04.
+    expect(noticeReceivedOn('2026-03-30')).toBe('2026-04-07')
   })
 
-  it('clamps to the last day of the target month (31.01 has no 31.02)', () => {
-    expect(appealDeadlineEnd('2026-01-31')).toBe('2026-02-28')
-    expect(appealDeadlineEnd('2024-01-31')).toBe('2024-02-29') // leap year
+  it('ends one month after the notice was received, on a working day', () => {
+    // Received Fr 20.03.2026 → Mo 20.04.2026.
+    expect(appealDeadlineEnd('2026-03-16')).toBe('2026-04-20')
+    // Received Mo 23.03.2026 → Do 23.04.2026.
+    expect(appealDeadlineEnd('2026-03-18')).toBe('2026-04-23')
+    // Received Mi 18.03.2026 (Sa 14.03. + 4) → Sa 18.04.2026 → Mo 20.04.2026.
+    expect(appealDeadlineEnd('2026-03-14')).toBe('2026-04-20')
+  })
+
+  it('rolls over the year and clamps to the last day of a shorter month', () => {
+    // Di 15.12.2026 + 4 = Sa 19.12. → Mo 21.12.2026 → Do 21.01.2027.
+    expect(appealDeadlineEnd('2026-12-15')).toBe('2027-01-21')
+    // Mo 26.01.2026 + 4 = Fr 30.01.2026 → 30.02. does not exist → Sa 28.02.2026 → Mo 02.03.2026.
+    expect(appealDeadlineEnd('2026-01-26')).toBe('2026-03-02')
+  })
+
+  it('knows the holidays of the state when it is given, and only nationwide ones without it', () => {
+    // Do 31.12.2026: Mi 25.11.2026 + 4 = So 29.11. → Mo 30.11.2026 → Mi 30.12.2026 everywhere.
+    expect(appealDeadlineEnd('2026-11-25')).toBe('2026-12-30')
+    // Fronleichnam Do 04.06.2026 is a holiday in NRW, not in Berlin: received Mo 04.05.2026 (Do 30.04. + 4).
+    expect(noticeReceivedOn('2026-04-30')).toBe('2026-05-04')
+    expect(appealDeadlineEnd('2026-04-30', 'NW')).toBe('2026-06-05')
+    expect(appealDeadlineEnd('2026-04-30', 'BE')).toBe('2026-06-04')
+    expect(appealDeadlineEnd('2026-04-30')).toBe('2026-06-04')
   })
 
   it('counts whole days from heute (exclusive) to the frist end, negative once abgelaufen', () => {
-    expect(remainingAppealDays('2026-03-15', '2026-03-15')).toBe(31) // frist end 2026-04-15
-    expect(remainingAppealDays('2026-03-15', '2026-04-15')).toBe(0)
-    expect(remainingAppealDays('2026-03-15', '2026-04-16')).toBe(-1)
+    expect(remainingAppealDays('2026-03-16', '2026-03-16')).toBe(35) // frist end 2026-04-20
+    expect(remainingAppealDays('2026-03-16', '2026-04-20')).toBe(0)
+    expect(remainingAppealDays('2026-03-16', '2026-04-21')).toBe(-1)
   })
 
   it('rejects a malformed date', () => {

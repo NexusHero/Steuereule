@@ -37,9 +37,9 @@ export class LstbScanService {
         {
           bruttoarbeitslohn: dto.bruttoarbeitslohn,
           lohnsteuer: dto.lohnsteuer,
-          sozialversicherung: dto.sozialversicherung,
+          sozialversicherung: dto.sozialversicherung ?? null,
         },
-        { receiptId, overwriteExisting: dto.overwriteExisting === true },
+        { receiptId, overwriteExisting: dto.overwriteExisting === true, addToExisting: dto.addToExisting === true },
       )
       await this.advisorService.markLstbActionsApplied(actorUserId, taxYear, dto.actionIds ?? [])
       return response

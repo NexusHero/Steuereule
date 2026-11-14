@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Date:** 2026-11-12
 - **Deciders:** NexusHero (Product Owner), Steuereule Engineering
-- **Applies to:** Ticket #495; `packages/core/src/interview/advisor-skills.ts`, `apps/api/src/ki/{advisor-skills,advisor-prompt,advisor-tools,advisor-tool-round}.ts`, `apps/mobile-web/src/screens/advisor/chat/{SkillsMenu,QuestionRound}.tsx`
+- **Applies to:** Ticket #495; `apps/api/skills/berater-interview/SKILL.md`, `apps/api/prisma/schema.prisma` (`AdvisorInterview`), `packages/core/src/interview/advisor-skills.ts`, `apps/api/src/ki/{advisor-skills,advisor-prompt,advisor-tools,advisor-tool-round}.ts`, `apps/mobile-web/src/screens/advisor/chat/{SkillsMenu,QuestionRound}.tsx`
 - **Ergänzt:** ADR-0038 (Zero-Write), ADR-0067 (Projekte, Gespräche, Notizen)
 
 ## Kontext
@@ -31,6 +31,25 @@ und ausschaltet („Skills“), und als ersten Skill ein Interview nach dem Vorb
    wie sonst. Die Runde bleibt bedienbar, solange sie die letzte Nachricht ist, danach ist sie
    Verlauf. Eine Frage kann auch frei beantwortet werden: Das Eingabefeld bleibt.
 5. **Eine Runde ohne mindestens zwei Antworten je Frage wird verworfen,** nicht angezeigt.
+
+## Hartnäckig und ehrlich (ergänzt 2026-11-13)
+
+6. **Die App führt den Stand des Interviews, nicht das Modell.** Zehn Bereiche
+   (`INTERVIEW_AREAS` in core: grunddaten, kinder, einkuenfte, arbeit, vorsorge, haushalt,
+   belastungen, spenden, ausland, vorjahr) haben je Steuerjahr den Stand offen, erledigt oder
+   trifft nicht zu. Die Eule hakt sie mit `mark_interview_area` ab. Gespeichert wird je Nutzer
+   und Steuerjahr in `BeraterInterview` (verschlüsselt, mit Kontolöschung und Datenexport). Bei
+   eingeschaltetem Skill steht der Stand in jedem Prompt.
+7. **Fertig erst, wenn kein Bereich mehr offen ist.** Bis dahin endet jede Antwort mit einer
+   neuen Runde. Am Ende fasst die Eule zusammen und lässt bestätigen (`apps/api/skills/berater-interview/SKILL.md`).
+8. **Tatsache oder Entscheidung.** Jede Frage hat `kind`. Bei `fact` (was der Nutzer hatte oder
+   tat) verwirft die API eine Empfehlung, und die Oberfläche zeigt keine, auch nicht bei älteren
+   Runden ohne `kind`. Sonst würde „Empfehlungen übernehmen“ Tatsachen für den Nutzer behaupten.
+   Nur `decision` trägt `recommended` und einen Satz `reason`.
+9. **Mehrfachauswahl.** `multiple: true` erlaubt mehrere Antworten („Was davon hattest du?“);
+   sie gehen als „1: A, B“ zurück. Antworten, die genau so aussehen, wie die App sie schreibt,
+   überspringen den Themenprüfer (`isRoundAnswer`); vorher fiel jede Runde mit mehr als einer
+   Frage durch diese Lücke und wurde geprüft.
 
 ## Folgen
 

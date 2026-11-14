@@ -39,7 +39,9 @@ export interface LstbScanState {
   readonly updateFieldText: (fieldId: FieldId, nextText: string) => void
   readonly confirmField: (fieldId: FieldId) => void
   readonly discardDraft: () => Promise<void>
-  readonly applyDraft: (overwriteExisting: boolean) => Promise<void>
+  readonly applyDraft: (overwriteExisting: boolean, addToExisting?: boolean) => Promise<void>
+  /** The scanned certificate is the one already saved for the year. */
+  readonly sameCertificate: boolean
   readonly dismissYearConflict: () => void
   readonly dismissOverwriteConflict: () => void
   readonly setPreviewOpen: (open: boolean) => void
@@ -64,6 +66,7 @@ export function useLstbScan({ taxYear, person }: { readonly taxYear: number; rea
   const [error, setError] = useState<string | null>(null)
   const [yearConflict, setYearConflict] = useState<LstbYearConflictDto | null>(null)
   const [overwriteConflict, setOverwriteConflict] = useState(false)
+  const [sameCertificate, setSameCertificate] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(false)
 
   // A different tax year or person starts from a clean slate.
@@ -170,10 +173,10 @@ export function useLstbScan({ taxYear, person }: { readonly taxYear: number; rea
     void queryClient.invalidateQueries({ queryKey: getAdvisorControllerGetSessionQueryKey(taxYear) })
   }
 
-  async function applyDraft(overwriteExisting: boolean) {
+  async function applyDraft(overwriteExisting: boolean, addToExisting = false) {
     if (stagedScan === null) return
     const { bruttoarbeitslohn, lohnsteuer, sozialversicherung } = evaluateStagedDraft(stagedScan).values
-    if (bruttoarbeitslohn === null || lohnsteuer === null || sozialversicherung === null) return
+    if (bruttoarbeitslohn === null || lohnsteuer === null || !evaluateStagedDraft(stagedScan).readyToApply) return
 
     setError(null)
     try {
@@ -183,16 +186,18 @@ export function useLstbScan({ taxYear, person }: { readonly taxYear: number; rea
         data: {
           bruttoarbeitslohn,
           lohnsteuer,
-          sozialversicherung,
+          ...(sozialversicherung !== null ? { sozialversicherung } : {}),
           ...(stagedScan.receiptId !== null ? { receiptId: stagedScan.receiptId } : {}),
           ...(stagedScan.actionIds.length > 0 ? { actionIds: [...stagedScan.actionIds] } : {}),
           ...(overwriteExisting ? { overwriteExisting: true } : {}),
+          ...(addToExisting ? { addToExisting: true } : {}),
         },
       })
       if (res.status === 200) {
         setLocallyDismissed(true)
         setStagedScan(null)
         setOverwriteConflict(false)
+        setSameCertificate(false)
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: getLstbControllerGetLstbQueryKey(taxYear, params) }),
           queryClient.invalidateQueries({ queryKey: getCockpitControllerGetCockpitSummaryQueryKey(taxYear) }),
@@ -204,6 +209,10 @@ export function useLstbScan({ taxYear, person }: { readonly taxYear: number; rea
         return
       }
       if ((res.status as number) === 409) {
+        if ((res.data as { code?: string } | undefined)?.code === 'LSTB_SAME_CERTIFICATE') {
+          setSameCertificate(true)
+          return
+        }
         // Existing values: a visible choice, never a silent overwrite (ADR-0008, AC 8).
         setOverwriteConflict(true)
         return
@@ -220,7 +229,7 @@ export function useLstbScan({ taxYear, person }: { readonly taxYear: number; rea
     evaluation,
     canApply:
       stagedScan !== null &&
-      evaluation.allIntegers &&
+      evaluation.readyToApply &&
       !evaluation.hasUnconfirmedYellow &&
       !evaluation.hasWiderspruch &&
       !confirmScan.isPending,
@@ -228,6 +237,7 @@ export function useLstbScan({ taxYear, person }: { readonly taxYear: number; rea
     error,
     yearConflict,
     overwriteConflict,
+    sameCertificate,
     confirming: confirmScan.isPending,
     previewOpen,
     scanFile,

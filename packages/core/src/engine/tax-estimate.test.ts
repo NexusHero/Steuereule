@@ -238,3 +238,14 @@ describe('Kirchensteuer in the single estimate (#450 Teil 6F)', () => {
     expect(twoKids.churchTax.due.to).toBeLessThan(noKids.churchTax.due.to)
   })
 })
+
+describe('taxEstimateCrossBorder with German wages of the same year (ADR-0079)', () => {
+  it('adds the German wage, its social security and its wage tax', () => {
+    const base = { year: 2024, wageEur: 21000, withholdingTaxEur: 940, retirementProvisionEur: 1400, otherProvisionEur: 280, healthInsuranceEur: 0, commuterAllowance: 2000, donations: 0 }
+    const swissOnly = taxEstimateCrossBorder(base)
+    const both = taxEstimateCrossBorder({ ...base, germanWage: { gross: 70000, wageTax: 15000, socialSecurity: 14000 } })
+    if (swissOnly.kind !== 'spanne' || both.kind !== 'spanne') throw new Error('expected ranges')
+    expect(both.anrechnung).toBe(swissOnly.anrechnung + 15000)
+    expect(both.taxableIncome.to).toBeGreaterThan(swissOnly.taxableIncome.to + 50000)
+  })
+})

@@ -38,6 +38,10 @@ function toRecord(row: {
     healthBasicEur: row.healthBasicEur,
     careEur: row.careEur,
     swissFamilyAllowanceEur: row.swissFamilyAllowanceEur,
+    childcareEur: row.childcareEur ?? null,
+    childcareProvider: row.childcareProvider ?? null,
+    childcareFrom: row.childcareFrom ?? null,
+    childcareTo: row.childcareTo ?? null,
   }
 }
 
@@ -99,6 +103,10 @@ export class PrismaChildRepository implements ChildRepository {
           healthBasicEur: data.healthBasicEur ?? null,
           careEur: data.careEur ?? null,
           swissFamilyAllowanceEur: data.swissFamilyAllowanceEur ?? null,
+          childcareEur: data.childcareEur ?? null,
+          childcareProvider: data.childcareProvider ?? null,
+          childcareFrom: data.childcareFrom ?? null,
+          childcareTo: data.childcareTo ?? null,
         },
       }),
       this.prisma.taxDataAccessLog.create({

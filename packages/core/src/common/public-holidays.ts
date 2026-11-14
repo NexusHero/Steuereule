@@ -88,3 +88,20 @@ export function holidaysOnWorkdays(year: number, region: HolidayRegion, workdays
     return workdays.includes((weekday === 0 ? 7 : weekday) as IsoWeekday)
   }).length
 }
+
+export function isHolidayRegion(value: string | null | undefined): value is HolidayRegion {
+  return typeof value === 'string' && ([...GERMAN_STATES, ...SWISS_CANTONS] as readonly string[]).includes(value)
+}
+
+/**
+ * The public holidays to subtract from the commute days: the count the user confirmed, otherwise
+ * the holidays of the region on the days they work. Without either, none. Before, a region without
+ * a confirmed count subtracted nothing, and the printout counted 227 commute days instead of 216.
+ */
+export function effectivePublicHolidays(
+  year: number,
+  inputs: { readonly workdays: readonly IsoWeekday[]; readonly publicHolidays?: number | null | undefined; readonly publicHolidayRegion?: string | null | undefined },
+): number {
+  if (inputs.publicHolidays !== null && inputs.publicHolidays !== undefined) return inputs.publicHolidays
+  return isHolidayRegion(inputs.publicHolidayRegion) ? holidaysOnWorkdays(year, inputs.publicHolidayRegion, inputs.workdays) : 0
+}

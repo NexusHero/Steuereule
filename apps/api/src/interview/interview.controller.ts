@@ -32,7 +32,7 @@ export class InterviewController {
   })
   @ApiOkResponse({ type: InterviewStateDto, description: 'The caller’s Minimal-Gate state for this tax year — re-entry.' })
   @ApiUnauthorizedResponse({ description: 'Guest session targeting a catalogue entry other than the Minimal-Gate — that requires a signed-in account (ADR-0045).' })
-  @ApiQuery({ name: 'eintrag', required: false, enum: ['minimal-gate', 'segment-2', 'lebenslagen', 'einkuenfte', 'sonderausgaben', 'segment-ch', 'alleinerziehend', 'haushalt', 'gesundheit', 'berufsprofil'], description: 'The catalogue entry to re-enter; absent → the Minimal-Gate.' })
+  @ApiQuery({ name: 'eintrag', required: false, enum: ['minimal-gate', 'segment-2', 'lebenslagen', 'einkuenfte', 'sonderausgaben', 'segment-ch', 'alleinerziehend', 'haushalt', 'gesundheit', 'vorauszahlungen', 'berufsprofil'], description: 'The catalogue entry to re-enter; absent → the Minimal-Gate.' })
   getInterview(
     @CurrentUser() userId: string,
     @CurrentUserKind() kind: UserIdKind,

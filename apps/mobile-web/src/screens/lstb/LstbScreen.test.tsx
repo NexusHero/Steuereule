@@ -716,6 +716,53 @@ describe('LstbScreen', () => {
     expect(putBodies[1]).toMatchObject({ overwriteExisting: true })
   })
 
+  it('adds a further certificate of the year instead of replacing — handles 409 LSTB_EXISTING_VALUES_CONFLICT with an explicit overwrite confirmation dialog', async () => {
+    let lstbState: LstbResponseDto = EMPTY_LSTB_RESPONSE
+    const putBodies: unknown[] = []
+    server.use(
+      http.get(LSTB_URL, () => HttpResponse.json(lstbState, { status: 200 })),
+      http.post(UPLOAD_URL, () => HttpResponse.json(makeUploadedReceipt(), { status: 201 })),
+      http.post(PARSE_URL, () => HttpResponse.json(makeParseResponse(), { status: 200 })),
+      http.put(LSTB_URL, async ({ request }) => {
+        const body = (await request.json()) as { overwriteExisting?: boolean; addToExisting?: boolean }
+        putBodies.push(body)
+        if (!body.overwriteExisting && !body.addToExisting) {
+          return HttpResponse.json({ code: 'LSTB_EXISTING_VALUES_CONFLICT' }, { status: 409 })
+        }
+        lstbState = {
+          bruttoarbeitslohn: { kind: 'erfasst', value: 54000 },
+          lohnsteuer: { kind: 'erfasst', value: 8200 },
+          sozialversicherung: { kind: 'erfasst', value: 11100 },
+          state: { kind: 'vollstaendig' },
+        }
+        return HttpResponse.json(lstbState, { status: 200 })
+      }),
+    )
+    mockExtractDocumentText.mockResolvedValue({
+      kind: 'pdf',
+      mimeType: 'application/pdf',
+      text: 'LStB 2026 overwrite',
+      usedOcrFallback: false,
+      pagesProcessed: 1,
+    })
+
+    renderLstb()
+    fireEvent.change(await screen.findByTestId('lstb-scan-file-input'), {
+      target: { files: [new File(['%PDF-1.4'], 'lstb.pdf', { type: 'application/pdf' })] },
+    })
+
+    fireEvent.click(await screen.findByTestId('lstb-scan-apply'))
+    expect(await screen.findByTestId('lstb-overwrite-conflict-modal')).toBeTruthy()
+    expect(screen.getByText('Bestehende Werte ersetzen?')).toBeTruthy()
+    expect(putBodies).toHaveLength(1)
+
+    fireEvent.click(screen.getByTestId('lstb-overwrite-add'))
+    expect(await screen.findByText('Alles erfasst ✓')).toBeTruthy()
+    expect(putBodies).toHaveLength(2)
+    expect(putBodies[1]).toMatchObject({ addToExisting: true })
+    expect(putBodies[1]).not.toHaveProperty('overwriteExisting')
+  })
+
   it('supports viewing the original receipt modal and discarding a staged draft', async () => {
     const dismissedIds: string[] = []
     const origCreate = URL.createObjectURL

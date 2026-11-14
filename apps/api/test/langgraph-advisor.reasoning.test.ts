@@ -306,6 +306,9 @@ describe('tool schemas as the providers accept them (#476)', () => {
     for (const tool of buildToolSchemas()) {
       expect(containsKey(tool.schema, 'propertyNames'), `${tool.name} carries propertyNames`).toBe(false)
       expect(containsKey(tool.schema, '$schema'), `${tool.name} carries $schema`).toBe(false)
+      // Found by the eval: z.number().positive() turns into exclusiveMinimum, which Gemini rejects.
+      expect(containsKey(tool.schema, 'exclusiveMinimum'), `${tool.name} carries exclusiveMinimum`).toBe(false)
+      expect(containsKey(tool.schema, 'exclusiveMaximum'), `${tool.name} carries exclusiveMaximum`).toBe(false)
     }
   })
 

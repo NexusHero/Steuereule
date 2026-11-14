@@ -159,6 +159,7 @@ function buildTestHarness(responses: string[], visionEnabled = true) {
   return {
     advisorRepo,
     advisorService,
+    childRepo,
     interviewRepo,
     lstbRepo,
     receiptRepo,
@@ -282,6 +283,30 @@ describe('ReceiptParseService — Two-Stage Receipt Isolation (#446 Slice 3)', (
     ).rejects.toThrow(/PII|IBAN/i)
   })
 
+  it('drops a harmless target it does not write instead of blocking the receipt, and files a donation by its category', async () => {
+    const h = buildTestHarness([
+      JSON.stringify({
+        vendorCategory: 'spende',
+        receiptDate: '2026-01-31',
+        amountEur: 3135,
+        suggestedScreen: 'interview',
+        suggestedField: 'sonderausgaben-spenden',
+        suggestedValue: '3135',
+        summary: 'Sammelbestätigung über Spenden 2025',
+        taxYear: 2025,
+      }),
+    ])
+    const res = await h.parseService.parseReceipt('user-r6', { taxYear: 2025, fileName: 'spenden.pdf', rawText: 'Sammelbestätigung Geldzuwendungen 2025 Gesamt 3.135,00 EUR' })
+    expect(res.securityBlocked).toBe(false)
+    expect(res.stagedAction).toMatchObject({ screen: 'interview', field: 'spenden-betrag', newValue: '3135' })
+  })
+
+  it('rounds a model’s decimal amount to whole euros, so the draft can be applied', async () => {
+    const h = buildTestHarness([JSON.stringify({ vendorCategory: 'sonstiges', amountEur: 650.4, suggestedScreen: 'interview', suggestedField: 'umzug-kosten', suggestedValue: '650.40', summary: 'Umzug', taxYear: 2025 })])
+    const res = await h.parseService.parseReceipt('user-r7', { taxYear: 2025, fileName: 'umzug.pdf', rawText: 'Spedition Umzug 650,40 EUR' })
+    expect(res.stagedAction?.newValue).toBe('650')
+  })
+
   it('supports deterministic offline parsing when vision_ocr kill-switch is active and blocks workplace tampering', async () => {
     const h = buildTestHarness([], false)
 
@@ -295,8 +320,17 @@ describe('ReceiptParseService — Two-Stage Receipt Isolation (#446 Slice 3)', (
     expect(res.parsed.vendorCategory).toBe('arbeitsmittel')
     expect(res.parsed.amountEur).toBe(640)
     expect(res.stagedAction?.status).toBe('pending')
-    expect(res.stagedAction?.screen).toBe('interview')
-    expect(res.stagedAction?.field).toBe('fortbildung')
+    // Work tools are Kz 320 in the commute mask, not training (ADR-0076).
+    expect(res.stagedAction?.screen).toBe('commute')
+    expect(res.stagedAction?.field).toBe('workEquipmentEur')
+    expect(res.stagedAction?.newValue).toBe('640')
+  })
+
+  it('adds a second work-tool receipt to the year’s total instead of replacing it', async () => {
+    const h = buildTestHarness([], false)
+    await h.commuteRepo.save('user-r5', 2025, { workdays: [1, 2, 3, 4, 5], vacationDays: 0, sickDays: 0, homeOfficeDays: 0, oneWayKm: null, transport: null, workplace: null, workEquipmentEur: 110 })
+    const res = await h.parseService.parseReceipt('user-r5', { taxYear: 2025, fileName: 'monitor.pdf', rawText: 'Hardware Monitor 240 EUR vom 2025-07-03' })
+    expect(res.stagedAction).toMatchObject({ field: 'workEquipmentEur', previousValue: '110', newValue: '350' })
   })
 
   it('blocks commute.workplace tampering from Stage 1 and rejects disallowed receipt MIME types', async () => {
@@ -626,5 +660,121 @@ describe('ReceiptParseService — Two-Stage LStB Cascade (#444)', () => {
         rawText: '3. Bruttoarbeitslohn 50.000,00',
       }),
     ).rejects.toThrow(/does not exist/)
+  })
+})
+
+describe('craftsmen’s invoices (§ 35a, ADR-0078)', () => {
+  const stated = [
+    'Zimmerei Beispiel GmbH Rechnung Nr. 4711 vom 12.08.2025',
+    '1 3,00 Std. Arbeitszeit Facharbeiter 58,00 174,00',
+    'Nettosumme in EUR 194,00',
+    'Endsumme in EUR : 230,86',
+    'Im oben aufgeführten Rechnungsbetrag von 230,86 € sind 207,06 € inkl. 19 % MwSt. Lohnkosten enthalten.',
+  ].join('\n')
+  const hours = [
+    'Beispiel Elektro GmbH Rechnung 2025-118, Datum 03.09.2025',
+    '1 10,50 Std. An- und Abfahrt, Teilmontage und Wiedermontage 70,00 735,00',
+    '2 1,00 Stck. Kabel und Installationsmaterial 90,00 90,00',
+    'Gesamtbetrag EUR 825,00',
+    'Mehrwertsteuer 19,00% EUR 156,75',
+    'Gesamtbetrag inkl. Steuer EUR 981,75',
+  ].join('\n')
+
+  it('drafts the labour share with the invoice total and the gate', async () => {
+    const h = buildTestHarness([], false)
+    const res = await h.parseService.parseReceipt('user-h1', { taxYear: 2025, fileName: 'zimmerei.pdf', rawText: stated })
+    expect(res.stagedAction).toMatchObject({ screen: 'interview', field: 'haushalt-handwerker-betrag', newValue: '207', sourceId: 'estg-35a' })
+    expect(res.stagedAction?.companionFields).toEqual({ 'haushalt-gate': 'Ja', 'haushalt-handwerker-rechnungsbetrag': '231' })
+  })
+
+  it('adds a second invoice to the first while that draft is still waiting', async () => {
+    const h = buildTestHarness([], false)
+    await h.parseService.parseReceipt('user-h2', { taxYear: 2025, fileName: 'zimmerei.pdf', rawText: stated })
+    const second = await h.parseService.parseReceipt('user-h2', { taxYear: 2025, fileName: 'elektro.pdf', rawText: hours })
+    expect(second.stagedAction).toMatchObject({ newValue: String(207 + 875) })
+    expect(second.stagedAction?.companionFields?.['haushalt-handwerker-rechnungsbetrag']).toBe(String(231 + 982))
+  })
+
+  it('stages nothing for an order confirmation and says so', async () => {
+    const h = buildTestHarness([], false)
+    const res = await h.parseService.parseReceipt('user-h3', { taxYear: 2025, fileName: 'ab.pdf', rawText: hours.replace('Rechnung 2025-118', 'Auftragsbestätigung AB-118') })
+    expect(res.stagedAction).toBeNull()
+    expect(res.parsed.summary).toContain('erst die Rechnung')
+  })
+})
+
+
+describe('donation receipts add up, never twice (§ 10b, ADR-0080)', () => {
+  const head = ['Aussteller: Beispielhilfe e.V., Musterweg 1, 50000 Köln', 'Sammelbestätigung über Geldzuwendungen', 'im Sinne des § 10b des Einkommensteuergesetzes']
+  const joint = [
+    ...head,
+    'Datum: 16.07.2025',
+    'EUR 1.380,00*/*eins*drei*acht*null*/01.01.2024 bis 31.12.2024',
+    'D000000000001      05.02.2024   Geldzuwendung   nein                 EUR 1.000,00',
+    'D000000000002      05.06.2024   Geldzuwendung   nein                 EUR 120,00',
+    'D000000000003      30.09.2024   Geldzuwendung   nein                 EUR 260,00',
+    'Gesamtsumme                                                          EUR 1.380,00',
+  ].join('\n')
+  const own = [...head, 'Datum: 06.06.2025', 'EUR 120,00 01.01.2024 bis 31.12.2024', 'D000000000002      05.06.2024   Geldzuwendung   nein                 EUR 120,00', 'Gesamtsumme EUR 120,00'].join('\n')
+  const copy = [head[0], 'Sammelbestätigung (Doppel) über Geldzuwendungen', head[2], 'EUR 120.00 01.01.2024 bis 31.12.2024', 'Gesamtsumme EUR 120.00'].join('\n')
+  const other = ['Aussteller: Andere Hilfe e.V.', 'Bestätigung über Geldzuwendungen im Sinne des § 10b EStG', 'Betrag der Zuwendung - in Ziffern -', '50,00 €', 'Tag der Zuwendung: 03.03.2024'].join('\n')
+
+  it('drafts the year the donations were made, not the date the receipt was printed', async () => {
+    const h = buildTestHarness([], false)
+    const res = await h.parseService.parseReceipt('user-d1', { taxYear: 2025, fileName: 'spenden.pdf', rawText: joint })
+    expect(res.parsed.taxYear).toBe(2024)
+    expect(res.stagedAction).toMatchObject({ field: 'spenden-betrag', newValue: '1380', sourceId: 'estg-10b' })
+    expect(res.stagedAction).not.toHaveProperty('countedItems')
+  })
+
+  it('counts a partner’s own receipt and a copy of a donation already counted only once', async () => {
+    const h = buildTestHarness([], false)
+    await h.parseService.parseReceipt('user-d2', { taxYear: 2024, fileName: 'a.pdf', rawText: copy })
+    const second = await h.parseService.parseReceipt('user-d2', { taxYear: 2024, fileName: 'b.pdf', rawText: joint })
+    expect(second.stagedAction).toMatchObject({ newValue: '1380' })
+    expect(second.parsed.summary).toContain('dazu kommen nur 1260 €')
+    const third = await h.parseService.parseReceipt('user-d2', { taxYear: 2024, fileName: 'c.pdf', rawText: own })
+    expect(third.stagedAction).toBeNull()
+    expect(third.parsed.summary).toContain('schon über eine andere Bestätigung gezählt')
+    const fourth = await h.parseService.parseReceipt('user-d2', { taxYear: 2024, fileName: 'd.pdf', rawText: other })
+    expect(fourth.stagedAction).toMatchObject({ newValue: '1430' })
+  })
+})
+
+describe('childcare notices (ADR-0086)', () => {
+  const notice = 'Landratsamt Beispielkreis – Jugendamt\nKostenbeitragsbescheid Kindertagespflege\nDer Kostenbeitrag beträgt ab 01.09.2024 monatlich 250,00 EUR.'
+
+  it('drafts the care period for the only child, and leaves the amount to the user', async () => {
+    const h = buildTestHarness([], false)
+    const child = await h.childRepo.create('user-c1', 2024, { firstName: 'Lea', lastName: 'Muster', geburtsdatum: '2022-01-01' })
+    const res = await h.parseService.parseReceipt('user-c1', { taxYear: 2024, fileName: 'bescheid.pdf', rawText: notice, textSource: 'pdf_text' } as never)
+    const drafts = res.assistantMessage?.meta?.actions ?? []
+    expect(drafts.map((d) => [d.screen, d.instance, d.field, d.newValue])).toEqual([
+      ['kind', child.id, 'childcareFrom', '01.09.2024'],
+      ['kind', child.id, 'childcareTo', '31.12.2024'],
+    ])
+    expect(res.assistantMessage?.content).toContain('tatsächlich gezahlt')
+    await h.advisorService.applyBatch('user-c1', 2024, { drafts: drafts.map((d) => ({ actionId: d.actionId })) })
+    expect((await h.childRepo.listForUserAndYear('user-c1', 2024))[0]).toMatchObject({ childcareFrom: '01.09.2024', childcareTo: '31.12.2024' })
+  })
+
+  it('stages no period while it is unclear which child it is', async () => {
+    const h = buildTestHarness([], false)
+    await h.childRepo.create('user-c2', 2024, { firstName: 'Lea', lastName: 'Muster', geburtsdatum: '2022-01-01' })
+    await h.childRepo.create('user-c2', 2024, { firstName: 'Tom', lastName: 'Muster', geburtsdatum: '2020-01-01' })
+    const res = await h.parseService.parseReceipt('user-c2', { taxYear: 2024, fileName: 'bescheid.pdf', rawText: notice, textSource: 'pdf_text' } as never)
+    expect((res.assistantMessage?.meta?.actions ?? []).some((d) => d.field === 'childcareFrom')).toBe(false)
+    expect(res.parsed.summary).toContain('Für welches eurer Kinder')
+  })
+
+  it('drafts the period for the child the notice names, when there are several', async () => {
+    const h = buildTestHarness([], false)
+    await h.childRepo.create('user-c3', 2024, { firstName: 'Lea', lastName: 'Muster', geburtsdatum: '2022-01-01' })
+    const tom = await h.childRepo.create('user-c3', 2024, { firstName: 'Tom', lastName: 'Muster', geburtsdatum: '2020-01-01' })
+    const res = await h.parseService.parseReceipt('user-c3', { taxYear: 2024, fileName: 'bescheid.pdf', rawText: `${notice}\nKind: Tom Muster`, textSource: 'pdf_text' } as never)
+    expect((res.assistantMessage?.meta?.actions ?? []).map((d) => [d.instance, d.field])).toEqual([
+      [tom.id, 'childcareFrom'],
+      [tom.id, 'childcareTo'],
+    ])
   })
 })

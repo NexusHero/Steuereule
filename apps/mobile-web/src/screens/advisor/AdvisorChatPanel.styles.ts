@@ -353,6 +353,7 @@ export function makeStyles(t: UiTheme) {
       fontSize: t.size.s,
       color: t.color.fehler,
     } as TextStyle,
+    certificateOwnerRow: { flexDirection: 'row', flexWrap: 'wrap', gap: t.space.s2 } as ViewStyle,
     receiptPanel: {
       padding: t.space.s3,
       gap: t.space.s2,

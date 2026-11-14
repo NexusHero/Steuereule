@@ -8,6 +8,7 @@ import {
   maskEmployer,
   maskPhone,
   scrubUserMessagePii,
+  replaceNamesWith,
   scrubDocumentTextPii,
 } from './pii-masking'
 
@@ -178,3 +179,17 @@ describe('PII Masking (ADR-0052 §8 — Personenbezogene Daten: schreiben ja, le
     })
   })
 })
+
+describe('replaceNamesWith', () => {
+  it('puts the handle in place of the spouse’s name, also with umlauts at the start', () => {
+    expect(replaceNamesWith('Gülay fährt 24 km, Ümit nicht. Gülays Lohn', ['Gülay', 'Ümit Kaya'], 'Person B')).toBe('Person B fährt 24 km, Person B nicht. Person B Lohn')
+  })
+})
+
+describe('names in the genitive (real-case test)', () => {
+  it('replaces „Gülays Konto“ like „Gülay“, and leaves longer words alone', () => {
+    expect(replaceNamesWith('Gülays Konto und Gülay’s Arbeitgeber', ['Gülay'], 'Person B')).toBe('Person B Konto und Person B Arbeitgeber')
+    expect(replaceNamesWith('Gulaysse', ['Gulay'], 'X')).toBe('Gulaysse')
+  })
+})
+

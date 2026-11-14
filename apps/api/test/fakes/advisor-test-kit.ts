@@ -5,6 +5,7 @@ import { AuditService } from '../../src/audit/audit.service.js'
 import { ConfirmationService } from '../../src/confirmation/confirmation.service.js'
 import { fieldAccessFrom } from '../../src/confirmation/field-access.js'
 import { RagKiAdapter } from '../../src/ki/ki.adapter.js'
+import { LinkService } from '../../src/link/link.service.js'
 import { OwlModeService } from '../../src/owl-mode/owl-mode.service.js'
 import { FakeAssessmentRepository } from './fake-assessment.repository.js'
 import { FakeAuditRepository } from './fake-audit.repository.js'
@@ -28,6 +29,12 @@ export interface AdvisorTestKit {
   readonly interviewRepo: FakeInterviewAnswerRepository
   readonly rentalRepo: FakeRentalRepository
   readonly childRepo: FakeChildRepository
+  readonly commuteRepo: FakeCommuteRepository
+  readonly chRepo: FakeChSalaryCertificateRepository
+  readonly lstbRepo: FakeLstbRepository
+  /** The joint return: set it up with `set` and `updatePersonB` to give the user a Person B. */
+  readonly linkService: LinkService
+  readonly profileRepo: FakeProfileRepository
   readonly service: AdvisorService
 }
 
@@ -43,14 +50,18 @@ export function buildAdvisorTestKit(engine?: AdvisorEnginePort, modelConnection?
   const commuteRepo = new FakeCommuteRepository()
   const assessmentRepo = new FakeAssessmentRepository()
   const auditService = new AuditService(new FakeAuditRepository())
+  const linkRepo = new FakeLinkRepository()
+  const masterDataRepo = new FakeMasterDataRepository()
+  const pensionRepo = new FakePensionRepository()
+  const linkService = new LinkService(linkRepo, profileRepo, masterDataRepo, auditService)
   const access = fieldAccessFrom({
     lstb: lstbRepo,
-    pension: new FakePensionRepository(),
+    pension: pensionRepo,
     capital: new FakeCapitalRepository(),
     rental: rentalRepo,
     profile: profileRepo,
-    masterData: new FakeMasterDataRepository(),
-    link: new FakeLinkRepository(),
+    masterData: masterDataRepo,
+    link: linkRepo,
     interview: interviewRepo,
     chSalaryCertificate: chRepo,
     child: childRepo,
@@ -85,8 +96,11 @@ export function buildAdvisorTestKit(engine?: AdvisorEnginePort, modelConnection?
     undefined,
     undefined,
     modelConnection,
+    undefined,
+    pensionRepo,
+    linkService,
   )
-  return { advisorRepo, interviewRepo, rentalRepo, childRepo, service }
+  return { advisorRepo, interviewRepo, rentalRepo, childRepo, commuteRepo, chRepo, lstbRepo, linkService, profileRepo, service }
 }
 
 /** A step of a scripted engine turn: an event, or a pause that only ends when the turn is aborted. */

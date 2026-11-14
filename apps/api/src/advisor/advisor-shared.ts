@@ -2,6 +2,8 @@
 // returns, and the small rules about titles, search and context. No state, no dependencies on the
 // service itself.
 import {
+  PERSON_B_HANDLE,
+  replaceNamesWith,
   advisorContextUsage,
   scrubUserMessagePii,
   type AdvisorActionProposal,
@@ -9,6 +11,8 @@ import {
   type AdvisorMessageMeta,
   summaryCut,
   type AdvisorHistorySource,
+  type AdvisorPreviewEffect,
+  type AdvisorPreviewTarget,
 } from '@steuereule/core'
 import { type AdvisorChatMessageRecord, type AdvisorConversationRecord, type AdvisorNoteRecord } from './advisor.repository.js'
 import type { AdvisorChatMessageDto, AdvisorContextDto, AdvisorConversationDto, AdvisorNoteDto, AdvisorProjectDto, SendAdvisorMessageDto } from './dto/advisor.dto.js'
@@ -16,7 +20,10 @@ import type { AdvisorChatMessageDto, AdvisorContextDto, AdvisorConversationDto, 
 export interface ResolvedDraft {
   readonly messageRecord: AdvisorChatMessageRecord
   readonly action: AdvisorActionProposal
+  /** The field key the draft writes (screen, instance, field), the same for A and B. */
   readonly key: string
+  /** Whose data the draft writes: the user, or Person B's record that A keeps (ADR-0073). */
+  readonly dataUserId: string
 }
 
 export function parseNum(raw: string | null | undefined): number | null {
@@ -27,8 +34,8 @@ export function parseNum(raw: string | null | undefined): number | null {
 
 /** Strips the server-internal undo snapshot; the client never needs prior provenance rows. */
 export function toPublicAction<T extends AdvisorActionProposal>(action: T): T {
-  if (action.undoSnapshot === undefined) return action
-  const { undoSnapshot: _internal, ...rest } = action
+  if (action.undoSnapshot === undefined && action.countedItems === undefined) return action
+  const { undoSnapshot: _internal, countedItems: _items, ...rest } = action
   return rest as T
 }
 
@@ -109,8 +116,17 @@ export function liveMessages(conversation: AdvisorConversationRecord, records: r
   return until === null ? [...records] : records.filter((record) => record.createdAt.getTime() > until.getTime())
 }
 
-export function historySources(records: readonly AdvisorChatMessageRecord[], knownNames: readonly string[]): AdvisorHistorySource[] {
-  return records.map((msg) => ({ role: msg.role, content: scrubUserMessagePii(msg.content, [...knownNames]), meta: msg.meta, status: msg.status }))
+/**
+ * The history as the model may read it: the spouse is „Person B“ (the handle the owl drafts for) and
+ * every other known name a stand-in. Masking the spouse as „[MANDANT]“ made the owl write that word back.
+ */
+export function historySources(records: readonly AdvisorChatMessageRecord[], knownNames: readonly string[], spouseNames: readonly string[] = []): AdvisorHistorySource[] {
+  return records.map((msg) => ({
+    role: msg.role,
+    content: scrubUserMessagePii(replaceNamesWith(msg.content, spouseNames, PERSON_B_HANDLE), [...knownNames]),
+    meta: msg.meta,
+    status: msg.status,
+  }))
 }
 
 export function contextOf(conversation: AdvisorConversationRecord, records: readonly AdvisorChatMessageRecord[], knownNames: readonly string[]): AdvisorContextDto {
@@ -169,4 +185,15 @@ export function toConversationDto(conversation: AdvisorConversationRecord, answe
     createdAt: conversation.createdAt.toISOString(),
     lastUsedAt: conversation.lastUsedAt.toISOString(),
   }
+}
+
+/**
+ * The estimate leaves § 35a and § 33 out while their boosters are off (#443 slice 5). A draft there
+ * would show 0 € and read as "brings nothing", which is not true: say instead that it is not
+ * computed. Null when the estimate does count the draft.
+ */
+export function effectLeftOutOfEstimate(target: AdvisorPreviewTarget, boostersOn: boolean): AdvisorPreviewEffect | null {
+  if (boostersOn || target.screen !== 'interview') return null
+  if (!target.values.some(([field]) => /^(haushalt|gesundheit)-/.test(field))) return null
+  return { kind: 'not-computable', hint: 'Handwerker, haushaltsnahe Dienste und Krankheitskosten rechnet die Schätzung der App noch nicht ein. Die Angabe zählt trotzdem für die Erklärung.' }
 }

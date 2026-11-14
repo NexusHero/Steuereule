@@ -16,6 +16,7 @@ import {
   type AdvisorMessageMeta,
   type AdvisorNoteChange,
   type AdvisorQuestionRound,
+  type InterviewAreaChange,
   type AdvisorStreamEvent,
   type AdvisorSummaryRequest,
   type AdvisorTopicOutcome,
@@ -105,6 +106,21 @@ function sumUsage(messages: readonly BaseMessage[]): AdvisorTurnUsage | undefine
  */
 export const TASK_TOOL_ROUNDS = 10
 export const TASK_TIMEOUT_MS = 120_000
+/**
+ * Time kept back for the final answer. Once less than this is left of the turn's budget, the model
+ * gets no more tools and has to answer with what it has; without it a turn that kept calling tools
+ * ran into the timeout and the user got an error instead of an answer (found by the eval).
+ */
+export const ANSWER_RESERVE_MS = 20_000
+
+/** Said to the model when it ended a round after tools without a word. */
+export const ANSWER_NUDGE = 'Antworte jetzt dem Nutzer in Worten auf seine Frage, mit dem, was die Werkzeuge ergeben haben (Regel mit Norm, Betrag oder Satz, nächster Schritt). Keine weiteren Werkzeuge.'
+
+/** A model turn that says nothing and asks for no tool. */
+function isEmptyEnding(message: BaseMessage): boolean {
+  const toolCalls = 'tool_calls' in message ? (message as AIMessage).tool_calls : undefined
+  return (toolCalls?.length ?? 0) === 0 && extractMessageText(message.content).trim().length === 0
+}
 
 @Injectable()
 export class LangGraphAdvisorEngine implements AdvisorEnginePort {
@@ -125,6 +141,9 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
     request: AdvisorTurnRequest,
     maxToolRounds: number,
     canForceTool: boolean,
+    /** From this moment (epoch ms) on, the model answers without tools. */
+    answerBy: number = Number.POSITIVE_INFINITY,
+    now: () => number = Date.now,
   ) {
     const tools = buildToolSchemas()
     const bind = typeof model.bindTools === 'function' ? model.bindTools.bind(model) : null
@@ -144,7 +163,9 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
 
       // After the last tool round the model has to answer in words: with tools still on offer it
       // may ask for yet another one, and the turn would end without any text.
-      const roundModel = state.toolRounds === 0 ? planFirstModel : state.toolRounds >= maxToolRounds ? answerOnlyModel : boundModel
+      // The same when the time is nearly up: an answer from what is there beats an error.
+      const mustAnswer = state.toolRounds >= maxToolRounds || (state.toolRounds > 0 && now() >= answerBy)
+      const roundModel = state.toolRounds === 0 ? planFirstModel : mustAnswer ? answerOnlyModel : boundModel
       const streamOrValue = await roundModel.stream(state.messages, config)
       for await (const chunk of streamOrValue) {
         if (chunk instanceof AIMessageChunk) {
@@ -166,10 +187,27 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
         }
       }
 
-      const finalMsg: BaseMessage =
+      let finalMsg: BaseMessage =
         aggregated ??
         lastFallbackMsg ??
         new AIMessage('Ich habe deine Angaben geprüft, konnte aber keine Antwort erzeugen.')
+
+      // Found by the eval: Gemini sometimes ends a round with neither text nor a tool
+      // call, and the user got a stock sentence ("Ich habe deine Steuerakte geprüft.") instead of
+      // an answer. Ask once more, without tools, for the answer in words.
+      // Also in the first round: a model that says nothing at all is no better than one that went silent after tools.
+      if (isEmptyEnding(finalMsg)) {
+        const nudge = new HumanMessage(ANSWER_NUDGE)
+        let retried = null as BaseMessage | null
+        for await (const chunk of await answerOnlyModel.stream([...state.messages, nudge], config)) {
+          const text = extractMessageText((chunk as BaseMessage).content)
+          if (text.length > 0) config?.writer?.({ event: 'token', data: { text } } satisfies AdvisorStreamEvent)
+          // A streaming model sends chunks, one that cannot stream sends the whole message once.
+          const piece = chunk as BaseMessage
+          retried = piece instanceof AIMessageChunk && retried instanceof AIMessageChunk ? concat(retried, piece) : piece
+        }
+        if (retried && extractMessageText(retried.content).trim().length > 0) finalMsg = retried
+      }
 
       return { messages: [finalMsg] }
     }
@@ -317,6 +355,8 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
     canFailOver: boolean,
     /** The guard called the question a grey zone: only its tax side is answered. */
     grayZone = false,
+    /** How often a turn that came back completely empty is asked again (ADR-0084). */
+    emptyRetries = 1,
   ): AsyncIterable<AdvisorStreamEvent> {
     // Anthropic rejects a forced tool call while extended thinking is on; the plan is then asked for in words.
     const canForceTool = !(slotConfig.provider === 'anthropic' && slotConfig.reasoning === 'summary')
@@ -333,6 +373,8 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
       request.situation,
       request.opening,
       grayZone,
+      request.interview,
+      request.household,
     )
     const historyMessages: BaseMessage[] = (request.history ?? []).map((entry) =>
       entry.role === 'user' ? new HumanMessage(entry.content) : new AIMessage(entry.content),
@@ -348,6 +390,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
     let pendingActions: AdvisorActionProposal[] = []
     let rejectedDrafts: RejectedDraft[] = []
     let noteChanges: AdvisorNoteChange[] = []
+    let interviewChanges: InterviewAreaChange[] = []
     let pendingTwoPaths: AdvisorTwoPathsProposal | null = null
     let choices: string[] = []
     let questionRound: AdvisorQuestionRound | null = null
@@ -355,14 +398,19 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
     let sources: OwlSourceId[] = []
 
     // A task works through the whole case: it needs more rounds and more time than one question.
-    const maxToolRounds = request.task ? Math.max(limits.maxToolRounds, TASK_TOOL_ROUNDS) : limits.maxToolRounds
-    const timeout = AbortSignal.timeout(request.task ? Math.max(limits.turnTimeoutMs, TASK_TIMEOUT_MS) : limits.turnTimeoutMs)
+    // The interview also does several things per answer (drafts, ticking areas off, the next
+    // round): with the budget of one question it ran out of rounds before the next round (eval).
+    const bigTurn = request.task !== undefined || request.skill === 'berater-interview'
+    const maxToolRounds = bigTurn ? Math.max(limits.maxToolRounds, TASK_TOOL_ROUNDS) : limits.maxToolRounds
+    const budgetMs = bigTurn ? Math.max(limits.turnTimeoutMs, TASK_TIMEOUT_MS) : limits.turnTimeoutMs
+    const timeout = AbortSignal.timeout(budgetMs)
+    const answerBy = Date.now() + Math.max(budgetMs - ANSWER_RESERVE_MS, budgetMs / 2)
     const signal = request.signal ? AbortSignal.any([request.signal, timeout]) : timeout
     const abortReason = (): 'client' | 'timeout' | null =>
       request.signal?.aborted ? 'client' : timeout.aborted ? 'timeout' : null
 
     try {
-      const graph = this.buildCompiledGraph(chatModel, request, maxToolRounds, canForceTool)
+      const graph = this.buildCompiledGraph(chatModel, request, maxToolRounds, canForceTool, answerBy)
       const stream = await graph.stream(
         { messages: initialMessages },
         { streamMode: ['custom', 'updates'], signal },
@@ -415,6 +463,9 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
             }
             if (Array.isArray(nodeUpdate.noteChanges)) {
               noteChanges = nodeUpdate.noteChanges
+            }
+            if (Array.isArray(nodeUpdate.interviewChanges)) {
+              interviewChanges = nodeUpdate.interviewChanges
             }
             if (Array.isArray(nodeUpdate.sources)) {
               sources = [...new Set([...sources, ...nodeUpdate.sources])]
@@ -470,6 +521,28 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
     const lastAiText = lastAiMessage ? extractMessageText(lastAiMessage.content) : ''
     let replyText = (streamedText || lastAiText).trim()
 
+    // Found in the real case: a turn came back with nothing at all, not even after the nudge, and the stock
+    // sentence below made it look answered. Ask once more; if it stays silent, say so (ADR-0084).
+    const nothingAtAll =
+      replyText.length === 0 &&
+      streamedTokenCount === 0 &&
+      pendingActions.length === 0 &&
+      pendingTwoPaths === null &&
+      choices.length === 0 &&
+      questionRound === null &&
+      noteChanges.length === 0 &&
+      interviewChanges.length === 0
+    if (nothingAtAll) {
+      this.logger.warn(`advisor turn came back empty (${slotConfig.provider}/${slotConfig.model}), ${emptyRetries > 0 ? 'asking again' : 'giving up'}`)
+      if (emptyRetries > 0) {
+        yield { event: 'status', data: { text: 'Die Eule fragt noch einmal nach …' } }
+        yield* this.runModelTurn(request, slotConfig, chatModel, limits, canFailOver, grayZone, emptyRetries - 1)
+        return
+      }
+      yield* this.emitFallbackTurn(request, undefined, { reason: 'unknown', detail: 'empty answer' })
+      return
+    }
+
     if (replyText.length === 0) {
       replyText = pendingActions.length === 1
         ? `Ich habe den Entwurf „${pendingActions[0]!.label}“ als unverbindlichen Vorschlag vorbereitet.`
@@ -507,6 +580,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
       ...(notStaged.length > 0 ? { notStaged } : {}),
       ...(notices.length > 0 ? { notices } : {}),
       ...(noteChanges.length > 0 ? { noteChanges } : {}),
+      ...(interviewChanges.length > 0 ? { interviewChanges } : {}),
     }
 
     if (meta.choices && meta.choices.length > 0) {

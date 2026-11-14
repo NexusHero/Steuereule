@@ -8,6 +8,7 @@ export type CatalogEntryParam =
   | 'alleinerziehend'
   | 'haushalt'
   | 'gesundheit'
+  | 'vorauszahlungen'
 export type PartnerAreaParam = 'lstb' | 'arbeitsweg'
 
 export type CockpitStackParamList = {

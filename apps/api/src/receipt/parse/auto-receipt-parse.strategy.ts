@@ -2,7 +2,22 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import { HumanMessage, SystemMessage } from '@langchain/core/messages'
 import { Inject, Injectable, Optional } from '@nestjs/common'
 import { z } from 'zod'
-import { scrubDocumentTextPii, scrubUserMessagePii, type OwlSourceId, type Screen } from '@steuereule/core'
+import { createHash } from 'node:crypto'
+import {
+  looksLikeCraftsmanInvoice,
+  looksLikeDonationReceipt,
+  parseCraftsmanInvoice,
+  childcarePeriod,
+  parseDonationReceipt,
+  scrubDocumentTextPii,
+  scrubUserMessagePii,
+  uncountedDonations,
+  type AdvisorCountedItem,
+  type CraftsmanInvoiceRead,
+  type DonationItem,
+  type OwlSourceId,
+  type Screen,
+} from '@steuereule/core'
 import { AdvisorService } from '../../advisor/advisor.service.js'
 import { AuditService } from '../../audit/audit.service.js'
 import {
@@ -46,9 +61,9 @@ const STAGE1_EXTRACTION_SCHEMA = z.object({
 const RECEIPT_EXTRACTION_TIMEOUT_MS = 20_000
 
 const SAFE_RECEIPT_TARGETS: Readonly<Record<string, readonly string[]>> = {
-  interview: ['spenden-betrag', 'fortbildung', 'umzug-kosten', 'dhf-miete', 'riester-betrag', 'homeoffice'],
+  interview: ['spenden-betrag', 'fortbildung', 'umzug-kosten', 'dhf-miete', 'riester-betrag', 'homeoffice', 'haushalt-handwerker-betrag'],
   lstb: ['bruttoarbeitslohn', 'lohnsteuer', 'sozialversicherung'],
-  commute: ['oneWayKm', 'homeOfficeDays'],
+  commute: ['oneWayKm', 'homeOfficeDays', 'workEquipmentEur', 'otherWorkExpensesEur'],
   chLohnausweis: ['krankenkasseChf', 'krankentaggeldChf', 'saeule3aChf'],
 }
 
@@ -118,9 +133,12 @@ function extractDeterministically(dto: ParseReceiptDto): ParsedReceiptDataDto {
     }
   } else if (/monitor|laptop|computer|hardware|drucker|schreibtisch|arbeitsmittel|büroausstattung/.test(combined)) {
     vendorCategory = 'arbeitsmittel'
-    suggestedScreen = 'interview'
-    suggestedField = 'fortbildung'
-    suggestedValue = 'Ja'
+    // Work tools are their own Werbungskosten (Kz 320), not training (ADR-0076).
+    if (amountEur !== null && amountEur > 0) {
+      suggestedScreen = 'commute'
+      suggestedField = 'workEquipmentEur'
+      suggestedValue = String(amountEur)
+    }
   } else if (/fortbildung|kurs|seminar|zertifikat|weiterbildung|konferenz/.test(combined)) {
     vendorCategory = 'fortbildung'
     suggestedScreen = 'interview'
@@ -148,6 +166,31 @@ function extractDeterministically(dto: ParseReceiptDto): ParsedReceiptDataDto {
     suggestedValue,
     summary: describeReceipt(vendorCategory, amountEur, receiptDate),
     taxYear: Number.isFinite(derivedYear) ? derivedYear : dto.taxYear,
+  }
+}
+
+/**
+ * The draft for a craftsman's invoice: the labour share counts, with what it was read from, so the user
+ * can check it; the invoice total goes along for Z. 6 of the Anlage Haushaltsnahe Aufwendungen.
+ */
+function craftsmanProposal(invoice: CraftsmanInvoiceRead) {
+  const how =
+    invoice.source === 'stated'
+      ? 'wie auf der Rechnung ausgewiesen'
+      : `aus ${invoice.labourPositions.length === 1 ? 'der Position' : 'den Positionen'} ${invoice.labourPositions.map((p) => `„${p.text.slice(0, 60)}“`).join(', ')}${invoice.vatRate ? ` mit ${Math.round(invoice.vatRate * 100)} % Umsatzsteuer` : ''}`
+  const warnings = [
+    ...(invoice.subsidyHint ? ['Die Rechnung erwähnt eine Förderung (BAFA, KfW …): Für geförderte Maßnahmen gibt es die Ermäßigung nicht.'] : []),
+    'Zählt nur, wenn ihr per Überweisung bezahlt habt, und im Jahr der Zahlung.',
+  ]
+  return {
+    label: 'Handwerkerleistung: Lohnanteil (Summe im Jahr)',
+    reason: `Arbeitskosten ${invoice.labourEur} € ${how}; Material zählt nicht (§ 35a Abs. 3 EStG). ${warnings.join(' ')}`,
+    sourceId: 'estg-35a' as OwlSourceId,
+    companionFields: {
+      'haushalt-gate': 'Ja',
+      ...(invoice.invoiceTotalEur ? { 'haushalt-handwerker-rechnungsbetrag': String(invoice.invoiceTotalEur) } : {}),
+    },
+    summaryText: `Handwerkerrechnung über ${invoice.invoiceTotalEur ?? '?'} € erkannt, davon Arbeitskosten ${invoice.labourEur} € (${how}). Nach [estg-35a] ermäßigt das die Steuer um 20 % der Arbeitskosten. ${warnings.join(' ')} Bitte prüfe den Lohnanteil:`,
   }
 }
 
@@ -181,6 +224,14 @@ function proposalDetailsFor(parsed: ParsedReceiptDataDto): {
           : 'Werbungskostenabzug für berufliche Fortbildung nach § 9 Abs. 1 Nr. 4a EStG.',
       sourceId,
       summaryText: `${summary} Nach [${sourceId}] habe ich den Werbungskosten-Entwurf für deine Akte vorbereitet:`,
+    }
+  }
+  if (parsed.suggestedScreen === 'commute' && parsed.suggestedField === 'workEquipmentEur') {
+    return {
+      label: 'Arbeitsmittel (Summe im Jahr)',
+      reason: 'Beruflich genutzte Arbeitsmittel als Werbungskosten nach § 9 Abs. 1 Satz 3 Nr. 6 EStG aus geprüftem Beleg.',
+      sourceId: 'estg-9-1-6',
+      summaryText: `${summary} Nach [estg-9-1-6] habe ich den Betrag zu deinen Arbeitsmitteln gerechnet:`,
     }
   }
   if (parsed.suggestedScreen === 'interview' && parsed.suggestedField === 'umzug-kosten') {
@@ -236,18 +287,41 @@ export class AutoReceiptParseStrategy implements DocumentParseStrategy {
       const allowedFields = targetCheck.ok ? SAFE_RECEIPT_TARGETS[targetCheck.screen] : undefined
       const cleanField = (raw.suggestedField ?? '').trim()
 
-      if (!targetCheck.ok || !allowedFields || !allowedFields.includes(cleanField)) {
+      if (!targetCheck.ok && 'locked' in targetCheck && targetCheck.locked) {
+        // A target holding personal data (profile, master data, IBAN, workplace): an injection, blocked.
         securityBlocked = true
+      } else if (!targetCheck.ok || !allowedFields || !allowedFields.includes(cleanField)) {
+        // A harmless target the receipt path does not write (another name for a field, a mask it does not
+        // serve): the suggestion is dropped and the category decides below. Blocking the whole receipt
+        // here lost real donations in the real-case test.
       } else {
         suggestedScreen = targetCheck.screen
         suggestedField = cleanField
         suggestedValue = raw.suggestedValue ? raw.suggestedValue.trim().slice(0, 120) : null
+        // Amounts are whole euros in every field a receipt fills; a model's „45678.90“ was refused on apply.
+        if (suggestedValue !== null && /^\d+[.,]\d{1,2}$/.test(suggestedValue)) suggestedValue = String(Math.round(Number(suggestedValue.replace(',', '.'))))
       }
     }
 
     const summaryText = securityBlocked
       ? 'Der Beleg enthielt unzulässige Schreibziele; der Änderungsvorschlag wurde aus Sicherheitsgründen blockiert.'
       : scrubUserMessagePii(raw.summary.trim().slice(0, 400), [...knownNames]) || 'Beleg ausgewertet.'
+
+    // A donation with its amount always has its place, whatever field name the model chose.
+    if (!securityBlocked && suggestedScreen === null && raw.vendorCategory === 'spende' && raw.amountEur !== null && raw.amountEur !== undefined && raw.amountEur > 0) {
+      suggestedScreen = 'interview'
+      suggestedField = 'spenden-betrag'
+      suggestedValue = String(Math.round(raw.amountEur))
+    }
+
+    // A model that files work tools under training gets corrected: they are Kz 320 (ADR-0076).
+    // Only a plain „Ja“ or amount is corrected; anything else stays for the PII firewall to judge.
+    const plainSuggestion = suggestedValue === null || suggestedValue === 'Ja' || /^\d+$/.test(suggestedValue)
+    if (!securityBlocked && plainSuggestion && raw.vendorCategory === 'arbeitsmittel' && raw.amountEur !== null && raw.amountEur !== undefined && raw.amountEur > 0) {
+      suggestedScreen = 'commute'
+      suggestedField = 'workEquipmentEur'
+      suggestedValue = String(Math.round(raw.amountEur))
+    }
 
     const parsed: ParsedReceiptDataDto = {
       vendorCategory: raw.vendorCategory,
@@ -308,6 +382,91 @@ export class AutoReceiptParseStrategy implements DocumentParseStrategy {
       }
     }
 
+    // A craftsman's invoice: the labour share, read from the text by a fixed rule (§ 35a, ADR-0078),
+    // whatever field the model chose. An order confirmation or a quote gets no draft.
+    const invoice: CraftsmanInvoiceRead | null = !securityBlocked && dto.rawText && looksLikeCraftsmanInvoice(dto.rawText) ? parseCraftsmanInvoice(dto.rawText) : null
+    if (invoice) {
+      const labour = invoice.notAnInvoice ? null : invoice.labourEur
+      parsed = {
+        ...parsed,
+        vendorCategory: 'handwerker',
+        amountEur: invoice.invoiceTotalEur ?? parsed.amountEur,
+        suggestedScreen: labour ? 'interview' : null,
+        suggestedField: labour ? 'haushalt-handwerker-betrag' : null,
+        suggestedValue: labour ? String(labour) : null,
+        taxYear: invoice.taxYear ?? parsed.taxYear,
+        summary: invoice.notAnInvoice
+          ? 'Auftragsbestätigung oder Angebot eines Handwerkers: Für die Steuerermäßigung zählt erst die Rechnung, bezahlt per Überweisung. Lade bitte die Rechnung hoch.'
+          : parsed.summary,
+      }
+    }
+
+    // A Zuwendungsbestätigung: the donations it lists that are not counted yet (ADR-0080). A partner's own
+    // receipt repeating a joint booking, or a copy („Doppel“), adds nothing; the year is the year donated.
+    let countedItems: AdvisorCountedItem[] | undefined
+    const donation = !securityBlocked && !invoice && dto.rawText && looksLikeDonationReceipt(dto.rawText) ? parseDonationReceipt(dto.rawText) : null
+    // Without a readable amount the model's reading stands.
+    if (donation && donation.items.length > 0) {
+      const read = donation
+      const year = read.taxYear ?? parsed.taxYear ?? dto.taxYear
+      const hashed = read.items.map(hashDonation)
+      const counted = await this.advisorService.countedReceiptItems(userId, year, { screen: 'interview', field: 'spenden-betrag' })
+      const { fresh, repeated } = uncountedDonations(hashed, counted)
+      const freshEur = Math.round(fresh.reduce((sum, item) => sum + item.amountCents, 0) / 100)
+      const note =
+        repeated.length === 0
+          ? ''
+          : fresh.length === 0
+            ? read.isCopy
+              ? 'Das ist eine Zweitschrift einer Spendenbestätigung, die schon gezählt ist; sie kommt nicht noch einmal dazu.'
+              : 'Die Spenden auf dieser Bestätigung sind schon über eine andere Bestätigung gezählt; sie kommen nicht noch einmal dazu.'
+            : `${repeated.length === 1 ? 'Eine Spende darauf ist' : `${repeated.length} Spenden darauf sind`} schon über eine andere Bestätigung gezählt; dazu kommen nur ${freshEur} €.`
+      parsed = {
+        ...parsed,
+        vendorCategory: 'spende',
+        amountEur: read.totalEur ?? parsed.amountEur,
+        taxYear: year,
+        suggestedScreen: freshEur > 0 ? 'interview' : null,
+        suggestedField: freshEur > 0 ? 'spenden-betrag' : null,
+        suggestedValue: freshEur > 0 ? String(freshEur) : null,
+        summary: note ? `${parsed.summary} ${note}`.trim() : parsed.summary,
+      }
+      countedItems = fresh.map(({ ref, amountKey }) => ({ ref, amountKey }))
+    }
+
+    // A childcare notice: the care period for Anlage Kind Zeile 67, for the year's only child (ADR-0086). The
+    // amount stays with the user: a notice states a monthly contribution, not what was paid.
+    const period = !securityBlocked && !invoice && !donation && dto.rawText ? childcarePeriod(dto.rawText, dto.taxYear) : null
+    const child = period && (dto.stageDraft ?? true) ? await this.advisorService.childForReceipt(userId, dto.taxYear, dto.rawText ?? '') : null
+    const childId = child?.id ?? null
+    if (period && child && child.children > 1 && childId === null) {
+      // Several children and the notice names none of them: no guess, the user assigns it.
+      parsed = {
+        ...parsed,
+        vendorCategory: 'kinderbetreuung',
+        summary: `Betreuungsbescheid gelesen: Betreuung vom ${period.from} bis ${period.to}. Für welches eurer Kinder er gilt, steht nicht eindeutig darin; trag den Zeitraum bitte beim Kind ein (Anlage Kind Zeile 67).`,
+      }
+    }
+    if (period && childId) {
+      const ocr = dto.textSource !== 'pdf_text'
+      const staged = await this.advisorService.stageDocumentDrafts(userId, dto.taxYear, {
+        screen: 'kind',
+        person: 'A',
+        digestUserId: userId,
+        receiptId: dto.receiptId ?? null,
+        engine: { mode: 'deterministic_fallback', provider: 'deterministic' },
+        summaryText: `Betreuungsbescheid gelesen: Betreuung vom ${period.from} bis ${period.to} (Anlage Kind Zeile 67). Den Betrag trag bitte ein, was ihr ${dto.taxYear} tatsächlich gezahlt habt; der Bescheid nennt nur den Monatsbeitrag.`,
+        sourceId: 'estg-10-1-5',
+        fields: [
+          { field: 'childcareFrom', label: 'Kinderbetreuung von', value: period.from, status: ocr ? 'pruefen' : 'ok', reason: ocr ? 'ocr_source' : null, instance: childId },
+          { field: 'childcareTo', label: 'Kinderbetreuung bis', value: period.to, status: 'pruefen', reason: null, instance: childId },
+        ],
+      })
+      checkPiiFree(parsed)
+      await this.auditService.append({ userId, action: 'READ', resource: 'beleg_analyse' })
+      return { mode, securityBlocked, parsed: { ...parsed, vendorCategory: 'kinderbetreuung' }, stagedAction: staged.actions[0] ?? null, assistantMessage: staged.assistantMessage }
+    }
+
     // Security Firewall Bridge between Stage 1 (untrusted doc OCR) and Stage 2 (advisor staging):
     // Throws synchronously if IBAN, 11-digit Steuer-ID, or forbidden personal keys slipped into extracted payload!
     checkPiiFree(parsed)
@@ -336,7 +495,7 @@ export class AutoReceiptParseStrategy implements DocumentParseStrategy {
     }
 
     const targetTaxYear = parsed.taxYear ?? dto.taxYear
-    const proposalMeta = proposalDetailsFor(parsed)
+    const proposalMeta = invoice?.labourEur ? craftsmanProposal(invoice) : proposalDetailsFor(parsed)
     const staged = await this.advisorService.stageReceiptProposal(userId, targetTaxYear, {
       screen: parsed.suggestedScreen,
       field: parsed.suggestedField,
@@ -347,6 +506,7 @@ export class AutoReceiptParseStrategy implements DocumentParseStrategy {
       sourceId: proposalMeta.sourceId,
       summaryText: proposalMeta.summaryText,
       receiptId: dto.receiptId ?? null,
+      ...(countedItems ? { countedItems } : {}),
       engine:
         mode === 'vision_ocr' && visionSlot
           ? { mode: 'langgraph', provider: visionSlot.provider, model: visionSlot.model }
@@ -361,4 +521,10 @@ export class AutoReceiptParseStrategy implements DocumentParseStrategy {
       assistantMessage: staged.assistantMessage,
     }
   }
+}
+
+/** Booking numbers and amount keys are stored only as hashes: enough to recognise them again (ADR-0080). */
+function hashDonation(item: DonationItem): DonationItem {
+  const hash = (value: string) => `0${createHash('sha256').update(`donation:${value}`).digest('hex').slice(0, 24)}`
+  return { ref: item.ref === null ? null : hash(item.ref), amountKey: hash(item.amountKey), amountCents: item.amountCents }
 }

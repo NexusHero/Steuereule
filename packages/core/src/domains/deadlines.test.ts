@@ -8,6 +8,7 @@ import {
   isFestsetzungsverjaehrt,
   deadlineWarning,
   isSupportedDeadlineYear,
+  upcomingTaxDates,
 } from './deadlines'
 
 // Ticket 10.7 (M6) — the Fristen-/Verspätungszuschlag-Warnmodus. The Abgabefrist is the explicit
@@ -93,5 +94,22 @@ describe('the cited § 152 Abs. 2 AO figures — constants the banner renders n�
     expect(LATE_FILING_FEE_MINIMUM_EUR).toBe(25)
     expect(LATE_FILING_FEE_PERCENT_PER_MONTH).toBe(0.25)
     expect(DEADLINE_WARNING_THRESHOLD_DAYS).toBe(60)
+  })
+})
+
+describe('upcoming tax dates', () => {
+  it('names the dates of the next 90 days in order, from the law and practice only', () => {
+    const dates = upcomingTaxDates(2025, '2026-11-13')
+    expect(dates.map((entry) => entry.date)).toEqual(['2026-12-10', '2026-12-15', '2026-12-31'])
+    expect(dates[1]!.label).toContain('Verlustbescheinigung')
+    expect(dates[2]!.label).toContain('noch für 2026')
+  })
+
+  it('includes the filing deadline of the tax year in view when it comes up', () => {
+    expect(upcomingTaxDates(2025, '2026-06-01').map((entry) => entry.date)).toEqual(['2026-06-10', '2026-07-31'])
+  })
+
+  it('leaves out what has passed', () => {
+    expect(upcomingTaxDates(2025, '2026-12-16').map((entry) => entry.date)).toEqual(['2026-12-31', '2027-03-10'])
   })
 })

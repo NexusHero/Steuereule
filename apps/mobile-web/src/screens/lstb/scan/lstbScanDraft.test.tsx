@@ -32,4 +32,15 @@ describe('evaluateStagedDraft — „Werte übernehmen“ stays blocked until th
     )
     expect(result).toMatchObject({ allIntegers: true, hasUnconfirmedYellow: false, hasWiderspruch: false })
   })
+
+  it('lets an unreadable social insurance stay empty and open, without blocking (ADR-0083)', () => {
+    const result = evaluateStagedDraft(
+      draft({ bruttoarbeitslohn: field('900', 'pruefen', true), lohnsteuer: field('300', 'pruefen', true), sozialversicherung: field('', 'pruefen') }),
+    )
+    expect(result).toMatchObject({ readyToApply: true, socialInsuranceOpen: true, hasUnconfirmedYellow: false, hasWiderspruch: false })
+  })
+
+  it('still blocks when the gross wage is missing', () => {
+    expect(evaluateStagedDraft(draft({ bruttoarbeitslohn: field('', 'pruefen'), lohnsteuer: field('300', 'ok'), sozialversicherung: field('', 'pruefen') })).readyToApply).toBe(false)
+  })
 })

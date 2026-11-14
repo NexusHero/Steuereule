@@ -173,6 +173,27 @@ export function splittingTariff(zveA: number, zveB: number, year: number): numbe
   return 2 * incomeTax(half, year)
 }
 
+/**
+ * Income tax under the progression clause (§ 32b EStG): wage replacement benefits (Arbeitslosengeld,
+ * Elterngeld, Krankengeld …) are not taxed, but the rate of tax on the remaining taxable income is
+ * the average rate that taxable income plus those benefits would bear (Abs. 2). The special rate is
+ * used unrounded and the tax rounded down to whole euros like the tariff; how the tax office
+ * rounds the rate is not checked against the law here.
+ */
+export function progressionClauseTax(zvE: number, exemptIncome: number, year: number, splitting = false): number {
+  if (!Number.isFinite(exemptIncome) || exemptIncome < 0) {
+    throw new RangeError('exemptIncome must be a non-negative finite number')
+  }
+  const tariff = (value: number) => (splitting ? splittingTariff(value, 0, year) : incomeTax(value, year))
+  const base = Math.floor(zvE)
+  const extra = Math.floor(exemptIncome)
+  if (extra === 0) return tariff(base)
+  const widened = base + extra
+  if (base <= 0) return 0
+  return Math.floor((base * tariff(widened)) / widened)
+}
+
+
 export function solidaritaetszuschlag(assessmentBasis: number, exemptionLimit: number): number {
   if (!Number.isFinite(assessmentBasis) || !Number.isFinite(exemptionLimit)) {
     throw new RangeError('bemessungsgrundlage and freigrenze must be finite numbers')

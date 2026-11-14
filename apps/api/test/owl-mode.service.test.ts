@@ -74,10 +74,10 @@ describe('EulenModusService', () => {
     const firstCard = res.cards[0]!
     expect(firstCard.amountEur).toBe(1200)
     expect(firstCard.sourceTranslated).toContain('§ 4 Abs. 5 Satz 1 Nr. 6c EStG, Rechtsstand 01.01.2025')
-    expect(res.cards[1]!.appealDeadline).toBe('15.11.2025')
+    expect(res.cards[1]!.appealDeadline).toBe('20.11.2025')
     expect(res.cards[1]!.amountEur).toBe(396)
 
-    expect((await service.getCards(userId, year, '2025-11-16')).cards.map((k) => k.category)).not.toContain(
+    expect((await service.getCards(userId, year, '2025-11-21')).cards.map((k) => k.category)).not.toContain(
       'archiv_einspruch',
     )
 

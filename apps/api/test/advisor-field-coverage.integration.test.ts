@@ -17,7 +17,8 @@ import { RENTAL_REPOSITORY, type RentalRepository } from '../src/rental/rental.r
 const YEAR = 2025
 
 /** Values a model would plausibly send; the first one a field accepts counts. */
-const GENERIC_CANDIDATES = ['1200', '12', '2025-06-30', 'true', 'pkw', '1,2,3,4,5', 'BY', 'GesetzlicheRente', '1', 'Inland', '1995', '2019']
+// A German date (TT.MM.JJJJ) for the fields that take one, e.g. the period of a way to work (ADR-0079).
+const GENERIC_CANDIDATES = ['1200', '12', '2025-06-30', '30.06.2025', 'true', 'pkw', '1,2,3,4,5', 'BY', 'GesetzlicheRente', '1', 'Inland', '1995', '2019']
 
 function candidatesFor(screen: Screen, field: string): string[] {
   if (screen === 'interview') {

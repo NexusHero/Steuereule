@@ -58,6 +58,8 @@ function emptyCh(): ChSalaryCertificateResponseDto {
       krankentaggeldChf: null,
       pkArbeitnehmerChf: null,
       pkArbeitgeberChf: null,
+      pkArbeitgeberGesamtChf: null,
+      steuerfreiesKrankentaggeldChf: null,
       krankentaggeldArbeitgeberProzent: null,
       krankentaggeldArbeitgeberChf: null,
       nbuvArbeitgeberProzent: null,
@@ -98,7 +100,7 @@ function completeCommute(): CommuteResponseDto {
 }
 
 describe('cockpit tiles (§ 2.2–2.4 & Slice 5 § 5.2)', () => {
-  it('defines all 13 tiles with unique IDs, title keys, and persona rules', () => {
+  it('defines all 14 tiles with unique IDs, title keys, and persona rules', () => {
     const ids = TILES.map((t) => t.id)
     expect(ids).toEqual([
       'lstb',
@@ -114,6 +116,7 @@ describe('cockpit tiles (§ 2.2–2.4 & Slice 5 § 5.2)', () => {
       'alleinerziehend',
       'haushalt',
       'gesundheit',
+      'vorauszahlungen',
     ])
     for (const tile of TILES) {
       expect(tile.titleKey).toBe(`cockpit.kachel.${tile.id}.titel`)
@@ -125,7 +128,7 @@ describe('cockpit tiles (§ 2.2–2.4 & Slice 5 § 5.2)', () => {
     it('places angestellt tiles in main and all remaining non-flagged tiles in more (booster flag false)', () => {
       const part = partitionTiles(baseFacts({ boosterEnabled: false }))
       expect(part.main.map((t) => t.id)).toEqual(['lstb', 'lebenslagen', 'einkuenfte', 'sonderausgaben', 'arbeitsweg'])
-      expect(part.more.map((t) => t.id)).toEqual(['ch', 'rente', 'kapital', 'vermietung', 'kinder', 'alleinerziehend'])
+      expect(part.more.map((t) => t.id)).toEqual(['ch', 'rente', 'kapital', 'vermietung', 'kinder', 'alleinerziehend', 'vorauszahlungen'])
       expect(visibleTiles(baseFacts({ boosterEnabled: false })).map((t) => t.id)).toEqual(part.main.map((t) => t.id))
     })
 
@@ -151,7 +154,7 @@ describe('cockpit tiles (§ 2.2–2.4 & Slice 5 § 5.2)', () => {
       const part = partitionTiles(
         baseFacts({ path: 'ch', answers: { job: 'Angestellt', ausland: 'Ja, in die Schweiz', kinder: 'Nein' }, boosterEnabled: false }),
       )
-      expect(part.main.map((t) => t.id)).toEqual(['ch', 'lebenslagen', 'einkuenfte', 'sonderausgaben', 'arbeitsweg'])
+      expect(part.main.map((t) => t.id)).toEqual(['ch', 'lebenslagen', 'einkuenfte', 'sonderausgaben', 'arbeitsweg', 'vorauszahlungen'])
       expect(part.more.map((t) => t.id)).toContain('lstb')
     })
 

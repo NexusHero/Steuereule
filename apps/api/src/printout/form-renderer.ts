@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises'
 import { PDFDocument, rgb, StandardFonts, TextAlignment, type PDFFont, type PDFForm, type PDFPage } from 'pdf-lib'
+import felder2024 from './felder-2024.json' with { type: 'json' }
 import felder2025 from './felder-2025.json' with { type: 'json' }
 
 const templateBytesCache = new Map<string, Promise<Uint8Array>>()
@@ -50,11 +51,28 @@ const ORDER = [
   'anlage-v',
   'anlage-kind',
   'anlage-sonderausgaben',
+  'anlage-aussergewoehnliche-belastungen',
+  'anlage-haushaltsnahe-aufwendungen',
   'anlage-av',
   'anlage-vorsorgeaufwand',
 ]
 
-export const FIELD_SETS: Readonly<Record<number, FieldSet>> = { 2025: felder2025 as FieldSet }
+export const FIELD_SETS: Readonly<Record<number, FieldSet>> = { 2024: felder2024 as FieldSet, 2025: felder2025 as FieldSet }
+
+/**
+ * Fields the app fills that a year's Vordruck does not have (ADR-0085): their values are left out for that
+ * year instead of failing as unknown ids. Every other unknown id still fails, so a typo cannot hide.
+ */
+export const NOT_ON_FORM: Readonly<Record<number, readonly string[]>> = {
+  2024: ['anlNGre.beruf'],
+}
+
+/** The values a year's forms can take: those of fields its Vordruck does not have are dropped. */
+export function forYear<T extends Record<string, unknown>>(year: number, values: T): T {
+  const absent = NOT_ON_FORM[year]
+  if (!absent || absent.length === 0) return values
+  return Object.fromEntries(Object.entries(values).filter(([id]) => !absent.includes(id))) as T
+}
 
 /** Writes field values onto the checked-in Vordruck templates. */
 export class OverflowError extends Error {

@@ -32,6 +32,33 @@ const TEMPLATES: Readonly<Record<string, (payload: Payload) => string>> = {
     const tax = num(p.incomeTaxEur)
     return tax !== null ? amount(tax) : 'erledigt'
   },
+  compare_filing_types: (p) => {
+    const saving = num(p.savingEur)
+    if (p.outcome === 'joint' && saving !== null) return `zusammen spart ${amount(saving)}`
+    if (p.outcome === 'separate' && saving !== null) return `einzeln spart ${amount(saving)}`
+    return p.outcome === 'too_close' ? 'zu knapp für eine Aussage' : 'offen: Lohnersatz unbekannt'
+  },
+  check_capital_taxation: (p) => {
+    const saving = num(p.savingEur)
+    if (p.outcome === 'personal' && saving !== null) return `persönlicher Satz spart ${amount(saving)}`
+    if (p.outcome === 'flat_rate') return 'Abgeltungsteuer bleibt günstiger'
+    return p.outcome === 'too_close' ? 'zu knapp für eine Aussage' : 'offen: Lohnersatz unbekannt'
+  },
+  check_holding_period: (p) => (p.taxable === true ? 'innerhalb der Frist' : 'steuerfrei'),
+  check_rental_repairs: (p) => {
+    const room = num(p.roomLeftEur)
+    return p.exceeds === true ? 'Grenze überschritten' : room !== null ? `noch ${amount(room)} Platz` : 'unter der Grenze'
+  },
+  compute_gift_tax: (p) => {
+    const tax = num(p.taxEur)
+    return tax === null ? 'erledigt' : tax === 0 ? 'steuerfrei' : `${amount(tax)} Steuer`
+  },
+  check_small_business: (p) => (p.eligible === true ? 'Kleinunternehmer möglich' : 'Grenze überschritten'),
+  estimate_trade_tax: (p) => {
+    const tax = num(p.tradeTaxEur)
+    return tax === null ? 'erledigt' : `${amount(tax)} Gewerbesteuer`
+  },
+  read_law_text: (p) => (typeof p.norm === 'string' ? p.norm : 'gelesen'),
   lookup_legal_source: (p) => {
     const source = (p.source ?? {}) as Payload
     return typeof source.paragraph === 'string' ? source.paragraph : 'erledigt'
@@ -40,6 +67,7 @@ const TEMPLATES: Readonly<Record<string, (payload: Payload) => string>> = {
   remember_note: (p) => (p.alreadyNoted === true ? 'war schon notiert' : 'gemerkt'),
   replace_note: () => 'aktualisiert',
   forget_note: () => 'entfernt',
+  mark_interview_area: (p) => (p.status === 'not_applicable' ? 'trifft nicht zu' : p.status === 'open' ? 'wieder offen' : 'erledigt'),
 }
 
 /** The result line of one tool call; a refusal stays "nicht möglich", its reason goes to the model only. */

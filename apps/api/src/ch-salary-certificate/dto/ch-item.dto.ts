@@ -75,7 +75,7 @@ export class PutNGreDto {
   @Min(0)
   familienzulagenChf?: number | null
 
-  @ApiPropertyOptional({ type: Number, nullable: true, description: 'Whole CHF — employee Krankentaggeld contributions (Zeile 80).' })
+  @ApiPropertyOptional({ type: Number, nullable: true, description: 'Whole CHF — employee Krankentaggeld premium (Zeile 80), not the Taggeld paid out.' })
   @IsOptional()
   @IsInt()
   @Min(0)
@@ -92,6 +92,18 @@ export class PutNGreDto {
   @IsInt()
   @Min(0)
   pkArbeitgeberChf?: number | null
+
+  @ApiPropertyOptional({ type: Number, nullable: true, description: 'Whole CHF — all employer pension contributions; the part above the Obligatorium is taxable wage (Zeile 20).' })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  pkArbeitgeberGesamtChf?: number | null
+
+  @ApiPropertyOptional({ type: Number, nullable: true, description: 'Whole CHF — tax-free Krankentaggeld paid out and contained in Ziffer 8 (Zeilen 9/76).' })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  steuerfreiesKrankentaggeldChf?: number | null
 
   @ApiPropertyOptional({ type: Number, nullable: true, description: 'Employer share of the Krankentaggeld premium in percent, 0–100 (Zeilen 18, 95, 96).' })
   @IsOptional()
@@ -119,7 +131,7 @@ export class PutNGreDto {
   @Min(0)
   nbuvArbeitgeberChf?: number | null
 
-  @ApiPropertyOptional({ type: Boolean, nullable: true, description: 'Any of N-Gre Zeilen 7, 9–14, 16, 17 or 20–22 applies.' })
+  @ApiPropertyOptional({ type: Boolean, nullable: true, description: 'Any of N-Gre Zeilen 7, 10–14, 16, 17, 21 or 22 applies.' })
   @IsOptional()
   @IsBoolean()
   specialCases?: boolean | null
@@ -147,6 +159,12 @@ export class NGreDetailsDto {
 
   @ApiProperty({ type: Number, nullable: true })
   pkArbeitgeberChf!: number | null
+
+  @ApiProperty({ type: Number, nullable: true })
+  pkArbeitgeberGesamtChf!: number | null
+
+  @ApiProperty({ type: Number, nullable: true })
+  steuerfreiesKrankentaggeldChf!: number | null
 
   @ApiProperty({ type: Number, nullable: true })
   krankentaggeldArbeitgeberProzent!: number | null

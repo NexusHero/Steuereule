@@ -38,6 +38,7 @@ import {
   useOwlModeControllerSetSetting,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
+import { usePartnerFirstName } from './usePartnerFirstName'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { ErrorState, LoadingState } from '../shared/ScreenState'
 import { sendOptionsToDto } from './AdvisorChatPanel'
@@ -71,6 +72,10 @@ export function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CU
   const conversationId = bridge ? bridge.conversationId : localConversationId
   const selectConversation = (id: string | null) => (bridge ? bridge.setConversationId(id) : setLocalConversationId(id))
   const sessionQuery = useAdvisorControllerGetSession(taxYear, conversationId ? { conversationId } : undefined, { query: { retry: false } })
+  const partnerName = usePartnerFirstName(
+    taxYear,
+    sessionQuery.data?.status === 200 ? (sessionQuery.data.data.messages as unknown as readonly AdvisorChatMessageView[]) : undefined,
+  )
   // The server decided which conversation is open: the bridge files this conversation's answer under its id.
   const adoptConversationId = bridge?.adoptConversationId
   const openConversationId = sessionQuery.data?.status === 200 ? sessionQuery.data.data.conversationId : undefined
@@ -179,6 +184,7 @@ export function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CU
       taxYear={taxYear}
       initialCards={cards}
       initialMessages={serverMessages}
+      partnerName={partnerName}
       optInEnabled={settingQuery.data.data.enabled}
       onToggleOptIn={async (enabled) => {
         await setSetting.mutateAsync({ data: { enabled } })

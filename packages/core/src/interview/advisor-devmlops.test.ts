@@ -284,7 +284,9 @@ describe('DevMLOps Pillar 1 — Golden Dataset Evaluation (Grounding, Calculatio
     expect(turn.meta.action).toBeUndefined()
     expect(turn.meta.twoPaths).toBeUndefined()
     expect(turn.replyText).toContain('verbindliche Rechtsauskunft')
-    expect(turn.replyText).toMatch(/Steuerberater/)
+    // It refuses, but sends nobody away: it offers to explain and prepare instead (ADR-0069 §38).
+    expect(turn.replyText).not.toMatch(/wende dich/)
+    expect(turn.replyText).toMatch(/erkläre dir aber die Rechtslage/)
   })
 
   const OTHER_TAX_TOPICS = ['Kannst du meine Gewerbesteuer für meine GmbH berechnen?', 'Wie buche ich meine Bilanzierung und Umsatzsteuervoranmeldung?']

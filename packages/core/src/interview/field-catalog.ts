@@ -37,6 +37,8 @@ export interface FieldSpec {
   readonly perInstance: boolean
   /** False for everything that identifies a person: the owl never proposes it. */
   readonly aiWritable: boolean
+  /** What belongs in the field, for the model, where the name alone is ambiguous (German, goes into the prompt). */
+  readonly hint?: string
 }
 
 const MAX_AMOUNT = 999_999_999
@@ -47,6 +49,7 @@ export const AI_FORBIDDEN_SCREENS: ReadonlySet<Screen> = new Set<Screen>(['profi
 /** Field names that identify a person or a third party, on whatever screen they appear. */
 export const AI_FORBIDDEN_FIELDS: ReadonlySet<string> = new Set([
   'workplace',
+  'secondWorkplace',
   'steuerId',
   'taxId',
   'idnr',
@@ -139,6 +142,19 @@ const DECLARED: Readonly<Record<Screen, { readonly perInstance: boolean; readonl
       transport: oneOf(['pkw', 'oepnv', 'andere']),
       publicHolidays: integer(0, 30),
       publicHolidayRegion: text(8),
+      professionalBodiesEur: amount,
+      professionalBodiesNote: text(100),
+      workEquipmentEur: amount,
+      workEquipmentNote: text(100),
+      accountFeesEur: amount,
+      otherWorkExpensesEur: amount,
+      otherWorkExpensesNote: text(100),
+      periodFrom: text(10),
+      periodTo: text(10),
+      secondOneWayKm: integer(0, 999),
+      secondTransport: oneOf(['pkw', 'oepnv', 'andere']),
+      secondFrom: text(10),
+      secondTo: text(10),
     },
   },
   chLohnausweis: {
@@ -155,6 +171,8 @@ const DECLARED: Readonly<Record<Screen, { readonly perInstance: boolean; readonl
       krankentaggeldChf: amount,
       pkArbeitnehmerChf: amount,
       pkArbeitgeberChf: amount,
+      pkArbeitgeberGesamtChf: amount,
+      steuerfreiesKrankentaggeldChf: amount,
       krankentaggeldArbeitgeberProzent: percent,
       krankentaggeldArbeitgeberChf: amount,
       nbuvArbeitgeberProzent: percent,
@@ -201,6 +219,10 @@ const DECLARED: Readonly<Record<Screen, { readonly perInstance: boolean; readonl
       healthBasicEur: { kind: 'amount', max: 9_999_999 },
       careEur: { kind: 'amount', max: 9_999_999 },
       swissFamilyAllowanceEur: { kind: 'amount', max: 9_999_999 },
+      childcareEur: { kind: 'amount', max: 9_999_999 },
+      childcareProvider: text(45),
+      childcareFrom: text(10),
+      childcareTo: text(10),
     },
   },
   assessment: {
@@ -212,14 +234,55 @@ const DECLARED: Readonly<Record<Screen, { readonly perInstance: boolean; readonl
   },
 }
 
+/**
+ * Fields whose name does not say what belongs in them. The Swiss pension fields are the reason this
+ * exists: a model that read "pkArbeitnehmerChf" wrote the whole contribution although the user said
+ * which part was obligatorisch (ADR-0072). Totals and the obligatorisch part go in separate fields,
+ * so a sentence like "7.186 CHF, davon obligatorisch 2.892 CHF" needs no arithmetic.
+ */
+const HINTS: Readonly<Partial<Record<Screen, Readonly<Record<string, string>>>>> = {
+  kind: {
+    childcareEur: 'Kinderbetreuungskosten, die die Eltern gezahlt haben (Kita, Tagesmutter, Hort), Euro im Jahr, ohne Verpflegung; Anlage Kind Kz 51',
+    childcareProvider: 'Art der Betreuung und Anbieter, kurz (höchstens 45 Zeichen, sonst passt es nicht in Zeile 67), z. B. „Kita, Gemeinde Musterdorf“',
+    childcareFrom: 'Beginn der Betreuung im Jahr, TT.MM.JJJJ',
+    childcareTo: 'Ende der Betreuung im Jahr, TT.MM.JJJJ',
+  },
+  commute: {
+    professionalBodiesEur: 'Werbungskosten: Beiträge zu Berufsverbänden, z. B. Gewerkschaft (Anlage N Kz 310), Euro im Jahr',
+    workEquipmentEur: 'Werbungskosten: Arbeitsmittel und typische Berufskleidung (Kz 320), Euro im Jahr; was es war, in workEquipmentNote',
+    accountFeesEur: 'Werbungskosten: Kontoführungsgebühren (Kz 380); ohne Nachweis akzeptiert das Finanzamt 16 € im Jahr',
+    otherWorkExpensesEur: 'Werbungskosten: Sonstiges wie Bewerbungen (Kz 380), Euro im Jahr; was es war, in otherWorkExpensesNote',
+    periodFrom: 'Arbeitsweg gilt erst ab diesem Tag, TT.MM.JJJJ; leer = ab Jahresbeginn',
+    periodTo: 'Arbeitsweg gilt nur bis zu diesem Tag (z. B. Arbeitgeberwechsel), TT.MM.JJJJ; leer = bis Jahresende',
+    secondOneWayKm: 'zweiter Arbeitsweg nach einem Arbeitgeberwechsel im Jahr: einfache Entfernung in km',
+    secondTransport: 'Verkehrsmittel des zweiten Arbeitswegs',
+    secondFrom: 'zweiter Arbeitsweg ab, TT.MM.JJJJ (meist der Tag nach periodTo)',
+    secondTo: 'zweiter Arbeitsweg bis, TT.MM.JJJJ; leer = bis Jahresende',
+  },
+  chLohnausweis: {
+    'berufliche-vorsorge': 'Lohnausweis Ziffer 10: alle Arbeitnehmerbeiträge an die Pensionskasse, obligatorisch und überobligatorisch zusammen',
+    pkArbeitnehmerChf: 'nur der obligatorische BVG-Teil (Säule 2a) der Arbeitnehmerbeiträge, N-Gre Zeile 84',
+    pkArbeitgeberChf: 'nur der obligatorische BVG-Teil (Säule 2a) der Arbeitgeberbeiträge, N-Gre Zeile 87',
+    pkArbeitgeberGesamtChf: 'alle Arbeitgeberbeiträge an die Pensionskasse, obligatorisch und überobligatorisch zusammen; den überobligatorischen Teil (Zeile 20) rechnet die App',
+    krankentaggeldChf: 'Prämie des Arbeitnehmers zur Krankentaggeldversicherung, N-Gre Zeile 80, nicht das ausgezahlte Taggeld',
+    steuerfreiesKrankentaggeldChf: 'ausgezahltes steuerfreies Krankentaggeld, im Bruttolohn Ziffer 8 enthalten, N-Gre Zeile 9',
+    nbuvArbeitgeberChf: 'Arbeitgeberanteil der NBUV-Prämie in CHF, nur nötig, wenn der Arbeitgeber 100 % zahlt',
+    krankentaggeldArbeitgeberChf: 'Arbeitgeberanteil der Krankentaggeld-Prämie in CHF, nur nötig, wenn der Arbeitgeber 100 % zahlt',
+  },
+}
+
 export const FIELD_CATALOG: readonly FieldSpec[] = SCREENS.flatMap((screen) =>
-  Object.entries(DECLARED[screen].fields).map(([field, value]) => ({
-    screen,
-    field,
-    value,
-    perInstance: DECLARED[screen].perInstance,
-    aiWritable: !AI_FORBIDDEN_SCREENS.has(screen) && !AI_FORBIDDEN_FIELDS.has(field),
-  })),
+  Object.entries(DECLARED[screen].fields).map(([field, value]) => {
+    const hint = HINTS[screen]?.[field]
+    return {
+      screen,
+      field,
+      value,
+      perInstance: DECLARED[screen].perInstance,
+      aiWritable: !AI_FORBIDDEN_SCREENS.has(screen) && !AI_FORBIDDEN_FIELDS.has(field),
+      ...(hint !== undefined ? { hint } : {}),
+    }
+  }),
 )
 
 const BY_KEY: ReadonlyMap<string, FieldSpec> = new Map(FIELD_CATALOG.map((spec) => [`${spec.screen}.${spec.field}`, spec]))
@@ -342,8 +405,13 @@ export function validateFieldValue(screen: string, field: string, raw: string): 
   return checkKind(spec.value, field, trimmed)
 }
 
-/** One line for the model: the field name and, where the name does not say it, what a value looks like. */
+/** One line for the model: the field name, what a value looks like and, where the name is ambiguous, what belongs in it. */
 export function describeFieldForPrompt(spec: FieldSpec): string {
+  const shape = describeShape(spec)
+  return spec.hint === undefined ? shape : `${shape.slice(0, -1)}; ${spec.hint})`
+}
+
+function describeShape(spec: FieldSpec): string {
   const { value } = spec
   switch (value.kind) {
     case 'amount':

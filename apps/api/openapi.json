@@ -643,6 +643,7 @@
                 "alleinerziehend",
                 "haushalt",
                 "gesundheit",
+                "vorauszahlungen",
                 "berufsprofil"
               ],
               "type": "string"
@@ -3066,6 +3067,248 @@
         ]
       }
     },
+    "/v1/steuerjahre/{jahr}/ausdruck/pruefung": {
+      "get": {
+        "operationId": "PrintoutController_check",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Everything that would stop the printout — checked before anyone pays.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrintoutCheckDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "404": {
+            "description": "No measured templates exist for this tax year."
+          }
+        },
+        "tags": [
+          "ausdruck"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/ausdruck/checkout": {
+      "post": {
+        "operationId": "PrintoutController_checkout",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The hosted Stripe Checkout page to redirect to.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckoutResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "422": {
+            "description": "`fehlend`: the printout could not be delivered yet, so payment is not offered."
+          },
+          "503": {
+            "description": "Payment is not configured on this environment."
+          }
+        },
+        "tags": [
+          "ausdruck"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/ausdruck/async": {
+      "post": {
+        "operationId": "PrintoutController_exportAsync",
+        "parameters": [
+          {
+            "name": "bearbeitbar",
+            "required": false,
+            "in": "query",
+            "description": "true → editable PDF",
+            "schema": {
+              "enum": [
+                "true"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Asynchronous PDF rendering job enqueued (ADR-0056).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrintoutJobDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "ausdruck"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/ausdruck/jobs/{jobId}": {
+      "get": {
+        "operationId": "PrintoutController_getJob",
+        "parameters": [
+          {
+            "name": "jobId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": "job_4bf92f3577b34da6a3ce929d0e0e4736",
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Status of the asynchronous PDF export job.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrintoutJobDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "ausdruck"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/ausdruck": {
+      "get": {
+        "operationId": "PrintoutController_printout",
+        "parameters": [
+          {
+            "name": "bearbeitbar",
+            "required": false,
+            "in": "query",
+            "description": "true → the values as named, editable AcroForm fields (for a correction before printing).",
+            "schema": {
+              "enum": [
+                "true"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The filled Vordrucke (ESt 1 A + used Anlagen) as one PDF to print, sign and hand in."
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "402": {
+            "description": "The Ausdruck for this tax year is not unlocked (ADR-0050)."
+          },
+          "404": {
+            "description": "No measured templates exist for this tax year."
+          },
+          "422": {
+            "description": "`fehlend`: what the Hauptvordruck still needs; `zuLang`: a value too long for its field."
+          }
+        },
+        "tags": [
+          "ausdruck"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/freischaltung": {
+      "get": {
+        "operationId": "UnlockController_status",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnlockStatusDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — paying requires a signed-in account."
+          }
+        },
+        "tags": [
+          "freischaltung"
+        ]
+      }
+    },
     "/v1/eulen-modus/einstellung": {
       "get": {
         "operationId": "OwlModeController_getSetting",
@@ -4110,248 +4353,6 @@
         },
         "tags": [
           "uebernahme"
-        ]
-      }
-    },
-    "/v1/steuerjahre/{jahr}/freischaltung": {
-      "get": {
-        "operationId": "UnlockController_status",
-        "parameters": [
-          {
-            "name": "jahr",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "example": 2025,
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UnlockStatusDto"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Guest session — paying requires a signed-in account."
-          }
-        },
-        "tags": [
-          "freischaltung"
-        ]
-      }
-    },
-    "/v1/steuerjahre/{jahr}/ausdruck/pruefung": {
-      "get": {
-        "operationId": "PrintoutController_check",
-        "parameters": [
-          {
-            "name": "jahr",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "example": 2025,
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Everything that would stop the printout — checked before anyone pays.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PrintoutCheckDto"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Guest session — this endpoint requires a signed-in account."
-          },
-          "404": {
-            "description": "No measured templates exist for this tax year."
-          }
-        },
-        "tags": [
-          "ausdruck"
-        ]
-      }
-    },
-    "/v1/steuerjahre/{jahr}/ausdruck/checkout": {
-      "post": {
-        "operationId": "PrintoutController_checkout",
-        "parameters": [
-          {
-            "name": "jahr",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "example": 2025,
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "The hosted Stripe Checkout page to redirect to.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CheckoutResponseDto"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Guest session — this endpoint requires a signed-in account."
-          },
-          "422": {
-            "description": "`fehlend`: the printout could not be delivered yet, so payment is not offered."
-          },
-          "503": {
-            "description": "Payment is not configured on this environment."
-          }
-        },
-        "tags": [
-          "ausdruck"
-        ]
-      }
-    },
-    "/v1/steuerjahre/{jahr}/ausdruck/async": {
-      "post": {
-        "operationId": "PrintoutController_exportAsync",
-        "parameters": [
-          {
-            "name": "bearbeitbar",
-            "required": false,
-            "in": "query",
-            "description": "true → editable PDF",
-            "schema": {
-              "enum": [
-                "true"
-              ],
-              "type": "string"
-            }
-          },
-          {
-            "name": "jahr",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "example": 2025,
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "202": {
-            "description": "Asynchronous PDF rendering job enqueued (ADR-0056).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PrintoutJobDto"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "ausdruck"
-        ]
-      }
-    },
-    "/v1/steuerjahre/{jahr}/ausdruck/jobs/{jobId}": {
-      "get": {
-        "operationId": "PrintoutController_getJob",
-        "parameters": [
-          {
-            "name": "jobId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "example": "job_4bf92f3577b34da6a3ce929d0e0e4736",
-              "type": "string"
-            }
-          },
-          {
-            "name": "jahr",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "example": 2025,
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Status of the asynchronous PDF export job.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PrintoutJobDto"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "ausdruck"
-        ]
-      }
-    },
-    "/v1/steuerjahre/{jahr}/ausdruck": {
-      "get": {
-        "operationId": "PrintoutController_printout",
-        "parameters": [
-          {
-            "name": "bearbeitbar",
-            "required": false,
-            "in": "query",
-            "description": "true → the values as named, editable AcroForm fields (for a correction before printing).",
-            "schema": {
-              "enum": [
-                "true"
-              ],
-              "type": "string"
-            }
-          },
-          {
-            "name": "jahr",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "example": 2025,
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "The filled Vordrucke (ESt 1 A + used Anlagen) as one PDF to print, sign and hand in."
-          },
-          "401": {
-            "description": "Guest session — this endpoint requires a signed-in account."
-          },
-          "402": {
-            "description": "The Ausdruck for this tax year is not unlocked (ADR-0050)."
-          },
-          "404": {
-            "description": "No measured templates exist for this tax year."
-          },
-          "422": {
-            "description": "`fehlend`: what the Hauptvordruck still needs; `zuLang`: a value too long for its field."
-          }
-        },
-        "tags": [
-          "ausdruck"
         ]
       }
     },
@@ -5913,12 +5914,12 @@
           },
           "personal": {
             "type": "number",
-            "example": 8482,
+            "example": 8012,
             "description": "The personal (tariff) tax on the capital income (only when kind !== \"nicht-anwendbar\")."
           },
           "delta": {
             "type": "number",
-            "example": 3732,
+            "example": 3262,
             "description": "persoenlich − abgeltung (only when kind !== \"nicht-anwendbar\")."
           },
           "uncertainty": {
@@ -6323,7 +6324,7 @@
           "month": {
             "type": "string",
             "example": "2026-01",
-            "description": "yyyy-mm the rate applies to."
+            "description": "yyyy-mm the rate applies to; yyyy for the Jahresdurchschnittskurs."
           },
           "rate": {
             "type": "number",
@@ -6334,9 +6335,10 @@
             "type": "string",
             "enum": [
               "amtlich",
+              "jahresdurchschnitt",
               "tatsaechlich"
             ],
-            "description": "The rate mode (ADR-012)."
+            "description": "The rate mode (ADR-012, ADR-0072)."
           },
           "receiptId": {
             "type": "string",
@@ -6483,6 +6485,14 @@
             "type": "number",
             "nullable": true
           },
+          "pkArbeitgeberGesamtChf": {
+            "type": "number",
+            "nullable": true
+          },
+          "steuerfreiesKrankentaggeldChf": {
+            "type": "number",
+            "nullable": true
+          },
           "krankentaggeldArbeitgeberProzent": {
             "type": "number",
             "nullable": true
@@ -6512,6 +6522,8 @@
           "krankentaggeldChf",
           "pkArbeitnehmerChf",
           "pkArbeitgeberChf",
+          "pkArbeitgeberGesamtChf",
+          "steuerfreiesKrankentaggeldChf",
           "krankentaggeldArbeitgeberProzent",
           "krankentaggeldArbeitgeberChf",
           "nbuvArbeitgeberProzent",
@@ -6662,7 +6674,7 @@
           "krankentaggeldChf": {
             "type": "number",
             "nullable": true,
-            "description": "Whole CHF — employee Krankentaggeld contributions (Zeile 80)."
+            "description": "Whole CHF — employee Krankentaggeld premium (Zeile 80), not the Taggeld paid out."
           },
           "pkArbeitnehmerChf": {
             "type": "number",
@@ -6673,6 +6685,16 @@
             "type": "number",
             "nullable": true,
             "description": "Whole CHF — Säule 2a Obligatorium, employer (Zeile 87)."
+          },
+          "pkArbeitgeberGesamtChf": {
+            "type": "number",
+            "nullable": true,
+            "description": "Whole CHF — all employer pension contributions; the part above the Obligatorium is taxable wage (Zeile 20)."
+          },
+          "steuerfreiesKrankentaggeldChf": {
+            "type": "number",
+            "nullable": true,
+            "description": "Whole CHF — tax-free Krankentaggeld paid out and contained in Ziffer 8 (Zeilen 9/76)."
           },
           "krankentaggeldArbeitgeberProzent": {
             "type": "number",
@@ -6697,7 +6719,7 @@
           "specialCases": {
             "type": "boolean",
             "nullable": true,
-            "description": "Any of N-Gre Zeilen 7, 9–14, 16, 17 or 20–22 applies."
+            "description": "Any of N-Gre Zeilen 7, 10–14, 16, 17, 21 or 22 applies."
           }
         }
       },
@@ -6707,7 +6729,7 @@
           "month": {
             "type": "string",
             "example": "2026-01",
-            "description": "yyyy-mm the rate applies to."
+            "description": "yyyy-mm the rate applies to; yyyy for the Jahresdurchschnittskurs."
           },
           "rate": {
             "type": "number",
@@ -6718,9 +6740,10 @@
             "type": "string",
             "enum": [
               "amtlich",
+              "jahresdurchschnitt",
               "tatsaechlich"
             ],
-            "description": "The rate mode (ADR-012)."
+            "description": "The rate mode (ADR-012, ADR-0072)."
           },
           "receiptId": {
             "type": "string",
@@ -6794,6 +6817,90 @@
             "nullable": true,
             "example": "BW",
             "description": "German state or Swiss canton the holiday suggestion came from."
+          },
+          "professionalBodiesEur": {
+            "type": "number",
+            "nullable": true,
+            "example": 110,
+            "description": "Werbungskosten Kz 310: professional bodies, e.g. a trade union. Whole euros; omitted keeps what is stored."
+          },
+          "professionalBodiesNote": {
+            "type": "string",
+            "nullable": true,
+            "example": "Berufskleidung",
+            "description": "Which bodies (Anlage N Zeile 53)."
+          },
+          "workEquipmentEur": {
+            "type": "number",
+            "nullable": true,
+            "example": 110,
+            "description": "Werbungskosten Kz 320: work tools and typical work clothing. Whole euros; omitted keeps what is stored."
+          },
+          "workEquipmentNote": {
+            "type": "string",
+            "nullable": true,
+            "example": "Berufskleidung",
+            "description": "What the work tools were (Anlage N Zeile 54)."
+          },
+          "accountFeesEur": {
+            "type": "number",
+            "nullable": true,
+            "example": 110,
+            "description": "Werbungskosten Kz 380: account fees (16 € a year are accepted without proof). Whole euros; omitted keeps what is stored."
+          },
+          "otherWorkExpensesEur": {
+            "type": "number",
+            "nullable": true,
+            "example": 110,
+            "description": "Werbungskosten Kz 380: other expenses, e.g. applications. Whole euros; omitted keeps what is stored."
+          },
+          "otherWorkExpensesNote": {
+            "type": "string",
+            "nullable": true,
+            "example": "Berufskleidung",
+            "description": "What the other expenses were (Anlage N Zeile 63)."
+          },
+          "periodFrom": {
+            "type": "string",
+            "nullable": true,
+            "example": "01.01.2024",
+            "description": "This way to work from (DD.MM.YYYY), when not the whole year (ADR-0079)."
+          },
+          "periodTo": {
+            "type": "string",
+            "nullable": true,
+            "example": "31.10.2024",
+            "description": "This way to work until (DD.MM.YYYY)."
+          },
+          "secondOneWayKm": {
+            "type": "number",
+            "nullable": true,
+            "example": 87,
+            "description": "A second way to work after a change of job: one-way km."
+          },
+          "secondTransport": {
+            "type": "string",
+            "enum": [
+              "pkw",
+              "oepnv",
+              "andere"
+            ],
+            "nullable": true
+          },
+          "secondWorkplace": {
+            "type": "string",
+            "nullable": true,
+            "example": "8050 Zürich, Birchstrasse 155"
+          },
+          "secondFrom": {
+            "type": "string",
+            "nullable": true,
+            "example": "01.11.2024"
+          },
+          "secondTo": {
+            "type": "string",
+            "nullable": true,
+            "example": "31.12.2024"
           }
         },
         "required": [
@@ -6978,6 +7085,10 @@
           "laterAmounts": {
             "type": "number",
             "description": "Number of deferred catalog deduction amounts."
+          },
+          "prepayments": {
+            "type": "number",
+            "description": "Income tax prepayments of the year (§ 37 EStG), already included in the result (ADR-0081)."
           }
         },
         "required": [
@@ -7098,6 +7209,22 @@
             "nullable": true,
             "example": "2748",
             "description": "Zeile 6 (Kz 15): Schweizer Kinderzulage in whole EUR."
+          },
+          "childcareEur": {
+            "type": "string",
+            "nullable": true
+          },
+          "childcareProvider": {
+            "type": "string",
+            "nullable": true
+          },
+          "childcareFrom": {
+            "type": "string",
+            "nullable": true
+          },
+          "childcareTo": {
+            "type": "string",
+            "nullable": true
           },
           "differentialChildBenefitEur": {
             "type": "string",
@@ -7275,6 +7402,30 @@
             "example": "2748",
             "description": "Zeile 6 (Kz 15): Schweizer Kinderzulage / Familienzulage in whole EUR."
           },
+          "childcareEur": {
+            "type": "string",
+            "nullable": true,
+            "example": "739",
+            "description": "Zeile 67 (Kz 51): childcare the parents paid, whole euros (ADR-0076)."
+          },
+          "childcareProvider": {
+            "type": "string",
+            "nullable": true,
+            "example": "Kindergarten, Gemeinde Musterdorf, Hauptstr. 1",
+            "description": "Zeile 67: kind of service, provider name and address."
+          },
+          "childcareFrom": {
+            "type": "string",
+            "nullable": true,
+            "example": "01.01.2025",
+            "description": "Zeile 67: from (DD.MM.YYYY)."
+          },
+          "childcareTo": {
+            "type": "string",
+            "nullable": true,
+            "example": "31.12.2025",
+            "description": "Zeile 67: until (DD.MM.YYYY)."
+          },
           "firstName": {
             "type": "string",
             "example": "Lina"
@@ -7402,6 +7553,30 @@
             "nullable": true,
             "example": "2748",
             "description": "Zeile 6 (Kz 15): Schweizer Kinderzulage / Familienzulage in whole EUR."
+          },
+          "childcareEur": {
+            "type": "string",
+            "nullable": true,
+            "example": "739",
+            "description": "Zeile 67 (Kz 51): childcare the parents paid, whole euros (ADR-0076)."
+          },
+          "childcareProvider": {
+            "type": "string",
+            "nullable": true,
+            "example": "Kindergarten, Gemeinde Musterdorf, Hauptstr. 1",
+            "description": "Zeile 67: kind of service, provider name and address."
+          },
+          "childcareFrom": {
+            "type": "string",
+            "nullable": true,
+            "example": "01.01.2025",
+            "description": "Zeile 67: from (DD.MM.YYYY)."
+          },
+          "childcareTo": {
+            "type": "string",
+            "nullable": true,
+            "example": "31.12.2025",
+            "description": "Zeile 67: until (DD.MM.YYYY)."
           },
           "firstName": {
             "type": "string",
@@ -7617,10 +7792,14 @@
             "type": "string",
             "enum": [
               "auto",
-              "lstb"
+              "lstb",
+              "chLohnausweis",
+              "chPensionskasse",
+              "chPraemien",
+              "chKrankenkasse"
             ],
             "example": "lstb",
-            "description": "Explicit document parser cascade: \"lstb\" uses deterministic two-stage German LStB extraction."
+            "description": "Explicit document parser: \"lstb\" the German LStB, \"chLohnausweis\" the Swiss salary certificate, \"chPensionskasse\" a Swiss pension fund statement, \"chPraemien\" the employer letter on sickness-pay and NBU premiums, \"chKrankenkasse\" a Swiss health insurer statement for the tax return; \"auto\" routes a recognised document to its reader."
           },
           "receiptId": {
             "type": "string",
@@ -7804,6 +7983,15 @@
             "nullable": true,
             "example": null
           },
+          "person": {
+            "type": "string",
+            "enum": [
+              "A",
+              "B"
+            ],
+            "example": "B",
+            "description": "Whose fields the draft writes in a joint return (ADR-0073): B is the spouse whose figures the user records. Absent means the user."
+          },
           "companionFields": {
             "type": "object",
             "additionalProperties": {
@@ -7885,6 +8073,8 @@
               "estg-9-6",
               "estg-10b",
               "estg-10-1-5",
+              "estg-35a",
+              "estg-10-1-3",
               "ao-355"
             ],
             "example": "estg-10b"
@@ -8097,8 +8287,25 @@
               "type": "string"
             }
           },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "fact",
+              "decision"
+            ],
+            "description": "`fact` gets no recommendation; `decision` does, with a reason. Missing on older rounds: read as fact."
+          },
+          "multiple": {
+            "type": "boolean",
+            "description": "More than one answer may be ticked."
+          },
           "recommended": {
-            "type": "string"
+            "type": "string",
+            "description": "The owl's pick, only on a decision."
+          },
+          "reason": {
+            "type": "string",
+            "description": "Why she recommends it, one short sentence."
           }
         },
         "required": [
@@ -8237,6 +8444,15 @@
             "nullable": true,
             "example": null
           },
+          "person": {
+            "type": "string",
+            "enum": [
+              "A",
+              "B"
+            ],
+            "example": "B",
+            "description": "Whose fields the draft writes in a joint return (ADR-0073): B is the spouse whose figures the user records. Absent means the user."
+          },
           "companionFields": {
             "type": "object",
             "additionalProperties": {
@@ -8318,6 +8534,8 @@
               "estg-9-6",
               "estg-10b",
               "estg-10-1-5",
+              "estg-35a",
+              "estg-10-1-3",
               "ao-355"
             ],
             "example": "estg-10b"
@@ -8410,6 +8628,8 @@
               "estg-9-6",
               "estg-10b",
               "estg-10-1-5",
+              "estg-35a",
+              "estg-10-1-3",
               "ao-355"
             ],
             "example": "estg-4-5-6c"
@@ -8529,6 +8749,8 @@
                 "estg-9-6",
                 "estg-10b",
                 "estg-10-1-5",
+                "estg-35a",
+                "estg-10-1-3",
                 "ao-355"
               ]
             }
@@ -8823,6 +9045,280 @@
           "securityBlocked"
         ]
       },
+      "ChCertificateFieldDto": {
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string",
+            "example": "bruttolohn-total"
+          },
+          "digit": {
+            "type": "string",
+            "example": "8"
+          },
+          "value": {
+            "type": "number",
+            "example": 121022,
+            "description": "CHF as printed; negative where the certificate prints one."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "pruefen"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "negative",
+              "plausibility_conflict",
+              "llm_suggested",
+              "ocr_source"
+            ]
+          }
+        },
+        "required": [
+          "field",
+          "digit",
+          "value",
+          "status",
+          "reason"
+        ]
+      },
+      "ChCertificateChecksDto": {
+        "type": "object",
+        "properties": {
+          "gross": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "conflict",
+              "unknown"
+            ],
+            "description": "Ziffer 8 = Ziffern 1 to 7."
+          },
+          "net": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "conflict",
+              "unknown"
+            ],
+            "description": "Ziffer 11 = 8 − 9 − 10."
+          }
+        },
+        "required": [
+          "gross",
+          "net"
+        ]
+      },
+      "ParsedChCertificateResponseDto": {
+        "type": "object",
+        "properties": {
+          "stage": {
+            "type": "string",
+            "enum": [
+              "deterministic",
+              "llm_text_fallback"
+            ]
+          },
+          "receiptId": {
+            "type": "string",
+            "nullable": true
+          },
+          "taxYearOnDocument": {
+            "type": "number",
+            "nullable": true,
+            "example": 2025
+          },
+          "yearConflict": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LstbYearConflictDto"
+              }
+            ]
+          },
+          "person": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "A",
+              "B"
+            ],
+            "description": "Whose certificate it is, by the name on it or the choice sent; null when unclear."
+          },
+          "personUnclear": {
+            "type": "boolean",
+            "description": "The name fits neither person: ask whose it is and parse again with `person`."
+          },
+          "personNotRecordable": {
+            "type": "boolean",
+            "description": "Person B keeps an own account: B uploads it there."
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChCertificateFieldDto"
+            }
+          },
+          "checks": {
+            "$ref": "#/components/schemas/ChCertificateChecksDto"
+          },
+          "canteen": {
+            "type": "boolean",
+            "description": "Box G: canteen or lunch cheques."
+          },
+          "freeTransport": {
+            "type": "boolean",
+            "description": "Box F: free transport between home and work."
+          },
+          "missing": {
+            "description": "Ziffern every certificate carries that could not be read.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "stagedActionIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "securityBlocked": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "stage",
+          "receiptId",
+          "taxYearOnDocument",
+          "yearConflict",
+          "person",
+          "personUnclear",
+          "personNotRecordable",
+          "fields",
+          "checks",
+          "canteen",
+          "freeTransport",
+          "missing",
+          "stagedActionIds",
+          "securityBlocked"
+        ]
+      },
+      "ChLetterFieldDto": {
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string",
+            "example": "pkArbeitgeberGesamtChf"
+          },
+          "value": {
+            "type": "number",
+            "example": 7362
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "pruefen"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "plausibility_conflict",
+              "ocr_source"
+            ]
+          }
+        },
+        "required": [
+          "field",
+          "value",
+          "status",
+          "reason"
+        ]
+      },
+      "ParsedChLetterResponseDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "chPensionskasse",
+              "chPraemien"
+            ]
+          },
+          "receiptId": {
+            "type": "string",
+            "nullable": true
+          },
+          "taxYearOnDocument": {
+            "type": "number",
+            "nullable": true,
+            "example": 2025
+          },
+          "yearConflict": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LstbYearConflictDto"
+              }
+            ]
+          },
+          "person": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "A",
+              "B"
+            ]
+          },
+          "personUnclear": {
+            "type": "boolean"
+          },
+          "personNotRecordable": {
+            "type": "boolean"
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChLetterFieldDto"
+            }
+          },
+          "missing": {
+            "description": "Fields the letter did not give; the owl asks for them.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "stagedActionIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "kind",
+          "receiptId",
+          "taxYearOnDocument",
+          "yearConflict",
+          "person",
+          "personUnclear",
+          "personNotRecordable",
+          "fields",
+          "missing",
+          "stagedActionIds"
+        ]
+      },
       "ParseReceiptResponseDto": {
         "type": "object",
         "properties": {
@@ -8865,6 +9361,24 @@
             "allOf": [
               {
                 "$ref": "#/components/schemas/ParsedLstbResponseDto"
+              }
+            ]
+          },
+          "chLohnausweis": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ParsedChCertificateResponseDto"
+              }
+            ]
+          },
+          "chLetter": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ParsedChLetterResponseDto"
               }
             ]
           }
@@ -9147,6 +9661,8 @@
               "estg-9-6",
               "estg-10b",
               "estg-10-1-5",
+              "estg-35a",
+              "estg-10-1-3",
               "ao-355"
             ],
             "example": "estg-9-1-4a"
@@ -9654,6 +10170,95 @@
           "action"
         ]
       },
+      "PrintoutCheckDto": {
+        "type": "object",
+        "properties": {
+          "missing": {
+            "example": [
+              "iban",
+              "anlageV"
+            ],
+            "description": "What stops the printout: missing Stammdaten keys, `ehegatte` (married, not yet supported), or an Anlage that is not printable yet (`anlageV`, `anlageKap`, `anlageNGre`, `anlageRAvBav`, `anlageRAus`). Empty = printable.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "missing"
+        ]
+      },
+      "CheckoutResponseDto": {
+        "type": "object",
+        "properties": {
+          "checkoutUrl": {
+            "type": "string",
+            "example": "https://checkout.stripe.com/c/pay/cs_test_…"
+          }
+        },
+        "required": [
+          "checkoutUrl"
+        ]
+      },
+      "PrintoutJobDto": {
+        "type": "object",
+        "properties": {
+          "jobId": {
+            "type": "string",
+            "example": "job_4bf92f3577b34da6a3ce929d0e0e4736",
+            "description": "Unique asynchronous export job identifier."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "processing",
+              "completed",
+              "failed"
+            ],
+            "example": "queued",
+            "description": "Current state of the background PDF rendering job."
+          },
+          "statusUrl": {
+            "type": "string",
+            "example": "/v1/steuerjahre/2025/ausdruck/jobs/job_4bf92f3577b34da6a3ce929d0e0e4736",
+            "description": "Polling URL to check job progress."
+          },
+          "downloadUrl": {
+            "type": "string",
+            "example": "/v1/steuerjahre/2025/ausdruck",
+            "description": "Download URL when status is completed."
+          },
+          "error": {
+            "type": "string",
+            "example": "Error during PDF synthesis",
+            "description": "Error explanation if job failed."
+          }
+        },
+        "required": [
+          "jobId",
+          "status",
+          "statusUrl"
+        ]
+      },
+      "UnlockStatusDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "freigeschaltet",
+              "offen",
+              "nicht-verfuegbar"
+            ],
+            "description": "freigeschaltet = paid for this tax year; offen = payable; nicht-verfuegbar = payment is not configured on this environment."
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
       "OwlSettingResponseDto": {
         "type": "object",
         "properties": {
@@ -9796,7 +10401,7 @@
           "deadlineEnd": {
             "type": "string",
             "nullable": true,
-            "description": "Einspruchsfrist-Ende (Bescheiddatum + 1 Monat), null until the datum is set."
+            "description": "Einspruchsfrist-Ende: one month after the notice counts as received (Bescheiddatum + 4 days, § 122 Abs. 2 AO; 3 before 2025), moved to a working day (§ 108 Abs. 3 AO). Null until the datum is set."
           },
           "remainingDays": {
             "type": "number",
@@ -10134,8 +10739,9 @@
           },
           "sozialversicherung": {
             "type": "number",
+            "nullable": true,
             "example": 10912,
-            "description": "SV-Arbeitnehmeranteil (Summe Zeilen 23/23a/23b, 25, 26 und 27) in whole EUR."
+            "description": "SV-Arbeitnehmeranteil (Summe Zeilen 23/23a/23b, 25, 26 und 27) in whole EUR. Absent or null when unreadable: the field stays open, or on a further certificate the recorded sum stands (ADR-0083)."
           },
           "receiptId": {
             "type": "string",
@@ -10146,6 +10752,11 @@
             "type": "boolean",
             "example": false,
             "description": "Must be true to overwrite already captured LStB fields (ADR-0008)."
+          },
+          "addToExisting": {
+            "type": "boolean",
+            "example": false,
+            "description": "Adds the values to a certificate already captured for the year (second employer, later payment) instead of replacing it. The same certificate twice is refused (409 LSTB_SAME_CERTIFICATE)."
           },
           "actionIds": {
             "example": [
@@ -10162,8 +10773,7 @@
         },
         "required": [
           "bruttoarbeitslohn",
-          "lohnsteuer",
-          "sozialversicherung"
+          "lohnsteuer"
         ]
       },
       "DeleteAccountRequestDto": {
@@ -10871,95 +11481,6 @@
         },
         "required": [
           "markings"
-        ]
-      },
-      "UnlockStatusDto": {
-        "type": "object",
-        "properties": {
-          "status": {
-            "type": "string",
-            "enum": [
-              "freigeschaltet",
-              "offen",
-              "nicht-verfuegbar"
-            ],
-            "description": "freigeschaltet = paid for this tax year; offen = payable; nicht-verfuegbar = payment is not configured on this environment."
-          }
-        },
-        "required": [
-          "status"
-        ]
-      },
-      "PrintoutCheckDto": {
-        "type": "object",
-        "properties": {
-          "missing": {
-            "example": [
-              "iban",
-              "anlageV"
-            ],
-            "description": "What stops the printout: missing Stammdaten keys, `ehegatte` (married, not yet supported), or an Anlage that is not printable yet (`anlageV`, `anlageKap`, `anlageNGre`, `anlageRAvBav`, `anlageRAus`). Empty = printable.",
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        },
-        "required": [
-          "missing"
-        ]
-      },
-      "CheckoutResponseDto": {
-        "type": "object",
-        "properties": {
-          "checkoutUrl": {
-            "type": "string",
-            "example": "https://checkout.stripe.com/c/pay/cs_test_…"
-          }
-        },
-        "required": [
-          "checkoutUrl"
-        ]
-      },
-      "PrintoutJobDto": {
-        "type": "object",
-        "properties": {
-          "jobId": {
-            "type": "string",
-            "example": "job_4bf92f3577b34da6a3ce929d0e0e4736",
-            "description": "Unique asynchronous export job identifier."
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "queued",
-              "processing",
-              "completed",
-              "failed"
-            ],
-            "example": "queued",
-            "description": "Current state of the background PDF rendering job."
-          },
-          "statusUrl": {
-            "type": "string",
-            "example": "/v1/steuerjahre/2025/ausdruck/jobs/job_4bf92f3577b34da6a3ce929d0e0e4736",
-            "description": "Polling URL to check job progress."
-          },
-          "downloadUrl": {
-            "type": "string",
-            "example": "/v1/steuerjahre/2025/ausdruck",
-            "description": "Download URL when status is completed."
-          },
-          "error": {
-            "type": "string",
-            "example": "Error during PDF synthesis",
-            "description": "Error explanation if job failed."
-          }
-        },
-        "required": [
-          "jobId",
-          "status",
-          "statusUrl"
         ]
       },
       "HouseholdPersonDto": {

@@ -7,6 +7,7 @@ import { PrintoutModule } from './printout/printout.module.js'
 import { AuthModule } from './auth/auth.module.js'
 import { ReceiptModule } from './receipt/receipt.module.js'
 import { LstbScanModule } from './lstb-scan/lstb-scan.module.js'
+import { ChCertificateScanModule } from './ch-certificate-scan/ch-certificate-scan.module.js'
 import { AssessmentModule } from './assessment/assessment.module.js'
 import { UnlockModule } from './unlock/unlock.module.js'
 import { DeadlinesModule } from './deadlines/deadlines.module.js'
@@ -50,6 +51,7 @@ import { DomainErrorFilter } from './common/domain-error.filter.js'
     TaxEstimateModule,
     ReceiptModule,
     LstbScanModule,
+    ChCertificateScanModule,
     AssessmentModule,
     AccountModule,
     AssistantsModule,

@@ -7,6 +7,7 @@ import {
   incomeTax,
   isSupportedIncomeTaxYear,
   kirchensteuer,
+  progressionClauseTax,
   solidaritaetszuschlag,
   splittingTariff,
   zoneBoundaries,
@@ -147,3 +148,35 @@ describe('kirchensteuer — §51a EStG', () => {
 // Compile-time guard: the year union stays exactly {2022, 2023, 2024, 2025, 2026}.
 const _allYears: readonly IncomeTaxYear[] = [2022, 2023, 2024, 2025, 2026]
 void _allYears
+
+describe('progression clause (§ 32b EStG)', () => {
+  it('taxes the income at the average rate it would bear together with the benefits', () => {
+    // 40.000 € zvE and 10.000 € Elterngeld in 2025: the rate of 50.000 € applies to the 40.000 €.
+    const expected = Math.floor((40_000 * incomeTax(50_000, 2025)) / 50_000)
+    expect(progressionClauseTax(40_000, 10_000, 2025)).toBe(expected)
+    // Independent: the skill's own calculator (checked against the BMF calculator) gives 10.691 € on
+    // 50.000 € in 2025, so 21,382 % on 40.000 € is 8.552 €, against 7.320 € without the benefits.
+    expect(progressionClauseTax(40_000, 10_000, 2025)).toBe(8_552)
+    expect(expected).toBeGreaterThan(incomeTax(40_000, 2025))
+    expect(expected).toBeLessThan(incomeTax(50_000, 2025))
+  })
+
+  it('is the plain tariff without benefits, single and joint', () => {
+    expect(progressionClauseTax(40_000, 0, 2025)).toBe(incomeTax(40_000, 2025))
+    expect(progressionClauseTax(80_000, 0, 2025, true)).toBe(splittingTariff(80_000, 0, 2025))
+  })
+
+  it('makes income below the basic allowance taxable once the benefits lift the rate', () => {
+    expect(incomeTax(11_000, 2025)).toBe(0)
+    expect(progressionClauseTax(11_000, 20_000, 2025)).toBeGreaterThan(0)
+    expect(progressionClauseTax(0, 20_000, 2025)).toBe(0)
+  })
+
+  it('uses the splitting rate for a couple', () => {
+    expect(progressionClauseTax(60_000, 12_000, 2025, true)).toBe(Math.floor((60_000 * splittingTariff(72_000, 0, 2025)) / 72_000))
+  })
+
+  it('refuses negative benefits', () => {
+    expect(() => progressionClauseTax(40_000, -1, 2025)).toThrow(RangeError)
+  })
+})

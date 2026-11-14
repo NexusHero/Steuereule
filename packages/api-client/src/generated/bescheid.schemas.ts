@@ -71,7 +71,7 @@ export interface AssessmentDeadlineDto {
      */
   assessmentDate: string | null;
   /**
-     * Einspruchsfrist-Ende (Bescheiddatum + 1 Monat), null until the datum is set.
+     * Einspruchsfrist-Ende: one month after the notice counts as received (Bescheiddatum + 4 days, § 122 Abs. 2 AO; 3 before 2025), moved to a working day (§ 108 Abs. 3 AO). Null until the datum is set.
      * @nullable
      */
   deadlineEnd: string | null;

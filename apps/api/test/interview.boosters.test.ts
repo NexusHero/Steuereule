@@ -13,9 +13,14 @@ class BoostersOnInterviewService extends InterviewService {
   protected override readonly boostersEnabled = true
 }
 
+/** The switch can still be turned off; then nothing is stored that estimate and printout would ignore. */
+class BoostersOffInterviewService extends InterviewService {
+  protected override readonly boostersEnabled = false
+}
+
 describe('InterviewService — Slice 5 boosters while the flag is off', () => {
   it('rejects haushalt and gesundheit answers so nothing is stored that estimate and printout ignore', async () => {
-    const service = new InterviewService(new FakeInterviewAnswerRepository(), new AuditService(new FakeAuditRepository()))
+    const service = new BoostersOffInterviewService(new FakeInterviewAnswerRepository(), new AuditService(new FakeAuditRepository()))
     await expect(service.postAnswer(USER_ID, TAX_YEAR, { questionId: 'haushalt-gate', value: 'Ja' })).rejects.toThrow()
     await expect(service.postAnswer(USER_ID, TAX_YEAR, { questionId: 'gesundheit-gate', value: 'Ja' })).rejects.toThrow()
   })
@@ -45,6 +50,10 @@ describe('InterviewService — Slice 5 haushalt & gesundheit entries', () => {
       questionId: 'haushalt-handwerker-betrag',
       value: AMOUNT_LATER,
     })
+    await service.postAnswer(USER_ID, TAX_YEAR, {
+      questionId: 'haushalt-handwerker-rechnungsbetrag',
+      value: AMOUNT_LATER,
+    })
     const done = await service.postAnswer(USER_ID, TAX_YEAR, {
       questionId: 'haushalt-minijob-betrag',
       value: '500',
@@ -69,5 +78,16 @@ describe('InterviewService — Slice 5 haushalt & gesundheit entries', () => {
 
     const reloaded = await service.getState(USER_ID, TAX_YEAR, 'gesundheit')
     expect(reloaded.answers['gesundheit-betrag']).toBe('4200')
+  })
+})
+
+describe('InterviewService — prepayments (ADR-0081)', () => {
+  it('stores the prepayments through the interview, as the cockpit tile does', async () => {
+    const repository = new FakeInterviewAnswerRepository()
+    const service = new InterviewService(repository, new AuditService(new FakeAuditRepository()))
+    await service.postAnswer(USER_ID, TAX_YEAR, { questionId: 'vorauszahlungen-gate', value: 'Ja' })
+    await service.postAnswer(USER_ID, TAX_YEAR, { questionId: 'vorauszahlungen-betrag', value: '12000' })
+    const state = await service.getState(USER_ID, TAX_YEAR, 'vorauszahlungen')
+    expect(JSON.stringify(state)).toContain('12000')
   })
 })

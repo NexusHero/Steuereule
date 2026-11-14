@@ -17,6 +17,18 @@ export const CommuteInputsDtoTransport = {
   andere: 'andere',
 } as const;
 
+/**
+ * @nullable
+ */
+export type CommuteInputsDtoSecondTransport = typeof CommuteInputsDtoSecondTransport[keyof typeof CommuteInputsDtoSecondTransport] | null;
+
+
+export const CommuteInputsDtoSecondTransport = {
+  pkw: 'pkw',
+  oepnv: 'oepnv',
+  andere: 'andere',
+} as const;
+
 export interface CommuteInputsDto {
   /** ISO weekdays worked (1 = Monday … 7 = Sunday). */
   workdays: number[];
@@ -42,6 +54,64 @@ export interface CommuteInputsDto {
      * @nullable
      */
   publicHolidayRegion?: string | null;
+  /**
+     * Werbungskosten Kz 310: professional bodies, e.g. a trade union. Whole euros; omitted keeps what is stored.
+     * @nullable
+     */
+  professionalBodiesEur?: number | null;
+  /**
+     * Which bodies (Anlage N Zeile 53).
+     * @nullable
+     */
+  professionalBodiesNote?: string | null;
+  /**
+     * Werbungskosten Kz 320: work tools and typical work clothing. Whole euros; omitted keeps what is stored.
+     * @nullable
+     */
+  workEquipmentEur?: number | null;
+  /**
+     * What the work tools were (Anlage N Zeile 54).
+     * @nullable
+     */
+  workEquipmentNote?: string | null;
+  /**
+     * Werbungskosten Kz 380: account fees (16 € a year are accepted without proof). Whole euros; omitted keeps what is stored.
+     * @nullable
+     */
+  accountFeesEur?: number | null;
+  /**
+     * Werbungskosten Kz 380: other expenses, e.g. applications. Whole euros; omitted keeps what is stored.
+     * @nullable
+     */
+  otherWorkExpensesEur?: number | null;
+  /**
+     * What the other expenses were (Anlage N Zeile 63).
+     * @nullable
+     */
+  otherWorkExpensesNote?: string | null;
+  /**
+     * This way to work from (DD.MM.YYYY), when not the whole year (ADR-0079).
+     * @nullable
+     */
+  periodFrom?: string | null;
+  /**
+     * This way to work until (DD.MM.YYYY).
+     * @nullable
+     */
+  periodTo?: string | null;
+  /**
+     * A second way to work after a change of job: one-way km.
+     * @nullable
+     */
+  secondOneWayKm?: number | null;
+  /** @nullable */
+  secondTransport?: CommuteInputsDtoSecondTransport;
+  /** @nullable */
+  secondWorkplace?: string | null;
+  /** @nullable */
+  secondFrom?: string | null;
+  /** @nullable */
+  secondTo?: string | null;
 }
 
 export interface WorkdaysDto {
