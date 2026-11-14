@@ -44,6 +44,13 @@ function emptyMasterData(): MasterDataRecord {
   return { ...values, religionEinwilligungAm: null }
 }
 
+/** Interview Familienstand → master data value; „Geschieden oder getrennt“ is two values there, so it is left to the user. */
+const MARITAL_STATUS_FROM_INTERVIEW: Readonly<Record<string, 'ledig' | 'verheiratet' | 'verwitwet'>> = {
+  Ledig: 'ledig',
+  Verheiratet: 'verheiratet',
+  Verwitwet: 'verwitwet',
+}
+
 @Injectable()
 export class LinkService {
   constructor(
@@ -170,6 +177,23 @@ export class LinkService {
     }
 
     return this.get(userId, taxYear)
+  }
+
+  /**
+   * One data stream (UX review H3): what the interview already knows about the household is not asked
+   * again. An empty Familienstand in the master data takes the interview answer, and „Verheiratet“
+   * sets up the joint return when none is chosen yet. Nothing the user entered elsewhere is overwritten.
+   */
+  async adoptInterviewHousehold(userId: string, taxYear: number, answers: { readonly familienstand?: string | undefined }): Promise<void> {
+    const status = MARITAL_STATUS_FROM_INTERVIEW[answers.familienstand ?? '']
+    if (status === undefined) return
+    const masterData = await this.masterDataRepository.findByUserId(userId)
+    if (!masterData?.familienstand) {
+      await this.masterDataRepository.save(userId, { ...(masterData ?? emptyMasterData()), familienstand: status })
+    }
+    if (status !== 'verheiratet') return
+    const existing = await this.repository.findByUserAndYear(userId, taxYear)
+    if (existing === null) await this.set(userId, taxYear, { filingType: 'zusammen' })
   }
 
   async updatePersonB(userId: string, taxYear: number, data: LinkPersonBDto): Promise<LinkResponseDto> {
