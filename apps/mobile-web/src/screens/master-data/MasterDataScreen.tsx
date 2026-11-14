@@ -382,6 +382,21 @@ function TaxYearLinkSection({
     )
   }
 
+  const joinBlock = (
+    <View>
+      <Text style={{ fontSize: theme.size.s, color: theme.color.tinte2, marginBottom: theme.space.s2 }}>
+        {`Dein Partner hat die Zusammenveranlagung ${taxYear} schon angelegt? Dann gib hier den Einladungscode ein – ihr gebt dann eine gemeinsame Erklärung ab.`}
+      </Text>
+      <Feld label="Einladungscode deines Partners">
+        <Input value={code} onChange={setCode} testID="kopplung-code" accessibilityLabel="Einladungscode deines Partners" />
+      </Feld>
+      {joinError ? <Text style={{ fontSize: theme.size.s, color: theme.color.tinte }}>{joinError}</Text> : null}
+      <Button variant="ghost" onPress={redeemCode} testID="kopplung-beitreten">
+        Einladung annehmen
+      </Button>
+    </View>
+  )
+
   return (
     <Card style={{ marginVertical: theme.space.s3, padding: theme.space.s4 }}>
       <Feld label={`Veranlagungsart ${taxYear} & Partner (Person B, Zeile 19–24 ESt 1 A)`}>
@@ -444,20 +459,11 @@ function TaxYearLinkSection({
               </Button>
             </>
           ) : null}
+          {/* The interview set this joint return up (UX review H3); a partner who already created theirs can still be joined. */}
+          {joinBlock}
         </View>
       ) : (
-        <View>
-          <Text style={{ fontSize: theme.size.s, color: theme.color.tinte2, marginBottom: theme.space.s2 }}>
-            {`Dein Partner hat die Zusammenveranlagung ${taxYear} schon angelegt? Dann gib hier den Einladungscode ein – ihr gebt dann eine gemeinsame Erklärung ab.`}
-          </Text>
-          <Feld label="Einladungscode deines Partners">
-            <Input value={code} onChange={setCode} testID="kopplung-code" accessibilityLabel="Einladungscode deines Partners" />
-          </Feld>
-          {joinError ? <Text style={{ fontSize: theme.size.s, color: theme.color.tinte }}>{joinError}</Text> : null}
-          <Button variant="ghost" onPress={redeemCode} testID="kopplung-beitreten">
-            Einladung annehmen
-          </Button>
-        </View>
+        joinBlock
       )}
     </Card>
   )

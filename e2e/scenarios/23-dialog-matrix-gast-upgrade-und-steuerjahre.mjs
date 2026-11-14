@@ -76,12 +76,12 @@ export async function runScenario23(browser, webOrigin) {
   await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
   await page.locator('[data-testid="cockpit-erstattung"]').waitFor({ state: 'visible', timeout: 10_000 })
 
-  // 6. Multi-Tax-Year Isolation: 2026 (migrated from Guest with CH path) vs 2025 (fresh year)
-  await selectTaxYear(page, 2026)
+  // 6. Multi-Tax-Year Isolation (the guest starts on the last completed year since UX review K2): 2025 (migrated from Guest with CH path) vs 2026 (fresh year)
+  await selectTaxYear(page, 2025)
   await page.locator('[data-testid="cockpit-weiter"]').waitFor({ state: 'visible', timeout: 10_000 })
 
-  // Switch to 2025 -> 2025 must still be untouched and show its fresh interview CTA (`cockpit-interview`)
-  await selectTaxYear(page, 2025)
+  // Switch to 2026 -> 2026 must still be untouched and show its fresh interview CTA (`cockpit-interview`)
+  await selectTaxYear(page, 2026)
   await page.locator('[data-testid="cockpit-interview"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="cockpit-interview"]').click()
   await page.locator('[data-testid="interview-option-job-Angestellt"]').waitFor({ state: 'visible', timeout: 10_000 })
@@ -90,21 +90,21 @@ export async function runScenario23(browser, webOrigin) {
   await page.locator('[data-testid="interview-option-kinder-Nein"]').click()
   await page.locator('[data-testid="interview-option-familienstand-Ledig"]').click()
 
-  // Fill LStB for 2025
+  // Fill LStB for 2026
   await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').fill('80000')
   await page.locator('[data-testid="lstb-lohnsteuer"]').fill('18000')
   await page.locator('[data-testid="lstb-sozialversicherung"]').fill('14000')
   await page.locator('[data-testid="lstb-weiter"]').click()
 
-  // Return to Cockpit and check 2025 now has `cockpit-weiter` (Angestellte)
+  // Return to Cockpit and check 2026 now has `cockpit-weiter` (Angestellte)
   await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
   await page.locator('[data-testid="cockpit-kacheln"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.getByRole('tab', { name: 'Cockpit' }).click()
   await page.locator('[data-testid="cockpit-weiter"]').waitFor({ state: 'visible', timeout: 10_000 })
 
-  // Switch back to 2026 -> 2026 must still have its migrated Grenzgänger CH path (`cockpit-weiter`)
-  await selectTaxYear(page, 2026)
+  // Switch back to 2025 -> 2025 must still have its migrated Grenzgänger CH path (`cockpit-weiter`)
+  await selectTaxYear(page, 2025)
   await page.locator('[data-testid="cockpit-weiter"]').waitFor({ state: 'visible', timeout: 10_000 })
 
   console.log('[Scenario 23] PASS: Guest-to-Account upgrade and strict 2025/2026 tax-year isolation verified.')

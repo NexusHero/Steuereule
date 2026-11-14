@@ -66,9 +66,11 @@ function walkedMinimalGateSteps(answers: Answers): readonly StepId[] {
 export interface InterviewScreenProps {
   readonly onDone: (answers: Answers) => void
   readonly taxYear?: number
+  /** K2: switch the tax year from the first question ("Anderes Jahr"). */
+  readonly onChangeYear?: (year: number) => void
 }
 
-export function InterviewScreen({ onDone, taxYear = CURRENT_TAX_YEAR }: InterviewScreenProps) {
+export function InterviewScreen({ onDone, taxYear = CURRENT_TAX_YEAR, onChangeYear }: InterviewScreenProps) {
   const bp = useBreakpoint()
   const { t: tr } = useTranslation(APP_NS)
   const queryClient = useQueryClient()
@@ -203,12 +205,14 @@ export function InterviewScreen({ onDone, taxYear = CURRENT_TAX_YEAR }: Intervie
   return (
     <QuestionScreen
       questionId={current.id}
+      answers={answers}
       canGoBack={history.length > 0}
       onAnswer={(value) => answer(current.id, value)}
       onBack={back}
       bp={bp}
       notice={postError}
       taxYear={taxYear}
+      {...(onChangeYear ? { onChangeYear } : {})}
     />
   )
 }

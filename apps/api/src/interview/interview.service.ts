@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common'
+import { Inject, Injectable, Optional } from '@nestjs/common'
 import { HOUSEHOLD_AND_HEALTH_BOOSTERS } from '../config/features.js'
 import { ConflictError, InvalidInputError } from '../common/domain-error.js'
 import {
@@ -23,6 +23,7 @@ import type { InterviewStateDto } from './dto/interview-state.dto.js'
 import type { PostAnswerDto } from './dto/post-answer.dto.js'
 import type { PostAnswerResponseDto } from './dto/post-answer-response.dto.js'
 import { answersFrom } from './answers.js'
+import { LinkService } from '../link/link.service.js'
 
 /** QuestionId is not reachable given the answers stored so far. */
 export class UnreachableAnswerError extends ConflictError {
@@ -76,7 +77,14 @@ export class InterviewService {
   constructor(
     @Inject(INTERVIEW_ANSWER_REPOSITORY) private readonly repository: InterviewAnswerRepository,
     @Inject(AuditService) private readonly auditService: AuditService,
+    @Optional() @Inject(LinkService) private readonly link?: LinkService,
   ) {}
+
+  /** Signed-in users only: a guest has no master data or joint return yet (the upgrade carries the answers over). */
+  private async adoptHousehold(userId: string, taxYear: number, answers: Answers, kind: UserIdKind): Promise<void> {
+    if (kind !== 'session' || this.link === undefined || answers.familienstand === undefined) return
+    await this.link.adoptInterviewHousehold(userId, taxYear, answers)
+  }
 
   async getState(userId: string, taxYear: number, entryKey?: string, kind: UserIdKind = 'session'): Promise<InterviewStateDto> {
     const requestedEntry = entryKey ?? 'minimal-gate'
@@ -88,6 +96,8 @@ export class InterviewService {
     if (rows.length > 0) {
       await this.auditService.append({ userId, action: 'READ', resource: 'interview' })
     }
+    // Answers carried over from a guest session reach the household on the first read after the upgrade.
+    await this.adoptHousehold(userId, taxYear, answers, kind)
 
     const entryId = entryKey ?? 'minimal-gate'
     if (!Object.hasOwn(ENTRIES, entryId)) {
@@ -124,6 +134,8 @@ export class InterviewService {
       value: dto.value,
       openItems,
     })
+
+    if (dto.questionId === 'familienstand') await this.adoptHousehold(userId, taxYear, updatedAnswers, kind)
 
     return { nextStep: nextStepFor(entry, updatedAnswers), openItems: remainingStepsFor(entry, updatedAnswers) }
   }

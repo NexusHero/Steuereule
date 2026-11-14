@@ -330,6 +330,9 @@ describe('KatalogScreen — whose answers, in a joint return (ADR-0088)', () => 
 
     fireEvent.click(await screen.findByTestId('katalog-fuer-b'))
     expect(screen.getByTestId('katalog-fuer-b').textContent).toContain('Nora')
+    // UX review H7: the question says whose answers these are, and that donations count for both.
+    expect((await screen.findByTestId('katalog-fuer-partner')).textContent).toContain('Gefragt für Nora')
+    expect(screen.getByTestId('katalog-gemeinsam-spenden')).toBeTruthy()
     fireEvent.click(await screen.findByTestId('katalog-option-spenden-Nein'))
     await waitFor(() => expect(seen).toContain('post B'))
     expect(seen).toContain('get B')

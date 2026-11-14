@@ -9,6 +9,8 @@
   "testIds": {
     "microphone": "not a testID: the name of the icon in DictationBar's `isRecording ? 'stop' : 'microphone'`, picked up by the ternary scan next to a testID",
     "stop": "not a testID: icon name, see microphone",
-    "eule-inline-mask-unplaced": "the notice for a question that is on no page of the workbench: every question the owl may draft is placed (locate-question.test.ts checks that every question of the interview has a page), so the browser can never reach it; it is covered by OwlInlineMask.test.tsx (#488)"
+    "eule-inline-mask-unplaced": "the notice for a question that is on no page of the workbench: every question the owl may draft is placed (locate-question.test.ts checks that every question of the interview has a page), so the browser can never reach it; it is covered by OwlInlineMask.test.tsx (#488)",
+    "draft-choose-${draft.actionId}": "UX review K1: two ways for one field come only from the model's two-paths tool (advisor-tool-round.ts); the fake KiPort's scripted calls never use it and the rule fallback drafts one way (the home-office branch drafts exactly the stated days), so the browser gate cannot reach it. Covered by OwlModeScreenAlternatives.test.tsx and the API test of ADVISOR_BATCH_ALTERNATIVE_CONFLICT",
+    "eule-batch-alternatives-hint": "UX review K1: shown only next to alternatives, see draft-choose-${draft.actionId}"
   }
 }

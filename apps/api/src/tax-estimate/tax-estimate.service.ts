@@ -12,6 +12,7 @@ import {
   wageTaxCertificateStatus,
   openSalaryCertificateFields,
   taxEstimateEmployee,
+  taxEstimatePensioner,
   homeOfficeAllowance,
   churchMembership,
   lookupPostalCode,
@@ -108,13 +109,18 @@ export class TaxEstimateService {
     ])
     const answers = answersFrom(interviewRows)
 
-    if (answers.job !== 'Angestellt') return { kind: 'nicht-moeglich', reason: 'nur-angestellte' }
+    // Employees and pensioners get an estimate; the self-employed are out of scope (gewerbe gate).
+    if (answers.job !== 'Angestellt' && answers.job !== 'Rente') return { kind: 'nicht-moeglich', reason: 'nur-angestellte' }
     if (masterData?.familienstand === 'verheiratet' || answers.familienstand === 'Verheiratet') {
       return this.marriedCouple(userId, year, boostersEnabled)
     }
     if (gatedIncomeTypes(answers).length > 0 || specialCircumstance(answers)) {
       return { kind: 'nicht-moeglich', reason: 'besondere-lebenslage' }
     }
+    // § 32b EStG: the benefits are counted, not a reason to give up (UX review K3); the amount is needed though.
+    const wageReplacement = wageReplacementFrom(answers)
+    if (wageReplacement === null) return { kind: 'offen', missing: ['lohnersatz-betrag'] }
+    if (answers.job === 'Rente') return this.pensioner(userId, year, answers, masterData, boostersEnabled)
 
     const numbers = employeeFromAnswers(answers)
     const allowance = commuterAllowanceFrom(year, path) + homeOfficeAllowanceFrom(year, path) + furtherWorkExpensesEur(path)
@@ -173,6 +179,7 @@ export class TaxEstimateService {
           singleParentChildren,
           childrenBracket,
           churchTax,
+          wageReplacementEur: wageReplacement,
         }),
         laterCount,
       )
@@ -197,10 +204,47 @@ export class TaxEstimateService {
           singleParentChildren,
           childrenBracket,
           churchTax,
+          wageReplacementEur: wageReplacement,
         }),
         laterCount,
       )
     }, { 'tax.year': year, 'user.id': userId })
+  }
+
+  /**
+   * A single pensioner (Anlage R): the taxable share of the recorded pension, KVdR as Vorsorge unless the
+   * Sonderausgaben catalogue says privately insured, and nothing withheld (UX review K3).
+   */
+  private async pensioner(
+    userId: string,
+    year: number,
+    answers: Answers,
+    masterData: Awaited<ReturnType<MasterDataRepository['findByUserId']>>,
+    boostersEnabled: boolean,
+  ): Promise<TaxEstimateStatus> {
+    const record = this.pension ? await this.pension.findForUserAndYear(userId, year) : null
+    const data = record ? pensionDataFromRecord(record) : null
+    const item = data ? pensionAsCoreLineItem(data) : null
+    if (data === null || item === null || data.jahresbetrag.kind !== 'erfasst') return { kind: 'offen', missing: ['rente'] }
+    const numbers = employeeFromAnswers(answers)
+    const childcare = await this.childcareDeduction(userId, year)
+    const recordedChildren = this.kinder ? (await this.kinder.listForUserAndYear(userId, year)).length : 0
+    const church = churchTaxInput(masterData, null, 'own', await this.childrenForChurchTax(userId, year, answers))
+    return withEstimateExtras(
+      taxEstimatePensioner({
+        year,
+        grossPensionEur: data.jahresbetrag.value,
+        taxablePensionEur: item.amount,
+        donations: numbers.donations + childcare,
+        selfPaidKvPv: numbers.healthCareContributions,
+        privatelyInsured: answers['kv-pv'] === 'Ja' && answers['kv-pv-art'] === 'Privat',
+        householdReductionEur: boostersEnabled ? householdServicesFromAnswers(answers, year).totalReductionEur : 0,
+        healthExpensesEur: boostersEnabled ? extraordinaryBurdenFromAnswers(answers) : 0,
+        childrenBracket: burdenChildrenBracket(answers.kinder, recordedChildren),
+        churchTax: { membership: church.membership, state: church.state, postalCode: church.postalCode, children: church.children },
+      }),
+      countLaterAmounts(answers, boostersEnabled),
+    )
   }
 
   /** § 24b Abs. 2 Satz 2: the recorded children, else what the interview says (1 or "2 oder mehr" → 2). */
@@ -234,6 +278,7 @@ export class TaxEstimateService {
     if (a.kind === 'exempt' || b?.kind === 'exempt') return { kind: 'nicht-moeglich', reason: 'kein-grenzgaenger' }
     const missing = [...(a?.kind === 'offen' ? a.missing : []), ...(b?.kind === 'offen' ? b.missing.map((f) => `personB.${f}`) : [])]
     if (a.kind === 'none') missing.unshift('einkommen')
+    if (a.kind === 'ok' && wageReplacementFrom(a.answers) === null) missing.push('lohnersatz-betrag')
     if (missing.length > 0 || a.kind !== 'ok') return { kind: 'offen', missing }
     const [kinder, properties, sdA, sdB] = await Promise.all([
       this.kinder ? this.kinder.listForUserAndYear(link.personAUserId, year) : Promise.resolve([]),
@@ -271,6 +316,7 @@ export class TaxEstimateService {
       householdReductionEur,
       healthExpensesEur,
       childrenBracket: burdenChildrenBracket(a.answers.kinder ?? bAnswers.kinder, kinder.length),
+      wageReplacementEur: (wageReplacementFrom(a.answers) ?? 0) + (wageReplacementFrom(bAnswers) ?? 0),
     })
     if (estimate.kind !== 'spanne') return { kind: 'nicht-moeglich', reason: estimate.reason }
     const { childAllowanceUsed: _k, churchTax, ...range } = estimate
@@ -421,9 +467,15 @@ function rentalSurplus(o: {
   return number(o.mieteinnahmen) + number(o.umlagen) - number(o.werbungskosten) - number(o.schuldzinsen) - depreciation
 }
 
-/** A stored optional number; absent and null both mean "not entered". */
+/** Life situations the estimate cannot price yet; wage replacement benefits are priced (§ 32b, UX review K3). */
 function specialCircumstance(answers: Answers): boolean {
-  return answers.dhf === 'Ja' || answers.abfindung === 'Ja' || answers.lohnersatz === 'Ja' || answers.nebenjob === 'Midijob' || answers.nebenjob === 'Nebenjob'
+  return answers.dhf === 'Ja' || answers.abfindung === 'Ja' || answers.nebenjob === 'Midijob' || answers.nebenjob === 'Nebenjob'
+}
+
+/** Wage replacement benefits of the year: 0 without, the amount with, null when „Ja“ is answered but the amount is missing. */
+function wageReplacementFrom(answers: Answers): number | null {
+  if (answers.lohnersatz !== 'Ja') return 0
+  return amountFromAnswer(answers['lohnersatz-betrag'])
 }
 
 function commuterAllowanceFrom(year: number, path: CommuteInputs | null): number {

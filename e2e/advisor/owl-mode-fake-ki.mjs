@@ -19,7 +19,8 @@ import { skipSplash, signUpOutOfBand, submitLogin } from '../harness/flows.mjs'
 const AUTH_BUCKET = { windowMs: 10_000, max: 3, shared: true }
 const PASSWORD = 'Sicheres-Passwort-1!'
 const TAG = 'owl-mode-fake-ki'
-const YEAR = 2026
+// The cockpit opens on the last completed year since UX review K2 (2025 on 2026-11-14).
+const YEAR = 2025
 const COMMUTE = { workdays: [1, 2, 3, 4, 5], vacationDays: 30, sickDays: 5, homeOfficeDays: 0, oneWayKm: 20, transport: 'pkw', workplace: null }
 
 async function account(apiOrigin, webOrigin, sql) {
@@ -93,6 +94,9 @@ async function main() {
     const stage = page.locator('[data-testid="eule-draft-stage"]')
     await stage.waitFor({ state: 'visible', timeout: 15_000 })
     await page.locator('[data-testid^="draft-card-"]', { hasText: '→ 38' }).waitFor({ state: 'visible', timeout: 10_000 })
+    // UX review K3: without an LStB the real estimate cannot price the draft — the card says so instead of a figure.
+    const cardId = (await page.locator('[data-testid^="draft-card-"]', { hasText: '→ 38' }).first().getAttribute('data-testid')) ?? ''
+    await page.locator(`[data-testid="draft-effect-open-${cardId.slice('draft-card-'.length)}"]`).waitFor({ state: 'visible', timeout: 10_000 })
     await page.waitForTimeout(1_000)
     if (writes.length > 0) fail(`Row A: a draft must not write anything without a click, saw ${writes.join(', ')}`)
     if ((await commute(user.api)).oneWayKm !== 20) fail('Row A: the mask value changed without a click')

@@ -21,7 +21,8 @@ import { skipSplash, signUpOutOfBand, submitLogin } from '../harness/flows.mjs'
 const AUTH_BUCKET = { windowMs: 10_000, max: 3, shared: true }
 const PASSWORD = 'Sicheres-Passwort-1!'
 const TAG = 'visual'
-const YEAR = 2026
+// The cockpit opens on the last completed year since UX review K2 (2025 on 2026-11-14).
+const YEAR = 2025
 const here = path.dirname(fileURLToPath(import.meta.url))
 const BASELINES = path.join(here, 'baselines', process.platform)
 const OUT = process.env.VISUAL_OUT ? path.resolve(process.env.VISUAL_OUT) : null

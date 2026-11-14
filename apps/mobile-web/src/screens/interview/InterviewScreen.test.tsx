@@ -31,7 +31,9 @@ function makeTestQueryClient() {
   return new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
 }
 
-function renderInterview(opts: { lng?: 'de' | 'en'; onDone?: () => void; queryClient?: QueryClient; taxYear?: number } = {}) {
+function renderInterview(
+  opts: { lng?: 'de' | 'en'; onDone?: () => void; queryClient?: QueryClient; taxYear?: number; onChangeYear?: (year: number) => void } = {},
+) {
   const i18n = createAppI18n(opts.lng ?? 'de')
   const queryClient = opts.queryClient ?? makeTestQueryClient()
   return {
@@ -40,7 +42,11 @@ function renderInterview(opts: { lng?: 'de' | 'en'; onDone?: () => void; queryCl
       <QueryClientProvider client={queryClient}>
         <I18nextProvider i18n={i18n}>
           <ThemeProvider mode="light">
-            <InterviewScreen onDone={opts.onDone ?? (() => {})} taxYear={opts.taxYear ?? TAX_YEAR} />
+            <InterviewScreen
+              onDone={opts.onDone ?? (() => {})}
+              taxYear={opts.taxYear ?? TAX_YEAR}
+              {...(opts.onChangeYear ? { onChangeYear: opts.onChangeYear } : {})}
+            />
           </ThemeProvider>
         </I18nextProvider>
       </QueryClientProvider>,
@@ -67,9 +73,9 @@ async function renderOnJobQuestion(opts: Parameters<typeof renderInterview>[0] =
 // mis-wired branch fails loudly instead of a generic "something is on screen" assertion passing
 // by accident. `find*` (not `get*`): every screen mount now waits on the GET.
 const onJobQuestion = () => screen.findByText('Mehrfachjobs? Nimm die Hauptquelle — der Rest kommt später.')
-const onForeignQuestion = () => screen.findByText('Grenzgänger haben Sonderregeln — in die Schweiz können wir sie komplett, inklusive 60-Tage-Tracking.')
-const onKinderQuestion = () => screen.findByText('Kindergeld, Freibeträge, Betreuungskosten — die Günstigerprüfung Kindergeld vs. Freibetrag läuft automatisch.')
-const onMaritalStatusQuestion = () => screen.findByText('Verheiratete geben meist eine gemeinsame Erklärung ab — dann rechnen wir mit dem Splittingtarif.')
+const onForeignQuestion = () => screen.findByText('Wer in Deutschland wohnt und in der Schweiz arbeitet, hat eigene Regeln — die gehen wir komplett mit dir durch.')
+const onKinderQuestion = () => screen.findByText('Kindergeld, Kinderfreibetrag, Betreuungskosten — was für dich günstiger ist, rechnen wir selbst aus.')
+const onMaritalStatusQuestion = () => screen.findByText('Verheiratete geben meist eine gemeinsame Erklärung ab, das spart oft Steuern. Dann fragen wir noch kurz nach deinem Partner.')
 const onBusinessGate = () => screen.findByText('Ehrlich: dafür sind wir noch nicht gut genug.')
 const onChOnlyGate = () => screen.findByText('Ehrlich: andere Länder können wir noch nicht.')
 
@@ -80,6 +86,26 @@ describe('InterviewScreen', () => {
     await onJobQuestion()
     expect(screen.getByText(/ 2025\?$/)).toBeTruthy()
     expect(screen.queryByText(/2026/)).toBeNull()
+  })
+
+  it('K2: offers "Anderes Jahr" under the first question and switches the year', async () => {
+    server.use(http.get('*/v1/steuerjahre/2025/interview', () => HttpResponse.json(EMPTY_INTERVIEW_STATE, { status: 200 })))
+    const onChangeYear = vi.fn()
+    renderInterview({ taxYear: 2025, onChangeYear })
+    await onJobQuestion()
+
+    expect(screen.queryByTestId('interview-jahr-2024')).toBeNull()
+    fireEvent.click(screen.getByTestId('interview-anderes-jahr'))
+    expect(screen.queryByTestId('interview-jahr-2025')).toBeNull()
+    expect(screen.getByTestId('interview-jahr-2026').textContent).toBe('2026 · läuft')
+    fireEvent.click(screen.getByTestId('interview-jahr-2024'))
+    expect(onChangeYear).toHaveBeenCalledWith(2024)
+  })
+
+  it('offers no year switch when the host cannot change the year', async () => {
+    renderInterview()
+    await onJobQuestion()
+    expect(screen.queryByTestId('interview-anderes-jahr')).toBeNull()
   })
 
   it('shows an honest loading state while the interview state is fetched', async () => {
@@ -344,7 +370,8 @@ describe('InterviewScreen', () => {
     it('Rente -> ausland question directly, NOT the Gewerbe gate (ADR-034: Rente is an answer, not a branch)', async () => {
       await renderOnJobQuestion()
       fireEvent.click(screen.getByText('Rente'))
-      await onForeignQuestion()
+      // UX review M3: a pensioner gets the same question asked the way that fits, not "commute for work".
+      await screen.findByText('Die meisten tippen hier „Nein“. Eine Rente aus der Schweiz trägst du später bei deiner Rente ein.')
       expect(screen.queryByText('Ehrlich: dafür sind wir noch nicht gut genug.')).toBeNull()
     })
 

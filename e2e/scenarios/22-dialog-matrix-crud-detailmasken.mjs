@@ -69,8 +69,7 @@ export async function runScenario22(browser, webOrigin) {
   await page.locator('[data-testid="kind-verhaeltnis-1"]').click() // Leibliches Kind
   await page.locator('[data-testid="kind-inland-nein"]').click()
   await page.locator('[data-testid="kind-inland-ja"]').click()
-  await page.locator('[data-testid="kind-gemeldet-ja"]').click()
-  await page.locator('[data-testid="kind-kindergeld-an-mich-ja"]').click()
+  // UX review H3: the married household is known from the interview, so the single-parent questions stay hidden.
   await page.locator('[data-testid="kind-familienkasse"]').fill('Familienkasse Berlin')
   await page.locator('[data-testid="kind-speichern"]').click()
   await page.waitForTimeout(400)
@@ -86,8 +85,7 @@ export async function runScenario22(browser, webOrigin) {
   await page.locator('[data-testid="kind-kindergeld"]').fill('3060')
   await page.locator('[data-testid="kind-verhaeltnis-1"]').click()
   await page.locator('[data-testid="kind-inland-ja"]').click()
-  await page.locator('[data-testid="kind-gemeldet-ja"]').click()
-  await page.locator('[data-testid="kind-kindergeld-an-mich-ja"]').click()
+  // UX review H3: the married household is known from the interview, so the single-parent questions stay hidden.
   await page.locator('[data-testid="kind-familienkasse"]').fill('Familienkasse Berlin')
   await page.locator('[data-testid="kind-speichern"]').click()
   await page.waitForTimeout(400)

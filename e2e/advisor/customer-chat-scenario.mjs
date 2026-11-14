@@ -16,12 +16,13 @@ import { startStack } from '../harness/stack.mjs'
 import { skipSplash, signUpOutOfBand, submitLogin } from '../harness/flows.mjs'
 
 const PASSWORD = 'Sicheres-Passwort-1!'
-const YEAR = 2026
+// The cockpit opens on the last completed year since UX review K2 (2025 on 2026-11-14).
+const YEAR = 2025
 const OUT = process.env.SCENARIO_OUT ?? '/tmp/customer-scenario'
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
 const TURNS = [
-  'Hallo! Ich will meine Steuererklärung für 2026 machen. Ich bin angestellt, ledig und habe keine Kinder. Wie fangen wir an?',
+  'Hallo! Ich will meine Steuererklärung für 2025 machen. Ich bin angestellt, ledig und habe keine Kinder. Wie fangen wir an?',
   'Auf meiner Lohnsteuerbescheinigung steht: Bruttolohn 62.000 €, Lohnsteuer 11.800 €, Sozialversicherung 12.400 €. Trag das bitte ein.',
   'Ich fahre 38 km einfach zur Arbeit, mit dem Auto, fünf Tage die Woche.',
   'Ungefähr 60 Tage war ich im Homeoffice.',

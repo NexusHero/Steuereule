@@ -124,6 +124,7 @@ export function employeeFromData(data: WageTaxCertificateData, answers: Answers)
     openItems,
     conflicts: employed && state.kind === 'widerspruch' ? state.conflicts.length : 0,
     gated: gatedIncomeTypes(answers),
-    recordedNotCalculated: numbers.doubleHouseholdRent + numbers.severanceAmount + numbers.wageReplacementAmount,
+    // Wage replacement benefits are priced by the estimate (§ 32b EStG, UX review K3), so they are not listed here.
+    recordedNotCalculated: numbers.doubleHouseholdRent + numbers.severanceAmount,
   }
 }

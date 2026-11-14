@@ -400,6 +400,7 @@ export async function runToolRound(
         sourceId,
         safePath: {
           actionId: `${baseActionId}-safe`,
+          alternativeGroup: baseActionId,
           status: 'pending',
           screen: safeCheck.screen,
           field: safeField,
@@ -416,6 +417,7 @@ export async function runToolRound(
         },
         maxPath: {
           actionId: `${baseActionId}-max`,
+          alternativeGroup: baseActionId,
           status: 'pending',
           screen: maxCheck.screen,
           field: maxField,

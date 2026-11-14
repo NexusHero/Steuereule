@@ -393,6 +393,23 @@ describe('AiRuntimeConfigService & LangGraphAdvisorEngine (#446 Slice 2)', () =>
     expect(fallbackRes.meta.action?.newValue).toBe('250')
   })
 
+  it('gives the fallback draft the effect of the real estimate, and none while it cannot say (K3)', async () => {
+    const engine = new LangGraphAdvisorEngine(runtimeWithProvider('google-genai'), () => new ScriptedChatModel([new Error('503 Upstream unavailable')]))
+    const computed = await engine.runTurn({
+      message: 'Ich war an 80 Tagen im Homeoffice.',
+      digest: sampleDigest,
+      previewEffect: async () => ({ kind: 'computed', beforeRefundEur: 300, afterRefundEur: 410, deltaEur: 110 }),
+    })
+    expect(computed.meta.action).toMatchObject({ field: 'homeOfficeDays', newValue: '80', deltaEur: 110, effect: 'computed' })
+
+    const open = await engine.runTurn({
+      message: 'Ich war an 80 Tagen im Homeoffice.',
+      digest: sampleDigest,
+      previewEffect: async () => ({ kind: 'not-computable', hint: 'Wirkung erst berechenbar …' }),
+    })
+    expect(open.meta.action).toMatchObject({ deltaEur: 0, effect: 'not-computable', effectHint: 'Wirkung erst berechenbar …' })
+  })
+
   it('persists LangGraph streamTurn results via AdvisorService.streamMessage and hydrates expectedPreviousValue', async () => {
     const advisorRepo = new InMemoryAdvisorRepository()
     const interviewRepo = new FakeInterviewAnswerRepository()

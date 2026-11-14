@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, View, Text } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
@@ -21,7 +21,7 @@ import { OwlAdvisorCard } from '../advisor/OwlAdvisorCard'
 import { useOptionalCopilotBridge } from '../advisor/CopilotBridgeProvider'
 import { APP_NS } from '../../i18n/resources'
 import type { PartnerAreaParam } from '../../navigation/routes'
-import { SELECTABLE_TAX_YEARS, CURRENT_TAX_YEAR } from '../../config/taxYear'
+import { SELECTABLE_TAX_YEARS, CURRENT_TAX_YEAR, isRunningTaxYear } from '../../config/taxYear'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { pathFromAnswers, type FunnelPath } from '../funnel/KontoWandScreen'
 import { usePlausibility } from '../plausibility/usePlausibility'
@@ -29,6 +29,7 @@ import { CockpitTiles, tileRevisitFlag, useCockpitTileFacts } from './CockpitTil
 import { derivePersonas } from './personas'
 import { nextStep, type TileDefinition, type TileFacts } from './tiles'
 import { makeStyles } from './CockpitScreen.styles'
+import { dismissEffect, observeMidpoint, rememberOpenedArea, type Effect } from './effectMemory'
 
 
 const SELECTABLE_YEARS = SELECTABLE_TAX_YEARS
@@ -94,7 +95,9 @@ export function CockpitScreen({
   const masterDataValue = masterDataQuery.data?.status === 200 ? masterDataQuery.data.data : null
   const interview = interviewQuery.data?.status === 200 ? interviewQuery.data.data : null
   const answers = (interview?.answers ?? {}) as Answers
-  const path = interview?.nextStep.kind === 'done' ? pathFromAnswers(interview.answers) : null
+  // H5: the deadline banner waits for the answers — whether the deadline binds depends on them.
+  const deadlineAnswers = interviewQuery.isPending ? null : answers
+  const path =interview?.nextStep.kind === 'done' ? pathFromAnswers(interview.answers) : null
   const personas = derivePersonas(answers, masterDataValue)
   const linkQuery = useLinkControllerGet(year, { query: { enabled: isSignedIn && path !== null && personas.has('verheiratet') } })
   const linkData = linkQuery.data?.status === 200 ? linkQuery.data.data : null
@@ -139,7 +142,11 @@ export function CockpitScreen({
           label: missingDetails > 0 ? tr('cockpit.stammdatenErgaenzen', { anzahl: missingDetails }) : tr('cockpit.stammdatenAnsehen'),
           onPress: onOpenMasterData,
         }
-  const openTile = onOpenTile ?? (() => {})
+  const openTile = (tile: TileDefinition, revisit: boolean) => {
+    // The next change of the estimate is attributed to this area (UX review H1, Wirkungszeile).
+    rememberOpenedArea(year, tile.id)
+    onOpenTile?.(tile, revisit)
+  }
   const submissionHandler = onOpenSubmission ?? onOpenPrintout
   const step = tileFacts !== null ? nextStep(tileFacts) : null
   const next: Next | null =
@@ -183,6 +190,7 @@ export function CockpitScreen({
         {...(onOpenKinder ? { onOpenKinder } : {})}
         {...(onOpenOwlMode ? { onOpenOwlMode: () => onOpenOwlMode(year) } : {})}
         {...(submissionHandler ? { onOpenPrintout: () => submissionHandler(year) } : {})}
+        deadlineAnswers={deadlineAnswers}
         bp={bp}
       />
     )
@@ -213,6 +221,7 @@ export function CockpitScreen({
       {...(onOpenKinder ? { onOpenKinder } : {})}
       {...(onOpenOwlMode ? { onOpenOwlMode: () => onOpenOwlMode(year) } : {})}
       {...(submissionHandler ? { onOpenPrintout: () => submissionHandler(year) } : {})}
+      deadlineAnswers={deadlineAnswers}
       bp={bp}
     />
   )
@@ -228,7 +237,7 @@ interface PullToRefresh {
   readonly onPull: () => void
 }
 
-function Refund({ year }: { readonly year: number }) {
+function Refund({ year, hideRange = false }: { readonly year: number; readonly hideRange?: boolean }) {
   const t = useTheme()
   const styles = makeStyles(t)
   const { t: tr, i18n } = useTranslation(APP_NS)
@@ -236,7 +245,7 @@ function Refund({ year }: { readonly year: number }) {
   const estimate: TaxEstimateDto | null = query.data?.status === 200 ? query.data.data : null
   return (
     <>
-      <Text style={styles.refundLater} testID="cockpit-erstattung">{refundText(estimate, tr, i18n.language)}</Text>
+      {hideRange ? null : <Text style={styles.refundLater} testID="cockpit-erstattung">{refundText(estimate, tr, i18n.language)}</Text>}
       {estimate?.kind === 'spanne' && estimate.churchTaxOpen ? (
         <Text style={styles.refundLater} testID="cockpit-kirchensteuer-offen">
           {estimate.churchTax?.kind === 'offen' && estimate.churchTax.reason
@@ -249,6 +258,65 @@ function Refund({ year }: { readonly year: number }) {
       ) : null}
     </>
   )
+}
+
+/**
+ * The refund or back payment as the hero's headline (UX review H1), with the effect of the last change
+ * underneath: what moved, in which area and form, and by how much.
+ */
+function RefundHeadline({ year, estimate }: { readonly year: number; readonly estimate: TaxEstimateDto | null }) {
+  const t = useTheme()
+  const styles = makeStyles(t)
+  const { t: tr } = useTranslation(APP_NS)
+  const result = estimate?.kind === 'spanne' ? (estimate.result ?? null) : null
+  const midpoint = result === null ? null : Math.round((result.from + result.to) / 2)
+  const [effect, setEffect] = useState<Effect | null>(null)
+  useEffect(() => {
+    setEffect(observeMidpoint(year, midpoint))
+  }, [year, midpoint])
+  if (result === null) return null
+  // Exactly 0 € (e.g. a pension below the basic allowance) is neither a refund nor a back payment.
+  const even = result.from === 0 && result.to === 0
+  const label = even
+    ? 'cockpit.hero.ergebnisLabel'
+    : result.from >= 0
+      ? 'cockpit.hero.erstattungLabel'
+      : result.to <= 0
+        ? 'cockpit.hero.nachzahlungLabel'
+        : 'cockpit.hero.ergebnisLabel'
+  const value =
+    result.from === result.to
+      ? formatEuro(Math.abs(result.from))
+      : result.from >= 0 || result.to <= 0
+        ? formatEuroRange(Math.min(Math.abs(result.from), Math.abs(result.to)), Math.max(Math.abs(result.from), Math.abs(result.to)))
+        : tr('cockpit.hero.ergebnisSpanne', { nachzahlung: formatEuro(Math.abs(result.from)), erstattung: formatEuro(result.to) })
+  return (
+    // One element reads as the whole statement („Voraussichtliche Erstattung 483–544 €“) for screen readers and checks.
+    <>
+      <View testID="cockpit-erstattung">
+        <Text style={styles.refundLabel}>{tr(label)}</Text>
+        <Text style={styles.heroValue} testID="cockpit-erstattung-betrag">{value}</Text>
+        {even ? <Text style={styles.effectLine} testID="cockpit-ausgeglichen">{tr('cockpit.hero.ausgeglichen')}</Text> : null}
+      </View>
+      {/* Outside the statement above: its euro amount is the change, not the estimate. */}
+      {effect !== null && effect.deltaEur !== 0 ? (
+        <Pressable accessibilityRole="button" accessibilityHint={tr('cockpit.wirkung.schliessen')} onPress={() => { dismissEffect(year); setEffect(null) }} testID="cockpit-wirkung">
+          <Text style={styles.effectLine}>{effectText(effect, tr)}</Text>
+        </Pressable>
+      ) : null}
+    </>
+  )
+}
+
+function effectText(effect: Effect, tr: TFunction<typeof APP_NS>): string {
+  const amount = formatEuro(Math.abs(effect.deltaEur))
+  const direction = tr(effect.deltaEur > 0 ? 'cockpit.wirkung.mehr' : 'cockpit.wirkung.weniger', { betrag: amount })
+  if (effect.area === null) return tr('cockpit.wirkung.ohneBereich', { wirkung: direction })
+  return tr('cockpit.wirkung.mitBereich', {
+    bereich: tr(`cockpit.kachel.${effect.area}.titel`),
+    formular: tr(`cockpit.kachel.${effect.area}.formular`),
+    wirkung: direction,
+  })
 }
 
 function refundText(estimate: TaxEstimateDto | null, tr: TFunction<typeof APP_NS>, language: string): string {
@@ -281,11 +349,28 @@ function Appbar({ year, onYearChange, isRefreshing }: { readonly year: number; r
       <View style={styles.jahrReihe} accessibilityLabel={tr('cockpit.jahrAuswahl')}>
         {SELECTABLE_YEARS.map((y) => (
           <Chip key={y} active={y === year} onPress={() => onYearChange(y)} testID={`jahr-${y}`}>
-            {String(y)}
+            {isRunningTaxYear(y) ? tr('cockpit.jahrLaeuft', { jahr: y }) : String(y)}
           </Chip>
         ))}
       </View>
     </View>
+  )
+}
+
+/** The notices about the year itself: the running year's prepare mode (K2) and the deadline (H5). */
+function YearNotices({ year, answers }: { readonly year: number; readonly answers: Answers | null }) {
+  const t = useTheme()
+  const { t: tr } = useTranslation(APP_NS)
+  const styles = makeStyles(t)
+  return (
+    <>
+      {isRunningTaxYear(year) ? (
+        <View style={styles.runningYearNotice} testID="cockpit-laufendes-jahr">
+          <Text style={styles.runningYearText}>{tr('cockpit.laufendesJahr', { jahr: year, abgabeAb: year + 1 })}</Text>
+        </View>
+      ) : null}
+      <DeadlinesBanner taxYear={year} answers={answers} />
+    </>
   )
 }
 
@@ -312,6 +397,7 @@ interface CockpitEmptyProps {
   readonly onOpenOwlMode?: () => void
   readonly onOpenPrintout?: () => void
   readonly bp: Breakpoint
+  readonly deadlineAnswers: Answers | null
 }
 
 function EuleBannerNotice() {
@@ -363,7 +449,7 @@ function EuleBannerNotice() {
   )
 }
 
-function CockpitEmpty({ year, onYearChange, refresh, isRefreshing, next, tileFacts, isSignedIn, isJointMarried, partnerName, findings, onOpenTile, onOpenPartner, onOpenSubmission, masterData, onOpenInterview, onOpenAssessment, onOpenCapital, onOpenRental, onOpenKinder, onOpenOwlMode, bp }: CockpitEmptyProps) {
+function CockpitEmpty({ year, onYearChange, refresh, isRefreshing, next, tileFacts, isSignedIn, isJointMarried, partnerName, findings, onOpenTile, onOpenPartner, onOpenSubmission, masterData, onOpenInterview, onOpenAssessment, onOpenCapital, onOpenRental, onOpenKinder, onOpenOwlMode, deadlineAnswers, bp }: CockpitEmptyProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
@@ -374,7 +460,7 @@ function CockpitEmpty({ year, onYearChange, refresh, isRefreshing, next, tileFac
       testID="screen-container"
     >
       <Appbar year={year} onYearChange={onYearChange} isRefreshing={isRefreshing} />
-      <DeadlinesBanner taxYear={year} />
+      <YearNotices year={year} answers={deadlineAnswers} />
       <EuleBannerNotice />
       <View style={styles.emptyBlock}>
         <Text style={styles.heading}>{tr('cockpit.empty.heading')}</Text>
@@ -491,14 +577,19 @@ interface CockpitLoadedProps {
   readonly onOpenOwlMode?: () => void
   readonly onOpenPrintout?: () => void
   readonly bp: Breakpoint
+  readonly deadlineAnswers: Answers | null
 }
 
-function CockpitLoaded({ summary, year, onYearChange, confirmation, onOpenConfirmation, refresh, isRefreshing, next, tileFacts, isSignedIn, isJointMarried, partnerName, findings, onOpenTile, onOpenPartner, onOpenSubmission, masterData, onOpenInterview, onOpenAssessment, onOpenCapital, onOpenRental, onOpenKinder, onOpenOwlMode, onOpenPrintout, bp }: CockpitLoadedProps) {
+function CockpitLoaded({ summary, year, onYearChange, confirmation, onOpenConfirmation, refresh, isRefreshing, next, tileFacts, isSignedIn, isJointMarried, partnerName, findings, onOpenTile, onOpenPartner, onOpenSubmission, masterData, onOpenInterview, onOpenAssessment, onOpenCapital, onOpenRental, onOpenKinder, onOpenOwlMode, onOpenPrintout, deadlineAnswers, bp }: CockpitLoadedProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
   const { openItems, status } = summary
   const hasOpenItems = openItems > 0
+  const estimateQuery = useTaxEstimateControllerGet(year)
+  const estimate: TaxEstimateDto | null = estimateQuery.data?.status === 200 ? estimateQuery.data.data : null
+  // UX review H1: as soon as there is a range, the refund is the headline and the income the detail.
+  const refundFirst = estimate?.kind === 'spanne'
 
   return (
     <ScrollView
@@ -507,18 +598,24 @@ function CockpitLoaded({ summary, year, onYearChange, confirmation, onOpenConfir
       testID="screen-container"
     >
       <Appbar year={year} onYearChange={onYearChange} isRefreshing={isRefreshing} />
-      <DeadlinesBanner taxYear={year} />
+      <YearNotices year={year} answers={deadlineAnswers} />
       <EuleBannerNotice />
       <ConfirmationNotice annexes={confirmation} status={status} {...(onOpenConfirmation ? { onOpenConfirmation } : {})} />
       <Card variant="nacht">
+        {refundFirst ? (
+          <>
+            <RefundHeadline year={year} estimate={estimate} />
+            <View style={styles.heroDivider} />
+          </>
+        ) : null}
         <Text style={styles.heroLabel}>{tr('cockpit.hero.label')}</Text>
         {status.kind === 'gated' ? (
           <GatedHero status={status} />
         ) : (
-          <NumericHero status={status} />
+          <NumericHero status={status} compact={refundFirst} />
         )}
         <Text style={styles.openItems}>{tr('cockpit.hero.openItems', { count: openItems })}</Text>
-        <Refund year={year} />
+        <Refund year={year} hideRange={refundFirst} />
       </Card>
       {next ? (
         <Button onPress={next.onPress} style={styles.cta} testID="cockpit-weiter">
@@ -592,7 +689,7 @@ function CockpitLoaded({ summary, year, onYearChange, confirmation, onOpenConfir
   )
 }
 
-function NumericHero({ status }: { readonly status: CockpitStatusDto }) {
+function NumericHero({ status, compact = false }: { readonly status: CockpitStatusDto; readonly compact?: boolean }) {
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(useTheme())
   const calculationPath =
@@ -602,7 +699,7 @@ function NumericHero({ status }: { readonly status: CockpitStatusDto }) {
   const source = calculationPath === undefined ? { rule: tr('cockpit.hero.herkunftRegel') } : { rule: tr('cockpit.hero.herkunftRegel'), calculationPath }
   return (
     <>
-      <Text style={styles.heroValue}>
+      <Text style={compact ? styles.heroValueSmall : styles.heroValue} testID="cockpit-einkommen">
         {heroDisplay(status, tr('cockpit.hero.nochOffen'))}
       </Text>
       {status.kind === 'spanne' && (status.openItems ?? 0) > 0 ? (

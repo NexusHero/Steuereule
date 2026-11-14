@@ -102,6 +102,9 @@ export interface CatalogScreenProps {
   readonly revisit?: boolean
 }
 
+/** Steps whose amounts count for the couple together in a joint return — whose they are changes nothing. */
+const JOINT_STEPS: readonly EntryStepId[] = ['spenden', 'spenden-betrag']
+
 /** Entries each spouse answers for themselves; in a joint return the user picks whose answers these are (ADR-0088). */
 const PERSONAL_ENTRIES: readonly CatalogScreenEntry[] = ['lebenslagen', 'sonderausgaben']
 
@@ -112,7 +115,8 @@ export function CatalogScreen(props: CatalogScreenProps) {
   const personal = PERSONAL_ENTRIES.includes(entry)
   const link = useLinkControllerGet(taxYear, { query: { enabled: personal, retry: false } })
   const coupling = link.data?.status === 200 ? link.data.data : null
-  const partnerName = coupling?.filingType === 'zusammen' && coupling.personBHasOwnAccount !== true ? coupling.personB?.firstName?.trim() || tr('katalog.fuerWen.partnerFallback') : null
+  const partnerFirstName = coupling?.personB?.firstName?.trim() || null
+  const partnerName = coupling?.filingType === 'zusammen' && coupling.personBHasOwnAccount !== true ? partnerFirstName ?? tr('katalog.fuerWen.partnerFallback') : null
   const [person, setPerson] = useState<'A' | 'B'>('A')
   if (!personal || partnerName === null) return <CatalogFlow {...props} person="A" />
   return (
@@ -126,12 +130,22 @@ export function CatalogScreen(props: CatalogScreenProps) {
           {tr('katalog.fuerWen.partner', { name: partnerName })}
         </Chip>
       </View>
-      <CatalogFlow key={person} {...props} person={person} />
+      <CatalogFlow key={person} {...props} person={person} partnerName={partnerName} partnerNamed={partnerFirstName !== null} />
     </>
   )
 }
 
-function CatalogFlow({ entry, focusStep, onDone = () => {}, onBack, taxYear = CURRENT_TAX_YEAR, revisit = false, person }: CatalogScreenProps & { readonly person: 'A' | 'B' }) {
+function CatalogFlow({
+  entry,
+  focusStep,
+  onDone = () => {},
+  onBack,
+  taxYear = CURRENT_TAX_YEAR,
+  revisit = false,
+  person,
+  partnerName = null,
+  partnerNamed = false,
+}: CatalogScreenProps & { readonly person: 'A' | 'B'; readonly partnerName?: string | null; readonly partnerNamed?: boolean }) {
   const bp = useBreakpoint()
   const t = useTheme()
   const styles = makeStyles(t)
@@ -271,14 +285,25 @@ function CatalogFlow({ entry, focusStep, onDone = () => {}, onBack, taxYear = CU
       <View style={styles.headerRow}>
         {handleBack ? <BackButton accessibilityLabel={tr('katalog.back')} onPress={handleBack} /> : <BackButtonSpacer />}
         <Text style={styles.stepPill}>
-          {tr('katalog.progress', { done: history.length, total: history.length + remainingStepsFor(ENTRIES[entry], answers) })}
+          {tr('katalog.progress', { done: history.length + 1, total: history.length + remainingStepsFor(ENTRIES[entry], answers) })}
         </Text>
       </View>
 
       {conflict ? <Text style={styles.conflict}>{tr('katalog.conflict')}</Text> : null}
 
+      {/* UX review H7: on the partner's side every question says whose answers these are. */}
+      {person === 'B' && partnerName !== null ? (
+        <Text style={styles.hint} testID="katalog-fuer-partner">
+          {partnerNamed ? tr('katalog.fuerWen.frageFuer', { name: partnerName }) : tr('katalog.fuerWen.frageFuerOhneName')}
+        </Text>
+      ) : null}
       <Text style={styles.heading}>{tr(`katalog.questions.${step}`, { defaultValue: step })}</Text>
       {hint !== '' ? <Text style={styles.hint} testID={`katalog-hinweis-${step}`}>{hint}</Text> : null}
+      {partnerName !== null && JOINT_STEPS.includes(step) ? (
+        <Text style={styles.hint} testID={`katalog-gemeinsam-${step}`}>
+          {tr('katalog.fuerWen.gemeinsam')}
+        </Text>
+      ) : null}
 
       {decl.form.kind === 'enum' ? (
         decl.form.values.map((value) => (

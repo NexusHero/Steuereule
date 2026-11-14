@@ -172,7 +172,7 @@ describe('angestellteAusDaten — the ONE fold shared by Cockpit API + Plausibil
       'lohnersatz-betrag': '4000',
     })
     expect(facts.gated).toEqual(['Gewerbe'])
-    expect(facts.recordedNotCalculated).toBe(650 + 20000 + 4000)
+    expect(facts.recordedNotCalculated).toBe(650 + 20000)
   })
 })
 

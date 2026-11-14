@@ -14,6 +14,7 @@ import {
   type MasterDataResponseDto,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
+import { isRunningTaxYear } from '../../config/taxYear'
 import type { PartnerAreaParam } from '../../navigation/routes'
 import type { FunnelPath } from '../funnel/KontoWandScreen'
 import { CockpitPartnerSection } from './CockpitPartnerSection'
@@ -145,6 +146,10 @@ export function CockpitTiles({
       >
         <Card variant="default" style={styles.card}>
           <Text style={styles.title}>{tr(tile.titleKey)}</Text>
+          {/* UX review H2: every tile says which form it fills. */}
+          <Text style={styles.formular} testID={`cockpit-kachel-${tile.id}-formular`}>
+            {tr(`cockpit.kachel.${tile.id}.formular`)}
+          </Text>
           {facts.pendingTiles?.has(tile.id) ? null : (
             <Text style={statusStyle(status, styles)} testID={`cockpit-kachel-${tile.id}-status`}>
               {statusLabel(status, tr)}
@@ -206,6 +211,11 @@ export function CockpitTiles({
       >
         <Card variant="default" style={styles.card}>
           <Text style={styles.submissionTitle}>{tr('cockpit.abgabe.titel')}</Text>
+          {year !== undefined && isRunningTaxYear(year) ? (
+            <Text style={styles.submissionHint} testID="cockpit-abgabe-laufendes-jahr">
+              {tr('cockpit.abgabe.laufendesJahr', { abgabeAb: year + 1 })}
+            </Text>
+          ) : null}
         </Card>
       </Pressable>
     </View>
@@ -243,6 +253,7 @@ function makeStyles(t: UiTheme) {
     fontSize: t.size.l,
     color: t.color.tinte,
   }
+  const submissionHint: TextStyle = { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.tinte2, marginTop: t.space.s1 }
   const tileWrapNarrow: ViewStyle = {
     width: '100%',
   }
@@ -261,6 +272,12 @@ function makeStyles(t: UiTheme) {
     fontWeight: t.weight.schwer,
     fontSize: t.size.l,
     color: t.color.tinte,
+    marginBottom: t.space.s2,
+  }
+  const formular: TextStyle = {
+    fontFamily: t.font.mono,
+    fontSize: t.size.xs,
+    color: t.color.tinte2,
     marginBottom: t.space.s2,
   }
   const statusBase: TextStyle = {
@@ -307,8 +324,9 @@ function makeStyles(t: UiTheme) {
     tileWrapWide,
     submissionWrap,
     submissionTitle,
+    submissionHint,
     card,
-    title,
+    title, formular,
     statusOpen,
     statusDone,
     statusLater,

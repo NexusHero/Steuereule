@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { NavigationHelpers } from '@react-navigation/native'
 import type { Notice } from '@steuereule/core'
-import { CURRENT_TAX_YEAR, SELECTABLE_TAX_YEARS } from '../config/taxYear'
+import { DEFAULT_TAX_YEAR, SELECTABLE_TAX_YEARS } from '../config/taxYear'
 import type { FunnelPath } from '../screens/funnel/KontoWandScreen'
 import { rememberTaxYear, rememberedTaxYear } from '../screens/funnel/sessionMemory'
 import {
@@ -66,7 +66,9 @@ export function ShellStateProvider({
   onOpenConfirmation,
   children,
 }: ShellStateProviderProps) {
-  const [taxYear, setTaxYearState] = useState(() => rememberedTaxYear(CURRENT_TAX_YEAR, SELECTABLE_TAX_YEARS))
+  // K2: start in the last completed year. Only `setTaxYear` writes the memory, i.e. only a year the
+  // user picked (pill, deep link, "Anderes Jahr") is honoured — the default itself is never stored.
+  const [taxYear, setTaxYearState] = useState(() => rememberedTaxYear(DEFAULT_TAX_YEAR, SELECTABLE_TAX_YEARS))
   const [funnelPath, setFunnelPath] = useState<FunnelPath>('angestellte')
   const [pendingPath, setPendingPath] = useState<FunnelPath | null>(null)
   // ADR-0054: Person A records a partner's figures (no own account) without putting the name in the URL.

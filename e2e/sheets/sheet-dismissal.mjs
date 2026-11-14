@@ -6,7 +6,8 @@ import { fail } from '../harness/rate-limit.mjs'
 import { createAccount, call, answer, browserLogin, until } from '../harness/api-account.mjs'
 
 const TAG = 'sheet-dismissal'
-const YEAR = 2026
+// The cockpit opens on the last completed year since UX review K2 (2025 on 2026-11-14).
+const YEAR = 2025
 
 async function main() {
   const { apiOrigin, webOrigin, sql, stop } = await startStack()

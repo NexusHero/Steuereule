@@ -156,6 +156,12 @@ export interface AdvisorActionProposal {
   /** Whose fields the draft writes in a joint return (ADR-0073): `B` is the spouse; absent means the user (A). */
   readonly person?: AdvisorPerson | undefined
   readonly companionFields?: Readonly<Record<string, string>> | undefined
+  /**
+   * Drafts with the same group are alternatives (the two paths of a comparison): the user applies
+   * one of them, never both together, and applying one drops the others. Drafts on the same field
+   * are alternatives without a group (see `alternativeKeyOf`).
+   */
+  readonly alternativeGroup?: string | undefined
   /** Raw values of the companion fields when the draft was created; the stale check compares against them. */
   readonly companionExpectedValues?: Readonly<Record<string, string | null>> | undefined
   /** Server-internal: exact pre-apply state of every written field, so undo restores value and provenance. */
@@ -809,6 +815,101 @@ export function evaluateAdvisorTurn(input: {
   }
 }
 
+const EUR = new Intl.NumberFormat('de-DE', { maximumFractionDigits: 0 })
+
+/** "an 80 Tagen", "80 Tage", "80 Homeoffice-Tagen": the day count the user named, or null. */
+export function statedHomeOfficeDays(message: string): number | null {
+  const match = message.match(/(?<![\d.,])(\d{1,3})\s*(?:homeoffice-|home-office-)?tag(?:e|en)?\b/i)
+  if (!match || !match[1]) return null
+  const days = Number.parseInt(match[1], 10)
+  return Number.isFinite(days) && days > 0 ? days : null
+}
+
+/** Work expenses from what the user entered, nothing assumed: an unknown distance counts as no commute. */
+function statedWorkExpensesEur(digest: CaseDigest): number {
+  const work = workAllowancesOf(digest)
+  const training = digest.catalogExpenses.hasTraining ? (digest.catalogExpenses.trainingCostsEur ?? 0) : 0
+  return (
+    (work.commuteEur ?? 0) +
+    work.homeOfficeEur +
+    training +
+    furtherWorkExpensesEur(digest.catalogExpenses.workExpenses) +
+    (digest.catalogExpenses.relocationCostsEur ?? 0) +
+    (digest.catalogExpenses.doubleHouseholdRentEur ?? 0)
+  )
+}
+
+/**
+ * The home-office answer of the fallback. With a day count it drafts exactly those days on the
+ * commute mask (what the estimate reads) and shows the computation; without one it asks, and
+ * names the year's maximum only as information, never as a one-click draft (K1). The draft
+ * carries no euro effect of its own: the API fills it from the real estimate, or it stays open (K3).
+ */
+function homeOfficeTurn(message: string, digest: CaseDigest, makeActionId: () => string): AdvisorFallbackTurn {
+  const params = isSupportedIncomeTaxYear(digest.taxYear) ? getTaxYearParameters(digest.taxYear) : null
+  const rate = params?.homeOffice.dailyRateEur ?? 6
+  const maxDays = params?.homeOffice.maxDays ?? 210
+  const maxAnnualEur = params?.homeOffice.maxAnnualEur ?? maxDays * rate
+  const employeeLumpSum = params?.lumpSums.employee ?? 1230
+  const limits = `höchstens ${maxDays} Tage = ${EUR.format(maxAnnualEur)} € im Jahr`
+  const stated = statedHomeOfficeDays(message)
+
+  if (stated === null) {
+    const known = digest.commuteAndWorkdays.homeOfficeDays
+    const knownText =
+      known !== null && known > 0 ? ` In deiner Akte stehen bisher ${known} Homeoffice-Tage (${EUR.format(Math.min(known, maxDays) * rate)} €).` : ''
+    return {
+      replyText: `Für jeden Tag, an dem du überwiegend zu Hause gearbeitet hast, gibt es nach [estg-4-5-6c] die Tagespauschale von ${rate} €, ganz ohne separates Arbeitszimmer (${limits}). Das Maximum von ${maxDays} Tagen gilt nur, wenn du wirklich an so vielen Tagen zu Hause gearbeitet hast.${knownText} An wie vielen Tagen warst du ${digest.taxYear} im Homeoffice? Schreib mir einfach die Zahl, z. B. „an 40 Tagen im Homeoffice“, dann trage ich genau das ein.`,
+      meta: { sources: ['estg-4-5-6c'] },
+    }
+  }
+
+  const days = Math.min(stated, maxDays)
+  const allowanceEur = Math.min(days * rate, maxAnnualEur)
+  const capped = stated > maxDays ? ` Du hast ${stated} Tage genannt; angesetzt werden höchstens ${maxDays}.` : ''
+  const withDays = applyCandidateToDigest(digest, 'commute', 'homeOfficeDays', String(days))
+  const commuteBefore = workAllowancesOf(digest).commuteEur
+  const commuteAfter = workAllowancesOf(withDays).commuteEur
+  const commuteText =
+    commuteBefore !== null && commuteAfter !== null && commuteAfter < commuteBefore
+      ? ' An Homeoffice-Tagen bist du nicht zur Arbeit gefahren, deshalb gilt die Entfernungspauschale nur noch für die übrigen Tage.'
+      : ''
+  const totalAfter = statedWorkExpensesEur(withDays)
+  const lumpSumText = digest.crossBorder.isCrossBorderCh
+    ? ''
+    : totalAfter <= employeeLumpSum
+      ? ` Mit deinen übrigen bisher erfassten Werbungskosten sind das rund ${EUR.format(totalAfter)} € – weniger als der Arbeitnehmer-Pauschbetrag von ${EUR.format(employeeLumpSum)} €, den das Finanzamt ohnehin ansetzt, deshalb ändert sich deine Erstattung dadurch kaum.`
+      : statedWorkExpensesEur(digest) < employeeLumpSum
+        ? ` Ein Teil davon geht im Arbeitnehmer-Pauschbetrag von ${EUR.format(employeeLumpSum)} € auf, den das Finanzamt ohnehin ansetzt, deshalb wirkt nur der Betrag darüber.`
+        : ''
+
+  return {
+    replyText: `Nach [estg-4-5-6c] gibt es für jeden Homeoffice-Tag ${rate} € (${limits}): ${days} Tage × ${rate} € = ${EUR.format(allowanceEur)} € Homeoffice-Pauschale.${capped}${commuteText}${lumpSumText} Ich habe dir genau diese ${days} Tage als Entwurf vorbereitet:`,
+    meta: {
+      sources: ['estg-4-5-6c'],
+      action: {
+        actionId: makeActionId(),
+        status: 'pending',
+        screen: 'commute',
+        field: 'homeOfficeDays',
+        instance: null,
+        label: `Homeoffice-Tage: ${days}`,
+        previousValue: readCurrentValueFromDigest(digest, 'commute', 'homeOfficeDays'),
+        expectedPreviousValue: readCurrentValueFromDigest(digest, 'commute', 'homeOfficeDays'),
+        newValue: String(days),
+        beforeRefundEur: 0,
+        afterRefundEur: 0,
+        deltaEur: 0,
+        effect: 'not-computable',
+        effectHint: 'Die Wirkung rechnet die Schätzung deiner Steuererklärung aus, sobald sie dafür genug Angaben hat.',
+        reason: `${days} Tage × ${rate} € = ${EUR.format(allowanceEur)} € Homeoffice-Pauschale, so wie du es genannt hast (§ 4 Abs. 5 Nr. 6c EStG).`,
+        sourceId: 'estg-4-5-6c',
+        paragraph: ADVISOR_LEGAL_SOURCES['estg-4-5-6c'].paragraph,
+      },
+    },
+  }
+}
+
 function evaluateOwnTurn(input: {
   readonly message: string
   readonly activeScreen?: Screen | undefined
@@ -917,56 +1018,9 @@ function evaluateOwnTurn(input: {
     }
   }
 
-  // 4. Homeoffice vs. Häusliches Arbeitszimmer (Zwei-Wege-Empfehlung § 4 Abs. 5 Nr. 6c EStG)
-  if (lower.includes('homeoffice') || lower.includes('arbeitszimmer') || lower.includes('tagespauschale')) {
-    const safeSim = simulateAdvisorFieldDelta(digest, 'interview', 'homeoffice', '1–2 Tage pro Woche')
-    const maxSim = simulateAdvisorFieldDelta(digest, 'interview', 'homeoffice', 'Fast immer')
-
-    return {
-      replyText: `Beim Arbeiten von zu Hause haben wir nach [estg-4-5-6c] zwei steuerliche Wege: Die unbürokratische Tagespauschale (6 € pro Tag, bis zu 210 Tage = 1.260 €) ohne Raum-Nachweis oder den Maximal-Ansatz bei überwiegender Tätigkeit zu Hause. Hier ist der direkte Vorher/Nachher-Vergleich für deine Akte:`,
-      meta: {
-        sources: ['estg-4-5-6c'],
-        twoPaths: {
-          title: 'Zwei-Wege-Empfehlung: Homeoffice & Arbeitszimmer',
-          sourceId: 'estg-4-5-6c',
-          safePath: {
-            actionId: `${makeActionId()}-safe`,
-            status: 'pending',
-            screen: 'interview',
-            field: 'homeoffice',
-            instance: null,
-            label: 'Weg A (Sicher): Homeoffice 1–2 Tage/Woche',
-            previousValue: digest.commuteAndWorkdays.homeOfficeAnswer ?? 'Nie',
-            expectedPreviousValue: safeSim.previousValue,
-            newValue: '1–2 Tage pro Woche',
-            beforeRefundEur: safeSim.beforeRefundEur,
-            afterRefundEur: safeSim.afterRefundEur,
-            deltaEur: safeSim.deltaEur,
-            reason: '6 € Tagespauschale ohne Nachweis eines separaten Arbeitszimmers (§ 4 Abs. 5 Nr. 6c EStG).',
-            sourceId: 'estg-4-5-6c',
-            paragraph: ADVISOR_LEGAL_SOURCES['estg-4-5-6c'].paragraph,
-          },
-          maxPath: {
-            actionId: `${makeActionId()}-max`,
-            status: 'pending',
-            screen: 'interview',
-            field: 'homeoffice',
-            instance: null,
-            label: 'Weg B (Maximal): Fast immer im Homeoffice (bis 1.260 €)',
-            previousValue: digest.commuteAndWorkdays.homeOfficeAnswer ?? 'Nie',
-            expectedPreviousValue: maxSim.previousValue,
-            newValue: 'Fast immer',
-            beforeRefundEur: maxSim.beforeRefundEur,
-            afterRefundEur: maxSim.afterRefundEur,
-            deltaEur: maxSim.deltaEur,
-            reason: 'Volle Ausschöpfung der 210 Homeoffice-Tage (1.260 € Werbungskosten).',
-            evidenceHint: 'Nachweis-Hinweis: Das Finanzamt kann bei fast ausschließlichem Homeoffice eine kurze Bestätigung des Arbeitgebers anfordern.',
-            sourceId: 'estg-4-5-6c',
-            paragraph: ADVISOR_LEGAL_SOURCES['estg-4-5-6c'].paragraph,
-          },
-        },
-      },
-    }
+  // 4. Homeoffice-Tagespauschale (§ 4 Abs. 5 Nr. 6c EStG): drafts only the days the user stated (K1).
+  if (lower.includes('homeoffice') || lower.includes('home-office') || lower.includes('arbeitszimmer') || lower.includes('tagespauschale')) {
+    return homeOfficeTurn(message, digest, makeActionId)
   }
 
   // 5. Fortbildung, Dienstreisen & Verpflegungsmehraufwand (§ 9 Abs. 1 Nr. 4a & Abs. 4a EStG)

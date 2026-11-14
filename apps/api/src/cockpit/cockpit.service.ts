@@ -118,7 +118,13 @@ export class CockpitService {
       }
     }
 
-    const facts = answers.ausland === CH_FOREIGN ? crossBorderFacts(chRecord, answers) : employeeFromData(data, answers)
+    const baseFacts = answers.ausland === CH_FOREIGN ? crossBorderFacts(chRecord, answers) : employeeFromData(data, answers)
+    // A pensioner's income is the pension, not the LStB — without it the hero read "0 €" (UX review K3).
+    const pension = answers.job === 'Rente' ? recordedValue(pensionRecord?.jahresbetrag ?? null) : null
+    const facts =
+      answers.job === 'Rente'
+        ? { ...baseFacts, einnahmen: baseFacts.einnahmen + (pension ?? 0), openItems: baseFacts.openItems + (pension === null ? 1 : 0) }
+        : baseFacts
     const status = cockpitRangeFromInputs({
       sum: facts.einnahmen,
       openItems: facts.openItems,

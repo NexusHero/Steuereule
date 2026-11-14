@@ -117,6 +117,9 @@ export async function runScenario01(browser, webOrigin, sql) {
   await page.locator('[data-testid="stammdaten-zurueck"]').click()
 
   await assertEstimate(page, 'Scenario 01', { direction: 'Erstattung', contains: s1.expectedEstimate.targetRefund })
+  // UX review H1: the donations after the LStB changed the estimate, and the cockpit still says by how much.
+  await page.locator('[data-testid="cockpit-wirkung"]').waitFor({ state: 'visible', timeout: 10_000 })
+  if (!/€/.test(await page.locator('[data-testid="cockpit-wirkung"]').innerText())) fail('[Scenario 01] the change line should name the euro effect')
 
   unlockTaxYearInDb(sql, s1.email, s1.year)
 

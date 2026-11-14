@@ -34,6 +34,7 @@ import {
   useProfileControllerGetProfile,
   useChildrenControllerUpdate,
   useMasterDataControllerRead,
+  useLinkControllerGet,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
@@ -135,6 +136,8 @@ export interface ChildrenScreenProps {
   readonly onSingleParentQuestions?: (() => void) | undefined
   /** Married people cannot claim the Entlastungsbetrag für Alleinerziehende (§ 24b EStG), so its questions stay hidden. */
   readonly married?: boolean | undefined
+  /** The spouse's first name in a joint return — named instead of „Person B“ (UX review H7). */
+  readonly partnerName?: string | undefined
   /** The household at account level (#452): last year's children to take over, duplicates, leaving. */
   readonly householdSlot?: ReactNode
   /** The user's own last name: offered for a new child, marked as a suggestion, never for an existing one. */
@@ -164,6 +167,8 @@ function ConnectedKinderScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TA
   const ownAddress = masterData.data?.status === 200 ? masterData.data.data : null
   const addressState = ownAddress?.plz ? stateForAddress(ownAddress.plz, ownAddress.wohnort ?? '') : null
   const married = masterData.data?.status === 200 && masterData.data.data.familienstand === 'verheiratet'
+  const link = useLinkControllerGet(taxYear, { query: { enabled: married, retry: false } })
+  const partnerName = link.data?.status === 200 ? link.data.data.personB?.firstName?.trim() || undefined : undefined
   const [householdQuestions, setHouseholdQuestions] = useState(false)
   const { track, flushThen, saveFailed } = usePendingMutations()
 
@@ -235,6 +240,7 @@ function ConnectedKinderScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TA
       }}
       onSingleParentQuestions={() => setHouseholdQuestions(true)}
       married={married}
+      {...(partnerName ? { partnerName } : {})}
       suggestedLastName={ownLastName}
       addressState={addressState}
       householdSlot={<HouseholdChildrenSection taxYear={taxYear} onChanged={invalidate} />}
@@ -254,6 +260,7 @@ function KinderScreenView({
   onDeleteChild,
   onSingleParentQuestions,
   married = false,
+  partnerName,
   suggestedLastName = '',
   addressState = null,
 }: ChildrenScreenProps & { readonly initialKinder: readonly ChildItem[] }) {
@@ -280,7 +287,7 @@ function KinderScreenView({
   const [childcareFrom, setChildcareFrom] = useState('')
   const [childcareTo, setChildcareTo] = useState('')
   const [relationship, setRelationship] = useState<ChildRelationship | null>(null)
-  const [relationshipB, setRelationshipB] = useState<ChildRelationship | null>(null)
+  const [relationshipB, setRelationshipB] = useState<ChildRelationship | null>(married ? '1' : null)
   const [familyBenefitsOffice, setFamilyBenefitsOffice] = useState('')
   const [inland, setInland] = useState<boolean | null>(null)
   const [ae, setAe] = useState<OtherParentStatus | null>(null)
@@ -292,6 +299,13 @@ function KinderScreenView({
   const [registered, setRegistered] = useState<boolean | null>(null)
   const [childBenefitToMe, setChildBenefitToMe] = useState<boolean | null>(null)
   const [edited, setEdited] = useState<string | null>(null)
+  // Married is known only once the master data has loaded: a new form then starts at the couple's
+  // joint child too, not at „Keines“ (UX review H3, found in the browser retest).
+  useEffect(() => {
+    if (married && edited === null) setRelationshipB((current) => current ?? '1')
+    // Only the moment the household becomes known matters; later choices are the user's.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [married])
   const [formOpen, setFormOpen] = useState(initialKinder.length === 0)
   /** Short form first: the optional amounts stay folded until asked for, or until a child already has one. */
   const [moreOpen, setMoreOpen] = useState(false)
@@ -327,7 +341,8 @@ function KinderScreenView({
     setChildcareFrom(k?.childcareFrom ?? '')
     setChildcareTo(k?.childcareTo ?? '')
     setRelationship(k?.kinship ?? null)
-    setRelationshipB(k?.kinshipB ?? null)
+    // A couple's new child is usually theirs together (UX review H3): pre-select it, never „Keines“.
+    setRelationshipB(k ? (k.kinshipB ?? null) : married ? '1' : null)
     setFamilyBenefitsOffice(k?.familyBenefitsOffice ?? '')
     setInland(k?.domesticResidenceAllYear ?? null)
     setAe(k?.otherParent ?? null)
@@ -438,7 +453,7 @@ function KinderScreenView({
 
   /** Married people need it for the joint return; for everyone else it sits among the further details. */
   const spouseRelationshipField = (
-    <Feld label="Kindschaftsverhältnis zu deinem Ehepartner (nur bei Zusammenveranlagung)">
+    <Feld label={partnerName ? tr('kinder.verhaeltnisZuPartnerName', { name: partnerName, defaultValue: 'Kindschaftsverhältnis zu {{name}}' }) : tr('kinder.verhaeltnisZuPartner', 'Kindschaftsverhältnis zu deinem Partner')}>
       <View style={styles.chips}>
         {CHILD_RELATIONSHIPS.map((value) => (
           <Chip key={value} active={relationshipB === value} onPress={() => setRelationshipB(value)} testID={`kind-verhaeltnis-b-${value}`}>
@@ -770,13 +785,13 @@ function KinderScreenView({
                 />
               </Feld>
               {married ? (
-                <Feld label="Die Kinderzulage kommt mit dem Lohn von">
+                <Feld label={tr('kinder.zulageVon', 'Die Kinderzulage kommt mit dem Lohn von')}>
                   <View style={{ flexDirection: 'row', gap: 8 }}>
                     <Chip active={swissPayer === 'A'} onPress={() => setSwissPayer(swissPayer === 'A' ? null : 'A')} testID="kind-zulage-von-a">
-                      mir
+                      {tr('kinder.zulageVonMir', 'mir')}
                     </Chip>
                     <Chip active={swissPayer === 'B'} onPress={() => setSwissPayer(swissPayer === 'B' ? null : 'B')} testID="kind-zulage-von-b">
-                      Person B
+                      {partnerName ?? tr('kinder.zulageVonPartner', 'meinem Partner')}
                     </Chip>
                   </View>
                 </Feld>

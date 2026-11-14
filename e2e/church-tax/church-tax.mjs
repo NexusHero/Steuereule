@@ -17,7 +17,8 @@ import { skipSplash, signUpOutOfBand, submitLogin } from '../harness/flows.mjs'
 const AUTH_BUCKET = { windowMs: 10_000, max: 3, shared: true }
 const PASSWORD = 'Sicheres-Passwort-1!'
 const TAG = 'church-tax'
-const YEAR = 2026
+// The cockpit opens on the last completed year since UX review K2 (2025 on 2026-11-14).
+const YEAR = 2025
 
 async function account(apiOrigin, webOrigin, sql, label) {
   const email = `church-${label}-${Date.now()}@beispiel.de`

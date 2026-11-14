@@ -12,7 +12,8 @@ import { skipSplash, signUpOutOfBand, submitLogin } from '../harness/flows.mjs'
 const AUTH_BUCKET = { windowMs: 10_000, max: 3, shared: true }
 const PASSWORD = 'Sicheres-Passwort-1!'
 const TAG = 'a11y-themes'
-const YEAR = 2026
+// The cockpit opens on the last completed year since UX review K2 (2025 on 2026-11-14).
+const YEAR = 2025
 // Same exceptions as bfsg-wcag-audit.mjs: RN-Web has no <main> landmark; contrast is tested on the
 // design tokens in @steuereule/ui for both themes.
 const BODY_BACKGROUND = { light: 'rgb(244, 242, 233)', dark: 'rgb(18, 20, 12)' }

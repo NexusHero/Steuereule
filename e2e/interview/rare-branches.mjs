@@ -8,7 +8,8 @@ import { fail } from '../harness/rate-limit.mjs'
 import { createAccount, call, browserLogin, until } from '../harness/api-account.mjs'
 
 const TAG = 'rare-branches'
-const YEAR = 2026
+// The Eule tab and the cockpit open on the last completed year since UX review K2.
+const YEAR = 2025
 
 /** Clicks through whatever question is on screen until none of `picks`' steps is shown any more. */
 async function drive(page, picks) {

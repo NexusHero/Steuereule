@@ -194,7 +194,7 @@ describe('CockpitScreen', () => {
 
     await screen.findByText('Erfasstes Einkommen')
     expect(screen.getByText('Steuerjahr')).toBeTruthy()
-    expect(screen.getByText('2026')).toBeTruthy()
+    expect(screen.getByText('2026 · läuft')).toBeTruthy()
   })
 
   it('shows "Fragen beantworten" as the primary CTA while items are open, and reaches the Minimal-Gate', async () => {
@@ -554,6 +554,8 @@ describe('CockpitScreen — Kinder & Eulen-Modus entries', () => {
 
       const subTile = await screen.findByTestId('cockpit-abgabe-vorbereiten')
       expect(subTile.textContent).toContain('Abgabe vorbereiten')
+      // K2: for the running year the entry says up front when filing opens.
+      expect(subTile.textContent).toContain('Abgeben kannst du ab Januar 2027.')
       fireEvent.click(subTile)
       expect(onOpenSubmission).toHaveBeenCalledWith(TAX_YEAR)
     })
@@ -678,7 +680,9 @@ describe('CockpitScreen — die voraussichtliche Erstattung als ehrliche Spanne 
     server.use(http.get(ESTIMATE_URL, () => HttpResponse.json({ kind: 'spanne', result: { from: 312, to: 455 }, churchTaxOpen: false })))
     renderCockpit()
 
-    expect(await screen.findByText('Voraussichtlich 312 – 455 € Erstattung')).toBeTruthy()
+    // UX review H1: the refund is the hero's headline — label and figure, the income below it.
+    expect(await screen.findByText('Voraussichtliche Erstattung')).toBeTruthy()
+    expect(screen.getByTestId('cockpit-erstattung').textContent).toMatch(/312\s*–\s*455\s*€/)
     expect(screen.queryByText('Die Erstattung rechnen wir in einem späteren Schritt.')).toBeNull()
   })
 
@@ -687,7 +691,8 @@ describe('CockpitScreen — die voraussichtliche Erstattung als ehrliche Spanne 
     server.use(http.get(ESTIMATE_URL, () => HttpResponse.json({ kind: 'spanne', result: { from: -31192, to: -31192 }, churchTaxOpen: false })))
     renderCockpit()
 
-    expect(await screen.findByText('Voraussichtlich rund 31.192 € Nachzahlung')).toBeTruthy()
+    expect(await screen.findByText('Voraussichtliche Nachzahlung')).toBeTruthy()
+    expect(screen.getByTestId('cockpit-erstattung-betrag').textContent).toMatch(/^31\.192\s*€$/)
   })
 
   it('tells a married person to set up the joint return instead of estimating them as single (ADR-0054)', async () => {
@@ -702,7 +707,8 @@ describe('CockpitScreen — die voraussichtliche Erstattung als ehrliche Spanne 
     server.use(http.get(ESTIMATE_URL, () => HttpResponse.json({ kind: 'spanne', result: { from: -21200, to: -20400 }, churchTaxOpen: true })))
     renderCockpit()
 
-    expect(await screen.findByText('Voraussichtlich 20.400 – 21.200 € Nachzahlung')).toBeTruthy()
+    expect(await screen.findByText('Voraussichtliche Nachzahlung')).toBeTruthy()
+    expect(screen.getByTestId('cockpit-erstattung').textContent).toMatch(/20\.400\s*–\s*21\.200\s*€/)
     expect(screen.getByText('Kirchensteuer ist in der Schätzung noch nicht enthalten.')).toBeTruthy()
   })
 
@@ -752,5 +758,38 @@ describe('CockpitScreen — die voraussichtliche Erstattung als ehrliche Spanne 
     renderCockpit()
 
     expect(await screen.findByText('Für Verheiratete rechnen wir die Erstattung noch nicht.')).toBeTruthy()
+  })
+})
+
+describe('CockpitScreen — the running year is a prepare mode (K2)', () => {
+  it('marks the running year in the year pills', async () => {
+    mockCockpit(LOADED_SUMMARY)
+    renderCockpit()
+
+    await screen.findByText('Erfasstes Einkommen')
+    expect(screen.getByTestId('jahr-2026').textContent).toBe('2026 · läuft')
+    expect(screen.getByTestId('jahr-2025').textContent).toBe('2025')
+  })
+
+  it('shows a calm prepare banner when the running year is selected', async () => {
+    mockCockpit(LOADED_SUMMARY)
+    renderCockpit()
+
+    expect(await screen.findByTestId('cockpit-laufendes-jahr')).toBeTruthy()
+    expect(
+      screen.getByText('2026 läuft noch. Sammle Belege und Homeoffice-Tage — abgeben kannst du ab Januar 2027.'),
+    ).toBeTruthy()
+  })
+
+  it('shows no prepare banner for a completed year', async () => {
+    server.use(
+      http.get('*/v1/steuerjahre/2025/cockpit', () =>
+        HttpResponse.json({ taxYear: 2025, status: { kind: 'bestimmt', value: 42000 }, openItems: 0 }),
+      ),
+    )
+    renderCockpit({ taxYear: 2025 })
+
+    expect(await screen.findByText('42.000 €')).toBeTruthy()
+    expect(screen.queryByTestId('cockpit-laufendes-jahr')).toBeNull()
   })
 })

@@ -63,11 +63,11 @@ async function enterAsGuestThroughInterview() {
   // The guest lands directly in the Minimal-Gate (start: 'interview').
   await screen.findByText('Angestellt')
   fireEvent.click(screen.getByText('Angestellt'))
-  await screen.findByText('Grenzgänger haben Sonderregeln — in die Schweiz können wir sie komplett, inklusive 60-Tage-Tracking.')
+  await screen.findByText('Wer in Deutschland wohnt und in der Schweiz arbeitet, hat eigene Regeln — die gehen wir komplett mit dir durch.')
   fireEvent.click(screen.getByText('Nein'))
-  await screen.findByText('Kindergeld, Freibeträge, Betreuungskosten — die Günstigerprüfung Kindergeld vs. Freibetrag läuft automatisch.')
+  await screen.findByText('Kindergeld, Kinderfreibetrag, Betreuungskosten — was für dich günstiger ist, rechnen wir selbst aus.')
   fireEvent.click(screen.getByText('2 oder mehr'))
-  await screen.findByText('Verheiratete geben meist eine gemeinsame Erklärung ab — dann rechnen wir mit dem Splittingtarif.')
+  await screen.findByText('Verheiratete geben meist eine gemeinsame Erklärung ab, das spart oft Steuern. Dann fragen wir noch kurz nach deinem Partner.')
   fireEvent.click(screen.getByText('Ledig'))
 
   // The Konto-Wand is the honest next step for a guest — "Später" reaches the Cockpit.
@@ -202,13 +202,13 @@ describe('App', () => {
     'Cockpit\'s "Fragen beantworten" reaches the Minimal-Gate, and finishing it drops the Cockpit open-items count',
     async () => {
       server.use(
-        http.get(`${API_BASE_URL}/v1/steuerjahre/2026/cockpit`, () =>
-          HttpResponse.json({ taxYear: 2026, status: { kind: 'spanne', from: 100, to: 300, openItems: 3, conflicts: 0 }, openItems: 3 }, { status: 200 }),
+        http.get(`${API_BASE_URL}/v1/steuerjahre/2025/cockpit`, () =>
+          HttpResponse.json({ taxYear: 2025, status: { kind: 'spanne', from: 100, to: 300, openItems: 3, conflicts: 0 }, openItems: 3 }, { status: 200 }),
         ),
-        http.get(`${API_BASE_URL}/v1/steuerjahre/2026/interview`, () =>
+        http.get(`${API_BASE_URL}/v1/steuerjahre/2025/interview`, () =>
           HttpResponse.json({ answers: {}, nextStep: { kind: 'question', id: 'job' }, openItems: 3 }, { status: 200 }),
         ),
-        http.post(`${API_BASE_URL}/v1/steuerjahre/2026/interview/antworten`, () =>
+        http.post(`${API_BASE_URL}/v1/steuerjahre/2025/interview/antworten`, () =>
           HttpResponse.json({ nextStep: { kind: 'question', id: 'ausland' }, openItems: 2 }, { status: 200 }),
         ),
       )
@@ -230,19 +230,19 @@ describe('App', () => {
       expect(screen.getByText('Profil')).toBeTruthy()
 
       fireEvent.click(screen.getByText('Angestellt'))
-      await screen.findByText('Grenzgänger haben Sonderregeln — in die Schweiz können wir sie komplett, inklusive 60-Tage-Tracking.') // ausland question
+      await screen.findByText('Wer in Deutschland wohnt und in der Schweiz arbeitet, hat eigene Regeln — die gehen wir komplett mit dir durch.') // ausland question
 
       // The server now holds a lower open-items count (2, after the one answer above) — the
       // next Cockpit render reads it, not a value carried over in memory.
       server.use(
-        http.get(`${API_BASE_URL}/v1/steuerjahre/2026/cockpit`, () =>
-          HttpResponse.json({ taxYear: 2026, status: { kind: 'spanne', from: 100, to: 300, openItems: 3, conflicts: 0 }, openItems: 2 }, { status: 200 }),
+        http.get(`${API_BASE_URL}/v1/steuerjahre/2025/cockpit`, () =>
+          HttpResponse.json({ taxYear: 2025, status: { kind: 'spanne', from: 100, to: 300, openItems: 3, conflicts: 0 }, openItems: 2 }, { status: 200 }),
         ),
       )
       fireEvent.click(screen.getByText('Nein')) // ausland: no gate
-      await screen.findByText('Kindergeld, Freibeträge, Betreuungskosten — die Günstigerprüfung Kindergeld vs. Freibetrag läuft automatisch.') // kinder question
+      await screen.findByText('Kindergeld, Kinderfreibetrag, Betreuungskosten — was für dich günstiger ist, rechnen wir selbst aus.') // kinder question
       fireEvent.click(screen.getByText('2 oder mehr'))
-      await screen.findByText('Verheiratete geben meist eine gemeinsame Erklärung ab — dann rechnen wir mit dem Splittingtarif.')
+      await screen.findByText('Verheiratete geben meist eine gemeinsame Erklärung ab, das spart oft Steuern. Dann fragen wir noch kurz nach deinem Partner.')
       fireEvent.click(screen.getByText('Ledig')) // completes the Minimal-Gate (Familienstand, ADR-0054)
 
       // ADR-0045: a guest's onDone leads to the Konto-Wand — "Später" reaches the Cockpit,
@@ -643,7 +643,7 @@ describe('App', () => {
       )
     }
 
-    function mockCompletedEmployeeInterview(year = 2026) {
+    function mockCompletedEmployeeInterview(year = 2025) {
       server.use(
         http.get(`${API_BASE_URL}/v1/steuerjahre/${year}/interview`, () =>
           HttpResponse.json(
@@ -660,7 +660,7 @@ describe('App', () => {
 
     it('AC-1: preserves active non-sheet Cockpit mask and typed input value across switching to Belege tab and back', async () => {
       mockSignedInSession()
-      mockCompletedEmployeeInterview(2026)
+      mockCompletedEmployeeInterview(2025)
       let masterDataPutCount = 0
       server.use(
         http.get('*/v1/stammdaten', () =>
@@ -711,7 +711,7 @@ describe('App', () => {
 
     it('Pop-to-Root: tapping the active Cockpit tab returns from CockpitMasterData to CockpitHome', async () => {
       mockSignedInSession()
-      mockCompletedEmployeeInterview(2026)
+      mockCompletedEmployeeInterview(2025)
       server.use(
         http.get('*/v1/stammdaten', () =>
           HttpResponse.json(
@@ -751,7 +751,7 @@ describe('App', () => {
 
     it('Slice 4: keeps CockpitHome mounted behind an open Sheet and hides the TabBar', async () => {
       mockSignedInSession()
-      mockCompletedEmployeeInterview(2026)
+      mockCompletedEmployeeInterview(2025)
 
       window.history.pushState({}, '', '/app')
       const { default: App } = await import('./App')
@@ -766,7 +766,7 @@ describe('App', () => {
 
     it('Slice 4: auto-saves focused LStB input on Sheet close without prior blur and returns to Cockpit', async () => {
       mockSignedInSession()
-      mockCompletedEmployeeInterview(2026)
+      mockCompletedEmployeeInterview(2025)
       const putPayloads: { feld: string; body: unknown }[] = []
       server.use(
         http.put('*/v1/steuerjahre/:jahr/lstb/:feld', async ({ params, request }) => {
@@ -804,7 +804,7 @@ describe('App', () => {
 
     it('Slice 4: auto-saves focused LStB input on Escape without prior blur and returns to Cockpit', async () => {
       mockSignedInSession()
-      mockCompletedEmployeeInterview(2026)
+      mockCompletedEmployeeInterview(2025)
       const putPayloads: { feld: string; body: unknown }[] = []
       server.use(
         http.put('*/v1/steuerjahre/:jahr/lstb/:feld', async ({ params, request }) => {
@@ -842,11 +842,11 @@ describe('App', () => {
 
     it('Slice 4: does not PUT LStB fields on Sheet close when a scan draft is staged', async () => {
       mockSignedInSession()
-      mockCompletedEmployeeInterview(2026)
+      mockCompletedEmployeeInterview(2025)
       let lstbPutCount = 0
       let confirmScanCount = 0
       server.use(
-        http.get('*/v1/steuerjahre/2026/advisor/session', () =>
+        http.get('*/v1/steuerjahre/2025/advisor/session', () =>
           HttpResponse.json(
             {
               enabled: true,
@@ -946,7 +946,7 @@ describe('App', () => {
       expect(confirmScanCount).toBe(0)
     })
 
-    it('AC-2: opening /app/steuerjahr/2025/lstb signed-in loads the 2025 LStB screen', async () => {
+    it('AC-2: opening /app/steuerjahr/2024/lstb signed-in loads the 2024 LStB screen and remembers the chosen year', async () => {
       mockSignedInSession()
       const requestedYears: string[] = []
       server.use(
@@ -961,14 +961,14 @@ describe('App', () => {
         }),
       )
 
-      window.history.pushState({}, '', '/app/steuerjahr/2025/lstb')
+      window.history.pushState({}, '', '/app/steuerjahr/2024/lstb')
       const { default: App } = await import('./App')
       render(<App />)
 
       await screen.findByTestId('lstb-bruttoarbeitslohn')
       expect(screen.getByText('Deine Lohnsteuerbescheinigung')).toBeTruthy()
-      expect(requestedYears).toContain('2025')
-      expect(window.sessionStorage.getItem('steuereule.taxYear')).toBe('2025')
+      expect(requestedYears).toContain('2024')
+      expect(window.sessionStorage.getItem('steuereule.taxYear')).toBe('2024')
     })
 
     it('AC-2: opening /app/steuerjahr/2025/katalog/einkuenfte opens Catalog on entry einkuenfte', async () => {

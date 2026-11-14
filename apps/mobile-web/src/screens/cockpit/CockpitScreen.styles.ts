@@ -85,6 +85,24 @@ export function makeStyles(t: UiTheme) {
     fontVariant: ['tabular-nums'],
     lineHeight: t.size['3xl'] * 1.05,
   }
+  /** The refund headline's label, in normal case so the label and figure read as one sentence. */
+  const refundLabel: TextStyle = { ...heroLabel, textTransform: 'none', letterSpacing: 0, fontSize: t.size.s }
+  /** The income once the refund leads the hero (UX review H1): still visible, no longer the headline. */
+  const heroValueSmall: TextStyle = {
+    fontFamily: t.font.display,
+    fontWeight: t.weight.schwer,
+    fontSize: t.size.l,
+    color: t.color.nachtText,
+    fontVariant: ['tabular-nums'],
+  }
+  const effectLine: TextStyle = {
+    color: t.color.funkeHell,
+    fontFamily: t.font.text,
+    fontWeight: t.weight.fett,
+    fontSize: t.size.s,
+    marginTop: t.space.s2,
+  }
+  const heroDivider: ViewStyle = { height: 1, backgroundColor: t.color.nachtText, opacity: 0.2, marginVertical: t.space.s3 }
   const openItems: TextStyle = {
     color: t.color.nachtText,
     opacity: 0.75,
@@ -161,6 +179,15 @@ export function makeStyles(t: UiTheme) {
     fontSize: t.size.xs,
     color: t.color.tinte2,
   }
+  // K2: the running year's prepare mode — calm, a frame and plain ink, no signal colour.
+  const runningYearNotice: ViewStyle = {
+    borderWidth: 1,
+    borderColor: t.color.tinte2,
+    paddingHorizontal: t.space.s3,
+    paddingVertical: t.space.s2,
+    marginBottom: t.space.s3,
+  }
+  const runningYearText: TextStyle = { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.tinte }
 
-  return { screen, wideScreen, appbar, appbarTitleReihe: appbarTitleRow, appbarTitle, jahrReihe: yearRow, uebernahmeZeile: takeoverRow, uebernahmeZeileText: takeoverRowText, heading, help, cta, secondaryCta, berater, emptyBlock, heroLabel, heroValue, openItems, offenePosten: openItemCount, refundLater, gatedHeading, gatedBody, euleBannerCard, euleBannerRow, euleBannerCopy, euleBannerTitle, euleBannerEffect, euleBannerProvenance, euleBannerDismissBtn, euleBannerDismissText }
+  return { runningYearNotice, runningYearText, screen, wideScreen, appbar, appbarTitleReihe: appbarTitleRow, appbarTitle, jahrReihe: yearRow, uebernahmeZeile: takeoverRow, uebernahmeZeileText: takeoverRowText, heading, help, cta, secondaryCta, berater, emptyBlock, heroLabel, refundLabel, heroValue, heroValueSmall, effectLine, heroDivider, openItems, offenePosten: openItemCount, refundLater, gatedHeading, gatedBody, euleBannerCard, euleBannerRow, euleBannerCopy, euleBannerTitle, euleBannerEffect, euleBannerProvenance, euleBannerDismissBtn, euleBannerDismissText }
 }

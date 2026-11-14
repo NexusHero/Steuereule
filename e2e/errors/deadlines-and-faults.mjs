@@ -55,22 +55,42 @@ async function main() {
       await page.locator('[data-testid="cockpit-interview"], [data-testid="cockpit-weiter"], [data-testid="cockpit-kachel-lstb"]').first().waitFor({ state: 'visible', timeout: 15_000 })
     }
 
+    // H5: 2025 is a plain single employee too — a voluntary return: a calm note even though the
+    // Abgabefrist 31.07.2026 is past, never the surcharge alarm.
     await openCockpit(2025)
-    await banner('abgelaufen').waitFor({ state: 'visible', timeout: 10_000 })
-    console.log(`[${TAG}] ✅ fristen-banner-abgelaufen — tax year 2025 (Abgabefrist 31.07.2026 is past), real server clock`)
+    await banner('freiwillig').waitFor({ state: 'visible', timeout: 10_000 })
+    if ((await banner('abgelaufen').count()) + (await banner('zuschlag').count()) !== 0) fail('no surcharge alarm for a voluntary return')
+    console.log(`[${TAG}] ✅ fristen-banner-freiwillig — tax year 2025 (Abgabefrist 31.07.2026 is past), voluntary return`)
 
+    // H5: YEAR is a plain single employee — a voluntary return, so the near deadline stays calm.
     await stubDeadline('warnung', 60)
     await openCockpit(YEAR)
-    await banner('warnung').waitFor({ state: 'visible', timeout: 10_000 })
-    if ((await banner('abgelaufen').count()) !== 0) fail('a warning must not also show the expired banner')
-    console.log(`[${TAG}] ✅ fristen-banner-warnung — 60 days before the Abgabefrist`)
+    await banner('freiwillig').waitFor({ state: 'visible', timeout: 10_000 })
+    if ((await banner('warnung').count()) !== 0) fail('a voluntary return must not get the deadline warning')
+    console.log(`[${TAG}] ✅ fristen-banner-freiwillig — 60 days before the Abgabefrist, voluntary return`)
 
     await page.unroute(/\/v1\/steuerjahre\/\d+\/fristen$/)
     await stubDeadline('keine', 200)
     await openCockpit(YEAR)
-    if ((await banner('warnung').count()) + (await banner('abgelaufen').count()) !== 0) fail('level "keine" must show no banner at all')
+    if ((await page.locator('[data-testid^="fristen-banner-"]').count()) !== 0) fail('level "keine" must show no banner at all')
     await page.unroute(/\/v1\/steuerjahre\/\d+\/fristen$/)
     console.log(`[${TAG}] ✅ no banner when the Abgabefrist is far away`)
+
+    // --- K2: the running year is a „prepare“ mode, said up front, not at the end -----------------
+    await openCockpit(YEAR)
+    await page.locator('[data-testid="cockpit-laufendes-jahr"]').waitFor({ state: 'visible', timeout: 10_000 })
+    await page.locator('[data-testid="cockpit-abgabe-laufendes-jahr"]').waitFor({ state: 'attached', timeout: 10_000 })
+    await page.goto(`${webOrigin}/app/steuerjahr/${YEAR}/abgabe`, { waitUntil: 'networkidle' })
+    await page.locator('[data-testid="abgabe-laufendes-jahr"]').waitFor({ state: 'visible', timeout: 10_000 })
+    console.log(`[${TAG}] ✅ the running year ${YEAR} says in the cockpit and at the submission that it cannot be filed yet`)
+
+    // K2: „Anderes Jahr“ under the first question switches the year without leaving the interview.
+    await page.goto(`${webOrigin}/app/steuerjahr/2024/interview`, { waitUntil: 'networkidle' })
+    await page.locator('[data-testid="interview-anderes-jahr"]').click()
+    await page.locator('[data-testid="interview-jahr-2023"]').click()
+    await page.waitForURL((u) => u.pathname.includes('/steuerjahr/2023/'), { timeout: 10_000 })
+    await page.locator('[data-testid="interview-option-job-Angestellt"]').waitFor({ state: 'visible', timeout: 10_000 })
+    console.log(`[${TAG}] ✅ „Anderes Jahr“ switches the interview from 2024 to 2023`)
 
     // --- Interview: the answer POST fails, the step stays, a retry goes through ------------------
     await answer(api, YEAR, [['job', 'Angestellt']]) // keep the gate open; the next question is asked below
