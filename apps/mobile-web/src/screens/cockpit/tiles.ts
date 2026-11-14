@@ -186,7 +186,8 @@ export const TILES: readonly TileDefinition[] = [
     titleKey: 'cockpit.kachel.alleinerziehend.titel',
     route: { screen: 'Catalog', entry: 'alleinerziehend' },
     personas: ['alleinerziehend'],
-    isVisible: () => true,
+    // § 24b EStG is closed to married people — not even under „Weitere Themen“ (UX review H7).
+    isVisible: (f) => !derivePersonas(f.answers, f.masterData).has('verheiratet'),
     status: (f) => catalogStatus('alleinerziehend', f.answers),
   },
   {

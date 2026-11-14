@@ -21,12 +21,15 @@ export interface CockpitPartnerSectionProps {
 export function CockpitPartnerSection({ year, partnerName, enabled, crossBorder = false, partnerJob, onOpenPartner }: CockpitPartnerSectionProps) {
   const employed = partnerJob === undefined || partnerJob === 'Angestellt'
   const retired = partnerJob === 'Rente'
+  // A partner who works only in Switzerland has a Lohnausweis, no German LStB (UX review H7); while the
+  // interview has not said so, both stay on offer as before.
+  const germanCertificate = employed && !(crossBorder && partnerJob !== undefined)
   const bp = useBreakpoint()
   const t = useTheme()
   const styles = makeStyles(t)
   const { t: tr } = useTranslation(APP_NS)
 
-  const lstb = useLstbControllerGetLstb(year, { person: 'B' }, { query: { enabled: enabled && employed } })
+  const lstb = useLstbControllerGetLstb(year, { person: 'B' }, { query: { enabled: enabled && germanCertificate } })
   const commute = useCommuteControllerGet(year, { person: 'B' }, { query: { enabled: enabled && employed } })
   const swiss = useChSalaryCertificateControllerGet(year, { person: 'B' }, { query: { enabled: enabled && employed && crossBorder } })
   const pension = usePensionControllerGet(year, { person: 'B' }, { query: { enabled: enabled && retired } })
@@ -38,7 +41,7 @@ export function CockpitPartnerSection({ year, partnerName, enabled, crossBorder 
   const commuteStatus = tileById('arbeitsweg').status({ path: 'angestellte', answers: {}, commute: commuteData })
   const swissStatus = tileById('ch').status({ path: 'ch', answers: {}, ch: swiss.data?.status === 200 ? swiss.data.data : null })
   const pensionStatus = tileById('rente').status({ path: 'rente', answers: {}, pension: pension.data?.status === 200 ? pension.data.data : null })
-  const lstbPending = enabled && lstb.isPending
+  const lstbPending = enabled && germanCertificate && lstb.isPending
   const commutePending = enabled && commute.isPending
   const prevStatusesRef = useRef<{ year: number; lstb?: TileStatus; commute?: TileStatus }>({ year })
 
@@ -66,12 +69,8 @@ export function CockpitPartnerSection({ year, partnerName, enabled, crossBorder 
   }, [year, lstbPending, commutePending, lstbStatus, commuteStatus])
 
   const items: readonly { readonly area: PartnerAreaParam; readonly testId: string; readonly titleKey: string; readonly status: TileStatus }[] = [
-    ...(employed
-      ? [
-          { area: 'lstb' as const, testId: 'partner-lstb', titleKey: 'cockpit.kachel.partner-lstb.titel', status: lstbStatus },
-          { area: 'arbeitsweg' as const, testId: 'partner-arbeitsweg', titleKey: 'cockpit.kachel.partner-arbeitsweg.titel', status: commuteStatus },
-        ]
-      : []),
+    ...(germanCertificate ? [{ area: 'lstb' as const, testId: 'partner-lstb', titleKey: 'cockpit.kachel.partner-lstb.titel', status: lstbStatus }] : []),
+    ...(employed ? [{ area: 'arbeitsweg' as const, testId: 'partner-arbeitsweg', titleKey: 'cockpit.kachel.partner-arbeitsweg.titel', status: commuteStatus }] : []),
     ...(employed && crossBorder ? [{ area: 'schweiz' as const, testId: 'partner-schweiz', titleKey: 'cockpit.kachel.partner-schweiz.titel', status: swissStatus }] : []),
     ...(retired ? [{ area: 'rente' as const, testId: 'partner-rente', titleKey: 'cockpit.kachel.partner-rente.titel', status: pensionStatus }] : []),
   ]

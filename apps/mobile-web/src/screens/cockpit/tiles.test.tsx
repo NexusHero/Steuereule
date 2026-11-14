@@ -179,7 +179,8 @@ describe('cockpit tiles (§ 2.2–2.4 & Slice 5 § 5.2)', () => {
       )
       expect(marriedParent.main.map((t) => t.id)).toContain('kinder')
       expect(marriedParent.main.map((t) => t.id)).not.toContain('alleinerziehend')
-      expect(marriedParent.more.map((t) => t.id)).toContain('alleinerziehend')
+      // UX review H7: § 24b is closed to married people, so the tile is not even under „Weitere Themen“.
+      expect(marriedParent.more.map((t) => t.id)).not.toContain('alleinerziehend')
 
       const singleParent = partitionTiles(
         baseFacts({

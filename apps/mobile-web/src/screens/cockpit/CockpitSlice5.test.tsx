@@ -156,7 +156,9 @@ describe('Cockpit Screen — Slice 5 Persona Boosters & Dual Cockpit', () => {
     mockDoneInterview({ job: 'Angestellt', ausland: 'Nein', kinder: 'Nein', familienstand: 'Verheiratet', 'partner-job': 'Angestellt', 'partner-ausland': 'Ja, in die Schweiz' })
     renderCockpit({ onOpenPartner })
     expect(await screen.findByTestId('partner-schweiz')).toBeTruthy()
-    expect(screen.getByTestId('partner-lstb')).toBeTruthy()
+    // UX review H7: a partner who works only in Switzerland has no German LStB to enter.
+    expect(screen.queryByTestId('partner-lstb')).toBeNull()
+    expect(screen.getByTestId('partner-arbeitsweg')).toBeTruthy()
     expect(screen.queryByTestId('partner-rente')).toBeNull()
   })
 
