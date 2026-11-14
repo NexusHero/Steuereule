@@ -286,8 +286,11 @@ describe('entryForStep + isReachableFor (D3) — the cross-entry derivation R2 o
       return entryId !== undefined && isReachableFor(ENTRIES[entryId], answers, target)
     }
     expect(admit({}, 'partner')).toBe(true)
-    expect(admit({}, 'homeoffice')).toBe(false)
-    expect(admit({ partner: 'Ja' }, 'homeoffice')).toBe(true)
+    // Segment 2 is order-free since the Strom (ADR-0089): each top-level question stands alone,
+    // a follow-up still needs its question (Fortbildung → Kosten).
+    expect(admit({}, 'homeoffice')).toBe(true)
+    expect(admit({}, 'fortbildung-kosten')).toBe(false)
+    expect(admit({ fortbildung: 'Ja' }, 'fortbildung-kosten')).toBe(true)
   })
 })
 

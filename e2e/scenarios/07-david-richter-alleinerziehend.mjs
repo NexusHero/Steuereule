@@ -7,7 +7,11 @@ import {
   fail,
   registerAndOnboard,
   selectTaxYear2025,
-  nextStep,
+  answerBasis,
+  chooseTopics,
+  fillTopic,
+  leaveStrom,
+  waitForStromStep,
   assertCockpitEstimate,
   runStandaloneScenario,
 } from './helpers/scenario-harness.mjs'
@@ -33,37 +37,17 @@ export async function runScenario07(browser, webOrigin) {
   await selectTaxYear2025(page)
 
   await page.locator('[data-testid="cockpit-interview"]').click()
-  await page.locator('[data-testid="interview-option-job-Angestellt"]').click()
-  await page.locator('[data-testid="interview-option-ausland-Nein"]').click()
-  await page.locator('[data-testid="interview-option-kinder-1 Kind"]').click()
-  await page.locator('[data-testid="interview-option-familienstand-Geschieden oder getrennt"]').click()
+  // The Strom (ADR-0089): basis, LStB, way to work, the child, the selection, the single-parent page.
+  await answerBasis(page, { job: 'Angestellt', ausland: 'Nein', kinder: '1 Kind', familienstand: 'Geschieden oder getrennt' })
 
+  await waitForStromStep(page, 'lohnsteuerbescheinigung')
   await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').fill('52000')
   await page.locator('[data-testid="lstb-lohnsteuer"]').fill('8400')
   await page.locator('[data-testid="lstb-sozialversicherung"]').fill('11000')
   await page.locator('[data-testid="lstb-weiter"]').click()
-  await nextStep(page)
 
-  for (const step of ['dhf', 'umzug', 'abfindung', 'lohnersatz', 'nebenjob']) {
-    const opt = page.locator(`[data-testid="katalog-option-${step}-Nein"]`)
-    await opt.waitFor({ state: 'visible', timeout: 10_000 })
-    await opt.click()
-  }
-  await nextStep(page)
-
-  await page.locator('[data-testid="katalog-option-einkuenfte-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="katalog-option-einkuenfte-Nein"]').click()
-  await nextStep(page)
-
-  await page.locator('[data-testid="katalog-option-spenden-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="katalog-option-spenden-Nein"]').click()
-  await page.locator('[data-testid="katalog-option-kv-pv-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="katalog-option-kv-pv-Nein"]').click()
-  await page.locator('[data-testid="katalog-option-riester-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="katalog-option-riester-Nein"]').click()
-  await nextStep(page)
-
+  await waitForStromStep(page, 'arbeitsweg')
   await page.locator('[data-testid="arbeitstage-urlaub"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="arbeitstage-urlaub"]').fill('28')
   await page.locator('[data-testid="arbeitstage-krank"]').fill('3')
@@ -73,20 +57,8 @@ export async function runScenario07(browser, webOrigin) {
   await page.locator('[data-testid="arbeitstage-transport-oepnv"]').click()
   await page.locator('[data-testid="arbeitstage-arbeitsort"]').fill('Köln')
   await page.locator('[data-testid="arbeitstage-weiter"]').click()
-  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
 
-  await page.locator('[data-testid="cockpit-kacheln"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="cockpit-kachel-alleinerziehend"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="cockpit-abgabe-vorbereiten"]').click()
-  const printBtn = page.locator('[data-testid="abgabe-zum-ausdruck"]')
-  await printBtn.waitFor({ state: 'visible', timeout: 10_000 })
-  if (await printBtn.isDisabled()) fail('Expected abgabe-zum-ausdruck enabled for Scenario 07')
-  await page.locator('[data-testid="abgabe-zurueck"]').click()
-
-  const kinderBtn = page.locator('[data-testid="cockpit-kinder"]')
-  await kinderBtn.waitFor({ state: 'visible', timeout: 10_000 })
-  await kinderBtn.click()
-
+  await waitForStromStep(page, 'kinder')
   await page.locator('[data-testid="kind-vorname"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="kind-vorname"]').fill('Felix')
   await page.locator('[data-testid="kind-nachname"]').fill('Richter')
@@ -103,6 +75,20 @@ export async function runScenario07(browser, webOrigin) {
   await page.waitForTimeout(500)
 
   await page.locator('[data-testid="kinder-weiter"]').click()
+
+  await chooseTopics(page, [])
+  // § 24b EStG: no other adult in the household — the relief applies.
+  await fillTopic(page, 'alleinerziehend', { 'ae-weitere-person': 'Nein', 'ae-haushaltsgemeinschaft': 'Nein' })
+  await waitForStromStep(page, 'fertig')
+  await leaveStrom(page)
+
+  await page.locator('[data-testid="cockpit-kacheln"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await page.locator('[data-testid="cockpit-kachel-alleinerziehend"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await page.locator('[data-testid="cockpit-abgabe-vorbereiten"]').click()
+  const printBtn = page.locator('[data-testid="abgabe-zum-ausdruck"]')
+  await printBtn.waitFor({ state: 'visible', timeout: 10_000 })
+  if (await printBtn.isDisabled()) fail('Expected abgabe-zum-ausdruck enabled for Scenario 07')
+  await page.locator('[data-testid="abgabe-zurueck"]').click()
 
   await assertCockpitEstimate(page, 'Scenario 07', { direction: 'Erstattung' })
   console.log('[Scenario 07] PASS: Single parent flow with child and Kindergeld verified.')

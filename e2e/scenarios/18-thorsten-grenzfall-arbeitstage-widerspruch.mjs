@@ -6,7 +6,10 @@ import {
   guardAgainst429,
   fail,
   registerAndOnboard,
-  nextStep,
+  answerBasis,
+  chooseTopics,
+  leaveStrom,
+  waitForStromStep,
   runStandaloneScenario,
 } from './helpers/scenario-harness.mjs'
 
@@ -30,40 +33,17 @@ export async function runScenario18(browser, webOrigin) {
   )
 
   await page.locator('[data-testid="cockpit-interview"]').click()
-  await page.locator('[data-testid="interview-option-job-Angestellt"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="interview-option-job-Angestellt"]').click()
-  await page.locator('[data-testid="interview-option-ausland-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="interview-option-ausland-Nein"]').click()
-  await page.locator('[data-testid="interview-option-kinder-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="interview-option-kinder-Nein"]').click()
-  await page.locator('[data-testid="interview-option-familienstand-Ledig"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="interview-option-familienstand-Ledig"]').click()
+  // The Strom (ADR-0089).
+  await answerBasis(page, { job: 'Angestellt', ausland: 'Nein', kinder: 'Nein', familienstand: 'Ledig' })
 
+  await waitForStromStep(page, 'lohnsteuerbescheinigung')
   await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').fill('50000')
   await page.locator('[data-testid="lstb-lohnsteuer"]').fill('8000')
   await page.locator('[data-testid="lstb-sozialversicherung"]').fill('10000')
   await page.locator('[data-testid="lstb-weiter"]').click()
-  await nextStep(page)
 
-  for (const step of ['dhf', 'umzug', 'abfindung', 'lohnersatz', 'nebenjob']) {
-    const opt = page.locator(`[data-testid="katalog-option-${step}-Nein"]`)
-    await opt.waitFor({ state: 'visible', timeout: 10_000 })
-    await opt.click()
-  }
-  await nextStep(page)
-
-  await page.locator('[data-testid="katalog-option-einkuenfte-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="katalog-option-einkuenfte-Nein"]').click()
-  await nextStep(page)
-
-  for (const step of ['spenden', 'kv-pv', 'riester']) {
-    const opt = page.locator(`[data-testid="katalog-option-${step}-Nein"]`)
-    await opt.waitFor({ state: 'visible', timeout: 10_000 })
-    await opt.click()
-  }
-  await nextStep(page)
-
+  await waitForStromStep(page, 'arbeitsweg')
   const urlaubInput = page.locator('[data-testid="arbeitstage-urlaub"]')
   await urlaubInput.waitFor({ state: 'visible', timeout: 10_000 })
   await urlaubInput.fill('220')
@@ -85,7 +65,11 @@ export async function runScenario18(browser, webOrigin) {
     fail('Submit button should be enabled after correcting absences')
   }
   await submitBtn.click()
-  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
+
+  await chooseTopics(page, [])
+  await waitForStromStep(page, 'fertig')
+  await page.locator('[data-testid="strom-uebernommen-arbeitsweg"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await leaveStrom(page)
 
   await page.locator('[data-testid="cockpit-kachel-arbeitsweg-status"]', { hasText: 'Erledigt' }).waitFor({
     state: 'visible',

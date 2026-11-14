@@ -6,6 +6,9 @@ import {
   guardAgainst429,
   fail,
   registerAndOnboard,
+  answerBasis,
+  leaveStrom,
+  waitForStromStep,
   assertCockpitEstimate,
   runStandaloneScenario,
 } from './helpers/scenario-harness.mjs'
@@ -29,15 +32,10 @@ export async function runScenario13(browser, webOrigin) {
   )
 
   await page.locator('[data-testid="cockpit-interview"]').click()
-  await page.locator('text=Angestellt').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('text=Angestellt').click()
-  await page.locator('text=Nein').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('text=Nein').click()
-  await page.locator('text=Nein').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('text=Nein').click()
-  await page.locator('text=Verwitwet').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('text=Verwitwet').click()
+  // The Strom's basis page (ADR-0089).
+  await answerBasis(page, { job: 'Angestellt', ausland: 'Nein', kinder: 'Nein', familienstand: 'Verwitwet' })
 
+  await waitForStromStep(page, 'lohnsteuerbescheinigung')
   await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').fill('45000')
   await page.locator('[data-testid="lstb-lohnsteuer"]').fill('6200')
@@ -46,7 +44,8 @@ export async function runScenario13(browser, webOrigin) {
   await page.waitForLoadState('networkidle').catch(() => {})
   await page.locator('[data-testid="lstb-weiter"]').click()
 
-  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
+  await waitForStromStep(page, 'arbeitsweg')
+  await leaveStrom(page)
   await page.locator('[data-testid="cockpit-kacheln"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.getByRole('tab', { name: 'Cockpit' }).click()
   await assertCockpitEstimate(page, 'Scenario 13', { direction: 'Erstattung' })

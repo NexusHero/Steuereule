@@ -91,8 +91,6 @@ const TILE_READY_CSS = {
   kinder: '[data-testid="kind-neu"], [data-testid="kind-vorname"]',
 }
 
-const ANY_TILE_CSS = Object.values(TILE_READY_CSS).join(', ')
-
 /** Requests in flight per page, counted from the first time the page is watched. */
 const inFlight = new WeakMap()
 
@@ -146,10 +144,6 @@ function tileReadyLocator(page, tileId) {
   return page.locator(css).first()
 }
 
-function anyMaskReadyLocator(page) {
-  return page.locator(ANY_TILE_CSS).or(page.locator('text=Welche Rente beziehst du?')).first()
-}
-
 /** Clicks a specific Cockpit tile (`cockpit-kachel-<tileId>`) and waits until its mask is visible. */
 export async function openTile(page, tileId) {
   await waitForCockpitSettled(page)
@@ -159,13 +153,72 @@ export async function openTile(page, tileId) {
   await tileReadyLocator(page, tileId).waitFor({ state: 'visible', timeout: 10_000 })
 }
 
-/** Clicks the Cockpit "Nächster Schritt" CTA (`cockpit-weiter`) and waits until the target mask is visible. */
-export async function nextStep(page) {
-  await waitForCockpitSettled(page)
-  const nextBtn = page.locator('[data-testid="cockpit-weiter"]')
-  await nextBtn.waitFor({ state: 'visible', timeout: 10_000 })
-  await nextBtn.click()
-  await anyMaskReadyLocator(page).waitFor({ state: 'visible', timeout: 10_000 })
+// ---- The Strom (ADR-0089) ---------------------------------------------------------------------
+
+/** Waits until the Strom shows the step with this address segment (e.g. `auswahl`, `spenden`). */
+export async function waitForStromStep(page, slug) {
+  try {
+    await page.locator(`[data-testid="strom-schritt-${slug}"]`).waitFor({ state: 'visible', timeout: 15_000 })
+  } catch (err) {
+    const text = (await page.locator('body').innerText().catch(() => '')).slice(0, 600)
+    throw new Error(`Strom step "${slug}" did not appear; at ${page.url()}:\n${text}`, { cause: err })
+  }
+}
+
+/**
+ * Answers the Strom's basis page (the Minimal-Gate on one page) and presses Weiter.
+ * `answers`: { job, ausland, kinder, familienstand, partnerJob?, partnerAusland? } — the partner's
+ * answers may also be given under their question ids ('partner-job', 'partner-ausland').
+ */
+export async function answerBasis(page, answers) {
+  await waitForStromStep(page, 'basis')
+  const pick = (id, value) => page.locator(`[data-testid="interview-option-${id}-${value}"]`).click()
+  await pick('job', answers.job)
+  if (await page.locator('[data-testid="strom-feld-ausland"]').isVisible()) await pick('ausland', answers.ausland)
+  if (await page.locator('[data-testid="strom-feld-kinder"]').isVisible()) await pick('kinder', answers.kinder)
+  if (await page.locator('[data-testid="strom-feld-familienstand"]').isVisible()) await pick('familienstand', answers.familienstand)
+  const partnerJob = answers['partner-job'] ?? answers.partnerJob
+  const partnerAusland = answers['partner-ausland'] ?? answers.partnerAusland
+  if (partnerJob) await pick('partner-job', partnerJob)
+  if (partnerAusland) await pick('partner-ausland', partnerAusland)
+  await page.locator('[data-testid="strom-weiter"]').click()
+}
+
+/**
+ * The selection page: taps each topic (with its kind where it has one, e.g. { nebenjob: 'Midijob' })
+ * and presses Weiter. Rare topics are opened behind „Mehr anzeigen“ first.
+ */
+export async function chooseTopics(page, topics, kinds = {}) {
+  await waitForStromStep(page, 'auswahl')
+  const more = page.locator('[data-testid="strom-mehr"]')
+  if (await more.isVisible()) await more.click()
+  for (const topic of topics) {
+    await page.locator(`[data-testid="strom-thema-${topic}"]`).click()
+    if (kinds[topic]) await page.locator(`[data-testid="strom-art-${topic}-${kinds[topic]}"]`).click()
+  }
+  await page.locator('[data-testid="strom-weiter"]').click()
+  const confirm = page.locator('[data-testid="strom-abwaehlen-ja"]')
+  if (await confirm.isVisible().catch(() => false)) await confirm.click()
+}
+
+/** Fills a topic page: `fields` maps a question id to an amount (string/number) or an option value. */
+export async function fillTopic(page, slug, fields) {
+  await waitForStromStep(page, slug)
+  for (const [id, value] of Object.entries(fields)) {
+    const input = page.locator(`[data-testid="katalog-input-${id}"]`)
+    if (await input.count()) await input.fill(String(value))
+    else await page.locator(`[data-testid="katalog-option-${id}-${value}"]`).click()
+  }
+  await page.locator('[data-testid="strom-weiter"]').click()
+}
+
+/** Leaves the Strom for the cockpit (from any Strom step, also the summary). */
+export async function leaveStrom(page) {
+  const summary = page.locator('[data-testid="strom-cockpit"]')
+  if (await summary.isVisible().catch(() => false)) await summary.click()
+  else await page.locator('[data-testid="strom-pause"]').first().click()
+  // Before the basis is answered the cockpit has no tiles yet, only its „Fragen beantworten“.
+  await page.locator('[data-testid="cockpit-kacheln"], [data-testid="cockpit-interview"]').first().waitFor({ state: 'visible', timeout: 15_000 })
 }
 
 /** Switches the Cockpit tax year to 2025. */

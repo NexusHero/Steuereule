@@ -8,6 +8,7 @@ import {
   skipSplash,
   registerAndOnboard,
   selectTaxYear2025,
+  answerBasis,
   runStandaloneScenario,
 } from './helpers/scenario-harness.mjs'
 
@@ -22,11 +23,8 @@ export async function runScenario08(browser, webOrigin) {
   await guestButton.waitFor({ state: 'visible', timeout: 10_000 })
   await guestButton.click()
 
-  await guestPage.locator('[data-testid="interview-option-job-Angestellt"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await guestPage.locator('[data-testid="interview-option-job-Angestellt"]').click()
-  await guestPage.locator('[data-testid="interview-option-ausland-Nein"]').click()
-  await guestPage.locator('[data-testid="interview-option-kinder-Nein"]').click()
-  await guestPage.locator('[data-testid="interview-option-familienstand-Ledig"]').click()
+  // A guest starts on the Strom's basis page (ADR-0089); after it the account wall follows.
+  await answerBasis(guestPage, { job: 'Angestellt', ausland: 'Nein', kinder: 'Nein', familienstand: 'Ledig' })
 
   await guestPage.locator('text=Dein Weg:').waitFor({ state: 'visible', timeout: 10_000 })
   await guestPage.locator('[data-testid="konto-wand-spaeter"]').click()

@@ -7,7 +7,10 @@ import {
   fail,
   registerAndOnboard,
   selectTaxYear2025,
-  nextStep,
+  answerBasis,
+  chooseTopics,
+  leaveStrom,
+  waitForStromStep,
   assertCockpitEstimate,
   runStandaloneScenario,
 } from './helpers/scenario-harness.mjs'
@@ -35,31 +38,17 @@ export async function runScenario24(browser, webOrigin) {
 
   // 1. Complete quick baseline return so the deterministic tax kernel has a real case digest
   await page.locator('[data-testid="cockpit-interview"]').click()
-  await page.locator('[data-testid="interview-option-job-Angestellt"]').click()
-  await page.locator('[data-testid="interview-option-ausland-Nein"]').click()
-  await page.locator('[data-testid="interview-option-kinder-Nein"]').click()
-  await page.locator('[data-testid="interview-option-familienstand-Ledig"]').click()
+  // The Strom (ADR-0089): basis, LStB, way to work, an empty selection (everything „Nein“), summary.
+  await answerBasis(page, { job: 'Angestellt', ausland: 'Nein', kinder: 'Nein', familienstand: 'Ledig' })
 
+  await waitForStromStep(page, 'lohnsteuerbescheinigung')
   await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').fill('65000')
   await page.locator('[data-testid="lstb-lohnsteuer"]').fill('12800')
   await page.locator('[data-testid="lstb-sozialversicherung"]').fill('13200')
   await page.locator('[data-testid="lstb-weiter"]').click()
-  await nextStep(page)
 
-  await page.locator('[data-testid="katalog-option-dhf-Nein"]').click()
-  await page.locator('[data-testid="katalog-option-umzug-Nein"]').click()
-  await page.locator('[data-testid="katalog-option-abfindung-Nein"]').click()
-  await page.locator('[data-testid="katalog-option-lohnersatz-Nein"]').click()
-  await page.locator('[data-testid="katalog-option-nebenjob-Nein"]').click()
-  await nextStep(page)
-  await page.locator('[data-testid="katalog-option-einkuenfte-Nein"]').click()
-  await nextStep(page)
-  await page.locator('[data-testid="katalog-option-spenden-Nein"]').click()
-  await page.locator('[data-testid="katalog-option-kv-pv-Nein"]').click()
-  await page.locator('[data-testid="katalog-option-riester-Nein"]').click()
-  await nextStep(page)
-
+  await waitForStromStep(page, 'arbeitsweg')
   await page.locator('[data-testid="arbeitstage-urlaub"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="arbeitstage-urlaub"]').fill('25')
   await page.locator('[data-testid="arbeitstage-krank"]').fill('0')
@@ -69,7 +58,10 @@ export async function runScenario24(browser, webOrigin) {
   await page.locator('[data-testid="arbeitstage-transport-pkw"]').click()
   await page.locator('[data-testid="arbeitstage-arbeitsort"]').fill('München')
   await page.locator('[data-testid="arbeitstage-weiter"]').click()
-  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
+
+  await chooseTopics(page, [])
+  await waitForStromStep(page, 'fertig')
+  await leaveStrom(page)
 
   await page.locator('[data-testid="cockpit-kacheln"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="cockpit-abgabe-vorbereiten"]').click()

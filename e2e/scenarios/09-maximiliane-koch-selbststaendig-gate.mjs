@@ -6,6 +6,8 @@ import {
   guardAgainst429,
   fail,
   registerAndOnboard,
+  leaveStrom,
+  waitForStromStep,
   runStandaloneScenario,
 } from './helpers/scenario-harness.mjs'
 
@@ -28,19 +30,31 @@ export async function runScenario09(browser, webOrigin) {
   )
 
   await page.locator('[data-testid="cockpit-interview"]').click()
-  await page.locator('text=Selbstständig').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('text=Selbstständig').click()
+  // The Strom's basis page (ADR-0089) shows the Gewerbe-Gate inline, right under the answer that opens it.
+  await waitForStromStep(page, 'basis')
+  await page.locator('[data-testid="interview-option-job-Selbstständig"]').click()
 
-  await page.locator('text=Ehrlich: dafür sind wir noch nicht gut genug.').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('text=Selbstständige brauchen EÜR, Anlage G/S und Umsatzsteuer').waitFor({ state: 'visible', timeout: 10_000 })
+  const gate = page.locator('[data-testid="strom-hinweis-gewerbe"]')
+  await gate.waitFor({ state: 'visible', timeout: 10_000 })
+  await gate.locator('text=Ehrlich: dafür sind wir noch nicht gut genug.').waitFor({ state: 'visible', timeout: 10_000 })
+  await gate.locator('text=Selbstständige brauchen EÜR, Anlage G/S und Umsatzsteuer').waitFor({ state: 'visible', timeout: 10_000 })
 
   const forwardOption = page.locator('text=Angestellten-Teil vorbereiten')
   if ((await forwardOption.count()) > 0 && (await forwardOption.isVisible())) {
     fail('[Scenario 09] Expected terminal Gewerbe-Gate to offer no forward progression for pure Selbstständige.')
   }
+  // Terminal: nothing after the gate is asked for a pure Selbstständige.
+  if (await page.locator('[data-testid="strom-feld-ausland"]').isVisible()) {
+    fail('[Scenario 09] Expected the terminal Gewerbe-Gate to hide the remaining basis questions.')
+  }
 
-  await page.locator('text=Zurück zur Frage').click()
-  await page.locator('text=Selbstständig').waitFor({ state: 'visible', timeout: 10_000 })
+  // Changing the answer is the way back: the notice goes, the next question comes.
+  await page.locator('[data-testid="interview-option-job-Angestellt"]').click()
+  await gate.waitFor({ state: 'detached', timeout: 10_000 })
+  await page.locator('[data-testid="strom-feld-ausland"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await page.locator('[data-testid="interview-option-job-Selbstständig"]').click()
+  await gate.waitFor({ state: 'visible', timeout: 10_000 })
+  await leaveStrom(page)
   console.log('[Scenario 09] PASS: Terminal Gewerbe-Gate and honest gate boundary verified.')
 
   await ctx.close()

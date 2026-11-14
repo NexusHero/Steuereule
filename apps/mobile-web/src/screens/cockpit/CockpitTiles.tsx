@@ -29,7 +29,8 @@ export function useCockpitTileFacts(
   masterData?: MasterDataResponseDto | null,
 ): TileFacts | null {
   const active = enabled && path !== null
-  const lstb = useLstbControllerGetLstb(year, undefined, { query: { enabled: active && path === 'angestellte' } })
+  // A cross-border commuter may have had a German job earlier in the year (ADR-0079): the Strom asks for that certificate too.
+  const lstb = useLstbControllerGetLstb(year, undefined, { query: { enabled: active && (path === 'angestellte' || path === 'ch') } })
   const ch = useChSalaryCertificateControllerGet(year, undefined, { query: { enabled: active && path === 'ch' } })
   const pension = usePensionControllerGet(year, undefined, { query: { enabled: active && path === 'rente' } })
   const commute = useCommuteControllerGet(year, undefined, { query: { enabled: active && path !== 'rente' } })
@@ -43,7 +44,7 @@ export function useCockpitTileFacts(
   // Tiles whose query is still loading or failed: their status is unknown, so none is shown (honest states).
   const unknown = (q: { readonly isPending: boolean; readonly isError: boolean }) => q.isPending || q.isError
   const pendingTiles = new Set<TileId>()
-  if (path === 'angestellte' && unknown(lstb)) pendingTiles.add('lstb')
+  if ((path === 'angestellte' || path === 'ch') && unknown(lstb)) pendingTiles.add('lstb')
   if (path === 'ch' && unknown(ch)) pendingTiles.add('ch')
   if (path === 'rente' && unknown(pension)) pendingTiles.add('rente')
   if (path !== 'rente' && unknown(commute)) pendingTiles.add('arbeitsweg')

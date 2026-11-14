@@ -9,7 +9,9 @@ import {
   fail,
   registerAndOnboard,
   selectTaxYear2025,
-  nextStep,
+  answerBasis,
+  leaveStrom,
+  waitForStromStep,
   openTile,
   runStandaloneScenario,
 } from './helpers/scenario-harness.mjs'
@@ -34,18 +36,19 @@ export async function runScenario20(browser, webOrigin) {
 
   await selectTaxYear2025(page)
   await page.locator('[data-testid="cockpit-interview"]').click()
-  await page.locator('[data-testid="interview-option-job-Angestellt"]').click()
-  await page.locator('[data-testid="interview-option-ausland-Nein"]').click()
-  await page.locator('[data-testid="interview-option-kinder-Nein"]').click()
-  await page.locator('[data-testid="interview-option-familienstand-Ledig"]').click()
+  await answerBasis(page, { job: 'Angestellt', ausland: 'Nein', kinder: 'Nein', familienstand: 'Ledig' })
 
-  // Complete LStB
+  // Complete LStB in the Strom (ADR-0089), then leave it: this scenario is about the catalogues
+  // behind the cockpit tiles („Alles ansehen“), which keep their question-by-question walk.
+  await waitForStromStep(page, 'lohnsteuerbescheinigung')
   await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').fill('62000')
   await page.locator('[data-testid="lstb-lohnsteuer"]').fill('11500')
   await page.locator('[data-testid="lstb-sozialversicherung"]').fill('12400')
   await page.locator('[data-testid="lstb-weiter"]').click()
-  await nextStep(page)
+  await waitForStromStep(page, 'arbeitsweg')
+  await leaveStrom(page)
+  await openTile(page, 'lebenslagen')
 
   // --- 1. Catalog Lebenslagen Zig-Zag ---
   // DHF = Ja -> dhf-miete appears -> Back -> returns to dhf (NOT LstbScreen!) -> Nein
@@ -56,11 +59,16 @@ export async function runScenario20(browser, webOrigin) {
   await page.locator('[data-testid="katalog-option-dhf-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="katalog-option-dhf-Nein"]').click()
 
-  // Umzug = Ja -> enter 1800 -> lands on abfindung -> Back to umzug-kosten -> Back to umzug -> Nein
+  // Umzug = Ja -> enter 1800 -> lands on abfindung -> Back to umzug-kosten -> Später -> abfindung -> Back -> Back to umzug -> Nein
   await page.locator('[data-testid="katalog-option-umzug-Ja"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="katalog-option-umzug-Ja"]').click()
   await page.locator('[data-testid="katalog-input-umzug-kosten"]').fill('1800')
   await page.locator('[data-testid="katalog-submit-umzug-kosten"]').click()
+  await page.locator('[data-testid="katalog-option-abfindung-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await page.getByLabel('Zurück').click()
+  // „Später“ on the amount also moves on (AMOUNT_LATER) -> Back to umzug-kosten once more
+  await page.locator('[data-testid="katalog-later-umzug-kosten"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await page.locator('[data-testid="katalog-later-umzug-kosten"]').click()
   await page.locator('[data-testid="katalog-option-abfindung-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.getByLabel('Zurück').click()
   await page.locator('[data-testid="katalog-input-umzug-kosten"]').waitFor({ state: 'visible', timeout: 10_000 })
@@ -95,12 +103,12 @@ export async function runScenario20(browser, webOrigin) {
   await page.locator('[data-testid="katalog-option-nebenjob-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="katalog-option-nebenjob-Nein"]').click()
 
-  await nextStep(page)
+  await openTile(page, 'einkuenfte')
   await page.locator('[data-testid="katalog-option-einkuenfte-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.getByLabel('Zurück').click()
   await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
   await page.locator('[data-testid="cockpit-kacheln"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await nextStep(page)
+  await openTile(page, 'einkuenfte')
   console.log('[Scenario 20] Verified: Revisit of completed Lebenslagen and Back from Einkünfte to Cockpit work cleanly.')
 
   // --- 3. Catalog Einkünfte: Krypto-Gate & Vermietung-Gate Zig-Zag ---
@@ -124,7 +132,7 @@ export async function runScenario20(browser, webOrigin) {
   await page.getByLabel('Zurück').click()
   await page.locator('[data-testid="katalog-option-vermietung-art-Einfach"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="katalog-option-vermietung-art-Einfach"]').click()
-  await nextStep(page)
+  await openTile(page, 'sonderausgaben')
 
   // --- 4. Catalog Sonderausgaben: KV/PV branches, consecutive integer inputs & Riester ---
   await page.locator('[data-testid="katalog-option-spenden-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
@@ -188,7 +196,7 @@ export async function runScenario20(browser, webOrigin) {
   await openTile(page, 'sonderausgaben')
   await page.locator('[data-testid="katalog-option-riester-art-Mittelbar"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="katalog-option-riester-art-Mittelbar"]').click()
-  await nextStep(page)
+  await openTile(page, 'arbeitsweg')
   await page.locator('[data-testid="arbeitstage-urlaub"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.getByLabel('Zurück').click()
   await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })

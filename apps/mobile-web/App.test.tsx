@@ -60,15 +60,15 @@ async function enterAsGuestThroughInterview() {
   fireEvent.click(screen.getByLabelText('Weiter zur App'))
   fireEvent.click(screen.getByText('Erstmal als Gast umschauen'))
 
-  // The guest lands directly in the Minimal-Gate (start: 'interview').
-  await screen.findByText('Angestellt')
-  fireEvent.click(screen.getByText('Angestellt'))
-  await screen.findByText('Wer in Deutschland wohnt und in der Schweiz arbeitet, hat eigene Regeln — die gehen wir komplett mit dir durch.')
-  fireEvent.click(screen.getByText('Nein'))
-  await screen.findByText('Kindergeld, Kinderfreibetrag, Betreuungskosten — was für dich günstiger ist, rechnen wir selbst aus.')
-  fireEvent.click(screen.getByText('2 oder mehr'))
-  await screen.findByText('Verheiratete geben meist eine gemeinsame Erklärung ab, das spart oft Steuern. Dann fragen wir noch kurz nach deinem Partner.')
-  fireEvent.click(screen.getByText('Ledig'))
+  // The guest lands directly on the Strom's basis page (start: 'interview', ADR-0089): every
+  // branching question on one page, then one Weiter.
+  await screen.findByTestId('interview-option-job-Angestellt')
+  fireEvent.click(screen.getByTestId('interview-option-job-Angestellt'))
+  expect(screen.getByText('Wer in Deutschland wohnt und in der Schweiz arbeitet, hat eigene Regeln — die gehen wir komplett mit dir durch.')).toBeTruthy()
+  fireEvent.click(screen.getByTestId('interview-option-ausland-Nein'))
+  fireEvent.click(screen.getByTestId('interview-option-kinder-2 oder mehr'))
+  fireEvent.click(screen.getByTestId('interview-option-familienstand-Ledig'))
+  fireEvent.click(screen.getByTestId('strom-weiter'))
 
   // The Konto-Wand is the honest next step for a guest — "Später" reaches the Cockpit.
   await screen.findByText('Später — erst mal ins Cockpit')
@@ -217,33 +217,31 @@ describe('App', () => {
       render(<App />)
       fireEvent.click(screen.getByLabelText('Weiter zur App'))
       fireEvent.click(screen.getByText('Erstmal als Gast umschauen'))
-      // The guest lands in the Minimal-Gate (ADR-0045); switch to Cockpit to drive the CTA.
-      await screen.findByText('Angestellt')
+      // The guest lands on the basis page (ADR-0045, ADR-0089); switch to Cockpit to drive the CTA.
+      await screen.findByTestId('interview-option-job-Angestellt')
       fireEvent.click(screen.getByText('Cockpit'))
 
       await screen.findByText('3 Fragen offen')
       fireEvent.click(screen.getByText('Fragen beantworten'))
 
-      // Inside the Minimal-Gate: the job question, real client and server wiring (#318 task 2).
-      await screen.findByText('Angestellt')
+      // Inside the Strom's basis page: the Minimal-Gate on one page, real client and server wiring (#318 task 2).
+      await screen.findByTestId('interview-option-job-Angestellt')
       // The tab bar stays reachable — unlike Datenschutz, nothing here is destructive/in-progress.
       expect(screen.getByText('Profil')).toBeTruthy()
 
-      fireEvent.click(screen.getByText('Angestellt'))
-      await screen.findByText('Wer in Deutschland wohnt und in der Schweiz arbeitet, hat eigene Regeln — die gehen wir komplett mit dir durch.') // ausland question
+      fireEvent.click(screen.getByTestId('interview-option-job-Angestellt'))
+      fireEvent.click(screen.getByTestId('interview-option-ausland-Nein'))
+      fireEvent.click(screen.getByTestId('interview-option-kinder-2 oder mehr'))
+      fireEvent.click(screen.getByTestId('interview-option-familienstand-Ledig')) // Familienstand, ADR-0054
 
-      // The server now holds a lower open-items count (2, after the one answer above) — the
-      // next Cockpit render reads it, not a value carried over in memory.
+      // The server now holds a lower open-items count — the next Cockpit render reads it, not a
+      // value carried over in memory.
       server.use(
         http.get(`${API_BASE_URL}/v1/steuerjahre/2025/cockpit`, () =>
           HttpResponse.json({ taxYear: 2025, status: { kind: 'spanne', from: 100, to: 300, openItems: 3, conflicts: 0 }, openItems: 2 }, { status: 200 }),
         ),
       )
-      fireEvent.click(screen.getByText('Nein')) // ausland: no gate
-      await screen.findByText('Kindergeld, Kinderfreibetrag, Betreuungskosten — was für dich günstiger ist, rechnen wir selbst aus.') // kinder question
-      fireEvent.click(screen.getByText('2 oder mehr'))
-      await screen.findByText('Verheiratete geben meist eine gemeinsame Erklärung ab, das spart oft Steuern. Dann fragen wir noch kurz nach deinem Partner.')
-      fireEvent.click(screen.getByText('Ledig')) // completes the Minimal-Gate (Familienstand, ADR-0054)
+      fireEvent.click(screen.getByTestId('strom-weiter')) // completes the Minimal-Gate
 
       // ADR-0045: a guest's onDone leads to the Konto-Wand — "Später" reaches the Cockpit,
       // whose query was invalidated by the last successful write (a real re-fetch, not stale
@@ -757,7 +755,8 @@ describe('App', () => {
       const { default: App } = await import('./App')
       render(<App />)
 
-      fireEvent.click(await screen.findByTestId('cockpit-weiter'))
+      // The LStB tile opens the mask as a sheet; „Weiter“ leads into the Strom (ADR-0089).
+      fireEvent.click(await screen.findByTestId('cockpit-kachel-lstb'))
       await screen.findByTestId('lstb-bruttoarbeitslohn')
       expect(screen.getByTestId('sheet-schliessen')).toBeTruthy()
       expect(screen.getByTestId('cockpit-weiter')).toBeTruthy()
@@ -787,7 +786,8 @@ describe('App', () => {
       const { default: App } = await import('./App')
       render(<App />)
 
-      fireEvent.click(await screen.findByTestId('cockpit-weiter'))
+      // The LStB tile opens the mask as a sheet; „Weiter“ leads into the Strom (ADR-0089).
+      fireEvent.click(await screen.findByTestId('cockpit-kachel-lstb'))
       const grossInput = (await screen.findByTestId('lstb-bruttoarbeitslohn')) as HTMLInputElement
       grossInput.focus()
       expect(document.activeElement).toBe(grossInput)
@@ -825,7 +825,8 @@ describe('App', () => {
       const { default: App } = await import('./App')
       render(<App />)
 
-      fireEvent.click(await screen.findByTestId('cockpit-weiter'))
+      // The LStB tile opens the mask as a sheet; „Weiter“ leads into the Strom (ADR-0089).
+      fireEvent.click(await screen.findByTestId('cockpit-kachel-lstb'))
       const grossInput = (await screen.findByTestId('lstb-bruttoarbeitslohn')) as HTMLInputElement
       grossInput.focus()
       expect(document.activeElement).toBe(grossInput)
@@ -933,7 +934,8 @@ describe('App', () => {
       const { default: App } = await import('./App')
       render(<App />)
 
-      fireEvent.click(await screen.findByTestId('cockpit-weiter'))
+      // The LStB tile opens the mask as a sheet; „Weiter“ leads into the Strom (ADR-0089).
+      fireEvent.click(await screen.findByTestId('cockpit-kachel-lstb'))
       await screen.findByTestId('lstb-scan-draft-banner')
       const grossInput = screen.getByTestId('lstb-bruttoarbeitslohn') as HTMLInputElement
       expect(grossInput.value).toBe('61000')

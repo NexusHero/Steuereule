@@ -9,7 +9,11 @@ import {
   fail,
   registerAndOnboard,
   selectTaxYear2025,
-  nextStep,
+  answerBasis,
+  chooseTopics,
+  fillTopic,
+  leaveStrom,
+  waitForStromStep,
   unlockTaxYearInDb,
   runStandaloneScenario,
 } from './helpers/scenario-harness.mjs'
@@ -37,54 +41,32 @@ export async function runScenario21(browser, webOrigin, sql) {
 
   await selectTaxYear2025(page)
   await page.locator('[data-testid="cockpit-interview"]').click()
-  await page.locator('[data-testid="interview-option-job-Angestellt"]').click()
-  await page.locator('[data-testid="interview-option-ausland-Nein"]').click()
-  await page.locator('[data-testid="interview-option-kinder-1 Kind"]').click()
-  await page.locator('[data-testid="interview-option-familienstand-Verheiratet"]').click()
-  // ADR-0088: the interview asks what Person B does
-  await page.locator('[data-testid="interview-option-partner-job-Angestellt"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="interview-option-partner-job-Angestellt"]').click()
-  await page.locator('[data-testid="interview-option-partner-ausland-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="interview-option-partner-ausland-Nein"]').click()
+  // The Strom (ADR-0089): the basis page asks what Person B does as well (ADR-0088).
+  await answerBasis(page, { job: 'Angestellt', ausland: 'Nein', kinder: '1 Kind', familienstand: 'Verheiratet', 'partner-job': 'Angestellt', 'partner-ausland': 'Nein' })
 
   // LStB
+  await waitForStromStep(page, 'lohnsteuerbescheinigung')
   await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').fill('68000')
   await page.locator('[data-testid="lstb-lohnsteuer"]').fill('13500')
   await page.locator('[data-testid="lstb-sozialversicherung"]').fill('13100')
   await page.locator('[data-testid="lstb-weiter"]').click()
-  await nextStep(page)
 
-  // Lebenslagen: all Nein
-  for (const step of ['dhf', 'umzug', 'abfindung', 'lohnersatz', 'nebenjob']) {
-    await page.locator(`[data-testid="katalog-option-${step}-Nein"]`).waitFor({ state: 'visible', timeout: 10_000 })
-    await page.locator(`[data-testid="katalog-option-${step}-Nein"]`).click()
-  }
-  await nextStep(page)
-
-  // Einkünfte: Beides -> Deutscher Broker -> Einfach (triggers missing kapital & vermietung on Printout until filled)
-  await page.locator('[data-testid="katalog-option-einkuenfte-Beides"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="katalog-option-einkuenfte-Beides"]').click()
-  await page.locator('[data-testid="katalog-option-kap-depot-Deutscher Broker"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="katalog-option-kap-depot-Deutscher Broker"]').click()
-  await page.locator('[data-testid="katalog-option-vermietung-art-Einfach"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="katalog-option-vermietung-art-Einfach"]').click()
-  await nextStep(page)
-
-  // Sonderausgaben: all Nein
-  for (const step of ['spenden', 'kv-pv', 'riester']) {
-    await page.locator(`[data-testid="katalog-option-${step}-Nein"]`).waitFor({ state: 'visible', timeout: 10_000 })
-    await page.locator(`[data-testid="katalog-option-${step}-Nein"]`).click()
-  }
-  await nextStep(page)
-
-  // Workdays -> Cockpit -> Submission check -> Cockpit
+  // Workdays -> the child later (seeded partially below) -> selection -> Cockpit -> Submission check -> Cockpit
+  await waitForStromStep(page, 'arbeitsweg')
   await page.locator('[data-testid="arbeitstage-km"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="arbeitstage-km"]').fill('12')
   await page.locator('[data-testid="arbeitstage-transport-pkw"]').click()
   await page.locator('[data-testid="arbeitstage-arbeitsort"]').fill('Stuttgart')
   await page.locator('[data-testid="arbeitstage-weiter"]').click()
-  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
+  await waitForStromStep(page, 'kinder')
+  await page.locator('[data-testid="kinder-weiter"]').click()
+
+  // Einkünfte: Beides -> Deutscher Broker -> Einfach (triggers missing kapital & vermietung on Printout until filled)
+  await chooseTopics(page, ['einkuenfte'], { einkuenfte: 'Beides' })
+  await fillTopic(page, 'einkuenfte', { 'kap-depot': 'Deutscher Broker', 'vermietung-art': 'Einfach' })
+  await waitForStromStep(page, 'fertig')
+  await leaveStrom(page)
   await page.locator('[data-testid="cockpit-kacheln"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="cockpit-abgabe-vorbereiten"]').click()
   const printBtnStep = page.locator('[data-testid="abgabe-zum-ausdruck"]')

@@ -6,7 +6,10 @@ import {
   guardAgainst429,
   fail,
   registerAndOnboard,
-  nextStep,
+  answerBasis,
+  fillTopic,
+  leaveStrom,
+  waitForStromStep,
   runStandaloneScenario,
 } from './helpers/scenario-harness.mjs'
 
@@ -30,52 +33,53 @@ export async function runScenario17(browser, webOrigin) {
   )
 
   await page.locator('[data-testid="cockpit-interview"]').click()
-  await page.locator('[data-testid="interview-option-job-Angestellt"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="interview-option-job-Angestellt"]').click()
-  await page.locator('[data-testid="interview-option-ausland-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="interview-option-ausland-Nein"]').click()
-  await page.locator('[data-testid="interview-option-kinder-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="interview-option-kinder-Nein"]').click()
-  await page.locator('[data-testid="interview-option-familienstand-Ledig"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="interview-option-familienstand-Ledig"]').click()
+  // The Strom (ADR-0089): every Lebenslage chosen on the one selection page, then one page each.
+  await answerBasis(page, { job: 'Angestellt', ausland: 'Nein', kinder: 'Nein', familienstand: 'Ledig' })
 
+  await waitForStromStep(page, 'lohnsteuerbescheinigung')
   await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').fill('70000')
   await page.locator('[data-testid="lstb-lohnsteuer"]').fill('14000')
   await page.locator('[data-testid="lstb-sozialversicherung"]').fill('13000')
   await page.locator('[data-testid="lstb-weiter"]').click()
-  await nextStep(page)
 
-  await page.locator('[data-testid="katalog-option-dhf-Ja"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="katalog-option-dhf-Ja"]').click()
-  await page.locator('[data-testid="katalog-input-dhf-miete"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="katalog-input-dhf-miete"]').fill('1200')
-  await page.locator('[data-testid="katalog-submit-dhf-miete"]').click()
+  await waitForStromStep(page, 'arbeitsweg')
+  await page.locator('[data-testid="arbeitstage-km"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await page.locator('[data-testid="arbeitstage-km"]').fill('10')
+  await page.locator('[data-testid="arbeitstage-weiter"]').click()
 
-  await page.locator('[data-testid="katalog-option-umzug-Ja"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="katalog-option-umzug-Ja"]').click()
-  await page.locator('[data-testid="katalog-input-umzug-kosten"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="katalog-input-umzug-kosten"]').fill('3500')
-  await page.locator('[data-testid="katalog-submit-umzug-kosten"]').click()
+  await waitForStromStep(page, 'auswahl')
+  // The rare topics (Abfindung, Weitere Einkünfte, Vorauszahlungen) wait behind „Mehr anzeigen“.
+  if (await page.locator('[data-testid="strom-thema-abfindung"]').isVisible()) fail('[Scenario 17] Abfindung should be behind „Mehr anzeigen“')
+  await page.locator('[data-testid="strom-mehr"]').click()
+  await page.locator('[data-testid="strom-thema-abfindung"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await page.locator('[data-testid="strom-thema-einkuenfte"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await page.locator('[data-testid="strom-thema-vorauszahlungen-gate"]').waitFor({ state: 'visible', timeout: 10_000 })
+  // Every Lebenslage with the answer it stands for: Ja, or the kind for the side job.
+  const chosen = { dhf: 'Ja', umzug: 'Ja', abfindung: 'Ja', lohnersatz: 'Ja', nebenjob: 'Minijob' }
+  for (const topic of Object.keys(chosen)) {
+    await page.locator(`[data-testid="strom-thema-${topic}"]`).click()
+  }
+  // The side job is chosen with its kind: Weiter without one names what is missing.
+  await page.locator('[data-testid="strom-arten-nebenjob"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await page.locator('[data-testid="strom-weiter"]').click()
+  await page.locator('[data-testid="strom-fehlt-art-nebenjob"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await page.locator(`[data-testid="strom-art-nebenjob-${chosen.nebenjob}"]`).click()
+  await page.locator('[data-testid="strom-weiter"]').click()
 
-  await page.locator('[data-testid="katalog-option-abfindung-Ja"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="katalog-option-abfindung-Ja"]').click()
-  await page.locator('[data-testid="katalog-input-abfindung-betrag"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="katalog-input-abfindung-betrag"]').fill('25000')
-  await page.locator('[data-testid="katalog-submit-abfindung-betrag"]').click()
+  await fillTopic(page, 'umzug', { 'umzug-kosten': 3500 })
+  await fillTopic(page, 'doppelte-haushaltsfuehrung', { 'dhf-miete': 1200 })
+  await fillTopic(page, 'lohnersatz', { 'lohnersatz-betrag': 4000 })
+  await fillTopic(page, 'abfindung', { 'abfindung-betrag': 25000 })
 
-  await page.locator('[data-testid="katalog-option-lohnersatz-Ja"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="katalog-option-lohnersatz-Ja"]').click()
-  await page.locator('[data-testid="katalog-input-lohnersatz-betrag"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="katalog-input-lohnersatz-betrag"]').fill('4000')
-  await page.locator('[data-testid="katalog-submit-lohnersatz-betrag"]').click()
-
-  await page.locator('[data-testid="katalog-option-nebenjob-Minijob"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="katalog-option-nebenjob-Minijob"]').click()
-
-  await nextStep(page)
-  await page.locator('[data-testid="katalog-option-einkuenfte-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
-  console.log('[Scenario 17] PASS: All Lebenslagen Ja branches with amounts accepted and transitioned seamlessly.')
+  await waitForStromStep(page, 'fertig')
+  for (const slug of ['umzug', 'doppelte-haushaltsfuehrung', 'lohnersatz', 'abfindung']) {
+    await page.locator(`[data-testid="strom-uebernommen-${slug}"]`).waitFor({ state: 'visible', timeout: 10_000 })
+  }
+  await page.locator('[data-testid="strom-fertig-erstattung"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await leaveStrom(page)
+  await page.locator('[data-testid="cockpit-kachel-lebenslagen-status"]', { hasText: 'Erledigt' }).waitFor({ state: 'visible', timeout: 10_000 })
+  console.log('[Scenario 17] PASS: All Lebenslagen chosen on one selection page, every amount on its own page, summary complete.')
 
   await ctx.close()
 }

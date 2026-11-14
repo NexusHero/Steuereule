@@ -28,6 +28,7 @@ import { usePlausibility } from '../plausibility/usePlausibility'
 import { CockpitTiles, tileRevisitFlag, useCockpitTileFacts } from './CockpitTiles'
 import { derivePersonas } from './personas'
 import { nextStep, type TileDefinition, type TileFacts } from './tiles'
+import { nextOpenStep, type StromStep } from '../strom/stromPlan'
 import { makeStyles } from './CockpitScreen.styles'
 import { dismissEffect, observeMidpoint, rememberOpenedArea, type Effect } from './effectMemory'
 
@@ -53,11 +54,30 @@ export interface CockpitScreenProps {
   readonly onOpenPartner?: (area: PartnerAreaParam, name: string) => void
   readonly onYearChange?: (year: number) => void
   readonly onOpenMasterData?: () => void
+  /** The Strom (ADR-0089): „Weiter“ leads to its next open step instead of the next tile. */
+  readonly onOpenStrom?: (step: StromStep) => void
 }
 
 interface Next {
   readonly label: string
   readonly onPress: () => void
+}
+
+function stromStepTitle(step: StromStep, tr: (key: string) => string): string {
+  switch (step.kind) {
+    case 'basis':
+      return tr('strom.basis.titel')
+    case 'maske':
+      return tr(`strom.maske.${step.id}`)
+    case 'auswahl':
+      return tr('strom.auswahl.kurz')
+    case 'thema':
+      return tr(`strom.thema.${step.id}`)
+    case 'alleinerziehend':
+      return tr('strom.alleinerziehend.titel')
+    case 'fertig':
+      return tr('cockpit.abgabe.titel')
+  }
 }
 
 export function CockpitScreen({
@@ -78,6 +98,7 @@ export function CockpitScreen({
   onOpenPartner,
   onYearChange,
   onOpenMasterData,
+  onOpenStrom,
 }: CockpitScreenProps) {
   const bp = useBreakpoint()
   const { t: tr } = useTranslation(APP_NS)
@@ -149,7 +170,14 @@ export function CockpitScreen({
   }
   const submissionHandler = onOpenSubmission ?? onOpenPrintout
   const step = tileFacts !== null ? nextStep(tileFacts) : null
-  const next: Next | null =
+  const stromStep = tileFacts !== null && onOpenStrom !== undefined ? nextOpenStep(answers, tileFacts) : null
+  const stromNext: Next | null =
+    tileFacts === null || onOpenStrom === undefined || stromStep === null
+      ? null
+      : stromStep.kind === 'fertig'
+        ? { label: tr('cockpit.naechsterSchritt', { titel: tr('cockpit.abgabe.titel') }), onPress: () => submissionHandler?.(year) }
+        : { label: tr('cockpit.naechsterSchritt', { titel: stromStepTitle(stromStep, (key) => tr(key)) }), onPress: () => onOpenStrom(stromStep) }
+  const next: Next | null = onOpenStrom !== undefined && tileFacts !== null ? stromNext :
     tileFacts !== null && step !== null
       ? step.kind === 'unknown'
         ? null

@@ -29,6 +29,8 @@ export type CockpitStackParamList = {
   Children: { year: number }
   CockpitMasterData: { year: number }
   Partner: { year: number; area: PartnerAreaParam }
+  /** The Strom (ADR-0089): one address segment per step, e.g. `spenden` or `auswahl`. */
+  Strom: { year: number; step: string }
 }
 
 export const SHEET_ROUTE_NAMES: readonly (keyof CockpitStackParamList)[] = [

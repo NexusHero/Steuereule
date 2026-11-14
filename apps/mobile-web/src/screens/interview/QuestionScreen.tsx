@@ -58,7 +58,7 @@ const PARTNER_FOREIGN_OPTIONS: ReadonlyArray<OptionSpec<(typeof PARTNER_FOREIGN_
   { value: 'Nein', labelKey: 'interview.partnerAusland.options.nein' },
 ]
 
-const QUESTION_COPY: Record<QuestionId, { readonly titleKey: string; readonly helpKey: string; readonly options: ReadonlyArray<OptionSpec<string>> }> = {
+export const QUESTION_COPY: Record<QuestionId, { readonly titleKey: string; readonly helpKey: string; readonly options: ReadonlyArray<OptionSpec<string>> }> = {
   job: { titleKey: 'interview.job', helpKey: 'interview.job.help', options: JOB_OPTIONS },
   ausland: { titleKey: 'interview.ausland', helpKey: 'interview.ausland.help', options: FOREIGN_OPTIONS },
   kinder: { titleKey: 'interview.kinder', helpKey: 'interview.kinder.help', options: KINDER_OPTIONS },
