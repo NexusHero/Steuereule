@@ -1,8 +1,8 @@
 /**
  * The care period from a childcare notice or invoice (Kita, Kindertagespflege, Tagesmutter, Hort), for
  * Anlage Kind Zeile 67 (ADR-0086). A notice states when care starts („ab 01.09.2024“) or a period („vom … bis
- * …“); the year's part of it is what the form asks. The amount paid is not read: a notice states a monthly
- * contribution that may change, and what counts is what was paid.
+ * …“); the year's part of it is what the form asks. A monthly contribution is not an amount paid (it may
+ * change); only a sum the document states as paid for the year is read (`childcarePaidInYear`).
  */
 import { foldName } from './ch-salary-certificate-parser'
 
@@ -16,7 +16,7 @@ const CHILDCARE = /kindertagespflege|kindertagesst(?:ä|a)tte|\bkita\b|kindergar
 const DATE = String.raw`(\d{1,2})\.(\d{1,2})\.(\d{4})`
 
 export function looksLikeChildcareNotice(text: string): boolean {
-  return CHILDCARE.test(text ?? '') && /betreuung|kostenbeitrag|elternbeitrag|geb(?:ü|u)hr|beitrag/i.test(text ?? '')
+  return CHILDCARE.test(text ?? '') && /betreuung|kostenbeitr|elternbeitr|geb(?:ü|u)hr|beitr(?:a|ä)g/i.test(text ?? '')
 }
 
 const pad = (n: string) => n.padStart(2, '0')
@@ -53,4 +53,24 @@ export function childNamedIn(text: string, children: readonly { readonly id: str
     return names.length > 0 && names.every((n) => printed.has(n))
   })
   return fits.length === 1 ? fits[0]!.id : null
+}
+
+/** „1.200,00 EUR“, „960 €“ in whole euros. */
+const EUROS = /(\d{1,3}(?:\.\d{3})+|\d+)(?:,(\d{2}))?\s*(?:€|eur\b|euro\b)/i
+
+/**
+ * What a Kita's annual statement says was paid for the tax year: a line naming the year's total
+ * („Gesamt 2025“, „im Jahr 2025 gezahlt“, „Jahresbetrag“, „Summe der Elternbeiträge 2025“). A monthly
+ * contribution („monatlich“) is never taken for it. Null when no such line is printed.
+ */
+export function childcarePaidInYear(text: string, taxYear: number): number | null {
+  if (!looksLikeChildcareNotice(text)) return null
+  for (const line of (text ?? '').split('\n')) {
+    if (/monatlich|pro monat|je monat/i.test(line)) continue
+    const total = /gesamt|summe|jahresbetrag|insgesamt|gezahlt|entrichtet/i.test(line)
+    if (!total || !(new RegExp(`\\b${taxYear}\\b`).test(line) || /jahresbetrag|im jahr/i.test(line))) continue
+    const m = EUROS.exec(line.replace(new RegExp(`\\b${taxYear}\\b`, 'g'), ''))
+    if (m) return Math.round(Number(m[1]!.replace(/\./g, '')) + Number(m[2] ?? '0') / 100)
+  }
+  return null
 }

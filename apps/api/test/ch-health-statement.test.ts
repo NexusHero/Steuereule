@@ -93,4 +93,80 @@ describe('the health insurer’s statement', () => {
     expect(child).toMatchObject({ newValue: '320', confidenceStatus: 'pruefen' })
     expect(res.assistantMessage?.content).toContain('amtlichen Jahresdurchschnitt')
   })
+
+  it('counts the self-borne costs into the Krankheitskosten once, in euros at the Lohnausweis rate (escalation case)', async () => {
+    const { kit, strategy } = await setUp()
+    const withOwn = family.replace("KOSTENZUSAMMENSTELLUNG FÜR 2025\nPrämien Grundversicherung/Prämienverbilligung   1'400.00   0.00   1'400.00\nPrämientotal 2025   1'400.00", "KOSTENZUSAMMENSTELLUNG FÜR 2025\nPrämien Grundversicherung/Prämienverbilligung   1'400.00   0.00   1'400.00\nTotal Ihres Kostenanteils für 2025   300.00\nPrämientotal 2025   1'400.00")
+    expect(withOwn).not.toBe(family)
+    const res = await parse(strategy, withOwn)
+    const drafts = (await kit.advisorRepo.listForUserAndYear(USER, YEAR)).flatMap((m) => m.meta?.actions ?? [])
+    // 300 CHF at 1,05.
+    expect(drafts.filter((d) => d.screen === 'interview').map((d) => [d.field, d.newValue])).toEqual([
+      ['gesundheit-gate', 'Ja'],
+      ['gesundheit-betrag', '315'],
+    ])
+    expect(res.assistantMessage?.content).toContain('zu euren Krankheitskosten gerechnet')
+    await kit.service.applyBatch(USER, YEAR, { drafts: drafts.map((d) => ({ actionId: d.actionId })) })
+
+    await parse(strategy, withOwn)
+    const pending = (await kit.advisorRepo.listForUserAndYear(USER, YEAR)).flatMap((m) => m.meta?.actions ?? []).filter((d) => d.status === 'pending')
+    expect(pending.filter((d) => d.field === 'gesundheit-betrag')).toEqual([])
+  })
+
+  it('names the children’s converted premiums once, not once per child', async () => {
+    const { kit, strategy } = await setUp(false)
+    await kit.childRepo.create(USER, YEAR, { firstName: 'Ben', lastName: 'Muster', geburtsdatum: '2023-01-01' })
+    const twoKids = family.replace('LEA MUSTER', 'LEA MUSTER').concat("\nBEN MUSTER\nVERSICHERTEN-NR. 1004\nKOSTENZUSAMMENSTELLUNG FÜR 2025\nPrämien Grundversicherung/Prämienverbilligung   300.00   0.00   300.00\nPrämientotal 2025   300.00")
+    const res = await parse(strategy, twoKids)
+    expect(res.assistantMessage?.content.match(/amtlichen Jahresdurchschnitt/g)).toHaveLength(1)
+    expect(res.assistantMessage?.content).toContain('Die Prämien der Kinder')
+  })
+
+  it('lets a dentist’s invoice add to the self-borne costs still waiting, not replace them', async () => {
+    const { kit, strategy } = await setUp()
+    const withOwn = family.replace("Prämientotal 2025   1'400.00", "Total Ihres Kostenanteils für 2025   300.00\nPrämientotal 2025   1'400.00")
+    await parse(strategy, withOwn)
+    const invoice = await kit.service.stageReceiptProposal(USER, YEAR, {
+      screen: 'interview',
+      field: 'gesundheit-betrag',
+      newValue: '1700',
+      companionFields: { 'gesundheit-gate': 'Ja' },
+      label: 'Krankheitskosten (Summe im Jahr)',
+      reason: 'Zahnarztrechnung.',
+      sourceId: 'estg-33',
+      summaryText: 'Zahnarztrechnung gelesen.',
+      receiptId: null,
+      countedItems: [{ ref: '0invoice', amountKey: '0invoice' }],
+      engine: { mode: 'deterministic_fallback', provider: 'deterministic' },
+    })
+    // 300 CHF at 1,05 = 315 € waiting, plus 1.700 € for the invoice.
+    expect(invoice.action).toMatchObject({ field: 'gesundheit-betrag', newValue: '2015' })
+    const counted = await kit.service.countedReceiptItems(USER, YEAR, { screen: 'interview', field: 'gesundheit-betrag' })
+    expect(counted.map((c) => c.ref)).toContain('0invoice')
+    expect(counted.length).toBeGreaterThan(1)
+  })
+
+  it('applies the invoice after the statement’s drafts were taken over, though both open „Krankheitskosten: Ja“', async () => {
+    const { kit, strategy } = await setUp()
+    const withOwn = family.replace("Prämientotal 2025   1'400.00", "Total Ihres Kostenanteils für 2025   300.00\nPrämientotal 2025   1'400.00")
+    await parse(strategy, withOwn)
+    const invoice = await kit.service.stageReceiptProposal(USER, YEAR, {
+      screen: 'interview',
+      field: 'gesundheit-betrag',
+      newValue: '1700',
+      companionFields: { 'gesundheit-gate': 'Ja' },
+      label: 'Krankheitskosten (Summe im Jahr)',
+      reason: 'Zahnarztrechnung.',
+      sourceId: 'estg-33',
+      summaryText: 'Zahnarztrechnung gelesen.',
+      receiptId: null,
+      engine: { mode: 'deterministic_fallback', provider: 'deterministic' },
+    })
+    const statementDrafts = (await kit.advisorRepo.listForUserAndYear(USER, YEAR)).flatMap((m) => m.meta?.actions ?? []).filter((d) => d.status === 'pending')
+    await kit.service.applyBatch(USER, YEAR, { drafts: statementDrafts.map((d) => ({ actionId: d.actionId })) })
+    await kit.service.applyAction(USER, YEAR, invoice.action.actionId)
+    const answers = Object.fromEntries((await kit.interviewRepo.findAllForUserAndYear(USER, YEAR)).map((a) => [a.questionId, a.value]))
+    expect(answers).toMatchObject({ 'gesundheit-gate': 'Ja', 'gesundheit-betrag': '2015' })
+  })
 })
+

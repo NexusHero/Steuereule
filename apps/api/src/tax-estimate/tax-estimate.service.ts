@@ -1,7 +1,8 @@
-import { Inject, Injectable } from '@nestjs/common'
+import { Inject, Injectable, Optional } from '@nestjs/common'
 import { withSpan } from '../telemetry/tracer.js'
 import {
   annexNGreAmounts,
+  pensionAsCoreLineItem,
   employeeFromAnswers,
   furtherWorkExpensesEur,
   childcareDeductionEur,
@@ -47,6 +48,8 @@ import { MASTER_DATA_REPOSITORY, type MasterDataRepository } from '../master-dat
 import { CHILD_REPOSITORY, type ChildRepository } from '../children/child.repository.js'
 import { PARTNER_COUPLING_REPOSITORY, type PartnerCouplingRepository } from '../link/link.repository.js'
 import { RENTAL_REPOSITORY, type RentalRepository } from '../rental/rental.repository.js'
+import { PENSION_REPOSITORY, type PensionRepository } from '../pension/pension.repository.js'
+import { pensionDataFromRecord } from '../pension/pension.service.js'
 import { churchTaxDtoFrom } from '../lstb/lstb.service.js'
 import type { WageTaxCertificateRecord } from '../lstb/lstb.repository.js'
 
@@ -77,6 +80,7 @@ export class TaxEstimateService {
     @Inject(PARTNER_COUPLING_REPOSITORY) private readonly link?: PartnerCouplingRepository,
     @Inject(CHILD_REPOSITORY) private readonly kinder?: ChildRepository,
     @Inject(RENTAL_REPOSITORY) private readonly rental?: RentalRepository,
+    @Optional() @Inject(PENSION_REPOSITORY) private readonly pension?: PensionRepository,
   ) {}
 
   async getState(
@@ -127,7 +131,8 @@ export class TaxEstimateService {
       answers['ae-weitere-person'] !== 'Ja' &&
       answers['ae-haushaltsgemeinschaft'] !== 'Ja'
     const singleParentChildren = singleParent ? await this.childrenForRelief(userId, year, answers) : 0
-    const childrenBracket = burdenChildrenBracket(answers.kinder)
+    const recordedChildren = this.kinder ? (await this.kinder.listForUserAndYear(userId, year)).length : 0
+    const childrenBracket = burdenChildrenBracket(answers.kinder, recordedChildren)
     const householdReductionEur = boostersEnabled ? householdServicesFromAnswers(answers, year).totalReductionEur : 0
     const healthExpensesEur = boostersEnabled ? extraordinaryBurdenFromAnswers(answers) : 0
     const churchTax = churchTaxInput(masterData, lstbRecord, 'own', await this.childrenForChurchTax(userId, year, answers))
@@ -136,6 +141,9 @@ export class TaxEstimateService {
       const values = salaryCertificateValuesFromRecord(chRecord)
       const exchangeRate = exchangeRateFromRecord(chRecord)
       const status = crossBorderStatusFromAnswers(answers)
+      // Not a Grenzgänger (> 60 days without return, or living in Switzerland): the Swiss wage is exempt in
+      // Germany with Progressionsvorbehalt (Art. 15, 24 DBA-CH); the estimate does not tax it (ADR-0088).
+      if (status === 'kein-grenzgaenger') return { kind: 'nicht-moeglich', reason: 'kein-grenzgaenger' }
       const nGre = chRecord?.nGre
       const missing = [
         ...(status === null ? ['grenzgaenger-status'] : openSalaryCertificateFields(values, status)),
@@ -223,6 +231,7 @@ export class TaxEstimateService {
       this.income(link.personAUserId, year, boostersEnabled),
       link.personBUserId ? this.income(link.personBUserId, year, boostersEnabled) : Promise.resolve(null),
     ])
+    if (a.kind === 'exempt' || b?.kind === 'exempt') return { kind: 'nicht-moeglich', reason: 'kein-grenzgaenger' }
     const missing = [...(a?.kind === 'offen' ? a.missing : []), ...(b?.kind === 'offen' ? b.missing.map((f) => `personB.${f}`) : [])]
     if (a.kind === 'none') missing.unshift('einkommen')
     if (missing.length > 0 || a.kind !== 'ok') return { kind: 'offen', missing }
@@ -261,7 +270,7 @@ export class TaxEstimateService {
       },
       householdReductionEur,
       healthExpensesEur,
-      childrenBracket: burdenChildrenBracket(a.answers.kinder ?? bAnswers.kinder),
+      childrenBracket: burdenChildrenBracket(a.answers.kinder ?? bAnswers.kinder, kinder.length),
     })
     if (estimate.kind !== 'spanne') return { kind: 'nicht-moeglich', reason: estimate.reason }
     const { childAllowanceUsed: _k, churchTax, ...range } = estimate
@@ -285,6 +294,7 @@ export class TaxEstimateService {
     | { kind: 'ok'; spouse: SpouseIncome; donations: number; laterCount: number; answers: Answers }
     | { kind: 'offen'; missing: string[] }
     | { kind: 'none'; laterCount: number; answers: Answers }
+    | { kind: 'exempt' }
   > {
     const [lstbRecord, interviewRows, chRecord, path] = await Promise.all([
       this.lstb.findForUserAndYear(userId, year),
@@ -296,7 +306,10 @@ export class TaxEstimateService {
     const laterCount = countLaterAmounts(answers, boostersEnabled)
     const numbers = employeeFromAnswers(answers)
     const allowance = commuterAllowanceFrom(year, path) + homeOfficeAllowanceFrom(year, path) + furtherWorkExpensesEur(path)
-    if (chRecord && (answers.ausland === CH_FOREIGN || lstbRecord === null)) {
+    // Person B recorded by the user answers only the Grenzgänger questions, never the minimal gate.
+    const answersCrossBorder = answers.ausland === CH_FOREIGN || answers['ch-wohnsitz'] !== undefined
+    if (chRecord && answersCrossBorder && crossBorderStatusFromAnswers(answers) === 'kein-grenzgaenger') return { kind: 'exempt' }
+    if (chRecord && (answersCrossBorder || lstbRecord === null)) {
       const values = salaryCertificateValuesFromRecord(chRecord)
       const exchangeRate = exchangeRateFromRecord(chRecord)
       const nGre = chRecord.nGre
@@ -340,7 +353,16 @@ export class TaxEstimateService {
         },
       }
     }
-    if (lstbRecord === null) return { kind: 'none', laterCount, answers }
+    if (lstbRecord === null) {
+      // A spouse living on a pension (Anlage R): its taxable share counts in the couple's estimate (ADR-0088).
+      const pensionRecord = this.pension ? await this.pension.findForUserAndYear(userId, year) : null
+      if (pensionRecord?.rentenart) {
+        const item = pensionAsCoreLineItem(pensionDataFromRecord(pensionRecord))
+        if (item === null) return { kind: 'offen', missing: ['rente'] }
+        return { kind: 'ok', donations: numbers.donations, laterCount, answers, spouse: { kind: 'pension', taxablePensionEur: item.amount } }
+      }
+      return { kind: 'none', laterCount, answers }
+    }
     const state = wageTaxCertificateStatus(wageTaxCertificateDataFrom(lstbRecord))
     if (state.kind === 'unvollstaendig') return { kind: 'offen', missing: [...state.open, ...state.unclear] }
     if (state.kind === 'widerspruch') return { kind: 'offen', missing: state.conflicts.map((w) => w.kind) }

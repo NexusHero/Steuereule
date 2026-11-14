@@ -29,8 +29,8 @@ export function useCockpitTileFacts(
 ): TileFacts | null {
   const active = enabled && path !== null
   const lstb = useLstbControllerGetLstb(year, undefined, { query: { enabled: active && path === 'angestellte' } })
-  const ch = useChSalaryCertificateControllerGet(year, { query: { enabled: active && path === 'ch' } })
-  const pension = usePensionControllerGet(year, { query: { enabled: active && path === 'rente' } })
+  const ch = useChSalaryCertificateControllerGet(year, undefined, { query: { enabled: active && path === 'ch' } })
+  const pension = usePensionControllerGet(year, undefined, { query: { enabled: active && path === 'rente' } })
   const commute = useCommuteControllerGet(year, undefined, { query: { enabled: active && path !== 'rente' } })
   const capital = useCapitalControllerGet(year, { query: { enabled: active } })
   const rental = useRentalControllerGet(year, { query: { enabled: active } })
@@ -193,6 +193,8 @@ export function CockpitTiles({
           year={year}
           partnerName={partnerName ?? tr('cockpit.bereich.partnerFallback')}
           enabled={isSignedIn}
+          crossBorder={facts.answers['partner-ausland'] === 'Ja, in die Schweiz' || (facts.answers['partner-ausland'] === undefined && facts.answers.ausland === 'Ja, in die Schweiz')}
+          partnerJob={facts.answers['partner-job']}
           onOpenPartner={onOpenPartner}
         />
       ) : null}

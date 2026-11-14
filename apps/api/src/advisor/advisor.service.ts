@@ -112,6 +112,7 @@ const ACCUMULATING_KEYS: ReadonlySet<string> = new Set([
   'interview.haushalt-handwerker-betrag',
   'interview.haushalt-handwerker-rechnungsbetrag',
   'interview.spenden-betrag',
+  'interview.gesundheit-betrag',
 ])
 
 /** A field (of a person, of a child) whose receipts are counted so none counts twice. */
@@ -887,6 +888,8 @@ export class AdvisorService {
       readonly receiptId?: string | null | undefined
       /** The donations this receipt adds (hashed, ADR-0080); the draft carries them with those still waiting. */
       readonly countedItems?: readonly AdvisorCountedItem[] | undefined
+      /** A receipt read from a photo or scan is never offered as read (ADR-0060). */
+      readonly fromOcr?: boolean | undefined
     },
   ): Promise<{ action: AdvisorActionProposal; assistantMessage: AdvisorChatMessageDto }> {
     assertAiWritable(input.screen, input.field)
@@ -936,6 +939,7 @@ export class AdvisorService {
       sourceId: input.sourceId,
       paragraph: ADVISOR_LEGAL_SOURCES[input.sourceId].paragraph,
       ...(input.receiptId ? { receiptId: input.receiptId } : {}),
+      ...(input.fromOcr ? { confidenceStatus: 'pruefen' as const, fieldReason: 'ocr_source' as const } : {}),
       ...(input.countedItems
         ? { countedItems: [...(adds ? await this.pendingCountedItems(userId, taxYear, { screen: input.screen, field: input.field }) : []), ...input.countedItems] }
         : {}),
@@ -1003,6 +1007,8 @@ export class AdvisorService {
         screen: 'lstb',
         field: item.field,
         instance: null,
+        // A partner's LStB writes into B's record and must not replace the user's own drafts.
+        ...(input.person === 'B' ? { person: 'B' as const } : {}),
         label: item.label,
         previousValue: sim.previousValue,
         expectedPreviousValue: sim.previousValue,
@@ -1209,10 +1215,14 @@ export class AdvisorService {
     const values = new Map<string, string>()
     // Oldest to newest, so a newer draft overwrites an older one.
     for (const message of await this.advisorRepo.listForUserAndYear(userId, taxYear)) {
-      const action = message.meta?.action
-      if (!action || action.status !== 'pending' || action.screen !== screen || action.person === 'B') continue
-      values.set(action.field, action.newValue)
-      for (const [field, value] of Object.entries(action.companionFields ?? {})) values.set(field, value)
+      // A single receipt's draft, and the drafts a document staged together (a health insurer's
+      // statement puts the self-borne costs next to the premiums): a later receipt adds to either.
+      const actions = [...(message.meta?.action ? [message.meta.action] : []), ...(message.meta?.actions ?? [])]
+      for (const action of actions) {
+        if (action.status !== 'pending' || action.screen !== screen || action.person === 'B' || (action.instance ?? null) !== null) continue
+        values.set(action.field, action.newValue)
+        for (const [field, value] of Object.entries(action.companionFields ?? {})) values.set(field, value)
+      }
     }
     return values
   }

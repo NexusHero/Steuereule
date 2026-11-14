@@ -1,4 +1,4 @@
-export type MinimalGateQuestionId = 'job' | 'ausland' | 'kinder' | 'familienstand'
+export type MinimalGateQuestionId = 'job' | 'ausland' | 'kinder' | 'familienstand' | 'partner-job' | 'partner-ausland'
 
 export type MinimalGateGateId = 'gewerbe' | 'ch-only'
 
@@ -122,6 +122,12 @@ export const MARITAL_STATUS_VALUES = ['Ledig', 'Verheiratet', 'Geschieden oder g
 
 export const PARTNER_VALUES = ['Ja', 'Nein'] as const
 
+/** What Person B does, asked of a married user so only B's fields that apply appear (ADR-0088). */
+export const PARTNER_JOB_VALUES = ['Angestellt', 'Rente', 'Nicht berufstätig'] as const
+
+/** Whether an employed Person B works in Switzerland (Grenzgänger) too. */
+export const PARTNER_FOREIGN_VALUES = ['Ja, in die Schweiz', 'Nein'] as const
+
 export const HOME_OFFICE_VALUES = ['Nie', '1–2 Tage pro Woche', 'Fast immer'] as const
 
 export const TRAINING_VALUES = ['Ja', 'Nein'] as const
@@ -228,7 +234,19 @@ export const QUESTIONS: Readonly<Record<EntryStepId, QuestionDeclaration>> = {
     },
   },
   kinder: { id: 'kinder', kind: 'question', form: { kind: 'enum', values: KINDER_VALUES } },
-  familienstand: { id: 'familienstand', kind: 'question', form: { kind: 'enum', values: MARITAL_STATUS_VALUES } },
+  familienstand: {
+    id: 'familienstand',
+    kind: 'question',
+    form: { kind: 'enum', values: MARITAL_STATUS_VALUES },
+    followUps: { Verheiratet: ['partner-job'] },
+  },
+  'partner-job': {
+    id: 'partner-job',
+    kind: 'question',
+    form: { kind: 'enum', values: PARTNER_JOB_VALUES },
+    followUps: { Angestellt: ['partner-ausland'] },
+  },
+  'partner-ausland': { id: 'partner-ausland', kind: 'question', form: { kind: 'enum', values: PARTNER_FOREIGN_VALUES } },
   gewerbe: { id: 'gewerbe', kind: 'gate', form: { kind: 'enum', values: [GATE_ACKNOWLEDGED] } },
   'ch-only': { id: 'ch-only', kind: 'gate', form: { kind: 'enum', values: [GATE_ACKNOWLEDGED] } },
 

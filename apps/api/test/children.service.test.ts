@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { ChildrenService } from '../src/children/children.service.js'
 import { FakeChildRepository } from './fakes/fake-child.repository.js'
 import { FakeChSalaryCertificateRepository } from './fakes/fake-ch-salary-certificate.repository.js'
+import { FakeLinkRepository } from './fakes/fake-link.repository.js'
 
 class FakeAuditService {
   readonly logs: unknown[] = []
@@ -153,5 +154,44 @@ describe('KinderService', () => {
     expect(res.kinder[1]!.differentialChildBenefitEur).toBeNull()
     expect(res.swissFamilyAllowanceSum).toBe(0)
     expect(res.differentialChildBenefitSum).toBe(0)
+  })
+})
+
+describe('ChildrenService — the Swiss Kinderzulage when both parents are Grenzgänger (ADR-0088)', () => {
+  const swiss = (userId: string, allowancesChf: string) =>
+    ({
+      userId, taxYear: 2025, fields: {} as never, bemerkungen: null, saeule3aChf: null, krankenkasseChf: null,
+      exchangeRateMonth: '2025', exchangeRateValue: 1.065, exchangeRateMode: 'jahresdurchschnitt', exchangeRateReceiptId: null,
+      nGre: { familienzulagenChf: allowancesChf } as never,
+    }) as never
+  async function setup(aChf: string, bChf: string) {
+    const repo = new FakeChildRepository()
+    const ch = new FakeChSalaryCertificateRepository()
+    ch.seed(swiss('a', aChf))
+    ch.seed(swiss('b', bChf))
+    const link = new FakeLinkRepository()
+    await link.upsert('a', 2025, { personBUserId: 'b', filingType: 'zusammen' })
+    const service = new ChildrenService(repo, new FakeAuditService() as never, ch, link)
+    return { repo, service }
+  }
+
+  it('takes B’s allowances when the user’s Lohnausweis holds 0, and shows the Differenzkindergeld', async () => {
+    const { repo, service } = await setup('0', '5160')
+    await repo.create('a', 2025, { firstName: 'Lio', lastName: 'S', geburtsdatum: '2019-04-03' })
+    await repo.create('a', 2025, { firstName: 'Ida', lastName: 'S', geburtsdatum: '2021-08-21' })
+    const res = await service.list('a', 2025)
+    // 5.160 CHF at 1,065 = 5.495 €, half each; 3.060 € Kindergeld a child less 2.748 € = 312 €.
+    expect(res.kinder.map((k) => k.swissFamilyAllowanceEur)).toEqual(['2748', '2748'])
+    expect(res.kinder.map((k) => k.differentialChildBenefitEur)).toEqual(['312', '312'])
+    // A share of B's allowances, not entered for the child: the mask offers it but does not store it.
+    expect(res.kinder.map((k) => k.swissFamilyAllowanceDerived)).toEqual([true, true])
+  })
+
+  it('keeps each parent’s allowances to the child they are paid for', async () => {
+    const { repo, service } = await setup('2580', '2580')
+    await repo.create('a', 2025, { firstName: 'Lio', lastName: 'S', geburtsdatum: '2019-04-03', swissFamilyAllowancePayer: 'A' } as never)
+    await repo.create('a', 2025, { firstName: 'Ida', lastName: 'S', geburtsdatum: '2021-08-21', swissFamilyAllowancePayer: 'B' } as never)
+    const res = await service.list('a', 2025)
+    expect(res.kinder.map((k) => [k.swissFamilyAllowancePayer, k.swissFamilyAllowanceEur])).toEqual([['A', '2748'], ['B', '2748']])
   })
 })

@@ -223,6 +223,7 @@ const DECLARED: Readonly<Record<Screen, { readonly perInstance: boolean; readonl
       childcareProvider: text(45),
       childcareFrom: text(10),
       childcareTo: text(10),
+      swissFamilyAllowancePayer: oneOf(['A', 'B'] as const),
     },
   },
   assessment: {

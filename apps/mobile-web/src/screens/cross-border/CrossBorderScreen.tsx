@@ -12,6 +12,7 @@ import {
   useChSalaryCertificateControllerSetNGre,
   useChSalaryCertificateControllerSetProvision,
   useChSalaryCertificateControllerSetExchangeRate,
+  useChSalaryCertificateControllerSetCrossBorderFacts,
   getChSalaryCertificateControllerGetQueryKey,
   getCockpitControllerGetCockpitSummaryQueryKey,
   getInterviewControllerGetInterviewQueryKey,
@@ -35,6 +36,8 @@ export interface CrossBorderScreenProps {
   readonly onDone: () => void
   readonly onBack?: () => void
   readonly taxYear?: number
+  /** Set when Person A records the partner's Swiss figures (ADR-0054, partner without an own account). */
+  readonly partnerName?: string
 }
 
 const SEGMENT_CH = ENTRIES['segment-ch']
@@ -42,12 +45,17 @@ const SEGMENT_CH = ENTRIES['segment-ch']
 /** The exchange rate is the official rate of one month of the tax year, or the annual average — picked, not typed. */
 const MONTH_NUMBERS = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'] as const
 
-export function CrossBorderScreen({ onDone, onBack, taxYear = CURRENT_TAX_YEAR }: CrossBorderScreenProps) {
+export function CrossBorderScreen({ onDone, onBack, taxYear = CURRENT_TAX_YEAR, partnerName }: CrossBorderScreenProps) {
   const bp = useBreakpoint()
   const { t: tr } = useTranslation(APP_NS)
   const queryClient = useQueryClient()
-  const interviewQuery = useInterviewControllerGetInterview(taxYear, { eintrag: 'segment-ch' })
-  const salaryCertificateQuery = useChSalaryCertificateControllerGet(taxYear)
+  const forPartner = partnerName !== undefined
+  const params = forPartner ? ({ person: 'B' } as const) : undefined
+  // The user's Grenzgänger questions are interview answers; the partner's are saved with B's mask.
+  const interviewQuery = useInterviewControllerGetInterview(taxYear, { eintrag: 'segment-ch' }, { query: { enabled: !forPartner } })
+  const salaryCertificateQuery = useChSalaryCertificateControllerGet(taxYear, params)
+  const setCrossBorderFacts = useChSalaryCertificateControllerSetCrossBorderFacts()
+  const [partnerResidence, setPartnerResidence] = useState<'Deutschland' | 'Schweiz' | null>(null)
   const postAnswer = useInterviewControllerPostAnswer()
   const setField = useChSalaryCertificateControllerSetField()
   const setExchangeRate = useChSalaryCertificateControllerSetExchangeRate()
@@ -62,7 +70,7 @@ export function CrossBorderScreen({ onDone, onBack, taxYear = CURRENT_TAX_YEAR }
   const answerQueue = useRef<Promise<unknown>>(Promise.resolve())
 
   function invalidateCertificate(): void {
-    void queryClient.invalidateQueries({ queryKey: getChSalaryCertificateControllerGetQueryKey(taxYear) })
+    void queryClient.invalidateQueries({ queryKey: getChSalaryCertificateControllerGetQueryKey(taxYear, params) })
     void queryClient.invalidateQueries({ queryKey: getCockpitControllerGetCockpitSummaryQueryKey(taxYear) })
     void queryClient.invalidateQueries({ queryKey: getTaxEstimateControllerGetQueryKey(taxYear) })
   }
@@ -72,10 +80,12 @@ export function CrossBorderScreen({ onDone, onBack, taxYear = CURRENT_TAX_YEAR }
     setSeeded(true)
   }
 
-  if (interviewQuery.isPending || salaryCertificateQuery.isPending) {
+  const interviewPending = !forPartner && interviewQuery.isPending
+  const interviewFailed = !forPartner && (interviewQuery.isError || interviewQuery.data?.status !== 200)
+  if (interviewPending || salaryCertificateQuery.isPending) {
     return <LoadingState bp={bp} label={tr('grenzgaenger.loading')} />
   }
-  if (interviewQuery.isError || interviewQuery.data.status !== 200 || salaryCertificateQuery.isError || salaryCertificateQuery.data.status !== 200) {
+  if (interviewFailed || salaryCertificateQuery.isError || salaryCertificateQuery.data.status !== 200) {
     return (
       <ErrorState
         bp={bp}
@@ -90,8 +100,27 @@ export function CrossBorderScreen({ onDone, onBack, taxYear = CURRENT_TAX_YEAR }
     )
   }
 
-  const step = seeded ? nextStepFor(SEGMENT_CH, interviewAnswers) : null
   const salaryCertificate = salaryCertificateQuery.data.data
+  const step = forPartner
+    ? salaryCertificate.status === null
+      ? ({ kind: 'question', id: partnerResidence === null ? 'ch-wohnsitz' : 'ch-nichtrueckkehrtage' } as const)
+      : null
+    : seeded
+      ? nextStepFor(SEGMENT_CH, interviewAnswers)
+      : null
+
+  function answerForPartner(questionId: EntryQuestionId, value: string) {
+    if (questionId === 'ch-wohnsitz') {
+      setPartnerResidence(value === 'Schweiz' ? 'Schweiz' : 'Deutschland')
+      return
+    }
+    const residence = partnerResidence ?? 'Deutschland'
+    track(
+      watchSaveResult(
+        setCrossBorderFacts.mutateAsync({ jahr: taxYear, data: { residence, daysWithoutReturn: Number(value) }, params: { person: 'B' } }),
+      ).then(invalidateCertificate),
+    )
+  }
 
   function answer(questionId: EntryQuestionId, value: string) {
     const previous = interviewAnswers
@@ -127,7 +156,15 @@ export function CrossBorderScreen({ onDone, onBack, taxYear = CURRENT_TAX_YEAR }
   }
 
   if (step !== null && step.kind === 'question') {
-    return <ChInterviewStep stepId={step.id} onAnswer={answer} bp={bp} onBack={() => finish(onBack ?? onDone)} />
+    return (
+      <ChInterviewStep
+        stepId={step.id}
+        onAnswer={forPartner ? answerForPartner : answer}
+        bp={bp}
+        onBack={() => (forPartner && partnerResidence !== null ? setPartnerResidence(null) : finish(onBack ?? onDone))}
+        {...(partnerName !== undefined ? { partnerName } : {})}
+      />
+    )
   }
 
   return (
@@ -136,10 +173,11 @@ export function CrossBorderScreen({ onDone, onBack, taxYear = CURRENT_TAX_YEAR }
     <SalaryCertificateStep
       salaryCertificate={salaryCertificate}
       taxYear={taxYear}
-      onSetField={(vars) => track(watchSaveResult(setField.mutateAsync(vars)).then(invalidateCertificate))}
-      onSetExchangeRate={(vars) => track(watchSaveResult(setExchangeRate.mutateAsync(vars)).then(invalidateCertificate))}
-      onSetProvision={(data) => track(watchSaveResult(setProvision.mutateAsync({ jahr: taxYear, data })).then(invalidateCertificate))}
-      onSetNGre={(data) => track(watchSaveResult(setNGre.mutateAsync({ jahr: taxYear, data })).then(invalidateCertificate))}
+      {...(partnerName !== undefined ? { partnerName } : {})}
+      onSetField={(vars) => track(watchSaveResult(setField.mutateAsync({ ...vars, ...(params ? { params } : {}) })).then(invalidateCertificate))}
+      onSetExchangeRate={(vars) => track(watchSaveResult(setExchangeRate.mutateAsync({ ...vars, ...(params ? { params } : {}) })).then(invalidateCertificate))}
+      onSetProvision={(data) => track(watchSaveResult(setProvision.mutateAsync({ jahr: taxYear, data, ...(params ? { params } : {}) })).then(invalidateCertificate))}
+      onSetNGre={(data) => track(watchSaveResult(setNGre.mutateAsync({ jahr: taxYear, data, ...(params ? { params } : {}) })).then(invalidateCertificate))}
       onDone={() => finish(onDone)}
       {...(onBack ? { onBack: () => finish(onBack) } : {})}
       bp={bp}
@@ -148,7 +186,19 @@ export function CrossBorderScreen({ onDone, onBack, taxYear = CURRENT_TAX_YEAR }
   )
 }
 
-function ChInterviewStep({ stepId, onAnswer, bp, onBack }: { readonly stepId: EntryQuestionId; readonly onAnswer: (id: EntryQuestionId, value: string) => void; readonly bp: Breakpoint; readonly onBack: () => void }) {
+function ChInterviewStep({
+  stepId,
+  onAnswer,
+  bp,
+  onBack,
+  partnerName,
+}: {
+  readonly stepId: EntryQuestionId
+  readonly onAnswer: (id: EntryQuestionId, value: string) => void
+  readonly bp: Breakpoint
+  readonly onBack: () => void
+  readonly partnerName?: string
+}) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
@@ -164,6 +214,7 @@ function ChInterviewStep({ stepId, onAnswer, bp, onBack }: { readonly stepId: En
           <Text style={styles.mark}>{tr('grenzgaenger.interview.wohnsitz.titleMark')}</Text>
           {tr('grenzgaenger.interview.wohnsitz.titleAfter')}
         </Text>
+        {partnerName !== undefined ? <Text style={styles.help} testID="ch-partner-hinweis">{tr('grenzgaenger.partnerFor', { name: partnerName })}</Text> : null}
         <Text style={styles.help}>{tr('grenzgaenger.interview.wohnsitz.help')}</Text>
         <Option onPress={() => onAnswer('ch-wohnsitz', 'Deutschland')} testID="ch-wohnsitz-deutschland">{tr('grenzgaenger.interview.wohnsitz.deutschland')}</Option>
         <Option onPress={() => onAnswer('ch-wohnsitz', 'Schweiz')} testID="ch-wohnsitz-schweiz">{tr('grenzgaenger.interview.wohnsitz.schweiz')}</Option>
@@ -181,6 +232,7 @@ function ChInterviewStep({ stepId, onAnswer, bp, onBack }: { readonly stepId: En
         <Text style={styles.mark}>{tr('grenzgaenger.interview.tage.titleMark')}</Text>
         {tr('grenzgaenger.interview.tage.titleAfter')}
       </Text>
+      {partnerName !== undefined ? <Text style={styles.help} testID="ch-partner-hinweis">{tr('grenzgaenger.partnerFor', { name: partnerName })}</Text> : null}
       <Text style={styles.help}>{tr('grenzgaenger.interview.tage.help')}</Text>
       <DaysInput onAnswer={onAnswer} />
     </ScrollView>
@@ -223,9 +275,11 @@ function SalaryCertificateStep({
   onDone,
   onBack,
   bp,
+  partnerName,
 }: {
   readonly salaryCertificate: ChSalaryCertificateResponseDto
   readonly taxYear: number
+  readonly partnerName?: string
   // the generated client's own variables, so the path parameters follow the spec
   readonly onSetField: (vars: Parameters<ReturnType<typeof useChSalaryCertificateControllerSetField>['mutate']>[0]) => void
   readonly onSetExchangeRate: (vars: Parameters<ReturnType<typeof useChSalaryCertificateControllerSetExchangeRate>['mutate']>[0]) => void
@@ -252,6 +306,7 @@ function SalaryCertificateStep({
         {onBack ? <BackButton accessibilityLabel={tr('grenzgaenger.back')} onPress={onBack} /> : <BackButtonSpacer />}
         <Text style={styles.heading}>{tr('grenzgaenger.lohnausweis.title')}</Text>
       </View>
+      {partnerName !== undefined ? <Text style={styles.help} testID="ch-partner-hinweis">{tr('grenzgaenger.partnerFor', { name: partnerName })}</Text> : null}
       <Text style={styles.help}>{tr('grenzgaenger.lohnausweis.help')}</Text>
 
       {amountFields.map((field) => (

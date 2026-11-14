@@ -746,6 +746,20 @@ export const appResources = {
             verwitwet: 'Verwitwet',
           },
         },
+        partnerJob: {
+          titleBefore: 'Und deine ',
+          titleMark: 'Ehepartnerin oder dein Ehepartner',
+          titleAfter: '?',
+          help: 'Für die gemeinsame Erklärung: Danach zeigen wir nur die Angaben, die ihr für Person B braucht.',
+          options: { angestellt: 'Angestellt', rente: 'In Rente', keine: 'Nicht berufstätig' },
+        },
+        partnerAusland: {
+          titleBefore: 'Arbeitet Person B auch in der ',
+          titleMark: 'Schweiz',
+          titleAfter: '?',
+          help: 'Dann bekommt Person B einen eigenen Lohnausweis mit Anlage N-Gre.',
+          options: { schweiz: 'Ja, als Grenzgänger', nein: 'Nein' },
+        },
         gewerbe: {
           heading: 'Ehrlich: dafür sind wir noch nicht gut genug.',
           body1: 'Selbstständige brauchen EÜR, Anlage G/S und Umsatzsteuer — das kann SteuerEule in Version 1 nicht. Halbe Steuererklärungen liefern wir nicht.',
@@ -861,6 +875,7 @@ export const appResources = {
         weiter: 'Weiter',
       },
       rente: {
+        partnerFor: 'Rente von {{name}}.',
         back: 'Zurück',
         heading: 'Deine Rente',
         help: 'Übertrag die Angaben aus deiner Rentenbezugsmitteilung — Rentenart, Jahresbetrag und Rentenbeginn.',
@@ -999,6 +1014,7 @@ export const appResources = {
         saveFailed: 'Mindestens eine Eingabe wurde nicht gespeichert. Prüf deine Verbindung und gib sie noch einmal ein – oder tipp noch einmal, um trotzdem weiterzugehen.',
       },
       katalog: {
+        fuerWen: { label: 'Für wen?', mich: 'für mich', partner: 'für {{name}}', partnerFallback: 'Person B' },
         einkuenfteBeantworten: 'Frage jetzt beantworten',
         back: 'Zurück',
         loading: 'Wird geladen …',
@@ -1269,6 +1285,8 @@ export const appResources = {
           vorauszahlungen: { titel: 'Vorauszahlungen ans Finanzamt' },
           'partner-lstb': { titel: 'Lohnsteuerbescheinigung' },
           'partner-arbeitsweg': { titel: 'Arbeitstage & Weg' },
+          'partner-schweiz': { titel: 'Lohnausweis Schweiz' },
+          'partner-rente': { titel: 'Rente' },
         },
         weitereThemen: 'Weitere Themen',
         boosterUeberschrift: {
@@ -1306,6 +1324,7 @@ export const appResources = {
             verheiratet: 'Für Verheiratete rechnen wir die Erstattung noch nicht.',
             'nur-angestellte': 'Die Erstattung rechnen wir bisher nur für Angestellte.',
             'besondere-lebenslage': 'Mit Nebenjob, Abfindung, Lohnersatz oder doppelter Haushaltsführung rechnen wir die Erstattung noch nicht.',
+            'kein-grenzgaenger': 'Mehr als 60 Tage ohne Rückkehr oder Wohnsitz in der Schweiz: Dann ist der Schweizer Lohn in Deutschland steuerfrei und erhöht nur den Steuersatz. Das rechnen wir noch nicht.',
             'jahr-ohne-tarif': 'Für dieses Jahr haben wir noch keinen Steuertarif.',
             unbekannt: 'Die Erstattung rechnen wir in einem späteren Schritt.',
           },
@@ -1471,6 +1490,7 @@ export const appResources = {
         done: 'Fertig',
       },
       grenzgaenger: {
+        partnerFor: 'Angaben für {{name}}: Lohnausweis, Anlage N-Gre und Grenzgänger-Status.',
         vorsorge: {
           title: 'Vorsorge außerhalb des Lohns',
           help: 'Nur was nicht schon auf dem Lohnausweis steht. Eine deutsche Krankenversicherung trägst du später bei den Sonderausgaben ein.',
@@ -1872,6 +1892,8 @@ export const appResources = {
           letterWhose: 'Der Name auf diesem Schreiben passt zu keiner Person in deiner Erklärung. Für wen ist es? Es wurde noch nichts übernommen.',
           certificateOwnerA: 'Meiner',
           certificateOwnerB: 'Von Person B',
+          lstbWhose: 'Der Name auf dieser Lohnsteuerbescheinigung passt zu keiner Person in deiner Erklärung. Wessen Bescheinigung ist das? Es wurde noch nichts übernommen.',
+          lstbPersonBOwnAccount: 'Das ist die Lohnsteuerbescheinigung von Person B. Person B hat ein eigenes Konto und lädt sie dort hoch; hier wurde nichts übernommen.',
           certificatePersonBOwnAccount: 'Das ist der Lohnausweis von Person B. Person B hat ein eigenes Konto und lädt ihn dort hoch; hier wurde nichts übernommen.',
           receiptYearConflict: 'Diese Lohnsteuerbescheinigung gehört zum Steuerjahr {{documentYear}}, du bist gerade in {{activeYear}}. Wechsle oben ins Jahr {{documentYear}} und lade sie dort hoch — es wurde nichts übernommen.',
           receiptProgress: {
@@ -2776,6 +2798,20 @@ export const appResources = {
             verwitwet: 'Widowed',
           },
         },
+        partnerJob: {
+          titleBefore: 'And your ',
+          titleMark: 'spouse',
+          titleAfter: '?',
+          help: 'For the joint return: afterwards we only show what you need for Person B.',
+          options: { angestellt: 'Employed', rente: 'Retired', keine: 'Not working' },
+        },
+        partnerAusland: {
+          titleBefore: 'Does Person B work in ',
+          titleMark: 'Switzerland',
+          titleAfter: ' too?',
+          help: 'Then Person B gets an own salary certificate with Anlage N-Gre.',
+          options: { schweiz: 'Yes, as a cross-border commuter', nein: 'No' },
+        },
         gewerbe: {
           heading: "Honestly: we're not good enough for that yet.",
           body1: "Self-employed returns need EÜR, Anlage G/S and VAT — SteuerEule can't do that in version 1. We don't ship half tax returns.",
@@ -2891,6 +2927,7 @@ export const appResources = {
         weiter: 'Continue',
       },
       rente: {
+        partnerFor: 'Pension of {{name}}.',
         back: 'Back',
         heading: 'Your pension',
         help: 'Copy the figures from your pension notification (Rentenbezugsmitteilung) — pension type, annual amount and start.',
@@ -3029,6 +3066,7 @@ export const appResources = {
         saveFailed: 'At least one entry was not saved. Check your connection and enter it again — or tap again to continue anyway.',
       },
       katalog: {
+        fuerWen: { label: 'For whom?', mich: 'for me', partner: 'for {{name}}', partnerFallback: 'Person B' },
         einkuenfteBeantworten: 'Answer the question now',
         back: 'Back',
         loading: 'Loading …',
@@ -3299,6 +3337,8 @@ export const appResources = {
           vorauszahlungen: { titel: 'Prepayments to the tax office' },
           'partner-lstb': { titel: 'Wage tax certificate' },
           'partner-arbeitsweg': { titel: 'Workdays & commute' },
+          'partner-schweiz': { titel: 'Swiss salary certificate' },
+          'partner-rente': { titel: 'Pension' },
         },
         weitereThemen: 'More topics',
         boosterUeberschrift: {
@@ -3336,6 +3376,7 @@ export const appResources = {
             verheiratet: 'We do not estimate the refund for married couples yet.',
             'nur-angestellte': 'So far we estimate the refund only for employees.',
             'besondere-lebenslage': 'With a side job, severance, wage replacement or double housekeeping we do not estimate the refund yet.',
+            'kein-grenzgaenger': 'More than 60 days without return, or living in Switzerland: the Swiss wage is then tax-free in Germany and only raises the rate. We do not estimate that yet.',
             'jahr-ohne-tarif': 'We do not have a tax tariff for this year yet.',
             unbekannt: 'We will calculate the refund in a later step.',
           },
@@ -3501,6 +3542,7 @@ export const appResources = {
         done: 'Done',
       },
       grenzgaenger: {
+        partnerFor: 'Figures for {{name}}: salary certificate, Anlage N-Gre and cross-border status.',
         vorsorge: {
           title: 'Provision outside your salary',
           help: 'Only what is not already on the salary certificate. A German health insurance goes into the special expenses later.',
@@ -3903,6 +3945,8 @@ export const appResources = {
           letterWhose: 'The name on this letter fits nobody in your return. Whose is it? Nothing was taken over yet.',
           certificateOwnerA: 'Mine',
           certificateOwnerB: 'Person B’s',
+          lstbWhose: 'The name on this wage tax certificate fits nobody in your return. Whose certificate is it? Nothing was taken over yet.',
+          lstbPersonBOwnAccount: 'This is Person B’s wage tax certificate. Person B has an own account and uploads it there; nothing was taken over here.',
           certificatePersonBOwnAccount: 'This is Person B’s salary certificate. Person B has an own account and uploads it there; nothing was taken over here.',
           receiptYearConflict: 'This wage tax statement belongs to tax year {{documentYear}}, you are in {{activeYear}}. Switch to {{documentYear}} above and upload it there — nothing was taken over.',
           receiptProgress: {

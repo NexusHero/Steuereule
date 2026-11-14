@@ -838,13 +838,19 @@ export function CopilotBridgeProvider({
           return result
         }
         setLastParsedReceipt(result.response)
-        // A Swiss certificate or letter whose name fits nobody waits for the user to say whose it is.
+        // A certificate, LStB or letter whose name fits nobody waits for the user to say whose it is.
         const certificate = result.response.chLohnausweis ?? result.response.chLetter ?? null
-        if (certificate?.personUnclear) {
+        const owned = certificate ?? result.response.lstb ?? null
+        const isLstb = certificate === null && result.response.lstb != null
+        if (owned?.personUnclear) {
           setCertificateOwnerFile({ file, receiptId: result.receiptId, kind: result.kind })
-          setReceiptNotice(tr(result.response.chLetter ? 'advisor.chat.letterWhose' : 'advisor.chat.certificateWhose'))
-        } else if (certificate?.personNotRecordable) {
-          setReceiptNotice(tr('advisor.chat.certificatePersonBOwnAccount'))
+          setReceiptNotice(tr(isLstb ? 'advisor.chat.lstbWhose' : result.response.chLetter ? 'advisor.chat.letterWhose' : 'advisor.chat.certificateWhose'))
+        } else if (owned?.personNotRecordable) {
+          setReceiptNotice(tr(isLstb ? 'advisor.chat.lstbPersonBOwnAccount' : 'advisor.chat.certificatePersonBOwnAccount'))
+        }
+        // A receipt that is read but records nothing (a cosmetic operation, an invoice counted already) says why.
+        if (result.response.stagedAction == null && result.response.parsed.vendorCategory === 'krankheitskosten') {
+          setReceiptNotice(result.response.parsed.summary)
         }
         const yearConflict = result.response.lstb?.yearConflict ?? certificate?.yearConflict ?? null
         if (yearConflict !== null) {

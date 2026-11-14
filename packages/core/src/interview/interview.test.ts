@@ -97,7 +97,12 @@ describe('nextStep — the identity of the next screen (product ADR-016)', () =>
     ],
 
     ['kinder answered asks the Familienstand', { ...EMPLOYED, ausland: 'Nein', kinder: '1 Kind' }, { kind: 'question', id: 'familienstand' }],
-    ['all four answered is done', { ...EMPLOYED, ausland: 'Nein', kinder: '1 Kind', familienstand: 'Verheiratet' }, { kind: 'done' }],
+    ['single, all four answered is done', { ...EMPLOYED, ausland: 'Nein', kinder: '1 Kind', familienstand: 'Ledig' }, { kind: 'done' }],
+    // ADR-0088: a married user is asked about Person B, so only the partner's fields that apply appear.
+    ['married asks what Person B does', { ...EMPLOYED, ausland: 'Nein', kinder: '1 Kind', familienstand: 'Verheiratet' }, { kind: 'question', id: 'partner-job' }],
+    ['an employed Person B is asked about Switzerland', { ...EMPLOYED, ausland: 'Nein', kinder: '1 Kind', familienstand: 'Verheiratet', 'partner-job': 'Angestellt' }, { kind: 'question', id: 'partner-ausland' }],
+    ['a retired Person B ends the gate', { ...EMPLOYED, ausland: 'Nein', kinder: '1 Kind', familienstand: 'Verheiratet', 'partner-job': 'Rente' }, { kind: 'done' }],
+    ['married with Person B answered is done', { ...EMPLOYED, ausland: 'Nein', kinder: '1 Kind', familienstand: 'Verheiratet', 'partner-job': 'Angestellt', 'partner-ausland': 'Ja, in die Schweiz' }, { kind: 'done' }],
   ]
 
   it.each(cases)('%s', (_name, answers, expected) => {

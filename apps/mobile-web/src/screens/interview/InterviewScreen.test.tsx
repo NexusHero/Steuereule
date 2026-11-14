@@ -424,9 +424,26 @@ describe('InterviewScreen', () => {
     await onMaritalStatusQuestion()
     expect(onDone).not.toHaveBeenCalled()
     fireEvent.click(screen.getByText('Verheiratet / eingetragene Lebenspartnerschaft'))
+    // ADR-0088: married asks what Person B does; a retired B ends the gate.
+    fireEvent.click(await screen.findByTestId('interview-option-partner-job-Rente'))
 
     await waitFor(() => expect(onDone).toHaveBeenCalledOnce())
     expect(container.textContent).toBe('')
+  })
+
+  it('asks an employed Person B about Switzerland before it is done (ADR-0088)', async () => {
+    const onDone = vi.fn()
+    await renderOnJobQuestion({ onDone })
+    fireEvent.click(screen.getByText('Angestellt'))
+    await onForeignQuestion()
+    fireEvent.click(screen.getByText('Nein'))
+    await onKinderQuestion()
+    fireEvent.click(screen.getByText('1 Kind'))
+    await onMaritalStatusQuestion()
+    fireEvent.click(screen.getByText('Verheiratet / eingetragene Lebenspartnerschaft'))
+    fireEvent.click(await screen.findByTestId('interview-option-partner-job-Angestellt'))
+    fireEvent.click(await screen.findByTestId('interview-option-partner-ausland-Ja, in die Schweiz'))
+    await waitFor(() => expect(onDone).toHaveBeenCalledOnce())
   })
 
   describe('back navigation between the three questions (in scope per #318; reset is not)', () => {

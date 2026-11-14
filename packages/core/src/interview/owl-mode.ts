@@ -17,6 +17,7 @@ export type OwlSourceId =
   | 'estg-10-1-5'
   | 'estg-35a'
   | 'estg-10-1-3'
+  | 'estg-33'
   | 'ao-355'
 
 export interface OwlRecommendationPath {

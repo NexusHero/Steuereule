@@ -42,6 +42,11 @@ export async function runScenario02(browser, webOrigin, _sql, { keepOpen = false
   await pageMarkus.locator(`[data-testid="interview-option-ausland-${s.markus.interview.ausland}"]`).click()
   await pageMarkus.locator(`[data-testid="interview-option-kinder-${s.markus.interview.kinder}"]`).click()
   await pageMarkus.locator(`[data-testid="interview-option-familienstand-${s.markus.interview.familienstand}"]`).click()
+  // ADR-0088: the interview asks what Person B does
+  await pageMarkus.locator('[data-testid="interview-option-partner-job-Angestellt"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await pageMarkus.locator('[data-testid="interview-option-partner-job-Angestellt"]').click()
+  await pageMarkus.locator('[data-testid="interview-option-partner-ausland-Ja, in die Schweiz"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await pageMarkus.locator('[data-testid="interview-option-partner-ausland-Ja, in die Schweiz"]').click()
 
   await pageMarkus.locator('[data-testid="ch-wohnsitz-deutschland"]').waitFor({ state: 'visible', timeout: 10_000 })
   await pageMarkus.locator('[data-testid="ch-wohnsitz-deutschland"]').click()

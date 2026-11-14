@@ -39,8 +39,11 @@ const DEFAULT_BURDEN_PARAMS: ReasonableBurdenParameters = {
 /**
  * § 33 Abs. 3 EStG: Kinderzahl aus der Interview-Antwort `kinder`.
  * `2 oder mehr` maps to `1-2` per Product Owner ruling because Minimal-Gate does not distinguish 2 from 3+.
+ * Children recorded for the year know better: with three or more the rates for `3+` apply (ADR-0087).
  */
-export function burdenChildrenBracket(kinderAnswer: string | undefined): BurdenChildrenBracket {
+export function burdenChildrenBracket(kinderAnswer: string | undefined, recordedChildren = 0): BurdenChildrenBracket {
+  if (recordedChildren >= 3) return '3+'
+  if (recordedChildren >= 1) return '1-2'
   if (kinderAnswer === '1 Kind' || kinderAnswer === '2 oder mehr') return '1-2'
   return '0'
 }

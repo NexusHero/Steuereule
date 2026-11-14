@@ -63,7 +63,7 @@ export class TaxEstimateDto {
   @ApiProperty({ type: [String], required: false })
   missing?: string[]
 
-  @ApiProperty({ type: String, required: false, enum: ['nur-angestellte', 'verheiratet', 'besondere-lebenslage', 'jahr-ohne-tarif'] })
+  @ApiProperty({ type: String, required: false, enum: ['nur-angestellte', 'verheiratet', 'besondere-lebenslage', 'jahr-ohne-tarif', 'kein-grenzgaenger'] })
   reason?: string
 
   @ApiProperty({ type: Number, required: false, description: 'Number of deferred catalog deduction amounts.' })

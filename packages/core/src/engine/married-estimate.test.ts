@@ -180,3 +180,40 @@ describe('a change of job from a German to a Swiss employer (ADR-0079)', () => {
     expect(lowCommute.werbungskosten).toBe(1230 + 1230)
   })
 })
+
+describe('a spouse with a pension (ADR-0088)', () => {
+  it('taxes the pension’s taxable share less the 102 € lump sum, with nothing withheld', () => {
+    const employeeA = { kind: 'employee' as const, grossWage: 60_000, wageTax: 9_000, socialSecurity: 12_000, commuteAllowance: 0, selfPaidHealthCare: 0 }
+    const base = { year: 2025, a: employeeA, children: 0, childBenefit: 0, rentalSurplus: 0, donations: 0 }
+    const alone = estimateMarriedCouple({ ...base, b: null })
+    const withPension = estimateMarriedCouple({ ...base, b: { kind: 'pension', taxablePensionEur: 14_000 } })
+    if (alone.kind !== 'spanne' || withPension.kind !== 'spanne') throw new Error('expected ranges')
+    // 14.000 € taxable share − 102 € Werbungskosten-Pauschbetrag (§ 9a S. 1 Nr. 3 EStG).
+    expect(withPension.taxableIncome.from - alone.taxableIncome.from).toBe(13_898)
+    expect(withPension.anrechnung).toBe(alone.anrechnung)
+  })
+})
+
+describe('church tax for two Grenzgänger (escalation case, ADR-0088)', () => {
+  it('charges 8 % in Baden-Württemberg on the tax after child allowances, with nothing withheld in Switzerland', () => {
+    const swiss = (wageEur: number, withholding: number) =>
+      ({ kind: 'crossBorder', wageEur, swissWithholdingEur: withholding, pensionContributionsEur: 3_000, otherProvisionEur: 800, commuteAllowance: 1_500, selfPaidHealthCare: 2_200 }) as const
+    const input: MarriedEstimateInput = {
+      year: 2025,
+      a: swiss(90_000, 4_050),
+      b: swiss(50_000, 2_250),
+      children: 3,
+      childBenefit: 9_180,
+      rentalSurplus: 0,
+      donations: 0,
+      churchTax: church({ membership: EV, withheld: null }, { membership: EV, withheld: null }, 'BY'),
+    }
+    const bw = range({ ...input, churchTax: { ...input.churchTax!, state: 'BW' as never } })
+    if (bw.churchTax.kind !== 'spanne') throw new Error('expected church tax')
+    expect(bw.churchTax.withheld).toBe(0)
+    // 8 % of the tax with the three Kinderfreibeträge (28.800 €), rounded down, on the zvE range.
+    const basis = (zve: number) => splittingTariff(Math.max(0, zve - 28_800), 0, 2025)
+    expect(bw.churchTax.due.from).toBe(Math.floor(basis(bw.taxableIncome.from) * 0.08))
+    expect(bw.churchTax.due.to).toBe(Math.floor(basis(bw.taxableIncome.to) * 0.08))
+  })
+})

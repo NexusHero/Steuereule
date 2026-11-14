@@ -293,13 +293,15 @@ export class AdvisorDrafts {
 
   async collectStaleConflicts(
     taxYear: number,
-    plans: ReadonlyArray<{ actionId: string; dataUserId: string; writes: ReadonlyArray<{ key: string; expected: string | null }> }>,
+    plans: ReadonlyArray<{ actionId: string; dataUserId: string; writes: ReadonlyArray<{ key: string; expected: string | null; newValue?: string | undefined }> }>,
   ): Promise<Array<{ actionId: string; key: string; currentValue: string | null }>> {
     const conflicts: Array<{ actionId: string; key: string; currentValue: string | null }> = []
     for (const plan of plans) {
       for (const write of plan.writes) {
         const currentValue = (await this.confirmationService.readRawValue(plan.dataUserId, taxYear, write.key)) ?? null
-        if (currentValue !== write.expected) conflicts.push({ actionId: plan.actionId, key: write.key, currentValue })
+        // A field that meanwhile holds exactly what the draft writes overwrites nothing (two receipts
+        // both opening „Krankheitskosten: Ja“): no conflict to show.
+        if (currentValue !== write.expected && currentValue !== (write.newValue ?? undefined)) conflicts.push({ actionId: plan.actionId, key: write.key, currentValue })
       }
     }
     return conflicts
@@ -388,9 +390,9 @@ export class AdvisorDrafts {
           : undefined
         for (const write of writes) {
           const record = `${draft.dataUserId}|${write.key.slice(0, write.key.lastIndexOf('.'))}`
-          const expected = writtenRecords.has(record)
-            ? ((await this.confirmationService.readRawValue(draft.dataUserId, taxYear, write.key)) ?? null)
-            : write.expected
+          const current = (await this.confirmationService.readRawValue(draft.dataUserId, taxYear, write.key)) ?? null
+          // A field that already holds the draft's value (checked above) is compared with itself: its undo keeps it.
+          const expected = writtenRecords.has(record) || current === write.newValue ? current : write.expected
           undoSnapshot.push(
             await this.confirmationService.writeConfirmedByAdvisor(
               draft.dataUserId,

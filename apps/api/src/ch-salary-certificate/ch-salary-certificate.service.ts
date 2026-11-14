@@ -32,6 +32,7 @@ import {
 } from './ch-salary-certificate.repository.js'
 import type { SalaryCertificateFieldDto, PutSalaryCertificateFieldDto } from './dto/salary-certificate-field.dto.js'
 import type { PutExchangeRateDto, ExchangeRateDto } from './dto/exchange-rate.dto.js'
+import type { PutCrossBorderFactsDto } from './dto/cross-border-facts.dto.js'
 import type { ChItemDto, NGreDetailsDto, PutRemarksDto, PutNGreDto, PutProvisionDto } from './dto/ch-item.dto.js'
 import type { CalculationStatusDto, ChSalaryCertificateResponseDto } from './dto/ch-salary-certificate-response.dto.js'
 import { crossBorderStatusFromAnswers, exchangeRateFromRecord } from './salary-certificate-data.js'
@@ -217,6 +218,17 @@ export class ChSalaryCertificateService {
     if (specialCases !== undefined) details.nGreSonderfaelle = specialCases
     const record = await this.repository.setNGre(userId, taxYear, details)
     return this.toResponse(userId, taxYear, record)
+  }
+
+  /**
+   * Person B's Grenzgänger questions, stored as B's own answers: every reader (estimate, printout,
+   * this mask) derives B's status from them as it does from the user's interview.
+   */
+  async setCrossBorderFacts(dataUserId: string, taxYear: number, dto: PutCrossBorderFactsDto): Promise<ChSalaryCertificateResponseDto> {
+    for (const [questionId, value] of [['ch-wohnsitz', dto.residence], ['ch-nichtrueckkehrtage', String(dto.daysWithoutReturn)]] as const) {
+      await this.interviewRepository.write({ userId: dataUserId, taxYear, questionId, value, openItems: 0 })
+    }
+    return this.toResponse(dataUserId, taxYear, await this.repository.findForUserAndYear(dataUserId, taxYear))
   }
 
   async setExchangeRate(userId: string, taxYear: number, dto: PutExchangeRateDto): Promise<ChSalaryCertificateResponseDto> {

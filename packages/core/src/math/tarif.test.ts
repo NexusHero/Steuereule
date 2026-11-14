@@ -180,3 +180,15 @@ describe('progression clause (§ 32b EStG)', () => {
     expect(() => progressionClauseTax(40_000, -1, 2025)).toThrow(RangeError)
   })
 })
+
+describe('splitting tariff 2025 against the BMF calculator (escalation case, checked 14.11.2026)', () => {
+  // bmf-steuerrechner.de, „Berechnung der Einkommensteuer“, 2025, verheiratet/verpartnert.
+  it.each([
+    [114_536, 26_724],
+    [115_955, 27_266],
+    [85_736, 16_502],
+    [87_155, 16_970],
+  ])('zvE %i € → %i € ESt', (zve, est) => {
+    expect(splittingTariff(zve, 0, 2025)).toBe(est)
+  })
+})

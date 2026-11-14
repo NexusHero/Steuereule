@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { childNamedIn, childcarePeriod, looksLikeChildcareNotice } from './childcare-notice'
+import { childNamedIn, childcarePaidInYear, childcarePeriod, looksLikeChildcareNotice } from './childcare-notice'
 
 // Invented notices in the shapes youth offices and Kitas print (ADR-0086).
 const NOTICE = 'Landratsamt Beispielkreis – Jugendamt\nBewilligungs- und Kostenbeitragsbescheid Kindertagespflege\nDer Kostenbeitrag beträgt ab 01.09.2024 monatlich 250,00 EUR.'
@@ -39,5 +39,25 @@ describe('childNamedIn', () => {
     expect(childNamedIn('Kostenbeitrag Kindertagespflege', kids)).toBeNull()
     expect(childNamedIn('Lea Marie und Tom', kids)).toBeNull()
     expect(childNamedIn('irgendein Text', [{ id: 'k1', firstName: 'Lea' }])).toBe('k1')
+  })
+})
+
+describe('childcarePaidInYear (escalation case: three children in care)', () => {
+  it('reads the year’s total a Kita states as paid, never the monthly contribution', () => {
+    const statement = 'Kita Sonnenschein\nJahresbescheinigung Elternbeiträge\nBetreuung für das Kind Ida Muster\nDer Elternbeitrag beträgt ab 01.01.2025 monatlich 300,00 EUR.\nGesamt 2025: 3.600,00 EUR'
+    expect(childcarePaidInYear(statement, 2025)).toBe(3600)
+    expect(childcarePaidInYear('Kindergarten Musterdorf\nIm Jahr 2025 gezahlte Elternbeiträge: 1.200 €', 2025)).toBe(1200)
+  })
+  it('finds nothing in a notice that only states the monthly amount, or for another year', () => {
+    expect(childcarePaidInYear(NOTICE, 2024)).toBeNull()
+    expect(childcarePaidInYear('Kita Sonnenschein\nElternbeitrag\nGesamt 2024: 2.400,00 EUR', 2025)).toBeNull()
+  })
+})
+
+describe('childcarePaidInYear — edges', () => {
+  it('reads a „Jahresbetrag“ line without the year and skips lines without an amount', () => {
+    expect(childcarePaidInYear('Kita Beispiel\nElternbeitrag\nJahresbetrag: 2.400 €', 2025)).toBe(2400)
+    expect(childcarePaidInYear('Kita Beispiel\nElternbeitrag\nGesamt 2025: siehe Anlage', 2025)).toBeNull()
+    expect(childcarePaidInYear('Rechnung Elektro, Gesamt 2025: 300 €', 2025)).toBeNull()
   })
 })

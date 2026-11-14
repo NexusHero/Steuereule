@@ -120,6 +120,9 @@ function makeParseResponse(overrides?: Partial<NonNullable<ParseReceiptResponseD
     },
     stagedActionIds: ['act-1', 'act-2', 'act-3'],
     securityBlocked: false,
+    person: 'A',
+    personUnclear: false,
+    personNotRecordable: false,
     ...overrides,
   }
   return {

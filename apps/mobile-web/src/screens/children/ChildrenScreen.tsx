@@ -71,6 +71,8 @@ export interface ChildItem {
   childcareProvider?: string | null
   childcareFrom?: string | null
   childcareTo?: string | null
+  swissFamilyAllowancePayer?: 'A' | 'B' | null
+  swissFamilyAllowanceDerived?: boolean
   differentialChildBenefitEur?: string | null
   totalClaimEur?: string | null
 }
@@ -102,6 +104,7 @@ export interface ChildInput {
   childcareProvider?: string | null
   childcareFrom?: string | null
   childcareTo?: string | null
+  swissFamilyAllowancePayer?: 'A' | 'B' | null
 }
 
 const OTHER_PARENT_LABEL: Record<OtherParentStatus, string> = {
@@ -268,6 +271,8 @@ function KinderScreenView({
   const [taxId, setTaxId] = useState('')
   const [childBenefit, setChildBenefit] = useState('')
   const [swissAllowance, setSwissAllowance] = useState('')
+  const [swissPayer, setSwissPayer] = useState<'A' | 'B' | null>(null)
+  const [swissDerived, setSwissDerived] = useState<string | null>(null)
   const [kvBasis, setKvBasis] = useState('')
   const [pv, setPv] = useState('')
   const [childcare, setChildcare] = useState('')
@@ -311,7 +316,10 @@ function KinderScreenView({
     setBirthDate(isoToGerman(k?.geburtsdatum ?? null))
     setTaxId(k?.taxId ?? '')
     setChildBenefit(k?.childBenefitClaimEur ?? '')
-    setSwissAllowance(k?.swissFamilyAllowanceEur ?? '')
+    // A share derived from a parent's Lohnausweis is shown as a hint, not stored as the child's own amount.
+    setSwissAllowance(k?.swissFamilyAllowanceDerived ? '' : (k?.swissFamilyAllowanceEur ?? ''))
+    setSwissDerived(k?.swissFamilyAllowanceDerived ? (k.swissFamilyAllowanceEur ?? null) : null)
+    setSwissPayer(k?.swissFamilyAllowancePayer ?? null)
     setKvBasis(k?.healthBasicEur ?? '')
     setPv(k?.careEur ?? '')
     setChildcare(k?.childcareEur ?? '')
@@ -394,6 +402,7 @@ function KinderScreenView({
       healthBasicEur: /^\d+$/.test(kvBasis.trim()) ? kvBasis.trim() : null,
       careEur: /^\d+$/.test(pv.trim()) ? pv.trim() : null,
       swissFamilyAllowanceEur: /^\d+$/.test(swissAllowance.trim()) ? swissAllowance.trim() : null,
+      swissFamilyAllowancePayer: swissPayer,
       childcareEur: /^\d+$/.test(childcare.trim()) ? childcare.trim() : null,
       childcareProvider: childcareProvider.trim().slice(0, 120) || null,
       childcareFrom: /^\d{2}\.\d{2}\.\d{4}$/.test(childcareFrom.trim()) ? childcareFrom.trim() : null,
@@ -754,12 +763,24 @@ function KinderScreenView({
                 <Input
                   value={swissAllowance}
                   onChange={setSwissAllowance}
-                  placeholder="z.B. 2748"
+                  placeholder={swissDerived ? `${swissDerived} (aus dem Lohnausweis)` : 'z.B. 2748'}
                   type="numeric"
                   accessibilityLabel="Schweizer Kinderzulage"
                   testID="kind-schweizer-kinderzulage"
                 />
               </Feld>
+              {married ? (
+                <Feld label="Die Kinderzulage kommt mit dem Lohn von">
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    <Chip active={swissPayer === 'A'} onPress={() => setSwissPayer(swissPayer === 'A' ? null : 'A')} testID="kind-zulage-von-a">
+                      mir
+                    </Chip>
+                    <Chip active={swissPayer === 'B'} onPress={() => setSwissPayer(swissPayer === 'B' ? null : 'B')} testID="kind-zulage-von-b">
+                      Person B
+                    </Chip>
+                  </View>
+                </Feld>
+              ) : null}
               <Feld label="Krankenversicherung des Kindes, die ihr zahlt (Basisabsicherung, € im Jahr, optional)">
                 <Input
                   value={kvBasis}

@@ -6,8 +6,12 @@ import { createHash } from 'node:crypto'
 import {
   looksLikeCraftsmanInvoice,
   looksLikeDonationReceipt,
+  looksLikeMedicalInvoice,
+  parseMedicalInvoice,
   parseCraftsmanInvoice,
   childcarePeriod,
+  childcarePaidInYear,
+  looksLikeChildcareNotice,
   parseDonationReceipt,
   scrubDocumentTextPii,
   scrubUserMessagePii,
@@ -85,11 +89,18 @@ function parseGermanOrIsoDate(text: string): string | null {
   return null
 }
 
+/** An amount in euros, with or without a thousands separator: "1.700,00 EUR", "640 €", "9,90 EUR". */
+const EURO_AMOUNT = /(?<![\d.,])(\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?|\d{1,6}(?:[.,]\d{1,2})?)\s*(?:€|eur|euro)\b/gi
+/** A line that names the total to pay; its amount wins over shipping or single items. */
+const TOTAL_LINE = /rechnungsbetrag|gesamtbetrag|endbetrag|zu zahlen|summe|gesamt|betrag der zuwendung/i
+
 function extractEuroAmount(text: string): number | null {
-  const m = text.match(/(\d{1,5}(?:[.,]\d{2})?)\s*(?:€|eur|euro)\b/i)
-  if (!m?.[1]) return null
-  const num = Number.parseFloat(m[1].replace(',', '.'))
-  return Number.isFinite(num) && num >= 0 ? Math.round(num) : null
+  const amountsOf = (line: string) =>
+    [...line.matchAll(EURO_AMOUNT)].map((m) => Number.parseFloat(m[1]!.replace(/\.(?=\d{3}(?:\D|$))/g, '').replace(',', '.')))
+  const lines = text.split('\n')
+  const candidates = [...lines.filter((line) => TOTAL_LINE.test(line)), ...lines].flatMap(amountsOf)
+  const num = candidates.find((n) => Number.isFinite(n) && n >= 0)
+  return num === undefined ? null : Math.round(num)
 }
 
 const CATEGORY_LABELS: Readonly<Record<ReceiptVendorCategory, string>> = {
@@ -98,6 +109,7 @@ const CATEGORY_LABELS: Readonly<Record<ReceiptVendorCategory, string>> = {
   fortbildung: 'Fortbildung',
   kinderbetreuung: 'Kinderbetreuung',
   handwerker: 'Handwerkerleistung',
+  krankheitskosten: 'Krankheitskosten',
   entfernung: 'Fahrtkosten',
   sonstiges: 'Sonstiges',
 }
@@ -209,6 +221,15 @@ function proposalDetailsFor(parsed: ParsedReceiptDataDto): {
       sourceId: 'estg-10b',
       companionFields: { spenden: 'Ja' },
       summaryText: `${summary} Nach [estg-10b] habe ich dir den Sonderausgaben-Entwurf bereitgestellt:`,
+    }
+  }
+  if (parsed.suggestedScreen === 'interview' && parsed.suggestedField === 'gesundheit-betrag') {
+    return {
+      label: 'Krankheitskosten (Summe im Jahr)',
+      reason: 'Selbst getragene Krankheitskosten als außergewöhnliche Belastung nach § 33 EStG aus geprüfter Rechnung.',
+      sourceId: 'estg-33',
+      companionFields: { 'gesundheit-gate': 'Ja' },
+      summaryText: `${summary} Nach [estg-33] habe ich den Betrag zu euren Krankheitskosten gerechnet; abziehbar ist der Teil über der zumutbaren Belastung:`,
     }
   }
   if (parsed.suggestedScreen === 'interview' && parsed.suggestedField === 'fortbildung') {
@@ -434,6 +455,42 @@ export class AutoReceiptParseStrategy implements DocumentParseStrategy {
       countedItems = fresh.map(({ ref, amountKey }) => ({ ref, amountKey }))
     }
 
+    // A doctor's or dentist's invoice adds to the year's Krankheitskosten (§ 33 EStG); the same invoice
+    // counts once. A cosmetic operation without a medical reason is no extraordinary burden: nothing is drafted.
+    const medical =
+      !securityBlocked && !invoice && !donation && dto.rawText && looksLikeMedicalInvoice(dto.rawText) && !looksLikeChildcareNotice(dto.rawText)
+        ? parseMedicalInvoice(dto.rawText)
+        : null
+    if (medical?.cosmetic) {
+      parsed = {
+        ...parsed,
+        vendorCategory: 'krankheitskosten',
+        amountEur: medical.totalEur ?? parsed.amountEur,
+        suggestedScreen: null,
+        suggestedField: null,
+        suggestedValue: null,
+        summary:
+          'Das ist eine Schönheitsoperation oder kosmetische Behandlung. Ohne medizinische Notwendigkeit ist sie keine außergewöhnliche Belastung (§ 33 EStG); ich habe nichts eingetragen.',
+      }
+    } else if (medical && medical.totalEur !== null && medical.totalEur > 0) {
+      const year = medical.taxYear ?? parsed.taxYear ?? dto.taxYear
+      const hashed = hashMedical(medical.ref)
+      const counted = await this.advisorService.countedReceiptItems(userId, year, { screen: 'interview', field: 'gesundheit-betrag' })
+      const repeated = counted.some((c) => c.ref === hashed)
+      parsed = {
+        ...parsed,
+        vendorCategory: 'krankheitskosten',
+        amountEur: medical.totalEur,
+        receiptDate: parsed.receiptDate,
+        taxYear: year,
+        suggestedScreen: repeated ? null : 'interview',
+        suggestedField: repeated ? null : 'gesundheit-betrag',
+        suggestedValue: repeated ? null : String(medical.totalEur),
+        summary: repeated ? 'Diese Rechnung ist schon bei den Krankheitskosten gezählt; sie kommt nicht noch einmal dazu.' : parsed.summary,
+      }
+      if (!repeated) countedItems = [{ ref: hashed, amountKey: hashed }]
+    }
+
     // A childcare notice: the care period for Anlage Kind Zeile 67, for the year's only child (ADR-0086). The
     // amount stays with the user: a notice states a monthly contribution, not what was paid.
     const period = !securityBlocked && !invoice && !donation && dto.rawText ? childcarePeriod(dto.rawText, dto.taxYear) : null
@@ -449,17 +506,25 @@ export class AutoReceiptParseStrategy implements DocumentParseStrategy {
     }
     if (period && childId) {
       const ocr = dto.textSource !== 'pdf_text'
+      // A Kita's annual statement says what was paid; a plain notice only the monthly contribution.
+      const paid = childcarePaidInYear(dto.rawText ?? '', dto.taxYear)
       const staged = await this.advisorService.stageDocumentDrafts(userId, dto.taxYear, {
         screen: 'kind',
         person: 'A',
         digestUserId: userId,
         receiptId: dto.receiptId ?? null,
         engine: { mode: 'deterministic_fallback', provider: 'deterministic' },
-        summaryText: `Betreuungsbescheid gelesen: Betreuung vom ${period.from} bis ${period.to} (Anlage Kind Zeile 67). Den Betrag trag bitte ein, was ihr ${dto.taxYear} tatsächlich gezahlt habt; der Bescheid nennt nur den Monatsbeitrag.`,
+        summaryText:
+          paid === null
+            ? `Betreuungsbescheid gelesen: Betreuung vom ${period.from} bis ${period.to} (Anlage Kind Zeile 67). Den Betrag trag bitte ein, was ihr ${dto.taxYear} tatsächlich gezahlt habt; der Bescheid nennt nur den Monatsbeitrag.`
+            : `Betreuungsbescheinigung gelesen: Betreuung vom ${period.from} bis ${period.to}, ${dto.taxYear} gezahlt ${paid} € (Anlage Kind Zeile 67). Nach [estg-10-1-5] zählen davon 80 %, höchstens 4.800 € je Kind. Prüf bitte, ob ihr alles unbar gezahlt habt:`,
         sourceId: 'estg-10-1-5',
         fields: [
           { field: 'childcareFrom', label: 'Kinderbetreuung von', value: period.from, status: ocr ? 'pruefen' : 'ok', reason: ocr ? 'ocr_source' : null, instance: childId },
           { field: 'childcareTo', label: 'Kinderbetreuung bis', value: period.to, status: 'pruefen', reason: null, instance: childId },
+          ...(paid !== null
+            ? [{ field: 'childcareEur', label: 'Kinderbetreuung gezahlt (Jahr)', value: paid, status: 'pruefen' as const, reason: ocr ? ('ocr_source' as const) : null, instance: childId }]
+            : []),
         ],
       })
       checkPiiFree(parsed)
@@ -507,6 +572,7 @@ export class AutoReceiptParseStrategy implements DocumentParseStrategy {
       summaryText: proposalMeta.summaryText,
       receiptId: dto.receiptId ?? null,
       ...(countedItems ? { countedItems } : {}),
+      fromOcr: dto.textSource !== undefined && dto.textSource !== 'pdf_text',
       engine:
         mode === 'vision_ocr' && visionSlot
           ? { mode: 'langgraph', provider: visionSlot.provider, model: visionSlot.model }
@@ -524,6 +590,11 @@ export class AutoReceiptParseStrategy implements DocumentParseStrategy {
 }
 
 /** Booking numbers and amount keys are stored only as hashes: enough to recognise them again (ADR-0080). */
+/** The medical invoice's key, only hashed: it holds the practice's name. */
+function hashMedical(ref: string): string {
+  return `0${createHash('sha256').update(`medical:${ref}`).digest('hex').slice(0, 24)}`
+}
+
 function hashDonation(item: DonationItem): DonationItem {
   const hash = (value: string) => `0${createHash('sha256').update(`donation:${value}`).digest('hex').slice(0, 24)}`
   return { ref: item.ref === null ? null : hash(item.ref), amountKey: hash(item.amountKey), amountCents: item.amountCents }

@@ -417,6 +417,31 @@ describe('ausdruckWerte', () => {
       expect(values).toMatchObject({ 'anlVor.kz426': '2520', 'anlVor.kz429': '480' })
     })
 
+    it('renders both spouses’ Anlagen N-Gre on the 2024 forms (escalation case, ADR-0088)', async () => {
+      const templates2024 = new URL('../assets/vordrucke/2024/', import.meta.url)
+      const res = printoutValues({
+        ...FACTS,
+        taxYear: 2024,
+        bruttoarbeitslohn: null,
+        chSalaryCertificate: CH,
+        link: {
+          filingType: 'zusammen',
+          personB: {
+            firstName: 'Julia', lastName: 'Brenner', steuerId: '21234567891', geburtsdatum: '1986-07-21', beruf: 'Treuhänderin',
+            chSalaryCertificate: { ...CH, grossWageChf: '58000', familienzulagenChf: '2580', arbeitgeberName: 'Basler Treuhand AG' },
+          },
+        },
+      })
+      expect(res.missing).toEqual([])
+      const pages = res.instances?.['anlage-n-gre'] ?? []
+      expect(pages).toHaveLength(2)
+      expect(pages[1]).toMatchObject({ 'anlNGre.personB': true, 'anlNGre.z6Chf': '58000', 'anlNGre.z8Chf': '2580' })
+      // As the printout service does: the 2024 forms lack the occupation line on every page.
+      const instances = Object.fromEntries(Object.entries(res.instances ?? {}).map(([form, list]) => [form, list.map((v) => forYear(2024, v))]))
+      const pdf = await renderForms(FIELD_SETS[2024]!, forYear(2024, res.values), { templatesDirectory: templates2024, instances, editable: true })
+      expect((await PDFDocument.load(pdf)).getPageCount()).toBeGreaterThan(2)
+    })
+
     it("names Person B's incomplete Lohnausweis separately", () => {
       const { missing } = printoutValues({
         ...FACTS,

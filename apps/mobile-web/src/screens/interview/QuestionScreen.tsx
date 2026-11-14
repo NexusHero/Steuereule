@@ -6,6 +6,8 @@ import {
   FOREIGN_VALUES,
   MARITAL_STATUS_VALUES,
   KINDER_VALUES,
+  PARTNER_JOB_VALUES,
+  PARTNER_FOREIGN_VALUES,
   QUESTION_ORDER,
   type QuestionId,
 } from '@steuereule/core'
@@ -43,11 +45,23 @@ const MARITAL_STATUS_OPTIONS: ReadonlyArray<OptionSpec<(typeof MARITAL_STATUS_VA
   { value: 'Verwitwet', labelKey: 'interview.familienstand.options.verwitwet' },
 ]
 
+const PARTNER_JOB_OPTIONS: ReadonlyArray<OptionSpec<(typeof PARTNER_JOB_VALUES)[number]>> = [
+  { value: 'Angestellt', labelKey: 'interview.partnerJob.options.angestellt' },
+  { value: 'Rente', labelKey: 'interview.partnerJob.options.rente' },
+  { value: 'Nicht berufstätig', labelKey: 'interview.partnerJob.options.keine' },
+]
+const PARTNER_FOREIGN_OPTIONS: ReadonlyArray<OptionSpec<(typeof PARTNER_FOREIGN_VALUES)[number]>> = [
+  { value: 'Ja, in die Schweiz', labelKey: 'interview.partnerAusland.options.schweiz' },
+  { value: 'Nein', labelKey: 'interview.partnerAusland.options.nein' },
+]
+
 const QUESTION_COPY: Record<QuestionId, { readonly titleKey: string; readonly helpKey: string; readonly options: ReadonlyArray<OptionSpec<string>> }> = {
   job: { titleKey: 'interview.job', helpKey: 'interview.job.help', options: JOB_OPTIONS },
   ausland: { titleKey: 'interview.ausland', helpKey: 'interview.ausland.help', options: FOREIGN_OPTIONS },
   kinder: { titleKey: 'interview.kinder', helpKey: 'interview.kinder.help', options: KINDER_OPTIONS },
   familienstand: { titleKey: 'interview.familienstand', helpKey: 'interview.familienstand.help', options: MARITAL_STATUS_OPTIONS },
+  'partner-job': { titleKey: 'interview.partnerJob', helpKey: 'interview.partnerJob.help', options: PARTNER_JOB_OPTIONS },
+  'partner-ausland': { titleKey: 'interview.partnerAusland', helpKey: 'interview.partnerAusland.help', options: PARTNER_FOREIGN_OPTIONS },
 }
 
 interface QuestionScreenProps {

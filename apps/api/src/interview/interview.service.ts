@@ -59,6 +59,9 @@ export function admittedEntryIds(boostersEnabled: boolean): readonly EntryId[] {
 
 const GUEST_ADMITTED_ENTRY_IDS: readonly EntryId[] = ['minimal-gate']
 
+/** Entries one spouse answers for themselves; the user answers them for Person B too (ADR-0088). */
+export const PERSONAL_ENTRY_IDS: readonly EntryId[] = ['lebenslagen', 'sonderausgaben']
+
 function assertGuestMayUse(kind: UserIdKind, entryId: EntryId): void {
   if (kind === 'guest' && !GUEST_ADMITTED_ENTRY_IDS.includes(entryId)) {
     throw new GuestCannotUseThisEndpointError()
@@ -98,11 +101,11 @@ export class InterviewService {
     }
   }
 
-  async postAnswer(userId: string, taxYear: number, dto: PostAnswerDto, kind: UserIdKind = 'session'): Promise<PostAnswerResponseDto> {
+  async postAnswer(userId: string, taxYear: number, dto: PostAnswerDto, kind: UserIdKind = 'session', personalOnly = false): Promise<PostAnswerResponseDto> {
     const rows = await this.repository.findAllForUserAndYear(userId, taxYear)
     const answers = answersFrom(rows)
     const entryId = entryForStep(dto.questionId as never)
-    if (entryId === undefined || !admittedEntryIds(this.boostersEnabled).includes(entryId)) {
+    if (entryId === undefined || !admittedEntryIds(this.boostersEnabled).includes(entryId) || (personalOnly && !PERSONAL_ENTRY_IDS.includes(entryId))) {
       throw new UnreachableAnswerError(dto.questionId)
     }
     assertGuestMayUse(kind, entryId)

@@ -11,6 +11,7 @@ import { FakeMasterDataRepository } from './fakes/fake-master-data.repository.js
 import { FakeLinkRepository } from './fakes/fake-link.repository.js'
 import { FakeChildRepository } from './fakes/fake-child.repository.js'
 import { FakeRentalRepository } from './fakes/fake-rental.repository.js'
+import { FakePensionRepository } from './fakes/fake-pension.repository.js'
 import type { TaxEstimateStatus } from '../src/tax-estimate/tax-estimate.service.js'
 
 function range(status: TaxEstimateStatus) {
@@ -30,8 +31,9 @@ function setup(path: CommuteInputs | null = null) {
   const link = new FakeLinkRepository()
   const kinder = new FakeChildRepository()
   const rental = new FakeRentalRepository()
-  const service = new TaxEstimateService(lstb, interview, ch, masterData, commute(path), link, kinder, rental)
-  return { lstb, interview, ch, stammdaten: masterData, kopplung: link, kinder, vermietung: rental, service }
+  const pension = new FakePensionRepository()
+  const service = new TaxEstimateService(lstb, interview, ch, masterData, commute(path), link, kinder, rental, pension)
+  return { lstb, interview, ch, stammdaten: masterData, kopplung: link, kinder, vermietung: rental, pension, service }
 }
 
 const EMPLOYED = { job: 'Angestellt', ausland: 'Nein', kinder: 'Nein' }
@@ -188,6 +190,113 @@ describe('SteuerschaetzungService', () => {
 
     expect(status.anrechnung).toBe(4334)
     expect(status.result.to).toBeLessThan(0)
+  })
+
+  it('counts Person B’s Swiss wage next to B’s German one when B recorded the Grenzgänger questions (escalation case)', async () => {
+    const swiss = (userId: string): CrossBorderSalaryStatementRecord => ({
+      userId,
+      taxYear: 2025,
+      fields: { 'bruttolohn-total': '31200', 'ahv-beitraege': '1997', 'berufliche-vorsorge': '1450', quellensteuer: '1404' } as CrossBorderSalaryStatementRecord['fields'],
+      bemerkungen: null,
+      saeule3aChf: null,
+      krankenkasseChf: null,
+      exchangeRateMonth: '2025',
+      exchangeRateValue: 1.065,
+      exchangeRateMode: 'jahresdurchschnitt',
+      exchangeRateReceiptId: null,
+      nGre: { familienzulagenChf: 0, krankentaggeldChf: 0, pkArbeitnehmerChf: 1100, pkArbeitgeberChf: 1100 } as unknown as CrossBorderSalaryStatementRecord['nGre'],
+    })
+    const couple = async (bAnswers: Record<string, string>) => {
+      const env = setup()
+      env.interview.seed('a', 2025, EMPLOYED)
+      env.interview.seed('spouse_a_2025', 2025, bAnswers)
+      await env.stammdaten.save('a', { familienstand: 'verheiratet', religion: 'VD' } as MasterDataRecord)
+      await env.kopplung.upsert('a', 2025, { personBUserId: 'spouse_a_2025', filingType: 'zusammen' })
+      env.lstb.seed({ userId: 'a', taxYear: 2025, bruttoarbeitslohn: '82000', lohnsteuer: '9890', sozialversicherung: '15473' })
+      env.lstb.seed({ userId: 'spouse_a_2025', taxYear: 2025, bruttoarbeitslohn: '21000', lohnsteuer: '2150', sozialversicherung: '4263' })
+      env.ch.seed(swiss('spouse_a_2025'))
+      return range(await env.service.getState('a', 2025))
+    }
+    const withSwiss = await couple({ 'ch-wohnsitz': 'Deutschland', 'ch-nichtrueckkehrtage': '0' })
+    // Both wage taxes and B's Quellensteuer (1.404 CHF at 1,065) are credited.
+    expect(withSwiss.anrechnung).toBe(9890 + 2150 + Math.round(1404 * 1.065))
+    const germanOnly = await couple({})
+    expect(withSwiss.incomeTax.from).toBeGreaterThan(germanOnly.incomeTax.from)
+  })
+
+  it('counts Person B’s pension in the couple’s estimate instead of leaving B out (ADR-0088)', async () => {
+    const couple = async (withPension: boolean) => {
+      const env = setup()
+      env.interview.seed('a', 2025, EMPLOYED)
+      await env.stammdaten.save('a', { familienstand: 'verheiratet', religion: 'VD' } as MasterDataRecord)
+      await env.kopplung.upsert('a', 2025, { personBUserId: 'spouse_a_2025', filingType: 'zusammen' })
+      env.lstb.seed({ userId: 'a', taxYear: 2025, bruttoarbeitslohn: '60000', lohnsteuer: '9000', sozialversicherung: '12000' })
+      if (withPension) env.pension.seed({ userId: 'spouse_a_2025', taxYear: 2025, rentenart: 'GesetzlicheRente', jahresbetrag: '18000', rentenbeginnJahr: '2020', alterBeiRentenbeginn: null })
+      return range(await env.service.getState('a', 2025))
+    }
+    // 18.000 € at the 80 % taxable share of a 2020 start = 14.400 €, less the 102 € lump sum.
+    expect((await couple(true)).taxableIncome.from - (await couple(false)).taxableIncome.from).toBe(14_298)
+  })
+
+  it('asks for the pension’s start when B’s pension is entered but incomplete', async () => {
+    const env = setup()
+    env.interview.seed('a', 2025, EMPLOYED)
+    await env.stammdaten.save('a', { familienstand: 'verheiratet', religion: 'VD' } as MasterDataRecord)
+    await env.kopplung.upsert('a', 2025, { personBUserId: 'spouse_a_2025', filingType: 'zusammen' })
+    env.lstb.seed({ userId: 'a', taxYear: 2025, bruttoarbeitslohn: '60000', lohnsteuer: '9000', sozialversicherung: '12000' })
+    env.pension.seed({ userId: 'spouse_a_2025', taxYear: 2025, rentenart: 'GesetzlicheRente', jahresbetrag: '18000', rentenbeginnJahr: null, alterBeiRentenbeginn: null })
+    expect(await env.service.getState('a', 2025)).toEqual({ kind: 'offen', missing: ['personB.rente'] })
+  })
+
+  it('does not tax a Swiss wage that is exempt: no Grenzgänger (> 60 days without return) gets no estimate (ADR-0088)', async () => {
+    const seed = (env: ReturnType<typeof setup>, userId: string, days: string) => {
+      env.ch.seed({
+        userId, taxYear: 2025,
+        fields: { 'bruttolohn-total': '90000', 'ahv-beitraege': '6660', 'berufliche-vorsorge': '4500', quellensteuer: '4050' } as CrossBorderSalaryStatementRecord['fields'],
+        bemerkungen: null, saeule3aChf: null, krankenkasseChf: null,
+        exchangeRateMonth: '2025', exchangeRateValue: 1.065, exchangeRateMode: 'jahresdurchschnitt', exchangeRateReceiptId: null,
+        nGre: { familienzulagenChf: 0, krankentaggeldChf: 0, pkArbeitnehmerChf: 4500, pkArbeitgeberChf: 4500 } as unknown as CrossBorderSalaryStatementRecord['nGre'],
+      })
+      return { 'ch-wohnsitz': 'Deutschland', 'ch-nichtrueckkehrtage': days }
+    }
+    const single = setup()
+    single.interview.seed('u', 2025, { ...EMPLOYED, ausland: 'Ja, in die Schweiz', ...seed(single, 'u', '75') })
+    expect(await single.service.getState('u', 2025)).toEqual({ kind: 'nicht-moeglich', reason: 'kein-grenzgaenger' })
+
+    const couple = setup()
+    couple.interview.seed('a', 2025, EMPLOYED)
+    couple.interview.seed('spouse_a_2025', 2025, seed(couple, 'spouse_a_2025', '75'))
+    await couple.stammdaten.save('a', { familienstand: 'verheiratet', religion: 'VD' } as MasterDataRecord)
+    await couple.kopplung.upsert('a', 2025, { personBUserId: 'spouse_a_2025', filingType: 'zusammen' })
+    couple.lstb.seed({ userId: 'a', taxYear: 2025, bruttoarbeitslohn: '60000', lohnsteuer: '9000', sozialversicherung: '12000' })
+    expect(await couple.service.getState('a', 2025)).toEqual({ kind: 'nicht-moeglich', reason: 'kein-grenzgaenger' })
+  })
+
+  it('measures the reasonable burden with three recorded children at 1/1/2 % (§ 33 Abs. 3 EStG, BMF check 14.11.2026)', async () => {
+    // GdE 146.289 €, joint, 3 children: reasonable burden 2.414,48 € (with 1-2 children it would be 5.186,86 €).
+    const estimate = async (children: number) => {
+      const env = setup()
+      env.interview.seed('a', 2025, { ...EMPLOYED, kinder: '2 oder mehr', 'gesundheit-gate': 'Ja', 'gesundheit-betrag': '4000' })
+      await env.stammdaten.save('a', { familienstand: 'verheiratet', religion: 'VD' } as MasterDataRecord)
+      await env.kopplung.upsert('a', 2025, { personBUserId: 'spouse_a_2025', filingType: 'zusammen' })
+      env.lstb.seed({ userId: 'a', taxYear: 2025, bruttoarbeitslohn: '98749', lohnsteuer: '20000', sozialversicherung: '0' })
+      env.lstb.seed({ userId: 'spouse_a_2025', taxYear: 2025, bruttoarbeitslohn: '50000', lohnsteuer: '8000', sozialversicherung: '0' })
+      for (let i = 0; i < children; i++) await env.kinder.create('a', 2025, { firstName: `K${i}`, lastName: 'M', geburtsdatum: '2015-01-01' })
+      return range(await env.service.getState('a', 2025))
+    }
+    const three = await estimate(3)
+    const none = await (async () => {
+      const env = setup()
+      env.interview.seed('a', 2025, { ...EMPLOYED, kinder: '2 oder mehr' })
+      await env.stammdaten.save('a', { familienstand: 'verheiratet', religion: 'VD' } as MasterDataRecord)
+      await env.kopplung.upsert('a', 2025, { personBUserId: 'spouse_a_2025', filingType: 'zusammen' })
+      env.lstb.seed({ userId: 'a', taxYear: 2025, bruttoarbeitslohn: '98749', lohnsteuer: '20000', sozialversicherung: '0' })
+      env.lstb.seed({ userId: 'spouse_a_2025', taxYear: 2025, bruttoarbeitslohn: '50000', lohnsteuer: '8000', sozialversicherung: '0' })
+      for (let i = 0; i < 3; i++) await env.kinder.create('a', 2025, { firstName: `K${i}`, lastName: 'M', geburtsdatum: '2015-01-01' })
+      return range(await env.service.getState('a', 2025))
+    })()
+    // 4.000 € − 2.414,48 € = 1.585,52 € less taxable income.
+    expect(none.taxableIncome.from - three.taxableIncome.from).toBe(1586)
   })
 
   it('adds a German employer’s certificate of the same year to a Grenzgänger’s Swiss wage (change of job, ADR-0079)', async () => {

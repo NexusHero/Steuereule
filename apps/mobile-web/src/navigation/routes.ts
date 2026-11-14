@@ -9,7 +9,7 @@ export type CatalogEntryParam =
   | 'haushalt'
   | 'gesundheit'
   | 'vorauszahlungen'
-export type PartnerAreaParam = 'lstb' | 'arbeitsweg'
+export type PartnerAreaParam = 'lstb' | 'arbeitsweg' | 'schweiz' | 'rente'
 
 export type CockpitStackParamList = {
   CockpitHome: undefined

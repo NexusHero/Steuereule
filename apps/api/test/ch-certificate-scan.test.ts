@@ -97,6 +97,17 @@ describe('the Swiss salary certificate from an upload', () => {
     expect(res.assistantMessage?.content).not.toContain('Kemal')
   })
 
+  it('drafts the family allowances the remarks name for the Anlage N-Gre, into B’s mask for B (ADR-0088)', async () => {
+    const { kit, strategy } = await setUp({ spouse: true })
+    const withAllowances = certificate('Muster Jürgen').replace('15. Bemerkungen', "15. Bemerkungen   Kinderzulagen CHF 2'580, im Lohn enthalten")
+    await parse(strategy, withAllowances)
+    const drafts = (await kit.advisorRepo.listForUserAndYear(USER, YEAR)).flatMap((m) => m.meta?.actions ?? [])
+    expect(drafts.find((d) => d.field === 'familienzulagenChf')).toMatchObject({ newValue: '2580', person: 'B' })
+    await kit.service.applyBatch(USER, YEAR, { drafts: drafts.map((d) => ({ actionId: d.actionId })) })
+    const spouse = await kit.linkService.dataUser(USER, YEAR, 'B')
+    expect((await kit.chRepo.findForUserAndYear(spouse, YEAR))?.nGre.familienzulagenChf).toBe('2580')
+  })
+
   it('puts the spouse’s certificate into Person B’s mask, by the name on it', async () => {
     const { kit, strategy } = await setUp({ spouse: true })
     const res = await parse(strategy, certificate('Muster Juergen'))

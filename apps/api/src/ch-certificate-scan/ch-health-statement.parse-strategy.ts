@@ -58,6 +58,11 @@ export class ChHealthStatementParseStrategy implements DocumentParseStrategy, On
     const forA: Field[] = []
     const forB: Field[] = []
     let unmatched = 0
+    let childRateNoted = false
+    // Franchise and Selbstbehalt the household paid itself: Krankheitskosten (§ 33 EStG), in euros.
+    let selfBorneChf = 0
+    const selfBorneItems: AdvisorCountedItem[] = []
+    const countedHealth = await this.advisorService.countedReceiptItems(userId, year, { screen: 'interview', field: 'gesundheit-betrag' })
     for (const person of read.insured) {
       const key = insuredMember(person.name, members)
       if (key === null) {
@@ -84,14 +89,32 @@ export class ChHealthStatementParseStrategy implements DocumentParseStrategy, On
           notes.push(`Für das Kind stehen ${chf} CHF Grundversicherung im Auszug. Den Betrag in Euro rechne ich, sobald der Wechselkurs im Lohnausweis steht.`)
           continue
         }
-        if (chosenRate === null) {
-          notes.push(`Die Prämie des Kindes habe ich zum amtlichen Jahresdurchschnitt umgerechnet (100 CHF = ${(rateA * 100).toFixed(2).replace('.', ',')} €). Wählst du im Lohnausweis einen anderen Kurs, passe sie bitte an.`)
+        if (chosenRate === null && !childRateNoted) {
+          childRateNoted = true
+          notes.push(`${kids.length > 1 ? 'Die Prämien der Kinder' : 'Die Prämie des Kindes'} habe ich zum amtlichen Jahresdurchschnitt umgerechnet (100 CHF = ${(rateA * 100).toFixed(2).replace('.', ',')} €). Wählst du im Lohnausweis einen anderen Kurs, passe sie bitte an.`)
         }
         const field = premiumField('healthBasicEur', Math.round(chfToEur(chf, rateA)), dto, items)
         forA.push({ ...field, ...(chosenRate === null ? { status: 'pruefen' as const } : {}), screen: 'kind', instance: childId })
       }
       if (person.selfBorneCents > 0) {
-        notes.push(`Dazu ${Math.round(person.selfBorneCents / 100)} CHF selbst getragene Krankheitskosten (Franchise, Selbstbehalt); die zählen bei den Krankheitskosten, nicht hier.`)
+        const item = selfBorneItemOf(read.insurer, year, person)
+        if (!countedHealth.some((c) => c.ref === item.ref)) {
+          selfBorneChf += person.selfBorneCents / 100
+          selfBorneItems.push(item)
+        }
+      }
+    }
+    if (selfBorneChf > 0) {
+      const chf = Math.round(selfBorneChf)
+      if (rateA === null) {
+        notes.push(`Dazu ${chf} CHF selbst getragene Krankheitskosten (Franchise, Selbstbehalt). In Euro rechne ich sie, sobald der Wechselkurs im Lohnausweis steht.`)
+      } else {
+        notes.push(`Dazu ${chf} CHF selbst getragene Krankheitskosten (Franchise, Selbstbehalt); die habe ich in Euro zu euren Krankheitskosten gerechnet (§ 33 EStG).`)
+        const status = chosenRate === null || dto.textSource !== 'pdf_text' ? ('pruefen' as const) : ('ok' as const)
+        forA.push(
+          { field: 'gesundheit-gate', label: 'Krankheitskosten', value: 'Ja', status: 'ok', reason: null, screen: 'interview' },
+          { field: 'gesundheit-betrag', label: 'Krankheitskosten (Summe im Jahr)', value: Math.round(chfToEur(chf, rateA)), status, reason: null, screen: 'interview', accumulate: true, countedItems: selfBorneItems },
+        )
       }
     }
     if (unmatched > 0) notes.push(`${unmatched === 1 ? 'Eine versicherte Person' : `${unmatched} versicherte Personen`} konnte ich niemandem im Haushalt zuordnen; trag die Prämie bitte selbst ein.`)
@@ -152,6 +175,13 @@ export class ChHealthStatementParseStrategy implements DocumentParseStrategy, On
 function premiumField(field: string, value: number, dto: ParseReceiptDto, items: AdvisorCountedItem[]): Field {
   const fromOcr = dto.textSource !== 'pdf_text'
   return { field, label: field === 'healthBasicEur' ? 'Kind: Basis-Krankenversicherung (Anlage Kind Kz 66)' : 'Krankenkasse Grundversicherung (CHF)', value, status: fromOcr ? 'pruefen' : 'ok', reason: fromOcr ? 'ocr_source' : null, accumulate: true, countedItems: items }
+}
+
+/** The self-borne costs of one person on one statement: counted into the Krankheitskosten once. */
+function selfBorneItemOf(insurer: string, year: number, person: InsuredPremium): AdvisorCountedItem {
+  const hash = (value: string) => `0${createHash('sha256').update(`health-own:${value}`).digest('hex').slice(0, 24)}`
+  const who = person.insuredNo ?? person.name.toLowerCase()
+  return { ref: hash(`${insurer}|${who}|${year}|${person.period ?? ''}|${person.selfBorneCents}`), amountKey: hash(`${insurer}|${who}|${year}`) }
 }
 
 /** One statement for one person: insurer, insured number (or name), year and amount — stored only hashed. */
