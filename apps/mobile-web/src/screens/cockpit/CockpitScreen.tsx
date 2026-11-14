@@ -275,7 +275,15 @@ function RefundHeadline({ year, estimate }: { readonly year: number; readonly es
     setEffect(observeMidpoint(year, midpoint))
   }, [year, midpoint])
   if (result === null) return null
-  const label = result.from >= 0 ? 'cockpit.hero.erstattungLabel' : result.to <= 0 ? 'cockpit.hero.nachzahlungLabel' : 'cockpit.hero.ergebnisLabel'
+  // Exactly 0 € (e.g. a pension below the basic allowance) is neither a refund nor a back payment.
+  const even = result.from === 0 && result.to === 0
+  const label = even
+    ? 'cockpit.hero.ergebnisLabel'
+    : result.from >= 0
+      ? 'cockpit.hero.erstattungLabel'
+      : result.to <= 0
+        ? 'cockpit.hero.nachzahlungLabel'
+        : 'cockpit.hero.ergebnisLabel'
   const value =
     result.from === result.to
       ? formatEuro(Math.abs(result.from))
@@ -286,6 +294,7 @@ function RefundHeadline({ year, estimate }: { readonly year: number; readonly es
     <View testID="cockpit-erstattung-hero">
       <Text style={styles.heroLabel}>{tr(label)}</Text>
       <Text style={styles.heroValue} testID="cockpit-erstattung">{value}</Text>
+      {even ? <Text style={styles.effectLine} testID="cockpit-ausgeglichen">{tr('cockpit.hero.ausgeglichen')}</Text> : null}
       {effect !== null && effect.deltaEur !== 0 ? (
         <Pressable accessibilityRole="button" accessibilityHint={tr('cockpit.wirkung.schliessen')} onPress={() => { dismissEffect(year); setEffect(null) }} testID="cockpit-wirkung">
           <Text style={styles.effectLine}>{effectText(effect, tr)}</Text>
