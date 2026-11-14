@@ -173,7 +173,18 @@ describe('CockpitService', () => {
     // A pensioner has no LStB to transcribe, so the (absent) LStB must not widen the range.
     const summary = await service.getSummary('user-a', 2026)
 
-    expect(summary?.status).toEqual({ kind: 'bestimmt', value: 0 })
+    // The missing pension is the one open item (UX review K3) — never the three LStB fields.
+    expect(summary?.status).toMatchObject({ kind: 'spanne', from: 0, openItems: 1 })
+  })
+
+  it('counts a pensioner\'s recorded pension as the income, so the hero never reads 0 € (UX review K3)', async () => {
+    taxYear.seed('user-a', { taxYear: 2026, openItems: 0 })
+    interview.seed('user-a', 2026, { job: 'Rente' })
+    pension.seed({ userId: 'user-a', taxYear: 2026, rentenart: 'GesetzlicheRente', jahresbetrag: '18000', rentenbeginnJahr: '2019', alterBeiRentenbeginn: null })
+
+    const summary = await service.getSummary('user-a', 2026)
+
+    expect(summary?.status).toEqual({ kind: 'bestimmt', value: 18000 })
   })
 
   it('adds the declared Nebenjob Brutto to the settled income sum', async () => {
