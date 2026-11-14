@@ -352,6 +352,29 @@ Auftrag: die kritischen Befunde K1–K3 und die Hebel 1, 2, 3 und 5. Hebel 4 (Eu
 
 **Bewusst nicht umgesetzt:** amtliche Formular-Ansicht mit Zeilensprung (Hebel 1, groß), Rest von Hebel 4 (Rechtsstand dynamisch, „Alles geprüft“), Selbstständige in der Schätzung, Vorbelegung des Partnernamens aus dem Interview (das Interview kennt kein Textfeld).
 
+## Nachtest im Browser (nach der Umsetzung)
+
+Frischer Stack mit Wegwerf-Datenbank, alle drei Personas erneut durchgeklickt. Screenshots: [`2026-11-interview-review/nachtest/`](2026-11-interview-review/nachtest/).
+
+| Prüfpunkt | Ergebnis | Screenshot |
+|---|---|---|
+| Start im Jahr 2025, „Anderes Jahr“ unter Frage 1 | ✔ | [n01](2026-11-interview-review/nachtest/n01-p1-start-2025-mobile.jpg) |
+| Hero „Voraussichtliche Erstattung 483–544 €“, Einkommen darunter, Anlage auf jeder Kachel, ruhiger Banner „Freiwillige Erklärung“ | ✔ | [n02](2026-11-interview-review/nachtest/n02-p1-cockpit-erstattung-hero-mobile.jpg) |
+| Lohnersatz 3.000 €: Spanne bleibt (248–309 €), Wirkungszeile nennt Lebenslagen und Anlage, Banner wechselt korrekt auf Pflicht (§ 152 Abs. 2 AO), Abgabe-Prüfung ohne „nicht gerechnet“ | ✔ | [n03](2026-11-interview-review/nachtest/n03-p1-lohnersatz-spanne-wirkungszeile-mobile.jpg) |
+| Eule bei „80 Tagen im Homeoffice“: genau ein Entwurf mit 80 Tagen | ✔ | [n04](2026-11-interview-review/nachtest/n04-p1-eule-80-tage-ein-entwurf-desktop.jpg) |
+| Eulen-Wirkung aus der echten Schätzung | ✘ → behoben: zeigte −63 €, weil § 32b den Pauschbetrag falsch kürzte; jetzt „Im Pauschbetrag (1.230 €)“ | [n05](2026-11-interview-review/nachtest/n05-p1-eule-im-pauschbetrag-desktop.jpg) |
+| Partnerfragen zählen 5/6 und 6/6 | ✔ | [n06](2026-11-interview-review/nachtest/n06-p2-partnerfrage-5von6-mobile.jpg) |
+| Zusammenveranlagung automatisch, Partner ohne LStB-Kachel, mit Lohnausweis Schweiz | ✔ | – |
+| Erstes Kind beim Paar „gemeinsam“ vorbelegt | ✘ → behoben (Familienstand kam erst nach dem Öffnen des Formulars) | [n07](2026-11-interview-review/nachtest/n07-p2-kind-gemeinsam-vorbelegt-mobile.jpg) |
+| „Für wen?“ mit Spenden-Hinweis | ✔; Text ohne Partnernamen grammatisch falsch („bei deinen Partner“) → behoben | [n08](2026-11-interview-review/nachtest/n08-p2-fuer-wen-spenden-gemeinsam-mobile.jpg) |
+| Rentner: Auslandsfrage passend formuliert | ✔ | [n09](2026-11-interview-review/nachtest/n09-p3-rentner-auslandsfrage-mobile.jpg) |
+| Rentner: Einkommen 18.000 €, Schätzung vorhanden, neutraler Fristbanner („unklar“) | ✔; „Erstattung 0 €“ → behoben zu „Ergebnis 0 € — weder Nachzahlung noch Erstattung“ | [n10](2026-11-interview-review/nachtest/n10-p3-rentner-schaetzung-mobile.jpg), [n11](2026-11-interview-review/nachtest/n11-p3-ergebnis-ausgeglichen-mobile.jpg) |
+
+**Offen geblieben (nicht im Auftrag):**
+- Wortumbruch „Familienstan|d“ (M1).
+- „Anderes Jahr“ sieht wie eine Antwortoption aus und sollte eher als Link erscheinen.
+- „Nachzahlung senken“ und „Erstattung erhöhen“ stehen schon vor der ersten Schätzung (M5).
+
 ## Grenzen dieses Reviews
 
 - **KI im Basis-Modus:** Lokal war kein KI-Schlüssel gesetzt, getestet ist also der regelbasierte Fallback der Eule. Ein Durchgang mit echtem Modell steht noch aus.
