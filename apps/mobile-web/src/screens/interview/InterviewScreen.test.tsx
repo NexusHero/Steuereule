@@ -67,9 +67,9 @@ async function renderOnJobQuestion(opts: Parameters<typeof renderInterview>[0] =
 // mis-wired branch fails loudly instead of a generic "something is on screen" assertion passing
 // by accident. `find*` (not `get*`): every screen mount now waits on the GET.
 const onJobQuestion = () => screen.findByText('Mehrfachjobs? Nimm die Hauptquelle — der Rest kommt später.')
-const onForeignQuestion = () => screen.findByText('Grenzgänger haben Sonderregeln — in die Schweiz können wir sie komplett, inklusive 60-Tage-Tracking.')
-const onKinderQuestion = () => screen.findByText('Kindergeld, Freibeträge, Betreuungskosten — die Günstigerprüfung Kindergeld vs. Freibetrag läuft automatisch.')
-const onMaritalStatusQuestion = () => screen.findByText('Verheiratete geben meist eine gemeinsame Erklärung ab — dann rechnen wir mit dem Splittingtarif.')
+const onForeignQuestion = () => screen.findByText('Wer in Deutschland wohnt und in der Schweiz arbeitet, hat eigene Regeln — die gehen wir komplett mit dir durch.')
+const onKinderQuestion = () => screen.findByText('Kindergeld, Kinderfreibetrag, Betreuungskosten — was für dich günstiger ist, rechnen wir selbst aus.')
+const onMaritalStatusQuestion = () => screen.findByText('Verheiratete geben meist eine gemeinsame Erklärung ab, das spart oft Steuern. Dann fragen wir noch kurz nach deinem Partner.')
 const onBusinessGate = () => screen.findByText('Ehrlich: dafür sind wir noch nicht gut genug.')
 const onChOnlyGate = () => screen.findByText('Ehrlich: andere Länder können wir noch nicht.')
 
@@ -344,7 +344,8 @@ describe('InterviewScreen', () => {
     it('Rente -> ausland question directly, NOT the Gewerbe gate (ADR-034: Rente is an answer, not a branch)', async () => {
       await renderOnJobQuestion()
       fireEvent.click(screen.getByText('Rente'))
-      await onForeignQuestion()
+      // UX review M3: a pensioner gets the same question asked the way that fits, not "commute for work".
+      await screen.findByText('Die meisten tippen hier „Nein“. Eine Rente aus der Schweiz trägst du später bei deiner Rente ein.')
       expect(screen.queryByText('Ehrlich: dafür sind wir noch nicht gut genug.')).toBeNull()
     })
 

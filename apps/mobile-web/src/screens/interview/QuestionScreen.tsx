@@ -9,6 +9,7 @@ import {
   PARTNER_JOB_VALUES,
   PARTNER_FOREIGN_VALUES,
   QUESTION_ORDER,
+  type Answers,
   type QuestionId,
 } from '@steuereule/core'
 import { APP_NS } from '../../i18n/resources'
@@ -64,8 +65,26 @@ const QUESTION_COPY: Record<QuestionId, { readonly titleKey: string; readonly he
   'partner-ausland': { titleKey: 'interview.partnerAusland', helpKey: 'interview.partnerAusland.help', options: PARTNER_FOREIGN_OPTIONS },
 }
 
+/**
+ * One continuous count over the minimal gate and the partner questions (UX review H4): the partner
+ * questions are steps 5 and 6 after „Verheiratet“, never a restart at 0.
+ */
+export function interviewProgress(questionId: QuestionId, answers: Answers): { readonly step: number; readonly total: number } {
+  const partnerSteps: readonly QuestionId[] =
+    answers.familienstand !== 'Verheiratet'
+      ? []
+      : answers['partner-job'] !== undefined && answers['partner-job'] !== 'Angestellt'
+        ? ['partner-job']
+        : ['partner-job', 'partner-ausland']
+  const all: readonly QuestionId[] = [...QUESTION_ORDER, ...partnerSteps]
+  const index = all.indexOf(questionId)
+  return { step: index === -1 ? all.length - 1 : index, total: all.length }
+}
+
 interface QuestionScreenProps {
   readonly questionId: QuestionId
+  /** The answers so far — they decide the count and the wording (e.g. a pensioner's foreign question). */
+  readonly answers?: Answers
   readonly canGoBack: boolean
   readonly onAnswer: (value: string) => void
   readonly onBack: () => void
@@ -74,12 +93,17 @@ interface QuestionScreenProps {
   readonly taxYear: number
 }
 
-export function QuestionScreen({ questionId, canGoBack, onAnswer, onBack, bp, notice, taxYear }: QuestionScreenProps) {
+export function QuestionScreen({ questionId, answers = {}, canGoBack, onAnswer, onBack, bp, notice, taxYear }: QuestionScreenProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeInterviewStyles(t)
-  const copy = QUESTION_COPY[questionId]
-  const stepIndex = QUESTION_ORDER.indexOf(questionId)
+  const baseCopy = QUESTION_COPY[questionId]
+  // A pensioner does not commute: the same answer values, asked the way that fits (UX review M3).
+  const copy =
+    questionId === 'ausland' && answers.job === 'Rente'
+      ? { ...baseCopy, titleKey: 'interview.auslandRente', helpKey: 'interview.auslandRente.help' }
+      : baseCopy
+  const { step: stepIndex, total } = interviewProgress(questionId, answers)
 
   return (
     <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="screen-container">
@@ -89,9 +113,9 @@ export function QuestionScreen({ questionId, canGoBack, onAnswer, onBack, bp, no
         ) : (
           <BackButtonSpacer />
         )}
-        <StepIndicator step={stepIndex} total={QUESTION_ORDER.length} />
+        <StepIndicator step={stepIndex} total={total} />
         <View style={styles.stepPill}>
-          <Text style={styles.stepPillText}>{`${stepIndex + 1}/${QUESTION_ORDER.length}`}</Text>
+          <Text style={styles.stepPillText}>{`${stepIndex + 1}/${total}`}</Text>
         </View>
       </View>
 

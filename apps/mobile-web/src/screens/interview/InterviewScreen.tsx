@@ -203,6 +203,7 @@ export function InterviewScreen({ onDone, taxYear = CURRENT_TAX_YEAR }: Intervie
   return (
     <QuestionScreen
       questionId={current.id}
+      answers={answers}
       canGoBack={history.length > 0}
       onAnswer={(value) => answer(current.id, value)}
       onBack={back}

@@ -63,11 +63,11 @@ async function enterAsGuestThroughInterview() {
   // The guest lands directly in the Minimal-Gate (start: 'interview').
   await screen.findByText('Angestellt')
   fireEvent.click(screen.getByText('Angestellt'))
-  await screen.findByText('Grenzgänger haben Sonderregeln — in die Schweiz können wir sie komplett, inklusive 60-Tage-Tracking.')
+  await screen.findByText('Wer in Deutschland wohnt und in der Schweiz arbeitet, hat eigene Regeln — die gehen wir komplett mit dir durch.')
   fireEvent.click(screen.getByText('Nein'))
-  await screen.findByText('Kindergeld, Freibeträge, Betreuungskosten — die Günstigerprüfung Kindergeld vs. Freibetrag läuft automatisch.')
+  await screen.findByText('Kindergeld, Kinderfreibetrag, Betreuungskosten — was für dich günstiger ist, rechnen wir selbst aus.')
   fireEvent.click(screen.getByText('2 oder mehr'))
-  await screen.findByText('Verheiratete geben meist eine gemeinsame Erklärung ab — dann rechnen wir mit dem Splittingtarif.')
+  await screen.findByText('Verheiratete geben meist eine gemeinsame Erklärung ab, das spart oft Steuern. Dann fragen wir noch kurz nach deinem Partner.')
   fireEvent.click(screen.getByText('Ledig'))
 
   // The Konto-Wand is the honest next step for a guest — "Später" reaches the Cockpit.
@@ -230,7 +230,7 @@ describe('App', () => {
       expect(screen.getByText('Profil')).toBeTruthy()
 
       fireEvent.click(screen.getByText('Angestellt'))
-      await screen.findByText('Grenzgänger haben Sonderregeln — in die Schweiz können wir sie komplett, inklusive 60-Tage-Tracking.') // ausland question
+      await screen.findByText('Wer in Deutschland wohnt und in der Schweiz arbeitet, hat eigene Regeln — die gehen wir komplett mit dir durch.') // ausland question
 
       // The server now holds a lower open-items count (2, after the one answer above) — the
       // next Cockpit render reads it, not a value carried over in memory.
@@ -240,9 +240,9 @@ describe('App', () => {
         ),
       )
       fireEvent.click(screen.getByText('Nein')) // ausland: no gate
-      await screen.findByText('Kindergeld, Freibeträge, Betreuungskosten — die Günstigerprüfung Kindergeld vs. Freibetrag läuft automatisch.') // kinder question
+      await screen.findByText('Kindergeld, Kinderfreibetrag, Betreuungskosten — was für dich günstiger ist, rechnen wir selbst aus.') // kinder question
       fireEvent.click(screen.getByText('2 oder mehr'))
-      await screen.findByText('Verheiratete geben meist eine gemeinsame Erklärung ab — dann rechnen wir mit dem Splittingtarif.')
+      await screen.findByText('Verheiratete geben meist eine gemeinsame Erklärung ab, das spart oft Steuern. Dann fragen wir noch kurz nach deinem Partner.')
       fireEvent.click(screen.getByText('Ledig')) // completes the Minimal-Gate (Familienstand, ADR-0054)
 
       // ADR-0045: a guest's onDone leads to the Konto-Wand — "Später" reaches the Cockpit,
