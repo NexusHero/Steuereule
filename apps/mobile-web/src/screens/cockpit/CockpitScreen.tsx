@@ -21,7 +21,7 @@ import { OwlAdvisorCard } from '../advisor/OwlAdvisorCard'
 import { useOptionalCopilotBridge } from '../advisor/CopilotBridgeProvider'
 import { APP_NS } from '../../i18n/resources'
 import type { PartnerAreaParam } from '../../navigation/routes'
-import { SELECTABLE_TAX_YEARS, CURRENT_TAX_YEAR } from '../../config/taxYear'
+import { SELECTABLE_TAX_YEARS, CURRENT_TAX_YEAR, isRunningTaxYear } from '../../config/taxYear'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { pathFromAnswers, type FunnelPath } from '../funnel/KontoWandScreen'
 import { usePlausibility } from '../plausibility/usePlausibility'
@@ -94,7 +94,9 @@ export function CockpitScreen({
   const masterDataValue = masterDataQuery.data?.status === 200 ? masterDataQuery.data.data : null
   const interview = interviewQuery.data?.status === 200 ? interviewQuery.data.data : null
   const answers = (interview?.answers ?? {}) as Answers
-  const path = interview?.nextStep.kind === 'done' ? pathFromAnswers(interview.answers) : null
+  // H5: the deadline banner waits for the answers — whether the deadline binds depends on them.
+  const deadlineAnswers = interviewQuery.isPending ? null : answers
+  const path =interview?.nextStep.kind === 'done' ? pathFromAnswers(interview.answers) : null
   const personas = derivePersonas(answers, masterDataValue)
   const linkQuery = useLinkControllerGet(year, { query: { enabled: isSignedIn && path !== null && personas.has('verheiratet') } })
   const linkData = linkQuery.data?.status === 200 ? linkQuery.data.data : null
@@ -183,6 +185,7 @@ export function CockpitScreen({
         {...(onOpenKinder ? { onOpenKinder } : {})}
         {...(onOpenOwlMode ? { onOpenOwlMode: () => onOpenOwlMode(year) } : {})}
         {...(submissionHandler ? { onOpenPrintout: () => submissionHandler(year) } : {})}
+        deadlineAnswers={deadlineAnswers}
         bp={bp}
       />
     )
@@ -213,6 +216,7 @@ export function CockpitScreen({
       {...(onOpenKinder ? { onOpenKinder } : {})}
       {...(onOpenOwlMode ? { onOpenOwlMode: () => onOpenOwlMode(year) } : {})}
       {...(submissionHandler ? { onOpenPrintout: () => submissionHandler(year) } : {})}
+      deadlineAnswers={deadlineAnswers}
       bp={bp}
     />
   )
@@ -281,11 +285,28 @@ function Appbar({ year, onYearChange, isRefreshing }: { readonly year: number; r
       <View style={styles.jahrReihe} accessibilityLabel={tr('cockpit.jahrAuswahl')}>
         {SELECTABLE_YEARS.map((y) => (
           <Chip key={y} active={y === year} onPress={() => onYearChange(y)} testID={`jahr-${y}`}>
-            {String(y)}
+            {isRunningTaxYear(y) ? tr('cockpit.jahrLaeuft', { jahr: y }) : String(y)}
           </Chip>
         ))}
       </View>
     </View>
+  )
+}
+
+/** The notices about the year itself: the running year's prepare mode (K2) and the deadline (H5). */
+function YearNotices({ year, answers }: { readonly year: number; readonly answers: Answers | null }) {
+  const t = useTheme()
+  const { t: tr } = useTranslation(APP_NS)
+  const styles = makeStyles(t)
+  return (
+    <>
+      {isRunningTaxYear(year) ? (
+        <View style={styles.runningYearNotice} testID="cockpit-laufendes-jahr">
+          <Text style={styles.runningYearText}>{tr('cockpit.laufendesJahr', { jahr: year, abgabeAb: year + 1 })}</Text>
+        </View>
+      ) : null}
+      <DeadlinesBanner taxYear={year} answers={answers} />
+    </>
   )
 }
 
@@ -312,6 +333,7 @@ interface CockpitEmptyProps {
   readonly onOpenOwlMode?: () => void
   readonly onOpenPrintout?: () => void
   readonly bp: Breakpoint
+  readonly deadlineAnswers: Answers | null
 }
 
 function EuleBannerNotice() {
@@ -363,7 +385,7 @@ function EuleBannerNotice() {
   )
 }
 
-function CockpitEmpty({ year, onYearChange, refresh, isRefreshing, next, tileFacts, isSignedIn, isJointMarried, partnerName, findings, onOpenTile, onOpenPartner, onOpenSubmission, masterData, onOpenInterview, onOpenAssessment, onOpenCapital, onOpenRental, onOpenKinder, onOpenOwlMode, bp }: CockpitEmptyProps) {
+function CockpitEmpty({ year, onYearChange, refresh, isRefreshing, next, tileFacts, isSignedIn, isJointMarried, partnerName, findings, onOpenTile, onOpenPartner, onOpenSubmission, masterData, onOpenInterview, onOpenAssessment, onOpenCapital, onOpenRental, onOpenKinder, onOpenOwlMode, deadlineAnswers, bp }: CockpitEmptyProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
@@ -374,7 +396,7 @@ function CockpitEmpty({ year, onYearChange, refresh, isRefreshing, next, tileFac
       testID="screen-container"
     >
       <Appbar year={year} onYearChange={onYearChange} isRefreshing={isRefreshing} />
-      <DeadlinesBanner taxYear={year} />
+      <YearNotices year={year} answers={deadlineAnswers} />
       <EuleBannerNotice />
       <View style={styles.emptyBlock}>
         <Text style={styles.heading}>{tr('cockpit.empty.heading')}</Text>
@@ -491,9 +513,10 @@ interface CockpitLoadedProps {
   readonly onOpenOwlMode?: () => void
   readonly onOpenPrintout?: () => void
   readonly bp: Breakpoint
+  readonly deadlineAnswers: Answers | null
 }
 
-function CockpitLoaded({ summary, year, onYearChange, confirmation, onOpenConfirmation, refresh, isRefreshing, next, tileFacts, isSignedIn, isJointMarried, partnerName, findings, onOpenTile, onOpenPartner, onOpenSubmission, masterData, onOpenInterview, onOpenAssessment, onOpenCapital, onOpenRental, onOpenKinder, onOpenOwlMode, onOpenPrintout, bp }: CockpitLoadedProps) {
+function CockpitLoaded({ summary, year, onYearChange, confirmation, onOpenConfirmation, refresh, isRefreshing, next, tileFacts, isSignedIn, isJointMarried, partnerName, findings, onOpenTile, onOpenPartner, onOpenSubmission, masterData, onOpenInterview, onOpenAssessment, onOpenCapital, onOpenRental, onOpenKinder, onOpenOwlMode, onOpenPrintout, deadlineAnswers, bp }: CockpitLoadedProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
@@ -507,7 +530,7 @@ function CockpitLoaded({ summary, year, onYearChange, confirmation, onOpenConfir
       testID="screen-container"
     >
       <Appbar year={year} onYearChange={onYearChange} isRefreshing={isRefreshing} />
-      <DeadlinesBanner taxYear={year} />
+      <YearNotices year={year} answers={deadlineAnswers} />
       <EuleBannerNotice />
       <ConfirmationNotice annexes={confirmation} status={status} {...(onOpenConfirmation ? { onOpenConfirmation } : {})} />
       <Card variant="nacht">

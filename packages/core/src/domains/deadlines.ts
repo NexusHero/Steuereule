@@ -45,7 +45,21 @@ function daysSince(iso: string): number {
   return Date.UTC(Number(m[1]!), Number(m[2]!) - 1, Number(m[3]!)) / 86_400_000
 }
 
-export type DeadlineLevel = 'keine' | 'warnung' | 'abgelaufen'
+/**
+ * The first day on which the tax office MUST set a late filing surcharge (§ 152 Abs. 2 Nr. 1 AO:
+ * the return was not filed within 14 months after the end of the tax year). Before this day the
+ * surcharge is at its discretion (§ 152 Abs. 1 AO). For 2025: from 01.03.2027.
+ */
+export function mandatoryLateFilingSurchargeFrom(taxYear: number): string {
+  return `${taxYear + 2}-03-01`
+}
+
+/** Whether `today` lies on or after the mandatory-surcharge day of § 152 Abs. 2 AO. */
+export function isLateFilingSurchargeMandatory(taxYear: number, today: string): boolean {
+  return daysSince(today) >= daysSince(mandatoryLateFilingSurchargeFrom(taxYear))
+}
+
+export type DeadlineLevel ='keine' | 'warnung' | 'abgelaufen'
 
 export interface DeadlineWarning {
   readonly level: DeadlineLevel

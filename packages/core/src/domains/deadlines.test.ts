@@ -9,7 +9,22 @@ import {
   deadlineWarning,
   isSupportedDeadlineYear,
   upcomingTaxDates,
+  mandatoryLateFilingSurchargeFrom,
+  isLateFilingSurchargeMandatory,
 } from './deadlines'
+
+describe('mandatoryLateFilingSurchargeFrom — § 152 Abs. 2 Nr. 1 AO, 14 months after the year', () => {
+  it('is the first day after the 14-month mark (for 2025: after 28.02.2027)', () => {
+    expect(mandatoryLateFilingSurchargeFrom(2025)).toBe('2027-03-01')
+    expect(mandatoryLateFilingSurchargeFrom(2024)).toBe('2026-03-01')
+  })
+
+  it('is discretionary up to 28.02. and mandatory from 01.03.', () => {
+    expect(isLateFilingSurchargeMandatory(2025, '2026-11-14')).toBe(false)
+    expect(isLateFilingSurchargeMandatory(2025, '2027-02-28')).toBe(false)
+    expect(isLateFilingSurchargeMandatory(2025, '2027-03-01')).toBe(true)
+  })
+})
 
 // Ticket 10.7 (M6) — the Fristen-/Verspätungszuschlag-Warnmodus. The Abgabefrist is the explicit
 // per-year § 149 Abs. 2 AO table (never "current" values, Produkt-ADR-022); the Warnmodus derives
