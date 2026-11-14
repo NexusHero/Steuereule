@@ -76,6 +76,22 @@ async function main() {
     await page.unroute(/\/v1\/steuerjahre\/\d+\/fristen$/)
     console.log(`[${TAG}] ✅ no banner when the Abgabefrist is far away`)
 
+    // --- K2: the running year is a „prepare“ mode, said up front, not at the end -----------------
+    await openCockpit(YEAR)
+    await page.locator('[data-testid="cockpit-laufendes-jahr"]').waitFor({ state: 'visible', timeout: 10_000 })
+    await page.locator('[data-testid="cockpit-abgabe-laufendes-jahr"]').waitFor({ state: 'attached', timeout: 10_000 })
+    await page.goto(`${webOrigin}/app/steuerjahr/${YEAR}/abgabe`, { waitUntil: 'networkidle' })
+    await page.locator('[data-testid="abgabe-laufendes-jahr"]').waitFor({ state: 'visible', timeout: 10_000 })
+    console.log(`[${TAG}] ✅ the running year ${YEAR} says in the cockpit and at the submission that it cannot be filed yet`)
+
+    // K2: „Anderes Jahr“ under the first question switches the year without leaving the interview.
+    await page.goto(`${webOrigin}/app/steuerjahr/2024/interview`, { waitUntil: 'networkidle' })
+    await page.locator('[data-testid="interview-anderes-jahr"]').click()
+    await page.locator('[data-testid="interview-jahr-2023"]').click()
+    await page.waitForURL((u) => u.pathname.includes('/steuerjahr/2023/'), { timeout: 10_000 })
+    await page.locator('[data-testid="interview-option-job-Angestellt"]').waitFor({ state: 'visible', timeout: 10_000 })
+    console.log(`[${TAG}] ✅ „Anderes Jahr“ switches the interview from 2024 to 2023`)
+
     // --- Interview: the answer POST fails, the step stays, a retry goes through ------------------
     await answer(api, YEAR, [['job', 'Angestellt']]) // keep the gate open; the next question is asked below
     const interview = await call(api, 'GET', `/v1/steuerjahre/${YEAR}/interview`)

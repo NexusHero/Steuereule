@@ -63,6 +63,8 @@ export async function runScenario11(browser, webOrigin) {
   await page.locator('[data-testid="cockpit-erstattung"]').waitFor({ state: 'visible', timeout: 10_000 })
   // UX review K3: a pensioner is estimated now (Ertragsanteil of the private pension).
   await assertCockpitEstimate(page, 'Scenario 11')
+  // A taxable share of 3.240 € stays below the basic allowance: exactly 0 €, said as neither refund nor back payment.
+  await page.locator('[data-testid="cockpit-ausgeglichen"]').waitFor({ state: 'visible', timeout: 10_000 })
   console.log('[Scenario 11] PASS: Private Pension Ertragsanteil calculation and honest cockpit notice verified.')
 
   await ctx.close()

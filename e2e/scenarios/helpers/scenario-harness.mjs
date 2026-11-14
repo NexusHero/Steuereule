@@ -213,6 +213,17 @@ export async function assertEstimate(page, label, { direction, contains } = {}) 
   }
   console.log(`[${label}] Cockpit estimate text: "${text}"`)
   if (problem !== null) fail(`[${label}] ${problem}: "${text}"`)
+  await assertRefundLeadsHero(page, label)
+}
+
+/**
+ * UX review H1: with a range the refund is the hero's headline and its figure stands on its own, while
+ * the recorded income stays visible below it.
+ */
+async function assertRefundLeadsHero(page, label) {
+  if ((await page.locator('[data-testid="cockpit-erstattung-betrag"]').count()) === 0) return
+  if (!/\d/.test(await page.locator('[data-testid="cockpit-erstattung-betrag"]').innerText())) fail(`[${label}] the refund headline names no figure`)
+  if (!(await page.locator('[data-testid="cockpit-einkommen"]').isVisible())) fail(`[${label}] the recorded income must stay visible below the refund headline`)
 }
 
 /** Asserts Cockpit estimate direction, minAmount, or exact expectedText. */

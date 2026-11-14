@@ -62,6 +62,8 @@ export async function runScenario26(browser, webOrigin, sql) {
   // Row A — a retired Person B: only the pension tile, and B's pension mask from it.
   await page.goto(`${webOrigin}/app`, { waitUntil: 'networkidle' })
   await visible(page, 'partner-rente', 'Row A')
+  // UX review H2: every tile names the form it fills, the partner's too.
+  if (!(await page.locator(tid('partner-rente-formular')).innerText()).includes('Anlage R')) fail('Row A: the partner\'s pension tile should name Anlage R')
   if ((await page.locator(tid('partner-lstb')).count()) > 0) fail('Row A: a retired Person B should get no LStB tile')
   if ((await page.locator(tid('partner-schweiz')).count()) > 0) fail('Row A: a retired Person B should get no Swiss certificate tile')
   await page.locator(tid('partner-rente')).click()
@@ -100,6 +102,10 @@ export async function runScenario26(browser, webOrigin, sql) {
   await visible(page, 'katalog-fuer-wen', 'Row C')
   await page.locator(tid('katalog-fuer-b')).click()
   await visible(page, 'katalog-option-spenden-Nein', 'Row C')
+  // UX review H7: the partner's side says whose answers these are, and donations count for both.
+  await visible(page, 'katalog-fuer-partner', 'Row C')
+  if (!(await page.locator(tid('katalog-fuer-partner')).innerText()).includes('Ute')) fail('Row C: the question should say it is asked for Ute')
+  await visible(page, 'katalog-gemeinsam-spenden', 'Row C')
   await page.locator(tid('katalog-option-spenden-Nein')).click()
   await until(
     async () => (await call(api, 'GET', `/v1/steuerjahre/${Y}/interview?eintrag=sonderausgaben&person=B`)).answers.spenden ?? null,
