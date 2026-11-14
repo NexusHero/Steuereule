@@ -147,12 +147,14 @@ export const STATUTORY_PENSIONER_HEALTH_SHARE: Range = { from: 0.11, to: 0.13 }
 const PENSION_LUMP_SUM_EUR = 102
 
 /**
- * The part of the wage replacement benefits the progression clause counts: the benefits less the part
- * of the Arbeitnehmer-Pauschbetrag the wage did not use up (§ 32b Abs. 2 Satz 1 Nr. 1 Buchst. a EStG).
+ * The part of the wage replacement benefits the progression clause counts (§ 32b Abs. 2 Satz 1 Nr. 1
+ * Buchst. a EStG): the benefits less the Arbeitnehmer-Pauschbetrag as far as the wage did not use it.
+ * When the actual Werbungskosten beat the lump sum, the wage deducts those and the whole lump sum is
+ * left for the benefits (BFH III R 61/12); otherwise the wage uses the lump sum up to its own amount.
  */
-function progressionIncome(benefits: number | undefined, actualWorkExpenses: number, employeeLumpSum: number): number {
+function progressionIncome(benefits: number | undefined, wages: number, actualWorkExpenses: number, employeeLumpSum: number): number {
   if (benefits === undefined || !Number.isFinite(benefits) || benefits <= 0) return 0
-  const unusedLumpSum = Math.max(0, employeeLumpSum - actualWorkExpenses)
+  const unusedLumpSum = actualWorkExpenses > employeeLumpSum ? employeeLumpSum : Math.max(0, employeeLumpSum - Math.max(0, wages))
   return Math.max(0, Math.floor(benefits) - unusedLumpSum)
 }
 
@@ -186,7 +188,7 @@ export function taxEstimateEmployee(e: EmployeeEstimateInput): TaxEstimate {
     singleParentChildren: e.singleParentChildren,
     childrenBracket: e.childrenBracket,
     churchTax: e.churchTax,
-    progressionIncomeEur: progressionIncome(e.wageReplacementEur, e.commuterAllowance + e.otherIncomeRelatedExpenses, params.lumpSums.employee),
+    progressionIncomeEur: progressionIncome(e.wageReplacementEur, e.bruttoarbeitslohn, e.commuterAllowance + e.otherIncomeRelatedExpenses, params.lumpSums.employee),
   })
 }
 
@@ -219,7 +221,7 @@ export function taxEstimateCrossBorder(e: CrossBorderEstimateInput): TaxEstimate
     singleParentChildren: e.singleParentChildren,
     childrenBracket: e.childrenBracket,
     churchTax: e.churchTax ? { ...e.churchTax, withheld: 0 } : undefined,
-    progressionIncomeEur: progressionIncome(e.wageReplacementEur, e.commuterAllowance, params.lumpSums.employee),
+    progressionIncomeEur: progressionIncome(e.wageReplacementEur, e.wageEur + (german?.gross ?? 0), e.commuterAllowance, params.lumpSums.employee),
   })
 }
 

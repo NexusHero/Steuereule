@@ -1327,8 +1327,8 @@ export const appResources = {
         wirkung: {
           mitBereich: 'Deine letzte Änderung · {{bereich}} ({{formular}}): {{wirkung}}',
           ohneBereich: 'Deine letzte Änderung: {{wirkung}}',
-          mehr: '+{{betrag}} für dich',
-          weniger: '−{{betrag}} für dich',
+          mehr: '+{{betrag}} zu deinen Gunsten',
+          weniger: '−{{betrag}} zu deinen Lasten',
           schliessen: 'Hinweis ausblenden',
         },
         stammdatenErgaenzen: 'Angaben für die Erklärung ergänzen · {{anzahl}} fehlen',
@@ -3413,8 +3413,8 @@ export const appResources = {
         wirkung: {
           mitBereich: 'Your last change · {{bereich}} ({{formular}}): {{wirkung}}',
           ohneBereich: 'Your last change: {{wirkung}}',
-          mehr: '+{{betrag}} for you',
-          weniger: '−{{betrag}} for you',
+          mehr: '+{{betrag}} in your favour',
+          weniger: '−{{betrag}} against you',
           schliessen: 'Hide this note',
         },
         stammdatenErgaenzen: 'Complete the details for your return · {{anzahl}} missing',

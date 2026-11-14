@@ -27,16 +27,28 @@ describe('wage replacement benefits in the estimate (§ 32b EStG, UX review K3)'
   })
 
   it('applies the special rate of § 32b Abs. 2 to the taxable income', () => {
+    // The wage of 48.000 € uses the 1.230 € lump sum up, so the whole benefit counts.
     const estimate = taxEstimateEmployee({ ...EMPLOYED, wageReplacementEur: 3000 })
     if (estimate.kind !== 'spanne') throw new Error('expected a range')
-    // No own Werbungskosten: the whole 1.230 € lump sum is unused and comes off the benefits.
-    expect(estimate.incomeTax.from).toBe(progressionClauseTax(estimate.taxableIncome.from, 3000 - 1230, 2025))
-    expect(estimate.incomeTax.to).toBe(progressionClauseTax(estimate.taxableIncome.to, 3000 - 1230, 2025))
+    expect(estimate.incomeTax.from).toBe(progressionClauseTax(estimate.taxableIncome.from, 3000, 2025))
+    expect(estimate.incomeTax.to).toBe(progressionClauseTax(estimate.taxableIncome.to, 3000, 2025))
   })
 
-  it('reduces the benefit by the unused Arbeitnehmer-Pauschbetrag (§ 32b Abs. 2 Satz 1 Nr. 1 Buchst. a)', () => {
-    // Actual Werbungskosten of 1.000 € leave 230 € of the 1.230 € lump sum unused.
-    const estimate = taxEstimateEmployee({ ...EMPLOYED, commuterAllowance: 1000, wageReplacementEur: 3000 })
+  it('takes the whole lump sum off the benefit once actual Werbungskosten beat it (BFH III R 61/12)', () => {
+    const estimate = taxEstimateEmployee({ ...EMPLOYED, commuterAllowance: 2000, wageReplacementEur: 3000 })
+    if (estimate.kind !== 'spanne') throw new Error('expected a range')
+    expect(estimate.incomeTax.from).toBe(progressionClauseTax(estimate.taxableIncome.from, 3000 - 1230, 2025))
+  })
+
+  it('does not change the refund when home-office days stay below the lump sum (browser retest)', () => {
+    const without = taxEstimateEmployee({ ...EMPLOYED, wageReplacementEur: 3000 })
+    const withHomeOffice = taxEstimateEmployee({ ...EMPLOYED, commuterAllowance: 480, wageReplacementEur: 3000 })
+    if (without.kind !== 'spanne' || withHomeOffice.kind !== 'spanne') throw new Error('expected ranges')
+    expect(withHomeOffice.result).toEqual(without.result)
+  })
+
+  it('takes the unused rest of the lump sum off when the wage is smaller than it', () => {
+    const estimate = taxEstimateEmployee({ ...EMPLOYED, bruttoarbeitslohn: 1000, lohnsteuer: 0, sozialversicherung: 200, wageReplacementEur: 3000 })
     if (estimate.kind !== 'spanne') throw new Error('expected a range')
     expect(estimate.incomeTax.from).toBe(progressionClauseTax(estimate.taxableIncome.from, 3000 - 230, 2025))
   })
