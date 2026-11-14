@@ -8,7 +8,7 @@ export const theme = {
     "s5": 24,
     "s6": 32,
     "s7": 48,
-    "kontur": 2
+    "kontur": 1.5
   },
   "radius": {
     "s": 12,
@@ -22,9 +22,9 @@ export const theme = {
     "m": 16,
     "l": 18,
     "xl": 24,
-    "2xl": 32,
-    "3xl": 44,
-    "held": 60
+    "2xl": 28,
+    "3xl": 34,
+    "held": 52
   },
   "font": {
     "display": "\"Bricolage Grotesque\", \"Arial Black\", sans-serif",
@@ -35,7 +35,7 @@ export const theme = {
     "normal": "450",
     "halb": "600",
     "fett": "700",
-    "schwer": "800"
+    "schwer": "700"
   },
   "leading": {
     "eng": 1.05,
@@ -100,12 +100,12 @@ export const theme = {
       "hart": {
         "shadowColor": "#191b12",
         "shadowOffset": {
-          "width": 4,
-          "height": 4
+          "width": 3,
+          "height": 3
         },
         "shadowOpacity": 1,
         "shadowRadius": 0,
-        "elevation": 4
+        "elevation": 3
       },
       "hartS": {
         "shadowColor": "#191b12",
@@ -120,12 +120,12 @@ export const theme = {
       "hartL": {
         "shadowColor": "#191b12",
         "shadowOffset": {
-          "width": 7,
-          "height": 7
+          "width": 5,
+          "height": 5
         },
         "shadowOpacity": 1,
         "shadowRadius": 0,
-        "elevation": 7
+        "elevation": 5
       },
       "ki": {
         "shadowColor": "#7c5cff",
@@ -170,12 +170,12 @@ export const theme = {
       "hart": {
         "shadowColor": "#f2f0e3",
         "shadowOffset": {
-          "width": 4,
-          "height": 4
+          "width": 3,
+          "height": 3
         },
         "shadowOpacity": 1,
         "shadowRadius": 0,
-        "elevation": 4
+        "elevation": 3
       },
       "hartS": {
         "shadowColor": "#f2f0e3",
@@ -190,12 +190,12 @@ export const theme = {
       "hartL": {
         "shadowColor": "#f2f0e3",
         "shadowOffset": {
-          "width": 7,
-          "height": 7
+          "width": 5,
+          "height": 5
         },
         "shadowOpacity": 1,
         "shadowRadius": 0,
-        "elevation": 7
+        "elevation": 5
       },
       "ki": {
         "shadowColor": "#7c5cff",

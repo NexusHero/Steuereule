@@ -230,8 +230,7 @@ function makeStyles(t: UiTheme) {
   const sectionCard: ViewStyle = {
     marginBottom: t.space.s4,
     borderWidth: t.space.kontur,
-    borderColor: t.color.tinte,
-    ...t.shadow.hart,
+    borderColor: t.color.linieWeich,
   }
   const sectionTitle: TextStyle = {
     fontFamily: t.font.display,

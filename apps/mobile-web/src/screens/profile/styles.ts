@@ -30,7 +30,7 @@ export function makeProfileStyles(t: UiTheme) {
     height: 54,
     borderRadius: t.radius.pille,
     backgroundColor: t.color.funke,
-    borderWidth: 2,
+    borderWidth: t.space.kontur,
     borderColor: t.color.tinte,
     alignItems: 'center',
     justifyContent: 'center',

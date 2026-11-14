@@ -1,5 +1,5 @@
 import { type ViewStyle, type TextStyle } from 'react-native'
-import { WIDE_CONTENT_MAX_WIDTH, inkOnFunke, type UiTheme } from '@steuereule/ui'
+import { WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
 
 export function makeOnboardingStyles(t: UiTheme) {
   const screen: ViewStyle = {
@@ -26,13 +26,8 @@ export function makeOnboardingStyles(t: UiTheme) {
     marginBottom: t.space.s2,
     textAlign: 'center',
   }
-  const mark: TextStyle = {
-    backgroundColor: t.color.funke,
-    color: inkOnFunke(t),
-    paddingHorizontal: t.space.s2,
-    borderRadius: t.radius.s,
-    overflow: 'hidden',
-  }
+  // "Funke ruhig": the key word is set in readable dark lime, no lime box behind it.
+  const mark: TextStyle = { color: t.color.funkeTinte }
   const help: TextStyle = {
     color: t.color.tinte2,
     fontFamily: t.font.text,

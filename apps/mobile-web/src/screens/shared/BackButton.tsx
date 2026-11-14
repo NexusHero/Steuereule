@@ -31,12 +31,11 @@ function makeStyles(t: UiTheme) {
     width: 44,
     height: 44,
     borderRadius: t.radius.pille,
-    borderWidth: 2,
-    borderColor: t.color.tinte,
+    borderWidth: t.space.kontur,
+    borderColor: t.color.tinte2,
     backgroundColor: t.color.karte,
     alignItems: 'center',
     justifyContent: 'center',
-    ...t.shadow.hartS,
   }
   const backArrow: TextStyle = { fontWeight: t.weight.schwer, fontSize: t.size.m, color: t.color.tinte }
   return { backButton, backArrow }

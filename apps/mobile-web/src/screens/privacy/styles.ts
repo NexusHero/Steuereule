@@ -17,12 +17,11 @@ export function makePrivacyStyles(t: UiTheme) {
     width: 44,
     height: 44,
     borderRadius: t.radius.pille,
-    borderWidth: 2,
-    borderColor: t.color.tinte,
+    borderWidth: t.space.kontur,
+    borderColor: t.color.tinte2,
     backgroundColor: t.color.karte,
     alignItems: 'center',
     justifyContent: 'center',
-    ...t.shadow.hartS,
   }
   const backGlyph: TextStyle = { fontFamily: t.font.text, fontWeight: t.weight.schwer, fontSize: t.size.l, color: t.color.tinte }
   const appbarTitle: TextStyle = { fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size['2xl'], color: t.color.tinte, flex: 1 }

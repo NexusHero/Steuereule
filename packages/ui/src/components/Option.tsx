@@ -1,7 +1,7 @@
 import { Pressable, Text, type ViewStyle, type TextStyle, type StyleProp } from 'react-native'
 import { type ReactNode } from 'react'
 import { hapticLight } from '../lib/haptics'
-import { inkOnFunke, useTheme } from '../theme/useTheme'
+import { useTheme } from '../theme/useTheme'
 
 export interface OptionProps {
   readonly selected?: boolean
@@ -19,18 +19,19 @@ export function Option({ selected = false, onPress, style, children, testID }: O
     justifyContent: 'center',
     padding: t.space.s4,
     marginBottom: t.space.s3,
-    backgroundColor: selected ? t.color.funke : t.color.karte,
+    // Quiet rows: a thin tinte-2 contour at rest (≥ 3:1, WCAG 1.4.11); the chosen one gets soft
+    // lime and an ink contour.
+    backgroundColor: selected ? t.color.funkeWeich : t.color.karte,
     borderWidth: t.space.kontur,
-    borderColor: t.color.tinte,
+    borderColor: selected ? t.color.tinte : t.color.tinte2,
     borderRadius: t.radius.s,
-    ...(selected ? t.shadow.hartS : null),
   }
   const label: TextStyle = {
     textAlign: 'left',
     fontFamily: t.font.text,
     fontWeight: t.weight.fett,
     fontSize: t.size.m,
-    color: selected ? inkOnFunke(t) : t.color.tinte,
+    color: t.color.tinte,
   }
   return (
     <Pressable
@@ -43,7 +44,7 @@ export function Option({ selected = false, onPress, style, children, testID }: O
       }}
       style={({ pressed }) => [
         container,
-        pressed && !selected && { transform: [{ translateX: -1 }, { translateY: -1 }], ...t.shadow.hartS },
+        pressed && !selected && { borderColor: t.color.tinte },
         style,
       ]}
     >

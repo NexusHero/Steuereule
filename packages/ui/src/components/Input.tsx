@@ -56,13 +56,13 @@ export function Input({
     paddingVertical: t.space.s3,
     color: t.color.tinte,
     backgroundColor: t.color.karte,
-    borderWidth: 2,
-    borderColor: t.color.tinte,
+    // Quiet at rest (tinte-2 still clears 3:1 against karte), ink once focused — no shadow.
+    borderWidth: isFocused ? 2 : t.space.kontur,
+    borderColor: isFocused ? t.color.tinte : t.color.tinte2,
     borderRadius: t.radius.s,
     fontFamily: mono ? t.font.mono : t.font.text,
     fontSize: mono ? t.size.l : t.size.m,
     ...(mono ? { letterSpacing: 0.04 * t.size.l, fontVariant: ['tabular-nums'] as const } : {}),
-    ...(isFocused ? t.shadow.hartS : {}),
     ...({ outlineStyle: 'none', outlineWidth: 0 } as any),
   }
   const hint = autoComplete ?? (type === 'numeric' ? 'off' : undefined)

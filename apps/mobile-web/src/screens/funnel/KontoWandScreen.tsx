@@ -1,6 +1,6 @@
 import { ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { Button, Card, Chip, Sticker, inkOnFunke, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
+import { Button, Card, Chip, Sticker, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
 import { APP_NS } from '../../i18n/resources'
 
 export type FunnelPath = 'angestellte' | 'rente' | 'ch'
@@ -86,13 +86,8 @@ function makeStyles(t: UiTheme) {
     marginTop: t.space.s4,
     marginBottom: t.space.s2,
   }
-  const mark: TextStyle = {
-    backgroundColor: t.color.funke,
-    color: inkOnFunke(t),
-    paddingHorizontal: t.space.s2,
-    borderRadius: t.radius.s,
-    overflow: 'hidden',
-  }
+  // "Funke ruhig": the key word is set in readable dark lime, no lime box behind it.
+  const mark: TextStyle = { color: t.color.funkeTinte }
   const help: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.m, marginBottom: t.space.s5 }
   const cardLabel: TextStyle = {
     fontFamily: t.font.mono,

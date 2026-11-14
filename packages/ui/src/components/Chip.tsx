@@ -1,6 +1,6 @@
 import { Pressable, Text, type ViewStyle, type TextStyle, type StyleProp } from 'react-native'
 import { type ReactNode } from 'react'
-import { inkOnFunke, useTheme } from '../theme/useTheme'
+import { useTheme } from '../theme/useTheme'
 
 export type ChipVariant = 'standard' | 'src' | 'pro'
 
@@ -15,14 +15,15 @@ export interface ChipProps {
 
 export function Chip({ variant = 'standard', active = false, onPress, style, children, testID }: ChipProps) {
   const t = useTheme()
+  // Lime as light, not as a fill: an active chip is soft lime with an ink contour.
   const bg = active
-    ? t.color.funke
+    ? t.color.funkeWeich
     : variant === 'src'
       ? t.color.funkeWeich
       : variant === 'pro'
         ? t.color.nacht
         : t.color.karte
-  const fg = active ? inkOnFunke(t) : variant === 'pro' ? t.color.funke : t.color.tinte
+  const fg = variant === 'pro' && !active ? t.color.funke : t.color.tinte
 
   const container: ViewStyle = {
     alignSelf: 'flex-start',
@@ -33,10 +34,9 @@ export function Chip({ variant = 'standard', active = false, onPress, style, chi
     paddingVertical: 4,
     paddingHorizontal: 14,
     backgroundColor: bg,
-    borderWidth: 2,
-    borderColor: t.color.tinte,
+    borderWidth: t.space.kontur,
+    borderColor: active ? t.color.tinte : variant === 'pro' ? t.color.nacht : t.color.tinte2,
     borderRadius: t.radius.pille,
-    ...t.shadow.hartS,
   }
   const label: TextStyle = { fontSize: t.size.s, fontWeight: t.weight.fett, color: fg }
 
@@ -48,7 +48,7 @@ export function Chip({ variant = 'standard', active = false, onPress, style, chi
       onPress={onPress}
       style={({ pressed }) => [
         container,
-        pressed && { transform: [{ translateX: 2 }, { translateY: 2 }], shadowOpacity: 0, elevation: 0 },
+        pressed && { opacity: 0.7 },
         style,
       ]}
     >

@@ -39,12 +39,14 @@ describe('dark mode readability on lime (funke) surfaces', () => {
 
     expect(getComputedStyle(screen.getByText('Weiter')).color).toBe(DARK_INK_ON_FUNKE_RGB)
     expect(getComputedStyle(screen.getByText('Abbrechen')).color).toBe(DARK_TINTE_RGB)
-    expect(getComputedStyle(screen.getByText('Aktiv')).color).toBe(DARK_INK_ON_FUNKE_RGB)
+    // "Funke ruhig": active chips, options and tabs sit on soft lime (funkeWeich), not on funke —
+    // in dark mode that is a deep olive, so they take the theme's own light ink (≈ 12:1).
+    expect(getComputedStyle(screen.getByText('Aktiv')).color).toBe(DARK_TINTE_RGB)
     expect(getComputedStyle(screen.getByText('Inaktiv')).color).toBe(DARK_TINTE_RGB)
-    expect(getComputedStyle(screen.getByText('Ja')).color).toBe(DARK_INK_ON_FUNKE_RGB)
+    expect(getComputedStyle(screen.getByText('Ja')).color).toBe(DARK_TINTE_RGB)
     expect(getComputedStyle(screen.getByText('Nein')).color).toBe(DARK_TINTE_RGB)
     expect(getComputedStyle(screen.getByText('+80 €')).color).toBe(DARK_INK_ON_FUNKE_RGB)
-    expect(getComputedStyle(screen.getByText('Cockpit')).color).toBe(DARK_INK_ON_FUNKE_RGB)
+    expect(getComputedStyle(screen.getByText('Cockpit')).color).toBe(DARK_TINTE_RGB)
     expect(getComputedStyle(screen.getByText('Profil')).color).toBe(DARK_TINTE2_RGB)
   })
 

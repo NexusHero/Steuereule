@@ -2,7 +2,7 @@ import { useRef, useState, type ReactNode } from 'react'
 import { Animated, Easing, Pressable, Text, View, type LayoutChangeEvent, type StyleProp, type TextStyle, type ViewStyle } from 'react-native'
 import { theme as motionTokens } from '@steuereule/tokens'
 import { hapticSelection } from '../lib/haptics'
-import { inkOnFunke, useTheme } from '../theme/useTheme'
+import { useTheme } from '../theme/useTheme'
 import { useReducedMotion } from '../motion/useReducedMotion'
 
 export const TAB_ICON_PATHS = {
@@ -16,7 +16,7 @@ export const TAB_ICON_PATHS = {
 
 const TAB_MIN_HEIGHT = 52
 const BAR_PADDING = 6
-const BAR_BORDER = 2
+const BAR_BORDER = 1.5
 
 export const TAB_BAR_HEIGHT = TAB_MIN_HEIGHT + 2 * BAR_PADDING + 2 * BAR_BORDER
 
@@ -142,19 +142,17 @@ function makeStyles(t: ReturnType<typeof useTheme>) {
     gap: 2,
     backgroundColor: t.color.karte,
     borderWidth: BAR_BORDER,
-    borderColor: t.color.tinte,
+    borderColor: t.color.linieWeich,
     borderRadius: t.radius.pille,
     padding: BAR_PADDING,
-    ...t.shadow.hart,
   }
   const pill: ViewStyle = {
     position: 'absolute',
     top: BAR_PADDING,
     left: BAR_PADDING,
     zIndex: 0,
-    backgroundColor: t.color.funke,
-    borderWidth: 1.5,
-    borderColor: t.color.tinte,
+    // Lime as light: a soft lime pill behind the active tab, no contour.
+    backgroundColor: t.color.funkeWeich,
     borderRadius: t.radius.pille,
   }
   const tab: ViewStyle = {
@@ -169,9 +167,7 @@ function makeStyles(t: ReturnType<typeof useTheme>) {
     borderRadius: t.radius.pille,
   }
   const tabActiveFallback: ViewStyle = {
-    backgroundColor: t.color.funke,
-    borderWidth: 1.5,
-    borderColor: t.color.tinte,
+    backgroundColor: t.color.funkeWeich,
   }
   const label: TextStyle = {
     fontFamily: t.font.text,
@@ -179,7 +175,7 @@ function makeStyles(t: ReturnType<typeof useTheme>) {
     fontWeight: t.weight.fett,
     color: t.color.tinte2,
   }
-  const labelActive: TextStyle = { color: inkOnFunke(t) }
+  const labelActive: TextStyle = { color: t.color.tinte }
 
   return { bar, inner, pill, tab, tabActiveFallback, label, labelActive }
 }

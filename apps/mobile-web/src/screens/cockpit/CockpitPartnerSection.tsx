@@ -125,11 +125,11 @@ function makeStyles(t: UiTheme) {
   }
   const tileWrapNarrow: ViewStyle = { width: '100%' }
   const tileWrapWide: ViewStyle = { flexBasis: 260, flexGrow: 1 }
+  // Tiles sit flat on the ground — the screen's one hard shadow belongs to its primary action.
   const card: ViewStyle = {
     marginBottom: 0,
     borderWidth: t.space.kontur,
-    borderColor: t.color.tinte,
-    ...t.shadow.hart,
+    borderColor: t.color.linieWeich,
   }
   const title: TextStyle = {
     fontFamily: t.font.display,
