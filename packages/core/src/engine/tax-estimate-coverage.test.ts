@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { taxEstimateEmployee, taxEstimateCrossBorder, taxEstimatePensioner, STATUTORY_PENSIONER_HEALTH_SHARE } from './tax-estimate'
+import { homeOfficeAllowance, taxEstimateEmployee, taxEstimateCrossBorder, taxEstimatePensioner, STATUTORY_PENSIONER_HEALTH_SHARE } from './tax-estimate'
 import { estimateMarriedCouple } from './married-estimate'
 import { incomeTax, progressionClauseTax } from '../math/tarif'
 
@@ -131,5 +131,44 @@ describe('taxEstimatePensioner (Anlage R, UX review K3)', () => {
 
   it('declines years without a tariff', () => {
     expect(taxEstimatePensioner({ ...PENSIONER, year: 2019 }).kind).toBe('nicht-moeglich')
+  })
+})
+
+describe('edge branches of the new estimate paths', () => {
+  const CROSS_BORDER = {
+    year: 2025,
+    wageEur: 90000,
+    withholdingTaxEur: 4000,
+    retirementProvisionEur: 9000,
+    otherProvisionEur: 1500,
+    healthInsuranceEur: 3000,
+    commuterAllowance: 0,
+    donations: 0,
+  }
+
+  it('declines a Grenzgänger year without a tariff', () => {
+    expect(taxEstimateCrossBorder({ ...CROSS_BORDER, year: 2019 }).kind).toBe('nicht-moeglich')
+  })
+
+  it('counts nothing withheld as church tax for a Grenzgänger and a pensioner', () => {
+    const church = { membership: { kind: 'member' as const, church: 'EV' as const }, state: 'BY' as const, postalCode: '80331', children: 0 }
+    const crossBorder = taxEstimateCrossBorder({ ...CROSS_BORDER, churchTax: church as never })
+    const pensioner = taxEstimatePensioner({ year: 2025, grossPensionEur: 40000, taxablePensionEur: 33000, donations: 0, selfPaidKvPv: 0, churchTax: church as never })
+    for (const estimate of [crossBorder, pensioner]) {
+      if (estimate.kind !== 'spanne') throw new Error('expected a range')
+      if (estimate.churchTax?.kind === 'spanne') expect(estimate.churchTax.withheld).toBe(0)
+    }
+  })
+
+  it('deducts a pensioner\'s medical costs above the reasonable burden without a children bracket', () => {
+    const base = { year: 2025, grossPensionEur: 40000, taxablePensionEur: 33000, donations: 0, selfPaidKvPv: 0 }
+    const without = taxEstimatePensioner(base)
+    const withCosts = taxEstimatePensioner({ ...base, healthExpensesEur: 6000 })
+    if (without.kind !== 'spanne' || withCosts.kind !== 'spanne') throw new Error('expected ranges')
+    expect(withCosts.taxableIncome.to).toBeLessThan(without.taxableIncome.to)
+  })
+
+  it('gives no home-office allowance for a year without parameters', () => {
+    expect(homeOfficeAllowance(2019, 80)).toBe(0)
   })
 })
