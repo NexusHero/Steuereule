@@ -247,7 +247,7 @@ function makeStyles(t: UiTheme) {
     paddingVertical: t.space.s2,
     marginBottom: t.space.s4,
   }
-  const runningYearText: TextStyle = { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.tinte }
+  const runningYearText: TextStyle = { ...t.type.small, color: t.color.tinte }
 
   return {
     runningYearNotice,

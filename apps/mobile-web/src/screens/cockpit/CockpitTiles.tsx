@@ -251,7 +251,7 @@ function makeStyles(t: UiTheme) {
     ...t.type.cardTitle,
     color: t.color.tinte,
   }
-  const submissionHint: TextStyle = { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.tinte2, marginTop: t.space.s1 }
+  const submissionHint: TextStyle = { ...t.type.small, color: t.color.tinte2, marginTop: t.space.s1 }
   const tileWrapNarrow: ViewStyle = {
     width: '100%',
   }

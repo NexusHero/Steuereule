@@ -69,20 +69,16 @@ export function makeStyles(t: UiTheme) {
     fontVariant: ['tabular-nums'],
   }
   /** The refund headline's label, in normal case so the label and figure read as one sentence. */
-  const refundLabel: TextStyle = { ...heroLabel, textTransform: 'none', letterSpacing: 0, fontSize: t.size.s }
+  const refundLabel: TextStyle = { ...heroLabel, ...t.type.metaLarge, textTransform: 'none', letterSpacing: 0 }
   /** The income once the refund leads the hero (UX review H1): still visible, no longer the headline. */
   const heroValueSmall: TextStyle = {
-    fontFamily: t.font.display,
-    fontWeight: t.weight.schwer,
-    fontSize: t.size.l,
+    ...t.type.cardTitle,
     color: t.color.nachtText,
     fontVariant: ['tabular-nums'],
   }
   const effectLine: TextStyle = {
+    ...t.type.label,
     color: t.color.funkeHell,
-    fontFamily: t.font.text,
-    fontWeight: t.weight.fett,
-    fontSize: t.size.s,
     marginTop: t.space.s2,
   }
   const heroDivider: ViewStyle = { height: 1, backgroundColor: t.color.nachtText, opacity: 0.2, marginVertical: t.space.s3 }
@@ -164,7 +160,7 @@ export function makeStyles(t: UiTheme) {
     paddingVertical: t.space.s2,
     marginBottom: t.space.s3,
   }
-  const runningYearText: TextStyle = { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.tinte }
+  const runningYearText: TextStyle = { ...t.type.small, color: t.color.tinte }
 
   return { runningYearNotice, runningYearText, screen, wideScreen, appbar, appbarTitleReihe: appbarTitleRow, appbarTitle, jahrReihe: yearRow, uebernahmeZeile: takeoverRow, uebernahmeZeileText: takeoverRowText, heading, help, cta, secondaryCta, berater, emptyBlock, heroLabel, refundLabel, heroValue, heroValueSmall, effectLine, heroDivider, openItems, offenePosten: openItemCount, refundLater, gatedHeading, gatedBody, euleBannerCard, euleBannerRow, euleBannerCopy, euleBannerTitle, euleBannerEffect, euleBannerProvenance, euleBannerDismissBtn, euleBannerDismissText }
 }
