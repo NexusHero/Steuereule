@@ -6,6 +6,8 @@ import {
   evaluateAdvisorTurn,
   formatEuro,
   LEGAL_STATUS_DATE,
+  conflictingAlternatives,
+  withoutAlternativesOf,
   type AdvisorChatMessageView,
   type AdvisorFeedbackRating,
   type AdvisorFeedbackReason,
@@ -235,6 +237,9 @@ export function OwlModeScreenView({
   const displayedMessages = initialMessages ?? localMessages
   const activeCard = cards[activeIndex]
   const pendingDrafts = extractPendingDrafts(displayedMessages)
+  // Alternatives (two ways to fill one thing) are never applied together: the user picks one (K1).
+  const alternativeGroups = conflictingAlternatives(pendingDrafts)
+  const alternativeIds = new Set(alternativeGroups.flatMap((group) => group.map((d) => d.actionId)))
   const viewMode = bridge ? bridge.owlViewMode : localViewMode
   // With the bridge every conversation has its own answer (#503): the open one is busy only while
   // its own answer is written, whatever is running elsewhere.
@@ -388,7 +393,13 @@ export function OwlModeScreenView({
       const ok = await bridge.applySingleAction(actionId)
       if (!ok) return
     }
-    setLocalMessages((prev) => prev.map((m) => updateActionStatusInMessage(m, actionId, 'applied')))
+    // Applying one alternative drops the others; the server marks them superseded the same way.
+    const chosen = pendingDrafts.find((d) => d.actionId === actionId)
+    const kept = new Set(chosen ? withoutAlternativesOf(pendingDrafts, chosen).map((d) => d.actionId) : [])
+    const dropped = chosen ? pendingDrafts.filter((d) => d.actionId !== actionId && !kept.has(d.actionId)) : []
+    setLocalMessages((prev) =>
+      prev.map((m) => dropped.reduce((msg, d) => updateActionStatusInMessage(msg, d.actionId, 'superseded'), updateActionStatusInMessage(m, actionId, 'applied'))),
+    )
   }
 
   async function handleUndoAction(actionId: string) {
@@ -404,7 +415,7 @@ export function OwlModeScreenView({
   }
 
   async function handleBatchApply(acceptCurrentValues = false) {
-    if (pendingDrafts.length === 0) return
+    if (pendingDrafts.length === 0 || alternativeGroups.length > 0) return
     if (bridge) {
       const acknowledgedConflict = acceptCurrentValues ? (bridge.staleConflict ?? undefined) : undefined
       const ok = await bridge.applyAllPending(pendingDrafts, { stay: true, ...(acknowledgedConflict ? { acknowledgedConflict } : {}) })
@@ -602,13 +613,19 @@ export function OwlModeScreenView({
               {pendingDrafts.map((draft) => {
                 const isReceipt = bridge?.receiptLinkedActionIds.has(draft.actionId) ?? false
                 const isZeroPauschbetrag =
-                  draft.deltaEur === 0 && (draft.sourceId.startsWith('estg-9') || draft.sourceId === 'estg-4-5-6c')
+                  draft.effect !== 'not-computable' &&
+                  draft.deltaEur === 0 &&
+                  (draft.sourceId.startsWith('estg-9') || draft.sourceId === 'estg-4-5-6c')
                 return (
                   <View key={draft.actionId} style={styles.draftRowCard} testID={`draft-card-${draft.actionId}`}>
                     <View style={styles.draftTopRow}>
                       <Text style={styles.draftTitle}>{draft.label}</Text>
                       {draft.deltaEur > 0 ? (
                         <Text style={styles.draftDelta}>{`+${formatEuro(draft.deltaEur)}`}</Text>
+                      ) : draft.effect === 'not-computable' ? (
+                        <Text style={styles.draftMutedBadge} testID={`draft-effect-open-${draft.actionId}`}>
+                          {tr('advisor.chat.effectOpen', 'Wirkung noch offen')}
+                        </Text>
                       ) : isZeroPauschbetrag ? (
                         <Text style={styles.draftMutedBadge}>
                           {tr('eule.workspace.pauschbetragBadge', 'Im Pauschbetrag (1.230 €)')}
@@ -623,6 +640,16 @@ export function OwlModeScreenView({
                     <Text style={styles.draftDiff}>
                       {`${draft.previousValue ?? tr('advisor.chat.notRecorded', 'Nicht erfasst')} → ${draft.newValue}`}
                     </Text>
+                    {alternativeIds.has(draft.actionId) ? (
+                      <Button
+                        variant="leise"
+                        onPress={() => void handleApplyAction(draft.actionId)}
+                        disabled={bridge?.batchApplying ?? false}
+                        testID={`draft-choose-${draft.actionId}`}
+                      >
+                        {tr('eule.workspace.chooseAlternative', 'Diesen Weg übernehmen')}
+                      </Button>
+                    ) : null}
                     <Pressable
                       accessibilityRole="button"
                       onPress={() => handleInspectMask(draft.screen, draft.field)}
@@ -637,11 +664,16 @@ export function OwlModeScreenView({
                 )
               })}
             </View>
+            {alternativeGroups.length > 0 ? (
+              <Text style={styles.help} testID="eule-batch-alternatives-hint">
+                {tr('eule.workspace.alternativesHint', 'Wähle einen der Wege — beide zusammen geht nicht.')}
+              </Text>
+            ) : null}
             <Button
               // Quiet on purpose: the conversation is the stage, the same drafts have their own button there.
               variant="leise"
               onPress={() => void handleBatchApply(false)}
-              disabled={bridge?.batchApplying ?? false}
+              disabled={(bridge?.batchApplying ?? false) || alternativeGroups.length > 0}
               testID="eule-batch-apply-btn"
             >
               {bridge?.batchApplying

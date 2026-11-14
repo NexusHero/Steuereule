@@ -243,6 +243,8 @@ export interface AdvisorActionProposalDto {
   /** Whose fields the draft writes in a joint return (ADR-0073): B is the spouse whose figures the user records. Absent means the user. */
   person?: AdvisorActionProposalDtoPerson;
   companionFields?: AdvisorActionProposalDtoCompanionFields;
+  /** Drafts sharing this group are alternatives (the two paths of a comparison): apply one, never several together. */
+  alternativeGroup?: string;
   /** Raw values of the companion fields when the draft was created (stale-check baseline). */
   companionExpectedValues?: AdvisorActionProposalDtoCompanionExpectedValues;
   /** When the draft was last applied. */
@@ -541,6 +543,8 @@ export interface AdvisorMaxPathProposalDto {
   /** Whose fields the draft writes in a joint return (ADR-0073): B is the spouse whose figures the user records. Absent means the user. */
   person?: AdvisorMaxPathProposalDtoPerson;
   companionFields?: AdvisorMaxPathProposalDtoCompanionFields;
+  /** Drafts sharing this group are alternatives (the two paths of a comparison): apply one, never several together. */
+  alternativeGroup?: string;
   /** Raw values of the companion fields when the draft was created (stale-check baseline). */
   companionExpectedValues?: AdvisorMaxPathProposalDtoCompanionExpectedValues;
   /** When the draft was last applied. */

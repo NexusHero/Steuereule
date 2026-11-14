@@ -8,6 +8,7 @@ import {
   ADVISOR_LEGAL_SOURCES,
   buildAdvisorHistory,
   evaluateAdvisorTurn,
+  withPreviewedEffects,
   isOfferedChoice,
   applyInterviewChanges,
   provenanceKey,
@@ -660,7 +661,9 @@ export class AdvisorService {
           actionIdFactory,
         })
 
-        const enrichedMeta = await this.drafts.enrichDraftsWithRawBaseline(userId, taxYear, fallback.meta)
+        // The rules' drafts name the effect the real estimate computes, or none (K3).
+        const previewed = await withPreviewedEffects(fallback.meta, this.previewEffectFor(userId, taxYear))
+        const enrichedMeta = await this.drafts.enrichDraftsWithRawBaseline(userId, taxYear, previewed)
         await this.drafts.supersedePendingDraftsForSameTargets(userId, taxYear, this.drafts.collectPendingTargetKeys(enrichedMeta))
 
         const status: AdvisorStreamEvent = { event: 'status', data: { text: 'Eule prüft deine Akte & Paragraphen …' } }

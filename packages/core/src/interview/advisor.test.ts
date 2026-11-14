@@ -121,15 +121,50 @@ describe('Advisor Engine ("Deine Eule")', () => {
     expect(more.deltaEur).toBeGreaterThan(some.deltaEur)
   })
 
-  it('emits a Two-Paths comparison for Homeoffice vs. Arbeitszimmer', () => {
-    const turn = evaluateAdvisorTurn({
-      message: 'Lohnt sich bei mir die Homeoffice-Pauschale oder das Arbeitszimmer?',
-      digest: sampleDigest,
+  describe('home office: drafts only what the user stated (K1)', () => {
+    const digest2026: CaseDigest = { ...sampleDigest, taxYear: 2026 }
+
+    it('drafts exactly the stated 80 days on the commute mask and names the computation', () => {
+      const turn = evaluateAdvisorTurn({ message: 'Ich war 2026 an 80 Tagen im Homeoffice.', digest: digest2026, actionIdFactory: () => 'act-ho' })
+      expect(turn.meta.twoPaths).toBeUndefined()
+      expect(turn.meta.actions).toBeUndefined()
+      expect(turn.meta.action?.screen).toBe('commute')
+      expect(turn.meta.action?.field).toBe('homeOfficeDays')
+      expect(turn.meta.action?.newValue).toBe('80')
+      expect(turn.replyText).toContain('80 Tage × 6 € = 480 € Homeoffice-Pauschale')
+      expect(turn.replyText).toContain('höchstens 210 Tage')
+      // No figure of its own (K3): the API fills it from the real estimate, or it stays open.
+      expect(turn.meta.action?.effect).toBe('not-computable')
+      expect(turn.meta.action?.deltaEur).toBe(0)
+      // 80 home-office days are 80 days less of commuting.
+      expect(turn.replyText).toContain('Entfernungspauschale')
     })
-    expect(turn.meta.twoPaths).toBeDefined()
-    expect(turn.meta.twoPaths?.safePath.newValue).toBe('1–2 Tage pro Woche')
-    expect(turn.meta.twoPaths?.maxPath.newValue).toBe('Fast immer')
-    expect(turn.meta.twoPaths?.maxPath.evidenceHint).toContain('Nachweis-Hinweis')
+
+    it.each(['Ich war an 80 Homeoffice-Tagen zu Hause.', 'Homeoffice: 80 Tage', 'Ungefähr 80 Tage war ich im Homeoffice.'])('reads the days from "%s"', (message) => {
+      expect(evaluateAdvisorTurn({ message, digest: digest2026 }).meta.action?.newValue).toBe('80')
+    })
+
+    it('says in one sentence when the Arbeitnehmer-Pauschbetrag already covers the days', () => {
+      const noCommute: CaseDigest = { ...digest2026, commuteAndWorkdays: { ...digest2026.commuteAndWorkdays, distanceKm: 0 } }
+      const turn = evaluateAdvisorTurn({ message: 'Ich war an 80 Tagen im Homeoffice.', digest: noCommute })
+      expect(turn.replyText).toContain('480 €')
+      expect(turn.replyText).toContain('Arbeitnehmer-Pauschbetrag von 1.230 €')
+    })
+
+    it('caps more days than the law allows at the year maximum, never above what was stated', () => {
+      const turn = evaluateAdvisorTurn({ message: 'Ich war an 250 Tagen im Homeoffice.', digest: digest2026 })
+      expect(turn.meta.action?.newValue).toBe('210')
+      expect(turn.replyText).toContain('210 Tage × 6 € = 1.260 €')
+    })
+
+    it('drafts nothing without a day count and shows the maximum only as information', () => {
+      const turn = evaluateAdvisorTurn({ message: 'Lohnt sich bei mir die Homeoffice-Pauschale oder das Arbeitszimmer?', digest: sampleDigest })
+      expect(turn.meta.twoPaths).toBeUndefined()
+      expect(turn.meta.action).toBeUndefined()
+      expect(turn.meta.actions).toBeUndefined()
+      expect(turn.replyText).toContain('gilt nur, wenn du wirklich an so vielen Tagen zu Hause gearbeitet hast')
+      for (const choice of turn.meta.choices ?? []) expect(choice).not.toMatch(/210|fast immer|maximal/i)
+    })
   })
 
   it('proposes an ActionCard for Spenden when amount is given', () => {

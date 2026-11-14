@@ -303,19 +303,69 @@ describe('AdvisorService (In-App Steuerberater Agent "Deine Eule")', () => {
     })
   })
 
-  it('supports Two-Paths comparison and applying either path', async () => {
-    const chatRes = await advisorService.sendMessage(USER, YEAR, {
-      message: 'Homeoffice vs. Arbeitszimmer prüfen',
-    })
-    const twoPaths = chatRes.assistantMessage.meta?.twoPaths
-    expect(twoPaths).toBeDefined()
+  it('drafts exactly the stated home-office days on the commute mask, and applies them there (K1)', async () => {
+    const chatRes = await advisorService.sendMessage(USER, YEAR, { message: 'Ich war 2025 an 80 Tagen im Homeoffice.' })
+    const meta = chatRes.assistantMessage.meta
+    expect(meta?.twoPaths).toBeUndefined()
+    expect(meta?.action).toMatchObject({ screen: 'commute', field: 'homeOfficeDays', newValue: '80' })
+    expect(chatRes.assistantMessage.content).toContain('80 Tage × 6 € = 480 € Homeoffice-Pauschale')
 
-    const applyRes = await advisorService.applyAction(USER, YEAR, twoPaths!.maxPath.actionId)
+    const applyRes = await advisorService.applyAction(USER, YEAR, meta!.action!.actionId)
     expect(applyRes.action.status).toBe('applied')
-    expect(applyRes.action.newValue).toBe('Fast immer')
+    expect((await commuteRepo.findForUserAndYear(USER, YEAR))?.homeOfficeDays).toBe(80)
+  })
 
-    const rows = await interviewRepo.findAllForUserAndYear(USER, YEAR)
-    expect(rows.find((r) => r.questionId === 'homeoffice')?.value).toBe('Fast immer')
+  describe('alternatives exclude each other (K1)', () => {
+    const path = (actionId: string, field: string, newValue: string, alternativeGroup?: string) => ({
+      actionId,
+      status: 'pending' as const,
+      screen: 'interview' as const,
+      field,
+      instance: null,
+      ...(alternativeGroup ? { alternativeGroup } : {}),
+      label: actionId,
+      previousValue: null,
+      expectedPreviousValue: null,
+      newValue,
+      beforeRefundEur: 0,
+      afterRefundEur: 0,
+      deltaEur: 0,
+      reason: '',
+      sourceId: 'estg-4-5-6c' as const,
+    })
+    const seedTwoPaths = (group: string | undefined) =>
+      advisorRepo.createMessage({
+        userId: USER,
+        taxYear: YEAR,
+        role: 'assistant',
+        content: 'Zwei Wege',
+        meta: {
+          twoPaths: {
+            title: 'Zwei Wege',
+            sourceId: 'estg-4-5-6c',
+            safePath: path('two-safe', 'spenden-betrag', '100', group),
+            maxPath: { ...path('two-max', 'riester-betrag', '200', group), evidenceHint: 'Nachweis' },
+          },
+        },
+      })
+
+    it('refuses to apply two paths of one comparison together', async () => {
+      await seedTwoPaths('two')
+      await expect(
+        advisorService.applyBatch(USER, YEAR, { drafts: [{ actionId: 'two-safe' }, { actionId: 'two-max' }] }),
+      ).rejects.toMatchObject({ code: 'ADVISOR_BATCH_ALTERNATIVE_CONFLICT' })
+      const rows = await interviewRepo.findAllForUserAndYear(USER, YEAR)
+      expect(rows.find((r) => r.questionId === 'spenden-betrag')).toBeUndefined()
+    })
+
+    it.each([['with a group', 'two'], ['stored before groups existed', undefined]])('drops the other path once one is applied (%s)', async (_label, group) => {
+      const message = await seedTwoPaths(group)
+      await advisorService.applyAction(USER, YEAR, 'two-safe')
+      const session = await advisorService.getSession(USER, YEAR)
+      const stored = session.messages.find((m) => m.id === message.id)
+      expect(stored?.meta?.twoPaths?.safePath.status).toBe('applied')
+      expect(stored?.meta?.twoPaths?.maxPath.status).toBe('superseded')
+    })
   })
 
   it('enforces the daily quota of 50 messages per user', async () => {

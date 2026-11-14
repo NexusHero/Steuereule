@@ -8249,6 +8249,11 @@
               "type": "string"
             }
           },
+          "alternativeGroup": {
+            "type": "string",
+            "example": "act-1730970000",
+            "description": "Drafts sharing this group are alternatives (the two paths of a comparison): apply one, never several together."
+          },
           "companionExpectedValues": {
             "type": "object",
             "additionalProperties": {
@@ -8710,6 +8715,11 @@
             "additionalProperties": {
               "type": "string"
             }
+          },
+          "alternativeGroup": {
+            "type": "string",
+            "example": "act-1730970000",
+            "description": "Drafts sharing this group are alternatives (the two paths of a comparison): apply one, never several together."
           },
           "companionExpectedValues": {
             "type": "object",

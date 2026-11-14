@@ -1,5 +1,5 @@
 // Drafts as the owl screen reads them out of the conversation and marks them after a click.
-import { type AdvisorActionProposal, type AdvisorChatMessageView } from '@steuereule/core'
+import { withTwoPathsGroup, type AdvisorActionProposal, type AdvisorChatMessageView } from '@steuereule/core'
 
 export function extractPendingDrafts(messages: readonly AdvisorChatMessageView[]): readonly AdvisorActionProposal[] {
   const seen = new Set<string>()
@@ -10,7 +10,9 @@ export function extractPendingDrafts(messages: readonly AdvisorChatMessageView[]
     // Several drafts in one answer (ADR-0066). A scanned certificate keeps its own review flow.
     if (msg.meta?.actions && !msg.meta.lstbScan) candidates.push(...msg.meta.actions)
     if (msg.meta?.twoPaths) {
-      candidates.push(msg.meta.twoPaths.safePath, msg.meta.twoPaths.maxPath)
+      // The two paths exclude each other, also in a comparison stored before groups existed (K1).
+      const grouped = withTwoPathsGroup(msg.meta.twoPaths)
+      candidates.push(grouped.safePath, grouped.maxPath)
     }
     for (const candidate of candidates) {
       if (candidate.status === 'pending' && !seen.has(candidate.actionId)) {

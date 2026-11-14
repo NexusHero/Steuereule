@@ -301,7 +301,9 @@ describe('EulenModusScreen', () => {
 
       // The sheet steps aside so the answer can be read.
       await waitFor(() => expect(screen.queryByTestId('eule-workbench-sheet')).toBeNull())
-      expect(await screen.findByTestId('advisor-two-paths-card')).toBeDefined()
+      // The card names 50 days: the owl drafts exactly those, no second, larger path (K1).
+      expect((await screen.findByTestId('advisor-action-card')).textContent).toContain('50')
+      expect(screen.queryByTestId('advisor-two-paths-card')).toBeNull()
     })
 
     it('conducts Mandanten-Anamnese with clickable follow-up pills and supports 1-click Apply and 1-click Undo', async () => {
