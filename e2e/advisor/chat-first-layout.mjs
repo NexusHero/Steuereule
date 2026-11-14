@@ -589,6 +589,8 @@ async function main() {
     await see(page, 'advisor-situation-suggestion-taken', 'Row S')
     if ((await byId(page, 'advisor-question').count()) !== 2) fail('Row S: both questions of the round should be shown')
     if (!(await textOf(page, 'advisor-question-round')).includes('Empfohlen')) fail('Row S: the owl’s pick should be marked')
+    // A decision shows why the owl recommends it; a fact is asked without a recommendation.
+    if ((await byId(page, 'advisor-question-reason').count()) !== 1 || !(await textOf(page, 'advisor-question-reason')).includes('Sie senken die Steuer.')) fail('Row S: the decision should say why the owl recommends it')
     if (!(await byId(page, 'advisor-question-submit').isDisabled())) fail('Row S: a round with open questions must not be sendable')
     await byId(page, 'advisor-question-take-recommended').click()
     await byId(page, 'advisor-question-option').nth(3).click()

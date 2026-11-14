@@ -94,6 +94,34 @@ async function main() {
     await until(async () => (await lstb()).bruttoarbeitslohn?.value, 60_000, 'confirming the overwrite must store the new gross wage', 20_000)
     console.log(`[${TAG}] ✅ lstb-overwrite-conflict-modal — confirm replaces it with 60.000 €`)
 
+    // The same certificate once more, as a further one: refused as already recorded (fe5baaf3).
+    await openLstb()
+    await scan(pdf('lstb-2025-neu-nochmal.pdf', syntheticLstbLines({ year: YEAR, gross: 60_000, wageTax: 11_000 })))
+    await page.locator('[data-testid="lstb-scan-draft-banner"]').waitFor({ state: 'visible', timeout: 60_000 })
+    await confirmAllFields()
+    await page.locator('[data-testid="lstb-scan-apply"]').click()
+    await page.locator('[data-testid="lstb-overwrite-conflict-modal"]').waitFor({ state: 'visible', timeout: 15_000 })
+    await page.locator('[data-testid="lstb-overwrite-add"]').click()
+    await page.locator('[data-testid="lstb-same-certificate"]').waitFor({ state: 'visible', timeout: 15_000 })
+    if ((await lstb()).bruttoarbeitslohn?.value !== 60_000) fail('the same certificate must not be added twice')
+    await page.locator('[data-testid="lstb-overwrite-cancel"]').click()
+    console.log(`[${TAG}] ✅ lstb-same-certificate — the same certificate is not added twice`)
+
+    // A further certificate whose social insurance is unreadable (ADR-0083): gross and wage tax add up,
+    // the social insurance sum stands.
+    const socialBefore = (await lstb()).sozialversicherung?.value
+    await openLstb()
+    const withoutSocial = syntheticLstbLines({ year: YEAR, gross: 900, wageTax: 300 }).filter((line) => !/^(22a|23a|25\.|26\.|27\.)/.test(line))
+    await scan(pdf('lstb-2025-nachzahlung.pdf', withoutSocial))
+    await page.locator('[data-testid="lstb-scan-sv-offen"]').waitFor({ state: 'visible', timeout: 60_000 })
+    await confirmAllFields()
+    await page.locator('[data-testid="lstb-scan-apply"]').click()
+    await page.locator('[data-testid="lstb-overwrite-conflict-modal"]').waitFor({ state: 'visible', timeout: 15_000 })
+    await page.locator('[data-testid="lstb-overwrite-add"]').click()
+    await until(async () => (await lstb()).bruttoarbeitslohn?.value, 60_900, 'adding a further certificate must add the gross wage', 20_000)
+    if ((await lstb()).sozialversicherung?.value !== socialBefore) fail('an unreadable social insurance must leave the recorded sum as it is')
+    console.log(`[${TAG}] ✅ lstb-scan-sv-offen / lstb-overwrite-add — a further certificate adds up, the social insurance stands`)
+
     // Year dialog: the document is for 2024 while 2025 is open.
     await openLstb()
     await scan(pdf('lstb-2024.pdf', syntheticLstbLines({ year: 2024 })))
