@@ -38,6 +38,43 @@ function setup(path: CommuteInputs | null = null) {
 
 const EMPLOYED = { job: 'Angestellt', ausland: 'Nein', kinder: 'Nein' }
 
+describe('estimate coverage from the UX review (K3)', () => {
+  it('estimates a single pensioner from the recorded pension instead of declining', async () => {
+    const { interview, pension, service } = setup()
+    interview.seed('u', 2025, { job: 'Rente', ausland: 'Nein', kinder: 'Nein', familienstand: 'Verwitwet' })
+    pension.seed({ userId: 'u', taxYear: 2025, rentenart: 'GesetzlicheRente', jahresbetrag: '18000', rentenbeginnJahr: '2019', alterBeiRentenbeginn: null })
+
+    const status = range(await service.getState('u', 2025))
+
+    expect(status.anrechnung).toBe(0)
+    expect(status.result.to).toBeLessThanOrEqual(0)
+  })
+
+  it('asks for the pension before it estimates a pensioner', async () => {
+    const { interview, service } = setup()
+    interview.seed('u', 2025, { job: 'Rente', ausland: 'Nein', kinder: 'Nein', familienstand: 'Ledig' })
+    expect(await service.getState('u', 2025)).toEqual({ kind: 'offen', missing: ['rente'] })
+  })
+
+  it('keeps the range with wage replacement benefits and prices them under § 32b', async () => {
+    const { lstb, interview, service } = setup()
+    lstb.seed({ userId: 'u', taxYear: 2025, bruttoarbeitslohn: '48000', lohnsteuer: '7100', sozialversicherung: '9850' })
+    interview.seed('u', 2025, EMPLOYED)
+    const without = range(await service.getState('u', 2025))
+    interview.seed('u', 2025, { ...EMPLOYED, lohnersatz: 'Ja', 'lohnersatz-betrag': '3000' })
+    const withBenefits = range(await service.getState('u', 2025))
+
+    expect(withBenefits.result.to).toBeLessThan(without.result.to)
+  })
+
+  it('asks for the amount when wage replacement is answered „Ja“ without one', async () => {
+    const { lstb, interview, service } = setup()
+    lstb.seed({ userId: 'u', taxYear: 2025, bruttoarbeitslohn: '48000', lohnsteuer: '7100', sozialversicherung: '9850' })
+    interview.seed('u', 2025, { ...EMPLOYED, lohnersatz: 'Ja' })
+    expect(await service.getState('u', 2025)).toEqual({ kind: 'offen', missing: ['lohnersatz-betrag'] })
+  })
+})
+
 describe('SteuerschaetzungService', () => {
   it('estimates the refund for a complete Lohnsteuerbescheinigung', async () => {
     const { lstb, interview, service } = setup()

@@ -5,7 +5,7 @@ import { incomeTax as basicTariff } from '../math/tarif'
 import { childTaxAllowance } from '../domains/children'
 import { applyHouseholdTaxReduction } from '../domains/household-services'
 import { calculateExtraordinaryBurden, type BurdenChildrenBracket } from '../domains/extraordinary-burdens'
-import { isSupportedIncomeTaxYear, soliExemptionLimits, solidaritaetszuschlag, splittingTariff } from '../math/tarif'
+import { isSupportedIncomeTaxYear, progressionClauseTax, soliExemptionLimits, solidaritaetszuschlag, splittingTariff } from '../math/tarif'
 import { getTaxYearParameters } from '../math/tax-parameters'
 
 /** One spouse's wage income, as either the German Lohnsteuerbescheinigung or the Swiss Anlage N-Gre gives it. */
@@ -75,6 +75,8 @@ export interface MarriedEstimateInput {
   readonly healthExpensesEur?: number | undefined
   /** Optional § 33 Abs. 3 children bracket override when count distinguishes 2 from 3+ elsewhere. */
   readonly childrenBracket?: BurdenChildrenBracket | undefined
+  /** Wage replacement benefits of both spouses under the progression clause (§ 32b EStG). */
+  readonly wageReplacementEur?: number | undefined
 }
 
 export interface SpouseChurchTax {
@@ -187,8 +189,11 @@ export function estimateMarriedCouple(input: MarriedEstimateInput): MarriedEstim
   const zve = { from: taxableIncome(provision.to), to: taxableIncome(provision.from) }
 
   const allowance = input.children * childTaxAllowance(input.year)
-  const withAllowance = (z: number) => splittingTariff(Math.max(0, z - allowance), 0, input.year)
-  const withBenefit = (z: number) => splittingTariff(z, 0, input.year)
+  // § 32b EStG: wage replacement benefits raise the rate on the splitting tariff as for a single person.
+  const progression = Math.max(0, Math.floor(input.wageReplacementEur ?? 0))
+  const tariff = (z: number) => (progression > 0 ? progressionClauseTax(z, progression, input.year, true) : splittingTariff(z, 0, input.year))
+  const withAllowance = (z: number) => tariff(Math.max(0, z - allowance))
+  const withBenefit = (z: number) => tariff(z)
   // Günstigerprüfung: the allowance only wins when it saves more tax than the Kindergeld paid out.
   const childAllowanceUsed = allowance > 0 && withBenefit(zve.to) - withAllowance(zve.to) > input.childBenefit
   const reductionEur = input.householdReductionEur ?? 0

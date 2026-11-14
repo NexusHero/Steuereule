@@ -1,4 +1,4 @@
-import { incomeTax, isSupportedIncomeTaxYear, soliExemptionLimits, solidaritaetszuschlag } from '../math/tarif'
+import { incomeTax, isSupportedIncomeTaxYear, progressionClauseTax, soliExemptionLimits, solidaritaetszuschlag } from '../math/tarif'
 import { getTaxYearParameters } from '../math/tax-parameters'
 import { applyHouseholdTaxReduction } from '../domains/household-services'
 import { calculateExtraordinaryBurden, type BurdenChildrenBracket } from '../domains/extraordinary-burdens'
@@ -76,6 +76,8 @@ export interface EmployeeEstimateInput {
   readonly childrenBracket?: BurdenChildrenBracket | undefined
   /** Kirchensteuer facts; without them the estimate leaves church tax out (as before #450 6F). */
   readonly churchTax?: ChurchTaxInput | undefined
+  /** Wage replacement benefits (Kurzarbeit-, Eltern-, Krankengeld …): tax-free, but under the progression clause (§ 32b EStG). */
+  readonly wageReplacementEur?: number | undefined
 }
 
 /** The EUR lines of the Anlage N-Gre (anlageNGreBetraege) plus what the user pays outside the salary. */
@@ -110,6 +112,48 @@ export interface CrossBorderEstimateInput {
   readonly childrenBracket?: BurdenChildrenBracket | undefined
   /** Kirchensteuer facts; a Grenzgänger CH has no German church tax withheld (`withheld` is ignored). */
   readonly churchTax?: Omit<ChurchTaxInput, 'withheld'> | undefined
+  /** Wage replacement benefits under the progression clause (§ 32b EStG). */
+  readonly wageReplacementEur?: number | undefined
+}
+
+/** What a single pensioner's estimate needs (Anlage R, UX review K3). */
+export interface PensionerEstimateInput {
+  readonly year: number
+  /** Gross annual pension — the statutory health and care insurance of pensioners is measured on it. */
+  readonly grossPensionEur: number
+  /** Taxable share (Besteuerungs- or Ertragsanteil, § 22 Nr. 1 Satz 3 Buchst. a EStG). */
+  readonly taxablePensionEur: number
+  readonly donations: number
+  /** Health and care contributions paid outside the pension (Sonderausgaben catalogue). */
+  readonly selfPaidKvPv: number
+  /** Privately insured: the self-paid contributions replace the statutory share deducted from the pension. */
+  readonly privatelyInsured?: boolean | undefined
+  readonly householdReductionEur?: number | undefined
+  readonly healthExpensesEur?: number | undefined
+  readonly childrenBracket?: BurdenChildrenBracket | undefined
+  /** Church tax is not withheld from a pension: `withheld` counts as 0. */
+  readonly churchTax?: Omit<ChurchTaxInput, 'withheld'> | undefined
+}
+
+/**
+ * Share of the gross pension a statutory insured pensioner pays for health and care insurance (KVdR):
+ * half of 14.6 % plus half the average Zusatzbeitrag, and the full care rate (3.6 % with, 4.2 % without
+ * children, plus later reductions for more children) — roughly 11 to 13 %, all of it deductible
+ * because a pension carries no Krankengeld claim (§ 10 Abs. 1 Nr. 3 EStG).
+ */
+export const STATUTORY_PENSIONER_HEALTH_SHARE: Range = { from: 0.11, to: 0.13 }
+
+/** § 9a Satz 1 Nr. 3 EStG: Werbungskosten-Pauschbetrag for pensions. */
+const PENSION_LUMP_SUM_EUR = 102
+
+/**
+ * The part of the wage replacement benefits the progression clause counts: the benefits less the part
+ * of the Arbeitnehmer-Pauschbetrag the wage did not use up (§ 32b Abs. 2 Satz 1 Nr. 1 Buchst. a EStG).
+ */
+function progressionIncome(benefits: number | undefined, actualWorkExpenses: number, employeeLumpSum: number): number {
+  if (benefits === undefined || !Number.isFinite(benefits) || benefits <= 0) return 0
+  const unusedLumpSum = Math.max(0, employeeLumpSum - actualWorkExpenses)
+  return Math.max(0, Math.floor(benefits) - unusedLumpSum)
 }
 
 /**
@@ -142,6 +186,7 @@ export function taxEstimateEmployee(e: EmployeeEstimateInput): TaxEstimate {
     singleParentChildren: e.singleParentChildren,
     childrenBracket: e.childrenBracket,
     churchTax: e.churchTax,
+    progressionIncomeEur: progressionIncome(e.wageReplacementEur, e.commuterAllowance + e.otherIncomeRelatedExpenses, params.lumpSums.employee),
   })
 }
 
@@ -174,6 +219,36 @@ export function taxEstimateCrossBorder(e: CrossBorderEstimateInput): TaxEstimate
     singleParentChildren: e.singleParentChildren,
     childrenBracket: e.childrenBracket,
     churchTax: e.churchTax ? { ...e.churchTax, withheld: 0 } : undefined,
+    progressionIncomeEur: progressionIncome(e.wageReplacementEur, e.commuterAllowance, params.lumpSums.employee),
+  })
+}
+
+/**
+ * A ranged estimate for a single pensioner (Anlage R): the taxable share less the 102 € lump sum, the
+ * health and care insurance as Vorsorge, and no tax withheld — so the result is 0 or a back payment.
+ */
+export function taxEstimatePensioner(e: PensionerEstimateInput): TaxEstimate {
+  if (!isSupportedIncomeTaxYear(e.year)) return { kind: 'nicht-moeglich', reason: 'jahr-ohne-tarif' }
+  const params = getTaxYearParameters(e.year)
+  const provision = e.privatelyInsured
+    ? { from: e.selfPaidKvPv, to: e.selfPaidKvPv }
+    : {
+        from: Math.round(e.grossPensionEur * STATUTORY_PENSIONER_HEALTH_SHARE.from) + e.selfPaidKvPv,
+        to: Math.round(e.grossPensionEur * STATUTORY_PENSIONER_HEALTH_SHARE.to) + e.selfPaidKvPv,
+      }
+  return estimate({
+    year: e.year,
+    einnahmen: e.taxablePensionEur,
+    werbungskosten: Math.min(PENSION_LUMP_SUM_EUR, e.taxablePensionEur),
+    provision,
+    donations: e.donations,
+    alreadyPaid: (taxAmount) => -taxAmount,
+    anrechnung: 0,
+    specialExpensesLumpSum: params.lumpSums.specialExpensesSingle,
+    householdReductionEur: e.householdReductionEur,
+    healthExpensesEur: e.healthExpensesEur,
+    childrenBracket: e.childrenBracket,
+    churchTax: e.churchTax ? { ...e.churchTax, withheld: 0 } : undefined,
   })
 }
 
@@ -192,6 +267,8 @@ function estimate(input: {
   readonly singleParentChildren?: number | undefined
   readonly childrenBracket?: BurdenChildrenBracket | undefined
   readonly churchTax?: ChurchTaxInput | undefined
+  /** Tax-free income under the progression clause (§ 32b EStG); 0 or absent = the plain tariff. */
+  readonly progressionIncomeEur?: number | undefined
 }): TaxEstimate {
   const params = getTaxYearParameters(input.year)
   const furtherChildren = Math.max(0, Math.floor(input.singleParentChildren ?? 1) - 1)
@@ -220,9 +297,11 @@ function estimate(input: {
     Math.max(0, input.einnahmen - input.werbungskosten - singleParentRelief - provision - specialExpenses - deductibleBurdenEur)
   const taxableIncome = { from: zve(input.provision.to), to: zve(input.provision.from) }
   const reductionEur = input.householdReductionEur ?? 0
+  const progression = input.progressionIncomeEur ?? 0
+  const tariff = (z: number) => (progression > 0 ? progressionClauseTax(z, progression, input.year) : incomeTax(z, input.year))
   const incomeTaxOwed = {
-    from: applyHouseholdTaxReduction(incomeTax(taxableIncome.from, input.year), reductionEur),
-    to: applyHouseholdTaxReduction(incomeTax(taxableIncome.to, input.year), reductionEur),
+    from: applyHouseholdTaxReduction(tariff(taxableIncome.from), reductionEur),
+    to: applyHouseholdTaxReduction(tariff(taxableIncome.to), reductionEur),
   }
   const soliRange = { from: soli(incomeTaxOwed.from, input.year), to: soli(incomeTaxOwed.to, input.year) }
   const churchTax = church ? estimateChurchTax(input.year, church, taxableIncome, reductionEur) : undefined
