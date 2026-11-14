@@ -8,6 +8,7 @@ import {
   useUnlockControllerStatus,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
+import { isRunningTaxYear } from '../../config/taxYear'
 import { makePrivacyStyles } from '../privacy/styles'
 import { ErrorState, LoadingState } from '../shared/ScreenState'
 import { loadPrintout } from './printoutDownload'
@@ -37,6 +38,18 @@ export function PrintoutScreen({ year, payment, onBack, onCompleteDetails, onCom
   const [message, setMessage] = useState<{ kind: 'ok' | 'fehler'; text: string } | null>(null)
   const [loading, setLoading] = useState(false)
 
+  if (isRunningTaxYear(year)) {
+    // K2: the running year has no official forms yet — name when filing opens, up front.
+    return (
+      <ErrorState
+        bp={bp}
+        heading={t('cockpit.laufendesJahr', { jahr: year, abgabeAb: year + 1 })}
+        message={t('ausdruck.laufendesJahr')}
+        retryLabel={t('ausdruck.back')}
+        onRetry={onBack}
+      />
+    )
+  }
   if (status.isPending || check.isPending) return <LoadingState bp={bp} label={t('ausdruck.loading')} />
   if (check.data?.status === 404) {
     return (

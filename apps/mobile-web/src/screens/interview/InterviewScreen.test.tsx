@@ -31,7 +31,9 @@ function makeTestQueryClient() {
   return new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
 }
 
-function renderInterview(opts: { lng?: 'de' | 'en'; onDone?: () => void; queryClient?: QueryClient; taxYear?: number } = {}) {
+function renderInterview(
+  opts: { lng?: 'de' | 'en'; onDone?: () => void; queryClient?: QueryClient; taxYear?: number; onChangeYear?: (year: number) => void } = {},
+) {
   const i18n = createAppI18n(opts.lng ?? 'de')
   const queryClient = opts.queryClient ?? makeTestQueryClient()
   return {
@@ -40,7 +42,11 @@ function renderInterview(opts: { lng?: 'de' | 'en'; onDone?: () => void; queryCl
       <QueryClientProvider client={queryClient}>
         <I18nextProvider i18n={i18n}>
           <ThemeProvider mode="light">
-            <InterviewScreen onDone={opts.onDone ?? (() => {})} taxYear={opts.taxYear ?? TAX_YEAR} />
+            <InterviewScreen
+              onDone={opts.onDone ?? (() => {})}
+              taxYear={opts.taxYear ?? TAX_YEAR}
+              {...(opts.onChangeYear ? { onChangeYear: opts.onChangeYear } : {})}
+            />
           </ThemeProvider>
         </I18nextProvider>
       </QueryClientProvider>,
@@ -80,6 +86,26 @@ describe('InterviewScreen', () => {
     await onJobQuestion()
     expect(screen.getByText(/ 2025\?$/)).toBeTruthy()
     expect(screen.queryByText(/2026/)).toBeNull()
+  })
+
+  it('K2: offers "Anderes Jahr" under the first question and switches the year', async () => {
+    server.use(http.get('*/v1/steuerjahre/2025/interview', () => HttpResponse.json(EMPTY_INTERVIEW_STATE, { status: 200 })))
+    const onChangeYear = vi.fn()
+    renderInterview({ taxYear: 2025, onChangeYear })
+    await onJobQuestion()
+
+    expect(screen.queryByTestId('interview-jahr-2024')).toBeNull()
+    fireEvent.click(screen.getByTestId('interview-anderes-jahr'))
+    expect(screen.queryByTestId('interview-jahr-2025')).toBeNull()
+    expect(screen.getByTestId('interview-jahr-2026').textContent).toBe('2026 · läuft')
+    fireEvent.click(screen.getByTestId('interview-jahr-2024'))
+    expect(onChangeYear).toHaveBeenCalledWith(2024)
+  })
+
+  it('offers no year switch when the host cannot change the year', async () => {
+    renderInterview()
+    await onJobQuestion()
+    expect(screen.queryByTestId('interview-anderes-jahr')).toBeNull()
   })
 
   it('shows an honest loading state while the interview state is fetched', async () => {

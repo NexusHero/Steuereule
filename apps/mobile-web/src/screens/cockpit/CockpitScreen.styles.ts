@@ -177,6 +177,15 @@ export function makeStyles(t: UiTheme) {
     fontSize: t.size.xs,
     color: t.color.tinte2,
   }
+  // K2: the running year's prepare mode — calm, a frame and plain ink, no signal colour.
+  const runningYearNotice: ViewStyle = {
+    borderWidth: 1,
+    borderColor: t.color.tinte2,
+    paddingHorizontal: t.space.s3,
+    paddingVertical: t.space.s2,
+    marginBottom: t.space.s3,
+  }
+  const runningYearText: TextStyle = { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.tinte }
 
-  return { screen, wideScreen, appbar, appbarTitleReihe: appbarTitleRow, appbarTitle, jahrReihe: yearRow, uebernahmeZeile: takeoverRow, uebernahmeZeileText: takeoverRowText, heading, help, cta, secondaryCta, berater, emptyBlock, heroLabel, heroValue, heroValueSmall, effectLine, heroDivider, openItems, offenePosten: openItemCount, refundLater, gatedHeading, gatedBody, euleBannerCard, euleBannerRow, euleBannerCopy, euleBannerTitle, euleBannerEffect, euleBannerProvenance, euleBannerDismissBtn, euleBannerDismissText }
+  return { runningYearNotice, runningYearText, screen, wideScreen, appbar, appbarTitleReihe: appbarTitleRow, appbarTitle, jahrReihe: yearRow, uebernahmeZeile: takeoverRow, uebernahmeZeileText: takeoverRowText, heading, help, cta, secondaryCta, berater, emptyBlock, heroLabel, heroValue, heroValueSmall, effectLine, heroDivider, openItems, offenePosten: openItemCount, refundLater, gatedHeading, gatedBody, euleBannerCard, euleBannerRow, euleBannerCopy, euleBannerTitle, euleBannerEffect, euleBannerProvenance, euleBannerDismissBtn, euleBannerDismissText }
 }

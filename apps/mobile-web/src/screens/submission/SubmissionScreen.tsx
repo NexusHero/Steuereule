@@ -5,7 +5,7 @@ import type { TFunction } from 'i18next'
 import { Button, Card, WIDE_CONTENT_MAX_WIDTH, hapticWarning, useBreakpoint, useTheme, type UiTheme } from '@steuereule/ui'
 import { useLinkControllerGet, useMasterDataControllerRead } from '@steuereule/api-client'
 import type { Answers, Conflict, Notice } from '@steuereule/core'
-import { CURRENT_TAX_YEAR } from '../../config/taxYear'
+import { CURRENT_TAX_YEAR, isRunningTaxYear } from '../../config/taxYear'
 import { APP_NS } from '../../i18n/resources'
 import { useShellState } from '../../navigation/ShellState'
 import { usePlausibility } from '../plausibility/usePlausibility'
@@ -73,7 +73,8 @@ export function SubmissionScreen({
   const step1Passed = !hasConflicts && noticesConfirmed
   const isJointFiling =
     isMarried && linkQuery.data?.status === 200 && linkQuery.data.data.filingType === 'zusammen'
-  const canOpenPrintout = step1Passed && (!isJointFiling || comparisonDone)
+  const isRunningYear = isRunningTaxYear(taxYear)
+  const canOpenPrintout = !isRunningYear && step1Passed && (!isJointFiling || comparisonDone)
 
   const openFindingTile = (target: TileId) => {
     const revisit = tileRevisitFlag(tileById(target), answers)
@@ -87,6 +88,13 @@ export function SubmissionScreen({
       </View>
 
       <Text style={styles.heading}>{tr('abgabe.heading')}</Text>
+
+      {isRunningYear ? (
+        // K2: the running year has no official forms yet — say so before the user works through it.
+        <View style={styles.runningYearNotice} testID="abgabe-laufendes-jahr">
+          <Text style={styles.runningYearText}>{tr('cockpit.laufendesJahr', { jahr: taxYear, abgabeAb: taxYear + 1 })}</Text>
+        </View>
+      ) : null}
 
       <Card variant="default" style={styles.sectionCard}>
         <Text style={styles.sectionTitle}>{tr('abgabe.schrittPlausibilitaet')}</Text>
@@ -247,8 +255,18 @@ function makeStyles(t: UiTheme) {
   const confirmBtn: ViewStyle = { marginTop: t.space.s3 }
   const skipBtn: ViewStyle = { marginTop: t.space.s3 }
   const printBtn: ViewStyle = { marginTop: t.space.s2 }
+  const runningYearNotice: ViewStyle = {
+    borderWidth: 1,
+    borderColor: t.color.tinte2,
+    paddingHorizontal: t.space.s3,
+    paddingVertical: t.space.s2,
+    marginBottom: t.space.s4,
+  }
+  const runningYearText: TextStyle = { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.tinte }
 
   return {
+    runningYearNotice,
+    runningYearText,
     screen,
     wideScreen,
     headerRow,

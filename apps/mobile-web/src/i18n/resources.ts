@@ -421,6 +421,7 @@ export const appResources = {
           heading: 'Für {{jahr}} gibt es die amtlichen Vordrucke noch nicht.',
           message: 'Das Finanzamt veröffentlicht sie erst im Folgejahr. Wähl im Cockpit ein früheres Steuerjahr oder schau später wieder rein.',
         },
+        laufendesJahr: 'Die amtlichen Vordrucke erscheinen erst nach Jahresende. Bis dahin bleibt alles, was du sammelst, gespeichert. Ein abgeschlossenes Jahr kannst du im Cockpit wählen.',
         fehlendTitel: 'Dafür fehlt noch etwas',
         fehlendAngaben: 'Ergänze zuerst deine Angaben für die Steuererklärung.',
         fehlendEhegatte: 'Leg in den Stammdaten fest, ob ihr zusammen oder einzeln veranlagt werdet.',
@@ -684,6 +685,7 @@ export const appResources = {
           invalid: 'Diese Antwort wurde nicht akzeptiert. Wir haben deinen Fortschritt aktualisiert.',
           network: 'Deine Antwort konnte nicht gespeichert werden. Prüf die Verbindung und versuch es noch mal.',
         },
+        anderesJahr: 'Anderes Jahr',
         job: {
           titleBefore: 'Woher kam dein ',
           titleMark: 'Geld',
@@ -1014,7 +1016,10 @@ export const appResources = {
       },
       fristen: {
         warnung: 'Abgabefrist: {{frist}} (noch {{tage}} Tage). Bei Verspätung fällt ein Verspätungszuschlag an — mindestens {{mindestsatz}} pro Monat (§ 152 AO).',
-        abgelaufen: 'Die Abgabefrist {{frist}} ist um {{tage}} Tage überschritten. Verspätungszuschlag (§ 152 AO): mindestens {{mindestsatz}} pro Monat — reich die Erklärung bald ein.',
+        abgelaufen: 'Die Frist {{frist}} ist vorbei. Das Finanzamt kann einen Verspätungszuschlag festsetzen — ab dem {{pflichtAb}} muss es das (mindestens {{mindestsatz}} je angefangenem Monat).',
+        zuschlagPflicht: 'Die Abgabefrist {{frist}} ist um {{tage}} Tage überschritten. Seit dem {{pflichtAb}} muss das Finanzamt einen Verspätungszuschlag festsetzen (§ 152 Abs. 2 AO): mindestens {{mindestsatz}} je angefangenem Monat — reich die Erklärung bald ein.',
+        freiwillig: 'Freiwillige Erklärung: Du hast Zeit bis {{bis}} (31.12. des vierten Folgejahres). Je früher, desto früher kommt die Erstattung.',
+        unklar: 'Ob du abgeben musst, klären wir mit deinen Antworten. Pflicht-Frist wäre der {{frist}}.',
       },
       shared: {
         saveFailed: 'Mindestens eine Eingabe wurde nicht gespeichert. Prüf deine Verbindung und gib sie noch einmal ein – oder tipp noch einmal, um trotzdem weiterzugehen.',
@@ -1317,6 +1322,7 @@ export const appResources = {
         },
         abgabe: {
           titel: 'Abgabe vorbereiten',
+          laufendesJahr: 'Abgeben kannst du ab Januar {{abgabeAb}}.',
         },
         wirkung: {
           mitBereich: 'Deine letzte Änderung · {{bereich}} ({{formular}}): {{wirkung}}',
@@ -1364,6 +1370,8 @@ export const appResources = {
           cta: 'Eule fragen',
         },
         jahrAuswahl: 'Steuerjahr wählen',
+        jahrLaeuft: '{{jahr}} · läuft',
+        laufendesJahr: '{{jahr}} läuft noch. Sammle Belege und Homeoffice-Tage — abgeben kannst du ab Januar {{abgabeAb}}.',
         bestaetigung: {
           hinweis_one: '{{summe}} wartet noch auf deine Bestätigung.',
           hinweis_other: '{{summe}} warten noch auf deine Bestätigung.',
@@ -2499,6 +2507,7 @@ export const appResources = {
           heading: 'The official forms for {{jahr}} are not available yet.',
           message: 'The tax office publishes them in the following year. Pick an earlier tax year in the cockpit or check back later.',
         },
+        laufendesJahr: 'The official forms appear only after the year ends. Until then everything you collect stays saved. You can pick a completed year in the cockpit.',
         fehlendTitel: 'Something is still missing',
         fehlendAngaben: 'Please complete your details for the tax return first.',
         fehlendEhegatte: 'Choose in your personal details whether you file jointly or separately.',
@@ -2762,6 +2771,7 @@ export const appResources = {
           invalid: "That answer wasn't accepted. We've refreshed your progress.",
           network: "Your answer couldn't be saved. Check your connection and try again.",
         },
+        anderesJahr: 'Other year',
         job: {
           titleBefore: 'Where did your ',
           titleMark: 'money',
@@ -3092,7 +3102,10 @@ export const appResources = {
       },
       fristen: {
         warnung: 'Filing deadline: {{frist}} ({{tage}} days left). Late filing incurs a late-filing surcharge — at least {{mindestsatz}} per month (§ 152 AO).',
-        abgelaufen: 'The filing deadline {{frist}} passed {{tage}} days ago. Late-filing surcharge (§ 152 AO): at least {{mindestsatz}} per month — file soon.',
+        abgelaufen: 'The deadline {{frist}} has passed. The tax office may set a late-filing surcharge — from {{pflichtAb}} it must (at least {{mindestsatz}} per started month).',
+        zuschlagPflicht: 'The filing deadline {{frist}} passed {{tage}} days ago. Since {{pflichtAb}} the tax office must set a late-filing surcharge (§ 152 (2) AO): at least {{mindestsatz}} per started month — file soon.',
+        freiwillig: 'Voluntary return: you have until {{bis}} (31 Dec of the fourth following year). The sooner you file, the sooner the refund arrives.',
+        unklar: 'Whether you have to file, we will work out from your answers. The mandatory deadline would be {{frist}}.',
       },
       shared: {
         saveFailed: 'At least one entry was not saved. Check your connection and enter it again — or tap again to continue anyway.',
@@ -3395,6 +3408,7 @@ export const appResources = {
         },
         abgabe: {
           titel: 'Prepare submission',
+          laufendesJahr: 'You can file from January {{abgabeAb}}.',
         },
         wirkung: {
           mitBereich: 'Your last change · {{bereich}} ({{formular}}): {{wirkung}}',
@@ -3442,6 +3456,8 @@ export const appResources = {
           cta: 'Ask the owl',
         },
         jahrAuswahl: 'Choose tax year',
+        jahrLaeuft: '{{jahr}} · running',
+        laufendesJahr: '{{jahr}} is still running. Collect receipts and home-office days — you can file from January {{abgabeAb}}.',
         bestaetigung: {
           hinweis_one: '{{summe}} is still waiting for your confirmation.',
           hinweis_other: '{{summe}} are still waiting for your confirmation.',

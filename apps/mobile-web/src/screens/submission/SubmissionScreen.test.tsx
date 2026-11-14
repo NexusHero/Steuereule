@@ -11,11 +11,12 @@ import { SubmissionGateProvider } from '../../navigation/SubmissionGateContext'
 import { SubmissionScreen } from './SubmissionScreen'
 import type { TileId } from '../cockpit/tiles'
 
-const TAX_YEAR = 2026
+const TAX_YEAR = 2025
+const RUNNING_YEAR = 2026
 
-function mockCompleteLstb() {
+function mockCompleteLstb(year = TAX_YEAR) {
   server.use(
-    http.get(`*/v1/steuerjahre/${TAX_YEAR}/lstb`, () =>
+    http.get(`*/v1/steuerjahre/${year}/lstb`, () =>
       HttpResponse.json({
         bruttoarbeitslohn: { kind: 'erfasst', value: 50000 },
         lohnsteuer: { kind: 'erfasst', value: 8000 },
@@ -26,9 +27,9 @@ function mockCompleteLstb() {
   )
 }
 
-function mockInterview(answers: Record<string, string>) {
+function mockInterview(answers: Record<string, string>, year = TAX_YEAR) {
   server.use(
-    http.get(`*/v1/steuerjahre/${TAX_YEAR}/interview`, () =>
+    http.get(`*/v1/steuerjahre/${year}/interview`, () =>
       HttpResponse.json({ answers, nextStep: { kind: 'done' }, openItems: 0 }),
     ),
   )
@@ -40,6 +41,7 @@ function renderSubmission(
     onOpenTile?: (target: TileId, revisit: boolean) => void
     onOpenPrintout?: (year: number) => void
     queryClient?: QueryClient
+    taxYear?: number
   } = {},
 ) {
   const i18n = createAppI18n('de')
@@ -57,7 +59,7 @@ function renderSubmission(
             <SubmissionGateProvider>
               <ShellStateProvider onRegister={() => {}} onLogin={() => {}} onSignedOut={() => {}}>
                 <SubmissionScreen
-                  taxYear={TAX_YEAR}
+                  taxYear={props.taxYear ?? TAX_YEAR}
                   {...(props.onBack ? { onBack: props.onBack } : {})}
                   onOpenTile={onOpenTile}
                   onOpenPrintout={onOpenPrintout}
@@ -164,5 +166,19 @@ describe('SubmissionScreen (§ 3.4)', () => {
     expect(printBtn.disabled).toBe(false)
     fireEvent.click(printBtn)
     expect(onOpenPrintout).toHaveBeenCalledWith(TAX_YEAR)
+  })
+
+  it('K2: says up front that the running year cannot be filed yet, and keeps the printout closed', async () => {
+    mockCompleteLstb(RUNNING_YEAR)
+    mockInterview({ job: 'Angestellt', ausland: 'Nein', kinder: 'Nein', familienstand: 'Ledig' }, RUNNING_YEAR)
+    server.use(http.get('*/v1/stammdaten', () => HttpResponse.json({ missing: [], familienstand: 'ledig' })))
+
+    renderSubmission({ taxYear: RUNNING_YEAR })
+
+    expect(await screen.findByTestId('abgabe-laufendes-jahr')).toBeTruthy()
+    expect(
+      screen.getByText('2026 läuft noch. Sammle Belege und Homeoffice-Tage — abgeben kannst du ab Januar 2027.'),
+    ).toBeTruthy()
+    expect((screen.getByTestId('abgabe-zum-ausdruck') as HTMLButtonElement).disabled).toBe(true)
   })
 })

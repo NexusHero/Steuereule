@@ -16,7 +16,7 @@ function mock(status: string, missing: string[] = []) {
   )
 }
 
-function renderScreen(props: { payment?: 'erfolg' | 'abbruch'; openCheckout?: (url: string) => void } = {}) {
+function renderScreen(props: { payment?: 'erfolg' | 'abbruch'; openCheckout?: (url: string) => void; year?: number } = {}) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   const onCompleteDetails = vi.fn()
   const onCompleteRiester = vi.fn()
@@ -51,6 +51,19 @@ function renderScreen(props: { payment?: 'erfolg' | 'abbruch'; openCheckout?: (u
 afterEach(() => server.resetHandlers())
 
 describe('AusdruckScreen (ADR-0050)', () => {
+  it('K2: for the running year it says up front when filing opens, not the missing-forms dead end', async () => {
+    server.use(
+      http.get('*/v1/steuerjahre/2026/freischaltung', () => HttpResponse.json({ status: 'offen' })),
+      http.get('*/v1/steuerjahre/2026/ausdruck/pruefung', () =>
+        HttpResponse.json({ statusCode: 404, error: 'Not Found', code: 'VORDRUCKE_MISSING', message: 'x' }, { status: 404 }),
+      ),
+    )
+    renderScreen({ year: 2026 })
+
+    expect(await screen.findByText('2026 läuft noch. Sammle Belege und Homeoffice-Tage — abgeben kannst du ab Januar 2027.')).toBeTruthy()
+    expect(screen.queryByText('Für 2026 gibt es die amtlichen Vordrucke noch nicht.')).toBeNull()
+  })
+
   it('says honestly that a year has no Vordrucke yet, instead of a generic load error', async () => {
     server.use(
       http.get('*/v1/steuerjahre/2025/freischaltung', () => HttpResponse.json({ status: 'offen' })),

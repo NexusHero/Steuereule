@@ -1,6 +1,7 @@
+import { useState } from 'react'
 import { ScrollView, View, Text } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { Option, useTheme, type Breakpoint } from '@steuereule/ui'
+import { Button, Chip, Option, useTheme, type Breakpoint } from '@steuereule/ui'
 import {
   JOB_VALUES,
   FOREIGN_VALUES,
@@ -13,6 +14,7 @@ import {
   type QuestionId,
 } from '@steuereule/core'
 import { APP_NS } from '../../i18n/resources'
+import { SELECTABLE_TAX_YEARS, isRunningTaxYear } from '../../config/taxYear'
 import { makeInterviewStyles } from './styles'
 import { PostErrorNotice, type PostErrorKind } from './PostErrorNotice'
 import { StepIndicator } from '../shared/StepIndicator'
@@ -91,9 +93,11 @@ interface QuestionScreenProps {
   readonly bp: Breakpoint
   readonly notice: PostErrorKind | null
   readonly taxYear: number
+  /** K2: lets the user switch the tax year from the first question; absent → no switch. */
+  readonly onChangeYear?: (year: number) => void
 }
 
-export function QuestionScreen({ questionId, answers = {}, canGoBack, onAnswer, onBack, bp, notice, taxYear }: QuestionScreenProps) {
+export function QuestionScreen({ questionId, answers = {}, canGoBack, onAnswer, onBack, bp, notice, taxYear, onChangeYear }: QuestionScreenProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeInterviewStyles(t)
@@ -127,6 +131,7 @@ export function QuestionScreen({ questionId, answers = {}, canGoBack, onAnswer, 
         {tr(`${copy.titleKey}.titleAfter`, { taxYear })}
       </Text>
       <Text style={styles.help}>{tr(copy.helpKey)}</Text>
+      {questionId === 'job' && onChangeYear ? <YearSwitch taxYear={taxYear} onChangeYear={onChangeYear} /> : null}
 
       {copy.options.map((opt) => (
         <Option key={opt.value} onPress={() => onAnswer(opt.value)} testID={`interview-option-${questionId}-${opt.value}`}>
@@ -134,5 +139,30 @@ export function QuestionScreen({ questionId, answers = {}, canGoBack, onAnswer, 
         </Option>
       ))}
     </ScrollView>
+  )
+}
+
+/** K2: a quiet "Anderes Jahr" link under the first question that unfolds the other selectable years. */
+function YearSwitch({ taxYear, onChangeYear }: { readonly taxYear: number; readonly onChangeYear: (year: number) => void }) {
+  const t = useTheme()
+  const { t: tr } = useTranslation(APP_NS)
+  const [open, setOpen] = useState(false)
+  if (!open) {
+    return (
+      <View style={{ alignSelf: 'flex-start', marginBottom: t.space.s3 }}>
+        <Button variant="ghost" onPress={() => setOpen(true)} testID="interview-anderes-jahr">
+          {tr('interview.anderesJahr')}
+        </Button>
+      </View>
+    )
+  }
+  return (
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.s2, marginBottom: t.space.s3 }} accessibilityLabel={tr('cockpit.jahrAuswahl')}>
+      {SELECTABLE_TAX_YEARS.filter((year) => year !== taxYear).map((year) => (
+        <Chip key={year} active={false} onPress={() => onChangeYear(year)} testID={`interview-jahr-${year}`}>
+          {isRunningTaxYear(year) ? tr('cockpit.jahrLaeuft', { jahr: year }) : String(year)}
+        </Chip>
+      ))}
+    </View>
   )
 }

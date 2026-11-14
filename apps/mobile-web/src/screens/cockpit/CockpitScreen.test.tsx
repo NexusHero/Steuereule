@@ -194,7 +194,7 @@ describe('CockpitScreen', () => {
 
     await screen.findByText('Erfasstes Einkommen')
     expect(screen.getByText('Steuerjahr')).toBeTruthy()
-    expect(screen.getByText('2026')).toBeTruthy()
+    expect(screen.getByText('2026 · läuft')).toBeTruthy()
   })
 
   it('shows "Fragen beantworten" as the primary CTA while items are open, and reaches the Minimal-Gate', async () => {
@@ -554,6 +554,8 @@ describe('CockpitScreen — Kinder & Eulen-Modus entries', () => {
 
       const subTile = await screen.findByTestId('cockpit-abgabe-vorbereiten')
       expect(subTile.textContent).toContain('Abgabe vorbereiten')
+      // K2: for the running year the entry says up front when filing opens.
+      expect(subTile.textContent).toContain('Abgeben kannst du ab Januar 2027.')
       fireEvent.click(subTile)
       expect(onOpenSubmission).toHaveBeenCalledWith(TAX_YEAR)
     })
@@ -756,5 +758,38 @@ describe('CockpitScreen — die voraussichtliche Erstattung als ehrliche Spanne 
     renderCockpit()
 
     expect(await screen.findByText('Für Verheiratete rechnen wir die Erstattung noch nicht.')).toBeTruthy()
+  })
+})
+
+describe('CockpitScreen — the running year is a prepare mode (K2)', () => {
+  it('marks the running year in the year pills', async () => {
+    mockCockpit(LOADED_SUMMARY)
+    renderCockpit()
+
+    await screen.findByText('Erfasstes Einkommen')
+    expect(screen.getByTestId('jahr-2026').textContent).toBe('2026 · läuft')
+    expect(screen.getByTestId('jahr-2025').textContent).toBe('2025')
+  })
+
+  it('shows a calm prepare banner when the running year is selected', async () => {
+    mockCockpit(LOADED_SUMMARY)
+    renderCockpit()
+
+    expect(await screen.findByTestId('cockpit-laufendes-jahr')).toBeTruthy()
+    expect(
+      screen.getByText('2026 läuft noch. Sammle Belege und Homeoffice-Tage — abgeben kannst du ab Januar 2027.'),
+    ).toBeTruthy()
+  })
+
+  it('shows no prepare banner for a completed year', async () => {
+    server.use(
+      http.get('*/v1/steuerjahre/2025/cockpit', () =>
+        HttpResponse.json({ taxYear: 2025, status: { kind: 'bestimmt', value: 42000 }, openItems: 0 }),
+      ),
+    )
+    renderCockpit({ taxYear: 2025 })
+
+    expect(await screen.findByText('42.000 €')).toBeTruthy()
+    expect(screen.queryByTestId('cockpit-laufendes-jahr')).toBeNull()
   })
 })

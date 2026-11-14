@@ -76,12 +76,18 @@ function CockpitHomeRoute({ navigation }: Props<'CockpitHome'>) {
 
 function InterviewRoute({ navigation, route }: Props<'Interview'>) {
   const year = useYearGuard(route.params?.year, navigation)
-  const { setFunnelPath, setPendingPath } = useShellState()
+  const { setFunnelPath, setPendingPath, setTaxYear } = useShellState()
   if (year === null) return null
 
   return (
     <InterviewScreen
+      key={year}
       taxYear={year}
+      onChangeYear={(nextYear) => {
+        // The route param is the source of truth (useYearGuard), so both move together.
+        setTaxYear(nextYear)
+        navigation.setParams({ year: nextYear })
+      }}
       onDone={(answers) => {
         const path = pathFromAnswers(answers)
         // The finished interview leaves the history before the next mask opens: Back from that mask

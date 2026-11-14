@@ -55,20 +55,23 @@ async function main() {
       await page.locator('[data-testid="cockpit-interview"], [data-testid="cockpit-weiter"], [data-testid="cockpit-kachel-lstb"]').first().waitFor({ state: 'visible', timeout: 15_000 })
     }
 
+    // H5: 2025 has no answers yet, so the obligation is unclear — a neutral note, never the surcharge alarm.
     await openCockpit(2025)
-    await banner('abgelaufen').waitFor({ state: 'visible', timeout: 10_000 })
-    console.log(`[${TAG}] ✅ fristen-banner-abgelaufen — tax year 2025 (Abgabefrist 31.07.2026 is past), real server clock`)
+    await banner('unklar').waitFor({ state: 'visible', timeout: 10_000 })
+    if ((await banner('abgelaufen').count()) + (await banner('zuschlag').count()) !== 0) fail('no surcharge alarm before the answers say the return is mandatory')
+    console.log(`[${TAG}] ✅ fristen-banner-unklar — tax year 2025 (Abgabefrist 31.07.2026 is past), no answers yet`)
 
+    // H5: YEAR is a plain single employee — a voluntary return, so the near deadline stays calm.
     await stubDeadline('warnung', 60)
     await openCockpit(YEAR)
-    await banner('warnung').waitFor({ state: 'visible', timeout: 10_000 })
-    if ((await banner('abgelaufen').count()) !== 0) fail('a warning must not also show the expired banner')
-    console.log(`[${TAG}] ✅ fristen-banner-warnung — 60 days before the Abgabefrist`)
+    await banner('freiwillig').waitFor({ state: 'visible', timeout: 10_000 })
+    if ((await banner('warnung').count()) !== 0) fail('a voluntary return must not get the deadline warning')
+    console.log(`[${TAG}] ✅ fristen-banner-freiwillig — 60 days before the Abgabefrist, voluntary return`)
 
     await page.unroute(/\/v1\/steuerjahre\/\d+\/fristen$/)
     await stubDeadline('keine', 200)
     await openCockpit(YEAR)
-    if ((await banner('warnung').count()) + (await banner('abgelaufen').count()) !== 0) fail('level "keine" must show no banner at all')
+    if ((await page.locator('[data-testid^="fristen-banner-"]').count()) !== 0) fail('level "keine" must show no banner at all')
     await page.unroute(/\/v1\/steuerjahre\/\d+\/fristen$/)
     console.log(`[${TAG}] ✅ no banner when the Abgabefrist is far away`)
 
