@@ -1,6 +1,6 @@
 import { Pressable, Text, type ViewStyle, type TextStyle, type StyleProp } from 'react-native'
 import { type ReactNode } from 'react'
-import { useTheme } from '../theme/useTheme'
+import { inkOnFunke, useTheme } from '../theme/useTheme'
 
 export type ChipVariant = 'standard' | 'src' | 'pro'
 
@@ -15,15 +15,16 @@ export interface ChipProps {
 
 export function Chip({ variant = 'standard', active = false, onPress, style, children, testID }: ChipProps) {
   const t = useTheme()
-  // Lime as light, not as a fill: an active chip is soft lime with an ink contour.
+  // Quiet at rest; a chosen chip is unmistakable: full lime, ink contour and a check mark, so the
+  // state never rests on a soft tint alone (WCAG 1.4.1, 1.4.11 — soft lime is ~1.1:1 on a card).
   const bg = active
-    ? t.color.funkeWeich
+    ? t.color.funke
     : variant === 'src'
       ? t.color.funkeWeich
       : variant === 'pro'
         ? t.color.nacht
         : t.color.karte
-  const fg = variant === 'pro' && !active ? t.color.funke : t.color.tinte
+  const fg = active ? inkOnFunke(t) : variant === 'pro' ? t.color.funke : t.color.tinte
 
   const container: ViewStyle = {
     alignSelf: 'flex-start',
@@ -52,6 +53,11 @@ export function Chip({ variant = 'standard', active = false, onPress, style, chi
         style,
       ]}
     >
+      {active ? (
+        <Text style={label} accessibilityElementsHidden importantForAccessibility="no" aria-hidden>
+          ✓
+        </Text>
+      ) : null}
       {typeof children === 'string' ? <Text style={label}>{children}</Text> : children}
     </Pressable>
   )

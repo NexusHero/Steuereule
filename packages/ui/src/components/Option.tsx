@@ -1,7 +1,7 @@
 import { Pressable, Text, type ViewStyle, type TextStyle, type StyleProp } from 'react-native'
 import { type ReactNode } from 'react'
 import { hapticLight } from '../lib/haptics'
-import { useTheme } from '../theme/useTheme'
+import { inkOnFunke, useTheme } from '../theme/useTheme'
 
 export interface OptionProps {
   readonly selected?: boolean
@@ -18,10 +18,11 @@ export function Option({ selected = false, onPress, style, children, testID }: O
     minHeight: 52,
     justifyContent: 'center',
     padding: t.space.s4,
+    paddingRight: t.space.s6,
     marginBottom: t.space.s3,
-    // Quiet rows: a thin tinte-2 contour at rest (≥ 3:1, WCAG 1.4.11); the chosen one gets soft
-    // lime and an ink contour.
-    backgroundColor: selected ? t.color.funkeWeich : t.color.karte,
+    // Quiet rows: a thin tinte-2 contour at rest (≥ 3:1, WCAG 1.4.11). The chosen one is
+    // unmistakable — full lime, ink contour and a check mark — never a soft tint alone (~1.1:1).
+    backgroundColor: selected ? t.color.funke : t.color.karte,
     borderWidth: t.space.kontur,
     borderColor: selected ? t.color.tinte : t.color.tinte2,
     borderRadius: t.radius.s,
@@ -31,13 +32,16 @@ export function Option({ selected = false, onPress, style, children, testID }: O
     fontFamily: t.font.text,
     fontWeight: t.weight.fett,
     fontSize: t.size.m,
-    color: t.color.tinte,
+    color: selected ? inkOnFunke(t) : t.color.tinte,
   }
+  // The check sits at the row's end, so the label keeps its place when chosen.
+  const mark: TextStyle = { position: 'absolute', right: t.space.s4 }
   return (
     <Pressable
       testID={testID}
       accessibilityRole="button"
       aria-pressed={selected}
+      accessibilityState={{ selected }}
       onPress={() => {
         void hapticLight()
         onPress?.()
@@ -49,6 +53,11 @@ export function Option({ selected = false, onPress, style, children, testID }: O
       ]}
     >
       {typeof children === 'string' ? <Text style={label}>{children}</Text> : children}
+      {selected ? (
+        <Text style={[label, mark]} accessibilityElementsHidden importantForAccessibility="no" aria-hidden>
+          ✓
+        </Text>
+      ) : null}
     </Pressable>
   )
 }

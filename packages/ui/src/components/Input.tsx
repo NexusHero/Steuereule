@@ -52,8 +52,9 @@ export function Input({
   const style: TextStyle = {
     width: '100%',
     minHeight: 52,
-    paddingHorizontal: t.space.s4,
-    paddingVertical: t.space.s3,
+    // The thicker focus contour takes its width from the padding, so the field never shifts.
+    paddingHorizontal: t.space.s4 - (isFocused ? 2 - t.space.kontur : 0),
+    paddingVertical: t.space.s3 - (isFocused ? 2 - t.space.kontur : 0),
     color: t.color.tinte,
     backgroundColor: t.color.karte,
     // Quiet at rest (tinte-2 still clears 3:1 against karte), ink once focused — no shadow.

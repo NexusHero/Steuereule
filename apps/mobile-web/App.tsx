@@ -109,14 +109,16 @@ function ThemedShellFrame({ children }: { readonly children: ReactNode }) {
   // "Funke ruhig": long German compounds in large titles ("Lohnsteuerbescheinigung") break at a
   // syllable with a hyphen instead of mid-word. Needs the document language for the browser's
   // hyphenation dictionary.
+  const language = useTranslation(APP_NS).i18n.language
   useEffect(() => {
     if (RN.Platform.OS !== 'web' || typeof document === 'undefined') return
-    document.documentElement.lang = i18n.language
+    // Follows a language switch, so English text is hyphenated with the English dictionary.
+    document.documentElement.lang = language
     document.body.style.setProperty('hyphens', 'auto')
     document.body.style.setProperty('-webkit-hyphens', 'auto')
     // Only long words (12+ letters, 6 on each side) — short ones in body copy stay whole.
     document.body.style.setProperty('hyphenate-limit-chars', '12 6 6')
-  }, [])
+  }, [language])
 
   return (
     <RN.View style={{ flex: 1, backgroundColor: t.color.grund }}>

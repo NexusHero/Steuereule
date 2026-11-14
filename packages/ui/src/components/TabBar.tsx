@@ -2,7 +2,7 @@ import { useRef, useState, type ReactNode } from 'react'
 import { Animated, Easing, Pressable, Text, View, type LayoutChangeEvent, type StyleProp, type TextStyle, type ViewStyle } from 'react-native'
 import { theme as motionTokens } from '@steuereule/tokens'
 import { hapticSelection } from '../lib/haptics'
-import { useTheme } from '../theme/useTheme'
+import { inkOnFunke, useTheme } from '../theme/useTheme'
 import { useReducedMotion } from '../motion/useReducedMotion'
 
 export const TAB_ICON_PATHS = {
@@ -151,8 +151,10 @@ function makeStyles(t: ReturnType<typeof useTheme>) {
     top: BAR_PADDING,
     left: BAR_PADDING,
     zIndex: 0,
-    // Lime as light: a soft lime pill behind the active tab, no contour.
-    backgroundColor: t.color.funkeWeich,
+    // The active tab is unmistakable: a lime pill with an ink contour (soft lime alone is ~1.1:1).
+    backgroundColor: t.color.funke,
+    borderWidth: BAR_BORDER,
+    borderColor: t.color.tinte,
     borderRadius: t.radius.pille,
   }
   const tab: ViewStyle = {
@@ -167,7 +169,9 @@ function makeStyles(t: ReturnType<typeof useTheme>) {
     borderRadius: t.radius.pille,
   }
   const tabActiveFallback: ViewStyle = {
-    backgroundColor: t.color.funkeWeich,
+    backgroundColor: t.color.funke,
+    borderWidth: BAR_BORDER,
+    borderColor: t.color.tinte,
   }
   const label: TextStyle = {
     fontFamily: t.font.text,
@@ -175,7 +179,7 @@ function makeStyles(t: ReturnType<typeof useTheme>) {
     fontWeight: t.weight.fett,
     color: t.color.tinte2,
   }
-  const labelActive: TextStyle = { color: t.color.tinte }
+  const labelActive: TextStyle = { color: inkOnFunke(t), fontWeight: t.weight.schwer }
 
   return { bar, inner, pill, tab, tabActiveFallback, label, labelActive }
 }
