@@ -107,10 +107,10 @@ describe('DevMLOps Pillar 1 — Golden Dataset Evaluation (Grounding, Calculatio
       expectsFollowUpChoices: true,
     },
     {
-      id: 'G04-homeoffice-vs-arbeitszimmer-two-paths',
+      id: 'G04-homeoffice-asks-for-the-days-instead-of-two-paths',
       message: 'Lohnt sich für mich die Homeoffice-Pauschale oder ein Arbeitszimmer?',
       expectedSources: ['estg-4-5-6c'],
-      expectsTwoPaths: true,
+      expectsTwoPaths: false,
     },
     {
       id: 'G05-fortbildung-anamnese-initial',

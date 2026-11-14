@@ -143,14 +143,14 @@ export async function runScenario24(browser, webOrigin) {
   await trainingActionApplyBtn.waitFor({ state: 'visible', timeout: 10_000 })
   await trainingActionApplyBtn.click()
 
-  // 5. Turn 3: Ask about Homeoffice vs. Arbeitszimmer -> verify Two-Paths comparison card (Safe Pauschale vs Maximal)
-  await chatInput.fill('Wie setze ich Homeoffice oder Arbeitszimmer ab?')
+  // 5. Turn 3: Home office with a day count -> exactly those days as one draft, no larger second path (K1)
+  await chatInput.fill('Ich war an 80 Tagen im Homeoffice.')
   await chatSend.click()
 
-  const twoPathsCard = page.locator('[data-testid="advisor-two-paths-card"]').first()
-  await twoPathsCard.waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="advisor-path-safe-card"]').first().waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="advisor-path-max-card"]').first().waitFor({ state: 'visible', timeout: 10_000 })
+  await page.locator('[data-testid="advisor-action-card"]', { hasText: '80' }).first().waitFor({ state: 'visible', timeout: 10_000 })
+  if ((await page.locator('[data-testid="advisor-two-paths-card"]').count()) !== 0) {
+    throw new Error('Home office with a stated day count must not offer a two-paths comparison (K1).')
+  }
 
   // 6. Turn 4: a binding legal opinion is still refused with the reference to the StBerG. Tax topics
   //    outside the return are no boundary any more (#499, ADR-0069), the promise of a binding opinion is.

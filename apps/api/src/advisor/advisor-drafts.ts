@@ -1,4 +1,4 @@
-import { ADVISOR_LEGAL_SOURCES, draftPersonKey, provenanceKey, type AdvisorActionProposal, type AdvisorMessageMeta, type AdvisorPerson, type AdvisorUndoEntry } from '@steuereule/core'
+import { ADVISOR_LEGAL_SOURCES, alternativeKeyOf, draftPersonKey, withTwoPathsGroup, provenanceKey, type AdvisorActionProposal, type AdvisorMessageMeta, type AdvisorPerson, type AdvisorUndoEntry } from '@steuereule/core'
 import { AuditService } from '../audit/audit.service.js'
 import { type TransactionRunner } from '../prisma/transaction.js'
 import { assertAiWritable } from '../confirmation/ai-write-policy.js'
@@ -135,8 +135,10 @@ export class AdvisorDrafts {
     taxYear: number,
     targetKeys: Set<string>,
     excludeActionIds: Set<string> = new Set(),
+    /** Alternative groups of the applied drafts: their other pending alternatives drop out too. */
+    alternativeKeys: Set<string> = new Set(),
   ): Promise<void> {
-    if (targetKeys.size === 0) return
+    if (targetKeys.size === 0 && alternativeKeys.size === 0) return
     const history = await this.advisorRepo.listForUserAndYear(userId, taxYear)
     for (const msg of history) {
       if (!msg.meta) continue
@@ -147,7 +149,7 @@ export class AdvisorDrafts {
         if (
           proposal.status === 'pending' &&
           !excludeActionIds.has(proposal.actionId) &&
-          targetKeys.has(this.targetKeyOf(proposal))
+          (targetKeys.has(this.targetKeyOf(proposal)) || alternativeKeys.has(alternativeKeyOf(proposal)))
         ) {
           changed = true
           return { ...proposal, status: 'superseded' }
@@ -162,8 +164,10 @@ export class AdvisorDrafts {
         updatedMeta = { ...updatedMeta, actions: updatedMeta.actions.map(maybeSupersede) }
       }
       if (updatedMeta.twoPaths) {
-        const nextSafe = maybeSupersede(updatedMeta.twoPaths.safePath)
-        const nextMax = maybeSupersede(updatedMeta.twoPaths.maxPath)
+        // A comparison stored before alternative groups existed still has its two paths exclude each other.
+        const grouped = withTwoPathsGroup(updatedMeta.twoPaths)
+        const nextSafe = maybeSupersede(grouped.safePath)
+        const nextMax = maybeSupersede(grouped.maxPath)
         updatedMeta = {
           ...updatedMeta,
           twoPaths: {
@@ -191,8 +195,8 @@ export class AdvisorDrafts {
     if (meta.action?.actionId === actionId) return meta.action
     const inActions = meta.actions?.find((a) => a.actionId === actionId)
     if (inActions) return inActions
-    if (meta.twoPaths?.safePath.actionId === actionId) return meta.twoPaths.safePath
-    if (meta.twoPaths?.maxPath.actionId === actionId) return meta.twoPaths.maxPath
+    if (meta.twoPaths?.safePath.actionId === actionId) return withTwoPathsGroup(meta.twoPaths).safePath
+    if (meta.twoPaths?.maxPath.actionId === actionId) return withTwoPathsGroup(meta.twoPaths).maxPath
     return null
   }
 
@@ -344,6 +348,7 @@ export class AdvisorDrafts {
     return this.transactions.run(async () => {
       const drafts: ResolvedDraft[] = []
       const targetKeys = new Set<string>()
+      const alternativeKeys = new Set<string>()
       for (const item of dto.drafts) {
         const draft = await this.resolveDraft(userId, taxYear, item.actionId)
         this.assertActionApplicable(draft.action)
@@ -352,6 +357,13 @@ export class AdvisorDrafts {
           throw new ConflictError('ADVISOR_BATCH_TARGET_CONFLICT', `Mehrere Entwürfe im Batch zielen auf dasselbe Feld "${draft.key}".`)
         }
         targetKeys.add(targetKey)
+        if (draft.action.alternativeGroup !== undefined) {
+          const alternativeKey = alternativeKeyOf(draft.action)
+          if (alternativeKeys.has(alternativeKey)) {
+            throw new ConflictError('ADVISOR_BATCH_ALTERNATIVE_CONFLICT', 'Wähle einen der Wege — beide zusammen geht nicht.')
+          }
+          alternativeKeys.add(alternativeKey)
+        }
         drafts.push(draft)
       }
 
@@ -423,7 +435,7 @@ export class AdvisorDrafts {
         updatedMessages.set(persisted.id, persisted)
       }
 
-      await this.supersedePendingDraftsForSameTargets(userId, taxYear, targetKeys, new Set(actionIds))
+      await this.supersedePendingDraftsForSameTargets(userId, taxYear, targetKeys, new Set(actionIds), alternativeKeys)
       await this.auditService.append({
         userId,
         action: 'WRITE',

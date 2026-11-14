@@ -159,6 +159,13 @@ export class AdvisorActionProposalDto implements AdvisorActionProposal {
   companionFields?: Readonly<Record<string, string>> | undefined
 
   @ApiPropertyOptional({
+    type: String,
+    example: 'act-1730970000',
+    description: 'Drafts sharing this group are alternatives (the two paths of a comparison): apply one, never several together.',
+  })
+  alternativeGroup?: string | undefined
+
+  @ApiPropertyOptional({
     type: Object,
     additionalProperties: { type: 'string', nullable: true },
     description: 'Raw values of the companion fields when the draft was created (stale-check baseline).',

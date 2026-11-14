@@ -9,6 +9,7 @@ import {
   checkAdvisorInputBoundary,
   describeModelFailure,
   evaluateAdvisorTurn,
+  withPreviewedEffects,
   topicRefusal,
   type AdvisorActionProposal,
   type AdvisorEnginePort,
@@ -240,14 +241,16 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
     /** Set when the rules answer because the model could not: the answer says so instead of passing as the model's. */
     failure?: AdvisorModelFailure,
   ): AsyncIterable<AdvisorStreamEvent> {
-    const evaluated =
-      override ??
-      evaluateAdvisorTurn({
-        message: request.message,
-        activeScreen: request.activeScreen,
-        digest: request.digest,
-        actionIdFactory: request.actionIdFactory,
-      })
+    const rules = override
+      ? undefined
+      : evaluateAdvisorTurn({
+          message: request.message,
+          activeScreen: request.activeScreen,
+          digest: request.digest,
+          actionIdFactory: request.actionIdFactory,
+        })
+    // The rules' drafts name the effect the real estimate computes, or none (K3).
+    const evaluated = override ?? { ...rules!, meta: await withPreviewedEffects(rules!.meta, request.previewEffect) }
     const turn = failure ? { ...evaluated, meta: { ...evaluated.meta, modelFailure: failure } } : evaluated
 
     yield { event: 'token', data: { text: turn.replyText } }
