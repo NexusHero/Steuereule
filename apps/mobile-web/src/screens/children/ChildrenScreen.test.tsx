@@ -197,6 +197,21 @@ describe('KinderScreen', () => {
       expect(screen.getByTestId('kind-verhaeltnis-b-1')).toBeTruthy()
     })
 
+    it('pre-selects the joint child when the household turns out married after the form is open (browser retest)', () => {
+      const { rerender } = renderKinder({ initialKinder: [] })
+      const i18n = createAppI18n('de')
+      rerender(
+        <I18nextProvider i18n={i18n}>
+          <ThemeProvider mode="light">
+            <ChildrenScreen taxYear={2025} initialKinder={[]} married />
+          </ThemeProvider>
+        </I18nextProvider>,
+      )
+      const joint = (screen.getByTestId('kind-verhaeltnis-b-1') as HTMLElement).style.backgroundColor
+      const none = (screen.getByTestId('kind-verhaeltnis-b-keins') as HTMLElement).style.backgroundColor
+      expect(joint).not.toBe(none)
+    })
+
     it('pre-selects a joint child for a married couple instead of „Keines“ (UX review H3)', () => {
       renderKinder({ married: true, partnerName: 'Julia' })
       fireEvent.click(screen.getByTestId('kind-neu'))

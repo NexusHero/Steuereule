@@ -115,7 +115,8 @@ export function CatalogScreen(props: CatalogScreenProps) {
   const personal = PERSONAL_ENTRIES.includes(entry)
   const link = useLinkControllerGet(taxYear, { query: { enabled: personal, retry: false } })
   const coupling = link.data?.status === 200 ? link.data.data : null
-  const partnerName = coupling?.filingType === 'zusammen' && coupling.personBHasOwnAccount !== true ? coupling.personB?.firstName?.trim() || tr('katalog.fuerWen.partnerFallback') : null
+  const partnerFirstName = coupling?.personB?.firstName?.trim() || null
+  const partnerName = coupling?.filingType === 'zusammen' && coupling.personBHasOwnAccount !== true ? partnerFirstName ?? tr('katalog.fuerWen.partnerFallback') : null
   const [person, setPerson] = useState<'A' | 'B'>('A')
   if (!personal || partnerName === null) return <CatalogFlow {...props} person="A" />
   return (
@@ -129,7 +130,7 @@ export function CatalogScreen(props: CatalogScreenProps) {
           {tr('katalog.fuerWen.partner', { name: partnerName })}
         </Chip>
       </View>
-      <CatalogFlow key={person} {...props} person={person} partnerName={partnerName} />
+      <CatalogFlow key={person} {...props} person={person} partnerName={partnerName} partnerNamed={partnerFirstName !== null} />
     </>
   )
 }
@@ -143,7 +144,8 @@ function CatalogFlow({
   revisit = false,
   person,
   partnerName = null,
-}: CatalogScreenProps & { readonly person: 'A' | 'B'; readonly partnerName?: string | null }) {
+  partnerNamed = false,
+}: CatalogScreenProps & { readonly person: 'A' | 'B'; readonly partnerName?: string | null; readonly partnerNamed?: boolean }) {
   const bp = useBreakpoint()
   const t = useTheme()
   const styles = makeStyles(t)
@@ -292,7 +294,7 @@ function CatalogFlow({
       {/* UX review H7: on the partner's side every question says whose answers these are. */}
       {person === 'B' && partnerName !== null ? (
         <Text style={styles.hint} testID="katalog-fuer-partner">
-          {tr('katalog.fuerWen.frageFuer', { name: partnerName })}
+          {partnerNamed ? tr('katalog.fuerWen.frageFuer', { name: partnerName }) : tr('katalog.fuerWen.frageFuerOhneName')}
         </Text>
       ) : null}
       <Text style={styles.heading}>{tr(`katalog.questions.${step}`, { defaultValue: step })}</Text>

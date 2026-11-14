@@ -287,7 +287,7 @@ function KinderScreenView({
   const [childcareFrom, setChildcareFrom] = useState('')
   const [childcareTo, setChildcareTo] = useState('')
   const [relationship, setRelationship] = useState<ChildRelationship | null>(null)
-  const [relationshipB, setRelationshipB] = useState<ChildRelationship | null>(null)
+  const [relationshipB, setRelationshipB] = useState<ChildRelationship | null>(married ? '1' : null)
   const [familyBenefitsOffice, setFamilyBenefitsOffice] = useState('')
   const [inland, setInland] = useState<boolean | null>(null)
   const [ae, setAe] = useState<OtherParentStatus | null>(null)
@@ -299,6 +299,13 @@ function KinderScreenView({
   const [registered, setRegistered] = useState<boolean | null>(null)
   const [childBenefitToMe, setChildBenefitToMe] = useState<boolean | null>(null)
   const [edited, setEdited] = useState<string | null>(null)
+  // Married is known only once the master data has loaded: a new form then starts at the couple's
+  // joint child too, not at „Keines“ (UX review H3, found in the browser retest).
+  useEffect(() => {
+    if (married && edited === null) setRelationshipB((current) => current ?? '1')
+    // Only the moment the household becomes known matters; later choices are the user's.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [married])
   const [formOpen, setFormOpen] = useState(initialKinder.length === 0)
   /** Short form first: the optional amounts stay folded until asked for, or until a child already has one. */
   const [moreOpen, setMoreOpen] = useState(false)
