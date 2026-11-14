@@ -70,6 +70,20 @@ async function chooseMarried(zveB: string) {
 }
 
 describe('VeranlagungsartenvergleichScreen', () => {
+  it('starts at „Ja“ when the user is already known to be married (real case 2024/2025)', async () => {
+    server.use(
+      http.get(`*/v1/steuerjahre/${TAX_YEAR}/interview`, () =>
+        HttpResponse.json({ answers: { familienstand: 'Verheiratet' }, nextStep: { kind: 'done' }, openItems: 0 }, { status: 200 }),
+      ),
+    )
+    renderScreen()
+    expect(await screen.findByTestId('zveb-input')).toBeTruthy()
+    expect(screen.getByTestId('verheiratet-ja').getAttribute('aria-pressed')).toBe('true')
+    // The user can still say otherwise.
+    fireEvent.click(screen.getByTestId('verheiratet-nein'))
+    expect(screen.queryByTestId('zveb-input')).toBeNull()
+  })
+
   it('lets a single person carry on to the cockpit instead of offering only a way back', () => {
     let done = 0
     renderScreen(() => (done += 1))
