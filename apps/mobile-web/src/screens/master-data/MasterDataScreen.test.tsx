@@ -200,6 +200,28 @@ describe('StammdatenScreen (ADR-0050)', () => {
       expect(await screen.findByText('Diesen Code kennen wir nicht. Prüf die Schreibweise.')).toBeTruthy()
     })
 
+    it("records the partner's religion with consent, so the church tax is not left open (real case 2024/2025)", async () => {
+      const bodies: unknown[] = []
+      server.use(
+        http.get('*/v1/stammdaten', () => HttpResponse.json(MARRIED)),
+        http.get('*/v1/steuerjahre/:jahr/kopplung', () => HttpResponse.json(JOINT)),
+        http.put('*/v1/steuerjahre/:jahr/kopplung/person-b', async ({ request }) => {
+          bodies.push(await request.json())
+          return HttpResponse.json(JOINT)
+        }),
+      )
+      renderScreen(2025)
+      fireEvent.click(await screen.findByTestId('personb-religion-RK'))
+      // Art. 9 DSGVO: the confession is only sent with the explicit consent.
+      fireEvent.click(screen.getByTestId('personb-speichern'))
+      expect(await screen.findByTestId('personb-einwilligung-fehlt')).toBeTruthy()
+      expect(bodies).toEqual([])
+      fireEvent.click(screen.getByTestId('personb-einwilligung'))
+      fireEvent.click(screen.getByTestId('personb-speichern'))
+      await waitFor(() => expect(bodies).toHaveLength(1))
+      expect(bodies[0]).toMatchObject({ religion: 'RK', religionConsent: true })
+    })
+
     it("shows a joined partner's data read-only — it is theirs to change", async () => {
       server.use(
         http.get('*/v1/stammdaten', () => HttpResponse.json(MARRIED)),
