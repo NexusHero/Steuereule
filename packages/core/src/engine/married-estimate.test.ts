@@ -49,7 +49,16 @@ describe('estimateMarriedCouple (ADR-0054)', () => {
     const high = range({ ...WEBER, children: 2, childBenefit: 6120 })
     expect(high.childAllowanceUsed).toBe(true)
     const z = high.taxableIncome.from
-    expect(high.incomeTax.from).toBe(splittingTariff(z - 2 * 9600, 0, 2025) + 6120)
+    expect(high.incomeTax.from).toBe(splittingTariff(z, 0, 2025) + 6120)
+  })
+
+  it('reports the taxable income as the notice does: after the child allowances when they are used (real case 2025)', () => {
+    const before = range({ ...WEBER, children: 0, childBenefit: 0 }).taxableIncome
+    const high = range({ ...WEBER, children: 2, childBenefit: 6120 })
+    expect(high.taxableIncome).toEqual({ from: before.from - 2 * 9600, to: before.to - 2 * 9600 })
+    // Where the Kindergeld wins, the taxable income stays as it is.
+    const low = { ...WEBER, rentalSurplus: 0, a: { ...EMPLOYEE_A, grossWage: 30000 }, b: null, children: 2, childBenefit: 6120 }
+    expect(range(low).taxableIncome).toEqual(range({ ...low, children: 0, childBenefit: 0 }).taxableIncome)
   })
 
   it('two Grenzgänger: no German church tax was withheld, so the church tax due lowers the result', () => {
@@ -211,8 +220,10 @@ describe('church tax for two Grenzgänger (escalation case, ADR-0088)', () => {
     const bw = range({ ...input, churchTax: { ...input.churchTax!, state: 'BW' as never } })
     if (bw.churchTax.kind !== 'spanne') throw new Error('expected church tax')
     expect(bw.churchTax.withheld).toBe(0)
-    // 8 % of the tax with the three Kinderfreibeträge (28.800 €), rounded down, on the zvE range.
-    const basis = (zve: number) => splittingTariff(Math.max(0, zve - 28_800), 0, 2025)
+    // 8 % of the tax with the three Kinderfreibeträge (28.800 €), rounded down, on the zvE range. The
+    // reported zvE is already after the allowances where they win (as on the notice).
+    const before = bw.childAllowanceUsed ? 28_800 : 0
+    const basis = (zve: number) => splittingTariff(Math.max(0, zve + before - 28_800), 0, 2025)
     expect(bw.churchTax.due.from).toBe(Math.floor(basis(bw.taxableIncome.from) * 0.08))
     expect(bw.churchTax.due.to).toBe(Math.floor(basis(bw.taxableIncome.to) * 0.08))
   })

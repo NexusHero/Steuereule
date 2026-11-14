@@ -228,7 +228,8 @@ export function estimateMarriedCouple(input: MarriedEstimateInput): MarriedEstim
     werbungskosten: spouses.reduce((sum, s) => sum + s.werbungskosten, 0),
     provision,
     specialExpenses,
-    taxableIncome: zve,
+    // As on the notice: the zvE is after the child allowances when they win over the Kindergeld (§ 2 Abs. 5 EStG).
+    taxableIncome: childAllowanceUsed ? { from: Math.max(0, zve.from - allowance), to: Math.max(0, zve.to - allowance) } : zve,
     incomeTax,
     solidaritaetszuschlag: soli,
     anrechnung: credit,
