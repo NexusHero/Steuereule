@@ -180,18 +180,18 @@ export function HouseholdChildrenSection({ taxYear, onChanged }: HouseholdChildr
 function makeStyles(t: UiTheme) {
   return {
     card: { marginBottom: t.space.s4, padding: t.space.s4, gap: t.space.s3 } as ViewStyle,
-    title: { fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size.l, color: t.color.tinte } as TextStyle,
+    title: { ...t.type.cardTitle, color: t.color.tinte } as TextStyle,
     block: { gap: t.space.s2 } as ViewStyle,
     question: { gap: t.space.s2, padding: t.space.s3, borderRadius: t.radius.m, backgroundColor: t.color.kiWeich } as ViewStyle,
     row: { flexDirection: 'row', flexWrap: 'wrap', gap: t.space.s3, alignItems: 'center' } as ViewStyle,
     choice: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: t.space.s2, paddingVertical: t.space.s1 } as ViewStyle,
-    check: { fontSize: t.size.l, color: t.color.tinte } as TextStyle,
+    check: { ...t.type.emphasis, color: t.color.tinte } as TextStyle,
     present: { gap: t.space.s1, paddingVertical: t.space.s2, borderTopWidth: 1, borderTopColor: t.color.linieWeich } as ViewStyle,
     warning: { gap: t.space.s2, padding: t.space.s3, borderRadius: t.radius.m, backgroundColor: t.color.fehlerWeich } as ViewStyle,
     button: { width: 'auto', flexGrow: 1 } as ViewStyle,
-    text: { fontFamily: t.font.text, fontSize: t.size.m, color: t.color.tinte, flexShrink: 1 } as TextStyle,
-    hint: { fontFamily: t.font.text, fontSize: t.size.xs, color: t.color.tinte2 } as TextStyle,
-    link: { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.kiTinte, textDecorationLine: 'underline' } as TextStyle,
-    danger: { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.fehler } as TextStyle,
+    text: { ...t.type.body, color: t.color.tinte, flexShrink: 1 } as TextStyle,
+    hint: { ...t.type.caption, color: t.color.tinte2 } as TextStyle,
+    link: { ...t.type.small, color: t.color.kiTinte, textDecorationLine: 'underline' } as TextStyle,
+    danger: { ...t.type.small, color: t.color.fehler } as TextStyle,
   }
 }

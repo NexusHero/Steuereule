@@ -1,6 +1,6 @@
 import { ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { Button, Card, Chip, Sticker, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
+import { Button, Card, Chip, Sticker, useTheme, useBreakpoint, type UiTheme } from '@steuereule/ui'
 import { APP_NS } from '../../i18n/resources'
 
 export type FunnelPath = 'angestellte' | 'rente' | 'ch'
@@ -67,31 +67,19 @@ export function AccountWallScreen({ path, onRegister, onLogin, onLater }: Accoun
 }
 
 function makeStyles(t: UiTheme) {
-  const screen: ViewStyle = {
-    backgroundColor: t.color.grund,
-    paddingHorizontal: t.space.s5,
-    paddingTop: t.space.s6,
-    paddingBottom: t.space.s7 * 2,
-    minHeight: '100%',
-    maxWidth: 460,
-    width: '100%',
-    alignSelf: 'center',
-  }
-  const wideScreen: ViewStyle = { ...screen, maxWidth: WIDE_CONTENT_MAX_WIDTH }
+  const screen: ViewStyle = { ...t.layout.flow.narrow, paddingTop: t.space.s6, paddingBottom: t.space.s7 * 2 }
+  const wideScreen: ViewStyle = { ...t.layout.flow.wide, paddingTop: t.space.s6, paddingBottom: t.space.s7 * 2 }
   const heading: TextStyle = {
-    fontFamily: t.font.display,
-    fontWeight: t.weight.schwer,
-    fontSize: t.size['3xl'],
+    ...t.type.title,
     color: t.color.tinte,
     marginTop: t.space.s4,
     marginBottom: t.space.s2,
   }
   // "Funke ruhig": the key word is set in readable dark lime, no lime box behind it.
   const mark: TextStyle = { color: t.color.funkeTinte }
-  const help: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.m, marginBottom: t.space.s5 }
+  const help: TextStyle = { ...t.type.body, color: t.color.tinte2, marginBottom: t.space.s5 }
   const cardLabel: TextStyle = {
-    fontFamily: t.font.mono,
-    fontSize: t.size.xs,
+    ...t.type.meta,
     color: t.color.tinte2,
     textTransform: 'uppercase',
     letterSpacing: 0.08 * t.size.xs,
@@ -99,6 +87,7 @@ function makeStyles(t: UiTheme) {
   }
   const stepRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s3, paddingVertical: t.space.s2 }
   const stepNumber: TextStyle = {
+    ...t.type.metaLarge,
     width: 28,
     height: 28,
     lineHeight: 24,
@@ -107,17 +96,15 @@ function makeStyles(t: UiTheme) {
     borderColor: t.color.tinte,
     borderRadius: t.radius.pille,
     backgroundColor: t.color.funkeWeich,
-    fontFamily: t.font.mono,
-    fontSize: t.size.s,
     color: t.color.tinte,
     fontVariant: ['tabular-nums'],
     overflow: 'hidden',
   }
-  const stepText: TextStyle = { flex: 1, fontFamily: t.font.text, fontSize: t.size.m, color: t.color.tinte }
-  const honest: TextStyle = { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.tinte2, marginTop: t.space.s4 }
+  const stepText: TextStyle = { ...t.type.body, flex: 1, color: t.color.tinte }
+  const honest: TextStyle = { ...t.type.small, color: t.color.tinte2, marginTop: t.space.s4 }
   const cta: ViewStyle = { marginTop: t.space.s5 }
   const secondaryCta: ViewStyle = { marginTop: t.space.s3 }
   const laterRow: ViewStyle = { alignItems: 'center', marginTop: t.space.s4 }
-  const note: TextStyle = { fontFamily: t.font.text, fontSize: t.size.xs, color: t.color.tinte2, textAlign: 'center', marginTop: t.space.s3 }
+  const note: TextStyle = { ...t.type.caption, color: t.color.tinte2, textAlign: 'center', marginTop: t.space.s3 }
   return { screen, wideScreen, heading, mark, help, cardLabel, stepRow, stepNumber, stepText, honest, cta, secondaryCta, laterRow, note }
 }

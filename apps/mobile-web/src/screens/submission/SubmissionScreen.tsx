@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { ScrollView, Text, View, type TextStyle, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
-import { Button, Card, WIDE_CONTENT_MAX_WIDTH, hapticWarning, useBreakpoint, useTheme, type UiTheme } from '@steuereule/ui'
+import { Button, Card, hapticWarning, useBreakpoint, useTheme, type UiTheme } from '@steuereule/ui'
 import { useLinkControllerGet, useMasterDataControllerRead } from '@steuereule/api-client'
 import type { Answers, Conflict, Notice } from '@steuereule/core'
 import { CURRENT_TAX_YEAR, isRunningTaxYear } from '../../config/taxYear'
@@ -209,21 +209,11 @@ function FindingList({
 }
 
 function makeStyles(t: UiTheme) {
-  const screen: ViewStyle = {
-    backgroundColor: t.color.grund,
-    paddingHorizontal: t.space.s5,
-    paddingVertical: t.space.s6,
-    minHeight: '100%',
-    maxWidth: 460,
-    width: '100%',
-    alignSelf: 'center',
-  }
-  const wideScreen: ViewStyle = { ...screen, maxWidth: WIDE_CONTENT_MAX_WIDTH }
+  const screen: ViewStyle = t.layout.flow.narrow
+  const wideScreen: ViewStyle = t.layout.flow.wide
   const headerRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', marginBottom: t.space.s4 }
   const heading: TextStyle = {
-    fontFamily: t.font.display,
-    fontWeight: t.weight.schwer,
-    fontSize: t.size['2xl'],
+    ...t.type.title,
     color: t.color.tinte,
     marginBottom: t.space.s4,
   }
@@ -233,23 +223,19 @@ function makeStyles(t: UiTheme) {
     borderColor: t.color.linieWeich,
   }
   const sectionTitle: TextStyle = {
-    fontFamily: t.font.display,
-    fontWeight: t.weight.schwer,
-    fontSize: t.size.l,
+    ...t.type.cardTitle,
     color: t.color.tinte,
     marginBottom: t.space.s2,
   }
-  const okText: TextStyle = { fontFamily: t.font.text, fontSize: t.size.m, color: t.color.ok }
+  const okText: TextStyle = { ...t.type.body, color: t.color.ok }
   const findingBlock: ViewStyle = { marginTop: t.space.s2, gap: t.space.s2 }
   const findingHeading: TextStyle = {
-    fontFamily: t.font.text,
-    fontWeight: t.weight.fett,
-    fontSize: t.size.s,
+    ...t.type.label,
     color: t.color.tinte,
   }
   const findingRow: ViewStyle = { gap: t.space.s2, marginBottom: t.space.s2 }
-  const blockerText: TextStyle = { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.fehler }
-  const noticeText: TextStyle = { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.warn }
+  const blockerText: TextStyle = { ...t.type.small, color: t.color.fehler }
+  const noticeText: TextStyle = { ...t.type.small, color: t.color.warn }
   const tileLinkBtn: ViewStyle = { alignSelf: 'flex-start' }
   const confirmBtn: ViewStyle = { marginTop: t.space.s3 }
   const skipBtn: ViewStyle = { marginTop: t.space.s3 }
@@ -261,7 +247,7 @@ function makeStyles(t: UiTheme) {
     paddingVertical: t.space.s2,
     marginBottom: t.space.s4,
   }
-  const runningYearText: TextStyle = { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.tinte }
+  const runningYearText: TextStyle = { ...t.type.small, color: t.color.tinte }
 
   return {
     runningYearNotice,

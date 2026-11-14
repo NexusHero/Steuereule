@@ -77,7 +77,7 @@ function makeStyles(t: UiTheme) {
   return {
     box: { gap: t.space.s1, marginTop: -t.space.s2, marginBottom: t.space.s3 } as ViewStyle,
     row: { flexDirection: 'row', flexWrap: 'wrap', gap: t.space.s2, marginTop: t.space.s1 } as ViewStyle,
-    hint: { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.tinte2 } as TextStyle,
-    badge: { fontFamily: t.font.text, fontSize: t.size.xs, color: t.color.ki, fontWeight: t.weight.fett } as TextStyle,
+    hint: { ...t.type.small, color: t.color.tinte2 } as TextStyle,
+    badge: { ...t.type.captionStrong, color: t.color.ki } as TextStyle,
   }
 }

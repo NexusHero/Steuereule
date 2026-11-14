@@ -105,15 +105,12 @@ export function AssistantsListSection() {
 function makeStyles(t: UiTheme) {
   const card: ViewStyle = { marginTop: t.space.s4, padding: t.space.s4 }
   const sectionTitle: TextStyle = {
-    fontFamily: t.font.display,
-    fontWeight: t.weight.schwer,
-    fontSize: t.size.l,
+    ...t.type.cardTitle,
     color: t.color.tinte,
     marginBottom: t.space.s3,
   }
   const help: TextStyle = {
-    fontFamily: t.font.text,
-    fontSize: t.size.s,
+    ...t.type.small,
     color: t.color.tinte2,
     marginBottom: t.space.s4,
   }
@@ -129,26 +126,21 @@ function makeStyles(t: UiTheme) {
   }
   const assistantInfo: ViewStyle = { flex: 1, gap: t.space.s2 }
   const assistantName: TextStyle = {
-    fontFamily: t.font.text,
-    fontWeight: t.weight.schwer,
-    fontSize: t.size.m,
+    ...t.type.button,
     color: t.color.tinte,
   }
   const valueText: TextStyle = {
-    fontFamily: t.font.text,
-    fontSize: t.size.s,
+    ...t.type.small,
     color: t.color.tinte,
   }
   const revokeButton: ViewStyle = { flexShrink: 0 }
   const revokeErrorText: TextStyle = {
+    ...t.type.small,
     color: t.color.fehler,
-    fontFamily: t.font.text,
-    fontSize: t.size.s,
     marginBottom: t.space.s2,
   }
   const emptyText: TextStyle = {
-    fontFamily: t.font.text,
-    fontSize: t.size.m,
+    ...t.type.body,
     color: t.color.tinte2,
     fontStyle: 'italic',
   }

@@ -103,15 +103,13 @@ export function DeviceListSection({ onCurrentSessionRevoked }: DeviceListSection
 function makeStyles(t: UiTheme) {
   const card: ViewStyle = { marginTop: t.space.s4 }
   const sectionTitle: TextStyle = {
-    fontFamily: t.font.text,
-    fontWeight: t.weight.schwer,
-    fontSize: t.size.l,
+    ...t.type.emphasis,
     color: t.color.tinte,
     marginBottom: t.space.s3,
   }
   const loadingRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s2 }
-  const help: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.m }
-  const revokeErrorText: TextStyle = { color: t.color.fehler, fontFamily: t.font.text, fontSize: t.size.s, marginBottom: t.space.s2 }
+  const help: TextStyle = { ...t.type.body, color: t.color.tinte2 }
+  const revokeErrorText: TextStyle = { ...t.type.small, color: t.color.fehler, marginBottom: t.space.s2 }
   const deviceRow: ViewStyle = {
     flexDirection: 'row',
     alignItems: 'center',
@@ -122,8 +120,8 @@ function makeStyles(t: UiTheme) {
     borderTopColor: t.color.linieWeich,
   }
   const deviceInfo: ViewStyle = { flex: 1, minWidth: 0 }
-  const deviceValue: TextStyle = { fontFamily: t.font.text, fontSize: t.size.m, color: t.color.tinte }
-  const currentBadge: TextStyle = { fontFamily: t.font.text, fontWeight: t.weight.schwer, fontSize: t.size.xs, color: t.color.funkeTinte, marginTop: t.space.s1 }
+  const deviceValue: TextStyle = { ...t.type.body, color: t.color.tinte }
+  const currentBadge: TextStyle = { ...t.type.captionStrong, color: t.color.funkeTinte, marginTop: t.space.s1 }
   const revokeButton: ViewStyle = { flexShrink: 0 }
 
   return { card, sectionTitle, loadingRow, help, revokeErrorText, deviceRow, deviceInfo, deviceValue, currentBadge, revokeButton }

@@ -47,16 +47,13 @@ function makeStyles(t: UiTheme) {
     marginBottom: t.space.s5,
   }
   const wordmark: TextStyle = {
-    fontFamily: t.font.display,
-    fontWeight: t.weight.schwer,
-    fontSize: t.size.held,
-    lineHeight: t.size.held,
+    ...t.type.hero,
     letterSpacing: -0.03 * t.size.held,
     color: t.color.tinte,
   }
   const visuallyHidden: TextStyle = { position: 'absolute', width: 1, height: 1, overflow: 'hidden', opacity: 0 }
-  const subheading: TextStyle = { fontFamily: t.font.text, fontWeight: t.weight.schwer, fontSize: t.size.l, color: t.color.tinte, marginBottom: t.space.s1 }
-  const subtitle: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.m }
+  const subheading: TextStyle = { ...t.type.emphasis, color: t.color.tinte, marginBottom: t.space.s1 }
+  const subtitle: TextStyle = { ...t.type.body, color: t.color.tinte2 }
   const headerDivider: ViewStyle = { height: 2, backgroundColor: t.color.linieWeich, borderRadius: 1, marginTop: t.space.s5, marginBottom: t.space.s5, width: '100%' }
   return { header, wordmarkRow, wordmark, visuallyHidden, subheading, subtitle, headerDivider }
 }

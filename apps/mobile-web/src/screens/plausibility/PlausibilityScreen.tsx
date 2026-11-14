@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { Button, hapticWarning, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
+import { Button, hapticWarning, useTheme, useBreakpoint, type UiTheme } from '@steuereule/ui'
 import { APP_NS } from '../../i18n/resources'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
@@ -103,31 +103,21 @@ export function PlausibilityScreen({ onBack, onDone, taxYear = CURRENT_TAX_YEAR 
 }
 
 function makeStyles(t: UiTheme) {
-  const screen: ViewStyle = {
-    backgroundColor: t.color.grund,
-    paddingHorizontal: t.space.s5,
-    paddingVertical: t.space.s6,
-    minHeight: '100%',
-    maxWidth: 460,
-    width: '100%',
-    alignSelf: 'center',
-  }
-  const wideScreen: ViewStyle = { ...screen, maxWidth: WIDE_CONTENT_MAX_WIDTH }
+  const screen: ViewStyle = t.layout.flow.narrow
+  const wideScreen: ViewStyle = t.layout.flow.wide
   const headerRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', marginBottom: t.space.s4 }
   const heading: TextStyle = {
-    fontFamily: t.font.display,
-    fontWeight: t.weight.schwer,
-    fontSize: t.size['2xl'],
+    ...t.type.title,
     color: t.color.tinte,
     marginBottom: t.space.s3,
   }
-  const workdaysNote: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.s, marginBottom: t.space.s3 }
-  const submittable: TextStyle = { color: t.color.ok, fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size.l, marginBottom: t.space.s4 }
-  const notSubmittable: TextStyle = { color: t.color.warn, fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size.l, marginBottom: t.space.s4 }
+  const workdaysNote: TextStyle = { ...t.type.small, color: t.color.tinte2, marginBottom: t.space.s3 }
+  const submittable: TextStyle = { ...t.type.cardTitle, color: t.color.ok, marginBottom: t.space.s4 }
+  const notSubmittable: TextStyle = { ...t.type.cardTitle, color: t.color.warn, marginBottom: t.space.s4 }
   const block: ViewStyle = { marginBottom: t.space.s4, padding: t.space.s3, backgroundColor: t.color.karte, borderWidth: t.space.kontur, borderColor: t.color.linieWeich, borderRadius: t.radius.s }
-  const blockHeading: TextStyle = { color: t.color.tinte, fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size.m, marginBottom: t.space.s2 }
-  const conflictItem: TextStyle = { color: t.color.fehler, fontFamily: t.font.text, fontSize: t.size.s, marginBottom: t.space.s1 }
-  const noticeItem: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.s, marginBottom: t.space.s1 }
+  const blockHeading: TextStyle = { ...t.type.itemTitle, color: t.color.tinte, marginBottom: t.space.s2 }
+  const conflictItem: TextStyle = { ...t.type.small, color: t.color.fehler, marginBottom: t.space.s1 }
+  const noticeItem: TextStyle = { ...t.type.small, color: t.color.tinte2, marginBottom: t.space.s1 }
   const doneCta: ViewStyle = { marginTop: t.space.s4 }
   return { screen, wideScreen, headerRow, heading, werktageNote: workdaysNote, einreichbar: submittable, nichtEinreichbar: notSubmittable, block, blockHeading, widerspruchItem: conflictItem, hinweisItem: noticeItem, doneCta }
 }

@@ -37,9 +37,7 @@ export function ProfileAppearanceSection() {
 function makeStyles(t: UiTheme) {
   const card: ViewStyle = { marginTop: t.space.s4, padding: t.space.s4 }
   const sectionTitle: TextStyle = {
-    fontFamily: t.font.display,
-    fontWeight: t.weight.schwer,
-    fontSize: t.size.l,
+    ...t.type.cardTitle,
     color: t.color.tinte,
     marginBottom: t.space.s3,
   }

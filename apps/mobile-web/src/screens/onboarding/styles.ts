@@ -1,17 +1,9 @@
 import { type ViewStyle, type TextStyle } from 'react-native'
-import { WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
+import { type UiTheme } from '@steuereule/ui'
 
 export function makeOnboardingStyles(t: UiTheme) {
-  const screen: ViewStyle = {
-    backgroundColor: t.color.grund,
-    paddingHorizontal: t.space.s5,
-    paddingVertical: t.space.s6,
-    minHeight: '100%',
-    maxWidth: 460,
-    width: '100%',
-    alignSelf: 'center',
-  }
-  const wideScreen: ViewStyle = { ...screen, maxWidth: WIDE_CONTENT_MAX_WIDTH }
+  const screen: ViewStyle = t.layout.flow.narrow
+  const wideScreen: ViewStyle = t.layout.flow.wide
   const headerRow: ViewStyle = {
     flexDirection: 'row',
     alignItems: 'center',
@@ -19,9 +11,7 @@ export function makeOnboardingStyles(t: UiTheme) {
     paddingBottom: t.space.s5,
   }
   const heading: TextStyle = {
-    fontFamily: t.font.display,
-    fontWeight: t.weight.schwer,
-    fontSize: t.size['3xl'],
+    ...t.type.title,
     color: t.color.tinte,
     marginBottom: t.space.s2,
     textAlign: 'center',
@@ -29,30 +19,25 @@ export function makeOnboardingStyles(t: UiTheme) {
   // "Funke ruhig": the key word is set in readable dark lime, no lime box behind it.
   const mark: TextStyle = { color: t.color.funkeTinte }
   const help: TextStyle = {
+    ...t.type.body,
     color: t.color.tinte2,
-    fontFamily: t.font.text,
-    fontSize: t.size.m,
     marginBottom: t.space.s5,
     textAlign: 'center',
   }
   const counterRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s2 }
   const cta: ViewStyle = { marginTop: t.space.s5 }
   const submitError: TextStyle = {
+    ...t.type.small,
     color: t.color.fehler,
-    fontFamily: t.font.text,
-    fontSize: t.size.s,
     marginTop: t.space.s3,
   }
   const summaryHeadingRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s3, marginBottom: t.space.s2 }
   const summaryHeading: TextStyle = {
-    fontFamily: t.font.display,
-    fontWeight: t.weight.schwer,
-    fontSize: t.size['3xl'],
+    ...t.type.title,
     color: t.color.tinte,
   }
   const cardLabel: TextStyle = {
-    fontFamily: t.font.mono,
-    fontSize: t.size.xs,
+    ...t.type.meta,
     color: t.color.funkeHell,
     textTransform: 'uppercase',
     letterSpacing: 0.08 * t.size.xs,
@@ -66,11 +51,11 @@ export function makeOnboardingStyles(t: UiTheme) {
     borderBottomColor: t.color.nachtKarte,
     paddingVertical: t.space.s2,
   }
-  const summaryRowLabel: TextStyle = { color: t.color.nachtText, opacity: 0.7, fontFamily: t.font.text, fontSize: t.size.s }
-  const summaryRowValue: TextStyle = { color: t.color.funke, fontFamily: t.font.text, fontWeight: t.weight.schwer, fontSize: t.size.s }
-  const summaryRowValueMono: TextStyle = { fontFamily: t.font.mono, fontVariant: ['tabular-nums'] }
+  const summaryRowLabel: TextStyle = { ...t.type.small, color: t.color.nachtText, opacity: 0.7 }
+  const summaryRowValue: TextStyle = { ...t.type.labelStrong, color: t.color.funke }
+  const summaryRowValueMono: TextStyle = { fontFamily: t.type.figure.fontFamily, fontVariant: ['tabular-nums'] }
   const summaryEditButton: ViewStyle = { marginTop: t.space.s2 }
-  const summaryFooterNote: TextStyle = { fontSize: t.size.xs, color: t.color.tinte2, textAlign: 'center', marginTop: t.space.s3 }
+  const summaryFooterNote: TextStyle = { ...t.type.caption, color: t.color.tinte2, textAlign: 'center', marginTop: t.space.s3 }
 
   return {
     screen,

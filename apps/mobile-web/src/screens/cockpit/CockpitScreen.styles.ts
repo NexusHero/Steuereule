@@ -1,18 +1,10 @@
 // How the cockpit looks: tiles, estimate, next step.
 import { type ViewStyle, type TextStyle } from 'react-native'
-import { WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
+import { type UiTheme } from '@steuereule/ui'
 
 export function makeStyles(t: UiTheme) {
-  const screen: ViewStyle = {
-    backgroundColor: t.color.grund,
-    paddingHorizontal: t.space.s5,
-    paddingVertical: t.space.s6,
-    minHeight: '100%',
-    maxWidth: 460,
-    width: '100%',
-    alignSelf: 'center',
-  }
-  const wideScreen: ViewStyle = { ...screen, maxWidth: WIDE_CONTENT_MAX_WIDTH }
+  const screen: ViewStyle = t.layout.overview.narrow
+  const wideScreen: ViewStyle = t.layout.overview.wide
   const appbar: ViewStyle = {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -21,9 +13,7 @@ export function makeStyles(t: UiTheme) {
   }
   const appbarTitleRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s2 }
   const appbarTitle: TextStyle = {
-    fontFamily: t.font.display,
-    fontWeight: t.weight.schwer,
-    fontSize: t.size['2xl'],
+    ...t.type.title,
     color: t.color.tinte,
   }
   const yearRow: ViewStyle = {
@@ -46,21 +36,18 @@ export function makeStyles(t: UiTheme) {
   const takeoverRowText: TextStyle = {
     flex: 1,
     flexWrap: 'wrap',
+    ...t.type.small,
     color: t.color.tinte,
-    fontSize: t.size.s,
   }
   const heading: TextStyle = {
-    fontFamily: t.font.display,
-    fontWeight: t.weight.schwer,
-    fontSize: t.size['3xl'],
+    ...t.type.title,
     color: t.color.tinte,
     marginBottom: t.space.s2,
     textAlign: 'center',
   }
   const help: TextStyle = {
+    ...t.type.body,
     color: t.color.tinte2,
-    fontFamily: t.font.text,
-    fontSize: t.size.m,
     marginBottom: t.space.s3,
     textAlign: 'center',
   }
@@ -70,72 +57,58 @@ export function makeStyles(t: UiTheme) {
   const berater: ViewStyle = { marginTop: t.space.s4, width: '100%' }
   const emptyBlock: ViewStyle = { alignItems: 'center', paddingVertical: t.space.s6 }
   const heroLabel: TextStyle = {
-    fontFamily: t.font.mono,
-    fontSize: t.size.xs,
+    ...t.type.meta,
     color: t.color.funkeHell,
     textTransform: 'uppercase',
     letterSpacing: 0.08 * t.size.xs,
     marginBottom: t.space.s2,
   }
   const heroValue: TextStyle = {
-    fontFamily: t.font.display,
-    fontWeight: t.weight.schwer,
-    fontSize: t.size['3xl'],
+    ...t.type.title,
     color: t.color.funke,
     fontVariant: ['tabular-nums'],
-    lineHeight: t.size['3xl'] * 1.05,
   }
   /** The refund headline's label, in normal case so the label and figure read as one sentence. */
-  const refundLabel: TextStyle = { ...heroLabel, textTransform: 'none', letterSpacing: 0, fontSize: t.size.s }
+  const refundLabel: TextStyle = { ...heroLabel, ...t.type.metaLarge, textTransform: 'none', letterSpacing: 0 }
   /** The income once the refund leads the hero (UX review H1): still visible, no longer the headline. */
   const heroValueSmall: TextStyle = {
-    fontFamily: t.font.display,
-    fontWeight: t.weight.schwer,
-    fontSize: t.size.l,
+    ...t.type.cardTitle,
     color: t.color.nachtText,
     fontVariant: ['tabular-nums'],
   }
   const effectLine: TextStyle = {
+    ...t.type.label,
     color: t.color.funkeHell,
-    fontFamily: t.font.text,
-    fontWeight: t.weight.fett,
-    fontSize: t.size.s,
     marginTop: t.space.s2,
   }
   const heroDivider: ViewStyle = { height: 1, backgroundColor: t.color.nachtText, opacity: 0.2, marginVertical: t.space.s3 }
   const openItems: TextStyle = {
+    ...t.type.small,
     color: t.color.nachtText,
     opacity: 0.75,
-    fontFamily: t.font.text,
-    fontSize: t.size.s,
     marginTop: t.space.s2,
     marginBottom: t.space.s3,
   }
   const openItemCount: TextStyle = {
+    ...t.type.small,
     color: t.color.nachtText,
     opacity: 0.85,
-    fontFamily: t.font.text,
-    fontSize: t.size.s,
     marginTop: t.space.s2,
   }
   const refundLater: TextStyle = {
+    ...t.type.caption,
     color: t.color.nachtText,
     opacity: 0.6,
-    fontFamily: t.font.text,
-    fontSize: t.size.xs,
     marginTop: t.space.s2,
   }
   const gatedHeading: TextStyle = {
-    fontFamily: t.font.display,
-    fontWeight: t.weight.schwer,
-    fontSize: t.size.xl,
+    ...t.type.subhead,
     color: t.color.funke,
     marginBottom: t.space.s2,
   }
   const gatedBody: TextStyle = {
+    ...t.type.body,
     color: t.color.nachtText,
-    fontFamily: t.font.text,
-    fontSize: t.size.m,
     marginBottom: t.space.s2,
   }
   const euleBannerCard: ViewStyle = {
@@ -187,7 +160,7 @@ export function makeStyles(t: UiTheme) {
     paddingVertical: t.space.s2,
     marginBottom: t.space.s3,
   }
-  const runningYearText: TextStyle = { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.tinte }
+  const runningYearText: TextStyle = { ...t.type.small, color: t.color.tinte }
 
   return { runningYearNotice, runningYearText, screen, wideScreen, appbar, appbarTitleReihe: appbarTitleRow, appbarTitle, jahrReihe: yearRow, uebernahmeZeile: takeoverRow, uebernahmeZeileText: takeoverRowText, heading, help, cta, secondaryCta, berater, emptyBlock, heroLabel, refundLabel, heroValue, heroValueSmall, effectLine, heroDivider, openItems, offenePosten: openItemCount, refundLater, gatedHeading, gatedBody, euleBannerCard, euleBannerRow, euleBannerCopy, euleBannerTitle, euleBannerEffect, euleBannerProvenance, euleBannerDismissBtn, euleBannerDismissText }
 }

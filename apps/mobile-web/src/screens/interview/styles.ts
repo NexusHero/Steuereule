@@ -1,19 +1,11 @@
 import { type ViewStyle, type TextStyle } from 'react-native'
-import { WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
+import { type UiTheme } from '@steuereule/ui'
 
 export function makeInterviewStyles(t: UiTheme) {
-  const screen: ViewStyle = {
-    backgroundColor: t.color.grund,
-    paddingHorizontal: t.space.s5,
-    paddingVertical: t.space.s6,
-    minHeight: '100%',
-    maxWidth: 460,
-    width: '100%',
-    alignSelf: 'center',
-  }
-  const wideScreen: ViewStyle = { ...screen, maxWidth: WIDE_CONTENT_MAX_WIDTH }
+  const screen: ViewStyle = t.layout.flow.narrow
+  const wideScreen: ViewStyle = t.layout.flow.wide
   const gateScreen: ViewStyle = { ...screen, paddingTop: t.space.s6 }
-  const wideGateScreen: ViewStyle = { ...gateScreen, maxWidth: WIDE_CONTENT_MAX_WIDTH }
+  const wideGateScreen: ViewStyle = { ...wideScreen, paddingTop: t.space.s6 }
   const headerRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s3, paddingBottom: t.space.s5 }
   const stepPill: ViewStyle = {
     flexDirection: 'row',
@@ -26,15 +18,12 @@ export function makeInterviewStyles(t: UiTheme) {
     paddingHorizontal: 12,
   }
   const stepPillText: TextStyle = {
-    fontFamily: t.font.mono,
-    fontSize: t.size.xs,
+    ...t.type.meta,
     color: t.color.tinte,
     fontVariant: ['tabular-nums'],
   }
   const heading: TextStyle = {
-    fontFamily: t.font.display,
-    fontWeight: t.weight.schwer,
-    fontSize: t.size['3xl'],
+    ...t.type.title,
     color: t.color.tinte,
     marginBottom: t.space.s2,
   }
@@ -42,13 +31,12 @@ export function makeInterviewStyles(t: UiTheme) {
   // "Funke ruhig": the key word is set in readable dark lime, no lime box behind it.
   const mark: TextStyle = { color: t.color.funkeTinte }
   const help: TextStyle = {
+    ...t.type.body,
     color: t.color.tinte2,
-    fontFamily: t.font.text,
-    fontSize: t.size.m,
     marginBottom: t.space.s3,
   }
   const gateBackLink: ViewStyle = { alignSelf: 'center', marginTop: t.space.s3, minHeight: 44, justifyContent: 'center' }
-  const gateBackLinkText: TextStyle = { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.tinte, textDecorationLine: 'underline' }
+  const gateBackLinkText: TextStyle = { ...t.type.small, color: t.color.tinte, textDecorationLine: 'underline' }
 
   return {
     screen,

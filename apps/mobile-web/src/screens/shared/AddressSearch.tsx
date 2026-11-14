@@ -132,7 +132,7 @@ export function AddressSearch({ postalCode, onPick, testIDPrefix }: AddressSearc
 function makeStyles(t: UiTheme) {
   return {
     box: { marginBottom: t.space.s3 } as ViewStyle,
-    hint: { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.tinte2, marginTop: -t.space.s2 } as TextStyle,
+    hint: { ...t.type.small, color: t.color.tinte2, marginTop: -t.space.s2 } as TextStyle,
     list: {
       marginTop: -t.space.s2,
       borderWidth: 2,
@@ -143,6 +143,6 @@ function makeStyles(t: UiTheme) {
     } as ViewStyle,
     row: { minHeight: 48, justifyContent: 'center', paddingHorizontal: t.space.s4, paddingVertical: t.space.s3 } as ViewStyle,
     rowDivider: { borderTopWidth: 1, borderTopColor: t.color.tinte2 } as ViewStyle,
-    rowText: { fontFamily: t.font.text, fontSize: t.size.m, color: t.color.tinte } as TextStyle,
+    rowText: { ...t.type.body, color: t.color.tinte } as TextStyle,
   }
 }

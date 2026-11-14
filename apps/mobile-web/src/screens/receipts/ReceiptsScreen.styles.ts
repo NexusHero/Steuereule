@@ -1,18 +1,10 @@
 // How the receipts screen looks.
 import { type ViewStyle, type TextStyle } from 'react-native'
-import { WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
+import { type UiTheme } from '@steuereule/ui'
 
 export function makeStyles(t: UiTheme) {
-  const screen: ViewStyle = {
-    backgroundColor: t.color.grund,
-    paddingHorizontal: t.space.s5,
-    paddingVertical: t.space.s6,
-    minHeight: '100%',
-    maxWidth: 460,
-    width: '100%',
-    alignSelf: 'center',
-  }
-  const wideScreen: ViewStyle = { ...screen, maxWidth: WIDE_CONTENT_MAX_WIDTH }
+  const screen: ViewStyle = t.layout.overview.narrow
+  const wideScreen: ViewStyle = t.layout.overview.wide
   const appbar: ViewStyle = {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -20,9 +12,7 @@ export function makeStyles(t: UiTheme) {
     paddingBottom: t.space.s4,
   }
   const appbarTitle: TextStyle = {
-    fontFamily: t.font.display,
-    fontWeight: t.weight.schwer,
-    fontSize: t.size['2xl'],
+    ...t.type.title,
     color: t.color.tinte,
   }
   const uploadCard: ViewStyle = {
@@ -30,52 +20,41 @@ export function makeStyles(t: UiTheme) {
     marginBottom: t.space.s3,
   }
   const uploadHeading: TextStyle = {
-    fontFamily: t.font.mono,
-    fontSize: t.size.xs,
+    ...t.type.meta,
     color: t.color.funkeHell,
     textTransform: 'uppercase',
     letterSpacing: 0.08 * t.size.xs,
   }
   const uploadBody: TextStyle = {
+    ...t.type.small,
     color: t.color.nachtText,
     opacity: 0.9,
-    fontFamily: t.font.text,
-    fontSize: t.size.s,
   }
   const uploadControls: ViewStyle = {
     gap: t.space.s2,
   }
   const uploadKindLabel: TextStyle = {
+    ...t.type.captionStrong,
     color: t.color.nachtText,
-    fontFamily: t.font.text,
-    fontWeight: t.weight.fett,
-    fontSize: t.size.xs,
   }
   const uploadOkText: TextStyle = {
+    ...t.type.label,
     color: t.color.funkeHell,
-    fontFamily: t.font.text,
-    fontWeight: t.weight.fett,
-    fontSize: t.size.s,
   }
   const uploadErrText: TextStyle = {
+    ...t.type.label,
     color: t.color.warn,
-    fontFamily: t.font.text,
-    fontWeight: t.weight.fett,
-    fontSize: t.size.s,
   }
   const emptyBlock: ViewStyle = { alignItems: 'center', paddingVertical: t.space.s6 }
   const emptyHeading: TextStyle = {
-    fontFamily: t.font.display,
-    fontWeight: t.weight.schwer,
-    fontSize: t.size['3xl'],
+    ...t.type.title,
     color: t.color.tinte,
     textAlign: 'center',
     marginBottom: t.space.s2,
   }
   const emptyBody: TextStyle = {
+    ...t.type.body,
     color: t.color.tinte2,
-    fontFamily: t.font.text,
-    fontSize: t.size.m,
     textAlign: 'center',
   }
   const cardHead: ViewStyle = {
@@ -85,24 +64,20 @@ export function makeStyles(t: UiTheme) {
     gap: t.space.s3,
   }
   const cardTitle: TextStyle = {
+    ...t.type.bodyStrong,
     flex: 1,
-    fontFamily: t.font.text,
-    fontWeight: t.weight.fett,
-    fontSize: t.size.m,
     color: t.color.tinte,
   }
   const fileBadge: TextStyle = {
+    ...t.type.captionStrong,
     marginTop: t.space.s2,
     color: t.color.ok,
-    fontFamily: t.font.text,
-    fontWeight: t.weight.fett,
-    fontSize: t.size.xs,
   }
   const dates: ViewStyle = { marginTop: t.space.s3, gap: t.space.s1 }
-  const dateLine: TextStyle = { color: t.color.tinte2, fontSize: t.size.s }
-  const mono: TextStyle = { fontFamily: t.font.mono, fontSize: t.size.s, fontVariant: ['tabular-nums'] }
-  const assignmentMuted: TextStyle = { color: t.color.tinte2, fontSize: t.size.s, marginTop: t.space.s3 }
-  const assignmentSettled: TextStyle = { color: t.color.tinte, fontWeight: t.weight.fett, fontSize: t.size.s, marginTop: t.space.s3 }
+  const dateLine: TextStyle = { ...t.type.small, color: t.color.tinte2 }
+  const mono: TextStyle = { ...t.type.metaLarge, fontVariant: ['tabular-nums'] }
+  const assignmentMuted: TextStyle = { ...t.type.small, color: t.color.tinte2, marginTop: t.space.s3 }
+  const assignmentSettled: TextStyle = { ...t.type.label, color: t.color.tinte, marginTop: t.space.s3 }
   const proposalRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s3, marginTop: t.space.s3, flexWrap: 'wrap' }
   const actionRow: ViewStyle = { flexDirection: 'row', gap: t.space.s3, marginTop: t.space.s3, flexWrap: 'wrap' }
   const cardFooter: ViewStyle = {
@@ -124,10 +99,8 @@ export function makeStyles(t: UiTheme) {
     flexWrap: 'wrap',
   }
   const deleteConfirmText: TextStyle = {
+    ...t.type.label,
     color: t.color.warn,
-    fontFamily: t.font.text,
-    fontWeight: t.weight.fett,
-    fontSize: t.size.s,
   }
   const conflictBox: ViewStyle = {
     marginTop: t.space.s3,
@@ -138,8 +111,8 @@ export function makeStyles(t: UiTheme) {
     backgroundColor: t.color.warnWeich,
     gap: t.space.s2,
   }
-  const conflictHeading: TextStyle = { color: t.color.warn, fontWeight: t.weight.schwer, fontSize: t.size.s }
-  const conflictBody: TextStyle = { color: t.color.tinte2, fontSize: t.size.s }
+  const conflictHeading: TextStyle = { ...t.type.labelStrong, color: t.color.warn }
+  const conflictBody: TextStyle = { ...t.type.small, color: t.color.tinte2 }
 
   return {
     screen,

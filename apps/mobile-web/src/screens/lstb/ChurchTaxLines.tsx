@@ -91,8 +91,8 @@ function LineInput({ label, stored, onCommit, testID }: { label: string; stored:
 function makeStyles(t: UiTheme): { section: ViewStyle; heading: TextStyle; help: TextStyle; error: TextStyle } {
   return {
     section: { marginTop: t.space.s5, marginBottom: t.space.s4 },
-    heading: { fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size.l, color: t.color.tinte, marginBottom: t.space.s2 },
-    help: { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.m, marginBottom: t.space.s3 },
-    error: { color: t.color.tinte, fontFamily: t.font.text, fontSize: t.size.m, marginBottom: t.space.s3 },
+    heading: { ...t.type.cardTitle, color: t.color.tinte, marginBottom: t.space.s2 },
+    help: { ...t.type.body, color: t.color.tinte2, marginBottom: t.space.s3 },
+    error: { ...t.type.body, color: t.color.tinte, marginBottom: t.space.s3 },
   }
 }

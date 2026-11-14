@@ -10,7 +10,7 @@ export function PostErrorNotice({ kind }: { readonly kind: PostErrorKind | null 
   const t = useTheme()
   if (kind === null) return null
   return (
-    <Text style={{ color: t.color.fehler, fontFamily: t.font.text, fontSize: t.size.s, marginBottom: t.space.s3 }} accessibilityRole="alert" testID={`post-error-${kind}`}>
+    <Text style={{ ...t.type.small, color: t.color.fehler, marginBottom: t.space.s3 }} accessibilityRole="alert" testID={`post-error-${kind}`}>
       {tr(`interview.postError.${kind}`)}
     </Text>
   )

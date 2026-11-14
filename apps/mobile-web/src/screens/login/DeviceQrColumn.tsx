@@ -151,29 +151,27 @@ function makeStyles(t: UiTheme) {
   const qrColumn: ViewStyle = { width: '100%', maxWidth: 320, flexShrink: 0 }
   const qrCard: ViewStyle = { alignItems: 'center', marginBottom: 0 }
   const qrHeading: TextStyle = {
-    fontFamily: t.font.text,
-    fontWeight: t.weight.schwer,
-    fontSize: t.size.m,
+    ...t.type.button,
     color: t.color.nachtText,
     textAlign: 'center',
   }
-  const qrBody: TextStyle = { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.nachtText, opacity: 0.8, textAlign: 'center', marginTop: t.space.s1, marginBottom: t.space.s4 }
+  const qrBody: TextStyle = { ...t.type.small, color: t.color.nachtText, opacity: 0.8, textAlign: 'center', marginTop: t.space.s1, marginBottom: t.space.s4 }
   const qrFrame: ViewStyle = { alignItems: 'center', justifyContent: 'center', minHeight: 144, gap: t.space.s2, width: '100%' }
-  const qrStatusLabel: TextStyle = { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.nachtText, opacity: 0.85, textAlign: 'center' }
-  const qrStatusHeading: TextStyle = { fontFamily: t.font.text, fontWeight: t.weight.schwer, fontSize: t.size.m, color: t.color.nachtText, textAlign: 'center' }
-  const qrRetryNote: TextStyle = { fontFamily: t.font.text, fontSize: t.size.xs, color: t.color.nachtText, opacity: 0.6, textAlign: 'center' }
+  const qrStatusLabel: TextStyle = { ...t.type.small, color: t.color.nachtText, opacity: 0.85, textAlign: 'center' }
+  const qrStatusHeading: TextStyle = { ...t.type.button, color: t.color.nachtText, textAlign: 'center' }
+  const qrRetryNote: TextStyle = { ...t.type.caption, color: t.color.nachtText, opacity: 0.6, textAlign: 'center' }
   const qrCodeRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s2, marginTop: t.space.s3 }
-  const qrCode: TextStyle = { fontFamily: t.font.mono, fontSize: t.size.l, fontWeight: t.weight.schwer, color: t.color.funke, letterSpacing: 2, fontVariant: ['tabular-nums'] }
+  const qrCode: TextStyle = { ...t.type.figureStrong, color: t.color.funke, letterSpacing: 2, fontVariant: ['tabular-nums'] }
   const qrCopyChip: ViewStyle = { minHeight: 44, borderColor: t.color.nachtLinie, backgroundColor: 'transparent' }
-  const qrCopyChipLabel: TextStyle = { fontSize: t.size.xs, fontWeight: t.weight.fett, color: t.color.nachtText }
-  const qrRetryLink: TextStyle = { fontFamily: t.font.text, fontWeight: t.weight.schwer, fontSize: t.size.s, color: t.color.funke, textDecorationLine: 'underline', minHeight: 44, textAlignVertical: 'center' }
+  const qrCopyChipLabel: TextStyle = { ...t.type.captionStrong, color: t.color.nachtText }
+  const qrRetryLink: TextStyle = { ...t.type.labelStrong, color: t.color.funke, textDecorationLine: 'underline', minHeight: 44, textAlignVertical: 'center' }
   const qrApprovedBadge: ViewStyle = { width: 48, height: 48, borderRadius: 99, backgroundColor: t.color.funke, alignItems: 'center', justifyContent: 'center' }
-  const qrApprovedCheck: TextStyle = { fontSize: t.size.l, fontWeight: t.weight.schwer, color: t.color.nacht }
+  const qrApprovedCheck: TextStyle = { ...t.type.emphasis, color: t.color.nacht }
   const qrLifetime: ViewStyle = { width: '100%', marginTop: t.space.s3, gap: t.space.s1 }
   const qrLifetimeTrack: ViewStyle = { height: 5, borderRadius: 99, backgroundColor: t.color.nachtLinie, overflow: 'hidden', width: '100%' }
   const qrLifetimeFill: ViewStyle = { height: '100%', backgroundColor: t.color.funke, borderRadius: 99 }
   const qrLifetimeFillTight: ViewStyle = { backgroundColor: t.color.warn }
-  const qrLifetimeLabel: TextStyle = { fontFamily: t.font.mono, fontSize: t.size.xs, color: t.color.nachtText, opacity: 0.6, textAlign: 'center' }
+  const qrLifetimeLabel: TextStyle = { ...t.type.meta, color: t.color.nachtText, opacity: 0.6, textAlign: 'center' }
   const qrLifetimeLabelTight: TextStyle = { color: t.color.warn, opacity: 1, fontWeight: t.weight.schwer }
 
   return {

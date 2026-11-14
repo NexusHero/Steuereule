@@ -100,7 +100,7 @@ function makeStyles(t: UiTheme) {
     paddingVertical: t.space.s2,
     marginBottom: t.space.s3,
   }
-  const text: TextStyle = { color: t.color.tinte, fontFamily: t.font.text, fontSize: t.size.s }
+  const text: TextStyle = { ...t.type.small, color: t.color.tinte }
   const calmBanner: ViewStyle = {
     borderWidth: 1,
     borderColor: t.color.tinte2,
@@ -108,6 +108,6 @@ function makeStyles(t: UiTheme) {
     paddingVertical: t.space.s2,
     marginBottom: t.space.s3,
   }
-  const calmText: TextStyle = { color: t.color.tinte, fontFamily: t.font.text, fontSize: t.size.s }
+  const calmText: TextStyle = { ...t.type.small, color: t.color.tinte }
   return { banner, text, calmBanner, calmText }
 }

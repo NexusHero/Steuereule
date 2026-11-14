@@ -112,9 +112,7 @@ function makeStyles(t: UiTheme) {
     gap: t.space.s2,
   }
   const heading: TextStyle = {
-    fontFamily: t.font.display,
-    fontWeight: t.weight.schwer,
-    fontSize: t.size.xl,
+    ...t.type.subhead,
     color: t.color.tinte,
   }
   const grid: ViewStyle = {
@@ -133,23 +131,12 @@ function makeStyles(t: UiTheme) {
     borderColor: t.color.tinte2,
   }
   const title: TextStyle = {
-    fontFamily: t.font.display,
-    fontWeight: t.weight.schwer,
-    fontSize: t.size.l,
+    ...t.type.cardTitle,
     color: t.color.tinte,
     marginBottom: t.space.s2,
   }
-  const formular: TextStyle = {
-    fontFamily: t.font.mono,
-    fontSize: t.size.xs,
-    color: t.color.tinte2,
-    marginBottom: t.space.s2,
-  }
-  const statusBase: TextStyle = {
-    fontFamily: t.font.text,
-    fontWeight: t.weight.fett,
-    fontSize: t.size.s,
-  }
+  const formular: TextStyle = { ...t.type.meta, color: t.color.tinte2, marginBottom: t.space.s2 }
+  const statusBase: TextStyle = { ...t.type.label }
   const statusOpen: TextStyle = { ...statusBase, color: t.color.tinte2 }
   const statusDone: TextStyle = { ...statusBase, color: t.color.ok }
 

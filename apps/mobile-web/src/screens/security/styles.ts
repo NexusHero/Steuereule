@@ -1,17 +1,9 @@
 import { type ViewStyle, type TextStyle } from 'react-native'
-import { WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
+import { type UiTheme } from '@steuereule/ui'
 
 export function makeSecurityStyles(t: UiTheme) {
-  const screen: ViewStyle = {
-    backgroundColor: t.color.grund,
-    paddingHorizontal: t.space.s5,
-    paddingVertical: t.space.s6,
-    minHeight: '100%',
-    maxWidth: 460,
-    width: '100%',
-    alignSelf: 'center',
-  }
-  const wideScreen: ViewStyle = { ...screen, maxWidth: WIDE_CONTENT_MAX_WIDTH }
+  const screen: ViewStyle = t.layout.flow.narrow
+  const wideScreen: ViewStyle = t.layout.flow.wide
   const appbar: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s3, paddingBottom: t.space.s4 }
   const backButton: ViewStyle = {
     width: 44,
@@ -23,14 +15,14 @@ export function makeSecurityStyles(t: UiTheme) {
     alignItems: 'center',
     justifyContent: 'center',
   }
-  const backGlyph: TextStyle = { fontFamily: t.font.text, fontWeight: t.weight.schwer, fontSize: t.size.l, color: t.color.tinte }
-  const appbarTitle: TextStyle = { fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size['2xl'], color: t.color.tinte, flex: 1 }
+  const backGlyph: TextStyle = { ...t.type.emphasis, color: t.color.tinte }
+  const appbarTitle: TextStyle = { ...t.type.title, color: t.color.tinte, flex: 1 }
   const statusRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: t.space.s3 }
-  const sectionTitle: TextStyle = { fontFamily: t.font.text, fontWeight: t.weight.schwer, fontSize: t.size.l, color: t.color.tinte, marginBottom: t.space.s2 }
-  const sectionBody: TextStyle = { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.tinte2, marginBottom: t.space.s4 }
-  const status: TextStyle = { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.tinte, marginTop: t.space.s2 }
-  const secret: TextStyle = { fontFamily: t.font.mono, fontSize: t.size.xs, color: t.color.tinte2, marginTop: t.space.s3, marginBottom: t.space.s3 }
-  const codes: TextStyle = { fontFamily: t.font.mono, fontSize: t.size.s, color: t.color.tinte, marginBottom: t.space.s4 }
+  const sectionTitle: TextStyle = { ...t.type.emphasis, color: t.color.tinte, marginBottom: t.space.s2 }
+  const sectionBody: TextStyle = { ...t.type.small, color: t.color.tinte2, marginBottom: t.space.s4 }
+  const status: TextStyle = { ...t.type.small, color: t.color.tinte, marginTop: t.space.s2 }
+  const secret: TextStyle = { ...t.type.meta, color: t.color.tinte2, marginTop: t.space.s3, marginBottom: t.space.s3 }
+  const codes: TextStyle = { ...t.type.metaLarge, color: t.color.tinte, marginBottom: t.space.s4 }
   const card: ViewStyle = { marginTop: t.space.s4 }
 
   return {

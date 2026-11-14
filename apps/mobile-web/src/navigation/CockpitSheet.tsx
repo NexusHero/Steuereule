@@ -25,7 +25,8 @@ export function CockpitSheet({ navigation, children }: CockpitSheetProps) {
   }
 
   return (
-    <Sheet onClose={close} closeLabel={tr('sheet.schliessen')}>
+    // Every cockpit sheet holds a mask (LStB, Kapital, Kinder …): a reading column, not a wide panel.
+    <Sheet onClose={close} closeLabel={tr('sheet.schliessen')} width="flow">
       {children}
     </Sheet>
   )

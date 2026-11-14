@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { ScrollView, View, Text, Pressable, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { Button, Feld, Input, inkOnFunke, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
+import { Button, Feld, Input, inkOnFunke, useTheme, useBreakpoint, type UiTheme } from '@steuereule/ui'
 import {
   getCockpitControllerGetCockpitSummaryQueryKey,
   getPensionControllerGetQueryKey,
@@ -196,26 +196,16 @@ function ItemNotice({ response }: { readonly response: PensionResponseDto }) {
 }
 
 function makeStyles(t: UiTheme) {
-  const screen: ViewStyle = {
-    backgroundColor: t.color.grund,
-    paddingHorizontal: t.space.s5,
-    paddingVertical: t.space.s6,
-    minHeight: '100%',
-    maxWidth: 460,
-    width: '100%',
-    alignSelf: 'center',
-  }
-  const wideScreen: ViewStyle = { ...screen, maxWidth: WIDE_CONTENT_MAX_WIDTH }
+  const screen: ViewStyle = t.layout.flow.narrow
+  const wideScreen: ViewStyle = t.layout.flow.wide
   const headerRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', marginBottom: t.space.s4 }
   const heading: TextStyle = {
-    fontFamily: t.font.display,
-    fontWeight: t.weight.schwer,
-    fontSize: t.size['2xl'],
+    ...t.type.title,
     color: t.color.tinte,
     marginBottom: t.space.s2,
   }
-  const help: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.m, marginBottom: t.space.s4 }
-  const sectionHeading: TextStyle = { color: t.color.tinte, fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: t.size.m, marginBottom: t.space.s2 }
+  const help: TextStyle = { ...t.type.body, color: t.color.tinte2, marginBottom: t.space.s4 }
+  const sectionHeading: TextStyle = { ...t.type.bodyStrong, color: t.color.tinte, marginBottom: t.space.s2 }
   const kindButton: ViewStyle = {
     paddingHorizontal: t.space.s3,
     paddingVertical: t.space.s2,
@@ -225,8 +215,8 @@ function makeStyles(t: UiTheme) {
     marginBottom: t.space.s2,
   }
   const kindButtonActive: ViewStyle = { backgroundColor: t.color.funke, borderColor: t.color.funke }
-  const kindLabel: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.s }
-  const kindLabelActive: TextStyle = { color: inkOnFunke(t), fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: t.size.s }
+  const kindLabel: TextStyle = { ...t.type.small, color: t.color.tinte2 }
+  const kindLabelActive: TextStyle = { ...t.type.label, color: inkOnFunke(t) }
   const fieldRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s3 }
   const unclearButton: ViewStyle = {
     paddingHorizontal: t.space.s3,
@@ -235,13 +225,13 @@ function makeStyles(t: UiTheme) {
     borderColor: t.color.tinte,
     borderRadius: t.radius.s,
   }
-  const unclearLabel: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.s }
-  const unclearActive: TextStyle = { color: t.color.tinte, fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: t.size.s }
+  const unclearLabel: TextStyle = { ...t.type.small, color: t.color.tinte2 }
+  const unclearActive: TextStyle = { ...t.type.label, color: t.color.tinte }
   const itemsBlock: ViewStyle = { marginVertical: t.space.s3, padding: t.space.s3, borderWidth: t.space.kontur, borderColor: t.color.tinte, borderRadius: t.radius.s }
-  const itemsHeading: TextStyle = { color: t.color.tinte, fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size.m, marginBottom: t.space.s1 }
-  const itemAmount: TextStyle = { color: t.color.tinte, fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size['2xl'] }
-  const itemSource: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.s, marginTop: t.space.s1 }
-  const itemsOpen: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.m, marginVertical: t.space.s3 }
+  const itemsHeading: TextStyle = { ...t.type.itemTitle, color: t.color.tinte, marginBottom: t.space.s1 }
+  const itemAmount: TextStyle = { ...t.type.headline, color: t.color.tinte }
+  const itemSource: TextStyle = { ...t.type.small, color: t.color.tinte2, marginTop: t.space.s1 }
+  const itemsOpen: TextStyle = { ...t.type.body, color: t.color.tinte2, marginVertical: t.space.s3 }
   const cta: ViewStyle = { marginTop: t.space.s4 }
   return {
     screen,

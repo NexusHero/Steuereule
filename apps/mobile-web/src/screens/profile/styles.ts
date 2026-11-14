@@ -1,21 +1,11 @@
 import { type ViewStyle, type TextStyle } from 'react-native'
-import { WIDE_CONTENT_MAX_WIDTH, inkOnFunke, type UiTheme } from '@steuereule/ui'
+import { inkOnFunke, type UiTheme } from '@steuereule/ui'
 
 export function makeProfileStyles(t: UiTheme) {
-  const screen: ViewStyle = {
-    backgroundColor: t.color.grund,
-    paddingHorizontal: t.space.s5,
-    paddingVertical: t.space.s6,
-    minHeight: '100%',
-    maxWidth: 460,
-    width: '100%',
-    alignSelf: 'center',
-  }
-  const wideScreen: ViewStyle = { ...screen, maxWidth: WIDE_CONTENT_MAX_WIDTH }
+  const screen: ViewStyle = t.layout.overview.narrow
+  const wideScreen: ViewStyle = t.layout.overview.wide
   const heading: TextStyle = {
-    fontFamily: t.font.display,
-    fontWeight: t.weight.schwer,
-    fontSize: t.size['3xl'],
+    ...t.type.title,
     color: t.color.tinte,
     marginBottom: t.space.s4,
     textAlign: 'center',
@@ -36,29 +26,25 @@ export function makeProfileStyles(t: UiTheme) {
     justifyContent: 'center',
   }
   const avatarText: TextStyle = {
-    fontFamily: t.font.display,
-    fontWeight: t.weight.schwer,
-    fontSize: t.size.xl,
+    ...t.type.subhead,
     color: inkOnFunke(t),
   }
-  const name: TextStyle = { fontFamily: t.font.text, fontWeight: t.weight.schwer, fontSize: t.size.l, color: t.color.funke }
+  const name: TextStyle = { ...t.type.emphasis, color: t.color.funke }
   const idLine: TextStyle = {
-    fontFamily: t.font.mono,
-    fontSize: t.size.s,
+    ...t.type.metaLarge,
     color: t.color.nachtText,
     opacity: 0.8,
     fontVariant: ['tabular-nums'],
     marginTop: t.space.s1,
   }
   const savedNotice: TextStyle = {
+    ...t.type.small,
     color: t.color.tinte,
-    fontFamily: t.font.text,
-    fontSize: t.size.s,
     textAlign: 'center',
     marginTop: t.space.s3,
   }
   const counterRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s2, marginTop: -t.space.s2, marginBottom: t.space.s3 }
-  const saveErrorText: TextStyle = { color: t.color.fehler, fontFamily: t.font.text, fontSize: t.size.s, marginTop: t.space.s2 }
+  const saveErrorText: TextStyle = { ...t.type.small, color: t.color.fehler, marginTop: t.space.s2 }
   const dataCard: ViewStyle = { padding: 0, overflow: 'hidden' }
   const dataRow: ViewStyle = {
     flexDirection: 'row',
@@ -68,8 +54,8 @@ export function makeProfileStyles(t: UiTheme) {
     paddingHorizontal: t.space.s4,
     paddingVertical: t.space.s3,
   }
-  const dataRowLabel: TextStyle = { fontFamily: t.font.text, fontSize: t.size.m, color: t.color.tinte, flex: 1 }
-  const dataRowArrow: TextStyle = { fontFamily: t.font.text, fontWeight: t.weight.schwer, color: t.color.tinte }
+  const dataRowLabel: TextStyle = { ...t.type.body, color: t.color.tinte, flex: 1 }
+  const dataRowArrow: TextStyle = { ...t.type.button, color: t.color.tinte }
 
   return {
     screen,

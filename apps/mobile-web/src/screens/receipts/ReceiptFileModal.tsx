@@ -114,6 +114,7 @@ export function ReceiptFileModal({ receiptId, fileName, onClose }: ReceiptFileMo
               <a
                 href={state.objectUrl}
                 download={displayName}
+                // adherence-allow: a DOM <a> takes CSS, not a React Native text role.
                 style={{ color: t.color.tinte, fontFamily: t.font.text, fontWeight: 700, fontSize: t.size.s }}
               >
                 {tr('belege.preview.download')}
@@ -142,10 +143,8 @@ function makeStyles(t: UiTheme) {
     gap: t.space.s3,
   }
   const title: TextStyle = {
+    ...t.type.cardTitle,
     flex: 1,
-    fontFamily: t.font.display,
-    fontWeight: t.weight.schwer,
-    fontSize: t.size.l,
     color: t.color.tinte,
   }
   const closeButton: ViewStyle = {
@@ -160,9 +159,8 @@ function makeStyles(t: UiTheme) {
     gap: t.space.s2,
   }
   const infoText: TextStyle = {
+    ...t.type.small,
     color: t.color.tinte2,
-    fontFamily: t.font.text,
-    fontSize: t.size.s,
   }
   const errorBox: ViewStyle = {
     padding: t.space.s3,
@@ -172,9 +170,8 @@ function makeStyles(t: UiTheme) {
     backgroundColor: t.color.warnWeich,
   }
   const errorText: TextStyle = {
+    ...t.type.small,
     color: t.color.tinte,
-    fontFamily: t.font.text,
-    fontSize: t.size.s,
   }
   const nativeImage = {
     width: '100%' as const,

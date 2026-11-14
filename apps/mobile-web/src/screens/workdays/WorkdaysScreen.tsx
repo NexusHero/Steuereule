@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { ScrollView, View, Text, Pressable, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { Button, Chip, Feld, Input, inkOnFunke, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
+import { Button, Chip, Feld, Input, inkOnFunke, useTheme, useBreakpoint, type UiTheme } from '@steuereule/ui'
 import {
   GERMAN_STATES,
   SWISS_CANTONS,
@@ -495,26 +495,16 @@ function int(s: string): number {
 }
 
 function makeStyles(t: UiTheme) {
-  const screen: ViewStyle = {
-    backgroundColor: t.color.grund,
-    paddingHorizontal: t.space.s5,
-    paddingVertical: t.space.s6,
-    minHeight: '100%',
-    maxWidth: 460,
-    width: '100%',
-    alignSelf: 'center',
-  }
-  const wideScreen: ViewStyle = { ...screen, maxWidth: WIDE_CONTENT_MAX_WIDTH }
+  const screen: ViewStyle = t.layout.flow.narrow
+  const wideScreen: ViewStyle = t.layout.flow.wide
   const headerRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', marginBottom: t.space.s4 }
   const heading: TextStyle = {
-    fontFamily: t.font.display,
-    fontWeight: t.weight.schwer,
-    fontSize: t.size['2xl'],
+    ...t.type.title,
     color: t.color.tinte,
     marginBottom: t.space.s2,
   }
-  const help: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.m, marginBottom: t.space.s4 }
-  const sectionLabel: TextStyle = { color: t.color.tinte, fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: t.size.s, marginBottom: t.space.s2 }
+  const help: TextStyle = { ...t.type.body, color: t.color.tinte2, marginBottom: t.space.s4 }
+  const sectionLabel: TextStyle = { ...t.type.label, color: t.color.tinte, marginBottom: t.space.s2 }
   const weekdayRow: ViewStyle = { flexDirection: 'row', flexWrap: 'wrap', gap: t.space.s2, marginBottom: t.space.s4 }
   const weekday: ViewStyle = {
     minWidth: 44,
@@ -526,19 +516,19 @@ function makeStyles(t: UiTheme) {
     alignItems: 'center',
   }
   const weekdayActive: ViewStyle = { backgroundColor: t.color.funke }
-  const weekdayText: TextStyle = { color: t.color.tinte, fontFamily: t.font.text, fontSize: t.size.s }
-  const weekdayActiveText: TextStyle = { color: inkOnFunke(t), fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: t.size.s }
+  const weekdayText: TextStyle = { ...t.type.small, color: t.color.tinte }
+  const weekdayActiveText: TextStyle = { ...t.type.label, color: inkOnFunke(t) }
   const resultBlock: ViewStyle = { marginTop: t.space.s4, padding: t.space.s4, backgroundColor: t.color.karte, borderWidth: t.space.kontur, borderColor: t.color.tinte, borderRadius: t.radius.s }
   const resultRow: ViewStyle = { flexDirection: 'row', justifyContent: 'space-between', marginBottom: t.space.s2 }
-  const resultLabel: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.m }
-  const resultValue: TextStyle = { color: t.color.tinte, fontFamily: t.font.mono, fontSize: t.size.m, fontVariant: ['tabular-nums'] }
-  const honestyNote: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.xs, marginTop: t.space.s2 }
+  const resultLabel: TextStyle = { ...t.type.body, color: t.color.tinte2 }
+  const resultValue: TextStyle = { ...t.type.figure, color: t.color.tinte, fontVariant: ['tabular-nums'] }
+  const honestyNote: TextStyle = { ...t.type.caption, color: t.color.tinte2, marginTop: t.space.s2 }
   const conflictBlock: ViewStyle = { marginTop: t.space.s4, padding: t.space.s4, borderWidth: t.space.kontur, borderColor: t.color.warn, borderRadius: t.radius.s }
-  const conflictHeading: TextStyle = { color: t.color.tinte, fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size.m, marginBottom: t.space.s2 }
-  const conflictBody: TextStyle = { color: t.color.tinte, fontFamily: t.font.text, fontSize: t.size.s }
+  const conflictHeading: TextStyle = { ...t.type.itemTitle, color: t.color.tinte, marginBottom: t.space.s2 }
+  const conflictBody: TextStyle = { ...t.type.small, color: t.color.tinte }
   const cta: ViewStyle = { marginTop: t.space.s4 }
   const priorButton: ViewStyle = { marginBottom: t.space.s4 }
-  const regionHint: TextStyle = { color: t.color.ki, fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: t.size.xs, marginTop: -t.space.s2 }
+  const regionHint: TextStyle = { ...t.type.captionStrong, color: t.color.ki, marginTop: -t.space.s2 }
   return {
     priorButton,
     regionHint,

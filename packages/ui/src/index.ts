@@ -29,7 +29,7 @@ export { Gallery } from './gallery/Gallery'
 export { useReducedMotion } from './motion/useReducedMotion'
 export { autoCompleteProps, type InputAutoComplete } from './lib/autoComplete'
 export { useBreakpoint, resolveBreakpoint, type Breakpoint } from './responsive/useBreakpoint'
-export { WIDE_CONTENT_MAX_WIDTH } from './responsive/contentWidth'
+export { WIDE_CONTENT_MAX_WIDTH, FLOW_CONTENT_MAX_WIDTH, NARROW_CONTENT_MAX_WIDTH } from './responsive/contentWidth'
 export {
   hapticSelection,
   hapticLight,
@@ -39,3 +39,4 @@ export {
   setHapticsEnabled,
   isHapticsEnabled,
 } from './lib/haptics'
+export { TYPE, type TypeRole, type LayoutRoles, type ScreenLayout } from './theme/roles'

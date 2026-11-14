@@ -60,11 +60,11 @@ function makeStyles(t: UiTheme) {
     padding: t.space.s4,
     marginBottom: t.space.s4,
   }
-  const verifyHeading: TextStyle = { fontFamily: t.font.text, fontWeight: t.weight.schwer, fontSize: t.size.m, color: t.color.tinte, marginBottom: t.space.s1 }
-  const verifyBody: TextStyle = { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.tinte2, marginBottom: t.space.s2 }
-  const verifyResendLink: TextStyle = { fontFamily: t.font.text, fontWeight: t.weight.schwer, fontSize: t.size.s, color: t.color.tinte, textDecorationLine: 'underline', minHeight: 44, textAlignVertical: 'center' }
-  const verifyResendNote: TextStyle = { fontFamily: t.font.text, fontSize: t.size.xs, color: t.color.tinte2, marginTop: t.space.s1 }
-  const verifyResendError: TextStyle = { fontFamily: t.font.text, fontSize: t.size.xs, color: t.color.fehler, marginTop: t.space.s1 }
+  const verifyHeading: TextStyle = { ...t.type.button, color: t.color.tinte, marginBottom: t.space.s1 }
+  const verifyBody: TextStyle = { ...t.type.small, color: t.color.tinte2, marginBottom: t.space.s2 }
+  const verifyResendLink: TextStyle = { ...t.type.labelStrong, color: t.color.tinte, textDecorationLine: 'underline', minHeight: 44, textAlignVertical: 'center' }
+  const verifyResendNote: TextStyle = { ...t.type.caption, color: t.color.tinte2, marginTop: t.space.s1 }
+  const verifyResendError: TextStyle = { ...t.type.caption, color: t.color.fehler, marginTop: t.space.s1 }
   const verifiedBanner: ViewStyle = {
     alignSelf: 'stretch',
     backgroundColor: t.color.okWeich,
@@ -74,6 +74,6 @@ function makeStyles(t: UiTheme) {
     padding: t.space.s4,
     marginBottom: t.space.s4,
   }
-  const verifiedHeading: TextStyle = { fontFamily: t.font.text, fontWeight: t.weight.schwer, fontSize: t.size.m, color: t.color.tinte }
+  const verifiedHeading: TextStyle = { ...t.type.button, color: t.color.tinte }
   return { verifyBanner, verifyHeading, verifyBody, verifyResendLink, verifyResendNote, verifyResendError, verifiedBanner, verifiedHeading }
 }

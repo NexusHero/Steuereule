@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { theme as motionTokens } from '@steuereule/tokens'
 import { useTheme } from '../theme/useTheme'
 import { useBreakpoint } from '../responsive/useBreakpoint'
-import { WIDE_CONTENT_MAX_WIDTH } from '../responsive/contentWidth'
+import { FLOW_CONTENT_MAX_WIDTH, WIDE_CONTENT_MAX_WIDTH } from '../responsive/contentWidth'
 import { useReducedMotion } from '../motion/useReducedMotion'
 import { UI_NS } from '../i18n/resources'
 
@@ -22,9 +22,14 @@ export interface SheetProps {
   readonly closeLabel?: string
   readonly children: ReactNode
   readonly testID?: string
+  /**
+   * Panel width from tablet up: `flow` for a mask or a question (a calm reading column),
+   * `overview` (default) for wide content. Phones always get the full-width bottom sheet.
+   */
+  readonly width?: 'flow' | 'overview'
 }
 
-export function Sheet({ onClose, closeLabel, children, testID }: SheetProps) {
+export function Sheet({ onClose, closeLabel, children, testID, width = 'overview' }: SheetProps) {
   const t = useTheme()
   const bp = useBreakpoint()
   const compact = bp === 's'
@@ -165,7 +170,7 @@ export function Sheet({ onClose, closeLabel, children, testID }: SheetProps) {
       }
     : {
         width: '100%',
-        maxWidth: WIDE_CONTENT_MAX_WIDTH,
+        maxWidth: width === 'flow' ? FLOW_CONTENT_MAX_WIDTH + 2 * t.space.s4 : WIDE_CONTENT_MAX_WIDTH,
         maxHeight: '88%',
         borderRadius: t.radius.m,
       }
