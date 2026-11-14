@@ -104,7 +104,8 @@ export async function runScenario05(browser, webOrigin, sql) {
   await page.locator('[data-testid="kapital-weiter"]').click()
   await page.waitForTimeout(500)
 
-  await assertCockpitEstimate(page, 'Scenario 05', { expectedText: 'Die Erstattung rechnen wir bisher nur für Angestellte.' })
+  // UX review K3: a pensioner is estimated now — nothing withheld from 24.000 € pension, so a back payment.
+  await assertCockpitEstimate(page, 'Scenario 05', { direction: 'Nachzahlung' })
 
   const masterDataBtn = page.locator('[data-testid="cockpit-stammdaten"]')
   await masterDataBtn.waitFor({ state: 'visible', timeout: 10_000 })

@@ -76,7 +76,8 @@ export async function runScenario14(browser, webOrigin) {
 
   await page.locator('[data-testid="cockpit-kacheln"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="cockpit-erstattung"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await assertCockpitEstimate(page, 'Scenario 14', { expectedText: 'Ihr seid verheiratet' })
+  // UX review H3: „Verheiratet“ in the interview sets up the joint return, so the couple is estimated right away.
+  await assertCockpitEstimate(page, 'Scenario 14')
 
   await page.locator('[data-testid="cockpit-stammdaten"]').click()
   await page.locator('[data-testid="stammdaten-familienstand-verheiratet"]').waitFor({ state: 'visible', timeout: 10_000 })

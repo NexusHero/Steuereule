@@ -89,7 +89,10 @@ export async function runScenario21(browser, webOrigin, sql) {
   await page.locator('[data-testid="cockpit-abgabe-vorbereiten"]').click()
   const printBtnStep = page.locator('[data-testid="abgabe-zum-ausdruck"]')
   await printBtnStep.waitFor({ state: 'visible', timeout: 10_000 })
-  if (await printBtnStep.isDisabled()) fail('Expected abgabe-zum-ausdruck enabled before Stammdaten in Scenario 21')
+  // UX review H3: „Verheiratet“ in the interview already set up the joint return, so the printout waits for the
+  // Veranlagungsart comparison (or its skip) instead of being open before the master data.
+  await page.locator('[data-testid="abgabe-vergleich-ueberspringen"]').waitFor({ state: 'visible', timeout: 10_000 })
+  if (!(await printBtnStep.isDisabled())) fail('Expected abgabe-zum-ausdruck to wait for the comparison in Scenario 21')
   await page.locator('[data-testid="abgabe-zurueck"]').click()
 
   // --- 1. MasterDataScreen Partner B inline sub-screens (Back + Save roundtrips) ---

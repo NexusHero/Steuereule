@@ -10,7 +10,8 @@ import { skipSplash, signUpOutOfBand, submitLogin } from '../harness/flows.mjs'
 const AUTH_BUCKET = { windowMs: 10_000, max: 3, shared: true }
 const PASSWORD = 'Sicheres-Passwort-1!'
 const TAG = 'hub-acceptance'
-const YEAR = 2026
+// The cockpit opens on the last completed year since UX review K2 (2025 on 2026-11-14).
+const YEAR = 2025
 const COMMUTE = { workdays: [1, 2, 3, 4, 5], vacationDays: 30, sickDays: 5, homeOfficeDays: 0, oneWayKm: 12, transport: 'pkw', workplace: null }
 
 async function account(apiOrigin, webOrigin, sql) {

@@ -65,3 +65,25 @@ describe('interview answers reach the household (UX review H3)', () => {
     expect((await links.findByUserAndYear('u', YEAR))?.filingType).toBe('zusammen')
   })
 })
+
+describe('joining the partner\'s return after the interview set up an own one (E2E scenario 03)', () => {
+  it('replaces the untouched own joint return with the partner\'s', async () => {
+    const answers = new FakeInterviewAnswerRepository()
+    const links = new FakeLinkRepository()
+    const audit = new AuditService(new FakeAuditRepository())
+    const link = new LinkService(links, new FakeProfileRepository(), new FakeMasterDataRepository(), audit)
+    const service = new InterviewService(answers, audit, link)
+
+    const markus = await link.set('markus', YEAR, { filingType: 'zusammen' })
+    for (const [questionId, value] of [['job', 'Angestellt'], ['ausland', 'Nein'], ['kinder', 'Nein'], ['familienstand', 'Verheiratet']] as const) {
+      await service.postAnswer('julia', YEAR, { questionId, value }, 'session')
+    }
+    expect((await links.findByUserAndYear('julia', YEAR))?.personAUserId).toBe('julia')
+
+    await link.joinWithCode('julia', YEAR, markus.invitationCode!)
+
+    const joined = await links.findByUserAndYear('julia', YEAR)
+    expect(joined?.personAUserId).toBe('markus')
+    expect(joined?.personBUserId).toBe('julia')
+  })
+})

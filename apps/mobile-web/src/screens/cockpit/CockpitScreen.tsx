@@ -291,16 +291,20 @@ function RefundHeadline({ year, estimate }: { readonly year: number; readonly es
         ? formatEuroRange(Math.min(Math.abs(result.from), Math.abs(result.to)), Math.max(Math.abs(result.from), Math.abs(result.to)))
         : tr('cockpit.hero.ergebnisSpanne', { nachzahlung: formatEuro(Math.abs(result.from)), erstattung: formatEuro(result.to) })
   return (
-    <View testID="cockpit-erstattung-hero">
-      <Text style={styles.heroLabel}>{tr(label)}</Text>
-      <Text style={styles.heroValue} testID="cockpit-erstattung">{value}</Text>
-      {even ? <Text style={styles.effectLine} testID="cockpit-ausgeglichen">{tr('cockpit.hero.ausgeglichen')}</Text> : null}
+    // One element reads as the whole statement („Voraussichtliche Erstattung 483–544 €“) for screen readers and checks.
+    <>
+      <View testID="cockpit-erstattung">
+        <Text style={styles.refundLabel}>{tr(label)}</Text>
+        <Text style={styles.heroValue} testID="cockpit-erstattung-betrag">{value}</Text>
+        {even ? <Text style={styles.effectLine} testID="cockpit-ausgeglichen">{tr('cockpit.hero.ausgeglichen')}</Text> : null}
+      </View>
+      {/* Outside the statement above: its euro amount is the change, not the estimate. */}
       {effect !== null && effect.deltaEur !== 0 ? (
         <Pressable accessibilityRole="button" accessibilityHint={tr('cockpit.wirkung.schliessen')} onPress={() => { dismissEffect(year); setEffect(null) }} testID="cockpit-wirkung">
           <Text style={styles.effectLine}>{effectText(effect, tr)}</Text>
         </Pressable>
       ) : null}
-    </View>
+    </>
   )
 }
 

@@ -248,6 +248,15 @@ export class LinkService {
     if (row.personAUserId === userId) {
       throw new InvalidInputError('INVITATION_IS_OWN', 'You cannot couple with your own invitation.')
     }
+    // The interview may have set up this user's own joint return already (UX review H3). As long as no
+    // spouse account joined it, it is only a placeholder: joining the partner's return replaces it.
+    const own = await this.repository.findByUserAndYear(userId, taxYear)
+    if (own && own.id !== row.id && own.personAUserId === userId) {
+      if (hasOwnAccount(own)) {
+        throw new InvalidInputError('ALREADY_COUPLED', 'This year is already coupled with another account.')
+      }
+      await this.repository.delete(userId, taxYear)
+    }
     await this.repository.setPersonB(row.id, userId)
     await this.household?.linkPartner(row.personAUserId, userId, taxYear)
     return this.get(userId, taxYear)

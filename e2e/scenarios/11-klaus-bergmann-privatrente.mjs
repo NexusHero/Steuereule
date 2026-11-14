@@ -31,10 +31,11 @@ export async function runScenario11(browser, webOrigin) {
   await page.locator('[data-testid="cockpit-interview"]').click()
   await page.locator('text=Rente').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('text=Rente').click()
-  await page.locator('text=Nein').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('text=Nein').click()
-  await page.locator('text=Nein').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('text=Nein').click()
+  // The pensioner's foreign question names „Nein“ in its help text too (UX review M3): click the options by id.
+  await page.locator('[data-testid="interview-option-ausland-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await page.locator('[data-testid="interview-option-ausland-Nein"]').click()
+  await page.locator('[data-testid="interview-option-kinder-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await page.locator('[data-testid="interview-option-kinder-Nein"]').click()
   await page.locator('text=Ledig').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('text=Ledig').click()
 
@@ -60,7 +61,8 @@ export async function runScenario11(browser, webOrigin) {
   await page.getByRole('button', { name: 'Weiter', exact: true }).click()
   await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
   await page.locator('[data-testid="cockpit-erstattung"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await assertCockpitEstimate(page, 'Scenario 11', { expectedText: 'Die Erstattung rechnen wir bisher nur für Angestellte.' })
+  // UX review K3: a pensioner is estimated now (Ertragsanteil of the private pension).
+  await assertCockpitEstimate(page, 'Scenario 11')
   console.log('[Scenario 11] PASS: Private Pension Ertragsanteil calculation and honest cockpit notice verified.')
 
   await ctx.close()

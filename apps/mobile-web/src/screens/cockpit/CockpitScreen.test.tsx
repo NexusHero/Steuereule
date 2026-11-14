@@ -692,7 +692,7 @@ describe('CockpitScreen — die voraussichtliche Erstattung als ehrliche Spanne 
     renderCockpit()
 
     expect(await screen.findByText('Voraussichtliche Nachzahlung')).toBeTruthy()
-    expect(screen.getByTestId('cockpit-erstattung').textContent).toMatch(/^31\.192\s*€$/)
+    expect(screen.getByTestId('cockpit-erstattung-betrag').textContent).toMatch(/^31\.192\s*€$/)
   })
 
   it('tells a married person to set up the joint return instead of estimating them as single (ADR-0054)', async () => {

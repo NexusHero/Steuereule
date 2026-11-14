@@ -10,7 +10,8 @@ import { FLOW_COPY, skipSplash, signUpOutOfBand, submitLogin } from '../harness/
 const AUTH_BUCKET = { windowMs: 10_000, max: 3, shared: true }
 const PASSWORD = 'Sicheres-Passwort-1!'
 const TAG = 'deep-links'
-const YEAR = 2026
+// The cockpit opens on the last completed year since UX review K2 (2025 on 2026-11-14).
+const YEAR = 2025
 
 /** Every path of linking.ts with real parameters. `lands` names a deliberate redirect, with the reason. */
 export const ROUTES = [

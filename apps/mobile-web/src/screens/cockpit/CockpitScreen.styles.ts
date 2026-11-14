@@ -85,6 +85,8 @@ export function makeStyles(t: UiTheme) {
     fontVariant: ['tabular-nums'],
     lineHeight: t.size['3xl'] * 1.05,
   }
+  /** The refund headline's label, in normal case so the label and figure read as one sentence. */
+  const refundLabel: TextStyle = { ...heroLabel, textTransform: 'none', letterSpacing: 0, fontSize: t.size.s }
   /** The income once the refund leads the hero (UX review H1): still visible, no longer the headline. */
   const heroValueSmall: TextStyle = {
     fontFamily: t.font.display,
@@ -187,5 +189,5 @@ export function makeStyles(t: UiTheme) {
   }
   const runningYearText: TextStyle = { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.tinte }
 
-  return { runningYearNotice, runningYearText, screen, wideScreen, appbar, appbarTitleReihe: appbarTitleRow, appbarTitle, jahrReihe: yearRow, uebernahmeZeile: takeoverRow, uebernahmeZeileText: takeoverRowText, heading, help, cta, secondaryCta, berater, emptyBlock, heroLabel, heroValue, heroValueSmall, effectLine, heroDivider, openItems, offenePosten: openItemCount, refundLater, gatedHeading, gatedBody, euleBannerCard, euleBannerRow, euleBannerCopy, euleBannerTitle, euleBannerEffect, euleBannerProvenance, euleBannerDismissBtn, euleBannerDismissText }
+  return { runningYearNotice, runningYearText, screen, wideScreen, appbar, appbarTitleReihe: appbarTitleRow, appbarTitle, jahrReihe: yearRow, uebernahmeZeile: takeoverRow, uebernahmeZeileText: takeoverRowText, heading, help, cta, secondaryCta, berater, emptyBlock, heroLabel, refundLabel, heroValue, heroValueSmall, effectLine, heroDivider, openItems, offenePosten: openItemCount, refundLater, gatedHeading, gatedBody, euleBannerCard, euleBannerRow, euleBannerCopy, euleBannerTitle, euleBannerEffect, euleBannerProvenance, euleBannerDismissBtn, euleBannerDismissText }
 }
