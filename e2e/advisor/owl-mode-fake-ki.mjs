@@ -89,7 +89,7 @@ async function main() {
     const writes = watchWrites(page)
 
     // Row A — a draft, but no write.
-    await ask(page, 'Mein Arbeitsweg ist länger geworden')
+    await ask(page, 'Mein Arbeitsweg ist länger geworden, jetzt 38 km')
     const stage = page.locator('[data-testid="eule-draft-stage"]')
     await stage.waitFor({ state: 'visible', timeout: 15_000 })
     await page.locator('[data-testid^="draft-card-"]', { hasText: '→ 38' }).waitFor({ state: 'visible', timeout: 10_000 })
@@ -116,7 +116,7 @@ async function main() {
     console.log(`[${TAG}] ✅ Row B — apply wrote 38 km, undo restored exactly 20 km`)
 
     // Row C — „Alle übernehmen“ with two drafts from two turns (the engine stages one draft per turn).
-    await ask(page, 'Mein Arbeitsweg ist länger geworden')
+    await ask(page, 'Mein Arbeitsweg ist länger geworden, jetzt 38 km')
     await page.locator('[data-testid^="draft-card-"]', { hasText: '→ 38' }).first().waitFor({ state: 'visible', timeout: 15_000 })
     await ask(page, 'Ich war oft im Homeoffice')
     await page.locator('[data-testid^="draft-card-"]', { hasText: '→ 60' }).first().waitFor({ state: 'visible', timeout: 15_000 })
@@ -133,7 +133,7 @@ async function main() {
     await setCommute(user.api, {})
     await page.reload({ waitUntil: 'networkidle' })
     await openEule(page)
-    await ask(page, 'Mein Arbeitsweg ist länger geworden')
+    await ask(page, 'Mein Arbeitsweg ist länger geworden, jetzt 38 km')
     await page.locator('[data-testid^="draft-card-"]', { hasText: '→ 38' }).last().waitFor({ state: 'visible', timeout: 15_000 })
     await setCommute(user.api, { oneWayKm: 25 })
     await page.locator('[data-testid="eule-batch-apply-btn"]').click()
@@ -146,7 +146,7 @@ async function main() {
 
     // Row E — „Maske ansehen“ shows the mask inline.
     await setCommute(user.api, {})
-    await ask(page, 'Mein Arbeitsweg ist länger geworden')
+    await ask(page, 'Mein Arbeitsweg ist länger geworden, jetzt 38 km')
     const inspect = page.locator('[data-testid^="draft-inspect-"]').last()
     await inspect.waitFor({ state: 'visible', timeout: 15_000 })
     await inspect.click()
