@@ -260,6 +260,15 @@ describe('InterviewService', () => {
       await expect(repository.findAllForUserAndYear(USER_ID, TAX_YEAR)).resolves.toEqual([])
     })
 
+    it('admits the training question of the Strom selection, and its costs only after „Ja“ (ADR-0089)', async () => {
+      await expect(service.postAnswer(USER_ID, TAX_YEAR, { questionId: 'fortbildung-kosten', value: '800' })).rejects.toBeInstanceOf(UnreachableAnswerError)
+      await service.postAnswer(USER_ID, TAX_YEAR, { questionId: 'fortbildung', value: 'Ja' })
+      await service.postAnswer(USER_ID, TAX_YEAR, { questionId: 'fortbildung-kosten', value: '800' })
+      expect(repository.writes.map((w) => `${w.questionId}=${w.value}`)).toEqual(['fortbildung=Ja', 'fortbildung-kosten=800'])
+      // The rest of Segment 2 stays closed.
+      await expect(service.postAnswer(USER_ID, TAX_YEAR, { questionId: 'homeoffice', value: 'Nie' })).rejects.toBeInstanceOf(UnreachableAnswerError)
+    })
+
     it('rejects (409) a Segment-2 follow-up id (kap-depot) and writes nothing', async () => {
       await expect(
         service.postAnswer(USER_ID, TAX_YEAR, { questionId: 'kap-depot', value: 'Krypto' }),

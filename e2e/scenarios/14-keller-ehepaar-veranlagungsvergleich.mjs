@@ -6,7 +6,10 @@ import {
   guardAgainst429,
   fail,
   registerAndOnboard,
-  nextStep,
+  answerBasis,
+  chooseTopics,
+  leaveStrom,
+  waitForStromStep,
   assertCockpitEstimate,
   runStandaloneScenario,
 } from './helpers/scenario-harness.mjs'
@@ -30,49 +33,25 @@ export async function runScenario14(browser, webOrigin) {
   )
 
   await page.locator('[data-testid="cockpit-interview"]').click()
-  await page.locator('[data-testid="interview-option-job-Angestellt"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="interview-option-job-Angestellt"]').click()
-  await page.locator('[data-testid="interview-option-ausland-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="interview-option-ausland-Nein"]').click()
-  await page.locator('[data-testid="interview-option-kinder-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="interview-option-kinder-Nein"]').click()
-  await page.locator('[data-testid="interview-option-familienstand-Verheiratet"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="interview-option-familienstand-Verheiratet"]').click()
-  // ADR-0088: the interview asks what Person B does
-  await page.locator('[data-testid="interview-option-partner-job-Angestellt"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="interview-option-partner-job-Angestellt"]').click()
-  await page.locator('[data-testid="interview-option-partner-ausland-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="interview-option-partner-ausland-Nein"]').click()
+  // The Strom (ADR-0089): the basis page asks what Person B does as well (ADR-0088).
+  await answerBasis(page, { job: 'Angestellt', ausland: 'Nein', kinder: 'Nein', familienstand: 'Verheiratet', 'partner-job': 'Angestellt', 'partner-ausland': 'Nein' })
 
+  await waitForStromStep(page, 'lohnsteuerbescheinigung')
   await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').fill('75000')
   await page.locator('[data-testid="lstb-lohnsteuer"]').fill('16000')
   await page.locator('[data-testid="lstb-sozialversicherung"]').fill('14000')
   await page.locator('[data-testid="lstb-weiter"]').click()
-  await nextStep(page)
 
-  for (const step of ['dhf', 'umzug', 'abfindung', 'lohnersatz', 'nebenjob']) {
-    const opt = page.locator(`[data-testid="katalog-option-${step}-Nein"]`)
-    await opt.waitFor({ state: 'visible', timeout: 10_000 })
-    await opt.click()
-  }
-  await nextStep(page)
-
-  await page.locator('[data-testid="katalog-option-einkuenfte-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="katalog-option-einkuenfte-Nein"]').click()
-  await nextStep(page)
-
-  for (const step of ['spenden', 'kv-pv', 'riester']) {
-    const opt = page.locator(`[data-testid="katalog-option-${step}-Nein"]`)
-    await opt.waitFor({ state: 'visible', timeout: 10_000 })
-    await opt.click()
-  }
-  await nextStep(page)
-
+  await waitForStromStep(page, 'arbeitsweg')
   await page.locator('[data-testid="arbeitstage-km"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="arbeitstage-km"]').fill('10')
   await page.locator('[data-testid="arbeitstage-weiter"]').click()
-  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
+
+  // Nothing on the selection page applies: every topic is answered „Nein“ at once.
+  await chooseTopics(page, [])
+  await waitForStromStep(page, 'fertig')
+  await leaveStrom(page)
 
   await page.locator('[data-testid="cockpit-kacheln"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="cockpit-erstattung"]').waitFor({ state: 'visible', timeout: 10_000 })

@@ -8,8 +8,12 @@ import {
   fail,
   registerAndOnboard,
   selectTaxYear2025,
-  nextStep,
   assertEstimate,
+  answerBasis,
+  chooseTopics,
+  fillTopic,
+  leaveStrom,
+  waitForStromStep,
   unlockTaxYearInDb,
   confirmAnnexesIfPresent,
   downloadAndVerifyPdf,
@@ -44,42 +48,17 @@ export async function runScenario01(browser, webOrigin, sql) {
   await interviewBtn.waitFor({ state: 'visible', timeout: 10_000 })
   await interviewBtn.click()
 
-  await page.locator(`[data-testid="interview-option-job-${s1.interview.job}"]`).click()
-  await page.locator(`[data-testid="interview-option-ausland-${s1.interview.ausland}"]`).click()
-  await page.locator(`[data-testid="interview-option-kinder-${s1.interview.kinder}"]`).click()
-  await page.locator(`[data-testid="interview-option-familienstand-${s1.interview.familienstand}"]`).click()
+  // The Strom (ADR-0089): basis page, the LStB and the way to work, one selection, one topic page.
+  await answerBasis(page, s1.interview)
 
+  await waitForStromStep(page, 'lohnsteuerbescheinigung')
   await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').fill(String(s1.lstb.grossWage))
   await page.locator('[data-testid="lstb-lohnsteuer"]').fill(String(s1.lstb.wageTax))
   await page.locator('[data-testid="lstb-sozialversicherung"]').fill(String(s1.lstb.socialSecurity))
   await page.locator('[data-testid="lstb-weiter"]').click()
-  await nextStep(page)
 
-  for (const step of ['dhf', 'umzug', 'abfindung', 'lohnersatz', 'nebenjob']) {
-    const opt = page.locator(`[data-testid="katalog-option-${step}-Nein"]`)
-    await opt.waitFor({ state: 'visible', timeout: 10_000 })
-    await opt.click()
-  }
-  await nextStep(page)
-
-  const einkuenfteNein = page.locator('[data-testid="katalog-option-einkuenfte-Nein"]')
-  await einkuenfteNein.waitFor({ state: 'visible', timeout: 10_000 })
-  await einkuenfteNein.click()
-  await nextStep(page)
-
-  await page.locator('[data-testid="katalog-option-spenden-Ja"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="katalog-option-spenden-Ja"]').click()
-  await page.locator('[data-testid="katalog-input-spenden-betrag"]').fill(String(s1.specialExpenses.donations))
-  await page.locator('[data-testid="katalog-submit-spenden-betrag"]').click()
-
-  await page.locator('[data-testid="katalog-option-kv-pv-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="katalog-option-kv-pv-Nein"]').click()
-
-  await page.locator('[data-testid="katalog-option-riester-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="katalog-option-riester-Nein"]').click()
-  await nextStep(page)
-
+  await waitForStromStep(page, 'arbeitsweg')
   await page.locator('[data-testid="arbeitstage-urlaub"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="arbeitstage-urlaub"]').fill(String(s1.commute.vacationDays))
   await page.locator('[data-testid="arbeitstage-krank"]').fill(String(s1.commute.sickDays))
@@ -89,6 +68,17 @@ export async function runScenario01(browser, webOrigin, sql) {
   await page.locator(`[data-testid="arbeitstage-transport-${s1.commute.transport}"]`).click()
   await page.locator('[data-testid="arbeitstage-arbeitsort"]').fill(s1.commute.workplace)
   await page.locator('[data-testid="arbeitstage-weiter"]').click()
+
+  // Only the donations apply: everything else on the selection page is answered „Nein“ at once.
+  await chooseTopics(page, ['spenden'])
+  await fillTopic(page, 'spenden', { 'spenden-betrag': s1.specialExpenses.donations })
+
+  await waitForStromStep(page, 'fertig')
+  // UX review H1 in the Strom: the summary names what the donations changed, in euros.
+  const donations = page.locator('[data-testid="strom-uebernommen-spenden"]')
+  await donations.waitFor({ state: 'visible', timeout: 10_000 })
+  if (!/€/.test(await donations.innerText())) fail('[Scenario 01] the summary should name the euro effect of the donations')
+  await leaveStrom(page)
 
   await page.locator('[data-testid="cockpit-kacheln"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="cockpit-abgabe-vorbereiten"]').click()
@@ -117,9 +107,6 @@ export async function runScenario01(browser, webOrigin, sql) {
   await page.locator('[data-testid="stammdaten-zurueck"]').click()
 
   await assertEstimate(page, 'Scenario 01', { direction: 'Erstattung', contains: s1.expectedEstimate.targetRefund })
-  // UX review H1: the donations after the LStB changed the estimate, and the cockpit still says by how much.
-  await page.locator('[data-testid="cockpit-wirkung"]').waitFor({ state: 'visible', timeout: 10_000 })
-  if (!/€/.test(await page.locator('[data-testid="cockpit-wirkung"]').innerText())) fail('[Scenario 01] the change line should name the euro effect')
 
   unlockTaxYearInDb(sql, s1.email, s1.year)
 

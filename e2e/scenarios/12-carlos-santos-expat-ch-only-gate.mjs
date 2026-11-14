@@ -6,6 +6,9 @@ import {
   guardAgainst429,
   fail,
   registerAndOnboard,
+  answerBasis,
+  leaveStrom,
+  waitForStromStep,
   assertCockpitEstimate,
   runStandaloneScenario,
 } from './helpers/scenario-harness.mjs'
@@ -29,24 +32,18 @@ export async function runScenario12(browser, webOrigin) {
   )
 
   await page.locator('[data-testid="cockpit-interview"]').click()
-  await page.locator('text=Angestellt').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('text=Angestellt').click()
+  // The Strom's basis page (ADR-0089) shows the CH-only gate inline under the foreign answer; the
+  // remaining questions stay open, and Weiter continues without the foreign part.
+  await waitForStromStep(page, 'basis')
+  await page.locator('[data-testid="interview-option-job-Angestellt"]').click()
+  await page.locator('[data-testid="interview-option-ausland-In ein anderes Land"]').click()
+  const gate = page.locator('[data-testid="strom-hinweis-ch-only"]')
+  await gate.waitFor({ state: 'visible', timeout: 10_000 })
+  await gate.locator('text=Ehrlich: andere Länder können wir noch nicht.').waitFor({ state: 'visible', timeout: 10_000 })
+  await gate.locator('text=Jedes Land hat sein eigenes Abkommen mit eigenen Regeln').waitFor({ state: 'visible', timeout: 10_000 })
+  await answerBasis(page, { job: 'Angestellt', ausland: 'In ein anderes Land', kinder: 'Nein', familienstand: 'Ledig' })
 
-  await page.locator('text=In ein anderes Land').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('text=In ein anderes Land').click()
-
-  await page.locator('text=Ehrlich: andere Länder können wir noch nicht.').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('text=Jedes Land hat sein eigenes Abkommen mit eigenen Regeln').waitFor({ state: 'visible', timeout: 10_000 })
-
-  const continueOption = page.locator('text=Ohne Auslands-Teil weitermachen')
-  await continueOption.waitFor({ state: 'visible', timeout: 10_000 })
-  await continueOption.click()
-
-  await page.locator('text=Nein').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('text=Nein').click()
-  await page.locator('text=Ledig').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('text=Ledig').click()
-
+  await waitForStromStep(page, 'lohnsteuerbescheinigung')
   await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').fill('60000')
   await page.locator('[data-testid="lstb-lohnsteuer"]').fill('11000')
@@ -55,7 +52,8 @@ export async function runScenario12(browser, webOrigin) {
   await page.waitForLoadState('networkidle').catch(() => {})
   await page.locator('[data-testid="lstb-weiter"]').click()
 
-  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
+  await waitForStromStep(page, 'arbeitsweg')
+  await leaveStrom(page)
   await page.locator('[data-testid="cockpit-kacheln"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.getByRole('tab', { name: 'Cockpit' }).click()
   await assertCockpitEstimate(page, 'Scenario 12', { direction: 'Erstattung' })

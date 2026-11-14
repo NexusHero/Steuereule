@@ -1,5 +1,5 @@
 // Scenario 23: Deep Dialog Matrix — Guest-to-Account Upgrade (rememberedPendingPath) & Multi-Tax-Year Isolation
-// Tests starting as a Guest -> Interview -> Konto-Wand -> Registering directly from Konto-Wand -> Onboarding ->
+// Tests starting as a Guest -> Strom basis page -> Konto-Wand -> Registering directly from Konto-Wand -> Onboarding ->
 // Automatic resumption of the exact funnel path ('ch'), plus switching between 2025 and 2026 on Cockpit.
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -12,6 +12,12 @@ import {
   waitForBucketHeadroom,
   skipSplash,
   selectTaxYear,
+  openTile,
+  answerBasis,
+  chooseTopics,
+  fillTopic,
+  leaveStrom,
+  waitForStromStep,
   runStandaloneScenario,
 } from './helpers/scenario-harness.mjs'
 
@@ -29,12 +35,8 @@ export async function runScenario23(browser, webOrigin) {
   await guestBtn.waitFor({ state: 'visible', timeout: 10_000 })
   await guestBtn.click()
 
-  // 2. Complete Interview as Guest choosing Swiss Cross-Border path ('ch')
-  await page.locator('[data-testid="interview-option-job-Angestellt"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="interview-option-job-Angestellt"]').click()
-  await page.locator('[data-testid="interview-option-ausland-Ja, in die Schweiz"]').click()
-  await page.locator('[data-testid="interview-option-kinder-Nein"]').click()
-  await page.locator('[data-testid="interview-option-familienstand-Ledig"]').click()
+  // 2. Answer the Strom's basis page (ADR-0089) as Guest choosing Swiss Cross-Border path ('ch')
+  await answerBasis(page, { job: 'Angestellt', ausland: 'Ja, in die Schweiz', kinder: 'Nein', familienstand: 'Ledig' })
 
   // 3. Arrives on Konto-Wand showing "Grenzgänger CH" path -> Click "Konto anlegen und weitermachen"
   await page.locator('text=Grenzgänger CH').waitFor({ state: 'visible', timeout: 10_000 })
@@ -79,26 +81,45 @@ export async function runScenario23(browser, webOrigin) {
   // 6. Multi-Tax-Year Isolation (the guest starts on the last completed year since UX review K2): 2025 (migrated from Guest with CH path) vs 2026 (fresh year)
   await selectTaxYear(page, 2025)
   await page.locator('[data-testid="cockpit-weiter"]').waitFor({ state: 'visible', timeout: 10_000 })
+  // A donation in 2025 through the catalogue behind its tile: 2026 offers it as last year's amount.
+  await openTile(page, 'sonderausgaben')
+  await page.locator('[data-testid="katalog-option-spenden-Ja"]').click()
+  await page.locator('[data-testid="katalog-input-spenden-betrag"]').fill('300')
+  await page.locator('[data-testid="katalog-submit-spenden-betrag"]').click()
+  await page.locator('[data-testid="katalog-option-kv-pv-Nein"]').click()
+  await page.locator('[data-testid="katalog-option-riester-Nein"]').click()
+  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
 
   // Switch to 2026 -> 2026 must still be untouched and show its fresh interview CTA (`cockpit-interview`)
   await selectTaxYear(page, 2026)
   await page.locator('[data-testid="cockpit-interview"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="cockpit-interview"]').click()
-  await page.locator('[data-testid="interview-option-job-Angestellt"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="interview-option-job-Angestellt"]').click()
-  await page.locator('[data-testid="interview-option-ausland-Nein"]').click()
-  await page.locator('[data-testid="interview-option-kinder-Nein"]').click()
-  await page.locator('[data-testid="interview-option-familienstand-Ledig"]').click()
+  await answerBasis(page, { job: 'Angestellt', ausland: 'Nein', kinder: 'Nein', familienstand: 'Ledig' })
 
   // Fill LStB for 2026
+  await waitForStromStep(page, 'lohnsteuerbescheinigung')
   await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').fill('80000')
   await page.locator('[data-testid="lstb-lohnsteuer"]').fill('18000')
   await page.locator('[data-testid="lstb-sozialversicherung"]').fill('14000')
   await page.locator('[data-testid="lstb-weiter"]').click()
+  await waitForStromStep(page, 'arbeitsweg')
+  await page.locator('[data-testid="arbeitstage-km"]').fill('10')
+  await page.locator('[data-testid="arbeitstage-weiter"]').click()
+
+  // #452: the donations page offers 2025's amount with one tap.
+  await chooseTopics(page, ['spenden'])
+  await waitForStromStep(page, 'spenden')
+  const priorYear = page.locator('[data-testid="wie-vorjahr-spenden-betrag"]')
+  await priorYear.waitFor({ state: 'visible', timeout: 10_000 })
+  await priorYear.click()
+  const donation = await page.locator('[data-testid="katalog-input-spenden-betrag"]').inputValue()
+  if (donation !== '300') fail(`[Scenario 23] „wie im Vorjahr“ should take over 300, the field shows "${donation}"`)
+  await fillTopic(page, 'spenden', {})
+  await waitForStromStep(page, 'fertig')
 
   // Return to Cockpit and check 2026 now has `cockpit-weiter` (Angestellte)
-  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
+  await leaveStrom(page)
   await page.locator('[data-testid="cockpit-kacheln"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.getByRole('tab', { name: 'Cockpit' }).click()
   await page.locator('[data-testid="cockpit-weiter"]').waitFor({ state: 'visible', timeout: 10_000 })

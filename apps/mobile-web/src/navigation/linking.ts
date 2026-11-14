@@ -28,6 +28,7 @@ const cockpitScreens: NonNullable<PathConfig<CockpitStackParamList>['screens']> 
   Children: { path: 'steuerjahr/:year/kinder', parse: { year: Number } },
   CockpitMasterData: { path: 'steuerjahr/:year/stammdaten', parse: { year: Number } },
   Partner: { path: 'steuerjahr/:year/partner/:area', parse: { year: Number } },
+  Strom: { path: 'steuerjahr/:year/strom/:step', parse: { year: Number } },
 }
 
 const profileScreens: NonNullable<PathConfig<ProfileStackParamList>['screens']> = {

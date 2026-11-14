@@ -6,6 +6,10 @@ import {
   guardAgainst429,
   fail,
   registerAndOnboard,
+  answerBasis,
+  chooseTopics,
+  leaveStrom,
+  waitForStromStep,
   assertCockpitEstimate,
   runStandaloneScenario,
 } from './helpers/scenario-harness.mjs'
@@ -29,16 +33,10 @@ export async function runScenario11(browser, webOrigin) {
   )
 
   await page.locator('[data-testid="cockpit-interview"]').click()
-  await page.locator('text=Rente').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('text=Rente').click()
-  // The pensioner's foreign question names „Nein“ in its help text too (UX review M3): click the options by id.
-  await page.locator('[data-testid="interview-option-ausland-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="interview-option-ausland-Nein"]').click()
-  await page.locator('[data-testid="interview-option-kinder-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="interview-option-kinder-Nein"]').click()
-  await page.locator('text=Ledig').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('text=Ledig').click()
+  // The Strom's basis page (ADR-0089), then the pension mask as its next step.
+  await answerBasis(page, { job: 'Rente', ausland: 'Nein', kinder: 'Nein', familienstand: 'Ledig' })
 
+  await waitForStromStep(page, 'rente')
   await page.locator('text=Deine Rente').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('text=Private Rentenversicherung').click()
 
@@ -59,7 +57,9 @@ export async function runScenario11(browser, webOrigin) {
 
   await page.locator('text=3240 €').waitFor({ state: 'visible', timeout: 10_000 })
   await page.getByRole('button', { name: 'Weiter', exact: true }).click()
-  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
+  await chooseTopics(page, [])
+  await waitForStromStep(page, 'fertig')
+  await leaveStrom(page)
   await page.locator('[data-testid="cockpit-erstattung"]').waitFor({ state: 'visible', timeout: 10_000 })
   // UX review K3: a pensioner is estimated now (Ertragsanteil of the private pension).
   await assertCockpitEstimate(page, 'Scenario 11')

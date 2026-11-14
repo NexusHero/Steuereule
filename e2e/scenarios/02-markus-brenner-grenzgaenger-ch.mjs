@@ -8,7 +8,10 @@ import {
   fail,
   registerAndOnboard,
   selectTaxYear2025,
-  nextStep,
+  answerBasis,
+  chooseTopics,
+  leaveStrom,
+  waitForStromStep,
   saveExchangeRate,
   runStandaloneScenario,
 } from './helpers/scenario-harness.mjs'
@@ -38,16 +41,10 @@ export async function runScenario02(browser, webOrigin, _sql, { keepOpen = false
   await selectTaxYear2025(pageMarkus)
 
   await pageMarkus.locator('[data-testid="cockpit-interview"]').click()
-  await pageMarkus.locator(`[data-testid="interview-option-job-${s.markus.interview.job}"]`).click()
-  await pageMarkus.locator(`[data-testid="interview-option-ausland-${s.markus.interview.ausland}"]`).click()
-  await pageMarkus.locator(`[data-testid="interview-option-kinder-${s.markus.interview.kinder}"]`).click()
-  await pageMarkus.locator(`[data-testid="interview-option-familienstand-${s.markus.interview.familienstand}"]`).click()
-  // ADR-0088: the interview asks what Person B does
-  await pageMarkus.locator('[data-testid="interview-option-partner-job-Angestellt"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await pageMarkus.locator('[data-testid="interview-option-partner-job-Angestellt"]').click()
-  await pageMarkus.locator('[data-testid="interview-option-partner-ausland-Ja, in die Schweiz"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await pageMarkus.locator('[data-testid="interview-option-partner-ausland-Ja, in die Schweiz"]').click()
+  // The Strom (ADR-0089): the basis page asks what Person B does as well (ADR-0088).
+  await answerBasis(pageMarkus, { ...s.markus.interview, 'partner-job': 'Angestellt', 'partner-ausland': 'Ja, in die Schweiz' })
 
+  await waitForStromStep(pageMarkus, 'schweiz')
   await pageMarkus.locator('[data-testid="ch-wohnsitz-deutschland"]').waitFor({ state: 'visible', timeout: 10_000 })
   await pageMarkus.locator('[data-testid="ch-wohnsitz-deutschland"]').click()
 
@@ -90,20 +87,8 @@ export async function runScenario02(browser, webOrigin, _sql, { keepOpen = false
   await pageMarkus.waitForTimeout(500)
 
   await pageMarkus.locator('[data-testid="ch-lohnausweis-weiter"]').click()
-  await nextStep(pageMarkus)
 
-  await pageMarkus.locator('[data-testid="katalog-option-einkuenfte-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await pageMarkus.locator('[data-testid="katalog-option-einkuenfte-Nein"]').click()
-  await nextStep(pageMarkus)
-
-  await pageMarkus.locator('[data-testid="katalog-option-spenden-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await pageMarkus.locator('[data-testid="katalog-option-spenden-Nein"]').click()
-  await pageMarkus.locator('[data-testid="katalog-option-kv-pv-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await pageMarkus.locator('[data-testid="katalog-option-kv-pv-Nein"]').click()
-  await pageMarkus.locator('[data-testid="katalog-option-riester-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await pageMarkus.locator('[data-testid="katalog-option-riester-Nein"]').click()
-  await nextStep(pageMarkus)
-
+  await waitForStromStep(pageMarkus, 'arbeitsweg')
   await pageMarkus.locator('[data-testid="arbeitstage-urlaub"]').waitFor({ state: 'visible', timeout: 10_000 })
   await pageMarkus.locator('[data-testid="arbeitstage-urlaub"]').fill(String(s.markus.commute.vacationDays))
   await pageMarkus.locator('[data-testid="arbeitstage-krank"]').fill(String(s.markus.commute.sickDays))
@@ -114,8 +99,7 @@ export async function runScenario02(browser, webOrigin, _sql, { keepOpen = false
   await pageMarkus.locator('[data-testid="arbeitstage-arbeitsort"]').fill(s.markus.commute.workplace)
   await pageMarkus.locator('[data-testid="arbeitstage-weiter"]').click()
 
-  await pageMarkus.locator('[data-testid="cockpit-kinder"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await pageMarkus.locator('[data-testid="cockpit-kinder"]').click()
+  await waitForStromStep(pageMarkus, 'kinder')
 
   for (const child of s.markus.children) {
     await pageMarkus.locator('[data-testid="kind-neu"], [data-testid="kind-vorname"]').first().waitFor({ state: 'visible', timeout: 10_000 })
@@ -140,6 +124,11 @@ export async function runScenario02(browser, webOrigin, _sql, { keepOpen = false
   }
 
   await pageMarkus.locator('[data-testid="kinder-weiter"]').click()
+
+  // No other income, no special expenses: nothing on the selection page applies, so every topic is „Nein“.
+  await chooseTopics(pageMarkus, [])
+  await waitForStromStep(pageMarkus, 'fertig')
+  await leaveStrom(pageMarkus)
 
   await pageMarkus.locator('[data-testid="cockpit-stammdaten"]').waitFor({ state: 'visible', timeout: 10_000 })
   await pageMarkus.locator('[data-testid="cockpit-stammdaten"]').click()

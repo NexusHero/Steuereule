@@ -6,6 +6,9 @@ import {
   guardAgainst429,
   fail,
   registerAndOnboard,
+  answerBasis,
+  leaveStrom,
+  waitForStromStep,
   assertCockpitEstimate,
   runStandaloneScenario,
 } from './helpers/scenario-harness.mjs'
@@ -29,28 +32,25 @@ export async function runScenario10(browser, webOrigin) {
   )
 
   await page.locator('[data-testid="cockpit-interview"]').click()
-  await page.locator('text=Beides').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('text=Beides').click()
+  // The Strom's basis page (ADR-0089): „Beides“ shows the passable Gewerbe-Gate inline and the
+  // remaining questions stay open below it; Weiter acknowledges the notice with the answers.
+  await waitForStromStep(page, 'basis')
+  await page.locator('[data-testid="interview-option-job-Beides"]').click()
+  const gate = page.locator('[data-testid="strom-hinweis-gewerbe"]')
+  await gate.waitFor({ state: 'visible', timeout: 10_000 })
+  await gate.locator('text=Ehrlich: dafür sind wir noch nicht gut genug.').waitFor({ state: 'visible', timeout: 10_000 })
+  await gate.locator('text=Bei „Beides“ sammeln wir deinen Angestellten-Teil komplett ein').waitFor({ state: 'visible', timeout: 10_000 })
+  await answerBasis(page, { job: 'Beides', ausland: 'Nein', kinder: 'Nein', familienstand: 'Ledig' })
 
-  await page.locator('text=Ehrlich: dafür sind wir noch nicht gut genug.').waitFor({ state: 'visible', timeout: 10_000 })
-  const acknowledgeOption = page.locator('text=Angestellten-Teil vorbereiten — Abgabe erst mit Gewerbe')
-  await acknowledgeOption.waitFor({ state: 'visible', timeout: 10_000 })
-  await acknowledgeOption.click()
-
-  await page.locator('[data-testid="interview-option-ausland-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="interview-option-ausland-Nein"]').click()
-  await page.locator('[data-testid="interview-option-kinder-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="interview-option-kinder-Nein"]').click()
-  await page.locator('[data-testid="interview-option-familienstand-Ledig"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="interview-option-familienstand-Ledig"]').click()
-
+  await waitForStromStep(page, 'lohnsteuerbescheinigung')
   await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').fill('55000')
   await page.locator('[data-testid="lstb-lohnsteuer"]').fill('10500')
   await page.locator('[data-testid="lstb-sozialversicherung"]').fill('11000')
   await page.locator('[data-testid="lstb-weiter"]').click()
 
-  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
+  await waitForStromStep(page, 'arbeitsweg')
+  await leaveStrom(page)
   await page.locator('[data-testid="cockpit-kacheln"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.getByRole('tab', { name: 'Cockpit' }).click()
   await assertCockpitEstimate(page, 'Scenario 10', {

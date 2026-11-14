@@ -394,23 +394,31 @@ export type EntryId =
 export interface CatalogueEntry {
   readonly id: EntryId
   readonly steps: readonly EntryQuestionId[]
+  /**
+   * The top-level questions do not depend on each other: each is reachable on its own, in any
+   * order (ADR-0089). The Strom's selection answers them together, and the owl can fill one
+   * without the others. The walk (`nextStepFor`) still asks them in the listed order.
+   */
+  readonly orderFree?: true
 }
 
 export const ENTRIES: Readonly<Record<EntryId, CatalogueEntry>> = {
   'minimal-gate': { id: 'minimal-gate', steps: ['job', 'ausland', 'kinder', 'familienstand'] },
-  'segment-2': { id: 'segment-2', steps: ['partner', 'homeoffice', 'weg', 'tage', 'fortbildung'] },
+  'segment-2': { id: 'segment-2', steps: ['partner', 'homeoffice', 'weg', 'tage', 'fortbildung'], orderFree: true },
   /** Kapital and Vermietung: the depot and the kind of letting decide what the masks and the Anlagen ask. */
   einkuenfte: { id: 'einkuenfte', steps: ['einkuenfte'] },
   lebenslagen: {
     id: 'lebenslagen',
     steps: ['dhf', 'umzug', 'abfindung', 'lohnersatz', 'nebenjob'],
+    orderFree: true,
   },
   sonderausgaben: {
     id: 'sonderausgaben',
     steps: ['spenden', 'kv-pv', 'riester'],
+    orderFree: true,
   },
   'segment-ch': { id: 'segment-ch', steps: ['ch-wohnsitz', 'ch-nichtrueckkehrtage'] },
-  alleinerziehend: { id: 'alleinerziehend', steps: ['ae-weitere-person', 'ae-haushaltsgemeinschaft'] },
+  alleinerziehend: { id: 'alleinerziehend', steps: ['ae-weitere-person', 'ae-haushaltsgemeinschaft'], orderFree: true },
   haushalt: { id: 'haushalt', steps: ['haushalt-gate'] },
   gesundheit: { id: 'gesundheit', steps: ['gesundheit-gate'] },
   /** Prepayments the tax office set for the year (§ 37 EStG): they count against the tax like wage tax. */
@@ -524,6 +532,7 @@ export function nextStepFor(entry: CatalogueEntry, answers: Answers): EntryStep 
 }
 
 export function isReachableFor(entry: CatalogueEntry, answers: Answers, target: EntryStepId): boolean {
+  if (entry.orderFree === true) return entry.steps.some((top) => isReachableFor({ id: entry.id, steps: [top] }, answers, target))
   const seen = new Set<EntryStepId>()
   let reached: Answers = {}
 

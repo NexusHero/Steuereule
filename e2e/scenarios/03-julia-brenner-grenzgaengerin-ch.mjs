@@ -9,7 +9,9 @@ import {
   fail,
   registerAndOnboard,
   selectTaxYear2025,
-  nextStep,
+  answerBasis,
+  leaveStrom,
+  waitForStromStep,
   saveExchangeRate,
   assertEstimate,
   unlockTaxYearInDb,
@@ -47,16 +49,10 @@ export async function runScenario03(browser, webOrigin, sql, markusSession = nul
   await selectTaxYear2025(pageJulia)
 
   await pageJulia.locator('[data-testid="cockpit-interview"]').click()
-  await pageJulia.locator(`[data-testid="interview-option-job-${s.julia.interview.job}"]`).click()
-  await pageJulia.locator(`[data-testid="interview-option-ausland-${s.julia.interview.ausland}"]`).click()
-  await pageJulia.locator(`[data-testid="interview-option-kinder-${s.julia.interview.kinder}"]`).click()
-  await pageJulia.locator(`[data-testid="interview-option-familienstand-${s.julia.interview.familienstand}"]`).click()
-  // ADR-0088: the interview asks what Person B does
-  await pageJulia.locator('[data-testid="interview-option-partner-job-Angestellt"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await pageJulia.locator('[data-testid="interview-option-partner-job-Angestellt"]').click()
-  await pageJulia.locator('[data-testid="interview-option-partner-ausland-Ja, in die Schweiz"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await pageJulia.locator('[data-testid="interview-option-partner-ausland-Ja, in die Schweiz"]').click()
+  // The Strom (ADR-0089): the basis page asks what Person B does as well (ADR-0088).
+  await answerBasis(pageJulia, { ...s.julia.interview, 'partner-job': 'Angestellt', 'partner-ausland': 'Ja, in die Schweiz' })
 
+  await waitForStromStep(pageJulia, 'schweiz')
   await pageJulia.locator('[data-testid="ch-wohnsitz-deutschland"]').waitFor({ state: 'visible', timeout: 10_000 })
   await pageJulia.locator('[data-testid="ch-wohnsitz-deutschland"]').click()
 
@@ -99,19 +95,8 @@ export async function runScenario03(browser, webOrigin, sql, markusSession = nul
   await pageJulia.waitForTimeout(500)
 
   await pageJulia.locator('[data-testid="ch-lohnausweis-weiter"]').click()
-  await nextStep(pageJulia)
 
-  await pageJulia.locator('[data-testid="katalog-option-einkuenfte-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await pageJulia.locator('[data-testid="katalog-option-einkuenfte-Nein"]').click()
-  await nextStep(pageJulia)
-  await pageJulia.locator('[data-testid="katalog-option-spenden-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await pageJulia.locator('[data-testid="katalog-option-spenden-Nein"]').click()
-  await pageJulia.locator('[data-testid="katalog-option-kv-pv-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await pageJulia.locator('[data-testid="katalog-option-kv-pv-Nein"]').click()
-  await pageJulia.locator('[data-testid="katalog-option-riester-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await pageJulia.locator('[data-testid="katalog-option-riester-Nein"]').click()
-  await nextStep(pageJulia)
-
+  await waitForStromStep(pageJulia, 'arbeitsweg')
   await pageJulia.locator('[data-testid="arbeitstage-urlaub"]').waitFor({ state: 'visible', timeout: 10_000 })
   await pageJulia.locator('[data-testid="arbeitstage-urlaub"]').fill(String(s.julia.commute.vacationDays))
   await pageJulia.locator('[data-testid="arbeitstage-krank"]').fill(String(s.julia.commute.sickDays))
@@ -121,7 +106,10 @@ export async function runScenario03(browser, webOrigin, sql, markusSession = nul
   await pageJulia.locator(`[data-testid="arbeitstage-transport-${s.julia.commute.transport}"]`).click()
   await pageJulia.locator('[data-testid="arbeitstage-arbeitsort"]').fill(s.julia.commute.workplace)
   await pageJulia.locator('[data-testid="arbeitstage-weiter"]').click()
-  await pageJulia.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
+
+  // The children are entered on Markus's side; Julia pauses the Strom at their step.
+  await waitForStromStep(pageJulia, 'kinder')
+  await leaveStrom(pageJulia)
 
   await pageJulia.locator('[data-testid="cockpit-stammdaten"]').waitFor({ state: 'visible', timeout: 10_000 })
   await pageJulia.locator('[data-testid="cockpit-stammdaten"]').click()

@@ -8,7 +8,11 @@ import {
   fail,
   registerAndOnboard,
   selectTaxYear2025,
-  nextStep,
+  answerBasis,
+  chooseTopics,
+  fillTopic,
+  leaveStrom,
+  waitForStromStep,
   assertEstimate,
   unlockTaxYearInDb,
   confirmAnnexesIfPresent,
@@ -41,46 +45,17 @@ export async function runScenario04(browser, webOrigin, sql) {
   await selectTaxYear2025(page)
 
   await page.locator('[data-testid="cockpit-interview"]').click()
-  await page.locator(`[data-testid="interview-option-job-${s.thomas.interview.job}"]`).click()
-  await page.locator(`[data-testid="interview-option-ausland-${s.thomas.interview.ausland}"]`).click()
-  await page.locator(`[data-testid="interview-option-kinder-${s.thomas.interview.kinder}"]`).click()
-  await page.locator(`[data-testid="interview-option-familienstand-${s.thomas.interview.familienstand}"]`).click()
-  // ADR-0088: the interview asks what Person B does
-  await page.locator('[data-testid="interview-option-partner-job-Angestellt"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="interview-option-partner-job-Angestellt"]').click()
-  await page.locator('[data-testid="interview-option-partner-ausland-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="interview-option-partner-ausland-Nein"]').click()
+  // The Strom (ADR-0089): the basis page asks what Person B does as well (ADR-0088).
+  await answerBasis(page, { ...s.thomas.interview, 'partner-job': 'Angestellt', 'partner-ausland': 'Nein' })
 
+  await waitForStromStep(page, 'lohnsteuerbescheinigung')
   await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').fill(String(s.thomas.lstb.grossWage))
   await page.locator('[data-testid="lstb-lohnsteuer"]').fill(String(s.thomas.lstb.wageTax))
   await page.locator('[data-testid="lstb-sozialversicherung"]').fill(String(s.thomas.lstb.socialSecurity))
   await page.locator('[data-testid="lstb-weiter"]').click()
-  await nextStep(page)
 
-  for (const step of ['dhf', 'umzug', 'abfindung', 'lohnersatz', 'nebenjob']) {
-    const opt = page.locator(`[data-testid="katalog-option-${step}-Nein"]`)
-    await opt.waitFor({ state: 'visible', timeout: 10_000 })
-    await opt.click()
-  }
-  await nextStep(page)
-
-  await page.locator('[data-testid="katalog-option-einkuenfte-Beides"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="katalog-option-einkuenfte-Beides"]').click()
-  await page.locator('[data-testid="katalog-option-kap-depot-Deutscher Broker"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="katalog-option-kap-depot-Deutscher Broker"]').click()
-  await page.locator('[data-testid="katalog-option-vermietung-art-Mehrere"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="katalog-option-vermietung-art-Mehrere"]').click()
-  await nextStep(page)
-
-  await page.locator('[data-testid="katalog-option-spenden-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="katalog-option-spenden-Nein"]').click()
-  await page.locator('[data-testid="katalog-option-kv-pv-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="katalog-option-kv-pv-Nein"]').click()
-  await page.locator('[data-testid="katalog-option-riester-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="katalog-option-riester-Nein"]').click()
-  await nextStep(page)
-
+  await waitForStromStep(page, 'arbeitsweg')
   await page.locator('[data-testid="arbeitstage-urlaub"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="arbeitstage-urlaub"]').fill(String(s.thomas.commute.vacationDays))
   await page.locator('[data-testid="arbeitstage-krank"]').fill(String(s.thomas.commute.sickDays))
@@ -90,7 +65,12 @@ export async function runScenario04(browser, webOrigin, sql) {
   await page.locator(`[data-testid="arbeitstage-transport-${s.thomas.commute.transport}"]`).click()
   await page.locator('[data-testid="arbeitstage-arbeitsort"]').fill(s.thomas.commute.workplace)
   await page.locator('[data-testid="arbeitstage-weiter"]').click()
-  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
+
+  // Capital and letting are the rare „Weitere Einkünfte“ behind „Mehr anzeigen“; the kind is chosen right there.
+  await chooseTopics(page, ['einkuenfte'], { einkuenfte: 'Beides' })
+  await fillTopic(page, 'einkuenfte', { 'kap-depot': 'Deutscher Broker', 'vermietung-art': 'Mehrere' })
+  await waitForStromStep(page, 'fertig')
+  await leaveStrom(page)
 
   await page.locator('[data-testid="cockpit-kacheln"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="cockpit-abgabe-vorbereiten"]').click()

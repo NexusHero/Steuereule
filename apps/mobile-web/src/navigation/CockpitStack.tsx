@@ -3,8 +3,11 @@ import { createNativeStackNavigator, type NativeStackScreenProps } from '@react-
 import { CockpitScreen } from '../screens/cockpit/CockpitScreen'
 import { useAccountSession } from '../auth/useAccountSession'
 import { InterviewScreen } from '../screens/interview/InterviewScreen'
+import { StromScreen } from '../screens/strom/StromScreen'
+import { slugOf } from '../screens/strom/stromPlan'
 import { AccountWallScreen, pathFromAnswers } from '../screens/funnel/KontoWandScreen'
 import { useShellState } from './ShellState'
+import { RequiresAccount } from './RequiresAccount'
 import { renderActiveStackRoute, useYearGuard } from './guards'
 import {
   CatalogRoute,
@@ -40,7 +43,7 @@ function CockpitHomeRoute({ navigation }: Props<'CockpitHome'>) {
   useEffect(() => {
     if (!redirecting) return
     setRedirecting(false)
-    navigation.navigate('Interview', { year: taxYear })
+    navigation.navigate('Strom', { year: taxYear, step: 'basis' })
   }, [redirecting, navigation, taxYear])
 
   if (redirecting) return null
@@ -52,7 +55,8 @@ function CockpitHomeRoute({ navigation }: Props<'CockpitHome'>) {
       isSignedIn={sessionState.status === 'signed-in'}
       sessionPending={sessionState.status === 'loading'}
       onYearChange={setTaxYear}
-      onOpenInterview={() => navigation.navigate('Interview', { year: taxYear })}
+      onOpenInterview={() => navigation.navigate('Strom', { year: taxYear, step: 'basis' })}
+      onOpenStrom={(step) => navigation.navigate('Strom', { year: taxYear, step: slugOf(step) })}
       onOpenAssessment={() => navigation.navigate('Assessment', { year: taxYear })}
       onOpenCapital={() => navigation.navigate('Capital', { year: taxYear })}
       onOpenRental={() => navigation.navigate('Rental', { year: taxYear })}
@@ -100,6 +104,32 @@ function InterviewRoute({ navigation, route }: Props<'Interview'>) {
   )
 }
 
+function StromRoute({ navigation, route }: Props<'Strom'>) {
+  const year = useYearGuard(route.params?.year, navigation)
+  const { setFunnelPath, setPendingPath } = useShellState()
+  const { state: sessionState } = useAccountSession()
+  if (year === null || sessionState.status === 'loading') return null
+  const screen = (
+    <StromScreen
+      key={year}
+      taxYear={year}
+      slug={route.params?.step}
+      isSignedIn={sessionState.status === 'signed-in'}
+      onGo={(step) => navigation.navigate('Strom', { year, step: slugOf(step) })}
+      onExit={() => navigation.navigate('CockpitHome', undefined, { pop: true })}
+      onOpenSubmission={() => navigation.navigate('Submission', { year })}
+      onGuestBasisDone={(path) => {
+        // As after the interview: a guest goes on to the account wall (the masks need an account).
+        navigation.navigate('CockpitHome', undefined, { pop: true })
+        setFunnelPath(path)
+        setPendingPath(path)
+      }}
+    />
+  )
+  // Only the basis page is open to guests; every other step needs an account (as the masks do).
+  return route.params?.step === 'basis' ? screen : <RequiresAccount>{screen}</RequiresAccount>
+}
+
 function AccountWallRoute({ navigation }: Props<'AccountWall'>) {
   const { funnelPath, onRegister, onLogin } = useShellState()
   return (
@@ -117,6 +147,7 @@ export function CockpitStack() {
     <Stack.Navigator initialRouteName="CockpitHome" screenOptions={{ headerShown: false }} screenLayout={renderActiveStackRoute}>
       <Stack.Screen name="CockpitHome" component={CockpitHomeRoute} />
       <Stack.Screen name="Interview" component={InterviewRoute} />
+      <Stack.Screen name="Strom" component={StromRoute} getId={({ params }) => `${params.year}-${params.step}`} />
       <Stack.Screen name="AccountWall" component={AccountWallRoute} />
       <Stack.Screen name="Submission" component={SubmissionRoute} />
       <Stack.Screen name="Plausibility" component={PlausibilityRoute} />

@@ -13,6 +13,11 @@ import {
   confirmAnnexesIfPresent,
   PDFDocument,
   runStandaloneScenario,
+  answerBasis,
+  chooseTopics,
+  fillTopic,
+  leaveStrom,
+  waitForStromStep,
 } from './helpers/scenario-harness.mjs'
 
 export async function runScenario05(browser, webOrigin, sql) {
@@ -41,10 +46,10 @@ export async function runScenario05(browser, webOrigin, sql) {
   await interviewBtn.waitFor({ state: 'visible', timeout: 10_000 })
   await interviewBtn.click()
 
-  await page.locator('[data-testid="interview-option-job-Rente"]').click()
-  await page.locator('[data-testid="interview-option-ausland-Nein"]').click()
-  await page.locator('[data-testid="interview-option-kinder-Nein"]').click()
-  await page.locator('[data-testid="interview-option-familienstand-Ledig"]').click()
+  // The Strom (ADR-0089): basis page, the pension mask, the selection (capital income), its page.
+  await answerBasis(page, { job: 'Rente', ausland: 'Nein', kinder: 'Nein', familienstand: 'Ledig' })
+
+  await waitForStromStep(page, 'rente')
 
   const heading = page.locator('text=Welche Rente beziehst du?')
   await heading.waitFor({ state: 'visible', timeout: 10_000 })
@@ -64,7 +69,11 @@ export async function runScenario05(browser, webOrigin, sql) {
 
   await page.locator('text=Steuerpflichtiger Anteil').waitFor({ state: 'visible', timeout: 10_000 })
   await page.getByRole('button', { name: 'Weiter', exact: true }).click()
-  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
+
+  await chooseTopics(page, ['einkuenfte'], { einkuenfte: 'Kapitalerträge' })
+  await fillTopic(page, 'einkuenfte', { 'kap-depot': 'Deutscher Broker' })
+  await waitForStromStep(page, 'fertig')
+  await leaveStrom(page)
 
   await page.locator('[data-testid="cockpit-kachel-kapital"]').waitFor({ state: 'visible', timeout: 10_000 })
   if (await page.locator('[data-testid="cockpit-kachel-arbeitsweg"]').isVisible()) {

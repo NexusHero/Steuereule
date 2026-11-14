@@ -3,6 +3,7 @@
 //
 //   Row A — commute: a change of job during the year (end of the first way, a second way with its own
 //           km, transport, workplace and start) and the further Werbungskosten are saved.
+//   Row A2 — the Strom then asks this cross-border commuter for the German LStB too (ADR-0089).
 //   Row B — child: childcare amount, provider and period are saved with the child.
 //   Row C — cross-border: the official annual average rate is offered and saved.
 //   Row D — prepayments: the catalogue entry takes „Ja“ with the amount (and „Nein“ through the API).
@@ -32,7 +33,7 @@ async function main() {
   try {
     const user = await createAccount({ apiOrigin, webOrigin, sql, tag: TAG })
     const api = user.api
-    await answer(api, YEAR, [['job', 'Angestellt'], ['ausland', 'Ja, in die Schweiz'], ['kinder', '1 Kind'], ['familienstand', 'Verheiratet']])
+    await answer(api, YEAR, [['job', 'Angestellt'], ['ausland', 'Ja, in die Schweiz'], ['kinder', '1 Kind'], ['familienstand', 'Verheiratet'], ['partner-job', 'Angestellt'], ['partner-ausland', 'Ja, in die Schweiz']])
     const ctx = await newContextAtBreakpoint(browser, 'l')
     const page = await ctx.newPage()
     guardAgainst429(page, fail, '/api/auth/')
@@ -65,6 +66,16 @@ async function main() {
       if (commute?.[key] !== value) fail(`Row A: ${key} should be ${value}, got ${JSON.stringify(commute?.[key])}`)
     }
     console.log(`[${TAG}] ✅ Row A — a second way after a change of job and the further Werbungskosten are saved`)
+
+    // Row A2 — the Strom (ADR-0089): after the way to work with a change of job, a cross-border
+    // commuter is asked for the German wage tax certificate too (ADR-0079).
+    await page.goto(`${webOrigin}/app/steuerjahr/${YEAR}/strom/arbeitsweg`, { waitUntil: 'networkidle' })
+    await visible(page, 'strom-schritt-arbeitsweg', 'Row A2')
+    await visible(page, 'arbeitstage-weiter', 'Row A2')
+    await page.locator(tid('arbeitstage-weiter')).click()
+    await visible(page, 'strom-schritt-lohnsteuerbescheinigung', 'Row A2')
+    await visible(page, 'lstb-bruttoarbeitslohn', 'Row A2')
+    console.log(`[${TAG}] ✅ Row A2 — the Strom asks a cross-border commuter who changed job for the German LStB`)
 
     // Row B — the child's childcare.
     await page.goto(`${webOrigin}/app/steuerjahr/${YEAR}/kinder`, { waitUntil: 'networkidle' })

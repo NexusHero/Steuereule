@@ -10,6 +10,9 @@ import {
   registerAndOnboard,
   selectTaxYear2025,
   openTile,
+  answerBasis,
+  leaveStrom,
+  waitForStromStep,
   runStandaloneScenario,
 } from './helpers/scenario-harness.mjs'
 
@@ -35,21 +38,19 @@ export async function runScenario22(browser, webOrigin) {
 
   // Complete Interview with 2 oder mehr Kinder + Verheiratet
   await page.locator('[data-testid="cockpit-interview"]').click()
-  await page.locator('[data-testid="interview-option-job-Angestellt"]').click()
-  await page.locator('[data-testid="interview-option-ausland-Nein"]').click()
-  await page.locator('[data-testid="interview-option-kinder-2 oder mehr"]').click()
-  await page.locator('[data-testid="interview-option-familienstand-Verheiratet"]').click()
-  // ADR-0088: the interview asks what Person B does
-  await page.locator('[data-testid="interview-option-partner-job-Nicht berufstätig"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="interview-option-partner-job-Nicht berufstätig"]').click()
+  // The Strom (ADR-0089): the basis page asks what Person B does as well (ADR-0088).
+  await answerBasis(page, { job: 'Angestellt', ausland: 'Nein', kinder: '2 oder mehr', familienstand: 'Verheiratet', 'partner-job': 'Nicht berufstätig' })
 
-  // LStB -> back to Cockpit via TabBar
+  // LStB in the Strom, then pause it: this scenario is about the detail masks behind the cockpit,
+  // each opened as a sheet and closed back to the cockpit -> back to Cockpit via TabBar
+  await waitForStromStep(page, 'lohnsteuerbescheinigung')
   await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').fill('64000')
   await page.locator('[data-testid="lstb-lohnsteuer"]').fill('12000')
   await page.locator('[data-testid="lstb-sozialversicherung"]').fill('12500')
   await page.locator('[data-testid="lstb-weiter"]').click()
-  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
+  await waitForStromStep(page, 'arbeitsweg')
+  await leaveStrom(page)
   await page.locator('[data-testid="cockpit-kacheln"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.getByRole('tab', { name: 'Cockpit' }).click()
 

@@ -6,7 +6,9 @@ import {
   guardAgainst429,
   fail,
   registerAndOnboard,
-  nextStep,
+  answerBasis,
+  chooseTopics,
+  waitForStromStep,
   runStandaloneScenario,
 } from './helpers/scenario-harness.mjs'
 
@@ -30,53 +32,37 @@ export async function runScenario16(browser, webOrigin) {
   )
 
   await page.locator('[data-testid="cockpit-interview"]').click()
-  await page.locator('[data-testid="interview-option-job-Angestellt"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="interview-option-job-Angestellt"]').click()
-  await page.locator('[data-testid="interview-option-ausland-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="interview-option-ausland-Nein"]').click()
-  await page.locator('[data-testid="interview-option-kinder-1 Kind"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="interview-option-kinder-1 Kind"]').click()
+  // The Strom (ADR-0089).
+  await answerBasis(page, { job: 'Angestellt', ausland: 'Nein', kinder: '1 Kind', familienstand: 'Geschieden oder getrennt' })
 
-  const geschiedenOpt = page.locator('[data-testid="interview-option-familienstand-Geschieden oder getrennt"]')
-  await geschiedenOpt.waitFor({ state: 'visible', timeout: 10_000 })
-  await geschiedenOpt.click()
-
+  await waitForStromStep(page, 'lohnsteuerbescheinigung')
   await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').fill('48000')
   await page.locator('[data-testid="lstb-lohnsteuer"]').fill('7500')
   await page.locator('[data-testid="lstb-sozialversicherung"]').fill('9500')
   await page.locator('[data-testid="lstb-weiter"]').click()
-  await nextStep(page)
 
-  for (const step of ['dhf', 'umzug', 'abfindung', 'lohnersatz', 'nebenjob']) {
-    const opt = page.locator(`[data-testid="katalog-option-${step}-Nein"]`)
-    await opt.waitFor({ state: 'visible', timeout: 10_000 })
-    await opt.click()
-  }
-  await nextStep(page)
-
-  await page.locator('[data-testid="katalog-option-einkuenfte-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="katalog-option-einkuenfte-Nein"]').click()
-  await nextStep(page)
-
-  for (const step of ['spenden', 'kv-pv', 'riester']) {
-    const opt = page.locator(`[data-testid="katalog-option-${step}-Nein"]`)
-    await opt.waitFor({ state: 'visible', timeout: 10_000 })
-    await opt.click()
-  }
-  await nextStep(page)
-
+  await waitForStromStep(page, 'arbeitsweg')
   await page.locator('[data-testid="arbeitstage-km"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="arbeitstage-km"]').fill('10')
   await page.locator('[data-testid="arbeitstage-weiter"]').click()
-  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
 
-  await page.locator('[data-testid="cockpit-kacheln"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="cockpit-abgabe-vorbereiten"]').click()
+  // The child and the single-parent questions wait: the child step is passed over, the
+  // single-parent page is put off with „Später“ — the summary still offers the submission.
+  await waitForStromStep(page, 'kinder')
+  await page.locator('[data-testid="kinder-weiter"]').click()
+  await chooseTopics(page, [])
+  await waitForStromStep(page, 'alleinerziehend')
+  await page.locator('[data-testid="strom-spaeter"]').click()
+  await waitForStromStep(page, 'fertig')
+  await page.locator('[data-testid="strom-offen-alleinerziehend"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await page.locator('[data-testid="strom-abgabe"]').click()
   const printBtn = page.locator('[data-testid="abgabe-zum-ausdruck"]')
   await printBtn.waitFor({ state: 'visible', timeout: 10_000 })
   if (await printBtn.isDisabled()) fail('Expected abgabe-zum-ausdruck enabled for Scenario 16')
+  // The submission's back leads to the cockpit.
   await page.locator('[data-testid="abgabe-zurueck"]').click()
+  await page.locator('[data-testid="cockpit-kacheln"]').waitFor({ state: 'visible', timeout: 10_000 })
 
   await page.locator('[data-testid="cockpit-erstattung"]').waitFor({ state: 'visible', timeout: 10_000 })
   console.log('[Scenario 16] PASS: Divorced parent flow completed cleanly.')

@@ -6,7 +6,10 @@ import {
   guardAgainst429,
   fail,
   registerAndOnboard,
-  openTile,
+  answerBasis,
+  chooseTopics,
+  leaveStrom,
+  waitForStromStep,
   runStandaloneScenario,
 } from './helpers/scenario-harness.mjs'
 
@@ -31,29 +34,14 @@ export async function runScenario15(browser, webOrigin) {
 
   await page.locator('[data-testid="cockpit-interview"]').click()
 
-  const beidesOpt = page.locator('[data-testid="interview-option-job-Beides"]')
-  await beidesOpt.waitFor({ state: 'visible', timeout: 10_000 })
-  await beidesOpt.click()
+  // The Strom's basis page (ADR-0089): „Beides“ shows the passable Gewerbe-Gate inline, the Swiss
+  // answer and the partner's work (ADR-0088) are on the same page.
+  await waitForStromStep(page, 'basis')
+  await page.locator('[data-testid="interview-option-job-Beides"]').click()
+  await page.locator('[data-testid="strom-hinweis-gewerbe"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await answerBasis(page, { job: 'Beides', ausland: 'Ja, in die Schweiz', kinder: '1 Kind', familienstand: 'Verheiratet', 'partner-job': 'Rente' })
 
-  const gateAck = page.locator('text=Angestellten-Teil vorbereiten')
-  await gateAck.waitFor({ state: 'visible', timeout: 10_000 })
-  await gateAck.click()
-
-  const chOpt = page.locator('[data-testid="interview-option-ausland-Ja, in die Schweiz"]')
-  await chOpt.waitFor({ state: 'visible', timeout: 10_000 })
-  await chOpt.click()
-
-  const kinderOpt = page.locator('[data-testid="interview-option-kinder-1 Kind"]')
-  await kinderOpt.waitFor({ state: 'visible', timeout: 10_000 })
-  await kinderOpt.click()
-
-  const marriedOpt = page.locator('[data-testid="interview-option-familienstand-Verheiratet"]')
-  await marriedOpt.waitFor({ state: 'visible', timeout: 10_000 })
-  await marriedOpt.click()
-  // ADR-0088: the interview asks what Person B does
-  await page.locator('[data-testid="interview-option-partner-job-Rente"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="interview-option-partner-job-Rente"]').click()
-
+  await waitForStromStep(page, 'schweiz')
   await page.locator('[data-testid="ch-wohnsitz-deutschland"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="ch-wohnsitz-deutschland"]').click()
 
@@ -63,23 +51,18 @@ export async function runScenario15(browser, webOrigin) {
 
   await page.locator('[data-testid="ch-lohnausweis-weiter"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="ch-lohnausweis-weiter"]').click()
-  await openTile(page, 'einkuenfte')
 
-  await page.locator('[data-testid="katalog-option-einkuenfte-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="katalog-option-einkuenfte-Nein"]').click()
-  await openTile(page, 'sonderausgaben')
-
-  for (const step of ['spenden', 'kv-pv', 'riester']) {
-    const opt = page.locator(`[data-testid="katalog-option-${step}-Nein"]`)
-    await opt.waitFor({ state: 'visible', timeout: 10_000 })
-    await opt.click()
-  }
-  await openTile(page, 'arbeitsweg')
-
+  await waitForStromStep(page, 'arbeitsweg')
   await page.locator('[data-testid="arbeitstage-km"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="arbeitstage-km"]').fill('10')
   await page.locator('[data-testid="arbeitstage-weiter"]').click()
-  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
+
+  // The child is entered later: the step is passed over, the selection names nothing.
+  await waitForStromStep(page, 'kinder')
+  await page.locator('[data-testid="kinder-weiter"]').click()
+  await chooseTopics(page, [])
+  await waitForStromStep(page, 'fertig')
+  await leaveStrom(page)
 
   await page.locator('[data-testid="cockpit-erstattung"]').waitFor({ state: 'visible', timeout: 10_000 })
   console.log('[Scenario 15] PASS: Hybrid + Swiss Expat combined flow verified without dead-ends.')

@@ -51,6 +51,12 @@ const ADMITTED_ENTRY_IDS: readonly EntryId[] = [
   'vorauszahlungen',
 ]
 
+/**
+ * Single questions of an entry that is otherwise not admitted: the training costs of Segment 2,
+ * which the Strom's selection asks (ADR-0089) and the estimate already counts.
+ */
+const ADMITTED_STEPS: ReadonlySet<string> = new Set(['fortbildung', 'fortbildung-kosten'])
+
 /** § 35a / § 33 entries: answers are only taken once estimate and printout can use them (ADR-0032). */
 const BOOSTER_ENTRY_IDS: readonly EntryId[] = ['haushalt', 'gesundheit']
 
@@ -115,7 +121,8 @@ export class InterviewService {
     const rows = await this.repository.findAllForUserAndYear(userId, taxYear)
     const answers = answersFrom(rows)
     const entryId = entryForStep(dto.questionId as never)
-    if (entryId === undefined || !admittedEntryIds(this.boostersEnabled).includes(entryId) || (personalOnly && !PERSONAL_ENTRY_IDS.includes(entryId))) {
+    const admitted = entryId !== undefined && (admittedEntryIds(this.boostersEnabled).includes(entryId) || ADMITTED_STEPS.has(dto.questionId))
+    if (entryId === undefined || !admitted || (personalOnly && !PERSONAL_ENTRY_IDS.includes(entryId))) {
       throw new UnreachableAnswerError(dto.questionId)
     }
     assertGuestMayUse(kind, entryId)
