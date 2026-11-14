@@ -26,6 +26,7 @@ import type {
 
 import type {
   InterviewControllerGetInterviewParams,
+  InterviewControllerPostAnswerParams,
   InterviewStateDto,
   PostAnswerDto,
   PostAnswerResponseDto
@@ -211,18 +212,27 @@ export type interviewControllerPostAnswerResponseError = (interviewControllerPos
 
 export type interviewControllerPostAnswerResponse = (interviewControllerPostAnswerResponseSuccess | interviewControllerPostAnswerResponseError)
 
-export const getInterviewControllerPostAnswerUrl = (jahr: number,) => {
+export const getInterviewControllerPostAnswerUrl = (jahr: number,
+    params?: InterviewControllerPostAnswerParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/v1/steuerjahre/${jahr}/interview/antworten`
+  return stringifiedParams.length > 0 ? `/v1/steuerjahre/${jahr}/interview/antworten?${stringifiedParams}` : `/v1/steuerjahre/${jahr}/interview/antworten`
 }
 
 export const interviewControllerPostAnswer = async (jahr: number,
-    postAnswerDto: PostAnswerDto, options?: RequestInit): Promise<interviewControllerPostAnswerResponse> => {
+    postAnswerDto: PostAnswerDto,
+    params?: InterviewControllerPostAnswerParams, options?: RequestInit): Promise<interviewControllerPostAnswerResponse> => {
 
-  return httpClient<interviewControllerPostAnswerResponse>(getInterviewControllerPostAnswerUrl(jahr),
+  return httpClient<interviewControllerPostAnswerResponse>(getInterviewControllerPostAnswerUrl(jahr,params),
   {
     ...options,
     method: 'POST',
@@ -236,8 +246,8 @@ export const interviewControllerPostAnswer = async (jahr: number,
 
 
 export const getInterviewControllerPostAnswerMutationOptions = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof interviewControllerPostAnswer>>, TError,{jahr: number;data: PostAnswerDto}, TContext>, request?: SecondParameter<typeof httpClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof interviewControllerPostAnswer>>, TError,{jahr: number;data: PostAnswerDto}, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof interviewControllerPostAnswer>>, TError,{jahr: number;data: PostAnswerDto;params?: InterviewControllerPostAnswerParams}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof interviewControllerPostAnswer>>, TError,{jahr: number;data: PostAnswerDto;params?: InterviewControllerPostAnswerParams}, TContext> => {
 
 const mutationKey = ['interviewControllerPostAnswer'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -249,10 +259,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof interviewControllerPostAnswer>>, {jahr: number;data: PostAnswerDto}> = (props) => {
-          const {jahr,data} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof interviewControllerPostAnswer>>, {jahr: number;data: PostAnswerDto;params?: InterviewControllerPostAnswerParams}> = (props) => {
+          const {jahr,data,params} = props ?? {};
 
-          return  interviewControllerPostAnswer(jahr,data,requestOptions)
+          return  interviewControllerPostAnswer(jahr,data,params,requestOptions)
         }
 
 
@@ -267,11 +277,11 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type InterviewControllerPostAnswerMutationError = void
 
     export const useInterviewControllerPostAnswer = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof interviewControllerPostAnswer>>, TError,{jahr: number;data: PostAnswerDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof interviewControllerPostAnswer>>, TError,{jahr: number;data: PostAnswerDto;params?: InterviewControllerPostAnswerParams}, TContext>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof interviewControllerPostAnswer>>,
         TError,
-        {jahr: number;data: PostAnswerDto},
+        {jahr: number;data: PostAnswerDto;params?: InterviewControllerPostAnswerParams},
         TContext
       > => {
       return useMutation(getInterviewControllerPostAnswerMutationOptions(options), queryClient);

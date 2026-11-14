@@ -104,6 +104,8 @@ The ADRs **justify** the architecture; the [living arc42 document](../arc42/READ
 | 0084 | Eine leere Antwort des Modells wird wiederholt und dann offen benannt | Accepted |
 | 0085 | Ausdruck für 2024, zu lange Angaben vor dem Bezahlen | Accepted |
 | 0086 | KV des Kindes ohne gewählten Kurs, Betreuungszeitraum aus dem Bescheid | Accepted |
+| 0087 | Eskalationsfall: zwei Grenzgänger mit Wechseljahr, drei Kinder, Krankheitskosten | Accepted |
+| 0088 | Person B vollständig erfassen, Schweizer Kinderzulage je Kind | Accepted |
 
 See also the [Tech Radar](./tech-radar.md).
 

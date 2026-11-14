@@ -179,7 +179,10 @@ describe('InterviewService', () => {
       await service.postAnswer(USER_ID, TAX_YEAR, { questionId: 'ausland', value: 'Nein' })
       const afterChildren = await service.postAnswer(USER_ID, TAX_YEAR, { questionId: 'kinder', value: 'Nein' })
       expect(afterChildren).toEqual({ nextStep: { kind: 'question', id: 'familienstand' }, openItems: 1 })
-      const result = await service.postAnswer(USER_ID, TAX_YEAR, { questionId: 'familienstand', value: 'Verheiratet' })
+      const married = await service.postAnswer(USER_ID, TAX_YEAR, { questionId: 'familienstand', value: 'Verheiratet' })
+      // ADR-0088: a married user is asked what Person B does.
+      expect(married).toEqual({ nextStep: { kind: 'question', id: 'partner-job' }, openItems: 1 })
+      const result = await service.postAnswer(USER_ID, TAX_YEAR, { questionId: 'partner-job', value: 'Rente' })
 
       expect(result).toEqual({ nextStep: { kind: 'done' }, openItems: 0 })
     })

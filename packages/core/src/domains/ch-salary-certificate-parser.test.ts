@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  familyAllowancesIn,
   applyChCertificateTextFallback,
   certificateHolderPerson,
   parseChSalaryCertificateText,
@@ -220,5 +221,17 @@ describe('certificateHolderPerson', () => {
     expect(certificateHolderPerson('Muster', people)).toBeNull()
     expect(certificateHolderPerson('Someone Else', people)).toBeNull()
     expect(certificateHolderPerson(null, people)).toBeNull()
+  })
+})
+
+describe('familyAllowancesIn (both parents Grenzgänger, ADR-0088)', () => {
+  it('reads the allowances the remarks name, and adds several up', () => {
+    expect(familyAllowancesIn(['15. Bemerkungen   Kinderzulagen CHF 2\'580, im Lohn enthalten'])).toBe(2580)
+    expect(familyAllowancesIn(['Familienzulagen: 3\'870.00', 'davon Ausbildungszulagen 1\'200'])).toBe(3870)
+    expect(familyAllowancesIn(['Kinderzulagen 2\'400', 'Ausbildungszulagen 1\'200'])).toBe(3600)
+  })
+  it('gives nothing when the remark only says they are included', () => {
+    expect(familyAllowancesIn(['15. Bemerkungen   Kinderzulagen im Lohn enthalten'])).toBeNull()
+    expect(familyAllowancesIn(['15. Bemerkungen   See Supplementary Sheet'])).toBeNull()
   })
 })

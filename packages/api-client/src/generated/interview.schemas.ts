@@ -50,10 +50,22 @@ export interface PostAnswerResponseDto {
 
 export type InterviewControllerGetInterviewParams = {
 /**
+ * B: the personal entries (Lebenslagen, Sonderausgaben) of a partner the user records (ADR-0088).
+ */
+person?: InterviewControllerGetInterviewPerson;
+/**
  * The catalogue entry to re-enter; absent → the Minimal-Gate.
  */
 eintrag?: InterviewControllerGetInterviewEintrag;
 };
+
+export type InterviewControllerGetInterviewPerson = typeof InterviewControllerGetInterviewPerson[keyof typeof InterviewControllerGetInterviewPerson];
+
+
+export const InterviewControllerGetInterviewPerson = {
+  A: 'A',
+  B: 'B',
+} as const;
 
 export type InterviewControllerGetInterviewEintrag = typeof InterviewControllerGetInterviewEintrag[keyof typeof InterviewControllerGetInterviewEintrag];
 
@@ -70,5 +82,20 @@ export const InterviewControllerGetInterviewEintrag = {
   gesundheit: 'gesundheit',
   vorauszahlungen: 'vorauszahlungen',
   berufsprofil: 'berufsprofil',
+} as const;
+
+export type InterviewControllerPostAnswerParams = {
+/**
+ * B: an answer of a personal entry for a partner the user records (ADR-0088).
+ */
+person?: InterviewControllerPostAnswerPerson;
+};
+
+export type InterviewControllerPostAnswerPerson = typeof InterviewControllerPostAnswerPerson[keyof typeof InterviewControllerPostAnswerPerson];
+
+
+export const InterviewControllerPostAnswerPerson = {
+  A: 'A',
+  B: 'B',
 } as const;
 

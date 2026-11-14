@@ -628,6 +628,19 @@
         "operationId": "InterviewController_getInterview",
         "parameters": [
           {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "B: the personal entries (Lebenslagen, Sonderausgaben) of a partner the user records (ADR-0088).",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
             "name": "eintrag",
             "required": false,
             "in": "query",
@@ -685,6 +698,19 @@
         "operationId": "InterviewController_postAnswer",
         "parameters": [
           {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "B: an answer of a personal entry for a partner the user records (ADR-0088).",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
             "name": "jahr",
             "required": true,
             "in": "path",
@@ -736,6 +762,19 @@
         "operationId": "PensionController_get",
         "parameters": [
           {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "B: Person A records the pension of a partner without an own account (ADR-0088).",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
             "name": "jahr",
             "required": true,
             "in": "path",
@@ -770,6 +809,19 @@
       "put": {
         "operationId": "PensionController_setPensionKind",
         "parameters": [
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "B: Person A records the pension of a partner without an own account (ADR-0088).",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
           {
             "name": "jahr",
             "required": true,
@@ -815,6 +867,19 @@
       "put": {
         "operationId": "PensionController_setField",
         "parameters": [
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "B: Person A records the pension of a partner without an own account (ADR-0088).",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
           {
             "name": "feld",
             "required": true,
@@ -1241,6 +1306,19 @@
         "operationId": "ChSalaryCertificateController_get",
         "parameters": [
           {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "B: Person A records the Swiss figures of a partner without an own account (ADR-0054).",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
             "name": "jahr",
             "required": true,
             "in": "path",
@@ -1275,6 +1353,19 @@
       "put": {
         "operationId": "ChSalaryCertificateController_setField",
         "parameters": [
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "B: Person A records the Swiss figures of a partner without an own account (ADR-0054).",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
           {
             "name": "feld",
             "required": true,
@@ -1331,6 +1422,19 @@
         "operationId": "ChSalaryCertificateController_setRemarks",
         "parameters": [
           {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "B: Person A records the Swiss figures of a partner without an own account (ADR-0054).",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
             "name": "jahr",
             "required": true,
             "in": "path",
@@ -1372,6 +1476,19 @@
       "put": {
         "operationId": "ChSalaryCertificateController_setProvision",
         "parameters": [
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "B: Person A records the Swiss figures of a partner without an own account (ADR-0054).",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
           {
             "name": "jahr",
             "required": true,
@@ -1415,6 +1532,19 @@
         "operationId": "ChSalaryCertificateController_setNGre",
         "parameters": [
           {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "B: Person A records the Swiss figures of a partner without an own account (ADR-0054).",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
             "name": "jahr",
             "required": true,
             "in": "path",
@@ -1457,6 +1587,19 @@
         "operationId": "ChSalaryCertificateController_setExchangeRate",
         "parameters": [
           {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "B: Person A records the Swiss figures of a partner without an own account (ADR-0054).",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
             "name": "jahr",
             "required": true,
             "in": "path",
@@ -1480,6 +1623,60 @@
         "responses": {
           "200": {
             "description": "The updated mask and its derived fold.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChSalaryCertificateResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "ch-lohnausweis"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/ch-lohnausweis/grenzgaenger": {
+      "put": {
+        "operationId": "ChSalaryCertificateController_setCrossBorderFacts",
+        "parameters": [
+          {
+            "name": "person",
+            "required": true,
+            "in": "query",
+            "description": "Only for Person B: the user answers these questions in the interview.",
+            "schema": {
+              "enum": [
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (Steuerjahr).",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutCrossBorderFactsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Person B’s mask with the Grenzgänger status the answers give.",
             "content": {
               "application/json": {
                 "schema": {
@@ -6756,6 +6953,28 @@
           "mode"
         ]
       },
+      "PutCrossBorderFactsDto": {
+        "type": "object",
+        "properties": {
+          "residence": {
+            "type": "string",
+            "enum": [
+              "Deutschland",
+              "Schweiz"
+            ],
+            "description": "Where Person B lives."
+          },
+          "daysWithoutReturn": {
+            "type": "number",
+            "example": 0,
+            "description": "Working days Person B did not return home (Nichtrückkehrtage)."
+          }
+        },
+        "required": [
+          "residence",
+          "daysWithoutReturn"
+        ]
+      },
       "CommuteInputsDto": {
         "type": "object",
         "properties": {
@@ -7079,7 +7298,8 @@
               "nur-angestellte",
               "verheiratet",
               "besondere-lebenslage",
-              "jahr-ohne-tarif"
+              "jahr-ohne-tarif",
+              "kein-grenzgaenger"
             ]
           },
           "laterAmounts": {
@@ -7225,6 +7445,18 @@
           "childcareTo": {
             "type": "string",
             "nullable": true
+          },
+          "swissFamilyAllowancePayer": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "A",
+              "B"
+            ]
+          },
+          "swissFamilyAllowanceDerived": {
+            "type": "boolean",
+            "description": "The allowance is a share of a parent’s Swiss allowances, not entered for the child (ADR-0088)."
           },
           "differentialChildBenefitEur": {
             "type": "string",
@@ -7426,6 +7658,15 @@
             "example": "31.12.2025",
             "description": "Zeile 67: until (DD.MM.YYYY)."
           },
+          "swissFamilyAllowancePayer": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "A",
+              "B"
+            ],
+            "description": "Who receives the Swiss Kinderzulage with their wage (ADR-0088)."
+          },
           "firstName": {
             "type": "string",
             "example": "Lina"
@@ -7577,6 +7818,15 @@
             "nullable": true,
             "example": "31.12.2025",
             "description": "Zeile 67: until (DD.MM.YYYY)."
+          },
+          "swissFamilyAllowancePayer": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "A",
+              "B"
+            ],
+            "description": "Who receives the Swiss Kinderzulage with their wage (ADR-0088)."
           },
           "firstName": {
             "type": "string",
@@ -7856,6 +8106,7 @@
               "fortbildung",
               "kinderbetreuung",
               "handwerker",
+              "krankheitskosten",
               "entfernung",
               "sonstiges"
             ],
@@ -8075,6 +8326,7 @@
               "estg-10-1-5",
               "estg-35a",
               "estg-10-1-3",
+              "estg-33",
               "ao-355"
             ],
             "example": "estg-10b"
@@ -8536,6 +8788,7 @@
               "estg-10-1-5",
               "estg-35a",
               "estg-10-1-3",
+              "estg-33",
               "ao-355"
             ],
             "example": "estg-10b"
@@ -8630,6 +8883,7 @@
               "estg-10-1-5",
               "estg-35a",
               "estg-10-1-3",
+              "estg-33",
               "ao-355"
             ],
             "example": "estg-4-5-6c"
@@ -8751,6 +9005,7 @@
                 "estg-10-1-5",
                 "estg-35a",
                 "estg-10-1-3",
+                "estg-33",
                 "ao-355"
               ]
             }
@@ -9032,6 +9287,23 @@
           "securityBlocked": {
             "type": "boolean",
             "example": false
+          },
+          "person": {
+            "type": "string",
+            "enum": [
+              "A",
+              "B"
+            ],
+            "nullable": true,
+            "description": "Whose LStB it is; null when the name fits neither person."
+          },
+          "personUnclear": {
+            "type": "boolean",
+            "description": "The name fits neither person: ask whose it is and parse again with `person`."
+          },
+          "personNotRecordable": {
+            "type": "boolean",
+            "description": "Person B keeps an own account: B uploads it there."
           }
         },
         "required": [
@@ -9042,7 +9314,10 @@
           "existingLstbConflict",
           "fields",
           "stagedActionIds",
-          "securityBlocked"
+          "securityBlocked",
+          "person",
+          "personUnclear",
+          "personNotRecordable"
         ]
       },
       "ChCertificateFieldDto": {
@@ -9663,6 +9938,7 @@
               "estg-10-1-5",
               "estg-35a",
               "estg-10-1-3",
+              "estg-33",
               "ao-355"
             ],
             "example": "estg-9-1-4a"

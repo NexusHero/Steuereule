@@ -1,3 +1,4 @@
+import { LinkModule } from '../link/link.module.js'
 import { Module } from '@nestjs/common'
 import { MarkingModule } from '../marking/marking.module.js'
 import { AuditModule } from '../audit/audit.module.js'
@@ -9,7 +10,7 @@ import { PrismaPensionRepository } from './pension.repository.prisma.js'
 import { PensionService } from './pension.service.js'
 
 @Module({
-  imports: [MarkingModule, PrismaModule, AuditModule, InterviewModule],
+  imports: [MarkingModule, PrismaModule, AuditModule, InterviewModule, LinkModule],
   controllers: [PensionController],
   providers: [PensionService, { provide: PENSION_REPOSITORY, useClass: PrismaPensionRepository }],
   exports: [PENSION_REPOSITORY],

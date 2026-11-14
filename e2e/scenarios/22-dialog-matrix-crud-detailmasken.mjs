@@ -39,6 +39,9 @@ export async function runScenario22(browser, webOrigin) {
   await page.locator('[data-testid="interview-option-ausland-Nein"]').click()
   await page.locator('[data-testid="interview-option-kinder-2 oder mehr"]').click()
   await page.locator('[data-testid="interview-option-familienstand-Verheiratet"]').click()
+  // ADR-0088: the interview asks what Person B does
+  await page.locator('[data-testid="interview-option-partner-job-Nicht berufstätig"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await page.locator('[data-testid="interview-option-partner-job-Nicht berufstätig"]').click()
 
   // LStB -> back to Cockpit via TabBar
   await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').waitFor({ state: 'visible', timeout: 10_000 })

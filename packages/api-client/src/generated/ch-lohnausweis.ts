@@ -25,7 +25,15 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  ChSalaryCertificateControllerGetParams,
+  ChSalaryCertificateControllerSetCrossBorderFactsParams,
+  ChSalaryCertificateControllerSetExchangeRateParams,
+  ChSalaryCertificateControllerSetFieldParams,
+  ChSalaryCertificateControllerSetNGreParams,
+  ChSalaryCertificateControllerSetProvisionParams,
+  ChSalaryCertificateControllerSetRemarksParams,
   ChSalaryCertificateResponseDto,
+  PutCrossBorderFactsDto,
   PutExchangeRateDto,
   PutNGreDto,
   PutProvisionDto,
@@ -74,17 +82,26 @@ export type chSalaryCertificateControllerGetResponseError = (chSalaryCertificate
 
 export type chSalaryCertificateControllerGetResponse = (chSalaryCertificateControllerGetResponseSuccess | chSalaryCertificateControllerGetResponseError)
 
-export const getChSalaryCertificateControllerGetUrl = (jahr: number,) => {
+export const getChSalaryCertificateControllerGetUrl = (jahr: number,
+    params?: ChSalaryCertificateControllerGetParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/v1/steuerjahre/${jahr}/ch-lohnausweis`
+  return stringifiedParams.length > 0 ? `/v1/steuerjahre/${jahr}/ch-lohnausweis?${stringifiedParams}` : `/v1/steuerjahre/${jahr}/ch-lohnausweis`
 }
 
-export const chSalaryCertificateControllerGet = async (jahr: number, options?: RequestInit): Promise<chSalaryCertificateControllerGetResponse> => {
+export const chSalaryCertificateControllerGet = async (jahr: number,
+    params?: ChSalaryCertificateControllerGetParams, options?: RequestInit): Promise<chSalaryCertificateControllerGetResponse> => {
 
-  return httpClient<chSalaryCertificateControllerGetResponse>(getChSalaryCertificateControllerGetUrl(jahr),
+  return httpClient<chSalaryCertificateControllerGetResponse>(getChSalaryCertificateControllerGetUrl(jahr,params),
   {
     ...options,
     method: 'GET'
@@ -97,23 +114,25 @@ export const chSalaryCertificateControllerGet = async (jahr: number, options?: R
 
 
 
-export const getChSalaryCertificateControllerGetQueryKey = (jahr: number,) => {
+export const getChSalaryCertificateControllerGetQueryKey = (jahr: number,
+    params?: ChSalaryCertificateControllerGetParams,) => {
     return [
-    `/v1/steuerjahre/${jahr}/ch-lohnausweis`
+    `/v1/steuerjahre/${jahr}/ch-lohnausweis`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getChSalaryCertificateControllerGetQueryOptions = <TData = Awaited<ReturnType<typeof chSalaryCertificateControllerGet>>, TError = void>(jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof chSalaryCertificateControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export const getChSalaryCertificateControllerGetQueryOptions = <TData = Awaited<ReturnType<typeof chSalaryCertificateControllerGet>>, TError = void>(jahr: number,
+    params?: ChSalaryCertificateControllerGetParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof chSalaryCertificateControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getChSalaryCertificateControllerGetQueryKey(jahr);
+  const queryKey =  queryOptions?.queryKey ?? getChSalaryCertificateControllerGetQueryKey(jahr,params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof chSalaryCertificateControllerGet>>> = ({ signal }) => chSalaryCertificateControllerGet(jahr, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof chSalaryCertificateControllerGet>>> = ({ signal }) => chSalaryCertificateControllerGet(jahr,params, { signal, ...requestOptions });
 
 
 
@@ -127,7 +146,8 @@ export type ChSalaryCertificateControllerGetQueryError = void
 
 
 export function useChSalaryCertificateControllerGet<TData = Awaited<ReturnType<typeof chSalaryCertificateControllerGet>>, TError = void>(
- jahr: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof chSalaryCertificateControllerGet>>, TError, TData>> & Pick<
+ jahr: number,
+    params: undefined |  ChSalaryCertificateControllerGetParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof chSalaryCertificateControllerGet>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof chSalaryCertificateControllerGet>>,
           TError,
@@ -137,7 +157,8 @@ export function useChSalaryCertificateControllerGet<TData = Awaited<ReturnType<t
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useChSalaryCertificateControllerGet<TData = Awaited<ReturnType<typeof chSalaryCertificateControllerGet>>, TError = void>(
- jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof chSalaryCertificateControllerGet>>, TError, TData>> & Pick<
+ jahr: number,
+    params?: ChSalaryCertificateControllerGetParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof chSalaryCertificateControllerGet>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof chSalaryCertificateControllerGet>>,
           TError,
@@ -147,16 +168,18 @@ export function useChSalaryCertificateControllerGet<TData = Awaited<ReturnType<t
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useChSalaryCertificateControllerGet<TData = Awaited<ReturnType<typeof chSalaryCertificateControllerGet>>, TError = void>(
- jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof chSalaryCertificateControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ jahr: number,
+    params?: ChSalaryCertificateControllerGetParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof chSalaryCertificateControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 
 export function useChSalaryCertificateControllerGet<TData = Awaited<ReturnType<typeof chSalaryCertificateControllerGet>>, TError = void>(
- jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof chSalaryCertificateControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ jahr: number,
+    params?: ChSalaryCertificateControllerGetParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof chSalaryCertificateControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getChSalaryCertificateControllerGetQueryOptions(jahr,options)
+  const queryOptions = getChSalaryCertificateControllerGetQueryOptions(jahr,params,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
@@ -189,19 +212,28 @@ export type chSalaryCertificateControllerSetFieldResponseError = (chSalaryCertif
 export type chSalaryCertificateControllerSetFieldResponse = (chSalaryCertificateControllerSetFieldResponseSuccess | chSalaryCertificateControllerSetFieldResponseError)
 
 export const getChSalaryCertificateControllerSetFieldUrl = (jahr: number,
-    feld: string,) => {
+    feld: string,
+    params?: ChSalaryCertificateControllerSetFieldParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/v1/steuerjahre/${jahr}/ch-lohnausweis/${feld}`
+  return stringifiedParams.length > 0 ? `/v1/steuerjahre/${jahr}/ch-lohnausweis/${feld}?${stringifiedParams}` : `/v1/steuerjahre/${jahr}/ch-lohnausweis/${feld}`
 }
 
 export const chSalaryCertificateControllerSetField = async (jahr: number,
     feld: string,
-    putSalaryCertificateFieldDto: PutSalaryCertificateFieldDto, options?: RequestInit): Promise<chSalaryCertificateControllerSetFieldResponse> => {
+    putSalaryCertificateFieldDto: PutSalaryCertificateFieldDto,
+    params?: ChSalaryCertificateControllerSetFieldParams, options?: RequestInit): Promise<chSalaryCertificateControllerSetFieldResponse> => {
 
-  return httpClient<chSalaryCertificateControllerSetFieldResponse>(getChSalaryCertificateControllerSetFieldUrl(jahr,feld),
+  return httpClient<chSalaryCertificateControllerSetFieldResponse>(getChSalaryCertificateControllerSetFieldUrl(jahr,feld,params),
   {
     ...options,
     method: 'PUT',
@@ -215,8 +247,8 @@ export const chSalaryCertificateControllerSetField = async (jahr: number,
 
 
 export const getChSalaryCertificateControllerSetFieldMutationOptions = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof chSalaryCertificateControllerSetField>>, TError,{jahr: number;feld: string;data: PutSalaryCertificateFieldDto}, TContext>, request?: SecondParameter<typeof httpClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof chSalaryCertificateControllerSetField>>, TError,{jahr: number;feld: string;data: PutSalaryCertificateFieldDto}, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof chSalaryCertificateControllerSetField>>, TError,{jahr: number;feld: string;data: PutSalaryCertificateFieldDto;params?: ChSalaryCertificateControllerSetFieldParams}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof chSalaryCertificateControllerSetField>>, TError,{jahr: number;feld: string;data: PutSalaryCertificateFieldDto;params?: ChSalaryCertificateControllerSetFieldParams}, TContext> => {
 
 const mutationKey = ['chSalaryCertificateControllerSetField'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -228,10 +260,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof chSalaryCertificateControllerSetField>>, {jahr: number;feld: string;data: PutSalaryCertificateFieldDto}> = (props) => {
-          const {jahr,feld,data} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof chSalaryCertificateControllerSetField>>, {jahr: number;feld: string;data: PutSalaryCertificateFieldDto;params?: ChSalaryCertificateControllerSetFieldParams}> = (props) => {
+          const {jahr,feld,data,params} = props ?? {};
 
-          return  chSalaryCertificateControllerSetField(jahr,feld,data,requestOptions)
+          return  chSalaryCertificateControllerSetField(jahr,feld,data,params,requestOptions)
         }
 
 
@@ -246,11 +278,11 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type ChSalaryCertificateControllerSetFieldMutationError = void
 
     export const useChSalaryCertificateControllerSetField = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof chSalaryCertificateControllerSetField>>, TError,{jahr: number;feld: string;data: PutSalaryCertificateFieldDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof chSalaryCertificateControllerSetField>>, TError,{jahr: number;feld: string;data: PutSalaryCertificateFieldDto;params?: ChSalaryCertificateControllerSetFieldParams}, TContext>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof chSalaryCertificateControllerSetField>>,
         TError,
-        {jahr: number;feld: string;data: PutSalaryCertificateFieldDto},
+        {jahr: number;feld: string;data: PutSalaryCertificateFieldDto;params?: ChSalaryCertificateControllerSetFieldParams},
         TContext
       > => {
       return useMutation(getChSalaryCertificateControllerSetFieldMutationOptions(options), queryClient);
@@ -268,18 +300,27 @@ export type chSalaryCertificateControllerSetRemarksResponseSuccess = (chSalaryCe
 
 export type chSalaryCertificateControllerSetRemarksResponse = (chSalaryCertificateControllerSetRemarksResponseSuccess)
 
-export const getChSalaryCertificateControllerSetRemarksUrl = (jahr: number,) => {
+export const getChSalaryCertificateControllerSetRemarksUrl = (jahr: number,
+    params?: ChSalaryCertificateControllerSetRemarksParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/v1/steuerjahre/${jahr}/ch-lohnausweis/bemerkungen`
+  return stringifiedParams.length > 0 ? `/v1/steuerjahre/${jahr}/ch-lohnausweis/bemerkungen?${stringifiedParams}` : `/v1/steuerjahre/${jahr}/ch-lohnausweis/bemerkungen`
 }
 
 export const chSalaryCertificateControllerSetRemarks = async (jahr: number,
-    putRemarksDto: PutRemarksDto, options?: RequestInit): Promise<chSalaryCertificateControllerSetRemarksResponse> => {
+    putRemarksDto: PutRemarksDto,
+    params?: ChSalaryCertificateControllerSetRemarksParams, options?: RequestInit): Promise<chSalaryCertificateControllerSetRemarksResponse> => {
 
-  return httpClient<chSalaryCertificateControllerSetRemarksResponse>(getChSalaryCertificateControllerSetRemarksUrl(jahr),
+  return httpClient<chSalaryCertificateControllerSetRemarksResponse>(getChSalaryCertificateControllerSetRemarksUrl(jahr,params),
   {
     ...options,
     method: 'PUT',
@@ -293,8 +334,8 @@ export const chSalaryCertificateControllerSetRemarks = async (jahr: number,
 
 
 export const getChSalaryCertificateControllerSetRemarksMutationOptions = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof chSalaryCertificateControllerSetRemarks>>, TError,{jahr: number;data: PutRemarksDto}, TContext>, request?: SecondParameter<typeof httpClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof chSalaryCertificateControllerSetRemarks>>, TError,{jahr: number;data: PutRemarksDto}, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof chSalaryCertificateControllerSetRemarks>>, TError,{jahr: number;data: PutRemarksDto;params?: ChSalaryCertificateControllerSetRemarksParams}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof chSalaryCertificateControllerSetRemarks>>, TError,{jahr: number;data: PutRemarksDto;params?: ChSalaryCertificateControllerSetRemarksParams}, TContext> => {
 
 const mutationKey = ['chSalaryCertificateControllerSetRemarks'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -306,10 +347,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof chSalaryCertificateControllerSetRemarks>>, {jahr: number;data: PutRemarksDto}> = (props) => {
-          const {jahr,data} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof chSalaryCertificateControllerSetRemarks>>, {jahr: number;data: PutRemarksDto;params?: ChSalaryCertificateControllerSetRemarksParams}> = (props) => {
+          const {jahr,data,params} = props ?? {};
 
-          return  chSalaryCertificateControllerSetRemarks(jahr,data,requestOptions)
+          return  chSalaryCertificateControllerSetRemarks(jahr,data,params,requestOptions)
         }
 
 
@@ -324,11 +365,11 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type ChSalaryCertificateControllerSetRemarksMutationError = unknown
 
     export const useChSalaryCertificateControllerSetRemarks = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof chSalaryCertificateControllerSetRemarks>>, TError,{jahr: number;data: PutRemarksDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof chSalaryCertificateControllerSetRemarks>>, TError,{jahr: number;data: PutRemarksDto;params?: ChSalaryCertificateControllerSetRemarksParams}, TContext>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof chSalaryCertificateControllerSetRemarks>>,
         TError,
-        {jahr: number;data: PutRemarksDto},
+        {jahr: number;data: PutRemarksDto;params?: ChSalaryCertificateControllerSetRemarksParams},
         TContext
       > => {
       return useMutation(getChSalaryCertificateControllerSetRemarksMutationOptions(options), queryClient);
@@ -346,18 +387,27 @@ export type chSalaryCertificateControllerSetProvisionResponseSuccess = (chSalary
 
 export type chSalaryCertificateControllerSetProvisionResponse = (chSalaryCertificateControllerSetProvisionResponseSuccess)
 
-export const getChSalaryCertificateControllerSetProvisionUrl = (jahr: number,) => {
+export const getChSalaryCertificateControllerSetProvisionUrl = (jahr: number,
+    params?: ChSalaryCertificateControllerSetProvisionParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/v1/steuerjahre/${jahr}/ch-lohnausweis/vorsorge`
+  return stringifiedParams.length > 0 ? `/v1/steuerjahre/${jahr}/ch-lohnausweis/vorsorge?${stringifiedParams}` : `/v1/steuerjahre/${jahr}/ch-lohnausweis/vorsorge`
 }
 
 export const chSalaryCertificateControllerSetProvision = async (jahr: number,
-    putProvisionDto: PutProvisionDto, options?: RequestInit): Promise<chSalaryCertificateControllerSetProvisionResponse> => {
+    putProvisionDto: PutProvisionDto,
+    params?: ChSalaryCertificateControllerSetProvisionParams, options?: RequestInit): Promise<chSalaryCertificateControllerSetProvisionResponse> => {
 
-  return httpClient<chSalaryCertificateControllerSetProvisionResponse>(getChSalaryCertificateControllerSetProvisionUrl(jahr),
+  return httpClient<chSalaryCertificateControllerSetProvisionResponse>(getChSalaryCertificateControllerSetProvisionUrl(jahr,params),
   {
     ...options,
     method: 'PUT',
@@ -371,8 +421,8 @@ export const chSalaryCertificateControllerSetProvision = async (jahr: number,
 
 
 export const getChSalaryCertificateControllerSetProvisionMutationOptions = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof chSalaryCertificateControllerSetProvision>>, TError,{jahr: number;data: PutProvisionDto}, TContext>, request?: SecondParameter<typeof httpClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof chSalaryCertificateControllerSetProvision>>, TError,{jahr: number;data: PutProvisionDto}, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof chSalaryCertificateControllerSetProvision>>, TError,{jahr: number;data: PutProvisionDto;params?: ChSalaryCertificateControllerSetProvisionParams}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof chSalaryCertificateControllerSetProvision>>, TError,{jahr: number;data: PutProvisionDto;params?: ChSalaryCertificateControllerSetProvisionParams}, TContext> => {
 
 const mutationKey = ['chSalaryCertificateControllerSetProvision'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -384,10 +434,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof chSalaryCertificateControllerSetProvision>>, {jahr: number;data: PutProvisionDto}> = (props) => {
-          const {jahr,data} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof chSalaryCertificateControllerSetProvision>>, {jahr: number;data: PutProvisionDto;params?: ChSalaryCertificateControllerSetProvisionParams}> = (props) => {
+          const {jahr,data,params} = props ?? {};
 
-          return  chSalaryCertificateControllerSetProvision(jahr,data,requestOptions)
+          return  chSalaryCertificateControllerSetProvision(jahr,data,params,requestOptions)
         }
 
 
@@ -402,11 +452,11 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type ChSalaryCertificateControllerSetProvisionMutationError = unknown
 
     export const useChSalaryCertificateControllerSetProvision = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof chSalaryCertificateControllerSetProvision>>, TError,{jahr: number;data: PutProvisionDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof chSalaryCertificateControllerSetProvision>>, TError,{jahr: number;data: PutProvisionDto;params?: ChSalaryCertificateControllerSetProvisionParams}, TContext>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof chSalaryCertificateControllerSetProvision>>,
         TError,
-        {jahr: number;data: PutProvisionDto},
+        {jahr: number;data: PutProvisionDto;params?: ChSalaryCertificateControllerSetProvisionParams},
         TContext
       > => {
       return useMutation(getChSalaryCertificateControllerSetProvisionMutationOptions(options), queryClient);
@@ -424,18 +474,27 @@ export type chSalaryCertificateControllerSetNGreResponseSuccess = (chSalaryCerti
 
 export type chSalaryCertificateControllerSetNGreResponse = (chSalaryCertificateControllerSetNGreResponseSuccess)
 
-export const getChSalaryCertificateControllerSetNGreUrl = (jahr: number,) => {
+export const getChSalaryCertificateControllerSetNGreUrl = (jahr: number,
+    params?: ChSalaryCertificateControllerSetNGreParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/v1/steuerjahre/${jahr}/ch-lohnausweis/n-gre`
+  return stringifiedParams.length > 0 ? `/v1/steuerjahre/${jahr}/ch-lohnausweis/n-gre?${stringifiedParams}` : `/v1/steuerjahre/${jahr}/ch-lohnausweis/n-gre`
 }
 
 export const chSalaryCertificateControllerSetNGre = async (jahr: number,
-    putNGreDto: PutNGreDto, options?: RequestInit): Promise<chSalaryCertificateControllerSetNGreResponse> => {
+    putNGreDto: PutNGreDto,
+    params?: ChSalaryCertificateControllerSetNGreParams, options?: RequestInit): Promise<chSalaryCertificateControllerSetNGreResponse> => {
 
-  return httpClient<chSalaryCertificateControllerSetNGreResponse>(getChSalaryCertificateControllerSetNGreUrl(jahr),
+  return httpClient<chSalaryCertificateControllerSetNGreResponse>(getChSalaryCertificateControllerSetNGreUrl(jahr,params),
   {
     ...options,
     method: 'PUT',
@@ -449,8 +508,8 @@ export const chSalaryCertificateControllerSetNGre = async (jahr: number,
 
 
 export const getChSalaryCertificateControllerSetNGreMutationOptions = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof chSalaryCertificateControllerSetNGre>>, TError,{jahr: number;data: PutNGreDto}, TContext>, request?: SecondParameter<typeof httpClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof chSalaryCertificateControllerSetNGre>>, TError,{jahr: number;data: PutNGreDto}, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof chSalaryCertificateControllerSetNGre>>, TError,{jahr: number;data: PutNGreDto;params?: ChSalaryCertificateControllerSetNGreParams}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof chSalaryCertificateControllerSetNGre>>, TError,{jahr: number;data: PutNGreDto;params?: ChSalaryCertificateControllerSetNGreParams}, TContext> => {
 
 const mutationKey = ['chSalaryCertificateControllerSetNGre'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -462,10 +521,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof chSalaryCertificateControllerSetNGre>>, {jahr: number;data: PutNGreDto}> = (props) => {
-          const {jahr,data} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof chSalaryCertificateControllerSetNGre>>, {jahr: number;data: PutNGreDto;params?: ChSalaryCertificateControllerSetNGreParams}> = (props) => {
+          const {jahr,data,params} = props ?? {};
 
-          return  chSalaryCertificateControllerSetNGre(jahr,data,requestOptions)
+          return  chSalaryCertificateControllerSetNGre(jahr,data,params,requestOptions)
         }
 
 
@@ -480,11 +539,11 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type ChSalaryCertificateControllerSetNGreMutationError = unknown
 
     export const useChSalaryCertificateControllerSetNGre = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof chSalaryCertificateControllerSetNGre>>, TError,{jahr: number;data: PutNGreDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof chSalaryCertificateControllerSetNGre>>, TError,{jahr: number;data: PutNGreDto;params?: ChSalaryCertificateControllerSetNGreParams}, TContext>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof chSalaryCertificateControllerSetNGre>>,
         TError,
-        {jahr: number;data: PutNGreDto},
+        {jahr: number;data: PutNGreDto;params?: ChSalaryCertificateControllerSetNGreParams},
         TContext
       > => {
       return useMutation(getChSalaryCertificateControllerSetNGreMutationOptions(options), queryClient);
@@ -502,18 +561,27 @@ export type chSalaryCertificateControllerSetExchangeRateResponseSuccess = (chSal
 
 export type chSalaryCertificateControllerSetExchangeRateResponse = (chSalaryCertificateControllerSetExchangeRateResponseSuccess)
 
-export const getChSalaryCertificateControllerSetExchangeRateUrl = (jahr: number,) => {
+export const getChSalaryCertificateControllerSetExchangeRateUrl = (jahr: number,
+    params?: ChSalaryCertificateControllerSetExchangeRateParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/v1/steuerjahre/${jahr}/ch-lohnausweis/wechselkurs`
+  return stringifiedParams.length > 0 ? `/v1/steuerjahre/${jahr}/ch-lohnausweis/wechselkurs?${stringifiedParams}` : `/v1/steuerjahre/${jahr}/ch-lohnausweis/wechselkurs`
 }
 
 export const chSalaryCertificateControllerSetExchangeRate = async (jahr: number,
-    putExchangeRateDto: PutExchangeRateDto, options?: RequestInit): Promise<chSalaryCertificateControllerSetExchangeRateResponse> => {
+    putExchangeRateDto: PutExchangeRateDto,
+    params?: ChSalaryCertificateControllerSetExchangeRateParams, options?: RequestInit): Promise<chSalaryCertificateControllerSetExchangeRateResponse> => {
 
-  return httpClient<chSalaryCertificateControllerSetExchangeRateResponse>(getChSalaryCertificateControllerSetExchangeRateUrl(jahr),
+  return httpClient<chSalaryCertificateControllerSetExchangeRateResponse>(getChSalaryCertificateControllerSetExchangeRateUrl(jahr,params),
   {
     ...options,
     method: 'PUT',
@@ -527,8 +595,8 @@ export const chSalaryCertificateControllerSetExchangeRate = async (jahr: number,
 
 
 export const getChSalaryCertificateControllerSetExchangeRateMutationOptions = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof chSalaryCertificateControllerSetExchangeRate>>, TError,{jahr: number;data: PutExchangeRateDto}, TContext>, request?: SecondParameter<typeof httpClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof chSalaryCertificateControllerSetExchangeRate>>, TError,{jahr: number;data: PutExchangeRateDto}, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof chSalaryCertificateControllerSetExchangeRate>>, TError,{jahr: number;data: PutExchangeRateDto;params?: ChSalaryCertificateControllerSetExchangeRateParams}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof chSalaryCertificateControllerSetExchangeRate>>, TError,{jahr: number;data: PutExchangeRateDto;params?: ChSalaryCertificateControllerSetExchangeRateParams}, TContext> => {
 
 const mutationKey = ['chSalaryCertificateControllerSetExchangeRate'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -540,10 +608,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof chSalaryCertificateControllerSetExchangeRate>>, {jahr: number;data: PutExchangeRateDto}> = (props) => {
-          const {jahr,data} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof chSalaryCertificateControllerSetExchangeRate>>, {jahr: number;data: PutExchangeRateDto;params?: ChSalaryCertificateControllerSetExchangeRateParams}> = (props) => {
+          const {jahr,data,params} = props ?? {};
 
-          return  chSalaryCertificateControllerSetExchangeRate(jahr,data,requestOptions)
+          return  chSalaryCertificateControllerSetExchangeRate(jahr,data,params,requestOptions)
         }
 
 
@@ -558,13 +626,100 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type ChSalaryCertificateControllerSetExchangeRateMutationError = unknown
 
     export const useChSalaryCertificateControllerSetExchangeRate = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof chSalaryCertificateControllerSetExchangeRate>>, TError,{jahr: number;data: PutExchangeRateDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof chSalaryCertificateControllerSetExchangeRate>>, TError,{jahr: number;data: PutExchangeRateDto;params?: ChSalaryCertificateControllerSetExchangeRateParams}, TContext>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof chSalaryCertificateControllerSetExchangeRate>>,
         TError,
-        {jahr: number;data: PutExchangeRateDto},
+        {jahr: number;data: PutExchangeRateDto;params?: ChSalaryCertificateControllerSetExchangeRateParams},
         TContext
       > => {
       return useMutation(getChSalaryCertificateControllerSetExchangeRateMutationOptions(options), queryClient);
+    }
+
+export type chSalaryCertificateControllerSetCrossBorderFactsResponse200 = {
+  data: ChSalaryCertificateResponseDto
+  status: 200
+}
+
+export type chSalaryCertificateControllerSetCrossBorderFactsResponseSuccess = (chSalaryCertificateControllerSetCrossBorderFactsResponse200) & {
+  headers: Headers;
+};
+;
+
+export type chSalaryCertificateControllerSetCrossBorderFactsResponse = (chSalaryCertificateControllerSetCrossBorderFactsResponseSuccess)
+
+export const getChSalaryCertificateControllerSetCrossBorderFactsUrl = (jahr: number,
+    params: ChSalaryCertificateControllerSetCrossBorderFactsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/v1/steuerjahre/${jahr}/ch-lohnausweis/grenzgaenger?${stringifiedParams}` : `/v1/steuerjahre/${jahr}/ch-lohnausweis/grenzgaenger`
+}
+
+export const chSalaryCertificateControllerSetCrossBorderFacts = async (jahr: number,
+    putCrossBorderFactsDto: PutCrossBorderFactsDto,
+    params: ChSalaryCertificateControllerSetCrossBorderFactsParams, options?: RequestInit): Promise<chSalaryCertificateControllerSetCrossBorderFactsResponse> => {
+
+  return httpClient<chSalaryCertificateControllerSetCrossBorderFactsResponse>(getChSalaryCertificateControllerSetCrossBorderFactsUrl(jahr,params),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(putCrossBorderFactsDto)
+  }
+);}
+
+
+
+
+
+export const getChSalaryCertificateControllerSetCrossBorderFactsMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof chSalaryCertificateControllerSetCrossBorderFacts>>, TError,{jahr: number;data: PutCrossBorderFactsDto;params: ChSalaryCertificateControllerSetCrossBorderFactsParams}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof chSalaryCertificateControllerSetCrossBorderFacts>>, TError,{jahr: number;data: PutCrossBorderFactsDto;params: ChSalaryCertificateControllerSetCrossBorderFactsParams}, TContext> => {
+
+const mutationKey = ['chSalaryCertificateControllerSetCrossBorderFacts'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof chSalaryCertificateControllerSetCrossBorderFacts>>, {jahr: number;data: PutCrossBorderFactsDto;params: ChSalaryCertificateControllerSetCrossBorderFactsParams}> = (props) => {
+          const {jahr,data,params} = props ?? {};
+
+          return  chSalaryCertificateControllerSetCrossBorderFacts(jahr,data,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ChSalaryCertificateControllerSetCrossBorderFactsMutationResult = NonNullable<Awaited<ReturnType<typeof chSalaryCertificateControllerSetCrossBorderFacts>>>
+    export type ChSalaryCertificateControllerSetCrossBorderFactsMutationBody = PutCrossBorderFactsDto
+    export type ChSalaryCertificateControllerSetCrossBorderFactsMutationError = unknown
+
+    export const useChSalaryCertificateControllerSetCrossBorderFacts = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof chSalaryCertificateControllerSetCrossBorderFacts>>, TError,{jahr: number;data: PutCrossBorderFactsDto;params: ChSalaryCertificateControllerSetCrossBorderFactsParams}, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof chSalaryCertificateControllerSetCrossBorderFacts>>,
+        TError,
+        {jahr: number;data: PutCrossBorderFactsDto;params: ChSalaryCertificateControllerSetCrossBorderFactsParams},
+        TContext
+      > => {
+      return useMutation(getChSalaryCertificateControllerSetCrossBorderFactsMutationOptions(options), queryClient);
     }
 

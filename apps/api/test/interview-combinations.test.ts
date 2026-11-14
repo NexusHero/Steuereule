@@ -59,7 +59,7 @@ interface Row {
 }
 
 const ROWS: readonly Row[] = [
-  { name: 'Rente + verheiratet', answers: { ...BASE, job: 'Rente', familienstand: 'Verheiratet' }, gate: { kind: 'done' }, estimate: { kind: 'nicht-moeglich', reason: 'nur-angestellte' } },
+  { name: 'Rente + verheiratet', answers: { ...BASE, job: 'Rente', familienstand: 'Verheiratet', 'partner-job': 'Rente' }, gate: { kind: 'done' }, estimate: { kind: 'nicht-moeglich', reason: 'nur-angestellte' } },
   { name: 'Rente + Schweiz', answers: { ...BASE, job: 'Rente', ausland: 'Ja, in die Schweiz' }, gate: { kind: 'done' }, estimate: { kind: 'nicht-moeglich', reason: 'nur-angestellte' } },
   { name: 'Beides + Kinder', answers: { ...BASE, job: 'Beides', kinder: '2 oder mehr' }, gate: { kind: 'gate', id: 'gewerbe' }, estimate: { kind: 'nicht-moeglich', reason: 'nur-angestellte' } },
   { name: 'Verwitwet + 1 Kind (§ 24b)', answers: { ...BASE, kinder: '1 Kind', familienstand: 'Verwitwet' }, gate: { kind: 'done' }, estimate: { kind: 'spanne', taxableDeltaVsLedig: RELIEF } },

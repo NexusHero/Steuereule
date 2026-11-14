@@ -20,6 +20,8 @@ export interface ChildDetails {
   childcareProvider?: string | null
   childcareFrom?: string | null
   childcareTo?: string | null
+  /** Who receives the Swiss Kinderzulage with their wage (ADR-0088). */
+  swissFamilyAllowancePayer?: 'A' | 'B' | null
 }
 
 export interface ChildRecord extends ChildDetails {

@@ -86,6 +86,7 @@ export const ParsedReceiptDataDtoVendorCategory = {
   fortbildung: 'fortbildung',
   kinderbetreuung: 'kinderbetreuung',
   handwerker: 'handwerker',
+  krankheitskosten: 'krankheitskosten',
   entfernung: 'entfernung',
   sonstiges: 'sonstiges',
 } as const;
@@ -193,6 +194,7 @@ export const AdvisorActionProposalDtoSourceId = {
   'estg-10-1-5': 'estg-10-1-5',
   'estg-35a': 'estg-35a',
   'estg-10-1-3': 'estg-10-1-3',
+  'estg-33': 'estg-33',
   'ao-355': 'ao-355',
 } as const;
 
@@ -495,6 +497,7 @@ export const AdvisorMaxPathProposalDtoSourceId = {
   'estg-10-1-5': 'estg-10-1-5',
   'estg-35a': 'estg-35a',
   'estg-10-1-3': 'estg-10-1-3',
+  'estg-33': 'estg-33',
   'ao-355': 'ao-355',
 } as const;
 
@@ -583,6 +586,7 @@ export const AdvisorTwoPathsProposalDtoSourceId = {
   'estg-10-1-5': 'estg-10-1-5',
   'estg-35a': 'estg-35a',
   'estg-10-1-3': 'estg-10-1-3',
+  'estg-33': 'estg-33',
   'ao-355': 'ao-355',
 } as const;
 
@@ -607,6 +611,7 @@ export const AdvisorMessageMetaDtoSourcesItem = {
   'estg-10-1-5': 'estg-10-1-5',
   'estg-35a': 'estg-35a',
   'estg-10-1-3': 'estg-10-1-3',
+  'estg-33': 'estg-33',
   'ao-355': 'ao-355',
 } as const;
 
@@ -760,6 +765,18 @@ export interface LstbExtractedFieldsDto {
   sozialversicherung: LstbExtractedFieldDto;
 }
 
+/**
+ * Whose LStB it is; null when the name fits neither person.
+ * @nullable
+ */
+export type ParsedLstbResponseDtoPerson = typeof ParsedLstbResponseDtoPerson[keyof typeof ParsedLstbResponseDtoPerson] | null;
+
+
+export const ParsedLstbResponseDtoPerson = {
+  A: 'A',
+  B: 'B',
+} as const;
+
 export interface ParsedLstbResponseDto {
   stage: ParsedLstbResponseDtoStage;
   /** @nullable */
@@ -772,6 +789,15 @@ export interface ParsedLstbResponseDto {
   fields: LstbExtractedFieldsDto;
   stagedActionIds: string[];
   securityBlocked: boolean;
+  /**
+     * Whose LStB it is; null when the name fits neither person.
+     * @nullable
+     */
+  person: ParsedLstbResponseDtoPerson;
+  /** The name fits neither person: ask whose it is and parse again with `person`. */
+  personUnclear: boolean;
+  /** Person B keeps an own account: B uploads it there. */
+  personNotRecordable: boolean;
 }
 
 export type ParsedChCertificateResponseDtoStage = typeof ParsedChCertificateResponseDtoStage[keyof typeof ParsedChCertificateResponseDtoStage];
@@ -1107,6 +1133,7 @@ export const AdvisorLegalSourceDtoSourceId = {
   'estg-10-1-5': 'estg-10-1-5',
   'estg-35a': 'estg-35a',
   'estg-10-1-3': 'estg-10-1-3',
+  'estg-33': 'estg-33',
   'ao-355': 'ao-355',
 } as const;
 

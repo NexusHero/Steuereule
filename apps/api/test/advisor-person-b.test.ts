@@ -205,3 +205,30 @@ describe('the spouse in the history the model reads (real-case test)', () => {
     expect(entry!.content).toBe('Für Person B und Person B Konto habe ich 16 € vorbereitet, Herr [MANDANT].')
   })
 })
+
+describe('a scanned LStB of Person B (escalation case)', () => {
+  const field = (value: number) => ({ value, status: 'ok' as const, sourceLines: ['3'], calculation: [{ line: '3', amount: value }], reason: null })
+  const scan = (kit: AdvisorTestKit, person: 'A' | 'B', digestUserId: string, gross: number) =>
+    kit.service.stageLstbScanBatch(USER, YEAR, {
+      digestUserId,
+      receiptId: null,
+      stage: 'deterministic',
+      taxYearOnDocument: YEAR,
+      ...(person === 'B' ? { person } : {}),
+      engine: { mode: 'deterministic_fallback', provider: 'deterministic' },
+      summaryText: 'Lohnsteuerbescheinigung (2025) analysiert.',
+      fields: [{ field: 'bruttoarbeitslohn', label: 'Bruttoarbeitslohn (Zeile 3)', extracted: field(gross) }],
+    })
+
+  it('drafts for B, leaves the user’s own LStB drafts standing, and writes into B’s record', async () => {
+    const kit = buildAdvisorTestKit()
+    const spouse = await jointReturn(kit)
+    const own = await scan(kit, 'A', USER, 36_000)
+    const partner = await scan(kit, 'B', spouse, 21_000)
+    expect(partner.actions.map((a) => a.person)).toEqual(['B'])
+
+    await kit.service.applyBatch(USER, YEAR, { drafts: [...own.actions, ...partner.actions].map((a) => ({ actionId: a.actionId })) })
+    expect((await kit.lstbRepo.findForUserAndYear(USER, YEAR))?.bruttoarbeitslohn).toBe('36000')
+    expect((await kit.lstbRepo.findForUserAndYear(spouse, YEAR))?.bruttoarbeitslohn).toBe('21000')
+  })
+})

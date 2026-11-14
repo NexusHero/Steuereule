@@ -100,6 +100,14 @@ export const LEGAL_SOURCES: Readonly<Record<OwlSourceId | 'estg-32', LegalSource
       'Beiträge zur Basis-Krankenversicherung (auch die Schweizer Grundversicherung) sind voll als Sonderausgaben abziehbar; die Prämien eines Kindes zählen bei den Eltern.',
     url: 'https://www.gesetze-im-internet.de/estg/__10.html',
   },
+  'estg-33': {
+    id: 'estg-33',
+    paragraph: '§ 33 EStG',
+    legalStatusDate: '14.11.2026',
+    translation:
+      'Selbst getragene Krankheitskosten (Arzt, Zahnarzt, Brille, Medikamente auf Rezept) sind außergewöhnliche Belastungen über der zumutbaren Belastung; eine Schönheitsoperation ohne medizinische Notwendigkeit zählt nicht.',
+    url: 'https://www.gesetze-im-internet.de/estg/__33.html',
+  },
   'ao-355': {
     id: 'ao-355',
     paragraph: '§ 355 Abs. 1 AO',

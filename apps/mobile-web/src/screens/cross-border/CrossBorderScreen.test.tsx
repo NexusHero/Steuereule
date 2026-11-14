@@ -25,14 +25,14 @@ function makeTestQueryClient() {
   return new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
 }
 
-function renderScreen(onDone: () => void = () => {}, onBack?: () => void) {
+function renderScreen(onDone: () => void = () => {}, onBack?: () => void, partnerName?: string) {
   const i18n = createAppI18n('de')
   const queryClient = makeTestQueryClient()
   return render(
     <QueryClientProvider client={queryClient}>
       <I18nextProvider i18n={i18n}>
         <ThemeProvider mode="light">
-          <CrossBorderScreen onDone={onDone} {...(onBack ? { onBack } : {})} taxYear={TAX_YEAR} />
+          <CrossBorderScreen onDone={onDone} {...(onBack ? { onBack } : {})} {...(partnerName ? { partnerName } : {})} taxYear={TAX_YEAR} />
         </ThemeProvider>
       </I18nextProvider>
     </QueryClientProvider>,
@@ -445,5 +445,51 @@ describe('GrenzgaengerScreen — onBack & saving race safety', () => {
 
     releasePut()
     await waitFor(() => expect(onDone).toHaveBeenCalledOnce())
+  })
+})
+
+describe('GrenzgaengerScreen — the partner’s Swiss figures (escalation case: both spouses Grenzgänger)', () => {
+  it('asks Person B’s residence and days, saves them with B’s mask, and reads and writes only ?person=B', async () => {
+    const urls: string[] = []
+    let facts: unknown = null
+    let current: ChSalaryCertificateResponseDto = EMPTY_CH
+    server.use(
+      http.get(INTERVIEW_URL, ({ request }) => {
+        urls.push(`interview ${request.url}`)
+        return HttpResponse.json(EMPTY_CH_INTERVIEW, { status: 200 })
+      }),
+      http.get(CH_URL, ({ request }) => {
+        urls.push(`get ${new URL(request.url).search}`)
+        return HttpResponse.json(current, { status: 200 })
+      }),
+      http.put(`${CH_URL}/grenzgaenger`, async ({ request }) => {
+        urls.push(`put grenzgaenger ${new URL(request.url).search}`)
+        facts = await request.json()
+        current = { ...EMPTY_CH, status: 'echter-grenzgaenger' }
+        return HttpResponse.json(current, { status: 200 })
+      }),
+      http.put(`${CH_URL}/:feld`, ({ request }) => {
+        urls.push(`put field ${new URL(request.url).search}`)
+        return HttpResponse.json(current, { status: 200 })
+      }),
+    )
+
+    renderScreen(() => {}, undefined, 'Nora')
+
+    await screen.findByText(/Wo wohnst/)
+    expect(screen.getByTestId('ch-partner-hinweis').textContent).toContain('Nora')
+    fireEvent.click(screen.getByText('Deutschland'))
+    await screen.findByText(/zurückgekehrt/)
+    fireEvent.change(screen.getByTestId('ch-tage-input'), { target: { value: '0' } })
+    fireEvent.click(screen.getByTestId('ch-tage-weiter'))
+
+    await waitFor(() => expect(facts).toEqual({ residence: 'Deutschland', daysWithoutReturn: 0 }))
+    const lohn = await screen.findByTestId('ch-feld-lohn')
+    fireEvent.change(lohn, { target: { value: '31200' } })
+    fireEvent.blur(lohn)
+
+    await waitFor(() => expect(urls).toContain('put field ?person=B'))
+    expect(urls.filter((u) => u.startsWith('interview'))).toEqual([])
+    expect(urls.filter((u) => !u.endsWith('?person=B'))).toEqual([])
   })
 })

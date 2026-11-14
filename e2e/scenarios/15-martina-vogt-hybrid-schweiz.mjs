@@ -50,6 +50,9 @@ export async function runScenario15(browser, webOrigin) {
   const marriedOpt = page.locator('[data-testid="interview-option-familienstand-Verheiratet"]')
   await marriedOpt.waitFor({ state: 'visible', timeout: 10_000 })
   await marriedOpt.click()
+  // ADR-0088: the interview asks what Person B does
+  await page.locator('[data-testid="interview-option-partner-job-Rente"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await page.locator('[data-testid="interview-option-partner-job-Rente"]').click()
 
   await page.locator('[data-testid="ch-wohnsitz-deutschland"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="ch-wohnsitz-deutschland"]').click()

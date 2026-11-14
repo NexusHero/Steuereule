@@ -6,6 +6,7 @@ import { CROSS_BORDER_SALARY_STATEMENT_REPOSITORY, type CrossBorderSalaryStateme
 import { HouseholdAccessService } from '../household/household-access.service.js'
 import { PARTNER_COUPLING_REPOSITORY, type PartnerCouplingRepository } from '../link/link.repository.js'
 import { CHILD_REPOSITORY, type ChildRecord, type ChildRepository } from './child.repository.js'
+import { childAllowancesEur } from './swiss-allowance.js'
 import type { CreateChildDto, ChildrenResponseDto, ChildResponseDto, UpdateChildDto } from './dto/child.dto.js'
 
 function toChildData(r: ChildRecord, effectiveSwissEur: number | null): ChildData {
@@ -48,7 +49,10 @@ function toDto(r: ChildRecord, effectiveSwissEur: number | null, year: number): 
     childcareProvider: r.childcareProvider ?? null,
     childcareFrom: r.childcareFrom ?? null,
     childcareTo: r.childcareTo ?? null,
+    swissFamilyAllowancePayer: r.swissFamilyAllowancePayer ?? null,
     swissFamilyAllowanceEur: effectiveSwissEur != null ? String(effectiveSwissEur) : null,
+    // A share of a parent's allowances, not entered for the child: the mask offers it, it does not store it (ADR-0088).
+    swissFamilyAllowanceDerived: !r.swissFamilyAllowanceEur && effectiveSwissEur != null,
     differentialChildBenefitEur: diff != null ? String(diff.differentialChildBenefit) : null,
     totalClaimEur: diff != null ? String(diff.totalClaim) : null,
   }
@@ -69,38 +73,21 @@ export class ChildrenService {
     return this.household ? this.household.householdOwner(userId, taxYear) : Promise.resolve(userId)
   }
 
-  private async getPerChildSwissAllowanceEur(userId: string, year: number, count: number): Promise<number | null> {
-    if (!this.chSalaryCertificate || count <= 0) return null
-    let chRecord = await this.chSalaryCertificate.findForUserAndYear(userId, year)
-    if ((!chRecord?.nGre.familienzulagenChf || Number(chRecord.nGre.familienzulagenChf) <= 0) && this.link) {
-      const k = await this.link.findByUserAndYear(userId, year)
-      if (k?.filingType === 'zusammen' && k.personBUserId) {
-        const spouseCh = await this.chSalaryCertificate.findForUserAndYear(k.personBUserId, year)
-        if (spouseCh?.nGre.familienzulagenChf && Number(spouseCh.nGre.familienzulagenChf) > 0) {
-          chRecord = spouseCh
-        }
-      }
-    }
-    const allowancesChf = chRecord?.nGre.familienzulagenChf
-    if (!allowancesChf || Number(allowancesChf) <= 0) return null
-    const rate = chRecord?.exchangeRateValue
-    if (rate == null || rate <= 0) return null
-    const perChildChf = Math.round(Number(allowancesChf) / count)
-    return Math.round(perChildChf * rate)
+  /** The Swiss Kinderzulage of each child: its own amount or its share of the paying parent's (ADR-0088). */
+  private async allowancesEur(userId: string, year: number, records: readonly ChildRecord[]): Promise<(number | null)[]> {
+    if (!this.chSalaryCertificate || records.length === 0) return records.map(() => null)
+    const own = await this.chSalaryCertificate.findForUserAndYear(userId, year)
+    const k = this.link ? await this.link.findByUserAndYear(userId, year) : null
+    const spouse = k?.filingType === 'zusammen' && k.personBUserId ? await this.chSalaryCertificate.findForUserAndYear(k.personBUserId, year) : null
+    return childAllowancesEur(records, own, spouse)
   }
 
   private async toResponse(userId: string, records: ChildRecord[], year: number): Promise<ChildrenResponseDto> {
-    const perChildEur = await this.getPerChildSwissAllowanceEur(userId, year, records.length)
-    const data = records.map((r) => {
-      const effectiveSwissEur = r.swissFamilyAllowanceEur ? Number(r.swissFamilyAllowanceEur) : perChildEur
-      return toChildData(r, effectiveSwissEur)
-    })
+    const allowances = await this.allowancesEur(userId, year, records)
+    const data = records.map((r, i) => toChildData(r, allowances[i] ?? null))
     const status = calculateChildrenStatus(data, year)
     return {
-      kinder: records.map((r) => {
-        const effectiveSwissEur = r.swissFamilyAllowanceEur ? Number(r.swissFamilyAllowanceEur) : perChildEur
-        return toDto(r, effectiveSwissEur, year)
-      }),
+      kinder: records.map((r, i) => toDto(r, allowances[i] ?? null, year)),
       count: status.count,
       childBenefitSum: status.childBenefitSum,
       totalAllowance: status.totalAllowance,

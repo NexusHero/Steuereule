@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { Button, Input, Option, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
+import { Button, Chip, Input, Option, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
 import {
   formatEuro,
   AMOUNT_LATER,
@@ -18,6 +18,7 @@ import {
 import {
   useInterviewControllerGetInterview,
   useInterviewControllerPostAnswer,
+  useLinkControllerGet,
   getCockpitControllerGetCockpitSummaryQueryKey,
   getInterviewControllerGetInterviewQueryKey,
   getTaxEstimateControllerGetQueryKey,
@@ -101,15 +102,46 @@ export interface CatalogScreenProps {
   readonly revisit?: boolean
 }
 
-export function CatalogScreen({ entry, focusStep, onDone = () => {}, onBack, taxYear = CURRENT_TAX_YEAR, revisit = false }: CatalogScreenProps) {
+/** Entries each spouse answers for themselves; in a joint return the user picks whose answers these are (ADR-0088). */
+const PERSONAL_ENTRIES: readonly CatalogScreenEntry[] = ['lebenslagen', 'sonderausgaben']
+
+export function CatalogScreen(props: CatalogScreenProps) {
+  const { entry, taxYear = CURRENT_TAX_YEAR } = props
+  const t = useTheme()
+  const { t: tr } = useTranslation(APP_NS)
+  const personal = PERSONAL_ENTRIES.includes(entry)
+  const link = useLinkControllerGet(taxYear, { query: { enabled: personal, retry: false } })
+  const coupling = link.data?.status === 200 ? link.data.data : null
+  const partnerName = coupling?.filingType === 'zusammen' && coupling.personBHasOwnAccount !== true ? coupling.personB?.firstName?.trim() || tr('katalog.fuerWen.partnerFallback') : null
+  const [person, setPerson] = useState<'A' | 'B'>('A')
+  if (!personal || partnerName === null) return <CatalogFlow {...props} person="A" />
+  return (
+    <>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.s2, alignItems: 'center', paddingHorizontal: t.space.s4, paddingTop: t.space.s3 }} testID="katalog-fuer-wen">
+        <Text style={{ color: t.color.tinte, fontFamily: t.font.text }}>{tr('katalog.fuerWen.label')}</Text>
+        <Chip active={person === 'A'} onPress={() => setPerson('A')} testID="katalog-fuer-a">
+          {tr('katalog.fuerWen.mich')}
+        </Chip>
+        <Chip active={person === 'B'} onPress={() => setPerson('B')} testID="katalog-fuer-b">
+          {tr('katalog.fuerWen.partner', { name: partnerName })}
+        </Chip>
+      </View>
+      <CatalogFlow key={person} {...props} person={person} />
+    </>
+  )
+}
+
+function CatalogFlow({ entry, focusStep, onDone = () => {}, onBack, taxYear = CURRENT_TAX_YEAR, revisit = false, person }: CatalogScreenProps & { readonly person: 'A' | 'B' }) {
   const bp = useBreakpoint()
   const t = useTheme()
   const styles = makeStyles(t)
   const { t: tr } = useTranslation(APP_NS)
   const queryClient = useQueryClient()
-  const interviewQuery = useInterviewControllerGetInterview(taxYear, { eintrag: entry })
+  // Person B's personal answers live in B's record (ADR-0088).
+  const params = person === 'B' ? ({ eintrag: entry, person: 'B' } as const) : { eintrag: entry }
+  const interviewQuery = useInterviewControllerGetInterview(taxYear, params)
   // #452 slice 4: last year's amounts (Spenden, Riester), offered on a click.
-  const priorQuery = useInterviewControllerGetInterview(taxYear - 1, { eintrag: entry }, { query: { retry: false } })
+  const priorQuery = useInterviewControllerGetInterview(taxYear - 1, params, { query: { retry: false } })
   const priorAnswers = priorQuery.data?.status === 200 ? (priorQuery.data.data.answers as Answers) : {}
   const postAnswer = useInterviewControllerPostAnswer()
 
@@ -187,13 +219,13 @@ export function CatalogScreen({ entry, focusStep, onDone = () => {}, onBack, tax
     mutationQueue.current = mutationQueue.current
       .then(async () => {
         try {
-          const response = await postAnswer.mutateAsync({ jahr: taxYear, data: { questionId: stepId, value } })
+          const response = await postAnswer.mutateAsync({ jahr: taxYear, data: { questionId: stepId, value }, ...(person === 'B' ? { params: { person: 'B' as const } } : {}) })
           if (response.status === 200) {
             void queryClient.invalidateQueries({ queryKey: getCockpitControllerGetCockpitSummaryQueryKey(taxYear) })
             void queryClient.invalidateQueries({ queryKey: getTaxEstimateControllerGetQueryKey(taxYear) })
             void queryClient.invalidateQueries({ queryKey: getInterviewControllerGetInterviewQueryKey(taxYear), exact: true })
             void queryClient.invalidateQueries({
-              queryKey: getInterviewControllerGetInterviewQueryKey(taxYear, { eintrag: entry }),
+              queryKey: getInterviewControllerGetInterviewQueryKey(taxYear, params),
               refetchType: 'none',
             })
             return

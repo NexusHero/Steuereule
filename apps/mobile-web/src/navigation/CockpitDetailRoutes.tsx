@@ -7,13 +7,15 @@ import { ChildrenScreen } from '../screens/children/ChildrenScreen'
 import { MasterDataScreen } from '../screens/master-data/MasterDataScreen'
 import { LstbScreen } from '../screens/lstb/LstbScreen'
 import { WorkdaysScreen } from '../screens/workdays/WorkdaysScreen'
+import { CrossBorderScreen } from '../screens/cross-border/CrossBorderScreen'
+import { PensionerScreen } from '../screens/pension/PensionerScreen'
 import { useShellState } from './ShellState'
 import { RequiresAccount } from './RequiresAccount'
 import { CockpitSheet } from './CockpitSheet'
 import { useYearGuard } from './guards'
 import type { CockpitStackParamList, PartnerAreaParam } from './routes'
 
-const PARTNER_AREAS: readonly PartnerAreaParam[] = ['lstb', 'arbeitsweg']
+const PARTNER_AREAS: readonly PartnerAreaParam[] = ['lstb', 'arbeitsweg', 'schweiz', 'rente']
 
 type Props<T extends keyof CockpitStackParamList> = NativeStackScreenProps<CockpitStackParamList, T>
 
@@ -119,6 +121,10 @@ export function PartnerRoute({ navigation, route }: Props<'Partner'>) {
             onDone={closePartner}
             onBack={closePartner}
           />
+        ) : activePartner.area === 'rente' ? (
+          <PensionerScreen taxYear={year} partnerName={activePartner.name} onDone={closePartner} onBack={closePartner} />
+        ) : activePartner.area === 'schweiz' ? (
+          <CrossBorderScreen taxYear={year} partnerName={activePartner.name} onDone={closePartner} onBack={closePartner} />
         ) : (
           <WorkdaysScreen taxYear={year} partnerName={activePartner.name} onDone={closePartner} onBack={closePartner} />
         )}

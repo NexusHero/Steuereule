@@ -48,6 +48,14 @@ export type SpouseIncome =
       readonly commuteAllowance: number
       readonly selfPaidHealthCare: number
     }
+  | {
+      /** A pension (Anlage R): its taxable share (Besteuerungs- or Ertragsanteil); nothing is withheld (ADR-0088). */
+      readonly kind: 'pension'
+      readonly taxablePensionEur: number
+    }
+
+/** § 9a S. 1 Nr. 3 EStG: Werbungskosten-Pauschbetrag for pensions. */
+const PENSION_LUMP_SUM_EUR = 102
 
 export interface MarriedEstimateInput {
   readonly year: number
@@ -103,6 +111,10 @@ interface SpouseFigures {
 
 function spouseFigures(s: SpouseIncome, year: number): SpouseFigures {
   const params = getTaxYearParameters(year)
+  if (s.kind === 'pension') {
+    const werbungskosten = Math.min(PENSION_LUMP_SUM_EUR, s.taxablePensionEur)
+    return { werbungskosten, income: s.taxablePensionEur - werbungskosten, provision: { from: 0, to: 0 }, credit: 0 }
+  }
   if (s.kind === 'employee') {
     const werbungskosten = Math.max(params.lumpSums.employee, s.commuteAllowance)
     return {

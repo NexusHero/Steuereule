@@ -1,3 +1,4 @@
+import { LinkModule } from '../link/link.module.js'
 import { Module } from '@nestjs/common'
 import { AuditModule } from '../audit/audit.module.js'
 import { PrismaModule } from '../prisma/prisma.module.js'
@@ -7,7 +8,7 @@ import { InterviewController } from './interview.controller.js'
 import { InterviewService } from './interview.service.js'
 
 @Module({
-  imports: [PrismaModule, AuditModule],
+  imports: [PrismaModule, AuditModule, LinkModule],
   controllers: [InterviewController],
   providers: [InterviewService, { provide: INTERVIEW_ANSWER_REPOSITORY, useClass: PrismaInterviewAnswerRepository }],
   exports: [INTERVIEW_ANSWER_REPOSITORY],

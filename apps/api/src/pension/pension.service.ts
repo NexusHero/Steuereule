@@ -28,7 +28,7 @@ import type { PutPensionFieldDto, PensionFieldDto } from './dto/pension-field.dt
 import type { PutPensionKindDto } from './dto/pension-kind.dto.js'
 import type { PensionItemDto, PensionResponseDto, PensionStatusDto } from './dto/pension-response.dto.js'
 
-function dataFromRecord(record: PensionRecord | null): PensionData {
+export function pensionDataFromRecord(record: PensionRecord | null): PensionData {
   if (record === null) return EMPTY_PENSION
   return {
     kind: record.rentenart !== null && isPensionType(record.rentenart) ? record.rentenart : null,
@@ -85,7 +85,7 @@ export class PensionService {
   }
 
   private async toResponse(userId: string, taxYear: number, record: PensionRecord | null): Promise<PensionResponseDto> {
-    const data = dataFromRecord(record)
+    const data = pensionDataFromRecord(record)
     const answers = await this.answers(userId, taxYear)
     const gated = gatedIncomeTypes(answers)
 
@@ -126,7 +126,7 @@ export class PensionService {
 
   async setField(userId: string, taxYear: number, field: PensionFieldId, dto: PutPensionFieldDto): Promise<PensionResponseDto> {
     const record = await this.repository.findForUserAndYear(userId, taxYear)
-    const data = dataFromRecord(record)
+    const data = pensionDataFromRecord(record)
     const state = stateFromDto(dto)
     setPensionField(data, field, state)
     const next = await this.repository.setField(userId, taxYear, field, serializePensionField(state))

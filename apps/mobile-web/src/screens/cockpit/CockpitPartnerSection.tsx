@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { Pressable, Text, View, type TextStyle, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { Card, hapticSuccess, useBreakpoint, useTheme, type UiTheme } from '@steuereule/ui'
-import { useCommuteControllerGet, useLstbControllerGetLstb } from '@steuereule/api-client'
+import { useChSalaryCertificateControllerGet, useCommuteControllerGet, useLstbControllerGetLstb, usePensionControllerGet } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import type { PartnerAreaParam } from '../../navigation/routes'
 import { tileById, type TileStatus } from './tiles'
@@ -11,23 +11,33 @@ export interface CockpitPartnerSectionProps {
   readonly year: number
   readonly partnerName: string
   readonly enabled: boolean
+  /** A Grenzgänger household: the partner gets a Swiss certificate of their own (escalation case). */
+  readonly crossBorder?: boolean
+  /** What the interview says Person B does (ADR-0088); unanswered shows the employee's fields as before. */
+  readonly partnerJob?: string | undefined
   readonly onOpenPartner: (area: PartnerAreaParam, name: string) => void
 }
 
-export function CockpitPartnerSection({ year, partnerName, enabled, onOpenPartner }: CockpitPartnerSectionProps) {
+export function CockpitPartnerSection({ year, partnerName, enabled, crossBorder = false, partnerJob, onOpenPartner }: CockpitPartnerSectionProps) {
+  const employed = partnerJob === undefined || partnerJob === 'Angestellt'
+  const retired = partnerJob === 'Rente'
   const bp = useBreakpoint()
   const t = useTheme()
   const styles = makeStyles(t)
   const { t: tr } = useTranslation(APP_NS)
 
-  const lstb = useLstbControllerGetLstb(year, { person: 'B' }, { query: { enabled } })
-  const commute = useCommuteControllerGet(year, { person: 'B' }, { query: { enabled } })
+  const lstb = useLstbControllerGetLstb(year, { person: 'B' }, { query: { enabled: enabled && employed } })
+  const commute = useCommuteControllerGet(year, { person: 'B' }, { query: { enabled: enabled && employed } })
+  const swiss = useChSalaryCertificateControllerGet(year, { person: 'B' }, { query: { enabled: enabled && employed && crossBorder } })
+  const pension = usePensionControllerGet(year, { person: 'B' }, { query: { enabled: enabled && retired } })
 
   const lstbData = lstb.data?.status === 200 ? lstb.data.data : null
   const commuteData = commute.data?.status === 200 ? commute.data.data : null
 
   const lstbStatus = tileById('lstb').status({ path: 'angestellte', answers: {}, lstb: lstbData })
   const commuteStatus = tileById('arbeitsweg').status({ path: 'angestellte', answers: {}, commute: commuteData })
+  const swissStatus = tileById('ch').status({ path: 'ch', answers: {}, ch: swiss.data?.status === 200 ? swiss.data.data : null })
+  const pensionStatus = tileById('rente').status({ path: 'rente', answers: {}, pension: pension.data?.status === 200 ? pension.data.data : null })
   const lstbPending = enabled && lstb.isPending
   const commutePending = enabled && commute.isPending
   const prevStatusesRef = useRef<{ year: number; lstb?: TileStatus; commute?: TileStatus }>({ year })
@@ -56,9 +66,16 @@ export function CockpitPartnerSection({ year, partnerName, enabled, onOpenPartne
   }, [year, lstbPending, commutePending, lstbStatus, commuteStatus])
 
   const items: readonly { readonly area: PartnerAreaParam; readonly testId: string; readonly titleKey: string; readonly status: TileStatus }[] = [
-    { area: 'lstb', testId: 'partner-lstb', titleKey: 'cockpit.kachel.partner-lstb.titel', status: lstbStatus },
-    { area: 'arbeitsweg', testId: 'partner-arbeitsweg', titleKey: 'cockpit.kachel.partner-arbeitsweg.titel', status: commuteStatus },
+    ...(employed
+      ? [
+          { area: 'lstb' as const, testId: 'partner-lstb', titleKey: 'cockpit.kachel.partner-lstb.titel', status: lstbStatus },
+          { area: 'arbeitsweg' as const, testId: 'partner-arbeitsweg', titleKey: 'cockpit.kachel.partner-arbeitsweg.titel', status: commuteStatus },
+        ]
+      : []),
+    ...(employed && crossBorder ? [{ area: 'schweiz' as const, testId: 'partner-schweiz', titleKey: 'cockpit.kachel.partner-schweiz.titel', status: swissStatus }] : []),
+    ...(retired ? [{ area: 'rente' as const, testId: 'partner-rente', titleKey: 'cockpit.kachel.partner-rente.titel', status: pensionStatus }] : []),
   ]
+  if (items.length === 0) return null
 
   return (
     <View style={styles.section}>

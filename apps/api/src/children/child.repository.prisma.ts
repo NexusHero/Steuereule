@@ -12,7 +12,7 @@ function toRecord(row: {
   geburtsdatum: string
   taxId: string | null
   childBenefitClaimEur: string | null
-} & ChildDetails): ChildRecord {
+} & Omit<ChildDetails, 'swissFamilyAllowancePayer'> & { swissFamilyAllowancePayer?: string | null }): ChildRecord {
   return {
     id: row.id,
     userId: row.userId,
@@ -42,6 +42,7 @@ function toRecord(row: {
     childcareProvider: row.childcareProvider ?? null,
     childcareFrom: row.childcareFrom ?? null,
     childcareTo: row.childcareTo ?? null,
+    swissFamilyAllowancePayer: row.swissFamilyAllowancePayer === 'A' || row.swissFamilyAllowancePayer === 'B' ? row.swissFamilyAllowancePayer : null,
   }
 }
 
@@ -107,6 +108,7 @@ export class PrismaChildRepository implements ChildRepository {
           childcareProvider: data.childcareProvider ?? null,
           childcareFrom: data.childcareFrom ?? null,
           childcareTo: data.childcareTo ?? null,
+          swissFamilyAllowancePayer: data.swissFamilyAllowancePayer ?? null,
         },
       }),
       this.prisma.taxDataAccessLog.create({

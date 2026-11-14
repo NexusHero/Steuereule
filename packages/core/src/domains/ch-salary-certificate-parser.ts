@@ -34,6 +34,8 @@ export interface ChCertificateRead {
   /** CHF as printed, whole francs; negative where the certificate prints a negative figure. */
   readonly amounts: Partial<Record<SalaryCertificateAmountFieldId, number>>
   readonly fields: Partial<Record<SalaryCertificateAmountFieldId, ChCertificateField>>
+  /** Kinder-, Ausbildungs- or Familienzulagen the remarks (Ziffer 15) name, CHF: Anlage N-Gre Z. 8 (ADR-0088). */
+  readonly familyAllowancesChf: number | null
   /** Ziffer 10.1 and 10.2; `berufliche-vorsorge` is their sum. */
   readonly pension: { readonly ordinary: number | null; readonly buyIn: number | null }
   readonly checks: { readonly gross: ChCertificateCheck; readonly net: ChCertificateCheck }
@@ -283,8 +285,31 @@ export function parseChSalaryCertificateText(rawText: string): ChCertificateRead
     fields: fieldsOf(amounts, checks),
     pension,
     checks,
+    familyAllowancesChf: familyAllowancesIn(lines),
     missing: EXPECTED.filter((id) => amounts[id] === undefined),
   }
+}
+
+/**
+ * The family allowances a certificate states in its remarks: „Kinderzulagen CHF 2'580“, „Familienzulagen:
+ * 3'870.00“. Several such amounts add up; a „davon …“ part is not counted again. A remark that only says they are
+ * included, without an amount, gives null: the user enters it.
+ */
+export function familyAllowancesIn(lines: readonly string[]): number | null {
+  let sum = 0
+  let found = false
+  for (const line of lines) {
+    // „davon …“ is a part of an amount already counted.
+    if (/\bdavon\b/i.test(line)) continue
+    const m = /(kinder|ausbildungs|familien)zulage[n]?\b[^\d]{0,30}?(\d{1,3}(?:['’.\s]\d{3})*|\d+)(?:[.,]\d{2})?/i.exec(line)
+    if (!m) continue
+    const chf = Number(m[2]!.replace(/['’.\s]/g, ''))
+    if (Number.isFinite(chf) && chf > 0) {
+      sum += chf
+      found = true
+    }
+  }
+  return found ? sum : null
 }
 
 /**

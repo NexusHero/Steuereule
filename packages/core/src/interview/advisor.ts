@@ -116,6 +116,15 @@ export const ADVISOR_LEGAL_SOURCES: Readonly<Record<OwlSourceId, AdvisorLegalSou
     legalStatusDate: LEGAL_SOURCES_CHECKED_ON,
     url: 'https://www.gesetze-im-internet.de/estg/__35a.html',
   },
+  'estg-33': {
+    sourceId: 'estg-33',
+    paragraph: '§ 33 EStG',
+    title: 'Krankheitskosten als außergewöhnliche Belastung',
+    summary:
+      'Krankheitskosten wie Arzt, Zahnarzt, Brille oder Medikamente auf Rezept sind außergewöhnliche Belastungen, soweit ihr sie selbst getragen habt; abziehbar ist der Teil über der zumutbaren Belastung. Eine Schönheitsoperation ohne medizinische Notwendigkeit zählt nicht.',
+    legalStatusDate: LEGAL_SOURCES_CHECKED_ON,
+    url: 'https://www.gesetze-im-internet.de/estg/__33.html',
+  },
   'estg-10-1-3': {
     sourceId: 'estg-10-1-3',
     paragraph: '§ 10 Abs. 1 Nr. 3 EStG',
@@ -507,6 +516,10 @@ function computeRefundMidpoint(digest: CaseDigest): number {
 function readCurrentValueFromDigest(digest: CaseDigest, screen: Screen, field: string): string | null {
   if (screen === 'interview') {
     if (field === 'spenden-betrag') return digest.catalogExpenses.donationsEur !== null ? String(digest.catalogExpenses.donationsEur) : null
+    if (field === 'gesundheit-betrag') {
+      const health = digest.furtherFacts?.healthCostsEur
+      return health !== null && health !== undefined ? String(health) : null
+    }
     if (field === 'spenden') return digest.catalogExpenses.donationsEur && digest.catalogExpenses.donationsEur > 0 ? 'Ja' : 'Nein'
     if (field === 'homeoffice') return digest.commuteAndWorkdays.homeOfficeAnswer
     if (field === 'weg') return digest.commuteAndWorkdays.distanceKm !== null ? String(digest.commuteAndWorkdays.distanceKm) : null

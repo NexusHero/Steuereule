@@ -1077,8 +1077,8 @@ jobs:
             kill "$(cat /tmp/steuereule-web-cross-origin.pid)" 2>/dev/null || true
           fi
 
-  # 4-Shard Parallel Playwright Acceptance & Dialog-Matrix Suite (Scenarios 01–24, including
-  # Scenario 24 DevMLOps Advisor Chat UI E2E). Runs all 24 full-persona E2E scenarios on every PR.
+  # 4-Shard Parallel Playwright Acceptance & Dialog-Matrix Suite (Scenarios 01–26, including
+  # Scenario 24 DevMLOps Advisor Chat UI E2E and 25/26, the escalation cases). Runs all 26 full-persona E2E scenarios on every PR.
   e2e-scenarios:
     name: E2E Scenarios Matrix (Shard ${{ matrix.shard }})
     needs: build
