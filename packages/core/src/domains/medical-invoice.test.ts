@@ -44,3 +44,23 @@ describe('parseMedicalInvoice', () => {
     expect(looksLikeMedicalInvoice('Bestätigung über Geldzuwendungen, Kinderhilfe e.V.')).toBe(false)
   })
 })
+
+describe('parseMedicalInvoice — edges', () => {
+  it('takes the first euro amount when no line names the total, and reads amounts without cents', () => {
+    expect(parseMedicalInvoice('Praxis Dr. Muster\nBehandlung 120 €').totalEur).toBe(120)
+    expect(parseMedicalInvoice('Physiotherapie Beispiel\nRechnungsbetrag 2.050 EUR').totalEur).toBe(2050)
+  })
+  it('gives no amount, date or year when the invoice prints none', () => {
+    expect(parseMedicalInvoice('Zahnarztpraxis Dr. Beispiel\nBehandlung nach GOZ')).toMatchObject({ totalEur: null, taxYear: null, invoiceDate: null, cosmetic: false })
+    expect(parseMedicalInvoice('')).toMatchObject({ totalEur: null, taxYear: null })
+  })
+  it('falls back from a total line without an amount to the next amount, and to the date for the key', () => {
+    const read = parseMedicalInvoice('Optiker Beispiel\nGesamtbetrag siehe unten\nBrillengläser 340,00 €\n01.03.2025')
+    expect(read.totalEur).toBe(340)
+    expect(read.ref).toContain('01.03.2025')
+  })
+  it('is not a medical invoice without a medical word, nor when empty', () => {
+    expect(looksLikeMedicalInvoice('Rechnung Nr. 4711 über 99,00 EUR')).toBe(false)
+    expect(looksLikeMedicalInvoice('')).toBe(false)
+  })
+})

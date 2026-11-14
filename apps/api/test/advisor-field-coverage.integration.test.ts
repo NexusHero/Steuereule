@@ -18,7 +18,8 @@ const YEAR = 2025
 
 /** Values a model would plausibly send; the first one a field accepts counts. */
 // A German date (TT.MM.JJJJ) for the fields that take one, e.g. the period of a way to work (ADR-0079).
-const GENERIC_CANDIDATES = ['1200', '12', '2025-06-30', '30.06.2025', 'true', 'pkw', '1,2,3,4,5', 'BY', 'GesetzlicheRente', '1', 'Inland', '1995', '2019']
+// 'A' for the person a child's Swiss Kinderzulage comes with (ADR-0088), last so it never wins over a real value.
+const GENERIC_CANDIDATES = ['1200', '12', '2025-06-30', '30.06.2025', 'true', 'pkw', '1,2,3,4,5', 'BY', 'GesetzlicheRente', '1', 'Inland', '1995', '2019', 'A']
 
 function candidatesFor(screen: Screen, field: string): string[] {
   if (screen === 'interview') {

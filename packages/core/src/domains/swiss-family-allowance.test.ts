@@ -21,3 +21,10 @@ describe('swissAllowancePerChild', () => {
     expect(swissAllowancePerChild(kids, { A: 1_000, B: 3_000 })).toEqual([1_000, 3_000])
   })
 })
+
+describe('swissAllowancePerChild — edges', () => {
+  it('treats a zero or missing own amount as open, and a payer without allowances as none', () => {
+    expect(swissAllowancePerChild([{ payer: 'B', ownEur: 0 }, { payer: null, ownEur: null }], { A: 1_200, B: 0 })).toEqual([null, 1_200])
+    expect(swissAllowancePerChild([], { A: 1_000, B: 1_000 })).toEqual([])
+  })
+})

@@ -53,3 +53,11 @@ describe('childcarePaidInYear (escalation case: three children in care)', () => 
     expect(childcarePaidInYear('Kita Sonnenschein\nElternbeitrag\nGesamt 2024: 2.400,00 EUR', 2025)).toBeNull()
   })
 })
+
+describe('childcarePaidInYear — edges', () => {
+  it('reads a „Jahresbetrag“ line without the year and skips lines without an amount', () => {
+    expect(childcarePaidInYear('Kita Beispiel\nElternbeitrag\nJahresbetrag: 2.400 €', 2025)).toBe(2400)
+    expect(childcarePaidInYear('Kita Beispiel\nElternbeitrag\nGesamt 2025: siehe Anlage', 2025)).toBeNull()
+    expect(childcarePaidInYear('Rechnung Elektro, Gesamt 2025: 300 €', 2025)).toBeNull()
+  })
+})
