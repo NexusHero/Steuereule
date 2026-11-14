@@ -229,10 +229,10 @@ function TwoFactorChallenge({ email, onDone }: { readonly email: string; readonl
 
   return (
     <View style={{ gap: t.space.s4 }}>
-      <Text style={{ fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size['2xl'], color: t.color.tinte }}>
+      <Text style={{ ...t.type.headline, color: t.color.tinte }}>
         {tr('login.twoFactor.heading')}
       </Text>
-      <Text style={{ fontFamily: t.font.text, fontSize: t.size.s, color: t.color.tinte2 }}>
+      <Text style={{ ...t.type.small, color: t.color.tinte2 }}>
         {useBackupCode ? tr('login.twoFactor.backupBody') : tr('login.twoFactor.body', { email })}
       </Text>
       <Feld label={useBackupCode ? tr('login.twoFactor.backupLabel') : tr('login.twoFactor.codeLabel')} error={error}>

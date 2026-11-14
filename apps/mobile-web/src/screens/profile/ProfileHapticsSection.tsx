@@ -54,14 +54,11 @@ function makeStyles(t: UiTheme) {
   }
   const labelCol: ViewStyle = { flex: 1, gap: t.space.s1 }
   const sectionTitle: TextStyle = {
-    fontFamily: t.font.display,
-    fontWeight: t.weight.schwer,
-    fontSize: t.size.l,
+    ...t.type.cardTitle,
     color: t.color.tinte,
   }
   const description: TextStyle = {
-    fontFamily: t.font.text,
-    fontSize: t.size.s,
+    ...t.type.small,
     color: t.color.tinte2,
   }
   return { card, row, labelCol, sectionTitle, description }

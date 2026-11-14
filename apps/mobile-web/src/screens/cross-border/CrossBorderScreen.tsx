@@ -2,7 +2,7 @@ import { useState, useRef } from 'react'
 import { ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { Button, Card, Chip, Input, Feld, Option, Pill, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme, type Breakpoint } from '@steuereule/ui'
+import { Button, Card, Chip, Input, Feld, Option, Pill, useTheme, useBreakpoint, type UiTheme, type Breakpoint } from '@steuereule/ui'
 import { ANNUAL_AVERAGE_RATES, ENTRIES, SALARY_CERTIFICATE_FIELDS, formatEuro, nextStepFor, type Answers, type EntryQuestionId } from '@steuereule/core'
 import {
   useInterviewControllerGetInterview,
@@ -598,29 +598,19 @@ function valueFromResponse(salaryCertificate: ChSalaryCertificateResponseDto, id
 }
 
 function makeStyles(t: UiTheme) {
-  const screen: ViewStyle = {
-    backgroundColor: t.color.grund,
-    paddingHorizontal: t.space.s5,
-    paddingVertical: t.space.s6,
-    minHeight: '100%',
-    maxWidth: 460,
-    width: '100%',
-    alignSelf: 'center',
-  }
-  const wideScreen: ViewStyle = { ...screen, maxWidth: WIDE_CONTENT_MAX_WIDTH }
+  const screen: ViewStyle = t.layout.flow.narrow
+  const wideScreen: ViewStyle = t.layout.flow.wide
   const headerRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s3, marginBottom: t.space.s3 }
   const heading: TextStyle = {
-    fontFamily: t.font.display,
-    fontWeight: t.weight.schwer,
-    fontSize: t.size['3xl'],
+    ...t.type.title,
     color: t.color.tinte,
     marginBottom: t.space.s2,
   }
   const mark: TextStyle = { color: t.color.funke }
-  const help: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.m, marginBottom: t.space.s3 }
-  const sectionTitle: TextStyle = { fontFamily: t.font.display, fontWeight: t.weight.fett, fontSize: t.size.l, color: t.color.tinte, marginBottom: t.space.s2 }
+  const help: TextStyle = { ...t.type.body, color: t.color.tinte2, marginBottom: t.space.s3 }
+  const sectionTitle: TextStyle = { ...t.type.cardTitle, color: t.color.tinte, marginBottom: t.space.s2 }
   const statusCard: ViewStyle = { marginTop: t.space.s4 }
-  const statusRow: TextStyle = { color: t.color.tinte, fontFamily: t.font.text, fontSize: t.size.m, marginBottom: t.space.s1 }
+  const statusRow: TextStyle = { ...t.type.body, color: t.color.tinte, marginBottom: t.space.s1 }
   const cta: ViewStyle = { marginTop: t.space.s4 }
   return { screen, wideScreen, headerRow, heading, mark, help, sectionTitle, statusCard, standRow: statusRow, cta }
 }

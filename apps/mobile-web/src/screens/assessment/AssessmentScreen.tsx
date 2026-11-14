@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { ScrollView, View, Text, Pressable, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { Button, Card, DateInput, Feld, germanDateToIso, Input, isoDateToGerman, Pill, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
+import { Button, Card, DateInput, Feld, germanDateToIso, Input, isoDateToGerman, Pill, useTheme, useBreakpoint, type UiTheme } from '@steuereule/ui'
 import { formatEuro } from '@steuereule/core'
 import {
   useAssessmentControllerGet,
@@ -324,25 +324,15 @@ function AppealSection({ response, onAppeal }: { readonly response: AssessmentRe
 }
 
 function makeStyles(t: UiTheme) {
-  const screen: ViewStyle = {
-    backgroundColor: t.color.grund,
-    paddingHorizontal: t.space.s5,
-    paddingVertical: t.space.s6,
-    minHeight: '100%',
-    maxWidth: 460,
-    width: '100%',
-    alignSelf: 'center',
-  }
-  const wideScreen: ViewStyle = { ...screen, maxWidth: WIDE_CONTENT_MAX_WIDTH }
+  const screen: ViewStyle = t.layout.overview.narrow
+  const wideScreen: ViewStyle = t.layout.overview.wide
   const headerRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', marginBottom: t.space.s4 }
   const heading: TextStyle = {
-    fontFamily: t.font.display,
-    fontWeight: t.weight.schwer,
-    fontSize: t.size['2xl'],
+    ...t.type.title,
     color: t.color.tinte,
     marginBottom: t.space.s2,
   }
-  const help: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.m, marginBottom: t.space.s4 }
+  const help: TextStyle = { ...t.type.body, color: t.color.tinte2, marginBottom: t.space.s4 }
   const fieldRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s3 }
   const unclearButton: ViewStyle = {
     paddingHorizontal: t.space.s3,
@@ -351,18 +341,18 @@ function makeStyles(t: UiTheme) {
     borderColor: t.color.tinte,
     borderRadius: t.radius.s,
   }
-  const unclearLabel: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.s }
-  const unclearActive: TextStyle = { color: t.color.tinte, fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: t.size.s }
+  const unclearLabel: TextStyle = { ...t.type.small, color: t.color.tinte2 }
+  const unclearActive: TextStyle = { ...t.type.label, color: t.color.tinte }
   const section: ViewStyle = { marginTop: t.space.s4 }
-  const sectionHeading: TextStyle = { color: t.color.tinte, fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: t.size.m, marginBottom: t.space.s2 }
-  const muted: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.s, marginBottom: t.space.s2 }
-  const ok: TextStyle = { color: t.color.tinte, fontFamily: t.font.text, fontSize: t.size.s, marginBottom: t.space.s2 }
-  const fristHeading: TextStyle = { fontFamily: t.font.mono, fontSize: t.size.xs, color: t.color.funkeHell, textTransform: 'uppercase', letterSpacing: 0.08 * t.size.xs, marginBottom: t.space.s2 }
-  const fristBody: TextStyle = { color: t.color.nachtText, opacity: 0.85, fontFamily: t.font.text, fontSize: t.size.s }
+  const sectionHeading: TextStyle = { ...t.type.bodyStrong, color: t.color.tinte, marginBottom: t.space.s2 }
+  const muted: TextStyle = { ...t.type.small, color: t.color.tinte2, marginBottom: t.space.s2 }
+  const ok: TextStyle = { ...t.type.small, color: t.color.tinte, marginBottom: t.space.s2 }
+  const fristHeading: TextStyle = { ...t.type.meta, color: t.color.funkeHell, textTransform: 'uppercase', letterSpacing: 0.08 * t.size.xs, marginBottom: t.space.s2 }
+  const fristBody: TextStyle = { ...t.type.small, color: t.color.nachtText, opacity: 0.85 }
   const deviationHead: ViewStyle = { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: t.space.s3 }
-  const deviationField: TextStyle = { color: t.color.tinte, fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: t.size.s }
-  const deviationDelta: TextStyle = { color: t.color.warn, fontFamily: t.font.mono, fontWeight: t.weight.schwer, fontSize: t.size.m }
-  const deviationBody: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.s, marginTop: t.space.s2 }
+  const deviationField: TextStyle = { ...t.type.label, color: t.color.tinte }
+  const deviationDelta: TextStyle = { ...t.type.figure, color: t.color.warn, fontWeight: t.weight.schwer }
+  const deviationBody: TextStyle = { ...t.type.small, color: t.color.tinte2, marginTop: t.space.s2 }
   const statusRow: ViewStyle = { flexDirection: 'row', gap: t.space.s2, marginBottom: t.space.s2 }
   const cta: ViewStyle = { marginTop: t.space.s4 }
   const reasonButton: ViewStyle = { marginTop: t.space.s2 }

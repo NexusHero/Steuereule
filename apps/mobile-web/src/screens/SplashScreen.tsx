@@ -113,14 +113,11 @@ function makeStyles(t: UiTheme) {
     gap: t.space.s3,
   }
   const wordmark: TextStyle = {
-    fontFamily: t.font.display,
-    fontWeight: t.weight.schwer,
-    fontSize: t.size.xl,
+    ...t.type.subhead,
     color: t.color.nachtText,
   }
   const greeting: TextStyle = {
-    fontFamily: t.font.text,
-    fontSize: t.size.m,
+    ...t.type.body,
     color: t.color.nachtText,
     opacity: 0.9,
   }

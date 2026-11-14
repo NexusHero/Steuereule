@@ -384,13 +384,13 @@ function TaxYearLinkSection({
 
   const joinBlock = (
     <View>
-      <Text style={{ fontSize: theme.size.s, color: theme.color.tinte2, marginBottom: theme.space.s2 }}>
+      <Text style={{ ...theme.type.small, color: theme.color.tinte2, marginBottom: theme.space.s2 }}>
         {`Dein Partner hat die Zusammenveranlagung ${taxYear} schon angelegt? Dann gib hier den Einladungscode ein – ihr gebt dann eine gemeinsame Erklärung ab.`}
       </Text>
       <Feld label="Einladungscode deines Partners">
         <Input value={code} onChange={setCode} testID="kopplung-code" accessibilityLabel="Einladungscode deines Partners" />
       </Feld>
-      {joinError ? <Text style={{ fontSize: theme.size.s, color: theme.color.tinte }}>{joinError}</Text> : null}
+      {joinError ? <Text style={{ ...theme.type.small, color: theme.color.tinte }}>{joinError}</Text> : null}
       <Button variant="ghost" onPress={redeemCode} testID="kopplung-beitreten">
         Einladung annehmen
       </Button>
@@ -411,13 +411,13 @@ function TaxYearLinkSection({
       </Feld>
       <PartnerLinkStatus taxYear={taxYear} onChanged={invalidate} />
       {filingType === 'zusammen' && current?.personBHasOwnAccount ? (
-        <Text style={{ fontSize: theme.size.s, color: theme.color.tinte2 }}>
+        <Text style={{ ...theme.type.small, color: theme.color.tinte2 }}>
           {`${[personB?.firstName, personB?.lastName].filter(Boolean).join(' ') || 'Person B'} pflegt die Angaben im eigenen Konto.`}
         </Text>
       ) : filingType === 'zusammen' ? (
         <View>
           {current?.invitationCode ? (
-            <Text style={{ fontFamily: theme.font.mono, fontSize: theme.size.xs, color: theme.color.tinte2, marginBottom: theme.space.s2 }} testID="kopplung-code-anzeige">
+            <Text style={{ ...theme.type.meta, color: theme.color.tinte2, marginBottom: theme.space.s2 }} testID="kopplung-code-anzeige">
               {invitationNotice(current.invitationCode, current.invitationCodeValidUntil ?? null)}
             </Text>
           ) : null}
@@ -448,7 +448,7 @@ function TaxYearLinkSection({
           </Button>
           {onRecordPartner ? (
             <>
-              <Text style={{ fontSize: theme.size.s, color: theme.color.tinte2, marginTop: theme.space.s3 }}>
+              <Text style={{ ...theme.type.small, color: theme.color.tinte2, marginTop: theme.space.s3 }}>
                 Hat dein Partner kein eigenes Konto? Dann trag sein Einkommen hier mit ein – es kommt in eure gemeinsame Erklärung.
               </Text>
               <Button variant="ghost" onPress={() => onRecordPartner('lstb', partnerDisplayName)} testID="partner-lstb">

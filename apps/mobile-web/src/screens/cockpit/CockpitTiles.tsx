@@ -248,9 +248,7 @@ function makeStyles(t: UiTheme) {
   }
   const submissionWrap: ViewStyle = { width: '100%' }
   const submissionTitle: TextStyle = {
-    fontFamily: t.font.display,
-    fontWeight: t.weight.schwer,
-    fontSize: t.size.l,
+    ...t.type.cardTitle,
     color: t.color.tinte,
   }
   const submissionHint: TextStyle = { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.tinte2, marginTop: t.space.s1 }
@@ -269,52 +267,33 @@ function makeStyles(t: UiTheme) {
     borderColor: t.color.tinte2,
   }
   const title: TextStyle = {
-    fontFamily: t.font.display,
-    fontWeight: t.weight.schwer,
-    fontSize: t.size.l,
+    ...t.type.cardTitle,
     color: t.color.tinte,
     marginBottom: t.space.s2,
   }
-  const formular: TextStyle = {
-    fontFamily: t.font.mono,
-    fontSize: t.size.xs,
-    color: t.color.tinte2,
-    marginBottom: t.space.s2,
-  }
-  const statusBase: TextStyle = {
-    fontFamily: t.font.text,
-    fontWeight: t.weight.fett,
-    fontSize: t.size.s,
-  }
+  const formular: TextStyle = { ...t.type.meta, color: t.color.tinte2, marginBottom: t.space.s2 }
+  const statusBase: TextStyle = { ...t.type.label }
   const statusOpen: TextStyle = { ...statusBase, color: t.color.tinte2 }
   const statusDone: TextStyle = { ...statusBase, color: t.color.ok }
   const statusLater: TextStyle = { ...statusBase, color: t.color.warn }
   const hintBase: TextStyle = {
-    fontFamily: t.font.text,
-    fontWeight: t.weight.fett,
-    fontSize: t.size.xs,
+    ...t.type.captionStrong,
     marginTop: t.space.s1,
   }
   const hintBlocker: TextStyle = { ...hintBase, color: t.color.fehler }
   const hintWarning: TextStyle = { ...hintBase, color: t.color.warn }
   const boosterHeading: TextStyle = {
-    fontFamily: t.font.display,
-    fontWeight: t.weight.schwer,
-    fontSize: t.size.xl,
+    ...t.type.subhead,
     color: t.color.tinte,
   }
   const sectionHeading: TextStyle = {
-    fontFamily: t.font.display,
-    fontWeight: t.weight.fett,
-    fontSize: t.size.m,
+    ...t.type.itemTitle,
     color: t.color.tinte2,
   }
   const moreBlock: ViewStyle = { width: '100%', gap: t.space.s2 }
   const moreToggle: ViewStyle = { alignSelf: 'flex-start', paddingVertical: t.space.s1 }
   const moreToggleText: TextStyle = {
-    fontFamily: t.font.text,
-    fontWeight: t.weight.fett,
-    fontSize: t.size.s,
+    ...t.type.label,
     color: t.color.tinte2,
   }
 

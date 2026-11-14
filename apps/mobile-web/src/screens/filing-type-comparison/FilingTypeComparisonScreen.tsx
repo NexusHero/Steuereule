@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { Button, Card, HerkunftsChip, Input, Option, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
+import { Button, Card, HerkunftsChip, Input, Option, useTheme, useBreakpoint, type UiTheme } from '@steuereule/ui'
 import { formatEuro } from '@steuereule/core'
 import {
   useFilingTypeComparisonControllerGetComparison,
@@ -162,33 +162,23 @@ function Result({ dto }: { readonly dto: FilingTypeComparisonDto }) {
 }
 
 function makeStyles(t: UiTheme) {
-  const screen: ViewStyle = {
-    backgroundColor: t.color.grund,
-    paddingHorizontal: t.space.s5,
-    paddingVertical: t.space.s6,
-    minHeight: '100%',
-    maxWidth: 460,
-    width: '100%',
-    alignSelf: 'center',
-  }
-  const wideScreen: ViewStyle = { ...screen, maxWidth: WIDE_CONTENT_MAX_WIDTH }
+  const screen: ViewStyle = t.layout.overview.narrow
+  const wideScreen: ViewStyle = t.layout.overview.wide
   const embedded: ViewStyle = { width: '100%' }
   const headerRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', marginBottom: t.space.s4 }
   const heading: TextStyle = {
-    fontFamily: t.font.display,
-    fontWeight: t.weight.schwer,
-    fontSize: t.size['2xl'],
+    ...t.type.title,
     color: t.color.tinte,
     marginBottom: t.space.s3,
   }
-  const label: TextStyle = { color: t.color.tinte, fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: t.size.s, marginBottom: t.space.s2 }
+  const label: TextStyle = { ...t.type.label, color: t.color.tinte, marginBottom: t.space.s2 }
   const optionRow: ViewStyle = { flexDirection: 'row', gap: t.space.s3 }
   const inputBlock: ViewStyle = { marginTop: t.space.s3 }
-  const notice: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.s, marginTop: t.space.s3 }
+  const notice: TextStyle = { ...t.type.small, color: t.color.tinte2, marginTop: t.space.s3 }
   const resultBlock: ViewStyle = { marginTop: t.space.s5 }
-  const statement: TextStyle = { color: t.color.tinte, fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size.xl, marginBottom: t.space.s4 }
-  const numberLabel: TextStyle = { color: t.color.tinte2, fontFamily: t.font.mono, fontSize: t.size.xs, textTransform: 'uppercase', letterSpacing: 0.08 * t.size.xs, marginBottom: t.space.s1 }
-  const number: TextStyle = { color: t.color.tinte, fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size['2xl'], fontVariant: ['tabular-nums'], marginBottom: t.space.s2 }
+  const statement: TextStyle = { ...t.type.subhead, color: t.color.tinte, marginBottom: t.space.s4 }
+  const numberLabel: TextStyle = { ...t.type.meta, color: t.color.tinte2, textTransform: 'uppercase', letterSpacing: 0.08 * t.size.xs, marginBottom: t.space.s1 }
+  const number: TextStyle = { ...t.type.headline, color: t.color.tinte, fontVariant: ['tabular-nums'], marginBottom: t.space.s2 }
   const doneCta: ViewStyle = { marginTop: t.space.s5 }
   return { screen, wideScreen, embedded, headerRow, heading, label, optionRow, inputBlock, hinweis: notice, resultBlock, aussage: statement, zahlLabel: numberLabel, zahl: number, doneCta }
 }

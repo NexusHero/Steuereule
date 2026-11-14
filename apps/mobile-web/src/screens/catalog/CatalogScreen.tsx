@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { Button, Chip, Input, Option, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
+import { Button, Chip, Input, Option, useTheme, useBreakpoint, type UiTheme } from '@steuereule/ui'
 import {
   formatEuro,
   AMOUNT_LATER,
@@ -122,7 +122,7 @@ export function CatalogScreen(props: CatalogScreenProps) {
   return (
     <>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.s2, alignItems: 'center', paddingHorizontal: t.space.s4, paddingTop: t.space.s3 }} testID="katalog-fuer-wen">
-        <Text style={{ color: t.color.tinte, fontFamily: t.font.text }}>{tr('katalog.fuerWen.label')}</Text>
+        <Text style={{ ...t.type.body, color: t.color.tinte }}>{tr('katalog.fuerWen.label')}</Text>
         <Chip active={person === 'A'} onPress={() => setPerson('A')} testID="katalog-fuer-a">
           {tr('katalog.fuerWen.mich')}
         </Chip>
@@ -413,29 +413,18 @@ function IntegerFollowUp({
 }
 
 function makeStyles(t: UiTheme) {
-  const screen: ViewStyle = {
-    backgroundColor: t.color.grund,
-    paddingHorizontal: t.space.s5,
-    paddingVertical: t.space.s6,
-    minHeight: '100%',
-    maxWidth: 460,
-    width: '100%',
-    alignSelf: 'center',
-  }
-  const wideScreen: ViewStyle = { ...screen, maxWidth: WIDE_CONTENT_MAX_WIDTH }
+  const screen: ViewStyle = t.layout.flow.narrow
+  const wideScreen: ViewStyle = t.layout.flow.wide
   const headerRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: t.space.s4 }
-  const stepPill: TextStyle = { color: t.color.tinte2, fontFamily: t.font.mono, fontSize: t.size.s }
-  const conflict: TextStyle = { color: t.color.warn, fontFamily: t.font.text, fontSize: t.size.s, marginBottom: t.space.s3 }
+  const stepPill: TextStyle = { ...t.type.metaLarge, color: t.color.tinte2 }
+  const conflict: TextStyle = { ...t.type.small, color: t.color.warn, marginBottom: t.space.s3 }
   const heading: TextStyle = {
-    fontFamily: t.font.display,
-    fontWeight: t.weight.schwer,
-    fontSize: t.size['2xl'],
+    ...t.type.title,
     color: t.color.tinte,
     marginBottom: t.space.s4,
   }
   const hint: TextStyle = {
-    fontFamily: t.font.text,
-    fontSize: t.size.s,
+    ...t.type.small,
     color: t.color.tinte2,
     marginBottom: t.space.s4,
   }

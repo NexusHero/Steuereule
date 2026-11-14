@@ -195,23 +195,19 @@ function makeStyles(t: UiTheme) {
     gap: t.space.s2,
   }
   const scanHeading: TextStyle = {
-    fontFamily: t.font.mono,
-    fontSize: t.size.xs,
+    ...t.type.meta,
     color: t.color.funkeHell,
     textTransform: 'uppercase',
     letterSpacing: 0.08 * t.size.xs,
   }
   const scanBody: TextStyle = {
+    ...t.type.small,
     color: t.color.nachtText,
     opacity: 0.9,
-    fontFamily: t.font.text,
-    fontSize: t.size.s,
   }
   const scanErrorText: TextStyle = {
+    ...t.type.label,
     color: t.color.warn,
-    fontFamily: t.font.text,
-    fontWeight: t.weight.fett,
-    fontSize: t.size.s,
   }
   const conflictCard: ViewStyle = {
     marginBottom: t.space.s4,
@@ -221,15 +217,12 @@ function makeStyles(t: UiTheme) {
     gap: t.space.s2,
   }
   const conflictHeading: TextStyle = {
+    ...t.type.cardTitle,
     color: t.color.tinte,
-    fontFamily: t.font.display,
-    fontWeight: t.weight.schwer,
-    fontSize: t.size.l,
   }
   const conflictBody: TextStyle = {
+    ...t.type.small,
     color: t.color.tinte,
-    fontFamily: t.font.text,
-    fontSize: t.size.s,
   }
   const conflictActions: ViewStyle = {
     flexDirection: 'row',
@@ -251,22 +244,17 @@ function makeStyles(t: UiTheme) {
     flexWrap: 'wrap',
   }
   const draftTitle: TextStyle = {
+    ...t.type.itemTitle,
     flex: 1,
-    fontFamily: t.font.display,
-    fontWeight: t.weight.schwer,
-    fontSize: t.size.m,
     color: t.color.tinte,
   }
   const draftSubtitle: TextStyle = {
+    ...t.type.small,
     color: t.color.tinte2,
-    fontFamily: t.font.text,
-    fontSize: t.size.s,
   }
   const yellowWarningText: TextStyle = {
+    ...t.type.label,
     color: t.color.warn,
-    fontFamily: t.font.text,
-    fontWeight: t.weight.fett,
-    fontSize: t.size.s,
   }
   const draftActions: ViewStyle = {
     flexDirection: 'row',
@@ -280,8 +268,8 @@ function makeStyles(t: UiTheme) {
     paddingHorizontal: t.space.s4,
   }
   const widerspruchBlock: ViewStyle = { marginVertical: t.space.s3, padding: t.space.s3, borderWidth: t.space.kontur, borderColor: t.color.warn, borderRadius: t.radius.s }
-  const widerspruchHeading: TextStyle = { color: t.color.tinte, fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size.m, marginBottom: t.space.s2 }
-  const widerspruchItem: TextStyle = { color: t.color.tinte, fontFamily: t.font.text, fontSize: t.size.s, marginBottom: t.space.s1 }
+  const widerspruchHeading: TextStyle = { ...t.type.itemTitle, color: t.color.tinte, marginBottom: t.space.s2 }
+  const widerspruchItem: TextStyle = { ...t.type.small, color: t.color.tinte, marginBottom: t.space.s1 }
   return {
     scanCard,
     scanHeading,

@@ -1,5 +1,7 @@
 import { createContext, useMemo, type ReactNode } from 'react'
 import { theme as tokens, type ThemeMode, type RnShadow } from '@steuereule/tokens'
+import { TYPE, layoutFor, type LayoutRoles, type TypeRole } from './roles'
+import type { TextStyle } from 'react-native'
 
 type ColorKey = keyof (typeof tokens)['light']['color']
 type ShadowKey = keyof (typeof tokens)['light']['shadow']
@@ -15,6 +17,10 @@ export interface UiTheme {
   readonly weight: (typeof tokens)['weight']
   readonly leading: (typeof tokens)['leading']
   readonly tracking: (typeof tokens)['tracking']
+  /** Text roles — spread one instead of setting family/size/weight by hand (see roles.ts). */
+  readonly type: Readonly<Record<TypeRole, TextStyle>>
+  /** Screen layout per kind and breakpoint (see roles.ts). */
+  readonly layout: LayoutRoles
 }
 
 function build(mode: ThemeMode): UiTheme {
@@ -30,6 +36,8 @@ function build(mode: ThemeMode): UiTheme {
     weight: tokens.weight,
     leading: tokens.leading,
     tracking: tokens.tracking,
+    type: TYPE,
+    layout: layoutFor(m.color.grund),
   }
 }
 

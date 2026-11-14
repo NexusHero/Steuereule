@@ -37,6 +37,6 @@ function makeStyles(t: UiTheme) {
     alignItems: 'center',
     justifyContent: 'center',
   }
-  const backArrow: TextStyle = { fontWeight: t.weight.schwer, fontSize: t.size.m, color: t.color.tinte }
+  const backArrow: TextStyle = { ...t.type.button, color: t.color.tinte }
   return { backButton, backArrow }
 }

@@ -96,9 +96,9 @@ function makeStyles(t: UiTheme) {
     marginBottom: t.space.s4,
   }
   const socialFallbackIcon: ViewStyle = { opacity: 0.45 }
-  const socialFallbackText: TextStyle = { flexShrink: 1, fontFamily: t.font.text, fontSize: t.size.xs, color: t.color.tinte2 }
+  const socialFallbackText: TextStyle = { ...t.type.caption, flexShrink: 1, color: t.color.tinte2 }
   const dividerRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s2, marginVertical: t.space.s4 }
   const dividerLine: ViewStyle = { flex: 1, height: 2, backgroundColor: t.color.linieWeich, borderRadius: 1 }
-  const dividerLabel: TextStyle = { fontFamily: t.font.mono, fontSize: t.size.xs, color: t.color.tinte2 }
+  const dividerLabel: TextStyle = { ...t.type.meta, color: t.color.tinte2 }
   return { socialButtons, socialFallback, socialFallbackIcon, socialFallbackText, dividerRow, dividerLine, dividerLabel }
 }

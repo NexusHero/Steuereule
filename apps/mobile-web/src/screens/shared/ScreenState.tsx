@@ -1,38 +1,22 @@
 import { ActivityIndicator, View, Text, type ViewStyle, type TextStyle } from 'react-native'
-import { Button, useTheme, WIDE_CONTENT_MAX_WIDTH, type UiTheme, type Breakpoint } from '@steuereule/ui'
+import { Button, useTheme, type UiTheme, type Breakpoint } from '@steuereule/ui'
 
 interface ScreenStateProps {
   readonly bp: Breakpoint
 }
 
 function useScreenStateStyles(t: UiTheme) {
-  const screen: ViewStyle = {
-    backgroundColor: t.color.grund,
-    paddingHorizontal: t.space.s5,
-    paddingVertical: t.space.s6,
-    minHeight: '100%',
-    maxWidth: 460,
-    width: '100%',
-    alignSelf: 'center',
-  }
-  const centerScreen: ViewStyle = {
-    ...screen,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: t.space.s3,
-  }
-  const wideCenterScreen: ViewStyle = { ...centerScreen, maxWidth: WIDE_CONTENT_MAX_WIDTH }
+  const center: ViewStyle = { alignItems: 'center', justifyContent: 'center', gap: t.space.s3 }
+  const centerScreen: ViewStyle = { ...t.layout.flow.narrow, ...center }
+  const wideCenterScreen: ViewStyle = { ...t.layout.flow.wide, ...center }
   const heading: TextStyle = {
-    fontFamily: t.font.display,
-    fontWeight: t.weight.schwer,
-    fontSize: t.size['3xl'],
+    ...t.type.title,
     color: t.color.tinte,
     textAlign: 'center',
   }
   const help: TextStyle = {
+    ...t.type.body,
     color: t.color.tinte2,
-    fontFamily: t.font.text,
-    fontSize: t.size.m,
     textAlign: 'center',
   }
   return { centerScreen, wideCenterScreen, heading, help }

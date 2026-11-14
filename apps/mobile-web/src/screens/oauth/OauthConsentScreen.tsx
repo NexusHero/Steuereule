@@ -185,9 +185,7 @@ function makeStyles(t: UiTheme) {
     gap: t.space.s4,
   }
   const title: TextStyle = {
-    fontFamily: t.font.display,
-    fontWeight: t.weight.schwer,
-    fontSize: t.size.xl,
+    ...t.type.subhead,
     color: t.color.tinte,
   }
   const loadingRow: ViewStyle = {
@@ -196,8 +194,7 @@ function makeStyles(t: UiTheme) {
     gap: t.space.s2,
   }
   const help: TextStyle = {
-    fontFamily: t.font.text,
-    fontSize: t.size.s,
+    ...t.type.small,
     color: t.color.tinte2,
   }
   const clientBox: ViewStyle = {
@@ -208,8 +205,7 @@ function makeStyles(t: UiTheme) {
     borderRadius: 8,
   }
   const clientHeading: TextStyle = {
-    fontFamily: t.font.text,
-    fontSize: t.size.m,
+    ...t.type.body,
     color: t.color.tinte,
     lineHeight: 22,
   }
@@ -221,17 +217,14 @@ function makeStyles(t: UiTheme) {
     gap: t.space.s2,
   }
   const sectionHeading: TextStyle = {
-    fontFamily: t.font.text,
-    fontWeight: t.weight.schwer,
-    fontSize: t.size.m,
+    ...t.type.button,
     color: t.color.tinte,
   }
   const scopeList: ViewStyle = {
     gap: t.space.s1,
   }
   const scopeItem: TextStyle = {
-    fontFamily: t.font.text,
-    fontSize: t.size.s,
+    ...t.type.small,
     color: t.color.tinte,
     lineHeight: 20,
   }
@@ -243,20 +236,16 @@ function makeStyles(t: UiTheme) {
     gap: t.space.s1,
   }
   const warningHeading: TextStyle = {
-    fontFamily: t.font.text,
-    fontSize: t.size.s,
+    ...t.type.labelStrong,
     color: t.color.tinte,
-    fontWeight: t.weight.schwer,
   }
   const warningBody: TextStyle = {
-    fontFamily: t.font.text,
-    fontSize: t.size.xs,
+    ...t.type.caption,
     color: t.color.tinte,
     lineHeight: 18,
   }
   const errorText: TextStyle = {
-    fontFamily: t.font.text,
-    fontSize: t.size.s,
+    ...t.type.small,
     color: t.color.fehler,
   }
   const actionRow: ViewStyle = {

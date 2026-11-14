@@ -16,7 +16,7 @@ export function SaveFailedNotice({ visible }: { readonly visible: boolean }) {
     padding: t.space.s3,
     marginVertical: t.space.s3,
   }
-  const text: TextStyle = { color: t.color.tinte, fontFamily: t.font.text, fontSize: t.size.s }
+  const text: TextStyle = { ...t.type.small, color: t.color.tinte }
   return (
     <View accessibilityRole="alert" style={box} testID="speichern-fehlgeschlagen">
       <Text style={text}>{tr('shared.saveFailed')}</Text>

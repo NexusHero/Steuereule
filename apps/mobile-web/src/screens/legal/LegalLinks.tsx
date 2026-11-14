@@ -12,7 +12,7 @@ export interface LegalLinksProps {
 export function LegalLinks({ onPage, current }: LegalLinksProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
-  const text = { fontFamily: t.font.text, fontSize: t.size.xs, color: t.color.tinte2 }
+  const text = { ...t.type.caption, color: t.color.tinte2 }
 
   return (
     <View

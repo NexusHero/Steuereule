@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { ActivityIndicator, ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { Button, Card, Feld, Pill, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
+import { Button, Card, Feld, Pill, useTheme, useBreakpoint, type UiTheme } from '@steuereule/ui'
 import { useDeviceControllerGetPending, useDeviceControllerApprove } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { parseUserAgent, resolveRegionName, formatRequestedAt } from './deviceContext'
@@ -108,20 +108,10 @@ export function DeviceApprovalScreen({ userCode }: DeviceApprovalScreenProps) {
 }
 
 function makeStyles(t: UiTheme) {
-  const screen: ViewStyle = {
-    backgroundColor: t.color.grund,
-    paddingHorizontal: t.space.s5,
-    paddingVertical: t.space.s6,
-    minHeight: '100%',
-    maxWidth: 460,
-    width: '100%',
-    alignSelf: 'center',
-  }
-  const wideScreen: ViewStyle = { ...screen, maxWidth: WIDE_CONTENT_MAX_WIDTH }
+  const screen: ViewStyle = t.layout.flow.narrow
+  const wideScreen: ViewStyle = t.layout.flow.wide
   const code: TextStyle = {
-    fontFamily: t.font.mono,
-    fontWeight: t.weight.schwer,
-    fontSize: t.size['3xl'],
+    ...t.type.code,
     color: t.color.tinte,
     textAlign: 'center',
     letterSpacing: 4,
@@ -129,7 +119,7 @@ function makeStyles(t: UiTheme) {
     marginBottom: t.space.s5,
   }
   const contextCard: ViewStyle = { marginBottom: t.space.s4 }
-  const contextValue: TextStyle = { fontFamily: t.font.text, fontSize: t.size.m, color: t.color.tinte }
+  const contextValue: TextStyle = { ...t.type.body, color: t.color.tinte }
   const warning: ViewStyle = {
     backgroundColor: t.color.warnWeich,
     borderWidth: 2,
@@ -138,19 +128,17 @@ function makeStyles(t: UiTheme) {
     padding: t.space.s4,
     marginBottom: t.space.s4,
   }
-  const warningText: TextStyle = { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.tinte }
+  const warningText: TextStyle = { ...t.type.small, color: t.color.tinte }
   const question: TextStyle = {
-    fontFamily: t.font.text,
-    fontWeight: t.weight.schwer,
-    fontSize: t.size.l,
+    ...t.type.emphasis,
     color: t.color.tinte,
     textAlign: 'center',
     marginBottom: t.space.s4,
   }
-  const approveErrorText: TextStyle = { color: t.color.fehler, fontFamily: t.font.text, fontSize: t.size.s, textAlign: 'center', marginBottom: t.space.s2 }
+  const approveErrorText: TextStyle = { ...t.type.small, color: t.color.fehler, textAlign: 'center', marginBottom: t.space.s2 }
   const cta: ViewStyle = { marginTop: t.space.s2 }
   const submittingRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s2 }
-  const submittingLabel: TextStyle = { fontFamily: t.font.text, fontWeight: t.weight.schwer, fontSize: t.size.m, color: t.color.tinte }
+  const submittingLabel: TextStyle = { ...t.type.button, color: t.color.tinte }
 
   return {
     screen,

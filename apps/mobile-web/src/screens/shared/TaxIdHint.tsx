@@ -9,7 +9,7 @@ export function TaxIdHint({ value, testID }: { readonly value: string; readonly 
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   if (checkTaxId(value) !== 'invalid') return null
-  const style: TextStyle = { fontFamily: t.font.text, fontSize: t.size.xs, color: t.color.fehler, marginTop: t.space.s1 }
+  const style: TextStyle = { ...t.type.caption, color: t.color.fehler, marginTop: t.space.s1 }
   return (
     <Text style={style} accessibilityLiveRegion="polite" testID={testID}>
       {tr('steuerIdHinweis.ungueltig')}

@@ -229,6 +229,7 @@ function UploadCard({ onUploaded }: { readonly onUploaded: () => void }) {
               border: `2px solid ${t.color.funkeHell}`,
               backgroundColor: t.color.nachtKarte,
               color: t.color.nachtText,
+              // adherence-allow: a DOM <select> takes CSS, not a React Native text role.
               fontFamily: t.font.text,
               fontSize: t.size.s,
             }}

@@ -22,7 +22,7 @@ export function PartnerLinkStatus({ taxYear, onChanged }: { readonly taxYear: nu
   const link = query.data?.status === 200 ? query.data.data.partnerLink : null
   if (!link || !link.ownAccount || link.validFromYear > taxYear) return null
 
-  const text: TextStyle = { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.tinte2 }
+  const text: TextStyle = { ...t.type.small, color: t.color.tinte2 }
   const box: ViewStyle = { gap: t.space.s1, marginBottom: t.space.s3 }
 
   if (link.endedFromYear !== null && link.endedFromYear <= taxYear) return null

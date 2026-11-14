@@ -1,27 +1,17 @@
 // How the children mask looks.
 import { type TextStyle, type ViewStyle } from 'react-native'
-import { WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
+import { type UiTheme } from '@steuereule/ui'
 
 export function makeStyles(t: UiTheme) {
-  const screen: ViewStyle = {
-    backgroundColor: t.color.grund,
-    paddingHorizontal: t.space.s5,
-    paddingVertical: t.space.s6,
-    minHeight: '100%',
-    maxWidth: 460,
-    width: '100%',
-    alignSelf: 'center',
-  }
-  const wideScreen: ViewStyle = { ...screen, maxWidth: WIDE_CONTENT_MAX_WIDTH }
+  const screen: ViewStyle = t.layout.flow.narrow
+  const wideScreen: ViewStyle = t.layout.flow.wide
   const headerRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', marginBottom: t.space.s4 }
   const heading: TextStyle = {
-    fontFamily: t.font.display,
-    fontWeight: t.weight.schwer,
-    fontSize: t.size['2xl'],
+    ...t.type.title,
     color: t.color.tinte,
     marginBottom: t.space.s2,
   }
-  const help: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.m, marginBottom: t.space.s4 }
+  const help: TextStyle = { ...t.type.body, color: t.color.tinte2, marginBottom: t.space.s4 }
   const summaryCard: ViewStyle = {
     padding: t.space.s4,
     marginBottom: t.space.s4,
@@ -31,9 +21,7 @@ export function makeStyles(t: UiTheme) {
     borderRadius: t.radius.m,
   }
   const summaryTitle: TextStyle = {
-    fontFamily: t.font.display,
-    fontWeight: t.weight.fett,
-    fontSize: t.size.l,
+    ...t.type.cardTitle,
     color: t.color.tinte,
     marginBottom: t.space.s2,
   }
@@ -43,25 +31,20 @@ export function makeStyles(t: UiTheme) {
     marginVertical: t.space.s1,
   }
   const summaryLabel: TextStyle = {
-    fontFamily: t.font.text,
-    fontSize: t.size.m,
+    ...t.type.body,
     color: t.color.tinte2,
   }
   const summaryValue: TextStyle = {
-    fontFamily: t.font.text,
-    fontSize: t.size.m,
-    fontWeight: t.weight.fett,
+    ...t.type.bodyStrong,
     color: t.color.tinte,
   }
   const summarySubLabel: TextStyle = {
-    fontFamily: t.font.text,
-    fontSize: t.size.s,
+    ...t.type.small,
     color: t.color.tinte2,
     paddingLeft: t.space.s2,
   }
   const summarySubValue: TextStyle = {
-    fontFamily: t.font.text,
-    fontSize: t.size.s,
+    ...t.type.small,
     color: t.color.tinte,
   }
   const childCard: ViewStyle = {
@@ -77,26 +60,22 @@ export function makeStyles(t: UiTheme) {
     marginBottom: t.space.s2,
   }
   const childName: TextStyle = {
-    fontFamily: t.font.display,
-    fontWeight: t.weight.fett,
-    fontSize: t.size.l,
+    ...t.type.cardTitle,
     color: t.color.tinte,
   }
   const deleteButton: TextStyle = {
-    fontFamily: t.font.text,
-    fontSize: t.size.s,
+    ...t.type.small,
     color: t.color.fehler,
   }
   const childActions: ViewStyle = { flexDirection: 'row', gap: t.space.s3 }
-  const editButton: TextStyle = { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.tinte }
-  const gap: TextStyle = { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.fehler, marginTop: t.space.s2 }
+  const editButton: TextStyle = { ...t.type.small, color: t.color.tinte }
+  const gap: TextStyle = { ...t.type.small, color: t.color.fehler, marginTop: t.space.s2 }
   const chips: ViewStyle = { flexDirection: 'row', flexWrap: 'wrap', gap: t.space.s2 }
   const copyBox: ViewStyle = { gap: t.space.s2, marginBottom: t.space.s4 }
   const officeBox: ViewStyle = { gap: t.space.s2, marginTop: -t.space.s2, marginBottom: t.space.s3 }
-  const suggestion: TextStyle = { fontFamily: t.font.text, fontSize: t.size.xs, color: t.color.ki, fontWeight: t.weight.fett, marginTop: -t.space.s2, marginBottom: t.space.s3 }
+  const suggestion: TextStyle = { ...t.type.captionStrong, color: t.color.ki, marginTop: -t.space.s2, marginBottom: t.space.s3 }
   const childDetail: TextStyle = {
-    fontFamily: t.font.text,
-    fontSize: t.size.s,
+    ...t.type.small,
     color: t.color.tinte2,
     marginVertical: 2,
   }
@@ -107,9 +86,7 @@ export function makeStyles(t: UiTheme) {
     borderRadius: t.radius.m,
   }
   const formTitle: TextStyle = {
-    fontFamily: t.font.display,
-    fontWeight: t.weight.fett,
-    fontSize: t.size.l,
+    ...t.type.cardTitle,
     color: t.color.tinte,
     marginBottom: t.space.s3,
   }

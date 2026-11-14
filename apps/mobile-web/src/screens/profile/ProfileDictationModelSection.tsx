@@ -52,7 +52,7 @@ function makeStyles(t: UiTheme) {
   return {
     card: { marginTop: t.space.s4, padding: t.space.s4 } as ViewStyle,
     col: { gap: t.space.s2 } as ViewStyle,
-    title: { fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size.l, color: t.color.tinte } as TextStyle,
-    text: { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.tinte2 } as TextStyle,
+    title: { ...t.type.cardTitle, color: t.color.tinte } as TextStyle,
+    text: { ...t.type.small, color: t.color.tinte2 } as TextStyle,
   }
 }
