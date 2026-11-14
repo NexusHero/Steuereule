@@ -13,6 +13,7 @@ import {
   useLinkControllerUpdatePersonB,
   useMasterDataControllerRead,
   useMasterDataControllerSave,
+  type LinkPersonBDtoReligion,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
@@ -318,6 +319,10 @@ function TaxYearLinkSection({
   const [taxIdB, setTaxIdB] = useState(personB?.steuerId ?? '')
   const [birthDateB, setBirthDateB] = useState(personB?.geburtsdatum ?? '')
   const [occupationB, setOccupationB] = useState(personB?.beruf ?? '')
+  // Person B's confession decides the church tax of the joint return (§ 51a EStG); Art. 9 DSGVO asks for consent.
+  const [religionB, setReligionB] = useState<string | null>(personB?.religion ?? null)
+  const [religionConsentB, setReligionConsentB] = useState(false)
+  const [religionConsentMissing, setReligionConsentMissing] = useState(false)
 
   const invalidate = () => {
     void queryClient.invalidateQueries({ queryKey: getLinkControllerGetQueryKey(taxYear) })
@@ -361,6 +366,12 @@ function TaxYearLinkSection({
   }
 
   const savePersonB = () => {
+    const religionChanged = religionB !== (personB?.religion ?? null)
+    if (religionChanged && religionB !== null && !religionConsentB) {
+      setReligionConsentMissing(true)
+      return
+    }
+    setReligionConsentMissing(false)
     updatePersonB.mutate(
       {
         jahr: taxYear,
@@ -370,6 +381,7 @@ function TaxYearLinkSection({
           steuerId: taxIdB || null,
           geburtsdatum: birthDateB ? germanToIso(birthDateB) : null,
           beruf: occupationB || null,
+          ...(religionChanged ? { religion: religionB as LinkPersonBDtoReligion, ...(religionB !== null ? { religionConsent: true } : {}) } : {}),
         },
       },
       {
@@ -443,6 +455,25 @@ function TaxYearLinkSection({
           <Feld label="Beruf Partner">
             <Input value={occupationB || (personB?.beruf ?? '')} onChange={setOccupationB} testID="personb-beruf" />
           </Feld>
+          <Feld label={t('stammdaten.religionPartner')}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.space.s2, marginTop: theme.space.s2 }}>
+              {RELIGION_KEYS.map((key) => (
+                <Chip key={key} active={religionB === key} onPress={() => setReligionB(key)} testID={`personb-religion-${key}`}>
+                  {t(`stammdaten.religionen.${key}`)}
+                </Chip>
+              ))}
+            </View>
+          </Feld>
+          {religionB !== null && religionB !== (personB?.religion ?? null) ? (
+            <Option selected={religionConsentB} onPress={() => setReligionConsentB(!religionConsentB)} testID="personb-einwilligung">
+              {t('stammdaten.einwilligungPartner')}
+            </Option>
+          ) : null}
+          {religionConsentMissing ? (
+            <Text style={{ ...theme.type.small, color: theme.color.warn }} accessibilityLiveRegion="polite" testID="personb-einwilligung-fehlt">
+              {t('stammdaten.einwilligungFehlt')}
+            </Text>
+          ) : null}
           <Button variant="ghost" onPress={savePersonB} testID="personb-speichern">
             Partner-Angaben übernehmen
           </Button>
