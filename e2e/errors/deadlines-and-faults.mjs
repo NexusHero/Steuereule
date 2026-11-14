@@ -55,11 +55,12 @@ async function main() {
       await page.locator('[data-testid="cockpit-interview"], [data-testid="cockpit-weiter"], [data-testid="cockpit-kachel-lstb"]').first().waitFor({ state: 'visible', timeout: 15_000 })
     }
 
-    // H5: 2025 has no answers yet, so the obligation is unclear — a neutral note, never the surcharge alarm.
+    // H5: 2025 is a plain single employee too — a voluntary return: a calm note even though the
+    // Abgabefrist 31.07.2026 is past, never the surcharge alarm.
     await openCockpit(2025)
-    await banner('unklar').waitFor({ state: 'visible', timeout: 10_000 })
-    if ((await banner('abgelaufen').count()) + (await banner('zuschlag').count()) !== 0) fail('no surcharge alarm before the answers say the return is mandatory')
-    console.log(`[${TAG}] ✅ fristen-banner-unklar — tax year 2025 (Abgabefrist 31.07.2026 is past), no answers yet`)
+    await banner('freiwillig').waitFor({ state: 'visible', timeout: 10_000 })
+    if ((await banner('abgelaufen').count()) + (await banner('zuschlag').count()) !== 0) fail('no surcharge alarm for a voluntary return')
+    console.log(`[${TAG}] ✅ fristen-banner-freiwillig — tax year 2025 (Abgabefrist 31.07.2026 is past), voluntary return`)
 
     // H5: YEAR is a plain single employee — a voluntary return, so the near deadline stays calm.
     await stubDeadline('warnung', 60)
