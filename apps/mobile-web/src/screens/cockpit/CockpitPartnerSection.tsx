@@ -92,6 +92,9 @@ export function CockpitPartnerSection({ year, partnerName, enabled, crossBorder 
           >
             <Card variant="default" style={styles.card}>
               <Text style={styles.title}>{tr(item.titleKey)}</Text>
+              <Text style={styles.formular} testID={`${item.testId}-formular`}>
+                {tr(item.titleKey.replace(/\.titel$/, '.formular'))}
+              </Text>
               <Text style={item.status === 'erledigt' ? styles.statusDone : styles.statusOpen} testID={`${item.testId}-status`}>
                 {tr(item.status === 'erledigt' ? 'cockpit.kachel.status.erledigt' : 'cockpit.kachel.status.offen')}
               </Text>
@@ -135,6 +138,12 @@ function makeStyles(t: UiTheme) {
     color: t.color.tinte,
     marginBottom: t.space.s2,
   }
+  const formular: TextStyle = {
+    fontFamily: t.font.mono,
+    fontSize: t.size.xs,
+    color: t.color.tinte2,
+    marginBottom: t.space.s2,
+  }
   const statusBase: TextStyle = {
     fontFamily: t.font.text,
     fontWeight: t.weight.fett,
@@ -143,5 +152,5 @@ function makeStyles(t: UiTheme) {
   const statusOpen: TextStyle = { ...statusBase, color: t.color.tinte2 }
   const statusDone: TextStyle = { ...statusBase, color: t.color.ok }
 
-  return { section, heading, grid, tileWrapNarrow, tileWrapWide, card, title, statusOpen, statusDone }
+  return { section, heading, grid, tileWrapNarrow, tileWrapWide, card, title, formular, statusOpen, statusDone }
 }

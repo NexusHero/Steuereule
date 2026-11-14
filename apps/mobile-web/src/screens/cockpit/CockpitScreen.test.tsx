@@ -678,7 +678,9 @@ describe('CockpitScreen — die voraussichtliche Erstattung als ehrliche Spanne 
     server.use(http.get(ESTIMATE_URL, () => HttpResponse.json({ kind: 'spanne', result: { from: 312, to: 455 }, churchTaxOpen: false })))
     renderCockpit()
 
-    expect(await screen.findByText('Voraussichtlich 312 – 455 € Erstattung')).toBeTruthy()
+    // UX review H1: the refund is the hero's headline — label and figure, the income below it.
+    expect(await screen.findByText('Voraussichtliche Erstattung')).toBeTruthy()
+    expect(screen.getByTestId('cockpit-erstattung').textContent).toMatch(/312\s*–\s*455\s*€/)
     expect(screen.queryByText('Die Erstattung rechnen wir in einem späteren Schritt.')).toBeNull()
   })
 
@@ -687,7 +689,8 @@ describe('CockpitScreen — die voraussichtliche Erstattung als ehrliche Spanne 
     server.use(http.get(ESTIMATE_URL, () => HttpResponse.json({ kind: 'spanne', result: { from: -31192, to: -31192 }, churchTaxOpen: false })))
     renderCockpit()
 
-    expect(await screen.findByText('Voraussichtlich rund 31.192 € Nachzahlung')).toBeTruthy()
+    expect(await screen.findByText('Voraussichtliche Nachzahlung')).toBeTruthy()
+    expect(screen.getByTestId('cockpit-erstattung').textContent).toMatch(/^31\.192\s*€$/)
   })
 
   it('tells a married person to set up the joint return instead of estimating them as single (ADR-0054)', async () => {
@@ -702,7 +705,8 @@ describe('CockpitScreen — die voraussichtliche Erstattung als ehrliche Spanne 
     server.use(http.get(ESTIMATE_URL, () => HttpResponse.json({ kind: 'spanne', result: { from: -21200, to: -20400 }, churchTaxOpen: true })))
     renderCockpit()
 
-    expect(await screen.findByText('Voraussichtlich 20.400 – 21.200 € Nachzahlung')).toBeTruthy()
+    expect(await screen.findByText('Voraussichtliche Nachzahlung')).toBeTruthy()
+    expect(screen.getByTestId('cockpit-erstattung').textContent).toMatch(/20\.400\s*–\s*21\.200\s*€/)
     expect(screen.getByText('Kirchensteuer ist in der Schätzung noch nicht enthalten.')).toBeTruthy()
   })
 

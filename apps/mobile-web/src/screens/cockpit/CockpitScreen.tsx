@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, View, Text } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
@@ -29,6 +29,7 @@ import { CockpitTiles, tileRevisitFlag, useCockpitTileFacts } from './CockpitTil
 import { derivePersonas } from './personas'
 import { nextStep, type TileDefinition, type TileFacts } from './tiles'
 import { makeStyles } from './CockpitScreen.styles'
+import { dismissEffect, observeMidpoint, rememberOpenedArea, type Effect } from './effectMemory'
 
 
 const SELECTABLE_YEARS = SELECTABLE_TAX_YEARS
@@ -139,7 +140,11 @@ export function CockpitScreen({
           label: missingDetails > 0 ? tr('cockpit.stammdatenErgaenzen', { anzahl: missingDetails }) : tr('cockpit.stammdatenAnsehen'),
           onPress: onOpenMasterData,
         }
-  const openTile = onOpenTile ?? (() => {})
+  const openTile = (tile: TileDefinition, revisit: boolean) => {
+    // The next change of the estimate is attributed to this area (UX review H1, Wirkungszeile).
+    rememberOpenedArea(year, tile.id)
+    onOpenTile?.(tile, revisit)
+  }
   const submissionHandler = onOpenSubmission ?? onOpenPrintout
   const step = tileFacts !== null ? nextStep(tileFacts) : null
   const next: Next | null =
@@ -228,7 +233,7 @@ interface PullToRefresh {
   readonly onPull: () => void
 }
 
-function Refund({ year }: { readonly year: number }) {
+function Refund({ year, hideRange = false }: { readonly year: number; readonly hideRange?: boolean }) {
   const t = useTheme()
   const styles = makeStyles(t)
   const { t: tr, i18n } = useTranslation(APP_NS)
@@ -236,7 +241,7 @@ function Refund({ year }: { readonly year: number }) {
   const estimate: TaxEstimateDto | null = query.data?.status === 200 ? query.data.data : null
   return (
     <>
-      <Text style={styles.refundLater} testID="cockpit-erstattung">{refundText(estimate, tr, i18n.language)}</Text>
+      {hideRange ? null : <Text style={styles.refundLater} testID="cockpit-erstattung">{refundText(estimate, tr, i18n.language)}</Text>}
       {estimate?.kind === 'spanne' && estimate.churchTaxOpen ? (
         <Text style={styles.refundLater} testID="cockpit-kirchensteuer-offen">
           {estimate.churchTax?.kind === 'offen' && estimate.churchTax.reason
@@ -249,6 +254,52 @@ function Refund({ year }: { readonly year: number }) {
       ) : null}
     </>
   )
+}
+
+/**
+ * The refund or back payment as the hero's headline (UX review H1), with the effect of the last change
+ * underneath: what moved, in which area and form, and by how much.
+ */
+function RefundHeadline({ year, estimate }: { readonly year: number; readonly estimate: TaxEstimateDto | null }) {
+  const t = useTheme()
+  const styles = makeStyles(t)
+  const { t: tr } = useTranslation(APP_NS)
+  const result = estimate?.kind === 'spanne' ? (estimate.result ?? null) : null
+  const midpoint = result === null ? null : Math.round((result.from + result.to) / 2)
+  const [effect, setEffect] = useState<Effect | null>(null)
+  useEffect(() => {
+    setEffect(observeMidpoint(year, midpoint))
+  }, [year, midpoint])
+  if (result === null) return null
+  const label = result.from >= 0 ? 'cockpit.hero.erstattungLabel' : result.to <= 0 ? 'cockpit.hero.nachzahlungLabel' : 'cockpit.hero.ergebnisLabel'
+  const value =
+    result.from === result.to
+      ? formatEuro(Math.abs(result.from))
+      : result.from >= 0 || result.to <= 0
+        ? formatEuroRange(Math.min(Math.abs(result.from), Math.abs(result.to)), Math.max(Math.abs(result.from), Math.abs(result.to)))
+        : tr('cockpit.hero.ergebnisSpanne', { nachzahlung: formatEuro(Math.abs(result.from)), erstattung: formatEuro(result.to) })
+  return (
+    <View testID="cockpit-erstattung-hero">
+      <Text style={styles.heroLabel}>{tr(label)}</Text>
+      <Text style={styles.heroValue} testID="cockpit-erstattung">{value}</Text>
+      {effect !== null && effect.deltaEur !== 0 ? (
+        <Pressable accessibilityRole="button" accessibilityHint={tr('cockpit.wirkung.schliessen')} onPress={() => { dismissEffect(year); setEffect(null) }} testID="cockpit-wirkung">
+          <Text style={styles.effectLine}>{effectText(effect, tr)}</Text>
+        </Pressable>
+      ) : null}
+    </View>
+  )
+}
+
+function effectText(effect: Effect, tr: TFunction<typeof APP_NS>): string {
+  const amount = formatEuro(Math.abs(effect.deltaEur))
+  const direction = tr(effect.deltaEur > 0 ? 'cockpit.wirkung.mehr' : 'cockpit.wirkung.weniger', { betrag: amount })
+  if (effect.area === null) return tr('cockpit.wirkung.ohneBereich', { wirkung: direction })
+  return tr('cockpit.wirkung.mitBereich', {
+    bereich: tr(`cockpit.kachel.${effect.area}.titel`),
+    formular: tr(`cockpit.kachel.${effect.area}.formular`),
+    wirkung: direction,
+  })
 }
 
 function refundText(estimate: TaxEstimateDto | null, tr: TFunction<typeof APP_NS>, language: string): string {
@@ -499,6 +550,10 @@ function CockpitLoaded({ summary, year, onYearChange, confirmation, onOpenConfir
   const styles = makeStyles(t)
   const { openItems, status } = summary
   const hasOpenItems = openItems > 0
+  const estimateQuery = useTaxEstimateControllerGet(year)
+  const estimate: TaxEstimateDto | null = estimateQuery.data?.status === 200 ? estimateQuery.data.data : null
+  // UX review H1: as soon as there is a range, the refund is the headline and the income the detail.
+  const refundFirst = estimate?.kind === 'spanne'
 
   return (
     <ScrollView
@@ -511,14 +566,20 @@ function CockpitLoaded({ summary, year, onYearChange, confirmation, onOpenConfir
       <EuleBannerNotice />
       <ConfirmationNotice annexes={confirmation} status={status} {...(onOpenConfirmation ? { onOpenConfirmation } : {})} />
       <Card variant="nacht">
+        {refundFirst ? (
+          <>
+            <RefundHeadline year={year} estimate={estimate} />
+            <View style={styles.heroDivider} />
+          </>
+        ) : null}
         <Text style={styles.heroLabel}>{tr('cockpit.hero.label')}</Text>
         {status.kind === 'gated' ? (
           <GatedHero status={status} />
         ) : (
-          <NumericHero status={status} />
+          <NumericHero status={status} compact={refundFirst} />
         )}
         <Text style={styles.openItems}>{tr('cockpit.hero.openItems', { count: openItems })}</Text>
-        <Refund year={year} />
+        <Refund year={year} hideRange={refundFirst} />
       </Card>
       {next ? (
         <Button onPress={next.onPress} style={styles.cta} testID="cockpit-weiter">
@@ -592,7 +653,7 @@ function CockpitLoaded({ summary, year, onYearChange, confirmation, onOpenConfir
   )
 }
 
-function NumericHero({ status }: { readonly status: CockpitStatusDto }) {
+function NumericHero({ status, compact = false }: { readonly status: CockpitStatusDto; readonly compact?: boolean }) {
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(useTheme())
   const calculationPath =
@@ -602,7 +663,7 @@ function NumericHero({ status }: { readonly status: CockpitStatusDto }) {
   const source = calculationPath === undefined ? { rule: tr('cockpit.hero.herkunftRegel') } : { rule: tr('cockpit.hero.herkunftRegel'), calculationPath }
   return (
     <>
-      <Text style={styles.heroValue}>
+      <Text style={compact ? styles.heroValueSmall : styles.heroValue} testID="cockpit-einkommen">
         {heroDisplay(status, tr('cockpit.hero.nochOffen'))}
       </Text>
       {status.kind === 'spanne' && (status.openItems ?? 0) > 0 ? (

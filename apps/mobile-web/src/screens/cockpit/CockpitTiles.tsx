@@ -145,6 +145,10 @@ export function CockpitTiles({
       >
         <Card variant="default" style={styles.card}>
           <Text style={styles.title}>{tr(tile.titleKey)}</Text>
+          {/* UX review H2: every tile says which form it fills. */}
+          <Text style={styles.formular} testID={`cockpit-kachel-${tile.id}-formular`}>
+            {tr(`cockpit.kachel.${tile.id}.formular`)}
+          </Text>
           {facts.pendingTiles?.has(tile.id) ? null : (
             <Text style={statusStyle(status, styles)} testID={`cockpit-kachel-${tile.id}-status`}>
               {statusLabel(status, tr)}
@@ -263,6 +267,12 @@ function makeStyles(t: UiTheme) {
     color: t.color.tinte,
     marginBottom: t.space.s2,
   }
+  const formular: TextStyle = {
+    fontFamily: t.font.mono,
+    fontSize: t.size.xs,
+    color: t.color.tinte2,
+    marginBottom: t.space.s2,
+  }
   const statusBase: TextStyle = {
     fontFamily: t.font.text,
     fontWeight: t.weight.fett,
@@ -308,7 +318,7 @@ function makeStyles(t: UiTheme) {
     submissionWrap,
     submissionTitle,
     card,
-    title,
+    title, formular,
     statusOpen,
     statusDone,
     statusLater,
