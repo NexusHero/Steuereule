@@ -102,6 +102,11 @@ class ChildDetailsDto {
   @IsOptional()
   @Matches(/^\d{2}\.\d{2}\.\d{4}$/)
   childcareTo?: string | null
+
+  @ApiPropertyOptional({ type: String, nullable: true, enum: ['A', 'B'], description: 'Who receives the Swiss Kinderzulage with their wage (ADR-0088).' })
+  @IsOptional()
+  @IsIn(['A', 'B'])
+  swissFamilyAllowancePayer?: 'A' | 'B' | null
 }
 
 export class CreateChildDto extends ChildDetailsDto {
@@ -246,6 +251,12 @@ export class ChildResponseDto {
 
   @ApiPropertyOptional({ type: String, nullable: true })
   childcareTo?: string | null
+
+  @ApiPropertyOptional({ type: String, nullable: true, enum: ['A', 'B'] })
+  swissFamilyAllowancePayer?: 'A' | 'B' | null
+
+  @ApiPropertyOptional({ type: Boolean, description: 'The allowance is a share of a parent’s Swiss allowances, not entered for the child (ADR-0088).' })
+  swissFamilyAllowanceDerived?: boolean
 
   @ApiPropertyOptional({ type: String, nullable: true, example: '312', description: 'Differenz-Kindergeld der deutschen Familienkasse in whole EUR.' })
   differentialChildBenefitEur?: string | null

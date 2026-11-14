@@ -126,7 +126,7 @@ async function main() {
   try {
     // A married couple, so the partner masks and the comparison have a reason to exist.
     const user = await account(apiOrigin, webOrigin, sql)
-    for (const [questionId, value] of [['job', 'Angestellt'], ['ausland', 'Nein'], ['kinder', 'Nein'], ['familienstand', 'Verheiratet']]) {
+    for (const [questionId, value] of [['job', 'Angestellt'], ['ausland', 'Nein'], ['kinder', 'Nein'], ['familienstand', 'Verheiratet'], ['partner-job', 'Angestellt'], ['partner-ausland', 'Nein']]) {
       await call(user.api, 'POST', `/v1/steuerjahre/${YEAR}/interview/antworten`, { questionId, value })
     }
     await call(user.api, 'PUT', `/v1/steuerjahre/${YEAR}/kopplung`, { filingType: 'zusammen' })

@@ -29,15 +29,18 @@ export interface PensionerScreenProps {
   readonly onDone?: () => void
   readonly onBack?: () => void
   readonly taxYear?: number
+  /** Set when Person A records the partner's pension (ADR-0088, partner without an own account). */
+  readonly partnerName?: string
 }
 
-export function PensionerScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YEAR }: PensionerScreenProps) {
+export function PensionerScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YEAR, partnerName }: PensionerScreenProps) {
+  const params = partnerName === undefined ? undefined : ({ person: 'B' } as const)
   const bp = useBreakpoint()
   const t = useTheme()
   const styles = makeStyles(t)
   const { t: tr } = useTranslation(APP_NS)
   const queryClient = useQueryClient()
-  const query = usePensionControllerGet(taxYear)
+  const query = usePensionControllerGet(taxYear, params)
   const setKind = usePensionControllerSetPensionKind()
   const setField = usePensionControllerSetField()
   const { track, flushThen, saveFailed } = usePendingMutations()
@@ -60,17 +63,17 @@ export function PensionerScreen({ onDone = () => {}, onBack, taxYear = CURRENT_T
   const response = query.data.data
 
   function invalidate() {
-    void queryClient.invalidateQueries({ queryKey: getPensionControllerGetQueryKey(taxYear) })
+    void queryClient.invalidateQueries({ queryKey: getPensionControllerGetQueryKey(taxYear, params) })
     void queryClient.invalidateQueries({ queryKey: getCockpitControllerGetCockpitSummaryQueryKey(taxYear) })
     void queryClient.invalidateQueries({ queryKey: getTaxEstimateControllerGetQueryKey(taxYear) })
   }
 
   function sendKind(kind: PensionType | null) {
-    track(watchSaveResult(setKind.mutateAsync({ jahr: taxYear, data: { kind } })).then(invalidate))
+    track(watchSaveResult(setKind.mutateAsync({ jahr: taxYear, data: { kind }, ...(params ? { params } : {}) })).then(invalidate))
   }
 
   function send(field: FieldId, data: PensionFieldDto) {
-    track(watchSaveResult(setField.mutateAsync({ jahr: taxYear, feld: field, data })).then(invalidate))
+    track(watchSaveResult(setField.mutateAsync({ jahr: taxYear, feld: field, data, ...(params ? { params } : {}) })).then(invalidate))
   }
 
   const showsPensionStartYear = response.kind !== null && response.kind !== 'PrivateRentenversicherung'
@@ -82,6 +85,7 @@ export function PensionerScreen({ onDone = () => {}, onBack, taxYear = CURRENT_T
         {onBack ? <BackButton accessibilityLabel={tr('rente.back')} onPress={() => flushThen(onBack)} testID="rente-zurueck" /> : <BackButtonSpacer />}
       </View>
       <Text style={styles.heading} testID="rente-heading">{tr('rente.heading')}</Text>
+      {partnerName !== undefined ? <Text testID="rente-partner-hinweis">{tr('rente.partnerFor', { name: partnerName })}</Text> : null}
       <Text style={styles.help}>{tr('rente.help')}</Text>
 
       <Text style={styles.sectionHeading}>{tr('rente.artHeading')}</Text>

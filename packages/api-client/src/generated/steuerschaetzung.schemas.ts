@@ -22,6 +22,7 @@ export const TaxEstimateDtoReason = {
   verheiratet: 'verheiratet',
   'besondere-lebenslage': 'besondere-lebenslage',
   'jahr-ohne-tarif': 'jahr-ohne-tarif',
+  'kein-grenzgaenger': 'kein-grenzgaenger',
 } as const;
 
 export interface RangeDto {

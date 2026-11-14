@@ -53,6 +53,17 @@ export const ChildResponseDtoOtherParentKind = {
   NUMBER_2: '2',
 } as const;
 
+/**
+ * @nullable
+ */
+export type ChildResponseDtoSwissFamilyAllowancePayer = typeof ChildResponseDtoSwissFamilyAllowancePayer[keyof typeof ChildResponseDtoSwissFamilyAllowancePayer] | null;
+
+
+export const ChildResponseDtoSwissFamilyAllowancePayer = {
+  A: 'A',
+  B: 'B',
+} as const;
+
 export interface ChildResponseDto {
   id: string;
   sequenceNumber: number;
@@ -104,6 +115,10 @@ export interface ChildResponseDto {
   childcareFrom?: string | null;
   /** @nullable */
   childcareTo?: string | null;
+  /** @nullable */
+  swissFamilyAllowancePayer?: ChildResponseDtoSwissFamilyAllowancePayer;
+  /** The allowance is a share of a parent’s Swiss allowances, not entered for the child (ADR-0088). */
+  swissFamilyAllowanceDerived?: boolean;
   /**
      * Differenz-Kindergeld der deutschen Familienkasse in whole EUR.
      * @nullable
@@ -176,6 +191,18 @@ export type CreateChildDtoOtherParentKind = typeof CreateChildDtoOtherParentKind
 export const CreateChildDtoOtherParentKind = {
   NUMBER_1: '1',
   NUMBER_2: '2',
+} as const;
+
+/**
+ * Who receives the Swiss Kinderzulage with their wage (ADR-0088).
+ * @nullable
+ */
+export type CreateChildDtoSwissFamilyAllowancePayer = typeof CreateChildDtoSwissFamilyAllowancePayer[keyof typeof CreateChildDtoSwissFamilyAllowancePayer] | null;
+
+
+export const CreateChildDtoSwissFamilyAllowancePayer = {
+  A: 'A',
+  B: 'B',
 } as const;
 
 export interface CreateChildDto {
@@ -256,6 +283,11 @@ export interface CreateChildDto {
      * @nullable
      */
   childcareTo?: string | null;
+  /**
+     * Who receives the Swiss Kinderzulage with their wage (ADR-0088).
+     * @nullable
+     */
+  swissFamilyAllowancePayer?: CreateChildDtoSwissFamilyAllowancePayer;
   firstName: string;
   lastName: string;
   /** ISO date YYYY-MM-DD */
@@ -313,6 +345,18 @@ export type UpdateChildDtoOtherParentKind = typeof UpdateChildDtoOtherParentKind
 export const UpdateChildDtoOtherParentKind = {
   NUMBER_1: '1',
   NUMBER_2: '2',
+} as const;
+
+/**
+ * Who receives the Swiss Kinderzulage with their wage (ADR-0088).
+ * @nullable
+ */
+export type UpdateChildDtoSwissFamilyAllowancePayer = typeof UpdateChildDtoSwissFamilyAllowancePayer[keyof typeof UpdateChildDtoSwissFamilyAllowancePayer] | null;
+
+
+export const UpdateChildDtoSwissFamilyAllowancePayer = {
+  A: 'A',
+  B: 'B',
 } as const;
 
 export interface UpdateChildDto {
@@ -393,6 +437,11 @@ export interface UpdateChildDto {
      * @nullable
      */
   childcareTo?: string | null;
+  /**
+     * Who receives the Swiss Kinderzulage with their wage (ADR-0088).
+     * @nullable
+     */
+  swissFamilyAllowancePayer?: UpdateChildDtoSwissFamilyAllowancePayer;
   firstName?: string;
   lastName?: string;
   geburtsdatum?: string;

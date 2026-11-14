@@ -74,6 +74,16 @@ describe('Exhaustive Matrix & Fuzzing Suite', () => {
               answers.familienstand = status
               step = nextStepFor(minimalGate, answers)
 
+              // Married: Person B's job, and Switzerland for an employed B (ADR-0088)
+              if (status === 'Verheiratet') {
+                expect(step).toEqual({ kind: 'question', id: 'partner-job' })
+                answers['partner-job'] = 'Angestellt'
+                step = nextStepFor(minimalGate, answers)
+                expect(step).toEqual({ kind: 'question', id: 'partner-ausland' })
+                answers['partner-ausland'] = 'Nein'
+                step = nextStepFor(minimalGate, answers)
+              }
+
               // Must be done!
               expect(step).toEqual({ kind: 'done' })
               expect(remainingStepsFor(minimalGate, answers)).toBe(0)

@@ -136,6 +136,7 @@ const CHILD_ACCESS_FIELDS = [
   'childcareProvider',
   'childcareFrom',
   'childcareTo',
+  'swissFamilyAllowancePayer',
 ] as const
 
 /**
@@ -436,6 +437,7 @@ export function fieldAccessFrom({
           childcareProvider: c.childcareProvider ?? null,
           childcareFrom: c.childcareFrom ?? null,
           childcareTo: c.childcareTo ?? null,
+          swissFamilyAllowancePayer: c.swissFamilyAllowancePayer ?? null,
         }
       },
       async write(userId, taxYear, instance, field, value) {

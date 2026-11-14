@@ -31,6 +31,7 @@ import { PROFILE_REPOSITORY, type ProfileRepository } from '../profile/profile.r
 import { PENSION_REPOSITORY, type PensionRepository } from '../pension/pension.repository.js'
 import { MASTER_DATA_REPOSITORY, type MasterDataRepository } from '../master-data/master-data.repository.js'
 import { RENTAL_REPOSITORY, type RentalRepository } from '../rental/rental.repository.js'
+import { childAllowancesEur } from '../children/swiss-allowance.js'
 import { printoutValues, type CommuteFacts, type ChSalaryCertificateFacts, type PersonBFacts } from './printout-values.js'
 import { FIELD_SETS, forYear, renderForms, OverflowError, type FieldValues } from './form-renderer.js'
 
@@ -212,16 +213,10 @@ export class PrintoutService {
       anteilA: obj.anteilA ?? null,
     }))
 
+    // The Swiss Kinderzulage per child: its own amount or its share of the paying parent's (ADR-0088).
+    const allowances = childAllowancesEur(kinder, ch, spouseChRecord)
     const childrenFacts = kinder.map((k, i) => {
-      let swissFamilyAllowanceEur = k.swissFamilyAllowanceEur
-      if (!swissFamilyAllowanceEur && kinder.length > 0) {
-        const allowancesChf = ch?.nGre.familienzulagenChf ?? spouseChRecord?.nGre.familienzulagenChf
-        const rate = ch?.exchangeRateValue ?? spouseChRecord?.exchangeRateValue
-        if (allowancesChf && Number(allowancesChf) > 0 && rate && rate > 0) {
-          const perChildChf = Math.round(Number(allowancesChf) / kinder.length)
-          swissFamilyAllowanceEur = String(Math.round(perChildChf * rate))
-        }
-      }
+      const swissFamilyAllowanceEur = allowances[i] != null ? String(allowances[i]) : null
       return {
         sequenceNumber: String(i + 1),
         firstName: k.firstName,

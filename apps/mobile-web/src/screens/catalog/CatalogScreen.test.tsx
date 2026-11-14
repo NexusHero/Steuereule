@@ -309,3 +309,42 @@ describe('„Wie 2025 übernehmen“ for Spenden (#452 slice 4, AC 7)', () => {
     expect(screen.queryByTestId('wie-vorjahr-spenden-betrag')).toBeNull()
   })
 })
+
+describe('KatalogScreen — whose answers, in a joint return (ADR-0088)', () => {
+  it('lets the user answer Sonderausgaben for Person B, read and written with ?person=B', async () => {
+    const seen: string[] = []
+    server.use(
+      http.get(`*/v1/steuerjahre/${TAX_YEAR}/kopplung`, () =>
+        HttpResponse.json({ filingType: 'zusammen', personBUserId: 'b', personBHasOwnAccount: false, personB: { firstName: 'Nora' } }, { status: 200 }),
+      ),
+      http.get(`*/v1/steuerjahre/${TAX_YEAR}/interview`, ({ request }) => {
+        seen.push(`get ${new URL(request.url).searchParams.get('person') ?? 'A'}`)
+        return HttpResponse.json({ answers: {}, nextStep: { kind: 'question', id: 'spenden' }, openItems: 3 }, { status: 200 })
+      }),
+      http.post(`*/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, ({ request }) => {
+        seen.push(`post ${new URL(request.url).searchParams.get('person') ?? 'A'}`)
+        return HttpResponse.json({ nextStep: { kind: 'question', id: 'kv-pv' }, openItems: 2 }, { status: 200 })
+      }),
+    )
+    renderCatalog('sonderausgaben')
+
+    fireEvent.click(await screen.findByTestId('katalog-fuer-b'))
+    expect(screen.getByTestId('katalog-fuer-b').textContent).toContain('Nora')
+    fireEvent.click(await screen.findByTestId('katalog-option-spenden-Nein'))
+    await waitFor(() => expect(seen).toContain('post B'))
+    expect(seen).toContain('get B')
+    expect(seen.filter((s) => s.startsWith('post')).every((s) => s === 'post B')).toBe(true)
+  })
+
+  it('shows no choice for a single person', async () => {
+    server.use(
+      http.get(`*/v1/steuerjahre/${TAX_YEAR}/kopplung`, () => HttpResponse.json({ filingType: 'keine', personB: null }, { status: 200 })),
+      http.get(`*/v1/steuerjahre/${TAX_YEAR}/interview`, () =>
+        HttpResponse.json({ answers: {}, nextStep: { kind: 'question', id: 'spenden' }, openItems: 3 }, { status: 200 }),
+      ),
+    )
+    renderCatalog('sonderausgaben')
+    await screen.findByTestId('katalog-option-spenden-Nein')
+    expect(screen.queryByTestId('katalog-fuer-wen')).toBeNull()
+  })
+})

@@ -41,6 +41,11 @@ export async function runScenario21(browser, webOrigin, sql) {
   await page.locator('[data-testid="interview-option-ausland-Nein"]').click()
   await page.locator('[data-testid="interview-option-kinder-1 Kind"]').click()
   await page.locator('[data-testid="interview-option-familienstand-Verheiratet"]').click()
+  // ADR-0088: the interview asks what Person B does
+  await page.locator('[data-testid="interview-option-partner-job-Angestellt"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await page.locator('[data-testid="interview-option-partner-job-Angestellt"]').click()
+  await page.locator('[data-testid="interview-option-partner-ausland-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await page.locator('[data-testid="interview-option-partner-ausland-Nein"]').click()
 
   // LStB
   await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').waitFor({ state: 'visible', timeout: 10_000 })

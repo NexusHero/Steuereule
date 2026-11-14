@@ -9,6 +9,7 @@ export const RECEIPT_VENDOR_CATEGORIES = [
   'fortbildung',
   'kinderbetreuung',
   'handwerker',
+  'krankheitskosten',
   'entfernung',
   'sonstiges',
 ] as const
@@ -220,6 +221,15 @@ export class ParsedLstbResponseDto {
 
   @ApiProperty({ type: Boolean, example: false })
   securityBlocked!: boolean
+
+  @ApiProperty({ type: String, enum: ['A', 'B'], nullable: true, description: 'Whose LStB it is; null when the name fits neither person.' })
+  person!: 'A' | 'B' | null
+
+  @ApiProperty({ type: Boolean, description: 'The name fits neither person: ask whose it is and parse again with `person`.' })
+  personUnclear!: boolean
+
+  @ApiProperty({ type: Boolean, description: 'Person B keeps an own account: B uploads it there.' })
+  personNotRecordable!: boolean
 }
 
 export class ChCertificateFieldDto {

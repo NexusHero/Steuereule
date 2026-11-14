@@ -330,3 +330,125 @@ export interface PutExchangeRateDto {
   receiptId?: string;
 }
 
+/**
+ * Where Person B lives.
+ */
+export type PutCrossBorderFactsDtoResidence = typeof PutCrossBorderFactsDtoResidence[keyof typeof PutCrossBorderFactsDtoResidence];
+
+
+export const PutCrossBorderFactsDtoResidence = {
+  Deutschland: 'Deutschland',
+  Schweiz: 'Schweiz',
+} as const;
+
+export interface PutCrossBorderFactsDto {
+  /** Where Person B lives. */
+  residence: PutCrossBorderFactsDtoResidence;
+  /** Working days Person B did not return home (Nichtrückkehrtage). */
+  daysWithoutReturn: number;
+}
+
+export type ChSalaryCertificateControllerGetParams = {
+/**
+ * B: Person A records the Swiss figures of a partner without an own account (ADR-0054).
+ */
+person?: ChSalaryCertificateControllerGetPerson;
+};
+
+export type ChSalaryCertificateControllerGetPerson = typeof ChSalaryCertificateControllerGetPerson[keyof typeof ChSalaryCertificateControllerGetPerson];
+
+
+export const ChSalaryCertificateControllerGetPerson = {
+  A: 'A',
+  B: 'B',
+} as const;
+
+export type ChSalaryCertificateControllerSetFieldParams = {
+/**
+ * B: Person A records the Swiss figures of a partner without an own account (ADR-0054).
+ */
+person?: ChSalaryCertificateControllerSetFieldPerson;
+};
+
+export type ChSalaryCertificateControllerSetFieldPerson = typeof ChSalaryCertificateControllerSetFieldPerson[keyof typeof ChSalaryCertificateControllerSetFieldPerson];
+
+
+export const ChSalaryCertificateControllerSetFieldPerson = {
+  A: 'A',
+  B: 'B',
+} as const;
+
+export type ChSalaryCertificateControllerSetRemarksParams = {
+/**
+ * B: Person A records the Swiss figures of a partner without an own account (ADR-0054).
+ */
+person?: ChSalaryCertificateControllerSetRemarksPerson;
+};
+
+export type ChSalaryCertificateControllerSetRemarksPerson = typeof ChSalaryCertificateControllerSetRemarksPerson[keyof typeof ChSalaryCertificateControllerSetRemarksPerson];
+
+
+export const ChSalaryCertificateControllerSetRemarksPerson = {
+  A: 'A',
+  B: 'B',
+} as const;
+
+export type ChSalaryCertificateControllerSetProvisionParams = {
+/**
+ * B: Person A records the Swiss figures of a partner without an own account (ADR-0054).
+ */
+person?: ChSalaryCertificateControllerSetProvisionPerson;
+};
+
+export type ChSalaryCertificateControllerSetProvisionPerson = typeof ChSalaryCertificateControllerSetProvisionPerson[keyof typeof ChSalaryCertificateControllerSetProvisionPerson];
+
+
+export const ChSalaryCertificateControllerSetProvisionPerson = {
+  A: 'A',
+  B: 'B',
+} as const;
+
+export type ChSalaryCertificateControllerSetNGreParams = {
+/**
+ * B: Person A records the Swiss figures of a partner without an own account (ADR-0054).
+ */
+person?: ChSalaryCertificateControllerSetNGrePerson;
+};
+
+export type ChSalaryCertificateControllerSetNGrePerson = typeof ChSalaryCertificateControllerSetNGrePerson[keyof typeof ChSalaryCertificateControllerSetNGrePerson];
+
+
+export const ChSalaryCertificateControllerSetNGrePerson = {
+  A: 'A',
+  B: 'B',
+} as const;
+
+export type ChSalaryCertificateControllerSetExchangeRateParams = {
+/**
+ * B: Person A records the Swiss figures of a partner without an own account (ADR-0054).
+ */
+person?: ChSalaryCertificateControllerSetExchangeRatePerson;
+};
+
+export type ChSalaryCertificateControllerSetExchangeRatePerson = typeof ChSalaryCertificateControllerSetExchangeRatePerson[keyof typeof ChSalaryCertificateControllerSetExchangeRatePerson];
+
+
+export const ChSalaryCertificateControllerSetExchangeRatePerson = {
+  A: 'A',
+  B: 'B',
+} as const;
+
+export type ChSalaryCertificateControllerSetCrossBorderFactsParams = {
+/**
+ * Only for Person B: the user answers these questions in the interview.
+ */
+person: ChSalaryCertificateControllerSetCrossBorderFactsPerson;
+};
+
+export type ChSalaryCertificateControllerSetCrossBorderFactsPerson = typeof ChSalaryCertificateControllerSetCrossBorderFactsPerson[keyof typeof ChSalaryCertificateControllerSetCrossBorderFactsPerson];
+
+
+export const ChSalaryCertificateControllerSetCrossBorderFactsPerson = {
+  B: 'B',
+} as const;
+

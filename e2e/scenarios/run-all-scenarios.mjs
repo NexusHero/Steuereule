@@ -1,4 +1,4 @@
-// Master E2E Runner: executes all 24 scenarios (01–24) sequentially against a shared stack and browser.
+// Master E2E Runner: executes all 26 scenarios (01–26) sequentially against a shared stack and browser.
 // Supports optional sharding for CI matrix parallelism: `node e2e/scenarios/run-all-scenarios.mjs --shard 1/4`
 import { launchBrowser, closeBrowser, startStack, fail } from './helpers/scenario-harness.mjs'
 import { runScenario01 } from './01-lena-hoffmann-angestellt.mjs'
@@ -25,6 +25,8 @@ import { runScenario21 } from './21-dialog-matrix-submasken-und-partner-b.mjs'
 import { runScenario22 } from './22-dialog-matrix-crud-detailmasken.mjs'
 import { runScenario23 } from './23-dialog-matrix-gast-upgrade-und-steuerjahre.mjs'
 import { runScenario24 } from './24-advisor-chat-steuereule.mjs'
+import { runScenario25 } from './25-familie-sommer-eskalation.mjs'
+import { runScenario26 } from './26-familie-brandt-rente-und-zulage.mjs'
 
 function parseShardArgs(argv) {
   const idx = argv.indexOf('--shard')
@@ -77,6 +79,8 @@ const SCENARIO_UNITS = [
   { name: 'Scenario 22', run: (browser, webOrigin, sql) => runScenario22(browser, webOrigin, sql) },
   { name: 'Scenario 23', run: (browser, webOrigin, sql) => runScenario23(browser, webOrigin, sql) },
   { name: 'Scenario 24', run: (browser, webOrigin, sql) => runScenario24(browser, webOrigin, sql) },
+  { name: 'Scenario 25', run: (browser, webOrigin, sql) => runScenario25(browser, webOrigin, sql) },
+  { name: 'Scenario 26', run: (browser, webOrigin, sql) => runScenario26(browser, webOrigin, sql) },
 ]
 
 async function main() {
@@ -91,7 +95,7 @@ async function main() {
       `STARTING SHARD ${shard.shardIndex}/${shard.shardTotal} (${selectedUnits.map((u) => u.name).join(', ')})`,
     )
   } else {
-    console.log('STARTING COMPLETE 24-SCENARIO PLAYWRIGHT ACCEPTANCE & DIALOG-MATRIX SUITE')
+    console.log('STARTING COMPLETE 26-SCENARIO PLAYWRIGHT ACCEPTANCE & DIALOG-MATRIX SUITE')
   }
   console.log('='.repeat(80))
 
@@ -107,7 +111,7 @@ async function main() {
     console.log(
       shard
         ? `SHARD ${shard.shardIndex}/${shard.shardTotal} PASSED WITH ZERO FINDINGS OR REGRESSIONS!`
-        : 'ALL 24 SCENARIOS PASSED WITH ZERO FINDINGS OR REGRESSIONS!',
+        : 'ALL 26 SCENARIOS PASSED WITH ZERO FINDINGS OR REGRESSIONS!',
     )
     console.log('='.repeat(80) + '\n')
   } catch (error) {

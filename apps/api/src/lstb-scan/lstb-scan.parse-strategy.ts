@@ -5,6 +5,7 @@ import { z } from 'zod'
 import {
   applyLstbTextFallback,
   capOcrSourcedExtraction,
+  certificateHolderPerson,
   parseLstbTextDeterministically,
   scrubDocumentTextPii,
   selectLstbRelevantLines,
@@ -173,7 +174,12 @@ export class LstbScanParseStrategy implements DocumentParseStrategy, OnModuleIni
       resource: 'beleg_analyse',
     })
 
-    const targetUserId = await this.linkService.dataUser(userId, dto.taxYear, dto.person ?? 'A')
+    // An upload without a person (the chat) is the user's, or B's when the LStB names B; a name that fits
+    // nobody is asked about instead of guessed (as for the Swiss certificate, ADR-0074).
+    const household = dto.person === undefined ? await this.advisorService.householdNames(userId, dto.taxYear) : null
+    const person: 'A' | 'B' | null = dto.person ?? (household?.B ? certificateHolderPerson(rawText, household) : 'A')
+    const personNotRecordable = person === 'B' && household !== null && household.B?.recordable !== true
+    const targetUserId = person !== null && !personNotRecordable ? await this.linkService.dataUser(userId, dto.taxYear, person) : userId
     const existingLstbConflict = await this.lstbService.existingValues(targetUserId, dto.taxYear)
 
     const toFieldDto = (f: LstbExtractionResult['fields']['bruttoarbeitslohn']) => ({
@@ -215,13 +221,13 @@ export class LstbScanParseStrategy implements DocumentParseStrategy, OnModuleIni
     let stagedActionIds: string[] = []
 
     // Year conflict blocks staging so nothing lands on the wrong tax year (ADR-0008).
-    if (shouldStage && yearConflict === null) {
+    if (shouldStage && yearConflict === null && person !== null && !personNotRecordable) {
       const staged = await this.advisorService.stageLstbScanBatch(userId, dto.taxYear, {
         digestUserId: targetUserId,
         receiptId: dto.receiptId ?? null,
         stage,
         taxYearOnDocument: extraction.taxYear,
-        ...(dto.person !== undefined ? { person: dto.person } : {}),
+        ...(person === 'B' ? { person } : dto.person !== undefined ? { person: dto.person } : {}),
         engine:
           mode === 'vision_ocr' && visionSlot
             ? { mode: 'langgraph', provider: visionSlot.provider, model: visionSlot.model }
@@ -259,6 +265,9 @@ export class LstbScanParseStrategy implements DocumentParseStrategy, OnModuleIni
       fields: lstbFieldsDto,
       stagedActionIds,
       securityBlocked,
+      person,
+      personUnclear: person === null,
+      personNotRecordable,
     }
 
     return {

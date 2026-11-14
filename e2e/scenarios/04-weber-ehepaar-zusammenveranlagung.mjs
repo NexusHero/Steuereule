@@ -45,6 +45,11 @@ export async function runScenario04(browser, webOrigin, sql) {
   await page.locator(`[data-testid="interview-option-ausland-${s.thomas.interview.ausland}"]`).click()
   await page.locator(`[data-testid="interview-option-kinder-${s.thomas.interview.kinder}"]`).click()
   await page.locator(`[data-testid="interview-option-familienstand-${s.thomas.interview.familienstand}"]`).click()
+  // ADR-0088: the interview asks what Person B does
+  await page.locator('[data-testid="interview-option-partner-job-Angestellt"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await page.locator('[data-testid="interview-option-partner-job-Angestellt"]').click()
+  await page.locator('[data-testid="interview-option-partner-ausland-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await page.locator('[data-testid="interview-option-partner-ausland-Nein"]').click()
 
   await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').fill(String(s.thomas.lstb.grossWage))

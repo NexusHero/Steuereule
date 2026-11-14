@@ -74,3 +74,13 @@ describe('extraordinary burdens / medical costs (§ 33 Abs. 3 EStG, BFH VI R 75/
     expect(extraordinaryBurdenFromAnswers({ 'gesundheit-gate': 'Ja', 'gesundheit-betrag': '1850' })).toBe(1850)
   })
 })
+
+describe('burdenChildrenBracket with recorded children (§ 33 Abs. 3 EStG)', () => {
+  it('takes the recorded children over the interview answer, which cannot tell 2 from 3+', () => {
+    expect(burdenChildrenBracket('2 oder mehr', 3)).toBe('3+')
+    expect(burdenChildrenBracket('2 oder mehr', 2)).toBe('1-2')
+    expect(burdenChildrenBracket('2 oder mehr', 0)).toBe('1-2')
+    expect(burdenChildrenBracket('2 oder mehr')).toBe('1-2')
+    expect(burdenChildrenBracket('Nein', 0)).toBe('0')
+  })
+})

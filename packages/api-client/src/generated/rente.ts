@@ -25,6 +25,9 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  PensionControllerGetParams,
+  PensionControllerSetFieldParams,
+  PensionControllerSetPensionKindParams,
   PensionResponseDto,
   PutPensionFieldDto,
   PutPensionKindDto
@@ -71,17 +74,26 @@ export type pensionControllerGetResponseError = (pensionControllerGetResponse401
 
 export type pensionControllerGetResponse = (pensionControllerGetResponseSuccess | pensionControllerGetResponseError)
 
-export const getPensionControllerGetUrl = (jahr: number,) => {
+export const getPensionControllerGetUrl = (jahr: number,
+    params?: PensionControllerGetParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/v1/steuerjahre/${jahr}/rente`
+  return stringifiedParams.length > 0 ? `/v1/steuerjahre/${jahr}/rente?${stringifiedParams}` : `/v1/steuerjahre/${jahr}/rente`
 }
 
-export const pensionControllerGet = async (jahr: number, options?: RequestInit): Promise<pensionControllerGetResponse> => {
+export const pensionControllerGet = async (jahr: number,
+    params?: PensionControllerGetParams, options?: RequestInit): Promise<pensionControllerGetResponse> => {
 
-  return httpClient<pensionControllerGetResponse>(getPensionControllerGetUrl(jahr),
+  return httpClient<pensionControllerGetResponse>(getPensionControllerGetUrl(jahr,params),
   {
     ...options,
     method: 'GET'
@@ -94,23 +106,25 @@ export const pensionControllerGet = async (jahr: number, options?: RequestInit):
 
 
 
-export const getPensionControllerGetQueryKey = (jahr: number,) => {
+export const getPensionControllerGetQueryKey = (jahr: number,
+    params?: PensionControllerGetParams,) => {
     return [
-    `/v1/steuerjahre/${jahr}/rente`
+    `/v1/steuerjahre/${jahr}/rente`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getPensionControllerGetQueryOptions = <TData = Awaited<ReturnType<typeof pensionControllerGet>>, TError = void>(jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof pensionControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export const getPensionControllerGetQueryOptions = <TData = Awaited<ReturnType<typeof pensionControllerGet>>, TError = void>(jahr: number,
+    params?: PensionControllerGetParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof pensionControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getPensionControllerGetQueryKey(jahr);
+  const queryKey =  queryOptions?.queryKey ?? getPensionControllerGetQueryKey(jahr,params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof pensionControllerGet>>> = ({ signal }) => pensionControllerGet(jahr, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof pensionControllerGet>>> = ({ signal }) => pensionControllerGet(jahr,params, { signal, ...requestOptions });
 
 
 
@@ -124,7 +138,8 @@ export type PensionControllerGetQueryError = void
 
 
 export function usePensionControllerGet<TData = Awaited<ReturnType<typeof pensionControllerGet>>, TError = void>(
- jahr: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof pensionControllerGet>>, TError, TData>> & Pick<
+ jahr: number,
+    params: undefined |  PensionControllerGetParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof pensionControllerGet>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof pensionControllerGet>>,
           TError,
@@ -134,7 +149,8 @@ export function usePensionControllerGet<TData = Awaited<ReturnType<typeof pensio
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function usePensionControllerGet<TData = Awaited<ReturnType<typeof pensionControllerGet>>, TError = void>(
- jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof pensionControllerGet>>, TError, TData>> & Pick<
+ jahr: number,
+    params?: PensionControllerGetParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof pensionControllerGet>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof pensionControllerGet>>,
           TError,
@@ -144,16 +160,18 @@ export function usePensionControllerGet<TData = Awaited<ReturnType<typeof pensio
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function usePensionControllerGet<TData = Awaited<ReturnType<typeof pensionControllerGet>>, TError = void>(
- jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof pensionControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ jahr: number,
+    params?: PensionControllerGetParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof pensionControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 
 export function usePensionControllerGet<TData = Awaited<ReturnType<typeof pensionControllerGet>>, TError = void>(
- jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof pensionControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ jahr: number,
+    params?: PensionControllerGetParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof pensionControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getPensionControllerGetQueryOptions(jahr,options)
+  const queryOptions = getPensionControllerGetQueryOptions(jahr,params,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
@@ -185,18 +203,27 @@ export type pensionControllerSetPensionKindResponseError = (pensionControllerSet
 
 export type pensionControllerSetPensionKindResponse = (pensionControllerSetPensionKindResponseSuccess | pensionControllerSetPensionKindResponseError)
 
-export const getPensionControllerSetPensionKindUrl = (jahr: number,) => {
+export const getPensionControllerSetPensionKindUrl = (jahr: number,
+    params?: PensionControllerSetPensionKindParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/v1/steuerjahre/${jahr}/rente/art`
+  return stringifiedParams.length > 0 ? `/v1/steuerjahre/${jahr}/rente/art?${stringifiedParams}` : `/v1/steuerjahre/${jahr}/rente/art`
 }
 
 export const pensionControllerSetPensionKind = async (jahr: number,
-    putPensionKindDto: PutPensionKindDto, options?: RequestInit): Promise<pensionControllerSetPensionKindResponse> => {
+    putPensionKindDto: PutPensionKindDto,
+    params?: PensionControllerSetPensionKindParams, options?: RequestInit): Promise<pensionControllerSetPensionKindResponse> => {
 
-  return httpClient<pensionControllerSetPensionKindResponse>(getPensionControllerSetPensionKindUrl(jahr),
+  return httpClient<pensionControllerSetPensionKindResponse>(getPensionControllerSetPensionKindUrl(jahr,params),
   {
     ...options,
     method: 'PUT',
@@ -210,8 +237,8 @@ export const pensionControllerSetPensionKind = async (jahr: number,
 
 
 export const getPensionControllerSetPensionKindMutationOptions = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof pensionControllerSetPensionKind>>, TError,{jahr: number;data: PutPensionKindDto}, TContext>, request?: SecondParameter<typeof httpClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof pensionControllerSetPensionKind>>, TError,{jahr: number;data: PutPensionKindDto}, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof pensionControllerSetPensionKind>>, TError,{jahr: number;data: PutPensionKindDto;params?: PensionControllerSetPensionKindParams}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof pensionControllerSetPensionKind>>, TError,{jahr: number;data: PutPensionKindDto;params?: PensionControllerSetPensionKindParams}, TContext> => {
 
 const mutationKey = ['pensionControllerSetPensionKind'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -223,10 +250,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof pensionControllerSetPensionKind>>, {jahr: number;data: PutPensionKindDto}> = (props) => {
-          const {jahr,data} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof pensionControllerSetPensionKind>>, {jahr: number;data: PutPensionKindDto;params?: PensionControllerSetPensionKindParams}> = (props) => {
+          const {jahr,data,params} = props ?? {};
 
-          return  pensionControllerSetPensionKind(jahr,data,requestOptions)
+          return  pensionControllerSetPensionKind(jahr,data,params,requestOptions)
         }
 
 
@@ -241,11 +268,11 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type PensionControllerSetPensionKindMutationError = void
 
     export const usePensionControllerSetPensionKind = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof pensionControllerSetPensionKind>>, TError,{jahr: number;data: PutPensionKindDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof pensionControllerSetPensionKind>>, TError,{jahr: number;data: PutPensionKindDto;params?: PensionControllerSetPensionKindParams}, TContext>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof pensionControllerSetPensionKind>>,
         TError,
-        {jahr: number;data: PutPensionKindDto},
+        {jahr: number;data: PutPensionKindDto;params?: PensionControllerSetPensionKindParams},
         TContext
       > => {
       return useMutation(getPensionControllerSetPensionKindMutationOptions(options), queryClient);
@@ -271,19 +298,28 @@ export type pensionControllerSetFieldResponseError = (pensionControllerSetFieldR
 export type pensionControllerSetFieldResponse = (pensionControllerSetFieldResponseSuccess | pensionControllerSetFieldResponseError)
 
 export const getPensionControllerSetFieldUrl = (jahr: number,
-    feld: string,) => {
+    feld: string,
+    params?: PensionControllerSetFieldParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/v1/steuerjahre/${jahr}/rente/${feld}`
+  return stringifiedParams.length > 0 ? `/v1/steuerjahre/${jahr}/rente/${feld}?${stringifiedParams}` : `/v1/steuerjahre/${jahr}/rente/${feld}`
 }
 
 export const pensionControllerSetField = async (jahr: number,
     feld: string,
-    putPensionFieldDto: PutPensionFieldDto, options?: RequestInit): Promise<pensionControllerSetFieldResponse> => {
+    putPensionFieldDto: PutPensionFieldDto,
+    params?: PensionControllerSetFieldParams, options?: RequestInit): Promise<pensionControllerSetFieldResponse> => {
 
-  return httpClient<pensionControllerSetFieldResponse>(getPensionControllerSetFieldUrl(jahr,feld),
+  return httpClient<pensionControllerSetFieldResponse>(getPensionControllerSetFieldUrl(jahr,feld,params),
   {
     ...options,
     method: 'PUT',
@@ -297,8 +333,8 @@ export const pensionControllerSetField = async (jahr: number,
 
 
 export const getPensionControllerSetFieldMutationOptions = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof pensionControllerSetField>>, TError,{jahr: number;feld: string;data: PutPensionFieldDto}, TContext>, request?: SecondParameter<typeof httpClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof pensionControllerSetField>>, TError,{jahr: number;feld: string;data: PutPensionFieldDto}, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof pensionControllerSetField>>, TError,{jahr: number;feld: string;data: PutPensionFieldDto;params?: PensionControllerSetFieldParams}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof pensionControllerSetField>>, TError,{jahr: number;feld: string;data: PutPensionFieldDto;params?: PensionControllerSetFieldParams}, TContext> => {
 
 const mutationKey = ['pensionControllerSetField'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -310,10 +346,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof pensionControllerSetField>>, {jahr: number;feld: string;data: PutPensionFieldDto}> = (props) => {
-          const {jahr,feld,data} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof pensionControllerSetField>>, {jahr: number;feld: string;data: PutPensionFieldDto;params?: PensionControllerSetFieldParams}> = (props) => {
+          const {jahr,feld,data,params} = props ?? {};
 
-          return  pensionControllerSetField(jahr,feld,data,requestOptions)
+          return  pensionControllerSetField(jahr,feld,data,params,requestOptions)
         }
 
 
@@ -328,11 +364,11 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type PensionControllerSetFieldMutationError = void
 
     export const usePensionControllerSetField = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof pensionControllerSetField>>, TError,{jahr: number;feld: string;data: PutPensionFieldDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof pensionControllerSetField>>, TError,{jahr: number;feld: string;data: PutPensionFieldDto;params?: PensionControllerSetFieldParams}, TContext>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof pensionControllerSetField>>,
         TError,
-        {jahr: number;feld: string;data: PutPensionFieldDto},
+        {jahr: number;feld: string;data: PutPensionFieldDto;params?: PensionControllerSetFieldParams},
         TContext
       > => {
       return useMutation(getPensionControllerSetFieldMutationOptions(options), queryClient);

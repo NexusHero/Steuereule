@@ -132,3 +132,48 @@ export interface PutPensionFieldDto {
   value?: number;
 }
 
+export type PensionControllerGetParams = {
+/**
+ * B: Person A records the pension of a partner without an own account (ADR-0088).
+ */
+person?: PensionControllerGetPerson;
+};
+
+export type PensionControllerGetPerson = typeof PensionControllerGetPerson[keyof typeof PensionControllerGetPerson];
+
+
+export const PensionControllerGetPerson = {
+  A: 'A',
+  B: 'B',
+} as const;
+
+export type PensionControllerSetPensionKindParams = {
+/**
+ * B: Person A records the pension of a partner without an own account (ADR-0088).
+ */
+person?: PensionControllerSetPensionKindPerson;
+};
+
+export type PensionControllerSetPensionKindPerson = typeof PensionControllerSetPensionKindPerson[keyof typeof PensionControllerSetPensionKindPerson];
+
+
+export const PensionControllerSetPensionKindPerson = {
+  A: 'A',
+  B: 'B',
+} as const;
+
+export type PensionControllerSetFieldParams = {
+/**
+ * B: Person A records the pension of a partner without an own account (ADR-0088).
+ */
+person?: PensionControllerSetFieldPerson;
+};
+
+export type PensionControllerSetFieldPerson = typeof PensionControllerSetFieldPerson[keyof typeof PensionControllerSetFieldPerson];
+
+
+export const PensionControllerSetFieldPerson = {
+  A: 'A',
+  B: 'B',
+} as const;
+

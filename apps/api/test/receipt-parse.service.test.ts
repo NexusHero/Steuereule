@@ -326,6 +326,17 @@ describe('ReceiptParseService — Two-Stage Receipt Isolation (#446 Slice 3)', (
     expect(res.stagedAction?.newValue).toBe('640')
   })
 
+  it('reads an amount with a thousands separator whole, and the invoice total before other amounts', async () => {
+    const h = buildTestHarness([], false)
+    const res = await h.parseService.parseReceipt('user-r6', {
+      taxYear: 2025,
+      fileName: 'laptop.pdf',
+      rawText: 'Rechnung vom 03.07.2025\nLaptop für die Arbeit, Versand 9,90 EUR\nRechnungsbetrag: 1.700,00 EUR',
+    })
+    expect(res.parsed.amountEur).toBe(1700)
+    expect(res.stagedAction).toMatchObject({ field: 'workEquipmentEur', newValue: '1700' })
+  })
+
   it('adds a second work-tool receipt to the year’s total instead of replacing it', async () => {
     const h = buildTestHarness([], false)
     await h.commuteRepo.save('user-r5', 2025, { workdays: [1, 2, 3, 4, 5], vacationDays: 0, sickDays: 0, homeOfficeDays: 0, oneWayKm: null, transport: null, workplace: null, workEquipmentEur: 110 })
@@ -432,6 +443,53 @@ describe('ReceiptParseService — Two-Stage Receipt Isolation (#446 Slice 3)', (
     expect(res.assistantMessage?.content).toMatch(/^Beleg \(Spende\) über 120 € vom 2025-11-02 erkannt\./)
     expect(res.assistantMessage?.content).not.toContain('IGNORIERE')
     expect(res.assistantMessage?.content).not.toContain('Mustermann')
+  })
+})
+
+describe('ReceiptParseService — medical invoices (escalation case, § 33 EStG)', () => {
+  const dentist = (no: string, amount: string) =>
+    `Zahnarztpraxis Dr. Beispiel\nRechnung Nr. ${no} vom 14.05.2025\nZahnärztliche Behandlung nach GOZ\nRechnungsbetrag: ${amount} EUR`
+
+  it('drafts a dentist’s invoice into the Krankheitskosten with the gate, adds a second one, and never counts one twice', async () => {
+    const h = buildTestHarness([], false)
+    const first = await h.parseService.parseReceipt('user-med', { taxYear: 2025, fileName: 'zahnarzt.pdf', rawText: dentist('2025-0815', '1.700,00') })
+    expect(first.parsed.vendorCategory).toBe('krankheitskosten')
+    expect(first.stagedAction).toMatchObject({ screen: 'interview', field: 'gesundheit-betrag', newValue: '1700', sourceId: 'estg-33' })
+    await h.advisorService.applyAction('user-med', 2025, first.stagedAction!.actionId)
+    const answers = await h.interviewRepo.findAllForUserAndYear('user-med', 2025)
+    expect(Object.fromEntries(answers.map((a) => [a.questionId, a.value]))).toMatchObject({ 'gesundheit-gate': 'Ja', 'gesundheit-betrag': '1700' })
+
+    const again = await h.parseService.parseReceipt('user-med', { taxYear: 2025, fileName: 'zahnarzt-kopie.pdf', rawText: dentist('2025-0815', '1.700,00') })
+    expect(again.stagedAction).toBeNull()
+    expect(again.parsed.summary).toContain('schon bei den Krankheitskosten gezählt')
+
+    const second = await h.parseService.parseReceipt('user-med', { taxYear: 2025, fileName: 'zahnarzt-2.pdf', rawText: dentist('2025-0901', '240,00') })
+    expect(second.stagedAction).toMatchObject({ field: 'gesundheit-betrag', previousValue: '1700', newValue: '1940' })
+  })
+
+  it('marks a dentist’s invoice read from a photo as „prüfen“ (ADR-0060, escalation case)', async () => {
+    const h = buildTestHarness([], false)
+    const res = await h.parseService.parseReceipt('user-med-ocr', {
+      taxYear: 2025,
+      fileName: 'zahnarzt-foto.jpg',
+      mimeType: 'image/jpeg',
+      textSource: 'ocr',
+      rawText: dentist('2025-0815', '1.700,00'),
+    })
+    expect(res.stagedAction).toMatchObject({ field: 'gesundheit-betrag', newValue: '1700', confidenceStatus: 'pruefen' })
+  })
+
+  it('records nothing for a cosmetic operation and says why', async () => {
+    const h = buildTestHarness([], false)
+    const res = await h.parseService.parseReceipt('user-med-2', {
+      taxYear: 2025,
+      fileName: 'klinik.pdf',
+      rawText: 'Klinik für Ästhetische Chirurgie Beispiel\nRechnung vom 02.10.2025\nSchönheitsoperation (ästhetische Lidstraffung)\nRechnungsbetrag: 3.800,00 EUR',
+    })
+    expect(res.stagedAction).toBeNull()
+    expect(res.parsed).toMatchObject({ vendorCategory: 'krankheitskosten', suggestedField: null })
+    expect(res.parsed.summary).toContain('keine außergewöhnliche Belastung')
+    expect(await h.interviewRepo.findAllForUserAndYear('user-med-2', 2025)).toEqual([])
   })
 })
 
@@ -777,4 +835,21 @@ describe('childcare notices (ADR-0086)', () => {
       [tom.id, 'childcareTo'],
     ])
   })
+
+  it('drafts the paid amount too when a Kita’s annual statement prints it, to be checked (escalation case)', async () => {
+    const h = buildTestHarness([], false)
+    await h.childRepo.create('user-c4', 2025, { firstName: 'Lio', lastName: 'Muster', geburtsdatum: '2019-04-03' })
+    const ida = await h.childRepo.create('user-c4', 2025, { firstName: 'Ida', lastName: 'Muster', geburtsdatum: '2021-08-21' })
+    await h.childRepo.create('user-c4', 2025, { firstName: 'Mats', lastName: 'Muster', geburtsdatum: '2023-02-09' })
+    const statement = 'Kita Sonnenschein\nJahresbescheinigung Elternbeiträge\nBetreuung für das Kind Ida Muster\nDer Elternbeitrag beträgt ab 01.01.2025 monatlich 300,00 EUR.\nGesamt 2025: 3.600,00 EUR'
+    const res = await h.parseService.parseReceipt('user-c4', { taxYear: 2025, fileName: 'kita.pdf', rawText: statement, textSource: 'pdf_text' } as never)
+    const drafts = res.assistantMessage?.meta?.actions ?? []
+    expect(drafts.map((d) => [d.instance, d.field, d.newValue, d.confidenceStatus])).toEqual([
+      [ida.id, 'childcareFrom', '01.01.2025', 'ok'],
+      [ida.id, 'childcareTo', '31.12.2025', 'pruefen'],
+      [ida.id, 'childcareEur', '3600', 'pruefen'],
+    ])
+    expect(res.parsed.vendorCategory).toBe('kinderbetreuung')
+  })
 })
+

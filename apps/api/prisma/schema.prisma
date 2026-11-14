@@ -899,6 +899,8 @@ model Child {
   childcareProvider        String?  @map("betreuungDienstleister") /// @encrypted?mode=strict
   childcareFrom            String?  @map("betreuungVon") /// @encrypted?mode=strict
   childcareTo              String?  @map("betreuungBis") /// @encrypted?mode=strict
+  /// Who receives the Swiss Kinderzulage with their wage: "A" or "B" (ADR-0088).
+  swissFamilyAllowancePayer String? @map("schweizerKinderzulageVon")
   createdAt                DateTime @default(now())
   updatedAt                DateTime @updatedAt
 

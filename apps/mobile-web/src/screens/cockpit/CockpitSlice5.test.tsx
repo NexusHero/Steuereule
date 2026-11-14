@@ -139,6 +139,27 @@ describe('Cockpit Screen — Slice 5 Persona Boosters & Dual Cockpit', () => {
     expect(onOpenPartner).toHaveBeenCalledWith('arbeitsweg', 'Sabine')
   })
 
+  it('shows only the pension tile for a retired Person B, and the Swiss certificate for a Grenzgänger B (ADR-0088)', async () => {
+    const coupling = http.get(`*/v1/steuerjahre/${TAX_YEAR}/kopplung`, () =>
+      HttpResponse.json({ filingType: 'zusammen', personBUserId: null, invitationCode: null, personBHasOwnAccount: false, personB: { firstName: 'Sabine', lastName: 'Weber', steuerId: null, geburtsdatum: null, religion: null, religionConsent: false, beruf: null } }),
+    )
+    mockDoneInterview({ job: 'Angestellt', ausland: 'Nein', kinder: 'Nein', familienstand: 'Verheiratet', 'partner-job': 'Rente' })
+    server.use(http.get('*/v1/stammdaten', () => HttpResponse.json({ familienstand: 'verheiratet', missing: [] })), coupling)
+    const onOpenPartner = vi.fn()
+    const first = renderCockpit({ onOpenPartner })
+    fireEvent.click(await screen.findByTestId('partner-rente'))
+    expect(onOpenPartner).toHaveBeenCalledWith('rente', 'Sabine')
+    expect(screen.queryByTestId('partner-lstb')).toBeNull()
+    expect(screen.queryByTestId('partner-schweiz')).toBeNull()
+    first.unmount()
+
+    mockDoneInterview({ job: 'Angestellt', ausland: 'Nein', kinder: 'Nein', familienstand: 'Verheiratet', 'partner-job': 'Angestellt', 'partner-ausland': 'Ja, in die Schweiz' })
+    renderCockpit({ onOpenPartner })
+    expect(await screen.findByTestId('partner-schweiz')).toBeTruthy()
+    expect(screen.getByTestId('partner-lstb')).toBeTruthy()
+    expect(screen.queryByTestId('partner-rente')).toBeNull()
+  })
+
   it('hides Dual Cockpit partner section when filingType is einzel', async () => {
     mockDoneInterview({ job: 'Angestellt', ausland: 'Nein', kinder: 'Nein', familienstand: 'Verheiratet' })
     server.use(

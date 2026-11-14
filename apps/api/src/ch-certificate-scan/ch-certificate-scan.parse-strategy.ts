@@ -163,13 +163,19 @@ export class ChCertificateScanParseStrategy implements DocumentParseStrategy, On
         engine: slot ? { mode: 'langgraph', provider: slot.provider, model: slot.model } : { mode: 'deterministic_fallback', provider: 'deterministic' },
         summaryText: summaryOf(read, person, fields, fromOcr),
         sourceId: 'estg-9-1',
-        fields: stageable.map((f) => ({
-          field: f.field,
-          label: LABELS[f.field as SalaryCertificateAmountFieldId] ?? f.field,
-          value: f.value,
-          status: f.status,
-          reason: f.reason === 'negative' ? null : f.reason,
-        })),
+        fields: [
+          ...stageable.map((f) => ({
+            field: f.field,
+            label: LABELS[f.field as SalaryCertificateAmountFieldId] ?? f.field,
+            value: f.value,
+            status: f.status,
+            reason: f.reason === 'negative' ? null : f.reason,
+          })),
+          // The family allowances the remarks name: Anlage N-Gre Z. 8, kept out of the taxed wage (ADR-0088).
+          ...(read.familyAllowancesChf !== null
+            ? [{ field: 'familienzulagenChf', label: 'Familienzulagen (CHF, Anlage N-Gre Zeile 8)', value: read.familyAllowancesChf, status: fromOcr ? ('pruefen' as const) : ('ok' as const), reason: fromOcr ? ('ocr_source' as const) : null }]
+            : []),
+        ],
       })
       stagedActionIds = staged.actions.map((a) => a.actionId)
       stagedAction = staged.actions[0] ?? null
