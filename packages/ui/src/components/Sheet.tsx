@@ -173,8 +173,7 @@ export function Sheet({ onClose, closeLabel, children, testID }: SheetProps) {
   const panelStyle: ViewStyle = {
     backgroundColor: t.color.grund,
     borderWidth: t.space.kontur,
-    borderColor: t.color.tinte,
-    ...t.shadow.hart,
+    borderColor: t.color.linieWeich,
     flexShrink: 1,
     overflow: 'hidden',
   }
@@ -208,17 +207,14 @@ export function Sheet({ onClose, closeLabel, children, testID }: SheetProps) {
     paddingVertical: t.space.s1,
     borderRadius: t.radius.pille,
     borderWidth: t.space.kontur,
-    borderColor: t.color.tinte,
+    borderColor: t.color.tinte2,
     backgroundColor: t.color.karte,
     justifyContent: 'center',
     alignItems: 'center',
-    ...t.shadow.hartS,
   }
 
   const closeButtonPressedStyle: ViewStyle = {
-    transform: [{ translateX: 2 }, { translateY: 2 }],
-    shadowOpacity: 0,
-    elevation: 0,
+    opacity: 0.7,
   }
 
   const closeLabelStyle: TextStyle = {

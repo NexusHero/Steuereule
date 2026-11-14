@@ -16,7 +16,7 @@ export const TAB_ICON_PATHS = {
 
 const TAB_MIN_HEIGHT = 52
 const BAR_PADDING = 6
-const BAR_BORDER = 2
+const BAR_BORDER = 1.5
 
 export const TAB_BAR_HEIGHT = TAB_MIN_HEIGHT + 2 * BAR_PADDING + 2 * BAR_BORDER
 
@@ -142,18 +142,18 @@ function makeStyles(t: ReturnType<typeof useTheme>) {
     gap: 2,
     backgroundColor: t.color.karte,
     borderWidth: BAR_BORDER,
-    borderColor: t.color.tinte,
+    borderColor: t.color.linieWeich,
     borderRadius: t.radius.pille,
     padding: BAR_PADDING,
-    ...t.shadow.hart,
   }
   const pill: ViewStyle = {
     position: 'absolute',
     top: BAR_PADDING,
     left: BAR_PADDING,
     zIndex: 0,
+    // The active tab is unmistakable: a lime pill with an ink contour (soft lime alone is ~1.1:1).
     backgroundColor: t.color.funke,
-    borderWidth: 1.5,
+    borderWidth: BAR_BORDER,
     borderColor: t.color.tinte,
     borderRadius: t.radius.pille,
   }
@@ -170,7 +170,7 @@ function makeStyles(t: ReturnType<typeof useTheme>) {
   }
   const tabActiveFallback: ViewStyle = {
     backgroundColor: t.color.funke,
-    borderWidth: 1.5,
+    borderWidth: BAR_BORDER,
     borderColor: t.color.tinte,
   }
   const label: TextStyle = {
@@ -179,7 +179,7 @@ function makeStyles(t: ReturnType<typeof useTheme>) {
     fontWeight: t.weight.fett,
     color: t.color.tinte2,
   }
-  const labelActive: TextStyle = { color: inkOnFunke(t) }
+  const labelActive: TextStyle = { color: inkOnFunke(t), fontWeight: t.weight.schwer }
 
   return { bar, inner, pill, tab, tabActiveFallback, label, labelActive }
 }

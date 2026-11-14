@@ -261,11 +261,12 @@ function makeStyles(t: UiTheme) {
     flexBasis: 260,
     flexGrow: 1,
   }
+  // Tiles sit flat on the ground — the screen's one hard shadow belongs to its primary action.
   const card: ViewStyle = {
     marginBottom: 0,
     borderWidth: t.space.kontur,
-    borderColor: t.color.tinte,
-    ...t.shadow.hart,
+    // tinte-2 (6:1) keeps a tappable tile recognisable — linie-weich is only ~1.3:1 (WCAG 1.4.11).
+    borderColor: t.color.tinte2,
   }
   const title: TextStyle = {
     fontFamily: t.font.display,

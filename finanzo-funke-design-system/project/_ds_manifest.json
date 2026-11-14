@@ -780,19 +780,19 @@
     },
     {
       "name": "--text-2xl",
-      "value": "32px",
+      "value": "28px",
       "kind": "font",
       "definedIn": "tokens/typography.css"
     },
     {
       "name": "--text-3xl",
-      "value": "44px",
+      "value": "34px",
       "kind": "font",
       "definedIn": "tokens/typography.css"
     },
     {
       "name": "--text-held",
-      "value": "60px",
+      "value": "52px",
       "kind": "font",
       "definedIn": "tokens/typography.css"
     },
@@ -819,7 +819,7 @@
     },
     {
       "name": "--gewicht-schwer",
-      "value": "800",
+      "value": "700",
       "kind": "font",
       "definedIn": "tokens/typography.css",
       "annotation": "font"
@@ -920,14 +920,14 @@
     },
     {
       "name": "--kontur",
-      "value": "2px",
+      "value": "1.5px",
       "kind": "spacing",
       "definedIn": "tokens/spacing.css",
       "annotation": "spacing"
     },
     {
       "name": "--schatten-hart",
-      "value": "4px 4px 0 var(--tinte)",
+      "value": "3px 3px 0 var(--tinte)",
       "kind": "color",
       "definedIn": "tokens/effects.css"
     },
@@ -939,7 +939,7 @@
     },
     {
       "name": "--schatten-hart-l",
-      "value": "7px 7px 0 var(--tinte)",
+      "value": "5px 5px 0 var(--tinte)",
       "kind": "color",
       "definedIn": "tokens/effects.css"
     },

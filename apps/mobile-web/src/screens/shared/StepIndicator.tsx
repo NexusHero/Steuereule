@@ -28,13 +28,12 @@ export function StepIndicator({ step, total }: StepIndicatorProps) {
 
 function makeStyles(t: UiTheme) {
   const progressRow: ViewStyle = { flexDirection: 'row', gap: t.space.s1, flex: 1 }
+  // Quiet track: open steps are a soft line, done steps lime — no ink outlines.
   const segment: ViewStyle = {
     flex: 1,
-    height: 8,
-    borderRadius: 4,
-    borderWidth: 1.5,
-    borderColor: t.color.tinte,
-    backgroundColor: t.color.karte,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: t.color.linieWeich,
   }
   const segmentFilled: ViewStyle = { backgroundColor: t.color.funke }
   return { progressRow, segment, segmentFilled }

@@ -24,7 +24,16 @@ export function Button({ variant = 'primaer', disabled = false, onPress, style, 
     nacht: t.color.nacht,
   }
   const fg = variant === 'nacht' ? t.color.funke : variant === 'primaer' ? inkOnFunke(t) : t.color.tinte
-  const shadow = variant === 'leise' ? t.shadow.hartS : t.shadow.hart
+  // "Funke ruhig": the hard offset shadow is the primary action's mark alone — one accent per
+  // screen. Secondary variants sit flat, with a quiet contour (ghost) or none at all.
+  const primary = variant === 'primaer'
+  const border: Record<ButtonVariant, string> = {
+    primaer: t.color.tinte,
+    // tinte-2 keeps the control boundary at ≥ 3:1 (WCAG 1.4.11) while reading far quieter than ink.
+    ghost: t.color.tinte2,
+    leise: t.color.funkeWeich,
+    nacht: t.color.nacht,
+  }
 
   const container: ViewStyle = {
     width: '100%',
@@ -34,10 +43,10 @@ export function Button({ variant = 'primaer', disabled = false, onPress, style, 
     minHeight: 52,
     paddingHorizontal: t.space.s5,
     backgroundColor: bg[variant],
-    borderWidth: 2,
-    borderColor: t.color.tinte,
+    borderWidth: t.space.kontur,
+    borderColor: border[variant],
     borderRadius: t.radius.pille,
-    ...shadow,
+    ...(primary ? t.shadow.hart : null),
   }
   const label: TextStyle = {
     color: fg,
@@ -58,7 +67,9 @@ export function Button({ variant = 'primaer', disabled = false, onPress, style, 
       style={({ pressed }) => [
         container,
         disabled && { opacity: 0.4 },
-        pressed && !disabled && { transform: [{ translateX: 4 }, { translateY: 4 }], shadowOpacity: 0, elevation: 0 },
+        pressed && !disabled && (primary
+          ? { transform: [{ translateX: 3 }, { translateY: 3 }], shadowOpacity: 0, elevation: 0 }
+          : { opacity: 0.7 }),
         style,
       ]}
     >

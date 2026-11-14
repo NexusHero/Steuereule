@@ -26,9 +26,8 @@ export function Card({ variant = 'default', style, children, testID }: CardProps
     },
     nacht: {
       backgroundColor: t.color.nacht,
-      borderWidth: 2,
-      borderColor: t.color.tinte,
-      ...t.shadow.hart,
+      borderWidth: t.space.kontur,
+      borderColor: t.color.nacht,
     },
     ai: {
       backgroundColor: t.color.kiWeich,

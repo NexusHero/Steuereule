@@ -767,7 +767,8 @@ describe('CockpitScreen — the running year is a prepare mode (K2)', () => {
     renderCockpit()
 
     await screen.findByText('Erfasstes Einkommen')
-    expect(screen.getByTestId('jahr-2026').textContent).toBe('2026 · läuft')
+    // The chosen pill also carries a hidden ✓ (Chip), so only the label is compared.
+    expect(screen.getByTestId('jahr-2026').textContent).toContain('2026 · läuft')
     expect(screen.getByTestId('jahr-2025').textContent).toBe('2025')
   })
 

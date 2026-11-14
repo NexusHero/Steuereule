@@ -4,7 +4,7 @@
    Text: Schibsted Grotesk — klar, freundlich, gut lesbar.
    Mono: Space Mono — Zeilennummern, Regel-IDs, Metadaten.
    Zahlen: IMMER tabular-nums (Klasse .num).
-   Skala: 12 / 14 / 16 / 18 / 24 / 32 / 44 / 60
+   Skala: 12 / 14 / 16 / 18 / 24 / 28 / 34 / 52 („Funke ruhig“)
    ============================================================ */
 :root {
   --schrift-display: "Bricolage Grotesque", "Arial Black", sans-serif; /* @kind font */
@@ -16,14 +16,14 @@
   --text-m: 16px;
   --text-l: 18px;
   --text-xl: 24px;
-  --text-2xl: 32px;
-  --text-3xl: 44px;
-  --text-held: 60px;   /* der Erstattungs-Held */
+  --text-2xl: 28px;
+  --text-3xl: 34px;
+  --text-held: 52px;   /* der Erstattungs-Held */
 
   --gewicht-normal: 450; /* @kind font */
   --gewicht-halb: 600; /* @kind font */
   --gewicht-fett: 700; /* @kind font */
-  --gewicht-schwer: 800; /* @kind font */
+  --gewicht-schwer: 700; /* @kind font */
 
   --zeile-eng: 1.05; /* @kind font */
   --zeile-normal: 1.45; /* @kind font */

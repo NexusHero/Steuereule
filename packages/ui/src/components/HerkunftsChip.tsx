@@ -60,7 +60,6 @@ export function ProvenanceChip({ source, variant = 'default', testID }: Provenan
     borderColor,
     borderRadius: t.radius.s,
     padding: t.space.s3,
-    ...t.shadow.hart,
   }
   const line: TextStyle = { fontSize: t.size.s, color: t.color.tinte, marginBottom: 2 }
   const strong: TextStyle = { fontWeight: t.weight.fett }

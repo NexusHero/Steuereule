@@ -1,6 +1,6 @@
 import { Text, View, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { inkOnFunke, useTheme, type UiTheme } from '@steuereule/ui'
+import { useTheme, type UiTheme } from '@steuereule/ui'
 import {
   filingObligation,
   formatEuro,
@@ -92,15 +92,15 @@ export function Banner({ dto, taxYear, answers }: { readonly dto: DeadlinesRespo
 }
 
 function makeStyles(t: UiTheme) {
+  // A quiet note, not an alarm: soft lime, no contour.
   const banner: ViewStyle = {
-    borderWidth: 2,
-    borderColor: t.color.tinte,
-    backgroundColor: t.color.funke,
+    backgroundColor: t.color.funkeWeich,
+    borderRadius: t.radius.s,
     paddingHorizontal: t.space.s3,
     paddingVertical: t.space.s2,
     marginBottom: t.space.s3,
   }
-  const text: TextStyle = { color: inkOnFunke(t), fontFamily: t.font.text, fontSize: t.size.s }
+  const text: TextStyle = { color: t.color.tinte, fontFamily: t.font.text, fontSize: t.size.s }
   const calmBanner: ViewStyle = {
     borderWidth: 1,
     borderColor: t.color.tinte2,

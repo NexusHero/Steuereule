@@ -15,6 +15,8 @@ export interface ChipProps {
 
 export function Chip({ variant = 'standard', active = false, onPress, style, children, testID }: ChipProps) {
   const t = useTheme()
+  // Quiet at rest; a chosen chip is unmistakable: full lime, ink contour and a check mark, so the
+  // state never rests on a soft tint alone (WCAG 1.4.1, 1.4.11 — soft lime is ~1.1:1 on a card).
   const bg = active
     ? t.color.funke
     : variant === 'src'
@@ -33,10 +35,9 @@ export function Chip({ variant = 'standard', active = false, onPress, style, chi
     paddingVertical: 4,
     paddingHorizontal: 14,
     backgroundColor: bg,
-    borderWidth: 2,
-    borderColor: t.color.tinte,
+    borderWidth: t.space.kontur,
+    borderColor: active ? t.color.tinte : variant === 'pro' ? t.color.nacht : t.color.tinte2,
     borderRadius: t.radius.pille,
-    ...t.shadow.hartS,
   }
   const label: TextStyle = { fontSize: t.size.s, fontWeight: t.weight.fett, color: fg }
 
@@ -48,10 +49,15 @@ export function Chip({ variant = 'standard', active = false, onPress, style, chi
       onPress={onPress}
       style={({ pressed }) => [
         container,
-        pressed && { transform: [{ translateX: 2 }, { translateY: 2 }], shadowOpacity: 0, elevation: 0 },
+        pressed && { opacity: 0.7 },
         style,
       ]}
     >
+      {active ? (
+        <Text style={label} accessibilityElementsHidden importantForAccessibility="no" aria-hidden>
+          ✓
+        </Text>
+      ) : null}
       {typeof children === 'string' ? <Text style={label}>{children}</Text> : children}
     </Pressable>
   )

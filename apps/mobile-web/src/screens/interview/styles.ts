@@ -1,5 +1,5 @@
 import { type ViewStyle, type TextStyle } from 'react-native'
-import { WIDE_CONTENT_MAX_WIDTH, inkOnFunke, type UiTheme } from '@steuereule/ui'
+import { WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
 
 export function makeInterviewStyles(t: UiTheme) {
   const screen: ViewStyle = {
@@ -19,8 +19,8 @@ export function makeInterviewStyles(t: UiTheme) {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: t.color.karte,
-    borderWidth: 2,
-    borderColor: t.color.tinte,
+    borderWidth: t.space.kontur,
+    borderColor: t.color.linieWeich,
     borderRadius: t.radius.pille,
     paddingVertical: 4,
     paddingHorizontal: 12,
@@ -39,13 +39,8 @@ export function makeInterviewStyles(t: UiTheme) {
     marginBottom: t.space.s2,
   }
   const gateHeading: TextStyle = { ...heading, marginBottom: t.space.s3 }
-  const mark: TextStyle = {
-    backgroundColor: t.color.funke,
-    color: inkOnFunke(t),
-    paddingHorizontal: t.space.s2,
-    borderRadius: t.radius.s,
-    overflow: 'hidden',
-  }
+  // "Funke ruhig": the key word is set in readable dark lime, no lime box behind it.
+  const mark: TextStyle = { color: t.color.funkeTinte }
   const help: TextStyle = {
     color: t.color.tinte2,
     fontFamily: t.font.text,

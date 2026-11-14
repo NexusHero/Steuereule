@@ -39,6 +39,7 @@ describe('dark mode readability on lime (funke) surfaces', () => {
 
     expect(getComputedStyle(screen.getByText('Weiter')).color).toBe(DARK_INK_ON_FUNKE_RGB)
     expect(getComputedStyle(screen.getByText('Abbrechen')).color).toBe(DARK_TINTE_RGB)
+    // A chosen chip, option or tab sits on full lime again, so its state never rests on a soft tint.
     expect(getComputedStyle(screen.getByText('Aktiv')).color).toBe(DARK_INK_ON_FUNKE_RGB)
     expect(getComputedStyle(screen.getByText('Inaktiv')).color).toBe(DARK_TINTE_RGB)
     expect(getComputedStyle(screen.getByText('Ja')).color).toBe(DARK_INK_ON_FUNKE_RGB)
@@ -55,5 +56,23 @@ describe('dark mode readability on lime (funke) surfaces', () => {
       </ThemeProvider>,
     )
     expect(getComputedStyle(screen.getByText('Weiter')).color).toBe(LIGHT_TINTE_RGB)
+  })
+})
+
+describe('a chosen state never rests on colour alone (WCAG 1.4.1)', () => {
+  it('marks an active chip and a chosen option with a check, and announces the option as selected', () => {
+    render(
+      <ThemeProvider mode="light">
+        <Chip active testID="c-an">An</Chip>
+        <Chip testID="c-aus">Aus</Chip>
+        <Option selected testID="o-an">Gewählt</Option>
+        <Option testID="o-aus">Offen</Option>
+      </ThemeProvider>,
+    )
+    expect(screen.getByTestId('c-an').textContent).toContain('✓')
+    expect(screen.getByTestId('c-aus').textContent).not.toContain('✓')
+    expect(screen.getByTestId('o-an').textContent).toContain('✓')
+    expect(screen.getByTestId('o-an').getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByTestId('o-aus').textContent).not.toContain('✓')
   })
 })
