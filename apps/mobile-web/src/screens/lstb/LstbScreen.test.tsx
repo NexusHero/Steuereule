@@ -74,6 +74,8 @@ function makeUploadedReceipt(id = 'rec-lstb-1', fileName = 'lstb-2026.pdf'): Rec
     belegdatum: null,
     zahlungsdatum: null,
     hasFile: true,
+    holders: [],
+    holderTaxYear: null,
     mimeType: 'application/pdf',
     byteLength: 512,
     assignment: { kind: 'ungebunden' },
@@ -238,6 +240,22 @@ describe('LstbScreen', () => {
     await waitFor(() => expect(puts).toEqual([{ kirchensteuer: 540, kirchensteuerEhegatte: null }]))
   })
 
+  it('saves the employer subsidies of Zeile 24 on blur (real case 2024, ADR-0090)', async () => {
+    const puts: unknown[] = []
+    server.use(
+      http.put('*/v1/steuerjahre/:jahr/lstb-zuschuesse', async ({ request }) => {
+        const body = await request.json()
+        puts.push(body)
+        return HttpResponse.json(body, { status: 200 })
+      }),
+    )
+    renderLstb()
+    const line24 = await screen.findByLabelText('Steuerfreie Zuschüsse zur Kranken- und Pflegeversicherung (Zeile 24 a–c, zusammen) (Ganzzahlige Euro)')
+    fireEvent.change(line24, { target: { value: '5072' } })
+    fireEvent.blur(line24)
+    await waitFor(() => expect(puts).toEqual([{ zuschuesseKvPv: 5072 }]))
+  })
+
   it('an emptied church tax line is stored as not entered, never as 0 €', async () => {
     const puts: unknown[] = []
     server.use(
@@ -387,6 +405,8 @@ describe('LstbScreen', () => {
       rawText: 'Ausdruck der elektronischen Lohnsteuerbescheinigung für 2026\n3. Bruttoarbeitslohn 54.000,00',
       textSource: 'pdf_text',
       stageDraft: true,
+      // The mask is the upload area (ADR-0092).
+      area: 'A',
     })
 
     const grossInput = screen.getByTestId('lstb-bruttoarbeitslohn') as HTMLInputElement
@@ -415,6 +435,41 @@ describe('LstbScreen', () => {
     expect((screen.getByTestId('lstb-bruttoarbeitslohn') as HTMLInputElement).value).toBe('55000')
   })
 
+  it('asks whose the certificate is when its name contradicts B’s mask, and reads it for the chosen person (ADR-0092)', async () => {
+    const bodies: Record<string, unknown>[] = []
+    server.use(
+      http.post(UPLOAD_URL, () => HttpResponse.json(makeUploadedReceipt('rec-x', 'elias.pdf'), { status: 201 })),
+      http.post(PARSE_URL, async ({ request }) => {
+        const body = (await request.json()) as Record<string, unknown>
+        bodies.push(body)
+        if (body.holder === undefined) {
+          return HttpResponse.json({
+            mode: 'deterministic_fallback',
+            securityBlocked: false,
+            parsed: { vendorCategory: 'sonstiges', receiptDate: null, amountEur: null, suggestedScreen: null, suggestedField: null, suggestedValue: null, summary: 'Für wen?', taxYear: null },
+            stagedAction: null,
+            assistantMessage: null,
+            assignment: {
+              holder: null,
+              alsoFor: [],
+              question: { reason: 'contradiction', options: [{ holder: 'A', name: 'Elias' }, { holder: 'B', name: 'Sabine' }], preselected: 'A', printedName: 'Elias Muster', area: { holder: 'B', name: 'Sabine' }, offerCreate: [] },
+            },
+          } satisfies ParseReceiptResponseDto)
+        }
+        return HttpResponse.json({ ...makeParseResponse({ person: 'A' }), assignment: { holder: { holder: 'A', name: 'Elias' }, question: null, alsoFor: [] } })
+      }),
+    )
+    mockExtractDocumentText.mockResolvedValue({ kind: 'pdf', mimeType: 'application/pdf', text: 'Lohnsteuerbescheinigung\nElias Muster', usedOcrFallback: false, pagesProcessed: 1 })
+    renderLstb({ partnerName: 'Sabine' })
+    fireEvent.change(await screen.findByTestId('lstb-scan-file-input'), { target: { files: [new File(['%PDF'], 'elias.pdf', { type: 'application/pdf' })] } })
+    expect((await screen.findByTestId('beleg-zuordnung-frage')).textContent).toBe('Der Beleg lautet auf Elias Muster, du bist bei Sabine – für wen?')
+    expect(bodies[0]).toMatchObject({ area: 'B' })
+    fireEvent.click(screen.getByTestId('beleg-zuordnung-fuer-A'))
+    expect((await screen.findByTestId('lstb-scan-anderswo')).textContent).toContain('Elias')
+    expect(bodies[1]).toMatchObject({ holder: 'A', receiptId: 'rec-x' })
+    expect(bodies[1]!.area).toBeUndefined()
+  })
+
   it('displays Stage-2 KI-Text-Fallback badge and sends person=B for partner certificates', async () => {
     let parseBody: unknown = null
     let confirmUrl = ''
@@ -422,7 +477,7 @@ describe('LstbScreen', () => {
       http.post(UPLOAD_URL, () => HttpResponse.json(makeUploadedReceipt('rec-partner-1', 'sabine.jpg'), { status: 201 })),
       http.post(PARSE_URL, async ({ request }) => {
         parseBody = await request.json()
-        return HttpResponse.json(makeParseResponse({ stage: 'llm_text_fallback', receiptId: 'rec-partner-1' }), { status: 200 })
+        return HttpResponse.json(makeParseResponse({ stage: 'llm_text_fallback', receiptId: 'rec-partner-1', person: 'B' }), { status: 200 })
       }),
       http.put(LSTB_URL, ({ request }) => {
         confirmUrl = request.url
@@ -450,7 +505,8 @@ describe('LstbScreen', () => {
     fireEvent.change(input, { target: { files: [new File([new Uint8Array([0xff, 0xd8, 0xff])], 'sabine.jpg', { type: 'image/jpeg' })] } })
 
     expect(await screen.findByText('KI-Text-Fallback (ohne personenbezogene Daten)')).toBeTruthy()
-    expect(parseBody).toMatchObject({ person: 'B', kind: 'lstb' })
+    // Uploaded in B's mask: B's area (ADR-0092).
+    expect(parseBody).toMatchObject({ area: 'B', kind: 'lstb' })
 
     fireEvent.click(screen.getByTestId('lstb-scan-apply'))
     await waitFor(() => expect(confirmUrl).toMatch(/\/lstb\?person=B$/))

@@ -76,25 +76,15 @@ describe('AdvisorChatPanel — receipts in the chat', () => {
     expect(onFile).toHaveBeenCalledTimes(2)
   })
 
-  it('asks whose Swiss salary certificate it is and hands the answer on', () => {
-    const choose = vi.fn()
-    renderPanel(
-      <AdvisorChatPanel
-        messages={[]}
-        onSendMessage={vi.fn()}
-        receiptNotice="Wessen Lohnausweis ist das?"
-        onChooseCertificateOwner={choose}
-      />,
-    )
-    fireEvent.click(screen.getByTestId('advisor-certificate-owner-b'))
-    expect(choose).toHaveBeenCalledWith('B')
-    fireEvent.click(screen.getByTestId('advisor-certificate-owner-a'))
-    expect(choose).toHaveBeenLastCalledWith('A')
+  it('shows the document assignment under the upload (ADR-0092)', () => {
+    renderPanel(<AdvisorChatPanel messages={[]} onSendMessage={vi.fn()} receiptAssignment={<span data-testid="zuordnung-slot">Für wen?</span>} />)
+    expect(screen.getByTestId('advisor-receipt-notice')).toBeTruthy()
+    expect(screen.getByTestId('zuordnung-slot').textContent).toBe('Für wen?')
   })
 
-  it('offers no owner choice on an ordinary notice', () => {
+  it('shows no assignment on an ordinary notice', () => {
     renderPanel(<AdvisorChatPanel messages={[]} onSendMessage={vi.fn()} receiptNotice="Datei unlesbar" />)
-    expect(screen.queryByTestId('advisor-certificate-owner-a')).toBeNull()
+    expect(screen.queryByTestId('beleg-zuordnung')).toBeNull()
   })
 
   it('shows progress while a receipt is read and the outcome notice afterwards', () => {

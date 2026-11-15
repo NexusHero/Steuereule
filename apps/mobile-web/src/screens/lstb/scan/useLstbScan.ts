@@ -14,7 +14,10 @@ import {
   type LstbYearConflictDto,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../../i18n/resources'
+import type { AssignmentQuestionDto } from '@steuereule/api-client'
+import { printedPersonDetails } from '@steuereule/core'
 import { captureReceipt, type CapturePhase } from '../../../lib/receipts/captureReceipt'
+import { createHolderFromDocument, detailsFromDocument, takeNameIntoProfile, type NewHolderDetails } from '../../../lib/receipts/documentAssignment'
 import { integerFrom } from '../../shared/integer'
 import {
   buildFieldDraft,
@@ -45,6 +48,14 @@ export interface LstbScanState {
   readonly dismissYearConflict: () => void
   readonly dismissOverwriteConflict: () => void
   readonly setPreviewOpen: (open: boolean) => void
+  /** The name on the document contradicts this mask, names nobody of the household, or A has no name yet (ADR-0092). */
+  readonly assignmentQuestion: { readonly question: AssignmentQuestionDto; readonly printed: NewHolderDetails } | null
+  readonly assignmentError: string | null
+  /** The user gave the document to someone else than this mask's person: its values wait in the owl. */
+  readonly assignedElsewhere: string | null
+  readonly chooseHolder: (holder: string) => Promise<void>
+  readonly createHolder: (role: 'B' | 'kind', details: NewHolderDetails) => Promise<void>
+  readonly confirmSelf: (takeName: boolean) => Promise<void>
 }
 
 /**
@@ -68,6 +79,9 @@ export function useLstbScan({ taxYear, person }: { readonly taxYear: number; rea
   const [overwriteConflict, setOverwriteConflict] = useState(false)
   const [sameCertificate, setSameCertificate] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(false)
+  const [assignment, setAssignment] = useState<{ question: AssignmentQuestionDto; printed: NewHolderDetails; file: File; receiptId: string | null } | null>(null)
+  const [assignmentError, setAssignmentError] = useState<string | null>(null)
+  const [assignedElsewhere, setAssignedElsewhere] = useState<string | null>(null)
 
   // A different tax year or person starts from a clean slate.
   useEffect(() => {
@@ -87,13 +101,22 @@ export function useLstbScan({ taxYear, person }: { readonly taxYear: number; rea
     if (rehydrated !== null) setStagedScan(rehydrated)
   }, [advisorSessionQuery.data, person, locallyDismissed, stagedScan])
 
-  async function scanFile(file: File) {
+  async function scanFile(file: File, again?: { holder: string; receiptId: string | null }) {
     setError(null)
     setYearConflict(null)
     setOverwriteConflict(false)
     setLocallyDismissed(false)
+    setAssignment(null)
+    setAssignmentError(null)
+    setAssignedElsewhere(null)
     try {
-      const captured = await captureReceipt(file, { taxYear, kind: 'lstb', person, onPhase: setBusyPhase })
+      // The mask is the upload area (ADR-0092): the document is this person's unless its name says otherwise.
+      const captured = await captureReceipt(file, {
+        taxYear,
+        kind: 'lstb',
+        onPhase: setBusyPhase,
+        ...(again ? { holder: again.holder, receiptId: again.receiptId } : { area: person }),
+      })
       // The original lands in the Belege inbox even when reading or parsing fails.
       void queryClient.invalidateQueries({ queryKey: getReceiptControllerListQueryKey() })
       if (!captured.ok) {
@@ -110,7 +133,23 @@ export function useLstbScan({ taxYear, person }: { readonly taxYear: number; rea
         )
         return
       }
+      const question = captured.response.assignment?.question ?? null
+      if (question !== null) {
+        setAssignment({
+          question,
+          printed: detailsFromDocument(printedPersonDetails('lstb', captured.rawText, question.printedName)),
+          file,
+          receiptId: captured.receiptId,
+        })
+        return
+      }
       const lstbScan = captured.response.lstb
+      if (lstbScan && lstbScan.person !== null && lstbScan.person !== person) {
+        // Read for the other spouse: the drafts wait in the owl, not in this mask.
+        setAssignedElsewhere(captured.response.assignment?.holder?.name ?? lstbScan.person)
+        void queryClient.invalidateQueries({ queryKey: getAdvisorControllerGetSessionQueryKey(taxYear) })
+        return
+      }
       if (!lstbScan) {
         setError(tr('lstb.scan.error.parseFailed'))
         return
@@ -223,8 +262,36 @@ export function useLstbScan({ taxYear, person }: { readonly taxYear: number; rea
     }
   }
 
+  async function chooseHolder(holder: string) {
+    if (assignment === null) return
+    await scanFile(assignment.file, { holder, receiptId: assignment.receiptId })
+  }
+
+  async function createHolder(role: 'B' | 'kind', details: NewHolderDetails) {
+    if (assignment === null) return
+    const holder = await createHolderFromDocument(taxYear, role, details)
+    if (holder === null) {
+      setAssignmentError(tr('belegZuordnung.anlegen.fehler'))
+      return
+    }
+    await queryClient.invalidateQueries()
+    await scanFile(assignment.file, { holder, receiptId: assignment.receiptId })
+  }
+
+  async function confirmSelf(takeName: boolean) {
+    if (assignment === null) return
+    if (takeName) await takeNameIntoProfile(assignment.printed)
+    await scanFile(assignment.file, { holder: 'A', receiptId: assignment.receiptId })
+  }
+
   const evaluation = evaluateStagedDraft(stagedScan)
   return {
+    assignmentQuestion: assignment === null ? null : { question: assignment.question, printed: assignment.printed },
+    assignmentError,
+    assignedElsewhere,
+    chooseHolder,
+    createHolder,
+    confirmSelf,
     stagedScan,
     evaluation,
     canApply:

@@ -82,3 +82,21 @@ export class OwlCardsResponseDto {
   @ApiProperty({ type: String, example: '01.01.2025' })
   legalStatus!: string
 }
+
+/** ADR-0091: give (`true`) or revoke (`false`) the consent that personal data may go to the owl's model. */
+export class SetPersonalDataConsentDto {
+  @ApiProperty({ type: Boolean, example: true })
+  @IsBoolean()
+  granted!: boolean
+}
+
+export class PersonalDataConsentResponseDto {
+  @ApiProperty({ type: Boolean, description: 'True while a consent to the current text stands.' })
+  granted!: boolean
+
+  @ApiProperty({ type: String, example: '2026-11-14', description: 'Version of the consent text the app shows now.' })
+  version!: string
+
+  @ApiPropertyOptional({ type: String, nullable: true, example: '2026-11-14T10:00:00Z' })
+  grantedAt!: string | null
+}

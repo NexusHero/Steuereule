@@ -62,6 +62,12 @@ export interface ParseReceiptDto {
   receiptId?: string;
   /** Taxpayer slot when parsing a partner LStB (ADR-0054). */
   person?: ParseReceiptDtoPerson;
+  /** Where the document was uploaded (ADR-0092): `A`, `B` or `kind:<child id>` for a mask of that person. The place decides whose the document is; a name on it that is clearly someone else makes the app ask. Absent in the chat and the Belege tab. */
+  area?: string;
+  /** The user’s answer to „Für wen?“ (ADR-0092): `A`, `B` or `kind:<child id>`. Final; nothing is asked again. */
+  holder?: string;
+  /** Take a multi-person document over for `holder` too („auch für … übernehmen?“): links it to them as well, with their own lines. */
+  alsoFor?: boolean;
   /** How rawText was produced on the device: a PDF text layer, or OCR of a photo/scan (never green, ADR-0060). */
   textSource?: ParseReceiptDtoTextSource;
   mimeType?: ParseReceiptDtoMimeType;
@@ -170,6 +176,17 @@ export const AdvisorActionProposalDtoPerson = {
 } as const;
 
 /**
+ * A document amount where the field already holds one from another source (ADR-0092): `add` puts it on top (a second employer), `replace` corrects what is there. The two are alternatives.
+ */
+export type AdvisorActionProposalDtoCombination = typeof AdvisorActionProposalDtoCombination[keyof typeof AdvisorActionProposalDtoCombination];
+
+
+export const AdvisorActionProposalDtoCombination = {
+  add: 'add',
+  replace: 'replace',
+} as const;
+
+/**
  * computed: the three euro figures come from the app's own estimate. not-computable: there is no figure, see effectHint. Absent: approximation.
  */
 export type AdvisorActionProposalDtoEffect = typeof AdvisorActionProposalDtoEffect[keyof typeof AdvisorActionProposalDtoEffect];
@@ -245,6 +262,8 @@ export interface AdvisorActionProposalDto {
   companionFields?: AdvisorActionProposalDtoCompanionFields;
   /** Drafts sharing this group are alternatives (the two paths of a comparison): apply one, never several together. */
   alternativeGroup?: string;
+  /** A document amount where the field already holds one from another source (ADR-0092): `add` puts it on top (a second employer), `replace` corrects what is there. The two are alternatives. */
+  combination?: AdvisorActionProposalDtoCombination;
   /** Raw values of the companion fields when the draft was created (stale-check baseline). */
   companionExpectedValues?: AdvisorActionProposalDtoCompanionExpectedValues;
   /** When the draft was last applied. */
@@ -475,6 +494,17 @@ export const AdvisorMaxPathProposalDtoPerson = {
 } as const;
 
 /**
+ * A document amount where the field already holds one from another source (ADR-0092): `add` puts it on top (a second employer), `replace` corrects what is there. The two are alternatives.
+ */
+export type AdvisorMaxPathProposalDtoCombination = typeof AdvisorMaxPathProposalDtoCombination[keyof typeof AdvisorMaxPathProposalDtoCombination];
+
+
+export const AdvisorMaxPathProposalDtoCombination = {
+  add: 'add',
+  replace: 'replace',
+} as const;
+
+/**
  * computed: the three euro figures come from the app's own estimate. not-computable: there is no figure, see effectHint. Absent: approximation.
  */
 export type AdvisorMaxPathProposalDtoEffect = typeof AdvisorMaxPathProposalDtoEffect[keyof typeof AdvisorMaxPathProposalDtoEffect];
@@ -545,6 +575,8 @@ export interface AdvisorMaxPathProposalDto {
   companionFields?: AdvisorMaxPathProposalDtoCompanionFields;
   /** Drafts sharing this group are alternatives (the two paths of a comparison): apply one, never several together. */
   alternativeGroup?: string;
+  /** A document amount where the field already holds one from another source (ADR-0092): `add` puts it on top (a second employer), `replace` corrects what is there. The two are alternatives. */
+  combination?: AdvisorMaxPathProposalDtoCombination;
   /** Raw values of the companion fields when the draft was created (stale-check baseline). */
   companionExpectedValues?: AdvisorMaxPathProposalDtoCompanionExpectedValues;
   /** When the draft was last applied. */
@@ -639,6 +671,8 @@ export interface AdvisorMessageMetaDto {
   questionRound?: AdvisorQuestionRoundDto;
   /** Turbo mode: the owl applied the drafts of this answer itself; each can be undone. */
   turbo?: boolean;
+  /** The owl needed personal data or the user wrote some, without consent to personal data going to the model: the chat shows the consent card (ADR-0091). */
+  personalDataConsentRequest?: boolean;
   /** Why the language model did not answer this turn, when it did not (#487): the answer then comes from fixed rules or is missing. */
   modelFailure?: AdvisorModelFailureDto;
   action?: AdvisorActionProposalDto;
@@ -979,6 +1013,72 @@ export interface ParsedChLetterResponseDto {
   stagedActionIds: string[];
 }
 
+export interface AssignmentPersonDto {
+  /** `A`, `B` or `kind:<child id>`. */
+  holder: string;
+  /**
+     * The first name on record, for the button; null while none is entered.
+     * @nullable
+     */
+  name: string | null;
+}
+
+/**
+ * `which`: „Für wen?“ in a household of several; `contradiction`: the name on it is someone else than the person of the upload area; `unknown`: it names nobody of the household; `confirmSelf`: A has no name yet — „Bist du …?“.
+ */
+export type AssignmentQuestionDtoReason = typeof AssignmentQuestionDtoReason[keyof typeof AssignmentQuestionDtoReason];
+
+
+export const AssignmentQuestionDtoReason = {
+  which: 'which',
+  contradiction: 'contradiction',
+  unknown: 'unknown',
+  confirmSelf: 'confirmSelf',
+} as const;
+
+export type AssignmentQuestionDtoOfferCreateItem = typeof AssignmentQuestionDtoOfferCreateItem[keyof typeof AssignmentQuestionDtoOfferCreateItem];
+
+
+export const AssignmentQuestionDtoOfferCreateItem = {
+  B: 'B',
+  kind: 'kind',
+} as const;
+
+export interface AssignmentQuestionDto {
+  /** `which`: „Für wen?“ in a household of several; `contradiction`: the name on it is someone else than the person of the upload area; `unknown`: it names nobody of the household; `confirmSelf`: A has no name yet — „Bist du …?“. */
+  reason: AssignmentQuestionDtoReason;
+  options: AssignmentPersonDto[];
+  /**
+     * The person the document names, preselected.
+     * @nullable
+     */
+  preselected: string | null;
+  /**
+     * The name printed on the document, for the question; never stored.
+     * @nullable
+     */
+  printedName: string | null;
+  /**
+     * The person of the upload area („du bist bei …“).
+     * @nullable
+     */
+  area: AssignmentPersonDto | null;
+  /** Who can be created from the document: „als Person B anlegen?“, „als Kind anlegen?“. */
+  offerCreate: AssignmentQuestionDtoOfferCreateItem[];
+}
+
+export interface DocumentAssignmentDto {
+  /**
+     * The person it was read for; null while the question is open.
+     * @nullable
+     */
+  holder: AssignmentPersonDto | null;
+  /** @nullable */
+  question: AssignmentQuestionDto | null;
+  /** Others of the household a multi-person document names: „auch für … übernehmen?“. */
+  alsoFor: AssignmentPersonDto[];
+}
+
 export interface ParseReceiptResponseDto {
   mode: ParseReceiptResponseDtoMode;
   securityBlocked: boolean;
@@ -993,6 +1093,44 @@ export interface ParseReceiptResponseDto {
   chLohnausweis?: ParsedChCertificateResponseDto | null;
   /** @nullable */
   chLetter?: ParsedChLetterResponseDto | null;
+  /**
+     * Whose the document is (ADR-0092); absent for a receipt of the joint return.
+     * @nullable
+     */
+  assignment?: DocumentAssignmentDto | null;
+}
+
+export type ReassignReceiptDtoTextSource = typeof ReassignReceiptDtoTextSource[keyof typeof ReassignReceiptDtoTextSource];
+
+
+export const ReassignReceiptDtoTextSource = {
+  pdf_text: 'pdf_text',
+  ocr: 'ocr',
+} as const;
+
+export interface ReassignReceiptDto {
+  taxYear: number;
+  /** The new holder: `A`, `B` or `kind:<child id>`. */
+  holder: string;
+  /** The document text, read again on the device, so its values can be read for the new holder. Without it the values are only taken back. */
+  rawText?: string;
+  textSource?: ReassignReceiptDtoTextSource;
+}
+
+export interface ReassignReceiptResponseDto {
+  /** Whose the document is now, the holder first. */
+  holders: string[];
+  /** Values taken back at the person before (only those still as the document wrote them). */
+  takenBack: number;
+  /** Values written for the new holder right away. */
+  applied: number;
+  /** Drafts waiting for the user: „zusätzlich oder ersetzen?“ or a value to check. */
+  waiting: number;
+  /**
+     * The document read for the new holder; null without `rawText`.
+     * @nullable
+     */
+  parse: ParseReceiptResponseDto | null;
 }
 
 export type OwlCardDtoTrigger = typeof OwlCardDtoTrigger[keyof typeof OwlCardDtoTrigger];
@@ -1402,6 +1540,19 @@ export interface ApplyBatchActionsResponseDto {
 export interface AdvisorActionMutationResponseDto {
   message: AdvisorChatMessageDto;
   action: AdvisorActionProposalDto;
+}
+
+export interface PersonalDataConsentResponseDto {
+  /** True while a consent to the current text stands. */
+  granted: boolean;
+  /** Version of the consent text the app shows now. */
+  version: string;
+  /** @nullable */
+  grantedAt?: string | null;
+}
+
+export interface SetPersonalDataConsentDto {
+  granted: boolean;
 }
 
 export interface OwlSettingResponseDto {

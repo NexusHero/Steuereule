@@ -162,6 +162,26 @@ describe('Cockpit Screen — Slice 5 Persona Boosters & Dual Cockpit', () => {
     expect(screen.queryByTestId('partner-rente')).toBeNull()
   })
 
+  it('offers the German LStB to a Grenzgänger B who changed job in the year (Strom-vs-chat S1, ADR-0079)', async () => {
+    const coupling = http.get(`*/v1/steuerjahre/${TAX_YEAR}/kopplung`, () =>
+      HttpResponse.json({ filingType: 'zusammen', personBUserId: null, invitationCode: null, personBHasOwnAccount: false, personB: { firstName: 'Nora', lastName: 'Sommer', steuerId: null, geburtsdatum: null, religion: null, religionConsent: false, beruf: null } }),
+    )
+    mockDoneInterview({ job: 'Angestellt', ausland: 'Ja, in die Schweiz', kinder: 'Nein', familienstand: 'Verheiratet', 'partner-job': 'Angestellt', 'partner-ausland': 'Ja, in die Schweiz' })
+    server.use(
+      http.get('*/v1/stammdaten', () => HttpResponse.json({ familienstand: 'verheiratet', missing: [] })),
+      coupling,
+      // B's way to work records the change of job: the first way ends, a second one starts.
+      http.get(`*/v1/steuerjahre/${TAX_YEAR}/arbeitsweg`, ({ request }) =>
+        new URL(request.url).searchParams.get('person') === 'B'
+          ? HttpResponse.json({ inputs: { periodTo: '31.08.2025', secondFrom: '01.09.2025', secondOneWayKm: 70 }, workdays: null, commuterAllowance: null })
+          : HttpResponse.json({ inputs: null, workdays: null, commuterAllowance: null }),
+      ),
+    )
+    renderCockpit({ onOpenPartner: vi.fn() })
+    expect(await screen.findByTestId('partner-schweiz')).toBeTruthy()
+    expect(await screen.findByTestId('partner-lstb')).toBeTruthy()
+  })
+
   it('hides Dual Cockpit partner section when filingType is einzel', async () => {
     mockDoneInterview({ job: 'Angestellt', ausland: 'Nein', kinder: 'Nein', familienstand: 'Verheiratet' })
     server.use(

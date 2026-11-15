@@ -45,7 +45,38 @@ async function uploadInChat(page, name, lines) {
   await page.locator(tid('advisor-receipt-file-input')).setInputFiles({ name, mimeType: 'application/pdf', buffer: pdf })
   const res = await parsed
   if (!res.ok()) fail(`Row A: ${name} should be read, got ${res.status()}`)
-  return res.json()
+  const body = await res.json()
+  // A household of several: „Für wen?“ first (ADR-0092); the person the document names is preselected.
+  const question = body.assignment?.question
+  if (!question) return body
+  if (!question.preselected) fail(`Row A: ${name} should preselect the person it names, got ${JSON.stringify(question)}`)
+  const again = page.waitForResponse((r) => r.url().includes('/belege/parse') && (r.request().postData() ?? '').includes(`"holder":"${question.preselected}"`), { timeout: 60_000 })
+  await page.locator(tid(`beleg-zuordnung-fuer-${question.preselected.replace(':', '-')}`)).click()
+  return (await again).json()
+}
+
+/** Through the API like a client of its own: answers „Für wen?“ with the person named, and takes a family
+ * statement over for everyone it names („auch für …“, ADR-0092). */
+async function parseForNamed(api, body) {
+  // `/belege/parse` allows 15 calls a minute per IP; answering „Für wen?“ doubles the calls, so a 429 waits.
+  const parse = async (data) => {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const res = await api.fetch('/v1/belege/parse', { method: 'POST', data })
+      if (res.status() === 429) {
+        await new Promise((resolve) => setTimeout(resolve, 61_000))
+        continue
+      }
+      if (!res.ok()) fail(`Row B: ${data.fileName} answered ${res.status()}: ${(await res.text()).slice(0, 200)}`)
+      return res.json()
+    }
+    fail(`Row B: ${data.fileName} stayed throttled`)
+  }
+  const first = await parse(body)
+  const question = first.assignment?.question
+  if (!question) return
+  if (!question.preselected) fail(`Row B: ${body.fileName} should preselect the person it names, got ${JSON.stringify(question)}`)
+  const read = await parse({ ...body, holder: question.preselected })
+  for (const other of read.assignment?.alsoFor ?? []) await parse({ ...body, holder: other.holder, alsoFor: true })
 }
 
 export async function runScenario25(browser, webOrigin, sql) {
@@ -122,9 +153,11 @@ export async function runScenario25(browser, webOrigin, sql) {
     { kind: 'auto', rawText: D.donation },
   ]
   for (const [i, doc] of documents.entries()) {
-    await call(api, 'POST', '/v1/belege/parse', { taxYear: Y, fileName: `beleg-${i + 1}.pdf`, mimeType: 'application/pdf', textSource: 'pdf_text', ...doc })
+    await parseForNamed(api, { taxYear: Y, fileName: `beleg-${i + 1}.pdf`, mimeType: 'application/pdf', textSource: 'pdf_text', ...doc })
   }
-  const pending = (await drafts(api)).filter((a) => a.status === 'pending')
+  // Where a field holds an amount already (the dentist's bill before the statement's self-borne costs), both
+  // ways wait (ADR-0092 §6); this family adds them up, so the „ersetzen“ alternative stays unused.
+  const pending = (await drafts(api)).filter((a) => a.status === 'pending' && a.combination !== 'replace')
   for (const a of pending) {
     const res = await api.fetch(`/v1/steuerjahre/${Y}/advisor/actions/${a.actionId}/apply`, { method: 'POST', data: {} })
     if (!res.ok()) fail(`Row B: taking over ${a.screen}.${a.field}${a.person === 'B' ? ' (B)' : ''} answered ${res.status()}: ${(await res.text()).slice(0, 200)}`)

@@ -11,6 +11,8 @@
     "stop": "not a testID: icon name, see microphone",
     "eule-inline-mask-unplaced": "the notice for a question that is on no page of the workbench: every question the owl may draft is placed (locate-question.test.ts checks that every question of the interview has a page), so the browser can never reach it; it is covered by OwlInlineMask.test.tsx (#488)",
     "draft-choose-${draft.actionId}": "UX review K1: two ways for one field come only from the model's two-paths tool (advisor-tool-round.ts); the fake KiPort's scripted calls never use it and the rule fallback drafts one way (the home-office branch drafts exactly the stated days), so the browser gate cannot reach it. Covered by OwlModeScreenAlternatives.test.tsx and the API test of ADVISOR_BATCH_ALTERNATIVE_CONFLICT",
-    "eule-batch-alternatives-hint": "UX review K1: shown only next to alternatives, see draft-choose-${draft.actionId}"
+    "eule-batch-alternatives-hint": "UX review K1: shown only next to alternatives, see draft-choose-${draft.actionId}",
+    "beleg-zuordnung-fehler": "ADR-0092: shown only when creating Person B or a child from a document fails on the server (a refused write); the browser gate has no way to make the real API refuse a valid person. Covered by DocumentAssignmentCard.test.tsx and documentAssignment.test.tsx",
+    "advisor-lstb-scan-kombination": "ADR-0092 §6: the chat's LStB card hint when the LStB already holds an amount from another source; the add-or-replace choice itself runs in the browser in real-case-additions Row J (family statement) and for the LStB in the mask, the API side in document-assignment.test.ts"
   }
 }

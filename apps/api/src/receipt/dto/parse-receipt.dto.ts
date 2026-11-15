@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
-import { IsBoolean, IsIn, IsInt, IsNotEmpty, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator'
+import { IsBoolean, IsIn, IsInt, IsNotEmpty, IsOptional, IsString, Matches, Max, MaxLength, Min } from 'class-validator'
 import { SCREENS, type LstbFieldReason, type Screen } from '@steuereule/core'
 import { AdvisorActionProposalDto, AdvisorChatMessageDto, CalculationTermDto } from '../../advisor/dto/advisor.dto.js'
 
@@ -22,6 +22,9 @@ export const ALLOWED_RECEIPT_PARSE_MIME_TYPES = [
   'image/webp',
   'application/pdf',
 ] as const
+
+/** `A`, `B` or `kind:<child id>` — the same pattern as core's `isHolderRef`. */
+export const HOLDER_REF_PATTERN = /^(?:A|B|kind:[A-Za-z0-9_-]{1,64})$/
 
 /** Document kinds with a registered parse strategy (`auto` = generic receipt classifier). */
 export const DOCUMENT_KINDS = ['auto', 'lstb', 'chLohnausweis', 'chPensionskasse', 'chPraemien', 'chKrankenkasse'] as const
@@ -80,6 +83,35 @@ export class ParseReceiptDto {
   @IsString()
   @IsIn(['A', 'B'])
   person?: 'A' | 'B'
+
+  @ApiPropertyOptional({
+    type: String,
+    example: 'B',
+    description: 'Where the document was uploaded (ADR-0092): `A`, `B` or `kind:<child id>` for a mask of that person. The place decides whose the document is; a name on it that is clearly someone else makes the app ask. Absent in the chat and the Belege tab.',
+  })
+  @IsOptional()
+  @IsString()
+  @Matches(HOLDER_REF_PATTERN)
+  area?: string
+
+  @ApiPropertyOptional({
+    type: String,
+    example: 'kind:3f2a',
+    description: 'The user’s answer to „Für wen?“ (ADR-0092): `A`, `B` or `kind:<child id>`. Final; nothing is asked again.',
+  })
+  @IsOptional()
+  @IsString()
+  @Matches(HOLDER_REF_PATTERN)
+  holder?: string
+
+  @ApiPropertyOptional({
+    type: Boolean,
+    example: true,
+    description: 'Take a multi-person document over for `holder` too („auch für … übernehmen?“): links it to them as well, with their own lines.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  alsoFor?: boolean
 
   @ApiPropertyOptional({
     type: String,
@@ -347,6 +379,46 @@ export class ParsedChLetterResponseDto {
   stagedActionIds!: string[]
 }
 
+export class AssignmentPersonDto {
+  @ApiProperty({ type: String, example: 'B', description: '`A`, `B` or `kind:<child id>`.' })
+  holder!: string
+
+  @ApiProperty({ type: String, nullable: true, example: 'Nora', description: 'The first name on record, for the button; null while none is entered.' })
+  name!: string | null
+}
+
+export class AssignmentQuestionDto {
+  @ApiProperty({ type: String, enum: ['which', 'contradiction', 'unknown', 'confirmSelf'], example: 'which', description: '`which`: „Für wen?“ in a household of several; `contradiction`: the name on it is someone else than the person of the upload area; `unknown`: it names nobody of the household; `confirmSelf`: A has no name yet — „Bist du …?“.' })
+  reason!: 'which' | 'contradiction' | 'unknown' | 'confirmSelf'
+
+  @ApiProperty({ type: [AssignmentPersonDto] })
+  options!: AssignmentPersonDto[]
+
+  @ApiProperty({ type: String, nullable: true, example: 'B', description: 'The person the document names, preselected.' })
+  preselected!: string | null
+
+  @ApiProperty({ type: String, nullable: true, example: 'Nora Sommer', description: 'The name printed on the document, for the question; never stored.' })
+  printedName!: string | null
+
+  @ApiProperty({ type: AssignmentPersonDto, nullable: true, description: 'The person of the upload area („du bist bei …“).' })
+  area!: AssignmentPersonDto | null
+
+  @ApiProperty({ type: [String], enum: ['B', 'kind'], example: ['B'], description: 'Who can be created from the document: „als Person B anlegen?“, „als Kind anlegen?“.' })
+  offerCreate!: ('B' | 'kind')[]
+}
+
+/** Whose the document is (ADR-0092), or the question the app asks before it reads it for anyone. */
+export class DocumentAssignmentDto {
+  @ApiProperty({ type: AssignmentPersonDto, nullable: true, description: 'The person it was read for; null while the question is open.' })
+  holder!: AssignmentPersonDto | null
+
+  @ApiProperty({ type: AssignmentQuestionDto, nullable: true })
+  question!: AssignmentQuestionDto | null
+
+  @ApiProperty({ type: [AssignmentPersonDto], description: 'Others of the household a multi-person document names: „auch für … übernehmen?“.' })
+  alsoFor!: AssignmentPersonDto[]
+}
+
 export class ParseReceiptResponseDto {
   @ApiProperty({ type: String, enum: ['vision_ocr', 'deterministic_fallback'], example: 'vision_ocr' })
   mode!: 'vision_ocr' | 'deterministic_fallback'
@@ -371,4 +443,7 @@ export class ParseReceiptResponseDto {
 
   @ApiPropertyOptional({ type: ParsedChLetterResponseDto, nullable: true })
   chLetter?: ParsedChLetterResponseDto | null
+
+  @ApiPropertyOptional({ type: DocumentAssignmentDto, nullable: true, description: 'Whose the document is (ADR-0092); absent for a receipt of the joint return.' })
+  assignment?: DocumentAssignmentDto | null
 }

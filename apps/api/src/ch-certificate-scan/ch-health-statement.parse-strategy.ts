@@ -15,7 +15,7 @@ type Field = Parameters<AdvisorService['stageDocumentDrafts']>[2]['fields'][numb
 /**
  * A Swiss health insurer's statement for the tax return (ADR-0080): the basic-insurance premiums of each
  * insured person. The partners' premiums go to their Lohnausweis mask (Krankenkasse, CHF), a child's to
- * its Anlage Kind (Kz 66, in euros at the Lohnausweis rate). A second insurer in the year adds to the
+ * its Anlage Kind (Kz 89 as a foreign insurer, in euros at the Lohnausweis rate; ADR-0090). A second insurer in the year adds to the
  * first; the same statement uploaded again adds nothing. A fixed rule reads it; names stay on the server.
  */
 @Injectable()
@@ -63,8 +63,11 @@ export class ChHealthStatementParseStrategy implements DocumentParseStrategy, On
     let selfBorneChf = 0
     const selfBorneItems: AdvisorCountedItem[] = []
     const countedHealth = await this.advisorService.countedReceiptItems(userId, year, { screen: 'interview', field: 'gesundheit-betrag' })
+    // Read for one person of the household (ADR-0092 §5): only their lines; the others are offered apart.
+    const only = dto.holder
     for (const person of read.insured) {
       const key = insuredMember(person.name, members)
+      if (only !== undefined && key !== only) continue
       if (key === null) {
         unmatched++
         continue
@@ -95,6 +98,8 @@ export class ChHealthStatementParseStrategy implements DocumentParseStrategy, On
         }
         const field = premiumField('healthBasicEur', Math.round(chfToEur(chf, rateA)), dto, items)
         forA.push({ ...field, ...(chosenRate === null ? { status: 'pruefen' as const } : {}), screen: 'kind', instance: childId })
+        // A Swiss insurer is a foreign one: the child's premium belongs in Anlage Kind Kz 89 (ADR-0090).
+        forA.push({ field: 'healthInsuranceAbroad', label: 'Kind: Kasse im Ausland (Anlage Kind Kz 89)', value: 'true', status: 'ok', reason: null, screen: 'kind', instance: childId })
       }
       if (person.selfBorneCents > 0) {
         const item = selfBorneItemOf(read.insurer, year, person)
@@ -174,7 +179,7 @@ export class ChHealthStatementParseStrategy implements DocumentParseStrategy, On
 
 function premiumField(field: string, value: number, dto: ParseReceiptDto, items: AdvisorCountedItem[]): Field {
   const fromOcr = dto.textSource !== 'pdf_text'
-  return { field, label: field === 'healthBasicEur' ? 'Kind: Basis-Krankenversicherung (Anlage Kind Kz 66)' : 'Krankenkasse Grundversicherung (CHF)', value, status: fromOcr ? 'pruefen' : 'ok', reason: fromOcr ? 'ocr_source' : null, accumulate: true, countedItems: items }
+  return { field, label: field === 'healthBasicEur' ? 'Kind: Basis-Krankenversicherung (Anlage Kind Kz 89)' : 'Krankenkasse Grundversicherung (CHF)', value, status: fromOcr ? 'pruefen' : 'ok', reason: fromOcr ? 'ocr_source' : null, accumulate: true, countedItems: items }
 }
 
 /** The self-borne costs of one person on one statement: counted into the Krankheitskosten once. */

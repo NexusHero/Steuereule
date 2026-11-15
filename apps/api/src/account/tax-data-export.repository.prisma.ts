@@ -91,6 +91,7 @@ export class PrismaTaxDataExportRepository implements TaxDataExportRepository {
         }
       }),
     )
+    const personalDataConsents = await this.prisma.owlPersonalDataConsent.findMany({ where })
     const partnerLinks = await this.prisma.partnerLink.findMany({ where: { OR: [{ personAUserId: userId }, { personBUserId: userId }] } })
     const mergeQuestions = await this.prisma.householdMergeCandidate.findMany({ where: { householdUserId: userId } })
 
@@ -113,6 +114,7 @@ export class PrismaTaxDataExportRepository implements TaxDataExportRepository {
       ...links.map((row) => toExportEntry('Steuerjahr-Kopplung', 'TaxYearLink', row)),
       ...owlSetting.map((row) => toExportEntry('Eulen-Modus-Einstellung', 'OwlSetting', row)),
       ...owlDismissals.map((row) => toExportEntry('Eulen-Modus-Kartenverwurf', 'OwlCardDismissal', row)),
+      ...personalDataConsents.map((row) => toExportEntry('Eulen-Einwilligung Personendaten', 'OwlPersonalDataConsent', row)),
       ...advisorConversations.map((row) => toExportEntry('Steuerberater-Chat (Gespräche)', 'AdvisorConversation', row)),
       ...advisorMessages.map((row) => toExportEntry('Steuerberater-Chat', 'AdvisorChatMessage', row)),
       ...advisorNotes.map((row) => toExportEntry('Steuerberater-Chat (Projektnotizen)', 'AdvisorNote', row)),

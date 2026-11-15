@@ -70,10 +70,13 @@ describe('InterviewService — Slice 5 haushalt & gesundheit entries', () => {
     expect(initial.nextStep).toEqual({ kind: 'question', id: 'gesundheit-gate' })
 
     await service.postAnswer(USER_ID, TAX_YEAR, { questionId: 'gesundheit-gate', value: 'Ja' })
-    const done = await service.postAnswer(USER_ID, TAX_YEAR, {
+    const afterCosts = await service.postAnswer(USER_ID, TAX_YEAR, {
       questionId: 'gesundheit-betrag',
       value: '4200',
     })
+    // Then what was reimbursed (ADR-0090).
+    expect(afterCosts.nextStep).toEqual({ kind: 'question', id: 'gesundheit-erstattung' })
+    const done = await service.postAnswer(USER_ID, TAX_YEAR, { questionId: 'gesundheit-erstattung', value: '0' })
     expect(done.nextStep).toEqual({ kind: 'done' })
 
     const reloaded = await service.getState(USER_ID, TAX_YEAR, 'gesundheit')

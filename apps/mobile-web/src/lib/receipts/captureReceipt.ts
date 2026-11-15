@@ -20,6 +20,9 @@ export type CaptureResult =
       /** The stored Beleg (encrypted original), or null when the upload was not possible. */
       readonly receiptId: string | null
       readonly response: ParseReceiptResponseDto
+      /** The text read on the device: kept only in memory, to read the document again for someone else. */
+      readonly rawText: string
+      readonly textSource: 'pdf_text' | 'ocr'
     }
   | { readonly ok: false; readonly failure: CaptureFailure }
 
@@ -28,6 +31,12 @@ export interface CaptureReceiptOptions {
   /** Force a strategy (the LStB mask); otherwise the text decides (chat, inbox). */
   readonly kind?: DetectedDocumentKind | undefined
   readonly person?: 'A' | 'B' | undefined
+  /** The person whose mask the upload happened in (ADR-0092): `A`, `B` or `kind:<id>`. */
+  readonly area?: string | undefined
+  /** The user's answer to „Für wen?“ (ADR-0092): final. */
+  readonly holder?: string | undefined
+  /** „Auch für … übernehmen?“: link the document to `holder` as well. */
+  readonly alsoFor?: boolean | undefined
   /** The Beleg is already stored (parsing again after the user said whose it is): no second upload. */
   readonly receiptId?: string | null | undefined
   readonly onPhase?: ((phase: CapturePhase) => void) | undefined
@@ -95,13 +104,16 @@ export async function captureReceipt(file: File, options: CaptureReceiptOptions)
     stageDraft: true,
     ...(receiptId !== null ? { receiptId } : {}),
     ...(options.person === 'B' ? { person: 'B' } : {}),
+    ...(options.area !== undefined ? { area: options.area } : {}),
+    ...(options.holder !== undefined ? { holder: options.holder } : {}),
+    ...(options.alsoFor === true ? { alsoFor: true } : {}),
   }
 
   options.onPhase?.('parsing')
   try {
     const parsed = await deps.parse(payload)
     if (parsed.status !== 200) return { ok: false, failure: 'parse_failed' }
-    return { ok: true, kind, receiptId, response: parsed.data }
+    return { ok: true, kind, receiptId, response: parsed.data, rawText: extracted.text, textSource: payload.textSource ?? 'ocr' }
   } catch {
     return { ok: false, failure: 'parse_failed' }
   }

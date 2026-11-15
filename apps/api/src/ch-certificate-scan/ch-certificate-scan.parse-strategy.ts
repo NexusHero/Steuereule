@@ -1,4 +1,5 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
+import { holderWithoutPartner } from './document-holder.js'
 import { HumanMessage, SystemMessage } from '@langchain/core/messages'
 import { Inject, Injectable, Optional, type OnModuleInit } from '@nestjs/common'
 import { z } from 'zod'
@@ -145,7 +146,7 @@ export class ChCertificateScanParseStrategy implements DocumentParseStrategy, On
     const household = await this.advisorService.householdNames(userId, dto.taxYear)
     // The name in box H; when that fits nobody, the one name of the household the whole form carries.
     const person: 'A' | 'B' | null =
-      dto.person ?? (household.B === null ? 'A' : (certificateHolderPerson(read.holder, household) ?? certificateHolderPerson(rawText, household)))
+      dto.person ?? (household.B === null ? holderWithoutPartner(rawText, household.A, read.holder ?? undefined) : (certificateHolderPerson(read.holder, household) ?? certificateHolderPerson(rawText, household)))
     const personUnclear = person === null
     const personNotRecordable = person === 'B' && household.B?.recordable !== true
     const yearConflict = read.taxYear !== null && read.taxYear !== dto.taxYear ? { documentYear: read.taxYear, activeYear: dto.taxYear } : null

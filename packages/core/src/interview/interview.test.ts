@@ -781,8 +781,10 @@ describe('Ticket #443 Slice 5 — haushalt & gesundheit catalogue entries', () =
     })
     expect(isValidAnswer('gesundheit-betrag', '2500')).toBe(true)
     expect(isValidAnswer('gesundheit-betrag', AMOUNT_LATER)).toBe(false)
+    // Then what was reimbursed (ADR-0090), and the entry is done.
+    expect(nextStepFor(ENTRIES.gesundheit, { 'gesundheit-gate': 'Ja', 'gesundheit-betrag': '2500' })).toEqual({ kind: 'question', id: 'gesundheit-erstattung' })
     expect(
-      nextStepFor(ENTRIES.gesundheit, { 'gesundheit-gate': 'Ja', 'gesundheit-betrag': '2500' }),
+      nextStepFor(ENTRIES.gesundheit, { 'gesundheit-gate': 'Ja', 'gesundheit-betrag': '2500', 'gesundheit-erstattung': '0' }),
     ).toEqual({ kind: 'done' })
   })
 })

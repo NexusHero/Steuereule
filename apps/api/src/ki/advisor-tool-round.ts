@@ -12,8 +12,10 @@ import {
   tidyNoteText,
   fieldSpec,
   resolveRecordHandle,
+  isNewRecordId,
   simulateAdvisorFieldDelta,
   checkDraftPerson,
+  deriveBasisAnswers,
   isInterviewAreaId,
   checkPrivateSale,
   checkSmallBusiness,
@@ -110,6 +112,8 @@ export async function runToolRound(
       : []
 
   const toolMessages: ToolMessage[] = []
+  /** The user consented to personal data for the owl (ADR-0091); without it nothing changes. */
+  const consent = request.personalDataConsent === true
   let pendingActions = state.pendingActions
   let rejectedDrafts = state.rejectedDrafts
   let pendingTwoPaths = state.pendingTwoPaths
@@ -161,8 +165,8 @@ export async function runToolRound(
       answer({ ok: false, error: target.error })
     }
     /** Refuses a draft: the model gets the reason, and the answer will carry it unless a retry succeeds. */
-    const refuseDraft = (label: string, screen: string, error: string, openScreen?: Screen): void => {
-      rejectedDrafts = [...rejectedDrafts, { label, screen, reason: humanReason(error), ...(openScreen ? { openScreen } : {}) }]
+    const refuseDraft = (label: string, screen: string, error: string, openScreen?: Screen, consentRequired?: true): void => {
+      rejectedDrafts = [...rejectedDrafts, { label, screen, reason: humanReason(error), ...(openScreen ? { openScreen } : {}), ...(consentRequired ? { consentRequired } : {}) }]
     }
     /**
      * Which stored record a draft is for. Masks with one record per case take no instance at
@@ -170,7 +174,9 @@ export async function runToolRound(
      */
     const resolveInstance = (screen: Screen, field: string, raw: string | null | undefined): RecordHandleResolution | { ok: true; id: null; handle: null } => {
       if (!fieldSpec(screen, field)?.perInstance) return { ok: true, id: null, handle: null }
-      return resolveRecordHandle(screen, request.records?.[screen] ?? [], raw)
+      // A new record (ADR-0091): a rental object always, a child only with the consent to personal data.
+      const allowNew = screen === 'vermietung' || (screen === 'kind' && consent)
+      return resolveRecordHandle(screen, request.records?.[screen] ?? [], raw, { allowNew })
     }
 
     /**
@@ -204,7 +210,7 @@ export async function runToolRound(
       const args = parseArgs(TOOL_ARG_SCHEMAS.simulate_tax_delta)
       if (args === null) continue
       const { screen, field, newValue } = args
-      const target = validateStageTarget(screen, field)
+      const target = validateStageTarget(screen, field, consent)
       if (!target.ok) {
         rejectTarget(target)
         continue
@@ -230,15 +236,15 @@ export async function runToolRound(
       const sourceId = normalizeSourceId(args.sourceId)
       const rawCompanions = Object.entries(args.companionFields ?? {}).map(([k, v]) => [k.trim(), v] as const)
 
-      const target = validateStageTarget(screen, field)
+      const target = validateStageTarget(screen, field, consent)
       if (!target.ok) {
-        refuseDraft(label, screen, target.error)
+        refuseDraft(label, screen, target.error, undefined, target.consentRequired)
         rejectTarget(target)
         continue
       }
       // Person B only where the household has one A records for, and only on B's own masks.
       const person = args.person
-      const personCheck = checkDraftPerson(request.household, person, target.screen)
+      const personCheck = checkDraftPerson(request.household, person, target.screen, field)
       if (!personCheck.ok) {
         const error = `${personCheck.code}: ${personCheck.reason}`
         refuseDraft(label, screen, error)
@@ -270,10 +276,10 @@ export async function runToolRound(
       }
       // Companion fields are written with the same rights as the main field, so they pass the same gate.
       const lockedCompanion = rawCompanions
-        .map(([companionField]) => validateStageTarget(screen, companionField))
+        .map(([companionField]) => validateStageTarget(screen, companionField, consent))
         .find((check): check is Extract<StageTargetCheck, { ok: false }> => !check.ok)
       if (lockedCompanion) {
-        refuseDraft(label, screen, lockedCompanion.error)
+        refuseDraft(label, screen, lockedCompanion.error, undefined, lockedCompanion.consentRequired)
         rejectTarget(lockedCompanion)
         continue
       }
@@ -290,15 +296,29 @@ export async function runToolRound(
         const entry = checkedValues.find((candidate) => candidate.name === name)!
         return entry.check.ok ? entry.check.value : ''
       }
-      const newValue = tidy(field.trim())
+      const cleanFieldName = field.trim()
+      const newValue = tidy(cleanFieldName)
       const companionEntries = rawCompanions.map(([name]) => [name, tidy(name)] as const)
       const companionFields = companionEntries.length > 0 ? Object.fromEntries(companionEntries) : undefined
 
-      try {
-        checkPiiFree({ newValue, label, reason, companionFields: companionFields ?? {} })
-      } catch (error) {
-        answer({ ok: false, error: error instanceof Error ? error.message : 'PII boundary rejected draft payload.' })
-        continue
+      // A new child is created from its draft: it needs the first name and the birth date (ADR-0091).
+      if (target.screen === 'kind' && isNewRecordId(instance)) {
+        const written = new Set([cleanFieldName, ...companionEntries.map(([name]) => name)])
+        if (!written.has('firstName') || !written.has('geburtsdatum')) {
+          const error = 'NEW_RECORD_INCOMPLETE: Ein neues Kind lege ich mit Vorname (firstName) und Geburtsdatum (geburtsdatum) im selben Entwurf an, als Haupt- oder Begleitfeld. Frag den Nutzer danach.'
+          refuseDraft(label, screen, error)
+          answer({ ok: false, error })
+          continue
+        }
+      }
+      // With the consent to personal data the values may carry a Steuer-ID or an IBAN (ADR-0091).
+      if (!consent) {
+        try {
+          checkPiiFree({ newValue, label, reason, companionFields: companionFields ?? {} })
+        } catch (error) {
+          answer({ ok: false, error: error instanceof Error ? error.message : 'PII boundary rejected draft payload.' })
+          continue
+        }
       }
 
       const cleanField = field.trim()
@@ -341,18 +361,18 @@ export async function runToolRound(
       const rawSafe = args.safePath
       const rawMax = args.maxPath
 
-      const safeCheck = validateStageTarget(rawSafe.screen, rawSafe.field)
+      const safeCheck = validateStageTarget(rawSafe.screen, rawSafe.field, consent)
       if (!safeCheck.ok) {
         rejectTarget(safeCheck)
         continue
       }
-      const maxCheck = validateStageTarget(rawMax.screen, rawMax.field)
+      const maxCheck = validateStageTarget(rawMax.screen, rawMax.field, consent)
       if (!maxCheck.ok) {
         rejectTarget(maxCheck)
         continue
       }
-      const safePersonCheck = checkDraftPerson(request.household, rawSafe.person, safeCheck.screen)
-      const maxPersonCheck = checkDraftPerson(request.household, rawMax.person, maxCheck.screen)
+      const safePersonCheck = checkDraftPerson(request.household, rawSafe.person, safeCheck.screen, rawSafe.field)
+      const maxPersonCheck = checkDraftPerson(request.household, rawMax.person, maxCheck.screen, rawMax.field)
       const personRefusal = !safePersonCheck.ok ? safePersonCheck : !maxPersonCheck.ok ? maxPersonCheck : null
       if (personRefusal) {
         answer({ ok: false, error: `${personRefusal.code}: ${personRefusal.reason}` })
@@ -381,7 +401,7 @@ export async function runToolRound(
         continue
       }
       try {
-        checkPiiFree({ safeNewValue, maxNewValue, title, safeLabel: rawSafe.label, maxLabel: rawMax.label })
+        if (!consent) checkPiiFree({ safeNewValue, maxNewValue, title, safeLabel: rawSafe.label, maxLabel: rawMax.label })
       } catch (error) {
         answer({ ok: false, error: error instanceof Error ? error.message : 'PII boundary rejected twoPaths payload.' })
         continue
@@ -658,6 +678,8 @@ export async function runToolRound(
     answer({ ok: true, source: ADVISOR_LEGAL_SOURCES[sourceId] })
   }
 
+  pendingActions = withDerivedBasisDrafts(pendingActions, request, makeActionId)
+
   return {
     messages: toolMessages,
     toolRounds: state.toolRounds + 1,
@@ -671,4 +693,43 @@ export async function runToolRound(
     interviewChanges,
     sources,
   }
+}
+
+/**
+ * Basis answers the owl can read off the case (job from a wage tax certificate, Switzerland from a
+ * Swiss salary statement) become ordinary drafts when the model did not stage them itself. They pass
+ * the same checks as the model's drafts and the user confirms them like any other.
+ */
+function withDerivedBasisDrafts(pending: AdvisorActionProposal[], request: AdvisorTurnRequest, makeActionId: () => string): AdvisorActionProposal[] {
+  let result = pending
+  for (const derived of deriveBasisAnswers(request.digest)) {
+    if (result.length >= MAX_DRAFTS_PER_TURN) break
+    if (result.some((existing) => existing.screen === 'interview' && existing.field === derived.field && existing.person === undefined)) continue
+    if (!validateStageTarget('interview', derived.field).ok) continue
+    const value = checkStageValue('interview', derived.field, derived.value)
+    if (!value.ok) continue
+    result = [
+      ...result,
+      {
+        actionId: makeActionId(),
+        status: 'pending',
+        screen: 'interview',
+        field: derived.field,
+        instance: null,
+        label: derived.label,
+        previousValue: null,
+        expectedPreviousValue: null,
+        newValue: value.value,
+        beforeRefundEur: 0,
+        afterRefundEur: 0,
+        deltaEur: 0,
+        effect: 'not-computable',
+        effectHint: 'Diese Angabe bestimmt, welche Schätzung möglich ist; sie ändert für sich keinen Betrag.',
+        reason: derived.reason,
+        sourceId: derived.sourceId,
+        paragraph: ADVISOR_LEGAL_SOURCES[derived.sourceId].paragraph,
+      },
+    ]
+  }
+  return result
 }

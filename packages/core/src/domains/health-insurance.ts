@@ -44,3 +44,12 @@ export function deductibleBasicProvision(kv: HealthInsurance | null, taxYear?: n
   const basic = kv.withSickPay ? kv.basicHealthAmount * factor : kv.basicHealthAmount
   return Math.round(basic) + kv.careInsuranceAmount
 }
+
+/**
+ * Whether the interview's self-paid insurance counts next to a Swiss insurer recorded in the cross-border
+ * mask (Krankenkasse, CHF). A foreign insurer named in the interview is that same Swiss policy and is
+ * counted once — through the mask, which carries the statement's figures (ADR-0090).
+ */
+export function countsInterviewHealthInsurance(answers: Answers, swissInsurerRecorded: boolean): boolean {
+  return !(swissInsurerRecorded && answers['kv-pv'] === 'Ja' && answers['kv-pv-art'] === 'Ausländisch')
+}

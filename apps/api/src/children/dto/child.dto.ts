@@ -107,6 +107,11 @@ class ChildDetailsDto {
   @IsOptional()
   @IsIn(['A', 'B'])
   swissFamilyAllowancePayer?: 'A' | 'B' | null
+
+  @ApiPropertyOptional({ type: Boolean, nullable: true, description: 'The child’s KV/PV is with a foreign insurer (e.g. Swiss basic insurance): Anlage Kind Kz 89 (ADR-0090).' })
+  @IsOptional()
+  @IsBoolean()
+  healthInsuranceAbroad?: boolean | null
 }
 
 export class CreateChildDto extends ChildDetailsDto {
@@ -254,6 +259,9 @@ export class ChildResponseDto {
 
   @ApiPropertyOptional({ type: String, nullable: true, enum: ['A', 'B'] })
   swissFamilyAllowancePayer?: 'A' | 'B' | null
+
+  @ApiPropertyOptional({ type: Boolean, nullable: true })
+  healthInsuranceAbroad?: boolean | null
 
   @ApiPropertyOptional({ type: Boolean, description: 'The allowance is a share of a parent’s Swiss allowances, not entered for the child (ADR-0088).' })
   swissFamilyAllowanceDerived?: boolean

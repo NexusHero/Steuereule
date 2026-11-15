@@ -40,6 +40,7 @@ export function taxDataTables(tx: TransactionClient): UserKeyedTable[] {
     tx.child,
     tx.owlSetting,
     tx.owlCardDismissal,
+    tx.owlPersonalDataConsent,
     tx.advisorChatMessage,
     // After its messages: they reference the conversation (#481).
     tx.advisorConversation,

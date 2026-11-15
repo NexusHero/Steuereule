@@ -68,6 +68,7 @@ export class FakeChildRepository implements ChildRepository {
       childcareFrom: data.childcareFrom ?? null,
       childcareTo: data.childcareTo ?? null,
       swissFamilyAllowancePayer: data.swissFamilyAllowancePayer ?? null,
+      healthInsuranceAbroad: data.healthInsuranceAbroad ?? null,
     }
     this.store.set(record.id, record)
     return Promise.resolve(record)

@@ -69,6 +69,18 @@ export interface TileFacts {
   readonly children?: ChildrenResponseDto | null | undefined
 }
 
+/**
+ * A cross-border commuter who also had a German job in the year (ADR-0079): the way-to-work mask
+ * records the change (the first way ends, a second one starts), or a German certificate is already
+ * entered. Then the German LStB is asked too — for A in the Strom, for B in the partner tiles.
+ */
+export function hasGermanJobToo(commute: CommuteResponseDto | null | undefined, lstb: LstbResponseDto | null | undefined): boolean {
+  const inputs = commute?.inputs
+  const changed = inputs != null && (inputs.secondFrom != null || inputs.secondOneWayKm != null || inputs.periodTo != null)
+  const entered = lstb != null && [lstb.bruttoarbeitslohn, lstb.lohnsteuer, lstb.sozialversicherung].some((field) => field.kind === 'erfasst')
+  return changed || entered
+}
+
 export interface TileDefinition {
   readonly id: TileId
   readonly titleKey: `cockpit.kachel.${TileId}.titel`

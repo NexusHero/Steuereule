@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { employeeFromAnswers } from './employee'
 import { ENTRIES, nextStepFor, type Answers } from '../interview/interview'
-import { healthInsuranceFromAnswers } from './health-insurance'
+import { countsInterviewHealthInsurance, healthInsuranceFromAnswers } from './health-insurance'
 
 const SPECIAL_EXPENSES = ENTRIES.sonderausgaben
 
@@ -58,5 +58,15 @@ describe('self-paid health and care insurance (Anlage Vorsorgeaufwand Z. 16–33
     expect(Number.isNaN(parsed?.basicHealthAmount)).toBe(false)
     expect(Number.isNaN(parsed?.careInsuranceAmount)).toBe(false)
     expect(Number.isNaN(parsed?.optionalExtrasAmount)).toBe(false)
+  })
+})
+
+describe('one Swiss insurer, counted once (ADR-0090)', () => {
+  it('drops a foreign insurer from the interview when the cross-border mask already holds the Swiss one', () => {
+    const answers = { 'kv-pv': 'Ja', 'kv-pv-art': 'Ausländisch', 'kv-pv-betrag': '3800' } as const
+    expect(countsInterviewHealthInsurance(answers, true)).toBe(false)
+    expect(countsInterviewHealthInsurance(answers, false)).toBe(true)
+    // A private German insurer next to a Swiss one is a different policy and counts.
+    expect(countsInterviewHealthInsurance({ ...answers, 'kv-pv-art': 'Privat' }, true)).toBe(true)
   })
 })

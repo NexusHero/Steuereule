@@ -570,6 +570,20 @@ describe('ReceiptParseService — Two-Stage LStB Cascade (#444)', () => {
     expect(await h.lstbRepo.findForUserAndYear('user-lstb-1', 2025)).toBeNull()
   })
 
+  it("routes a recognised LStB uploaded with kind 'auto' to the LStB reader, like kind 'lstb' (API/MCP uploads)", async () => {
+    const h = buildTestHarness(['SHOULD_NOT_BE_CALLED'], true)
+    const rawText = [
+      'Ausdruck der elektronischen Lohnsteuerbescheinigung für 2025',
+      '3. Bruttoarbeitslohn einschl. Sachbezüge ohne 9. und 10.   54.320,00',
+      '4. Einbehaltene Lohnsteuer von 3.                         9.840,00',
+      '23. a) Arbeitnehmeranteil zur gesetzlichen Rentenversicherung 5.051,76',
+    ].join('\n')
+    const res = await h.parseService.parseReceipt('user-lstb-auto', { taxYear: 2025, kind: 'auto', fileName: 'scan.pdf', rawText, textSource: 'pdf_text' })
+    expect(res.lstb?.fields.bruttoarbeitslohn).toMatchObject({ value: 54320, status: 'ok' })
+    expect(res.lstb?.fields.lohnsteuer.value).toBe(9840)
+    expect(res.lstb?.stagedActionIds).toHaveLength(3)
+  })
+
   it('Stage 2 sees only the allowlisted rows, and invented amounts never become values (ADR-0058, AC 4)', async () => {
     const h = buildTestHarness(
       [

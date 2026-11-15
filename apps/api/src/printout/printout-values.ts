@@ -13,6 +13,8 @@ import {
 import type { FieldValues } from './form-renderer.js'
 
 export interface PersonBFacts {
+  /** B's own Lebenslagen (ADR-0088 personal entries, ADR-0090). */
+  lifeSituations?: LifeSituationFacts | null
   firstName: string | null
   lastName: string | null
   steuerId: string | null
@@ -52,6 +54,8 @@ export interface ChildFacts {
   registeredWithMeAllYear?: boolean | null
   childBenefitToMeAllYear?: boolean | null
   healthBasicEur?: string | null
+  /** A foreign insurer: KV and PV go into Kz 89 (ADR-0090). */
+  healthInsuranceAbroad?: boolean | null
   /** Anlage Kind Zeile 67 (Kz 51): childcare, provider and period (ADR-0076). */
   childcareEur?: string | null
   childcareProvider?: string | null
@@ -264,7 +268,7 @@ function nGreValues(
   set('anlNGre.steuernummer', header.steuernummer)
   values['anlNGre.kz117'] = '3'
   set('anlNGre.beruf', header.beruf)
-  const { chf, eur, split } = annexNGreAmounts({
+  const { chf, eur, split, nbuvWorkExpenses } = annexNGreAmounts({
     grossWageChf: Number(ch.grossWageChf),
     familienzulagenChf: Number(ch.familienzulagenChf),
     ahvContributionsChf: Number(ch.ahvContributionsChf),
@@ -298,6 +302,7 @@ function nGreValues(
     values[`anlNGre.${rows[1]}Arbeitnehmer`] = String(teil.employeeChf)
   }
   Object.assign(values, commuteValues(commute, 'anlNGre', waysInNGre(commute, hasGermanWage)))
+  addOtherWorkExpense(values, 'anlNGre', '50 % der Beiträge zur Nichtberufsunfallversicherung', nbuvWorkExpenses.eur)
   set('anlNGre.arbeitgeberName', ch.arbeitgeberName)
   set('anlNGre.arbeitgeberStrasse', ch.arbeitgeberStrasse)
   set('anlNGre.arbeitgeberPlzOrt', ch.arbeitgeberPlzOrt)
@@ -386,6 +391,24 @@ function workExpenseValues(x: WorkExpenseFacts | null | undefined, prefix: 'anlN
   })
   if (sonstiges.length > 0) values[`${prefix}.kz380`] = String(sonstiges.reduce((sum, [, eur]) => sum + eur, 0))
   return values
+}
+
+/**
+ * One more „Sonstiges“ Werbungskosten line (Kz 380): the first free line, or — when both are taken —
+ * added to the last one under a general label, so the sum in Kz 380 always holds.
+ */
+function addOtherWorkExpense(values: Record<string, string | true>, prefix: 'anlN' | 'anlNGre', text: string, eur: number): void {
+  if (eur <= 0) return
+  const [first, second] = WORK_EXPENSE_LINES[prefix].sonstiges
+  const free = [first, second].find((line) => values[`${prefix}.${line}Eur`] === undefined)
+  if (free !== undefined) {
+    values[`${prefix}.${free}Text`] = text
+    values[`${prefix}.${free}Eur`] = String(eur)
+  } else {
+    values[`${prefix}.${second}Text`] = 'Weitere Werbungskosten'
+    values[`${prefix}.${second}Eur`] = String(Number(values[`${prefix}.${second}Eur`]) + eur)
+  }
+  values[`${prefix}.kz380`] = String(Number(values[`${prefix}.kz380`] ?? 0) + eur)
 }
 
 /** The form's vom/bis boxes take day and month („01.11.“); the year is the tax year. */
@@ -486,6 +509,10 @@ export interface PrintoutFacts {
   riester?: RiesterFacts | null
   /** Medical costs (§ 33) and household services / craftsmen (§ 35a), whole euros as asked (ADR-0077). */
   householdAndHealth?: HouseholdAndHealthFacts | null
+  /** The basis page said there are children (Anlage Kind is then needed even before one is recorded). */
+  childrenAnswered?: boolean
+  /** Life situations answered in the Strom / catalogue (ADR-0090); absent = none. */
+  lifeSituations?: LifeSituationFacts | null
   singleParent?: SingleParentFacts | null
   commute?: CommuteFacts | null
   /** Self-paid health and care insurance of Person A (Anlage Vorsorgeaufwand Z. 16–33). */
@@ -549,9 +576,32 @@ const SINCE_FIELD: Record<string, string> = {
   'dauernd-getrennt': 'est1a.getrenntSeit',
 }
 
+/** What the Lebenslagen and Segment 2 answered, in whole euros (ADR-0090). */
+export interface LifeSituationFacts {
+  /** Fortbildungskosten — Anlage N Z. 60 / N-Gre Z. 55, Kz 330. */
+  trainingEur: number | null
+  /** Beruflich veranlasster Umzug — a further Werbungskosten line (Kz 380). */
+  relocationEur: number | null
+  /** Einkommensersatzleistungen under the progression clause — Hauptvordruck Z. 35, Kz 120 (A) / 121 (B). */
+  wageReplacementEur: number | null
+  /** An Abfindung: Anlage N Z. 17/18 depend on how the employer taxed it — not printed yet. */
+  severance: boolean
+  /** Doppelte Haushaltsführung: its own Anlage N-Doppelte Haushaltsführung — not printed yet. */
+  secondHousehold: boolean
+}
+
+/** Work expenses of the life situations into the form that holds the person's work expenses. */
+function addLifeSituationWorkExpenses(target: Record<string, string | true>, prefix: 'anlN' | 'anlNGre', ls: LifeSituationFacts | null | undefined): void {
+  if (!ls) return
+  if (ls.trainingEur) target[`${prefix}.kz330`] = String(ls.trainingEur)
+  if (ls.relocationEur) addOtherWorkExpense(target, prefix, 'Umzugskosten (beruflich veranlasst)', ls.relocationEur)
+}
+
 export interface HouseholdAndHealthFacts {
-  /** Out-of-pocket medical costs after reimbursements (Anlage Außergewöhnliche Belastungen Z. 23–25). */
+  /** Medical costs of the year (Anlage Außergewöhnliche Belastungen Z. 24, Kz 302). */
   healthCostsEur: number | null
+  /** What insurers or Beihilfe reimbursed (Z. 25, Kz 303), ADR-0090; absent = nothing. */
+  healthReimbursedEur?: number | null
   /** Anlage Haushaltsnahe Aufwendungen Z. 4 (Kz 202), Z. 5 (Kz 212), Z. 6/9 (Kz 214, labour only). */
   minijobEur: number | null
   servicesEur: number | null
@@ -634,6 +684,7 @@ export function printoutValues(facts: PrintoutFacts): PrintoutValues {
     values['anlN.personA'] = true
     const waysA = waysInAnlageN(facts.commute, facts.chSalaryCertificate)
     if (waysA) Object.assign(values, commuteValues(facts.commute, 'anlN', waysA))
+    addLifeSituationWorkExpenses(values, 'anlN', facts.lifeSituations)
     set('anlN.name', profile.lastName)
     set('anlN.vorname', profile.firstName)
     set('anlN.steuernummer', profile.steuernummer)
@@ -642,6 +693,7 @@ export function printoutValues(facts: PrintoutFacts): PrintoutValues {
     if (hasGrossA) {
       const waysA = waysInAnlageN(facts.commute, facts.chSalaryCertificate)
       const nA: Record<string, string | true> = { 'anlN.kz110': gross!, 'anlN.personA': true, ...(waysA ? commuteValues(facts.commute, 'anlN', waysA) : {}) }
+      addLifeSituationWorkExpenses(nA, 'anlN', facts.lifeSituations)
       if (profile.lastName) nA['anlN.name'] = profile.lastName
       if (profile.firstName) nA['anlN.vorname'] = profile.firstName
       if (profile.steuernummer) nA['anlN.steuernummer'] = profile.steuernummer
@@ -652,6 +704,7 @@ export function printoutValues(facts: PrintoutFacts): PrintoutValues {
     // B's commute belongs to their Anlage N unless they are a Grenzgänger (then it is in their N-Gre).
     const waysB = waysInAnlageN(b?.commute, b?.chSalaryCertificate)
     if (waysB) Object.assign(nB, commuteValues(b?.commute, 'anlN', waysB))
+    addLifeSituationWorkExpenses(nB, 'anlN', b?.lifeSituations)
     if (b?.lastName) nB['anlN.name'] = b.lastName
     if (b?.firstName) nB['anlN.vorname'] = b.firstName
     if (profile.steuernummer) nB['anlN.steuernummer'] = profile.steuernummer
@@ -746,7 +799,20 @@ export function printoutValues(facts: PrintoutFacts): PrintoutValues {
     beruf: personB?.beruf ?? null,
     steuernummer: profile.steuernummer,
   })
+  // Without a German employer the work expenses of the life situations go into the person's N-Gre.
+  if (nGreA?.gap === null && !hasGrossA) addLifeSituationWorkExpenses(nGreA.values, 'anlNGre', facts.lifeSituations)
+  if (nGreB?.gap === null && !hasGrossB) addLifeSituationWorkExpenses(nGreB.values, 'anlNGre', personB?.lifeSituations)
   for (const n of [nGreA, nGreB]) if (n?.gap) missing.push(n.gap)
+  // Children named on the basis page but none recorded: the Anlage Kind would be missing (Strom-vs-chat, P2).
+  if (facts.childrenAnswered && (facts.kinder?.length ?? 0) === 0 && !missing.includes('kinder')) missing.push('kinder')
+  // Einkommensersatzleistungen (Hauptvordruck Z. 35) and the life situations without a printout yet (ADR-0090).
+  const lifeB = facts.link?.filingType === 'zusammen' ? personB?.lifeSituations : null
+  if (facts.lifeSituations?.wageReplacementEur) values['est1a.kz120'] = String(facts.lifeSituations.wageReplacementEur)
+  if (lifeB?.wageReplacementEur) values['est1a.kz121'] = String(lifeB.wageReplacementEur)
+  for (const ls of [facts.lifeSituations, lifeB]) {
+    if (ls?.severance && !missing.includes('anlageNEntschaedigung')) missing.push('anlageNEntschaedigung')
+    if (ls?.secondHousehold && !missing.includes('anlageNDhf')) missing.push('anlageNDhf')
+  }
   const nGreInstances = [nGreA, nGreB].filter((n): n is NGreResult => n !== null && n.gap === null).map((n) => n.values)
   if (nGreInstances.length === 1 && nGreA?.gap === null) Object.assign(values, nGreInstances[0])
   else if (nGreInstances.length > 0) instances['anlage-n-gre'] = nGreInstances
@@ -841,7 +907,10 @@ export function printoutValues(facts: PrintoutFacts): PrintoutValues {
       }
       if (k.familyBenefitsOffice) kValues['anlKind.familienkasse'] = k.familyBenefitsOffice
       // Z. 27/28: KV/PV of the child the parents pay as policyholders — an empty or zero line stays empty.
-      if (k.healthBasicEur && Number(k.healthBasicEur) > 0) kValues['anlKind.kz66'] = k.healthBasicEur
+      // A foreign insurer (e.g. Swiss basic insurance) goes into Kz 89, KV and PV together (ADR-0090).
+      const foreignHealthEur = k.healthInsuranceAbroad === true ? Number(k.healthBasicEur ?? 0) + Number(k.careEur ?? 0) : 0
+      if (foreignHealthEur > 0) kValues['anlKind.kz89'] = String(foreignHealthEur)
+      else if (k.healthBasicEur && Number(k.healthBasicEur) > 0) kValues['anlKind.kz66'] = k.healthBasicEur
       // Zeile 67: what the parents paid; the tax office applies the 80 % and the cap itself.
       if (k.childcareEur && Number(k.childcareEur) > 0) {
         kValues['anlKind.kz51'] = k.childcareEur
@@ -849,7 +918,7 @@ export function printoutValues(facts: PrintoutFacts): PrintoutValues {
         if (k.childcareFrom) kValues['anlKind.z67Von'] = k.childcareFrom
         if (k.childcareTo) kValues['anlKind.z67Bis'] = k.childcareTo
       }
-      if (k.careEur && Number(k.careEur) > 0) kValues['anlKind.kz67'] = k.careEur
+      if (k.healthInsuranceAbroad !== true && k.careEur && Number(k.careEur) > 0) kValues['anlKind.kz67'] = k.careEur
       const start = k.geburtsdatum?.startsWith(`${facts.taxYear}-`) ? k.geburtsdatum : `${facts.taxYear}-01-01`
       const end = `${facts.taxYear}-12-31`
       if (k.domesticResidenceAllYear) {
@@ -913,10 +982,10 @@ export function printoutValues(facts: PrintoutFacts): PrintoutValues {
     set('anlAgB.name', profile.lastName)
     set('anlAgB.vorname', profile.firstName)
     set('anlAgB.steuernummer', profile.steuernummer)
-    // The interview asks for the costs after reimbursements: the tax office gets that sum and 0.
-    values['anlAgB.z23Text'] = 'Krankheitskosten (selbst getragen)'
+    // Costs and reimbursements on their own lines, as the form asks (ADR-0090).
+    values['anlAgB.z23Text'] = 'Krankheitskosten'
     values['anlAgB.kz302'] = String(hh.healthCostsEur)
-    values['anlAgB.kz303'] = '0'
+    values['anlAgB.kz303'] = String(hh.healthReimbursedEur ?? 0)
   }
   if (hh && (hh.minijobEur || hh.servicesEur || hh.craftsmenLabourEur)) {
     set('anlHha.name', profile.lastName)

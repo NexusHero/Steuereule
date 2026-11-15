@@ -109,11 +109,16 @@ describe('CatalogScreen — Slice 5 boosters (haushalt & gesundheit)', () => {
     expect(screen.queryByTestId('katalog-later-gesundheit-betrag')).toBeNull()
     fireEvent.change(medicalInput, { target: { value: '2500' } })
     fireEvent.click(screen.getByTestId('katalog-submit-gesundheit-betrag'))
+    // Then what was reimbursed (ADR-0090).
+    const reimbursed = await screen.findByTestId('katalog-input-gesundheit-erstattung')
+    fireEvent.change(reimbursed, { target: { value: '600' } })
+    fireEvent.click(screen.getByTestId('katalog-submit-gesundheit-erstattung'))
 
     await waitFor(() =>
       expect(posted).toEqual([
         { questionId: 'gesundheit-gate', value: 'Ja' },
         { questionId: 'gesundheit-betrag', value: '2500' },
+        { questionId: 'gesundheit-erstattung', value: '600' },
       ]),
     )
     await waitFor(() => expect(onDone).toHaveBeenCalledOnce())

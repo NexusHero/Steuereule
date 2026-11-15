@@ -107,6 +107,14 @@ export interface LstbChurchTaxDto {
   kirchensteuerEhegatte: number | null;
 }
 
+export interface LstbSubsidiesDto {
+  /**
+     * Zeile 24 a–c: steuerfreie Arbeitgeberzuschüsse zur Kranken- und Pflegeversicherung, zusammen, ganze Euro.
+     * @nullable
+     */
+  zuschuesseKvPv: number | null;
+}
+
 export type LstbControllerGetLstbParams = {
 /**
  * B: Person A reads the figures of a partner without an own account (ADR-0054).
@@ -178,6 +186,36 @@ export type LstbControllerSetChurchTaxPerson = typeof LstbControllerSetChurchTax
 
 
 export const LstbControllerSetChurchTaxPerson = {
+  A: 'A',
+  B: 'B',
+} as const;
+
+export type LstbControllerGetSubsidiesParams = {
+/**
+ * B: Person A reads the figures of a partner without an own account (ADR-0054).
+ */
+person?: LstbControllerGetSubsidiesPerson;
+};
+
+export type LstbControllerGetSubsidiesPerson = typeof LstbControllerGetSubsidiesPerson[keyof typeof LstbControllerGetSubsidiesPerson];
+
+
+export const LstbControllerGetSubsidiesPerson = {
+  A: 'A',
+  B: 'B',
+} as const;
+
+export type LstbControllerSetSubsidiesParams = {
+/**
+ * B: Person A records the figures of a partner without an own account (ADR-0054).
+ */
+person?: LstbControllerSetSubsidiesPerson;
+};
+
+export type LstbControllerSetSubsidiesPerson = typeof LstbControllerSetSubsidiesPerson[keyof typeof LstbControllerSetSubsidiesPerson];
+
+
+export const LstbControllerSetSubsidiesPerson = {
   A: 'A',
   B: 'B',
 } as const;

@@ -3,6 +3,8 @@ import {
   AI_FORBIDDEN_FIELDS,
   AI_FORBIDDEN_SCREENS,
   FIELD_CATALOG,
+  OWL_PERSONAL_DATA_CONSENT_VERSION,
+  isAiWritableField,
   describeFieldForPrompt,
   fieldSpec,
   fieldsOfScreen,
@@ -146,5 +148,95 @@ describe('the Swiss pension split and the tax-free Krankentaggeld in the catalog
     expect(describeFieldForPrompt(fieldSpec('chLohnausweis', 'steuerfreiesKrankentaggeldChf')!)).toBe(
       'steuerfreiesKrankentaggeldChf (Betrag, ganze Zahl; ausgezahltes steuerfreies Krankentaggeld, im Bruttolohn Ziffer 8 enthalten, N-Gre Zeile 9)',
     )
+  })
+})
+
+describe('personal data with the owl (ADR-0091)', () => {
+  it('marks every identifying field as personal: closed without consent, open with it', () => {
+    for (const spec of FIELD_CATALOG) {
+      if (AI_FORBIDDEN_SCREENS.has(spec.screen) || AI_FORBIDDEN_FIELDS.has(spec.field)) {
+        expect(spec.personal, `${spec.screen}.${spec.field}`).toBe(true)
+        expect(isAiWritableField(spec.screen, spec.field, false), `${spec.screen}.${spec.field}`).toBe(false)
+      }
+    }
+    expect(isAiWritableField('profil', 'steuerId', true)).toBe(true)
+    expect(isAiWritableField('stammdaten', 'iban', true)).toBe(true)
+    expect(isAiWritableField('stammdaten', 'religion', true)).toBe(true)
+    expect(isAiWritableField('kind', 'firstName', true)).toBe(true)
+    expect(isAiWritableField('kopplung', 'filingType', true)).toBe(true)
+    expect(isAiWritableField('commute', 'workplace', true)).toBe(true)
+    expect(isAiWritableField('lstb', 'bruttoarbeitslohn', false)).toBe(true)
+  })
+
+  it('never lets the owl write the invitation code, consent or not: it is a key, not a figure of the return', () => {
+    expect(isAiWritableField('kopplung', 'invitationCode', true)).toBe(false)
+    expect(fieldSpec('kopplung', 'invitationCode')?.aiWritable).toBe(false)
+  })
+
+  it('refuses fields the catalogue does not know, with or without consent', () => {
+    expect(isAiWritableField('lstb', 'unbekannt', true)).toBe(false)
+  })
+
+  it('carries a consent version, so a changed text asks again', () => {
+    expect(OWL_PERSONAL_DATA_CONSENT_VERSION).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+  })
+
+  it('offers the exchange rate of the Swiss certificate, the capital owner and the rental object description (C4)', () => {
+    expect(validateFieldValue('chLohnausweis', 'wechselkurs', '1,065')).toEqual(ok('1.065'))
+    expect(validateFieldValue('chLohnausweis', 'wechselkurs', '0.9412')).toEqual(ok('0.9412'))
+    expect(validateFieldValue('chLohnausweis', 'wechselkurs', '7').ok).toBe(false)
+    expect(validateFieldValue('chLohnausweis', 'wechselkursMonat', '2025')).toEqual(ok('2025'))
+    expect(validateFieldValue('chLohnausweis', 'wechselkursMonat', '2025-03')).toEqual(ok('2025-03'))
+    expect(validateFieldValue('chLohnausweis', 'wechselkursMonat', 'März').ok).toBe(false)
+    expect(fieldSpec('chLohnausweis', 'wechselkurs')?.aiWritable).toBe(true)
+    expect(validateFieldValue('kapital', 'inhaber', 'gemeinsam')).toEqual(ok('gemeinsam'))
+    expect(fieldSpec('kapital', 'inhaber')?.aiWritable).toBe(true)
+    expect(validateFieldValue('vermietung', 'livingArea', '85')).toEqual(ok('85'))
+    expect(validateFieldValue('vermietung', 'einheiten', '3')).toEqual(ok('3'))
+    expect(validateFieldValue('vermietung', 'depreciationAsLastYear', 'ja')).toEqual(ok('true'))
+    expect(fieldSpec('vermietung', 'umlagen')?.aiWritable).toBe(true)
+    expect(fieldSpec('vermietung', 'strasse')?.personal).toBe(true)
+    expect(fieldSpec('vermietung', 'city')?.personal).toBe(true)
+  })
+})
+
+describe('identifying numbers the owl writes with consent (ADR-0091)', () => {
+  it('takes a Steuer-ID as 11 digits, also written with spaces, and nothing else', () => {
+    expect(validateFieldValue('profil', 'steuerId', '12 345 678 901')).toEqual(ok('12345678901'))
+    expect(validateFieldValue('kind', 'taxId', '12345678901')).toEqual(ok('12345678901'))
+    expect(validateFieldValue('profil', 'steuerId', '1200').ok).toBe(false)
+  })
+
+  it('takes a Steuernummer as up to 13 digits, slashes left out', () => {
+    expect(validateFieldValue('profil', 'steuernummer', '06/123/45678')).toEqual(ok('0612345678'))
+    expect(validateFieldValue('profil', 'steuernummer', 'xyz').ok).toBe(false)
+  })
+
+  it('takes an IBAN without spaces, in capitals', () => {
+    expect(validateFieldValue('stammdaten', 'iban', 'de89 3704 0044 0532 0130 00')).toEqual(ok('DE89370400440532013000'))
+    expect(validateFieldValue('stammdaten', 'iban', '1200').ok).toBe(false)
+  })
+})
+
+describe('master data the owl writes with consent (ADR-0091)', () => {
+  it('takes the religion and the marital status only as the mask stores them', () => {
+    expect(validateFieldValue('stammdaten', 'religion', 'rk')).toEqual(ok('RK'))
+    expect(validateFieldValue('stammdaten', 'religion', 'katholisch').ok).toBe(false)
+    expect(validateFieldValue('stammdaten', 'familienstand', 'verheiratet')).toEqual(ok('verheiratet'))
+    expect(validateFieldValue('stammdaten', 'familienstand', 'Ehe').ok).toBe(false)
+  })
+
+  it('refuses an IBAN whose check digits do not add up', () => {
+    expect(validateFieldValue('stammdaten', 'iban', 'DE89370400440532013001').ok).toBe(false)
+  })
+})
+
+describe('the place of work (Strom-vs-chat R1, ADR-0091)', () => {
+  it('is a catalogue field the owl may write only with consent to personal data', () => {
+    for (const field of ['workplace', 'secondWorkplace']) {
+      expect(fieldSpec('commute', field)).toBeDefined()
+      expect(isAiWritableField('commute', field, false)).toBe(false)
+      expect(isAiWritableField('commute', field, true)).toBe(true)
+    }
   })
 })

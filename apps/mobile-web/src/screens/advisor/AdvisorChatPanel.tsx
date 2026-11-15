@@ -39,6 +39,7 @@ import {
 } from '@steuereule/core'
 import { APP_NS } from '../../i18n/resources'
 import { ModelFailureNotice } from './chat/ModelFailureNotice'
+import { PersonalDataConsentCard } from './chat/PersonalDataConsentCard'
 import { ActionProposalCardView, ScannedCertificateCardView, TwoPathsCardView } from './chat/ProposalCards'
 import { makeStyles } from './AdvisorChatPanel.styles'
 export { makeStyles } from './AdvisorChatPanel.styles'
@@ -100,8 +101,8 @@ export interface AdvisorChatPanelProps {
   /** Visible progress text of the running receipt capture, if any. */
   readonly receiptProgress?: string | null | undefined
   readonly receiptNotice?: string | null | undefined
-  /** Set while a Swiss salary certificate waits for the user to say whose it is. */
-  readonly onChooseCertificateOwner?: ((person: 'A' | 'B') => void) | undefined
+  /** „Für wen?“ and „für: … · auch für …?“ of the last document (ADR-0092), shown under the upload. */
+  readonly receiptAssignment?: ReactNode | undefined
   readonly isParsingReceipt?: boolean | undefined
   readonly compact?: boolean | undefined
   /**
@@ -190,7 +191,7 @@ export function AdvisorChatPanel({
   onAttachReceiptFile,
   receiptProgress = null,
   receiptNotice = null,
-  onChooseCertificateOwner,
+  receiptAssignment,
   isParsingReceipt = false,
   compact = false,
   variant = 'panel',
@@ -544,6 +545,9 @@ export function AdvisorChatPanel({
                 </View>
               ) : null}
 
+              {/* The owl needed personal data without consent: ask once, explicitly (ADR-0091) */}
+              {msg.meta?.personalDataConsentRequest === true ? <PersonalDataConsentCard /> : null}
+
               {/* The model did not answer: the rules did, and the reason stays with the answer (#487) */}
               {msg.meta?.modelFailure ? (
                 <ModelFailureNotice
@@ -789,19 +793,10 @@ export function AdvisorChatPanel({
         </Card>
       ) : null}
 
-      {receiptNotice ? (
+      {receiptNotice || receiptAssignment ? (
         <Card style={styles.receiptPanel} testID="advisor-receipt-notice">
-          <Text style={styles.actionReason}>{receiptNotice}</Text>
-          {onChooseCertificateOwner ? (
-            <View style={styles.certificateOwnerRow}>
-              <Button variant="leise" onPress={() => onChooseCertificateOwner('A')} testID="advisor-certificate-owner-a">
-                {tr('advisor.chat.certificateOwnerA')}
-              </Button>
-              <Button variant="leise" onPress={() => onChooseCertificateOwner('B')} testID="advisor-certificate-owner-b">
-                {tr('advisor.chat.certificateOwnerB')}
-              </Button>
-            </View>
-          ) : null}
+          {receiptNotice ? <Text style={styles.actionReason}>{receiptNotice}</Text> : null}
+          {receiptAssignment ?? null}
         </Card>
       ) : null}
 

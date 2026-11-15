@@ -69,7 +69,7 @@ export class FakeChSalaryCertificateRepository implements CrossBorderSalaryState
     return Promise.resolve(updated)
   }
 
-  setExchangeRate(userId: string, taxYear: number, exchangeRate: { month: string; rate: number; mode: string; receiptId?: string }): Promise<CrossBorderSalaryStatementRecord> {
+  setExchangeRate(userId: string, taxYear: number, exchangeRate: { month: string | null; rate: number | null; mode: string | null; receiptId?: string }): Promise<CrossBorderSalaryStatementRecord> {
     const k = key(userId, taxYear)
     const existing = this.store.get(k) ?? this.leer(userId, taxYear)
     const updated = {

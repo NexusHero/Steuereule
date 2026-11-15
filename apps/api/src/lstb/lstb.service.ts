@@ -20,6 +20,7 @@ import type { LstbResponseDto } from './dto/lstb-response.dto.js'
 import type { LstbConflictDto } from './dto/lstb-conflict.dto.js'
 import type { LstbStatusDto } from './dto/lstb-state.dto.js'
 import type { LstbChurchTaxDto } from './dto/lstb-church-tax.dto.js'
+import type { LstbSubsidiesDto } from './dto/lstb-subsidies.dto.js'
 import { wageTaxCertificateDataFrom } from './lstb-data.js'
 
 const LSTB_FIELD_IDS: readonly WageTaxCertificateFieldId[] = ['bruttoarbeitslohn', 'lohnsteuer', 'sozialversicherung']
@@ -132,6 +133,22 @@ export class LstbService {
     return churchTaxDtoFrom(record)
   }
 
+  /** Tax-free employer subsidies to health and care insurance (Zeile 24, ADR-0090). */
+  async getSubsidies(userId: string, taxYear: number): Promise<LstbSubsidiesDto> {
+    const record = await this.repository.findForUserAndYear(userId, taxYear)
+    if (record !== null) await this.auditService.append({ userId, action: 'READ', resource: 'lstb' })
+    return subsidiesDtoFrom(record)
+  }
+
+  async setSubsidies(userId: string, taxYear: number, dto: LstbSubsidiesDto): Promise<LstbSubsidiesDto> {
+    const value = dto.zuschuesseKvPv
+    if (value !== null && value !== undefined && !isValidAmount(value)) {
+      throw new InvalidInputError('FIELD_VALUE_INVALID', 'Zuschüsse require a non-negative whole-euro amount or null.')
+    }
+    const record = await this.repository.setSubsidies(userId, taxYear, value === null || value === undefined ? null : String(value))
+    return subsidiesDtoFrom(record)
+  }
+
   /** Values already captured for the year — a scan must never overwrite them silently (ADR-0008). */
   async existingValues(userId: string, taxYear: number): Promise<ExistingLstbValues> {
     const data = wageTaxCertificateDataFrom(await this.repository.findForUserAndYear(userId, taxYear))
@@ -237,4 +254,10 @@ export function churchTaxDtoFrom(record: { kirchensteuer?: string | null; kirche
     return Number(value)
   }
   return { kirchensteuer: parse(record?.kirchensteuer), kirchensteuerEhegatte: parse(record?.kirchensteuerEhegatte) }
+}
+
+/** Zeile 24 as a whole-euro number; anything unreadable counts as not entered. */
+export function subsidiesDtoFrom(record: { zuschuesseKvPv?: string | null } | null): LstbSubsidiesDto {
+  const value = record?.zuschuesseKvPv
+  return { zuschuesseKvPv: value !== null && value !== undefined && /^\d+$/.test(value) ? Number(value) : null }
 }

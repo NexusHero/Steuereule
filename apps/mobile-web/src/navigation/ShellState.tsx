@@ -176,6 +176,11 @@ export function ShellStateProvider({
   return <ShellStateContext.Provider value={value}>{children}</ShellStateContext.Provider>
 }
 
+/** The shell's open tax year, or null outside the shell (a screen rendered on its own, in a test). */
+export function useOptionalShellTaxYear(): number | null {
+  return useContext(ShellStateContext)?.taxYear ?? null
+}
+
 export function useShellState(): ShellStateValue {
   const ctx = useContext(ShellStateContext)
   if (ctx === null) {

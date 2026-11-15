@@ -40,6 +40,8 @@ export interface RejectedDraft {
   readonly reason: string
   /** Set when the user can do it by hand in that mask (a record that has to be created first). */
   readonly openScreen?: Screen | undefined
+  /** The field opens with the user's consent to personal data (ADR-0091): the answer offers it. */
+  readonly consentRequired?: true | undefined
 }
 
 /** More drafts in one answer than anyone can review are a sign the model is looping. */

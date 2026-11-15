@@ -212,10 +212,17 @@ export function ScannedCertificateCardView({
   const { t: tr } = useTranslation(APP_NS)
   const pending = actions.filter((a) => a.status === 'pending')
   const allApplied = pending.length === 0
+  // A value is recorded already (ADR-0092): the mask asks „zusätzlich oder ersetzen?“; the card shows what was read.
+  const combined = actions.some((a) => a.combination !== undefined)
   return (
     <View style={styles.actionCard} testID="advisor-lstb-scan-card">
       <Text style={styles.actionLabel}>{tr('advisor.chat.lstbScan.title', 'Lohnsteuerbescheinigung erkannt')}</Text>
-      {actions.map((a) => (
+      {combined && !allApplied ? (
+        <Text style={styles.actionReason} testID="advisor-lstb-scan-kombination">
+          {tr('belegZuordnung.kombination')}
+        </Text>
+      ) : null}
+      {actions.filter((a) => a.combination !== 'add').map((a) => (
         <View key={a.actionId} style={styles.actionHeader} testID={`advisor-lstb-scan-row-${a.field}`}>
           <Text style={styles.actionReason}>
             {a.label}: {a.newValue === '' ? tr('advisor.chat.lstbScan.notRead', 'nicht gelesen') : formatEuro(Number(a.newValue))}

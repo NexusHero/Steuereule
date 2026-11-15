@@ -6,17 +6,43 @@ import { RequiresAccount } from '../auth/requires-account.guard.js'
 import { UserContextGuard } from '../auth/user-context.guard.js'
 import { ParseTaxYearPipe } from '../cockpit/parse-tax-year.pipe.js'
 import { OwlModeService } from './owl-mode.service.js'
+import { PersonalDataConsentService } from './personal-data-consent.service.js'
 import {
   OwlSettingResponseDto,
   OwlCardsResponseDto,
+  PersonalDataConsentResponseDto,
   SetOwlSettingDto,
+  SetPersonalDataConsentDto,
 } from './dto/owl-mode.dto.js'
 
 @ApiTags('eulen-modus')
 @Controller('v1')
 @UseGuards(UserContextGuard)
 export class OwlModeController {
-  constructor(@Inject(OwlModeService) private readonly service: OwlModeService) {}
+  constructor(
+    @Inject(OwlModeService) private readonly service: OwlModeService,
+    @Inject(PersonalDataConsentService) private readonly consent: PersonalDataConsentService,
+  ) {}
+
+  @Get('eulen-modus/personendaten-einwilligung')
+  @RequiresAccount()
+  @ApiOkResponse({ type: PersonalDataConsentResponseDto, description: 'Whether personal data may go to the owl\'s language model (ADR-0091).' })
+  @ApiUnauthorizedResponse({ description: 'Requires account.' })
+  getPersonalDataConsent(@CurrentUser() userId: string): Promise<PersonalDataConsentResponseDto> {
+    return this.consent.state(userId)
+  }
+
+  /** Only the user gives or revokes it, never an assistant acting for them. */
+  @Put('eulen-modus/personendaten-einwilligung')
+  @HttpCode(200)
+  @RequiresAccount()
+  @ForbidAssistant()
+  @ApiBody({ type: SetPersonalDataConsentDto })
+  @ApiOkResponse({ type: PersonalDataConsentResponseDto })
+  @ApiUnauthorizedResponse({ description: 'Requires account.' })
+  setPersonalDataConsent(@CurrentUser() userId: string, @Body() dto: SetPersonalDataConsentDto): Promise<PersonalDataConsentResponseDto> {
+    return this.consent.set(userId, dto.granted)
+  }
 
   @Get('eulen-modus/einstellung')
   @RequiresAccount()

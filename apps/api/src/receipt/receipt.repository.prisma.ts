@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { isReceiptType } from '@steuereule/core'
+import { isHolderRef, isReceiptType, type HolderRef } from '@steuereule/core'
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
 import type { ReceiptRecord, ReceiptRepository, CreateReceiptData, SetAssignmentData } from './receipt.repository.js'
 
@@ -16,6 +16,8 @@ function toRecord(row: {
   zahlungsdatum: Date | null
   taxYear: number | null
   proposalDismissed: boolean
+  holders?: string | null
+  holderTaxYear?: number | null
   file?: { mimeType: string; byteLength: number } | null
   createdAt: Date
   updatedAt: Date
@@ -29,10 +31,17 @@ function toRecord(row: {
     ...(row.zahlungsdatum !== null ? { zahlungsdatum: toIsoDate(row.zahlungsdatum) } : {}),
     taxYear: row.taxYear,
     proposalDismissed: row.proposalDismissed,
+    holders: holdersOf(row.holders ?? null),
+    holderTaxYear: row.holderTaxYear ?? null,
     ...(row.file !== undefined ? { fileMeta: row.file ? { mimeType: row.file.mimeType, byteLength: row.file.byteLength } : null } : {}),
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   }
+}
+
+/** The stored holders, the holder first; a value that is no reference is dropped rather than shown. */
+function holdersOf(stored: string | null): HolderRef[] {
+  return (stored ?? '').split(',').filter(isHolderRef)
 }
 
 const FILE_META_INCLUDE = {
@@ -98,6 +107,20 @@ export class PrismaReceiptRepository implements ReceiptRepository {
       this.prisma.taxDataAccessLog.create({
         data: { userId, action: 'WRITE', resource: 'beleg' },
       }),
+    ])
+    return toRecord(updated)
+  }
+
+  async setHolders(userId: string, id: string, holders: readonly HolderRef[], taxYear: number): Promise<ReceiptRecord | null> {
+    const row = await this.prisma.receipt.findFirst({ where: { id, userId }, select: { id: true } })
+    if (row === null) return null
+    const [updated] = await this.prisma.$transaction([
+      this.prisma.receipt.update({
+        where: { id },
+        data: { holders: holders.length > 0 ? holders.join(',') : null, holderTaxYear: holders.length > 0 ? taxYear : null },
+        include: FILE_META_INCLUDE,
+      }),
+      this.prisma.taxDataAccessLog.create({ data: { userId, action: 'WRITE', resource: 'beleg' } }),
     ])
     return toRecord(updated)
   }

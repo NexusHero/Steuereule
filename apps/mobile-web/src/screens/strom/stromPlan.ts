@@ -11,7 +11,7 @@ import {
   type Answers,
   type StromTopicId,
 } from '@steuereule/core'
-import { tileById, visibleTiles, type TileFacts, type TileId } from '../cockpit/tiles'
+import { hasGermanJobToo, tileById, visibleTiles, type TileFacts, type TileId } from '../cockpit/tiles'
 import type { FunnelPath } from '../funnel/KontoWandScreen'
 
 export type StromMaskId = 'lstb' | 'ch' | 'rente' | 'arbeitsweg' | 'kinder'
@@ -97,19 +97,14 @@ function shownTiles(facts: TileFacts): ReadonlySet<TileId> {
  * records the change (the first way ends, a second one starts), or a German certificate is already
  * entered. Then the German LStB belongs in the Strom too, right after the way to work.
  */
-function hasGermanJobToo(facts: TileFacts): boolean {
-  if (facts.path !== 'ch') return false
-  const inputs = facts.commute?.inputs
-  const changed = inputs != null && (inputs.secondFrom != null || inputs.secondOneWayKm != null || inputs.periodTo != null)
-  const lstb = facts.lstb
-  const entered = lstb != null && [lstb.bruttoarbeitslohn, lstb.lohnsteuer, lstb.sozialversicherung].some((field) => field.kind === 'erfasst')
-  return changed || entered
+function crossBorderWithGermanJob(facts: TileFacts): boolean {
+  return facts.path === 'ch' && hasGermanJobToo(facts.commute, facts.lstb)
 }
 
 function masksFor(facts: TileFacts): readonly StromMaskId[] {
   const tiles = shownTiles(facts)
   const masks = MASKS[facts.path].filter((id) => tiles.has(id))
-  if (!hasGermanJobToo(facts)) return masks
+  if (!crossBorderWithGermanJob(facts)) return masks
   const at = masks.indexOf('arbeitsweg') + 1
   return [...masks.slice(0, at), 'lstb', ...masks.slice(at)]
 }

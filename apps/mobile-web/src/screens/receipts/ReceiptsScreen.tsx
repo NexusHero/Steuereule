@@ -18,6 +18,9 @@ import { detectDocumentMimeType } from '../../lib/documentOcr'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { triggerSaveErrorHaptic, warnOnHttpError } from '../shared/saveFeedback'
 import { ReceiptFileModal } from './ReceiptFileModal'
+import { ReceiptHolderSection } from './ReceiptHolderSection'
+import { useOptionalShellTaxYear } from '../../navigation/ShellState'
+import { DEFAULT_TAX_YEAR } from '../../config/taxYear'
 import { makeStyles } from './ReceiptsScreen.styles'
 
 const KIND_LABEL_KEYS: Readonly<Record<string, string>> = {
@@ -300,6 +303,8 @@ function ReceiptCard({
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const s = makeStyles(t)
+  const shellYear = useOptionalShellTaxYear()
+  const holderYear = receipt.holderTaxYear ?? shellYear ?? (receipt.assignment.kind === 'zugeordnet' ? receipt.assignment.taxYear : null) ?? DEFAULT_TAX_YEAR
   const kindKey = receipt.kind === null ? undefined : KIND_LABEL_KEYS[receipt.kind]
   const kindLabel = kindKey !== undefined ? tr(kindKey) : receipt.kind === null ? tr('belege.art.generic') : receipt.kind
 
@@ -327,6 +332,7 @@ function ReceiptCard({
         </View>
       )}
       <AssignmentSection receipt={receipt} onAssign={onAssign} />
+      <ReceiptHolderSection receipt={receipt} taxYear={holderYear} />
 
       <View style={s.cardFooter}>
         {receipt.hasFile && (

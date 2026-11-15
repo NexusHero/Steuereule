@@ -205,6 +205,7 @@ export class AdvisorCaseFacts {
       })),
       printoutMissingFields: missingConfirmationsList,
       estimatedRefundEur: null,
+      answeredBasis: (['job', 'ausland'] as const).filter((id) => (answerMap[id] ?? '') !== ''),
       furtherFacts: {
         ...furtherFactsOf(taxYear, answerMap, pensionRecord, rentals, capitalRecord),
         leave: commuteRecord && commuteRecord.workdays.length > 0 ? { vacationDays: commuteRecord.vacationDays, sickDays: commuteRecord.sickDays } : null,

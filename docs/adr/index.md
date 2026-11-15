@@ -107,6 +107,9 @@ The ADRs **justify** the architecture; the [living arc42 document](../arc42/READ
 | 0087 | Eskalationsfall: zwei Grenzgänger mit Wechseljahr, drei Kinder, Krankheitskosten | Accepted |
 | 0088 | Person B vollständig erfassen, Schweizer Kinderzulage je Kind | Accepted |
 | 0089 | Der Strom: eine Auswahl statt Ja/Nein-Seiten, eine Seite je Thema | Accepted |
+| 0090 | Funde aus dem Echtfall-Lauf über den Strom (2024/2025) | Accepted |
+| 0091 | Die Eule füllt jedes Feld: persönliche Daten mit Einwilligung | Accepted |
+| 0092 | Belegzuordnung: Wem gehört ein Beleg? | Accepted |
 
 See also the [Tech Radar](./tech-radar.md).
 

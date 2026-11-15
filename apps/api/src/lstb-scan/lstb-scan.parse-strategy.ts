@@ -1,4 +1,5 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
+import { holderWithoutPartner } from '../ch-certificate-scan/document-holder.js'
 import { HumanMessage, SystemMessage } from '@langchain/core/messages'
 import { Inject, Injectable, Optional, type OnModuleInit } from '@nestjs/common'
 import { z } from 'zod'
@@ -177,7 +178,7 @@ export class LstbScanParseStrategy implements DocumentParseStrategy, OnModuleIni
     // An upload without a person (the chat) is the user's, or B's when the LStB names B; a name that fits
     // nobody is asked about instead of guessed (as for the Swiss certificate, ADR-0074).
     const household = dto.person === undefined ? await this.advisorService.householdNames(userId, dto.taxYear) : null
-    const person: 'A' | 'B' | null = dto.person ?? (household?.B ? certificateHolderPerson(rawText, household) : 'A')
+    const person: 'A' | 'B' | null = dto.person ?? (household?.B ? certificateHolderPerson(rawText, household) : holderWithoutPartner(rawText, household?.A ?? { firstName: null, lastName: null }))
     const personNotRecordable = person === 'B' && household !== null && household.B?.recordable !== true
     const targetUserId = person !== null && !personNotRecordable ? await this.linkService.dataUser(userId, dto.taxYear, person) : userId
     const existingLstbConflict = await this.lstbService.existingValues(targetUserId, dto.taxYear)
@@ -228,6 +229,8 @@ export class LstbScanParseStrategy implements DocumentParseStrategy, OnModuleIni
         stage,
         taxYearOnDocument: extraction.taxYear,
         ...(person === 'B' ? { person } : dto.person !== undefined ? { person: dto.person } : {}),
+        // Outside the mask (the chat, the Belege tab) a recorded value makes the app ask „zusätzlich oder ersetzen?“.
+        askCombination: dto.area === undefined,
         engine:
           mode === 'vision_ocr' && visionSlot
             ? { mode: 'langgraph', provider: visionSlot.provider, model: visionSlot.model }

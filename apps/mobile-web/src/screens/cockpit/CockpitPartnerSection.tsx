@@ -5,7 +5,7 @@ import { Card, hapticSuccess, useBreakpoint, useTheme, type UiTheme } from '@ste
 import { useChSalaryCertificateControllerGet, useCommuteControllerGet, useLstbControllerGetLstb, usePensionControllerGet } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import type { PartnerAreaParam } from '../../navigation/routes'
-import { tileById, type TileStatus } from './tiles'
+import { hasGermanJobToo, tileById, type TileStatus } from './tiles'
 
 export interface CockpitPartnerSectionProps {
   readonly year: number
@@ -21,21 +21,23 @@ export interface CockpitPartnerSectionProps {
 export function CockpitPartnerSection({ year, partnerName, enabled, crossBorder = false, partnerJob, onOpenPartner }: CockpitPartnerSectionProps) {
   const employed = partnerJob === undefined || partnerJob === 'Angestellt'
   const retired = partnerJob === 'Rente'
-  // A partner who works only in Switzerland has a Lohnausweis, no German LStB (UX review H7); while the
-  // interview has not said so, both stay on offer as before.
-  const germanCertificate = employed && !(crossBorder && partnerJob !== undefined)
+  const onlySwiss = crossBorder && partnerJob !== undefined
   const bp = useBreakpoint()
   const t = useTheme()
   const styles = makeStyles(t)
   const { t: tr } = useTranslation(APP_NS)
 
-  const lstb = useLstbControllerGetLstb(year, { person: 'B' }, { query: { enabled: enabled && germanCertificate } })
+  const lstb = useLstbControllerGetLstb(year, { person: 'B' }, { query: { enabled: enabled && employed } })
   const commute = useCommuteControllerGet(year, { person: 'B' }, { query: { enabled: enabled && employed } })
   const swiss = useChSalaryCertificateControllerGet(year, { person: 'B' }, { query: { enabled: enabled && employed && crossBorder } })
   const pension = usePensionControllerGet(year, { person: 'B' }, { query: { enabled: enabled && retired } })
 
   const lstbData = lstb.data?.status === 200 ? lstb.data.data : null
   const commuteData = commute.data?.status === 200 ? commute.data.data : null
+  // A partner who works only in Switzerland has a Lohnausweis, no German LStB (UX review H7) — unless the
+  // way to work records a change of job or a German certificate is entered (ADR-0079); while the interview
+  // has not said so, both stay on offer as before.
+  const germanCertificate = employed && (!onlySwiss || hasGermanJobToo(commuteData, lstbData))
 
   const lstbStatus = tileById('lstb').status({ path: 'angestellte', answers: {}, lstb: lstbData })
   const commuteStatus = tileById('arbeitsweg').status({ path: 'angestellte', answers: {}, commute: commuteData })

@@ -462,6 +462,12 @@ model Receipt {
   /// derived state), so `zuordnungAusDaten` can resolve the conflict without silently
   /// overwriting the contradicting dates.
   proposalDismissed Boolean      @default(false) @map("vorschlagVerworfen")
+  /// Whose document it is (ADR-0092): `A`, `B` or `kind:<child id>`, comma-separated — the first is the
+  /// holder, the others the people a multi-person document was also taken over for („auch für …“).
+  /// Null while nobody is chosen. A family relation, so encrypted like the names it points to.
+  holders           String?      @map("inhaber") /// @encrypted?mode=strict
+  /// The tax year the holders refer to (B and the children are per year). Clear, like `steuerjahr`.
+  holderTaxYear     Int?         @map("inhaberSteuerjahr")
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
   file              ReceiptFile?
@@ -500,6 +506,8 @@ model Lstb {
   kirchensteuer         String? /// @encrypted?mode=strict
   /// Kirchensteuer des Ehegatten, nur bei konfessionsverschiedener Ehe (Zeile 7); null = not entered.
   kirchensteuerEhegatte String? /// @encrypted?mode=strict
+  /// Steuerfreie Arbeitgeberzuschüsse zur Kranken- und Pflegeversicherung (Zeile 24 a–c), whole euros; null = not entered (ADR-0090).
+  zuschuesseKvPv        String? /// @encrypted?mode=strict
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
@@ -901,6 +909,8 @@ model Child {
   childcareTo              String?  @map("betreuungBis") /// @encrypted?mode=strict
   /// Who receives the Swiss Kinderzulage with their wage: "A" or "B" (ADR-0088).
   swissFamilyAllowancePayer String? @map("schweizerKinderzulageVon")
+  /// The child's health insurance is foreign (e.g. Swiss basic insurance): Anlage Kind Kz 89 (ADR-0090).
+  healthInsuranceAbroad     Boolean? @map("kvAusland")
   createdAt                DateTime @default(now())
   updatedAt                DateTime @updatedAt
 
@@ -1009,6 +1019,23 @@ model OwlSetting {
   updatedAt DateTime  @updatedAt
 
   @@map("EulenEinstellung")
+}
+
+/// The user's consent that personal data (names, Steuer-ID, birth dates, addresses, IBAN, religion as a
+/// special category under Art. 9 DSGVO) may go to the language model of the owl, so it can fill those
+/// fields too (ADR-0091). One row per user; `version` is the consent text agreed to, a revocation sets
+/// `revokedAt` and keeps the row as the record of when consent was given and taken back. No personal
+/// data in it, only the decision and its timestamps.
+model OwlPersonalDataConsent {
+  id        String    @id @default(uuid())
+  userId    String    @unique
+  version   String    @map("version")
+  grantedAt DateTime  @map("erteiltAm")
+  revokedAt DateTime? @map("widerrufenAm")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@map("EulenPersonendatenEinwilligung")
 }
 
 /// Dismissed cards in Eulen-Modus (product ADR-041: "Stimmt nicht").

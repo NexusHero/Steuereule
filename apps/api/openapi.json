@@ -395,6 +395,110 @@
         ]
       }
     },
+    "/v1/steuerjahre/{jahr}/lstb-zuschuesse": {
+      "get": {
+        "operationId": "LstbController_getSubsidies",
+        "parameters": [
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "B: Person A reads the figures of a partner without an own account (ADR-0054).",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (Steuerjahr).",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tax-free employer subsidies to health and care insurance per LStB, Zeile 24 (ADR-0090).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LstbSubsidiesDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          }
+        },
+        "tags": [
+          "lstb"
+        ]
+      },
+      "put": {
+        "operationId": "LstbController_setSubsidies",
+        "parameters": [
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "B: Person A records the figures of a partner without an own account (ADR-0054).",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (Steuerjahr).",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LstbSubsidiesDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The stored subsidies line.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LstbSubsidiesDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          }
+        },
+        "tags": [
+          "lstb"
+        ]
+      }
+    },
     "/v1/steuerjahre/{jahr}/kopplung": {
       "get": {
         "operationId": "LinkController_get",
@@ -2183,6 +2287,50 @@
         ]
       }
     },
+    "/v1/belege/{id}/inhaber": {
+      "post": {
+        "operationId": "ReceiptParseController_reassign",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "The Beleg id (the caller’s own).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReassignReceiptDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Gives the document to another person of the household (ADR-0092): its values move along.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReassignReceiptResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Requires account."
+          }
+        },
+        "tags": [
+          "eulen-modus"
+        ]
+      }
+    },
     "/v1/steuerjahre/{jahr}/advisor/session": {
       "get": {
         "operationId": "AdvisorController_getSession",
@@ -3503,6 +3651,62 @@
         },
         "tags": [
           "freischaltung"
+        ]
+      }
+    },
+    "/v1/eulen-modus/personendaten-einwilligung": {
+      "get": {
+        "operationId": "OwlModeController_getPersonalDataConsent",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Whether personal data may go to the owl's language model (ADR-0091).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonalDataConsentResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Requires account."
+          }
+        },
+        "tags": [
+          "eulen-modus"
+        ]
+      },
+      "put": {
+        "operationId": "OwlModeController_setPersonalDataConsent",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetPersonalDataConsentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonalDataConsentResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Requires account."
+          }
+        },
+        "tags": [
+          "eulen-modus"
         ]
       }
     },
@@ -5177,6 +5381,20 @@
         "required": [
           "kirchensteuer",
           "kirchensteuerEhegatte"
+        ]
+      },
+      "LstbSubsidiesDto": {
+        "type": "object",
+        "properties": {
+          "zuschuesseKvPv": {
+            "type": "number",
+            "nullable": true,
+            "example": 5072,
+            "description": "Zeile 24 a–c: steuerfreie Arbeitgeberzuschüsse zur Kranken- und Pflegeversicherung, zusammen, ganze Euro."
+          }
+        },
+        "required": [
+          "zuschuesseKvPv"
         ]
       },
       "LinkPersonBDto": {
@@ -7454,6 +7672,10 @@
               "B"
             ]
           },
+          "healthInsuranceAbroad": {
+            "type": "boolean",
+            "nullable": true
+          },
           "swissFamilyAllowanceDerived": {
             "type": "boolean",
             "description": "The allowance is a share of a parent’s Swiss allowances, not entered for the child (ADR-0088)."
@@ -7667,6 +7889,11 @@
             ],
             "description": "Who receives the Swiss Kinderzulage with their wage (ADR-0088)."
           },
+          "healthInsuranceAbroad": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "The child’s KV/PV is with a foreign insurer (e.g. Swiss basic insurance): Anlage Kind Kz 89 (ADR-0090)."
+          },
           "firstName": {
             "type": "string",
             "example": "Lina"
@@ -7828,6 +8055,11 @@
             ],
             "description": "Who receives the Swiss Kinderzulage with their wage (ADR-0088)."
           },
+          "healthInsuranceAbroad": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "The child’s KV/PV is with a foreign insurer (e.g. Swiss basic insurance): Anlage Kind Kz 89 (ADR-0090)."
+          },
           "firstName": {
             "type": "string",
             "example": "Lina"
@@ -7939,6 +8171,22 @@
                 "$ref": "#/components/schemas/AssignmentDto"
               }
             ]
+          },
+          "holders": {
+            "example": [
+              "B"
+            ],
+            "description": "Whose document it is (ADR-0092): `A`, `B` or `kind:<child id>`, the holder first, then the people a multi-person document was also taken over for. Empty while nobody is chosen.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "holderTaxYear": {
+            "type": "number",
+            "nullable": true,
+            "example": 2025,
+            "description": "The tax year the holders refer to (B and the children are per year)."
           }
         },
         "required": [
@@ -7950,7 +8198,9 @@
           "hasFile",
           "mimeType",
           "byteLength",
-          "assignment"
+          "assignment",
+          "holders",
+          "holderTaxYear"
         ]
       },
       "CreateReceiptDto": {
@@ -8064,6 +8314,21 @@
             ],
             "example": "A",
             "description": "Taxpayer slot when parsing a partner LStB (ADR-0054)."
+          },
+          "area": {
+            "type": "string",
+            "example": "B",
+            "description": "Where the document was uploaded (ADR-0092): `A`, `B` or `kind:<child id>` for a mask of that person. The place decides whose the document is; a name on it that is clearly someone else makes the app ask. Absent in the chat and the Belege tab."
+          },
+          "holder": {
+            "type": "string",
+            "example": "kind:3f2a",
+            "description": "The user’s answer to „Für wen?“ (ADR-0092): `A`, `B` or `kind:<child id>`. Final; nothing is asked again."
+          },
+          "alsoFor": {
+            "type": "boolean",
+            "example": true,
+            "description": "Take a multi-person document over for `holder` too („auch für … übernehmen?“): links it to them as well, with their own lines."
           },
           "textSource": {
             "type": "string",
@@ -8253,6 +8518,15 @@
             "type": "string",
             "example": "act-1730970000",
             "description": "Drafts sharing this group are alternatives (the two paths of a comparison): apply one, never several together."
+          },
+          "combination": {
+            "type": "string",
+            "enum": [
+              "add",
+              "replace"
+            ],
+            "example": "add",
+            "description": "A document amount where the field already holds one from another source (ADR-0092): `add` puts it on top (a second employer), `replace` corrects what is there. The two are alternatives."
           },
           "companionExpectedValues": {
             "type": "object",
@@ -8721,6 +8995,15 @@
             "example": "act-1730970000",
             "description": "Drafts sharing this group are alternatives (the two paths of a comparison): apply one, never several together."
           },
+          "combination": {
+            "type": "string",
+            "enum": [
+              "add",
+              "replace"
+            ],
+            "example": "add",
+            "description": "A document amount where the field already holds one from another source (ADR-0092): `add` puts it on top (a second employer), `replace` corrects what is there. The two are alternatives."
+          },
           "companionExpectedValues": {
             "type": "object",
             "additionalProperties": {
@@ -8976,6 +9259,10 @@
           "turbo": {
             "type": "boolean",
             "description": "Turbo mode: the owl applied the drafts of this answer itself; each can be undone."
+          },
+          "personalDataConsentRequest": {
+            "type": "boolean",
+            "description": "The owl needed personal data or the user wrote some, without consent to personal data going to the model: the chat shows the consent card (ADR-0091)."
           },
           "modelFailure": {
             "description": "Why the language model did not answer this turn, when it did not (#487): the answer then comes from fixed rules or is missing.",
@@ -9604,6 +9891,128 @@
           "stagedActionIds"
         ]
       },
+      "AssignmentPersonDto": {
+        "type": "object",
+        "properties": {
+          "holder": {
+            "type": "string",
+            "example": "B",
+            "description": "`A`, `B` or `kind:<child id>`."
+          },
+          "name": {
+            "type": "string",
+            "nullable": true,
+            "example": "Nora",
+            "description": "The first name on record, for the button; null while none is entered."
+          }
+        },
+        "required": [
+          "holder",
+          "name"
+        ]
+      },
+      "AssignmentQuestionDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "enum": [
+              "which",
+              "contradiction",
+              "unknown",
+              "confirmSelf"
+            ],
+            "example": "which",
+            "description": "`which`: „Für wen?“ in a household of several; `contradiction`: the name on it is someone else than the person of the upload area; `unknown`: it names nobody of the household; `confirmSelf`: A has no name yet — „Bist du …?“."
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssignmentPersonDto"
+            }
+          },
+          "preselected": {
+            "type": "string",
+            "nullable": true,
+            "example": "B",
+            "description": "The person the document names, preselected."
+          },
+          "printedName": {
+            "type": "string",
+            "nullable": true,
+            "example": "Nora Sommer",
+            "description": "The name printed on the document, for the question; never stored."
+          },
+          "area": {
+            "nullable": true,
+            "description": "The person of the upload area („du bist bei …“).",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AssignmentPersonDto"
+              }
+            ]
+          },
+          "offerCreate": {
+            "type": "array",
+            "example": [
+              "B"
+            ],
+            "description": "Who can be created from the document: „als Person B anlegen?“, „als Kind anlegen?“.",
+            "items": {
+              "type": "string",
+              "enum": [
+                "B",
+                "kind"
+              ]
+            }
+          }
+        },
+        "required": [
+          "reason",
+          "options",
+          "preselected",
+          "printedName",
+          "area",
+          "offerCreate"
+        ]
+      },
+      "DocumentAssignmentDto": {
+        "type": "object",
+        "properties": {
+          "holder": {
+            "nullable": true,
+            "description": "The person it was read for; null while the question is open.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AssignmentPersonDto"
+              }
+            ]
+          },
+          "question": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AssignmentQuestionDto"
+              }
+            ]
+          },
+          "alsoFor": {
+            "description": "Others of the household a multi-person document names: „auch für … übernehmen?“.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssignmentPersonDto"
+            }
+          }
+        },
+        "required": [
+          "holder",
+          "question",
+          "alsoFor"
+        ]
+      },
       "ParseReceiptResponseDto": {
         "type": "object",
         "properties": {
@@ -9666,12 +10075,99 @@
                 "$ref": "#/components/schemas/ParsedChLetterResponseDto"
               }
             ]
+          },
+          "assignment": {
+            "nullable": true,
+            "description": "Whose the document is (ADR-0092); absent for a receipt of the joint return.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DocumentAssignmentDto"
+              }
+            ]
           }
         },
         "required": [
           "mode",
           "securityBlocked",
           "parsed"
+        ]
+      },
+      "ReassignReceiptDto": {
+        "type": "object",
+        "properties": {
+          "taxYear": {
+            "type": "number",
+            "example": 2025
+          },
+          "holder": {
+            "type": "string",
+            "example": "B",
+            "description": "The new holder: `A`, `B` or `kind:<child id>`."
+          },
+          "rawText": {
+            "type": "string",
+            "description": "The document text, read again on the device, so its values can be read for the new holder. Without it the values are only taken back."
+          },
+          "textSource": {
+            "type": "string",
+            "enum": [
+              "pdf_text",
+              "ocr"
+            ],
+            "example": "pdf_text"
+          }
+        },
+        "required": [
+          "taxYear",
+          "holder"
+        ]
+      },
+      "ReassignReceiptResponseDto": {
+        "type": "object",
+        "properties": {
+          "holders": {
+            "example": [
+              "B"
+            ],
+            "description": "Whose the document is now, the holder first.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "takenBack": {
+            "type": "number",
+            "example": 3,
+            "description": "Values taken back at the person before (only those still as the document wrote them)."
+          },
+          "applied": {
+            "type": "number",
+            "example": 3,
+            "description": "Values written for the new holder right away."
+          },
+          "waiting": {
+            "type": "number",
+            "example": 0,
+            "description": "Drafts waiting for the user: „zusätzlich oder ersetzen?“ or a value to check."
+          },
+          "parse": {
+            "nullable": true,
+            "description": "The document read for the new holder; null without `rawText`.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ParseReceiptResponseDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "holders",
+          "takenBack",
+          "applied",
+          "waiting",
+          "parse"
         ]
       },
       "OwlPathDto": {
@@ -10543,6 +11039,41 @@
         },
         "required": [
           "status"
+        ]
+      },
+      "PersonalDataConsentResponseDto": {
+        "type": "object",
+        "properties": {
+          "granted": {
+            "type": "boolean",
+            "description": "True while a consent to the current text stands."
+          },
+          "version": {
+            "type": "string",
+            "example": "2026-11-14",
+            "description": "Version of the consent text the app shows now."
+          },
+          "grantedAt": {
+            "type": "string",
+            "nullable": true,
+            "example": "2026-11-14T10:00:00Z"
+          }
+        },
+        "required": [
+          "granted",
+          "version"
+        ]
+      },
+      "SetPersonalDataConsentDto": {
+        "type": "object",
+        "properties": {
+          "granted": {
+            "type": "boolean",
+            "example": true
+          }
+        },
+        "required": [
+          "granted"
         ]
       },
       "OwlSettingResponseDto": {

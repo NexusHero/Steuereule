@@ -7,6 +7,7 @@ import { AutoReceiptParseStrategy } from './parse/auto-receipt-parse.strategy.js
 import { DocumentParseRegistry } from './parse/document-parse.registry.js'
 import { ReceiptParseController } from './receipt-parse.controller.js'
 import { ReceiptParseService } from './receipt-parse.service.js'
+import { ReceiptReassignService } from './receipt-reassign.service.js'
 import { ReceiptStorageModule } from './receipt-storage.module.js'
 import { ReceiptController } from './receipt.controller.js'
 import { ReceiptService } from './receipt.service.js'
@@ -14,7 +15,7 @@ import { ReceiptService } from './receipt.service.js'
 @Module({
   imports: [PrismaModule, ReceiptStorageModule, AuditModule, KiModule, AdvisorModule],
   controllers: [ReceiptController, ReceiptParseController],
-  providers: [ReceiptService, ReceiptParseService, DocumentParseRegistry, AutoReceiptParseStrategy],
+  providers: [ReceiptService, ReceiptParseService, ReceiptReassignService, DocumentParseRegistry, AutoReceiptParseStrategy],
   exports: [ReceiptStorageModule, ReceiptService, DocumentParseRegistry],
 })
 export class ReceiptModule {}

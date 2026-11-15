@@ -4,9 +4,10 @@
 // list: the value check on the owl's write path, the check when a draft is made, and the field
 // list in the model's prompt. A field without a line here cannot be proposed.
 import { CAPITAL_FIELDS } from '../domains/capital'
+import { MARITAL_STATUSES, RELIGION_KEYS, isValidIban, normalizeIban } from '../common/master-data'
 import { CHILD_RELATIONSHIPS, OTHER_CHILD_RELATIONSHIPS, OTHER_PARENT_STATUSES } from '../domains/children'
 import { SALARY_CERTIFICATE_AMOUNT_FIELDS } from '../domains/cross-border'
-import { WAGE_TAX_CERTIFICATE_FIELDS } from '../domains/lstb'
+import { LSTB_OPTIONAL_LINES, WAGE_TAX_CERTIFICATE_FIELDS } from '../domains/lstb'
 import { PENSION_TYPES } from '../domains/pension'
 import { ASSESSMENT_FIELDS } from '../engine/assessment'
 import { AMOUNT_LATER, QUESTIONS, isValidAnswer, type EntryStepId } from './interview'
@@ -17,7 +18,14 @@ export type FieldValueKind =
   /** Whole currency units, zero or more: `"1200"`. */
   | { readonly kind: 'amount'; readonly max: number }
   | { readonly kind: 'integer'; readonly min: number; readonly max: number }
-  | { readonly kind: 'decimal'; readonly min: number; readonly max: number }
+  /** `places`: decimal places allowed, two when not given. */
+  | { readonly kind: 'decimal'; readonly min: number; readonly max: number; readonly places?: number }
+  /** Digits only, between `min` and `max` of them; spaces, dots and slashes in the input are left out (Steuer-ID, Steuernummer). */
+  | { readonly kind: 'digits'; readonly min: number; readonly max: number; readonly shape: string }
+  /** An IBAN: two letters, two check digits, up to 30 letters or digits; spaces are left out. */
+  | { readonly kind: 'iban' }
+  /** Text that has to match a pattern; `shape` says in German what it looks like. */
+  | { readonly kind: 'pattern'; readonly pattern: RegExp; readonly shape: string }
   | { readonly kind: 'enum'; readonly values: readonly string[] }
   /** `"true"` or `"false"`. */
   | { readonly kind: 'boolean' }
@@ -35,18 +43,30 @@ export interface FieldSpec {
   readonly value: FieldValueKind
   /** The screen has several rows a year (children, rental properties); a write names one. */
   readonly perInstance: boolean
-  /** False for everything that identifies a person: the owl never proposes it. */
+  /** Whether the owl may propose it without the user's consent to personal data (ADR-0091). */
   readonly aiWritable: boolean
+  /**
+   * Identifies a person (a name, an id, an address, the bank, the religion, the household link):
+   * the owl may propose it only once the user consented to personal data going to the model
+   * (ADR-0091); without that consent it stays closed as before (ADR-0066).
+   */
+  readonly personal: boolean
   /** What belongs in the field, for the model, where the name alone is ambiguous (German, goes into the prompt). */
   readonly hint?: string
 }
 
 const MAX_AMOUNT = 999_999_999
 
-/** Screens the owl never writes at all (identity, address, bank details, coupling). */
+/**
+ * Version of the consent text the user agreed to when personal data goes to the model (ADR-0091).
+ * A new text gets a new version; a consent to an older version no longer counts.
+ */
+export const OWL_PERSONAL_DATA_CONSENT_VERSION = '2026-11-14'
+
+/** Screens the owl writes only with the consent to personal data (identity, address, bank details, coupling; ADR-0091). */
 export const AI_FORBIDDEN_SCREENS: ReadonlySet<Screen> = new Set<Screen>(['profil', 'stammdaten', 'kopplung'])
 
-/** Field names that identify a person or a third party, on whatever screen they appear. */
+/** Field names that identify a person or a third party, on whatever screen they appear: open only with consent (ADR-0091). */
 export const AI_FORBIDDEN_FIELDS: ReadonlySet<string> = new Set([
   'workplace',
   'secondWorkplace',
@@ -80,7 +100,21 @@ export const AI_FORBIDDEN_FIELDS: ReadonlySet<string> = new Set([
   'otherParentKind',
   'otherParentDiedOn',
   'familyBenefitsOffice',
+  'city',
 ])
+
+/**
+ * Fields the owl never writes, consent or not: the invitation code is a key to someone's return,
+ * not a figure of it.
+ */
+export const AI_NEVER_FIELDS: ReadonlySet<string> = new Set(['invitationCode'])
+
+/** Whether the owl may propose this field, given whether the user consented to personal data (ADR-0091). */
+export function isAiWritableField(screen: string, field: string, personalDataConsent: boolean): boolean {
+  const spec = fieldSpec(screen, field.trim())
+  if (spec === undefined) return false
+  return spec.aiWritable || (personalDataConsent && spec.personal && !AI_NEVER_FIELDS.has(spec.field))
+}
 
 const amount: FieldValueKind = { kind: 'amount', max: MAX_AMOUNT }
 const text = (maxLength: number): FieldValueKind => ({ kind: 'text', maxLength })
@@ -89,6 +123,8 @@ const oneOf = (values: readonly string[]): FieldValueKind => ({ kind: 'enum', va
 const bool: FieldValueKind = { kind: 'boolean' }
 const date: FieldValueKind = { kind: 'date' }
 const percent: FieldValueKind = { kind: 'decimal', min: 0, max: 100 }
+const taxId: FieldValueKind = { kind: 'digits', min: 11, max: 11, shape: 'Steuer-ID aus 11 Ziffern' }
+const taxNumber: FieldValueKind = { kind: 'digits', min: 1, max: 13, shape: 'Steuernummer aus bis zu 13 Ziffern' }
 
 type Declared = Readonly<Record<string, FieldValueKind>>
 
@@ -98,7 +134,7 @@ const fromList = (fields: readonly string[], value: FieldValueKind): Declared =>
 const DECLARED: Readonly<Record<Screen, { readonly perInstance: boolean; readonly fields: Declared }>> = {
   profil: {
     perInstance: false,
-    fields: { firstName: text(100), lastName: text(100), steuerId: text(20), steuernummer: text(20) },
+    fields: { firstName: text(100), lastName: text(100), steuerId: taxId, steuernummer: taxNumber },
   },
   stammdaten: {
     perInstance: false,
@@ -110,10 +146,10 @@ const DECLARED: Readonly<Record<Screen, { readonly perInstance: boolean; readonl
       plz: text(10),
       wohnort: text(100),
       beruf: text(100),
-      religion: text(10),
-      familienstand: text(30),
+      religion: oneOf(RELIGION_KEYS),
+      familienstand: oneOf(MARITAL_STATUSES),
       familienstandSeit: date,
-      iban: text(40),
+      iban: { kind: 'iban' },
       kontoinhaber: text(100),
       finanzamt: text(100),
       telefon: text(40),
@@ -129,7 +165,11 @@ const DECLARED: Readonly<Record<Screen, { readonly perInstance: boolean; readonl
   },
   lstb: {
     perInstance: false,
-    fields: fromList(WAGE_TAX_CERTIFICATE_FIELDS, amount),
+    fields: {
+      ...fromList(WAGE_TAX_CERTIFICATE_FIELDS, amount),
+      /** Zeilen 6 und 7 (ADR-0063) and Zeile 24 (ADR-0090): optional lines next to the three required ones. */
+      ...fromList(LSTB_OPTIONAL_LINES, amount),
+    },
   },
   commute: {
     perInstance: false,
@@ -155,6 +195,9 @@ const DECLARED: Readonly<Record<Screen, { readonly perInstance: boolean; readonl
       secondTransport: oneOf(['pkw', 'oepnv', 'andere']),
       secondFrom: text(10),
       secondTo: text(10),
+      /** The first place of work (Anlage N/N-Gre „Arbeitsort“) — an address, so personal (ADR-0091). */
+      workplace: text(120),
+      secondWorkplace: text(120),
     },
   },
   chLohnausweis: {
@@ -177,6 +220,11 @@ const DECLARED: Readonly<Record<Screen, { readonly perInstance: boolean; readonl
       krankentaggeldArbeitgeberChf: amount,
       nbuvArbeitgeberProzent: percent,
       nbuvArbeitgeberChf: amount,
+      /** Wechselkurs CHF→EUR (C4): the rate and what it is for — a year for the annual average, a month for the BMF monthly rate. */
+      wechselkurs: { kind: 'decimal', min: 0.5, max: 2, places: 4 },
+      wechselkursMonat: { kind: 'pattern', pattern: /^\d{4}(-(0[1-9]|1[0-2]))?$/, shape: 'JJJJ für den Jahresdurchschnitt oder JJJJ-MM für den Monatskurs' },
+      /** „Keine Sonderfälle“ of the Anlage N-Gre: without the answer no N-Gre is printed (ADR-0091, Nachtrag). */
+      nGreSonderfaelle: bool,
     },
   },
   rente: {
@@ -190,11 +238,26 @@ const DECLARED: Readonly<Record<Screen, { readonly perInstance: boolean; readonl
   },
   kapital: {
     perInstance: false,
-    fields: fromList(CAPITAL_FIELDS, amount),
+    fields: { ...fromList(CAPITAL_FIELDS, amount), inhaber: oneOf(['A', 'B', 'gemeinsam']) },
   },
   vermietung: {
     perInstance: true,
-    fields: { mieteinnahmen: amount, anschaffungskosten: amount, baujahr: integer(1800, 2100), werbungskosten: amount },
+    fields: {
+      mieteinnahmen: amount,
+      anschaffungskosten: amount,
+      baujahr: integer(1800, 2100),
+      werbungskosten: amount,
+      strasse: text(100),
+      hausnummer: text(10),
+      plz: text(10),
+      city: text(100),
+      livingArea: integer(1, 100_000),
+      einheiten: integer(1, 999),
+      depreciationAsLastYear: bool,
+      umlagen: amount,
+      schuldzinsen: amount,
+      anteilA: percent,
+    },
   },
   kind: {
     perInstance: true,
@@ -202,7 +265,7 @@ const DECLARED: Readonly<Record<Screen, { readonly perInstance: boolean; readonl
       firstName: text(100),
       lastName: text(100),
       geburtsdatum: date,
-      taxId: text(20),
+      taxId,
       childBenefitClaimEur: amount,
       kinship: oneOf(CHILD_RELATIONSHIPS),
       kinshipB: oneOf(CHILD_RELATIONSHIPS),
@@ -224,6 +287,7 @@ const DECLARED: Readonly<Record<Screen, { readonly perInstance: boolean; readonl
       childcareFrom: text(10),
       childcareTo: text(10),
       swissFamilyAllowancePayer: oneOf(['A', 'B'] as const),
+      healthInsuranceAbroad: bool,
     },
   },
   assessment: {
@@ -243,6 +307,7 @@ const DECLARED: Readonly<Record<Screen, { readonly perInstance: boolean; readonl
  */
 const HINTS: Readonly<Partial<Record<Screen, Readonly<Record<string, string>>>>> = {
   kind: {
+    healthInsuranceAbroad: '„true“, wenn das Kind bei einer ausländischen Kasse versichert ist (z. B. Schweizer Grundversicherung); dann Anlage Kind Kz 89 statt Kz 66/67',
     childcareEur: 'Kinderbetreuungskosten, die die Eltern gezahlt haben (Kita, Tagesmutter, Hort), Euro im Jahr, ohne Verpflegung; Anlage Kind Kz 51',
     childcareProvider: 'Art der Betreuung und Anbieter, kurz (höchstens 45 Zeichen, sonst passt es nicht in Zeile 67), z. B. „Kita, Gemeinde Musterdorf“',
     childcareFrom: 'Beginn der Betreuung im Jahr, TT.MM.JJJJ',
@@ -269,18 +334,35 @@ const HINTS: Readonly<Partial<Record<Screen, Readonly<Record<string, string>>>>>
     steuerfreiesKrankentaggeldChf: 'ausgezahltes steuerfreies Krankentaggeld, im Bruttolohn Ziffer 8 enthalten, N-Gre Zeile 9',
     nbuvArbeitgeberChf: 'Arbeitgeberanteil der NBUV-Prämie in CHF, nur nötig, wenn der Arbeitgeber 100 % zahlt',
     krankentaggeldArbeitgeberChf: 'Arbeitgeberanteil der Krankentaggeld-Prämie in CHF, nur nötig, wenn der Arbeitgeber 100 % zahlt',
+    wechselkurs: 'Euro je 1 CHF, z. B. 1,065 = Jahresdurchschnitt 2025 (Anlage N-Gre); ohne wechselkursMonat gilt der Jahresdurchschnitt des Steuerjahrs',
+    wechselkursMonat: 'JJJJ = Jahresdurchschnittskurs, JJJJ-MM = amtlicher BMF-Monatskurs dieses Monats; als Begleitfeld zu wechselkurs',
+    nGreSonderfaelle: '„false“ = keine Sonderfälle der Anlage N-Gre (der Normalfall: täglich zurück, Arbeit in der Grenzzone), „true“ = es liegt ein Sonderfall vor (z. B. Wochenaufenthalt); ohne die Angabe druckt die App keine N-Gre',
+  },
+  kapital: {
+    inhaber: 'wessen Depot: „A“ (Nutzer), „B“ (Person B) oder „gemeinsam“ (Gemeinschaftsdepot)',
+  },
+  vermietung: {
+    city: 'Ort des Mietobjekts',
+    livingArea: 'Wohnfläche in m², ganze Zahl (Anlage V Zeile 10)',
+    einheiten: 'Zahl der vermieteten Wohnungen im Gebäude (Anlage V Zeile 13)',
+    depreciationAsLastYear: '„true“, wenn die AfA wie im Vorjahr weiterläuft (Anlage V Zeile 33)',
+    umlagen: 'vereinnahmte Umlagen/Nebenkosten im Jahr, Euro (Anlage V Zeile 20)',
+    schuldzinsen: 'Schuldzinsen für das Objekt im Jahr, Euro (Anlage V Zeile 46)',
+    anteilA: 'Anteil des Nutzers am Objekt in Prozent, der Rest gehört Person B (Anlage V Zeile 86)',
   },
 }
 
 export const FIELD_CATALOG: readonly FieldSpec[] = SCREENS.flatMap((screen) =>
   Object.entries(DECLARED[screen].fields).map(([field, value]) => {
     const hint = HINTS[screen]?.[field]
+    const personal = AI_FORBIDDEN_SCREENS.has(screen) || AI_FORBIDDEN_FIELDS.has(field) || AI_NEVER_FIELDS.has(field)
     return {
       screen,
       field,
       value,
       perInstance: DECLARED[screen].perInstance,
-      aiWritable: !AI_FORBIDDEN_SCREENS.has(screen) && !AI_FORBIDDEN_FIELDS.has(field),
+      aiWritable: !personal,
+      personal,
       ...(hint !== undefined ? { hint } : {}),
     }
   }),
@@ -351,7 +433,8 @@ function checkKind(kind: FieldValueKind, field: string, raw: string): FieldValue
     }
     case 'decimal': {
       const dotted = raw.replace(',', '.')
-      if (!/^\d+(\.\d{1,2})?$/.test(dotted)) return invalid(`„${raw}“ ist keine Zahl mit höchstens zwei Nachkommastellen.`)
+      const places = kind.places ?? 2
+      if (!new RegExp(`^\\d+(\\.\\d{1,${places}})?$`).test(dotted)) return invalid(`„${raw}“ ist keine Zahl mit höchstens ${places} Nachkommastellen.`)
       const n = Number(dotted)
       return n >= kind.min && n <= kind.max ? valid(dotted) : invalid(`Erlaubt ist eine Zahl von ${kind.min} bis ${kind.max}.`)
     }
@@ -375,6 +458,16 @@ function checkKind(kind: FieldValueKind, field: string, raw: string): FieldValue
       return days.length > 0 && days.every((day) => /^[1-7]$/.test(day))
         ? valid(days.join(','))
         : invalid('Erlaubt sind Wochentage als Ziffern 1–7 mit Komma, Mo–Fr = „1,2,3,4,5“.')
+    }
+    case 'pattern':
+      return kind.pattern.test(raw) ? valid(raw) : invalid(`Erlaubt ist: ${kind.shape}.`)
+    case 'digits': {
+      const bare = raw.replace(/[\s./-]/g, '')
+      return /^\d+$/.test(bare) && bare.length >= kind.min && bare.length <= kind.max ? valid(bare) : invalid(`Erlaubt ist: ${kind.shape}.`)
+    }
+    case 'iban': {
+      // The same check the Stammdaten mask runs, check digits included.
+      return isValidIban(raw) ? valid(normalizeIban(raw)) : invalid('Das ist keine gültige IBAN (Beispiel: DE89370400440532013000).')
     }
     case 'text':
       return raw.length <= kind.maxLength ? valid(raw) : invalid(`Höchstens ${kind.maxLength} Zeichen.`)
@@ -429,6 +522,11 @@ function describeShape(spec: FieldSpec): string {
       return `${spec.field} (Datum JJJJ-MM-TT)`
     case 'weekdays':
       return `${spec.field} (Wochentage 1–7 mit Komma, Mo–Fr = „1,2,3,4,5“)`
+    case 'pattern':
+    case 'digits':
+      return `${spec.field} (${value.shape})`
+    case 'iban':
+      return `${spec.field} (IBAN ohne Leerzeichen)`
     case 'text':
       return `${spec.field} (Text, höchstens ${value.maxLength} Zeichen)`
     case 'interview': {

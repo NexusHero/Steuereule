@@ -29,11 +29,14 @@ import type {
   LstbChurchTaxDto,
   LstbControllerGetChurchTaxParams,
   LstbControllerGetLstbParams,
+  LstbControllerGetSubsidiesParams,
   LstbControllerSetChurchTaxParams,
   LstbControllerSetFieldParams,
+  LstbControllerSetSubsidiesParams,
   LstbFieldDto,
   LstbResponseDto,
-  LstbScanControllerConfirmScanParams
+  LstbScanControllerConfirmScanParams,
+  LstbSubsidiesDto
 } from './lstb.schemas';
 
 import { httpClient } from '../http-client';
@@ -598,5 +601,228 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getLstbControllerSetChurchTaxMutationOptions(options), queryClient);
+    }
+
+export type lstbControllerGetSubsidiesResponse200 = {
+  data: LstbSubsidiesDto
+  status: 200
+}
+
+export type lstbControllerGetSubsidiesResponse401 = {
+  data: void
+  status: 401
+}
+
+export type lstbControllerGetSubsidiesResponseSuccess = (lstbControllerGetSubsidiesResponse200) & {
+  headers: Headers;
+};
+export type lstbControllerGetSubsidiesResponseError = (lstbControllerGetSubsidiesResponse401) & {
+  headers: Headers;
+};
+
+export type lstbControllerGetSubsidiesResponse = (lstbControllerGetSubsidiesResponseSuccess | lstbControllerGetSubsidiesResponseError)
+
+export const getLstbControllerGetSubsidiesUrl = (jahr: number,
+    params?: LstbControllerGetSubsidiesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/v1/steuerjahre/${jahr}/lstb-zuschuesse?${stringifiedParams}` : `/v1/steuerjahre/${jahr}/lstb-zuschuesse`
+}
+
+export const lstbControllerGetSubsidies = async (jahr: number,
+    params?: LstbControllerGetSubsidiesParams, options?: RequestInit): Promise<lstbControllerGetSubsidiesResponse> => {
+
+  return httpClient<lstbControllerGetSubsidiesResponse>(getLstbControllerGetSubsidiesUrl(jahr,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getLstbControllerGetSubsidiesQueryKey = (jahr: number,
+    params?: LstbControllerGetSubsidiesParams,) => {
+    return [
+    `/v1/steuerjahre/${jahr}/lstb-zuschuesse`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getLstbControllerGetSubsidiesQueryOptions = <TData = Awaited<ReturnType<typeof lstbControllerGetSubsidies>>, TError = void>(jahr: number,
+    params?: LstbControllerGetSubsidiesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof lstbControllerGetSubsidies>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getLstbControllerGetSubsidiesQueryKey(jahr,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof lstbControllerGetSubsidies>>> = ({ signal }) => lstbControllerGetSubsidies(jahr,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: jahr !== null && jahr !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof lstbControllerGetSubsidies>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type LstbControllerGetSubsidiesQueryResult = NonNullable<Awaited<ReturnType<typeof lstbControllerGetSubsidies>>>
+export type LstbControllerGetSubsidiesQueryError = void
+
+
+export function useLstbControllerGetSubsidies<TData = Awaited<ReturnType<typeof lstbControllerGetSubsidies>>, TError = void>(
+ jahr: number,
+    params: undefined |  LstbControllerGetSubsidiesParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof lstbControllerGetSubsidies>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof lstbControllerGetSubsidies>>,
+          TError,
+          Awaited<ReturnType<typeof lstbControllerGetSubsidies>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useLstbControllerGetSubsidies<TData = Awaited<ReturnType<typeof lstbControllerGetSubsidies>>, TError = void>(
+ jahr: number,
+    params?: LstbControllerGetSubsidiesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof lstbControllerGetSubsidies>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof lstbControllerGetSubsidies>>,
+          TError,
+          Awaited<ReturnType<typeof lstbControllerGetSubsidies>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useLstbControllerGetSubsidies<TData = Awaited<ReturnType<typeof lstbControllerGetSubsidies>>, TError = void>(
+ jahr: number,
+    params?: LstbControllerGetSubsidiesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof lstbControllerGetSubsidies>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useLstbControllerGetSubsidies<TData = Awaited<ReturnType<typeof lstbControllerGetSubsidies>>, TError = void>(
+ jahr: number,
+    params?: LstbControllerGetSubsidiesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof lstbControllerGetSubsidies>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getLstbControllerGetSubsidiesQueryOptions(jahr,params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type lstbControllerSetSubsidiesResponse200 = {
+  data: LstbSubsidiesDto
+  status: 200
+}
+
+export type lstbControllerSetSubsidiesResponse401 = {
+  data: void
+  status: 401
+}
+
+export type lstbControllerSetSubsidiesResponseSuccess = (lstbControllerSetSubsidiesResponse200) & {
+  headers: Headers;
+};
+export type lstbControllerSetSubsidiesResponseError = (lstbControllerSetSubsidiesResponse401) & {
+  headers: Headers;
+};
+
+export type lstbControllerSetSubsidiesResponse = (lstbControllerSetSubsidiesResponseSuccess | lstbControllerSetSubsidiesResponseError)
+
+export const getLstbControllerSetSubsidiesUrl = (jahr: number,
+    params?: LstbControllerSetSubsidiesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/v1/steuerjahre/${jahr}/lstb-zuschuesse?${stringifiedParams}` : `/v1/steuerjahre/${jahr}/lstb-zuschuesse`
+}
+
+export const lstbControllerSetSubsidies = async (jahr: number,
+    lstbSubsidiesDto: LstbSubsidiesDto,
+    params?: LstbControllerSetSubsidiesParams, options?: RequestInit): Promise<lstbControllerSetSubsidiesResponse> => {
+
+  return httpClient<lstbControllerSetSubsidiesResponse>(getLstbControllerSetSubsidiesUrl(jahr,params),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(lstbSubsidiesDto)
+  }
+);}
+
+
+
+
+
+export const getLstbControllerSetSubsidiesMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof lstbControllerSetSubsidies>>, TError,{jahr: number;data: LstbSubsidiesDto;params?: LstbControllerSetSubsidiesParams}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof lstbControllerSetSubsidies>>, TError,{jahr: number;data: LstbSubsidiesDto;params?: LstbControllerSetSubsidiesParams}, TContext> => {
+
+const mutationKey = ['lstbControllerSetSubsidies'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof lstbControllerSetSubsidies>>, {jahr: number;data: LstbSubsidiesDto;params?: LstbControllerSetSubsidiesParams}> = (props) => {
+          const {jahr,data,params} = props ?? {};
+
+          return  lstbControllerSetSubsidies(jahr,data,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type LstbControllerSetSubsidiesMutationResult = NonNullable<Awaited<ReturnType<typeof lstbControllerSetSubsidies>>>
+    export type LstbControllerSetSubsidiesMutationBody = LstbSubsidiesDto
+    export type LstbControllerSetSubsidiesMutationError = void
+
+    export const useLstbControllerSetSubsidies = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof lstbControllerSetSubsidies>>, TError,{jahr: number;data: LstbSubsidiesDto;params?: LstbControllerSetSubsidiesParams}, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof lstbControllerSetSubsidies>>,
+        TError,
+        {jahr: number;data: LstbSubsidiesDto;params?: LstbControllerSetSubsidiesParams},
+        TContext
+      > => {
+      return useMutation(getLstbControllerSetSubsidiesMutationOptions(options), queryClient);
     }
 

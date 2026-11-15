@@ -138,6 +138,13 @@ describe('Anlage N-Gre — NBUV paid entirely by the employer (Zeilen 97/98)', (
     expect(chf).toMatchObject({ z19: 540, z81: 270, z23: 97600 + 540 })
   })
 
+  it('puts the other half of the NBUV into the Werbungskosten (Anleitung N-Gre 2025 zu Z. 97/98, real case 2025)', () => {
+    const { nbuvWorkExpenses, chf } = annexNGreAmounts({ ...INPUT, rate: 1.065, nbuvArbeitgeberProzent: 100, nbuvArbeitgeberChf: 541 })
+    // 541 CHF: 271 (rounded half) in Z. 81 as a Sonderausgabe, the rest, 270, as Werbungskosten — together 100 %.
+    expect(chf.z81).toBe(271)
+    expect(nbuvWorkExpenses).toEqual({ chf: 270, eur: Math.round(270 * 1.065) })
+  })
+
   it('treats the Krankentaggeld premium the same way', () => {
     const { split } = annexNGreAmounts({ ...INPUT, krankentaggeldArbeitgeberProzent: 100, krankentaggeldArbeitgeberChf: 800 })
     expect(split.dailySicknessAllowance).toMatchObject({ employeeChf: 0, employerChf: 800 })

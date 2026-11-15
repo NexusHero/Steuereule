@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { foldThoughtEvent, type AdvisorActionProposal, type AdvisorChatMessageView, type AdvisorPlanStepStatus, type AdvisorQuickAction, type AdvisorSkillId, type AdvisorThoughtStep, type DetectedDocumentKind, type Screen } from '@steuereule/core'
+import { foldThoughtEvent, printedPersonDetails, type AdvisorActionProposal, type AdvisorChatMessageView, type AdvisorPlanStepStatus, type AdvisorQuickAction, type AdvisorSkillId, type AdvisorThoughtStep, type DetectedDocumentKind, type Screen } from '@steuereule/core'
 import {
   advisorControllerApplyAction,
   advisorControllerApplyBatch,
@@ -30,12 +30,15 @@ import {
   getRentalControllerGetQueryKey,
   getTaxEstimateControllerGetQueryKey,
   receiptParseControllerParseReceipt,
+  type AssignmentPersonDto,
+  type AssignmentQuestionDto,
   type ParseReceiptDtoMimeType,
   type ParseReceiptResponseDto,
   type SendAdvisorMessageResponseDto,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { captureReceipt, type CapturePhase, type CaptureResult } from '../../lib/receipts/captureReceipt'
+import { createHolderFromDocument, detailsFromDocument, takeNameIntoProfile, type NewHolderDetails } from '../../lib/receipts/documentAssignment'
 import { createFrameBatcher } from './chat/frameBatcher'
 import { followRun, type RunFrame } from './chat/runStream'
 
@@ -206,9 +209,16 @@ export interface CopilotBridgeContextValue {
   /** Plain-language outcome the chat shows after a capture (year conflict, unreadable file …). */
   readonly receiptNotice: string | null
   readonly clearReceiptNotice: () => void
-  /** A Swiss salary certificate whose name fits neither person waits for the user to say whose it is. */
-  readonly certificateOwnerPending: boolean
-  readonly chooseCertificateOwner: (person: 'A' | 'B') => Promise<void>
+  /** „Für wen?“ (ADR-0092): a document waits for the user to say whose it is; nothing is read for anyone yet. */
+  readonly documentQuestion: { readonly question: AssignmentQuestionDto; readonly printed: NewHolderDetails } | null
+  /** Whose the last document is („für: …“) and whom else a multi-person document names („auch für …?“). */
+  readonly documentHolder: { readonly holder: AssignmentPersonDto; readonly alsoFor: readonly AssignmentPersonDto[] } | null
+  readonly assignmentBusy: boolean
+  readonly assignmentError: string | null
+  readonly chooseDocumentHolder: (holder: string) => Promise<void>
+  readonly createDocumentHolder: (role: 'B' | 'kind', details: NewHolderDetails) => Promise<void>
+  readonly confirmDocumentSelf: (takeName: boolean) => Promise<void>
+  readonly takeDocumentAlsoFor: (holder: string) => Promise<void>
   readonly provenanceByScreen: Readonly<Partial<Record<Screen, TileProvenanceKind>>>
   readonly bestTileProvenance: (screens: readonly Screen[]) => TileProvenanceKind | null
   readonly cockpitBanner: CockpitBannerState | null
@@ -408,7 +418,12 @@ export function CopilotBridgeProvider({
   const [lastParsedReceipt, setLastParsedReceipt] = useState<ParseReceiptResponseDto | null>(null)
   const [receiptPhase, setReceiptPhase] = useState<CapturePhase | null>(null)
   const [receiptNotice, setReceiptNotice] = useState<string | null>(null)
-  const [certificateOwnerFile, setCertificateOwnerFile] = useState<{ file: File; receiptId: string | null; kind: DetectedDocumentKind } | null>(null)
+  // The document of the last upload, kept in memory to read it again for the person the user names.
+  const [assignmentFile, setAssignmentFile] = useState<{ file: File; receiptId: string | null; kind: DetectedDocumentKind; rawText: string } | null>(null)
+  const [documentQuestion, setDocumentQuestion] = useState<CopilotBridgeContextValue['documentQuestion']>(null)
+  const [documentHolder, setDocumentHolder] = useState<CopilotBridgeContextValue['documentHolder']>(null)
+  const [assignmentBusy, setAssignmentBusy] = useState(false)
+  const [assignmentError, setAssignmentError] = useState<string | null>(null)
   const [receiptLinkedActionIds, setReceiptLinkedActionIds] = useState<ReadonlySet<string>>(() => new Set())
   const [provenanceByScreen, setProvenanceByScreen] = useState<Readonly<Partial<Record<Screen, TileProvenanceKind>>>>({})
   const [cockpitBanner, setCockpitBanner] = useState<CockpitBannerState | null>(null)
@@ -821,31 +836,43 @@ export function CopilotBridgeProvider({
   )
 
   const captureReceiptFile = useCallback(
-    async (file: File, again?: { person: 'A' | 'B'; receiptId: string | null; kind: DetectedDocumentKind }): Promise<CaptureResult | null> => {
+    async (
+      file: File,
+      again?: { holder: string; receiptId: string | null; kind: DetectedDocumentKind; alsoFor?: boolean },
+    ): Promise<CaptureResult | null> => {
       if (!isAuthenticated) return null
       setParsingReceipt(true)
       setOpenChatError(null)
       setReceiptNotice(null)
-      setCertificateOwnerFile(null)
+      setDocumentQuestion(null)
+      setAssignmentError(null)
+      if (!again) setDocumentHolder(null)
       try {
         const result = await captureReceipt(file, {
           taxYear,
           onPhase: setReceiptPhase,
-          ...(again ? { kind: again.kind, person: again.person, receiptId: again.receiptId } : {}),
+          ...(again ? { kind: again.kind, holder: again.holder, receiptId: again.receiptId, alsoFor: again.alsoFor === true } : {}),
         })
         if (!result.ok) {
           setReceiptNotice(tr(`advisor.chat.receiptFailure.${result.failure}`))
           return result
         }
         setLastParsedReceipt(result.response)
-        // A certificate, LStB or letter whose name fits nobody waits for the user to say whose it is.
+        setAssignmentFile({ file, receiptId: result.receiptId, kind: result.kind, rawText: result.rawText })
+        // „Für wen?“ (ADR-0092): nothing was read for anyone; the user answers first.
+        const assignment = result.response.assignment ?? null
+        if (assignment?.question) {
+          setDocumentQuestion({
+            question: assignment.question,
+            printed: detailsFromDocument(printedPersonDetails(result.kind, result.rawText, assignment.question.printedName)),
+          })
+        } else if (assignment?.holder) {
+          setDocumentHolder({ holder: assignment.holder, alsoFor: assignment.alsoFor })
+        }
         const certificate = result.response.chLohnausweis ?? result.response.chLetter ?? null
         const owned = certificate ?? result.response.lstb ?? null
         const isLstb = certificate === null && result.response.lstb != null
-        if (owned?.personUnclear) {
-          setCertificateOwnerFile({ file, receiptId: result.receiptId, kind: result.kind })
-          setReceiptNotice(tr(isLstb ? 'advisor.chat.lstbWhose' : result.response.chLetter ? 'advisor.chat.letterWhose' : 'advisor.chat.certificateWhose'))
-        } else if (owned?.personNotRecordable) {
+        if (owned?.personNotRecordable) {
           setReceiptNotice(tr(isLstb ? 'advisor.chat.lstbPersonBOwnAccount' : 'advisor.chat.certificatePersonBOwnAccount'))
         }
         // A receipt that is read but records nothing (a cosmetic operation, an invoice counted already) says why.
@@ -883,12 +910,44 @@ export function CopilotBridgeProvider({
     [isAuthenticated, queryClient, taxYear, tr],
   )
 
-  const chooseCertificateOwner = useCallback(
-    async (person: 'A' | 'B') => {
-      if (certificateOwnerFile === null) return
-      await captureReceiptFile(certificateOwnerFile.file, { person, receiptId: certificateOwnerFile.receiptId, kind: certificateOwnerFile.kind })
+  const readAgainFor = useCallback(
+    async (holder: string, alsoFor = false) => {
+      if (assignmentFile === null) return
+      setAssignmentBusy(true)
+      try {
+        await captureReceiptFile(assignmentFile.file, { holder, receiptId: assignmentFile.receiptId, kind: assignmentFile.kind, alsoFor })
+      } finally {
+        setAssignmentBusy(false)
+      }
     },
-    [captureReceiptFile, certificateOwnerFile],
+    [assignmentFile, captureReceiptFile],
+  )
+
+  const chooseDocumentHolder = useCallback((holder: string) => readAgainFor(holder), [readAgainFor])
+  const takeDocumentAlsoFor = useCallback((holder: string) => readAgainFor(holder, true), [readAgainFor])
+
+  const confirmDocumentSelf = useCallback(
+    async (takeName: boolean) => {
+      if (takeName && documentQuestion !== null) await takeNameIntoProfile(documentQuestion.printed)
+      await readAgainFor('A')
+    },
+    [documentQuestion, readAgainFor],
+  )
+
+  const createDocumentHolder = useCallback(
+    async (role: 'B' | 'kind', details: NewHolderDetails) => {
+      setAssignmentBusy(true)
+      setAssignmentError(null)
+      const holder = await createHolderFromDocument(taxYear, role, details)
+      setAssignmentBusy(false)
+      if (holder === null) {
+        setAssignmentError(tr('belegZuordnung.anlegen.fehler'))
+        return
+      }
+      await queryClient.invalidateQueries()
+      await readAgainFor(holder)
+    },
+    [queryClient, readAgainFor, taxYear, tr],
   )
 
   const bestTileProvenance = useCallback(
@@ -949,8 +1008,14 @@ export function CopilotBridgeProvider({
       receiptPhase,
       receiptNotice,
       clearReceiptNotice: () => setReceiptNotice(null),
-      certificateOwnerPending: certificateOwnerFile !== null,
-      chooseCertificateOwner,
+      documentQuestion,
+      documentHolder,
+      assignmentBusy,
+      assignmentError,
+      chooseDocumentHolder,
+      createDocumentHolder,
+      confirmDocumentSelf,
+      takeDocumentAlsoFor,
       provenanceByScreen,
       bestTileProvenance,
       cockpitBanner,
@@ -994,8 +1059,14 @@ export function CopilotBridgeProvider({
       captureReceiptFile,
       receiptPhase,
       receiptNotice,
-      certificateOwnerFile,
-      chooseCertificateOwner,
+      documentQuestion,
+      documentHolder,
+      assignmentBusy,
+      assignmentError,
+      chooseDocumentHolder,
+      createDocumentHolder,
+      confirmDocumentSelf,
+      takeDocumentAlsoFor,
       provenanceByScreen,
       bestTileProvenance,
       cockpitBanner,

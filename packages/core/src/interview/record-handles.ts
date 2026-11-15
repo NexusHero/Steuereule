@@ -33,16 +33,44 @@ const positionOf = (raw: string): number | null => {
 }
 
 /**
- * Finds the record a draft is meant for. One record needs no name; several need one; none means
- * the user has to create it in the mask first — the owl never creates records.
+ * A record the owl prepares that does not exist yet (ADR-0091): „neu“, „neu 2“, „neues Kind 2“.
+ * It is created when the user applies the draft; until then its id is this placeholder.
  */
-export function resolveRecordHandle(screen: Screen, records: readonly AdvisorRecordHandle[], raw: string | null | undefined): RecordHandleResolution {
+export const NEW_RECORD_PREFIX = 'neu:'
+
+export function isNewRecordId(id: string | null | undefined): boolean {
+  return id?.startsWith(NEW_RECORD_PREFIX) === true
+}
+
+const NEW_RECORD = /^neu(?:e[sr]?)?(?:\s+[\p{L}]+)?(?:\s*(\d{1,2}))?$/iu
+
+export interface ResolveRecordOptions {
+  /** The owl may prepare a new record on this mask (a rental object; a child with the consent to personal data). */
+  readonly allowNew?: boolean
+}
+
+/**
+ * Finds the record a draft is meant for. One record needs no name; several need one; none means
+ * the user creates it in the mask first — unless the owl may prepare a new one (ADR-0091).
+ */
+export function resolveRecordHandle(
+  screen: Screen,
+  records: readonly AdvisorRecordHandle[],
+  raw: string | null | undefined,
+  options: ResolveRecordOptions = {},
+): RecordHandleResolution {
   const noun = NOUN[screen]
+  const wanted = raw?.trim() ?? ''
+  const fresh = options.allowNew ? NEW_RECORD.exec(wanted) : null
+  if (fresh) {
+    const number = fresh[1] ?? '1'
+    return { ok: true, id: `${NEW_RECORD_PREFIX}${Number(number)}`, handle: `neues ${noun?.one ?? 'Eintrag'} ${Number(number)}` }
+  }
   if (records.length === 0) {
-    return { ok: false, code: 'NO_RECORD', reason: noun?.none ?? 'Dafür ist noch kein Eintrag angelegt.' }
+    const none = noun?.none ?? 'Dafür ist noch kein Eintrag angelegt.'
+    return { ok: false, code: 'NO_RECORD', reason: options.allowNew ? `${none} Einen neuen Eintrag bereitest du mit \`instance: „neu“\` vor.` : none }
   }
   const names = records.map((record) => record.handle).join(', ')
-  const wanted = raw?.trim() ?? ''
   if (wanted === '') {
     if (records.length === 1) return { ok: true, ...records[0]! }
     return { ok: false, code: 'RECORD_REQUIRED', reason: `Es gibt mehrere Einträge (${names}). Für welchen gilt die Angabe?` }

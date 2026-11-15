@@ -260,6 +260,20 @@ describe('KinderScreen', () => {
     await waitFor(() => expect(onAdd).toHaveBeenCalledWith(expect.objectContaining({ healthBasicEur: '1080', careEur: null })))
   })
 
+  it("marks a child's foreign health insurance, so its premium goes into Anlage Kind Kz 89 (real case 2025, ADR-0090)", async () => {
+    const onAdd = vi.fn().mockResolvedValue(undefined)
+    renderKinder({ onAddChild: onAdd })
+    fireEvent.click(screen.getByTestId('kind-neu'))
+    fireEvent.change(screen.getByLabelText('Vorname'), { target: { value: 'Mia' } })
+    fireEvent.change(screen.getByLabelText('Nachname'), { target: { value: 'Brenner' } })
+    fireEvent.change(screen.getByLabelText('Geburtsdatum'), { target: { value: '02.09.2021' } })
+    fireEvent.click(screen.getByTestId('kind-weitere-angaben'))
+    fireEvent.change(screen.getByLabelText('Krankenversicherung des Kindes'), { target: { value: '963' } })
+    fireEvent.click(screen.getByTestId('kind-kv-ausland'))
+    fireEvent.click(screen.getByTestId('kind-speichern'))
+    await waitFor(() => expect(onAdd).toHaveBeenCalledWith(expect.objectContaining({ healthBasicEur: '963', healthInsuranceAbroad: true })))
+  })
+
   it('saves the childcare the parents paid with provider and period (Anlage Kind Z. 67, ADR-0076)', async () => {
     const onAdd = vi.fn().mockResolvedValue(undefined)
     renderKinder({ onAddChild: onAdd })
@@ -279,6 +293,20 @@ describe('KinderScreen', () => {
         expect.objectContaining({ childcareEur: '739', childcareProvider: 'Kindergarten, Gemeinde Musterdorf', childcareFrom: '01.01.2025', childcareTo: null }),
       ),
     )
+  })
+
+  it('takes only as much of the provider as fits the form line, and says so (real case 2024/2025, ADR-0090)', () => {
+    renderKinder({ onAddChild: vi.fn().mockResolvedValue(undefined) })
+    fireEvent.click(screen.getByTestId('kind-neu'))
+    fireEvent.click(screen.getByTestId('kind-weitere-angaben'))
+    const provider = screen.getByTestId('kind-betreuung-anbieter') as HTMLInputElement
+    fireEvent.change(provider, { target: { value: 'Kita Sonnenschein, Hauptstr. 1, 79100 Freiburg' } })
+    expect(provider.value).toBe('Kita Sonnenschein, Hauptstr. 1, 79100 Freiburg')
+    expect(screen.queryByTestId('kind-betreuung-anbieter-voll')).toBeNull()
+    fireEvent.change(provider, { target: { value: 'Kindertagesstätte Sonnenschein e. V., Hauptstraße 12, 79100 Freiburg im Breisgau' } })
+    // The longer text is refused as a whole, the field keeps what fits, and a line says why.
+    expect(provider.value).toBe('Kita Sonnenschein, Hauptstr. 1, 79100 Freiburg')
+    expect(screen.getByTestId('kind-betreuung-anbieter-voll')).toBeTruthy()
   })
 
   it('allows adding a new child', async () => {
