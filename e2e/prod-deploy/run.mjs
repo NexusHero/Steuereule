@@ -143,10 +143,14 @@ async function guestFlow(browser, webOrigin, target) {
 
     // Answer the Minimal-Gate — each answer is a real POST, so API reachability is proven end
     // to end (the same "the flow genuinely completed" standard the onboarding walk used to hold).
-    await jobQuestion.click()
-    await page.getByText(COPY.nein).click() // ausland: no gate
-    await page.getByText(COPY.kinder).click()
-    await page.getByText(COPY.familienstand).click() // completes the Minimal-Gate (Familienstand, ADR-0054)
+    // The Strom's basis page (ADR-0089) shows every question at once, so each answer is picked by
+    // its question's test id ("Nein" alone is ambiguous) and "Weiter" posts the page.
+    const pick = (id, value) => page.locator(`[data-testid="interview-option-${id}-${value}"]`).click()
+    await pick('job', COPY.job)
+    await pick('ausland', COPY.nein) // ausland: no gate
+    await pick('kinder', COPY.kinder)
+    await pick('familienstand', COPY.familienstand) // completes the Minimal-Gate (Familienstand, ADR-0054)
+    await page.locator('[data-testid="strom-weiter"]').click()
 
     // The Konto-Wand is the funnel's honest next step for a guest; "Später" reaches the Cockpit.
     await page.getByText(COPY.kontoWandLater).waitFor({ state: 'visible', timeout: 15_000 }).catch(async () => {
