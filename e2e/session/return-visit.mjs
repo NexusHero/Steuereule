@@ -527,10 +527,14 @@ async function testGuestReload(browser, webOrigin) {
     await page.getByText(COPY.loginGuest, { exact: true }).click()
     // ADR-0045: the guest lands in the Minimal-Gate, not Onboarding.
     await page.getByText(COPY.job).waitFor({ state: 'visible', timeout: 10_000 })
-    await page.getByText(COPY.job).click()
-    await page.getByText(COPY.nein).click() // ausland: no gate
-    await page.getByText(COPY.kinder).click()
-    await page.getByText(COPY.familienstand).click() // completes the Minimal-Gate (Familienstand, ADR-0054)
+    // The Strom's basis page (ADR-0089) shows every question at once: each answer is picked by its
+    // question's test id ("Nein" alone is ambiguous) and "Weiter" posts the page.
+    const pick = (id, value) => page.locator(`[data-testid="interview-option-${id}-${value}"]`).click()
+    await pick('job', COPY.job)
+    await pick('ausland', COPY.nein) // ausland: no gate
+    await pick('kinder', COPY.kinder)
+    await pick('familienstand', COPY.familienstand) // completes the Minimal-Gate (Familienstand, ADR-0054)
+    await page.locator('[data-testid="strom-weiter"]').click()
     await page.getByText(COPY.kontoWandLater).click() // Konto-Wand -> "Später" -> Cockpit
     await page.getByText('0 Fragen offen', { exact: true }).waitFor({ state: 'visible', timeout: 10_000 })
     console.log('[return-visit] Row D: guest answered the Minimal-Gate, own data ("0 Fragen offen") renders in the Cockpit.')
