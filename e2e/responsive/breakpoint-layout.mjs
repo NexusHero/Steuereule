@@ -296,15 +296,19 @@ async function continueAsGuestThroughOnboarding(page) {
 
   // Minimal-Gate: job -> ausland -> kinder (the funnel's guest may answer Segment 1).
   await page.getByText(COPY.job).waitFor({ state: 'visible', timeout: 10_000 })
-  await page.getByText(COPY.job).click()
   // The gate answers are clicked with `force: true`: this is a LAYOUT-measurement gate, not an
   // interaction-fidelity gate (the interaction logic is pinned by the jsdom suites). At the `m`/
   // `l` breakpoints Playwright's stability check has been observed to never settle (the harness
   // sets those viewports in two resize steps, and the shell re-lays out while the breakpoint hook
   // settles) — the buttons themselves are fine.
-  await page.getByText(COPY.nein).click({ force: true }) // ausland: no gate
-  await page.getByText(COPY.kinder).click({ force: true })
-  await page.getByText(COPY.familienstand).click({ force: true }) // completes the Minimal-Gate (Familienstand, ADR-0054)
+  // The Strom's basis page (ADR-0089) shows every question at once: each answer is picked by its
+  // question's test id ("Nein" alone is ambiguous) and "Weiter" posts the page.
+  const pick = (id, value) => page.locator(`[data-testid="interview-option-${id}-${value}"]`).click({ force: true })
+  await pick('job', COPY.job)
+  await pick('ausland', COPY.nein) // ausland: no gate
+  await pick('kinder', COPY.kinder)
+  await pick('familienstand', COPY.familienstand) // completes the Minimal-Gate (Familienstand, ADR-0054)
+  await page.locator('[data-testid="strom-weiter"]').click({ force: true })
 
   // Konto-Wand — the honest next step for a guest; "Später" reaches the Cockpit.
   await page.getByText(COPY.kontoWandLater).waitFor({ state: 'visible', timeout: 10_000 })
