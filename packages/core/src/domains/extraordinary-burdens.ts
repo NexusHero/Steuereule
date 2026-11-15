@@ -106,5 +106,7 @@ export function calculateExtraordinaryBurden(input: ExtraordinaryBurdenInput): E
 
 export function extraordinaryBurdenFromAnswers(answers: Answers): number {
   if (answers['gesundheit-gate'] !== 'Ja') return 0
-  return amountFromAnswer(answers['gesundheit-betrag']) ?? 0
+  // § 33 EStG: only what the taxpayer bore — costs less what was reimbursed (ADR-0090).
+  const costs = amountFromAnswer(answers['gesundheit-betrag']) ?? 0
+  return Math.max(0, costs - (amountFromAnswer(answers['gesundheit-erstattung']) ?? 0))
 }

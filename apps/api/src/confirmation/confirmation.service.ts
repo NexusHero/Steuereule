@@ -108,6 +108,43 @@ export class ConfirmationService {
     }
   }
 
+  /**
+   * The value in a field and the document it came from (ADR-0092): a value applied from a Beleg names its
+   * receipt; one typed by hand, told in the chat or taken over from last year names none. A field whose
+   * record does not exist yet holds nothing.
+   */
+  async valueWithSource(userId: string, taxYear: number, key: string): Promise<{ value: string | null; receiptId: string | null }> {
+    const a = this.address(key, taxYear)
+    const values = await a.access.read(userId, a.taxYear, a.instance)
+    const value = values?.[a.field] ?? null
+    if (value === null) return { value: null, receiptId: null }
+    const provenance = (await this.repository.find(userId, a.taxYear, key))?.provenance
+    const receiptId = provenance?.kind === 'beleg' ? provenance.receiptId : provenance?.kind === 'assistent' ? (provenance.receiptId ?? null) : null
+    return { value, receiptId }
+  }
+
+  /**
+   * Several fields of one person at once, each record read once. A field that cannot be read here
+   * (no such field, no record yet) reads as empty: the caller asks what is empty (ADR-0091, Nachtrag).
+   */
+  async readRawValues(userId: string, taxYear: number, keys: readonly string[]): Promise<Record<string, string | null>> {
+    const records = new Map<string, Promise<Record<string, string | null> | null>>()
+    const out: Record<string, string | null> = {}
+    for (const key of keys) {
+      let a: Address
+      try {
+        a = this.address(key, taxYear)
+      } catch {
+        out[key] = null
+        continue
+      }
+      const recordKey = `${a.screen}:${a.instance ?? ''}:${a.taxYear}`
+      if (!records.has(recordKey)) records.set(recordKey, a.access.read(userId, a.taxYear, a.instance).catch(() => null))
+      out[key] = (await records.get(recordKey))?.[a.field] ?? null
+    }
+    return out
+  }
+
   async readRawValue(userId: string, taxYear: number, key: string): Promise<string | null> {
     const a = this.address(key, taxYear)
     return this.currentValue(userId, a)
@@ -126,9 +163,11 @@ export class ConfirmationService {
     newValue: string | null,
     expectedCurrentValue?: string | null,
     provenanceOverride?: Provenance,
+    /** The user consented to personal data for the owl (ADR-0091): the identifying fields are open. */
+    options: { readonly personalDataConsent?: boolean } = {},
   ): Promise<AdvisorUndoEntry> {
     const a = this.address(key, taxYear)
-    assertAiWritable(a.screen, a.field, key)
+    assertAiWritable(a.screen, a.field, key, options.personalDataConsent === true)
     // The catalogue's value check on the write itself (ADR-0066): a draft made before a rule
     // existed, or by a path that skipped the check, still cannot store a value the field cannot hold.
     let valueToStore = newValue
@@ -162,9 +201,9 @@ export class ConfirmationService {
    * 1-click undo of an applied draft: restores value and provenance exactly as they were,
    * but only while the field still holds what the Eule wrote — a later manual edit wins.
    */
-  async restoreByAdvisor(userId: string, taxYear: number, entry: AdvisorUndoEntry): Promise<void> {
+  async restoreByAdvisor(userId: string, taxYear: number, entry: AdvisorUndoEntry, options: { readonly personalDataConsent?: boolean } = {}): Promise<void> {
     const a = this.address(entry.key, taxYear)
-    assertAiWritable(a.screen, a.field, entry.key)
+    assertAiWritable(a.screen, a.field, entry.key, options.personalDataConsent === true)
     const currentValue = await this.currentValue(userId, a)
     if (currentValue !== entry.appliedValue) throw staleValueConflict(entry.key, currentValue)
     await this.writeValue(userId, a, entry.previousValue)

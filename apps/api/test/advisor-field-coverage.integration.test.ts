@@ -10,7 +10,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { AppModule } from '../src/app.module.js'
 import { CHILD_REPOSITORY, type ChildRepository } from '../src/children/child.repository.js'
 import { ConfirmationService } from '../src/confirmation/confirmation.service.js'
-import { AI_WRITABLE_FIELDS } from '../src/ki/advisor-safety.js'
+import { AI_WRITABLE_FIELDS, aiWritableFields } from '../src/ki/advisor-safety.js'
 import { PrismaService } from '../src/prisma/prisma.service.js'
 import { RENTAL_REPOSITORY, type RentalRepository } from '../src/rental/rental.repository.js'
 
@@ -19,7 +19,8 @@ const YEAR = 2025
 /** Values a model would plausibly send; the first one a field accepts counts. */
 // A German date (TT.MM.JJJJ) for the fields that take one, e.g. the period of a way to work (ADR-0079).
 // 'A' for the person a child's Swiss Kinderzulage comes with (ADR-0088), last so it never wins over a real value.
-const GENERIC_CANDIDATES = ['1200', '12', '2025-06-30', '30.06.2025', 'true', 'pkw', '1,2,3,4,5', 'BY', 'GesetzlicheRente', '1', 'Inland', '1995', '2019', 'A']
+// ADR-0091: 'zusammen' for the Veranlagungsart, '1.065' for the Wechselkurs, a Steuer-ID, an IBAN, a religion key and a marital status.
+const GENERIC_CANDIDATES = ['1200', '12', '2025-06-30', '30.06.2025', 'true', 'pkw', '1,2,3,4,5', 'BY', 'GesetzlicheRente', '1', 'Inland', '1995', '2019', 'A', 'zusammen', '1.065', '12345678901', 'DE89370400440532013000', 'VD', 'ledig']
 
 function candidatesFor(screen: Screen, field: string): string[] {
   if (screen === 'interview') {
@@ -31,6 +32,7 @@ function candidatesFor(screen: Screen, field: string): string[] {
 }
 
 const NONSENSE = 'xyz-unsinn'
+const consent = { personalDataConsent: true }
 
 interface FieldResult {
   readonly key: string
@@ -53,19 +55,20 @@ describe('every field the owl is told about can be written (#476)', () => {
     prisma = app.get(PrismaService)
     confirmation = app.get(ConfirmationService)
 
-    // Screens with several rows a year need one to write to; the owl cannot create them.
+    // Screens with several rows a year need one to write to (the owl creates them through a draft, ADR-0091).
     const child = await app.get<ChildRepository>(CHILD_REPOSITORY).create(userId, YEAR, { firstName: 'Mila', lastName: 'Muster', geburtsdatum: '2019-05-12' })
     const rental = await app.get<RentalRepository>(RENTAL_REPOSITORY).create(userId, YEAR)
     const instances: Partial<Record<Screen, string>> = { kind: child.id, vermietung: rental.id }
 
-    for (const [screen, fields] of Object.entries(AI_WRITABLE_FIELDS) as Array<[Screen, readonly string[]]>) {
+    // Every field the owl may be told about: with the consent to personal data that is all of them (ADR-0091).
+    for (const [screen, fields] of Object.entries(aiWritableFields(true)) as Array<[Screen, readonly string[]]>) {
       for (const field of fields) {
         const key = provenanceKey(screen, field, instances[screen])
         let accepted: string | null = null
         const reasons: string[] = []
         for (const value of candidatesFor(screen, field)) {
           try {
-            await confirmation.writeConfirmedByAdvisor(userId, YEAR, key, value)
+            await confirmation.writeConfirmedByAdvisor(userId, YEAR, key, value, undefined, undefined, consent)
             accepted = value
             break
           } catch (error) {
@@ -82,9 +85,9 @@ describe('every field the owl is told about can be written (#476)', () => {
     for (const result of results) {
       if (result.accepted === null) continue
       try {
-        await confirmation.writeConfirmedByAdvisor(userId, YEAR, result.key, NONSENSE)
+        await confirmation.writeConfirmedByAdvisor(userId, YEAR, result.key, NONSENSE, undefined, undefined, consent)
         unguarded.push(result.key)
-        await confirmation.writeConfirmedByAdvisor(userId, YEAR, result.key, result.accepted).catch(() => {})
+        await confirmation.writeConfirmedByAdvisor(userId, YEAR, result.key, result.accepted, undefined, undefined, consent).catch(() => {})
       } catch {
         // refused, as it should be
       }
@@ -92,7 +95,7 @@ describe('every field the owl is told about can be written (#476)', () => {
   }, 120_000)
 
   afterAll(async () => {
-    for (const table of ['marking', 'interviewAnswer', 'taxDataAccessLog', 'commute', 'child', 'rentalProperty', 'taxYear'] as const) {
+    for (const table of ['marking', 'interviewAnswer', 'taxDataAccessLog', 'commute', 'child', 'rentalProperty', 'capital', 'chSalaryCertificate', 'lstb', 'pension', 'assessment', 'masterData', 'taxYearLink', 'taxYear'] as const) {
       await (prisma[table] as unknown as { deleteMany(args: unknown): Promise<unknown> }).deleteMany({ where: { userId } }).catch(() => {})
     }
     await app.close()
@@ -123,6 +126,17 @@ describe('every field the owl is told about can be written (#476)', () => {
       return fieldSpec(screenPart.split(':')[0]!, field)?.value.kind !== 'text'
     })
     expect(fixedForm).toEqual([])
+  })
+
+  it('covers what the owl fills since ADR-0091: identity, household, children, the exchange rate, the owner, the rental object', () => {
+    const keys = results.map((r) => r.key)
+    for (const wanted of ['profil.steuerId', 'stammdaten.iban', 'stammdaten.religion', 'kopplung.filingType', 'chLohnausweis.wechselkurs', 'chLohnausweis.wechselkursMonat', 'kapital.inhaber']) {
+      expect(keys, wanted).toContain(wanted)
+    }
+    for (const field of ['firstName', 'geburtsdatum', 'taxId', 'otherParentName']) expect(keys.some((k) => k.startsWith('kind:') && k.endsWith(`.${field}`)), field).toBe(true)
+    for (const field of ['strasse', 'livingArea', 'einheiten', 'depreciationAsLastYear']) expect(keys.some((k) => k.startsWith('vermietung:') && k.endsWith(`.${field}`)), field).toBe(true)
+    expect(keys).not.toContain('kopplung.invitationCode')
+    expect(Object.values(AI_WRITABLE_FIELDS).flat().length).toBeLessThan(results.length)
   })
 
   it('lists no field to the model that can never be written', () => {

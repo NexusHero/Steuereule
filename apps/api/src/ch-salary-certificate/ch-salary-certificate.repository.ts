@@ -63,6 +63,6 @@ export interface CrossBorderSalaryStatementRepository {
   setExchangeRate(
     userId: string,
     taxYear: number,
-    exchangeRate: { month: string; rate: number; mode: string; receiptId?: string },
+    exchangeRate: { month: string | null; rate: number | null; mode: string | null; receiptId?: string },
   ): Promise<CrossBorderSalaryStatementRecord>
 }

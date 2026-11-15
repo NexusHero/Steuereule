@@ -34,13 +34,13 @@ export function parseNum(raw: string | null | undefined): number | null {
 
 /** Strips the server-internal undo snapshot; the client never needs prior provenance rows. */
 export function toPublicAction<T extends AdvisorActionProposal>(action: T): T {
-  if (action.undoSnapshot === undefined && action.countedItems === undefined) return action
-  const { undoSnapshot: _internal, countedItems: _items, ...rest } = action
+  if (action.undoSnapshot === undefined && action.countedItems === undefined && action.receiptMark === undefined) return action
+  const { undoSnapshot: _internal, countedItems: _items, receiptMark: _mark, ...rest } = action
   return rest as T
 }
 
 export function toPublicMeta(meta: AdvisorMessageMeta): AdvisorMessageMeta {
-  const { engine: _internal, ...rest } = meta
+  const { engine: _internal, printoutGapsAsked: _asked, ...rest } = meta
   return {
     ...rest,
     ...(rest.action ? { action: toPublicAction(rest.action) } : {}),
@@ -88,6 +88,12 @@ export interface PreparedAdvisorTurn {
    * guard does not check it (ADR-0069 §Themengrenze).
    */
   readonly fromApp: boolean
+  /** The user consented to personal data for the owl (ADR-0091): nothing was masked. */
+  readonly personalDataConsent?: boolean | undefined
+  /** Without that consent, the message carried personal data that was masked: the answer offers the consent card. */
+  readonly maskedPersonalData?: boolean | undefined
+  /** The previous answer of this conversation: whether its drafts were taken over and which printout gaps it asked (ADR-0091, Nachtrag). */
+  readonly previousAnswer?: { readonly draftsApplied: boolean; readonly printoutGapsAsked?: readonly string[] | undefined } | undefined
   /** Set when the owl opens this conversation itself (ADR-0067 §11). */
   readonly opening?: { readonly marker: NonNullable<AdvisorMessageMeta['opening']>; readonly context: import('./advisor-opening.js').OpeningContext } | undefined
 }
@@ -120,10 +126,16 @@ export function liveMessages(conversation: AdvisorConversationRecord, records: r
  * The history as the model may read it: the spouse is „Person B“ (the handle the owl drafts for) and
  * every other known name a stand-in. Masking the spouse as „[MANDANT]“ made the owl write that word back.
  */
-export function historySources(records: readonly AdvisorChatMessageRecord[], knownNames: readonly string[], spouseNames: readonly string[] = []): AdvisorHistorySource[] {
+export function historySources(
+  records: readonly AdvisorChatMessageRecord[],
+  knownNames: readonly string[],
+  spouseNames: readonly string[] = [],
+  /** With the consent to personal data the history goes as written (ADR-0091); without it, masked again on every read. */
+  personalDataConsent = false,
+): AdvisorHistorySource[] {
   return records.map((msg) => ({
     role: msg.role,
-    content: scrubUserMessagePii(replaceNamesWith(msg.content, spouseNames, PERSON_B_HANDLE), [...knownNames]),
+    content: personalDataConsent ? msg.content : scrubUserMessagePii(replaceNamesWith(msg.content, spouseNames, PERSON_B_HANDLE), [...knownNames]),
     meta: msg.meta,
     status: msg.status,
   }))

@@ -55,6 +55,11 @@ export interface NGreAmounts {
   readonly eur: Readonly<Record<NGreRow, number>>
   readonly split: { readonly dailySicknessAllowance: PremiumSplit; readonly nbuv: PremiumSplit }
   readonly pension: { readonly employee: PensionSplit; readonly employer: PensionSplit }
+  /**
+   * The other half of the NBUV premium: half is a Sonderausgabe (Z. 81), half Werbungskosten (Z. 57/58,
+   * Kz 380), because a Nichtberufsunfall includes the way to work (Anleitung N-Gre 2025 zu Z. 97/98, ADR-0090).
+   */
+  readonly nbuvWorkExpenses: { readonly chf: number; readonly eur: number }
 }
 
 /** The total minus the Obligatorium; without a total nothing above the Obligatorium is known. */
@@ -125,9 +130,11 @@ export function annexNGreAmounts(e: NGreInput): NGreAmounts {
     z88: t.z83 + t.z87,
   })
   const inEur = Object.fromEntries(Object.entries(parts).map(([row, chf]) => [row, Math.round(chf * e.rate)])) as typeof parts
+  const nbuvWorkExpensesChf = nbuv.employeeChf + nbuv.employerChf - parts.z81
   return {
     chf: sums(parts),
     eur: sums(inEur),
+    nbuvWorkExpenses: { chf: nbuvWorkExpensesChf, eur: Math.round(nbuvWorkExpensesChf * e.rate) },
     split: { dailySicknessAllowance, nbuv },
     pension: { employee: employeePension, employer: employerPension },
   }

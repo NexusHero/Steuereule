@@ -9,7 +9,7 @@ import { germanToIso, isoToGerman } from '../master-data/masterDataMapping'
 import { Pressable, ScrollView, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { Button, Card, Chip, DateInput, Feld, Input, useBreakpoint, useTheme } from '@steuereule/ui'
+import { Button, Card, Chip, DateInput, Feld, Input, Option, useBreakpoint, useTheme } from '@steuereule/ui'
 import {
   claimMonths,
   formatEuro,
@@ -23,6 +23,8 @@ import {
   type GermanState,
   type OtherParentStatus,
   type ChildRelationship,
+  CHILDCARE_PROVIDER_WIDTH_PT,
+  fitsPrintBox,
 } from '@steuereule/core'
 import {
   getChildrenControllerListQueryKey,
@@ -73,6 +75,7 @@ export interface ChildItem {
   childcareFrom?: string | null
   childcareTo?: string | null
   swissFamilyAllowancePayer?: 'A' | 'B' | null
+  healthInsuranceAbroad?: boolean | null
   swissFamilyAllowanceDerived?: boolean
   differentialChildBenefitEur?: string | null
   totalClaimEur?: string | null
@@ -106,6 +109,7 @@ export interface ChildInput {
   childcareFrom?: string | null
   childcareTo?: string | null
   swissFamilyAllowancePayer?: 'A' | 'B' | null
+  healthInsuranceAbroad?: boolean | null
 }
 
 const OTHER_PARENT_LABEL: Record<OtherParentStatus, string> = {
@@ -282,8 +286,10 @@ function KinderScreenView({
   const [swissDerived, setSwissDerived] = useState<string | null>(null)
   const [kvBasis, setKvBasis] = useState('')
   const [pv, setPv] = useState('')
+  const [healthAbroad, setHealthAbroad] = useState(false)
   const [childcare, setChildcare] = useState('')
   const [childcareProvider, setChildcareProvider] = useState('')
+  const [providerFull, setProviderFull] = useState(false)
   const [childcareFrom, setChildcareFrom] = useState('')
   const [childcareTo, setChildcareTo] = useState('')
   const [relationship, setRelationship] = useState<ChildRelationship | null>(null)
@@ -336,6 +342,7 @@ function KinderScreenView({
     setSwissPayer(k?.swissFamilyAllowancePayer ?? null)
     setKvBasis(k?.healthBasicEur ?? '')
     setPv(k?.careEur ?? '')
+    setHealthAbroad(k?.healthInsuranceAbroad === true)
     setChildcare(k?.childcareEur ?? '')
     setChildcareProvider(k?.childcareProvider ?? '')
     setChildcareFrom(k?.childcareFrom ?? '')
@@ -416,6 +423,7 @@ function KinderScreenView({
       childBenefitToMeAllYear: childBenefitToMe,
       healthBasicEur: /^\d+$/.test(kvBasis.trim()) ? kvBasis.trim() : null,
       careEur: /^\d+$/.test(pv.trim()) ? pv.trim() : null,
+      healthInsuranceAbroad: healthAbroad,
       swissFamilyAllowanceEur: /^\d+$/.test(swissAllowance.trim()) ? swissAllowance.trim() : null,
       swissFamilyAllowancePayer: swissPayer,
       childcareEur: /^\d+$/.test(childcare.trim()) ? childcare.trim() : null,
@@ -805,6 +813,9 @@ function KinderScreenView({
                   accessibilityLabel="Krankenversicherung des Kindes"
                 />
               </Feld>
+              <Option selected={healthAbroad} onPress={() => setHealthAbroad(!healthAbroad)} testID="kind-kv-ausland">
+                Bei einer Kasse im Ausland versichert (z. B. Schweizer Grundversicherung)
+              </Option>
               <Feld label="Pflegeversicherung des Kindes, die ihr zahlt (€ im Jahr, optional)">
                 <Input value={pv} onChange={setPv} placeholder="z.B. 0" type="numeric" accessibilityLabel="Pflegeversicherung des Kindes" />
               </Feld>
@@ -812,7 +823,23 @@ function KinderScreenView({
                 <Input value={childcare} onChange={setChildcare} placeholder="z.B. 739" type="numeric" accessibilityLabel="Kinderbetreuungskosten" testID="kind-betreuung" />
               </Feld>
               <Feld label="Art der Betreuung, Name und Anschrift des Anbieters">
-                <Input value={childcareProvider} onChange={setChildcareProvider} placeholder="z.B. Kindergarten, Gemeinde Musterdorf, Hauptstr. 1" accessibilityLabel="Anbieter der Kinderbetreuung" testID="kind-betreuung-anbieter" />
+                <Input
+                  value={childcareProvider}
+                  onChange={(next) => {
+                    // Only what fits the form's line (Anlage Kind Z. 67) — the printout would refuse the rest after payment (ADR-0090).
+                    const fits = fitsPrintBox(next.trim(), CHILDCARE_PROVIDER_WIDTH_PT)
+                    setProviderFull(!fits)
+                    if (fits) setChildcareProvider(next)
+                  }}
+                  placeholder="z.B. Kindergarten, Gemeinde Musterdorf, Hauptstr. 1"
+                  accessibilityLabel="Anbieter der Kinderbetreuung"
+                  testID="kind-betreuung-anbieter"
+                />
+                {providerFull ? (
+                  <Text style={{ ...t.type.small, color: t.color.warn }} accessibilityLiveRegion="polite" testID="kind-betreuung-anbieter-voll">
+                    Mehr passt nicht in die Zeile des Formulars. Kürz z. B. die Anschrift ab (Straße und Ort genügen).
+                  </Text>
+                ) : null}
               </Feld>
               <Feld label="Betreut vom (TT.MM.JJJJ)">
                 <Input value={childcareFrom} onChange={setChildcareFrom} placeholder="01.01.2025" accessibilityLabel="Betreut vom" testID="kind-betreuung-von" />

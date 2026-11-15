@@ -22,6 +22,8 @@ export interface ChildDetails {
   childcareTo?: string | null
   /** Who receives the Swiss Kinderzulage with their wage (ADR-0088). */
   swissFamilyAllowancePayer?: 'A' | 'B' | null
+  /** The child's KV/PV is with a foreign insurer: Anlage Kind Kz 89 instead of Kz 66/67 (ADR-0090). */
+  healthInsuranceAbroad?: boolean | null
 }
 
 export interface ChildRecord extends ChildDetails {

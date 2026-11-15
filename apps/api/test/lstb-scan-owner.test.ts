@@ -69,10 +69,17 @@ describe('whose LStB an upload in the chat is', () => {
     expect(res.stagedAction).toBeNull()
   })
 
-  it('the user’s own without a joint return, whatever name it carries', async () => {
+  it('the user’s own without a joint return, when it names them or carries no recognisable name', async () => {
+    const { parse } = await setup(false)
+    const named = await parse(lstbOf('Elias Sommer', '21.000,00'))
+    expect(named.lstb).toMatchObject({ person: 'A', personUnclear: false })
+    expect(named.lstb?.stagedActionIds).toHaveLength(3)
+    expect((await parse(lstbOf('', '21.000,00'))).lstb).toMatchObject({ person: 'A', personUnclear: false })
+  })
+
+  it('asks instead of writing into the user’s record when, without a joint return, it names someone else (C2)', async () => {
     const { parse } = await setup(false)
     const res = await parse(lstbOf('Erika Fremd', '21.000,00'))
-    expect(res.lstb).toMatchObject({ person: 'A', personUnclear: false })
-    expect(res.lstb?.stagedActionIds).toHaveLength(3)
+    expect(res.lstb).toMatchObject({ person: null, personUnclear: true, stagedActionIds: [] })
   })
 })

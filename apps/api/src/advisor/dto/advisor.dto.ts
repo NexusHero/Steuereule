@@ -166,6 +166,14 @@ export class AdvisorActionProposalDto implements AdvisorActionProposal {
   alternativeGroup?: string | undefined
 
   @ApiPropertyOptional({
+    type: String,
+    enum: ['add', 'replace'],
+    example: 'add',
+    description: 'A document amount where the field already holds one from another source (ADR-0092): `add` puts it on top (a second employer), `replace` corrects what is there. The two are alternatives.',
+  })
+  combination?: 'add' | 'replace' | undefined
+
+  @ApiPropertyOptional({
     type: Object,
     additionalProperties: { type: 'string', nullable: true },
     description: 'Raw values of the companion fields when the draft was created (stale-check baseline).',
@@ -453,6 +461,12 @@ export class AdvisorMessageMetaDto implements AdvisorMessageMeta {
 
   @ApiPropertyOptional({ type: Boolean, description: 'Turbo mode: the owl applied the drafts of this answer itself; each can be undone.' })
   turbo?: true | undefined
+
+  @ApiPropertyOptional({
+    type: Boolean,
+    description: 'The owl needed personal data or the user wrote some, without consent to personal data going to the model: the chat shows the consent card (ADR-0091).',
+  })
+  personalDataConsentRequest?: true | undefined
 
   @ApiPropertyOptional({
     type: () => AdvisorModelFailureDto,

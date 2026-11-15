@@ -1,3 +1,4 @@
+import { ChatDocumentAssignment } from './ChatDocumentAssignment'
 import { useEffect, useRef, useState } from 'react'
 import { Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native'
 import { useTranslation } from 'react-i18next'
@@ -483,7 +484,7 @@ export function OwlModeScreenView({
         onAttachReceiptFile={bridge ? async (file) => void (await bridge.captureReceiptFile(file)) : undefined}
         receiptProgress={bridge?.receiptPhase ? tr(`advisor.chat.receiptProgress.${bridge.receiptPhase}`) : null}
         receiptNotice={bridge?.receiptNotice ?? null}
-        onChooseCertificateOwner={bridge?.certificateOwnerPending ? (person) => void bridge.chooseCertificateOwner(person) : undefined}
+        receiptAssignment={bridge && (bridge.documentQuestion !== null || bridge.documentHolder !== null) ? <ChatDocumentAssignment bridge={bridge} /> : undefined}
         isParsingReceipt={bridge?.parsingReceipt}
         compact={compact}
       />
@@ -664,6 +665,11 @@ export function OwlModeScreenView({
                 )
               })}
             </View>
+            {pendingDrafts.some((d) => d.combination !== undefined) ? (
+              <Text style={styles.help} testID="eule-kombination-hinweis">
+                {tr('belegZuordnung.kombination')}
+              </Text>
+            ) : null}
             {alternativeGroups.length > 0 ? (
               <Text style={styles.help} testID="eule-batch-alternatives-hint">
                 {tr('eule.workspace.alternativesHint', 'Wähle einen der Wege — beide zusammen geht nicht.')}

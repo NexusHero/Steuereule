@@ -43,6 +43,7 @@ function toRecord(row: {
     childcareFrom: row.childcareFrom ?? null,
     childcareTo: row.childcareTo ?? null,
     swissFamilyAllowancePayer: row.swissFamilyAllowancePayer === 'A' || row.swissFamilyAllowancePayer === 'B' ? row.swissFamilyAllowancePayer : null,
+    healthInsuranceAbroad: row.healthInsuranceAbroad ?? null,
   }
 }
 
@@ -109,6 +110,7 @@ export class PrismaChildRepository implements ChildRepository {
           childcareFrom: data.childcareFrom ?? null,
           childcareTo: data.childcareTo ?? null,
           swissFamilyAllowancePayer: data.swissFamilyAllowancePayer ?? null,
+          healthInsuranceAbroad: data.healthInsuranceAbroad ?? null,
         },
       }),
       this.prisma.taxDataAccessLog.create({

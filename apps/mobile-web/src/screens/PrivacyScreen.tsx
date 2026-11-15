@@ -9,6 +9,7 @@ import { useAccountSession } from '../auth/useAccountSession'
 import { downloadAccountExport, type ExportFormat } from './privacy/exportDownload'
 import { ExportSection, type ExportButtonState } from './privacy/ExportSection'
 import { DeleteSection, type DeleteFlow } from './privacy/DeleteSection'
+import { OwlPersonalDataSection } from './privacy/OwlPersonalDataSection'
 import { makePrivacyStyles } from './privacy/styles'
 
 export interface PrivacyScreenProps {
@@ -84,6 +85,7 @@ export function PrivacyScreen({ onBack, onAccountDeleted }: PrivacyScreenProps) 
       <Appbar tr={tr} onBack={onBack} />
       <Hero tr={tr} />
       <DeviceSessionsSection tr={tr} />
+      {sessionState.status === 'signed-in' ? <OwlPersonalDataSection /> : null}
 
       {sessionState.status === 'loading' ? (
         <SessionChecking tr={tr} />

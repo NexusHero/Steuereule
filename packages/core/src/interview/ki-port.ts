@@ -62,6 +62,12 @@ export interface AdvisorTurnRequest {
    * looks at typed text (ADR-0069). Anything else is checked.
    */
   readonly topicCheck?: 'check' | 'skip' | undefined
+  /**
+   * The user consented that personal data may go to the model (ADR-0091): the message is not
+   * masked, and the owl may draft names, ids, addresses, the bank, the religion, the household
+   * link and children. Absent or false: everything as before (ADR-0066).
+   */
+  readonly personalDataConsent?: boolean | undefined
 }
 
 /** The fields one draft would write, main field and companions alike. */

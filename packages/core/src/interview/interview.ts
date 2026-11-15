@@ -50,7 +50,7 @@ export type HouseholdQuestionId =
   | 'haushalt-handwerker-rechnungsbetrag'
   | 'haushalt-minijob-betrag'
 
-export type HealthQuestionId = 'gesundheit-gate' | 'gesundheit-betrag'
+export type HealthQuestionId = 'gesundheit-gate' | 'gesundheit-betrag' | 'gesundheit-erstattung'
 
 /** Income tax prepayments of the year (§ 37 EStG), credited against the tax like withheld wage tax (ADR-0081). */
 export type PrepaymentQuestionId = 'vorauszahlungen-gate' | 'vorauszahlungen-betrag'
@@ -362,9 +362,11 @@ export const QUESTIONS: Readonly<Record<EntryStepId, QuestionDeclaration>> = {
     id: 'gesundheit-gate',
     kind: 'question',
     form: { kind: 'enum', values: YES_NO_VALUES },
-    followUps: { Ja: ['gesundheit-betrag'] },
+    followUps: { Ja: ['gesundheit-betrag', 'gesundheit-erstattung'] },
   },
   'gesundheit-betrag': { id: 'gesundheit-betrag', kind: 'question', form: { kind: 'integer', min: 0, max: 1000000 } },
+  /** What the health insurer, an insurance or Beihilfe paid back (Anlage Außergewöhnliche Belastungen Kz 303), ADR-0090. */
+  'gesundheit-erstattung': { id: 'gesundheit-erstattung', kind: 'question', form: { kind: 'integer', min: 0, max: 1000000 } },
   'vorauszahlungen-gate': {
     id: 'vorauszahlungen-gate',
     kind: 'question',

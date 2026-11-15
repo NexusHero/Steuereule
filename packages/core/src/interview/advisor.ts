@@ -1,3 +1,4 @@
+import type { PrintoutGapPlan } from './advisor-printout-plan'
 import type { OwlSourceId } from './owl-mode'
 import { furtherWorkExpensesEur, type WorkExpenseAmounts } from '../domains/work-expenses'
 
@@ -155,6 +156,8 @@ export interface AdvisorActionProposal {
   readonly instance: string | null
   /** Whose fields the draft writes in a joint return (ADR-0073): `B` is the spouse; absent means the user (A). */
   readonly person?: AdvisorPerson | undefined
+  /** This draft created the row it writes (a new child or rental object, ADR-0091); undoing it removes a child again. */
+  readonly createdRecord?: true | undefined
   readonly companionFields?: Readonly<Record<string, string>> | undefined
   /**
    * Drafts with the same group are alternatives (the two paths of a comparison): the user applies
@@ -162,6 +165,12 @@ export interface AdvisorActionProposal {
    * are alternatives without a group (see `alternativeKeyOf`).
    */
   readonly alternativeGroup?: string | undefined
+  /**
+   * A document's amount where the field already holds one from another source (ADR-0092 §6): this draft
+   * adds it on top (`add`, e.g. a second employer) or replaces what is there (`replace`, a correction).
+   * The two come as alternatives; the user picks one, nothing is added or overwritten silently.
+   */
+  readonly combination?: 'add' | 'replace' | undefined
   /** Raw values of the companion fields when the draft was created; the stale check compares against them. */
   readonly companionExpectedValues?: Readonly<Record<string, string | null>> | undefined
   /** Server-internal: exact pre-apply state of every written field, so undo restores value and provenance. */
@@ -194,6 +203,12 @@ export interface AdvisorActionProposal {
    * repeated receipt or a copy is not counted again (ADR-0080). Never sent to the client.
    */
   readonly countedItems?: readonly AdvisorCountedItem[] | undefined
+  /**
+   * Server-internal: the receipt of a sum field this draft came from — the issuer hashed, the amount and
+   * the date — so the same receipt again asks „zusätzlich oder ersetzen?“ while another one adds up
+   * (ADR-0092 §6). Never sent to the client.
+   */
+  readonly receiptMark?: { readonly issuer: string; readonly amount: string; readonly date: string | null } | undefined
   readonly confidenceStatus?: LstbExtractedFieldStatus | undefined
   readonly sourceLines?: readonly string[] | undefined
   readonly calculation?: readonly LstbCalculationTerm[] | undefined
@@ -274,6 +289,14 @@ export interface AdvisorMessageMeta {
    * so the text can never claim a draft that does not exist without the user seeing it.
    */
   readonly notStaged?: readonly AdvisorNotStaged[] | undefined
+  /**
+   * The owl needed personal data (a name, a Steuer-ID, an address …) or the user wrote some, and
+   * the user has not consented to personal data going to the model yet: the chat shows the consent
+   * card under this answer (ADR-0091).
+   */
+  readonly personalDataConsentRequest?: true | undefined
+  /** Server-internal: the printout gaps (`printoutGapKey`) this answer asked for, so the next does not ask them again unprompted. */
+  readonly printoutGapsAsked?: readonly string[] | undefined
 }
 
 export interface AdvisorNotStaged {
@@ -376,6 +399,8 @@ export interface CaseDigest {
   }[]
   readonly printoutMissingFields: readonly string[]
   readonly estimatedRefundEur: number | null
+  /** Which basis interview questions (`job`, `ausland`) already have an answer; absent when unknown, so nothing is derived then. */
+  readonly answeredBasis?: readonly string[] | undefined
   /** Everything else the interview and the masks know, in figures only (#501 follow-up). */
   readonly furtherFacts?: CaseFurtherFacts | undefined
 }
@@ -406,6 +431,11 @@ export interface CaseFurtherFacts {
   readonly voluntaryFilingDeadline: string | null
   /** What the printout still needs, in words (empty when it is complete; absent where the year has no forms). */
   readonly printoutGaps?: readonly string[] | undefined
+  /**
+   * The fields that would close those gaps, per person, child or object, and whether the owl may
+   * prepare each (ADR-0091, Nachtrag). Field names and neutral record names only.
+   */
+  readonly printoutPlan?: PrintoutGapPlan | undefined
 }
 
 export function commuterAllowanceFrom(workdays: number, distanceKm: number, taxYear?: number): number {

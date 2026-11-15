@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto'
 import { PrintoutService } from '../printout/printout.service.js'
+import { PersonalDataConsentService } from '../owl-mode/personal-data-consent.service.js'
 import { describePrintoutGap } from './advisor-printout-gaps.js'
+import { buildPrintoutPlan, draftsTakenOver, printoutFollowUp } from './advisor-printout-plan.js'
 import { HOUSEHOLD_AND_HEALTH_BOOSTERS } from '../config/features.js'
 import { newActionId } from '../common/action-id.js'
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common'
@@ -20,8 +22,15 @@ import {
   holdUnaskedOverwrites,
   childNamedIn,
   simulateAdvisorFieldDelta,
+  addAmounts,
+  amountCombination,
+  type ExistingValueSource,
+  type ReceiptMark,
+  sameReceiptAgain,
+  sumFieldCombination,
   type AdvisorActionProposal,
   type AdvisorCountedItem,
+  type AssignmentMember,
   type AdvisorAssessmentBrief,
   type AdvisorEngineInfo,
   type AdvisorEnginePort,
@@ -110,6 +119,9 @@ export type { PreparedAdvisorTurn } from './advisor-shared.js'
 const ACCUMULATING_KEYS: ReadonlySet<string> = new Set([
   'commute.workEquipmentEur',
   'commute.otherWorkExpensesEur',
+  'commute.professionalBodiesEur',
+  'interview.fortbildung-kosten',
+  'interview.umzug-kosten',
   'interview.haushalt-handwerker-betrag',
   'interview.haushalt-handwerker-rechnungsbetrag',
   'interview.spenden-betrag',
@@ -187,7 +199,13 @@ export class AdvisorService {
     @Optional() @Inject(PENSION_REPOSITORY) private readonly pensionRepo?: PensionRepository,
     @Optional() @Inject(LinkService) private readonly link?: LinkService,
     @Optional() @Inject(PrintoutService) private readonly printout?: PrintoutService,
+    @Optional() @Inject(PersonalDataConsentService) private readonly personalDataConsent?: PersonalDataConsentService,
   ) {}
+
+  /** Whether the user consented to personal data going to the owl's model (ADR-0091); read fresh on every use. */
+  private async hasPersonalDataConsent(userId: string): Promise<boolean> {
+    return (await this.personalDataConsent?.hasConsent(userId)) ?? false
+  }
 
   // The service is the front door; each theme lives in its own part.
   private openingPart?: AdvisorOpening
@@ -231,6 +249,25 @@ export class AdvisorService {
       this.confirmationService,
       this.transactions,
       link ? (userId, taxYear, person) => link.dataUser(userId, taxYear, person) : undefined,
+      (userId) => this.hasPersonalDataConsent(userId),
+      {
+        create: async (dataUserId, taxYear, screen, values) => {
+          if (screen === 'kind') {
+            if (!this.childRepo) return null
+            const child = await this.childRepo.create(dataUserId, taxYear, {
+              firstName: values.firstName ?? '',
+              lastName: values.lastName ?? '',
+              geburtsdatum: values.geburtsdatum ?? '',
+            })
+            return child.id
+          }
+          if (screen === 'vermietung') return (await this.rentalRepo?.create(dataUserId, taxYear))?.id ?? null
+          return null
+        },
+        remove: async (dataUserId, taxYear, screen, id) => {
+          if (screen === 'kind') await this.childRepo?.delete(dataUserId, taxYear, id)
+        },
+      },
     ))
   }
 
@@ -324,13 +361,40 @@ export class AdvisorService {
   async buildCaseDigest(userId: string, taxYear: number): Promise<CaseDigest> {
     const digest = await this.facts.buildCaseDigest(userId, taxYear)
     if (!this.printout || !digest.furtherFacts) return digest
+    let missing: string[]
     try {
-      const { missing } = await this.printout.check(userId, taxYear)
-      return { ...digest, furtherFacts: { ...digest.furtherFacts, printoutGaps: missing.map(describePrintoutGap) } }
+      missing = (await this.printout.check(userId, taxYear)).missing
     } catch {
       // A year without forms has no printout to check.
       return digest
     }
+    const printoutPlan = await this.printoutPlan(userId, taxYear, missing).catch((error: unknown) => {
+      this.logger.warn(`printout plan failed: ${error instanceof Error ? error.name : 'error'}`)
+      return undefined
+    })
+    return { ...digest, furtherFacts: { ...digest.furtherFacts, printoutGaps: missing.map(describePrintoutGap), ...(printoutPlan ? { printoutPlan } : {}) } }
+  }
+
+  /** What closes each printout gap, per person, child or object (ADR-0091, Nachtrag). */
+  private async printoutPlan(userId: string, taxYear: number, missing: readonly string[]) {
+    if (missing.length === 0) return { questions: [], unplanned: [] }
+    const [spouse, records, consent] = await Promise.all([this.link?.spouseForAdvisor(userId, taxYear), this.loadRecordHandles(userId, taxYear), this.hasPersonalDataConsent(userId)])
+    return buildPrintoutPlan({
+      userId,
+      taxYear,
+      missing,
+      spouse: spouse ? { spouseUserId: spouse.spouseUserId, recordable: spouse.recordable } : null,
+      records,
+      personalDataConsent: consent,
+      read: (dataUserId, year, keys) => this.confirmationService.readRawValues(dataUserId, year, keys),
+    })
+  }
+
+  /** A child's first name for its neutral name, so the app's own question names the child; only with the consent. */
+  private async childLabels(userId: string, taxYear: number, consent: boolean): Promise<Record<string, string> | undefined> {
+    if (!consent || !this.childRepo) return undefined
+    const children = await this.childRepo.listForUserAndYear(userId, taxYear)
+    return Object.fromEntries(children.map((child, i) => [`Kind ${i + 1}`, child.firstName]).filter(([, name]) => !!name))
   }
 
   /** The tax office's notice against the return, as the assessment check needs it: figures only, nothing that names a person. */
@@ -394,10 +458,11 @@ export class AdvisorService {
       try {
         // Person B's fields are written where B's data lives; the estimate is the couple's, read for the user.
         const dataUserId = await this.drafts.dataUserFor(userId, taxYear, target)
+        const personalDataConsent = await this.hasPersonalDataConsent(userId)
         await this.transactions.run(async () => {
           const before = await estimate.getState(userId, taxYear)
           for (const [field, value] of target.values) {
-            await this.confirmationService.writeConfirmedByAdvisor(dataUserId, taxYear, provenanceKey(target.screen, field, target.instance ?? undefined), value)
+            await this.confirmationService.writeConfirmedByAdvisor(dataUserId, taxYear, provenanceKey(target.screen, field, target.instance ?? undefined), value, undefined, undefined, { personalDataConsent })
           }
           states = { before, after: await estimate.getState(userId, taxYear) }
           throw new PreviewRollback()
@@ -499,15 +564,20 @@ export class AdvisorService {
       await this.owlModeService.setSetting(userId, true)
     }
 
-    // Double PII Shield: scrub known names, Steuer-IDs, IBANs, emails, and phones from user free-text & history
-    const knownNames = await this.knownNamesForScrubbing(userId, taxYear)
+    // Double PII Shield: scrub known names, Steuer-IDs, IBANs, emails, and phones from user free-text & history.
+    // With the user's consent to personal data nothing is masked (ADR-0091); it is read fresh, so a revocation counts at once.
+    const consent = await this.hasPersonalDataConsent(userId)
+    const knownNames = consent ? [] : await this.knownNamesForScrubbing(userId, taxYear)
     const isOpening = dto.quickAction === 'opening'
     // The spouse's name becomes the handle the owl drafts for („Person B“), not an anonymous stand-in.
     const spouse = isOpening ? null : await this.link?.spouseForAdvisor(userId, taxYear)
     // A last name the couple shares stays a stand-in: it would turn the user into „Person B“ too.
     const ownProfile = isOpening ? null : await this.profileRepo?.findByUserId(userId)
-    const spouseNames = [spouse?.firstName, spouse?.lastName !== ownProfile?.lastName ? spouse?.lastName : null].filter((name): name is string => !!name)
-    const scrubbedUserText = isOpening ? OPENING_PLACEHOLDER : scrubUserMessagePii(replaceNamesWith(dto.message.trim(), spouseNames, PERSON_B_HANDLE), knownNames)
+    const spouseNames = consent ? [] : [spouse?.firstName, spouse?.lastName !== ownProfile?.lastName ? spouse?.lastName : null].filter((name): name is string => !!name)
+    const maskedText = isOpening ? OPENING_PLACEHOLDER : scrubUserMessagePii(replaceNamesWith(dto.message.trim(), spouseNames, PERSON_B_HANDLE), knownNames)
+    const scrubbedUserText = consent && !isOpening ? dto.message.trim() : maskedText
+    // What the masking took out tells the owl's answer to offer the consent (ADR-0091); a spouse name turned into „Person B“ does not.
+    const maskedPersonalData = !consent && !isOpening && scrubUserMessagePii(dto.message.trim(), knownNames) !== dto.message.trim()
     const conversation = await this.conversationFor(userId, taxYear, dto.conversationId)
     // Conversations answer side by side (#503), but one conversation has one answer at a time:
     // two would write into the same history in an order nobody chose.
@@ -522,7 +592,7 @@ export class AdvisorService {
     const opening = isOpening ? await this.prepareOpening(userId, taxYear, priorRecords.length) : undefined
     const lastAnswer = priorRecords.filter((record) => record.role === 'assistant').at(-1)
     const fromApp = isOpening || isOfferedChoice(dto.message, lastAnswer?.meta)
-    const sources = historySources(priorRecords, knownNames, spouseNames)
+    const sources = historySources(priorRecords, knownNames, spouseNames, consent)
     // A full context is summarised before the answer, once the stream is open (see executeTurn).
     const needsSummary = advisorContextUsage(sources, conversation.summary).level === 'full'
     await this.advisorRepo.updateConversation(conversation.id, userId, {
@@ -552,7 +622,9 @@ export class AdvisorService {
       runId,
     })
 
-    return { runId, userMessage, assistantMessageId: assistantMessage.id, scrubbedUserText, history, dto, conversationId: conversation.id, needsSummary, fromApp, ...(opening ? { opening } : {}) }
+    // Whether the owl's last drafts were just taken over, and which printout gaps it asked then (ADR-0091, Nachtrag).
+    const previousAnswer = lastAnswer ? { draftsApplied: draftsTakenOver(lastAnswer.meta), ...(lastAnswer.meta?.printoutGapsAsked ? { printoutGapsAsked: lastAnswer.meta.printoutGapsAsked } : {}) } : undefined
+    return { runId, userMessage, assistantMessageId: assistantMessage.id, scrubbedUserText, history, dto, conversationId: conversation.id, needsSummary, fromApp, personalDataConsent: consent, maskedPersonalData, ...(previousAnswer ? { previousAnswer } : {}), ...(opening ? { opening } : {}) }
   }
 
   /** An opening needs something to talk about and an empty conversation. */
@@ -670,7 +742,19 @@ export class AdvisorService {
         steps = foldThoughtEvent(steps, status)
         yield status
         firstTokenMs = Date.now() - startedAt
-        yield { event: 'token', data: { text: fallback.replyText } }
+        const rulesFollowUp = turn.opening
+          ? { text: '', meta: {} }
+          : printoutFollowUp({
+              plan: digest.furtherFacts?.printoutPlan,
+              message: scrubbedUserText,
+              reply: fallback.replyText,
+              meta: enrichedMeta,
+              records: await this.loadRecordHandles(userId, taxYear),
+              previous: turn.previousAnswer,
+              subjectLabels: await this.childLabels(userId, taxYear, turn.personalDataConsent === true),
+            })
+        const replyText = fallback.replyText + rulesFollowUp.text
+        yield { event: 'token', data: { text: replyText } }
         if (enrichedMeta.choices && enrichedMeta.choices.length > 0) {
           yield { event: 'choices', data: { choices: enrichedMeta.choices } }
         }
@@ -680,7 +764,7 @@ export class AdvisorService {
         if (enrichedMeta.twoPaths) {
           yield { event: 'twoPaths', data: toPublicMeta({ twoPaths: enrichedMeta.twoPaths }).twoPaths! }
         }
-        const assistant = await finish('complete', fallback.replyText, { ...enrichedMeta, engine: DETERMINISTIC_ENGINE })
+        const assistant = await finish('complete', replyText, { ...enrichedMeta, ...rulesFollowUp.meta, ...(turn.maskedPersonalData ? { personalDataConsentRequest: true as const } : {}), engine: DETERMINISTIC_ENGINE })
         yield doneWith((await this.applyTurbo(userId, taxYear, runId, dto, assistant)) ?? assistant, 'deterministic_fallback')
         return
       }
@@ -701,6 +785,7 @@ export class AdvisorService {
         ...(dto.skill ? { skill: dto.skill } : {}),
         ...(dto.skill === 'berater-interview' ? { interview: await this.advisorRepo.findInterview(userId, taxYear) } : {}),
         topicCheck: turn.fromApp ? 'skip' : 'check',
+        personalDataConsent: turn.personalDataConsent === true,
         records: await this.loadRecordHandles(userId, taxYear),
         household: await this.advisorHousehold(userId, taxYear),
         previewEffect: this.previewEffectFor(userId, taxYear),
@@ -771,10 +856,29 @@ export class AdvisorService {
             await this.advisorRepo.saveInterview(userId, taxYear, applyInterviewChanges(await this.advisorRepo.findInterview(userId, taxYear), enrichedMeta.interviewChanges))
           }
           const { noteChanges: _asProposed, interviewChanges: _stored, ...metaWithoutNotes } = enrichedMeta
+          // What still blocks the printout, asked by the app when the model left it out (ADR-0091, Nachtrag).
+          const gapFollowUp = turn.opening
+            ? { text: '', meta: {} }
+            : printoutFollowUp({
+                plan: digest.furtherFacts?.printoutPlan,
+                message: scrubbedUserText,
+                reply: turnResult.replyText,
+                meta: enrichedMeta,
+                records: request.records,
+                previous: turn.previousAnswer,
+                subjectLabels: await this.childLabels(userId, taxYear, turn.personalDataConsent === true),
+              })
           const assistant = await finish(
             'complete',
-            turnResult.replyText + heldNote,
-            { ...metaWithoutNotes, ...(noteChanges.length > 0 ? { noteChanges } : {}), ...(turn.opening ? { opening: turn.opening.marker } : {}), engine },
+            turnResult.replyText + heldNote + gapFollowUp.text,
+            {
+              ...metaWithoutNotes,
+              ...gapFollowUp.meta,
+              ...(noteChanges.length > 0 ? { noteChanges } : {}),
+              ...(turn.opening ? { opening: turn.opening.marker } : {}),
+              ...(turn.maskedPersonalData ? { personalDataConsentRequest: true as const } : {}),
+              engine,
+            },
             turnResult.usage,
           )
           // An opening prepares no drafts, so there is nothing for Turbo to apply.
@@ -893,6 +997,12 @@ export class AdvisorService {
       readonly countedItems?: readonly AdvisorCountedItem[] | undefined
       /** A receipt read from a photo or scan is never offered as read (ADR-0060). */
       readonly fromOcr?: boolean | undefined
+      /** Whose Werbungskosten they are (ADR-0092 §2): B's go to B's own record. */
+      readonly person?: 'A' | 'B' | undefined
+      /** Whose data the draft writes: B's record for Person B. */
+      readonly digestUserId?: string | undefined
+      /** Issuer (hashed), amount and date of the receipt, to tell the same one again from another (§6). */
+      readonly receiptMark?: ReceiptMark | undefined
     },
   ): Promise<{ action: AdvisorActionProposal; assistantMessage: AdvisorChatMessageDto }> {
     assertAiWritable(input.screen, input.field)
@@ -904,53 +1014,87 @@ export class AdvisorService {
       await this.owlModeService.setSetting(userId, true)
     }
 
-    const digest = await this.buildCaseDigest(userId, taxYear)
-    // A year's total built from several receipts (work tools, other Werbungskosten, craftsmen): this
-    // receipt adds to what is recorded — or to the draft still waiting, which it replaces — instead of
-    // replacing it (ADR-0076, ADR-0078).
-    const pending = await this.pendingReceiptValues(userId, taxYear, input.screen)
-    const accumulate = async (field: string, value: string): Promise<{ value: string; before: string | null }> => {
-      const key = `${input.screen}.${field}`
-      if (!ACCUMULATING_KEYS.has(key) || !/^\d+$/.test(value)) return { value, before: null }
-      const base = pending.get(field) ?? (await this.confirmationService.readRawValue(userId, taxYear, key))
-      return base !== null && /^\d+$/.test(base) ? { value: String(Number(base) + Number(value)), before: base } : { value, before: null }
+    const person = input.person ?? 'A'
+    const dataUserId = input.digestUserId ?? userId
+    const digest = await this.buildCaseDigest(dataUserId, taxYear)
+    const counted = input.countedItems
+    const proposal = (value: string, extra: Partial<AdvisorActionProposal> = {}): AdvisorActionProposal => {
+      const sim = simulateAdvisorFieldDelta(digest, input.screen, input.field, value)
+      return {
+        actionId: newActionId(),
+        status: 'pending',
+        screen: input.screen,
+        field: input.field,
+        instance: null,
+        // Person B's Werbungskosten go into B's own record (ADR-0092 §2).
+        ...(person === 'B' ? { person: 'B' as const } : {}),
+        ...(input.companionFields ? { companionFields: input.companionFields } : {}),
+        label: input.label,
+        previousValue: sim.previousValue,
+        expectedPreviousValue: sim.previousValue,
+        newValue: value,
+        beforeRefundEur: sim.beforeRefundEur,
+        afterRefundEur: sim.afterRefundEur,
+        deltaEur: sim.deltaEur,
+        reason: input.reason,
+        sourceId: input.sourceId,
+        paragraph: ADVISOR_LEGAL_SOURCES[input.sourceId].paragraph,
+        ...(input.receiptId ? { receiptId: input.receiptId } : {}),
+        ...(input.fromOcr ? { confidenceStatus: 'pruefen' as const, fieldReason: 'ocr_source' as const } : {}),
+        ...(counted ? { countedItems: counted } : {}),
+        ...(input.receiptMark ? { receiptMark: input.receiptMark } : {}),
+        ...extra,
+      }
     }
-    const main = await accumulate(input.field, input.newValue)
-    const newValue = main.value
-    const previous = main.before
-    const adds = previous !== null
-    const companionFields = input.companionFields
-      ? Object.fromEntries(await Promise.all(Object.entries(input.companionFields).map(async ([field, value]) => [field, (await accumulate(field, value)).value] as const)))
-      : undefined
-    const sim = simulateAdvisorFieldDelta(digest, input.screen, input.field, newValue)
-
-    const draft: AdvisorActionProposal = {
-      actionId: newActionId(),
-      status: 'pending',
-      screen: input.screen,
-      field: input.field,
-      instance: null,
-      ...(companionFields ? { companionFields } : {}),
-      label: input.label,
-      previousValue: sim.previousValue,
-      expectedPreviousValue: sim.previousValue,
-      newValue,
-      beforeRefundEur: sim.beforeRefundEur,
-      afterRefundEur: sim.afterRefundEur,
-      deltaEur: sim.deltaEur,
-      reason: adds ? `${input.reason} Bisher ${previous} €, dieser Beleg ${input.newValue} €.` : input.reason,
-      sourceId: input.sourceId,
-      paragraph: ADVISOR_LEGAL_SOURCES[input.sourceId].paragraph,
-      ...(input.receiptId ? { receiptId: input.receiptId } : {}),
-      ...(input.fromOcr ? { confidenceStatus: 'pruefen' as const, fieldReason: 'ocr_source' as const } : {}),
-      ...(input.countedItems
-        ? { countedItems: [...(adds ? await this.pendingCountedItems(userId, taxYear, { screen: input.screen, field: input.field }) : []), ...input.countedItems] }
-        : {}),
+    const target = { screen: input.screen, field: input.field, person }
+    const existing = /^\d+$/.test(input.newValue) ? await this.existingAmount(userId, taxYear, dataUserId, target, input.receiptId ?? null) : null
+    // A sum's companions (a craftsman's invoice total) add up with it.
+    const companionsAdded = async (): Promise<Record<string, string> | undefined> => {
+      if (!input.companionFields) return undefined
+      const entries: [string, string][] = []
+      for (const [field, value] of Object.entries(input.companionFields)) {
+        const key = `${input.screen}.${field}`
+        if (!ACCUMULATING_KEYS.has(key) || !/^\d+$/.test(value)) {
+          entries.push([field, value])
+          continue
+        }
+        const base = existing?.companions?.[field] ?? (await this.confirmationService.readRawValue(dataUserId, taxYear, key).catch(() => null))
+        entries.push([field, base !== null && base !== undefined && /^\d+$/.test(base) ? addAmounts(base, value) : value])
+      }
+      return Object.fromEntries(entries)
+    }
+    // A year's total built from several receipts (ADR-0092 §6): another receipt adds up without a question,
+    // the same receipt again (a copy, a correction) asks „zusätzlich oder ersetzen?“. A field that holds one
+    // value (a premium, a wage) asks whenever another source is in it.
+    const sumField = ACCUMULATING_KEYS.has(`${input.screen}.${input.field}`)
+    const how =
+      existing === null
+        ? 'write'
+        : sumField
+          ? sumFieldCombination(existing.value, input.newValue, existing.source, input.receiptMark !== undefined && sameReceiptAgain(input.receiptMark, existing.marks))
+          : amountCombination(existing.value, input.newValue, existing.source)
+    const drafts: AdvisorActionProposal[] = []
+    if (how === 'write') drafts.push(proposal(input.newValue))
+    else if (how === 'add') {
+      const companions = await companionsAdded()
+      const sum = addAmounts(existing!.value!, input.newValue)
+      drafts.push(
+        proposal(sum, {
+          reason: `${input.reason} Bisher ${existing!.value} €, dieser Beleg ${input.newValue} €: zusammen ${sum} €.`,
+          ...(companions ? { companionFields: companions } : {}),
+          ...(counted ? { countedItems: [...existing!.counted, ...counted] } : {}),
+        }),
+      )
+    } else {
+      const [add, replace] = combinationDrafts(proposal, input.label, existing!, input.newValue, counted)
+      const companions = await companionsAdded()
+      drafts.push({ ...add, ...(companions ? { companionFields: companions } : {}) }, replace)
     }
 
+    // One draft, or the two ways „zusätzlich“ / „ersetzen“ as alternatives of one answer.
     const enrichedMeta = await this.drafts.enrichDraftsWithRawBaseline(userId, taxYear, {
       sources: [input.sourceId],
-      action: draft,
+      ...(drafts.length === 1 ? { action: drafts[0]! } : { actions: drafts }),
     })
 
     await this.drafts.supersedePendingDraftsForSameTargets(userId, taxYear, this.drafts.collectPendingTargetKeys(enrichedMeta))
@@ -964,7 +1108,7 @@ export class AdvisorService {
     })
 
     return {
-      action: toPublicAction(enrichedMeta.action!),
+      action: toPublicAction((enrichedMeta.action ?? enrichedMeta.actions?.[0])!),
       assistantMessage: toMessageDto(assistantMessage),
     }
   }
@@ -978,6 +1122,8 @@ export class AdvisorService {
       readonly stage: 'deterministic' | 'llm_text_fallback'
       readonly taxYearOnDocument: number | null
       readonly person?: 'A' | 'B' | undefined
+      /** Offer „zusätzlich“ and „ersetzen“ where a value is recorded already (the chat; the mask asks itself). */
+      readonly askCombination?: boolean | undefined
       readonly engine: AdvisorEngineInfo
       readonly summaryText: string
       readonly fields: ReadonlyArray<{
@@ -997,38 +1143,54 @@ export class AdvisorService {
     }
 
     const digest = await this.buildCaseDigest(input.digestUserId ?? userId, taxYear)
-    const rawActions: AdvisorActionProposal[] = input.fields.map((item) => {
+    const rawActions: AdvisorActionProposal[] = []
+    // The drafts the LStB mask takes over itself; an alternative „zusätzlich“ is the chat's own choice.
+    const scanActionIds: string[] = []
+    for (const item of input.fields) {
       const valueStr = item.extracted.value !== null ? String(item.extracted.value) : ''
-      const sim =
-        item.extracted.value !== null
-          ? simulateAdvisorFieldDelta(digest, 'lstb', item.field, valueStr)
-          : { previousValue: null, beforeRefundEur: 0, afterRefundEur: 0, deltaEur: 0 }
-
-      return {
-        actionId: newActionId(),
-        status: 'pending',
-        screen: 'lstb',
-        field: item.field,
-        instance: null,
-        // A partner's LStB writes into B's record and must not replace the user's own drafts.
-        ...(input.person === 'B' ? { person: 'B' as const } : {}),
-        label: item.label,
-        previousValue: sim.previousValue,
-        expectedPreviousValue: sim.previousValue,
-        newValue: valueStr,
-        beforeRefundEur: sim.beforeRefundEur,
-        afterRefundEur: sim.afterRefundEur,
-        deltaEur: sim.deltaEur,
-        reason: describeLstbCalculation(item.extracted.calculation),
-        sourceId: 'estg-9-1',
-        paragraph: ADVISOR_LEGAL_SOURCES['estg-9-1'].paragraph,
-        ...(input.receiptId ? { receiptId: input.receiptId } : {}),
-        confidenceStatus: item.extracted.status,
-        sourceLines: item.extracted.sourceLines,
-        calculation: item.extracted.calculation,
-        fieldReason: item.extracted.reason,
+      const draft = (value: string, extra: Partial<AdvisorActionProposal> = {}): AdvisorActionProposal => {
+        const sim = item.extracted.value !== null ? simulateAdvisorFieldDelta(digest, 'lstb', item.field, value) : { previousValue: null, beforeRefundEur: 0, afterRefundEur: 0, deltaEur: 0 }
+        return {
+          actionId: newActionId(),
+          status: 'pending',
+          screen: 'lstb',
+          field: item.field,
+          instance: null,
+          // A partner's LStB writes into B's record and must not replace the user's own drafts.
+          ...(input.person === 'B' ? { person: 'B' as const } : {}),
+          label: item.label,
+          previousValue: sim.previousValue,
+          expectedPreviousValue: sim.previousValue,
+          newValue: value,
+          beforeRefundEur: sim.beforeRefundEur,
+          afterRefundEur: sim.afterRefundEur,
+          deltaEur: sim.deltaEur,
+          reason: describeLstbCalculation(item.extracted.calculation),
+          sourceId: 'estg-9-1',
+          paragraph: ADVISOR_LEGAL_SOURCES['estg-9-1'].paragraph,
+          ...(input.receiptId ? { receiptId: input.receiptId } : {}),
+          confidenceStatus: item.extracted.status,
+          sourceLines: item.extracted.sourceLines,
+          calculation: item.extracted.calculation,
+          fieldReason: item.extracted.reason,
+          ...extra,
+        }
       }
-    })
+      // The mask asks „hinzufügen oder ersetzen“ itself; the chat gets both ways as drafts (ADR-0092 §6).
+      const existing =
+        input.askCombination === true && item.extracted.value !== null
+          ? await this.existingAmount(userId, taxYear, input.digestUserId ?? userId, { screen: 'lstb', field: item.field, person: input.person ?? 'A' }, input.receiptId)
+          : null
+      if (existing === null || amountCombination(existing.value, valueStr, existing.source) === 'write') {
+        const plain = draft(valueStr)
+        rawActions.push(plain)
+        scanActionIds.push(plain.actionId)
+        continue
+      }
+      const [add, replace] = combinationDrafts(draft, item.label, existing, valueStr, undefined)
+      rawActions.push(add, replace)
+      scanActionIds.push(replace.actionId)
+    }
 
     const initialMeta: AdvisorMessageMeta = {
       sources: ['estg-9-1'],
@@ -1038,7 +1200,7 @@ export class AdvisorService {
         stage: input.stage,
         taxYearOnDocument: input.taxYearOnDocument,
         ...(input.person !== undefined ? { person: input.person } : {}),
-        actionIds: rawActions.map((a) => a.actionId),
+        actionIds: scanActionIds,
       },
     }
 
@@ -1073,6 +1235,20 @@ export class AdvisorService {
       A: { firstName: profile?.firstName ?? null, lastName: profile?.lastName ?? null },
       B: spouse ? { firstName: spouse.firstName, lastName: spouse.lastName, recordable: spouse.recordable } : null,
     }
+  }
+
+  /**
+   * The household of the year for the assignment of documents (ADR-0092): A, B in a joint return and the
+   * children, with the names on record. Only to tell whose a document is; never in a draft or a prompt.
+   */
+  async householdMembers(userId: string, taxYear: number): Promise<AssignmentMember[]> {
+    const names = await this.householdNames(userId, taxYear)
+    const children = (await this.childRepo?.listForUserAndYear(userId, taxYear)) ?? []
+    return [
+      { ref: 'A', ...names.A },
+      ...(names.B ? [{ ref: 'B' as const, firstName: names.B.firstName, lastName: names.B.lastName }] : []),
+      ...children.map((c) => ({ ref: `kind:${c.id}` as const, firstName: c.firstName || null, lastName: c.lastName || null })),
+    ]
   }
 
   /**
@@ -1114,52 +1290,58 @@ export class AdvisorService {
     if (!setting.enabled) await this.owlModeService.setSetting(userId, true)
 
     const digest = await this.buildCaseDigest(input.digestUserId, taxYear)
-    // A field that adds up: this document's amount goes on top of the draft still waiting, or else of
-    // what is recorded, and the draft carries everything counted so far.
-    const added = await Promise.all(
-      input.fields.map(async (item) => {
-        const screen = item.screen ?? input.screen
-        if (!item.accumulate || typeof item.value !== 'number') return { value: item.value, before: null as number | null, counted: item.countedItems }
-        const target = { screen, field: item.field, person: input.person, instance: item.instance ?? null }
-        const pending = await this.pendingDraftFor(userId, taxYear, target)
-        const stored = pending
-          ? pending.newValue
-          : await this.confirmationService.readRawValue(input.digestUserId, taxYear, provenanceKey(screen, item.field, item.instance)).catch(() => null)
-        const before = stored !== null && /^\d+$/.test(stored) ? Number(stored) : null
-        return {
-          value: before === null ? item.value : before + item.value,
-          before,
-          counted: item.countedItems ? [...(pending?.countedItems ?? []), ...item.countedItems] : undefined,
-        }
-      }),
-    )
-    const rawActions: AdvisorActionProposal[] = input.fields.map((item, index) => {
+    // An amount the field already holds from another source is never added to or overwritten silently
+    // (ADR-0092 §6, finding N2): the user gets both ways as alternatives, „zusätzlich“ or „ersetzen“.
+    const rawActions: AdvisorActionProposal[] = []
+    for (const item of input.fields) {
       const screen = item.screen ?? input.screen
-      const { value, before, counted } = added[index]!
-      const sim = simulateAdvisorFieldDelta(digest, screen, item.field, String(value))
-      return {
-        actionId: newActionId(),
-        status: 'pending',
-        screen,
-        field: item.field,
-        instance: item.instance ?? null,
-        label: item.label,
-        previousValue: sim.previousValue,
-        expectedPreviousValue: sim.previousValue,
-        newValue: String(value),
-        beforeRefundEur: sim.beforeRefundEur,
-        afterRefundEur: sim.afterRefundEur,
-        deltaEur: sim.deltaEur,
-        reason: before === null ? 'Vom Beleg gelesen' : `Vom Beleg gelesen: bisher ${before}, dazu ${item.value}.`,
-        ...(counted ? { countedItems: counted } : {}),
-        sourceId: input.sourceId,
-        paragraph: ADVISOR_LEGAL_SOURCES[input.sourceId].paragraph,
-        ...(input.receiptId ? { receiptId: input.receiptId } : {}),
-        ...(input.person === 'B' ? { person: 'B' as const } : {}),
-        confidenceStatus: item.status,
-        fieldReason: item.reason,
+      const incoming = String(item.value)
+      const draft = (value: string, extra: Partial<AdvisorActionProposal> = {}): AdvisorActionProposal => {
+        const sim = simulateAdvisorFieldDelta(digest, screen, item.field, value)
+        return {
+          actionId: newActionId(),
+          status: 'pending',
+          screen,
+          field: item.field,
+          instance: item.instance ?? null,
+          label: item.label,
+          previousValue: sim.previousValue,
+          expectedPreviousValue: sim.previousValue,
+          newValue: value,
+          beforeRefundEur: sim.beforeRefundEur,
+          afterRefundEur: sim.afterRefundEur,
+          deltaEur: sim.deltaEur,
+          reason: 'Vom Beleg gelesen',
+          ...(item.countedItems ? { countedItems: item.countedItems } : {}),
+          sourceId: input.sourceId,
+          paragraph: ADVISOR_LEGAL_SOURCES[input.sourceId].paragraph,
+          ...(input.receiptId ? { receiptId: input.receiptId } : {}),
+          ...(input.person === 'B' ? { person: 'B' as const } : {}),
+          confidenceStatus: item.status,
+          fieldReason: item.reason,
+          ...extra,
+        }
       }
-    })
+      const target = { screen, field: item.field, person: input.person, instance: item.instance ?? null }
+      const existing = typeof item.value === 'number' ? await this.existingAmount(userId, taxYear, input.digestUserId, target, input.receiptId) : null
+      // A sum of several documents (the self-borne medical costs) adds another one up; a single value asks (§6).
+      const how =
+        existing === null
+          ? 'write'
+          : ACCUMULATING_KEYS.has(`${screen}.${item.field}`)
+            ? sumFieldCombination(existing.value, incoming, existing.source, false)
+            : amountCombination(existing.value, incoming, existing.source)
+      if (how === 'write') {
+        rawActions.push(draft(incoming))
+        continue
+      }
+      if (how === 'add') {
+        const sum = addAmounts(existing!.value!, incoming)
+        rawActions.push(draft(sum, { reason: `Vom Beleg gelesen: bisher ${existing!.value}, dazu ${incoming}.`, ...(item.countedItems ? { countedItems: [...existing!.counted, ...item.countedItems] } : {}) }))
+        continue
+      }
+      rawActions.push(...combinationDrafts(draft, item.label, existing!, incoming, item.countedItems))
+    }
     const initialMeta: AdvisorMessageMeta = { sources: [input.sourceId], actions: rawActions }
     const enrichedMeta = await this.drafts.enrichDraftsWithRawBaseline(userId, taxYear, initialMeta)
     checkPiiFree(enrichedMeta)
@@ -1184,6 +1366,32 @@ export class AdvisorService {
     return [...items, ...((await this.pendingDraftFor(userId, taxYear, target))?.countedItems ?? [])]
   }
 
+  /**
+   * What a document's amount meets in its field (ADR-0092 §6): the draft still waiting for it, or else
+   * the value recorded, and whether that came from this very document, another one, or by hand / the chat.
+   */
+  private async existingAmount(
+    userId: string,
+    taxYear: number,
+    dataUserId: string,
+    target: CountTarget,
+    receiptId: string | null,
+  ): Promise<ExistingAmount> {
+    const drafts = await this.draftsFor(userId, taxYear, target)
+    // The receipts already in this field (applied or waiting): another one of them again is a copy or a correction.
+    const marks = drafts.filter((a) => a.status === 'applied' || a.status === 'pending').flatMap((a) => (a.receiptMark ? [a.receiptMark] : []))
+    const pending = drafts.filter((a) => a.status === 'pending' && a.combination !== 'replace').at(-1)
+    if (pending !== undefined) {
+      const own = receiptId !== null && pending.receiptId === receiptId
+      return { value: pending.newValue, source: own ? 'thisDocument' : 'other', fromDocument: pending.receiptId !== undefined, counted: pending.countedItems ?? [], marks, companions: pending.companionFields ?? {} }
+    }
+    const key = provenanceKey(target.screen, target.field, target.instance ?? undefined)
+    const stored = await this.confirmationService.valueWithSource(dataUserId, taxYear, key).catch(() => ({ value: null, receiptId: null }))
+    if (stored.value === null) return { value: null, source: 'none', fromDocument: false, counted: [], marks }
+    const own = receiptId !== null && stored.receiptId === receiptId
+    return { value: stored.value, source: own ? 'thisDocument' : 'other', fromDocument: stored.receiptId !== null, counted: [], marks }
+  }
+
   private async pendingCountedItems(userId: string, taxYear: number, target: CountTarget): Promise<AdvisorCountedItem[]> {
     return [...((await this.pendingDraftFor(userId, taxYear, target))?.countedItems ?? [])]
   }
@@ -1201,7 +1409,8 @@ export class AdvisorService {
   }
 
   private async pendingDraftFor(userId: string, taxYear: number, target: CountTarget): Promise<AdvisorActionProposal | undefined> {
-    return (await this.draftsFor(userId, taxYear, target)).filter((a) => a.status === 'pending').at(-1)
+    // Of the two ways „zusätzlich“ / „ersetzen“ still open, the one adding up carries everything counted.
+    return (await this.draftsFor(userId, taxYear, target)).filter((a) => a.status === 'pending' && a.combination !== 'replace').at(-1)
   }
 
   /**
@@ -1230,6 +1439,56 @@ export class AdvisorService {
     return values
   }
 
+  /**
+   * Takes back what one document put into the return (ADR-0092 §4), before it is assigned to someone else:
+   * each applied draft from it is undone where the field still holds what the draft wrote — a value
+   * changed since by hand or by another source stays — and its drafts still waiting are dismissed.
+   * Returns how many applied drafts were taken back.
+   */
+  async takeBackDocumentValues(userId: string, taxYear: number, receiptId: string): Promise<number> {
+    return this.transactions.run(async () => {
+      let takenBack = 0
+      const undoneAt = new Date().toISOString()
+      for (const message of await this.advisorRepo.listForUserAndYear(userId, taxYear)) {
+        const meta = message.meta
+        if (!meta) continue
+        let changed = false
+        const takeBack = async (action: AdvisorActionProposal): Promise<AdvisorActionProposal> => {
+          if (action.receiptId !== receiptId) return action
+          if (action.status === 'pending') {
+            changed = true
+            return { ...action, status: 'dismissed' }
+          }
+          if (action.status !== 'applied') return action
+          const dataUserId = await this.drafts.dataUserFor(userId, taxYear, action)
+          const key = provenanceKey(action.screen, action.field, action.instance ?? undefined)
+          const snapshot = action.undoSnapshot ?? [{ key, previousValue: null, appliedValue: action.newValue, previousMarking: null }]
+          // Main field first, companions after — the reverse of the apply order.
+          for (let i = snapshot.length - 1; i >= 0; i -= 1) {
+            const entry = snapshot[i]!
+            const current = await this.confirmationService.readRawValue(dataUserId, taxYear, entry.key).catch(() => undefined)
+            // The user's own click in the app, not the owl: personal fields may be restored too.
+            if (current === entry.appliedValue) await this.confirmationService.restoreByAdvisor(dataUserId, taxYear, entry, { personalDataConsent: true })
+          }
+          takenBack++
+          changed = true
+          const { undoSnapshot: _consumed, ...rest } = action
+          return { ...rest, status: 'undone', undoneAt }
+        }
+        const actions: AdvisorActionProposal[] = []
+        for (const action of meta.actions ?? []) actions.push(await takeBack(action))
+        const next: AdvisorMessageMeta = {
+          ...meta,
+          ...(meta.action ? { action: await takeBack(meta.action) } : {}),
+          ...(meta.actions ? { actions } : {}),
+        }
+        if (changed) await this.advisorRepo.updateMessageMeta(message.id, userId, next)
+      }
+      if (takenBack > 0) await this.auditService.append({ userId, action: 'WRITE', resource: 'beleg_zuordnung' })
+      return takenBack
+    })
+  }
+
   async markLstbActionsApplied(userId: string, taxYear: number, actionIds: readonly string[]): Promise<void> {
     if (actionIds.length === 0) return
     const targetIds = new Set(actionIds)
@@ -1239,10 +1498,16 @@ export class AdvisorService {
     for (const msg of history) {
       if (!msg.meta?.actions) continue
       let changed = false
+      const hits = msg.meta.actions.some((a) => targetIds.has(a.actionId))
       const nextActions = msg.meta.actions.map((a) => {
         if (targetIds.has(a.actionId) && a.status === 'pending') {
           changed = true
           return { ...a, status: 'applied' as const, appliedAt }
+        }
+        // The mask took the scan over its own way: the chat's „zusätzlich“ alternative is answered too.
+        if (hits && a.status === 'pending' && a.combination !== undefined) {
+          changed = true
+          return { ...a, status: 'superseded' as const }
         }
         return a
       })
@@ -1272,4 +1537,47 @@ function guardModelDrafts(meta: AdvisorMessageMeta, userText: string): { meta: A
     },
     note: heldDraftsNote(held),
   }
+}
+
+/** What a document's amount meets in its field. */
+interface ExistingAmount {
+  readonly value: string | null
+  readonly source: ExistingValueSource
+  /** The value came from a document (not typed by hand or told in the chat). */
+  readonly fromDocument: boolean
+  /** What the waiting draft already counted (a statement, a donation), carried on when adding. */
+  readonly counted: readonly AdvisorCountedItem[]
+  /** The receipts already in a sum field, to tell the same receipt again from another one. */
+  readonly marks: readonly ReceiptMark[]
+  /** The companion values of the draft still waiting (a craftsman's invoice total), which add up too. */
+  readonly companions?: Readonly<Record<string, string>> | undefined
+}
+
+/**
+ * The two ways to take a document's amount into a field that already holds one (ADR-0092 §6): on top of
+ * it (a second employer, a second insurer) or instead of it (a correction). Alternatives of one group.
+ */
+export function combinationDrafts(
+  draft: (value: string, extra?: Partial<AdvisorActionProposal>) => AdvisorActionProposal,
+  label: string,
+  existing: ExistingAmount,
+  incoming: string,
+  counted: readonly AdvisorCountedItem[] | undefined,
+): [AdvisorActionProposal, AdvisorActionProposal] {
+  const before = existing.value ?? '0'
+  const sum = addAmounts(before, incoming)
+  const said = existing.fromDocument ? 'aus einem anderen Beleg' : 'von Hand oder im Chat eingetragen'
+  const add = draft(sum, {
+    label: `${label} – zusätzlich`,
+    reason: `Schon eingetragen: ${before} (${said}). Dieser Beleg: ${incoming}. Zusätzlich, etwa für einen zweiten Arbeitgeber oder eine zweite Kasse: zusammen ${sum}.`,
+    combination: 'add',
+    ...(counted ? { countedItems: [...existing.counted, ...counted] } : {}),
+  })
+  const replace = draft(incoming, {
+    label: `${label} – ersetzen (Korrektur)`,
+    reason: `Schon eingetragen: ${before} (${said}). Ersetzen, wenn dieser Beleg den bisherigen Wert korrigiert: dann ${incoming}.`,
+    combination: 'replace',
+    alternativeGroup: `combine:${add.actionId}`,
+  })
+  return [{ ...add, alternativeGroup: `combine:${add.actionId}` }, replace]
 }

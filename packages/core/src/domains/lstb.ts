@@ -47,6 +47,13 @@ export type WageTaxCertificateStatus =
       readonly lohnsteuer: number
       readonly sozialversicherung: number
     }
+/**
+ * Optional LStB lines next to the three required fields: church tax (Zeilen 6 und 7, ADR-0063) and the
+ * tax-free employer subsidies to health and care insurance (Zeile 24 a–c, ADR-0090). Whole euros.
+ */
+export const LSTB_OPTIONAL_LINES = ['kirchensteuer', 'kirchensteuerEhegatte', 'zuschuesseKvPv'] as const
+export type LstbOptionalLine = (typeof LSTB_OPTIONAL_LINES)[number]
+
 export const WAGE_TAX_CERTIFICATE_FIELDS: readonly WageTaxCertificateFieldId[] = [
   'bruttoarbeitslohn',
   'lohnsteuer',

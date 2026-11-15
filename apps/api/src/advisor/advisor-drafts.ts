@@ -1,4 +1,4 @@
-import { ADVISOR_LEGAL_SOURCES, alternativeKeyOf, draftPersonKey, withTwoPathsGroup, provenanceKey, type AdvisorActionProposal, type AdvisorMessageMeta, type AdvisorPerson, type AdvisorUndoEntry } from '@steuereule/core'
+import { ADVISOR_LEGAL_SOURCES, alternativeKeyOf, draftPersonKey, isNewRecordId, withTwoPathsGroup, provenanceKey, type AdvisorActionProposal, type AdvisorMessageMeta, type AdvisorPerson, type AdvisorUndoEntry, type Screen } from '@steuereule/core'
 import { AuditService } from '../audit/audit.service.js'
 import { type TransactionRunner } from '../prisma/transaction.js'
 import { assertAiWritable } from '../confirmation/ai-write-policy.js'
@@ -17,6 +17,23 @@ const ownDataOnly: DataUserResolver = async (userId, _taxYear, person) => {
   throw new InvalidInputError('NO_ACTIVE_ZUSAMMENVERANLAGUNG', 'There is no active Zusammenveranlagung.')
 }
 
+/** Whether the user consented to personal data for the owl (ADR-0091); read on every apply, so a revocation stops drafts at once. */
+export type PersonalDataConsentResolver = (userId: string) => Promise<boolean>
+
+/**
+ * Creates and removes the rows a draft prepared as new (ADR-0091): a child from its first name and
+ * birth date, a rental object. `create` answers the new id, or null where the mask has no rows.
+ */
+export interface DraftRecords {
+  create(dataUserId: string, taxYear: number, screen: Screen, values: Readonly<Record<string, string>>): Promise<string | null>
+  remove(dataUserId: string, taxYear: number, screen: Screen, id: string): Promise<void>
+}
+
+const NO_RECORDS: DraftRecords = { create: async () => null, remove: async () => {} }
+
+/** A field's record: whose data, which mask and which row — the part of the key before the field. */
+const recordOf = (dataUserId: string, key: string): string => `${dataUserId}|${key.slice(0, key.lastIndexOf('.'))}`
+
 /** The life of a draft after the owl proposed it: baseline, superseding, applying with a compare-and-set, undo and dismissal. */
 export class AdvisorDrafts {
   constructor(
@@ -25,6 +42,8 @@ export class AdvisorDrafts {
     private readonly confirmationService: ConfirmationService,
     private readonly transactions: TransactionRunner,
     private readonly dataUserOf: DataUserResolver = ownDataOnly,
+    private readonly consentOf: PersonalDataConsentResolver = async () => false,
+    private readonly records: DraftRecords = NO_RECORDS,
   ) {}
 
   /** What a draft aims at: the field, and for Person B that it is B's field, not the user's. */
@@ -54,7 +73,8 @@ export class AdvisorDrafts {
     taxYear: number,
     draft: AdvisorActionProposal,
   ): Promise<AdvisorActionProposal> {
-    assertAiWritable(draft.screen, draft.field)
+    const consent = await this.consentOf(userId)
+    assertAiWritable(draft.screen, draft.field, undefined, consent)
     const dataUserId = await this.dataUserFor(userId, taxYear, draft)
     const key = provenanceKey(draft.screen, draft.field, draft.instance ?? undefined)
     const rawPreviousValue = await this.readBaseline(dataUserId, taxYear, key, draft.expectedPreviousValue)
@@ -62,7 +82,7 @@ export class AdvisorDrafts {
     if (draft.companionFields) {
       companionExpectedValues = {}
       for (const companionField of Object.keys(draft.companionFields)) {
-        assertAiWritable(draft.screen, companionField)
+        assertAiWritable(draft.screen, companionField, undefined, consent)
         const companionKey = provenanceKey(draft.screen, companionField, draft.instance ?? undefined)
         companionExpectedValues[companionField] = (await this.readBaseline(dataUserId, taxYear, companionKey, null)) ?? null
       }
@@ -239,7 +259,7 @@ export class AdvisorDrafts {
     return meta
   }
 
-  assertActionApplicable(action: AdvisorActionProposal): void {
+  assertActionApplicable(action: AdvisorActionProposal, personalDataConsent = false): void {
     if (action.status === 'applied') {
       throw new ConflictError('ADVISOR_ACTION_ALREADY_APPLIED', 'Dieser Vorschlag wurde bereits übernommen.')
     }
@@ -249,8 +269,8 @@ export class AdvisorDrafts {
     if (action.status === 'dismissed') {
       throw new ConflictError('ADVISOR_ACTION_DISMISSED', 'Dieser Entwurf wurde bereits verworfen.')
     }
-    assertAiWritable(action.screen, action.field)
-    for (const companionField of Object.keys(action.companionFields ?? {})) assertAiWritable(action.screen, companionField)
+    assertAiWritable(action.screen, action.field, undefined, personalDataConsent)
+    for (const companionField of Object.keys(action.companionFields ?? {})) assertAiWritable(action.screen, companionField, undefined, personalDataConsent)
   }
 
   async findDraft(userId: string, taxYear: number, actionId: string): Promise<Omit<ResolvedDraft, 'dataUserId'>> {
@@ -297,10 +317,12 @@ export class AdvisorDrafts {
 
   async collectStaleConflicts(
     taxYear: number,
-    plans: ReadonlyArray<{ actionId: string; dataUserId: string; writes: ReadonlyArray<{ key: string; expected: string | null; newValue?: string | undefined }> }>,
+    plans: ReadonlyArray<{ actionId: string; dataUserId: string; fresh?: boolean; writes: ReadonlyArray<{ key: string; expected: string | null; newValue?: string | undefined }> }>,
   ): Promise<Array<{ actionId: string; key: string; currentValue: string | null }>> {
     const conflicts: Array<{ actionId: string; key: string; currentValue: string | null }> = []
     for (const plan of plans) {
+      // A row this batch has just created holds nothing anyone could have changed (ADR-0091).
+      if (plan.fresh === true) continue
       for (const write of plan.writes) {
         const currentValue = (await this.confirmationService.readRawValue(plan.dataUserId, taxYear, write.key)) ?? null
         // A field that meanwhile holds exactly what the draft writes overwrites nothing (two receipts
@@ -345,13 +367,14 @@ export class AdvisorDrafts {
       throw new InvalidInputError('ADVISOR_BATCH_DUPLICATE_ACTION', 'Eine Aktion ist doppelt im Batch enthalten.')
     }
 
+    const consent = await this.consentOf(userId)
     return this.transactions.run(async () => {
       const drafts: ResolvedDraft[] = []
       const targetKeys = new Set<string>()
       const alternativeKeys = new Set<string>()
       for (const item of dto.drafts) {
         const draft = await this.resolveDraft(userId, taxYear, item.actionId)
-        this.assertActionApplicable(draft.action)
+        this.assertActionApplicable(draft.action, consent)
         const targetKey = this.targetKeyOf(draft.action)
         if (targetKeys.has(targetKey)) {
           throw new ConflictError('ADVISOR_BATCH_TARGET_CONFLICT', `Mehrere Entwürfe im Batch zielen auf dasselbe Feld "${draft.key}".`)
@@ -367,10 +390,14 @@ export class AdvisorDrafts {
         drafts.push(draft)
       }
 
-      const plans = drafts.map((draft, i) => ({
+      // Rows the owl prepared as new are created now, once per answer and placeholder (ADR-0091).
+      const created = await this.createNewRecords(taxYear, drafts)
+      const placed = drafts.map((draft) => this.placeOnCreatedRecord(draft, created))
+      const plans = placed.map((draft, i) => ({
         draft,
         actionId: draft.action.actionId,
         dataUserId: draft.dataUserId,
+        fresh: created.has(this.placeholderKey(drafts[i]!)),
         writes: this.writePlan(draft, dto.drafts[i]!.acknowledgedCurrentValues),
       }))
       const conflicts = await this.collectStaleConflicts(taxYear, plans)
@@ -395,7 +422,9 @@ export class AdvisorDrafts {
       // it had when the draft was made. All baselines were checked above, inside this transaction;
       // for a record this batch has already written to, the comparison uses what is there now.
       const writtenRecords = new Set<string>()
-      for (const { draft, writes } of plans) {
+      // The other drafts of the same answers, as they read before these writes (C3).
+      const siblings = await this.siblingBaselines(userId, taxYear, placed, plans)
+      for (const { draft, writes, fresh } of plans) {
         const undoSnapshot: AdvisorUndoEntry[] = []
         const provenanceOverride = draft.action.receiptId
           ? ({ kind: 'beleg', receiptId: draft.action.receiptId } as const)
@@ -404,7 +433,7 @@ export class AdvisorDrafts {
           const record = `${draft.dataUserId}|${write.key.slice(0, write.key.lastIndexOf('.'))}`
           const current = (await this.confirmationService.readRawValue(draft.dataUserId, taxYear, write.key)) ?? null
           // A field that already holds the draft's value (checked above) is compared with itself: its undo keeps it.
-          const expected = writtenRecords.has(record) || current === write.newValue ? current : write.expected
+          const expected = fresh || writtenRecords.has(record) || current === write.newValue ? current : write.expected
           undoSnapshot.push(
             await this.confirmationService.writeConfirmedByAdvisor(
               draft.dataUserId,
@@ -413,6 +442,7 @@ export class AdvisorDrafts {
               write.newValue,
               expected,
               provenanceOverride,
+              { personalDataConsent: consent },
             ),
           )
           writtenRecords.add(record)
@@ -420,6 +450,7 @@ export class AdvisorDrafts {
         const { undoneAt: _previousUndo, ...reapplicable } = draft.action
         appliedActions.push({
           ...reapplicable,
+          ...(fresh && created.get(this.placeholderKey(drafts[plans.findIndex((p) => p.draft === draft)]!))?.creator === draft.action.actionId ? { createdRecord: true as const } : {}),
           status: 'applied',
           appliedAt,
           previousValue: undoSnapshot[undoSnapshot.length - 1]!.previousValue,
@@ -434,6 +465,7 @@ export class AdvisorDrafts {
         const persisted = await this.advisorRepo.updateMessageMeta(record.id, userId, this.replaceActionInMeta(record.meta!, applied))
         updatedMessages.set(persisted.id, persisted)
       }
+      await this.settleSiblings(userId, taxYear, siblings, created, updatedMessages)
 
       await this.supersedePendingDraftsForSameTargets(userId, taxYear, targetKeys, new Set(actionIds), alternativeKeys)
       await this.auditService.append({
@@ -450,7 +482,117 @@ export class AdvisorDrafts {
     })
   }
 
+  /** Which new row a draft means: its answer, whose data, the mask and the placeholder („neu:1“). */
+  private placeholderKey(draft: ResolvedDraft): string {
+    return `${draft.messageRecord.id}|${draft.dataUserId}|${draft.action.screen}|${draft.action.instance ?? ''}`
+  }
+
+  /**
+   * Creates the rows the batch's drafts prepared as new, one per answer and placeholder. A child is
+   * created by the draft that names it and its birth date; another draft for the same new child
+   * waits for that one (it is applied in the same batch, or before).
+   */
+  private async createNewRecords(taxYear: number, drafts: readonly ResolvedDraft[]): Promise<Map<string, { id: string; creator: string }>> {
+    const created = new Map<string, { id: string; creator: string }>()
+    const fresh = drafts.filter((draft) => isNewRecordId(draft.action.instance))
+    const valuesOf = (draft: ResolvedDraft): Record<string, string> => ({ ...draft.action.companionFields, [draft.action.field]: draft.action.newValue })
+    const canCreate = (draft: ResolvedDraft): boolean => draft.action.screen !== 'kind' || (valuesOf(draft).firstName !== undefined && valuesOf(draft).geburtsdatum !== undefined)
+    for (const draft of [...fresh.filter(canCreate), ...fresh.filter((d) => !canCreate(d))]) {
+      const key = this.placeholderKey(draft)
+      if (created.has(key)) continue
+      if (!canCreate(draft)) {
+        throw new ConflictError('ADVISOR_RECORD_NOT_CREATED', 'Übernimm zuerst den Entwurf, der das Kind mit Vorname und Geburtsdatum anlegt.')
+      }
+      const id = await this.records.create(draft.dataUserId, taxYear, draft.action.screen, valuesOf(draft))
+      if (id === null) throw new InvalidInputError('ADVISOR_RECORD_NOT_CREATED', 'Dieser Eintrag lässt sich hier nicht neu anlegen.')
+      created.set(key, { id, creator: draft.action.actionId })
+    }
+    return created
+  }
+
+  /** A draft for a row created in this batch, addressed to that row. */
+  private placeOnCreatedRecord(draft: ResolvedDraft, created: ReadonlyMap<string, { id: string; creator: string }>): ResolvedDraft {
+    const row = created.get(this.placeholderKey(draft))
+    if (row === undefined) return draft
+    const action = { ...draft.action, instance: row.id }
+    return { ...draft, action, key: provenanceKey(action.screen, action.field, row.id) }
+  }
+
+  /**
+   * The pending drafts of the same answers that are not in this batch, with what their fields hold
+   * before the batch writes (C3). The first write to a record that does not exist yet creates it
+   * with its defaults (a commute record starts with 0 sick days); a sibling draft from the same
+   * answer must not see that as a manual change.
+   */
+  private async siblingBaselines(
+    userId: string,
+    taxYear: number,
+    batch: readonly ResolvedDraft[],
+    plans: ReadonlyArray<{ dataUserId: string; writes: ReadonlyArray<{ key: string }> }>,
+  ): Promise<Array<{ messageId: string; draft: ResolvedDraft; before: Map<string, string | null> }>> {
+    const inBatch = new Set(batch.map((draft) => draft.action.actionId))
+    const touched = new Set(plans.flatMap((plan) => plan.writes.map((write) => recordOf(plan.dataUserId, write.key))))
+    const result: Array<{ messageId: string; draft: ResolvedDraft; before: Map<string, string | null> }> = []
+    const messages = new Map(batch.map((draft) => [draft.messageRecord.id, draft.messageRecord]))
+    for (const message of messages.values()) {
+      const pending = [message.meta?.action, ...(message.meta?.actions ?? [])].filter(
+        (a): a is AdvisorActionProposal => a !== undefined && a.status === 'pending' && !inBatch.has(a.actionId),
+      )
+      for (const action of pending) {
+        let dataUserId: string
+        try {
+          dataUserId = await this.dataUserFor(userId, taxYear, action)
+        } catch {
+          continue
+        }
+        const draft: ResolvedDraft = { messageRecord: message, action, dataUserId, key: provenanceKey(action.screen, action.field, action.instance ?? undefined) }
+        const before = new Map<string, string | null>()
+        for (const write of this.writePlan(draft, undefined)) {
+          if (!touched.has(recordOf(dataUserId, write.key))) continue
+          before.set(write.key, (await this.readBaseline(dataUserId, taxYear, write.key, null)) ?? null)
+        }
+        result.push({ messageId: message.id, draft, before })
+      }
+    }
+    return result
+  }
+
+  /**
+   * After the batch: a sibling draft whose field the batch changed without writing it (a default of a
+   * new record) takes the new value as its baseline, and a sibling of a new row is addressed to it.
+   * A field changed by anyone else stays a conflict, as before.
+   */
+  private async settleSiblings(
+    userId: string,
+    taxYear: number,
+    siblings: ReadonlyArray<{ messageId: string; draft: ResolvedDraft; before: Map<string, string | null> }>,
+    created: ReadonlyMap<string, { id: string; creator: string }>,
+    updatedMessages: Map<string, AdvisorChatMessageRecord>,
+  ): Promise<void> {
+    for (const { messageId, draft, before } of siblings) {
+      let action = draft.action
+      const row = created.get(this.placeholderKey(draft))
+      if (row !== undefined) action = { ...action, instance: row.id }
+      for (const [key, previous] of before) {
+        const now = (await this.readBaseline(draft.dataUserId, taxYear, key, null)) ?? null
+        if (now === previous) continue
+        const plan = this.writePlan(draft, undefined).find((write) => write.key === key)
+        if (plan === undefined || plan.expected !== previous) continue
+        if (key === draft.key) action = { ...action, expectedPreviousValue: now }
+        else {
+          const field = key.slice(key.lastIndexOf('.') + 1)
+          action = { ...action, companionExpectedValues: { ...action.companionExpectedValues, [field]: now } }
+        }
+      }
+      if (action === draft.action) continue
+      const record = updatedMessages.get(messageId) ?? (await this.advisorRepo.findMessage(messageId, userId))
+      if (!record?.meta) continue
+      updatedMessages.set(messageId, await this.advisorRepo.updateMessageMeta(messageId, userId, this.replaceActionInMeta(record.meta, action)))
+    }
+  }
+
   async undoAction(userId: string, taxYear: number, actionId: string): Promise<AdvisorActionMutationResponseDto> {
+    const consent = await this.consentOf(userId)
     return this.transactions.run(async () => {
       const draft = await this.resolveDraft(userId, taxYear, actionId)
       if (draft.action.status !== 'applied') {
@@ -460,9 +602,15 @@ export class AdvisorDrafts {
       const snapshot: readonly AdvisorUndoEntry[] = draft.action.undoSnapshot ?? [
         { key: draft.key, previousValue: draft.action.previousValue, appliedValue: draft.action.newValue, previousMarking: null },
       ]
-      // Main field first, companions after — the reverse of the apply order.
-      for (let i = snapshot.length - 1; i >= 0; i -= 1) {
-        await this.confirmationService.restoreByAdvisor(draft.dataUserId, taxYear, snapshot[i]!)
+      // A row the draft created goes with it (ADR-0091); a rental object stays, emptied, as the mask keeps it.
+      const removable = draft.action.createdRecord === true && draft.action.screen === 'kind' && draft.action.instance !== null
+      if (removable) {
+        await this.records.remove(draft.dataUserId, taxYear, draft.action.screen, draft.action.instance!)
+      } else {
+        // Main field first, companions after — the reverse of the apply order.
+        for (let i = snapshot.length - 1; i >= 0; i -= 1) {
+          await this.confirmationService.restoreByAdvisor(draft.dataUserId, taxYear, snapshot[i]!, { personalDataConsent: consent })
+        }
       }
 
       const { undoSnapshot: _consumed, ...rest } = draft.action

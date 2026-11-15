@@ -35,6 +35,26 @@ describe('which drafts may be made for Person B', () => {
   })
 })
 
+describe('Person B\'s own Grenzgänger answers (ADR-0091, Nachtrag)', () => {
+  it('lets the owl draft B\'s residence and non-return days in B\'s interview, and nothing else of it', () => {
+    for (const field of ['ch-wohnsitz', 'ch-nichtrueckkehrtage', ' ch-wohnsitz ']) expect(checkDraftPerson(recordable, 'B', 'interview', field)).toEqual({ ok: true })
+    for (const field of ['job', 'kinder', undefined]) expect(checkDraftPerson(recordable, 'B', 'interview', field)).toMatchObject({ ok: false, code: 'JOINT_SCREEN' })
+    expect(checkDraftPerson(ownAccount, 'B', 'interview', 'ch-wohnsitz')).toMatchObject({ ok: false, code: 'PERSON_B_OWNS_DATA' })
+  })
+
+  it('tells the model about them', () => {
+    expect(describeHouseholdForPrompt(recordable)).toContain('`interview.ch-wohnsitz`')
+  })
+})
+
+describe('Person B\'s own identity (ADR-0091)', () => {
+  it('lets the owl draft B\'s name, Steuer-ID and master data on B\'s own profile', () => {
+    for (const screen of ['profil', 'stammdaten'] as const) {
+      expect(checkDraftPerson(recordable, 'B', screen)).toEqual({ ok: true })
+    }
+  })
+})
+
 describe('the target of a draft names the person', () => {
   it('keeps A drafts as they were and sets B drafts apart', () => {
     expect(draftPersonKey(undefined, 'commute.oneWayKm')).toBe('commute.oneWayKm')

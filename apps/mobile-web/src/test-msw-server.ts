@@ -233,6 +233,12 @@ export const server = setupServer(
   // response body is never asserted by a test that doesn't override it); tests proving the
   // widerspruch/unreadable states override with `server.use(...)`.
   getLstbControllerGetLstbMockHandler(EMPTY_LSTB_RESPONSE),
+  // ADR-0091 — the owl's consent to process personal data: not granted by default.
+  http.get('*/v1/eulen-modus/personendaten-einwilligung', () => HttpResponse.json({ granted: false, version: '1', grantedAt: null }, { status: 200 })),
+  http.put('*/v1/eulen-modus/personendaten-einwilligung', async ({ request }) => {
+    const body = (await request.json()) as { granted: boolean }
+    return HttpResponse.json({ granted: body.granted, version: '1', grantedAt: body.granted ? '2026-11-14T10:00:00.000Z' : null }, { status: 200 })
+  }),
   http.get('*/v1/stammdaten', () => HttpResponse.json({ missing: [] }, { status: 200 })),
   http.get('*/v1/steuerjahre/:jahr/arbeitsweg', () => HttpResponse.json(EMPTY_COMMUTE_RESPONSE, { status: 200 })),
   http.put('*/v1/steuerjahre/:jahr/lstb/:feld', () =>
@@ -243,6 +249,9 @@ export const server = setupServer(
     HttpResponse.json({ kirchensteuer: null, kirchensteuerEhegatte: null }, { status: 200 }),
   ),
   http.put('*/v1/steuerjahre/:jahr/lstb-kirchensteuer', async ({ request }) => HttpResponse.json(await request.json(), { status: 200 })),
+  // ADR-0090 — the optional subsidies line (Zeile 24): nothing entered by default.
+  http.get('*/v1/steuerjahre/:jahr/lstb-zuschuesse', () => HttpResponse.json({ zuschuesseKvPv: null }, { status: 200 })),
+  http.put('*/v1/steuerjahre/:jahr/lstb-zuschuesse', async ({ request }) => HttpResponse.json(await request.json(), { status: 200 })),
   // REQ-021 (ticket 16) — the CH-Lohnausweis guided mask + fold: empty `offen` mask by default,
   // same "fresh tax year" honesty as the interview/LStB defaults.
   getChSalaryCertificateControllerGetMockHandler(EMPTY_CH_SALARY_CERTIFICATE_RESPONSE),

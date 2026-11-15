@@ -12,9 +12,18 @@ export const PERSON_B_HANDLE = 'Person B'
 
 /**
  * Masks that exist once per spouse (ADR-0054 §2): wage certificate, Swiss salary certificate,
- * commute, pension. Children, rentals, capital and the interview belong to the joint return.
+ * commute, pension — and B's own profile and master data (name, Steuer-ID, birth date, religion),
+ * which the owl drafts only with the consent to personal data (ADR-0091). Children, rentals,
+ * capital and the interview belong to the joint return.
  */
-export const PERSON_B_SCREENS: ReadonlySet<Screen> = new Set<Screen>(['lstb', 'chLohnausweis', 'commute', 'rente'])
+export const PERSON_B_SCREENS: ReadonlySet<Screen> = new Set<Screen>(['lstb', 'chLohnausweis', 'commute', 'rente', 'profil', 'stammdaten'])
+
+/**
+ * Interview answers that are Person B's own, not the joint return's: B's Grenzgänger facts (residence
+ * and non-return days), which the Swiss mask writes into B's interview and from which the printout
+ * and the estimate derive B's status (ADR-0091, Nachtrag).
+ */
+export const PERSON_B_INTERVIEW_FIELDS: ReadonlySet<string> = new Set(['ch-wohnsitz', 'ch-nichtrueckkehrtage'])
 
 /** The spouse's figures already entered, so the owl does not ask for them again. Figures only. */
 export interface PersonBFigures {
@@ -39,7 +48,7 @@ export type DraftPersonCheck =
   | { readonly ok: false; readonly code: 'NO_PERSON_B' | 'PERSON_B_OWNS_DATA' | 'JOINT_SCREEN'; readonly reason: string }
 
 /** Whether a draft may be made for this person on this mask; the reason is said to the user as it stands. */
-export function checkDraftPerson(household: AdvisorHousehold | undefined, person: AdvisorPerson | undefined, screen: Screen): DraftPersonCheck {
+export function checkDraftPerson(household: AdvisorHousehold | undefined, person: AdvisorPerson | undefined, screen: Screen, field?: string): DraftPersonCheck {
   if (person !== 'B') return { ok: true }
   const personB = household?.personB ?? null
   if (personB === null) {
@@ -48,7 +57,7 @@ export function checkDraftPerson(household: AdvisorHousehold | undefined, person
   if (!personB.recordable) {
     return { ok: false, code: 'PERSON_B_OWNS_DATA', reason: 'Person B pflegt ihre Angaben im eigenen Konto; dort trägt sie sie selbst ein.' }
   }
-  if (!PERSON_B_SCREENS.has(screen)) {
+  if (!PERSON_B_SCREENS.has(screen) && !(screen === 'interview' && field !== undefined && PERSON_B_INTERVIEW_FIELDS.has(field.trim()))) {
     return { ok: false, code: 'JOINT_SCREEN', reason: 'Diese Maske gehört zur gemeinsamen Erklärung, nicht zu einer Person; den Entwurf ohne Person B vorbereiten.' }
   }
   return { ok: true }
@@ -79,7 +88,7 @@ export function describeHouseholdForPrompt(household: AdvisorHousehold | undefin
     : []
   return [
     `Haushalt: Zusammenveranlagung mit ${personB.handle} (Ehepartner des Nutzers, ohne eigenes Konto; der Nutzer erfasst ${personB.handle}s Angaben mit).`,
-    `Für ${personB.handle} legst du Entwürfe mit \`person: "B"\` an, nur in den Masken ${[...PERSON_B_SCREENS].join(', ')}.`,
+    `Für ${personB.handle} legst du Entwürfe mit \`person: "B"\` an, nur in den Masken ${[...PERSON_B_SCREENS].join(', ')} und im Interview für ${personB.handle}s eigene Grenzgänger-Angaben (${[...PERSON_B_INTERVIEW_FIELDS].map((question) => `\`interview.${question}\``).join(', ')}).`,
     `Schon erfasst für ${personB.handle}: ${known.length > 0 ? known.join(', ') : 'noch nichts'}.`,
   ].join('\n')
 }

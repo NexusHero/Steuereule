@@ -11,6 +11,9 @@ import {
   parseCraftsmanInvoice,
   childcarePeriod,
   childcarePaidInYear,
+  holderChildId,
+  isHolderRef,
+  sectionForMember,
   looksLikeChildcareNotice,
   parseDonationReceipt,
   scrubDocumentTextPii,
@@ -358,6 +361,13 @@ export class AutoReceiptParseStrategy implements DocumentParseStrategy {
     return { parsed, securityBlocked }
   }
 
+  /** The lines of a childcare notice about one child, when it lists several (ADR-0092 §5). */
+  private async childSection(userId: string, taxYear: number, rawText: string, childId: string): Promise<string> {
+    const members = await this.advisorService.householdMembers(userId, taxYear)
+    const child = members.find((m) => m.ref === `kind:${childId}`)
+    return child === undefined ? rawText : sectionForMember(rawText, child, members.filter((m) => m.ref.startsWith('kind:')))
+  }
+
   async parse(userId: string, dto: ParseReceiptDto): Promise<ParseReceiptResponseDto> {
     let mode: 'vision_ocr' | 'deterministic_fallback' = 'deterministic_fallback'
     let securityBlocked = false
@@ -493,8 +503,11 @@ export class AutoReceiptParseStrategy implements DocumentParseStrategy {
 
     // A childcare notice: the care period for Anlage Kind Zeile 67, for the year's only child (ADR-0086). The
     // amount stays with the user: a notice states a monthly contribution, not what was paid.
-    const period = !securityBlocked && !invoice && !donation && dto.rawText ? childcarePeriod(dto.rawText, dto.taxYear) : null
-    const child = period && (dto.stageDraft ?? true) ? await this.advisorService.childForReceipt(userId, dto.taxYear, dto.rawText ?? '') : null
+    // A notice for one child of several, chosen by the user (ADR-0092): only that child's lines are read.
+    const chosenChild = dto.holder !== undefined && isHolderRef(dto.holder) ? holderChildId(dto.holder) : null
+    const careText = chosenChild !== null && dto.rawText ? await this.childSection(userId, dto.taxYear, dto.rawText, chosenChild) : dto.rawText
+    const period = !securityBlocked && !invoice && !donation && careText ? childcarePeriod(careText, dto.taxYear) : null
+    const child = period && (dto.stageDraft ?? true) ? (chosenChild !== null ? { id: chosenChild, children: 1 } : await this.advisorService.childForReceipt(userId, dto.taxYear, dto.rawText ?? '')) : null
     const childId = child?.id ?? null
     if (period && child && child.children > 1 && childId === null) {
       // Several children and the notice names none of them: no guess, the user assigns it.
@@ -507,7 +520,7 @@ export class AutoReceiptParseStrategy implements DocumentParseStrategy {
     if (period && childId) {
       const ocr = dto.textSource !== 'pdf_text'
       // A Kita's annual statement says what was paid; a plain notice only the monthly contribution.
-      const paid = childcarePaidInYear(dto.rawText ?? '', dto.taxYear)
+      const paid = childcarePaidInYear(careText ?? '', dto.taxYear)
       const staged = await this.advisorService.stageDocumentDrafts(userId, dto.taxYear, {
         screen: 'kind',
         person: 'A',

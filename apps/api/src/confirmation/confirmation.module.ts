@@ -19,6 +19,7 @@ import { MASTER_DATA_REPOSITORY, type MasterDataRepository } from '../master-dat
 import { MasterDataModule } from '../master-data/master-data.module.js'
 import { PARTNER_COUPLING_REPOSITORY, type PartnerCouplingRepository } from '../link/link.repository.js'
 import { LinkModule } from '../link/link.module.js'
+import { LinkService } from '../link/link.service.js'
 import { INTERVIEW_ANSWER_REPOSITORY, type InterviewAnswerRepository } from '../interview/interview-answer.repository.js'
 import { InterviewModule } from '../interview/interview.module.js'
 import { CROSS_BORDER_SALARY_STATEMENT_REPOSITORY, type CrossBorderSalaryStatementRepository } from '../ch-salary-certificate/ch-salary-certificate.repository.js'
@@ -64,6 +65,7 @@ import { FIELD_ACCESS, fieldAccessFrom } from './field-access.js'
         CHILD_REPOSITORY,
         COMMUTE_REPOSITORY,
         ASSESSMENT_REPOSITORY,
+        LinkService,
       ],
       useFactory: (
         lstb: WageTaxCertificateRepository,
@@ -78,6 +80,7 @@ import { FIELD_ACCESS, fieldAccessFrom } from './field-access.js'
         child: ChildRepository,
         commute: CommuteRepository,
         assessment: AssessmentRepository,
+        linkService: LinkService,
       ) =>
         fieldAccessFrom({
           lstb,
@@ -92,6 +95,10 @@ import { FIELD_ACCESS, fieldAccessFrom } from './field-access.js'
           child,
           commute,
           assessment,
+          // The Veranlagungsart the way the Kopplung mask sets it: „zusammen“ creates Person B's placeholder (ADR-0091).
+          linkFilingType: async (userId, taxYear, filingType) => {
+            await linkService.set(userId, taxYear, { filingType })
+          },
         }),
     },
   ],

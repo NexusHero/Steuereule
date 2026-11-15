@@ -61,7 +61,8 @@ export function ChurchTaxLines({ taxYear, params, track }: ChurchTaxLinesProps) 
   )
 }
 
-function LineInput({ label, stored, onCommit, testID }: { label: string; stored: number | null; onCommit: (value: number | null) => void; testID: string }) {
+/** One optional whole-euro LStB line; an empty field means „not entered“. */
+export function LineInput({ label, stored, onCommit, testID }: { label: string; stored: number | null; onCommit: (value: number | null) => void; testID: string }) {
   const { t: tr } = useTranslation(APP_NS)
   const [text, setText] = useState(stored === null ? '' : String(stored))
   useEffect(() => setText(stored === null ? '' : String(stored)), [stored])
@@ -88,7 +89,7 @@ function LineInput({ label, stored, onCommit, testID }: { label: string; stored:
   )
 }
 
-function makeStyles(t: UiTheme): { section: ViewStyle; heading: TextStyle; help: TextStyle; error: TextStyle } {
+export function makeStyles(t: UiTheme): { section: ViewStyle; heading: TextStyle; help: TextStyle; error: TextStyle } {
   return {
     section: { marginTop: t.space.s5, marginBottom: t.space.s4 },
     heading: { ...t.type.cardTitle, color: t.color.tinte, marginBottom: t.space.s2 },

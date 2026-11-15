@@ -1,4 +1,4 @@
-import type { ReceiptType } from '@steuereule/core'
+import type { HolderRef, ReceiptType } from '@steuereule/core'
 
 export interface ReceiptFileMetaRecord {
   readonly mimeType: string
@@ -17,6 +17,10 @@ export interface ReceiptRecord {
   paymentDate?: string
   taxYear: number | null
   proposalDismissed: boolean
+  /** Whose document it is (ADR-0092), the holder first; empty while nobody is chosen. */
+  holders?: readonly HolderRef[]
+  /** The tax year the holders refer to. */
+  holderTaxYear?: number | null
   fileMeta?: ReceiptFileMetaRecord | null
   createdAt: Date
   updatedAt: Date
@@ -46,5 +50,7 @@ export interface ReceiptRepository {
   findByIdForUser(userId: string, id: string): Promise<ReceiptRecord | null>
   create(userId: string, data: CreateReceiptData): Promise<ReceiptRecord>
   setAssignment(userId: string, id: string, data: SetAssignmentData): Promise<ReceiptRecord | null>
+  /** Records whose document it is (ADR-0092): the holder first, then the people it was also taken over for. */
+  setHolders(userId: string, id: string, holders: readonly HolderRef[], taxYear: number): Promise<ReceiptRecord | null>
   deleteForUser(userId: string, id: string): Promise<boolean>
 }

@@ -348,6 +348,13 @@ describe('ausdruckWerte', () => {
     }
     const ngre = (ch: Partial<ChSalaryCertificateFacts>) => printoutValues({ ...FACTS, chSalaryCertificate: { ...CH, ...ch } })
 
+    it('puts a cross-border commuter’s training into the Anlage N-Gre (ADR-0090)', () => {
+      const life = { trainingEur: 800, relocationEur: null, wageReplacementEur: null, severance: false, secondHousehold: false }
+      const { values } = printoutValues({ ...FACTS, bruttoarbeitslohn: null, chSalaryCertificate: CH, lifeSituations: life })
+      expect(values['anlNGre.kz330']).toBe('800')
+      expect(values['anlN.kz330']).toBeUndefined()
+    })
+
     it('prints Kz 117, the wage in CHF and EUR, Kz 116, the Abzugssteuer and the employer', () => {
       const { values, missing } = ngre({})
       expect(missing).toEqual([])
@@ -477,6 +484,17 @@ describe('ausdruckWerte', () => {
       expect(values['anlNGre.z19Chf']).toBeUndefined()
     })
 
+    it('prints the other half of the NBUV as Werbungskosten in Z. 57 and Kz 380 (real case 2025, ADR-0090)', () => {
+      const { values } = ngre({ nbuvArbeitgeberProzent: '100', nbuvArbeitgeberChf: '540' })
+      // 540 CHF: 270 in Z. 81, the other 270 CHF × 1,065 = 288 € as Werbungskosten.
+      expect(values).toMatchObject({
+        'anlNGre.z81Chf': '270',
+        'anlNGre.z57Text': '50 % der Beiträge zur Nichtberufsunfallversicherung',
+        'anlNGre.z57Eur': '288',
+        'anlNGre.kz380': '288',
+      })
+    })
+
     it("prints the adviser's case: Säule 2b as wage (Z. 20), only the Obligatorium in Z. 84/87, NBUV paid by the employer, tax-free Krankentaggeld (Z. 9/76)", () => {
       const { values, missing } = ngre({
         pkArbeitnehmerGesamtChf: '7186',
@@ -564,7 +582,10 @@ describe('ausdruckWerte', () => {
         'anlNGre.kz110Tage': '36', 'anlNGre.kz111': '80', 'anlNGre.wegOrt': '4058 Basel', 'anlNGre.wegVon': '01.11.', 'anlNGre.wegBis': '31.12.',
       })
       expect(values['anlN.kz131']).toBeUndefined()
-      expect(values['anlNGre.kz380']).toBeUndefined()
+      // The account fees go with the first way (Anlage N); the N-Gre has only the NBUV half (ADR-0090).
+      expect(values['anlNGre.z57Eur']).toBe('187')
+      expect(values['anlNGre.kz380']).toBe('187')
+      expect(values['anlNGre.z57Text']).toBe('50 % der Beiträge zur Nichtberufsunfallversicherung')
     })
 
     it('prints two ways in one form as its 1. and 2. Angabe when both are German', () => {
@@ -589,7 +610,7 @@ describe('ausdruckWerte', () => {
           workExpenses: { professionalBodiesEur: null, professionalBodiesNote: null, workEquipmentEur: 110, workEquipmentNote: null, accountFeesEur: 16, otherWorkExpensesEur: null, otherWorkExpensesNote: null },
         },
       })
-      expect(values).toMatchObject({ 'anlNGre.z49Text': 'Arbeitsmittel', 'anlNGre.z49Eur': '110', 'anlNGre.kz320': '110', 'anlNGre.z57Text': 'Kontoführungsgebühren', 'anlNGre.kz380': '16' })
+      expect(values).toMatchObject({ 'anlNGre.z49Text': 'Arbeitsmittel', 'anlNGre.z49Eur': '110', 'anlNGre.kz320': '110', 'anlNGre.z57Text': 'Kontoführungsgebühren', 'anlNGre.z58Text': '50 % der Beiträge zur Nichtberufsunfallversicherung', 'anlNGre.z58Eur': '187', 'anlNGre.kz380': String(16 + 187) })
       expect(values['anlN.kz320']).toBeUndefined()
     })
   })
@@ -614,6 +635,11 @@ describe('ausdruckWerte', () => {
     expect(values['anlHha.kz202']).toBeUndefined()
   })
 
+  it('prints what the insurer reimbursed in Kz 303 next to the costs in Kz 302 (real case 2024, ADR-0090)', () => {
+    const { values } = printoutValues({ ...FACTS, householdAndHealth: { healthCostsEur: 170, healthReimbursedEur: 170, minijobEur: null, servicesEur: null, craftsmenLabourEur: null } })
+    expect(values).toMatchObject({ 'anlAgB.kz302': '170', 'anlAgB.kz303': '170' })
+  })
+
   it('prints neither form while nothing was entered (or the switch is off)', () => {
     const { values } = printoutValues({ ...FACTS, householdAndHealth: null })
     expect(Object.keys(values).some((k) => k.startsWith('anlAgB.') || k.startsWith('anlHha.'))).toBe(false)
@@ -624,6 +650,41 @@ describe('ausdruckWerte', () => {
     const { instances } = printoutValues({ ...FACTS, kinder: [kind] })
     expect(instances?.['anlage-kind']?.[0]).toMatchObject({ 'anlKind.kz66': '1080' })
     expect(instances?.['anlage-kind']?.[0]?.['anlKind.kz67']).toBeUndefined()
+  })
+
+  it("prints a child's foreign KV/PV (e.g. Swiss basic insurance) in Anlage Kind Kz 89, not Kz 66 (real case 2025, ADR-0090)", () => {
+    const kind = { sequenceNumber: '1', firstName: 'Mia', lastName: 'Beispiel', geburtsdatum: '2016-03-14', taxId: '41234567890', healthBasicEur: '963', careEur: '20', healthInsuranceAbroad: true }
+    const { instances } = printoutValues({ ...FACTS, kinder: [kind] })
+    expect(instances?.['anlage-kind']?.[0]).toMatchObject({ 'anlKind.kz89': '983' })
+    expect(instances?.['anlage-kind']?.[0]?.['anlKind.kz66']).toBeUndefined()
+    expect(instances?.['anlage-kind']?.[0]?.['anlKind.kz67']).toBeUndefined()
+  })
+
+  describe('life situations from the Strom (Strom-vs-chat comparison, ADR-0090)', () => {
+    const LIFE = { trainingEur: 800, relocationEur: 1500, wageReplacementEur: 3000, severance: false, secondHousehold: false }
+
+    it('prints training (Kz 330), relocation (Kz 380) and wage replacement (Hauptvordruck Kz 120) instead of leaving them out', () => {
+      const { values, missing } = printoutValues({ ...FACTS, lifeSituations: LIFE })
+      expect(values).toMatchObject({
+        'anlN.kz330': '800',
+        'anlN.z62Text': 'Umzugskosten (beruflich veranlasst)',
+        'anlN.z62Eur': '1500',
+        'anlN.kz380': '1500',
+        'est1a.kz120': '3000',
+      })
+      expect(missing).not.toContain('anlageNEntschaedigung')
+    })
+
+    it('does not print without the Anlage Kind when the basis names a child that is not recorded (Strom-vs-chat, P2)', () => {
+      expect(printoutValues({ ...FACTS, childrenAnswered: true, kinder: null }).missing).toContain('kinder')
+      expect(printoutValues({ ...FACTS, childrenAnswered: false, kinder: null }).missing).not.toContain('kinder')
+    })
+
+    it('stops with a clear gap where there is no printout yet: severance and a second household', () => {
+      const { missing } = printoutValues({ ...FACTS, lifeSituations: { ...LIFE, severance: true, secondHousehold: true } })
+      expect(missing).toEqual(expect.arrayContaining(['anlageNEntschaedigung', 'anlageNDhf']))
+    })
+
   })
 
   describe('Anlage Vorsorgeaufwand', () => {

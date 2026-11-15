@@ -1,4 +1,5 @@
 import { Inject, Injectable, Optional, type OnModuleInit } from '@nestjs/common'
+import { holderWithoutPartner } from './document-holder.js'
 import {
   certificateHolderPerson,
   parseChPensionStatement,
@@ -63,7 +64,7 @@ abstract class ChLetterParseStrategy implements DocumentParseStrategy, OnModuleI
     const fromOcr = dto.textSource !== 'pdf_text'
     const household = await this.advisorService.householdNames(userId, dto.taxYear)
     // The name is looked for in the whole letter, on the server only; only one person's name may fit.
-    const person: 'A' | 'B' | null = dto.person ?? (household.B === null ? 'A' : certificateHolderPerson(rawText, household))
+    const person: 'A' | 'B' | null = dto.person ?? (household.B === null ? holderWithoutPartner(rawText, household.A) : certificateHolderPerson(rawText, household))
     const personNotRecordable = person === 'B' && household.B?.recordable !== true
     const dataUser = person !== null && !personNotRecordable ? await this.linkService.dataUser(userId, dto.taxYear, person) : null
     const stored = dataUser ? await this.chRepo?.findForUserAndYear(dataUser, dto.taxYear) : null

@@ -67,6 +67,17 @@ describe('estimate coverage from the UX review (K3)', () => {
     expect(withBenefits.result.to).toBeLessThan(without.result.to)
   })
 
+  it('takes the tax-free employer subsidies (LStB Zeile 24) off the deductible insurance (real case 2024, ADR-0090)', async () => {
+    const { lstb, interview, service } = setup()
+    lstb.seed({ userId: 'u', taxYear: 2025, bruttoarbeitslohn: '78000', lohnsteuer: '18000', sozialversicherung: '18000' })
+    interview.seed('u', 2025, { ...EMPLOYED, familienstand: 'Ledig' })
+    const without = range(await service.getState('u', 2025))
+    lstb.seed({ userId: 'u', taxYear: 2025, bruttoarbeitslohn: '78000', lohnsteuer: '18000', sozialversicherung: '18000', zuschuesseKvPv: '5000' })
+    const withSubsidies = range(await service.getState('u', 2025))
+    expect(withSubsidies.provision.from).toBeLessThan(without.provision.from)
+    expect(withSubsidies.taxableIncome.from).toBeGreaterThan(without.taxableIncome.from)
+  })
+
   it('asks for the amount when wage replacement is answered „Ja“ without one', async () => {
     const { lstb, interview, service } = setup()
     lstb.seed({ userId: 'u', taxYear: 2025, bruttoarbeitslohn: '48000', lohnsteuer: '7100', sozialversicherung: '9850' })
@@ -259,6 +270,39 @@ describe('SteuerschaetzungService', () => {
     expect(withSwiss.anrechnung).toBe(9890 + 2150 + Math.round(1404 * 1.065))
     const germanOnly = await couple({})
     expect(withSwiss.incomeTax.from).toBeGreaterThan(germanOnly.incomeTax.from)
+  })
+
+  it('gives a cross-border spouse without a German LStB the NBUV half as Werbungskosten and counts the Swiss KV once (real case 2025, ADR-0090)', async () => {
+    const couple = async (nGre: Record<string, unknown>, bAnswers: Record<string, string> = {}) => {
+      const env = setup()
+      env.interview.seed('a', 2025, EMPLOYED)
+      env.interview.seed('spouse_a_2025', 2025, { 'ch-wohnsitz': 'Deutschland', 'ch-nichtrueckkehrtage': '0', ...bAnswers })
+      await env.stammdaten.save('a', { familienstand: 'verheiratet', religion: 'VD' } as MasterDataRecord)
+      await env.kopplung.upsert('a', 2025, { personBUserId: 'spouse_a_2025', filingType: 'zusammen' })
+      env.lstb.seed({ userId: 'a', taxYear: 2025, bruttoarbeitslohn: '82000', lohnsteuer: '9890', sozialversicherung: '15473' })
+      env.ch.seed({
+        userId: 'spouse_a_2025',
+        taxYear: 2025,
+        fields: { 'bruttolohn-total': '90000', 'ahv-beitraege': '5800', 'berufliche-vorsorge': '4000', quellensteuer: '4050' } as CrossBorderSalaryStatementRecord['fields'],
+        bemerkungen: null,
+        saeule3aChf: null,
+        krankenkasseChf: '3500',
+        exchangeRateMonth: '2025',
+        exchangeRateValue: 1.065,
+        exchangeRateMode: 'jahresdurchschnitt',
+        exchangeRateReceiptId: null,
+        nGre: { familienzulagenChf: 0, krankentaggeldChf: 0, pkArbeitnehmerChf: 3000, pkArbeitgeberChf: 3000, ...nGre } as unknown as CrossBorderSalaryStatementRecord['nGre'],
+      })
+      return range(await env.service.getState('a', 2025))
+    }
+    const without = await couple({})
+    const withNbuv = await couple({ nbuvArbeitgeberProzent: 100, nbuvArbeitgeberChf: 4000 })
+    // 4.000 CHF: 2.000 in Z. 81, the other 2.000 CHF × 1,065 = 2.130 € as Werbungskosten of B — above
+    // B's Arbeitnehmer-Pauschbetrag of 1.230 €, which B had without them.
+    expect(withNbuv.werbungskosten - without.werbungskosten).toBe(2130 - 1230)
+    // The same Swiss policy named again in B's interview is not counted twice.
+    const twice = await couple({}, { 'kv-pv': 'Ja', 'kv-pv-art': 'Ausländisch', 'kv-pv-betrag': '3700', 'pv-betrag': '0', 'kv-wahl-betrag': '0' })
+    expect(twice.provision).toEqual(without.provision)
   })
 
   it('counts Person B’s pension in the couple’s estimate instead of leaving B out (ADR-0088)', async () => {

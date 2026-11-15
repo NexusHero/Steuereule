@@ -708,6 +708,33 @@ describe('AdvisorService (In-App Steuerberater Agent "Deine Eule")', () => {
     expect(gaps[3]).toContain('druckt die App noch nicht')
   })
 
+  it('hands the owl a checklist of the fields that close the gaps, per child, read through the field access (ADR-0091, Nachtrag)', async () => {
+    const printout = { check: async () => ({ missing: ['kinder', 'anlageSO'] }) }
+    const withPrintout = new AdvisorService(advisorRepo, owlModeService, confirmationService, new AuditService(auditRepo), interviewRepo, lstbRepo, chRepo, commuteRepo, childRepo, new FakeRentalRepository(), new FakeCapitalRepository(), profileRepo, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, printout as never)
+    const [mila] = await childRepo.listForUserAndYear(USER, YEAR)
+    await confirmationService.writeConfirmedByAdvisor(USER, YEAR, `kind:${mila!.id}.kinship`, '1', undefined, undefined, { personalDataConsent: true })
+    const plan = (await withPrintout.buildCaseDigest(USER, YEAR)).furtherFacts?.printoutPlan
+    const keys = plan?.questions.map((q) => q.key) ?? []
+    expect(keys).toContain('A|kind:Kind 1.familyBenefitsOffice')
+    expect(keys).toContain('A|kind:Kind 1.otherParent')
+    expect(keys).not.toContain('A|kind:Kind 1.kinship')
+    expect(plan?.unplanned).toEqual(['anlageSO'])
+    // Without the consent the child's Steuer-ID is the user's to enter in the mask.
+    expect(plan?.questions.find((q) => q.key === 'A|kind:Kind 1.taxId')).toMatchObject({ owlMayDraft: false, mask: 'Kinder' })
+  })
+
+  it('asks what still blocks the printout when the user asks „Fehlt noch etwas?“, without a model too (ADR-0091, Nachtrag)', async () => {
+    const printout = { check: async () => ({ missing: ['kinder'] }) }
+    const withPrintout = new AdvisorService(advisorRepo, owlModeService, confirmationService, new AuditService(auditRepo), interviewRepo, lstbRepo, chRepo, commuteRepo, childRepo, new FakeRentalRepository(), new FakeCapitalRepository(), profileRepo, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, printout as never)
+    const res = await withPrintout.sendMessage(USER, YEAR, { message: 'Fehlt jetzt noch etwas für den Ausdruck?' })
+    expect(res.assistantMessage.content).toMatch(/Damit der Ausdruck vollständig ist, fehlt noch:/)
+    expect(res.assistantMessage.content).toMatch(/Kind 1: .*Familienkasse/)
+    // The asked gaps stay on the server, not in what the app is sent.
+    expect(res.assistantMessage.meta).not.toHaveProperty('printoutGapsAsked')
+    const stored = (await advisorRepo.listForConversation((await advisorRepo.listConversations(USER, YEAR))[0]!.id, USER)).at(-1)
+    expect(stored?.meta?.printoutGapsAsked).toContain('A|kind:Kind 1.familyBenefitsOffice')
+  })
+
   it('leaves the gaps out when the year has no printout to check', async () => {
     const printout = { check: async () => { throw new Error('no forms for this year') } }
     const withPrintout = new AdvisorService(advisorRepo, owlModeService, confirmationService, new AuditService(auditRepo), interviewRepo, lstbRepo, chRepo, commuteRepo, childRepo, new FakeRentalRepository(), new FakeCapitalRepository(), profileRepo, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, printout as never)

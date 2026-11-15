@@ -47,6 +47,9 @@ import type {
   OwlSettingResponseDto,
   ParseReceiptDto,
   ParseReceiptResponseDto,
+  PersonalDataConsentResponseDto,
+  ReassignReceiptDto,
+  ReassignReceiptResponseDto,
   RenameAdvisorConversationDto,
   SaveAdvisorNoteDto,
   SaveAdvisorSituationDto,
@@ -54,6 +57,7 @@ import type {
   SendAdvisorMessageResponseDto,
   SetAdvisorFeedbackDto,
   SetOwlSettingDto,
+  SetPersonalDataConsentDto,
   StopAdvisorRunResponseDto
 } from './eulen-modus.schemas';
 
@@ -161,6 +165,91 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getReceiptParseControllerParseReceiptMutationOptions(options), queryClient);
+    }
+
+export type receiptParseControllerReassignResponse200 = {
+  data: ReassignReceiptResponseDto
+  status: 200
+}
+
+export type receiptParseControllerReassignResponse401 = {
+  data: void
+  status: 401
+}
+
+export type receiptParseControllerReassignResponseSuccess = (receiptParseControllerReassignResponse200) & {
+  headers: Headers;
+};
+export type receiptParseControllerReassignResponseError = (receiptParseControllerReassignResponse401) & {
+  headers: Headers;
+};
+
+export type receiptParseControllerReassignResponse = (receiptParseControllerReassignResponseSuccess | receiptParseControllerReassignResponseError)
+
+export const getReceiptParseControllerReassignUrl = (id: string,) => {
+
+
+
+
+  return `/v1/belege/${id}/inhaber`
+}
+
+export const receiptParseControllerReassign = async (id: string,
+    reassignReceiptDto: ReassignReceiptDto, options?: RequestInit): Promise<receiptParseControllerReassignResponse> => {
+
+  return httpClient<receiptParseControllerReassignResponse>(getReceiptParseControllerReassignUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(reassignReceiptDto)
+  }
+);}
+
+
+
+
+
+export const getReceiptParseControllerReassignMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof receiptParseControllerReassign>>, TError,{id: string;data: ReassignReceiptDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof receiptParseControllerReassign>>, TError,{id: string;data: ReassignReceiptDto}, TContext> => {
+
+const mutationKey = ['receiptParseControllerReassign'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof receiptParseControllerReassign>>, {id: string;data: ReassignReceiptDto}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  receiptParseControllerReassign(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReceiptParseControllerReassignMutationResult = NonNullable<Awaited<ReturnType<typeof receiptParseControllerReassign>>>
+    export type ReceiptParseControllerReassignMutationBody = ReassignReceiptDto
+    export type ReceiptParseControllerReassignMutationError = void
+
+    export const useReceiptParseControllerReassign = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof receiptParseControllerReassign>>, TError,{id: string;data: ReassignReceiptDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof receiptParseControllerReassign>>,
+        TError,
+        {id: string;data: ReassignReceiptDto},
+        TContext
+      > => {
+      return useMutation(getReceiptParseControllerReassignMutationOptions(options), queryClient);
     }
 
 export type advisorControllerGetSessionResponse200 = {
@@ -2659,6 +2748,204 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getAdvisorControllerDismissActionMutationOptions(options), queryClient);
+    }
+
+export type owlModeControllerGetPersonalDataConsentResponse200 = {
+  data: PersonalDataConsentResponseDto
+  status: 200
+}
+
+export type owlModeControllerGetPersonalDataConsentResponse401 = {
+  data: void
+  status: 401
+}
+
+export type owlModeControllerGetPersonalDataConsentResponseSuccess = (owlModeControllerGetPersonalDataConsentResponse200) & {
+  headers: Headers;
+};
+export type owlModeControllerGetPersonalDataConsentResponseError = (owlModeControllerGetPersonalDataConsentResponse401) & {
+  headers: Headers;
+};
+
+export type owlModeControllerGetPersonalDataConsentResponse = (owlModeControllerGetPersonalDataConsentResponseSuccess | owlModeControllerGetPersonalDataConsentResponseError)
+
+export const getOwlModeControllerGetPersonalDataConsentUrl = () => {
+
+
+
+
+  return `/v1/eulen-modus/personendaten-einwilligung`
+}
+
+export const owlModeControllerGetPersonalDataConsent = async ( options?: RequestInit): Promise<owlModeControllerGetPersonalDataConsentResponse> => {
+
+  return httpClient<owlModeControllerGetPersonalDataConsentResponse>(getOwlModeControllerGetPersonalDataConsentUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getOwlModeControllerGetPersonalDataConsentQueryKey = () => {
+    return [
+    `/v1/eulen-modus/personendaten-einwilligung`
+    ] as const;
+    }
+
+
+export const getOwlModeControllerGetPersonalDataConsentQueryOptions = <TData = Awaited<ReturnType<typeof owlModeControllerGetPersonalDataConsent>>, TError = void>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof owlModeControllerGetPersonalDataConsent>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getOwlModeControllerGetPersonalDataConsentQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof owlModeControllerGetPersonalDataConsent>>> = ({ signal }) => owlModeControllerGetPersonalDataConsent({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof owlModeControllerGetPersonalDataConsent>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type OwlModeControllerGetPersonalDataConsentQueryResult = NonNullable<Awaited<ReturnType<typeof owlModeControllerGetPersonalDataConsent>>>
+export type OwlModeControllerGetPersonalDataConsentQueryError = void
+
+
+export function useOwlModeControllerGetPersonalDataConsent<TData = Awaited<ReturnType<typeof owlModeControllerGetPersonalDataConsent>>, TError = void>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof owlModeControllerGetPersonalDataConsent>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof owlModeControllerGetPersonalDataConsent>>,
+          TError,
+          Awaited<ReturnType<typeof owlModeControllerGetPersonalDataConsent>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useOwlModeControllerGetPersonalDataConsent<TData = Awaited<ReturnType<typeof owlModeControllerGetPersonalDataConsent>>, TError = void>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof owlModeControllerGetPersonalDataConsent>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof owlModeControllerGetPersonalDataConsent>>,
+          TError,
+          Awaited<ReturnType<typeof owlModeControllerGetPersonalDataConsent>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useOwlModeControllerGetPersonalDataConsent<TData = Awaited<ReturnType<typeof owlModeControllerGetPersonalDataConsent>>, TError = void>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof owlModeControllerGetPersonalDataConsent>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useOwlModeControllerGetPersonalDataConsent<TData = Awaited<ReturnType<typeof owlModeControllerGetPersonalDataConsent>>, TError = void>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof owlModeControllerGetPersonalDataConsent>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getOwlModeControllerGetPersonalDataConsentQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type owlModeControllerSetPersonalDataConsentResponse200 = {
+  data: PersonalDataConsentResponseDto
+  status: 200
+}
+
+export type owlModeControllerSetPersonalDataConsentResponse401 = {
+  data: void
+  status: 401
+}
+
+export type owlModeControllerSetPersonalDataConsentResponseSuccess = (owlModeControllerSetPersonalDataConsentResponse200) & {
+  headers: Headers;
+};
+export type owlModeControllerSetPersonalDataConsentResponseError = (owlModeControllerSetPersonalDataConsentResponse401) & {
+  headers: Headers;
+};
+
+export type owlModeControllerSetPersonalDataConsentResponse = (owlModeControllerSetPersonalDataConsentResponseSuccess | owlModeControllerSetPersonalDataConsentResponseError)
+
+export const getOwlModeControllerSetPersonalDataConsentUrl = () => {
+
+
+
+
+  return `/v1/eulen-modus/personendaten-einwilligung`
+}
+
+export const owlModeControllerSetPersonalDataConsent = async (setPersonalDataConsentDto: SetPersonalDataConsentDto, options?: RequestInit): Promise<owlModeControllerSetPersonalDataConsentResponse> => {
+
+  return httpClient<owlModeControllerSetPersonalDataConsentResponse>(getOwlModeControllerSetPersonalDataConsentUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(setPersonalDataConsentDto)
+  }
+);}
+
+
+
+
+
+export const getOwlModeControllerSetPersonalDataConsentMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof owlModeControllerSetPersonalDataConsent>>, TError,{data: SetPersonalDataConsentDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof owlModeControllerSetPersonalDataConsent>>, TError,{data: SetPersonalDataConsentDto}, TContext> => {
+
+const mutationKey = ['owlModeControllerSetPersonalDataConsent'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof owlModeControllerSetPersonalDataConsent>>, {data: SetPersonalDataConsentDto}> = (props) => {
+          const {data} = props ?? {};
+
+          return  owlModeControllerSetPersonalDataConsent(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type OwlModeControllerSetPersonalDataConsentMutationResult = NonNullable<Awaited<ReturnType<typeof owlModeControllerSetPersonalDataConsent>>>
+    export type OwlModeControllerSetPersonalDataConsentMutationBody = SetPersonalDataConsentDto
+    export type OwlModeControllerSetPersonalDataConsentMutationError = void
+
+    export const useOwlModeControllerSetPersonalDataConsent = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof owlModeControllerSetPersonalDataConsent>>, TError,{data: SetPersonalDataConsentDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof owlModeControllerSetPersonalDataConsent>>,
+        TError,
+        {data: SetPersonalDataConsentDto},
+        TContext
+      > => {
+      return useMutation(getOwlModeControllerSetPersonalDataConsentMutationOptions(options), queryClient);
     }
 
 export type owlModeControllerGetSettingResponse200 = {

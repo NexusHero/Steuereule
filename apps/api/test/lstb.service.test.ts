@@ -44,6 +44,21 @@ describe('LstbService', () => {
     })
   })
 
+  describe('tax-free employer subsidies (Zeile 24, ADR-0090)', () => {
+    it('are not entered until the user enters them, and store whole euros without touching the rest', async () => {
+      expect(await service.getSubsidies(USER_ID, 2024)).toEqual({ zuschuesseKvPv: null })
+      await service.setField(USER_ID, 2024, 'sozialversicherung', { kind: 'erfasst', value: 18146 })
+      expect(await service.setSubsidies(USER_ID, 2024, { zuschuesseKvPv: 5072 })).toEqual({ zuschuesseKvPv: 5072 })
+      expect(await service.getSubsidies(USER_ID, 2024)).toEqual({ zuschuesseKvPv: 5072 })
+      expect((await service.getState(USER_ID, 2024)).sozialversicherung).toEqual({ kind: 'erfasst', value: 18146 })
+    })
+
+    it('rejects negative or fractional amounts', async () => {
+      await expect(service.setSubsidies(USER_ID, 2024, { zuschuesseKvPv: -1 })).rejects.toThrow(/whole-euro/)
+      await expect(service.setSubsidies(USER_ID, 2024, { zuschuesseKvPv: 1.5 })).rejects.toThrow(/whole-euro/)
+    })
+  })
+
   describe('getState — the honest empty mask', () => {
     it('a fresh tax year returns every field offen, unvollstaendig, no READ audit entry', async () => {
       const state = await service.getState(USER_ID, TAX_YEAR)

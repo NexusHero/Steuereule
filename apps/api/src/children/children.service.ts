@@ -50,6 +50,7 @@ function toDto(r: ChildRecord, effectiveSwissEur: number | null, year: number): 
     childcareFrom: r.childcareFrom ?? null,
     childcareTo: r.childcareTo ?? null,
     swissFamilyAllowancePayer: r.swissFamilyAllowancePayer ?? null,
+    healthInsuranceAbroad: r.healthInsuranceAbroad ?? null,
     swissFamilyAllowanceEur: effectiveSwissEur != null ? String(effectiveSwissEur) : null,
     // A share of a parent's allowances, not entered for the child: the mask offers it, it does not store it (ADR-0088).
     swissFamilyAllowanceDerived: !r.swissFamilyAllowanceEur && effectiveSwissEur != null,

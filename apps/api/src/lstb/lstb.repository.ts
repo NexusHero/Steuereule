@@ -10,6 +10,8 @@ export interface WageTaxCertificateRecord {
   kirchensteuer?: string | null
   /** LStB Zeile 7 (konfessionsverschiedene Ehe). */
   kirchensteuerEhegatte?: string | null
+  /** LStB Zeile 24 a–c: tax-free employer subsidies to health and care insurance, whole euros (ADR-0090). */
+  zuschuesseKvPv?: string | null
 }
 
 export interface WageTaxCertificateChurchTax {
@@ -25,4 +27,6 @@ export interface WageTaxCertificateRepository {
   setField(userId: string, taxYear: number, field: WageTaxCertificateFieldId, value: string | null): Promise<WageTaxCertificateRecord>
   /** Church tax lines (Zeilen 6 und 7), optional next to the three required fields. */
   setChurchTax(userId: string, taxYear: number, values: WageTaxCertificateChurchTax): Promise<WageTaxCertificateRecord>
+  /** Zeile 24 a–c (ADR-0090), optional like the church tax lines. */
+  setSubsidies(userId: string, taxYear: number, zuschuesseKvPv: string | null): Promise<WageTaxCertificateRecord>
 }

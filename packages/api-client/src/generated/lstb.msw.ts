@@ -19,7 +19,8 @@ import type {
 
 import type {
   LstbChurchTaxDto,
-  LstbResponseDto
+  LstbResponseDto,
+  LstbSubsidiesDto
 } from './lstb.schemas';
 
 
@@ -32,6 +33,10 @@ export const getLstbControllerSetFieldResponseMock = (overrideResponse: Partial<
 export const getLstbControllerGetChurchTaxResponseMock = (overrideResponse: Partial<Extract<LstbChurchTaxDto, object>> = {}): LstbChurchTaxDto => ({kirchensteuer: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), kirchensteuerEhegatte: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), ...overrideResponse})
 
 export const getLstbControllerSetChurchTaxResponseMock = (overrideResponse: Partial<Extract<LstbChurchTaxDto, object>> = {}): LstbChurchTaxDto => ({kirchensteuer: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), kirchensteuerEhegatte: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), ...overrideResponse})
+
+export const getLstbControllerGetSubsidiesResponseMock = (overrideResponse: Partial<Extract<LstbSubsidiesDto, object>> = {}): LstbSubsidiesDto => ({zuschuesseKvPv: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), ...overrideResponse})
+
+export const getLstbControllerSetSubsidiesResponseMock = (overrideResponse: Partial<Extract<LstbSubsidiesDto, object>> = {}): LstbSubsidiesDto => ({zuschuesseKvPv: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), ...overrideResponse})
 
 
 export const getLstbControllerGetLstbMockHandler = (overrideResponse?: LstbResponseDto | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<LstbResponseDto> | LstbResponseDto), options?: RequestHandlerOptions) => {
@@ -93,10 +98,36 @@ export const getLstbControllerSetChurchTaxMockHandler = (overrideResponse?: Lstb
       })
   }, options)
 }
+
+export const getLstbControllerGetSubsidiesMockHandler = (overrideResponse?: LstbSubsidiesDto | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<LstbSubsidiesDto> | LstbSubsidiesDto), options?: RequestHandlerOptions) => {
+  return http.get('*/v1/steuerjahre/:jahr/lstb-zuschuesse', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getLstbControllerGetSubsidiesResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getLstbControllerSetSubsidiesMockHandler = (overrideResponse?: LstbSubsidiesDto | ((info: Parameters<Parameters<typeof http.put>[1]>[0]) => Promise<LstbSubsidiesDto> | LstbSubsidiesDto), options?: RequestHandlerOptions) => {
+  return http.put('*/v1/steuerjahre/:jahr/lstb-zuschuesse', async (info: Parameters<Parameters<typeof http.put>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getLstbControllerSetSubsidiesResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
 export const getSteuerEuleAPIMock = () => [
   getLstbControllerGetLstbMockHandler(),
   getLstbScanControllerConfirmScanMockHandler(),
   getLstbControllerSetFieldMockHandler(),
   getLstbControllerGetChurchTaxMockHandler(),
-  getLstbControllerSetChurchTaxMockHandler()
+  getLstbControllerSetChurchTaxMockHandler(),
+  getLstbControllerGetSubsidiesMockHandler(),
+  getLstbControllerSetSubsidiesMockHandler()
 ]

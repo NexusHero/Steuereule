@@ -1,0 +1,66 @@
+import { describe, expect, it } from 'vitest'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { I18nextProvider } from 'react-i18next'
+import { ThemeProvider } from '@steuereule/ui'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { http, HttpResponse } from 'msw'
+import { createAppI18n } from '../../../i18n/app-i18n'
+import { server } from '../../../test-msw-server'
+import { PersonalDataConsentCard } from './PersonalDataConsentCard'
+
+const URL_PATTERN = '*/v1/eulen-modus/personendaten-einwilligung'
+
+function renderCard() {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <I18nextProvider i18n={createAppI18n('de')}>
+        <ThemeProvider mode="light">
+          <PersonalDataConsentCard />
+        </ThemeProvider>
+      </I18nextProvider>
+    </QueryClientProvider>,
+  )
+}
+
+describe('PersonalDataConsentCard (ADR-0091)', () => {
+  it('asks for consent while it is not granted', async () => {
+    renderCard()
+    expect(await screen.findByText('Darf die Eule deine persönlichen Daten verarbeiten?')).toBeTruthy()
+    expect(screen.getByText(/Google Gemini/)).toBeTruthy()
+    expect(screen.getByText(/Art\. 9 DSGVO/)).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Erlauben' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Nicht erlauben' })).toBeTruthy()
+  })
+
+  it('is not shown when consent is already granted', async () => {
+    server.use(http.get(URL_PATTERN, () => HttpResponse.json({ granted: true, version: '1', grantedAt: '2026-11-14T10:00:00.000Z' })))
+    renderCard()
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Erlauben' })).toBeNull())
+    expect(screen.queryByText('Darf die Eule deine persönlichen Daten verarbeiten?')).toBeNull()
+  })
+
+  it('sends granted:true on Erlauben and then shows the granted state', async () => {
+    let body: unknown = null
+    server.use(
+      http.put(URL_PATTERN, async ({ request }) => {
+        body = await request.json()
+        return HttpResponse.json({ granted: true, version: '1', grantedAt: '2026-11-14T10:00:00.000Z' })
+      }),
+    )
+    renderCard()
+    fireEvent.click(await screen.findByRole('button', { name: 'Erlauben' }))
+    await waitFor(() => expect(body).toEqual({ granted: true }))
+    expect(await screen.findByText(/Erlaubt\./)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Erlauben' })).toBeNull()
+  })
+
+  it('hides itself on Nicht erlauben without sending anything', async () => {
+    let put = false
+    server.use(http.put(URL_PATTERN, () => { put = true; return HttpResponse.json({ granted: false, version: '1', grantedAt: null }) }))
+    renderCard()
+    fireEvent.click(await screen.findByRole('button', { name: 'Nicht erlauben' }))
+    expect(screen.queryByText('Darf die Eule deine persönlichen Daten verarbeiten?')).toBeNull()
+    expect(put).toBe(false)
+  })
+})

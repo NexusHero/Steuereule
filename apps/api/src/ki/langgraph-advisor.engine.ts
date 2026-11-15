@@ -290,12 +290,17 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
   }
 
   async *streamTurn(request: AdvisorTurnRequest): AsyncIterable<AdvisorStreamEvent> {
-    // Zero-trust PII gate before ANY LLM or fallback branch runs
-    checkPiiFree({
-      digest: request.digest,
-      history: request.history ?? [],
-      message: request.message,
-    })
+    // Zero-trust PII gate before ANY LLM or fallback branch runs. With the consent to personal data
+    // (ADR-0091) the user's own words may carry a Steuer-ID or an IBAN; the case digest never does.
+    checkPiiFree(
+      request.personalDataConsent === true
+        ? { digest: request.digest }
+        : {
+            digest: request.digest,
+            history: request.history ?? [],
+            message: request.message,
+          },
+    )
 
     yield { event: 'status', data: { text: 'Eule prüft deine Akte & Paragraphen …' } }
 
@@ -378,6 +383,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
       grayZone,
       request.interview,
       request.household,
+      request.personalDataConsent === true,
     )
     const historyMessages: BaseMessage[] = (request.history ?? []).map((entry) =>
       entry.role === 'user' ? new HumanMessage(entry.content) : new AIMessage(entry.content),
@@ -581,6 +587,8 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
       ...(pendingTwoPaths ? { twoPaths: pendingTwoPaths } : {}),
       ...(sources.length > 0 ? { sources } : {}),
       ...(notStaged.length > 0 ? { notStaged } : {}),
+      // A field the consent would open was asked for: the chat shows the consent card (ADR-0091).
+      ...(request.personalDataConsent !== true && rejectedDrafts.some((draft) => draft.consentRequired) ? { personalDataConsentRequest: true as const } : {}),
       ...(notices.length > 0 ? { notices } : {}),
       ...(noteChanges.length > 0 ? { noteChanges } : {}),
       ...(interviewChanges.length > 0 ? { interviewChanges } : {}),

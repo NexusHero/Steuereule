@@ -72,6 +72,10 @@ describe('extraordinary burdens / medical costs (§ 33 Abs. 3 EStG, BFH VI R 75/
   it('extracts health expenses from catalogue answers safely', () => {
     expect(extraordinaryBurdenFromAnswers({ 'gesundheit-gate': 'Nein' })).toBe(0)
     expect(extraordinaryBurdenFromAnswers({ 'gesundheit-gate': 'Ja', 'gesundheit-betrag': '1850' })).toBe(1850)
+    // What the health insurer reimbursed is not a burden (real case 2024): costs less reimbursement, never below 0.
+    expect(extraordinaryBurdenFromAnswers({ 'gesundheit-gate': 'Ja', 'gesundheit-betrag': '1850', 'gesundheit-erstattung': '600' })).toBe(1250)
+    expect(extraordinaryBurdenFromAnswers({ 'gesundheit-gate': 'Ja', 'gesundheit-betrag': '170', 'gesundheit-erstattung': '170' })).toBe(0)
+    expect(extraordinaryBurdenFromAnswers({ 'gesundheit-gate': 'Ja', 'gesundheit-betrag': '170', 'gesundheit-erstattung': '400' })).toBe(0)
   })
 })
 

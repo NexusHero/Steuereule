@@ -25,6 +25,8 @@ const UNBOUND: ReceiptResponseDto = {
   belegdatum: null,
   zahlungsdatum: null,
   hasFile: false,
+  holders: [],
+  holderTaxYear: null,
   mimeType: null,
   byteLength: null,
   assignment: { kind: 'ungebunden' },
@@ -37,6 +39,8 @@ const PROPOSED: ReceiptResponseDto = {
   belegdatum: '2025-12-20',
   zahlungsdatum: '2026-01-15',
   hasFile: false,
+  holders: [],
+  holderTaxYear: null,
   mimeType: null,
   byteLength: null,
   assignment: { kind: 'vorgeschlagen', taxYear: 2026, provenance: 'zahlungsdatum' },
@@ -49,6 +53,8 @@ const ASSIGNED: ReceiptResponseDto = {
   belegdatum: '2026-02-01',
   zahlungsdatum: null,
   hasFile: true,
+  holders: [],
+  holderTaxYear: null,
   mimeType: 'application/pdf',
   byteLength: 1024,
   assignment: { kind: 'zugeordnet', taxYear: 2026 },
@@ -61,6 +67,8 @@ const CONFLICT: ReceiptResponseDto = {
   belegdatum: '2026-01-02',
   zahlungsdatum: null,
   hasFile: false,
+  holders: [],
+  holderTaxYear: null,
   mimeType: null,
   byteLength: null,
   assignment: { kind: 'konflikt', taxYear: 2025, proposalYear: 2026, provenance: 'belegdatum' },
@@ -190,6 +198,8 @@ describe('BelegeScreen', () => {
       belegdatum: null,
       zahlungsdatum: null,
       hasFile: true,
+      holders: [],
+      holderTaxYear: null,
       mimeType: 'image/png',
       byteLength: 128,
       assignment: { kind: 'ungebunden' },
@@ -493,5 +503,48 @@ describe('BelegeScreen', () => {
     fireEvent.click(screen.getByText('Zuordnen zu 2026'))
     await waitFor(() => expect(screen.getByText('Zugeordnet: 2026')).toBeTruthy())
     expect(getCalls).toBe(2)
+  })
+
+  describe('„für: <Name>“ (ADR-0092)', () => {
+    function mockHousehold() {
+      server.use(
+        http.get('*/v1/profile', () => HttpResponse.json({ firstName: 'Elias', lastName: 'Sommer', steuerId: null, steuernummer: null })),
+        http.get('*/v1/steuerjahre/2025/kopplung', () => HttpResponse.json({ filingType: 'zusammen', personBUserId: 'b1', personB: { firstName: 'Nora' } })),
+        http.get('*/v1/steuerjahre/2025/kinder', () => HttpResponse.json({ kinder: [], count: 0, childBenefitSum: 0, totalAllowance: 0, swissFamilyAllowanceSum: 0 })),
+      )
+    }
+
+    it('shows whose a document is and gives it to another person with its values', async () => {
+      mockHousehold()
+      let body: Record<string, unknown> | null = null
+      server.use(
+        http.post('*/v1/belege/b-lstb/inhaber', async ({ request }) => {
+          body = (await request.json()) as Record<string, unknown>
+          return HttpResponse.json({ holders: ['B'], takenBack: 3, applied: 3, waiting: 1, parse: null })
+        }),
+      )
+      mockReceipts([{ ...CONFLICT, id: 'b-lstb', fileName: 'lstb.pdf', holders: ['A'], holderTaxYear: 2025 }])
+      renderReceipts()
+      const chip = await screen.findByTestId('beleg-inhaber-b-lstb')
+      await waitFor(() => expect(chip.textContent).toBe('für: Elias'))
+      fireEvent.click(chip)
+      fireEvent.click(await screen.findByTestId('beleg-inhaber-wahl-b-lstb-B'))
+      const outcome = await screen.findByTestId('beleg-inhaber-ergebnis-b-lstb')
+      expect(outcome.textContent).toContain('Der Beleg gehört jetzt Nora: 3 Werte übernommen, 3 bei der Person vorher zurückgenommen.')
+      expect(outcome.textContent).toContain('1 Entwürfe warten')
+      expect(body).toEqual({ taxYear: 2025, holder: 'B' })
+    })
+
+    it('says when nobody is chosen yet, and when giving it away failed', async () => {
+      mockHousehold()
+      server.use(http.post('*/v1/belege/b-offen/inhaber', () => HttpResponse.json({ code: 'X' }, { status: 400 })))
+      mockReceipts([{ ...CONFLICT, id: 'b-offen', holders: [], holderTaxYear: 2025 }])
+      renderReceipts()
+      const chip = await screen.findByTestId('beleg-inhaber-b-offen')
+      expect(chip.textContent).toBe('für: noch niemand')
+      fireEvent.click(chip)
+      fireEvent.click(await screen.findByTestId('beleg-inhaber-wahl-b-offen-A'))
+      expect((await screen.findByTestId('beleg-inhaber-ergebnis-b-offen')).textContent).toContain('nicht geklappt')
+    })
   })
 })

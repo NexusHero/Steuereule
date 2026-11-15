@@ -117,6 +117,8 @@ export interface ChildResponseDto {
   childcareTo?: string | null;
   /** @nullable */
   swissFamilyAllowancePayer?: ChildResponseDtoSwissFamilyAllowancePayer;
+  /** @nullable */
+  healthInsuranceAbroad?: boolean | null;
   /** The allowance is a share of a parent’s Swiss allowances, not entered for the child (ADR-0088). */
   swissFamilyAllowanceDerived?: boolean;
   /**
@@ -288,6 +290,11 @@ export interface CreateChildDto {
      * @nullable
      */
   swissFamilyAllowancePayer?: CreateChildDtoSwissFamilyAllowancePayer;
+  /**
+     * The child’s KV/PV is with a foreign insurer (e.g. Swiss basic insurance): Anlage Kind Kz 89 (ADR-0090).
+     * @nullable
+     */
+  healthInsuranceAbroad?: boolean | null;
   firstName: string;
   lastName: string;
   /** ISO date YYYY-MM-DD */
@@ -442,6 +449,11 @@ export interface UpdateChildDto {
      * @nullable
      */
   swissFamilyAllowancePayer?: UpdateChildDtoSwissFamilyAllowancePayer;
+  /**
+     * The child’s KV/PV is with a foreign insurer (e.g. Swiss basic insurance): Anlage Kind Kz 89 (ADR-0090).
+     * @nullable
+     */
+  healthInsuranceAbroad?: boolean | null;
   firstName?: string;
   lastName?: string;
   geburtsdatum?: string;

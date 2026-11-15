@@ -23,6 +23,8 @@ import { FakeOwlCardDismissalRepository, FakeOwlSettingRepository } from './fake
 import { FakePensionRepository } from './fake-pension.repository.js'
 import { FakeProfileRepository } from './fake-profile.repository.js'
 import { FakeRentalRepository } from './fake-rental.repository.js'
+import { FakePersonalDataConsentRepository } from './fake-personal-data-consent.repository.js'
+import { PersonalDataConsentService } from '../../src/owl-mode/personal-data-consent.service.js'
 
 export interface AdvisorTestKit {
   readonly advisorRepo: InMemoryAdvisorRepository
@@ -35,6 +37,8 @@ export interface AdvisorTestKit {
   /** The joint return: set it up with `set` and `updatePersonB` to give the user a Person B. */
   readonly linkService: LinkService
   readonly profileRepo: FakeProfileRepository
+  /** The consent to personal data for the owl (ADR-0091); none until a test gives it. */
+  readonly consent: PersonalDataConsentService
   readonly service: AdvisorService
 }
 
@@ -67,7 +71,11 @@ export function buildAdvisorTestKit(engine?: AdvisorEnginePort, modelConnection?
     child: childRepo,
     commute: commuteRepo,
     assessment: assessmentRepo,
+    linkFilingType: async (userId, taxYear, filingType) => {
+      await linkService.set(userId, taxYear, { filingType })
+    },
   })
+  const consent = new PersonalDataConsentService(new FakePersonalDataConsentRepository(), auditService)
   const confirmationService = new ConfirmationService(new FakeMarkingRepository(), access, auditService)
   const owlModeService = new OwlModeService(
     new FakeOwlSettingRepository(),
@@ -99,8 +107,10 @@ export function buildAdvisorTestKit(engine?: AdvisorEnginePort, modelConnection?
     undefined,
     pensionRepo,
     linkService,
+    undefined,
+    consent,
   )
-  return { advisorRepo, interviewRepo, rentalRepo, childRepo, commuteRepo, chRepo, lstbRepo, linkService, profileRepo, service }
+  return { advisorRepo, interviewRepo, rentalRepo, childRepo, commuteRepo, chRepo, lstbRepo, linkService, profileRepo, consent, service }
 }
 
 /** A step of a scripted engine turn: an event, or a pause that only ends when the turn is aborted. */

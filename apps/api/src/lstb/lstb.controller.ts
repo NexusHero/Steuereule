@@ -18,6 +18,7 @@ import { LstbService } from './lstb.service.js'
 import { LstbFieldDto } from './dto/lstb-field.dto.js'
 import { LstbResponseDto } from './dto/lstb-response.dto.js'
 import { LstbChurchTaxDto } from './dto/lstb-church-tax.dto.js'
+import { LstbSubsidiesDto } from './dto/lstb-subsidies.dto.js'
 
 @ApiTags('lstb')
 @Controller('v1/steuerjahre')
@@ -105,5 +106,36 @@ export class LstbController {
     @Query('person', ParsePersonPipe) person: 'A' | 'B',
   ): Promise<LstbChurchTaxDto> {
     return this.lstbService.setChurchTax(await this.link.dataUser(userId, year, person), year, dto)
+  }
+
+  @Get(':jahr/lstb-zuschuesse')
+  @RequiresAccount()
+  @ApiParam({ name: 'jahr', type: Number, example: 2026, description: 'The tax year (Steuerjahr).' })
+  @ApiOkResponse({ type: LstbSubsidiesDto, description: 'Tax-free employer subsidies to health and care insurance per LStB, Zeile 24 (ADR-0090).' })
+  @ApiUnauthorizedResponse({ description: 'Guest session — this endpoint requires a signed-in account.' })
+  @ApiQuery({ name: 'person', required: false, enum: ['A', 'B'], description: 'B: Person A reads the figures of a partner without an own account (ADR-0054).' })
+  async getSubsidies(
+    @CurrentUser() userId: string,
+    @Param('jahr', ParseTaxYearPipe) year: number,
+    @Query('person', ParsePersonPipe) person: 'A' | 'B',
+  ): Promise<LstbSubsidiesDto> {
+    return this.lstbService.getSubsidies(await this.link.dataUser(userId, year, person), year)
+  }
+
+  @Put(':jahr/lstb-zuschuesse')
+  @HttpCode(200)
+  @RequiresAccount()
+  @ApiParam({ name: 'jahr', type: Number, example: 2026, description: 'The tax year (Steuerjahr).' })
+  @ApiBody({ type: LstbSubsidiesDto })
+  @ApiOkResponse({ type: LstbSubsidiesDto, description: 'The stored subsidies line.' })
+  @ApiUnauthorizedResponse({ description: 'Guest session — this endpoint requires a signed-in account.' })
+  @ApiQuery({ name: 'person', required: false, enum: ['A', 'B'], description: 'B: Person A records the figures of a partner without an own account (ADR-0054).' })
+  async setSubsidies(
+    @CurrentUser() userId: string,
+    @Param('jahr', ParseTaxYearPipe) year: number,
+    @Body() dto: LstbSubsidiesDto,
+    @Query('person', ParsePersonPipe) person: 'A' | 'B',
+  ): Promise<LstbSubsidiesDto> {
+    return this.lstbService.setSubsidies(await this.link.dataUser(userId, year, person), year, dto)
   }
 }

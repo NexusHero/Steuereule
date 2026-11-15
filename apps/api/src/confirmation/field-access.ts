@@ -1,7 +1,7 @@
 import {
   ASSESSMENT_FIELD_IDS,
   CAPITAL_FIELDS,
-  WAGE_TAX_CERTIFICATE_FIELDS,
+  WAGE_TAX_CERTIFICATE_FIELDS, LSTB_OPTIONAL_LINES,
   PENSION_FIELDS,
   RENTAL_FIELDS,
   SALARY_CERTIFICATE_AMOUNT_FIELDS,
@@ -59,6 +59,11 @@ export interface FieldAccessRepositories {
   readonly child?: ChildRepository
   readonly commute?: CommuteRepository
   readonly assessment?: AssessmentRepository
+  /**
+   * Chooses the Veranlagungsart the way the Kopplung mask does (`LinkService.set`): „zusammen“
+   * creates Person B's placeholder, so there is someone to record for (ADR-0054, ADR-0091).
+   */
+  readonly linkFilingType?: (userId: string, taxYear: number, filingType: 'einzel' | 'zusammen') => Promise<void>
 }
 
 const COMMUTE_ACCESS_FIELDS = [
@@ -78,6 +83,8 @@ const COMMUTE_ACCESS_FIELDS = [
   'secondTransport',
   'secondFrom',
   'secondTo',
+  'workplace',
+  'secondWorkplace',
 ] as const
 const COMMUTE_DATE_FIELDS: ReadonlySet<string> = new Set(['periodFrom', 'periodTo', 'secondFrom', 'secondTo'])
 const GERMAN_DATE_RE = /^\d{2}\.\d{2}\.\d{4}$/
@@ -104,13 +111,25 @@ const NGRE_FIELDS: readonly (keyof NGreDetails)[] = [
   'nbuvArbeitgeberProzent',
   'nbuvArbeitgeberChf',
 ]
+/** The Wechselkurs CHF→EUR as two fields (C4): the rate, and a year (annual average) or a month (BMF monthly rate). */
+const EXCHANGE_RATE_FIELDS = ['wechselkurs', 'wechselkursMonat'] as const
+const YEAR_OR_MONTH_RE = /^\d{4}(-(0[1-9]|1[0-2]))?$/
 const CH_SALARY_ACCESS_FIELDS = [
   ...SALARY_CERTIFICATE_AMOUNT_FIELDS,
   'bemerkungen',
   'saeule3aChf',
   'krankenkasseChf',
   ...NGRE_FIELDS,
+  ...EXCHANGE_RATE_FIELDS,
+  /** „Keine Sonderfälle“ of the Anlage N-Gre, as the mask's switch (ADR-0091, Nachtrag). */
+  'nGreSonderfaelle',
 ] as const
+const CAPITAL_ACCESS_FIELDS = [...CAPITAL_FIELDS, 'inhaber'] as const
+const CAPITAL_OWNERS = ['A', 'B', 'gemeinsam'] as const
+/** What describes a rental object beyond its amounts (Anlage V Zeilen 1–13, 20, 33, 46, 86); the mask's address call stores them. */
+const RENTAL_DETAIL_FIELDS = ['strasse', 'hausnummer', 'plz', 'city', 'livingArea', 'einheiten', 'depreciationAsLastYear', 'umlagen', 'schuldzinsen', 'anteilA'] as const
+type RentalDetailField = (typeof RENTAL_DETAIL_FIELDS)[number]
+const RENTAL_ACCESS_FIELDS = [...RENTAL_FIELDS, ...RENTAL_DETAIL_FIELDS] as const
 const CHILD_ACCESS_FIELDS = [
   'firstName',
   'lastName',
@@ -137,6 +156,7 @@ const CHILD_ACCESS_FIELDS = [
   'childcareFrom',
   'childcareTo',
   'swissFamilyAllowancePayer',
+  'healthInsuranceAbroad',
 ] as const
 
 /**
@@ -145,10 +165,10 @@ const CHILD_ACCESS_FIELDS = [
  * a name against them before a draft exists that could never be applied.
  */
 export const WRITABLE_FIELDS_BY_SCREEN: Readonly<Record<Screen, readonly string[]>> = {
-  lstb: WAGE_TAX_CERTIFICATE_FIELDS,
+  lstb: [...WAGE_TAX_CERTIFICATE_FIELDS, ...LSTB_OPTIONAL_LINES],
   rente: PENSION_ACCESS_FIELDS,
-  kapital: CAPITAL_FIELDS,
-  vermietung: RENTAL_FIELDS,
+  kapital: CAPITAL_ACCESS_FIELDS,
+  vermietung: RENTAL_ACCESS_FIELDS,
   profil: PROFILE_ACCESS_FIELDS,
   stammdaten: MASTER_DATA_FIELDS,
   kopplung: LINK_ACCESS_FIELDS,
@@ -172,17 +192,33 @@ export function fieldAccessFrom({
   child,
   commute,
   assessment,
+  linkFilingType,
 }: FieldAccessRepositories): FieldAccess {
   const access: Partial<Record<Screen, ScreenAccess>> = {
     lstb: {
-      fields: WAGE_TAX_CERTIFICATE_FIELDS,
+      fields: [...WAGE_TAX_CERTIFICATE_FIELDS, ...LSTB_OPTIONAL_LINES],
       withInstance: false,
       async read(userId, taxYear) {
         const r = await lstb.findForUserAndYear(userId, taxYear)
-        return { bruttoarbeitslohn: r?.bruttoarbeitslohn ?? null, lohnsteuer: r?.lohnsteuer ?? null, sozialversicherung: r?.sozialversicherung ?? null }
+        return {
+          bruttoarbeitslohn: r?.bruttoarbeitslohn ?? null,
+          lohnsteuer: r?.lohnsteuer ?? null,
+          sozialversicherung: r?.sozialversicherung ?? null,
+          kirchensteuer: r?.kirchensteuer ?? null,
+          kirchensteuerEhegatte: r?.kirchensteuerEhegatte ?? null,
+          zuschuesseKvPv: r?.zuschuesseKvPv ?? null,
+        }
       },
       async write(userId, taxYear, _instance, field, value) {
-        await lstb.setField(userId, taxYear, field as WageTaxCertificateFieldId, value)
+        if (field === 'zuschuesseKvPv') {
+          await lstb.setSubsidies(userId, taxYear, value)
+        } else if (field === 'kirchensteuer' || field === 'kirchensteuerEhegatte') {
+          const r = await lstb.findForUserAndYear(userId, taxYear)
+          const lines = { kirchensteuer: r?.kirchensteuer ?? null, kirchensteuerEhegatte: r?.kirchensteuerEhegatte ?? null }
+          await lstb.setChurchTax(userId, taxYear, { ...lines, [field]: value })
+        } else {
+          await lstb.setField(userId, taxYear, field as WageTaxCertificateFieldId, value)
+        }
         return true
       },
     },
@@ -205,27 +241,45 @@ export function fieldAccessFrom({
       },
     },
     kapital: {
-      fields: CAPITAL_FIELDS,
+      fields: CAPITAL_ACCESS_FIELDS,
       withInstance: false,
       async read(userId, taxYear) {
         const r = await capital.findForUserAndYear(userId, taxYear)
-        return Object.fromEntries(CAPITAL_FIELDS.map((f) => [f, r?.[f] ?? null]))
+        return { ...Object.fromEntries(CAPITAL_FIELDS.map((f) => [f, r?.[f] ?? null])), inhaber: r?.inhaber ?? r?.owner ?? null }
       },
       async write(userId, taxYear, _instance, field, value) {
+        if (field === 'inhaber') {
+          if (!(CAPITAL_OWNERS as readonly (string | null)[]).includes(value)) {
+            throw new InvalidInputError('FIELD_VALUE_INVALID', `"inhaber" must be one of: ${CAPITAL_OWNERS.join(', ')}.`)
+          }
+          await capital.setOwner(userId, taxYear, value as (typeof CAPITAL_OWNERS)[number])
+          return true
+        }
         await capital.setField(userId, taxYear, field as CapitalFieldId, value)
         return true
       },
     },
     vermietung: {
-      fields: RENTAL_FIELDS,
+      fields: RENTAL_ACCESS_FIELDS,
       withInstance: true,
       async read(userId, taxYear, instance) {
         const property = (await rental.listForUserAndYear(userId, taxYear)).find((o) => o.id === instance)
         if (property === undefined) return null
-        return Object.fromEntries(RENTAL_FIELDS.map((f) => [f, property[f]]))
+        const details = Object.fromEntries(
+          RENTAL_DETAIL_FIELDS.map((f) => {
+            const v = property[f]
+            return [f, v === null || v === undefined ? null : String(v)]
+          }),
+        )
+        return { ...Object.fromEntries(RENTAL_FIELDS.map((f) => [f, property[f]])), ...details }
       },
       async write(userId, taxYear, instance, field, value) {
         if (instance === null) return false
+        if ((RENTAL_DETAIL_FIELDS as readonly string[]).includes(field)) {
+          const detail = field as RentalDetailField
+          const stored = detail === 'depreciationAsLastYear' ? (value === null ? null : value === 'true') : value
+          return (await rental.setAddress(userId, taxYear, instance, { [detail]: stored })) !== null
+        }
         return (await rental.setField(userId, taxYear, instance, field as RentalFieldId, value)) !== null
       },
     },
@@ -287,6 +341,8 @@ export function fieldAccessFrom({
         await masterData.save(userId, {
           ...current,
           [field as MasterDataField]: value,
+          // Art. 9 DSGVO: the religion is stored only with the moment of the consent (ADR-0091 for the owl's write).
+          ...(field === 'religion' ? { religionEinwilligungAm: value === null ? null : new Date() } : {}),
         })
         return true
       },
@@ -305,6 +361,10 @@ export function fieldAccessFrom({
         }
       },
       async write(userId, taxYear, _instance, field, value) {
+        if (field === 'filingType' && linkFilingType) {
+          await linkFilingType(userId, taxYear, value === 'zusammen' ? 'zusammen' : 'einzel')
+          return true
+        }
         const current = await link.findByUserAndYear(userId, taxYear)
         if (field === 'filingType') {
           const filingType = value === 'zusammen' ? 'zusammen' : 'einzel'
@@ -369,6 +429,8 @@ export function fieldAccessFrom({
         }
         return {
           ...(r?.fields),
+          wechselkurs: r?.exchangeRateValue === null || r?.exchangeRateValue === undefined ? null : String(r.exchangeRateValue),
+          wechselkursMonat: r?.exchangeRateMonth ?? null,
           bemerkungen: r?.bemerkungen ?? null,
           saeule3aChf: r?.saeule3aChf ?? null,
           krankenkasseChf: r?.krankenkasseChf ?? null,
@@ -384,6 +446,29 @@ export function fieldAccessFrom({
           await chSalaryCertificate.setRemarks(userId, taxYear, value)
           return true
         }
+        if ((EXCHANGE_RATE_FIELDS as readonly string[]).includes(field)) {
+          // The mode follows the period: a year is the annual average (Anlage N-Gre), a month the BMF monthly rate.
+          // A rate with a receipt ("tatsächlich") is the mask's, the owl does not set it.
+          const current = await chSalaryCertificate.findForUserAndYear(userId, taxYear)
+          let rate = current?.exchangeRateValue ?? null
+          let month = current?.exchangeRateMonth ?? null
+          if (field === 'wechselkurs') {
+            const parsed = value === null ? null : Number(value.replace(',', '.'))
+            if (parsed !== null && (!Number.isFinite(parsed) || parsed <= 0)) {
+              throw new InvalidInputError('WECHSELKURS_INVALID', '"wechselkurs" must be a positive number.')
+            }
+            rate = parsed
+            month ??= String(taxYear)
+          } else {
+            if (value !== null && !YEAR_OR_MONTH_RE.test(value)) {
+              throw new InvalidInputError('WECHSELKURS_INVALID', '"wechselkursMonat" must be yyyy or yyyy-mm.')
+            }
+            month = value
+          }
+          const mode = month === null ? null : month.length === 4 ? 'jahresdurchschnitt' : 'amtlich'
+          await chSalaryCertificate.setExchangeRate(userId, taxYear, { month, rate, mode })
+          return true
+        }
         if (field === 'saeule3aChf' || field === 'krankenkasseChf') {
           const current = await chSalaryCertificate.findForUserAndYear(userId, taxYear)
           await chSalaryCertificate.setProvision(
@@ -396,6 +481,13 @@ export function fieldAccessFrom({
         }
         if ((NGRE_FIELDS as readonly string[]).includes(field)) {
           await chSalaryCertificate.setNGre(userId, taxYear, { [field]: value })
+          return true
+        }
+        if (field === 'nGreSonderfaelle') {
+          if (value !== null && value !== 'true' && value !== 'false') {
+            throw new InvalidInputError('FIELD_VALUE_INVALID', `"${value}" is not "true" or "false".`)
+          }
+          await chSalaryCertificate.setNGre(userId, taxYear, { nGreSonderfaelle: value === null ? null : value === 'true' })
           return true
         }
         return false
@@ -438,11 +530,12 @@ export function fieldAccessFrom({
           childcareFrom: c.childcareFrom ?? null,
           childcareTo: c.childcareTo ?? null,
           swissFamilyAllowancePayer: c.swissFamilyAllowancePayer ?? null,
+          healthInsuranceAbroad: c.healthInsuranceAbroad === null || c.healthInsuranceAbroad === undefined ? null : String(c.healthInsuranceAbroad),
         }
       },
       async write(userId, taxYear, instance, field, value) {
         if (instance === null) return false
-        const boolFields = ['domesticResidenceAllYear', 'registeredWithMeAllYear', 'childBenefitToMeAllYear']
+        const boolFields = ['domesticResidenceAllYear', 'registeredWithMeAllYear', 'childBenefitToMeAllYear', 'healthInsuranceAbroad']
         const parsedValue = boolFields.includes(field) ? (value === 'true' ? true : value === 'false' ? false : null) : value
         const updated = await child.update(userId, taxYear, instance, { [field]: parsedValue })
         return updated !== null
@@ -476,6 +569,8 @@ export function fieldAccessFrom({
           secondTransport: r.secondTransport ?? null,
           secondFrom: r.secondFrom ?? null,
           secondTo: r.secondTo ?? null,
+          workplace: r.workplace ?? null,
+          secondWorkplace: r.secondWorkplace ?? null,
         }
       },
       async write(userId, taxYear, _instance, field, value) {
@@ -561,6 +656,11 @@ export function fieldAccessFrom({
             break
           }
           default: {
+            if (field === 'workplace' || field === 'secondWorkplace') {
+              const trimmed = value === null ? '' : value.trim()
+              updated = { ...current, [field]: trimmed === '' ? null : trimmed.slice(0, 120) }
+              break
+            }
             if (COMMUTE_DATE_FIELDS.has(field)) {
               const trimmed = value === null ? null : value.trim()
               if (trimmed !== null && trimmed !== '' && !GERMAN_DATE_RE.test(trimmed)) {

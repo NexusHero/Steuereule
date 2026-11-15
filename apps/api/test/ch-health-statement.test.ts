@@ -64,6 +64,8 @@ describe('the health insurer’s statement', () => {
     expect(all.map((d) => [d.screen, d.field, d.newValue, d.person ?? 'A', d.instance])).toEqual([
       ['chLohnausweis', 'krankenkasseChf', '1400', 'A', null],
       ['kind', 'healthBasicEur', '315', 'A', childId],
+      // A Swiss insurer is foreign: the child's premium goes into Anlage Kind Kz 89 (ADR-0090).
+      ['kind', 'healthInsuranceAbroad', 'true', 'A', childId],
       ['chLohnausweis', 'krankenkasseChf', '1400', 'B', null],
     ])
     expect(res.assistantMessage?.content).toContain('Grundversicherung')
@@ -122,7 +124,7 @@ describe('the health insurer’s statement', () => {
     expect(res.assistantMessage?.content).toContain('Die Prämien der Kinder')
   })
 
-  it('lets a dentist’s invoice add to the self-borne costs still waiting, not replace them', async () => {
+  it('adds a dentist’s invoice to the self-borne costs still waiting, without asking: another receipt (ADR-0092 §6)', async () => {
     const { kit, strategy } = await setUp()
     const withOwn = family.replace("Prämientotal 2025   1'400.00", "Total Ihres Kostenanteils für 2025   300.00\nPrämientotal 2025   1'400.00")
     await parse(strategy, withOwn)
@@ -139,8 +141,9 @@ describe('the health insurer’s statement', () => {
       countedItems: [{ ref: '0invoice', amountKey: '0invoice' }],
       engine: { mode: 'deterministic_fallback', provider: 'deterministic' },
     })
-    // 300 CHF at 1,05 = 315 € waiting, plus 1.700 € for the invoice.
+    // 300 CHF at 1,05 = 315 € waiting, plus 1.700 € for the invoice: a sum of receipts adds up.
     expect(invoice.action).toMatchObject({ field: 'gesundheit-betrag', newValue: '2015' })
+    expect(invoice.action.combination).toBeUndefined()
     const counted = await kit.service.countedReceiptItems(USER, YEAR, { screen: 'interview', field: 'gesundheit-betrag' })
     expect(counted.map((c) => c.ref)).toContain('0invoice')
     expect(counted.length).toBeGreaterThan(1)
@@ -162,7 +165,8 @@ describe('the health insurer’s statement', () => {
       receiptId: null,
       engine: { mode: 'deterministic_fallback', provider: 'deterministic' },
     })
-    const statementDrafts = (await kit.advisorRepo.listForUserAndYear(USER, YEAR)).flatMap((m) => m.meta?.actions ?? []).filter((d) => d.status === 'pending')
+    // The invoice's two ways („zusätzlich“ / „ersetzen“, ADR-0092) wait apart from the statement's drafts.
+    const statementDrafts = (await kit.advisorRepo.listForUserAndYear(USER, YEAR)).flatMap((m) => m.meta?.actions ?? []).filter((d) => d.status === 'pending' && d.combination === undefined)
     await kit.service.applyBatch(USER, YEAR, { drafts: statementDrafts.map((d) => ({ actionId: d.actionId })) })
     await kit.service.applyAction(USER, YEAR, invoice.action.actionId)
     const answers = Object.fromEntries((await kit.interviewRepo.findAllForUserAndYear(USER, YEAR)).map((a) => [a.questionId, a.value]))

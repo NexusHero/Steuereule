@@ -69,6 +69,13 @@ export interface ReceiptResponseDto {
   byteLength: number | null;
   /** @steuereule/core’s zuordnungAusDaten — never recomputed elsewhere. */
   assignment: AssignmentDto;
+  /** Whose document it is (ADR-0092): `A`, `B` or `kind:<child id>`, the holder first, then the people a multi-person document was also taken over for. Empty while nobody is chosen. */
+  holders: string[];
+  /**
+     * The tax year the holders refer to (B and the children are per year).
+     * @nullable
+     */
+  holderTaxYear: number | null;
 }
 
 /**

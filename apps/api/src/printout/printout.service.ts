@@ -8,6 +8,7 @@ import {
   calculateWorkdays,
   missingConfirmations,
   crossBorderStatus,
+  countsInterviewHealthInsurance,
   healthInsuranceFromAnswers,
   classifyCapitalDepot,
   type ChResidence,
@@ -32,7 +33,7 @@ import { PENSION_REPOSITORY, type PensionRepository } from '../pension/pension.r
 import { MASTER_DATA_REPOSITORY, type MasterDataRepository } from '../master-data/master-data.repository.js'
 import { RENTAL_REPOSITORY, type RentalRepository } from '../rental/rental.repository.js'
 import { childAllowancesEur } from '../children/swiss-allowance.js'
-import { printoutValues, type CommuteFacts, type ChSalaryCertificateFacts, type PersonBFacts } from './printout-values.js'
+import { printoutValues, type CommuteFacts, type ChSalaryCertificateFacts, type LifeSituationFacts, type PersonBFacts } from './printout-values.js'
 import { FIELD_SETS, forYear, renderForms, OverflowError, type FieldValues } from './form-renderer.js'
 
 export const TEMPLATES_BASE = Symbol('VORLAGEN_BASIS')
@@ -193,6 +194,7 @@ export class PrintoutService {
         chSalaryCertificate: chSalaryCertificateFacts(spouseCh, spouseAnswers),
         commute: commuteFacts(year, spouseCommute),
         healthInsurance: healthInsurances(spouseAnswers, spouseCh),
+        lifeSituations: lifeSituationsFrom(spouseAnswers),
       }
     }
 
@@ -238,6 +240,7 @@ export class PrintoutService {
         registeredWithMeAllYear: k.registeredWithMeAllYear,
         childBenefitToMeAllYear: k.childBenefitToMeAllYear,
         healthBasicEur: k.healthBasicEur,
+        healthInsuranceAbroad: k.healthInsuranceAbroad ?? null,
         childcareEur: k.childcareEur ?? null,
         childcareProvider: k.childcareProvider ?? null,
         childcareFrom: k.childcareFrom ?? null,
@@ -283,6 +286,7 @@ export class PrintoutService {
       householdAndHealth: HOUSEHOLD_AND_HEALTH_BOOSTERS
         ? {
             healthCostsEur: answers['gesundheit-gate'] === 'Ja' ? amountOf(answers['gesundheit-betrag']) : null,
+            healthReimbursedEur: answers['gesundheit-gate'] === 'Ja' ? amountOf(answers['gesundheit-erstattung']) : null,
             minijobEur: answers['haushalt-gate'] === 'Ja' ? amountOf(answers['haushalt-minijob-betrag']) : null,
             servicesEur: answers['haushalt-gate'] === 'Ja' ? amountOf(answers['haushalt-dienstleistung-betrag']) : null,
             craftsmenLabourEur: answers['haushalt-gate'] === 'Ja' ? amountOf(answers['haushalt-handwerker-betrag']) : null,
@@ -294,6 +298,8 @@ export class PrintoutService {
           ? { kind: answers['riester-art'] ?? null, incomeLastYear: answers['riester-einnahmen-vorjahr'] ?? null }
           : null,
       commute: commuteFacts(year, commute),
+      childrenAnswered: answers['kinder'] !== undefined && answers['kinder'] !== 'Nein',
+      lifeSituations: lifeSituationsFrom(answers),
     })
   }
 }
@@ -376,13 +382,25 @@ function healthInsurances(
   ch: { krankenkasseChf: string | null; exchangeRateValue: number | null } | null,
 ): HealthInsurance[] {
   const list: HealthInsurance[] = []
-  const fromInterview = healthInsuranceFromAnswers(answers)
-  if (fromInterview) list.push(fromInterview)
   const chf = ch?.krankenkasseChf ? Number(ch.krankenkasseChf) : 0
+  const fromInterview = healthInsuranceFromAnswers(answers)
+  // The Swiss insurer of the mask and a foreign one named in the interview are the same policy (ADR-0090).
+  if (fromInterview && countsInterviewHealthInsurance(answers, chf > 0)) list.push(fromInterview)
   if (chf > 0 && ch?.exchangeRateValue) {
     list.push({ kind: 'ausland', basicHealthAmount: Math.round(chf * ch.exchangeRateValue), withSickPay: false, careInsuranceAmount: 0, optionalExtrasAmount: 0 })
   }
   return list
+}
+
+/** The Lebenslagen and the training of Segment 2 as printout facts (ADR-0090). */
+function lifeSituationsFrom(answers: Record<string, string>): LifeSituationFacts {
+  return {
+    trainingEur: answers['fortbildung'] === 'Ja' ? amountOf(answers['fortbildung-kosten']) : null,
+    relocationEur: answers['umzug'] === 'Ja' ? amountOf(answers['umzug-kosten']) : null,
+    wageReplacementEur: answers['lohnersatz'] === 'Ja' ? amountOf(answers['lohnersatz-betrag']) : null,
+    severance: answers['abfindung'] === 'Ja',
+    secondHousehold: answers['dhf'] === 'Ja',
+  }
 }
 
 /** A whole-euro interview amount; „später“ and anything else is not printed. */

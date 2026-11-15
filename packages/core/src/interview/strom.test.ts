@@ -92,6 +92,10 @@ describe('a topic page', () => {
     ])
   })
 
+  it('asks the medical costs and what was reimbursed on one page (real case 2024)', () => {
+    expect(topicPageSteps('gesundheit-gate', { 'gesundheit-gate': 'Ja' })).toEqual(['gesundheit-betrag', 'gesundheit-erstattung'])
+  })
+
   it('has no page when the topic asks nothing further (a Minijob)', () => {
     expect(topicPageSteps('nebenjob', { nebenjob: 'Midijob' })).toEqual(['nebenjob-brutto'])
     expect(topicPageSteps('nebenjob', { nebenjob: 'Minijob' })).toEqual([])

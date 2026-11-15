@@ -7,7 +7,7 @@ import {
   type OwlSourceId,
   type Screen,
 } from '@steuereule/core'
-import { AI_FORBIDDEN_FIELDS, AI_FORBIDDEN_SCREENS } from '../confirmation/ai-write-policy.js'
+import { AI_NEVER_FIELDS, isAiWritable, isPersonalField } from '../confirmation/ai-write-policy.js'
 
 export const OWL_SOURCE_KEY_SET: ReadonlySet<string> = new Set(Object.keys(ADVISOR_LEGAL_SOURCES))
 
@@ -20,17 +20,32 @@ export function normalizeSourceId(raw: string | undefined): OwlSourceId {
 
 export type StageTargetCheck =
   | { readonly ok: true; readonly screen: Screen }
-  | { readonly ok: false; readonly error: string; readonly locked?: { readonly screen: Screen; readonly field: string } }
+  | {
+      readonly ok: false
+      readonly error: string
+      readonly locked?: { readonly screen: Screen; readonly field: string }
+      /** The field opens with the user's consent to personal data: the chat offers it (ADR-0091). */
+      readonly consentRequired?: true
+    }
 
-/** What the owl may propose a value for: every catalogue field that is not protected (ADR-0066). */
-export const AI_WRITABLE_FIELDS: Readonly<Partial<Record<Screen, readonly string[]>>> = Object.fromEntries(
-  SCREENS.filter((screen) => !AI_FORBIDDEN_SCREENS.has(screen)).map((screen) => [
-    screen,
-    fieldsOfScreen(screen)
-      .filter((spec) => spec.aiWritable)
-      .map((spec) => spec.field),
-  ]),
-)
+type WritableFields = Readonly<Partial<Record<Screen, readonly string[]>>>
+
+function writableFields(personalDataConsent: boolean): WritableFields {
+  return Object.fromEntries(
+    SCREENS.map((screen) => [screen, fieldsOfScreen(screen).filter((spec) => isAiWritable(screen, spec.field, personalDataConsent)).map((spec) => spec.field)] as const).filter(
+      ([, fields]) => fields.length > 0,
+    ),
+  )
+}
+
+/** What the owl may propose a value for without consent: every catalogue field that is not protected (ADR-0066). */
+export const AI_WRITABLE_FIELDS: WritableFields = writableFields(false)
+const AI_WRITABLE_FIELDS_WITH_CONSENT: WritableFields = writableFields(true)
+
+/** What the owl may propose, given the user's consent to personal data (ADR-0091). */
+export function aiWritableFields(personalDataConsent: boolean): WritableFields {
+  return personalDataConsent ? AI_WRITABLE_FIELDS_WITH_CONSENT : AI_WRITABLE_FIELDS
+}
 
 /**
  * The fields the model has to use, with what a value looks like, as part of the system prompt.
@@ -38,10 +53,11 @@ export const AI_WRITABLE_FIELDS: Readonly<Partial<Record<Screen, readonly string
  * `bruttoarbeitslohn`) and produces drafts nobody can apply — found by playing a customer against
  * the real model (#476). The list is generated from the field catalogue, never written by hand.
  */
-export function describeAiWritableFields(): string {
-  return SCREENS.filter((screen) => !AI_FORBIDDEN_SCREENS.has(screen))
+export function describeAiWritableFields(personalDataConsent = false): string {
+  const writable = aiWritableFields(personalDataConsent)
+  return SCREENS.filter((screen) => writable[screen] !== undefined)
     .map((screen) => {
-      const specs = fieldsOfScreen(screen).filter((spec) => spec.aiWritable)
+      const specs = fieldsOfScreen(screen).filter((spec) => writable[screen]!.includes(spec.field))
       const instance = specs.some((spec) => spec.perInstance) ? ' [braucht `instance`]' : ''
       return `- ${screen}${instance}: ${specs.map(describeFieldForPrompt).join(', ')}`
     })
@@ -56,33 +72,32 @@ export function checkStageValue(screen: string, field: string, value: string): S
   return check.ok ? check : { ok: false, error: `INVALID_VALUE: „${value}“ passt nicht zu "${screen}.${field.trim()}". ${check.reason}` }
 }
 
-export function validateStageTarget(screen: string, field: string): StageTargetCheck {
+export function validateStageTarget(screen: string, field: string, personalDataConsent = false): StageTargetCheck {
+  const writable = aiWritableFields(personalDataConsent)
   if (!(SCREENS as readonly string[]).includes(screen)) {
     return {
       ok: false,
-      error: `FORBIDDEN_TARGET: Unbekannte Maske "${screen}". Gültige Masken: ${Object.keys(AI_WRITABLE_FIELDS).join(', ')}.`,
+      error: `FORBIDDEN_TARGET: Unbekannte Maske "${screen}". Gültige Masken: ${Object.keys(writable).join(', ')}.`,
     }
   }
   const typedScreen = screen as Screen
-  if (AI_FORBIDDEN_SCREENS.has(typedScreen)) {
-    return {
-      ok: false,
-      locked: { screen: typedScreen, field: field.trim() },
-      error: `AI_WRITE_FORBIDDEN: Maske "${screen}" gehört zu Profil/Stammdaten/Kopplung und darf niemals geändert werden.`,
-    }
-  }
   const cleanField = field.trim()
-  if (cleanField.length === 0 || cleanField.length > 100) {
-    return { ok: false, error: 'INVALID_FIELD: Feldname darf nicht leer sein.' }
+  if (AI_NEVER_FIELDS.has(cleanField)) {
+    return { ok: false, error: `AI_WRITE_FORBIDDEN: Feld "${screen}.${cleanField}" schreibt die Eule nie; das macht der Nutzer selbst.` }
   }
-  if (AI_FORBIDDEN_FIELDS.has(cleanField)) {
+  if (!personalDataConsent && isPersonalField(typedScreen, cleanField)) {
+    // Without consent nothing changes (ADR-0066); the answer carries the consent card instead (ADR-0091).
     return {
       ok: false,
       locked: { screen: typedScreen, field: cleanField },
-      error: `AI_WRITE_FORBIDDEN: Feld "${screen}.${cleanField}" enthält personenbezogene Daten und ist gesperrt.`,
+      consentRequired: true,
+      error: `AI_WRITE_FORBIDDEN: Feld "${screen}.${cleanField}" enthält personenbezogene Daten. Ohne Einwilligung des Nutzers darfst du es nicht vorbereiten; die App zeigt ihm die Einwilligung. Sag ihm, dass er sie erteilen oder das Feld selbst in der Maske eintragen kann.`,
     }
   }
-  const known = AI_WRITABLE_FIELDS[typedScreen] ?? []
+  if (cleanField.length === 0 || cleanField.length > 100) {
+    return { ok: false, error: 'INVALID_FIELD: Feldname darf nicht leer sein.' }
+  }
+  const known = writable[typedScreen] ?? []
   if (!known.includes(cleanField)) {
     // Names the valid fields so the model can correct itself in the next round.
     return {

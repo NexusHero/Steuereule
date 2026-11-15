@@ -76,6 +76,8 @@ function toReceiptResponse(record: ReceiptRecord, fallbackMeta?: StoredReceiptMe
     mimeType: fileMeta?.mimeType ?? null,
     byteLength: fileMeta?.byteLength ?? null,
     assignment: toAssignmentDto(assignmentFromData(record)),
+    holders: [...(record.holders ?? [])],
+    holderTaxYear: record.holderTaxYear ?? null,
   }
 }
 

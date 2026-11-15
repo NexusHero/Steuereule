@@ -537,3 +537,12 @@ describe('DatenschutzScreen', () => {
     })
   })
 })
+
+describe('PrivacyScreen: owl consent section (ADR-0091)', () => {
+  it('shows the owl personal-data section for a signed-in account', async () => {
+    mockSession(REAL_SESSION)
+    renderPrivacy()
+    expect(await screen.findByText('Eule und persönliche Daten')).toBeTruthy()
+    expect(await screen.findByText('Nicht erlaubt')).toBeTruthy()
+  })
+})

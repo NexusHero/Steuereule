@@ -29,6 +29,12 @@ export class ReceiptResponseDto {
 
   @ApiProperty({ type: AssignmentDto, description: '@steuereule/core’s zuordnungAusDaten — never recomputed elsewhere.' })
   assignment!: AssignmentDto
+
+  @ApiProperty({ type: [String], example: ['B'], description: 'Whose document it is (ADR-0092): `A`, `B` or `kind:<child id>`, the holder first, then the people a multi-person document was also taken over for. Empty while nobody is chosen.' })
+  holders!: string[]
+
+  @ApiProperty({ type: Number, nullable: true, example: 2025, description: 'The tax year the holders refer to (B and the children are per year).' })
+  holderTaxYear!: number | null
 }
 
 export class DeleteReceiptResponseDto {

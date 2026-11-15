@@ -70,6 +70,20 @@ describe('BestaetigungService', () => {
     service = new ConfirmationService(markings, access, new AuditService(new FakeAuditRepository()))
   })
 
+  it('reads several fields at once, an unknown field or a record not there yet as empty (ADR-0091, Nachtrag)', async () => {
+    await lstb.setField(USER, YEAR, 'bruttoarbeitslohn', '50000')
+    await interview.write({ userId: USER, taxYear: YEAR, questionId: 'ch-wohnsitz', value: 'Deutschland', openItems: 0 })
+    const values = await service.readRawValues(USER, YEAR, ['lstb.bruttoarbeitslohn', 'lstb.lohnsteuer', 'interview.ch-wohnsitz', 'kind:missing.kinship', 'nope.field', 'chLohnausweis.nGreSonderfaelle'])
+    expect(values).toEqual({ 'lstb.bruttoarbeitslohn': '50000', 'lstb.lohnsteuer': null, 'interview.ch-wohnsitz': 'Deutschland', 'kind:missing.kinship': null, 'nope.field': null, 'chLohnausweis.nGreSonderfaelle': null })
+  })
+
+  it('writes „keine Sonderfälle“ of the Anlage N-Gre as the mask does, and refuses anything but true or false', async () => {
+    await service.writeConfirmedByAdvisor(USER, YEAR, 'chLohnausweis.nGreSonderfaelle', 'false')
+    expect((await chSalary.findForUserAndYear(USER, YEAR))?.nGre.nGreSonderfaelle).toBe(false)
+    expect(await service.readRawValue(USER, YEAR, 'chLohnausweis.nGreSonderfaelle')).toBe('false')
+    await expect(service.writeConfirmedByAdvisor(USER, YEAR, 'chLohnausweis.nGreSonderfaelle', 'vielleicht')).rejects.toThrow()
+  })
+
   it('a non-user write into an empty field writes the value and leaves it unconfirmed', async () => {
     expect(await service.write(USER, YEAR, 'lstb.bruttoarbeitslohn', '50000', CLAUDE)).toBe('geschrieben')
     expect((await lstb.findForUserAndYear(USER, YEAR))?.bruttoarbeitslohn).toBe('50000')
@@ -189,7 +203,7 @@ describe('BestaetigungService', () => {
     expect(kids[0]?.kinship).toBe('1')
   })
 
-  it('supports advisor-confirmed writes and reads for commute (excluding PII workplace) and assessment', async () => {
+  it('supports advisor-confirmed writes and reads for commute (the workplace only with consent) and assessment', async () => {
     const resKm = await service.writeConfirmedByAdvisor(USER, YEAR, 'commute.oneWayKm', '32')
     expect(resKm.previousValue).toBeNull()
     const resHo = await service.writeConfirmedByAdvisor(USER, YEAR, 'commute.homeOfficeDays', '120')
@@ -200,9 +214,9 @@ describe('BestaetigungService', () => {
     expect(savedCommute?.homeOfficeDays).toBe(120)
     expect(await service.readRawValue(USER, YEAR, 'commute.oneWayKm')).toBe('32')
 
-    // PII workplace address must never be writable via fieldAccess
+    // The workplace is an address: without the personal-data consent the owl may not write it (ADR-0091).
     await expect(service.writeConfirmedByAdvisor(USER, YEAR, 'commute.workplace', 'Secret St 1')).rejects.toMatchObject({
-      code: 'FIELD_NOT_WRITABLE',
+      code: 'AI_WRITE_FORBIDDEN',
     })
 
     // Contradictory days off must be rejected

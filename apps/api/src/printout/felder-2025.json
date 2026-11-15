@@ -2418,6 +2418,66 @@
       }
     },
     {
+      "id": "anlKind.kz89",
+      "formular": "anlage-kind",
+      "seite": 2,
+      "art": "euro",
+      "kasten": {
+        "x": 449.7,
+        "y": 227.4,
+        "breite": 72.1,
+        "hoehe": 15.9
+      }
+    },
+    {
+      "id": "anlN.kz330",
+      "formular": "anlage-n",
+      "seite": 3,
+      "art": "euro",
+      "kasten": {
+        "x": 473.6,
+        "y": 141.4,
+        "breite": 71.1,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlNGre.kz330",
+      "formular": "anlage-n-gre",
+      "seite": 3,
+      "art": "euro",
+      "kasten": {
+        "x": 473.6,
+        "y": 420.8,
+        "breite": 71.5,
+        "hoehe": 15.9
+      }
+    },
+    {
+      "id": "est1a.kz120",
+      "formular": "est-1-a",
+      "seite": 2,
+      "art": "euro",
+      "kasten": {
+        "x": 299.1,
+        "y": 378.8,
+        "breite": 85.4,
+        "hoehe": 15.9
+      }
+    },
+    {
+      "id": "est1a.kz121",
+      "formular": "est-1-a",
+      "seite": 2,
+      "art": "euro",
+      "kasten": {
+        "x": 433.3,
+        "y": 378.8,
+        "breite": 85.2,
+        "hoehe": 15.9
+      }
+    },
+    {
       "id": "anlKind.inlandVon",
       "formular": "anlage-kind",
       "seite": 1,

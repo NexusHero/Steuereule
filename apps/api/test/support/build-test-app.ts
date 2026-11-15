@@ -49,6 +49,8 @@ import { FakeCapitalRepository } from '../fakes/fake-capital.repository.js'
 import { FakeLstbRepository } from '../fakes/fake-lstb.repository.js'
 import { FakeMasterDataRepository } from '../fakes/fake-master-data.repository.js'
 import { FakeOwlCardDismissalRepository, FakeOwlSettingRepository } from '../fakes/fake-owl-mode.repository.js'
+import { FakePersonalDataConsentRepository } from '../fakes/fake-personal-data-consent.repository.js'
+import { PERSONAL_DATA_CONSENT_REPOSITORY } from '../../src/owl-mode/personal-data-consent.repository.js'
 import { FakePdfRenderer } from '../fakes/fake-pdf-renderer.js'
 import { FakeTaxDataExportRepository } from '../fakes/fake-tax-data-export.repository.js'
 import { FakeProfileRepository } from '../fakes/fake-profile.repository.js'
@@ -103,6 +105,7 @@ export async function buildTestApp(options?: {
   const commuteRepository = new FakeCommuteRepository()
   const owlSettingRepository = new FakeOwlSettingRepository()
   const owlCardDismissalRepository = new FakeOwlCardDismissalRepository()
+  const personalDataConsentRepository = new FakePersonalDataConsentRepository()
   const accountIdentityRepository = new FakeAccountIdentityRepository()
   const pdfRenderer = new FakePdfRenderer()
   const taxDataExportRepository = new FakeTaxDataExportRepository()
@@ -184,6 +187,8 @@ export async function buildTestApp(options?: {
     .useValue(owlSettingRepository)
     .overrideProvider(OWL_CARD_DISMISSAL_REPOSITORY)
     .useValue(owlCardDismissalRepository)
+    .overrideProvider(PERSONAL_DATA_CONSENT_REPOSITORY)
+    .useValue(personalDataConsentRepository)
     .overrideProvider(ACCOUNT_IDENTITY_REPOSITORY)
     .useValue(accountIdentityRepository)
     .overrideProvider(PDF_RENDERER)

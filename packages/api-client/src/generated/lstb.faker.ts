@@ -11,7 +11,8 @@ import {
 
 import type {
   LstbChurchTaxDto,
-  LstbResponseDto
+  LstbResponseDto,
+  LstbSubsidiesDto
 } from './lstb.schemas';
 
 
@@ -24,4 +25,8 @@ export const getLstbControllerSetFieldResponseMock = (overrideResponse: Partial<
 export const getLstbControllerGetChurchTaxResponseMock = (overrideResponse: Partial<Extract<LstbChurchTaxDto, object>> = {}): LstbChurchTaxDto => ({kirchensteuer: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), kirchensteuerEhegatte: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), ...overrideResponse})
 
 export const getLstbControllerSetChurchTaxResponseMock = (overrideResponse: Partial<Extract<LstbChurchTaxDto, object>> = {}): LstbChurchTaxDto => ({kirchensteuer: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), kirchensteuerEhegatte: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), ...overrideResponse})
+
+export const getLstbControllerGetSubsidiesResponseMock = (overrideResponse: Partial<Extract<LstbSubsidiesDto, object>> = {}): LstbSubsidiesDto => ({zuschuesseKvPv: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), ...overrideResponse})
+
+export const getLstbControllerSetSubsidiesResponseMock = (overrideResponse: Partial<Extract<LstbSubsidiesDto, object>> = {}): LstbSubsidiesDto => ({zuschuesseKvPv: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), ...overrideResponse})
 

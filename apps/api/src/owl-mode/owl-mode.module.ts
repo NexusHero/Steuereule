@@ -7,6 +7,9 @@ import { ChildrenModule } from '../children/children.module.js'
 import { PrismaModule } from '../prisma/prisma.module.js'
 import { OwlModeController } from './owl-mode.controller.js'
 import { OwlModeService } from './owl-mode.service.js'
+import { PersonalDataConsentService } from './personal-data-consent.service.js'
+import { PERSONAL_DATA_CONSENT_REPOSITORY } from './personal-data-consent.repository.js'
+import { PrismaPersonalDataConsentRepository } from './personal-data-consent.repository.prisma.js'
 import {
   OWL_SETTING_REPOSITORY,
   OWL_CARD_DISMISSAL_REPOSITORY,
@@ -21,6 +24,8 @@ import {
   controllers: [OwlModeController],
   providers: [
     OwlModeService,
+    PersonalDataConsentService,
+    { provide: PERSONAL_DATA_CONSENT_REPOSITORY, useClass: PrismaPersonalDataConsentRepository },
     {
       provide: OWL_SETTING_REPOSITORY,
       useClass: PrismaOwlSettingRepository,
@@ -30,6 +35,6 @@ import {
       useClass: PrismaOwlCardDismissalRepository,
     },
   ],
-  exports: [OwlModeService, OWL_SETTING_REPOSITORY, OWL_CARD_DISMISSAL_REPOSITORY],
+  exports: [OwlModeService, PersonalDataConsentService, PERSONAL_DATA_CONSENT_REPOSITORY, OWL_SETTING_REPOSITORY, OWL_CARD_DISMISSAL_REPOSITORY],
 })
 export class OwlModeModule {}

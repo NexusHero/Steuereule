@@ -104,7 +104,8 @@ export class AdvisorConversations {
     const compacted = await this.compact(userId, taxYear, conversation, thisTurn, signal)
     const knownNames = await this.knownNamesForScrubbing(userId, taxYear)
     const live = liveMessages(compacted, await this.advisorRepo.listForConversation(compacted.id, userId)).filter((m) => !thisTurn.includes(m.id))
-    return buildAdvisorHistory(historySources(live, knownNames), { summary: compacted.summary })
+    // The summary stays masked (it is the model's own text, kept long); the verbatim turns follow the consent (ADR-0091).
+    return buildAdvisorHistory(historySources(live, knownNames, [], turn.personalDataConsent === true), { summary: compacted.summary })
   }
 
   /** "Jetzt zusammenfassen": the user tidies the context before it is full. */

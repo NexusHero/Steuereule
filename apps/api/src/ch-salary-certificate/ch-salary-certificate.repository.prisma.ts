@@ -168,7 +168,7 @@ export class PrismaChSalaryCertificateRepository implements CrossBorderSalarySta
   async setExchangeRate(
     userId: string,
     taxYear: number,
-    exchangeRate: { month: string; rate: number; mode: string; receiptId?: string },
+    exchangeRate: { month: string | null; rate: number | null; mode: string | null; receiptId?: string },
   ): Promise<CrossBorderSalaryStatementRecord> {
     const [row] = await this.prisma.$transaction([
       this.prisma.chSalaryCertificate.upsert({

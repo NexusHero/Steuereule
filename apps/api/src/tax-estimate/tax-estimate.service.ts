@@ -5,6 +5,7 @@ import {
   pensionAsCoreLineItem,
   employeeFromAnswers,
   furtherWorkExpensesEur,
+  countsInterviewHealthInsurance,
   childcareDeductionEur,
   calculateWorkdays,
   chfToEur,
@@ -51,7 +52,7 @@ import { PARTNER_COUPLING_REPOSITORY, type PartnerCouplingRepository } from '../
 import { RENTAL_REPOSITORY, type RentalRepository } from '../rental/rental.repository.js'
 import { PENSION_REPOSITORY, type PensionRepository } from '../pension/pension.repository.js'
 import { pensionDataFromRecord } from '../pension/pension.service.js'
-import { churchTaxDtoFrom } from '../lstb/lstb.service.js'
+import { churchTaxDtoFrom, subsidiesDtoFrom } from '../lstb/lstb.service.js'
 import type { WageTaxCertificateRecord } from '../lstb/lstb.repository.js'
 
 export type TaxEstimateStatus =
@@ -157,21 +158,22 @@ export class TaxEstimateService {
         ...(nGre?.pkArbeitnehmerChf === null || nGre?.pkArbeitnehmerChf === undefined ? ['pk-obligatorium'] : []),
       ]
       if (missing.length > 0 || exchangeRate === null || !chRecord) return { kind: 'offen', missing }
-      const rows = annexNGreAmounts(nGreInputFromRecord(chRecord, exchangeRate)).eur
+      const nGreAmounts = annexNGreAmounts(nGreInputFromRecord(chRecord, exchangeRate))
+      const rows = nGreAmounts.eur
       const krankenkasseChf = chRecord?.krankenkasseChf === null || chRecord?.krankenkasseChf === undefined ? 0 : Number(chRecord.krankenkasseChf)
       // A change of job during the year: the German employer's certificate counts as well (ADR-0079).
       const germanWage = completeGermanWage(lstbRecord)
       return withEstimateExtras(
         taxEstimateCrossBorder({
           year,
-          ...(germanWage ? { germanWage: { gross: germanWage.bruttoarbeitslohn, wageTax: germanWage.lohnsteuer, socialSecurity: germanWage.sozialversicherung } } : {}),
+          ...(germanWage ? { germanWage: { gross: germanWage.bruttoarbeitslohn, wageTax: germanWage.lohnsteuer, socialSecurity: deductibleSocialSecurity(germanWage.sozialversicherung, lstbRecord) } } : {}),
           wageEur: rows.z23,
           withholdingTaxEur: rows.z25,
           retirementProvisionEur: rows.z85,
           otherProvisionEur: rows.z82,
-          healthInsuranceEur: Math.round(chfToEur(krankenkasseChf, exchangeRate.rate)) + numbers.healthCareContributions,
-          // Training and relocation are Werbungskosten for a cross-border commuter as for anyone else.
-          commuterAllowance: allowance + numbers.relocationCosts + numbers.trainingCosts,
+          healthInsuranceEur: Math.round(chfToEur(krankenkasseChf, exchangeRate.rate)) + (countsInterviewHealthInsurance(answers, krankenkasseChf > 0) ? numbers.healthCareContributions : 0),
+          // Training, relocation and half the NBUV (ADR-0090) are Werbungskosten for a cross-border commuter.
+          commuterAllowance: allowance + numbers.relocationCosts + numbers.trainingCosts + nGreAmounts.nbuvWorkExpenses.eur,
           donations: numbers.donations + childcare,
           householdReductionEur,
           healthExpensesEur,
@@ -193,7 +195,7 @@ export class TaxEstimateService {
           year,
           bruttoarbeitslohn: state.bruttoarbeitslohn,
           lohnsteuer: state.lohnsteuer,
-          sozialversicherung: state.sozialversicherung,
+          sozialversicherung: deductibleSocialSecurity(state.sozialversicherung, lstbRecord),
           commuterAllowance: allowance,
           otherIncomeRelatedExpenses: numbers.relocationCosts + numbers.trainingCosts,
           donations: numbers.donations + childcare,
@@ -362,7 +364,8 @@ export class TaxEstimateService {
       const missing = [...(exchangeRate === null ? ['wechselkurs'] : []), ...(nGre.pkArbeitnehmerChf === null ? ['pk-obligatorium'] : [])]
       if (values['bruttolohn-total'] === undefined) missing.unshift('bruttolohn-total')
       if (missing.length > 0 || exchangeRate === null) return { kind: 'offen', missing }
-      const rows = annexNGreAmounts(nGreInputFromRecord(chRecord, exchangeRate)).eur
+      const nGreAmounts = annexNGreAmounts(nGreInputFromRecord(chRecord, exchangeRate))
+      const rows = nGreAmounts.eur
       const krankenkasseChf = chRecord.krankenkasseChf === null || chRecord.krankenkasseChf === undefined ? 0 : Number(chRecord.krankenkasseChf)
       const germanWage = completeGermanWage(lstbRecord)
       const crossBorder = {
@@ -370,8 +373,8 @@ export class TaxEstimateService {
         swissWithholdingEur: rows.z25,
         pensionContributionsEur: rows.z85,
         otherProvisionEur: rows.z82,
-        commuteAllowance: allowance + numbers.relocationCosts + numbers.trainingCosts,
-        selfPaidHealthCare: Math.round(chfToEur(krankenkasseChf, exchangeRate.rate)) + numbers.healthCareContributions,
+        commuteAllowance: allowance + numbers.relocationCosts + numbers.trainingCosts + nGreAmounts.nbuvWorkExpenses.eur,
+        selfPaidHealthCare: Math.round(chfToEur(krankenkasseChf, exchangeRate.rate)) + (countsInterviewHealthInsurance(answers, krankenkasseChf > 0) ? numbers.healthCareContributions : 0),
       }
       if (germanWage) {
         // A change of job during the year: both employers' wages and both credits (ADR-0079).
@@ -380,7 +383,7 @@ export class TaxEstimateService {
           donations: numbers.donations,
           laterCount,
           answers,
-          spouse: { kind: 'mixed', grossWage: germanWage.bruttoarbeitslohn, wageTax: germanWage.lohnsteuer, socialSecurity: germanWage.sozialversicherung, ...crossBorder },
+          spouse: { kind: 'mixed', grossWage: germanWage.bruttoarbeitslohn, wageTax: germanWage.lohnsteuer, socialSecurity: deductibleSocialSecurity(germanWage.sozialversicherung, lstbRecord), ...crossBorder },
         }
       }
       return {
@@ -388,15 +391,8 @@ export class TaxEstimateService {
         donations: numbers.donations,
         laterCount,
         answers,
-        spouse: {
-          kind: 'crossBorder',
-          wageEur: rows.z23,
-          swissWithholdingEur: rows.z25,
-          pensionContributionsEur: rows.z85,
-          otherProvisionEur: rows.z82,
-          commuteAllowance: allowance + numbers.relocationCosts + numbers.trainingCosts,
-          selfPaidHealthCare: Math.round(chfToEur(krankenkasseChf, exchangeRate.rate)) + numbers.healthCareContributions,
-        },
+        // The same figures as a change-of-job year, so both get the NBUV half and count the Swiss KV once (ADR-0090).
+        spouse: { kind: 'crossBorder', ...crossBorder },
       }
     }
     if (lstbRecord === null) {
@@ -421,7 +417,7 @@ export class TaxEstimateService {
         kind: 'employee',
         grossWage: state.bruttoarbeitslohn,
         wageTax: state.lohnsteuer,
-        socialSecurity: state.sozialversicherung,
+        socialSecurity: deductibleSocialSecurity(state.sozialversicherung, lstbRecord),
         commuteAllowance: allowance + numbers.relocationCosts + numbers.trainingCosts,
         selfPaidHealthCare: numbers.healthCareContributions,
       },
@@ -430,6 +426,15 @@ export class TaxEstimateService {
 }
 
 /** The German certificate of the year when it is complete and consistent; otherwise it stays out. */
+/**
+ * The employee's insurance contributions per LStB less the employer's tax-free subsidies to health and
+ * care insurance (Zeile 24): § 10 Abs. 2 Satz 1 Nr. 1 EStG deducts only what the employee bore (ADR-0090).
+ */
+function deductibleSocialSecurity(sozialversicherung: number, record: { zuschuesseKvPv?: string | null } | null): number {
+  const subsidies = subsidiesDtoFrom(record).zuschuesseKvPv ?? 0
+  return Math.max(0, sozialversicherung - subsidies)
+}
+
 function completeGermanWage(record: Parameters<typeof wageTaxCertificateDataFrom>[0] | null) {
   if (record === null) return null
   const state = wageTaxCertificateStatus(wageTaxCertificateDataFrom(record))
