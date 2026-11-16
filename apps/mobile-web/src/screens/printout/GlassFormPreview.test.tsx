@@ -330,15 +330,19 @@ describe('GlassFormPreview („Glas-Erklärung“)', () => {
       expect(screen.queryByTestId('acro-field-editable-anlN.kz110')).toBeNull()
     })
 
-    it('keeps computed fields read-only and names their sources', async () => {
+    it('keeps computed fields read-only, names their sources and stays in the form', async () => {
       writeExpertMode(true)
       serveLiveValues(singleN())
-      open('anlage-n', N_FIELDS)
+      const onInspectField = open('anlage-n', N_FIELDS)
 
       fireEvent.click(await screen.findByLabelText(/Anlage N · kz380/))
 
       expect((await screen.findByTestId('acro-derived-hint')).textContent).toMatch(/Wird berechnet aus: Weitere Werbungskosten/)
       expect(screen.queryByLabelText(/Direkteingabe/)).toBeNull()
+      // In expert mode a click only selects; the jump to the mask is the inspector's own button.
+      expect(onInspectField).not.toHaveBeenCalled()
+      fireEvent.click(screen.getByText('Ins Eingabefeld springen →'))
+      expect(onInspectField).toHaveBeenCalledTimes(1)
     })
 
     it('saves a master-data field as part of the whole record, keeping every other field', async () => {

@@ -458,8 +458,9 @@ export function AcroFormLiveViewer({
                 }`}
                 onPress={() => {
                   setFocusedField(annot.fieldName)
-                  // In expert mode an editable field is edited in place instead of leaving the form.
-                  if (onInspectField && !canEdit(annot.fieldName)) {
+                  // In expert mode a click only selects the field: editable ones open in place, the
+                  // others show why they are locked; leaving for the mask is the inspector's button.
+                  if (onInspectField && !onSaveAcroField) {
                     onInspectField(target.screen, target.field, target.person ?? copy?.person ?? 'A')
                   }
                 }}
