@@ -25,6 +25,7 @@ import {
   CapitalRoute,
   ChildrenRoute,
   CockpitMasterDataRoute,
+  OfficialFormRoute,
   PartnerRoute,
   RentalRoute,
 } from './CockpitDetailRoutes'
@@ -61,6 +62,7 @@ function CockpitHomeRoute({ navigation }: Props<'CockpitHome'>) {
       onOpenCapital={() => navigation.navigate('Capital', { year: taxYear })}
       onOpenRental={() => navigation.navigate('Rental', { year: taxYear })}
       onOpenKinder={() => navigation.navigate('Children', { year: taxYear })}
+      onOpenOfficialForm={(year) => navigation.navigate('OfficialForm', { year })}
       onOpenMasterData={() => navigation.navigate('CockpitMasterData', { year: taxYear })}
       onOpenSubmission={(year) => navigation.navigate('Submission', { year })}
       onOpenTile={(tile, revisit) => navigateToTileRoute(navigation, taxYear, tile, revisit)}
@@ -153,6 +155,7 @@ export function CockpitStack() {
       <Stack.Screen name="FilingTypeComparison" component={FilingTypeComparisonRoute} />
       <Stack.Screen name="Assessment" component={AssessmentRoute} />
       <Stack.Screen name="CockpitMasterData" component={CockpitMasterDataRoute} />
+      <Stack.Screen name="OfficialForm" component={OfficialFormRoute} />
       <Stack.Group screenOptions={{ presentation: 'transparentModal', animation: 'slide_from_bottom' }}>
         <Stack.Screen name="Lstb" component={LstbRoute} />
         <Stack.Screen name="Pension" component={PensionRoute} />
