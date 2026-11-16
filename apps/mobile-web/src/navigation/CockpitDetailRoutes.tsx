@@ -9,6 +9,8 @@ import { LstbScreen } from '../screens/lstb/LstbScreen'
 import { WorkdaysScreen } from '../screens/workdays/WorkdaysScreen'
 import { CrossBorderScreen } from '../screens/cross-border/CrossBorderScreen'
 import { PensionerScreen } from '../screens/pension/PensionerScreen'
+import { OfficialFormScreen } from '../screens/printout/OfficialFormScreen'
+import type { Screen } from '@steuereule/core'
 import { useShellState } from './ShellState'
 import { RequiresAccount } from './RequiresAccount'
 import { CockpitSheet } from './CockpitSheet'
@@ -129,6 +131,55 @@ export function PartnerRoute({ navigation, route }: Props<'Partner'>) {
           <WorkdaysScreen taxYear={year} partnerName={activePartner.name} onDone={closePartner} onBack={closePartner} />
         )}
       </CockpitSheet>
+    </RequiresAccount>
+  )
+}
+
+type FormNavigation = Props<'OfficialForm'>['navigation']
+
+/** Opens where a field of the official form is entered: its mask, or for Person B the partner area. */
+function openMaskFor(navigation: FormNavigation, screen: Screen, person: 'A' | 'B', year: number): void {
+  const partnerArea: PartnerAreaParam | null =
+    person !== 'B' ? null : screen === 'lstb' ? 'lstb' : screen === 'commute' ? 'arbeitsweg' : screen === 'chLohnausweis' ? 'schweiz' : screen === 'rente' ? 'rente' : null
+  if (partnerArea) return navigation.navigate('Partner', { year, area: partnerArea })
+  switch (screen) {
+    case 'lstb':
+      return navigation.navigate('Lstb', { year })
+    case 'commute':
+      return navigation.navigate('Workdays', { year })
+    case 'chLohnausweis':
+      return navigation.navigate('CrossBorder', { year })
+    case 'rente':
+      return navigation.navigate('Pension', { year })
+    case 'kapital':
+      return navigation.navigate('Capital', { year })
+    case 'vermietung':
+      return navigation.navigate('Rental', { year })
+    case 'kind':
+      return navigation.navigate('Children', { year })
+    case 'stammdaten':
+    case 'profil':
+    case 'kopplung':
+      return navigation.navigate('CockpitMasterData', { year })
+    case 'interview':
+      return navigation.navigate('Interview', { year })
+    case 'assessment':
+      return navigation.navigate('Assessment', { year })
+  }
+}
+
+export function OfficialFormRoute({ navigation, route }: Props<'OfficialForm'>) {
+  const year = useYearGuard(route.params?.year, navigation)
+  if (year === null) return null
+  const back = () => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('CockpitHome', undefined, { pop: true }))
+  return (
+    <RequiresAccount>
+      <OfficialFormScreen
+        taxYear={year}
+        initialForm={route.params?.form}
+        onBack={back}
+        onInspectField={(screen, _field, person) => openMaskFor(navigation, screen, person ?? 'A', year)}
+      />
     </RequiresAccount>
   )
 }

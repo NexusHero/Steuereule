@@ -414,8 +414,27 @@ export const appResources = {
           rentenart: 'Rentenart',
         },
       },
+      formular: {
+        titel: 'Amtliches Formular {{jahr}}',
+        intro: 'So steht deine Steuererklärung auf den amtlichen Vordrucken. Tipp auf ein Feld, um zu sehen, woher der Wert kommt.',
+        zurueck: 'Zurück',
+        expertenmodusAus: 'Aus: Ein Tipp auf ein Feld öffnet die passende Eingabemaske.',
+        expertenmodusAn: 'An: Mit ✎ markierte Felder änderst du direkt hier. 🔒 Felder werden berechnet.',
+        oeffnen: 'Amtliches Formular ansehen ({{form}})',
+        legende: {
+          editierbar: '✎ direkt änderbar',
+          berechnet: '🔒 berechnet',
+          maske: 'übrige Felder: in der Eingabemaske',
+        },
+      },
       ausdruck: {
         cockpitCta: 'Steuererklärung ausdrucken',
+        exemplar: {
+          person: 'Person {{person}}',
+          kind: 'Kind: {{name}}',
+          objekt: 'Objekt: {{name}}',
+          allgemein: 'Exemplar {{nummer}}',
+        },
         direkteingabe: {
           eingabeLabel: 'Direkteingabe {{label}}',
           inlineLabel: 'Formularfeld {{field}} bearbeiten',
@@ -424,7 +443,14 @@ export const appResources = {
           speichert: 'Speichere Änderung in der Steuererklärung …',
           gespeichert: 'Gespeichert.',
           geleert: 'Wert entfernt, das Feld ist wieder offen.',
-          ungueltig: 'Bitte einen ganzen Betrag eingeben, z. B. 68500 oder 68.500.',
+          platzhalterText: 'Text eingeben',
+          ungueltig: {
+            amount: 'Bitte einen ganzen Betrag eingeben, z. B. 68500 oder 68.500.',
+            text: 'Bitte höchstens 100 Zeichen, ohne Zeilenumbrüche.',
+            postalCode: 'Bitte eine fünfstellige Postleitzahl eingeben.',
+            taxId: 'Die Steuer-ID hat 11 Ziffern.',
+            required: 'Dieses Feld darf nicht leer sein. Entfernen kannst du es in der Eingabemaske.',
+          },
           fehler: 'Konnte nicht gespeichert werden. Der vorherige Wert bleibt bestehen.',
           berechnet: 'Wird berechnet aus: {{sources}}. Ändere die Einzelposten in der Eingabemaske.',
           nurMaske: 'Dieses Feld änderst du in der Eingabemaske.',
@@ -1510,6 +1536,7 @@ export const appResources = {
         checkKapital: 'Kapital & Depot prüfen',
         checkVermietung: 'Vermietung prüfen',
         checkKinder: 'Kinder verwalten',
+        amtlichesFormular: 'Amtliches Formular ansehen',
         eulenModus: 'Eulen-Modus',
         berater: {
           title: 'Deine Eule berät dich',
@@ -2685,8 +2712,27 @@ export const appResources = {
           rentenart: 'Type of pension',
         },
       },
+      formular: {
+        titel: 'Official form {{jahr}}',
+        intro: 'This is how your tax return appears on the official forms. Tap a field to see where its value comes from.',
+        zurueck: 'Back',
+        expertenmodusAus: 'Off: tapping a field opens the matching input mask.',
+        expertenmodusAn: 'On: fields marked ✎ can be changed right here. 🔒 fields are computed.',
+        oeffnen: 'View official form ({{form}})',
+        legende: {
+          editierbar: '✎ editable here',
+          berechnet: '🔒 computed',
+          maske: 'other fields: in the input mask',
+        },
+      },
       ausdruck: {
         cockpitCta: 'Print your tax return',
+        exemplar: {
+          person: 'Person {{person}}',
+          kind: 'Child: {{name}}',
+          objekt: 'Property: {{name}}',
+          allgemein: 'Copy {{nummer}}',
+        },
         direkteingabe: {
           eingabeLabel: 'Direct input {{label}}',
           inlineLabel: 'Edit form field {{field}}',
@@ -2695,7 +2741,14 @@ export const appResources = {
           speichert: 'Saving the change to your tax return …',
           gespeichert: 'Saved.',
           geleert: 'Value removed, the field is open again.',
-          ungueltig: 'Please enter a whole amount, e.g. 68500 or 68.500.',
+          platzhalterText: 'Enter text',
+          ungueltig: {
+            amount: 'Please enter a whole amount, e.g. 68500 or 68.500.',
+            text: 'Please use at most 100 characters, without line breaks.',
+            postalCode: 'Please enter a five-digit postal code.',
+            taxId: 'The tax ID has 11 digits.',
+            required: 'This field cannot be empty. You can remove it in the input mask.',
+          },
           fehler: 'Could not be saved. The previous value stays in place.',
           berechnet: 'Computed from: {{sources}}. Change the individual inputs in the input mask.',
           nurMaske: 'You change this field in the input mask.',
@@ -3781,6 +3834,7 @@ export const appResources = {
         checkKapital: 'Review capital & brokerage',
         checkVermietung: 'Review rental property',
         checkKinder: 'Manage children',
+        amtlichesFormular: 'View official form',
         eulenModus: 'Owl Mode',
         berater: {
           title: 'Your owl advises you',
