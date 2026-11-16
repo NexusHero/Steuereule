@@ -75,6 +75,7 @@ function renderCockpit(opts: {
   isSignedIn?: boolean
   onOpenInterview?: () => void
   onOpenKinder?: () => void
+  onOpenOfficialForm?: (year: number) => void
   onOpenOwlMode?: (year: number) => void
   onOpenPrintout?: (year: number) => void
   onOpenSubmission?: (year: number) => void
@@ -96,6 +97,7 @@ function renderCockpit(opts: {
             {...(opts.isSignedIn !== undefined ? { isSignedIn: opts.isSignedIn } : {})}
             onOpenInterview={opts.onOpenInterview ?? (() => {})}
             {...(opts.onOpenKinder ? { onOpenKinder: opts.onOpenKinder } : {})}
+            {...(opts.onOpenOfficialForm ? { onOpenOfficialForm: opts.onOpenOfficialForm } : {})}
             {...(opts.onOpenOwlMode ? { onOpenOwlMode: opts.onOpenOwlMode } : {})}
             {...(opts.onOpenPrintout ? { onOpenPrintout: opts.onOpenPrintout } : {})}
             {...(opts.onOpenSubmission ? { onOpenSubmission: opts.onOpenSubmission } : {})}
@@ -560,17 +562,22 @@ describe('CockpitScreen — Kinder & Eulen-Modus entries', () => {
       expect(onOpenSubmission).toHaveBeenCalledWith(TAX_YEAR)
     })
 
-    it('keeps existing secondary buttons accessible alongside hub tiles', async () => {
+    it('does not repeat topics as buttons once the tiles show them', async () => {
       mockCockpit(LOADED_SUMMARY)
       mockInterview({ job: 'Angestellt', ausland: 'Nein', kinder: '1 Kind', familienstand: 'Ledig' })
-      renderCockpit({ isSignedIn: true, onOpenTile: vi.fn(), onOpenKinder: vi.fn(), onOpenPrintout: vi.fn() })
+      const onOpenOfficialForm = vi.fn()
+      renderCockpit({ isSignedIn: true, onOpenTile: vi.fn(), onOpenKinder: vi.fn(), onOpenPrintout: vi.fn(), onOpenOfficialForm })
 
       expect(await screen.findByTestId('cockpit-kachel-kinder')).toBeTruthy()
-      expect(screen.getByTestId('cockpit-kapital')).toBeTruthy()
-      expect(screen.getByTestId('cockpit-vermietung')).toBeTruthy()
-      expect(screen.getByTestId('cockpit-kinder')).toBeTruthy()
+      // Kapital and Vermietung are not this persona's tiles: they sit under „Weitere Themen“ instead.
+      expect(screen.getByTestId('cockpit-weitere-themen')).toBeTruthy()
+      expect(screen.queryByTestId('cockpit-kapital')).toBeNull()
+      expect(screen.queryByTestId('cockpit-vermietung')).toBeNull()
+      expect(screen.queryByTestId('cockpit-kinder')).toBeNull()
       expect(screen.getByTestId('cockpit-bescheid')).toBeTruthy()
       expect(screen.getByTestId('cockpit-ausdruck')).toBeTruthy()
+      fireEvent.click(screen.getByTestId('cockpit-formular'))
+      expect(onOpenOfficialForm).toHaveBeenCalledWith(TAX_YEAR)
     })
 
     it('renders red blocker hint for conflicts and warning hint for notices without conflicts (§ 3.3)', async () => {
