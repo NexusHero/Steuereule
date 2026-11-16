@@ -18,6 +18,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { createMeter } from './instrument.mjs'
+import { openCockpitTopic } from '../harness/flows.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const VARIANT = process.env.NAV_VARIANT ?? 'neu'
@@ -43,7 +44,7 @@ export const TASKS = ['erster-durchlauf', 'korrektur', 'unterbrechung', 'wiedere
 
 /** The old tunnel's "next" buttons, in the order the tunnel shows them. */
 const OLD_FORWARD = ['lstb-weiter', 'ch-lohnausweis-weiter', 'arbeitstage-weiter', 'kinder-weiter', 'plausibilitaet-weiter', 'veranlagungsartenvergleich-weiter', 'kapital-weiter', 'rente-weiter']
-const COCKPIT = '[data-testid="cockpit-weiter"], [data-testid="cockpit-erstattung"], [data-testid="cockpit-kachel-lstb"], [data-testid="cockpit-kapital"]'
+const COCKPIT = '[data-testid="cockpit-weiter"], [data-testid="cockpit-erstattung"], [data-testid="cockpit-kachel-lstb"], [data-testid="cockpit-kapital"], [data-testid="cockpit-bescheid"]'
 
 const visible = (page, id) => page.locator(`[data-testid="${id}"]`).first().isVisible().catch(() => false)
 
@@ -68,7 +69,8 @@ async function openMask(page, target) {
   if (VARIANT !== 'baseline') {
     await page.locator(`[data-testid="cockpit-kachel-${target.tile}"]`).click()
   } else if (target.old !== 'tunnel') {
-    await page.locator(`[data-testid="${target.old}"]`).click()
+    // The old Cockpit topic buttons now show only while no tiles do; the helper takes the tile then.
+    await openCockpitTopic(page, target.tile)
   } else {
     await page.locator('[data-testid="cockpit-weiter"]').click()
     for (let guard = 0; guard < 10 && !(await visible(page, target.field)); guard++) {

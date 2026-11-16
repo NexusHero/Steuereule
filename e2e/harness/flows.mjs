@@ -58,3 +58,29 @@ export async function signUpOutOfBand(apiOrigin, webOrigin, email, password) {
   })
   if (!res.ok) fail(`out-of-band sign-up failed for ${email}: ${res.status} ${await res.text()}`)
 }
+
+/** The quiet Cockpit buttons that stand in for a topic while no tiles show yet (empty Cockpit, guests). */
+const TOPIC_FALLBACK_BUTTONS = {
+  kapital: ['cockpit-kapital'],
+  vermietung: ['cockpit-vermietung'],
+  kinder: ['cockpit-kinder', 'cockpit-empty-kinder'],
+}
+
+/**
+ * Opens a Cockpit topic the way a user does: its tile (`cockpit-kachel-<topic>`); if the persona has
+ * it under „Weitere Themen“, that section is opened first (never closed again if already open); while
+ * no tiles show yet, the Cockpit's own button for it.
+ */
+export async function openCockpitTopic(page, topic, timeout = 10_000) {
+  const fallbacks = TOPIC_FALLBACK_BUTTONS[topic]
+  if (!fallbacks) throw new Error(`openCockpitTopic: unknown topic "${topic}"`)
+  const tile = page.locator(`[data-testid="cockpit-kachel-${topic}"]`)
+  const button = page.locator(fallbacks.map((id) => `[data-testid="${id}"]`).join(', ')).first()
+  const more = page.locator('[data-testid="cockpit-weitere-themen"]')
+  await tile.or(button).or(more).first().waitFor({ state: 'visible', timeout })
+  if (await tile.isVisible()) return tile.click()
+  if (await button.isVisible()) return button.click()
+  if ((await more.getAttribute('aria-expanded')) !== 'true') await more.click()
+  await tile.waitFor({ state: 'visible', timeout })
+  await tile.click()
+}

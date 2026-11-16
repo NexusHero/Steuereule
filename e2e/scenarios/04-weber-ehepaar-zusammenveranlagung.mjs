@@ -19,6 +19,7 @@ import {
   downloadAndVerifyPdf,
   runStandaloneScenario,
 } from './helpers/scenario-harness.mjs'
+import { openCockpitTopic } from '../harness/flows.mjs'
 
 export async function runScenario04(browser, webOrigin, sql) {
   console.log('\n--- Scenario 04: Thomas & Sabine Weber (married DE, 3 rentals, 50k capital income) ---')
@@ -140,8 +141,7 @@ export async function runScenario04(browser, webOrigin, sql) {
   await page.locator('[data-testid="arbeitstage-weiter"]').click()
   await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
 
-  await page.locator('[data-testid="cockpit-kapital"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="cockpit-kapital"]').click()
+  await openCockpitTopic(page, 'kapital')
 
   await page.locator('[data-testid="kapital-inhaber-gemeinsam"]').click()
   await page.locator('[data-testid="kapital-kapitalertraege"]').fill(String(s.capital.kapitalertraege))
@@ -152,8 +152,7 @@ export async function runScenario04(browser, webOrigin, sql) {
   await page.locator('[data-testid="kapital-weiter"]').click()
   await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
 
-  await page.locator('[data-testid="cockpit-vermietung"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="cockpit-vermietung"]').click()
+  await openCockpitTopic(page, 'vermietung')
 
   for (let i = 0; i < s.rentals.length; i++) {
     const r = s.rentals[i]
