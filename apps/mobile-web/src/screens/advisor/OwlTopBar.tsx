@@ -95,7 +95,7 @@ export function OwlTopBar({
         {onOpenSessionSummary ? (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Session-Zusammenfassung anzeigen"
+            accessibilityLabel="∑ Summary – Session-Zusammenfassung anzeigen"
             onPress={onOpenSessionSummary}
             style={(state) => [styles.summaryBtn, (state as { hovered?: boolean }).hovered ? styles.iconHover : null]}
             testID="eule-session-summary-btn"
