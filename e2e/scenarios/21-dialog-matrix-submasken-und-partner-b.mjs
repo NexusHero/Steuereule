@@ -17,6 +17,7 @@ import {
   unlockTaxYearInDb,
   runStandaloneScenario,
 } from './helpers/scenario-harness.mjs'
+import { openCockpitTopic } from '../harness/flows.mjs'
 
 export async function runScenario21(browser, webOrigin, sql) {
   console.log('\n--- Scenario 21: Dialog Matrix — Embedded Sub-Screens in MasterData, Printout & Confirmation ---')
@@ -128,8 +129,7 @@ export async function runScenario21(browser, webOrigin, sql) {
 
   // Seed partial records in Children, Capital, and Rental so PrintoutScreen displays all completion sub-screen triggers:
   // 1) Partial Child (missing familienkasse -> triggers ausdruck-kinder-ergaenzen)
-  await page.locator('[data-testid="cockpit-kinder"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="cockpit-kinder"]').click()
+  await openCockpitTopic(page, 'kinder')
   await page.locator('[data-testid="kind-vorname"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="kind-vorname"]').fill('Tim')
   await page.locator('[data-testid="kind-nachname"]').fill('Submaske')
@@ -141,8 +141,7 @@ export async function runScenario21(browser, webOrigin, sql) {
   await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
 
   // 2) Partial Capital (only kapitalertraege filled -> triggers Kapitalerträge ergänzen)
-  await page.locator('[data-testid="cockpit-kapital"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="cockpit-kapital"]').click()
+  await openCockpitTopic(page, 'kapital')
   await page.locator('[data-testid="kapital-kapitalertraege"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="kapital-kapitalertraege"]').fill('1500')
   await page.locator('[data-testid="kapital-kapitalertraege"]').blur()
@@ -151,8 +150,7 @@ export async function runScenario21(browser, webOrigin, sql) {
   await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
 
   // 3) Partial Rental (create 1 object with only mieteinnahmen filled -> triggers Vermietung ergänzen)
-  await page.locator('[data-testid="cockpit-vermietung"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="cockpit-vermietung"]').click()
+  await openCockpitTopic(page, 'vermietung')
   await page.locator('[data-testid="objekt-hinzufuegen"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="objekt-hinzufuegen"]').click()
   await page.locator('[data-testid="vermietung-0-mieteinnahmen"]').waitFor({ state: 'visible', timeout: 10_000 })
