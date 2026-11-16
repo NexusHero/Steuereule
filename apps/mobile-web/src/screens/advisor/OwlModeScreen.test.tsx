@@ -446,12 +446,18 @@ describe('EulenModusScreen', () => {
       const summarySheet = await screen.findByTestId('eule-session-summary-sheet')
       expect(summarySheet.textContent).toContain('1 Änderung übernommen (Berufsbezeichnung: Ingenieur (CH))')
 
-      // 2. Open workbench -> shows applied stage log without a batch-apply button
+      // 2. Open workbench -> shows applied stage log without a batch-apply button + form line badge
       openWorkbench()
       expect(screen.getByTestId('eule-applied-stage')).toBeTruthy()
       expect(screen.getByTestId('applied-status-act-ch-8').textContent).toContain('✓ Übernommen')
+      expect(screen.getByTestId('applied-form-line-act-ch-8').textContent).toContain('Hauptvordruck ESt 1 A')
       expect(screen.getByTestId('applied-undo-act-ch-8')).toBeTruthy()
       expect(screen.queryByTestId('eule-batch-apply-btn')).toBeNull()
+
+      // Switch to Glas-Erklärung tab in workbench and back
+      fireEvent.click(screen.getByTestId('eule-workbench-tab-forms'))
+      expect(await screen.findByTestId('glass-form-preview')).toBeTruthy()
+      fireEvent.click(screen.getByTestId('eule-workbench-tab-drafts'))
 
       // 3. Clicking "Maske ansehen →" deep-links into the inline mask with the field pill
       fireEvent.click(screen.getByTestId('applied-inspect-act-ch-8'))

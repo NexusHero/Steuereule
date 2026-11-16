@@ -34,6 +34,8 @@ import { ResizeHandle } from './chat/ResizeHandle'
 import { useOptionalCopilotBridge, type OwlViewMode } from './CopilotBridgeProvider'
 import { GuestOwlGate } from './OwlGuestGate'
 import { InlineMaskView } from './OwlInlineMask'
+import { GlassFormPreview } from '../printout/GlassFormPreview'
+import { formLineForField } from '../shared/formLineMapping'
 import { extractAppliedDrafts, extractPendingDrafts, updateActionStatusInMessage } from './owlDrafts'
 import { makeStyles } from './OwlModeScreen.styles'
 import { ConnectedOwlModeScreen } from './OwlModeScreen.connected'
@@ -209,6 +211,7 @@ export function OwlModeScreenView({
   const [searchOpen, setSearchOpen] = useState(false)
   const [situationOpen, setSituationOpen] = useState(false)
   const [sessionSummaryOpen, setSessionSummaryOpen] = useState(false)
+  const [workbenchTab, setWorkbenchTab] = useState<'drafts' | 'forms'>('drafts')
 
   // Cmd/Ctrl+K opens the search, as in Claude.
   useEffect(() => {
@@ -562,6 +565,31 @@ export function OwlModeScreenView({
 
     return (
       <>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.s2, marginBottom: t.space.s3 }} testID="eule-workbench-tabs">
+          <Chip
+            active={workbenchTab === 'drafts'}
+            onPress={() => setWorkbenchTab('drafts')}
+            testID="eule-workbench-tab-drafts"
+          >
+            {tr('eule.workspace.tabDrafts', 'Entwürfe & Hinweise')}
+          </Chip>
+          <Chip
+            active={workbenchTab === 'forms'}
+            onPress={() => setWorkbenchTab('forms')}
+            testID="eule-workbench-tab-forms"
+          >
+            {tr('eule.workspace.tabForms', '🔍 Glas-Erklärung')}
+          </Chip>
+        </View>
+
+        {workbenchTab === 'forms' ? (
+          <GlassFormPreview
+            year={taxYear}
+            defaultOpen
+            onInspectField={(screen, field) => handleInspectMask(screen, field)}
+          />
+        ) : (
+          <>
         {bridge?.lastParsedReceipt ? (
           <Card variant="ai" style={styles.receiptResultCard} testID="eule-receipt-result">
             <Text style={styles.draftSectionTitle}>
@@ -640,6 +668,9 @@ export function OwlModeScreenView({
                         ? tr('eule.workspace.provenanceReceiptOwl', '📎 Beleg + Eule')
                         : tr('eule.workspace.provenanceOwlDraft', '🦉 Eulen-Entwurf')}
                     </Text>
+                    <Text style={styles.draftProvenance} testID={`draft-form-line-${draft.actionId}`}>
+                      {`📄 ${formLineForField(draft.screen, draft.field).label}`}
+                    </Text>
                     <Text style={styles.draftDiff}>
                       {`${draft.previousValue ?? tr('advisor.chat.notRecorded', 'Nicht erfasst')} → ${draft.newValue}`}
                     </Text>
@@ -710,6 +741,9 @@ export function OwlModeScreenView({
                       ✓ Übernommen
                     </Text>
                   </View>
+                  <Text style={styles.draftProvenance} testID={`applied-form-line-${draft.actionId}`}>
+                    {`📄 ${formLineForField(draft.screen, draft.field).label}`}
+                  </Text>
                   <Text style={styles.draftDiff}>
                     {`${draft.previousValue ?? tr('advisor.chat.notRecorded', 'Nicht erfasst')} → ${draft.newValue}`}
                   </Text>
@@ -830,6 +864,8 @@ export function OwlModeScreenView({
         <Button variant="ghost" onPress={onDone} style={styles.cta}>
           {tr('eule.fertig', 'Zurück zum Cockpit')}
         </Button>
+          </>
+        )}
       </>
     )
   }

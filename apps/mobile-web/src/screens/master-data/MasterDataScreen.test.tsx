@@ -162,8 +162,12 @@ describe('StammdatenScreen (ADR-0050)', () => {
         </QueryClientProvider>,
       )
       fireEvent.click(await screen.findByText('Lohnsteuerbescheinigung von Bea erfassen'))
+      fireEvent.click(screen.getByText('Schweizer Lohnausweis von Bea erfassen'))
       fireEvent.click(screen.getByText('Arbeitsweg von Bea erfassen'))
-      expect(opened).toEqual(['lstb:Bea', 'arbeitsweg:Bea'])
+      fireEvent.click(screen.getByText('Rente von Bea erfassen'))
+      expect(opened).toEqual(['lstb:Bea', 'schweiz:Bea', 'arbeitsweg:Bea', 'rente:Bea'])
+      expect(screen.getByLabelText('Vorname Partner (Person B)')).toBeTruthy()
+      expect(screen.getByLabelText('Beruf Partner')).toBeTruthy()
     })
 
     it('sets the Veranlagungsart for the tax year the cockpit shows, not the current one', async () => {

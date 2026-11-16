@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Button, Input, Option, useTheme, type UiTheme } from '@steuereule/ui'
 import { QUESTIONS, formatEuro, type Answers, type EntryStepId } from '@steuereule/core'
 import { APP_NS } from '../../i18n/resources'
+import { GlossaryHint } from '../shared/GlossaryHint'
 import { integerFrom } from '../shared/integer'
 
 export interface FieldCopy {
@@ -54,6 +55,7 @@ export function StromFields({ steps, draft, onChange, copy, idPrefix, prior, mis
               {copy.question(id)}
             </Text>
             {copy.help !== undefined && copy.help(id) !== '' ? <Text style={styles.help}>{copy.help(id)}</Text> : null}
+            <GlossaryHint stepId={id} />
             {decl.form.kind === 'enum' ? (
               decl.form.values.map((value) => (
                 <Option key={value} selected={draft[id] === value} onPress={() => onChange(id, value)} testID={`${idPrefix}-option-${id}-${value}`}>

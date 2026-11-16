@@ -23,6 +23,7 @@ import { CapitalScreen } from './src/screens/capital/CapitalScreen'
 import { RentalScreen } from './src/screens/rental/RentalScreen'
 import { CrossBorderScreen } from './src/screens/cross-border/CrossBorderScreen'
 import { PensionerScreen } from './src/screens/pension/PensionerScreen'
+import { WorkdaysScreen } from './src/screens/workdays/WorkdaysScreen'
 import { DeviceScreen } from './src/screens/device/DeviceScreen'
 import { LegalScreen } from './src/screens/legal/LegalScreen'
 import { MasterDataScreen } from './src/screens/master-data/MasterDataScreen'
@@ -127,8 +128,9 @@ function ThemedShellFrame({ children }: { readonly children: ReactNode }) {
     document.documentElement.lang = language
     document.body.style.setProperty('hyphens', 'auto')
     document.body.style.setProperty('-webkit-hyphens', 'auto')
-    // Only long words (12+ letters, 6 on each side) — short ones in body copy stay whole.
-    document.body.style.setProperty('hyphenate-limit-chars', '12 6 6')
+    // Compound words (10+ letters, 4 on each side) such as "Familien-stand" and "Steuer-nummer"
+    // hyphenate cleanly at syllable boundaries on 375 px mobile instead of breaking mid-letter.
+    document.body.style.setProperty('hyphenate-limit-chars', '10 4 4')
   }, [language])
 
   return (
@@ -229,7 +231,7 @@ function LegalRoute({ navigation, route }: NativeStackScreenProps<RootStackParam
 }
 
 function PrintoutRoute({ navigation, route }: NativeStackScreenProps<RootStackParamList, 'Printout'>) {
-  const [view, setView] = useState<'ausdruck' | 'stammdaten' | 'sonderausgaben' | 'kinder' | 'vermietung' | 'kapital' | 'grenzgaenger'>('ausdruck')
+  const [view, setView] = useState<'ausdruck' | 'stammdaten' | 'sonderausgaben' | 'kinder' | 'vermietung' | 'kapital' | 'grenzgaenger' | 'lstb' | 'arbeitsweg' | 'rente'>('ausdruck')
   const bp = useBreakpoint()
   const { t: tr } = useTranslation(APP_NS)
   const year = Number(route.params?.year)
@@ -264,6 +266,9 @@ function PrintoutRoute({ navigation, route }: NativeStackScreenProps<RootStackPa
   if (view === 'kapital') return <CapitalScreen taxYear={year} onDone={() => setView('ausdruck')} onBack={() => setView('ausdruck')} />
   if (view === 'vermietung') return <RentalScreen taxYear={year} onDone={() => setView('ausdruck')} onBack={() => setView('ausdruck')} />
   if (view === 'kinder') return <ChildrenScreen taxYear={year} onDone={() => setView('ausdruck')} onBack={() => setView('ausdruck')} />
+  if (view === 'lstb') return <LstbScreen taxYear={year} onDone={() => setView('ausdruck')} onBack={() => setView('ausdruck')} />
+  if (view === 'arbeitsweg') return <WorkdaysScreen taxYear={year} onDone={() => setView('ausdruck')} onBack={() => setView('ausdruck')} />
+  if (view === 'rente') return <PensionerScreen taxYear={year} onDone={() => setView('ausdruck')} onBack={() => setView('ausdruck')} />
   if (view === 'sonderausgaben') {
     return <CatalogScreen entry="sonderausgaben" taxYear={year} revisit onDone={() => setView('ausdruck')} onBack={() => setView('ausdruck')} />
   }
@@ -279,6 +284,17 @@ function PrintoutRoute({ navigation, route }: NativeStackScreenProps<RootStackPa
       onCompleteRental={() => setView('vermietung')}
       onCompleteCapital={() => setView('kapital')}
       onCompleteCrossBorder={() => setView('grenzgaenger')}
+      onInspectField={(screen) => {
+        if (screen === 'lstb') setView('lstb')
+        else if (screen === 'commute') setView('arbeitsweg')
+        else if (screen === 'rente') setView('rente')
+        else if (screen === 'chLohnausweis') setView('grenzgaenger')
+        else if (screen === 'kapital') setView('kapital')
+        else if (screen === 'vermietung') setView('vermietung')
+        else if (screen === 'kind') setView('kinder')
+        else if (screen === 'interview') setView('sonderausgaben')
+        else setView('stammdaten')
+      }}
       onConfirm={() => navigation.navigate('Confirmation', { year: String(year) })}
     />
   )
