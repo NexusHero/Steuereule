@@ -33,6 +33,15 @@ export async function answer(api, year, pairs) {
   for (const [questionId, value] of pairs) await call(api, 'POST', `/v1/steuerjahre/${year}/interview/antworten`, { questionId, value })
 }
 
+/** Profile and single-person Stammdaten that make Person A printable (ledig, Dresden). */
+export async function putPrintableBasics(api, { firstName, lastName }) {
+  await call(api, 'PUT', '/v1/profile', { firstName, lastName, steuerId: '04452397686' })
+  await call(api, 'PUT', '/v1/stammdaten', {
+    geburtsdatum: '1990-04-12', strasse: 'Musterstraße', hausnummer: '12', plz: '01067', wohnort: 'Dresden', religion: 'VD', religionConsent: true,
+    familienstand: 'ledig', iban: 'DE89370400440532013000', finanzamt: 'Dresden-Nord',
+  })
+}
+
 export async function putLstb(api, year, gross, wageTax, social) {
   for (const [field, value] of [['bruttoarbeitslohn', gross], ['lohnsteuer', wageTax], ['sozialversicherung', social]]) {
     await call(api, 'PUT', `/v1/steuerjahre/${year}/lstb/${field}`, { kind: 'erfasst', value })

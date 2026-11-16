@@ -200,65 +200,39 @@ export function CockpitScreen({
         ? { label: tr('cockpit.weiterMitDeinemWeg', { pfad: tr(`funnel.kontoWand.pfad.${path}`) }), onPress: () => onContinuePath(path) }
         : null
 
-  if (summary === null) {
-    return (
-      <CockpitEmpty
-        year={year}
-        onYearChange={setYear}
-        refresh={refresh}
-        isRefreshing={isRefreshing}
-        next={next}
-        tileFacts={tileFacts}
-        isSignedIn={isSignedIn}
-        isJointMarried={isJointMarried}
-        partnerName={partnerName}
-        findings={findings}
-        onOpenTile={openTile}
-        {...(onOpenPartner ? { onOpenPartner } : {})}
-        {...(submissionHandler ? { onOpenSubmission: () => submissionHandler(year) } : {})}
-        masterData={masterData}
-        onOpenInterview={onOpenInterview}
-        onOpenAssessment={onOpenAssessment}
-        onOpenCapital={onOpenCapital}
-        onOpenRental={onOpenRental}
-        {...(onOpenKinder ? { onOpenKinder } : {})}
-        {...(onOpenOfficialForm ? { onOpenOfficialForm: () => onOpenOfficialForm(year) } : {})}
-        {...(onOpenOwlMode ? { onOpenOwlMode: () => onOpenOwlMode(year) } : {})}
-        {...(submissionHandler ? { onOpenPrintout: () => submissionHandler(year) } : {})}
-        deadlineAnswers={deadlineAnswers}
-        bp={bp}
-      />
-    )
+  const shared: CockpitEmptyProps = {
+    year,
+    onYearChange: setYear,
+    refresh,
+    isRefreshing,
+    next,
+    tileFacts,
+    isSignedIn,
+    isJointMarried,
+    partnerName,
+    findings,
+    onOpenTile: openTile,
+    ...(onOpenPartner ? { onOpenPartner } : {}),
+    ...(submissionHandler ? { onOpenSubmission: () => submissionHandler(year), onOpenPrintout: () => submissionHandler(year) } : {}),
+    masterData,
+    onOpenInterview,
+    onOpenAssessment,
+    onOpenCapital,
+    onOpenRental,
+    ...(onOpenKinder ? { onOpenKinder } : {}),
+    ...(onOpenOfficialForm ? { onOpenOfficialForm: () => onOpenOfficialForm(year) } : {}),
+    ...(onOpenOwlMode ? { onOpenOwlMode: () => onOpenOwlMode(year) } : {}),
+    deadlineAnswers,
+    bp,
   }
+
+  if (summary === null) return <CockpitEmpty {...shared} />
   return (
     <CockpitLoaded
+      {...shared}
       summary={summary}
-      year={year}
-      onYearChange={setYear}
       confirmation={confirmationQuery.data?.status === 200 ? confirmationQuery.data.data.annexes : null}
       {...(onOpenConfirmation ? { onOpenConfirmation: () => onOpenConfirmation(year) } : {})}
-      refresh={refresh}
-      isRefreshing={isRefreshing}
-      next={next}
-      tileFacts={tileFacts}
-      isSignedIn={isSignedIn}
-      isJointMarried={isJointMarried}
-      partnerName={partnerName}
-      findings={findings}
-      onOpenTile={openTile}
-      {...(onOpenPartner ? { onOpenPartner } : {})}
-      {...(submissionHandler ? { onOpenSubmission: () => submissionHandler(year) } : {})}
-      masterData={masterData}
-      onOpenInterview={onOpenInterview}
-      onOpenAssessment={onOpenAssessment}
-      onOpenCapital={onOpenCapital}
-      onOpenRental={onOpenRental}
-      {...(onOpenKinder ? { onOpenKinder } : {})}
-      {...(onOpenOfficialForm ? { onOpenOfficialForm: () => onOpenOfficialForm(year) } : {})}
-      {...(onOpenOwlMode ? { onOpenOwlMode: () => onOpenOwlMode(year) } : {})}
-      {...(submissionHandler ? { onOpenPrintout: () => submissionHandler(year) } : {})}
-      deadlineAnswers={deadlineAnswers}
-      bp={bp}
     />
   )
 }
@@ -437,41 +411,48 @@ interface CockpitEmptyProps {
   readonly deadlineAnswers: Answers | null
 }
 
-/** Ways into Kapital, Vermietung and Kinder while no tiles show them (no interview answers yet). */
-function TopicFallbackButtons({
+/** The quieter actions below the tiles; shared by the empty and the loaded Cockpit. */
+function SecondaryActions({
+  tileFacts,
+  onOpenAssessment,
+  onOpenOfficialForm,
   onOpenCapital,
   onOpenRental,
   onOpenKinder,
+  onOpenPrintout,
   kinderTestID,
 }: {
+  readonly tileFacts: TileFacts | null
+  readonly onOpenAssessment: () => void
+  readonly onOpenOfficialForm?: (() => void) | undefined
   readonly onOpenCapital: () => void
   readonly onOpenRental: () => void
   readonly onOpenKinder?: (() => void) | undefined
+  readonly onOpenPrintout?: (() => void) | undefined
   readonly kinderTestID: string
 }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
+  const action = (label: string, onPress: () => void, testID: string) => (
+    <View key={testID} style={styles.secondaryGridItem}>
+      <Button variant="ghost" onPress={onPress} testID={testID}>
+        {label}
+      </Button>
+    </View>
+  )
+  // Once tiles show, Kapital, Vermietung and Kinder are tiles or under „Weitere Themen“: only without
+  // tiles (no interview answers yet) do they need a way in here.
+  const withoutTiles = tileFacts === null
   return (
-    <>
-      <View style={styles.secondaryGridItem}>
-        <Button variant="ghost" onPress={onOpenCapital} testID="cockpit-kapital">
-          {tr('cockpit.checkKapital')}
-        </Button>
-      </View>
-      <View style={styles.secondaryGridItem}>
-        <Button variant="ghost" onPress={onOpenRental} testID="cockpit-vermietung">
-          {tr('cockpit.checkVermietung')}
-        </Button>
-      </View>
-      {onOpenKinder ? (
-        <View style={styles.secondaryGridItem}>
-          <Button variant="ghost" onPress={onOpenKinder} testID={kinderTestID}>
-            {tr('cockpit.checkKinder')}
-          </Button>
-        </View>
-      ) : null}
-    </>
+    <View style={styles.secondaryGrid}>
+      {action(tr('cockpit.checkBescheid'), onOpenAssessment, 'cockpit-bescheid')}
+      {onOpenOfficialForm ? action(tr('cockpit.amtlichesFormular'), onOpenOfficialForm, 'cockpit-formular') : null}
+      {withoutTiles ? action(tr('cockpit.checkKapital'), onOpenCapital, 'cockpit-kapital') : null}
+      {withoutTiles ? action(tr('cockpit.checkVermietung'), onOpenRental, 'cockpit-vermietung') : null}
+      {withoutTiles && onOpenKinder ? action(tr('cockpit.checkKinder'), onOpenKinder, kinderTestID) : null}
+      {onOpenPrintout ? action(tr('ausdruck.cockpitCta'), onOpenPrintout, 'cockpit-ausdruck') : null}
+    </View>
   )
 }
 
@@ -616,23 +597,15 @@ function CockpitEmpty({ year, onYearChange, refresh, isRefreshing, next, tileFac
         ) : null}
         {onOpenOwlMode ? <View style={styles.berater}><OwlAdvisorCard onOpen={onOpenOwlMode} testID="cockpit-empty-eulen-modus" /></View> : null}
         {masterData && (masterData.missingFields?.length ?? 0) === 0 ? <MissingMasterDataNotice masterData={masterData} /> : null}
-        <View style={styles.secondaryGrid}>
-          <View style={styles.secondaryGridItem}>
-            <Button variant="ghost" onPress={onOpenAssessment} testID="cockpit-bescheid">
-              {tr('cockpit.checkBescheid')}
-            </Button>
-          </View>
-          {onOpenOfficialForm ? (
-            <View style={styles.secondaryGridItem}>
-              <Button variant="ghost" onPress={onOpenOfficialForm} testID="cockpit-formular">
-                {tr('cockpit.amtlichesFormular')}
-              </Button>
-            </View>
-          ) : null}
-          {tileFacts === null ? (
-            <TopicFallbackButtons onOpenCapital={onOpenCapital} onOpenRental={onOpenRental} onOpenKinder={onOpenKinder} kinderTestID="cockpit-empty-kinder" />
-          ) : null}
-        </View>
+        <SecondaryActions
+          tileFacts={tileFacts}
+          onOpenAssessment={onOpenAssessment}
+          onOpenOfficialForm={onOpenOfficialForm}
+          onOpenCapital={onOpenCapital}
+          onOpenRental={onOpenRental}
+          onOpenKinder={onOpenKinder}
+          kinderTestID="cockpit-empty-kinder"
+        />
       </View>
     </ScrollView>
   )
@@ -676,34 +649,10 @@ function ConfirmationNotice({ annexes, status, onOpenConfirmation }: Confirmatio
   )
 }
 
-interface CockpitLoadedProps {
+interface CockpitLoadedProps extends CockpitEmptyProps {
   readonly summary: CockpitSummaryDto
-  readonly year: number
-  readonly onYearChange: (year: number) => void
   readonly confirmation: readonly AnnexConfirmationDto[] | null
   readonly onOpenConfirmation?: () => void
-  readonly refresh: PullToRefresh
-  readonly isRefreshing: boolean
-  readonly next: Next | null
-  readonly tileFacts: TileFacts | null
-  readonly isSignedIn: boolean
-  readonly isJointMarried: boolean
-  readonly partnerName: string
-  readonly findings: PlausibilityFindings
-  readonly onOpenTile: (tile: TileDefinition, revisit: boolean) => void
-  readonly onOpenPartner?: (area: PartnerAreaParam, name: string) => void
-  readonly onOpenSubmission?: () => void
-  readonly masterData: Next | null
-  readonly onOpenInterview: () => void
-  readonly onOpenAssessment: () => void
-  readonly onOpenCapital: () => void
-  readonly onOpenRental: () => void
-  readonly onOpenKinder?: () => void
-  readonly onOpenOwlMode?: () => void
-  readonly onOpenPrintout?: () => void
-  readonly onOpenOfficialForm?: () => void
-  readonly bp: Breakpoint
-  readonly deadlineAnswers: Answers | null
 }
 
 function CockpitLoaded({ summary, year, onYearChange, confirmation, onOpenConfirmation, refresh, isRefreshing, next, tileFacts, isSignedIn, isJointMarried, partnerName, findings, onOpenTile, onOpenPartner, onOpenSubmission, masterData, onOpenInterview, onOpenAssessment, onOpenCapital, onOpenRental, onOpenKinder, onOpenOwlMode, onOpenPrintout, onOpenOfficialForm, deadlineAnswers, bp }: CockpitLoadedProps) {
@@ -770,35 +719,16 @@ function CockpitLoaded({ summary, year, onYearChange, confirmation, onOpenConfir
       ) : null}
       {onOpenOwlMode ? <View style={styles.berater}><OwlAdvisorCard onOpen={onOpenOwlMode} /></View> : null}
       {masterData && (masterData.missingFields?.length ?? 0) === 0 ? <MissingMasterDataNotice masterData={masterData} /> : null}
-      <View style={styles.secondaryGrid}>
-        <View style={styles.secondaryGridItem}>
-          <Button
-            variant="ghost"
-            onPress={onOpenAssessment}
-            testID="cockpit-bescheid"
-          >
-            {tr('cockpit.checkBescheid')}
-          </Button>
-        </View>
-        {onOpenOfficialForm ? (
-          <View style={styles.secondaryGridItem}>
-            <Button variant="ghost" onPress={onOpenOfficialForm} testID="cockpit-formular">
-              {tr('cockpit.amtlichesFormular')}
-            </Button>
-          </View>
-        ) : null}
-        {/* Once tiles show, Kapital, Vermietung and Kinder are tiles or under „Weitere Themen“. */}
-        {tileFacts === null ? (
-          <TopicFallbackButtons onOpenCapital={onOpenCapital} onOpenRental={onOpenRental} onOpenKinder={onOpenKinder} kinderTestID="cockpit-kinder" />
-        ) : null}
-        {onOpenPrintout ? (
-          <View style={styles.secondaryGridItem}>
-            <Button variant="ghost" onPress={onOpenPrintout} testID="cockpit-ausdruck">
-              {tr('ausdruck.cockpitCta')}
-            </Button>
-          </View>
-        ) : null}
-      </View>
+      <SecondaryActions
+        tileFacts={tileFacts}
+        onOpenAssessment={onOpenAssessment}
+        onOpenOfficialForm={onOpenOfficialForm}
+        onOpenCapital={onOpenCapital}
+        onOpenRental={onOpenRental}
+        onOpenKinder={onOpenKinder}
+        onOpenPrintout={onOpenPrintout}
+        kinderTestID="cockpit-kinder"
+      />
     </ScrollView>
   )
 }

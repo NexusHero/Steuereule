@@ -4,7 +4,7 @@
 import { launchBrowser, closeBrowser, newContextAtBreakpoint, guardAgainst429 } from '../harness/browser.mjs'
 import { startStack } from '../harness/stack.mjs'
 import { fail } from '../harness/rate-limit.mjs'
-import { createAccount, call, answer, putLstb, browserLogin, until } from '../harness/api-account.mjs'
+import { createAccount, call, answer, putLstb, putPrintableBasics, browserLogin, until } from '../harness/api-account.mjs'
 import { readFile } from 'node:fs/promises'
 
 const TAG = 'printout-unlock'
@@ -17,11 +17,7 @@ async function main() {
   try {
     const user = await createAccount({ apiOrigin, webOrigin, sql, tag: TAG })
     const api = user.api
-    await call(api, 'PUT', '/v1/profile', { firstName: 'Mara', lastName: 'Druckfrisch', steuerId: '04452397686' })
-    await call(api, 'PUT', '/v1/stammdaten', {
-      geburtsdatum: '1990-04-12', strasse: 'Musterstraße', hausnummer: '12', plz: '01067', wohnort: 'Dresden', religion: 'VD', religionConsent: true,
-      familienstand: 'ledig', iban: 'DE89370400440532013000', finanzamt: 'Dresden-Nord',
-    })
+    await putPrintableBasics(api, { firstName: 'Mara', lastName: 'Druckfrisch' })
     await answer(api, YEAR, [['job', 'Angestellt'], ['ausland', 'Nein'], ['kinder', 'Nein'], ['familienstand', 'Ledig'], ['dhf', 'Nein'], ['umzug', 'Nein'], ['abfindung', 'Nein'], ['lohnersatz', 'Nein'], ['nebenjob', 'Nein'], ['einkuenfte', 'Nein'], ['spenden', 'Nein'], ['kv-pv', 'Nein'], ['riester', 'Nein']])
     await putLstb(api, YEAR, 45_000, 6_100, 9_200)
     await call(api, 'PUT', `/v1/steuerjahre/${YEAR}/arbeitsweg`, { workdays: [1, 2, 3, 4, 5], vacationDays: 30, sickDays: 5, homeOfficeDays: 0, oneWayKm: 12, transport: 'pkw', workplace: null })
