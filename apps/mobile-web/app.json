@@ -8,8 +8,7 @@
     "newArchEnabled": true,
     "web": {
       "bundler": "metro",
-      "output": "single",
-      "favicon": "./public/favicon.svg"
+      "output": "single"
     }
   }
 }
