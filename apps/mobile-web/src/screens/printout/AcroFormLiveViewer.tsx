@@ -2,8 +2,11 @@ import { useEffect, useRef, useState } from 'react'
 import { Platform, Pressable, Text, TextInput, View, type TextStyle, type ViewStyle } from 'react-native'
 import { getApiClientBaseUrl } from '@steuereule/api-client'
 import type { Screen } from '@steuereule/core'
+import { useTranslation } from 'react-i18next'
 import { Card, Chip, useTheme, type UiTheme } from '@steuereule/ui'
+import { APP_NS } from '../../i18n/resources'
 import { maskTargetForAcroField } from '../shared/formLineMapping'
+import { acroEditSpec, type AcroSaveOutcome } from './acroFieldEditing'
 
 export interface AcroFormViewerProps {
   readonly year: number
@@ -11,7 +14,8 @@ export interface AcroFormViewerProps {
   readonly liveValues: Readonly<Record<string, string | true>>
   readonly highlightedFieldId?: string | undefined
   readonly onInspectField?: ((screen: Screen, field?: string, person?: 'A' | 'B') => void) | undefined
-  readonly onSaveAcroField?: ((acroFieldId: string, nextValue: string) => Promise<void> | void) | undefined
+  /** Present only in expert mode; writes a directly editable field (see acroFieldEditing.ts) back to the return. */
+  readonly onSaveAcroField?: ((acroFieldId: string, nextValue: string) => Promise<AcroSaveOutcome>) | undefined
 }
 
 export interface AcroAnnotationBox {
@@ -100,6 +104,9 @@ export function AcroFormLiveViewer({
   const [focusedField, setFocusedField] = useState<string | null>(highlightedFieldId ?? null)
   const [draftValues, setDraftValues] = useState<Record<string, string>>({})
   const [savingField, setSavingField] = useState<string | null>(null)
+  const [feedback, setFeedback] = useState<{ readonly field: string; readonly outcome: AcroSaveOutcome } | null>(null)
+  const savingRef = useRef(false)
+  const { t: tr } = useTranslation(APP_NS)
   const [loading, setLoading] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
   const canvasHostRef = useRef<View | null>(null)
@@ -174,6 +181,59 @@ export function AcroFormLiveViewer({
   const activeFormMeta = OFFICIAL_VORDRUCKE.find((f) => f.id === selectedForm) ?? OFFICIAL_VORDRUCKE[0]!
   const filledCountOnForm = annotations.filter((a) => liveValues[a.fieldName] !== undefined).length
   const selectedFieldMeta = focusedField ? maskTargetForAcroField(focusedField) : null
+  const focusedSpec = focusedField ? acroEditSpec(focusedField) : null
+  const canEdit = (fieldId: string): boolean =>
+    onSaveAcroField !== undefined && liveValues[fieldId] !== true && acroEditSpec(fieldId)?.kind === 'direct'
+  const storedText = (fieldId: string): string => {
+    const stored = liveValues[fieldId]
+    return typeof stored === 'string' ? stored : ''
+  }
+  const dropDraft = (fieldId: string) =>
+    setDraftValues((prev) => {
+      const { [fieldId]: _dropped, ...rest } = prev
+      return rest
+    })
+
+  /** One save path for Enter, the button and leaving the inline field; never two saves at once. */
+  async function commit(fieldId: string) {
+    const draft = draftValues[fieldId]
+    if (!onSaveAcroField || draft === undefined || savingRef.current) return
+    if (draft.trim() === storedText(fieldId)) {
+      dropDraft(fieldId)
+      return
+    }
+    savingRef.current = true
+    setSavingField(fieldId)
+    setFeedback(null)
+    let outcome: AcroSaveOutcome
+    try {
+      outcome = await onSaveAcroField(fieldId, draft)
+    } catch {
+      outcome = { kind: 'failed' }
+    } finally {
+      savingRef.current = false
+      setSavingField(null)
+    }
+    // An invalid input stays for correcting; otherwise the stored value is the truth again
+    // (the new one after a save, the previous one after a failure).
+    if (outcome.kind !== 'invalid') dropDraft(fieldId)
+    setFeedback({ field: fieldId, outcome })
+  }
+
+  const feedbackText = (outcome: AcroSaveOutcome): string | null => {
+    switch (outcome.kind) {
+      case 'saved':
+        return tr('ausdruck.direkteingabe.gespeichert')
+      case 'cleared':
+        return tr('ausdruck.direkteingabe.geleert')
+      case 'invalid':
+        return tr('ausdruck.direkteingabe.ungueltig')
+      case 'failed':
+        return tr('ausdruck.direkteingabe.fehler')
+      case 'not-editable':
+        return tr('ausdruck.direkteingabe.nurMaske')
+    }
+  }
 
   return (
     <Card style={styles.card}>
@@ -235,30 +295,39 @@ export function AcroFormLiveViewer({
             </Text>
             <Text style={styles.inspectorValue}>
               {savingField === focusedField
-                ? 'Speichere Änderung direkt in der Steuererklärung …'
-                : (draftValues[focusedField] ?? liveValues[focusedField]) !== undefined
-                  ? `Eingetragener Wert: ${(draftValues[focusedField] ?? liveValues[focusedField]) === true ? '✕ (Angekreuzt)' : String(draftValues[focusedField] ?? liveValues[focusedField])}`
+                ? tr('ausdruck.direkteingabe.speichert')
+                : liveValues[focusedField] !== undefined
+                  ? `Eingetragener Wert: ${liveValues[focusedField] === true ? '✕ (Angekreuzt)' : String(liveValues[focusedField])}`
                   : 'Derzeit leer im amtlichen Formular'}
             </Text>
+            {onSaveAcroField && focusedSpec?.kind === 'derived' ? (
+              <Text style={styles.inspectorValue} testID="acro-derived-hint">
+                {tr('ausdruck.direkteingabe.berechnet', { sources: focusedSpec.sources.join(', ') })}
+              </Text>
+            ) : null}
+            {onSaveAcroField && focusedSpec === null ? (
+              <Text style={styles.inspectorValue}>{tr('ausdruck.direkteingabe.nurMaske')}</Text>
+            ) : null}
+            {feedback && feedback.field === focusedField ? (
+              <Text
+                accessibilityLiveRegion="polite"
+                testID="acro-save-feedback"
+                style={feedback.outcome.kind === 'failed' || feedback.outcome.kind === 'invalid' ? styles.errorText : styles.inspectorValue}
+              >
+                {feedbackText(feedback.outcome)}
+              </Text>
+            ) : null}
           </View>
-          {onSaveAcroField && liveValues[focusedField] !== true ? (
+          {canEdit(focusedField) && focusedSpec?.kind === 'direct' ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.s2 }}>
               <TextInput
-                accessibilityLabel={`Direkteingabe ${selectedFieldMeta.label}`}
-                value={draftValues[focusedField] ?? (typeof liveValues[focusedField] === 'string' ? liveValues[focusedField] : '')}
-                placeholder="Wert direkt im Formular ändern …"
+                accessibilityLabel={tr('ausdruck.direkteingabe.eingabeLabel', { label: selectedFieldMeta.label })}
+                value={draftValues[focusedField] ?? storedText(focusedField)}
+                placeholder={tr('ausdruck.direkteingabe.platzhalter', { unit: focusedSpec.unit === 'CHF' ? 'Franken' : 'Euro' })}
+                inputMode="numeric"
+                editable={savingField !== focusedField}
                 onChangeText={(next) => setDraftValues((prev) => ({ ...prev, [focusedField]: next }))}
-                onSubmitEditing={async () => {
-                  const val = draftValues[focusedField]
-                  if (val !== undefined) {
-                    setSavingField(focusedField)
-                    try {
-                      await onSaveAcroField(focusedField, val)
-                    } finally {
-                      setSavingField(null)
-                    }
-                  }
-                }}
+                onSubmitEditing={() => void commit(focusedField)}
                 style={{
                   ...t.type.small,
                   color: t.color.tinte,
@@ -273,21 +342,11 @@ export function AcroFormLiveViewer({
               />
               <Pressable
                 accessibilityRole="button"
-                disabled={savingField === focusedField}
-                onPress={async () => {
-                  const val =
-                    draftValues[focusedField] ??
-                    (typeof liveValues[focusedField] === 'string' ? liveValues[focusedField] : '')
-                  setSavingField(focusedField)
-                  try {
-                    await onSaveAcroField(focusedField, val)
-                  } finally {
-                    setSavingField(null)
-                  }
-                }}
+                disabled={savingField === focusedField || draftValues[focusedField] === undefined}
+                onPress={() => void commit(focusedField)}
                 style={styles.jumpButton}
               >
-                <Text style={styles.jumpButtonText}>✓ Direkt speichern</Text>
+                <Text style={styles.jumpButtonText}>{tr('ausdruck.direkteingabe.speichern')}</Text>
               </Pressable>
             </View>
           ) : null}
@@ -341,7 +400,8 @@ export function AcroFormLiveViewer({
                 accessibilityLabel={`${target.label}${displayVal ? `: ${displayVal}` : ''}`}
                 onPress={() => {
                   setFocusedField(annot.fieldName)
-                  if (onInspectField) {
+                  // In expert mode an editable field is edited in place instead of leaving the form.
+                  if (onInspectField && !canEdit(annot.fieldName)) {
                     onInspectField(target.screen, target.field, target.person ?? 'A')
                   }
                 }}
@@ -362,17 +422,15 @@ export function AcroFormLiveViewer({
                       : 'rgba(37, 99, 235, 0.04)',
                 }}
               >
-                {onSaveAcroField && rawVal !== true && isFocused ? (
+                {isFocused && canEdit(annot.fieldName) ? (
                   <TextInput
-                    accessibilityLabel={`Inline AcroForm ${annot.fieldName}`}
+                    accessibilityLabel={tr('ausdruck.direkteingabe.inlineLabel', { field: annot.fieldName })}
                     value={String(displayVal)}
+                    inputMode="numeric"
+                    editable={savingField !== annot.fieldName}
                     onChangeText={(next) => setDraftValues((prev) => ({ ...prev, [annot.fieldName]: next }))}
-                    onBlur={async () => {
-                      const val = draftValues[annot.fieldName]
-                      if (val !== undefined) {
-                        await onSaveAcroField(annot.fieldName, val)
-                      }
-                    }}
+                    onSubmitEditing={() => void commit(annot.fieldName)}
+                    onBlur={() => void commit(annot.fieldName)}
                     style={{
                       ...t.type.meta,
                       color: '#0D0F08',

@@ -7,6 +7,7 @@ import { http, HttpResponse } from 'msw'
 import type { Screen } from '@steuereule/core'
 import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
+import { writeExpertMode } from '../../lib/expertModePreference'
 import { GlassFormPreview } from './GlassFormPreview'
 import type { AcroFormPdfLoader } from './AcroFormLiveViewer'
 
@@ -38,7 +39,10 @@ function renderPreview(
   )
 }
 
-afterEach(() => server.resetHandlers())
+afterEach(() => {
+  server.resetHandlers()
+  writeExpertMode(false)
+})
 
 describe('GlassFormPreview („Glas-Erklärung“)', () => {
   it('starts collapsed by default and opens on click to show official forms, lines, provenance and jump links', async () => {
@@ -167,30 +171,15 @@ describe('GlassFormPreview („Glas-Erklärung“)', () => {
     expect(screen.queryByTestId('glass-section-est1a')).toBeNull()
   })
 
-  it('renders pre-compiled AcroForm fields in HD Vordruck mode, jumps to the input mask on click, and allows Power-Users to edit values directly in the form', async () => {
-    let savedBrutto: number | null = null
-    server.use(
-      http.get('*/v1/steuerjahre/2025/lstb', () =>
-        HttpResponse.json({
-          bruttoarbeitslohn: { kind: 'erfasst', value: savedBrutto ?? 64000 },
-          lohnsteuer: { kind: 'erfasst', value: 11200 },
-          sozialversicherung: { kind: 'erfasst', value: 12100 },
-          state: { kind: 'vollstaendig', bruttoarbeitslohn: savedBrutto ?? 64000, lohnsteuer: 11200, sozialversicherung: 12100 },
-        }),
-      ),
-      http.put('*/v1/steuerjahre/2025/lstb/bruttoarbeitslohn', async ({ request }) => {
-        const body = (await request.json()) as { value?: number }
-        savedBrutto = body.value ?? null
-        return HttpResponse.json({
-          bruttoarbeitslohn: { kind: 'erfasst', value: savedBrutto ?? 64000 },
-          lohnsteuer: { kind: 'erfasst', value: 11200 },
-          sozialversicherung: { kind: 'erfasst', value: 12100 },
-          state: { kind: 'vollstaendig', bruttoarbeitslohn: savedBrutto ?? 64000, lohnsteuer: 11200, sozialversicherung: 12100 },
-        })
-      }),
-    )
+  describe('HD Vordruck mode and expert direct input', () => {
+    const lstbBody = (brutto: number | null) => ({
+      bruttoarbeitslohn: brutto === null ? { kind: 'offen' } : { kind: 'erfasst', value: brutto },
+      lohnsteuer: { kind: 'erfasst', value: 11200 },
+      sozialversicherung: { kind: 'erfasst', value: 12100 },
+      state: { kind: 'unvollstaendig' },
+    })
 
-    const fakeLoader: AcroFormPdfLoader = {
+    const fakeLoader = (): AcroFormPdfLoader => ({
       loadTemplate: vi.fn().mockResolvedValue({
         numPages: 4,
         getPage: vi.fn().mockResolvedValue({
@@ -203,34 +192,108 @@ describe('GlassFormPreview („Glas-Erklärung“)', () => {
           getAnnotations: async () => [
             { fieldName: 'anlN.kz110', rect: [233.9, 575.2, 350.4, 591.0], textAlignment: 2 },
             { fieldName: 'anlN.kz140', rect: [233.9, 550.0, 350.4, 565.8], textAlignment: 2 },
+            { fieldName: 'anlN.kz380', rect: [233.9, 400.0, 350.4, 415.8], textAlignment: 2 },
           ],
         }),
       }),
-    }
-
-    const onInspectField = vi.fn()
-    renderPreview({
-      defaultOpen: true,
-      defaultMode: 'acroform',
-      initialAcroForm: 'anlage-n',
-      acroFormLoader: fakeLoader,
-      onInspectField,
     })
 
-    const kz110Btn = await screen.findByLabelText(/Anlage N · Zeile 6 \(Kz 110 Bruttoarbeitslohn\): 64000/)
-    expect(kz110Btn).toBeTruthy()
+    /** Serves the LStB like the API: GET returns what the last PUT stored; `putStatus` can force a refusal. */
+    function serveLstb(options: { putStatus?: number } = {}) {
+      const puts: unknown[] = []
+      let brutto: number | null = 64000
+      server.use(
+        http.get('*/v1/steuerjahre/2025/lstb', () => HttpResponse.json(lstbBody(brutto))),
+        http.put('*/v1/steuerjahre/2025/lstb/bruttoarbeitslohn', async ({ request }) => {
+          const body = (await request.json()) as { kind: string; value?: number }
+          puts.push(body)
+          if (options.putStatus && options.putStatus !== 200) {
+            return HttpResponse.json({ message: 'refused' }, { status: options.putStatus })
+          }
+          brutto = body.kind === 'erfasst' ? (body.value ?? null) : null
+          return HttpResponse.json(lstbBody(brutto))
+        }),
+      )
+      return puts
+    }
 
-    fireEvent.click(kz110Btn)
-    expect(onInspectField).toHaveBeenCalledWith('lstb', 'bruttoarbeitslohn', 'A')
-    expect(await screen.findByText(/Aktives AcroForm-Feld: anlN\.kz110/)).toBeTruthy()
+    function open(onInspectField = vi.fn()) {
+      renderPreview({ defaultOpen: true, defaultMode: 'acroform', initialAcroForm: 'anlage-n', acroFormLoader: fakeLoader(), onInspectField })
+      return onInspectField
+    }
 
-    // Power-User edits the value directly in the AcroForm inspector / inline input and saves
-    const directInput = await screen.findByLabelText(/Direkteingabe Anlage N · Zeile 6/)
-    fireEvent.change(directInput, { target: { value: '68500' } })
-    fireEvent.click(await screen.findByText('✓ Direkt speichern'))
+    async function editKz110(value: string) {
+      fireEvent.click(await screen.findByLabelText(/Anlage N · Zeile 6 \(Kz 110 Bruttoarbeitslohn\): 64000/))
+      fireEvent.change(await screen.findByLabelText(/Direkteingabe Anlage N · Zeile 6/), { target: { value } })
+      fireEvent.click(screen.getByText('✓ Direkt speichern'))
+    }
 
-    await vi.waitFor(() => {
-      expect(savedBrutto).toBe(68500)
+    it('without expert mode a click jumps to the input mask and offers no direct input', async () => {
+      serveLstb()
+      const onInspectField = open()
+
+      fireEvent.click(await screen.findByLabelText(/Anlage N · Zeile 6 \(Kz 110 Bruttoarbeitslohn\): 64000/))
+
+      expect(onInspectField).toHaveBeenCalledWith('lstb', 'bruttoarbeitslohn', 'A')
+      expect(await screen.findByText(/Aktives AcroForm-Feld: anlN\.kz110/)).toBeTruthy()
+      expect(screen.queryByLabelText(/Direkteingabe/)).toBeNull()
+    })
+
+    it('in expert mode saves a 1:1 field in place, without leaving the form', async () => {
+      writeExpertMode(true)
+      const puts = serveLstb()
+      const onInspectField = open()
+
+      await editKz110('68.500')
+
+      expect(await screen.findByText('Gespeichert.')).toBeTruthy()
+      expect(puts).toEqual([{ kind: 'erfasst', value: 68500 }])
+      expect(onInspectField).not.toHaveBeenCalled()
+      expect(await screen.findByText(/Eingetragener Wert: 68500/)).toBeTruthy()
+    })
+
+    it('shows a refusal of the server and keeps the stored value', async () => {
+      writeExpertMode(true)
+      serveLstb({ putStatus: 400 })
+      open()
+
+      await editKz110('68500')
+
+      expect(await screen.findByText(/Konnte nicht gespeichert werden/)).toBeTruthy()
+      expect(screen.getByText(/Eingetragener Wert: 64000/)).toBeTruthy()
+    })
+
+    it('rejects an ambiguous amount without calling the server', async () => {
+      writeExpertMode(true)
+      const puts = serveLstb()
+      open()
+
+      await editKz110('68,5')
+
+      expect(await screen.findByText(/Bitte einen ganzen Betrag eingeben/)).toBeTruthy()
+      expect(puts).toEqual([])
+    })
+
+    it('clearing the field sets it back to open', async () => {
+      writeExpertMode(true)
+      const puts = serveLstb()
+      open()
+
+      await editKz110('')
+
+      expect(await screen.findByText(/Wert entfernt/)).toBeTruthy()
+      expect(puts).toEqual([{ kind: 'offen' }])
+    })
+
+    it('keeps computed fields read-only and names their sources', async () => {
+      writeExpertMode(true)
+      serveLstb()
+      open()
+
+      fireEvent.click(await screen.findByLabelText(/Anlage N · kz380/))
+
+      expect((await screen.findByTestId('acro-derived-hint')).textContent).toMatch(/Wird berechnet aus: Weitere Werbungskosten/)
+      expect(screen.queryByLabelText(/Direkteingabe/)).toBeNull()
     })
   })
 })
