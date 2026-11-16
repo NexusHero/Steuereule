@@ -6,6 +6,7 @@ export type Persona =
   | 'grenzgaenger'
   | 'rentner'
   | 'vermieter'
+  | 'anleger'
   | 'verheiratet'
   | 'alleinerziehend'
   | 'eltern'
@@ -43,6 +44,9 @@ export function derivePersonas(
   }
   if (answers.einkuenfte === 'Vermietung' || answers.einkuenfte === 'Beides') {
     result.add('vermieter')
+  }
+  if (answers.einkuenfte === 'Kapitalerträge' || answers.einkuenfte === 'Beides') {
+    result.add('anleger')
   }
 
   const mdStatus = masterData?.familienstand ?? null

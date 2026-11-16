@@ -34,7 +34,7 @@ export interface MasterDataScreenProps {
   /** The Veranlagungsart and the partner belong to one tax year — the one the cockpit shows. */
   readonly taxYear?: number
   /** Opens a regular mask for the partner's figures — only while the partner has no own account. */
-  readonly onRecordPartner?: (area: 'lstb' | 'arbeitsweg', name: string) => void
+  readonly onRecordPartner?: (area: 'lstb' | 'arbeitsweg' | 'schweiz' | 'rente', name: string) => void
 }
 
 type TextField = Exclude<keyof MasterDataDraft, 'religion' | 'religionConsent' | 'familienstand'>
@@ -300,7 +300,7 @@ function TaxYearLinkSection({
   onRecordPartner,
 }: {
   readonly taxYear: number
-  readonly onRecordPartner?: (area: 'lstb' | 'arbeitsweg', name: string) => void
+  readonly onRecordPartner?: (area: 'lstb' | 'arbeitsweg' | 'schweiz' | 'rente', name: string) => void
 }) {
   const theme = useTheme()
   const { t } = useTranslation(APP_NS)
@@ -415,7 +415,7 @@ function TaxYearLinkSection({
   return (
     <Card style={{ marginVertical: theme.space.s3, padding: theme.space.s4 }}>
       <Feld label={`Veranlagungsart ${taxYear} & Partner (Person B, Zeile 19–24 ESt 1 A)`}>
-        <View style={{ flexDirection: 'row', gap: theme.space.s2, marginBottom: theme.space.s3 }}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.space.s2, marginBottom: theme.space.s3 }}>
           <Chip active={filingType === 'zusammen'} onPress={() => selectKind('zusammen')} testID="kopplung-zusammen">
             Zusammenveranlagung
           </Chip>
@@ -437,13 +437,31 @@ function TaxYearLinkSection({
             </Text>
           ) : null}
           <Feld label="Vorname Partner (Person B)">
-            <Input value={firstNameB || (personB?.firstName ?? '')} onChange={setFirstNameB} autoComplete="off" testID="personb-vorname" />
+            <Input
+              value={firstNameB || (personB?.firstName ?? '')}
+              onChange={setFirstNameB}
+              autoComplete="off"
+              accessibilityLabel="Vorname Partner (Person B)"
+              testID="personb-vorname"
+            />
           </Feld>
           <Feld label="Nachname Partner (Person B)">
-            <Input value={lastNameB || (personB?.lastName ?? '')} onChange={setLastNameB} autoComplete="off" testID="personb-nachname" />
+            <Input
+              value={lastNameB || (personB?.lastName ?? '')}
+              onChange={setLastNameB}
+              autoComplete="off"
+              accessibilityLabel="Nachname Partner (Person B)"
+              testID="personb-nachname"
+            />
           </Feld>
           <Feld label="Steuer-ID Partner (11 Ziffern)">
-            <Input type="numeric" value={taxIdB || (personB?.steuerId ?? '')} onChange={setTaxIdB} testID="personb-steuerid" />
+            <Input
+              type="numeric"
+              value={taxIdB || (personB?.steuerId ?? '')}
+              onChange={setTaxIdB}
+              accessibilityLabel="Steuer-ID Partner (11 Ziffern)"
+              testID="personb-steuerid"
+            />
             <TaxIdHint value={taxIdB} testID="personb-steuerid-hinweis" />
           </Feld>
           <Feld label="Geburtsdatum Partner (TT.MM.JJJJ)">
@@ -452,11 +470,17 @@ function TaxYearLinkSection({
               onChange={setBirthDateB}
               calendarLabel={t('datum.kalender')}
               max={todayIso()}
+              accessibilityLabel="Geburtsdatum Partner (TT.MM.JJJJ)"
               testID="personb-geburtsdatum"
             />
           </Feld>
           <Feld label="Beruf Partner">
-            <Input value={occupationB || (personB?.beruf ?? '')} onChange={setOccupationB} testID="personb-beruf" />
+            <Input
+              value={occupationB || (personB?.beruf ?? '')}
+              onChange={setOccupationB}
+              accessibilityLabel="Beruf Partner"
+              testID="personb-beruf"
+            />
           </Feld>
           <Feld label={t('stammdaten.religionPartner')}>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.space.s2, marginTop: theme.space.s2 }}>
@@ -488,8 +512,14 @@ function TaxYearLinkSection({
               <Button variant="ghost" onPress={() => onRecordPartner('lstb', partnerDisplayName)} testID="partner-lstb">
                 {`Lohnsteuerbescheinigung von ${partnerDisplayName} erfassen`}
               </Button>
+              <Button variant="ghost" onPress={() => onRecordPartner('schweiz', partnerDisplayName)} testID="partner-schweiz">
+                {`Schweizer Lohnausweis von ${partnerDisplayName} erfassen`}
+              </Button>
               <Button variant="ghost" onPress={() => onRecordPartner('arbeitsweg', partnerDisplayName)} testID="partner-arbeitsweg">
                 {`Arbeitsweg von ${partnerDisplayName} erfassen`}
+              </Button>
+              <Button variant="ghost" onPress={() => onRecordPartner('rente', partnerDisplayName)} testID="partner-rente">
+                {`Rente von ${partnerDisplayName} erfassen`}
               </Button>
             </>
           ) : null}

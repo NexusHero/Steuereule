@@ -173,7 +173,7 @@ export const TILES: readonly TileDefinition[] = [
     id: 'kapital',
     titleKey: 'cockpit.kachel.kapital.titel',
     route: { screen: 'Capital' },
-    personas: ['rentner'],
+    personas: ['rentner', 'anleger'],
     isVisible: () => true,
     status: (f) => (f.capital?.status.kind === 'bestimmt' ? 'erledigt' : 'offen'),
   },

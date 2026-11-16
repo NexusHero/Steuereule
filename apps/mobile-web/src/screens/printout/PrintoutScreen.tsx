@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Pressable, ScrollView, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { Button, Card, useBreakpoint, useTheme } from '@steuereule/ui'
+import type { Screen } from '@steuereule/core'
 import {
   usePrintoutControllerCheckout,
   usePrintoutControllerCheck,
@@ -11,6 +12,7 @@ import { APP_NS } from '../../i18n/resources'
 import { isRunningTaxYear } from '../../config/taxYear'
 import { makePrivacyStyles } from '../privacy/styles'
 import { ErrorState, LoadingState } from '../shared/ScreenState'
+import { GlassFormPreview } from './GlassFormPreview'
 import { loadPrintout } from './printoutDownload'
 
 export interface PrintoutScreenProps {
@@ -24,10 +26,11 @@ export interface PrintoutScreenProps {
   readonly onCompleteCapital: () => void
   readonly onCompleteCrossBorder: () => void
   readonly onConfirm: () => void
+  readonly onInspectField?: (screen: Screen, field?: string) => void
   readonly openCheckout?: (url: string) => void
 }
 
-export function PrintoutScreen({ year, payment, onBack, onCompleteDetails, onCompleteRiester, onCompleteChildren, onCompleteRental, onCompleteCapital, onCompleteCrossBorder, onConfirm, openCheckout = (url) => window.location.assign(url) }: PrintoutScreenProps) {
+export function PrintoutScreen({ year, payment, onBack, onCompleteDetails, onCompleteRiester, onCompleteChildren, onCompleteRental, onCompleteCapital, onCompleteCrossBorder, onConfirm, onInspectField, openCheckout = (url) => window.location.assign(url) }: PrintoutScreenProps) {
   const bp = useBreakpoint()
   const theme = useTheme()
   const styles = makePrivacyStyles(theme)
@@ -122,6 +125,38 @@ export function PrintoutScreen({ year, payment, onBack, onCompleteDetails, onCom
     }
   }
 
+  function handleInspectField(screen: Screen, field?: string) {
+    if (onInspectField) {
+      onInspectField(screen, field)
+      return
+    }
+    switch (screen) {
+      case 'stammdaten':
+      case 'profil':
+      case 'kopplung':
+        onCompleteDetails()
+        return
+      case 'chLohnausweis':
+        onCompleteCrossBorder()
+        return
+      case 'kapital':
+        onCompleteCapital()
+        return
+      case 'vermietung':
+        onCompleteRental()
+        return
+      case 'kind':
+        onCompleteChildren()
+        return
+      case 'interview':
+        if (field?.startsWith('riester')) onCompleteRiester()
+        else onCompleteDetails()
+        return
+      default:
+        onCompleteDetails()
+    }
+  }
+
   return (
     <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="screen-container">
       <View style={styles.appbar}>
@@ -131,6 +166,8 @@ export function PrintoutScreen({ year, payment, onBack, onCompleteDetails, onCom
         <Text style={styles.appbarTitle}>{t('ausdruck.title', { jahr: year })}</Text>
       </View>
       <Text style={styles.sectionBody}>{t('ausdruck.intro')}</Text>
+
+      <GlassFormPreview year={year} onInspectField={handleInspectField} />
 
       {locked ? (
         <Card style={{ marginBottom: theme.space.s4 }}>

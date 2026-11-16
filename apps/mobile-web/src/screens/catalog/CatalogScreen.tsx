@@ -29,6 +29,7 @@ import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import type { CatalogEntryParam } from '../../navigation/routes'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
+import { GlossaryHint } from '../shared/GlossaryHint'
 import { triggerSaveErrorHaptic } from '../shared/saveFeedback'
 
 function collectFollowUpStepIds(stepId: EntryStepId, acc = new Set<EntryStepId>()): ReadonlySet<EntryStepId> {
@@ -298,6 +299,7 @@ function CatalogFlow({
         </Text>
       ) : null}
       <Text style={styles.heading}>{tr(`katalog.questions.${step}`, { defaultValue: step })}</Text>
+      <GlossaryHint stepId={step} />
       {hint !== '' ? <Text style={styles.hint} testID={`katalog-hinweis-${step}`}>{hint}</Text> : null}
       {partnerName !== null && JOINT_STEPS.includes(step) ? (
         <Text style={styles.hint} testID={`katalog-gemeinsam-${step}`}>

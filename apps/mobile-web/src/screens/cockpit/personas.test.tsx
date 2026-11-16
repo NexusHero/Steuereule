@@ -38,11 +38,14 @@ describe('derivePersonas (§ 5.1)', () => {
     expect([...derivePersonas({ job: 'Rente', ausland: 'Nein' })]).toEqual(['rentner'])
   })
 
-  it('derives vermieter when einkuenfte is Vermietung or Beides', () => {
+  it('derives vermieter when einkuenfte is Vermietung or Beides, and anleger when Kapitalerträge or Beides', () => {
     expect(derivePersonas({ job: 'Angestellt', einkuenfte: 'Vermietung' }).has('vermieter')).toBe(true)
     expect(derivePersonas({ job: 'Angestellt', einkuenfte: 'Beides' }).has('vermieter')).toBe(true)
     expect(derivePersonas({ job: 'Angestellt', einkuenfte: 'Kapitalerträge' }).has('vermieter')).toBe(false)
+    expect(derivePersonas({ job: 'Angestellt', einkuenfte: 'Kapitalerträge' }).has('anleger')).toBe(true)
+    expect(derivePersonas({ job: 'Angestellt', einkuenfte: 'Beides' }).has('anleger')).toBe(true)
     expect(derivePersonas({ job: 'Angestellt', einkuenfte: 'Nein' }).has('vermieter')).toBe(false)
+    expect(derivePersonas({ job: 'Angestellt', einkuenfte: 'Nein' }).has('anleger')).toBe(false)
   })
 
   it('derives verheiratet from interview answer or masterData override', () => {

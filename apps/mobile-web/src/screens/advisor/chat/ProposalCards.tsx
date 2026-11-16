@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '@steuereule/ui'
 import { ADVISOR_LEGAL_SOURCES, formatEuro, type AdvisorActionProposal, type AdvisorLegalSource, type AdvisorTwoPathsProposal, type Screen } from '@steuereule/core'
 import { APP_NS } from '../../../i18n/resources'
+import { formLineForField } from '../../shared/formLineMapping'
 import { makeStyles } from '../AdvisorChatPanel'
 
 export function ActionProposalCardView({
@@ -105,6 +106,18 @@ export function ActionProposalCardView({
           {tr('eule.workspace.provenanceReceiptOwl', '📎 Beleg + Eule')}
         </Text>
       ) : null}
+
+      <Pressable
+        accessibilityRole={onInspectMask ? 'button' : 'text'}
+        disabled={!onInspectMask}
+        onPress={onInspectMask ? () => onInspectMask(action.screen, action.field) : undefined}
+        style={styles.sourcePill}
+        testID={`${testIDPrefix}-form-line`}
+      >
+        <Text style={styles.sourcePillText}>
+          {`📄 ${formLineForField(action.screen, action.field).label}`}
+        </Text>
+      </Pressable>
 
       <View style={styles.diffBox}>
         <View style={styles.diffRow}>

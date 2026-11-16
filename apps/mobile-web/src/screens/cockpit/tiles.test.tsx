@@ -166,11 +166,17 @@ describe('cockpit tiles (§ 2.2–2.4 & Slice 5 § 5.2)', () => {
       expect(part.more.map((t) => t.id)).toContain('arbeitsweg')
     })
 
-    it('adds vermietung to main for vermieter', () => {
+    it('adds vermietung to main for vermieter and kapital to main for anleger (including mixed couples)', () => {
       const part = partitionTiles(
         baseFacts({ answers: { job: 'Angestellt', ausland: 'Nein', kinder: 'Nein', einkuenfte: 'Vermietung' }, boosterEnabled: false }),
       )
       expect(part.main.map((t) => t.id)).toContain('vermietung')
+
+      const mixed = partitionTiles(
+        baseFacts({ answers: { job: 'Angestellt', ausland: 'Ja, in die Schweiz', kinder: '1 Kind', familienstand: 'Verheiratet', einkuenfte: 'Beides' }, boosterEnabled: false }),
+      )
+      expect(mixed.main.map((t) => t.id)).toContain('kapital')
+      expect(mixed.main.map((t) => t.id)).toContain('vermietung')
     })
 
     it('adds kinder (and not alleinerziehend) to main when married with child, and both when single parent', () => {
