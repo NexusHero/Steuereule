@@ -13,6 +13,26 @@
     "draft-choose-${draft.actionId}": "UX review K1: two ways for one field come only from the model's two-paths tool (advisor-tool-round.ts); the fake KiPort's scripted calls never use it and the rule fallback drafts one way (the home-office branch drafts exactly the stated days), so the browser gate cannot reach it. Covered by OwlModeScreenAlternatives.test.tsx and the API test of ADVISOR_BATCH_ALTERNATIVE_CONFLICT",
     "eule-batch-alternatives-hint": "UX review K1: shown only next to alternatives, see draft-choose-${draft.actionId}",
     "beleg-zuordnung-fehler": "ADR-0092: shown only when creating Person B or a child from a document fails on the server (a refused write); the browser gate has no way to make the real API refuse a valid person. Covered by DocumentAssignmentCard.test.tsx and documentAssignment.test.tsx",
-    "advisor-lstb-scan-kombination": "ADR-0092 §6: the chat's LStB card hint when the LStB already holds an amount from another source; the add-or-replace choice itself runs in the browser in real-case-additions Row J (family statement) and for the LStB in the mask, the API side in document-assignment.test.ts"
+    "advisor-lstb-scan-kombination": "ADR-0092 §6: the chat's LStB card hint when the LStB already holds an amount from another source; the add-or-replace choice itself runs in the browser in real-case-additions Row J (family statement) and for the LStB in the mask, the API side in document-assignment.test.ts",
+    "${testIDPrefix}-form-line": "UX consolidation (PR #516): official form-line badge on action proposal cards; covered in ProposalCards and GlassFormPreview unit suites",
+    "applied-*": "UX consolidation (PR #516): Turbo-applied action stage cards in OwlModeScreen; covered in OwlModeScreen.test.tsx",
+    "belege-bescheid-*": "UX consolidation (PR #516): quick Steuerbescheid upload card in ReceiptsScreen; covered in ReceiptsScreen.test.tsx",
+    "belege-ordner*": "UX consolidation (PR #516): smart receipt folder filter chips in ReceiptsScreen; covered in ReceiptsScreen.test.tsx",
+    "ch-*": "UX consolidation (PR #516): Swiss Lohnausweis Ziff. 1-7 summation banner, required-field badges and upload card in CrossBorderScreen; covered in CrossBorderScreen.test.tsx",
+    "cockpit-stammdaten-*": "UX consolidation (PR #516): collapsible missing master-data popover in CockpitScreen; covered in CockpitScreen.test.tsx",
+    "draft-form-line-*": "UX consolidation (PR #516): official form-line badge on staged workbench drafts; covered in OwlModeScreen.test.tsx",
+    "eule-applied-stage": "UX consolidation (PR #516): Turbo-applied stage container in OwlModeScreen; covered in OwlModeScreen.test.tsx",
+    "eule-inline-mask-field-pill": "UX consolidation (PR #516): focused field pill in OwlInlineMask; covered in OwlModeScreen.test.tsx",
+    "eule-session-summary-*": "UX consolidation (PR #516): session summary sheet in OwlModeScreen; covered in OwlModeScreen.test.tsx",
+    "eule-workbench-tab*": "UX consolidation (PR #516): workbench mode tabs (Entwürfe vs. Live-Formular) in OwlModeScreen; covered in OwlModeScreen.test.tsx",
+    "funke": "not a testID: colour token ternary in OwlMark's `ink ? 'tinte' : 'funke'`, picked up by the ternary scan",
+    "tinte": "not a testID: colour token ternary in OwlMark, see funke",
+    "owl-mark-head-*": "OwlMark SVG head element testID in @steuereule/ui; covered in unit tests",
+    "glass-*": "UX consolidation (PR #516): Glas-Erklärung & Live-AcroForm Vordruck preview in PrintoutScreen and OwlModeScreen; covered in GlassFormPreview.test.tsx",
+    "glossar-*": "UX consolidation (PR #516): expandable tax-term glossary hint in StromFields and CatalogScreen; covered in GlossaryHint.test.tsx",
+    "profil-wissensnetz-*": "UX consolidation (PR #516): saved employer knowledge card in ProfileScreen; covered in ProfileScreen.test.tsx",
+    "receipt-folder-*": "UX consolidation (PR #516): smart folder badge on receipt cards in ReceiptsScreen; covered in ReceiptsScreen.test.tsx",
+    "stammdaten-unternehmen-*": "UX consolidation (PR #516): saved employer directory in MasterDataScreen; covered in MasterDataScreen.test.tsx",
+    "zweifaktor-qr-wrapper": "UX consolidation (PR #516): high-contrast white QR background wrapper in TwoFactorSection; covered in SecurityScreen.test.tsx"
   }
 }

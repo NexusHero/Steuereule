@@ -18,6 +18,7 @@ import {
   type ProvenanceDto,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
+import { AcroFormLiveViewer, type AcroFormPdfLoader } from './AcroFormLiveViewer'
 
 export interface GlassFormRow {
   readonly id: string
@@ -40,6 +41,10 @@ export interface GlassFormSection {
 export interface GlassFormPreviewProps {
   readonly year: number
   readonly defaultOpen?: boolean | undefined
+  readonly defaultMode?: 'zeilen' | 'acroform' | undefined
+  readonly initialAcroForm?: string | undefined
+  readonly highlightedAcroFieldId?: string | undefined
+  readonly acroFormLoader?: AcroFormPdfLoader | undefined
   readonly onInspectField?: ((screen: Screen, field?: string, person?: 'A' | 'B') => void) | undefined
 }
 
@@ -65,12 +70,21 @@ function formatProvenanceBadge(
   }
 }
 
-export function GlassFormPreview({ year, defaultOpen = false, onInspectField }: GlassFormPreviewProps) {
+export function GlassFormPreview({
+  year,
+  defaultOpen = false,
+  defaultMode = 'zeilen',
+  initialAcroForm,
+  highlightedAcroFieldId,
+  acroFormLoader,
+  onInspectField,
+}: GlassFormPreviewProps) {
   const t = useTheme()
   const styles = makeStyles(t)
   const { t: tr } = useTranslation(APP_NS)
   const [open, setOpen] = useState(defaultOpen)
   const [activeFilter, setActiveFilter] = useState<string>('alle')
+  const [viewMode, setViewMode] = useState<'zeilen' | 'acroform'>(defaultMode)
 
   if (!open) {
     return (
@@ -107,6 +121,11 @@ export function GlassFormPreview({ year, defaultOpen = false, onInspectField }: 
       year={year}
       activeFilter={activeFilter}
       onSelectFilter={setActiveFilter}
+      viewMode={viewMode}
+      onChangeViewMode={setViewMode}
+      initialAcroForm={initialAcroForm}
+      highlightedAcroFieldId={highlightedAcroFieldId}
+      acroFormLoader={acroFormLoader}
       onCollapse={defaultOpen ? undefined : () => setOpen(false)}
       onInspectField={onInspectField}
     />
@@ -117,12 +136,22 @@ function GlassFormPreviewBody({
   year,
   activeFilter,
   onSelectFilter,
+  viewMode,
+  onChangeViewMode,
+  initialAcroForm,
+  highlightedAcroFieldId,
+  acroFormLoader,
   onCollapse,
   onInspectField,
 }: {
   readonly year: number
   readonly activeFilter: string
   readonly onSelectFilter: (filter: string) => void
+  readonly viewMode: 'zeilen' | 'acroform'
+  readonly onChangeViewMode: (mode: 'zeilen' | 'acroform') => void
+  readonly initialAcroForm?: string | undefined
+  readonly highlightedAcroFieldId?: string | undefined
+  readonly acroFormLoader?: AcroFormPdfLoader | undefined
   readonly onCollapse?: (() => void) | undefined
   readonly onInspectField?: ((screen: Screen, field?: string, person?: 'A' | 'B') => void) | undefined
 }) {
@@ -832,6 +861,77 @@ function GlassFormPreviewBody({
   const visibleSections =
     activeFilter === 'alle' ? sections : sections.filter((s) => s.formId === activeFilter)
 
+  const liveAcroValues: Record<string, string | true> = {
+    'est1a.einkommensteuererklaerung': true,
+  }
+  if (md) {
+    if (md.strasse) liveAcroValues['est1a.strasse'] = md.strasse
+    if (md.hausnummer) liveAcroValues['est1a.hausnummer'] = md.hausnummer
+    if (md.hausnummerZusatz) liveAcroValues['est1a.hausnummerZusatz'] = md.hausnummerZusatz
+    if (md.plz) liveAcroValues['est1a.plz'] = md.plz
+    if (md.wohnort) liveAcroValues['est1a.wohnort'] = md.wohnort
+    if (md.beruf) liveAcroValues['est1a.beruf'] = md.beruf
+    if (md.religion) liveAcroValues['est1a.religion'] = md.religion
+    if (md.finanzamt) liveAcroValues['est1a.finanzamt'] = md.finanzamt
+    if (md.iban) {
+      if (md.iban.toUpperCase().startsWith('DE')) {
+        liveAcroValues['est1a.ibanInland'] = md.iban.slice(2).replace(/\s+/g, '')
+      } else {
+        liveAcroValues['est1a.ibanAusland'] = md.iban
+      }
+    }
+  }
+  if (isJoint) {
+    liveAcroValues['est1a.zusammenveranlagung'] = true
+    if (linkData?.personB?.firstName) liveAcroValues['est1a.vornameB'] = linkData.personB.firstName
+    if (linkData?.personB?.lastName) liveAcroValues['est1a.nameB'] = linkData.personB.lastName
+    if (linkData?.personB?.steuerId) liveAcroValues['est1a.idnrB'] = linkData.personB.steuerId
+    if (linkData?.personB?.beruf) liveAcroValues['est1a.berufB'] = linkData.personB.beruf
+    if (linkData?.personB?.religion) liveAcroValues['est1a.religionB'] = linkData.personB.religion
+  }
+  if (lstb?.bruttoarbeitslohn.kind === 'erfasst' && lstb.bruttoarbeitslohn.value !== undefined) {
+    liveAcroValues['anlN.personA'] = true
+    liveAcroValues['anlN.kz110'] = String(Math.round(lstb.bruttoarbeitslohn.value))
+  }
+  if (lstb?.lohnsteuer.kind === 'erfasst' && lstb.lohnsteuer.value !== undefined) {
+    liveAcroValues['anlN.kz140'] = String(Math.round(lstb.lohnsteuer.value))
+  }
+  if (commute?.inputs) {
+    if (commute.inputs.workplace) liveAcroValues['anlN.wegOrt'] = commute.inputs.workplace
+    if (commute.inputs.oneWayKm != null && commute.inputs.oneWayKm > 0) liveAcroValues['anlN.kz111'] = String(commute.inputs.oneWayKm)
+    if (commute.workdays?.commuteDays) liveAcroValues['anlN.kz110Tage'] = String(commute.workdays.commuteDays)
+  }
+  if (chGrossA?.kind === 'erfasst' && chGrossA.value !== undefined) {
+    liveAcroValues['anlNGre.personA'] = true
+    liveAcroValues['anlNGre.z6Chf'] = String(Math.round(chGrossA.value))
+  }
+  if (chQstA?.kind === 'erfasst' && chQstA.value !== undefined) {
+    liveAcroValues['anlNGre.kz169'] = String(Math.round(chQstA.value))
+  }
+  if (chAhvA?.kind === 'erfasst' && chAhvA.value !== undefined) {
+    liveAcroValues['anlNGre.z82Chf'] = String(Math.round(chAhvA.value))
+  }
+  if (cap?.kapitalertraege.kind === 'erfasst' && cap.kapitalertraege.value !== undefined) {
+    liveAcroValues['anlKap.personA'] = true
+    liveAcroValues['anlKap.kz210'] = String(Math.round(cap.kapitalertraege.value))
+  }
+  if (pension?.jahresbetrag.kind === 'erfasst' && pension.jahresbetrag.value !== undefined) {
+    liveAcroValues['anlR.personA'] = true
+    liveAcroValues['anlR.kz101'] = String(Math.round(pension.jahresbetrag.value))
+  }
+  if (kinderData && kinderData.kinder.length > 0 && kinderData.kinder[0]) {
+    const firstChild = kinderData.kinder[0]
+    if (firstChild.firstName) liveAcroValues['anlKind.vorname'] = firstChild.firstName
+    if (firstChild.lastName) liveAcroValues['anlKind.name'] = firstChild.lastName
+    if (firstChild.taxId) liveAcroValues['anlKind.idnr'] = firstChild.taxId
+  }
+  if (rental && rental.properties.length > 0 && rental.properties[0]) {
+    const firstRental = rental.properties[0]
+    if (firstRental.strasse) liveAcroValues['anlV.strasse'] = firstRental.strasse
+    if (firstRental.plz) liveAcroValues['anlV.plz'] = firstRental.plz
+    if (firstRental.city) liveAcroValues['anlV.ort'] = firstRental.city
+  }
+
   return (
     <View style={styles.container} testID="glass-form-preview">
       <View style={styles.headerRow}>
@@ -848,19 +948,38 @@ function GlassFormPreviewBody({
                 )}
           </Text>
         </View>
-        {onCollapse ? (
-          <Pressable
-            accessibilityRole="button"
-            onPress={onCollapse}
-            style={styles.toggleButton}
-            testID="glass-form-preview-collapse"
-          >
-            <Text style={styles.toggleButtonText}>
-              {tr('ausdruck.glasErklaerung.schliessen', 'Einklappen ▲')}
-            </Text>
-          </Pressable>
-        ) : null}
+        <View style={styles.filterRow}>
+          <Chip active={viewMode === 'zeilen'} onPress={() => onChangeViewMode('zeilen')}>
+            📋 Strukturierte Zeilen
+          </Chip>
+          <Chip active={viewMode === 'acroform'} onPress={() => onChangeViewMode('acroform')}>
+            📄 Original-Vordruck (AcroForm HD)
+          </Chip>
+          {onCollapse ? (
+            <Pressable
+              accessibilityRole="button"
+              onPress={onCollapse}
+              style={styles.toggleButton}
+              testID="glass-form-preview-collapse"
+            >
+              <Text style={styles.toggleButtonText}>
+                {tr('ausdruck.glasErklaerung.schliessen', 'Einklappen ▲')}
+              </Text>
+            </Pressable>
+          ) : null}
+        </View>
       </View>
+
+      {viewMode === 'acroform' ? (
+        <AcroFormLiveViewer
+          year={year}
+          initialForm={initialAcroForm}
+          liveValues={liveAcroValues}
+          highlightedFieldId={highlightedAcroFieldId}
+          loader={acroFormLoader}
+          onInspectField={onInspectField}
+        />
+      ) : null}
 
       {sections.length > 1 ? (
         <View style={styles.filterRow} testID="glass-form-filter-row">

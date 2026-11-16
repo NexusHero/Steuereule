@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formLineForField } from './formLineMapping'
+import { formLineForField, maskTargetForAcroField } from './formLineMapping'
 
 describe('formLineForField („Glas-Erklärung“)', () => {
   it('maps commute homeOfficeDays and oneWayKm to exact Anlage N lines', () => {
@@ -34,5 +34,16 @@ describe('formLineForField („Glas-Erklärung“)', () => {
     expect(formLineForField('kind', 'childcareEur').label).toBe('Anlage Kind · Zeile 67 (Kinderbetreuung)')
     expect(formLineForField('kapital', 'kapitalertraege').label).toBe('Anlage KAP · Zeilen 7–51')
     expect(formLineForField('rente', 'jahresbetrag').label).toBe('Anlage R · Zeilen 4–10')
+  })
+
+  it('reverse-maps AcroForm field IDs back to the exact input mask and field', () => {
+    expect(maskTargetForAcroField('anlN.kz110')).toMatchObject({ screen: 'lstb', field: 'bruttoarbeitslohn' })
+    expect(maskTargetForAcroField('anlN.kz111')).toMatchObject({ screen: 'commute', field: 'oneWayKm' })
+    expect(maskTargetForAcroField('anlNGre.kz169')).toMatchObject({ screen: 'chLohnausweis', field: 'withholdingTaxChf' })
+    expect(maskTargetForAcroField('anlNGre.z6Chf')).toMatchObject({ screen: 'chLohnausweis', field: 'grossWageChf' })
+    expect(maskTargetForAcroField('anlKind.vorname#2')).toMatchObject({ screen: 'kind', field: 'firstName' })
+    expect(maskTargetForAcroField('anlV.z13Miete')).toMatchObject({ screen: 'vermietung', field: 'mieteinnahmen' })
+    expect(maskTargetForAcroField('est1a.ibanInland')).toMatchObject({ screen: 'stammdaten', field: 'iban' })
+    expect(maskTargetForAcroField('est1a.vornameB')).toMatchObject({ screen: 'stammdaten', person: 'B' })
   })
 })

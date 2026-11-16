@@ -1,6 +1,7 @@
 import { Controller, Get, HttpCode, Inject, Param, Post, Query, Res, UseGuards } from '@nestjs/common'
 import {
   ApiAcceptedResponse,
+  ApiExcludeEndpoint,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiParam,
@@ -84,6 +85,19 @@ export class PrintoutController {
     @Param('jobId') jobId: string,
   ): Promise<PrintoutJobDto> {
     return this.jobService.getJobStatus(userId, year, jobId)
+  }
+
+  @Get(':jahr/ausdruck/vorlage/:formular')
+  @ApiExcludeEndpoint()
+  async template(
+    @Param('jahr', ParseTaxYearPipe) year: number,
+    @Param('formular') formular: string,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ): Promise<Buffer> {
+    const pdf = await this.service.loadAcroFormTemplate(year, formular)
+    reply.header('Cache-Control', 'public, max-age=3600')
+    reply.type('application/pdf')
+    return Buffer.from(pdf)
   }
 
   @Get(':jahr/ausdruck')

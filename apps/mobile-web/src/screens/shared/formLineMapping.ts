@@ -170,3 +170,144 @@ export function formLineForField(screen: Screen, field?: string): FormLineInfo {
       return { form: 'Bescheidprüfung', label: 'Steuerbescheid-Abgleich' }
   }
 }
+
+export interface AcroFieldJumpTarget {
+  readonly screen: Screen
+  readonly field?: string | undefined
+  readonly person?: 'A' | 'B' | undefined
+  readonly label: string
+}
+
+/**
+ * Reverse mapping from an official BMF AcroForm field name (`est1a.*`, `anlN.*`, `anlNGre.*`,
+ * `anlKind.*`, `anlV.*`, `anlKap.*`, `anlVorsorge.*`, `anlSo.*`, `anlAgb.*`, `anlHaushalt.*`,
+ * `anlAV.*`, `anlR.*`) to the input mask and field the Power-User jumps to on click.
+ */
+export function maskTargetForAcroField(acroFieldId: string): AcroFieldJumpTarget {
+  const cleanId = acroFieldId.split('#')[0] ?? acroFieldId
+  const [prefix, key = ''] = cleanId.split('.')
+
+  switch (prefix) {
+    case 'est1a': {
+      if (key.endsWith('B') || key === 'zusammenveranlagung' || key === 'einzelveranlagung') {
+        return { screen: 'stammdaten', field: 'familienstand', person: 'B', label: `Hauptvordruck ESt 1 A · ${key}` }
+      }
+      if (key.startsWith('iban') || key.startsWith('kontoinhaber')) {
+        return { screen: 'stammdaten', field: 'iban', person: 'A', label: 'Hauptvordruck ESt 1 A · Bankverbindung' }
+      }
+      if (key === 'steuernummer' || key === 'idnr' || key === 'name' || key === 'vorname') {
+        return { screen: 'profil', field: key, person: 'A', label: `Hauptvordruck ESt 1 A · ${key}` }
+      }
+      return { screen: 'stammdaten', field: key, person: 'A', label: `Hauptvordruck ESt 1 A · ${key}` }
+    }
+
+    case 'anlN': {
+      if (key === 'kz110') {
+        return { screen: 'lstb', field: 'bruttoarbeitslohn', label: 'Anlage N · Zeile 6 (Kz 110 Bruttoarbeitslohn)' }
+      }
+      if (key === 'kz140') {
+        return { screen: 'lstb', field: 'lohnsteuer', label: 'Anlage N · Zeile 7 (Kz 140 Lohnsteuer)' }
+      }
+      if (key === 'kz150') {
+        return { screen: 'lstb', field: 'solidaritaetszuschlag', label: 'Anlage N · Zeile 8 (Kz 150 Solidaritätszuschlag)' }
+      }
+      if (key === 'kz142' || key === 'kz143') {
+        return { screen: 'lstb', field: 'kirchensteuer', label: 'Anlage N · Zeilen 9–10 (Kirchensteuer)' }
+      }
+      if (key === 'kz335' || key.toLowerCase().includes('homeoffice')) {
+        return { screen: 'commute', field: 'homeOfficeDays', label: 'Anlage N · Zeile 45 (Kz 335 Homeoffice-Tage)' }
+      }
+      if (key === 'kz310') {
+        return { screen: 'commute', field: 'professionalBodiesEur', label: 'Anlage N · Zeile 41 (Kz 310 Berufsverbände)' }
+      }
+      if (key.startsWith('z42') || key.startsWith('z43')) {
+        return { screen: 'commute', field: 'workEquipmentEur', label: 'Anlage N · Zeilen 42–43 (Arbeitsmittel)' }
+      }
+      if (key.startsWith('z46') || key === 'fortbildung') {
+        return { screen: 'interview', field: 'fortbildung-kosten', label: 'Anlage N · Zeile 46 (Fortbildungskosten)' }
+      }
+      if (key.startsWith('z48')) {
+        return { screen: 'interview', field: 'umzug-kosten', label: 'Anlage N · Zeile 48 (Weitere Werbungskosten)' }
+      }
+      if (key.startsWith('weg') || key.startsWith('kz11') || key.startsWith('kz13')) {
+        return { screen: 'commute', field: 'oneWayKm', label: 'Anlage N · Zeilen 31–39 (Entfernungspauschale)' }
+      }
+      return { screen: 'lstb', field: 'bruttoarbeitslohn', label: `Anlage N · ${key}` }
+    }
+
+    case 'anlNGre': {
+      if (key === 'kz169') {
+        return { screen: 'chLohnausweis', field: 'withholdingTaxChf', label: 'Anlage N-Gre · Zeile 24 (Kz 169 Quellensteuer)' }
+      }
+      if (key.startsWith('z8') && !key.startsWith('z80') && !key.startsWith('z81') && !key.startsWith('z82') && !key.startsWith('z86') && !key.startsWith('z87')) {
+        return { screen: 'chLohnausweis', field: 'familienzulagenChf', label: 'Anlage N-Gre · Zeile 8 (Familienzulagen)' }
+      }
+      if (key.startsWith('z9') && !key.startsWith('z93') && !key.startsWith('z94') && !key.startsWith('z98')) {
+        return { screen: 'chLohnausweis', field: 'steuerfreiesKrankentaggeldChf', label: 'Anlage N-Gre · Zeile 9 (Krankentaggeld)' }
+      }
+      if (key.startsWith('z80') || key.startsWith('z81') || key.startsWith('z18') || key.startsWith('z19') || key.startsWith('z94') || key.startsWith('z98')) {
+        return { screen: 'chLohnausweis', field: 'krankentaggeldChf', label: 'Anlage N-Gre · KTG / NBUV' }
+      }
+      if (key.startsWith('z82') || key.startsWith('z86') || key.startsWith('z87') || key.startsWith('z93') || key.startsWith('z20')) {
+        return { screen: 'chLohnausweis', field: 'ahvContributionsChf', label: 'Anlage N-Gre · Zeilen 81–93 (AHV / Pensionskasse)' }
+      }
+      return { screen: 'chLohnausweis', field: 'grossWageChf', label: `Anlage N-Gre · ${key}` }
+    }
+
+    case 'anlKind': {
+      if (key.startsWith('z67') || key.startsWith('kz51')) {
+        return { screen: 'kind', field: 'childcareEur', label: 'Anlage Kind · Zeile 67 (Kinderbetreuungskosten)' }
+      }
+      if (key.startsWith('kz3') || key.startsWith('kz89')) {
+        return { screen: 'kind', field: 'healthBasicEur', label: 'Anlage Kind · Zeilen 31–37 (KV/PV Kind)' }
+      }
+      if (key.startsWith('kz4')) {
+        return { screen: 'interview', field: 'ae-weitere-person', label: 'Anlage Kind · Zeilen 44–49 (Entlastungsbetrag Alleinerziehende)' }
+      }
+      if (key === 'kindergeld' || key.startsWith('z6')) {
+        return { screen: 'kind', field: 'childBenefitClaimEur', label: 'Anlage Kind · Zeile 6 (Kindergeld / Familienzulage)' }
+      }
+      return { screen: 'kind', field: 'firstName', label: `Anlage Kind · ${key}` }
+    }
+
+    case 'anlV': {
+      if (key.includes('Miete') || key === 'kz01' || key === 'z32Einnahmen') {
+        return { screen: 'vermietung', field: 'mieteinnahmen', label: 'Anlage V · Zeile 9 / 13 (Mieteinnahmen)' }
+      }
+      if (key.startsWith('z33') || key === 'kz30') {
+        return { screen: 'vermietung', field: 'anschaffungskosten', label: 'Anlage V · Zeile 33 (Gebäude-AfA)' }
+      }
+      if (key.startsWith('z37') || key === 'kz37') {
+        return { screen: 'vermietung', field: 'schuldzinsen', label: 'Anlage V · Zeile 37 (Schuldzinsen)' }
+      }
+      if (key.startsWith('z80') || key === 'kz49' || key === 'werbungskostenSumme') {
+        return { screen: 'vermietung', field: 'werbungskosten', label: 'Anlage V · Werbungskosten' }
+      }
+      return { screen: 'vermietung', field: 'strasse', label: `Anlage V · ${key}` }
+    }
+
+    case 'anlKap':
+      return { screen: 'kapital', field: 'kapitalertraege', label: `Anlage KAP · ${key}` }
+
+    case 'anlR':
+      return { screen: 'rente', field: 'jahresbetrag', label: `Anlage R · ${key}` }
+
+    case 'anlVorsorge':
+      return { screen: 'lstb', field: 'sozialversicherung', label: `Anlage Vorsorgeaufwand · ${key}` }
+
+    case 'anlSo':
+      return { screen: 'interview', field: 'spenden-betrag', label: `Anlage Sonderausgaben · ${key}` }
+
+    case 'anlAV':
+      return { screen: 'interview', field: 'riester-eigenbeitrag', label: `Anlage AV · ${key}` }
+
+    case 'anlHaushalt':
+      return { screen: 'interview', field: 'haushalt-handwerker-betrag', label: `Anlage Haushaltsnahe Aufwendungen · ${key}` }
+
+    case 'anlAgb':
+      return { screen: 'interview', field: 'gesundheit-betrag', label: `Anlage Außerg. Belastungen · ${key}` }
+
+    default:
+      return { screen: 'stammdaten', label: cleanId }
+  }
+}

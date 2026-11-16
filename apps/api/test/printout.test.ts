@@ -11,9 +11,10 @@ import felder2025 from '../src/printout/felder-2025.json' with { type: 'json' }
 import manifest from '../src/printout/vordrucke-2025.json' with { type: 'json' }
 import felder2024 from '../src/printout/felder-2024.json' with { type: 'json' }
 import manifest2024 from '../src/printout/vordrucke-2024.json' with { type: 'json' }
-import { FIELD_SETS, forYear, renderForms, OverflowError } from '../src/printout/form-renderer.js'
+import { FIELD_SETS, extractAcroFormWidgets, forYear, loadAcroFormTemplateBytes, renderForms, OverflowError } from '../src/printout/form-renderer.js'
 
 const TEMPLATES = new URL('../assets/vordrucke/2025/', import.meta.url)
+const ACROFORM_TEMPLATES = new URL('../assets/vordrucke-acroform/2025/', import.meta.url)
 
 const FACTS: PrintoutFacts = {
   taxYear: 2025,
@@ -1171,4 +1172,31 @@ describe('rendereVordrucke (real templates)', () => {
       expect((await PDFDocument.load(pdf)).getPageCount()).toBeGreaterThan(15)
     })
   }
+
+  it('pre-compiled AcroForm templates carry all measured field widgets and render cleanly in both flat and editable modes', async () => {
+    const anlageNBytes = await loadAcroFormTemplateBytes(ACROFORM_TEMPLATES, 'anlage-n')
+    const anlageNDoc = await PDFDocument.load(anlageNBytes)
+    const widgets = await extractAcroFormWidgets(anlageNDoc)
+    expect(widgets.has('anlN.kz110')).toBe(true)
+    expect(widgets.get('anlN.kz110')?.rect.width).toBeGreaterThan(50)
+
+    const res = printoutValues(ALL_FACTS)
+    const flatPdf = await renderForms(FIELD_SETS[2025]!, res.values, {
+      templatesDirectory: ACROFORM_TEMPLATES,
+      instances: res.instances,
+    })
+    const loadedFlat = await PDFDocument.load(flatPdf)
+    expect(loadedFlat.getForm().getFields()).toHaveLength(0)
+    expect(loadedFlat.getPageCount()).toBeGreaterThan(15)
+
+    const editablePdf = await renderForms(FIELD_SETS[2025]!, res.values, {
+      templatesDirectory: ACROFORM_TEMPLATES,
+      instances: res.instances,
+      editable: true,
+    })
+    const loadedEditable = await PDFDocument.load(editablePdf)
+    expect(loadedEditable.getForm().getTextField('anlN.kz110').getText()).toBe('42000')
+    expect(loadedEditable.getForm().getTextField('anlKind.vorname').getText()).toBe('Lina')
+    expect(loadedEditable.getForm().getTextField('anlKind.vorname#2').getText()).toBe('Lina')
+  })
 })

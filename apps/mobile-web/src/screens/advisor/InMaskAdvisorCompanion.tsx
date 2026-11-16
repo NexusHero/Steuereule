@@ -29,6 +29,8 @@ import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { AdvisorChatPanel, sendOptionsToDto, type ChatSendOptions } from './AdvisorChatPanel'
 import { useOptionalCopilotBridge } from './CopilotBridgeProvider'
 import { usePartnerFirstName } from './usePartnerFirstName'
+import { GlassFormPreview } from '../printout/GlassFormPreview'
+import { formLineForField } from '../shared/formLineMapping'
 
 export interface InMaskAdvisorCompanionProps {
   readonly screen: Screen
@@ -102,9 +104,25 @@ export function InMaskAdvisorCompanion({
   const bridge = useOptionalCopilotBridge()
   const insideOwlWorkspace = bridge?.insideOwlWorkspace ?? false
   const [open, setOpen] = useState(false)
+  const [liveFormOpen, setLiveFormOpen] = useState(false)
   const [localMessages, setLocalMessages] = useState<readonly AdvisorChatMessageView[]>([])
   const queryClient = useQueryClient()
   const resolvedTitle = title ?? tr('advisor.companion.triggerTitle', 'Eule zu dieser Maske fragen')
+  const screenFormLine = formLineForField(screen)
+  const initialAcroFormForScreen =
+    screen === 'lstb' || screen === 'commute'
+      ? 'anlage-n'
+      : screen === 'chLohnausweis'
+        ? 'anlage-n-gre'
+        : screen === 'kind'
+          ? 'anlage-kind'
+          : screen === 'vermietung'
+            ? 'anlage-v'
+            : screen === 'kapital'
+              ? 'anlage-kap'
+              : screen === 'rente'
+                ? 'anlage-r'
+                : 'est-1-a'
 
   const chipKeys = SCREEN_QUICK_CHIP_KEYS[screen] ?? SCREEN_QUICK_CHIP_KEYS.interview ?? []
   const quickChips = chipKeys.map((key) => tr(`advisor.companion.chips.${key}`))
@@ -230,19 +248,40 @@ export function InMaskAdvisorCompanion({
 
   if (!open) {
     return (
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={resolvedTitle}
-        onPress={() => setOpen(true)}
-        style={styles.triggerBar}
-        testID="in-mask-advisor-trigger"
-      >
-        <View style={styles.triggerLeft}>
-          <OwlGlyph size={18} ink={t.color.tinte} ground={t.color.funkeWeich} />
-          <Text style={styles.triggerTitle}>{resolvedTitle}</Text>
+      <View>
+        <View style={{ flexDirection: 'row', gap: t.space.s2, flexWrap: 'wrap', alignItems: 'center' }}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={resolvedTitle}
+            onPress={() => setOpen(true)}
+            style={[styles.triggerBar, { flex: 1 }]}
+            testID="in-mask-advisor-trigger"
+          >
+            <View style={styles.triggerLeft}>
+              <OwlGlyph size={18} ink={t.color.tinte} ground={t.color.funkeWeich} />
+              <Text style={styles.triggerTitle}>{resolvedTitle}</Text>
+            </View>
+            <Text style={styles.triggerHint}>{tr('advisor.companion.triggerHint', 'Kanzlei-Begleiter öffnen ▾')}</Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => setLiveFormOpen((v) => !v)}
+            style={styles.triggerBar}
+          >
+            <Text style={styles.triggerHint}>
+              {liveFormOpen ? `📄 ${screenFormLine.form} schließen ▲` : `📄 Live-Formular (${screenFormLine.form}) ▾`}
+            </Text>
+          </Pressable>
         </View>
-        <Text style={styles.triggerHint}>{tr('advisor.companion.triggerHint', 'Kanzlei-Begleiter öffnen ▾')}</Text>
-      </Pressable>
+        {liveFormOpen ? (
+          <GlassFormPreview
+            year={taxYear}
+            defaultOpen
+            defaultMode="acroform"
+            initialAcroForm={initialAcroFormForScreen}
+          />
+        ) : null}
+      </View>
     )
   }
 

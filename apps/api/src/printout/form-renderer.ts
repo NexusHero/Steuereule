@@ -57,6 +57,53 @@ const ORDER = [
   'anlage-vorsorgeaufwand',
 ]
 
+export const FORM_ORDER: readonly string[] = ORDER
+
+export interface AcroFieldWidgetMeta {
+  readonly id: string
+  readonly pageIndex: number
+  readonly rect: { x: number; y: number; width: number; height: number }
+  readonly alignment: TextAlignment
+}
+
+/**
+ * Extracts AcroForm widget rectangles, alignments and page indices directly from a pre-compiled
+ * AcroForm Vordruck template (`assets/vordrucke-acroform/<jahr>/<formular>.pdf`). When the template
+ * is a raw BMF PDF without pre-compiled AcroForm fields, returns an empty map so the caller falls
+ * back to `felder-<jahr>.json`.
+ */
+export async function extractAcroFormWidgets(template: PDFDocument): Promise<ReadonlyMap<string, AcroFieldWidgetMeta>> {
+  const form = template.getForm()
+  const fields = form.getFields()
+  if (fields.length === 0) return new Map()
+  const pageRefs = template.getPages().map((p) => p.ref)
+  const result = new Map<string, AcroFieldWidgetMeta>()
+  for (const field of fields) {
+    const id = field.getName()
+    try {
+      const tf = form.getTextField(id)
+      const widget = tf.acroField.getWidgets()[0]
+      if (!widget) continue
+      const pageRef = widget.P()
+      const pageIndex = pageRefs.findIndex((ref) => ref === pageRef)
+      result.set(id, {
+        id,
+        pageIndex: pageIndex >= 0 ? pageIndex : 0,
+        rect: widget.getRectangle(),
+        alignment: tf.getAlignment() ?? TextAlignment.Left,
+      })
+    } catch {
+      // Ignore non-text fields if any
+    }
+  }
+  return result
+}
+
+/** Loads a single pre-compiled AcroForm Vordruck PDF for the live Power-User viewer. */
+export async function loadAcroFormTemplateBytes(acroTemplatesDirectory: URL, formular: string): Promise<Uint8Array> {
+  return loadTemplateBytes(new URL(`${formular}.pdf`, acroTemplatesDirectory))
+}
+
 export const FIELD_SETS: Readonly<Record<number, FieldSet>> = { 2024: felder2024 as FieldSet, 2025: felder2025 as FieldSet }
 
 /**
@@ -113,14 +160,29 @@ export async function renderForms(fieldSet: FieldSet, values: FieldValues, optio
       instanceNumber.set(formular, number)
       const templateBytes = await loadTemplateBytes(new URL(`${formular}.pdf`, options.templatesDirectory))
       const template = await PDFDocument.load(templateBytes)
+      const acroWidgets = await extractAcroFormWidgets(template)
+      if (acroWidgets.size > 0) {
+        const templateForm = template.getForm()
+        for (const existingField of templateForm.getFields()) {
+          templateForm.removeField(existingField)
+        }
+      }
       const pages = await output.copyPages(template, template.getPageIndices())
       pages.forEach((page, index) => {
         output.addPage(page)
         for (const field of fields.filter((f) => f.seite === index + 1)) {
           const value = instanceValues[field.id]!
-          const situation = place(font, field, value)
+          const widget = acroWidgets.get(field.id)
+          const resolvedField: Field = widget
+            ? {
+                ...field,
+                kasten: { x: widget.rect.x, y: widget.rect.y, breite: widget.rect.width, hoehe: widget.rect.height },
+                ...(field.textAb !== undefined ? { textAb: widget.rect.x } : {}),
+              }
+            : field
+          const situation = place(font, resolvedField, value)
           if (situation === null) overflows.push(field.id)
-          else if (form) setFormField(form, page, font, field, number === 1 ? field.id : `${field.id}#${number}`, value)
+          else if (form) setFormField(form, page, font, resolvedField, number === 1 ? field.id : `${field.id}#${number}`, value)
           else page.drawText(situation.text, { x: situation.x, y: situation.baseline, size: FONT_SIZE, font, color: rgb(0, 0, 0) })
         }
       })
