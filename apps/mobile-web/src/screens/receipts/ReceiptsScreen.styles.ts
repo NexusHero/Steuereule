@@ -73,7 +73,6 @@ export function makeStyles(t: UiTheme) {
   const bulkText: TextStyle = { ...t.type.small, color: t.color.tinte, flexShrink: 1 }
   const folderScroll: ViewStyle = { flexGrow: 0, marginBottom: t.space.s3 }
   const folderRow: ViewStyle = { flexDirection: 'row', gap: t.space.s2 }
-  const owlOutcome: ViewStyle = { gap: t.space.s2, marginTop: t.space.s2, alignItems: 'flex-start' }
   const cardHead: ViewStyle = {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -157,7 +156,6 @@ export function makeStyles(t: UiTheme) {
     bulkText,
     folderScroll,
     folderRow,
-    owlOutcome,
     cardHead,
     cardTitle,
     fileBadge,

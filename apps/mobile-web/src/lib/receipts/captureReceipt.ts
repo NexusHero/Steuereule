@@ -39,6 +39,11 @@ export interface CaptureReceiptOptions {
   readonly alsoFor?: boolean | undefined
   /** The Beleg is already stored (parsing again after the user said whose it is): no second upload. */
   readonly receiptId?: string | null | undefined
+  /**
+   * `false`: only read and recognise the document (its kind is filed, whose it is is noted), without
+   * staging drafts — the Belege inbox files a fresh upload, the user decides when the owl takes its values.
+   */
+  readonly stageDraft?: boolean | undefined
   readonly onPhase?: ((phase: CapturePhase) => void) | undefined
   readonly deps?: Partial<CaptureReceiptDeps> | undefined
 }
@@ -101,7 +106,7 @@ export async function captureReceipt(file: File, options: CaptureReceiptOptions)
     fileName: file.name,
     rawText: extracted.text,
     textSource: extracted.kind === 'pdf' && !extracted.usedOcrFallback ? 'pdf_text' : 'ocr',
-    stageDraft: true,
+    stageDraft: options.stageDraft ?? true,
     ...(receiptId !== null ? { receiptId } : {}),
     ...(options.person === 'B' ? { person: 'B' } : {}),
     ...(options.area !== undefined ? { area: options.area } : {}),

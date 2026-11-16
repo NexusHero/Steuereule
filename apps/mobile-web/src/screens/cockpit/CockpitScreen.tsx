@@ -433,10 +433,13 @@ function ProgressLine({ progress }: { readonly progress: Progress | null }) {
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
   if (progress === null || progress.total === 0) return null
+  const label = tr('cockpit.fortschritt', { erledigt: progress.done, count: progress.total })
   return (
     <View
       style={styles.progress}
       accessibilityRole="progressbar"
+      // A progress bar without a name is announced as a bare number (WCAG 4.1.2): it carries the sentence itself.
+      accessibilityLabel={label}
       accessibilityValue={{ min: 0, max: progress.total, now: progress.done }}
       testID="cockpit-fortschritt"
     >
@@ -446,7 +449,7 @@ function ProgressLine({ progress }: { readonly progress: Progress | null }) {
         ))}
       </View>
       <Text style={styles.progressText} testID="cockpit-fortschritt-text">
-        {tr('cockpit.fortschritt', { erledigt: progress.done, count: progress.total })}
+        {label}
       </Text>
     </View>
   )

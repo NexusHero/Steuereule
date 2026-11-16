@@ -1821,11 +1821,7 @@
     "eule": {
       "lesen": "Mit der Eule lesen",
       "liest": "Die Eule liest …",
-      "ansehen": "In der Eule ansehen",
-      "beantworten": "In der Eule beantworten",
       "ergebnis": {
-        "read": "Die Eule hat den Beleg gelesen. Was sie gefunden hat, wartet dort auf dein Ja.",
-        "question": "Die Eule fragt noch, für wen dieser Beleg ist.",
         "unreadable": "Die Eule konnte diesen Beleg nicht lesen. Er bleibt gespeichert."
       }
     }

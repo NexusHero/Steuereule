@@ -22,6 +22,7 @@ import { ReceiptHolderSection } from './ReceiptHolderSection'
 import { useOptionalShellTaxYear, useOptionalSwitchToTab } from '../../navigation/ShellState'
 import { useOptionalCopilotBridge } from '../advisor/CopilotBridgeProvider'
 import { storedReceiptFile } from '../../lib/receipts/storedReceiptFile'
+import { captureReceipt } from '../../lib/receipts/captureReceipt'
 import { DEFAULT_TAX_YEAR } from '../../config/taxYear'
 import { makeStyles } from './ReceiptsScreen.styles'
 
@@ -75,9 +76,6 @@ const FOLDER_LABEL_KEYS = {
   bescheide: 'belege.ordner.bescheide',
   weitere: 'belege.ordner.weitere',
 } as const satisfies Readonly<Record<ReceiptFolderCategory, string>>
-
-/** What reading a document for the owl led to, as the Belege tab says it. */
-type OwlReadOutcome = 'read' | 'question' | 'unreadable'
 
 export function ReceiptsScreen() {
   const bp = useBreakpoint()
@@ -323,15 +321,13 @@ function UploadCard({ onUploaded }: { readonly onUploaded: () => void }) {
   const [selectedKind, setSelectedKind] = useState<CreateReceiptDtoKind>(CreateReceiptDtoKind.Sonstiges)
   const [uploading, setUploading] = useState(false)
   const [statusMessage, setStatusMessage] = useState<{ readonly kind: 'ok' | 'error'; readonly text: string } | null>(null)
-  const [owlOutcome, setOwlOutcome] = useState<OwlReadOutcome | null>(null)
   const bridge = useOptionalCopilotBridge()
-  const switchToTab = useOptionalSwitchToTab()
+  const shellYear = useOptionalShellTaxYear()
   const isWeb = typeof document !== 'undefined'
 
   async function handleFileSelected(file: File | undefined) {
     if (!file) return
     setStatusMessage(null)
-    setOwlOutcome(null)
 
     const detectedMime = detectDocumentMimeType(new Uint8Array(0), file.type, file.name)
     if (detectedMime === null) {
@@ -354,14 +350,11 @@ function UploadCard({ onUploaded }: { readonly onUploaded: () => void }) {
       }
       setStatusMessage({ kind: 'ok', text: tr('belege.upload.success') })
       onUploaded()
-      // The same reading as a chat upload (UX review 2026-11): the owl knows the document, its kind is
-      // recognised and what it says waits as drafts — nothing is written without the user's yes.
+      // In the app (the owl's bridge is there), the document is read on the device in the background so
+      // its kind is recognised and it lands in the right folder. No drafts are staged here: the user
+      // hands a document to the owl with „Mit der Eule lesen“ on its card, when they want its values.
       if (bridge) {
-        const read = await bridge.readStoredReceipt(file, result.data.id)
-        if (read !== null) {
-          setOwlOutcome(!read.ok ? 'unreadable' : read.response.assignment?.question ? 'question' : 'read')
-          onUploaded()
-        }
+        void captureReceipt(file, { taxYear: shellYear ?? DEFAULT_TAX_YEAR, receiptId: result.data.id, stageDraft: false }).then(onUploaded)
       }
     } catch {
       triggerSaveErrorHaptic()
@@ -408,7 +401,7 @@ function UploadCard({ onUploaded }: { readonly onUploaded: () => void }) {
             testID="belege-upload-cta"
             inputTestID="belege-file-input"
           >
-            {uploading ? tr(bridge?.receiptPhase ? `advisor.chat.receiptProgress.${bridge.receiptPhase}` : 'belege.upload.uploading') : tr('belege.upload.cta')}
+            {uploading ? tr('belege.upload.uploading') : tr('belege.upload.cta')}
           </ReceiptPickerButton>
         </View>
       )}
@@ -417,18 +410,6 @@ function UploadCard({ onUploaded }: { readonly onUploaded: () => void }) {
         <Text style={statusMessage.kind === 'ok' ? s.uploadOkText : s.uploadErrText}>{statusMessage.text}</Text>
       )}
       <BescheidPicker onUploaded={onUploaded} />
-      {owlOutcome !== null && (
-        <View style={s.owlOutcome} testID="belege-upload-eule">
-          <Text style={s.uploadBody} accessibilityLiveRegion="polite">
-            {tr(`belege.eule.ergebnis.${owlOutcome}`)}
-          </Text>
-          {owlOutcome !== 'unreadable' && switchToTab ? (
-            <Button variant="leise" onPress={() => switchToTab('Owl')} style={s.compactButton} testID="belege-upload-eule-oeffnen">
-              {tr(owlOutcome === 'question' ? 'belege.eule.beantworten' : 'belege.eule.ansehen')}
-            </Button>
-          ) : null}
-        </View>
-      )}
     </Card>
   )
 }

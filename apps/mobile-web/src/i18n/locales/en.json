@@ -1821,11 +1821,7 @@
     "eule": {
       "lesen": "Read with the owl",
       "liest": "The owl is reading …",
-      "ansehen": "View in the owl",
-      "beantworten": "Answer in the owl",
       "ergebnis": {
-        "read": "The owl has read the document. What it found is waiting there for your yes.",
-        "question": "The owl still asks whose document this is.",
         "unreadable": "The owl could not read this document. It stays saved."
       }
     }
