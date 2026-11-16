@@ -180,8 +180,8 @@ export interface AcroFieldJumpTarget {
 
 /**
  * Reverse mapping from an official BMF AcroForm field name (`est1a.*`, `anlN.*`, `anlNGre.*`,
- * `anlKind.*`, `anlV.*`, `anlKap.*`, `anlVorsorge.*`, `anlSo.*`, `anlAgb.*`, `anlHaushalt.*`,
- * `anlAV.*`, `anlR.*`) to the input mask and field the Power-User jumps to on click.
+ * `anlKind.*`, `anlV.*`, `anlKap.*`, `anlVor.*`, `anlSo.*`, `anlAgB.*`, `anlHha.*`,
+ * `anlAv.*`, `anlR.*` — the ids of apps/api/src/printout/felder-*.json) to the input mask and field the Power-User jumps to on click.
  */
 export function maskTargetForAcroField(acroFieldId: string): AcroFieldJumpTarget {
   const cleanId = acroFieldId.split('#')[0] ?? acroFieldId
@@ -292,19 +292,19 @@ export function maskTargetForAcroField(acroFieldId: string): AcroFieldJumpTarget
     case 'anlR':
       return { screen: 'rente', field: 'jahresbetrag', label: `Anlage R · ${key}` }
 
-    case 'anlVorsorge':
+    case 'anlVor':
       return { screen: 'lstb', field: 'sozialversicherung', label: `Anlage Vorsorgeaufwand · ${key}` }
 
     case 'anlSo':
       return { screen: 'interview', field: 'spenden-betrag', label: `Anlage Sonderausgaben · ${key}` }
 
-    case 'anlAV':
+    case 'anlAv':
       return { screen: 'interview', field: 'riester-eigenbeitrag', label: `Anlage AV · ${key}` }
 
-    case 'anlHaushalt':
+    case 'anlHha':
       return { screen: 'interview', field: 'haushalt-handwerker-betrag', label: `Anlage Haushaltsnahe Aufwendungen · ${key}` }
 
-    case 'anlAgb':
+    case 'anlAgB':
       return { screen: 'interview', field: 'gesundheit-betrag', label: `Anlage Außerg. Belastungen · ${key}` }
 
     default:
