@@ -647,15 +647,20 @@ describe('CockpitScreen — the chosen tax year belongs to the whole app', () =>
 })
 
 describe('CockpitScreen — the personal details the return needs, asked early', () => {
-  it('says how many details are still missing and opens them', async () => {
+  it('says how many details are still missing, expands the missing field list, and opens them', async () => {
     mockCockpit(LOADED_SUMMARY)
     server.use(http.get('*/v1/stammdaten', () => HttpResponse.json({ missing: ['geburtsdatum', 'iban', 'finanzamt'] })))
     const onOpenMasterData = vi.fn()
     renderCockpit({ onOpenMasterData })
 
     fireEvent.click(await screen.findByText('Angaben für die Erklärung ergänzen · 3 fehlen'))
-
     expect(onOpenMasterData).toHaveBeenCalledOnce()
+
+    fireEvent.click(screen.getByTestId('cockpit-stammdaten-details-toggle'))
+    const dobChip = await screen.findByTestId('cockpit-stammdaten-missing-geburtsdatum')
+    expect(dobChip.textContent).toContain('Geburtsdatum')
+    fireEvent.click(dobChip)
+    expect(onOpenMasterData).toHaveBeenCalledTimes(2)
   })
 
   it('drops the missing count once every detail is there but keeps the way back to the details', async () => {

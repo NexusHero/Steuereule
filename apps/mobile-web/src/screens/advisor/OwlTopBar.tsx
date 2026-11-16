@@ -25,6 +25,8 @@ export interface OwlTopBarProps {
   /** The status of the connection (#488): a dot and a word, tapped for details. */
   readonly connection?: ConnectionView | undefined
   readonly onOpenConnection?: (() => void) | undefined
+  /** Opens the human-readable session summary sheet. */
+  readonly onOpenSessionSummary?: (() => void) | undefined
   /** Phone width: the connection shows as a dot only. */
   readonly compact?: boolean | undefined
 }
@@ -46,6 +48,7 @@ export function OwlTopBar({
   conversationsExpanded = false,
   connection,
   onOpenConnection,
+  onOpenSessionSummary,
   compact = false,
 }: OwlTopBarProps) {
   const t = useTheme()
@@ -89,6 +92,17 @@ export function OwlTopBar({
 
       <View style={styles.side}>
         {connection && onOpenConnection ? <ConnectionChip view={connection} compact={compact} onPress={onOpenConnection} /> : null}
+        {onOpenSessionSummary ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Session-Zusammenfassung anzeigen"
+            onPress={onOpenSessionSummary}
+            style={(state) => [styles.summaryBtn, (state as { hovered?: boolean }).hovered ? styles.iconHover : null]}
+            testID="eule-session-summary-btn"
+          >
+            <Text style={styles.summaryBtnText}>{compact ? '∑' : '∑ Summary'}</Text>
+          </Pressable>
+        ) : null}
         {iconButton('lock', tr('eule.workspace.topbar.privacyAria'), onOpenPrivacy, 'eule-privacy-badge')}
         {iconButton('bulb', `${tr('eule.workspace.topbar.hintsAria')}: ${waiting}`, onTogglePanel, 'eule-hints-pill', { expanded: panelOpen, badge: count, badgeTestID: 'eule-hints-count' })}
         {onOpenSettings ? iconButton('settings', tr('eule.workspace.topbar.settingsAria'), onOpenSettings, 'eule-settings-btn') : null}
@@ -116,8 +130,19 @@ function makeStyles(t: UiTheme) {
     brand: { flexDirection: 'row', alignItems: 'center', gap: t.space.s2, flexShrink: 0 } as ViewStyle,
     title: { fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size.m, color: t.color.tinte } as TextStyle,
     icon: { width: 44, height: 44, borderRadius: t.radius.s, alignItems: 'center', justifyContent: 'center' } as ViewStyle,
+    summaryBtn: {
+      minHeight: 34,
+      paddingHorizontal: t.space.s2,
+      borderRadius: t.radius.s,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: t.color.karte,
+      borderWidth: 1,
+      borderColor: t.color.linieWeich,
+    } as ViewStyle,
+    summaryBtnText: { ...t.type.captionStrong, color: t.color.tinte } as TextStyle,
     iconHover: { backgroundColor: t.color.linieWeich } as ViewStyle,
-    iconActive: { backgroundColor: t.color.kiWeich } as ViewStyle,
+    iconActive: { backgroundColor: t.color.funkeWeich } as ViewStyle,
     badge: {
       position: 'absolute',
       top: 6,
@@ -128,7 +153,7 @@ function makeStyles(t: UiTheme) {
       borderRadius: 9,
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: t.color.kiTinte,
+      backgroundColor: t.color.tinte,
     } as ViewStyle,
     badgeText: { fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: 11, color: t.color.grund } as TextStyle,
   }

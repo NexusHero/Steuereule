@@ -43,9 +43,9 @@ export function makeStyles(t: UiTheme) {
       paddingVertical: t.space.s2,
       paddingHorizontal: t.space.s3,
       borderRadius: t.radius.pille,
-      backgroundColor: t.color.kiWeich,
+      backgroundColor: t.color.funkeWeich,
       borderWidth: 1,
-      borderColor: t.color.ki,
+      borderColor: t.color.linie,
     } as ViewStyle,
     quickChipText: {
       flexShrink: 1,
@@ -53,7 +53,7 @@ export function makeStyles(t: UiTheme) {
       fontFamily: t.font.text,
       fontWeight: t.weight.fett,
       fontSize: t.size.s,
-      color: t.color.kiTinte,
+      color: t.color.tinte,
     } as TextStyle,
     messagesList: {
       gap: t.space.s3,
@@ -77,7 +77,7 @@ export function makeStyles(t: UiTheme) {
       borderRadius: t.radius.m,
       backgroundColor: t.color.karte,
       borderWidth: 1,
-      borderColor: t.color.kiLinie,
+      borderColor: t.color.linieWeich,
     } as ViewStyle,
     assistantBubbleHeader: {
       flexDirection: 'row',
@@ -91,7 +91,7 @@ export function makeStyles(t: UiTheme) {
       lineHeight: 22,
     } as TextStyle,
     inlineLawChip: {
-      backgroundColor: t.color.kiWeich,
+      backgroundColor: t.color.funkeWeich,
       paddingHorizontal: 6,
       paddingVertical: 1,
       borderRadius: t.radius.s,
@@ -101,7 +101,7 @@ export function makeStyles(t: UiTheme) {
       fontFamily: t.font.text,
       fontWeight: t.weight.fett,
       fontSize: t.size.s,
-      color: t.color.kiTinte,
+      color: t.color.tinte,
     } as TextStyle,
     sourcesRow: {
       flexDirection: 'row',
@@ -111,7 +111,7 @@ export function makeStyles(t: UiTheme) {
     } as ViewStyle,
     sourcePill: {
       alignSelf: 'flex-start',
-      backgroundColor: t.color.kiWeich,
+      backgroundColor: t.color.funkeWeich,
       paddingHorizontal: t.space.s2,
       paddingVertical: 4,
       borderRadius: t.radius.s,
@@ -121,7 +121,7 @@ export function makeStyles(t: UiTheme) {
       fontFamily: t.font.text,
       fontWeight: t.weight.fett,
       fontSize: t.size.xs,
-      color: t.color.kiTinte,
+      color: t.color.tinte,
     } as TextStyle,
     choicesContainer: {
       marginTop: t.space.s3,
@@ -149,7 +149,7 @@ export function makeStyles(t: UiTheme) {
       borderRadius: t.radius.pille,
       backgroundColor: t.color.grund,
       borderWidth: 1,
-      borderColor: t.color.ki,
+      borderColor: t.color.linie,
     } as ViewStyle,
     choicePillText: {
       flexShrink: 1,
@@ -186,9 +186,9 @@ export function makeStyles(t: UiTheme) {
       marginTop: t.space.s3,
       padding: t.space.s4,
       borderRadius: t.radius.m,
-      backgroundColor: t.color.kiWeich,
+      backgroundColor: t.color.funkeWeich,
       borderWidth: 1.5,
-      borderColor: t.color.ki,
+      borderColor: t.color.linie,
     } as ViewStyle,
     actionHeader: {
       flexDirection: 'row',
@@ -224,7 +224,7 @@ export function makeStyles(t: UiTheme) {
       fontFamily: t.font.text,
       fontWeight: t.weight.fett,
       fontSize: t.size.xs,
-      color: t.color.kiTinte,
+      color: t.color.tinte,
       marginBottom: t.space.s2,
     } as TextStyle,
     diffBox: {
@@ -253,7 +253,7 @@ export function makeStyles(t: UiTheme) {
     diffNewValue: {
       fontFamily: t.font.display,
       fontWeight: t.weight.fett,
-      color: t.color.kiTinte,
+      color: t.color.tinte,
     } as TextStyle,
     actionReason: {
       fontFamily: t.font.text,
@@ -304,14 +304,14 @@ export function makeStyles(t: UiTheme) {
       paddingHorizontal: t.space.s2,
       borderRadius: t.radius.s,
       borderWidth: 1,
-      borderColor: t.color.ki,
+      borderColor: t.color.linie,
       backgroundColor: t.color.karte,
     } as ViewStyle,
     inspectMaskText: {
       fontFamily: t.font.text,
       fontWeight: t.weight.fett,
       fontSize: t.size.xs,
-      color: t.color.kiTinte,
+      color: t.color.tinte,
     } as TextStyle,
     twoPathsContainer: {
       marginTop: t.space.s3,
@@ -357,7 +357,7 @@ export function makeStyles(t: UiTheme) {
     receiptPanel: {
       padding: t.space.s3,
       gap: t.space.s2,
-      borderColor: t.color.kiLinie,
+      borderColor: t.color.linieWeich,
       marginBottom: t.space.s3,
     } as ViewStyle,
     receiptActionsRow: {
@@ -369,7 +369,7 @@ export function makeStyles(t: UiTheme) {
       borderRadius: t.radius.m,
       backgroundColor: t.color.karte,
       borderWidth: 2,
-      borderColor: t.color.ki,
+      borderColor: t.color.tinte,
       marginBottom: t.space.s4,
     } as ViewStyle,
     lawModalHeader: {
@@ -382,7 +382,7 @@ export function makeStyles(t: UiTheme) {
       fontFamily: t.font.display,
       fontWeight: t.weight.schwer,
       fontSize: t.size.l,
-      color: t.color.kiTinte,
+      color: t.color.tinte,
     } as TextStyle,
     lawModalTitle: {
       fontFamily: t.font.display,
@@ -423,7 +423,7 @@ export function makeStyles(t: UiTheme) {
       fontFamily: t.font.text,
       fontWeight: t.weight.fett,
       fontSize: t.size.xs,
-      color: t.color.kiTinte,
+      color: t.color.tinte,
     } as TextStyle,
     inputRow: {
       flexDirection: 'row',

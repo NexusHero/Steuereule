@@ -34,7 +34,7 @@ import { ResizeHandle } from './chat/ResizeHandle'
 import { useOptionalCopilotBridge, type OwlViewMode } from './CopilotBridgeProvider'
 import { GuestOwlGate } from './OwlGuestGate'
 import { InlineMaskView } from './OwlInlineMask'
-import { extractPendingDrafts, updateActionStatusInMessage } from './owlDrafts'
+import { extractAppliedDrafts, extractPendingDrafts, updateActionStatusInMessage } from './owlDrafts'
 import { makeStyles } from './OwlModeScreen.styles'
 import { ConnectedOwlModeScreen } from './OwlModeScreen.connected'
 export { makeStyles } from './OwlModeScreen.styles'
@@ -208,6 +208,7 @@ export function OwlModeScreenView({
   const [conversationsOpen, setConversationsOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [situationOpen, setSituationOpen] = useState(false)
+  const [sessionSummaryOpen, setSessionSummaryOpen] = useState(false)
 
   // Cmd/Ctrl+K opens the search, as in Claude.
   useEffect(() => {
@@ -238,6 +239,7 @@ export function OwlModeScreenView({
   const displayedMessages = initialMessages ?? localMessages
   const activeCard = cards[activeIndex]
   const pendingDrafts = extractPendingDrafts(displayedMessages)
+  const appliedDrafts = extractAppliedDrafts(displayedMessages)
   // Alternatives (two ways to fill one thing) are never applied together: the user picks one (K1).
   const alternativeGroups = conflictingAlternatives(pendingDrafts)
   const alternativeIds = new Set(alternativeGroups.flatMap((group) => group.map((d) => d.actionId)))
@@ -694,6 +696,48 @@ export function OwlModeScreenView({
           </Card>
         ) : null}
 
+        {appliedDrafts.length > 0 ? (
+          <Card style={styles.draftStageCard} testID="eule-applied-stage">
+            <Text style={styles.draftSectionTitle}>
+              {`✓ Änderungsprotokoll (${appliedDrafts.length} übernommen)`}
+            </Text>
+            <View style={styles.draftList}>
+              {appliedDrafts.map((draft) => (
+                <View key={draft.actionId} style={styles.draftRowCard} testID={`applied-card-${draft.actionId}`}>
+                  <View style={styles.draftTopRow}>
+                    <Text style={styles.draftTitle}>{draft.label}</Text>
+                    <Text style={styles.draftDelta} testID={`applied-status-${draft.actionId}`}>
+                      ✓ Übernommen
+                    </Text>
+                  </View>
+                  <Text style={styles.draftDiff}>
+                    {`${draft.previousValue ?? tr('advisor.chat.notRecorded', 'Nicht erfasst')} → ${draft.newValue}`}
+                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: t.space.s1 }}>
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={() => handleInspectMask(draft.screen, draft.field)}
+                      style={styles.inspectMaskLink}
+                      testID={`applied-inspect-${draft.actionId}`}
+                    >
+                      <Text style={styles.inspectMaskLinkText}>
+                        {tr('eule.workspace.inspectMask', 'Maske ansehen →')}
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={() => void handleUndoAction(draft.actionId)}
+                      testID={`applied-undo-${draft.actionId}`}
+                    >
+                      <Text style={styles.draftMutedBadge}>↩ Rückgängig</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              ))}
+            </View>
+          </Card>
+        ) : null}
+
         {cards.length === 0 ? (
           <Card style={styles.emptyCard}>
             <Text style={styles.emptyTitle}>{tr('eule.emptyTitle', 'Alles geprüft. Keine offenen Fragen!')}</Text>
@@ -887,6 +931,7 @@ export function OwlModeScreenView({
         conversationsExpanded={wide ? sidebarOpen : conversationsOpen}
         connection={connection && bridge?.reconnecting ? { kind: 'restoring' } : connection}
         onOpenConnection={connection ? () => setConnectionOpen(true) : undefined}
+        onOpenSessionSummary={() => setSessionSummaryOpen(true)}
         compact={bp === 's'}
       />
 
@@ -1005,6 +1050,27 @@ export function OwlModeScreenView({
           testID="eule-settings-sheet"
         >
           {renderSettings()}
+        </Sheet>
+      ) : null}
+
+      {sessionSummaryOpen ? (
+        <Sheet
+          onClose={() => setSessionSummaryOpen(false)}
+          closeLabel={tr('eule.workspace.topbar.privacyClose')}
+          testID="eule-session-summary-sheet"
+        >
+          <View style={styles.sheetBody}>
+            <Text style={styles.sheetTitle} role="heading" aria-level={2}>
+              {`Eulen-Summary · Steuerjahr ${taxYear}`}
+            </Text>
+            <Text style={styles.help} testID="eule-session-summary-text">
+              {appliedDrafts.length > 0 || pendingDrafts.length > 0 || cards.length > 0
+                ? `In dieser Session erledigt: ${appliedDrafts.length} ${appliedDrafts.length === 1 ? 'Änderung übernommen' : 'Änderungen übernommen'}${
+                    appliedDrafts.length > 0 ? ` (${appliedDrafts.map((d) => `${d.label}: ${d.newValue}`).join(', ')})` : ''
+                  }. Offene Punkte: ${pendingDrafts.length} ${pendingDrafts.length === 1 ? 'Entwurf' : 'Entwürfe'} und ${cards.length} ${cards.length === 1 ? 'Hinweis' : 'Hinweise'}.`
+                : 'In dieser Session wurden noch keine Änderungen übernommen. Stelle der Eule eine Frage oder lade einen Beleg hoch.'}
+            </Text>
+          </View>
         </Sheet>
       ) : null}
     </View>

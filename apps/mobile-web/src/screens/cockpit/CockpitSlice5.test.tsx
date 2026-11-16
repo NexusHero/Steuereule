@@ -75,13 +75,24 @@ describe('Cockpit Screen — Slice 5 Persona Boosters & Dual Cockpit', () => {
     expect(onOpenTile).toHaveBeenCalledWith(expect.objectContaining({ id: 'kapital' }), false)
   })
 
-  it('shows Nachzahlung senken heading and CH main tiles for grenzgaenger', async () => {
+  it('shows Nachzahlung senken heading and CH main tiles for grenzgaenger when estimate is open or negative, and Erstattung erhöhen when refund is positive', async () => {
     mockDoneInterview({ job: 'Angestellt', ausland: 'Ja, in die Schweiz', kinder: 'Nein', familienstand: 'Ledig' })
-    renderCockpit()
+    const first = renderCockpit()
 
     expect((await screen.findByTestId('cockpit-booster-ueberschrift')).textContent).toBe('Nachzahlung senken')
     expect(screen.getByTestId('cockpit-kachel-ch')).toBeTruthy()
     expect(screen.queryByTestId('cockpit-kachel-lstb')).toBeNull()
+    first.unmount()
+
+    server.use(
+      http.get(`*/v1/steuerjahre/${TAX_YEAR}/steuerschaetzung`, () =>
+        HttpResponse.json({ kind: 'spanne', result: { from: 12633, to: 12873 }, churchTaxOpen: false }, { status: 200 }),
+      ),
+    )
+    renderCockpit()
+    await waitFor(() => {
+      expect(screen.getByTestId('cockpit-booster-ueberschrift').textContent).toBe('Erstattung erhöhen')
+    })
   })
 
   it('shows alleinerziehend tile in main section for single parents', async () => {

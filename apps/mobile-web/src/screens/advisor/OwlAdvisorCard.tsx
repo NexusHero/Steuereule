@@ -32,7 +32,7 @@ export function OwlAdvisorCard({ onOpen, testID = 'cockpit-eulen-modus' }: OwlAd
           <Text style={styles.body}>{tr('cockpit.berater.body')}</Text>
         </View>
       </View>
-      <Button variant="leise" onPress={onOpen} style={styles.cta} testID={testID}>
+      <Button variant={t.mode === 'dark' ? 'primaer' : 'leise'} onPress={onOpen} style={styles.cta} testID={testID}>
         {tr('cockpit.berater.cta')}
       </Button>
     </Card>

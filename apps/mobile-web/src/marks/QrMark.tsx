@@ -39,6 +39,7 @@ export function QrMark({ value, size = 168, accessibilityLabel, brandMark = fals
     <View
       testID="qr-mark-quiet-zone"
       style={{
+        alignSelf: 'center',
         width: size + quietZonePx * 2,
         height: size + quietZonePx * 2,
         padding: quietZonePx,

@@ -1,10 +1,13 @@
-import { useState, useRef } from 'react'
-import { ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-native'
+import { useState, useRef, useEffect } from 'react'
+import { ScrollView, View, Text, Pressable, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { Button, Card, Chip, Input, Feld, Option, Pill, useTheme, useBreakpoint, type UiTheme, type Breakpoint } from '@steuereule/ui'
 import { ANNUAL_AVERAGE_RATES, ENTRIES, SALARY_CERTIFICATE_FIELDS, formatEuro, nextStepFor, type Answers, type EntryQuestionId } from '@steuereule/core'
 import {
+  CreateReceiptDtoKind,
+  getReceiptControllerListQueryKey,
+  uploadReceiptFile,
   useInterviewControllerGetInterview,
   useInterviewControllerPostAnswer,
   useChSalaryCertificateControllerGet,
@@ -31,6 +34,10 @@ import { BackButton, BackButtonSpacer } from '../shared/BackButton'
 import { usePendingMutations } from '../shared/usePendingMutations'
 import { SaveFailedNotice } from '../shared/SaveFailedNotice'
 import { triggerSaveErrorHaptic, watchSaveResult } from '../shared/saveFeedback'
+import { ReceiptPickerButton } from '../shared/ReceiptPickerButton'
+import { detectDocumentMimeType } from '../../lib/documentOcr'
+import { AddressSearch } from '../shared/AddressSearch'
+import { useSavedEmployers } from '../master-data/employersStore'
 
 export interface CrossBorderScreenProps {
   readonly onDone: () => void
@@ -44,6 +51,17 @@ const SEGMENT_CH = ENTRIES['segment-ch']
 
 /** The exchange rate is the official rate of one month of the tax year, or the annual average — picked, not typed. */
 const MONTH_NUMBERS = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'] as const
+
+/** Ziffern 1–7 of the Swiss Lohnausweis sum up to Ziffer 8 (Bruttolohn total / AHV). */
+const GROSS_COMPONENT_IDS = [
+  'lohn',
+  'gehaltsnebenleistungen',
+  'unregelmaessige-leistungen',
+  'kapitalleistungen',
+  'beteiligungsrechte',
+  'sitzungsgelder',
+  'andere-leistungen',
+] as const
 
 export function CrossBorderScreen({ onDone, onBack, taxYear = CURRENT_TAX_YEAR, partnerName }: CrossBorderScreenProps) {
   const bp = useBreakpoint()
@@ -169,19 +187,19 @@ export function CrossBorderScreen({ onDone, onBack, taxYear = CURRENT_TAX_YEAR, 
 
   return (
     <>
-    <SaveFailedNotice visible={saveFailed} />
-    <SalaryCertificateStep
-      salaryCertificate={salaryCertificate}
-      taxYear={taxYear}
-      {...(partnerName !== undefined ? { partnerName } : {})}
-      onSetField={(vars) => track(watchSaveResult(setField.mutateAsync({ ...vars, ...(params ? { params } : {}) })).then(invalidateCertificate))}
-      onSetExchangeRate={(vars) => track(watchSaveResult(setExchangeRate.mutateAsync({ ...vars, ...(params ? { params } : {}) })).then(invalidateCertificate))}
-      onSetProvision={(data) => track(watchSaveResult(setProvision.mutateAsync({ jahr: taxYear, data, ...(params ? { params } : {}) })).then(invalidateCertificate))}
-      onSetNGre={(data) => track(watchSaveResult(setNGre.mutateAsync({ jahr: taxYear, data, ...(params ? { params } : {}) })).then(invalidateCertificate))}
-      onDone={() => finish(onDone)}
-      {...(onBack ? { onBack: () => finish(onBack) } : {})}
-      bp={bp}
-    />
+      <SaveFailedNotice visible={saveFailed} />
+      <SalaryCertificateStep
+        salaryCertificate={salaryCertificate}
+        taxYear={taxYear}
+        {...(partnerName !== undefined ? { partnerName } : {})}
+        onSetField={(vars) => track(watchSaveResult(setField.mutateAsync({ ...vars, ...(params ? { params } : {}) })).then(invalidateCertificate))}
+        onSetExchangeRate={(vars) => track(watchSaveResult(setExchangeRate.mutateAsync({ ...vars, ...(params ? { params } : {}) })).then(invalidateCertificate))}
+        onSetProvision={(data) => track(watchSaveResult(setProvision.mutateAsync({ jahr: taxYear, data, ...(params ? { params } : {}) })).then(invalidateCertificate))}
+        onSetNGre={(data) => track(watchSaveResult(setNGre.mutateAsync({ jahr: taxYear, data, ...(params ? { params } : {}) })).then(invalidateCertificate))}
+        onDone={() => finish(onDone)}
+        {...(onBack ? { onBack: () => finish(onBack) } : {})}
+        bp={bp}
+      />
     </>
   )
 }
@@ -280,7 +298,6 @@ function SalaryCertificateStep({
   readonly salaryCertificate: ChSalaryCertificateResponseDto
   readonly taxYear: number
   readonly partnerName?: string
-  // the generated client's own variables, so the path parameters follow the spec
   readonly onSetField: (vars: Parameters<ReturnType<typeof useChSalaryCertificateControllerSetField>['mutate']>[0]) => void
   readonly onSetExchangeRate: (vars: Parameters<ReturnType<typeof useChSalaryCertificateControllerSetExchangeRate>['mutate']>[0]) => void
   readonly onSetNGre: (data: PutNGreDto) => void
@@ -291,14 +308,121 @@ function SalaryCertificateStep({
 }) {
   const t = useTheme()
   const { t: tr, i18n } = useTranslation(APP_NS)
+  const queryClient = useQueryClient()
   const styles = makeStyles(t)
-  const [month, setMonth] = useState(salaryCertificate.exchangeRate?.month ?? "")
+  const [month, setMonth] = useState(salaryCertificate.exchangeRate?.month ?? '')
   const [rateError, setRateError] = useState(false)
-  const [rate, setRate] = useState(salaryCertificate.exchangeRate !== null && salaryCertificate.exchangeRate !== undefined ? String(salaryCertificate.exchangeRate.rate) : '')
+  const [rate, setRate] = useState(
+    salaryCertificate.exchangeRate !== null && salaryCertificate.exchangeRate !== undefined ? String(salaryCertificate.exchangeRate.rate) : '',
+  )
 
   const amountFields = SALARY_CERTIFICATE_FIELDS.filter((f) => f.kind === 'chf-betrag')
   const foldStatus = salaryCertificate.foldStatus
   const status = salaryCertificate.status
+
+  const [drafts, setDrafts] = useState<Record<string, string>>(() => {
+    const initial: Record<string, string> = {}
+    for (const field of amountFields) {
+      initial[field.id] = valueFromResponse(salaryCertificate, field.id)
+    }
+    return initial
+  })
+  const [manualGrossOverride, setManualGrossOverride] = useState(false)
+  const [missingDrawerOpen, setMissingDrawerOpen] = useState(false)
+  const [uploadingReceipt, setUploadingReceipt] = useState(false)
+  const [receiptUploadStatus, setReceiptUploadStatus] = useState<{ readonly kind: 'ok' | 'error'; readonly text: string } | null>(null)
+
+  const grossComponentValues = GROSS_COMPONENT_IDS.map((id) => integerFrom(drafts[id]?.trim() ?? '')).filter(
+    (v): v is number => v !== null && v > 0,
+  )
+  const calculatedGrossSum = grossComponentValues.reduce((acc, n) => acc + n, 0)
+  const currentGrossInt = integerFrom(drafts['bruttolohn-total']?.trim() ?? '')
+
+  // Required fields for the calculation fold: Ziffer 8, Ziffer 10, Ziffer 12 (when echter Grenzgänger), and Wechselkurs.
+  const requiredFieldDefs: ReadonlyArray<{ readonly id: string; readonly label: string; readonly open: boolean }> = [
+    {
+      id: 'bruttolohn-total',
+      label: `Ziff. 8 · ${tr('grenzgaenger.lohnausweis.felder.bruttolohn-total')}`,
+      open: currentGrossInt === null && calculatedGrossSum === 0,
+    },
+    {
+      id: 'berufliche-vorsorge',
+      label: `Ziff. 10 · ${tr('grenzgaenger.lohnausweis.felder.berufliche-vorsorge')}`,
+      open: integerFrom(drafts['berufliche-vorsorge']?.trim() ?? '') === null,
+    },
+    ...(status !== 'kein-grenzgaenger'
+      ? [
+          {
+            id: 'quellensteuer',
+            label: `Ziff. 12 · ${tr('grenzgaenger.lohnausweis.felder.quellensteuer')}`,
+            open: integerFrom(drafts['quellensteuer']?.trim() ?? '') === null,
+          },
+        ]
+      : []),
+    {
+      id: 'wechselkurs',
+      label: tr('grenzgaenger.lohnausweis.wechselkurs.title'),
+      open: salaryCertificate.exchangeRate === null && rate.trim() === '',
+    },
+  ]
+  const openRequiredFields = requiredFieldDefs.filter((f) => f.open)
+
+  function handleFieldTextChange(fieldId: string, nextText: string) {
+    setDrafts((prev) => {
+      const next = { ...prev, [fieldId]: nextText }
+      if (fieldId === 'bruttolohn-total') {
+        setManualGrossOverride(nextText.trim() !== '')
+        return next
+      }
+      if ((GROSS_COMPONENT_IDS as readonly string[]).includes(fieldId) && !manualGrossOverride) {
+        const sum = GROSS_COMPONENT_IDS.reduce((acc, id) => {
+          const v = integerFrom((id === fieldId ? nextText : next[id] ?? '').trim())
+          return acc + (v !== null && v > 0 ? v : 0)
+        }, 0)
+        if (sum > 0) {
+          next['bruttolohn-total'] = String(sum)
+        }
+      }
+      return next
+    })
+  }
+
+  function applyCalculatedGrossSum() {
+    if (calculatedGrossSum <= 0) return
+    setManualGrossOverride(false)
+    setDrafts((prev) => ({ ...prev, 'bruttolohn-total': String(calculatedGrossSum) }))
+    onSetField({ jahr: taxYear, feld: 'bruttolohn-total', data: { kind: 'erfasst', value: calculatedGrossSum } })
+  }
+
+  async function handleReceiptFile(file: File) {
+    setReceiptUploadStatus(null)
+    const detectedMime = detectDocumentMimeType(new Uint8Array(0), file.type, file.name)
+    if (detectedMime === null) {
+      triggerSaveErrorHaptic()
+      setReceiptUploadStatus({ kind: 'error', text: tr('belege.upload.errorUnsupported') })
+      return
+    }
+    setUploadingReceipt(true)
+    try {
+      const result = await uploadReceiptFile({
+        file,
+        fileName: file.name,
+        kind: CreateReceiptDtoKind.Lohnausweis,
+      })
+      if (!result.ok) {
+        triggerSaveErrorHaptic()
+        setReceiptUploadStatus({ kind: 'error', text: tr('belege.upload.errorFailed') })
+        return
+      }
+      setReceiptUploadStatus({ kind: 'ok', text: `${file.name} gespeichert & im Belege-Tab verknüpft.` })
+      void queryClient.invalidateQueries({ queryKey: getReceiptControllerListQueryKey() })
+    } catch {
+      triggerSaveErrorHaptic()
+      setReceiptUploadStatus({ kind: 'error', text: tr('belege.upload.errorFailed') })
+    } finally {
+      setUploadingReceipt(false)
+    }
+  }
 
   return (
     <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="screen-container">
@@ -309,9 +433,103 @@ function SalaryCertificateStep({
       {partnerName !== undefined ? <Text style={styles.help} testID="ch-partner-hinweis">{tr('grenzgaenger.partnerFor', { name: partnerName })}</Text> : null}
       <Text style={styles.help}>{tr('grenzgaenger.lohnausweis.help')}</Text>
 
-      {amountFields.map((field) => (
-        <ChFieldInput key={field.id} fieldId={field.id} digit={field.digit} initial={valueFromResponse(salaryCertificate, field.id)} onCommit={(value) => onSetField({ jahr: taxYear, feld: field.id, data: value })} />
-      ))}
+      <Card style={styles.uploadCard} testID="ch-lohnausweis-upload-card">
+        <View style={styles.uploadHeaderRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.uploadTitle}>Lohnausweis oder Gre-1 / Gre-2 ablegen</Text>
+            <Text style={styles.uploadBody}>
+              Lade deinen Schweizer Lohnausweis direkt hier hoch – er landet automatisch im Belege-Ordner ({taxYear}) und steht der Eule im Chat bereit.
+            </Text>
+          </View>
+          <ReceiptPickerButton
+            onFile={(file) => void handleReceiptFile(file)}
+            disabled={uploadingReceipt}
+            variant="leise"
+            testID="ch-lohnausweis-upload-btn"
+          >
+            {uploadingReceipt ? tr('belege.upload.uploading') : 'Beleg auswählen'}
+          </ReceiptPickerButton>
+        </View>
+        {receiptUploadStatus !== null ? (
+          <Text
+            style={receiptUploadStatus.kind === 'ok' ? styles.uploadStatusOk : styles.uploadStatusError}
+            accessibilityLiveRegion="polite"
+            testID="ch-lohnausweis-upload-status"
+          >
+            {receiptUploadStatus.text}
+          </Text>
+        ) : null}
+      </Card>
+
+      {openRequiredFields.length > 0 ? (
+        <Card style={styles.missingFieldsCard} testID="ch-offene-pflichtfelder-banner">
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => setMissingDrawerOpen((o) => !o)}
+            style={styles.missingHeaderRow}
+            testID="ch-offene-pflichtfelder-toggle"
+          >
+            <Text style={styles.missingBadgeText}>
+              {`! ${openRequiredFields.length} ${openRequiredFields.length === 1 ? 'Pflichtangabe fehlt noch' : 'Pflichtangaben fehlen noch'}`}
+            </Text>
+            <Text style={styles.missingChipText}>{missingDrawerOpen ? 'Ausblenden ▲' : 'Welche fehlen? ▼'}</Text>
+          </Pressable>
+          {missingDrawerOpen ? (
+            <View style={styles.missingChipsRow}>
+              {openRequiredFields.map((item) => (
+                <View key={item.id} style={styles.missingChip} testID={`ch-offen-chip-${item.id}`}>
+                  <Text style={styles.missingChipText}>{item.label}</Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
+        </Card>
+      ) : null}
+
+      {amountFields.map((field) => {
+        const isRequired = field.itemsRelevant && (field.id !== 'quellensteuer' || status !== 'kein-grenzgaenger')
+        return (
+          <View key={field.id}>
+            {field.id === 'bruttolohn-total' && calculatedGrossSum > 0 ? (
+              <View style={styles.liveSumBanner} testID="ch-bruttolohn-summe-banner">
+                <Text style={styles.liveSumText}>
+                  {`∑ Automatische Summe (Ziff. 1–7): ${calculatedGrossSum.toLocaleString('de-DE')} CHF`}
+                </Text>
+                {currentGrossInt !== calculatedGrossSum ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={applyCalculatedGrossSum}
+                    style={styles.liveSumApplyBtn}
+                    testID="ch-bruttolohn-summe-uebernehmen"
+                  >
+                    <Text style={styles.liveSumApplyText}>Summe übernehmen</Text>
+                  </Pressable>
+                ) : null}
+              </View>
+            ) : null}
+            <ChFieldInput
+              fieldId={field.id}
+              digit={field.digit}
+              required={isRequired}
+              value={drafts[field.id] ?? ''}
+              initial={valueFromResponse(salaryCertificate, field.id)}
+              onChangeText={(next) => handleFieldTextChange(field.id, next)}
+              onCommit={(value) => {
+                onSetField({ jahr: taxYear, feld: field.id, data: value })
+                // When an additional allowance (Ziffer 2–7) is committed and Ziffer 8 wasn't manually overridden, persist the live sum to Ziffer 8 too.
+                if (
+                  field.id !== 'lohn' &&
+                  (GROSS_COMPONENT_IDS as readonly string[]).includes(field.id) &&
+                  !manualGrossOverride &&
+                  calculatedGrossSum > 0
+                ) {
+                  onSetField({ jahr: taxYear, feld: 'bruttolohn-total', data: { kind: 'erfasst', value: calculatedGrossSum } })
+                }
+              }}
+            />
+          </View>
+        )
+      })}
 
       <Text style={styles.sectionTitle}>{tr('grenzgaenger.lohnausweis.wechselkurs.title')}</Text>
       <Text style={styles.help}>{tr('grenzgaenger.lohnausweis.wechselkurs.help')}</Text>
@@ -421,19 +639,122 @@ function NGreSection({ nGre, onSet }: { readonly nGre: NGreDetailsDto; readonly 
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
+  const { employers, addEmployer } = useSavedEmployers()
+  const [employerText, setEmployerText] = useState<{
+    readonly arbeitgeberName: string
+    readonly arbeitgeberStrasse: string
+    readonly arbeitgeberPlzOrt: string
+  }>({
+    arbeitgeberName: nGre.arbeitgeberName ?? '',
+    arbeitgeberStrasse: nGre.arbeitgeberStrasse ?? '',
+    arbeitgeberPlzOrt: nGre.arbeitgeberPlzOrt ?? '',
+  })
+  const [savedNotice, setSavedNotice] = useState(false)
+
+  useEffect(() => {
+    setEmployerText({
+      arbeitgeberName: nGre.arbeitgeberName ?? '',
+      arbeitgeberStrasse: nGre.arbeitgeberStrasse ?? '',
+      arbeitgeberPlzOrt: nGre.arbeitgeberPlzOrt ?? '',
+    })
+  }, [nGre.arbeitgeberName, nGre.arbeitgeberStrasse, nGre.arbeitgeberPlzOrt])
+
+  const plzMatch = /^(\d{4,5})/.exec(employerText.arbeitgeberPlzOrt.trim())
+  const currentPostalCode = plzMatch ? plzMatch[1]! : ''
+
   return (
     <>
       <Text style={styles.sectionTitle}>{tr('grenzgaenger.nGre.title')}</Text>
       <Text style={styles.help}>{tr('grenzgaenger.nGre.help')}</Text>
+
+      {employers.length > 0 ? (
+        <View style={styles.employerPickerBox} testID="ch-ngre-arbeitgeber-auswahl">
+          <Text style={styles.employerPickerLabel}>Gespeicherte Arbeitgeber aus deinem Profil übernehmen (Snapshot):</Text>
+          <View style={styles.employerChipsRow}>
+            {employers.map((emp) => (
+              <Chip
+                key={emp.id}
+                active={employerText.arbeitgeberName === emp.name}
+                onPress={() => {
+                  setSavedNotice(false)
+                  setEmployerText({
+                    arbeitgeberName: emp.name,
+                    arbeitgeberStrasse: emp.strasse,
+                    arbeitgeberPlzOrt: emp.plzOrt,
+                  })
+                  onSet({
+                    arbeitgeberName: emp.name,
+                    arbeitgeberStrasse: emp.strasse,
+                    arbeitgeberPlzOrt: emp.plzOrt,
+                  })
+                }}
+                testID={`ch-ngre-arbeitgeber-chip-${emp.id}`}
+              >
+                {`${emp.name} (${emp.plzOrt})`}
+              </Chip>
+            ))}
+          </View>
+        </View>
+      ) : null}
+
+      <AddressSearch
+        postalCode={currentPostalCode}
+        testIDPrefix="ch-ngre"
+        onPick={(address) => {
+          const streetLine = `${address.street}${address.houseNumber ? ` ${address.houseNumber}${address.houseNumberSuffix ?? ''}` : ''}`
+          const cityLine = `${address.postalCode} ${address.city}`
+          setEmployerText((prev) => ({
+            ...prev,
+            arbeitgeberStrasse: streetLine,
+            arbeitgeberPlzOrt: cityLine,
+          }))
+          onSet({
+            arbeitgeberStrasse: streetLine,
+            arbeitgeberPlzOrt: cityLine,
+          })
+        }}
+      />
+
       {N_GRE_TEXT_FIELDS.map((field) => (
         <NGreInput
           key={field}
           label={tr(`grenzgaenger.nGre.felder.${field}`)}
           initial={nGre[field] ?? ''}
+          controlledValue={employerText[field]}
+          onControlledChange={(val) => {
+            setSavedNotice(false)
+            setEmployerText((prev) => ({ ...prev, [field]: val }))
+          }}
           testID={`ch-ngre-${field}`}
           onCommit={(text) => onSet({ [field]: text === '' ? null : text })}
         />
       ))}
+
+      {employerText.arbeitgeberName.trim() !== '' ? (
+        <View style={styles.saveEmployerRow}>
+          <Button
+            variant="ghost"
+            onPress={() => {
+              addEmployer({
+                name: employerText.arbeitgeberName,
+                strasse: employerText.arbeitgeberStrasse,
+                plzOrt: employerText.arbeitgeberPlzOrt,
+                land: 'CH',
+              })
+              setSavedNotice(true)
+            }}
+            testID="ch-ngre-arbeitgeber-speichern"
+          >
+            Arbeitgeber im Profil merken
+          </Button>
+          {savedNotice ? (
+            <Text style={styles.savedEmployerHint} testID="ch-ngre-arbeitgeber-gespeichert">
+              ✓ Im Profil unter Unternehmen gespeichert
+            </Text>
+          ) : null}
+        </View>
+      ) : null}
+
       {N_GRE_AMOUNT_FIELDS.map((field) => (
         <NGreInput
           key={field}
@@ -524,17 +845,26 @@ function ProvisionSection({ salaryCertificate, onSet }: { readonly salaryCertifi
 function NGreInput({
   label,
   initial,
+  controlledValue,
+  onControlledChange,
   numeric = false,
   testID,
   onCommit,
 }: {
   readonly label: string
   readonly initial: string
+  readonly controlledValue?: string
+  readonly onControlledChange?: (text: string) => void
   readonly numeric?: boolean
   readonly testID: string
   readonly onCommit: (text: string) => void
 }) {
-  const [text, setText] = useState(initial)
+  const [internalText, setInternalText] = useState(initial)
+  const text = controlledValue !== undefined ? controlledValue : internalText
+  function setText(next: string) {
+    if (onControlledChange) onControlledChange(next)
+    else setInternalText(next)
+  }
   function commit() {
     const trimmed = text.trim()
     if (trimmed !== initial) onCommit(trimmed)
@@ -557,38 +887,52 @@ function NGreInput({
 function ChFieldInput({
   fieldId,
   digit,
+  required = false,
+  value,
   initial,
+  onChangeText,
   onCommit,
 }: {
   readonly fieldId: string
   readonly digit: string
+  readonly required?: boolean
+  readonly value: string
   readonly initial: string
+  readonly onChangeText: (text: string) => void
   readonly onCommit: (value: PutSalaryCertificateFieldDto) => void
 }) {
+  const t = useTheme()
+  const styles = makeStyles(t)
   const { t: tr } = useTranslation(APP_NS)
-  const [text, setText] = useState(initial)
   function commit() {
-    const trimmed = text.trim()
+    const trimmed = value.trim()
     if (trimmed === initial) return
     if (trimmed === '') return onCommit({ kind: 'offen' })
-    const value = integerFrom(trimmed)
-    if (value !== null) onCommit({ kind: 'erfasst', value })
+    const parsed = integerFrom(trimmed)
+    if (parsed !== null) onCommit({ kind: 'erfasst', value: parsed })
   }
   const label = `${tr('grenzgaenger.lohnausweis.ziffer', { n: digit })} · ${tr(`grenzgaenger.lohnausweis.felder.${fieldId}`)}`
   return (
-    <Feld label={label}>
-      <Input
-        type="numeric"
-        accessibilityLabel={label}
-        value={text}
-        onChange={setText}
-        placeholder="0"
-        mono
-        onSubmit={commit}
-        onBlur={commit}
-        testID={`ch-feld-${fieldId}`}
-      />
-    </Feld>
+    <View style={required ? styles.requiredFieldWrapper : undefined}>
+      {required ? (
+        <View style={styles.requiredBadgeRow} testID={`ch-pflicht-${fieldId}`}>
+          <Text style={styles.requiredBadgeText}>Pflichtfeld</Text>
+        </View>
+      ) : null}
+      <Feld label={label}>
+        <Input
+          type="numeric"
+          accessibilityLabel={label}
+          value={value}
+          onChange={onChangeText}
+          placeholder="0"
+          mono
+          onSubmit={commit}
+          onBlur={commit}
+          testID={`ch-feld-${fieldId}`}
+        />
+      </Feld>
+    </View>
   )
 }
 
@@ -612,5 +956,136 @@ function makeStyles(t: UiTheme) {
   const statusCard: ViewStyle = { marginTop: t.space.s4 }
   const statusRow: TextStyle = { ...t.type.body, color: t.color.tinte, marginBottom: t.space.s1 }
   const cta: ViewStyle = { marginTop: t.space.s4 }
-  return { screen, wideScreen, headerRow, heading, mark, help, sectionTitle, statusCard, standRow: statusRow, cta }
+  const uploadCard: ViewStyle = {
+    marginBottom: t.space.s3,
+    padding: t.space.s3,
+    backgroundColor: t.color.karte,
+    borderWidth: 1.5,
+    borderColor: t.color.funke,
+  }
+  const uploadHeaderRow: ViewStyle = {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: t.space.s3,
+  }
+  const uploadTitle: TextStyle = { ...t.type.emphasis, color: t.color.tinte, marginBottom: t.space.s1 }
+  const uploadBody: TextStyle = { ...t.type.small, color: t.color.tinte2 }
+  const uploadStatusOk: TextStyle = { ...t.type.small, color: t.color.ok, marginTop: t.space.s2 }
+  const uploadStatusError: TextStyle = { ...t.type.small, color: t.color.warn, marginTop: t.space.s2 }
+  const missingFieldsCard: ViewStyle = {
+    marginBottom: t.space.s4,
+    padding: t.space.s3,
+    backgroundColor: t.color.karte,
+    borderWidth: 1.5,
+    borderColor: t.color.warn,
+  }
+  const missingHeaderRow: ViewStyle = {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: t.space.s2,
+  }
+  const missingBadgeText: TextStyle = { ...t.type.captionStrong, color: t.color.tinte }
+  const missingChipsRow: ViewStyle = { flexDirection: 'row', flexWrap: 'wrap', gap: t.space.s2 }
+  const missingChip: ViewStyle = {
+    paddingHorizontal: t.space.s2,
+    paddingVertical: t.space.s1,
+    borderRadius: t.radius.s,
+    backgroundColor: t.color.karte,
+    borderWidth: 1,
+    borderColor: t.color.linie,
+  }
+  const missingChipText: TextStyle = { ...t.type.caption, color: t.color.tinte }
+  const requiredFieldWrapper: ViewStyle = {
+    paddingLeft: t.space.s2,
+    borderLeftWidth: 3,
+    borderLeftColor: t.color.funke,
+    marginBottom: t.space.s1,
+  }
+  const requiredBadgeRow: ViewStyle = {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 2,
+  }
+  const requiredBadgeText: TextStyle = {
+    ...t.type.captionStrong,
+    color: t.color.tinte2,
+    textTransform: 'uppercase',
+  }
+  const liveSumBanner: ViewStyle = {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: t.space.s2,
+    paddingHorizontal: t.space.s3,
+    paddingVertical: t.space.s2,
+    marginBottom: t.space.s2,
+    borderRadius: t.radius.s,
+    backgroundColor: t.color.funkeHell,
+    borderWidth: 1,
+    borderColor: t.color.funke,
+  }
+  const liveSumText: TextStyle = { ...t.type.small, color: t.color.tinte }
+  const liveSumApplyBtn: ViewStyle = {
+    paddingHorizontal: t.space.s2,
+    paddingVertical: 4,
+    borderRadius: t.radius.s,
+    backgroundColor: t.color.funke,
+  }
+  const liveSumApplyText: TextStyle = { ...t.type.captionStrong, color: t.color.nacht }
+  const employerPickerBox: ViewStyle = {
+    marginBottom: t.space.s3,
+    padding: t.space.s3,
+    borderRadius: t.radius.s,
+    backgroundColor: t.color.karte,
+  }
+  const employerPickerLabel: TextStyle = { ...t.type.small, color: t.color.tinte2, marginBottom: t.space.s2 }
+  const employerChipsRow: ViewStyle = { flexDirection: 'row', flexWrap: 'wrap', gap: t.space.s2 }
+  const saveEmployerRow: ViewStyle = {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: t.space.s2,
+    marginBottom: t.space.s3,
+  }
+  const savedEmployerHint: TextStyle = { ...t.type.small, color: t.color.ok }
+  return {
+    screen,
+    wideScreen,
+    headerRow,
+    heading,
+    mark,
+    help,
+    sectionTitle,
+    statusCard,
+    standRow: statusRow,
+    cta,
+    uploadCard,
+    uploadHeaderRow,
+    uploadTitle,
+    uploadBody,
+    uploadStatusOk,
+    uploadStatusError,
+    missingFieldsCard,
+    missingHeaderRow,
+    missingBadgeText,
+    missingChipsRow,
+    missingChip,
+    missingChipText,
+    requiredFieldWrapper,
+    requiredBadgeRow,
+    requiredBadgeText,
+    liveSumBanner,
+    liveSumText,
+    liveSumApplyBtn,
+    liveSumApplyText,
+    employerPickerBox,
+    employerPickerLabel,
+    employerChipsRow,
+    saveEmployerRow,
+    savedEmployerHint,
+  }
 }

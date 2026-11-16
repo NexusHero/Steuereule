@@ -1436,7 +1436,7 @@ export const appResources = {
           vorauszahlungen: { titel: 'Vorauszahlungen ans Finanzamt', formular: 'wird auf die Steuer angerechnet' },
           'partner-lstb': { titel: 'Lohnsteuerbescheinigung', formular: 'Anlage N' },
           'partner-arbeitsweg': { titel: 'Arbeitstage & Weg', formular: 'Anlage N · Werbungskosten' },
-          'partner-schweiz': { titel: 'Lohnausweis Schweiz', formular: 'Anlage N-Gre' },
+          'partner-schweiz': { titel: 'Schweizer Lohnausweis', formular: 'Anlage N-Gre' },
           'partner-rente': { titel: 'Rente', formular: 'Anlage R' },
         },
         weitereThemen: 'Weitere Themen',
@@ -1461,6 +1461,7 @@ export const appResources = {
           schliessen: 'Hinweis ausblenden',
         },
         stammdatenErgaenzen: 'Angaben für die Erklärung ergänzen · {{anzahl}} fehlen',
+        stammdatenFehlendToggle: 'Welche {{anzahl}} Angaben fehlen?',
         stammdatenAnsehen: 'Angaben für die Erklärung & Partner',
         erstattung: {
           erstattung: 'Voraussichtlich {{von}} – {{bis}} € Erstattung',
@@ -3714,6 +3715,7 @@ export const appResources = {
           schliessen: 'Hide this note',
         },
         stammdatenErgaenzen: 'Complete the details for your return · {{anzahl}} missing',
+        stammdatenFehlendToggle: 'Which {{anzahl}} details are missing?',
         stammdatenAnsehen: 'Details for your return & partner',
         erstattung: {
           erstattung: 'Expected refund: {{von}} – {{bis}} €',

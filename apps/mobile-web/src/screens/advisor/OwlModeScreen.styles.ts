@@ -3,8 +3,8 @@ import { type TextStyle, type ViewStyle } from 'react-native'
 import { WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
 
 export function makeStyles(t: UiTheme) {
-  const kiColor = t.color.ki
-  const kiBg = t.color.kiWeich
+  const kiColor = t.color.tinte
+  const kiBg = t.color.funkeWeich
 
   return {
     root: { flex: 1, minHeight: 0, backgroundColor: t.color.grund } as ViewStyle,
@@ -40,13 +40,13 @@ export function makeStyles(t: UiTheme) {
       borderRadius: t.radius.pille,
       backgroundColor: t.color.karte,
       borderWidth: 1.5,
-      borderColor: t.color.ki,
+      borderColor: t.color.linie,
     } as ViewStyle,
     toolbarToggleText: {
       fontFamily: t.font.text,
       fontWeight: t.weight.fett,
       fontSize: t.size.xs,
-      color: t.color.kiTinte,
+      color: t.color.tinte,
     } as TextStyle,
     guestCard: {
       marginTop: t.space.s3,
@@ -91,15 +91,15 @@ export function makeStyles(t: UiTheme) {
       paddingHorizontal: t.space.s3,
       paddingVertical: t.space.s2,
       borderRadius: t.radius.s,
-      backgroundColor: t.color.kiWeich,
+      backgroundColor: t.color.funkeWeich,
       borderWidth: 1,
-      borderColor: t.color.kiLinie,
+      borderColor: t.color.linie,
     } as ViewStyle,
     inlineMaskFocusText: {
       fontFamily: t.font.text,
       fontWeight: t.weight.fett,
       fontSize: t.size.xs,
-      color: t.color.kiTinte,
+      color: t.color.tinte,
     } as TextStyle,
     manualNoticeCard: {
       borderColor: t.color.warn,
@@ -155,7 +155,7 @@ export function makeStyles(t: UiTheme) {
       borderRadius: t.radius.s,
       padding: t.space.s3,
       borderWidth: 1,
-      borderColor: t.color.kiLinie,
+      borderColor: t.color.linieWeich,
       gap: 4,
     } as ViewStyle,
     draftTopRow: {
@@ -186,7 +186,7 @@ export function makeStyles(t: UiTheme) {
     draftProvenance: {
       fontFamily: t.font.text,
       fontSize: t.size.xs,
-      color: t.color.kiTinte,
+      color: t.color.tinte2,
     } as TextStyle,
     draftDiff: {
       fontFamily: t.font.text,
@@ -202,7 +202,7 @@ export function makeStyles(t: UiTheme) {
       fontFamily: t.font.text,
       fontWeight: t.weight.fett,
       fontSize: t.size.xs,
-      color: t.color.kiTinte,
+      color: t.color.tinte,
     } as TextStyle,
     hero: { flexDirection: 'row', alignItems: 'center', gap: t.space.s4, marginBottom: t.space.s5 } as ViewStyle,
     heroCopy: { flex: 1, flexShrink: 1 } as ViewStyle,
@@ -295,7 +295,7 @@ export function makeStyles(t: UiTheme) {
       borderRadius: t.radius.m,
       backgroundColor: kiBg,
       borderWidth: 2,
-      borderColor: t.color.kiLinie,
+      borderColor: t.color.linie,
       marginBottom: t.space.s4,
     } as ViewStyle,
     cardHeader: {

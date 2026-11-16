@@ -547,4 +547,37 @@ describe('BelegeScreen', () => {
       expect((await screen.findByTestId('beleg-inhaber-ergebnis-b-offen')).textContent).toContain('nicht geklappt')
     })
   })
+
+  describe('Smarte Ordner-Kategorisierung & Steuerbescheid-Abgleich (4.2 & 4.3)', () => {
+    it('groups receipts into smart folders and filters by category', async () => {
+      mockReceipts([ASSIGNED, PROPOSED])
+      renderReceipts()
+
+      await screen.findByText('lohnausweis-2026.pdf')
+      expect(screen.getByTestId('receipt-folder-b-zugeordnet').textContent).toContain('2026 / Einkünfte & Lohn')
+      expect(screen.getByTestId('belege-ordner-einkuenfte').textContent).toContain('(1)')
+
+      fireEvent.click(screen.getByTestId('belege-ordner-einkuenfte'))
+      expect(screen.getByText('lohnausweis-2026.pdf')).toBeTruthy()
+      expect(screen.queryByText('rechnung-fortbildung.pdf')).toBeNull()
+    })
+
+    it('imports a Steuerbescheid via BescheidCheckCard and shows the comparison status', async () => {
+      mockReceipts([])
+      server.use(
+        http.post('*/v1/belege/upload', () =>
+          HttpResponse.json({ ...ASSIGNED, id: 'b-bescheid', fileName: 'bescheid-2025.pdf', kind: 'Steuerbescheid' }, { status: 201 }),
+        ),
+      )
+      renderReceipts()
+      await screen.findByTestId('belege-bescheid-check-card')
+
+      const pdfFile = new File(['%PDF-1.4\nbescheid'], 'bescheid-2025.pdf', { type: 'application/pdf' })
+      fireEvent.change(screen.getByTestId('belege-bescheid-file-input'), { target: { files: [pdfFile] } })
+
+      const status = await screen.findByTestId('belege-bescheid-check-status')
+      expect(status.textContent).toContain('bescheid-2025.pdf')
+      expect(status.textContent).toContain('mit deiner Erklärung abgeglichen')
+    })
+  })
 })

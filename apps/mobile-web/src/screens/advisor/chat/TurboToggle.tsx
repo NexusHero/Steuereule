@@ -59,15 +59,15 @@ function makeStyles(t: UiTheme) {
       backgroundColor: t.color.karte,
       justifyContent: 'center',
     } as ViewStyle,
-    pillOn: { borderColor: t.color.ki, backgroundColor: t.color.kiWeich } as ViewStyle,
+    pillOn: { borderColor: t.color.tinte, backgroundColor: t.color.funkeWeich } as ViewStyle,
     label: { fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: t.size.s, color: t.color.tinte2 } as TextStyle,
-    labelOn: { color: t.color.kiTinte } as TextStyle,
+    labelOn: { color: t.color.tinte } as TextStyle,
     summary: {
       paddingVertical: t.space.s2,
       paddingHorizontal: t.space.s3,
       borderRadius: t.radius.m,
-      backgroundColor: t.color.kiWeich,
+      backgroundColor: t.color.funkeWeich,
     } as ViewStyle,
-    summaryText: { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.kiTinte } as TextStyle,
+    summaryText: { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.tinte } as TextStyle,
   }
 }

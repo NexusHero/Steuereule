@@ -83,9 +83,9 @@ function makeStyles(t: UiTheme) {
       backgroundColor: t.color.karte,
       justifyContent: 'center',
     } as ViewStyle,
-    pillOn: { borderColor: t.color.ki, backgroundColor: t.color.kiWeich } as ViewStyle,
+    pillOn: { borderColor: t.color.tinte, backgroundColor: t.color.funkeWeich } as ViewStyle,
     label: { fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: t.size.s, color: t.color.tinte2 } as TextStyle,
-    labelOn: { color: t.color.kiTinte } as TextStyle,
+    labelOn: { color: t.color.tinte } as TextStyle,
     panel: {
       position: 'absolute',
       bottom: 40,
@@ -101,9 +101,9 @@ function makeStyles(t: UiTheme) {
     heading: { fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: t.size.m, color: t.color.tinte } as TextStyle,
     help: { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.tinte2 } as TextStyle,
     row: { gap: t.space.s1, padding: t.space.s3, borderRadius: t.radius.m, borderWidth: 1, borderColor: t.color.linie, minHeight: 44 } as ViewStyle,
-    rowOn: { borderColor: t.color.ki, backgroundColor: t.color.kiWeich } as ViewStyle,
+    rowOn: { borderColor: t.color.tinte, backgroundColor: t.color.funkeWeich } as ViewStyle,
     name: { fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: t.size.m, color: t.color.tinte } as TextStyle,
     state: { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.tinte2 } as TextStyle,
-    stateOn: { color: t.color.kiTinte, fontWeight: t.weight.fett } as TextStyle,
+    stateOn: { color: t.color.tinte, fontWeight: t.weight.fett } as TextStyle,
   }
 }

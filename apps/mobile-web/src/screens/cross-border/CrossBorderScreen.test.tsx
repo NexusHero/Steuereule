@@ -493,3 +493,85 @@ describe('GrenzgaengerScreen — the partner’s Swiss figures (escalation case:
     expect(urls.filter((u) => !u.endsWith('?person=B'))).toEqual([])
   })
 })
+
+describe('GrenzgaengerScreen — Smart summation, required indicators, upload & employer snapshots', () => {
+  it('renders all 14 CHF fields, required badges, top missing-fields overview and direct receipt upload card', async () => {
+    server.use(http.get(INTERVIEW_URL, () => HttpResponse.json(DONE_CH_INTERVIEW, { status: 200 })))
+    server.use(http.get(CH_URL, () => HttpResponse.json(EMPTY_CH, { status: 200 })))
+    renderScreen()
+
+    await screen.findByText('CH-Lohnausweis')
+    // All 14 CHF fields remain present
+    const chfFields = SALARY_CERTIFICATE_FIELDS.filter((f) => f.kind === 'chf-betrag')
+    expect(chfFields).toHaveLength(14)
+    for (const f of chfFields) {
+      expect(screen.getByTestId(`ch-feld-${f.id}`)).toBeTruthy()
+    }
+
+    // Required field badges & top open required fields overview
+    expect(screen.getByTestId('ch-pflicht-bruttolohn-total')).toBeTruthy()
+    expect(screen.getByTestId('ch-pflicht-berufliche-vorsorge')).toBeTruthy()
+    expect(screen.getByTestId('ch-pflicht-quellensteuer')).toBeTruthy()
+    expect(screen.getByTestId('ch-offene-pflichtfelder-banner').textContent).toContain('4 Pflichtangaben fehlen noch')
+
+    // Direct Lohnausweis upload card
+    expect(screen.getByTestId('ch-lohnausweis-upload-card')).toBeTruthy()
+    expect(screen.getByTestId('ch-lohnausweis-upload-btn')).toBeTruthy()
+  })
+
+  it('automatically sums Ziffer 1 (Grundlohn) and Ziffer 2 (Gehaltsnebenleistungen) into Ziffer 8 (Bruttolohn total)', async () => {
+    const saved: Array<{ feld: string; body: unknown }> = []
+    server.use(http.get(INTERVIEW_URL, () => HttpResponse.json(DONE_CH_INTERVIEW, { status: 200 })))
+    server.use(
+      http.put(`${CH_URL}/:feld`, async ({ params, request }) => {
+        saved.push({ feld: String(params.feld), body: await request.json() })
+        return HttpResponse.json(EMPTY_CH, { status: 200 })
+      }),
+    )
+    renderScreen()
+
+    const lohn = (await screen.findByTestId('ch-feld-lohn')) as HTMLInputElement
+    const neben = screen.getByTestId('ch-feld-gehaltsnebenleistungen') as HTMLInputElement
+    const brutto = screen.getByTestId('ch-feld-bruttolohn-total') as HTMLInputElement
+
+    fireEvent.change(lohn, { target: { value: '90000' } })
+    fireEvent.blur(lohn)
+    fireEvent.change(neben, { target: { value: '4200' } })
+    fireEvent.blur(neben)
+
+    expect(screen.getByTestId('ch-bruttolohn-summe-banner').textContent).toContain('94.200 CHF')
+    expect(brutto.value).toBe('94200')
+
+    await waitFor(() =>
+      expect(saved).toContainEqual({
+        feld: 'bruttolohn-total',
+        body: { kind: 'erfasst', value: 94200 },
+      }),
+    )
+  })
+
+  it('snapshots a saved employer from the profile picker into Anlage N-Gre with one click', async () => {
+    const bodies: unknown[] = []
+    server.use(http.get(INTERVIEW_URL, () => HttpResponse.json(DONE_CH_INTERVIEW, { status: 200 })))
+    server.use(
+      http.put(`${CH_URL}/n-gre`, async ({ request }) => {
+        bodies.push(await request.json())
+        return HttpResponse.json(EMPTY_CH, { status: 200 })
+      }),
+    )
+    renderScreen()
+
+    const chip = await screen.findByTestId('ch-ngre-arbeitgeber-chip-emp-novartis-ch')
+    fireEvent.click(chip)
+
+    await waitFor(() =>
+      expect(bodies).toEqual([
+        {
+          arbeitgeberName: 'Novartis Pharma AG',
+          arbeitgeberStrasse: 'Lichtstrasse 35',
+          arbeitgeberPlzOrt: '4056 Basel',
+        },
+      ]),
+    )
+  })
+})

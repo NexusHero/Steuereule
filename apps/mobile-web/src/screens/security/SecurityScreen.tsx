@@ -187,7 +187,9 @@ export function SecurityScreen({ onBack }: SecurityScreenProps) {
           {stage.kind === 'enable-setup' ? (
             <Card style={styles.card}>
               <Text style={styles.sectionTitle}>{tr('sicherheit.enable.setupTitle')}</Text>
-              <QrMark value={stage.setup.totpURI} size={168} accessibilityLabel={tr('sicherheit.enable.qrLabel')} />
+              <View style={styles.qrRow} testID="zweifaktor-qr-wrapper">
+                <QrMark value={stage.setup.totpURI} size={168} accessibilityLabel={tr('sicherheit.enable.qrLabel')} />
+              </View>
               <Text style={styles.secret} testID="zweifaktor-totp-uri">{stage.setup.totpURI}</Text>
               <Text style={styles.sectionBody}>{tr('sicherheit.enable.backupCodes')}</Text>
               <Text style={styles.codes} testID="zweifaktor-backup-codes">{stage.setup.backupCodes.join('  ')}</Text>
