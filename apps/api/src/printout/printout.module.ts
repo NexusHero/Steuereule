@@ -14,7 +14,7 @@ import { ChildrenModule } from '../children/children.module.js'
 import { LinkModule } from '../link/link.module.js'
 import { MarkingModule } from '../marking/marking.module.js'
 import { PrintoutController } from './printout.controller.js'
-import { PrintoutService, TEMPLATES_BASE } from './printout.service.js'
+import { ACROFORM_TEMPLATES_BASE, PrintoutService, TEMPLATES_BASE } from './printout.service.js'
 import { PrintoutJobService } from './printout-job.service.js'
 
 @Module({
@@ -39,6 +39,7 @@ import { PrintoutJobService } from './printout-job.service.js'
     PrintoutService,
     PrintoutJobService,
     { provide: TEMPLATES_BASE, useValue: new URL('../../assets/vordrucke/', import.meta.url) },
+    { provide: ACROFORM_TEMPLATES_BASE, useValue: new URL('../../assets/vordrucke-acroform/', import.meta.url) },
   ],
   exports: [PrintoutService, PrintoutJobService],
 })

@@ -34,9 +34,18 @@ import { MASTER_DATA_REPOSITORY, type MasterDataRepository } from '../master-dat
 import { RENTAL_REPOSITORY, type RentalRepository } from '../rental/rental.repository.js'
 import { childAllowancesEur } from '../children/swiss-allowance.js'
 import { printoutValues, type CommuteFacts, type ChSalaryCertificateFacts, type LifeSituationFacts, type PersonBFacts } from './printout-values.js'
-import { FIELD_SETS, forYear, renderForms, OverflowError, type FieldValues } from './form-renderer.js'
+import {
+  FIELD_SETS,
+  FORM_ORDER,
+  forYear,
+  loadAcroFormTemplateBytes,
+  renderForms,
+  OverflowError,
+  type FieldValues,
+} from './form-renderer.js'
 
 export const TEMPLATES_BASE = Symbol('VORLAGEN_BASIS')
+export const ACROFORM_TEMPLATES_BASE = Symbol('ACROFORM_VORLAGEN_BASIS')
 
 function crossBorderStatusFrom(answers: Record<string, string>): CrossBorderStatus | null {
   const residence = answers['ch-wohnsitz']
@@ -65,7 +74,18 @@ export class PrintoutService {
     @Inject(UnlockService) private readonly unlock: UnlockService,
     @Inject(AuditService) private readonly audit: AuditService,
     @Inject(TEMPLATES_BASE) private readonly templatesBase: URL,
+    @Inject(ACROFORM_TEMPLATES_BASE) private readonly acroFormTemplatesBase: URL = new URL('../vordrucke-acroform/', templatesBase),
   ) {}
+
+  async loadAcroFormTemplate(year: number, formular: string): Promise<Uint8Array> {
+    const fieldSet = FIELD_SETS[year]
+    if (!fieldSet) throw new NotFoundError('VORDRUCKE_MISSING', `No Vordrucke are available for tax year ${year} yet.`)
+    if (!FORM_ORDER.includes(formular) || !(formular in fieldSet.vorlagen)) {
+      throw new NotFoundError('VORDRUCK_UNKNOWN', `Unknown Vordruck "${formular}" for tax year ${year}.`)
+    }
+    const yearDir = new URL(`${year}/`, this.acroFormTemplatesBase)
+    return loadAcroFormTemplateBytes(yearDir, formular)
+  }
 
   async check(userId: string, year: number): Promise<{ missing: string[] }> {
     const fieldSet = FIELD_SETS[year]

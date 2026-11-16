@@ -8,8 +8,17 @@ import type { Screen } from '@steuereule/core'
 import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { GlassFormPreview } from './GlassFormPreview'
+import type { AcroFormPdfLoader } from './AcroFormLiveViewer'
 
-function renderPreview(props: { defaultOpen?: boolean; onInspectField?: (screen: Screen, field?: string, person?: 'A' | 'B') => void } = {}) {
+function renderPreview(
+  props: {
+    defaultOpen?: boolean
+    defaultMode?: 'zeilen' | 'acroform'
+    initialAcroForm?: string
+    acroFormLoader?: AcroFormPdfLoader
+    onInspectField?: (screen: Screen, field?: string, person?: 'A' | 'B') => void
+  } = {},
+) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
     <QueryClientProvider client={queryClient}>
@@ -18,6 +27,9 @@ function renderPreview(props: { defaultOpen?: boolean; onInspectField?: (screen:
           <GlassFormPreview
             year={2025}
             defaultOpen={props.defaultOpen ?? false}
+            defaultMode={props.defaultMode}
+            initialAcroForm={props.initialAcroForm}
+            acroFormLoader={props.acroFormLoader}
             onInspectField={props.onInspectField}
           />
         </ThemeProvider>
@@ -153,5 +165,52 @@ describe('GlassFormPreview („Glas-Erklärung“)', () => {
     fireEvent.click(screen.getByTestId('glass-filter-anlageN'))
     expect(screen.getByTestId('glass-section-anlageN')).toBeTruthy()
     expect(screen.queryByTestId('glass-section-est1a')).toBeNull()
+  })
+
+  it('renders pre-compiled AcroForm fields in HD Vordruck mode and jumps to the input mask when an AcroForm field is clicked', async () => {
+    server.use(
+      http.get('*/v1/steuerjahre/2025/lstb', () =>
+        HttpResponse.json({
+          bruttoarbeitslohn: { kind: 'erfasst', value: 64000 },
+          lohnsteuer: { kind: 'erfasst', value: 11200 },
+          sozialversicherung: { kind: 'erfasst', value: 12100 },
+          state: { kind: 'vollstaendig', bruttoarbeitslohn: 64000, lohnsteuer: 11200, sozialversicherung: 12100 },
+        }),
+      ),
+    )
+
+    const fakeLoader: AcroFormPdfLoader = {
+      loadTemplate: vi.fn().mockResolvedValue({
+        numPages: 4,
+        getPage: vi.fn().mockResolvedValue({
+          getViewport: () => ({
+            width: 595,
+            height: 842,
+            convertToViewportRectangle: (r: readonly [number, number, number, number]) => r,
+          }),
+          render: () => ({ promise: Promise.resolve() }),
+          getAnnotations: async () => [
+            { fieldName: 'anlN.kz110', rect: [233.9, 575.2, 350.4, 591.0], textAlignment: 2 },
+            { fieldName: 'anlN.kz140', rect: [233.9, 550.0, 350.4, 565.8], textAlignment: 2 },
+          ],
+        }),
+      }),
+    }
+
+    const onInspectField = vi.fn()
+    renderPreview({
+      defaultOpen: true,
+      defaultMode: 'acroform',
+      initialAcroForm: 'anlage-n',
+      acroFormLoader: fakeLoader,
+      onInspectField,
+    })
+
+    const kz110Btn = await screen.findByLabelText(/Anlage N · Zeile 6 \(Kz 110 Bruttoarbeitslohn\): 64000/)
+    expect(kz110Btn).toBeTruthy()
+
+    fireEvent.click(kz110Btn)
+    expect(onInspectField).toHaveBeenCalledWith('lstb', 'bruttoarbeitslohn', 'A')
+    expect(await screen.findByText(/Aktives AcroForm-Feld: anlN\.kz110/)).toBeTruthy()
   })
 })
