@@ -3449,6 +3449,43 @@
         ]
       }
     },
+    "/v1/steuerjahre/{jahr}/ausdruck/werte": {
+      "get": {
+        "operationId": "PrintoutController_liveValues",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "What the printout would show, per Vordruck and copy, for the live form view. Free: only the PDF is paid (ADR-0050).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LiveFormValuesDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "404": {
+            "description": "No measured templates exist for this tax year."
+          }
+        },
+        "tags": [
+          "ausdruck"
+        ]
+      }
+    },
     "/v1/steuerjahre/{jahr}/ausdruck/checkout": {
       "post": {
         "operationId": "PrintoutController_checkout",
@@ -10969,6 +11006,88 @@
         },
         "required": [
           "missing"
+        ]
+      },
+      "LiveFormInstanceDto": {
+        "type": "object",
+        "properties": {
+          "person": {
+            "type": "string",
+            "enum": [
+              "A",
+              "B"
+            ],
+            "nullable": true,
+            "description": "Whose copy it is when the form says so (Anlage N, R, KAP, N-Gre of a couple); null otherwise."
+          },
+          "entityId": {
+            "type": "string",
+            "nullable": true,
+            "example": "kind_3f2a",
+            "description": "The record behind a per-record form: the child (Anlage Kind) or the rental object (Anlage V); null otherwise."
+          },
+          "values": {
+            "type": "object",
+            "additionalProperties": {
+              "oneOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "boolean",
+                  "enum": [
+                    true
+                  ]
+                }
+              ]
+            },
+            "example": {
+              "anlN.personA": true,
+              "anlN.kz110": "42000"
+            },
+            "description": "The AcroForm field ids of this copy and what is printed in them; `true` = a cross."
+          }
+        },
+        "required": [
+          "person",
+          "entityId",
+          "values"
+        ]
+      },
+      "LiveFormDto": {
+        "type": "object",
+        "properties": {
+          "formular": {
+            "type": "string",
+            "example": "anlage-n",
+            "description": "The Vordruck id, as for `ausdruck/vorlage/:formular`."
+          },
+          "instances": {
+            "description": "Every printed copy of this Vordruck, in print order.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LiveFormInstanceDto"
+            }
+          }
+        },
+        "required": [
+          "formular",
+          "instances"
+        ]
+      },
+      "LiveFormValuesDto": {
+        "type": "object",
+        "properties": {
+          "forms": {
+            "description": "The filled Vordrucke in print order; Vordrucke without values are left out.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LiveFormDto"
+            }
+          }
+        },
+        "required": [
+          "forms"
         ]
       },
       "CheckoutResponseDto": {

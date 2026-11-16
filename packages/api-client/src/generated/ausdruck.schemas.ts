@@ -10,6 +10,50 @@ export interface PrintoutCheckDto {
   missing: string[];
 }
 
+/**
+ * Whose copy it is when the form says so (Anlage N, R, KAP, N-Gre of a couple); null otherwise.
+ * @nullable
+ */
+export type LiveFormInstanceDtoPerson = typeof LiveFormInstanceDtoPerson[keyof typeof LiveFormInstanceDtoPerson] | null;
+
+
+export const LiveFormInstanceDtoPerson = {
+  A: 'A',
+  B: 'B',
+} as const;
+
+/**
+ * The AcroForm field ids of this copy and what is printed in them; `true` = a cross.
+ */
+export type LiveFormInstanceDtoValues = {[key: string]: string | true};
+
+export interface LiveFormInstanceDto {
+  /**
+     * Whose copy it is when the form says so (Anlage N, R, KAP, N-Gre of a couple); null otherwise.
+     * @nullable
+     */
+  person: LiveFormInstanceDtoPerson;
+  /**
+     * The record behind a per-record form: the child (Anlage Kind) or the rental object (Anlage V); null otherwise.
+     * @nullable
+     */
+  entityId: string | null;
+  /** The AcroForm field ids of this copy and what is printed in them; `true` = a cross. */
+  values: LiveFormInstanceDtoValues;
+}
+
+export interface LiveFormDto {
+  /** The Vordruck id, as for `ausdruck/vorlage/:formular`. */
+  formular: string;
+  /** Every printed copy of this Vordruck, in print order. */
+  instances: LiveFormInstanceDto[];
+}
+
+export interface LiveFormValuesDto {
+  /** The filled Vordrucke in print order; Vordrucke without values are left out. */
+  forms: LiveFormDto[];
+}
+
 export interface CheckoutResponseDto {
   checkoutUrl: string;
 }

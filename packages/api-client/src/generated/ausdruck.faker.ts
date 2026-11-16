@@ -11,12 +11,17 @@ import {
 
 import type {
   CheckoutResponseDto,
+  LiveFormValuesDto,
   PrintoutCheckDto,
   PrintoutJobDto
 } from './ausdruck.schemas';
 
 
 export const getPrintoutControllerCheckResponseMock = (overrideResponse: Partial<Extract<PrintoutCheckDto, object>> = {}): PrintoutCheckDto => ({missing: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), ...overrideResponse})
+
+export const getPrintoutControllerLiveValuesResponseMock = (overrideResponse: Partial<Extract<LiveFormValuesDto, object>> = {}): LiveFormValuesDto => ({forms: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({formular: faker.string.alpha({length: {min: 10, max: 20}}), instances: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({person: faker.helpers.arrayElement([faker.helpers.arrayElement(['A','B'] as const), null]), entityId: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), values: {
+        [faker.string.alphanumeric(5)]: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),faker.helpers.arrayElement([true] as const),])
+      }}))})), ...overrideResponse})
 
 export const getPrintoutControllerCheckoutResponseMock = (overrideResponse: Partial<Extract<CheckoutResponseDto, object>> = {}): CheckoutResponseDto => ({checkoutUrl: faker.string.alpha({length: {min: 10, max: 20}}), ...overrideResponse})
 
