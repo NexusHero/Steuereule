@@ -80,7 +80,7 @@ Ein angehaltener Batch ist ein **gutes** Ergebnis, wenn der Bericht genau sagt, 
 - **E2E-Szenarien:** Wird ein Szenario rot, zuerst prüfen, ob die App falsch ist (dann App fixen). Nur wenn das Szenario die alte Klickfolge erwartet, das Szenario anpassen. **Die erwarteten Euro-Beträge, PDF-Inhalte und Formularwerte in den Szenarien dürfen sich in Slices 1–4, 6, 7 nicht ändern.**
 - **Keine personenbezogenen Daten in URLs** (keine Namen, Steuer-IDs, Beträge).
 - **Keine Steuerdaten in localStorage/sessionStorage.** Erlaubt sind nur die hier genannten Keys: `steuereule.returnTo` (sessionStorage), `steuereule.appearance` und `steuereule.haptics` (localStorage).
-- **Bezeichner, Dateinamen, Kommentare, Commit-Messages auf Englisch.** Sichtbare UI-Texte auf Deutsch, immer über i18n (`apps/mobile-web/src/i18n/resources.ts`, Namespace `APP_NS`). Keine hart codierten deutschen Strings in Komponenten.
+- **Bezeichner, Dateinamen, Kommentare, Commit-Messages auf Englisch.** Sichtbare UI-Texte auf Deutsch, immer über i18n (`apps/mobile-web/src/i18n/locales/de.json` und `en.json` mit denselben Schlüsseln, Namespace `APP_NS`). Keine hart codierten deutschen Strings in Komponenten.
 - **Farben nur über `useTheme()`** (`t.color.*`, `t.shadow.*`). Keine Hex-Werte in Komponenten.
 - **Keine neuen Abhängigkeiten** außer `@react-navigation/bottom-tabs` (Slice 1) und `expo-haptics` (Slice 7).
 - **Keine Datei über ~300 Zeilen** neu entstehen lassen. Lieber aufteilen.
