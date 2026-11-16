@@ -47,3 +47,21 @@ describe('formLineForField („Glas-Erklärung“)', () => {
     expect(maskTargetForAcroField('est1a.vornameB')).toMatchObject({ screen: 'stammdaten', person: 'B' })
   })
 })
+
+describe('maskTargetForAcroField against the real field sets', () => {
+  it('knows every form prefix the printout field sets use, so no field falls through to the master data', async () => {
+    const { default: felder2025 } = await import('../../../../api/src/printout/felder-2025.json')
+    const prefixes = new Set(felder2025.felder.map((f: { id: string }) => f.id.split('.')[0]))
+    for (const prefix of prefixes) {
+      if (prefix === 'est1a') continue
+      expect(maskTargetForAcroField(`${prefix}.unbekannt`).screen, prefix).not.toBe('stammdaten')
+    }
+  })
+
+  it('routes the Vorsorge, Sonderausgaben, AgB, Haushalt and AV forms to their masks', () => {
+    expect(maskTargetForAcroField('anlVor.kz300').screen).toBe('lstb')
+    expect(maskTargetForAcroField('anlAgB.kz302').field).toBe('gesundheit-betrag')
+    expect(maskTargetForAcroField('anlHha.kz214').field).toBe('haushalt-handwerker-betrag')
+    expect(maskTargetForAcroField('anlAv.kz100').field).toBe('riester-eigenbeitrag')
+  })
+})
