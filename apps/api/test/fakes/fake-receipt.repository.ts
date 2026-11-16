@@ -9,7 +9,7 @@ import type {
   CreateReceiptData,
   SetAssignmentData,
 } from '../../src/receipt/receipt.repository.js'
-import type { HolderRef } from '@steuereule/core'
+import type { HolderRef, ReceiptType } from '@steuereule/core'
 
 export class FakeReceiptRepository implements ReceiptRepository {
   private readonly rows: ReceiptRecord[] = []
@@ -63,6 +63,14 @@ export class FakeReceiptRepository implements ReceiptRepository {
     const index = this.rows.findIndex((row) => row.userId === userId && row.id === id)
     if (index === -1) return Promise.resolve(null)
     const updated: ReceiptRecord = { ...this.rows[index]!, holders: [...holders], holderTaxYear: holders.length > 0 ? taxYear : null, updatedAt: new Date() }
+    this.rows[index] = updated
+    return Promise.resolve(updated)
+  }
+
+  setKind(userId: string, id: string, kind: ReceiptType): Promise<ReceiptRecord | null> {
+    const index = this.rows.findIndex((row) => row.userId === userId && row.id === id)
+    if (index === -1) return Promise.resolve(null)
+    const updated: ReceiptRecord = { ...this.rows[index]!, kind, updatedAt: new Date() }
     this.rows[index] = updated
     return Promise.resolve(updated)
   }

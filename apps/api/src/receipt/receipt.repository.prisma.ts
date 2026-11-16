@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { isHolderRef, isReceiptType, type HolderRef } from '@steuereule/core'
+import { isHolderRef, isReceiptType, type HolderRef, type ReceiptType } from '@steuereule/core'
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
 import type { ReceiptRecord, ReceiptRepository, CreateReceiptData, SetAssignmentData } from './receipt.repository.js'
 
@@ -120,6 +120,16 @@ export class PrismaReceiptRepository implements ReceiptRepository {
         data: { holders: holders.length > 0 ? holders.join(',') : null, holderTaxYear: holders.length > 0 ? taxYear : null },
         include: FILE_META_INCLUDE,
       }),
+      this.prisma.taxDataAccessLog.create({ data: { userId, action: 'WRITE', resource: 'beleg' } }),
+    ])
+    return toRecord(updated)
+  }
+
+  async setKind(userId: string, id: string, kind: ReceiptType): Promise<ReceiptRecord | null> {
+    const row = await this.prisma.receipt.findFirst({ where: { id, userId }, select: { id: true } })
+    if (row === null) return null
+    const [updated] = await this.prisma.$transaction([
+      this.prisma.receipt.update({ where: { id }, data: { kind }, include: FILE_META_INCLUDE }),
       this.prisma.taxDataAccessLog.create({ data: { userId, action: 'WRITE', resource: 'beleg' } }),
     ])
     return toRecord(updated)
