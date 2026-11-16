@@ -140,6 +140,23 @@ export function CockpitTiles({
       ? 'cockpit.boosterUeberschrift.nachzahlung'
       : 'cockpit.boosterUeberschrift.erstattung'
 
+  /** The status pill of a tile, the same on a card and on a row; none while the tile's data is still loading. */
+  function renderBadge(tile: TileDefinition, status: TileStatus, isOptional: boolean) {
+    if (facts.pendingTiles?.has(tile.id)) return null
+    return (
+      <View style={isOptional ? styles.statusPillOptional : statusPillStyle(status, styles)} testID={`cockpit-kachel-${tile.id}-badge`}>
+        {isOptional ? null : (
+          <Text style={statusGlyphStyle(status, styles)} accessible={false} importantForAccessibility="no">
+            {statusGlyph(status)}
+          </Text>
+        )}
+        <Text style={isOptional ? styles.statusOptional : statusStyle(status, styles)} testID={`cockpit-kachel-${tile.id}-status`}>
+          {isOptional ? tr('cockpit.kachel.status.optional') : statusLabel(status, tr)}
+        </Text>
+      </View>
+    )
+  }
+
   function renderTile(tile: TileDefinition) {
     const status = tile.status(facts)
     const revisit = tileRevisitFlag(tile, facts.answers)
@@ -158,18 +175,7 @@ export function CockpitTiles({
         <Card variant="default" style={[styles.card, isCompactDone ? styles.cardDone : styles.cardActive]}>
           <View style={styles.tileHeaderRow}>
             <Text style={[styles.title, isCompactDone ? styles.titleDone : null]}>{tr(tile.titleKey)}</Text>
-            {facts.pendingTiles?.has(tile.id) ? null : (
-              <View style={isOptional ? styles.statusPillOptional : statusPillStyle(status, styles)} testID={`cockpit-kachel-${tile.id}-badge`}>
-                {isOptional ? null : (
-                  <Text style={statusGlyphStyle(status, styles)} accessible={false} importantForAccessibility="no">
-                    {statusGlyph(status)}
-                  </Text>
-                )}
-                <Text style={isOptional ? styles.statusOptional : statusStyle(status, styles)} testID={`cockpit-kachel-${tile.id}-status`}>
-                  {isOptional ? tr('cockpit.kachel.status.optional') : statusLabel(status, tr)}
-                </Text>
-              </View>
-            )}
+            {renderBadge(tile, status, isOptional)}
           </View>
           {/* UX review H2: every tile says which form it fills. */}
           <Text style={[styles.formular, isCompactDone ? styles.formularDone : null]} testID={`cockpit-kachel-${tile.id}-formular`}>
@@ -218,18 +224,7 @@ export function CockpitTiles({
             </Text>
           ) : null}
         </View>
-        {facts.pendingTiles?.has(tile.id) ? null : (
-          <View style={isOptional ? styles.statusPillOptional : statusPillStyle(status, styles)} testID={`cockpit-kachel-${tile.id}-badge`}>
-            {isOptional ? null : (
-              <Text style={statusGlyphStyle(status, styles)} accessible={false} importantForAccessibility="no">
-                {statusGlyph(status)}
-              </Text>
-            )}
-            <Text style={isOptional ? styles.statusOptional : statusStyle(status, styles)} testID={`cockpit-kachel-${tile.id}-status`}>
-              {isOptional ? tr('cockpit.kachel.status.optional') : statusLabel(status, tr)}
-            </Text>
-          </View>
-        )}
+        {renderBadge(tile, status, isOptional)}
       </Pressable>
     )
   }
@@ -251,7 +246,7 @@ export function CockpitTiles({
               {tr('cockpit.gruppe.offen', { count: required.length })}
             </Text>
           </View>
-          <View style={styles.grid}>{required.map(renderTile)}</View>
+          <View style={styles.grid}>{required.map((tile) => renderTile(tile))}</View>
         </>
       ) : null}
       <View style={styles.groupHeadingRow}>
@@ -260,7 +255,7 @@ export function CockpitTiles({
         </Text>
         {optional.length > 0 ? <Text style={styles.groupCount}>{tr('cockpit.gruppe.optional')}</Text> : null}
       </View>
-      {optional.length > 0 ? <View style={styles.rowList}>{optional.map(renderRow)}</View> : null}
+      {optional.length > 0 ? <View style={styles.rowList}>{optional.map((tile, index) => renderRow(tile, index))}</View> : null}
       {more.length > 0 ? (
         <View style={styles.moreBlock}>
           <Pressable
@@ -272,7 +267,7 @@ export function CockpitTiles({
           >
             <Text style={styles.moreToggleText}>{`${tr('cockpit.weitereThemen')} ${moreExpanded ? '▲' : '▼'}`}</Text>
           </Pressable>
-          {moreExpanded ? <View style={styles.rowList}>{more.map(renderRow)}</View> : null}
+          {moreExpanded ? <View style={styles.rowList}>{more.map((tile, index) => renderRow(tile, index))}</View> : null}
         </View>
       ) : null}
       {done.length > 0 ? (
@@ -285,7 +280,7 @@ export function CockpitTiles({
               {String(done.length)}
             </Text>
           </View>
-          <View style={styles.rowList}>{done.map(renderRow)}</View>
+          <View style={styles.rowList}>{done.map((tile, index) => renderRow(tile, index))}</View>
         </>
       ) : null}
       {isJointMarried && year !== undefined && onOpenPartner ? (

@@ -1,8 +1,9 @@
 // ADR-0091, Nachtrag: the owl asks for what still blocks the printout. Fast tier, no database.
 import { describe, expect, it } from 'vitest'
-import type { AdvisorActionProposal, AdvisorMessageMeta, CaseDigest } from '@steuereule/core'
+import type { AdvisorActionProposal, AdvisorMessageMeta } from '@steuereule/core'
 import { buildPrintoutPlan, draftsTakenOver, printoutFollowUp, stagedGapKeys } from '../src/advisor/advisor-printout-plan.js'
 import { buildCaseSystemPrompt, buildStableSystemPrompt } from '../src/ki/advisor-prompt.js'
+import { emptyCaseDigest } from './fakes/empty-case-digest.js'
 
 const records = { kind: [{ handle: 'Kind 1', id: 'child-1' }, { handle: 'Kind 2', id: 'child-2' }], vermietung: [] }
 
@@ -82,35 +83,8 @@ describe('printoutFollowUp', () => {
   })
 })
 
-const DIGEST = {
-  taxYear: 2025,
-  filingStatus: 'zusammen',
-  lstbPersonA: { grossWageEur: null, wageTaxEur: null, socialSecurityEur: null },
-  crossBorder: { isCrossBorderCh: false, grossWageChf: null, withholdingTaxChf: null, pillar3aChf: null, healthInsuranceChf: null, dailySicknessBenefitChf: null, nonReturnDays: null },
-  commuteAndWorkdays: { workdays: 220, homeOfficeAnswer: null, homeOfficeDays: 0, distanceKm: null },
-  catalogExpenses: { hasTraining: false, trainingCostsEur: null, relocationCostsEur: null, donationsEur: null, selfPaidKvPvEur: null, riesterEur: null, doubleHouseholdRentEur: null, workExpenses: { professionalBodiesEur: null, workEquipmentEur: null, accountFeesEur: null, otherWorkExpensesEur: null }, childcareDeductionEur: 0 },
-  childrenCount: 0,
-  childrenAges: [],
-  rentalObjectsCount: 0,
-  capitalGainEur: null,
-  priorYearComparison: { donationsEur: null },
-  openOwlHints: [],
-  printoutMissingFields: [],
-  estimatedRefundEur: null,
-  furtherFacts: {
-    answeredQuestions: 3,
-    filingStatusAnswered: true,
-    singleParent: false,
-    pension: null,
-    rentals: { rentEur: null, expensesEur: null, loanInterestEur: null },
-    capital: { withheldTaxEur: null, saverAllowanceUsedEur: null, depot: null },
-    sideJobGrossEur: null,
-    wageReplacementEur: null,
-    severanceEur: null,
-    healthCostsEur: null,
-    householdServicesEur: null,
-    filingDeadline: null,
-    voluntaryFilingDeadline: null,
+const DIGEST = emptyCaseDigest(
+  {
     printoutGaps: ['Kapitalerträge: …'],
     printoutPlan: {
       questions: [
@@ -119,7 +93,8 @@ const DIGEST = {
       unplanned: [],
     },
   },
-} as CaseDigest
+  { filingStatus: 'zusammen' },
+)
 
 describe('the checklist in the prompt', () => {
   it('stands as its own list under the case, not inside the digest', () => {
