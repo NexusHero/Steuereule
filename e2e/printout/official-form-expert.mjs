@@ -5,7 +5,7 @@
 import { launchBrowser, closeBrowser, newContextAtBreakpoint, guardAgainst429 } from '../harness/browser.mjs'
 import { startStack } from '../harness/stack.mjs'
 import { fail } from '../harness/rate-limit.mjs'
-import { createAccount, call, answer, putLstb, browserLogin, until } from '../harness/api-account.mjs'
+import { createAccount, call, answer, putLstb, putPrintableBasics, browserLogin, until } from '../harness/api-account.mjs'
 
 const TAG = 'official-form-expert'
 const YEAR = 2025
@@ -19,11 +19,7 @@ async function main() {
   try {
     const user = await createAccount({ apiOrigin, webOrigin, sql, tag: TAG })
     const api = user.api
-    await call(api, 'PUT', '/v1/profile', { firstName: 'Ina', lastName: 'Formfest', steuerId: '04452397686' })
-    await call(api, 'PUT', '/v1/stammdaten', {
-      geburtsdatum: '1988-02-03', strasse: 'Elbweg', hausnummer: '7', plz: '01067', wohnort: 'Dresden', religion: 'VD', religionConsent: true,
-      familienstand: 'ledig', iban: 'DE89370400440532013000', finanzamt: 'Dresden-Nord',
-    })
+    await putPrintableBasics(api, { firstName: 'Ina', lastName: 'Formfest' })
     await answer(api, YEAR, [['job', 'Angestellt'], ['ausland', 'Nein'], ['kinder', '2 oder mehr'], ['familienstand', 'Ledig']])
     await putLstb(api, YEAR, 45_000, 6_100, 9_200)
     // Work equipment gives the Anlage N a computed field (Kz 320) next to the editable Kz 110.
