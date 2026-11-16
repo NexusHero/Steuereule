@@ -181,6 +181,11 @@ export function useOptionalShellTaxYear(): number | null {
   return useContext(ShellStateContext)?.taxYear ?? null
 }
 
+/** Switches the bottom tab, or does nothing outside the shell (a screen rendered on its own, in a test). */
+export function useOptionalSwitchToTab(): ((tab: keyof AppTabParamList) => void) | null {
+  return useContext(ShellStateContext)?.switchToTab ?? null
+}
+
 export function useShellState(): ShellStateValue {
   const ctx = useContext(ShellStateContext)
   if (ctx === null) {

@@ -12,7 +12,9 @@ import type {
 import {
   FINDING_TILE,
   TILES,
+  groupTiles,
   hasAnswersForEntry,
+  isRequiredTile,
   nextStep,
   nextStepTile,
   partitionTiles,
@@ -492,5 +494,28 @@ describe('cockpit tiles (§ 2.2–2.4 & Slice 5 § 5.2)', () => {
       const sameTileNotices: readonly Notice[] = [{ kind: 'erfasst-nicht-gerechnet', amount: 500 }]
       expect(tileHintSeverity('einkuenfte', gatedConflicts, sameTileNotices)).toBe('blocker')
     })
+  })
+})
+
+describe('groupTiles — the cockpit by what is left to do (UX review 2026-11)', () => {
+  const answers = { job: 'Angestellt', ausland: 'Nein', kinder: 'Nein', familienstand: 'Ledig' } as TileFacts['answers']
+
+  it('moves a done tile to the end and keeps the open steps of the path as required', () => {
+    const groups = groupTiles({ path: 'angestellte', answers, lstb: completeLstb() })
+    expect(groups.done.map((t) => t.id)).toEqual(['lstb'])
+    expect(groups.required.map((t) => t.id)).toEqual(['lebenslagen', 'einkuenfte', 'sonderausgaben', 'arbeitsweg'])
+    expect(groups.optional.every((t) => !isRequiredTile(t, 'angestellte'))).toBe(true)
+    expect(groups.optional.map((t) => t.id)).toContain('haushalt')
+  })
+
+  it('keeps a done tile in its group while a finding points at it', () => {
+    const groups = groupTiles({ path: 'angestellte', answers, lstb: completeLstb() }, (id) => id === 'lstb')
+    expect(groups.done).toEqual([])
+    expect(groups.required[0]?.id).toBe('lstb')
+  })
+
+  it('never calls a tile done whose data is still loading', () => {
+    const groups = groupTiles({ path: 'angestellte', answers, lstb: completeLstb(), pendingTiles: new Set<TileId>(['lstb']) })
+    expect(groups.done).toEqual([])
   })
 })

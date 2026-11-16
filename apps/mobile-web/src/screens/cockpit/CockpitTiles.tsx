@@ -19,7 +19,7 @@ import type { PartnerAreaParam } from '../../navigation/routes'
 import type { FunnelPath } from '../funnel/KontoWandScreen'
 import { CockpitPartnerSection } from './CockpitPartnerSection'
 import { derivePersonas } from './personas'
-import { TILES, hasAnswersForEntry, partitionTiles, tileHintSeverity, type TileDefinition, type TileFacts, type TileId, type TileStatus } from './tiles'
+import { TILES, groupTiles, hasAnswersForEntry, isRequiredTile, tileHintSeverity, type TileDefinition, type TileFacts, type TileId, type TileStatus } from './tiles'
 
 export function useCockpitTileFacts(
   year: number,
@@ -80,6 +80,8 @@ export interface CockpitTilesProps {
   readonly conflicts?: readonly Conflict[]
   readonly notices?: readonly Notice[]
   readonly hasPositiveRefund?: boolean
+  /** Steps of the user's path still open: the submission tile says how many stand before it. */
+  readonly openSteps?: number | undefined
   readonly onOpenTile: (tile: TileDefinition, revisit: boolean) => void
   readonly onOpenSubmission?: () => void
   readonly onOpenPartner?: (area: PartnerAreaParam, name: string) => void
@@ -94,6 +96,7 @@ export function CockpitTiles({
   conflicts = [],
   notices = [],
   hasPositiveRefund = false,
+  openSteps,
   onOpenTile,
   onOpenSubmission,
   onOpenPartner,
@@ -130,7 +133,8 @@ export function CockpitTiles({
   }, [facts, year])
 
   const personas = derivePersonas(facts.answers, facts.masterData)
-  const { main, more } = partitionTiles(facts)
+  // UX review 2026-11: tiles are grouped by what is left to do, so progress shows at a glance.
+  const { required, optional, done, more } = groupTiles(facts, (id) => tileHintSeverity(id, conflicts, notices) !== null)
   const boosterTitleKey =
     personas.has('grenzgaenger') && !hasPositiveRefund
       ? 'cockpit.boosterUeberschrift.nachzahlung'
@@ -141,6 +145,8 @@ export function CockpitTiles({
     const revisit = tileRevisitFlag(tile, facts.answers)
     const severity = tileHintSeverity(tile.id, conflicts, notices)
     const isCompactDone = status === 'erledigt' && severity === null
+    // An open tile that never blocks the return says so instead of reading like a duty.
+    const isOptional = status === 'offen' && !isRequiredTile(tile, facts.path)
     return (
       <Pressable
         key={tile.id}
@@ -153,12 +159,14 @@ export function CockpitTiles({
           <View style={styles.tileHeaderRow}>
             <Text style={[styles.title, isCompactDone ? styles.titleDone : null]}>{tr(tile.titleKey)}</Text>
             {facts.pendingTiles?.has(tile.id) ? null : (
-              <View style={statusPillStyle(status, styles)} testID={`cockpit-kachel-${tile.id}-badge`}>
-                <Text style={statusGlyphStyle(status, styles)} accessible={false} importantForAccessibility="no">
-                  {statusGlyph(status)}
-                </Text>
-                <Text style={statusStyle(status, styles)} testID={`cockpit-kachel-${tile.id}-status`}>
-                  {statusLabel(status, tr)}
+              <View style={isOptional ? styles.statusPillOptional : statusPillStyle(status, styles)} testID={`cockpit-kachel-${tile.id}-badge`}>
+                {isOptional ? null : (
+                  <Text style={statusGlyphStyle(status, styles)} accessible={false} importantForAccessibility="no">
+                    {statusGlyph(status)}
+                  </Text>
+                )}
+                <Text style={isOptional ? styles.statusOptional : statusStyle(status, styles)} testID={`cockpit-kachel-${tile.id}-status`}>
+                  {isOptional ? tr('cockpit.kachel.status.optional') : statusLabel(status, tr)}
                 </Text>
               </View>
             )}
@@ -180,17 +188,79 @@ export function CockpitTiles({
     )
   }
 
+  /**
+   * The same tile as one line of a list (UX review 2026-11): what is optional or done needs no card of
+   * its own, so the open duties stand out and the screen gets shorter. Same test ids as the card.
+   */
+  function renderRow(tile: TileDefinition, index: number) {
+    const status = tile.status(facts)
+    const revisit = tileRevisitFlag(tile, facts.answers)
+    const severity = tileHintSeverity(tile.id, conflicts, notices)
+    const isOptional = status === 'offen' && !isRequiredTile(tile, facts.path)
+    return (
+      <Pressable
+        key={tile.id}
+        accessibilityRole="button"
+        onPress={() => onOpenTile(tile, revisit)}
+        style={[styles.row, index > 0 ? styles.rowDivider : null]}
+        testID={`cockpit-kachel-${tile.id}`}
+      >
+        <View style={styles.rowCopy}>
+          <Text style={styles.rowTitle} numberOfLines={2}>
+            {tr(tile.titleKey)}
+          </Text>
+          <Text style={styles.formularDone} testID={`cockpit-kachel-${tile.id}-formular`}>
+            {tr(`cockpit.kachel.${tile.id}.formular`)}
+          </Text>
+          {severity !== null ? (
+            <Text style={severity === 'blocker' ? styles.hintBlocker : styles.hintWarning} testID={`cockpit-kachel-${tile.id}-hinweis`}>
+              {tr(severity === 'blocker' ? 'cockpit.kachel.hinweis.blocker' : 'cockpit.kachel.hinweis.warnung')}
+            </Text>
+          ) : null}
+        </View>
+        {facts.pendingTiles?.has(tile.id) ? null : (
+          <View style={isOptional ? styles.statusPillOptional : statusPillStyle(status, styles)} testID={`cockpit-kachel-${tile.id}-badge`}>
+            {isOptional ? null : (
+              <Text style={statusGlyphStyle(status, styles)} accessible={false} importantForAccessibility="no">
+                {statusGlyph(status)}
+              </Text>
+            )}
+            <Text style={isOptional ? styles.statusOptional : statusStyle(status, styles)} testID={`cockpit-kachel-${tile.id}-status`}>
+              {isOptional ? tr('cockpit.kachel.status.optional') : statusLabel(status, tr)}
+            </Text>
+          </View>
+        )}
+      </Pressable>
+    )
+  }
+
   return (
     <View style={styles.section} testID="cockpit-kacheln">
-      <Text style={styles.boosterHeading} testID="cockpit-booster-ueberschrift">
-        {tr(boosterTitleKey)}
-      </Text>
       {isJointMarried ? (
         <Text style={styles.sectionHeading} testID="cockpit-bereich-du">
           {tr('cockpit.bereich.du')}
         </Text>
       ) : null}
-      <View style={styles.grid}>{main.map(renderTile)}</View>
+      {required.length > 0 ? (
+        <>
+          <View style={styles.groupHeadingRow}>
+            <Text style={styles.boosterHeading} testID="cockpit-bereich-pflicht">
+              {tr('cockpit.gruppe.pflicht')}
+            </Text>
+            <Text style={styles.groupCount} testID="cockpit-bereich-pflicht-anzahl">
+              {tr('cockpit.gruppe.offen', { count: required.length })}
+            </Text>
+          </View>
+          <View style={styles.grid}>{required.map(renderTile)}</View>
+        </>
+      ) : null}
+      <View style={styles.groupHeadingRow}>
+        <Text style={styles.boosterHeading} testID="cockpit-booster-ueberschrift">
+          {tr(boosterTitleKey)}
+        </Text>
+        {optional.length > 0 ? <Text style={styles.groupCount}>{tr('cockpit.gruppe.optional')}</Text> : null}
+      </View>
+      {optional.length > 0 ? <View style={styles.rowList}>{optional.map(renderRow)}</View> : null}
       {more.length > 0 ? (
         <View style={styles.moreBlock}>
           <Pressable
@@ -202,8 +272,21 @@ export function CockpitTiles({
           >
             <Text style={styles.moreToggleText}>{`${tr('cockpit.weitereThemen')} ${moreExpanded ? '▲' : '▼'}`}</Text>
           </Pressable>
-          {moreExpanded ? <View style={styles.grid}>{more.map(renderTile)}</View> : null}
+          {moreExpanded ? <View style={styles.rowList}>{more.map(renderRow)}</View> : null}
         </View>
+      ) : null}
+      {done.length > 0 ? (
+        <>
+          <View style={styles.groupHeadingRow}>
+            <Text style={styles.boosterHeading} testID="cockpit-bereich-erledigt">
+              {tr('cockpit.gruppe.erledigt')}
+            </Text>
+            <Text style={styles.groupCount} testID="cockpit-bereich-erledigt-anzahl">
+              {String(done.length)}
+            </Text>
+          </View>
+          <View style={styles.rowList}>{done.map(renderRow)}</View>
+        </>
       ) : null}
       {isJointMarried && year !== undefined && onOpenPartner ? (
         <CockpitPartnerSection
@@ -223,6 +306,11 @@ export function CockpitTiles({
       >
         <Card variant="default" style={styles.card}>
           <Text style={styles.submissionTitle}>{tr('cockpit.abgabe.titel')}</Text>
+          {openSteps !== undefined && openSteps > 0 ? (
+            <Text style={styles.submissionHint} testID="cockpit-abgabe-offen">
+              {tr('cockpit.abgabe.nochOffen', { count: openSteps })}
+            </Text>
+          ) : null}
           {year !== undefined && isRunningTaxYear(year) ? (
             <Text style={styles.submissionHint} testID="cockpit-abgabe-laufendes-jahr">
               {tr('cockpit.abgabe.laufendesJahr', { abgabeAb: year + 1 })}
@@ -335,10 +423,35 @@ function makeStyles(t: UiTheme) {
   const statusPillDone: ViewStyle = { ...statusPillBase, backgroundColor: t.color.okWeich }
   const statusPillLater: ViewStyle = { ...statusPillBase, backgroundColor: t.color.warnWeich }
   const statusPillOpen: ViewStyle = { ...statusPillBase, backgroundColor: t.color.funkeWeich }
+  const statusPillOptional: ViewStyle = { ...statusPillBase, borderWidth: 1, borderColor: t.color.linieWeich }
   const statusBase: TextStyle = { ...t.type.label }
   const statusOpen: TextStyle = { ...statusBase, color: t.color.tinte }
   const statusDone: TextStyle = { ...statusBase, color: t.color.ok }
   const statusLater: TextStyle = { ...statusBase, color: t.color.warn }
+  const statusOptional: TextStyle = { ...statusBase, color: t.color.tinte2 }
+  const groupHeadingRow: ViewStyle = { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: t.space.s2 }
+  const rowList: ViewStyle = {
+    width: '100%',
+    borderWidth: t.space.kontur,
+    borderColor: t.color.tinte2,
+    borderRadius: t.radius.m,
+    backgroundColor: t.color.karte,
+    overflow: 'hidden',
+  }
+  // 48 px keeps the row a comfortable touch target (WCAG 2.5.8).
+  const row: ViewStyle = {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: t.space.s2,
+    minHeight: 48,
+    paddingVertical: t.space.s2,
+    paddingHorizontal: t.space.s4,
+  }
+  const rowDivider: ViewStyle = { borderTopWidth: 1, borderTopColor: t.color.linieWeich }
+  const rowCopy: ViewStyle = { flex: 1, minWidth: 0 }
+  // The text face, not the display face: a title like „Haushalt & Handwerker“ fits the line at 375 px.
+  const rowTitle: TextStyle = { ...t.type.bodyStrong, color: t.color.tinte }
+  const groupCount: TextStyle = { ...t.type.meta, color: t.color.tinte2 }
   const hintBase: TextStyle = {
     ...t.type.captionStrong,
     marginTop: t.space.s1,
@@ -379,6 +492,15 @@ function makeStyles(t: UiTheme) {
     statusPillDone,
     statusPillLater,
     statusPillOpen,
+    statusPillOptional,
+    statusOptional,
+    groupHeadingRow,
+    groupCount,
+    rowList,
+    row,
+    rowDivider,
+    rowCopy,
+    rowTitle,
     statusOpen,
     statusDone,
     statusLater,

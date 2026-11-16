@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Answers } from '@steuereule/core'
 import type { TileFacts } from '../cockpit/tiles'
-import { nextOpenStep, slugOf, stepAfter, stepBefore, stepFromSlug, stepPosition, stromSteps, type StromStep } from './stromPlan'
+import { nextOpenStep, slugOf, stepAfter, stepBefore, stepFromSlug, stepPosition, stromProgress, stromSteps, type StromStep } from './stromPlan'
 
 const BASIS: Answers = { job: 'Angestellt', ausland: 'Nein', kinder: 'Nein', familienstand: 'Ledig' }
 const LSTB_DONE = {
@@ -91,5 +91,17 @@ describe('the Strom order (ADR-0089)', () => {
       expect(stepFromSlug(slugOf(step))).toEqual(step)
     }
     expect(stepFromSlug('gibt-es-nicht')).toBeNull()
+  })
+})
+
+describe('stromProgress — how far the user is (UX review 2026-11)', () => {
+  it('counts the answered steps out of all of them, without the summary', () => {
+    expect(stromProgress(BASIS, facts(BASIS))).toEqual({ done: 1, total: 4 })
+    expect(stromProgress(BASIS, facts(BASIS, { lstb: LSTB_DONE } as Partial<TileFacts>))).toEqual({ done: 2, total: 4 })
+  })
+
+  it('gives no count before the basis is answered or while a mask is still loading', () => {
+    expect(stromProgress({}, null)).toBeNull()
+    expect(stromProgress(BASIS, facts(BASIS, { pendingTiles: new Set(['lstb']) } as Partial<TileFacts>))).toBeNull()
   })
 })

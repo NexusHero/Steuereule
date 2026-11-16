@@ -205,6 +205,11 @@ export interface CopilotBridgeContextValue {
   readonly parseReceipt: (input: ParseReceiptInput) => Promise<ParseReceiptResponseDto | null>
   /** Upload a PDF or photo from the chat: stored encrypted, read on the device, parsed (#444). */
   readonly captureReceiptFile: (file: File) => Promise<CaptureResult | null>
+  /**
+   * Reads a document that already lies in the Belege inbox (the file as uploaded there, or its stored
+   * original fetched again): the same reading and drafts as a chat upload, without a second copy.
+   */
+  readonly readStoredReceipt: (file: File, receiptId: string) => Promise<CaptureResult | null>
   readonly receiptPhase: CapturePhase | null
   /** Plain-language outcome the chat shows after a capture (year conflict, unreadable file …). */
   readonly receiptNotice: string | null
@@ -839,6 +844,7 @@ export function CopilotBridgeProvider({
     async (
       file: File,
       again?: { holder: string; receiptId: string | null; kind: DetectedDocumentKind; alsoFor?: boolean },
+      storedReceiptId?: string,
     ): Promise<CaptureResult | null> => {
       if (!isAuthenticated) return null
       setParsingReceipt(true)
@@ -852,6 +858,7 @@ export function CopilotBridgeProvider({
           taxYear,
           onPhase: setReceiptPhase,
           ...(again ? { kind: again.kind, holder: again.holder, receiptId: again.receiptId, alsoFor: again.alsoFor === true } : {}),
+          ...(!again && storedReceiptId !== undefined ? { receiptId: storedReceiptId } : {}),
         })
         if (!result.ok) {
           setReceiptNotice(tr(`advisor.chat.receiptFailure.${result.failure}`))
@@ -908,6 +915,11 @@ export function CopilotBridgeProvider({
       }
     },
     [isAuthenticated, queryClient, taxYear, tr],
+  )
+
+  const readStoredReceipt = useCallback(
+    (file: File, receiptId: string) => captureReceiptFile(file, undefined, receiptId),
+    [captureReceiptFile],
   )
 
   const readAgainFor = useCallback(
@@ -1005,6 +1017,7 @@ export function CopilotBridgeProvider({
       receiptLinkedActionIds,
       parseReceipt,
       captureReceiptFile,
+      readStoredReceipt,
       receiptPhase,
       receiptNotice,
       clearReceiptNotice: () => setReceiptNotice(null),
@@ -1057,6 +1070,7 @@ export function CopilotBridgeProvider({
       receiptLinkedActionIds,
       parseReceipt,
       captureReceiptFile,
+      readStoredReceipt,
       receiptPhase,
       receiptNotice,
       documentQuestion,

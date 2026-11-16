@@ -170,6 +170,17 @@ export function nextOpenStep(answers: Answers, facts: TileFacts | null): StromSt
   return { kind: 'fertig' }
 }
 
+/**
+ * How far the user is: the steps of their Strom that are answered, out of all of them (the summary is
+ * no step of its own). Null while a mask's data is still loading — no count rather than a wrong one.
+ */
+export function stromProgress(answers: Answers, facts: TileFacts | null): { readonly done: number; readonly total: number } | null {
+  if (facts === null || !isBasisDone(answers)) return null
+  const steps = stromSteps(answers, facts).filter((s) => s.kind !== 'fertig')
+  if (steps.some((s) => s.kind === 'maske' && facts.pendingTiles?.has(s.id))) return null
+  return { done: steps.filter((s) => !isStepOpen(s, answers, facts)).length, total: steps.length }
+}
+
 /** The step after `current` in this user's Strom; the summary when `current` is no longer part of it. */
 export function stepAfter(current: StromStep, answers: Answers, facts: TileFacts | null): StromStep {
   const steps = stromSteps(answers, facts)

@@ -36,7 +36,7 @@ const Stack = createNativeStackNavigator<CockpitStackParamList>()
 type Props<T extends keyof CockpitStackParamList> = NativeStackScreenProps<CockpitStackParamList, T>
 
 function CockpitHomeRoute({ navigation }: Props<'CockpitHome'>) {
-  const { taxYear, setTaxYear, setFunnelPath, setPendingPath, setPartner, consumeStartInterview, onOpenConfirmation } =
+  const { taxYear, setTaxYear, setFunnelPath, setPendingPath, setPartner, consumeStartInterview, onOpenConfirmation, switchToTab } =
     useShellState()
   const { state: sessionState } = useAccountSession()
   const [redirecting, setRedirecting] = useState(() => consumeStartInterview())
@@ -64,6 +64,7 @@ function CockpitHomeRoute({ navigation }: Props<'CockpitHome'>) {
       onOpenKinder={() => navigation.navigate('Children', { year: taxYear })}
       onOpenOfficialForm={(year) => navigation.navigate('OfficialForm', { year })}
       onOpenMasterData={() => navigation.navigate('CockpitMasterData', { year: taxYear })}
+      onOpenReceipts={() => switchToTab('Receipts')}
       onOpenSubmission={(year) => navigation.navigate('Submission', { year })}
       onOpenTile={(tile, revisit) => navigateToTileRoute(navigation, taxYear, tile, revisit)}
       onOpenPartner={(area, name) => {

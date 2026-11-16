@@ -103,6 +103,8 @@ export interface AdvisorChatPanelProps {
   readonly receiptNotice?: string | null | undefined
   /** „Für wen?“ and „für: … · auch für …?“ of the last document (ADR-0092), shown under the upload. */
   readonly receiptAssignment?: ReactNode | undefined
+  /** More ways to hand the owl a document, shown in the attach panel (e.g. one already in the Belege inbox). */
+  readonly receiptSources?: ReactNode | undefined
   readonly isParsingReceipt?: boolean | undefined
   readonly compact?: boolean | undefined
   /**
@@ -192,6 +194,7 @@ export function AdvisorChatPanel({
   receiptProgress = null,
   receiptNotice = null,
   receiptAssignment,
+  receiptSources,
   isParsingReceipt = false,
   compact = false,
   variant = 'panel',
@@ -713,6 +716,7 @@ export function AdvisorChatPanel({
                 : tr('advisor.chat.receiptFileCta', 'PDF oder Foto auswählen')}
             </ReceiptPickerButton>
           ) : null}
+          {receiptSources ?? null}
           {fileQueue.length > 1 ? (
             <View style={styles.choicesRow} testID="advisor-receipt-queue">
               <Text style={styles.actionReason}>{tr('advisor.chat.receiptQueue', { count: fileQueue.length - 1 })}</Text>

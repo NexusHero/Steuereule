@@ -28,7 +28,8 @@ import { usePlausibility } from '../plausibility/usePlausibility'
 import { CockpitTiles, tileRevisitFlag, useCockpitTileFacts } from './CockpitTiles'
 import { derivePersonas } from './personas'
 import { nextStep, type TileDefinition, type TileFacts } from './tiles'
-import { nextOpenStep, type StromStep } from '../strom/stromPlan'
+import { nextOpenStep, stromProgress, type StromStep } from '../strom/stromPlan'
+import { CockpitInbox } from './CockpitInbox'
 import { makeStyles } from './CockpitScreen.styles'
 import { dismissEffect, observeMidpoint, rememberOpenedArea, type Effect } from './effectMemory'
 
@@ -48,6 +49,8 @@ export interface CockpitScreenProps {
   /** Opens the official Vordrucke on their own screen. */
   readonly onOpenOfficialForm?: (year: number) => void
   readonly onOpenOwlMode?: (year: number) => void
+  /** Opens the Belege tab: the cockpit says how many documents wait there. */
+  readonly onOpenReceipts?: () => void
   readonly onOpenPrintout?: (year: number) => void
   readonly onOpenSubmission?: (year: number) => void
   readonly onOpenConfirmation?: (year: number) => void
@@ -93,6 +96,7 @@ export function CockpitScreen({
   onOpenRental = () => {},
   onOpenKinder,
   onOpenOwlMode,
+  onOpenReceipts,
   onOpenPrintout,
   onOpenOfficialForm,
   onOpenSubmission,
@@ -200,7 +204,11 @@ export function CockpitScreen({
         ? { label: tr('cockpit.weiterMitDeinemWeg', { pfad: tr(`funnel.kontoWand.pfad.${path}`) }), onPress: () => onContinuePath(path) }
         : null
 
+  const progress = stromProgress(answers, tileFacts)
+
   const shared: CockpitEmptyProps = {
+    progress,
+    ...(onOpenReceipts ? { onOpenReceipts } : {}),
     year,
     onYearChange: setYear,
     refresh,
@@ -356,13 +364,19 @@ function Appbar({ year, onYearChange, isRefreshing }: { readonly year: number; r
         <Text style={styles.appbarTitle}>{tr('cockpit.appbarTitle')}</Text>
         {isRefreshing ? <ActivityIndicator size="small" color={t.color.tinte2} accessibilityLabel={tr('cockpit.refreshing')} /> : null}
       </View>
-      <View style={styles.jahrReihe} accessibilityLabel={tr('cockpit.jahrAuswahl')}>
+      {/* One row that scrolls sideways: five wrapped chips took a quarter of the first screen at 375 px. */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.jahrReihe}
+        accessibilityLabel={tr('cockpit.jahrAuswahl')}
+      >
         {SELECTABLE_YEARS.map((y) => (
           <Chip key={y} active={y === year} onPress={() => onYearChange(y)} testID={`jahr-${y}`}>
             {isRunningTaxYear(y) ? tr('cockpit.jahrLaeuft', { jahr: y }) : String(y)}
           </Chip>
         ))}
-      </View>
+      </ScrollView>
     </View>
   )
 }
@@ -409,6 +423,38 @@ interface CockpitEmptyProps {
   readonly onOpenOfficialForm?: () => void
   readonly bp: Breakpoint
   readonly deadlineAnswers: Answers | null
+  readonly progress: Progress | null
+  readonly onOpenReceipts?: () => void
+}
+
+interface Progress {
+  readonly done: number
+  readonly total: number
+}
+
+/** „3 von 6 Schritten erledigt“ with one segment per step: where the user stands, in one line. */
+function ProgressLine({ progress }: { readonly progress: Progress | null }) {
+  const t = useTheme()
+  const { t: tr } = useTranslation(APP_NS)
+  const styles = makeStyles(t)
+  if (progress === null || progress.total === 0) return null
+  return (
+    <View
+      style={styles.progress}
+      accessibilityRole="progressbar"
+      accessibilityValue={{ min: 0, max: progress.total, now: progress.done }}
+      testID="cockpit-fortschritt"
+    >
+      <View style={styles.progressBar}>
+        {Array.from({ length: progress.total }, (_, index) => (
+          <View key={index} style={index < progress.done ? styles.progressSegmentDone : styles.progressSegment} />
+        ))}
+      </View>
+      <Text style={styles.progressText} testID="cockpit-fortschritt-text">
+        {tr('cockpit.fortschritt', { erledigt: progress.done, count: progress.total })}
+      </Text>
+    </View>
+  )
 }
 
 /** The quieter actions below the tiles; shared by the empty and the loaded Cockpit. */
@@ -555,7 +601,7 @@ function EuleBannerNotice() {
   )
 }
 
-function CockpitEmpty({ year, onYearChange, refresh, isRefreshing, next, tileFacts, isSignedIn, isJointMarried, partnerName, findings, onOpenTile, onOpenPartner, onOpenSubmission, masterData, onOpenInterview, onOpenAssessment, onOpenCapital, onOpenRental, onOpenKinder, onOpenOwlMode, onOpenOfficialForm, deadlineAnswers, bp }: CockpitEmptyProps) {
+function CockpitEmpty({ year, onYearChange, refresh, isRefreshing, next, tileFacts, isSignedIn, isJointMarried, partnerName, findings, onOpenTile, onOpenPartner, onOpenSubmission, masterData, onOpenInterview, onOpenAssessment, onOpenCapital, onOpenRental, onOpenKinder, onOpenOwlMode, onOpenOfficialForm, deadlineAnswers, progress, onOpenReceipts, bp }: CockpitEmptyProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
@@ -571,6 +617,7 @@ function CockpitEmpty({ year, onYearChange, refresh, isRefreshing, next, tileFac
       <View style={styles.emptyBlock}>
         <Text style={styles.heading}>{tr('cockpit.empty.heading')}</Text>
         <Text style={styles.help}>{tr('cockpit.empty.message')}</Text>
+        <ProgressLine progress={progress} />
         {next ? (
           <Button onPress={next.onPress} style={styles.cta} testID="cockpit-weiter">
             {next.label}
@@ -580,6 +627,7 @@ function CockpitEmpty({ year, onYearChange, refresh, isRefreshing, next, tileFac
             {tr('cockpit.answerQuestions')}
           </Button>
         ) : null}
+        {isSignedIn && onOpenReceipts ? <CockpitInbox onOpenReceipts={onOpenReceipts} /> : null}
         {masterData && (masterData.missingFields?.length ?? 0) > 0 ? <MissingMasterDataNotice masterData={masterData} /> : null}
         {tileFacts !== null ? (
           <CockpitTiles
@@ -590,6 +638,7 @@ function CockpitEmpty({ year, onYearChange, refresh, isRefreshing, next, tileFac
             partnerName={partnerName}
             conflicts={findings.conflicts}
             notices={findings.notices}
+            openSteps={progress === null ? undefined : progress.total - progress.done}
             onOpenTile={onOpenTile}
             {...(onOpenPartner ? { onOpenPartner } : {})}
             {...(onOpenSubmission ? { onOpenSubmission } : {})}
@@ -655,7 +704,7 @@ interface CockpitLoadedProps extends CockpitEmptyProps {
   readonly onOpenConfirmation?: () => void
 }
 
-function CockpitLoaded({ summary, year, onYearChange, confirmation, onOpenConfirmation, refresh, isRefreshing, next, tileFacts, isSignedIn, isJointMarried, partnerName, findings, onOpenTile, onOpenPartner, onOpenSubmission, masterData, onOpenInterview, onOpenAssessment, onOpenCapital, onOpenRental, onOpenKinder, onOpenOwlMode, onOpenPrintout, onOpenOfficialForm, deadlineAnswers, bp }: CockpitLoadedProps) {
+function CockpitLoaded({ summary, year, onYearChange, confirmation, onOpenConfirmation, refresh, isRefreshing, next, tileFacts, isSignedIn, isJointMarried, partnerName, findings, onOpenTile, onOpenPartner, onOpenSubmission, masterData, onOpenInterview, onOpenAssessment, onOpenCapital, onOpenRental, onOpenKinder, onOpenOwlMode, onOpenPrintout, onOpenOfficialForm, deadlineAnswers, progress, onOpenReceipts, bp }: CockpitLoadedProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
@@ -689,9 +738,11 @@ function CockpitLoaded({ summary, year, onYearChange, confirmation, onOpenConfir
         ) : (
           <NumericHero status={status} compact={refundFirst} />
         )}
-        <Text style={styles.openItems}>{tr('cockpit.hero.openItems', { count: openItems })}</Text>
+        {/* Zero open questions is no news: the progress line below says where the user stands. */}
+        {hasOpenItems || progress === null ? <Text style={styles.openItems}>{tr('cockpit.hero.openItems', { count: openItems })}</Text> : null}
         <Refund year={year} hideRange={refundFirst} />
       </Card>
+      <ProgressLine progress={progress} />
       {next ? (
         <Button onPress={next.onPress} style={styles.cta} testID="cockpit-weiter">
           {next.label}
@@ -701,6 +752,7 @@ function CockpitLoaded({ summary, year, onYearChange, confirmation, onOpenConfir
           {tr('cockpit.answerQuestions')}
         </Button>
       ) : null}
+      {isSignedIn && onOpenReceipts ? <CockpitInbox onOpenReceipts={onOpenReceipts} /> : null}
       {masterData && (masterData.missingFields?.length ?? 0) > 0 ? <MissingMasterDataNotice masterData={masterData} /> : null}
       {tileFacts !== null ? (
         <CockpitTiles
@@ -712,6 +764,7 @@ function CockpitLoaded({ summary, year, onYearChange, confirmation, onOpenConfir
           conflicts={findings.conflicts}
           notices={findings.notices}
           hasPositiveRefund={estimate?.kind === 'spanne' && (estimate.result?.from ?? 0) > 0}
+          openSteps={progress === null ? undefined : progress.total - progress.done}
           onOpenTile={onOpenTile}
           {...(onOpenPartner ? { onOpenPartner } : {})}
           {...(onOpenSubmission ? { onOpenSubmission } : {})}

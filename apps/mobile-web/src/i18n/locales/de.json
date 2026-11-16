@@ -1498,7 +1498,8 @@
       "status": {
         "offen": "Offen",
         "erledigt": "Erledigt",
-        "betragOffen": "⏳ Betrag offen"
+        "betragOffen": "⏳ Betrag offen",
+        "optional": "Optional"
       },
       "hinweis": {
         "blocker": "Muss vor der Abgabe geklärt werden",
@@ -1589,7 +1590,9 @@
     },
     "abgabe": {
       "titel": "Abgabe vorbereiten",
-      "laufendesJahr": "Abgeben kannst du ab Januar {{abgabeAb}}."
+      "laufendesJahr": "Abgeben kannst du ab Januar {{abgabeAb}}.",
+      "nochOffen_one": "Noch {{count}} Schritt offen",
+      "nochOffen_other": "Noch {{count}} Schritte offen"
     },
     "wirkung": {
       "mitBereich": "Deine letzte Änderung · {{bereich}} ({{formular}}): {{wirkung}}",
@@ -1656,6 +1659,20 @@
       "provenanceReceiptOwl": "📎 Beleg + Eule",
       "provenanceOwl": "🦉 Von Eule",
       "provenanceUser": "✓ Selbst eingetragen"
+    },
+    "fortschritt_one": "{{erledigt}} von {{count}} Schritt erledigt",
+    "fortschritt_other": "{{erledigt}} von {{count}} Schritten erledigt",
+    "gruppe": {
+      "pflicht": "Pflicht",
+      "offen_one": "{{count}} offen",
+      "offen_other": "{{count}} offen",
+      "optional": "optional",
+      "erledigt": "Erledigt"
+    },
+    "eingang": {
+      "belege_one": "{{count}} Beleg wartet auf dich",
+      "belege_other": "{{count}} Belege warten auf dich",
+      "belegeHinweis": "Ordne sie einem Steuerjahr zu, dann zählen sie."
     }
   },
   "belegZuordnung": {
@@ -1725,7 +1742,6 @@
     },
     "upload": {
       "heading": "Beleg hochladen (PDF / Foto)",
-      "body": "PDF, JPEG, PNG oder WebP — dein Beleg wird verschlüsselt in deinem Konto gespeichert.",
       "kindLabel": "Belegart",
       "cta": "PDF oder Foto hochladen",
       "uploading": "Wird verschlüsselt hochgeladen …",
@@ -1784,6 +1800,34 @@
     "datum": {
       "belegdatum": "Belegdatum",
       "zahlungsdatum": "Zahlungsdatum"
+    },
+    "ordner": {
+      "alle": "Alle Ordner",
+      "einkuenfte": "Einkünfte & Lohn",
+      "vorsorge": "Vorsorge & Gesundheit",
+      "bescheide": "Bescheide & Nachweise",
+      "weitere": "Weitere Ausgaben"
+    },
+    "sammel": {
+      "text_one": "{{count}} Vorschlag wartet nur auf dein Ja.",
+      "text_other": "{{count}} Vorschläge warten nur auf dein Ja.",
+      "cta_one": "{{count}} Vorschlag zuordnen",
+      "cta_other": "Alle {{count}} zuordnen"
+    },
+    "bescheid": {
+      "cta": "Steuerbescheid ablegen",
+      "gespeichert": "Steuerbescheid ({{datei}}) gespeichert. Du findest ihn im Ordner „Bescheide & Nachweise“. Den Abgleich mit deiner Erklärung startest du im Cockpit unter „Bescheid prüfen“."
+    },
+    "eule": {
+      "lesen": "Mit der Eule lesen",
+      "liest": "Die Eule liest …",
+      "ansehen": "In der Eule ansehen",
+      "beantworten": "In der Eule beantworten",
+      "ergebnis": {
+        "read": "Die Eule hat den Beleg gelesen. Was sie gefunden hat, wartet dort auf dein Ja.",
+        "question": "Die Eule fragt noch, für wen dieser Beleg ist.",
+        "unreadable": "Die Eule konnte diesen Beleg nicht lesen. Er bleibt gespeichert."
+      }
     }
   },
   "bescheid": {
@@ -2075,7 +2119,8 @@
       "receiptBlocked": "⚠️ Sensibler Inhalt geschwärzt (Mandantengeheimnis)",
       "pauschbetragBadge": "Im Pauschbetrag (1.230 €)",
       "provenanceReceiptOwl": "📎 Beleg + Eule",
-      "provenanceOwlDraft": "🦉 Eulen-Entwurf"
+      "provenanceOwlDraft": "🦉 Eulen-Entwurf",
+      "receiptInInbox": "Das Original liegt in deinen Belegen →"
     }
   },
   "advisor": {
@@ -2405,7 +2450,12 @@
       "undoAria": "Rückgängig machen",
       "undoButton": "↩ Rückgängig machen",
       "applyNow": "✓ Jetzt übernehmen",
-      "applyAgain": "✓ Erneut übernehmen"
+      "applyAgain": "✓ Erneut übernehmen",
+      "storedReceipts": {
+        "toggle": "Aus deinen Belegen wählen",
+        "empty": "In deinen Belegen liegt noch keine Datei.",
+        "all": "Alle Belege ansehen"
+      }
     },
     "companion": {
       "triggerTitle": "Eule zu dieser Maske fragen",

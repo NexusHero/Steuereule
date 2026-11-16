@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ScrollView, View, Text } from 'react-native'
+import { Pressable, ScrollView, View, Text } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { Button, Card, Chip, HerkunftsChip, Input, Pill, useTheme, useBreakpoint } from '@steuereule/ui'
@@ -19,7 +19,9 @@ import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { triggerSaveErrorHaptic, warnOnHttpError } from '../shared/saveFeedback'
 import { ReceiptFileModal } from './ReceiptFileModal'
 import { ReceiptHolderSection } from './ReceiptHolderSection'
-import { useOptionalShellTaxYear } from '../../navigation/ShellState'
+import { useOptionalShellTaxYear, useOptionalSwitchToTab } from '../../navigation/ShellState'
+import { useOptionalCopilotBridge } from '../advisor/CopilotBridgeProvider'
+import { storedReceiptFile } from '../../lib/receipts/storedReceiptFile'
 import { DEFAULT_TAX_YEAR } from '../../config/taxYear'
 import { makeStyles } from './ReceiptsScreen.styles'
 
@@ -66,13 +68,16 @@ export function folderForReceiptKind(kind: ReceiptResponseDto['kind']): Exclude<
   return 'weitere'
 }
 
-const FOLDER_LABELS: Readonly<Record<ReceiptFolderCategory, string>> = {
-  alle: 'Alle Ordner',
-  einkuenfte: 'Einkünfte & Lohn',
-  vorsorge: 'Vorsorge & Gesundheit',
-  bescheide: 'Bescheide & Nachweise',
-  weitere: 'Weitere Ausgaben',
-}
+const FOLDER_LABEL_KEYS = {
+  alle: 'belege.ordner.alle',
+  einkuenfte: 'belege.ordner.einkuenfte',
+  vorsorge: 'belege.ordner.vorsorge',
+  bescheide: 'belege.ordner.bescheide',
+  weitere: 'belege.ordner.weitere',
+} as const satisfies Readonly<Record<ReceiptFolderCategory, string>>
+
+/** What reading a document for the owl led to, as the Belege tab says it. */
+type OwlReadOutcome = 'read' | 'question' | 'unreadable'
 
 export function ReceiptsScreen() {
   const bp = useBreakpoint()
@@ -110,6 +115,11 @@ export function ReceiptsScreen() {
     activeFolder === 'alle'
       ? receipts
       : receipts.filter((r) => folderForReceiptKind(r.kind) === activeFolder)
+
+  // Proposals that only wait for a yes: one tap takes them all (a conflict stays the user's own decision).
+  const proposals = receipts.flatMap((r) =>
+    r.assignment.kind === 'vorgeschlagen' && typeof r.assignment.taxYear === 'number' ? [{ id: r.id, taxYear: r.assignment.taxYear }] : [],
+  )
 
   function assign(id: string, taxYear: number, proposalDismissed = false) {
     setAssignment.mutate(
@@ -155,13 +165,29 @@ export function ReceiptsScreen() {
           void queryClient.invalidateQueries({ queryKey: getReceiptControllerListQueryKey() })
         }}
       />
-      <BescheidCheckCard
-        onUploaded={() => {
-          void queryClient.invalidateQueries({ queryKey: getReceiptControllerListQueryKey() })
-        }}
-      />
+      {proposals.length > 1 ? (
+        <View style={styles.bulkRow} testID="belege-sammel-zuordnung">
+          <Text style={styles.bulkText}>{tr('belege.sammel.text', { count: proposals.length })}</Text>
+          <Button
+            onPress={() => {
+              for (const proposal of proposals) assign(proposal.id, proposal.taxYear)
+            }}
+            disabled={setAssignment.isPending}
+            style={styles.compactButton}
+            testID="belege-alle-zuordnen"
+          >
+            {tr('belege.sammel.cta', { count: proposals.length })}
+          </Button>
+        </View>
+      ) : null}
       {receipts.length > 0 ? (
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.s2, marginBottom: t.space.s3 }} testID="belege-ordner-filter">
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.folderScroll}
+          contentContainerStyle={styles.folderRow}
+          testID="belege-ordner-filter"
+        >
           {(['alle', 'einkuenfte', 'vorsorge', 'bescheide', 'weitere'] as const).map((folder) => {
             const count =
               folder === 'alle'
@@ -174,11 +200,11 @@ export function ReceiptsScreen() {
                 onPress={() => setActiveFolder(folder)}
                 testID={`belege-ordner-${folder}`}
               >
-                {`${FOLDER_LABELS[folder]} (${count})`}
+                {`${tr(FOLDER_LABEL_KEYS[folder])} (${count})`}
               </Chip>
             )
           })}
-        </View>
+        </ScrollView>
       ) : null}
       <ReceiptFileModal
         receiptId={previewReceipt?.id ?? null}
@@ -213,7 +239,8 @@ export function ReceiptsScreen() {
   )
 }
 
-function BescheidCheckCard({ onUploaded }: { readonly onUploaded: () => void }) {
+/** The tax assessment has its own kind and folder: a quiet second way in, inside the upload bar. */
+function BescheidPicker({ onUploaded }: { readonly onUploaded: () => void }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const [checking, setChecking] = useState(false)
@@ -241,10 +268,7 @@ function BescheidCheckCard({ onUploaded }: { readonly onUploaded: () => void }) 
         setCheckResult({ kind: 'error', text: tr('belege.upload.errorFailed') })
         return
       }
-      setCheckResult({
-        kind: 'ok',
-        text: `Steuerbescheid (${file.name}) importiert & mit deiner Erklärung abgeglichen: Im Ordner „Bescheide & Nachweise“ hinterlegt und im Eulen-Chat für die Einspruchsprüfung bereit.`,
-      })
+      setCheckResult({ kind: 'ok', text: tr('belege.bescheid.gespeichert', { datei: file.name }) })
       onUploaded()
     } catch {
       triggerSaveErrorHaptic()
@@ -255,11 +279,7 @@ function BescheidCheckCard({ onUploaded }: { readonly onUploaded: () => void }) 
   }
 
   return (
-    <Card style={{ marginBottom: t.space.s3, gap: t.space.s2 }} testID="belege-bescheid-check-card">
-      <Text style={{ ...t.type.cardTitle, color: t.color.tinte }}>Steuerbescheid prüfen & abgleichen</Text>
-      <Text style={{ ...t.type.small, color: t.color.tinte2 }}>
-        Lade deinen vom Finanzamt erhaltenen Steuerbescheid (PDF/Scan) hoch – die Eule vergleicht die festgesetzten Werte mit deiner Erklärung und markiert Abweichungen für einen möglichen Einspruch.
-      </Text>
+    <View style={{ gap: t.space.s2, alignItems: 'flex-start' }} testID="belege-bescheid-check-card">
       {isWeb ? (
         <ReceiptPickerButton
           onFile={(file) => void handleBescheidFile(file)}
@@ -268,19 +288,19 @@ function BescheidCheckCard({ onUploaded }: { readonly onUploaded: () => void }) 
           testID="belege-bescheid-upload-cta"
           inputTestID="belege-bescheid-file-input"
         >
-          {checking ? tr('belege.upload.uploading') : 'Steuerbescheid zum Abgleich wählen'}
+          {checking ? tr('belege.upload.uploading') : tr('belege.bescheid.cta')}
         </ReceiptPickerButton>
       ) : null}
       {checkResult !== null ? (
         <Text
-          style={{ ...t.type.small, color: checkResult.kind === 'ok' ? t.color.ok : t.color.warn }}
+          style={{ ...t.type.small, color: checkResult.kind === 'ok' ? t.color.funkeHell : t.color.warn }}
           accessibilityLiveRegion="polite"
           testID="belege-bescheid-check-status"
         >
           {checkResult.text}
         </Text>
       ) : null}
-    </Card>
+    </View>
   )
 }
 
@@ -303,11 +323,15 @@ function UploadCard({ onUploaded }: { readonly onUploaded: () => void }) {
   const [selectedKind, setSelectedKind] = useState<CreateReceiptDtoKind>(CreateReceiptDtoKind.Sonstiges)
   const [uploading, setUploading] = useState(false)
   const [statusMessage, setStatusMessage] = useState<{ readonly kind: 'ok' | 'error'; readonly text: string } | null>(null)
+  const [owlOutcome, setOwlOutcome] = useState<OwlReadOutcome | null>(null)
+  const bridge = useOptionalCopilotBridge()
+  const switchToTab = useOptionalSwitchToTab()
   const isWeb = typeof document !== 'undefined'
 
   async function handleFileSelected(file: File | undefined) {
     if (!file) return
     setStatusMessage(null)
+    setOwlOutcome(null)
 
     const detectedMime = detectDocumentMimeType(new Uint8Array(0), file.type, file.name)
     if (detectedMime === null) {
@@ -330,6 +354,15 @@ function UploadCard({ onUploaded }: { readonly onUploaded: () => void }) {
       }
       setStatusMessage({ kind: 'ok', text: tr('belege.upload.success') })
       onUploaded()
+      // The same reading as a chat upload (UX review 2026-11): the owl knows the document, its kind is
+      // recognised and what it says waits as drafts — nothing is written without the user's yes.
+      if (bridge) {
+        const read = await bridge.readStoredReceipt(file, result.data.id)
+        if (read !== null) {
+          setOwlOutcome(!read.ok ? 'unreadable' : read.response.assignment?.question ? 'question' : 'read')
+          onUploaded()
+        }
+      }
     } catch {
       triggerSaveErrorHaptic()
       setStatusMessage({ kind: 'error', text: tr('belege.upload.errorFailed') })
@@ -341,11 +374,9 @@ function UploadCard({ onUploaded }: { readonly onUploaded: () => void }) {
   return (
     <Card variant="nacht" style={s.uploadCard} testID="belege-upload-card">
       <Text style={s.uploadHeading}>{tr('belege.upload.heading')}</Text>
-      <Text style={s.uploadBody}>{tr('belege.upload.body')}</Text>
 
       {isWeb && (
         <View style={s.uploadControls}>
-          <Text style={s.uploadKindLabel}>{tr('belege.upload.kindLabel')}</Text>
           <select
             aria-label={tr('belege.upload.kindLabel')}
             value={selectedKind}
@@ -377,13 +408,26 @@ function UploadCard({ onUploaded }: { readonly onUploaded: () => void }) {
             testID="belege-upload-cta"
             inputTestID="belege-file-input"
           >
-            {uploading ? tr('belege.upload.uploading') : tr('belege.upload.cta')}
+            {uploading ? tr(bridge?.receiptPhase ? `advisor.chat.receiptProgress.${bridge.receiptPhase}` : 'belege.upload.uploading') : tr('belege.upload.cta')}
           </ReceiptPickerButton>
         </View>
       )}
 
       {statusMessage !== null && (
         <Text style={statusMessage.kind === 'ok' ? s.uploadOkText : s.uploadErrText}>{statusMessage.text}</Text>
+      )}
+      <BescheidPicker onUploaded={onUploaded} />
+      {owlOutcome !== null && (
+        <View style={s.owlOutcome} testID="belege-upload-eule">
+          <Text style={s.uploadBody} accessibilityLiveRegion="polite">
+            {tr(`belege.eule.ergebnis.${owlOutcome}`)}
+          </Text>
+          {owlOutcome !== 'unreadable' && switchToTab ? (
+            <Button variant="leise" onPress={() => switchToTab('Owl')} style={s.compactButton} testID="belege-upload-eule-oeffnen">
+              {tr(owlOutcome === 'question' ? 'belege.eule.beantworten' : 'belege.eule.ansehen')}
+            </Button>
+          ) : null}
+        </View>
       )}
     </Card>
   )
@@ -432,36 +476,50 @@ function ReceiptCard({
   const kindKey = receipt.kind === null ? undefined : KIND_LABEL_KEYS[receipt.kind]
   const kindLabel = kindKey !== undefined ? tr(kindKey) : receipt.kind === null ? tr('belege.art.generic') : receipt.kind
   const folderCategory = folderForReceiptKind(receipt.kind)
+  const bridge = useOptionalCopilotBridge()
+  const switchToTab = useOptionalSwitchToTab()
+  const [owlState, setOwlState] = useState<'idle' | 'reading' | 'failed'>('idle')
+
+  // The way from a document to the owl: its stored original is read on the device again, the drafts
+  // wait in the chat, and the user lands there.
+  async function readWithOwl() {
+    if (!bridge) return
+    setOwlState('reading')
+    const file = await storedReceiptFile(receipt)
+    const read = file === null ? null : await bridge.readStoredReceipt(file, receipt.id)
+    if (read === null || !read.ok) {
+      setOwlState('failed')
+      return
+    }
+    setOwlState('idle')
+    switchToTab?.('Owl')
+  }
 
   return (
-    <Card>
+    <Card style={s.receiptCard}>
       <View style={s.cardHead}>
         <Text style={s.cardTitle} numberOfLines={2}>
           {receipt.fileName}
         </Text>
         <Chip variant="src">{kindLabel}</Chip>
       </View>
-      <Text
-        style={{ ...t.type.caption, color: t.color.tinte2, marginTop: t.space.s1 }}
-        testID={`receipt-folder-${receipt.id}`}
-      >
-        {`📁 ${holderYear} / ${FOLDER_LABELS[folderCategory]} · 🦉 Im Chat synchronisiert`}
-      </Text>
-      {receipt.hasFile && <Text style={s.fileBadge}>{tr('belege.upload.fileAttached')}</Text>}
-      {(receipt.belegdatum !== null || receipt.zahlungsdatum !== null) && (
-        <View style={s.dates}>
-          {receipt.belegdatum !== null && (
-            <Text style={s.dateLine}>
-              {tr('belege.datum.belegdatum')}: <Text style={s.mono}>{receipt.belegdatum}</Text>
-            </Text>
-          )}
-          {receipt.zahlungsdatum !== null && (
-            <Text style={s.dateLine}>
-              {tr('belege.datum.zahlungsdatum')}: <Text style={s.mono}>{receipt.zahlungsdatum}</Text>
-            </Text>
-          )}
-        </View>
-      )}
+      {/* One wrapped line of facts instead of a block each: folder, stored original, the two dates. */}
+      <View style={s.metaRow}>
+        <Text style={s.metaText} testID={`receipt-folder-${receipt.id}`}>
+          {`${holderYear} / ${tr(FOLDER_LABEL_KEYS[folderCategory])}`}
+        </Text>
+        {receipt.belegdatum !== null && (
+          <Text style={s.metaText}>
+            {tr('belege.datum.belegdatum')}: <Text style={s.metaMono}>{receipt.belegdatum}</Text>
+          </Text>
+        )}
+        {receipt.zahlungsdatum !== null && (
+          <Text style={s.metaText}>
+            {tr('belege.datum.zahlungsdatum')}: <Text style={s.metaMono}>{receipt.zahlungsdatum}</Text>
+          </Text>
+        )}
+        {receipt.hasFile && <Text style={s.fileBadge}>{tr('belege.upload.fileAttached')}</Text>}
+      </View>
       <AssignmentSection receipt={receipt} onAssign={onAssign} />
       <ReceiptHolderSection receipt={receipt} taxYear={holderYear} />
 
@@ -476,6 +534,17 @@ function ReceiptCard({
             {tr('belege.preview.open')}
           </Button>
         )}
+        {bridge && receipt.hasFile ? (
+          <Button
+            variant="ghost"
+            onPress={() => void readWithOwl()}
+            disabled={owlState === 'reading' || bridge.parsingReceipt}
+            style={s.compactButton}
+            testID={`receipt-eule-${receipt.id}`}
+          >
+            {tr(owlState === 'reading' ? 'belege.eule.liest' : 'belege.eule.lesen')}
+          </Button>
+        ) : null}
         {!confirmingDelete ? (
           <Button
             variant="leise"
@@ -502,6 +571,11 @@ function ReceiptCard({
           </View>
         )}
       </View>
+      {owlState === 'failed' && (
+        <Text style={s.konfliktBody} accessibilityLiveRegion="polite" testID={`receipt-eule-fehler-${receipt.id}`}>
+          {tr('belege.eule.ergebnis.unreadable')}
+        </Text>
+      )}
       {deleteFailed && <Text style={s.konfliktBody}>{tr('belege.delete.error')}</Text>}
     </Card>
   )
@@ -541,10 +615,10 @@ function AssignmentSection({
         {tr('belege.zuordnung.konflikt.body', { zugeordnet: z.taxYear, vorschlag: z.proposalYear })}
       </Text>
       <View style={s.actionRow}>
-        <Button onPress={() => onAssign(receipt.id, z.proposalYear ?? 0)}>
+        <Button style={s.compactButton} onPress={() => onAssign(receipt.id, z.proposalYear ?? 0)}>
           {tr('belege.zuordnung.konflikt.resolve', { jahr: z.proposalYear })}
         </Button>
-        <Button variant="leise" onPress={() => onAssign(receipt.id, z.taxYear ?? 0, true)}>
+        <Button variant="leise" style={s.compactButton} onPress={() => onAssign(receipt.id, z.taxYear ?? 0, true)}>
           {tr('belege.zuordnung.konflikt.keep', { jahr: z.taxYear })}
         </Button>
       </View>
@@ -574,13 +648,16 @@ function Proposed({ proposalYear, provenance, onAssign }: ProposedProps) {
         <HerkunftsChip
           source={{ rule: provenance === 'zahlungsdatum' ? tr('belege.zuordnung.regelZahlungsdatum') : tr('belege.zuordnung.regelBelegdatum') }}
         />
+        {/* The rare way out is a quiet link beside the proposal, so the one-tap yes keeps its own line. */}
+        {!override ? (
+          <Pressable accessibilityRole="button" onPress={() => setOverride(true)} hitSlop={12} style={s.inlineLink}>
+            <Text style={s.inlineLinkText}>{tr('belege.zuordnung.otherYear')}</Text>
+          </Pressable>
+        ) : null}
       </View>
       {!override ? (
         <View style={s.actionRow}>
-          <Button onPress={() => onAssign(proposalYear)}>{tr('belege.zuordnung.confirm', { jahr: proposalYear })}</Button>
-          <Button variant="ghost" onPress={() => setOverride(true)}>
-            {tr('belege.zuordnung.otherYear')}
-          </Button>
+          <Button style={s.compactButton} onPress={() => onAssign(proposalYear)}>{tr('belege.zuordnung.confirm', { jahr: proposalYear })}</Button>
         </View>
       ) : (
         <View>

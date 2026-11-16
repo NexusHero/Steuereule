@@ -257,6 +257,43 @@ export function partitionTiles(facts: TileFacts): PartitionedTiles {
   return { main, more }
 }
 
+export interface GroupedTiles {
+  /** Part of the user's path and still to do — or done but flagged by a finding. */
+  readonly required: readonly TileDefinition[]
+  /** Fits the user, can pay off, never blocks the return. */
+  readonly optional: readonly TileDefinition[]
+  /** Done and unflagged: shown compactly at the end. */
+  readonly done: readonly TileDefinition[]
+  /** Topics that do not fit the user's personas („Weitere Themen“). */
+  readonly more: readonly TileDefinition[]
+}
+
+/**
+ * A tile the return cannot do without: the steps of the user's path, and the two the Strom asks as steps
+ * of their own once they apply (the children, Alleinerziehend).
+ */
+export function isRequiredTile(tile: TileDefinition, path: FunnelPath): boolean {
+  return tile.id === 'kinder' || tile.id === 'alleinerziehend' || NEXT_STEP_ORDER[path].includes(tile.id)
+}
+
+/**
+ * The cockpit's tiles by what the user has to do with them. A done tile moves to the end unless
+ * `needsAttention` says a finding points at it; a tile whose data is still loading stays where it is.
+ */
+export function groupTiles(facts: TileFacts, needsAttention: (id: TileId) => boolean = () => false): GroupedTiles {
+  const { main, more } = partitionTiles(facts)
+  const required: TileDefinition[] = []
+  const optional: TileDefinition[] = []
+  const done: TileDefinition[] = []
+  for (const tile of main) {
+    const settled = !facts.pendingTiles?.has(tile.id) && tile.status(facts) === 'erledigt' && !needsAttention(tile.id)
+    if (settled) done.push(tile)
+    else if (isRequiredTile(tile, facts.path)) required.push(tile)
+    else optional.push(tile)
+  }
+  return { required, optional, done, more }
+}
+
 export function visibleTiles(facts: TileFacts): readonly TileDefinition[] {
   return partitionTiles(facts).main
 }
