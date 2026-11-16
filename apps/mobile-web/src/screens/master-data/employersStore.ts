@@ -9,8 +9,6 @@ export interface SavedEmployer {
   readonly uid?: string
 }
 
-const STORAGE_KEY = 'steuereule.employers'
-
 export const DEFAULT_EMPLOYERS: readonly SavedEmployer[] = [
   {
     id: 'emp-novartis-ch',
@@ -33,35 +31,14 @@ export const DEFAULT_EMPLOYERS: readonly SavedEmployer[] = [
 let cachedEmployers: readonly SavedEmployer[] | null = null
 const listeners = new Set<() => void>()
 
-function readFromStorage(): readonly SavedEmployer[] {
+function readFromMemory(): readonly SavedEmployer[] {
   if (cachedEmployers !== null) return cachedEmployers
-  try {
-    if (typeof window !== 'undefined' && window.localStorage) {
-      const raw = window.localStorage.getItem(STORAGE_KEY)
-      if (raw) {
-        const parsed = JSON.parse(raw) as unknown
-        if (Array.isArray(parsed)) {
-          cachedEmployers = parsed as SavedEmployer[]
-          return cachedEmployers
-        }
-      }
-    }
-  } catch {
-    // Fallback to in-memory defaults
-  }
   cachedEmployers = DEFAULT_EMPLOYERS
   return cachedEmployers
 }
 
-function writeToStorage(next: readonly SavedEmployer[]): void {
+function writeToMemory(next: readonly SavedEmployer[]): void {
   cachedEmployers = next
-  try {
-    if (typeof window !== 'undefined' && window.localStorage) {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
-    }
-  } catch {
-    // Ignore storage quota / privacy mode errors
-  }
   for (const listener of listeners) {
     listener()
   }
@@ -75,11 +52,11 @@ export function subscribeEmployers(listener: () => void): () => void {
 }
 
 export function getEmployersSnapshot(): readonly SavedEmployer[] {
-  return readFromStorage()
+  return readFromMemory()
 }
 
 export function addSavedEmployer(input: Omit<SavedEmployer, 'id'> & { readonly id?: string }): SavedEmployer {
-  const current = readFromStorage()
+  const current = readFromMemory()
   const trimmedName = input.name.trim()
   const existingIndex = current.findIndex((e) => e.name.toLowerCase() === trimmedName.toLowerCase())
   const entry: SavedEmployer = {
@@ -94,13 +71,13 @@ export function addSavedEmployer(input: Omit<SavedEmployer, 'id'> & { readonly i
     existingIndex >= 0
       ? current.map((item, idx) => (idx === existingIndex ? entry : item))
       : [...current, entry]
-  writeToStorage(next)
+  writeToMemory(next)
   return entry
 }
 
 export function removeSavedEmployer(id: string): void {
-  const current = readFromStorage()
-  writeToStorage(current.filter((item) => item.id !== id))
+  const current = readFromMemory()
+  writeToMemory(current.filter((item) => item.id !== id))
 }
 
 export function resetEmployersForTest(): void {

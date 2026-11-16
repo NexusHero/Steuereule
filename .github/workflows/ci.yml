@@ -35,7 +35,7 @@ jobs:
   # Real gate today: the three compose file combinations must parse.
   validate-compose:
     name: Validate compose
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - name: base
@@ -63,7 +63,7 @@ jobs:
   lint:
     name: Lint
     needs: validate-compose
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
       - name: Set up pnpm
@@ -84,7 +84,7 @@ jobs:
   security-static:
     name: DevSecOps Static (Gitleaks, Trivy FS/IaC, Semgrep SAST, Hadolint, Actionlint)
     needs: validate-compose
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
         with:
@@ -123,7 +123,7 @@ jobs:
   test:
     name: Test
     needs: validate-compose
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
       - name: Set up pnpm
@@ -236,7 +236,7 @@ jobs:
   integration:
     name: Integration (Postgres)
     needs: validate-compose
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     services:
       postgres:
         image: postgres:16
@@ -323,7 +323,7 @@ jobs:
   # (`fs`, `fetch`), deliberately dependency-free (see the README).
   docs-consistency:
     name: Docs consistency — register-check + adr-check
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # F7 (Musti's review on #252): the only job in this pipeline that hands GITHUB_TOKEN to a
     # `fetch()` call (check 5's issue-open lookup) — with no permissions: block anywhere in
     # this workflow, that token would carry the repository's default, which can be far wider
@@ -373,7 +373,7 @@ jobs:
 
   vordrucke:
     name: Vordrucke — Vermessung und Lage der Ausdruck-Felder
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # The Ausdruck writes onto fixed positions of the official PDFs. A swapped template, a spec
     # that no longer resolves to the checked-in boxes, or a box that now sits next to another
     # label would print a wrong but plausible-looking return — none of that is visible to the
@@ -409,7 +409,7 @@ jobs:
   build:
     name: Build, CycloneDX SBOM, Trivy Container Scan & Bundle Gate
     needs: [lint, test, integration, security-static]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
       - name: Set up pnpm
@@ -486,7 +486,7 @@ jobs:
   smoke:
     name: Smoke
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     services:
       postgres:
         image: postgres:16
@@ -737,7 +737,7 @@ jobs:
     # this pipeline exists to refuse — it stays unwired until #206 closes.
     name: Browser gates (real stack, headless Chromium)
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     services:
       postgres:
         image: postgres:16
@@ -1084,7 +1084,7 @@ jobs:
   e2e-scenarios:
     name: E2E Scenarios Matrix (Shard ${{ matrix.shard }})
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     strategy:
       fail-fast: false
@@ -1197,7 +1197,7 @@ jobs:
   prod-deploy-smoke:
     name: Production compose stack — guest, registration, login, QR (real Docker build)
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
