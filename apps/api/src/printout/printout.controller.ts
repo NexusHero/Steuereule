@@ -19,7 +19,7 @@ import { RequiresAccount } from '../auth/requires-account.guard.js'
 import { UserContextGuard } from '../auth/user-context.guard.js'
 import { ParseTaxYearPipe } from '../cockpit/parse-tax-year.pipe.js'
 import { CheckoutResponseDto } from '../unlock/dto/unlock.dto.js'
-import { PrintoutCheckDto, PrintoutJobDto } from './dto/printout.dto.js'
+import { LiveFormValuesDto, PrintoutCheckDto, PrintoutJobDto } from './dto/printout.dto.js'
 import { PrintoutService } from './printout.service.js'
 import { PrintoutJobService } from './printout-job.service.js'
 
@@ -40,6 +40,19 @@ export class PrintoutController {
   @ApiUnauthorizedResponse({ description: 'Guest session — this endpoint requires a signed-in account.' })
   check(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number): Promise<PrintoutCheckDto> {
     return this.service.check(userId, year)
+  }
+
+  @Get(':jahr/ausdruck/werte')
+  @RequiresAccount()
+  @ApiParam({ name: 'jahr', type: Number, example: 2025 })
+  @ApiOkResponse({
+    type: LiveFormValuesDto,
+    description: 'What the printout would show, per Vordruck and copy, for the live form view. Free: only the PDF is paid (ADR-0050).',
+  })
+  @ApiNotFoundResponse({ description: 'No measured templates exist for this tax year.' })
+  @ApiUnauthorizedResponse({ description: 'Guest session — this endpoint requires a signed-in account.' })
+  liveValues(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number): Promise<LiveFormValuesDto> {
+    return this.service.liveValues(userId, year)
   }
 
   @Post(':jahr/ausdruck/checkout')

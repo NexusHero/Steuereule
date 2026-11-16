@@ -51,3 +51,42 @@ export class PrintoutJobDto {
   })
   error?: string
 }
+
+export class LiveFormInstanceDto {
+  @ApiProperty({
+    type: String,
+    enum: ['A', 'B'],
+    nullable: true,
+    description: 'Whose copy it is when the form says so (Anlage N, R, KAP, N-Gre of a couple); null otherwise.',
+  })
+  readonly person!: 'A' | 'B' | null
+
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    example: 'kind_3f2a',
+    description: 'The record behind a per-record form: the child (Anlage Kind) or the rental object (Anlage V); null otherwise.',
+  })
+  readonly entityId!: string | null
+
+  @ApiProperty({
+    type: Object,
+    additionalProperties: { oneOf: [{ type: 'string' }, { type: 'boolean', enum: [true] }] },
+    example: { 'anlN.personA': true, 'anlN.kz110': '42000' },
+    description: 'The AcroForm field ids of this copy and what is printed in them; `true` = a cross.',
+  })
+  readonly values!: Readonly<Record<string, string | true>>
+}
+
+export class LiveFormDto {
+  @ApiProperty({ type: String, example: 'anlage-n', description: 'The Vordruck id, as for `ausdruck/vorlage/:formular`.' })
+  readonly formular!: string
+
+  @ApiProperty({ type: [LiveFormInstanceDto], description: 'Every printed copy of this Vordruck, in print order.' })
+  readonly instances!: readonly LiveFormInstanceDto[]
+}
+
+export class LiveFormValuesDto {
+  @ApiProperty({ type: [LiveFormDto], description: 'The filled Vordrucke in print order; Vordrucke without values are left out.' })
+  readonly forms!: readonly LiveFormDto[]
+}

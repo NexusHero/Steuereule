@@ -26,6 +26,7 @@ import type {
 
 import type {
   CheckoutResponseDto,
+  LiveFormValuesDto,
   PrintoutCheckDto,
   PrintoutControllerExportAsyncParams,
   PrintoutControllerPrintoutParams,
@@ -161,6 +162,125 @@ export function usePrintoutControllerCheck<TData = Awaited<ReturnType<typeof pri
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getPrintoutControllerCheckQueryOptions(jahr,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type printoutControllerLiveValuesResponse200 = {
+  data: LiveFormValuesDto
+  status: 200
+}
+
+export type printoutControllerLiveValuesResponse401 = {
+  data: void
+  status: 401
+}
+
+export type printoutControllerLiveValuesResponse404 = {
+  data: void
+  status: 404
+}
+
+export type printoutControllerLiveValuesResponseSuccess = (printoutControllerLiveValuesResponse200) & {
+  headers: Headers;
+};
+export type printoutControllerLiveValuesResponseError = (printoutControllerLiveValuesResponse401 | printoutControllerLiveValuesResponse404) & {
+  headers: Headers;
+};
+
+export type printoutControllerLiveValuesResponse = (printoutControllerLiveValuesResponseSuccess | printoutControllerLiveValuesResponseError)
+
+export const getPrintoutControllerLiveValuesUrl = (jahr: number,) => {
+
+
+
+
+  return `/v1/steuerjahre/${jahr}/ausdruck/werte`
+}
+
+export const printoutControllerLiveValues = async (jahr: number, options?: RequestInit): Promise<printoutControllerLiveValuesResponse> => {
+
+  return httpClient<printoutControllerLiveValuesResponse>(getPrintoutControllerLiveValuesUrl(jahr),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getPrintoutControllerLiveValuesQueryKey = (jahr: number,) => {
+    return [
+    `/v1/steuerjahre/${jahr}/ausdruck/werte`
+    ] as const;
+    }
+
+
+export const getPrintoutControllerLiveValuesQueryOptions = <TData = Awaited<ReturnType<typeof printoutControllerLiveValues>>, TError = void>(jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof printoutControllerLiveValues>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getPrintoutControllerLiveValuesQueryKey(jahr);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof printoutControllerLiveValues>>> = ({ signal }) => printoutControllerLiveValues(jahr, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: jahr !== null && jahr !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof printoutControllerLiveValues>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type PrintoutControllerLiveValuesQueryResult = NonNullable<Awaited<ReturnType<typeof printoutControllerLiveValues>>>
+export type PrintoutControllerLiveValuesQueryError = void
+
+
+export function usePrintoutControllerLiveValues<TData = Awaited<ReturnType<typeof printoutControllerLiveValues>>, TError = void>(
+ jahr: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof printoutControllerLiveValues>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof printoutControllerLiveValues>>,
+          TError,
+          Awaited<ReturnType<typeof printoutControllerLiveValues>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function usePrintoutControllerLiveValues<TData = Awaited<ReturnType<typeof printoutControllerLiveValues>>, TError = void>(
+ jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof printoutControllerLiveValues>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof printoutControllerLiveValues>>,
+          TError,
+          Awaited<ReturnType<typeof printoutControllerLiveValues>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function usePrintoutControllerLiveValues<TData = Awaited<ReturnType<typeof printoutControllerLiveValues>>, TError = void>(
+ jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof printoutControllerLiveValues>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function usePrintoutControllerLiveValues<TData = Awaited<ReturnType<typeof printoutControllerLiveValues>>, TError = void>(
+ jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof printoutControllerLiveValues>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getPrintoutControllerLiveValuesQueryOptions(jahr,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

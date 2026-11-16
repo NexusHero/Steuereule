@@ -33,6 +33,7 @@ import { PENSION_REPOSITORY, type PensionRepository } from '../pension/pension.r
 import { MASTER_DATA_REPOSITORY, type MasterDataRepository } from '../master-data/master-data.repository.js'
 import { RENTAL_REPOSITORY, type RentalRepository } from '../rental/rental.repository.js'
 import { childAllowancesEur } from '../children/swiss-allowance.js'
+import { liveForms, type LiveForm } from './live-values.js'
 import { printoutValues, type CommuteFacts, type ChSalaryCertificateFacts, type LifeSituationFacts, type PersonBFacts } from './printout-values.js'
 import {
   FIELD_SETS,
@@ -113,6 +114,26 @@ export class PrintoutService {
       instances: instances ? Object.fromEntries(Object.entries(instances).map(([form, list]) => [form, list.map((v) => forYear(year, v))])) : instances,
       editable,
     })
+  }
+
+  /**
+   * The values of every printed copy for the live form view. Shown before payment: only the PDF is
+   * paid (ADR-0050); the check before payment (ADR-0085) shows what is missing the same way.
+   */
+  async liveValues(userId: string, year: number): Promise<{ forms: LiveForm[] }> {
+    const fieldSet = FIELD_SETS[year]
+    if (!fieldSet) throw new NotFoundError('VORDRUCKE_MISSING', `No Vordrucke are available for tax year ${year} yet.`)
+    const link = await this.link.findByUserAndYear(userId, year)
+    // ADR-0054: Person A prints the couple's return; Person B has no copy of their own to show.
+    if (link?.filingType === 'zusammen' && link.personAUserId !== userId) return { forms: [] }
+    const { values, instances, entityIds } = await this.collectValues(userId, year)
+    await this.audit.append({ userId, action: 'READ', resource: 'ausdruck-werte' })
+    return { forms: liveForms(year, fieldSet, values, instances, entityIds) }
+  }
+
+  /** The Vordruck a field id belongs to in a tax year, or null when that year has no such field. */
+  formOfField(year: number, fieldId: string): string | null {
+    return FIELD_SETS[year]?.felder.find((field) => field.id === fieldId)?.formular ?? null
   }
 
   async startCheckout(userId: string, year: number): Promise<{ checkoutUrl: string }> {
@@ -271,7 +292,7 @@ export class PrintoutService {
 
     const donationsAmount = amountFromAnswer(answers['spenden-betrag'])
 
-    return printoutValues({
+    const printed = printoutValues({
       taxYear: year,
       profile: {
         firstName: profile?.firstName ?? null,
@@ -321,6 +342,9 @@ export class PrintoutService {
       childrenAnswered: answers['kinder'] !== undefined && answers['kinder'] !== 'Nein',
       lifeSituations: lifeSituationsFrom(answers),
     })
+    // Same order as the instances printout-values.ts builds for these forms.
+    const entityIds = { 'anlage-kind': kinder.map((k) => k.id), 'anlage-v': properties.map((p) => p.id) }
+    return { ...printed, entityIds }
   }
 }
 
