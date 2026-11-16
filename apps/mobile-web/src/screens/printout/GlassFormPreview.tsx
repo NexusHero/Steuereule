@@ -8,7 +8,6 @@ import {
   getCapitalControllerGetQueryKey,
   getChSalaryCertificateControllerGetQueryKey,
   getCockpitControllerGetCockpitSummaryQueryKey,
-  getInterviewControllerGetInterviewQueryKey,
   getLstbControllerGetLstbQueryKey,
   getPensionControllerGetQueryKey,
   getTaxEstimateControllerGetQueryKey,
@@ -20,7 +19,6 @@ import {
   useCommuteControllerGet,
   useConfirmationControllerGet,
   useInterviewControllerGetInterview,
-  useInterviewControllerPostAnswer,
   useLinkControllerGet,
   useLstbControllerGetLstb,
   useLstbControllerSetField,
@@ -31,8 +29,16 @@ import {
   type ProvenanceDto,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
-import { maskTargetForAcroField } from '../shared/formLineMapping'
+import { useExpertMode } from '../../lib/expertModePreference'
+import { acroEditSpec, parseWholeAmount, type AcroSaveOutcome, type DirectAcroEdit } from './acroFieldEditing'
 import { AcroFormLiveViewer, type AcroFormPdfLoader } from './AcroFormLiveViewer'
+
+const QUERY_KEY_FOR: Readonly<Record<DirectAcroEdit['endpoint'], (jahr: number) => readonly unknown[]>> = {
+  lstb: getLstbControllerGetLstbQueryKey,
+  ch: getChSalaryCertificateControllerGetQueryKey,
+  kapital: getCapitalControllerGetQueryKey,
+  rente: getPensionControllerGetQueryKey,
+}
 
 export interface GlassFormRow {
   readonly id: string
@@ -190,54 +196,40 @@ function GlassFormPreviewBody({
   const chSetField = useChSalaryCertificateControllerSetField()
   const capSetField = useCapitalControllerSetField()
   const pensionSetField = usePensionControllerSetField()
-  const interviewPostAnswer = useInterviewControllerPostAnswer()
+  const expertMode = useExpertMode()
 
-  async function handleSaveAcroField(acroFieldId: string, rawValue: string) {
-    const target = maskTargetForAcroField(acroFieldId)
-    const numeric = Number(rawValue.replace(/\./g, '').replace(',', '.').trim())
-    const hasNumber = Number.isFinite(numeric) && numeric >= 0
-
-    try {
-      if (target.screen === 'lstb' && target.field && hasNumber) {
-        await lstbSetField.mutateAsync({
-          jahr: year,
-          feld: target.field as 'bruttoarbeitslohn' | 'lohnsteuer' | 'sozialversicherung',
-          data: { kind: 'erfasst', value: Math.round(numeric) },
-        })
-        await queryClient.invalidateQueries({ queryKey: getLstbControllerGetLstbQueryKey(year) })
-      } else if (target.screen === 'chLohnausweis' && target.field && hasNumber) {
-        await chSetField.mutateAsync({
-          jahr: year,
-          feld: target.field as 'grossWageChf' | 'ahvContributionsChf' | 'withholdingTaxChf',
-          data: { kind: 'erfasst', value: Math.round(numeric) },
-        })
-        await queryClient.invalidateQueries({ queryKey: getChSalaryCertificateControllerGetQueryKey(year) })
-      } else if (target.screen === 'kapital' && target.field && hasNumber) {
-        await capSetField.mutateAsync({
-          jahr: year,
-          feld: target.field as 'kapitalertraege' | 'sparerPauschbetrag' | 'kapitalertragsteuer',
-          data: { kind: 'erfasst', value: Math.round(numeric) },
-        })
-        await queryClient.invalidateQueries({ queryKey: getCapitalControllerGetQueryKey(year) })
-      } else if (target.screen === 'rente' && target.field && hasNumber) {
-        await pensionSetField.mutateAsync({
-          jahr: year,
-          feld: target.field as 'jahresbetrag',
-          data: { kind: 'erfasst', value: Math.round(numeric) },
-        })
-        await queryClient.invalidateQueries({ queryKey: getPensionControllerGetQueryKey(year) })
-      } else if (target.screen === 'interview' && target.field) {
-        await interviewPostAnswer.mutateAsync({
-          jahr: year,
-          data: { questionId: target.field, value: rawValue.trim() },
-        })
-        await queryClient.invalidateQueries({ queryKey: getInterviewControllerGetInterviewQueryKey(year) })
-      }
-      await queryClient.invalidateQueries({ queryKey: getCockpitControllerGetCockpitSummaryQueryKey(year) })
-      await queryClient.invalidateQueries({ queryKey: getTaxEstimateControllerGetQueryKey(year) })
-    } catch {
-      // Fallback: keep local draft visible if API rejects
+  async function saveDirectField(spec: DirectAcroEdit, data: { kind: 'erfasst'; value: number } | { kind: 'offen' }): Promise<number> {
+    const params = spec.person === 'B' ? { person: 'B' as const } : undefined
+    switch (spec.endpoint) {
+      case 'lstb':
+        return (await lstbSetField.mutateAsync({ jahr: year, feld: spec.field, data, ...(params ? { params } : {}) })).status
+      case 'ch':
+        return (await chSetField.mutateAsync({ jahr: year, feld: spec.field, data, ...(params ? { params } : {}) })).status
+      case 'kapital':
+        return (await capSetField.mutateAsync({ jahr: year, feld: spec.field, data })).status
+      case 'rente':
+        return (await pensionSetField.mutateAsync({ jahr: year, feld: spec.field, data, ...(params ? { params } : {}) })).status
     }
+  }
+
+  async function handleSaveAcroField(acroFieldId: string, rawValue: string): Promise<AcroSaveOutcome> {
+    const spec = acroEditSpec(acroFieldId)
+    if (spec?.kind !== 'direct') return { kind: 'not-editable' }
+    const parsed = parseWholeAmount(rawValue)
+    if (parsed.kind === 'invalid') return { kind: 'invalid' }
+    const data = parsed.kind === 'value' ? { kind: 'erfasst' as const, value: parsed.value } : { kind: 'offen' as const }
+    try {
+      // The generated client does not throw on 4xx/5xx; only a 200 means the value is stored.
+      if ((await saveDirectField(spec, data)) !== 200) return { kind: 'failed' }
+    } catch {
+      return { kind: 'failed' }
+    }
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: QUERY_KEY_FOR[spec.endpoint](year) }),
+      queryClient.invalidateQueries({ queryKey: getCockpitControllerGetCockpitSummaryQueryKey(year) }),
+      queryClient.invalidateQueries({ queryKey: getTaxEstimateControllerGetQueryKey(year) }),
+    ])
+    return { kind: parsed.kind === 'value' ? 'saved' : 'cleared' }
   }
 
   const linkData = linkQuery.data?.status === 200 ? linkQuery.data.data : null
@@ -1047,7 +1039,7 @@ function GlassFormPreviewBody({
           highlightedFieldId={highlightedAcroFieldId}
           loader={acroFormLoader}
           onInspectField={onInspectField}
-          onSaveAcroField={handleSaveAcroField}
+          {...(expertMode ? { onSaveAcroField: handleSaveAcroField } : {})}
         />
       ) : null}
 

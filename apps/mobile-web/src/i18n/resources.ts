@@ -281,6 +281,10 @@ export const appResources = {
           titel: 'Haptisches Feedback',
           beschreibung: 'Kurze Vibration bei Auswahl, Bestätigung und Warnungen.',
         },
+        expertenmodus: {
+          titel: 'Expertenmodus',
+          beschreibung: 'Beträge direkt im amtlichen Vordruck ändern. Berechnete Felder bleiben geschützt und führen zu ihren Einzelposten.',
+        },
         sprachmodell: {
           titel: 'Sprachmodell für das Diktieren',
           beschreibung: 'Auf diesem Gerät liegt das Sprachmodell (ca. {{megabytes}} MB) im Browser-Speicher. Es enthält keine Daten von dir. Nach dem Löschen wird es beim nächsten Diktat wieder geladen, nur mit deiner Zustimmung.',
@@ -412,6 +416,19 @@ export const appResources = {
       },
       ausdruck: {
         cockpitCta: 'Steuererklärung ausdrucken',
+        direkteingabe: {
+          eingabeLabel: 'Direkteingabe {{label}}',
+          inlineLabel: 'Formularfeld {{field}} bearbeiten',
+          platzhalter: 'Betrag in ganzen {{unit}}',
+          speichern: '✓ Direkt speichern',
+          speichert: 'Speichere Änderung in der Steuererklärung …',
+          gespeichert: 'Gespeichert.',
+          geleert: 'Wert entfernt, das Feld ist wieder offen.',
+          ungueltig: 'Bitte einen ganzen Betrag eingeben, z. B. 68500 oder 68.500.',
+          fehler: 'Konnte nicht gespeichert werden. Der vorherige Wert bleibt bestehen.',
+          berechnet: 'Wird berechnet aus: {{sources}}. Ändere die Einzelposten in der Eingabemaske.',
+          nurMaske: 'Dieses Feld änderst du in der Eingabemaske.',
+        },
         title: 'Ausdruck {{jahr}}',
         back: 'Zurück',
         intro: 'Wir füllen die amtlichen Vordrucke mit deinen Angaben aus. Du druckst sie aus, unterschreibst und gibst sie bei deinem Finanzamt ab.',
@@ -2535,6 +2552,10 @@ export const appResources = {
           titel: 'Haptic feedback',
           beschreibung: 'Subtle vibration on selection, confirmation, and warnings.',
         },
+        expertenmodus: {
+          titel: 'Expert mode',
+          beschreibung: 'Change amounts directly in the official form. Computed fields stay protected and lead to their inputs.',
+        },
         sprachmodell: {
           titel: 'Speech model for dictation',
           beschreibung: 'The speech model (about {{megabytes}} MB) is stored in this browser. It contains none of your data. After deleting it, it is loaded again on your next dictation, only with your consent.',
@@ -2666,6 +2687,19 @@ export const appResources = {
       },
       ausdruck: {
         cockpitCta: 'Print your tax return',
+        direkteingabe: {
+          eingabeLabel: 'Direct input {{label}}',
+          inlineLabel: 'Edit form field {{field}}',
+          platzhalter: 'Whole amount in {{unit}}',
+          speichern: '✓ Save directly',
+          speichert: 'Saving the change to your tax return …',
+          gespeichert: 'Saved.',
+          geleert: 'Value removed, the field is open again.',
+          ungueltig: 'Please enter a whole amount, e.g. 68500 or 68.500.',
+          fehler: 'Could not be saved. The previous value stays in place.',
+          berechnet: 'Computed from: {{sources}}. Change the individual inputs in the input mask.',
+          nurMaske: 'You change this field in the input mask.',
+        },
         title: 'Printout {{jahr}}',
         back: 'Back',
         intro: 'We fill in the official forms with your details. You print them, sign and hand them in at your tax office.',
