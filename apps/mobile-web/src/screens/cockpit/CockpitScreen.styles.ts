@@ -14,11 +14,13 @@ export function makeStyles(t: UiTheme) {
     ...t.type.title,
     color: t.color.tinte,
   }
-  // One row: the years scroll sideways instead of wrapping into a column at 375 px.
+  // Full width under the title: the chips wrap inside the screen (#450 Teil 4), in two lines at 375 px.
   const yearRow: ViewStyle = {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     gap: t.space.s1,
+    width: '100%',
   }
   const progress: ViewStyle = { width: '100%', gap: t.space.s1, marginTop: t.space.s3 }
   const progressBar: ViewStyle = { flexDirection: 'row', gap: 4 }

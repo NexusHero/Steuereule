@@ -364,19 +364,14 @@ function Appbar({ year, onYearChange, isRefreshing }: { readonly year: number; r
         <Text style={styles.appbarTitle}>{tr('cockpit.appbarTitle')}</Text>
         {isRefreshing ? <ActivityIndicator size="small" color={t.color.tinte2} accessibilityLabel={tr('cockpit.refreshing')} /> : null}
       </View>
-      {/* One row that scrolls sideways: five wrapped chips took a quarter of the first screen at 375 px. */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.jahrReihe}
-        accessibilityLabel={tr('cockpit.jahrAuswahl')}
-      >
+      {/* Under the title, across the full width: the years wrap into two lines at 375 px instead of five, and none is cut off. */}
+      <View style={styles.jahrReihe} accessibilityLabel={tr('cockpit.jahrAuswahl')}>
         {SELECTABLE_YEARS.map((y) => (
           <Chip key={y} active={y === year} onPress={() => onYearChange(y)} testID={`jahr-${y}`}>
             {isRunningTaxYear(y) ? tr('cockpit.jahrLaeuft', { jahr: y }) : String(y)}
           </Chip>
         ))}
-      </ScrollView>
+      </View>
     </View>
   )
 }
