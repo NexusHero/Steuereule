@@ -7,7 +7,8 @@
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "types": ["react", "node"],
     "moduleResolution": "Bundler",
-    "verbatimModuleSyntax": false
+    "verbatimModuleSyntax": false,
+    "resolveJsonModule": true
   },
   "include": ["App.tsx", "src"]
 }
