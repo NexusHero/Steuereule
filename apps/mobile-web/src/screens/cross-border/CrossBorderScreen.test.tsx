@@ -574,4 +574,58 @@ describe('GrenzgaengerScreen — Smart summation, required indicators, upload & 
       ]),
     )
   })
+
+  it('preserves sequential employer field edits when earlier PUT refetches arrive mid-typing and saves identical Ziffer 1 + Ziffer 8', async () => {
+    const nGreBodies: Array<Record<string, unknown>> = []
+    const fieldBodies: Array<{ feld: string; body: unknown }> = []
+    let current = EMPTY_CH
+    server.use(
+      http.get(INTERVIEW_URL, () => HttpResponse.json(DONE_CH_INTERVIEW, { status: 200 })),
+      http.get(CH_URL, () => HttpResponse.json(current, { status: 200 })),
+      http.put(`${CH_URL}/n-gre`, async ({ request }) => {
+        const body = (await request.json()) as Record<string, unknown>
+        nGreBodies.push(body)
+        current = { ...current, nGre: { ...current.nGre, ...body } }
+        return HttpResponse.json(current, { status: 200 })
+      }),
+      http.put(`${CH_URL}/:feld`, async ({ params, request }) => {
+        const body = await request.json()
+        fieldBodies.push({ feld: String(params.feld), body })
+        return HttpResponse.json(current, { status: 200 })
+      }),
+    )
+    renderScreen()
+
+    const lohn = await screen.findByTestId('ch-feld-lohn')
+    const brutto = screen.getByTestId('ch-feld-bruttolohn-total')
+    fireEvent.change(lohn, { target: { value: '110000' } })
+    fireEvent.blur(lohn)
+    fireEvent.change(brutto, { target: { value: '110000' } })
+    fireEvent.blur(brutto)
+
+    const name = screen.getByTestId('ch-ngre-arbeitgeberName')
+    const strasse = screen.getByTestId('ch-ngre-arbeitgeberStrasse')
+    const plzOrt = screen.getByTestId('ch-ngre-arbeitgeberPlzOrt')
+
+    fireEvent.change(name, { target: { value: 'Basler Treuhand AG' } })
+    fireEvent.blur(name)
+    fireEvent.change(strasse, { target: { value: 'Steinenberg 5' } })
+    fireEvent.blur(strasse)
+    fireEvent.change(plzOrt, { target: { value: '4051 Basel' } })
+    fireEvent.blur(plzOrt)
+
+    await waitFor(() =>
+      expect(fieldBodies).toEqual([
+        { feld: 'lohn', body: { kind: 'erfasst', value: 110000 } },
+        { feld: 'bruttolohn-total', body: { kind: 'erfasst', value: 110000 } },
+      ]),
+    )
+    await waitFor(() =>
+      expect(nGreBodies).toEqual([
+        { arbeitgeberName: 'Basler Treuhand AG' },
+        { arbeitgeberStrasse: 'Steinenberg 5' },
+        { arbeitgeberPlzOrt: '4051 Basel' },
+      ]),
+    )
+  })
 })

@@ -218,6 +218,49 @@ describe('ArbeitstageScreen', () => {
     expect(bodies.at(-1)).toMatchObject({ oneWayKm: 12, periodTo: '31.10.2025', secondOneWayKm: 80, secondTransport: 'pkw', secondFrom: '01.11.2025' })
   })
 
+  it('does not send a stale secondTransport=null when blurring arbeitsweg-zweiter-km onto the transport chip', async () => {
+    const bodies: Record<string, unknown>[] = []
+    server.use(
+      http.put('*/v1/steuerjahre/2025/arbeitsweg', async ({ request }) => {
+        const body = (await request.json()) as Record<string, unknown>
+        await new Promise((r) => setTimeout(r, 25))
+        bodies.push(body)
+        return HttpResponse.json({ inputs: null, workdays: null, commuterAllowance: null }, { status: 200 })
+      }),
+    )
+    const onDone = vi.fn()
+    renderWorkdays(onDone, 2025)
+    const km = await screen.findByTestId('arbeitstage-km')
+    fireEvent.change(km, { target: { value: '12' } })
+    fireEvent.blur(km)
+    fireEvent.click(screen.getByTestId('arbeitstage-transport-pkw'))
+    fireEvent.click(screen.getByTestId('arbeitsweg-wechsel'))
+    const bis = screen.getByTestId('arbeitsweg-bis')
+    fireEvent.change(bis, { target: { value: '31.10.2025' } })
+    fireEvent.blur(bis)
+    const ab = screen.getByTestId('arbeitsweg-zweiter-ab')
+    fireEvent.change(ab, { target: { value: '01.11.2025' } })
+    fireEvent.blur(ab)
+    const km2 = screen.getByTestId('arbeitsweg-zweiter-km')
+    fireEvent.change(km2, { target: { value: '80' } })
+    // Real browser blurs the input on mousedown before click fires on the chip
+    fireEvent.blur(km2)
+    fireEvent.click(screen.getByTestId('arbeitsweg-zweiter-transport-pkw'))
+    const ort2 = screen.getByTestId('arbeitsweg-zweiter-ort')
+    fireEvent.change(ort2, { target: { value: '4058 Basel, Beispielstrasse 1' } })
+    fireEvent.blur(ort2)
+    fireEvent.click(screen.getByTestId('arbeitstage-weiter'))
+    await waitFor(() => expect(onDone).toHaveBeenCalledOnce())
+    expect(bodies).toHaveLength(1)
+    expect(bodies[0]).toMatchObject({
+      oneWayKm: 12,
+      periodTo: '31.10.2025',
+      secondOneWayKm: 80,
+      secondTransport: 'pkw',
+      secondFrom: '01.11.2025',
+    })
+  })
+
   it('holds back a half-typed date instead of saving it', async () => {
     const bodies: unknown[] = []
     server.use(
