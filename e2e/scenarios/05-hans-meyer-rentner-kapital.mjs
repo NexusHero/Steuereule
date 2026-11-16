@@ -19,6 +19,7 @@ import {
   leaveStrom,
   waitForStromStep,
 } from './helpers/scenario-harness.mjs'
+import { openCockpitTopic } from '../harness/flows.mjs'
 
 export async function runScenario05(browser, webOrigin, sql) {
   console.log('\n--- Scenario 05: Hans Meyer (Retiree / Pensioner with statutory pension & capital income) ---')
@@ -82,9 +83,7 @@ export async function runScenario05(browser, webOrigin, sql) {
   await page.locator('[data-testid="cockpit-weitere-themen"]').click()
   await page.locator('[data-testid="cockpit-kachel-arbeitsweg"]').waitFor({ state: 'visible', timeout: 10_000 })
 
-  const capitalBtn = page.locator('[data-testid="cockpit-kapital"]')
-  await capitalBtn.waitFor({ state: 'visible', timeout: 10_000 })
-  await capitalBtn.click()
+  await openCockpitTopic(page, 'kapital')
 
   const answerPrompt = page.locator('[data-testid="kapital-frage-beantworten"]')
   const firstField = page.locator('[data-testid="kapital-kapitalertraege"]')

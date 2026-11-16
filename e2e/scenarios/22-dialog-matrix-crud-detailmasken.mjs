@@ -15,6 +15,7 @@ import {
   waitForStromStep,
   runStandaloneScenario,
 } from './helpers/scenario-harness.mjs'
+import { openCockpitTopic } from '../harness/flows.mjs'
 
 export async function runScenario22(browser, webOrigin) {
   console.log('\n--- Scenario 22: Dialog Matrix — CRUD & Chip Permutations in Detail Screens ---')
@@ -55,8 +56,7 @@ export async function runScenario22(browser, webOrigin) {
   await page.getByRole('tab', { name: 'Cockpit' }).click()
 
   // --- 1. ChildrenScreen: Add 2 Children with Chip Permutations ---
-  await page.locator('[data-testid="cockpit-kinder"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="cockpit-kinder"]').click()
+  await openCockpitTopic(page, 'kinder')
 
   // Child 1: Lukas (toggle chips before saving)
   await page.locator('[data-testid="kind-vorname"]').waitFor({ state: 'visible', timeout: 10_000 })
@@ -96,8 +96,7 @@ export async function runScenario22(browser, webOrigin) {
   console.log('[Scenario 22] Verified: ChildrenScreen multi-child creation and chip toggles.')
 
   // --- 2. CapitalScreen: Prompt resolution + Fields & Unklar Toggles ---
-  await page.locator('[data-testid="cockpit-kapital"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="cockpit-kapital"]').click()
+  await openCockpitTopic(page, 'kapital')
 
   const kapPrompt = page.locator('[data-testid="kapital-frage-beantworten"]')
   await kapPrompt.waitFor({ state: 'visible', timeout: 10_000 })
@@ -126,8 +125,7 @@ export async function runScenario22(browser, webOrigin) {
   console.log('[Scenario 22] Verified: CapitalScreen inline catalog gate and field persistence.')
 
   // --- 2b. RentalScreen: Multi-object creation & AfA chip toggles ---
-  await page.locator('[data-testid="cockpit-vermietung"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="cockpit-vermietung"]').click()
+  await openCockpitTopic(page, 'vermietung')
   await page.locator('[data-testid="objekt-hinzufuegen"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="objekt-hinzufuegen"]').click()
   await page.locator('[data-testid="vermietung-0-mieteinnahmen"]').waitFor({ state: 'visible', timeout: 10_000 })

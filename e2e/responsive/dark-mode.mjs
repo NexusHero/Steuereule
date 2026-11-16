@@ -7,7 +7,7 @@
 import { launchBrowser, closeBrowser, newContextAtBreakpoint, guardAgainst429 } from '../harness/browser.mjs'
 import { startStack } from '../harness/stack.mjs'
 import { fail, waitForBucketHeadroom } from '../harness/rate-limit.mjs'
-import { FLOW_COPY, skipSplash, signUpOutOfBand, submitLogin } from '../harness/flows.mjs'
+import { FLOW_COPY, openCockpitTopic, skipSplash, signUpOutOfBand, submitLogin } from '../harness/flows.mjs'
 
 const AUTH_BUCKET = { windowMs: 10_000, max: 3, shared: true }
 const TEST_PASSWORD = 'Sicheres-Passwort-1!'
@@ -48,11 +48,11 @@ async function main() {
     await submitLogin(page, email, TEST_PASSWORD)
 
     await page.waitForURL((u) => u.pathname === '/app', { timeout: 15_000 })
-    await page.locator('[data-testid="cockpit-kapital"]').waitFor({ state: 'visible', timeout: 10_000 })
+    await page.locator('[data-testid="cockpit-bescheid"]').waitFor({ state: 'visible', timeout: 10_000 })
     await waitForBodyBackground(page, DARK_GRUND_RGB, 'Cockpit (system dark)')
     console.log('[dark-mode] ✅ Cockpit inherits dark grund under OS colorScheme="dark"')
 
-    await page.locator('[data-testid="cockpit-kapital"]').click()
+    await openCockpitTopic(page, 'kapital')
     await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'visible', timeout: 10_000 })
     await waitForBodyBackground(page, DARK_GRUND_RGB, 'Mask sheet (system dark)')
     console.log('[dark-mode] ✅ Mask renders under dark theme')

@@ -7,6 +7,7 @@
 import { SCENARIO_1_LENA, SCENARIO_4_WEBER } from '../fixtures/scenarios-2025.fixture.mjs'
 import * as D from '../fixtures/escalation-documents.mjs'
 import { answerBasis, chooseTopics, fillTopic, leaveStrom, waitForStromStep } from '../scenarios/helpers/scenario-harness.mjs'
+import { openCockpitTopic } from '../harness/flows.mjs'
 
 const tid = (id) => `[data-testid="${id}"]`
 const IBAN = 'DE89370400440532013000'
@@ -258,11 +259,13 @@ const weber = {
     await lstbMask(page, { gross: W.sabine.lstb.grossWage, wageTax: W.sabine.lstb.wageTax, social: W.sabine.lstb.socialSecurity })
     await fromCockpit(page, 'partner-arbeitsweg')
     await commuteMask(page, W.sabine.commute)
-    await fromCockpit(page, 'cockpit-kapital')
+    await cockpitSettled(page)
+    await openCockpitTopic(page, 'kapital')
     await click(page, 'kapital-inhaber-gemeinsam')
     for (const field of ['kapitalertraege', 'sparerPauschbetrag', 'kapitalertragsteuer', 'solidaritaetszuschlag', 'kirchensteuer']) await fill(page, `kapital-${field}`, W.capital[field])
     await click(page, 'kapital-weiter')
-    await fromCockpit(page, 'cockpit-vermietung')
+    await cockpitSettled(page)
+    await openCockpitTopic(page, 'vermietung')
     for (const [i, r] of W.rentals.entries()) {
       if ((await page.locator(tid(`vermietung-${i}-mieteinnahmen`)).count()) === 0) await click(page, 'objekt-hinzufuegen')
       await fill(page, `vermietung-${i}-mieteinnahmen`, r.grossRent)
@@ -338,7 +341,8 @@ const meyer = {
     await fillTopic(page, 'einkuenfte', { 'kap-depot': 'Deutscher Broker' })
     await waitForStromStep(page, 'fertig')
     await leaveStrom(page)
-    await fromCockpit(page, 'cockpit-kapital')
+    await cockpitSettled(page)
+    await openCockpitTopic(page, 'kapital')
     await page.locator(tid('kapital-sparerPauschbetrag')).waitFor({ state: 'visible', timeout: 15_000 })
     for (const [field, value] of [['kapitalertraege', 8000], ['sparerPauschbetrag', 1000], ['kapitalertragsteuer', 1750], ['solidaritaetszuschlag', 96], ['kirchensteuer', 0]]) await fill(page, `kapital-${field}`, value)
     await click(page, 'kapital-weiter')

@@ -11,6 +11,7 @@ import {
   answerBasis,
   runStandaloneScenario,
 } from './helpers/scenario-harness.mjs'
+import { openCockpitTopic } from '../harness/flows.mjs'
 
 export async function runScenario08(browser, webOrigin) {
   console.log('\n--- Scenario 08: Exhaustive Navigation, Every Screen, Back Buttons, Settings & Viewports ---')
@@ -98,9 +99,7 @@ export async function runScenario08(browser, webOrigin) {
   await page.locator('[data-testid="bescheid-zurueck"]').click()
   await page.locator('[data-testid="cockpit-interview"], [data-testid="cockpit-weiter"], [data-testid="cockpit-bescheid"]').first().waitFor({ state: 'visible', timeout: 10_000 })
 
-  const rentalBtn = page.locator('[data-testid="cockpit-vermietung"]')
-  await rentalBtn.waitFor({ state: 'visible', timeout: 10_000 })
-  await rentalBtn.click()
+  await openCockpitTopic(page, 'vermietung')
   await page.locator('text=Deine Vermietung').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('text=←').first().click()
   await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
@@ -147,7 +146,7 @@ export async function runScenario08(browser, webOrigin) {
   await page.goBack({ waitUntil: 'networkidle' })
   await page.locator('[data-testid="cockpit-interview"], [data-testid="cockpit-weiter"], [data-testid="cockpit-bescheid"]').first().waitFor({ state: 'visible', timeout: 10_000 })
   // In-app navigation check: clicking Cockpit tile pushes /kapital and goBack pops to Cockpit
-  await page.locator('[data-testid="cockpit-kapital"]').click()
+  await openCockpitTopic(page, 'kapital')
   await page.locator('[data-testid="kapital-weiter"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.goBack()
   await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
