@@ -1009,6 +1009,8 @@ jobs:
         run: node e2e/interview/rare-branches.mjs
       - name: Printout pay and download without Stripe (#450 5C) — fake payment provider, signed webhook, both PDFs
         run: node e2e/printout/printout-unlock.mjs
+      - name: Official form and expert mode — form screen from cockpit and mask, direct save, locked computed fields, copy per child
+        run: node e2e/printout/official-form-expert.mjs
       - name: Uploads with synthetic documents (#450 5D) — Belege upload/preview/delete, LStB scan with overwrite and year dialogs
         run: node e2e/uploads/receipts-and-lstb-scan.mjs
       - name: Scan corpus metrics (#450 Teil 3B) — accuracy per variant, "falsch, aber sicher" = 0, Zero-Write, on-device, time budgets

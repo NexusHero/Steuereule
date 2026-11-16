@@ -172,65 +172,69 @@ describe('GlassFormPreview („Glas-Erklärung“)', () => {
   })
 
   describe('HD Vordruck mode and expert direct input', () => {
-    const lstbBody = (brutto: number | null) => ({
-      bruttoarbeitslohn: brutto === null ? { kind: 'offen' } : { kind: 'erfasst', value: brutto },
-      lohnsteuer: { kind: 'erfasst', value: 11200 },
-      sozialversicherung: { kind: 'erfasst', value: 12100 },
-      state: { kind: 'unvollstaendig' },
-    })
+    type Annotation = { fieldName: string; rect: [number, number, number, number]; textAlignment: number }
+    type Copy = { person: 'A' | 'B' | null; entityId: string | null; values: Record<string, string | true> }
+    const box = (fieldName: string, y: number): Annotation => ({ fieldName, rect: [233.9, y, 350.4, y + 15.8], textAlignment: 2 })
+    const N_FIELDS = [box('anlN.kz110', 575), box('anlN.kz380', 400)]
 
-    const fakeLoader = (): AcroFormPdfLoader => ({
+    const fakeLoader = (annotations: Annotation[]): AcroFormPdfLoader => ({
       loadTemplate: vi.fn().mockResolvedValue({
         numPages: 4,
         getPage: vi.fn().mockResolvedValue({
-          getViewport: () => ({
-            width: 595,
-            height: 842,
-            convertToViewportRectangle: (r: readonly [number, number, number, number]) => r,
-          }),
+          getViewport: () => ({ width: 595, height: 842, convertToViewportRectangle: (r: readonly [number, number, number, number]) => r }),
           render: () => ({ promise: Promise.resolve() }),
-          getAnnotations: async () => [
-            { fieldName: 'anlN.kz110', rect: [233.9, 575.2, 350.4, 591.0], textAlignment: 2 },
-            { fieldName: 'anlN.kz140', rect: [233.9, 550.0, 350.4, 565.8], textAlignment: 2 },
-            { fieldName: 'anlN.kz380', rect: [233.9, 400.0, 350.4, 415.8], textAlignment: 2 },
-          ],
+          getAnnotations: async () => annotations,
         }),
       }),
     })
 
-    /** Serves the LStB like the API: GET returns what the last PUT stored; `putStatus` can force a refusal. */
-    function serveLstb(options: { putStatus?: number } = {}) {
-      const puts: unknown[] = []
-      let brutto: number | null = 64000
+    /** Serves `ausdruck/werte` from a mutable state, so a save shows up after the refetch like on the API. */
+    function serveLiveValues(forms: Record<string, Copy[]>) {
       server.use(
-        http.get('*/v1/steuerjahre/2025/lstb', () => HttpResponse.json(lstbBody(brutto))),
+        http.get('*/v1/steuerjahre/2025/ausdruck/werte', () =>
+          HttpResponse.json({ forms: Object.entries(forms).map(([formular, instances]) => ({ formular, instances })) }),
+        ),
+      )
+      return forms
+    }
+
+    /** The LStB of one person: a PUT is recorded and, unless refused, printed into Kz 110 of that copy. */
+    function serveLstbPut(forms: Record<string, Copy[]>, options: { putStatus?: number } = {}) {
+      const puts: { person: string | null; body: unknown }[] = []
+      server.use(
         http.put('*/v1/steuerjahre/2025/lstb/bruttoarbeitslohn', async ({ request }) => {
+          const person = new URL(request.url).searchParams.get('person')
           const body = (await request.json()) as { kind: string; value?: number }
-          puts.push(body)
-          if (options.putStatus && options.putStatus !== 200) {
-            return HttpResponse.json({ message: 'refused' }, { status: options.putStatus })
+          puts.push({ person, body })
+          if (options.putStatus) return HttpResponse.json({ message: 'refused' }, { status: options.putStatus })
+          const target = forms['anlage-n']?.find((c) => c.person === (person ?? 'A'))
+          if (target) {
+            if (body.kind === 'erfasst') target.values['anlN.kz110'] = String(body.value)
+            else delete target.values['anlN.kz110']
           }
-          brutto = body.kind === 'erfasst' ? (body.value ?? null) : null
-          return HttpResponse.json(lstbBody(brutto))
+          return HttpResponse.json({ bruttoarbeitslohn: body, lohnsteuer: { kind: 'offen' }, sozialversicherung: { kind: 'offen' }, state: { kind: 'unvollstaendig' } })
         }),
       )
       return puts
     }
 
-    function open(onInspectField = vi.fn()) {
-      renderPreview({ defaultOpen: true, defaultMode: 'acroform', initialAcroForm: 'anlage-n', acroFormLoader: fakeLoader(), onInspectField })
+    const singleN = () => ({ 'anlage-n': [{ person: 'A' as const, entityId: null, values: { 'anlN.personA': true as const, 'anlN.kz110': '64000', 'anlN.kz380': '310' } }] })
+
+    function open(form: string, annotations: Annotation[], onInspectField = vi.fn()) {
+      renderPreview({ defaultOpen: true, defaultMode: 'acroform', initialAcroForm: form, acroFormLoader: fakeLoader(annotations), onInspectField })
       return onInspectField
     }
 
-    async function editKz110(value: string) {
-      fireEvent.click(await screen.findByLabelText(/Anlage N · Zeile 6 \(Kz 110 Bruttoarbeitslohn\): 64000/))
-      fireEvent.change(await screen.findByLabelText(/Direkteingabe Anlage N · Zeile 6/), { target: { value } })
+    async function edit(label: RegExp, inputLabel: RegExp, value: string) {
+      fireEvent.click(await screen.findByLabelText(label))
+      fireEvent.change(await screen.findByLabelText(inputLabel), { target: { value } })
       fireEvent.click(screen.getByText('✓ Direkt speichern'))
     }
+    const editKz110 = (value: string) => edit(/Anlage N · Zeile 6 \(Kz 110 Bruttoarbeitslohn\): 64000/, /Direkteingabe Anlage N · Zeile 6/, value)
 
     it('without expert mode a click jumps to the input mask and offers no direct input', async () => {
-      serveLstb()
-      const onInspectField = open()
+      serveLiveValues(singleN())
+      const onInspectField = open('anlage-n', N_FIELDS)
 
       fireEvent.click(await screen.findByLabelText(/Anlage N · Zeile 6 \(Kz 110 Bruttoarbeitslohn\): 64000/))
 
@@ -241,21 +245,41 @@ describe('GlassFormPreview („Glas-Erklärung“)', () => {
 
     it('in expert mode saves a 1:1 field in place, without leaving the form', async () => {
       writeExpertMode(true)
-      const puts = serveLstb()
-      const onInspectField = open()
+      const forms = serveLiveValues(singleN())
+      const puts = serveLstbPut(forms)
+      const onInspectField = open('anlage-n', N_FIELDS)
 
       await editKz110('68.500')
 
       expect(await screen.findByText('Gespeichert.')).toBeTruthy()
-      expect(puts).toEqual([{ kind: 'erfasst', value: 68500 }])
+      expect(puts).toEqual([{ person: null, body: { kind: 'erfasst', value: 68500 } }])
       expect(onInspectField).not.toHaveBeenCalled()
       expect(await screen.findByText(/Eingetragener Wert: 68500/)).toBeTruthy()
     })
 
+    it("writes Person B's Anlage N to B's certificate", async () => {
+      writeExpertMode(true)
+      const forms = serveLiveValues({
+        'anlage-n': [
+          { person: 'A', entityId: null, values: { 'anlN.personA': true, 'anlN.kz110': '64000' } },
+          { person: 'B', entityId: null, values: { 'anlN.personB': true, 'anlN.kz110': '51000' } },
+        ],
+      })
+      const puts = serveLstbPut(forms)
+      open('anlage-n', N_FIELDS)
+
+      fireEvent.click(await screen.findByText('Person B'))
+      await edit(/Kz 110 Bruttoarbeitslohn\): 51000/, /Direkteingabe Anlage N · Zeile 6/, '52000')
+
+      expect(await screen.findByText('Gespeichert.')).toBeTruthy()
+      expect(puts).toEqual([{ person: 'B', body: { kind: 'erfasst', value: 52000 } }])
+    })
+
     it('shows a refusal of the server and keeps the stored value', async () => {
       writeExpertMode(true)
-      serveLstb({ putStatus: 400 })
-      open()
+      const forms = serveLiveValues(singleN())
+      serveLstbPut(forms, { putStatus: 400 })
+      open('anlage-n', N_FIELDS)
 
       await editKz110('68500')
 
@@ -265,8 +289,9 @@ describe('GlassFormPreview („Glas-Erklärung“)', () => {
 
     it('rejects an ambiguous amount without calling the server', async () => {
       writeExpertMode(true)
-      const puts = serveLstb()
-      open()
+      const forms = serveLiveValues(singleN())
+      const puts = serveLstbPut(forms)
+      open('anlage-n', N_FIELDS)
 
       await editKz110('68,5')
 
@@ -276,24 +301,102 @@ describe('GlassFormPreview („Glas-Erklärung“)', () => {
 
     it('clearing the field sets it back to open', async () => {
       writeExpertMode(true)
-      const puts = serveLstb()
-      open()
+      const forms = serveLiveValues(singleN())
+      const puts = serveLstbPut(forms)
+      open('anlage-n', N_FIELDS)
 
       await editKz110('')
 
       expect(await screen.findByText(/Wert entfernt/)).toBeTruthy()
-      expect(puts).toEqual([{ kind: 'offen' }])
+      expect(puts).toEqual([{ person: null, body: { kind: 'offen' } }])
+    })
+
+    it('shows in expert mode which fields can be changed here and which are computed', async () => {
+      writeExpertMode(true)
+      serveLiveValues(singleN())
+      open('anlage-n', N_FIELDS)
+
+      expect(await screen.findByTestId('acro-field-editable-anlN.kz110')).toBeTruthy()
+      expect(screen.getByTestId('acro-field-computed-anlN.kz380')).toBeTruthy()
+      expect(screen.getByTestId('acro-legend').textContent).toMatch(/direkt änderbar.*berechnet/)
+    })
+
+    it('shows no markings or legend without expert mode', async () => {
+      serveLiveValues(singleN())
+      open('anlage-n', N_FIELDS)
+
+      await screen.findByLabelText(/Kz 110 Bruttoarbeitslohn\): 64000/)
+      expect(screen.queryByTestId('acro-legend')).toBeNull()
+      expect(screen.queryByTestId('acro-field-editable-anlN.kz110')).toBeNull()
     })
 
     it('keeps computed fields read-only and names their sources', async () => {
       writeExpertMode(true)
-      serveLstb()
-      open()
+      serveLiveValues(singleN())
+      open('anlage-n', N_FIELDS)
 
       fireEvent.click(await screen.findByLabelText(/Anlage N · kz380/))
 
       expect((await screen.findByTestId('acro-derived-hint')).textContent).toMatch(/Wird berechnet aus: Weitere Werbungskosten/)
       expect(screen.queryByLabelText(/Direkteingabe/)).toBeNull()
+    })
+
+    it('saves a master-data field as part of the whole record, keeping every other field', async () => {
+      writeExpertMode(true)
+      serveLiveValues({ 'est-1-a': [{ person: null, entityId: null, values: { 'est1a.plz': '79539' } }] })
+      const record = {
+        geburtsdatum: '1990-05-12', strasse: 'Rheinweg', hausnummer: '4', hausnummerZusatz: null, plz: '79539',
+        wohnort: 'Lörrach', beruf: 'Ingenieurin', religion: 'VD', familienstand: 'verheiratet', familienstandSeit: '2020-06-01',
+        iban: 'DE89370400440532013000', kontoinhaber: 'Lena Brenner', finanzamt: 'Lörrach', telefon: null, missing: [],
+      }
+      const puts: Record<string, unknown>[] = []
+      server.use(
+        http.get('*/v1/stammdaten', () => HttpResponse.json(record)),
+        http.put('*/v1/stammdaten', async ({ request }) => {
+          const body = (await request.json()) as Record<string, unknown>
+          puts.push(body)
+          return HttpResponse.json({ ...record, ...body })
+        }),
+      )
+      open('est-1-a', [box('est1a.plz', 600)])
+
+      await edit(/Hauptvordruck ESt 1 A · plz: 79539/, /Direkteingabe Hauptvordruck ESt 1 A · plz/, '123')
+      expect(await screen.findByText(/fünfstellige Postleitzahl/)).toBeTruthy()
+      expect(puts).toEqual([])
+
+      fireEvent.change(screen.getByLabelText(/Direkteingabe Hauptvordruck ESt 1 A · plz/), { target: { value: '79540' } })
+      fireEvent.click(screen.getByText('✓ Direkt speichern'))
+
+      expect(await screen.findByText('Gespeichert.')).toBeTruthy()
+      expect(puts[0]).toMatchObject({ plz: '79540', strasse: 'Rheinweg', wohnort: 'Lörrach', religion: 'VD', religionConsent: true, iban: 'DE89370400440532013000' })
+    })
+
+    it('writes a child\'s name to the child of the selected copy, and refuses to empty it', async () => {
+      writeExpertMode(true)
+      serveLiveValues({
+        'anlage-kind': [
+          { person: null, entityId: 'kind-1', values: { 'anlKind.vorname': 'Mia' } },
+          { person: null, entityId: 'kind-2', values: { 'anlKind.vorname': 'Ben' } },
+        ],
+      })
+      const puts: { url: string; body: unknown }[] = []
+      server.use(
+        http.put('*/v1/steuerjahre/2025/kinder/:id', async ({ request }) => {
+          puts.push({ url: new URL(request.url).pathname, body: await request.json() })
+          return HttpResponse.json({ kinder: [], count: 0, childBenefitSum: 0, totalAllowance: 0 })
+        }),
+      )
+      open('anlage-kind', [box('anlKind.vorname', 600)])
+
+      fireEvent.click(await screen.findByText('Kind: Ben'))
+      await edit(/Anlage Kind · vorname: Ben/, /Direkteingabe Anlage Kind · vorname/, ' ')
+      expect(await screen.findByText(/darf nicht leer sein/)).toBeTruthy()
+
+      fireEvent.change(screen.getByLabelText(/Direkteingabe Anlage Kind · vorname/), { target: { value: 'Benno' } })
+      fireEvent.click(screen.getByText('✓ Direkt speichern'))
+
+      expect(await screen.findByText('Gespeichert.')).toBeTruthy()
+      expect(puts).toEqual([{ url: '/v1/steuerjahre/2025/kinder/kind-2', body: { firstName: 'Benno' } }])
     })
   })
 })

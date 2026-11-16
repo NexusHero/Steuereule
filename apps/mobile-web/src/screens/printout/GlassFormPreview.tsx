@@ -1,44 +1,27 @@
 import { useState } from 'react'
 import { Pressable, Text, View, type TextStyle, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { useQueryClient } from '@tanstack/react-query'
 import { Card, Chip, useTheme, type UiTheme } from '@steuereule/ui'
 import { amountFromAnswer, formatEuro, type Answers, type Screen } from '@steuereule/core'
 import {
-  getCapitalControllerGetQueryKey,
-  getChSalaryCertificateControllerGetQueryKey,
-  getCockpitControllerGetCockpitSummaryQueryKey,
-  getLstbControllerGetLstbQueryKey,
-  getPensionControllerGetQueryKey,
-  getTaxEstimateControllerGetQueryKey,
   useCapitalControllerGet,
-  useCapitalControllerSetField,
   useChSalaryCertificateControllerGet,
-  useChSalaryCertificateControllerSetField,
   useChildrenControllerList,
   useCommuteControllerGet,
   useConfirmationControllerGet,
   useInterviewControllerGetInterview,
   useLinkControllerGet,
   useLstbControllerGetLstb,
-  useLstbControllerSetField,
   useMasterDataControllerRead,
+  usePrintoutControllerLiveValues,
   usePensionControllerGet,
-  usePensionControllerSetField,
   useRentalControllerGet,
   type ProvenanceDto,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { useExpertMode } from '../../lib/expertModePreference'
-import { acroEditSpec, parseWholeAmount, type AcroSaveOutcome, type DirectAcroEdit } from './acroFieldEditing'
+import { useAcroFieldSaver } from './useAcroFieldSaver'
 import { AcroFormLiveViewer, type AcroFormPdfLoader } from './AcroFormLiveViewer'
-
-const QUERY_KEY_FOR: Readonly<Record<DirectAcroEdit['endpoint'], (jahr: number) => readonly unknown[]>> = {
-  lstb: getLstbControllerGetLstbQueryKey,
-  ch: getChSalaryCertificateControllerGetQueryKey,
-  kapital: getCapitalControllerGetQueryKey,
-  rente: getPensionControllerGetQueryKey,
-}
 
 export interface GlassFormRow {
   readonly id: string
@@ -66,6 +49,8 @@ export interface GlassFormPreviewProps {
   readonly highlightedAcroFieldId?: string | undefined
   readonly acroFormLoader?: AcroFormPdfLoader | undefined
   readonly onInspectField?: ((screen: Screen, field?: string, person?: 'A' | 'B') => void) | undefined
+  /** On a screen with its own title the preview leaves out its heading and keeps only the view switch. */
+  readonly hideHeading?: boolean | undefined
 }
 
 function formatProvenanceBadge(
@@ -98,6 +83,7 @@ export function GlassFormPreview({
   highlightedAcroFieldId,
   acroFormLoader,
   onInspectField,
+  hideHeading = false,
 }: GlassFormPreviewProps) {
   const t = useTheme()
   const styles = makeStyles(t)
@@ -148,6 +134,7 @@ export function GlassFormPreview({
       acroFormLoader={acroFormLoader}
       onCollapse={defaultOpen ? undefined : () => setOpen(false)}
       onInspectField={onInspectField}
+      hideHeading={hideHeading}
     />
   )
 }
@@ -163,6 +150,7 @@ function GlassFormPreviewBody({
   acroFormLoader,
   onCollapse,
   onInspectField,
+  hideHeading,
 }: {
   readonly year: number
   readonly activeFilter: string
@@ -173,12 +161,12 @@ function GlassFormPreviewBody({
   readonly highlightedAcroFieldId?: string | undefined
   readonly acroFormLoader?: AcroFormPdfLoader | undefined
   readonly onCollapse?: (() => void) | undefined
+  readonly hideHeading: boolean
   readonly onInspectField?: ((screen: Screen, field?: string, person?: 'A' | 'B') => void) | undefined
 }) {
   const t = useTheme()
   const styles = makeStyles(t)
   const { t: tr } = useTranslation(APP_NS)
-  const queryClient = useQueryClient()
 
   const masterDataQuery = useMasterDataControllerRead()
   const linkQuery = useLinkControllerGet(year)
@@ -192,45 +180,14 @@ function GlassFormPreviewBody({
   const childrenQuery = useChildrenControllerList(year)
   const confirmationQuery = useConfirmationControllerGet(year)
 
-  const lstbSetField = useLstbControllerSetField()
-  const chSetField = useChSalaryCertificateControllerSetField()
-  const capSetField = useCapitalControllerSetField()
-  const pensionSetField = usePensionControllerSetField()
   const expertMode = useExpertMode()
-
-  async function saveDirectField(spec: DirectAcroEdit, data: { kind: 'erfasst'; value: number } | { kind: 'offen' }): Promise<number> {
-    const params = spec.person === 'B' ? { person: 'B' as const } : undefined
-    switch (spec.endpoint) {
-      case 'lstb':
-        return (await lstbSetField.mutateAsync({ jahr: year, feld: spec.field, data, ...(params ? { params } : {}) })).status
-      case 'ch':
-        return (await chSetField.mutateAsync({ jahr: year, feld: spec.field, data, ...(params ? { params } : {}) })).status
-      case 'kapital':
-        return (await capSetField.mutateAsync({ jahr: year, feld: spec.field, data })).status
-      case 'rente':
-        return (await pensionSetField.mutateAsync({ jahr: year, feld: spec.field, data, ...(params ? { params } : {}) })).status
-    }
-  }
-
-  async function handleSaveAcroField(acroFieldId: string, rawValue: string): Promise<AcroSaveOutcome> {
-    const spec = acroEditSpec(acroFieldId)
-    if (spec?.kind !== 'direct') return { kind: 'not-editable' }
-    const parsed = parseWholeAmount(rawValue)
-    if (parsed.kind === 'invalid') return { kind: 'invalid' }
-    const data = parsed.kind === 'value' ? { kind: 'erfasst' as const, value: parsed.value } : { kind: 'offen' as const }
-    try {
-      // The generated client does not throw on 4xx/5xx; only a 200 means the value is stored.
-      if ((await saveDirectField(spec, data)) !== 200) return { kind: 'failed' }
-    } catch {
-      return { kind: 'failed' }
-    }
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: QUERY_KEY_FOR[spec.endpoint](year) }),
-      queryClient.invalidateQueries({ queryKey: getCockpitControllerGetCockpitSummaryQueryKey(year) }),
-      queryClient.invalidateQueries({ queryKey: getTaxEstimateControllerGetQueryKey(year) }),
-    ])
-    return { kind: parsed.kind === 'value' ? 'saved' : 'cleared' }
-  }
+  const saveAcroField = useAcroFieldSaver({
+    year,
+    masterData: masterDataQuery.data?.status === 200 ? masterDataQuery.data.data : null,
+  })
+  // What the printout would print, per copy (A/B, each child, each rental object), straight from the API.
+  const liveValuesQuery = usePrintoutControllerLiveValues(year, { query: { enabled: viewMode === 'acroform' } })
+  const liveForms = liveValuesQuery.data?.status === 200 ? liveValuesQuery.data.data.forms : []
 
   const linkData = linkQuery.data?.status === 200 ? linkQuery.data.data : null
   const isJoint = linkData?.filingType === 'zusammen'
@@ -922,84 +879,15 @@ function GlassFormPreviewBody({
   const visibleSections =
     activeFilter === 'alle' ? sections : sections.filter((s) => s.formId === activeFilter)
 
-  const liveAcroValues: Record<string, string | true> = {
-    'est1a.einkommensteuererklaerung': true,
-  }
-  if (md) {
-    if (md.strasse) liveAcroValues['est1a.strasse'] = md.strasse
-    if (md.hausnummer) liveAcroValues['est1a.hausnummer'] = md.hausnummer
-    if (md.hausnummerZusatz) liveAcroValues['est1a.hausnummerZusatz'] = md.hausnummerZusatz
-    if (md.plz) liveAcroValues['est1a.plz'] = md.plz
-    if (md.wohnort) liveAcroValues['est1a.wohnort'] = md.wohnort
-    if (md.beruf) liveAcroValues['est1a.beruf'] = md.beruf
-    if (md.religion) liveAcroValues['est1a.religion'] = md.religion
-    if (md.finanzamt) liveAcroValues['est1a.finanzamt'] = md.finanzamt
-    if (md.iban) {
-      if (md.iban.toUpperCase().startsWith('DE')) {
-        liveAcroValues['est1a.ibanInland'] = md.iban.slice(2).replace(/\s+/g, '')
-      } else {
-        liveAcroValues['est1a.ibanAusland'] = md.iban
-      }
-    }
-  }
-  if (isJoint) {
-    liveAcroValues['est1a.zusammenveranlagung'] = true
-    if (linkData?.personB?.firstName) liveAcroValues['est1a.vornameB'] = linkData.personB.firstName
-    if (linkData?.personB?.lastName) liveAcroValues['est1a.nameB'] = linkData.personB.lastName
-    if (linkData?.personB?.steuerId) liveAcroValues['est1a.idnrB'] = linkData.personB.steuerId
-    if (linkData?.personB?.beruf) liveAcroValues['est1a.berufB'] = linkData.personB.beruf
-    if (linkData?.personB?.religion) liveAcroValues['est1a.religionB'] = linkData.personB.religion
-  }
-  if (lstb?.bruttoarbeitslohn.kind === 'erfasst' && lstb.bruttoarbeitslohn.value !== undefined) {
-    liveAcroValues['anlN.personA'] = true
-    liveAcroValues['anlN.kz110'] = String(Math.round(lstb.bruttoarbeitslohn.value))
-  }
-  if (lstb?.lohnsteuer.kind === 'erfasst' && lstb.lohnsteuer.value !== undefined) {
-    liveAcroValues['anlN.kz140'] = String(Math.round(lstb.lohnsteuer.value))
-  }
-  if (commute?.inputs) {
-    if (commute.inputs.workplace) liveAcroValues['anlN.wegOrt'] = commute.inputs.workplace
-    if (commute.inputs.oneWayKm != null && commute.inputs.oneWayKm > 0) liveAcroValues['anlN.kz111'] = String(commute.inputs.oneWayKm)
-    if (commute.workdays?.commuteDays) liveAcroValues['anlN.kz110Tage'] = String(commute.workdays.commuteDays)
-  }
-  if (chGrossA?.kind === 'erfasst' && chGrossA.value !== undefined) {
-    liveAcroValues['anlNGre.personA'] = true
-    liveAcroValues['anlNGre.z6Chf'] = String(Math.round(chGrossA.value))
-  }
-  if (chQstA?.kind === 'erfasst' && chQstA.value !== undefined) {
-    liveAcroValues['anlNGre.kz169'] = String(Math.round(chQstA.value))
-  }
-  if (chAhvA?.kind === 'erfasst' && chAhvA.value !== undefined) {
-    liveAcroValues['anlNGre.z82Chf'] = String(Math.round(chAhvA.value))
-  }
-  if (cap?.kapitalertraege.kind === 'erfasst' && cap.kapitalertraege.value !== undefined) {
-    liveAcroValues['anlKap.personA'] = true
-    liveAcroValues['anlKap.kz210'] = String(Math.round(cap.kapitalertraege.value))
-  }
-  if (pension?.jahresbetrag.kind === 'erfasst' && pension.jahresbetrag.value !== undefined) {
-    liveAcroValues['anlR.personA'] = true
-    liveAcroValues['anlR.kz101'] = String(Math.round(pension.jahresbetrag.value))
-  }
-  if (kinderData && kinderData.kinder.length > 0 && kinderData.kinder[0]) {
-    const firstChild = kinderData.kinder[0]
-    if (firstChild.firstName) liveAcroValues['anlKind.vorname'] = firstChild.firstName
-    if (firstChild.lastName) liveAcroValues['anlKind.name'] = firstChild.lastName
-    if (firstChild.taxId) liveAcroValues['anlKind.idnr'] = firstChild.taxId
-  }
-  if (rental && rental.properties.length > 0 && rental.properties[0]) {
-    const firstRental = rental.properties[0]
-    if (firstRental.strasse) liveAcroValues['anlV.strasse'] = firstRental.strasse
-    if (firstRental.plz) liveAcroValues['anlV.plz'] = firstRental.plz
-    if (firstRental.city) liveAcroValues['anlV.ort'] = firstRental.city
-  }
-
   return (
     <View style={styles.container} testID="glass-form-preview">
       <View style={styles.headerRow}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.heading}>
-            {tr('ausdruck.glasErklaerung.titel', '🔍 Glas-Erklärung: Amtliche Formular-Vorschau')}
-          </Text>
+        <View style={styles.titleColumn}>
+          {hideHeading ? null : (
+            <Text style={styles.heading}>
+              {tr('ausdruck.glasErklaerung.titel', '🔍 Glas-Erklärung: Amtliche Formular-Vorschau')}
+            </Text>
+          )}
           <Text style={styles.subheading}>
             {totalRows > 0
               ? `${sections.length} Vordrucke · ${totalRows} befüllte Formularzeilen · Tipp auf eine Zeile öffnet die Eingabemaske`
@@ -1014,7 +902,7 @@ function GlassFormPreviewBody({
             📋 Strukturierte Zeilen
           </Chip>
           <Chip active={viewMode === 'acroform'} onPress={() => onChangeViewMode('acroform')}>
-            📄 Original-Vordruck (AcroForm HD)
+            📄 Original-Vordruck
           </Chip>
           {onCollapse ? (
             <Pressable
@@ -1035,11 +923,11 @@ function GlassFormPreviewBody({
         <AcroFormLiveViewer
           year={year}
           initialForm={initialAcroForm}
-          liveValues={liveAcroValues}
+          liveForms={liveForms}
           highlightedFieldId={highlightedAcroFieldId}
           loader={acroFormLoader}
           onInspectField={onInspectField}
-          {...(expertMode ? { onSaveAcroField: handleSaveAcroField } : {})}
+          {...(expertMode ? { onSaveAcroField: saveAcroField } : {})}
         />
       ) : null}
 
@@ -1145,6 +1033,8 @@ function makeStyles(t: UiTheme) {
     marginBottom: t.space.s4,
     gap: t.space.s3,
   }
+  // A real basis width: with `flex: 1` (basis 0) the row never wraps and the title shrinks to one letter per line.
+  const titleColumn: ViewStyle = { flexGrow: 1, flexShrink: 1, flexBasis: 240, minWidth: 0 }
   const headerRow: ViewStyle = {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -1177,6 +1067,8 @@ function makeStyles(t: UiTheme) {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: t.space.s2,
+    maxWidth: '100%',
+    flexShrink: 1,
   }
   const sectionCard: ViewStyle = {
     borderWidth: t.space.kontur,
@@ -1276,6 +1168,7 @@ function makeStyles(t: UiTheme) {
     collapsedSubtitle,
     container,
     headerRow,
+    titleColumn,
     heading,
     subheading,
     toggleButton,

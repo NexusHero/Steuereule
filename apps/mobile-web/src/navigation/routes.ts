@@ -28,6 +28,8 @@ export type CockpitStackParamList = {
   Rental: { year: number }
   Children: { year: number }
   CockpitMasterData: { year: number }
+  /** The official Vordrucke on their own screen; `form` opens one first, e.g. `anlage-n`. */
+  OfficialForm: { year: number; form?: string }
   Partner: { year: number; area: PartnerAreaParam }
   /** The Strom (ADR-0089): one address segment per step, e.g. `spenden` or `auswahl`. */
   Strom: { year: number; step: string }

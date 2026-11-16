@@ -1,21 +1,24 @@
 import { useEffect, useRef, useState } from 'react'
 import { Platform, Pressable, Text, TextInput, View, type TextStyle, type ViewStyle } from 'react-native'
-import { getApiClientBaseUrl } from '@steuereule/api-client'
+import { getApiClientBaseUrl, type LiveFormDto, type LiveFormInstanceDto } from '@steuereule/api-client'
 import type { Screen } from '@steuereule/core'
 import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import { Card, Chip, useTheme, type UiTheme } from '@steuereule/ui'
 import { APP_NS } from '../../i18n/resources'
 import { maskTargetForAcroField } from '../shared/formLineMapping'
-import { acroEditSpec, type AcroSaveOutcome } from './acroFieldEditing'
+import { acroEditSpec, type AcroEditSpec, type AcroInstanceContext, type AcroSaveOutcome, type EditableAcroField } from './acroFieldEditing'
+import type { SaveAcroField } from './useAcroFieldSaver'
 
 export interface AcroFormViewerProps {
   readonly year: number
   readonly initialForm?: string | undefined
-  readonly liveValues: Readonly<Record<string, string | true>>
+  /** What the printout prints, per Vordruck and copy (`GET ausdruck/werte`). */
+  readonly liveForms: readonly LiveFormDto[]
   readonly highlightedFieldId?: string | undefined
   readonly onInspectField?: ((screen: Screen, field?: string, person?: 'A' | 'B') => void) | undefined
   /** Present only in expert mode; writes a directly editable field (see acroFieldEditing.ts) back to the return. */
-  readonly onSaveAcroField?: ((acroFieldId: string, nextValue: string) => Promise<AcroSaveOutcome>) | undefined
+  readonly onSaveAcroField?: SaveAcroField | undefined
 }
 
 export interface AcroAnnotationBox {
@@ -87,7 +90,7 @@ const DEFAULT_LOADER: AcroFormPdfLoader = {
 export function AcroFormLiveViewer({
   year,
   initialForm = 'est-1-a',
-  liveValues,
+  liveForms,
   highlightedFieldId,
   onInspectField,
   onSaveAcroField,
@@ -99,6 +102,8 @@ export function AcroFormLiveViewer({
   const [pageNumber, setPageNumber] = useState<number>(1)
   const [numPages, setNumPages] = useState<number>(1)
   const [zoom, setZoom] = useState<number>(1.25)
+  // Until the user picks a zoom, the page is fitted to the width it gets (a narrow mask, a wide screen).
+  const [fitToWidth, setFitToWidth] = useState(true)
   const [annotations, setAnnotations] = useState<readonly AcroAnnotationBox[]>([])
   const [pageSize, setPageSize] = useState<{ readonly width: number; readonly height: number }>({ width: 595, height: 842 })
   const [focusedField, setFocusedField] = useState<string | null>(highlightedFieldId ?? null)
@@ -106,6 +111,7 @@ export function AcroFormLiveViewer({
   const [savingField, setSavingField] = useState<string | null>(null)
   const [feedback, setFeedback] = useState<{ readonly field: string; readonly outcome: AcroSaveOutcome } | null>(null)
   const savingRef = useRef(false)
+  const [copyIndex, setCopyIndex] = useState(0)
   const { t: tr } = useTranslation(APP_NS)
   const [loading, setLoading] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
@@ -179,11 +185,21 @@ export function AcroFormLiveViewer({
   }, [year, selectedForm, pageNumber, zoom, loader])
 
   const activeFormMeta = OFFICIAL_VORDRUCKE.find((f) => f.id === selectedForm) ?? OFFICIAL_VORDRUCKE[0]!
+  const copies = liveForms.find((form) => form.formular === selectedForm)?.instances ?? []
+  const copy = copies[Math.min(copyIndex, Math.max(0, copies.length - 1))]
+  const liveValues: Readonly<Record<string, string | true>> = copy?.values ?? {}
+  const copyContext: AcroInstanceContext = { person: copy?.person ?? null, entityId: copy?.entityId ?? null, copies: Math.max(1, copies.length) }
+  /** A draft belongs to one copy: switching the copy or the form starts clean. */
+  const selectCopy = (index: number) => {
+    setCopyIndex(index)
+    setDraftValues({})
+    setFeedback(null)
+  }
   const filledCountOnForm = annotations.filter((a) => liveValues[a.fieldName] !== undefined).length
   const selectedFieldMeta = focusedField ? maskTargetForAcroField(focusedField) : null
-  const focusedSpec = focusedField ? acroEditSpec(focusedField) : null
+  const focusedSpec = focusedField ? acroEditSpec(focusedField, copyContext) : null
   const canEdit = (fieldId: string): boolean =>
-    onSaveAcroField !== undefined && liveValues[fieldId] !== true && acroEditSpec(fieldId)?.kind === 'direct'
+    onSaveAcroField !== undefined && liveValues[fieldId] !== true && isEditable(acroEditSpec(fieldId, copyContext))
   const storedText = (fieldId: string): string => {
     const stored = liveValues[fieldId]
     return typeof stored === 'string' ? stored : ''
@@ -207,7 +223,7 @@ export function AcroFormLiveViewer({
     setFeedback(null)
     let outcome: AcroSaveOutcome
     try {
-      outcome = await onSaveAcroField(fieldId, draft)
+      outcome = await onSaveAcroField(fieldId, draft, copyContext)
     } catch {
       outcome = { kind: 'failed' }
     } finally {
@@ -227,7 +243,7 @@ export function AcroFormLiveViewer({
       case 'cleared':
         return tr('ausdruck.direkteingabe.geleert')
       case 'invalid':
-        return tr('ausdruck.direkteingabe.ungueltig')
+        return tr(`ausdruck.direkteingabe.ungueltig.${outcome.reason}`)
       case 'failed':
         return tr('ausdruck.direkteingabe.fehler')
       case 'not-editable':
@@ -238,10 +254,12 @@ export function AcroFormLiveViewer({
   return (
     <Card style={styles.card}>
       <View style={styles.toolbar}>
-        <View style={{ flex: 1 }}>
+        <View style={styles.titleColumn}>
           <Text style={styles.title}>{`📄 Original BMF-Vordruck (AcroForm HD) · ${activeFormMeta.title}`}</Text>
           <Text style={styles.subtitle}>
-            {`Seite ${pageNumber} von ${numPages} · ${annotations.length} AcroForm-Felder auf dieser Seite (${filledCountOnForm} befüllt) · Klick ins Feld springt direkt in die Eingabemaske`}
+            {`Seite ${pageNumber} von ${numPages} · ${annotations.length} AcroForm-Felder auf dieser Seite (${filledCountOnForm} befüllt) · ${
+              onSaveAcroField ? 'Mit ✎ markierte Felder änderst du hier, die übrigen in ihrer Eingabemaske' : 'Klick ins Feld springt direkt in die Eingabemaske'
+            }`}
           </Text>
         </View>
         <View style={styles.controlsRow}>
@@ -264,7 +282,10 @@ export function AcroFormLiveViewer({
           </Pressable>
           <Pressable
             accessibilityRole="button"
-            onPress={() => setZoom((z) => (z >= 1.75 ? 1.0 : Number((z + 0.25).toFixed(2))))}
+            onPress={() => {
+              setFitToWidth(false)
+              setZoom((z) => (z >= 1.75 ? 1.0 : Number((z + 0.25).toFixed(2))))
+            }}
             style={styles.controlBtn}
           >
             <Text style={styles.controlBtnText}>{`🔍 ${Math.round(zoom * 100)} %`}</Text>
@@ -280,12 +301,23 @@ export function AcroFormLiveViewer({
             onPress={() => {
               setSelectedForm(form.id)
               setPageNumber(1)
+              selectCopy(0)
             }}
           >
             {form.short}
           </Chip>
         ))}
       </View>
+
+      {copies.length > 1 ? (
+        <View style={styles.formChipsRow} testID="acro-copies">
+          {copies.map((instance, index) => (
+            <Chip key={instance.entityId ?? `${instance.person ?? 'x'}-${index}`} active={copy === instance} onPress={() => selectCopy(index)}>
+              {copyLabel(instance, index, tr)}
+            </Chip>
+          ))}
+        </View>
+      ) : null}
 
       {selectedFieldMeta && focusedField ? (
         <View style={styles.inspectorBar}>
@@ -318,13 +350,17 @@ export function AcroFormLiveViewer({
               </Text>
             ) : null}
           </View>
-          {canEdit(focusedField) && focusedSpec?.kind === 'direct' ? (
+          {canEdit(focusedField) && isEditable(focusedSpec) ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.s2 }}>
               <TextInput
                 accessibilityLabel={tr('ausdruck.direkteingabe.eingabeLabel', { label: selectedFieldMeta.label })}
                 value={draftValues[focusedField] ?? storedText(focusedField)}
-                placeholder={tr('ausdruck.direkteingabe.platzhalter', { unit: focusedSpec.unit === 'CHF' ? 'Franken' : 'Euro' })}
-                inputMode="numeric"
+                placeholder={
+                  focusedSpec.kind === 'direct'
+                    ? tr('ausdruck.direkteingabe.platzhalter', { unit: focusedSpec.unit === 'CHF' ? 'Franken' : 'Euro' })
+                    : tr('ausdruck.direkteingabe.platzhalterText')
+                }
+                inputMode={focusedSpec.kind === 'direct' || focusedSpec.rule !== 'text' ? 'numeric' : 'text'}
                 editable={savingField !== focusedField}
                 onChangeText={(next) => setDraftValues((prev) => ({ ...prev, [focusedField]: next }))}
                 onSubmitEditing={() => void commit(focusedField)}
@@ -353,7 +389,7 @@ export function AcroFormLiveViewer({
           {onInspectField ? (
             <Pressable
               accessibilityRole="button"
-              onPress={() => onInspectField(selectedFieldMeta.screen, selectedFieldMeta.field, selectedFieldMeta.person ?? 'A')}
+              onPress={() => onInspectField(selectedFieldMeta.screen, selectedFieldMeta.field, selectedFieldMeta.person ?? copy?.person ?? 'A')}
               style={styles.jumpButton}
             >
               <Text style={styles.jumpButtonText}>Ins Eingabefeld springen →</Text>
@@ -365,7 +401,23 @@ export function AcroFormLiveViewer({
       {loading ? <Text style={styles.statusText}>Lade hochauflösenden AcroForm-Vordruck …</Text> : null}
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-      <View style={styles.sheetScrollWrapper}>
+      {onSaveAcroField ? (
+        <View style={styles.legendRow} testID="acro-legend">
+          <Text style={[styles.legendItem, styles.legendEditable]}>{tr('formular.legende.editierbar')}</Text>
+          <Text style={[styles.legendItem, styles.legendDerived]}>{tr('formular.legende.berechnet')}</Text>
+          <Text style={styles.legendItem}>{tr('formular.legende.maske')}</Text>
+        </View>
+      ) : null}
+
+      <View
+        style={styles.sheetScrollWrapper}
+        onLayout={(event) => {
+          if (!fitToWidth) return
+          const available = event.nativeEvent.layout.width - 2 * t.space.s2
+          const fitted = Math.round(Math.min(2, Math.max(0.6, available / pageSize.width)) * 20) / 20
+          if (Number.isFinite(fitted) && fitted !== zoom) setZoom(fitted)
+        }}
+      >
         <View
           style={{
             width: Math.floor(pageSize.width * zoom),
@@ -390,6 +442,10 @@ export function AcroFormLiveViewer({
             const isFilled = rawVal !== undefined && rawVal !== ''
             const isFocused = focusedField === annot.fieldName
             const target = maskTargetForAcroField(annot.fieldName)
+            // In expert mode every field shows what it is: editable here, computed, or only in its mask.
+            const spec = onSaveAcroField ? acroEditSpec(annot.fieldName, copyContext) : null
+            const editableHere = canEdit(annot.fieldName)
+            const computed = spec?.kind === 'derived'
             const alignRight = annot.textAlignment === 2
             const alignCenter = annot.textAlignment === 1 || rawVal === true
 
@@ -397,12 +453,14 @@ export function AcroFormLiveViewer({
               <Pressable
                 key={annot.fieldName}
                 accessibilityRole="button"
-                accessibilityLabel={`${target.label}${displayVal ? `: ${displayVal}` : ''}`}
+                accessibilityLabel={`${target.label}${displayVal ? `: ${displayVal}` : ''}${
+                  editableHere ? ` · ${tr('formular.legende.editierbar')}` : computed ? ` · ${tr('formular.legende.berechnet')}` : ''
+                }`}
                 onPress={() => {
                   setFocusedField(annot.fieldName)
                   // In expert mode an editable field is edited in place instead of leaving the form.
                   if (onInspectField && !canEdit(annot.fieldName)) {
-                    onInspectField(target.screen, target.field, target.person ?? 'A')
+                    onInspectField(target.screen, target.field, target.person ?? copy?.person ?? 'A')
                   }
                 }}
                 style={{
@@ -413,20 +471,36 @@ export function AcroFormLiveViewer({
                   height: Math.max(12, height),
                   justifyContent: 'center',
                   paddingHorizontal: 2,
-                  borderWidth: isFocused ? 2 : 1,
-                  borderColor: isFocused ? t.color.funkeTinte : isFilled ? t.color.tinte : 'rgba(37, 99, 235, 0.35)',
+                  // Room for the ✎ / 🔒 marker inside the box, so it is never clipped at the page edge.
+                  paddingLeft: editableHere || computed ? 16 : 2,
+                  borderWidth: isFocused || editableHere ? 2 : 1,
+                  borderStyle: computed ? 'dashed' : 'solid',
+                  borderColor: isFocused || editableHere ? t.color.funkeTinte : computed ? t.color.tinte2 : isFilled ? t.color.tinte : 'rgba(37, 99, 235, 0.35)',
                   backgroundColor: isFocused
                     ? 'rgba(201, 242, 41, 0.32)'
-                    : isFilled
-                      ? 'rgba(201, 242, 41, 0.14)'
-                      : 'rgba(37, 99, 235, 0.04)',
+                    : editableHere
+                      ? 'rgba(201, 242, 41, 0.22)'
+                      : computed
+                        ? 'rgba(13, 15, 8, 0.05)'
+                        : isFilled
+                          ? // In expert mode only editable fields carry the Funke tint, so they stand out.
+                            onSaveAcroField
+                            ? 'rgba(13, 15, 8, 0.03)'
+                            : 'rgba(201, 242, 41, 0.14)'
+                          : 'rgba(37, 99, 235, 0.04)',
                 }}
+                testID={editableHere ? `acro-field-editable-${annot.fieldName}` : computed ? `acro-field-computed-${annot.fieldName}` : undefined}
               >
+                {editableHere || computed ? (
+                  <Text aria-hidden={true} style={styles.fieldBadge}>
+                    {editableHere ? '✎' : '🔒'}
+                  </Text>
+                ) : null}
                 {isFocused && canEdit(annot.fieldName) ? (
                   <TextInput
                     accessibilityLabel={tr('ausdruck.direkteingabe.inlineLabel', { field: annot.fieldName })}
                     value={String(displayVal)}
-                    inputMode="numeric"
+                    inputMode={acroEditSpec(annot.fieldName, copyContext)?.kind === 'direct' ? 'numeric' : 'text'}
                     editable={savingField !== annot.fieldName}
                     onChangeText={(next) => setDraftValues((prev) => ({ ...prev, [annot.fieldName]: next }))}
                     onSubmitEditing={() => void commit(annot.fieldName)}
@@ -469,6 +543,8 @@ function makeStyles(t: UiTheme) {
     padding: t.space.s3,
     gap: t.space.s3,
   }
+  // A real basis width: with `flex: 1` (basis 0) the row never wraps and the title shrinks to one letter per line.
+  const titleColumn: ViewStyle = { flexGrow: 1, flexShrink: 1, flexBasis: 240, minWidth: 0 }
   const toolbar: ViewStyle = {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -555,6 +631,19 @@ function makeStyles(t: UiTheme) {
     ...t.type.small,
     color: t.color.fehler,
   }
+  const legendRow: ViewStyle = { flexDirection: 'row', flexWrap: 'wrap', gap: t.space.s2, marginBottom: t.space.s3 }
+  const legendItem: TextStyle = {
+    ...t.type.meta,
+    color: t.color.tinte2,
+    paddingHorizontal: t.space.s2,
+    paddingVertical: 2,
+    borderRadius: t.radius.s,
+    borderWidth: 1,
+    borderColor: t.color.linieWeich,
+  }
+  const legendEditable: TextStyle = { color: t.color.tinte, borderColor: t.color.funkeTinte, borderWidth: 2, backgroundColor: 'rgba(201, 242, 41, 0.22)' }
+  const legendDerived: TextStyle = { borderStyle: 'dashed', borderColor: t.color.tinte2, backgroundColor: 'rgba(13, 15, 8, 0.05)' }
+  const fieldBadge: TextStyle = { ...t.type.meta, position: 'absolute', left: 3, top: 0, bottom: 0, textAlignVertical: 'center', color: t.color.tinte }
   const sheetScrollWrapper: ViewStyle = {
     overflow: 'scroll',
     paddingVertical: t.space.s2,
@@ -562,6 +651,7 @@ function makeStyles(t: UiTheme) {
   return {
     card,
     toolbar,
+    titleColumn,
     title,
     subtitle,
     controlsRow,
@@ -578,5 +668,24 @@ function makeStyles(t: UiTheme) {
     statusText,
     errorText,
     sheetScrollWrapper,
+    legendRow,
+    legendItem,
+    legendEditable,
+    legendDerived,
+    fieldBadge,
   }
+}
+
+function isEditable(spec: AcroEditSpec | null): spec is EditableAcroField {
+  return spec !== null && spec.kind !== 'derived'
+}
+
+/** Names a printed copy so the user knows whose Anlage they are looking at. */
+function copyLabel(instance: LiveFormInstanceDto, index: number, tr: TFunction<typeof APP_NS>): string {
+  if (instance.person) return tr('ausdruck.exemplar.person', { person: instance.person })
+  const childName = instance.values['anlKind.vorname']
+  if (typeof childName === 'string') return tr('ausdruck.exemplar.kind', { name: childName })
+  const street = instance.values['anlV.strasse']
+  if (typeof street === 'string') return tr('ausdruck.exemplar.objekt', { name: street })
+  return tr('ausdruck.exemplar.allgemein', { nummer: index + 1 })
 }

@@ -27,6 +27,7 @@ const cockpitScreens: NonNullable<PathConfig<CockpitStackParamList>['screens']> 
   Rental: { path: 'steuerjahr/:year/vermietung', parse: { year: Number } },
   Children: { path: 'steuerjahr/:year/kinder', parse: { year: Number } },
   CockpitMasterData: { path: 'steuerjahr/:year/stammdaten', parse: { year: Number } },
+  OfficialForm: { path: 'steuerjahr/:year/formular/:form?', parse: { year: Number } },
   Partner: { path: 'steuerjahr/:year/partner/:area', parse: { year: Number } },
   Strom: { path: 'steuerjahr/:year/strom/:step', parse: { year: Number } },
 }
@@ -98,6 +99,7 @@ const ROUTE_TITLES: Readonly<Record<string, string>> = {
   Rental: 'SteuerEule — Vermietung',
   Children: 'SteuerEule — Kinder',
   CockpitMasterData: 'SteuerEule — Stammdaten',
+  OfficialForm: 'SteuerEule — Amtliches Formular',
   Partner: 'SteuerEule — Partner',
   Strom: 'SteuerEule — Steuererklärung',
   Owl: 'SteuerEule — Eulen-Modus',

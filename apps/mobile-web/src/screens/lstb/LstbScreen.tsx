@@ -21,7 +21,7 @@ import { BackButton, BackButtonSpacer } from '../shared/BackButton'
 import { usePendingMutations } from '../shared/usePendingMutations'
 import { SaveFailedNotice } from '../shared/SaveFailedNotice'
 import { watchSaveResult } from '../shared/saveFeedback'
-import { InMaskAdvisorCompanion } from '../advisor/InMaskAdvisorCompanion'
+import { OfficialFormLink } from '../printout/OfficialFormLink'
 import { FIELDS, type FieldId, type StagedFieldDraft } from './scan/lstbScanDraft'
 import { LstbScanPanel } from './scan/LstbScanPanel'
 import { useLstbScan } from './scan/useLstbScan'
@@ -114,7 +114,7 @@ export function LstbScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YE
       <ChurchTaxLines taxYear={taxYear} params={params} track={track} />
       <SubsidyLine taxYear={taxYear} params={params} track={track} />
 
-      <InMaskAdvisorCompanion screen="lstb" taxYear={taxYear} />
+      <OfficialFormLink screen="lstb" taxYear={taxYear} />
 
       <SaveFailedNotice visible={saveFailed} />
       <Button onPress={() => finish(onDone)} style={styles.cta} testID="lstb-weiter">

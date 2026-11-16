@@ -29,7 +29,7 @@ import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
 import { LoadingState } from '../shared/ScreenState'
 import { integerFrom } from '../shared/integer'
-import { InMaskAdvisorCompanion } from '../advisor/InMaskAdvisorCompanion'
+import { OfficialFormLink } from '../printout/OfficialFormLink'
 import { triggerSaveErrorHaptic } from '../shared/saveFeedback'
 import { stateForAddress } from '../shared/postalCodePrefill'
 
@@ -443,7 +443,7 @@ function WorkdaysForm({
 
       {error ? <Text style={styles.widerspruchBody}>{tr('arbeitstage.speichernFehler')}</Text> : null}
 
-      <InMaskAdvisorCompanion screen="interview" taxYear={taxYear} />
+      <OfficialFormLink screen="commute" taxYear={taxYear} />
 
       <Button onPress={next} disabled={moving || result?.kind === 'widerspruch'} style={styles.cta} testID="arbeitstage-weiter">
         {tr('arbeitstage.weiter')}

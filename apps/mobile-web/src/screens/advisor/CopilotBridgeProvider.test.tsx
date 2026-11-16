@@ -9,7 +9,6 @@ import type { AdvisorActionProposal, AdvisorChatMessageView } from '@steuereule/
 import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { CockpitScreen } from '../cockpit/CockpitScreen'
-import { LstbScreen } from '../lstb/LstbScreen'
 import { OwlModeScreen } from './OwlModeScreen'
 import { AdvisorChatPanel } from './AdvisorChatPanel'
 import { CopilotBridgeProvider, type CopilotMode, useCopilotBridge, useOptionalCopilotBridge } from './CopilotBridgeProvider'
@@ -521,7 +520,7 @@ describe('Slice 4: CopilotBridgeProvider & 3-Breakpoint OwlMode Workspace', () =
     expect(await screen.findByTestId('eule-workbench-sheet')).toBeTruthy()
   })
 
-  it('opens inline Maske ansehen inside left workbench, suppresses InMaskAdvisorCompanion (#443/#446), and shows honest Pauschbetrag & conflict UI', async () => {
+  it('opens inline Maske ansehen inside left workbench and shows honest Pauschbetrag & conflict UI', async () => {
     setViewportWidth(1280)
     const lstbDraft: AdvisorActionProposal = {
       ...PENDING_WORKDAYS_DRAFT,
@@ -574,19 +573,11 @@ describe('Slice 4: CopilotBridgeProvider & 3-Breakpoint OwlMode Workspace', () =
     fireEvent.click(screen.getByTestId('draft-inspect-act-lstb-1'))
     expect(await screen.findByTestId('eule-inline-mask-view')).toBeTruthy()
     expect(screen.getByTestId('eule-inline-mask-focus-banner')).toBeTruthy()
-    // #443/#446 AC 5: InMaskAdvisorCompanion MUST return null inside Eulen-Modus!
+    // The masks carry no owl entry of their own any more: the owl lives in its tab and the Eulen-Modus.
     expect(screen.queryByTestId('in-mask-advisor-trigger')).toBeNull()
 
     fireEvent.click(screen.getByTestId('eule-back-to-stage-btn'))
     expect(screen.queryByTestId('eule-inline-mask-view')).toBeNull()
-
-    // Outside Eulen-Modus (in Cockpit/standalone LstbScreen), InMaskAdvisorCompanion remains active
-    render(
-      <BridgeHarness initialMode="cockpit">
-        <LstbScreen taxYear={2025} />
-      </BridgeHarness>,
-    )
-    expect(await screen.findByTestId('in-mask-advisor-trigger')).toBeTruthy()
   })
 
   it('supports AdvisorChatPanel receipt upload button and live stream fallback JSON response', async () => {
