@@ -1,23 +1,37 @@
 import { useState } from 'react'
 import { Pressable, Text, View, type TextStyle, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
+import { useQueryClient } from '@tanstack/react-query'
 import { Card, Chip, useTheme, type UiTheme } from '@steuereule/ui'
 import { amountFromAnswer, formatEuro, type Answers, type Screen } from '@steuereule/core'
 import {
+  getCapitalControllerGetQueryKey,
+  getChSalaryCertificateControllerGetQueryKey,
+  getCockpitControllerGetCockpitSummaryQueryKey,
+  getInterviewControllerGetInterviewQueryKey,
+  getLstbControllerGetLstbQueryKey,
+  getPensionControllerGetQueryKey,
+  getTaxEstimateControllerGetQueryKey,
   useCapitalControllerGet,
+  useCapitalControllerSetField,
   useChSalaryCertificateControllerGet,
+  useChSalaryCertificateControllerSetField,
   useChildrenControllerList,
   useCommuteControllerGet,
   useConfirmationControllerGet,
   useInterviewControllerGetInterview,
+  useInterviewControllerPostAnswer,
   useLinkControllerGet,
   useLstbControllerGetLstb,
+  useLstbControllerSetField,
   useMasterDataControllerRead,
   usePensionControllerGet,
+  usePensionControllerSetField,
   useRentalControllerGet,
   type ProvenanceDto,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
+import { maskTargetForAcroField } from '../shared/formLineMapping'
 import { AcroFormLiveViewer, type AcroFormPdfLoader } from './AcroFormLiveViewer'
 
 export interface GlassFormRow {
@@ -158,6 +172,7 @@ function GlassFormPreviewBody({
   const t = useTheme()
   const styles = makeStyles(t)
   const { t: tr } = useTranslation(APP_NS)
+  const queryClient = useQueryClient()
 
   const masterDataQuery = useMasterDataControllerRead()
   const linkQuery = useLinkControllerGet(year)
@@ -170,6 +185,60 @@ function GlassFormPreviewBody({
   const rentalQuery = useRentalControllerGet(year)
   const childrenQuery = useChildrenControllerList(year)
   const confirmationQuery = useConfirmationControllerGet(year)
+
+  const lstbSetField = useLstbControllerSetField()
+  const chSetField = useChSalaryCertificateControllerSetField()
+  const capSetField = useCapitalControllerSetField()
+  const pensionSetField = usePensionControllerSetField()
+  const interviewPostAnswer = useInterviewControllerPostAnswer()
+
+  async function handleSaveAcroField(acroFieldId: string, rawValue: string) {
+    const target = maskTargetForAcroField(acroFieldId)
+    const numeric = Number(rawValue.replace(/\./g, '').replace(',', '.').trim())
+    const hasNumber = Number.isFinite(numeric) && numeric >= 0
+
+    try {
+      if (target.screen === 'lstb' && target.field && hasNumber) {
+        await lstbSetField.mutateAsync({
+          jahr: year,
+          feld: target.field as 'bruttoarbeitslohn' | 'lohnsteuer' | 'sozialversicherung',
+          data: { kind: 'erfasst', value: Math.round(numeric) },
+        })
+        await queryClient.invalidateQueries({ queryKey: getLstbControllerGetLstbQueryKey(year) })
+      } else if (target.screen === 'chLohnausweis' && target.field && hasNumber) {
+        await chSetField.mutateAsync({
+          jahr: year,
+          feld: target.field as 'grossWageChf' | 'ahvContributionsChf' | 'withholdingTaxChf',
+          data: { kind: 'erfasst', value: Math.round(numeric) },
+        })
+        await queryClient.invalidateQueries({ queryKey: getChSalaryCertificateControllerGetQueryKey(year) })
+      } else if (target.screen === 'kapital' && target.field && hasNumber) {
+        await capSetField.mutateAsync({
+          jahr: year,
+          feld: target.field as 'kapitalertraege' | 'sparerPauschbetrag' | 'kapitalertragsteuer',
+          data: { kind: 'erfasst', value: Math.round(numeric) },
+        })
+        await queryClient.invalidateQueries({ queryKey: getCapitalControllerGetQueryKey(year) })
+      } else if (target.screen === 'rente' && target.field && hasNumber) {
+        await pensionSetField.mutateAsync({
+          jahr: year,
+          feld: target.field as 'jahresbetrag',
+          data: { kind: 'erfasst', value: Math.round(numeric) },
+        })
+        await queryClient.invalidateQueries({ queryKey: getPensionControllerGetQueryKey(year) })
+      } else if (target.screen === 'interview' && target.field) {
+        await interviewPostAnswer.mutateAsync({
+          jahr: year,
+          data: { questionId: target.field, value: rawValue.trim() },
+        })
+        await queryClient.invalidateQueries({ queryKey: getInterviewControllerGetInterviewQueryKey(year) })
+      }
+      await queryClient.invalidateQueries({ queryKey: getCockpitControllerGetCockpitSummaryQueryKey(year) })
+      await queryClient.invalidateQueries({ queryKey: getTaxEstimateControllerGetQueryKey(year) })
+    } catch {
+      // Fallback: keep local draft visible if API rejects
+    }
+  }
 
   const linkData = linkQuery.data?.status === 200 ? linkQuery.data.data : null
   const isJoint = linkData?.filingType === 'zusammen'
@@ -978,6 +1047,7 @@ function GlassFormPreviewBody({
           highlightedFieldId={highlightedAcroFieldId}
           loader={acroFormLoader}
           onInspectField={onInspectField}
+          onSaveAcroField={handleSaveAcroField}
         />
       ) : null}
 

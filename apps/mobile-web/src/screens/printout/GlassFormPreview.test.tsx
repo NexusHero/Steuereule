@@ -167,16 +167,27 @@ describe('GlassFormPreview („Glas-Erklärung“)', () => {
     expect(screen.queryByTestId('glass-section-est1a')).toBeNull()
   })
 
-  it('renders pre-compiled AcroForm fields in HD Vordruck mode and jumps to the input mask when an AcroForm field is clicked', async () => {
+  it('renders pre-compiled AcroForm fields in HD Vordruck mode, jumps to the input mask on click, and allows Power-Users to edit values directly in the form', async () => {
+    let savedBrutto: number | null = null
     server.use(
       http.get('*/v1/steuerjahre/2025/lstb', () =>
         HttpResponse.json({
-          bruttoarbeitslohn: { kind: 'erfasst', value: 64000 },
+          bruttoarbeitslohn: { kind: 'erfasst', value: savedBrutto ?? 64000 },
           lohnsteuer: { kind: 'erfasst', value: 11200 },
           sozialversicherung: { kind: 'erfasst', value: 12100 },
-          state: { kind: 'vollstaendig', bruttoarbeitslohn: 64000, lohnsteuer: 11200, sozialversicherung: 12100 },
+          state: { kind: 'vollstaendig', bruttoarbeitslohn: savedBrutto ?? 64000, lohnsteuer: 11200, sozialversicherung: 12100 },
         }),
       ),
+      http.put('*/v1/steuerjahre/2025/lstb/bruttoarbeitslohn', async ({ request }) => {
+        const body = (await request.json()) as { value?: number }
+        savedBrutto = body.value ?? null
+        return HttpResponse.json({
+          bruttoarbeitslohn: { kind: 'erfasst', value: savedBrutto ?? 64000 },
+          lohnsteuer: { kind: 'erfasst', value: 11200 },
+          sozialversicherung: { kind: 'erfasst', value: 12100 },
+          state: { kind: 'vollstaendig', bruttoarbeitslohn: savedBrutto ?? 64000, lohnsteuer: 11200, sozialversicherung: 12100 },
+        })
+      }),
     )
 
     const fakeLoader: AcroFormPdfLoader = {
@@ -212,5 +223,14 @@ describe('GlassFormPreview („Glas-Erklärung“)', () => {
     fireEvent.click(kz110Btn)
     expect(onInspectField).toHaveBeenCalledWith('lstb', 'bruttoarbeitslohn', 'A')
     expect(await screen.findByText(/Aktives AcroForm-Feld: anlN\.kz110/)).toBeTruthy()
+
+    // Power-User edits the value directly in the AcroForm inspector / inline input and saves
+    const directInput = await screen.findByLabelText(/Direkteingabe Anlage N · Zeile 6/)
+    fireEvent.change(directInput, { target: { value: '68500' } })
+    fireEvent.click(await screen.findByText('✓ Direkt speichern'))
+
+    await vi.waitFor(() => {
+      expect(savedBrutto).toBe(68500)
+    })
   })
 })
