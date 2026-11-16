@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef } from 'react'
 import { ScrollView, View, Text, Pressable, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
@@ -374,7 +374,7 @@ function SalaryCertificateStep({
         setManualGrossOverride(nextText.trim() !== '')
         return next
       }
-      if ((GROSS_COMPONENT_IDS as readonly string[]).includes(fieldId) && !manualGrossOverride) {
+      if (fieldId !== 'lohn' && (GROSS_COMPONENT_IDS as readonly string[]).includes(fieldId) && !manualGrossOverride) {
         const sum = GROSS_COMPONENT_IDS.reduce((acc, id) => {
           const v = integerFrom((id === fieldId ? nextText : next[id] ?? '').trim())
           return acc + (v !== null && v > 0 ? v : 0)
@@ -650,14 +650,6 @@ function NGreSection({ nGre, onSet }: { readonly nGre: NGreDetailsDto; readonly 
     arbeitgeberPlzOrt: nGre.arbeitgeberPlzOrt ?? '',
   })
   const [savedNotice, setSavedNotice] = useState(false)
-
-  useEffect(() => {
-    setEmployerText({
-      arbeitgeberName: nGre.arbeitgeberName ?? '',
-      arbeitgeberStrasse: nGre.arbeitgeberStrasse ?? '',
-      arbeitgeberPlzOrt: nGre.arbeitgeberPlzOrt ?? '',
-    })
-  }, [nGre.arbeitgeberName, nGre.arbeitgeberStrasse, nGre.arbeitgeberPlzOrt])
 
   const plzMatch = /^(\d{4,5})/.exec(employerText.arbeitgeberPlzOrt.trim())
   const currentPostalCode = plzMatch ? plzMatch[1]! : ''

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ScrollView, View, Text, Pressable, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
@@ -204,45 +204,57 @@ function WorkdaysForm({
   // What was last loaded or saved — leaving a field saves only real changes (#443 AC 7).
   const lastSaved = useRef<string | null>(null)
   if (lastSaved.current === null) lastSaved.current = JSON.stringify(formData())
+  const latestFormData = useRef(formData)
+  latestFormData.current = formData
+  const canPersist = useRef(false)
+  canPersist.current = result?.kind !== 'widerspruch' && datesValid
+  const blurTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const inFlight = useRef<Promise<unknown>>(Promise.resolve())
+
+  function clearBlurTimer() {
+    if (blurTimer.current !== null) {
+      clearTimeout(blurTimer.current)
+      blurTimer.current = null
+    }
+  }
 
   function persist(onSaved?: () => void, onFailed?: () => void) {
-    if (result?.kind === 'widerspruch' || !datesValid) return
+    if (!canPersist.current) return
     setError(false)
-    const data = formData()
-    save.mutate(
-      {
-        jahr: taxYear,
-        data,
-        ...(partnerName === undefined ? {} : { params: { person: 'B' as const } }),
-      },
-      {
-        onSuccess: (response) => {
-          if (response.status === 200) {
-            lastSaved.current = JSON.stringify(data)
-            const params = partnerName === undefined ? undefined : ({ person: 'B' } as const)
-            void queryClient.invalidateQueries({ queryKey: getCommuteControllerGetQueryKey(taxYear, params) })
-            void queryClient.invalidateQueries({ queryKey: getCockpitControllerGetCockpitSummaryQueryKey(taxYear) })
-            void queryClient.invalidateQueries({ queryKey: getTaxEstimateControllerGetQueryKey(taxYear) })
-            onSaved?.()
-          } else {
-            triggerSaveErrorHaptic()
-            setError(true)
-            onFailed?.()
-          }
-        },
-        onError: () => {
+    const run = async () => {
+      const data = latestFormData.current()
+      try {
+        const response = await save.mutateAsync({
+          jahr: taxYear,
+          data,
+          ...(partnerName === undefined ? {} : { params: { person: 'B' as const } }),
+        })
+        if (response.status === 200) {
+          lastSaved.current = JSON.stringify(data)
+          const params = partnerName === undefined ? undefined : ({ person: 'B' } as const)
+          void queryClient.invalidateQueries({ queryKey: getCommuteControllerGetQueryKey(taxYear, params) })
+          void queryClient.invalidateQueries({ queryKey: getCockpitControllerGetCockpitSummaryQueryKey(taxYear) })
+          void queryClient.invalidateQueries({ queryKey: getTaxEstimateControllerGetQueryKey(taxYear) })
+          onSaved?.()
+        } else {
           triggerSaveErrorHaptic()
           setError(true)
           onFailed?.()
-        },
-      },
-    )
+        }
+      } catch {
+        triggerSaveErrorHaptic()
+        setError(true)
+        onFailed?.()
+      }
+    }
+    inFlight.current = inFlight.current.then(run, run)
   }
 
   // „Weiter“ waits only for its own save: a save started by leaving a field (the mouse-down on
   // „Weiter“ blurs the input first) must not swallow the click.
   const [moving, setMoving] = useState(false)
   function next() {
+    clearBlurTimer()
     if (result?.kind === 'widerspruch' || !datesValid) return
     setMoving(true)
     persist(onDone, () => setMoving(false))
@@ -250,9 +262,32 @@ function WorkdaysForm({
 
   /** Leaving a field (also when the sheet is closed) saves a changed, consistent form. */
   function saveOnLeave() {
-    if (lastSaved.current === null || JSON.stringify(formData()) === lastSaved.current) return
-    persist()
+    clearBlurTimer()
+    blurTimer.current = setTimeout(() => {
+      blurTimer.current = null
+      if (!canPersist.current) return
+      const current = latestFormData.current()
+      if (lastSaved.current === null || JSON.stringify(current) === lastSaved.current) return
+      persist()
+    }, 40)
   }
+
+  useEffect(
+    () => () => {
+      if (blurTimer.current !== null) {
+        clearTimeout(blurTimer.current)
+        blurTimer.current = null
+        if (canPersist.current) {
+          const current = latestFormData.current()
+          if (lastSaved.current !== null && JSON.stringify(current) !== lastSaved.current) {
+            persist()
+          }
+        }
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  )
 
   return (
     <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="screen-container">
