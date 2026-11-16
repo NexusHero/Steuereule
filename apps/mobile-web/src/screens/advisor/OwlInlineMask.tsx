@@ -1,5 +1,5 @@
 // A mask of the return shown inside the owl workbench, so a draft can be checked where it lands.
-import { type ReactNode } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { Pressable, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { Card } from '@steuereule/ui'
@@ -34,6 +34,25 @@ export function InlineMaskView({
   const isManualOnly = AI_MANUAL_ONLY_SCREENS.has(screen)
   // The interview is several pages; the field says which one the draft is about (#488).
   const located = screen === 'interview' && field ? locateQuestion(field) : null
+
+  useEffect(() => {
+    if (!field || typeof document === 'undefined') return
+    const timer = setTimeout(() => {
+      const escaped = field.replace(/["\\]/g, '')
+      const target = document.querySelector<HTMLElement>(
+        `[data-testid*="${escaped}"], input[aria-label*="${escaped}"]`,
+      )
+      if (target) {
+        if (typeof target.scrollIntoView === 'function') {
+          target.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
+        if (typeof target.focus === 'function') {
+          target.focus()
+        }
+      }
+    }, 60)
+    return () => clearTimeout(timer)
+  }, [field, screen])
 
   function renderMask(): ReactNode {
     if (isManualOnly) {
@@ -97,7 +116,9 @@ export function InlineMaskView({
       <View style={styles.inlineMaskFocusBanner} testID="eule-inline-mask-focus-banner">
         <Text style={styles.inlineMaskFocusText}>
           {tr('eule.workspace.maskFocus', '🦉 Eulen-Fokus · Prüfe deine Maske')}
-          {field ? ` · ${field}` : ''}
+          {field ? (
+            <Text testID="eule-inline-mask-field-pill">{` · #${field}`}</Text>
+          ) : null}
         </Text>
       </View>
       {renderMask()}

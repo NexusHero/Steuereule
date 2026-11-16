@@ -98,17 +98,17 @@ export function QuestionRound({ round, onSubmit, open }: QuestionRoundProps) {
 
 function makeStyles(t: UiTheme) {
   return {
-    box: { gap: t.space.s3, padding: t.space.s3, borderRadius: t.radius.m, borderWidth: 1, borderColor: t.color.ki, backgroundColor: t.color.kiWeich } as ViewStyle,
+    box: { gap: t.space.s3, padding: t.space.s3, borderRadius: t.radius.m, borderWidth: 1, borderColor: t.color.linie, backgroundColor: t.color.funkeWeich } as ViewStyle,
     question: { gap: t.space.s2 } as ViewStyle,
     text: { fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: t.size.m, color: t.color.tinte } as TextStyle,
     options: { flexDirection: 'row', flexWrap: 'wrap', gap: t.space.s2 } as ViewStyle,
     // A long answer wraps inside the round instead of running past its edge on a phone.
     option: { minHeight: 44, maxWidth: '100%', flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: t.space.s2, paddingVertical: 6, paddingHorizontal: t.space.s3, borderRadius: t.radius.m, borderWidth: 1, borderColor: t.color.linie, backgroundColor: t.color.karte } as ViewStyle,
-    optionOn: { borderColor: t.color.ki, backgroundColor: t.color.ki } as ViewStyle,
+    optionOn: { borderColor: t.color.tinte, backgroundColor: t.color.tinte } as ViewStyle,
     optionText: { flexShrink: 1, fontFamily: t.font.text, fontSize: t.size.m, color: t.color.tinte } as TextStyle,
     optionTextOn: { color: t.color.karte, fontWeight: t.weight.fett } as TextStyle,
-    recommended: { fontFamily: t.font.text, fontSize: t.size.xs, color: t.color.kiTinte } as TextStyle,
-    hint: { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.kiTinte } as TextStyle,
+    recommended: { fontFamily: t.font.text, fontSize: t.size.xs, color: t.color.tinte2 } as TextStyle,
+    hint: { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.tinte2 } as TextStyle,
     actions: { flexDirection: 'row', flexWrap: 'wrap', gap: t.space.s2 } as ViewStyle,
   }
 }

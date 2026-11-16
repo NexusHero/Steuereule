@@ -149,4 +149,10 @@ describe('QrMark', () => {
     const cellsSecond = screen.getByTestId('qr-mark').children.length
     expect(cellsFirst).toBe(cellsSecond)
   })
+
+  it('centers the quiet-zone wrapper inside flex column containers', () => {
+    renderQr('https://steuereule.example/geraet?user_code=K7QX-9F2M')
+    const quietZoneEl = screen.getByTestId('qr-mark-quiet-zone')
+    expect(quietZoneEl.style.alignSelf).toBe('center')
+  })
 })

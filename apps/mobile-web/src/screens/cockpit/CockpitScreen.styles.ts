@@ -53,6 +53,54 @@ export function makeStyles(t: UiTheme) {
   }
   const cta: ViewStyle = { marginTop: t.space.s4 }
   const secondaryCta: ViewStyle = { marginTop: t.space.s3 }
+  const secondaryGrid: ViewStyle = {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: t.space.s2,
+    marginTop: t.space.s3,
+    width: '100%',
+  }
+  const secondaryGridItem: ViewStyle = {
+    flexGrow: 1,
+    flexBasis: 200,
+  }
+  const missingBox: ViewStyle = {
+    marginTop: t.space.s3,
+    padding: t.space.s3,
+    borderRadius: t.radius.m,
+    backgroundColor: t.color.warnWeich,
+    borderWidth: 1,
+    borderColor: t.color.warn,
+    gap: t.space.s2,
+    width: '100%',
+  }
+  const missingToggleRow: ViewStyle = {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: t.space.s2,
+  }
+  const missingToggleText: TextStyle = {
+    ...t.type.captionStrong,
+    color: t.color.tinte,
+  }
+  const missingChipRow: ViewStyle = {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: t.space.s2,
+  }
+  const missingChip: ViewStyle = {
+    paddingHorizontal: t.space.s2,
+    paddingVertical: 4,
+    borderRadius: t.radius.pille,
+    backgroundColor: t.color.karte,
+    borderWidth: 1,
+    borderColor: t.color.warn,
+  }
+  const missingChipText: TextStyle = {
+    ...t.type.captionStrong,
+    color: t.color.tinte,
+  }
   // The advisor card sits right under the next step — advice up front, not at the bottom.
   const berater: ViewStyle = { marginTop: t.space.s4, width: '100%' }
   const emptyBlock: ViewStyle = { alignItems: 'center', paddingVertical: t.space.s6 }
@@ -162,5 +210,5 @@ export function makeStyles(t: UiTheme) {
   }
   const runningYearText: TextStyle = { ...t.type.small, color: t.color.tinte }
 
-  return { runningYearNotice, runningYearText, screen, wideScreen, appbar, appbarTitleReihe: appbarTitleRow, appbarTitle, jahrReihe: yearRow, uebernahmeZeile: takeoverRow, uebernahmeZeileText: takeoverRowText, heading, help, cta, secondaryCta, berater, emptyBlock, heroLabel, refundLabel, heroValue, heroValueSmall, effectLine, heroDivider, openItems, offenePosten: openItemCount, refundLater, gatedHeading, gatedBody, euleBannerCard, euleBannerRow, euleBannerCopy, euleBannerTitle, euleBannerEffect, euleBannerProvenance, euleBannerDismissBtn, euleBannerDismissText }
+  return { runningYearNotice, runningYearText, screen, wideScreen, appbar, appbarTitleReihe: appbarTitleRow, appbarTitle, jahrReihe: yearRow, uebernahmeZeile: takeoverRow, uebernahmeZeileText: takeoverRowText, heading, help, cta, secondaryCta, secondaryGrid, secondaryGridItem, missingBox, missingToggleRow, missingToggleText, missingChipRow, missingChip, missingChipText, berater, emptyBlock, heroLabel, refundLabel, heroValue, heroValueSmall, effectLine, heroDivider, openItems, offenePosten: openItemCount, refundLater, gatedHeading, gatedBody, euleBannerCard, euleBannerRow, euleBannerCopy, euleBannerTitle, euleBannerEffect, euleBannerProvenance, euleBannerDismissBtn, euleBannerDismissText }
 }

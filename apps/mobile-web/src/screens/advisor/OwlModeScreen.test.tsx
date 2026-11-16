@@ -400,5 +400,63 @@ describe('EulenModusScreen', () => {
       expect(screen.getByRole('button', { name: 'Ask' })).toBeDefined()
       expect(screen.getByText('Check home office vs. dedicated study')).toBeDefined()
     })
+
+    it('renders applied actions in the workbench as a clean log with Undo and field deep-link (no redundant Apply button), plus Session Summary', async () => {
+      const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      const i18n = createAppI18n('de')
+      const appliedMessages = [
+        {
+          id: 'm-turbo-1',
+          role: 'assistant' as const,
+          content: 'Ich habe deinen Schweizer Lohnausweis übernommen.',
+          createdAt: '2026-11-15T10:00:00.000Z',
+          status: 'complete' as const,
+          meta: {
+            sources: [],
+            action: {
+              actionId: 'act-ch-8',
+              screen: 'stammdaten' as const,
+              field: 'stammdaten-beruf',
+              instance: null,
+              label: 'Berufsbezeichnung',
+              previousValue: 'Nicht erfasst',
+              newValue: 'Ingenieur (CH)',
+              deltaEur: 0,
+              beforeRefundEur: 480,
+              afterRefundEur: 480,
+              reason: 'Beruf für die Erklärung hinterlegt.',
+              sourceId: 'estg-9-1' as const,
+              status: 'applied' as const,
+            },
+          },
+        },
+      ]
+      render(
+        <QueryClientProvider client={qc}>
+          <I18nextProvider i18n={i18n}>
+            <ThemeProvider mode="light">
+              <OwlModeScreen taxYear={2025} initialCards={CARDS_FIXTURE} initialMessages={appliedMessages} />
+            </ThemeProvider>
+          </I18nextProvider>
+        </QueryClientProvider>,
+      )
+
+      // 1. Session Summary button in top bar opens readable Management-Summary
+      fireEvent.click(screen.getByTestId('eule-session-summary-btn'))
+      const summarySheet = await screen.findByTestId('eule-session-summary-sheet')
+      expect(summarySheet.textContent).toContain('1 Änderung übernommen (Berufsbezeichnung: Ingenieur (CH))')
+
+      // 2. Open workbench -> shows applied stage log without a batch-apply button
+      openWorkbench()
+      expect(screen.getByTestId('eule-applied-stage')).toBeTruthy()
+      expect(screen.getByTestId('applied-status-act-ch-8').textContent).toContain('✓ Übernommen')
+      expect(screen.getByTestId('applied-undo-act-ch-8')).toBeTruthy()
+      expect(screen.queryByTestId('eule-batch-apply-btn')).toBeNull()
+
+      // 3. Clicking "Maske ansehen →" deep-links into the inline mask with the field pill
+      fireEvent.click(screen.getByTestId('applied-inspect-act-ch-8'))
+      expect(await screen.findByTestId('eule-inline-mask-field-pill')).toBeTruthy()
+      expect(screen.getByTestId('eule-inline-mask-field-pill').textContent).toContain('#stammdaten-beruf')
+    })
   })
 })

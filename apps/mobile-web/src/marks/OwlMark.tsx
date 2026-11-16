@@ -21,7 +21,7 @@ export function OwlMark({ size = 104, variant = 'funke', headStyle, glassesStyle
   const t = useTheme()
   const layer: ViewStyle = { position: 'absolute', width: size, height: size }
   const lidRestStyle: ViewStyle = { transform: [{ scaleY: 0 }], transformOrigin: 'center top' }
-  const ink = variant === 'tinte'
+  const ink = variant === 'tinte' && t.mode !== 'dark'
   const head = ink ? t.color.tinte : t.color.funke
 
   return (
@@ -35,7 +35,7 @@ export function OwlMark({ size = 104, variant = 'funke', headStyle, glassesStyle
         <Svg width={size} height={size} viewBox={VIEWBOX}>
           <Path d="M20 36 L30 10 L41 24 Z" fill={head} />
           <Path d="M76 36 L66 10 L55 24 Z" fill={head} />
-          <Rect x={14} y={20} width={68} height={64} rx={30} fill={head} />
+          <Rect x={14} y={20} width={68} height={64} rx={30} fill={head} testID={`owl-mark-head-${ink ? 'tinte' : 'funke'}`} />
           <Path d="M48 58 L55 65 L48 74 L41 65 Z" fill={ink ? t.color.funke : t.color.nacht} />
         </Svg>
       </Animated.View>

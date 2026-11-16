@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { getPathFromState, getStateFromPath } from '@react-navigation/native'
-import { linking } from './linking'
+import { formatDocumentTitle, linking } from './linking'
 
 describe('navigation linking config (#443 slice 1)', () => {
   const cases: readonly { readonly path: string; readonly expectedPath?: string }[] = [
@@ -83,5 +83,13 @@ describe('navigation linking config (#443 slice 1)', () => {
 
     const confirmation = getStateFromPath('/app/steuerjahr/2025/bestaetigung', linking.config)
     expect(confirmation?.routes[0]?.name).toBe('Confirmation')
+  })
+
+  it('formats human-readable browser tab titles instead of raw route keys like CockpitHome', () => {
+    expect(formatDocumentTitle('CockpitHome')).toBe('SteuerEule — Cockpit')
+    expect(formatDocumentTitle('CrossBorder')).toBe('SteuerEule — Grenzgänger Schweiz')
+    expect(formatDocumentTitle('Owl')).toBe('SteuerEule — Eulen-Modus')
+    expect(formatDocumentTitle('Receipts')).toBe('SteuerEule — Belege')
+    expect(formatDocumentTitle(undefined)).toBe('SteuerEule')
   })
 })

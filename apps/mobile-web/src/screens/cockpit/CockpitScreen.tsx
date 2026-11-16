@@ -61,6 +61,7 @@ export interface CockpitScreenProps {
 interface Next {
   readonly label: string
   readonly onPress: () => void
+  readonly missingFields?: readonly string[]
 }
 
 function stromStepTitle(step: StromStep, tr: (key: string) => string): string {
@@ -154,7 +155,8 @@ export function CockpitScreen({
     },
   }
   const isRefreshing = query.isFetching && !pulling
-  const missingDetails = masterDataQuery.data?.status === 200 ? masterDataQuery.data.data.missing.length : 0
+  const missingFields = masterDataQuery.data?.status === 200 ? masterDataQuery.data.data.missing : []
+  const missingDetails = missingFields.length
   const masterData: Next | null =
     // Stays reachable once complete: it is also the way back to the Veranlagungsart and the partner.
     onOpenMasterData === undefined
@@ -162,6 +164,7 @@ export function CockpitScreen({
       : {
           label: missingDetails > 0 ? tr('cockpit.stammdatenErgaenzen', { anzahl: missingDetails }) : tr('cockpit.stammdatenAnsehen'),
           onPress: onOpenMasterData,
+          missingFields,
         }
   const openTile = (tile: TileDefinition, revisit: boolean) => {
     // The next change of the estimate is attributed to this area (UX review H1, Wirkungszeile).
@@ -428,6 +431,56 @@ interface CockpitEmptyProps {
   readonly deadlineAnswers: Answers | null
 }
 
+function MissingMasterDataNotice({ masterData }: { readonly masterData: Next }) {
+  const t = useTheme()
+  const { t: tr } = useTranslation(APP_NS)
+  const styles = makeStyles(t)
+  const [expanded, setExpanded] = useState(false)
+  const missing = masterData.missingFields ?? []
+
+  if (missing.length === 0) {
+    return (
+      <Button variant="ghost" onPress={masterData.onPress} style={styles.secondaryCta} testID="cockpit-stammdaten">
+        {masterData.label}
+      </Button>
+    )
+  }
+
+  return (
+    <View style={styles.missingBox} testID="cockpit-stammdaten-box">
+      <Button variant="ghost" onPress={masterData.onPress} testID="cockpit-stammdaten">
+        {masterData.label}
+      </Button>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ expanded }}
+        onPress={() => setExpanded((v) => !v)}
+        style={styles.missingToggleRow}
+        testID="cockpit-stammdaten-details-toggle"
+      >
+        <Text style={styles.missingToggleText}>
+          {`⚠️ ${tr('cockpit.stammdatenFehlendToggle', { anzahl: missing.length })} ${expanded ? '▴' : '▾'}`}
+        </Text>
+      </Pressable>
+      {expanded ? (
+        <View style={styles.missingChipRow} testID="cockpit-stammdaten-missing-list">
+          {missing.map((field) => (
+            <Pressable
+              key={field}
+              accessibilityRole="button"
+              onPress={masterData.onPress}
+              style={styles.missingChip}
+              testID={`cockpit-stammdaten-missing-${field}`}
+            >
+              <Text style={styles.missingChipText}>{tr(`stammdaten.${field}`, field)} →</Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
+    </View>
+  )
+}
+
 function EuleBannerNotice() {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
@@ -502,6 +555,7 @@ function CockpitEmpty({ year, onYearChange, refresh, isRefreshing, next, tileFac
             {tr('cockpit.answerQuestions')}
           </Button>
         ) : null}
+        {masterData && (masterData.missingFields?.length ?? 0) > 0 ? <MissingMasterDataNotice masterData={masterData} /> : null}
         {tileFacts !== null ? (
           <CockpitTiles
             facts={tileFacts}
@@ -517,25 +571,31 @@ function CockpitEmpty({ year, onYearChange, refresh, isRefreshing, next, tileFac
           />
         ) : null}
         {onOpenOwlMode ? <View style={styles.berater}><OwlAdvisorCard onOpen={onOpenOwlMode} testID="cockpit-empty-eulen-modus" /></View> : null}
-        {masterData ? (
-          <Button variant="ghost" onPress={masterData.onPress} style={styles.secondaryCta} testID="cockpit-stammdaten">
-            {masterData.label}
-          </Button>
-        ) : null}
-        <Button variant="ghost" onPress={onOpenAssessment} style={styles.secondaryCta} testID="cockpit-bescheid">
-          {tr('cockpit.checkBescheid')}
-        </Button>
-        <Button variant="ghost" onPress={onOpenCapital} style={styles.secondaryCta} testID="cockpit-kapital">
-          {tr('cockpit.checkKapital')}
-        </Button>
-        <Button variant="ghost" onPress={onOpenRental} style={styles.secondaryCta} testID="cockpit-vermietung">
-          {tr('cockpit.checkVermietung')}
-        </Button>
-        {onOpenKinder ? (
-          <Button variant="ghost" onPress={onOpenKinder} style={styles.secondaryCta} testID="cockpit-empty-kinder">
-            {tr('cockpit.checkKinder')}
-          </Button>
-        ) : null}
+        {masterData && (masterData.missingFields?.length ?? 0) === 0 ? <MissingMasterDataNotice masterData={masterData} /> : null}
+        <View style={styles.secondaryGrid}>
+          <View style={styles.secondaryGridItem}>
+            <Button variant="ghost" onPress={onOpenAssessment} testID="cockpit-bescheid">
+              {tr('cockpit.checkBescheid')}
+            </Button>
+          </View>
+          <View style={styles.secondaryGridItem}>
+            <Button variant="ghost" onPress={onOpenCapital} testID="cockpit-kapital">
+              {tr('cockpit.checkKapital')}
+            </Button>
+          </View>
+          <View style={styles.secondaryGridItem}>
+            <Button variant="ghost" onPress={onOpenRental} testID="cockpit-vermietung">
+              {tr('cockpit.checkVermietung')}
+            </Button>
+          </View>
+          {onOpenKinder ? (
+            <View style={styles.secondaryGridItem}>
+              <Button variant="ghost" onPress={onOpenKinder} testID="cockpit-empty-kinder">
+                {tr('cockpit.checkKinder')}
+              </Button>
+            </View>
+          ) : null}
+        </View>
       </View>
     </ScrollView>
   )
@@ -654,6 +714,7 @@ function CockpitLoaded({ summary, year, onYearChange, confirmation, onOpenConfir
           {tr('cockpit.answerQuestions')}
         </Button>
       ) : null}
+      {masterData && (masterData.missingFields?.length ?? 0) > 0 ? <MissingMasterDataNotice masterData={masterData} /> : null}
       {tileFacts !== null ? (
         <CockpitTiles
           facts={tileFacts}
@@ -663,56 +724,61 @@ function CockpitLoaded({ summary, year, onYearChange, confirmation, onOpenConfir
           partnerName={partnerName}
           conflicts={findings.conflicts}
           notices={findings.notices}
+          hasPositiveRefund={estimate?.kind === 'spanne' && (estimate.result?.from ?? 0) > 0}
           onOpenTile={onOpenTile}
           {...(onOpenPartner ? { onOpenPartner } : {})}
           {...(onOpenSubmission ? { onOpenSubmission } : {})}
         />
       ) : null}
       {onOpenOwlMode ? <View style={styles.berater}><OwlAdvisorCard onOpen={onOpenOwlMode} /></View> : null}
-      {masterData ? (
-        <Button variant="ghost" onPress={masterData.onPress} style={styles.secondaryCta} testID="cockpit-stammdaten">
-          {masterData.label}
-        </Button>
-      ) : null}
-      <Button
-        variant="ghost"
-        onPress={onOpenAssessment}
-        style={styles.secondaryCta}
-        testID="cockpit-bescheid"
-      >
-        {tr('cockpit.checkBescheid')}
-      </Button>
-      <Button
-        variant="ghost"
-        onPress={onOpenCapital}
-        style={styles.secondaryCta}
-        testID="cockpit-kapital"
-      >
-        {tr('cockpit.checkKapital')}
-      </Button>
-      <Button
-        variant="ghost"
-        onPress={onOpenRental}
-        style={styles.secondaryCta}
-        testID="cockpit-vermietung"
-      >
-        {tr('cockpit.checkVermietung')}
-      </Button>
-      {onOpenKinder ? (
-        <Button
-          variant="ghost"
-          onPress={onOpenKinder}
-          style={styles.secondaryCta}
-          testID="cockpit-kinder"
-        >
-          {tr('cockpit.checkKinder')}
-        </Button>
-      ) : null}
-      {onOpenPrintout ? (
-        <Button variant="ghost" onPress={onOpenPrintout} style={styles.secondaryCta} testID="cockpit-ausdruck">
-          {tr('ausdruck.cockpitCta')}
-        </Button>
-      ) : null}
+      {masterData && (masterData.missingFields?.length ?? 0) === 0 ? <MissingMasterDataNotice masterData={masterData} /> : null}
+      <View style={styles.secondaryGrid}>
+        <View style={styles.secondaryGridItem}>
+          <Button
+            variant="ghost"
+            onPress={onOpenAssessment}
+            testID="cockpit-bescheid"
+          >
+            {tr('cockpit.checkBescheid')}
+          </Button>
+        </View>
+        <View style={styles.secondaryGridItem}>
+          <Button
+            variant="ghost"
+            onPress={onOpenCapital}
+            testID="cockpit-kapital"
+          >
+            {tr('cockpit.checkKapital')}
+          </Button>
+        </View>
+        <View style={styles.secondaryGridItem}>
+          <Button
+            variant="ghost"
+            onPress={onOpenRental}
+            testID="cockpit-vermietung"
+          >
+            {tr('cockpit.checkVermietung')}
+          </Button>
+        </View>
+        {onOpenKinder ? (
+          <View style={styles.secondaryGridItem}>
+            <Button
+              variant="ghost"
+              onPress={onOpenKinder}
+              testID="cockpit-kinder"
+            >
+              {tr('cockpit.checkKinder')}
+            </Button>
+          </View>
+        ) : null}
+        {onOpenPrintout ? (
+          <View style={styles.secondaryGridItem}>
+            <Button variant="ghost" onPress={onOpenPrintout} testID="cockpit-ausdruck">
+              {tr('ausdruck.cockpitCta')}
+            </Button>
+          </View>
+        ) : null}
+      </View>
     </ScrollView>
   )
 }

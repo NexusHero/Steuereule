@@ -238,7 +238,7 @@ export function InMaskAdvisorCompanion({
         testID="in-mask-advisor-trigger"
       >
         <View style={styles.triggerLeft}>
-          <OwlGlyph size={18} ink={t.color.ki} ground={t.color.kiWeich} />
+          <OwlGlyph size={18} ink={t.color.tinte} ground={t.color.funkeWeich} />
           <Text style={styles.triggerTitle}>{resolvedTitle}</Text>
         </View>
         <Text style={styles.triggerHint}>{tr('advisor.companion.triggerHint', 'Kanzlei-Begleiter öffnen ▾')}</Text>
@@ -250,7 +250,7 @@ export function InMaskAdvisorCompanion({
     <Card style={styles.sheetCard} testID="in-mask-advisor-sheet">
       <View style={styles.sheetHeader}>
         <View style={styles.sheetTitleRow}>
-          <OwlGlyph size={20} ink={t.color.ki} ground={t.color.kiWeich} />
+          <OwlGlyph size={20} ink={t.color.tinte} ground={t.color.funkeWeich} />
           <Text style={styles.sheetTitle}>{tr('advisor.companion.sheetTitle', 'Deine Eule · Direkt-Beratung an der Maske')}</Text>
         </View>
         <Pressable
@@ -298,9 +298,9 @@ function makeStyles(t: UiTheme) {
       paddingVertical: t.space.s3,
       paddingHorizontal: t.space.s4,
       borderRadius: t.radius.m,
-      backgroundColor: t.color.kiWeich,
+      backgroundColor: t.color.funkeWeich,
       borderWidth: 1.5,
-      borderColor: t.color.ki,
+      borderColor: t.color.tinte,
       marginVertical: t.space.s4,
     } as ViewStyle,
     triggerLeft: {
@@ -318,14 +318,14 @@ function makeStyles(t: UiTheme) {
       fontFamily: t.font.text,
       fontWeight: t.weight.fett,
       fontSize: t.size.s,
-      color: t.color.kiTinte,
+      color: t.color.tinte,
     } as TextStyle,
     sheetCard: {
       padding: t.space.s4,
       borderRadius: t.radius.m,
       backgroundColor: t.color.grund,
       borderWidth: 2,
-      borderColor: t.color.ki,
+      borderColor: t.color.tinte,
       marginVertical: t.space.s4,
     } as ViewStyle,
     sheetHeader: {
@@ -353,7 +353,7 @@ function makeStyles(t: UiTheme) {
       fontFamily: t.font.text,
       fontWeight: t.weight.fett,
       fontSize: t.size.s,
-      color: t.color.kiTinte,
+      color: t.color.tinte,
     } as TextStyle,
     privacyNotice: {
       fontFamily: t.font.text,

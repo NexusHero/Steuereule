@@ -85,4 +85,15 @@ describe('OwlMark', () => {
     )
     expect(getByTestId('owl-mark-tinte')).toBeTruthy()
   })
+
+  it('renders the green funke palette in dark mode even when variant="tinte" is requested', () => {
+    const { getByTestId, queryByTestId } = render(
+      <ThemeProvider mode="dark">
+        <OwlMark variant="tinte" />
+      </ThemeProvider>,
+    )
+    expect(getByTestId('owl-mark-tinte')).toBeTruthy()
+    expect(getByTestId('owl-mark-head-funke')).toBeTruthy()
+    expect(queryByTestId('owl-mark-head-tinte')).toBeNull()
+  })
 })

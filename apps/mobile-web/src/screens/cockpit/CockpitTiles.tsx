@@ -79,6 +79,7 @@ export interface CockpitTilesProps {
   readonly partnerName?: string
   readonly conflicts?: readonly Conflict[]
   readonly notices?: readonly Notice[]
+  readonly hasPositiveRefund?: boolean
   readonly onOpenTile: (tile: TileDefinition, revisit: boolean) => void
   readonly onOpenSubmission?: () => void
   readonly onOpenPartner?: (area: PartnerAreaParam, name: string) => void
@@ -92,6 +93,7 @@ export function CockpitTiles({
   partnerName,
   conflicts = [],
   notices = [],
+  hasPositiveRefund = false,
   onOpenTile,
   onOpenSubmission,
   onOpenPartner,
@@ -129,14 +131,16 @@ export function CockpitTiles({
 
   const personas = derivePersonas(facts.answers, facts.masterData)
   const { main, more } = partitionTiles(facts)
-  const boosterTitleKey = personas.has('grenzgaenger')
-    ? 'cockpit.boosterUeberschrift.nachzahlung'
-    : 'cockpit.boosterUeberschrift.erstattung'
+  const boosterTitleKey =
+    personas.has('grenzgaenger') && !hasPositiveRefund
+      ? 'cockpit.boosterUeberschrift.nachzahlung'
+      : 'cockpit.boosterUeberschrift.erstattung'
 
   function renderTile(tile: TileDefinition) {
     const status = tile.status(facts)
     const revisit = tileRevisitFlag(tile, facts.answers)
     const severity = tileHintSeverity(tile.id, conflicts, notices)
+    const isCompactDone = status === 'erledigt' && severity === null
     return (
       <Pressable
         key={tile.id}
@@ -145,17 +149,24 @@ export function CockpitTiles({
         style={bp === 's' ? styles.tileWrapNarrow : styles.tileWrapWide}
         testID={`cockpit-kachel-${tile.id}`}
       >
-        <Card variant="default" style={styles.card}>
-          <Text style={styles.title}>{tr(tile.titleKey)}</Text>
+        <Card variant="default" style={[styles.card, isCompactDone ? styles.cardDone : styles.cardActive]}>
+          <View style={styles.tileHeaderRow}>
+            <Text style={[styles.title, isCompactDone ? styles.titleDone : null]}>{tr(tile.titleKey)}</Text>
+            {facts.pendingTiles?.has(tile.id) ? null : (
+              <View style={statusPillStyle(status, styles)} testID={`cockpit-kachel-${tile.id}-badge`}>
+                <Text style={statusGlyphStyle(status, styles)} accessible={false} importantForAccessibility="no">
+                  {statusGlyph(status)}
+                </Text>
+                <Text style={statusStyle(status, styles)} testID={`cockpit-kachel-${tile.id}-status`}>
+                  {statusLabel(status, tr)}
+                </Text>
+              </View>
+            )}
+          </View>
           {/* UX review H2: every tile says which form it fills. */}
-          <Text style={styles.formular} testID={`cockpit-kachel-${tile.id}-formular`}>
+          <Text style={[styles.formular, isCompactDone ? styles.formularDone : null]} testID={`cockpit-kachel-${tile.id}-formular`}>
             {tr(`cockpit.kachel.${tile.id}.formular`)}
           </Text>
-          {facts.pendingTiles?.has(tile.id) ? null : (
-            <Text style={statusStyle(status, styles)} testID={`cockpit-kachel-${tile.id}-status`}>
-              {statusLabel(status, tr)}
-            </Text>
-          )}
           {severity !== null ? (
             <Text
               style={severity === 'blocker' ? styles.hintBlocker : styles.hintWarning}
@@ -229,6 +240,24 @@ function statusLabel(status: TileStatus, tr: ReturnType<typeof useTranslation<ty
   return tr('cockpit.kachel.status.offen')
 }
 
+function statusGlyph(status: TileStatus): string {
+  if (status === 'erledigt') return '✓'
+  if (status === 'betrag-offen') return '◷'
+  return '!'
+}
+
+function statusPillStyle(status: TileStatus, styles: ReturnType<typeof makeStyles>): ViewStyle {
+  if (status === 'erledigt') return styles.statusPillDone
+  if (status === 'betrag-offen') return styles.statusPillLater
+  return styles.statusPillOpen
+}
+
+function statusGlyphStyle(status: TileStatus, styles: ReturnType<typeof makeStyles>): TextStyle {
+  if (status === 'erledigt') return styles.statusDone
+  if (status === 'betrag-offen') return styles.statusLater
+  return styles.statusOpen
+}
+
 function statusStyle(status: TileStatus, styles: ReturnType<typeof makeStyles>): TextStyle {
   if (status === 'erledigt') return styles.statusDone
   if (status === 'betrag-offen') return styles.statusLater
@@ -267,14 +296,47 @@ function makeStyles(t: UiTheme) {
     // tinte-2 (6:1) keeps a tappable tile recognisable — linie-weich is only ~1.3:1 (WCAG 1.4.11).
     borderColor: t.color.tinte2,
   }
+  const cardDone: ViewStyle = {
+    paddingVertical: t.space.s3,
+    paddingHorizontal: t.space.s4,
+    borderColor: t.color.linie,
+    opacity: 0.92,
+  }
+  const cardActive: ViewStyle = {
+    borderColor: t.color.tinte,
+  }
+  const tileHeaderRow: ViewStyle = {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: t.space.s2,
+    marginBottom: t.space.s1,
+  }
   const title: TextStyle = {
     ...t.type.cardTitle,
     color: t.color.tinte,
-    marginBottom: t.space.s2,
+    flex: 1,
+    flexShrink: 1,
   }
-  const formular: TextStyle = { ...t.type.meta, color: t.color.tinte2, marginBottom: t.space.s2 }
+  const titleDone: TextStyle = {
+    ...t.type.itemTitle,
+    color: t.color.tinte,
+  }
+  const formular: TextStyle = { ...t.type.meta, color: t.color.tinte2 }
+  const formularDone: TextStyle = { ...t.type.caption, color: t.color.tinte2 }
+  const statusPillBase: ViewStyle = {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: t.space.s2,
+    paddingVertical: 2,
+    borderRadius: t.radius.pille,
+  }
+  const statusPillDone: ViewStyle = { ...statusPillBase, backgroundColor: t.color.okWeich }
+  const statusPillLater: ViewStyle = { ...statusPillBase, backgroundColor: t.color.warnWeich }
+  const statusPillOpen: ViewStyle = { ...statusPillBase, backgroundColor: t.color.funkeWeich }
   const statusBase: TextStyle = { ...t.type.label }
-  const statusOpen: TextStyle = { ...statusBase, color: t.color.tinte2 }
+  const statusOpen: TextStyle = { ...statusBase, color: t.color.tinte }
   const statusDone: TextStyle = { ...statusBase, color: t.color.ok }
   const statusLater: TextStyle = { ...statusBase, color: t.color.warn }
   const hintBase: TextStyle = {
@@ -307,7 +369,16 @@ function makeStyles(t: UiTheme) {
     submissionTitle,
     submissionHint,
     card,
-    title, formular,
+    cardDone,
+    cardActive,
+    tileHeaderRow,
+    title,
+    titleDone,
+    formular,
+    formularDone,
+    statusPillDone,
+    statusPillLater,
+    statusPillOpen,
     statusOpen,
     statusDone,
     statusLater,

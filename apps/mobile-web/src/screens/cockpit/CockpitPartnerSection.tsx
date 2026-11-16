@@ -84,25 +84,35 @@ export function CockpitPartnerSection({ year, partnerName, enabled, crossBorder 
         {tr('cockpit.bereich.partner', { name: partnerName })}
       </Text>
       <View style={styles.grid}>
-        {items.map((item) => (
-          <Pressable
-            key={item.area}
-            accessibilityRole="button"
-            onPress={() => onOpenPartner(item.area, partnerName)}
-            style={bp === 's' ? styles.tileWrapNarrow : styles.tileWrapWide}
-            testID={item.testId}
-          >
-            <Card variant="default" style={styles.card}>
-              <Text style={styles.title}>{tr(item.titleKey)}</Text>
-              <Text style={styles.formular} testID={`${item.testId}-formular`}>
-                {tr(item.titleKey.replace(/\.titel$/, '.formular'))}
-              </Text>
-              <Text style={item.status === 'erledigt' ? styles.statusDone : styles.statusOpen} testID={`${item.testId}-status`}>
-                {tr(item.status === 'erledigt' ? 'cockpit.kachel.status.erledigt' : 'cockpit.kachel.status.offen')}
-              </Text>
-            </Card>
-          </Pressable>
-        ))}
+        {items.map((item) => {
+          const isDone = item.status === 'erledigt'
+          return (
+            <Pressable
+              key={item.area}
+              accessibilityRole="button"
+              onPress={() => onOpenPartner(item.area, partnerName)}
+              style={bp === 's' ? styles.tileWrapNarrow : styles.tileWrapWide}
+              testID={item.testId}
+            >
+              <Card variant="default" style={[styles.card, isDone ? styles.cardDone : styles.cardActive]}>
+                <View style={styles.tileHeaderRow}>
+                  <Text style={[styles.title, isDone ? styles.titleDone : null]}>{tr(item.titleKey)}</Text>
+                  <View style={isDone ? styles.statusPillDone : styles.statusPillOpen}>
+                    <Text style={isDone ? styles.statusDone : styles.statusOpen} accessible={false} importantForAccessibility="no">
+                      {isDone ? '✓' : '!'}
+                    </Text>
+                    <Text style={isDone ? styles.statusDone : styles.statusOpen} testID={`${item.testId}-status`}>
+                      {tr(isDone ? 'cockpit.kachel.status.erledigt' : 'cockpit.kachel.status.offen')}
+                    </Text>
+                  </View>
+                </View>
+                <Text style={styles.formular} testID={`${item.testId}-formular`}>
+                  {tr(item.titleKey.replace(/\.titel$/, '.formular'))}
+                </Text>
+              </Card>
+            </Pressable>
+          )
+        })}
       </View>
     </View>
   )
@@ -132,15 +142,46 @@ function makeStyles(t: UiTheme) {
     // tinte-2 (6:1) keeps a tappable tile recognisable — linie-weich is only ~1.3:1 (WCAG 1.4.11).
     borderColor: t.color.tinte2,
   }
+  const cardDone: ViewStyle = {
+    paddingVertical: t.space.s3,
+    paddingHorizontal: t.space.s4,
+    borderColor: t.color.linie,
+    opacity: 0.92,
+  }
+  const cardActive: ViewStyle = {
+    borderColor: t.color.tinte,
+  }
+  const tileHeaderRow: ViewStyle = {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: t.space.s2,
+    marginBottom: t.space.s1,
+  }
   const title: TextStyle = {
     ...t.type.cardTitle,
     color: t.color.tinte,
-    marginBottom: t.space.s2,
+    flex: 1,
+    flexShrink: 1,
   }
-  const formular: TextStyle = { ...t.type.meta, color: t.color.tinte2, marginBottom: t.space.s2 }
+  const titleDone: TextStyle = {
+    ...t.type.itemTitle,
+    color: t.color.tinte,
+  }
+  const formular: TextStyle = { ...t.type.meta, color: t.color.tinte2 }
+  const statusPillBase: ViewStyle = {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: t.space.s2,
+    paddingVertical: 2,
+    borderRadius: t.radius.pille,
+  }
+  const statusPillDone: ViewStyle = { ...statusPillBase, backgroundColor: t.color.okWeich }
+  const statusPillOpen: ViewStyle = { ...statusPillBase, backgroundColor: t.color.funkeWeich }
   const statusBase: TextStyle = { ...t.type.label }
-  const statusOpen: TextStyle = { ...statusBase, color: t.color.tinte2 }
+  const statusOpen: TextStyle = { ...statusBase, color: t.color.tinte }
   const statusDone: TextStyle = { ...statusBase, color: t.color.ok }
 
-  return { section, heading, grid, tileWrapNarrow, tileWrapWide, card, title, formular, statusOpen, statusDone }
+  return { section, heading, grid, tileWrapNarrow, tileWrapWide, card, cardDone, cardActive, tileHeaderRow, title, titleDone, formular, statusPillDone, statusPillOpen, statusOpen, statusDone }
 }

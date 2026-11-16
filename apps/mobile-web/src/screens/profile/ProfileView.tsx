@@ -8,6 +8,7 @@ import { ProfileHapticsSection } from './ProfileHapticsSection'
 import { ProfileDictationModelSection } from './ProfileDictationModelSection'
 import { AssistantsListSection } from './AssistentenListSection'
 import { DeviceListSection } from '../device/DeviceListSection'
+import { useSavedEmployers } from '../master-data/employersStore'
 import type { OnboardingProfile } from '../onboarding/profileMapping'
 
 interface ProfileViewProps {
@@ -25,6 +26,7 @@ export function ProfileView({ profile, onEdit, justSaved, bp, onOpenPrivacy, onO
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeProfileStyles(t)
+  const { employers } = useSavedEmployers()
   const fullName = `${profile.firstName} ${profile.lastName}`.trim()
   const initialSource = profile.firstName.trim() || profile.lastName.trim()
   const initial = initialSource ? initialSource[0]?.toUpperCase() : '?'
@@ -51,6 +53,42 @@ export function ProfileView({ profile, onEdit, justSaved, bp, onOpenPrivacy, onO
           {tr('profil.savedNotice')}
         </Text>
       ) : null}
+
+      <Card style={styles.datenCard} testID="profil-wissensnetz-card">
+        <View style={{ padding: t.space.s3, gap: t.space.s2 }}>
+          <Text style={{ ...t.type.emphasis, color: t.color.tinte }}>Steuer-Wissensnetz (Relationen)</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.s2 }}>
+            <View
+              style={{
+                paddingHorizontal: t.space.s2,
+                paddingVertical: t.space.s1,
+                borderRadius: t.radius.s,
+                backgroundColor: t.color.grund,
+              }}
+            >
+              <Text style={{ ...t.type.caption, color: t.color.tinte }}>
+                {`Arbeitgeber: ${employers.length} hinterlegt`}
+              </Text>
+            </View>
+            {employers.map((emp) => (
+              <View
+                key={emp.id}
+                style={{
+                  paddingHorizontal: t.space.s2,
+                  paddingVertical: t.space.s1,
+                  borderRadius: t.radius.s,
+                  backgroundColor: t.color.funkeHell,
+                }}
+                testID={`profil-wissensnetz-emp-${emp.id}`}
+              >
+                <Text style={{ ...t.type.captionStrong, color: t.color.tinte }}>
+                  {`${emp.name} (${emp.land})`}
+                </Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      </Card>
 
       {onOpenMasterData ? (
         <Card style={styles.datenCard}>

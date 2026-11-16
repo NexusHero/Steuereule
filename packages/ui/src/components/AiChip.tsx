@@ -16,21 +16,19 @@ export function AiChip({ style, children, testID }: AiChipProps) {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: t.color.kiWeich,
-    borderWidth: 2,
-    borderColor: t.color.ki,
+    backgroundColor: t.color.funkeWeich,
+    borderWidth: 1.5,
+    borderColor: t.color.tinte,
     borderRadius: t.radius.pille,
     paddingVertical: 4,
     paddingLeft: 6,
     paddingRight: 12,
   }
-  const label: TextStyle = { color: t.color.kiTinte, fontWeight: t.weight.fett, fontSize: t.size.xs }
+  const label: TextStyle = { color: t.color.tinte, fontWeight: t.weight.fett, fontSize: t.size.xs }
 
   return (
     <View testID={testID} accessibilityLabel="KI" style={[container, style]}>
-      {/* The advisor owl is the AI sender mark (was the round "B" dot) — in ki-tinte, so the
-          marking never hangs on colour alone. */}
-      <OwlGlyph ink={t.color.kiTinte} ground={t.color.kiWeich} />
+      <OwlGlyph ink={t.color.tinte} ground={t.color.funkeWeich} />
       {typeof children === 'string' ? <Text style={label}>{children}</Text> : children}
     </View>
   )

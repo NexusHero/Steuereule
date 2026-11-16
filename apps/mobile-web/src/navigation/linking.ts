@@ -76,3 +76,45 @@ export const linking: LinkingOptions<RootStackParamList> = {
     screens: rootScreens,
   } as NonNullable<LinkingOptions<RootStackParamList>['config']>,
 }
+
+const ROUTE_TITLES: Readonly<Record<string, string>> = {
+  Splash: 'SteuerEule',
+  Login: 'SteuerEule — Anmelden',
+  Registration: 'SteuerEule — Konto anlegen',
+  Onboarding: 'SteuerEule — Einrichtung',
+  CockpitHome: 'SteuerEule — Cockpit',
+  Cockpit: 'SteuerEule — Cockpit',
+  Interview: 'SteuerEule — Interview',
+  Lstb: 'SteuerEule — Lohnsteuerbescheinigung',
+  Pension: 'SteuerEule — Rente',
+  CrossBorder: 'SteuerEule — Grenzgänger Schweiz',
+  Catalog: 'SteuerEule — Angaben',
+  Workdays: 'SteuerEule — Arbeitstage & Pendeln',
+  Submission: 'SteuerEule — Abgabe',
+  Plausibility: 'SteuerEule — Plausibilitätsprüfung',
+  FilingTypeComparison: 'SteuerEule — Veranlagungsvergleich',
+  Assessment: 'SteuerEule — Steuerbescheid prüfen',
+  Capital: 'SteuerEule — Kapital & Depot',
+  Rental: 'SteuerEule — Vermietung',
+  Children: 'SteuerEule — Kinder',
+  CockpitMasterData: 'SteuerEule — Stammdaten',
+  Partner: 'SteuerEule — Partner',
+  Strom: 'SteuerEule — Steuererklärung',
+  Owl: 'SteuerEule — Eulen-Modus',
+  Receipts: 'SteuerEule — Belege',
+  ProfileHome: 'SteuerEule — Profil',
+  Profile: 'SteuerEule — Profil',
+  Privacy: 'SteuerEule — Datenschutz',
+  Security: 'SteuerEule — Sicherheit & 2FA',
+  ProfileMasterData: 'SteuerEule — Stammdaten',
+  Printout: 'SteuerEule — Ausdruck',
+  Confirmation: 'SteuerEule — Bestätigung',
+  Legal: 'SteuerEule — Rechtliches',
+  Device: 'SteuerEule — Gerät verbinden',
+  OauthConsent: 'SteuerEule — Freigabe',
+}
+
+export function formatDocumentTitle(routeName?: string): string {
+  if (!routeName) return 'SteuerEule'
+  return ROUTE_TITLES[routeName] ?? 'SteuerEule'
+}

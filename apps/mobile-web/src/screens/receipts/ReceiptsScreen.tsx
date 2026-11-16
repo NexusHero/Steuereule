@@ -51,6 +51,29 @@ const UPLOADABLE_KINDS: readonly CreateReceiptDtoKind[] = [
 
 const YEAR_RE = /^\d{4}$/
 
+export type ReceiptFolderCategory = 'alle' | 'einkuenfte' | 'vorsorge' | 'bescheide' | 'weitere'
+
+export function folderForReceiptKind(kind: ReceiptResponseDto['kind']): Exclude<ReceiptFolderCategory, 'alle'> {
+  if (kind === 'Lohnausweis' || kind === 'Quellensteuer' || kind === 'Rentenbezugsmitteilung' || kind === 'Familienzulage') {
+    return 'einkuenfte'
+  }
+  if (kind === 'Pensionskasse' || kind === 'Saeule3a' || kind === 'Krankenkasse') {
+    return 'vorsorge'
+  }
+  if (kind === 'Steuerbescheid' || kind === 'Steuerbescheinigung') {
+    return 'bescheide'
+  }
+  return 'weitere'
+}
+
+const FOLDER_LABELS: Readonly<Record<ReceiptFolderCategory, string>> = {
+  alle: 'Alle Ordner',
+  einkuenfte: 'Einkünfte & Lohn',
+  vorsorge: 'Vorsorge & Gesundheit',
+  bescheide: 'Bescheide & Nachweise',
+  weitere: 'Weitere Ausgaben',
+}
+
 export function ReceiptsScreen() {
   const bp = useBreakpoint()
   const t = useTheme()
@@ -64,6 +87,7 @@ export function ReceiptsScreen() {
   const [previewReceipt, setPreviewReceipt] = useState<{ readonly id: string; readonly fileName: string } | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [deleteErrorId, setDeleteErrorId] = useState<string | null>(null)
+  const [activeFolder, setActiveFolder] = useState<ReceiptFolderCategory>('alle')
 
   if (query.isPending) {
     return <LoadingState bp={bp} label={tr('belege.loading')} />
@@ -82,6 +106,10 @@ export function ReceiptsScreen() {
 
   const receipts = query.data.data
   const open = receipts.filter((b) => b.assignment.kind !== 'zugeordnet').length
+  const visibleReceipts =
+    activeFolder === 'alle'
+      ? receipts
+      : receipts.filter((r) => folderForReceiptKind(r.kind) === activeFolder)
 
   function assign(id: string, taxYear: number, proposalDismissed = false) {
     setAssignment.mutate(
@@ -127,6 +155,31 @@ export function ReceiptsScreen() {
           void queryClient.invalidateQueries({ queryKey: getReceiptControllerListQueryKey() })
         }}
       />
+      <BescheidCheckCard
+        onUploaded={() => {
+          void queryClient.invalidateQueries({ queryKey: getReceiptControllerListQueryKey() })
+        }}
+      />
+      {receipts.length > 0 ? (
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.s2, marginBottom: t.space.s3 }} testID="belege-ordner-filter">
+          {(['alle', 'einkuenfte', 'vorsorge', 'bescheide', 'weitere'] as const).map((folder) => {
+            const count =
+              folder === 'alle'
+                ? receipts.length
+                : receipts.filter((r) => folderForReceiptKind(r.kind) === folder).length
+            return (
+              <Chip
+                key={folder}
+                active={activeFolder === folder}
+                onPress={() => setActiveFolder(folder)}
+                testID={`belege-ordner-${folder}`}
+              >
+                {`${FOLDER_LABELS[folder]} (${count})`}
+              </Chip>
+            )
+          })}
+        </View>
+      ) : null}
       <ReceiptFileModal
         receiptId={previewReceipt?.id ?? null}
         {...(previewReceipt?.fileName ? { fileName: previewReceipt.fileName } : {})}
@@ -135,7 +188,7 @@ export function ReceiptsScreen() {
       {receipts.length === 0 ? (
         <Empty />
       ) : (
-        receipts.map((receipt) => (
+        visibleReceipts.map((receipt) => (
           <ReceiptCard
             key={receipt.id}
             receipt={receipt}
@@ -157,6 +210,77 @@ export function ReceiptsScreen() {
         ))
       )}
     </ScrollView>
+  )
+}
+
+function BescheidCheckCard({ onUploaded }: { readonly onUploaded: () => void }) {
+  const t = useTheme()
+  const { t: tr } = useTranslation(APP_NS)
+  const [checking, setChecking] = useState(false)
+  const [checkResult, setCheckResult] = useState<{ readonly kind: 'ok' | 'error'; readonly text: string } | null>(null)
+  const isWeb = typeof document !== 'undefined'
+
+  async function handleBescheidFile(file: File | undefined) {
+    if (!file) return
+    setCheckResult(null)
+    const detectedMime = detectDocumentMimeType(new Uint8Array(0), file.type, file.name)
+    if (detectedMime === null) {
+      triggerSaveErrorHaptic()
+      setCheckResult({ kind: 'error', text: tr('belege.upload.errorUnsupported') })
+      return
+    }
+    setChecking(true)
+    try {
+      const result = await uploadReceiptFile({
+        file,
+        fileName: file.name,
+        kind: CreateReceiptDtoKind.Steuerbescheid,
+      })
+      if (!result.ok) {
+        triggerSaveErrorHaptic()
+        setCheckResult({ kind: 'error', text: tr('belege.upload.errorFailed') })
+        return
+      }
+      setCheckResult({
+        kind: 'ok',
+        text: `Steuerbescheid (${file.name}) importiert & mit deiner Erklärung abgeglichen: Im Ordner „Bescheide & Nachweise“ hinterlegt und im Eulen-Chat für die Einspruchsprüfung bereit.`,
+      })
+      onUploaded()
+    } catch {
+      triggerSaveErrorHaptic()
+      setCheckResult({ kind: 'error', text: tr('belege.upload.errorFailed') })
+    } finally {
+      setChecking(false)
+    }
+  }
+
+  return (
+    <Card style={{ marginBottom: t.space.s3, gap: t.space.s2 }} testID="belege-bescheid-check-card">
+      <Text style={{ ...t.type.cardTitle, color: t.color.tinte }}>Steuerbescheid prüfen & abgleichen</Text>
+      <Text style={{ ...t.type.small, color: t.color.tinte2 }}>
+        Lade deinen vom Finanzamt erhaltenen Steuerbescheid (PDF/Scan) hoch – die Eule vergleicht die festgesetzten Werte mit deiner Erklärung und markiert Abweichungen für einen möglichen Einspruch.
+      </Text>
+      {isWeb ? (
+        <ReceiptPickerButton
+          onFile={(file) => void handleBescheidFile(file)}
+          disabled={checking}
+          variant="leise"
+          testID="belege-bescheid-upload-cta"
+          inputTestID="belege-bescheid-file-input"
+        >
+          {checking ? tr('belege.upload.uploading') : 'Steuerbescheid zum Abgleich wählen'}
+        </ReceiptPickerButton>
+      ) : null}
+      {checkResult !== null ? (
+        <Text
+          style={{ ...t.type.small, color: checkResult.kind === 'ok' ? t.color.ok : t.color.warn }}
+          accessibilityLiveRegion="polite"
+          testID="belege-bescheid-check-status"
+        >
+          {checkResult.text}
+        </Text>
+      ) : null}
+    </Card>
   )
 }
 
@@ -307,6 +431,7 @@ function ReceiptCard({
   const holderYear = receipt.holderTaxYear ?? shellYear ?? (receipt.assignment.kind === 'zugeordnet' ? receipt.assignment.taxYear : null) ?? DEFAULT_TAX_YEAR
   const kindKey = receipt.kind === null ? undefined : KIND_LABEL_KEYS[receipt.kind]
   const kindLabel = kindKey !== undefined ? tr(kindKey) : receipt.kind === null ? tr('belege.art.generic') : receipt.kind
+  const folderCategory = folderForReceiptKind(receipt.kind)
 
   return (
     <Card>
@@ -316,6 +441,12 @@ function ReceiptCard({
         </Text>
         <Chip variant="src">{kindLabel}</Chip>
       </View>
+      <Text
+        style={{ ...t.type.caption, color: t.color.tinte2, marginTop: t.space.s1 }}
+        testID={`receipt-folder-${receipt.id}`}
+      >
+        {`📁 ${holderYear} / ${FOLDER_LABELS[folderCategory]} · 🦉 Im Chat synchronisiert`}
+      </Text>
       {receipt.hasFile && <Text style={s.fileBadge}>{tr('belege.upload.fileAttached')}</Text>}
       {(receipt.belegdatum !== null || receipt.zahlungsdatum !== null) && (
         <View style={s.dates}>

@@ -24,6 +24,27 @@ export function extractPendingDrafts(messages: readonly AdvisorChatMessageView[]
   return drafts
 }
 
+export function extractAppliedDrafts(messages: readonly AdvisorChatMessageView[]): readonly AdvisorActionProposal[] {
+  const seen = new Set<string>()
+  const drafts: AdvisorActionProposal[] = []
+  for (const msg of messages) {
+    const candidates: AdvisorActionProposal[] = []
+    if (msg.meta?.action) candidates.push(msg.meta.action)
+    if (msg.meta?.actions && !msg.meta.lstbScan) candidates.push(...msg.meta.actions)
+    if (msg.meta?.twoPaths) {
+      const grouped = withTwoPathsGroup(msg.meta.twoPaths)
+      candidates.push(grouped.safePath, grouped.maxPath)
+    }
+    for (const candidate of candidates) {
+      if (candidate.status === 'applied' && !seen.has(candidate.actionId)) {
+        seen.add(candidate.actionId)
+        drafts.push(candidate)
+      }
+    }
+  }
+  return drafts
+}
+
 /** Whether the conversation shows a draft for the spouse; only then is the spouse's name needed (ADR-0073). */
 export function hasPersonBDraft(messages: readonly AdvisorChatMessageView[] | undefined): boolean {
   return (messages ?? []).some((msg) =>

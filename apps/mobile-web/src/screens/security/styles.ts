@@ -24,6 +24,7 @@ export function makeSecurityStyles(t: UiTheme) {
   const secret: TextStyle = { ...t.type.meta, color: t.color.tinte2, marginTop: t.space.s3, marginBottom: t.space.s3 }
   const codes: TextStyle = { ...t.type.metaLarge, color: t.color.tinte, marginBottom: t.space.s4 }
   const card: ViewStyle = { marginTop: t.space.s4 }
+  const qrRow: ViewStyle = { alignItems: 'center', justifyContent: 'center', marginVertical: t.space.s3 }
 
   return {
     screen,
@@ -39,5 +40,6 @@ export function makeSecurityStyles(t: UiTheme) {
     secret,
     codes,
     card,
+    qrRow,
   }
 }

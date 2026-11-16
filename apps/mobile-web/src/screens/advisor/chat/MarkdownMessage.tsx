@@ -100,7 +100,7 @@ function makeStyles(t: UiTheme) {
     paragraph: { marginVertical: 2 },
     strong: { fontWeight: t.weight.fett },
     em: { fontStyle: 'italic' },
-    link: { color: t.color.kiTinte, textDecorationLine: 'underline' },
+    link: { color: t.color.tinte, textDecorationLine: 'underline' },
     h1: { ...text, fontFamily: t.font.display, fontSize: t.size.xl, fontWeight: t.weight.schwer, marginVertical: 4 },
     h2: { ...text, fontFamily: t.font.display, fontSize: t.size.l, fontWeight: t.weight.schwer, marginVertical: 4 },
     h3: { ...text, fontWeight: t.weight.fett, marginVertical: 2 },
@@ -123,9 +123,9 @@ function makeStyles(t: UiTheme) {
       paddingHorizontal: 6,
       paddingVertical: 1,
       borderRadius: t.radius.s,
-      backgroundColor: t.color.kiWeich,
+      backgroundColor: t.color.funkeWeich,
       alignSelf: 'flex-start',
     } as ViewStyle,
-    chipText: { fontFamily: t.font.text, fontSize: t.size.xs, fontWeight: t.weight.fett, color: t.color.kiTinte } as TextStyle,
+    chipText: { fontFamily: t.font.text, fontSize: t.size.xs, fontWeight: t.weight.fett, color: t.color.tinte } as TextStyle,
   }
 }

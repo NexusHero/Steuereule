@@ -575,4 +575,21 @@ describe('StammdatenScreen small helpers (#452 slice 5)', () => {
     fireEvent.click(screen.getByTestId('kopplung-beenden'))
     await waitFor(() => expect(ended).toBe(1))
   })
+
+  it('allows adding and removing reusable employers in Stammdaten', async () => {
+    server.use(http.get('*/v1/stammdaten', () => HttpResponse.json(LEER)))
+    renderScreen()
+
+    const card = await screen.findByTestId('stammdaten-unternehmen-card')
+    expect(card.textContent).toContain('Novartis Pharma AG')
+
+    input('stammdaten-unternehmen-name', 'Lonza Group AG')
+    input('stammdaten-unternehmen-strasse', 'Münchensteinerstrasse 38')
+    input('stammdaten-unternehmen-plzort', '4052 Basel')
+    input('stammdaten-unternehmen-uid', 'CHE-106.841.866')
+    fireEvent.click(screen.getByTestId('stammdaten-unternehmen-hinzufuegen'))
+
+    expect(screen.getByTestId('stammdaten-unternehmen-card').textContent).toContain('Lonza Group AG (CH)')
+    expect(screen.getByTestId('stammdaten-unternehmen-card').textContent).toContain('UID: CHE-106.841.866')
+  })
 })

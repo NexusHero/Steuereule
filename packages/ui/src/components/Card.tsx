@@ -30,10 +30,10 @@ export function Card({ variant = 'default', style, children, testID }: CardProps
       borderColor: t.color.nacht,
     },
     ai: {
-      backgroundColor: t.color.kiWeich,
+      backgroundColor: t.color.funkeWeich,
       borderWidth: 2,
-      borderColor: t.color.ki,
-      ...t.shadow.ki,
+      borderColor: t.color.tinte,
+      ...t.shadow.hart,
     },
   }
   return (

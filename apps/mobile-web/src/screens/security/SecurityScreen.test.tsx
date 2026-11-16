@@ -88,6 +88,9 @@ describe('SicherheitScreen (REQ-007)', () => {
 
     // Setup shows the real totpURI (a scannable QR) + backup codes, and asks for one code.
     await screen.findByText(TOTP_URI)
+    const qrWrapper = screen.getByTestId('zweifaktor-qr-wrapper')
+    expect(qrWrapper.style.alignItems).toBe('center')
+    expect(qrWrapper.style.justifyContent).toBe('center')
     expect(screen.getByText(/111-222/)).toBeTruthy()
     expect(screen.getByText(/333-444/)).toBeTruthy()
     expect(enableCalled).toBe(true)

@@ -80,4 +80,18 @@ describe('DateInput', () => {
     expect(calendar.getAttribute('tabindex')).toBe('-1')
     expect(calendar.getAttribute('aria-hidden')).toBe('true')
   })
+
+  it('opens the themed SteuerEule calendar dialog on button click and picks a date', () => {
+    const onChange = vi.fn()
+    renderUi(<DateInput value="12.05.2018" onChange={onChange} calendarLabel="Kalender öffnen" testID="datum" />)
+    expect(screen.queryByTestId('datum-kalender-dialog')).toBeNull()
+
+    fireEvent.click(screen.getByTestId('datum-kalender-oeffnen'))
+    expect(screen.getByTestId('datum-kalender-dialog')).toBeTruthy()
+    expect(screen.getByTestId('datum-kalender-titel').textContent).toBe('Mai 2018')
+
+    fireEvent.click(screen.getByTestId('datum-kalender-tag-15'))
+    expect(onChange).toHaveBeenCalledWith('15.05.2018')
+    expect(screen.queryByTestId('datum-kalender-dialog')).toBeNull()
+  })
 })

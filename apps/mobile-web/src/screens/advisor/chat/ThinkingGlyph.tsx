@@ -10,7 +10,7 @@ export function ThinkingGlyph() {
   const t = useTheme()
   const styles = makeStyles(t)
   const reducedMotion = useReducedMotion()
-  return reducedMotion ? <PulsingDots styles={styles} /> : <TurningOwl ink={t.color.ki} ground={t.color.kiWeich} />
+  return reducedMotion ? <PulsingDots styles={styles} /> : <TurningOwl ink={t.color.tinte} ground={t.color.funkeWeich} />
 }
 
 function TurningOwl({ ink, ground }: { readonly ink: string; readonly ground: string }) {
@@ -58,6 +58,6 @@ function PulsingDots({ styles }: { readonly styles: ReturnType<typeof makeStyles
 function makeStyles(t: UiTheme) {
   return {
     dots: { flexDirection: 'row', gap: 4, width: 22, justifyContent: 'center' } as ViewStyle,
-    dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: t.color.ki } as ViewStyle,
+    dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: t.color.tinte } as ViewStyle,
   }
 }

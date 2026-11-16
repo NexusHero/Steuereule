@@ -45,7 +45,7 @@ import { useAccountSession } from './src/auth/useAccountSession'
 import { followNativeAppFocus } from './src/app-focus'
 import { viewAfterInterview } from './src/screens/funnel/afterTheInterview'
 import type { RootStackParamList } from './src/navigation/routes'
-import { linking } from './src/navigation/linking'
+import { formatDocumentTitle, linking } from './src/navigation/linking'
 import { ShellStateProvider, useShellState } from './src/navigation/ShellState'
 import { SubmissionGateProvider, useSubmissionGate } from './src/navigation/SubmissionGateContext'
 import { AppTabs } from './src/navigation/AppTabs'
@@ -104,6 +104,17 @@ function ThemedShellFrame({ children }: { readonly children: ReactNode }) {
     if (RN.Platform.OS !== 'web' || typeof document === 'undefined') return
     document.body.style.backgroundColor = t.color.grund
     document.documentElement.style.colorScheme = t.mode
+    const svgFavicon = `data:image/svg+xml,${encodeURIComponent(
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96"><rect width="96" height="96" rx="22" fill="#0d0f08"/><path d="M20 36 L30 10 L41 24 Z" fill="#c9f229"/><path d="M76 36 L66 10 L55 24 Z" fill="#c9f229"/><rect x="14" y="20" width="68" height="64" rx="30" fill="#c9f229"/><path d="M48 58 L55 65 L48 74 L41 65 Z" fill="#0d0f08"/><rect x="42" y="44" width="12" height="6" rx="3" fill="#0d0f08"/><circle cx="33" cy="47" r="14" fill="#0d0f08"/><circle cx="63" cy="47" r="14" fill="#0d0f08"/><circle cx="36" cy="45" r="5.5" fill="#c9f229"/><circle cx="66" cy="45" r="5.5" fill="#c9f229"/></svg>',
+    )}`
+    let link = document.querySelector<HTMLLinkElement>('link[rel="icon"]')
+    if (!link) {
+      link = document.createElement('link')
+      link.rel = 'icon'
+      document.head.appendChild(link)
+    }
+    link.type = 'image/svg+xml'
+    link.href = svgFavicon
   }, [t.color.grund, t.mode])
 
   // "Funke ruhig": long German compounds in large titles ("Lohnsteuerbescheinigung") break at a
@@ -146,7 +157,13 @@ function RootNavigator() {
   }
 
   return (
-    <NavigationContainer linking={linking} theme={navTheme}>
+    <NavigationContainer
+      linking={linking}
+      theme={navTheme}
+      documentTitle={{
+        formatter: (_options, route) => formatDocumentTitle(route?.name),
+      }}
+    >
       <RootStack.Navigator screenOptions={{ headerShown: false }}>
         <RootStack.Screen name="Splash" component={SplashRoute} />
         <RootStack.Screen name="Login" component={LoginRoute} />
