@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Platform, Pressable, Text, View, type TextStyle, type ViewStyle } from 'react-native'
+import { Platform, Pressable, Text, TextInput, View, type TextStyle, type ViewStyle } from 'react-native'
 import { getApiClientBaseUrl } from '@steuereule/api-client'
 import type { Screen } from '@steuereule/core'
 import { Card, Chip, useTheme, type UiTheme } from '@steuereule/ui'
@@ -11,6 +11,7 @@ export interface AcroFormViewerProps {
   readonly liveValues: Readonly<Record<string, string | true>>
   readonly highlightedFieldId?: string | undefined
   readonly onInspectField?: ((screen: Screen, field?: string, person?: 'A' | 'B') => void) | undefined
+  readonly onSaveAcroField?: ((acroFieldId: string, nextValue: string) => Promise<void> | void) | undefined
 }
 
 export interface AcroAnnotationBox {
@@ -85,6 +86,7 @@ export function AcroFormLiveViewer({
   liveValues,
   highlightedFieldId,
   onInspectField,
+  onSaveAcroField,
   loader = DEFAULT_LOADER,
 }: AcroFormViewerProps & { readonly loader?: AcroFormPdfLoader | undefined }) {
   const t = useTheme()
@@ -96,6 +98,8 @@ export function AcroFormLiveViewer({
   const [annotations, setAnnotations] = useState<readonly AcroAnnotationBox[]>([])
   const [pageSize, setPageSize] = useState<{ readonly width: number; readonly height: number }>({ width: 595, height: 842 })
   const [focusedField, setFocusedField] = useState<string | null>(highlightedFieldId ?? null)
+  const [draftValues, setDraftValues] = useState<Record<string, string>>({})
+  const [savingField, setSavingField] = useState<string | null>(null)
   const [loading, setLoading] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
   const canvasHostRef = useRef<View | null>(null)
@@ -230,11 +234,63 @@ export function AcroFormLiveViewer({
               {`Aktives AcroForm-Feld: ${focusedField} → ${selectedFieldMeta.label}`}
             </Text>
             <Text style={styles.inspectorValue}>
-              {liveValues[focusedField] !== undefined
-                ? `Eingetragener Wert: ${liveValues[focusedField] === true ? '✕ (Angekreuzt)' : String(liveValues[focusedField])}`
-                : 'Derzeit leer im amtlichen Formular'}
+              {savingField === focusedField
+                ? 'Speichere Änderung direkt in der Steuererklärung …'
+                : (draftValues[focusedField] ?? liveValues[focusedField]) !== undefined
+                  ? `Eingetragener Wert: ${(draftValues[focusedField] ?? liveValues[focusedField]) === true ? '✕ (Angekreuzt)' : String(draftValues[focusedField] ?? liveValues[focusedField])}`
+                  : 'Derzeit leer im amtlichen Formular'}
             </Text>
           </View>
+          {onSaveAcroField && liveValues[focusedField] !== true ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.s2 }}>
+              <TextInput
+                accessibilityLabel={`Direkteingabe ${selectedFieldMeta.label}`}
+                value={draftValues[focusedField] ?? (typeof liveValues[focusedField] === 'string' ? liveValues[focusedField] : '')}
+                placeholder="Wert direkt im Formular ändern …"
+                onChangeText={(next) => setDraftValues((prev) => ({ ...prev, [focusedField]: next }))}
+                onSubmitEditing={async () => {
+                  const val = draftValues[focusedField]
+                  if (val !== undefined) {
+                    setSavingField(focusedField)
+                    try {
+                      await onSaveAcroField(focusedField, val)
+                    } finally {
+                      setSavingField(null)
+                    }
+                  }
+                }}
+                style={{
+                  ...t.type.small,
+                  color: t.color.tinte,
+                  backgroundColor: t.color.karte,
+                  borderWidth: 1,
+                  borderColor: t.color.tinte,
+                  borderRadius: t.radius.s,
+                  paddingHorizontal: t.space.s2,
+                  paddingVertical: 4,
+                  minWidth: 150,
+                }}
+              />
+              <Pressable
+                accessibilityRole="button"
+                disabled={savingField === focusedField}
+                onPress={async () => {
+                  const val =
+                    draftValues[focusedField] ??
+                    (typeof liveValues[focusedField] === 'string' ? liveValues[focusedField] : '')
+                  setSavingField(focusedField)
+                  try {
+                    await onSaveAcroField(focusedField, val)
+                  } finally {
+                    setSavingField(null)
+                  }
+                }}
+                style={styles.jumpButton}
+              >
+                <Text style={styles.jumpButtonText}>✓ Direkt speichern</Text>
+              </Pressable>
+            </View>
+          ) : null}
           {onInspectField ? (
             <Pressable
               accessibilityRole="button"
@@ -270,9 +326,9 @@ export function AcroFormLiveViewer({
             const width = Math.abs(x2 - x1) * zoom
             const height = Math.abs(y2 - y1) * zoom
             const top = (pageSize.height - Math.max(y1, y2)) * zoom
-            const rawVal = liveValues[annot.fieldName]
+            const rawVal = draftValues[annot.fieldName] ?? liveValues[annot.fieldName]
             const displayVal = rawVal === true ? '✕' : rawVal ?? ''
-            const isFilled = rawVal !== undefined
+            const isFilled = rawVal !== undefined && rawVal !== ''
             const isFocused = focusedField === annot.fieldName
             const target = maskTargetForAcroField(annot.fieldName)
             const alignRight = annot.textAlignment === 2
@@ -306,17 +362,39 @@ export function AcroFormLiveViewer({
                       : 'rgba(37, 99, 235, 0.04)',
                 }}
               >
-                <Text
-                  numberOfLines={1}
-                  style={{
-                    ...t.type.meta,
-                    color: '#0D0F08',
-                    fontWeight: isFilled ? '700' : '400',
-                    textAlign: alignCenter ? 'center' : alignRight ? 'right' : 'left',
-                  }}
-                >
-                  {displayVal}
-                </Text>
+                {onSaveAcroField && rawVal !== true && isFocused ? (
+                  <TextInput
+                    accessibilityLabel={`Inline AcroForm ${annot.fieldName}`}
+                    value={String(displayVal)}
+                    onChangeText={(next) => setDraftValues((prev) => ({ ...prev, [annot.fieldName]: next }))}
+                    onBlur={async () => {
+                      const val = draftValues[annot.fieldName]
+                      if (val !== undefined) {
+                        await onSaveAcroField(annot.fieldName, val)
+                      }
+                    }}
+                    style={{
+                      ...t.type.meta,
+                      color: '#0D0F08',
+                      fontWeight: '700',
+                      padding: 0,
+                      margin: 0,
+                      textAlign: alignRight ? 'right' : 'left',
+                    }}
+                  />
+                ) : (
+                  <Text
+                    numberOfLines={1}
+                    style={{
+                      ...t.type.meta,
+                      color: '#0D0F08',
+                      fontWeight: isFilled ? '700' : '400',
+                      textAlign: alignCenter ? 'center' : alignRight ? 'right' : 'left',
+                    }}
+                  >
+                    {displayVal}
+                  </Text>
+                )}
               </Pressable>
             )
           })}
