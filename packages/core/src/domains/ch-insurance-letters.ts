@@ -25,6 +25,11 @@ export interface ChPensionStatement {
   readonly taxYear: number | null
   readonly employee: PensionSide
   readonly employer: PensionSide
+  /**
+   * `statement`: the contributions paid in a year, with their mandatory part. `certificate`: the fund's yearly
+   * certificate (Vorsorgeausweis), which states yearly figures at a key date and no mandatory part.
+   */
+  readonly source: 'statement' | 'certificate'
   /** Mandatory + supplementary = total on both sides, where the letter prints all three. */
   readonly checks: { readonly split: 'ok' | 'conflict' | 'unknown' }
 }
@@ -41,13 +46,18 @@ export interface ChPremiumLetter {
 
 const PENSION_LETTER = /obligatorisch/i
 const PENSION_SENDER = /pensionskasse|pension\s+fund|vorsorge|2\.\s*s(?:ä|a)ule|\bBVG\b/i
-const SICKNESS = /krankentaggeld/i
+/** The fund's yearly certificate, by its title; OCR may tear the compound apart. */
+const PENSION_CERTIFICATE = /(?:vorsorge|leistungs|versicherungs|pensionskassen)\s*-?\s*ausweis/i
+const PENSION_CERTIFICATE_ROW = /sparbeitrag|risikobeitrag|altersguthaben|arbeitnehmerbeitrag|freiz\S{1,3}gigkeit|\bBVG\b/i
+/** „Krankentaggeld“, „Kranken-Taggeld“, „KTG“. */
+const SICKNESS = /kranken\s*-?\s*taggeld|\bKTG\b/i
 const ACCIDENT = /nicht\s*(?:-\s*)?be(?:rufs|triebs)\s*(?:-\s*)?unfall|\bNBU/i
 
 export function classifyChInsuranceLetter(text: string): ChInsuranceLetterKind | null {
   if (!text) return null
   if (PENSION_LETTER.test(text) && PENSION_SENDER.test(text)) return 'chPensionskasse'
-  if (SICKNESS.test(text) && ACCIDENT.test(text) && /pr(?:ä|a)mie|beitr(?:ä|a)g/i.test(text)) return 'chPraemien'
+  if (PENSION_CERTIFICATE.test(text) && PENSION_CERTIFICATE_ROW.test(text)) return 'chPensionskasse'
+  if (SICKNESS.test(text) && ACCIDENT.test(text) && /pr(?:ä|a|ae)mie|beitr(?:ä|a|ae)g/i.test(text)) return 'chPraemien'
   return null
 }
 
@@ -66,7 +76,7 @@ function amountsIn(line: string): number[] {
 }
 
 function letterYear(text: string): number | null {
-  const m = /(?:Steuerjahr|Jahr|Altersvorsorge|versicherung)\s+(20\d{2})\b/i.exec(text)
+  const m = /(?:Steuerjahr|Jahr|Altersvorsorge|versicherung|NBUV?)\s+(20\d{2})\b/i.exec(text) ?? /ausweis\s+per\s+\d{1,2}\.\s*(?:\d{1,2}\.|\p{L}+)\s*(20\d{2})\b/iu.exec(text)
   return m?.[1] ? Number(m[1]) : null
 }
 
@@ -117,8 +127,22 @@ function readRows(lines: readonly string[]) {
   return { AN: side('an'), AG: side('ag') }
 }
 
+/** The yearly certificate: „Gesamtbeitrag Arbeitnehmer … 6'535.00“ (the year is the last column), „Arbeitnehmerbeitrag (pro Jahr)“. */
+function readCertificate(lines: readonly string[]) {
+  const yearly = (side: 'nehmer' | 'geber'): number | null => {
+    const row = new RegExp(`gesamtbeitr\\S*\\s+arbeit${side}|arbeit${side}beitr\\S*\\s*\\(pro\\s+jahr\\)`, 'i')
+    const line = lines.find((l) => row.test(l) && amountsIn(l).length > 0)
+    return line === undefined ? null : amountsIn(line).at(-1)!
+  }
+  return { AN: { total: yearly('nehmer'), mandatory: null, supplementary: null }, AG: { total: yearly('geber'), mandatory: null, supplementary: null } }
+}
+
 export function parseChPensionStatement(text: string): ChPensionStatement {
   const lines = (text ?? '').split(/\r?\n/)
+  if (PENSION_CERTIFICATE.test(text ?? '') && !PENSION_LETTER.test(text ?? '')) {
+    const sides = readCertificate(lines)
+    return { taxYear: letterYear(text ?? ''), source: 'certificate', employee: sides.AN, employer: sides.AG, checks: { split: 'unknown' } }
+  }
   const rowsLayout = lines.some((l) => /nehmer\S*\s+arbeitgeber/i.test(l))
   const sides = rowsLayout ? readRows(lines) : readTable(lines)
   if (!rowsLayout) {
@@ -133,7 +157,7 @@ export function parseChPensionStatement(text: string): ChPensionStatement {
     : [sides.AN, sides.AG].every((s) => Math.abs(s.mandatory! + s.supplementary! - s.total!) <= 1)
       ? 'ok'
       : 'conflict'
-  return { taxYear: letterYear(text ?? ''), employee: sides.AN, employer: sides.AG, checks: { split } }
+  return { taxYear: letterYear(text ?? ''), source: 'statement', employee: sides.AN, employer: sides.AG, checks: { split } }
 }
 
 export function parseChPremiumLetter(text: string): ChPremiumLetter {

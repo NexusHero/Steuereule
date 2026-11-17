@@ -54,6 +54,11 @@ describe('parseChHealthStatement', () => {
     ])
   })
 
+  it('counts the basic insurance (KVG) and leaves the supplementary cover (VVG) out', () => {
+    const text = PER_PERSON.replace("Total Versicherungspramien 2'001.00", "01.01.2025 - 30.06.2025 Pramie Zusatzversicherung (VVG) 600.00\nTotal Versicherungspramien 2'601.00")
+    expect(parseChHealthStatement(text).insured[0]).toMatchObject({ premiumCents: 200100 })
+  })
+
   it('is not fooled by a premium letter of the employer', () => {
     expect(looksLikeChHealthStatement('Krankentaggeldversicherung Prämie 2025 Arbeitgeber 50 %')).toBe(false)
   })
