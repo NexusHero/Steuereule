@@ -227,7 +227,7 @@ describe('ProfilScreen', () => {
     fireEvent.click(screen.getByText('Bearbeiten'))
     fireEvent.click(screen.getByText('Speichern'))
 
-    await screen.findByText('Das hat gerade nicht geklappt. Prüf die Verbindung und versuch es noch mal.')
+    expect(await screen.findByText('Das hat gerade nicht geklappt. Prüf die Verbindung und versuch es noch mal.')).toBeTruthy()
   })
 
   it('shows the Steuer-ID digit counter and confirmation while editing, matching the Onboarding field pattern', async () => {
@@ -282,7 +282,7 @@ describe('ProfilScreen', () => {
       fireEvent.click(screen.getByText('Bearbeiten'))
       fireEvent.change(screen.getByDisplayValue('Beispiel'), { target: { value: 'Neu' } })
       fireEvent.click(screen.getByText('Speichern'))
-      await screen.findByText('Anna Neu')
+      expect(await screen.findByText('Anna Neu')).toBeTruthy()
 
       assertNoStorageWrites('localStorage', localSetItem)
       assertNoStorageWrites('sessionStorage', sessionSetItem)

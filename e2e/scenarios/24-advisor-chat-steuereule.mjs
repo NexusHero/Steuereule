@@ -2,10 +2,7 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
-  newContextAtBreakpoint,
-  guardAgainst429,
   fail,
-  registerAndOnboard,
   selectTaxYear2025,
   answerBasis,
   chooseTopics,
@@ -14,25 +11,13 @@ import {
   assertCockpitEstimate,
   runStandaloneScenario,
 } from './helpers/scenario-harness.mjs'
+import { startPersona, completeLstb, completeCommute, assertPrintoutOpen } from './helpers/persona-steps.mjs'
 
 export async function runScenario24(browser, webOrigin) {
   console.log('\n--- Scenario 24: Advisor Chat (SteuerEule) — Legal Citations, Action Apply/Undo, Two-Paths & Red-Team Guardrails ---')
-  const ctx = await newContextAtBreakpoint(browser, 'l')
-  const page = await ctx.newPage()
-  guardAgainst429(page, fail)
-
-  await registerAndOnboard(
-    page,
-    {
-      email: `du+clara.eule.${Date.now()}@beispiel.de`,
-      firstName: 'Clara',
-      lastName: 'Eulenstein',
-      taxId: '81234567890',
-      taxNumber: '0912345679',
-    },
-    webOrigin,
-    'scenario-24',
-  )
+  const { ctx, page } = await startPersona(browser, webOrigin, 'scenario-24', {
+    email: `du+clara.eule.${Date.now()}@beispiel.de`, firstName: 'Clara', lastName: 'Eulenstein', taxId: '81234567890', taxNumber: '0912345679',
+  })
 
   await selectTaxYear2025(page)
 
@@ -41,34 +26,16 @@ export async function runScenario24(browser, webOrigin) {
   // The Strom (ADR-0089): basis, LStB, way to work, an empty selection (everything „Nein“), summary.
   await answerBasis(page, { job: 'Angestellt', ausland: 'Nein', kinder: 'Nein', familienstand: 'Ledig' })
 
-  await waitForStromStep(page, 'lohnsteuerbescheinigung')
-  await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').fill('65000')
-  await page.locator('[data-testid="lstb-lohnsteuer"]').fill('12800')
-  await page.locator('[data-testid="lstb-sozialversicherung"]').fill('13200')
-  await page.locator('[data-testid="lstb-weiter"]').click()
+  await completeLstb(page, { grossWage: '65000', wageTax: '12800', socialSecurity: '13200' })
 
-  await waitForStromStep(page, 'arbeitsweg')
-  await page.locator('[data-testid="arbeitstage-urlaub"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="arbeitstage-urlaub"]').fill('25')
-  await page.locator('[data-testid="arbeitstage-krank"]').fill('0')
-  await page.locator('[data-testid="arbeitstage-homeoffice"]').fill('100')
-  await page.locator('[data-testid="feiertage-region-BY"]').click()
-  await page.locator('[data-testid="arbeitstage-km"]').fill('20')
-  await page.locator('[data-testid="arbeitstage-transport-pkw"]').click()
-  await page.locator('[data-testid="arbeitstage-arbeitsort"]').fill('München')
-  await page.locator('[data-testid="arbeitstage-weiter"]').click()
+  await completeCommute(page, { vacationDays: '25', sickDays: '0', homeOfficeDays: '100', region: 'BY', oneWayKm: '20', transport: 'pkw', workplace: 'München' })
 
   await chooseTopics(page, [])
   await waitForStromStep(page, 'fertig')
   await leaveStrom(page)
 
   await page.locator('[data-testid="cockpit-kacheln"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="cockpit-abgabe-vorbereiten"]').click()
-  const printBtn = page.locator('[data-testid="abgabe-zum-ausdruck"]')
-  await printBtn.waitFor({ state: 'visible', timeout: 10_000 })
-  if (await printBtn.isDisabled()) fail('Expected abgabe-zum-ausdruck enabled for Scenario 24 baseline')
-  await page.locator('[data-testid="abgabe-zurueck"]').click()
+  await assertPrintoutOpen(page, 'Scenario 24 baseline')
 
   await assertCockpitEstimate(page, 'Scenario 24 Baseline', { direction: 'Erstattung' })
 

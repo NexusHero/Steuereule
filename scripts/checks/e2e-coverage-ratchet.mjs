@@ -20,6 +20,7 @@
 //   * API / picks tables: a `['<step>', '<value>']` tuple, a `'<step>': '<value>'` entry or
 //     `questionId: '<step>', value: '<value>'` in an E2E file.
 import { readFileSync, readdirSync, statSync, writeFileSync, mkdirSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join, relative, resolve, dirname } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
@@ -27,7 +28,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const BASELINE = join(ROOT, 'scripts/checks/e2e-coverage-baseline.json')
 // Gaps that are no test gap, each with its reason (AC 8): `{ "interviewPairs": { "step=*": "why" }, "testIds": { "id": "why" } }`.
 const EXCEPTIONS = join(ROOT, 'scripts/checks/e2e-coverage-exceptions.json')
-const ARTIFACT_DIR = process.env.E2E_COVERAGE_ARTIFACT_DIR ?? '/tmp/e2e-coverage'
+const ARTIFACT_DIR = process.env.E2E_COVERAGE_ARTIFACT_DIR ?? join(tmpdir(), 'e2e-coverage')
 
 function walk(dir, accept, out = []) {
   for (const name of readdirSync(dir)) {
@@ -54,7 +55,7 @@ export function collectAppTestIds(root = ROOT) {
     const pattern = hasHole ? new RegExp('^' + raw.replace(/[.*+?^()|[\]\\]/g, '\\$&').replace(/\$\{[^}]*\}/g, '.+') + '$') : null
     found.set(key, { id: raw, pattern, file: relative(root, file) })
   }
-  const props = /(?:testID|testId|inputTestID|sendTestID|stopTestID|testIDPrefix)\s*[=:]\s*(?:"([^"]+)"|'([^']+)'|\{?\s*`([^`]+)`\s*\}?)/g
+  const props = /(?:testID|testId|inputTestID|sendTestID|stopTestID|testIDPrefix)\s*[=:]\s*(?:"([^"]+)"|'([^']+)'|(?:\{\s*)?`([^`]+)`\s*\}?)/g
   for (const file of files) {
     const src = readFileSync(file, 'utf8')
     for (const m of src.matchAll(props)) add(m[1] ?? m[2] ?? m[3], file)
@@ -118,7 +119,7 @@ export function uncoveredTestIds(appIds, e2e) {
     }
     if (!hit) out.push(t.id)
   }
-  return [...new Set(out)].sort()
+  return [...new Set(out)].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0))
 }
 
 export function uncoveredPairs(pairs, e2e) {
@@ -146,7 +147,7 @@ export function uncoveredPairs(pairs, e2e) {
     }
     if (!hit) out.push(`${step}=${value}`)
   }
-  return out.sort()
+  return out.sort((a, b) => (a < b ? -1 : a > b ? 1 : 0))
 }
 
 export async function collectInterviewPairs(root = ROOT) {

@@ -135,6 +135,8 @@ describe('#240 — the shipped harness wiring itself (not just the nanostores me
     const unsubscribe = sessionStore.listen(() => {})
     unsubscribe()
     unmountedAt = Date.now()
+    expect(sessionStore.lc).toBe(0)
+    expect((sessionStore as unknown as { active: boolean }).active).toBe(true)
     // No `cleanStores()` call here — that's the shared `afterEach`'s job, and it runs after this
     // test returns, not inside it.
   })

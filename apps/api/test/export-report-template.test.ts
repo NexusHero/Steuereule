@@ -58,44 +58,49 @@ function expectPayloadWasEscaped(html: string, payload: string): void {
   expect(html).toContain(escaped)
 }
 
+/** Puts a payload into one user-controlled field of the account, the profile or the access log. */
+const ACCOUNT_PROFILE_AND_ACCESS_LOG_FIELDS = [
+  ['account.name', (doc: ExportDocument, payload: string) => ({ ...doc, account: { ...doc.account, name: payload } })],
+  ['account.email', (doc: ExportDocument, payload: string) => ({ ...doc, account: { ...doc.account, email: payload } })],
+  [
+    'profile.firstName',
+    (doc: ExportDocument, payload: string) => ({ ...doc, profile: { ...doc.profile!, firstName: payload } }),
+  ],
+  [
+    'profile.lastName',
+    (doc: ExportDocument, payload: string) => ({ ...doc, profile: { ...doc.profile!, lastName: payload } }),
+  ],
+  [
+    'profile.steuerId',
+    (doc: ExportDocument, payload: string) => ({ ...doc, profile: { ...doc.profile!, steuerId: payload } }),
+  ],
+  [
+    'profile.steuernummer',
+    (doc: ExportDocument, payload: string) => ({ ...doc, profile: { ...doc.profile!, steuernummer: payload } }),
+  ],
+  [
+    'account.authProviders[]',
+    (doc: ExportDocument, payload: string) => ({ ...doc, account: { ...doc.account, authProviders: [payload] } }),
+  ],
+  [
+    'accessLog[].action',
+    (doc: ExportDocument, payload: string) => ({
+      ...doc,
+      accessLog: [{ action: payload, resource: 'profile', createdAt: '2026-01-16T10:05:00.000Z' }],
+    }),
+  ],
+  [
+    'accessLog[].resource',
+    (doc: ExportDocument, payload: string) => ({
+      ...doc,
+      accessLog: [{ action: 'READ', resource: payload, createdAt: '2026-01-16T10:05:00.000Z' }],
+    }),
+  ],
+] as const
+
 describe('buildExportReportHtml — HTML-injection escaping (T1, every user-controlled field)', () => {
   it.each([
-    ['account.name', (doc: ExportDocument, payload: string) => ({ ...doc, account: { ...doc.account, name: payload } })],
-    ['account.email', (doc: ExportDocument, payload: string) => ({ ...doc, account: { ...doc.account, email: payload } })],
-    [
-      'profile.firstName',
-      (doc: ExportDocument, payload: string) => ({ ...doc, profile: { ...doc.profile!, firstName: payload } }),
-    ],
-    [
-      'profile.lastName',
-      (doc: ExportDocument, payload: string) => ({ ...doc, profile: { ...doc.profile!, lastName: payload } }),
-    ],
-    [
-      'profile.steuerId',
-      (doc: ExportDocument, payload: string) => ({ ...doc, profile: { ...doc.profile!, steuerId: payload } }),
-    ],
-    [
-      'profile.steuernummer',
-      (doc: ExportDocument, payload: string) => ({ ...doc, profile: { ...doc.profile!, steuernummer: payload } }),
-    ],
-    [
-      'account.authProviders[]',
-      (doc: ExportDocument, payload: string) => ({ ...doc, account: { ...doc.account, authProviders: [payload] } }),
-    ],
-    [
-      'accessLog[].action',
-      (doc: ExportDocument, payload: string) => ({
-        ...doc,
-        accessLog: [{ action: payload, resource: 'profile', createdAt: '2026-01-16T10:05:00.000Z' }],
-      }),
-    ],
-    [
-      'accessLog[].resource',
-      (doc: ExportDocument, payload: string) => ({
-        ...doc,
-        accessLog: [{ action: 'READ', resource: payload, createdAt: '2026-01-16T10:05:00.000Z' }],
-      }),
-    ],
+    ...ACCOUNT_PROFILE_AND_ACCESS_LOG_FIELDS,
     [
       'taxData[].felder value (e.g. a Beleg file name)',
       (doc: ExportDocument, payload: string) => ({
@@ -116,44 +121,7 @@ describe('buildExportReportHtml — HTML-injection escaping (T1, every user-cont
     expectPayloadWasEscaped(html, SCRIPT_PAYLOAD)
   })
 
-  it.each([
-    ['account.name', (doc: ExportDocument, payload: string) => ({ ...doc, account: { ...doc.account, name: payload } })],
-    ['account.email', (doc: ExportDocument, payload: string) => ({ ...doc, account: { ...doc.account, email: payload } })],
-    [
-      'profile.firstName',
-      (doc: ExportDocument, payload: string) => ({ ...doc, profile: { ...doc.profile!, firstName: payload } }),
-    ],
-    [
-      'profile.lastName',
-      (doc: ExportDocument, payload: string) => ({ ...doc, profile: { ...doc.profile!, lastName: payload } }),
-    ],
-    [
-      'profile.steuerId',
-      (doc: ExportDocument, payload: string) => ({ ...doc, profile: { ...doc.profile!, steuerId: payload } }),
-    ],
-    [
-      'profile.steuernummer',
-      (doc: ExportDocument, payload: string) => ({ ...doc, profile: { ...doc.profile!, steuernummer: payload } }),
-    ],
-    [
-      'account.authProviders[]',
-      (doc: ExportDocument, payload: string) => ({ ...doc, account: { ...doc.account, authProviders: [payload] } }),
-    ],
-    [
-      'accessLog[].action',
-      (doc: ExportDocument, payload: string) => ({
-        ...doc,
-        accessLog: [{ action: payload, resource: 'profile', createdAt: '2026-01-16T10:05:00.000Z' }],
-      }),
-    ],
-    [
-      'accessLog[].resource',
-      (doc: ExportDocument, payload: string) => ({
-        ...doc,
-        accessLog: [{ action: 'READ', resource: payload, createdAt: '2026-01-16T10:05:00.000Z' }],
-      }),
-    ],
-  ] as const)('escapes an attribute-breakout payload injected via %s', (_label, withPayload) => {
+  it.each(ACCOUNT_PROFILE_AND_ACCESS_LOG_FIELDS)('escapes an attribute-breakout payload injected via %s', (_label, withPayload) => {
     const document = withPayload(baseDocument(), ATTRIBUTE_BREAKOUT_PAYLOAD) as ExportDocument
     const html = buildExportReportHtml(document)
     expectPayloadWasEscaped(html, ATTRIBUTE_BREAKOUT_PAYLOAD)

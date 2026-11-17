@@ -387,9 +387,17 @@ export type FieldValueCheck =
 const invalid = (reason: string): FieldValueCheck => ({ ok: false, reason })
 const valid = (value: string): FieldValueCheck => ({ ok: true, value })
 
+const AMOUNT_UNITS = ['€', 'euro', 'eur', 'chf', 'fr.', 'fr'] as const
+
+function withoutTrailingUnit(raw: string): string {
+  const trimmed = raw.trimEnd()
+  const unit = AMOUNT_UNITS.find((candidate) => trimmed.slice(-candidate.length).toLowerCase() === candidate)
+  return unit === undefined ? raw : trimmed.slice(0, -unit.length)
+}
+
 /** `"5.000 €"`, `"5 000"`, `"5'000 CHF"`, `"5000,00"` → `"5000"`; anything with real decimals is refused. */
 function tidyAmount(raw: string): string | null {
-  const bare = raw.replace(/\s*(€|eur|euro|chf|fr\.?)\s*$/i, '').trim()
+  const bare = withoutTrailingUnit(raw).trim()
   const withoutZeroCents = bare.replace(/[.,]0{1,2}$/, '')
   const withoutGrouping = /^\d{1,3}([.\s'’]\d{3})+$/.test(withoutZeroCents) ? withoutZeroCents.replace(/[.\s'’]/g, '') : withoutZeroCents
   return /^\d+$/.test(withoutGrouping) ? String(Number(withoutGrouping)) : null

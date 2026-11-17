@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { ADVISOR_SKILL_IDS, type AdvisorSkillId } from '@steuereule/core'
 import { useTheme, type UiTheme } from '@steuereule/ui'
 import { APP_NS } from '../../../i18n/resources'
+import { pillStyles } from './pillStyles'
 
 export interface SkillsMenuProps {
   /** The skill that is on for the next messages, if any. One at a time. */
@@ -72,20 +73,10 @@ export function SkillsMenu({ active, onChange, disabled = false }: SkillsMenuPro
 }
 
 function makeStyles(t: UiTheme) {
+  const shared = pillStyles(t)
   return {
-    pill: {
-      minHeight: 32,
-      maxWidth: 160,
-      paddingHorizontal: t.space.s3,
-      borderRadius: t.radius.m,
-      borderWidth: 1,
-      borderColor: t.color.linie,
-      backgroundColor: t.color.karte,
-      justifyContent: 'center',
-    } as ViewStyle,
-    pillOn: { borderColor: t.color.tinte, backgroundColor: t.color.funkeWeich } as ViewStyle,
-    label: { fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: t.size.s, color: t.color.tinte2 } as TextStyle,
-    labelOn: { color: t.color.tinte } as TextStyle,
+    ...shared,
+    pill: { ...shared.pill, maxWidth: 160 } as ViewStyle,
     panel: {
       position: 'absolute',
       bottom: 40,

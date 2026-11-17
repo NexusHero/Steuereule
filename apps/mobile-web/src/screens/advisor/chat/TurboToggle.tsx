@@ -2,6 +2,7 @@ import { Pressable, Text, View, type TextStyle, type ViewStyle } from 'react-nat
 import { useTranslation } from 'react-i18next'
 import { useTheme, type UiTheme } from '@steuereule/ui'
 import { APP_NS } from '../../../i18n/resources'
+import { pillStyles } from './pillStyles'
 
 export interface TurboToggleProps {
   readonly on: boolean
@@ -50,18 +51,7 @@ export function TurboSummary({ count }: { readonly count: number }) {
 
 function makeStyles(t: UiTheme) {
   return {
-    pill: {
-      minHeight: 32,
-      paddingHorizontal: t.space.s3,
-      borderRadius: t.radius.m,
-      borderWidth: 1,
-      borderColor: t.color.linie,
-      backgroundColor: t.color.karte,
-      justifyContent: 'center',
-    } as ViewStyle,
-    pillOn: { borderColor: t.color.tinte, backgroundColor: t.color.funkeWeich } as ViewStyle,
-    label: { fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: t.size.s, color: t.color.tinte2 } as TextStyle,
-    labelOn: { color: t.color.tinte } as TextStyle,
+    ...pillStyles(t),
     summary: {
       paddingVertical: t.space.s2,
       paddingHorizontal: t.space.s3,

@@ -101,7 +101,7 @@ function trailingAmount(line: string): number | null {
 }
 
 /** "1. Lohn", "8 Bruttolohn", "14, Weitere", "15.Bemerkungen": a Ziffer's first line, never "10.1" or "13.1.1". */
-const ZIFFER_HEADER = /^\s{0,3}(\d{1,2})\s*[.,]?(?![.,]?\d)\s*(?=[A-Za-zÄÖÜäöü])/
+const ZIFFER_HEADER = /^\s{0,3}(\d{1,2})\s*(?:[.,]\s*)?(?=[A-Za-zÄÖÜäöü])/
 
 /** What each Ziffer's heading says, German or French, loose about OCR's umlauts. */
 const ZIFFER_HEADINGS: Readonly<Record<number, RegExp>> = {
@@ -137,7 +137,7 @@ function zifferBlocks(lines: readonly string[]): Block[] {
   let last = 0
   for (const line of lines) {
     const m = ZIFFER_HEADER.exec(line)
-    const printed = m?.[1] ? Number(m[1]) : NaN
+    const printed = m?.[1] ? Number(m[1]) : Number.NaN
     const digit = [printed, printed % 10].find((n) => Number.isInteger(n) && n > last && n <= 15 && ZIFFER_HEADINGS[n]!.test(line))
     if (digit !== undefined) {
       blocks.push({ digit, lines: [line] })
@@ -206,9 +206,15 @@ function readAmounts(blocks: readonly Block[]) {
   return { amounts, digitRuns, pension: { ordinary, buyIn } }
 }
 
+const DIGIT_RUN_CHAR = /[\d\s.'’]/
+
 /** The digits at a line's end, spaces and separators dropped: OCR's "1 1 1 839" is "111839". */
 function trailingDigitRun(line: string): string {
-  return (/(\d[\d\s.'’]*)\s*-?\s*$/.exec(line)?.[1] ?? '').replace(/\D/g, '')
+  let text = line.trimEnd()
+  if (text.endsWith('-')) text = text.slice(0, -1)
+  let start = text.length
+  while (start > 0 && DIGIT_RUN_CHAR.test(text[start - 1]!)) start -= 1
+  return text.slice(start).replace(/\D/g, '')
 }
 
 /**

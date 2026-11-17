@@ -1,13 +1,9 @@
-import { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { act, render, screen, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http } from 'msw'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
-import { CopilotBridgeProvider, useCopilotBridge, type CopilotMode, type StreamOutcome } from './CopilotBridgeProvider'
+import { useCopilotBridge, type StreamOutcome } from './CopilotBridgeProvider'
+import { CopilotBridgeHarness } from '../../test-advisor'
 
 const encoder = new TextEncoder()
 const sse = (event: string, data: unknown) => encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)
@@ -23,22 +19,6 @@ function hangingStream(events: Array<[string, unknown]>, onAbort: () => void): R
     },
   })
   return new Response(body, { status: 200, headers: { 'Content-Type': 'text/event-stream; charset=utf-8' } })
-}
-
-function Harness({ children }: { readonly children: React.ReactNode }) {
-  const [mode, setMode] = useState<CopilotMode>('eulen-modus')
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return (
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={createAppI18n('de')}>
-        <ThemeProvider mode="light">
-          <CopilotBridgeProvider mode={mode} onModeChange={setMode} taxYear={2025}>
-            {children}
-          </CopilotBridgeProvider>
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>
-  )
 }
 
 let outcome: StreamOutcome | 'pending' = 'pending'
@@ -79,9 +59,9 @@ describe('CopilotBridge stop (#451 slice 1, decision 2)', () => {
     )
     outcome = 'pending'
     render(
-      <Harness>
+      <CopilotBridgeHarness>
         <Probe />
-      </Harness>,
+      </CopilotBridgeHarness>,
     )
 
     act(() => screen.getByTestId('send').click())
@@ -112,9 +92,9 @@ describe('CopilotBridge stop (#451 slice 1, decision 2)', () => {
     )
     outcome = 'pending'
     render(
-      <Harness>
+      <CopilotBridgeHarness>
         <Probe />
-      </Harness>,
+      </CopilotBridgeHarness>,
     )
 
     act(() => screen.getByTestId('send').click())
@@ -134,9 +114,9 @@ describe('CopilotBridge stop (#451 slice 1, decision 2)', () => {
       }),
     )
     render(
-      <Harness>
+      <CopilotBridgeHarness>
         <Probe />
-      </Harness>,
+      </CopilotBridgeHarness>,
     )
     act(() => screen.getByTestId('send').click())
     await waitFor(() => expect(screen.getByTestId('text').textContent).toBe('Antwort 1'))

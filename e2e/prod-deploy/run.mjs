@@ -52,6 +52,7 @@
 // that cannot confirm a container says so instead. Nothing about the assertions changed: the
 // derivation describes a pass, it can never cause or prevent one.
 
+import { randomBytes } from 'node:crypto'
 import { launchBrowser, closeBrowser, newContextAtBreakpoint } from '../harness/browser.mjs'
 import { startStack } from '../harness/stack.mjs'
 import { resolveApiTarget } from './api-target.mjs'
@@ -186,7 +187,7 @@ async function registrationFlow(browser, webOrigin, target) {
     await skipSplash(page, webOrigin)
     await page.getByText(COPY.register).click()
 
-    const email = `prod-deploy-smoke-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@example.com`
+    const email = `prod-deploy-smoke-${Date.now()}-${randomBytes(3).toString('hex')}@example.com`
     const password = 'a-fine-strong-password-1'
     await page.getByPlaceholder(COPY.registrierungEmailPlaceholder).fill(email)
     await page.getByPlaceholder(COPY.registrierungPasswordPlaceholder).fill(password)

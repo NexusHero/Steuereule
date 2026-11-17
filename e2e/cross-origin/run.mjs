@@ -20,6 +20,7 @@
 //
 // Exits non-zero (and prints a clear reason) on the first failed assertion — no
 // sleeps, no soft-fail: this is a merge gate, not a report.
+import { randomBytes } from 'node:crypto'
 import { chromium } from 'playwright-core'
 
 const WEB_ORIGIN = requireEnv('WEB_ORIGIN')
@@ -201,7 +202,7 @@ async function main() {
     // 2) Drive the real credentialed cross-origin auth+profile journey, from a page
     // whose origin is genuinely different from the API's (different port = different
     // origin, browser same-origin policy keys on scheme+host+port).
-    const email = `cross-origin-smoke-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@example.com`
+    const email = `cross-origin-smoke-${Date.now()}-${randomBytes(3).toString('hex')}@example.com`
     const password = 'CrossOrigin-Smoke-1!'
 
     await credentialedFetch(page, {

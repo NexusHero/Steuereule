@@ -14,6 +14,7 @@
 //   AI_EVAL_ENFORCE          1 → exit 1 on a threshold violation. Off for the first week (D9).
 //   AI_EVAL_REPORT_DIR       default /tmp/ai-eval (report.md, report.json)
 import { mkdir, appendFile, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { BaseCallbackHandler } from '@langchain/core/callbacks/base'
 import type { BaseMessage } from '@langchain/core/messages'
@@ -36,7 +37,7 @@ const COST_CAP_EUR = Number(env.AI_EVAL_COST_CAP_EUR ?? 5)
 const EUR_PER_MTOK_IN = Number(env.AI_EVAL_EUR_PER_MTOK_IN ?? 0.3)
 const EUR_PER_MTOK_OUT = Number(env.AI_EVAL_EUR_PER_MTOK_OUT ?? 2.5)
 const ENFORCE = env.AI_EVAL_ENFORCE === '1' || env.AI_EVAL_ENFORCE === 'true'
-const REPORT_DIR = env.AI_EVAL_REPORT_DIR ?? '/tmp/ai-eval'
+const REPORT_DIR = env.AI_EVAL_REPORT_DIR ?? join(tmpdir(), 'ai-eval')
 /** Profile names the app hands to the scrubber; the PII cases use them. */
 const KNOWN_NAMES = ['Erika', 'Mustermann']
 

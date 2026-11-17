@@ -44,7 +44,10 @@ const TOOL_ICONS: Readonly<Record<string, StrokeIconName>> = {
 const iconOf = (step: AdvisorThoughtStep): StrokeIconName => (step.kind === 'status' ? 'status' : (TOOL_ICONS[step.tool ?? ''] ?? 'check'))
 
 /** A finished step reads as what was done, not as an ongoing "…". */
-const doneLabel = (label: string): string => label.replace(/\s*…\s*$/, '')
+const doneLabel = (label: string): string => {
+  const text = label.trimEnd()
+  return text.endsWith('…') ? text.slice(0, -1).trimEnd() : label
+}
 
 const seconds = (ms: number): number => Math.max(1, Math.round(ms / 1000))
 

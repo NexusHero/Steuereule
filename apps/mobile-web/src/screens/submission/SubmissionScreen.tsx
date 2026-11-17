@@ -1,14 +1,15 @@
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { ScrollView, Text, View, type TextStyle, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
-import { Button, Card, hapticWarning, useBreakpoint, useTheme, type UiTheme } from '@steuereule/ui'
+import { Button, Card, useBreakpoint, useTheme, type UiTheme } from '@steuereule/ui'
 import { useLinkControllerGet, useMasterDataControllerRead } from '@steuereule/api-client'
 import type { Answers, Conflict, Notice } from '@steuereule/core'
 import { CURRENT_TAX_YEAR, isRunningTaxYear } from '../../config/taxYear'
 import { APP_NS } from '../../i18n/resources'
 import { useShellState } from '../../navigation/ShellState'
 import { usePlausibility } from '../plausibility/usePlausibility'
+import { useBlockingConflictHaptic } from '../plausibility/useBlockingConflictHaptic'
 import { tileRevisitFlag } from '../cockpit/CockpitTiles'
 import { tileById, tilesForFinding, type TileId } from '../cockpit/tiles'
 import { FilingTypeComparisonScreen } from '../filing-type-comparison/FilingTypeComparisonScreen'
@@ -40,17 +41,7 @@ export function SubmissionScreen({
   const linkQuery = useLinkControllerGet(taxYear, { query: { enabled: isMarried } })
   const [comparisonDone, setComparisonDone] = useState(false)
   const hasBlockingConflict = plausibility.status === 'ready' && plausibility.conflicts.length > 0
-  const prevConflictRef = useRef<{ taxYear: number; active: boolean }>({ taxYear, active: false })
-
-  useEffect(() => {
-    if (prevConflictRef.current.taxYear !== taxYear) {
-      prevConflictRef.current = { taxYear, active: false }
-    }
-    if (!prevConflictRef.current.active && hasBlockingConflict) {
-      void hapticWarning()
-    }
-    prevConflictRef.current.active = hasBlockingConflict
-  }, [taxYear, hasBlockingConflict])
+  useBlockingConflictHaptic(taxYear, hasBlockingConflict)
 
   if (plausibility.status === 'loading' || masterDataQuery.isPending || (isMarried && linkQuery.isPending)) {
     return <LoadingState bp={bp} label={tr('abgabe.loading')} />

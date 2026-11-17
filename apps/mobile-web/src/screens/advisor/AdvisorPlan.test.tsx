@@ -1,34 +1,14 @@
-import { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http } from 'msw'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { AdvisorChatPanel, type AdvisorChatPanelProps } from './AdvisorChatPanel'
-import { abortPlan, CopilotBridgeProvider, useCopilotBridge, type CopilotMode } from './CopilotBridgeProvider'
+import { abortPlan, useCopilotBridge } from './CopilotBridgeProvider'
+import { CopilotBridgeHarness } from '../../test-advisor'
 import { renderInApp } from '../../test-render'
 
 const encoder = new TextEncoder()
 const sse = (event: string, data: unknown) => encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)
-
-function Providers({ children }: { readonly children: React.ReactNode }) {
-  const [mode, setMode] = useState<CopilotMode>('eulen-modus')
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return (
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={createAppI18n('de')}>
-        <ThemeProvider mode="light">
-          <CopilotBridgeProvider mode={mode} onModeChange={setMode} taxYear={2025}>
-            {children}
-          </CopilotBridgeProvider>
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>
-  )
-}
 
 function renderPanel(props: Partial<AdvisorChatPanelProps>) {
   return renderInApp(<AdvisorChatPanel messages={[]} onSendMessage={vi.fn()} {...props} />)
@@ -122,9 +102,9 @@ describe('plan checklist (#451 slice 6, AC 11–14)', () => {
       )
     }
     render(
-      <Providers>
+      <CopilotBridgeHarness>
         <Probe />
-      </Providers>,
+      </CopilotBridgeHarness>,
     )
     act(() => screen.getByTestId('send').click())
     await waitFor(() => expect(push).not.toBeNull())
@@ -162,9 +142,9 @@ describe('plan checklist (#451 slice 6, AC 11–14)', () => {
       return <button data-testid="send" onClick={() => void bridge.sendStreamingMessage('Und 350 €?', undefined, { replaceFromMessageId: 'u2' })} />
     }
     render(
-      <Providers>
+      <CopilotBridgeHarness>
         <Probe />
-      </Providers>,
+      </CopilotBridgeHarness>,
     )
     act(() => screen.getByTestId('send').click())
     await waitFor(() => expect(sentBody).toEqual({ message: 'Und 350 €?', replaceFromMessageId: 'u2' }))

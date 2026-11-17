@@ -13,65 +13,32 @@
 // file's GWT walk-through is an end-to-end identity check at the API layer, not a
 // restatement of P1. P7 (no localStorage) is the frontend track's proof (Kaan, #318
 // 1b/2) — nothing here writes to a browser at all.
-import type { NestFastifyApplication } from '@nestjs/platform-fastify'
-import { PrismaClient } from '@prisma/client'
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
-import { resetRateLimiters } from '../support/reset-rate-limiters.js'
-
-process.env.GUEST_SESSION_SECRET = 'req-015-secret'
-process.env.BETTER_AUTH_SECRET = 'req-015-better-auth-secret-0123456789'
-process.env.BETTER_AUTH_URL = 'http://127.0.0.1:39991'
+import { describe, expect, it } from 'vitest'
+import { baseUrl, prisma, signUp, useAcceptanceServer } from '../support/acceptance-server.js'
 
 const ALLOWED_ORIGIN = 'https://allowed.example.com'
-process.env.CORS_ALLOWED_ORIGINS = ALLOWED_ORIGIN
-// Node's fetch() sends Sec-Fetch-Mode by default, so every state-changing better-auth
-// call needs a trusted Origin, same as a real browser (see req-005/req-006/req-009).
-const TRUSTED_ORIGIN_HEADERS = { origin: ALLOWED_ORIGIN }
 
 const TAX_YEAR = 2026
 
 type InterviewAnswerRow = { userId: string; steuerjahr: number; questionId: string; value: string }
 
 describe('REQ-015 — the Minimal-Gate, against the real server', () => {
-  let app: NestFastifyApplication
-  let baseUrl: string
-  let prisma: PrismaClient
-
-  beforeAll(async () => {
-    const { buildApp } = await import('../../src/main.js')
-    app = await buildApp()
-    await app.listen(0, '127.0.0.1')
-    baseUrl = await app.getUrl()
-    const { PrismaService } = await import('../../src/prisma/prisma.service.js')
-    prisma = app.get(PrismaService)
+  useAcceptanceServer({
+    env: {
+      GUEST_SESSION_SECRET: 'req-015-secret',
+      BETTER_AUTH_SECRET: 'req-015-better-auth-secret-0123456789',
+      BETTER_AUTH_URL: 'http://127.0.0.1:39991',
+      CORS_ALLOWED_ORIGINS: ALLOWED_ORIGIN,
+    },
+    cleanup: async () => {
+      await prisma.$executeRawUnsafe(`DELETE FROM "InterviewAnswer"`)
+      await prisma.taxYear.deleteMany()
+      await prisma.$executeRawUnsafe(`DELETE FROM "TaxDataAccessLog"`)
+      await prisma.session.deleteMany()
+      await prisma.account.deleteMany()
+      await prisma.user.deleteMany()
+    },
   })
-
-  afterEach(async () => {
-    resetRateLimiters(app)
-    await prisma.$executeRawUnsafe(`DELETE FROM "InterviewAnswer"`)
-    await prisma.taxYear.deleteMany()
-    await prisma.$executeRawUnsafe(`DELETE FROM "TaxDataAccessLog"`)
-    await prisma.session.deleteMany()
-    await prisma.account.deleteMany()
-    await prisma.user.deleteMany()
-  })
-
-  afterAll(async () => {
-    await app.close()
-  })
-
-  /** Signs up a fresh account over real HTTP and returns its session cookie + userId. */
-  async function signUp(email: string): Promise<{ cookie: string; userId: string }> {
-    const response = await fetch(`${baseUrl}/api/auth/sign-up/email`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', ...TRUSTED_ORIGIN_HEADERS },
-      body: JSON.stringify({ email, password: 'a-fine-strong-password-1', name: 'Test User' }),
-    })
-    expect(response.status).toBe(200)
-    const body = (await response.json()) as { user: { id: string } }
-    const cookie = response.headers.get('set-cookie')!.split(';')[0]!
-    return { cookie, userId: body.user.id }
-  }
 
   async function interviewRows(userId: string): Promise<InterviewAnswerRow[]> {
     return prisma.$queryRaw<InterviewAnswerRow[]>`

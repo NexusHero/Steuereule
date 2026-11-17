@@ -23,24 +23,10 @@
 // itself. Said explicitly on each, not left for a reader to notice by re-running them against
 // main. Only the second `it` (the aged list-sessions call) and the fourth (the accepted
 // `/unlink-account` loss, ADR-0027) are regression guards on this PR's own change.
-import type { NestFastifyApplication } from '@nestjs/platform-fastify'
-import { PrismaClient } from '@prisma/client'
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
-import { resetRateLimiters } from '../support/reset-rate-limiters.js'
-
-process.env.GUEST_SESSION_SECRET = 'req-014-freshness-secret'
-process.env.BETTER_AUTH_SECRET = 'req-014-freshness-better-auth-secret-0123456789'
-// Placeholder only — unlike `baseUrl` below (the real ephemeral URL `app.listen(0, ...)` binds
-// to), `BETTER_AUTH_URL`/`resolveBetterAuthUrl()` is read once at `createBetterAuth()` construction
-// time, before the real port is known, and nothing in this file ever exercises a path that reads
-// `baseURL` back (no redirect/callback assertions here — see req-005-email-signup.test.ts for
-// those). The fixed port below can't collide with `app.listen(0, ...)`'s own dynamically-assigned
-// one because this tier runs `fileParallelism: false` (vitest.integration.config.ts) — one file at
-// a time, never a second file racing this same literal (Musti's #299 review, F4).
-process.env.BETTER_AUTH_URL = 'http://127.0.0.1:0'
+import { beforeAll, describe, expect, it } from 'vitest'
+import { baseUrl, prisma, useAcceptanceServer } from '../support/acceptance-server.js'
 
 const ALLOWED_ORIGIN = 'https://allowed.example.com'
-process.env.CORS_ALLOWED_ORIGINS = ALLOWED_ORIGIN
 
 const TRUSTED_ORIGIN_HEADERS = { origin: ALLOWED_ORIGIN }
 
@@ -51,30 +37,30 @@ const TRUSTED_ORIGIN_HEADERS = { origin: ALLOWED_ORIGIN }
 const PAST_DEFAULT_FRESH_AGE_MS = 25 * 60 * 60 * 1000
 
 describe('REQ-014 — device list session freshness (list-sessions must not require a fresh sign-in)', () => {
-  let app: NestFastifyApplication
-  let baseUrl: string
-  let prisma: PrismaClient
-
-  beforeAll(async () => {
+  beforeAll(() => {
     process.env.BETTER_AUTH_URL = 'http://127.0.0.1:39998'
-    const { buildApp } = await import('../../src/main.js')
-    app = await buildApp()
-    await app.listen(0, '127.0.0.1')
-    baseUrl = await app.getUrl()
-    const { PrismaService } = await import('../../src/prisma/prisma.service.js')
-    prisma = app.get(PrismaService)
   })
 
-  afterEach(async () => {
-    resetRateLimiters(app)
-    await prisma.session.deleteMany()
-    await prisma.account.deleteMany()
-    await prisma.user.deleteMany()
-    await prisma.profile.deleteMany()
-  })
-
-  afterAll(async () => {
-    await app.close()
+  useAcceptanceServer({
+    env: {
+      GUEST_SESSION_SECRET: 'req-014-freshness-secret',
+      BETTER_AUTH_SECRET: 'req-014-freshness-better-auth-secret-0123456789',
+      // Placeholder only — unlike `baseUrl` (the real ephemeral URL `app.listen(0, ...)` binds
+      // to), `BETTER_AUTH_URL`/`resolveBetterAuthUrl()` is read once at `createBetterAuth()` construction
+      // time, before the real port is known, and nothing in this file ever exercises a path that reads
+      // `baseURL` back (no redirect/callback assertions here — see req-005-email-signup.test.ts for
+      // those). The fixed port can't collide with `app.listen(0, ...)`'s own dynamically-assigned
+      // one because this tier runs `fileParallelism: false` (vitest.integration.config.ts) — one file at
+      // a time, never a second file racing this same literal (Musti's #299 review, F4).
+      BETTER_AUTH_URL: 'http://127.0.0.1:0',
+      CORS_ALLOWED_ORIGINS: ALLOWED_ORIGIN,
+    },
+    cleanup: async () => {
+      await prisma.session.deleteMany()
+      await prisma.account.deleteMany()
+      await prisma.user.deleteMany()
+      await prisma.profile.deleteMany()
+    },
   })
 
   it('[control, not a regression guard — passes identically before and after this PR] a session younger than the library default freshAge can list its own sessions', async () => {

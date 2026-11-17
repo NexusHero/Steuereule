@@ -4,10 +4,6 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
-  newContextAtBreakpoint,
-  guardAgainst429,
-  fail,
-  registerAndOnboard,
   selectTaxYear2025,
   answerBasis,
   chooseTopics,
@@ -17,28 +13,16 @@ import {
   unlockTaxYearInDb,
   runStandaloneScenario,
 } from './helpers/scenario-harness.mjs'
+import { startPersona, completeLstb, assertPrintoutWaitsForComparison, saveCapitalFields } from './helpers/persona-steps.mjs'
 import { openCockpitTopic } from '../harness/flows.mjs'
 
 export async function runScenario21(browser, webOrigin, sql) {
   console.log('\n--- Scenario 21: Dialog Matrix — Embedded Sub-Screens in MasterData, Printout & Confirmation ---')
-  const ctx = await newContextAtBreakpoint(browser, 'l')
-  const page = await ctx.newPage()
-  guardAgainst429(page, fail)
-
   const email = `du+matrix.submasken.${Date.now()}@beispiel.de`
 
-  await registerAndOnboard(
-    page,
-    {
-      email,
-      firstName: 'Stefan',
-      lastName: 'Submaske',
-      taxId: '04452397686',
-      taxNumber: '181/140/01235',
-    },
-    webOrigin,
-    'scenario-21',
-  )
+  const { ctx, page } = await startPersona(browser, webOrigin, 'scenario-21', {
+    email, firstName: 'Stefan', lastName: 'Submaske', taxId: '04452397686', taxNumber: '181/140/01235',
+  })
 
   await selectTaxYear2025(page)
   await page.locator('[data-testid="cockpit-interview"]').click()
@@ -46,12 +30,7 @@ export async function runScenario21(browser, webOrigin, sql) {
   await answerBasis(page, { job: 'Angestellt', ausland: 'Nein', kinder: '1 Kind', familienstand: 'Verheiratet', 'partner-job': 'Angestellt', 'partner-ausland': 'Nein' })
 
   // LStB
-  await waitForStromStep(page, 'lohnsteuerbescheinigung')
-  await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').fill('68000')
-  await page.locator('[data-testid="lstb-lohnsteuer"]').fill('13500')
-  await page.locator('[data-testid="lstb-sozialversicherung"]').fill('13100')
-  await page.locator('[data-testid="lstb-weiter"]').click()
+  await completeLstb(page, { grossWage: '68000', wageTax: '13500', socialSecurity: '13100' })
 
   // Workdays -> the child later (seeded partially below) -> selection -> Cockpit -> Submission check -> Cockpit
   await waitForStromStep(page, 'arbeitsweg')
@@ -69,14 +48,7 @@ export async function runScenario21(browser, webOrigin, sql) {
   await waitForStromStep(page, 'fertig')
   await leaveStrom(page)
   await page.locator('[data-testid="cockpit-kacheln"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="cockpit-abgabe-vorbereiten"]').click()
-  const printBtnStep = page.locator('[data-testid="abgabe-zum-ausdruck"]')
-  await printBtnStep.waitFor({ state: 'visible', timeout: 10_000 })
-  // UX review H3: „Verheiratet“ in the interview already set up the joint return, so the printout waits for the
-  // Veranlagungsart comparison (or its skip) instead of being open before the master data.
-  await page.locator('[data-testid="abgabe-vergleich-ueberspringen"]').waitFor({ state: 'visible', timeout: 10_000 })
-  if (!(await printBtnStep.isDisabled())) fail('Expected abgabe-zum-ausdruck to wait for the comparison in Scenario 21')
-  await page.locator('[data-testid="abgabe-zurueck"]').click()
+  await assertPrintoutWaitsForComparison(page, 'Scenario 21')
 
   // --- 1. MasterDataScreen Partner B inline sub-screens (Back + Save roundtrips) ---
   await page.locator('[data-testid="cockpit-stammdaten"]').waitFor({ state: 'visible', timeout: 10_000 })
@@ -192,17 +164,12 @@ export async function runScenario21(browser, webOrigin, sql) {
   await completeCapitalBtn.waitFor({ state: 'visible', timeout: 10_000 })
   await completeCapitalBtn.click()
   await page.locator('[data-testid="kapital-kapitalertraege"]').waitFor({ state: 'visible', timeout: 10_000 })
-  for (const [id, val] of [
+  await saveCapitalFields(page, [
     ['kapital-sparerPauschbetrag', '1000'],
     ['kapital-kapitalertragsteuer', '125'],
     ['kapital-solidaritaetszuschlag', '6'],
     ['kapital-kirchensteuer', '0'],
-  ]) {
-    await page.locator(`[data-testid="${id}"]`).fill(val)
-    await page.locator(`[data-testid="${id}"]`).blur()
-  }
-  await page.waitForTimeout(400)
-  await page.locator('[data-testid="kapital-weiter"]').click()
+  ])
   await page.locator('[data-testid="ausdruck-zurueck"]').waitFor({ state: 'visible', timeout: 10_000 })
 
   // 2.4 Printout -> Vermietungs-Angaben ergänzen -> Back to Printout

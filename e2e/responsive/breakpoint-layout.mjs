@@ -186,7 +186,7 @@ async function measureScreenMaxWidth(page, route) {
   if (maxWidth === 'none') {
     fail(`Screen container [data-testid="screen-container"] (and its immediate children) has maxWidth 'none' at route ${route}`)
   }
-  return parseFloat(maxWidth)
+  return Number.parseFloat(maxWidth)
 }
 
 /**
@@ -233,7 +233,7 @@ async function measureButtonFillsParent(buttonLocator, label) {
   await buttonLocator.waitFor({ state: 'visible', timeout: 20_000 })
   const { buttonWidth, parentContentWidth } = await buttonLocator.evaluate((el) => {
     const parent = el.parentElement
-    if (!(parent instanceof HTMLElement)) return { buttonWidth: el.getBoundingClientRect().width, parentContentWidth: NaN }
+    if (!(parent instanceof HTMLElement)) return { buttonWidth: el.getBoundingClientRect().width, parentContentWidth: Number.NaN }
     // `width: 100%` resolves against the parent's CONTENT box (padding excluded), not
     // its border box — comparing against `getBoundingClientRect()` on the parent would
     // wrongly fail on any padded parent. `centerScreen` (CockpitScreen LoadError) and
@@ -244,8 +244,8 @@ async function measureButtonFillsParent(buttonLocator, label) {
     // `clientWidth` includes padding but excludes border, so subtract the parent's own
     // computed padding to get the actual box a `width: 100%` child fills.
     const style = getComputedStyle(parent)
-    const paddingLeft = parseFloat(style.paddingLeft) || 0
-    const paddingRight = parseFloat(style.paddingRight) || 0
+    const paddingLeft = Number.parseFloat(style.paddingLeft) || 0
+    const paddingRight = Number.parseFloat(style.paddingRight) || 0
     return {
       buttonWidth: el.getBoundingClientRect().width,
       parentContentWidth: parent.clientWidth - paddingLeft - paddingRight,

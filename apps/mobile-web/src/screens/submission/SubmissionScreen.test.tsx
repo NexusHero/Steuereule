@@ -35,6 +35,18 @@ function mockInterview(answers: Record<string, string>, year = TAX_YEAR) {
   )
 }
 
+/** A married employee with a complete LStB whose coupling carries the given filing type. */
+function mockCompleteMarriedCase(filingType: 'zusammen' | 'einzel') {
+  mockCompleteLstb()
+  mockInterview({ job: 'Angestellt', ausland: 'Nein', kinder: 'Nein', familienstand: 'Verheiratet' })
+  server.use(
+    http.get('*/v1/stammdaten', () => HttpResponse.json({ missing: [], familienstand: 'verheiratet' })),
+    http.get(`*/v1/steuerjahre/${TAX_YEAR}/kopplung`, () =>
+      HttpResponse.json({ filingType, personBUserId: null, invitationCode: null, personB: null }),
+    ),
+  )
+}
+
 function renderSubmission(
   props: {
     onBack?: () => void
@@ -123,14 +135,7 @@ describe('SubmissionScreen (§ 3.4)', () => {
   })
 
   it('skips FilingTypeComparison for singles or Einzelveranlagung and allows Printout directly', async () => {
-    mockCompleteLstb()
-    mockInterview({ job: 'Angestellt', ausland: 'Nein', kinder: 'Nein', familienstand: 'Verheiratet' })
-    server.use(
-      http.get('*/v1/stammdaten', () => HttpResponse.json({ missing: [], familienstand: 'verheiratet' })),
-      http.get(`*/v1/steuerjahre/${TAX_YEAR}/kopplung`, () =>
-        HttpResponse.json({ filingType: 'einzel', personBUserId: null, invitationCode: null, personB: null }),
-      ),
-    )
+    mockCompleteMarriedCase('einzel')
 
     const onOpenPrintout = vi.fn()
     renderSubmission({ onOpenPrintout })
@@ -145,14 +150,7 @@ describe('SubmissionScreen (§ 3.4)', () => {
   })
 
   it('embeds FilingTypeComparison only for Zusammenveranlagung and allows skipping or completing before Printout', async () => {
-    mockCompleteLstb()
-    mockInterview({ job: 'Angestellt', ausland: 'Nein', kinder: 'Nein', familienstand: 'Verheiratet' })
-    server.use(
-      http.get('*/v1/stammdaten', () => HttpResponse.json({ missing: [], familienstand: 'verheiratet' })),
-      http.get(`*/v1/steuerjahre/${TAX_YEAR}/kopplung`, () =>
-        HttpResponse.json({ filingType: 'zusammen', personBUserId: null, invitationCode: null, personB: null }),
-      ),
-    )
+    mockCompleteMarriedCase('zusammen')
 
     const onOpenPrintout = vi.fn()
     renderSubmission({ onOpenPrintout })

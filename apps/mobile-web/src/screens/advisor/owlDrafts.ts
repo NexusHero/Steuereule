@@ -1,7 +1,10 @@
 // Drafts as the owl screen reads them out of the conversation and marks them after a click.
 import { withTwoPathsGroup, type AdvisorActionProposal, type AdvisorChatMessageView } from '@steuereule/core'
 
-export function extractPendingDrafts(messages: readonly AdvisorChatMessageView[]): readonly AdvisorActionProposal[] {
+function extractDraftsWithStatus(
+  messages: readonly AdvisorChatMessageView[],
+  status: AdvisorActionProposal['status'],
+): readonly AdvisorActionProposal[] {
   const seen = new Set<string>()
   const drafts: AdvisorActionProposal[] = []
   for (const msg of messages) {
@@ -15,7 +18,7 @@ export function extractPendingDrafts(messages: readonly AdvisorChatMessageView[]
       candidates.push(grouped.safePath, grouped.maxPath)
     }
     for (const candidate of candidates) {
-      if (candidate.status === 'pending' && !seen.has(candidate.actionId)) {
+      if (candidate.status === status && !seen.has(candidate.actionId)) {
         seen.add(candidate.actionId)
         drafts.push(candidate)
       }
@@ -24,25 +27,12 @@ export function extractPendingDrafts(messages: readonly AdvisorChatMessageView[]
   return drafts
 }
 
+export function extractPendingDrafts(messages: readonly AdvisorChatMessageView[]): readonly AdvisorActionProposal[] {
+  return extractDraftsWithStatus(messages, 'pending')
+}
+
 export function extractAppliedDrafts(messages: readonly AdvisorChatMessageView[]): readonly AdvisorActionProposal[] {
-  const seen = new Set<string>()
-  const drafts: AdvisorActionProposal[] = []
-  for (const msg of messages) {
-    const candidates: AdvisorActionProposal[] = []
-    if (msg.meta?.action) candidates.push(msg.meta.action)
-    if (msg.meta?.actions && !msg.meta.lstbScan) candidates.push(...msg.meta.actions)
-    if (msg.meta?.twoPaths) {
-      const grouped = withTwoPathsGroup(msg.meta.twoPaths)
-      candidates.push(grouped.safePath, grouped.maxPath)
-    }
-    for (const candidate of candidates) {
-      if (candidate.status === 'applied' && !seen.has(candidate.actionId)) {
-        seen.add(candidate.actionId)
-        drafts.push(candidate)
-      }
-    }
-  }
-  return drafts
+  return extractDraftsWithStatus(messages, 'applied')
 }
 
 /** Whether the conversation shows a draft for the spouse; only then is the spouse's name needed (ADR-0073). */

@@ -24,7 +24,7 @@ async function drive(page, picks) {
         return (
           steps.find((s) =>
             own[s] !== undefined
-              ? ids.some(own[s])
+              ? ids.some((id) => own[s](id))
               : ids.some((id) => id.startsWith(`interview-option-${s}-`) || id.startsWith(`katalog-option-${s}-`) || id === `katalog-input-${s}`),
           ) ?? null
         )

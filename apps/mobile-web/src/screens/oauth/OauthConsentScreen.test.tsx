@@ -31,6 +31,26 @@ function renderConsentScreen(props: {
   )
 }
 
+/** Mocks the client lookup and a consent endpoint that answers with a redirect; returns every consent body POSTed. */
+function mockConsentRedirectingTo(redirectUrl: string) {
+  const consentBodies: unknown[] = []
+  server.use(
+    http.get(`${BASE_URL}/v1/oauth/client-info`, () =>
+      HttpResponse.json({
+        clientId: 'claude-desktop',
+        name: 'Claude Desktop',
+        uri: null,
+        icon: null,
+      }),
+    ),
+    http.post(`${BASE_URL}/api/auth/oauth2/consent`, async ({ request }) => {
+      consentBodies.push(await request.json())
+      return HttpResponse.json({ redirect: true, url: redirectUrl })
+    }),
+  )
+  return consentBodies
+}
+
 describe('OauthConsentScreen (ADR-0052 §2 / §9 / §10)', () => {
   it('renders client name, requested scopes, and third-country notice', async () => {
     server.use(
@@ -62,26 +82,8 @@ describe('OauthConsentScreen (ADR-0052 §2 / §9 / §10)', () => {
   })
 
   it('approving calls the consent endpoint with accept: true and navigates to the redirect url', async () => {
-    let consentBody: unknown = null
+    const consentBodies = mockConsentRedirectingTo('http://127.0.0.1:8080/callback?code=test-code-123')
     const onNavigate = vi.fn()
-
-    server.use(
-      http.get(`${BASE_URL}/v1/oauth/client-info`, () =>
-        HttpResponse.json({
-          clientId: 'claude-desktop',
-          name: 'Claude Desktop',
-          uri: null,
-          icon: null,
-        }),
-      ),
-      http.post(`${BASE_URL}/api/auth/oauth2/consent`, async ({ request }) => {
-        consentBody = await request.json()
-        return HttpResponse.json({
-          redirect: true,
-          url: 'http://127.0.0.1:8080/callback?code=test-code-123',
-        })
-      }),
-    )
 
     renderConsentScreen({
       clientId: 'claude-desktop',
@@ -94,35 +96,19 @@ describe('OauthConsentScreen (ADR-0052 §2 / §9 / §10)', () => {
     fireEvent.click(allowBtn)
 
     await waitFor(() => {
-      expect(consentBody).toEqual({
-        accept: true,
-        oauth_query: 'client_id=claude-desktop&sig=xyz',
-      })
+      expect(consentBodies).toEqual([
+        {
+          accept: true,
+          oauth_query: 'client_id=claude-desktop&sig=xyz',
+        },
+      ])
       expect(onNavigate).toHaveBeenCalledWith('http://127.0.0.1:8080/callback?code=test-code-123')
     })
   })
 
   it('denying calls the consent endpoint with accept: false', async () => {
-    let consentBody: unknown = null
+    const consentBodies = mockConsentRedirectingTo('http://127.0.0.1:8080/callback?error=access_denied')
     const onNavigate = vi.fn()
-
-    server.use(
-      http.get(`${BASE_URL}/v1/oauth/client-info`, () =>
-        HttpResponse.json({
-          clientId: 'claude-desktop',
-          name: 'Claude Desktop',
-          uri: null,
-          icon: null,
-        }),
-      ),
-      http.post(`${BASE_URL}/api/auth/oauth2/consent`, async ({ request }) => {
-        consentBody = await request.json()
-        return HttpResponse.json({
-          redirect: true,
-          url: 'http://127.0.0.1:8080/callback?error=access_denied',
-        })
-      }),
-    )
 
     renderConsentScreen({
       clientId: 'claude-desktop',
@@ -135,10 +121,12 @@ describe('OauthConsentScreen (ADR-0052 §2 / §9 / §10)', () => {
     fireEvent.click(denyBtn)
 
     await waitFor(() => {
-      expect(consentBody).toEqual({
-        accept: false,
-        oauth_query: 'client_id=claude-desktop&sig=xyz',
-      })
+      expect(consentBodies).toEqual([
+        {
+          accept: false,
+          oauth_query: 'client_id=claude-desktop&sig=xyz',
+        },
+      ])
       expect(onNavigate).toHaveBeenCalledWith('http://127.0.0.1:8080/callback?error=access_denied')
     })
   })

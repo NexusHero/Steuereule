@@ -11,16 +11,10 @@
 // against Postgres — that IS the "real dependency" half of the acceptance tier, not a
 // stand-in for the API surface: every write and the read-back that recovers the userId
 // go through the real HTTP boundary (`fetch`, real socket) first.
-import type { NestFastifyApplication } from '@nestjs/platform-fastify'
 import { PrismaClient } from '@prisma/client'
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { resolveGuestSessionSecret, verifyGuestSession } from '../../src/auth/guest-session.js'
-import { resetRateLimiters } from '../support/reset-rate-limiters.js'
-
-process.env.GUEST_SESSION_SECRET = 'req-003-secret'
-process.env.BETTER_AUTH_SECRET = 'req-003-better-auth-secret-0123456789'
-process.env.BETTER_AUTH_URL = 'http://127.0.0.1:39993'
-process.env.CORS_ALLOWED_ORIGINS = 'https://allowed.example.com'
+import { baseUrl, prisma, useAcceptanceServer } from '../support/acceptance-server.js'
 
 const VALID_PAYLOAD = {
   firstName: 'Anna',
@@ -40,43 +34,33 @@ function userIdFromSetCookie(setCookieHeader: string | null): string {
 
 /** Raw-SQL read of a Profile column, bypassing the field-encryption client extension entirely. */
 async function rawProfileColumn(
-  prisma: PrismaClient,
+  client: PrismaClient,
   userId: string,
   column: 'steuerId' | 'steuernummer',
 ): Promise<string | null> {
   const rows =
     column === 'steuerId'
-      ? await prisma.$queryRaw<{ value: string | null }[]>`
+      ? await client.$queryRaw<{ value: string | null }[]>`
           SELECT "steuerId" AS value FROM "Profile" WHERE "userId" = ${userId}
         `
-      : await prisma.$queryRaw<{ value: string | null }[]>`
+      : await client.$queryRaw<{ value: string | null }[]>`
           SELECT "steuernummer" AS value FROM "Profile" WHERE "userId" = ${userId}
         `
   return rows[0]?.value ?? null
 }
 
 describe('REQ-003 — encrypted profile persistence at rest, against the real server', () => {
-  let app: NestFastifyApplication
-  let baseUrl: string
-  let prisma: PrismaClient
-
-  beforeAll(async () => {
-    const { buildApp } = await import('../../src/main.js')
-    app = await buildApp()
-    await app.listen(0, '127.0.0.1')
-    baseUrl = await app.getUrl()
-    const { PrismaService } = await import('../../src/prisma/prisma.service.js')
-    prisma = app.get(PrismaService)
-  })
-
-  afterEach(async () => {
-    resetRateLimiters(app)
-    await prisma.profile.deleteMany()
-    await prisma.$executeRawUnsafe(`DELETE FROM "TaxDataAccessLog"`)
-  })
-
-  afterAll(async () => {
-    await app.close()
+  useAcceptanceServer({
+    env: {
+      GUEST_SESSION_SECRET: 'req-003-secret',
+      BETTER_AUTH_SECRET: 'req-003-better-auth-secret-0123456789',
+      BETTER_AUTH_URL: 'http://127.0.0.1:39993',
+      CORS_ALLOWED_ORIGINS: 'https://allowed.example.com',
+    },
+    cleanup: async () => {
+      await prisma.profile.deleteMany()
+      await prisma.$executeRawUnsafe(`DELETE FROM "TaxDataAccessLog"`)
+    },
   })
 
   it('REQ-003.1 round-trip: a real PUT then GET over HTTP returns the same Steuer-ID in plaintext', async () => {

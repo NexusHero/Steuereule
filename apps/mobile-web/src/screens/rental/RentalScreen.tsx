@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ScrollView, View, Text, Pressable, type ViewStyle, type TextStyle } from 'react-native'
+import { ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { Button, Card, Chip, Feld, Input, useTheme, useBreakpoint, type UiTheme } from '@steuereule/ui'
@@ -19,7 +19,8 @@ import {
   type RentalPropertyDto,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
-import { integerFrom } from '../shared/integer'
+import { UnclearableNumberField } from '../shared/UnclearableNumberField'
+import { screenHeaderStyles } from '../shared/screenStyles'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { CatalogScreen } from '../catalog/CatalogScreen'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
@@ -181,10 +182,12 @@ function PropertyCard({
     <Card style={styles.objektCard}>
       <Text style={styles.objektHeading}>{tr('vermietung.objektHeading', { index: index + 1 })}</Text>
       {RENTAL_FIELDS.map((field) => (
-        <RentalFieldEditor
+        <UnclearableNumberField
           key={field}
           label={tr(`vermietung.felder.${field}`)}
           state={property[field]}
+          placeholder={tr('vermietung.feld.placeholder')}
+          unclearLabel={tr('vermietung.feld.unklar')}
           testID={`vermietung-${index}-${field}`}
           onRecorded={(value) => onSend(field, { kind: 'erfasst', value })}
           onUnclear={() => onSend(field, { kind: 'unklar' })}
@@ -314,53 +317,6 @@ function PropertyCard({
   )
 }
 
-function RentalFieldEditor({
-  label,
-  state,
-  testID,
-  onRecorded,
-  onUnclear,
-}: {
-  readonly label: string
-  readonly state: RentalFieldDto
-  readonly testID?: string
-  readonly onRecorded: (value: number) => void
-  readonly onUnclear: () => void
-}) {
-  const t = useTheme()
-  const { t: tr } = useTranslation(APP_NS)
-  const s = makeStyles(t)
-  const [text, setText] = useState(state.kind === 'erfasst' ? String(state.value) : '')
-
-  function commit() {
-    const value = integerFrom(text)
-    if (value === null) return
-    if (state.kind === 'erfasst' && state.value === value) return
-    onRecorded(value)
-  }
-
-  return (
-    <Feld label={label}>
-      <View style={s.feldRow}>
-        <Input
-          type="numeric"
-          mono
-          value={state.kind === 'unklar' ? '' : text}
-          onChange={setText}
-          placeholder={tr('vermietung.feld.placeholder')}
-          onSubmit={commit}
-          onBlur={commit}
-          accessibilityLabel={`${label} (${tr('vermietung.feld.placeholder')})`}
-          {...(testID ? { testID } : {})}
-        />
-        <Pressable accessibilityRole="button" onPress={onUnclear} style={s.unklarButton}>
-          <Text style={state.kind === 'unklar' ? s.unklarActive : s.unklarLabel}>{tr('vermietung.feld.unklar')}</Text>
-        </Pressable>
-      </View>
-    </Feld>
-  )
-}
-
 function FactsNotice({ property }: { readonly property: RentalPropertyDto }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
@@ -418,13 +374,6 @@ function StatusNotice({ response }: { readonly response: RentalResponseDto }) {
 function makeStyles(t: UiTheme) {
   const screen: ViewStyle = t.layout.flow.narrow
   const wideScreen: ViewStyle = t.layout.flow.wide
-  const headerRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', marginBottom: t.space.s4 }
-  const heading: TextStyle = {
-    ...t.type.title,
-    color: t.color.tinte,
-    marginBottom: t.space.s2,
-  }
-  const help: TextStyle = { ...t.type.body, color: t.color.tinte2, marginBottom: t.space.s4 }
   const notice: TextStyle = {
     ...t.type.body,
     color: t.color.tinte,
@@ -435,16 +384,6 @@ function makeStyles(t: UiTheme) {
   }
   const propertyCard: ViewStyle = { marginBottom: t.space.s4 }
   const propertyHeading: TextStyle = { ...t.type.cardTitle, color: t.color.tinte, marginBottom: t.space.s3 }
-  const fieldRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s3 }
-  const unclearButton: ViewStyle = {
-    paddingHorizontal: t.space.s3,
-    paddingVertical: t.space.s2,
-    borderWidth: t.space.kontur,
-    borderColor: t.color.tinte,
-    borderRadius: t.radius.s,
-  }
-  const unclearLabel: TextStyle = { ...t.type.small, color: t.color.tinte2 }
-  const unclearActive: TextStyle = { ...t.type.label, color: t.color.tinte }
   const factsBlock: ViewStyle = { marginTop: t.space.s3, padding: t.space.s3, borderWidth: t.space.kontur, borderColor: t.color.tinte, borderRadius: t.radius.s }
   const factsRow: TextStyle = { ...t.type.body, color: t.color.tinte, marginBottom: t.space.s1 }
   const factsSource: TextStyle = { ...t.type.small, color: t.color.tinte2 }
@@ -458,16 +397,10 @@ function makeStyles(t: UiTheme) {
   return {
     screen,
     wideScreen,
-    headerRow,
-    heading,
-    help,
+    ...screenHeaderStyles(t),
     notice,
     objektCard: propertyCard,
     objektHeading: propertyHeading,
-    feldRow: fieldRow,
-    unklarButton: unclearButton,
-    unklarLabel: unclearLabel,
-    unklarActive: unclearActive,
     faktenBlock: factsBlock,
     faktenZeile: factsRow,
     faktenHerkunft: factsSource,

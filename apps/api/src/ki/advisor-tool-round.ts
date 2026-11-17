@@ -22,6 +22,7 @@ import {
   computeGiftTax,
   estimateTradeTax,
   checkRentalRepairs,
+  isChurchTaxFactor,
   privateSalesExemptionLimit,
   privateSalesWithinLimit,
   type AdvisorActionProposal,
@@ -511,7 +512,7 @@ export async function runToolRound(
     if (tc.name === 'compute_income_tax') {
       const args = parseArgs(TOOL_ARG_SCHEMAS.compute_income_tax)
       if (args === null) continue
-      if (args.churchTaxRate !== 0 && args.churchTaxRate !== 0.08 && args.churchTaxRate !== 0.09) {
+      if (!isChurchTaxFactor(args.churchTaxRate)) {
         answer({ ok: false, error: 'Der Kirchensteuersatz ist 0, 0.08 (Bayern, Baden-Württemberg) oder 0.09.' })
         continue
       }
@@ -523,7 +524,7 @@ export async function runToolRound(
     if (tc.name === 'compare_filing_types' || tc.name === 'check_capital_taxation') {
       const raw = tc.name === 'compare_filing_types' ? parseArgs(TOOL_ARG_SCHEMAS.compare_filing_types) : parseArgs(TOOL_ARG_SCHEMAS.check_capital_taxation)
       if (raw === null) continue
-      if (raw.churchTaxRate !== 0 && raw.churchTaxRate !== 0.08 && raw.churchTaxRate !== 0.09) {
+      if (!isChurchTaxFactor(raw.churchTaxRate)) {
         answer({ ok: false, error: 'Der Kirchensteuersatz ist 0, 0.08 (Bayern, Baden-Württemberg) oder 0.09.' })
         continue
       }

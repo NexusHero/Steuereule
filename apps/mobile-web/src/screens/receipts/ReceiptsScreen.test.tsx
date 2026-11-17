@@ -471,7 +471,7 @@ describe('BelegeScreen', () => {
   it('treats a non-200 response as an honest error, not a silent empty fallthrough', async () => {
     server.use(http.get(RECEIPTS_URL, () => HttpResponse.json([], { status: 500 })))
     renderReceipts()
-    await screen.findByText('Das hat nicht geklappt.')
+    expect(await screen.findByText('Das hat nicht geklappt.')).toBeTruthy()
   })
 
   it('switches to English when the locale changes (ADR-0006)', async () => {

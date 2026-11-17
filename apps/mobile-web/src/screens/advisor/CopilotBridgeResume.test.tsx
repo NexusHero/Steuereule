@@ -1,13 +1,9 @@
-import { useState } from 'react'
 import { afterEach, describe, expect, it } from 'vitest'
 import { act, render, screen, waitFor } from '@testing-library/react'
-import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
-import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
-import { CopilotBridgeProvider, useCopilotBridge, type CopilotMode, type StreamOutcome } from './CopilotBridgeProvider'
+import { useCopilotBridge, type StreamOutcome } from './CopilotBridgeProvider'
+import { CopilotBridgeHarness } from '../../test-advisor'
 
 const encoder = new TextEncoder()
 const frame = (id: number, event: string, data: unknown): Uint8Array => encoder.encode(`id: ${id}\nevent: ${event}\ndata: ${JSON.stringify(data)}\n\n`)
@@ -45,20 +41,12 @@ function openStream(frames: Uint8Array[]): Response {
   }), SSE)
 }
 
-function Harness({ children }: { readonly children: React.ReactNode }) {
-  const [mode, setMode] = useState<CopilotMode>('eulen-modus')
-  const [queryClient] = useState(() => new QueryClient({ defaultOptions: { queries: { retry: false } } }))
-  return (
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={createAppI18n('de')}>
-        <ThemeProvider mode="light">
-          <CopilotBridgeProvider mode={mode} onModeChange={setMode} taxYear={2025}>
-            {children}
-          </CopilotBridgeProvider>
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>
-  )
+/** The stop endpoint; `stopped` collects the id of every run it was asked to stop. */
+function stopEndpoint(stopped: string[]) {
+  return http.post('*/v1/steuerjahre/2025/advisor/runs/:runId/stop', ({ params }) => {
+    stopped.push(String(params.runId))
+    return HttpResponse.json({ stopped: true })
+  })
 }
 
 let outcome: StreamOutcome | 'pending' = 'pending'
@@ -82,9 +70,9 @@ function Probe() {
 function mount() {
   outcome = 'pending'
   render(
-    <Harness>
+    <CopilotBridgeHarness>
       <Probe />
-    </Harness>,
+    </CopilotBridgeHarness>,
   )
 }
 
@@ -137,10 +125,7 @@ describe('CopilotBridge: answers survive the connection (#476)', () => {
     const stopped: string[] = []
     server.use(
       http.post('*/v1/steuerjahre/2025/advisor/stream', () => openStream([frame(1, 'start', START), frame(2, 'token', { text: 'Bis zu ' })])),
-      http.post('*/v1/steuerjahre/2025/advisor/runs/:runId/stop', ({ params }) => {
-        stopped.push(String(params.runId))
-        return HttpResponse.json({ stopped: true })
-      }),
+      stopEndpoint(stopped),
     )
     mount()
     act(() => screen.getByTestId('send').click())
@@ -162,10 +147,7 @@ describe('CopilotBridge: answers survive the connection (#476)', () => {
           messages: [USER_MESSAGE, { id: 'm2', role: 'assistant', content: '', meta: null, createdAt: '2026-11-11T10:00:01.000Z', status: 'streaming', runId: 'run-early' }],
         }),
       ),
-      http.post('*/v1/steuerjahre/2025/advisor/runs/:runId/stop', ({ params }) => {
-        stopped.push(String(params.runId))
-        return HttpResponse.json({ stopped: true })
-      }),
+      stopEndpoint(stopped),
     )
     mount()
     act(() => screen.getByTestId('send').click())

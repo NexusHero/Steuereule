@@ -129,9 +129,9 @@ export function extractLstbTaxYear(rawText: string): number | null {
 
   const highPriorityPatterns = [
     /Lohnsteuerbescheinigung\s+(?:f(?:ü|ue|u|ii|i)r\s+(?:das\s+)?)?(?:Kalenderjahr\s+)?(20\d{2})\b/i,
-    /(?:für\s+das\s+Kalenderjahr|Kalenderjahr)\s*[:-]?\s*(20\d{2})\b/i,
+    /(?:für\s+das\s+Kalenderjahr|Kalenderjahr)\s*(?:[:-]\s*)?(20\d{2})\b/i,
     /Bescheinigungszeitraum[^\n]*?(20\d{2})\b/i,
-    /Zeitraum\s*[:-]?\s*\d{2}\.\d{2}\.(20\d{2})\s*(?:-|bis)\s*\d{2}\.\d{2}\.(20\d{2})\b/i,
+    /Zeitraum\s*(?:[:-]\s*)?\d{2}\.\d{2}\.(20\d{2})\s*(?:-|bis)\s*\d{2}\.\d{2}\.(20\d{2})\b/i,
   ]
 
   for (const rx of highPriorityPatterns) {
@@ -384,9 +384,9 @@ const ROW_HEADINGS: readonly (readonly [RegExp, RegExp])[] = [
  */
 function rowSegment(rawLine: string): string {
   const line = rawLine.trim()
-  for (const m of line.matchAll(/(?<=^|[\s|:;])(\d{1,2}\s*[ab]?)\.?\s+(?=\S)/g)) {
+  for (const m of line.matchAll(/(?<=^|[\s|:;])(?:(\d{1,2}\s*[ab])\.?\s+|(\d{1,2})\s*(?:\.\s+|(?<=\s)))(?=\S)/g)) {
     const start = m.index ?? 0
-    const number = m[1]!.trim()
+    const number = (m[1] ?? m[2])!.trim()
     const heading = foldOcr(line.slice((m.index ?? 0) + m[0].length))
     if (ROW_HEADINGS.some(([num, head]) => num.test(number) && head.test(heading))) return line.slice(start).trimStart()
   }
@@ -406,8 +406,8 @@ function classifyLine(rawLine: string): MatchedRowKey | null {
 
   if (/^(?:Zeile\s+)?23\s*a(?![\d])(?:\b|[.)])/i.test(line) || /^23\.\s*a\)/i.test(line)) return '23a'
   if (/^(?:Zeile\s+)?23\s*b(?![\d])(?:\b|[.)])/i.test(line) || /^23\.\s*b\)/i.test(line)) return '23b'
-  if (/^23\.?\s+\S*\s*a\)\s*zur\s+gesetzlichen\s+Rente/i.test(line)) return '23a'
-  if (/^23\.?\s+\S*\s*b\)/i.test(line)) return '23b'
+  if (/^23\.?\s+(?:\S+\s*)?a\)\s*zur\s+gesetzlichen\s+Rente/i.test(line)) return '23a'
+  if (/^23\.?\s+(?:\S+\s*)?b\)/i.test(line)) return '23b'
   if (/^(?:Zeile\s+)?23(?!\s*[ab])(?![\d,]|\.\d)(?:\b|[.)])/i.test(line)) return '23'
   if (/^(?:Zeile\s+)?25(?![\d,]|\.\d)(?:\b|[.)])/i.test(line)) return '25'
   if (/^(?:Zeile\s+)?26(?![\d,]|\.\d)(?:\b|[.)])/i.test(line)) return '26'
@@ -426,9 +426,9 @@ function classifyLine(rawLine: string): MatchedRowKey | null {
   if (/Arbeitnehmeranteil.*Rentenversicherung/i.test(line) && !/Arbeitgeber/i.test(line)) return '23a'
   if (/berufsständische/i.test(line) && /Arbeitnehmer/i.test(line)) return '23b'
   const folded = foldOcr(line)
-  if (/arbeitnehmerbeitr\S*.*gesetzlichen\s+krankenvers/.test(folded)) return '25'
-  if (/arbeitnehmerbeitr\S*.*sozialen\s+pflegevers/.test(folded)) return '26'
-  if (/arbeitnehmerbeitr\S*.*arbeits.{0,2}osenvers/.test(folded)) return '27'
+  if (/arbeitnehmerbeitr.*gesetzlichen\s+krankenvers/.test(folded)) return '25'
+  if (/arbeitnehmerbeitr.*sozialen\s+pflegevers/.test(folded)) return '26'
+  if (/arbeitnehmerbeitr.*arbeits.{0,2}osenvers/.test(folded)) return '27'
 
   return null
 }
@@ -443,7 +443,7 @@ function extractTrailingAmount(line: string, isRowHeader: boolean): number | nul
     ' ',
   )
   if (isRowHeader) {
-    sanitized = sanitized.replace(/^(?:Zeile\s+)?\d{1,2}\s*[a-c]?[.)]?(?=\s+[A-Za-zÄÖÜäöüß(])\s*/i, '')
+    sanitized = sanitized.replace(/^(?:Zeile\s+)?\d{1,2}\s*(?:[a-c][.)]?\s+|[.)]\s+|(?<=\s))(?=[A-Za-zÄÖÜäöüß(])/i, '')
   }
   // OCR of a photo turns the decimal comma at the end of the line into a quote, or splits it off
   // with a space ("5.051 ‚76", "4.182 ,64", "977'76"); only the last two digits of the line qualify.
@@ -453,7 +453,7 @@ function extractTrailingAmount(line: string, isRowHeader: boolean): number | nul
 
   if (!sanitized) return null
 
-  const amountRegex = /(?:^|\s)((?:\d{1,3}(?:[.\s]\d{3})+|\d+)(?:[,.]\d{1,2})?)\s*(?:€|EUR|Euro)?(?=\s*$|\s+\S*$)/g
+  const amountRegex = /(?:^|\s)((?:\d{1,3}(?:[.\s]\d{3})+|\d+)(?:[,.]\d{1,2})?)(?:\s*(?:€|EUR|Euro))?(?=\s*$|\s+\S*$)/g
   let lastValid: number | null = null
   for (const m of sanitized.matchAll(amountRegex)) {
     const candidate = m[1]
@@ -572,7 +572,15 @@ export function parseLstbTextDeterministically(rawText: string): LstbExtractionR
   })
 }
 
-const AMOUNT_ONLY_LINE = /^\s*\d{1,3}(?:[.\s]\d{3})*(?:[,.]\d{1,2})?\s*(?:€|EUR|Euro)?\s*$/i
+const BARE_AMOUNT = /^\d{1,3}(?:[.\s]\d{3})*(?:[,.]\d{1,2})?$/
+const AMOUNT_UNITS = ['€', 'euro', 'eur'] as const
+
+/** A line that is nothing but one amount, with or without its currency. */
+function isAmountOnlyLine(line: string): boolean {
+  const text = line.trim()
+  const unit = AMOUNT_UNITS.find((candidate) => text.slice(-candidate.length).toLowerCase() === candidate)
+  return BARE_AMOUNT.test(unit === undefined ? text : text.slice(0, -unit.length).trimEnd())
+}
 
 /**
  * Allowlist for the text fallback (ADR-0058): keeps only the certificate rows 3, 4, 23–27
@@ -600,7 +608,7 @@ export function selectLstbRelevantLines(rawText: string): string {
       const next = lines[i + offset]!.trim()
       if (!next) continue
       if (classifyLine(next) !== null) break
-      if (AMOUNT_ONLY_LINE.test(next)) {
+      if (isAmountOnlyLine(next)) {
         kept.push(next)
         i += offset
       }

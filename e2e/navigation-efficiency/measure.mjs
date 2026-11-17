@@ -15,6 +15,7 @@
 //                        count until the same mask is on screen again.
 // Writes $NAV_REPORT_DIR/<variant>.json (default /tmp/navigation-efficiency).
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { createMeter } from './instrument.mjs'
@@ -23,7 +24,7 @@ import { openCockpitTopic } from '../harness/flows.mjs'
 const HERE = dirname(fileURLToPath(import.meta.url))
 const VARIANT = process.env.NAV_VARIANT ?? 'neu'
 const ROOT = resolve(process.env.NAV_ROOT ?? join(HERE, '..', '..'))
-const REPORT_DIR = process.env.NAV_REPORT_DIR ?? '/tmp/navigation-efficiency'
+const REPORT_DIR = process.env.NAV_REPORT_DIR ?? join(tmpdir(), 'navigation-efficiency')
 const PASSWORD = 'Sicheres-Passwort-1!'
 const BUDGET_SLACK = 0.1
 

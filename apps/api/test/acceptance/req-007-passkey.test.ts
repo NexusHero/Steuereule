@@ -41,24 +41,12 @@
 //       the plugin's own coverage, recorded here rather than forced with bespoke middleware on
 //       the plugin's route (TOTP's re-auth is proven separately in req-007-totp.test.ts).
 import { createHash, generateKeyPairSync, randomBytes, sign as signCrypto } from 'node:crypto'
-import type { NestFastifyApplication } from '@nestjs/platform-fastify'
-import { PrismaClient } from '@prisma/client'
 import { encodeCBOR } from '@levischuck/tiny-cbor'
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
-import { resetRateLimiters } from '../support/reset-rate-limiters.js'
-
-process.env.GUEST_SESSION_SECRET = 'req-007-passkey-secret'
-process.env.BETTER_AUTH_SECRET = 'req-007-passkey-better-auth-secret-0123456789'
-// The RP ID is the API's own baseURL hostname (the plugin's default: `getRpID` = baseURL
-// hostname when no `rpID` option is set) — a synthetic registrable domain, not the cross-site
-// web-app origin the deployed demo actually splits across. Using one origin keeps the WebAuthn
-// `expectedOrigin`/`expectedRPID` consistent for the test; a real cross-site deployment sets
-// `rpID` explicitly (see the register row's known-limit note).
-process.env.BETTER_AUTH_URL = 'https://passkey.example.com'
+import { describe, expect, it } from 'vitest'
+import { baseUrl, prisma, useAcceptanceServer } from '../support/acceptance-server.js'
 
 const ORIGIN = 'https://passkey.example.com'
 const RP_ID = 'passkey.example.com'
-process.env.CORS_ALLOWED_ORIGINS = ORIGIN
 
 const PASSWORD = 'a-fine-strong-password-1'
 const TRUSTED_ORIGIN_HEADERS = { origin: ORIGIN }
@@ -190,32 +178,27 @@ function cookieNamed(setCookie: string | null, name: string): string {
 }
 
 describe('REQ-007 — WebAuthn passkey (passwordless sign-in), against the real server', () => {
-  let app: NestFastifyApplication
-  let baseUrl: string
-  let prisma: PrismaClient
-
-  beforeAll(async () => {
-    const { buildApp } = await import('../../src/main.js')
-    app = await buildApp()
-    await app.listen(0, '127.0.0.1')
-    baseUrl = await app.getUrl()
-    const { PrismaService } = await import('../../src/prisma/prisma.service.js')
-    prisma = app.get(PrismaService)
-  })
-
-  afterEach(async () => {
-    resetRateLimiters(app)
-    await prisma.passkey.deleteMany()
-    await prisma.twoFactor.deleteMany()
-    await prisma.session.deleteMany()
-    await prisma.account.deleteMany()
-    await prisma.verification.deleteMany()
-    await prisma.user.deleteMany()
-    await prisma.profile.deleteMany()
-  })
-
-  afterAll(async () => {
-    await app.close()
+  useAcceptanceServer({
+    env: {
+      GUEST_SESSION_SECRET: 'req-007-passkey-secret',
+      BETTER_AUTH_SECRET: 'req-007-passkey-better-auth-secret-0123456789',
+      // The RP ID is the API's own baseURL hostname (the plugin's default: `getRpID` = baseURL
+      // hostname when no `rpID` option is set) — a synthetic registrable domain, not the cross-site
+      // web-app origin the deployed demo actually splits across. Using one origin keeps the WebAuthn
+      // `expectedOrigin`/`expectedRPID` consistent for the test; a real cross-site deployment sets
+      // `rpID` explicitly (see the register row's known-limit note).
+      BETTER_AUTH_URL: 'https://passkey.example.com',
+      CORS_ALLOWED_ORIGINS: ORIGIN,
+    },
+    cleanup: async () => {
+      await prisma.passkey.deleteMany()
+      await prisma.twoFactor.deleteMany()
+      await prisma.session.deleteMany()
+      await prisma.account.deleteMany()
+      await prisma.verification.deleteMany()
+      await prisma.user.deleteMany()
+      await prisma.profile.deleteMany()
+    },
   })
 
   async function signUp(email: string): Promise<string> {

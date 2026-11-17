@@ -116,7 +116,7 @@ export function withAdaptiveDatabasePoolUrl(
   if (databaseUrl !== databaseUrl.replace(/^\s+/, '')) {
     return databaseUrl
   }
-  const trimmed = databaseUrl.replace(/\s+$/, '')
+  const trimmed = databaseUrl.trimEnd()
   let parsed: URL
   try {
     parsed = new URL(trimmed)

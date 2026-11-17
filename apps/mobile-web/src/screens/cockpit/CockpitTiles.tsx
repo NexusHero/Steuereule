@@ -19,6 +19,7 @@ import type { PartnerAreaParam } from '../../navigation/routes'
 import type { FunnelPath } from '../funnel/KontoWandScreen'
 import { CockpitPartnerSection } from './CockpitPartnerSection'
 import { derivePersonas } from './personas'
+import { tileStyles } from './tileStyles'
 import { TILES, groupTiles, hasAnswersForEntry, isRequiredTile, tileHintSeverity, type TileDefinition, type TileFacts, type TileId, type TileStatus } from './tiles'
 
 export function useCockpitTileFacts(
@@ -348,16 +349,12 @@ function statusStyle(status: TileStatus, styles: ReturnType<typeof makeStyles>):
 }
 
 function makeStyles(t: UiTheme) {
+  const tile = tileStyles(t)
+  const { statusPillBase, statusBase } = tile
   const section: ViewStyle = {
     width: '100%',
     marginTop: t.space.s4,
     gap: t.space.s3,
-  }
-  const grid: ViewStyle = {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: t.space.s3,
-    width: '100%',
   }
   const submissionWrap: ViewStyle = { width: '100%' }
   const submissionTitle: TextStyle = {
@@ -365,63 +362,9 @@ function makeStyles(t: UiTheme) {
     color: t.color.tinte,
   }
   const submissionHint: TextStyle = { ...t.type.small, color: t.color.tinte2, marginTop: t.space.s1 }
-  const tileWrapNarrow: ViewStyle = {
-    width: '100%',
-  }
-  const tileWrapWide: ViewStyle = {
-    flexBasis: 260,
-    flexGrow: 1,
-  }
-  // Tiles sit flat on the ground — the screen's one hard shadow belongs to its primary action.
-  const card: ViewStyle = {
-    marginBottom: 0,
-    borderWidth: t.space.kontur,
-    // tinte-2 (6:1) keeps a tappable tile recognisable — linie-weich is only ~1.3:1 (WCAG 1.4.11).
-    borderColor: t.color.tinte2,
-  }
-  const cardDone: ViewStyle = {
-    paddingVertical: t.space.s3,
-    paddingHorizontal: t.space.s4,
-    borderColor: t.color.linie,
-    opacity: 0.92,
-  }
-  const cardActive: ViewStyle = {
-    borderColor: t.color.tinte,
-  }
-  const tileHeaderRow: ViewStyle = {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    gap: t.space.s2,
-    marginBottom: t.space.s1,
-  }
-  const title: TextStyle = {
-    ...t.type.cardTitle,
-    color: t.color.tinte,
-    flex: 1,
-    flexShrink: 1,
-  }
-  const titleDone: TextStyle = {
-    ...t.type.itemTitle,
-    color: t.color.tinte,
-  }
-  const formular: TextStyle = { ...t.type.meta, color: t.color.tinte2 }
   const formularDone: TextStyle = { ...t.type.caption, color: t.color.tinte2 }
-  const statusPillBase: ViewStyle = {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: t.space.s2,
-    paddingVertical: 2,
-    borderRadius: t.radius.pille,
-  }
-  const statusPillDone: ViewStyle = { ...statusPillBase, backgroundColor: t.color.okWeich }
   const statusPillLater: ViewStyle = { ...statusPillBase, backgroundColor: t.color.warnWeich }
-  const statusPillOpen: ViewStyle = { ...statusPillBase, backgroundColor: t.color.funkeWeich }
   const statusPillOptional: ViewStyle = { ...statusPillBase, borderWidth: 1, borderColor: t.color.linieWeich }
-  const statusBase: TextStyle = { ...t.type.label }
-  const statusOpen: TextStyle = { ...statusBase, color: t.color.tinte }
-  const statusDone: TextStyle = { ...statusBase, color: t.color.ok }
   const statusLater: TextStyle = { ...statusBase, color: t.color.warn }
   const statusOptional: TextStyle = { ...statusBase, color: t.color.tinte2 }
   const groupHeadingRow: ViewStyle = { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: t.space.s2 }
@@ -469,24 +412,13 @@ function makeStyles(t: UiTheme) {
   }
 
   return {
+    ...tile,
     section,
-    grid,
-    tileWrapNarrow,
-    tileWrapWide,
     submissionWrap,
     submissionTitle,
     submissionHint,
-    card,
-    cardDone,
-    cardActive,
-    tileHeaderRow,
-    title,
-    titleDone,
-    formular,
     formularDone,
-    statusPillDone,
     statusPillLater,
-    statusPillOpen,
     statusPillOptional,
     statusOptional,
     groupHeadingRow,
@@ -496,8 +428,6 @@ function makeStyles(t: UiTheme) {
     rowDivider,
     rowCopy,
     rowTitle,
-    statusOpen,
-    statusDone,
     statusLater,
     hintBlocker,
     hintWarning,

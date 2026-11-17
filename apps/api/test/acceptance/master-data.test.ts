@@ -1,17 +1,10 @@
 // ADR-0050 — the Erklärungs-Stammdaten against the real server and Postgres: what the
 // Hauptvordruck ESt 1 A needs beyond name/Steuer-ID, encrypted at rest, religion only
 // with explicit Art. 9 consent, account-only.
-import type { NestFastifyApplication } from '@nestjs/platform-fastify'
-import { PrismaClient } from '@prisma/client'
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
-import { resetRateLimiters } from '../support/reset-rate-limiters.js'
-
-process.env.GUEST_SESSION_SECRET = 'stammdaten-secret'
-process.env.BETTER_AUTH_SECRET = 'stammdaten-better-auth-secret-0123456789'
-process.env.BETTER_AUTH_URL = 'http://127.0.0.1:39995'
+import { describe, expect, it } from 'vitest'
+import { baseUrl, prisma, signUp, useAcceptanceServer } from '../support/acceptance-server.js'
 
 const ALLOWED_ORIGIN = 'https://allowed.example.com'
-process.env.CORS_ALLOWED_ORIGINS = ALLOWED_ORIGIN
 
 const COMPLETE = {
   geburtsdatum: '1990-04-12',
@@ -27,42 +20,21 @@ const COMPLETE = {
 }
 
 describe('Stammdaten (ADR-0050), against the real server', () => {
-  let app: NestFastifyApplication
-  let baseUrl: string
-  let prisma: PrismaClient
-
-  beforeAll(async () => {
-    const { buildApp } = await import('../../src/main.js')
-    app = await buildApp()
-    await app.listen(0, '127.0.0.1')
-    baseUrl = await app.getUrl()
-    const { PrismaService } = await import('../../src/prisma/prisma.service.js')
-    prisma = app.get(PrismaService)
+  useAcceptanceServer({
+    env: {
+      GUEST_SESSION_SECRET: 'stammdaten-secret',
+      BETTER_AUTH_SECRET: 'stammdaten-better-auth-secret-0123456789',
+      BETTER_AUTH_URL: 'http://127.0.0.1:39995',
+      CORS_ALLOWED_ORIGINS: ALLOWED_ORIGIN,
+    },
+    cleanup: async () => {
+      await prisma.$executeRawUnsafe(`DELETE FROM "Stammdaten"`)
+      await prisma.$executeRawUnsafe(`DELETE FROM "TaxDataAccessLog"`)
+      await prisma.session.deleteMany()
+      await prisma.account.deleteMany()
+      await prisma.user.deleteMany()
+    },
   })
-
-  afterEach(async () => {
-    resetRateLimiters(app)
-    await prisma.$executeRawUnsafe(`DELETE FROM "Stammdaten"`)
-    await prisma.$executeRawUnsafe(`DELETE FROM "TaxDataAccessLog"`)
-    await prisma.session.deleteMany()
-    await prisma.account.deleteMany()
-    await prisma.user.deleteMany()
-  })
-
-  afterAll(async () => {
-    await app.close()
-  })
-
-  async function signUp(email: string): Promise<{ cookie: string; userId: string }> {
-    const response = await fetch(`${baseUrl}/api/auth/sign-up/email`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', origin: ALLOWED_ORIGIN },
-      body: JSON.stringify({ email, password: 'a-fine-strong-password-1', name: 'Test User' }),
-    })
-    expect(response.status).toBe(200)
-    const body = (await response.json()) as { user: { id: string } }
-    return { cookie: response.headers.get('set-cookie')!.split(';')[0]!, userId: body.user.id }
-  }
 
   function put(cookie: string, body: unknown) {
     return fetch(`${baseUrl}/v1/stammdaten`, {

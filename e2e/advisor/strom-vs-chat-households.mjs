@@ -309,7 +309,7 @@ const weber = {
     ...wayOf('A', W.thomas.commute), ...wayOf('B', W.sabine.commute),
     'kapital.inhaber': 'gemeinsam', 'kapital.depot.kind': 'deutscher-broker', 'kapital.kapitalertraege': 50000, 'kapital.sparerPauschbetrag': 2000, 'kapital.kapitalertragsteuer': 12000, 'kapital.solidaritaetszuschlag': 660, 'kapital.kirchensteuer': 0,
     ...Object.fromEntries(W.rentals.flatMap((r, i) => {
-      const [street, number] = [r.address.street.replace(/\s+\d+$/, ''), r.address.street.match(/(\d+)$/)[1]]
+      const [street, number] = [r.address.street.replace(/(?<!\s)\s+\d+$/, ''), r.address.street.match(/(?<!\d)(\d+)$/)[1]]
       return Object.entries({ mieteinnahmen: r.grossRent, werbungskosten: r.advertisingCosts, anschaffungskosten: r.buildingCost, baujahr: r.yearOfConstruction, strasse: street, hausnummer: number, plz: r.address.postalCode, city: r.address.city, livingArea: r.address.livingArea, einheiten: r.address.units, depreciationAsLastYear: true })
         .map(([k, v]) => [`vermietung.properties[${i}].${k}`, v])
     })),

@@ -9,6 +9,7 @@ import { http, HttpResponse } from 'msw'
 import { createAppI18n } from '../../i18n/app-i18n'
 import { PlausibilityScreen } from './PlausibilityScreen'
 import { server } from '../../test-msw-server'
+import { COMPLETE_LSTB_RESPONSE } from '../../test-lstb-fixtures'
 
 const TAX_YEAR = 2026
 
@@ -26,6 +27,16 @@ function renderPlausibility() {
   )
 }
 
+function completeLstb() {
+  return http.get(`*/v1/steuerjahre/${TAX_YEAR}/lstb`, () => HttpResponse.json(COMPLETE_LSTB_RESPONSE, { status: 200 }))
+}
+
+function finishedInterview(answers: Record<string, string>) {
+  return http.get(`*/v1/steuerjahre/${TAX_YEAR}/interview`, () =>
+    HttpResponse.json({ answers, nextStep: { kind: 'done' }, openItems: 0 }, { status: 200 }),
+  )
+}
+
 describe('PlausibilitaetScreen', () => {
   it('reports "nicht einreichbar" with the honest LStB blocker on an empty mask', async () => {
     renderPlausibility()
@@ -36,20 +47,8 @@ describe('PlausibilitaetScreen', () => {
 
   it('reports "einreichbar" once the LStB is complete and nothing is gated', async () => {
     server.use(
-      http.get(`*/v1/steuerjahre/${TAX_YEAR}/lstb`, () =>
-        HttpResponse.json(
-          {
-            bruttoarbeitslohn: { kind: 'erfasst', value: 50000 },
-            lohnsteuer: { kind: 'erfasst', value: 8000 },
-            sozialversicherung: { kind: 'erfasst', value: 9000 },
-            state: { kind: 'vollstaendig', bruttoarbeitslohn: 50000, lohnsteuer: 8000, sozialversicherung: 9000 },
-          },
-          { status: 200 },
-        ),
-      ),
-      http.get(`*/v1/steuerjahre/${TAX_YEAR}/interview`, () =>
-        HttpResponse.json({ answers: { job: 'Angestellt' }, nextStep: { kind: 'done' }, openItems: 0 }, { status: 200 }),
-      ),
+      completeLstb(),
+      finishedInterview({ job: 'Angestellt' }),
     )
     renderPlausibility()
 
@@ -61,20 +60,8 @@ describe('PlausibilitaetScreen', () => {
 
   it('does not claim "nichts mehr offen" while personal details for the printout are missing', async () => {
     server.use(
-      http.get(`*/v1/steuerjahre/${TAX_YEAR}/lstb`, () =>
-        HttpResponse.json(
-          {
-            bruttoarbeitslohn: { kind: 'erfasst', value: 50000 },
-            lohnsteuer: { kind: 'erfasst', value: 8000 },
-            sozialversicherung: { kind: 'erfasst', value: 9000 },
-            state: { kind: 'vollstaendig', bruttoarbeitslohn: 50000, lohnsteuer: 8000, sozialversicherung: 9000 },
-          },
-          { status: 200 },
-        ),
-      ),
-      http.get(`*/v1/steuerjahre/${TAX_YEAR}/interview`, () =>
-        HttpResponse.json({ answers: { job: 'Angestellt' }, nextStep: { kind: 'done' }, openItems: 0 }, { status: 200 }),
-      ),
+      completeLstb(),
+      finishedInterview({ job: 'Angestellt' }),
       http.get('*/v1/stammdaten', () => HttpResponse.json({ missing: ['iban', 'plz', 'wohnort'] }, { status: 200 })),
     )
     renderPlausibility()
@@ -96,23 +83,8 @@ describe('PlausibilitaetScreen', () => {
 
   it('shows the betrag-spaeter Notice without blocking when an allowlisted step is "spaeter"', async () => {
     server.use(
-      http.get(`*/v1/steuerjahre/${TAX_YEAR}/lstb`, () =>
-        HttpResponse.json(
-          {
-            bruttoarbeitslohn: { kind: 'erfasst', value: 50000 },
-            lohnsteuer: { kind: 'erfasst', value: 8000 },
-            sozialversicherung: { kind: 'erfasst', value: 9000 },
-            state: { kind: 'vollstaendig', bruttoarbeitslohn: 50000, lohnsteuer: 8000, sozialversicherung: 9000 },
-          },
-          { status: 200 },
-        ),
-      ),
-      http.get(`*/v1/steuerjahre/${TAX_YEAR}/interview`, () =>
-        HttpResponse.json(
-          { answers: { job: 'Angestellt', dhf: 'Ja', 'dhf-miete': 'spaeter' }, nextStep: { kind: 'done' }, openItems: 0 },
-          { status: 200 },
-        ),
-      ),
+      completeLstb(),
+      finishedInterview({ job: 'Angestellt', dhf: 'Ja', 'dhf-miete': 'spaeter' }),
     )
     renderPlausibility()
 

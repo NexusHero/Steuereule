@@ -8,17 +8,10 @@
 // own convention (see req-005/006/009/010): this is the ATDD gate CI's `integration`
 // job runs, distinct from account-export.integration.test.ts's finer-grained,
 // developer-level Postgres/wiring proofs.
-import type { NestFastifyApplication } from '@nestjs/platform-fastify'
-import { PrismaClient } from '@prisma/client'
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
-import { resetRateLimiters } from '../support/reset-rate-limiters.js'
-
-process.env.GUEST_SESSION_SECRET = 'req-011-export-secret'
-process.env.BETTER_AUTH_SECRET = 'req-011-export-better-auth-secret-0123456789'
-process.env.BETTER_AUTH_URL = 'http://127.0.0.1:39995'
+import { beforeAll, describe, expect, it } from 'vitest'
+import { baseUrl, prisma, useAcceptanceServer } from '../support/acceptance-server.js'
 
 const ALLOWED_ORIGIN = 'https://allowed.example.com'
-process.env.CORS_ALLOWED_ORIGINS = ALLOWED_ORIGIN
 const TRUSTED_ORIGIN_HEADERS = { origin: ALLOWED_ORIGIN }
 
 const PROFILE_PAYLOAD = {
@@ -29,36 +22,29 @@ const PROFILE_PAYLOAD = {
 }
 
 describe('REQ-011 — DSGVO data export (Art. 15/20), against the real server', () => {
-  let app: NestFastifyApplication
-  let baseUrl: string
-  let prisma: PrismaClient
+  useAcceptanceServer({
+    env: {
+      GUEST_SESSION_SECRET: 'req-011-export-secret',
+      BETTER_AUTH_SECRET: 'req-011-export-better-auth-secret-0123456789',
+      BETTER_AUTH_URL: 'http://127.0.0.1:39995',
+      CORS_ALLOWED_ORIGINS: ALLOWED_ORIGIN,
+    },
+    cleanup: async () => {
+      await prisma.session.deleteMany()
+      await prisma.account.deleteMany()
+      await prisma.user.deleteMany()
+      await prisma.profile.deleteMany()
+      await prisma.$executeRawUnsafe(`DELETE FROM "TaxDataAccessLog"`)
+    },
+  })
 
   beforeAll(async () => {
-    const { buildApp } = await import('../../src/main.js')
-    app = await buildApp()
-    await app.listen(0, '127.0.0.1')
-    baseUrl = await app.getUrl()
-    const { PrismaService } = await import('../../src/prisma/prisma.service.js')
-    prisma = app.get(PrismaService)
     await prisma.session.deleteMany()
     await prisma.account.deleteMany()
     await prisma.user.deleteMany()
     await prisma.profile.deleteMany()
     await prisma.capital.deleteMany()
     await prisma.$executeRawUnsafe(`DELETE FROM "TaxDataAccessLog"`)
-  })
-
-  afterEach(async () => {
-    resetRateLimiters(app)
-    await prisma.session.deleteMany()
-    await prisma.account.deleteMany()
-    await prisma.user.deleteMany()
-    await prisma.profile.deleteMany()
-    await prisma.$executeRawUnsafe(`DELETE FROM "TaxDataAccessLog"`)
-  })
-
-  afterAll(async () => {
-    await app.close()
   })
 
   async function signUpAndSaveProfile(

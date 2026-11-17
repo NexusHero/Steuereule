@@ -62,7 +62,7 @@ function unzipSingleFile(zip) {
 const ENTITIES = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" }
 const decode = (value) =>
   value.replace(/&(#x?[0-9a-fA-F]+|\w+);/g, (whole, code) =>
-    code[0] === '#' ? String.fromCodePoint(code[1] === 'x' ? parseInt(code.slice(2), 16) : Number(code.slice(1))) : (ENTITIES[code] ?? whole),
+    code[0] === '#' ? String.fromCodePoint(code[1] === 'x' ? Number.parseInt(code.slice(2), 16) : Number(code.slice(1))) : (ENTITIES[code] ?? whole),
   )
 const attribute = (tag, name) => {
   const match = new RegExp(`\\s${name}="([^"]*)"`).exec(tag)
@@ -139,7 +139,7 @@ let unknown = 0
 let tooMany = 0
 const undefinedOffices = new Set()
 const lines = []
-for (const plz of knownPostalCodes.sort()) {
+for (const plz of knownPostalCodes.sort((a, b) => (a < b ? -1 : a > b ? 1 : 0))) {
   const ids = [...(byAddress.get(plz) ?? byMunicipality.get(plz) ?? [])]
   for (const id of ids) if (!officeName.get(id)) undefinedOffices.add(id)
   // Two offices may share a name (a main office and its branch): one suggestion is enough.

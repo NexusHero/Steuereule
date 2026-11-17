@@ -221,24 +221,7 @@ function ChInterviewStep({
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
 
-  if (stepId === 'ch-wohnsitz') {
-    return (
-      <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="screen-container">
-        <View style={styles.headerRow}>
-          <BackButton accessibilityLabel={tr('grenzgaenger.back')} onPress={onBack} />
-        </View>
-        <Text style={styles.heading}>
-          {tr('grenzgaenger.interview.wohnsitz.titleBefore')}
-          <Text style={styles.mark}>{tr('grenzgaenger.interview.wohnsitz.titleMark')}</Text>
-          {tr('grenzgaenger.interview.wohnsitz.titleAfter')}
-        </Text>
-        {partnerName !== undefined ? <Text style={styles.help} testID="ch-partner-hinweis">{tr('grenzgaenger.partnerFor', { name: partnerName })}</Text> : null}
-        <Text style={styles.help}>{tr('grenzgaenger.interview.wohnsitz.help')}</Text>
-        <Option onPress={() => onAnswer('ch-wohnsitz', 'Deutschland')} testID="ch-wohnsitz-deutschland">{tr('grenzgaenger.interview.wohnsitz.deutschland')}</Option>
-        <Option onPress={() => onAnswer('ch-wohnsitz', 'Schweiz')} testID="ch-wohnsitz-schweiz">{tr('grenzgaenger.interview.wohnsitz.schweiz')}</Option>
-      </ScrollView>
-    )
-  }
+  const topic = stepId === 'ch-wohnsitz' ? 'wohnsitz' : 'tage'
 
   return (
     <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="screen-container">
@@ -246,13 +229,20 @@ function ChInterviewStep({
         <BackButton accessibilityLabel={tr('grenzgaenger.back')} onPress={onBack} />
       </View>
       <Text style={styles.heading}>
-        {tr('grenzgaenger.interview.tage.titleBefore')}
-        <Text style={styles.mark}>{tr('grenzgaenger.interview.tage.titleMark')}</Text>
-        {tr('grenzgaenger.interview.tage.titleAfter')}
+        {tr(`grenzgaenger.interview.${topic}.titleBefore`)}
+        <Text style={styles.mark}>{tr(`grenzgaenger.interview.${topic}.titleMark`)}</Text>
+        {tr(`grenzgaenger.interview.${topic}.titleAfter`)}
       </Text>
       {partnerName !== undefined ? <Text style={styles.help} testID="ch-partner-hinweis">{tr('grenzgaenger.partnerFor', { name: partnerName })}</Text> : null}
-      <Text style={styles.help}>{tr('grenzgaenger.interview.tage.help')}</Text>
-      <DaysInput onAnswer={onAnswer} />
+      <Text style={styles.help}>{tr(`grenzgaenger.interview.${topic}.help`)}</Text>
+      {stepId === 'ch-wohnsitz' ? (
+        <>
+          <Option onPress={() => onAnswer('ch-wohnsitz', 'Deutschland')} testID="ch-wohnsitz-deutschland">{tr('grenzgaenger.interview.wohnsitz.deutschland')}</Option>
+          <Option onPress={() => onAnswer('ch-wohnsitz', 'Schweiz')} testID="ch-wohnsitz-schweiz">{tr('grenzgaenger.interview.wohnsitz.schweiz')}</Option>
+        </>
+      ) : (
+        <DaysInput onAnswer={onAnswer} />
+      )}
     </ScrollView>
   )
 }

@@ -32,6 +32,7 @@
 import { chromium } from 'playwright-core'
 import { inflateSync } from 'node:zlib'
 import { mkdir, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 /**
@@ -264,7 +265,7 @@ export async function probeColourAtPoint(page, x, y) {
  * or `/tmp/steuereule-e2e-screenshots` (a runner-writable path in both CI and local dev).
  */
 export async function saveNamedScreenshot(page, label, bp) {
-  const dir = process.env.E2E_SCREENSHOT_DIR ?? '/tmp/steuereule-e2e-screenshots'
+  const dir = process.env.E2E_SCREENSHOT_DIR ?? join(tmpdir(), 'steuereule-e2e-screenshots')
   await mkdir(dir, { recursive: true })
   const suffix = bp ? `--bp-${bp}` : ''
   const fileName = `${label}${suffix}-${Date.now()}.png`

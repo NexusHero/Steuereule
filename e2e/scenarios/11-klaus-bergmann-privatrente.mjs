@@ -2,10 +2,7 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
-  newContextAtBreakpoint,
-  guardAgainst429,
   fail,
-  registerAndOnboard,
   answerBasis,
   chooseTopics,
   leaveStrom,
@@ -13,24 +10,13 @@ import {
   assertCockpitEstimate,
   runStandaloneScenario,
 } from './helpers/scenario-harness.mjs'
+import { startPersona } from './helpers/persona-steps.mjs'
 
 export async function runScenario11(browser, webOrigin) {
   console.log('\n--- Scenario 11: Klaus Bergmann (Retiree with Private Pension § 22 EStG Ertragsanteil) ---')
-  const ctx = await newContextAtBreakpoint(browser, 'l')
-  const page = await ctx.newPage()
-  guardAgainst429(page, fail)
-
-  await registerAndOnboard(
-    page,
-    {
-      email: `du+klaus.bergmann.${Date.now()}@beispiel.de`,
-      firstName: 'Klaus',
-      lastName: 'Bergmann',
-      taxId: '56192837401',
-    },
-    webOrigin,
-    'scenario-11',
-  )
+  const { ctx, page } = await startPersona(browser, webOrigin, 'scenario-11', {
+    email: `du+klaus.bergmann.${Date.now()}@beispiel.de`, firstName: 'Klaus', lastName: 'Bergmann', taxId: '56192837401',
+  })
 
   await page.locator('[data-testid="cockpit-interview"]').click()
   // The Strom's basis page (ADR-0089), then the pension mask as its next step.

@@ -59,9 +59,43 @@ function blocks(lines: readonly string[], isHeader: (line: string, next: string)
 }
 
 // Helsana: „Max Beispiel, 01.02.1990, Versicherten Nr. 100 000 001“.
-const PERSON_LINE = /^\s*([A-Za-zÀ-ÿ' -]{3,}?),\s*\d{2}\.\d{2}\.\d{4},\s*versicherten[\s-]*nr\.?\s*([\d ]+)/i
+const NAME_CHARS = /^[A-Za-zÀ-ÿ' -]*$/i
+const AFTER_NAME = /^,\s*\d{2}\.\d{2}\.\d{4},\s*versicherten[\s-]*nr\.?/i
 // SWICA: „MAX BEISPIEL“ above „VERSICHERTEN-NR. 1000001“.
-const INSURED_NO = /^\s*versicherten[\s-]*nr\.?\s*([\d ]+)\s*$/i
+const INSURED_NO_LABEL = /^\s*versicherten[\s-]*nr\.?/i
+const UPPERCASE_NAME_LINE = /^\s*[A-ZÀ-Ý][A-ZÀ-Ý' -]{2,}(?:[^\S ]\s*)?$/
+
+/** The number printed after its label: its digits and inner spaces, or one space when only blanks follow. */
+function numberAfterLabel(rest: string, toLineEnd: boolean): string | null {
+  const body = rest.trimStart()
+  const digits = /^\d[\d ]*/.exec(body)?.[0]
+  if (digits !== undefined) return !toLineEnd || body.slice(digits.length).trim() === '' ? digits : null
+  const gap = rest.slice(0, rest.length - body.length)
+  return gap.includes(' ') && (!toLineEnd || body === '') ? ' ' : null
+}
+
+function insuredNoLine(line: string): string | null {
+  const label = INSURED_NO_LABEL.exec(line)
+  return label ? numberAfterLabel(line.slice(label[0].length), true) : null
+}
+
+/** The name before the first comma (at least three characters, blanks before it counted in) and the number after the label. */
+function personLine(line: string): { readonly name: string; readonly insuredNo: string } | null {
+  const comma = line.indexOf(',')
+  if (comma === -1) return null
+  const lead = line.length - line.trimStart().length
+  if (lead > comma) return null
+  const printed = line.slice(lead, comma)
+  if (!NAME_CHARS.test(printed)) return null
+  const borrowed = Math.max(0, 3 - printed.length)
+  const padding = line.slice(lead - borrowed, lead)
+  if (borrowed > lead || padding !== ' '.repeat(borrowed)) return null
+  const rest = line.slice(comma)
+  const label = AFTER_NAME.exec(rest)
+  if (!label) return null
+  const insuredNo = numberAfterLabel(rest.slice(label[0].length), false)
+  return insuredNo === null ? null : { name: padding + printed, insuredNo }
+}
 
 function readBlock(block: readonly string[], name: string, insuredNo: string | null): InsuredPremium {
   const premiumLines = block.filter((l) => PREMIUM.test(l) && /grundversicherung|\bKVG\b/i.test(l) && lastAmount(l) !== null)
@@ -78,13 +112,13 @@ export function parseChHealthStatement(text: string): ChHealthStatementRead {
   const taxYear = year ? Number(year[1] ?? year[2]) : null
   const insured: InsuredPremium[] = []
 
-  for (const block of blocks(lines, (l) => PERSON_LINE.test(l))) {
-    const m = PERSON_LINE.exec(block[0]!)!
-    insured.push(readBlock(block, m[1]!, m[2]!))
+  for (const block of blocks(lines, (l) => personLine(l) !== null)) {
+    const person = personLine(block[0]!)!
+    insured.push(readBlock(block, person.name, person.insuredNo))
   }
   if (insured.length === 0) {
-    for (const block of blocks(lines, (l, next) => INSURED_NO.test(next) && /^\s*[A-ZÀ-Ý][A-ZÀ-Ý' -]{2,}\s*$/.test(l))) {
-      insured.push(readBlock(block, block[0]!, INSURED_NO.exec(block[1] ?? '')?.[1] ?? null))
+    for (const block of blocks(lines, (l, next) => insuredNoLine(next) !== null && UPPERCASE_NAME_LINE.test(l))) {
+      insured.push(readBlock(block, block[0]!, insuredNoLine(block[1] ?? '')))
     }
   }
   // The same person twice (a statement printed with a detail page) counts once.

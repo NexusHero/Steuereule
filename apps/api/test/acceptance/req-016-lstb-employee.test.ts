@@ -6,62 +6,32 @@
 // offen/unklar/erfasst states, the widerspruch fold, field-encryption at rest, audit
 // atomicity, and the same P3/P4 isolation guarantees as REQ-015. Scan/OCR is deliberately
 // out of scope (ADR-045, later) — this proves the DATA interface only.
-import type { NestFastifyApplication } from '@nestjs/platform-fastify'
-import { PrismaClient } from '@prisma/client'
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
-import { resetRateLimiters } from '../support/reset-rate-limiters.js'
-
-process.env.GUEST_SESSION_SECRET = 'req-016-secret'
-process.env.BETTER_AUTH_SECRET = 'req-016-better-auth-secret-0123456789'
-process.env.BETTER_AUTH_URL = 'http://127.0.0.1:39992'
+import { describe, expect, it } from 'vitest'
+import { baseUrl, prisma, signUp, useAcceptanceServer } from '../support/acceptance-server.js'
 
 const ALLOWED_ORIGIN = 'https://allowed.example.com'
-process.env.CORS_ALLOWED_ORIGINS = ALLOWED_ORIGIN
-const TRUSTED_ORIGIN_HEADERS = { origin: ALLOWED_ORIGIN }
 
 const TAX_YEAR = 2026
 
 type LstbRow = { userId: string; steuerjahr: number; bruttoarbeitslohn: string | null }
 
 describe('REQ-016 — the LStB guided mask, against the real server', () => {
-  let app: NestFastifyApplication
-  let baseUrl: string
-  let prisma: PrismaClient
-
-  beforeAll(async () => {
-    const { buildApp } = await import('../../src/main.js')
-    app = await buildApp()
-    await app.listen(0, '127.0.0.1')
-    baseUrl = await app.getUrl()
-    const { PrismaService } = await import('../../src/prisma/prisma.service.js')
-    prisma = app.get(PrismaService)
+  useAcceptanceServer({
+    env: {
+      GUEST_SESSION_SECRET: 'req-016-secret',
+      BETTER_AUTH_SECRET: 'req-016-better-auth-secret-0123456789',
+      BETTER_AUTH_URL: 'http://127.0.0.1:39992',
+      CORS_ALLOWED_ORIGINS: ALLOWED_ORIGIN,
+    },
+    cleanup: async () => {
+      await prisma.$executeRawUnsafe(`DELETE FROM "Lstb"`)
+      await prisma.taxYear.deleteMany()
+      await prisma.$executeRawUnsafe(`DELETE FROM "TaxDataAccessLog"`)
+      await prisma.session.deleteMany()
+      await prisma.account.deleteMany()
+      await prisma.user.deleteMany()
+    },
   })
-
-  afterEach(async () => {
-    resetRateLimiters(app)
-    await prisma.$executeRawUnsafe(`DELETE FROM "Lstb"`)
-    await prisma.taxYear.deleteMany()
-    await prisma.$executeRawUnsafe(`DELETE FROM "TaxDataAccessLog"`)
-    await prisma.session.deleteMany()
-    await prisma.account.deleteMany()
-    await prisma.user.deleteMany()
-  })
-
-  afterAll(async () => {
-    await app.close()
-  })
-
-  async function signUp(email: string): Promise<{ cookie: string; userId: string }> {
-    const response = await fetch(`${baseUrl}/api/auth/sign-up/email`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', ...TRUSTED_ORIGIN_HEADERS },
-      body: JSON.stringify({ email, password: 'a-fine-strong-password-1', name: 'Test User' }),
-    })
-    expect(response.status).toBe(200)
-    const body = (await response.json()) as { user: { id: string } }
-    const cookie = response.headers.get('set-cookie')!.split(';')[0]!
-    return { cookie, userId: body.user.id }
-  }
 
   function getLstb(cookie: string) {
     return fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/lstb`, { headers: { cookie } })

@@ -132,6 +132,7 @@ describe.skipIf(!KEY)('the owl fills the return through the chat (live model)', 
         outcome.detail = error instanceof Error ? error.message.split('\n')[0]!.slice(0, 300) : String(error)
         throw error
       }
+      expect(outcomes.get(name), 'the scenario ran through and is on the report as passed').toMatchObject({ area, scenario: name, passed: true })
     })
   }
 

@@ -599,7 +599,46 @@ function EuleBannerNotice() {
   )
 }
 
-function CockpitEmpty({ year, onYearChange, refresh, isRefreshing, next, tileFacts, isSignedIn, isJointMarried, partnerName, findings, onOpenTile, onOpenPartner, onOpenSubmission, masterData, onOpenInterview, onOpenAssessment, onOpenCapital, onOpenRental, onOpenKinder, onOpenOwlMode, onOpenOfficialForm, deadlineAnswers, progress, onOpenReceipts, bp }: CockpitEmptyProps) {
+interface CockpitWorkAreaProps
+  extends Pick<
+    CockpitEmptyProps,
+    'year' | 'tileFacts' | 'isSignedIn' | 'isJointMarried' | 'partnerName' | 'findings' | 'onOpenTile' | 'onOpenPartner' | 'onOpenSubmission' | 'masterData' | 'onOpenOwlMode' | 'progress' | 'onOpenReceipts'
+  > {
+  readonly hasPositiveRefund?: boolean
+  readonly owlTestID?: string
+}
+
+/** Inbox, tiles, the owl card and the master-data notice — the same on the empty and the loaded Cockpit. */
+function CockpitWorkArea({ year, tileFacts, isSignedIn, isJointMarried, partnerName, findings, onOpenTile, onOpenPartner, onOpenSubmission, masterData, onOpenOwlMode, progress, onOpenReceipts, hasPositiveRefund = false, owlTestID }: CockpitWorkAreaProps) {
+  const styles = makeStyles(useTheme())
+  return (
+    <>
+      {isSignedIn && onOpenReceipts ? <CockpitInbox onOpenReceipts={onOpenReceipts} /> : null}
+      {masterData && (masterData.missingFields?.length ?? 0) > 0 ? <MissingMasterDataNotice masterData={masterData} /> : null}
+      {tileFacts !== null ? (
+        <CockpitTiles
+          facts={tileFacts}
+          year={year}
+          isSignedIn={isSignedIn}
+          isJointMarried={isJointMarried}
+          partnerName={partnerName}
+          conflicts={findings.conflicts}
+          notices={findings.notices}
+          hasPositiveRefund={hasPositiveRefund}
+          openSteps={progress === null ? undefined : progress.total - progress.done}
+          onOpenTile={onOpenTile}
+          {...(onOpenPartner ? { onOpenPartner } : {})}
+          {...(onOpenSubmission ? { onOpenSubmission } : {})}
+        />
+      ) : null}
+      {onOpenOwlMode ? <View style={styles.berater}><OwlAdvisorCard onOpen={onOpenOwlMode} {...(owlTestID ? { testID: owlTestID } : {})} /></View> : null}
+      {masterData && (masterData.missingFields?.length ?? 0) === 0 ? <MissingMasterDataNotice masterData={masterData} /> : null}
+    </>
+  )
+}
+
+function CockpitEmpty(props: CockpitEmptyProps) {
+  const { year, onYearChange, refresh, isRefreshing, next, tileFacts, onOpenInterview, onOpenAssessment, onOpenCapital, onOpenRental, onOpenKinder, onOpenOfficialForm, deadlineAnswers, progress, bp } = props
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
@@ -625,25 +664,7 @@ function CockpitEmpty({ year, onYearChange, refresh, isRefreshing, next, tileFac
             {tr('cockpit.answerQuestions')}
           </Button>
         ) : null}
-        {isSignedIn && onOpenReceipts ? <CockpitInbox onOpenReceipts={onOpenReceipts} /> : null}
-        {masterData && (masterData.missingFields?.length ?? 0) > 0 ? <MissingMasterDataNotice masterData={masterData} /> : null}
-        {tileFacts !== null ? (
-          <CockpitTiles
-            facts={tileFacts}
-            year={year}
-            isSignedIn={isSignedIn}
-            isJointMarried={isJointMarried}
-            partnerName={partnerName}
-            conflicts={findings.conflicts}
-            notices={findings.notices}
-            openSteps={progress === null ? undefined : progress.total - progress.done}
-            onOpenTile={onOpenTile}
-            {...(onOpenPartner ? { onOpenPartner } : {})}
-            {...(onOpenSubmission ? { onOpenSubmission } : {})}
-          />
-        ) : null}
-        {onOpenOwlMode ? <View style={styles.berater}><OwlAdvisorCard onOpen={onOpenOwlMode} testID="cockpit-empty-eulen-modus" /></View> : null}
-        {masterData && (masterData.missingFields?.length ?? 0) === 0 ? <MissingMasterDataNotice masterData={masterData} /> : null}
+        <CockpitWorkArea {...props} owlTestID="cockpit-empty-eulen-modus" />
         <SecondaryActions
           tileFacts={tileFacts}
           onOpenAssessment={onOpenAssessment}
@@ -702,7 +723,8 @@ interface CockpitLoadedProps extends CockpitEmptyProps {
   readonly onOpenConfirmation?: () => void
 }
 
-function CockpitLoaded({ summary, year, onYearChange, confirmation, onOpenConfirmation, refresh, isRefreshing, next, tileFacts, isSignedIn, isJointMarried, partnerName, findings, onOpenTile, onOpenPartner, onOpenSubmission, masterData, onOpenInterview, onOpenAssessment, onOpenCapital, onOpenRental, onOpenKinder, onOpenOwlMode, onOpenPrintout, onOpenOfficialForm, deadlineAnswers, progress, onOpenReceipts, bp }: CockpitLoadedProps) {
+function CockpitLoaded(props: CockpitLoadedProps) {
+  const { summary, year, onYearChange, confirmation, onOpenConfirmation, refresh, isRefreshing, next, tileFacts, onOpenInterview, onOpenAssessment, onOpenCapital, onOpenRental, onOpenKinder, onOpenPrintout, onOpenOfficialForm, deadlineAnswers, progress, bp } = props
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
@@ -750,26 +772,7 @@ function CockpitLoaded({ summary, year, onYearChange, confirmation, onOpenConfir
           {tr('cockpit.answerQuestions')}
         </Button>
       ) : null}
-      {isSignedIn && onOpenReceipts ? <CockpitInbox onOpenReceipts={onOpenReceipts} /> : null}
-      {masterData && (masterData.missingFields?.length ?? 0) > 0 ? <MissingMasterDataNotice masterData={masterData} /> : null}
-      {tileFacts !== null ? (
-        <CockpitTiles
-          facts={tileFacts}
-          year={year}
-          isSignedIn={isSignedIn}
-          isJointMarried={isJointMarried}
-          partnerName={partnerName}
-          conflicts={findings.conflicts}
-          notices={findings.notices}
-          hasPositiveRefund={estimate?.kind === 'spanne' && (estimate.result?.from ?? 0) > 0}
-          openSteps={progress === null ? undefined : progress.total - progress.done}
-          onOpenTile={onOpenTile}
-          {...(onOpenPartner ? { onOpenPartner } : {})}
-          {...(onOpenSubmission ? { onOpenSubmission } : {})}
-        />
-      ) : null}
-      {onOpenOwlMode ? <View style={styles.berater}><OwlAdvisorCard onOpen={onOpenOwlMode} /></View> : null}
-      {masterData && (masterData.missingFields?.length ?? 0) === 0 ? <MissingMasterDataNotice masterData={masterData} /> : null}
+      <CockpitWorkArea {...props} hasPositiveRefund={estimate?.kind === 'spanne' && (estimate.result?.from ?? 0) > 0} />
       <SecondaryActions
         tileFacts={tileFacts}
         onOpenAssessment={onOpenAssessment}

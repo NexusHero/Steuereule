@@ -62,6 +62,24 @@ async function openAccountScreen(opts: Parameters<typeof renderPrivacy>[0] = {})
   await screen.findByText('Konto & Daten löschen')
 }
 
+/** Opens the account screen and walks the delete flow up to its final confirmation, skipping the export offer. */
+async function openDeleteConfirmation(opts: Parameters<typeof renderPrivacy>[0] = {}) {
+  await openAccountScreen(opts)
+  fireEvent.click(screen.getByText('Konto & Daten löschen'))
+  await screen.findByText('Bevor du löschst')
+  fireEvent.click(screen.getByText('Weiter ohne Export'))
+  await screen.findByText('Bist du sicher?')
+}
+
+/** `DELETE /v1/account` demands the password first (400) and answers the retry that carries one with `answer`. */
+function deleteAnswersOncePasswordIsSent(answer: () => Response) {
+  return http.delete(`${BASE_URL}/v1/account`, async ({ request }) => {
+    const body = (await request.json()) as { password?: string }
+    if (body.password === undefined) return HttpResponse.json({ statusCode: 400 }, { status: 400 })
+    return answer()
+  })
+}
+
 describe('DatenschutzScreen', () => {
   afterEach(() => {
     mockedDownload.mockReset()
@@ -128,7 +146,7 @@ describe('DatenschutzScreen', () => {
     it('does show the guest notice on a cold-start 401 (the one status that genuinely means "signed out")', async () => {
       server.use(http.get(`${BASE_URL}/api/auth/get-session`, () => HttpResponse.json({ message: 'nope' }, { status: 401 })))
       renderPrivacy()
-      await screen.findByText('Noch kein Konto')
+      expect(await screen.findByText('Noch kein Konto')).toBeTruthy()
     })
 
     it('renders correctly in English (ADR-0006)', async () => {
@@ -282,11 +300,7 @@ describe('DatenschutzScreen', () => {
 
     it('a stale session (400, fresh-auth required) asks for the password instead of a generic error', async () => {
       server.use(http.delete(`${BASE_URL}/v1/account`, () => HttpResponse.json({ statusCode: 400, message: 'not fresh' }, { status: 400 })))
-      await openAccountScreen()
-      fireEvent.click(screen.getByText('Konto & Daten löschen'))
-      await screen.findByText('Bevor du löschst')
-      fireEvent.click(screen.getByText('Weiter ohne Export'))
-      await screen.findByText('Bist du sicher?')
+      await openDeleteConfirmation()
 
       fireEvent.click(screen.getByText('Ja, endgültig löschen'))
 
@@ -304,11 +318,7 @@ describe('DatenschutzScreen', () => {
         }),
       )
       const onAccountDeleted = vi.fn()
-      await openAccountScreen({ onAccountDeleted })
-      fireEvent.click(screen.getByText('Konto & Daten löschen'))
-      await screen.findByText('Bevor du löschst')
-      fireEvent.click(screen.getByText('Weiter ohne Export'))
-      await screen.findByText('Bist du sicher?')
+      await openDeleteConfirmation({ onAccountDeleted })
       fireEvent.click(screen.getByText('Ja, endgültig löschen'))
       await screen.findByText('Bestätige mit deinem Passwort')
 
@@ -324,18 +334,8 @@ describe('DatenschutzScreen', () => {
     })
 
     it('a rate-limited retry (429) shows its own honest message, distinct from a wrong password', async () => {
-      server.use(
-        http.delete(`${BASE_URL}/v1/account`, async ({ request }) => {
-          const body = (await request.json()) as { password?: string }
-          if (body.password === undefined) return HttpResponse.json({ statusCode: 400 }, { status: 400 })
-          return HttpResponse.json({ statusCode: 429 }, { status: 429 })
-        }),
-      )
-      await openAccountScreen()
-      fireEvent.click(screen.getByText('Konto & Daten löschen'))
-      await screen.findByText('Bevor du löschst')
-      fireEvent.click(screen.getByText('Weiter ohne Export'))
-      await screen.findByText('Bist du sicher?')
+      server.use(deleteAnswersOncePasswordIsSent(() => HttpResponse.json({ statusCode: 429 }, { status: 429 })))
+      await openDeleteConfirmation()
       fireEvent.click(screen.getByText('Ja, endgültig löschen'))
       await screen.findByText('Bestätige mit deinem Passwort')
 
@@ -347,11 +347,7 @@ describe('DatenschutzScreen', () => {
 
     it('a 403 mid-flow (session turned out to be a guest) shows the honest guest message, not a generic error', async () => {
       server.use(http.delete(`${BASE_URL}/v1/account`, () => HttpResponse.json({ statusCode: 403 }, { status: 403 })))
-      await openAccountScreen()
-      fireEvent.click(screen.getByText('Konto & Daten löschen'))
-      await screen.findByText('Bevor du löschst')
-      fireEvent.click(screen.getByText('Weiter ohne Export'))
-      await screen.findByText('Bist du sicher?')
+      await openDeleteConfirmation()
 
       fireEvent.click(screen.getByText('Ja, endgültig löschen'))
 
@@ -360,11 +356,7 @@ describe('DatenschutzScreen', () => {
 
     it('a genuine network failure on confirm shows an honest, retryable error without pretending success', async () => {
       server.use(http.delete(`${BASE_URL}/v1/account`, () => HttpResponse.error()))
-      await openAccountScreen()
-      fireEvent.click(screen.getByText('Konto & Daten löschen'))
-      await screen.findByText('Bevor du löschst')
-      fireEvent.click(screen.getByText('Weiter ohne Export'))
-      await screen.findByText('Bist du sicher?')
+      await openDeleteConfirmation()
 
       fireEvent.click(screen.getByText('Ja, endgültig löschen'))
 
@@ -372,18 +364,8 @@ describe('DatenschutzScreen', () => {
     })
 
     it('a genuine network failure while submitting the password shows its own honest error, staying on the password step', async () => {
-      server.use(
-        http.delete(`${BASE_URL}/v1/account`, async ({ request }) => {
-          const body = (await request.json()) as { password?: string }
-          if (body.password === undefined) return HttpResponse.json({ statusCode: 400 }, { status: 400 })
-          return HttpResponse.error()
-        }),
-      )
-      await openAccountScreen()
-      fireEvent.click(screen.getByText('Konto & Daten löschen'))
-      await screen.findByText('Bevor du löschst')
-      fireEvent.click(screen.getByText('Weiter ohne Export'))
-      await screen.findByText('Bist du sicher?')
+      server.use(deleteAnswersOncePasswordIsSent(() => HttpResponse.error()))
+      await openDeleteConfirmation()
       fireEvent.click(screen.getByText('Ja, endgültig löschen'))
       await screen.findByText('Bestätige mit deinem Passwort')
 
@@ -401,11 +383,7 @@ describe('DatenschutzScreen', () => {
     // real 500 and asserts the screen returns to an actionable state instead of hanging.
     it('a genuine 500 on confirm returns the user to the confirm step, never an infinite spinner', async () => {
       server.use(http.delete(`${BASE_URL}/v1/account`, () => HttpResponse.json({ statusCode: 500, message: 'internal error' }, { status: 500 })))
-      await openAccountScreen()
-      fireEvent.click(screen.getByText('Konto & Daten löschen'))
-      await screen.findByText('Bevor du löschst')
-      fireEvent.click(screen.getByText('Weiter ohne Export'))
-      await screen.findByText('Bist du sicher?')
+      await openDeleteConfirmation()
 
       fireEvent.click(screen.getByText('Ja, endgültig löschen'))
 
@@ -418,18 +396,8 @@ describe('DatenschutzScreen', () => {
     })
 
     it('a genuine 500 while submitting the password returns the user to the password step, never an infinite spinner', async () => {
-      server.use(
-        http.delete(`${BASE_URL}/v1/account`, async ({ request }) => {
-          const body = (await request.json()) as { password?: string }
-          if (body.password === undefined) return HttpResponse.json({ statusCode: 400 }, { status: 400 })
-          return HttpResponse.json({ statusCode: 500, message: 'internal error' }, { status: 500 })
-        }),
-      )
-      await openAccountScreen()
-      fireEvent.click(screen.getByText('Konto & Daten löschen'))
-      await screen.findByText('Bevor du löschst')
-      fireEvent.click(screen.getByText('Weiter ohne Export'))
-      await screen.findByText('Bist du sicher?')
+      server.use(deleteAnswersOncePasswordIsSent(() => HttpResponse.json({ statusCode: 500, message: 'internal error' }, { status: 500 })))
+      await openDeleteConfirmation()
       fireEvent.click(screen.getByText('Ja, endgültig löschen'))
       await screen.findByText('Bestätige mit deinem Passwort')
 

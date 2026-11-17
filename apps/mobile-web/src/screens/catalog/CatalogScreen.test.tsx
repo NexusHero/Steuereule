@@ -37,6 +37,21 @@ function renderCatalog(
   )
 }
 
+/** Puts the catalog on the rent follow-up (dhf answered "Ja") and records every answer POSTed from there. */
+function recordAnswersToRentQuestion() {
+  const bodies: unknown[] = []
+  server.use(
+    http.get(`*/v1/steuerjahre/${TAX_YEAR}/interview`, () =>
+      HttpResponse.json({ answers: { dhf: 'Ja' }, nextStep: { kind: 'question', id: 'dhf-miete' }, openItems: 4 }, { status: 200 }),
+    ),
+    http.post(`*/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, async ({ request }) => {
+      bodies.push(await request.json())
+      return HttpResponse.json({ nextStep: { kind: 'question', id: 'umzug' }, openItems: 3 }, { status: 200 })
+    }),
+  )
+  return bodies
+}
+
 describe('KatalogScreen', () => {
   it('renders the first Lebenslage question from GET ?eintrag=lebenslagen', async () => {
     server.use(
@@ -71,16 +86,7 @@ describe('KatalogScreen', () => {
   })
 
   it('submits an amount with a visible "Weiter" button, not only with Enter', async () => {
-    const bodies: unknown[] = []
-    server.use(
-      http.get(`*/v1/steuerjahre/${TAX_YEAR}/interview`, () =>
-        HttpResponse.json({ answers: { dhf: 'Ja' }, nextStep: { kind: 'question', id: 'dhf-miete' }, openItems: 4 }, { status: 200 }),
-      ),
-      http.post(`*/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, async ({ request }) => {
-        bodies.push(await request.json())
-        return HttpResponse.json({ nextStep: { kind: 'question', id: 'umzug' }, openItems: 3 }, { status: 200 })
-      }),
-    )
+    const bodies = recordAnswersToRentQuestion()
     renderCatalog('lebenslagen')
     const rent = await screen.findByLabelText('Monatliche Miete am Arbeitsort (Ganzzahlige Euro)')
 
@@ -91,16 +97,7 @@ describe('KatalogScreen', () => {
   })
 
   it('saves a typed amount when the field is left — closing the sheet must not lose it (#443 AC 7)', async () => {
-    const bodies: unknown[] = []
-    server.use(
-      http.get(`*/v1/steuerjahre/${TAX_YEAR}/interview`, () =>
-        HttpResponse.json({ answers: { dhf: 'Ja' }, nextStep: { kind: 'question', id: 'dhf-miete' }, openItems: 4 }, { status: 200 }),
-      ),
-      http.post(`*/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, async ({ request }) => {
-        bodies.push(await request.json())
-        return HttpResponse.json({ nextStep: { kind: 'question', id: 'umzug' }, openItems: 3 }, { status: 200 })
-      }),
-    )
+    const bodies = recordAnswersToRentQuestion()
     renderCatalog('lebenslagen')
     const rent = await screen.findByLabelText('Monatliche Miete am Arbeitsort (Ganzzahlige Euro)')
 
@@ -113,16 +110,7 @@ describe('KatalogScreen', () => {
   })
 
   it('an empty field left without typing sends nothing', async () => {
-    const bodies: unknown[] = []
-    server.use(
-      http.get(`*/v1/steuerjahre/${TAX_YEAR}/interview`, () =>
-        HttpResponse.json({ answers: { dhf: 'Ja' }, nextStep: { kind: 'question', id: 'dhf-miete' }, openItems: 4 }, { status: 200 }),
-      ),
-      http.post(`*/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, async ({ request }) => {
-        bodies.push(await request.json())
-        return HttpResponse.json({ nextStep: { kind: 'question', id: 'umzug' }, openItems: 3 }, { status: 200 })
-      }),
-    )
+    const bodies = recordAnswersToRentQuestion()
     renderCatalog('lebenslagen')
     const rent = await screen.findByLabelText('Monatliche Miete am Arbeitsort (Ganzzahlige Euro)')
     fireEvent.blur(rent)
@@ -207,16 +195,7 @@ describe('KatalogScreen', () => {
   })
 
   it('offers "Betrag später eintragen" on LATER_ALLOWED_STEPS, posts "spaeter", and advances to next step', async () => {
-    const bodies: unknown[] = []
-    server.use(
-      http.get(`*/v1/steuerjahre/${TAX_YEAR}/interview`, () =>
-        HttpResponse.json({ answers: { dhf: 'Ja' }, nextStep: { kind: 'question', id: 'dhf-miete' }, openItems: 4 }, { status: 200 }),
-      ),
-      http.post(`*/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, async ({ request }) => {
-        bodies.push(await request.json())
-        return HttpResponse.json({ nextStep: { kind: 'question', id: 'umzug' }, openItems: 3 }, { status: 200 })
-      }),
-    )
+    const bodies = recordAnswersToRentQuestion()
     renderCatalog('lebenslagen')
 
     fireEvent.click(await screen.findByTestId('katalog-later-dhf-miete'))

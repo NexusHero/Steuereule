@@ -70,7 +70,7 @@ export type SkillCommand =
 
 /** Reads a message that starts with a slash command; null for an ordinary message. */
 export function parseSkillCommand(text: string): SkillCommand | null {
-  const match = /^\/([a-z][a-z0-9-]*)(?:\s+([\s\S]*))?$/i.exec(text.trim())
+  const match = /^\/([a-z][a-z0-9-]*)(?:\s([\s\S]*))?$/i.exec(text.trim())
   if (!match) return null
   const command = match[1]!.toLowerCase()
   const skill = Object.hasOwn(ADVISOR_SKILL_COMMANDS, command) ? ADVISOR_SKILL_COMMANDS[command] : undefined

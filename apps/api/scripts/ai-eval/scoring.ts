@@ -94,10 +94,12 @@ export function checkAmounts(digest: CaseDigest, actions: readonly AdvisorAction
   return [checked, correct, problems]
 }
 
+const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0)
+
 const signature = (actions: readonly AdvisorActionProposal[]) =>
   actions
     .map((a) => `${a.screen}.${a.field}=${a.newValue}`)
-    .sort()
+    .sort(byCodeUnit)
     .join('|')
 
 /** Scores one case from one or more turns (consistency cases have five). */

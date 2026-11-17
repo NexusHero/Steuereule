@@ -56,7 +56,7 @@ export function childNamedIn(text: string, children: readonly { readonly id: str
 }
 
 /** „1.200,00 EUR“, „960 €“ in whole euros. */
-const EUROS = /(\d{1,3}(?:\.\d{3})+|\d+)(?:,(\d{2}))?\s*(?:€|eur\b|euro\b)/i
+const EUROS = /(\d{1,3}(?:\.\d{3})+|(?<!\d)\d+)(?:,(\d{2}))?\s*(?:€|eur\b|euro\b)/i
 
 /**
  * What a Kita's annual statement says was paid for the tax year: a line naming the year's total

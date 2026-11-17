@@ -4,36 +4,20 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
-  newContextAtBreakpoint,
-  guardAgainst429,
   fail,
-  registerAndOnboard,
   selectTaxYear2025,
   openTile,
   answerBasis,
-  leaveStrom,
-  waitForStromStep,
   runStandaloneScenario,
 } from './helpers/scenario-harness.mjs'
+import { startPersona, completeLstb, pauseStromAtCommute, saveCapitalFields } from './helpers/persona-steps.mjs'
 import { openCockpitTopic } from '../harness/flows.mjs'
 
 export async function runScenario22(browser, webOrigin) {
   console.log('\n--- Scenario 22: Dialog Matrix — CRUD & Chip Permutations in Detail Screens ---')
-  const ctx = await newContextAtBreakpoint(browser, 'l')
-  const page = await ctx.newPage()
-  guardAgainst429(page, fail)
-
-  await registerAndOnboard(
-    page,
-    {
-      email: `du+matrix.crud.${Date.now()}@beispiel.de`,
-      firstName: 'Nadine',
-      lastName: 'Detailmaske',
-      taxId: '04452397686',
-    },
-    webOrigin,
-    'scenario-22',
-  )
+  const { ctx, page } = await startPersona(browser, webOrigin, 'scenario-22', {
+    email: `du+matrix.crud.${Date.now()}@beispiel.de`, firstName: 'Nadine', lastName: 'Detailmaske', taxId: '04452397686',
+  })
 
   await selectTaxYear2025(page)
 
@@ -44,16 +28,8 @@ export async function runScenario22(browser, webOrigin) {
 
   // LStB in the Strom, then pause it: this scenario is about the detail masks behind the cockpit,
   // each opened as a sheet and closed back to the cockpit -> back to Cockpit via TabBar
-  await waitForStromStep(page, 'lohnsteuerbescheinigung')
-  await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').fill('64000')
-  await page.locator('[data-testid="lstb-lohnsteuer"]').fill('12000')
-  await page.locator('[data-testid="lstb-sozialversicherung"]').fill('12500')
-  await page.locator('[data-testid="lstb-weiter"]').click()
-  await waitForStromStep(page, 'arbeitsweg')
-  await leaveStrom(page)
-  await page.locator('[data-testid="cockpit-kacheln"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.getByRole('tab', { name: 'Cockpit' }).click()
+  await completeLstb(page, { grossWage: '64000', wageTax: '12000', socialSecurity: '12500' })
+  await pauseStromAtCommute(page)
 
   // --- 1. ChildrenScreen: Add 2 Children with Chip Permutations ---
   await openCockpitTopic(page, 'kinder')
@@ -109,18 +85,13 @@ export async function runScenario22(browser, webOrigin) {
   await page.locator('[data-testid="katalog-option-vermietung-art-Mehrere"]').click()
 
   await page.locator('[data-testid="kapital-kapitalertraege"]').waitFor({ state: 'visible', timeout: 10_000 })
-  for (const [id, val] of [
+  await saveCapitalFields(page, [
     ['kapital-kapitalertraege', '4200'],
     ['kapital-sparerPauschbetrag', '2000'],
     ['kapital-kapitalertragsteuer', '550'],
     ['kapital-solidaritaetszuschlag', '30'],
     ['kapital-kirchensteuer', '0'],
-  ]) {
-    await page.locator(`[data-testid="${id}"]`).fill(val)
-    await page.locator(`[data-testid="${id}"]`).blur()
-  }
-  await page.waitForTimeout(400)
-  await page.locator('[data-testid="kapital-weiter"]').click()
+  ])
   await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
   console.log('[Scenario 22] Verified: CapitalScreen inline catalog gate and field persistence.')
 

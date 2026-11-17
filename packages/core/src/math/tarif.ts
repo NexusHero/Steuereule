@@ -115,6 +115,12 @@ const SOLI_RELIEF_RATE = 0.119
 
 export type ChurchTaxFactor = 0 | 0.08 | 0.09
 
+const CHURCH_TAX_FACTORS: readonly number[] = [0, 0.08, 0.09]
+
+export function isChurchTaxFactor(value: number): value is ChurchTaxFactor {
+  return CHURCH_TAX_FACTORS.includes(value)
+}
+
 export function soliExemptionLimits(year: IncomeTaxYear): SoliExemptionLimits {
   return SOLI_EXEMPTION_LIMITS[year]
 }
@@ -212,7 +218,7 @@ export function kirchensteuer(incomeTaxAmount: number, factor: ChurchTaxFactor):
   if (!Number.isFinite(incomeTaxAmount) || incomeTaxAmount < 0) {
     throw new RangeError('einkommensteuer must be a non-negative finite number')
   }
-  if (factor !== 0 && factor !== 0.08 && factor !== 0.09) {
+  if (!isChurchTaxFactor(factor)) {
     throw new RangeError('faktor must be one of 0, 0.08, 0.09')
   }
   return Math.floor(incomeTaxAmount * factor)

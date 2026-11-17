@@ -22,7 +22,7 @@ const COSMETIC =
   /schönheitsop|ästhetische[rn]? (?:chirurgie|behandlung|lidstraffung|korrektur)|kosmetische[rn]? (?:behandlung|eingriff|operation)|botox|faltenunterspritz|fettabsaugung|liposuktion|brustvergrößer|keine medizinische indikation/i
 
 /** „1.700,00 EUR“, „450,00 €“: whole euros, the thousands separator understood. */
-const EURO = /(\d{1,3}(?:\.\d{3})+|\d+)(?:,(\d{2}))?\s*(?:€|eur\b|euro\b)/i
+const EURO = /(\d{1,3}(?:\.\d{3})+|(?<!\d)\d+)(?:,(\d{2}))?\s*(?:€|eur\b|euro\b)/i
 const OWN_SHARE = /eigenanteil|selbst zu zahlen|zu zahlender betrag/i
 const TOTAL = /rechnungsbetrag|gesamtbetrag|endbetrag|summe|gesamt|zu zahlen|betrag/i
 
@@ -48,7 +48,7 @@ export function parseMedicalInvoice(text: string): MedicalInvoiceRead {
   const lines = (text ?? '').split('\n').map((l) => l.trim()).filter(Boolean)
   const totalEur = amountOn(lines, OWN_SHARE) ?? amountOn(lines, TOTAL) ?? lines.map(euros).find((v) => v !== null) ?? null
   const date = /(\d{2})\.(\d{2})\.(20\d{2})/.exec(text ?? '')
-  const number = /(?:rechnung(?:s-?nr\.?|snummer)?|nr\.)\s*:?\s*([A-Z0-9][A-Z0-9/-]{3,})/i.exec(text ?? '')
+  const number = /(?:rechnung(?:s-?nr\.?|snummer)?|nr\.)\s*(?::\s*)?([A-Z0-9][A-Z0-9/-]{3,})/i.exec(text ?? '')
   const issuer = (lines[0] ?? '').toLowerCase().replace(/\s+/g, ' ')
   return {
     totalEur,
