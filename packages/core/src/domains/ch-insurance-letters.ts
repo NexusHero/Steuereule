@@ -47,10 +47,10 @@ export interface ChPremiumLetter {
 const PENSION_LETTER = /obligatorisch/i
 const PENSION_SENDER = /pensionskasse|pension\s+fund|vorsorge|2\.\s*s(?:ä|a)ule|\bBVG\b/i
 /** The fund's yearly certificate, by its title; OCR may tear the compound apart. */
-const PENSION_CERTIFICATE = /(?:vorsorge|leistungs|versicherungs|pensionskassen)\s*-?\s*ausweis/i
+const PENSION_CERTIFICATE = /(?:vorsorge|leistungs|versicherungs|pensionskassen)[\s-]*ausweis/i
 const PENSION_CERTIFICATE_ROW = /sparbeitrag|risikobeitrag|altersguthaben|arbeitnehmerbeitrag|freiz\S{1,3}gigkeit|\bBVG\b/i
 /** „Krankentaggeld“, „Kranken-Taggeld“, „KTG“. */
-const SICKNESS = /kranken\s*-?\s*taggeld|\bKTG\b/i
+const SICKNESS = /kranken[\s-]*taggeld|\bKTG\b/i
 const ACCIDENT = /nicht\s*(?:-\s*)?be(?:rufs|triebs)\s*(?:-\s*)?unfall|\bNBU/i
 
 export function classifyChInsuranceLetter(text: string): ChInsuranceLetterKind | null {

@@ -203,7 +203,7 @@ function readHead(lines: readonly string[]) {
   // The cross of a box stands after its letter, or (read by position) before the text beside the box.
   const canteen =
     (dLine !== null && /\b[GCc6]\s+[Xx]\b/.test(dLine.slice(dLine.lastIndexOf(dates.at(-1) ?? '')))) ||
-    lines.some((l) => /^\W*[Xx]\s+(?:Kantinenverpflegung|Repas\s+.\s+la\s+cantine|Pasti\s+alla\s+mensa)/i.test(l))
+    lines.some((l) => /^\W*[Xx]\s+(?:Kantinenverpflegung|Repas\s+\S\s+la\s+cantine|Pasti\s+alla\s+mensa)/i.test(l))
   const freeTransport = lines.some((l) => /\bF\s+X\b/.test(l) || /^\W*[Xx]\s+(?:Unentgeltl?iche\s+Bef|Transport\s+gratuit|Trasporto\s+gratuito)/i.test(l))
   return { taxYear, period, canteen, freeTransport, holder: readHolder(lines) }
 }

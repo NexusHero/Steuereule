@@ -213,10 +213,14 @@ export function AdvisorChatPanel({
   // Several files at once are read one after another: each reading shows its own progress and ends in its own drafts.
   const [fileQueue, setFileQueue] = useState<readonly File[]>([])
   const readingRef = useRef(false)
+  // Files the user chose while nothing was queued: a new choice, not the rest of a selection.
+  const freshChoiceRef = useRef(new WeakSet<File>())
   useEffect(() => {
     const next = fileQueue[0]
-    // A file whose „Für wen?“ is open has not been read yet: starting the next one would wipe the question.
-    if (next === undefined || readingRef.current || isParsingReceipt || receiptQueuePaused || !onAttachReceiptFile) return
+    // A file whose „Für wen?“ is open has not been read yet: starting the next one of the same selection would
+    // wipe the question. A file chosen anew replaces an unanswered question, as it always did.
+    const waitsForAnswer = receiptQueuePaused && next !== undefined && !freshChoiceRef.current.has(next)
+    if (next === undefined || readingRef.current || isParsingReceipt || waitsForAnswer || !onAttachReceiptFile) return
     readingRef.current = true
     void Promise.resolve(onAttachReceiptFile(next)).finally(() => {
       readingRef.current = false
@@ -723,7 +727,12 @@ export function AdvisorChatPanel({
           {onAttachReceiptFile ? (
             <ReceiptPickerButton
               multiple
-              onFile={(file) => setFileQueue((prev) => [...prev, file])}
+              onFile={(file) =>
+                setFileQueue((prev) => {
+                  if (prev.length === 0) freshChoiceRef.current.add(file)
+                  return [...prev, file]
+                })
+              }
               disabled={isParsingReceipt}
               testID="advisor-receipt-file"
               inputTestID="advisor-receipt-file-input"

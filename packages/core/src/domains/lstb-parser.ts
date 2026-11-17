@@ -439,7 +439,7 @@ type SubRowKey = '23a' | '23b' | 'other'
 /** A sub-row of the blocks 22 (employer's share), 23 (employee's share) and 24 (tax-free subsidies), on folded text. */
 const SUB_ROW = /(?:^|[\s|:;])([abc2])\)\s*(zur\s+gesetzlichen\s+renten|an\s+berufsst|zur\s+gesetzlichen\s+kranken|zur\s+privaten\s+kranken|zur\s+gesetzlichen\s+pflege)/
 /** The number of the block where it stands on the same line: "22. Arbeitgeber-", "23. Arbeiinehmer-", "24. Steuerfreie". */
-const BLOCK_NUMBER = /(?:^|[\s|:;])(?:(22)\s*\.?\s*arbeitgeb|(23)\s*\.?\s*arbei\S{0,3}nehm|(24)\s*\.?\s*steuerfr)/
+const BLOCK_NUMBER = /(?:^|[\s|:;])(?:(22)[\s.]*arbeitgeb|(23)[\s.]*arbei\S{0,3}nehm|(24)[\s.]*steuerfr)/
 
 /**
  * Which line of the certificate each sub-row a), b), c) of the blocks 22 to 24 is (real-data run, step

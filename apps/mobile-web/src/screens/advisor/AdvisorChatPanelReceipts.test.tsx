@@ -92,8 +92,10 @@ describe('AdvisorChatPanel — receipts in the chat', () => {
     const view = render(panel(true))
     fireEvent.click(screen.getByTestId('advisor-receipt-attach-btn'))
     fireEvent.change(screen.getByTestId('advisor-receipt-file-input'), { target: { files: [a, b] } })
+    // The first file is a new choice and replaces whatever question stood open; the second waits for its answer.
+    await waitFor(() => expect(onFile).toHaveBeenCalledTimes(1))
     await new Promise((resolve) => setTimeout(resolve, 20))
-    expect(onFile).not.toHaveBeenCalled()
+    expect(onFile).toHaveBeenCalledTimes(1)
 
     view.rerender(panel(false))
     await waitFor(() => expect(onFile).toHaveBeenCalledTimes(2))
