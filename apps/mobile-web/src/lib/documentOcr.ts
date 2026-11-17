@@ -2,9 +2,22 @@ import { recognizePhoto, type GrayImage, type RgbaImage } from './imagePreproces
 
 const ALLOWED_PDF_MIME = 'application/pdf'
 const ALLOWED_IMAGE_MIMES = new Set(['image/jpeg', 'image/png', 'image/webp'])
-const MAX_PDF_TEXT_PAGES = 5
-const MAX_PDF_OCR_PAGES = 3
+/** A text layer costs nothing to read; a certificate with its supplementary sheets has more than five pages. */
+const MAX_PDF_TEXT_PAGES = 12
+/** A scanned Lohnausweis with its Beiblatt has five pages (real-data run); each page costs seconds of OCR. */
+const MAX_PDF_OCR_PAGES = 6
 const MIN_MEANINGFUL_TEXT_CHARS = 40
+/** Scanners store 300 dpi; at 144 dpi the OCR lost four of nine amounts of a certificate (real-data run, step 3a). */
+const OCR_TARGET_DPI = 300
+/** An A4 page at 300 dpi, and below the canvas limit of phone browsers (16.7 million pixels). */
+const MAX_OCR_PIXELS = 9_000_000
+
+/** The scale a PDF page (size in points) is rendered at for the OCR: 300 dpi, less for a page too large to hold. */
+export function ocrRenderScale(widthPt: number, heightPt: number): number {
+  const wanted = OCR_TARGET_DPI / 72
+  const area = Math.max(1, widthPt * heightPt)
+  return area * wanted * wanted <= MAX_OCR_PIXELS ? wanted : Math.sqrt(MAX_OCR_PIXELS / area)
+}
 
 export type OcrStage = 'detecting' | 'pdf_text' | 'pdf_ocr_render' | 'image_ocr' | 'done'
 
@@ -45,8 +58,8 @@ export interface PdfTextItem {
   readonly transform?: readonly number[]
 }
 
-/** A line ends at pdf.js's own end-of-line mark or when the baseline moves by more than a pixel or two. */
-export function joinPdfTextItems(items: readonly PdfTextItem[]): string {
+/** In stream order: a line ends at pdf.js's own end-of-line mark or when the baseline moves by more than a pixel or two. */
+function joinInStreamOrder(items: readonly PdfTextItem[]): string {
   const lines: string[] = []
   let current = ''
   let baseline: number | null = null
@@ -65,17 +78,112 @@ export function joinPdfTextItems(items: readonly PdfTextItem[]): string {
   return lines.join('\n')
 }
 
+interface PlacedItem {
+  readonly str: string
+  readonly x: number
+  readonly y: number
+  readonly size: number
+}
+
+/**
+ * The text of a page in reading order: top to bottom, left to right. A form (the Swiss Lohnausweis) holds
+ * its labels and its amounts in separate blocks of the content stream; read in stream order no amount
+ * stands on the line of its label (real-data run, step 3a). Items whose baselines lie within a fraction
+ * of the smaller font size share a line: an amount is set in a larger font than its label. A page
+ * without positions, or one whose text is turned, keeps the stream order.
+ */
+export function joinPdfTextItems(items: readonly PdfTextItem[]): string {
+  const placed: PlacedItem[] = []
+  let turned = 0
+  for (const item of items) {
+    if (item.str === undefined || item.str === '') continue
+    const t = item.transform
+    if (t === undefined || t.length < 6) return joinInStreamOrder(items)
+    if (Math.abs(t[1]!) > Math.abs(t[0]!)) turned++
+    placed.push({ str: item.str, x: t[4]!, y: t[5]!, size: Math.hypot(t[2]!, t[3]!) || Math.hypot(t[0]!, t[1]!) })
+  }
+  if (placed.length === 0 || turned * 2 > placed.length) return joinInStreamOrder(items)
+
+  // PDF coordinates grow upwards: the highest baseline is the first line. The sort is stable.
+  const byHeight = [...placed].sort((a, b) => b.y - a.y)
+  const lines: PlacedItem[][] = []
+  for (const item of byHeight) {
+    const line = lines.at(-1)
+    const anchor = line?.[0]
+    if (line !== undefined && anchor !== undefined && anchor.y - item.y <= Math.max(2, 0.4 * Math.min(anchor.size, item.size))) line.push(item)
+    else lines.push([item])
+  }
+  return lines
+    .map((line) =>
+      [...line]
+        .sort((a, b) => a.x - b.x)
+        .reduce((text, item) => text + (text === '' || text.endsWith(' ') ? '' : ' ') + item.str, '')
+        .trim(),
+    )
+    .filter((line) => line !== '')
+    .join('\n')
+}
+
 export interface PdfJsLikeModule {
   getDocument(params: {
     readonly data: Uint8Array
     readonly disableAutoFetch?: boolean
     readonly isEvalSupported?: boolean
+    /** Folder of pdf.js's WASM image decoders (JBIG2, JPEG 2000), with a trailing slash. */
+    readonly wasmUrl?: string
   }): { readonly promise: Promise<PdfJsLikeDocument> }
 }
 
+/** A word tesseract found, with its box in pixels (y grows downwards). */
+export interface OcrWord {
+  readonly text: string
+  readonly bbox: { readonly x0: number; readonly y0: number; readonly x1: number; readonly y1: number }
+}
+
+export interface OcrBlock {
+  readonly paragraphs?: readonly { readonly lines?: readonly { readonly words?: readonly OcrWord[] }[] }[]
+}
+
 export interface TesseractLikeWorker {
-  recognize(image: Blob | HTMLCanvasElement): Promise<{ readonly data: { readonly text: string } }>
+  recognize(
+    image: Blob | HTMLCanvasElement,
+    options?: Record<string, never>,
+    output?: { readonly blocks: boolean },
+  ): Promise<{ readonly data: { readonly text: string; readonly blocks?: readonly OcrBlock[] | null } }>
+  setParameters?(params: { readonly tessedit_pageseg_mode: string }): Promise<unknown>
   terminate(): Promise<unknown>
+}
+
+
+/**
+ * The rows of a scanned page, rebuilt from the boxes of its words: top to bottom, left to right. A word
+ * joins a row when its vertical centre lies within half the taller of the two heights of the row's
+ * centre — an amount in a larger font stays on the row of its small label. Tesseract's own layout
+ * analysis loses the amount column of a ruled form (real-data run: a scanned Lohnsteuerbescheinigung
+ * kept 4 of 8 amounts, read this way all 8).
+ */
+export function joinOcrWords(words: readonly OcrWord[]): string {
+  const placed = words
+    .filter((w) => w.text.trim() !== '')
+    .map((w) => ({ text: w.text.trim(), x: w.bbox.x0, centre: (w.bbox.y0 + w.bbox.y1) / 2, height: Math.max(1, w.bbox.y1 - w.bbox.y0) }))
+    .sort((a, b) => a.centre - b.centre)
+  const rows: { centre: number; height: number; words: typeof placed }[] = []
+  for (const w of placed) {
+    const row = rows.at(-1)
+    if (row !== undefined && Math.abs(w.centre - row.centre) <= 0.5 * Math.max(w.height, row.height)) {
+      row.words.push(w)
+      row.centre += (w.centre - row.centre) / row.words.length
+      row.height += (w.height - row.height) / row.words.length
+    } else rows.push({ centre: w.centre, height: w.height, words: [w] })
+  }
+  return rows.map((row) => [...row.words].sort((a, b) => a.x - b.x).map((w) => w.text).join(' ')).join('\n')
+}
+
+/** Reads one scanned page: by word boxes where the engine hands them out, else its plain text. */
+async function recognizePage(worker: TesseractLikeWorker, image: HTMLCanvasElement): Promise<string> {
+  const { data } = await worker.recognize(image, {}, { blocks: true })
+  const words = (data.blocks ?? []).flatMap((block) => (block.paragraphs ?? []).flatMap((p) => (p.lines ?? []).flatMap((line) => line.words ?? [])))
+  return words.length > 0 ? joinOcrWords(words) : data.text
 }
 
 export interface OcrDependencies {
@@ -176,6 +284,15 @@ export function selfHostedOcrPaths(origin: string): { workerPath: string; corePa
   return { workerPath: `${base}/worker.min.js`, corePath: `${base}/core`, langPath: `${base}/lang` }
 }
 
+/**
+ * Same-origin folder of pdf.js's WASM image decoders (ADR-0060). A scanner's PDF often holds its page as
+ * JBIG2 or JPEG 2000; without the decoder pdf.js renders an empty page and the OCR reads nothing
+ * (real-data run: „Text nicht lesbar“).
+ */
+export function selfHostedPdfWasmUrl(origin: string): string {
+  return `${origin.replace(/\/$/, '')}/ocr/pdf/`
+}
+
 async function defaultCreateTesseractWorker(
   langs: string,
   options?: { readonly logger?: (msg: { readonly status?: string; readonly progress?: number }) => void },
@@ -232,14 +349,26 @@ function grayToCanvas(img: GrayImage, createCanvas: (width: number, height: numb
   return canvas
 }
 
+/** The pixels of a rendered page; null where the canvas cannot hand them out. */
+function canvasPixels(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement): RgbaImage | null {
+  if (typeof ctx.getImageData !== 'function') return null
+  try {
+    const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height)
+    return { data: pixels.data, width: pixels.width, height: pixels.height }
+  } catch {
+    return null
+  }
+}
+
 function countNonWhitespaceChars(text: string): number {
   return text.replace(/\s+/g, '').length
 }
 
 /**
  * Extracts text strictly on-device (no image or PDF ever leaves the browser for OCR):
- * - PDF: reads text layer via pdfjs-dist (up to 5 pages); if sparse (< 40 chars, scanned PDF),
- *   renders pages (up to 3) to <canvas> and OCRs locally via tesseract.js (deu+eng).
+ * - PDF: reads text layer via pdfjs-dist (up to 12 pages, in reading order); if sparse (< 40 chars,
+ *   scanned PDF), renders pages (up to 6) at 300 dpi to <canvas>, prepares them like a photo and OCRs
+ *   locally via tesseract.js (deu+eng).
  * - Image (JPEG/PNG/WebP): prepares the photo (imagePreprocess.ts) and runs local WASM OCR via
  *   tesseract.js (deu+eng).
  */
@@ -266,6 +395,7 @@ export async function extractDocumentTextOnDevice(
       data: bytes,
       disableAutoFetch: true,
       isEvalSupported: false,
+      ...(globalThis.location?.origin ? { wasmUrl: selfHostedPdfWasmUrl(globalThis.location.origin) } : {}),
     }).promise
 
     try {
@@ -309,18 +439,24 @@ export async function extractDocumentTextOnDevice(
         },
       })
       try {
+        // Tesseract's own page segmentation stays on: „sparse text“ dropped leading digits behind dot
+        // leaders („5.214,00“ read as „214,00“, scan corpus) and gained nothing on the real scans.
         for (let pageNo = 1; pageNo <= ocrLimit; pageNo++) {
           options.onProgress?.({ stage: 'pdf_ocr_render', page: pageNo, totalPages: ocrLimit })
           const page = await pdfDoc.getPage(pageNo)
-          const viewport = page.getViewport({ scale: 2 })
+          const size = page.getViewport({ scale: 1 })
+          const viewport = page.getViewport({ scale: ocrRenderScale(size.width, size.height) })
           const canvas = createCanvas(viewport.width, viewport.height)
           const ctx = canvas.getContext('2d')
           if (!ctx) {
             throw new Error('Could not obtain 2D canvas context for PDF OCR.')
           }
           await page.render({ canvasContext: ctx, viewport }).promise
-          const res = await worker.recognize(canvas)
-          const text = res.data.text.trim()
+          // A scanned page is a photo of paper: flattened, turned upright, straightened and binarised like one.
+          const pixels = canvasPixels(ctx, canvas)
+          const text = (
+            pixels === null ? await recognizePage(worker, canvas) : await recognizePhoto(pixels, (prepared) => recognizePage(worker, grayToCanvas(prepared, createCanvas)))
+          ).trim()
           if (text) ocrChunks.push(text)
         }
       } finally {

@@ -85,6 +85,10 @@ export interface ProvisionParameters {
   readonly maxOtherProvisionSingleEur: number
   /** § 10 Abs. 4 EStG: Höchstbetrag sonstige Vorsorgeaufwendungen (Arbeitnehmer mit AG-Anteil: 1.900 €). */
   readonly maxOtherProvisionEmployeeEur: number
+  /** § 10 Abs. 3 Satz 1 EStG: Höchstbetrag der Altersvorsorgeaufwendungen je Person (Höchstbeitrag knappschaftliche RV). */
+  readonly maxPensionProvisionEur: number
+  /** § 10 Abs. 3 Satz 4 und 6 EStG: abziehbarer Anteil der Altersvorsorgeaufwendungen (2022: 94 %, ab 2023: 100 %). */
+  readonly pensionDeductibleShare: number
 }
 
 /** § 35a EStG: Steuerermäßigung für haushaltsnahe Beschäftigungsverhältnisse, Dienstleistungen und Handwerkerleistungen. */
@@ -159,6 +163,15 @@ const CHILDREN_BY_YEAR: Readonly<Record<IncomeTaxYear, { monthly: number; childA
   2026: { monthly: 259, childAllowanceOnly: 6828, singleParentRelief: 4260 },
 }
 
+/** § 10 Abs. 3 Satz 1 EStG: the highest contribution to the knappschaftliche Rentenversicherung of the year. */
+const MAX_PENSION_PROVISION_BY_YEAR: Readonly<Record<IncomeTaxYear, number>> = {
+  2022: 25639,
+  2023: 26528,
+  2024: 27566,
+  2025: 29344,
+  2026: 30826,
+}
+
 const FILING_DEADLINES_BY_YEAR: Readonly<Record<IncomeTaxYear, string>> = {
   2022: '2023-10-02',
   2023: '2024-09-02',
@@ -229,6 +242,8 @@ function buildParametersForYear(year: IncomeTaxYear): TaxYearParameters {
       sickPayReductionRate: 0.04,
       maxOtherProvisionSingleEur: 2800,
       maxOtherProvisionEmployeeEur: 1900,
+      maxPensionProvisionEur: MAX_PENSION_PROVISION_BY_YEAR[year],
+      pensionDeductibleShare: year === 2022 ? 0.94 : 1,
     },
     maxOtherProvisionEur: 2800,
     householdServices: {

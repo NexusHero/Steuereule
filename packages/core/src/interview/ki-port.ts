@@ -68,7 +68,42 @@ export interface AdvisorTurnRequest {
    * link and children. Absent or false: everything as before (ADR-0066).
    */
   readonly personalDataConsent?: boolean | undefined
+  /**
+   * The estimate the app itself computes for the tax year from the stored values, with its
+   * components. The owl reads it instead of adding figures up herself; figures only, no personal data.
+   */
+  readonly readEstimate?: (() => Promise<AdvisorEstimateReading>) | undefined
 }
+
+/** A range in euro; `from` equals `to` where the estimate is exact. */
+export interface AdvisorEuroRange {
+  readonly fromEur: number
+  readonly toEur: number
+}
+
+/** The app's current estimate for the year as the owl may read it: amounts only. */
+export type AdvisorEstimateReading =
+  | {
+      readonly kind: 'computed'
+      /** Positive = refund, negative = back payment; prepayments are already counted. */
+      readonly result: AdvisorEuroRange
+      readonly workExpensesEur: number
+      readonly provision: AdvisorEuroRange
+      readonly specialExpensesEur: number
+      readonly taxableIncome: AdvisorEuroRange
+      readonly incomeTax: AdvisorEuroRange
+      readonly solidaritySurcharge: AdvisorEuroRange
+      /** Wage tax or creditable Swiss withholding tax already paid. */
+      readonly creditedTaxEur: number
+      /** Income tax prepayments of the year (§ 37 EStG). */
+      readonly prepaymentsEur: number
+      /** Church tax is not part of the result while its facts are open. */
+      readonly churchTaxOpen: boolean
+      readonly jointAssessment: boolean
+    }
+  /** Values are missing; `missing` names them. */
+  | { readonly kind: 'open'; readonly missing: readonly string[] }
+  | { readonly kind: 'not-possible'; readonly reason: string }
 
 /** The fields one draft would write, main field and companions alike. */
 export interface AdvisorPreviewTarget {

@@ -158,7 +158,12 @@ export class ChPensionStatementParseStrategy extends ChLetterParseStrategy {
     const fields: ChLetterFieldDto[] = []
     if (employee.mandatory !== null) fields.push(field('pkArbeitnehmerChf', employee.mandatory, fromOcr, splitConflict))
     if (employer.mandatory !== null) fields.push(field('pkArbeitgeberChf', employer.mandatory, fromOcr, splitConflict))
-    if (employer.total !== null) fields.push(field('pkArbeitgeberGesamtChf', employer.total, fromOcr, splitConflict || ziffer10Conflict))
+    // A yearly certificate states a figure at its key date, not what was paid: never offered as read.
+    const certificate = statement.source === 'certificate'
+    if (employer.total !== null) {
+      const total = field('pkArbeitgeberGesamtChf', employer.total, fromOcr, splitConflict || ziffer10Conflict)
+      fields.push(certificate ? { ...total, status: 'pruefen' } : total)
+    }
     const missing = [
       ...(employee.mandatory === null ? ['pkArbeitnehmerChf'] : []),
       ...(employer.mandatory === null ? ['pkArbeitgeberChf'] : []),
@@ -170,6 +175,9 @@ export class ChPensionStatementParseStrategy extends ChLetterParseStrategy {
       ...(employee.total !== null && ziffer10 !== null && !ziffer10Conflict ? [`Die Arbeitnehmerbeiträge gesamt (${employee.total} CHF) passen zu Ziffer 10 des Lohnausweises.`] : []),
       ...(ziffer10Conflict ? [`Die Beiträge des Arbeitnehmers (${employee.total} CHF) weichen von Ziffer 10 des Lohnausweises (${ziffer10} CHF) ab. Gehört der Nachweis zum richtigen Jahr?`] : []),
       ...(employer.total === null ? ['Die Arbeitgeberbeiträge gesamt konnte ich nicht lesen (im Scan fehlt eine Zeile). Ohne sie rechnet die App keine Zeile 20; trag sie bitte aus dem Nachweis ein.'] : []),
+      ...(certificate
+        ? ['Das ist ein Vorsorgeausweis: Er nennt die Beiträge als Jahreswert zum Stichtag und nicht den obligatorischen Anteil (Zeilen 84 und 87). Den „Nachweis obligatorischer und überobligatorischer Beiträge“ stellt die Pensionskasse auf Anfrage aus.']
+        : []),
     ]
     return { taxYear: statement.taxYear, fields, missing, notes }
   }

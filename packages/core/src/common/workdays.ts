@@ -159,7 +159,9 @@ export function commuterAllowance(input: CommuterAllowanceInput): number {
   const km = Math.floor(kmInput)
   const firstKm = Math.min(km, firstKmLimit)
   const additionalKm = km - firstKm
-  const amount = Math.round(days * (firstKm * rateFirst + additionalKm * rateAdditional))
+  // Whole euros, rounded up as the tax office does on the notice (5.392,36 € → 5.393 €, ADR-0094); the
+  // cents are fixed first so a float like 906,6800000001 does not gain a euro.
+  const amount = Math.ceil(Math.round(days * (firstKm * rateFirst + additionalKm * rateAdditional) * 100) / 100)
   return withCar ? amount : Math.min(amount, maxCap)
 }
 
@@ -169,6 +171,11 @@ export interface WayToWork {
   readonly withCar: boolean
   readonly from: string | null
   readonly to: string | null
+  /**
+   * Days the first place of work was actually visited on this way, as the user states them (ADR-0093).
+   * They stand as given; without them the days are derived from working days less days off.
+   */
+  readonly days?: number | null
 }
 
 function dayIndex(year: number, date: string | null, fallback: number): number {
@@ -194,7 +201,12 @@ export function weekdaysInPeriod(year: number, workdays: readonly IsoWeekday[], 
  * The year's commute days shared among the ways to work by the weekdays each one lasted; days off and
  * home office are known only for the year, so they fall evenly. One way without dates keeps all days.
  */
-export function commuteDaysByWay(year: number, workdays: readonly IsoWeekday[], commuteDays: number, ways: readonly Pick<WayToWork, 'from' | 'to'>[]): number[] {
+export function commuteDaysByWay(year: number, workdays: readonly IsoWeekday[], commuteDays: number, ways: readonly Pick<WayToWork, 'from' | 'to' | 'days'>[]): number[] {
+  // Days the user stated for a way stand; only the other ways get a derived share.
+  return derivedDaysByWay(year, workdays, commuteDays, ways).map((derived, i) => ways[i]!.days ?? derived)
+}
+
+function derivedDaysByWay(year: number, workdays: readonly IsoWeekday[], commuteDays: number, ways: readonly Pick<WayToWork, 'from' | 'to'>[]): number[] {
   if (ways.length === 0) return []
   if (ways.length === 1 && ways[0]!.from === null && ways[0]!.to === null) return [commuteDays]
   const yearWeekdays = weekdaysInYear(year, workdays)

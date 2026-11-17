@@ -3,6 +3,7 @@ import {
   calculateDifferentialChildBenefit,
   isValidChildBirthDate,
   childTaxAllowance,
+  childBenefitForComparison,
   monthlyChildBenefitClaim,
   calculateChildrenStatus,
   type ChildData,
@@ -118,5 +119,25 @@ describe('kinder', () => {
     expect(status.differentialChildBenefitSum).toBe(312 * 2) // 624 €
     expect(status.childBenefitSum).toBe(3060 * 2) // 6.120 € total claim for Günstigerprüfung
     expect(status.totalAllowance).toBe(9600 * 2) // 19.200 € Kinderfreibetrag + BEA
+  })
+
+  it('the Günstigerprüfung counts the claim to German Kindergeld, whatever was paid and by whom (§ 31 Satz 4–6, § 65 EStG)', () => {
+    // 2025: 12 × 255 € = 3.060 €. A Swiss Kinderzulage of 2.400 € plus 660 € Differenzkindergeld is that same claim.
+    const lower = calculateDifferentialChildBenefit('2021-03-09', 2025, 2400)
+    expect(lower.swissAllowanceEur + lower.differentialChildBenefit).toBe(3060)
+    expect(childBenefitForComparison('2021-03-09', 2025)).toBe(3060)
+
+    // Only the Differenzkindergeld reached the account (660 €): the comparison still uses the claim.
+    const paidOnlyTopUp: ChildData = { id: 'k', firstName: 'Mila', lastName: 'Muster', birthDate: '2021-03-09', taxId: null, childBenefit: 660, swissFamilyAllowanceEur: 2400 }
+    expect(calculateChildrenStatus([paidOnlyTopUp], 2025).childBenefitSum).toBe(660) // what the mask shows as entered
+    expect(childBenefitForComparison(paidOnlyTopUp.birthDate, 2025)).toBe(3060)
+
+    // A Swiss allowance above the German Kindergeld is offset only up to the German amount.
+    expect(calculateDifferentialChildBenefit('2021-03-09', 2025, 3500).differentialChildBenefit).toBe(0)
+    expect(childBenefitForComparison('2021-03-09', 2025)).toBe(3060)
+
+    // By month: born in October 2025 → 3 months; 2024 → 12 × 250 €.
+    expect(childBenefitForComparison('2025-10-15', 2025)).toBe(765)
+    expect(childBenefitForComparison('2021-03-09', 2024)).toBe(3000)
   })
 })

@@ -680,6 +680,8 @@
       "deny": "Do not allow",
       "saving": "Saving …",
       "granted": "Allowed. The owl may now process your personal data.",
+      "grantedContinues": "Allowed. The owl continues with your last message.",
+      "continueMessage": "I have allowed you to process my personal data. Please continue with my last message.",
       "error": "That did not work. Please try again."
     },
     "section": {
@@ -907,8 +909,24 @@
       "heading": "Employer subsidies",
       "help": "If your employer pays a tax-free subsidy to your health or care insurance, it is on line 24 (a to c). Enter the total, otherwise leave the field empty. You can only deduct what you bore yourself.",
       "zeile24": "Tax-free subsidies to health and care insurance (line 24 a–c, together)",
+      "offen": "Line 25 or 26 is filled in: please enter line 24 (0 is fine). Until then the social security counts as incomplete.",
       "loading": "Loading subsidies …",
       "loadError": "The subsidies couldn't be loaded."
+    },
+    "zeilen": {
+      "heading": "Social security by line (22–27)",
+      "help": "The amounts are listed separately on the wage tax statement. Enter only what it shows; empty fields count as not recorded.",
+      "rvArbeitgeber": "Employer share, pension insurance (line 22)",
+      "rvArbeitnehmer": "Employee share, pension insurance (line 23)",
+      "kvArbeitnehmer": "Health insurance, employee contribution (line 25)",
+      "pvArbeitnehmer": "Care insurance, employee contribution (line 26)",
+      "avArbeitnehmer": "Unemployment insurance, employee contribution (line 27)",
+      "zuschussPv": "Line 24c: of which care insurance",
+      "solidaritaetszuschlag": "Solidarity surcharge withheld (line 5, euros with cents)",
+      "summe": "Sum of employee shares: {{betrag}} €",
+      "summeHinweis": "calculated by the app (lines 23, 25, 26, 27)",
+      "loading": "Loading lines …",
+      "loadError": "The lines could not be loaded."
     },
     "feld": {
       "placeholder": "Whole euros",
@@ -1405,6 +1423,15 @@
         "ab": "New way from",
         "datumPlaceholder": "DD.MM.YYYY",
         "datumFehler": "Please enter as DD.MM.YYYY."
+      },
+      "kuerzeste": "This is the shortest road connection (§ 9 para. 1 no. 4 EStG) – the shortest route counts, not the one driven.",
+      "fahrtage": {
+        "label": "Actually visited on … days (optional)",
+        "labelZweiter": "Second way: actually visited on … days (optional)",
+        "placeholder": "empty = derived from working days",
+        "pendlertage": "Commute days (as stated)",
+        "pendlertageZweiter": "Commute days, second way (as stated)",
+        "widerspruch": "The days don't fit: more than the working days in this way's period (at most 366) are not possible."
       }
     }
   },
@@ -1886,8 +1913,10 @@
     "vorsorge": {
       "title": "Provision outside your salary",
       "help": "Only what is not already on the salary certificate. A German health insurance goes into the special expenses later.",
-      "krankenkasseChf": "Swiss health insurance – your premiums per year (CHF)",
-      "saeule3aChf": "Pillar 3a – your contributions per year (CHF)"
+      "krankenkasseChf": "Basic insurance (KVG) – your premiums per year (CHF)",
+      "saeule3aChf": "Pillar 3a – your contributions per year (CHF)",
+      "krankenkasseZusatzChf": "Supplementary insurance (VVG)",
+      "krankenkasseZusatzHilfe": "Counts as other provision, not as basic cover. 0 if there is none."
     },
     "nGre": {
       "title": "For Anlage N-Gre",
@@ -1905,7 +1934,10 @@
         "krankentaggeldArbeitgeberProzent": "What percentage of the daily sickness insurance premium does your employer pay? (0 to 100, 0 if you pay all)",
         "krankentaggeldArbeitgeberChf": "Employer contribution to the daily sickness insurance (CHF)",
         "nbuvArbeitgeberProzent": "What percentage of the non-occupational accident insurance premium does your employer pay? (0 to 100, 0 if you pay all)",
-        "nbuvArbeitgeberChf": "Employer contribution to the non-occupational accident insurance (CHF)"
+        "nbuvArbeitgeberChf": "Employer contribution to the non-occupational accident insurance (CHF)",
+        "familienzulagenImBruttolohn": "Included in gross salary, Ziffer 8?",
+        "familienzulagenImBruttolohnHilfe": "Only then is the allowance deducted from the gross salary (Anlage N-Gre line 8). Otherwise it belongs to the child (Children mask).",
+        "kvZuschussAnspruch": "Entitled to tax-free subsidies or employer contributions to health insurance? (Anlage Vorsorgeaufwand line 49)"
       },
       "sonderfaelle": "Were there unemployment or SUVA benefits, maternity or disability daily allowances, tax-free supplements, direct insurance, options, travel reimbursement, flat expenses, or a company car?",
       "ja": "Yes",
@@ -2189,6 +2221,11 @@
       "receiptQueue_other": "Then {{count}} more files",
       "receiptQueueRemove": "Remove {{name}} from the queue",
       "turnFailed": "The owl’s answer broke off on the way.",
+      "requestRefused": "The owl could not accept your message. Please try again.",
+      "length": {
+        "counter": "{{used}} of {{max}} characters",
+        "tooLong": "Your message is too long ({{used}} of {{max}} characters). Please split it up."
+      },
       "applyFailed": "The proposal could not be applied. Please enter the value in the screen itself.",
       "reconnecting": "Restoring the connection …",
       "failed": "not finished",
@@ -2302,7 +2339,8 @@
       "lstbWhose": "The name on this wage tax certificate fits nobody in your return. Whose certificate is it? Nothing was taken over yet.",
       "lstbPersonBOwnAccount": "This is Person B’s wage tax certificate. Person B has an own account and uploads it there; nothing was taken over here.",
       "certificatePersonBOwnAccount": "This is Person B’s salary certificate. Person B has an own account and uploads it there; nothing was taken over here.",
-      "receiptYearConflict": "This wage tax statement belongs to tax year {{documentYear}}, you are in {{activeYear}}. Switch to {{documentYear}} above and upload it there — nothing was taken over.",
+      "receiptYearConflict": "This document belongs to tax year {{documentYear}}, you are in {{activeYear}}. Switch to {{documentYear}} above and upload it there — nothing was taken over.",
+      "receiptNoValues": "The document was recognised, but I could not read any values from it. Please enter them in the form or upload a sharper image.",
       "receiptProgress": {
         "uploading": "Storing the receipt encrypted …",
         "detecting": "Recognising the document on your device …",

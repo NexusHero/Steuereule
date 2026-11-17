@@ -112,6 +112,26 @@ export interface CommuteInputsDto {
   secondFrom?: string | null;
   /** @nullable */
   secondTo?: string | null;
+  /**
+     * Days the first place of work was actually visited on this way; replaces the days derived from working days less days off (ADR-0093). Omitted keeps what is stored.
+     * @nullable
+     */
+  travelDays?: number | null;
+  /**
+     * Days actually travelled on the second way.
+     * @nullable
+     */
+  secondTravelDays?: number | null;
+  /**
+     * The user confirmed that `oneWayKm` is the shortest road connection (§ 9 Abs. 1 Nr. 4 Satz 4 EStG).
+     * @nullable
+     */
+  shortestRouteConfirmed?: boolean | null;
+  /**
+     * The same confirmation for `secondOneWayKm`.
+     * @nullable
+     */
+  secondShortestRouteConfirmed?: boolean | null;
 }
 
 export interface WorkdaysDto {

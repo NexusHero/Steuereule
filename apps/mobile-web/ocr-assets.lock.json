@@ -4,5 +4,10 @@
   "core/tesseract-core-simd-lstm.wasm.js": "c58b46a4c796c0b8afccf77591d5b875b6896b45d402bbce8caa6f5362447b38",
   "core/tesseract-core-relaxedsimd-lstm.wasm.js": "861a536cf9ef8e63cb644d57bab39c388f37f7d6b6f60024b741c5f6b39a59b3",
   "lang/deu.traineddata.gz": "306c4280d0cbed46fbff727486bd43b92730181bae80f56941a091f363bdf28b",
-  "lang/eng.traineddata.gz": "45b4cb346724ac1774f1c36f42f182b887bcdb28ebe63e6fff90ac41f3fcff91"
+  "lang/eng.traineddata.gz": "45b4cb346724ac1774f1c36f42f182b887bcdb28ebe63e6fff90ac41f3fcff91",
+  "pdf/jbig2.wasm": "466f45c2a61a698152fb5400c27e56ff2ceb73dcb71fde3fc366a502308eaab0",
+  "pdf/jbig2_nowasm_fallback.js": "70150223396487e1ccfef7eac61fc780074ad7fcc9e843b702a8a3bc23107494",
+  "pdf/openjpeg.wasm": "7ea4b2b04613370ad4e9c1162da750cc88b4b176eac0d0c164b3caff23fc0a46",
+  "pdf/openjpeg_nowasm_fallback.js": "2855f1590e7fd7abbbf204cd13a5c09d30c92fe2c9313fb72b64aa763fe8b4f3",
+  "pdf/qcms_bg.wasm": "663d86126d5f5fcb1c61490f94353e2a8375660b8c5498ab3ebab5a34b08800e"
 }

@@ -227,4 +227,12 @@ describe('church tax for two Grenzgänger (escalation case, ADR-0088)', () => {
     expect(bw.churchTax.due.from).toBe(Math.floor(basis(bw.taxableIncome.from) * 0.08))
     expect(bw.churchTax.due.to).toBe(Math.floor(basis(bw.taxableIncome.to) * 0.08))
   })
+
+  it('taxes capital income not settled at source at the flat rate and credits what the banks withheld (§ 32d, § 36 EStG)', () => {
+    const plain = range(WEBER)
+    const withCapital = range({ ...WEBER, capitalIncomeEur: 449, capitalTaxWithheldEur: 50 })
+    // 25 % of 449 € = 112 €; the Soli on it is 5,5 % without the exemption limit.
+    expect(withCapital.incomeTax.from - plain.incomeTax.from).toBe(112)
+    expect(withCapital.anrechnung - plain.anrechnung).toBe(50)
+  })
 })

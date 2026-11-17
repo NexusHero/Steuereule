@@ -1355,6 +1355,10 @@ export const SendAdvisorMessageDtoQuickAction = {
 } as const;
 
 export interface SendAdvisorMessageDto {
+  /**
+     * The user's message, at most 8000 characters; a longer one is refused with 400 and a German sentence under `fields[].message`.
+     * @maxLength 8000
+     */
   message: string;
   activeScreen?: SendAdvisorMessageDtoActiveScreen;
   /** A skill the user switched on for this message (#495). */

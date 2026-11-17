@@ -25,7 +25,9 @@ export interface AdvisorHistoryBudget {
 }
 
 /** The context of one conversation: how much of its past the model is shown verbatim. */
-export const DEFAULT_ADVISOR_HISTORY_TOKENS = 6000
+// Sized for the message limit (ADVISOR_MESSAGE_MAX_CHARS = 8.000 characters, about 2.000 tokens): several
+// full-length messages with their answers stay verbatim before the older part is summarised.
+export const DEFAULT_ADVISOR_HISTORY_TOKENS = 12_000
 /** From here on the chat warns that the conversation is about to be summarised. */
 export const ADVISOR_CONTEXT_WARN_PERCENT = 80
 /** After a summary, the newest turns stay verbatim up to this share of the context. */

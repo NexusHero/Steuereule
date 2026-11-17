@@ -214,6 +214,33 @@ export function solidaritaetszuschlag(assessmentBasis: number, exemptionLimit: n
   return Math.floor(Math.min(full, reduced))
 }
 
+/**
+ * The Solidaritätszuschlag in cents, as the notice sets it: 5,5 % of the tax, at most 11,9 % of what
+ * lies above the exemption limit, fractions of a cent dropped (§ 4 SolZG).
+ */
+export function solidaritaetszuschlagInCents(assessmentBasis: number, exemptionLimit: number): number {
+  if (!Number.isFinite(assessmentBasis) || !Number.isFinite(exemptionLimit) || assessmentBasis < 0 || exemptionLimit < 0) {
+    throw new RangeError('bemessungsgrundlage and freigrenze must be non-negative finite numbers')
+  }
+  const base = Math.floor(assessmentBasis)
+  if (base <= exemptionLimit) return 0
+  // Integer arithmetic in tenths of a cent keeps 11,9 % of 31.314 € at 3.726,36 € and not a float below it.
+  const full = Math.floor((base * 55) / 10)
+  const reduced = Math.floor((base - exemptionLimit) * 119 / 10)
+  return Math.min(full, reduced)
+}
+
+/** § 32d Abs. 1 EStG: 25 % of capital income not taxed at source, in whole euros (rounded down). */
+export function capitalFlatTax(capitalIncomeEur: number, year: number): number {
+  if (!Number.isFinite(capitalIncomeEur) || capitalIncomeEur <= 0 || !isSupportedIncomeTaxYear(year)) return 0
+  return Math.floor(Math.floor(capitalIncomeEur) * 0.25)
+}
+
+/** Soli on the flat tax in cents: 5,5 % from the first euro, without the exemption limit (§ 3 Abs. 3 SolZG). */
+export function soliOnFlatTax(flatTaxEur: number): number {
+  return Math.floor((Math.max(0, Math.floor(flatTaxEur)) * 55) / 10)
+}
+
 export function kirchensteuer(incomeTaxAmount: number, factor: ChurchTaxFactor): number {
   if (!Number.isFinite(incomeTaxAmount) || incomeTaxAmount < 0) {
     throw new RangeError('einkommensteuer must be a non-negative finite number')

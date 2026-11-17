@@ -58,6 +58,15 @@ describe('ausdruckWerte', () => {
     expect(values['est1a.telefon']).toBeUndefined()
   })
 
+  it('prints the Finanzamt without the word the form line already carries', () => {
+    const named = (finanzamt: string) => printoutValues({ ...FACTS, masterData: { ...FACTS.masterData!, finanzamt } }).values['est1a.finanzamt']
+    expect(named('Finanzamt Freiburg-Stadt')).toBe('Freiburg-Stadt')
+    expect(named('finanzamt  Stuttgart I')).toBe('Stuttgart I')
+    expect(named('Dresden-Nord')).toBe('Dresden-Nord')
+    // A name that is nothing but the word stays as entered.
+    expect(named('Finanzamt')).toBe('Finanzamt')
+  })
+
   it('a foreign IBAN goes to the foreign line, an other account holder by name', () => {
     const { values } = printoutValues({
       ...FACTS,

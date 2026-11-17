@@ -54,4 +54,13 @@ describe('toolResultLine', () => {
     expect(toolResultLine('propose_two_paths', { ok: true })).toBe('zwei Wege')
     expect(toolResultLine('some_new_tool', { ok: true })).toBe('erledigt')
   })
+
+  it('names the app’s estimate and the consent card in the line of thought', () => {
+    const estimate = { kind: 'computed', result: { fromEur: -4110, toEur: -3920 } }
+    expect(toolResultLine('read_current_estimate', { ok: true, estimate })).toBe('4.110 € bis 3.920 € Nachzahlung')
+    expect(toolResultLine('read_current_estimate', { ok: true, estimate: { kind: 'computed', result: { fromEur: 950, toEur: 950 } } })).toBe('950 € Erstattung')
+    expect(toolResultLine('read_current_estimate', { ok: true, estimate: { kind: 'open', missing: ['lstb'] } })).toBe('noch nicht berechenbar')
+    expect(toolResultLine('request_personal_data_consent', { ok: true, shown: true })).toBe('Karte folgt unter der Antwort')
+    expect(toolResultLine('request_personal_data_consent', { ok: true, alreadyGranted: true })).toBe('liegt schon vor')
+  })
 })

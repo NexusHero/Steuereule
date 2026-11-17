@@ -94,7 +94,9 @@ function parseSwissAmount(token: string): number | null {
   return negative ? -rounded : rounded
 }
 
-function trailingAmount(line: string): number | null {
+function trailingAmount(rawLine: string): number | null {
+  // A typographic minus right against the figure („−118“) is a minus; a dash alone marks an empty Ziffer.
+  const line = rawLine.replace(/[−–](?=\d)/g, '-')
   if (/\d{1,2}\.\d{1,2}\.\d{2,4}\s*$/.test(line)) return null // a date, not an amount
   const m = TRAILING_AMOUNT.exec(line)
   return m?.[1] ? parseSwissAmount(m[1]) : null
@@ -102,6 +104,9 @@ function trailingAmount(line: string): number | null {
 
 /** "1. Lohn", "8 Bruttolohn", "14, Weitere", "15.Bemerkungen": a Ziffer's first line, never "10.1" or "13.1.1". */
 const ZIFFER_HEADER = /^\s{0,3}(\d{1,2})\s*(?:[.,]\s*)?(?=[A-Za-zÄÖÜäöü])/
+
+/** A scan's margin (punch holes, a barcode) leaves a few characters before the number: "oO 14. Weitere". */
+const NOISY_ZIFFER_HEADER = /^\D{1,8}?\s(\d{1,2})\s*(?:[.,]\s*)?(?=[A-Za-zÄÖÜäöü])/
 
 /** What each Ziffer's heading says, German or French, loose about OCR's umlauts. */
 const ZIFFER_HEADINGS: Readonly<Record<number, RegExp>> = {
@@ -136,7 +141,7 @@ function zifferBlocks(lines: readonly string[]): Block[] {
   const blocks: { digit: number; lines: string[] }[] = []
   let last = 0
   for (const line of lines) {
-    const m = ZIFFER_HEADER.exec(line)
+    const m = ZIFFER_HEADER.exec(line) ?? NOISY_ZIFFER_HEADER.exec(line)
     const printed = m?.[1] ? Number(m[1]) : Number.NaN
     const digit = [printed, printed % 10].find((n) => Number.isInteger(n) && n > last && n <= 15 && ZIFFER_HEADINGS[n]!.test(line))
     if (digit !== undefined) {
@@ -154,29 +159,53 @@ function isoDate(german: string): string {
   return `${y}-${m}-${d}`
 }
 
+/** Box D (year) and box E (period) share a line: a year, then two dates. OCR loses or misreads the box letters. */
+const YEAR_AND_PERIOD = /(?<![\d.])(20\d{2})(?![\d.])\D{0,8}?(\d{2}\.\d{2}\.20\d{2})\D{0,8}?(\d{2}\.\d{2}\.20\d{2})/
+const SALUTATION = /^(?:Herr|Frau|Monsieur|Madame|Signora?)$/i
+const NOT_A_NAME = /PERS[ÖO]NLICH|VERTRAULICH|CONFIDENTIEL|PERSONNEL|Frankenbetr|montants|import[io]?\s+interi/i
+
+/** A name: two to four words of letters. Scans put a postal barcode line here too („*38267*0004497…“). */
+function looksLikeName(line: string): boolean {
+  const words = line.trim().split(/\s+/)
+  return words.length >= 2 && words.length <= 4 && words.every((w) => /^[\p{L}'’.-]+$/u.test(w) && /\p{L}/u.test(w)) && !NOT_A_NAME.test(line) && !SALUTATION.test(line.trim())
+}
+
+/**
+ * The name line of the address window (box H). With the „H“ it is the first name below it; a scan that
+ * lost the letter still has the window between the head and Ziffer 1: the name follows the salutation,
+ * or stands right above the street (a line that ends in a house number).
+ */
+function readHolder(lines: readonly string[]): string | null {
+  const hAt = lines.findIndex((l) => /^\s*H\s*$/.test(l))
+  if (hAt >= 0) {
+    const below = lines.slice(hAt + 1, hAt + 6).find(looksLikeName)
+    if (below !== undefined) return below.trim()
+  }
+  const firstZiffer = lines.findIndex((l) => ZIFFER_HEADER.test(l) && ZIFFER_HEADINGS[1]!.test(l))
+  const window = lines.slice(0, firstZiffer >= 0 ? firstZiffer : Math.min(lines.length, 30))
+  for (let i = 0; i < window.length; i++) {
+    const line = window[i]!
+    if (!looksLikeName(line)) continue
+    const afterSalutation = i > 0 && SALUTATION.test(window[i - 1]!.trim())
+    const aboveStreet = /^\s*\p{L}[\p{L}\s.'’-]*\s\d{1,4}\s?[a-z]?\s*$/iu.test(window[i + 1] ?? '')
+    if (afterSalutation || aboveStreet) return line.trim()
+  }
+  return null
+}
+
 function readHead(lines: readonly string[]) {
-  // Box D (year) and E (period) share a line; OCR may lose the "D" ("p 2025 E 01.01.2025 …").
-  const dLine = lines.find((l) => /^\s*D\s+20\d{2}\b/.test(l) || /\b20\d{2}\s+E\s+\d{2}\.\d{2}\.20\d{2}/.test(l)) ?? null
+  const headAt = lines.findIndex((l) => /^\s*D\s+20\d{2}\b/.test(l) || YEAR_AND_PERIOD.test(l))
+  const dLine = headAt >= 0 ? lines[headAt]! : null
   const dates = dLine ? [...dLine.matchAll(/\b(\d{2}\.\d{2}\.20\d{2})\b/g)].map((m) => m[1]!) : []
   const period = dates.length >= 2 ? { from: isoDate(dates[0]!), to: isoDate(dates[1]!) } : null
-  const yearOnD = dLine ? Number(/\b(20\d{2})\b/.exec(dLine)![1]) : null
+  const yearOnD = dLine ? Number((YEAR_AND_PERIOD.exec(dLine) ?? /\b(20\d{2})\b/.exec(dLine))![1]) : null
   const taxYear = yearOnD ?? (period ? Number(period.to.slice(0, 4)) : null)
-  const canteen = dLine !== null && /\b[GCc6]\s+[Xx]\b/.test(dLine.slice(dLine.lastIndexOf(dates.at(-1) ?? '')))
-  const freeTransport = lines.some((l) => /\bF\s+X\b/.test(l))
-  const hAt = lines.findIndex((l) => /^\s*H\s*$/.test(l))
-  let holder: string | null = null
-  if (hAt >= 0) {
-    for (const l of lines.slice(hAt + 1, hAt + 6)) {
-      const t = l.trim()
-      // A name: two or more words of letters. Scans put a postal barcode line here too („*38267*0004497…“).
-      const looksLikeName = /^[\p{L}'’.-]+(?:\s+[\p{L}'’.-]+)+$/u.test(t)
-      if (t && looksLikeName && !/PERS[ÖO]NLICH|VERTRAULICH|CONFIDENTIEL|PERSONNEL|^(?:Herr|Frau|Monsieur|Madame|Signora?)$/i.test(t)) {
-        holder = t
-        break
-      }
-    }
-  }
-  return { taxYear, period, canteen, freeTransport, holder }
+  // The cross of a box stands after its letter, or (read by position) before the text beside the box.
+  const canteen =
+    (dLine !== null && /\b[GCc6]\s+[Xx]\b/.test(dLine.slice(dLine.lastIndexOf(dates.at(-1) ?? '')))) ||
+    lines.some((l) => /^\W*[Xx]\s+(?:Kantinenverpflegung|Repas\s+\S\s+la\s+cantine|Pasti\s+alla\s+mensa)/i.test(l))
+  const freeTransport = lines.some((l) => /\bF\s+X\b/.test(l) || /^\W*[Xx]\s+(?:Unentgeltl?iche\s+Bef|Transport\s+gratuit|Trasporto\s+gratuito)/i.test(l))
+  return { taxYear, period, canteen, freeTransport, holder: readHolder(lines) }
 }
 
 function readAmounts(blocks: readonly Block[]) {

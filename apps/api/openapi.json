@@ -395,6 +395,110 @@
         ]
       }
     },
+    "/v1/steuerjahre/{jahr}/lstb-zeilen": {
+      "get": {
+        "operationId": "LstbController_getLines",
+        "parameters": [
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "B: Person A reads the figures of a partner without an own account (ADR-0054).",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (Steuerjahr).",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "LStB Zeilen 22–27, 24c and 5 line by line, with the sum the app keeps (ADR-0093).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LstbLinesResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          }
+        },
+        "tags": [
+          "lstb"
+        ]
+      },
+      "put": {
+        "operationId": "LstbController_setLines",
+        "parameters": [
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "B: Person A records the figures of a partner without an own account (ADR-0054).",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (Steuerjahr).",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LstbLinesDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The stored lines; `sozialversicherung` is their sum once Zeilen 23, 25, 26 and 27 are recorded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LstbLinesResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          }
+        },
+        "tags": [
+          "lstb"
+        ]
+      }
+    },
     "/v1/steuerjahre/{jahr}/lstb-zuschuesse": {
       "get": {
         "operationId": "LstbController_getSubsidies",
@@ -5420,6 +5524,112 @@
           "kirchensteuerEhegatte"
         ]
       },
+      "LstbLinesResponseDto": {
+        "type": "object",
+        "properties": {
+          "rvArbeitnehmer": {
+            "type": "number",
+            "nullable": true
+          },
+          "rvArbeitgeber": {
+            "type": "number",
+            "nullable": true
+          },
+          "kvArbeitnehmer": {
+            "type": "number",
+            "nullable": true
+          },
+          "pvArbeitnehmer": {
+            "type": "number",
+            "nullable": true
+          },
+          "avArbeitnehmer": {
+            "type": "number",
+            "nullable": true
+          },
+          "zuschussPv": {
+            "type": "number",
+            "nullable": true
+          },
+          "solidaritaetszuschlag": {
+            "type": "number",
+            "nullable": true
+          },
+          "zuschuesseKvPv": {
+            "type": "number",
+            "nullable": true,
+            "description": "Zeile 24 a–c zusammen, as stored through `lstb-zuschuesse`."
+          },
+          "sozialversicherung": {
+            "type": "number",
+            "nullable": true,
+            "description": "Sum of Zeilen 23, 25, 26 and 27 once all four are recorded; the app stores it as `sozialversicherung`."
+          },
+          "subsidyOpen": {
+            "type": "boolean",
+            "description": "Zeile 25 or 26 is filled and Zeile 24 not answered yet: the social security counts as incomplete."
+          }
+        },
+        "required": [
+          "rvArbeitnehmer",
+          "rvArbeitgeber",
+          "kvArbeitnehmer",
+          "pvArbeitnehmer",
+          "avArbeitnehmer",
+          "zuschussPv",
+          "solidaritaetszuschlag",
+          "zuschuesseKvPv",
+          "sozialversicherung",
+          "subsidyOpen"
+        ]
+      },
+      "LstbLinesDto": {
+        "type": "object",
+        "properties": {
+          "rvArbeitnehmer": {
+            "type": "number",
+            "nullable": true,
+            "example": 6150,
+            "description": "Zeile 23 a/b: Arbeitnehmeranteil zur Rentenversicherung. Ganze Euro; weggelassen = unverändert, null = leeren."
+          },
+          "rvArbeitgeber": {
+            "type": "number",
+            "nullable": true,
+            "example": 6150,
+            "description": "Zeile 22 a/b: Arbeitgeberanteil zur Rentenversicherung. Ganze Euro; weggelassen = unverändert, null = leeren."
+          },
+          "kvArbeitnehmer": {
+            "type": "number",
+            "nullable": true,
+            "example": 3100,
+            "description": "Zeile 25: Arbeitnehmerbeitrag zur gesetzlichen Krankenversicherung. Ganze Euro; weggelassen = unverändert, null = leeren."
+          },
+          "pvArbeitnehmer": {
+            "type": "number",
+            "nullable": true,
+            "example": 640,
+            "description": "Zeile 26: Arbeitnehmerbeitrag zur sozialen Pflegeversicherung. Ganze Euro; weggelassen = unverändert, null = leeren."
+          },
+          "avArbeitnehmer": {
+            "type": "number",
+            "nullable": true,
+            "example": 520,
+            "description": "Zeile 27: Arbeitnehmerbeitrag zur Arbeitslosenversicherung. Ganze Euro; weggelassen = unverändert, null = leeren."
+          },
+          "zuschussPv": {
+            "type": "number",
+            "nullable": true,
+            "example": 300,
+            "description": "Zeile 24c: Pflegeversicherungs-Teil des steuerfreien Arbeitgeberzuschusses. Ganze Euro; weggelassen = unverändert, null = leeren."
+          },
+          "solidaritaetszuschlag": {
+            "type": "number",
+            "nullable": true,
+            "example": 92.31,
+            "description": "Zeile 5: einbehaltener Solidaritätszuschlag, Euro mit Cent; weggelassen = unverändert, null = leeren."
+          }
+        }
+      },
       "LstbSubsidiesDto": {
         "type": "object",
         "properties": {
@@ -6964,6 +7174,18 @@
           "specialCases": {
             "type": "boolean",
             "nullable": true
+          },
+          "krankenkasseZusatzChf": {
+            "type": "number",
+            "nullable": true
+          },
+          "kvZuschussAnspruch": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "familienzulagenImBruttolohn": {
+            "type": "boolean",
+            "nullable": true
           }
         },
         "required": [
@@ -6980,7 +7202,10 @@
           "krankentaggeldArbeitgeberChf",
           "nbuvArbeitgeberProzent",
           "nbuvArbeitgeberChf",
-          "specialCases"
+          "specialCases",
+          "krankenkasseZusatzChf",
+          "kvZuschussAnspruch",
+          "familienzulagenImBruttolohn"
         ]
       },
       "ChSalaryCertificateResponseDto": {
@@ -7068,7 +7293,7 @@
           "value": {
             "type": "number",
             "example": 84000,
-            "description": "The whole-CHF amount — present only when kind === \"erfasst\" (validated via @steuereule/core)."
+            "description": "The whole-CHF amount — present only when kind === \"erfasst\". Zero or more; only Ziffer 7 (`andere-leistungen`) may be negative (checked per field via @steuereule/core, ADR-0093)."
           }
         },
         "required": [
@@ -7172,6 +7397,21 @@
             "type": "boolean",
             "nullable": true,
             "description": "Any of N-Gre Zeilen 7, 10–14, 16, 17, 21 or 22 applies."
+          },
+          "krankenkasseZusatzChf": {
+            "type": "number",
+            "nullable": true,
+            "description": "Whole CHF — supplementary health insurance (VVG): other provision, not basic cover (ADR-0093)."
+          },
+          "kvZuschussAnspruch": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "Anlage Vorsorgeaufwand Zeile 49: entitled to tax-free subsidies or employer contributions to health insurance."
+          },
+          "familienzulagenImBruttolohn": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "The family allowance is contained in the gross wage of Ziffer 8; only then Zeile 8 deducts it (ADR-0093)."
           }
         }
       },
@@ -7375,6 +7615,28 @@
             "type": "string",
             "nullable": true,
             "example": "31.12.2024"
+          },
+          "travelDays": {
+            "type": "number",
+            "nullable": true,
+            "example": 205,
+            "description": "Days the first place of work was actually visited on this way; replaces the days derived from working days less days off (ADR-0093). Omitted keeps what is stored."
+          },
+          "secondTravelDays": {
+            "type": "number",
+            "nullable": true,
+            "example": 40,
+            "description": "Days actually travelled on the second way."
+          },
+          "shortestRouteConfirmed": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "The user confirmed that `oneWayKm` is the shortest road connection (§ 9 Abs. 1 Nr. 4 Satz 4 EStG)."
+          },
+          "secondShortestRouteConfirmed": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "The same confirmation for `secondOneWayKm`."
           }
         },
         "required": [
@@ -10613,7 +10875,9 @@
         "properties": {
           "message": {
             "type": "string",
-            "example": "Ich hatte dieses Jahr eine Fortbildung."
+            "example": "Ich hatte dieses Jahr eine Fortbildung.",
+            "maxLength": 8000,
+            "description": "The user's message, at most 8000 characters; a longer one is refused with 400 and a German sentence under `fields[].message`."
           },
           "activeScreen": {
             "type": "string",

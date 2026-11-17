@@ -179,6 +179,10 @@ describe('REQ-021 — the CH-Posten folding (Vorsorge + Quellensteuer-Anrechnung
       nbuvArbeitgeberProzent: null,
       nbuvArbeitgeberChf: null,
       specialCases: false,
+      // The entry rules' answers (ADR-0093) are part of the record, unanswered here.
+      krankenkasseZusatzChf: null,
+      kvZuschussAnspruch: null,
+      familienzulagenImBruttolohn: null,
     })
     expect((await putField(cookie, 'n-gre', { krankentaggeldArbeitgeberProzent: 101 })).status).toBe(400)
     expect((await putField(cookie, 'n-gre', { familienzulagenChf: -1 })).status).toBe(400)

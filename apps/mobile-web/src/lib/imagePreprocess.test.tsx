@@ -5,6 +5,7 @@ import {
   normalizeIllumination,
   recognizePhoto,
   rotateGray,
+  slidingMax,
   textAxis,
   textQuality,
   type GrayImage,
@@ -31,6 +32,31 @@ function transpose(img: GrayImage): GrayImage {
   for (let y = 0; y < img.height; y++) for (let x = 0; x < img.width; x++) data[x * img.height + y] = img.data[y * img.width + x]!
   return { data, width: img.height, height: img.width }
 }
+
+describe('slidingMax', () => {
+  it('equals the plain maximum over each window, cut off at the edges, along rows and columns', () => {
+    const width = 23
+    const height = 17
+    const src = new Uint8Array(width * height)
+    for (let i = 0; i < src.length; i++) src[i] = (i * 97 + ((i * i) % 31) * 7) % 256
+    for (const r of [1, 3, 8, 30]) {
+      for (const vertical of [false, true]) {
+        const got = slidingMax(src, width, height, r, vertical)
+        for (let y = 0; y < height; y++) {
+          for (let x = 0; x < width; x++) {
+            let want = 0
+            for (let k = -r; k <= r; k++) {
+              const xx = vertical ? x : x + k
+              const yy = vertical ? y + k : y
+              if (xx >= 0 && yy >= 0 && xx < width && yy < height) want = Math.max(want, src[yy * width + xx]!)
+            }
+            expect(got[y * width + x]).toBe(want)
+          }
+        }
+      }
+    }
+  })
+})
 
 describe('imagePreprocess (#450 D3: photos of an LStB)', () => {
   it('flattens a shadow: the background becomes white everywhere, the ink stays dark', () => {

@@ -67,6 +67,9 @@ function emptyCh(): ChSalaryCertificateResponseDto {
       nbuvArbeitgeberProzent: null,
       nbuvArbeitgeberChf: null,
       specialCases: null,
+      krankenkasseZusatzChf: null,
+      kvZuschussAnspruch: null,
+      familienzulagenImBruttolohn: null,
     },
   }
 }

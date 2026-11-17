@@ -125,3 +125,36 @@ describe('selectChInsuranceLetterAmountLines', () => {
     expect(selectChInsuranceLetterAmountLines(TABLE_LAYOUT)).toContain("TOTAL AG 6'500.00 800.00 7'300.00")
   })
 })
+
+// Real-data run: the fund's yearly certificate (Vorsorgeausweis, Leistungsausweis) is what people have at
+// hand. It states the contributions as a yearly figure at a key date and no mandatory part.
+describe('parseChPensionStatement – the yearly certificate', () => {
+  const CERTIFICATE = [
+    'Pensionskasse Beispiel',
+    'Vorsorgeausweis per 01.04.2025 ausgestellt am 05.05.2025',
+    'Finanzierung / Beiträge Beitragssatz in % Monat für var. Salär Jahr',
+    "Sparbeitrag Arbeitnehmer 6.00 500.00 50.00 6'050.00",
+    'Risikobeitrag Arbeitnehmer 0.50 40.00 5.00 485.00',
+    "Gesamtbeitrag Arbeitnehmer 6.50 540.00 55.00 6'535.00",
+    "Sparbeitrag Arbeitgeber 8.00 660.00 60.00 7'980.00",
+    "Gesamtbeitrag Arbeitgeber 8.50 700.00 65.00 8'465.00",
+    "BVG-Altersguthaben per 01.04.2025 1'800.00",
+  ].join('\n')
+
+  it('reads the yearly totals of both sides and the year of the key date', () => {
+    const read = parseChPensionStatement(CERTIFICATE)
+    expect(read.taxYear).toBe(2025)
+    expect(read.source).toBe('certificate')
+    expect(read.employee).toEqual({ total: 6535, mandatory: null, supplementary: null })
+    expect(read.employer).toEqual({ total: 8465, mandatory: null, supplementary: null })
+  })
+
+  it('reads a certificate that names only the employee’s yearly contribution', () => {
+    const read = parseChPensionStatement(["Leistungsausweis per 31. März 2025", "Arbeitnehmerbeitrag (pro Jahr) 4'800.00", 'Arbeitnehmerbeitrag (pro Monat) 400.00'].join('\n'))
+    expect(read).toMatchObject({ taxYear: 2025, source: 'certificate', employee: { total: 4800 }, employer: { total: null } })
+  })
+
+  it('keeps a statement of contributions a statement', () => {
+    expect(parseChPensionStatement(ROWS_LAYOUT).source).toBe('statement')
+  })
+})

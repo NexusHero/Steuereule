@@ -15,6 +15,9 @@ import {
   isNewRecordId,
   simulateAdvisorFieldDelta,
   checkDraftPerson,
+  checkDraftRules,
+  draftFollowUps,
+  impliedCompanions,
   deriveBasisAnswers,
   isInterviewAreaId,
   checkPrivateSale,
@@ -89,6 +92,11 @@ export const AdvisorGraphState = Annotation.Root({
     reducer: (_left, right) => right,
     default: () => [],
   }),
+  /** The owl asked the app to show the consent card for personal data (ADR-0091). */
+  consentRequested: Annotation<boolean>({
+    reducer: (left, right) => left || right,
+    default: () => false,
+  }),
   sources: Annotation<OwlSourceId[]>({
     reducer: (left, right) => [...new Set([...left, ...right])],
     default: () => [],
@@ -123,6 +131,7 @@ export async function runToolRound(
   const situationSuggestions = [...(state.situationSuggestions ?? [])]
   let noteChanges = state.noteChanges
   let interviewChanges = state.interviewChanges ?? []
+  let consentRequested = state.consentRequested ?? false
   const sources: OwlSourceId[] = []
 
   for (const tc of toolCalls) {
@@ -299,14 +308,29 @@ export async function runToolRound(
       }
       const cleanFieldName = field.trim()
       const newValue = tidy(cleanFieldName)
-      const companionEntries = rawCompanions.map(([name]) => [name, tidy(name)] as const)
+      const statedCompanions = rawCompanions.map(([name]) => [name, tidy(name)] as const)
+      // The fixed rules (ADR-0093): what the app adds itself, and what it refuses until the user confirmed it.
+      const implied = impliedCompanions(target.screen, Object.fromEntries([[cleanFieldName, newValue], ...statedCompanions]))
+      const companionEntries = [...statedCompanions, ...Object.entries(implied).map(([name, value]) => [name, value] as const)]
       const companionFields = companionEntries.length > 0 ? Object.fromEntries(companionEntries) : undefined
+      const draftValues = Object.fromEntries([[cleanFieldName, newValue], ...companionEntries])
+      const rule = checkDraftRules({ screen: target.screen, values: draftValues, tool: 'stage', others: pendingActions.map(draftValuesOf) })
+      if (!rule.ok) {
+        // A question for the user, not a failed draft: the model asks and stages again.
+        answer({ ok: false, error: `${rule.code}: ${rule.reason}` })
+        continue
+      }
 
       // A new child is created from its draft: it needs the first name and the birth date (ADR-0091).
+      // Further drafts of the same answer for that child (Kindergeld, Kita …) ride on the draft that creates it.
       if (target.screen === 'kind' && isNewRecordId(instance)) {
-        const written = new Set([cleanFieldName, ...companionEntries.map(([name]) => name)])
+        const written = new Set([
+          cleanFieldName,
+          ...companionEntries.map(([name]) => name),
+          ...pendingActions.filter((existing) => existing.screen === 'kind' && existing.instance === instance).flatMap((existing) => [existing.field, ...Object.keys(existing.companionFields ?? {})]),
+        ])
         if (!written.has('firstName') || !written.has('geburtsdatum')) {
-          const error = 'NEW_RECORD_INCOMPLETE: Ein neues Kind lege ich mit Vorname (firstName) und Geburtsdatum (geburtsdatum) im selben Entwurf an, als Haupt- oder Begleitfeld. Frag den Nutzer danach.'
+          const error = 'NEW_RECORD_INCOMPLETE: Ein neues Kind lege ich mit Vorname (firstName) und Geburtsdatum (geburtsdatum) in einem Entwurf an, als Haupt- oder Begleitfeld; weitere Angaben zu diesem Kind folgen danach mit derselben `instance`. Frag den Nutzer nach Vorname und Geburtsdatum, wenn sie fehlen.'
           refuseDraft(label, screen, error)
           answer({ ok: false, error })
           continue
@@ -350,7 +374,8 @@ export async function runToolRound(
       // Several drafts in one answer stand side by side; a second one for the same field is a correction.
       pendingActions = [...pendingActions.filter((existing) => draftKey(existing) !== draftKey(stagedAction)), stagedAction]
 
-      answer({ ok: true, stagedAction: { ...stagedAction, instance: record.handle }, draftsInThisAnswer: pendingActions.length })
+      const mustAsk = draftFollowUps(target.screen, draftValues)
+      answer({ ok: true, stagedAction: { ...stagedAction, instance: record.handle }, draftsInThisAnswer: pendingActions.length, ...(mustAsk.length > 0 ? { mustAsk } : {}) })
       continue
     }
 
@@ -392,6 +417,15 @@ export async function runToolRound(
       }
       const safeNewValue = safeValue.value
       const maxNewValue = maxValue.value
+      const others = pendingActions.map(draftValuesOf)
+      const pathRule = [
+        checkDraftRules({ screen: safeCheck.screen, values: { [safeField]: safeNewValue }, tool: 'two-paths', others }),
+        checkDraftRules({ screen: maxCheck.screen, values: { [maxField]: maxNewValue }, tool: 'two-paths', others }),
+      ].find((check) => !check.ok)
+      if (pathRule && !pathRule.ok) {
+        answer({ ok: false, error: `${pathRule.code}: ${pathRule.reason}` })
+        continue
+      }
 
       // Two paths name no record: fine while there is exactly one, a question for the user otherwise.
       const safeRecord = resolveInstance(safeCheck.screen, safeField, rawSafe.instance)
@@ -657,6 +691,30 @@ export async function runToolRound(
       continue
     }
 
+    if (tc.name === 'request_personal_data_consent') {
+      // The card is the app's: the answer carries it whatever the model writes next (ADR-0091).
+      if (consent) {
+        answer({ ok: true, alreadyGranted: true, note: 'Die Einwilligung liegt vor. Bereite die persönlichen Angaben als Entwürfe vor.' })
+        continue
+      }
+      consentRequested = true
+      answer({ ok: true, shown: true, note: 'Die App zeigt die Einwilligung unter deiner Antwort. Sag dem Nutzer in einem Satz, dass er dort „Erlauben“ wählen oder die Angaben selbst in der Maske eintragen kann. Danach geht das Gespräch von selbst weiter.' })
+      continue
+    }
+
+    if (tc.name === 'read_current_estimate') {
+      if (!request.readEstimate) {
+        answer({ ok: false, error: 'ESTIMATE_UNAVAILABLE: Die Schätzung der App ist hier nicht verfügbar. Nenne keinen Gesamtbetrag.' })
+        continue
+      }
+      try {
+        answer({ ok: true, estimate: await request.readEstimate() })
+      } catch {
+        answer({ ok: false, error: 'ESTIMATE_UNAVAILABLE: Die Schätzung lässt sich gerade nicht lesen. Nenne keinen Gesamtbetrag.' })
+      }
+      continue
+    }
+
     if (tc.name === 'plan_steps') {
       const args = parseArgs(TOOL_ARG_SCHEMAS.plan_steps)
       if (args === null) continue
@@ -692,8 +750,14 @@ export async function runToolRound(
     situationSuggestions,
     noteChanges,
     interviewChanges,
+    consentRequested,
     sources,
   }
+}
+
+/** A staged draft as the fixed rules read it: its mask and every value it would write. */
+function draftValuesOf(action: AdvisorActionProposal): { screen: Screen; values: Record<string, string> } {
+  return { screen: action.screen, values: { [action.field]: action.newValue, ...action.companionFields } }
 }
 
 /**

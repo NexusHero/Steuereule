@@ -3,8 +3,10 @@ import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { useTheme } from '@steuereule/ui'
 import {
+  getLstbControllerGetLinesQueryKey,
   getLstbControllerGetSubsidiesQueryKey,
   getTaxEstimateControllerGetQueryKey,
+  useLstbControllerGetLines,
   useLstbControllerGetSubsidies,
   useLstbControllerSetSubsidies,
 } from '@steuereule/api-client'
@@ -29,16 +31,19 @@ export function SubsidyLine({ taxYear, params, track }: SubsidyLineProps) {
   const queryClient = useQueryClient()
   const query = useLstbControllerGetSubsidies(taxYear, params)
   const save = useLstbControllerSetSubsidies()
+  const lines = useLstbControllerGetLines(taxYear, params)
 
   if (query.isPending) return <Text style={s.help}>{tr('lstb.zuschuesse.loading')}</Text>
   if (query.isError || query.data.status !== 200) return <Text style={s.error}>{tr('lstb.zuschuesse.loadError')}</Text>
   const stored = query.data.data.zuschuesseKvPv
+  const subsidyOpen = lines.data?.status === 200 && lines.data.data.subsidyOpen
 
   function commit(value: number | null) {
     if (stored === value) return
     track(
       watchSaveResult(save.mutateAsync({ jahr: taxYear, data: { zuschuesseKvPv: value }, ...(params ? { params } : {}) })).then(() => {
         void queryClient.invalidateQueries({ queryKey: getLstbControllerGetSubsidiesQueryKey(taxYear, params) })
+        void queryClient.invalidateQueries({ queryKey: getLstbControllerGetLinesQueryKey(taxYear, params) })
         void queryClient.invalidateQueries({ queryKey: getTaxEstimateControllerGetQueryKey(taxYear) })
       }),
     )
@@ -49,6 +54,11 @@ export function SubsidyLine({ taxYear, params, track }: SubsidyLineProps) {
       <Text style={s.heading}>{tr('lstb.zuschuesse.heading')}</Text>
       <Text style={s.help}>{tr('lstb.zuschuesse.help')}</Text>
       <LineInput label={tr('lstb.zuschuesse.zeile24')} stored={stored} onCommit={commit} testID="lstb-zuschuesse" />
+      {subsidyOpen ? (
+        <Text style={s.error} accessibilityRole="alert" testID="lstb-zuschuesse-offen">
+          {tr('lstb.zuschuesse.offen')}
+        </Text>
+      ) : null}
     </View>
   )
 }

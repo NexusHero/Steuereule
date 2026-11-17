@@ -4,6 +4,8 @@
 // are still empty, and says for each whether the owl may prepare it or where the user enters it.
 // Deterministic: the model gets it as a checklist, and the app asks it itself when the model does not.
 import { mandatoryCapitalFields, classifyCapitalDepot } from '../domains/capital'
+import { lstbSubsidyQuestionOpen } from '../domains/lstb'
+import { AMOUNT_LATER } from './interview'
 import { PERSON_B_HANDLE, PERSON_B_SCREENS, PERSON_B_INTERVIEW_FIELDS, type AdvisorPerson } from './advisor-household'
 import { isAiWritableField } from './field-catalog'
 import type { Screen } from './marking'
@@ -132,6 +134,15 @@ const TEXTS: Readonly<Record<string, FieldText>> = {
   'vermietung.plz': { question: 'Postleitzahl des Objekts?', keywords: ['adresse', 'anschrift', 'postleitzahl'] },
   'vermietung.city': { question: 'Ort des Objekts?', keywords: ['adresse', 'anschrift', 'ort'] },
   'vermietung.depreciationAsLastYear': { question: 'Läuft die Abschreibung (AfA) wie im Vorjahr weiter?', keywords: ['afa', 'abschreibung'] },
+  // The fixed rules (ADR-0093): asked while the stored values leave them open.
+  'lstb.zuschuesseKvPv': { question: 'Lohnsteuerbescheinigung Zeile 24: steuerfreie Arbeitgeberzuschüsse zur Kranken- und Pflegeversicherung (auch 0)? Zeile 25 oder 26 ist gefüllt, ohne Zeile 24 ist die Sozialversicherung nicht vollständig.', keywords: ['zeile 24', 'arbeitgeberzusch'] },
+  'commute.shortestRouteConfirmed': { question: 'Es zählt die kürzeste Straßenverbindung (§ 9 Abs. 1 Nr. 4 EStG): Sind die erfassten Kilometer die kürzeste Strecke zur Arbeit?', keywords: ['kürzeste'] },
+  'commute.secondShortestRouteConfirmed': { question: 'Sind auch die Kilometer des zweiten Arbeitswegs die kürzeste Straßenverbindung?', keywords: ['kürzeste'] },
+  'commute.periodFrom': { question: 'Es gab im Jahr zwei Arbeitgeber: Für welchen Zeitraum gilt der erfasste Arbeitsweg (von/bis), und gibt es für den anderen Arbeitgeber einen eigenen Weg (Kilometer, Fahrtage) oder keinen?', keywords: ['zeitraum', 'arbeitgeberwechsel', 'anderen arbeitgeber'] },
+  'chLohnausweis.krankenkasseZusatzChf': { question: 'Krankenkasse: Wie viel vom erfassten Betrag entfällt auf Zusatzversicherungen (VVG) statt auf die Grundversicherung (KVG)? In CHF, auch 0.', keywords: ['zusatzversicherung', 'vvg', 'grundversicherung'] },
+  'interview.einkuenfte': { question: 'Gab es Kapitalerträge über dem Sparer-Pauschbetrag bzw. Freistellungsauftrag oder ohne deutschen Steuerabzug (z. B. bei einer ausländischen Bank), oder Mieteinnahmen?', keywords: ['kapitalertr', 'freistellungsauftrag', 'sparer-pauschbetrag'] },
+  'interview.vorauszahlungen-gate': { question: 'Hat das Finanzamt für das Jahr Einkommensteuer-Vorauszahlungen festgesetzt?', keywords: ['vorauszahlung'] },
+  'interview.vorauszahlungen-betrag': { question: 'Wie viel Einkommensteuer-Vorauszahlungen hast du für das Jahr gezahlt (Euro)?', keywords: ['vorauszahlung'] },
   'interview.riester-art': { question: 'Riester: unmittelbar oder mittelbar begünstigt?', keywords: ['mittelbar'] },
   'interview.riester-einnahmen-vorjahr': { question: 'Beitragspflichtige Einnahmen des Vorjahrs (für Riester)?', keywords: ['vorjahr'] },
 }
@@ -144,12 +155,16 @@ const MASKS: Readonly<Partial<Record<Screen, string>>> = {
   kapital: 'Kapitalerträge',
   chLohnausweis: 'Lohnausweis (Schweiz)',
   vermietung: 'Vermietung',
+  lstb: 'Lohnsteuerbescheinigung',
+  commute: 'Arbeitsweg',
 }
 
 function maskOf(screen: Screen, field: string): string {
   if (screen !== 'interview') return MASKS[screen] ?? screen
   if (field.startsWith('ch-')) return 'Schweiz (Grenzgänger)'
   if (field === 'kap-depot') return 'Kapitalerträge'
+  if (field === 'einkuenfte') return 'Weitere Einkünfte'
+  if (field.startsWith('vorauszahlungen')) return 'Vorauszahlungen'
   return 'Riester'
 }
 
@@ -241,9 +256,70 @@ export function printoutGapReads(missing: readonly string[], ctx: PrintoutGapCon
     } else if (code === 'riester') {
       add(code, 'A', 'interview', 'riester-art')
       add(code, 'A', 'interview', 'riester-einnahmen-vorjahr')
+    } else if (code in RULE_READS) {
+      const person = rulePerson(code)
+      if (person === 'B' && ctx.personB === null) continue
+      for (const [screen, field] of RULE_READS[code]!) add(code, person, screen, field)
     }
   }
   return [...reads.values()]
+}
+
+const rulePerson = (code: string): AdvisorPerson => (code.endsWith('PersonB') ? 'B' : 'A')
+
+const LSTB_RULE_READS: readonly (readonly [Screen, string])[] = [['lstb', 'kvArbeitnehmer'], ['lstb', 'pvArbeitnehmer'], ['lstb', 'zuschuesseKvPv']]
+const COMMUTE_RULE_READS: readonly (readonly [Screen, string])[] = [
+  ['commute', 'oneWayKm'],
+  ['commute', 'shortestRouteConfirmed'],
+  ['commute', 'secondOneWayKm'],
+  ['commute', 'secondShortestRouteConfirmed'],
+  ['commute', 'periodFrom'],
+  ['commute', 'periodTo'],
+  ['lstb', 'bruttoarbeitslohn'],
+  ['chLohnausweis', 'bruttolohn-total'],
+]
+const HEALTH_RULE_READS: readonly (readonly [Screen, string])[] = [['chLohnausweis', 'krankenkasseChf'], ['chLohnausweis', 'krankenkasseZusatzChf']]
+
+/** What each fixed rule (ADR-0093) reads to decide whether it is still open. */
+const RULE_READS: Readonly<Record<string, readonly (readonly [Screen, string])[]>> = {
+  regelLstb: LSTB_RULE_READS,
+  regelLstbPersonB: LSTB_RULE_READS,
+  regelArbeitsweg: COMMUTE_RULE_READS,
+  regelArbeitswegPersonB: COMMUTE_RULE_READS,
+  regelKrankenkasse: HEALTH_RULE_READS,
+  regelKrankenkassePersonB: HEALTH_RULE_READS,
+  regelKapital: [['interview', 'einkuenfte']],
+  regelVorauszahlungen: [['interview', 'vorauszahlungen-gate'], ['interview', 'vorauszahlungen-betrag']],
+}
+
+/** The fields a fixed rule still needs, from the values read for it. */
+function ruleGaps(code: string, read: (screen: Screen, field: string) => string | null | undefined): [Screen, string][] {
+  const amount = (screen: Screen, field: string): number | null => (isInteger(read(screen, field)) ? Number(read(screen, field)) : null)
+  const out: [Screen, string][] = []
+  if (code.startsWith('regelLstb')) {
+    if (lstbSubsidyQuestionOpen({ kvArbeitnehmer: amount('lstb', 'kvArbeitnehmer'), pvArbeitnehmer: amount('lstb', 'pvArbeitnehmer'), zuschuesseKvPv: amount('lstb', 'zuschuesseKvPv') })) {
+      out.push(['lstb', 'zuschuesseKvPv'])
+    }
+  } else if (code.startsWith('regelArbeitsweg')) {
+    const first = (amount('commute', 'oneWayKm') ?? 0) > 0
+    const second = (amount('commute', 'secondOneWayKm') ?? 0) > 0
+    if (first && read('commute', 'shortestRouteConfirmed') !== 'true') out.push(['commute', 'shortestRouteConfirmed'])
+    if (second && read('commute', 'secondShortestRouteConfirmed') !== 'true') out.push(['commute', 'secondShortestRouteConfirmed'])
+    // Two employers in the year (a German certificate and a Swiss one): one way for the whole year
+    // is a guess. A period or a second way answers it.
+    const twoEmployers = amount('lstb', 'bruttoarbeitslohn') !== null && amount('chLohnausweis', 'bruttolohn-total') !== null
+    if (twoEmployers && first && !second && empty(read('commute', 'periodFrom')) && empty(read('commute', 'periodTo'))) out.push(['commute', 'periodFrom'])
+  } else if (code.startsWith('regelKrankenkasse')) {
+    if ((amount('chLohnausweis', 'krankenkasseChf') ?? 0) > 0 && amount('chLohnausweis', 'krankenkasseZusatzChf') === null) out.push(['chLohnausweis', 'krankenkasseZusatzChf'])
+  } else if (code === 'regelKapital') {
+    if (empty(read('interview', 'einkuenfte'))) out.push(['interview', 'einkuenfte'])
+  } else if (code === 'regelVorauszahlungen') {
+    const gate = read('interview', 'vorauszahlungen-gate')
+    const paid = read('interview', 'vorauszahlungen-betrag')
+    if (gate !== 'Ja' && gate !== 'Nein') out.push(['interview', 'vorauszahlungen-gate'])
+    else if (gate === 'Ja' && !isInteger(paid) && paid !== AMOUNT_LATER) out.push(['interview', 'vorauszahlungen-betrag'])
+  }
+  return out
 }
 
 const empty = (value: string | null | undefined): boolean => value === null || value === undefined || value.trim() === ''
@@ -384,6 +460,10 @@ export function planPrintoutGaps(missing: readonly string[], ctx: PrintoutGapCon
       const kind = valueOf('A', 'interview', 'riester-art')
       if (kind !== 'Unmittelbar' && kind !== 'Mittelbar') ask({ code, person: 'A', screen: 'interview', field: 'riester-art' })
       else if (kind === 'Unmittelbar' && !isInteger(valueOf('A', 'interview', 'riester-einnahmen-vorjahr'))) ask({ code, person: 'A', screen: 'interview', field: 'riester-einnahmen-vorjahr' })
+    } else if (code in RULE_READS) {
+      const person = rulePerson(code)
+      if (person === 'B' && ctx.personB === null) continue
+      for (const [screen, field] of ruleGaps(code, (onScreen, name) => valueOf(person, onScreen, name))) ask({ code, person, screen, field })
     } else if (!unplanned.includes(code)) {
       unplanned.push(code)
     }

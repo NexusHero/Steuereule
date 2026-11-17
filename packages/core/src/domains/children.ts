@@ -48,6 +48,17 @@ export function claimMonths(birthDate: string, year: number): number {
   return 13 - month!
 }
 
+/**
+ * The Kindergeld that the Günstigerprüfung sets against the Kinderfreibetrag (§ 31 Satz 4 EStG):
+ * the claim for the months of the year, not what was paid out. A Swiss Kinderzulage counts as
+ * Kindergeld (§ 65 EStG) and the German Differenzkindergeld tops it up, so together they are this
+ * same claim; where the foreign benefit is higher, the offset still stops at the German amount
+ * (§ 31 Satz 6 EStG). The estimate adds exactly this (`monthlyChildBenefitClaim × claimMonths`).
+ */
+export function childBenefitForComparison(birthDate: string, year: number): number {
+  return monthlyChildBenefitClaim(year) * claimMonths(birthDate, year)
+}
+
 export interface DifferentialChildBenefitResult {
   readonly statutoryClaim: number
   readonly swissAllowanceEur: number

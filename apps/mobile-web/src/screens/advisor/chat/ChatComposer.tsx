@@ -12,12 +12,15 @@ import {
   type ViewStyle,
 } from 'react-native'
 import { useTranslation } from 'react-i18next'
+import { ADVISOR_MESSAGE_MAX_CHARS } from '@steuereule/core'
 import { inkOnFunke, useTheme, type UiTheme } from '@steuereule/ui'
 import { ChatIcon } from '../../../icons/ChatIcon'
 import { APP_NS } from '../../../i18n/resources'
 import { chatKeyAction, clampComposerHeight, detectChatInputPlatform, type ChatInputPlatform } from './chatKeys'
 
 const LINE_HEIGHT = 20
+/** From this share of the limit on the composer counts the characters. */
+const COUNTER_FROM = 0.9
 
 export interface ChatComposerProps {
   readonly value: string
@@ -60,7 +63,20 @@ export function ChatComposer({
 }: ChatComposerProps) {
   const t = useTheme()
   const styles = makeStyles(t, variant)
-  const { t: tr } = useTranslation(APP_NS)
+  const { t: tr, i18n } = useTranslation(APP_NS)
+  // The API refuses a longer message; the composer says so before it is sent (real-data run, finding 5).
+  const length = value.trim().length
+  const tooLong = length > ADVISOR_MESSAGE_MAX_CHARS
+  const counted = { used: length.toLocaleString(i18n.language), max: ADVISOR_MESSAGE_MAX_CHARS.toLocaleString(i18n.language) }
+  const lengthNote = tooLong ? (
+    <Text style={styles.tooLong} role="alert" testID="advisor-chat-too-long">
+      {tr('advisor.chat.length.tooLong', counted)}
+    </Text>
+  ) : length >= ADVISOR_MESSAGE_MAX_CHARS * COUNTER_FROM ? (
+    <Text style={styles.counter} testID="advisor-chat-length">
+      {tr('advisor.chat.length.counter', counted)}
+    </Text>
+  ) : null
   const platform = useMemo(() => platformOverride ?? detectChatInputPlatform(Platform.OS), [platformOverride])
   const [height, setHeight] = useState(LINE_HEIGHT)
   const inputRef = useRef<TextInput>(null)
@@ -88,7 +104,7 @@ export function ChatComposer({
 
   function submit() {
     const text = value.trim()
-    if (!text || sending) return
+    if (!text || sending || tooLong) return
     onSend(text)
     setHeight(LINE_HEIGHT)
   }
@@ -139,7 +155,9 @@ export function ChatComposer({
 
   if (variant === 'dock') {
     return (
-      <View style={styles.row}>
+      <>
+        {lengthNote}
+        <View style={styles.row}>
         {leading}
         {input}
         {canStop ? (
@@ -147,19 +165,22 @@ export function ChatComposer({
             <Text style={styles.dockSendText}>{tr('advisor.chat.stopButton')}</Text>
           </Pressable>
         ) : (
-          <Pressable accessibilityRole="button" disabled={sending || value.trim().length === 0} onPress={submit} style={styles.dockSend} testID={sendTestID}>
+          <Pressable accessibilityRole="button" disabled={sending || tooLong || value.trim().length === 0} onPress={submit} style={styles.dockSend} testID={sendTestID}>
             <Text style={styles.dockSendText}>{tr('advisor.chat.sendButton', 'Fragen')}</Text>
           </Pressable>
         )}
-      </View>
+        </View>
+      </>
     )
   }
 
   // One box, one line: attachment, text, microphone and send sit together and the box grows with
   // the text (#476). Send and Stop are the same round button.
-  const cannotSend = sending || value.trim().length === 0
+  const cannotSend = sending || tooLong || value.trim().length === 0
   return (
-    <View style={styles.box}>
+    <>
+      {lengthNote}
+      <View style={styles.box}>
       {leading}
       {input}
       {trailing}
@@ -186,7 +207,8 @@ export function ChatComposer({
           <ChatIcon name="send" color={inkOnFunke(t)} />
         </Pressable>
       )}
-    </View>
+      </View>
+    </>
   )
 }
 
@@ -200,6 +222,8 @@ function makeStyles(t: UiTheme, variant: 'panel' | 'dock') {
   return {
     inputPadding: padding * 2,
     row: { flexDirection: 'row', alignItems: 'flex-end', gap: t.space.s2 } as ViewStyle,
+    counter: { ...t.type.small, color: t.color.tinte2, textAlign: 'right', marginBottom: t.space.s1 } as TextStyle,
+    tooLong: { ...t.type.small, color: t.color.fehler, marginBottom: t.space.s1 } as TextStyle,
     box: {
       flexDirection: 'row',
       alignItems: 'flex-end',

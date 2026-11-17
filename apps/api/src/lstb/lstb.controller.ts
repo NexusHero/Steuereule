@@ -19,6 +19,7 @@ import { LstbFieldDto } from './dto/lstb-field.dto.js'
 import { LstbResponseDto } from './dto/lstb-response.dto.js'
 import { LstbChurchTaxDto } from './dto/lstb-church-tax.dto.js'
 import { LstbSubsidiesDto } from './dto/lstb-subsidies.dto.js'
+import { LstbLinesDto, LstbLinesResponseDto } from './dto/lstb-lines.dto.js'
 
 @ApiTags('lstb')
 @Controller('v1/steuerjahre')
@@ -106,6 +107,37 @@ export class LstbController {
     @Query('person', ParsePersonPipe) person: 'A' | 'B',
   ): Promise<LstbChurchTaxDto> {
     return this.lstbService.setChurchTax(await this.link.dataUser(userId, year, person), year, dto)
+  }
+
+  @Get(':jahr/lstb-zeilen')
+  @RequiresAccount()
+  @ApiParam({ name: 'jahr', type: Number, example: 2026, description: 'The tax year (Steuerjahr).' })
+  @ApiOkResponse({ type: LstbLinesResponseDto, description: 'LStB Zeilen 22–27, 24c and 5 line by line, with the sum the app keeps (ADR-0093).' })
+  @ApiUnauthorizedResponse({ description: 'Guest session — this endpoint requires a signed-in account.' })
+  @ApiQuery({ name: 'person', required: false, enum: ['A', 'B'], description: 'B: Person A reads the figures of a partner without an own account (ADR-0054).' })
+  async getLines(
+    @CurrentUser() userId: string,
+    @Param('jahr', ParseTaxYearPipe) year: number,
+    @Query('person', ParsePersonPipe) person: 'A' | 'B',
+  ): Promise<LstbLinesResponseDto> {
+    return this.lstbService.getLines(await this.link.dataUser(userId, year, person), year)
+  }
+
+  @Put(':jahr/lstb-zeilen')
+  @HttpCode(200)
+  @RequiresAccount()
+  @ApiParam({ name: 'jahr', type: Number, example: 2026, description: 'The tax year (Steuerjahr).' })
+  @ApiBody({ type: LstbLinesDto })
+  @ApiOkResponse({ type: LstbLinesResponseDto, description: 'The stored lines; `sozialversicherung` is their sum once Zeilen 23, 25, 26 and 27 are recorded.' })
+  @ApiUnauthorizedResponse({ description: 'Guest session — this endpoint requires a signed-in account.' })
+  @ApiQuery({ name: 'person', required: false, enum: ['A', 'B'], description: 'B: Person A records the figures of a partner without an own account (ADR-0054).' })
+  async setLines(
+    @CurrentUser() userId: string,
+    @Param('jahr', ParseTaxYearPipe) year: number,
+    @Body() dto: LstbLinesDto,
+    @Query('person', ParsePersonPipe) person: 'A' | 'B',
+  ): Promise<LstbLinesResponseDto> {
+    return this.lstbService.setLines(await this.link.dataUser(userId, year, person), year, dto)
   }
 
   @Get(':jahr/lstb-zuschuesse')

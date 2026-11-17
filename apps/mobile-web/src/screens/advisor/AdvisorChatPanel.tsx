@@ -40,6 +40,7 @@ import {
 import { APP_NS } from '../../i18n/resources'
 import { ModelFailureNotice } from './chat/ModelFailureNotice'
 import { PersonalDataConsentCard } from './chat/PersonalDataConsentCard'
+import { textToRepeatAfterConsent } from './chat/consentRetry'
 import { ActionProposalCardView, ScannedCertificateCardView, TwoPathsCardView } from './chat/ProposalCards'
 import { makeStyles } from './AdvisorChatPanel.styles'
 export { makeStyles } from './AdvisorChatPanel.styles'
@@ -103,6 +104,8 @@ export interface AdvisorChatPanelProps {
   readonly receiptNotice?: string | null | undefined
   /** „Für wen?“ and „für: … · auch für …?“ of the last document (ADR-0092), shown under the upload. */
   readonly receiptAssignment?: ReactNode | undefined
+  /** The last document still waits for an answer („Für wen?“): the next file of a selection is not started yet. */
+  readonly receiptQueuePaused?: boolean | undefined
   /** More ways to hand the owl a document, shown in the attach panel (e.g. one already in the Belege inbox). */
   readonly receiptSources?: ReactNode | undefined
   readonly isParsingReceipt?: boolean | undefined
@@ -194,6 +197,7 @@ export function AdvisorChatPanel({
   receiptProgress = null,
   receiptNotice = null,
   receiptAssignment,
+  receiptQueuePaused = false,
   receiptSources,
   isParsingReceipt = false,
   compact = false,
@@ -209,15 +213,20 @@ export function AdvisorChatPanel({
   // Several files at once are read one after another: each reading shows its own progress and ends in its own drafts.
   const [fileQueue, setFileQueue] = useState<readonly File[]>([])
   const readingRef = useRef(false)
+  // Files the user chose while nothing was queued: a new choice, not the rest of a selection.
+  const freshChoiceRef = useRef(new WeakSet<File>())
   useEffect(() => {
     const next = fileQueue[0]
-    if (next === undefined || readingRef.current || isParsingReceipt || !onAttachReceiptFile) return
+    // A file whose „Für wen?“ is open has not been read yet: starting the next one of the same selection would
+    // wipe the question. A file chosen anew replaces an unanswered question, as it always did.
+    const waitsForAnswer = receiptQueuePaused && next !== undefined && !freshChoiceRef.current.has(next)
+    if (next === undefined || readingRef.current || isParsingReceipt || waitsForAnswer || !onAttachReceiptFile) return
     readingRef.current = true
     void Promise.resolve(onAttachReceiptFile(next)).finally(() => {
       readingRef.current = false
       setFileQueue((prev) => prev.slice(1))
     })
-  }, [fileQueue, isParsingReceipt, onAttachReceiptFile])
+  }, [fileQueue, isParsingReceipt, receiptQueuePaused, onAttachReceiptFile])
   const [receiptTextOpen, setReceiptTextOpen] = useState(false)
   const [receiptFileName, setReceiptFileName] = useState('beleg.pdf')
   const [receiptRawText, setReceiptRawText] = useState('')
@@ -245,7 +254,10 @@ export function AdvisorChatPanel({
   /** What is switched on at the input travels with every message; a plain message stays plain. */
   const withSwitches = (options: ChatSendOptions | undefined, activeSkill: AdvisorSkillId | null): ChatSendOptions | undefined =>
     activeSkill || turbo ? { ...options, ...(activeSkill ? { skill: activeSkill } : {}), ...(turbo ? { turbo: true } : {}) } : options
+  // What was typed last, as typed: the stored question is masked while the consent is missing (ADR-0091).
+  const lastTypedRef = useRef<string | null>(null)
   const send = (text: string, options?: ChatSendOptions) => {
+    lastTypedRef.current = text
     const merged = withSwitches(options, skill)
     return merged ? onSendMessage(text, merged) : onSendMessage(text)
   }
@@ -287,6 +299,16 @@ export function AdvisorChatPanel({
   const lastUserIndex = messages.reduce((last, m, i) => (m.role === 'user' ? i : last), -1)
   const lastUser = lastUserIndex === -1 ? null : messages[lastUserIndex]!
   const canReplace = !isSending && lastUser !== null
+
+  /**
+   * „Erlauben“ on the consent card: the owl answers the user's last message again, now with the
+   * consent, in place of the turn that had to refuse. Nobody retypes anything (ADR-0091).
+   */
+  function continueAfterConsent() {
+    if (!canReplace || lastUser === null) return
+    const repeat = textToRepeatAfterConsent(lastUser.content, lastTypedRef.current)
+    void (repeat !== null ? send(repeat, { replaceFromMessageId: lastUser.id }) : send(tr('owlPersonalData.card.continueMessage')))
+  }
 
   async function copyMessage(id: string, content: string) {
     if (await copyToClipboard(plainTextForCopy(content))) {
@@ -549,7 +571,7 @@ export function AdvisorChatPanel({
               ) : null}
 
               {/* The owl needed personal data without consent: ask once, explicitly (ADR-0091) */}
-              {msg.meta?.personalDataConsentRequest === true ? <PersonalDataConsentCard /> : null}
+              {msg.meta?.personalDataConsentRequest === true ? <PersonalDataConsentCard onGranted={index === messages.length - 1 && canReplace ? continueAfterConsent : undefined} /> : null}
 
               {/* The model did not answer: the rules did, and the reason stays with the answer (#487) */}
               {msg.meta?.modelFailure ? (
@@ -705,7 +727,12 @@ export function AdvisorChatPanel({
           {onAttachReceiptFile ? (
             <ReceiptPickerButton
               multiple
-              onFile={(file) => setFileQueue((prev) => [...prev, file])}
+              onFile={(file) =>
+                setFileQueue((prev) => {
+                  if (prev.length === 0) freshChoiceRef.current.add(file)
+                  return [...prev, file]
+                })
+              }
               disabled={isParsingReceipt}
               testID="advisor-receipt-file"
               inputTestID="advisor-receipt-file-input"

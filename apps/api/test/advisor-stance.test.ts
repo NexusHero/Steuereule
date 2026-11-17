@@ -89,8 +89,10 @@ describe('the advisor stance is in every model call (#499, #501)', () => {
     expect(text).toContain('nur wenn sie günstiger sind als das Kindergeld (§ 31 EStG)')
     expect(text).toContain('Für die Erklärung dieses Nutzers gilt die Schätzung der App')
     expect(text).toContain('was das Finanzamt bei solchen Angaben typischerweise nachfragt')
-    // Real case: „an 226 Tagen gefahren“ has no field; the owl turns it into days off.
-    expect(text).toContain('Nennt der Nutzer stattdessen, an wie vielen Tagen er zur Arbeit gefahren ist')
+    // Days actually travelled have their own field and are never turned into days off (ADR-0093).
+    expect(text).toContain('trägst du genau diese Zahl als `commute.travelDays` ein')
+    expect(text).not.toContain('Trage dann die Differenz')
+    expect(text).toContain('kürzeste Straßenverbindung')
     // Found by the eval: after a draft the owl answered with nothing but „draft prepared“.
     expect(text).toContain('Ein Entwurf ersetzt nie die Antwort')
     // Further Werbungskosten and childcare have their fields (ADR-0076).

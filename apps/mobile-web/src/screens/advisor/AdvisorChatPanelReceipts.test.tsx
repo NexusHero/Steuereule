@@ -76,6 +76,32 @@ describe('AdvisorChatPanel — receipts in the chat', () => {
     expect(onFile).toHaveBeenCalledTimes(2)
   })
 
+  // Real-data run: of several files only the first was read. Its „Für wen?“ was still open when the
+  // next file started and wiped the question, so the first never got its values.
+  it('waits with the next file while the question whose the last one is stands open', async () => {
+    const onFile = vi.fn(async () => {})
+    const a = new File([new Uint8Array([1])], 'a.pdf', { type: 'application/pdf' })
+    const b = new File([new Uint8Array([2])], 'b.pdf', { type: 'application/pdf' })
+    const panel = (paused: boolean) => (
+      <I18nextProvider i18n={createAppI18n('de')}>
+        <ThemeProvider>
+          <AdvisorChatPanel messages={[]} onSendMessage={vi.fn()} onAttachReceiptFile={onFile} receiptQueuePaused={paused} />
+        </ThemeProvider>
+      </I18nextProvider>
+    )
+    const view = render(panel(true))
+    fireEvent.click(screen.getByTestId('advisor-receipt-attach-btn'))
+    fireEvent.change(screen.getByTestId('advisor-receipt-file-input'), { target: { files: [a, b] } })
+    // The first file is a new choice and replaces whatever question stood open; the second waits for its answer.
+    await waitFor(() => expect(onFile).toHaveBeenCalledTimes(1))
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(onFile).toHaveBeenCalledTimes(1)
+
+    view.rerender(panel(false))
+    await waitFor(() => expect(onFile).toHaveBeenCalledTimes(2))
+    expect(onFile.mock.calls.map((call) => (call as unknown as [File])[0].name)).toEqual(['a.pdf', 'b.pdf'])
+  })
+
   it('shows the document assignment under the upload (ADR-0092)', () => {
     renderPanel(<AdvisorChatPanel messages={[]} onSendMessage={vi.fn()} receiptAssignment={<span data-testid="zuordnung-slot">Für wen?</span>} />)
     expect(screen.getByTestId('advisor-receipt-notice')).toBeTruthy()

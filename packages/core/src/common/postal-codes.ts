@@ -45,6 +45,18 @@ export function lookupPostalCode(raw: string): PostalCodeLookup {
   return places && places.length > 0 ? { kind: 'found', places } : { kind: 'unknown' }
 }
 
+/**
+ * The Bundesland of the first German postal code in a free-text address. Null when there is none,
+ * the table does not know it, or it lies in two states.
+ */
+export function germanStateOfAddress(address: string | null | undefined): GermanState | null {
+  const postalCode = /(?<!\d)\d{5}(?!\d)/.exec(address ?? '')?.[0]
+  const lookup = postalCode === undefined ? null : lookupPostalCode(postalCode)
+  if (lookup?.kind !== 'found') return null
+  const states = new Set(lookup.places.map((place) => place.state))
+  return states.size === 1 ? lookup.places[0]!.state : null
+}
+
 /** Kirchensteuersatz by Bundesland of residence (§ 51a EStG with the state church tax laws). */
 export function churchTaxRateForState(state: GermanState): 0.08 | 0.09 {
   return state === 'BY' || state === 'BW' ? 0.08 : 0.09

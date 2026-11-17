@@ -165,3 +165,30 @@ describe('Anlage N-Gre — tax-free Krankentaggeld (Zeilen 9 and 76)', () => {
   })
 })
 
+
+describe('annexNGreAmounts: as the tax office converts (ADR-0094)', () => {
+  it('converts the CHF totals, rounds the wage down and the Swiss tax credit up', () => {
+    // 111.750 + 6.382 + 608 + 4.470 = 123.210 CHF at 1,065: 131.218,65 € on the notice 131.218 €,
+    // although the lines converted one by one add up to 131.220 €.
+    const amounts = annexNGreAmounts({
+      grossWageChf: 115603,
+      familienzulagenChf: 0,
+      steuerfreiesKrankentaggeldChf: 3853,
+      ahvContributionsChf: 7153,
+      withholdingTaxChf: 5202,
+      krankentaggeldChf: 0,
+      krankentaggeldArbeitgeberChf: 6382,
+      nbuvArbeitgeberChf: 608,
+      pkArbeitnehmerChf: 2892,
+      pkArbeitgeberChf: 2892,
+      pkArbeitgeberGesamtChf: 2892 + 4470,
+      rate: 1.065,
+    })
+    expect(amounts.chf.z23).toBe(123210)
+    expect(amounts.assessed.wageEur).toBe(131218)
+    // 5.202 CHF = 5.540,13 € → 5.541 € credited.
+    expect(amounts.assessed.withholdingTaxEur).toBe(5541)
+    expect(amounts.assessed.pensionEmployeeEur).toBe(9089.78)
+    expect(amounts.assessed.pensionEmployerEur).toBe(9089.78)
+  })
+})

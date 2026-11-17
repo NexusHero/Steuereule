@@ -11,6 +11,7 @@ import {
 
 import type {
   LstbChurchTaxDto,
+  LstbLinesResponseDto,
   LstbResponseDto,
   LstbSubsidiesDto
 } from './lstb.schemas';
@@ -25,6 +26,10 @@ export const getLstbControllerSetFieldResponseMock = (overrideResponse: Partial<
 export const getLstbControllerGetChurchTaxResponseMock = (overrideResponse: Partial<Extract<LstbChurchTaxDto, object>> = {}): LstbChurchTaxDto => ({kirchensteuer: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), kirchensteuerEhegatte: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), ...overrideResponse})
 
 export const getLstbControllerSetChurchTaxResponseMock = (overrideResponse: Partial<Extract<LstbChurchTaxDto, object>> = {}): LstbChurchTaxDto => ({kirchensteuer: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), kirchensteuerEhegatte: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), ...overrideResponse})
+
+export const getLstbControllerGetLinesResponseMock = (overrideResponse: Partial<Extract<LstbLinesResponseDto, object>> = {}): LstbLinesResponseDto => ({rvArbeitnehmer: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), rvArbeitgeber: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), kvArbeitnehmer: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), pvArbeitnehmer: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), avArbeitnehmer: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), zuschussPv: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), solidaritaetszuschlag: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), zuschuesseKvPv: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), sozialversicherung: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), subsidyOpen: faker.datatype.boolean(), ...overrideResponse})
+
+export const getLstbControllerSetLinesResponseMock = (overrideResponse: Partial<Extract<LstbLinesResponseDto, object>> = {}): LstbLinesResponseDto => ({rvArbeitnehmer: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), rvArbeitgeber: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), kvArbeitnehmer: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), pvArbeitnehmer: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), avArbeitnehmer: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), zuschussPv: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), solidaritaetszuschlag: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), zuschuesseKvPv: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), sozialversicherung: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), subsidyOpen: faker.datatype.boolean(), ...overrideResponse})
 
 export const getLstbControllerGetSubsidiesResponseMock = (overrideResponse: Partial<Extract<LstbSubsidiesDto, object>> = {}): LstbSubsidiesDto => ({zuschuesseKvPv: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), ...overrideResponse})
 

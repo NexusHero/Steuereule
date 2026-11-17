@@ -60,6 +60,18 @@ export interface NGreAmounts {
    * Kz 380), because a Nichtberufsunfall includes the way to work (Anleitung N-Gre 2025 zu Z. 97/98, ADR-0090).
    */
   readonly nbuvWorkExpenses: { readonly chf: number; readonly eur: number }
+  /**
+   * The same lines as the tax office converts them for the assessment (two real notices, ADR-0094):
+   * the CHF total times the rate, the wage rounded down, the Swiss tax credit rounded up, and the
+   * provision lines with their cents (the notice rounds their sum).
+   */
+  readonly assessed: {
+    readonly wageEur: number
+    readonly withholdingTaxEur: number
+    readonly pensionEmployeeEur: number
+    readonly pensionEmployerEur: number
+    readonly otherProvisionEur: number
+  }
 }
 
 /** The total minus the Obligatorium; without a total nothing above the Obligatorium is known. */
@@ -131,9 +143,18 @@ export function annexNGreAmounts(e: NGreInput): NGreAmounts {
   })
   const inEur = Object.fromEntries(Object.entries(parts).map(([row, chf]) => [row, Math.round(chf * e.rate)])) as typeof parts
   const nbuvWorkExpensesChf = nbuv.employeeChf + nbuv.employerChf - parts.z81
+  const chf = sums(parts)
+  const inCents = (amountChf: number) => Math.round(amountChf * e.rate * 100) / 100
   return {
-    chf: sums(parts),
+    chf,
     eur: sums(inEur),
+    assessed: {
+      wageEur: Math.floor(inCents(chf.z23)),
+      withholdingTaxEur: Math.ceil(inCents(chf.z25)),
+      pensionEmployeeEur: inCents(chf.z85),
+      pensionEmployerEur: inCents(chf.z88),
+      otherProvisionEur: inCents(chf.z82),
+    },
     nbuvWorkExpenses: { chf: nbuvWorkExpensesChf, eur: Math.round(nbuvWorkExpensesChf * e.rate) },
     split: { dailySicknessAllowance, nbuv },
     pension: { employee: employeePension, employer: employerPension },

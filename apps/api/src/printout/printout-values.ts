@@ -656,7 +656,8 @@ export function printoutValues(facts: PrintoutFacts): PrintoutValues {
   )
 
   if (sd) {
-    set('est1a.finanzamt', sd.finanzamt)
+    // The form line already reads „An das Finanzamt“; the directory's names start with that word.
+    set('est1a.finanzamt', sd.finanzamt?.replace(/^Finanzamt\s+(?=\S)/i, '') ?? null)
     set('est1a.telefon', sd.telefon)
     set('est1a.geburtsdatum', sd.geburtsdatum ? formatGermanDate(sd.geburtsdatum) : null)
     set('est1a.religion', sd.religion)

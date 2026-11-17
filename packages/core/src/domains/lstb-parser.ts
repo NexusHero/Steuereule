@@ -318,7 +318,8 @@ export function evaluateLstbExtraction(input: LstbExtractionInput): LstbExtracti
         calculation,
         reason: 'unreadable',
       }
-    } else if (svCategoriesPresent.size < 2 && svRounded > 0) {
+    } else if ((svCategoriesPresent.size < 2 && svRounded > 0) || svCategoriesPresent.has('kv') !== svCategoriesPresent.has('pv')) {
+      // One category alone, or health without nursing care (they are withheld together): a line is missing.
       svField = {
         value: svRounded,
         status: 'pruefen',
@@ -433,6 +434,52 @@ function classifyLine(rawLine: string): MatchedRowKey | null {
   return null
 }
 
+type SubRowKey = '23a' | '23b' | 'other'
+
+/** A sub-row of the blocks 22 (employer's share), 23 (employee's share) and 24 (tax-free subsidies), on folded text. */
+const SUB_ROW = /(?:^|[\s|:;])([abc2])\)\s*(zur\s+gesetzlichen\s+renten|an\s+berufsst|zur\s+gesetzlichen\s+kranken|zur\s+privaten\s+kranken|zur\s+gesetzlichen\s+pflege)/
+/** The number of the block where it stands on the same line: "22. Arbeitgeber-", "23. Arbeiinehmer-", "24. Steuerfreie". */
+const BLOCK_NUMBER = /(?:^|[\s|:;])(?:(22)[\s.]*arbeitgeb|(23)[\s.]*arbei\S{0,3}nehm|(24)[\s.]*steuerfr)/
+
+/**
+ * Which line of the certificate each sub-row a), b), c) of the blocks 22 to 24 is (real-data run, step
+ * 3a). A form read by position has the block's number on another line than its sub-rows, so the
+ * number alone does not tell. The subsidies to health and nursing-care insurance are always block 24.
+ * The pension rows come twice, employer first: with the number on the row it decides, otherwise the
+ * order does. A single pension row without a number is taken as the employee's (both shares are
+ * equal by law) but stays ambiguous.
+ */
+function classifySubRows(lines: readonly string[]): { readonly keys: ReadonlyMap<number, SubRowKey>; readonly ambiguous: boolean } {
+  const keys = new Map<number, SubRowKey>()
+  const pension: { index: number; letter: 'a' | 'b'; block: '22' | '23' | null }[] = []
+  lines.forEach((raw, index) => {
+    const line = foldOcr(raw)
+    const sub = SUB_ROW.exec(line)
+    if (!sub) return
+    const topic = sub[2]!
+    if (!/renten|berufsst/.test(topic)) {
+      keys.set(index, 'other')
+      return
+    }
+    const number = BLOCK_NUMBER.exec(line.slice(0, sub.index + 1))
+    pension.push({ index, letter: topic.includes('renten') ? 'a' : 'b', block: number?.[1] ? '22' : number?.[2] ? '23' : null })
+  })
+  let ambiguous = false
+  for (const letter of ['a', 'b'] as const) {
+    const rows = pension.filter((row) => row.letter === letter)
+    const unnumbered = rows.filter((row) => row.block === null)
+    const has = (block: '22' | '23') => rows.some((row) => row.block === block)
+    unnumbered.forEach((row, i) => {
+      // Employer first: the unnumbered row is the employee's when the employer's is known or stands before it.
+      const employee = has('22') || (!has('23') && (unnumbered.length === 1 || i > 0))
+      keys.set(row.index, employee ? `23${letter}` : 'other')
+      if (unnumbered.length === 1 && !has('22') && !has('23') && extractTrailingAmount(lines[row.index]!, false) !== null) ambiguous = true
+    })
+    for (const row of rows) if (row.block !== null) keys.set(row.index, row.block === '23' ? `23${letter}` : 'other')
+  }
+  return { keys, ambiguous }
+}
+
 /**
  * Extracts the trailing monetary value from an LStB line, ignoring line ordinals such as
  * "ohne 9. und 10." or "von 3." at the middle of official BMF headings.
@@ -529,20 +576,24 @@ export function parseLstbTextDeterministically(rawText: string): LstbExtractionR
     }
   }
 
+  const subRows = classifySubRows(lines)
+  if (subRows.ambiguous) ambiguous.add('sozialversicherung')
+
   for (let i = 0; i < lines.length; i += 1) {
     const line = lines[i]!
-    const matched = classifyLine(line)
+    const subRow = subRows.keys.get(i)
+    const matched = subRow ?? classifyLine(line)
     if (!matched || matched === 'other') {
       continue
     }
 
-    let amount = extractTrailingAmount(line, true)
+    let amount = subRow !== undefined ? extractTrailingAmount(line, false) : extractTrailingAmount(line, true)
     // Look ahead up to 2 continuation lines if amount is on the next line (wrapped table cell)
     if (amount === null) {
       for (let offset = 1; offset <= 2 && i + offset < lines.length; offset += 1) {
         const nextLine = lines[i + offset]!.trim()
         if (!nextLine) continue
-        if (classifyLine(nextLine) !== null) break
+        if (classifyLine(nextLine) !== null || subRows.keys.has(i + offset)) break
         const nextAmount = extractTrailingAmount(nextLine, false)
         if (nextAmount !== null) {
           amount = nextAmount

@@ -186,7 +186,8 @@ describe('titleFrom', () => {
 })
 
 describe('a full conversation is summarised (#481)', () => {
-  const LONG = 'x'.repeat(2400)
+  // Sized against the history budget (12.000 tokens): one turn is about 2.400 of them.
+  const LONG = 'x'.repeat(4800)
   const longAnswer = answer(`Antwort ${LONG}`)
 
   /** A scripted engine that can also summarise; `summaries` records what it was asked to condense. */

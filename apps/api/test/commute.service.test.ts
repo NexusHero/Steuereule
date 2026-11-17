@@ -63,8 +63,8 @@ describe('ArbeitswegService', () => {
       secondFrom: '01.11.2025',
     })
 
-    // 206 commute days by weekdays (218 until October, 43 after, of 261): 172 on 30 km, 34 on 80 km.
-    expect(status.commuterAllowance).toBe(Math.round(172 * (20 * 0.3 + 10 * 0.38)) + Math.round(34 * (20 * 0.3 + 60 * 0.38)))
+    // 206 commute days by weekdays (218 until October, 43 after, of 261): 172 on 30 km, 34 on 80 km. Each way rounds up (ADR-0094).
+    expect(status.commuterAllowance).toBe(Math.ceil(172 * (20 * 0.3 + 10 * 0.38)) + Math.ceil(34 * (20 * 0.3 + 60 * 0.38)))
   })
 
   it('leaves the Pauschale open until distance and means of travel are known', async () => {

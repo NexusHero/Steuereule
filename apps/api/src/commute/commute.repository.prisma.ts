@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common'
 import type { IsoWeekday } from '@steuereule/core'
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
-import { MEANS_OF_TRANSPORT, WAY_TEXT_FIELDS, WORK_EXPENSE_AMOUNT_FIELDS, WORK_EXPENSE_NOTE_FIELDS, type CommuteInputs, type CommuteRepository, type MeansOfTransport } from './commute.repository.js'
+import { MEANS_OF_TRANSPORT, WAY_FACT_FIELDS, WAY_TEXT_FIELDS, WORK_EXPENSE_AMOUNT_FIELDS, WORK_EXPENSE_NOTE_FIELDS, type CommuteInputs, type CommuteRepository, type MeansOfTransport } from './commute.repository.js'
 
 interface CommuteRow {
   workdays: string
@@ -27,6 +27,10 @@ interface CommuteRow {
   secondWorkplace?: string | null
   secondFrom?: string | null
   secondTo?: string | null
+  travelDays?: number | null
+  secondTravelDays?: number | null
+  shortestRouteConfirmed?: boolean | null
+  secondShortestRouteConfirmed?: boolean | null
 }
 
 const wholeEuros = (raw: string | null | undefined): number | null => (raw !== null && raw !== undefined && /^\d+$/.test(raw) ? Number(raw) : null)
@@ -51,6 +55,10 @@ function inputsFrom(row: CommuteRow): CommuteInputs {
     secondWorkplace: row.secondWorkplace ?? null,
     secondFrom: row.secondFrom ?? null,
     secondTo: row.secondTo ?? null,
+    travelDays: row.travelDays ?? null,
+    secondTravelDays: row.secondTravelDays ?? null,
+    shortestRouteConfirmed: row.shortestRouteConfirmed ?? null,
+    secondShortestRouteConfirmed: row.secondShortestRouteConfirmed ?? null,
   }
 }
 
@@ -81,7 +89,7 @@ export class PrismaCommuteRepository implements CommuteRepository {
       ...Object.fromEntries(WORK_EXPENSE_NOTE_FIELDS.filter((f) => inputs[f] !== undefined).map((f) => [f, inputs[f] ?? null])),
       // The period and the second way: likewise kept when a save does not carry them.
       ...Object.fromEntries(WAY_TEXT_FIELDS.filter((f) => inputs[f] !== undefined).map((f) => [f, inputs[f] ?? null])),
-      ...(inputs.secondOneWayKm !== undefined ? { secondOneWayKm: inputs.secondOneWayKm } : {}),
+      ...Object.fromEntries(WAY_FACT_FIELDS.filter((f) => inputs[f] !== undefined).map((f) => [f, inputs[f] ?? null])),
     }
     const [row] = await this.prisma.$transaction([
       this.prisma.commute.upsert({

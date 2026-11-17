@@ -20,6 +20,8 @@ const tesseractDir = dirname(require.resolve('tesseract.js/package.json'))
 const coreDir = dirname(createRequire(join(tesseractDir, 'package.json')).resolve('tesseract.js-core/package.json'))
 const langDir = (lang) => join(dirname(require.resolve(`@tesseract.js-data/${lang}/package.json`)), '4.0.0_best_int')
 
+const pdfWasmDir = join(dirname(require.resolve('pdfjs-dist/package.json')), 'wasm')
+
 const ASSETS = [
   { from: join(tesseractDir, 'dist', 'worker.min.js'), to: 'worker.min.js' },
   { from: join(coreDir, 'tesseract-core-lstm.wasm.js'), to: 'core/tesseract-core-lstm.wasm.js' },
@@ -27,6 +29,13 @@ const ASSETS = [
   { from: join(coreDir, 'tesseract-core-relaxedsimd-lstm.wasm.js'), to: 'core/tesseract-core-relaxedsimd-lstm.wasm.js' },
   { from: join(langDir('deu'), 'deu.traineddata.gz'), to: 'lang/deu.traineddata.gz' },
   { from: join(langDir('eng'), 'eng.traineddata.gz'), to: 'lang/eng.traineddata.gz' },
+  // pdf.js decodes the page images of a scanner's PDF (JBIG2, JPEG 2000) with WASM it loads from `wasmUrl`;
+  // without it such a page renders empty and the OCR reads nothing. The JS files are its fallback without WASM.
+  { from: join(pdfWasmDir, 'jbig2.wasm'), to: 'pdf/jbig2.wasm' },
+  { from: join(pdfWasmDir, 'jbig2_nowasm_fallback.js'), to: 'pdf/jbig2_nowasm_fallback.js' },
+  { from: join(pdfWasmDir, 'openjpeg.wasm'), to: 'pdf/openjpeg.wasm' },
+  { from: join(pdfWasmDir, 'openjpeg_nowasm_fallback.js'), to: 'pdf/openjpeg_nowasm_fallback.js' },
+  { from: join(pdfWasmDir, 'qcms_bg.wasm'), to: 'pdf/qcms_bg.wasm' },
 ]
 
 const lockPath = join(appRoot, 'ocr-assets.lock.json')

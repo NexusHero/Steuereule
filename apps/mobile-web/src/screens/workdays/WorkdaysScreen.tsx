@@ -10,6 +10,7 @@ import {
   calculateWorkdays,
   formatEuro,
   holidaysOnWorkdays,
+  weekdaysInPeriod,
   commuterAllowanceByWay,
   type GermanState,
   type HolidayRegion,
@@ -98,13 +99,27 @@ function WorkdaysForm({
   const [vacation, setVacation] = useState(textFrom(saved?.vacationDays))
   const [sick, setSick] = useState(textFrom(saved?.sickDays))
   const [homeOffice, setHomeOffice] = useState(textFrom(saved?.homeOfficeDays))
-  const [km, setKm] = useState(textFrom(saved?.oneWayKm))
+  const [km, setKmText] = useState(textFrom(saved?.oneWayKm))
+  // ADR-0093: days actually travelled replace the derived commute days; the shortest-route confirmation
+  // belongs to one km value and is withdrawn whenever that value changes.
+  const [travelDays, setTravelDays] = useState(daysText(saved?.travelDays))
+  const [shortest, setShortest] = useState(saved?.shortestRouteConfirmed === true)
+  const [secondTravelDays, setSecondTravelDays] = useState(daysText(saved?.secondTravelDays))
+  const [secondShortest, setSecondShortest] = useState(saved?.secondShortestRouteConfirmed === true)
+  function setKm(value: string) {
+    setKmText(value)
+    setShortest(false)
+  }
   const [transport, setTransport] = useState<Transport | null>(saved?.transport ?? null)
   const [workplace, setWorkplace] = useState(saved?.workplace ?? '')
   // A change of job during the year (ADR-0079): the first way ends, a second one starts.
   const [changed, setChanged] = useState(saved?.secondOneWayKm != null || Boolean(saved?.periodTo))
   const [firstUntil, setFirstUntil] = useState(saved?.periodTo ?? '')
-  const [secondKm, setSecondKm] = useState(textFrom(saved?.secondOneWayKm))
+  const [secondKm, setSecondKmText] = useState(textFrom(saved?.secondOneWayKm))
+  function setSecondKm(value: string) {
+    setSecondKmText(value)
+    setSecondShortest(false)
+  }
   const [secondTransport, setSecondTransport] = useState<Transport | null>(saved?.secondTransport ?? null)
   const [secondWorkplace, setSecondWorkplace] = useState(saved?.secondWorkplace ?? '')
   const [secondFrom, setSecondFrom] = useState(saved?.secondFrom ?? '')
@@ -149,9 +164,17 @@ function WorkdaysForm({
   const oneWayKm = integerFrom(km)
   const secondOneWayKm = changed ? integerFrom(secondKm) : null
   const datesValid = !changed || (validDate(firstUntil) && validDate(secondFrom))
+  const firstTravel = travelDaysOf(travelDays)
+  const secondTravel = changed ? travelDaysOf(secondTravelDays) : null
+  const firstTo = changed ? dateOrNull(firstUntil) : null
+  const secondFromDate = dateOrNull(secondFrom)
+  // Stated days must fit the working weekdays of the way's period (server: FAHRTAGE_WIDERSPRUCH).
+  const travelInvalid =
+    (travelDays.trim() !== '' && (firstTravel === null || firstTravel > Math.min(366, weekdaysInPeriod(taxYear, workdays, null, firstTo)))) ||
+    (changed && secondTravelDays.trim() !== '' && (secondTravel === null || secondTravel > Math.min(366, weekdaysInPeriod(taxYear, workdays, secondFromDate, null))))
   const ways = [
-    ...(oneWayKm !== null && transport !== null ? [{ oneWayKm, withCar: transport === 'pkw', from: null, to: changed ? dateOrNull(firstUntil) : null }] : []),
-    ...(secondOneWayKm !== null && secondTransport !== null ? [{ oneWayKm: secondOneWayKm, withCar: secondTransport === 'pkw', from: dateOrNull(secondFrom), to: null }] : []),
+    ...(oneWayKm !== null && transport !== null ? [{ oneWayKm, withCar: transport === 'pkw', from: null, to: firstTo, days: firstTravel }] : []),
+    ...(secondOneWayKm !== null && secondTransport !== null ? [{ oneWayKm: secondOneWayKm, withCar: secondTransport === 'pkw', from: secondFromDate, to: null, days: secondTravel }] : []),
   ]
   const allowance = result?.kind === 'bestimmt' && ways.length > 0 && datesValid ? allowanceOrNull(taxYear, workdays, result.commuteDays, ways) : null
 
@@ -200,6 +223,10 @@ function WorkdaysForm({
     secondTransport: changed ? secondTransport : null,
     secondWorkplace: changed ? note(secondWorkplace) : null,
     secondFrom: changed ? dateOrNull(secondFrom) : null,
+    travelDays: firstTravel,
+    secondTravelDays: secondTravel,
+    shortestRouteConfirmed: shortest && oneWayKm !== null ? true : null,
+    secondShortestRouteConfirmed: changed && secondShortest && secondOneWayKm !== null ? true : null,
   })
   // What was last loaded or saved — leaving a field saves only real changes (#443 AC 7).
   const lastSaved = useRef<string | null>(null)
@@ -207,7 +234,7 @@ function WorkdaysForm({
   const latestFormData = useRef(formData)
   latestFormData.current = formData
   const canPersist = useRef(false)
-  canPersist.current = result?.kind !== 'widerspruch' && datesValid
+  canPersist.current = result?.kind !== 'widerspruch' && datesValid && !travelInvalid
   const blurTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const inFlight = useRef<Promise<unknown>>(Promise.resolve())
 
@@ -255,7 +282,7 @@ function WorkdaysForm({
   const [moving, setMoving] = useState(false)
   function next() {
     clearBlurTimer()
-    if (result?.kind === 'widerspruch' || !datesValid) return
+    if (result?.kind === 'widerspruch' || !datesValid || travelInvalid) return
     setMoving(true)
     persist(onDone, () => setMoving(false))
   }
@@ -367,6 +394,10 @@ function WorkdaysForm({
       <Feld label={tr('arbeitstage.weg.km')}>
         <Input type="numeric" mono value={km} onChange={setKm} placeholder="0" accessibilityLabel={tr('arbeitstage.weg.km')} testID="arbeitstage-km" onBlur={saveOnLeave} />
       </Feld>
+      <ShortestRoute active={shortest} onToggle={() => setShortest(!shortest)} testID="arbeitstage-kuerzeste" />
+      <Feld label={tr('arbeitstage.weg.fahrtage.label')}>
+        <Input type="numeric" mono value={travelDays} onChange={setTravelDays} placeholder={tr('arbeitstage.weg.fahrtage.placeholder')} accessibilityLabel={tr('arbeitstage.weg.fahrtage.label')} testID="arbeitstage-fahrtage" onBlur={saveOnLeave} />
+      </Feld>
       <Feld label={tr('arbeitstage.weg.verkehrsmittel')}>
         <View style={styles.weekdayRow}>
           {TRANSPORT.map((means) => (
@@ -401,6 +432,10 @@ function WorkdaysForm({
           <Feld label={tr('arbeitstage.weg.km')}>
             <Input type="numeric" mono value={secondKm} onChange={setSecondKm} placeholder="0" accessibilityLabel={`${tr('arbeitstage.weg.wechsel.titel')}: ${tr('arbeitstage.weg.km')}`} testID="arbeitsweg-zweiter-km" onBlur={saveOnLeave} />
           </Feld>
+          <ShortestRoute active={secondShortest} onToggle={() => setSecondShortest(!secondShortest)} testID="arbeitsweg-zweiter-kuerzeste" />
+          <Feld label={tr('arbeitstage.weg.fahrtage.labelZweiter')}>
+            <Input type="numeric" mono value={secondTravelDays} onChange={setSecondTravelDays} placeholder={tr('arbeitstage.weg.fahrtage.placeholder')} accessibilityLabel={tr('arbeitstage.weg.fahrtage.labelZweiter')} testID="arbeitsweg-zweiter-fahrtage" onBlur={saveOnLeave} />
+          </Feld>
           <Feld label={tr('arbeitstage.weg.verkehrsmittel')}>
             <View style={styles.weekdayRow}>
               {TRANSPORT.map((means) => (
@@ -415,6 +450,13 @@ function WorkdaysForm({
           </Feld>
         </>
       ) : null}
+      {travelInvalid ? (
+        <Text style={styles.widerspruchBody} accessibilityRole="alert" testID="arbeitstage-fahrtage-widerspruch">
+          {tr('arbeitstage.weg.fahrtage.widerspruch')}
+        </Text>
+      ) : null}
+      {firstTravel !== null && !travelInvalid ? <Row label={tr('arbeitstage.weg.fahrtage.pendlertage')} value={String(firstTravel)} /> : null}
+      {secondTravel !== null && !travelInvalid ? <Row label={tr('arbeitstage.weg.fahrtage.pendlertageZweiter')} value={String(secondTravel)} /> : null}
       {allowance !== null ? <Row label={tr('arbeitstage.weg.pauschale')} value={formatEuro(allowance)} /> : null}
 
       <Text style={styles.sectionLabel}>{tr('arbeitstage.weitere.titel')}</Text>
@@ -445,7 +487,7 @@ function WorkdaysForm({
 
       <OfficialFormLink screen="commute" taxYear={taxYear} />
 
-      <Button onPress={next} disabled={moving || result?.kind === 'widerspruch'} style={styles.cta} testID="arbeitstage-weiter">
+      <Button onPress={next} disabled={moving || result?.kind === 'widerspruch' || travelInvalid} style={styles.cta} testID="arbeitstage-weiter">
         {tr('arbeitstage.weiter')}
       </Button>
     </ScrollView>
@@ -457,6 +499,28 @@ type Transport = 'pkw' | 'oepnv' | 'andere'
 
 function textFrom(value: number | null | undefined): string {
   return value === null || value === undefined || value === 0 ? '' : String(value)
+}
+
+function daysText(value: number | null | undefined): string {
+  return value === null || value === undefined ? '' : String(value)
+}
+
+/** Stated travel days: a whole number 0–366, or null for an empty or unreadable field. */
+function travelDaysOf(text: string): number | null {
+  const n = integerFrom(text)
+  return n !== null && n <= 366 ? n : null
+}
+
+function ShortestRoute({ active, onToggle, testID }: { readonly active: boolean; readonly onToggle: () => void; readonly testID: string }) {
+  const { t: tr } = useTranslation(APP_NS)
+  const t = useTheme()
+  return (
+    <View style={{ flexDirection: 'row', marginBottom: t.space.s4 }}>
+      <Chip active={active} onPress={onToggle} testID={testID}>
+        {tr('arbeitstage.weg.kuerzeste')}
+      </Chip>
+    </View>
+  )
 }
 
 function allowanceOrNull(year: number, workdays: readonly IsoWeekday[], days: number, ways: Parameters<typeof commuterAllowanceByWay>[3]): number | null {

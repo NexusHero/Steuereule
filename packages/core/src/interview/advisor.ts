@@ -1339,3 +1339,9 @@ function evaluateOwnTurn(input: {
     },
   }
 }
+
+/**
+ * How long one chat message to the owl may be, in characters. One constant for the API validation,
+ * the OpenAPI description and the composer, so the app can say why a message is refused before it is sent.
+ */
+export const ADVISOR_MESSAGE_MAX_CHARS = 8000

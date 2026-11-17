@@ -16,7 +16,7 @@ export function salaryCertificateValuesFromRecord(record: CrossBorderSalaryState
   const values: SalaryCertificateValues = {}
   if (record === null) return values
   for (const [fieldId, stored] of Object.entries(record.fields)) {
-    const value = deserializeSalaryCertificateField(stored)
+    const value = deserializeSalaryCertificateField(stored, fieldId as keyof SalaryCertificateValues)
     if (typeof value === 'number') values[fieldId as keyof SalaryCertificateValues] = value
   }
   return values
@@ -52,7 +52,8 @@ export function nGreInputFromRecord(record: CrossBorderSalaryStatementRecord, ra
   const n = record.nGre
   return {
     grossWageChf: values['bruttolohn-total'] ?? 0,
-    familienzulagenChf: Number(n.familienzulagenChf ?? 0),
+    // Deducted only when the allowance is part of Ziffer 8 (ADR-0093); null is a record from before the question.
+    familienzulagenChf: n.familienzulagenImBruttolohn === false ? 0 : Number(n.familienzulagenChf ?? 0),
     ahvContributionsChf: values['ahv-beitraege'] ?? 0,
     withholdingTaxChf: values.quellensteuer ?? 0,
     krankentaggeldChf: Number(n.krankentaggeldChf ?? 0),
