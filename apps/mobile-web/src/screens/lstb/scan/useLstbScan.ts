@@ -18,7 +18,7 @@ import type { AssignmentQuestionDto } from '@steuereule/api-client'
 import { printedPersonDetails } from '@steuereule/core'
 import { captureReceipt, type CapturePhase } from '../../../lib/receipts/captureReceipt'
 import { createHolderFromDocument, detailsFromDocument, takeNameIntoProfile, type NewHolderDetails } from '../../../lib/receipts/documentAssignment'
-import { integerFrom } from '../../shared/integer'
+import { wholeEurosFrom } from '../../shared/wholeEuros'
 import {
   buildFieldDraft,
   evaluateStagedDraft,
@@ -188,7 +188,7 @@ export function useLstbScan({ taxYear, person }: { readonly taxYear: number; rea
             ...prev,
             fields: {
               ...prev.fields,
-              [fieldId]: { ...prev.fields[fieldId], text: nextText, confirmed: integerFrom(nextText) !== null },
+              [fieldId]: { ...prev.fields[fieldId], text: nextText, confirmed: wholeEurosFrom(nextText) !== null },
             },
           },
     )

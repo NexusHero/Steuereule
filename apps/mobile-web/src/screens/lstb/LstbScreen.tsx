@@ -14,7 +14,7 @@ import {
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { formatCalculation } from '../../lib/lstb/formatCalculation'
-import { integerFrom } from '../shared/integer'
+import { wholeEurosFrom } from '../shared/wholeEuros'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
@@ -163,7 +163,7 @@ function LstbFieldEditor({
   function commit() {
     // Zero-Write guarantee: never auto-PUT while a scanned LStB draft is staged
     if (stagedDraft !== null) return
-    const value = integerFrom(text)
+    const value = wholeEurosFrom(text)
     if (value === null) return
     if (state.kind === 'erfasst' && state.value === value) return
     onRecorded(value)

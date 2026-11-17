@@ -33,6 +33,14 @@ describe('evaluateStagedDraft — „Werte übernehmen“ stays blocked until th
     expect(result).toMatchObject({ allIntegers: true, hasUnconfirmedYellow: false, hasWiderspruch: false })
   })
 
+  it('takes a corrected amount with cents as whole euros instead of silently blocking (real case 2024)', () => {
+    const result = evaluateStagedDraft(
+      draft({ bruttoarbeitslohn: field('78565', 'pruefen', true), lohnsteuer: field('18669', 'pruefen', true), sozialversicherung: field('18145,99', 'pruefen', true) }),
+    )
+    expect(result).toMatchObject({ readyToApply: true, hasUnconfirmedYellow: false, hasWiderspruch: false })
+    expect(result.values.sozialversicherung).toBe(18146)
+  })
+
   it('lets an unreadable social insurance stay empty and open, without blocking (ADR-0083)', () => {
     const result = evaluateStagedDraft(
       draft({ bruttoarbeitslohn: field('900', 'pruefen', true), lohnsteuer: field('300', 'pruefen', true), sozialversicherung: field('', 'pruefen') }),
