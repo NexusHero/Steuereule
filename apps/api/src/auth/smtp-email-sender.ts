@@ -54,7 +54,8 @@ export function smtpTransportOptions(url: string): SmtpTransportOptions {
 export class SmtpEmailSender implements EmailSender {
   constructor(
     private readonly config: SmtpConfig,
-    private readonly transport: SmtpTransport = createTransport(smtpTransportOptions(config.url)),
+    // smtpTransportOptions allows plain SMTP only towards the local Mailpit and requires TLS for every other host (tested).
+    private readonly transport: SmtpTransport = createTransport(smtpTransportOptions(config.url)), // NOSONAR typescript:S5332 — TLS enforced for non-local hosts in smtpTransportOptions
   ) {}
 
   async sendVerificationEmail(email: VerificationEmail): Promise<void> {

@@ -240,6 +240,16 @@ describe('scrubDocumentTextPii keeps its lines after the backtracking fix', () =
     expect(scrubDocumentTextPii(text)).toBe(expected)
   })
 
+  it('keeps blank lines before a masked line (the indent no longer runs across lines), masks the same content', () => {
+    expect(scrubDocumentTextPii('x\n\n\nName: Max\nZeile\n\n78176 Blumberg\nEnde')).toBe('x\n\n\n[PII-ZEILE-GESCHÜTZT]\nZeile\n\n[ORT-GESCHÜTZT]')
+  })
+
+  it('stays linear on many blank lines (the old pattern took seconds on 20,000)', () => {
+    const started = performance.now()
+    scrubDocumentTextPii(`${'\n'.repeat(20_000)}y`)
+    expect(performance.now() - started).toBeLessThan(200)
+  })
+
   it('handles long runs of blanks quickly', () => {
     const blanks = ' '.repeat(50_000)
     const started = performance.now()
