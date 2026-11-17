@@ -226,7 +226,8 @@ describe('documentOcr (on-device PDF & image OCR)', () => {
         createCanvas: () => ({ getContext: () => ({}) }) as unknown as HTMLCanvasElement,
       },
     })
-    expect(setParameters).toHaveBeenCalledWith({ tessedit_pageseg_mode: '11' })
+    // The page segmentation is tesseract's own: sparse text lost digits behind dot leaders (scan corpus).
+    expect(setParameters).not.toHaveBeenCalled()
     expect(recognize.mock.calls[0]![2]).toEqual({ blocks: true })
     expect(res.text).toBe('Prämie Total 88,00')
   })

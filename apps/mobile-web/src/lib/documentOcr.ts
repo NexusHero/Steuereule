@@ -154,8 +154,6 @@ export interface TesseractLikeWorker {
   terminate(): Promise<unknown>
 }
 
-/** Tesseract's page segmentation mode „sparse text“: every piece of text, in no particular order. */
-const SPARSE_TEXT_MODE = '11'
 
 /**
  * The rows of a scanned page, rebuilt from the boxes of its words: top to bottom, left to right. A word
@@ -441,7 +439,8 @@ export async function extractDocumentTextOnDevice(
         },
       })
       try {
-        await worker.setParameters?.({ tessedit_pageseg_mode: SPARSE_TEXT_MODE })
+        // Tesseract's own page segmentation stays on: „sparse text“ dropped leading digits behind dot
+        // leaders („5.214,00“ read as „214,00“, scan corpus) and gained nothing on the real scans.
         for (let pageNo = 1; pageNo <= ocrLimit; pageNo++) {
           options.onProgress?.({ stage: 'pdf_ocr_render', page: pageNo, totalPages: ocrLimit })
           const page = await pdfDoc.getPage(pageNo)

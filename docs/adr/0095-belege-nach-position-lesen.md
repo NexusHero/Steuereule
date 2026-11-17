@@ -28,8 +28,9 @@ meist erkannt und ging danach verloren:
    oder ist der Text der Seite gedreht, bleibt die Reihenfolge des Inhaltsstroms.
 2. **Scans mit 300 dpi, höchstens 9 Mio. Pixel je Seite.** Das ist eine A4-Seite und liegt unter der
    Canvas-Grenze mobiler Browser. Die Seite durchläuft dieselbe Vorbehandlung wie ein Foto.
-3. **Scans nach Wortkästen.** Gescannte PDF-Seiten liest tesseract als „sparse text“ (PSM 11). Die
-   Zeilen entstehen aus den Kästen der Wörter (`joinOcrWords`), nicht aus tesseracts Layout-Analyse.
+3. **Scans nach Wortkästen.** Die Zeilen entstehen aus den Kästen der Wörter (`joinOcrWords`). Die
+   Seitensegmentierung bleibt die von tesseract: „sparse text“ (PSM 11) verlor im Scan-Korpus führende
+   Ziffern hinter Punktlinien („5.214,00“ als „214,00“) und brachte auf den echten Scans nichts.
    Fotos bleiben beim bisherigen Weg; ihr Korpus ist darauf eingemessen.
 4. **Seitengrenzen.** Bis zu 12 Seiten Text-Layer und 6 Seiten OCR. Ein gescannter Lohnausweis mit
    Beiblatt hat fünf Seiten.
