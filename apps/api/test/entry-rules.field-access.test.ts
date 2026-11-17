@@ -132,6 +132,17 @@ describe('Swiss certificate', () => {
     expect((await rows()).z15).toBe(97600)
   })
 
+  it('keeps the health insurer when the mask saves the Säule 3a on its own, and the other way round', async () => {
+    // The mask saves each provision field with its own request; a field the request leaves out stays as it is.
+    const { chSalaryCertificate, interview, audit } = setup()
+    const service = new ChSalaryCertificateService(chSalaryCertificate, interview, audit)
+    await service.setProvision('u', YEAR, { krankenkasseChf: 3593 })
+    await service.setProvision('u', YEAR, { saeule3aChf: 0 })
+    expect(await chSalaryCertificate.findForUserAndYear('u', YEAR)).toMatchObject({ krankenkasseChf: '3593', saeule3aChf: '0' })
+    await service.setProvision('u', YEAR, { krankenkasseChf: null })
+    expect(await chSalaryCertificate.findForUserAndYear('u', YEAR)).toMatchObject({ krankenkasseChf: null, saeule3aChf: '0' })
+  })
+
   it('keeps the supplementary insurance apart from the basic one', async () => {
     const { chSalaryCertificate, write } = setup()
     await write('chLohnausweis.krankenkasseChf', '4200')
