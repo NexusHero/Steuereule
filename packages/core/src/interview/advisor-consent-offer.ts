@@ -32,7 +32,8 @@ const SPOUSE = words('ehefrau|ehemann|ehegatt(?:e|in)|ehepartner(?:in)?|mein(?:e
 const USER_CONSENTS = /einwillig|erlaube|\bconsent\b|\bi allow\b/iu
 const REPLY_NAMES_CONSENT = /einwillig|\bconsent\b|erlaub[^.!?]{0,80}pers(?:ö|oe)nliche|pers(?:ö|oe)nliche[nr]? (?:daten|angaben)[^.!?]{0,80}erlaub/iu
 const BIRTH_DATE = /(?:geboren|geb\.|geburtsdatum|geburtstag|born)[^.!?\n]{0,40}\d/iu
-const ADDRESS = /\p{L}{2,}(?:straße|strasse|str\.|weg|gasse|allee|platz|ring|damm)\s*\d{1,4}\s*[a-z]?(?![\p{L}\p{N}])/iu
+// The two letters before the street suffix are a fixed-length lookbehind, so the pattern never backtracks over a long word.
+const ADDRESS = /(?<=\p{L}{2})(?:straße|strasse|str\.|weg|gasse|allee|platz|ring|damm)\s*\d{1,4}\s*[a-z]?(?![\p{L}\p{N}])/iu
 
 /** Whether the user's words name personal data the owl may not process, or need, without the consent. */
 export function messageNamesPersonalData(message: string, known: Pick<ConsentOfferInput, 'hasChildRecord' | 'hasPersonB'>): boolean {
