@@ -3,6 +3,9 @@
 // Every pipeline (CI jobs, compose `migrate`, the Cloud Run migrate job) runs this one script
 // via `pnpm --filter @steuereule/api migrate:deploy`, so none of them can forget the keystore.
 import { execFileSync } from 'node:child_process'
+import { readFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
+import path from 'node:path'
 import { PrismaClient } from '@prisma/client'
 
 function keystoreUrl(env) {
@@ -36,7 +39,12 @@ async function ensureDatabaseExists(keystore) {
   }
 }
 
-const run = (args, env) => execFileSync('prisma', args, { stdio: 'inherit', env })
+// The Prisma CLI of this package, started with this Node: a bare `prisma` would be looked up in the
+// caller's PATH, where a writable folder could put another program in its place (Sonar S4036).
+const require = createRequire(import.meta.url)
+const prismaPackage = require.resolve('prisma/package.json')
+const prismaCli = path.join(path.dirname(prismaPackage), JSON.parse(readFileSync(prismaPackage, 'utf8')).bin.prisma)
+const run = (args, env) => execFileSync(process.execPath, [prismaCli, ...args], { stdio: 'inherit', env })
 
 run(['migrate', 'deploy'], process.env)
 const keystore = keystoreUrl(process.env)
