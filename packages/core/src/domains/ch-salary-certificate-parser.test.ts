@@ -167,6 +167,99 @@ describe('parseChSalaryCertificateText', () => {
     expect(read.checks).toEqual({ gross: 'ok', net: 'ok' })
   })
 
+  // Real-data run, step 3a: the text layer of a payroll system's PDF, joined in reading order. The
+  // amount stands on the last of a Ziffer's three language lines, an empty Ziffer prints a dash, and the
+  // supplementary sheet repeats Ziffer headings with their detail lines.
+  it('reads a text layer joined by position: dashes for empty Ziffern, a negative Ziffer 7, a supplementary sheet', () => {
+    const text = [
+      'A  X Lohnausweis - Certificat de salaire - Certificato di salario',
+      'B  Rentenbescheinigung - Attestation de rentes - Attestazione delle rendite',
+      'Unentgeltiche Beförderung zwischen Wohn- und Arbeitsort',
+      'C  756.1234.5678.97  01.02.1990 F',
+      'Transport gratuit entre le domicile et le lieu de travail',
+      'Kantinenverpflegung / Lunch-Checks',
+      'D  2025  E  01.01.2025  31.12.2025  G X Repas à la cantine / chèques-repas',
+      'Jahr - Année - Anno  von - du - dal  bis - au - al',
+      'H',
+      '- PERSÖNLICH -',
+      'Muster Anna',
+      'Beispielweg 3',
+      '79999 MUSTERDORF',
+      '1.  Lohn  soweit nicht unter Ziffer 2-7 aufzuführen  / Rente  CHF',
+      'Salaire  qui ne concerne pas les chiffres 2 à 7 ci-dessous  / Rente',
+      'Salario  se non da indicare sotto cifre da 2 a 7 più sotto  / Rendita 100.000',
+      '2.  Gehaltsnebenleistungen  2.1  Verpflegung, Unterkunft - Pension, logement - Vitto, alloggio  + –',
+      'Prestazioni accessorie al salario  2.2  Privatanteil Geschäftswagen - P.privée voit. Serv.  + –',
+      '3.  Unregelmässige Leistungen - Prestations non périodiques - Prestazioni aperiodiche  Art - Genre - Genere',
+      'See Supplementary Sheet  + 1.500',
+      '4.  Kapitalleistungen - Prestations en capital - Prestazioni in capitale  + –',
+      '7.  Andere Leistungen - Autres prestations - Altre prestazioni  See Supplementary Sheet  + −100',
+      '8  Bruttolohn total / Rente - Salaire brut total / Rente - Salario lordo totale / Rendita  = 101.400',
+      '9.  Beiträge AHV/IV/EO/ALV/NBUV - Cotisations AVS/AI/APG/AC/AANP - Contributi AVS/AI/IPG/AD/AINP  - 6.900',
+      '10  Berufliche Vorsorge  2. Säule  10.1  Ordentliche Beiträge - Cotisations ordinaries - Contributi ordinari  - 6.000',
+      'Previdenza professionale  2 o pilastro  10.2  Beiträge für den Einkauf - Cotisations pour le rachat  - –',
+      '11. Nettolohn / Rente - Salaire net / Rente - Salario netto / Rendita  = 88.500',
+      '12.  Quellensteuerabzug - Retenue de I\'impôt à la source - Ritenuta d\'imposta alla fonte 4.321',
+      '13.  Spesenvergütungen - Allocations pour frais - Indennità per spese',
+      '15.  Bemerkungen See Supplementary Sheet',
+      'Seite - Page - Pagina 2 /  2',
+      '3.  Unregelmässige Leistungen - Prestations non périodiques - Prestazioni aperiodiche',
+      '5753  1.500,00 CHF',
+      '7.  Andere Leistungen - Autres prestations - Altre prestazioni',
+      'Reduction  100,05- CHF',
+    ].join('\n')
+    const read = parseChSalaryCertificateText(text)
+    expect(read).toMatchObject({ taxYear: 2025, period: { from: '2025-01-01', to: '2025-12-31' }, canteen: true, freeTransport: false, holder: 'Muster Anna' })
+    expect(read.amounts).toEqual({
+      lohn: 100000,
+      'unregelmaessige-leistungen': 1500,
+      'andere-leistungen': -100,
+      'bruttolohn-total': 101400,
+      'ahv-beitraege': 6900,
+      'berufliche-vorsorge': 6000,
+      nettolohn: 88500,
+      quellensteuer: 4321,
+    })
+    expect(read.pension).toEqual({ ordinary: 6000, buyIn: null })
+    expect(read.checks).toEqual({ gross: 'ok', net: 'ok' })
+    expect(read.missing).toEqual([])
+  })
+
+  // Real-data run: a scan read by word boxes. The box letters D, E, G and H are lost or misread, the
+  // cross of box G stands on the line above, and the name follows the salutation without an „H“.
+  it('reads the head of a scan without the box letters', () => {
+    const text = [
+      'A X Lohnausweis - Certificat de salaire - Certificato di salario —',
+      '| Rentenbescheinigung - Attestation de rentes - Attestazione delle rendite',
+      '756.1234.5678.97 01.02.1990 Unentgeltliche Beförderung zwischen Wohn- und Arbeitsort',
+      'X Kantinenverpflegung / Lunch-Checks',
+      'p 2025 e 01.01.2025 31.12.2025 6 Repas ä la cantine / chéques-repas',
+      'Jahr - Année - Anno von - du - dal bis - au - al Pasti alla mensa/buoni pasto',
+      '*38267*0004497*16* i',
+      'Frau',
+      'Muster Anna',
+      'Beispielweg 3',
+      '79999 MUSTERDORF',
+      'DEUTSCHLAND',
+      'Nur ganze Frankenbetrdge',
+      'Que des montants entiers',
+      'Unicamente import interi',
+      '1. Lohn soweit nicht unter Ziffer 2-7 aufzuführen / Rente',
+      'Salaire qui ne concerne pas les chiffres 2 ä 7 ci-dessous / Rente 100500',
+      'Salario se non da indicare sotto cifre da 2 a 7 piu sotto / Rendita',
+      '8. Bruttolohn total / Rente - Salaire brut total / Rente = 100500',
+    ].join('\n')
+    const read = parseChSalaryCertificateText(text)
+    expect(read).toMatchObject({ taxYear: 2025, period: { from: '2025-01-01', to: '2025-12-31' }, canteen: true, freeTransport: false, holder: 'Muster Anna' })
+    expect(read.amounts).toMatchObject({ lohn: 100500, 'bruttolohn-total': 100500 })
+  })
+
+  it('reads the cross of box F where it stands beside the free transport', () => {
+    const head = ['C 756.1234.5678.97 01.02.1990 F X Unentgeltliche Beförderung zwischen Wohn- und Arbeitsort', 'D 2025 E 01.01.2025 31.12.2025 G Repas à la cantine'].join('\n')
+    expect(parseChSalaryCertificateText(head)).toMatchObject({ freeTransport: true, canteen: false })
+    expect(parseChSalaryCertificateText('X Transport gratuit entre le domicile et le lieu de travail').freeTransport).toBe(true)
+  })
+
   it('repairs a torn figure only when the form’s sum asks for exactly its digits', () => {
     const torn = PDF.replace('100.000', '1 0 0 000')
     expect(parseChSalaryCertificateText(torn).amounts.lohn).toBe(100000)
