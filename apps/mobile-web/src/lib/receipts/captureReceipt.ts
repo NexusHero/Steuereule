@@ -123,3 +123,12 @@ export async function captureReceipt(file: File, options: CaptureReceiptOptions)
     return { ok: false, failure: 'parse_failed' }
   }
 }
+
+/**
+ * A document that was recognised (Lohnausweis, Lohnsteuerbescheinigung, pension or premium letter, health
+ * statement) but left no draft, and no question whose it is: the chat says so instead of staying silent
+ * (real-data run: „erkannt, aber keine Werte“).
+ */
+export function recognisedWithoutValues(kind: DetectedDocumentKind, response: ParseReceiptResponseDto): boolean {
+  return kind !== 'auto' && response.stagedAction == null && response.assignment?.question == null
+}

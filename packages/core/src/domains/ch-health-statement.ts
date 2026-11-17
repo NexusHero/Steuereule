@@ -24,11 +24,13 @@ export interface ChHealthStatementRead {
   readonly insured: readonly InsuredPremium[]
 }
 
-const STATEMENT = /(?:auszug|zusammenstellung|bescheinigung)\s+f(?:ü|u|ii)r\s+(?:die\s+|ihre\s+)?steuererkl|kostenzusammenstellung\s+f(?:ü|u|ii)r/i
-const PREMIUM = /pr(?:ä|a|ä)m/i
+const STATEMENT = /(?:auszug|zusammenstellung|bescheinigung|(?:ü|u|ue|ii)bersicht)\s+f(?:ü|u|ue|ii)r\s+(?:die\s+|ihre\s+)?steuererkl|kostenzusammenstellung\s+f(?:ü|u|ue|ii)r|steuerbescheinigung|tax\s+statement/i
+const PREMIUM = /pr(?:ä|a|ae)m|premium/i
+/** The basic insurance under the KVG, as insurers name it. */
+const BASIC_INSURANCE = /grundversicherung|krankenpflegeversicherung|\bKVG\b/i
 
 export function looksLikeChHealthStatement(text: string): boolean {
-  return STATEMENT.test(text ?? '') && /grundversicherung|\bKVG\b/i.test(text ?? '') && PREMIUM.test(text ?? '')
+  return STATEMENT.test(text ?? '') && BASIC_INSURANCE.test(text ?? '') && PREMIUM.test(text ?? '')
 }
 
 /** CHF amounts: „1'234.50“, „456.70“, OCR „0:00“. */
@@ -98,7 +100,8 @@ function personLine(line: string): { readonly name: string; readonly insuredNo: 
 }
 
 function readBlock(block: readonly string[], name: string, insuredNo: string | null): InsuredPremium {
-  const premiumLines = block.filter((l) => PREMIUM.test(l) && /grundversicherung|\bKVG\b/i.test(l) && lastAmount(l) !== null)
+  // Only the basic insurance (KVG) counts; supplementary cover (VVG) is another line and stays out.
+  const premiumLines = block.filter((l) => PREMIUM.test(l) && BASIC_INSURANCE.test(l) && !/\bVVG\b|zusatzversicherung/i.test(l) && lastAmount(l) !== null)
   const total = block.find((l) => /(?:total\s+versicherungspr|pr(?:ä|a)mientotal)/i.test(l) && lastAmount(l) !== null)
   const premiumCents = premiumLines.length > 0 ? premiumLines.reduce((s, l) => s + lastAmount(l)!, 0) : total ? lastAmount(total)! : 0
   const selfLine = block.find((l) => /total\s+selbstgetragene|total\s+ihres\s+kostenanteils/i.test(l) && lastAmount(l) !== null)

@@ -1,4 +1,5 @@
-// #450 D3 — preparing a phone photo of a Lohnsteuerbescheinigung for the on-device OCR.
+// #450 D3 — preparing a phone photo of a Lohnsteuerbescheinigung for the on-device OCR. The pages of a
+// scanned PDF take the same way (real-data run, step 3a).
 //
 // tesseract binarises with one global threshold and expects upright, level lines. A photo breaks
 // both: a shadow or a dim room leaves no single threshold that separates ink from paper, and a
@@ -43,22 +44,37 @@ export function toGray(img: RgbaImage): GrayImage {
   return { data, width: img.width, height: img.height }
 }
 
-/** Sliding maximum along rows (axis 0) or columns (axis 1), window 2r+1. */
-function slidingMax(src: Uint8Array, width: number, height: number, r: number, vertical: boolean): Uint8Array {
+/**
+ * Sliding maximum along rows (axis 0) or columns (axis 1), window 2r+1, cut off at the edges. Each line is
+ * split into blocks of the window's length; a running maximum from the block's start and one towards its end
+ * give any window as the larger of two values (van Herk), so a 300 dpi page costs the same as a small photo
+ * per pixel.
+ */
+export function slidingMax(src: Uint8Array, width: number, height: number, r: number, vertical: boolean): Uint8Array {
   const out = new Uint8Array(src.length)
   const lines = vertical ? width : height
   const len = vertical ? height : width
-  const at = (line: number, i: number) => (vertical ? i * width + line : line * width + i)
+  const step = vertical ? width : 1
+  const size = 2 * r + 1
+  const fromStart = new Uint8Array(len)
+  const toEnd = new Uint8Array(len)
   for (let line = 0; line < lines; line++) {
+    const base = vertical ? line : line * width
     for (let i = 0; i < len; i++) {
-      let m = 0
-      const from = Math.max(0, i - r)
+      const v = src[base + i * step]!
+      fromStart[i] = i % size === 0 ? v : Math.max(fromStart[i - 1]!, v)
+    }
+    for (let i = len - 1; i >= 0; i--) {
+      const v = src[base + i * step]!
+      toEnd[i] = i === len - 1 || (i + 1) % size === 0 ? v : Math.max(toEnd[i + 1]!, v)
+    }
+    for (let i = 0; i < len; i++) {
+      const from = i - r
       const to = Math.min(len - 1, i + r)
-      for (let k = from; k <= to; k++) {
-        const v = src[at(line, k)]!
-        if (v > m) m = v
-      }
-      out[at(line, i)] = m
+      // Cut off at the left edge the window starts with its block; cut off at the right it may end inside one.
+      if (from <= 0) out[base + i * step] = fromStart[to]!
+      else if (Math.floor(from / size) === Math.floor(to / size)) out[base + i * step] = toEnd[from]!
+      else out[base + i * step] = Math.max(toEnd[from]!, fromStart[to]!)
     }
   }
   return out
@@ -273,11 +289,20 @@ const LSTB_LABELS = [
 ]
 const AMOUNT = /\d{1,3}(?:\.\d{3})*,\d{2}/g
 
-/** How much of an LStB a reading holds: distinct line labels, plus a little for amounts. */
+/** Small words every German, French or English document is full of; a page read upside down holds almost none. */
+const COMMON_WORDS = /(?<![\p{L}\d])(?:und|oder|der|die|das|den|dem|des|für|von|vom|mit|zur|zum|bei|auf|aus|ist|sind|wir|sie|ihr|ihre|nicht|im|in|an|am|per|total|betrag|datum|jahr|herr|frau|chf|eur|et|de|du|la|le|les|des|the|and|of|for)(?![\p{L}\d])/giu
+/** This many common words make a reading as good as three LStB lines. */
+const COMMON_WORDS_PER_POINT = 3
+
+/**
+ * How much of a document a reading holds: distinct LStB line labels, plus a little for amounts, plus the
+ * common words of any printed page (a Lohnausweis or a letter has no LStB line, yet reads well).
+ */
 export function textQuality(text: string): number {
   const labels = LSTB_LABELS.filter((re) => re.test(text)).length
   const amounts = Math.min(10, text.match(AMOUNT)?.length ?? 0)
-  return labels + amounts / 100
+  const words = Math.min(GOOD_READING, Math.floor((text.match(COMMON_WORDS)?.length ?? 0) / COMMON_WORDS_PER_POINT))
+  return labels + amounts / 100 + words
 }
 
 /** Flattened, upright and level: the image the first OCR pass gets, for one quarter turn. */

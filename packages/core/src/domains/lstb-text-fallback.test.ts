@@ -122,7 +122,7 @@ describe('applyLstbTextFallback — never a false green (AC 4)', () => {
 describe('capOcrSourcedExtraction — OCR text is never green', () => {
   it('turns every ok field into pruefen/ocr_source and keeps values and other reasons', () => {
     const clean = parseLstbTextDeterministically(
-      ['Lohnsteuerbescheinigung für 2025', '3. Bruttoarbeitslohn 48.000,00', '4. Lohnsteuer 7.600,00', '23a RV 4.464,00', '25. KV 3.650,00'].join('\n'),
+      ['Lohnsteuerbescheinigung für 2025', '3. Bruttoarbeitslohn 48.000,00', '4. Lohnsteuer 7.600,00', '23a RV 4.464,00', '25. KV 3.650,00', '26. PV 816,00'].join('\n'),
     )
     expect(clean.unresolvedFields).toEqual([])
 

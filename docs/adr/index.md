@@ -112,6 +112,7 @@ The ADRs **justify** the architecture; the [living arc42 document](../arc42/READ
 | 0092 | Belegzuordnung: Wem gehört ein Beleg? | Accepted |
 | 0093 | Pflichtfelder und Rückfragen statt Deutung | Accepted |
 | 0094 | Die Schätzung rechnet wie der Bescheid | Accepted |
+| 0095 | Belege nach Position lesen: Lesereihenfolge, 300 dpi, Wortkästen | Accepted |
 
 See also the [Tech Radar](./tech-radar.md).
 
