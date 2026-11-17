@@ -119,7 +119,7 @@ describe('pendlerpauschale (Entfernungspauschale, § 9 Abs. 1 Nr. 4 EStG)', () =
   it('2026: 0,38 € from the first km', () => {
     const amount = commuterAllowance({ oneWayKm: 30, days: 206, year: 2026, withCar: true })
 
-    expect(amount).toBe(2348)
+    expect(amount).toBe(2349)
   })
 
   it('counts only full kilometres, as the form asks', () => {

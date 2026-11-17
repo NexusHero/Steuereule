@@ -159,7 +159,9 @@ export function commuterAllowance(input: CommuterAllowanceInput): number {
   const km = Math.floor(kmInput)
   const firstKm = Math.min(km, firstKmLimit)
   const additionalKm = km - firstKm
-  const amount = Math.round(days * (firstKm * rateFirst + additionalKm * rateAdditional))
+  // Whole euros, rounded up as the tax office does on the notice (5.392,36 € → 5.393 €, ADR-0094); the
+  // cents are fixed first so a float like 906,6800000001 does not gain a euro.
+  const amount = Math.ceil(Math.round(days * (firstKm * rateFirst + additionalKm * rateAdditional) * 100) / 100)
   return withCar ? amount : Math.min(amount, maxCap)
 }
 
