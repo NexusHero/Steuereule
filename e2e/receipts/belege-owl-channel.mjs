@@ -45,7 +45,8 @@ async function main() {
     await page.goto(`${webOrigin}/app`, { waitUntil: 'networkidle' })
     await see('cockpit-fortschritt')
     const progress = await byId('cockpit-fortschritt-text').innerText()
-    if (!/^\d+ von \d+ Schritten? erledigt$/.test(progress.trim())) fail(`the progress line should count the steps, it says "${progress}"`)
+    // Bounded digits: the count is small, and an open-ended \d+ on both sides can backtrack.
+    if (!/^\d{1,3} von \d{1,3} Schritt(?:en)? erledigt$/.test(progress.trim())) fail(`the progress line should count the steps, it says "${progress}"`)
     await see('cockpit-bereich-pflicht')
     if (!/\d+ offen/.test(await byId('cockpit-bereich-pflicht-anzahl').innerText())) fail('the „Pflicht“ group should say how many areas are open')
     await see('cockpit-bereich-erledigt')
