@@ -25,19 +25,19 @@ interface TwoFactorClientSurface {
   }
 }
 
-const CODE_TO_KEY: Record<string, string> = {
-  INVALID_CODE: 'sicherheit.errWrongCode',
-  INVALID_PASSWORD: 'sicherheit.errWrongPassword',
-  TOO_MANY_ATTEMPTS_REQUEST_NEW_CODE: 'sicherheit.errTooManyAttempts',
-  ACCOUNT_TEMPORARILY_LOCKED: 'sicherheit.errLocked',
-}
+const CODE_TO_KEY: ReadonlyMap<string, string> = new Map([
+  ['INVALID_CODE', 'sicherheit.errWrongCode'],
+  ['INVALID_PASSWORD', 'sicherheit.errWrongPassword'],
+  ['TOO_MANY_ATTEMPTS_REQUEST_NEW_CODE', 'sicherheit.errTooManyAttempts'],
+  ['ACCOUNT_TEMPORARILY_LOCKED', 'sicherheit.errLocked'],
+])
 
 export function useTwoFactor(): UseTwoFactorResult {
   const authClient = useAuthClient() as unknown as TwoFactorClientSurface
   const { t } = useTranslation(APP_NS)
 
   function translate(code: string | undefined): string {
-    const key = code === undefined ? undefined : CODE_TO_KEY[code]
+    const key = code === undefined ? undefined : CODE_TO_KEY.get(code)
     return t(key ?? 'auth.errGeneric')
   }
 

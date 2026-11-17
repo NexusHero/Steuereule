@@ -1,10 +1,11 @@
 // The printed words of one Vordruck page with their boxes (poppler's pdftotext -bbox), shared by
 // vermessen.mjs and lagebericht.mjs. Dev-time and CI tool, never a runtime dependency.
 import { execFileSync } from 'node:child_process'
+import { werkzeug } from './werkzeug.mjs'
 
 /** Words with their boxes, top-left origin, PDF points. */
 export function woerter(datei, seite) {
-  const xml = execFileSync('pdftotext', ['-f', String(seite), '-l', String(seite), '-bbox', datei, '-'], {
+  const xml = execFileSync(werkzeug('pdftotext'), ['-f', String(seite), '-l', String(seite), '-bbox', datei, '-'], {
     encoding: 'utf8',
   })
   const hoehe = Number(/<page width="[\d.]+" height="([\d.]+)"/.exec(xml)[1])

@@ -193,3 +193,67 @@ describe('names in the genitive (real-case test)', () => {
   })
 })
 
+// Sonar S8786: the labelled-line and postcode patterns were rewritten without overlapping quantifiers. These
+// lines pin what they masked before, edge cases included, and the patterns stay linear on long blank runs.
+describe('scrubDocumentTextPii keeps its lines after the backtracking fix', () => {
+  it.each([
+      ["Name: Max Muster", "[PII-ZEILE-GESCHÜTZT]"],
+      ["Name Max", "[PII-ZEILE-GESCHÜTZT]"],
+      ["Name:Max", "Name:Max"],
+      ["Name :Max", "[PII-ZEILE-GESCHÜTZT]"],
+      ["Name - Max", "[PII-ZEILE-GESCHÜTZT]"],
+      ["Name-Max", "Name-Max"],
+      ["Name, Vorname: A B", "[PII-ZEILE-GESCHÜTZT]"],
+      ["Name,Vorname B", "[PII-ZEILE-GESCHÜTZT]"],
+      ["Arbeitgeber (Name, Anschrift): X GmbH", "[PII-ZEILE-GESCHÜTZT]"],
+      ["Arbeitgeber  ACME", "[PII-ZEILE-GESCHÜTZT]"],
+      ["Arbeitgeber(x)y", "Arbeitgeber(x)y"],
+      ["Steuerklasse / Faktor: 4", "[PII-ZEILE-GESCHÜTZT]"],
+      ["Steuerklasse/Faktor 4", "[PII-ZEILE-GESCHÜTZT]"],
+      ["Steuerklasse  Faktor 1,0", "[PII-ZEILE-GESCHÜTZT]"],
+      ["Steuerklasse: 3", "[PII-ZEILE-GESCHÜTZT]"],
+      ["geb. am 01.02.1990", "[PII-ZEILE-GESCHÜTZT]"],
+      ["geb am: 1.2.90", "[PII-ZEILE-GESCHÜTZT]"],
+      ["Zahl der Kinderfreibeträge 1,0", "[PII-ZEILE-GESCHÜTZT]"],
+      ["   Vorname   Erika", "[PII-ZEILE-GESCHÜTZT]"],
+      ["Vornamex Erika", "Vornamex Erika"],
+      ["Bruttoarbeitslohn 78.565", "Bruttoarbeitslohn 78.565"],
+      ["PLZ / Ort", "[ORT-GESCHÜTZT]"],
+      ["PLZ/Ort", "[ORT-GESCHÜTZT]"],
+      ["PLZOrt", "[ORT-GESCHÜTZT]"],
+      ["D-78176", "[ORT-GESCHÜTZT]"],
+      ["DE-78176", "[ORT-GESCHÜTZT]"],
+      ["78176 Blumberg", "[ORT-GESCHÜTZT]"],
+      ["78176 Bad Dürrheim", "[ORT-GESCHÜTZT]"],
+      ["78176 Bad Dürrheim Ost", "78176 Bad Dürrheim Ost"],
+      ["78176 Blumberg   ", "[ORT-GESCHÜTZT]"],
+      ["78176  Blumberg", "[ORT-GESCHÜTZT]"],
+      ["78176 blumberg", "78176 blumberg"],
+      ["  78176 Villingen Schwenningen  ", "[ORT-GESCHÜTZT]"],
+      ["Zeile 1\n78176 Blumberg\nZeile 3", "Zeile 1\n[ORT-GESCHÜTZT]\nZeile 3"],
+      ["Name:\nMax", "[PII-ZEILE-GESCHÜTZT]"],
+      ["Finanzamt Rottweil Außenstelle", "[PII-ZEILE-GESCHÜTZT]"],
+      ["AGS 08326", "[PII-ZEILE-GESCHÜTZT]"],
+      ["Steuer-ID: 12 345 678 901", "[PII-ZEILE-GESCHÜTZT]"],
+      ["Identifikationsnummer  40781643293", "[PII-ZEILE-GESCHÜTZT]"],
+  ])('%j → %j', (text, expected) => {
+    expect(scrubDocumentTextPii(text)).toBe(expected)
+  })
+
+  it('keeps blank lines before a masked line (the indent no longer runs across lines), masks the same content', () => {
+    expect(scrubDocumentTextPii('x\n\n\nName: Max\nZeile\n\n78176 Blumberg\nEnde')).toBe('x\n\n\n[PII-ZEILE-GESCHÜTZT]\nZeile\n\n[ORT-GESCHÜTZT]')
+  })
+
+  it('stays linear on many blank lines (the old pattern took seconds on 20,000)', () => {
+    const started = performance.now()
+    scrubDocumentTextPii(`${'\n'.repeat(20_000)}y`)
+    expect(performance.now() - started).toBeLessThan(200)
+  })
+
+  it('handles long runs of blanks quickly', () => {
+    const blanks = ' '.repeat(50_000)
+    const started = performance.now()
+    scrubDocumentTextPii(`Name${blanks}x\n78176 Blumberg${blanks}y\nPLZ${blanks}/`)
+    expect(performance.now() - started).toBeLessThan(500)
+  })
+})

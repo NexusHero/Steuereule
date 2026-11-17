@@ -19,6 +19,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { woerter } from './pdf-woerter.mjs'
+import { werkzeug } from './werkzeug.mjs'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
 const jahrArgument = process.argv[2] ?? ''
@@ -36,7 +37,7 @@ const cache = new Map()
 
 /** White, axis-aligned filled rectangles = the form's input boxes (and tick boxes). */
 function weisseKaesten(datei, seite) {
-  const svg = execFileSync('pdftocairo', ['-svg', '-f', String(seite), '-l', String(seite), datei, '-'], {
+  const svg = execFileSync(werkzeug('pdftocairo'), ['-svg', '-f', String(seite), '-l', String(seite), datei, '-'], {
     encoding: 'utf8',
   })
   const kaesten = []
@@ -56,7 +57,7 @@ function weisseKaesten(datei, seite) {
 /** Stroked straight lines (after their `matrix(a 0 0 d e f)` transform) — the outline of
  *  boxes the form draws as a frame instead of a white fill (the page-2 header). */
 function linien(datei, seite) {
-  const svg = execFileSync('pdftocairo', ['-svg', '-f', String(seite), '-l', String(seite), datei, '-'], {
+  const svg = execFileSync(werkzeug('pdftocairo'), ['-svg', '-f', String(seite), '-l', String(seite), datei, '-'], {
     encoding: 'utf8',
   })
   const ergebnis = []

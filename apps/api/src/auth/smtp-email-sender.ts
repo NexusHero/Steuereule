@@ -14,11 +14,48 @@ export interface SmtpTransport {
 
 const LOCAL_SENDER = 'noreply@steuereule.localhost'
 
+export interface SmtpTransportOptions {
+  host: string
+  port: number
+  /** Implicit TLS from the first byte (`smtps:`). */
+  secure: boolean
+  /** STARTTLS is required; without it the mail is not sent. */
+  requireTLS: boolean
+  auth?: { user: string; pass: string }
+}
+
+/** Loopback, or a single-label name such as the compose service `mailpit`: the local test inbox. */
+function isLocalHost(host: string): boolean {
+  return host === 'localhost' || host === '127.0.0.1' || host === '[::1]' || host === '::1' || !host.includes('.')
+}
+
+/**
+ * The transport for an SMTP URL. Plain SMTP is only for the local Mailpit; any other server must
+ * speak TLS, implicitly with `smtps:` or by STARTTLS, so no mail with a login link crosses a
+ * network in clear text (Sonar S5332).
+ */
+export function smtpTransportOptions(url: string): SmtpTransportOptions {
+  const parsed = new URL(url)
+  if (parsed.protocol !== 'smtp:' && parsed.protocol !== 'smtps:') {
+    throw new Error(`SMTP_URL must start with smtp:// or smtps:// (got ${parsed.protocol}).`)
+  }
+  const secure = parsed.protocol === 'smtps:'
+  const options: SmtpTransportOptions = {
+    host: parsed.hostname,
+    port: parsed.port ? Number(parsed.port) : secure ? 465 : 587,
+    secure,
+    requireTLS: secure || !isLocalHost(parsed.hostname),
+  }
+  if (parsed.username) options.auth = { user: decodeURIComponent(parsed.username), pass: decodeURIComponent(parsed.password) }
+  return options
+}
+
 /** EmailSender over plain SMTP — locally against Mailpit, so every mail is visible in a real inbox. */
 export class SmtpEmailSender implements EmailSender {
   constructor(
     private readonly config: SmtpConfig,
-    private readonly transport: SmtpTransport = createTransport(config.url),
+    // smtpTransportOptions allows plain SMTP only towards the local Mailpit and requires TLS for every other host (tested).
+    private readonly transport: SmtpTransport = createTransport(smtpTransportOptions(config.url)), // NOSONAR typescript:S5332 — TLS enforced for non-local hosts in smtpTransportOptions
   ) {}
 
   async sendVerificationEmail(email: VerificationEmail): Promise<void> {
