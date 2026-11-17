@@ -110,6 +110,7 @@ The ADRs **justify** the architecture; the [living arc42 document](../arc42/READ
 | 0090 | Funde aus dem Echtfall-Lauf über den Strom (2024/2025) | Accepted |
 | 0091 | Die Eule füllt jedes Feld: persönliche Daten mit Einwilligung | Accepted |
 | 0092 | Belegzuordnung: Wem gehört ein Beleg? | Accepted |
+| 0093 | Belege nach Position lesen: Lesereihenfolge, 300 dpi, Wortkästen | Accepted |
 
 See also the [Tech Radar](./tech-radar.md).
 
