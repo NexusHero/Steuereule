@@ -1498,7 +1498,8 @@
       "status": {
         "offen": "Open",
         "erledigt": "Done",
-        "betragOffen": "⏳ Amount open"
+        "betragOffen": "⏳ Amount open",
+        "optional": "Optional"
       },
       "hinweis": {
         "blocker": "Must be resolved before filing",
@@ -1589,7 +1590,9 @@
     },
     "abgabe": {
       "titel": "Prepare submission",
-      "laufendesJahr": "You can file from January {{abgabeAb}}."
+      "laufendesJahr": "You can file from January {{abgabeAb}}.",
+      "nochOffen_one": "{{count}} step still open",
+      "nochOffen_other": "{{count}} steps still open"
     },
     "wirkung": {
       "mitBereich": "Your last change · {{bereich}} ({{formular}}): {{wirkung}}",
@@ -1656,6 +1659,20 @@
       "provenanceReceiptOwl": "📎 Receipt + Owl",
       "provenanceOwl": "🦉 From Owl",
       "provenanceUser": "✓ Entered by you"
+    },
+    "fortschritt_one": "{{erledigt}} of {{count}} step done",
+    "fortschritt_other": "{{erledigt}} of {{count}} steps done",
+    "gruppe": {
+      "pflicht": "Required",
+      "offen_one": "{{count}} open",
+      "offen_other": "{{count}} open",
+      "optional": "optional",
+      "erledigt": "Done"
+    },
+    "eingang": {
+      "belege_one": "{{count}} document is waiting for you",
+      "belege_other": "{{count}} documents are waiting for you",
+      "belegeHinweis": "Assign them to a tax year so they count."
     }
   },
   "belegZuordnung": {
@@ -1725,7 +1742,6 @@
     },
     "upload": {
       "heading": "Upload receipt (PDF / photo)",
-      "body": "PDF, JPEG, PNG, or WebP — your receipt is stored encrypted in your account.",
       "kindLabel": "Receipt type",
       "cta": "Upload PDF or photo",
       "uploading": "Encrypting and uploading …",
@@ -1784,6 +1800,30 @@
     "datum": {
       "belegdatum": "Invoice date",
       "zahlungsdatum": "Payment date"
+    },
+    "ordner": {
+      "alle": "All folders",
+      "einkuenfte": "Income & wages",
+      "vorsorge": "Pension & health",
+      "bescheide": "Notices & certificates",
+      "weitere": "Other expenses"
+    },
+    "sammel": {
+      "text_one": "{{count}} proposal only needs your yes.",
+      "text_other": "{{count}} proposals only need your yes.",
+      "cta_one": "Assign {{count}} proposal",
+      "cta_other": "Assign all {{count}}"
+    },
+    "bescheid": {
+      "cta": "File tax assessment",
+      "gespeichert": "Tax assessment ({{datei}}) saved. You will find it in the folder “Notices & certificates”. Start the comparison with your return in the cockpit under “Review assessment”."
+    },
+    "eule": {
+      "lesen": "Read with the owl",
+      "liest": "The owl is reading …",
+      "ergebnis": {
+        "unreadable": "The owl could not read this document. It stays saved."
+      }
     }
   },
   "bescheid": {
@@ -2075,7 +2115,8 @@
       "receiptBlocked": "⚠️ Sensitive details redacted (client privilege)",
       "pauschbetragBadge": "Within €1,230 lump sum",
       "provenanceReceiptOwl": "📎 Receipt + Owl",
-      "provenanceOwlDraft": "🦉 Owl draft"
+      "provenanceOwlDraft": "🦉 Owl draft",
+      "receiptInInbox": "The original is kept in your documents →"
     }
   },
   "advisor": {
@@ -2405,7 +2446,12 @@
       "undoAria": "Undo",
       "undoButton": "↩ Undo",
       "applyNow": "✓ Apply now",
-      "applyAgain": "✓ Apply again"
+      "applyAgain": "✓ Apply again",
+      "storedReceipts": {
+        "toggle": "Choose from your documents",
+        "empty": "There is no file in your documents yet.",
+        "all": "View all documents"
+      }
     },
     "companion": {
       "triggerTitle": "Ask Owl about this screen",

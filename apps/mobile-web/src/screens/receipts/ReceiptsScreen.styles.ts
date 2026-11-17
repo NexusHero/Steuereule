@@ -15,9 +15,11 @@ export function makeStyles(t: UiTheme) {
     ...t.type.title,
     color: t.color.tinte,
   }
+  // One bar for every way in (document, tax assessment): the first Beleg starts higher up.
   const uploadCard: ViewStyle = {
-    gap: t.space.s3,
+    gap: t.space.s2,
     marginBottom: t.space.s3,
+    paddingVertical: t.space.s3,
   }
   const uploadHeading: TextStyle = {
     ...t.type.meta,
@@ -57,6 +59,20 @@ export function makeStyles(t: UiTheme) {
     color: t.color.tinte2,
     textAlign: 'center',
   }
+  const bulkRow: ViewStyle = {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: t.space.s2,
+    padding: t.space.s3,
+    marginBottom: t.space.s3,
+    borderRadius: t.radius.m,
+    backgroundColor: t.color.funkeWeich,
+  }
+  const bulkText: TextStyle = { ...t.type.small, color: t.color.tinte, flexShrink: 1 }
+  const folderScroll: ViewStyle = { flexGrow: 0, marginBottom: t.space.s3 }
+  const folderRow: ViewStyle = { flexDirection: 'row', gap: t.space.s2 }
   const cardHead: ViewStyle = {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -66,25 +82,32 @@ export function makeStyles(t: UiTheme) {
   const cardTitle: TextStyle = {
     ...t.type.bodyStrong,
     flex: 1,
+    // Without it a long file name pushed the kind chip out of the card at 375 px.
+    minWidth: 0,
+    flexShrink: 1,
     color: t.color.tinte,
   }
   const fileBadge: TextStyle = {
     ...t.type.captionStrong,
-    marginTop: t.space.s2,
     color: t.color.ok,
   }
-  const dates: ViewStyle = { marginTop: t.space.s3, gap: t.space.s1 }
-  const dateLine: TextStyle = { ...t.type.small, color: t.color.tinte2 }
+  // A Beleg takes about half a screen less than before: tighter padding, facts on one wrapped line.
+  const receiptCard: ViewStyle = { padding: t.space.s3, marginBottom: t.space.s2 }
+  const metaRow: ViewStyle = { flexDirection: 'row', flexWrap: 'wrap', columnGap: t.space.s2, rowGap: 2, marginTop: t.space.s1 }
+  const metaText: TextStyle = { ...t.type.caption, color: t.color.tinte2 }
+  const metaMono: TextStyle = { fontVariant: ['tabular-nums'] }
+  const inlineLink: ViewStyle = { marginLeft: 'auto', paddingVertical: t.space.s1 }
+  const inlineLinkText: TextStyle = { ...t.type.label, color: t.color.tinte, textDecorationLine: 'underline' }
   const mono: TextStyle = { ...t.type.metaLarge, fontVariant: ['tabular-nums'] }
-  const assignmentMuted: TextStyle = { ...t.type.small, color: t.color.tinte2, marginTop: t.space.s3 }
-  const assignmentSettled: TextStyle = { ...t.type.label, color: t.color.tinte, marginTop: t.space.s3 }
-  const proposalRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s3, marginTop: t.space.s3, flexWrap: 'wrap' }
-  const actionRow: ViewStyle = { flexDirection: 'row', gap: t.space.s3, marginTop: t.space.s3, flexWrap: 'wrap' }
+  const assignmentMuted: TextStyle = { ...t.type.small, color: t.color.tinte2, marginTop: t.space.s2 }
+  const assignmentSettled: TextStyle = { ...t.type.label, color: t.color.tinte, marginTop: t.space.s2 }
+  const proposalRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s2, marginTop: t.space.s2, flexWrap: 'wrap' }
+  const actionRow: ViewStyle = { flexDirection: 'row', gap: t.space.s2, marginTop: t.space.s2, flexWrap: 'wrap' }
   const cardFooter: ViewStyle = {
     flexDirection: 'row',
     alignItems: 'center',
     gap: t.space.s2,
-    marginTop: t.space.s3,
+    marginTop: t.space.s2,
     flexWrap: 'wrap',
   }
   const compactButton: ViewStyle = {
@@ -129,11 +152,19 @@ export function makeStyles(t: UiTheme) {
     emptyBlock,
     emptyHeading,
     emptyBody,
+    bulkRow,
+    bulkText,
+    folderScroll,
+    folderRow,
     cardHead,
     cardTitle,
     fileBadge,
-    dates,
-    dateLine,
+    receiptCard,
+    metaRow,
+    metaText,
+    metaMono,
+    inlineLink,
+    inlineLinkText,
     mono,
     zuordnungMuted: assignmentMuted,
     zuordnungSettled: assignmentSettled,

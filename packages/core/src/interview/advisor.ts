@@ -436,6 +436,29 @@ export interface CaseFurtherFacts {
    * prepare each (ADR-0091, Nachtrag). Field names and neutral record names only.
    */
   readonly printoutPlan?: PrintoutGapPlan | undefined
+  /** The stored Belege of the year as the Belege inbox shows them: kind, dates, status, holder role; never a file name. */
+  readonly receiptInbox?: ReceiptInboxFacts | undefined
+}
+
+/** One stored Beleg for the owl: no file name, no free text, no name; the holder is only a role. */
+export interface ReceiptInboxItem {
+  /** The Beleg kind (Lohnausweis, Krankenkasse, …); null while unclassified. */
+  readonly kind: string | null
+  readonly belegdatum: string | null
+  readonly zahlungsdatum: string | null
+  readonly assignment: 'zugeordnet' | 'vorgeschlagen' | 'ungebunden' | 'konflikt'
+  /** The confirmed year (zugeordnet, konflikt) or the suggested one (vorgeschlagen). */
+  readonly year: number | null
+  readonly holder: 'A' | 'B' | 'kind' | null
+  /** Whether a value from this Beleg is in the return, waits as a draft, or nothing was taken from it yet. */
+  readonly values: 'uebernommen' | 'entwurf-offen' | 'keine'
+}
+
+export interface ReceiptInboxFacts {
+  readonly items: readonly ReceiptInboxItem[]
+  /** How many Belege are relevant to the year; larger than `items` when the list was cut. */
+  readonly total: number
+  readonly truncated: boolean
 }
 
 export function commuterAllowanceFrom(workdays: number, distanceKm: number, taxYear?: number): number {

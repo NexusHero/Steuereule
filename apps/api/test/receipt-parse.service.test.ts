@@ -18,7 +18,7 @@ import { LstbScanParseStrategy } from '../src/lstb-scan/lstb-scan.parse-strategy
 import { LstbService } from '../src/lstb/lstb.service.js'
 import { AutoReceiptParseStrategy } from '../src/receipt/parse/auto-receipt-parse.strategy.js'
 import { DocumentParseRegistry } from '../src/receipt/parse/document-parse.registry.js'
-import { ReceiptParseService } from '../src/receipt/receipt-parse.service.js'
+import { ReceiptParseService, receiptKindOfDocument } from '../src/receipt/receipt-parse.service.js'
 import { FakeAssessmentRepository } from './fakes/fake-assessment.repository.js'
 import { FakeAuditRepository } from './fakes/fake-audit.repository.js'
 import { FakeCapitalRepository } from './fakes/fake-capital.repository.js'
@@ -167,6 +167,8 @@ function buildTestHarness(responses: string[], visionEnabled = true) {
     profileRepo,
     visionModel,
     parseService,
+    registry,
+    autoStrategy,
   }
 }
 
@@ -867,3 +869,62 @@ describe('childcare notices (ADR-0086)', () => {
   })
 })
 
+
+describe('ReceiptParseService — the recognised kind goes back to the stored Beleg', () => {
+  const SALARY_CERTIFICATE = 'Lohnausweis / Certificat de salaire\nBruttolohn total 85\'000'
+  const stored = async (h: ReturnType<typeof buildTestHarness>, id: string) => (await h.receiptRepo.findByIdForUser('user-kind', id))?.kind
+
+  it('files a recognised Swiss salary certificate uploaded as Sonstiges under Lohnausweis', async () => {
+    const h = buildTestHarness(['{}'])
+    const beleg = await h.receiptRepo.create('user-kind', { fileName: 'scan.pdf', kind: 'Sonstiges' })
+    await h.parseService.parseReceipt('user-kind', { taxYear: 2025, fileName: 'scan.pdf', receiptId: beleg.id, rawText: SALARY_CERTIFICATE })
+    expect(await stored(h, beleg.id)).toBe('Lohnausweis')
+  })
+
+  it('files a Beleg that has no kind yet', async () => {
+    const h = buildTestHarness(['{}'])
+    const beleg = await h.receiptRepo.create('user-kind', { fileName: 'scan.pdf' })
+    await h.parseService.parseReceipt('user-kind', { taxYear: 2025, fileName: 'scan.pdf', receiptId: beleg.id, rawText: SALARY_CERTIFICATE })
+    expect(await stored(h, beleg.id)).toBe('Lohnausweis')
+  })
+
+  it('never overwrites a kind the user chose', async () => {
+    const h = buildTestHarness(['{}'])
+    const beleg = await h.receiptRepo.create('user-kind', { fileName: 'scan.pdf', kind: 'Quellensteuer' })
+    await h.parseService.parseReceipt('user-kind', { taxYear: 2025, fileName: 'scan.pdf', receiptId: beleg.id, rawText: SALARY_CERTIFICATE })
+    expect(await stored(h, beleg.id)).toBe('Quellensteuer')
+  })
+
+  it('leaves the kind alone when the document is none the app has a Beleg kind for', async () => {
+    const h = buildTestHarness(['{}'])
+    const beleg = await h.receiptRepo.create('user-kind', { fileName: 'scan.pdf', kind: 'Sonstiges' })
+    await h.parseService.parseReceipt('user-kind', { taxYear: 2025, fileName: 'scan.pdf', receiptId: beleg.id, rawText: 'Rechnung Nr. 4711 Monitor 349,00 EUR' })
+    expect(await stored(h, beleg.id)).toBe('Sonstiges')
+  })
+
+  it('does not touch the Beleg of another account', async () => {
+    const h = buildTestHarness(['{}'])
+    const beleg = await h.receiptRepo.create('someone-else', { fileName: 'scan.pdf', kind: 'Sonstiges' })
+    await expect(h.parseService.parseReceipt('user-kind', { taxYear: 2025, fileName: 'scan.pdf', receiptId: beleg.id, rawText: SALARY_CERTIFICATE })).rejects.toThrow()
+    expect((await h.receiptRepo.findByIdForUser('someone-else', beleg.id))?.kind).toBe('Sonstiges')
+  })
+
+  it('files it also when the answer is the question whose it is: the kind does not depend on the holder', async () => {
+    const h = buildTestHarness(['{}'])
+    await h.profileRepo.upsert('user-kind', { firstName: 'Anna', lastName: 'Beispiel' } as never)
+    const ask = new ReceiptParseService(h.registry, h.autoStrategy, h.receiptRepo, h.advisorService)
+    const beleg = await h.receiptRepo.create('user-kind', { fileName: 'scan.pdf', kind: 'Sonstiges' })
+    const res = await ask.parseReceipt('user-kind', { taxYear: 2025, fileName: 'scan.pdf', receiptId: beleg.id, rawText: `${SALARY_CERTIFICATE}\nHerr Max Muster` })
+    expect(res.assignment?.question).not.toBeNull()
+    expect(await stored(h, beleg.id)).toBe('Lohnausweis')
+  })
+
+  it('maps only what is honest: pension fund and health insurer yes, LStB and the employer premium letter no', () => {
+    expect(receiptKindOfDocument('chPensionskasse')).toBe('Pensionskasse')
+    expect(receiptKindOfDocument('chKrankenkasse')).toBe('Krankenkasse')
+    expect(receiptKindOfDocument('chLohnausweis')).toBe('Lohnausweis')
+    expect(receiptKindOfDocument('lstb')).toBeNull()
+    expect(receiptKindOfDocument('chPraemien')).toBeNull()
+    expect(receiptKindOfDocument('auto')).toBeNull()
+  })
+})

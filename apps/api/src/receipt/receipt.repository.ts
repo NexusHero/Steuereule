@@ -52,5 +52,7 @@ export interface ReceiptRepository {
   setAssignment(userId: string, id: string, data: SetAssignmentData): Promise<ReceiptRecord | null>
   /** Records whose document it is (ADR-0092): the holder first, then the people it was also taken over for. */
   setHolders(userId: string, id: string, holders: readonly HolderRef[], taxYear: number): Promise<ReceiptRecord | null>
+  /** Records the recognised document kind of a stored Beleg (the parse found out what it is). */
+  setKind(userId: string, id: string, kind: ReceiptType): Promise<ReceiptRecord | null>
   deleteForUser(userId: string, id: string): Promise<boolean>
 }

@@ -35,6 +35,15 @@ describe('captureReceipt — the one receipt pipeline', () => {
     expect(phases.at(-1)).toBe('parsing')
   })
 
+  it('only recognises a document already in the inbox when asked not to stage drafts, without a second upload', async () => {
+    const d = deps(LSTB_TEXT)
+
+    await captureReceipt(pdf, { taxYear: 2025, deps: d, receiptId: 'beleg-9', stageDraft: false })
+
+    expect(d.upload).not.toHaveBeenCalled()
+    expect(d.parse).toHaveBeenCalledWith(expect.objectContaining({ receiptId: 'beleg-9', stageDraft: false }))
+  })
+
   it('routes a Swiss salary certificate to its reader and, asked again with the owner, uploads it only once', async () => {
     const d = deps('Lohnausweis - Certificat de salaire\n8 Bruttolohn total = 100.000')
     const first = await captureReceipt(pdf, { taxYear: 2025, deps: d })

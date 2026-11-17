@@ -6,26 +6,27 @@ export function makeStyles(t: UiTheme) {
   const screen: ViewStyle = t.layout.overview.narrow
   const wideScreen: ViewStyle = t.layout.overview.wide
   const appbar: ViewStyle = {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingBottom: t.space.s4,
+    gap: t.space.s2,
+    paddingBottom: t.space.s3,
   }
   const appbarTitleRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s2 }
   const appbarTitle: TextStyle = {
     ...t.type.title,
     color: t.color.tinte,
   }
+  // Full width under the title: the chips wrap inside the screen (#450 Teil 4), in two lines at 375 px.
   const yearRow: ViewStyle = {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'flex-end',
+    alignItems: 'center',
     gap: t.space.s1,
-    maxWidth: '55%',
-    // Without shrinking, the chips pushed past the right edge at 375 px (#450 Teil 4).
-    flexShrink: 1,
-    minWidth: 0,
+    width: '100%',
   }
+  const progress: ViewStyle = { width: '100%', gap: t.space.s1, marginTop: t.space.s3 }
+  const progressBar: ViewStyle = { flexDirection: 'row', gap: 4 }
+  const progressSegment: ViewStyle = { flex: 1, height: 8, borderRadius: 4, backgroundColor: t.color.linieWeich }
+  const progressSegmentDone: ViewStyle = { ...progressSegment, backgroundColor: t.color.ok }
+  const progressText: TextStyle = { ...t.type.small, color: t.color.tinte2 }
   const takeoverRow: ViewStyle = {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -210,5 +211,5 @@ export function makeStyles(t: UiTheme) {
   }
   const runningYearText: TextStyle = { ...t.type.small, color: t.color.tinte }
 
-  return { runningYearNotice, runningYearText, screen, wideScreen, appbar, appbarTitleReihe: appbarTitleRow, appbarTitle, jahrReihe: yearRow, uebernahmeZeile: takeoverRow, uebernahmeZeileText: takeoverRowText, heading, help, cta, secondaryCta, secondaryGrid, secondaryGridItem, missingBox, missingToggleRow, missingToggleText, missingChipRow, missingChip, missingChipText, berater, emptyBlock, heroLabel, refundLabel, heroValue, heroValueSmall, effectLine, heroDivider, openItems, offenePosten: openItemCount, refundLater, gatedHeading, gatedBody, euleBannerCard, euleBannerRow, euleBannerCopy, euleBannerTitle, euleBannerEffect, euleBannerProvenance, euleBannerDismissBtn, euleBannerDismissText }
+  return { progress, progressBar, progressSegment, progressSegmentDone, progressText, runningYearNotice, runningYearText, screen, wideScreen, appbar, appbarTitleReihe: appbarTitleRow, appbarTitle, jahrReihe: yearRow, uebernahmeZeile: takeoverRow, uebernahmeZeileText: takeoverRowText, heading, help, cta, secondaryCta, secondaryGrid, secondaryGridItem, missingBox, missingToggleRow, missingToggleText, missingChipRow, missingChip, missingChipText, berater, emptyBlock, heroLabel, refundLabel, heroValue, heroValueSmall, effectLine, heroDivider, openItems, offenePosten: openItemCount, refundLater, gatedHeading, gatedBody, euleBannerCard, euleBannerRow, euleBannerCopy, euleBannerTitle, euleBannerEffect, euleBannerProvenance, euleBannerDismissBtn, euleBannerDismissText }
 }

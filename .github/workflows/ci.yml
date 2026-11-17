@@ -1013,6 +1013,8 @@ jobs:
         run: node e2e/printout/official-form-expert.mjs
       - name: Uploads with synthetic documents (#450 5D) — Belege upload/preview/delete, LStB scan with overwrite and year dialogs
         run: node e2e/uploads/receipts-and-lstb-scan.mjs
+      - name: Cockpit progress and the Belege ↔ Eule channel — groups, one-tap assignment, a stored document read by the owl, the way back
+        run: node e2e/receipts/belege-owl-channel.mjs
       - name: Scan corpus metrics (#450 Teil 3B) — accuracy per variant, "falsch, aber sicher" = 0, Zero-Write, on-device, time budgets
         run: |
           node --test e2e/scan-corpus/measure.test.mjs

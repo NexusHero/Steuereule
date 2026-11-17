@@ -494,6 +494,8 @@ describe('CockpitScreen — Kinder & Eulen-Modus entries', () => {
       renderCockpit({ isSignedIn: true, onOpenTile })
 
       expect((await screen.findByTestId('cockpit-kachel-lstb-status')).textContent).toBe('Erledigt')
+      // The progress bar has a name of its own (WCAG 4.1.2, axe aria-progressbar-name).
+      expect(screen.getByTestId('cockpit-fortschritt').getAttribute('aria-label')).toMatch(/von \d+ Schritten erledigt/)
       expect(screen.getByTestId('cockpit-kachel-lebenslagen-status').textContent).toBe('⏳ Betrag offen')
       expect(screen.getByTestId('cockpit-kachel-einkuenfte-status').textContent).toBe('Offen')
 

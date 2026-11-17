@@ -36,6 +36,8 @@ import { GuestOwlGate } from './OwlGuestGate'
 import { InlineMaskView } from './OwlInlineMask'
 import { GlassFormPreview } from '../printout/GlassFormPreview'
 import { formLineForField } from '../shared/formLineMapping'
+import { StoredReceiptPicker } from './chat/StoredReceiptPicker'
+import { useOptionalSwitchToTab } from '../../navigation/ShellState'
 import { extractAppliedDrafts, extractPendingDrafts, updateActionStatusInMessage } from './owlDrafts'
 import { makeStyles } from './OwlModeScreen.styles'
 import { ConnectedOwlModeScreen } from './OwlModeScreen.connected'
@@ -199,6 +201,7 @@ export function OwlModeScreenView({
   const t = useTheme()
   const styles = makeStyles(t)
   const { t: tr, i18n } = useTranslation(APP_NS)
+  const switchToTab = useOptionalSwitchToTab()
   const bridge = useOptionalCopilotBridge()
 
   // null: the workbench follows what needs attention; otherwise the reader's own choice stands.
@@ -489,7 +492,28 @@ export function OwlModeScreenView({
         onAttachReceiptFile={bridge ? async (file) => void (await bridge.captureReceiptFile(file)) : undefined}
         receiptProgress={bridge?.receiptPhase ? tr(`advisor.chat.receiptProgress.${bridge.receiptPhase}`) : null}
         receiptNotice={bridge?.receiptNotice ?? null}
-        receiptAssignment={bridge && (bridge.documentQuestion !== null || bridge.documentHolder !== null) ? <ChatDocumentAssignment bridge={bridge} /> : undefined}
+        receiptAssignment={
+          bridge && (bridge.documentQuestion !== null || bridge.documentHolder !== null || bridge.lastParsedReceipt !== null) ? (
+            <>
+              {bridge.documentQuestion !== null || bridge.documentHolder !== null ? <ChatDocumentAssignment bridge={bridge} /> : null}
+              {/* The way back from the chat to the document: its original lies in the Belege tab. */}
+              {bridge.lastParsedReceipt !== null && switchToTab ? (
+                <Pressable accessibilityRole="button" onPress={() => switchToTab('Receipts')} testID="eule-receipt-result-belege">
+                  <Text style={styles.help}>{tr('eule.workspace.receiptInInbox')}</Text>
+                </Pressable>
+              ) : null}
+            </>
+          ) : undefined
+        }
+        receiptSources={
+          bridge ? (
+            <StoredReceiptPicker
+              onRead={bridge.readStoredReceipt}
+              disabled={bridge.parsingReceipt}
+              {...(switchToTab ? { onOpenReceipts: () => switchToTab('Receipts') } : {})}
+            />
+          ) : undefined
+        }
         isParsingReceipt={bridge?.parsingReceipt}
         compact={compact}
       />

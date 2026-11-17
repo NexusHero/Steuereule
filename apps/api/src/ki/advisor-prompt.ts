@@ -22,6 +22,7 @@ import {
   type CaseDigest,
   type Screen,
 } from '@steuereule/core'
+import { describeReceiptInboxForPrompt } from '../advisor/advisor-receipt-inbox.js'
 import { describeAiWritableFields } from './advisor-safety.js'
 import { skillPrompt } from './advisor-skills.js'
 import { taskPrompt } from './advisor-tasks.js'
@@ -145,6 +146,7 @@ export function buildCaseSystemPrompt(digest: CaseDigest, activeScreen: Screen |
     describeHouseholdForPrompt(household),
     describeNotesForPrompt(notes ?? []),
     ...(digest.furtherFacts?.printoutPlan ? describePrintoutPlanForPrompt(digest.furtherFacts.printoutPlan) : []),
+    ...describeReceiptInboxForPrompt(digest.furtherFacts?.receiptInbox),
     ...describeUpcomingDates(digest.taxYear, today),
     ...describeYearFigures(digest.taxYear),
     ...(skill ? ['', skillPrompt(skill)] : []),
@@ -155,10 +157,10 @@ export function buildCaseSystemPrompt(digest: CaseDigest, activeScreen: Screen |
   ].join('\n')
 }
 
-/** The printout checklist goes into the prompt as its own list, not a second time inside the digest. */
+/** The printout checklist and the Belege list go into the prompt as their own lists, not a second time inside the digest. */
 function withoutPrintoutPlan(digest: CaseDigest): CaseDigest {
-  if (!digest.furtherFacts?.printoutPlan) return digest
-  const { printoutPlan: _listed, ...furtherFacts } = digest.furtherFacts
+  if (!digest.furtherFacts?.printoutPlan && !digest.furtherFacts?.receiptInbox) return digest
+  const { printoutPlan: _listed, receiptInbox: _inbox, ...furtherFacts } = digest.furtherFacts
   return { ...digest, furtherFacts }
 }
 

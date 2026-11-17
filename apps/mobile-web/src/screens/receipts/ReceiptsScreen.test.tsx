@@ -577,7 +577,38 @@ describe('BelegeScreen', () => {
 
       const status = await screen.findByTestId('belege-bescheid-check-status')
       expect(status.textContent).toContain('bescheid-2025.pdf')
-      expect(status.textContent).toContain('mit deiner Erklärung abgeglichen')
+      expect(status.textContent).toContain('gespeichert')
+    })
+  })
+  describe('one tap for every proposal (UX review 2026-11)', () => {
+    it('assigns all waiting proposals at once and leaves a conflict alone', async () => {
+      const second = { ...PROPOSED, id: 'b-vorschlag-2', fileName: 'zweiter.pdf' }
+      mockReceipts([PROPOSED, second, CONFLICT])
+      const assigned: string[] = []
+      server.use(
+        http.post('*/v1/belege/:id/zuordnung', ({ params }) => {
+          assigned.push(String(params.id))
+          return HttpResponse.json({ ...ASSIGNED, id: String(params.id) }, { status: 200 })
+        }),
+      )
+      renderReceipts()
+
+      fireEvent.click(await screen.findByTestId('belege-alle-zuordnen'))
+
+      await waitFor(() => expect(assigned.sort()).toEqual([PROPOSED.id, second.id].sort()))
+    })
+
+    it('offers no bulk action for a single proposal', async () => {
+      mockReceipts([PROPOSED, ASSIGNED])
+      renderReceipts()
+      await screen.findByTestId('belege-ordner-filter')
+      expect(screen.queryByTestId('belege-alle-zuordnen')).toBeNull()
+    })
+
+    it('no longer claims a sync with the chat that does not exist', async () => {
+      mockReceipts([ASSIGNED])
+      renderReceipts()
+      expect((await screen.findByTestId(`receipt-folder-${ASSIGNED.id}`)).textContent).not.toContain('synchronisiert')
     })
   })
 })

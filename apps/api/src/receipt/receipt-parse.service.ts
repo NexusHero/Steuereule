@@ -8,7 +8,9 @@ import {
   printedPersonNames,
   type AssignmentDecision,
   type AssignmentMember,
+  type DetectedDocumentKind,
   type HolderRef,
+  type ReceiptType,
 } from '@steuereule/core'
 import { Inject, Injectable, Optional, type OnModuleInit } from '@nestjs/common'
 import { AdvisorService } from '../advisor/advisor.service.js'
@@ -22,7 +24,7 @@ import {
 } from './dto/parse-receipt.dto.js'
 import { AutoReceiptParseStrategy } from './parse/auto-receipt-parse.strategy.js'
 import { DocumentParseRegistry } from './parse/document-parse.registry.js'
-import { RECEIPT_REPOSITORY, type ReceiptRepository } from './receipt.repository.js'
+import { RECEIPT_REPOSITORY, type ReceiptRecord, type ReceiptRepository } from './receipt.repository.js'
 
 /**
  * Entry point of `POST /v1/belege/parse`: validates the payload, checks that a referenced
@@ -58,6 +60,9 @@ export class ReceiptParseService implements OnModuleInit {
     if (strategy === null) {
       throw new InvalidInputError('RECEIPT_KIND_UNSUPPORTED', `Belegart "${kind}" wird nicht unterstützt.`)
     }
+
+    // The Belege inbox files by kind: what the reader recognised is written back, so the tab does not show it as „Sonstiges“.
+    await this.rememberRecognisedKind(userId, owned, kind, dto.rawText ?? '')
 
     // Whose the document is (ADR-0092): one rule for the masks, the Belege tab and the chat.
     const rawText = dto.rawText ?? ''
@@ -95,6 +100,13 @@ export class ReceiptParseService implements OnModuleInit {
     return { ...response, assignment }
   }
 
+  /** Never overwrites a kind the user chose: only an unclassified (null) or generic (Sonstiges) Beleg takes the recognised one. */
+  private async rememberRecognisedKind(userId: string, owned: ReceiptRecord | null, kind: string, rawText: string): Promise<void> {
+    if (owned === null || (owned.kind !== undefined && owned.kind !== 'Sonstiges')) return
+    const recognised = receiptKindOfDocument(kind === 'auto' ? classifyDocumentKind(rawText) : (kind as DetectedDocumentKind))
+    if (recognised !== null) await this.receiptRepository.setKind(userId, owned.id, recognised)
+  }
+
   private assertValidPayload(dto: ParseReceiptDto): void {
     if (dto.mimeType && !ALLOWED_RECEIPT_PARSE_MIME_TYPES.includes(dto.mimeType)) {
       throw new InvalidInputError('RECEIPT_MIME_INVALID', 'Ungültiger Dateityp (erlaubt sind JPEG, PNG, WebP oder PDF).')
@@ -102,6 +114,24 @@ export class ReceiptParseService implements OnModuleInit {
     if (!dto.rawText?.trim() && !dto.fileName.trim()) {
       throw new InvalidInputError('RECEIPT_EMPTY', 'Bitte gib einen Belegtext an.')
     }
+  }
+}
+
+/**
+ * The Beleg kind that honestly describes a recognised document, or null when none of the stored kinds does:
+ * a German Lohnsteuerbescheinigung is no Swiss Lohnausweis, and the employer's premium letter (Krankentaggeld,
+ * NBU) is no insurer's statement, so both stay as they are.
+ */
+export function receiptKindOfDocument(detected: DetectedDocumentKind): ReceiptType | null {
+  switch (detected) {
+    case 'chLohnausweis':
+      return 'Lohnausweis'
+    case 'chPensionskasse':
+      return 'Pensionskasse'
+    case 'chKrankenkasse':
+      return 'Krankenkasse'
+    default:
+      return null
   }
 }
 

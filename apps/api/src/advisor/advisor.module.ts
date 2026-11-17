@@ -16,6 +16,7 @@ import { AssessmentModule } from '../assessment/assessment.module.js'
 import { TaxEstimateModule } from '../tax-estimate/tax-estimate.module.js'
 import { RentalModule } from '../rental/rental.module.js'
 import { PensionModule } from '../pension/pension.module.js'
+import { ReceiptStorageModule } from '../receipt/receipt-storage.module.js'
 import { LinkModule } from '../link/link.module.js'
 import { AdvisorController } from './advisor.controller.js'
 import { ADVISOR_REPOSITORY } from './advisor.repository.js'
@@ -56,6 +57,7 @@ export function createAdvisorRunLog(env: NodeJS.ProcessEnv = process.env): Advis
     ProfileModule,
     TaxEstimateModule,
     AssessmentModule,
+    ReceiptStorageModule,
   ],
   controllers: [AdvisorController],
   providers: [

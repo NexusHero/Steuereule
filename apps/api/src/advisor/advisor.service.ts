@@ -110,6 +110,8 @@ import { ANSWERING_WINDOW_MS, effectLeftOutOfEstimate, projectsOf, toPublicActio
 import { AdvisorConversations } from './advisor-conversations.js'
 import { AdvisorProjectNotes } from './advisor-project-notes.js'
 import { AdvisorCaseFacts } from './advisor-case-facts.js'
+import { buildReceiptInbox } from './advisor-receipt-inbox.js'
+import { RECEIPT_REPOSITORY, type ReceiptRepository } from '../receipt/receipt.repository.js'
 import { AdvisorDrafts } from './advisor-drafts.js'
 export { MAX_CONVERSATIONS_PER_YEAR, searchKey, snippetAround, titleFrom } from './advisor-shared.js'
 export type { PreparedAdvisorTurn } from './advisor-shared.js'
@@ -200,6 +202,7 @@ export class AdvisorService {
     @Optional() @Inject(LinkService) private readonly link?: LinkService,
     @Optional() @Inject(PrintoutService) private readonly printout?: PrintoutService,
     @Optional() @Inject(PersonalDataConsentService) private readonly personalDataConsent?: PersonalDataConsentService,
+    @Optional() @Inject(RECEIPT_REPOSITORY) private readonly receiptRepo?: ReceiptRepository,
   ) {}
 
   /** Whether the user consented to personal data going to the owl's model (ADR-0091); read fresh on every use. */
@@ -359,7 +362,26 @@ export class AdvisorService {
   }
 
   async buildCaseDigest(userId: string, taxYear: number): Promise<CaseDigest> {
-    const digest = await this.facts.buildCaseDigest(userId, taxYear)
+    const withInbox = await this.withReceiptInbox(userId, taxYear, await this.facts.buildCaseDigest(userId, taxYear))
+    return this.withPrintoutGaps(userId, taxYear, withInbox)
+  }
+
+  /** The stored Belege of the year, as far as the owl may know them (no file names). A failing read leaves the digest as it was. */
+  private async withReceiptInbox(userId: string, taxYear: number, digest: CaseDigest): Promise<CaseDigest> {
+    if (!this.receiptRepo || !digest.furtherFacts) return digest
+    try {
+      const [records, messages] = await Promise.all([this.receiptRepo.findAllForUser(userId), this.advisorRepo.listForUserAndYear(userId, taxYear)])
+      const drafts = messages.flatMap((m) => [...(m.meta?.action ? [m.meta.action] : []), ...(m.meta?.actions ?? [])])
+      const receiptInbox = buildReceiptInbox(records, taxYear, drafts)
+      checkPiiFree(receiptInbox)
+      return receiptInbox.total === 0 ? digest : { ...digest, furtherFacts: { ...digest.furtherFacts, receiptInbox } }
+    } catch (error: unknown) {
+      this.logger.warn(`receipt inbox skipped: ${error instanceof Error ? error.name : 'error'}`)
+      return digest
+    }
+  }
+
+  private async withPrintoutGaps(userId: string, taxYear: number, digest: CaseDigest): Promise<CaseDigest> {
     if (!this.printout || !digest.furtherFacts) return digest
     let missing: string[]
     try {
