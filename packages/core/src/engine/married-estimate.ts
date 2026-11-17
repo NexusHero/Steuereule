@@ -88,6 +88,8 @@ export interface MarriedEstimateInput {
   readonly childrenBracket?: BurdenChildrenBracket | undefined
   /** Wage replacement benefits of both spouses under the progression clause (§ 32b EStG). */
   readonly wageReplacementEur?: number | undefined
+  /** The child allowances of the year when they differ from the full amount per child (a child born in the year). */
+  readonly childAllowanceEur?: number | undefined
   /** Insurance paid for the children (Anlage Kind); counts only in the exact deduction. */
   readonly childrenProvision?: ChildrenProvision | undefined
   /**
@@ -217,7 +219,7 @@ export function estimateMarriedCouple(input: MarriedEstimateInput): MarriedEstim
   const taxableIncome = (deduction: number) => Math.max(0, income - deduction - specialExpenses - deductibleBurdenEur)
   const zve = { from: taxableIncome(provision.to), to: taxableIncome(provision.from) }
 
-  const allowance = input.children * childTaxAllowance(input.year)
+  const allowance = input.childAllowanceEur ?? input.children * childTaxAllowance(input.year)
   // § 32b EStG: wage replacement benefits raise the rate on the splitting tariff as for a single person.
   const progression = Math.max(0, Math.floor(input.wageReplacementEur ?? 0))
   const tariff = (z: number) => (progression > 0 ? progressionClauseTax(z, progression, input.year, true) : splittingTariff(z, 0, input.year))

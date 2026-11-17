@@ -266,8 +266,8 @@ describe('SteuerschaetzungService', () => {
       return range(await env.service.getState('a', 2025))
     }
     const withSwiss = await couple({ 'ch-wohnsitz': 'Deutschland', 'ch-nichtrueckkehrtage': '0' })
-    // Both wage taxes and B's Quellensteuer (1.404 CHF at 1,065) are credited.
-    expect(withSwiss.anrechnung).toBe(9890 + 2150 + Math.round(1404 * 1.065))
+    // Both wage taxes and B's Quellensteuer (1.404 CHF at 1,065) are credited, rounded up as on the notice.
+    expect(withSwiss.anrechnung).toBe(9890 + 2150 + Math.ceil(1404 * 1.065))
     const germanOnly = await couple({})
     expect(withSwiss.incomeTax.from).toBeGreaterThan(germanOnly.incomeTax.from)
   })

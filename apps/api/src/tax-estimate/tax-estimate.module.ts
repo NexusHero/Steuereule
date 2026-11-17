@@ -6,13 +6,14 @@ import { ChildrenModule } from '../children/children.module.js'
 import { LinkModule } from '../link/link.module.js'
 import { RentalModule } from '../rental/rental.module.js'
 import { PensionModule } from '../pension/pension.module.js'
+import { CapitalModule } from '../capital/capital.module.js'
 import { LstbModule } from '../lstb/lstb.module.js'
 import { MasterDataModule } from '../master-data/master-data.module.js'
 import { TaxEstimateController } from './tax-estimate.controller.js'
 import { TaxEstimateService } from './tax-estimate.service.js'
 
 @Module({
-  imports: [LstbModule, InterviewModule, ChSalaryCertificateModule, MasterDataModule, CommuteModule, LinkModule, ChildrenModule, RentalModule, PensionModule],
+  imports: [LstbModule, InterviewModule, ChSalaryCertificateModule, MasterDataModule, CommuteModule, LinkModule, ChildrenModule, RentalModule, PensionModule, CapitalModule],
   controllers: [TaxEstimateController],
   providers: [TaxEstimateService],
   exports: [TaxEstimateService],
