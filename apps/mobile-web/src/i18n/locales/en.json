@@ -680,6 +680,8 @@
       "deny": "Do not allow",
       "saving": "Saving …",
       "granted": "Allowed. The owl may now process your personal data.",
+      "grantedContinues": "Allowed. The owl continues with your last message.",
+      "continueMessage": "I have allowed you to process my personal data. Please continue with my last message.",
       "error": "That did not work. Please try again."
     },
     "section": {
@@ -2189,6 +2191,11 @@
       "receiptQueue_other": "Then {{count}} more files",
       "receiptQueueRemove": "Remove {{name}} from the queue",
       "turnFailed": "The owl’s answer broke off on the way.",
+      "requestRefused": "The owl could not accept your message. Please try again.",
+      "length": {
+        "counter": "{{used}} of {{max}} characters",
+        "tooLong": "Your message is too long ({{used}} of {{max}} characters). Please split it up."
+      },
       "applyFailed": "The proposal could not be applied. Please enter the value in the screen itself.",
       "reconnecting": "Restoring the connection …",
       "failed": "not finished",

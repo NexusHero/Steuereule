@@ -184,4 +184,38 @@ describe('ChatComposer as one box (#476)', () => {
     fireEvent.click(stop)
     expect(onStop).toHaveBeenCalled()
   })
+
+  it('counts the characters near the limit and says nothing before', () => {
+    render(<Host platform="desktop" onSend={vi.fn()} />)
+    fireEvent.change(input(), { target: { value: 'a'.repeat(7199) } })
+    expect(screen.queryByTestId('advisor-chat-length')).toBeNull()
+    fireEvent.change(input(), { target: { value: 'a'.repeat(7200) } })
+    expect(screen.getByTestId('advisor-chat-length').textContent).toBe('7.200 von 8.000 Zeichen')
+  })
+
+  it('does not send a message over the limit and says why (real-data run finding 5)', () => {
+    const onSend = vi.fn()
+    render(<Host platform="desktop" onSend={onSend} />)
+    fireEvent.change(input(), { target: { value: 'a'.repeat(8001) } })
+    expect(screen.getByRole('alert').textContent).toBe('Deine Nachricht ist zu lang (8.001 von 8.000 Zeichen). Teile sie bitte auf.')
+    expect((screen.getByTestId('send') as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.keyDown(input(), { key: 'Enter' })
+    fireEvent.click(screen.getByTestId('send'))
+    expect(onSend).not.toHaveBeenCalled()
+    expect(input().value).toHaveLength(8001)
+
+    fireEvent.change(input(), { target: { value: 'a'.repeat(8000) } })
+    expect(screen.queryByRole('alert')).toBeNull()
+    fireEvent.keyDown(input(), { key: 'Enter' })
+    expect(onSend).toHaveBeenCalledTimes(1)
+  })
+
+  it('blocks an over-long message in the dock too', () => {
+    const onSend = vi.fn()
+    render(<Host platform="touch" variant="dock" onSend={onSend} />)
+    fireEvent.change(input(), { target: { value: 'a'.repeat(8001) } })
+    expect(screen.getByRole('alert')).toBeTruthy()
+    fireEvent.click(screen.getByTestId('send'))
+    expect(onSend).not.toHaveBeenCalled()
+  })
 })

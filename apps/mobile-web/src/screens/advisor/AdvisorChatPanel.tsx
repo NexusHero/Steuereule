@@ -40,6 +40,7 @@ import {
 import { APP_NS } from '../../i18n/resources'
 import { ModelFailureNotice } from './chat/ModelFailureNotice'
 import { PersonalDataConsentCard } from './chat/PersonalDataConsentCard'
+import { textToRepeatAfterConsent } from './chat/consentRetry'
 import { ActionProposalCardView, ScannedCertificateCardView, TwoPathsCardView } from './chat/ProposalCards'
 import { makeStyles } from './AdvisorChatPanel.styles'
 export { makeStyles } from './AdvisorChatPanel.styles'
@@ -245,7 +246,10 @@ export function AdvisorChatPanel({
   /** What is switched on at the input travels with every message; a plain message stays plain. */
   const withSwitches = (options: ChatSendOptions | undefined, activeSkill: AdvisorSkillId | null): ChatSendOptions | undefined =>
     activeSkill || turbo ? { ...options, ...(activeSkill ? { skill: activeSkill } : {}), ...(turbo ? { turbo: true } : {}) } : options
+  // What was typed last, as typed: the stored question is masked while the consent is missing (ADR-0091).
+  const lastTypedRef = useRef<string | null>(null)
   const send = (text: string, options?: ChatSendOptions) => {
+    lastTypedRef.current = text
     const merged = withSwitches(options, skill)
     return merged ? onSendMessage(text, merged) : onSendMessage(text)
   }
@@ -287,6 +291,16 @@ export function AdvisorChatPanel({
   const lastUserIndex = messages.reduce((last, m, i) => (m.role === 'user' ? i : last), -1)
   const lastUser = lastUserIndex === -1 ? null : messages[lastUserIndex]!
   const canReplace = !isSending && lastUser !== null
+
+  /**
+   * „Erlauben“ on the consent card: the owl answers the user's last message again, now with the
+   * consent, in place of the turn that had to refuse. Nobody retypes anything (ADR-0091).
+   */
+  function continueAfterConsent() {
+    if (!canReplace || lastUser === null) return
+    const repeat = textToRepeatAfterConsent(lastUser.content, lastTypedRef.current)
+    void (repeat !== null ? send(repeat, { replaceFromMessageId: lastUser.id }) : send(tr('owlPersonalData.card.continueMessage')))
+  }
 
   async function copyMessage(id: string, content: string) {
     if (await copyToClipboard(plainTextForCopy(content))) {
@@ -549,7 +563,7 @@ export function AdvisorChatPanel({
               ) : null}
 
               {/* The owl needed personal data without consent: ask once, explicitly (ADR-0091) */}
-              {msg.meta?.personalDataConsentRequest === true ? <PersonalDataConsentCard /> : null}
+              {msg.meta?.personalDataConsentRequest === true ? <PersonalDataConsentCard onGranted={index === messages.length - 1 && canReplace ? continueAfterConsent : undefined} /> : null}
 
               {/* The model did not answer: the rules did, and the reason stays with the answer (#487) */}
               {msg.meta?.modelFailure ? (

@@ -25,6 +25,8 @@ import { FakeProfileRepository } from './fake-profile.repository.js'
 import { FakeRentalRepository } from './fake-rental.repository.js'
 import { FakePersonalDataConsentRepository } from './fake-personal-data-consent.repository.js'
 import { PersonalDataConsentService } from '../../src/owl-mode/personal-data-consent.service.js'
+import { TaxEstimateService } from '../../src/tax-estimate/tax-estimate.service.js'
+import { ChildrenService } from '../../src/children/children.service.js'
 
 export interface AdvisorTestKit {
   readonly advisorRepo: InMemoryAdvisorRepository
@@ -40,10 +42,20 @@ export interface AdvisorTestKit {
   /** The consent to personal data for the owl (ADR-0091); none until a test gives it. */
   readonly consent: PersonalDataConsentService
   readonly service: AdvisorService
+  readonly masterDataRepo: FakeMasterDataRepository
+  /** The estimate over the same fakes; the owl reads it only when the kit is built with `withEstimate`. */
+  readonly taxEstimate: TaxEstimateService
+  /** The Kinder mask's own service over the same fakes, for comparing the mask against the chat. */
+  readonly children: ChildrenService
+}
+
+export interface AdvisorTestKitOptions {
+  /** Hand the app's estimate to the AdvisorService, as the API module does. */
+  readonly withEstimate?: boolean
 }
 
 /** An AdvisorService on in-memory fakes; pass an engine to exercise the model path. */
-export function buildAdvisorTestKit(engine?: AdvisorEnginePort, modelConnection?: ModelConnectionService): AdvisorTestKit {
+export function buildAdvisorTestKit(engine?: AdvisorEnginePort, modelConnection?: ModelConnectionService, options: AdvisorTestKitOptions = {}): AdvisorTestKit {
   const advisorRepo = new InMemoryAdvisorRepository()
   const interviewRepo = new FakeInterviewAnswerRepository()
   const lstbRepo = new FakeLstbRepository()
@@ -86,6 +98,8 @@ export function buildAdvisorTestKit(engine?: AdvisorEnginePort, modelConnection?
     new RagKiAdapter(),
     auditService,
   )
+  const taxEstimate = new TaxEstimateService(lstbRepo, interviewRepo, chRepo, masterDataRepo, commuteRepo, linkRepo, childRepo, rentalRepo, pensionRepo)
+  const children = new ChildrenService(childRepo, auditService, chRepo, linkRepo)
   const service = new AdvisorService(
     advisorRepo,
     owlModeService,
@@ -102,7 +116,7 @@ export function buildAdvisorTestKit(engine?: AdvisorEnginePort, modelConnection?
     engine,
     undefined,
     undefined,
-    undefined,
+    options.withEstimate ? taxEstimate : undefined,
     modelConnection,
     undefined,
     pensionRepo,
@@ -110,7 +124,7 @@ export function buildAdvisorTestKit(engine?: AdvisorEnginePort, modelConnection?
     undefined,
     consent,
   )
-  return { advisorRepo, interviewRepo, rentalRepo, childRepo, commuteRepo, chRepo, lstbRepo, linkService, profileRepo, consent, service }
+  return { advisorRepo, interviewRepo, rentalRepo, childRepo, commuteRepo, chRepo, lstbRepo, linkService, profileRepo, consent, service, masterDataRepo, taxEstimate, children }
 }
 
 /** A step of a scripted engine turn: an event, or a pause that only ends when the turn is aborted. */

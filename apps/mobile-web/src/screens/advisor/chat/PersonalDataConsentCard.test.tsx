@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
 import { ThemeProvider } from '@steuereule/ui'
@@ -10,13 +10,13 @@ import { PersonalDataConsentCard } from './PersonalDataConsentCard'
 
 const URL_PATTERN = '*/v1/eulen-modus/personendaten-einwilligung'
 
-function renderCard() {
+function renderCard(onGranted?: () => void) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   return render(
     <QueryClientProvider client={queryClient}>
       <I18nextProvider i18n={createAppI18n('de')}>
         <ThemeProvider mode="light">
-          <PersonalDataConsentCard />
+          <PersonalDataConsentCard onGranted={onGranted} />
         </ThemeProvider>
       </I18nextProvider>
     </QueryClientProvider>,
@@ -62,5 +62,23 @@ describe('PersonalDataConsentCard (ADR-0091)', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Nicht erlauben' }))
     expect(screen.queryByText('Darf die Eule deine persönlichen Daten verarbeiten?')).toBeNull()
     expect(put).toBe(false)
+  })
+
+  it('tells the chat once the consent is stored, so the conversation goes on by itself', async () => {
+    server.use(http.put(URL_PATTERN, () => HttpResponse.json({ granted: true, version: '1', grantedAt: '2026-11-14T10:00:00.000Z' })))
+    const onGranted = vi.fn()
+    renderCard(onGranted)
+    fireEvent.click(await screen.findByRole('button', { name: 'Erlauben' }))
+    await waitFor(() => expect(onGranted).toHaveBeenCalledTimes(1))
+    expect(await screen.findByText(/macht mit deiner letzten Nachricht weiter/)).toBeTruthy()
+  })
+
+  it('does not continue when storing the consent failed', async () => {
+    server.use(http.put(URL_PATTERN, () => HttpResponse.json({}, { status: 500 })))
+    const onGranted = vi.fn()
+    renderCard(onGranted)
+    fireEvent.click(await screen.findByRole('button', { name: 'Erlauben' }))
+    expect(await screen.findByText('Das hat nicht geklappt. Bitte versuche es noch einmal.')).toBeTruthy()
+    expect(onGranted).not.toHaveBeenCalled()
   })
 })

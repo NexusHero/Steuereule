@@ -680,6 +680,8 @@
       "deny": "Nicht erlauben",
       "saving": "Wird gespeichert …",
       "granted": "Erlaubt. Die Eule darf deine persönlichen Daten jetzt verarbeiten.",
+      "grantedContinues": "Erlaubt. Die Eule macht mit deiner letzten Nachricht weiter.",
+      "continueMessage": "Ich habe dir erlaubt, meine persönlichen Daten zu verarbeiten. Bitte mach mit meiner letzten Nachricht weiter.",
       "error": "Das hat nicht geklappt. Bitte versuche es noch einmal."
     },
     "section": {
@@ -2189,6 +2191,11 @@
       "receiptQueue_other": "Danach {{count}} weitere Dateien",
       "receiptQueueRemove": "{{name}} aus der Warteschlange nehmen",
       "turnFailed": "Die Antwort der Eule ist unterwegs abgebrochen.",
+      "requestRefused": "Die Eule konnte deine Nachricht nicht annehmen. Bitte versuche es noch einmal.",
+      "length": {
+        "counter": "{{used}} von {{max}} Zeichen",
+        "tooLong": "Deine Nachricht ist zu lang ({{used}} von {{max}} Zeichen). Teile sie bitte auf."
+      },
       "applyFailed": "Der Vorschlag konnte nicht übernommen werden. Trag den Wert bitte direkt in der Maske ein.",
       "reconnecting": "Verbindung wird wiederhergestellt …",
       "failed": "nicht fertig geworden",

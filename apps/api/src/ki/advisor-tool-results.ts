@@ -67,6 +67,16 @@ const TEMPLATES: Readonly<Record<string, (payload: Payload) => string>> = {
   remember_note: (p) => (p.alreadyNoted === true ? 'war schon notiert' : 'gemerkt'),
   replace_note: () => 'aktualisiert',
   forget_note: () => 'entfernt',
+  request_personal_data_consent: (p) => (p.alreadyGranted === true ? 'liegt schon vor' : 'Karte folgt unter der Antwort'),
+  read_current_estimate: (p) => {
+    const estimate = (p.estimate ?? {}) as Payload
+    const result = (estimate.result ?? {}) as Payload
+    const from = num(result.fromEur)
+    const to = num(result.toEur)
+    if (estimate.kind !== 'computed' || from === null || to === null) return 'noch nicht berechenbar'
+    const word = to < 0 ? 'Nachzahlung' : 'Erstattung'
+    return from === to ? `${amount(from)} ${word}` : `${amount(from)} bis ${amount(to)} ${word}`
+  },
   mark_interview_area: (p) => (p.status === 'not_applicable' ? 'trifft nicht zu' : p.status === 'open' ? 'wieder offen' : 'erledigt'),
 }
 

@@ -13,8 +13,14 @@ import { APP_NS } from '../../../i18n/resources'
 /**
  * Consent card under an owl answer that needed (or received) personal data without consent (ADR-0091).
  * Shown only while consent is not granted; "Nicht erlauben" just hides it for this message.
+ * After "Erlauben" the conversation goes on by itself (`onGranted`), nobody types anything twice.
  */
-export function PersonalDataConsentCard() {
+export interface PersonalDataConsentCardProps {
+  /** Called once the consent is stored: the chat answers the user's last message again, now with it. */
+  readonly onGranted?: (() => void) | undefined
+}
+
+export function PersonalDataConsentCard({ onGranted }: PersonalDataConsentCardProps = {}) {
   const { t: tr } = useTranslation(APP_NS)
   const theme = useTheme()
   const queryClient = useQueryClient()
@@ -40,7 +46,7 @@ export function PersonalDataConsentCard() {
   if (justGranted) {
     return (
       <View style={box} accessibilityRole="alert">
-        <Text style={body}>{tr('owlPersonalData.card.granted')}</Text>
+        <Text style={body}>{tr(onGranted ? 'owlPersonalData.card.grantedContinues' : 'owlPersonalData.card.granted')}</Text>
       </View>
     )
   }
@@ -58,6 +64,7 @@ export function PersonalDataConsentCard() {
       }
       setJustGranted(true)
       await queryClient.invalidateQueries({ queryKey: getOwlModeControllerGetPersonalDataConsentQueryKey() })
+      onGranted?.()
     } catch {
       setFailed(true)
     }

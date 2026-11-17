@@ -40,6 +40,7 @@ import { APP_NS } from '../../i18n/resources'
 import { captureReceipt, type CapturePhase, type CaptureResult } from '../../lib/receipts/captureReceipt'
 import { createHolderFromDocument, detailsFromDocument, takeNameIntoProfile, type NewHolderDetails } from '../../lib/receipts/documentAssignment'
 import { createFrameBatcher } from './chat/frameBatcher'
+import { apiErrorText } from './chat/apiErrorText'
 import { followRun, type RunFrame } from './chat/runStream'
 
 /** What one conversation shows of its answer while it is written, and what is left when it stops or fails. */
@@ -280,13 +281,7 @@ function acknowledgedValuesFor(
   return own.length === 0 ? undefined : Object.fromEntries(own.map((c) => [c.key, c.currentValue]))
 }
 
-function extractErrorMessage(payload: unknown): string | null {
-  if (typeof payload !== 'object' || payload === null) return null
-  if ('message' in payload && typeof (payload as { message: unknown }).message === 'string') {
-    return (payload as { message: string }).message
-  }
-  return null
-}
+const extractErrorMessage = apiErrorText
 
 export async function invalidateAllTaxQueries(queryClient: QueryClient, taxYear: number): Promise<void> {
   await Promise.all([
@@ -571,7 +566,8 @@ export function CopilotBridgeProvider({
 
         if (result.kind === 'aborted') return await endAborted()
         if (result.kind === 'http-error') {
-          setChatError(extractErrorMessage(result.body) ?? `HTTP ${result.status}`)
+          // Always in words: a refusal the user cannot read helps nobody (real-data run, finding 5).
+          setChatError(extractErrorMessage(result.body) ?? tr('advisor.chat.requestRefused'))
           return null
         }
         if (result.kind === 'lost') {

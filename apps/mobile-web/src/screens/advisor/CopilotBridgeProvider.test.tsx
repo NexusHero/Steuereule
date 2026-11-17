@@ -631,6 +631,43 @@ describe('Slice 4: CopilotBridgeProvider & 3-Breakpoint OwlMode Workspace', () =
     panelView.unmount()
   })
 
+  it('says a refused message in words, never as „HTTP 400“ (real-data run finding 5)', async () => {
+    const tooLong = 'Deine Nachricht ist zu lang (höchstens 8.000 Zeichen). Teile sie bitte auf.'
+    server.use(
+      http.post('*/v1/steuerjahre/2025/advisor/stream', () =>
+        HttpResponse.json({ statusCode: 400, error: 'Bad Request', fields: [{ field: 'message', message: tooLong }] }, { status: 400 }),
+      ),
+    )
+    function Probe() {
+      const bridge = useCopilotBridge()
+      return (
+        <div>
+          <span data-testid="refused-err">{bridge.chatError ?? 'none'}</span>
+          <button onClick={() => void bridge.sendStreamingMessage('x'.repeat(9000), 'lstb')}>refused-send</button>
+        </div>
+      )
+    }
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <I18nextProvider i18n={createAppI18n('de')}>
+          <ThemeProvider mode="light">
+            <CopilotBridgeProvider mode="eulen-modus" onModeChange={() => {}} taxYear={2025}>
+              <Probe />
+            </CopilotBridgeProvider>
+          </ThemeProvider>
+        </I18nextProvider>
+      </QueryClientProvider>,
+    )
+    fireEvent.click(screen.getByText('refused-send'))
+    await waitFor(() => expect(screen.getByTestId('refused-err').textContent).toBe(tooLong))
+
+    // A refusal without words for the user (a technical field, an empty body) still reads as a sentence.
+    server.use(http.post('*/v1/steuerjahre/2025/advisor/stream', () => HttpResponse.json({ statusCode: 400, fields: [{ field: 'activeScreen', message: 'activeScreen must be one of …' }] }, { status: 400 })))
+    fireEvent.click(screen.getByText('refused-send'))
+    await waitFor(() => expect(screen.getByTestId('refused-err').textContent).toBe('Die Eule konnte deine Nachricht nicht annehmen. Bitte versuche es noch einmal.'))
+    expect(screen.getByTestId('refused-err').textContent).not.toMatch(/HTTP/)
+  })
+
   it('handles SSE error responses, JSON fallback, single apply/undo errors, and parseReceipt failures cleanly', async () => {
     const modeChanges: CopilotMode[] = []
     server.use(

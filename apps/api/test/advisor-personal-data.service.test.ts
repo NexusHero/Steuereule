@@ -51,6 +51,31 @@ describe('personal data with the owl (ADR-0091)', () => {
     expect((await lastAnswer(kit)).meta?.personalDataConsentRequest).toBeUndefined()
   })
 
+  it('offers the card when the owl points to the consent, although it called no tool (real-data run)', async () => {
+    const reply = 'Die Tochter legst du selbst an. Alternativ gibst du mir unter dieser Antwort die Einwilligung.'
+    const kit = build([token(reply), doneEvent({ replyText: reply })])
+    await collect(kit.service.streamMessage(USER, YEAR, { message: 'Bitte trag alles ein.' }))
+    expect((await lastAnswer(kit)).meta?.personalDataConsentRequest).toBe(true)
+  })
+
+  it('offers the card when the user names a child that is not recorded yet, whatever the owl answers', async () => {
+    const kit = build()
+    await collect(kit.service.streamMessage(USER, YEAR, { message: 'Unsere Tochter kam im Mai 2021 zur Welt, die Kita kostete 6.000 €.' }))
+    expect((await lastAnswer(kit)).meta?.personalDataConsentRequest).toBe(true)
+  })
+
+  it('offers no card for a recorded child, and none once the user consented', async () => {
+    const kit = build()
+    await kit.childRepo.create(USER, YEAR, { firstName: 'Mila', lastName: 'Muster', geburtsdatum: '2021-03-09' })
+    await collect(kit.service.streamMessage(USER, YEAR, { message: 'Die Kita unserer Tochter kostete 6.000 €.' }))
+    expect((await lastAnswer(kit)).meta?.personalDataConsentRequest).toBeUndefined()
+
+    const consented = build()
+    await consented.consent.set(USER, true)
+    await collect(consented.service.streamMessage(USER, YEAR, { message: 'Unsere Tochter kam im Mai 2021 zur Welt.' }))
+    expect((await lastAnswer(consented)).meta?.personalDataConsentRequest).toBeUndefined()
+  })
+
   it('passes the words unmasked with consent, and masks again once it is revoked', async () => {
     const kit = build()
     await kit.consent.set(USER, true)

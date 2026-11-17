@@ -127,3 +127,39 @@ Der Product Owner hat entschieden: „Alles an die Eule“. Die Eule darf alle F
 - Der Feldkatalog hat ein Feld mehr. `advisor-field-coverage.integration.test.ts` geht es mit durch.
 - Die Nachfrage der App ist deutsch. Auf Englisch fragt nur das Modell.
 - Was weder Nutzer noch Beleg kennt (etwa die Steuer-ID eines Kindes oder Name und Anschrift des anderen Elternteils), bleibt eine ehrliche Lücke. Die Eule nennt sie jetzt aber mit Feld und Maske.
+
+## Nachtrag: Die Karte hängt nicht mehr am Modell; ein Kind in einer Antwort
+
+- **Datum:** 2026-11-17
+- **Anlass:** Der Echtdaten-Lauf (2024 und 2025). Die Eule verwies auf eine Einwilligung „unter dieser Antwort“, die Karte erschien aber nicht. Ein Kind ließ sich deshalb im Chat nicht anlegen, und Kinderfreibetrag, Kindergeld-Vergleich und Betreuungskosten fehlten in der Schätzung. Dazu: Nachrichten über 2.000 Zeichen kamen als „HTTP 400“ zurück, und die Eule nannte im selben Gespräch vier verschiedene Gesamtergebnisse.
+
+**Ursache**
+
+`personalDataConsentRequest` entstand nur auf zwei Wegen: Die Maskierung hatte etwas aus der Nachricht genommen (Steuer-ID, IBAN, Kontakt, ein bekannter Name), oder das Modell hatte einen Entwurf für ein gesperrtes Feld versucht. Ohne Einwilligung steht die Maske `kind` aber gar nicht im Feldkatalog des Prompts, und Regel 2 sagt dem Modell, es dürfe solche Felder nicht vorschlagen. Es rief also kein Werkzeug auf und schrieb nur den Satz. Ein Geburtsdatum oder „unsere Tochter“ maskiert die App nicht. Damit traf keiner der beiden Wege zu.
+
+**Entscheidung**
+
+1. **Die App entscheidet über die Karte** (`needsPersonalDataConsentOffer`, `packages/core/src/interview/advisor-consent-offer.ts`). Ohne Einwilligung trägt die Antwort die Karte, wenn eines davon zutrifft:
+   - Die Maskierung hat etwas ersetzt.
+   - Die Eule hat darum gebeten (neues Werkzeug `request_personal_data_consent`) oder ein Entwurf wurde wegen fehlender Einwilligung abgelehnt.
+   - Die Antwort selbst verweist auf die Einwilligung.
+   - Der Nutzer nennt ein Kind und es ist noch keines angelegt, oder eine Partnerin/einen Partner und es gibt keine Person B.
+   - Der Nutzer schreibt ein Geburtsdatum, eine Anschrift, oder dass er einwilligt. Ein „Ja“ im Chat ersetzt die Karte nicht.
+2. **Nach „Erlauben“ geht das Gespräch von selbst weiter.** Der Chat schickt die letzte Nachricht des Nutzers noch einmal, anstelle der abgelehnten Runde (`replaceFromMessageId`), und zwar so, wie sie getippt wurde. Gespeichert ist ohne Einwilligung nur die maskierte Fassung; ist der getippte Text nicht mehr da (neu geladen), sagt der Chat der Eule in einem Satz, dass die Einwilligung jetzt vorliegt. Das gilt nur für die Karte unter der letzten Antwort.
+3. **Ein Kind in einer Antwort.** Weitere Entwürfe für dasselbe neue Kind (`instance: „neu“`: Kindergeld, Kinderzulage mit Zahler, Betreuung, Krankenversicherung, Verwandtschaft) hängen sich an den Entwurf, der es mit Vorname und Geburtsdatum anlegt. Bisher lehnte die Werkzeugrunde jeden davon mit `NEW_RECORD_INCOMPLETE` ab, und weil ein Entwurf derselben Maske gelang, stand die Ablehnung nicht einmal unter „nicht vorbereitet“.
+4. **Die Eule liest die Schätzung der App** (`read_current_estimate`): Ergebnis, Werbungskosten, Vorsorge, Sonderausgaben, zu versteuerndes Einkommen, Einkommensteuer, Soli, Anrechnung, Vorauszahlungen. Es sind nur Beträge. Regel 16 im Prompt: Jede Zahl zum Gesamtergebnis kommt von dort.
+5. **Nachrichtenlänge 8.000 Zeichen** (`ADVISOR_MESSAGE_MAX_CHARS` im Kern, für API-Prüfung, OpenAPI und Eingabefeld).
+   - Das Eingabefeld zählt ab 90 % mit und sendet eine längere Nachricht nicht.
+   - Eine Ablehnung der API steht in Worten im Chat, nie als „HTTP 400“.
+   - Das Verlaufsbudget steigt von 6.000 auf 12.000 Token, damit mehrere volle Nachrichten wörtlich bleiben.
+   - Der Themenprüfer sieht von einer langen Nachricht Anfang und Ende.
+
+**Kindergeld im Vergleich**
+
+Die Günstigerprüfung rechnet mit dem Anspruch auf Kindergeld für die Monate des Jahres, nicht mit dem, was ausgezahlt wurde (§ 31 Satz 4 EStG). Eine Schweizer Kinderzulage zählt als Kindergeld (§ 65 EStG), das Differenzkindergeld füllt sie auf; zusammen sind sie derselbe Anspruch. Die Schätzung tut das schon (`monthlyChildBenefitClaim × claimMonths`); `childBenefitForComparison` benennt es, und ein Test hält fest, dass der eingetragene Betrag die Schätzung nicht ändert.
+
+**Folgen**
+
+- `advisor-child-through-chat.test.ts` geht den Weg mit dem echten LangGraph-Lauf und dem Skript-Modell: Karte, Einwilligung, Kind mit allen Beträgen, Schätzung. Derselbe Fall über die Kinder-Maske ergibt dieselbe Schätzung.
+- Die Karte kann häufiger erscheinen als nötig, etwa wenn der Nutzer nur beiläufig ein Kind erwähnt. Das ist gewollt: „Nicht erlauben“ blendet sie aus, und eine fehlende Karte war der teurere Fehler.
+- **Offen im Rechenkern:** Die Krankenversicherung eines Kindes (`healthBasicEur`, `careEur`) fließt nicht in den Vorsorgeaufwand der Schätzung ein. Der Kinderfreibetrag wird für ein im Steuerjahr geborenes Kind nicht nach Monaten gekürzt, das Kindergeld schon.
