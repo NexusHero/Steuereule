@@ -10,6 +10,7 @@ import {
   crossBorderChItems,
   crossBorderFold,
   isValidSalaryCertificateAmount,
+  type SalaryCertificateAmountFieldId,
   serializeSalaryCertificateField,
   actualRate,
   type Answers,
@@ -29,6 +30,7 @@ import {
   type CrossBorderSalaryStatementRecord,
   type CrossBorderSalaryStatementRepository,
   type NGreDetails,
+  N_GRE_BOOLEAN_FIELDS,
 } from './ch-salary-certificate.repository.js'
 import type { SalaryCertificateFieldDto, PutSalaryCertificateFieldDto } from './dto/salary-certificate-field.dto.js'
 import type { PutExchangeRateDto, ExchangeRateDto } from './dto/exchange-rate.dto.js'
@@ -43,7 +45,7 @@ function fieldsFromRecord(record: CrossBorderSalaryStatementRecord | null): { fi
   for (const field of SALARY_CERTIFICATE_FIELDS) {
     if (field.kind !== 'chf-betrag') continue
     const stored = record === null ? null : record.fields[field.id as keyof CrossBorderSalaryStatementRecord['fields']]
-    const value = deserializeSalaryCertificateField(stored)
+    const value = deserializeSalaryCertificateField(stored, field.id)
     if (value === null) {
       fields.push({ id: field.id, digit: field.digit, kind: 'offen' })
     } else if (value === 'unklar') {
@@ -89,13 +91,14 @@ function itemToDto(items: ChItem): ChItemDto {
   }
 }
 
-function valueFromDto(dto: PutSalaryCertificateFieldDto): string | null {
+function valueFromDto(dto: PutSalaryCertificateFieldDto, field: SalaryCertificateAmountFieldId): string | null {
   if (dto.kind === 'offen') return null
   if (dto.kind === 'unklar') return 'unklar'
-  if (dto.value === undefined || !isValidSalaryCertificateAmount(dto.value)) {
+  // Only Ziffer 7 may be negative (ADR-0093).
+  if (dto.value === undefined || !isValidSalaryCertificateAmount(dto.value, field)) {
     throw new InvalidInputError('FIELD_VALUE_INVALID', 'kind "erfasst" requires a non-negative whole-CHF `wert`.')
   }
-  return serializeSalaryCertificateField(dto.value)
+  return serializeSalaryCertificateField(dto.value, field)
 }
 
 
@@ -116,6 +119,9 @@ function nGreToDto(n: NGreDetails): NGreDetailsDto {
     nbuvArbeitgeberProzent: number(n.nbuvArbeitgeberProzent),
     nbuvArbeitgeberChf: number(n.nbuvArbeitgeberChf),
     specialCases: n.nGreSonderfaelle,
+    krankenkasseZusatzChf: number(n.krankenkasseZusatzChf),
+    kvZuschussAnspruch: n.kvZuschussAnspruch,
+    familienzulagenImBruttolohn: n.familienzulagenImBruttolohn,
   }
 }
 
@@ -192,7 +198,7 @@ export class ChSalaryCertificateService {
     field: Parameters<CrossBorderSalaryStatementRepository['setField']>[2],
     dto: PutSalaryCertificateFieldDto,
   ): Promise<ChSalaryCertificateResponseDto> {
-    const record = await this.repository.setField(userId, taxYear, field, valueFromDto(dto))
+    const record = await this.repository.setField(userId, taxYear, field, valueFromDto(dto, field))
     return this.toResponse(userId, taxYear, record)
   }
 
@@ -209,13 +215,15 @@ export class ChSalaryCertificateService {
   }
 
   async setNGre(userId: string, taxYear: number, dto: PutNGreDto): Promise<ChSalaryCertificateResponseDto> {
-    const { specialCases, ...rest } = dto
+    const { specialCases, kvZuschussAnspruch, familienzulagenImBruttolohn, ...rest } = dto
     const details: Partial<NGreDetails> = {}
     for (const [field, value] of Object.entries(rest)) {
       if (value === undefined) continue
-      details[field as Exclude<keyof NGreDetails, 'nGreSonderfaelle'>] = value === null ? null : String(value)
+      details[field as Exclude<keyof NGreDetails, (typeof N_GRE_BOOLEAN_FIELDS)[number]>] = value === null ? null : String(value)
     }
     if (specialCases !== undefined) details.nGreSonderfaelle = specialCases
+    if (kvZuschussAnspruch !== undefined) details.kvZuschussAnspruch = kvZuschussAnspruch
+    if (familienzulagenImBruttolohn !== undefined) details.familienzulagenImBruttolohn = familienzulagenImBruttolohn
     const record = await this.repository.setNGre(userId, taxYear, details)
     return this.toResponse(userId, taxYear, record)
   }

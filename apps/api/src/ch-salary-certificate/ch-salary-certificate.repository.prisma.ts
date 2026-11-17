@@ -75,6 +75,9 @@ function toRecord(row: ChSalaryCertificateRow): CrossBorderSalaryStatementRecord
       nbuvArbeitgeberProzent: row.nbuvArbeitgeberProzent,
       nbuvArbeitgeberChf: row.nbuvArbeitgeberChf,
       nGreSonderfaelle: row.nGreSonderfaelle,
+      krankenkasseZusatzChf: row.krankenkasseZusatzChf ?? null,
+      kvZuschussAnspruch: row.kvZuschussAnspruch ?? null,
+      familienzulagenImBruttolohn: row.familienzulagenImBruttolohn ?? null,
     },
   }
 }

@@ -18,7 +18,16 @@ export interface NGreDetails {
   nbuvArbeitgeberProzent: string | null
   nbuvArbeitgeberChf: string | null
   nGreSonderfaelle: boolean | null
+  /** Supplementary health insurance (VVG), whole CHF: other provision, not basic cover (ADR-0093). */
+  krankenkasseZusatzChf: string | null
+  /** Anlage Vorsorgeaufwand Zeile 49: entitled to tax-free subsidies to health insurance. */
+  kvZuschussAnspruch: boolean | null
+  /** The family allowance is contained in the gross wage of Ziffer 8; null = recorded before the question existed. */
+  familienzulagenImBruttolohn: boolean | null
 }
+
+/** The yes/no facts among the N-Gre details. */
+export const N_GRE_BOOLEAN_FIELDS = ['nGreSonderfaelle', 'kvZuschussAnspruch', 'familienzulagenImBruttolohn'] as const
 
 export const EMPTY_N_GRE: NGreDetails = {
   arbeitgeberName: null,
@@ -35,6 +44,9 @@ export const EMPTY_N_GRE: NGreDetails = {
   nbuvArbeitgeberProzent: null,
   nbuvArbeitgeberChf: null,
   nGreSonderfaelle: null,
+  krankenkasseZusatzChf: null,
+  kvZuschussAnspruch: null,
+  familienzulagenImBruttolohn: null,
 }
 
 export interface CrossBorderSalaryStatementRecord {

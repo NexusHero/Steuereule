@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
-import { IsIn, IsInt, IsOptional, Min } from 'class-validator'
+import { IsIn, IsInt, IsOptional } from 'class-validator'
 
 /** One Lohnausweis CHF field's honest capture state. */
 export class SalaryCertificateFieldDto {
@@ -29,10 +29,9 @@ export class PutSalaryCertificateFieldDto {
   @ApiPropertyOptional({
     type: Number,
     example: 84000,
-    description: 'The whole-CHF amount — present only when kind === "erfasst" (validated via @steuereule/core).',
+    description: 'The whole-CHF amount — present only when kind === "erfasst". Zero or more; only Ziffer 7 (`andere-leistungen`) may be negative (checked per field via @steuereule/core, ADR-0093).',
   })
   @IsOptional()
   @IsInt()
-  @Min(0)
   value?: number
 }

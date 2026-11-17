@@ -508,6 +508,21 @@ model Lstb {
   kirchensteuerEhegatte String? /// @encrypted?mode=strict
   /// Steuerfreie Arbeitgeberzuschüsse zur Kranken- und Pflegeversicherung (Zeile 24 a–c), whole euros; null = not entered (ADR-0090).
   zuschuesseKvPv        String? /// @encrypted?mode=strict
+  /// The insurance block line by line (ADR-0093), whole euros; null = not entered. Zeile 23 a/b:
+  /// employee pension contribution.
+  rvArbeitnehmer        String? /// @encrypted?mode=strict
+  /// Zeile 22 a/b: employer pension contribution.
+  rvArbeitgeber         String? /// @encrypted?mode=strict
+  /// Zeile 25: employee contribution to statutory health insurance.
+  kvArbeitnehmer        String? /// @encrypted?mode=strict
+  /// Zeile 26: employee contribution to care insurance.
+  pvArbeitnehmer        String? /// @encrypted?mode=strict
+  /// Zeile 27: employee contribution to unemployment insurance.
+  avArbeitnehmer        String? /// @encrypted?mode=strict
+  /// Zeile 24c: the care-insurance part of the tax-free employer subsidy.
+  zuschussPv            String? /// @encrypted?mode=strict
+  /// Zeile 5: withheld Solidaritätszuschlag, euros with cents as a decimal string ("165.44").
+  solidaritaetszuschlag String? /// @encrypted?mode=strict
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
@@ -568,6 +583,13 @@ model ChSalaryCertificate {
   saeule3aChf                      String? /// @encrypted?mode=strict
   /// CH-Krankenkasse (ADR-029 point 5) — optional whole-CHF amount, null = not entered. Encrypted.
   krankenkasseChf                  String? /// @encrypted?mode=strict
+  /// Supplementary health insurance (VVG), whole CHF: other provision, not basic cover (ADR-0093).
+  krankenkasseZusatzChf            String? /// @encrypted?mode=strict
+  /// Anlage Vorsorgeaufwand Zeile 49: entitled to tax-free subsidies to health insurance; null = not answered.
+  kvZuschussAnspruch               Boolean?
+  /// Whether the family allowance is contained in the gross wage of Ziffer 8; only then N-Gre Zeile 8
+  /// deducts it (ADR-0093). null = recorded before the question existed.
+  familienzulagenImBruttolohn      Boolean?
   /// Anlage N-Gre: employer (Zeilen 89–91), Familienzulagen (Z. 8/76), Krankentaggeld (Z. 80),
   /// Säule 2a Obligatorium employee/employer (Z. 84/87); whole CHF, null = not entered.
   arbeitgeberName                  String? /// @encrypted?mode=strict
@@ -870,49 +892,49 @@ model MasterData {
 /// One row per child for a given tax year (product ADR-031, Anlage Kind, ADR-0050).
 /// Personal facts are field-encrypted at rest (ADR-0008).
 model Child {
-  id                       String   @id @default(uuid())
+  id                        String   @id @default(uuid())
   /// Scoping key — same trusted userId as Profile.userId (ADR-0007).
-  userId                   String
-  taxYear                  Int      @map("steuerjahr")
-  sequenceNumber           Int      @default(1) @map("lfdNr")
-  firstName                String   @map("vorname") /// @encrypted?mode=strict
-  lastName                 String   @map("nachname") /// @encrypted?mode=strict
-  geburtsdatum             String /// @encrypted?mode=strict
-  taxId                    String?  @map("idnr") /// @encrypted?mode=strict
-  childBenefitClaimEur     String?  @map("kindergeldAnspruchEur") /// @encrypted?mode=strict
+  userId                    String
+  taxYear                   Int      @map("steuerjahr")
+  sequenceNumber            Int      @default(1) @map("lfdNr")
+  firstName                 String   @map("vorname") /// @encrypted?mode=strict
+  lastName                  String   @map("nachname") /// @encrypted?mode=strict
+  geburtsdatum              String /// @encrypted?mode=strict
+  taxId                     String?  @map("idnr") /// @encrypted?mode=strict
+  childBenefitClaimEur      String?  @map("kindergeldAnspruchEur") /// @encrypted?mode=strict
   /// Anlage Kind Zeile 10 (Kz 02 / Kz 03): 1 = leiblich/adoptiert, 2 = Pflegekind, 3 = Enkel-/Stiefkind.
-  kinship                  String?  @map("kindschaftsverhaeltnis")
-  kinshipB                 String?  @map("kindschaftsverhaeltnisB")
-  familyBenefitsOffice     String?  @map("familienkasse") /// @encrypted?mode=strict
-  domesticResidenceAllYear Boolean? @map("wohnsitzInlandGanzjaehrig")
+  kinship                   String?  @map("kindschaftsverhaeltnis")
+  kinshipB                  String?  @map("kindschaftsverhaeltnisB")
+  familyBenefitsOffice      String?  @map("familienkasse") /// @encrypted?mode=strict
+  domesticResidenceAllYear  Boolean? @map("wohnsitzInlandGanzjaehrig")
   /// Anlage Kind Zeilen 11–15: the other parent when not part of this return.
-  otherParent              String?  @map("andererElternteil")
-  otherParentName          String?  @map("andererElternteilName") /// @encrypted?mode=strict
-  otherParentBirthDate     String?  @map("andererElternteilGeburtsdatum") /// @encrypted?mode=strict
-  otherParentAddress       String?  @map("andererElternteilAdresse") /// @encrypted?mode=strict
-  otherParentKind          String?  @map("andererElternteilArt")
-  otherParentDiedOn        String?  @map("andererElternteilVerstorbenAm") /// @encrypted?mode=strict
+  otherParent               String?  @map("andererElternteil")
+  otherParentName           String?  @map("andererElternteilName") /// @encrypted?mode=strict
+  otherParentBirthDate      String?  @map("andererElternteilGeburtsdatum") /// @encrypted?mode=strict
+  otherParentAddress        String?  @map("andererElternteilAdresse") /// @encrypted?mode=strict
+  otherParentKind           String?  @map("andererElternteilArt")
+  otherParentDiedOn         String?  @map("andererElternteilVerstorbenAm") /// @encrypted?mode=strict
   /// Entlastungsbetrag für Alleinerziehende (Anlage Kind Zeilen 45/46), whole year only.
-  registeredWithMeAllYear  Boolean? @map("gemeldetBeiMirGanzjaehrig")
-  childBenefitToMeAllYear  Boolean? @map("kindergeldAnMichGanzjaehrig")
+  registeredWithMeAllYear   Boolean? @map("gemeldetBeiMirGanzjaehrig")
+  childBenefitToMeAllYear   Boolean? @map("kindergeldAnMichGanzjaehrig")
   /// Anlage Kind Zeilen 27/28 (Kz 66/67): the child's KV Basisabsicherung and PV, paid by the parents as
   /// policyholders; whole euros, null = not entered.
-  healthBasicEur           String?  @map("kvBasisEur") /// @encrypted?mode=strict
-  careEur                  String?  @map("pvEur") /// @encrypted?mode=strict
+  healthBasicEur            String?  @map("kvBasisEur") /// @encrypted?mode=strict
+  careEur                   String?  @map("pvEur") /// @encrypted?mode=strict
   /// Anlage Kind Zeile 6 (Kz 15): Schweizer Kinderzulage / Familienzulage in whole EUR (converted from Lohnausweis).
-  swissFamilyAllowanceEur  String?  @map("schweizerKinderzulageEur") /// @encrypted?mode=strict
+  swissFamilyAllowanceEur   String?  @map("schweizerKinderzulageEur") /// @encrypted?mode=strict
   /// Anlage Kind Zeile 67 (Kz 51): childcare paid by the parents in whole euros, the kind of service with
   /// the provider's name and address, and the period (DD.MM.YYYY); null = not entered.
-  childcareEur             String?  @map("betreuungEur") /// @encrypted?mode=strict
-  childcareProvider        String?  @map("betreuungDienstleister") /// @encrypted?mode=strict
-  childcareFrom            String?  @map("betreuungVon") /// @encrypted?mode=strict
-  childcareTo              String?  @map("betreuungBis") /// @encrypted?mode=strict
+  childcareEur              String?  @map("betreuungEur") /// @encrypted?mode=strict
+  childcareProvider         String?  @map("betreuungDienstleister") /// @encrypted?mode=strict
+  childcareFrom             String?  @map("betreuungVon") /// @encrypted?mode=strict
+  childcareTo               String?  @map("betreuungBis") /// @encrypted?mode=strict
   /// Who receives the Swiss Kinderzulage with their wage: "A" or "B" (ADR-0088).
-  swissFamilyAllowancePayer String? @map("schweizerKinderzulageVon")
+  swissFamilyAllowancePayer String?  @map("schweizerKinderzulageVon")
   /// The child's health insurance is foreign (e.g. Swiss basic insurance): Anlage Kind Kz 89 (ADR-0090).
   healthInsuranceAbroad     Boolean? @map("kvAusland")
-  createdAt                DateTime @default(now())
-  updatedAt                DateTime @updatedAt
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
 
   @@index([userId, taxYear])
   @@map("Kind")
@@ -1241,47 +1263,53 @@ model Jwks {
 /// One row per (userId, steuerjahr) — the commute facts for the Entfernungspauschale (Anlage N
 /// Zeilen 27–31): which weekdays are worked, days off, the one-way distance and how it is travelled.
 model Commute {
-  id                     String   @id @default(uuid())
+  id                           String   @id @default(uuid())
   /// Scoping key — same trusted userId as Lstb.userId (ADR-0007).
-  userId                 String
-  taxYear                Int      @map("steuerjahr")
+  userId                       String
+  taxYear                      Int      @map("steuerjahr")
   /// ISO weekdays worked, comma-separated ("1,2,3,4,5").
-  workdays               String   @map("arbeitstage")
-  vacationDays           Int      @default(0) @map("urlaubstage")
-  sickDays               Int      @default(0) @map("krankheitstage")
-  homeOfficeDays         Int      @default(0) @map("homeofficeTage")
+  workdays                     String   @map("arbeitstage")
+  vacationDays                 Int      @default(0) @map("urlaubstage")
+  sickDays                     Int      @default(0) @map("krankheitstage")
+  homeOfficeDays               Int      @default(0) @map("homeofficeTage")
   /// One-way distance in full kilometres; null = not entered yet.
-  oneWayKm               Int?     @map("einfacheKm")
+  oneWayKm                     Int?     @map("einfacheKm")
   /// "pkw" | "oepnv" | "andere"; null = not entered yet.
-  transport              String?  @map("verkehrsmittel")
+  transport                    String?  @map("verkehrsmittel")
   /// PLZ, Ort und Straße der ersten Tätigkeitsstätte. Encrypted at rest (ADR-0008).
-  workplace              String?  @map("taetigkeitsstaette") /// @encrypted?mode=strict
+  workplace                    String?  @map("taetigkeitsstaette") /// @encrypted?mode=strict
   /// Confirmed public holidays on working days (F4) and the state / canton they were suggested for. Clear —
   /// a count and a region code.
-  publicHolidays         Int?     @map("feiertage")
-  publicHolidayRegion    String?  @map("feiertageRegion")
+  publicHolidays               Int?     @map("feiertage")
+  publicHolidayRegion          String?  @map("feiertageRegion")
   /// The period of this way to work (DD.MM.YYYY) when it did not last the whole year; a change of
   /// job brings a second way with its own period (ADR-0079).
-  periodFrom             String?  @map("zeitraumVon")
-  periodTo               String?  @map("zeitraumBis")
-  secondOneWayKm         Int?     @map("zweiterWegKm")
-  secondTransport        String?  @map("zweiterWegVerkehrsmittel")
-  secondWorkplace        String?  @map("zweiterWegOrt") /// @encrypted?mode=strict
-  secondFrom             String?  @map("zweiterWegVon")
-  secondTo               String?  @map("zweiterWegBis")
+  periodFrom                   String?  @map("zeitraumVon")
+  periodTo                     String?  @map("zeitraumBis")
+  secondOneWayKm               Int?     @map("zweiterWegKm")
+  secondTransport              String?  @map("zweiterWegVerkehrsmittel")
+  secondWorkplace              String?  @map("zweiterWegOrt") /// @encrypted?mode=strict
+  secondFrom                   String?  @map("zweiterWegVon")
+  secondTo                     String?  @map("zweiterWegBis")
+  /// Days the first place of work was actually visited, per way; they replace the derived days (ADR-0093).
+  travelDays                   Int?     @map("fahrtage")
+  secondTravelDays             Int?     @map("zweiterWegFahrtage")
+  /// The user confirmed the distance is the shortest road connection (§ 9 Abs. 1 Nr. 4 Satz 4 EStG).
+  shortestRouteConfirmed       Boolean? @map("kuerzesteStreckeBestaetigt")
+  secondShortestRouteConfirmed Boolean? @map("zweiterWegKuerzesteStreckeBestaetigt")
   /// Further Werbungskosten of this person (Anlage N / N-Gre), whole euros; null = not entered.
   /// Zeile 53 / 48 (Kz 310): professional bodies, e.g. a trade union.
-  professionalBodiesEur  String?  @map("berufsverbaendeEur") /// @encrypted?mode=strict
-  professionalBodiesNote String?  @map("berufsverbaendeArt") /// @encrypted?mode=strict
+  professionalBodiesEur        String?  @map("berufsverbaendeEur") /// @encrypted?mode=strict
+  professionalBodiesNote       String?  @map("berufsverbaendeArt") /// @encrypted?mode=strict
   /// Zeilen 54–56 / 49–51 (Kz 320): work tools and typical work clothing, and what they were.
-  workEquipmentEur       String?  @map("arbeitsmittelEur") /// @encrypted?mode=strict
-  workEquipmentNote      String?  @map("arbeitsmittelArt") /// @encrypted?mode=strict
+  workEquipmentEur             String?  @map("arbeitsmittelEur") /// @encrypted?mode=strict
+  workEquipmentNote            String?  @map("arbeitsmittelArt") /// @encrypted?mode=strict
   /// Zeilen 62–64 / 57–59 (Kz 380): account fees, and any other Werbungskosten with what they were.
-  accountFeesEur         String?  @map("kontofuehrungEur") /// @encrypted?mode=strict
-  otherWorkExpensesEur   String?  @map("sonstigeWerbungskostenEur") /// @encrypted?mode=strict
-  otherWorkExpensesNote  String?  @map("sonstigeWerbungskostenArt") /// @encrypted?mode=strict
-  createdAt              DateTime @default(now())
-  updatedAt              DateTime @updatedAt
+  accountFeesEur               String?  @map("kontofuehrungEur") /// @encrypted?mode=strict
+  otherWorkExpensesEur         String?  @map("sonstigeWerbungskostenEur") /// @encrypted?mode=strict
+  otherWorkExpensesNote        String?  @map("sonstigeWerbungskostenArt") /// @encrypted?mode=strict
+  createdAt                    DateTime @default(now())
+  updatedAt                    DateTime @updatedAt
 
   @@unique([userId, taxYear])
   @@map("Arbeitsweg")

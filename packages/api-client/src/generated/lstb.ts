@@ -28,12 +28,16 @@ import type {
   ConfirmLstbScanDto,
   LstbChurchTaxDto,
   LstbControllerGetChurchTaxParams,
+  LstbControllerGetLinesParams,
   LstbControllerGetLstbParams,
   LstbControllerGetSubsidiesParams,
   LstbControllerSetChurchTaxParams,
   LstbControllerSetFieldParams,
+  LstbControllerSetLinesParams,
   LstbControllerSetSubsidiesParams,
   LstbFieldDto,
+  LstbLinesDto,
+  LstbLinesResponseDto,
   LstbResponseDto,
   LstbScanControllerConfirmScanParams,
   LstbSubsidiesDto
@@ -601,6 +605,229 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getLstbControllerSetChurchTaxMutationOptions(options), queryClient);
+    }
+
+export type lstbControllerGetLinesResponse200 = {
+  data: LstbLinesResponseDto
+  status: 200
+}
+
+export type lstbControllerGetLinesResponse401 = {
+  data: void
+  status: 401
+}
+
+export type lstbControllerGetLinesResponseSuccess = (lstbControllerGetLinesResponse200) & {
+  headers: Headers;
+};
+export type lstbControllerGetLinesResponseError = (lstbControllerGetLinesResponse401) & {
+  headers: Headers;
+};
+
+export type lstbControllerGetLinesResponse = (lstbControllerGetLinesResponseSuccess | lstbControllerGetLinesResponseError)
+
+export const getLstbControllerGetLinesUrl = (jahr: number,
+    params?: LstbControllerGetLinesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/v1/steuerjahre/${jahr}/lstb-zeilen?${stringifiedParams}` : `/v1/steuerjahre/${jahr}/lstb-zeilen`
+}
+
+export const lstbControllerGetLines = async (jahr: number,
+    params?: LstbControllerGetLinesParams, options?: RequestInit): Promise<lstbControllerGetLinesResponse> => {
+
+  return httpClient<lstbControllerGetLinesResponse>(getLstbControllerGetLinesUrl(jahr,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getLstbControllerGetLinesQueryKey = (jahr: number,
+    params?: LstbControllerGetLinesParams,) => {
+    return [
+    `/v1/steuerjahre/${jahr}/lstb-zeilen`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getLstbControllerGetLinesQueryOptions = <TData = Awaited<ReturnType<typeof lstbControllerGetLines>>, TError = void>(jahr: number,
+    params?: LstbControllerGetLinesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof lstbControllerGetLines>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getLstbControllerGetLinesQueryKey(jahr,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof lstbControllerGetLines>>> = ({ signal }) => lstbControllerGetLines(jahr,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: jahr !== null && jahr !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof lstbControllerGetLines>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type LstbControllerGetLinesQueryResult = NonNullable<Awaited<ReturnType<typeof lstbControllerGetLines>>>
+export type LstbControllerGetLinesQueryError = void
+
+
+export function useLstbControllerGetLines<TData = Awaited<ReturnType<typeof lstbControllerGetLines>>, TError = void>(
+ jahr: number,
+    params: undefined |  LstbControllerGetLinesParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof lstbControllerGetLines>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof lstbControllerGetLines>>,
+          TError,
+          Awaited<ReturnType<typeof lstbControllerGetLines>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useLstbControllerGetLines<TData = Awaited<ReturnType<typeof lstbControllerGetLines>>, TError = void>(
+ jahr: number,
+    params?: LstbControllerGetLinesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof lstbControllerGetLines>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof lstbControllerGetLines>>,
+          TError,
+          Awaited<ReturnType<typeof lstbControllerGetLines>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useLstbControllerGetLines<TData = Awaited<ReturnType<typeof lstbControllerGetLines>>, TError = void>(
+ jahr: number,
+    params?: LstbControllerGetLinesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof lstbControllerGetLines>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useLstbControllerGetLines<TData = Awaited<ReturnType<typeof lstbControllerGetLines>>, TError = void>(
+ jahr: number,
+    params?: LstbControllerGetLinesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof lstbControllerGetLines>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getLstbControllerGetLinesQueryOptions(jahr,params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type lstbControllerSetLinesResponse200 = {
+  data: LstbLinesResponseDto
+  status: 200
+}
+
+export type lstbControllerSetLinesResponse401 = {
+  data: void
+  status: 401
+}
+
+export type lstbControllerSetLinesResponseSuccess = (lstbControllerSetLinesResponse200) & {
+  headers: Headers;
+};
+export type lstbControllerSetLinesResponseError = (lstbControllerSetLinesResponse401) & {
+  headers: Headers;
+};
+
+export type lstbControllerSetLinesResponse = (lstbControllerSetLinesResponseSuccess | lstbControllerSetLinesResponseError)
+
+export const getLstbControllerSetLinesUrl = (jahr: number,
+    params?: LstbControllerSetLinesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/v1/steuerjahre/${jahr}/lstb-zeilen?${stringifiedParams}` : `/v1/steuerjahre/${jahr}/lstb-zeilen`
+}
+
+export const lstbControllerSetLines = async (jahr: number,
+    lstbLinesDto: LstbLinesDto,
+    params?: LstbControllerSetLinesParams, options?: RequestInit): Promise<lstbControllerSetLinesResponse> => {
+
+  return httpClient<lstbControllerSetLinesResponse>(getLstbControllerSetLinesUrl(jahr,params),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(lstbLinesDto)
+  }
+);}
+
+
+
+
+
+export const getLstbControllerSetLinesMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof lstbControllerSetLines>>, TError,{jahr: number;data: LstbLinesDto;params?: LstbControllerSetLinesParams}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof lstbControllerSetLines>>, TError,{jahr: number;data: LstbLinesDto;params?: LstbControllerSetLinesParams}, TContext> => {
+
+const mutationKey = ['lstbControllerSetLines'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof lstbControllerSetLines>>, {jahr: number;data: LstbLinesDto;params?: LstbControllerSetLinesParams}> = (props) => {
+          const {jahr,data,params} = props ?? {};
+
+          return  lstbControllerSetLines(jahr,data,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type LstbControllerSetLinesMutationResult = NonNullable<Awaited<ReturnType<typeof lstbControllerSetLines>>>
+    export type LstbControllerSetLinesMutationBody = LstbLinesDto
+    export type LstbControllerSetLinesMutationError = void
+
+    export const useLstbControllerSetLines = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof lstbControllerSetLines>>, TError,{jahr: number;data: LstbLinesDto;params?: LstbControllerSetLinesParams}, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof lstbControllerSetLines>>,
+        TError,
+        {jahr: number;data: LstbLinesDto;params?: LstbControllerSetLinesParams},
+        TContext
+      > => {
+      return useMutation(getLstbControllerSetLinesMutationOptions(options), queryClient);
     }
 
 export type lstbControllerGetSubsidiesResponse200 = {

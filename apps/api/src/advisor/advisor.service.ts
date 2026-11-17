@@ -8,6 +8,7 @@ import { newActionId } from '../common/action-id.js'
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common'
 import {
   ADVISOR_LEGAL_SOURCES,
+  ENTRY_RULE_CODES,
   buildAdvisorHistory,
   evaluateAdvisorTurn,
   withPreviewedEffects,
@@ -390,7 +391,9 @@ export class AdvisorService {
       // A year without forms has no printout to check.
       return digest
     }
-    const printoutPlan = await this.printoutPlan(userId, taxYear, missing).catch((error: unknown) => {
+    // The fixed rules (ADR-0093) are asked with the printout's gaps; they stay out of `printoutGaps`,
+    // which names only what blocks the printout.
+    const printoutPlan = await this.printoutPlan(userId, taxYear, [...missing, ...ENTRY_RULE_CODES]).catch((error: unknown) => {
       this.logger.warn(`printout plan failed: ${error instanceof Error ? error.name : 'error'}`)
       return undefined
     })
@@ -399,7 +402,6 @@ export class AdvisorService {
 
   /** What closes each printout gap, per person, child or object (ADR-0091, Nachtrag). */
   private async printoutPlan(userId: string, taxYear: number, missing: readonly string[]) {
-    if (missing.length === 0) return { questions: [], unplanned: [] }
     const [spouse, records, consent] = await Promise.all([this.link?.spouseForAdvisor(userId, taxYear), this.loadRecordHandles(userId, taxYear), this.hasPersonalDataConsent(userId)])
     return buildPrintoutPlan({
       userId,

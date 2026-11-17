@@ -1,4 +1,9 @@
-import type { WageTaxCertificateFieldId } from '@steuereule/core'
+import type { LstbSocialLine, WageTaxCertificateFieldId } from '@steuereule/core'
+
+/** The LStB lines stored next to the three required fields (ADR-0093): Zeilen 22–27, 24c and 5. */
+export type LstbLine = LstbSocialLine | 'solidaritaetszuschlag'
+/** A partial update of the lines; `sozialversicherung` rides along when the app derives the sum. */
+export type LstbLinePatch = Partial<Record<LstbLine | 'sozialversicherung', string | null>>
 
 export interface WageTaxCertificateRecord {
   userId: string
@@ -12,6 +17,15 @@ export interface WageTaxCertificateRecord {
   kirchensteuerEhegatte?: string | null
   /** LStB Zeile 24 a–c: tax-free employer subsidies to health and care insurance, whole euros (ADR-0090). */
   zuschuesseKvPv?: string | null
+  /** Zeilen 23, 22, 25, 26, 27 and 24c, whole euros (ADR-0093). */
+  rvArbeitnehmer?: string | null
+  rvArbeitgeber?: string | null
+  kvArbeitnehmer?: string | null
+  pvArbeitnehmer?: string | null
+  avArbeitnehmer?: string | null
+  zuschussPv?: string | null
+  /** Zeile 5, euros with cents as a decimal string. */
+  solidaritaetszuschlag?: string | null
 }
 
 export interface WageTaxCertificateChurchTax {
@@ -29,4 +43,6 @@ export interface WageTaxCertificateRepository {
   setChurchTax(userId: string, taxYear: number, values: WageTaxCertificateChurchTax): Promise<WageTaxCertificateRecord>
   /** Zeile 24 a–c (ADR-0090), optional like the church tax lines. */
   setSubsidies(userId: string, taxYear: number, zuschuesseKvPv: string | null): Promise<WageTaxCertificateRecord>
+  /** Zeilen 22–27, 24c and 5 (ADR-0093); only the lines named are written. */
+  setLines(userId: string, taxYear: number, lines: LstbLinePatch): Promise<WageTaxCertificateRecord>
 }

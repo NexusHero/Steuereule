@@ -4,7 +4,7 @@
 // LstbZustand is left to LstbService (as in production, the repository stores facts, never
 // the derived state — ADR-014/048).
 import type { WageTaxCertificateFieldId } from '@steuereule/core'
-import type { WageTaxCertificateChurchTax, WageTaxCertificateRecord, WageTaxCertificateRepository } from '../../src/lstb/lstb.repository.js'
+import type { LstbLinePatch, WageTaxCertificateChurchTax, WageTaxCertificateRecord, WageTaxCertificateRepository } from '../../src/lstb/lstb.repository.js'
 
 function key(userId: string, taxYear: number): string {
   return `${userId}::${taxYear}`
@@ -44,6 +44,14 @@ export class FakeLstbRepository implements WageTaxCertificateRepository {
     const k = key(userId, taxYear)
     const record: WageTaxCertificateRecord = this.store.get(k) ?? { userId, taxYear, bruttoarbeitslohn: null, lohnsteuer: null, sozialversicherung: null }
     const updated: WageTaxCertificateRecord = { ...record, zuschuesseKvPv }
+    this.store.set(k, updated)
+    return Promise.resolve(updated)
+  }
+
+  setLines(userId: string, taxYear: number, lines: LstbLinePatch): Promise<WageTaxCertificateRecord> {
+    const k = key(userId, taxYear)
+    const record: WageTaxCertificateRecord = this.store.get(k) ?? { userId, taxYear, bruttoarbeitslohn: null, lohnsteuer: null, sozialversicherung: null }
+    const updated: WageTaxCertificateRecord = { ...record, ...lines }
     this.store.set(k, updated)
     return Promise.resolve(updated)
   }

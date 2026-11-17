@@ -11,6 +11,9 @@ import {
   type WageTaxCertificateStatus,
   type WageTaxCertificateConflict,
   provenanceKey,
+  LSTB_SOCIAL_LINES,
+  lstbSocialSecurityFromLines,
+  lstbSubsidyQuestionOpen,
 } from '@steuereule/core'
 import { AuditService } from '../audit/audit.service.js'
 import { PROVENANCE_REPOSITORY, type ProvenanceRepository } from '../marking/marking.repository.js'
@@ -21,7 +24,9 @@ import type { LstbConflictDto } from './dto/lstb-conflict.dto.js'
 import type { LstbStatusDto } from './dto/lstb-state.dto.js'
 import type { LstbChurchTaxDto } from './dto/lstb-church-tax.dto.js'
 import type { LstbSubsidiesDto } from './dto/lstb-subsidies.dto.js'
-import { wageTaxCertificateDataFrom } from './lstb-data.js'
+import { lstbLineValuesFrom, storeLstbLines, wageTaxCertificateDataFrom } from './lstb-data.js'
+import type { LstbLinesDto, LstbLinesResponseDto } from './dto/lstb-lines.dto.js'
+import type { LstbLinePatch, WageTaxCertificateRecord } from './lstb.repository.js'
 
 const LSTB_FIELD_IDS: readonly WageTaxCertificateFieldId[] = ['bruttoarbeitslohn', 'lohnsteuer', 'sozialversicherung']
 
@@ -149,6 +154,29 @@ export class LstbService {
     return subsidiesDtoFrom(record)
   }
 
+  /** Zeilen 22–27, 24c and 5 of the LStB, line by line (ADR-0093). */
+  async getLines(userId: string, taxYear: number): Promise<LstbLinesResponseDto> {
+    const record = await this.repository.findForUserAndYear(userId, taxYear)
+    if (record !== null) await this.auditService.append({ userId, action: 'READ', resource: 'lstb' })
+    return linesDtoFrom(record)
+  }
+
+  async setLines(userId: string, taxYear: number, dto: LstbLinesDto): Promise<LstbLinesResponseDto> {
+    const patch: LstbLinePatch = {}
+    for (const line of LSTB_SOCIAL_LINES) {
+      const value = dto[line]
+      if (value === undefined) continue
+      if (value !== null && !isValidAmount(value)) throw new InvalidInputError('FIELD_VALUE_INVALID', `"${line}" requires a non-negative whole-euro amount or null.`)
+      patch[line] = value === null ? null : String(value)
+    }
+    const soli = dto.solidaritaetszuschlag
+    if (soli !== undefined) {
+      if (soli !== null && (!Number.isFinite(soli) || soli < 0)) throw new InvalidInputError('FIELD_VALUE_INVALID', '"solidaritaetszuschlag" requires a non-negative amount or null.')
+      patch.solidaritaetszuschlag = soli === null ? null : String(Math.round(soli * 100) / 100)
+    }
+    return linesDtoFrom(await storeLstbLines(this.repository, userId, taxYear, patch))
+  }
+
   /** Values already captured for the year — a scan must never overwrite them silently (ADR-0008). */
   async existingValues(userId: string, taxYear: number): Promise<ExistingLstbValues> {
     const data = wageTaxCertificateDataFrom(await this.repository.findForUserAndYear(userId, taxYear))
@@ -254,6 +282,24 @@ export function churchTaxDtoFrom(record: { kirchensteuer?: string | null; kirche
     return Number(value)
   }
   return { kirchensteuer: parse(record?.kirchensteuer), kirchensteuerEhegatte: parse(record?.kirchensteuerEhegatte) }
+}
+
+/** The stored lines with the derived sum and the open Zeile 24 (ADR-0093). */
+export function linesDtoFrom(record: WageTaxCertificateRecord | null): LstbLinesResponseDto {
+  const lines = lstbLineValuesFrom(record)
+  const soli = record?.solidaritaetszuschlag
+  return {
+    rvArbeitnehmer: lines.rvArbeitnehmer ?? null,
+    rvArbeitgeber: lines.rvArbeitgeber ?? null,
+    kvArbeitnehmer: lines.kvArbeitnehmer ?? null,
+    pvArbeitnehmer: lines.pvArbeitnehmer ?? null,
+    avArbeitnehmer: lines.avArbeitnehmer ?? null,
+    zuschussPv: lines.zuschussPv ?? null,
+    solidaritaetszuschlag: soli !== null && soli !== undefined && /^\d+(\.\d{1,2})?$/.test(soli) ? Number(soli) : null,
+    zuschuesseKvPv: lines.zuschuesseKvPv ?? null,
+    sozialversicherung: lstbSocialSecurityFromLines(lines),
+    subsidyOpen: lstbSubsidyQuestionOpen(lines),
+  }
 }
 
 /** Zeile 24 as a whole-euro number; anything unreadable counts as not entered. */
