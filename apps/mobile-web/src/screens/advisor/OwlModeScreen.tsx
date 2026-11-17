@@ -59,6 +59,8 @@ export interface OwlModeScreenProps {
   readonly onSendMessage?: ((text: string, options?: ChatSendOptions) => Promise<void> | void) | undefined
   readonly onApplyAction?: ((actionId: string) => Promise<void> | void) | undefined
   readonly onUndoAction?: ((actionId: string) => Promise<void> | void) | undefined
+  /** Refuses a pending draft (ADR-0073 Nachtrag). */
+  readonly onDismissAction?: ((actionId: string) => Promise<void> | void) | undefined
   /** The spouse's first name, shown on drafts for Person B (ADR-0073). */
   readonly partnerName?: string | undefined
   /** Stores a thumbs up/down for an answer; without it the chat offers no rating. */
@@ -172,6 +174,7 @@ export function OwlModeScreenView({
   onSendMessage,
   onApplyAction,
   onUndoAction,
+  onDismissAction,
   partnerName,
   onRateMessage,
   onClearConversation,
@@ -423,6 +426,11 @@ export function OwlModeScreenView({
     setLocalMessages((prev) => prev.map((m) => updateActionStatusInMessage(m, actionId, 'undone')))
   }
 
+  async function handleDismissAction(actionId: string) {
+    if (onDismissAction) await onDismissAction(actionId)
+    setLocalMessages((prev) => prev.map((m) => updateActionStatusInMessage(m, actionId, 'dismissed')))
+  }
+
   async function handleBatchApply(acceptCurrentValues = false) {
     if (pendingDrafts.length === 0 || alternativeGroups.length > 0) return
     if (bridge) {
@@ -485,6 +493,7 @@ export function OwlModeScreenView({
         plan={bridge?.plan}
         onApplyAction={handleApplyAction}
         onUndoAction={handleUndoAction}
+        onDismissAction={handleDismissAction}
         onInspectMask={handleInspectMask}
         receiptLinkedActionIds={bridge?.receiptLinkedActionIds}
         onAttachReceipt={handleAttachReceipt}

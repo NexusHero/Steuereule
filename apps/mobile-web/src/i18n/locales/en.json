@@ -2483,6 +2483,8 @@
       "parsingReceipt": "Checking receipt …",
       "undoAria": "Undo",
       "undoButton": "↩ Undo",
+      "dismissButton": "Discard",
+      "dismissAria": "Discard draft",
       "applyNow": "✓ Apply now",
       "applyAgain": "✓ Apply again",
       "storedReceipts": {

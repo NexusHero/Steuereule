@@ -55,3 +55,18 @@ describe('a draft for Person B on the card', () => {
     expect(onUndoAction).toHaveBeenCalledWith('act-b')
   })
 })
+
+// Real-data runs: the owl called its own draft wrong („bitte lehne diese Karte ab“), but a card had no way to refuse it.
+describe('refusing a pending draft on the card', () => {
+  it('discards a pending draft with its own button', () => {
+    const onDismissAction = vi.fn()
+    renderInApp(<AdvisorChatPanel messages={answerWith(draft({ person: 'B' }))} onSendMessage={vi.fn()} onApplyAction={vi.fn()} onDismissAction={onDismissAction} />)
+    fireEvent.click(screen.getByTestId('advisor-action-dismiss-btn'))
+    expect(onDismissAction).toHaveBeenCalledWith('act-b')
+  })
+
+  it('offers no discard on an applied draft, nor without a handler', () => {
+    renderInApp(<AdvisorChatPanel messages={answerWith(draft({ status: 'applied' }), draft({ actionId: 'act-a' }))} onSendMessage={vi.fn()} onDismissAction={vi.fn()} />)
+    expect(screen.getAllByTestId('advisor-action-dismiss-btn')).toHaveLength(1)
+  })
+})

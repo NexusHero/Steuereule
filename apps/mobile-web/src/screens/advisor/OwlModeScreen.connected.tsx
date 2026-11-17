@@ -30,6 +30,7 @@ import {
   useAdvisorControllerSendMessage,
   useAdvisorControllerSetFeedback,
   useAdvisorControllerUndoAction,
+  useAdvisorControllerDismissAction,
   useInterviewControllerGetInterview,
   useInterviewControllerPostAnswer,
   useOwlModeControllerDismissCard,
@@ -130,6 +131,7 @@ export function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CU
   const setFeedbackMutation = useAdvisorControllerSetFeedback()
   const clearConversationMutation = useAdvisorControllerClearConversation()
   const undoActionMutation = useAdvisorControllerUndoAction()
+  const dismissActionMutation = useAdvisorControllerDismissAction()
   const setSetting = useOwlModeControllerSetSetting()
   const dismissCard = useOwlModeControllerDismissCard()
   const interviewQuery = useInterviewControllerGetInterview(taxYear)
@@ -289,6 +291,10 @@ export function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CU
           return
         }
         await applyActionMutation.mutateAsync({ jahr: taxYear, actionId })
+        await invalidate()
+      }}
+      onDismissAction={async (actionId) => {
+        await dismissActionMutation.mutateAsync({ jahr: taxYear, actionId })
         await invalidate()
       }}
       onUndoAction={async (actionId) => {

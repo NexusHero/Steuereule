@@ -2483,6 +2483,8 @@
       "parsingReceipt": "Beleg wird geprüft …",
       "undoAria": "Rückgängig machen",
       "undoButton": "↩ Rückgängig machen",
+      "dismissButton": "Verwerfen",
+      "dismissAria": "Entwurf verwerfen",
       "applyNow": "✓ Jetzt übernehmen",
       "applyAgain": "✓ Erneut übernehmen",
       "storedReceipts": {

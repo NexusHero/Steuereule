@@ -12,6 +12,7 @@ export function ActionProposalCardView({
   action,
   onApply,
   onUndo,
+  onDismiss,
   onInspectMask,
   receiptLinked,
   onSelectSource,
@@ -24,6 +25,8 @@ export function ActionProposalCardView({
   readonly partnerName?: string | undefined
   readonly onApply?: ((actionId: string) => Promise<void> | void) | undefined
   readonly onUndo?: ((actionId: string) => Promise<void> | void) | undefined
+  /** Refuses a pending draft (ADR-0073 Nachtrag): a draft the owl itself called wrong must not stay one tap from the return. */
+  readonly onDismiss?: ((actionId: string) => Promise<void> | void) | undefined
   readonly onInspectMask?: ((screen: Screen, field?: string) => void) | undefined
   readonly receiptLinked?: boolean | undefined
   readonly onSelectSource: (source: AdvisorLegalSource) => void
@@ -43,6 +46,17 @@ export function ActionProposalCardView({
     setBusyStatus(startingStatus)
     try {
       await onApply(action.actionId)
+    } finally {
+      setBusyStatus((current) => (current === startingStatus ? null : current))
+    }
+  }
+
+  async function handleDismiss() {
+    if (!onDismiss || isBusy) return
+    const startingStatus = action.status
+    setBusyStatus(startingStatus)
+    try {
+      await onDismiss(action.actionId)
     } finally {
       setBusyStatus((current) => (current === startingStatus ? null : current))
     }
@@ -192,6 +206,19 @@ export function ActionProposalCardView({
               : tr('advisor.chat.applyNow', '✓ Jetzt übernehmen')}
           </Button>
         )}
+
+        {onDismiss && action.status === 'pending' ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={tr('advisor.chat.dismissAria', 'Entwurf verwerfen')}
+            disabled={isBusy}
+            onPress={() => void handleDismiss()}
+            style={styles.inspectMaskBtn}
+            testID={`${testIDPrefix}-dismiss-btn`}
+          >
+            <Text style={styles.inspectMaskText}>{tr('advisor.chat.dismissButton', 'Verwerfen')}</Text>
+          </Pressable>
+        ) : null}
 
         {onInspectMask ? (
           <Pressable

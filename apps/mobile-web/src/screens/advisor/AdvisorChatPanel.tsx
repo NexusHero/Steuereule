@@ -91,6 +91,8 @@ export interface AdvisorChatPanelProps {
   readonly abortedTurn?: AbortedTurn | null | undefined
   readonly onApplyAction?: ((actionId: string) => Promise<void> | void) | undefined
   readonly onUndoAction?: ((actionId: string) => Promise<void> | void) | undefined
+  /** Refuses a pending draft; without it the cards offer no discard. */
+  readonly onDismissAction?: ((actionId: string) => Promise<void> | void) | undefined
   readonly onInspectMask?: ((screen: Screen, field?: string) => void) | undefined
   readonly receiptLinkedActionIds?: ReadonlySet<string> | undefined
   /** The spouse's first name: a draft for Person B says „für …“ (ADR-0073). */
@@ -189,6 +191,7 @@ export function AdvisorChatPanel({
   dictationEngine = browserDictationEngine,
   onApplyAction,
   onUndoAction,
+  onDismissAction,
   onInspectMask,
   receiptLinkedActionIds,
   partnerName,
@@ -521,6 +524,7 @@ export function AdvisorChatPanel({
                   action={msg.meta.action}
                   onApply={onApplyAction}
                   onUndo={onUndoAction}
+                  onDismiss={onDismissAction}
                   onInspectMask={onInspectMask}
                   receiptLinked={receiptLinkedActionIds?.has(msg.meta.action.actionId)}
                   onSelectSource={setSelectedSource}
@@ -537,6 +541,7 @@ export function AdvisorChatPanel({
                       action={action}
                       onApply={onApplyAction}
                       onUndo={onUndoAction}
+                      onDismiss={onDismissAction}
                       onInspectMask={onInspectMask}
                       receiptLinked={receiptLinkedActionIds?.has(action.actionId)}
                       onSelectSource={setSelectedSource}
