@@ -120,6 +120,9 @@ export const EMPTY_CH_SALARY_CERTIFICATE_RESPONSE: ChSalaryCertificateResponseDt
     nbuvArbeitgeberProzent: null,
     nbuvArbeitgeberChf: null,
     specialCases: null,
+    krankenkasseZusatzChf: null,
+    kvZuschussAnspruch: null,
+    familienzulagenImBruttolohn: null,
   }
 }
 

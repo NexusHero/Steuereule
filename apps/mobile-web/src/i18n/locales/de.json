@@ -1911,8 +1911,10 @@
     "vorsorge": {
       "title": "Vorsorge außerhalb des Lohns",
       "help": "Nur was nicht schon auf dem Lohnausweis steht. Eine deutsche Krankenversicherung trägst du später bei den Sonderausgaben ein.",
-      "krankenkasseChf": "Schweizer Krankenkasse – deine Prämien im Jahr (CHF)",
-      "saeule3aChf": "Säule 3a – deine Einzahlungen im Jahr (CHF)"
+      "krankenkasseChf": "Grundversicherung (KVG) – deine Prämien im Jahr (CHF)",
+      "saeule3aChf": "Säule 3a – deine Einzahlungen im Jahr (CHF)",
+      "krankenkasseZusatzChf": "Zusatzversicherungen (VVG)",
+      "krankenkasseZusatzHilfe": "Zählt als sonstige Vorsorge, nicht als Basisabsicherung. 0, wenn es keine gibt."
     },
     "nGre": {
       "title": "Für die Anlage N-Gre",
@@ -1930,7 +1932,10 @@
         "krankentaggeldArbeitgeberProzent": "Wie viel Prozent der Krankentaggeld-Prämie zahlt dein Arbeitgeber? (0 bis 100, 0 wenn du alles zahlst)",
         "krankentaggeldArbeitgeberChf": "Beitrag des Arbeitgebers zur Krankentaggeldversicherung (CHF)",
         "nbuvArbeitgeberProzent": "Wie viel Prozent der NBUV-Prämie zahlt dein Arbeitgeber? (0 bis 100, 0 wenn du alles zahlst)",
-        "nbuvArbeitgeberChf": "Beitrag des Arbeitgebers zur Nichtberufsunfallversicherung (CHF)"
+        "nbuvArbeitgeberChf": "Beitrag des Arbeitgebers zur Nichtberufsunfallversicherung (CHF)",
+        "familienzulagenImBruttolohn": "Im Bruttolohn Ziffer 8 enthalten?",
+        "familienzulagenImBruttolohnHilfe": "Nur dann wird die Zulage vom Bruttolohn abgezogen (Anlage N-Gre Zeile 8). Sonst gehört sie zum Kind (Maske Kinder).",
+        "kvZuschussAnspruch": "Anspruch auf steuerfreie Zuschüsse oder Arbeitgeberbeiträge zur Krankenversicherung? (Anlage Vorsorgeaufwand Zeile 49)"
       },
       "sonderfaelle": "Gab es Arbeitslosen- oder SUVA-Gelder, Mutterschafts- oder IV-Taggelder, steuerfreie Zuschläge, Direktversicherung, Optionsrechte, Fahrtkostenersatz, Spesenpauschalen oder einen Firmenwagen?",
       "ja": "Ja",

@@ -1911,8 +1911,10 @@
     "vorsorge": {
       "title": "Provision outside your salary",
       "help": "Only what is not already on the salary certificate. A German health insurance goes into the special expenses later.",
-      "krankenkasseChf": "Swiss health insurance – your premiums per year (CHF)",
-      "saeule3aChf": "Pillar 3a – your contributions per year (CHF)"
+      "krankenkasseChf": "Basic insurance (KVG) – your premiums per year (CHF)",
+      "saeule3aChf": "Pillar 3a – your contributions per year (CHF)",
+      "krankenkasseZusatzChf": "Supplementary insurance (VVG)",
+      "krankenkasseZusatzHilfe": "Counts as other provision, not as basic cover. 0 if there is none."
     },
     "nGre": {
       "title": "For Anlage N-Gre",
@@ -1930,7 +1932,10 @@
         "krankentaggeldArbeitgeberProzent": "What percentage of the daily sickness insurance premium does your employer pay? (0 to 100, 0 if you pay all)",
         "krankentaggeldArbeitgeberChf": "Employer contribution to the daily sickness insurance (CHF)",
         "nbuvArbeitgeberProzent": "What percentage of the non-occupational accident insurance premium does your employer pay? (0 to 100, 0 if you pay all)",
-        "nbuvArbeitgeberChf": "Employer contribution to the non-occupational accident insurance (CHF)"
+        "nbuvArbeitgeberChf": "Employer contribution to the non-occupational accident insurance (CHF)",
+        "familienzulagenImBruttolohn": "Included in gross salary, Ziffer 8?",
+        "familienzulagenImBruttolohnHilfe": "Only then is the allowance deducted from the gross salary (Anlage N-Gre line 8). Otherwise it belongs to the child (Children mask).",
+        "kvZuschussAnspruch": "Entitled to tax-free subsidies or employer contributions to health insurance? (Anlage Vorsorgeaufwand line 49)"
       },
       "sonderfaelle": "Were there unemployment or SUVA benefits, maternity or disability daily allowances, tax-free supplements, direct insurance, options, travel reimbursement, flat expenses, or a company car?",
       "ja": "Yes",

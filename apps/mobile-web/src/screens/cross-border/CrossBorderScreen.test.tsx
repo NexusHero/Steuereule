@@ -112,6 +112,9 @@ const FOLDED_CH: ChSalaryCertificateResponseDto = {
     nbuvArbeitgeberProzent: null,
     nbuvArbeitgeberChf: null,
     specialCases: null,
+    krankenkasseZusatzChf: null,
+    kvZuschussAnspruch: null,
+    familienzulagenImBruttolohn: null,
   },
 }
 
@@ -147,7 +150,7 @@ describe('GrenzgaengerScreen — the CH interview', () => {
 
     await screen.findByText('CH-Lohnausweis')
     // The mask renders the Ziffer fields (in paper order) — Ziffer 8 (Bruttolohn) is present.
-    expect(screen.getByText(/Ziffer 8/)).toBeTruthy()
+    expect(screen.getAllByText(/Ziffer 8/).length).toBeGreaterThan(0)
   })
 })
 
@@ -312,6 +315,48 @@ describe('GrenzgaengerScreen — Anlage N-Gre facts', () => {
 
     await waitFor(() => expect(nGre).toEqual([{ arbeitgeberName: 'Muster AG' }]))
     await waitFor(() => expect(fields).toEqual([{ kind: 'erfasst', value: 90000 }]))
+  })
+
+  it('accepts a negative Ziffer 7 end to end, but refuses a negative value in any other Ziffer', async () => {
+    const fields: unknown[] = []
+    server.use(
+      http.get(INTERVIEW_URL, () => HttpResponse.json(DONE_CH_INTERVIEW, { status: 200 })),
+      http.put(`${CH_URL}/:feld`, async ({ params, request }) => {
+        fields.push({ feld: params['feld'], body: await request.json() })
+        return HttpResponse.json(EMPTY_CH, { status: 200 })
+      }),
+    )
+    renderScreen()
+    const andere = await screen.findByTestId('ch-feld-andere-leistungen')
+    fireEvent.change(andere, { target: { value: '-75' } })
+    fireEvent.blur(andere)
+    await waitFor(() => expect(fields).toEqual([{ feld: 'andere-leistungen', body: { kind: 'erfasst', value: -75 } }]))
+
+    const lohn = screen.getByTestId('ch-feld-lohn')
+    fireEvent.change(lohn, { target: { value: '-5' } })
+    fireEvent.blur(lohn)
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(fields).toHaveLength(1)
+  })
+
+  it('saves the new N-Gre answers and the supplementary insurance through the N-Gre PUT', async () => {
+    const nGre: unknown[] = []
+    server.use(
+      http.get(INTERVIEW_URL, () => HttpResponse.json(DONE_CH_INTERVIEW, { status: 200 })),
+      http.put(`${CH_URL}/n-gre`, async ({ request }) => {
+        nGre.push(await request.json())
+        return HttpResponse.json(EMPTY_CH, { status: 200 })
+      }),
+    )
+    renderScreen()
+    fireEvent.click(await screen.findByTestId('ch-ngre-familienzulagen-im-brutto-nein'))
+    fireEvent.click(screen.getByTestId('ch-ngre-kv-zuschuss-ja'))
+    const zusatz = screen.getByTestId('ch-vorsorge-krankenkasseZusatzChf')
+    fireEvent.change(zusatz, { target: { value: '0' } })
+    fireEvent.blur(zusatz)
+    await waitFor(() =>
+      expect(nGre).toEqual([{ familienzulagenImBruttolohn: false }, { kvZuschussAnspruch: true }, { krankenkasseZusatzChf: 0 }]),
+    )
   })
 
   it('does not send anything when an untouched field loses focus', async () => {
