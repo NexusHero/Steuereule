@@ -233,7 +233,8 @@ describe('AiRuntimeConfigService & LangGraphAdvisorEngine (#446 Slice 2)', () =>
     const anthropicModel = createChatModelFromConfig(await anthropicConfig.resolveSlot('advisor_chat')) as {
       temperature?: number
     } | null
-    expect(anthropicModel?.temperature).toBe(0.2)
+    // The current Claude models reject a temperature of our own.
+    expect(anthropicModel?.temperature).toBeUndefined()
 
     const openAiConfig = new EnvAiRuntimeConfigService({
       AI_ADVISOR_PROVIDER: 'openai',

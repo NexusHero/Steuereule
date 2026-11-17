@@ -17,6 +17,39 @@ export type ChatModelFactory = (config: ResolvedAiSlotConfig) => BaseChatModel |
 
 const THINKING_LEVEL = { low: 'LOW', medium: 'MEDIUM', high: 'HIGH' } as const
 
+/**
+ * Claude models up to 4.5 think on a fixed token budget and take a temperature. Every later model
+ * decides the depth itself (`adaptive`), is steered by `effort`, and rejects both a budget and a
+ * temperature of our own with a 400. Unknown names count as current, so a new model works unchanged.
+ */
+const BUDGET_THINKING_MODEL = /^claude-(?:3-|(?:opus|sonnet|haiku)-4(?:$|-(?:[015]|\d{8})(?:-|$)))/
+
+export function anthropicThinksOnBudget(model: string): boolean {
+  return BUDGET_THINKING_MODEL.test(model)
+}
+
+function createAnthropicModel(config: ResolvedAiSlotConfig, apiKey: string, temperature: number, reasoningBudget: number): BaseChatModel {
+  const withReasoning = config.reasoning === 'summary'
+  const base = { model: config.model, apiKey, maxRetries: CHAT_MODEL_MAX_RETRIES }
+  // Thinking is paid from the same allowance as the answer, so the answer keeps room beyond it.
+  const roomForThinking = Math.max(config.maxTokens ?? 0, reasoningBudget + MIN_ANSWER_TOKENS)
+
+  if (anthropicThinksOnBudget(config.model)) {
+    if (withReasoning) {
+      // Extended thinking does not accept a custom temperature.
+      return new ChatAnthropic({ ...base, thinking: { type: 'enabled', budget_tokens: reasoningBudget }, maxTokens: roomForThinking })
+    }
+    return new ChatAnthropic({ ...base, temperature, ...(config.maxTokens !== undefined ? { maxTokens: config.maxTokens } : {}) })
+  }
+
+  const effort = config.thinkingLevel === undefined ? {} : { outputConfig: { effort: config.thinkingLevel } }
+  if (withReasoning) {
+    // The summary has to be asked for: by default these models return the thinking blocks empty.
+    return new ChatAnthropic({ ...base, ...effort, thinking: { type: 'adaptive', display: 'summarized' }, maxTokens: roomForThinking })
+  }
+  return new ChatAnthropic({ ...base, ...effort, ...(config.maxTokens !== undefined ? { maxTokens: config.maxTokens } : {}) })
+}
+
 export function createChatModelFromConfig(config: ResolvedAiSlotConfig): BaseChatModel | null {
   if (config.enabled && config.provider === 'fake') return new FakeKiChatModel()
   if (!config.enabled || config.provider === 'deterministic' || config.provider === 'fake' || !config.apiKey) {
@@ -46,23 +79,7 @@ export function createChatModelFromConfig(config: ResolvedAiSlotConfig): BaseCha
           : {}),
       })
     case 'anthropic':
-      if (withReasoning) {
-        // Extended thinking does not accept a custom temperature, and the answer needs room beyond the budget.
-        return new ChatAnthropic({
-          model: config.model,
-          apiKey: config.apiKey,
-          maxRetries: CHAT_MODEL_MAX_RETRIES,
-          thinking: { type: 'enabled', budget_tokens: reasoningBudget },
-          maxTokens: Math.max(config.maxTokens ?? 0, reasoningBudget + MIN_ANSWER_TOKENS),
-        })
-      }
-      return new ChatAnthropic({
-        model: config.model,
-        apiKey: config.apiKey,
-        maxRetries: CHAT_MODEL_MAX_RETRIES,
-        temperature,
-        ...(config.maxTokens !== undefined ? { maxTokens: config.maxTokens } : {}),
-      })
+      return createAnthropicModel(config, config.apiKey, temperature, reasoningBudget)
     case 'openai':
       return new ChatOpenAI({
         model: config.model,
