@@ -129,6 +129,8 @@ describe('parseLstbTextDeterministically', () => {
       '24a Steuerfreie Arbeitgeberzuschüsse zur Krankenversicherung 3.000,00',
       '25. Arbeitnehmerbeiträge zur gesetzlichen Krankenversicherung',
       '3.255,00',
+      '26. Arbeitnehmerbeiträge zur sozialen Pflegeversicherung',
+      '714,00',
     ].join('\n')
 
     const res = parseLstbTextDeterministically(multiline)
@@ -136,8 +138,8 @@ describe('parseLstbTextDeterministically', () => {
     expect(res.unresolvedFields).toEqual([])
     expect(res.fields.bruttoarbeitslohn.value).toBe(42000)
     expect(res.fields.lohnsteuer.value).toBe(6450)
-    expect(res.fields.sozialversicherung.value).toBe(7161) // 3906 + 3255, ignores line 24a!
-    expect(res.fields.sozialversicherung.sourceLines).toEqual(['23', '25'])
+    expect(res.fields.sozialversicherung.value).toBe(7875) // 3906 + 3255 + 714, ignores line 24a!
+    expect(res.fields.sozialversicherung.sourceLines).toEqual(['23', '25', '26'])
   })
 
   it('flags plausibility conflict when Lohnsteuer > Brutto and requests LLM fallback', () => {
@@ -332,4 +334,68 @@ describe('a scanned two-column certificate', () => {
     expect(kept).not.toContain('Beispiel GmbH')
   })
 
+})
+
+// Real-data run, step 3a: a scan read by word boxes puts the number of a block (22, 23, 24) and its
+// sub-rows a), b), c) on different lines. Each amount belongs to its own line of the certificate: the
+// employer's share (22) and the tax-free subsidies (24) are never the employee's contributions.
+describe('parseLstbTextDeterministically – lines 22 to 27 of a form read by position', () => {
+  const rows = (employer: string, employee: string) =>
+    [
+      'Ausdruck der elektronischen Lohnsteuerbescheinigung für 2024',
+      '3. Bruttoarbeitslohn einschl. Sachbezüge ohne 9. und 10. 61.234,56',
+      '4. Einbehaltene Lohnsteuer von 3. 12.345,67',
+      '22. Arbeitgeber-',
+      `a) zur gesetzlichen Rentenversicherung ${employer}`,
+      'anteil/',
+      '-zuschuss b) an berufsständische Versorgungseinrichtungen',
+      '23. Arbeitnehmer-',
+      `a) zur gesetzlichen Rentenversicherung ${employee}`,
+      'anteil b) an berufsständische Versorgungseinrichtungen',
+      'a) zur gesetzlichen Krankenversicherung 2.160,50',
+      '24. Steuerfreie',
+      'Arbeitgeber-',
+      'Zuschüsse b) zur privaten Krankenversicherung',
+      'c) zur gesetzlichen Pflegeversicherung 493,80',
+      '25. Arbeitnehmerbeiträge zur gesetzlichen Krankenversicherung 4.321,09',
+      '26. Arbeitnehmerbeiträge zur sozialen Pflegeversicherung 987,65',
+      '27. Arbeitnehmerbeiträge zur Arbeitslosenversicherung 765,43',
+    ].join('\n')
+
+  it('takes the second pension row as line 23a and leaves 22 and 24 out of the sum', () => {
+    const res = parseLstbTextDeterministically(rows('5.700,00', '5.678,90'))
+    expect(res.svBreakdown).toMatchObject({ line23a: 5678.9, line23b: null, line25: 4321.09, line26: 987.65, line27: 765.43 })
+    expect(res.fields.sozialversicherung.value).toBe(Math.round(5678.9 + 4321.09 + 987.65 + 765.43))
+    expect(res.fields.sozialversicherung.status).toBe('ok')
+  })
+
+  it('reads the block number where it stands on the row of its sub-row', () => {
+    const text = rows('5.700,00', '5.678,90')
+      .replace('22. Arbeitgeber-\na) zur gesetzlichen Rentenversicherung 5.700,00', '22. Arbeitgeber- a) zur gesetzlichen Rentenversicherung 5.700,00')
+      .replace('23. Arbeitnehmer-\na) zur gesetzlichen Rentenversicherung 5.678,90', '23. Arbeiinehmer- a) zur gesetzlichen Rentenversicherung 5.678,90')
+    expect(parseLstbTextDeterministically(text).svBreakdown.line23a).toBe(5678.9)
+  })
+
+  it('asks for a check when only one pension row could be read: it may be the employer’s', () => {
+    const text = rows('5.700,00', '5.678,90').replace('a) zur gesetzlichen Rentenversicherung 5.700,00\n', '').replace('22. Arbeitgeber-\n', '').replace('23. Arbeitnehmer-\n', '')
+    const res = parseLstbTextDeterministically(text)
+    expect(res.svBreakdown.line23a).toBe(5678.9)
+    expect(res.fields.sozialversicherung.status).toBe('pruefen')
+  })
+
+  it('never takes the subsidy to the health insurance (24a) as line 25', () => {
+    const text = rows('5.700,00', '5.678,90').replace('25. Arbeitnehmerbeiträge zur gesetzlichen Krankenversicherung 4.321,09\n', '')
+    const res = parseLstbTextDeterministically(text)
+    expect(res.svBreakdown.line25).toBeNull()
+  })
+
+  // Health and nursing-care contributions are withheld together: one without the other is a line the
+  // scan lost (a fold through line 26 in the real-data run), and the sum is too small.
+  it('marks the sum as partial when line 26 is missing beside line 25', () => {
+    const text = rows('5.700,00', '5.678,90').replace('26. Arbeitnehmerbeiträge zur sozialen Pflegeversicherung 987,65\n', '')
+    const res = parseLstbTextDeterministically(text)
+    expect(res.svBreakdown.line26).toBeNull()
+    expect(res.fields.sozialversicherung).toMatchObject({ status: 'pruefen', reason: 'partial_sv_lines' })
+    expect(res.unresolvedFields).toContain('sozialversicherung')
+  })
 })
