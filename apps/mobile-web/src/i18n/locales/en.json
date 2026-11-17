@@ -2320,6 +2320,7 @@
       "entryLabel": "Entry:",
       "notRecorded": "Not recorded",
       "forPerson": "for {{name}}",
+      "forYou": "for you",
       "personBFallback": "Person B",
       "refundSimulation": "Refund (simulation):",
       "appliedBadge": "✓ Applied & confirmed (SteuerEule)",
@@ -2483,6 +2484,8 @@
       "parsingReceipt": "Checking receipt …",
       "undoAria": "Undo",
       "undoButton": "↩ Undo",
+      "dismissButton": "Discard",
+      "dismissAria": "Discard draft",
       "applyNow": "✓ Apply now",
       "applyAgain": "✓ Apply again",
       "storedReceipts": {

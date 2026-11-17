@@ -12,6 +12,7 @@ export const MAX_COMPANION_FIELDS = 3
 export const TOOL_LABELS: Readonly<Record<string, string>> = {
   simulate_tax_delta: 'Simuliere Vorher/Nachher-Steuerwirkung …',
   stage_field_draft: 'Bereite sicheren Entwurf vor …',
+  withdraw_draft: 'Ziehe einen Entwurf zurück …',
   propose_two_paths: 'Vergleiche Zwei-Wege-Strategien …',
   ask_clarification: 'Prüfe Rückfragen …',
   ask_questions: 'Bereite die nächsten Fragen vor …',
@@ -106,8 +107,11 @@ export const draftTargetSchema = z.object({
   label: z.string().max(160),
   reason: z.string().max(400).default(''),
   instance: z.string().max(80).nullable().optional(),
-  /** `B`: a value of the spouse in a joint return (ADR-0073); the user's own otherwise. */
-  person: z.enum(ADVISOR_PERSONS).default('A'),
+  /**
+   * Whose value: `A` the user, `B` the spouse in a joint return (ADR-0073). No silent default: in a joint
+   * return the masks of one spouse refuse a draft without it (PERSON_REQUIRED), elsewhere absent means A.
+   */
+  person: z.enum(ADVISOR_PERSONS).optional(),
 })
 
 /** One schema per tool: the model sees it via bindTools, and toolsNode parses every call with it. */
@@ -120,6 +124,13 @@ export const TOOL_ARG_SCHEMAS = {
   stage_field_draft: draftTargetSchema.extend({
     sourceId: z.string().max(40).default('estg-9-1'),
     companionFields: z.record(z.string().max(100), z.string().max(200)).optional(),
+  }),
+  /** Takes back a draft of this answer the owl found wrong, so the user is not left to spot and refuse it. */
+  withdraw_draft: z.object({
+    screen: z.string().max(40),
+    field: z.string().max(100),
+    instance: z.string().max(80).nullable().optional(),
+    person: z.enum(ADVISOR_PERSONS).optional(),
   }),
   propose_two_paths: z.object({
     title: z.string().max(160),
@@ -235,7 +246,9 @@ export const TOOL_DESCRIPTIONS: Readonly<Record<ToolName, string>> = {
   simulate_tax_delta:
     'Simuliert deterministisch die exakte Vorher/Nachher-Erstattungswirkung eines Feldes ohne etwas in der Datenbank zu ändern.',
   stage_field_draft:
-    'Erstellt einen unverbindlichen Feld-Entwurf (Status pending) zur Prüfung und Freigabe im Eulen-Modus. Rechnet das Steuerdelta deterministisch aus. `person`: `A` für den Nutzer selbst (Vorgabe), `B` für Angaben über Ehefrau, Ehemann oder Partner in der Zusammenveranlagung (nur Masken lstb, chLohnausweis, commute, rente und nur, wenn der Haushalt Person B nennt).',
+    'Erstellt einen unverbindlichen Feld-Entwurf (Status pending) zur Prüfung und Freigabe im Eulen-Modus. Rechnet das Steuerdelta deterministisch aus. `person`: `A` für den Nutzer selbst, `B` für Angaben über Ehefrau, Ehemann oder Partner in der Zusammenveranlagung (nur Masken lstb, chLohnausweis, commute, rente, profil, stammdaten und nur, wenn der Haushalt Person B nennt). Gibt es Person B, ist `person` in diesen Masken Pflicht; ohne Angabe oder wenn der Titel Person B nennt, der Entwurf aber für den Nutzer ist, lehnt die App ihn ab.',
+  withdraw_draft:
+    'Zieht einen Entwurf dieser Antwort zurück, den du als falsch erkannt hast (Maske, Feld, ggf. Datensatz und `person` wie beim Entwurf). Statt den Nutzer zu bitten, eine Karte abzulehnen, ziehst du sie selbst zurück und legst sie bei Bedarf richtig neu an.',
   propose_two_paths:
     'Stellt zwei Alternativen (Sicher-Weg vs. Maximal-Weg mit Nachweishinweis) zur Auswahl durch den Nutzer gegenüber. `person` je Weg wie bei stage_field_draft.',
   ask_clarification: 'Schlägt 2 bis 4 anklickbare Quick-Chips als nächste Rückfragen im Chat vor.',

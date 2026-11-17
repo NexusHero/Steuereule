@@ -77,3 +77,40 @@ describe('what the case prompt says about the household', () => {
     expect(describeHouseholdForPrompt({ personB: { handle: PERSON_B_HANDLE, recordable: false, figures: null } })).toMatch(/eigenes Konto/)
   })
 })
+
+// Real-data runs 2024/2025: three drafts for the spouse came without `person` and would have overwritten the
+// user's own value („Person B: Name → Büsra“, „Büsra, Arbeitsweg Schaffhausen 26 km“, „Helsana … Büsra“).
+describe('whose value a draft is, in a joint return (no silent default to the user)', () => {
+  const named: AdvisorHousehold = { personB: { handle: PERSON_B_HANDLE, recordable: true, figures: null, aliases: ['Büsra', 'Büsra Sevinc'] } }
+
+  it('asks for the person on a mask that exists once per spouse, and on B\'s own interview answers', () => {
+    for (const screen of ['commute', 'chLohnausweis', 'lstb', 'rente', 'profil', 'stammdaten'] as const) {
+      expect(checkDraftPerson(recordable, undefined, screen)).toMatchObject({ ok: false, code: 'PERSON_REQUIRED' })
+      expect(checkDraftPerson(recordable, 'A', screen)).toEqual({ ok: true })
+    }
+    expect(checkDraftPerson(recordable, undefined, 'interview', 'ch-wohnsitz')).toMatchObject({ ok: false, code: 'PERSON_REQUIRED' })
+  })
+
+  it('does not ask on the joint masks, nor without a spouse the user records for', () => {
+    expect(checkDraftPerson(recordable, undefined, 'kind')).toEqual({ ok: true })
+    expect(checkDraftPerson(recordable, undefined, 'interview', 'job')).toEqual({ ok: true })
+    expect(checkDraftPerson({ personB: null }, undefined, 'commute')).toEqual({ ok: true })
+    expect(checkDraftPerson(ownAccount, undefined, 'commute')).toEqual({ ok: true })
+  })
+
+  it('refuses a draft for the user whose title names the spouse, by handle or by name', () => {
+    for (const label of ['Person B: Name', 'Büsra, Arbeitsweg Schaffhausen: 26 km', 'Helsana Grundversicherung (KVG) 2024, büsra']) {
+      expect(checkDraftPerson(named, 'A', 'commute', undefined, label)).toMatchObject({ ok: false, code: 'PERSON_MISMATCH' })
+    }
+    expect(checkDraftPerson(named, 'B', 'commute', undefined, 'Büsra, Arbeitsweg Schaffhausen: 26 km')).toEqual({ ok: true })
+    expect(checkDraftPerson(named, 'A', 'commute', undefined, 'Arbeitsweg Zürich: 67 km')).toEqual({ ok: true })
+    // A name inside another word is no mention; a joint mask may name both.
+    expect(checkDraftPerson(named, 'A', 'commute', undefined, 'Arbeitsweg Büsrastrasse')).toEqual({ ok: true })
+    expect(checkDraftPerson(named, undefined, 'kind', undefined, 'Zeynep: anderer Elternteil Büsra')).toEqual({ ok: true })
+  })
+
+  it('never puts the spouse\'s real name into the case prompt', () => {
+    expect(describeHouseholdForPrompt(named)).not.toMatch(/Büsra/)
+    expect(describeHouseholdForPrompt(named)).toMatch(/`person: "A"`/)
+  })
+})

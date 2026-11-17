@@ -55,3 +55,42 @@ describe('a draft for Person B on the card', () => {
     expect(onUndoAction).toHaveBeenCalledWith('act-b')
   })
 })
+
+// Real-data runs: the owl called its own draft wrong („bitte lehne diese Karte ab“), but a card had no way to refuse it.
+describe('refusing a pending draft on the card', () => {
+  it('discards a pending draft with its own button', () => {
+    const onDismissAction = vi.fn()
+    renderInApp(<AdvisorChatPanel messages={answerWith(draft({ person: 'B' }))} onSendMessage={vi.fn()} onApplyAction={vi.fn()} onDismissAction={onDismissAction} />)
+    fireEvent.click(screen.getByTestId('advisor-action-dismiss-btn'))
+    expect(onDismissAction).toHaveBeenCalledWith('act-b')
+  })
+
+  it('offers no discard on an applied draft, nor without a handler', () => {
+    renderInApp(<AdvisorChatPanel messages={answerWith(draft({ status: 'applied' }), draft({ actionId: 'act-a' }))} onSendMessage={vi.fn()} onDismissAction={vi.fn()} />)
+    expect(screen.getAllByTestId('advisor-action-dismiss-btn')).toHaveLength(1)
+  })
+})
+
+// Real-data runs: „67 → 26“ on a card without a name did not show that the spouse's commute would replace the user's.
+describe('in a joint return, every card on a mask of one spouse says whose it is', () => {
+  it('names the user on the user’s own drafts and the spouse on B’s, and nobody on a joint mask', () => {
+    renderInApp(
+      <AdvisorChatPanel
+        messages={answerWith(draft({ actionId: 'act-a', newValue: '67' }), draft({ person: 'B' }), draft({ actionId: 'act-k', screen: 'kind', field: 'childcareEur', newValue: '616' }))}
+        onSendMessage={vi.fn()}
+        partnerName="Gülay"
+        ownName="Suhay"
+        jointReturn
+      />,
+    )
+    expect(screen.getAllByTestId('advisor-action-person').map((badge) => badge.textContent)).toEqual(['für Suhay', 'für Gülay'])
+  })
+
+  it('says „für dich“ while the user’s own name is not known, and nothing outside a joint return', () => {
+    const { unmount } = renderInApp(<AdvisorChatPanel messages={answerWith(draft({ actionId: 'act-a' }))} onSendMessage={vi.fn()} jointReturn />)
+    expect(screen.getByTestId('advisor-action-person').textContent).toBe('für dich')
+    unmount()
+    renderInApp(<AdvisorChatPanel messages={answerWith(draft({ actionId: 'act-a' }))} onSendMessage={vi.fn()} ownName="Suhay" />)
+    expect(screen.queryByTestId('advisor-action-person')).toBeNull()
+  })
+})

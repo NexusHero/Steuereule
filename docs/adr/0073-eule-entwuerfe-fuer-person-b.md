@@ -63,3 +63,42 @@ trugen die „24 km“ der Ehefrau als Arbeitsweg des Ehemanns ein.
   nicht die von B.
 - Der Wortgrenzen-Abgleich der Namen arbeitet jetzt mit Unicode-Buchstaben: Namen mit Umlaut am
   Anfang („Ümit“) wurden vorher nicht entfernt.
+
+## Nachtrag: Kein stiller Standard für die Person (17.11.2026)
+
+**Anlass.** Im Echtdatenlauf mit einem Grenzgänger-Paar (Chat 2024/2025, vier Läufe) hat die Eule
+dreimal einen Entwurf für Person B ohne `person` angelegt: Bs Krankenkasse, Bs Vorname und Bs
+Arbeitsweg. Das Schema setzte `person` stillschweigend auf `A`. Die Karte hätte so den Wert des
+Nutzers überschrieben, sichtbar etwa als „67 → 26“. Die Eule bemerkte den Fehler zweimal selbst,
+konnte die Karte aber nicht zurücknehmen und bat den Nutzer, sie abzulehnen. Einen Knopf dafür hatte
+die Karte nicht.
+
+**Entscheidung.**
+
+1. **Die Person ist Pflicht, wo es die Angabe zweimal gibt.** `person` hat im Werkzeug-Schema keinen
+   Standardwert mehr. Bei einer Zusammenveranlagung, in der der Nutzer für B erfasst, lehnt
+   `checkDraftPerson` einen Entwurf auf einer Maske einer Person (`PERSON_B_SCREENS` und Bs eigene
+   Interview-Antworten) ohne `person` mit `PERSON_REQUIRED` ab. Die Eule bekommt den Grund und legt
+   den Entwurf in derselben Antwort richtig neu an. Gemeinsame Masken und Haushalte ohne B bleiben,
+   wie sie waren: Dort heißt keine Angabe weiter „der Nutzer“.
+2. **Der Titel muss zur Person passen.** Nennt der Titel eines Entwurfs für den Nutzer Person B,
+   über den Handle „Person B“ oder Bs Vor- bzw. vollen Namen als eigenes Wort, lehnt der Server ihn
+   mit `PERSON_MISMATCH` ab. Bs Namen kommen aus Bs Profil (`spouseForAdvisor`) und reisen als
+   `aliases` nur im Server mit. In den Prompt gehen sie nicht; der Fall-Prompt nennt B weiter nur
+   „Person B“.
+3. **Die Eule kann zurückziehen.** Das Werkzeug `withdraw_draft` nimmt einen Entwurf derselben
+   Antwort zurück (Maske, Feld, ggf. Datensatz und Person), auch einen Weg aus `propose_two_paths`.
+4. **Der Nutzer kann verwerfen.** Jede offene Karte hat einen Knopf „Verwerfen“. Er nutzt den
+   vorhandenen Endpunkt `dismiss` und zeigt danach „Verworfen“.
+
+**Konsequenzen.**
+
+- Für die Masken einer Person gibt die Eule bei einer Zusammenveranlagung jetzt immer `person: "A"`
+  oder `"B"` an. Vergisst sie es, kostet das einen Werkzeugaufruf, aber nie einen falschen Wert.
+- Der Namensabgleich findet nur Namen, die die App kennt. Nennt der Nutzer B mit einem Spitznamen,
+  greift nur Punkt 1.
+- **Jede Karte einer Personen-Maske nennt ihren Besitzer.** Bei einer Zusammenveranlagung trägt auch
+  ein Entwurf für den Nutzer auf diesen Masken „für ‹Vorname›“ (ohne bekannten Namen „für dich“),
+  neben Bs „für ‹Vorname›“. Eine Karte, die Bs Zahl in das Feld des Nutzers schreiben würde, steht so
+  sichtbar als „für Suhay · 67 → 26“ da. Gemeinsame Masken bleiben ohne Kennzeichnung. Die Namen holt
+  die App aus Kopplung und Profil, nur solange eine solche Karte zu sehen ist.

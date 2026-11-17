@@ -91,10 +91,15 @@ export interface AdvisorChatPanelProps {
   readonly abortedTurn?: AbortedTurn | null | undefined
   readonly onApplyAction?: ((actionId: string) => Promise<void> | void) | undefined
   readonly onUndoAction?: ((actionId: string) => Promise<void> | void) | undefined
+  /** Refuses a pending draft; without it the cards offer no discard. */
+  readonly onDismissAction?: ((actionId: string) => Promise<void> | void) | undefined
   readonly onInspectMask?: ((screen: Screen, field?: string) => void) | undefined
   readonly receiptLinkedActionIds?: ReadonlySet<string> | undefined
   /** The spouse's first name: a draft for Person B says „für …“ (ADR-0073). */
   readonly partnerName?: string | undefined
+  /** The user's first name and whether the return is a joint one: then every card on a mask of one spouse names its owner. */
+  readonly ownName?: string | undefined
+  readonly jointReturn?: boolean | undefined
   readonly onAttachReceipt?: ((input: { readonly fileName: string; readonly rawText: string }) => Promise<void> | void) | undefined
   /** Upload a PDF or photo: stored encrypted, read on the device, parsed (#444). */
   /** Resolves when the file has been read: several files are read one after another (#497). */
@@ -189,9 +194,12 @@ export function AdvisorChatPanel({
   dictationEngine = browserDictationEngine,
   onApplyAction,
   onUndoAction,
+  onDismissAction,
   onInspectMask,
   receiptLinkedActionIds,
   partnerName,
+  ownName,
+  jointReturn,
   onAttachReceipt,
   onAttachReceiptFile,
   receiptProgress = null,
@@ -521,11 +529,14 @@ export function AdvisorChatPanel({
                   action={msg.meta.action}
                   onApply={onApplyAction}
                   onUndo={onUndoAction}
+                  onDismiss={onDismissAction}
                   onInspectMask={onInspectMask}
                   receiptLinked={receiptLinkedActionIds?.has(msg.meta.action.actionId)}
                   onSelectSource={setSelectedSource}
                   styles={styles}
                   partnerName={partnerName}
+                  ownName={ownName}
+                  jointReturn={jointReturn}
                 />
               ) : null}
 
@@ -537,11 +548,14 @@ export function AdvisorChatPanel({
                       action={action}
                       onApply={onApplyAction}
                       onUndo={onUndoAction}
+                      onDismiss={onDismissAction}
                       onInspectMask={onInspectMask}
                       receiptLinked={receiptLinkedActionIds?.has(action.actionId)}
                       onSelectSource={setSelectedSource}
                       styles={styles}
                       partnerName={partnerName}
+                      ownName={ownName}
+                      jointReturn={jointReturn}
                     />
                   ))
                 : null}
@@ -621,6 +635,8 @@ export function AdvisorChatPanel({
                   onSelectSource={setSelectedSource}
                   styles={styles}
                   partnerName={partnerName}
+                  ownName={ownName}
+                  jointReturn={jointReturn}
                 />
               ) : null}
 

@@ -40,15 +40,68 @@ export interface AdvisorHousehold {
     /** True while the user is Person A and B has no own account: A records B's figures. */
     readonly recordable: boolean
     readonly figures: PersonBFigures | null
+    /**
+     * How the user may call B in a chat (first name, full name). Server-side only: checks a draft's title
+     * against it and never goes into a prompt (the model knows B by the handle alone).
+     */
+    readonly aliases?: readonly string[] | undefined
   } | null
 }
 
 export type DraftPersonCheck =
   | { readonly ok: true }
-  | { readonly ok: false; readonly code: 'NO_PERSON_B' | 'PERSON_B_OWNS_DATA' | 'JOINT_SCREEN'; readonly reason: string }
+  | {
+      readonly ok: false
+      readonly code: 'NO_PERSON_B' | 'PERSON_B_OWNS_DATA' | 'JOINT_SCREEN' | 'PERSON_REQUIRED' | 'PERSON_MISMATCH'
+      readonly reason: string
+    }
 
-/** Whether a draft may be made for this person on this mask; the reason is said to the user as it stands. */
-export function checkDraftPerson(household: AdvisorHousehold | undefined, person: AdvisorPerson | undefined, screen: Screen, field?: string): DraftPersonCheck {
+/** A mask, or an interview answer, that exists once per spouse. */
+function isPersonTarget(screen: Screen, field: string | undefined): boolean {
+  return PERSON_B_SCREENS.has(screen) || (screen === 'interview' && field !== undefined && PERSON_B_INTERVIEW_FIELDS.has(field.trim()))
+}
+
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+/** Whether the text names B: the handle or one of B's names, as a word of its own. */
+function namesPersonB(text: string, personB: NonNullable<AdvisorHousehold['personB']>): boolean {
+  return [personB.handle, ...(personB.aliases ?? [])]
+    .map((name) => name.trim())
+    .filter((name) => name.length >= 2)
+    .some((name) => new RegExp(`(?<![\\p{L}\\p{N}])${escapeRegExp(name)}(?![\\p{L}\\p{N}])`, 'iu').test(text))
+}
+
+/**
+ * Whether a draft may be made for this person on this mask; the reason is said to the user as it stands.
+ * In a joint return A records B's figures for, a mask of one spouse needs the person said explicitly, and a
+ * draft whose title names B cannot go to the user: a forgotten `person` once wrote B's commute over the user's.
+ */
+export function checkDraftPerson(
+  household: AdvisorHousehold | undefined,
+  person: AdvisorPerson | undefined,
+  screen: Screen,
+  field?: string,
+  label?: string,
+): DraftPersonCheck {
+  const recordableB = household?.personB?.recordable === true ? household.personB : null
+  if (recordableB !== null && person !== 'B' && isPersonTarget(screen, field)) {
+    if (person === undefined) {
+      return {
+        ok: false,
+        code: 'PERSON_REQUIRED',
+        reason: `Zusammenveranlagung mit ${recordableB.handle}: Bei dieser Maske gibt es die Angaben zweimal. Lege den Entwurf mit \`person: "A"\` für den Nutzer oder \`person: "B"\` für ${recordableB.handle} an.`,
+      }
+    }
+    if (label !== undefined && namesPersonB(label, recordableB)) {
+      return {
+        ok: false,
+        code: 'PERSON_MISMATCH',
+        reason: `Der Titel nennt ${recordableB.handle}, der Entwurf zielt aber auf den Nutzer. Für ${recordableB.handle} mit \`person: "B"\` anlegen, sonst den Titel richtigstellen.`,
+      }
+    }
+  }
   if (person !== 'B') return { ok: true }
   const personB = household?.personB ?? null
   if (personB === null) {
@@ -57,7 +110,7 @@ export function checkDraftPerson(household: AdvisorHousehold | undefined, person
   if (!personB.recordable) {
     return { ok: false, code: 'PERSON_B_OWNS_DATA', reason: 'Person B pflegt ihre Angaben im eigenen Konto; dort trägt sie sie selbst ein.' }
   }
-  if (!PERSON_B_SCREENS.has(screen) && !(screen === 'interview' && field !== undefined && PERSON_B_INTERVIEW_FIELDS.has(field.trim()))) {
+  if (!isPersonTarget(screen, field)) {
     return { ok: false, code: 'JOINT_SCREEN', reason: 'Diese Maske gehört zur gemeinsamen Erklärung, nicht zu einer Person; den Entwurf ohne Person B vorbereiten.' }
   }
   return { ok: true }
@@ -89,6 +142,7 @@ export function describeHouseholdForPrompt(household: AdvisorHousehold | undefin
   return [
     `Haushalt: Zusammenveranlagung mit ${personB.handle} (Ehepartner des Nutzers, ohne eigenes Konto; der Nutzer erfasst ${personB.handle}s Angaben mit).`,
     `Für ${personB.handle} legst du Entwürfe mit \`person: "B"\` an, nur in den Masken ${[...PERSON_B_SCREENS].join(', ')} und im Interview für ${personB.handle}s eigene Grenzgänger-Angaben (${[...PERSON_B_INTERVIEW_FIELDS].map((question) => `\`interview.${question}\``).join(', ')}).`,
+    `In diesen Masken gibt es jede Angabe zweimal: Gib dort bei jedem Entwurf \`person\` an, \`person: "A"\` für den Nutzer und \`person: "B"\` für ${personB.handle}. Ohne Angabe lehnt die App den Entwurf ab.`,
     `Schon erfasst für ${personB.handle}: ${known.length > 0 ? known.join(', ') : 'noch nichts'}.`,
   ].join('\n')
 }

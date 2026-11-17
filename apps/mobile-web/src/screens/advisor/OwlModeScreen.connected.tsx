@@ -30,6 +30,7 @@ import {
   useAdvisorControllerSendMessage,
   useAdvisorControllerSetFeedback,
   useAdvisorControllerUndoAction,
+  useAdvisorControllerDismissAction,
   useInterviewControllerGetInterview,
   useInterviewControllerPostAnswer,
   useOwlModeControllerDismissCard,
@@ -38,7 +39,7 @@ import {
   useOwlModeControllerSetSetting,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
-import { usePartnerFirstName } from './usePartnerFirstName'
+import { useDraftOwners } from './useDraftOwners'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { ErrorState, LoadingState } from '../shared/ScreenState'
 import { sendOptionsToDto } from './AdvisorChatPanel'
@@ -72,7 +73,7 @@ export function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CU
   const conversationId = bridge ? bridge.conversationId : localConversationId
   const selectConversation = (id: string | null) => (bridge ? bridge.setConversationId(id) : setLocalConversationId(id))
   const sessionQuery = useAdvisorControllerGetSession(taxYear, conversationId ? { conversationId } : undefined, { query: { retry: false } })
-  const partnerName = usePartnerFirstName(
+  const { partnerName, ownName, jointReturn } = useDraftOwners(
     taxYear,
     sessionQuery.data?.status === 200 ? (sessionQuery.data.data.messages as unknown as readonly AdvisorChatMessageView[]) : undefined,
   )
@@ -130,6 +131,7 @@ export function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CU
   const setFeedbackMutation = useAdvisorControllerSetFeedback()
   const clearConversationMutation = useAdvisorControllerClearConversation()
   const undoActionMutation = useAdvisorControllerUndoAction()
+  const dismissActionMutation = useAdvisorControllerDismissAction()
   const setSetting = useOwlModeControllerSetSetting()
   const dismissCard = useOwlModeControllerDismissCard()
   const interviewQuery = useInterviewControllerGetInterview(taxYear)
@@ -185,6 +187,8 @@ export function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CU
       initialCards={cards}
       initialMessages={serverMessages}
       partnerName={partnerName}
+      ownName={ownName}
+      jointReturn={jointReturn}
       optInEnabled={settingQuery.data.data.enabled}
       onToggleOptIn={async (enabled) => {
         await setSetting.mutateAsync({ data: { enabled } })
@@ -289,6 +293,10 @@ export function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CU
           return
         }
         await applyActionMutation.mutateAsync({ jahr: taxYear, actionId })
+        await invalidate()
+      }}
+      onDismissAction={async (actionId) => {
+        await dismissActionMutation.mutateAsync({ jahr: taxYear, actionId })
         await invalidate()
       }}
       onUndoAction={async (actionId) => {

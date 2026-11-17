@@ -86,7 +86,7 @@ describe('the owl drafts the spouse’s figures for Person B', () => {
   it('keeps a draft for the user and one for B on the same field side by side', async () => {
     const { kit } = kitWith([
       stage(
-        { screen: 'commute', field: 'oneWayKm', newValue: '12', label: 'Arbeitsweg' },
+        { screen: 'commute', field: 'oneWayKm', newValue: '12', label: 'Arbeitsweg', person: 'A' },
         { screen: 'commute', field: 'oneWayKm', newValue: '24', label: 'Arbeitsweg Person B', person: 'B' },
       ),
       new AIMessageChunk({ content: 'Beide vorbereitet.' }),
@@ -101,6 +101,63 @@ describe('the owl drafts the spouse’s figures for Person B', () => {
     await kit.service.applyBatch(USER, YEAR, { drafts: actions.map((a) => ({ actionId: a.actionId })) })
     expect((await kit.commuteRepo.findForUserAndYear(USER, YEAR))?.oneWayKm).toBe(12)
     expect((await kit.commuteRepo.findForUserAndYear(spouse, YEAR))?.oneWayKm).toBe(24)
+  })
+})
+
+// Real-data runs 2024/2025: drafts for the spouse without `person` landed on the user and overwrote the
+// user's commute (67 → 26 km) and first name. In a joint return the person is no longer a silent default.
+describe('in a joint return, every draft on a mask of one spouse says whose it is', () => {
+  const withdraw = (args: Record<string, unknown>): AIMessageChunk =>
+    new AIMessageChunk({ content: '', tool_call_chunks: [{ name: 'withdraw_draft', args: JSON.stringify(args), index: 0, id: 'w0' }] } as never)
+
+  it('refuses a draft without `person`, and the owl stages it again for B', async () => {
+    const { kit, model } = kitWith([
+      stage({ screen: 'commute', field: 'oneWayKm', newValue: '26', label: 'Arbeitsweg Schaffhausen' }),
+      stage({ screen: 'commute', field: 'oneWayKm', newValue: '26', label: 'Arbeitsweg Schaffhausen', person: 'B' }),
+      new AIMessageChunk({ content: 'Für Person B vorbereitet.' }),
+    ])
+    await jointReturn(kit)
+    await kit.commuteRepo.save(USER, YEAR, commute(67))
+    const meta = metaOf(await collect(kit.service.streamMessage(USER, YEAR, { message: 'Gülay fährt 26 km nach Schaffhausen.' })))
+    expect(model.seen.join(' ')).toContain('PERSON_REQUIRED')
+    const actions = meta.actions ?? [meta.action!]
+    expect(actions.map((a) => [a.field, a.newValue, a.person])).toEqual([['oneWayKm', '26', 'B']])
+  })
+
+  it('refuses a draft for the user whose title names the spouse by name, which the model never saw', async () => {
+    const { kit } = kitWith([
+      stage({ screen: 'commute', field: 'oneWayKm', newValue: '26', label: 'Gülay, Arbeitsweg Schaffhausen', person: 'A' }),
+      new AIMessageChunk({ content: 'Ok.' }),
+    ])
+    await jointReturn(kit)
+    await kit.commuteRepo.save(USER, YEAR, commute(67))
+    const meta = metaOf(await collect(kit.service.streamMessage(USER, YEAR, { message: 'Gülay fährt 26 km.' })))
+    expect(meta.action).toBeUndefined()
+    expect(meta.notStaged?.[0]?.reason).toContain('nennt Person B')
+    expect((await kit.commuteRepo.findForUserAndYear(USER, YEAR))?.oneWayKm).toBe(67)
+  })
+
+  it('lets the owl withdraw a draft of its own answer that it found wrong', async () => {
+    const { kit, model } = kitWith([
+      stage(
+        { screen: 'commute', field: 'oneWayKm', newValue: '24', label: 'Arbeitsweg Person B', person: 'B' },
+        { screen: 'chLohnausweis', field: 'bruttolohn-total', newValue: '84000', label: 'Bruttolohn CH Person B', person: 'B' },
+      ),
+      withdraw({ screen: 'commute', field: 'oneWayKm', person: 'B' }),
+      new AIMessageChunk({ content: 'Den Arbeitsweg habe ich zurückgezogen.' }),
+    ])
+    await jointReturn(kit)
+    const meta = metaOf(await collect(kit.service.streamMessage(USER, YEAR, { message: 'Gülay verdient 84.000 CHF.' })))
+    const actions = meta.actions ?? [meta.action!]
+    expect(actions.map((a) => a.field)).toEqual(['bruttolohn-total'])
+    expect(model.seen.join(' ')).toMatch(/withdrawn\\?":1/)
+  })
+
+  it('answers when there is nothing to withdraw', async () => {
+    const { kit, model } = kitWith([withdraw({ screen: 'commute', field: 'oneWayKm', person: 'A' }), new AIMessageChunk({ content: 'Ok.' })])
+    await jointReturn(kit)
+    await collect(kit.service.streamMessage(USER, YEAR, { message: 'Hallo' }))
+    expect(model.seen.join(' ')).toContain('NO_SUCH_DRAFT')
   })
 })
 

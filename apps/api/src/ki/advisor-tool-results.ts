@@ -24,6 +24,7 @@ const TEMPLATES: Readonly<Record<string, (payload: Payload) => string>> = {
     return staged.effect === 'computed' && delta !== null && delta !== 0 ? `fertig · ${signed(delta)} Erstattung` : 'fertig'
   },
   propose_two_paths: () => 'zwei Wege',
+  withdraw_draft: (p) => (p.ok === true ? 'zurückgezogen' : 'nichts zurückzuziehen'),
   ask_questions: (p) => plural(num(p.questions) ?? 0, 'Frage', 'Fragen'),
   ask_clarification: (p) => plural(Array.isArray(p.choices) ? p.choices.length : 0, 'Antwort', 'Antworten'),
   suggest_situation: () => 'vorgeschlagen',

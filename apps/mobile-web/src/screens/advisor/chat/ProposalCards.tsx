@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { Pressable, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@steuereule/ui'
-import { ADVISOR_LEGAL_SOURCES, formatEuro, type AdvisorActionProposal, type AdvisorLegalSource, type AdvisorTwoPathsProposal, type Screen } from '@steuereule/core'
+import { ADVISOR_LEGAL_SOURCES, PERSON_B_SCREENS, formatEuro, type AdvisorActionProposal, type AdvisorLegalSource, type AdvisorTwoPathsProposal, type Screen } from '@steuereule/core'
 import { APP_NS } from '../../../i18n/resources'
 import { formLineForField } from '../../shared/formLineMapping'
 import { makeStyles } from '../AdvisorChatPanel'
@@ -12,18 +12,26 @@ export function ActionProposalCardView({
   action,
   onApply,
   onUndo,
+  onDismiss,
   onInspectMask,
   receiptLinked,
   onSelectSource,
   styles,
   testIDPrefix = 'advisor-action',
   partnerName,
+  ownName,
+  jointReturn = false,
 }: {
   readonly action: AdvisorActionProposal
   /** The spouse's first name, for a draft that writes Person B's fields (ADR-0073). */
   readonly partnerName?: string | undefined
+  /** The user's first name: in a joint return a card on a mask of one spouse names whose value it writes. */
+  readonly ownName?: string | undefined
+  readonly jointReturn?: boolean | undefined
   readonly onApply?: ((actionId: string) => Promise<void> | void) | undefined
   readonly onUndo?: ((actionId: string) => Promise<void> | void) | undefined
+  /** Refuses a pending draft (ADR-0073 Nachtrag): a draft the owl itself called wrong must not stay one tap from the return. */
+  readonly onDismiss?: ((actionId: string) => Promise<void> | void) | undefined
   readonly onInspectMask?: ((screen: Screen, field?: string) => void) | undefined
   readonly receiptLinked?: boolean | undefined
   readonly onSelectSource: (source: AdvisorLegalSource) => void
@@ -43,6 +51,17 @@ export function ActionProposalCardView({
     setBusyStatus(startingStatus)
     try {
       await onApply(action.actionId)
+    } finally {
+      setBusyStatus((current) => (current === startingStatus ? null : current))
+    }
+  }
+
+  async function handleDismiss() {
+    if (!onDismiss || isBusy) return
+    const startingStatus = action.status
+    setBusyStatus(startingStatus)
+    try {
+      await onDismiss(action.actionId)
     } finally {
       setBusyStatus((current) => (current === startingStatus ? null : current))
     }
@@ -98,6 +117,12 @@ export function ActionProposalCardView({
       {action.person === 'B' ? (
         <Text style={styles.receiptLinkedBadge} testID={`${testIDPrefix}-person`}>
           {tr('advisor.chat.forPerson', { name: partnerName?.trim() || tr('advisor.chat.personBFallback', 'Person B'), defaultValue: `für ${partnerName?.trim() || 'Person B'}` })}
+        </Text>
+      ) : jointReturn && PERSON_B_SCREENS.has(action.screen) ? (
+        <Text style={styles.receiptLinkedBadge} testID={`${testIDPrefix}-person`}>
+          {ownName?.trim()
+            ? tr('advisor.chat.forPerson', { name: ownName.trim(), defaultValue: `für ${ownName.trim()}` })
+            : tr('advisor.chat.forYou', 'für dich')}
         </Text>
       ) : null}
 
@@ -193,6 +218,19 @@ export function ActionProposalCardView({
           </Button>
         )}
 
+        {onDismiss && action.status === 'pending' ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={tr('advisor.chat.dismissAria', 'Entwurf verwerfen')}
+            disabled={isBusy}
+            onPress={() => void handleDismiss()}
+            style={styles.inspectMaskBtn}
+            testID={`${testIDPrefix}-dismiss-btn`}
+          >
+            <Text style={styles.inspectMaskText}>{tr('advisor.chat.dismissButton', 'Verwerfen')}</Text>
+          </Pressable>
+        ) : null}
+
         {onInspectMask ? (
           <Pressable
             accessibilityRole="button"
@@ -272,9 +310,13 @@ export function TwoPathsCardView({
   onSelectSource,
   styles,
   partnerName,
+  ownName,
+  jointReturn,
 }: {
   readonly twoPaths: AdvisorTwoPathsProposal
   readonly partnerName?: string | undefined
+  readonly ownName?: string | undefined
+  readonly jointReturn?: boolean | undefined
   readonly onApply?: ((actionId: string) => Promise<void> | void) | undefined
   readonly onUndo?: ((actionId: string) => Promise<void> | void) | undefined
   readonly onInspectMask?: ((screen: Screen, field?: string) => void) | undefined
@@ -294,6 +336,8 @@ export function TwoPathsCardView({
         onSelectSource={onSelectSource}
         styles={styles}
         partnerName={partnerName}
+        ownName={ownName}
+        jointReturn={jointReturn}
         testIDPrefix="advisor-path-safe"
       />
       <View style={styles.maxPathWrapper}>
@@ -307,6 +351,8 @@ export function TwoPathsCardView({
           onSelectSource={onSelectSource}
           styles={styles}
           partnerName={partnerName}
+          ownName={ownName}
+          jointReturn={jointReturn}
           testIDPrefix="advisor-path-max"
         />
       </View>
