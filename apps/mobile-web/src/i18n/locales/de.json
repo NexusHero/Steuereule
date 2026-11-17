@@ -907,8 +907,24 @@
       "heading": "Zuschüsse des Arbeitgebers",
       "help": "Zahlt dein Arbeitgeber steuerfrei etwas zu deiner Kranken- oder Pflegeversicherung, steht das in Zeile 24 (a bis c). Trag die Summe ein, sonst lass das Feld leer. Abziehen kannst du nur, was du selbst getragen hast.",
       "zeile24": "Steuerfreie Zuschüsse zur Kranken- und Pflegeversicherung (Zeile 24 a–c, zusammen)",
+      "offen": "Zeile 25 oder 26 ist ausgefüllt: Bitte Zeile 24 eintragen (auch 0). Bis dahin gilt die Sozialversicherung als unvollständig.",
       "loading": "Zuschüsse werden geladen …",
       "loadError": "Die Zuschüsse konnten nicht geladen werden."
+    },
+    "zeilen": {
+      "heading": "Sozialversicherung nach Zeilen (22–27)",
+      "help": "Die Beträge stehen einzeln auf der Lohnsteuerbescheinigung. Trag nur ein, was dort steht; leere Felder gelten als nicht erfasst.",
+      "rvArbeitgeber": "Arbeitgeberanteil Rentenversicherung (Zeile 22)",
+      "rvArbeitnehmer": "Arbeitnehmeranteil Rentenversicherung (Zeile 23)",
+      "kvArbeitnehmer": "Krankenversicherung, Arbeitnehmerbeitrag (Zeile 25)",
+      "pvArbeitnehmer": "Pflegeversicherung, Arbeitnehmerbeitrag (Zeile 26)",
+      "avArbeitnehmer": "Arbeitslosenversicherung, Arbeitnehmerbeitrag (Zeile 27)",
+      "zuschussPv": "Zeile 24c: davon Pflegeversicherung",
+      "solidaritaetszuschlag": "Einbehaltener Solidaritätszuschlag (Zeile 5, in Euro mit Cent)",
+      "summe": "Summe Arbeitnehmeranteile: {{betrag}} €",
+      "summeHinweis": "rechnet die App (Zeilen 23, 25, 26, 27)",
+      "loading": "Zeilen werden geladen …",
+      "loadError": "Die Zeilen konnten nicht geladen werden."
     },
     "feld": {
       "placeholder": "Ganzzahlige Euro",

@@ -907,8 +907,24 @@
       "heading": "Employer subsidies",
       "help": "If your employer pays a tax-free subsidy to your health or care insurance, it is on line 24 (a to c). Enter the total, otherwise leave the field empty. You can only deduct what you bore yourself.",
       "zeile24": "Tax-free subsidies to health and care insurance (line 24 a–c, together)",
+      "offen": "Line 25 or 26 is filled in: please enter line 24 (0 is fine). Until then the social security counts as incomplete.",
       "loading": "Loading subsidies …",
       "loadError": "The subsidies couldn't be loaded."
+    },
+    "zeilen": {
+      "heading": "Social security by line (22–27)",
+      "help": "The amounts are listed separately on the wage tax statement. Enter only what it shows; empty fields count as not recorded.",
+      "rvArbeitgeber": "Employer share, pension insurance (line 22)",
+      "rvArbeitnehmer": "Employee share, pension insurance (line 23)",
+      "kvArbeitnehmer": "Health insurance, employee contribution (line 25)",
+      "pvArbeitnehmer": "Care insurance, employee contribution (line 26)",
+      "avArbeitnehmer": "Unemployment insurance, employee contribution (line 27)",
+      "zuschussPv": "Line 24c: of which care insurance",
+      "solidaritaetszuschlag": "Solidarity surcharge withheld (line 5, euros with cents)",
+      "summe": "Sum of employee shares: {{betrag}} €",
+      "summeHinweis": "calculated by the app (lines 23, 25, 26, 27)",
+      "loading": "Loading lines …",
+      "loadError": "The lines could not be loaded."
     },
     "feld": {
       "placeholder": "Whole euros",

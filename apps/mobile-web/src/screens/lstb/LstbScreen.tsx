@@ -28,6 +28,7 @@ import { LstbScanPanel } from './scan/LstbScanPanel'
 import { useLstbScan } from './scan/useLstbScan'
 import { ChurchTaxLines } from './ChurchTaxLines'
 import { SubsidyLine } from './SubsidyLine'
+import { SocialInsuranceLines } from './SocialInsuranceLines'
 
 export interface LstbScreenProps {
   readonly onDone?: () => void
@@ -114,6 +115,7 @@ export function LstbScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YE
 
       <ChurchTaxLines taxYear={taxYear} params={params} track={track} />
       <SubsidyLine taxYear={taxYear} params={params} track={track} />
+      <SocialInsuranceLines taxYear={taxYear} params={params} track={track} />
 
       <OfficialFormLink screen="lstb" taxYear={taxYear} />
 
