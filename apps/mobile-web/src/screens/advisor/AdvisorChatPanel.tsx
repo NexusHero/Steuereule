@@ -97,6 +97,9 @@ export interface AdvisorChatPanelProps {
   readonly receiptLinkedActionIds?: ReadonlySet<string> | undefined
   /** The spouse's first name: a draft for Person B says „für …“ (ADR-0073). */
   readonly partnerName?: string | undefined
+  /** The user's first name and whether the return is a joint one: then every card on a mask of one spouse names its owner. */
+  readonly ownName?: string | undefined
+  readonly jointReturn?: boolean | undefined
   readonly onAttachReceipt?: ((input: { readonly fileName: string; readonly rawText: string }) => Promise<void> | void) | undefined
   /** Upload a PDF or photo: stored encrypted, read on the device, parsed (#444). */
   /** Resolves when the file has been read: several files are read one after another (#497). */
@@ -195,6 +198,8 @@ export function AdvisorChatPanel({
   onInspectMask,
   receiptLinkedActionIds,
   partnerName,
+  ownName,
+  jointReturn,
   onAttachReceipt,
   onAttachReceiptFile,
   receiptProgress = null,
@@ -530,6 +535,8 @@ export function AdvisorChatPanel({
                   onSelectSource={setSelectedSource}
                   styles={styles}
                   partnerName={partnerName}
+                  ownName={ownName}
+                  jointReturn={jointReturn}
                 />
               ) : null}
 
@@ -547,6 +554,8 @@ export function AdvisorChatPanel({
                       onSelectSource={setSelectedSource}
                       styles={styles}
                       partnerName={partnerName}
+                      ownName={ownName}
+                      jointReturn={jointReturn}
                     />
                   ))
                 : null}
@@ -626,6 +635,8 @@ export function AdvisorChatPanel({
                   onSelectSource={setSelectedSource}
                   styles={styles}
                   partnerName={partnerName}
+                  ownName={ownName}
+                  jointReturn={jointReturn}
                 />
               ) : null}
 

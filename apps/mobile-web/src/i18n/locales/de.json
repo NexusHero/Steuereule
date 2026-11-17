@@ -2320,6 +2320,7 @@
       "entryLabel": "Eintrag:",
       "notRecorded": "Nicht erfasst",
       "forPerson": "für {{name}}",
+      "forYou": "für dich",
       "personBFallback": "Person B",
       "refundSimulation": "Erstattung (Simulation):",
       "appliedBadge": "✓ Übernommen & bestätigt (SteuerEule)",

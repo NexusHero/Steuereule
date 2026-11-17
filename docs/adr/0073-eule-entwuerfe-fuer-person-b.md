@@ -97,5 +97,8 @@ die Karte nicht.
   oder `"B"` an. Vergisst sie es, kostet das einen Werkzeugaufruf, aber nie einen falschen Wert.
 - Der Namensabgleich findet nur Namen, die die App kennt. Nennt der Nutzer B mit einem Spitznamen,
   greift nur Punkt 1.
-- Nicht enthalten ist eine Kennzeichnung „für ‹Nutzer›“ auf den Karten des Nutzers, die zeigt, wessen
-  Wert eine Karte ersetzt. Das folgt in einem eigenen Schritt.
+- **Jede Karte einer Personen-Maske nennt ihren Besitzer.** Bei einer Zusammenveranlagung trägt auch
+  ein Entwurf für den Nutzer auf diesen Masken „für ‹Vorname›“ (ohne bekannten Namen „für dich“),
+  neben Bs „für ‹Vorname›“. Eine Karte, die Bs Zahl in das Feld des Nutzers schreiben würde, steht so
+  sichtbar als „für Suhay · 67 → 26“ da. Gemeinsame Masken bleiben ohne Kennzeichnung. Die Namen holt
+  die App aus Kopplung und Profil, nur solange eine solche Karte zu sehen ist.

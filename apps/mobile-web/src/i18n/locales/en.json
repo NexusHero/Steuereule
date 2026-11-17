@@ -2320,6 +2320,7 @@
       "entryLabel": "Entry:",
       "notRecorded": "Not recorded",
       "forPerson": "for {{name}}",
+      "forYou": "for you",
       "personBFallback": "Person B",
       "refundSimulation": "Refund (simulation):",
       "appliedBadge": "✓ Applied & confirmed (SteuerEule)",

@@ -63,6 +63,8 @@ export interface OwlModeScreenProps {
   readonly onDismissAction?: ((actionId: string) => Promise<void> | void) | undefined
   /** The spouse's first name, shown on drafts for Person B (ADR-0073). */
   readonly partnerName?: string | undefined
+  readonly ownName?: string | undefined
+  readonly jointReturn?: boolean | undefined
   /** Stores a thumbs up/down for an answer; without it the chat offers no rating. */
   readonly onRateMessage?:
     | ((messageId: string, rating: AdvisorFeedbackRating | null, reason?: AdvisorFeedbackReason) => Promise<void> | void)
@@ -176,6 +178,8 @@ export function OwlModeScreenView({
   onUndoAction,
   onDismissAction,
   partnerName,
+  ownName,
+  jointReturn,
   onRateMessage,
   onClearConversation,
   conversations,
@@ -460,6 +464,8 @@ export function OwlModeScreenView({
       <AdvisorChatPanel
         messages={displayedMessages}
         partnerName={partnerName}
+        ownName={ownName}
+        jointReturn={jointReturn}
         opening={opening}
         situationChip={hasSituationDialog ? <SituationChip text={situation ?? ''} onPress={() => setSituationOpen(true)} /> : undefined}
         footnote={tr('eule.workspace.topbar.legalStatus', { date: formatLegalDate(LEGAL_STATUS_DATE, i18n.language) })}

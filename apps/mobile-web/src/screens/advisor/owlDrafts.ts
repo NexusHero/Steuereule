@@ -1,5 +1,5 @@
 // Drafts as the owl screen reads them out of the conversation and marks them after a click.
-import { withTwoPathsGroup, type AdvisorActionProposal, type AdvisorChatMessageView } from '@steuereule/core'
+import { PERSON_B_SCREENS, withTwoPathsGroup, type AdvisorActionProposal, type AdvisorChatMessageView } from '@steuereule/core'
 
 function extractDraftsWithStatus(
   messages: readonly AdvisorChatMessageView[],
@@ -35,10 +35,12 @@ export function extractAppliedDrafts(messages: readonly AdvisorChatMessageView[]
   return extractDraftsWithStatus(messages, 'applied')
 }
 
-/** Whether the conversation shows a draft for the spouse; only then is the spouse's name needed (ADR-0073). */
-export function hasPersonBDraft(messages: readonly AdvisorChatMessageView[] | undefined): boolean {
+/** Whether the conversation shows a draft on a mask that exists once per spouse; only then are the owners' names needed. */
+export function hasPersonScreenDraft(messages: readonly AdvisorChatMessageView[] | undefined): boolean {
   return (messages ?? []).some((msg) =>
-    [msg.meta?.action, ...(msg.meta?.actions ?? []), msg.meta?.twoPaths?.safePath, msg.meta?.twoPaths?.maxPath].some((action) => action?.person === 'B'),
+    [msg.meta?.action, ...(msg.meta?.actions ?? []), msg.meta?.twoPaths?.safePath, msg.meta?.twoPaths?.maxPath].some(
+      (action) => action !== undefined && (action.person === 'B' || PERSON_B_SCREENS.has(action.screen)),
+    ),
   )
 }
 
