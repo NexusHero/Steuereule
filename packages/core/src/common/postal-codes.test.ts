@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { GERMAN_STATES } from './public-holidays'
 import { POSTAL_CODE_SOURCE, POSTAL_CODE_TABLE } from './postal-codes.data'
-import { churchTaxRateForState, lookupPostalCode } from './postal-codes'
+import { churchTaxRateForState, germanStateOfAddress, lookupPostalCode } from './postal-codes'
 
 describe('lookupPostalCode (#451 slice 3)', () => {
   it('finds the one place of a plain postal code', () => {
@@ -51,6 +51,21 @@ describe('postal code table plausibility (decision 8)', () => {
     expect(POSTAL_CODE_SOURCE.license).toBe('ODbL-1.0')
     expect(POSTAL_CODE_SOURCE.retrieved).toMatch(/^\d{4}-\d{2}-\d{2}$/)
     expect(POSTAL_CODE_SOURCE.commit).toMatch(/^[0-9a-f]{40}$/)
+  })
+})
+
+describe('germanStateOfAddress', () => {
+  it('reads the Bundesland from the postal code, wherever it stands in the address', () => {
+    expect(germanStateOfAddress('76131 Karlsruhe, Durlacher Allee 50')).toBe('BW')
+    expect(germanStateOfAddress('Durlacher Allee 50, 76131 Karlsruhe')).toBe('BW')
+    expect(germanStateOfAddress('Werk Köln, 50667')).toBe('NW')
+  })
+
+  it('is null without a German postal code the table knows', () => {
+    expect(germanStateOfAddress('Köln')).toBeNull()
+    expect(germanStateOfAddress('4058 Basel, Rheinweg 2')).toBeNull()
+    expect(germanStateOfAddress('Hausnummer 123456')).toBeNull()
+    expect(germanStateOfAddress(null)).toBeNull()
   })
 })
 
