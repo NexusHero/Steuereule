@@ -223,8 +223,14 @@ describe('system prompt built for provider-side caching (#476)', () => {
 describe('a forced plan and Anthropic thinking (#476)', () => {
   it('forces plan_steps as tool choice where the provider allows it', async () => {
     const model = new ChunkedChatModel([[answer('Antwort.')]])
-    await run(new LangGraphAdvisorEngine(runtime('anthropic'), () => model), { planRequired: true })
+    await run(new LangGraphAdvisorEngine(runtime('anthropic', { model: 'claude-haiku-4-5' }), () => model), { planRequired: true })
     expect(model.toolChoices).toContain('plan_steps')
+  })
+
+  it('asks for the plan in words on a current Claude model, which rejects a forced tool even without thinking', async () => {
+    const model = new ChunkedChatModel([[answer('Antwort.')]])
+    await run(new LangGraphAdvisorEngine(runtime('anthropic', { model: 'claude-sonnet-5-5' }), () => model), { planRequired: true })
+    expect(model.toolChoices).not.toContain('plan_steps')
   })
 
   it('asks for the plan in words instead when thinking is on, because Anthropic rejects a forced tool then', async () => {
@@ -276,6 +282,14 @@ describe('reasoning configuration (#476)', () => {
       thinking: unknown
       maxTokens: number
     }
+    expect(model.thinking).toEqual({ type: 'adaptive', display: 'summarized' })
+    expect(model.maxTokens).toBeGreaterThan(3000)
+  })
+
+  it('gives a Claude model up to 4.5 its thinking budget, with room left for the answer', () => {
+    const model = createChatModelFromConfig(
+      slot('anthropic', { model: 'claude-haiku-4-5', reasoning: 'summary', reasoningBudgetTokens: 3000, maxTokens: 1000 }),
+    ) as unknown as { thinking: unknown; maxTokens: number }
     expect(model.thinking).toEqual({ type: 'enabled', budget_tokens: 3000 })
     expect(model.maxTokens).toBeGreaterThan(3000)
   })

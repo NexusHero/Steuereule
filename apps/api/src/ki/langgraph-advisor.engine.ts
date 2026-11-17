@@ -28,7 +28,7 @@ import {
   type OwlSourceId,
 } from '@steuereule/core'
 import { AI_RUNTIME_CONFIG_SERVICE, DEFAULT_AI_TURN_LIMITS, type AiRuntimeConfigService, type AiTurnLimits, type ResolvedAiSlotConfig } from './ai-runtime-config.service.js'
-import { CHAT_MODEL_FACTORY, createChatModelFromConfig, type ChatModelFactory } from './chat-model.factory.js'
+import { anthropicThinksOnBudget, CHAT_MODEL_FACTORY, createChatModelFromConfig, type ChatModelFactory } from './chat-model.factory.js'
 import { classifyModelFailure, providerName } from './advisor-failure.js'
 import { checkPiiFree } from './ki.adapter.js'
 import { buildSystemMessage, SUMMARY_MAX_CHARS, SUMMARY_INSTRUCTIONS } from './advisor-prompt.js'
@@ -366,8 +366,9 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
     /** How often a turn that came back completely empty is asked again (ADR-0084). */
     emptyRetries = 1,
   ): AsyncIterable<AdvisorStreamEvent> {
-    // Anthropic rejects a forced tool call while extended thinking is on; the plan is then asked for in words.
-    const canForceTool = !(slotConfig.provider === 'anthropic' && slotConfig.reasoning === 'summary')
+    // Anthropic rejects a forced tool call while extended thinking is on, and its current models reject
+    // it always; the plan is then asked for in words.
+    const canForceTool = slotConfig.provider !== 'anthropic' || (anthropicThinksOnBudget(slotConfig.model) && slotConfig.reasoning !== 'summary')
     const systemMessage = buildSystemMessage(
       slotConfig.provider,
       request.digest,
