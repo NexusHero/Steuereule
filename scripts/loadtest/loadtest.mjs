@@ -5,7 +5,7 @@
 //
 // Usage:
 //   node scripts/loadtest/loadtest.mjs [--concurrency 5] [--iterations 5] [--url http://localhost:3000] [--origin http://localhost:3300] [--max-p95 250] [--mock]
-import { randomBytes } from 'node:crypto'
+import { randomBytes, randomInt } from 'node:crypto'
 import { performance } from 'node:perf_hooks'
 
 const args = process.argv.slice(2)
@@ -75,7 +75,7 @@ async function runJourney(cookie, workerId, iter) {
   const step = async (name, fn) => {
     const t0 = performance.now()
     if (IS_MOCK) {
-      await new Promise((r) => setTimeout(r, Math.floor(Math.random() * 15 + 5)))
+      await new Promise((r) => setTimeout(r, randomInt(5, 20)))
     } else {
       await fn()
     }
