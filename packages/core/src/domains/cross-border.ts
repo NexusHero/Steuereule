@@ -68,6 +68,9 @@ export const SALARY_CERTIFICATE_AMOUNT_FIELDS: readonly SalaryCertificateAmountF
   (field) => field.kind === 'chf-betrag',
 ).map((field) => field.id) as readonly SalaryCertificateAmountFieldId[]
 
+/** Ziffer 7 („andere Leistungen“) may be a correction, so it is the one amount that can be negative (ADR-0093). */
+export const SALARY_CERTIFICATE_SIGNED_FIELD: SalaryCertificateAmountFieldId = 'andere-leistungen'
+
 export function openSalaryCertificateFields(values: SalaryCertificateValues, status: CrossBorderStatus): readonly SalaryCertificateFieldId[] {
   const required = new Set<SalaryCertificateFieldId>(['bruttolohn-total', 'berufliche-vorsorge'])
   if (status === 'echter-grenzgaenger') required.add('quellensteuer')
@@ -210,24 +213,25 @@ export function crossBorderFold(input: CrossBorderCalculationInput): Calculation
 
 export const SALARY_CERTIFICATE_UNCLEAR = 'unklar'
 
-export function isValidSalaryCertificateAmount(value: number): boolean {
-  return Number.isFinite(value) && Number.isInteger(value) && value >= 0
+/** A whole-CHF amount of the Lohnausweis; only Ziffer 7 (`field` given as such) may be below zero. */
+export function isValidSalaryCertificateAmount(value: number, field?: SalaryCertificateFieldId): boolean {
+  return Number.isFinite(value) && Number.isInteger(value) && (value >= 0 || field === SALARY_CERTIFICATE_SIGNED_FIELD)
 }
 
-export function serializeSalaryCertificateField(value: number | null | typeof SALARY_CERTIFICATE_UNCLEAR): string | null {
+export function serializeSalaryCertificateField(value: number | null | typeof SALARY_CERTIFICATE_UNCLEAR, field?: SalaryCertificateFieldId): string | null {
   if (value === null) return null
   if (value === SALARY_CERTIFICATE_UNCLEAR) return SALARY_CERTIFICATE_UNCLEAR
-  if (!isValidSalaryCertificateAmount(value)) {
+  if (!isValidSalaryCertificateAmount(value, field)) {
     throw new RangeError(`lohnausweis: erfasst value must be a non-negative integer`)
   }
   return String(value)
 }
 
-export function deserializeSalaryCertificateField(value: string | null): number | null | typeof SALARY_CERTIFICATE_UNCLEAR {
+export function deserializeSalaryCertificateField(value: string | null, field?: SalaryCertificateFieldId): number | null | typeof SALARY_CERTIFICATE_UNCLEAR {
   if (value === null) return null
   if (value === SALARY_CERTIFICATE_UNCLEAR) return SALARY_CERTIFICATE_UNCLEAR
   const rawValue = Number(value)
-  if (!isValidSalaryCertificateAmount(rawValue)) {
+  if (!isValidSalaryCertificateAmount(rawValue, field)) {
     throw new Error(`lohnausweis: stored value "${value}" is neither offen, unklar, nor a valid amount`)
   }
   return rawValue

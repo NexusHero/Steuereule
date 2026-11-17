@@ -6,8 +6,8 @@
 import { CAPITAL_FIELDS } from '../domains/capital'
 import { MARITAL_STATUSES, RELIGION_KEYS, isValidIban, normalizeIban } from '../common/master-data'
 import { CHILD_RELATIONSHIPS, OTHER_CHILD_RELATIONSHIPS, OTHER_PARENT_STATUSES } from '../domains/children'
-import { SALARY_CERTIFICATE_AMOUNT_FIELDS } from '../domains/cross-border'
-import { LSTB_OPTIONAL_LINES, WAGE_TAX_CERTIFICATE_FIELDS } from '../domains/lstb'
+import { SALARY_CERTIFICATE_AMOUNT_FIELDS, SALARY_CERTIFICATE_SIGNED_FIELD } from '../domains/cross-border'
+import { LSTB_OPTIONAL_LINES, LSTB_SOCIAL_LINES, LSTB_SOLI_LINE, WAGE_TAX_CERTIFICATE_FIELDS } from '../domains/lstb'
 import { PENSION_TYPES } from '../domains/pension'
 import { ASSESSMENT_FIELDS } from '../engine/assessment'
 import { AMOUNT_LATER, QUESTIONS, isValidAnswer, type EntryStepId } from './interview'
@@ -15,8 +15,8 @@ import { SCREENS, type Screen } from './marking'
 
 /** What a value has to look like. Stored values are strings; `kind` says which strings. */
 export type FieldValueKind =
-  /** Whole currency units, zero or more: `"1200"`. */
-  | { readonly kind: 'amount'; readonly max: number }
+  /** Whole currency units, zero or more: `"1200"`. `signed`: the form line can be negative (`"-75"`). */
+  | { readonly kind: 'amount'; readonly max: number; readonly signed?: boolean }
   | { readonly kind: 'integer'; readonly min: number; readonly max: number }
   /** `places`: decimal places allowed, two when not given. */
   | { readonly kind: 'decimal'; readonly min: number; readonly max: number; readonly places?: number }
@@ -117,6 +117,7 @@ export function isAiWritableField(screen: string, field: string, personalDataCon
 }
 
 const amount: FieldValueKind = { kind: 'amount', max: MAX_AMOUNT }
+const signedAmount: FieldValueKind = { kind: 'amount', max: MAX_AMOUNT, signed: true }
 const text = (maxLength: number): FieldValueKind => ({ kind: 'text', maxLength })
 const integer = (min: number, max: number): FieldValueKind => ({ kind: 'integer', min, max })
 const oneOf = (values: readonly string[]): FieldValueKind => ({ kind: 'enum', values })
@@ -169,6 +170,10 @@ const DECLARED: Readonly<Record<Screen, { readonly perInstance: boolean; readonl
       ...fromList(WAGE_TAX_CERTIFICATE_FIELDS, amount),
       /** Zeilen 6 und 7 (ADR-0063) and Zeile 24 (ADR-0090): optional lines next to the three required ones. */
       ...fromList(LSTB_OPTIONAL_LINES, amount),
+      /** Zeilen 22–27 line by line and Zeile 24c; the app adds them, the owl never does (ADR-0093). */
+      ...fromList(LSTB_SOCIAL_LINES, amount),
+      /** Zeile 5: withheld Solidaritätszuschlag, euros with cents. */
+      [LSTB_SOLI_LINE]: { kind: 'decimal', min: 0, max: MAX_AMOUNT },
     },
   },
   commute: {
@@ -198,19 +203,33 @@ const DECLARED: Readonly<Record<Screen, { readonly perInstance: boolean; readonl
       /** The first place of work (Anlage N/N-Gre „Arbeitsort“) — an address, so personal (ADR-0091). */
       workplace: text(120),
       secondWorkplace: text(120),
+      /** Days the first place of work was actually visited, per way; they replace the derived days (ADR-0093). */
+      travelDays: integer(0, 366),
+      secondTravelDays: integer(0, 366),
+      /** The user confirmed that the distance is the shortest road connection (§ 9 Abs. 1 Nr. 4 Satz 4 EStG). */
+      shortestRouteConfirmed: bool,
+      secondShortestRouteConfirmed: bool,
     },
   },
   chLohnausweis: {
     perInstance: false,
     fields: {
       ...fromList(SALARY_CERTIFICATE_AMOUNT_FIELDS, amount),
+      /** Ziffer 7 can be a correction and therefore negative (ADR-0093). */
+      [SALARY_CERTIFICATE_SIGNED_FIELD]: signedAmount,
       bemerkungen: text(500),
       saeule3aChf: amount,
       krankenkasseChf: amount,
+      /** Supplementary insurance (VVG): other provision, never basic health insurance (ADR-0093). */
+      krankenkasseZusatzChf: amount,
+      /** Anlage Vorsorgeaufwand Zeile 49: entitled to tax-free subsidies or employer contributions to health insurance. */
+      kvZuschussAnspruch: bool,
       arbeitgeberName: text(100),
       arbeitgeberStrasse: text(100),
       arbeitgeberPlzOrt: text(100),
       familienzulagenChf: amount,
+      /** Whether the family allowance is part of the gross wage of Ziffer 8; only then it is deducted (ADR-0093). */
+      familienzulagenImBruttolohn: bool,
       krankentaggeldChf: amount,
       pkArbeitnehmerChf: amount,
       pkArbeitgeberChf: amount,
@@ -306,19 +325,41 @@ const DECLARED: Readonly<Record<Screen, { readonly perInstance: boolean; readonl
  * so a sentence like "7.186 CHF, davon obligatorisch 2.892 CHF" needs no arithmetic.
  */
 const HINTS: Readonly<Partial<Record<Screen, Readonly<Record<string, string>>>>> = {
+  interview: {
+    einkuenfte: 'Pflichtfrage: Kapitalerträge über dem Sparer-Pauschbetrag bzw. Freistellungsauftrag oder ohne deutschen Steuerabzug (z. B. ausländische Bank) = „Kapitalerträge“; Mieteinnahmen = „Vermietung“; nichts davon = „Nein“',
+    'vorauszahlungen-gate': '„Ja“, wenn das Finanzamt für das Jahr Einkommensteuer-Vorauszahlungen festgesetzt hat',
+    'vorauszahlungen-betrag': 'gezahlte Einkommensteuer-Vorauszahlungen des Jahres in ganzen Euro (z. B. „Vorauszahlungen: 4.800 Euro“ → 4800); die App setzt vorauszahlungen-gate dazu selbst auf „Ja“',
+  },
   kind: {
     healthInsuranceAbroad: '„true“, wenn das Kind bei einer ausländischen Kasse versichert ist (z. B. Schweizer Grundversicherung); dann Anlage Kind Kz 89 statt Kz 66/67',
+    swissFamilyAllowanceEur: 'Schweizer Kinder-/Familienzulage für dieses Kind in Euro im Jahr, wenn sie NICHT im Bruttolohn Ziffer 8 des Lohnausweises steckt; steckt sie drin, stattdessen chLohnausweis.familienzulagenChf (die App verteilt sie auf die Kinder)',
     childcareEur: 'Kinderbetreuungskosten, die die Eltern gezahlt haben (Kita, Tagesmutter, Hort), Euro im Jahr, ohne Verpflegung; Anlage Kind Kz 51',
     childcareProvider: 'Art der Betreuung und Anbieter, kurz (höchstens 45 Zeichen, sonst passt es nicht in Zeile 67), z. B. „Kita, Gemeinde Musterdorf“',
     childcareFrom: 'Beginn der Betreuung im Jahr, TT.MM.JJJJ',
     childcareTo: 'Ende der Betreuung im Jahr, TT.MM.JJJJ',
   },
+  lstb: {
+    sozialversicherung: 'Summe der Arbeitnehmeranteile; NICHT selbst addieren: nennt der Nutzer die Zeilen einzeln, lege rvArbeitnehmer, kvArbeitnehmer, pvArbeitnehmer und avArbeitnehmer an, die App bildet die Summe',
+    rvArbeitnehmer: 'Zeile 23 a/b: Arbeitnehmeranteil zur Rentenversicherung',
+    rvArbeitgeber: 'Zeile 22 a/b: Arbeitgeberanteil zur Rentenversicherung',
+    kvArbeitnehmer: 'Zeile 25: Arbeitnehmerbeitrag zur gesetzlichen Krankenversicherung; ist sie gefüllt, MUSS Zeile 24 (zuschuesseKvPv, auch 0) beantwortet sein – frag danach',
+    pvArbeitnehmer: 'Zeile 26: Arbeitnehmerbeitrag zur sozialen Pflegeversicherung; ist sie gefüllt, MUSS Zeile 24 (zuschuesseKvPv, auch 0) beantwortet sein',
+    avArbeitnehmer: 'Zeile 27: Arbeitnehmerbeitrag zur Arbeitslosenversicherung',
+    zuschuesseKvPv: 'Zeile 24 a–c zusammen: steuerfreie Arbeitgeberzuschüsse zur Kranken- und Pflegeversicherung; 0, wenn die Zeile leer ist',
+    zuschussPv: 'Zeile 24c allein: der Pflegeversicherungs-Teil des steuerfreien Arbeitgeberzuschusses',
+    solidaritaetszuschlag: 'Zeile 5: einbehaltener Solidaritätszuschlag, Euro mit Cent',
+  },
   commute: {
+    oneWayKm: 'einfache Entfernung in vollen km; es zählt die kürzeste Straßenverbindung (§ 9 Abs. 1 Nr. 4 Satz 4 EStG), nicht die gefahrene Strecke – sag das und frag, ob es die kürzeste ist (shortestRouteConfirmed)',
+    travelDays: 'Tage, an denen die erste Tätigkeitsstätte auf diesem Weg tatsächlich aufgesucht wurde („an 205 Tagen“); ersetzt die Rechnung Arbeitstage − Urlaub − Krankheit − Homeoffice',
+    secondTravelDays: 'tatsächliche Fahrtage auf dem zweiten Arbeitsweg',
+    shortestRouteConfirmed: '„true“, wenn der Nutzer bestätigt hat, dass oneWayKm die kürzeste Straßenverbindung ist; nie ohne seine Antwort setzen',
+    secondShortestRouteConfirmed: 'dieselbe Bestätigung für secondOneWayKm',
     professionalBodiesEur: 'Werbungskosten: Beiträge zu Berufsverbänden, z. B. Gewerkschaft (Anlage N Kz 310), Euro im Jahr',
     workEquipmentEur: 'Werbungskosten: Arbeitsmittel und typische Berufskleidung (Kz 320), Euro im Jahr; was es war, in workEquipmentNote',
     accountFeesEur: 'Werbungskosten: Kontoführungsgebühren (Kz 380); ohne Nachweis akzeptiert das Finanzamt 16 € im Jahr',
     otherWorkExpensesEur: 'Werbungskosten: Sonstiges wie Bewerbungen (Kz 380), Euro im Jahr; was es war, in otherWorkExpensesNote',
-    periodFrom: 'Arbeitsweg gilt erst ab diesem Tag, TT.MM.JJJJ; leer = ab Jahresbeginn',
+    periodFrom: 'Arbeitsweg gilt erst ab diesem Tag, TT.MM.JJJJ; leer = ab Jahresbeginn. Bei einem Arbeitgeberwechsel je Arbeitgeber fragen, ob ein Weg angesetzt wird; für einen Zeitraum ohne Weg gibt es keine Pauschale',
     periodTo: 'Arbeitsweg gilt nur bis zu diesem Tag (z. B. Arbeitgeberwechsel), TT.MM.JJJJ; leer = bis Jahresende',
     secondOneWayKm: 'zweiter Arbeitsweg nach einem Arbeitgeberwechsel im Jahr: einfache Entfernung in km',
     secondTransport: 'Verkehrsmittel des zweiten Arbeitswegs',
@@ -331,7 +372,13 @@ const HINTS: Readonly<Partial<Record<Screen, Readonly<Record<string, string>>>>>
     pkArbeitgeberChf: 'nur der obligatorische BVG-Teil (Säule 2a) der Arbeitgeberbeiträge, N-Gre Zeile 87',
     pkArbeitgeberGesamtChf: 'alle Arbeitgeberbeiträge an die Pensionskasse, obligatorisch und überobligatorisch zusammen; den überobligatorischen Teil (Zeile 20) rechnet die App',
     krankentaggeldChf: 'Prämie des Arbeitnehmers zur Krankentaggeldversicherung, N-Gre Zeile 80, nicht das ausgezahlte Taggeld',
-    steuerfreiesKrankentaggeldChf: 'ausgezahltes steuerfreies Krankentaggeld, im Bruttolohn Ziffer 8 enthalten, N-Gre Zeile 9',
+    steuerfreiesKrankentaggeldChf: 'ausgezahltes steuerfreies Krankentaggeld, NUR wenn es im Bruttolohn Ziffer 8 enthalten ist (N-Gre Zeile 9); der Lohnausweis sagt das nicht eindeutig: immer nachfragen und nur über `propose_two_paths` vorschlagen (ein Weg 0 = nicht abziehen, ein Weg der Betrag)',
+    'andere-leistungen': 'Lohnausweis Ziffer 7; kann negativ sein (z. B. -75)',
+    krankenkasseChf: 'nur die Grundversicherung nach KVG (Basisabsicherung), ohne Zusatzversicherungen; zeigt der Beleg die Aufteilung nicht, frag nach',
+    krankenkasseZusatzChf: 'Zusatzversicherungen nach VVG (Spital-, Zahn-, Komplementärversicherung), sonstige Vorsorge und keine Basisabsicherung; 0, wenn es keine gibt',
+    kvZuschussAnspruch: '„true“, wenn Anspruch auf steuerfreie Zuschüsse oder Arbeitgeberbeiträge zur Krankenversicherung besteht (Anlage Vorsorgeaufwand Zeile 49); bei Grenzgängern meist „false“',
+    familienzulagenChf: 'Familien-/Kinderzulagen, NUR wenn sie im Bruttolohn Ziffer 8 des Lohnausweises enthalten sind (N-Gre Zeile 8); braucht das Begleitfeld familienzulagenImBruttolohn = „true“. Sonst gehört die Zulage zum Kind (kind.swissFamilyAllowanceEur), nie beides für dasselbe Geld',
+    familienzulagenImBruttolohn: '„true“, wenn der Nutzer bestätigt hat, dass die Zulage im Bruttolohn Ziffer 8 enthalten ist; „false“, wenn nicht',
     nbuvArbeitgeberChf: 'Arbeitgeberanteil der NBUV-Prämie in CHF, nur nötig, wenn der Arbeitgeber 100 % zahlt',
     krankentaggeldArbeitgeberChf: 'Arbeitgeberanteil der Krankentaggeld-Prämie in CHF, nur nötig, wenn der Arbeitgeber 100 % zahlt',
     wechselkurs: 'Euro je 1 CHF, z. B. 1,065 = Jahresdurchschnitt 2025 (Anlage N-Gre); ohne wechselkursMonat gilt der Jahresdurchschnitt des Steuerjahrs',
@@ -396,8 +443,16 @@ function withoutTrailingUnit(raw: string): string {
 }
 
 /** `"5.000 €"`, `"5 000"`, `"5'000 CHF"`, `"5000,00"` → `"5000"`; anything with real decimals is refused. */
-function tidyAmount(raw: string): string | null {
-  const bare = withoutTrailingUnit(raw).trim()
+function tidyAmount(raw: string, signed = false): string | null {
+  const unsigned = withoutTrailingUnit(raw).trim()
+  // A typed minus, the typographic one, or the Swiss „–“ in front of the figure.
+  const negative = signed && /^[-−–]\s*\d/.test(unsigned)
+  const bare = negative ? unsigned.replace(/^[-−–]\s*/, '') : unsigned
+  const tidy = tidyUnsignedAmount(bare)
+  return tidy === null || !negative || tidy === '0' ? tidy : `-${tidy}`
+}
+
+function tidyUnsignedAmount(bare: string): string | null {
   const withoutZeroCents = bare.replace(/[.,]0{1,2}$/, '')
   const withoutGrouping = /^\d{1,3}([.\s'’]\d{3})+$/.test(withoutZeroCents) ? withoutZeroCents.replace(/[.\s'’]/g, '') : withoutZeroCents
   return /^\d+$/.test(withoutGrouping) ? String(Number(withoutGrouping)) : null
@@ -430,9 +485,9 @@ function isRealDate(iso: string): boolean {
 function checkKind(kind: FieldValueKind, field: string, raw: string): FieldValueCheck {
   switch (kind.kind) {
     case 'amount': {
-      const tidy = tidyAmount(raw)
+      const tidy = tidyAmount(raw, kind.signed === true)
       if (tidy === null) return invalid(`„${raw}“ ist kein Betrag in ganzen Einheiten (Beispiel: 1200).`)
-      return Number(tidy) <= kind.max ? valid(tidy) : invalid(`Der Betrag darf höchstens ${kind.max} sein.`)
+      return Math.abs(Number(tidy)) <= kind.max ? valid(tidy) : invalid(`Der Betrag darf höchstens ${kind.max} sein.`)
     }
     case 'integer': {
       if (!/^-?\d+$/.test(raw)) return invalid(`„${raw}“ ist keine ganze Zahl.`)
@@ -517,7 +572,7 @@ function describeShape(spec: FieldSpec): string {
   const { value } = spec
   switch (value.kind) {
     case 'amount':
-      return `${spec.field} (Betrag, ganze Zahl)`
+      return value.signed ? `${spec.field} (Betrag, ganze Zahl, auch negativ)` : `${spec.field} (Betrag, ganze Zahl)`
     case 'integer':
       return `${spec.field} (ganze Zahl ${value.min}–${value.max})`
     case 'decimal':
