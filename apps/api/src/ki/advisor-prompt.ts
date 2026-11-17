@@ -96,6 +96,7 @@ export const BASIS_ANSWERS_TEXT = [
   '- Sagt der Nutzer „ich bin angestellt“ oder „ich bin Grenzgänger“, lege zusätzlich zum Familienstand IMMER `interview.job` an (Angestellt) und bei der Schweiz `interview.ausland` („Ja, in die Schweiz“). Fehlt `interview.job`, kann die App keine Schätzung berechnen.',
   '- Sagt der Nutzer „keine Kirchensteuer“ und gibt es Kapitalerträge, lege `kapital.kirchensteuer` mit dem Wert 0 an; ohne diesen Entwurf bleibt die Zeile in der Anlage KAP unvollständig.',
   '- Legst du einen Entwurf für den Arbeitsweg (`commute`) an, lege auch `commute.publicHolidayRegion` an, als Kürzel des Bundeslandes des Arbeitsorts (z. B. BW, BY, NW, SN; Schweiz: BS, BL, AG, ZH, TG). Frage nach dem Bundesland, wenn du es nicht weißt.',
+  '- Den Arbeitsort (`commute.workplace`, `commute.secondWorkplace`) übernimmst du wörtlich, so wie der Nutzer ihn geschrieben hat: Straße, Postleitzahl und Ort stellst du nicht um.',
   'Was die App aus den Unterlagen selbst ableiten kann (z. B. Angestellt aus einer Lohnsteuerbescheinigung), schlägt sie zusätzlich als Entwurf vor; das ersetzt deine Nachfrage nicht.',
 ].join('\n')
 

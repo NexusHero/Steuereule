@@ -20,6 +20,8 @@ import {
   type RentalFieldId,
   type SalaryCertificateAmountFieldId,
   effectivePublicHolidays,
+  germanStateOfAddress,
+  isHolidayRegion,
 } from '@steuereule/core'
 import { InvalidInputError } from '../common/domain-error.js'
 import type { AssessmentRepository } from '../assessment/assessment.repository.js'
@@ -681,6 +683,15 @@ export function fieldAccessFrom({
             }
             return false
           }
+        }
+
+        // The mask starts from the Bundesland of the home address; a way written here gets the same
+        // start, or the workplace's own state when its postal code names one. A region or a count the
+        // user set stands, and so does a region cleared in this very write.
+        const holidaysOpen = !isHolidayRegion(updated.publicHolidayRegion) && (updated.publicHolidays ?? null) === null
+        if (holidaysOpen && field !== 'publicHolidayRegion' && field !== 'publicHolidays') {
+          const region = germanStateOfAddress(updated.workplace) ?? germanStateOfAddress((await masterData?.findByUserId(userId))?.plz)
+          if (region !== null) updated = { ...updated, publicHolidayRegion: region }
         }
 
         const workdaysRes = calculateWorkdays({
