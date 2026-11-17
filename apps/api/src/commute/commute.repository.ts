@@ -26,7 +26,16 @@ export interface WaysToWork {
   readonly secondWorkplace?: string | null
   readonly secondFrom?: string | null
   readonly secondTo?: string | null
+  /** Days the first place of work was actually visited on each way; they replace the derived days (ADR-0093). */
+  readonly travelDays?: number | null
+  readonly secondTravelDays?: number | null
+  /** The user confirmed the distance is the shortest road connection (§ 9 Abs. 1 Nr. 4 Satz 4 EStG). */
+  readonly shortestRouteConfirmed?: boolean | null
+  readonly secondShortestRouteConfirmed?: boolean | null
 }
+
+/** The facts of a way stored as they are (numbers, yes/no); on save, undefined keeps what is stored. */
+export const WAY_FACT_FIELDS = ['secondOneWayKm', 'travelDays', 'secondTravelDays', 'shortestRouteConfirmed', 'secondShortestRouteConfirmed'] as const
 
 export const WAY_TEXT_FIELDS = ['periodFrom', 'periodTo', 'secondTransport', 'secondWorkplace', 'secondFrom', 'secondTo'] as const
 

@@ -257,6 +257,46 @@ describe('LstbScreen', () => {
     await waitFor(() => expect(puts).toEqual([{ zuschuesseKvPv: 5072 }]))
   })
 
+  it('shows the Zeile 24 hint while the server reports the subsidy open, and hides it after Zeile 24 is saved', async () => {
+    let open = true
+    const lines = () => ({
+      rvArbeitnehmer: null, rvArbeitgeber: null, kvArbeitnehmer: 3000, pvArbeitnehmer: null, avArbeitnehmer: null,
+      zuschussPv: null, solidaritaetszuschlag: null, zuschuesseKvPv: open ? null : 0, sozialversicherung: null, subsidyOpen: open,
+    })
+    server.use(
+      http.get('*/v1/steuerjahre/:jahr/lstb-zeilen', () => HttpResponse.json(lines())),
+      http.put('*/v1/steuerjahre/:jahr/lstb-zuschuesse', async ({ request }) => {
+        open = false
+        return HttpResponse.json(await request.json(), { status: 200 })
+      }),
+    )
+    renderLstb()
+    expect(await screen.findByText(/Zeile 25 oder 26 ist ausgefüllt: Bitte Zeile 24 eintragen \(auch 0\)/)).toBeTruthy()
+    const line24 = await screen.findByLabelText('Steuerfreie Zuschüsse zur Kranken- und Pflegeversicherung (Zeile 24 a–c, zusammen) (Ganzzahlige Euro)')
+    fireEvent.change(line24, { target: { value: '0' } })
+    fireEvent.blur(line24)
+    await waitFor(() => expect(screen.queryByText(/Bitte Zeile 24 eintragen/)).toBeNull())
+  })
+
+  it('saves a social-security line partially and a Soli with a decimal comma', async () => {
+    const puts: unknown[] = []
+    server.use(
+      http.put('*/v1/steuerjahre/:jahr/lstb-zeilen', async ({ request }) => {
+        const body = await request.json()
+        puts.push(body)
+        return HttpResponse.json(body, { status: 200 })
+      }),
+    )
+    renderLstb()
+    const rv = await screen.findByLabelText('Arbeitnehmeranteil Rentenversicherung (Zeile 23) (Ganzzahlige Euro)')
+    fireEvent.change(rv, { target: { value: '4200' } })
+    fireEvent.blur(rv)
+    const soli = await screen.findByLabelText('Einbehaltener Solidaritätszuschlag (Zeile 5, in Euro mit Cent)')
+    fireEvent.change(soli, { target: { value: '12,50' } })
+    fireEvent.blur(soli)
+    await waitFor(() => expect(puts).toEqual([{ rvArbeitnehmer: 4200 }, { solidaritaetszuschlag: 12.5 }]))
+  })
+
   it('an emptied church tax line is stored as not entered, never as 0 €', async () => {
     const puts: unknown[] = []
     server.use(

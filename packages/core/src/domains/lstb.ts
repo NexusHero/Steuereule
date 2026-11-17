@@ -54,6 +54,46 @@ export type WageTaxCertificateStatus =
 export const LSTB_OPTIONAL_LINES = ['kirchensteuer', 'kirchensteuerEhegatte', 'zuschuesseKvPv'] as const
 export type LstbOptionalLine = (typeof LSTB_OPTIONAL_LINES)[number]
 
+/**
+ * The insurance block of the LStB, line by line (ADR-0093): the employer's and the employee's pension
+ * contribution (Zeilen 22, 23), the employee's health, care and unemployment insurance (Zeilen 25–27)
+ * and the care part of the tax-free employer subsidy (Zeile 24c). Whole euros; the app adds, nobody else.
+ */
+export const LSTB_SOCIAL_LINES = ['rvArbeitnehmer', 'rvArbeitgeber', 'kvArbeitnehmer', 'pvArbeitnehmer', 'avArbeitnehmer', 'zuschussPv'] as const
+export type LstbSocialLine = (typeof LSTB_SOCIAL_LINES)[number]
+
+/** The lines whose sum is the employee's social security (`sozialversicherung`). */
+export const LSTB_EMPLOYEE_SOCIAL_LINES = ['rvArbeitnehmer', 'kvArbeitnehmer', 'pvArbeitnehmer', 'avArbeitnehmer'] as const
+
+/** Zeile 5, the withheld Solidaritätszuschlag: euros with cents, stored as a decimal string. */
+export const LSTB_SOLI_LINE = 'solidaritaetszuschlag'
+
+export type LstbLineValues = Readonly<Partial<Record<LstbSocialLine | 'zuschuesseKvPv', number | null | undefined>>>
+
+/** The employee's social security as the sum of Zeilen 23, 25, 26 and 27; null until all four are recorded. */
+export function lstbSocialSecurityFromLines(lines: LstbLineValues): number | null {
+  let sum = 0
+  for (const line of LSTB_EMPLOYEE_SOCIAL_LINES) {
+    const value = lines[line]
+    if (value === null || value === undefined) return null
+    sum += value
+  }
+  return sum
+}
+
+/**
+ * Zeile 24 has to be answered (an amount or an explicit 0) once Zeile 25 or 26 carries a contribution:
+ * for a voluntarily insured employee those lines hold the whole contribution and Zeile 24 the employer's
+ * tax-free part, which is not deductible (§ 10 Abs. 2 Satz 1 Nr. 1 EStG).
+ */
+export function lstbSubsidyQuestionOpen(lines: LstbLineValues): boolean {
+  const filled = (value: number | null | undefined): boolean => value !== null && value !== undefined && value > 0
+  return (filled(lines.kvArbeitnehmer) || filled(lines.pvArbeitnehmer)) && (lines.zuschuesseKvPv === null || lines.zuschuesseKvPv === undefined)
+}
+
+/** The code the estimate and the checklist name the open Zeile 24 by. */
+export const LSTB_SUBSIDY_OPEN = 'zuschuesseKvPv'
+
 export const WAGE_TAX_CERTIFICATE_FIELDS: readonly WageTaxCertificateFieldId[] = [
   'bruttoarbeitslohn',
   'lohnsteuer',

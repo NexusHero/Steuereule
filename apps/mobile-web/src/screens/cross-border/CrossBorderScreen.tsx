@@ -3,7 +3,7 @@ import { ScrollView, View, Text, Pressable, type ViewStyle, type TextStyle } fro
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { Button, Card, Chip, Input, Feld, Option, Pill, useTheme, useBreakpoint, type UiTheme, type Breakpoint } from '@steuereule/ui'
-import { ANNUAL_AVERAGE_RATES, ENTRIES, SALARY_CERTIFICATE_FIELDS, formatEuro, nextStepFor, type Answers, type EntryQuestionId } from '@steuereule/core'
+import { ANNUAL_AVERAGE_RATES, ENTRIES, SALARY_CERTIFICATE_FIELDS, SALARY_CERTIFICATE_SIGNED_FIELD, formatEuro, isValidSalaryCertificateAmount, nextStepFor, type Answers, type EntryQuestionId } from '@steuereule/core'
 import {
   CreateReceiptDtoKind,
   getReceiptControllerListQueryKey,
@@ -62,6 +62,14 @@ const GROSS_COMPONENT_IDS = [
   'sitzungsgelder',
   'andere-leistungen',
 ] as const
+
+/** Whole CHF of one Lohnausweis Ziffer; only Ziffer 7 may be negative (ADR-0093). Empty or unreadable is null. */
+function salaryAmountFrom(text: string, fieldId: string): number | null {
+  const trimmed = text.trim().replace('\u2212', '-')
+  if (!/^-?(0|[1-9]\d*)$/.test(trimmed)) return null
+  const value = Number(trimmed)
+  return isValidSalaryCertificateAmount(value, fieldId === SALARY_CERTIFICATE_SIGNED_FIELD ? SALARY_CERTIFICATE_SIGNED_FIELD : undefined) ? value : null
+}
 
 export function CrossBorderScreen({ onDone, onBack, taxYear = CURRENT_TAX_YEAR, partnerName }: CrossBorderScreenProps) {
   const bp = useBreakpoint()
@@ -322,8 +330,8 @@ function SalaryCertificateStep({
   const [uploadingReceipt, setUploadingReceipt] = useState(false)
   const [receiptUploadStatus, setReceiptUploadStatus] = useState<{ readonly kind: 'ok' | 'error'; readonly text: string } | null>(null)
 
-  const grossComponentValues = GROSS_COMPONENT_IDS.map((id) => integerFrom(drafts[id]?.trim() ?? '')).filter(
-    (v): v is number => v !== null && v > 0,
+  const grossComponentValues = GROSS_COMPONENT_IDS.map((id) => salaryAmountFrom(drafts[id] ?? '', id)).filter(
+    (v): v is number => v !== null && v !== 0,
   )
   const calculatedGrossSum = grossComponentValues.reduce((acc, n) => acc + n, 0)
   const currentGrossInt = integerFrom(drafts['bruttolohn-total']?.trim() ?? '')
@@ -366,8 +374,8 @@ function SalaryCertificateStep({
       }
       if (fieldId !== 'lohn' && (GROSS_COMPONENT_IDS as readonly string[]).includes(fieldId) && !manualGrossOverride) {
         const sum = GROSS_COMPONENT_IDS.reduce((acc, id) => {
-          const v = integerFrom((id === fieldId ? nextText : next[id] ?? '').trim())
-          return acc + (v !== null && v > 0 ? v : 0)
+          const v = salaryAmountFrom(id === fieldId ? nextText : next[id] ?? '', id)
+          return acc + (v ?? 0)
         }, 0)
         if (sum > 0) {
           next['bruttolohn-total'] = String(sum)
@@ -572,7 +580,7 @@ function SalaryCertificateStep({
         {tr('grenzgaenger.lohnausweis.wechselkurs.speichern')}
       </Button>
 
-      <ProvisionSection salaryCertificate={salaryCertificate} onSet={onSetProvision} />
+      <ProvisionSection salaryCertificate={salaryCertificate} nGre={salaryCertificate.nGre} onSet={onSetProvision} onSetNGre={onSetNGre} />
 
       <NGreSection nGre={salaryCertificate.nGre} onSet={onSetNGre} />
 
@@ -750,6 +758,19 @@ function NGreSection({ nGre, onSet }: { readonly nGre: NGreDetailsDto; readonly 
           }}
         />
       ))}
+      <YesNo
+        label={tr('grenzgaenger.nGre.felder.familienzulagenImBruttolohn')}
+        help={tr('grenzgaenger.nGre.felder.familienzulagenImBruttolohnHilfe')}
+        value={nGre.familienzulagenImBruttolohn}
+        onChange={(v) => onSet({ familienzulagenImBruttolohn: v })}
+        testID="ch-ngre-familienzulagen-im-brutto"
+      />
+      <YesNo
+        label={tr('grenzgaenger.nGre.felder.kvZuschussAnspruch')}
+        value={nGre.kvZuschussAnspruch}
+        onChange={(v) => onSet({ kvZuschussAnspruch: v })}
+        testID="ch-ngre-kv-zuschuss"
+      />
       {PREMIUMS.map(({ prozent: percent, chf }) => (
         <View key={percent}>
           <NGreInput
@@ -790,7 +811,48 @@ function NGreSection({ nGre, onSet }: { readonly nGre: NGreDetailsDto; readonly 
   )
 }
 
-function ProvisionSection({ salaryCertificate, onSet }: { readonly salaryCertificate: ChSalaryCertificateResponseDto; readonly onSet: (data: PutProvisionDto) => void }) {
+function YesNo({
+  label,
+  help,
+  value,
+  onChange,
+  testID,
+}: {
+  readonly label: string
+  readonly help?: string
+  readonly value: boolean | null
+  readonly onChange: (value: boolean) => void
+  readonly testID: string
+}) {
+  const t = useTheme()
+  const { t: tr } = useTranslation(APP_NS)
+  const styles = makeStyles(t)
+  return (
+    <Feld label={label}>
+      {help ? <Text style={styles.help}>{help}</Text> : null}
+      <View style={{ flexDirection: 'row', gap: t.space.s2 }}>
+        <Chip active={value === true} onPress={() => onChange(true)} testID={`${testID}-ja`}>
+          {tr('grenzgaenger.nGre.ja')}
+        </Chip>
+        <Chip active={value === false} onPress={() => onChange(false)} testID={`${testID}-nein`}>
+          {tr('grenzgaenger.nGre.nein')}
+        </Chip>
+      </View>
+    </Feld>
+  )
+}
+
+function ProvisionSection({
+  salaryCertificate,
+  nGre,
+  onSet,
+  onSetNGre,
+}: {
+  readonly salaryCertificate: ChSalaryCertificateResponseDto
+  readonly nGre: NGreDetailsDto
+  readonly onSet: (data: PutProvisionDto) => void
+  readonly onSetNGre: (data: PutNGreDto) => void
+}) {
   const t = useTheme()
   const styles = makeStyles(t)
   const { t: tr } = useTranslation(APP_NS)
@@ -820,6 +882,18 @@ function ProvisionSection({ salaryCertificate, onSet }: { readonly salaryCertifi
           />
         )
       })}
+      {/* Supplementary insurance (VVG) is stored with the N-Gre details, not with the provision items. */}
+      <NGreInput
+        label={tr('grenzgaenger.vorsorge.krankenkasseZusatzChf')}
+        initial={nGre.krankenkasseZusatzChf === null ? '' : String(nGre.krankenkasseZusatzChf)}
+        numeric
+        testID="ch-vorsorge-krankenkasseZusatzChf"
+        onCommit={(text) => {
+          if (text === '') onSetNGre({ krankenkasseZusatzChf: null })
+          else if (/^(0|[1-9]\d*)$/.test(text)) onSetNGre({ krankenkasseZusatzChf: Number(text) })
+        }}
+      />
+      <Text style={styles.help}>{tr('grenzgaenger.vorsorge.krankenkasseZusatzHilfe')}</Text>
     </>
   )
 }
@@ -890,7 +964,7 @@ function ChFieldInput({
     const trimmed = value.trim()
     if (trimmed === initial) return
     if (trimmed === '') return onCommit({ kind: 'offen' })
-    const parsed = integerFrom(trimmed)
+    const parsed = salaryAmountFrom(trimmed, fieldId)
     if (parsed !== null) onCommit({ kind: 'erfasst', value: parsed })
   }
   const label = `${tr('grenzgaenger.lohnausweis.ziffer', { n: digit })} · ${tr(`grenzgaenger.lohnausweis.felder.${fieldId}`)}`
@@ -903,7 +977,8 @@ function ChFieldInput({
       ) : null}
       <Feld label={label}>
         <Input
-          type="numeric"
+          // Ziffer 7 may be negative: the number pad has no minus sign.
+          type={fieldId === SALARY_CERTIFICATE_SIGNED_FIELD ? 'text' : 'numeric'}
           accessibilityLabel={label}
           value={value}
           onChange={onChangeText}

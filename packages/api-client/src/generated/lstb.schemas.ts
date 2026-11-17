@@ -107,6 +107,73 @@ export interface LstbChurchTaxDto {
   kirchensteuerEhegatte: number | null;
 }
 
+export interface LstbLinesResponseDto {
+  /** @nullable */
+  rvArbeitnehmer: number | null;
+  /** @nullable */
+  rvArbeitgeber: number | null;
+  /** @nullable */
+  kvArbeitnehmer: number | null;
+  /** @nullable */
+  pvArbeitnehmer: number | null;
+  /** @nullable */
+  avArbeitnehmer: number | null;
+  /** @nullable */
+  zuschussPv: number | null;
+  /** @nullable */
+  solidaritaetszuschlag: number | null;
+  /**
+     * Zeile 24 a–c zusammen, as stored through `lstb-zuschuesse`.
+     * @nullable
+     */
+  zuschuesseKvPv: number | null;
+  /**
+     * Sum of Zeilen 23, 25, 26 and 27 once all four are recorded; the app stores it as `sozialversicherung`.
+     * @nullable
+     */
+  sozialversicherung: number | null;
+  /** Zeile 25 or 26 is filled and Zeile 24 not answered yet: the social security counts as incomplete. */
+  subsidyOpen: boolean;
+}
+
+export interface LstbLinesDto {
+  /**
+     * Zeile 23 a/b: Arbeitnehmeranteil zur Rentenversicherung. Ganze Euro; weggelassen = unverändert, null = leeren.
+     * @nullable
+     */
+  rvArbeitnehmer?: number | null;
+  /**
+     * Zeile 22 a/b: Arbeitgeberanteil zur Rentenversicherung. Ganze Euro; weggelassen = unverändert, null = leeren.
+     * @nullable
+     */
+  rvArbeitgeber?: number | null;
+  /**
+     * Zeile 25: Arbeitnehmerbeitrag zur gesetzlichen Krankenversicherung. Ganze Euro; weggelassen = unverändert, null = leeren.
+     * @nullable
+     */
+  kvArbeitnehmer?: number | null;
+  /**
+     * Zeile 26: Arbeitnehmerbeitrag zur sozialen Pflegeversicherung. Ganze Euro; weggelassen = unverändert, null = leeren.
+     * @nullable
+     */
+  pvArbeitnehmer?: number | null;
+  /**
+     * Zeile 27: Arbeitnehmerbeitrag zur Arbeitslosenversicherung. Ganze Euro; weggelassen = unverändert, null = leeren.
+     * @nullable
+     */
+  avArbeitnehmer?: number | null;
+  /**
+     * Zeile 24c: Pflegeversicherungs-Teil des steuerfreien Arbeitgeberzuschusses. Ganze Euro; weggelassen = unverändert, null = leeren.
+     * @nullable
+     */
+  zuschussPv?: number | null;
+  /**
+     * Zeile 5: einbehaltener Solidaritätszuschlag, Euro mit Cent; weggelassen = unverändert, null = leeren.
+     * @nullable
+     */
+  solidaritaetszuschlag?: number | null;
+}
+
 export interface LstbSubsidiesDto {
   /**
      * Zeile 24 a–c: steuerfreie Arbeitgeberzuschüsse zur Kranken- und Pflegeversicherung, zusammen, ganze Euro.
@@ -186,6 +253,36 @@ export type LstbControllerSetChurchTaxPerson = typeof LstbControllerSetChurchTax
 
 
 export const LstbControllerSetChurchTaxPerson = {
+  A: 'A',
+  B: 'B',
+} as const;
+
+export type LstbControllerGetLinesParams = {
+/**
+ * B: Person A reads the figures of a partner without an own account (ADR-0054).
+ */
+person?: LstbControllerGetLinesPerson;
+};
+
+export type LstbControllerGetLinesPerson = typeof LstbControllerGetLinesPerson[keyof typeof LstbControllerGetLinesPerson];
+
+
+export const LstbControllerGetLinesPerson = {
+  A: 'A',
+  B: 'B',
+} as const;
+
+export type LstbControllerSetLinesParams = {
+/**
+ * B: Person A records the figures of a partner without an own account (ADR-0054).
+ */
+person?: LstbControllerSetLinesPerson;
+};
+
+export type LstbControllerSetLinesPerson = typeof LstbControllerSetLinesPerson[keyof typeof LstbControllerSetLinesPerson];
+
+
+export const LstbControllerSetLinesPerson = {
   A: 'A',
   B: 'B',
 } as const;

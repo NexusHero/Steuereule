@@ -146,7 +146,7 @@ describe('the Swiss pension split and the tax-free Krankentaggeld in the catalog
     expect(describeFieldForPrompt(fieldSpec('chLohnausweis', 'pkArbeitgeberGesamtChf')!)).toContain('alle Arbeitgeberbeiträge')
     expect(describeFieldForPrompt(fieldSpec('chLohnausweis', 'krankentaggeldChf')!)).toContain('nicht das ausgezahlte Taggeld')
     expect(describeFieldForPrompt(fieldSpec('chLohnausweis', 'steuerfreiesKrankentaggeldChf')!)).toBe(
-      'steuerfreiesKrankentaggeldChf (Betrag, ganze Zahl; ausgezahltes steuerfreies Krankentaggeld, im Bruttolohn Ziffer 8 enthalten, N-Gre Zeile 9)',
+      'steuerfreiesKrankentaggeldChf (Betrag, ganze Zahl; ausgezahltes steuerfreies Krankentaggeld, NUR wenn es im Bruttolohn Ziffer 8 enthalten ist (N-Gre Zeile 9); der Lohnausweis sagt das nicht eindeutig: immer nachfragen und nur über `propose_two_paths` vorschlagen (ein Weg 0 = nicht abziehen, ein Weg der Betrag))',
     )
   })
 })

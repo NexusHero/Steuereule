@@ -7,7 +7,7 @@ import { ParseTaxYearPipe } from '../cockpit/parse-tax-year.pipe.js'
 import { LinkService } from '../link/link.service.js'
 import { ParsePersonPipe } from '../link/parse-person.pipe.js'
 import { CommuteService } from './commute.service.js'
-import { WAY_TEXT_FIELDS, WORK_EXPENSE_AMOUNT_FIELDS, WORK_EXPENSE_NOTE_FIELDS } from './commute.repository.js'
+import { WAY_FACT_FIELDS, WAY_TEXT_FIELDS, WORK_EXPENSE_AMOUNT_FIELDS, WORK_EXPENSE_NOTE_FIELDS } from './commute.repository.js'
 import { CommuteInputsDto, CommuteResponseDto } from './dto/commute.dto.js'
 
 @ApiTags('arbeitsweg')
@@ -58,7 +58,7 @@ export class CommuteController {
       publicHolidays: body.publicHolidays ?? null,
       publicHolidayRegion: body.publicHolidayRegion ?? null,
       // Absent fields stay undefined so a save from an older client keeps what is stored.
-      ...pick(body, [...WORK_EXPENSE_AMOUNT_FIELDS, ...WORK_EXPENSE_NOTE_FIELDS, ...WAY_TEXT_FIELDS, 'secondOneWayKm']),
+      ...pick(body, [...WORK_EXPENSE_AMOUNT_FIELDS, ...WORK_EXPENSE_NOTE_FIELDS, ...WAY_TEXT_FIELDS, ...WAY_FACT_FIELDS]),
     })
   }
 }

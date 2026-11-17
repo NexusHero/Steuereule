@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
-import { ArrayMaxSize, ArrayUnique, IsArray, IsIn, IsInt, IsOptional, IsString, Matches, Max, MaxLength, Min } from 'class-validator'
+import { ArrayMaxSize, ArrayUnique, IsArray, IsBoolean, IsIn, IsInt, IsOptional, IsString, Matches, Max, MaxLength, Min } from 'class-validator'
 import { MEANS_OF_TRANSPORT, type MeansOfTransport } from '../commute.repository.js'
 
 export class CommuteInputsDto {
@@ -144,6 +144,30 @@ export class CommuteInputsDto {
   @IsOptional()
   @Matches(/^\d{2}\.\d{2}\.\d{4}$/)
   secondTo?: string | null
+
+  @ApiPropertyOptional({ type: Number, nullable: true, example: 205, description: 'Days the first place of work was actually visited on this way; replaces the days derived from working days less days off (ADR-0093). Omitted keeps what is stored.' })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(366)
+  travelDays?: number | null
+
+  @ApiPropertyOptional({ type: Number, nullable: true, example: 40, description: 'Days actually travelled on the second way.' })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(366)
+  secondTravelDays?: number | null
+
+  @ApiPropertyOptional({ type: Boolean, nullable: true, description: 'The user confirmed that `oneWayKm` is the shortest road connection (§ 9 Abs. 1 Nr. 4 Satz 4 EStG).' })
+  @IsOptional()
+  @IsBoolean()
+  shortestRouteConfirmed?: boolean | null
+
+  @ApiPropertyOptional({ type: Boolean, nullable: true, description: 'The same confirmation for `secondOneWayKm`.' })
+  @IsOptional()
+  @IsBoolean()
+  secondShortestRouteConfirmed?: boolean | null
 }
 
 export class WorkdaysDto {

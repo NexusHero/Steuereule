@@ -135,6 +135,22 @@ export class PutNGreDto {
   @IsOptional()
   @IsBoolean()
   specialCases?: boolean | null
+
+  @ApiPropertyOptional({ type: Number, nullable: true, description: 'Whole CHF — supplementary health insurance (VVG): other provision, not basic cover (ADR-0093).' })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  krankenkasseZusatzChf?: number | null
+
+  @ApiPropertyOptional({ type: Boolean, nullable: true, description: 'Anlage Vorsorgeaufwand Zeile 49: entitled to tax-free subsidies or employer contributions to health insurance.' })
+  @IsOptional()
+  @IsBoolean()
+  kvZuschussAnspruch?: boolean | null
+
+  @ApiPropertyOptional({ type: Boolean, nullable: true, description: 'The family allowance is contained in the gross wage of Ziffer 8; only then Zeile 8 deducts it (ADR-0093).' })
+  @IsOptional()
+  @IsBoolean()
+  familienzulagenImBruttolohn?: boolean | null
 }
 
 /** The stored Anlage-N-Gre facts. */
@@ -180,4 +196,13 @@ export class NGreDetailsDto {
 
   @ApiProperty({ type: Boolean, nullable: true })
   specialCases!: boolean | null
+
+  @ApiProperty({ type: Number, nullable: true })
+  krankenkasseZusatzChf!: number | null
+
+  @ApiProperty({ type: Boolean, nullable: true })
+  kvZuschussAnspruch!: boolean | null
+
+  @ApiProperty({ type: Boolean, nullable: true })
+  familienzulagenImBruttolohn!: boolean | null
 }

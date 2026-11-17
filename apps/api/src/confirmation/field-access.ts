@@ -1,7 +1,7 @@
 import {
   ASSESSMENT_FIELD_IDS,
   CAPITAL_FIELDS,
-  WAGE_TAX_CERTIFICATE_FIELDS, LSTB_OPTIONAL_LINES,
+  WAGE_TAX_CERTIFICATE_FIELDS, LSTB_OPTIONAL_LINES, LSTB_SOCIAL_LINES, LSTB_SOLI_LINE,
   PENSION_FIELDS,
   RENTAL_FIELDS,
   SALARY_CERTIFICATE_AMOUNT_FIELDS,
@@ -27,14 +27,16 @@ import { InvalidInputError } from '../common/domain-error.js'
 import type { AssessmentRepository } from '../assessment/assessment.repository.js'
 import type { CapitalRepository } from '../capital/capital.repository.js'
 import { MEANS_OF_TRANSPORT, WORK_EXPENSE_AMOUNT_FIELDS, WORK_EXPENSE_NOTE_FIELDS, type CommuteInputs, type CommuteRepository, type MeansOfTransport } from '../commute/commute.repository.js'
-import type { WageTaxCertificateRepository } from '../lstb/lstb.repository.js'
+import type { LstbLine, WageTaxCertificateRepository } from '../lstb/lstb.repository.js'
+import { storeLstbLines } from '../lstb/lstb-data.js'
+import { assertTravelDaysFit } from '../commute/ways-to-work.js'
 import type { PensionRepository } from '../pension/pension.repository.js'
 import type { RentalRepository } from '../rental/rental.repository.js'
 import type { ProfileRepository } from '../profile/profile.repository.js'
 import { MASTER_DATA_FIELDS, type MasterDataField, type MasterDataRepository } from '../master-data/master-data.repository.js'
 import type { PartnerCouplingRepository } from '../link/link.repository.js'
 import type { InterviewAnswerRepository } from '../interview/interview-answer.repository.js'
-import type { CrossBorderSalaryStatementRepository, NGreDetails } from '../ch-salary-certificate/ch-salary-certificate.repository.js'
+import { N_GRE_BOOLEAN_FIELDS, type CrossBorderSalaryStatementRepository, type NGreDetails } from '../ch-salary-certificate/ch-salary-certificate.repository.js'
 import type { ChildRepository } from '../children/child.repository.js'
 
 export interface ScreenAccess {
@@ -87,7 +89,15 @@ const COMMUTE_ACCESS_FIELDS = [
   'secondTo',
   'workplace',
   'secondWorkplace',
+  'travelDays',
+  'secondTravelDays',
+  'shortestRouteConfirmed',
+  'secondShortestRouteConfirmed',
 ] as const
+const COMMUTE_BOOLEAN_FIELDS: ReadonlySet<string> = new Set(['shortestRouteConfirmed', 'secondShortestRouteConfirmed'])
+/** Zeilen 22–27, 24c and 5 of the LStB (ADR-0093). */
+const LSTB_LINE_FIELDS: readonly string[] = [...LSTB_SOCIAL_LINES, LSTB_SOLI_LINE]
+const LSTB_ACCESS_FIELDS = [...WAGE_TAX_CERTIFICATE_FIELDS, ...LSTB_OPTIONAL_LINES, ...LSTB_LINE_FIELDS] as const
 const COMMUTE_DATE_FIELDS: ReadonlySet<string> = new Set(['periodFrom', 'periodTo', 'secondFrom', 'secondTo'])
 const GERMAN_DATE_RE = /^\d{2}\.\d{2}\.\d{4}$/
 const ASSESSMENT_ACCESS_FIELDS = [...ASSESSMENT_FIELD_IDS, 'assessmentDate'] as const
@@ -112,6 +122,7 @@ const NGRE_FIELDS: readonly (keyof NGreDetails)[] = [
   'krankentaggeldArbeitgeberChf',
   'nbuvArbeitgeberProzent',
   'nbuvArbeitgeberChf',
+  'krankenkasseZusatzChf',
 ]
 /** The Wechselkurs CHF→EUR as two fields (C4): the rate, and a year (annual average) or a month (BMF monthly rate). */
 const EXCHANGE_RATE_FIELDS = ['wechselkurs', 'wechselkursMonat'] as const
@@ -125,6 +136,9 @@ const CH_SALARY_ACCESS_FIELDS = [
   ...EXCHANGE_RATE_FIELDS,
   /** „Keine Sonderfälle“ of the Anlage N-Gre, as the mask's switch (ADR-0091, Nachtrag). */
   'nGreSonderfaelle',
+  /** Anlage Vorsorgeaufwand Zeile 49 and the family allowance inside Ziffer 8 (ADR-0093). */
+  'kvZuschussAnspruch',
+  'familienzulagenImBruttolohn',
 ] as const
 const CAPITAL_ACCESS_FIELDS = [...CAPITAL_FIELDS, 'inhaber'] as const
 const CAPITAL_OWNERS = ['A', 'B', 'gemeinsam'] as const
@@ -167,7 +181,7 @@ const CHILD_ACCESS_FIELDS = [
  * a name against them before a draft exists that could never be applied.
  */
 export const WRITABLE_FIELDS_BY_SCREEN: Readonly<Record<Screen, readonly string[]>> = {
-  lstb: [...WAGE_TAX_CERTIFICATE_FIELDS, ...LSTB_OPTIONAL_LINES],
+  lstb: LSTB_ACCESS_FIELDS,
   rente: PENSION_ACCESS_FIELDS,
   kapital: CAPITAL_ACCESS_FIELDS,
   vermietung: RENTAL_ACCESS_FIELDS,
@@ -198,7 +212,7 @@ export function fieldAccessFrom({
 }: FieldAccessRepositories): FieldAccess {
   const access: Partial<Record<Screen, ScreenAccess>> = {
     lstb: {
-      fields: [...WAGE_TAX_CERTIFICATE_FIELDS, ...LSTB_OPTIONAL_LINES],
+      fields: LSTB_ACCESS_FIELDS,
       withInstance: false,
       async read(userId, taxYear) {
         const r = await lstb.findForUserAndYear(userId, taxYear)
@@ -209,10 +223,14 @@ export function fieldAccessFrom({
           kirchensteuer: r?.kirchensteuer ?? null,
           kirchensteuerEhegatte: r?.kirchensteuerEhegatte ?? null,
           zuschuesseKvPv: r?.zuschuesseKvPv ?? null,
+          ...Object.fromEntries(LSTB_LINE_FIELDS.map((line) => [line, r?.[line as LstbLine] ?? null])),
         }
       },
       async write(userId, taxYear, _instance, field, value) {
-        if (field === 'zuschuesseKvPv') {
+        if (LSTB_LINE_FIELDS.includes(field)) {
+          // The same write as the mask's: the sum of Zeilen 23, 25, 26 and 27 follows the lines (ADR-0093).
+          await storeLstbLines(lstb, userId, taxYear, { [field as LstbLine]: value })
+        } else if (field === 'zuschuesseKvPv') {
           await lstb.setSubsidies(userId, taxYear, value)
         } else if (field === 'kirchensteuer' || field === 'kirchensteuerEhegatte') {
           const r = await lstb.findForUserAndYear(userId, taxYear)
@@ -485,11 +503,11 @@ export function fieldAccessFrom({
           await chSalaryCertificate.setNGre(userId, taxYear, { [field]: value })
           return true
         }
-        if (field === 'nGreSonderfaelle') {
+        if ((N_GRE_BOOLEAN_FIELDS as readonly string[]).includes(field)) {
           if (value !== null && value !== 'true' && value !== 'false') {
             throw new InvalidInputError('FIELD_VALUE_INVALID', `"${value}" is not "true" or "false".`)
           }
-          await chSalaryCertificate.setNGre(userId, taxYear, { nGreSonderfaelle: value === null ? null : value === 'true' })
+          await chSalaryCertificate.setNGre(userId, taxYear, { [field]: value === null ? null : value === 'true' })
           return true
         }
         return false
@@ -573,6 +591,10 @@ export function fieldAccessFrom({
           secondTo: r.secondTo ?? null,
           workplace: r.workplace ?? null,
           secondWorkplace: r.secondWorkplace ?? null,
+          travelDays: r.travelDays === null || r.travelDays === undefined ? null : String(r.travelDays),
+          secondTravelDays: r.secondTravelDays === null || r.secondTravelDays === undefined ? null : String(r.secondTravelDays),
+          shortestRouteConfirmed: r.shortestRouteConfirmed === null || r.shortestRouteConfirmed === undefined ? null : String(r.shortestRouteConfirmed),
+          secondShortestRouteConfirmed: r.secondShortestRouteConfirmed === null || r.secondShortestRouteConfirmed === undefined ? null : String(r.secondShortestRouteConfirmed),
         }
       },
       async write(userId, taxYear, _instance, field, value) {
@@ -657,7 +679,16 @@ export function fieldAccessFrom({
             updated = { ...current, secondTransport: value as MeansOfTransport | null }
             break
           }
+          case 'travelDays':
+          case 'secondTravelDays':
+            updated = { ...current, [field]: parseBoundedInt(value, 0, 366, field) }
+            break
           default: {
+            if (COMMUTE_BOOLEAN_FIELDS.has(field)) {
+              if (value !== null && value !== 'true' && value !== 'false') throw new InvalidInputError('FIELD_VALUE_INVALID', `"${value}" is not "true" or "false".`)
+              updated = { ...current, [field]: value === null ? null : value === 'true' }
+              break
+            }
             if (field === 'workplace' || field === 'secondWorkplace') {
               const trimmed = value === null ? '' : value.trim()
               updated = { ...current, [field]: trimmed === '' ? null : trimmed.slice(0, 120) }
@@ -708,6 +739,8 @@ export function fieldAccessFrom({
             `The days off exceed the working days (${workdaysRes.conflict.kind}).`,
           )
         }
+
+        assertTravelDaysFit(taxYear, updated)
 
         await commute.save(userId, taxYear, updated)
         return true

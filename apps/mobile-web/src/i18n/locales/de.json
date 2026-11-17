@@ -909,8 +909,24 @@
       "heading": "Zuschüsse des Arbeitgebers",
       "help": "Zahlt dein Arbeitgeber steuerfrei etwas zu deiner Kranken- oder Pflegeversicherung, steht das in Zeile 24 (a bis c). Trag die Summe ein, sonst lass das Feld leer. Abziehen kannst du nur, was du selbst getragen hast.",
       "zeile24": "Steuerfreie Zuschüsse zur Kranken- und Pflegeversicherung (Zeile 24 a–c, zusammen)",
+      "offen": "Zeile 25 oder 26 ist ausgefüllt: Bitte Zeile 24 eintragen (auch 0). Bis dahin gilt die Sozialversicherung als unvollständig.",
       "loading": "Zuschüsse werden geladen …",
       "loadError": "Die Zuschüsse konnten nicht geladen werden."
+    },
+    "zeilen": {
+      "heading": "Sozialversicherung nach Zeilen (22–27)",
+      "help": "Die Beträge stehen einzeln auf der Lohnsteuerbescheinigung. Trag nur ein, was dort steht; leere Felder gelten als nicht erfasst.",
+      "rvArbeitgeber": "Arbeitgeberanteil Rentenversicherung (Zeile 22)",
+      "rvArbeitnehmer": "Arbeitnehmeranteil Rentenversicherung (Zeile 23)",
+      "kvArbeitnehmer": "Krankenversicherung, Arbeitnehmerbeitrag (Zeile 25)",
+      "pvArbeitnehmer": "Pflegeversicherung, Arbeitnehmerbeitrag (Zeile 26)",
+      "avArbeitnehmer": "Arbeitslosenversicherung, Arbeitnehmerbeitrag (Zeile 27)",
+      "zuschussPv": "Zeile 24c: davon Pflegeversicherung",
+      "solidaritaetszuschlag": "Einbehaltener Solidaritätszuschlag (Zeile 5, in Euro mit Cent)",
+      "summe": "Summe Arbeitnehmeranteile: {{betrag}} €",
+      "summeHinweis": "rechnet die App (Zeilen 23, 25, 26, 27)",
+      "loading": "Zeilen werden geladen …",
+      "loadError": "Die Zeilen konnten nicht geladen werden."
     },
     "feld": {
       "placeholder": "Ganzzahlige Euro",
@@ -1407,6 +1423,15 @@
         "ab": "Neuer Weg ab",
         "datumPlaceholder": "TT.MM.JJJJ",
         "datumFehler": "Bitte als TT.MM.JJJJ eingeben."
+      },
+      "kuerzeste": "Das ist die kürzeste Straßenverbindung (§ 9 Abs. 1 Nr. 4 EStG) – es zählt die kürzeste Strecke, nicht die gefahrene.",
+      "fahrtage": {
+        "label": "Tatsächlich aufgesucht an … Tagen (optional)",
+        "labelZweiter": "Zweiter Weg: Tatsächlich aufgesucht an … Tagen (optional)",
+        "placeholder": "leer = aus Arbeitstagen berechnet",
+        "pendlertage": "Pendlertage (so angegeben)",
+        "pendlertageZweiter": "Pendlertage zweiter Weg (so angegeben)",
+        "widerspruch": "Die Tage passen nicht: Mehr als die Arbeitstage im Zeitraum dieses Wegs (höchstens 366) sind nicht möglich."
       }
     }
   },
@@ -1888,8 +1913,10 @@
     "vorsorge": {
       "title": "Vorsorge außerhalb des Lohns",
       "help": "Nur was nicht schon auf dem Lohnausweis steht. Eine deutsche Krankenversicherung trägst du später bei den Sonderausgaben ein.",
-      "krankenkasseChf": "Schweizer Krankenkasse – deine Prämien im Jahr (CHF)",
-      "saeule3aChf": "Säule 3a – deine Einzahlungen im Jahr (CHF)"
+      "krankenkasseChf": "Grundversicherung (KVG) – deine Prämien im Jahr (CHF)",
+      "saeule3aChf": "Säule 3a – deine Einzahlungen im Jahr (CHF)",
+      "krankenkasseZusatzChf": "Zusatzversicherungen (VVG)",
+      "krankenkasseZusatzHilfe": "Zählt als sonstige Vorsorge, nicht als Basisabsicherung. 0, wenn es keine gibt."
     },
     "nGre": {
       "title": "Für die Anlage N-Gre",
@@ -1907,7 +1934,10 @@
         "krankentaggeldArbeitgeberProzent": "Wie viel Prozent der Krankentaggeld-Prämie zahlt dein Arbeitgeber? (0 bis 100, 0 wenn du alles zahlst)",
         "krankentaggeldArbeitgeberChf": "Beitrag des Arbeitgebers zur Krankentaggeldversicherung (CHF)",
         "nbuvArbeitgeberProzent": "Wie viel Prozent der NBUV-Prämie zahlt dein Arbeitgeber? (0 bis 100, 0 wenn du alles zahlst)",
-        "nbuvArbeitgeberChf": "Beitrag des Arbeitgebers zur Nichtberufsunfallversicherung (CHF)"
+        "nbuvArbeitgeberChf": "Beitrag des Arbeitgebers zur Nichtberufsunfallversicherung (CHF)",
+        "familienzulagenImBruttolohn": "Im Bruttolohn Ziffer 8 enthalten?",
+        "familienzulagenImBruttolohnHilfe": "Nur dann wird die Zulage vom Bruttolohn abgezogen (Anlage N-Gre Zeile 8). Sonst gehört sie zum Kind (Maske Kinder).",
+        "kvZuschussAnspruch": "Anspruch auf steuerfreie Zuschüsse oder Arbeitgeberbeiträge zur Krankenversicherung? (Anlage Vorsorgeaufwand Zeile 49)"
       },
       "sonderfaelle": "Gab es Arbeitslosen- oder SUVA-Gelder, Mutterschafts- oder IV-Taggelder, steuerfreie Zuschläge, Direktversicherung, Optionsrechte, Fahrtkostenersatz, Spesenpauschalen oder einen Firmenwagen?",
       "ja": "Ja",

@@ -120,6 +120,9 @@ export const EMPTY_CH_SALARY_CERTIFICATE_RESPONSE: ChSalaryCertificateResponseDt
     nbuvArbeitgeberProzent: null,
     nbuvArbeitgeberChf: null,
     specialCases: null,
+    krankenkasseZusatzChf: null,
+    kvZuschussAnspruch: null,
+    familienzulagenImBruttolohn: null,
   }
 }
 
@@ -250,6 +253,24 @@ export const server = setupServer(
   ),
   http.put('*/v1/steuerjahre/:jahr/lstb-kirchensteuer', async ({ request }) => HttpResponse.json(await request.json(), { status: 200 })),
   // ADR-0090 — the optional subsidies line (Zeile 24): nothing entered by default.
+  http.get('*/v1/steuerjahre/:jahr/lstb-zeilen', () =>
+    HttpResponse.json(
+      {
+        rvArbeitnehmer: null,
+        rvArbeitgeber: null,
+        kvArbeitnehmer: null,
+        pvArbeitnehmer: null,
+        avArbeitnehmer: null,
+        zuschussPv: null,
+        solidaritaetszuschlag: null,
+        zuschuesseKvPv: null,
+        sozialversicherung: null,
+        subsidyOpen: false,
+      },
+      { status: 200 },
+    ),
+  ),
+  http.put('*/v1/steuerjahre/:jahr/lstb-zeilen', async ({ request }) => HttpResponse.json(await request.json(), { status: 200 })),
   http.get('*/v1/steuerjahre/:jahr/lstb-zuschuesse', () => HttpResponse.json({ zuschuesseKvPv: null }, { status: 200 })),
   http.put('*/v1/steuerjahre/:jahr/lstb-zuschuesse', async ({ request }) => HttpResponse.json(await request.json(), { status: 200 })),
   // REQ-021 (ticket 16) — the CH-Lohnausweis guided mask + fold: empty `offen` mask by default,

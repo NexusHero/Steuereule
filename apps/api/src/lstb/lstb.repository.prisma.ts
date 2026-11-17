@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common'
 import type { WageTaxCertificateFieldId } from '@steuereule/core'
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
-import type { WageTaxCertificateChurchTax, WageTaxCertificateRecord, WageTaxCertificateRepository } from './lstb.repository.js'
+import type { LstbLinePatch, WageTaxCertificateChurchTax, WageTaxCertificateRecord, WageTaxCertificateRepository } from './lstb.repository.js'
 
 function toRecord(row: {
   userId: string
@@ -12,6 +12,13 @@ function toRecord(row: {
   kirchensteuer?: string | null
   kirchensteuerEhegatte?: string | null
   zuschuesseKvPv?: string | null
+  rvArbeitnehmer?: string | null
+  rvArbeitgeber?: string | null
+  kvArbeitnehmer?: string | null
+  pvArbeitnehmer?: string | null
+  avArbeitnehmer?: string | null
+  zuschussPv?: string | null
+  solidaritaetszuschlag?: string | null
 }): WageTaxCertificateRecord {
   return {
     userId: row.userId,
@@ -22,6 +29,13 @@ function toRecord(row: {
     kirchensteuer: row.kirchensteuer ?? null,
     kirchensteuerEhegatte: row.kirchensteuerEhegatte ?? null,
     zuschuesseKvPv: row.zuschuesseKvPv ?? null,
+    rvArbeitnehmer: row.rvArbeitnehmer ?? null,
+    rvArbeitgeber: row.rvArbeitgeber ?? null,
+    kvArbeitnehmer: row.kvArbeitnehmer ?? null,
+    pvArbeitnehmer: row.pvArbeitnehmer ?? null,
+    avArbeitnehmer: row.avArbeitnehmer ?? null,
+    zuschussPv: row.zuschussPv ?? null,
+    solidaritaetszuschlag: row.solidaritaetszuschlag ?? null,
   }
 }
 
@@ -68,6 +82,18 @@ export class PrismaLstbRepository implements WageTaxCertificateRepository {
         where: { userId_taxYear: { userId, taxYear } },
         create: { userId, taxYear, bruttoarbeitslohn: null, lohnsteuer: null, sozialversicherung: null, zuschuesseKvPv },
         update: { zuschuesseKvPv },
+      }),
+      this.prisma.taxDataAccessLog.create({ data: { userId, action: 'WRITE', resource: 'lstb' } }),
+    ])
+    return toRecord(row)
+  }
+
+  async setLines(userId: string, taxYear: number, lines: LstbLinePatch): Promise<WageTaxCertificateRecord> {
+    const [row] = await this.prisma.$transaction([
+      this.prisma.lstb.upsert({
+        where: { userId_taxYear: { userId, taxYear } },
+        create: { userId, taxYear, bruttoarbeitslohn: null, lohnsteuer: null, sozialversicherung: null, ...lines },
+        update: lines,
       }),
       this.prisma.taxDataAccessLog.create({ data: { userId, action: 'WRITE', resource: 'lstb' } }),
     ])

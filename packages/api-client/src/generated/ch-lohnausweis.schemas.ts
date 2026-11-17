@@ -163,6 +163,12 @@ export interface NGreDetailsDto {
   nbuvArbeitgeberChf: number | null;
   /** @nullable */
   specialCases: boolean | null;
+  /** @nullable */
+  krankenkasseZusatzChf: number | null;
+  /** @nullable */
+  kvZuschussAnspruch: boolean | null;
+  /** @nullable */
+  familienzulagenImBruttolohn: boolean | null;
 }
 
 export interface ChSalaryCertificateResponseDto {
@@ -209,7 +215,7 @@ export const PutSalaryCertificateFieldDtoKind = {
 export interface PutSalaryCertificateFieldDto {
   /** The field’s capture state. */
   kind: PutSalaryCertificateFieldDtoKind;
-  /** The whole-CHF amount — present only when kind === "erfasst" (validated via @steuereule/core). */
+  /** The whole-CHF amount — present only when kind === "erfasst". Zero or more; only Ziffer 7 (`andere-leistungen`) may be negative (checked per field via @steuereule/core, ADR-0093). */
   value?: number;
 }
 
@@ -305,6 +311,21 @@ export interface PutNGreDto {
      * @nullable
      */
   specialCases?: boolean | null;
+  /**
+     * Whole CHF — supplementary health insurance (VVG): other provision, not basic cover (ADR-0093).
+     * @nullable
+     */
+  krankenkasseZusatzChf?: number | null;
+  /**
+     * Anlage Vorsorgeaufwand Zeile 49: entitled to tax-free subsidies or employer contributions to health insurance.
+     * @nullable
+     */
+  kvZuschussAnspruch?: boolean | null;
+  /**
+     * The family allowance is contained in the gross wage of Ziffer 8; only then Zeile 8 deducts it (ADR-0093).
+     * @nullable
+     */
+  familienzulagenImBruttolohn?: boolean | null;
 }
 
 /**

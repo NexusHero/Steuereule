@@ -15,6 +15,9 @@ import {
   isNewRecordId,
   simulateAdvisorFieldDelta,
   checkDraftPerson,
+  checkDraftRules,
+  draftFollowUps,
+  impliedCompanions,
   deriveBasisAnswers,
   isInterviewAreaId,
   checkPrivateSale,
@@ -305,8 +308,18 @@ export async function runToolRound(
       }
       const cleanFieldName = field.trim()
       const newValue = tidy(cleanFieldName)
-      const companionEntries = rawCompanions.map(([name]) => [name, tidy(name)] as const)
+      const statedCompanions = rawCompanions.map(([name]) => [name, tidy(name)] as const)
+      // The fixed rules (ADR-0093): what the app adds itself, and what it refuses until the user confirmed it.
+      const implied = impliedCompanions(target.screen, Object.fromEntries([[cleanFieldName, newValue], ...statedCompanions]))
+      const companionEntries = [...statedCompanions, ...Object.entries(implied).map(([name, value]) => [name, value] as const)]
       const companionFields = companionEntries.length > 0 ? Object.fromEntries(companionEntries) : undefined
+      const draftValues = Object.fromEntries([[cleanFieldName, newValue], ...companionEntries])
+      const rule = checkDraftRules({ screen: target.screen, values: draftValues, tool: 'stage', others: pendingActions.map(draftValuesOf) })
+      if (!rule.ok) {
+        // A question for the user, not a failed draft: the model asks and stages again.
+        answer({ ok: false, error: `${rule.code}: ${rule.reason}` })
+        continue
+      }
 
       // A new child is created from its draft: it needs the first name and the birth date (ADR-0091).
       // Further drafts of the same answer for that child (Kindergeld, Kita …) ride on the draft that creates it.
@@ -361,7 +374,8 @@ export async function runToolRound(
       // Several drafts in one answer stand side by side; a second one for the same field is a correction.
       pendingActions = [...pendingActions.filter((existing) => draftKey(existing) !== draftKey(stagedAction)), stagedAction]
 
-      answer({ ok: true, stagedAction: { ...stagedAction, instance: record.handle }, draftsInThisAnswer: pendingActions.length })
+      const mustAsk = draftFollowUps(target.screen, draftValues)
+      answer({ ok: true, stagedAction: { ...stagedAction, instance: record.handle }, draftsInThisAnswer: pendingActions.length, ...(mustAsk.length > 0 ? { mustAsk } : {}) })
       continue
     }
 
@@ -403,6 +417,15 @@ export async function runToolRound(
       }
       const safeNewValue = safeValue.value
       const maxNewValue = maxValue.value
+      const others = pendingActions.map(draftValuesOf)
+      const pathRule = [
+        checkDraftRules({ screen: safeCheck.screen, values: { [safeField]: safeNewValue }, tool: 'two-paths', others }),
+        checkDraftRules({ screen: maxCheck.screen, values: { [maxField]: maxNewValue }, tool: 'two-paths', others }),
+      ].find((check) => !check.ok)
+      if (pathRule && !pathRule.ok) {
+        answer({ ok: false, error: `${pathRule.code}: ${pathRule.reason}` })
+        continue
+      }
 
       // Two paths name no record: fine while there is exactly one, a question for the user otherwise.
       const safeRecord = resolveInstance(safeCheck.screen, safeField, rawSafe.instance)
@@ -730,6 +753,11 @@ export async function runToolRound(
     consentRequested,
     sources,
   }
+}
+
+/** A staged draft as the fixed rules read it: its mask and every value it would write. */
+function draftValuesOf(action: AdvisorActionProposal): { screen: Screen; values: Record<string, string> } {
+  return { screen: action.screen, values: { [action.field]: action.newValue, ...action.companionFields } }
 }
 
 /**
