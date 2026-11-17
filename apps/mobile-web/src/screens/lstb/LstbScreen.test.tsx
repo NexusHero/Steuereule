@@ -278,6 +278,32 @@ describe('LstbScreen', () => {
     await waitFor(() => expect(screen.queryByText(/Bitte Zeile 24 eintragen/)).toBeNull())
   })
 
+  it('keeps the cents a user types from the paper as whole euros (real case 2024: 7.021,48 and 5.071,60 were lost)', async () => {
+    const lines: unknown[] = []
+    const subsidies: unknown[] = []
+    server.use(
+      http.put('*/v1/steuerjahre/:jahr/lstb-zeilen', async ({ request }) => {
+        const body = await request.json()
+        lines.push(body)
+        return HttpResponse.json(body, { status: 200 })
+      }),
+      http.put('*/v1/steuerjahre/:jahr/lstb-zuschuesse', async ({ request }) => {
+        const body = await request.json()
+        subsidies.push(body)
+        return HttpResponse.json(body, { status: 200 })
+      }),
+    )
+    renderLstb()
+    const rv = await screen.findByLabelText('Arbeitnehmeranteil Rentenversicherung (Zeile 23) (Ganzzahlige Euro)')
+    fireEvent.change(rv, { target: { value: '7021,48' } })
+    fireEvent.blur(rv)
+    const line24 = await screen.findByLabelText('Steuerfreie Zuschüsse zur Kranken- und Pflegeversicherung (Zeile 24 a–c, zusammen) (Ganzzahlige Euro)')
+    fireEvent.change(line24, { target: { value: '5071,60' } })
+    fireEvent.blur(line24)
+    await waitFor(() => expect(lines).toEqual([{ rvArbeitnehmer: 7021 }]))
+    await waitFor(() => expect(subsidies).toEqual([{ zuschuesseKvPv: 5072 }]))
+  })
+
   it('saves a social-security line partially and a Soli with a decimal comma', async () => {
     const puts: unknown[] = []
     server.use(

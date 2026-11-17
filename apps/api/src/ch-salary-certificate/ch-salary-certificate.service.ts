@@ -207,9 +207,11 @@ export class ChSalaryCertificateService {
     return this.toResponse(userId, taxYear, record)
   }
 
+  /** A field the request leaves out keeps its stored value; only `null` clears it (the mask saves one field at a time). */
   async setProvision(userId: string, taxYear: number, dto: PutProvisionDto): Promise<ChSalaryCertificateResponseDto> {
-    const saeule3aChf = this.serializeOptional(dto.saeule3aChf)
-    const krankenkasseChf = this.serializeOptional(dto.krankenkasseChf)
+    const current = dto.saeule3aChf === undefined || dto.krankenkasseChf === undefined ? await this.repository.findForUserAndYear(userId, taxYear) : null
+    const saeule3aChf = dto.saeule3aChf === undefined ? (current?.saeule3aChf ?? null) : this.serializeOptional(dto.saeule3aChf)
+    const krankenkasseChf = dto.krankenkasseChf === undefined ? (current?.krankenkasseChf ?? null) : this.serializeOptional(dto.krankenkasseChf)
     const record = await this.repository.setProvision(userId, taxYear, saeule3aChf, krankenkasseChf)
     return this.toResponse(userId, taxYear, record)
   }

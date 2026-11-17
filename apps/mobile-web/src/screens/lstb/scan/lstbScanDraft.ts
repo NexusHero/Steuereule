@@ -1,6 +1,6 @@
 import type { AdvisorChatMessageDto, CalculationTermDto, LstbExtractedFieldDto, LstbExtractedFieldDtoReason } from '@steuereule/api-client'
 import { wageTaxCertificateStatus, type WageTaxCertificateStatus } from '@steuereule/core'
-import { integerFrom } from '../../shared/integer'
+import { wholeEurosFrom } from '../../shared/wholeEuros'
 
 /** Client-side model of a staged LStB scan (#444): what was read, how sure, and what the user confirmed. */
 export type FieldId = 'bruttoarbeitslohn' | 'lohnsteuer' | 'sozialversicherung'
@@ -103,9 +103,9 @@ export interface StagedDraftEvaluation {
 /** Live plausibility and yellow-field state of a draft; „Werte übernehmen“ stays blocked until both are clean (AC 6). */
 export function evaluateStagedDraft(draft: StagedLstbScanDraft | null): StagedDraftEvaluation {
   const values = {
-    bruttoarbeitslohn: draft ? integerFrom(draft.fields.bruttoarbeitslohn.text) : null,
-    lohnsteuer: draft ? integerFrom(draft.fields.lohnsteuer.text) : null,
-    sozialversicherung: draft ? integerFrom(draft.fields.sozialversicherung.text) : null,
+    bruttoarbeitslohn: draft ? wholeEurosFrom(draft.fields.bruttoarbeitslohn.text) : null,
+    lohnsteuer: draft ? wholeEurosFrom(draft.fields.lohnsteuer.text) : null,
+    sozialversicherung: draft ? wholeEurosFrom(draft.fields.sozialversicherung.text) : null,
   }
   const { bruttoarbeitslohn, lohnsteuer, sozialversicherung } = values
   const allIntegers = bruttoarbeitslohn !== null && lohnsteuer !== null && sozialversicherung !== null

@@ -11,7 +11,7 @@ import {
   type LstbChurchTaxDto,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
-import { integerFrom } from '../shared/integer'
+import { wholeEurosFrom } from '../shared/wholeEuros'
 import { watchSaveResult } from '../shared/saveFeedback'
 
 type Line = keyof LstbChurchTaxDto
@@ -61,7 +61,7 @@ export function ChurchTaxLines({ taxYear, params, track }: ChurchTaxLinesProps) 
   )
 }
 
-/** One optional whole-euro LStB line; an empty field means „not entered“. */
+/** One optional whole-euro LStB line, typed with or without the printed cents; an empty field means „not entered“. */
 export function LineInput({ label, stored, onCommit, testID }: { label: string; stored: number | null; onCommit: (value: number | null) => void; testID: string }) {
   const { t: tr } = useTranslation(APP_NS)
   const [text, setText] = useState(stored === null ? '' : String(stored))
@@ -69,8 +69,8 @@ export function LineInput({ label, stored, onCommit, testID }: { label: string; 
   const commit = () => {
     const trimmed = text.trim()
     if (trimmed === '') return onCommit(null)
-    const value = integerFrom(trimmed)
-    if (value !== null && value >= 0) onCommit(value)
+    const value = wholeEurosFrom(trimmed)
+    if (value !== null) onCommit(value)
   }
   return (
     <Feld label={label}>
