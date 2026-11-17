@@ -44,13 +44,22 @@ function clip(text: string): string {
   return text.length > GUARD_ENTRY_MAX_CHARS ? `${text.slice(0, GUARD_ENTRY_MAX_CHARS)} …` : text
 }
 
+/**
+ * The message itself keeps its beginning and its end: a message may be 8.000 characters long, and
+ * what it asks for often stands in the last lines, after the figures.
+ */
+function clipMessage(text: string): string {
+  if (text.length <= 2 * GUARD_ENTRY_MAX_CHARS) return text
+  return `${text.slice(0, GUARD_ENTRY_MAX_CHARS)} … ${text.slice(-GUARD_ENTRY_MAX_CHARS)}`
+}
+
 export function buildGuardInput(input: AdvisorTopicGuardInput): string {
   const recent = input.history.slice(-GUARD_HISTORY_ENTRIES)
   const before =
     recent.length > 0
       ? ['Bisheriges Gespräch (nur zum Verständnis):', ...recent.map((entry) => `${entry.role === 'user' ? 'Nutzer' : 'Eule'}: ${clip(entry.content)}`), '']
       : []
-  return [...before, '<nachricht>', clip(input.message), '</nachricht>'].join('\n')
+  return [...before, '<nachricht>', clipMessage(input.message), '</nachricht>'].join('\n')
 }
 
 @Injectable()

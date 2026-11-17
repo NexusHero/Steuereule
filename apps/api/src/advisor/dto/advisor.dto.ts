@@ -19,6 +19,7 @@ import {
   ADVISOR_FEEDBACK_RATINGS,
   ADVISOR_SKILL_IDS,
   ADVISOR_FEEDBACK_REASONS,
+  ADVISOR_MESSAGE_MAX_CHARS,
   ADVISOR_MESSAGE_STATUSES,
   ADVISOR_QUICK_ACTIONS,
   SCREENS,
@@ -715,11 +716,20 @@ export class AdvisorSessionResponseDto {
   legalSources!: readonly AdvisorLegalSourceDto[]
 }
 
+/** Said in words by the chat, never as „HTTP 400“ (real-data run, finding 5). */
+export const ADVISOR_MESSAGE_TOO_LONG_TEXT = `Deine Nachricht ist zu lang (höchstens ${ADVISOR_MESSAGE_MAX_CHARS.toLocaleString('de-DE')} Zeichen). Teile sie bitte auf.`
+export const ADVISOR_MESSAGE_EMPTY_TEXT = 'Schreib der Eule bitte eine Nachricht.'
+
 export class SendAdvisorMessageDto {
-  @ApiProperty({ type: String, example: 'Ich hatte dieses Jahr eine Fortbildung.' })
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(2000)
+  @ApiProperty({
+    type: String,
+    example: 'Ich hatte dieses Jahr eine Fortbildung.',
+    maxLength: ADVISOR_MESSAGE_MAX_CHARS,
+    description: `The user's message, at most ${ADVISOR_MESSAGE_MAX_CHARS} characters; a longer one is refused with 400 and a German sentence under \`fields[].message\`.`,
+  })
+  @IsString({ message: ADVISOR_MESSAGE_EMPTY_TEXT })
+  @IsNotEmpty({ message: ADVISOR_MESSAGE_EMPTY_TEXT })
+  @MaxLength(ADVISOR_MESSAGE_MAX_CHARS, { message: ADVISOR_MESSAGE_TOO_LONG_TEXT })
   message!: string
 
   @ApiPropertyOptional({ type: String, enum: SCREENS, example: 'interview' })

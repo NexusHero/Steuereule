@@ -10613,7 +10613,9 @@
         "properties": {
           "message": {
             "type": "string",
-            "example": "Ich hatte dieses Jahr eine Fortbildung."
+            "example": "Ich hatte dieses Jahr eine Fortbildung.",
+            "maxLength": 8000,
+            "description": "The user's message, at most 8000 characters; a longer one is refused with 400 and a German sentence under `fields[].message`."
           },
           "activeScreen": {
             "type": "string",
