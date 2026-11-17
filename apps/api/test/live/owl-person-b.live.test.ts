@@ -9,7 +9,7 @@
 //     --config vitest.live.config.ts test/live/owl-person-b.live.test.ts
 import { NestFactory } from '@nestjs/core'
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify'
-import type { AdvisorActionProposal, AdvisorMessageMeta } from '@steuereule/core'
+import { PERSON_B_SCREENS, type AdvisorActionProposal, type AdvisorMessageMeta } from '@steuereule/core'
 import { randomUUID } from 'node:crypto'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { AdvisorService } from '../../src/advisor/advisor.service.js'
@@ -71,7 +71,8 @@ describe.skipIf(!KEY)('the owl drafts the spouse’s figures for Person B (live 
     const meta = (response.assistantMessage.meta ?? {}) as AdvisorMessageMeta
     const drafts: AdvisorActionProposal[] = [...(meta.action ? [meta.action] : []), ...(meta.actions ?? [])]
     const forB = drafts.filter((draft) => draft.person === 'B')
-    expect(drafts.filter((draft) => draft.person !== 'B'), 'nothing of hers may be drafted as his').toEqual([])
+    // Her figures never land on his masks of one person; the joint interview may note her occupation (`partner-job`).
+    expect(drafts.filter((draft) => draft.person !== 'B' && PERSON_B_SCREENS.has(draft.screen)), 'nothing of hers may be drafted as his').toEqual([])
     expect(forB.map((draft) => `${draft.screen}.${draft.field}`)).toEqual(expect.arrayContaining(['commute.oneWayKm']))
     expect(forB.some((draft) => draft.screen === 'chLohnausweis')).toBe(true)
     // The model never saw her name.

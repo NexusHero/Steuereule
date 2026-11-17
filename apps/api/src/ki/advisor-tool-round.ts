@@ -254,7 +254,7 @@ export async function runToolRound(
       }
       // Person B only where the household has one A records for, and only on B's own masks.
       const person = args.person
-      const personCheck = checkDraftPerson(request.household, person, target.screen, field)
+      const personCheck = checkDraftPerson(request.household, person, target.screen, field, label)
       if (!personCheck.ok) {
         const error = `${personCheck.code}: ${personCheck.reason}`
         refuseDraft(label, screen, error)
@@ -379,6 +379,26 @@ export async function runToolRound(
       continue
     }
 
+    if (tc.name === 'withdraw_draft') {
+      const args = parseArgs(TOOL_ARG_SCHEMAS.withdraw_draft)
+      if (args === null) continue
+      const field = args.field.trim()
+      const forB = args.person === 'B'
+      const sameTarget = (action: Pick<AdvisorActionProposal, 'screen' | 'field' | 'instance' | 'person'>): boolean => {
+        if (action.screen !== args.screen || action.field !== field || (action.person === 'B') !== forB) return false
+        if (args.instance === undefined || args.instance === null) return true
+        const record = resolveInstance(action.screen, field, args.instance)
+        return record.ok && record.id === action.instance
+      }
+      const before = pendingActions.length
+      pendingActions = pendingActions.filter((action) => !sameTarget(action))
+      const withdrawnPaths = pendingTwoPaths !== null && (sameTarget(pendingTwoPaths.safePath) || sameTarget(pendingTwoPaths.maxPath))
+      if (withdrawnPaths) pendingTwoPaths = null
+      const withdrawn = before - pendingActions.length + (withdrawnPaths ? 1 : 0)
+      answer(withdrawn > 0 ? { ok: true, withdrawn, draftsInThisAnswer: pendingActions.length } : { ok: false, error: 'NO_SUCH_DRAFT: In dieser Antwort gibt es keinen solchen Entwurf.' })
+      continue
+    }
+
     if (tc.name === 'propose_two_paths') {
       const args = parseArgs(TOOL_ARG_SCHEMAS.propose_two_paths)
       if (args === null) continue
@@ -397,8 +417,8 @@ export async function runToolRound(
         rejectTarget(maxCheck)
         continue
       }
-      const safePersonCheck = checkDraftPerson(request.household, rawSafe.person, safeCheck.screen, rawSafe.field)
-      const maxPersonCheck = checkDraftPerson(request.household, rawMax.person, maxCheck.screen, rawMax.field)
+      const safePersonCheck = checkDraftPerson(request.household, rawSafe.person, safeCheck.screen, rawSafe.field, rawSafe.label)
+      const maxPersonCheck = checkDraftPerson(request.household, rawMax.person, maxCheck.screen, rawMax.field, rawMax.label)
       const personRefusal = !safePersonCheck.ok ? safePersonCheck : !maxPersonCheck.ok ? maxPersonCheck : null
       if (personRefusal) {
         answer({ ok: false, error: `${personRefusal.code}: ${personRefusal.reason}` })

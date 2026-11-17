@@ -367,7 +367,8 @@ export class AdvisorService {
 
   /**
    * The household as the owl may know it (ADR-0073): whether there is a Person B, whether the user
-   * records B's figures, and B's figures already entered. No name, no id.
+   * records B's figures, and B's figures already entered. No name, no id for the model: B's names
+   * only travel as `aliases`, which the tool round checks draft titles against.
    */
   async advisorHousehold(userId: string, taxYear: number): Promise<AdvisorHousehold> {
     const spouse = await this.link?.spouseForAdvisor(userId, taxYear)
@@ -377,6 +378,8 @@ export class AdvisorService {
         handle: PERSON_B_HANDLE,
         recordable: spouse.recordable,
         figures: spouse.recordable ? await this.facts.personBFigures(spouse.spouseUserId, taxYear) : null,
+        // Only to check a draft's title against (ADR-0073 Nachtrag); never part of a prompt.
+        aliases: spouseAliases(spouse.firstName, spouse.lastName),
       },
     }
   }
@@ -1659,4 +1662,11 @@ export function combinationDrafts(
     alternativeGroup: `combine:${add.actionId}`,
   })
   return [{ ...add, alternativeGroup: `combine:${add.actionId}` }, replace]
+}
+
+/** How a user may call the spouse in a chat: the first name and the full name, as stored in B's profile. */
+function spouseAliases(firstName: string | null, lastName: string | null): string[] {
+  const first = firstName?.trim() ?? ''
+  const full = [first, lastName?.trim() ?? ''].filter((part) => part.length > 0).join(' ')
+  return [...new Set([first, full].filter((name) => name.length > 0))]
 }
