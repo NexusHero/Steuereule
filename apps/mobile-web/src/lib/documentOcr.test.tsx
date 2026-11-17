@@ -160,8 +160,15 @@ describe('documentOcr (on-device PDF & image OCR)', () => {
 
   // A scanner's PDF often holds its page as JBIG2 or JPEG 2000; pdf.js decodes both with WASM it loads from `wasmUrl`.
   it('loads the pdf.js image decoders from the own origin', async () => {
-    const getDocument = vi.fn(() => ({ promise: Promise.resolve({ numPages: 0, getPage: async () => { throw new Error('none') } }) }))
-    await extractDocumentTextOnDevice(new Blob([new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d])]), { deps: { loadPdfJs: async () => ({ getDocument }) as PdfJsLikeModule } })
+    const getDocument = vi.fn((_params: Parameters<PdfJsLikeModule['getDocument']>[0]) => ({
+      promise: Promise.resolve({
+        numPages: 0,
+        getPage: async (): Promise<never> => {
+          throw new Error('none')
+        },
+      }),
+    }))
+    await extractDocumentTextOnDevice(new Blob([new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d])]), { deps: { loadPdfJs: async () => ({ getDocument }) } })
     expect(getDocument.mock.calls[0]![0]).toMatchObject({ wasmUrl: `${globalThis.location.origin}/ocr/pdf/` })
   })
 

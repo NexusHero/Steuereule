@@ -254,6 +254,24 @@ describe('parseChSalaryCertificateText', () => {
     expect(read.amounts).toMatchObject({ lohn: 100500, 'bruttolohn-total': 100500 })
   })
 
+  // Real-data run: margin noise before „14.“ hid the heading, and a figure of the pages behind the form
+  // was taken as Ziffer 13.
+  it('ends a Ziffer at the next heading although the scan put margin noise before its number', () => {
+    const text = [
+      '12. Quellensteuerabzug - Retenue de I\'impôt à la source 4321',
+      '13. Spesenvergütungen - Allocations pour frais - Indennità per spese',
+      '13.1 Effektive Spesen 13.1.1 Reise, Verpflegung, Übernachtung X',
+      'oO 14. Weitere Gehaltsnebenleistungen Art',
+      'wn',
+      '15. Bemerkungen siehe Zusatzblatt',
+      'Beitragssatz 9.00 % im Jahr 25',
+    ].join('\n')
+    const read = parseChSalaryCertificateText(text)
+    expect(read.amounts.spesen).toBeUndefined()
+    expect(read.amounts['weitere-nebenleistungen']).toBeUndefined()
+    expect(read.amounts.quellensteuer).toBe(4321)
+  })
+
   it('reads the cross of box F where it stands beside the free transport', () => {
     const head = ['C 756.1234.5678.97 01.02.1990 F X Unentgeltliche Beförderung zwischen Wohn- und Arbeitsort', 'D 2025 E 01.01.2025 31.12.2025 G Repas à la cantine'].join('\n')
     expect(parseChSalaryCertificateText(head)).toMatchObject({ freeTransport: true, canteen: false })

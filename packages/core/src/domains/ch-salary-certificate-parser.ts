@@ -105,6 +105,9 @@ function trailingAmount(rawLine: string): number | null {
 /** "1. Lohn", "8 Bruttolohn", "14, Weitere", "15.Bemerkungen": a Ziffer's first line, never "10.1" or "13.1.1". */
 const ZIFFER_HEADER = /^\s{0,3}(\d{1,2})\s*(?:[.,]\s*)?(?=[A-Za-zÄÖÜäöü])/
 
+/** A scan's margin (punch holes, a barcode) leaves a few characters before the number: "oO 14. Weitere". */
+const NOISY_ZIFFER_HEADER = /^\D{1,8}?\s(\d{1,2})\s*(?:[.,]\s*)?(?=[A-Za-zÄÖÜäöü])/
+
 /** What each Ziffer's heading says, German or French, loose about OCR's umlauts. */
 const ZIFFER_HEADINGS: Readonly<Record<number, RegExp>> = {
   1: /\blohn\b|salaire qui/i,
@@ -138,7 +141,7 @@ function zifferBlocks(lines: readonly string[]): Block[] {
   const blocks: { digit: number; lines: string[] }[] = []
   let last = 0
   for (const line of lines) {
-    const m = ZIFFER_HEADER.exec(line)
+    const m = ZIFFER_HEADER.exec(line) ?? NOISY_ZIFFER_HEADER.exec(line)
     const printed = m?.[1] ? Number(m[1]) : Number.NaN
     const digit = [printed, printed % 10].find((n) => Number.isInteger(n) && n > last && n <= 15 && ZIFFER_HEADINGS[n]!.test(line))
     if (digit !== undefined) {
