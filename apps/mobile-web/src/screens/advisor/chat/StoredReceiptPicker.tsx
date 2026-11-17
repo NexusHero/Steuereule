@@ -80,7 +80,7 @@ export function StoredReceiptPicker({ onRead, disabled = false, onOpenReceipts }
               {tr('belege.eule.ergebnis.unreadable')}
             </Text>
           ) : null}
-          {onOpenReceipts && (stored.length > SHOWN || stored.length === 0) ? (
+          {onOpenReceipts ? (
             <Pressable accessibilityRole="button" onPress={onOpenReceipts} style={styles.toggle} testID="advisor-stored-receipts-all">
               <Text style={styles.toggleText}>{tr('advisor.chat.storedReceipts.all')}</Text>
             </Pressable>

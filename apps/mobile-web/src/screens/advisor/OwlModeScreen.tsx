@@ -492,7 +492,19 @@ export function OwlModeScreenView({
         onAttachReceiptFile={bridge ? async (file) => void (await bridge.captureReceiptFile(file)) : undefined}
         receiptProgress={bridge?.receiptPhase ? tr(`advisor.chat.receiptProgress.${bridge.receiptPhase}`) : null}
         receiptNotice={bridge?.receiptNotice ?? null}
-        receiptAssignment={bridge && (bridge.documentQuestion !== null || bridge.documentHolder !== null) ? <ChatDocumentAssignment bridge={bridge} /> : undefined}
+        receiptAssignment={
+          bridge && (bridge.documentQuestion !== null || bridge.documentHolder !== null || bridge.lastParsedReceipt !== null) ? (
+            <>
+              {bridge.documentQuestion !== null || bridge.documentHolder !== null ? <ChatDocumentAssignment bridge={bridge} /> : null}
+              {/* The way back from the chat to the document: its original lies in the Belege tab. */}
+              {bridge.lastParsedReceipt !== null && switchToTab ? (
+                <Pressable accessibilityRole="button" onPress={() => switchToTab('Receipts')} testID="eule-receipt-result-belege">
+                  <Text style={styles.help}>{tr('eule.workspace.receiptInInbox')}</Text>
+                </Pressable>
+              ) : null}
+            </>
+          ) : undefined
+        }
         receiptSources={
           bridge ? (
             <StoredReceiptPicker
@@ -615,11 +627,6 @@ export function OwlModeScreenView({
               <Text style={styles.conflictText}>
                 {tr('eule.workspace.receiptBlocked', '⚠️ Sensibler Inhalt geschwärzt (Mandantengeheimnis)')}
               </Text>
-            ) : null}
-            {switchToTab ? (
-              <Pressable accessibilityRole="button" onPress={() => switchToTab('Receipts')} testID="eule-receipt-result-belege">
-                <Text style={styles.help}>{tr('eule.workspace.receiptInInbox')}</Text>
-              </Pressable>
             ) : null}
           </Card>
         ) : null}
