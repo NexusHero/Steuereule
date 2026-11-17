@@ -2,51 +2,28 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
-  newContextAtBreakpoint,
-  guardAgainst429,
   fail,
-  registerAndOnboard,
   answerBasis,
   fillTopic,
   leaveStrom,
   waitForStromStep,
   runStandaloneScenario,
 } from './helpers/scenario-harness.mjs'
+import { startPersona, completeLstb, completeCommuteDistance } from './helpers/persona-steps.mjs'
 
 export async function runScenario17(browser, webOrigin) {
   console.log('\n--- Scenario 17: Maximal Catalog (All "Ja" in Lebenslagen with follow-ups) ---')
-  const ctx = await newContextAtBreakpoint(browser, 's')
-  const page = await ctx.newPage()
-  guardAgainst429(page, fail)
-
-  await registerAndOnboard(
-    page,
-    {
-      email: `du+maximal-${Date.now()}@beispiel.de`,
-      firstName: 'Maximilian',
-      lastName: 'Allesgeber',
-      taxId: '04452397686',
-      taxNumber: '181/140/01235',
-    },
-    webOrigin,
-    'scenario-17',
-  )
+  const { ctx, page } = await startPersona(browser, webOrigin, 'scenario-17', {
+    email: `du+maximal-${Date.now()}@beispiel.de`, firstName: 'Maximilian', lastName: 'Allesgeber', taxId: '04452397686', taxNumber: '181/140/01235',
+  }, 's')
 
   await page.locator('[data-testid="cockpit-interview"]').click()
   // The Strom (ADR-0089): every Lebenslage chosen on the one selection page, then one page each.
   await answerBasis(page, { job: 'Angestellt', ausland: 'Nein', kinder: 'Nein', familienstand: 'Ledig' })
 
-  await waitForStromStep(page, 'lohnsteuerbescheinigung')
-  await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').fill('70000')
-  await page.locator('[data-testid="lstb-lohnsteuer"]').fill('14000')
-  await page.locator('[data-testid="lstb-sozialversicherung"]').fill('13000')
-  await page.locator('[data-testid="lstb-weiter"]').click()
+  await completeLstb(page, { grossWage: '70000', wageTax: '14000', socialSecurity: '13000' })
 
-  await waitForStromStep(page, 'arbeitsweg')
-  await page.locator('[data-testid="arbeitstage-km"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="arbeitstage-km"]').fill('10')
-  await page.locator('[data-testid="arbeitstage-weiter"]').click()
+  await completeCommuteDistance(page, '10')
 
   await waitForStromStep(page, 'auswahl')
   // The rare topics (Abfindung, Weitere Einkünfte, Vorauszahlungen) wait behind „Mehr anzeigen“.

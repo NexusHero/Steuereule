@@ -2,10 +2,6 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
-  newContextAtBreakpoint,
-  guardAgainst429,
-  fail,
-  registerAndOnboard,
   selectTaxYear2025,
   answerBasis,
   chooseTopics,
@@ -15,24 +11,13 @@ import {
   assertCockpitEstimate,
   runStandaloneScenario,
 } from './helpers/scenario-harness.mjs'
+import { startPersona, completeLstb, completeCommute, assertPrintoutOpen } from './helpers/persona-steps.mjs'
 
 export async function runScenario07(browser, webOrigin) {
   console.log('\n--- Scenario 07: David Richter (Single parent, 1 child, Kindergeld & § 24b Entlastungsbetrag) ---')
-  const ctx = await newContextAtBreakpoint(browser, 'l')
-  const page = await ctx.newPage()
-  guardAgainst429(page, fail)
-
-  await registerAndOnboard(
-    page,
-    {
-      email: `du+david.richter.${Date.now()}@beispiel.de`,
-      firstName: 'David',
-      lastName: 'Richter',
-      taxId: '81234567890',
-    },
-    webOrigin,
-    'scenario-07',
-  )
+  const { ctx, page } = await startPersona(browser, webOrigin, 'scenario-07', {
+    email: `du+david.richter.${Date.now()}@beispiel.de`, firstName: 'David', lastName: 'Richter', taxId: '81234567890',
+  })
 
   await selectTaxYear2025(page)
 
@@ -40,23 +25,9 @@ export async function runScenario07(browser, webOrigin) {
   // The Strom (ADR-0089): basis, LStB, way to work, the child, the selection, the single-parent page.
   await answerBasis(page, { job: 'Angestellt', ausland: 'Nein', kinder: '1 Kind', familienstand: 'Geschieden oder getrennt' })
 
-  await waitForStromStep(page, 'lohnsteuerbescheinigung')
-  await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').fill('52000')
-  await page.locator('[data-testid="lstb-lohnsteuer"]').fill('8400')
-  await page.locator('[data-testid="lstb-sozialversicherung"]').fill('11000')
-  await page.locator('[data-testid="lstb-weiter"]').click()
+  await completeLstb(page, { grossWage: '52000', wageTax: '8400', socialSecurity: '11000' })
 
-  await waitForStromStep(page, 'arbeitsweg')
-  await page.locator('[data-testid="arbeitstage-urlaub"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="arbeitstage-urlaub"]').fill('28')
-  await page.locator('[data-testid="arbeitstage-krank"]').fill('3')
-  await page.locator('[data-testid="arbeitstage-homeoffice"]').fill('0')
-  await page.locator('[data-testid="feiertage-region-NW"]').click()
-  await page.locator('[data-testid="arbeitstage-km"]').fill('25')
-  await page.locator('[data-testid="arbeitstage-transport-oepnv"]').click()
-  await page.locator('[data-testid="arbeitstage-arbeitsort"]').fill('Köln')
-  await page.locator('[data-testid="arbeitstage-weiter"]').click()
+  await completeCommute(page, { vacationDays: '28', sickDays: '3', homeOfficeDays: '0', region: 'NW', oneWayKm: '25', transport: 'oepnv', workplace: 'Köln' })
 
   await waitForStromStep(page, 'kinder')
   await page.locator('[data-testid="kind-vorname"]').waitFor({ state: 'visible', timeout: 10_000 })
@@ -84,11 +55,7 @@ export async function runScenario07(browser, webOrigin) {
 
   await page.locator('[data-testid="cockpit-kacheln"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="cockpit-kachel-alleinerziehend"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="cockpit-abgabe-vorbereiten"]').click()
-  const printBtn = page.locator('[data-testid="abgabe-zum-ausdruck"]')
-  await printBtn.waitFor({ state: 'visible', timeout: 10_000 })
-  if (await printBtn.isDisabled()) fail('Expected abgabe-zum-ausdruck enabled for Scenario 07')
-  await page.locator('[data-testid="abgabe-zurueck"]').click()
+  await assertPrintoutOpen(page, 'Scenario 07')
 
   await assertCockpitEstimate(page, 'Scenario 07', { direction: 'Erstattung' })
   console.log('[Scenario 07] PASS: Single parent flow with child and Kindergeld verified.')

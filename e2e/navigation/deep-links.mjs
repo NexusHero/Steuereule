@@ -1,14 +1,13 @@
 // Deep-link matrix (#450 Teil 4, #443 AC 2 and AC 3): every route of the app, signed in, with
 // reload and browser back/forward; and the guest path — an account mask opened without a session
 // lands in exactly that mask after signing in.
-import { request as playwrightRequest } from 'playwright-core'
 import { launchBrowser, closeBrowser, newContextAtBreakpoint, guardAgainst429 } from '../harness/browser.mjs'
 import { startStack } from '../harness/stack.mjs'
 import { fail, waitForBucketHeadroom } from '../harness/rate-limit.mjs'
-import { FLOW_COPY, skipSplash, signUpOutOfBand, submitLogin } from '../harness/flows.mjs'
+import { FLOW_COPY, skipSplash, submitLogin } from '../harness/flows.mjs'
+import { PASSWORD, createAccount, call } from '../harness/api-account.mjs'
 
 const AUTH_BUCKET = { windowMs: 10_000, max: 3, shared: true }
-const PASSWORD = 'Sicheres-Passwort-1!'
 const TAG = 'deep-links'
 // The cockpit opens on the last completed year since UX review K2 (2025 on 2026-11-14).
 const YEAR = 2025
@@ -53,24 +52,6 @@ const GUEST_TARGETS = [`/app/steuerjahr/${YEAR}/lstb`, `/app/steuerjahr/${YEAR}/
 
 const ERROR_COPY = 'Das hat nicht geklappt.'
 const KONTO_WAND_LOGIN = 'Ich hab schon ein Konto'
-
-async function account(apiOrigin, webOrigin, sql) {
-  const email = `deeplinks-${Date.now()}@beispiel.de`
-  await waitForBucketHeadroom(AUTH_BUCKET, 'sign-up/email', TAG)
-  await signUpOutOfBand(apiOrigin, webOrigin, email, PASSWORD)
-  sql(`UPDATE "User" SET "emailVerified" = true WHERE email = '${email}'`)
-  const api = await playwrightRequest.newContext({ baseURL: apiOrigin, extraHTTPHeaders: { origin: webOrigin } })
-  await waitForBucketHeadroom(AUTH_BUCKET, 'sign-in/email', TAG)
-  const res = await api.post('/api/auth/sign-in/email', { data: { email, password: PASSWORD } })
-  if (!res.ok()) fail(`sign-in failed (${res.status()})`)
-  return { email, api }
-}
-
-async function call(api, method, path, data) {
-  const res = await api.fetch(path, { method, ...(data === undefined ? {} : { data }) })
-  if (!res.ok()) fail(`${method} ${path} answered ${res.status()}: ${(await res.text()).slice(0, 200)}`)
-  return res.json()
-}
 
 async function login(page, email) {
   await waitForBucketHeadroom(AUTH_BUCKET, 'sign-in/email', TAG)
@@ -126,7 +107,7 @@ async function main() {
   const browser = await launchBrowser()
   try {
     // A married couple, so the partner masks and the comparison have a reason to exist.
-    const user = await account(apiOrigin, webOrigin, sql)
+    const user = await createAccount({ apiOrigin, webOrigin, sql, tag: TAG })
     for (const [questionId, value] of [['job', 'Angestellt'], ['ausland', 'Nein'], ['kinder', 'Nein'], ['familienstand', 'Verheiratet'], ['partner-job', 'Angestellt'], ['partner-ausland', 'Nein']]) {
       await call(user.api, 'POST', `/v1/steuerjahre/${YEAR}/interview/antworten`, { questionId, value })
     }

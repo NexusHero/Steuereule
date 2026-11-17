@@ -14,7 +14,7 @@ export class PrismaAccountIdentityRepository implements AccountIdentityRepositor
       where: { userId },
       select: { providerId: true },
     })
-    const authProviders = [...new Set(accounts.map((account) => account.providerId))].sort()
+    const authProviders = [...new Set(accounts.map((account) => account.providerId))].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0))
 
     return {
       email: user.email,

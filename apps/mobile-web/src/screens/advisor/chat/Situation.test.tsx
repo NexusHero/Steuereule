@@ -45,6 +45,6 @@ describe('suggestions for the situation (#501)', () => {
   it('says so when it could not be stored', async () => {
     renderInApp(<SituationSuggestions suggestions={['Hauskauf für 2027 geplant.']} onAccept={vi.fn().mockRejectedValue(new Error('down'))} />)
     fireEvent.click(screen.getByTestId('advisor-situation-suggestion-accept'))
-    await screen.findByTestId('advisor-situation-suggestion-failed')
+    expect(await screen.findByTestId('advisor-situation-suggestion-failed')).toBeTruthy()
   })
 })

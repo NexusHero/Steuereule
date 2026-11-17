@@ -5,13 +5,15 @@
 //   API_ORIGIN=… WEB_ORIGIN=… DATABASE_URL=… node advisor/chat-coverage-scenarios.mjs
 // The API behind API_ORIGIN must run with a provider key (see customer-chat-scenario.mjs).
 import { writeFile, mkdir } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { request as playwrightRequest } from 'playwright-core'
 import { startStack } from '../harness/stack.mjs'
 import { signUpOutOfBand } from '../harness/flows.mjs'
 
 const PASSWORD = 'Sicheres-Passwort-1!'
 const YEAR = 2026
-const OUT = process.env.SCENARIO_OUT ?? '/tmp/chat-coverage'
+const OUT = process.env.SCENARIO_OUT ?? join(tmpdir(), 'chat-coverage')
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 const BASE = `/v1/steuerjahre/${YEAR}`
 

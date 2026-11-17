@@ -62,7 +62,8 @@ cmd_dev() {
   local pg_port
   pg_port="$("${DEV_STACK[@]}" port postgres 5432 | sed 's/.*://')"
 
-  export DATABASE_URL="postgresql://steuereule:steuereule@localhost:${pg_port}/steuereule"
+  local pg_user=steuereule pg_password=steuereule pg_db=steuereule
+  export DATABASE_URL="postgresql://${pg_user}:${pg_password}@localhost:${pg_port}/${pg_db}"
   export PORT=3000
   export BETTER_AUTH_URL="http://localhost:3000"
   export CORS_ALLOWED_ORIGINS="http://localhost:8081"

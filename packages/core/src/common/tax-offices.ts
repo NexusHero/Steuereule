@@ -6,7 +6,7 @@ function build(): ReadonlyMap<string, readonly string[]> {
   const names = TAX_OFFICE_NAMES.split('|')
   return new Map(
     TAX_OFFICE_TABLE.split('\n').map((line) => {
-      const offices = line.slice(6).split(',').map((code) => `Finanzamt ${names[parseInt(code, 36)]}`)
+      const offices = line.slice(6).split(',').map((code) => `Finanzamt ${names[Number.parseInt(code, 36)]}`)
       return [line.slice(0, 5), offices] as const
     }),
   )

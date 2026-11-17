@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { ScrollView, View, Text, Pressable, type ViewStyle, type TextStyle } from 'react-native'
+import { ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { Button, Card, Chip, Feld, Input, useTheme, useBreakpoint, type UiTheme } from '@steuereule/ui'
+import { Button, Card, Chip, Feld, useTheme, useBreakpoint, type UiTheme } from '@steuereule/ui'
 import {
   getCapitalControllerGetMostFavourableCheckQueryKey,
   getCapitalControllerGetQueryKey,
@@ -19,7 +19,9 @@ import {
 } from '@steuereule/api-client'
 import type { CapitalFieldId } from '@steuereule/core'
 import { APP_NS } from '../../i18n/resources'
-import { integerFrom } from '../shared/integer'
+import { UnclearableNumberField } from '../shared/UnclearableNumberField'
+import { screenHeaderStyles } from '../shared/screenStyles'
+import { ItemNotice } from '../shared/ItemNotice'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { CatalogScreen } from '../catalog/CatalogScreen'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
@@ -119,17 +121,24 @@ export function CapitalScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX
       ) : null}
 
       {response.requiredFields.map((field) => (
-        <CapitalFieldEditor
+        <UnclearableNumberField
           key={field}
           label={field === 'kapitalertraege' ? tr('kapital.feld.label') : tr(`kapital.felder.${field}`)}
           state={response[field]}
+          placeholder={tr('kapital.feld.placeholder')}
+          unclearLabel={tr('kapital.feld.unklar')}
           testID={`kapital-${field}`}
           onRecorded={(value) => send(field, { kind: 'erfasst', value })}
           onUnclear={() => send(field, { kind: 'unklar' })}
         />
       ))}
 
-      <ItemNotice response={response} />
+      <ItemNotice
+        amount={response.items[0]?.amount}
+        openLabel={tr('kapital.posten.offen')}
+        heading={tr('kapital.posten.heading')}
+        source={tr('kapital.posten.herkunft')}
+      />
 
       <MostFavourableCheckSection taxYear={taxYear} />
 
@@ -154,71 +163,6 @@ function DepotNotice({ kind }: { readonly kind: KapitalResponseDto['depot']['kin
           ? tr('kapital.depot.krypto')
           : tr('kapital.depot.unbekannt')
   return <Text style={s.depotText}>{text}</Text>
-}
-
-function CapitalFieldEditor({
-  label,
-  state,
-  testID,
-  onRecorded,
-  onUnclear,
-}: {
-  readonly label: string
-  readonly state: KapitalFeldDto
-  readonly testID?: string
-  readonly onRecorded: (value: number) => void
-  readonly onUnclear: () => void
-}) {
-  const t = useTheme()
-  const { t: tr } = useTranslation(APP_NS)
-  const s = makeStyles(t)
-  const [text, setText] = useState(state.kind === 'erfasst' ? String(state.value) : '')
-
-  function commit() {
-    const value = integerFrom(text)
-    if (value === null) return
-    if (state.kind === 'erfasst' && state.value === value) return
-    onRecorded(value)
-  }
-
-  return (
-    <Feld label={label}>
-      <View style={s.feldRow}>
-        <Input
-          type="numeric"
-          mono
-          value={state.kind === 'unklar' ? '' : text}
-          onChange={setText}
-          placeholder={tr('kapital.feld.placeholder')}
-          onSubmit={commit}
-          onBlur={commit}
-          accessibilityLabel={`${label} (${tr('kapital.feld.placeholder')})`}
-          {...(testID ? { testID } : {})}
-        />
-        <Pressable accessibilityRole="button" onPress={onUnclear} style={s.unklarButton}>
-          <Text style={state.kind === 'unklar' ? s.unklarActive : s.unklarLabel}>{tr('kapital.feld.unklar')}</Text>
-        </Pressable>
-      </View>
-    </Feld>
-  )
-}
-
-function ItemNotice({ response }: { readonly response: KapitalResponseDto }) {
-  const t = useTheme()
-  const { t: tr } = useTranslation(APP_NS)
-  const s = makeStyles(t)
-  const items = response.items[0]
-
-  if (items === undefined) {
-    return <Text style={s.postenOffen}>{tr('kapital.posten.offen')}</Text>
-  }
-  return (
-    <View style={s.postenBlock}>
-      <Text style={s.postenHeading}>{tr('kapital.posten.heading')}</Text>
-      <Text style={s.postenBetrag}>{`${items.amount} €`}</Text>
-      <Text style={s.postenHerkunft}>{tr('kapital.posten.herkunft')}</Text>
-    </View>
-  )
 }
 
 function MostFavourableCheckSection({ taxYear }: { readonly taxYear: number }) {
@@ -292,29 +236,7 @@ function Result({ dto }: { readonly dto: GuenstigerpruefungDto }) {
 function makeStyles(t: UiTheme) {
   const screen: ViewStyle = t.layout.flow.narrow
   const wideScreen: ViewStyle = t.layout.flow.wide
-  const headerRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', marginBottom: t.space.s4 }
-  const heading: TextStyle = {
-    ...t.type.title,
-    color: t.color.tinte,
-    marginBottom: t.space.s2,
-  }
-  const help: TextStyle = { ...t.type.body, color: t.color.tinte2, marginBottom: t.space.s4 }
   const depotText: TextStyle = { ...t.type.body, color: t.color.tinte, marginBottom: t.space.s3 }
-  const fieldRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s3 }
-  const unclearButton: ViewStyle = {
-    paddingHorizontal: t.space.s3,
-    paddingVertical: t.space.s2,
-    borderWidth: t.space.kontur,
-    borderColor: t.color.tinte,
-    borderRadius: t.radius.s,
-  }
-  const unclearLabel: TextStyle = { ...t.type.small, color: t.color.tinte2 }
-  const unclearActive: TextStyle = { ...t.type.label, color: t.color.tinte }
-  const itemsBlock: ViewStyle = { marginVertical: t.space.s3, padding: t.space.s3, borderWidth: t.space.kontur, borderColor: t.color.tinte, borderRadius: t.radius.s }
-  const itemsHeading: TextStyle = { ...t.type.itemTitle, color: t.color.tinte, marginBottom: t.space.s1 }
-  const itemAmount: TextStyle = { ...t.type.headline, color: t.color.tinte }
-  const itemSource: TextStyle = { ...t.type.small, color: t.color.tinte2, marginTop: t.space.s1 }
-  const itemsOpen: TextStyle = { ...t.type.body, color: t.color.tinte2, marginVertical: t.space.s3 }
   const resultBlock: ViewStyle = { marginTop: t.space.s4 }
   const resultHeading: TextStyle = { ...t.type.bodyStrong, color: t.color.tinte, marginBottom: t.space.s2 }
   const statement: TextStyle = { ...t.type.subhead, color: t.color.tinte, marginBottom: t.space.s3 }
@@ -325,19 +247,8 @@ function makeStyles(t: UiTheme) {
   return {
     screen,
     wideScreen,
-    headerRow,
-    heading,
-    help,
+    ...screenHeaderStyles(t),
     depotText,
-    feldRow: fieldRow,
-    unklarButton: unclearButton,
-    unklarLabel: unclearLabel,
-    unklarActive: unclearActive,
-    postenBlock: itemsBlock,
-    postenHeading: itemsHeading,
-    postenBetrag: itemAmount,
-    postenHerkunft: itemSource,
-    postenOffen: itemsOpen,
     resultBlock,
     resultHeading,
     aussage: statement,

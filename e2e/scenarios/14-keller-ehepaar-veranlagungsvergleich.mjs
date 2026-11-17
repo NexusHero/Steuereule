@@ -2,10 +2,7 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
-  newContextAtBreakpoint,
-  guardAgainst429,
   fail,
-  registerAndOnboard,
   answerBasis,
   chooseTopics,
   leaveStrom,
@@ -13,40 +10,21 @@ import {
   assertCockpitEstimate,
   runStandaloneScenario,
 } from './helpers/scenario-harness.mjs'
+import { startPersona, completeLstb, completeCommuteDistance } from './helpers/persona-steps.mjs'
 
 export async function runScenario14(browser, webOrigin) {
   console.log('\n--- Scenario 14: Michael & Sandra Keller (Married couple -> FilingTypeComparison) ---')
-  const ctx = await newContextAtBreakpoint(browser, 'l')
-  const page = await ctx.newPage()
-  guardAgainst429(page, fail)
-
-  await registerAndOnboard(
-    page,
-    {
-      email: `du+michael.keller.${Date.now()}@beispiel.de`,
-      firstName: 'Michael',
-      lastName: 'Keller',
-      taxId: '89421035677',
-    },
-    webOrigin,
-    'scenario-14',
-  )
+  const { ctx, page } = await startPersona(browser, webOrigin, 'scenario-14', {
+    email: `du+michael.keller.${Date.now()}@beispiel.de`, firstName: 'Michael', lastName: 'Keller', taxId: '89421035677',
+  })
 
   await page.locator('[data-testid="cockpit-interview"]').click()
   // The Strom (ADR-0089): the basis page asks what Person B does as well (ADR-0088).
   await answerBasis(page, { job: 'Angestellt', ausland: 'Nein', kinder: 'Nein', familienstand: 'Verheiratet', 'partner-job': 'Angestellt', 'partner-ausland': 'Nein' })
 
-  await waitForStromStep(page, 'lohnsteuerbescheinigung')
-  await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').fill('75000')
-  await page.locator('[data-testid="lstb-lohnsteuer"]').fill('16000')
-  await page.locator('[data-testid="lstb-sozialversicherung"]').fill('14000')
-  await page.locator('[data-testid="lstb-weiter"]').click()
+  await completeLstb(page, { grossWage: '75000', wageTax: '16000', socialSecurity: '14000' })
 
-  await waitForStromStep(page, 'arbeitsweg')
-  await page.locator('[data-testid="arbeitstage-km"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="arbeitstage-km"]').fill('10')
-  await page.locator('[data-testid="arbeitstage-weiter"]').click()
+  await completeCommuteDistance(page, '10')
 
   // Nothing on the selection page applies: every topic is answered „Nein“ at once.
   await chooseTopics(page, [])

@@ -124,14 +124,14 @@ function isNameLine(line: string): boolean {
  */
 export function printedHolderName(rawText: string): string | null {
   for (const line of (rawText ?? '').split(/\r?\n/)) {
-    const labelled = /^\s*(?:name(?:,\s*vorname)?|vorname,?\s*name|arbeitnehmer(?:in)?|versicherungsnehmer(?:in)?|versicherte(?:r)?|herrn?|frau)\s*:?\s+(\p{Lu}[\p{L}'’-]+(?:\s+\p{Lu}[\p{L}'’-]+){1,2})\s*$/iu.exec(line)
+    const labelled = /^\s*(?:name(?:,\s*vorname)?|vorname,?\s*name|arbeitnehmer(?:in)?|versicherungsnehmer(?:in)?|versicherte(?:r)?|herrn?|frau)(?:\s+(?::\s+)?|:\s+)(\p{Lu}[\p{L}'’-]+(?:\s+\p{Lu}[\p{L}'’-]+){1,2})\s*$/iu.exec(line)
     if (labelled && !NOT_A_NAME.test(labelled[1]!)) return labelled[1]!
     if (isNameLine(line)) return line.trim()
   }
   return null
 }
 
-const CHILD_NAME = /(?:[Ff](?:ü|u)r[ \t]+(?:das[ \t]+)?[Kk]ind|[Nn]ame[ \t]+des[ \t]+[Kk]indes|\b[Kk]ind)[ \t]*:?[ \t]+(\p{Lu}[\p{L}'’-]+(?:[ \t]+\p{Lu}[\p{L}'’-]+){0,2})/u
+const CHILD_NAME = /(?:[Ff](?:ü|u)r[ \t]+(?:das[ \t]+)?[Kk]ind|[Nn]ame[ \t]+des[ \t]+[Kk]indes|\b[Kk]ind)(?:[ \t]+(?::[ \t]+)?|:[ \t]+)(\p{Lu}[\p{L}'’-]+(?:[ \t]+\p{Lu}[\p{L}'’-]+){0,2})/u
 
 /**
  * The names a document prints for the people it is about, the holder first: every insured person of a

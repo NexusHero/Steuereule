@@ -180,6 +180,6 @@ describe('BescheidScreen', () => {
   it('treats a non-200 response as an honest error, not a silent empty fallthrough', async () => {
     server.use(http.get(ASSESSMENT_URL, () => HttpResponse.json({}, { status: 500 })))
     renderAssessment()
-    await screen.findByText('Das hat nicht geklappt.')
+    expect(await screen.findByText('Das hat nicht geklappt.')).toBeTruthy()
   })
 })

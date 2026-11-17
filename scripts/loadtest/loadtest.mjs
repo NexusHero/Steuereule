@@ -5,6 +5,7 @@
 //
 // Usage:
 //   node scripts/loadtest/loadtest.mjs [--concurrency 5] [--iterations 5] [--url http://localhost:3000] [--origin http://localhost:3300] [--max-p95 250] [--mock]
+import { randomBytes } from 'node:crypto'
 import { performance } from 'node:perf_hooks'
 
 const args = process.argv.slice(2)
@@ -36,7 +37,7 @@ function extractCookieHeader(res) {
 async function createAuthenticatedSession() {
   if (IS_MOCK) return 'mock=1'
   for (let attempt = 1; attempt <= 3; attempt++) {
-    const email = `loadtest.${Date.now()}.${Math.random().toString(36).slice(2, 7)}@steuereule.test`
+    const email = `loadtest.${Date.now()}.${randomBytes(3).toString('hex')}@steuereule.test`
     const res = await fetch(`${BASE_URL}/api/auth/sign-up/email`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Origin: ORIGIN },

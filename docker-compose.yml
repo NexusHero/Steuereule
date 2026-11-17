@@ -2,10 +2,10 @@
 # database — replaces the earlier idle `baseline` placeholder container:
 #   docker compose up -d
 # Then apply migrations and load the synthetic seed fixture (ADR-0003) against it:
-#   DATABASE_URL=postgresql://steuereule:steuereule@localhost:5432/steuereule \
-#     pnpm --filter @steuereule/api migrate:deploy
-#   DATABASE_URL=postgresql://steuereule:steuereule@localhost:5432/steuereule \
-#     pnpm --filter @steuereule/api prisma db seed
+#   export DATABASE_URL="postgresql://$POSTGRES_USER:$POSTGRES_PASSWORD@localhost:5432/$POSTGRES_DB"
+#   pnpm --filter @steuereule/api migrate:deploy
+#   pnpm --filter @steuereule/api prisma db seed
+# (user, password and database name are the three values of the `postgres` service below)
 # CI's `integration`/`smoke` jobs use a GitHub Actions Postgres service container instead
 # (faster — no image build/orchestration for a process that runs natively on the
 # runner, ADR-0010) but pin the same `postgres:16` image family, so this compose stack

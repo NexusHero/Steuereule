@@ -4,17 +4,10 @@
 // the real PrismaAccountIdentityRepository (better-auth User/Account tables) and the
 // real append-only PrismaAuditRepository — the fake-repository tier (account.http.test.ts)
 // already proves the wiring; this tier proves it against the real database shape.
-import type { NestFastifyApplication } from '@nestjs/platform-fastify'
-import { PrismaClient } from '@prisma/client'
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
-import { resetRateLimiters } from './support/reset-rate-limiters.js'
-
-process.env.GUEST_SESSION_SECRET = 'account-export-integration-secret'
-process.env.BETTER_AUTH_SECRET = 'account-export-integration-better-auth-secret-0123456789'
-process.env.BETTER_AUTH_URL = 'http://127.0.0.1:39997'
+import { beforeAll, describe, expect, it } from 'vitest'
+import { baseUrl, prisma, signUp as signUpAccount, useAcceptanceServer } from './support/acceptance-server.js'
 
 const ALLOWED_ORIGIN = 'https://allowed.example.com'
-process.env.CORS_ALLOWED_ORIGINS = ALLOWED_ORIGIN
 // See req-005/req-006/req-009: Node's fetch() sends Sec-Fetch-Mode, so every
 // state-changing better-auth call needs a trusted Origin, same as a real browser.
 const TRUSTED_ORIGIN_HEADERS = { origin: ALLOWED_ORIGIN }
@@ -27,52 +20,35 @@ const PROFILE_PAYLOAD = {
 }
 
 describe('GET /v1/account/export — real Postgres', () => {
-  let app: NestFastifyApplication
-  let baseUrl: string
-  let prisma: PrismaClient
+  useAcceptanceServer({
+    env: {
+      GUEST_SESSION_SECRET: 'account-export-integration-secret',
+      BETTER_AUTH_SECRET: 'account-export-integration-better-auth-secret-0123456789',
+      BETTER_AUTH_URL: 'http://127.0.0.1:39997',
+      CORS_ALLOWED_ORIGINS: ALLOWED_ORIGIN,
+    },
+    cleanup: async () => {
+      await prisma.session.deleteMany()
+      await prisma.account.deleteMany()
+      await prisma.user.deleteMany()
+      await prisma.profile.deleteMany()
+      await prisma.$executeRawUnsafe(`DELETE FROM "TaxDataAccessLog"`)
+    },
+  })
 
+  // A clean slate independent of whatever state a shared local/CI Postgres instance
+  // already carries (e.g. the dev seed fixture, or a previous suite's leftovers) —
+  // every test below asserts on exact counts, so it must start from genuinely zero.
   beforeAll(async () => {
-    const { buildApp } = await import('../src/main.js')
-    app = await buildApp()
-    await app.listen(0, '127.0.0.1')
-    baseUrl = await app.getUrl()
-    const { PrismaService } = await import('../src/prisma/prisma.service.js')
-    prisma = app.get(PrismaService)
-    // A clean slate independent of whatever state a shared local/CI Postgres instance
-    // already carries (e.g. the dev seed fixture, or a previous suite's leftovers) —
-    // every test below asserts on exact counts, so it must start from genuinely zero.
     await prisma.session.deleteMany()
     await prisma.account.deleteMany()
     await prisma.user.deleteMany()
     await prisma.profile.deleteMany()
     await prisma.$executeRawUnsafe(`DELETE FROM "TaxDataAccessLog"`)
-  })
-
-  afterEach(async () => {
-    resetRateLimiters(app)
-    await prisma.session.deleteMany()
-    await prisma.account.deleteMany()
-    await prisma.user.deleteMany()
-    await prisma.profile.deleteMany()
-    await prisma.$executeRawUnsafe(`DELETE FROM "TaxDataAccessLog"`)
-  })
-
-  afterAll(async () => {
-    await app.close()
   })
 
   /** Signs a fresh, real better-auth account up and returns its session cookie + userId. */
-  async function signUp(email: string): Promise<{ cookie: string; userId: string }> {
-    const response = await fetch(`${baseUrl}/api/auth/sign-up/email`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', ...TRUSTED_ORIGIN_HEADERS },
-      body: JSON.stringify({ email, password: 'a-fine-strong-password-1', name: 'Anna Beispiel' }),
-    })
-    expect(response.status).toBe(200)
-    const body = (await response.json()) as { user: { id: string } }
-    const cookie = response.headers.get('set-cookie')!.split(';')[0]!
-    return { cookie, userId: body.user.id }
-  }
+  const signUp = (email: string) => signUpAccount(email, { name: 'Anna Beispiel' })
 
   it('returns 404 for a guest session that never signed up, and appends no audit row', async () => {
     const response = await fetch(`${baseUrl}/v1/account/export`)

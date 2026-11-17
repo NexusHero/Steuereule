@@ -1,17 +1,11 @@
 // REQ-006 — guest -> account upgrade, atomic data carry-over (ADR-0012 §4). Real
 // Postgres, real HTTP against the actual `buildApp()` boot (never `.inject()`).
-import type { NestFastifyApplication } from '@nestjs/platform-fastify'
-import { PrismaClient } from '@prisma/client'
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
-import { resetRateLimiters } from '../support/reset-rate-limiters.js'
+import { describe, expect, it } from 'vitest'
+import { baseUrl, prisma, useAcceptanceServer } from '../support/acceptance-server.js'
 
 const GUEST_SESSION_SECRET = 'req-006-secret'
-process.env.GUEST_SESSION_SECRET = GUEST_SESSION_SECRET
-process.env.BETTER_AUTH_SECRET = 'req-006-better-auth-secret-0123456789'
-process.env.BETTER_AUTH_URL = 'http://127.0.0.1:39996'
 
 const ALLOWED_ORIGIN = 'https://allowed.example.com'
-process.env.CORS_ALLOWED_ORIGINS = ALLOWED_ORIGIN
 // See req-005/req-009: Node's fetch() sends Sec-Fetch-Mode by default, so every
 // state-changing better-auth call needs a trusted Origin, same as a real browser.
 const TRUSTED_ORIGIN_HEADERS = { origin: ALLOWED_ORIGIN }
@@ -19,32 +13,22 @@ const TRUSTED_ORIGIN_HEADERS = { origin: ALLOWED_ORIGIN }
 const GUEST_PROFILE = { firstName: 'Guest', lastName: 'Person', steuerId: '02476291358', steuernummer: null }
 
 describe('REQ-006 — guest -> account upgrade, against the real server', () => {
-  let app: NestFastifyApplication
-  let baseUrl: string
-  let prisma: PrismaClient
-
-  beforeAll(async () => {
-    const { buildApp } = await import('../../src/main.js')
-    app = await buildApp()
-    await app.listen(0, '127.0.0.1')
-    baseUrl = await app.getUrl()
-    const { PrismaService } = await import('../../src/prisma/prisma.service.js')
-    prisma = app.get(PrismaService)
-  })
-
-  afterEach(async () => {
-    resetRateLimiters(app)
-    await prisma.session.deleteMany()
-    await prisma.account.deleteMany()
-    await prisma.user.deleteMany()
-    await prisma.profile.deleteMany()
-    await prisma.$executeRawUnsafe(`DELETE FROM "InterviewAnswer"`)
-    await prisma.taxYear.deleteMany()
-    await prisma.$executeRawUnsafe(`DELETE FROM "TaxDataAccessLog"`)
-  })
-
-  afterAll(async () => {
-    await app.close()
+  useAcceptanceServer({
+    env: {
+      GUEST_SESSION_SECRET,
+      BETTER_AUTH_SECRET: 'req-006-better-auth-secret-0123456789',
+      BETTER_AUTH_URL: 'http://127.0.0.1:39996',
+      CORS_ALLOWED_ORIGINS: ALLOWED_ORIGIN,
+    },
+    cleanup: async () => {
+      await prisma.session.deleteMany()
+      await prisma.account.deleteMany()
+      await prisma.user.deleteMany()
+      await prisma.profile.deleteMany()
+      await prisma.$executeRawUnsafe(`DELETE FROM "InterviewAnswer"`)
+      await prisma.taxYear.deleteMany()
+      await prisma.$executeRawUnsafe(`DELETE FROM "TaxDataAccessLog"`)
+    },
   })
 
   /** Mints a guest cookie exactly as UserContextGuard would, and seeds a Profile (+ a

@@ -7,61 +7,31 @@
 // Regel 3), the honest `nicht-anwendbar` gate for a single user, and `unbestimmt` when the
 // Progressionsvorbehalt input is absent. The core arithmetic itself is packages/core's job; this
 // file proves the API gathers the facts and maps them without re-deriving the comparison.
-import type { NestFastifyApplication } from '@nestjs/platform-fastify'
-import { PrismaClient } from '@prisma/client'
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
-import { resetRateLimiters } from '../support/reset-rate-limiters.js'
-
-process.env.GUEST_SESSION_SECRET = 'req-022-secret'
-process.env.BETTER_AUTH_SECRET = 'req-022-better-auth-secret-0123456789'
-process.env.BETTER_AUTH_URL = 'http://127.0.0.1:39994'
+import { describe, expect, it } from 'vitest'
+import { baseUrl, prisma, signUp, useAcceptanceServer } from '../support/acceptance-server.js'
 
 const ALLOWED_ORIGIN = 'https://allowed.example.com'
-process.env.CORS_ALLOWED_ORIGINS = ALLOWED_ORIGIN
-const TRUSTED_ORIGIN_HEADERS = { origin: ALLOWED_ORIGIN }
 
 const TAX_YEAR = 2026
 
 describe('REQ-022 — the Veranlagungsartenvergleich, against the real server', () => {
-  let app: NestFastifyApplication
-  let baseUrl: string
-  let prisma: PrismaClient
-
-  beforeAll(async () => {
-    const { buildApp } = await import('../../src/main.js')
-    app = await buildApp()
-    await app.listen(0, '127.0.0.1')
-    baseUrl = await app.getUrl()
-    const { PrismaService } = await import('../../src/prisma/prisma.service.js')
-    prisma = app.get(PrismaService)
+  useAcceptanceServer({
+    env: {
+      GUEST_SESSION_SECRET: 'req-022-secret',
+      BETTER_AUTH_SECRET: 'req-022-better-auth-secret-0123456789',
+      BETTER_AUTH_URL: 'http://127.0.0.1:39994',
+      CORS_ALLOWED_ORIGINS: ALLOWED_ORIGIN,
+    },
+    cleanup: async () => {
+      await prisma.$executeRawUnsafe(`DELETE FROM "InterviewAnswer"`)
+      await prisma.$executeRawUnsafe(`DELETE FROM "Lstb"`)
+      await prisma.taxYear.deleteMany()
+      await prisma.$executeRawUnsafe(`DELETE FROM "TaxDataAccessLog"`)
+      await prisma.session.deleteMany()
+      await prisma.account.deleteMany()
+      await prisma.user.deleteMany()
+    },
   })
-
-  afterEach(async () => {
-    resetRateLimiters(app)
-    await prisma.$executeRawUnsafe(`DELETE FROM "InterviewAnswer"`)
-    await prisma.$executeRawUnsafe(`DELETE FROM "Lstb"`)
-    await prisma.taxYear.deleteMany()
-    await prisma.$executeRawUnsafe(`DELETE FROM "TaxDataAccessLog"`)
-    await prisma.session.deleteMany()
-    await prisma.account.deleteMany()
-    await prisma.user.deleteMany()
-  })
-
-  afterAll(async () => {
-    await app.close()
-  })
-
-  async function signUp(email: string): Promise<{ cookie: string; userId: string }> {
-    const response = await fetch(`${baseUrl}/api/auth/sign-up/email`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', ...TRUSTED_ORIGIN_HEADERS },
-      body: JSON.stringify({ email, password: 'a-fine-strong-password-1', name: 'Test User' }),
-    })
-    expect(response.status).toBe(200)
-    const body = (await response.json()) as { user: { id: string } }
-    const cookie = response.headers.get('set-cookie')!.split(';')[0]!
-    return { cookie, userId: body.user.id }
-  }
 
   function postAnswer(cookie: string, questionId: string, value: string) {
     return fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, {

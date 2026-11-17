@@ -753,7 +753,7 @@ export function simulateAdvisorFieldDelta(
 }
 
 function extractFirstEuroAmount(text: string): number | null {
-  const match = text.match(/(\d{1,3}(?:[.\s]\d{3})+|\d+)\s*(?:€|eur|euro|chf)/i) ?? text.match(/\b(\d{2,5})\b/)
+  const match = text.match(/(\d{1,3}(?:[.\s]\d{3})+|(?<!\d)\d+)\s*(?:€|eur|euro|chf)/i) ?? text.match(/\b(\d{2,5})\b/)
   if (!match || !match[1]) return null
   const clean = match[1].replace(/[.\s]/g, '')
   const n = Number.parseInt(clean, 10)
@@ -772,7 +772,7 @@ export function extractAmountNear(text: string, topic: RegExp): number | null {
   const parts = text.split(/(?<!\d)\.|\.(?!\d)|[;\n!?]|,(?!\d)|\s(?:und|sowie)\s/i)
   const part = parts.find((candidate) => topic.test(candidate))
   if (part === undefined) return null
-  const match = part.match(/(\d{1,3}(?:[.\s]\d{3})+|\d+)\s*(?:€|eur|euro|chf)/i)
+  const match = part.match(/(\d{1,3}(?:[.\s]\d{3})+|(?<!\d)\d+)\s*(?:€|eur|euro|chf)/i)
   if (!match || !match[1]) return null
   const n = Number.parseInt(match[1].replace(/[.\s]/g, ''), 10)
   return Number.isFinite(n) && n > 0 ? n : null

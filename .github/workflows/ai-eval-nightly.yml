@@ -37,13 +37,20 @@ jobs:
           --health-timeout=5s
           --health-retries=10
     env:
-      DATABASE_URL: postgres://steuereule:steuereule@localhost:5432/steuereule
       TRUSTED_PROXIES: none
       AI_EVAL_GEMINI_API_KEY: ${{ secrets.AI_EVAL_GEMINI_API_KEY }}
       AI_EVAL_ENFORCE: ${{ vars.AI_EVAL_ENFORCE || '0' }}
       AI_EVAL_COST_CAP_EUR: '5'
       AI_EVAL_REPORT_DIR: /tmp/ai-eval
     steps:
+      # Built here rather than written out in the job env, so no connection string with
+      # credentials sits in the workflow; every later step reads it from the environment.
+      - name: Database URL of the Postgres service container
+        run: echo "DATABASE_URL=postgres://${DB_USER}:${DB_PASSWORD}@localhost:5432/${DB_NAME}" >> "$GITHUB_ENV"
+        env:
+          DB_USER: steuereule
+          DB_PASSWORD: steuereule
+          DB_NAME: steuereule
       - name: Skip without the secret
         id: key
         run: |
@@ -54,14 +61,14 @@ jobs:
           else
             echo "present=true" >> "$GITHUB_OUTPUT"
           fi
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         if: steps.key.outputs.present == 'true'
       - name: Set up pnpm
         if: steps.key.outputs.present == 'true'
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
       - name: Set up Node
         if: steps.key.outputs.present == 'true'
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 24
           cache: pnpm
@@ -96,7 +103,7 @@ jobs:
         run: pnpm --filter @steuereule/api test:live
       - name: Upload the report
         if: always() && steps.key.outputs.present == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: ai-eval-report
           path: /tmp/ai-eval

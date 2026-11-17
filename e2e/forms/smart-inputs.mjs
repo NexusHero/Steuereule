@@ -5,10 +5,11 @@
 // The address search needs street data: the API of this job runs with STREET_DATA_PATH pointing at
 // e2e/fixtures/streets.sample.csv. Without it the search answers "not available" and Row D fails
 // with exactly that message.
-import { launchBrowser, closeBrowser, newContextAtBreakpoint, guardAgainst429 } from '../harness/browser.mjs'
+import { launchBrowser, closeBrowser } from '../harness/browser.mjs'
 import { startStack } from '../harness/stack.mjs'
 import { fail, waitForBucketHeadroom } from '../harness/rate-limit.mjs'
 import { skipSplash, signUpOutOfBand, submitLogin } from '../harness/flows.mjs'
+import { openPageWatchingForeignRequests } from '../harness/foreign-requests.mjs'
 
 const AUTH_BUCKET = { windowMs: 10_000, max: 3, shared: true }
 const TEST_PASSWORD = 'Sicheres-Passwort-1!'
@@ -19,16 +20,6 @@ const LAST_NAME = 'Beispiel'
 const OTHER_PARENT = 'kind-ae'
 
 const tid = (id) => `[data-testid="${id}"]`
-
-function watchForeignRequests(page, origins) {
-  const foreign = []
-  page.on('request', (req) => {
-    const url = new URL(req.url())
-    if (url.protocol === 'data:' || url.protocol === 'blob:') return
-    if (!origins.has(url.origin)) foreign.push(req.url())
-  })
-  return foreign
-}
 
 async function expectValue(page, id, expected, label) {
   const matched = await page
@@ -68,10 +59,7 @@ async function main() {
     await signUpOutOfBand(apiOrigin, webOrigin, email, TEST_PASSWORD)
     sql(`UPDATE "User" SET "emailVerified" = true WHERE email = '${email}'`)
 
-    const ctx = await newContextAtBreakpoint(browser, 'l')
-    const page = await ctx.newPage()
-    guardAgainst429(page, fail, '/api/auth/')
-    const foreign = watchForeignRequests(page, new Set([new URL(apiOrigin).origin, new URL(webOrigin).origin]))
+    const { ctx, page, foreign } = await openPageWatchingForeignRequests(browser, apiOrigin, webOrigin)
 
     await skipSplash(page, webOrigin)
     await waitForBucketHeadroom(AUTH_BUCKET, 'sign-in/email', TAG)

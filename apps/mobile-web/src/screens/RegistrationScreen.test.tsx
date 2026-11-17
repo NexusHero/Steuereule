@@ -35,6 +35,20 @@ function fillCredentials(email = 'neu@beispiel.de', password = 'geheim-123') {
   fireEvent.change(screen.getByPlaceholderText('Mindestens 8 Zeichen'), { target: { value: password } })
 }
 
+/** Sign-up succeeds; as always, the fresh account (neu@beispiel.de) starts out unverified. */
+function unverifiedSignUp() {
+  return http.post(`${BASE_URL}/api/auth/sign-up/email`, () =>
+    HttpResponse.json({ token: 'tok_1', user: { id: 'u1', email: 'neu@beispiel.de', emailVerified: false, name: '' } }),
+  )
+}
+
+/** `get-session` answers with a session of the given user. */
+function sessionOf(user: Record<string, unknown>, sessionId = 's1') {
+  return http.get(`${BASE_URL}/api/auth/get-session`, () =>
+    HttpResponse.json({ user, session: { id: sessionId, createdAt: new Date().toISOString() } }),
+  )
+}
+
 describe('RegistrierungScreen', () => {
   it('renders the German "create account" form by default', () => {
     renderRegistration()
@@ -148,18 +162,14 @@ describe('RegistrierungScreen', () => {
     fillCredentials()
     fireEvent.click(screen.getByText('Konto anlegen'))
 
-    await screen.findByText('Dieses Passwort ist in einem bekannten Datenleck aufgetaucht — wähl bitte ein anderes.')
+    expect(await screen.findByText('Dieses Passwort ist in einem bekannten Datenleck aufgetaucht — wähl bitte ein anderes.')).toBeTruthy()
   })
 
   // REQ-005 — the account works immediately; while unverified, the success step shows an honest
   // banner rather than the DS demo's plain "Konto steht ✓" implying everything (including
   // verification) is done. It must NOT block continuing to onboarding.
   it('shows the honest unverified-email banner on the success step when the new account is unverified', async () => {
-    server.use(
-      http.post(`${BASE_URL}/api/auth/sign-up/email`, () =>
-        HttpResponse.json({ token: 'tok_1', user: { id: 'u1', email: 'neu@beispiel.de', emailVerified: false, name: '' } }),
-      ),
-    )
+    server.use(unverifiedSignUp())
     const onDone = vi.fn()
     renderRegistration({ onDone })
     fillCredentials()
@@ -184,11 +194,7 @@ describe('RegistrierungScreen', () => {
   // into the banner test above, so it still runs (and can still go red on its own) regardless
   // of which banner variant the success step happens to be showing.
   it('gives the success-step heading real heading semantics too (#298 F8 class)', async () => {
-    server.use(
-      http.post(`${BASE_URL}/api/auth/sign-up/email`, () =>
-        HttpResponse.json({ token: 'tok_1', user: { id: 'u1', email: 'neu@beispiel.de', emailVerified: false, name: '' } }),
-      ),
-    )
+    server.use(unverifiedSignUp())
     renderRegistration()
     fillCredentials()
     fireEvent.click(screen.getByText('Konto anlegen'))
@@ -203,15 +209,8 @@ describe('RegistrierungScreen', () => {
   // the signup call. Drives the state through a mocked `GET /api/auth/get-session` instead (#194).
   it('shows the verified confirmation on the success step when the session reports the account already verified', async () => {
     server.use(
-      http.post(`${BASE_URL}/api/auth/sign-up/email`, () =>
-        HttpResponse.json({ token: 'tok_1', user: { id: 'u1', email: 'neu@beispiel.de', emailVerified: false, name: '' } }),
-      ),
-      http.get(`${BASE_URL}/api/auth/get-session`, () =>
-        HttpResponse.json({
-          user: { id: 'u1', email: 'neu@beispiel.de', emailVerified: true, name: '' },
-          session: { id: 's1', createdAt: new Date().toISOString() },
-        }),
-      ),
+      unverifiedSignUp(),
+      sessionOf({ id: 'u1', email: 'neu@beispiel.de', emailVerified: true, name: '' }),
     )
     renderRegistration()
     fillCredentials()
@@ -229,15 +228,8 @@ describe('RegistrierungScreen', () => {
   // the confirmation for an account that is definitionally unverified.
   it('does not show the verified confirmation when the session belongs to a different account', async () => {
     server.use(
-      http.post(`${BASE_URL}/api/auth/sign-up/email`, () =>
-        HttpResponse.json({ token: 'tok_1', user: { id: 'u1', email: 'neu@beispiel.de', emailVerified: false, name: '' } }),
-      ),
-      http.get(`${BASE_URL}/api/auth/get-session`, () =>
-        HttpResponse.json({
-          user: { id: 'u2', email: 'jemand-anderes@beispiel.de', emailVerified: true, name: '' },
-          session: { id: 's2', createdAt: new Date().toISOString() },
-        }),
-      ),
+      unverifiedSignUp(),
+      sessionOf({ id: 'u2', email: 'jemand-anderes@beispiel.de', emailVerified: true, name: '' }, 's2'),
     )
     renderRegistration()
     fillCredentials()
@@ -259,9 +251,7 @@ describe('RegistrierungScreen', () => {
   it('clears the unverified banner without a reload once the session reports verification (out-of-band verify, #194)', async () => {
     let verified = false
     server.use(
-      http.post(`${BASE_URL}/api/auth/sign-up/email`, () =>
-        HttpResponse.json({ token: 'tok_1', user: { id: 'u1', email: 'neu@beispiel.de', emailVerified: false, name: '' } }),
-      ),
+      unverifiedSignUp(),
       http.get(`${BASE_URL}/api/auth/get-session`, () =>
         HttpResponse.json({
           user: { id: 'u1', email: 'neu@beispiel.de', emailVerified: verified, name: '' },
@@ -298,9 +288,7 @@ describe('RegistrierungScreen', () => {
   // no-data path.
   it('keeps the unverified banner when the session fetch fails, rather than assuming verified', async () => {
     server.use(
-      http.post(`${BASE_URL}/api/auth/sign-up/email`, () =>
-        HttpResponse.json({ token: 'tok_1', user: { id: 'u1', email: 'neu@beispiel.de', emailVerified: false, name: '' } }),
-      ),
+      unverifiedSignUp(),
       http.get(`${BASE_URL}/api/auth/get-session`, () => HttpResponse.json({ message: 'Internal Server Error' }, { status: 500 })),
     )
     renderRegistration()
@@ -329,12 +317,7 @@ describe('RegistrierungScreen', () => {
       http.post(`${BASE_URL}/api/auth/sign-up/email`, () =>
         HttpResponse.json({ token: 'tok_1', user: { id: 'u1', email: ACCOUNT_EMAIL, emailVerified: false, name: '' } }),
       ),
-      http.get(`${BASE_URL}/api/auth/get-session`, () =>
-        HttpResponse.json({
-          user: { id: 'u1', email: ACCOUNT_EMAIL, name: '' },
-          session: { id: 's1', createdAt: new Date().toISOString() },
-        }),
-      ),
+      sessionOf({ id: 'u1', email: ACCOUNT_EMAIL, name: '' }),
     )
     renderRegistration()
     fillCredentials()
@@ -348,9 +331,7 @@ describe('RegistrierungScreen', () => {
   it('lets the user resend the verification email from the success step, and shows an honest error if that fails', async () => {
     let resendCalls = 0
     server.use(
-      http.post(`${BASE_URL}/api/auth/sign-up/email`, () =>
-        HttpResponse.json({ token: 'tok_1', user: { id: 'u1', email: 'neu@beispiel.de', emailVerified: false, name: '' } }),
-      ),
+      unverifiedSignUp(),
       http.post(`${BASE_URL}/api/auth/send-verification-email`, () => {
         resendCalls += 1
         return HttpResponse.error()
@@ -371,11 +352,7 @@ describe('RegistrierungScreen', () => {
     // No fabricated `emailVerified: true` here (#194) — the CTA must work regardless of
     // verification state, so the honest signup response (always `false`, better-auth.ts:146)
     // is enough to prove the point without implying anything about the session.
-    server.use(
-      http.post(`${BASE_URL}/api/auth/sign-up/email`, () =>
-        HttpResponse.json({ token: 'tok_1', user: { id: 'u1', email: 'neu@beispiel.de', emailVerified: false, name: '' } }),
-      ),
-    )
+    server.use(unverifiedSignUp())
     const onDone = vi.fn()
     renderRegistration({ onDone })
     fillCredentials()

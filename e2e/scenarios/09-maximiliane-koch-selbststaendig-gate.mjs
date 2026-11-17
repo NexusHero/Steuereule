@@ -2,42 +2,25 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
-  newContextAtBreakpoint,
-  guardAgainst429,
   fail,
-  registerAndOnboard,
   leaveStrom,
   waitForStromStep,
   runStandaloneScenario,
 } from './helpers/scenario-harness.mjs'
+import { startPersona, waitForStromNotice } from './helpers/persona-steps.mjs'
 
 export async function runScenario09(browser, webOrigin) {
   console.log('\n--- Scenario 09: Maximiliane Koch (Pure Freelancer / Selbstständig -> Terminal Gewerbe-Gate) ---')
-  const ctx = await newContextAtBreakpoint(browser, 'l')
-  const page = await ctx.newPage()
-  guardAgainst429(page, fail)
-
-  await registerAndOnboard(
-    page,
-    {
-      email: `du+maxi.koch.${Date.now()}@beispiel.de`,
-      firstName: 'Maximiliane',
-      lastName: 'Koch',
-      taxId: '34827190562',
-    },
-    webOrigin,
-    'scenario-09',
-  )
+  const { ctx, page } = await startPersona(browser, webOrigin, 'scenario-09', {
+    email: `du+maxi.koch.${Date.now()}@beispiel.de`, firstName: 'Maximiliane', lastName: 'Koch', taxId: '34827190562',
+  })
 
   await page.locator('[data-testid="cockpit-interview"]').click()
   // The Strom's basis page (ADR-0089) shows the Gewerbe-Gate inline, right under the answer that opens it.
   await waitForStromStep(page, 'basis')
   await page.locator('[data-testid="interview-option-job-Selbstständig"]').click()
 
-  const gate = page.locator('[data-testid="strom-hinweis-gewerbe"]')
-  await gate.waitFor({ state: 'visible', timeout: 10_000 })
-  await gate.locator('text=Ehrlich: dafür sind wir noch nicht gut genug.').waitFor({ state: 'visible', timeout: 10_000 })
-  await gate.locator('text=Selbstständige brauchen EÜR, Anlage G/S und Umsatzsteuer').waitFor({ state: 'visible', timeout: 10_000 })
+  const gate = await waitForStromNotice(page, 'strom-hinweis-gewerbe', ['Ehrlich: dafür sind wir noch nicht gut genug.', 'Selbstständige brauchen EÜR, Anlage G/S und Umsatzsteuer'])
 
   const forwardOption = page.locator('text=Angestellten-Teil vorbereiten')
   if ((await forwardOption.count()) > 0 && (await forwardOption.isVisible())) {

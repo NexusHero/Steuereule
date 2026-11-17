@@ -28,7 +28,7 @@ export interface CraftsmanInvoiceRead {
   readonly notAnInvoice: boolean
 }
 
-const AMOUNT = /\d{1,3}(?:\.\d{3})*,\d{2}(?!\d)|\d{4,},\d{2}(?!\d)/g
+const AMOUNT = /\d{1,3}(?:\.\d{3})*,\d{2}(?!\d)|(?<!\d)\d{4,},\d{2}(?!\d)/g
 
 function euros(token: string): number {
   return Number(token.replace(/\./g, '').replace(',', '.'))
@@ -110,7 +110,7 @@ export function parseCraftsmanInvoice(text: string): CraftsmanInvoiceRead {
   const fromPositions =
     labourPositions.length > 0 ? Math.round(labourPositions.reduce((s, p) => s + p.netEur, 0) * afterDiscount * (1 + (vatRate ?? 0.19))) : null
   const labourEur = stated ?? fromPositions
-  const dateYear = /(?:vom|datum)\s*:?\s*\d{1,2}\.\d{1,2}\.(20\d{2})/i.exec(text ?? '')?.[1] ?? /\b\d{2}\.\d{2}\.(20\d{2})\b/.exec(text ?? '')?.[1]
+  const dateYear = /(?:vom|datum)\s*(?::\s*)?\d{1,2}\.\d{1,2}\.(20\d{2})/i.exec(text ?? '')?.[1] ?? /\b\d{2}\.\d{2}\.(20\d{2})\b/.exec(text ?? '')?.[1]
   return {
     labourEur,
     invoiceTotalEur: total !== null ? Math.round(total) : null,

@@ -3,14 +3,13 @@
 //           sheets, once with prefers-color-scheme light and once dark (profile on „System“).
 //   Row B — keyboard only through a sheet: Tab keeps the focus inside, Escape closes it.
 import AxeBuilder from '@axe-core/playwright'
-import { request as playwrightRequest } from 'playwright-core'
 import { launchBrowser, closeBrowser, guardAgainst429 } from '../harness/browser.mjs'
 import { startStack } from '../harness/stack.mjs'
 import { fail, waitForBucketHeadroom } from '../harness/rate-limit.mjs'
-import { skipSplash, signUpOutOfBand, submitLogin } from '../harness/flows.mjs'
+import { skipSplash, submitLogin } from '../harness/flows.mjs'
+import { PASSWORD, createAccount } from '../harness/api-account.mjs'
 
 const AUTH_BUCKET = { windowMs: 10_000, max: 3, shared: true }
-const PASSWORD = 'Sicheres-Passwort-1!'
 const TAG = 'a11y-themes'
 // The cockpit opens on the last completed year since UX review K2 (2025 on 2026-11-14).
 const YEAR = 2025
@@ -36,14 +35,7 @@ const SCREENS = [
 ]
 
 async function account(apiOrigin, webOrigin, sql) {
-  const email = `a11y-themes-${Date.now()}@beispiel.de`
-  await waitForBucketHeadroom(AUTH_BUCKET, 'sign-up/email', TAG)
-  await signUpOutOfBand(apiOrigin, webOrigin, email, PASSWORD)
-  sql(`UPDATE "User" SET "emailVerified" = true WHERE email = '${email}'`)
-  const api = await playwrightRequest.newContext({ baseURL: apiOrigin, extraHTTPHeaders: { origin: webOrigin } })
-  await waitForBucketHeadroom(AUTH_BUCKET, 'sign-in/email', TAG)
-  const res = await api.post('/api/auth/sign-in/email', { data: { email, password: PASSWORD } })
-  if (!res.ok()) fail(`sign-in failed (${res.status()})`)
+  const { email, api } = await createAccount({ apiOrigin, webOrigin, sql, tag: TAG })
   for (const [questionId, value] of [['job', 'Angestellt'], ['ausland', 'Nein'], ['kinder', 'Nein'], ['familienstand', 'Ledig']]) {
     const r = await api.post(`/v1/steuerjahre/${YEAR}/interview/antworten`, { data: { questionId, value } })
     if (!r.ok()) fail(`interview ${questionId} answered ${r.status()}`)

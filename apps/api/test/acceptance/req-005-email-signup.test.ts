@@ -1,18 +1,10 @@
 // REQ-005 — email/password account creation + async verification (ADR-0012 §6).
 // Real Postgres, real HTTP against the actual `buildApp()` boot (never `.inject()`).
 import { Logger } from '@nestjs/common'
-import type { NestFastifyApplication } from '@nestjs/platform-fastify'
-import { PrismaClient } from '@prisma/client'
-import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
-import { resetRateLimiters } from '../support/reset-rate-limiters.js'
-
-process.env.GUEST_SESSION_SECRET = 'req-005-secret'
-process.env.BETTER_AUTH_SECRET = 'req-005-better-auth-secret-0123456789'
-process.env.BETTER_AUTH_URL = 'http://127.0.0.1:39998'
-process.env.WEB_APP_URL = 'https://app.example.com'
+import { describe, expect, it, vi } from 'vitest'
+import { baseUrl, prisma, useAcceptanceServer } from '../support/acceptance-server.js'
 
 const ALLOWED_ORIGIN = 'https://allowed.example.com'
-process.env.CORS_ALLOWED_ORIGINS = ALLOWED_ORIGIN
 
 // Node's own `fetch()` (undici) sends `Sec-Fetch-Mode: cors` by default, which is
 // exactly the Fetch-Metadata signal better-auth's CSRF middleware treats as "this
@@ -21,29 +13,20 @@ process.env.CORS_ALLOWED_ORIGINS = ALLOWED_ORIGIN
 const TRUSTED_ORIGIN_HEADERS = { origin: ALLOWED_ORIGIN }
 
 describe('REQ-005 — email/password signup + async verification, against the real server', () => {
-  let app: NestFastifyApplication
-  let baseUrl: string
-  let prisma: PrismaClient
-
-  beforeAll(async () => {
-    const { buildApp } = await import('../../src/main.js')
-    app = await buildApp()
-    await app.listen(0, '127.0.0.1')
-    baseUrl = await app.getUrl()
-    const { PrismaService } = await import('../../src/prisma/prisma.service.js')
-    prisma = app.get(PrismaService)
-  })
-
-  afterEach(async () => {
-    resetRateLimiters(app)
-    vi.unstubAllGlobals()
-    await prisma.session.deleteMany()
-    await prisma.account.deleteMany()
-    await prisma.user.deleteMany()
-  })
-
-  afterAll(async () => {
-    await app.close()
+  useAcceptanceServer({
+    env: {
+      GUEST_SESSION_SECRET: 'req-005-secret',
+      BETTER_AUTH_SECRET: 'req-005-better-auth-secret-0123456789',
+      BETTER_AUTH_URL: 'http://127.0.0.1:39998',
+      WEB_APP_URL: 'https://app.example.com',
+      CORS_ALLOWED_ORIGINS: ALLOWED_ORIGIN,
+    },
+    cleanup: async () => {
+      vi.unstubAllGlobals()
+      await prisma.session.deleteMany()
+      await prisma.account.deleteMany()
+      await prisma.user.deleteMany()
+    },
   })
 
   it('a valid email + a policy-meeting password creates the account, signs in, and surfaces the honest unverified state', async () => {

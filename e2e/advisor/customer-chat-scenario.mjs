@@ -10,6 +10,8 @@
 // return) plus one screenshot per turn. In the first run (11.11.2026) nothing reached the return,
 // because the model guessed field names; see ADR-0064, „Nachtrag“.
 import { writeFile, mkdir } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { request as playwrightRequest } from 'playwright-core'
 import { launchBrowser, closeBrowser, newContextAtBreakpoint } from '../harness/browser.mjs'
 import { startStack } from '../harness/stack.mjs'
@@ -18,7 +20,7 @@ import { skipSplash, signUpOutOfBand, submitLogin } from '../harness/flows.mjs'
 const PASSWORD = 'Sicheres-Passwort-1!'
 // The cockpit opens on the last completed year since UX review K2 (2025 on 2026-11-14).
 const YEAR = 2025
-const OUT = process.env.SCENARIO_OUT ?? '/tmp/customer-scenario'
+const OUT = process.env.SCENARIO_OUT ?? join(tmpdir(), 'customer-scenario')
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
 const TURNS = [

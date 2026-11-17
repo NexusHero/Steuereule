@@ -60,9 +60,14 @@ WORKDIR /repo
 # session; see README.md's own note).
 RUN apt-get update && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
 
-# Whole monorepo, not a pruned subset — `turbo prune` / a pnpm deploy manifest are real,
-# separate image-size follow-up work, out of scope for "make it boot correctly, now".
-COPY . .
+# Every workspace, not a pruned subset — `turbo prune` / a pnpm deploy manifest are real,
+# separate image-size follow-up work, out of scope for "make it boot correctly, now". Named
+# explicitly, so nothing outside the workspace (docs, infra, local notes) can end up in a layer;
+# `e2e` is a workspace member and the frozen lockfile needs its manifest.
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json turbo.json ./
+COPY apps ./apps
+COPY packages ./packages
+COPY e2e ./e2e
 
 RUN pnpm install --frozen-lockfile
 

@@ -3,17 +3,10 @@
 // this suite proves it via a real listening socket + `fetch`, exactly like
 // cors.acceptance.test.ts). Boots via the *actual* `buildApp()` from src/main.ts —
 // not a re-assembled copy — so this can never silently drift from production wiring.
-import type { NestFastifyApplication } from '@nestjs/platform-fastify'
-import { PrismaClient } from '@prisma/client'
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
-import { resetRateLimiters } from '../support/reset-rate-limiters.js'
-
-process.env.GUEST_SESSION_SECRET = 'req-009-secret'
-process.env.BETTER_AUTH_SECRET = 'req-009-better-auth-secret-0123456789'
-process.env.BETTER_AUTH_URL = 'http://127.0.0.1:0' // overwritten to the real ephemeral URL below
+import { beforeAll, describe, expect, it } from 'vitest'
+import { baseUrl, prisma, useAcceptanceServer } from '../support/acceptance-server.js'
 
 const ALLOWED_ORIGIN = 'https://allowed.example.com'
-process.env.CORS_ALLOWED_ORIGINS = ALLOWED_ORIGIN
 
 const SIGNUP_PAYLOAD = { email: 'req009@example.com', password: 'a-fine-strong-password-1', name: 'Req 009' }
 
@@ -26,36 +19,28 @@ const SIGNUP_PAYLOAD = { email: 'req009@example.com', password: 'a-fine-strong-p
 const TRUSTED_ORIGIN_HEADERS = { origin: ALLOWED_ORIGIN }
 
 describe('REQ-009 — session/token storage model, against the real server', () => {
-  let app: NestFastifyApplication
-  let baseUrl: string
-  let prisma: PrismaClient
-
-  beforeAll(async () => {
+  beforeAll(() => {
     // better-auth needs its own real base URL to build absolute links; the ephemeral
     // port isn't known until after listen(), so resolveBetterAuthUrl's env lookup
     // must be set correctly before buildApp() runs. Since we don't need real
     // absolute-link correctness for this suite (no verification-link assertions
     // here — see req-005), a fixed loopback placeholder is fine.
     process.env.BETTER_AUTH_URL = 'http://127.0.0.1:39999'
-
-    const { buildApp } = await import('../../src/main.js')
-    app = await buildApp()
-    await app.listen(0, '127.0.0.1')
-    baseUrl = await app.getUrl()
-    const { PrismaService } = await import('../../src/prisma/prisma.service.js')
-    prisma = app.get(PrismaService)
   })
 
-  afterEach(async () => {
-    resetRateLimiters(app)
-    await prisma.session.deleteMany()
-    await prisma.account.deleteMany()
-    await prisma.user.deleteMany()
-    await prisma.profile.deleteMany()
-  })
-
-  afterAll(async () => {
-    await app.close()
+  useAcceptanceServer({
+    env: {
+      GUEST_SESSION_SECRET: 'req-009-secret',
+      BETTER_AUTH_SECRET: 'req-009-better-auth-secret-0123456789',
+      BETTER_AUTH_URL: 'http://127.0.0.1:0', // overwritten in the beforeAll above, before the app boots
+      CORS_ALLOWED_ORIGINS: ALLOWED_ORIGIN,
+    },
+    cleanup: async () => {
+      await prisma.session.deleteMany()
+      await prisma.account.deleteMany()
+      await prisma.user.deleteMany()
+      await prisma.profile.deleteMany()
+    },
   })
 
   it('given a user signs in on web, the session cookie is httpOnly, Secure, SameSite=None, unreadable by client JS', async () => {

@@ -32,7 +32,7 @@ export function looksLikeDonationReceipt(text: string): boolean {
 }
 
 /** „1.380,00“, „120.00“, „1 234,56“: the last separator before two digits is the decimal point. */
-const AMOUNT = /\d{1,3}(?:[.\s']\d{3})+[,.]\d{2}(?!\d)|\d+[,.]\d{2}(?!\d)/g
+const AMOUNT = /\d{1,3}(?:[.\s']\d{3})+[,.]\d{2}(?!\d)|(?<!\d)\d+[,.]\d{2}(?!\d)/g
 
 function cents(token: string): number {
   const digits = token.replace(/[^\d]/g, '')
@@ -44,7 +44,7 @@ function amountsIn(line: string): number[] {
 }
 
 function issuerOf(lines: readonly string[]): string {
-  const stated = lines.map((l) => /aussteller(?:in)?\s*:?\s*([^,\n]+)/i.exec(l)?.[1]).find(Boolean)
+  const stated = lines.map((l) => /aussteller(?:in)?\s*(?::\s*)?([^,\n]+)/i.exec(l)?.[1]).find(Boolean)
   const name = stated ?? lines.find((l) => /\be\.\s?v\.|stiftung|ggmbh|gemeinnützig/i.test(l)) ?? ''
   return name.toLowerCase().replace(/[^a-zäöüß0-9]/g, '')
 }

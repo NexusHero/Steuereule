@@ -21,6 +21,7 @@ import { APP_NS } from '../../i18n/resources'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
+import { screenHeaderStyles, unclearableFieldStyles } from '../shared/screenStyles'
 import { triggerSaveErrorHaptic, warnOnHttpError } from '../shared/saveFeedback'
 
 type FieldId = 'einnahmen' | 'vorsorgeaufwand' | 'anrechnung' | 'festgesetzteSteuer' | 'erstattung'
@@ -326,23 +327,6 @@ function AppealSection({ response, onAppeal }: { readonly response: AssessmentRe
 function makeStyles(t: UiTheme) {
   const screen: ViewStyle = t.layout.overview.narrow
   const wideScreen: ViewStyle = t.layout.overview.wide
-  const headerRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', marginBottom: t.space.s4 }
-  const heading: TextStyle = {
-    ...t.type.title,
-    color: t.color.tinte,
-    marginBottom: t.space.s2,
-  }
-  const help: TextStyle = { ...t.type.body, color: t.color.tinte2, marginBottom: t.space.s4 }
-  const fieldRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s3 }
-  const unclearButton: ViewStyle = {
-    paddingHorizontal: t.space.s3,
-    paddingVertical: t.space.s2,
-    borderWidth: t.space.kontur,
-    borderColor: t.color.tinte,
-    borderRadius: t.radius.s,
-  }
-  const unclearLabel: TextStyle = { ...t.type.small, color: t.color.tinte2 }
-  const unclearActive: TextStyle = { ...t.type.label, color: t.color.tinte }
   const section: ViewStyle = { marginTop: t.space.s4 }
   const sectionHeading: TextStyle = { ...t.type.bodyStrong, color: t.color.tinte, marginBottom: t.space.s2 }
   const muted: TextStyle = { ...t.type.small, color: t.color.tinte2, marginBottom: t.space.s2 }
@@ -357,7 +341,7 @@ function makeStyles(t: UiTheme) {
   const cta: ViewStyle = { marginTop: t.space.s4 }
   const reasonButton: ViewStyle = { marginTop: t.space.s2 }
   return {
-    screen, wideScreen, headerRow, heading, help, feldRow: fieldRow, unklarButton: unclearButton, unklarLabel: unclearLabel, unklarActive: unclearActive,
+    screen, wideScreen, ...screenHeaderStyles(t), ...unclearableFieldStyles(t),
     section, sectionHeading, muted, ok, fristHeading, fristBody, abweichungHead: deviationHead, abweichungFeld: deviationField,
     abweichungDelta: deviationDelta, abweichungBody: deviationBody, statusRow, cta, grundButton: reasonButton,
   }

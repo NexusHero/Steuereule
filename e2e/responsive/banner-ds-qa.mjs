@@ -156,7 +156,7 @@ function hexToRgb(hex) {
   const match = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex)
   if (!match) throw new Error(`not a #rrggbb hex colour: ${hex}`)
   const [, r, g, b] = match
-  return `rgb(${parseInt(r, 16)}, ${parseInt(g, 16)}, ${parseInt(b, 16)})`
+  return `rgb(${Number.parseInt(r, 16)}, ${Number.parseInt(g, 16)}, ${Number.parseInt(b, 16)})`
 }
 
 // `guardAgainst429` (fail-fast on a 429 instead of letting the caller's own subsequent `waitFor`

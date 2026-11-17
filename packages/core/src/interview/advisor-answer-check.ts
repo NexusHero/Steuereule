@@ -28,7 +28,7 @@ export interface AdvisorAnswerCheckInput {
 
 /** Ends of sentences; a dot inside a number („1.230 €“) is none. */
 const SENTENCE_END = /[!?\n]+|\.(?!\d)/
-const EURO_AMOUNT = /(\d{1,3}(?:\.\d{3})+|\d+)(?:,(\d{1,2}))?\s*(?:€|euro\b|eur\b)/gi
+const EURO_AMOUNT = /(\d{1,3}(?:\.\d{3})+|(?<!\d)\d+)(?:,(\d{1,2}))?\s*(?:€|euro\b|eur\b)/gi
 const ANY_NUMBER = /\d{1,3}(?:\.\d{3})+|\d+/g
 const EFFECT_WORDS = /erstattung|ersparnis|\bsparst\b|\bspart\b|steuervorteil|zurück\s?(?:bekomm|erh[aä]lt|erstattet)|bringt (?:dir|das|es)|weniger steuern?|steuerlast sinkt|mehr zurück/i
 const RATE_AFTER = /^\s*(?:pro\b|je\b|\/|im Jahr\b|jährlich\b)/i

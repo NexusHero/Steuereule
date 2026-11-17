@@ -291,7 +291,7 @@ describe('CockpitScreen', () => {
     server.use(http.get(COCKPIT_URL, () => HttpResponse.json(null, { status: 500 })))
     renderCockpit()
 
-    await screen.findByText('Das hat nicht geklappt.')
+    expect(await screen.findByText('Das hat nicht geklappt.')).toBeTruthy()
   })
 
   it('switches to English when the locale changes (ADR-0006)', async () => {
@@ -307,11 +307,11 @@ describe('CockpitScreen', () => {
   it('renders the empty and error states in English too', async () => {
     mockCockpit(null)
     renderCockpit({ lng: 'en' })
-    await screen.findByText('No details yet.')
+    expect(await screen.findByText('No details yet.')).toBeTruthy()
 
     mockCockpitError()
     renderCockpit({ lng: 'en' })
-    await screen.findByText("That didn't work.")
+    expect(await screen.findByText("That didn't work.")).toBeTruthy()
   })
 
   // --- Ticket 10.8 M3 (ADR-022/021) — Jahr-Auswahl + Übernahme-Hinweis --------------------

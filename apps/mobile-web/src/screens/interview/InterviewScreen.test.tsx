@@ -136,7 +136,7 @@ describe('InterviewScreen', () => {
   it('treats a non-200 GET response as an honest error, not a silent fallthrough', async () => {
     server.use(http.get(GET_URL, () => HttpResponse.json(null, { status: 401 })))
     renderInterview()
-    await screen.findByText('Das hat nicht geklappt.')
+    expect(await screen.findByText('Das hat nicht geklappt.')).toBeTruthy()
   })
 
   it('re-entry: opens on the step the stored answers actually resume at, not always the job question', async () => {
@@ -198,7 +198,7 @@ describe('InterviewScreen', () => {
     fireEvent.click(screen.getByText('Angestellt'))
 
     // The next question is already on screen while the write is still in flight.
-    await onForeignQuestion()
+    expect(await onForeignQuestion()).toBeTruthy()
     release?.()
   })
 
@@ -397,7 +397,7 @@ describe('InterviewScreen', () => {
     fireEvent.click(screen.getByText('Beides'))
     await onBusinessGate()
     fireEvent.click(screen.getByText('Angestellten-Teil vorbereiten — Abgabe erst mit Gewerbe'))
-    await onForeignQuestion()
+    expect(await onForeignQuestion()).toBeTruthy()
   })
 
   it('Selbstständig stays behind the Gewerbe gate forever, even after visiting and returning', async () => {
@@ -419,7 +419,7 @@ describe('InterviewScreen', () => {
       fireEvent.click(screen.getByText('In ein anderes Land'))
       await onChOnlyGate()
       fireEvent.click(screen.getByText('Ohne Auslands-Teil weitermachen'))
-      await onKinderQuestion()
+      expect(await onKinderQuestion()).toBeTruthy()
     })
 
     it('"Ja, in die Schweiz" -> kinder question directly, no gate', async () => {
@@ -436,7 +436,7 @@ describe('InterviewScreen', () => {
       fireEvent.click(screen.getByText('Angestellt'))
       await onForeignQuestion()
       fireEvent.click(screen.getByText('Nein'))
-      await onKinderQuestion()
+      expect(await onKinderQuestion()).toBeTruthy()
     })
   })
 
@@ -479,7 +479,7 @@ describe('InterviewScreen', () => {
       fireEvent.click(screen.getByText('Angestellt'))
       await onForeignQuestion()
       fireEvent.click(screen.getByLabelText('Zurück'))
-      await onJobQuestion()
+      expect(await onJobQuestion()).toBeTruthy()
     })
 
     it('back from the CH-only gate returns to the ausland question', async () => {
@@ -489,7 +489,7 @@ describe('InterviewScreen', () => {
       fireEvent.click(screen.getByText('In ein anderes Land'))
       await onChOnlyGate()
       fireEvent.click(screen.getByText('Zurück zur Frage'))
-      await onForeignQuestion()
+      expect(await onForeignQuestion()).toBeTruthy()
     })
 
     it('changing the job answer after going back changes the downstream path (no stale gate)', async () => {
@@ -557,7 +557,7 @@ describe('InterviewScreen', () => {
       renderInterview({ lng: 'en' })
       await screen.findByText('Multiple jobs? Use your main source — the rest comes later.')
       fireEvent.click(screen.getByText('Self-employed'))
-      await screen.findByText("Honestly: we're not good enough for that yet.")
+      expect(await screen.findByText("Honestly: we're not good enough for that yet.")).toBeTruthy()
     })
   })
 

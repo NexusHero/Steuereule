@@ -7,17 +7,10 @@
 // is why they are split across two files rather than one — keep the split, it maps to
 // the two endpoints. Backend is a single track again (ADR-0015), so there is no longer
 // a second author to coordinate with before editing either file.
-import type { NestFastifyApplication } from '@nestjs/platform-fastify'
-import { PrismaClient } from '@prisma/client'
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
-import { resetRateLimiters } from '../support/reset-rate-limiters.js'
-
-process.env.GUEST_SESSION_SECRET = 'req-011-secret'
-process.env.BETTER_AUTH_SECRET = 'req-011-better-auth-secret-0123456789'
-process.env.BETTER_AUTH_URL = 'http://127.0.0.1:39995'
+import { describe, expect, it } from 'vitest'
+import { baseUrl, prisma, signUp as signUpAccount, useAcceptanceServer } from '../support/acceptance-server.js'
 
 const ALLOWED_ORIGIN = 'https://allowed.example.com'
-process.env.CORS_ALLOWED_ORIGINS = ALLOWED_ORIGIN
 // See req-005/req-009/req-010: Node's fetch() sends Sec-Fetch-Mode by default, so every
 // state-changing better-auth call needs a trusted Origin, same as a real browser.
 const TRUSTED_ORIGIN_HEADERS = { origin: ALLOWED_ORIGIN }
@@ -25,47 +18,27 @@ const TRUSTED_ORIGIN_HEADERS = { origin: ALLOWED_ORIGIN }
 const STRONG_PASSWORD = 'a-fine-strong-password-1'
 
 describe('REQ-011 T1 — DELETE /v1/account, against the real server (ADR-0013)', () => {
-  let app: NestFastifyApplication
-  let baseUrl: string
-  let prisma: PrismaClient
-
-  beforeAll(async () => {
-    const { buildApp } = await import('../../src/main.js')
-    app = await buildApp()
-    await app.listen(0, '127.0.0.1')
-    baseUrl = await app.getUrl()
-    const { PrismaService } = await import('../../src/prisma/prisma.service.js')
-    prisma = app.get(PrismaService)
-  })
-
-  afterEach(async () => {
-    resetRateLimiters(app)
-    await prisma.session.deleteMany()
-    await prisma.account.deleteMany()
-    await prisma.verification.deleteMany()
-    await prisma.user.deleteMany()
-    await prisma.profile.deleteMany()
-    await prisma.legalHold.deleteMany()
-    await prisma.$executeRawUnsafe(`DELETE FROM "TaxDataAccessLog"`)
-  })
-
-  afterAll(async () => {
-    await app.close()
+  useAcceptanceServer({
+    env: {
+      GUEST_SESSION_SECRET: 'req-011-secret',
+      BETTER_AUTH_SECRET: 'req-011-better-auth-secret-0123456789',
+      BETTER_AUTH_URL: 'http://127.0.0.1:39995',
+      CORS_ALLOWED_ORIGINS: ALLOWED_ORIGIN,
+    },
+    cleanup: async () => {
+      await prisma.session.deleteMany()
+      await prisma.account.deleteMany()
+      await prisma.verification.deleteMany()
+      await prisma.user.deleteMany()
+      await prisma.profile.deleteMany()
+      await prisma.legalHold.deleteMany()
+      await prisma.$executeRawUnsafe(`DELETE FROM "TaxDataAccessLog"`)
+    },
   })
 
   /** Signs a brand-new account up (fresh session — createdAt is "now") and returns its
    *  userId + session cookie, ready to drive PUT /v1/profile or DELETE /v1/account. */
-  async function signUp(email: string): Promise<{ userId: string; cookie: string }> {
-    const response = await fetch(`${baseUrl}/api/auth/sign-up/email`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', ...TRUSTED_ORIGIN_HEADERS },
-      body: JSON.stringify({ email, password: STRONG_PASSWORD, name: 'REQ-011' }),
-    })
-    expect(response.status).toBe(200)
-    const body = (await response.json()) as { user: { id: string } }
-    const cookie = response.headers.get('set-cookie')!.split(';')[0]!
-    return { userId: body.user.id, cookie }
-  }
+  const signUp = (email: string) => signUpAccount(email, { password: STRONG_PASSWORD, name: 'REQ-011' })
 
   async function saveProfile(cookie: string, steuerId: string): Promise<void> {
     const response = await fetch(`${baseUrl}/v1/profile`, {

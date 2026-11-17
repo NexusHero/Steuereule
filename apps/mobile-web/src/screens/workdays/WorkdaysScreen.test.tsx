@@ -29,6 +29,18 @@ function renderWorkdays(onDone: () => void = () => {}, taxYear = 2026, queryClie
   }
 }
 
+/** Records every body PUT to the 2025 commute endpoint. */
+function recordCommutePuts() {
+  const bodies: Record<string, unknown>[] = []
+  server.use(
+    http.put('*/v1/steuerjahre/2025/arbeitsweg', async ({ request }) => {
+      bodies.push((await request.json()) as Record<string, unknown>)
+      return HttpResponse.json({ inputs: null, workdays: null, commuterAllowance: null }, { status: 200 })
+    }),
+  )
+  return bodies
+}
+
 describe('ArbeitstageScreen', () => {
   it('counts the default Mo–Fr work week from the real calendar (no free text)', async () => {
     renderWorkdays()
@@ -179,13 +191,7 @@ describe('ArbeitstageScreen', () => {
   })
 
   it('saves further Werbungskosten with what they were (ADR-0076)', async () => {
-    const bodies: Record<string, unknown>[] = []
-    server.use(
-      http.put('*/v1/steuerjahre/2025/arbeitsweg', async ({ request }) => {
-        bodies.push((await request.json()) as Record<string, unknown>)
-        return HttpResponse.json({ inputs: null, workdays: null, commuterAllowance: null }, { status: 200 })
-      }),
-    )
+    const bodies = recordCommutePuts()
     const onDone = vi.fn()
     renderWorkdays(onDone, 2025)
     fireEvent.change(await screen.findByTestId('werbungskosten-arbeitsmittel'), { target: { value: '110' } })
@@ -197,13 +203,7 @@ describe('ArbeitstageScreen', () => {
   })
 
   it('saves a change of job during the year as a second way with its dates (ADR-0079)', async () => {
-    const bodies: Record<string, unknown>[] = []
-    server.use(
-      http.put('*/v1/steuerjahre/2025/arbeitsweg', async ({ request }) => {
-        bodies.push((await request.json()) as Record<string, unknown>)
-        return HttpResponse.json({ inputs: null, workdays: null, commuterAllowance: null }, { status: 200 })
-      }),
-    )
+    const bodies = recordCommutePuts()
     const onDone = vi.fn()
     renderWorkdays(onDone, 2025)
     fireEvent.change(await screen.findByTestId('arbeitstage-km'), { target: { value: '12' } })

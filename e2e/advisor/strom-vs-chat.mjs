@@ -18,6 +18,8 @@
 // Output in SCENARIO_OUT: <household>/{strom,chat,vorab}.json, the PDFs, <household>/diff.json (+ diff-vorab.json).
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { request as playwrightRequest } from 'playwright-core'
 import { launchBrowser, closeBrowser, newContextAtBreakpoint, guardAgainst429 } from '../harness/browser.mjs'
 import { makeSql } from '../harness/stack.mjs'
@@ -41,7 +43,7 @@ import {
 } from './strom-vs-chat-lib.mjs'
 
 const YEAR = 2025
-const OUT = process.env.SCENARIO_OUT ?? '/tmp/strom-vs-chat'
+const OUT = process.env.SCENARIO_OUT ?? join(tmpdir(), 'strom-vs-chat')
 const MAX_TURNS = Number(process.env.MAX_TURNS ?? 16)
 const PATHS = (process.env.PATHS ?? 'strom,chat,hand').split(',')
 

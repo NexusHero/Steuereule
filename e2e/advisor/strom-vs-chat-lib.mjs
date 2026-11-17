@@ -249,7 +249,7 @@ export async function downloadPrintout(api, year) {
 export function diff(strom, chat, expected = {}) {
   const rows = []
   const paths = new Set([...Object.keys(strom), ...Object.keys(chat), ...Object.keys(expected)])
-  for (const path of [...paths].sort()) {
+  for (const path of [...paths].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0))) {
     const a = strom[path]
     const b = chat[path]
     const f = expected[path] === undefined ? undefined : normalizeScalar(expected[path])

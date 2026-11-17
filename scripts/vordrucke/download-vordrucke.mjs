@@ -114,7 +114,7 @@ async function downloadYear(year) {
   console.log(`Download for year ${year} completed successfully.`);
 }
 
-const targetYear = parseInt(process.argv[2] || '2024', 10);
+const targetYear = Number.parseInt(process.argv[2] || '2024', 10);
 downloadYear(targetYear).catch((err) => {
   console.error('Download failed:', err);
   process.exit(1);

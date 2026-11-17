@@ -11,10 +11,19 @@ export function extractMessageText(content: unknown): string {
     .join('')
 }
 
+/** The content of the first ``` fence, with or without a `json` tag; undefined when none is closed. */
+function fencedBlock(text: string): string | undefined {
+  const open = text.indexOf('```')
+  if (open === -1) return undefined
+  let start = open + 3
+  if (text.slice(start, start + 4).toLowerCase() === 'json') start += 4
+  const close = text.indexOf('```', start)
+  return close === -1 ? undefined : text.slice(start, close)
+}
+
 export function extractJsonObject(raw: string): unknown {
   const trimmed = raw.trim()
-  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i)
-  const candidate = fenced?.[1]?.trim() ?? trimmed
+  const candidate = fencedBlock(trimmed)?.trim() ?? trimmed
   const firstBrace = candidate.indexOf('{')
   const lastBrace = candidate.lastIndexOf('}')
   if (firstBrace === -1 || lastBrace <= firstBrace) {

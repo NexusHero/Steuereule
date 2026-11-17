@@ -31,7 +31,7 @@ export function DeviceQrColumn({ t, tr, state, requestNewCode, screenBannerShown
 
   function copyCode(code: string) {
     try {
-      void navigator.clipboard?.writeText(code)
+      void navigator.clipboard?.writeText(code).catch(() => undefined)
     } catch {
     }
     setCopied(true)

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { useBreakpoint } from '@steuereule/ui'
-import { ENTRIES, QUESTIONS, nextStep, nextStepFor, type Answers, type EntryStepId, type StepId } from '@steuereule/core'
+import { ENTRIES, nextStep, nextStepFor, type Answers, type StepId } from '@steuereule/core'
 import {
   useInterviewControllerGetInterview,
   useInterviewControllerPostAnswer,
@@ -15,38 +15,9 @@ import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { QuestionScreen } from './QuestionScreen'
 import { GateScreen } from './GateScreen'
 import { type PostErrorKind } from './PostErrorNotice'
+import { clearStepAndFollowUps } from './clearStepAndFollowUps'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { triggerSaveErrorHaptic } from '../shared/saveFeedback'
-
-function collectFollowUpStepIds(stepId: EntryStepId, acc = new Set<EntryStepId>()): ReadonlySet<EntryStepId> {
-  if (acc.has(stepId)) return acc
-  acc.add(stepId)
-  const decl = QUESTIONS[stepId]
-  if (decl.followUps !== undefined) {
-    for (const branch of Object.values(decl.followUps)) {
-      for (const target of branch) {
-        const id = typeof target === 'string' ? target : target.step
-        collectFollowUpStepIds(id, acc)
-      }
-    }
-  }
-  if (decl.defaultFollowUp !== undefined) {
-    for (const target of decl.defaultFollowUp) {
-      const id = typeof target === 'string' ? target : target.step
-      collectFollowUpStepIds(id, acc)
-    }
-  }
-  return acc
-}
-
-function clearStepAndFollowUps(answers: Answers, stepId: EntryStepId): Answers {
-  const toDelete = collectFollowUpStepIds(stepId)
-  const next: Answers = { ...answers }
-  for (const id of toDelete) {
-    delete next[id]
-  }
-  return next
-}
 
 function walkedMinimalGateSteps(answers: Answers): readonly StepId[] {
   const walked: StepId[] = []

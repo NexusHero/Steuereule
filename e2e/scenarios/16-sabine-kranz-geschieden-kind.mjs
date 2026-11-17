@@ -2,50 +2,27 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
-  newContextAtBreakpoint,
-  guardAgainst429,
   fail,
-  registerAndOnboard,
   answerBasis,
   chooseTopics,
   waitForStromStep,
   runStandaloneScenario,
 } from './helpers/scenario-harness.mjs'
+import { startPersona, completeLstb, completeCommuteDistance } from './helpers/persona-steps.mjs'
 
 export async function runScenario16(browser, webOrigin) {
   console.log('\n--- Scenario 16: Divorced Parent (Geschieden oder getrennt + 1 Kind) ---')
-  const ctx = await newContextAtBreakpoint(browser, 'm')
-  const page = await ctx.newPage()
-  guardAgainst429(page, fail)
-
-  await registerAndOnboard(
-    page,
-    {
-      email: `du+geschieden-${Date.now()}@beispiel.de`,
-      firstName: 'Sabine',
-      lastName: 'Kranz',
-      taxId: '04452397686',
-      taxNumber: '181/140/01235',
-    },
-    webOrigin,
-    'scenario-16',
-  )
+  const { ctx, page } = await startPersona(browser, webOrigin, 'scenario-16', {
+    email: `du+geschieden-${Date.now()}@beispiel.de`, firstName: 'Sabine', lastName: 'Kranz', taxId: '04452397686', taxNumber: '181/140/01235',
+  }, 'm')
 
   await page.locator('[data-testid="cockpit-interview"]').click()
   // The Strom (ADR-0089).
   await answerBasis(page, { job: 'Angestellt', ausland: 'Nein', kinder: '1 Kind', familienstand: 'Geschieden oder getrennt' })
 
-  await waitForStromStep(page, 'lohnsteuerbescheinigung')
-  await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').fill('48000')
-  await page.locator('[data-testid="lstb-lohnsteuer"]').fill('7500')
-  await page.locator('[data-testid="lstb-sozialversicherung"]').fill('9500')
-  await page.locator('[data-testid="lstb-weiter"]').click()
+  await completeLstb(page, { grossWage: '48000', wageTax: '7500', socialSecurity: '9500' })
 
-  await waitForStromStep(page, 'arbeitsweg')
-  await page.locator('[data-testid="arbeitstage-km"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="arbeitstage-km"]').fill('10')
-  await page.locator('[data-testid="arbeitstage-weiter"]').click()
+  await completeCommuteDistance(page, '10')
 
   // The child and the single-parent questions wait: the child step is passed over, the
   // single-parent page is put off with „Später“ — the summary still offers the submission.

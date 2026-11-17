@@ -37,7 +37,7 @@ jobs:
     name: Validate compose
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: base
         run: docker compose -f docker-compose.yml config
       - name: base + ci overlay
@@ -65,11 +65,11 @@ jobs:
     needs: validate-compose
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - name: Set up pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
       - name: Set up Node
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 24
           cache: pnpm
@@ -86,28 +86,28 @@ jobs:
     needs: validate-compose
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           fetch-depth: 0
       - name: Gitleaks Secret Scanning (.gitleaks.toml)
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_CONFIG: .gitleaks.toml
       - name: Hadolint — Lint apps/api/Dockerfile
-        uses: hadolint/hadolint-action@v3.1.0
+        uses: hadolint/hadolint-action@54c9adbab1582c2ef04b2016b760714a4bfde3cf # v3.1.0
         with:
           dockerfile: apps/api/Dockerfile
           failure-threshold: error
       - name: Hadolint — Lint apps/mobile-web/Dockerfile
-        uses: hadolint/hadolint-action@v3.1.0
+        uses: hadolint/hadolint-action@54c9adbab1582c2ef04b2016b760714a4bfde3cf # v3.1.0
         with:
           dockerfile: apps/mobile-web/Dockerfile
           failure-threshold: error
       - name: Actionlint — Lint .github/workflows/*.yml
         run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.7 -color
       - name: Trivy IaC Scan (Terraform, Dockerfiles, Compose & K8s — HIGH/CRITICAL)
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: config
           scan-ref: .
@@ -125,11 +125,11 @@ jobs:
     needs: validate-compose
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - name: Set up pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
       - name: Set up Node
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 24
           cache: pnpm
@@ -262,7 +262,6 @@ jobs:
           --health-timeout=3s
           --health-retries=10
     env:
-      DATABASE_URL: postgres://steuereule:steuereule@localhost:5432/steuereule
       # Synthetic, dev-only (ADR-0012) — vitest.integration.config.ts already sets
       # these for the test process, but declared here too for the same reason
       # DATABASE_URL is: this job's env is meant to be self-documenting about what
@@ -273,11 +272,19 @@ jobs:
       # explicitly for the same self-documenting reason as the two lines above.
       TRUSTED_PROXIES: none
     steps:
-      - uses: actions/checkout@v5
+      # Built here rather than written out in the job env, so no connection string with
+      # credentials sits in the workflow; every later step reads it from the environment.
+      - name: Database URL of the Postgres service container
+        run: echo "DATABASE_URL=postgres://${DB_USER}:${DB_PASSWORD}@localhost:5432/${DB_NAME}" >> "$GITHUB_ENV"
+        env:
+          DB_USER: steuereule
+          DB_PASSWORD: steuereule
+          DB_NAME: steuereule
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - name: Set up pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
       - name: Set up Node
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 24
           cache: pnpm
@@ -290,7 +297,7 @@ jobs:
       - name: Prisma Schema-vs-Migrations Drift Gate (zero drift between schema.prisma and migrations/)
         run: pnpm --filter @steuereule/api exec prisma migrate diff --from-schema-datasource prisma/schema.prisma --to-schema-datamodel prisma/schema.prisma --exit-code
       - name: Cache Playwright browsers
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ~/.cache/ms-playwright
           key: playwright-chromium-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
@@ -332,9 +339,9 @@ jobs:
       contents: read
       issues: read
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - name: Set up Node
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 24
           # actions/setup-node@v5's package-manager-cache auto-detection defaults to true and
@@ -381,9 +388,9 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - name: Set up Node
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 24
           # No pnpm in this job (see docs-consistency for why the cache must be off).
@@ -411,11 +418,11 @@ jobs:
     needs: [lint, test, integration, security-static]
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - name: Set up pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
       - name: Set up Node
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 24
           cache: pnpm
@@ -432,26 +439,26 @@ jobs:
       - name: Build production Web Docker image (non-root USER node)
         run: docker build -f apps/mobile-web/Dockerfile --build-arg EXPO_PUBLIC_API_BASE_URL=https://api.steuereule.de -t steuereule-web:ci .
       - name: Generate CycloneDX SBOM for repository (pnpm-lock.yaml)
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: fs
           scan-ref: .
           format: cyclonedx
           output: sbom-repo.cdx.json
       - name: Generate CycloneDX SBOM for API container image
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: steuereule-api:ci
           format: cyclonedx
           output: sbom-api.cdx.json
       - name: Generate CycloneDX SBOM for Web container image
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: steuereule-web:ci
           format: cyclonedx
           output: sbom-web.cdx.json
       - name: Trivy Container Scan — steuereule-api:ci (HIGH/CRITICAL blocking)
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: steuereule-api:ci
           format: table
@@ -460,7 +467,7 @@ jobs:
           exit-code: '1'
           trivyignores: .trivyignore
       - name: Trivy Container Scan — steuereule-web:ci (HIGH/CRITICAL blocking)
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: steuereule-web:ci
           format: table
@@ -469,7 +476,7 @@ jobs:
           exit-code: '1'
           trivyignores: .trivyignore
       - name: Upload CycloneDX SBOM artifacts (CRA /BSI TR-03183 compliance)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: cyclonedx-sbom
           path: |
@@ -502,7 +509,6 @@ jobs:
           --health-timeout=5s
           --health-retries=10
     env:
-      DATABASE_URL: postgres://steuereule:steuereule@localhost:5432/steuereule
       # Synthetic, dev-only values (ADR-0008/§4.2) — never real secrets. Production
       # requires both to be set explicitly (resolveGuestSessionSecret /
       # resolveFieldEncryptionKey refuse a guessable default under NODE_ENV=production).
@@ -525,11 +531,19 @@ jobs:
       # BETTER_AUTH_URL above, even though it matches resolveWebAppUrl's dev fallback.
       WEB_APP_URL: http://localhost:8081
     steps:
-      - uses: actions/checkout@v5
+      # Built here rather than written out in the job env, so no connection string with
+      # credentials sits in the workflow; every later step reads it from the environment.
+      - name: Database URL of the Postgres service container
+        run: echo "DATABASE_URL=postgres://${DB_USER}:${DB_PASSWORD}@localhost:5432/${DB_NAME}" >> "$GITHUB_ENV"
+        env:
+          DB_USER: steuereule
+          DB_PASSWORD: steuereule
+          DB_NAME: steuereule
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - name: Set up pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
       - name: Set up Node
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 24
           cache: pnpm
@@ -544,7 +558,7 @@ jobs:
       - name: Build the API
         run: pnpm --filter @steuereule/api build
       - name: Cache Playwright browsers
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ~/.cache/ms-playwright
           key: playwright-chromium-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
@@ -753,7 +767,6 @@ jobs:
           --health-timeout=5s
           --health-retries=10
     env:
-      DATABASE_URL: postgres://steuereule:steuereule@localhost:5432/steuereule
       GUEST_SESSION_SECRET: ci-cross-origin-smoke-secret
       PRISMA_FIELD_ENCRYPTION_KEY: k1.aesgcm256.MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
       BETTER_AUTH_SECRET: ci-cross-origin-smoke-better-auth-secret-0123456789
@@ -779,11 +792,19 @@ jobs:
       STREET_DATA_PATH: ${{ github.workspace }}/e2e/fixtures/streets.sample.csv
       EXPO_PUBLIC_API_BASE_URL: http://localhost:3301
     steps:
-      - uses: actions/checkout@v5
+      # Built here rather than written out in the job env, so no connection string with
+      # credentials sits in the workflow; every later step reads it from the environment.
+      - name: Database URL of the Postgres service container
+        run: echo "DATABASE_URL=postgres://${DB_USER}:${DB_PASSWORD}@localhost:5432/${DB_NAME}" >> "$GITHUB_ENV"
+        env:
+          DB_USER: steuereule
+          DB_PASSWORD: steuereule
+          DB_NAME: steuereule
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - name: Set up pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
       - name: Set up Node
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 24
           cache: pnpm
@@ -800,7 +821,7 @@ jobs:
       - name: Export the web bundle (offline/static web build, EXPO_PUBLIC_* baked in)
         run: pnpm --filter @steuereule/mobile-web exec expo export --platform web
       - name: Cache Playwright browsers
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ~/.cache/ms-playwright
           key: playwright-chromium-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
@@ -992,7 +1013,7 @@ jobs:
         # Diagnostics, not a gate: an outage of the artifact service must not fail the job and
         # skip every gate after it (seen on 2026-11-11: "Failed to CreateArtifact").
         continue-on-error: true
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: visual-regression
           path: /tmp/visual-regression
@@ -1021,7 +1042,7 @@ jobs:
           node e2e/scan-corpus/measure.mjs
       - name: Upload the scan corpus report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: scan-corpus-report
           path: /tmp/scan-corpus
@@ -1037,7 +1058,7 @@ jobs:
         # Diagnostics, not a gate: an outage of the artifact service must not fail the job and
         # skip every gate after it (seen on 2026-11-11: "Failed to CreateArtifact").
         continue-on-error: true
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: e2e-coverage-gaps
           path: /tmp/e2e-coverage
@@ -1050,7 +1071,7 @@ jobs:
         # Diagnostics, not a gate: an outage of the artifact service must not fail the job and
         # skip every gate after it (seen on 2026-11-11: "Failed to CreateArtifact").
         continue-on-error: true
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: navigation-efficiency
           path: /tmp/navigation-efficiency
@@ -1109,7 +1130,6 @@ jobs:
           --health-timeout=5s
           --health-retries=10
     env:
-      DATABASE_URL: postgres://steuereule:steuereule@localhost:5432/steuereule
       GUEST_SESSION_SECRET: ci-e2e-shard-secret
       PRISMA_FIELD_ENCRYPTION_KEY: k1.aesgcm256.MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
       BETTER_AUTH_SECRET: ci-e2e-shard-better-auth-secret-0123456789
@@ -1122,11 +1142,19 @@ jobs:
       WEB_APP_URL: http://localhost:4173
       EXPO_PUBLIC_API_BASE_URL: http://localhost:3301
     steps:
-      - uses: actions/checkout@v5
+      # Built here rather than written out in the job env, so no connection string with
+      # credentials sits in the workflow; every later step reads it from the environment.
+      - name: Database URL of the Postgres service container
+        run: echo "DATABASE_URL=postgres://${DB_USER}:${DB_PASSWORD}@localhost:5432/${DB_NAME}" >> "$GITHUB_ENV"
+        env:
+          DB_USER: steuereule
+          DB_PASSWORD: steuereule
+          DB_NAME: steuereule
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - name: Set up pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
       - name: Set up Node
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 24
           cache: pnpm
@@ -1141,7 +1169,7 @@ jobs:
       - name: Export the web bundle
         run: pnpm --filter @steuereule/mobile-web exec expo export --platform web
       - name: Cache Playwright browsers
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ~/.cache/ms-playwright
           key: playwright-chromium-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
@@ -1204,18 +1232,18 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - name: Set up pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
       - name: Set up Node
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 24
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Cache Playwright browsers
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ~/.cache/ms-playwright
           key: playwright-chromium-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
@@ -1249,8 +1277,10 @@ jobs:
         env:
           API_ORIGIN: http://localhost:3000
           WEB_ORIGIN: http://localhost:8080
-          DATABASE_URL: postgresql://steuereule:steuereule@localhost:5432/steuereule
-        run: node e2e/prod-deploy/run.mjs
+          DB_USER: steuereule
+          DB_PASSWORD: steuereule
+          DB_NAME: steuereule
+        run: DATABASE_URL="postgresql://${DB_USER}:${DB_PASSWORD}@localhost:5432/${DB_NAME}" node e2e/prod-deploy/run.mjs
       - name: Registration mail reached the local inbox (Mailpit, SMTP)
         run: |
           curl --fail --silent --show-error --retry 10 --retry-delay 2 --retry-all-errors \

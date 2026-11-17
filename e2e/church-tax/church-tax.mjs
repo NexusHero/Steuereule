@@ -13,6 +13,7 @@ import { launchBrowser, closeBrowser, newContextAtBreakpoint, guardAgainst429 } 
 import { startStack } from '../harness/stack.mjs'
 import { fail, waitForBucketHeadroom } from '../harness/rate-limit.mjs'
 import { skipSplash, signUpOutOfBand, submitLogin } from '../harness/flows.mjs'
+import { call } from '../harness/api-account.mjs'
 
 const AUTH_BUCKET = { windowMs: 10_000, max: 3, shared: true }
 const PASSWORD = 'Sicheres-Passwort-1!'
@@ -30,12 +31,6 @@ async function account(apiOrigin, webOrigin, sql, label) {
   const res = await api.post('/api/auth/sign-in/email', { data: { email, password: PASSWORD } })
   if (!res.ok()) fail(`${label}: sign-in failed (${res.status()})`)
   return { email, api }
-}
-
-async function call(api, method, path, data) {
-  const res = await api.fetch(path, { method, ...(data === undefined ? {} : { data }) })
-  if (!res.ok()) fail(`${method} ${path} answered ${res.status()}: ${(await res.text()).slice(0, 200)}`)
-  return res.json()
 }
 
 /** Interview answers one after another (409 ANSWER_UNREACHABLE otherwise). */

@@ -11,42 +11,25 @@
 // route handler itself does. The defect only shows on the real GET/POST response
 // through the hijacked route — asserted here against the actual `buildApp()` boot over
 // a real socket (real Postgres required, same tier/style as req-005/006/009/010).
-import type { NestFastifyApplication } from '@nestjs/platform-fastify'
-import { PrismaClient } from '@prisma/client'
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
-import { resetRateLimiters } from '../support/reset-rate-limiters.js'
-
-process.env.GUEST_SESSION_SECRET = 'auth-mount-cors-secret'
-process.env.BETTER_AUTH_SECRET = 'auth-mount-cors-better-auth-secret-0123456789'
-process.env.BETTER_AUTH_URL = 'http://127.0.0.1:39995'
+import { describe, expect, it } from 'vitest'
+import { baseUrl, prisma, useAcceptanceServer } from '../support/acceptance-server.js'
 
 const ALLOWED_ORIGIN = 'https://allowed.example.com'
 const DISALLOWED_ORIGIN = 'https://not-allowed.example.com'
-process.env.CORS_ALLOWED_ORIGINS = ALLOWED_ORIGIN
 
 describe('REQ-010/ADR-0011/ADR-0012 §5 — CORS on the better-auth mount (/api/auth/*), against the real server', () => {
-  let app: NestFastifyApplication
-  let baseUrl: string
-  let prisma: PrismaClient
-
-  beforeAll(async () => {
-    const { buildApp } = await import('../../src/main.js')
-    app = await buildApp()
-    await app.listen(0, '127.0.0.1')
-    baseUrl = await app.getUrl()
-    const { PrismaService } = await import('../../src/prisma/prisma.service.js')
-    prisma = app.get(PrismaService)
-  })
-
-  afterEach(async () => {
-    resetRateLimiters(app)
-    await prisma.session.deleteMany()
-    await prisma.account.deleteMany()
-    await prisma.user.deleteMany()
-  })
-
-  afterAll(async () => {
-    await app.close()
+  useAcceptanceServer({
+    env: {
+      GUEST_SESSION_SECRET: 'auth-mount-cors-secret',
+      BETTER_AUTH_SECRET: 'auth-mount-cors-better-auth-secret-0123456789',
+      BETTER_AUTH_URL: 'http://127.0.0.1:39995',
+      CORS_ALLOWED_ORIGINS: ALLOWED_ORIGIN,
+    },
+    cleanup: async () => {
+      await prisma.session.deleteMany()
+      await prisma.account.deleteMany()
+      await prisma.user.deleteMany()
+    },
   })
 
   it('a real (non-OPTIONS) GET through the hijacked mount still carries the CORS headers Nest sets everywhere else', async () => {

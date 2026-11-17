@@ -28,7 +28,7 @@ export function parseSkill(source: string, folder: string): SkillFile {
   if (!match) throw new Error(`skills/${folder}/SKILL.md: frontmatter between --- lines is missing`)
   const fields = new Map<string, string>()
   for (const line of match[1]!.split('\n')) {
-    const field = /^([a-z]+):\s*(.*)$/.exec(line.trim())
+    const field = /^([a-z]+):\s*(\S.*|)$/.exec(line.trim())
     if (!field) throw new Error(`skills/${folder}/SKILL.md: cannot read frontmatter line "${line}"`)
     fields.set(field[1]!, field[2]!.trim())
   }
@@ -45,19 +45,21 @@ export function parseSkill(source: string, folder: string): SkillFile {
   return { name, description: fields.get('description')!, activation, ...(command ? { command } : {}), references: list(fields.get('references')), body }
 }
 
+const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0)
+
 function readSkills(dir: string): SkillFile[] {
   return readdirSync(dir, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
     .map((entry) => entry.name)
-    .sort()
+    .sort(byCodeUnit)
     .map((folder) => parseSkill(readFileSync(join(dir, folder, 'SKILL.md'), 'utf8'), folder))
 }
 
 /** The skills the user switches on must be exactly the ones the app knows, with the same commands. */
 function checkAgainstCore(skills: readonly SkillFile[]): void {
   const userSkills = skills.filter((skill) => skill.activation === 'user')
-  const ids = userSkills.map((skill) => skill.name).sort()
-  const known = [...ADVISOR_SKILL_IDS].sort()
+  const ids = userSkills.map((skill) => skill.name).sort(byCodeUnit)
+  const known = [...ADVISOR_SKILL_IDS].sort(byCodeUnit)
   if (JSON.stringify(ids) !== JSON.stringify(known)) throw new Error(`skills: folders ${JSON.stringify(ids)} do not match ADVISOR_SKILL_IDS ${JSON.stringify(known)}`)
   for (const skill of userSkills) {
     const commands = Object.entries(ADVISOR_SKILL_COMMANDS).filter(([, id]) => id === skill.name).map(([command]) => command)
@@ -74,7 +76,7 @@ export function renderSkillsModule(dir: string = SKILLS_DIR): string {
     const path = join(dir, stance.name, 'references', `${topic}.md`)
     if (!existsSync(path)) throw new Error(`skills/${stance.name}: reference "${topic}" has no file references/${topic}.md`)
     const text = readFileSync(path, 'utf8').trim()
-    const title = /^#\s+(.+)$/m.exec(text)?.[1]?.trim() ?? topic
+    const title = /^#\s+(\S.*)$/m.exec(text)?.[1]?.trim() ?? topic
     return `  ${JSON.stringify(topic)}: { title: ${JSON.stringify(title)}, text: ${JSON.stringify(text)} },`
   })
   const userSkills = skills.filter((skill) => skill.activation === 'user')

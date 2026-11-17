@@ -14,18 +14,12 @@
 // Postgres — that IS the "real dependency" half of the acceptance tier, not a stand-in
 // for the API surface: every access that produces those rows goes through the real HTTP
 // boundary (`fetch`, real socket) first.
-import type { NestFastifyApplication } from '@nestjs/platform-fastify'
 import { PrismaClient } from '@prisma/client'
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { resolveGuestSessionSecret, verifyGuestSession } from '../../src/auth/guest-session.js'
-import { resetRateLimiters } from '../support/reset-rate-limiters.js'
-
-process.env.GUEST_SESSION_SECRET = 'req-004-secret'
-process.env.BETTER_AUTH_SECRET = 'req-004-better-auth-secret-0123456789'
-process.env.BETTER_AUTH_URL = 'http://127.0.0.1:39994'
+import { baseUrl, prisma, useAcceptanceServer } from '../support/acceptance-server.js'
 
 const ALLOWED_ORIGIN = 'https://allowed.example.com'
-process.env.CORS_ALLOWED_ORIGINS = ALLOWED_ORIGIN
 const TRUSTED_ORIGIN_HEADERS = { origin: ALLOWED_ORIGIN }
 
 const VALID_PAYLOAD = {
@@ -47,8 +41,8 @@ function userIdFromSetCookie(setCookieHeader: string | null): string {
 }
 
 /** Raw-SQL read of TaxDataAccessLog, oldest first — the only way to see the full row shape. */
-async function auditRows(prisma: PrismaClient, userId: string): Promise<AuditRow[]> {
-  return prisma.$queryRaw<AuditRow[]>`
+async function auditRows(client: PrismaClient, userId: string): Promise<AuditRow[]> {
+  return client.$queryRaw<AuditRow[]>`
     SELECT "id", "userId", "action", "resource", "createdAt"
     FROM "TaxDataAccessLog"
     WHERE "userId" = ${userId}
@@ -57,30 +51,20 @@ async function auditRows(prisma: PrismaClient, userId: string): Promise<AuditRow
 }
 
 describe('REQ-004 — immutable audit log of tax-data access, against the real server', () => {
-  let app: NestFastifyApplication
-  let baseUrl: string
-  let prisma: PrismaClient
-
-  beforeAll(async () => {
-    const { buildApp } = await import('../../src/main.js')
-    app = await buildApp()
-    await app.listen(0, '127.0.0.1')
-    baseUrl = await app.getUrl()
-    const { PrismaService } = await import('../../src/prisma/prisma.service.js')
-    prisma = app.get(PrismaService)
-  })
-
-  afterEach(async () => {
-    resetRateLimiters(app)
-    await prisma.profile.deleteMany()
-    await prisma.$executeRawUnsafe(`DELETE FROM "TaxDataAccessLog"`)
-    await prisma.session.deleteMany()
-    await prisma.account.deleteMany()
-    await prisma.user.deleteMany()
-  })
-
-  afterAll(async () => {
-    await app.close()
+  useAcceptanceServer({
+    env: {
+      GUEST_SESSION_SECRET: 'req-004-secret',
+      BETTER_AUTH_SECRET: 'req-004-better-auth-secret-0123456789',
+      BETTER_AUTH_URL: 'http://127.0.0.1:39994',
+      CORS_ALLOWED_ORIGINS: ALLOWED_ORIGIN,
+    },
+    cleanup: async () => {
+      await prisma.profile.deleteMany()
+      await prisma.$executeRawUnsafe(`DELETE FROM "TaxDataAccessLog"`)
+      await prisma.session.deleteMany()
+      await prisma.account.deleteMany()
+      await prisma.user.deleteMany()
+    },
   })
 
   it('REQ-004.1 one entry per write: a real HTTP PUT writes exactly one WRITE audit entry (userId, resource, timestamp; no value)', async () => {

@@ -2,46 +2,26 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
-  newContextAtBreakpoint,
-  guardAgainst429,
   fail,
-  registerAndOnboard,
   answerBasis,
   chooseTopics,
   leaveStrom,
   waitForStromStep,
   runStandaloneScenario,
 } from './helpers/scenario-harness.mjs'
+import { startPersona, completeLstb } from './helpers/persona-steps.mjs'
 
 export async function runScenario18(browser, webOrigin) {
   console.log('\n--- Scenario 18: Workdays Contradiction Boundary Testing ---')
-  const ctx = await newContextAtBreakpoint(browser, 'l')
-  const page = await ctx.newPage()
-  guardAgainst429(page, fail)
-
-  await registerAndOnboard(
-    page,
-    {
-      email: `du+workdays-conflict-${Date.now()}@beispiel.de`,
-      firstName: 'Thorsten',
-      lastName: 'Grenzfall',
-      taxId: '04452397686',
-      taxNumber: '181/140/01235',
-    },
-    webOrigin,
-    'scenario-18',
-  )
+  const { ctx, page } = await startPersona(browser, webOrigin, 'scenario-18', {
+    email: `du+workdays-conflict-${Date.now()}@beispiel.de`, firstName: 'Thorsten', lastName: 'Grenzfall', taxId: '04452397686', taxNumber: '181/140/01235',
+  })
 
   await page.locator('[data-testid="cockpit-interview"]').click()
   // The Strom (ADR-0089).
   await answerBasis(page, { job: 'Angestellt', ausland: 'Nein', kinder: 'Nein', familienstand: 'Ledig' })
 
-  await waitForStromStep(page, 'lohnsteuerbescheinigung')
-  await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').fill('50000')
-  await page.locator('[data-testid="lstb-lohnsteuer"]').fill('8000')
-  await page.locator('[data-testid="lstb-sozialversicherung"]').fill('10000')
-  await page.locator('[data-testid="lstb-weiter"]').click()
+  await completeLstb(page, { grossWage: '50000', wageTax: '8000', socialSecurity: '10000' })
 
   await waitForStromStep(page, 'arbeitsweg')
   const urlaubInput = page.locator('[data-testid="arbeitstage-urlaub"]')

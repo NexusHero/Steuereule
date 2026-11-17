@@ -8,6 +8,7 @@
 // The report goes to $SCAN_CORPUS_REPORT_DIR (default /tmp/scan-corpus) as JSON and Markdown.
 import { waitForNetworkQuiet } from '../scenarios/helpers/scenario-harness.mjs'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { launchBrowser, closeBrowser, newContextAtBreakpoint, guardAgainst429 } from '../harness/browser.mjs'
@@ -17,7 +18,7 @@ import { createAccount, call, answer, browserLogin } from '../harness/api-accoun
 
 const TAG = 'scan-corpus'
 const HERE = dirname(fileURLToPath(import.meta.url))
-const REPORT_DIR = process.env.SCAN_CORPUS_REPORT_DIR ?? '/tmp/scan-corpus'
+const REPORT_DIR = process.env.SCAN_CORPUS_REPORT_DIR ?? join(tmpdir(), 'scan-corpus')
 const YEAR = 2025
 const FIELDS = ['bruttoarbeitslohn', 'lohnsteuer', 'sozialversicherung']
 

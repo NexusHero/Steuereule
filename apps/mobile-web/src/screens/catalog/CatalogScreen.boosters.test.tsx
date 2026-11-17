@@ -25,21 +25,30 @@ function renderCatalog(entry: CatalogEntryParam, opts: { onDone?: () => void } =
   )
 }
 
+/**
+ * Serves the gate question of a booster entry (checking the catalog asked for that entry) and
+ * records every answer POSTed; each answer completes the entry.
+ */
+function mockEntryOnItsGate(expectedEntry: 'haushalt' | 'gesundheit') {
+  const posted: unknown[] = []
+  server.use(
+    http.get(`*/v1/steuerjahre/${TAX_YEAR}/interview`, ({ request }) => {
+      const entry = new URL(request.url).searchParams.get('eintrag')
+      expect(entry).toBe(expectedEntry)
+      return HttpResponse.json({ answers: {}, nextStep: { kind: 'question', id: `${expectedEntry}-gate` }, openItems: 1 }, { status: 200 })
+    }),
+    http.post(`*/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, async ({ request }) => {
+      posted.push(await request.json())
+      return HttpResponse.json({ nextStep: { kind: 'done' }, openItems: 0 }, { status: 200 })
+    }),
+  )
+  return posted
+}
+
 describe('CatalogScreen — Slice 5 boosters (haushalt & gesundheit)', () => {
   it('renders haushalt-gate with hint under question and walks amount steps including AMOUNT_LATER', async () => {
-    const posted: unknown[] = []
+    const posted = mockEntryOnItsGate('haushalt')
     const onDone = vi.fn()
-    server.use(
-      http.get(`*/v1/steuerjahre/${TAX_YEAR}/interview`, ({ request }) => {
-        const entry = new URL(request.url).searchParams.get('eintrag')
-        expect(entry).toBe('haushalt')
-        return HttpResponse.json({ answers: {}, nextStep: { kind: 'question', id: 'haushalt-gate' }, openItems: 1 }, { status: 200 })
-      }),
-      http.post(`*/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, async ({ request }) => {
-        posted.push(await request.json())
-        return HttpResponse.json({ nextStep: { kind: 'done' }, openItems: 0 }, { status: 200 })
-      }),
-    )
 
     renderCatalog('haushalt', { onDone })
 
@@ -82,19 +91,8 @@ describe('CatalogScreen — Slice 5 boosters (haushalt & gesundheit)', () => {
   })
 
   it('walks gesundheit entry and completes when gesundheit-betrag is submitted or Nein is chosen', async () => {
-    const posted: unknown[] = []
+    const posted = mockEntryOnItsGate('gesundheit')
     const onDone = vi.fn()
-    server.use(
-      http.get(`*/v1/steuerjahre/${TAX_YEAR}/interview`, ({ request }) => {
-        const entry = new URL(request.url).searchParams.get('eintrag')
-        expect(entry).toBe('gesundheit')
-        return HttpResponse.json({ answers: {}, nextStep: { kind: 'question', id: 'gesundheit-gate' }, openItems: 1 }, { status: 200 })
-      }),
-      http.post(`*/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, async ({ request }) => {
-        posted.push(await request.json())
-        return HttpResponse.json({ nextStep: { kind: 'done' }, openItems: 0 }, { status: 200 })
-      }),
-    )
 
     renderCatalog('gesundheit', { onDone })
 

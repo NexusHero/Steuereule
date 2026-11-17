@@ -10,36 +10,17 @@
 //   Row E — „Maske ansehen“ embeds the mask inline in the Eulen-Modus.
 //   Row F — tablet drawer and mobile 20 %-dock (minimise / maximise); the chat stays usable.
 //   Row G — a guest sees the account prompt instead of the chat.
-import { request as playwrightRequest } from 'playwright-core'
 import { launchBrowser, closeBrowser, newContextAtBreakpoint, guardAgainst429 } from '../harness/browser.mjs'
 import { startStack } from '../harness/stack.mjs'
 import { fail, waitForBucketHeadroom } from '../harness/rate-limit.mjs'
-import { skipSplash, signUpOutOfBand, submitLogin } from '../harness/flows.mjs'
+import { skipSplash, submitLogin } from '../harness/flows.mjs'
+import { PASSWORD, createAccount, call } from '../harness/api-account.mjs'
 
 const AUTH_BUCKET = { windowMs: 10_000, max: 3, shared: true }
-const PASSWORD = 'Sicheres-Passwort-1!'
 const TAG = 'owl-mode-fake-ki'
 // The cockpit opens on the last completed year since UX review K2 (2025 on 2026-11-14).
 const YEAR = 2025
 const COMMUTE = { workdays: [1, 2, 3, 4, 5], vacationDays: 30, sickDays: 5, homeOfficeDays: 0, oneWayKm: 20, transport: 'pkw', workplace: null }
-
-async function account(apiOrigin, webOrigin, sql) {
-  const email = `owl-fake-${Date.now()}@beispiel.de`
-  await waitForBucketHeadroom(AUTH_BUCKET, 'sign-up/email', TAG)
-  await signUpOutOfBand(apiOrigin, webOrigin, email, PASSWORD)
-  sql(`UPDATE "User" SET "emailVerified" = true WHERE email = '${email}'`)
-  const api = await playwrightRequest.newContext({ baseURL: apiOrigin, extraHTTPHeaders: { origin: webOrigin } })
-  await waitForBucketHeadroom(AUTH_BUCKET, 'sign-in/email', TAG)
-  const res = await api.post('/api/auth/sign-in/email', { data: { email, password: PASSWORD } })
-  if (!res.ok()) fail(`sign-in failed (${res.status()})`)
-  return { email, api }
-}
-
-async function call(api, method, path, data) {
-  const res = await api.fetch(path, { method, ...(data === undefined ? {} : { data }) })
-  if (!res.ok()) fail(`${method} ${path} answered ${res.status()}: ${(await res.text()).slice(0, 200)}`)
-  return res.json()
-}
 
 const commute = async (api) => (await call(api, 'GET', `/v1/steuerjahre/${YEAR}/arbeitsweg`)).inputs
 const setCommute = (api, values) => call(api, 'PUT', `/v1/steuerjahre/${YEAR}/arbeitsweg`, { ...COMMUTE, ...values })
@@ -79,7 +60,7 @@ async function main() {
   const { apiOrigin, webOrigin, sql, stop } = await startStack()
   const browser = await launchBrowser()
   try {
-    const user = await account(apiOrigin, webOrigin, sql)
+    const user = await createAccount({ apiOrigin, webOrigin, sql, tag: TAG })
     for (const [questionId, value] of [['job', 'Angestellt'], ['ausland', 'Nein'], ['kinder', 'Nein'], ['familienstand', 'Ledig']]) {
       await call(user.api, 'POST', `/v1/steuerjahre/${YEAR}/interview/antworten`, { questionId, value })
     }

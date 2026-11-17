@@ -379,7 +379,7 @@ async function main() {
           )
         } else {
           const tokens = tierMatch[1]
-            .split(/\s*\+\s*/)
+            .split('+')
             .map((t) => t.trim())
           for (const token of tokens) {
             if (!TIER_WORDS.has(token)) {

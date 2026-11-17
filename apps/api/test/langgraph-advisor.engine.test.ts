@@ -10,7 +10,7 @@ import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fa
 import { Test } from '@nestjs/testing'
 import { ThrottlerModule } from '@nestjs/throttler'
 import { describe, expect, it } from 'vitest'
-import type { AdvisorStreamEvent, CaseDigest } from '@steuereule/core'
+import type { AdvisorStreamEvent } from '@steuereule/core'
 import { AdvisorController, FastifyThrottlerGuard } from '../src/advisor/advisor.controller.js'
 import { AdvisorService } from '../src/advisor/advisor.service.js'
 import { InMemoryAdvisorRunLog } from '../src/advisor/run/advisor-run-log.js'
@@ -53,43 +53,7 @@ import { FakeOwlCardDismissalRepository, FakeOwlSettingRepository } from './fake
 import { FakePensionRepository } from './fakes/fake-pension.repository.js'
 import { FakeProfileRepository } from './fakes/fake-profile.repository.js'
 import { FakeRentalRepository } from './fakes/fake-rental.repository.js'
-
-const sampleDigest: CaseDigest = {
-  taxYear: 2025,
-  filingStatus: 'einzel',
-  profession: 'IT & Software',
-  lstbPersonA: { grossWageEur: 65000, wageTaxEur: 12500, socialSecurityEur: 12000 },
-  crossBorder: {
-    isCrossBorderCh: false,
-    grossWageChf: null,
-    withholdingTaxChf: null,
-    pillar3aChf: null,
-    healthInsuranceChf: null,
-    dailySicknessBenefitChf: null,
-    nonReturnDays: null,
-  },
-  commuteAndWorkdays: {
-    workdays: 220,
-    homeOfficeAnswer: 'Nie',
-    homeOfficeDays: 0,
-    distanceKm: 15,
-  },
-  catalogExpenses: {
-    hasTraining: false,
-    relocationCostsEur: null,
-    donationsEur: null,
-    selfPaidKvPvEur: null,
-    riesterEur: null,
-    doubleHouseholdRentEur: null,
-  },
-  childrenCount: 0,
-  rentalObjectsCount: 0,
-  capitalGainEur: null,
-  priorYearComparison: { donationsEur: 200 },
-  openOwlHints: [],
-  printoutMissingFields: [],
-  estimatedRefundEur: null,
-}
+import { SAMPLE_DIGEST as sampleDigest } from './fixtures/sample-digest.js'
 
 class ScriptedChatModel extends BaseChatModel {
   public invokeCount = 0
@@ -168,6 +132,61 @@ function runtimeWithProvider(
       }
     },
   }
+}
+
+/** An AdvisorService on in-memory fakes around the given engine, plus the repositories the tests read back. */
+function buildAdvisorServiceOnFakes(engine: LangGraphAdvisorEngine) {
+  const advisorRepo = new InMemoryAdvisorRepository()
+  const interviewRepo = new FakeInterviewAnswerRepository()
+  const lstbRepo = new FakeLstbRepository()
+  const chRepo = new FakeChSalaryCertificateRepository()
+  const childRepo = new FakeChildRepository()
+  const commuteRepo = new FakeCommuteRepository()
+  const assessmentRepo = new FakeAssessmentRepository()
+  const auditService = new AuditService(new FakeAuditRepository())
+
+  const access = fieldAccessFrom({
+    lstb: lstbRepo,
+    pension: new FakePensionRepository(),
+    capital: new FakeCapitalRepository(),
+    rental: new FakeRentalRepository(),
+    profile: new FakeProfileRepository(),
+    masterData: new FakeMasterDataRepository(),
+    link: new FakeLinkRepository(),
+    interview: interviewRepo,
+    chSalaryCertificate: chRepo,
+    child: childRepo,
+    commute: commuteRepo,
+    assessment: assessmentRepo,
+  })
+
+  const confirmationService = new ConfirmationService(new FakeMarkingRepository(), access, auditService)
+  const owlModeService = new OwlModeService(
+    new FakeOwlSettingRepository(),
+    new FakeOwlCardDismissalRepository(),
+    childRepo,
+    interviewRepo,
+    assessmentRepo,
+    new RagKiAdapter(),
+    auditService,
+  )
+
+  const service = new AdvisorService(
+    advisorRepo,
+    owlModeService,
+    confirmationService,
+    auditService,
+    interviewRepo,
+    lstbRepo,
+    chRepo,
+    commuteRepo,
+    childRepo,
+    new FakeRentalRepository(),
+    new FakeCapitalRepository(),
+    new FakeProfileRepository(),
+    engine,
+  )
+  return { advisorRepo, commuteRepo, service }
 }
 
 describe('AiRuntimeConfigService & LangGraphAdvisorEngine (#446 Slice 2)', () => {
@@ -411,51 +430,6 @@ describe('AiRuntimeConfigService & LangGraphAdvisorEngine (#446 Slice 2)', () =>
   })
 
   it('persists LangGraph streamTurn results via AdvisorService.streamMessage and hydrates expectedPreviousValue', async () => {
-    const advisorRepo = new InMemoryAdvisorRepository()
-    const interviewRepo = new FakeInterviewAnswerRepository()
-    const lstbRepo = new FakeLstbRepository()
-    const chRepo = new FakeChSalaryCertificateRepository()
-    const childRepo = new FakeChildRepository()
-    const commuteRepo = new FakeCommuteRepository()
-    const assessmentRepo = new FakeAssessmentRepository()
-    const auditService = new AuditService(new FakeAuditRepository())
-
-    const access = fieldAccessFrom({
-      lstb: lstbRepo,
-      pension: new FakePensionRepository(),
-      capital: new FakeCapitalRepository(),
-      rental: new FakeRentalRepository(),
-      profile: new FakeProfileRepository(),
-      masterData: new FakeMasterDataRepository(),
-      link: new FakeLinkRepository(),
-      interview: interviewRepo,
-      chSalaryCertificate: chRepo,
-      child: childRepo,
-      commute: commuteRepo,
-      assessment: assessmentRepo,
-    })
-
-    const confirmationService = new ConfirmationService(new FakeMarkingRepository(), access, auditService)
-    const owlModeService = new OwlModeService(
-      new FakeOwlSettingRepository(),
-      new FakeOwlCardDismissalRepository(),
-      childRepo,
-      interviewRepo,
-      assessmentRepo,
-      new RagKiAdapter(),
-      auditService,
-    )
-
-    await commuteRepo.save('user-s2', 2025, {
-      workdays: [1, 2, 3, 4, 5],
-      vacationDays: 25,
-      sickDays: 0,
-      homeOfficeDays: 40,
-      oneWayKm: 18,
-      transport: 'pkw',
-      workplace: 'Industriestr. 5',
-    })
-
     const scriptedModel = new ScriptedChatModel([
       new AIMessage({
         content: '',
@@ -478,21 +452,17 @@ describe('AiRuntimeConfigService & LangGraphAdvisorEngine (#446 Slice 2)', () =>
     ])
 
     const engine = new LangGraphAdvisorEngine(runtimeWithProvider('google-genai'), () => scriptedModel)
-    const service = new AdvisorService(
-      advisorRepo,
-      owlModeService,
-      confirmationService,
-      auditService,
-      interviewRepo,
-      lstbRepo,
-      chRepo,
-      commuteRepo,
-      childRepo,
-      new FakeRentalRepository(),
-      new FakeCapitalRepository(),
-      new FakeProfileRepository(),
-      engine,
-    )
+    const { commuteRepo, service } = buildAdvisorServiceOnFakes(engine)
+
+    await commuteRepo.save('user-s2', 2025, {
+      workdays: [1, 2, 3, 4, 5],
+      vacationDays: 25,
+      sickDays: 0,
+      homeOfficeDays: 40,
+      oneWayKm: 18,
+      transport: 'pkw',
+      workplace: 'Industriestr. 5',
+    })
 
     const emitted: Array<{ event: string; data: unknown }> = []
     for await (const ev of service.streamMessage('user-s2', 2025, { message: 'Arbeitsweg ist 42 km', activeScreen: 'commute' })) {
@@ -510,60 +480,11 @@ describe('AiRuntimeConfigService & LangGraphAdvisorEngine (#446 Slice 2)', () =>
   })
 
   it('preserves CORS headers on hijacked SSE responses for POST /v1/steuerjahre/:jahr/advisor/stream', async () => {
-    const advisorRepo = new InMemoryAdvisorRepository()
-    const interviewRepo = new FakeInterviewAnswerRepository()
-    const lstbRepo = new FakeLstbRepository()
-    const chRepo = new FakeChSalaryCertificateRepository()
-    const childRepo = new FakeChildRepository()
-    const commuteRepo = new FakeCommuteRepository()
-    const assessmentRepo = new FakeAssessmentRepository()
-    const auditService = new AuditService(new FakeAuditRepository())
-
-    const access = fieldAccessFrom({
-      lstb: lstbRepo,
-      pension: new FakePensionRepository(),
-      capital: new FakeCapitalRepository(),
-      rental: new FakeRentalRepository(),
-      profile: new FakeProfileRepository(),
-      masterData: new FakeMasterDataRepository(),
-      link: new FakeLinkRepository(),
-      interview: interviewRepo,
-      chSalaryCertificate: chRepo,
-      child: childRepo,
-      commute: commuteRepo,
-      assessment: assessmentRepo,
-    })
-
-    const confirmationService = new ConfirmationService(new FakeMarkingRepository(), access, auditService)
-    const owlModeService = new OwlModeService(
-      new FakeOwlSettingRepository(),
-      new FakeOwlCardDismissalRepository(),
-      childRepo,
-      interviewRepo,
-      assessmentRepo,
-      new RagKiAdapter(),
-      auditService,
-    )
-
     const scriptedModel = new ScriptedChatModel([
       new AIMessage('Ich prüfe deinen Arbeitsweg direkt für das Steuerjahr 2025.'),
     ])
     const engine = new LangGraphAdvisorEngine(runtimeWithProvider('google-genai'), () => scriptedModel)
-    const service = new AdvisorService(
-      advisorRepo,
-      owlModeService,
-      confirmationService,
-      auditService,
-      interviewRepo,
-      lstbRepo,
-      chRepo,
-      commuteRepo,
-      childRepo,
-      new FakeRentalRepository(),
-      new FakeCapitalRepository(),
-      new FakeProfileRepository(),
-      engine,
-    )
+    const { advisorRepo, service } = buildAdvisorServiceOnFakes(engine)
 
     const moduleRef = await Test.createTestingModule({
       imports: [ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 10 }])],

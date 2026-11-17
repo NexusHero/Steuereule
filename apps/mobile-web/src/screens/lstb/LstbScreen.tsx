@@ -18,6 +18,7 @@ import { integerFrom } from '../shared/integer'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
+import { screenHeaderStyles, unclearableFieldStyles } from '../shared/screenStyles'
 import { usePendingMutations } from '../shared/usePendingMutations'
 import { SaveFailedNotice } from '../shared/SaveFailedNotice'
 import { watchSaveResult } from '../shared/saveFeedback'
@@ -253,13 +254,6 @@ function StateNotice({ response }: { readonly response: LstbResponseDto }) {
 function makeStyles(t: UiTheme) {
   const screen: ViewStyle = t.layout.flow.narrow
   const wideScreen: ViewStyle = t.layout.flow.wide
-  const headerRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', marginBottom: t.space.s4 }
-  const heading: TextStyle = {
-    ...t.type.title,
-    color: t.color.tinte,
-    marginBottom: t.space.s2,
-  }
-  const help: TextStyle = { ...t.type.body, color: t.color.tinte2, marginBottom: t.space.s4 }
   const stagedMetaRow: ViewStyle = {
     flexDirection: 'row',
     alignItems: 'center',
@@ -276,16 +270,6 @@ function makeStyles(t: UiTheme) {
     ...t.type.captionStrong,
     color: t.color.ok,
   }
-  const fieldRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s3 }
-  const unclearButton: ViewStyle = {
-    paddingHorizontal: t.space.s3,
-    paddingVertical: t.space.s2,
-    borderWidth: t.space.kontur,
-    borderColor: t.color.tinte,
-    borderRadius: t.radius.s,
-  }
-  const unclearLabel: TextStyle = { ...t.type.small, color: t.color.tinte2 }
-  const unclearActive: TextStyle = { ...t.type.label, color: t.color.tinte }
   const stateOk: TextStyle = { ...t.type.body, color: t.color.tinte, marginVertical: t.space.s3 }
   const stateOpen: TextStyle = { ...t.type.body, color: t.color.tinte2, marginVertical: t.space.s3 }
   const conflictBlock: ViewStyle = { marginVertical: t.space.s3, padding: t.space.s3, borderWidth: t.space.kontur, borderColor: t.color.warn, borderRadius: t.radius.s }
@@ -295,16 +279,11 @@ function makeStyles(t: UiTheme) {
   return {
     screen,
     wideScreen,
-    headerRow,
-    heading,
-    help,
+    ...screenHeaderStyles(t),
     stagedMetaRow,
     confirmFieldButton,
     confirmedBadgeText,
-    feldRow: fieldRow,
-    unklarButton: unclearButton,
-    unklarLabel: unclearLabel,
-    unklarActive: unclearActive,
+    ...unclearableFieldStyles(t),
     zustandOk: stateOk,
     zustandOffen: stateOpen,
     widerspruchBlock: conflictBlock,

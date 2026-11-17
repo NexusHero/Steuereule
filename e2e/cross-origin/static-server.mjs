@@ -46,7 +46,7 @@ export function startStaticServer(rootDir, port, host = '127.0.0.1') {
     const body = await readFile(filePath)
     const ext = extname(filePath)
     const contentType = MIME_TYPES[ext] ?? 'application/octet-stream'
-    const etag = `"${createHash('sha1').update(body).digest('hex')}"`
+    const etag = `"${createHash('sha256').update(body).digest('hex')}"`
     const gzipBody = COMPRESSIBLE_EXTENSIONS.has(ext) && body.length >= 256 ? gzipSync(body) : null
 
     const asset = { body, gzipBody, contentType, etag }

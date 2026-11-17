@@ -26,13 +26,13 @@ x-api-env: &api-env
   # psql) uses `localhost:5432` instead (the published port). Two different consumers,
   # two different addresses for the same database — not a duplicated source of truth, the
   # same asymmetry ADR-0010's own e2e harness already documents.
-  DATABASE_URL: postgresql://${POSTGRES_USER:-steuereule}:${POSTGRES_PASSWORD:-steuereule}@postgres:5432/${POSTGRES_DB:-steuereule}
+  DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
   GUEST_SESSION_SECRET: ${GUEST_SESSION_SECRET}
   PRISMA_FIELD_ENCRYPTION_KEY: ${PRISMA_FIELD_ENCRYPTION_KEY}
   # Receipt-file keys live in their own database (ADR-0059). This local stack keeps it on the
   # same Postgres server for simplicity; the real deployment uses a separate Cloud SQL
   # instance with a shorter backup retention, which is what makes crypto-shredding reach backups.
-  KEYSTORE_DATABASE_URL: postgresql://${POSTGRES_USER:-steuereule}:${POSTGRES_PASSWORD:-steuereule}@postgres:5432/${POSTGRES_DB:-steuereule}_keystore
+  KEYSTORE_DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}_keystore
   KEYSTORE_MASTER_KEY: ${KEYSTORE_MASTER_KEY}
   BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
   # The API's OWN origin — same value it listens on (PORT below), used to build absolute

@@ -2,6 +2,7 @@
 // combinations): provision a verified account out of band, drive the API as that user, and sign the
 // browser in through the real login form. Same rate-limit discipline as hub-acceptance.mjs
 // (better-auth counts per path in a rolling 10 s window).
+import { randomInt } from 'node:crypto'
 import { request as playwrightRequest } from 'playwright-core'
 import { fail, waitForBucketHeadroom } from './rate-limit.mjs'
 import { skipSplash, signUpOutOfBand, submitLogin } from './flows.mjs'
@@ -11,7 +12,7 @@ const AUTH_BUCKET = { windowMs: 10_000, max: 3, shared: true }
 
 /** Creates a verified account and returns `{ email, api }` with `api` signed in. */
 export async function createAccount({ apiOrigin, webOrigin, sql, tag }) {
-  const email = `${tag}-${Date.now()}-${Math.floor(Math.random() * 1000)}@beispiel.de`
+  const email = `${tag}-${Date.now()}-${randomInt(1000)}@beispiel.de`
   await waitForBucketHeadroom(AUTH_BUCKET, 'sign-up/email', tag)
   await signUpOutOfBand(apiOrigin, webOrigin, email, PASSWORD)
   sql(`UPDATE "User" SET "emailVerified" = true WHERE email = '${email}'`)

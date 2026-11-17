@@ -20,8 +20,7 @@ async function main() {
   try {
     const user = await createAccount({ apiOrigin, webOrigin, sql, tag: TAG })
     const api = user.api
-    await answer(api, YEAR, [['job', 'Angestellt'], ['ausland', 'Nein'], ['kinder', 'Nein'], ['familienstand', 'Ledig']])
-    await answer(api, 2025, [['job', 'Angestellt'], ['ausland', 'Nein'], ['kinder', 'Nein'], ['familienstand', 'Ledig']])
+    for (const year of [YEAR, 2025]) await answer(api, year, [['job', 'Angestellt'], ['ausland', 'Nein'], ['kinder', 'Nein'], ['familienstand', 'Ledig']])
     await putLstb(api, YEAR, 42_000, 5_600, 8_600)
 
     const ctx = await newContextAtBreakpoint(browser, 'l')

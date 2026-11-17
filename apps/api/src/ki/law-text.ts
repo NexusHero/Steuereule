@@ -52,6 +52,20 @@ function decodeEntities(html: string): string {
   })
 }
 
+/** Removes every `<…>` tag with at least one character inside, in one pass over the text. */
+function stripTags(html: string): string {
+  let out = ''
+  let from = 0
+  for (;;) {
+    const open = html.indexOf('<', from)
+    const close = open === -1 ? -1 : html.indexOf('>', open + 1)
+    if (close === -1) return out + html.slice(from)
+    const empty = close === open + 1
+    out += html.slice(from, empty ? open + 1 : open)
+    from = empty ? open + 1 : close + 1
+  }
+}
+
 function toPlainText(html: string): string {
   const text = html
     .replace(/<sup class="Rec">\d+<\/sup>/g, '')
@@ -60,8 +74,7 @@ function toPlainText(html: string): string {
     .replace(/<\/dt>/g, ' ')
     .replace(/<\/dd>/g, ' ')
     .replace(/<br\s*\/?>/g, '\n')
-    .replace(/<[^>]+>/g, '')
-  return decodeEntities(text)
+  return decodeEntities(stripTags(text))
     .split('\n')
     .map((line) => line.replace(/[ \t ]+/g, ' ').trim())
     .join('\n')

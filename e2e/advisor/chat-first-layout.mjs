@@ -366,7 +366,7 @@ async function main() {
     // Row I — the context ring in the composer: says how full the conversation is; too short to summarise.
     await byId(page, 'advisor-context-ring').click()
     await see(page, 'advisor-context-popover', 'Row I')
-    if (!/\d+ %/.test(await textOf(page, 'advisor-context-percent'))) fail('Row I: the ring should name how full the context is')
+    if (!/\d %/.test(await textOf(page, 'advisor-context-percent'))) fail('Row I: the ring should name how full the context is')
     if (!(await byId(page, 'advisor-context-summarize').isDisabled())) fail('Row I: a short conversation offers no summary yet')
     await byId(page, 'advisor-context-ring').click()
     await gone(page, 'advisor-context-popover', 'Row I')

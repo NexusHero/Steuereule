@@ -47,6 +47,22 @@ function mockDoneInterview(answers: Record<string, string>) {
   )
 }
 
+/** Master data says married, and the coupling names Sabine Weber as person B under the given filing type. */
+function marriedCoupleHandlers(filingType: 'zusammen' | 'einzel') {
+  return [
+    http.get('*/v1/stammdaten', () => HttpResponse.json({ familienstand: 'verheiratet', missing: [] })),
+    http.get(`*/v1/steuerjahre/${TAX_YEAR}/kopplung`, () =>
+      HttpResponse.json({
+        filingType,
+        personBUserId: null,
+        invitationCode: null,
+        personBHasOwnAccount: false,
+        personB: { firstName: 'Sabine', lastName: 'Weber', steuerId: null, geburtsdatum: null, religion: null, religionConsent: false, beruf: null },
+      }),
+    ),
+  ]
+}
+
 describe('Cockpit Screen — Slice 5 Persona Boosters & Dual Cockpit', () => {
   it('shows Erstatten heading and reveals non-persona tiles only when Weitere Themen is expanded', async () => {
     mockDoneInterview({ job: 'Angestellt', ausland: 'Nein', kinder: 'Nein', familienstand: 'Ledig' })
@@ -106,16 +122,7 @@ describe('Cockpit Screen — Slice 5 Persona Boosters & Dual Cockpit', () => {
   it('renders Du and Partner sections with partner tiles and statuses for verheiratet + zusammen', async () => {
     mockDoneInterview({ job: 'Angestellt', ausland: 'Nein', kinder: 'Nein', familienstand: 'Verheiratet' })
     server.use(
-      http.get('*/v1/stammdaten', () => HttpResponse.json({ familienstand: 'verheiratet', missing: [] })),
-      http.get(`*/v1/steuerjahre/${TAX_YEAR}/kopplung`, () =>
-        HttpResponse.json({
-          filingType: 'zusammen',
-          personBUserId: null,
-          invitationCode: null,
-          personBHasOwnAccount: false,
-          personB: { firstName: 'Sabine', lastName: 'Weber', steuerId: null, geburtsdatum: null, religion: null, religionConsent: false, beruf: null },
-        }),
-      ),
+      ...marriedCoupleHandlers('zusammen'),
       http.get(`*/v1/steuerjahre/${TAX_YEAR}/lstb`, ({ request }) => {
         const person = new URL(request.url).searchParams.get('person')
         if (person === 'B') {
@@ -196,16 +203,7 @@ describe('Cockpit Screen — Slice 5 Persona Boosters & Dual Cockpit', () => {
   it('hides Dual Cockpit partner section when filingType is einzel', async () => {
     mockDoneInterview({ job: 'Angestellt', ausland: 'Nein', kinder: 'Nein', familienstand: 'Verheiratet' })
     server.use(
-      http.get('*/v1/stammdaten', () => HttpResponse.json({ familienstand: 'verheiratet', missing: [] })),
-      http.get(`*/v1/steuerjahre/${TAX_YEAR}/kopplung`, () =>
-        HttpResponse.json({
-          filingType: 'einzel',
-          personBUserId: null,
-          invitationCode: null,
-          personBHasOwnAccount: false,
-          personB: { firstName: 'Sabine', lastName: 'Weber', steuerId: null, geburtsdatum: null, religion: null, religionConsent: false, beruf: null },
-        }),
-      ),
+      ...marriedCoupleHandlers('einzel'),
     )
 
     renderCockpit()

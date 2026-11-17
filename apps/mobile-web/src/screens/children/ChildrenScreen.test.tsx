@@ -35,6 +35,14 @@ function renderKinder(props: Partial<Parameters<typeof ChildrenScreen>[0]> = {})
   )
 }
 
+/** Opens the new-child form and fills its mandatory fields (surname Brenner). */
+function startNewChild(firstName: string, birthDate: string) {
+  fireEvent.click(screen.getByTestId('kind-neu'))
+  fireEvent.change(screen.getByLabelText('Vorname'), { target: { value: firstName } })
+  fireEvent.change(screen.getByLabelText('Nachname'), { target: { value: 'Brenner' } })
+  fireEvent.change(screen.getByLabelText('Geburtsdatum'), { target: { value: birthDate } })
+}
+
 describe('KinderScreen', () => {
   it('renders existing children and calculates freibetrag and kindergeld', () => {
     renderKinder()
@@ -156,10 +164,7 @@ describe('KinderScreen', () => {
     it('still accepts a Familienkasse that is not on the list', async () => {
       const onAdd = vi.fn().mockResolvedValue(undefined)
       renderKinder({ onAddChild: onAdd, addressState: 'SN' })
-      fireEvent.click(screen.getByTestId('kind-neu'))
-      fireEvent.change(screen.getByLabelText('Vorname'), { target: { value: 'Noah' } })
-      fireEvent.change(screen.getByLabelText('Nachname'), { target: { value: 'Brenner' } })
-      fireEvent.change(screen.getByLabelText('Geburtsdatum'), { target: { value: '02.09.2019' } })
+      startNewChild('Noah', '02.09.2019')
       fireEvent.change(screen.getByLabelText('Familienkasse'), { target: { value: 'Landesfamilienkasse Musterstadt' } })
       expect(screen.queryByTestId('kind-familienkasse-vorschlaege')).toBeNull()
       fireEvent.click(screen.getByTestId('kind-speichern'))
@@ -233,10 +238,7 @@ describe('KinderScreen', () => {
     it('keeps a value typed into the further details when they are folded again', async () => {
       const onAdd = vi.fn().mockResolvedValue(undefined)
       renderKinder({ onAddChild: onAdd })
-      fireEvent.click(screen.getByTestId('kind-neu'))
-      fireEvent.change(screen.getByLabelText('Vorname'), { target: { value: 'Noah' } })
-      fireEvent.change(screen.getByLabelText('Nachname'), { target: { value: 'Brenner' } })
-      fireEvent.change(screen.getByLabelText('Geburtsdatum'), { target: { value: '02.09.2019' } })
+      startNewChild('Noah', '02.09.2019')
       fireEvent.click(screen.getByTestId('kind-weitere-angaben'))
       fireEvent.change(screen.getByLabelText('Kindergeld'), { target: { value: '3060' } })
       fireEvent.click(screen.getByTestId('kind-weitere-angaben'))
@@ -249,10 +251,7 @@ describe('KinderScreen', () => {
   it("saves the child's health and care insurance the parents pay (Anlage Kind Z. 27/28)", async () => {
     const onAdd = vi.fn().mockResolvedValue(undefined)
     renderKinder({ onAddChild: onAdd })
-    fireEvent.click(screen.getByTestId('kind-neu'))
-    fireEvent.change(screen.getByLabelText('Vorname'), { target: { value: 'Noah' } })
-    fireEvent.change(screen.getByLabelText('Nachname'), { target: { value: 'Brenner' } })
-    fireEvent.change(screen.getByLabelText('Geburtsdatum'), { target: { value: '02.09.2019' } })
+    startNewChild('Noah', '02.09.2019')
     fireEvent.click(screen.getByTestId('kind-weitere-angaben'))
     fireEvent.change(screen.getByLabelText('Krankenversicherung des Kindes'), { target: { value: '1080' } })
     fireEvent.click(screen.getByTestId('kind-speichern'))
@@ -263,10 +262,7 @@ describe('KinderScreen', () => {
   it("marks a child's foreign health insurance, so its premium goes into Anlage Kind Kz 89 (real case 2025, ADR-0090)", async () => {
     const onAdd = vi.fn().mockResolvedValue(undefined)
     renderKinder({ onAddChild: onAdd })
-    fireEvent.click(screen.getByTestId('kind-neu'))
-    fireEvent.change(screen.getByLabelText('Vorname'), { target: { value: 'Mia' } })
-    fireEvent.change(screen.getByLabelText('Nachname'), { target: { value: 'Brenner' } })
-    fireEvent.change(screen.getByLabelText('Geburtsdatum'), { target: { value: '02.09.2021' } })
+    startNewChild('Mia', '02.09.2021')
     fireEvent.click(screen.getByTestId('kind-weitere-angaben'))
     fireEvent.change(screen.getByLabelText('Krankenversicherung des Kindes'), { target: { value: '963' } })
     fireEvent.click(screen.getByTestId('kind-kv-ausland'))
@@ -277,10 +273,7 @@ describe('KinderScreen', () => {
   it('saves the childcare the parents paid with provider and period (Anlage Kind Z. 67, ADR-0076)', async () => {
     const onAdd = vi.fn().mockResolvedValue(undefined)
     renderKinder({ onAddChild: onAdd })
-    fireEvent.click(screen.getByTestId('kind-neu'))
-    fireEvent.change(screen.getByLabelText('Vorname'), { target: { value: 'Noah' } })
-    fireEvent.change(screen.getByLabelText('Nachname'), { target: { value: 'Brenner' } })
-    fireEvent.change(screen.getByLabelText('Geburtsdatum'), { target: { value: '02.09.2021' } })
+    startNewChild('Noah', '02.09.2021')
     fireEvent.click(screen.getByTestId('kind-weitere-angaben'))
     fireEvent.change(screen.getByTestId('kind-betreuung'), { target: { value: '739' } })
     fireEvent.change(screen.getByTestId('kind-betreuung-anbieter'), { target: { value: 'Kindergarten, Gemeinde Musterdorf' } })

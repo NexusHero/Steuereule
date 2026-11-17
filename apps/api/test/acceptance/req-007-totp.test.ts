@@ -9,17 +9,10 @@
 // `@better-auth/passkey` package requires a better-auth ^1.7 core upgrade — see REQ-007's
 // register row). That half is a documented follow-up, not silently dropped.
 import { createHmac } from 'node:crypto'
-import type { NestFastifyApplication } from '@nestjs/platform-fastify'
-import { PrismaClient } from '@prisma/client'
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
-import { resetRateLimiters } from '../support/reset-rate-limiters.js'
-
-process.env.GUEST_SESSION_SECRET = 'req-007-secret'
-process.env.BETTER_AUTH_SECRET = 'req-007-better-auth-secret-0123456789'
-process.env.BETTER_AUTH_URL = 'http://127.0.0.1:39997'
+import { describe, expect, it } from 'vitest'
+import { baseUrl, prisma, useAcceptanceServer } from '../support/acceptance-server.js'
 
 const ALLOWED_ORIGIN = 'https://allowed.example.com'
-process.env.CORS_ALLOWED_ORIGINS = ALLOWED_ORIGIN
 
 const PASSWORD = 'a-fine-strong-password-1'
 const TRUSTED_ORIGIN_HEADERS = { origin: ALLOWED_ORIGIN }
@@ -75,32 +68,21 @@ function cookieNamed(setCookie: string | null, name: string): string {
 }
 
 describe('REQ-007 — TOTP 2FA round trip, against the real server', () => {
-  let app: NestFastifyApplication
-  let baseUrl: string
-  let prisma: PrismaClient
-
-  beforeAll(async () => {
-    process.env.BETTER_AUTH_URL = 'http://127.0.0.1:39997'
-    const { buildApp } = await import('../../src/main.js')
-    app = await buildApp()
-    await app.listen(0, '127.0.0.1')
-    baseUrl = await app.getUrl()
-    const { PrismaService } = await import('../../src/prisma/prisma.service.js')
-    prisma = app.get(PrismaService)
-  })
-
-  afterEach(async () => {
-    resetRateLimiters(app)
-    await prisma.twoFactor.deleteMany()
-    await prisma.session.deleteMany()
-    await prisma.account.deleteMany()
-    await prisma.verification.deleteMany()
-    await prisma.user.deleteMany()
-    await prisma.profile.deleteMany()
-  })
-
-  afterAll(async () => {
-    await app.close()
+  useAcceptanceServer({
+    env: {
+      GUEST_SESSION_SECRET: 'req-007-secret',
+      BETTER_AUTH_SECRET: 'req-007-better-auth-secret-0123456789',
+      BETTER_AUTH_URL: 'http://127.0.0.1:39997',
+      CORS_ALLOWED_ORIGINS: ALLOWED_ORIGIN,
+    },
+    cleanup: async () => {
+      await prisma.twoFactor.deleteMany()
+      await prisma.session.deleteMany()
+      await prisma.account.deleteMany()
+      await prisma.verification.deleteMany()
+      await prisma.user.deleteMany()
+      await prisma.profile.deleteMany()
+    },
   })
 
   async function signUp(email: string): Promise<string> {

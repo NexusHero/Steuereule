@@ -139,13 +139,13 @@ export function replaceNamesWith(text: string, names: readonly string[], replace
 }
 
 const ETIN_TEXT_REGEX = /\beTIN\s*[:-]?\s*[A-Z0-9\s-]{8,20}|\b[A-Z]{6}[0-9]{2}[A-Z0-9]{6}\b/gi
-const TRANSFERTICKET_REGEX = /\bTransferticket\s*[:-]?\s*[A-Za-z0-9_-]{6,}/gi
+const TRANSFERTICKET_REGEX = /\bTransferticket\s*(?:[:-]\s*)?[A-Za-z0-9_-]{6,}/gi
 const SVNR_TEXT_REGEX = /\b\d{2}[\s.-]?\d{6}[\s.-]?[A-Z][\s.-]?\d{3}\b/g
 const LABELED_PII_LINE_REGEX =
   /^\s*(?:Arbeitgeber(?:\s*\([^)]*\))?|Arbeitnehmer(?:in)?|Name(?:,?\s*Vorname)?|Vorname|Nachname|Familienname|Anschrift|Adresse|Straße|Strasse|Geburtsdatum|geb\.?\s*am|Identifikationsnummer|IdNr|Steuer-?ID|Steueridentifikationsnummer|Steuernummer|Transferticket|Personal-?Nr\.?|Mandanten-?Nr\.?|Arbeitnehmernummer|Sozialversicherungsnummer|Versicherungsnummer|Finanzamt|AGS|Bundesland|Steuerklasse(?:\s*\/?\s*Faktor)?|Zahl\s+der\s+Kinderfreibeträge|Kirchensteuermerkmal)\s*[:-]?\s+.*$/gim
 const STREET_AND_NUMBER_REGEX =
   /\b[A-ZÄÖÜ][a-zäöüß-]{2,}(?:straße|strasse|str\.|weg|allee|platz|ring|gasse|damm|ufer)\s+\d{1,4}[a-zA-Z]?\b/gi
-const DOB_VALUE_REGEX = /\b(?:geb\.?(?:\s*am)?|Geburtsdatum)\s*[:-]?\s*\d{1,2}\.\d{1,2}\.\d{2,4}\b/gi
+const DOB_VALUE_REGEX = /\b(?:geb\.?\s*(?:am\s*)?|Geburtsdatum\s*)(?:[:-]\s*)?\d{1,2}\.\d{1,2}\.\d{2,4}\b/gi
 const EMPLOYER_LINE_REGEX =
   /^(?!.*\b(?:Bruttoarbeitslohn|Lohnsteuer|Rentenversicherung|Krankenversicherung|Pflegeversicherung|Arbeitslosenversicherung)\b).*\b(?:GmbH|mbH|UG|OHG|KGaA|GmbH\s*&\s*Co\.?\s*KG|Co\.?\s*KG|AG|SE)\b.*$/gm
 const LABELED_PLZ_LINE_REGEX = /^\s*(?:PLZ\s*\/?\s*Ort|D-\d{5}|DE-\d{5}|\d{5}\s+[A-ZÄÖÜ][a-zäöüß-]+(?:\s+[A-ZÄÖÜ][a-zäöüß-]+)?)\s*$/gm

@@ -5,47 +5,11 @@ import { ChatGenerationChunk, type ChatResult } from '@langchain/core/outputs'
 import type { Runnable } from '@langchain/core/runnables'
 import type { BaseLanguageModelInput } from '@langchain/core/language_models/base'
 import { describe, expect, it } from 'vitest'
-import { ADVISOR_SKILL_IDS, INTERVIEW_AREA_IDS, isAdvisorSkillId, type AdvisorTurnResult, type CaseDigest } from '@steuereule/core'
+import { ADVISOR_SKILL_IDS, INTERVIEW_AREA_IDS, isAdvisorSkillId, type AdvisorTurnResult } from '@steuereule/core'
 import { DEFAULT_AI_TURN_LIMITS, type AiRuntimeConfigService } from '../src/ki/ai-runtime-config.service.js'
 import { LangGraphAdvisorEngine } from '../src/ki/langgraph-advisor.engine.js'
 import { skillPrompt } from '../src/ki/advisor-skills.js'
-
-const DIGEST: CaseDigest = {
-  taxYear: 2025,
-  filingStatus: 'einzel',
-  profession: 'IT & Software',
-  lstbPersonA: { grossWageEur: 65000, wageTaxEur: 12500, socialSecurityEur: 12000 },
-  crossBorder: {
-    isCrossBorderCh: false,
-    grossWageChf: null,
-    withholdingTaxChf: null,
-    pillar3aChf: null,
-    healthInsuranceChf: null,
-    dailySicknessBenefitChf: null,
-    nonReturnDays: null,
-  },
-  commuteAndWorkdays: {
-    workdays: 220,
-    homeOfficeAnswer: 'Nie',
-    homeOfficeDays: 0,
-    distanceKm: 15,
-  },
-  catalogExpenses: {
-    hasTraining: false,
-    relocationCostsEur: null,
-    donationsEur: null,
-    selfPaidKvPvEur: null,
-    riesterEur: null,
-    doubleHouseholdRentEur: null,
-  },
-  childrenCount: 0,
-  rentalObjectsCount: 0,
-  capitalGainEur: null,
-  priorYearComparison: { donationsEur: 200 },
-  openOwlHints: [],
-  printoutMissingFields: [],
-  estimatedRefundEur: null,
-}
+import { SAMPLE_DIGEST as DIGEST } from './fixtures/sample-digest.js'
 
 /** Plays the given replies in order and keeps what it was asked. */
 class ScriptedModel extends BaseChatModel {

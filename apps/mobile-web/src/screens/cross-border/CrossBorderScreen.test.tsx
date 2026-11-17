@@ -14,7 +14,7 @@ import type { InterviewStateDto, ChSalaryCertificateResponseDto } from '@steuere
 import { SALARY_CERTIFICATE_FIELDS } from '@steuereule/core'
 import { createAppI18n } from '../../i18n/app-i18n'
 import { CrossBorderScreen } from './CrossBorderScreen'
-import { server } from '../../test-msw-server'
+import { EMPTY_CH_SALARY_CERTIFICATE_RESPONSE, server } from '../../test-msw-server'
 
 const TAX_YEAR = 2026
 const INTERVIEW_URL = `*/v1/steuerjahre/${TAX_YEAR}/interview`
@@ -50,29 +50,39 @@ const DONE_CH_INTERVIEW: InterviewStateDto = {
 }
 
 /** The empty CH-Lohnausweis mask (no Wechselkurs, no status, no fold). */
-const EMPTY_CH: ChSalaryCertificateResponseDto = {
-  fields: SALARY_CERTIFICATE_FIELDS.filter((f) => f.kind === 'chf-betrag').map((f) => ({ id: f.id, digit: f.digit, kind: 'offen' as const })),
-  bemerkungen: null,
-  exchangeRate: null,
-  status: null,
-  items: [],
-  foldStatus: null,
-  nGre: {
-    arbeitgeberName: null,
-    arbeitgeberStrasse: null,
-    arbeitgeberPlzOrt: null,
-    familienzulagenChf: null,
-    krankentaggeldChf: null,
-    pkArbeitnehmerChf: null,
-    pkArbeitgeberChf: null,
-    pkArbeitgeberGesamtChf: null,
-    steuerfreiesKrankentaggeldChf: null,
-    krankentaggeldArbeitgeberProzent: null,
-    krankentaggeldArbeitgeberChf: null,
-    nbuvArbeitgeberProzent: null,
-    nbuvArbeitgeberChf: null,
-    specialCases: null,
-  },
+const EMPTY_CH = EMPTY_CH_SALARY_CERTIFICATE_RESPONSE
+
+/** The server's answer to a stored CH answer: Wohnsitz leads on to the Tage question, Tage completes the segment. */
+function answerStored(questionId: string) {
+  return HttpResponse.json(
+    questionId === 'ch-wohnsitz'
+      ? { nextStep: { kind: 'question', id: 'ch-nichtrueckkehrtage' }, openItems: 1 }
+      : { nextStep: { kind: 'done' }, openItems: 0 },
+    { status: 200 },
+  )
+}
+
+/** Answers both CH questions through the UI: Wohnsitz Deutschland, 10 Nichtrückkehrtage. */
+async function answerBothChQuestions() {
+  await screen.findByText(/Wo wohnst/)
+  fireEvent.click(screen.getByText('Deutschland'))
+
+  await screen.findByText(/zurückgekehrt/)
+  fireEvent.change(screen.getByTestId('ch-tage-input'), { target: { value: '10' } })
+  fireEvent.click(screen.getByTestId('ch-tage-weiter'))
+}
+
+/** Opens the mask directly (interview done) and records every body PUT to the Wechselkurs endpoint. */
+function recordExchangeRatePuts() {
+  const bodies: unknown[] = []
+  server.use(
+    http.get(INTERVIEW_URL, () => HttpResponse.json(DONE_CH_INTERVIEW, { status: 200 })),
+    http.put(`${CH_URL}/wechselkurs`, async ({ request }) => {
+      bodies.push(await request.json())
+      return HttpResponse.json(EMPTY_CH, { status: 200 })
+    }),
+  )
+  return bodies
 }
 
 /** A folded CH-Lohnausweis: status derived, fold bestimmt (Bruttolohn/PK/Quellensteuer). */
@@ -127,23 +137,13 @@ describe('GrenzgaengerScreen — the CH interview', () => {
     server.use(
       http.post(POST_URL, async ({ request }) => {
         const body = (await request.json()) as { questionId: string }
-        return HttpResponse.json(
-          body.questionId === 'ch-wohnsitz'
-            ? { nextStep: { kind: 'question', id: 'ch-nichtrueckkehrtage' }, openItems: 1 }
-            : { nextStep: { kind: 'done' }, openItems: 0 },
-          { status: 200 },
-        )
+        return answerStored(body.questionId)
       }),
     )
 
     renderScreen()
 
-    await screen.findByText(/Wo wohnst/)
-    fireEvent.click(screen.getByText('Deutschland'))
-
-    await screen.findByText(/zurückgekehrt/)
-    fireEvent.change(screen.getByTestId('ch-tage-input'), { target: { value: '10' } })
-    fireEvent.click(screen.getByTestId('ch-tage-weiter'))
+    await answerBothChQuestions()
 
     await screen.findByText('CH-Lohnausweis')
     // The mask renders the Ziffer fields (in paper order) — Ziffer 8 (Bruttolohn) is present.
@@ -163,21 +163,12 @@ describe('GrenzgaengerScreen — CH answers are posted in order', () => {
         const body = (await request.json()) as { questionId: string }
         received.push(body.questionId)
         if (body.questionId === 'ch-wohnsitz') await wohnsitzHeld
-        return HttpResponse.json(
-          body.questionId === 'ch-wohnsitz'
-            ? { nextStep: { kind: 'question', id: 'ch-nichtrueckkehrtage' }, openItems: 1 }
-            : { nextStep: { kind: 'done' }, openItems: 0 },
-          { status: 200 },
-        )
+        return answerStored(body.questionId)
       }),
     )
 
     renderScreen()
-    await screen.findByText(/Wo wohnst/)
-    fireEvent.click(screen.getByText('Deutschland'))
-    await screen.findByText(/zurückgekehrt/)
-    fireEvent.change(screen.getByTestId('ch-tage-input'), { target: { value: '10' } })
-    fireEvent.click(screen.getByTestId('ch-tage-weiter'))
+    await answerBothChQuestions()
 
     await new Promise((r) => setTimeout(r, 30))
     expect(received).toEqual(['ch-wohnsitz'])
@@ -208,7 +199,7 @@ describe('GrenzgaengerScreen — the Lohnausweis mask + derived status + fold', 
     renderScreen()
 
     // Still on the interview step, not the mask.
-    await screen.findByText(/Wo wohnst/)
+    expect(await screen.findByText(/Wo wohnst/)).toBeTruthy()
   })
 })
 
@@ -340,14 +331,7 @@ describe('GrenzgaengerScreen — Anlage N-Gre facts', () => {
 
 describe('GrenzgaengerScreen — Wechselkurs', () => {
   it('accepts a German decimal comma and saves the rate for the chosen month', async () => {
-    const bodies: unknown[] = []
-    server.use(http.get(INTERVIEW_URL, () => HttpResponse.json(DONE_CH_INTERVIEW, { status: 200 })))
-    server.use(
-      http.put(`${CH_URL}/wechselkurs`, async ({ request }) => {
-        bodies.push(await request.json())
-        return HttpResponse.json(EMPTY_CH, { status: 200 })
-      }),
-    )
+    const bodies = recordExchangeRatePuts()
     renderScreen()
     fireEvent.click(await screen.findByTestId('ch-wechselkurs-monat-12'))
     fireEvent.change(screen.getByTestId('ch-wechselkurs-kurs'), { target: { value: '1,07' } })
@@ -357,14 +341,7 @@ describe('GrenzgaengerScreen — Wechselkurs', () => {
   })
 
   it('offers the Jahresdurchschnittskurs instead of a month and saves it for the year', async () => {
-    const bodies: unknown[] = []
-    server.use(http.get(INTERVIEW_URL, () => HttpResponse.json(DONE_CH_INTERVIEW, { status: 200 })))
-    server.use(
-      http.put(`${CH_URL}/wechselkurs`, async ({ request }) => {
-        bodies.push(await request.json())
-        return HttpResponse.json(EMPTY_CH, { status: 200 })
-      }),
-    )
+    const bodies = recordExchangeRatePuts()
     renderScreen()
     fireEvent.click(await screen.findByTestId('ch-wechselkurs-jahresdurchschnitt'))
     fireEvent.change(screen.getByTestId('ch-wechselkurs-kurs'), { target: { value: '1,065' } })

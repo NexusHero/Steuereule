@@ -3,10 +3,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { SCENARIO_4_WEBER } from '../fixtures/scenarios-2025.fixture.mjs'
 import {
-  newContextAtBreakpoint,
-  guardAgainst429,
   fail,
-  registerAndOnboard,
   selectTaxYear2025,
   answerBasis,
   chooseTopics,
@@ -19,29 +16,21 @@ import {
   downloadAndVerifyPdf,
   runStandaloneScenario,
 } from './helpers/scenario-harness.mjs'
+import { startPersona, completeLstb, completeCommute, assertPrintoutWaitsForComparison } from './helpers/persona-steps.mjs'
 import { openCockpitTopic } from '../harness/flows.mjs'
 
 export async function runScenario04(browser, webOrigin, sql) {
   console.log('\n--- Scenario 04: Thomas & Sabine Weber (married DE, 3 rentals, 50k capital income) ---')
-  const ctx = await newContextAtBreakpoint(browser, 'l', { acceptDownloads: true })
-  const page = await ctx.newPage()
-  guardAgainst429(page, fail)
-
   const s = SCENARIO_4_WEBER
 
-  await registerAndOnboard(
-    page,
-    {
-      email: s.email,
-      password: s.password,
-      firstName: s.thomas.profile.firstName,
-      lastName: s.thomas.profile.lastName,
-      taxId: s.thomas.profile.taxId,
-      taxNumber: s.thomas.profile.taxNumber,
-    },
-    webOrigin,
-    'scenario-04',
-  )
+  const { ctx, page } = await startPersona(browser, webOrigin, 'scenario-04', {
+    email: s.email,
+    password: s.password,
+    firstName: s.thomas.profile.firstName,
+    lastName: s.thomas.profile.lastName,
+    taxId: s.thomas.profile.taxId,
+    taxNumber: s.thomas.profile.taxNumber,
+  }, 'l', { acceptDownloads: true })
 
   await selectTaxYear2025(page)
 
@@ -49,23 +38,9 @@ export async function runScenario04(browser, webOrigin, sql) {
   // The Strom (ADR-0089): the basis page asks what Person B does as well (ADR-0088).
   await answerBasis(page, { ...s.thomas.interview, 'partner-job': 'Angestellt', 'partner-ausland': 'Nein' })
 
-  await waitForStromStep(page, 'lohnsteuerbescheinigung')
-  await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').fill(String(s.thomas.lstb.grossWage))
-  await page.locator('[data-testid="lstb-lohnsteuer"]').fill(String(s.thomas.lstb.wageTax))
-  await page.locator('[data-testid="lstb-sozialversicherung"]').fill(String(s.thomas.lstb.socialSecurity))
-  await page.locator('[data-testid="lstb-weiter"]').click()
+  await completeLstb(page, s.thomas.lstb)
 
-  await waitForStromStep(page, 'arbeitsweg')
-  await page.locator('[data-testid="arbeitstage-urlaub"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="arbeitstage-urlaub"]').fill(String(s.thomas.commute.vacationDays))
-  await page.locator('[data-testid="arbeitstage-krank"]').fill(String(s.thomas.commute.sickDays))
-  await page.locator('[data-testid="arbeitstage-homeoffice"]').fill(String(s.thomas.commute.homeOfficeDays))
-  await page.locator(`[data-testid="feiertage-region-${s.thomas.commute.region}"]`).click()
-  await page.locator('[data-testid="arbeitstage-km"]').fill(String(s.thomas.commute.oneWayKm))
-  await page.locator(`[data-testid="arbeitstage-transport-${s.thomas.commute.transport}"]`).click()
-  await page.locator('[data-testid="arbeitstage-arbeitsort"]').fill(s.thomas.commute.workplace)
-  await page.locator('[data-testid="arbeitstage-weiter"]').click()
+  await completeCommute(page, s.thomas.commute)
 
   // Capital and letting are the rare „Weitere Einkünfte“ behind „Mehr anzeigen“; the kind is chosen right there.
   await chooseTopics(page, ['einkuenfte'], { einkuenfte: 'Beides' })
@@ -74,14 +49,7 @@ export async function runScenario04(browser, webOrigin, sql) {
   await leaveStrom(page)
 
   await page.locator('[data-testid="cockpit-kacheln"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="cockpit-abgabe-vorbereiten"]').click()
-  const printBtnStep = page.locator('[data-testid="abgabe-zum-ausdruck"]')
-  await printBtnStep.waitFor({ state: 'visible', timeout: 10_000 })
-  // UX review H3: „Verheiratet“ in the interview already set up the joint return, so the printout waits for the
-  // Veranlagungsart comparison (or its skip) instead of being open before the master data.
-  await page.locator('[data-testid="abgabe-vergleich-ueberspringen"]').waitFor({ state: 'visible', timeout: 10_000 })
-  if (!(await printBtnStep.isDisabled())) fail('Expected abgabe-zum-ausdruck to wait for the comparison in Scenario 04')
-  await page.locator('[data-testid="abgabe-zurueck"]').click()
+  await assertPrintoutWaitsForComparison(page, 'Scenario 04')
 
   await page.locator('[data-testid="cockpit-stammdaten"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="cockpit-stammdaten"]').click()

@@ -42,7 +42,7 @@ export interface ChPremiumLetter {
 const PENSION_LETTER = /obligatorisch/i
 const PENSION_SENDER = /pensionskasse|pension\s+fund|vorsorge|2\.\s*s(?:ä|a)ule|\bBVG\b/i
 const SICKNESS = /krankentaggeld/i
-const ACCIDENT = /nicht\s*-?\s*be(?:rufs|triebs)\s*-?\s*unfall|\bNBU/i
+const ACCIDENT = /nicht\s*(?:-\s*)?be(?:rufs|triebs)\s*(?:-\s*)?unfall|\bNBU/i
 
 export function classifyChInsuranceLetter(text: string): ChInsuranceLetterKind | null {
   if (!text) return null
@@ -52,7 +52,7 @@ export function classifyChInsuranceLetter(text: string): ChInsuranceLetterKind |
 }
 
 /** "2'200.10", "4°500.00", "1409.90", "412,35": CHF with cents. OCR's apostrophe variants count as thousands. */
-const CHF_WITH_CENTS = /-?\d{1,3}(?:[’'`°´]\d{3})*[.,]\d{2}(?!\d)|-?\d{4,}[.,]\d{2}(?!\d)/g
+const CHF_WITH_CENTS = /-?\d{1,3}(?:[’'`°´]\d{3})*[.,]\d{2}(?!\d)|-?(?<!\d)\d{4,}[.,]\d{2}(?!\d)/g
 
 function chf(token: string): number {
   return Math.abs(Number(token.replace(/[’'`°´]/g, '').replace(',', '.')))

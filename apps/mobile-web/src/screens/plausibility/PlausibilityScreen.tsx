@@ -1,12 +1,12 @@
-import { useEffect, useRef } from 'react'
 import { ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { Button, hapticWarning, useTheme, useBreakpoint, type UiTheme } from '@steuereule/ui'
+import { Button, useTheme, useBreakpoint, type UiTheme } from '@steuereule/ui'
 import { APP_NS } from '../../i18n/resources'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
 import { usePlausibility } from './usePlausibility'
+import { useBlockingConflictHaptic } from './useBlockingConflictHaptic'
 
 export interface PlausibilityScreenProps {
   readonly onBack?: () => void
@@ -21,17 +21,7 @@ export function PlausibilityScreen({ onBack, onDone, taxYear = CURRENT_TAX_YEAR 
   const { t: tr } = useTranslation(APP_NS)
   const plausibility = usePlausibility(taxYear)
   const hasBlockingConflict = plausibility.status === 'ready' && plausibility.conflicts.length > 0
-  const prevConflictRef = useRef<{ taxYear: number; active: boolean }>({ taxYear, active: false })
-
-  useEffect(() => {
-    if (prevConflictRef.current.taxYear !== taxYear) {
-      prevConflictRef.current = { taxYear, active: false }
-    }
-    if (!prevConflictRef.current.active && hasBlockingConflict) {
-      void hapticWarning()
-    }
-    prevConflictRef.current.active = hasBlockingConflict
-  }, [taxYear, hasBlockingConflict])
+  useBlockingConflictHaptic(taxYear, hasBlockingConflict)
 
   if (plausibility.status === 'loading') {
     return <LoadingState bp={bp} label={tr('plausibilitaet.loading')} />

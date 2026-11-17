@@ -3,48 +3,12 @@
 // question), which knowledge it has to read and whether it has to calculate. By hand only, see
 // vitest.eval.config.ts. A failing case is a finding to look at, not a broken build.
 import { describe, expect, it } from 'vitest'
-import type { AdvisorStreamEvent, AdvisorTurnResult, CaseDigest } from '@steuereule/core'
+import type { AdvisorStreamEvent, AdvisorTurnResult } from '@steuereule/core'
 import { EnvAiRuntimeConfigService } from '../../src/ki/ai-runtime-config.service.js'
 import { LangGraphAdvisorEngine } from '../../src/ki/langgraph-advisor.engine.js'
+import { SAMPLE_DIGEST as DIGEST } from '../fixtures/sample-digest.js'
 
 const KEY = process.env.AI_EVAL_GEMINI_API_KEY?.trim()
-
-const DIGEST: CaseDigest = {
-  taxYear: 2025,
-  filingStatus: 'einzel',
-  profession: 'IT & Software',
-  lstbPersonA: { grossWageEur: 65000, wageTaxEur: 12500, socialSecurityEur: 12000 },
-  crossBorder: {
-    isCrossBorderCh: false,
-    grossWageChf: null,
-    withholdingTaxChf: null,
-    pillar3aChf: null,
-    healthInsuranceChf: null,
-    dailySicknessBenefitChf: null,
-    nonReturnDays: null,
-  },
-  commuteAndWorkdays: {
-    workdays: 220,
-    homeOfficeAnswer: 'Nie',
-    homeOfficeDays: 0,
-    distanceKm: 15,
-  },
-  catalogExpenses: {
-    hasTraining: false,
-    relocationCostsEur: null,
-    donationsEur: null,
-    selfPaidKvPvEur: null,
-    riesterEur: null,
-    doubleHouseholdRentEur: null,
-  },
-  childrenCount: 0,
-  rentalObjectsCount: 0,
-  capitalGainEur: null,
-  priorYearComparison: { donationsEur: 200 },
-  openOwlHints: [],
-  printoutMissingFields: [],
-  estimatedRefundEur: null,
-}
 
 const LOOKUP = 'Schlage im Steuerwissen nach'
 const COMPUTE = 'Rechne die Einkommensteuer'

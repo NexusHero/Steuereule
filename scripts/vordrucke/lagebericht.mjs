@@ -17,11 +17,13 @@ import { fileURLToPath } from 'node:url'
 import { woerter } from './pdf-woerter.mjs'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
-const jahr = process.argv[2]
-if (!/^\d{4}$/.test(jahr ?? '')) {
+const jahrArgument = process.argv[2] ?? ''
+if (!/^[1-9]\d{3}$/.test(jahrArgument)) {
   console.error('usage: node scripts/vordrucke/lagebericht.mjs <jahr> [--check]')
   process.exit(1)
 }
+// Rebuilt from the number, so the file names below can only ever carry four digits.
+const jahr = String(Number(jahrArgument))
 const VORLAGEN = path.join(ROOT, 'apps/api/assets/vordrucke', jahr)
 const AUSDRUCK = path.join(ROOT, 'apps/api/src/printout')
 const { felder } = JSON.parse(readFileSync(path.join(AUSDRUCK, `felder-${jahr}.json`), 'utf8'))

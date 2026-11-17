@@ -73,7 +73,7 @@ async function query(year, zvE, splitting) {
   const redirect = /redirect url="([^"]+)"/.exec(await post.text())?.[1]
   if (!redirect) throw new Error(`no result for ${year}/${zvE}`)
   const result = await fetch(new URL(redirect, FORM), { headers: { cookie: jar.header(), 'user-agent': 'steuereule-reference-check/1.0' } })
-  const text = (await result.text()).replace(/<script[\s\S]*?<\/script>/g, '').replace(/<[^>]+>/g, ' ').replace(/&nbsp;|​/g, ' ').replace(/\s+/g, ' ')
+  const text = (await result.text()).replace(/<script[\s\S]*?<\/script>/g, '').replace(/<[^<>]+>/g, ' ').replace(/&nbsp;|​/g, ' ').replace(/\s+/g, ' ')
   const shownZve = /zu versteuerndes Einkommen \( zvE \): ([\d.]+,\d\d) Euro/.exec(text)?.[1]
   const shownYear = /Ergebnis der Berechnung der Einkommensteuer (\d{4})/.exec(text)?.[1]
   const tax = /Einkommen\s?steuer ([\d.]+,\d\d) Euro/.exec(text)?.[1]

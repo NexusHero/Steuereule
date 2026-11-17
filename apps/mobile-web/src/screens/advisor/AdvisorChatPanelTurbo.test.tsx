@@ -1,8 +1,8 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
-import type { AdvisorActionProposal, AdvisorChatMessageView } from '@steuereule/core'
-import { AdvisorChatPanel, sendOptionsToDto } from './AdvisorChatPanel'
-import { renderInApp } from '../../test-render'
+import type { AdvisorActionProposal } from '@steuereule/core'
+import { sendOptionsToDto } from './AdvisorChatPanel'
+import { renderAdvisorChatPanel, sendChatMessage } from '../../test-advisor'
 
 const APPLIED: AdvisorActionProposal = {
   actionId: 'act-1',
@@ -20,38 +20,27 @@ const APPLIED: AdvisorActionProposal = {
   sourceId: 'estg-10b',
 }
 
-function renderPanel(messages: AdvisorChatMessageView[] = []) {
-  const onSendMessage = vi.fn()
-  renderInApp(<AdvisorChatPanel messages={messages} onSendMessage={onSendMessage} />)
-  return { onSendMessage }
-}
-
-function send(text: string) {
-  fireEvent.change(screen.getByTestId('advisor-chat-input'), { target: { value: text } })
-  fireEvent.click(screen.getByTestId('advisor-chat-send'))
-}
-
 describe('turbo mode (#491)', () => {
   it('is off at first: a message goes out without the flag', () => {
-    const { onSendMessage } = renderPanel()
+    const { onSendMessage } = renderAdvisorChatPanel()
     expect(screen.getByTestId('advisor-turbo-toggle').getAttribute('aria-checked')).toBe('false')
-    send('Bitte 300 € Spenden eintragen')
+    sendChatMessage('Bitte 300 € Spenden eintragen')
     expect(onSendMessage).toHaveBeenCalledWith('Bitte 300 € Spenden eintragen')
   })
 
   it('sends the flag with every message once it is on, and stops when it is off again', () => {
-    const { onSendMessage } = renderPanel()
+    const { onSendMessage } = renderAdvisorChatPanel()
     fireEvent.click(screen.getByTestId('advisor-turbo-toggle'))
     expect(screen.getByTestId('advisor-turbo-toggle').getAttribute('aria-checked')).toBe('true')
-    send('Bitte 300 € Spenden eintragen')
+    sendChatMessage('Bitte 300 € Spenden eintragen')
     expect(onSendMessage).toHaveBeenLastCalledWith('Bitte 300 € Spenden eintragen', { turbo: true })
     fireEvent.click(screen.getByTestId('advisor-turbo-toggle'))
-    send('Danke')
+    sendChatMessage('Danke')
     expect(onSendMessage).toHaveBeenLastCalledWith('Danke')
   })
 
   it('says under an answer what the owl applied itself', () => {
-    renderPanel([
+    renderAdvisorChatPanel([
       { id: 'u1', role: 'user', content: 'Bitte 300 € Spenden eintragen', meta: null, createdAt: '2026-11-12T10:00:00Z' },
       { id: 'a1', role: 'assistant', content: 'Erledigt.', meta: { action: APPLIED, turbo: true }, createdAt: '2026-11-12T10:00:01Z' },
     ])
@@ -59,7 +48,7 @@ describe('turbo mode (#491)', () => {
   })
 
   it('shows no turbo line under an answer the user applied by click', () => {
-    renderPanel([{ id: 'a1', role: 'assistant', content: 'Erledigt.', meta: { action: APPLIED }, createdAt: '2026-11-12T10:00:01Z' }])
+    renderAdvisorChatPanel([{ id: 'a1', role: 'assistant', content: 'Erledigt.', meta: { action: APPLIED }, createdAt: '2026-11-12T10:00:01Z' }])
     expect(screen.queryByTestId('advisor-turbo-summary')).toBeNull()
   })
 

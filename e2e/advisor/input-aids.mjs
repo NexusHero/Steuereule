@@ -2,10 +2,11 @@
 // PLZ → Ort/Bundesland prefill (marked, changeable, a choice for several places), the dictation
 // hint (dismissed once, stays dismissed), and — for all of it — not a single request to a host
 // other than the app's own two origins.
-import { launchBrowser, closeBrowser, newContextAtBreakpoint, guardAgainst429 } from '../harness/browser.mjs'
+import { launchBrowser, closeBrowser } from '../harness/browser.mjs'
 import { startStack } from '../harness/stack.mjs'
 import { fail, waitForBucketHeadroom } from '../harness/rate-limit.mjs'
 import { FLOW_COPY, skipSplash, signUpOutOfBand } from '../harness/flows.mjs'
+import { openPageWatchingForeignRequests } from '../harness/foreign-requests.mjs'
 
 const AUTH_BUCKET = { windowMs: 10_000, max: 3, shared: true }
 const TEST_PASSWORD = 'Sicheres-Passwort-1!'
@@ -19,16 +20,6 @@ async function expectAutocomplete(page, selector, expected, label) {
   if (actual !== expected) fail(`${label}: expected autocomplete="${expected}", got "${actual}"`)
 }
 
-function watchForeignRequests(page, origins) {
-  const foreign = []
-  page.on('request', (req) => {
-    const url = new URL(req.url())
-    if (url.protocol === 'data:' || url.protocol === 'blob:') return
-    if (!origins.has(url.origin)) foreign.push(req.url())
-  })
-  return foreign
-}
-
 async function main() {
   const { apiOrigin, webOrigin, sql, stop } = await startStack()
   const browser = await launchBrowser()
@@ -38,10 +29,7 @@ async function main() {
     await signUpOutOfBand(apiOrigin, webOrigin, email, TEST_PASSWORD)
     sql(`UPDATE "User" SET "emailVerified" = true WHERE email = '${email}'`)
 
-    const ctx = await newContextAtBreakpoint(browser, 'l')
-    const page = await ctx.newPage()
-    guardAgainst429(page, fail, '/api/auth/')
-    const foreign = watchForeignRequests(page, new Set([new URL(apiOrigin).origin, new URL(webOrigin).origin]))
+    const { ctx, page, foreign } = await openPageWatchingForeignRequests(browser, apiOrigin, webOrigin)
 
     // Row A — autofill on the sign-up and sign-in forms (AC 5).
     await page.goto(`${webOrigin}/registrierung`, { waitUntil: 'networkidle' })

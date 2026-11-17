@@ -10,6 +10,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { server } from './src/test-msw-server'
+import { COMPLETE_LSTB_RESPONSE, pendingLstbScanAction } from './src/test-lstb-fixtures'
 
 const API_BASE_URL = 'http://localhost:3000'
 
@@ -30,6 +31,25 @@ beforeEach(() => {
 function setViewportWidth(width: number) {
   Object.defineProperty(document.documentElement, 'clientWidth', { value: width, configurable: true })
   window.dispatchEvent(new Event('resize'))
+}
+
+/** Walks Splash -> Login -> Registrierung through a real sign-up, up to the step into Onboarding. */
+async function signUpFromSplash() {
+  fireEvent.click(screen.getByLabelText('Weiter zur App'))
+  // `findBy*` rather than a bare synchronous `getByText`: the Splash->Login stage flip is
+  // driven by the same click->handler round trip through RN-Web's Pressable response system
+  // that motivated the `waitFor` hardening in `RegistrierungScreen.test.tsx` — under CI's CPU
+  // contention it can land a tick later than a synchronous assertion allows for.
+  await screen.findByText('Einloggen')
+  fireEvent.click(screen.getByText('Neu hier? Konto anlegen'))
+
+  expect(await screen.findByText('Konto anlegen')).toBeTruthy()
+  fireEvent.change(screen.getByPlaceholderText('du@beispiel.de'), { target: { value: 'neu@beispiel.de' } })
+  fireEvent.change(screen.getByPlaceholderText('Mindestens 8 Zeichen'), { target: { value: 'geheim-123' } })
+  fireEvent.click(screen.getByText('Konto anlegen'))
+
+  await screen.findByText('Willkommen bei SteuerEule.')
+  fireEvent.click(screen.getByText('Weiter zum Onboarding →'))
 }
 
 /** Walks guest onboarding to completion — the only way into the tabbed shell pre-funnel. */
@@ -103,23 +123,9 @@ describe('App', () => {
       const { default: App } = await import('./App')
       render(<App />)
 
-      fireEvent.click(screen.getByLabelText('Weiter zur App'))
-      // `findBy*` rather than a bare synchronous `getByText`: the Splash->Login stage flip is
-      // driven by the same click->handler round trip through RN-Web's Pressable response system
-      // that motivated the `waitFor` hardening in `RegistrierungScreen.test.tsx` — under CI's CPU
-      // contention it can land a tick later than a synchronous assertion allows for.
-      await screen.findByText('Einloggen')
-      fireEvent.click(screen.getByText('Neu hier? Konto anlegen'))
+      await signUpFromSplash()
 
-      expect(await screen.findByText('Konto anlegen')).toBeTruthy()
-      fireEvent.change(screen.getByPlaceholderText('du@beispiel.de'), { target: { value: 'neu@beispiel.de' } })
-      fireEvent.change(screen.getByPlaceholderText('Mindestens 8 Zeichen'), { target: { value: 'geheim-123' } })
-      fireEvent.click(screen.getByText('Konto anlegen'))
-
-      await screen.findByText('Willkommen bei SteuerEule.')
-      fireEvent.click(screen.getByText('Weiter zum Onboarding →'))
-
-      await screen.findByPlaceholderText('Kim')
+      expect(await screen.findByPlaceholderText('Kim')).toBeTruthy()
     },
     // The suite-wide `testTimeout` in vitest.config.ts now carries this; kept explicit only
     // because this flow is the longest one and the reason the headroom exists.
@@ -150,7 +156,7 @@ describe('App', () => {
     fireEvent.click(screen.getByLabelText('Weiter zur App'))
     fireEvent.click(screen.getByText('Erstmal als Gast umschauen'))
     // ADR-0045: the guest lands in the Minimal-Gate (value first), not on Onboarding.
-    await screen.findByText('Angestellt')
+    expect(await screen.findByText('Angestellt')).toBeTruthy()
   })
   // The point of the tab bar slice: Profil (REQ-013) shipped, but Cockpit took the
   // post-onboarding home slot, leaving Profil with no route at all in the running app. This
@@ -308,15 +314,7 @@ describe('App', () => {
       )
       const { default: App } = await import('./App')
       render(<App />)
-      fireEvent.click(screen.getByLabelText('Weiter zur App'))
-      await screen.findByText('Einloggen')
-      fireEvent.click(screen.getByText('Neu hier? Konto anlegen'))
-      expect(await screen.findByText('Konto anlegen')).toBeTruthy()
-      fireEvent.change(screen.getByPlaceholderText('du@beispiel.de'), { target: { value: 'neu@beispiel.de' } })
-      fireEvent.change(screen.getByPlaceholderText('Mindestens 8 Zeichen'), { target: { value: 'geheim-123' } })
-      fireEvent.click(screen.getByText('Konto anlegen'))
-      await screen.findByText('Willkommen bei SteuerEule.')
-      fireEvent.click(screen.getByText('Weiter zum Onboarding →'))
+      await signUpFromSplash()
       await completeOnboarding()
       await screen.findByText('Cockpit')
 
@@ -641,6 +639,28 @@ describe('App', () => {
       )
     }
 
+    /** A guest whose session only exists once the Login form's sign-in has gone through. */
+    function mockGuestUntilSignIn(token: string) {
+      let signedIn = false
+      const user = { id: 'u1', email: 'lena@beispiel.de', emailVerified: true, name: '' }
+      server.use(
+        http.get(`${API_BASE_URL}/api/auth/get-session`, () => HttpResponse.json(signedIn ? { user, session: { id: 's1' } } : null)),
+        http.post(`${API_BASE_URL}/api/auth/sign-in/email`, () => {
+          signedIn = true
+          return HttpResponse.json({ user, token })
+        }),
+      )
+    }
+
+    /** What the Printout route needs to pass its gate for 2025: a complete LStB and a clean pre-print check. */
+    function printoutReadyHandlers(unlockStatus: 'offen' | 'bezahlt') {
+      return [
+        http.get('*/v1/steuerjahre/2025/lstb', () => HttpResponse.json(COMPLETE_LSTB_RESPONSE)),
+        http.get('*/v1/steuerjahre/2025/freischaltung', () => HttpResponse.json({ status: unlockStatus })),
+        http.get('*/v1/steuerjahre/2025/ausdruck/pruefung', () => HttpResponse.json({ missing: [] })),
+      ]
+    }
+
     function mockCompletedEmployeeInterview(year = 2025) {
       server.use(
         http.get(`${API_BASE_URL}/v1/steuerjahre/${year}/interview`, () =>
@@ -763,7 +783,18 @@ describe('App', () => {
       expect(screen.queryAllByRole('tab')).toHaveLength(0)
     })
 
-    it('Slice 4: auto-saves focused LStB input on Sheet close without prior blur and returns to Cockpit', async () => {
+    it.each([
+      {
+        dismissal: 'Sheet close',
+        value: 52000,
+        dismiss: () => fireEvent.click(screen.getByTestId('sheet-schliessen')),
+      },
+      {
+        dismissal: 'Escape',
+        value: 64000,
+        dismiss: (grossInput: HTMLInputElement) => fireEvent.keyDown(grossInput, { key: 'Escape', code: 'Escape', keyCode: 27 }),
+      },
+    ])('Slice 4: auto-saves focused LStB input on $dismissal without prior blur and returns to Cockpit', async ({ value, dismiss }) => {
       mockSignedInSession()
       mockCompletedEmployeeInterview(2025)
       const putPayloads: { feld: string; body: unknown }[] = []
@@ -772,7 +803,7 @@ describe('App', () => {
           putPayloads.push({ feld: String(params.feld), body: await request.json() })
           return HttpResponse.json(
             {
-              bruttoarbeitslohn: { kind: 'erfasst', value: 52000 },
+              bruttoarbeitslohn: { kind: 'erfasst', value },
               lohnsteuer: { kind: 'offen' },
               sozialversicherung: { kind: 'offen' },
               state: { kind: 'unvollstaendig', open: ['lohnsteuer', 'sozialversicherung'], unclear: [] },
@@ -791,51 +822,12 @@ describe('App', () => {
       const grossInput = (await screen.findByTestId('lstb-bruttoarbeitslohn')) as HTMLInputElement
       grossInput.focus()
       expect(document.activeElement).toBe(grossInput)
-      fireEvent.change(grossInput, { target: { value: '52000' } })
+      fireEvent.change(grossInput, { target: { value: String(value) } })
 
-      fireEvent.click(screen.getByTestId('sheet-schliessen'))
-
-      await waitFor(() =>
-        expect(putPayloads).toEqual([{ feld: 'bruttoarbeitslohn', body: { kind: 'erfasst', value: 52000 } }]),
-      )
-      await waitFor(() => expect(screen.queryByTestId('sheet-schliessen')).toBeNull())
-      expect(screen.getByRole('tab', { name: 'Cockpit' })).toBeTruthy()
-    })
-
-    it('Slice 4: auto-saves focused LStB input on Escape without prior blur and returns to Cockpit', async () => {
-      mockSignedInSession()
-      mockCompletedEmployeeInterview(2025)
-      const putPayloads: { feld: string; body: unknown }[] = []
-      server.use(
-        http.put('*/v1/steuerjahre/:jahr/lstb/:feld', async ({ params, request }) => {
-          putPayloads.push({ feld: String(params.feld), body: await request.json() })
-          return HttpResponse.json(
-            {
-              bruttoarbeitslohn: { kind: 'erfasst', value: 64000 },
-              lohnsteuer: { kind: 'offen' },
-              sozialversicherung: { kind: 'offen' },
-              state: { kind: 'unvollstaendig', open: ['lohnsteuer', 'sozialversicherung'], unclear: [] },
-            },
-            { status: 200 },
-          )
-        }),
-      )
-
-      window.history.pushState({}, '', '/app')
-      const { default: App } = await import('./App')
-      render(<App />)
-
-      // The LStB tile opens the mask as a sheet; „Weiter“ leads into the Strom (ADR-0089).
-      fireEvent.click(await screen.findByTestId('cockpit-kachel-lstb'))
-      const grossInput = (await screen.findByTestId('lstb-bruttoarbeitslohn')) as HTMLInputElement
-      grossInput.focus()
-      expect(document.activeElement).toBe(grossInput)
-      fireEvent.change(grossInput, { target: { value: '64000' } })
-
-      fireEvent.keyDown(grossInput, { key: 'Escape', code: 'Escape', keyCode: 27 })
+      dismiss(grossInput)
 
       await waitFor(() =>
-        expect(putPayloads).toEqual([{ feld: 'bruttoarbeitslohn', body: { kind: 'erfasst', value: 64000 } }]),
+        expect(putPayloads).toEqual([{ feld: 'bruttoarbeitslohn', body: { kind: 'erfasst', value } }]),
       )
       await waitFor(() => expect(screen.queryByTestId('sheet-schliessen')).toBeNull())
       expect(screen.getByRole('tab', { name: 'Cockpit' })).toBeTruthy()
@@ -868,48 +860,9 @@ describe('App', () => {
                       actionIds: ['act-s1', 'act-s2', 'act-s3'],
                     },
                     actions: [
-                      {
-                        actionId: 'act-s1',
-                        status: 'pending',
-                        screen: 'lstb',
-                        field: 'bruttoarbeitslohn',
-                        label: 'Brutto',
-                        newValue: '61000',
-                        beforeRefundEur: 0,
-                        afterRefundEur: 0,
-                        deltaEur: 0,
-                        reason: 'LStB-Scan',
-                        sourceId: 'estg-9-1',
-                        confidenceStatus: 'ok',
-                      },
-                      {
-                        actionId: 'act-s2',
-                        status: 'pending',
-                        screen: 'lstb',
-                        field: 'lohnsteuer',
-                        label: 'LSt',
-                        newValue: '9400',
-                        beforeRefundEur: 0,
-                        afterRefundEur: 0,
-                        deltaEur: 0,
-                        reason: 'LStB-Scan',
-                        sourceId: 'estg-9-1',
-                        confidenceStatus: 'ok',
-                      },
-                      {
-                        actionId: 'act-s3',
-                        status: 'pending',
-                        screen: 'lstb',
-                        field: 'sozialversicherung',
-                        label: 'SV',
-                        newValue: '12200',
-                        beforeRefundEur: 0,
-                        afterRefundEur: 0,
-                        deltaEur: 0,
-                        reason: 'LStB-Scan',
-                        sourceId: 'estg-9-1',
-                        confidenceStatus: 'ok',
-                      },
+                      pendingLstbScanAction({ actionId: 'act-s1', field: 'bruttoarbeitslohn', label: 'Brutto', newValue: '61000' }),
+                      pendingLstbScanAction({ actionId: 'act-s2', field: 'lohnsteuer', label: 'LSt', newValue: '9400' }),
+                      pendingLstbScanAction({ actionId: 'act-s3', field: 'sozialversicherung', label: 'SV', newValue: '12200' }),
                     ],
                   },
                 },
@@ -1019,18 +972,9 @@ describe('App', () => {
     })
 
     it('AC-3: after signing in from the deep-link AccountWall, redirects straight back to Capital 2025 and clears steuereule.returnTo', async () => {
-      let signedIn = false
+      mockGuestUntilSignIn('tok-cap')
       const capitalYears: string[] = []
       server.use(
-        http.get(`${API_BASE_URL}/api/auth/get-session`, () =>
-          HttpResponse.json(
-            signedIn ? { user: { id: 'u1', email: 'lena@beispiel.de', emailVerified: true, name: '' }, session: { id: 's1' } } : null,
-          ),
-        ),
-        http.post(`${API_BASE_URL}/api/auth/sign-in/email`, () => {
-          signedIn = true
-          return HttpResponse.json({ user: { id: 'u1', email: 'lena@beispiel.de', emailVerified: true, name: '' }, token: 'tok-cap' })
-        }),
         http.get('*/v1/steuerjahre/:jahr/kapital', ({ params }) => {
           capitalYears.push(String(params.jahr))
           return HttpResponse.json({
@@ -1150,18 +1094,7 @@ describe('App', () => {
 
     it('keeps /app/steuerjahr/2025/ausdruck mapped to the root Printout screen when plausibility gate passes', async () => {
       mockSignedInSession()
-      server.use(
-        http.get('*/v1/steuerjahre/2025/lstb', () =>
-          HttpResponse.json({
-            bruttoarbeitslohn: { kind: 'erfasst', value: 50000 },
-            lohnsteuer: { kind: 'erfasst', value: 8000 },
-            sozialversicherung: { kind: 'erfasst', value: 9000 },
-            state: { kind: 'vollstaendig', bruttoarbeitslohn: 50000, lohnsteuer: 8000, sozialversicherung: 9000 },
-          }),
-        ),
-        http.get('*/v1/steuerjahre/2025/freischaltung', () => HttpResponse.json({ status: 'offen' })),
-        http.get('*/v1/steuerjahre/2025/ausdruck/pruefung', () => HttpResponse.json({ missing: [] })),
-      )
+      server.use(...printoutReadyHandlers('offen'))
 
       window.history.pushState({}, '', '/app/steuerjahr/2025/ausdruck')
       const { default: App } = await import('./App')
@@ -1186,14 +1119,7 @@ describe('App', () => {
     it('submission gate (§ 3.4–3.5): unconfirmed notices redirect Printout to Submission, confirming unlocks, reload resets', async () => {
       mockSignedInSession()
       server.use(
-        http.get('*/v1/steuerjahre/2025/lstb', () =>
-          HttpResponse.json({
-            bruttoarbeitslohn: { kind: 'erfasst', value: 50000 },
-            lohnsteuer: { kind: 'erfasst', value: 8000 },
-            sozialversicherung: { kind: 'erfasst', value: 9000 },
-            state: { kind: 'vollstaendig', bruttoarbeitslohn: 50000, lohnsteuer: 8000, sozialversicherung: 9000 },
-          }),
-        ),
+        ...printoutReadyHandlers('offen'),
         http.get('*/v1/steuerjahre/2025/interview', () =>
           HttpResponse.json({
             answers: { job: 'Angestellt', ausland: 'Nein', kinder: 'Nein', familienstand: 'Ledig', dhf: 'Ja', 'dhf-miete': 'spaeter' },
@@ -1201,8 +1127,6 @@ describe('App', () => {
             openItems: 0,
           }),
         ),
-        http.get('*/v1/steuerjahre/2025/freischaltung', () => HttpResponse.json({ status: 'offen' })),
-        http.get('*/v1/steuerjahre/2025/ausdruck/pruefung', () => HttpResponse.json({ missing: [] })),
       )
 
       window.history.pushState({}, '', '/app/steuerjahr/2025/ausdruck')
@@ -1223,18 +1147,7 @@ describe('App', () => {
 
     it('allows Stripe payment return URL on Printout when submission gate passes', async () => {
       mockSignedInSession()
-      server.use(
-        http.get('*/v1/steuerjahre/2025/lstb', () =>
-          HttpResponse.json({
-            bruttoarbeitslohn: { kind: 'erfasst', value: 50000 },
-            lohnsteuer: { kind: 'erfasst', value: 8000 },
-            sozialversicherung: { kind: 'erfasst', value: 9000 },
-            state: { kind: 'vollstaendig', bruttoarbeitslohn: 50000, lohnsteuer: 8000, sozialversicherung: 9000 },
-          }),
-        ),
-        http.get('*/v1/steuerjahre/2025/freischaltung', () => HttpResponse.json({ status: 'bezahlt' })),
-        http.get('*/v1/steuerjahre/2025/ausdruck/pruefung', () => HttpResponse.json({ missing: [] })),
-      )
+      server.use(...printoutReadyHandlers('bezahlt'))
 
       window.history.pushState({}, '', '/app/steuerjahr/2025/ausdruck?zahlung=erfolg')
       const { default: App } = await import('./App')
@@ -1244,18 +1157,7 @@ describe('App', () => {
     })
 
     it('AC-2/AC-3 on ProfileStack: /app/profil/sicherheit redirects guests via AccountWall and back after login', async () => {
-      let signedIn = false
-      server.use(
-        http.get(`${API_BASE_URL}/api/auth/get-session`, () =>
-          HttpResponse.json(
-            signedIn ? { user: { id: 'u1', email: 'lena@beispiel.de', emailVerified: true, name: '' }, session: { id: 's1' } } : null,
-          ),
-        ),
-        http.post(`${API_BASE_URL}/api/auth/sign-in/email`, () => {
-          signedIn = true
-          return HttpResponse.json({ user: { id: 'u1', email: 'lena@beispiel.de', emailVerified: true, name: '' }, token: 'tok-sec' })
-        }),
-      )
+      mockGuestUntilSignIn('tok-sec')
 
       window.history.pushState({}, '', '/app/profil/sicherheit')
       const { default: App } = await import('./App')

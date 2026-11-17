@@ -83,6 +83,20 @@ function fillCredentials(email = 'a@b.de', password = 'geheim-123') {
   fireEvent.change(screen.getByPlaceholderText('••••••••'), { target: { value: password } })
 }
 
+/** Sign-in succeeds, but the server reports the account (a@b.de) as not yet verified. */
+function unverifiedSignIn() {
+  return http.post(`${BASE_URL}/api/auth/sign-in/email`, () =>
+    HttpResponse.json({ token: 'tok_1', user: { id: 'u1', email: 'a@b.de', emailVerified: false, name: '' } }),
+  )
+}
+
+/** `get-session` answers with a session of the given user. */
+function sessionOf(user: Record<string, unknown>, sessionId = 's1') {
+  return http.get(`${BASE_URL}/api/auth/get-session`, () =>
+    HttpResponse.json({ user, session: { id: sessionId, createdAt: new Date().toISOString() } }),
+  )
+}
+
 describe('LoginScreen', () => {
   it('renders the German login by default (brand, email form, guest mode)', () => {
     renderLogin()
@@ -454,11 +468,7 @@ describe('LoginScreen', () => {
   // blocking basic use": the account IS real and signed in, so the honest banner is shown
   // inline instead of silently claiming success; the user can still continue on their own.
   it('shows the honest unverified-email banner instead of silently continuing, when the account is unverified', async () => {
-    server.use(
-      http.post(`${BASE_URL}/api/auth/sign-in/email`, () =>
-        HttpResponse.json({ token: 'tok_1', user: { id: 'u1', email: 'a@b.de', emailVerified: false, name: '' } }),
-      ),
-    )
+    server.use(unverifiedSignIn())
     const onDone = vi.fn()
     renderLogin({ onDone })
     fillCredentials()
@@ -477,9 +487,7 @@ describe('LoginScreen', () => {
   it('lets the user resend the verification email from the unverified banner', async () => {
     let resendCalls = 0
     server.use(
-      http.post(`${BASE_URL}/api/auth/sign-in/email`, () =>
-        HttpResponse.json({ token: 'tok_1', user: { id: 'u1', email: 'a@b.de', emailVerified: false, name: '' } }),
-      ),
+      unverifiedSignIn(),
       http.post(`${BASE_URL}/api/auth/send-verification-email`, () => {
         resendCalls += 1
         return HttpResponse.json({ status: true })
@@ -498,9 +506,7 @@ describe('LoginScreen', () => {
 
   it('shows an honest error when resending the verification email fails', async () => {
     server.use(
-      http.post(`${BASE_URL}/api/auth/sign-in/email`, () =>
-        HttpResponse.json({ token: 'tok_1', user: { id: 'u1', email: 'a@b.de', emailVerified: false, name: '' } }),
-      ),
+      unverifiedSignIn(),
       http.post(`${BASE_URL}/api/auth/send-verification-email`, () => HttpResponse.error()),
     )
     renderLogin()
@@ -510,7 +516,7 @@ describe('LoginScreen', () => {
     await screen.findByText('Bitte bestätige noch deine E-Mail.')
     fireEvent.click(screen.getByText('Mail erneut senden'))
 
-    await screen.findByText('Das hat gerade nicht geklappt. Versuch es gleich noch mal.')
+    expect(await screen.findByText('Das hat gerade nicht geklappt. Versuch es gleich noch mal.')).toBeTruthy()
   })
 
   // Musti's #217 T1: mirrors RegistrierungScreen.test.tsx's four verified-flip tests via the
@@ -519,15 +525,8 @@ describe('LoginScreen', () => {
   // no auto-navigate.
   it('shows the verified confirmation on the unverified stage when the session reports the account already verified', async () => {
     server.use(
-      http.post(`${BASE_URL}/api/auth/sign-in/email`, () =>
-        HttpResponse.json({ token: 'tok_1', user: { id: 'u1', email: 'a@b.de', emailVerified: false, name: '' } }),
-      ),
-      http.get(`${BASE_URL}/api/auth/get-session`, () =>
-        HttpResponse.json({
-          user: { id: 'u1', email: 'a@b.de', emailVerified: true, name: '' },
-          session: { id: 's1', createdAt: new Date().toISOString() },
-        }),
-      ),
+      unverifiedSignIn(),
+      sessionOf({ id: 'u1', email: 'a@b.de', emailVerified: true, name: '' }),
     )
     const onDone = vi.fn()
     renderLogin({ onDone })
@@ -548,15 +547,8 @@ describe('LoginScreen', () => {
   // Comparator must be `sessionData.user.email === stage.email` (the server value), never `mail`.
   it('does not show the verified confirmation when the session belongs to a different account', async () => {
     server.use(
-      http.post(`${BASE_URL}/api/auth/sign-in/email`, () =>
-        HttpResponse.json({ token: 'tok_1', user: { id: 'u1', email: 'a@b.de', emailVerified: false, name: '' } }),
-      ),
-      http.get(`${BASE_URL}/api/auth/get-session`, () =>
-        HttpResponse.json({
-          user: { id: 'u2', email: 'jemand-anderes@beispiel.de', emailVerified: true, name: '' },
-          session: { id: 's2', createdAt: new Date().toISOString() },
-        }),
-      ),
+      unverifiedSignIn(),
+      sessionOf({ id: 'u2', email: 'jemand-anderes@beispiel.de', emailVerified: true, name: '' }, 's2'),
     )
     renderLogin()
     fillCredentials()
@@ -575,9 +567,7 @@ describe('LoginScreen', () => {
   it('clears the unverified banner without a reload once the session reports verification (out-of-band verify, #217)', async () => {
     let verified = false
     server.use(
-      http.post(`${BASE_URL}/api/auth/sign-in/email`, () =>
-        HttpResponse.json({ token: 'tok_1', user: { id: 'u1', email: 'a@b.de', emailVerified: false, name: '' } }),
-      ),
+      unverifiedSignIn(),
       http.get(`${BASE_URL}/api/auth/get-session`, () =>
         HttpResponse.json({
           user: { id: 'u1', email: 'a@b.de', emailVerified: verified, name: '' },
@@ -612,9 +602,7 @@ describe('LoginScreen', () => {
   // exercises the fail-closed clause; keep this one anyway, it's cheap and locks the no-data path.
   it('keeps the unverified banner when the session fetch fails, rather than assuming verified', async () => {
     server.use(
-      http.post(`${BASE_URL}/api/auth/sign-in/email`, () =>
-        HttpResponse.json({ token: 'tok_1', user: { id: 'u1', email: 'a@b.de', emailVerified: false, name: '' } }),
-      ),
+      unverifiedSignIn(),
       http.get(`${BASE_URL}/api/auth/get-session`, () => HttpResponse.json({ message: 'Internal Server Error' }, { status: 500 })),
     )
     renderLogin()
@@ -632,15 +620,8 @@ describe('LoginScreen', () => {
   // directions: fails on a fail-open mutant (`emailVerified !== false`), passes on this hook.
   it('keeps the unverified banner when the session for this account never positively answers emailVerified', async () => {
     server.use(
-      http.post(`${BASE_URL}/api/auth/sign-in/email`, () =>
-        HttpResponse.json({ token: 'tok_1', user: { id: 'u1', email: 'a@b.de', emailVerified: false, name: '' } }),
-      ),
-      http.get(`${BASE_URL}/api/auth/get-session`, () =>
-        HttpResponse.json({
-          user: { id: 'u1', email: 'a@b.de', name: '' },
-          session: { id: 's1', createdAt: new Date().toISOString() },
-        }),
-      ),
+      unverifiedSignIn(),
+      sessionOf({ id: 'u1', email: 'a@b.de', name: '' }),
     )
     renderLogin()
     fillCredentials()
@@ -654,15 +635,8 @@ describe('LoginScreen', () => {
   // success stage — once verified, there's nothing left to resend.
   it('drops the resend affordance once the verified confirmation replaces the banner', async () => {
     server.use(
-      http.post(`${BASE_URL}/api/auth/sign-in/email`, () =>
-        HttpResponse.json({ token: 'tok_1', user: { id: 'u1', email: 'a@b.de', emailVerified: false, name: '' } }),
-      ),
-      http.get(`${BASE_URL}/api/auth/get-session`, () =>
-        HttpResponse.json({
-          user: { id: 'u1', email: 'a@b.de', emailVerified: true, name: '' },
-          session: { id: 's1', createdAt: new Date().toISOString() },
-        }),
-      ),
+      unverifiedSignIn(),
+      sessionOf({ id: 'u1', email: 'a@b.de', emailVerified: true, name: '' }),
     )
     renderLogin()
     fillCredentials()
@@ -699,7 +673,7 @@ describe('LoginScreen', () => {
     renderLogin()
     fireEvent.click(await screen.findByText('Weiter mit Google'))
 
-    await screen.findByText('Das hat gerade nicht geklappt. Prüf die Verbindung und versuch es noch mal.')
+    expect(await screen.findByText('Das hat gerade nicht geklappt. Prüf die Verbindung und versuch es noch mal.')).toBeTruthy()
   })
 
   it('shows an honest error when Google social sign-in fails (network failure)', async () => {
@@ -707,7 +681,7 @@ describe('LoginScreen', () => {
     renderLogin()
     fireEvent.click(await screen.findByText('Weiter mit Google'))
 
-    await screen.findByText('Das hat gerade nicht geklappt. Prüf die Verbindung und versuch es noch mal.')
+    expect(await screen.findByText('Das hat gerade nicht geklappt. Prüf die Verbindung und versuch es noch mal.')).toBeTruthy()
   })
 
   // REQ-008 — the honesty gate. Social credentials are server-side, so an unconfigured

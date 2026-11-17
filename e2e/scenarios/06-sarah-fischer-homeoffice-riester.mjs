@@ -2,10 +2,7 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
-  newContextAtBreakpoint,
-  guardAgainst429,
   fail,
-  registerAndOnboard,
   selectTaxYear2025,
   answerBasis,
   chooseTopics,
@@ -15,25 +12,13 @@ import {
   assertCockpitEstimate,
   runStandaloneScenario,
 } from './helpers/scenario-harness.mjs'
+import { startPersona, completeLstb, completeCommute, assertPrintoutOpen } from './helpers/persona-steps.mjs'
 
 export async function runScenario06(browser, webOrigin) {
   console.log('\n--- Scenario 06: Sarah Fischer (Remote worker, 180 homeoffice days, relocation, Riester, Bavaria) ---')
-  const ctx = await newContextAtBreakpoint(browser, 'l')
-  const page = await ctx.newPage()
-  guardAgainst429(page, fail)
-
-  await registerAndOnboard(
-    page,
-    {
-      email: `du+sarah.fischer.${Date.now()}@beispiel.de`,
-      firstName: 'Sarah',
-      lastName: 'Fischer',
-      taxId: '71234567890',
-      taxNumber: '0912345678',
-    },
-    webOrigin,
-    'scenario-06',
-  )
+  const { ctx, page } = await startPersona(browser, webOrigin, 'scenario-06', {
+    email: `du+sarah.fischer.${Date.now()}@beispiel.de`, firstName: 'Sarah', lastName: 'Fischer', taxId: '71234567890', taxNumber: '0912345678',
+  })
 
   await selectTaxYear2025(page)
 
@@ -41,23 +26,9 @@ export async function runScenario06(browser, webOrigin) {
   // The Strom (ADR-0089): basis, LStB, way to work, selection, one page per chosen topic, summary.
   await answerBasis(page, { job: 'Angestellt', ausland: 'Nein', kinder: 'Nein', familienstand: 'Ledig' })
 
-  await waitForStromStep(page, 'lohnsteuerbescheinigung')
-  await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').fill('65000')
-  await page.locator('[data-testid="lstb-lohnsteuer"]').fill('12800')
-  await page.locator('[data-testid="lstb-sozialversicherung"]').fill('13200')
-  await page.locator('[data-testid="lstb-weiter"]').click()
+  await completeLstb(page, { grossWage: '65000', wageTax: '12800', socialSecurity: '13200' })
 
-  await waitForStromStep(page, 'arbeitsweg')
-  await page.locator('[data-testid="arbeitstage-urlaub"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="arbeitstage-urlaub"]').fill('30')
-  await page.locator('[data-testid="arbeitstage-krank"]').fill('5')
-  await page.locator('[data-testid="arbeitstage-homeoffice"]').fill('180')
-  await page.locator('[data-testid="feiertage-region-BY"]').click()
-  await page.locator('[data-testid="arbeitstage-km"]').fill('15')
-  await page.locator('[data-testid="arbeitstage-transport-pkw"]').click()
-  await page.locator('[data-testid="arbeitstage-arbeitsort"]').fill('München')
-  await page.locator('[data-testid="arbeitstage-weiter"]').click()
+  await completeCommute(page, { vacationDays: '30', sickDays: '5', homeOfficeDays: '180', region: 'BY', oneWayKm: '15', transport: 'pkw', workplace: 'München' })
 
   await chooseTopics(page, ['umzug', 'riester'])
 
@@ -96,11 +67,7 @@ export async function runScenario06(browser, webOrigin) {
   })
 
   await page.locator('[data-testid="cockpit-kacheln"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="cockpit-abgabe-vorbereiten"]').click()
-  const printBtn = page.locator('[data-testid="abgabe-zum-ausdruck"]')
-  await printBtn.waitFor({ state: 'visible', timeout: 10_000 })
-  if (await printBtn.isDisabled()) fail('Expected abgabe-zum-ausdruck enabled for Scenario 06')
-  await page.locator('[data-testid="abgabe-zurueck"]').click()
+  await assertPrintoutOpen(page, 'Scenario 06')
 
   await assertCockpitEstimate(page, 'Scenario 06', { direction: 'Erstattung' })
   console.log('[Scenario 06] PASS: Remote worker flow with Homeoffice-Pauschale and Riester verified.')

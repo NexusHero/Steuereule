@@ -2,52 +2,25 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
-  newContextAtBreakpoint,
-  guardAgainst429,
-  fail,
-  registerAndOnboard,
   answerBasis,
-  leaveStrom,
-  waitForStromStep,
   assertCockpitEstimate,
   runStandaloneScenario,
 } from './helpers/scenario-harness.mjs'
+import { startPersona, completeLstbSettled, pauseStromAtCommute } from './helpers/persona-steps.mjs'
 
 export async function runScenario13(browser, webOrigin) {
   console.log('\n--- Scenario 13: Erika Zimmermann (Widowed taxpayer / Verwitwet -> Gnadensplitting) ---')
-  const ctx = await newContextAtBreakpoint(browser, 'l')
-  const page = await ctx.newPage()
-  guardAgainst429(page, fail)
-
-  await registerAndOnboard(
-    page,
-    {
-      email: `du+erika.zimmermann.${Date.now()}@beispiel.de`,
-      firstName: 'Erika',
-      lastName: 'Zimmermann',
-      taxId: '78310294566',
-    },
-    webOrigin,
-    'scenario-13',
-  )
+  const { ctx, page } = await startPersona(browser, webOrigin, 'scenario-13', {
+    email: `du+erika.zimmermann.${Date.now()}@beispiel.de`, firstName: 'Erika', lastName: 'Zimmermann', taxId: '78310294566',
+  })
 
   await page.locator('[data-testid="cockpit-interview"]').click()
   // The Strom's basis page (ADR-0089).
   await answerBasis(page, { job: 'Angestellt', ausland: 'Nein', kinder: 'Nein', familienstand: 'Verwitwet' })
 
-  await waitForStromStep(page, 'lohnsteuerbescheinigung')
-  await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').fill('45000')
-  await page.locator('[data-testid="lstb-lohnsteuer"]').fill('6200')
-  await page.locator('[data-testid="lstb-sozialversicherung"]').fill('9200')
-  await page.locator('[data-testid="lstb-sozialversicherung"]').blur()
-  await page.waitForLoadState('networkidle').catch(() => {})
-  await page.locator('[data-testid="lstb-weiter"]').click()
+  await completeLstbSettled(page, { grossWage: '45000', wageTax: '6200', socialSecurity: '9200' })
 
-  await waitForStromStep(page, 'arbeitsweg')
-  await leaveStrom(page)
-  await page.locator('[data-testid="cockpit-kacheln"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.getByRole('tab', { name: 'Cockpit' }).click()
+  await pauseStromAtCommute(page)
   await assertCockpitEstimate(page, 'Scenario 13', { direction: 'Erstattung' })
   console.log('[Scenario 13] PASS: Widowed taxpayer interview and calculation verified.')
 

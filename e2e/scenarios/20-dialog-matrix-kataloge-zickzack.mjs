@@ -4,10 +4,7 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
-  newContextAtBreakpoint,
-  guardAgainst429,
   fail,
-  registerAndOnboard,
   selectTaxYear2025,
   answerBasis,
   leaveStrom,
@@ -15,24 +12,13 @@ import {
   openTile,
   runStandaloneScenario,
 } from './helpers/scenario-harness.mjs'
+import { startPersona, completeLstb } from './helpers/persona-steps.mjs'
 
 export async function runScenario20(browser, webOrigin) {
   console.log('\n--- Scenario 20: Dialog Matrix — Catalogs Zig-Zag, Follow-ups, Gates & Revisit Back-Navigation ---')
-  const ctx = await newContextAtBreakpoint(browser, 'l')
-  const page = await ctx.newPage()
-  guardAgainst429(page, fail)
-
-  await registerAndOnboard(
-    page,
-    {
-      email: `du+matrix.katalog.${Date.now()}@beispiel.de`,
-      firstName: 'Moritz',
-      lastName: 'Katalog',
-      taxId: '04452397686',
-    },
-    webOrigin,
-    'scenario-20',
-  )
+  const { ctx, page } = await startPersona(browser, webOrigin, 'scenario-20', {
+    email: `du+matrix.katalog.${Date.now()}@beispiel.de`, firstName: 'Moritz', lastName: 'Katalog', taxId: '04452397686',
+  })
 
   await selectTaxYear2025(page)
   await page.locator('[data-testid="cockpit-interview"]').click()
@@ -40,12 +26,7 @@ export async function runScenario20(browser, webOrigin) {
 
   // Complete LStB in the Strom (ADR-0089), then leave it: this scenario is about the catalogues
   // behind the cockpit tiles („Alles ansehen“), which keep their question-by-question walk.
-  await waitForStromStep(page, 'lohnsteuerbescheinigung')
-  await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').fill('62000')
-  await page.locator('[data-testid="lstb-lohnsteuer"]').fill('11500')
-  await page.locator('[data-testid="lstb-sozialversicherung"]').fill('12400')
-  await page.locator('[data-testid="lstb-weiter"]').click()
+  await completeLstb(page, { grossWage: '62000', wageTax: '11500', socialSecurity: '12400' })
   await waitForStromStep(page, 'arbeitsweg')
   await leaveStrom(page)
   await openTile(page, 'lebenslagen')

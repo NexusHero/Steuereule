@@ -134,7 +134,7 @@ function WorkdaysForm({
   const [error, setError] = useState(false)
 
   function toggle(tag: IsoWeekday) {
-    setWorkdays((prev) => (prev.includes(tag) ? prev.filter((x) => x !== tag) : [...prev, tag].sort()))
+    setWorkdays((prev) => (prev.includes(tag) ? prev.filter((x) => x !== tag) : [...prev, tag].sort((a, b) => a - b)))
   }
 
   const input = {
