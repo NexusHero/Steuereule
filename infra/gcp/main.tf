@@ -93,9 +93,18 @@ resource "google_sql_database_instance" "postgres" {
       }
     }
 
+    # Public IP without any authorized network: only the Cloud SQL connector of the Cloud Run
+    # service and job reaches it, IAM-authenticated and TLS-encrypted. Moving to a private IP needs
+    # a VPC and serverless egress, a change of its own.
     ip_configuration {
-      ipv4_enabled = true
+      ipv4_enabled = true # NOSONAR terraform:S6329 — no authorized_networks; reachable only via the IAM-checked Cloud SQL connector
       ssl_mode     = "ENCRYPTED_ONLY"
+    }
+
+    # Every connection attempt in the instance log, for the audit trail of tax data (Sonar S6258).
+    database_flags {
+      name  = "log_connections"
+      value = "on"
     }
 
     insights_config {
@@ -140,9 +149,18 @@ resource "google_sql_database_instance" "keystore" {
       }
     }
 
+    # Public IP without any authorized network: only the Cloud SQL connector of the Cloud Run
+    # service and job reaches it, IAM-authenticated and TLS-encrypted. Moving to a private IP needs
+    # a VPC and serverless egress, a change of its own.
     ip_configuration {
-      ipv4_enabled = true
+      ipv4_enabled = true # NOSONAR terraform:S6329 — no authorized_networks; reachable only via the IAM-checked Cloud SQL connector
       ssl_mode     = "ENCRYPTED_ONLY"
+    }
+
+    # Every connection attempt in the instance log, for the audit trail of tax data (Sonar S6258).
+    database_flags {
+      name  = "log_connections"
+      value = "on"
     }
   }
 
