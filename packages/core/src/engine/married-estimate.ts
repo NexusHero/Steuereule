@@ -97,6 +97,8 @@ export interface MarriedEstimateInput {
    * Sparer-Pauschbetrag and was not taxed at source (above the Freistellungsauftrag, a foreign bank).
    */
   readonly capitalIncomeEur?: number | undefined
+  /** Kapitalertragsteuer and Soli the banks withheld on that income: credited like the wage tax. */
+  readonly capitalTaxWithheldEur?: number | undefined
 }
 
 export interface SpouseChurchTax {
@@ -254,7 +256,7 @@ export function estimateMarriedCouple(input: MarriedEstimateInput): MarriedEstim
       ? { from: churchTax.withheld - churchTax.due.to, to: churchTax.withheld - churchTax.due.from }
       : { from: 0, to: 0 }
 
-  const credit = spouses.reduce((sum, s) => sum + s.credit, 0)
+  const credit = spouses.reduce((sum, s) => sum + s.credit, 0) + (input.capitalTaxWithheldEur ?? 0)
   return {
     kind: 'spanne',
     // What was deducted for both spouses together; it was a fixed 0 before (real-case test).

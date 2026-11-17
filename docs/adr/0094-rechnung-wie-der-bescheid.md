@@ -32,7 +32,7 @@ Beide Bescheide wurden vollständig abgeschrieben und nachgerechnet. Jede Summe 
    - Sonstige Vorsorge nur, soweit die Basisabsicherung den Höchstbetrag nicht ausschöpft. Der Höchstbetrag ist 1.900 € je Person mit Anspruch auf Zuschüsse zur Krankenversicherung und 2.800 € ohne; für Ehegatten addieren sich die Beträge.
    - Liegen die Zeilen für beide Ehegatten vor, ist die Vorsorge ein Betrag. Fehlen sie, bleibt die bisherige Spanne.
 3. **Rundung wie das Finanzamt:** Einnahmen ab, Werbungskosten und Anrechnungsbeträge auf. Die Entfernungspauschale wird auf volle Euro aufgerundet. Schweizer Lohn ist die Summe in CHF mal Kurs, abgerundet; die Abzugsteuer je Person aufgerundet.
-4. **Kapitalerträge ohne Steuerabzug** tragen 25 % (§ 32d Abs. 1 EStG), abgerundet auf volle Euro, nach Abzug des noch nicht verbrauchten Sparer-Pauschbetrags. Erträge mit Steuerabzug sind abgegolten und bleiben außen vor.
+4. **Kapitalerträge** über dem Sparer-Pauschbetrag tragen 25 % (§ 32d Abs. 1 EStG), abgerundet auf volle Euro. Der Pauschbetrag zählt einmal, gleich wo eine Bank ihn schon berücksichtigt hat. Einbehaltene Kapitalertragsteuer und ihr Solidaritätszuschlag werden angerechnet.
 5. **Solidaritätszuschlag** auf die tarifliche Steuer nach Kinderfreibeträgen und nach Steuerermäßigungen, centgenau, Bruchteile eines Cents entfallen. Auf die Steuer nach § 32d kommen 5,5 % ohne Freigrenze.
 6. **Kinderfreibetrag** je Monat ein Zwölftel (§ 32 Abs. 6 Satz 5 EStG).
 7. **Ein Punktwert ist erlaubt, wenn nichts mehr geschätzt wird.** Die Spanne bleibt die Form der Antwort; ihre Enden fallen zusammen, sobald alle Zeilen vorliegen.

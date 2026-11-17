@@ -306,6 +306,7 @@ export class TaxEstimateService {
       ? extraordinaryBurdenFromAnswers(a.answers) + extraordinaryBurdenFromAnswers(bAnswers)
       : 0
     const capitalRecord = this.capital ? await this.capital.findForUserAndYear(link.personAUserId, year) : null
+    const capital = flatRateCapital(capitalRecord, getTaxYearParameters(year).lumpSums.saverJoint)
     const amountOf = (value: string | null | undefined) => (value && /^\d+$/.test(value) ? Number(value) : 0)
     const estimate = estimateMarriedCouple({
       year,
@@ -313,7 +314,8 @@ export class TaxEstimateService {
       childAllowanceEur: kinder.reduce((sum, k) => sum + Math.round((childTaxAllowance(year) * claimMonths(k.geburtsdatum, year)) / 12), 0),
       // Anlage Kind Zeilen 27–29: what the parents pay for the children's basic insurance.
       childrenProvision: { healthBasicEur: kinder.reduce((sum, k) => sum + amountOf(k.healthBasicEur), 0), careEur: kinder.reduce((sum, k) => sum + amountOf(k.careEur), 0), otherEur: 0 },
-      capitalIncomeEur: flatRateCapitalIncome(capitalRecord, getTaxYearParameters(year).lumpSums.saverJoint),
+      capitalIncomeEur: capital.incomeEur,
+      capitalTaxWithheldEur: capital.withheldEur,
       a: a.spouse,
       b: b?.kind === 'ok' ? b.spouse : null,
       children: kinder.length,
@@ -534,15 +536,20 @@ function hasAnyLstbValue(record: WageTaxCertificateRecord): boolean {
 }
 
 /**
- * Capital income the return taxes at the flat rate (§ 32d Abs. 1 EStG): income on which no
- * Kapitalertragsteuer was withheld, less what is left of the Sparer-Pauschbetrag after the part the
- * banks already used. Income taxed at source is settled and stays out.
+ * Capital income the return taxes at the flat rate (§ 32d Abs. 1 EStG), as the Anlage KAP carries it:
+ * all capital income of the year less the Sparer-Pauschbetrag (§ 20 Abs. 9 EStG) — the allowance counts
+ * once, wherever a bank already used it. What the banks withheld is credited (§ 36 Abs. 2 Nr. 2 EStG).
  */
-function flatRateCapitalIncome(record: { kapitalertraege: string | null; sparerPauschbetrag: string | null; kapitalertragsteuer: string | null } | null, saverAllowance: number): number {
+function flatRateCapital(
+  record: { kapitalertraege: string | null; kapitalertragsteuer: string | null; solidaritaetszuschlag: string | null } | null,
+  saverAllowance: number,
+): { incomeEur: number; withheldEur: number } {
   const amount = (value: string | null) => (value && /^\d+$/.test(value) ? Number(value) : 0)
-  if (record === null || amount(record.kapitalertragsteuer) > 0) return 0
-  const unused = Math.max(0, saverAllowance - amount(record.sparerPauschbetrag))
-  return Math.max(0, amount(record.kapitalertraege) - unused)
+  if (record === null) return { incomeEur: 0, withheldEur: 0 }
+  return {
+    incomeEur: Math.max(0, amount(record.kapitalertraege) - saverAllowance),
+    withheldEur: amount(record.kapitalertragsteuer) + amount(record.solidaritaetszuschlag),
+  }
 }
 
 /** The German certificate of the year when it is complete and consistent; otherwise it stays out. */
