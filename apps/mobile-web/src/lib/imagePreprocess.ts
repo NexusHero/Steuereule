@@ -1,4 +1,5 @@
-// #450 D3 — preparing a phone photo of a Lohnsteuerbescheinigung for the on-device OCR.
+// #450 D3 — preparing a phone photo of a Lohnsteuerbescheinigung for the on-device OCR. The pages of a
+// scanned PDF take the same way (real-data run, step 3a).
 //
 // tesseract binarises with one global threshold and expects upright, level lines. A photo breaks
 // both: a shadow or a dim room leaves no single threshold that separates ink from paper, and a
@@ -273,11 +274,20 @@ const LSTB_LABELS = [
 ]
 const AMOUNT = /\d{1,3}(?:\.\d{3})*,\d{2}/g
 
-/** How much of an LStB a reading holds: distinct line labels, plus a little for amounts. */
+/** Small words every German, French or English document is full of; a page read upside down holds almost none. */
+const COMMON_WORDS = /(?<![\p{L}\d])(?:und|oder|der|die|das|den|dem|des|für|von|vom|mit|zur|zum|bei|auf|aus|ist|sind|wir|sie|ihr|ihre|nicht|im|in|an|am|per|total|betrag|datum|jahr|herr|frau|chf|eur|et|de|du|la|le|les|des|the|and|of|for)(?![\p{L}\d])/giu
+/** This many common words make a reading as good as three LStB lines. */
+const COMMON_WORDS_PER_POINT = 3
+
+/**
+ * How much of a document a reading holds: distinct LStB line labels, plus a little for amounts, plus the
+ * common words of any printed page (a Lohnausweis or a letter has no LStB line, yet reads well).
+ */
 export function textQuality(text: string): number {
   const labels = LSTB_LABELS.filter((re) => re.test(text)).length
   const amounts = Math.min(10, text.match(AMOUNT)?.length ?? 0)
-  return labels + amounts / 100
+  const words = Math.min(GOOD_READING, Math.floor((text.match(COMMON_WORDS)?.length ?? 0) / COMMON_WORDS_PER_POINT))
+  return labels + amounts / 100 + words
 }
 
 /** Flattened, upright and level: the image the first OCR pass gets, for one quarter turn. */
