@@ -1421,6 +1421,15 @@
         "ab": "Neuer Weg ab",
         "datumPlaceholder": "TT.MM.JJJJ",
         "datumFehler": "Bitte als TT.MM.JJJJ eingeben."
+      },
+      "kuerzeste": "Das ist die kürzeste Straßenverbindung (§ 9 Abs. 1 Nr. 4 EStG) – es zählt die kürzeste Strecke, nicht die gefahrene.",
+      "fahrtage": {
+        "label": "Tatsächlich aufgesucht an … Tagen (optional)",
+        "labelZweiter": "Zweiter Weg: Tatsächlich aufgesucht an … Tagen (optional)",
+        "placeholder": "leer = aus Arbeitstagen berechnet",
+        "pendlertage": "Pendlertage (so angegeben)",
+        "pendlertageZweiter": "Pendlertage zweiter Weg (so angegeben)",
+        "widerspruch": "Die Tage passen nicht: Mehr als die Arbeitstage im Zeitraum dieses Wegs (höchstens 366) sind nicht möglich."
       }
     }
   },

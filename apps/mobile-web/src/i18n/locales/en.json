@@ -1421,6 +1421,15 @@
         "ab": "New way from",
         "datumPlaceholder": "DD.MM.YYYY",
         "datumFehler": "Please enter as DD.MM.YYYY."
+      },
+      "kuerzeste": "This is the shortest road connection (§ 9 para. 1 no. 4 EStG) – the shortest route counts, not the one driven.",
+      "fahrtage": {
+        "label": "Actually visited on … days (optional)",
+        "labelZweiter": "Second way: actually visited on … days (optional)",
+        "placeholder": "empty = derived from working days",
+        "pendlertage": "Commute days (as stated)",
+        "pendlertageZweiter": "Commute days, second way (as stated)",
+        "widerspruch": "The days don't fit: more than the working days in this way's period (at most 366) are not possible."
       }
     }
   },

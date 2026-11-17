@@ -96,6 +96,40 @@ describe('ArbeitstageScreen', () => {
     expect(await screen.findByText('1.175 €')).toBeTruthy()
   })
 
+  it('stated travel days replace the derived commute days in the preview and are saved (ADR-0093)', async () => {
+    const bodies = recordCommutePuts()
+    const onDone = vi.fn()
+    renderWorkdays(onDone, 2025)
+    fireEvent.change(await screen.findByLabelText('Einfache Entfernung in km'), { target: { value: '15' } })
+    fireEvent.click(screen.getByText('Eigenes Auto'))
+    expect(await screen.findByText('1.175 €')).toBeTruthy()
+
+    fireEvent.change(screen.getByTestId('arbeitstage-fahrtage'), { target: { value: '100' } })
+    // 100 days x 15 km x 0,30 € = 450 €, not the 1.175 € of the derived days.
+    expect(await screen.findByText('450 €')).toBeTruthy()
+    expect(screen.queryByText('1.175 €')).toBeNull()
+    fireEvent.click(screen.getByTestId('arbeitstage-kuerzeste'))
+    fireEvent.click(screen.getByText('Weiter'))
+    await waitFor(() => expect(onDone).toHaveBeenCalledOnce())
+    expect(bodies.at(-1)).toMatchObject({ travelDays: 100, shortestRouteConfirmed: true, secondTravelDays: null })
+  })
+
+  it('withdraws the shortest-route confirmation when the km change, and refuses more days than the weekdays', async () => {
+    const bodies = recordCommutePuts()
+    const onDone = vi.fn()
+    renderWorkdays(onDone, 2025)
+    fireEvent.change(await screen.findByLabelText('Einfache Entfernung in km'), { target: { value: '15' } })
+    fireEvent.click(screen.getByTestId('arbeitstage-kuerzeste'))
+    fireEvent.change(screen.getByLabelText('Einfache Entfernung in km'), { target: { value: '16' } })
+    fireEvent.change(screen.getByTestId('arbeitstage-fahrtage'), { target: { value: '300' } })
+    expect(await screen.findByTestId('arbeitstage-fahrtage-widerspruch')).toBeTruthy()
+    fireEvent.change(screen.getByTestId('arbeitstage-fahrtage'), { target: { value: '0' } })
+    await waitFor(() => expect(screen.queryByTestId('arbeitstage-fahrtage-widerspruch')).toBeNull())
+    fireEvent.click(screen.getByText('Weiter'))
+    await waitFor(() => expect(onDone).toHaveBeenCalledOnce())
+    expect(bodies.at(-1)).toMatchObject({ oneWayKm: 16, travelDays: 0, shortestRouteConfirmed: null })
+  })
+
   it('saves a changed field when it is left, without moving on — closing the sheet keeps it (#443 AC 7)', async () => {
     const bodies: { oneWayKm: number | null }[] = []
     server.use(
@@ -186,6 +220,10 @@ describe('ArbeitstageScreen', () => {
         secondTransport: null,
         secondWorkplace: null,
         secondFrom: null,
+        travelDays: null,
+        secondTravelDays: null,
+        shortestRouteConfirmed: null,
+        secondShortestRouteConfirmed: null,
       },
     ])
   })
