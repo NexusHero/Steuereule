@@ -4,6 +4,7 @@ import { Card, Chip, type UiTheme } from '@steuereule/ui'
 import { QrMark } from '../../marks/QrMark'
 import type { DeviceQrState, AutoRetryStatus } from '../../auth/useDeviceQrCode'
 import type { Tr } from '../shared/tr'
+import { copyText } from '../../lib/clipboard'
 
 function formatCountdown(seconds: number): string {
   const clamped = Math.max(seconds, 0)
@@ -30,10 +31,7 @@ export function DeviceQrColumn({ t, tr, state, requestNewCode, screenBannerShown
   useEffect(() => () => clearTimeout(copiedTimer.current), [])
 
   function copyCode(code: string) {
-    try {
-      void navigator.clipboard?.writeText(code).catch(() => undefined)
-    } catch {
-    }
+    void copyText(code)
     setCopied(true)
     clearTimeout(copiedTimer.current)
     copiedTimer.current = setTimeout(() => setCopied(false), 1400)

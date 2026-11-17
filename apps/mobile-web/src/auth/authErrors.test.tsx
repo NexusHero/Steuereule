@@ -44,3 +44,11 @@ describe('authErrorKey', () => {
     expect(authErrorKey(undefined)).toBe('errGeneric')
   })
 })
+
+describe('authErrorKey with codes from the prototype', () => {
+  it('maps an inherited name to the generic message, not to a function', () => {
+    for (const code of ['toString', 'constructor', '__proto__', 'hasOwnProperty']) {
+      expect(authErrorKey({ code })).toBe('errGeneric')
+    }
+  })
+})

@@ -27,18 +27,18 @@ interface PasskeyClientSurface {
   ) => Promise<{ data?: T | null; error: AuthErrorLike | null }>
 }
 
-const CODE_TO_KEY: Record<string, string> = {
-  PREVIOUSLY_REGISTERED: 'sicherheit.passkey.errAlreadyRegistered',
-  REGISTRATION_CANCELLED: 'sicherheit.passkey.errCancelled',
-  AUTH_CANCELLED: 'sicherheit.passkey.errCancelled',
-}
+const CODE_TO_KEY: ReadonlyMap<string, string> = new Map([
+  ['PREVIOUSLY_REGISTERED', 'sicherheit.passkey.errAlreadyRegistered'],
+  ['REGISTRATION_CANCELLED', 'sicherheit.passkey.errCancelled'],
+  ['AUTH_CANCELLED', 'sicherheit.passkey.errCancelled'],
+])
 
 export function usePasskey(): UsePasskeyResult {
   const client = useAuthClient() as unknown as PasskeyClientSurface
   const { t } = useTranslation(APP_NS)
 
   function translate(code: string | undefined): string {
-    const key = code === undefined ? undefined : CODE_TO_KEY[code]
+    const key = code === undefined ? undefined : CODE_TO_KEY.get(code)
     return t(key ?? 'sicherheit.passkey.errGeneric')
   }
 
