@@ -401,6 +401,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
     let rejectedDrafts: RejectedDraft[] = []
     let noteChanges: AdvisorNoteChange[] = []
     let interviewChanges: InterviewAreaChange[] = []
+    let consentRequested = false
     let pendingTwoPaths: AdvisorTwoPathsProposal | null = null
     let choices: string[] = []
     let questionRound: AdvisorQuestionRound | null = null
@@ -474,6 +475,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
             if (Array.isArray(nodeUpdate.noteChanges)) {
               noteChanges = nodeUpdate.noteChanges
             }
+            if (nodeUpdate.consentRequested === true) consentRequested = true
             if (Array.isArray(nodeUpdate.interviewChanges)) {
               interviewChanges = nodeUpdate.interviewChanges
             }
@@ -588,8 +590,8 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
       ...(pendingTwoPaths ? { twoPaths: pendingTwoPaths } : {}),
       ...(sources.length > 0 ? { sources } : {}),
       ...(notStaged.length > 0 ? { notStaged } : {}),
-      // A field the consent would open was asked for: the chat shows the consent card (ADR-0091).
-      ...(request.personalDataConsent !== true && rejectedDrafts.some((draft) => draft.consentRequired) ? { personalDataConsentRequest: true as const } : {}),
+      // The owl asked for the consent, or for a field the consent would open: the chat shows the consent card (ADR-0091).
+      ...(request.personalDataConsent !== true && (consentRequested || rejectedDrafts.some((draft) => draft.consentRequired)) ? { personalDataConsentRequest: true as const } : {}),
       ...(notices.length > 0 ? { notices } : {}),
       ...(noteChanges.length > 0 ? { noteChanges } : {}),
       ...(interviewChanges.length > 0 ? { interviewChanges } : {}),

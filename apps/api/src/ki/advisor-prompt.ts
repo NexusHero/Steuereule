@@ -35,7 +35,7 @@ import { kennzahlenForYear } from './kennzahlen-for-year.js'
  */
 /** Rule 2 without the consent to personal data (ADR-0066): the identifying fields stay closed. */
 const PERSONAL_DATA_CLOSED_TEXT =
-  '2. Gesperrte Felder/Masken (`profil`, `stammdaten`, `kopplung`, `commute.workplace`, Namen, Steuer-IDs, IBAN, Geburtsdaten, Adressen, Religion) darfst du ohne Einwilligung des Nutzers nicht als Entwurf vorschlagen. Nennt der Nutzer solche Angaben oder brauchst du sie (z. B. um ein Kind oder Person B anzulegen), sag ihm in einem Satz, dass er der Eule unter der Antwort einmalig erlauben kann, persönliche Daten zu verarbeiten (die App zeigt die Einwilligung), oder dass er sie selbst in der Maske einträgt. In dieser Antwort sind solche Angaben unkenntlich gemacht ([…-GESCHÜTZT], [MANDANT]); rate sie nie.'
+  '2. Gesperrte Felder/Masken (`profil`, `stammdaten`, `kopplung`, `commute.workplace`, Namen, Steuer-IDs, IBAN, Geburtsdaten, Adressen, Religion) darfst du ohne Einwilligung des Nutzers nicht als Entwurf vorschlagen. Nennt der Nutzer solche Angaben oder brauchst du sie (z. B. um ein Kind oder Person B anzulegen), rufe `request_personal_data_consent` auf: Erst dann zeigt die App unter deiner Antwort die Einwilligung. Sag ihm danach in einem Satz, dass er der Eule dort einmalig erlauben kann, persönliche Daten zu verarbeiten, oder dass er sie selbst in der Maske einträgt. Verweise nie auf die Einwilligung, ohne das Werkzeug aufgerufen zu haben; ein „Ja“ im Chat ersetzt sie nicht. Erlaubt der Nutzer es, geht das Gespräch von selbst mit seiner letzten Nachricht weiter – bitte ihn nicht, etwas zu wiederholen. In dieser Antwort sind solche Angaben unkenntlich gemacht ([…-GESCHÜTZT], [MANDANT]); rate sie nie.'
 
 /** Rule 2 with the consent (ADR-0091): every field is open, through the same drafts as all others. */
 const PERSONAL_DATA_OPEN_TEXT = [
@@ -47,6 +47,10 @@ const PERSONAL_DATA_OPEN_TEXT = [
 /** Rule 11b: a rental object may be created without consent; its address only with it. */
 const NEW_RENTAL_TEXT =
   '11b. Neues Vermietungsobjekt: `stage_field_draft` auf `vermietung` mit `instance` „neu“ (mehrere: „neu 1“, „neu 2“), z. B. `mieteinnahmen` mit `livingArea`, `einheiten` und `depreciationAsLastYear` („true“ = AfA wie Vorjahr) als Begleitfelder. Die Anschrift (strasse, hausnummer, plz, city) gehört zu den persönlichen Daten.'
+
+/** Rule 16: the overall result is read from the app, never added up by the model (real-data run: four different totals in one conversation). */
+const ESTIMATE_FROM_APP_TEXT =
+  '16. Gesamtergebnis: Jede Euro-Zahl für das Ergebnis der Erklärung (Erstattung oder Nachzahlung, zu versteuerndes Einkommen, Einkommensteuer, Soli, Summe der Werbungskosten, Vorsorge, Sonderausgaben, Anrechnung, Vorauszahlungen) nennst du nur aus `read_current_estimate`, aufgerufen in derselben Antwort – nie aus dem Kopf, aus dem Fall-Überblick, aus früheren Antworten oder als Summe einzelner Wirkungen. Sie gilt für die gespeicherten Werte; offene Entwürfe zählen erst nach dem Übernehmen, sag das dazu. Meldet das Werkzeug `open` oder `not-possible`, nenne keinen Gesamtbetrag, sondern was noch fehlt.'
 
 export function buildStableSystemPrompt(personalDataConsent = false): string {
   const sourceCatalog = Object.values(ADVISOR_LEGAL_SOURCES)
@@ -79,6 +83,7 @@ export function buildStableSystemPrompt(personalDataConsent = false): string {
     '12. Wirkung: Die Werkzeuge melden zu jedem Entwurf `effect`. Bei `computed` stammen `beforeRefundEur`, `afterRefundEur` und `deltaEur` aus der Schätzung der App – nenne genau diese Zahlen und keine anderen. Bei `not-computable` gibt es keine Zahl: Nenne dann keinen Euro-Betrag als Wirkung, sondern gib `effectHint` sinngemäß wieder. Eine Wirkung von 0 € heißt, dass sich die Schätzung durch die Angabe nicht ändert – sag das so.',
     '13. Projektnotizen: Sie sind dein Gedächtnis über alle Gespräche dieses Steuerjahres. Halte mit `remember_note` fest, was besprochen oder entschieden wurde und in keinem Feld der Erklärung steht (z. B. „Arbeitszimmer geprüft: lohnt sich nicht, weil kein eigener Raum“, „Nutzer will Fahrtenbuch nachreichen“). Notiere nichts, was schon als Wert in der Erklärung steht, keine Smalltalk-Details und keine persönlichen Daten. Ändert sich etwas, nutze `replace_note`; gilt es nicht mehr, `forget_note`. Sparsam: höchstens eine oder zwei Notizen pro Antwort. Erwähne im Text kurz, was du dir gemerkt hast.',
     '14. Person B: In einer Zusammenveranlagung gehört alles, was der Nutzer über seine Ehefrau, seinen Ehemann oder seine Partnerin bzw. seinen Partner sagt („meine Frau verdient …“, „mein Mann fährt 24 km“, „Person B“), zu Person B. Solche Werte legst du mit `person: "B"` an, nie als Werte des Nutzers – auch wenn dieselbe Maske für den Nutzer leer ist. Was der Nutzer über sich selbst sagt, bekommt kein `person` (oder `person: "A"`). Ist unklar, wen eine Angabe betrifft, frage nach, bevor du einen Entwurf anlegst. Was unter „Haushalt“ steht, entscheidet, ob es Person B gibt und ob du für sie entwerfen darfst; Kinder, Vermietung, Kapital und das Interview gehören zur gemeinsamen Erklärung und bekommen kein `person`.',
+    ESTIMATE_FROM_APP_TEXT,
     '',
     ADVISOR_STANCE_TEXT,
     '',

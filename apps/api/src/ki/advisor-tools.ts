@@ -32,6 +32,8 @@ export const TOOL_LABELS: Readonly<Record<string, string>> = {
   replace_note: 'Aktualisiere eine Notiz …',
   forget_note: 'Entferne eine überholte Notiz …',
   mark_interview_area: 'Hake einen Bereich des Interviews ab …',
+  request_personal_data_consent: 'Bitte um die Einwilligung für persönliche Daten …',
+  read_current_estimate: 'Lese die aktuelle Schätzung der App …',
 }
 
 export interface RejectedDraft {
@@ -50,7 +52,10 @@ export const MAX_DRAFTS_PER_TURN = 8
 export const draftKey = (draft: Pick<AdvisorActionProposal, 'screen' | 'field' | 'instance' | 'person'>): string =>
   draftPersonKey(draft.person, `${draft.screen}|${draft.instance ?? ''}|${draft.field}`)
 
-export const FIGURE_KEYS = new Set(['beforeRefundEur', 'afterRefundEur', 'deltaEur', 'incomeTaxEur', 'soliEur', 'churchTaxEur', 'totalEur', 'savingEur', 'withoutBenefitsEur', 'separateTotalEur', 'jointTotalEur', 'progressionClauseUpToEur', 'flatRateTotalEur', 'personalTotalEur', 'limitEur', 'withinWindowEur', 'roomLeftEur', 'exemptionLimitEur', 'personalAllowanceEur', 'maintenanceAllowanceEur', 'taxableEur', 'totalTaxEur', 'priorTaxEur', 'taxEur', 'tradeTaxEur', 'baseAmountEur', 'incomeTaxCreditEur', 'netBurdenEur', 'priorYearLimitEur', 'currentYearLimitEur'])
+/** The euro figures of `read_current_estimate`; naming them in the answer is backed by the app's own estimate. */
+export const ESTIMATE_FIGURE_KEYS = ['fromEur', 'toEur', 'workExpensesEur', 'specialExpensesEur', 'creditedTaxEur', 'prepaymentsEur'] as const
+
+export const FIGURE_KEYS = new Set(['beforeRefundEur', 'afterRefundEur', 'deltaEur', 'incomeTaxEur', 'soliEur', 'churchTaxEur', 'totalEur', 'savingEur', 'withoutBenefitsEur', 'separateTotalEur', 'jointTotalEur', 'progressionClauseUpToEur', 'flatRateTotalEur', 'personalTotalEur', 'limitEur', 'withinWindowEur', 'roomLeftEur', 'exemptionLimitEur', 'personalAllowanceEur', 'maintenanceAllowanceEur', 'taxableEur', 'totalTaxEur', 'priorTaxEur', 'taxEur', 'tradeTaxEur', 'baseAmountEur', 'incomeTaxCreditEur', 'netBurdenEur', 'priorYearLimitEur', 'currentYearLimitEur', ...ESTIMATE_FIGURE_KEYS])
 
 /** Every euro figure a tool reported in this turn, wherever it sits in the tool's answer. */
 export function computedFiguresOf(messages: readonly BaseMessage[]): number[] {
@@ -220,6 +225,8 @@ export const TOOL_ARG_SCHEMAS = {
   replace_note: z.object({ note: z.string().min(1).max(60), text: z.string().min(1).max(400) }),
   forget_note: z.object({ note: z.string().min(1).max(60) }),
   mark_interview_area: z.object({ area: z.enum(INTERVIEW_AREA_IDS as [string, ...string[]]), status: z.enum(INTERVIEW_AREA_STATUSES) }),
+  request_personal_data_consent: z.object({}),
+  read_current_estimate: z.object({}),
 } as const
 
 export type ToolName = keyof typeof TOOL_ARG_SCHEMAS
@@ -265,6 +272,10 @@ export const TOOL_DESCRIPTIONS: Readonly<Record<ToolName, string>> = {
   forget_note: 'Entfernt eine vorhandene Projektnotiz (Angabe wie „Notiz 2“), wenn sie nicht mehr gilt.',
   mark_interview_area:
     'Hakt einen Bereich des Berater-Interviews für dieses Steuerjahr ab: `done`, wenn er gefragt und beantwortet ist; `not_applicable`, wenn der Nutzer nichts davon hat; `open`, wenn er doch wieder offen ist. Die App merkt sich den Stand über alle Gespräche. Schreibt nichts in die Akte.',
+  request_personal_data_consent:
+    'Lässt die App unter deiner Antwort die Einwilligung für persönliche Daten anzeigen („Erlauben“ / „Nicht erlauben“). Rufe es IMMER auf, wenn du ohne Einwilligung auf sie verweist: der Nutzer nennt Name, Geburtsdatum, Anschrift, Steuer-ID, IBAN, Religion, ein Kind oder Partnerin/Partner, oder du brauchst solche Angaben (z. B. um ein Kind oder Person B anzulegen). Ohne diesen Aufruf darfst du nicht sagen, dass die App die Einwilligung zeigt. Die Einwilligung gibt nur der Nutzer über die Karte; ein „Ja“ im Chat reicht nicht.',
+  read_current_estimate:
+    'Liest die aktuelle Schätzung der App für das Steuerjahr aus den gespeicherten Werten: Erstattung oder Nachzahlung (`result`, positiv = Erstattung), Werbungskosten, Vorsorgeaufwand, Sonderausgaben, zu versteuerndes Einkommen, Einkommensteuer, Solidaritätszuschlag, Anrechnung (Lohnsteuer, Quellensteuer) und Vorauszahlungen. `kind: open` nennt, was für eine Schätzung noch fehlt. Offene Entwürfe zählen erst mit, wenn der Nutzer sie übernommen hat. Schreibt nichts.',
 }
 
 /** JSON Schema keywords at least one provider's function-calling API rejects outright. */

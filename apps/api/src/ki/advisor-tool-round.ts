@@ -89,6 +89,11 @@ export const AdvisorGraphState = Annotation.Root({
     reducer: (_left, right) => right,
     default: () => [],
   }),
+  /** The owl asked the app to show the consent card for personal data (ADR-0091). */
+  consentRequested: Annotation<boolean>({
+    reducer: (left, right) => left || right,
+    default: () => false,
+  }),
   sources: Annotation<OwlSourceId[]>({
     reducer: (left, right) => [...new Set([...left, ...right])],
     default: () => [],
@@ -123,6 +128,7 @@ export async function runToolRound(
   const situationSuggestions = [...(state.situationSuggestions ?? [])]
   let noteChanges = state.noteChanges
   let interviewChanges = state.interviewChanges ?? []
+  let consentRequested = state.consentRequested ?? false
   const sources: OwlSourceId[] = []
 
   for (const tc of toolCalls) {
@@ -303,10 +309,15 @@ export async function runToolRound(
       const companionFields = companionEntries.length > 0 ? Object.fromEntries(companionEntries) : undefined
 
       // A new child is created from its draft: it needs the first name and the birth date (ADR-0091).
+      // Further drafts of the same answer for that child (Kindergeld, Kita …) ride on the draft that creates it.
       if (target.screen === 'kind' && isNewRecordId(instance)) {
-        const written = new Set([cleanFieldName, ...companionEntries.map(([name]) => name)])
+        const written = new Set([
+          cleanFieldName,
+          ...companionEntries.map(([name]) => name),
+          ...pendingActions.filter((existing) => existing.screen === 'kind' && existing.instance === instance).flatMap((existing) => [existing.field, ...Object.keys(existing.companionFields ?? {})]),
+        ])
         if (!written.has('firstName') || !written.has('geburtsdatum')) {
-          const error = 'NEW_RECORD_INCOMPLETE: Ein neues Kind lege ich mit Vorname (firstName) und Geburtsdatum (geburtsdatum) im selben Entwurf an, als Haupt- oder Begleitfeld. Frag den Nutzer danach.'
+          const error = 'NEW_RECORD_INCOMPLETE: Ein neues Kind lege ich mit Vorname (firstName) und Geburtsdatum (geburtsdatum) in einem Entwurf an, als Haupt- oder Begleitfeld; weitere Angaben zu diesem Kind folgen danach mit derselben `instance`. Frag den Nutzer nach Vorname und Geburtsdatum, wenn sie fehlen.'
           refuseDraft(label, screen, error)
           answer({ ok: false, error })
           continue
@@ -657,6 +668,30 @@ export async function runToolRound(
       continue
     }
 
+    if (tc.name === 'request_personal_data_consent') {
+      // The card is the app's: the answer carries it whatever the model writes next (ADR-0091).
+      if (consent) {
+        answer({ ok: true, alreadyGranted: true, note: 'Die Einwilligung liegt vor. Bereite die persönlichen Angaben als Entwürfe vor.' })
+        continue
+      }
+      consentRequested = true
+      answer({ ok: true, shown: true, note: 'Die App zeigt die Einwilligung unter deiner Antwort. Sag dem Nutzer in einem Satz, dass er dort „Erlauben“ wählen oder die Angaben selbst in der Maske eintragen kann. Danach geht das Gespräch von selbst weiter.' })
+      continue
+    }
+
+    if (tc.name === 'read_current_estimate') {
+      if (!request.readEstimate) {
+        answer({ ok: false, error: 'ESTIMATE_UNAVAILABLE: Die Schätzung der App ist hier nicht verfügbar. Nenne keinen Gesamtbetrag.' })
+        continue
+      }
+      try {
+        answer({ ok: true, estimate: await request.readEstimate() })
+      } catch {
+        answer({ ok: false, error: 'ESTIMATE_UNAVAILABLE: Die Schätzung lässt sich gerade nicht lesen. Nenne keinen Gesamtbetrag.' })
+      }
+      continue
+    }
+
     if (tc.name === 'plan_steps') {
       const args = parseArgs(TOOL_ARG_SCHEMAS.plan_steps)
       if (args === null) continue
@@ -692,6 +727,7 @@ export async function runToolRound(
     situationSuggestions,
     noteChanges,
     interviewChanges,
+    consentRequested,
     sources,
   }
 }

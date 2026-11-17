@@ -33,6 +33,8 @@ import {
   type AssignmentMember,
   type AdvisorAssessmentBrief,
   type AdvisorEngineInfo,
+  type AdvisorEstimateReading,
+  needsPersonalDataConsentOffer,
   type AdvisorEnginePort,
   type AdvisorFeedbackRating,
   type AdvisorFeedbackReason,
@@ -156,6 +158,27 @@ class PreviewRollback extends Error {}
 const midpoint = (state: Extract<TaxEstimateStatus, { kind: 'spanne' }>): number => Math.round((state.result.from + state.result.to) / 2)
 
 /** Turns the two estimates of a preview into what the draft card says; honest when there is no figure. */
+/** The app's estimate as the owl reads it (`read_current_estimate`): the amounts, never a name or an id. */
+export function estimateReadingFrom(status: TaxEstimateStatus): AdvisorEstimateReading {
+  if (status.kind === 'offen') return { kind: 'open', missing: status.missing }
+  if (status.kind === 'nicht-moeglich') return { kind: 'not-possible', reason: status.reason }
+  const range = (value: { readonly from: number; readonly to: number }) => ({ fromEur: value.from, toEur: value.to })
+  return {
+    kind: 'computed',
+    result: range(status.result),
+    workExpensesEur: status.werbungskosten,
+    provision: range(status.provision),
+    specialExpensesEur: status.specialExpenses,
+    taxableIncome: range(status.taxableIncome),
+    incomeTax: range(status.incomeTax),
+    solidaritySurcharge: range(status.solidaritaetszuschlag),
+    creditedTaxEur: status.anrechnung,
+    prepaymentsEur: status.prepayments ?? 0,
+    churchTaxOpen: status.churchTaxOpen,
+    jointAssessment: status.jointAssessment === true,
+  }
+}
+
 export function effectFromEstimates(states: { readonly before: TaxEstimateStatus; readonly after: TaxEstimateStatus } | null): AdvisorPreviewEffect {
   if (states === null) return { kind: 'not-computable', hint: 'Die Wirkung lässt sich gerade nicht berechnen.' }
   const { before, after } = states
@@ -499,6 +522,33 @@ export class AdvisorService {
     }
   }
 
+  /** The app's own estimate of the year for the owl to read (`read_current_estimate`): figures only. */
+  estimateReaderFor(userId: string, taxYear: number): (() => Promise<AdvisorEstimateReading>) | undefined {
+    const estimate = this.taxEstimate
+    if (!estimate) return undefined
+    return async () => estimateReadingFrom(await estimate.getState(userId, taxYear))
+  }
+
+  /**
+   * Whether this answer carries the consent card for personal data (ADR-0091). The app decides it
+   * from the turn (what was masked, what the user named, what the answer says), so the card never
+   * depends on the model having called a tool.
+   */
+  private async offersConsentCard(userId: string, taxYear: number, turn: PreparedAdvisorTurn, reply: string, askedByOwl: boolean, request?: AdvisorTurnRequest): Promise<boolean> {
+    if (turn.personalDataConsent === true) return false
+    const [records, household] = request ? [request.records, request.household] : await Promise.all([this.loadRecordHandles(userId, taxYear), this.advisorHousehold(userId, taxYear)])
+    return needsPersonalDataConsentOffer({
+      consent: false,
+      maskedPersonalData: turn.maskedPersonalData === true,
+      consentRequested: askedByOwl,
+      // An opening is the app's own placeholder, not the user's words.
+      message: turn.opening ? '' : turn.scrubbedUserText,
+      reply,
+      hasChildRecord: (records?.kind?.length ?? 0) > 0,
+      hasPersonB: (household?.personB ?? null) !== null,
+    })
+  }
+
   // ── Project notes (#481) ──────────────────────────────────────────────────────────────────
 
   async getSession(userId: string, taxYear: number, conversationId?: string): Promise<AdvisorSessionResponseDto> {
@@ -786,7 +836,8 @@ export class AdvisorService {
         if (enrichedMeta.twoPaths) {
           yield { event: 'twoPaths', data: toPublicMeta({ twoPaths: enrichedMeta.twoPaths }).twoPaths! }
         }
-        const assistant = await finish('complete', replyText, { ...enrichedMeta, ...rulesFollowUp.meta, ...(turn.maskedPersonalData ? { personalDataConsentRequest: true as const } : {}), engine: DETERMINISTIC_ENGINE })
+        const rulesOfferConsent = await this.offersConsentCard(userId, taxYear, turn, replyText, false)
+        const assistant = await finish('complete', replyText, { ...enrichedMeta, ...rulesFollowUp.meta, ...(rulesOfferConsent ? { personalDataConsentRequest: true as const } : {}), engine: DETERMINISTIC_ENGINE })
         yield doneWith((await this.applyTurbo(userId, taxYear, runId, dto, assistant)) ?? assistant, 'deterministic_fallback')
         return
       }
@@ -811,6 +862,7 @@ export class AdvisorService {
         records: await this.loadRecordHandles(userId, taxYear),
         household: await this.advisorHousehold(userId, taxYear),
         previewEffect: this.previewEffectFor(userId, taxYear),
+        readEstimate: this.estimateReaderFor(userId, taxYear),
         notes: buildNoteHandles(await this.advisorRepo.listNotes(userId, taxYear)),
       }
       const events = turn.opening
@@ -890,15 +942,18 @@ export class AdvisorService {
                 previous: turn.previousAnswer,
                 subjectLabels: await this.childLabels(userId, taxYear, turn.personalDataConsent === true),
               })
+          // The consent card is the app's decision, not the model's (ADR-0091): see `needsPersonalDataConsentOffer`.
+          const { personalDataConsentRequest: askedByOwl, ...metaWithoutConsent } = metaWithoutNotes
+          const offerConsent = await this.offersConsentCard(userId, taxYear, turn, turnResult.replyText, askedByOwl === true, request)
           const assistant = await finish(
             'complete',
             turnResult.replyText + heldNote + gapFollowUp.text,
             {
-              ...metaWithoutNotes,
+              ...metaWithoutConsent,
               ...gapFollowUp.meta,
               ...(noteChanges.length > 0 ? { noteChanges } : {}),
               ...(turn.opening ? { opening: turn.opening.marker } : {}),
-              ...(turn.maskedPersonalData ? { personalDataConsentRequest: true as const } : {}),
+              ...(offerConsent ? { personalDataConsentRequest: true as const } : {}),
               engine,
             },
             turnResult.usage,
