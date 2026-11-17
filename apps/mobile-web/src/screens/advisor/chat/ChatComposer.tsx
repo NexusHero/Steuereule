@@ -67,7 +67,7 @@ export function ChatComposer({
   // The API refuses a longer message; the composer says so before it is sent (real-data run, finding 5).
   const length = value.trim().length
   const tooLong = length > ADVISOR_MESSAGE_MAX_CHARS
-  const counted = { count: length.toLocaleString(i18n.language), max: ADVISOR_MESSAGE_MAX_CHARS.toLocaleString(i18n.language) }
+  const counted = { used: length.toLocaleString(i18n.language), max: ADVISOR_MESSAGE_MAX_CHARS.toLocaleString(i18n.language) }
   const lengthNote = tooLong ? (
     <Text style={styles.tooLong} role="alert" testID="advisor-chat-too-long">
       {tr('advisor.chat.length.tooLong', counted)}

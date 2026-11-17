@@ -2193,8 +2193,8 @@
       "turnFailed": "Die Antwort der Eule ist unterwegs abgebrochen.",
       "requestRefused": "Die Eule konnte deine Nachricht nicht annehmen. Bitte versuche es noch einmal.",
       "length": {
-        "counter": "{{count}} von {{max}} Zeichen",
-        "tooLong": "Deine Nachricht ist zu lang ({{count}} von {{max}} Zeichen). Teile sie bitte auf."
+        "counter": "{{used}} von {{max}} Zeichen",
+        "tooLong": "Deine Nachricht ist zu lang ({{used}} von {{max}} Zeichen). Teile sie bitte auf."
       },
       "applyFailed": "Der Vorschlag konnte nicht übernommen werden. Trag den Wert bitte direkt in der Maske ein.",
       "reconnecting": "Verbindung wird wiederhergestellt …",

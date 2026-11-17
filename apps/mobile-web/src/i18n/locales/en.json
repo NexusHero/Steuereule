@@ -2193,8 +2193,8 @@
       "turnFailed": "The owl’s answer broke off on the way.",
       "requestRefused": "The owl could not accept your message. Please try again.",
       "length": {
-        "counter": "{{count}} of {{max}} characters",
-        "tooLong": "Your message is too long ({{count}} of {{max}} characters). Please split it up."
+        "counter": "{{used}} of {{max}} characters",
+        "tooLong": "Your message is too long ({{used}} of {{max}} characters). Please split it up."
       },
       "applyFailed": "The proposal could not be applied. Please enter the value in the screen itself.",
       "reconnecting": "Restoring the connection …",
