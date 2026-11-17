@@ -1,7 +1,6 @@
 {
   "testIds": [
     "${testIDPrefix}-delta",
-    "${testIDPrefix}-dismissed-badge",
     "${testIDPrefix}-inspect-mask-btn",
     "${testIDPrefix}-kirchensteuersatz",
     "${testIDPrefix}-pauschbetrag-badge",
@@ -39,7 +38,6 @@
     "card-clarify-with-eule",
     "cockpit-berater",
     "cockpit-booster-ueberschrift",
-    "cockpit-empty-eulen-modus",
     "cockpit-eule-banner",
     "cockpit-eule-banner-dismiss",
     "cockpit-eulen-modus",

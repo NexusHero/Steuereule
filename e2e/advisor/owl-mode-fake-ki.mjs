@@ -4,6 +4,7 @@
 //
 //   Row A — no write without a click: a draft appears, and no PUT/apply request leaves the browser.
 //   Row B — apply → undo: the value in the mask is exactly the previous one again.
+//   Row B2 — „Verwerfen“ on a card: nothing is written, the card says „Verworfen“, the stage drops it.
 //   Row C — „Alle übernehmen“: two drafts are applied in one go.
 //   Row D — stale conflict: the user changed the field after the draft → conflict banner; nothing
 //           written until „Trotzdem übernehmen“.
@@ -99,6 +100,17 @@ async function main() {
     const afterUndo = await commute(user.api)
     if (afterUndo.oneWayKm !== 20) fail(`Row B: undo must restore exactly 20 km, got ${afterUndo.oneWayKm}`)
     console.log(`[${TAG}] ✅ Row B — apply wrote 38 km, undo restored exactly 20 km`)
+
+    // Row B2 — a draft the user refuses on its card: no write, the card is marked, the stage is empty again.
+    await ask(page, 'Mein Arbeitsweg ist länger geworden, jetzt 38 km')
+    await page.locator('[data-testid^="draft-card-"]', { hasText: '→ 38' }).first().waitFor({ state: 'visible', timeout: 15_000 })
+    const writesBeforeDismiss = writes.length
+    await page.locator('[data-testid="advisor-action-dismiss-btn"]:visible').last().click()
+    await page.locator('[data-testid="advisor-action-dismissed-badge"]:visible').last().waitFor({ state: 'visible', timeout: 10_000 })
+    await page.locator('[data-testid^="draft-card-"]:visible', { hasText: '→ 38' }).waitFor({ state: 'detached', timeout: 10_000 })
+    if (writes.slice(writesBeforeDismiss).some((w) => w.includes('/apply'))) fail(`Row B2: dismissing must not apply, saw ${writes.slice(writesBeforeDismiss).join(', ')}`)
+    if ((await commute(user.api)).oneWayKm !== 20) fail('Row B2: a dismissed draft must leave 20 km')
+    console.log(`[${TAG}] ✅ Row B2 — „Verwerfen“ wrote nothing, the card reads „Verworfen“, the stage dropped it`)
 
     // Row C — „Alle übernehmen“ with two drafts from two turns (the engine stages one draft per turn).
     await ask(page, 'Mein Arbeitsweg ist länger geworden, jetzt 38 km')
