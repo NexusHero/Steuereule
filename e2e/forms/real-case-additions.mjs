@@ -8,8 +8,10 @@
 //   Row C — cross-border: the official annual average rate is offered and saved.
 //   Row D — prepayments: the catalogue entry takes „Ja“ with the amount (and „Nein“ through the API).
 //   Row E — printout check: a value too long for its box is named before payment.
+//   Row E2 — chat: the composer counts near 8,000 characters and names a too-long message.
 //   Row F — chat: a premium letter whose name fits neither partner asks „whose?“; Person A answers.
 //   Row G — Person B's religion is stored only with consent (ADR-0090).
+//   Row H0 — the LStB lines are summed by the app; Zeile 24 is asked for once 25/26 are filled (ADR-0093).
 //   Row H — the LStB's Zeile 24 (employer subsidies) is saved (ADR-0090).
 //   Rows I–N — whose a document is (ADR-0092):
 //   Row I — a family statement in the chat: „Für wen?“, only that person's lines, „auch für Anna?“.
@@ -79,6 +81,13 @@ async function main() {
     await page.locator(tid('arbeitsweg-zweiter-km')).fill('80')
     await page.locator(tid('arbeitsweg-zweiter-transport-pkw')).click()
     await page.locator(tid('arbeitsweg-zweiter-ort')).fill('4058 Basel, Beispielstrasse 1')
+    // Stated travel days (ADR-0093): more than the working days of the way's period is a contradiction;
+    // a number that fits is kept, with the confirmation that the distance is the shortest road.
+    await page.locator(tid('arbeitstage-fahrtage')).fill('400')
+    await visible(page, 'arbeitstage-fahrtage-widerspruch', 'Row A')
+    await page.locator(tid('arbeitstage-fahrtage')).fill('150')
+    await page.locator(tid('arbeitstage-fahrtage-widerspruch')).waitFor({ state: 'detached', timeout: 10_000 }).catch(() => fail('Row A: 150 travel days fit the first way and should not contradict'))
+    await page.locator(tid('arbeitstage-kuerzeste')).click()
     await page.locator(tid('werbungskosten-arbeitsmittel')).fill('110')
     await page.locator(tid('werbungskosten-arbeitsmittel-art')).fill('Berufskleidung')
     await page.locator(tid('werbungskosten-kontofuehrung')).fill('16')
@@ -90,7 +99,7 @@ async function main() {
     await page.locator(tid('arbeitstage-weiter')).click()
     await savedCommute
     const commute = (await call(api, 'GET', `/v1/steuerjahre/${YEAR}/arbeitsweg`)).inputs
-    const wanted = { oneWayKm: 12, periodTo: '31.10.2025', secondOneWayKm: 80, secondTransport: 'pkw', secondFrom: '01.11.2025', workEquipmentEur: 110, accountFeesEur: 16, professionalBodiesEur: 240, otherWorkExpensesEur: 35 }
+    const wanted = { travelDays: 150, shortestRouteConfirmed: true, oneWayKm: 12, periodTo: '31.10.2025', secondOneWayKm: 80, secondTransport: 'pkw', secondFrom: '01.11.2025', workEquipmentEur: 110, accountFeesEur: 16, professionalBodiesEur: 240, otherWorkExpensesEur: 35 }
     for (const [key, value] of Object.entries(wanted)) {
       if (commute?.[key] !== value) fail(`Row A: ${key} should be ${value}, got ${JSON.stringify(commute?.[key])}`)
     }
@@ -182,6 +191,17 @@ async function main() {
     await page.unroute('**/ausdruck/pruefung*')
     console.log(`[${TAG}] ✅ Row E — a too-long entry is named before payment`)
 
+    // Row E2 — a long chat message (ADR-0091 addendum): the composer counts near the limit of 8,000
+    // characters and names a message beyond it instead of sending it.
+    await page.goto(`${webOrigin}/app/eule`, { waitUntil: 'networkidle' })
+    await visible(page, 'advisor-chat-input', 'Row E2')
+    await page.locator(tid('advisor-chat-input')).fill('a'.repeat(7400))
+    await visible(page, 'advisor-chat-length', 'Row E2')
+    await page.locator(tid('advisor-chat-input')).fill('a'.repeat(8100))
+    await visible(page, 'advisor-chat-too-long', 'Row E2')
+    await page.locator(tid('advisor-chat-input')).fill('')
+    console.log(`[${TAG}] ✅ Row E2 — the composer counts near the limit and names a message that is too long`)
+
     // Row F — a letter whose name fits neither partner: the chat asks whose it is.
     await call(api, 'PUT', `/v1/steuerjahre/${YEAR}/kopplung`, { filingType: 'zusammen' })
     await call(api, 'PUT', `/v1/steuerjahre/${YEAR}/kopplung/person-b`, { firstName: 'Anna', lastName: 'Beispiel' })
@@ -222,6 +242,32 @@ async function main() {
       15_000,
     )
     console.log(`[${TAG}] ✅ Row G — Person B's religion is saved after consent`)
+
+    // Row H0 — the LStB lines 23, 25–27 and 5 (ADR-0093): the app adds them up, and Zeile 24 is asked for
+    // as soon as 25 or 26 is filled.
+    await page.goto(`${webOrigin}/app/steuerjahr/${YEAR}/lstb`, { waitUntil: 'networkidle' })
+    await visible(page, 'lstb-zeilen-rvArbeitnehmer', 'Row H0')
+    for (const [line, value] of [['rvArbeitnehmer', '3000'], ['kvArbeitnehmer', '2500'], ['pvArbeitnehmer', '500'], ['avArbeitnehmer', '400']]) {
+      await page.locator(tid(`lstb-zeilen-${line}`)).fill(value)
+      await page.locator(tid(`lstb-zeilen-${line}`)).blur()
+    }
+    await page.locator(tid('lstb-zeilen-solidaritaetszuschlag')).fill('12,34')
+    await page.locator(tid('lstb-zeilen-solidaritaetszuschlag')).blur()
+    await until(
+      async () => {
+        const lines = await call(api, 'GET', `/v1/steuerjahre/${YEAR}/lstb-zeilen`)
+        return `${lines.sozialversicherung}/${lines.solidaritaetszuschlag}`
+      },
+      '6400/12.34',
+      'Row H0: the lines should be saved and summed by the app',
+      15_000,
+    )
+    await visible(page, 'lstb-zeilen-summe', 'Row H0')
+    await visible(page, 'lstb-zuschuesse-offen', 'Row H0')
+    // The rows below read documents onto an empty certificate: take the lines out again.
+    await call(api, 'PUT', `/v1/steuerjahre/${YEAR}/lstb-zeilen`, { rvArbeitnehmer: null, kvArbeitnehmer: null, pvArbeitnehmer: null, avArbeitnehmer: null, solidaritaetszuschlag: null })
+    await call(api, 'PUT', `/v1/steuerjahre/${YEAR}/lstb/sozialversicherung`, { kind: 'offen' })
+    console.log(`[${TAG}] ✅ Row H0 — the LStB lines are summed by the app and Zeile 24 is asked for`)
 
     // Row H — LStB Zeile 24, the employer's tax-free subsidies (ADR-0090).
     await page.goto(`${webOrigin}/app/steuerjahr/${YEAR}/lstb`, { waitUntil: 'networkidle' })
