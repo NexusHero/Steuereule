@@ -37,7 +37,7 @@ import {
   type SendAdvisorMessageResponseDto,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
-import { captureReceipt, type CapturePhase, type CaptureResult } from '../../lib/receipts/captureReceipt'
+import { captureReceipt, recognisedWithoutValues, type CapturePhase, type CaptureResult } from '../../lib/receipts/captureReceipt'
 import { createHolderFromDocument, detailsFromDocument, takeNameIntoProfile, type NewHolderDetails } from '../../lib/receipts/documentAssignment'
 import { createFrameBatcher } from './chat/frameBatcher'
 import { followRun, type RunFrame } from './chat/runStream'
@@ -885,6 +885,10 @@ export function CopilotBridgeProvider({
         // A receipt that is read but records nothing (a cosmetic operation, an invoice counted already) says why.
         if (result.response.stagedAction == null && result.response.parsed.vendorCategory === 'krankheitskosten') {
           setReceiptNotice(result.response.parsed.summary)
+        }
+        // A recognised document that left no draft says so; a reason of its own (below, above) replaces this.
+        if (recognisedWithoutValues(result.kind, result.response) && !owned?.personNotRecordable) {
+          setReceiptNotice(result.kind === 'chKrankenkasse' ? result.response.parsed.summary : tr('advisor.chat.receiptNoValues'))
         }
         const yearConflict = result.response.lstb?.yearConflict ?? certificate?.yearConflict ?? null
         if (yearConflict !== null) {

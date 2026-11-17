@@ -37,7 +37,8 @@ function looksLikeChSalaryCertificateForm(text: string): boolean {
   const folded = fold(text)
   const titles = CH_CERTIFICATE_TITLES.filter((re) => re.test(folded)).length
   const rows = CH_CERTIFICATE_ROWS.filter((re) => re.test(folded)).length
-  return (titles >= 3 && rows >= 1) || (titles >= 2 && rows >= 2) || (titles >= 1 && rows >= 3)
+  // The gross total (Ziffer 8) is the form's own phrase: with two titles it is enough.
+  return (titles >= 2 && CH_CERTIFICATE_ROWS[0]!.test(folded)) || (titles >= 3 && rows >= 1) || (titles >= 2 && rows >= 2) || (titles >= 1 && rows >= 3)
 }
 
 /**

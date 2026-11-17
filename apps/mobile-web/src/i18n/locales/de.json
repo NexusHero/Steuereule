@@ -2302,7 +2302,8 @@
       "lstbWhose": "Der Name auf dieser Lohnsteuerbescheinigung passt zu keiner Person in deiner Erklärung. Wessen Bescheinigung ist das? Es wurde noch nichts übernommen.",
       "lstbPersonBOwnAccount": "Das ist die Lohnsteuerbescheinigung von Person B. Person B hat ein eigenes Konto und lädt sie dort hoch; hier wurde nichts übernommen.",
       "certificatePersonBOwnAccount": "Das ist der Lohnausweis von Person B. Person B hat ein eigenes Konto und lädt ihn dort hoch; hier wurde nichts übernommen.",
-      "receiptYearConflict": "Diese Lohnsteuerbescheinigung gehört zum Steuerjahr {{documentYear}}, du bist gerade in {{activeYear}}. Wechsle oben ins Jahr {{documentYear}} und lade sie dort hoch — es wurde nichts übernommen.",
+      "receiptYearConflict": "Dieser Beleg gehört zum Steuerjahr {{documentYear}}, du bist gerade in {{activeYear}}. Wechsle oben ins Jahr {{documentYear}} und lade ihn dort hoch — es wurde nichts übernommen.",
+      "receiptNoValues": "Der Beleg wurde erkannt, aber ich konnte keine Werte daraus lesen. Trag sie bitte in der Maske ein oder lade ein schärferes Bild hoch.",
       "receiptProgress": {
         "uploading": "Beleg wird verschlüsselt gespeichert …",
         "detecting": "Dokument wird auf dem Gerät erkannt …",

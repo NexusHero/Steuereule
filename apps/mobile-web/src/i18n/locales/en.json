@@ -2302,7 +2302,8 @@
       "lstbWhose": "The name on this wage tax certificate fits nobody in your return. Whose certificate is it? Nothing was taken over yet.",
       "lstbPersonBOwnAccount": "This is Person B’s wage tax certificate. Person B has an own account and uploads it there; nothing was taken over here.",
       "certificatePersonBOwnAccount": "This is Person B’s salary certificate. Person B has an own account and uploads it there; nothing was taken over here.",
-      "receiptYearConflict": "This wage tax statement belongs to tax year {{documentYear}}, you are in {{activeYear}}. Switch to {{documentYear}} above and upload it there — nothing was taken over.",
+      "receiptYearConflict": "This document belongs to tax year {{documentYear}}, you are in {{activeYear}}. Switch to {{documentYear}} above and upload it there — nothing was taken over.",
+      "receiptNoValues": "The document was recognised, but I could not read any values from it. Please enter them in the form or upload a sharper image.",
       "receiptProgress": {
         "uploading": "Storing the receipt encrypted …",
         "detecting": "Recognising the document on your device …",

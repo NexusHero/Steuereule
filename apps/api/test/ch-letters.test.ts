@@ -89,6 +89,25 @@ describe('the pension fund statement', () => {
     expect(res.chLetter).toMatchObject({ yearConflict: { documentYear: 2024, activeYear: YEAR }, stagedActionIds: [] })
   })
 
+  // Real-data run: people upload the fund's yearly certificate (Vorsorgeausweis). It gives the employer's
+  // yearly total for Zeile 20, as a figure at a key date and without the mandatory part.
+  it('drafts the employer total of a yearly certificate, to be checked, and says what it does not hold', async () => {
+    const { pension } = await setUp()
+    const certificate = [
+      'Pensionskasse Beispiel',
+      `Vorsorgeausweis per 01.04.${YEAR} Muster Anna`,
+      "Sparbeitrag Arbeitnehmer 6.00 500.00 6'000.00",
+      "Gesamtbeitrag Arbeitnehmer 6.50 540.00 6'480.00",
+      "Gesamtbeitrag Arbeitgeber 8.50 700.00 8'400.00",
+    ].join('\n')
+    const res = await parse(pension, certificate)
+    expect(res.chLetter.person).toBe('B')
+    expect(res.chLetter.fields).toEqual([{ field: 'pkArbeitgeberGesamtChf', value: 8400, status: 'pruefen', reason: null }])
+    expect(res.assistantMessage?.meta?.actions?.map((d) => [d.field, d.newValue])).toEqual([['pkArbeitgeberGesamtChf', '8400']])
+    expect(res.assistantMessage?.content).toContain('Vorsorgeausweis')
+    expect(res.assistantMessage?.content).toContain('obligatorischen Anteil')
+  })
+
   it('asks whose it is when the name fits neither person', async () => {
     const { pension } = await setUp()
     expect((await parse(pension, pensionTable('Someone Else'))).chLetter).toMatchObject({ person: null, personUnclear: true, stagedActionIds: [] })

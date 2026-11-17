@@ -103,6 +103,8 @@ export interface AdvisorChatPanelProps {
   readonly receiptNotice?: string | null | undefined
   /** „Für wen?“ and „für: … · auch für …?“ of the last document (ADR-0092), shown under the upload. */
   readonly receiptAssignment?: ReactNode | undefined
+  /** The last document still waits for an answer („Für wen?“): the next file of a selection is not started yet. */
+  readonly receiptQueuePaused?: boolean | undefined
   /** More ways to hand the owl a document, shown in the attach panel (e.g. one already in the Belege inbox). */
   readonly receiptSources?: ReactNode | undefined
   readonly isParsingReceipt?: boolean | undefined
@@ -194,6 +196,7 @@ export function AdvisorChatPanel({
   receiptProgress = null,
   receiptNotice = null,
   receiptAssignment,
+  receiptQueuePaused = false,
   receiptSources,
   isParsingReceipt = false,
   compact = false,
@@ -211,13 +214,14 @@ export function AdvisorChatPanel({
   const readingRef = useRef(false)
   useEffect(() => {
     const next = fileQueue[0]
-    if (next === undefined || readingRef.current || isParsingReceipt || !onAttachReceiptFile) return
+    // A file whose „Für wen?“ is open has not been read yet: starting the next one would wipe the question.
+    if (next === undefined || readingRef.current || isParsingReceipt || receiptQueuePaused || !onAttachReceiptFile) return
     readingRef.current = true
     void Promise.resolve(onAttachReceiptFile(next)).finally(() => {
       readingRef.current = false
       setFileQueue((prev) => prev.slice(1))
     })
-  }, [fileQueue, isParsingReceipt, onAttachReceiptFile])
+  }, [fileQueue, isParsingReceipt, receiptQueuePaused, onAttachReceiptFile])
   const [receiptTextOpen, setReceiptTextOpen] = useState(false)
   const [receiptFileName, setReceiptFileName] = useState('beleg.pdf')
   const [receiptRawText, setReceiptRawText] = useState('')

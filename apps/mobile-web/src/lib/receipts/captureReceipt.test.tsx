@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { ParseReceiptDto } from '@steuereule/api-client'
-import { captureReceipt, type CaptureReceiptDeps } from './captureReceipt'
+import { captureReceipt, recognisedWithoutValues, type CaptureReceiptDeps } from './captureReceipt'
 
 const LSTB_TEXT = 'Ausdruck der elektronischen Lohnsteuerbescheinigung für 2025\n3. Bruttoarbeitslohn 48.000,00'
 
@@ -99,5 +99,22 @@ describe('captureReceipt — the one receipt pipeline', () => {
     })
     expect(await captureReceipt(pdf, { taxYear: 2025, deps: d })).toEqual({ ok: false, failure: 'read_failed' })
     expect(d.parse).not.toHaveBeenCalled()
+  })
+})
+
+// Real-data run: Swiss documents were recognised, yet nothing came of them and the chat stayed silent.
+describe('recognisedWithoutValues', () => {
+  const response = (stagedAction: unknown, question: unknown = null) =>
+    ({ stagedAction, assignment: question === null ? undefined : { holder: null, question, alsoFor: [] } }) as never
+
+  it('is true for a recognised Swiss document that staged no draft', () => {
+    expect(recognisedWithoutValues('chPensionskasse', response(null))).toBe(true)
+    expect(recognisedWithoutValues('chPraemien', response(null))).toBe(true)
+  })
+
+  it('is false when drafts wait, when the user is still asked whose it is, and for a generic receipt', () => {
+    expect(recognisedWithoutValues('chPensionskasse', response({ actionId: 'a' }))).toBe(false)
+    expect(recognisedWithoutValues('chLohnausweis', response(null, { reason: 'unknown' }))).toBe(false)
+    expect(recognisedWithoutValues('auto', response(null))).toBe(false)
   })
 })
