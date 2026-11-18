@@ -2488,7 +2488,7 @@
             }
           }
         },
-        "summary": "The chat models the user may pick, with Gründlich/Max and their measured cost and wait (ADR-0094)",
+        "summary": "The chat models the user may pick, with Gründlich/Max and their measured cost and wait (ADR-0096)",
         "tags": [
           "eulen-modus"
         ]
@@ -2541,7 +2541,7 @@
             "description": "No such conversation in this tax year."
           }
         },
-        "summary": "Pick the chat model of a conversation; provider and model null go back to the standard (ADR-0094)",
+        "summary": "Pick the chat model of a conversation; provider and model null go back to the standard (ADR-0096)",
         "tags": [
           "eulen-modus"
         ]
@@ -10770,7 +10770,7 @@
           },
           "chatModel": {
             "nullable": true,
-            "description": "The chat model picked for this conversation (ADR-0094); null = the standard model.",
+            "description": "The chat model picked for this conversation (ADR-0096); null = the standard model.",
             "type": "object",
             "allOf": [
               {
@@ -11218,7 +11218,7 @@
               "gruendlich",
               "max"
             ],
-            "description": "Gründlich (the standard) or Max for this one message (ADR-0094)."
+            "description": "Gründlich (the standard) or Max for this one message (ADR-0096)."
           },
           "quickAction": {
             "type": "string",
