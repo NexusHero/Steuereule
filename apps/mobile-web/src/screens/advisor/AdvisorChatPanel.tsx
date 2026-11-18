@@ -116,6 +116,10 @@ export interface AdvisorChatPanelProps {
   readonly receiptNotice?: string | null | undefined
   /** „Für wen?“ and „für: … · auch für …?“ of the last document (ADR-0092), shown under the upload. */
   readonly receiptAssignment?: ReactNode | undefined
+  /** One line per file of the last selection (ADR-0097 §3), shown with the notice. */
+  readonly receiptResults?: ReactNode | undefined
+  /** The user picks files while none is queued: a new selection starts, the lines of the last one go. */
+  readonly onReceiptBatchStart?: (() => void) | undefined
   /** The last document still waits for an answer („Für wen?“): the next file of a selection is not started yet. */
   readonly receiptQueuePaused?: boolean | undefined
   /** More ways to hand the owl a document, shown in the attach panel (e.g. one already in the Belege inbox). */
@@ -218,6 +222,8 @@ export function AdvisorChatPanel({
   receiptProgress = null,
   receiptNotice = null,
   receiptAssignment,
+  receiptResults,
+  onReceiptBatchStart,
   receiptQueuePaused = false,
   receiptSources,
   isParsingReceipt = false,
@@ -765,12 +771,14 @@ export function AdvisorChatPanel({
           {onAttachReceiptFile ? (
             <ReceiptPickerButton
               multiple
-              onFile={(file) =>
+              onFile={(file) => {
+                // Several files of one selection arrive one after another before the queue renders.
+                if (fileQueue.length === 0 && !readingRef.current) onReceiptBatchStart?.()
                 setFileQueue((prev) => {
                   if (prev.length === 0) freshChoiceRef.current.add(file)
                   return [...prev, file]
                 })
-              }
+              }}
               disabled={isParsingReceipt}
               testID="advisor-receipt-file"
               inputTestID="advisor-receipt-file-input"
@@ -813,6 +821,10 @@ export function AdvisorChatPanel({
           ) : null}
           {onAttachReceipt && (receiptTextOpen || !onAttachReceiptFile) ? (
             <>
+              {/* Pasted text is only read: it is no document, so the Belege inbox gets nothing (ADR-0097 §4). */}
+              <Text style={styles.actionReason} testID="advisor-receipt-text-hint">
+                {tr('advisor.chat.receiptPasteNoReceipt')}
+              </Text>
               <TextInput
                 accessibilityLabel={tr('advisor.chat.receiptNamePlaceholder', 'Dateiname (z. B. rechnung.pdf)')}
                 value={receiptFileName}
@@ -862,8 +874,9 @@ export function AdvisorChatPanel({
         </Card>
       ) : null}
 
-      {receiptNotice || receiptAssignment ? (
+      {receiptNotice || receiptAssignment || receiptResults ? (
         <Card style={styles.receiptPanel} testID="advisor-receipt-notice">
+          {receiptResults ?? null}
           {receiptNotice ? <Text style={styles.actionReason}>{receiptNotice}</Text> : null}
           {receiptAssignment ?? null}
         </Card>

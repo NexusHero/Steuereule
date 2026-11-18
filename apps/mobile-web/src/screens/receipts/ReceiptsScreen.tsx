@@ -19,10 +19,12 @@ import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { triggerSaveErrorHaptic, warnOnHttpError } from '../shared/saveFeedback'
 import { ReceiptFileModal } from './ReceiptFileModal'
 import { ReceiptHolderSection } from './ReceiptHolderSection'
-import { useOptionalShellTaxYear, useOptionalSwitchToTab } from '../../navigation/ShellState'
-import { useOptionalCopilotBridge } from '../advisor/CopilotBridgeProvider'
+import { DocumentAssignmentCard } from './DocumentAssignmentCard'
+import { ReceiptOutcomeLines } from './ReceiptOutcomeLines'
+import { useOptionalSetTaxYear, useOptionalShellTaxYear, useOptionalSwitchToTab } from '../../navigation/ShellState'
 import { storedReceiptFile } from '../../lib/receipts/storedReceiptFile'
-import { captureReceipt } from '../../lib/receipts/captureReceipt'
+import { canReadAgain, filledFieldsByYear, outcomeOfReceipt } from '../../lib/receipts/receiptOutcome'
+import { useReceiptReader, type ReceiptReader } from '../../lib/receipts/useReceiptReader'
 import { DEFAULT_TAX_YEAR } from '../../config/taxYear'
 import { makeStyles } from './ReceiptsScreen.styles'
 
@@ -38,19 +40,6 @@ const KIND_LABEL_KEYS: Readonly<Record<string, string>> = {
   Steuerbescheid: 'belege.art.steuerbescheid',
   Sonstiges: 'belege.art.sonstiges',
 }
-
-const UPLOADABLE_KINDS: readonly CreateReceiptDtoKind[] = [
-  CreateReceiptDtoKind.Sonstiges,
-  CreateReceiptDtoKind.Lohnausweis,
-  CreateReceiptDtoKind.Rentenbezugsmitteilung,
-  CreateReceiptDtoKind.Steuerbescheinigung,
-  CreateReceiptDtoKind.Steuerbescheid,
-  CreateReceiptDtoKind.Quellensteuer,
-  CreateReceiptDtoKind.Pensionskasse,
-  CreateReceiptDtoKind.Saeule3a,
-  CreateReceiptDtoKind.Krankenkasse,
-  CreateReceiptDtoKind.Familienzulage,
-]
 
 const YEAR_RE = /^\d{4}$/
 
@@ -77,6 +66,16 @@ const FOLDER_LABEL_KEYS = {
   weitere: 'belege.ordner.weitere',
 } as const satisfies Readonly<Record<ReceiptFolderCategory, string>>
 
+/** „Spenden 3.135 € · Steuerjahr 2025“ for every year a Beleg filled values in. */
+function useFilledText(): (receipt: ReceiptResponseDto) => string | null {
+  const { t: tr } = useTranslation(APP_NS)
+  return (receipt) => {
+    const groups = filledFieldsByYear(receipt.filledFields)
+    if (groups.length === 0) return null
+    return groups.map((g) => tr('belege.stand.gefuelltJahr', { felder: g.values.join(', '), jahr: g.taxYear })).join('; ')
+  }
+}
+
 export function ReceiptsScreen() {
   const bp = useBreakpoint()
   const t = useTheme()
@@ -86,10 +85,14 @@ export function ReceiptsScreen() {
   const query = useReceiptControllerList()
   const setAssignment = useReceiptControllerSetAssignment()
   const deleteReceipt = useReceiptControllerDelete()
+  const openYear = useOptionalShellTaxYear() ?? DEFAULT_TAX_YEAR
+  // Every Beleg is read after its upload (ADR-0097 §4): the reader keeps each one's progress and question.
+  const reader = useReceiptReader({ taxYear: openYear })
 
   const [previewReceipt, setPreviewReceipt] = useState<{ readonly id: string; readonly fileName: string } | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [deleteErrorId, setDeleteErrorId] = useState<string | null>(null)
+  const [deleteResult, setDeleteResult] = useState<string | null>(null)
   const [activeFolder, setActiveFolder] = useState<ReceiptFolderCategory>('alle')
 
   if (query.isPending) {
@@ -108,7 +111,8 @@ export function ReceiptsScreen() {
   }
 
   const receipts = query.data.data
-  const open = receipts.filter((b) => b.assignment.kind !== 'zugeordnet').length
+  // „Offen“ is what is not fully processed yet (ADR-0097 §1), no longer what has no year.
+  const open = receipts.filter((b) => b.processing.open).length
   const visibleReceipts =
     activeFolder === 'alle'
       ? receipts
@@ -135,16 +139,19 @@ export function ReceiptsScreen() {
     )
   }
 
-  async function handleDelete(id: string) {
+  async function handleDelete(receipt: ReceiptResponseDto, takeBackValues: boolean) {
+    const id = receipt.id
     setDeleteErrorId(null)
+    setDeleteResult(null)
     try {
-      const response = await deleteReceipt.mutateAsync({ id })
+      const response = await deleteReceipt.mutateAsync({ id, params: { takeBackValues } })
       if (response.status === 200) {
         setConfirmDeleteId(null)
         if (previewReceipt?.id === id) {
           setPreviewReceipt(null)
         }
-        await queryClient.invalidateQueries({ queryKey: getReceiptControllerListQueryKey() })
+        setDeleteResult(deleteResultText(receipt, takeBackValues, response.data))
+        await queryClient.invalidateQueries()
         return
       }
       triggerSaveErrorHaptic()
@@ -155,14 +162,31 @@ export function ReceiptsScreen() {
     }
   }
 
+  /** What the delete did, honestly: how many values went, how many drafts were withdrawn, what stays. */
+  function deleteResultText(receipt: ReceiptResponseDto, takeBackValues: boolean, data: { readonly takenBack?: number; readonly withdrawn?: number }): string {
+    const hadValues = receipt.filledFields.length > 0 || receipt.processing.pending > 0
+    if (!hadValues) return tr('belege.delete.ergebnis.geloescht', { datei: receipt.fileName })
+    if (!takeBackValues) return tr('belege.delete.ergebnis.werteBleiben', { datei: receipt.fileName })
+    const takenBack = data.takenBack ?? 0
+    const withdrawn = data.withdrawn ?? 0
+    const parts = [
+      tr('belege.delete.ergebnis.geloescht', { datei: receipt.fileName }),
+      ...(takenBack > 0 ? [tr('belege.delete.ergebnis.entfernt', { count: takenBack })] : []),
+      ...(withdrawn > 0 ? [tr('belege.delete.ergebnis.zurueckgezogen', { count: withdrawn })] : []),
+    ]
+    const changedSince = takenBack < receipt.filledFields.length
+    return [parts.join(' · '), ...(changedSince ? [tr('belege.delete.ergebnis.geaendert')] : [])].join(' ')
+  }
+
   return (
     <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="screen-container">
       <Appbar open={open} />
-      <UploadCard
-        onUploaded={() => {
-          void queryClient.invalidateQueries({ queryKey: getReceiptControllerListQueryKey() })
-        }}
-      />
+      <UploadCard reader={reader} />
+      {deleteResult !== null ? (
+        <Text style={styles.deleteResultText} accessibilityLiveRegion="polite" testID="belege-delete-ergebnis">
+          {deleteResult}
+        </Text>
+      ) : null}
       {proposals.length > 1 ? (
         <View style={styles.bulkRow} testID="belege-sammel-zuordnung">
           <Text style={styles.bulkText}>{tr('belege.sammel.text', { count: proposals.length })}</Text>
@@ -216,6 +240,8 @@ export function ReceiptsScreen() {
           <ReceiptCard
             key={receipt.id}
             receipt={receipt}
+            reader={reader}
+            openYear={openYear}
             onAssign={assign}
             onPreview={(r) => setPreviewReceipt({ id: r.id, fileName: r.fileName })}
             confirmingDelete={confirmDeleteId === receipt.id}
@@ -223,13 +249,14 @@ export function ReceiptsScreen() {
             deleteFailed={deleteErrorId === receipt.id}
             onRequestDelete={() => {
               setDeleteErrorId(null)
+              setDeleteResult(null)
               setConfirmDeleteId(receipt.id)
             }}
             onCancelDelete={() => {
               setDeleteErrorId(null)
               setConfirmDeleteId(null)
             }}
-            onConfirmDelete={() => void handleDelete(receipt.id)}
+            onConfirmDelete={(takeBackValues) => void handleDelete(receipt, takeBackValues)}
           />
         ))
       )}
@@ -237,10 +264,21 @@ export function ReceiptsScreen() {
   )
 }
 
+/** Stores a file in the Belege inbox; the caller reads it right after (ADR-0097 §4). Null when it could not be stored. */
+async function storeReceipt(file: File, kind: CreateReceiptDtoKind): Promise<{ readonly id: string } | null> {
+  try {
+    const result = await uploadReceiptFile({ file, fileName: file.name, kind })
+    return result.ok ? { id: result.data.id } : null
+  } catch {
+    return null
+  }
+}
+
 /** The tax assessment has its own kind and folder: a quiet second way in, inside the upload bar. */
-function BescheidPicker({ onUploaded }: { readonly onUploaded: () => void }) {
+function BescheidPicker({ reader }: { readonly reader: ReceiptReader }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
+  const queryClient = useQueryClient()
   const [checking, setChecking] = useState(false)
   const [checkResult, setCheckResult] = useState<{ readonly kind: 'ok' | 'error'; readonly text: string } | null>(null)
   const isWeb = typeof document !== 'undefined'
@@ -256,21 +294,16 @@ function BescheidPicker({ onUploaded }: { readonly onUploaded: () => void }) {
     }
     setChecking(true)
     try {
-      const result = await uploadReceiptFile({
-        file,
-        fileName: file.name,
-        kind: CreateReceiptDtoKind.Steuerbescheid,
-      })
-      if (!result.ok) {
+      const stored = await storeReceipt(file, CreateReceiptDtoKind.Steuerbescheid)
+      if (stored === null) {
         triggerSaveErrorHaptic()
         setCheckResult({ kind: 'error', text: tr('belege.upload.errorFailed') })
         return
       }
+      void queryClient.invalidateQueries({ queryKey: getReceiptControllerListQueryKey() })
+      // The same pipeline as every other upload: what the reading found shows on the Beleg's card.
+      await reader.read(stored.id, file, stored.id)
       setCheckResult({ kind: 'ok', text: tr('belege.bescheid.gespeichert', { datei: file.name }) })
-      onUploaded()
-    } catch {
-      triggerSaveErrorHaptic()
-      setCheckResult({ kind: 'error', text: tr('belege.upload.errorFailed') })
     } finally {
       setChecking(false)
     }
@@ -314,15 +347,17 @@ function Appbar({ open }: { readonly open: number }) {
   )
 }
 
-function UploadCard({ onUploaded }: { readonly onUploaded: () => void }) {
+/**
+ * One way in for every document: no kind to pick, the reading recognises it (ADR-0097 §4). Each file is
+ * stored, then read with its drafts staged, like a chat upload; the card of the Beleg says what came of it.
+ */
+function UploadCard({ reader }: { readonly reader: ReceiptReader }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const s = makeStyles(t)
-  const [selectedKind, setSelectedKind] = useState<CreateReceiptDtoKind>(CreateReceiptDtoKind.Sonstiges)
+  const queryClient = useQueryClient()
   const [uploading, setUploading] = useState(false)
   const [statusMessage, setStatusMessage] = useState<{ readonly kind: 'ok' | 'error'; readonly text: string } | null>(null)
-  const bridge = useOptionalCopilotBridge()
-  const shellYear = useOptionalShellTaxYear()
   const isWeb = typeof document !== 'undefined'
 
   async function handleFileSelected(file: File | undefined) {
@@ -337,31 +372,16 @@ function UploadCard({ onUploaded }: { readonly onUploaded: () => void }) {
     }
 
     setUploading(true)
-    try {
-      const result = await uploadReceiptFile({
-        file,
-        fileName: file.name,
-        kind: selectedKind,
-      })
-      if (!result.ok) {
-        triggerSaveErrorHaptic()
-        setStatusMessage({ kind: 'error', text: tr('belege.upload.errorFailed') })
-        return
-      }
-      setStatusMessage({ kind: 'ok', text: tr('belege.upload.success') })
-      onUploaded()
-      // In the app (the owl's bridge is there), the document is read on the device in the background so
-      // its kind is recognised and it lands in the right folder. No drafts are staged here: the user
-      // hands a document to the owl with „Mit der Eule lesen“ on its card, when they want its values.
-      if (bridge) {
-        void captureReceipt(file, { taxYear: shellYear ?? DEFAULT_TAX_YEAR, receiptId: result.data.id, stageDraft: false }).then(onUploaded)
-      }
-    } catch {
+    const stored = await storeReceipt(file, CreateReceiptDtoKind.Sonstiges)
+    setUploading(false)
+    if (stored === null) {
       triggerSaveErrorHaptic()
       setStatusMessage({ kind: 'error', text: tr('belege.upload.errorFailed') })
-    } finally {
-      setUploading(false)
+      return
     }
+    setStatusMessage({ kind: 'ok', text: tr('belege.upload.success') })
+    void queryClient.invalidateQueries({ queryKey: getReceiptControllerListQueryKey() })
+    await reader.read(stored.id, file, stored.id)
   }
 
   return (
@@ -370,31 +390,6 @@ function UploadCard({ onUploaded }: { readonly onUploaded: () => void }) {
 
       {isWeb && (
         <View style={s.uploadControls}>
-          <select
-            aria-label={tr('belege.upload.kindLabel')}
-            value={selectedKind}
-            onChange={(event) => setSelectedKind(event.target.value as CreateReceiptDtoKind)}
-            style={{
-              padding: '8px 12px',
-              borderRadius: t.radius.s,
-              border: `2px solid ${t.color.funkeHell}`,
-              backgroundColor: t.color.nachtKarte,
-              color: t.color.nachtText,
-              // adherence-allow: a DOM <select> takes CSS, not a React Native text role.
-              fontFamily: t.font.text,
-              fontSize: t.size.s,
-            }}
-          >
-            {UPLOADABLE_KINDS.map((kind) => {
-              const labelKey = KIND_LABEL_KEYS[kind] ?? 'belege.art.sonstiges'
-              return (
-                <option key={kind} value={kind}>
-                  {tr(labelKey)}
-                </option>
-              )
-            })}
-          </select>
-
           <ReceiptPickerButton
             onFile={(file) => void handleFileSelected(file)}
             disabled={uploading}
@@ -407,9 +402,11 @@ function UploadCard({ onUploaded }: { readonly onUploaded: () => void }) {
       )}
 
       {statusMessage !== null && (
-        <Text style={statusMessage.kind === 'ok' ? s.uploadOkText : s.uploadErrText}>{statusMessage.text}</Text>
+        <Text style={statusMessage.kind === 'ok' ? s.uploadOkText : s.uploadErrText} accessibilityLiveRegion="polite">
+          {statusMessage.text}
+        </Text>
       )}
-      <BescheidPicker onUploaded={onUploaded} />
+      <BescheidPicker reader={reader} />
     </Card>
   )
 }
@@ -428,6 +425,8 @@ function Empty() {
 
 interface ReceiptCardProps {
   readonly receipt: ReceiptResponseDto
+  readonly reader: ReceiptReader
+  readonly openYear: number
   readonly onAssign: (id: string, taxYear: number, proposalDismissed?: boolean) => void
   readonly onPreview: (receipt: ReceiptResponseDto) => void
   readonly confirmingDelete: boolean
@@ -435,11 +434,13 @@ interface ReceiptCardProps {
   readonly deleteFailed: boolean
   readonly onRequestDelete: () => void
   readonly onCancelDelete: () => void
-  readonly onConfirmDelete: () => void
+  readonly onConfirmDelete: (takeBackValues: boolean) => void
 }
 
 function ReceiptCard({
   receipt,
+  reader,
+  openYear,
   onAssign,
   onPreview,
   confirmingDelete,
@@ -457,22 +458,29 @@ function ReceiptCard({
   const kindKey = receipt.kind === null ? undefined : KIND_LABEL_KEYS[receipt.kind]
   const kindLabel = kindKey !== undefined ? tr(kindKey) : receipt.kind === null ? tr('belege.art.generic') : receipt.kind
   const folderCategory = folderForReceiptKind(receipt.kind)
-  const bridge = useOptionalCopilotBridge()
   const switchToTab = useOptionalSwitchToTab()
-  const [owlState, setOwlState] = useState<'idle' | 'reading' | 'failed'>('idle')
+  const setTaxYear = useOptionalSetTaxYear()
+  const filledText = useFilledText()
+  const [fileMissing, setFileMissing] = useState(false)
+  const entry = reader.entries[receipt.id]
+  const reading = entry?.phase != null
+  const outcome = outcomeOfReceipt(receipt)
+  const filled = filledText(receipt)
+  const hasValues = receipt.filledFields.length > 0 || receipt.processing.pending > 0
 
-  // The way from a document to the owl: its stored original is read on the device again, the drafts
-  // wait in the chat, and the user lands there.
-  async function readWithOwl() {
-    if (!bridge) return
-    setOwlState('reading')
+  // Reads the stored original again on the device, here in the tab; its drafts wait in the owl.
+  async function readAgain() {
+    setFileMissing(false)
     const file = await storedReceiptFile(receipt)
-    const read = file === null ? null : await bridge.readStoredReceipt(file, receipt.id)
-    if (read === null || !read.ok) {
-      setOwlState('failed')
+    if (file === null) {
+      setFileMissing(true)
       return
     }
-    setOwlState('idle')
+    await reader.read(receipt.id, file, receipt.id)
+  }
+
+  function openDrafts() {
+    if (outcome.draftsTaxYear !== null && outcome.draftsTaxYear !== openYear) setTaxYear?.(outcome.draftsTaxYear)
     switchToTab?.('Owl')
   }
 
@@ -501,6 +509,39 @@ function ReceiptCard({
         )}
         {receipt.hasFile && <Text style={s.fileBadge}>{tr('belege.upload.fileAttached')}</Text>}
       </View>
+      {/* What became of the Beleg (ADR-0097): from the server's state, never from a guess in the app. */}
+      {reading ? (
+        <Text style={s.processingText} accessibilityLiveRegion="polite" testID={`receipt-${receipt.id}-liest`}>
+          {tr('belege.stand.liest')}
+        </Text>
+      ) : (
+        <ReceiptOutcomeLines
+          outcome={outcome}
+          openYear={openYear}
+          testIDPrefix={`receipt-${receipt.id}`}
+          asking={entry?.question != null}
+          onSwitchYear={setTaxYear ?? undefined}
+          onOpenDrafts={switchToTab ? openDrafts : undefined}
+        />
+      )}
+      {filled !== null ? (
+        <Text style={s.filledText} testID={`receipt-${receipt.id}-gefuellt`}>
+          {tr('belege.stand.gefuellt', { werte: filled })}
+        </Text>
+      ) : null}
+      {entry?.question != null ? (
+        <View testID={`receipt-${receipt.id}-zuordnung`}>
+          <DocumentAssignmentCard
+            question={entry.question.question}
+            printed={entry.question.printed}
+            busy={reading}
+            error={entry.error}
+            onChoose={(holder) => void reader.choose(receipt.id, holder)}
+            onCreate={(role, details) => void reader.create(receipt.id, role, details)}
+            onConfirmSelf={(takeName) => void reader.confirmSelf(receipt.id, takeName)}
+          />
+        </View>
+      ) : null}
       <AssignmentSection receipt={receipt} onAssign={onAssign} />
       <ReceiptHolderSection receipt={receipt} taxYear={holderYear} />
 
@@ -515,15 +556,15 @@ function ReceiptCard({
             {tr('belege.preview.open')}
           </Button>
         )}
-        {bridge && receipt.hasFile ? (
+        {receipt.hasFile && canReadAgain(outcome) && entry?.question == null ? (
           <Button
             variant="ghost"
-            onPress={() => void readWithOwl()}
-            disabled={owlState === 'reading' || bridge.parsingReceipt}
+            onPress={() => void readAgain()}
+            disabled={reading}
             style={s.compactButton}
             testID={`receipt-eule-${receipt.id}`}
           >
-            {tr(owlState === 'reading' ? 'belege.eule.liest' : 'belege.eule.lesen')}
+            {tr(reading ? 'belege.eule.liest' : 'belege.eule.lesen')}
           </Button>
         ) : null}
         {!confirmingDelete ? (
@@ -535,30 +576,76 @@ function ReceiptCard({
           >
             {tr('belege.delete.button')}
           </Button>
-        ) : (
-          <View style={s.deleteConfirmRow}>
-            <Text style={s.deleteConfirmText}>{tr('belege.delete.confirmQuestion')}</Text>
-            <Button
-              onPress={onConfirmDelete}
-              disabled={deleting}
-              style={s.compactButton}
-              testID={`receipt-delete-confirm-${receipt.id}`}
-            >
-              {deleting ? tr('belege.delete.deleting') : tr('belege.delete.confirmYes')}
-            </Button>
-            <Button variant="ghost" onPress={onCancelDelete} disabled={deleting} style={s.compactButton}>
-              {tr('belege.delete.confirmCancel')}
-            </Button>
-          </View>
-        )}
+        ) : null}
       </View>
-      {owlState === 'failed' && (
+      {confirmingDelete ? (
+        <DeleteConfirm receipt={receipt} filled={filled} hasValues={hasValues} deleting={deleting} onConfirm={onConfirmDelete} onCancel={onCancelDelete} />
+      ) : null}
+      {fileMissing && (
         <Text style={s.konfliktBody} accessibilityLiveRegion="polite" testID={`receipt-eule-fehler-${receipt.id}`}>
           {tr('belege.eule.ergebnis.unreadable')}
         </Text>
       )}
       {deleteFailed && <Text style={s.konfliktBody}>{tr('belege.delete.error')}</Text>}
     </Card>
+  )
+}
+
+/**
+ * Deleting a Beleg that filled values (ADR-0097 §6): the app names them and asks whether they go too,
+ * „ja“ first. A Beleg without values keeps the plain two-step confirmation.
+ */
+function DeleteConfirm({
+  receipt,
+  filled,
+  hasValues,
+  deleting,
+  onConfirm,
+  onCancel,
+}: {
+  readonly receipt: ReceiptResponseDto
+  readonly filled: string | null
+  readonly hasValues: boolean
+  readonly deleting: boolean
+  readonly onConfirm: (takeBackValues: boolean) => void
+  readonly onCancel: () => void
+}) {
+  const t = useTheme()
+  const { t: tr } = useTranslation(APP_NS)
+  const s = makeStyles(t)
+  const pending = receipt.processing.pending
+  if (!hasValues) {
+    return (
+      <View style={s.deleteConfirmRow}>
+        <Text style={s.deleteConfirmText}>{tr('belege.delete.confirmQuestion')}</Text>
+        <Button onPress={() => onConfirm(false)} disabled={deleting} style={s.compactButton} testID={`receipt-delete-confirm-${receipt.id}`}>
+          {deleting ? tr('belege.delete.deleting') : tr('belege.delete.confirmYes')}
+        </Button>
+        <Button variant="ghost" onPress={onCancel} disabled={deleting} style={s.compactButton}>
+          {tr('belege.delete.confirmCancel')}
+        </Button>
+      </View>
+    )
+  }
+  const question =
+    filled !== null
+      ? [tr('belege.delete.mitWerten', { werte: filled }), ...(pending > 0 ? [tr('belege.delete.auchVorschlaege', { count: pending })] : [])].join(' ')
+      : tr('belege.delete.mitVorschlaegen', { count: pending })
+  return (
+    <View style={s.deleteConfirmBlock} testID={`receipt-delete-frage-${receipt.id}`}>
+      <Text style={s.deleteConfirmText}>{question}</Text>
+      <View style={s.deleteConfirmRow}>
+        <Button onPress={() => onConfirm(true)} disabled={deleting} style={s.compactButton} testID={`receipt-delete-werte-${receipt.id}`}>
+          {deleting ? tr('belege.delete.deleting') : tr('belege.delete.werteEntfernen')}
+        </Button>
+        <Button variant="leise" onPress={() => onConfirm(false)} disabled={deleting} style={s.compactButton} testID={`receipt-delete-nur-beleg-${receipt.id}`}>
+          {tr('belege.delete.nurBeleg')}
+        </Button>
+        <Button variant="ghost" onPress={onCancel} disabled={deleting} style={s.compactButton}>
+          {tr('belege.delete.confirmCancel')}
+        </Button>
+      </View>
+    </View>
   )
 }
 

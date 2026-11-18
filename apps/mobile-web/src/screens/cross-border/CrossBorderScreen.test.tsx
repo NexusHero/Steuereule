@@ -16,6 +16,12 @@ import { createAppI18n } from '../../i18n/app-i18n'
 import { CrossBorderScreen } from './CrossBorderScreen'
 import { EMPTY_CH_SALARY_CERTIFICATE_RESPONSE, server } from '../../test-msw-server'
 
+const { mockExtractDocumentText } = vi.hoisted(() => ({ mockExtractDocumentText: vi.fn() }))
+vi.mock('../../lib/documentOcr', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../lib/documentOcr')>()
+  return { ...actual, extractDocumentTextOnDevice: mockExtractDocumentText }
+})
+
 const TAX_YEAR = 2026
 const INTERVIEW_URL = `*/v1/steuerjahre/${TAX_YEAR}/interview`
 const POST_URL = `*/v1/steuerjahre/${TAX_YEAR}/interview/antworten`
@@ -661,5 +667,47 @@ describe('GrenzgaengerScreen — Smart summation, required indicators, upload & 
         { arbeitgeberPlzOrt: '4051 Basel' },
       ]),
     )
+  })
+})
+
+// ADR-0097 §4: the Lohnausweis upload in the mask goes through the one pipeline — stored, read on the
+// device, parsed with the mask's context — and says what came of it, instead of only storing the file.
+describe('GrenzgaengerScreen — Lohnausweis upload reads the document', () => {
+  it('stores the certificate, reads it with the mask as context and says that its values wait', async () => {
+    const parseBodies: unknown[] = []
+    server.use(
+      http.get(INTERVIEW_URL, () => HttpResponse.json(DONE_CH_INTERVIEW, { status: 200 })),
+      http.post('*/v1/belege/upload', () => HttpResponse.json({ id: 'rec-ch-1' }, { status: 201 })),
+      http.post('*/v1/belege/parse', async ({ request }) => {
+        parseBodies.push(await request.json())
+        return HttpResponse.json(
+          {
+            mode: 'deterministic_fallback',
+            securityBlocked: false,
+            parsed: { vendorCategory: 'sonstiges', receiptDate: null, amountEur: null, suggestedScreen: null, suggestedField: null, suggestedValue: null, summary: '', taxYear: TAX_YEAR },
+            stagedAction: null,
+            assistantMessage: null,
+            draftsTaxYear: 2025,
+            filedInTaxYear: 2025,
+            noValuesReason: null,
+            duplicateOf: null,
+            processing: { state: 'vorschlaege', reason: null, pending: 4, applied: 0, dismissed: 0, draftsTaxYear: 2025, open: true },
+          },
+          { status: 200 },
+        )
+      }),
+    )
+    mockExtractDocumentText.mockResolvedValue({ kind: 'pdf', mimeType: 'application/pdf', text: 'Lohnausweis - Certificat de salaire 2025', usedOcrFallback: false, pagesProcessed: 1 })
+
+    renderScreen()
+    await screen.findByTestId('ch-lohnausweis-upload-card')
+    expect(screen.getByText('Lohnausweis oder Gre-1 / Gre-2 hochladen')).toBeTruthy()
+    const input = screen.getByTestId('ch-lohnausweis-upload-card').querySelector('input[type="file"]') as HTMLInputElement
+    fireEvent.change(input, { target: { files: [new File(['%PDF-1.4'], 'lohnausweis-2025.pdf', { type: 'application/pdf' })] } })
+
+    expect((await screen.findByTestId('ch-lohnausweis-ergebnis-stand')).textContent).toBe('4 Werte warten auf dich')
+    expect(screen.getByTestId('ch-lohnausweis-upload-status').textContent).toBe('lohnausweis-2025.pdf ist in deinen Belegen gespeichert.')
+    expect(screen.getByTestId('ch-lohnausweis-ergebnis-jahr').textContent).toBe('Liegt im Steuerjahr 2025')
+    expect(parseBodies).toEqual([expect.objectContaining({ receiptId: 'rec-ch-1', expectedKind: 'chLohnausweis', mask: 'chLohnausweis', area: 'A', stageDraft: true })])
   })
 })

@@ -1003,10 +1003,11 @@
         }
       },
       "yearConflict": {
-        "title": "Different tax year on document",
-        "body": "This wage tax statement belongs to tax year {{documentYear}}, while you are currently viewing tax year {{activeYear}}. No values were staged.",
+        "title": "Filed in tax year {{jahr}}",
+        "body": "This wage tax certificate belongs to tax year {{documentYear}}. Its values wait for you there, not in {{activeYear}}. Nothing was taken over yet.",
         "switchYear": "Switch to {{jahr}}",
-        "cancel": "Cancel"
+        "cancel": "Stay here",
+        "bodyNotStaged": "This wage tax certificate belongs to tax year {{documentYear}}, you are in {{activeYear}}. Switch there and read it again."
       },
       "overwriteConflict": {
         "title": "Replace existing values?",
@@ -1021,7 +1022,8 @@
         "readFailed": "The file could not be read on your device (damaged or password-protected?). Please enter the values by hand.",
         "emptyOcr": "No readable text could be detected on the document. Please check the file or enter the values manually.",
         "parseFailed": "The wage tax statement could not be parsed right now. Please try again.",
-        "confirmFailed": "The values could not be saved. Please check your connection and try again."
+        "confirmFailed": "The values could not be saved. Please check your connection and try again.",
+        "noTaxYear": "This wage tax certificate is for {{jahr}}, a year the app does not keep. Nothing was taken over."
       }
     },
     "weiter": "Continue"
@@ -1810,10 +1812,9 @@
     },
     "upload": {
       "heading": "Upload receipt (PDF / photo)",
-      "kindLabel": "Receipt type",
       "cta": "Upload PDF or photo",
       "uploading": "Encrypting and uploading …",
-      "success": "Receipt saved.",
+      "success": "Document saved. It is being read now.",
       "errorUnsupported": "Please select a PDF, JPEG, PNG, or WebP file.",
       "errorFailed": "Upload didn't work. Check your connection and try again.",
       "fileAttached": "Original file stored encrypted"
@@ -1831,7 +1832,23 @@
       "confirmYes": "Yes, delete",
       "confirmCancel": "Cancel",
       "deleting": "Deleting …",
-      "error": "The receipt could not be deleted."
+      "error": "The receipt could not be deleted.",
+      "mitWerten": "This document filled {{werte}}. Remove the values too?",
+      "mitVorschlaegen_one": "{{count}} suggestion from this document still waits. Withdraw it too?",
+      "mitVorschlaegen_other": "{{count}} suggestions from this document still wait. Withdraw them too?",
+      "auchVorschlaege_one": "Its waiting suggestion is withdrawn as well.",
+      "auchVorschlaege_other": "Its {{count}} waiting suggestions are withdrawn as well.",
+      "werteEntfernen": "Yes, remove the values",
+      "nurBeleg": "Only delete the document",
+      "ergebnis": {
+        "geloescht": "“{{datei}}” deleted.",
+        "werteBleiben": "“{{datei}}” deleted. Its values stay in your return.",
+        "entfernt_one": "{{count}} value removed",
+        "entfernt_other": "{{count}} values removed",
+        "zurueckgezogen_one": "{{count}} suggestion withdrawn",
+        "zurueckgezogen_other": "{{count}} suggestions withdrawn",
+        "geaendert": "What you changed yourself since stays."
+      }
     },
     "zuordnung": {
       "ungebunden": "Unassigned",
@@ -1884,14 +1901,66 @@
     },
     "bescheid": {
       "cta": "File tax assessment",
-      "gespeichert": "Tax assessment ({{datei}}) saved. You will find it in the folder “Notices & certificates”. Start the comparison with your return in the cockpit under “Review assessment”."
+      "gespeichert": "Tax assessment ({{datei}}) saved and read. You find it in the folder “Assessments & certificates”. Start the comparison with your return in the cockpit under “Check assessment”."
     },
     "eule": {
-      "lesen": "Read with the owl",
-      "liest": "The owl is reading …",
+      "lesen": "Read again",
+      "liest": "Reading …",
       "ergebnis": {
         "unreadable": "The owl could not read this document. It stays saved."
       }
+    },
+    "stand": {
+      "neu": "Not read yet",
+      "liest": "Reading …",
+      "entwuerfeFehlen": "Read, but its suggestions are gone",
+      "nichtLesbar": "Not readable",
+      "vorschlaege_one": "{{count}} value waits for you",
+      "vorschlaege_other": "{{count}} values wait for you",
+      "uebernommen_one": "Read · {{count}} value taken over",
+      "uebernommen_other": "Read · {{count}} values taken over",
+      "nichtsErkannt": "Nothing recognised",
+      "nichts": "Nothing for the return: {{grund}}",
+      "verworfen": "Read · suggestions dismissed",
+      "frage": "Waits for your answer whose it is",
+      "datei": "{{datei}}: {{stand}}",
+      "jahr": "Filed in tax year {{jahr}}",
+      "jahrWechseln": "Switch to {{jahr}}",
+      "dublette": "Duplicate: already uploaded on {{datum}} ({{datei}})",
+      "zuVorschlaegen": "Go to the suggestions",
+      "gefuellt": "filled: {{werte}}",
+      "gefuelltJahr": "{{felder}} · tax year {{jahr}}",
+      "nichtLesbarGrund": "Not readable ({{grund}})"
+    },
+    "grund": {
+      "nichts_erkannt": "nothing recognised",
+      "keine_rechnung": "not an invoice",
+      "nicht_absetzbar": "not deductible",
+      "schon_gezaehlt": "already counted",
+      "dublette": "uploaded twice",
+      "blockiert": "blocked",
+      "kein_steuerjahr": "tax year not in the app",
+      "anderes_konto": "belongs to another account",
+      "lesefehler": "error while reading",
+      "unlesbar": "file not readable",
+      "kein_text": "no text found",
+      "nicht_unterstuetzt": "file type not supported",
+      "entwuerfe_fehlen": "suggestions removed"
+    },
+    "grundSatz": {
+      "nichts_erkannt": "The document held nothing that belongs in the return.",
+      "keine_rechnung": "This is an order confirmation or a quote. Only the invoice counts.",
+      "nicht_absetzbar": "What was read cannot be deducted from tax.",
+      "schon_gezaehlt": "What it lists is already counted through another document.",
+      "dublette": "You uploaded this file before. Its values stay with the first document.",
+      "blockiert": "The document tried to change a protected field. The suggestion was blocked.",
+      "kein_steuerjahr": "The document belongs to a tax year the app does not keep.",
+      "anderes_konto": "The document belongs to person B, who has an own account. Upload it there.",
+      "lesefehler": "Something went wrong while reading it. Please try again.",
+      "unlesbar": "Your device could not open the file (damaged or password protected?).",
+      "kein_text": "The file had no readable text. A sharper photo helps.",
+      "nicht_unterstuetzt": "The app cannot read this file type. Upload a PDF or a photo.",
+      "entwuerfe_fehlen": "The suggestions from this document were removed. Read it again to get them back."
     }
   },
   "bescheid": {
@@ -2064,7 +2133,14 @@
         "anrechnung": "Withholding tax credit",
         "offen": "{{count}} required field(s) still open"
       },
-      "done": "Done"
+      "done": "Done",
+      "upload": {
+        "title": "Upload salary certificate or Gre-1 / Gre-2",
+        "body": "Upload your Swiss salary certificate here. It is stored encrypted in your documents and read on your device. The values found wait in the owl until you take them over.",
+        "cta": "Choose salary certificate",
+        "reading": "Reading …",
+        "saved": "{{datei}} is saved in your documents."
+      }
     }
   },
   "veranlagungsartenvergleich": {
@@ -2391,8 +2467,6 @@
       "lstbWhose": "The name on this wage tax certificate fits nobody in your return. Whose certificate is it? Nothing was taken over yet.",
       "lstbPersonBOwnAccount": "This is Person B’s wage tax certificate. Person B has an own account and uploads it there; nothing was taken over here.",
       "certificatePersonBOwnAccount": "This is Person B’s salary certificate. Person B has an own account and uploads it there; nothing was taken over here.",
-      "receiptYearConflict": "This document belongs to tax year {{documentYear}}, you are in {{activeYear}}. Switch to {{documentYear}} above and upload it there — nothing was taken over.",
-      "receiptNoValues": "The document was recognised, but I could not read any values from it. Please enter them in the form or upload a sharper image.",
       "receiptProgress": {
         "uploading": "Storing the receipt encrypted …",
         "detecting": "Recognising the document on your device …",
@@ -2400,12 +2474,6 @@
         "pdf_ocr_render": "Reading the scanned PDF locally …",
         "image_ocr": "Reading the photo locally …",
         "parsing": "Checking the receipt …"
-      },
-      "receiptFailure": {
-        "unsupported_file": "Please choose a PDF or a photo (JPEG, PNG, WebP).",
-        "read_failed": "The file could not be read on your device (damaged or password-protected?). The original is still stored in your receipts.",
-        "empty_text": "No readable text on the receipt. Try a sharper photo or enter the values by hand.",
-        "parse_failed": "The receipt could not be checked right now. Please try again."
       },
       "notStaged": {
         "title": "Not prepared",
@@ -2558,7 +2626,10 @@
         "aria": "Max: the owl thinks as thoroughly as it can for this message",
         "hintOff": "Off: the owl answers thoroughly (standard).",
         "hintOn": "On: the owl answers this one message as thoroughly as the model can."
-      }
+      },
+      "receiptResults": "What became of your documents",
+      "receiptResultsClose": "Hide",
+      "receiptPasteNoReceipt": "Pasted text is only read. It creates no document; nothing appears in your documents."
     },
     "companion": {
       "triggerTitle": "Ask Owl about this screen",

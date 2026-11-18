@@ -35,10 +35,6 @@ export function makeStyles(t: UiTheme) {
   const uploadControls: ViewStyle = {
     gap: t.space.s2,
   }
-  const uploadKindLabel: TextStyle = {
-    ...t.type.captionStrong,
-    color: t.color.nachtText,
-  }
   const uploadOkText: TextStyle = {
     ...t.type.label,
     color: t.color.funkeHell,
@@ -125,6 +121,10 @@ export function makeStyles(t: UiTheme) {
     ...t.type.label,
     color: t.color.warn,
   }
+  const deleteConfirmBlock: ViewStyle = { gap: t.space.s2, marginTop: t.space.s2 }
+  const deleteResultText: TextStyle = { ...t.type.small, color: t.color.tinte, marginBottom: t.space.s3 }
+  const processingText: TextStyle = { ...t.type.label, color: t.color.tinte2, marginTop: t.space.s2 }
+  const filledText: TextStyle = { ...t.type.small, color: t.color.tinte2, marginTop: t.space.s1 }
   const conflictBox: ViewStyle = {
     marginTop: t.space.s3,
     borderWidth: 2,
@@ -146,7 +146,6 @@ export function makeStyles(t: UiTheme) {
     uploadHeading,
     uploadBody,
     uploadControls,
-    uploadKindLabel,
     uploadOkText,
     uploadErrText,
     emptyBlock,
@@ -174,6 +173,10 @@ export function makeStyles(t: UiTheme) {
     compactButton,
     deleteConfirmRow,
     deleteConfirmText,
+    deleteConfirmBlock,
+    deleteResultText,
+    processingText,
+    filledText,
     konfliktBox: conflictBox,
     konfliktHeading: conflictHeading,
     konfliktBody: conflictBody,

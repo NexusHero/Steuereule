@@ -37,6 +37,10 @@ import { triggerSaveErrorHaptic, watchSaveResult } from '../shared/saveFeedback'
 import { ReceiptPickerButton } from '../shared/ReceiptPickerButton'
 import { detectDocumentMimeType } from '../../lib/documentOcr'
 import { AddressSearch } from '../shared/AddressSearch'
+import { DocumentAssignmentCard } from '../receipts/DocumentAssignmentCard'
+import { ReceiptOutcomeLines } from '../receipts/ReceiptOutcomeLines'
+import { useReceiptReader } from '../../lib/receipts/useReceiptReader'
+import { useOptionalSetTaxYear, useOptionalSwitchToTab } from '../../navigation/ShellState'
 import { useKnownEmployers } from '../master-data/employersStore'
 
 export interface CrossBorderScreenProps {
@@ -48,6 +52,9 @@ export interface CrossBorderScreenProps {
 }
 
 const SEGMENT_CH = ENTRIES['segment-ch']
+
+/** The mask reads one certificate at a time: its read result is kept under this key. */
+const CERTIFICATE_READ_KEY = 'ch-lohnausweis'
 
 /** The exchange rate is the official rate of one month of the tax year, or the annual average — picked, not typed. */
 const MONTH_NUMBERS = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'] as const
@@ -331,6 +338,15 @@ function SalaryCertificateStep({
   const [missingDrawerOpen, setMissingDrawerOpen] = useState(false)
   const [uploadingReceipt, setUploadingReceipt] = useState(false)
   const [receiptUploadStatus, setReceiptUploadStatus] = useState<{ readonly kind: 'ok' | 'error'; readonly text: string } | null>(null)
+  // The same pipeline as every upload (ADR-0097 §4): stored, read on the device, its values staged as
+  // drafts in the owl. The mask only says what it expects and whose mask it is.
+  const reader = useReceiptReader({
+    taxYear,
+    context: { expectedKind: 'chLohnausweis', mask: 'chLohnausweis', area: partnerName !== undefined ? 'B' : 'A' },
+  })
+  const readEntry = reader.entries[CERTIFICATE_READ_KEY]
+  const switchToTab = useOptionalSwitchToTab()
+  const setTaxYear = useOptionalSetTaxYear()
 
   const grossComponentValues = GROSS_COMPONENT_IDS.map((id) => salaryAmountFrom(drafts[id] ?? '', id)).filter(
     (v): v is number => v !== null && v !== 0,
@@ -414,8 +430,9 @@ function SalaryCertificateStep({
         setReceiptUploadStatus({ kind: 'error', text: tr('belege.upload.errorFailed') })
         return
       }
-      setReceiptUploadStatus({ kind: 'ok', text: `${file.name} gespeichert & im Belege-Tab verknüpft.` })
+      setReceiptUploadStatus({ kind: 'ok', text: tr('grenzgaenger.lohnausweis.upload.saved', { datei: file.name }) })
       void queryClient.invalidateQueries({ queryKey: getReceiptControllerListQueryKey() })
+      await reader.read(CERTIFICATE_READ_KEY, file, result.data.id)
     } catch {
       triggerSaveErrorHaptic()
       setReceiptUploadStatus({ kind: 'error', text: tr('belege.upload.errorFailed') })
@@ -436,10 +453,8 @@ function SalaryCertificateStep({
       <Card style={styles.uploadCard} testID="ch-lohnausweis-upload-card">
         <View style={styles.uploadHeaderRow}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.uploadTitle}>Lohnausweis oder Gre-1 / Gre-2 ablegen</Text>
-            <Text style={styles.uploadBody}>
-              Lade deinen Schweizer Lohnausweis direkt hier hoch – er landet automatisch im Belege-Ordner ({taxYear}) und steht der Eule im Chat bereit.
-            </Text>
+            <Text style={styles.uploadTitle}>{tr('grenzgaenger.lohnausweis.upload.title')}</Text>
+            <Text style={styles.uploadBody}>{tr('grenzgaenger.lohnausweis.upload.body')}</Text>
           </View>
           <ReceiptPickerButton
             onFile={(file) => void handleReceiptFile(file)}
@@ -447,7 +462,9 @@ function SalaryCertificateStep({
             variant="leise"
             testID="ch-lohnausweis-upload-btn"
           >
-            {uploadingReceipt ? tr('belege.upload.uploading') : 'Beleg auswählen'}
+            {uploadingReceipt
+              ? tr(readEntry?.phase != null ? 'grenzgaenger.lohnausweis.upload.reading' : 'belege.upload.uploading')
+              : tr('grenzgaenger.lohnausweis.upload.cta')}
           </ReceiptPickerButton>
         </View>
         {receiptUploadStatus !== null ? (
@@ -458,6 +475,27 @@ function SalaryCertificateStep({
           >
             {receiptUploadStatus.text}
           </Text>
+        ) : null}
+        {readEntry?.outcome != null && readEntry.phase === null ? (
+          <ReceiptOutcomeLines
+            outcome={readEntry.outcome}
+            openYear={taxYear}
+            testIDPrefix="ch-lohnausweis-ergebnis"
+            asking={readEntry.question !== null}
+            onSwitchYear={setTaxYear ?? undefined}
+            onOpenDrafts={switchToTab ? () => switchToTab('Owl') : undefined}
+          />
+        ) : null}
+        {readEntry?.question != null ? (
+          <DocumentAssignmentCard
+            question={readEntry.question.question}
+            printed={readEntry.question.printed}
+            busy={readEntry.phase !== null}
+            error={readEntry.error}
+            onChoose={(holder) => void reader.choose(CERTIFICATE_READ_KEY, holder)}
+            onCreate={(role, details) => void reader.create(CERTIFICATE_READ_KEY, role, details)}
+            onConfirmSelf={(takeName) => void reader.confirmSelf(CERTIFICATE_READ_KEY, takeName)}
+          />
         ) : null}
       </Card>
 

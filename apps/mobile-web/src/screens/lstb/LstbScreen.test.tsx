@@ -386,12 +386,12 @@ describe('LstbScreen', () => {
     expect(parseCalls).toBe(0)
   })
 
-  it('shows an honest error when on-device OCR yields empty text without calling /v1/belege/parse', async () => {
-    let parseCalls = 0
+  it('shows an honest error when on-device OCR yields empty text and only records that on the stored Beleg (ADR-0097)', async () => {
+    const parseBodies: unknown[] = []
     server.use(
       http.post(UPLOAD_URL, () => HttpResponse.json(makeUploadedReceipt(), { status: 201 })),
-      http.post(PARSE_URL, () => {
-        parseCalls += 1
+      http.post(PARSE_URL, async ({ request }) => {
+        parseBodies.push(await request.json())
         return HttpResponse.json(makeParseResponse(), { status: 200 })
       }),
     )
@@ -412,7 +412,8 @@ describe('LstbScreen', () => {
         'Auf dem Dokument konnte kein lesbarer Text erkannt werden. Bitte prüfe die Datei oder trag die Werte manuell ein.',
       ),
     ).toBeTruthy()
-    expect(parseCalls).toBe(0)
+    // No text is sent: the server only hears that the device found none, so the Beleg says „kein Text“.
+    await waitFor(() => expect(parseBodies).toEqual([{ taxYear: TAX_YEAR, fileName: 'blank.pdf', receiptId: 'rec-lstb-1', deviceReadFailure: 'empty_text' }]))
   })
 
   it('stages deterministic Stage-1 scan results with ZERO writes to LStB (even on field edit + blur) until explicit confirmation (#444)', async () => {
@@ -475,7 +476,8 @@ describe('LstbScreen', () => {
       rawText: 'Ausdruck der elektronischen Lohnsteuerbescheinigung für 2026\n3. Bruttoarbeitslohn 54.000,00',
       textSource: 'pdf_text',
       stageDraft: true,
-      // The mask is the upload area (ADR-0092).
+      // The mask is the entry context (ADR-0097 §4) and the upload area (ADR-0092).
+      mask: 'lstb',
       area: 'A',
     })
 
@@ -671,17 +673,20 @@ describe('LstbScreen', () => {
     expect(screen.getByTestId('lstb-scan-apply').getAttribute('aria-disabled')).toBe('true')
   })
 
-  it('surfaces an explicit year-conflict dialog without staging values and switches tax year on user choice (ADR-0008)', async () => {
+  it('files a certificate of another year there and offers the switch instead of blocking (ADR-0097 §5)', async () => {
     const onSwitchTaxYear = vi.fn()
     server.use(
       http.post(UPLOAD_URL, () => HttpResponse.json(makeUploadedReceipt(), { status: 201 })),
       http.post(PARSE_URL, () =>
         HttpResponse.json(
-          makeParseResponse({
-            taxYearOnDocument: 2025,
-            yearConflict: { documentYear: 2025, activeYear: 2026 },
-            stagedActionIds: [],
-          }),
+          {
+            ...makeParseResponse({
+              taxYearOnDocument: 2025,
+              yearConflict: { documentYear: 2025, activeYear: 2026 },
+            }),
+            draftsTaxYear: 2025,
+            filedInTaxYear: 2025,
+          },
           { status: 200 },
         ),
       ),
@@ -700,15 +705,34 @@ describe('LstbScreen', () => {
     })
 
     expect(await screen.findByTestId('lstb-year-conflict-modal')).toBeTruthy()
+    // Its drafts wait in 2025: this mask of 2026 shows no draft it could not take over.
     expect(screen.queryByTestId('lstb-scan-draft-banner')).toBeNull()
+    expect(screen.getByText('Liegt im Steuerjahr 2025')).toBeTruthy()
     expect(
-      screen.getByText(
-        'Diese Lohnsteuerbescheinigung gehört zum Steuerjahr 2025, du bist aber gerade im Steuerjahr 2026. Es wurden noch keine Werte übernommen.',
-      ),
+      screen.getByText('Diese Lohnsteuerbescheinigung gehört zum Steuerjahr 2025. Ihre Werte warten dort auf dich, nicht in 2026. Es wurde noch nichts übernommen.'),
     ).toBeTruthy()
 
     fireEvent.click(screen.getByTestId('lstb-year-conflict-switch'))
     expect(onSwitchTaxYear).toHaveBeenCalledWith(2025)
+  })
+
+  it('says when a certificate of another year was read before and staged nothing there', async () => {
+    server.use(
+      http.post(UPLOAD_URL, () => HttpResponse.json(makeUploadedReceipt(), { status: 201 })),
+      http.post(PARSE_URL, () =>
+        HttpResponse.json(makeParseResponse({ taxYearOnDocument: 2025, yearConflict: { documentYear: 2025, activeYear: 2026 }, stagedActionIds: [] }), { status: 200 }),
+      ),
+    )
+    mockExtractDocumentText.mockResolvedValue({ kind: 'pdf', mimeType: 'application/pdf', text: 'Lohnsteuerbescheinigung für 2025', usedOcrFallback: false, pagesProcessed: 1 })
+
+    renderLstb()
+    fireEvent.change(await screen.findByTestId('lstb-scan-file-input'), {
+      target: { files: [new File(['%PDF-1.4'], 'lstb-2025.pdf', { type: 'application/pdf' })] },
+    })
+
+    expect(await screen.findByText('Diese Lohnsteuerbescheinigung gehört zum Steuerjahr 2025, du bist gerade in 2026. Wechsle dorthin und lies sie dort noch einmal.')).toBeTruthy()
+    fireEvent.click(screen.getByTestId('lstb-year-conflict-cancel'))
+    expect(screen.queryByTestId('lstb-year-conflict-modal')).toBeNull()
   })
 
   it('rehydrates a pending staged scan draft across page reload from AdvisorSession without touching LStB', async () => {

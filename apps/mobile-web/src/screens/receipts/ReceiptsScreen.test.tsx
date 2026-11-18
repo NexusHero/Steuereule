@@ -5,16 +5,25 @@
 // Zuordnung states render (ungebunden/vorgeschlagen/zugeordnet/konflikt) with art + dates, the
 // suggestion is confirmed by a tap, a conflicting year is VISIBLE (ADR-008) instead of silently
 // overwritten, and the upload affordance is the honest "Scan folgt" placeholder (ADR-032 §2).
-import { describe, it, expect, vi, afterEach } from 'vitest'
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
 import { ThemeProvider } from '@steuereule/ui'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
+import { Text } from 'react-native'
 import { createAppI18n } from '../../i18n/app-i18n'
 import { ReceiptsScreen } from './ReceiptsScreen'
 import { server } from '../../test-msw-server'
-import type { ReceiptResponseDto } from '@steuereule/api-client'
+import { ShellStateProvider, useShellState } from '../../navigation/ShellState'
+import type { AssignmentQuestionDto, ParseReceiptResponseDto, ReceiptResponseDto } from '@steuereule/api-client'
+
+// The device reading (PDF text layer / OCR) is the one seam replaced here: everything after it is the real pipeline.
+const { mockExtractDocumentText } = vi.hoisted(() => ({ mockExtractDocumentText: vi.fn() }))
+vi.mock('../../lib/documentOcr', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../lib/documentOcr')>()
+  return { ...actual, extractDocumentTextOnDevice: mockExtractDocumentText }
+})
 
 const RECEIPTS_URL = '*/v1/belege'
 
@@ -94,21 +103,60 @@ function mockReceiptsError() {
   server.use(http.get(RECEIPTS_URL, () => HttpResponse.error()))
 }
 
-function renderReceipts(opts: { lng?: 'de' | 'en' } = {}) {
+function YearProbe() {
+  return <Text testID="shell-year">{String(useShellState().taxYear)}</Text>
+}
+
+function renderReceipts(opts: { lng?: 'de' | 'en'; shell?: boolean } = {}) {
   const i18n = createAppI18n(opts.lng ?? 'de')
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  const content = (
+    <ThemeProvider mode="light">
+      <ReceiptsScreen />
+    </ThemeProvider>
+  )
   return render(
     <QueryClientProvider client={queryClient}>
       <I18nextProvider i18n={i18n}>
-        <ThemeProvider mode="light">
-          <ReceiptsScreen />
-        </ThemeProvider>
+        {opts.shell ? (
+          <ShellStateProvider onRegister={() => {}} onLogin={() => {}} onSignedOut={() => {}}>
+            <YearProbe />
+            {content}
+          </ShellStateProvider>
+        ) : (
+          content
+        )}
       </I18nextProvider>
     </QueryClientProvider>,
   )
 }
 
+const PROCESSING_DONE = { state: 'uebernommen', reason: null, pending: 0, applied: 1, dismissed: 0, draftsTaxYear: 2025, open: false } as const
+
+function parseResponse(overrides: Partial<ParseReceiptResponseDto> = {}): ParseReceiptResponseDto {
+  return {
+    mode: 'deterministic_fallback',
+    securityBlocked: false,
+    parsed: { vendorCategory: 'spende', receiptDate: null, amountEur: 50, suggestedScreen: null, suggestedField: null, suggestedValue: null, summary: 'Spende', taxYear: 2025 },
+    stagedAction: null,
+    assistantMessage: null,
+    draftsTaxYear: null,
+    filedInTaxYear: null,
+    noValuesReason: null,
+    duplicateOf: null,
+    processing: null,
+    ...overrides,
+  }
+}
+
 describe('BelegeScreen', () => {
+  beforeEach(() => {
+    // Unless a test says otherwise, the device finds no text and the server records that.
+    mockExtractDocumentText.mockReset()
+    mockExtractDocumentText.mockResolvedValue({ kind: 'pdf', mimeType: 'application/pdf', text: '', usedOcrFallback: false, pagesProcessed: 1 })
+    server.use(http.post('*/v1/belege/parse', () => HttpResponse.json(parseResponse(), { status: 200 })))
+  })
+
   it('shows a real loading state while the inbox is fetched', async () => {
     mockReceipts([])
     renderReceipts()
@@ -136,7 +184,8 @@ describe('BelegeScreen', () => {
     await screen.findByText('Beleg hochladen (PDF / Foto)')
     expect(screen.getByTestId('belege-upload-card')).toBeTruthy()
     expect(screen.getByTestId('belege-upload-cta')).toBeTruthy()
-    expect(screen.getByLabelText('Belegart')).toBeTruthy()
+    // No kind to pick any more: the reading recognises the document (ADR-0097 §4).
+    expect(screen.queryByLabelText('Belegart')).toBeNull()
     expect(screen.queryByText(/folgt noch/)).toBeNull()
   })
 
@@ -159,24 +208,30 @@ describe('BelegeScreen', () => {
     expect(uploadCalls).toBe(0)
   })
 
-  it('uploads a receipt multipart FormData with selected Belegart and refreshes the inbox', async () => {
+  it('uploads a receipt and reads it right away with its drafts staged, like the chat (ADR-0097 §4)', async () => {
     let list: ReceiptResponseDto[] = []
+    const parseBodies: unknown[] = []
     const fetchSpy = vi.spyOn(globalThis, 'fetch')
+    mockExtractDocumentText.mockResolvedValue({ kind: 'pdf', mimeType: 'application/pdf', text: 'Spendenbescheinigung 50,00 EUR', usedOcrFallback: false, pagesProcessed: 1 })
     server.use(
       http.get(RECEIPTS_URL, () => HttpResponse.json(list, { status: 200 })),
       http.post('*/v1/belege/upload', () => {
         list = [ASSIGNED]
         return HttpResponse.json(ASSIGNED, { status: 201 })
       }),
+      http.post('*/v1/belege/parse', async ({ request }) => {
+        parseBodies.push(await request.json())
+        list = [{ ...ASSIGNED, processing: { state: 'vorschlaege', reason: null, pending: 1, applied: 0, dismissed: 0, draftsTaxYear: 2025, open: true } }]
+        return HttpResponse.json(parseResponse({ draftsTaxYear: 2025 }), { status: 200 })
+      }),
     )
     renderReceipts()
     await screen.findByText('Noch keine Belege.')
 
-    fireEvent.change(screen.getByLabelText('Belegart'), { target: { value: 'Lohnausweis' } })
     const pdfFile = new File(['%PDF-1.4\ntest'], 'lohnausweis-2026.pdf', { type: 'application/pdf' })
     fireEvent.change(screen.getByTestId('belege-file-input'), { target: { files: [pdfFile] } })
 
-    expect(await screen.findByText('Beleg gespeichert.')).toBeTruthy()
+    expect(await screen.findByText('Beleg gespeichert. Er wird jetzt gelesen.')).toBeTruthy()
     expect(await screen.findByText('lohnausweis-2026.pdf')).toBeTruthy()
     expect(screen.getByText('Originaldatei verschlüsselt hinterlegt')).toBeTruthy()
 
@@ -184,10 +239,43 @@ describe('BelegeScreen', () => {
     expect(uploadCall).toBeTruthy()
     const body = uploadCall![1]?.body
     expect(body).toBeInstanceOf(FormData)
-    expect((body as FormData).get('kind')).toBe('Lohnausweis')
+    expect((body as FormData).get('kind')).toBe('Sonstiges')
     const uploadedFile = (body as FormData).get('file')
     expect(uploadedFile).toBeInstanceOf(File)
     expect((uploadedFile as File).name).toBe('lohnausweis-2026.pdf')
+
+    // Read once, with the stored Beleg and its drafts staged; no second upload.
+    await waitFor(() => expect(parseBodies).toHaveLength(1))
+    expect(parseBodies[0]).toMatchObject({ receiptId: ASSIGNED.id, stageDraft: true, fileName: 'lohnausweis-2026.pdf' })
+    expect(fetchSpy.mock.calls.filter(([url]) => String(url).endsWith('/v1/belege/upload'))).toHaveLength(1)
+    expect((await screen.findByTestId(`receipt-${ASSIGNED.id}-stand`)).textContent).toBe('1 Wert wartet auf dich')
+  })
+
+  it('records a file the device cannot read on its Beleg and offers to read it again', async () => {
+    let list: ReceiptResponseDto[] = []
+    const parseBodies: unknown[] = []
+    mockExtractDocumentText.mockRejectedValue(new Error('Invalid PDF structure'))
+    server.use(
+      http.get(RECEIPTS_URL, () => HttpResponse.json(list, { status: 200 })),
+      http.post('*/v1/belege/upload', () => {
+        list = [ASSIGNED]
+        return HttpResponse.json(ASSIGNED, { status: 201 })
+      }),
+      http.post('*/v1/belege/parse', async ({ request }) => {
+        parseBodies.push(await request.json())
+        const processing = { state: 'nicht_lesbar', reason: 'unlesbar', pending: 0, applied: 0, dismissed: 0, draftsTaxYear: null, open: true } as const
+        list = [{ ...ASSIGNED, processing }]
+        return HttpResponse.json(parseResponse({ processing }), { status: 200 })
+      }),
+    )
+    renderReceipts()
+    await screen.findByText('Noch keine Belege.')
+    fireEvent.change(screen.getByTestId('belege-file-input'), { target: { files: [new File(['%PDF-1.4'], 'kaputt.pdf', { type: 'application/pdf' })] } })
+
+    expect((await screen.findByTestId(`receipt-${ASSIGNED.id}-stand`, {}, { timeout: 5000 })).textContent).toBe('Nicht lesbar')
+    await waitFor(() => expect(parseBodies).toEqual([expect.objectContaining({ receiptId: ASSIGNED.id, deviceReadFailure: 'read_failed' })]))
+    expect(screen.getByTestId(`receipt-${ASSIGNED.id}-grund`).textContent).toContain('ließ sich auf deinem Gerät nicht öffnen')
+    expect(screen.getByTestId(`receipt-eule-${ASSIGNED.id}`).textContent).toBe('Noch mal lesen')
   })
 
   it('shows an honest error when multipart upload fails on the server', async () => {
@@ -349,14 +437,15 @@ describe('BelegeScreen', () => {
     mockReceipts([PROPOSED, ASSIGNED, UNBOUND])
     renderReceipts()
     await screen.findByText('rechnung-fortbildung.pdf')
-    // `art: 'Lohnausweis'` → label; `art: null` → the generic "Beleg" (once in <select>, once on card badge)
-    expect(screen.getAllByText('Lohnausweis').length).toBe(2)
-    expect(screen.getAllByText('Sonstiges').length).toBe(2)
+    // `art: 'Lohnausweis'` → label; `art: null` → the generic "Beleg" (on the card badge; no kind to pick at the upload)
+    expect(screen.getAllByText('Lohnausweis').length).toBe(1)
+    expect(screen.getAllByText('Sonstiges').length).toBe(1)
     expect(screen.getByText('Beleg')).toBeTruthy()
   })
 
-  it('counts "offen" (everything not zugeordnet) in the appbar pill', async () => {
-    mockReceipts([UNBOUND, PROPOSED, ASSIGNED, CONFLICT])
+  it('counts "offen" as not fully processed (ADR-0097 §1), not as without a year', async () => {
+    // ASSIGNED has its year but is not read yet: open. CONFLICT has no settled year but is done: not open.
+    mockReceipts([UNBOUND, PROPOSED, ASSIGNED, { ...CONFLICT, processing: PROCESSING_DONE }])
     renderReceipts()
     await screen.findByText('rechnung-fortbildung.pdf')
     expect(screen.getByText('3 offen')).toBeTruthy()
@@ -624,6 +713,171 @@ describe('BelegeScreen', () => {
       mockReceipts([ASSIGNED])
       renderReceipts()
       expect((await screen.findByTestId(`receipt-folder-${ASSIGNED.id}`)).textContent).not.toContain('synchronisiert')
+    })
+  })
+
+  // ADR-0097: every Beleg says what became of it, from the server's derived state.
+  describe('what became of a Beleg (ADR-0097)', () => {
+    const read = (id: string, fileName: string, processing: ReceiptResponseDto['processing'], extra: Partial<ReceiptResponseDto> = {}): ReceiptResponseDto => ({
+      ...ASSIGNED,
+      id,
+      fileName,
+      kind: 'Sonstiges',
+      processing,
+      ...extra,
+    })
+    const SPENDE_FIELD = { actionId: 'a-1', taxYear: 2025, screen: 'interview', field: 'spenden-betrag', instance: null, person: 'A', label: 'Spenden', value: '3135' } as const
+
+    it('says each state in plain words, with the reason and the way on', async () => {
+      mockReceipts([
+        read('b-wartet', 'spende.pdf', { state: 'vorschlaege', reason: null, pending: 2, applied: 0, dismissed: 0, draftsTaxYear: 2025, open: true }),
+        read('b-fertig', 'arbeitsmittel.pdf', { state: 'uebernommen', reason: null, pending: 0, applied: 3, dismissed: 0, draftsTaxYear: 2025, open: false }),
+        read('b-angebot', 'handwerker.pdf', { state: 'nichts_verwertbar', reason: 'keine_rechnung', pending: 0, applied: 0, dismissed: 0, draftsTaxYear: null, open: false }),
+        read('b-leer', 'zettel.pdf', { state: 'nichts_verwertbar', reason: 'nichts_erkannt', pending: 0, applied: 0, dismissed: 0, draftsTaxYear: null, open: false }),
+        read('b-weg', 'verworfen.pdf', { state: 'verworfen', reason: null, pending: 0, applied: 0, dismissed: 1, draftsTaxYear: 2025, open: false }),
+        read('b-neu', 'neu.pdf', { state: 'neu', reason: 'entwuerfe_fehlen', pending: 0, applied: 0, dismissed: 0, draftsTaxYear: null, open: true }),
+      ])
+      renderReceipts()
+      expect((await screen.findByTestId('receipt-b-wartet-stand')).textContent).toBe('2 Werte warten auf dich')
+      expect(screen.getByTestId('receipt-b-fertig-stand').textContent).toBe('Gelesen · 3 Werte übernommen')
+      expect(screen.getByTestId('receipt-b-angebot-stand').textContent).toBe('Nichts für die Erklärung: keine Rechnung')
+      expect(screen.getByTestId('receipt-b-angebot-grund').textContent).toBe('Das ist eine Auftragsbestätigung oder ein Angebot. Es zählt erst die Rechnung.')
+      expect(screen.getByTestId('receipt-b-leer-stand').textContent).toBe('Nichts erkannt')
+      expect(screen.getByTestId('receipt-b-weg-stand').textContent).toBe('Gelesen · Vorschläge verworfen')
+      expect(screen.getByTestId('receipt-b-neu-stand').textContent).toBe('Gelesen, aber die Vorschläge sind weg')
+      // Only a Beleg that is not read, or failed, is read again from its card.
+      expect(screen.getByTestId('receipt-eule-b-neu')).toBeTruthy()
+      expect(screen.queryByTestId('receipt-eule-b-fertig')).toBeNull()
+      expect(screen.getByText('2 offen')).toBeTruthy()
+    })
+
+    it('names a reason for every code in both languages', async () => {
+      const codes = ['nichts_erkannt', 'keine_rechnung', 'nicht_absetzbar', 'schon_gezaehlt', 'dublette', 'blockiert', 'kein_steuerjahr', 'anderes_konto', 'lesefehler', 'unlesbar', 'kein_text', 'nicht_unterstuetzt', 'entwuerfe_fehlen'] as const
+      for (const lng of ['de', 'en'] as const) {
+        const i18n = createAppI18n(lng)
+        for (const code of codes) {
+          expect(i18n.exists(`belege.grund.${code}`, { ns: 'app' }), `${lng} belege.grund.${code}`).toBe(true)
+          expect(i18n.exists(`belege.grundSatz.${code}`, { ns: 'app' }), `${lng} belege.grundSatz.${code}`).toBe(true)
+        }
+      }
+    })
+
+    it('says when its drafts sit in another tax year and switches there, and leads to the drafts', async () => {
+      sessionStorage.clear()
+      mockReceipts([read('b-2024', 'spende-2024.pdf', { state: 'vorschlaege', reason: null, pending: 1, applied: 0, dismissed: 0, draftsTaxYear: 2020, open: true })])
+      renderReceipts({ shell: true })
+      expect((await screen.findByTestId('receipt-b-2024-jahr')).textContent).toBe('Liegt im Steuerjahr 2020')
+      expect(screen.getByTestId('receipt-b-2024-zu-vorschlaegen').textContent).toBe('Zu den Vorschlägen')
+      fireEvent.click(screen.getByTestId('receipt-b-2024-jahr-wechseln'))
+      expect(screen.getByTestId('shell-year').textContent).toBe('2020')
+      sessionStorage.clear()
+    })
+
+    it('names a duplicate upload with the first one', async () => {
+      mockReceipts([
+        read('b-doppelt', 'spende-2025 (1).pdf', { state: 'nichts_verwertbar', reason: 'dublette', pending: 0, applied: 0, dismissed: 0, draftsTaxYear: null, open: false }, {
+          duplicateOf: { id: 'b-erst', fileName: 'spende-2025.pdf', uploadedAt: '2026-11-18T09:12:00.000Z' },
+        }),
+      ])
+      renderReceipts()
+      expect((await screen.findByTestId('receipt-b-doppelt-dublette')).textContent).toBe('Doppelt: schon am 18.11.2026 hochgeladen (spende-2025.pdf)')
+    })
+
+    it('lists the values it filled, with their amount and year', async () => {
+      mockReceipts([read('b-spende', 'spende.pdf', { state: 'uebernommen', reason: null, pending: 0, applied: 1, dismissed: 0, draftsTaxYear: 2025, open: false }, { filledFields: [SPENDE_FIELD] })])
+      renderReceipts()
+      expect((await screen.findByTestId('receipt-b-spende-gefuellt')).textContent).toBe('hat gefüllt: Spenden 3.135\u00a0€ · Steuerjahr 2025')
+    })
+
+    it('asks on delete whether its values go too, „ja“ first, and says what was taken back', async () => {
+      const receipt = read('b-spende', 'spende.pdf', { state: 'uebernommen', reason: null, pending: 0, applied: 1, dismissed: 0, draftsTaxYear: 2025, open: false }, { filledFields: [SPENDE_FIELD] })
+      let list: ReceiptResponseDto[] = [receipt]
+      const calls: string[] = []
+      server.use(
+        http.get(RECEIPTS_URL, () => HttpResponse.json(list, { status: 200 })),
+        http.delete('*/v1/belege/b-spende', ({ request }) => {
+          calls.push(new URL(request.url).searchParams.get('takeBackValues') ?? 'none')
+          list = []
+          return HttpResponse.json({ deleted: true, takenBack: 1, withdrawn: 0 }, { status: 200 })
+        }),
+      )
+      renderReceipts()
+      fireEvent.click(await screen.findByTestId('receipt-delete-b-spende'))
+      expect(screen.getByTestId('receipt-delete-frage-b-spende').textContent).toContain('Dieser Beleg hat Spenden 3.135\u00a0€ · Steuerjahr 2025 gefüllt. Werte auch entfernen?')
+      // „Ja, Werte entfernen“ is the primary choice; „Nur den Beleg löschen“ the other one.
+      expect(screen.getByTestId('receipt-delete-werte-b-spende').textContent).toBe('Ja, Werte entfernen')
+      expect(screen.getByTestId('receipt-delete-nur-beleg-b-spende').textContent).toBe('Nur den Beleg löschen')
+      expect(screen.queryByTestId('receipt-delete-confirm-b-spende')).toBeNull()
+      fireEvent.click(screen.getByTestId('receipt-delete-werte-b-spende'))
+      expect((await screen.findByTestId('belege-delete-ergebnis')).textContent).toBe('„spende.pdf“ gelöscht. · 1 Wert entfernt')
+      expect(calls).toEqual(['true'])
+    })
+
+    it('deletes only the Beleg when asked so, and says that its values stay', async () => {
+      const receipt = read('b-wartend', 'spende.pdf', { state: 'vorschlaege', reason: null, pending: 2, applied: 0, dismissed: 0, draftsTaxYear: 2025, open: true })
+      const calls: string[] = []
+      server.use(
+        http.get(RECEIPTS_URL, () => HttpResponse.json(calls.length > 0 ? [] : [receipt], { status: 200 })),
+        http.delete('*/v1/belege/b-wartend', ({ request }) => {
+          calls.push(new URL(request.url).searchParams.get('takeBackValues') ?? 'none')
+          return HttpResponse.json({ deleted: true, takenBack: 0, withdrawn: 0 }, { status: 200 })
+        }),
+      )
+      renderReceipts()
+      fireEvent.click(await screen.findByTestId('receipt-delete-b-wartend'))
+      expect(screen.getByTestId('receipt-delete-frage-b-wartend').textContent).toContain('Von diesem Beleg warten noch 2 Vorschläge. Auch zurückziehen?')
+      fireEvent.click(screen.getByTestId('receipt-delete-nur-beleg-b-wartend'))
+      expect((await screen.findByTestId('belege-delete-ergebnis')).textContent).toBe('„spende.pdf“ gelöscht. Seine Werte bleiben in deiner Erklärung.')
+      expect(calls).toEqual(['false'])
+    })
+
+    it('keeps the question whose a Beleg is on its card, and reads it for the answer', async () => {
+      const question: AssignmentQuestionDto = { reason: 'which', options: [{ holder: 'A', name: 'Mia' }, { holder: 'B', name: 'Jonas' }], preselected: 'A', printedName: null, area: null, offerCreate: [] }
+      let list: ReceiptResponseDto[] = []
+      const parseBodies: { holder?: string }[] = []
+      mockExtractDocumentText.mockResolvedValue({ kind: 'pdf', mimeType: 'application/pdf', text: 'Spendenbescheinigung Jonas 50 EUR', usedOcrFallback: false, pagesProcessed: 1 })
+      server.use(
+        http.get(RECEIPTS_URL, () => HttpResponse.json(list, { status: 200 })),
+        http.post('*/v1/belege/upload', () => {
+          list = [ASSIGNED]
+          return HttpResponse.json(ASSIGNED, { status: 201 })
+        }),
+        http.post('*/v1/belege/parse', async ({ request }) => {
+          const body = (await request.json()) as { holder?: string }
+          parseBodies.push(body)
+          return body.holder === undefined
+            ? HttpResponse.json(parseResponse({ assignment: { holder: null, question, alsoFor: [] } }), { status: 200 })
+            : HttpResponse.json(parseResponse({ assignment: { holder: { holder: 'B', name: 'Jonas' }, question: null, alsoFor: [] } }), { status: 200 })
+        }),
+      )
+      renderReceipts()
+      await screen.findByText('Noch keine Belege.')
+      fireEvent.change(screen.getByTestId('belege-file-input'), { target: { files: [new File(['%PDF-1.4'], 'spende-jonas.pdf', { type: 'application/pdf' })] } })
+
+      const card = await screen.findByTestId(`receipt-${ASSIGNED.id}-zuordnung`)
+      expect(card.textContent).toContain('Für wen ist dieser Beleg?')
+      expect(screen.getByTestId(`receipt-${ASSIGNED.id}-stand`).textContent).toBe('Wartet auf deine Antwort, für wen er ist')
+      fireEvent.click(screen.getByTestId('beleg-zuordnung-fuer-B'))
+      await waitFor(() => expect(parseBodies.map((b) => b.holder)).toEqual([undefined, 'B']))
+      await waitFor(() => expect(screen.queryByTestId(`receipt-${ASSIGNED.id}-zuordnung`)).toBeNull())
+    })
+
+    it('reads the Steuerbescheid through the same pipeline', async () => {
+      mockReceipts([])
+      const parseBodies: unknown[] = []
+      mockExtractDocumentText.mockResolvedValue({ kind: 'pdf', mimeType: 'application/pdf', text: 'Bescheid für 2025 über Einkommensteuer', usedOcrFallback: false, pagesProcessed: 1 })
+      server.use(
+        http.post('*/v1/belege/upload', () => HttpResponse.json({ ...ASSIGNED, id: 'b-bescheid', kind: 'Steuerbescheid' }, { status: 201 })),
+        http.post('*/v1/belege/parse', async ({ request }) => {
+          parseBodies.push(await request.json())
+          return HttpResponse.json(parseResponse(), { status: 200 })
+        }),
+      )
+      renderReceipts()
+      await screen.findByTestId('belege-bescheid-check-card')
+      fireEvent.change(screen.getByTestId('belege-bescheid-file-input'), { target: { files: [new File(['%PDF-1.4'], 'bescheid-2025.pdf', { type: 'application/pdf' })] } })
+      expect((await screen.findByTestId('belege-bescheid-check-status')).textContent).toContain('gelesen')
+      expect(parseBodies).toEqual([expect.objectContaining({ receiptId: 'b-bescheid', stageDraft: true })])
     })
   })
 })

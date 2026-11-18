@@ -64,6 +64,34 @@ export function DocumentAssignmentCard({ question, printed, busy = false, error 
             : tr('belegZuordnung.frage.unknownNoName')
           : tr('belegZuordnung.frage.which')
   const asksSelf = question.reason === 'confirmSelf' && !notMe
+  // The document names someone who is not in the household: creating them is the likely answer, so
+  // „anlegen“ leads and „Für mich“ steps back to a secondary choice.
+  const createLeads = question.reason === 'unknown' && question.offerCreate.length > 0
+
+  const optionsRow = question.options.length > 0 ? (
+    <View style={s.row}>
+      {question.options.map((person) => (
+        <Button
+          key={person.holder}
+          variant={!createLeads && person.holder === question.preselected ? 'primaer' : 'leise'}
+          disabled={busy}
+          onPress={() => onChoose(person.holder)}
+          testID={`beleg-zuordnung-fuer-${holderTestId(person.holder)}`}
+        >
+          {label(person)}
+        </Button>
+      ))}
+    </View>
+  ) : null
+  const createRow = question.offerCreate.length > 0 && creating === null ? (
+    <View style={s.row}>
+      {question.offerCreate.map((role, i) => (
+        <Button key={role} variant={createLeads && i === 0 ? 'primaer' : 'ghost'} disabled={busy} onPress={() => setCreating(role)} testID={`beleg-zuordnung-anlegen-${role === 'B' ? 'b' : 'kind'}`}>
+          {tr(role === 'B' ? 'belegZuordnung.anlegen.alsB' : 'belegZuordnung.anlegen.alsKind')}
+        </Button>
+      ))}
+    </View>
+  ) : null
 
   return (
     <View style={s.card} testID="beleg-zuordnung">
@@ -85,30 +113,9 @@ export function DocumentAssignmentCard({ question, printed, busy = false, error 
         </View>
       ) : (
         <>
-          {question.options.length > 0 ? (
-            <View style={s.row}>
-              {question.options.map((person) => (
-                <Button
-                  key={person.holder}
-                  variant={person.holder === question.preselected ? 'primaer' : 'leise'}
-                  disabled={busy}
-                  onPress={() => onChoose(person.holder)}
-                  testID={`beleg-zuordnung-fuer-${holderTestId(person.holder)}`}
-                >
-                  {label(person)}
-                </Button>
-              ))}
-            </View>
-          ) : null}
-          {question.offerCreate.length > 0 && creating === null ? (
-            <View style={s.row}>
-              {question.offerCreate.map((role) => (
-                <Button key={role} variant="ghost" disabled={busy} onPress={() => setCreating(role)} testID={`beleg-zuordnung-anlegen-${role === 'B' ? 'b' : 'kind'}`}>
-                  {tr(role === 'B' ? 'belegZuordnung.anlegen.alsB' : 'belegZuordnung.anlegen.alsKind')}
-                </Button>
-              ))}
-            </View>
-          ) : null}
+          {createLeads ? createRow : null}
+          {optionsRow}
+          {createLeads ? null : createRow}
         </>
       )}
       {creating !== null ? (

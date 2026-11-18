@@ -3,7 +3,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
-import { ThemeProvider } from '@steuereule/ui'
+import { Button, ThemeProvider } from '@steuereule/ui'
 import type { AssignmentQuestionDto } from '@steuereule/api-client'
 import { createAppI18n } from '../../i18n/app-i18n'
 import { AlsoForOffers, DocumentAssignmentCard } from './DocumentAssignmentCard'
@@ -30,7 +30,33 @@ const which: AssignmentQuestionDto = {
   offerCreate: [],
 }
 
+const background = (id: string) => getComputedStyle(screen.getByTestId(id)).backgroundColor
+
 describe('DocumentAssignmentCard', () => {
+  it('leads with „anlegen“, not „Für mich“, when the document names someone outside the household (ADR-0097)', () => {
+    const unknown: AssignmentQuestionDto = { reason: 'unknown', options: [{ holder: 'A', name: 'Elias' }], preselected: 'A', printedName: 'Jonas Sommer', area: null, offerCreate: ['B', 'kind'] }
+    renderUi(
+      <>
+        <Button testID="ref-primary">x</Button>
+        <DocumentAssignmentCard question={unknown} printed={empty} onChoose={vi.fn()} onCreate={vi.fn()} onConfirmSelf={vi.fn()} />
+      </>,
+    )
+    const primary = background('ref-primary')
+    expect(background('beleg-zuordnung-anlegen-b')).toBe(primary)
+    expect(background('beleg-zuordnung-fuer-A')).not.toBe(primary)
+    expect(background('beleg-zuordnung-anlegen-kind')).not.toBe(primary)
+    // The primary choice comes first, also for a screen reader and the keyboard.
+    const buttons = screen.getAllByRole('button').map((b) => b.getAttribute('data-testid'))
+    expect(buttons.indexOf('beleg-zuordnung-anlegen-b')).toBeGreaterThan(-1)
+    expect(buttons.indexOf('beleg-zuordnung-anlegen-b')).toBeLessThan(buttons.indexOf('beleg-zuordnung-fuer-A'))
+  })
+
+  it('keeps the person the document names as the primary choice when everyone is in the household', () => {
+    renderUi(<DocumentAssignmentCard question={which} printed={empty} onChoose={vi.fn()} onCreate={vi.fn()} onConfirmSelf={vi.fn()} />)
+    expect(background('beleg-zuordnung-fuer-B')).not.toBe(background('beleg-zuordnung-fuer-A'))
+    expect(background('beleg-zuordnung-fuer-A')).toBe(background('beleg-zuordnung-fuer-kind-lio'))
+  })
+
   it('asks „Für wen?“ with one button per person and hands the choice on', () => {
     const onChoose = vi.fn()
     renderUi(<DocumentAssignmentCard question={which} printed={empty} onChoose={onChoose} onCreate={vi.fn()} onConfirmSelf={vi.fn()} />)

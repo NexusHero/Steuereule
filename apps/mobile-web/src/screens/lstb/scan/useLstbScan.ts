@@ -11,11 +11,10 @@ import {
   useAdvisorControllerDismissAction,
   useAdvisorControllerGetSession,
   useLstbScanControllerConfirmScan,
-  type LstbYearConflictDto,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../../i18n/resources'
 import type { AssignmentQuestionDto } from '@steuereule/api-client'
-import { printedPersonDetails } from '@steuereule/core'
+import { printedPersonDetails, receiptFilingYear } from '@steuereule/core'
 import { captureReceipt, type CapturePhase } from '../../../lib/receipts/captureReceipt'
 import { createHolderFromDocument, detailsFromDocument, takeNameIntoProfile, type NewHolderDetails } from '../../../lib/receipts/documentAssignment'
 import { wholeEurosFrom } from '../../shared/wholeEuros'
@@ -28,13 +27,23 @@ import {
   type StagedLstbScanDraft,
 } from './lstbScanDraft'
 
+/**
+ * The certificate belongs to another tax year (ADR-0097 §5): its drafts were filed there (`staged`), or,
+ * read once already, wait to be read there. Nothing blocks; the mask offers the switch.
+ */
+export interface LstbOtherYear {
+  readonly documentYear: number
+  readonly activeYear: number
+  readonly staged: boolean
+}
+
 export interface LstbScanState {
   readonly stagedScan: StagedLstbScanDraft | null
   readonly evaluation: StagedDraftEvaluation
   readonly canApply: boolean
   readonly busyPhase: CapturePhase | null
   readonly error: string | null
-  readonly yearConflict: LstbYearConflictDto | null
+  readonly yearConflict: LstbOtherYear | null
   readonly overwriteConflict: boolean
   readonly confirming: boolean
   readonly previewOpen: boolean
@@ -75,7 +84,7 @@ export function useLstbScan({ taxYear, person }: { readonly taxYear: number; rea
   const [locallyDismissed, setLocallyDismissed] = useState(false)
   const [busyPhase, setBusyPhase] = useState<CapturePhase | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [yearConflict, setYearConflict] = useState<LstbYearConflictDto | null>(null)
+  const [yearConflict, setYearConflict] = useState<LstbOtherYear | null>(null)
   const [overwriteConflict, setOverwriteConflict] = useState(false)
   const [sameCertificate, setSameCertificate] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(false)
@@ -115,6 +124,7 @@ export function useLstbScan({ taxYear, person }: { readonly taxYear: number; rea
         taxYear,
         kind: 'lstb',
         onPhase: setBusyPhase,
+        mask: 'lstb',
         ...(again ? { holder: again.holder, receiptId: again.receiptId } : { area: person }),
       })
       // The original lands in the Belege inbox even when reading or parsing fails.
@@ -154,10 +164,18 @@ export function useLstbScan({ taxYear, person }: { readonly taxYear: number; rea
         setError(tr('lstb.scan.error.parseFailed'))
         return
       }
-      if (lstbScan.yearConflict !== null) {
-        // Year mismatch: nothing was staged; offer the switch instead (ADR-0008, AC 7).
+      // One year rule (ADR-0097 §5): a certificate of another year is filed in that year, not blocked.
+      // Its drafts wait there, so this mask offers the switch instead of a draft it could not take over.
+      const filedIn = captured.response.filedInTaxYear ?? null
+      if (filedIn !== null || lstbScan.yearConflict !== null) {
         setStagedScan(null)
-        setYearConflict(lstbScan.yearConflict)
+        const documentYear = filedIn ?? lstbScan.yearConflict?.documentYear ?? taxYear
+        if (filedIn === null && receiptFilingYear(documentYear, taxYear) === null) {
+          setError(tr('lstb.scan.error.noTaxYear', { jahr: documentYear }))
+          return
+        }
+        setYearConflict({ documentYear, activeYear: taxYear, staged: filedIn !== null })
+        if (filedIn !== null) void queryClient.invalidateQueries({ queryKey: getAdvisorControllerGetSessionQueryKey(filedIn) })
         return
       }
       setStagedScan({

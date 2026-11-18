@@ -37,7 +37,8 @@ import {
   type SendAdvisorMessageResponseDto,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
-import { captureReceipt, recognisedWithoutValues, type CapturePhase, type CaptureResult } from '../../lib/receipts/captureReceipt'
+import { captureReceipt, type CapturePhase, type CaptureResult } from '../../lib/receipts/captureReceipt'
+import { outcomeOfFailure, outcomeOfParse, type ReceiptOutcome } from '../../lib/receipts/receiptOutcome'
 import { createHolderFromDocument, detailsFromDocument, takeNameIntoProfile, type NewHolderDetails } from '../../lib/receipts/documentAssignment'
 import { createFrameBatcher } from './chat/frameBatcher'
 import { apiErrorText } from './chat/apiErrorText'
@@ -154,6 +155,16 @@ export interface ParseReceiptInput {
   readonly stageDraft?: boolean | undefined
 }
 
+/** What became of one file of a chat upload (ADR-0097 §3): one line per file, from the server's state. */
+export interface ChatReceiptResult {
+  /** The Beleg's id, or the file name when it could not be stored. */
+  readonly key: string
+  readonly fileName: string
+  readonly outcome: ReceiptOutcome
+  /** „Für wen?“ is open for this file: nothing was read for anyone yet. */
+  readonly asking: boolean
+}
+
 export interface CopilotBridgeContextValue {
   readonly mode: CopilotMode
   readonly insideOwlWorkspace: boolean
@@ -214,9 +225,16 @@ export interface CopilotBridgeContextValue {
    */
   readonly readStoredReceipt: (file: File, receiptId: string) => Promise<CaptureResult | null>
   readonly receiptPhase: CapturePhase | null
-  /** Plain-language outcome the chat shows after a capture (year conflict, unreadable file …). */
+  /** A sentence of the reader itself after a capture (Person B keeps an own account, a health statement's summary); the outcome per file is in `receiptResults`. */
   readonly receiptNotice: string | null
   readonly clearReceiptNotice: () => void
+  /** One line per file of the last selection, kept until the next selection starts (ADR-0097 §3). */
+  readonly receiptResults: readonly ChatReceiptResult[]
+  /** A new selection of files starts: the lines of the last one go. */
+  readonly startReceiptBatch: () => void
+  readonly clearReceiptResults: () => void
+  /** Opens another tax year for the whole app (drafts of a Beleg went there, ADR-0097 §5). */
+  readonly switchTaxYear: (year: number) => void
   /** „Für wen?“ (ADR-0092): a document waits for the user to say whose it is; nothing is read for anyone yet. */
   readonly documentQuestion: { readonly question: AssignmentQuestionDto; readonly printed: NewHolderDetails } | null
   /** Whose the last document is („für: …“) and whom else a multi-person document names („auch für …?“). */
@@ -420,6 +438,12 @@ export function CopilotBridgeProvider({
   const [lastParsedReceipt, setLastParsedReceipt] = useState<ParseReceiptResponseDto | null>(null)
   const [receiptPhase, setReceiptPhase] = useState<CapturePhase | null>(null)
   const [receiptNotice, setReceiptNotice] = useState<string | null>(null)
+  const [receiptResults, setReceiptResults] = useState<readonly ChatReceiptResult[]>([])
+  /** A file's line is replaced when it is read again (after „Für wen?“), never added twice. */
+  const putReceiptResult = useCallback((next: ChatReceiptResult) => {
+    setReceiptResults((prev) => (prev.some((r) => r.key === next.key) ? prev.map((r) => (r.key === next.key ? next : r)) : [...prev, next]))
+  }, [])
+  const switchTaxYear = useCallback((year: number) => onSwitchYear?.(year), [onSwitchYear])
   // The document of the last upload, kept in memory to read it again for the person the user names.
   const [assignmentFile, setAssignmentFile] = useState<{ file: File; receiptId: string | null; kind: DetectedDocumentKind; rawText: string } | null>(null)
   const [documentQuestion, setDocumentQuestion] = useState<CopilotBridgeContextValue['documentQuestion']>(null)
@@ -860,9 +884,16 @@ export function CopilotBridgeProvider({
           ...(!again && storedReceiptId !== undefined ? { receiptId: storedReceiptId } : {}),
         })
         if (!result.ok) {
-          setReceiptNotice(tr(`advisor.chat.receiptFailure.${result.failure}`))
+          // The device or the server could not read it: the file's line says so, from the state the server recorded.
+          putReceiptResult({ key: result.receiptId ?? again?.receiptId ?? storedReceiptId ?? file.name, fileName: file.name, outcome: outcomeOfFailure(result.failure, result.processing), asking: false })
           return result
         }
+        putReceiptResult({
+          key: result.receiptId ?? file.name,
+          fileName: file.name,
+          outcome: outcomeOfParse(result.response),
+          asking: result.response.assignment?.question != null,
+        })
         setLastParsedReceipt(result.response)
         setAssignmentFile({ file, receiptId: result.receiptId, kind: result.kind, rawText: result.rawText })
         // „Für wen?“ (ADR-0092): nothing was read for anyone; the user answers first.
@@ -885,39 +916,33 @@ export function CopilotBridgeProvider({
         if (result.response.stagedAction == null && result.response.parsed.vendorCategory === 'krankheitskosten') {
           setReceiptNotice(result.response.parsed.summary)
         }
-        // A recognised document that left no draft says so; a reason of its own (below, above) replaces this.
-        if (recognisedWithoutValues(result.kind, result.response) && !owned?.personNotRecordable) {
-          setReceiptNotice(result.kind === 'chKrankenkasse' ? result.response.parsed.summary : tr('advisor.chat.receiptNoValues'))
-        }
-        const yearConflict = result.response.lstb?.yearConflict ?? certificate?.yearConflict ?? null
-        if (yearConflict !== null) {
-          setReceiptNotice(
-            tr('advisor.chat.receiptYearConflict', {
-              documentYear: yearConflict.documentYear,
-              activeYear: yearConflict.activeYear,
-            }),
-          )
+        // A health statement says in its own words what it holds; „nothing recognised“ and „another
+        // tax year“ are said by the file's line, from the server's state (ADR-0097 §3, §5).
+        if (result.kind === 'chKrankenkasse' && result.response.stagedAction == null && result.response.assignment?.question == null) {
+          setReceiptNotice(result.response.parsed.summary)
         }
         const stagedId = result.response.stagedAction?.actionId
         if (stagedId) {
           setReceiptLinkedActionIds((prev) => new Set(prev).add(stagedId))
         }
+        const filedIn = result.response.filedInTaxYear ?? null
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: getAdvisorControllerGetSessionQueryKey(taxYear) }),
           queryClient.invalidateQueries({ queryKey: getOwlModeControllerGetCardsQueryKey(taxYear) }),
+          ...(filedIn !== null ? [queryClient.invalidateQueries({ queryKey: getAdvisorControllerGetSessionQueryKey(filedIn) })] : []),
           queryClient.invalidateQueries({ queryKey: getReceiptControllerListQueryKey() }),
         ])
         return result
       } catch {
-        // Never leave the chat silent: any unexpected failure becomes a visible notice.
-        setReceiptNotice(tr('advisor.chat.receiptFailure.parse_failed'))
+        // Never leave the chat silent: any unexpected failure becomes the file's line.
+        putReceiptResult({ key: again?.receiptId ?? storedReceiptId ?? file.name, fileName: file.name, outcome: outcomeOfFailure('parse_failed'), asking: false })
         return null
       } finally {
         setParsingReceipt(false)
         setReceiptPhase(null)
       }
     },
-    [isAuthenticated, queryClient, taxYear, tr],
+    [isAuthenticated, putReceiptResult, queryClient, taxYear, tr],
   )
 
   const readStoredReceipt = useCallback(
@@ -1024,6 +1049,10 @@ export function CopilotBridgeProvider({
       receiptPhase,
       receiptNotice,
       clearReceiptNotice: () => setReceiptNotice(null),
+      receiptResults,
+      startReceiptBatch: () => setReceiptResults([]),
+      clearReceiptResults: () => setReceiptResults([]),
+      switchTaxYear,
       documentQuestion,
       documentHolder,
       assignmentBusy,
@@ -1076,6 +1105,8 @@ export function CopilotBridgeProvider({
       readStoredReceipt,
       receiptPhase,
       receiptNotice,
+      receiptResults,
+      switchTaxYear,
       documentQuestion,
       documentHolder,
       assignmentBusy,
