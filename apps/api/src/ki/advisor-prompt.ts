@@ -19,6 +19,7 @@ import {
   interviewStanding,
   type AdvisorTask,
   type AdvisorOpeningBrief,
+  type AdvisorPlanStep,
   type CaseDigest,
   type Screen,
 } from '@steuereule/core'
@@ -70,7 +71,7 @@ export function buildStableSystemPrompt(personalDataConsent = false): string {
     '4. Zitiere Rechtsgrundlagen nur mit `[sourceId]` aus folgendem Katalog:',
     sourceCatalog,
     '',
-    '5. Plan: Braucht eine Aufgabe mehrere Schritte (z. B. „Was hab ich vergessen?“ oder mehrere Bereiche prüfen), lege mit `plan_steps` eine kurze Liste an (höchstens 8 Schritte) und rufe `plan_steps` bei jedem Fortschritt mit der vollständigen Liste und neuen Status auf (`offen`, `laeuft`, `erledigt`). Einfache Fragen beantwortest du direkt, ohne Plan. Ein Plan schreibt nie etwas: Änderungen bleiben Entwürfe über `stage_field_draft`.',
+    '5. Plan: Braucht eine Aufgabe mehrere Schritte (z. B. „Was hab ich vergessen?“ oder mehrere Bereiche prüfen) oder nennt eine Nachricht mehrere getrennte Punkte, lege mit `plan_steps` eine kurze Liste an (höchstens 8 Schritte; bei mehreren Punkten je Punkt ein Schritt, nur bei mehr als 8 fasst du verwandte zusammen) und rufe `plan_steps` bei jedem Fortschritt mit der vollständigen Liste und neuen Status auf (`offen`, `laeuft`, `erledigt`). Ein Schritt ist `erledigt`, sobald sein Entwurf vorbereitet ist. Bleibt etwas offen, sagt deine Antwort am Ende, was noch offen ist. Einfache Fragen beantwortest du direkt, ohne Plan. Ein Plan schreibt nie etwas: Änderungen bleiben Entwürfe über `stage_field_draft`.',
     '',
     '6. Felder: Für `screen` und `field` gelten ausschließlich die folgenden Namen. Die Namen im Fall-Überblick (CaseDigest) sind KEINE Feldnamen. Gehören mehrere Werte derselben Maske zusammen (z. B. die drei Beträge der Lohnsteuerbescheinigung), lege EINEN Entwurf an und gib die übrigen als `companionFields` mit (höchstens 3). Nennt der Nutzer Angaben für verschiedene Masken oder mehr Felder, rufe `stage_field_draft` für jede Gruppe einzeln auf: Alle Entwürfe einer Antwort stehen nebeneinander und werden gemeinsam freigegeben. Zähle in deinem Text nur Entwürfe auf, für die das Werkzeug `ok: true` gemeldet hat; was abgelehnt wurde, nennst du als nicht vorbereitet, mit dem Grund. Meldet ein Werkzeug UNKNOWN_FIELD, nimm einen Namen aus der Liste, die es nennt.',
     describeAiWritableFields(personalDataConsent),
@@ -140,7 +141,21 @@ export function describeYearFigures(taxYear: number): string[] {
   return ['', `Werte für das Steuerjahr ${taxYear} aus der geprüften Tabelle \`kennzahlen\`. Sätze, Pauschalen und Höchstbeträge nennst du nur von hier, nie aus dem Gedächtnis; für Entwürfe rechnest du mit diesen Werten (z. B. Kindergeld im Jahr = Monatsbetrag × Monate):`, ...lines]
 }
 
-export function buildCaseSystemPrompt(digest: CaseDigest, activeScreen: Screen | undefined, planFirst: boolean, records?: AdvisorRecordHandles, notes?: readonly AdvisorNoteHandle[], skill?: AdvisorSkillId, task?: AdvisorTask, assessment?: AdvisorAssessmentBrief, situation?: string, opening?: AdvisorOpeningBrief, grayZone = false, interview?: InterviewProgress, today: string = new Date().toISOString().slice(0, 10), household?: AdvisorHousehold): string {
+/**
+ * The steps the last plan left open, for the case part: they change from turn to turn, so they never
+ * go into the cached rules. Without them a model that promised „im nächsten Schritt“ forgot points.
+ */
+export function describeOpenPlanForPrompt(openPlan: readonly AdvisorPlanStep[] | undefined): string[] {
+  if (!openPlan || openPlan.length === 0) return []
+  return [
+    '',
+    'Offen aus deinem letzten Plan:',
+    ...openPlan.map((step) => `- ${step.text}`),
+    'Arbeite diese Punkte zuerst ab, bevor du Neues anfängst, und lass keinen fallen. Rufe `plan_steps` mit der vollständigen Liste auf und setze jeden Punkt auf `erledigt`, sobald sein Entwurf vorbereitet ist. Was du in dieser Antwort nicht schaffst, nennst du am Ende als noch offen.',
+  ]
+}
+
+export function buildCaseSystemPrompt(digest: CaseDigest, activeScreen: Screen | undefined, planFirst: boolean, records?: AdvisorRecordHandles, notes?: readonly AdvisorNoteHandle[], skill?: AdvisorSkillId, task?: AdvisorTask, assessment?: AdvisorAssessmentBrief, situation?: string, opening?: AdvisorOpeningBrief, grayZone = false, interview?: InterviewProgress, today: string = new Date().toISOString().slice(0, 10), household?: AdvisorHousehold, openPlan?: readonly AdvisorPlanStep[]): string {
   return [
     describeSituationForPrompt(digest, situation),
     '',
@@ -159,6 +174,7 @@ export function buildCaseSystemPrompt(digest: CaseDigest, activeScreen: Screen |
     ...(skill === 'berater-interview' ? ['', describeInterviewStanding(interview)] : []),
     ...(task ? ['', taskPrompt(task, digest, assessment, opening)] : []),
     ...(planFirst ? ['', 'Für diese Anfrage gilt: Rufe als Erstes `plan_steps` auf, bevor du irgendetwas anderes tust.'] : []),
+    ...describeOpenPlanForPrompt(openPlan),
     ...(grayZone ? ['', GRAY_ZONE_HINT] : []),
   ].join('\n')
 }
@@ -196,9 +212,11 @@ export function buildSystemMessage(
   household?: AdvisorHousehold,
   /** The user consented to personal data for the owl (ADR-0091). */
   personalDataConsent = false,
+  /** The steps the conversation's last plan left open. */
+  openPlan?: readonly AdvisorPlanStep[],
 ): SystemMessage {
   const stable = buildStableSystemPrompt(personalDataConsent)
-  const caseSpecific = buildCaseSystemPrompt(digest, activeScreen, planFirst, records, notes, skill, task, assessment, situation, opening, grayZone, interview, undefined, household)
+  const caseSpecific = buildCaseSystemPrompt(digest, activeScreen, planFirst, records, notes, skill, task, assessment, situation, opening, grayZone, interview, undefined, household, openPlan)
   if (provider === 'anthropic') {
     return new SystemMessage({
       content: [

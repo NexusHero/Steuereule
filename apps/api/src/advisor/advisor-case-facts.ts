@@ -15,6 +15,7 @@ import {
   type CaseFurtherFacts,
   effectivePublicHolidays,
   type PersonBFigures,
+  YES_NO_GATE_IDS,
 } from '@steuereule/core'
 import { checkPiiFree } from '../ki/ki.adapter.js'
 import { type CapitalRepository } from '../capital/capital.repository.js'
@@ -168,6 +169,8 @@ export class AdvisorCaseFacts {
         homeOfficeAnswer: answerMap['homeoffice'] ?? null,
         homeOfficeDays,
         distanceKm: commuteRecord?.oneWayKm ?? parseNum(answerMap['weg']),
+        // Without a commute repository the mask is unknown, and nothing may be called missing.
+        meansOfTransport: this.commuteRepo ? { transport: commuteRecord?.transport ?? null, secondTransport: commuteRecord?.secondTransport ?? null } : undefined,
       },
       catalogExpenses: {
         hasTraining: answerMap['fortbildung'] === 'Ja' || answerMap['katalog_fortbildung'] === 'ja',
@@ -206,6 +209,7 @@ export class AdvisorCaseFacts {
       printoutMissingFields: missingConfirmationsList,
       estimatedRefundEur: null,
       answeredBasis: (['job', 'ausland'] as const).filter((id) => (answerMap[id] ?? '') !== ''),
+      answeredGates: Object.fromEntries(YES_NO_GATE_IDS.filter((id) => (answerMap[id] ?? '') !== '').map((id) => [id, answerMap[id]!])),
       furtherFacts: {
         ...furtherFactsOf(taxYear, answerMap, pensionRecord, rentals, capitalRecord),
         leave: commuteRecord && commuteRecord.workdays.length > 0 ? { vacationDays: commuteRecord.vacationDays, sickDays: commuteRecord.sickDays } : null,

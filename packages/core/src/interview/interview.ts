@@ -522,6 +522,41 @@ export function entryForStep(step: EntryStepId): EntryId | undefined {
   return STEP_INDEX.get(step)
 }
 
+/** The yes/no question a follow-up sits behind, and the answer that opens it. */
+export interface YesNoGate {
+  readonly gate: EntryStepId
+  readonly opensWith: (typeof YES_NO_VALUES)[number]
+}
+
+const isYesNoForm = (form: ValueForm): boolean =>
+  form.kind === 'enum' && form.values.length === YES_NO_VALUES.length && YES_NO_VALUES.every((value, i) => form.values[i] === value)
+
+/**
+ * Read off the catalogue, never kept by hand: the estimate and the printout count a follow-up's
+ * answer only behind its „Ja“, so whoever drafts the follow-up must know which gate it needs.
+ * Only direct follow-ups of a yes/no question; deeper ones depend on a further, non-yes/no answer.
+ */
+function buildYesNoGateIndex(questions: Readonly<Record<EntryStepId, QuestionDeclaration>>): ReadonlyMap<EntryStepId, YesNoGate> {
+  const index = new Map<EntryStepId, YesNoGate>()
+  for (const decl of Object.values(questions)) {
+    if (decl.kind !== 'question' || !isYesNoForm(decl.form)) continue
+    for (const target of decl.followUps?.Ja ?? []) {
+      const id = targetId(target)
+      if (!index.has(id)) index.set(id, { gate: decl.id, opensWith: 'Ja' })
+    }
+  }
+  return index
+}
+
+const YES_NO_GATE_INDEX: ReadonlyMap<EntryStepId, YesNoGate> = buildYesNoGateIndex(QUESTIONS)
+
+/** Every yes/no question that opens follow-ups with its „Ja“, in catalogue order. */
+export const YES_NO_GATE_IDS: readonly EntryStepId[] = [...new Set([...YES_NO_GATE_INDEX.values()].map((entry) => entry.gate))]
+
+export function yesNoGateOf(followUp: string): YesNoGate | undefined {
+  return YES_NO_GATE_INDEX.get(followUp as EntryStepId)
+}
+
 function stepFor(id: EntryStepId): EntryStep {
   const decl = QUESTIONS[id]
   return decl.kind === 'gate' ? { kind: 'gate', id: id as EntryGateId } : { kind: 'question', id: id as EntryQuestionId }

@@ -78,6 +78,11 @@ export interface AdvisorTurnRequest {
    * components. The owl reads it instead of adding figures up herself; figures only, no personal data.
    */
   readonly readEstimate?: (() => Promise<AdvisorEstimateReading>) | undefined
+  /**
+   * The steps of the conversation's last plan that are not done yet. A model that promised to come
+   * back to a point may forget it; the prompt reminds it, whichever model answers.
+   */
+  readonly openPlan?: readonly AdvisorPlanStep[] | undefined
 }
 
 /** A range in euro; `from` equals `to` where the estimate is exact. */

@@ -403,6 +403,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
       request.interview,
       request.household,
       request.personalDataConsent === true,
+      request.openPlan,
     )
     const historyMessages: BaseMessage[] = (request.history ?? []).map((entry) =>
       entry.role === 'user' ? new HumanMessage(entry.content) : new AIMessage(entry.content),
