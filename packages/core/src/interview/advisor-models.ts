@@ -72,8 +72,10 @@ export interface AdvisorModelPrice {
 }
 
 /**
- * Anthropic's first-party list prices (Claude API reference, 2026-11). Models of other providers
- * have none here: their cost factor stays unknown rather than guessed.
+ * List prices: Anthropic's first-party prices (Claude API reference, 2026-11) and Gemini 3.8 Flash,
+ * the standard model, at Google's standard rate (ai.google.dev pricing, 2026-11). Google charges an
+ * introductory half until 2026-12-31; the factors are relative, so the standard rate keeps them
+ * from jumping in January. Models without a price here keep an unknown cost factor, not a guess.
  */
 const PRICES: Readonly<Record<string, AdvisorModelPrice>> = {
   'anthropic:claude-fable-5-2': { inputUsdPerMTok: 8, outputUsdPerMTok: 40 },
@@ -89,6 +91,7 @@ const PRICES: Readonly<Record<string, AdvisorModelPrice>> = {
   'anthropic:claude-sonnet-4-6': { inputUsdPerMTok: 3, outputUsdPerMTok: 15 },
   'anthropic:claude-haiku-5-5': { inputUsdPerMTok: 0.1, outputUsdPerMTok: 0.5 },
   'anthropic:claude-haiku-4-5': { inputUsdPerMTok: 1, outputUsdPerMTok: 5 },
+  'google-genai:gemini-3.8-flash': { inputUsdPerMTok: 1.5, outputUsdPerMTok: 7.5 },
 }
 
 export function modelPrice(provider: AdvisorModelProvider, model: string): AdvisorModelPrice | null {
