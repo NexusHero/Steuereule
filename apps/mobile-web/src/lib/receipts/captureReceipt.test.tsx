@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { ParseReceiptDto } from '@steuereule/api-client'
-import { captureReceipt, recognisedWithoutValues, type CaptureReceiptDeps } from './captureReceipt'
+import { captureReceipt, type CaptureReceiptDeps } from './captureReceipt'
 
 const LSTB_TEXT = 'Ausdruck der elektronischen Lohnsteuerbescheinigung für 2025\n3. Bruttoarbeitslohn 48.000,00'
 
@@ -82,14 +82,24 @@ describe('captureReceipt — the one receipt pipeline', () => {
   it('rejects unsupported files before uploading anything', async () => {
     const d = deps(LSTB_TEXT)
     const result = await captureReceipt(new File(['<html>'], 'evil.html', { type: 'text/html' }), { taxYear: 2025, deps: d })
-    expect(result).toEqual({ ok: false, failure: 'unsupported_file' })
+    expect(result).toEqual({ ok: false, failure: 'unsupported_file', receiptId: null, processing: null })
     expect(d.upload).not.toHaveBeenCalled()
+    expect(d.parse).not.toHaveBeenCalled()
+  })
+
+  it('records an unsupported file on a Beleg that is already stored, so it does not stay „neu“ (ADR-0097)', async () => {
+    const d = deps(LSTB_TEXT)
+    const result = await captureReceipt(new File(['x'], 'notiz.txt', { type: 'text/plain' }), { taxYear: 2025, deps: d, receiptId: 'beleg-7' })
+    expect(result).toMatchObject({ ok: false, failure: 'unsupported_file', receiptId: 'beleg-7' })
+    expect(d.parse).toHaveBeenCalledWith(expect.objectContaining({ receiptId: 'beleg-7', deviceReadFailure: 'unsupported_file', fileName: 'notiz.txt' }))
   })
 
   it('reports empty text instead of sending nothing to the server', async () => {
     const d = deps('   ')
-    expect(await captureReceipt(pdf, { taxYear: 2025, deps: d })).toEqual({ ok: false, failure: 'empty_text' })
-    expect(d.parse).not.toHaveBeenCalled()
+    expect(await captureReceipt(pdf, { taxYear: 2025, deps: d })).toMatchObject({ ok: false, failure: 'empty_text', receiptId: 'beleg-1' })
+    // Only the failure goes to the server, so the stored Beleg says „kein Text“ (ADR-0097).
+    expect(d.parse).toHaveBeenCalledTimes(1)
+    expect(d.parse.mock.calls[0]![0]).toEqual({ taxYear: 2025, fileName: 'lstb.pdf', receiptId: 'beleg-1', deviceReadFailure: 'empty_text' })
   })
 
   it('turns a file the device cannot read into a failure instead of throwing', async () => {
@@ -97,24 +107,13 @@ describe('captureReceipt — the one receipt pipeline', () => {
     ;(d as { extractText: unknown }).extractText = vi.fn(async () => {
       throw new Error('Invalid PDF structure')
     })
-    expect(await captureReceipt(pdf, { taxYear: 2025, deps: d })).toEqual({ ok: false, failure: 'read_failed' })
-    expect(d.parse).not.toHaveBeenCalled()
-  })
-})
-
-// Real-data run: Swiss documents were recognised, yet nothing came of them and the chat stayed silent.
-describe('recognisedWithoutValues', () => {
-  const response = (stagedAction: unknown, question: unknown = null) =>
-    ({ stagedAction, assignment: question === null ? undefined : { holder: null, question, alsoFor: [] } }) as never
-
-  it('is true for a recognised Swiss document that staged no draft', () => {
-    expect(recognisedWithoutValues('chPensionskasse', response(null))).toBe(true)
-    expect(recognisedWithoutValues('chPraemien', response(null))).toBe(true)
+    expect(await captureReceipt(pdf, { taxYear: 2025, deps: d })).toMatchObject({ ok: false, failure: 'read_failed', receiptId: 'beleg-1' })
+    expect(d.parse).toHaveBeenCalledWith(expect.objectContaining({ receiptId: 'beleg-1', deviceReadFailure: 'read_failed' }))
   })
 
-  it('is false when drafts wait, when the user is still asked whose it is, and for a generic receipt', () => {
-    expect(recognisedWithoutValues('chPensionskasse', response({ actionId: 'a' }))).toBe(false)
-    expect(recognisedWithoutValues('chLohnausweis', response(null, { reason: 'unknown' }))).toBe(false)
-    expect(recognisedWithoutValues('auto', response(null))).toBe(false)
+  it('passes the entry context on without forcing a reader (ADR-0097 §4)', async () => {
+    const d = deps('Irgendein Text 100 CHF')
+    await captureReceipt(pdf, { taxYear: 2025, deps: d, expectedKind: 'chLohnausweis', mask: 'chLohnausweis', area: 'A' })
+    expect(d.parse).toHaveBeenCalledWith(expect.objectContaining({ kind: 'auto', expectedKind: 'chLohnausweis', mask: 'chLohnausweis', area: 'A', stageDraft: true }))
   })
 })

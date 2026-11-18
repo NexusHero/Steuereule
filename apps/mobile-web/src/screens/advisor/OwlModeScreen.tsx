@@ -1,5 +1,6 @@
 import type { AdvisorChatModelRefDto, AdvisorModelsDto } from '@steuereule/api-client'
 import { ChatDocumentAssignment } from './ChatDocumentAssignment'
+import { ChatReceiptResults } from './ChatReceiptResults'
 import { useEffect, useRef, useState } from 'react'
 import { Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native'
 import { useTranslation } from 'react-i18next'
@@ -522,6 +523,12 @@ export function OwlModeScreenView({
         receiptProgress={bridge?.receiptPhase ? tr(`advisor.chat.receiptProgress.${bridge.receiptPhase}`) : null}
         receiptNotice={bridge?.receiptNotice ?? null}
         receiptQueuePaused={bridge?.documentQuestion != null}
+        onReceiptBatchStart={bridge?.startReceiptBatch}
+        receiptResults={
+          bridge && bridge.receiptResults.length > 0 ? (
+            <ChatReceiptResults results={bridge.receiptResults} openYear={bridge.taxYear} onSwitchYear={bridge.switchTaxYear} onClose={bridge.clearReceiptResults} />
+          ) : undefined
+        }
         receiptAssignment={
           bridge && (bridge.documentQuestion !== null || bridge.documentHolder !== null || bridge.lastParsedReceipt !== null) ? (
             <>

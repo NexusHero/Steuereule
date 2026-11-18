@@ -2,7 +2,10 @@ import {
   receiptParseControllerParseReceipt,
   uploadReceiptFile,
   type ParseReceiptDto,
+  type ParseReceiptDtoExpectedKind,
+  type ParseReceiptDtoMask,
   type ParseReceiptResponseDto,
+  type ParsedReceiptProcessingDto,
 } from '@steuereule/api-client'
 import { classifyDocumentKind, type DetectedDocumentKind } from '@steuereule/core'
 import { detectDocumentMimeType, extractDocumentTextOnDevice, type OcrStage } from '../documentOcr'
@@ -24,12 +27,25 @@ export type CaptureResult =
       readonly rawText: string
       readonly textSource: 'pdf_text' | 'ocr'
     }
-  | { readonly ok: false; readonly failure: CaptureFailure }
+  | {
+      readonly ok: false
+      readonly failure: CaptureFailure
+      /** The stored Beleg, when there is one: a device failure is recorded on it (ADR-0097). */
+      readonly receiptId?: string | null | undefined
+      /** The Beleg's state after the failure was recorded; absent when nothing could be recorded. */
+      readonly processing?: ParsedReceiptProcessingDto | null | undefined
+    }
 
 export interface CaptureReceiptOptions {
   readonly taxYear: number
   /** Force a strategy (the LStB mask); otherwise the text decides (chat, inbox). */
   readonly kind?: DetectedDocumentKind | undefined
+  /** Entry context (ADR-0097 §4): the document a mask expects; unlike `kind` it does not force a reader. */
+  readonly expectedKind?: ParseReceiptDtoExpectedKind | undefined
+  /** Entry context: the mask the upload happened in. */
+  readonly mask?: ParseReceiptDtoMask | undefined
+  /** Stage drafts although the Beleg is a duplicate of an older upload. */
+  readonly allowDuplicate?: boolean | undefined
   readonly person?: 'A' | 'B' | undefined
   /** The person whose mask the upload happened in (ADR-0092): `A`, `B` or `kind:<id>`. */
   readonly area?: string | undefined
@@ -60,6 +76,9 @@ const DEFAULT_DEPS: CaptureReceiptDeps = {
   parse: receiptParseControllerParseReceipt,
 }
 
+/** What the server records for a file the device could not read (ADR-0097: the Beleg says so instead of staying „neu“). */
+const DEVICE_READ_FAILURES = { read_failed: 'read_failed', empty_text: 'empty_text', unsupported_file: 'unsupported_file' } as const
+
 /**
  * The one receipt pipeline (#444), shared by the LStB mask, the Belege inbox and the chat:
  * 1. store the original encrypted in the Belege inbox,
@@ -71,7 +90,8 @@ const DEFAULT_DEPS: CaptureReceiptDeps = {
 export async function captureReceipt(file: File, options: CaptureReceiptOptions): Promise<CaptureResult> {
   const deps = { ...DEFAULT_DEPS, ...options.deps }
   if (detectDocumentMimeType(new Uint8Array(0), file.type, file.name) === null) {
-    return { ok: false, failure: 'unsupported_file' }
+    // A file that is not stored yet is never uploaded; one already stored says why it stays unread.
+    return deviceFailure(deps, options, file.name, options.receiptId ?? null, 'unsupported_file')
   }
 
   let receiptId: string | null = options.receiptId ?? null
@@ -95,9 +115,9 @@ export async function captureReceipt(file: File, options: CaptureReceiptOptions)
       },
     })
   } catch {
-    return { ok: false, failure: 'read_failed' }
+    return deviceFailure(deps, options, file.name, receiptId, 'read_failed')
   }
-  if (extracted.text.trim().length === 0) return { ok: false, failure: 'empty_text' }
+  if (extracted.text.trim().length === 0) return deviceFailure(deps, options, file.name, receiptId, 'empty_text')
 
   const kind = options.kind ?? classifyDocumentKind(extracted.text)
   const payload: ParseReceiptDto = {
@@ -107,6 +127,9 @@ export async function captureReceipt(file: File, options: CaptureReceiptOptions)
     rawText: extracted.text,
     textSource: extracted.kind === 'pdf' && !extracted.usedOcrFallback ? 'pdf_text' : 'ocr',
     stageDraft: options.stageDraft ?? true,
+    ...(options.expectedKind !== undefined ? { expectedKind: options.expectedKind } : {}),
+    ...(options.mask !== undefined ? { mask: options.mask } : {}),
+    ...(options.allowDuplicate === true ? { allowDuplicate: true } : {}),
     ...(receiptId !== null ? { receiptId } : {}),
     ...(options.person === 'B' ? { person: 'B' } : {}),
     ...(options.area !== undefined ? { area: options.area } : {}),
@@ -124,11 +147,24 @@ export async function captureReceipt(file: File, options: CaptureReceiptOptions)
   }
 }
 
-/**
- * A document that was recognised (Lohnausweis, Lohnsteuerbescheinigung, pension or premium letter, health
- * statement) but left no draft, and no question whose it is: the chat says so instead of staying silent
- * (real-data run: „erkannt, aber keine Werte“).
- */
-export function recognisedWithoutValues(kind: DetectedDocumentKind, response: ParseReceiptResponseDto): boolean {
-  return kind !== 'auto' && response.stagedAction == null && response.assignment?.question == null
+/** Records on the stored Beleg that the device could not read it; without a stored Beleg there is nothing to record. */
+async function deviceFailure(
+  deps: CaptureReceiptDeps,
+  options: CaptureReceiptOptions,
+  fileName: string,
+  receiptId: string | null,
+  failure: keyof typeof DEVICE_READ_FAILURES,
+): Promise<CaptureResult> {
+  if (receiptId === null) return { ok: false, failure, receiptId: null, processing: null }
+  try {
+    const recorded = await deps.parse({
+      taxYear: options.taxYear,
+      fileName: fileName.trim() === '' ? 'beleg' : fileName,
+      receiptId,
+      deviceReadFailure: DEVICE_READ_FAILURES[failure],
+    })
+    return { ok: false, failure, receiptId, processing: recorded.status === 200 ? (recorded.data.processing ?? null) : null }
+  } catch {
+    return { ok: false, failure, receiptId, processing: null }
+  }
 }

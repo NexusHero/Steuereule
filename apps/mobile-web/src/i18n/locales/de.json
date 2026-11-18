@@ -1003,10 +1003,11 @@
         }
       },
       "yearConflict": {
-        "title": "Anderes Steuerjahr auf dem Beleg",
-        "body": "Diese Lohnsteuerbescheinigung gehört zum Steuerjahr {{documentYear}}, du bist aber gerade im Steuerjahr {{activeYear}}. Es wurden noch keine Werte übernommen.",
-        "switchYear": "Auf {{jahr}} wechseln",
-        "cancel": "Abbrechen"
+        "title": "Liegt im Steuerjahr {{jahr}}",
+        "body": "Diese Lohnsteuerbescheinigung gehört zum Steuerjahr {{documentYear}}. Ihre Werte warten dort auf dich, nicht in {{activeYear}}. Es wurde noch nichts übernommen.",
+        "switchYear": "Zu {{jahr}} wechseln",
+        "cancel": "Hier bleiben",
+        "bodyNotStaged": "Diese Lohnsteuerbescheinigung gehört zum Steuerjahr {{documentYear}}, du bist gerade in {{activeYear}}. Wechsle dorthin und lies sie dort noch einmal."
       },
       "overwriteConflict": {
         "title": "Bestehende Werte ersetzen?",
@@ -1021,7 +1022,8 @@
         "readFailed": "Die Datei ließ sich auf deinem Gerät nicht lesen (beschädigt oder passwortgeschützt?). Trag die Werte bitte von Hand ein.",
         "emptyOcr": "Auf dem Dokument konnte kein lesbarer Text erkannt werden. Bitte prüfe die Datei oder trag die Werte manuell ein.",
         "parseFailed": "Die Lohnsteuerbescheinigung konnte gerade nicht ausgewertet werden. Bitte versuch es noch mal.",
-        "confirmFailed": "Die Werte konnten nicht gespeichert werden. Bitte prüf die Verbindung und versuch es noch mal."
+        "confirmFailed": "Die Werte konnten nicht gespeichert werden. Bitte prüf die Verbindung und versuch es noch mal.",
+        "noTaxYear": "Diese Lohnsteuerbescheinigung ist für {{jahr}}, ein Jahr, das die App nicht führt. Es wurde nichts übernommen."
       }
     },
     "weiter": "Weiter"
@@ -1810,10 +1812,9 @@
     },
     "upload": {
       "heading": "Beleg hochladen (PDF / Foto)",
-      "kindLabel": "Belegart",
       "cta": "PDF oder Foto hochladen",
       "uploading": "Wird verschlüsselt hochgeladen …",
-      "success": "Beleg gespeichert.",
+      "success": "Beleg gespeichert. Er wird jetzt gelesen.",
       "errorUnsupported": "Bitte wähle eine PDF-, JPEG-, PNG- oder WebP-Datei aus.",
       "errorFailed": "Der Upload hat nicht geklappt. Prüf die Verbindung und versuch es noch mal.",
       "fileAttached": "Originaldatei verschlüsselt hinterlegt"
@@ -1831,7 +1832,23 @@
       "confirmYes": "Ja, löschen",
       "confirmCancel": "Abbrechen",
       "deleting": "Wird gelöscht …",
-      "error": "Der Beleg konnte nicht gelöscht werden."
+      "error": "Der Beleg konnte nicht gelöscht werden.",
+      "mitWerten": "Dieser Beleg hat {{werte}} gefüllt. Werte auch entfernen?",
+      "mitVorschlaegen_one": "Von diesem Beleg wartet noch {{count}} Vorschlag. Auch zurückziehen?",
+      "mitVorschlaegen_other": "Von diesem Beleg warten noch {{count}} Vorschläge. Auch zurückziehen?",
+      "auchVorschlaege_one": "Sein wartender Vorschlag wird dann auch zurückgezogen.",
+      "auchVorschlaege_other": "Seine {{count}} wartenden Vorschläge werden dann auch zurückgezogen.",
+      "werteEntfernen": "Ja, Werte entfernen",
+      "nurBeleg": "Nur den Beleg löschen",
+      "ergebnis": {
+        "geloescht": "„{{datei}}“ gelöscht.",
+        "werteBleiben": "„{{datei}}“ gelöscht. Seine Werte bleiben in deiner Erklärung.",
+        "entfernt_one": "{{count}} Wert entfernt",
+        "entfernt_other": "{{count}} Werte entfernt",
+        "zurueckgezogen_one": "{{count}} Vorschlag zurückgezogen",
+        "zurueckgezogen_other": "{{count}} Vorschläge zurückgezogen",
+        "geaendert": "Was du seitdem selbst geändert hast, bleibt stehen."
+      }
     },
     "zuordnung": {
       "ungebunden": "Unzugeordnet",
@@ -1884,14 +1901,66 @@
     },
     "bescheid": {
       "cta": "Steuerbescheid ablegen",
-      "gespeichert": "Steuerbescheid ({{datei}}) gespeichert. Du findest ihn im Ordner „Bescheide & Nachweise“. Den Abgleich mit deiner Erklärung startest du im Cockpit unter „Bescheid prüfen“."
+      "gespeichert": "Steuerbescheid ({{datei}}) gespeichert und gelesen. Du findest ihn im Ordner „Bescheide & Nachweise“. Den Abgleich mit deiner Erklärung startest du im Cockpit unter „Bescheid prüfen“."
     },
     "eule": {
-      "lesen": "Mit der Eule lesen",
-      "liest": "Die Eule liest …",
+      "lesen": "Noch mal lesen",
+      "liest": "Wird gelesen …",
       "ergebnis": {
         "unreadable": "Die Eule konnte diesen Beleg nicht lesen. Er bleibt gespeichert."
       }
+    },
+    "stand": {
+      "neu": "Noch nicht gelesen",
+      "liest": "Wird gelesen …",
+      "entwuerfeFehlen": "Gelesen, aber die Vorschläge sind weg",
+      "nichtLesbar": "Nicht lesbar",
+      "vorschlaege_one": "{{count}} Wert wartet auf dich",
+      "vorschlaege_other": "{{count}} Werte warten auf dich",
+      "uebernommen_one": "Gelesen · {{count}} Wert übernommen",
+      "uebernommen_other": "Gelesen · {{count}} Werte übernommen",
+      "nichtsErkannt": "Nichts erkannt",
+      "nichts": "Nichts für die Erklärung: {{grund}}",
+      "verworfen": "Gelesen · Vorschläge verworfen",
+      "frage": "Wartet auf deine Antwort, für wen er ist",
+      "datei": "{{datei}}: {{stand}}",
+      "jahr": "Liegt im Steuerjahr {{jahr}}",
+      "jahrWechseln": "Zu {{jahr}} wechseln",
+      "dublette": "Doppelt: schon am {{datum}} hochgeladen ({{datei}})",
+      "zuVorschlaegen": "Zu den Vorschlägen",
+      "gefuellt": "hat gefüllt: {{werte}}",
+      "gefuelltJahr": "{{felder}} · Steuerjahr {{jahr}}",
+      "nichtLesbarGrund": "Nicht lesbar ({{grund}})"
+    },
+    "grund": {
+      "nichts_erkannt": "nichts erkannt",
+      "keine_rechnung": "keine Rechnung",
+      "nicht_absetzbar": "nicht absetzbar",
+      "schon_gezaehlt": "schon gezählt",
+      "dublette": "doppelt hochgeladen",
+      "blockiert": "blockiert",
+      "kein_steuerjahr": "Steuerjahr nicht in der App",
+      "anderes_konto": "gehört in ein anderes Konto",
+      "lesefehler": "Fehler beim Lesen",
+      "unlesbar": "Datei nicht lesbar",
+      "kein_text": "kein Text gefunden",
+      "nicht_unterstuetzt": "Dateiformat nicht unterstützt",
+      "entwuerfe_fehlen": "Vorschläge entfernt"
+    },
+    "grundSatz": {
+      "nichts_erkannt": "Auf dem Beleg war nichts, was in die Erklärung gehört.",
+      "keine_rechnung": "Das ist eine Auftragsbestätigung oder ein Angebot. Es zählt erst die Rechnung.",
+      "nicht_absetzbar": "Das Gelesene lässt sich nicht von der Steuer absetzen.",
+      "schon_gezaehlt": "Was darauf steht, zählt schon über einen anderen Beleg.",
+      "dublette": "Diese Datei hast du schon einmal hochgeladen. Ihre Werte bleiben beim ersten Beleg.",
+      "blockiert": "Der Beleg wollte ein geschütztes Feld ändern. Der Vorschlag wurde blockiert.",
+      "kein_steuerjahr": "Der Beleg gehört zu einem Steuerjahr, das die App nicht führt.",
+      "anderes_konto": "Der Beleg gehört Person B, die ein eigenes Konto hat. Lade ihn dort hoch.",
+      "lesefehler": "Beim Auswerten ging etwas schief. Versuch es noch mal.",
+      "unlesbar": "Die Datei ließ sich auf deinem Gerät nicht öffnen (beschädigt oder passwortgeschützt?).",
+      "kein_text": "Auf der Datei war kein lesbarer Text. Ein schärferes Foto hilft.",
+      "nicht_unterstuetzt": "Dieses Dateiformat kann die App nicht lesen. Lade ein PDF oder Foto hoch.",
+      "entwuerfe_fehlen": "Die Vorschläge aus diesem Beleg wurden entfernt. Lies ihn noch mal, dann kommen sie wieder."
     }
   },
   "bescheid": {
@@ -2064,7 +2133,14 @@
         "anrechnung": "Quellensteuer-Anrechnung",
         "offen": "Noch {{count}} Pflichtfeld(er) offen"
       },
-      "done": "Fertig"
+      "done": "Fertig",
+      "upload": {
+        "title": "Lohnausweis oder Gre-1 / Gre-2 hochladen",
+        "body": "Lade deinen Schweizer Lohnausweis hier hoch. Er wird verschlüsselt in deinen Belegen gespeichert und auf deinem Gerät gelesen. Die erkannten Werte warten in der Eule, bis du sie übernimmst.",
+        "cta": "Lohnausweis auswählen",
+        "reading": "Wird gelesen …",
+        "saved": "{{datei}} ist in deinen Belegen gespeichert."
+      }
     }
   },
   "veranlagungsartenvergleich": {
@@ -2391,8 +2467,6 @@
       "lstbWhose": "Der Name auf dieser Lohnsteuerbescheinigung passt zu keiner Person in deiner Erklärung. Wessen Bescheinigung ist das? Es wurde noch nichts übernommen.",
       "lstbPersonBOwnAccount": "Das ist die Lohnsteuerbescheinigung von Person B. Person B hat ein eigenes Konto und lädt sie dort hoch; hier wurde nichts übernommen.",
       "certificatePersonBOwnAccount": "Das ist der Lohnausweis von Person B. Person B hat ein eigenes Konto und lädt ihn dort hoch; hier wurde nichts übernommen.",
-      "receiptYearConflict": "Dieser Beleg gehört zum Steuerjahr {{documentYear}}, du bist gerade in {{activeYear}}. Wechsle oben ins Jahr {{documentYear}} und lade ihn dort hoch — es wurde nichts übernommen.",
-      "receiptNoValues": "Der Beleg wurde erkannt, aber ich konnte keine Werte daraus lesen. Trag sie bitte in der Maske ein oder lade ein schärferes Bild hoch.",
       "receiptProgress": {
         "uploading": "Beleg wird verschlüsselt gespeichert …",
         "detecting": "Dokument wird auf dem Gerät erkannt …",
@@ -2400,12 +2474,6 @@
         "pdf_ocr_render": "Gescanntes PDF wird lokal gelesen …",
         "image_ocr": "Foto wird lokal gelesen …",
         "parsing": "Beleg wird geprüft …"
-      },
-      "receiptFailure": {
-        "unsupported_file": "Bitte wähle ein PDF oder ein Foto (JPEG, PNG, WebP).",
-        "read_failed": "Die Datei ließ sich auf deinem Gerät nicht lesen (beschädigt oder passwortgeschützt?). Das Original ist trotzdem in deinen Belegen gespeichert.",
-        "empty_text": "Auf dem Beleg war kein lesbarer Text. Versuch ein schärferes Foto oder trag die Werte von Hand ein.",
-        "parse_failed": "Der Beleg konnte gerade nicht geprüft werden. Bitte versuch es noch mal."
       },
       "notStaged": {
         "title": "Nicht vorbereitet",
@@ -2558,7 +2626,10 @@
         "aria": "Max: die Eule denkt für diese Nachricht so gründlich wie möglich",
         "hintOff": "Aus: Die Eule antwortet gründlich (Standard).",
         "hintOn": "An: Diese eine Nachricht beantwortet die Eule so gründlich wie das Modell kann."
-      }
+      },
+      "receiptResults": "Was aus deinen Belegen wurde",
+      "receiptResultsClose": "Ausblenden",
+      "receiptPasteNoReceipt": "Eingefügter Text wird nur gelesen. Er legt keinen Beleg an, in deinen Belegen erscheint nichts."
     },
     "companion": {
       "triggerTitle": "Eule zu dieser Maske fragen",

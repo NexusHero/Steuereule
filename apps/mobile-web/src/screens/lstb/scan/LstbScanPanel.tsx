@@ -64,9 +64,9 @@ export function LstbScanPanel({ scan, taxYear, onSwitchTaxYear }: LstbScanPanelP
 
     {scan.yearConflict !== null && (
       <Card style={styles.conflictCard} testID="lstb-year-conflict-modal">
-        <Text style={styles.conflictHeading}>{tr('lstb.scan.yearConflict.title')}</Text>
+        <Text style={styles.conflictHeading}>{tr('lstb.scan.yearConflict.title', { jahr: scan.yearConflict.documentYear })}</Text>
         <Text style={styles.conflictBody}>
-          {tr('lstb.scan.yearConflict.body', {
+          {tr(scan.yearConflict.staged ? 'lstb.scan.yearConflict.body' : 'lstb.scan.yearConflict.bodyNotStaged', {
             documentYear: scan.yearConflict.documentYear,
             activeYear: scan.yearConflict.activeYear,
           })}

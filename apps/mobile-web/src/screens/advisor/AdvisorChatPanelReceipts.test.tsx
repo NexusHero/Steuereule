@@ -102,6 +102,33 @@ describe('AdvisorChatPanel — receipts in the chat', () => {
     expect(onFile.mock.calls.map((call) => (call as unknown as [File])[0].name)).toEqual(['a.pdf', 'b.pdf'])
   })
 
+  it('starts a new batch once per selection, so the lines of the last one go (ADR-0097 §3)', async () => {
+    const onBatchStart = vi.fn()
+    const onFile = vi.fn(async () => {})
+    renderPanel(<AdvisorChatPanel messages={[]} onSendMessage={vi.fn()} onAttachReceiptFile={onFile} onReceiptBatchStart={onBatchStart} />)
+    fireEvent.click(screen.getByTestId('advisor-receipt-attach-btn'))
+    const a = new File([new Uint8Array([1])], 'a.pdf', { type: 'application/pdf' })
+    const b = new File([new Uint8Array([2])], 'b.pdf', { type: 'application/pdf' })
+    fireEvent.change(screen.getByTestId('advisor-receipt-file-input'), { target: { files: [a, b] } })
+    await waitFor(() => expect(onFile).toHaveBeenCalledTimes(2))
+    expect(onBatchStart).toHaveBeenCalled()
+    // Every start of the same selection happens before its first file is read: no line of it is lost.
+    expect(onBatchStart.mock.invocationCallOrder.at(-1)).toBeLessThan(onFile.mock.invocationCallOrder[0]!)
+  })
+
+  it('shows the lines per file with the notice', () => {
+    renderPanel(<AdvisorChatPanel messages={[]} onSendMessage={vi.fn()} receiptResults={<span data-testid="results-slot">a.pdf: Nichts erkannt</span>} />)
+    expect(screen.getByTestId('advisor-receipt-notice')).toBeTruthy()
+    expect(screen.getByTestId('results-slot').textContent).toBe('a.pdf: Nichts erkannt')
+  })
+
+  it('says that pasted text creates no Beleg (ADR-0097 §4)', () => {
+    renderPanel(<AdvisorChatPanel messages={[]} onSendMessage={vi.fn()} onAttachReceipt={vi.fn()} onAttachReceiptFile={vi.fn()} />)
+    fireEvent.click(screen.getByTestId('advisor-receipt-attach-btn'))
+    fireEvent.click(screen.getByTestId('advisor-receipt-text-toggle'))
+    expect(screen.getByTestId('advisor-receipt-text-hint').textContent).toBe('Eingefügter Text wird nur gelesen. Er legt keinen Beleg an, in deinen Belegen erscheint nichts.')
+  })
+
   it('shows the document assignment under the upload (ADR-0092)', () => {
     renderPanel(<AdvisorChatPanel messages={[]} onSendMessage={vi.fn()} receiptAssignment={<span data-testid="zuordnung-slot">Für wen?</span>} />)
     expect(screen.getByTestId('advisor-receipt-notice')).toBeTruthy()
