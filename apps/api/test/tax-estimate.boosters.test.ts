@@ -60,6 +60,22 @@ describe('TaxEstimateService — § 35a & § 33 boosters and ADR-0032 feature fl
     expect(ignored).toEqual(baseline)
   })
 
+  it('counts a craftsmen amount only behind haushalt-gate = Ja, so the owl drafts both (real-data run)', async () => {
+    const base = { job: 'Angestellt', ausland: 'Nein', kinder: 'Nein', 'haushalt-handwerker-betrag': '10618', 'haushalt-handwerker-rechnungsbetrag': '14000' }
+    const wage = { userId: 'u', taxYear: 2025, bruttoarbeitslohn: '45000', lohnsteuer: '6100', sozialversicherung: '9200' }
+    const withoutGate = setup()
+    withoutGate.interview.seed('u', 2025, base)
+    withoutGate.lstb.seed(wage)
+    const withGate = setup()
+    withGate.interview.seed('u', 2025, { ...base, 'haushalt-gate': 'Ja' })
+    withGate.lstb.seed(wage)
+    const noGate = range(await withoutGate.service.getState('u', 2025, true))
+    const gated = range(await withGate.service.getState('u', 2025, true))
+    // 20 % of the labour share, capped at 1.200 € (§ 35a Abs. 3 EStG); the refund grows at least by that.
+    expect(noGate.incomeTax.from - gated.incomeTax.from).toBe(1200)
+    expect(gated.result.from).toBeGreaterThanOrEqual(noGate.result.from + 1200)
+  })
+
   it('applies § 35a household reduction and § 33 medical burden when boosters are enabled (single & couple)', async () => {
     const baseEnv = setup()
     baseEnv.interview.seed('u', 2025, { job: 'Angestellt', ausland: 'Nein', kinder: 'Nein' })

@@ -9,12 +9,14 @@ import type { BaseLanguageModelInput } from '@langchain/core/language_models/bas
 import { describe, expect, it } from 'vitest'
 import type { AdvisorStreamEvent } from '@steuereule/core'
 import { DEFAULT_AI_TURN_LIMITS, type AiRuntimeConfigService } from '../src/ki/ai-runtime-config.service.js'
+import { buildCaseSystemPrompt, buildStableSystemPrompt, buildSystemMessage } from '../src/ki/advisor-prompt.js'
 import { LangGraphAdvisorEngine } from '../src/ki/langgraph-advisor.engine.js'
 import { SAMPLE_DIGEST as digest } from './fixtures/sample-digest.js'
 
 /** Plays back scripted answers and records the tool_choice each round streamed with. */
 class PlanScriptModel extends BaseChatModel {
   public readonly toolChoices: unknown[] = []
+  public readonly seenMessages: BaseMessage[][] = []
   private calls = 0
 
   constructor(private readonly steps: AIMessage[]) {
@@ -37,7 +39,8 @@ class PlanScriptModel extends BaseChatModel {
     return view as unknown as Runnable<BaseLanguageModelInput, AIMessageChunk, BaseChatModelCallOptions>
   }
 
-  async _generate(_messages: BaseMessage[]): Promise<ChatResult> {
+  async _generate(messages: BaseMessage[]): Promise<ChatResult> {
+    this.seenMessages.push(messages)
     const next = this.steps[this.calls++] ?? new AIMessage('Fertig.')
     return { generations: [{ text: typeof next.content === 'string' ? next.content : '', message: next }] }
   }
@@ -148,5 +151,41 @@ describe('plan_steps (#451 slice 6, decisions 16–19)', () => {
     const events = await collect(engine.streamTurn({ message: 'Was hab ich vergessen?', digest, planRequired: true }))
     expect(plans(events)).toEqual([])
     expect(events.at(-1)?.event).toBe('done')
+  })
+})
+
+describe('open steps of the last plan (the owl keeps every point of a long message)', () => {
+  const open = [
+    { text: 'Krankenversicherung von Person B erfassen', status: 'offen' as const },
+    { text: 'Spenden erfassen', status: 'laeuft' as const },
+  ]
+
+  it('puts them into the case part of the prompt with the instruction to work them first and drop none', () => {
+    const prompt = buildCaseSystemPrompt(digest, undefined, false, undefined, undefined, undefined, undefined, undefined, undefined, undefined, false, undefined, '2026-03-01', undefined, open)
+    expect(prompt).toContain('Offen aus deinem letzten Plan:')
+    expect(prompt).toContain('- Krankenversicherung von Person B erfassen')
+    expect(prompt).toContain('- Spenden erfassen')
+    expect(prompt).toContain('`plan_steps`')
+    expect(buildCaseSystemPrompt(digest, undefined, false)).not.toContain('Offen aus deinem letzten Plan')
+  })
+
+  it('leaves the cached stable part byte-identical', () => {
+    const content = buildSystemMessage('anthropic', digest, undefined, false, undefined, undefined, undefined, undefined, undefined, undefined, undefined, false, undefined, undefined, false, open).content as Array<{ text: string }>
+    expect(content[0]!.text).toBe(buildStableSystemPrompt())
+    expect(content[1]!.text).toContain('Offen aus deinem letzten Plan:')
+  })
+
+  it('reaches the model through the turn request', async () => {
+    const model = new PlanScriptModel([new AIMessage('Weiter mit der Krankenversicherung.')])
+    const engine = new LangGraphAdvisorEngine(runtime, () => model)
+    await collect(engine.streamTurn({ message: 'Weiter', digest, openPlan: open }))
+    expect(String(model.seenMessages[0]![0]!.content)).toContain('- Spenden erfassen')
+  })
+
+  it('tells the model in the stable rules to plan one step per point and to name what stays open', () => {
+    const rules = buildStableSystemPrompt()
+    expect(rules).toContain('je Punkt ein Schritt')
+    expect(rules).toContain('sobald sein Entwurf vorbereitet ist')
+    expect(rules).toContain('was noch offen ist')
   })
 })

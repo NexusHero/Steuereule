@@ -9,6 +9,7 @@ import {
   type AdvisorActionProposal,
   type AdvisorHistoryEntry,
   type AdvisorMessageMeta,
+  type AdvisorPlanStep,
   summaryCut,
   type AdvisorHistorySource,
   type AdvisorPreviewEffect,
@@ -98,6 +99,8 @@ export interface PreparedAdvisorTurn {
   readonly maskedPersonalData?: boolean | undefined
   /** The previous answer of this conversation: whether its drafts were taken over and which printout gaps it asked (ADR-0091, Nachtrag). */
   readonly previousAnswer?: { readonly draftsApplied: boolean; readonly printoutGapsAsked?: readonly string[] | undefined } | undefined
+  /** The conversation's newest plan, from the newest answer that kept one; its open steps carry over. */
+  readonly previousPlan?: readonly AdvisorPlanStep[] | undefined
   /** Set when the owl opens this conversation itself (ADR-0067 §11). */
   readonly opening?: { readonly marker: NonNullable<AdvisorMessageMeta['opening']>; readonly context: import('./advisor-opening.js').OpeningContext } | undefined
 }

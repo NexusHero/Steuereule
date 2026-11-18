@@ -6,12 +6,16 @@ import {
   applyInterviewChanges,
   buildAdvisorHistory,
   buildNoteHandles,
+  carriedPlan,
   evaluateAdvisorTurn,
   foldThoughtEvent,
   heldDraftsNote,
   holdUnaskedOverwrites,
   isOfferedChoice,
+  latestPlan,
   needsPersonalDataConsentOffer,
+  openPlanNote,
+  openPlanSteps,
   replaceNamesWith,
   scrubUserMessagePii,
   withPreviewedEffects,
@@ -20,6 +24,8 @@ import {
   type AdvisorEngineInfo,
   type AdvisorEnginePort,
   type AdvisorMessageMeta,
+  type AdvisorPlanMeta,
+  type AdvisorPlanStep,
   type AdvisorStreamEvent,
   type AdvisorThoughtStep,
   type AdvisorTurnRequest,
@@ -145,7 +151,10 @@ export class AdvisorTurn {
       await this.replaceLatestTurn(userId, conversation.id, dto.replaceFromMessageId)
     }
     // The model sees this conversation only; what the conversations share is the return itself.
-    const priorRecords = liveMessages(conversation, await this.advisorRepo.listForConversation(conversation.id, userId))
+    const conversationRecords = await this.advisorRepo.listForConversation(conversation.id, userId)
+    const priorRecords = liveMessages(conversation, conversationRecords)
+    // Read over the whole conversation: a plan made before the history was summarised is still open.
+    const previousPlan = latestPlan(conversationRecords.filter((record) => !record.meta?.replaced))
     const opening = isOpening ? await this.prepareOpening(userId, taxYear, priorRecords.length) : undefined
     const lastAnswer = priorRecords.filter((record) => record.role === 'assistant').at(-1)
     const fromApp = isOpening || isOfferedChoice(dto.message, lastAnswer?.meta)
@@ -182,7 +191,7 @@ export class AdvisorTurn {
     // Whether the owl's last drafts were just taken over, and which printout gaps it asked then (ADR-0091, Nachtrag).
     const previousAnswer = lastAnswer ? { draftsApplied: draftsTakenOver(lastAnswer.meta), ...(lastAnswer.meta?.printoutGapsAsked ? { printoutGapsAsked: lastAnswer.meta.printoutGapsAsked } : {}) } : undefined
     const chatChoice = parseChatModel(conversation.chatModel)
-    return { runId, userMessage, assistantMessageId: assistantMessage.id, scrubbedUserText, history, dto, conversationId: conversation.id, ...(chatChoice ? { chatChoice } : {}), needsSummary, fromApp, personalDataConsent: consent, maskedPersonalData, ...(previousAnswer ? { previousAnswer } : {}), ...(opening ? { opening } : {}) }
+    return { runId, userMessage, assistantMessageId: assistantMessage.id, scrubbedUserText, history, dto, conversationId: conversation.id, ...(chatChoice ? { chatChoice } : {}), needsSummary, fromApp, personalDataConsent: consent, maskedPersonalData, ...(previousAnswer ? { previousAnswer } : {}), ...(previousPlan ? { previousPlan } : {}), ...(opening ? { opening } : {}) }
   }
 
   /** An opening needs something to talk about and an empty conversation. */
@@ -219,6 +228,8 @@ export class AdvisorTurn {
     let text = ''
     let reasoning = ''
     let steps: readonly AdvisorThoughtStep[] = []
+    // The last `plan_steps` list of this turn, taken from the stream so every engine is covered.
+    let turnPlan: readonly AdvisorPlanStep[] | null = null
     let firstTokenMs: number | null = null
     let finished = false
 
@@ -361,6 +372,7 @@ export class AdvisorTurn {
         notes: buildNoteHandles(await this.advisorRepo.listNotes(userId, taxYear)),
         ...(turn.chatChoice ? { chatChoice: turn.chatChoice } : {}),
         ...(dto.depth ? { depth: dto.depth } : {}),
+        ...(openPlanSteps(turn.previousPlan).length > 0 ? { openPlan: openPlanSteps(turn.previousPlan) } : {}),
       }
       const events = turn.opening
         ? openingStream(this.advisorEngine, request, await this.opening.brief(userId, taxYear, turn.opening.context))
@@ -372,6 +384,7 @@ export class AdvisorTurn {
         } else if (ev.event === 'reasoning') {
           reasoning += ev.data.text
         } else {
+          if (ev.event === 'plan') turnPlan = ev.data.steps
           steps = foldThoughtEvent(steps, ev)
         }
 
@@ -442,12 +455,17 @@ export class AdvisorTurn {
           // The consent card is the app's decision, not the model's (ADR-0091): see `needsPersonalDataConsentOffer`.
           const { personalDataConsentRequest: askedByOwl, ...metaWithoutConsent } = metaWithoutNotes
           const offerConsent = await this.offersConsentCard(userId, taxYear, turn, turnResult.replyText, askedByOwl === true, request)
+          // Open steps survive the answer, and the user hears of them even when the model forgot to say so.
+          const plan = carriedPlan(turnPlan, turn.previousPlan ?? null)
+          const planMeta: AdvisorPlanMeta = plan ? { plan } : {}
+          const planNote = turnResult.mode === 'langgraph' && !turn.opening ? openPlanNote(plan, turnResult.replyText) : ''
           const assistant = await finish(
             'complete',
-            turnResult.replyText + heldNote + gapFollowUp.text,
+            turnResult.replyText + heldNote + gapFollowUp.text + planNote,
             {
               ...metaWithoutConsent,
               ...gapFollowUp.meta,
+              ...planMeta,
               ...(noteChanges.length > 0 ? { noteChanges } : {}),
               ...(turn.opening ? { opening: turn.opening.marker } : {}),
               ...(offerConsent ? { personalDataConsentRequest: true as const } : {}),

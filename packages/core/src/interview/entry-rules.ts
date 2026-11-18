@@ -2,6 +2,7 @@
 // depending on how the model understood an ambiguous sentence; each such spot is decided here, by the
 // app: a draft is refused until the user confirmed what decides it, a value the model must not derive
 // is filled in, and what has to be asked next is told to the model with the tool's answer.
+import { fieldSpec } from './field-catalog'
 import type { Screen } from './marking'
 
 /** One field of a draft as it would be stored (already checked and tidied by the catalogue). */
@@ -91,6 +92,43 @@ export function draftFollowUps(screen: Screen, values: DraftValues): string[] {
     if (positive(values.krankenkasseChf) && !has('krankenkasseZusatzChf')) {
       asks.push('Frag, ob im Krankenkassen-Betrag Zusatzversicherungen (VVG) stecken. krankenkasseChf ist nur die Grundversicherung nach KVG; den Zusatz legst du als chLohnausweis.krankenkasseZusatzChf an (0, wenn es keinen gibt).')
     }
+  }
+  return asks
+}
+
+/** The means of transport as the commute mask stores it; null means not entered. */
+export interface StoredTransport {
+  readonly transport: string | null
+  readonly secondTransport: string | null
+}
+
+const WAYS_TO_WORK = [
+  { km: 'oneWayKm', days: 'travelDays', transport: 'transport', which: 'den Arbeitsweg' },
+  { km: 'secondOneWayKm', days: 'secondTravelDays', transport: 'secondTransport', which: 'den zweiten Arbeitsweg' },
+] as const
+
+/** The allowed values as the catalogue states them, „pkw“, „oepnv“ oder „andere“. */
+function allowedValuesOf(field: string): string {
+  const spec = fieldSpec('commute', field)
+  const values = spec?.value.kind === 'enum' ? spec.value.values.map((value) => `„${value}“`) : []
+  return values.length > 1 ? `${values.slice(0, -1).join(', ')} oder ${values[values.length - 1]}` : values.join('')
+}
+
+/**
+ * A way to work only counts with its means of transport: without it no Entfernungspauschale is
+ * computed, so a drafted distance or travel days would silently do nothing (real-data run). The
+ * model is told so; the app never guesses the transport. `values` are this turn's commute values,
+ * `stored` the mask's (undefined when unknown: then nothing is claimed to be missing).
+ */
+export function transportFollowUps(values: DraftValues, stored: StoredTransport | undefined): string[] {
+  if (stored === undefined) return []
+  const asks: string[] = []
+  for (const way of WAYS_TO_WORK) {
+    if (!positive(values[way.km]) && !positive(values[way.days])) continue
+    if (values[way.transport] !== undefined || (stored[way.transport] ?? '') !== '') continue
+    asks.push(
+      `Die Entfernungspauschale für ${way.which} zählt erst mit dem Verkehrsmittel: commute.${way.transport} ist weder gespeichert noch in dieser Antwort angelegt. Hat der Nutzer es genannt, lege commute.${way.transport} an (${allowedValuesOf(way.transport)}); sonst frag ihn, womit er zur Arbeit gefahren ist. Rate es nicht.`,
+    )
   }
   return asks
 }

@@ -5,9 +5,11 @@ import {
   checkDraftPerson,
   checkDraftRules,
   draftFollowUps,
+  transportFollowUps,
   impliedCompanions,
   type AdvisorActionProposal,
   type AdvisorStreamEvent,
+  type StoredTransport,
 } from '@steuereule/core'
 import { checkStageValue, normalizeSourceId, validateStageTarget, type StageTargetCheck } from '../advisor-safety.js'
 import { checkPiiFree } from '../ki.adapter.js'
@@ -150,6 +152,17 @@ export const stageFieldDraftTool = toolHandler(['stage_field_draft'], async (_ca
   // Several drafts in one answer stand side by side; a second one for the same field is a correction.
   turn.pendingActions = [...turn.pendingActions.filter((existing) => draftKey(existing) !== draftKey(stagedAction)), stagedAction]
 
-  const mustAsk = draftFollowUps(target.screen, draftValues)
+  const mustAsk = [...draftFollowUps(target.screen, draftValues), ...commuteTransportAsks(target.screen, forB, turn.pendingActions, request.digest.commuteAndWorkdays.meansOfTransport)]
   answer({ ok: true, stagedAction: { ...stagedAction, instance: record.handle }, draftsInThisAnswer: turn.pendingActions.length, ...(mustAsk.length > 0 ? { mustAsk } : {}) })
 })
+
+/**
+ * A drafted distance or travel days count only with the means of transport; the model hears it with
+ * the tool's answer when neither the mask nor this answer holds it. All commute drafts of this answer
+ * count, so a transport drafted before the kilometres silences it. Person B's mask is not in the digest.
+ */
+function commuteTransportAsks(screen: string, forB: boolean, pending: readonly AdvisorActionProposal[], stored: StoredTransport | undefined): string[] {
+  if (screen !== 'commute' || forB) return []
+  const drafted = Object.assign({}, ...pending.filter((action) => action.screen === 'commute' && action.person === undefined).map((action) => draftValuesOf(action).values)) as Record<string, string>
+  return transportFollowUps(drafted, stored)
+}

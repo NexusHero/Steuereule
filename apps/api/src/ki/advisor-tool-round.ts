@@ -6,6 +6,7 @@ import { type LangGraphRunnableConfig } from '@langchain/langgraph'
 import {
   ADVISOR_LEGAL_SOURCES,
   deriveBasisAnswers,
+  deriveGateAnswers,
   type AdvisorActionProposal,
   type AdvisorNoteChange,
   type InterviewAreaChange,
@@ -122,7 +123,7 @@ export async function runToolRound(
     await toolHandlerFor(tc.name).run({ name: tc.name, args: tc.args }, ctx)
   }
 
-  const pendingActions = withDerivedBasisDrafts(turn.pendingActions, request, makeActionId)
+  const pendingActions = withDerivedBasisDrafts(withDerivedGateDrafts(turn.pendingActions, request, makeActionId), request, makeActionId)
 
   return {
     messages: toolMessages,
@@ -138,6 +139,50 @@ export async function runToolRound(
     consentRequested: turn.consentRequested,
     sources: turn.sources,
   }
+}
+
+/**
+ * An amount behind a yes/no gate (household services, health costs …) counts only with the gate's
+ * „Ja“; the gate becomes an ordinary draft when this answer drafted the amount but neither the
+ * stored answers nor this answer hold the gate. Gates go before the basis drafts: they belong to
+ * what the model drafted in this very answer. Person B's drafts are left out: the digest is A's.
+ */
+function withDerivedGateDrafts(pending: AdvisorActionProposal[], request: AdvisorTurnRequest, makeActionId: () => string): AdvisorActionProposal[] {
+  const drafted = Object.fromEntries(
+    pending
+      .filter((action) => action.screen === 'interview' && action.person === undefined)
+      .flatMap((action) => [[action.field, action.newValue] as const, ...Object.entries(action.companionFields ?? {})]),
+  )
+  let result = pending
+  for (const derived of deriveGateAnswers(request.digest, drafted)) {
+    if (result.length >= MAX_DRAFTS_PER_TURN) break
+    if (!validateStageTarget('interview', derived.field).ok) continue
+    const value = checkStageValue('interview', derived.field, derived.value)
+    if (!value.ok) continue
+    result = [
+      ...result,
+      {
+        actionId: makeActionId(),
+        status: 'pending',
+        screen: 'interview',
+        field: derived.field,
+        instance: null,
+        label: derived.label,
+        previousValue: null,
+        expectedPreviousValue: null,
+        newValue: value.value,
+        beforeRefundEur: 0,
+        afterRefundEur: 0,
+        deltaEur: 0,
+        effect: 'not-computable',
+        effectHint: 'Diese Antwort schaltet die Beträge dahinter frei; ihre Wirkung zeigt die Schätzung, wenn du beide übernimmst.',
+        reason: derived.reason,
+        sourceId: derived.sourceId,
+        paragraph: ADVISOR_LEGAL_SOURCES[derived.sourceId].paragraph,
+      },
+    ]
+  }
+  return result
 }
 
 /**

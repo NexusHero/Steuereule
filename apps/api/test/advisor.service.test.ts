@@ -204,6 +204,18 @@ describe('AdvisorService (In-App Steuerberater Agent "Deine Eule")', () => {
     expect(digest.catalogExpenses).toMatchObject({ hasTraining: true, trainingCostsEur: 850 })
   })
 
+  it('tells the owl which yes/no gates are answered and with what, and the stored means of transport', async () => {
+    expect((await advisorService.buildCaseDigest(USER, YEAR)).answeredGates).toEqual({})
+    expect((await advisorService.buildCaseDigest(USER, YEAR)).commuteAndWorkdays.meansOfTransport).toEqual({ transport: null, secondTransport: null })
+    await interviewRepo.write({ userId: USER, taxYear: YEAR, questionId: 'haushalt-gate', value: 'Ja', openItems: 0 })
+    await interviewRepo.write({ userId: USER, taxYear: YEAR, questionId: 'gesundheit-gate', value: 'Nein', openItems: 0 })
+    await interviewRepo.write({ userId: USER, taxYear: YEAR, questionId: 'haushalt-handwerker-betrag', value: '900', openItems: 0 })
+    await commuteRepo.save(USER, YEAR, { workdays: [1, 2, 3, 4, 5], vacationDays: 0, sickDays: 0, homeOfficeDays: 0, oneWayKm: 20, transport: 'pkw', workplace: null })
+    const digest = await advisorService.buildCaseDigest(USER, YEAR)
+    expect(digest.answeredGates).toEqual({ 'haushalt-gate': 'Ja', 'gesundheit-gate': 'Nein' })
+    expect(digest.commuteAndWorkdays.meansOfTransport).toEqual({ transport: 'pkw', secondTransport: null })
+  })
+
   it('builds a 100% PII-free CaseDigest and scrubs user free-text names, Steuer-IDs, and IBANs', async () => {
     const digest = await advisorService.buildCaseDigest(USER, YEAR)
     const serialized = JSON.stringify(digest)

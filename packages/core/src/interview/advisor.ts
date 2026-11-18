@@ -1,5 +1,6 @@
 import type { PrintoutGapPlan } from './advisor-printout-plan'
 import type { OwlSourceId } from './owl-mode'
+import type { StoredTransport } from './entry-rules'
 import { furtherWorkExpensesEur, type WorkExpenseAmounts } from '../domains/work-expenses'
 
 /**
@@ -366,6 +367,11 @@ export interface CaseDigest {
     readonly homeOfficeAnswer: string | null
     readonly homeOfficeDays: number | null
     readonly distanceKm: number | null
+    /**
+     * The means of transport stored in the commute mask, per way (null: not entered); absent when
+     * unknown, so a draft is never told it is missing then. Without it no Entfernungspauschale is computed.
+     */
+    readonly meansOfTransport?: StoredTransport | undefined
   }
   readonly catalogExpenses: {
     readonly hasTraining: boolean
@@ -401,6 +407,11 @@ export interface CaseDigest {
   readonly estimatedRefundEur: number | null
   /** Which basis interview questions (`job`, `ausland`) already have an answer; absent when unknown, so nothing is derived then. */
   readonly answeredBasis?: readonly string[] | undefined
+  /**
+   * The yes/no gates of the catalogue that already have an answer, with that answer („Ja“/„Nein“);
+   * absent when unknown, so no gate draft is derived then.
+   */
+  readonly answeredGates?: Readonly<Record<string, string>> | undefined
   /** Everything else the interview and the masks know, in figures only (#501 follow-up). */
   readonly furtherFacts?: CaseFurtherFacts | undefined
 }
