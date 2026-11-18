@@ -11,6 +11,8 @@
 //   Row E — „Maske ansehen“ embeds the mask inline in the Eulen-Modus.
 //   Row F — tablet drawer and mobile 20 %-dock (minimise / maximise); the chat stays usable.
 //   Row G — a guest sees the account prompt instead of the chat.
+//   Row H — model picker and Max (ADR-0096): the picker lists the models with their cost, a pick is
+//           saved for the conversation, Max goes out with one message only and says its cost.
 import { launchBrowser, closeBrowser, newContextAtBreakpoint, guardAgainst429 } from '../harness/browser.mjs'
 import { startStack } from '../harness/stack.mjs'
 import { fail, waitForBucketHeadroom } from '../harness/rate-limit.mjs'
@@ -151,6 +153,46 @@ async function main() {
     await page.locator('[data-testid="eule-back-to-stage-btn"]').click()
     await page.locator('[data-testid="eule-inline-mask-view"]').waitFor({ state: 'hidden', timeout: 10_000 })
     console.log(`[${TAG}] ✅ Row E — „Maske ansehen“ embeds the mask inline and returns to the drafts`)
+
+    // Row H — the fake KI offers no models, so the list and the save are served here: this row tests the app.
+    const MODELS = {
+      standard: { provider: 'anthropic', model: 'claude-sonnet-5-5' },
+      models: [
+        { provider: 'anthropic', model: 'claude-sonnet-5-5', label: 'Claude Sonnet 5.5', depths: [{ depth: 'gruendlich', costFactor: 1, firstWordSeconds: 6, samples: 9 }, { depth: 'max', costFactor: 3, firstWordSeconds: 15, samples: 6 }] },
+        { provider: 'anthropic', model: 'claude-opus-5-5', label: 'Claude Opus 5.5', depths: [{ depth: 'gruendlich', costFactor: 2, firstWordSeconds: 8, samples: 5 }, { depth: 'max', samples: 0 }] },
+      ],
+    }
+    const picks = []
+    const sent = []
+    await page.route('**/advisor/models', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MODELS) }))
+    await page.route('**/advisor/conversations/*/model', async (route) => {
+      picks.push(route.request().postDataJSON())
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ id: 'c', title: null, createdAt: new Date().toISOString(), lastUsedAt: new Date().toISOString(), answering: false, chatModel: picks.at(-1) }) })
+    })
+    page.on('request', (req) => {
+      if (req.method() === 'POST' && /\/advisor\/(?:stream|messages)$/.test(new URL(req.url()).pathname)) sent.push(req.postDataJSON())
+    })
+    await page.reload({ waitUntil: 'networkidle' })
+    await openEule(page)
+    await page.locator('[data-testid="advisor-model-picker"]').waitFor({ state: 'visible', timeout: 15_000 })
+    await page.locator('[data-testid="advisor-model-picker"]').click()
+    await page.locator('[data-testid="advisor-model-menu"]').waitFor({ state: 'visible', timeout: 10_000 })
+    const opus = page.locator('[data-testid="advisor-model-option-anthropic:claude-opus-5-5"]')
+    if (!(await opus.innerText()).includes('2× Kosten')) fail('Row H: the model list should say the cost relative to the standard')
+    await opus.click()
+    await until(async () => picks.length === 1, 'Row H: the pick should be saved for the conversation')
+    if (picks[0]?.provider !== 'anthropic' || picks[0]?.model !== 'claude-opus-5-5') fail(`Row H: wrong pick saved: ${JSON.stringify(picks[0])}`)
+    await page.locator('[data-testid="advisor-depth-max"]').click()
+    await page.locator('[data-testid="advisor-depth-hint"]').waitFor({ state: 'visible', timeout: 10_000 })
+    const sentBefore = sent.length
+    await ask(page, 'Rechne meinen Arbeitsweg bitte ganz genau nach')
+    await until(async () => sent.length > sentBefore, 'Row H: the message should be sent')
+    if (sent[sentBefore]?.depth !== 'max') fail(`Row H: Max should go out with the message, got ${JSON.stringify(sent[sentBefore])}`)
+    await page.locator('[data-testid="advisor-chat-send"]').waitFor({ state: 'visible', timeout: 30_000 })
+    await page.locator('[data-testid="advisor-depth-hint"]').waitFor({ state: 'detached', timeout: 30_000 }).catch(() => fail('Row H: Max should switch off after one message'))
+    await page.unroute('**/advisor/models')
+    await page.unroute('**/advisor/conversations/*/model')
+    console.log(`[${TAG}] ✅ Row H — the model picker saves a pick with its cost, Max goes out with one message only`)
     await ctx.close()
 
     // Row F — tablet and phone: the chat is the screen and answers; the workbench is a sheet that

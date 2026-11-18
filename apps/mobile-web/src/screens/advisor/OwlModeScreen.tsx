@@ -1,3 +1,4 @@
+import type { AdvisorChatModelRefDto, AdvisorModelsDto } from '@steuereule/api-client'
 import { ChatDocumentAssignment } from './ChatDocumentAssignment'
 import { useEffect, useRef, useState } from 'react'
 import { Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native'
@@ -80,6 +81,11 @@ export interface OwlModeScreenProps {
   readonly onSelectConversationInYear?: ((taxYear: number, id: string) => void) | undefined
   readonly onNewConversation?: (() => Promise<void>) | undefined
   readonly onRenameConversation?: ((id: string, title: string) => Promise<void>) | undefined
+  /** The chat models the user may pick (ADR-0096); absent hides the picker and Max. */
+  readonly models?: AdvisorModelsDto | null | undefined
+  /** The model picked for the open conversation; null = the standard model. */
+  readonly chatModel?: AdvisorChatModelRefDto | null | undefined
+  readonly onPickModel?: ((model: AdvisorChatModelRefDto | null) => Promise<void>) | undefined
   readonly onDeleteConversation?: ((id: string) => Promise<void>) | undefined
   readonly onSearchConversations?: ((query: string) => Promise<readonly ConversationSearchHit[]>) | undefined
   /** How full the context of the open conversation is (#481). */
@@ -189,6 +195,9 @@ export function OwlModeScreenView({
   onSelectConversationInYear,
   onNewConversation,
   onRenameConversation,
+  models,
+  chatModel,
+  onPickModel,
   onDeleteConversation,
   onSearchConversations,
   context,
@@ -462,6 +471,9 @@ export function OwlModeScreenView({
   function renderChatPanel(compact = false) {
     return (
       <AdvisorChatPanel
+        models={models}
+        chatModel={chatModel}
+        onPickModel={onPickModel ? (model) => void onPickModel(model) : undefined}
         messages={displayedMessages}
         partnerName={partnerName}
         ownName={ownName}

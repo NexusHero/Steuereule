@@ -9,6 +9,7 @@ import type { AdvisorSkillId, InterviewProgress } from './advisor-skills'
 import type { AdvisorAssessmentBrief, AdvisorTask } from './advisor-tasks'
 import type { AdvisorOpeningBrief } from './advisor-opening'
 import type { AdvisorModelFailure } from './advisor-failure'
+import type { AdvisorDepth, AdvisorModelProvider } from './advisor-models'
 import type { AdvisorTopicOutcome } from './advisor-topic'
 
 /** The schema the LLM must answer. */
@@ -26,6 +27,10 @@ export interface AdvisorHistoryEntry {
 
 export interface AdvisorTurnRequest {
   readonly message: string
+  /** The chat model of the conversation, when the user picked one (ADR-0094); else the operator's. */
+  readonly chatChoice?: { readonly provider: AdvisorModelProvider; readonly model: string } | undefined
+  /** Gründlich (the standard) or Max for this one message (ADR-0094). */
+  readonly depth?: AdvisorDepth | undefined
   readonly activeScreen?: Screen | undefined
   readonly digest: CaseDigest
   readonly history?: readonly AdvisorHistoryEntry[] | undefined

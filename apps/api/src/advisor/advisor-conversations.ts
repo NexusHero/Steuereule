@@ -66,6 +66,13 @@ export class AdvisorConversations {
     return toConversationDto(updated ?? conversation)
   }
 
+  /** Picks the chat model of a conversation (ADR-0096); null goes back to the standard model. */
+  async setChatModel(userId: string, taxYear: number, conversationId: string, choice: { readonly provider: string; readonly model: string } | null): Promise<AdvisorConversationDto> {
+    const conversation = await this.conversationFor(userId, taxYear, conversationId)
+    const updated = await this.advisorRepo.updateConversation(conversation.id, userId, { chatModel: choice === null ? null : `${choice.provider}:${choice.model}` })
+    return toConversationDto(updated ?? conversation)
+  }
+
   /**
    * Deletes a conversation with its messages. Values already applied to the return stay; drafts
    * that were still open in it disappear.

@@ -25,6 +25,8 @@ import {
   useAdvisorControllerCreateConversation,
   useAdvisorControllerDeleteConversation,
   useAdvisorControllerRenameConversation,
+  useAdvisorControllerListModels,
+  useAdvisorControllerSetConversationModel,
   useAdvisorControllerSummarizeConversation,
   useAdvisorControllerGetSession,
   useAdvisorControllerSendMessage,
@@ -119,6 +121,9 @@ export function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CU
         : { kind: 'offline' }
   const createConversationMutation = useAdvisorControllerCreateConversation()
   const renameConversationMutation = useAdvisorControllerRenameConversation()
+  // ADR-0096: the models the user may pick, with their measured cost; the pick belongs to the conversation.
+  const modelsQuery = useAdvisorControllerListModels(taxYear, { query: { retry: false, staleTime: 5 * 60 * 1000 } })
+  const setConversationModelMutation = useAdvisorControllerSetConversationModel()
   const deleteConversationMutation = useAdvisorControllerDeleteConversation()
   const summarizeConversationMutation = useAdvisorControllerSummarizeConversation()
   const createNoteMutation = useAdvisorControllerCreateNote()
@@ -254,6 +259,19 @@ export function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CU
       connection={connectionView}
       onRecheckConnection={() => connectionQuery.refetch()}
       conversations={session?.conversations}
+      models={modelsQuery.data?.status === 200 ? modelsQuery.data.data : null}
+      chatModel={session?.conversations?.find((c) => c.id === session.conversationId)?.chatModel ?? null}
+      onPickModel={
+        session
+          ? async (model) => {
+              expectOk(
+                await setConversationModelMutation.mutateAsync({ jahr: taxYear, conversationId: session.conversationId, data: model ?? { provider: null, model: null } }),
+                'conversation model not saved',
+              )
+              await invalidate()
+            }
+          : undefined
+      }
       onSearchConversations={searchConversations}
       activeConversationId={session?.conversationId ?? null}
       onSelectConversation={(id) => selectConversation(id)}

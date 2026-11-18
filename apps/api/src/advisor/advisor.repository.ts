@@ -1,11 +1,15 @@
 import { randomUUID } from 'node:crypto'
-import type { AdvisorMessageFeedback, AdvisorMessageMeta, AdvisorMessageStatus, AdvisorTurnUsage, InterviewProgress } from '@steuereule/core'
+import type { AdvisorDepth, AdvisorMessageFeedback, AdvisorMessageMeta, AdvisorMessageStatus, AdvisorTurnUsage, InterviewProgress } from '@steuereule/core'
 
 export const ADVISOR_REPOSITORY = Symbol('ADVISOR_REPOSITORY')
 
 /** What a turn cost and how long it took (#476). Carries no message content. */
 export interface AdvisorMessageUsage extends Partial<AdvisorTurnUsage> {
   readonly traceId: string
+  /** Which model answered and how deep it thought (ADR-0096): what the cost factors are measured from. */
+  readonly provider?: string | undefined
+  readonly model?: string | undefined
+  readonly depth?: AdvisorDepth | undefined
   /** Milliseconds from the start of the turn to the first answer token; null if none arrived. */
   readonly firstTokenMs: number | null
   readonly durationMs: number
@@ -23,6 +27,8 @@ export interface AdvisorConversationRecord {
   /** What the conversation said up to `summaryUntil`; the model reads this instead of those messages. */
   readonly summary: string | null
   readonly summaryUntil: Date | null
+  /** The chat model the user picked for this conversation as „provider:model“ (ADR-0096); null = the operator's. */
+  readonly chatModel: string | null
 }
 
 export type AdvisorNoteAuthor = 'owl' | 'user'
@@ -44,6 +50,7 @@ export interface AdvisorConversationChange {
   readonly lastUsedAt?: Date
   readonly summary?: string | null
   readonly summaryUntil?: Date | null
+  readonly chatModel?: string | null
 }
 
 export interface AdvisorChatMessageRecord {
@@ -126,6 +133,8 @@ export interface AdvisorRepository {
   /** False when the note does not exist or belongs to someone else. */
   deleteNote(id: string, userId: string): Promise<boolean>
   countUserMessagesSince(userId: string, since: Date): Promise<number>
+  /** Token and timing records of the latest answers of all users, newest first: no content, no user (ADR-0096). */
+  recentUsage(limit: number): Promise<AdvisorMessageUsage[]>
   createMessage(input: CreateAdvisorMessageInput): Promise<AdvisorChatMessageRecord>
   findMessageByActionId(userId: string, taxYear: number, actionId: string): Promise<AdvisorChatMessageRecord | null>
   updateMessageMeta(id: string, userId: string, meta: AdvisorMessageMeta): Promise<AdvisorChatMessageRecord>
@@ -184,7 +193,7 @@ export class InMemoryAdvisorRepository implements AdvisorRepository {
 
   async createConversation(userId: string, taxYear: number, title: string | null = null): Promise<AdvisorConversationRecord> {
     const at = this.now()
-    const conversation: AdvisorConversationRecord = { id: randomUUID(), userId, taxYear, title, createdAt: at, lastUsedAt: at, summary: null, summaryUntil: null }
+    const conversation: AdvisorConversationRecord = { id: randomUUID(), userId, taxYear, title, createdAt: at, lastUsedAt: at, summary: null, summaryUntil: null, chatModel: null }
     this.conversations.push(conversation)
     return conversation
   }
@@ -271,6 +280,14 @@ export class InMemoryAdvisorRepository implements AdvisorRepository {
     return this.rows
       .filter((r) => r.userId === userId && r.taxYear === taxYear)
       .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
+  }
+
+  async recentUsage(limit: number): Promise<AdvisorMessageUsage[]> {
+    return [...this.rows]
+      .filter((r) => r.role === 'assistant' && r.usage !== null && r.usage !== undefined)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+      .slice(0, limit)
+      .map((r) => r.usage as AdvisorMessageUsage)
   }
 
   async countUserMessagesSince(userId: string, since: Date): Promise<number> {

@@ -22,6 +22,8 @@ import { AdvisorController } from './advisor.controller.js'
 import { ADVISOR_REPOSITORY } from './advisor.repository.js'
 import { PrismaAdvisorRepository } from './advisor.repository.prisma.js'
 import { AdvisorService } from './advisor.service.js'
+import { AdvisorModelsService } from './advisor-models.service.js'
+import { AdvisorModelCatalog } from '../ki/advisor-model-catalog.js'
 import { ADVISOR_RUN_LOG, InMemoryAdvisorRunLog, type AdvisorRunLog } from './run/advisor-run-log.js'
 import { RedisAdvisorRunLog } from './run/advisor-run-log.redis.js'
 import { AdvisorRunService } from './run/advisor-run.service.js'
@@ -63,6 +65,8 @@ export function createAdvisorRunLog(env: NodeJS.ProcessEnv = process.env): Advis
   providers: [
     AdvisorService,
     AdvisorRunService,
+    AdvisorModelsService,
+    AdvisorModelCatalog,
     { provide: ADVISOR_RUN_LOG, useFactory: () => createAdvisorRunLog() },
     {
       provide: ADVISOR_REPOSITORY,

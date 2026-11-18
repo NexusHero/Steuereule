@@ -13,6 +13,8 @@ import {
   type AdvisorHistorySource,
   type AdvisorPreviewEffect,
   type AdvisorPreviewTarget,
+  ADVISOR_MODEL_PROVIDERS,
+  type AdvisorModelProvider,
 } from '@steuereule/core'
 import { type AdvisorChatMessageRecord, type AdvisorConversationRecord, type AdvisorNoteRecord } from './advisor.repository.js'
 import type { AdvisorChatMessageDto, AdvisorContextDto, AdvisorConversationDto, AdvisorNoteDto, AdvisorProjectDto, SendAdvisorMessageDto } from './dto/advisor.dto.js'
@@ -81,6 +83,8 @@ export interface PreparedAdvisorTurn {
   readonly history: readonly AdvisorHistoryEntry[]
   readonly dto: SendAdvisorMessageDto
   readonly conversationId: string
+  /** The chat model picked for the conversation (ADR-0096); absent = the standard model. */
+  readonly chatChoice?: { readonly provider: AdvisorModelProvider; readonly model: string } | undefined
   /** The context of the conversation is full: its older part is summarised before the model is asked. */
   readonly needsSummary: boolean
   /**
@@ -196,7 +200,17 @@ export function toConversationDto(conversation: AdvisorConversationRecord, answe
     answering,
     createdAt: conversation.createdAt.toISOString(),
     lastUsedAt: conversation.lastUsedAt.toISOString(),
+    chatModel: parseChatModel(conversation.chatModel),
   }
+}
+
+/** „provider:model“ as stored for a conversation (ADR-0096); null for the standard model or anything unreadable. */
+export function parseChatModel(stored: string | null): { readonly provider: AdvisorModelProvider; readonly model: string } | null {
+  if (stored === null) return null
+  const at = stored.indexOf(':')
+  const provider = stored.slice(0, at)
+  const model = stored.slice(at + 1)
+  return at > 0 && model !== '' && (ADVISOR_MODEL_PROVIDERS as readonly string[]).includes(provider) ? { provider: provider as AdvisorModelProvider, model } : null
 }
 
 /**

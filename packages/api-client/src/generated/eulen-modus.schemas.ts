@@ -1133,6 +1133,106 @@ export interface ReassignReceiptResponseDto {
   parse: ParseReceiptResponseDto | null;
 }
 
+export type AdvisorChatModelRefDtoProvider = typeof AdvisorChatModelRefDtoProvider[keyof typeof AdvisorChatModelRefDtoProvider];
+
+
+export const AdvisorChatModelRefDtoProvider = {
+  anthropic: 'anthropic',
+  'google-genai': 'google-genai',
+  openai: 'openai',
+} as const;
+
+export interface AdvisorChatModelRefDto {
+  provider: AdvisorChatModelRefDtoProvider;
+  model: string;
+}
+
+export type AdvisorModelOptionDtoProvider = typeof AdvisorModelOptionDtoProvider[keyof typeof AdvisorModelOptionDtoProvider];
+
+
+export const AdvisorModelOptionDtoProvider = {
+  anthropic: 'anthropic',
+  'google-genai': 'google-genai',
+  openai: 'openai',
+} as const;
+
+export type AdvisorDepthProfileDtoDepth = typeof AdvisorDepthProfileDtoDepth[keyof typeof AdvisorDepthProfileDtoDepth];
+
+
+export const AdvisorDepthProfileDtoDepth = {
+  gruendlich: 'gruendlich',
+  max: 'max',
+} as const;
+
+export interface AdvisorDepthProfileDto {
+  depth: AdvisorDepthProfileDtoDepth;
+  /** Cost of a median answer relative to the standard model with Gründlich; absent while unknown. */
+  costFactor?: number;
+  /** Median wait until the first word, in seconds; absent while unmeasured. */
+  firstWordSeconds?: number;
+  /** Answers measured; below 5 the setting counts as not measured yet. */
+  samples: number;
+}
+
+export interface AdvisorModelOptionDto {
+  provider: AdvisorModelOptionDtoProvider;
+  model: string;
+  label: string;
+  /** The depths this model can do; Max only where it thinks deeper than Gründlich. */
+  depths: AdvisorDepthProfileDto[];
+}
+
+export interface AdvisorModelsDto {
+  /**
+     * The operator’s standard chat model; null when the chat runs on rules only.
+     * @nullable
+     */
+  standard: AdvisorChatModelRefDto | null;
+  /** Chat models of every provider with a key, the standard first. */
+  models: AdvisorModelOptionDto[];
+}
+
+/**
+ * Null together with model: back to the standard model.
+ * @nullable
+ */
+export type SetAdvisorConversationModelDtoProvider = typeof SetAdvisorConversationModelDtoProvider[keyof typeof SetAdvisorConversationModelDtoProvider] | null;
+
+
+export const SetAdvisorConversationModelDtoProvider = {
+  anthropic: 'anthropic',
+  'google-genai': 'google-genai',
+  openai: 'openai',
+} as const;
+
+export interface SetAdvisorConversationModelDto {
+  /**
+     * Null together with model: back to the standard model.
+     * @nullable
+     */
+  provider?: SetAdvisorConversationModelDtoProvider;
+  /** @nullable */
+  model?: string | null;
+}
+
+export interface AdvisorConversationDto {
+  id: string;
+  /**
+     * The chat model picked for this conversation (ADR-0094); null = the standard model.
+     * @nullable
+     */
+  chatModel: AdvisorChatModelRefDto | null;
+  /**
+     * From the first question; null while nothing has been asked.
+     * @nullable
+     */
+  title: string | null;
+  createdAt: string;
+  lastUsedAt: string;
+  /** An answer is being written in this conversation right now; several conversations can answer at the same time (#503). */
+  answering: boolean;
+}
+
 export type OwlCardDtoTrigger = typeof OwlCardDtoTrigger[keyof typeof OwlCardDtoTrigger];
 
 
@@ -1182,19 +1282,6 @@ export interface OwlCardDto {
   sourceUrl?: string;
   paths?: OwlPathDto[];
   appealDeadline?: string;
-}
-
-export interface AdvisorConversationDto {
-  id: string;
-  /**
-     * From the first question; null while nothing has been asked.
-     * @nullable
-     */
-  title: string | null;
-  createdAt: string;
-  lastUsedAt: string;
-  /** An answer is being written in this conversation right now; several conversations can answer at the same time (#503). */
-  answering: boolean;
 }
 
 export interface AdvisorProjectDto {
@@ -1342,6 +1429,17 @@ export const SendAdvisorMessageDtoSkill = {
 } as const;
 
 /**
+ * Gründlich (the standard) or Max for this one message (ADR-0094).
+ */
+export type SendAdvisorMessageDtoDepth = typeof SendAdvisorMessageDtoDepth[keyof typeof SendAdvisorMessageDtoDepth];
+
+
+export const SendAdvisorMessageDtoDepth = {
+  gruendlich: 'gruendlich',
+  max: 'max',
+} as const;
+
+/**
  * Quick start that shapes the turn: forgotten_check always opens with a visible plan (#451).
  */
 export type SendAdvisorMessageDtoQuickAction = typeof SendAdvisorMessageDtoQuickAction[keyof typeof SendAdvisorMessageDtoQuickAction];
@@ -1365,6 +1463,8 @@ export interface SendAdvisorMessageDto {
   skill?: SendAdvisorMessageDtoSkill;
   /** Turbo mode: the owl applies the drafts of this answer itself instead of waiting for a click. Off by default. */
   turbo?: boolean;
+  /** Gründlich (the standard) or Max for this one message (ADR-0094). */
+  depth?: SendAdvisorMessageDtoDepth;
   /** Quick start that shapes the turn: forgotten_check always opens with a visible plan (#451). */
   quickAction?: SendAdvisorMessageDtoQuickAction;
   /** Regenerate or edit-and-resend (#451): the id of the latest user message. That turn is replaced; its pending proposals are dismissed, never applied. */

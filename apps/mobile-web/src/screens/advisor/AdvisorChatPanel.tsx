@@ -1,3 +1,4 @@
+import type { AdvisorChatModelRefDto, AdvisorModelsDto } from '@steuereule/api-client'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Linking, Pressable, ScrollView, Text, TextInput, View } from 'react-native'
 import { ChatComposer } from './chat/ChatComposer'
@@ -7,6 +8,7 @@ import { QuestionRound } from './chat/QuestionRound'
 import { SituationSuggestions } from './chat/Situation'
 import { SkillsMenu } from './chat/SkillsMenu'
 import { TurboSummary, TurboToggle } from './chat/TurboToggle'
+import { MaxToggle, ModelPicker, activeModel } from './chat/ModelControls'
 import { DictationBar } from './chat/DictationBar'
 import { browserDictationEngine, type DictationEngine } from '../../lib/dictation/engine'
 import { MarkdownMessage } from './chat/MarkdownMessage'
@@ -46,6 +48,11 @@ import { makeStyles } from './AdvisorChatPanel.styles'
 export { makeStyles } from './AdvisorChatPanel.styles'
 
 export interface AdvisorChatPanelProps {
+  /** The chat models the user may pick, with their cost (ADR-0096); absent hides the picker and Max. */
+  readonly models?: AdvisorModelsDto | null | undefined
+  /** The model picked for the open conversation; null = the standard model. */
+  readonly chatModel?: AdvisorChatModelRefDto | null | undefined
+  readonly onPickModel?: ((model: AdvisorChatModelRefDto | null) => void) | undefined
   readonly greeting?: string | undefined
   readonly messages: readonly AdvisorChatMessageView[]
   readonly quickChips?: readonly (string | AdvisorQuickChip)[] | undefined
@@ -138,13 +145,16 @@ export interface ChatSendOptions {
   readonly skill?: AdvisorSkillId | undefined
   /** Turbo mode: the owl applies the drafts of this answer itself. */
   readonly turbo?: boolean | undefined
+  /** Max instead of Gründlich for this one message (ADR-0096). */
+  readonly depth?: 'max' | undefined
 }
 
 /** The options as request fields, without keys that are unset (the DTO forbids explicit undefined). */
-export function sendOptionsToDto(options: ChatSendOptions | undefined): { quickAction?: AdvisorQuickAction; replaceFromMessageId?: string; skill?: AdvisorSkillId; turbo?: boolean } {
+export function sendOptionsToDto(options: ChatSendOptions | undefined): { quickAction?: AdvisorQuickAction; replaceFromMessageId?: string; skill?: AdvisorSkillId; turbo?: boolean; depth?: 'max' } {
   return {
     ...(options?.skill ? { skill: options.skill } : {}),
     ...(options?.turbo ? { turbo: true } : {}),
+    ...(options?.depth === 'max' ? { depth: 'max' as const } : {}),
     ...(options?.quickAction ? { quickAction: options.quickAction } : {}),
     ...(options?.replaceFromMessageId ? { replaceFromMessageId: options.replaceFromMessageId } : {}),
   }
@@ -168,6 +178,9 @@ export interface AdvisorQuickChip {
 }
 
 export function AdvisorChatPanel({
+  models,
+  chatModel,
+  onPickModel,
   greeting,
   messages: allMessages,
   quickChips = [],
@@ -259,14 +272,23 @@ export function AdvisorChatPanel({
   const [skill, setSkill] = useState<AdvisorSkillId | null>(null)
   // Off in every new chat: the careful way is the default, Turbo is chosen per session.
   const [turbo, setTurbo] = useState(false)
+  // Max is chosen for one message (ADR-0096): it switches off again once that message is sent.
+  const [maxDepth, setMaxDepth] = useState(false)
+  const chatModelOption = activeModel(models, chatModel)
+  const maxOffered = chatModelOption?.depths.some((d) => d.depth === 'max') === true
   /** What is switched on at the input travels with every message; a plain message stays plain. */
-  const withSwitches = (options: ChatSendOptions | undefined, activeSkill: AdvisorSkillId | null): ChatSendOptions | undefined =>
-    activeSkill || turbo ? { ...options, ...(activeSkill ? { skill: activeSkill } : {}), ...(turbo ? { turbo: true } : {}) } : options
+  const withSwitches = (options: ChatSendOptions | undefined, activeSkill: AdvisorSkillId | null): ChatSendOptions | undefined => {
+    const max = maxDepth && maxOffered
+    return activeSkill || turbo || max
+      ? { ...options, ...(activeSkill ? { skill: activeSkill } : {}), ...(turbo ? { turbo: true } : {}), ...(max ? { depth: 'max' as const } : {}) }
+      : options
+  }
   // What was typed last, as typed: the stored question is masked while the consent is missing (ADR-0091).
   const lastTypedRef = useRef<string | null>(null)
   const send = (text: string, options?: ChatSendOptions) => {
     lastTypedRef.current = text
     const merged = withSwitches(options, skill)
+    setMaxDepth(false)
     return merged ? onSendMessage(text, merged) : onSendMessage(text)
   }
   const [unknownCommand, setUnknownCommand] = useState<string | null>(null)
@@ -917,6 +939,8 @@ export function AdvisorChatPanel({
               {situationChip ? <View style={styles.situationSlot}>{situationChip}</View> : null}
               <SkillsMenu active={skill} onChange={setSkill} disabled={isSending} />
               <TurboToggle on={turbo} onChange={setTurbo} disabled={isSending} />
+              {models && onPickModel ? <ModelPicker models={models} picked={chatModel} onPick={onPickModel} disabled={isSending} /> : null}
+              <MaxToggle model={chatModelOption} on={maxDepth && maxOffered} onChange={setMaxDepth} disabled={isSending} />
             </View>
             <ChatComposer
               value={inputText}
