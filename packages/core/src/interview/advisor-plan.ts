@@ -83,5 +83,12 @@ export function openPlanNote(plan: readonly AdvisorPlanStep[] | null | undefined
   if (open.length === 0) return ''
   const reply = normalized(replyText)
   if (open.every((step) => mentions(reply, step))) return ''
-  return `\n\nNoch offen: ${open.map((step) => step.text.trim().replace(/[.!?]+$/u, '')).join(', ')}.`
+  return `\n\nNoch offen: ${open.map((step) => withoutClosingPunctuation(step.text.trim())).join(', ')}.`
+}
+
+/** The step without its closing „.“, „!“ or „?“; a loop, since `/[.!?]+$/` backtracks on long input. */
+function withoutClosingPunctuation(text: string): string {
+  let end = text.length
+  while (end > 0 && '.!?'.includes(text[end - 1]!)) end -= 1
+  return text.slice(0, end)
 }
