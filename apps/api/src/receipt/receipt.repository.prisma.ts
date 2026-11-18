@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { isHolderRef, isReceiptType, type HolderRef, type ReceiptType } from '@steuereule/core'
+import { isHolderRef, isReceiptReadOutcome, isReceiptReadReason, isReceiptType, type HolderRef, type ReceiptType } from '@steuereule/core'
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
-import type { ReceiptRecord, ReceiptRepository, CreateReceiptData, SetAssignmentData } from './receipt.repository.js'
+import type { ReceiptRecord, ReceiptRepository, CreateReceiptData, RecordReadData, SetAssignmentData } from './receipt.repository.js'
 
 function toIsoDate(value: Date): string {
   return value.toISOString().slice(0, 10)
@@ -18,6 +18,10 @@ function toRecord(row: {
   proposalDismissed: boolean
   holders?: string | null
   holderTaxYear?: number | null
+  readAt?: Date | null
+  readOutcome?: string | null
+  readReason?: string | null
+  draftsTaxYear?: number | null
   file?: { mimeType: string; byteLength: number } | null
   createdAt: Date
   updatedAt: Date
@@ -33,6 +37,11 @@ function toRecord(row: {
     proposalDismissed: row.proposalDismissed,
     holders: holdersOf(row.holders ?? null),
     holderTaxYear: row.holderTaxYear ?? null,
+    readAt: row.readAt ?? null,
+    // An unknown code (written by a newer version) reads as no fact rather than failing the inbox.
+    readOutcome: isReceiptReadOutcome(row.readOutcome) ? row.readOutcome : null,
+    readReason: isReceiptReadReason(row.readReason) ? row.readReason : null,
+    draftsTaxYear: row.draftsTaxYear ?? null,
     ...(row.file !== undefined ? { fileMeta: row.file ? { mimeType: row.file.mimeType, byteLength: row.file.byteLength } : null } : {}),
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
@@ -130,6 +139,26 @@ export class PrismaReceiptRepository implements ReceiptRepository {
     if (row === null) return null
     const [updated] = await this.prisma.$transaction([
       this.prisma.receipt.update({ where: { id }, data: { kind }, include: FILE_META_INCLUDE }),
+      this.prisma.taxDataAccessLog.create({ data: { userId, action: 'WRITE', resource: 'beleg' } }),
+    ])
+    return toRecord(updated)
+  }
+
+  async recordRead(userId: string, id: string, data: RecordReadData): Promise<ReceiptRecord | null> {
+    const row = await this.prisma.receipt.findFirst({ where: { id, userId }, select: { id: true } })
+    if (row === null) return null
+    const [updated] = await this.prisma.$transaction([
+      this.prisma.receipt.update({
+        where: { id },
+        data: {
+          readAt: new Date(),
+          readOutcome: data.outcome,
+          readReason: data.reason,
+          draftsTaxYear: data.draftsTaxYear,
+          ...(data.belegdatum !== undefined ? { belegdatum: fromIsoDate(data.belegdatum) } : {}),
+        },
+        include: FILE_META_INCLUDE,
+      }),
       this.prisma.taxDataAccessLog.create({ data: { userId, action: 'WRITE', resource: 'beleg' } }),
     ])
     return toRecord(updated)

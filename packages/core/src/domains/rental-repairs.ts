@@ -1,3 +1,5 @@
+import { isIsoDate, parseDate } from '../common/dates'
+
 /**
  * Repairs in the first years after buying a rented building (§ 6 Abs. 1 Nr. 1a EStG): when the net
  * costs of repair and modernisation within three years of the purchase exceed 15 % of the
@@ -32,12 +34,10 @@ export interface RentalRepairsResult {
   readonly roomLeftEur: number
 }
 
-const ISO = /^\d{4}-\d{2}-\d{2}$/
-
 export function checkRentalRepairs(input: RentalRepairsInput): RentalRepairsResult {
-  if (!ISO.test(input.acquiredOn) || input.repairs.some((repair) => !ISO.test(repair.doneOn))) throw new RangeError('dates must be ISO yyyy-mm-dd')
+  if (!isIsoDate(input.acquiredOn) || input.repairs.some((repair) => !isIsoDate(repair.doneOn))) throw new RangeError('dates must be ISO yyyy-mm-dd')
   if (!(input.buildingCostEur > 0) || input.repairs.some((repair) => !(repair.netEur >= 0))) throw new RangeError('amounts must be positive')
-  const [y, m, d] = [Number(input.acquiredOn.slice(0, 4)), Number(input.acquiredOn.slice(5, 7)), Number(input.acquiredOn.slice(8, 10))]
+  const { year: y, month: m, day: d } = parseDate(input.acquiredOn)!
   const lastDay = new Date(Date.UTC(y + ACQUISITION_RELATED_YEARS, m, 0)).getUTCDate()
   const end = new Date(Date.UTC(y + ACQUISITION_RELATED_YEARS, m - 1, Math.min(d, lastDay)))
   const windowEnd = end.toISOString().slice(0, 10)

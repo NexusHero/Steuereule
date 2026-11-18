@@ -36,6 +36,123 @@ export interface AssignmentDto {
   provenance?: AssignmentDtoProvenance;
 }
 
+/**
+ * `neu` not read yet · `nicht_lesbar` reading failed · `vorschlaege` at least one draft waits · `uebernommen` all decided, at least one taken over · `nichts_verwertbar` read, nothing for the return · `verworfen` all drafts dismissed.
+ */
+export type ReceiptProcessingDtoState = typeof ReceiptProcessingDtoState[keyof typeof ReceiptProcessingDtoState];
+
+
+export const ReceiptProcessingDtoState = {
+  neu: 'neu',
+  nicht_lesbar: 'nicht_lesbar',
+  vorschlaege: 'vorschlaege',
+  uebernommen: 'uebernommen',
+  nichts_verwertbar: 'nichts_verwertbar',
+  verworfen: 'verworfen',
+} as const;
+
+/**
+ * Why the read found nothing or failed (for `nicht_lesbar`, `nichts_verwertbar`, and `neu` after its drafts were removed: `entwuerfe_fehlen`); null otherwise. The app words it.
+ * @nullable
+ */
+export type ReceiptProcessingDtoReason = typeof ReceiptProcessingDtoReason[keyof typeof ReceiptProcessingDtoReason] | null;
+
+
+export const ReceiptProcessingDtoReason = {
+  nichts_erkannt: 'nichts_erkannt',
+  keine_rechnung: 'keine_rechnung',
+  nicht_absetzbar: 'nicht_absetzbar',
+  schon_gezaehlt: 'schon_gezaehlt',
+  dublette: 'dublette',
+  blockiert: 'blockiert',
+  kein_steuerjahr: 'kein_steuerjahr',
+  anderes_konto: 'anderes_konto',
+  lesefehler: 'lesefehler',
+  unlesbar: 'unlesbar',
+  kein_text: 'kein_text',
+  nicht_unterstuetzt: 'nicht_unterstuetzt',
+  entwuerfe_fehlen: 'entwuerfe_fehlen',
+} as const;
+
+export interface ReceiptProcessingDto {
+  /** `neu` not read yet · `nicht_lesbar` reading failed · `vorschlaege` at least one draft waits · `uebernommen` all decided, at least one taken over · `nichts_verwertbar` read, nothing for the return · `verworfen` all drafts dismissed. */
+  state: ReceiptProcessingDtoState;
+  /**
+     * Why the read found nothing or failed (for `nicht_lesbar`, `nichts_verwertbar`, and `neu` after its drafts were removed: `entwuerfe_fehlen`); null otherwise. The app words it.
+     * @nullable
+     */
+  reason: ReceiptProcessingDtoReason;
+  /** Drafts of this Beleg still waiting, over every tax year. */
+  pending: number;
+  /** Drafts of this Beleg taken over. */
+  applied: number;
+  /** Drafts of this Beleg decided without being taken over (dismissed, undone, superseded). */
+  dismissed: number;
+  /**
+     * The tax year its drafts sit in. When it is not the open year, say „liegt im Steuerjahr 2024“ with a link to switch.
+     * @nullable
+     */
+  draftsTaxYear: number | null;
+  /** Not yet fully processed (`neu`, `nicht_lesbar`, `vorschlaege`): the Belege tab counts these as „offen“. */
+  open: boolean;
+}
+
+export type ReceiptFilledFieldDtoScreen = typeof ReceiptFilledFieldDtoScreen[keyof typeof ReceiptFilledFieldDtoScreen];
+
+
+export const ReceiptFilledFieldDtoScreen = {
+  profil: 'profil',
+  stammdaten: 'stammdaten',
+  kopplung: 'kopplung',
+  interview: 'interview',
+  lstb: 'lstb',
+  commute: 'commute',
+  chLohnausweis: 'chLohnausweis',
+  rente: 'rente',
+  kapital: 'kapital',
+  vermietung: 'vermietung',
+  kind: 'kind',
+  assessment: 'assessment',
+} as const;
+
+/**
+ * Whose field: `B` is the spouse.
+ */
+export type ReceiptFilledFieldDtoPerson = typeof ReceiptFilledFieldDtoPerson[keyof typeof ReceiptFilledFieldDtoPerson];
+
+
+export const ReceiptFilledFieldDtoPerson = {
+  A: 'A',
+  B: 'B',
+} as const;
+
+export interface ReceiptFilledFieldDto {
+  /** The draft that wrote it. */
+  actionId: string;
+  taxYear: number;
+  screen: ReceiptFilledFieldDtoScreen;
+  field: string;
+  /**
+     * The row of a repeated record (a child id), null for a plain field.
+     * @nullable
+     */
+  instance: string | null;
+  /** Whose field: `B` is the spouse. */
+  person: ReceiptFilledFieldDtoPerson;
+  /** The draft’s label, for „Dieser Beleg hat Spenden … gefüllt“. */
+  label: string;
+  /** The raw value the draft wrote (an amount in whole units, `Ja`, a date). For a sum field taken „zusätzlich“ it is the field’s new total. Formatted by the client. */
+  value: string;
+}
+
+export interface ReceiptDuplicateDto {
+  id: string;
+  /** Its file name (decrypted for the owner). */
+  fileName: string;
+  /** When it was uploaded (ISO timestamp). */
+  uploadedAt: string;
+}
+
 export interface ReceiptResponseDto {
   id: string;
   /** Original filename (decrypted for the owner). */
@@ -76,6 +193,15 @@ export interface ReceiptResponseDto {
      * @nullable
      */
   holderTaxYear: number | null;
+  /** What became of the Beleg (ADR-0097), derived from its last read and its drafts in every tax year. */
+  processing: ReceiptProcessingDto;
+  /** The fields this Beleg filled (its drafts taken over), over every tax year. This is also what `DELETE /v1/belege/{id}?takeBackValues=true` takes back, where a field still holds the value; `processing.pending` drafts are withdrawn with it. */
+  filledFields: ReceiptFilledFieldDto[];
+  /**
+     * The older Beleg with the same file content (per-user content key), when this one is a duplicate; null otherwise. Parsing a duplicate stages no drafts unless `allowDuplicate` is sent.
+     * @nullable
+     */
+  duplicateOf: ReceiptDuplicateDto | null;
 }
 
 /**
@@ -117,5 +243,16 @@ export interface SetAssignmentDto {
 
 export interface DeleteReceiptResponseDto {
   deleted: boolean;
+  /** Values taken back from the return (only with `takeBackValues=true`; a value changed since stays). */
+  takenBack: number;
+  /** Waiting drafts of the Beleg withdrawn (only with `takeBackValues=true`). */
+  withdrawn: number;
 }
+
+export type ReceiptControllerDeleteParams = {
+/**
+ * First take back the values this Beleg filled (its `filledFields`, where a field still holds them) and withdraw its waiting drafts, in every tax year (ADR-0097 §6). Without it the values stay.
+ */
+takeBackValues?: boolean;
+};
 

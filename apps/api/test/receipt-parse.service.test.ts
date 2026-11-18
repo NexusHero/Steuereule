@@ -442,7 +442,7 @@ describe('ReceiptParseService — Two-Stage Receipt Isolation (#446 Slice 3)', (
     expect(res.parsed.summary).not.toContain('Erika')
     expect(res.stagedAction?.label).toBe('Spendenbeleg')
     // What the chat model will later see as history comes from validated fields only.
-    expect(res.assistantMessage?.content).toMatch(/^Beleg \(Spende\) über 120 € vom 2025-11-02 erkannt\./)
+    expect(res.assistantMessage?.content).toMatch(/^Beleg \(Spende\) über 120\u00A0€ vom 02\.11\.2025 erkannt\./)
     expect(res.assistantMessage?.content).not.toContain('IGNORIERE')
     expect(res.assistantMessage?.content).not.toContain('Mustermann')
   })
@@ -697,7 +697,9 @@ describe('ReceiptParseService — Two-Stage LStB Cascade (#444)', () => {
     expect(JSON.stringify(h.visionModel.calls[0])).not.toContain('DE89370400440532013000')
   })
 
-  it('surfaces tax year conflict visibly and stages ZERO drafts (ADR-0008)', async () => {
+  // ADR-0097 §5, one year rule: an LStB of another year is staged in its own year (it belongs to that return),
+  // and the year shows in `yearConflict`, `draftsTaxYear` and, through the service, `filedInTaxYear`.
+  it('stages an LStB of another year in its own year and reports it', async () => {
     const h = buildTestHarness([], false)
     const rawText = [
       'Lohnsteuerbescheinigung für 2024',
@@ -716,9 +718,11 @@ describe('ReceiptParseService — Two-Stage LStB Cascade (#444)', () => {
 
     expect(res.lstb?.taxYearOnDocument).toBe(2024)
     expect(res.lstb?.yearConflict).toEqual({ documentYear: 2024, activeYear: 2025 })
-    expect(res.lstb?.stagedActionIds).toEqual([])
-    expect(res.stagedAction).toBeNull()
+    expect(res.lstb?.stagedActionIds.length).toBe(3)
+    expect(res.draftsTaxYear).toBe(2024)
+    expect(res.filedInTaxYear).toBe(2024)
     expect(await h.advisorRepo.listForUserAndYear('user-lstb-3', 2025)).toHaveLength(0)
+    expect(await h.advisorRepo.listForUserAndYear('user-lstb-3', 2024)).toHaveLength(1)
   })
 
   it('rejects foreign receiptId on LStB parse with NotFound', async () => {
@@ -806,7 +810,7 @@ describe('donation receipts add up, never twice (§ 10b, ADR-0080)', () => {
     await h.parseService.parseReceipt('user-d2', { taxYear: 2024, fileName: 'a.pdf', rawText: copy })
     const second = await h.parseService.parseReceipt('user-d2', { taxYear: 2024, fileName: 'b.pdf', rawText: joint })
     expect(second.stagedAction).toMatchObject({ newValue: '1380' })
-    expect(second.parsed.summary).toContain('dazu kommen nur 1260 €')
+    expect(second.parsed.summary).toContain('dazu kommen nur 1.260\u00A0€')
     const third = await h.parseService.parseReceipt('user-d2', { taxYear: 2024, fileName: 'c.pdf', rawText: own })
     expect(third.stagedAction).toBeNull()
     expect(third.parsed.summary).toContain('schon über eine andere Bestätigung gezählt')

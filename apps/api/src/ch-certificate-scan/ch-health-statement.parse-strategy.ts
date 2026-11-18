@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 import { Inject, Injectable, Optional, type OnModuleInit } from '@nestjs/common'
-import { ANNUAL_AVERAGE_RATES, chfToEur, insuredMember, parseChHealthStatement, type AdvisorCountedItem, type InsuredPremium } from '@steuereule/core'
+import { ANNUAL_AVERAGE_RATES, chfToEur, formatChf, insuredMember, parseChHealthStatement, receiptFilingYear, type AdvisorCountedItem, type InsuredPremium } from '@steuereule/core'
 import { AdvisorService } from '../advisor/advisor.service.js'
 import { AuditService } from '../audit/audit.service.js'
 import { CROSS_BORDER_SALARY_STATEMENT_REPOSITORY, type CrossBorderSalaryStatementRepository } from '../ch-salary-certificate/ch-salary-certificate.repository.js'
@@ -37,12 +37,14 @@ export class ChHealthStatementParseStrategy implements DocumentParseStrategy, On
 
   async parse(userId: string, dto: ParseReceiptDto): Promise<ParseReceiptResponseDto> {
     const read = parseChHealthStatement(dto.rawText ?? '')
-    const year = read.taxYear ?? dto.taxYear
+    // One year rule (ADR-0097 §5): the statement's year decides the household, the rate and where its drafts go.
+    const filingYear = receiptFilingYear(read.taxYear, dto.taxYear)
+    const year = filingYear ?? dto.taxYear
     await this.auditService.append({ userId, action: 'READ', resource: 'beleg_analyse' })
-    const yearConflict = read.taxYear !== null && read.taxYear !== dto.taxYear
+    const otherYear = read.taxYear !== null && read.taxYear !== dto.taxYear
 
-    const household = await this.advisorService.householdNames(userId, dto.taxYear)
-    const kids = (await this.children?.listForUserAndYear(userId, dto.taxYear)) ?? []
+    const household = await this.advisorService.householdNames(userId, year)
+    const kids = (await this.children?.listForUserAndYear(userId, year)) ?? []
     const members = [
       { key: 'A', ...household.A },
       ...(household.B ? [{ key: 'B', firstName: household.B.firstName, lastName: household.B.lastName }] : []),
@@ -50,7 +52,7 @@ export class ChHealthStatementParseStrategy implements DocumentParseStrategy, On
     ]
     // The child's premiums are in euros: at the rate of the Lohnausweis, or — while none is chosen yet — at the
     // official annual average the Anlage N-Gre prints, to be checked (ADR-0086).
-    const chosenRate = exchangeRateFromRecord((await this.chRepo?.findForUserAndYear(userId, dto.taxYear)) ?? null)?.rate ?? null
+    const chosenRate = exchangeRateFromRecord((await this.chRepo?.findForUserAndYear(userId, year)) ?? null)?.rate ?? null
     const averageRate = ANNUAL_AVERAGE_RATES[year] ?? null
     const rateA = chosenRate ?? averageRate
 
@@ -89,7 +91,7 @@ export class ChHealthStatementParseStrategy implements DocumentParseStrategy, On
           continue
         }
         if (rateA === null) {
-          notes.push(`Für das Kind stehen ${chf} CHF Grundversicherung im Auszug. Den Betrag in Euro rechne ich, sobald der Wechselkurs im Lohnausweis steht.`)
+          notes.push(`Für das Kind stehen ${formatChf(chf)} Grundversicherung im Auszug. Den Betrag in Euro rechne ich, sobald der Wechselkurs im Lohnausweis steht.`)
           continue
         }
         if (chosenRate === null && !childRateNoted) {
@@ -112,9 +114,9 @@ export class ChHealthStatementParseStrategy implements DocumentParseStrategy, On
     if (selfBorneChf > 0) {
       const chf = Math.round(selfBorneChf)
       if (rateA === null) {
-        notes.push(`Dazu ${chf} CHF selbst getragene Krankheitskosten (Franchise, Selbstbehalt). In Euro rechne ich sie, sobald der Wechselkurs im Lohnausweis steht.`)
+        notes.push(`Dazu ${formatChf(chf)} selbst getragene Krankheitskosten (Franchise, Selbstbehalt). In Euro rechne ich sie, sobald der Wechselkurs im Lohnausweis steht.`)
       } else {
-        notes.push(`Dazu ${chf} CHF selbst getragene Krankheitskosten (Franchise, Selbstbehalt); die habe ich in Euro zu euren Krankheitskosten gerechnet (§ 33 EStG).`)
+        notes.push(`Dazu ${formatChf(chf)} selbst getragene Krankheitskosten (Franchise, Selbstbehalt); die habe ich in Euro zu euren Krankheitskosten gerechnet (§ 33 EStG).`)
         const status = chosenRate === null || dto.textSource !== 'pdf_text' ? ('pruefen' as const) : ('ok' as const)
         forA.push(
           { field: 'gesundheit-gate', label: 'Krankheitskosten', value: 'Ja', status: 'ok', reason: null, screen: 'interview' },
@@ -127,7 +129,7 @@ export class ChHealthStatementParseStrategy implements DocumentParseStrategy, On
     const staged: string[] = []
     let stagedAction: ParseReceiptResponseDto['stagedAction'] = null
     let assistantMessage: ParseReceiptResponseDto['assistantMessage'] = null
-    if ((dto.stageDraft ?? true) && !yearConflict) {
+    if ((dto.stageDraft ?? true) && filingYear !== null) {
       const intro = `Ich habe den Auszug der Krankenkasse für ${year} gelesen: Prämien der Grundversicherung, als ausländische Krankenversicherung absetzbar.`
       const ocr = dto.textSource !== 'pdf_text' ? ['Der Text stammt aus einem Scan; prüfe die Beträge, bevor du sie übernimmst.'] : []
       for (const [person, fields] of [['A', forA], ['B', forB]] as const) {
@@ -136,10 +138,10 @@ export class ChHealthStatementParseStrategy implements DocumentParseStrategy, On
           notes.push('Die Prämien von Person B kann ich erst eintragen, wenn ihr gekoppelt seid.')
           continue
         }
-        const result = await this.advisorService.stageDocumentDrafts(userId, dto.taxYear, {
+        const result = await this.advisorService.stageDocumentDrafts(userId, year, {
           screen: 'chLohnausweis',
           person,
-          digestUserId: await this.linkService.dataUser(userId, dto.taxYear, person),
+          digestUserId: await this.linkService.dataUser(userId, year, person),
           receiptId: dto.receiptId ?? null,
           engine: { mode: 'deterministic_fallback', provider: 'deterministic' },
           summaryText: [intro, ...ocr, ...(person === 'A' ? notes : [])].join('\n'),
@@ -164,15 +166,17 @@ export class ChHealthStatementParseStrategy implements DocumentParseStrategy, On
         suggestedField: stagedAction ? 'krankenkasseChf' : null,
         suggestedValue: null,
         summary: [
-          yearConflict
-            ? `Der Auszug gehört zu ${read.taxYear}, du bearbeitest ${dto.taxYear}. Lade ihn bitte im richtigen Jahr hoch.`
-            : `Auszug der Krankenkasse gelesen: ${read.insured.length} versicherte ${read.insured.length === 1 ? 'Person' : 'Personen'}, Grundversicherung zusammen ${Math.round(total / 100)} CHF.`,
+          filingYear === null
+            ? `Der Auszug gehört zu ${read.taxYear}, für dieses Jahr führt die App keine Steuererklärung.`
+            : `Auszug der Krankenkasse gelesen: ${read.insured.length} versicherte ${read.insured.length === 1 ? 'Person' : 'Personen'}, Grundversicherung zusammen ${formatChf(Math.round(total / 100))}.${otherYear && stagedAction ? ` Er gehört zum Steuerjahr ${year}; dort liegen die Entwürfe.` : ''}`,
           ...(stagedAction === null ? notes : []),
         ].join(' '),
         taxYear: year,
       },
       stagedAction,
       assistantMessage,
+      draftsTaxYear: staged.length > 0 ? year : null,
+      noValuesReason: (dto.stageDraft ?? true) && filingYear === null ? 'kein_steuerjahr' : null,
     }
   }
 }

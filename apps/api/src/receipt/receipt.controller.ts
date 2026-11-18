@@ -1,5 +1,5 @@
 import '@fastify/multipart'
-import { Body, Controller, Delete, Get, HttpCode, Inject, Param, Post, Req, Res, UseGuards } from '@nestjs/common'
+import { Body, Controller, Delete, Get, HttpCode, Inject, Param, Post, Query, Req, Res, UseGuards } from '@nestjs/common'
 import type { FastifyReply, FastifyRequest } from 'fastify'
 import {
   ApiBody,
@@ -9,6 +9,7 @@ import {
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiParam,
+  ApiQuery,
   ApiTags,
 } from '@nestjs/swagger'
 import { CurrentUser } from '../auth/current-user.decorator.js'
@@ -29,6 +30,13 @@ function readMultipartField(fields: unknown, name: string): string | undefined {
     return trimmed.length > 0 ? trimmed : undefined
   }
   return undefined
+}
+
+/** A boolean query flag: absent is false; anything but `true`/`false` is refused rather than guessed. */
+function parseBooleanQuery(raw: string | undefined, name: string): boolean {
+  if (raw === undefined || raw === 'false') return false
+  if (raw === 'true') return true
+  throw new InvalidInputError('QUERY_BOOLEAN_INVALID', `"${name}" must be true or false.`)
 }
 
 function isFileTooLargeError(error: unknown): boolean {
@@ -60,7 +68,11 @@ export class ReceiptController {
   @ApiConsumes('multipart/form-data')
   @ApiCreatedResponse({
     type: ReceiptResponseDto,
-    description: 'Uploads and encrypts an original PDF/image receipt binary (max 10 MB) and creates the Beleg.',
+    description:
+      'Uploads and encrypts an original PDF/image receipt binary (max 10 MB) and creates the Beleg (`processing.state` `neu`). ' +
+      'Every entry point then reads the file on the device and calls `POST /v1/belege/parse` with the returned `id` as `receiptId` ' +
+      '(or with `deviceReadFailure` when the device cannot read it), so the Beleg reaches a state (ADR-0097 §4). ' +
+      'A file the user uploaded before is still stored and comes back with `duplicateOf`.',
   })
   async upload(@CurrentUser() userId: string, @Req() req: FastifyRequest): Promise<ReceiptResponseDto> {
     const isMultipart = typeof req.isMultipart === 'function' ? req.isMultipart() : false
@@ -131,9 +143,15 @@ export class ReceiptController {
   @Delete(':id')
   @HttpCode(200)
   @ApiParam({ name: 'id', type: String, description: 'The Beleg id (the caller’s own).' })
+  @ApiQuery({
+    name: 'takeBackValues',
+    required: false,
+    type: Boolean,
+    description: 'First take back the values this Beleg filled (its `filledFields`, where a field still holds them) and withdraw its waiting drafts, in every tax year (ADR-0097 §6). Without it the values stay.',
+  })
   @ApiOkResponse({ type: DeleteReceiptResponseDto, description: 'Deletes the Beleg and its encrypted original binary.' })
   @ApiNotFoundResponse({ description: 'No such Beleg for this account — nothing was deleted.' })
-  delete(@CurrentUser() userId: string, @Param('id') id: string): Promise<DeleteReceiptResponseDto> {
-    return this.receiptService.delete(userId, id)
+  delete(@CurrentUser() userId: string, @Param('id') id: string, @Query('takeBackValues') takeBackValues?: string): Promise<DeleteReceiptResponseDto> {
+    return this.receiptService.delete(userId, id, { takeBackValues: parseBooleanQuery(takeBackValues, 'takeBackValues') })
   }
 }

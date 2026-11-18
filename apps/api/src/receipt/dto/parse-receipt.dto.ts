@@ -1,7 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 import { IsBoolean, IsIn, IsInt, IsNotEmpty, IsOptional, IsString, Matches, Max, MaxLength, Min } from 'class-validator'
-import { SCREENS, type LstbFieldReason, type Screen } from '@steuereule/core'
+import { RECEIPT_READ_REASONS, SCREENS, type LstbFieldReason, type ReceiptReadReason, type Screen } from '@steuereule/core'
 import { AdvisorActionProposalDto, AdvisorChatMessageDto, CalculationTermDto } from '../../advisor/dto/advisor.dto.js'
+import { ReceiptDuplicateDto, ReceiptProcessingDto } from './receipt-response.dto.js'
 
 export const RECEIPT_VENDOR_CATEGORIES = [
   'arbeitsmittel',
@@ -30,6 +31,17 @@ export const HOLDER_REF_PATTERN = /^(?:A|B|kind:[A-Za-z0-9_-]{1,64})$/
 export const DOCUMENT_KINDS = ['auto', 'lstb', 'chLohnausweis', 'chPensionskasse', 'chPraemien', 'chKrankenkasse'] as const
 export type DocumentKind = (typeof DOCUMENT_KINDS)[number]
 
+/** Why the device could not produce text for a stored Beleg; the server records it as `nicht_lesbar`. */
+export const DEVICE_READ_FAILURES = ['read_failed', 'empty_text', 'unsupported_file'] as const
+export type DeviceReadFailure = (typeof DEVICE_READ_FAILURES)[number]
+
+/**
+ * `POST /v1/belege/parse` — the one ingest use case (ADR-0097 §4). Every entry point (Belege tab, chat, a
+ * mask) calls it the same way after `POST /v1/belege/upload`: the device reads the file (PDF text layer or
+ * OCR; the image never goes to a model), then sends the text here with the Beleg id and its entry context
+ * (`expectedKind`, `mask`, `area`/`person`, `stageDraft`). When the device cannot read it, it still calls
+ * this endpoint with `deviceReadFailure`, so the Beleg says „nicht lesbar“ instead of staying „neu“.
+ */
 export class ParseReceiptDto {
   @ApiProperty({ type: Number, example: 2025 })
   @IsInt()
@@ -62,6 +74,47 @@ export class ParseReceiptDto {
   @IsString()
   @IsIn([...DOCUMENT_KINDS])
   kind?: DocumentKind
+
+  @ApiPropertyOptional({
+    type: String,
+    enum: DOCUMENT_KINDS,
+    example: 'chLohnausweis',
+    description: 'Entry context: the document the entry point expects (a mask asks for its own). Unlike `kind` it does not force a reader: a text that is clearly another document goes to that one’s reader.',
+  })
+  @IsOptional()
+  @IsString()
+  @IsIn([...DOCUMENT_KINDS])
+  expectedKind?: DocumentKind
+
+  @ApiPropertyOptional({
+    type: String,
+    enum: SCREENS,
+    example: 'lstb',
+    description: 'Entry context: the mask the upload happened in; absent in the chat and the Belege tab. Without `kind`/`expectedKind`, the mask of the LStB or the Swiss Lohnausweis expects its document.',
+  })
+  @IsOptional()
+  @IsString()
+  @IsIn([...SCREENS])
+  mask?: Screen
+
+  @ApiPropertyOptional({
+    type: String,
+    enum: DEVICE_READ_FAILURES,
+    example: 'empty_text',
+    description: 'The device could not read the stored Beleg (`receiptId` required): nothing is parsed, the Beleg is recorded as `nicht_lesbar` with this reason.',
+  })
+  @IsOptional()
+  @IsIn([...DEVICE_READ_FAILURES])
+  deviceReadFailure?: DeviceReadFailure
+
+  @ApiPropertyOptional({
+    type: Boolean,
+    example: false,
+    description: 'Stage drafts even though the Beleg is a duplicate of an older upload (`duplicateOf` on the upload). Without it a duplicate is read but stages nothing.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  allowDuplicate?: boolean
 
   @ApiPropertyOptional({
     type: String,
@@ -419,6 +472,13 @@ export class DocumentAssignmentDto {
   alsoFor!: AssignmentPersonDto[]
 }
 
+/**
+ * The same shapes as on `GET /v1/belege`, under their own names: the parse endpoint is generated into the
+ * owl's client and the inbox into the Belege client, and one schema name in both would clash there.
+ */
+export class ParsedReceiptProcessingDto extends ReceiptProcessingDto {}
+export class ParsedReceiptDuplicateDto extends ReceiptDuplicateDto {}
+
 export class ParseReceiptResponseDto {
   @ApiProperty({ type: String, enum: ['vision_ocr', 'deterministic_fallback'], example: 'vision_ocr' })
   mode!: 'vision_ocr' | 'deterministic_fallback'
@@ -446,4 +506,24 @@ export class ParseReceiptResponseDto {
 
   @ApiPropertyOptional({ type: DocumentAssignmentDto, nullable: true, description: 'Whose the document is (ADR-0092); absent for a receipt of the joint return.' })
   assignment?: DocumentAssignmentDto | null
+
+  @ApiPropertyOptional({ type: Number, nullable: true, example: 2024, description: 'The tax year this read staged its drafts in; null when it staged none.' })
+  draftsTaxYear?: number | null
+
+  @ApiPropertyOptional({
+    type: Number,
+    nullable: true,
+    example: 2024,
+    description: 'Set when the drafts went to another tax year than the requested `taxYear` (ADR-0097 §5: the document’s own year, for every reader): say „liegt im Steuerjahr 2024“ with a link to switch. Null otherwise.',
+  })
+  filedInTaxYear?: number | null
+
+  @ApiPropertyOptional({ type: String, enum: RECEIPT_READ_REASONS, nullable: true, example: 'keine_rechnung', description: 'Why nothing was proposed, when a reader knows (e.g. `keine_rechnung`, `nicht_absetzbar`, `schon_gezaehlt`).' })
+  noValuesReason?: ReceiptReadReason | null
+
+  @ApiPropertyOptional({ type: ParsedReceiptDuplicateDto, nullable: true, description: 'The Beleg is a duplicate of this older upload: no drafts were staged unless `allowDuplicate` was sent.' })
+  duplicateOf?: ReceiptDuplicateDto | null
+
+  @ApiPropertyOptional({ type: ParsedReceiptProcessingDto, nullable: true, description: 'The Beleg’s processing state after this read (the same as `GET /v1/belege` shows); null without `receiptId`.' })
+  processing?: ReceiptProcessingDto | null
 }

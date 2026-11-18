@@ -4,6 +4,7 @@
 // list: the value check on the owl's write path, the check when a draft is made, and the field
 // list in the model's prompt. A field without a line here cannot be proposed.
 import { CAPITAL_FIELDS } from '../domains/capital'
+import { toIsoDate } from '../common/dates'
 import { MARITAL_STATUSES, RELIGION_KEYS, isValidIban, normalizeIban } from '../common/master-data'
 import { CHILD_RELATIONSHIPS, OTHER_CHILD_RELATIONSHIPS, OTHER_PARENT_STATUSES } from '../domains/children'
 import { SALARY_CERTIFICATE_AMOUNT_FIELDS, SALARY_CERTIFICATE_SIGNED_FIELD } from '../domains/cross-border'
@@ -481,11 +482,6 @@ function canonical(values: readonly string[], raw: string): string | null {
 const TRUE_WORDS = new Set(['true', 'ja', 'yes', 'wahr'])
 const FALSE_WORDS = new Set(['false', 'nein', 'no', 'falsch'])
 
-function isRealDate(iso: string): boolean {
-  const parsed = new Date(`${iso}T00:00:00Z`)
-  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === iso
-}
-
 function checkKind(kind: FieldValueKind, field: string, raw: string): FieldValueCheck {
   switch (kind.kind) {
     case 'amount': {
@@ -516,9 +512,8 @@ function checkKind(kind: FieldValueKind, field: string, raw: string): FieldValue
       return invalid('Erlaubt ist „true“ oder „false“.')
     }
     case 'date': {
-      const german = /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/.exec(raw)
-      const iso = german ? `${german[3]}-${german[2]!.padStart(2, '0')}-${german[1]!.padStart(2, '0')}` : raw
-      return /^\d{4}-\d{2}-\d{2}$/.test(iso) && isRealDate(iso) ? valid(iso) : invalid('Erlaubt ist ein Datum der Form JJJJ-MM-TT.')
+      const iso = toIsoDate(raw)
+      return iso !== null ? valid(iso) : invalid('Erlaubt ist ein Datum der Form JJJJ-MM-TT.')
     }
     case 'weekdays': {
       const days = [...new Set(raw.split(',').map((part) => part.trim()).filter((part) => part !== ''))]

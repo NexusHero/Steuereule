@@ -7,6 +7,8 @@ import {
   applyChCertificateTextFallback,
   certificateHolderPerson,
   parseChSalaryCertificateText,
+  formatChf,
+  receiptFilingYear,
   scrubDocumentTextPii,
   selectChCertificateRelevantLines,
   SALARY_CERTIFICATE_FIELDS,
@@ -143,7 +145,10 @@ export class ChCertificateScanParseStrategy implements DocumentParseStrategy, On
     checkPiiFree({ fields, checks: read.checks, missing: read.missing })
     await this.auditService.append({ userId, action: 'READ', resource: 'beleg_analyse' })
 
-    const household = await this.advisorService.householdNames(userId, dto.taxYear)
+    // One year rule (ADR-0097 §5): a certificate of another year is read for that year and its drafts go there.
+    const filingYear = receiptFilingYear(read.taxYear, dto.taxYear)
+    const year = filingYear ?? dto.taxYear
+    const household = await this.advisorService.householdNames(userId, year)
     // The name in box H; when that fits nobody, the one name of the household the whole form carries.
     const person: 'A' | 'B' | null =
       dto.person ?? (household.B === null ? holderWithoutPartner(rawText, household.A, read.holder ?? undefined) : (certificateHolderPerson(read.holder, household) ?? certificateHolderPerson(rawText, household)))
@@ -155,11 +160,12 @@ export class ChCertificateScanParseStrategy implements DocumentParseStrategy, On
     let stagedAction: ParseReceiptResponseDto['stagedAction'] = null
     let assistantMessage: ParseReceiptResponseDto['assistantMessage'] = null
     const stageable = fields.filter((f) => f.value >= 0)
-    if ((dto.stageDraft ?? true) && person !== null && !personNotRecordable && yearConflict === null && stageable.length > 0) {
-      const staged = await this.advisorService.stageDocumentDrafts(userId, dto.taxYear, {
+    // Another year no longer blocks (`yearConflict` only reports it); a year the app does not keep stages nothing.
+    if ((dto.stageDraft ?? true) && person !== null && !personNotRecordable && filingYear !== null && stageable.length > 0) {
+      const staged = await this.advisorService.stageDocumentDrafts(userId, filingYear, {
         screen: 'chLohnausweis',
         person,
-        digestUserId: await this.linkService.dataUser(userId, dto.taxYear, person),
+        digestUserId: await this.linkService.dataUser(userId, filingYear, person),
         receiptId: dto.receiptId ?? null,
         engine: slot ? { mode: 'langgraph', provider: slot.provider, model: slot.model } : { mode: 'deterministic_fallback', provider: 'deterministic' },
         summaryText: summaryOf(read, person, fields, fromOcr),
@@ -216,6 +222,8 @@ export class ChCertificateScanParseStrategy implements DocumentParseStrategy, On
       stagedAction,
       assistantMessage,
       chLohnausweis,
+      draftsTaxYear: stagedActionIds.length > 0 ? filingYear : null,
+      noValuesReason: (dto.stageDraft ?? true) && filingYear === null ? 'kein_steuerjahr' : null,
     }
   }
 }
@@ -229,7 +237,7 @@ function summaryOf(read: ChCertificateRead, person: 'A' | 'B', fields: readonly 
       : read.checks.gross === 'conflict' || read.checks.net === 'conflict'
         ? 'Eine Summe des Formulars geht nicht auf; bitte die markierten Ziffern mit dem Ausweis vergleichen.'
         : 'Die Summen ließen sich nicht ganz prüfen, weil Ziffern fehlen.'
-  const negative = fields.filter((f) => f.value < 0).map((f) => `Ziffer ${f.digit} (${f.value} CHF)`)
+  const negative = fields.filter((f) => f.value < 0).map((f) => `Ziffer ${f.digit} (${formatChf(f.value)})`)
   const lines = [
     `Ich habe ${whose} ${read.taxYear ?? ''} gelesen: ${fields.length} Ziffern. ${sums}`.replace(/\s+/g, ' '),
     ...(fromOcr ? ['Der Text stammt aus einem Scan; prüfe die Beträge, bevor du sie übernimmst.'] : []),

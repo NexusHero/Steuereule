@@ -3,6 +3,7 @@ import {
   addAmounts,
   amountCombination,
   childNamedIn,
+  formatEur,
   provenanceKey,
   sameReceiptAgain,
   simulateAdvisorFieldDelta,
@@ -141,6 +142,12 @@ function describeLstbCalculation(terms: readonly LstbCalculationTerm[]): string 
   return `Aus Lohnsteuerbescheinigung: ${terms.map((t) => `Zeile ${t.line} (${EURO.format(t.amount)})`).join(' + ')}`
 }
 
+/** A raw amount of a draft as people read it; a value that is no number is shown as it is. */
+function eurText(raw: string): string {
+  const amount = Number(raw)
+  return raw.trim() !== '' && Number.isFinite(amount) ? formatEur(amount) : `${raw} €`
+}
+
 /**
  * Drafts read from documents (a receipt, an LStB scan, another form) staged as one owl message each
  * (Zero-Write), how a document's amount meets what a field already holds, and taking a document back.
@@ -239,7 +246,7 @@ export class AdvisorDocumentStaging {
       const sum = addAmounts(existing!.value!, input.newValue)
       drafts.push(
         proposal(sum, {
-          reason: `${input.reason} Bisher ${existing!.value} €, dieser Beleg ${input.newValue} €: zusammen ${sum} €.`,
+          reason: `${input.reason} Bisher ${eurText(existing!.value!)}, dieser Beleg ${eurText(input.newValue)}: zusammen ${eurText(sum)}.`,
           ...(companions ? { companionFields: companions } : {}),
           ...(counted ? { countedItems: [...existing!.counted, ...counted] } : {}),
         }),

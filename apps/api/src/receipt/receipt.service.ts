@@ -1,7 +1,10 @@
-import { Inject, Injectable } from '@nestjs/common'
-import { assignmentFromData, isReceiptType, type ReceiptAssignment, type ReceiptType } from '@steuereule/core'
+import { Inject, Injectable, Optional } from '@nestjs/common'
+import { ISO_DATE_PATTERN, assignmentFromData, isReceiptType, type ReceiptAssignment, type ReceiptType } from '@steuereule/core'
+import { AdvisorService } from '../advisor/advisor.service.js'
+import type { ReceiptDraftRecord } from '../advisor/advisor.repository.js'
 import { InvalidInputError, NotFoundError } from '../common/domain-error.js'
 import { AuditService } from '../audit/audit.service.js'
+import { draftsByReceipt, duplicateDto, filledFieldsOf, originalsByContent, processingOf } from './receipt-state.js'
 import { RECEIPT_REPOSITORY, type ReceiptRecord, type ReceiptRepository } from './receipt.repository.js'
 import { detectAllowedReceiptMimeType, type AllowedReceiptMimeType } from './storage/magic-bytes.js'
 import { STORAGE_PORT, type StoragePort, type StoredReceiptMeta } from './storage/storage.port.js'
@@ -9,8 +12,6 @@ import type { DeleteReceiptResponseDto, ReceiptResponseDto } from './dto/receipt
 import type { CreateReceiptDto } from './dto/create-receipt.dto.js'
 import type { SetAssignmentDto } from './dto/set-assignment.dto.js'
 import type { AssignmentDto } from './dto/assignment.dto.js'
-
-const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
 
 export interface UploadReceiptInput {
   readonly buffer: Buffer
@@ -30,7 +31,7 @@ function assertIsoDateOrUndefined(value: string | undefined, field: string): str
   if (value === undefined) return undefined
   const trimmed = value.trim()
   if (!trimmed) return undefined
-  if (!ISO_DATE.test(trimmed) || Number.isNaN(new Date(trimmed).getTime())) {
+  if (!ISO_DATE_PATTERN.test(trimmed) || Number.isNaN(new Date(trimmed).getTime())) {
     throw new InvalidInputError('RECEIPT_DATE_INVALID', `Ungültiges Datum in "${field}" (erwartet YYYY-MM-DD).`)
   }
   return trimmed
@@ -64,7 +65,18 @@ function toAssignmentDto(assignment: ReceiptAssignment): AssignmentDto {
   }
 }
 
-function toReceiptResponse(record: ReceiptRecord, fallbackMeta?: StoredReceiptMeta | null): ReceiptResponseDto {
+/** What the inbox derives beside the stored facts (ADR-0097): the Beleg's drafts and the older upload it repeats. */
+interface DerivedReceiptFacts {
+  readonly drafts: readonly ReceiptDraftRecord[]
+  readonly original?: ReceiptRecord | undefined
+}
+
+export interface DeleteReceiptOptions {
+  /** Take back the values this Beleg filled and withdraw its waiting drafts first (ADR-0097 §6). */
+  readonly takeBackValues?: boolean | undefined
+}
+
+function toReceiptResponse(record: ReceiptRecord, derived: DerivedReceiptFacts, fallbackMeta?: StoredReceiptMeta | null): ReceiptResponseDto {
   const fileMeta = record.fileMeta ?? fallbackMeta ?? null
   return {
     id: record.id,
@@ -78,8 +90,13 @@ function toReceiptResponse(record: ReceiptRecord, fallbackMeta?: StoredReceiptMe
     assignment: toAssignmentDto(assignmentFromData(record)),
     holders: [...(record.holders ?? [])],
     holderTaxYear: record.holderTaxYear ?? null,
+    processing: { ...processingOf(record, derived.drafts) },
+    filledFields: filledFieldsOf(derived.drafts),
+    duplicateOf: duplicateDto(derived.original),
   }
 }
+
+const NOTHING_DERIVED: DerivedReceiptFacts = { drafts: [] }
 
 /** Application logic for the Beleg-Posteingang: userId-scoped reads/writes, encrypted binary storage, and derived-Zuordnung mapping. */
 @Injectable()
@@ -88,7 +105,14 @@ export class ReceiptService {
     @Inject(RECEIPT_REPOSITORY) private readonly repository: ReceiptRepository,
     @Inject(AuditService) private readonly auditService: AuditService,
     @Inject(STORAGE_PORT) private readonly storage: StoragePort,
+    /** The owl drafts carry the Beleg id: its processing state and its filled fields come from them (ADR-0097). */
+    @Optional() @Inject(AdvisorService) private readonly advisor?: AdvisorService,
   ) {}
+
+  /** The drafts of every tax year per Beleg; empty without the owl (a module that does not wire it). */
+  private async draftsPerReceipt(userId: string): Promise<Map<string, ReceiptDraftRecord[]>> {
+    return draftsByReceipt((await this.advisor?.receiptDrafts(userId)) ?? [])
+  }
 
   /** Whether the Beleg exists and belongs to the caller (ownership check for parse/confirm). */
   async isOwnedBy(userId: string, id: string): Promise<boolean> {
@@ -97,10 +121,11 @@ export class ReceiptService {
 
   async list(userId: string): Promise<ReceiptResponseDto[]> {
     const rows = await this.repository.findAllForUser(userId)
-    if (rows.length > 0) {
-      await this.auditService.append({ userId, action: 'READ', resource: 'beleg' })
-    }
-    return rows.map((row) => toReceiptResponse(row))
+    if (rows.length === 0) return []
+    await this.auditService.append({ userId, action: 'READ', resource: 'beleg' })
+    const [drafts, keys] = await Promise.all([this.draftsPerReceipt(userId), this.storage.listContentKeys(userId)])
+    const originals = originalsByContent(rows, keys)
+    return rows.map((row) => toReceiptResponse(row, { drafts: drafts.get(row.id) ?? [], original: originals.get(row.id) }))
   }
 
   async create(userId: string, dto: CreateReceiptDto): Promise<ReceiptResponseDto> {
@@ -110,7 +135,7 @@ export class ReceiptService {
       ...(dto.belegdatum !== undefined ? { belegdatum: dto.belegdatum } : {}),
       ...(dto.zahlungsdatum !== undefined ? { zahlungsdatum: dto.zahlungsdatum } : {}),
     })
-    return toReceiptResponse(record)
+    return toReceiptResponse(record, NOTHING_DERIVED)
   }
 
   async upload(userId: string, input: UploadReceiptInput): Promise<ReceiptResponseDto> {
@@ -142,11 +167,21 @@ export class ReceiptService {
         mimeType: storedMeta.mimeType,
         byteLength: storedMeta.byteLength,
       })
-      return toReceiptResponse(record, storedMeta)
+      // Still stored when it repeats an older upload: the user may mean it; parsing it stages nothing twice.
+      const original = await this.originalOf(userId, record.id)
+      return toReceiptResponse(record, { ...NOTHING_DERIVED, original: original ?? undefined }, storedMeta)
     } catch (error) {
       await this.repository.deleteForUser(userId, record.id).catch(() => {})
       throw error
     }
+  }
+
+  /** The older Beleg of the same user with the same file content (ADR-0097 §7), or null. */
+  async originalOf(userId: string, receiptId: string): Promise<ReceiptRecord | null> {
+    const keys = await this.storage.listContentKeys(userId)
+    if (!keys.some((k) => k.receiptId === receiptId)) return null
+    const rows = await this.repository.findAllForUser(userId)
+    return originalsByContent(rows, keys).get(receiptId) ?? null
   }
 
   async getFile(userId: string, id: string): Promise<DownloadedReceiptFile> {
@@ -174,16 +209,30 @@ export class ReceiptService {
     if (record === null) {
       throw new NotFoundError('BELEG_NOT_FOUND', `Beleg "${id}" does not exist for this account.`)
     }
-    return toReceiptResponse(record)
+    const drafts = (await this.draftsPerReceipt(userId)).get(id) ?? []
+    return toReceiptResponse(record, { drafts })
   }
 
-  async delete(userId: string, id: string): Promise<DeleteReceiptResponseDto> {
+  async delete(userId: string, id: string, options: DeleteReceiptOptions = {}): Promise<DeleteReceiptResponseDto> {
     const existing = await this.repository.findByIdForUser(userId, id)
     if (existing === null) {
       throw new NotFoundError('BELEG_NOT_FOUND', `Beleg "${id}" does not exist for this account.`)
     }
+    const { takenBack, withdrawn } = options.takeBackValues === true ? await this.takeBack(userId, id) : { takenBack: 0, withdrawn: 0 }
     await this.storage.delete(userId, id)
     await this.repository.deleteForUser(userId, id)
-    return { deleted: true }
+    return { deleted: true, takenBack, withdrawn }
+  }
+
+  /**
+   * Removes what the Beleg put into the return, in every tax year its drafts sit in (ADR-0097 §6): the same
+   * take-back as giving a document to someone else (ADR-0092 §4) — a value changed since stays.
+   */
+  private async takeBack(userId: string, id: string): Promise<{ takenBack: number; withdrawn: number }> {
+    if (this.advisor === undefined) return { takenBack: 0, withdrawn: 0 }
+    const drafts = (await this.draftsPerReceipt(userId)).get(id) ?? []
+    let takenBack = 0
+    for (const taxYear of new Set(drafts.map((d) => d.taxYear))) takenBack += await this.advisor.takeBackDocumentValues(userId, taxYear, id)
+    return { takenBack, withdrawn: drafts.filter((d) => d.status === 'pending').length }
   }
 }

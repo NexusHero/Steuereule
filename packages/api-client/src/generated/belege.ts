@@ -27,6 +27,7 @@ import type {
 import type {
   CreateReceiptDto,
   DeleteReceiptResponseDto,
+  ReceiptControllerDeleteParams,
   ReceiptResponseDto,
   SetAssignmentDto
 } from './belege.schemas';
@@ -418,17 +419,26 @@ export type receiptControllerDeleteResponseError = (receiptControllerDeleteRespo
 
 export type receiptControllerDeleteResponse = (receiptControllerDeleteResponseSuccess | receiptControllerDeleteResponseError)
 
-export const getReceiptControllerDeleteUrl = (id: string,) => {
+export const getReceiptControllerDeleteUrl = (id: string,
+    params?: ReceiptControllerDeleteParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/v1/belege/${id}`
+  return stringifiedParams.length > 0 ? `/v1/belege/${id}?${stringifiedParams}` : `/v1/belege/${id}`
 }
 
-export const receiptControllerDelete = async (id: string, options?: RequestInit): Promise<receiptControllerDeleteResponse> => {
+export const receiptControllerDelete = async (id: string,
+    params?: ReceiptControllerDeleteParams, options?: RequestInit): Promise<receiptControllerDeleteResponse> => {
 
-  return httpClient<receiptControllerDeleteResponse>(getReceiptControllerDeleteUrl(id),
+  return httpClient<receiptControllerDeleteResponse>(getReceiptControllerDeleteUrl(id,params),
   {
     ...options,
     method: 'DELETE'
@@ -442,8 +452,8 @@ export const receiptControllerDelete = async (id: string, options?: RequestInit)
 
 
 export const getReceiptControllerDeleteMutationOptions = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof receiptControllerDelete>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof httpClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof receiptControllerDelete>>, TError,{id: string}, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof receiptControllerDelete>>, TError,{id: string;params?: ReceiptControllerDeleteParams}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof receiptControllerDelete>>, TError,{id: string;params?: ReceiptControllerDeleteParams}, TContext> => {
 
 const mutationKey = ['receiptControllerDelete'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -455,10 +465,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof receiptControllerDelete>>, {id: string}> = (props) => {
-          const {id} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof receiptControllerDelete>>, {id: string;params?: ReceiptControllerDeleteParams}> = (props) => {
+          const {id,params} = props ?? {};
 
-          return  receiptControllerDelete(id,requestOptions)
+          return  receiptControllerDelete(id,params,requestOptions)
         }
 
 
@@ -473,11 +483,11 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type ReceiptControllerDeleteMutationError = void
 
     export const useReceiptControllerDelete = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof receiptControllerDelete>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof httpClient>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof receiptControllerDelete>>, TError,{id: string;params?: ReceiptControllerDeleteParams}, TContext>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof receiptControllerDelete>>,
         TError,
-        {id: string},
+        {id: string;params?: ReceiptControllerDeleteParams},
         TContext
       > => {
       return useMutation(getReceiptControllerDeleteMutationOptions(options), queryClient);

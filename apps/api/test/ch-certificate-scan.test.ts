@@ -136,10 +136,16 @@ describe('the Swiss salary certificate from an upload', () => {
     expect(res.chLohnausweis?.fields.every((f) => f.status === 'pruefen' && f.reason === 'ocr_source')).toBe(true)
   })
 
-  it('stages nothing for another tax year', async () => {
-    const { strategy } = await setUp()
+  // ADR-0097 §5, one year rule: a certificate of another year is no longer refused; its drafts go to its own
+  // year and the response says so. There is no legal reason to block: the values belong to that year's return.
+  it('stages a certificate of another tax year in its own year and reports it', async () => {
+    const { kit, strategy } = await setUp()
     const res = await strategy.parse(USER, { taxYear: 2024, fileName: 'x.pdf', rawText: certificate('Muster Kemal'), textSource: 'pdf_text' } as never)
-    expect(res.chLohnausweis).toMatchObject({ yearConflict: { documentYear: YEAR, activeYear: 2024 }, stagedActionIds: [] })
+    expect(res.chLohnausweis).toMatchObject({ yearConflict: { documentYear: YEAR, activeYear: 2024 } })
+    expect(res.chLohnausweis?.stagedActionIds.length).toBeGreaterThan(0)
+    expect(res.draftsTaxYear).toBe(YEAR)
+    expect(await kit.advisorRepo.listForUserAndYear(USER, 2024)).toHaveLength(0)
+    expect((await kit.advisorRepo.listForUserAndYear(USER, YEAR)).length).toBeGreaterThan(0)
   })
 
   it('lets a model fill a Ziffer the rule could not read, shown only the Ziffer rows', async () => {

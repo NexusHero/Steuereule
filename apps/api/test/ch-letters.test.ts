@@ -83,10 +83,16 @@ describe('the pension fund statement', () => {
     expect(off.chLetter.fields.find((f) => f.field === 'pkArbeitgeberGesamtChf')).toMatchObject({ status: 'pruefen', reason: 'plausibility_conflict' })
   })
 
-  it('stages nothing for a statement of another year', async () => {
-    const { pension } = await setUp()
+  // ADR-0097 §5, one year rule: the statement's drafts go to its own year, for the person of that year.
+  it('stages a statement of another year in that year, for the household of that year', async () => {
+    const { kit, pension } = await setUp()
+    await kit.linkService.set(USER, 2024, { filingType: 'zusammen' })
+    await kit.linkService.updatePersonB(USER, 2024, { firstName: 'Anna', lastName: 'Muster' })
     const res = await parse(pension, pensionTable('Anna Muster', 2024))
-    expect(res.chLetter).toMatchObject({ yearConflict: { documentYear: 2024, activeYear: YEAR }, stagedActionIds: [] })
+    expect(res.chLetter).toMatchObject({ yearConflict: { documentYear: 2024, activeYear: YEAR }, person: 'B' })
+    expect(res.chLetter.stagedActionIds.length).toBeGreaterThan(0)
+    expect((res as { draftsTaxYear?: number | null }).draftsTaxYear).toBe(2024)
+    expect(await kit.advisorRepo.listForUserAndYear(USER, YEAR)).toHaveLength(0)
   })
 
   // Real-data run: people upload the fund's yearly certificate (Vorsorgeausweis). It gives the employer's

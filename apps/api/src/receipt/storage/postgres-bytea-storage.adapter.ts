@@ -3,7 +3,7 @@ import { USER_KEY_STORE, type UserKeyStore, type WrappedUserKey } from '../../ke
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../../prisma/encrypted-prisma.provider.js'
 import { EnvelopeCryptoService } from './envelope-crypto.service.js'
 import type { AllowedReceiptMimeType } from './magic-bytes.js'
-import type { PutReceiptFileInput, StoragePort, StoredReceiptMeta, StoredReceiptObject } from './storage.port.js'
+import type { PutReceiptFileInput, StoragePort, StoredContentKey, StoredReceiptMeta, StoredReceiptObject } from './storage.port.js'
 
 @Injectable()
 export class PostgresByteaStorageAdapter implements StoragePort {
@@ -103,6 +103,11 @@ export class PostgresByteaStorageAdapter implements StoragePort {
       byteLength: fileRow.byteLength,
       contentMac: fileRow.contentMac,
     }
+  }
+
+  async listContentKeys(userId: string): Promise<StoredContentKey[]> {
+    // Two clear columns only; the ciphertext is never loaded for this.
+    return this.prisma.receiptFile.findMany({ where: { userId }, select: { receiptId: true, contentMac: true } })
   }
 
   async delete(userId: string, receiptId: string): Promise<boolean> {

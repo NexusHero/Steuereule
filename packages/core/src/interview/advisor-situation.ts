@@ -21,13 +21,8 @@ export function tidySituationText(raw: string): SituationTextCheck {
   return { ok: true, text }
 }
 
-/** Age at the end of the tax year, from an ISO or German date; null when it cannot be read. */
-export function ageAtEndOfYear(birthDate: string, taxYear: number): number | null {
-  const year = /^(\d{4})-\d{2}-\d{2}/.exec(birthDate)?.[1] ?? /^\d{1,2}\.\d{1,2}\.(\d{4})$/.exec(birthDate.trim())?.[1]
-  if (year === undefined) return null
-  const age = taxYear - Number(year)
-  return age >= 0 && age <= 120 ? age : null
-}
+/** Moved to the shared date module (ADR-0097); re-exported so existing imports stay valid. */
+export { ageAtEndOfYear } from '../common/dates'
 
 const euro = (value: number | null): string => (value === null ? 'keine Angabe' : `rund ${Math.round(value / 100) * 100} €`)
 

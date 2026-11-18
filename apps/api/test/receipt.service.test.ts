@@ -181,7 +181,7 @@ describe('BelegService', () => {
       await expect(service.getFile(USER_ID, uploaded.id)).rejects.toThrow(/keine entschlüsselbare Originaldatei/)
 
       const deleted = await service.delete(USER_ID, uploaded.id)
-      expect(deleted).toEqual({ deleted: true })
+      expect(deleted).toEqual({ deleted: true, takenBack: 0, withdrawn: 0 })
       expect(repository.recordCount()).toBe(0)
     })
   })

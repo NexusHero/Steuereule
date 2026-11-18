@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import type { AdvisorDepth, AdvisorMessageFeedback, AdvisorMessageMeta, AdvisorMessageStatus, AdvisorTurnUsage, InterviewProgress } from '@steuereule/core'
+import type { AdvisorActionProposal, AdvisorActionStatus, AdvisorDepth, AdvisorMessageFeedback, AdvisorMessageMeta, AdvisorMessageStatus, AdvisorTurnUsage, InterviewProgress, Screen } from '@steuereule/core'
 
 export const ADVISOR_REPOSITORY = Symbol('ADVISOR_REPOSITORY')
 
@@ -96,7 +96,52 @@ export interface AdvisorSituationRecord {
   readonly updatedAt: Date
 }
 
+/**
+ * An owl draft that came from a Beleg, as far as the Belege inbox needs it (ADR-0097): where it writes,
+ * what it writes and where it stands. Never the text of a message.
+ */
+export interface ReceiptDraftRecord {
+  readonly receiptId: string
+  readonly taxYear: number
+  readonly actionId: string
+  readonly status: AdvisorActionStatus
+  readonly screen: Screen
+  readonly field: string
+  readonly instance: string | null
+  readonly person: 'A' | 'B'
+  readonly label: string
+  readonly newValue: string
+}
+
+/** The drafts of one message that carry a Beleg id. */
+export function receiptDraftsOf(taxYear: number, meta: AdvisorMessageMeta | null): ReceiptDraftRecord[] {
+  const actions: AdvisorActionProposal[] = [...(meta?.action ? [meta.action] : []), ...(meta?.actions ?? [])]
+  return actions.flatMap((action) =>
+    action.receiptId
+      ? [
+          {
+            receiptId: action.receiptId,
+            taxYear,
+            actionId: action.actionId,
+            status: action.status,
+            screen: action.screen,
+            field: action.field,
+            instance: action.instance ?? null,
+            person: action.person ?? 'A',
+            label: action.label,
+            newValue: action.newValue,
+          },
+        ]
+      : [],
+  )
+}
+
 export interface AdvisorRepository {
+  /**
+   * The drafts of every tax year that came from a Beleg (ADR-0097): read from the drafts' metadata only,
+   * never from the message text, oldest first.
+   */
+  listReceiptDrafts(userId: string): Promise<ReceiptDraftRecord[]>
   /** Every message of the year, across all its conversations: drafts belong to the return. */
   listForUserAndYear(userId: string, taxYear: number): Promise<AdvisorChatMessageRecord[]>
   /** The messages of one conversation, oldest first. */
@@ -274,6 +319,13 @@ export class InMemoryAdvisorRepository implements AdvisorRepository {
     const before = this.rows.length
     this.rows = this.rows.filter((r) => !(r.conversationId === id && r.userId === userId))
     return before - this.rows.length
+  }
+
+  async listReceiptDrafts(userId: string): Promise<ReceiptDraftRecord[]> {
+    return this.rows
+      .filter((r) => r.userId === userId && r.role === 'assistant')
+      .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
+      .flatMap((r) => receiptDraftsOf(r.taxYear, r.meta))
   }
 
   async listForUserAndYear(userId: string, taxYear: number): Promise<AdvisorChatMessageRecord[]> {

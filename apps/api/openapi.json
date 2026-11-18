@@ -2291,7 +2291,7 @@
         "parameters": [],
         "responses": {
           "201": {
-            "description": "Uploads and encrypts an original PDF/image receipt binary (max 10 MB) and creates the Beleg.",
+            "description": "Uploads and encrypts an original PDF/image receipt binary (max 10 MB) and creates the Beleg (`processing.state` `neu`). Every entry point then reads the file on the device and calls `POST /v1/belege/parse` with the returned `id` as `receiptId` (or with `deviceReadFailure` when the device cannot read it), so the Beleg reaches a state (ADR-0097 §4). A file the user uploaded before is still stored and comes back with `duplicateOf`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2354,6 +2354,15 @@
       "delete": {
         "operationId": "ReceiptController_delete",
         "parameters": [
+          {
+            "name": "takeBackValues",
+            "required": false,
+            "in": "query",
+            "description": "First take back the values this Beleg filled (its `filledFields`, where a field still holds them) and withdraw its waiting drafts, in every tax year (ADR-0097 §6). Without it the values stay.",
+            "schema": {
+              "type": "boolean"
+            }
+          },
           {
             "name": "id",
             "required": true,
@@ -8577,6 +8586,175 @@
           "kind"
         ]
       },
+      "ReceiptProcessingDto": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": [
+              "neu",
+              "nicht_lesbar",
+              "vorschlaege",
+              "uebernommen",
+              "nichts_verwertbar",
+              "verworfen"
+            ],
+            "example": "vorschlaege",
+            "description": "`neu` not read yet · `nicht_lesbar` reading failed · `vorschlaege` at least one draft waits · `uebernommen` all decided, at least one taken over · `nichts_verwertbar` read, nothing for the return · `verworfen` all drafts dismissed."
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "nichts_erkannt",
+              "keine_rechnung",
+              "nicht_absetzbar",
+              "schon_gezaehlt",
+              "dublette",
+              "blockiert",
+              "kein_steuerjahr",
+              "anderes_konto",
+              "lesefehler",
+              "unlesbar",
+              "kein_text",
+              "nicht_unterstuetzt",
+              "entwuerfe_fehlen"
+            ],
+            "nullable": true,
+            "example": "keine_rechnung",
+            "description": "Why the read found nothing or failed (for `nicht_lesbar`, `nichts_verwertbar`, and `neu` after its drafts were removed: `entwuerfe_fehlen`); null otherwise. The app words it."
+          },
+          "pending": {
+            "type": "number",
+            "example": 1,
+            "description": "Drafts of this Beleg still waiting, over every tax year."
+          },
+          "applied": {
+            "type": "number",
+            "example": 0,
+            "description": "Drafts of this Beleg taken over."
+          },
+          "dismissed": {
+            "type": "number",
+            "example": 0,
+            "description": "Drafts of this Beleg decided without being taken over (dismissed, undone, superseded)."
+          },
+          "draftsTaxYear": {
+            "type": "number",
+            "nullable": true,
+            "example": 2024,
+            "description": "The tax year its drafts sit in. When it is not the open year, say „liegt im Steuerjahr 2024“ with a link to switch."
+          },
+          "open": {
+            "type": "boolean",
+            "example": true,
+            "description": "Not yet fully processed (`neu`, `nicht_lesbar`, `vorschlaege`): the Belege tab counts these as „offen“."
+          }
+        },
+        "required": [
+          "state",
+          "reason",
+          "pending",
+          "applied",
+          "dismissed",
+          "draftsTaxYear",
+          "open"
+        ]
+      },
+      "ReceiptFilledFieldDto": {
+        "type": "object",
+        "properties": {
+          "actionId": {
+            "type": "string",
+            "example": "act-1",
+            "description": "The draft that wrote it."
+          },
+          "taxYear": {
+            "type": "number",
+            "example": 2025
+          },
+          "screen": {
+            "type": "string",
+            "enum": [
+              "profil",
+              "stammdaten",
+              "kopplung",
+              "interview",
+              "lstb",
+              "commute",
+              "chLohnausweis",
+              "rente",
+              "kapital",
+              "vermietung",
+              "kind",
+              "assessment"
+            ],
+            "example": "interview"
+          },
+          "field": {
+            "type": "string",
+            "example": "spenden-betrag"
+          },
+          "instance": {
+            "type": "string",
+            "nullable": true,
+            "example": null,
+            "description": "The row of a repeated record (a child id), null for a plain field."
+          },
+          "person": {
+            "type": "string",
+            "enum": [
+              "A",
+              "B"
+            ],
+            "example": "A",
+            "description": "Whose field: `B` is the spouse."
+          },
+          "label": {
+            "type": "string",
+            "example": "Spendenbeleg",
+            "description": "The draft’s label, for „Dieser Beleg hat Spenden … gefüllt“."
+          },
+          "value": {
+            "type": "string",
+            "example": "3135",
+            "description": "The raw value the draft wrote (an amount in whole units, `Ja`, a date). For a sum field taken „zusätzlich“ it is the field’s new total. Formatted by the client."
+          }
+        },
+        "required": [
+          "actionId",
+          "taxYear",
+          "screen",
+          "field",
+          "instance",
+          "person",
+          "label",
+          "value"
+        ]
+      },
+      "ReceiptDuplicateDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "b1"
+          },
+          "fileName": {
+            "type": "string",
+            "example": "spende-2024.pdf",
+            "description": "Its file name (decrypted for the owner)."
+          },
+          "uploadedAt": {
+            "type": "string",
+            "example": "2026-11-18T09:12:00.000Z",
+            "description": "When it was uploaded (ISO timestamp)."
+          }
+        },
+        "required": [
+          "id",
+          "fileName",
+          "uploadedAt"
+        ]
+      },
       "ReceiptResponseDto": {
         "type": "object",
         "properties": {
@@ -8647,6 +8825,31 @@
             "nullable": true,
             "example": 2025,
             "description": "The tax year the holders refer to (B and the children are per year)."
+          },
+          "processing": {
+            "description": "What became of the Beleg (ADR-0097), derived from its last read and its drafts in every tax year.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ReceiptProcessingDto"
+              }
+            ]
+          },
+          "filledFields": {
+            "description": "The fields this Beleg filled (its drafts taken over), over every tax year. This is also what `DELETE /v1/belege/{id}?takeBackValues=true` takes back, where a field still holds the value; `processing.pending` drafts are withdrawn with it.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReceiptFilledFieldDto"
+            }
+          },
+          "duplicateOf": {
+            "nullable": true,
+            "description": "The older Beleg with the same file content (per-user content key), when this one is a duplicate; null otherwise. Parsing a duplicate stages no drafts unless `allowDuplicate` is sent.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ReceiptDuplicateDto"
+              }
+            ]
           }
         },
         "required": [
@@ -8660,7 +8863,10 @@
           "byteLength",
           "assignment",
           "holders",
-          "holderTaxYear"
+          "holderTaxYear",
+          "processing",
+          "filledFields",
+          "duplicateOf"
         ]
       },
       "CreateReceiptDto": {
@@ -8727,10 +8933,22 @@
           "deleted": {
             "type": "boolean",
             "example": true
+          },
+          "takenBack": {
+            "type": "number",
+            "example": 1,
+            "description": "Values taken back from the return (only with `takeBackValues=true`; a value changed since stays)."
+          },
+          "withdrawn": {
+            "type": "number",
+            "example": 0,
+            "description": "Waiting drafts of the Beleg withdrawn (only with `takeBackValues=true`)."
           }
         },
         "required": [
-          "deleted"
+          "deleted",
+          "takenBack",
+          "withdrawn"
         ]
       },
       "ParseReceiptDto": {
@@ -8760,6 +8978,53 @@
             ],
             "example": "lstb",
             "description": "Explicit document parser: \"lstb\" the German LStB, \"chLohnausweis\" the Swiss salary certificate, \"chPensionskasse\" a Swiss pension fund statement, \"chPraemien\" the employer letter on sickness-pay and NBU premiums, \"chKrankenkasse\" a Swiss health insurer statement for the tax return; \"auto\" routes a recognised document to its reader."
+          },
+          "expectedKind": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "lstb",
+              "chLohnausweis",
+              "chPensionskasse",
+              "chPraemien",
+              "chKrankenkasse"
+            ],
+            "example": "chLohnausweis",
+            "description": "Entry context: the document the entry point expects (a mask asks for its own). Unlike `kind` it does not force a reader: a text that is clearly another document goes to that one’s reader."
+          },
+          "mask": {
+            "type": "string",
+            "enum": [
+              "profil",
+              "stammdaten",
+              "kopplung",
+              "interview",
+              "lstb",
+              "commute",
+              "chLohnausweis",
+              "rente",
+              "kapital",
+              "vermietung",
+              "kind",
+              "assessment"
+            ],
+            "example": "lstb",
+            "description": "Entry context: the mask the upload happened in; absent in the chat and the Belege tab. Without `kind`/`expectedKind`, the mask of the LStB or the Swiss Lohnausweis expects its document."
+          },
+          "deviceReadFailure": {
+            "type": "string",
+            "enum": [
+              "read_failed",
+              "empty_text",
+              "unsupported_file"
+            ],
+            "example": "empty_text",
+            "description": "The device could not read the stored Beleg (`receiptId` required): nothing is parsed, the Beleg is recorded as `nicht_lesbar` with this reason."
+          },
+          "allowDuplicate": {
+            "type": "boolean",
+            "example": false,
+            "description": "Stage drafts even though the Beleg is a duplicate of an older upload (`duplicateOf` on the upload). Without it a duplicate is read but stages nothing."
           },
           "receiptId": {
             "type": "string",
@@ -10473,6 +10738,104 @@
           "alsoFor"
         ]
       },
+      "ParsedReceiptDuplicateDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "b1"
+          },
+          "fileName": {
+            "type": "string",
+            "example": "spende-2024.pdf",
+            "description": "Its file name (decrypted for the owner)."
+          },
+          "uploadedAt": {
+            "type": "string",
+            "example": "2026-11-18T09:12:00.000Z",
+            "description": "When it was uploaded (ISO timestamp)."
+          }
+        },
+        "required": [
+          "id",
+          "fileName",
+          "uploadedAt"
+        ]
+      },
+      "ParsedReceiptProcessingDto": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": [
+              "neu",
+              "nicht_lesbar",
+              "vorschlaege",
+              "uebernommen",
+              "nichts_verwertbar",
+              "verworfen"
+            ],
+            "example": "vorschlaege",
+            "description": "`neu` not read yet · `nicht_lesbar` reading failed · `vorschlaege` at least one draft waits · `uebernommen` all decided, at least one taken over · `nichts_verwertbar` read, nothing for the return · `verworfen` all drafts dismissed."
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "nichts_erkannt",
+              "keine_rechnung",
+              "nicht_absetzbar",
+              "schon_gezaehlt",
+              "dublette",
+              "blockiert",
+              "kein_steuerjahr",
+              "anderes_konto",
+              "lesefehler",
+              "unlesbar",
+              "kein_text",
+              "nicht_unterstuetzt",
+              "entwuerfe_fehlen"
+            ],
+            "nullable": true,
+            "example": "keine_rechnung",
+            "description": "Why the read found nothing or failed (for `nicht_lesbar`, `nichts_verwertbar`, and `neu` after its drafts were removed: `entwuerfe_fehlen`); null otherwise. The app words it."
+          },
+          "pending": {
+            "type": "number",
+            "example": 1,
+            "description": "Drafts of this Beleg still waiting, over every tax year."
+          },
+          "applied": {
+            "type": "number",
+            "example": 0,
+            "description": "Drafts of this Beleg taken over."
+          },
+          "dismissed": {
+            "type": "number",
+            "example": 0,
+            "description": "Drafts of this Beleg decided without being taken over (dismissed, undone, superseded)."
+          },
+          "draftsTaxYear": {
+            "type": "number",
+            "nullable": true,
+            "example": 2024,
+            "description": "The tax year its drafts sit in. When it is not the open year, say „liegt im Steuerjahr 2024“ with a link to switch."
+          },
+          "open": {
+            "type": "boolean",
+            "example": true,
+            "description": "Not yet fully processed (`neu`, `nicht_lesbar`, `vorschlaege`): the Belege tab counts these as „offen“."
+          }
+        },
+        "required": [
+          "state",
+          "reason",
+          "pending",
+          "applied",
+          "dismissed",
+          "draftsTaxYear",
+          "open"
+        ]
+      },
       "ParseReceiptResponseDto": {
         "type": "object",
         "properties": {
@@ -10543,6 +10906,59 @@
             "allOf": [
               {
                 "$ref": "#/components/schemas/DocumentAssignmentDto"
+              }
+            ]
+          },
+          "draftsTaxYear": {
+            "type": "number",
+            "nullable": true,
+            "example": 2024,
+            "description": "The tax year this read staged its drafts in; null when it staged none."
+          },
+          "filedInTaxYear": {
+            "type": "number",
+            "nullable": true,
+            "example": 2024,
+            "description": "Set when the drafts went to another tax year than the requested `taxYear` (ADR-0097 §5: the document’s own year, for every reader): say „liegt im Steuerjahr 2024“ with a link to switch. Null otherwise."
+          },
+          "noValuesReason": {
+            "type": "string",
+            "enum": [
+              "nichts_erkannt",
+              "keine_rechnung",
+              "nicht_absetzbar",
+              "schon_gezaehlt",
+              "dublette",
+              "blockiert",
+              "kein_steuerjahr",
+              "anderes_konto",
+              "lesefehler",
+              "unlesbar",
+              "kein_text",
+              "nicht_unterstuetzt",
+              "entwuerfe_fehlen"
+            ],
+            "nullable": true,
+            "example": "keine_rechnung",
+            "description": "Why nothing was proposed, when a reader knows (e.g. `keine_rechnung`, `nicht_absetzbar`, `schon_gezaehlt`)."
+          },
+          "duplicateOf": {
+            "nullable": true,
+            "description": "The Beleg is a duplicate of this older upload: no drafts were staged unless `allowDuplicate` was sent.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ParsedReceiptDuplicateDto"
+              }
+            ]
+          },
+          "processing": {
+            "nullable": true,
+            "description": "The Beleg’s processing state after this read (the same as `GET /v1/belege` shows); null without `receiptId`.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ParsedReceiptProcessingDto"
               }
             ]
           }

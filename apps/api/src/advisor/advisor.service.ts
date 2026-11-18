@@ -46,6 +46,7 @@ import {
   ADVISOR_REPOSITORY,
   type AdvisorConversationRecord,
   type AdvisorRepository,
+  type ReceiptDraftRecord,
 } from './advisor.repository.js'
 import type {
   AdvisorActionMutationResponseDto,
@@ -487,5 +488,10 @@ export class AdvisorService {
 
   async markLstbActionsApplied(userId: string, taxYear: number, actionIds: readonly string[]): Promise<void> {
     return this.staging.markLstbActionsApplied(userId, taxYear, actionIds)
+  }
+
+  /** The drafts of every tax year that came from a Beleg, metadata only (ADR-0097): for its processing state. */
+  async receiptDrafts(userId: string): Promise<ReceiptDraftRecord[]> {
+    return this.advisorRepo.listReceiptDrafts(userId)
   }
 }

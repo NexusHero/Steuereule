@@ -16,6 +16,8 @@ import {
   nextAssessmentStates,
   serializeAssessmentField,
   remainingAppealDays,
+  todayIso,
+  ISO_DATE_PATTERN,
   type CalculationStatus,
   type AssessmentStatus,
   type AssessmentValues,
@@ -42,7 +44,6 @@ import type {
 import { answersFrom } from '../interview/answers.js'
 import { crossBorderStatusFromAnswers, salaryCertificateValuesFromRecord, exchangeRateFromRecord } from '../ch-salary-certificate/salary-certificate-data.js'
 
-const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 
 function fieldsFromRecord(record: AssessmentRecord | null): { fields: AssessmentFieldDto[]; values: AssessmentValues } {
   const fields: AssessmentFieldDto[] = []
@@ -159,7 +160,7 @@ export class AssessmentService {
   }
 
   async setDate(userId: string, taxYear: number, dto: SetAssessmentDateDto): Promise<AssessmentResponseDto> {
-    if (dto.date !== null && dto.date !== undefined && !ISO_DATE_RE.test(dto.date)) {
+    if (dto.date !== null && dto.date !== undefined && !ISO_DATE_PATTERN.test(dto.date)) {
       throw new InvalidInputError('BESCHEIDDATUM_INVALID', 'bescheiddatum must be an ISO yyyy-mm-dd date.')
     }
     const record = await this.repository.setDate(userId, taxYear, dto.date ?? null)
@@ -200,15 +201,5 @@ function valueFromDto(field: Parameters<AssessmentRepository['setField']>[2], dt
   return serializeAssessmentField(field, dto.value)
 }
 
-export function todayIso(now: Date = new Date()): string {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'Europe/Berlin',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(now)
-  const year = parts.find((p) => p.type === 'year')!.value
-  const month = parts.find((p) => p.type === 'month')!.value
-  const tag = parts.find((p) => p.type === 'day')!.value
-  return `${year}-${month}-${tag}`
-}
+/** Today in Germany; the shared date module decides, re-exported here for the existing callers. */
+export { todayIso } from '@steuereule/core'

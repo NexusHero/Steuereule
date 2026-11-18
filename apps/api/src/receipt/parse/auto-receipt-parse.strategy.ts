@@ -16,6 +16,10 @@ import {
   sectionForMember,
   looksLikeChildcareNotice,
   parseDonationReceipt,
+  formatEur,
+  ISO_DATE_PATTERN,
+  receiptFilingYear,
+  toGermanDate,
   scrubDocumentTextPii,
   scrubUserMessagePii,
   uncountedDonations,
@@ -23,6 +27,7 @@ import {
   type CraftsmanInvoiceRead,
   type DonationItem,
   type OwlSourceId,
+  type ReceiptReadReason,
   type Screen,
 } from '@steuereule/core'
 import { AdvisorService } from '../../advisor/advisor.service.js'
@@ -53,7 +58,7 @@ const STAGE1_EXTRACTION_SCHEMA = z.object({
   vendorCategory: z.enum(RECEIPT_VENDOR_CATEGORIES).default('sonstiges'),
   receiptDate: z
     .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .regex(ISO_DATE_PATTERN)
     .nullable()
     .optional()
     .default(null),
@@ -123,8 +128,8 @@ const CATEGORY_LABELS: Readonly<Record<ReceiptVendorCategory, string>> = {
  * injection or a name printed on the receipt has no path into the chat.
  */
 function describeReceipt(category: ReceiptVendorCategory, amountEur: number | null, receiptDate: string | null): string {
-  const amount = amountEur !== null ? ` über ${amountEur} €` : ''
-  const date = receiptDate !== null ? ` vom ${receiptDate}` : ''
+  const amount = amountEur !== null ? ` über ${formatEur(amountEur)}` : ''
+  const date = receiptDate !== null ? ` vom ${toGermanDate(receiptDate) ?? receiptDate}` : ''
   return `Beleg (${CATEGORY_LABELS[category]})${amount}${date} erkannt.`
 }
 
@@ -199,13 +204,13 @@ function craftsmanProposal(invoice: CraftsmanInvoiceRead) {
   ]
   return {
     label: 'Handwerkerleistung: Lohnanteil (Summe im Jahr)',
-    reason: `Arbeitskosten ${invoice.labourEur} € ${how}; Material zählt nicht (§ 35a Abs. 3 EStG). ${warnings.join(' ')}`,
+    reason: `Arbeitskosten ${formatEur(invoice.labourEur ?? 0)} ${how}; Material zählt nicht (§ 35a Abs. 3 EStG). ${warnings.join(' ')}`,
     sourceId: 'estg-35a' as OwlSourceId,
     companionFields: {
       'haushalt-gate': 'Ja',
       ...(invoice.invoiceTotalEur ? { 'haushalt-handwerker-rechnungsbetrag': String(invoice.invoiceTotalEur) } : {}),
     },
-    summaryText: `Handwerkerrechnung über ${invoice.invoiceTotalEur ?? '?'} € erkannt, davon Arbeitskosten ${invoice.labourEur} € (${how}). Nach [estg-35a] ermäßigt das die Steuer um 20 % der Arbeitskosten. ${warnings.join(' ')} Bitte prüfe den Lohnanteil:`,
+    summaryText: `Handwerkerrechnung über ${invoice.invoiceTotalEur ? formatEur(invoice.invoiceTotalEur) : '? €'} erkannt, davon Arbeitskosten ${formatEur(invoice.labourEur ?? 0)} (${how}). Nach [estg-35a] ermäßigt das die Steuer um 20 % der Arbeitskosten. ${warnings.join(' ')} Bitte prüfe den Lohnanteil:`,
   }
 }
 
@@ -435,6 +440,8 @@ export class AutoReceiptParseStrategy implements DocumentParseStrategy {
     // A Zuwendungsbestätigung: the donations it lists that are not counted yet (ADR-0080). A partner's own
     // receipt repeating a joint booking, or a copy („Doppel“), adds nothing; the year is the year donated.
     let countedItems: AdvisorCountedItem[] | undefined
+    // Why nothing is proposed, when a rule below knows (ADR-0097): the Beleg says it instead of „nichts erkannt“.
+    let noValuesReason: ReceiptReadReason | null = invoice?.notAnInvoice ? 'keine_rechnung' : null
     const donation = !securityBlocked && !invoice && dto.rawText && looksLikeDonationReceipt(dto.rawText) ? parseDonationReceipt(dto.rawText) : null
     // Without a readable amount the model's reading stands.
     if (donation && donation.items.length > 0) {
@@ -451,7 +458,7 @@ export class AutoReceiptParseStrategy implements DocumentParseStrategy {
             ? read.isCopy
               ? 'Das ist eine Zweitschrift einer Spendenbestätigung, die schon gezählt ist; sie kommt nicht noch einmal dazu.'
               : 'Die Spenden auf dieser Bestätigung sind schon über eine andere Bestätigung gezählt; sie kommen nicht noch einmal dazu.'
-            : `${repeated.length === 1 ? 'Eine Spende darauf ist' : `${repeated.length} Spenden darauf sind`} schon über eine andere Bestätigung gezählt; dazu kommen nur ${freshEur} €.`
+            : `${repeated.length === 1 ? 'Eine Spende darauf ist' : `${repeated.length} Spenden darauf sind`} schon über eine andere Bestätigung gezählt; dazu kommen nur ${formatEur(freshEur)}.`
       parsed = {
         ...parsed,
         vendorCategory: 'spende',
@@ -463,6 +470,7 @@ export class AutoReceiptParseStrategy implements DocumentParseStrategy {
         summary: note ? `${parsed.summary} ${note}`.trim() : parsed.summary,
       }
       countedItems = fresh.map(({ ref, amountKey }) => ({ ref, amountKey }))
+      if (freshEur === 0 && repeated.length > 0) noValuesReason = 'schon_gezaehlt'
     }
 
     // A doctor's or dentist's invoice adds to the year's Krankheitskosten (§ 33 EStG); the same invoice
@@ -472,6 +480,7 @@ export class AutoReceiptParseStrategy implements DocumentParseStrategy {
         ? parseMedicalInvoice(dto.rawText)
         : null
     if (medical?.cosmetic) {
+      noValuesReason = 'nicht_absetzbar'
       parsed = {
         ...parsed,
         vendorCategory: 'krankheitskosten',
@@ -499,6 +508,7 @@ export class AutoReceiptParseStrategy implements DocumentParseStrategy {
         summary: repeated ? 'Diese Rechnung ist schon bei den Krankheitskosten gezählt; sie kommt nicht noch einmal dazu.' : parsed.summary,
       }
       if (!repeated) countedItems = [{ ref: hashed, amountKey: hashed }]
+      else noValuesReason = 'schon_gezaehlt'
     }
 
     // A childcare notice: the care period for Anlage Kind Zeile 67, for the year's only child (ADR-0086). The
@@ -529,8 +539,8 @@ export class AutoReceiptParseStrategy implements DocumentParseStrategy {
         engine: { mode: 'deterministic_fallback', provider: 'deterministic' },
         summaryText:
           paid === null
-            ? `Betreuungsbescheid gelesen: Betreuung vom ${period.from} bis ${period.to} (Anlage Kind Zeile 67). Den Betrag trag bitte ein, was ihr ${dto.taxYear} tatsächlich gezahlt habt; der Bescheid nennt nur den Monatsbeitrag.`
-            : `Betreuungsbescheinigung gelesen: Betreuung vom ${period.from} bis ${period.to}, ${dto.taxYear} gezahlt ${paid} € (Anlage Kind Zeile 67). Nach [estg-10-1-5] zählen davon 80 %, höchstens 4.800 € je Kind. Prüf bitte, ob ihr alles unbar gezahlt habt:`,
+            ? `Betreuungsbescheid gelesen: Betreuung vom ${toGermanDate(period.from) ?? period.from} bis ${toGermanDate(period.to) ?? period.to} (Anlage Kind Zeile 67). Den Betrag trag bitte ein, was ihr ${dto.taxYear} tatsächlich gezahlt habt; der Bescheid nennt nur den Monatsbeitrag.`
+            : `Betreuungsbescheinigung gelesen: Betreuung vom ${toGermanDate(period.from) ?? period.from} bis ${toGermanDate(period.to) ?? period.to}, ${dto.taxYear} gezahlt ${formatEur(paid)} (Anlage Kind Zeile 67). Nach [estg-10-1-5] zählen davon 80 %, höchstens 4.800 € je Kind. Prüf bitte, ob ihr alles unbar gezahlt habt:`,
         sourceId: 'estg-10-1-5',
         fields: [
           { field: 'childcareFrom', label: 'Kinderbetreuung von', value: period.from, status: ocr ? 'pruefen' : 'ok', reason: ocr ? 'ocr_source' : null, instance: childId },
@@ -542,7 +552,7 @@ export class AutoReceiptParseStrategy implements DocumentParseStrategy {
       })
       checkPiiFree(parsed)
       await this.auditService.append({ userId, action: 'READ', resource: 'beleg_analyse' })
-      return { mode, securityBlocked, parsed: { ...parsed, vendorCategory: 'kinderbetreuung' }, stagedAction: staged.actions[0] ?? null, assistantMessage: staged.assistantMessage }
+      return { mode, securityBlocked, parsed: { ...parsed, vendorCategory: 'kinderbetreuung' }, stagedAction: staged.actions[0] ?? null, assistantMessage: staged.assistantMessage, draftsTaxYear: dto.taxYear }
     }
 
     // Security Firewall Bridge between Stage 1 (untrusted doc OCR) and Stage 2 (advisor staging):
@@ -556,9 +566,12 @@ export class AutoReceiptParseStrategy implements DocumentParseStrategy {
     })
 
     const shouldStage = dto.stageDraft ?? true
+    // One year rule (ADR-0097 §5): the drafts go to the document's own year; a year the app does not keep gets none.
+    const targetTaxYear = receiptFilingYear(parsed.taxYear, dto.taxYear)
     if (
       securityBlocked ||
       !shouldStage ||
+      targetTaxYear === null ||
       parsed.suggestedScreen === null ||
       parsed.suggestedField === null ||
       parsed.suggestedValue === null
@@ -569,10 +582,11 @@ export class AutoReceiptParseStrategy implements DocumentParseStrategy {
         parsed,
         stagedAction: null,
         assistantMessage: null,
+        draftsTaxYear: null,
+        noValuesReason: targetTaxYear === null && parsed.suggestedValue !== null ? 'kein_steuerjahr' : noValuesReason,
       }
     }
 
-    const targetTaxYear = parsed.taxYear ?? dto.taxYear
     const proposalMeta = invoice?.labourEur ? craftsmanProposal(invoice) : proposalDetailsFor(parsed)
     const staged = await this.advisorService.stageReceiptProposal(userId, targetTaxYear, {
       screen: parsed.suggestedScreen,
@@ -598,6 +612,7 @@ export class AutoReceiptParseStrategy implements DocumentParseStrategy {
       parsed,
       stagedAction: staged.action,
       assistantMessage: staged.assistantMessage,
+      draftsTaxYear: targetTaxYear,
     }
   }
 }

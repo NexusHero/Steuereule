@@ -4,6 +4,8 @@ import {
   certificateHolderPerson,
   parseChPensionStatement,
   parseChPremiumLetter,
+  formatChf,
+  receiptFilingYear,
   type ChInsuranceLetterKind,
 } from '@steuereule/core'
 import { AdvisorService } from '../advisor/advisor.service.js'
@@ -62,12 +64,16 @@ abstract class ChLetterParseStrategy implements DocumentParseStrategy, OnModuleI
   async parse(userId: string, dto: ParseReceiptDto): Promise<ParseReceiptResponseDto> {
     const rawText = dto.rawText ?? ''
     const fromOcr = dto.textSource !== 'pdf_text'
-    const household = await this.advisorService.householdNames(userId, dto.taxYear)
+    // One year rule (ADR-0097 §5): the letter's year decides the household, the record and where its drafts go.
+    // The year printed is only known after reading, so the letter is read first without the stored Ziffer 10.
+    const filingYear = receiptFilingYear(this.read(rawText, null, fromOcr).taxYear, dto.taxYear)
+    const year = filingYear ?? dto.taxYear
+    const household = await this.advisorService.householdNames(userId, year)
     // The name is looked for in the whole letter, on the server only; only one person's name may fit.
     const person: 'A' | 'B' | null = dto.person ?? (household.B === null ? holderWithoutPartner(rawText, household.A) : certificateHolderPerson(rawText, household))
     const personNotRecordable = person === 'B' && household.B?.recordable !== true
-    const dataUser = person !== null && !personNotRecordable ? await this.linkService.dataUser(userId, dto.taxYear, person) : null
-    const stored = dataUser ? await this.chRepo?.findForUserAndYear(dataUser, dto.taxYear) : null
+    const dataUser = person !== null && !personNotRecordable ? await this.linkService.dataUser(userId, year, person) : null
+    const stored = dataUser ? await this.chRepo?.findForUserAndYear(dataUser, year) : null
     const ziffer10 = stored?.fields['berufliche-vorsorge'] ? Number(stored.fields['berufliche-vorsorge']) : null
 
     const letter = this.read(rawText, Number.isFinite(ziffer10) ? ziffer10 : null, fromOcr, { krankentaggeldChf: stored?.nGre.krankentaggeldChf ?? null })
@@ -78,10 +84,11 @@ abstract class ChLetterParseStrategy implements DocumentParseStrategy, OnModuleI
     let stagedActionIds: string[] = []
     let stagedAction: ParseReceiptResponseDto['stagedAction'] = null
     let assistantMessage: ParseReceiptResponseDto['assistantMessage'] = null
-    if ((dto.stageDraft ?? true) && person !== null && dataUser !== null && yearConflict === null && letter.fields.length > 0) {
+    // Another year no longer blocks (`yearConflict` only reports it); a year the app does not keep stages nothing.
+    if ((dto.stageDraft ?? true) && person !== null && dataUser !== null && filingYear !== null && letter.fields.length > 0) {
       const whose = person === 'B' ? 'von Person B' : 'von dir'
       const title = this.kind === 'chPensionskasse' ? 'den Nachweis der Pensionskasse' : 'die Bestätigung des Arbeitgebers zu Krankentaggeld und NBU'
-      const staged = await this.advisorService.stageDocumentDrafts(userId, dto.taxYear, {
+      const staged = await this.advisorService.stageDocumentDrafts(userId, filingYear, {
         screen: 'chLohnausweis',
         person,
         digestUserId: dataUser,
@@ -124,6 +131,8 @@ abstract class ChLetterParseStrategy implements DocumentParseStrategy, OnModuleI
       stagedAction,
       assistantMessage,
       chLetter,
+      draftsTaxYear: stagedActionIds.length > 0 ? filingYear : null,
+      noValuesReason: (dto.stageDraft ?? true) && filingYear === null ? 'kein_steuerjahr' : null,
     }
   }
 }
@@ -172,8 +181,8 @@ export class ChPensionStatementParseStrategy extends ChLetterParseStrategy {
     const notes = [
       ...(statement.checks.split === 'ok' ? ['Obligatorisch und überobligatorisch ergeben auf beiden Seiten die Summe.'] : []),
       ...(splitConflict ? ['Obligatorisch und überobligatorisch ergeben nicht die Summe; bitte mit dem Nachweis vergleichen.'] : []),
-      ...(employee.total !== null && ziffer10 !== null && !ziffer10Conflict ? [`Die Arbeitnehmerbeiträge gesamt (${employee.total} CHF) passen zu Ziffer 10 des Lohnausweises.`] : []),
-      ...(ziffer10Conflict ? [`Die Beiträge des Arbeitnehmers (${employee.total} CHF) weichen von Ziffer 10 des Lohnausweises (${ziffer10} CHF) ab. Gehört der Nachweis zum richtigen Jahr?`] : []),
+      ...(employee.total !== null && ziffer10 !== null && !ziffer10Conflict ? [`Die Arbeitnehmerbeiträge gesamt (${formatChf(employee.total)}) passen zu Ziffer 10 des Lohnausweises.`] : []),
+      ...(ziffer10Conflict ? [`Die Beiträge des Arbeitnehmers (${formatChf(employee.total ?? 0)}) weichen von Ziffer 10 des Lohnausweises (${formatChf(ziffer10 ?? 0)}) ab. Gehört der Nachweis zum richtigen Jahr?`] : []),
       ...(employer.total === null ? ['Die Arbeitgeberbeiträge gesamt konnte ich nicht lesen (im Scan fehlt eine Zeile). Ohne sie rechnet die App keine Zeile 20; trag sie bitte aus dem Nachweis ein.'] : []),
       ...(certificate
         ? ['Das ist ein Vorsorgeausweis: Er nennt die Beiträge als Jahreswert zum Stichtag und nicht den obligatorischen Anteil (Zeilen 84 und 87). Den „Nachweis obligatorischer und überobligatorischer Beiträge“ stellt die Pensionskasse auf Anfrage aus.']

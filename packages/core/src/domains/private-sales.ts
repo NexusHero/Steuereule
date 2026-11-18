@@ -1,3 +1,5 @@
+import { isIsoDate, parseDate } from '../common/dates'
+
 /**
  * Private sales (§ 23 EStG): when a gain is taxable at all, and whether the year's gains stay under
  * the exemption limit. Dates are ISO (yyyy-mm-dd); periods run by § 108 AO with §§ 187, 188 BGB:
@@ -18,13 +20,11 @@ export function privateSalesExemptionLimit(year: number): number {
 }
 
 function addYears(iso: string, years: number): Date {
-  const [y, m, d] = [Number(iso.slice(0, 4)), Number(iso.slice(5, 7)), Number(iso.slice(8, 10))]
+  const { year: y, month: m, day: d } = parseDate(iso)!
   // 29.02. plus whole years ends on 28.02. (§ 188 Abs. 3 BGB).
   const lastDay = new Date(Date.UTC(y + years, m, 0)).getUTCDate()
   return new Date(Date.UTC(y + years, m - 1, Math.min(d, lastDay)))
 }
-
-const ISO = /^\d{4}-\d{2}-\d{2}$/
 
 export interface PrivateSaleInput {
   readonly kind: PrivateSaleKind
@@ -46,7 +46,7 @@ export interface PrivateSaleResult {
 }
 
 export function checkPrivateSale(input: PrivateSaleInput): PrivateSaleResult {
-  if (!ISO.test(input.acquiredOn) || !ISO.test(input.soldOn)) throw new RangeError('acquiredOn and soldOn must be ISO yyyy-mm-dd dates')
+  if (!isIsoDate(input.acquiredOn) || !isIsoDate(input.soldOn)) throw new RangeError('acquiredOn and soldOn must be ISO yyyy-mm-dd dates')
   if (input.soldOn < input.acquiredOn) throw new RangeError('soldOn must not be before acquiredOn')
   const periodEnd = addYears(input.acquiredOn, holdingYears(input.kind))
   const taxFree = new Date(periodEnd)
