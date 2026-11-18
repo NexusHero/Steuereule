@@ -439,12 +439,12 @@ async function main() {
 
     // Row P — Person B in the Strom (Echtdatentest 18.11.2026).
     {
-      const pair = await createAccount({ apiOrigin, webOrigin, sql, tag: `${TAG}-paar` })
-      await answer(pair.api, YEAR, [['job', 'Angestellt'], ['ausland', 'Ja, in die Schweiz'], ['de-job', 'Auch in Deutschland'], ['kinder', 'Nein'], ['familienstand', 'Verheiratet'], ['partner-job', 'Angestellt'], ['partner-ausland', 'Ja, in die Schweiz'], ['partner-de-job', 'Auch in Deutschland']])
+      const couple = await createAccount({ apiOrigin, webOrigin, sql, tag: `${TAG}-paar` })
+      await answer(couple.api, YEAR, [['job', 'Angestellt'], ['ausland', 'Ja, in die Schweiz'], ['de-job', 'Auch in Deutschland'], ['kinder', 'Nein'], ['familienstand', 'Verheiratet'], ['partner-job', 'Angestellt'], ['partner-ausland', 'Ja, in die Schweiz'], ['partner-de-job', 'Auch in Deutschland']])
       const c4 = await newContextAtBreakpoint(browser, 'l')
       const p4 = await c4.newPage()
       guardAgainst429(p4, fail, '/api/auth/')
-      await browserLogin(p4, webOrigin, pair.email, TAG)
+      await browserLogin(p4, webOrigin, couple.email, TAG)
       await p4.goto(`${webOrigin}/app/steuerjahr/${YEAR}/strom/partner`, { waitUntil: 'networkidle' })
       await visible(p4, 'strom-partner-vorname', 'Row P')
       await p4.locator(tid('strom-weiter')).click()
@@ -455,7 +455,7 @@ async function main() {
       await p4.locator(tid('strom-weiter')).click()
       // The own masks come first, then B's.
       await visible(p4, 'strom-schritt-schweiz', 'Row P (after the partner page)')
-      const personB = (await call(pair.api, 'GET', `/v1/steuerjahre/${YEAR}/kopplung`)).personB
+      const personB = (await call(couple.api, 'GET', `/v1/steuerjahre/${YEAR}/kopplung`)).personB
       if (personB?.firstName !== 'Nora' || personB?.geburtsdatum !== '1991-10-17') fail(`Row P: Person B should be saved, got ${JSON.stringify(personB)}`)
       await p4.goto(`${webOrigin}/app/steuerjahr/${YEAR}/strom/partner-schweiz`, { waitUntil: 'networkidle' })
       await visible(p4, 'ch-interview-titel', 'Row P (B’s certificate)')
@@ -465,8 +465,8 @@ async function main() {
       await visible(p4, 'strom-schritt-partner-lohnsteuerbescheinigung', 'Row P (B’s LStB)')
       await visible(p4, 'lstb-bruttoarbeitslohn', 'Row P (B’s LStB)')
       // The cockpit's recorded income counts both persons and names each share.
-      await call(pair.api, 'PUT', `/v1/steuerjahre/${YEAR}/lstb/bruttoarbeitslohn`, { kind: 'erfasst', value: 30000 })
-      await call(pair.api, 'PUT', `/v1/steuerjahre/${YEAR}/lstb/bruttoarbeitslohn?person=B`, { kind: 'erfasst', value: 20000 })
+      await call(couple.api, 'PUT', `/v1/steuerjahre/${YEAR}/lstb/bruttoarbeitslohn`, { kind: 'erfasst', value: 30000 })
+      await call(couple.api, 'PUT', `/v1/steuerjahre/${YEAR}/lstb/bruttoarbeitslohn?person=B`, { kind: 'erfasst', value: 20000 })
       await p4.goto(`${webOrigin}/app`, { waitUntil: 'networkidle' })
       await p4.locator(tid(`jahr-${YEAR}`)).click()
       await visible(p4, 'cockpit-einkommen-personen', 'Row P (cockpit)')
@@ -474,7 +474,7 @@ async function main() {
       if (!split.includes('Nora') || !split.includes('30.000') || !split.includes('20.000')) fail(`Row P: the cockpit should split the income, got "${split}"`)
       console.log(`[${TAG}] ✅ Row P — the Strom names Person B, asks B's masks and the cockpit splits the income`)
       await c4.close()
-      await pair.api.dispose()
+      await couple.api.dispose()
     }
 
     // Row N — a user without a name (N1): „Bist du …?“; „Nein“ offers to create the person, „Ja“ takes the name.
