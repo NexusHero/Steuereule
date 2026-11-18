@@ -3,7 +3,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Schibsted+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap">
 <style>
-/* Layout: phone-shaped mock of the new "Verlauf" tab on the left, ADR-0098 notes on the right; stacks on phones. */
+/* Layout: a view switch (Handy / Desktop) over the mock; phone = phone frame + ADR notes side by side, desktop = app window with sidebar, notes below. */
 :root {
   --grund: #f4f2e9; --karte: #ffffff; --tinte: #191b12; --tinte-2: #5f6353;
   --linie: #191b12; --linie-weich: #dedacb;
@@ -11,7 +11,7 @@
   --ki: #7c5cff; --ki-weich: #ece6ff; --ki-tinte: #4630b8;
   --ok: #1f9d55; --ok-weich: #def4e2; --warn: #e07b00; --warn-weich: #ffeecf;
   --fehler: #e0362c; --fehler-weich: #fde3de;
-  --steuer: #5f6353; --sv: #b9b5a3; --wk-fahrt: #191b12; --wk-ho: #7c5cff; --wk-am: #e07b00; --wk-sonst: #b9b5a3;
+  --steuer: #5f6353; --sv: #b9b5a3; --wk-fahrt: #191b12; --wk-ho: #7c5cff; --wk-am: #e07b00; --wk-sonst: #b9b5a3; --wk-bescheid: #8d9178;
   --schrift-display: "Bricolage Grotesque", "Arial Black", sans-serif;
   --schrift-text: "Schibsted Grotesk", system-ui, sans-serif;
   --schrift-mono: "Space Mono", ui-monospace, Menlo, monospace;
@@ -22,43 +22,46 @@
   --grund: #12140c; --karte: #1d2013; --tinte: #f2f0e3; --tinte-2: #a9ad99; --linie: #f2f0e3; --linie-weich: #33371f;
   --funke-weich: #2b3312; --funke-tinte: #d9f077; --ki-weich: #251d4f; --ki-tinte: #cfc4ff;
   --ok-weich: #143020; --warn-weich: #392a10; --fehler: #e96a61; --fehler-weich: #3b1512;
-  --steuer: #a9ad99; --sv: #4d523b; --wk-fahrt: #f2f0e3; --wk-sonst: #4d523b; color-scheme: dark; } }
+  --steuer: #a9ad99; --sv: #4d523b; --wk-fahrt: #f2f0e3; --wk-sonst: #4d523b; --wk-bescheid: #6b705a; color-scheme: dark; } }
 :root[data-theme="dark"] {
   --grund: #12140c; --karte: #1d2013; --tinte: #f2f0e3; --tinte-2: #a9ad99; --linie: #f2f0e3; --linie-weich: #33371f;
   --funke-weich: #2b3312; --funke-tinte: #d9f077; --ki-weich: #251d4f; --ki-tinte: #cfc4ff;
   --ok-weich: #143020; --warn-weich: #392a10; --fehler: #e96a61; --fehler-weich: #3b1512;
-  --steuer: #a9ad99; --sv: #4d523b; --wk-fahrt: #f2f0e3; --wk-sonst: #4d523b; color-scheme: dark; }
+  --steuer: #a9ad99; --sv: #4d523b; --wk-fahrt: #f2f0e3; --wk-sonst: #4d523b; --wk-bescheid: #6b705a; color-scheme: dark; }
 
 * { box-sizing: border-box; }
 body { background: var(--grund); color: var(--tinte); font-family: var(--schrift-text); font-size: 15px; line-height: 1.45;
-  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 24px 40px; }
-.buehne { display: grid; grid-template-columns: minmax(0, 400px) minmax(0, 1fr); gap: 40px; max-width: 1040px; margin: 0 auto; align-items: start; }
-@media (max-width: 820px) { .buehne { grid-template-columns: minmax(0, 1fr); } }
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 20px 40px; }
 .mono { font-family: var(--schrift-mono); font-variant-numeric: tabular-nums; }
 button { font: inherit; color: inherit; }
 button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--ki); outline-offset: 2px; }
-
-/* phone */
-.telefon { background: var(--grund); border: var(--kontur) solid var(--linie); border-radius: 32px; box-shadow: 5px 5px 0 var(--linie); overflow: hidden; display: flex; flex-direction: column; }
-.screen { padding: 20px 16px 8px; display: flex; flex-direction: column; gap: 14px; }
-.kopf { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; }
 .eyebrow { font-family: var(--schrift-mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--tinte-2); }
-h1 { font-family: var(--schrift-display); font-size: 34px; line-height: 1.02; letter-spacing: -.03em; margin: 2px 0 0; }
-.beispiel { font-size: 11px; font-family: var(--schrift-mono); border: var(--kontur) dashed var(--tinte-2); color: var(--tinte-2); border-radius: var(--radius-pille); padding: 2px 8px; white-space: nowrap; }
 
+.leiste { max-width: 1240px; margin: 0 auto 18px; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.leiste .titel { font-family: var(--schrift-display); font-size: 20px; letter-spacing: -.02em; }
+.seg { display: inline-flex; border: var(--kontur) solid var(--linie); border-radius: var(--radius-pille); background: var(--karte); padding: 3px; gap: 2px; }
+.seg button { border: 0; background: none; border-radius: var(--radius-pille); padding: 5px 12px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.seg button[aria-pressed="true"] { background: var(--funke); color: #191b12; }
+.seg.klein button { padding: 4px 10px; font-size: 12.5px; }
+
+.buehne { display: grid; grid-template-columns: minmax(0, 400px) minmax(0, 1fr); gap: 40px; max-width: 1040px; margin: 0 auto; align-items: start; }
+.buehne.breit { grid-template-columns: minmax(0, 1fr); max-width: 1240px; }
+@media (max-width: 820px) { .buehne { grid-template-columns: minmax(0, 1fr); } }
+.buehne.breit #telefon, .buehne:not(.breit) #fenster-wrap { display: none; }
+
+/* shared pieces */
 .held { background: var(--karte); border: var(--kontur) solid var(--linie); border-radius: var(--radius); box-shadow: var(--schatten); padding: 14px 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; }
-.held .lbl { font-size: 12px; color: var(--tinte-2); }
-.held .zahl { font-family: var(--schrift-display); font-size: 24px; letter-spacing: -.02em; line-height: 1.1; }
-.trend { font-family: var(--schrift-mono); font-size: 12px; }
+.lbl { font-size: 12px; color: var(--tinte-2); }
+.zahl { font-family: var(--schrift-display); font-size: 24px; letter-spacing: -.02em; line-height: 1.1; }
+.trend { font-family: var(--schrift-mono); font-size: 11.5px; color: var(--tinte-2); }
 .trend.auf { color: var(--ok); } .trend.ab { color: var(--fehler); }
-
 .chips { display: flex; gap: 6px; overflow-x: auto; padding: 2px 2px 6px; scrollbar-width: none; }
 .chip { flex: none; border: var(--kontur) solid var(--linie); background: var(--karte); border-radius: var(--radius-pille); padding: 6px 12px; font-size: 13px; font-weight: 600; cursor: pointer; }
 .chip[aria-selected="true"] { background: var(--funke); color: #191b12; box-shadow: var(--schatten-s); }
-
-.karte { background: var(--karte); border: var(--kontur) solid var(--linie); border-radius: var(--radius); padding: 14px 14px 12px; display: flex; flex-direction: column; gap: 10px; }
+.karte { background: var(--karte); border: var(--kontur) solid var(--linie); border-radius: var(--radius); padding: 14px 14px 12px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 .karte h2 { font-family: var(--schrift-display); font-size: 19px; letter-spacing: -.02em; margin: 0; line-height: 1.15; }
-.karte .sub { font-size: 12.5px; color: var(--tinte-2); margin: -6px 0 0; }
+.sub { font-size: 12.5px; color: var(--tinte-2); margin: -6px 0 0; }
+.hinweis { font-size: 12.5px; background: var(--warn-weich); border-radius: var(--radius-s); padding: 6px 10px; }
 svg.chart { width: 100%; height: auto; display: block; overflow: visible; }
 svg text { font-family: var(--schrift-mono); font-size: 10px; fill: var(--tinte-2); }
 svg .jahr { cursor: pointer; }
@@ -67,97 +70,236 @@ svg .jahr:focus-visible .hit, svg .jahr.aktiv .hit { fill: var(--funke-weich); }
 .legende { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 11.5px; color: var(--tinte-2); }
 .legende span { display: inline-flex; align-items: center; gap: 5px; }
 .sw { width: 10px; height: 10px; border-radius: 3px; border: 1px solid var(--linie); display: inline-block; }
-.stufen { display: flex; gap: 10px; flex-wrap: wrap; font-size: 11.5px; color: var(--tinte-2); border-top: 1px solid var(--linie-weich); padding-top: 8px; }
-
+.stufen { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; font-size: 11.5px; color: var(--tinte-2); border-top: 1px solid var(--linie-weich); padding-top: 8px; }
 .detail { border: var(--kontur) solid var(--linie); border-radius: var(--radius-s); padding: 10px 12px; background: var(--grund); display: flex; flex-direction: column; gap: 6px; }
-.detail-kopf { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.detail-kopf { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
 .detail-kopf strong { font-family: var(--schrift-display); font-size: 17px; }
 .zeile { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; }
 .zeile .mono { font-size: 12.5px; text-align: right; }
 .zeile.summe { border-top: 1px solid var(--linie-weich); padding-top: 4px; font-weight: 600; }
+.leise { color: var(--tinte-2); font-size: 12.5px; }
 .pille { font-size: 11px; font-weight: 600; border-radius: var(--radius-pille); padding: 2px 8px; border: 1px solid var(--linie); white-space: nowrap; }
 .p-bescheid { background: var(--ok-weich); }
 .p-schaetzung { background: var(--warn-weich); border-style: dashed; }
 .p-offen { background: transparent; border-style: dotted; color: var(--tinte-2); }
 .p-eck { background: var(--ki-weich); }
-
+.p-lstb { background: var(--funke-weich); }
 .eule { display: flex; gap: 10px; align-items: flex-start; background: var(--ki-weich); color: var(--ki-tinte); border-radius: var(--radius-s); padding: 9px 11px; font-size: 13px; }
 .eule b { font-family: var(--schrift-mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; flex: none; padding-top: 2px; }
+.knopf { background: var(--funke); color: #191b12; border: var(--kontur) solid var(--linie); border-radius: var(--radius-pille); box-shadow: var(--schatten-s); padding: 7px 12px; font-weight: 700; font-size: 13px; cursor: pointer; white-space: nowrap; }
+.knopf:active { transform: translate(2px, 2px); box-shadow: none; }
+.upload { border: var(--kontur) dashed var(--linie); border-radius: var(--radius-s); padding: 10px 12px; display: flex; gap: 10px; align-items: center; justify-content: space-between; }
+.upload p { margin: 0; font-size: 12.5px; color: var(--tinte-2); }
+.upload strong { display: block; font-size: 13.5px; color: var(--tinte); }
+.toast { font-size: 12.5px; color: var(--ki-tinte); }
 
-.liste { display: flex; flex-direction: column; gap: 0; background: var(--karte); border: var(--kontur) solid var(--linie); border-radius: var(--radius); overflow: hidden; }
+/* phone */
+.telefon { background: var(--grund); border: var(--kontur) solid var(--linie); border-radius: 32px; box-shadow: 5px 5px 0 var(--linie); overflow: hidden; display: flex; flex-direction: column; }
+.screen { padding: 20px 16px 8px; display: flex; flex-direction: column; gap: 14px; }
+.kopf { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; }
+h1 { font-family: var(--schrift-display); font-size: 34px; line-height: 1.02; letter-spacing: -.03em; margin: 2px 0 0; }
+.beispiel { font-size: 11px; font-family: var(--schrift-mono); border: var(--kontur) dashed var(--tinte-2); color: var(--tinte-2); border-radius: var(--radius-pille); padding: 2px 8px; white-space: nowrap; }
+.liste { background: var(--karte); border: var(--kontur) solid var(--linie); border-radius: var(--radius); overflow: hidden; }
 .liste h2 { font-family: var(--schrift-display); font-size: 17px; margin: 0; padding: 12px 14px 6px; }
-.jzeile { display: grid; grid-template-columns: 52px 1fr auto; gap: 10px; align-items: center; padding: 10px 14px; border-top: 1px solid var(--linie-weich); background: none; border-left: 0; border-right: 0; border-bottom: 0; text-align: left; cursor: pointer; width: 100%; }
+.liste .upload { margin: 4px 14px 14px; }
+.liste .toast { padding: 0 14px 12px; }
+.jzeile { display: grid; grid-template-columns: 52px 1fr auto; gap: 10px; align-items: center; padding: 10px 14px; border: 0; border-top: 1px solid var(--linie-weich); background: none; text-align: left; cursor: pointer; width: 100%; }
 .jzeile:hover { background: var(--funke-weich); }
 .jzeile .j { font-family: var(--schrift-display); font-size: 18px; }
 .jzeile .t { font-size: 12.5px; color: var(--tinte-2); }
 .jzeile .betrag { font-family: var(--schrift-mono); font-size: 13px; text-align: right; }
-.upload { margin: 4px 14px 14px; border: var(--kontur) dashed var(--linie); border-radius: var(--radius-s); padding: 10px 12px; display: flex; gap: 10px; align-items: center; justify-content: space-between; }
-.upload p { margin: 0; font-size: 12.5px; color: var(--tinte-2); }
-.upload strong { display: block; font-size: 13.5px; color: var(--tinte); }
-.knopf { background: var(--funke); color: #191b12; border: var(--kontur) solid var(--linie); border-radius: var(--radius-pille); box-shadow: var(--schatten-s); padding: 7px 12px; font-weight: 700; font-size: 13px; cursor: pointer; white-space: nowrap; }
-.knopf:active { transform: translate(2px, 2px); box-shadow: none; }
-.toast { font-size: 12.5px; color: var(--ki-tinte); padding: 0 14px 12px; }
-
 .tabs { display: grid; grid-template-columns: repeat(5, 1fr); border-top: var(--kontur) solid var(--linie); background: var(--karte); margin-top: 8px; }
 .tabs div { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 9px 0 11px; font-size: 11px; color: var(--tinte-2); }
 .tabs div.an { color: var(--tinte); font-weight: 700; }
 .tabs i { width: 22px; height: 22px; border-radius: 7px; border: var(--kontur) solid currentColor; display: block; }
 .tabs div.an i { background: var(--funke); border-color: var(--linie); box-shadow: var(--schatten-s); }
 
+/* desktop window */
+#fenster-wrap { overflow-x: auto; padding: 0 6px 8px 0; }
+.fenster { min-width: 980px; display: grid; grid-template-columns: 200px minmax(0, 1fr); border: var(--kontur) solid var(--linie); border-radius: var(--radius); box-shadow: 5px 5px 0 var(--linie); overflow: hidden; background: var(--grund); }
+.seite { background: var(--karte); border-right: var(--kontur) solid var(--linie); padding: 20px 14px; display: flex; flex-direction: column; gap: 4px; }
+.marke { font-family: var(--schrift-display); font-size: 20px; letter-spacing: -.02em; padding: 0 8px 16px; }
+.nav { padding: 9px 10px; border-radius: var(--radius-s); font-weight: 600; font-size: 14px; color: var(--tinte-2); display: flex; align-items: center; gap: 10px; }
+.nav i { width: 18px; height: 18px; border-radius: 6px; border: var(--kontur) solid currentColor; }
+.nav.an { background: var(--funke); color: #191b12; border: var(--kontur) solid var(--linie); box-shadow: var(--schatten-s); }
+.haupt { padding: 24px 28px 28px; display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.haupt-kopf { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+.haupt-kopf h1 { font-size: 40px; }
+.kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.kpi { text-align: left; background: var(--karte); border: var(--kontur) solid var(--linie); border-radius: var(--radius); padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; cursor: pointer; }
+.kpi[aria-pressed="true"] { background: var(--funke-weich); box-shadow: var(--schatten); }
+.kpi .zahl { font-size: 22px; }
+.raster { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 18px; align-items: start; }
+.seitenspalte { display: flex; flex-direction: column; gap: 12px; }
+.tabelle-wrap { background: var(--karte); border: var(--kontur) solid var(--linie); border-radius: var(--radius); overflow: hidden; }
+.tabelle-wrap h2 { font-family: var(--schrift-display); font-size: 19px; margin: 0; padding: 14px 16px 8px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: right; font-weight: 600; font-size: 11.5px; color: var(--tinte-2); padding: 6px 12px; border-bottom: 1px solid var(--linie-weich); white-space: nowrap; }
+td { text-align: right; padding: 9px 12px; border-bottom: 1px solid var(--linie-weich); font-family: var(--schrift-mono); font-size: 12.5px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+th:first-child, td:first-child, th:nth-child(2), td:nth-child(2), th:last-child, td:last-child { text-align: left; }
+td:first-child { font-family: var(--schrift-display); font-size: 16px; }
+td:nth-child(2) { font-family: var(--schrift-text); }
+tbody tr { cursor: pointer; }
+tbody tr:hover, tbody tr.aktiv { background: var(--funke-weich); }
+tr.wechsel td { border-top: 2px dashed var(--ki); }
+.tabelle-wrap .upload { margin: 12px 16px 16px; }
+.tabelle-wrap .toast { padding: 0 16px 14px; }
+
+/* Bescheid diff */
+.diff { background: var(--karte); border: var(--kontur) solid var(--linie); border-radius: var(--radius); box-shadow: var(--schatten); padding: 14px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.diff-kopf { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; flex-wrap: wrap; }
+.diff h2 { font-family: var(--schrift-display); font-size: 19px; letter-spacing: -.02em; margin: 0; }
+.zu { border: var(--kontur) solid var(--linie); background: var(--karte); border-radius: var(--radius-pille); width: 28px; height: 28px; cursor: pointer; font-weight: 700; line-height: 1; }
+.chiprow { display: flex; gap: 6px; flex-wrap: wrap; }
+.frist { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; background: var(--warn-weich); border: var(--kontur) solid var(--warn); border-radius: var(--radius-s); padding: 8px 10px; font-size: 13px; }
+.frist.vorbei { background: var(--grund); border-color: var(--linie-weich); color: var(--tinte-2); }
+.dz { font-family: var(--schrift-mono); font-size: 12px; font-variant-numeric: tabular-nums; border: 1px solid var(--linie-weich); border-radius: var(--radius-s); overflow: hidden; }
+.dz-wrap { overflow-x: auto; }
+.dg { background: var(--grund); padding: 5px 10px; font-family: var(--schrift-text); font-size: 11.5px; font-weight: 700; color: var(--tinte-2); letter-spacing: .04em; text-transform: uppercase; border-top: 1px solid var(--linie-weich); display: flex; justify-content: space-between; gap: 8px; }
+.dg:first-child { border-top: 0; }
+.fa { padding: 4px 10px 8px 10px; font-family: var(--schrift-text); font-size: 12.5px; color: var(--tinte-2); display: flex; flex-direction: column; gap: 2px; }
+.fa q { font-style: italic; color: var(--tinte); }
+.fa .w { font-family: var(--schrift-mono); font-size: 11.5px; color: var(--fehler); }
+.mehr { display: block; width: 100%; text-align: left; border: 0; border-top: 1px dashed var(--linie-weich); background: none; padding: 6px 10px; font-size: 12px; color: var(--ki-tinte); cursor: pointer; font-family: var(--schrift-text); }
+.folge { font-size: 10px; font-family: var(--schrift-mono); border: 1px solid var(--tinte-2); border-radius: 4px; padding: 0 4px; margin-left: 6px; color: var(--tinte-2); }
+.oeffnen { align-self: flex-start; display: inline-flex; gap: 8px; align-items: center; border: var(--kontur) solid var(--linie); background: var(--karte); border-radius: var(--radius-pille); padding: 6px 12px; font-weight: 700; font-size: 13px; cursor: pointer; box-shadow: var(--schatten-s); }
+.oeffnen .zaehler { background: var(--fehler); color: #fff; border-radius: var(--radius-pille); padding: 0 7px; font-size: 11.5px; }
+.oeffnen .zaehler.null { background: var(--ok); }
+.fuss { font-size: 11.5px; color: var(--tinte-2); }
+
+/* what's due, diff rows by effect, lessons for next year */
+.ansteht { display: flex; flex-direction: column; gap: 8px; }
+.haupt .ansteht { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.an-item { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 1px 10px; align-items: baseline; text-align: left; background: var(--karte); border: var(--kontur) solid var(--linie); border-radius: var(--radius-s); padding: 9px 12px; cursor: pointer; }
+.an-item.dringend { background: var(--warn-weich); border-color: var(--warn); box-shadow: var(--schatten-s); }
+.an-item .j { font-family: var(--schrift-display); font-size: 17px; grid-row: 1 / span 2; }
+.an-item strong { font-size: 13.5px; }
+.an-item .t { font-size: 12.5px; color: var(--tinte-2); grid-column: 2; }
+.kpi svg { width: 100%; height: 22px; display: block; }
+td.ab { color: var(--fehler); font-weight: 700; }
+td:last-child { font-family: var(--schrift-text); }
+.dr { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(62px, auto); gap: 10px; padding: 5px 10px; align-items: baseline; }
+.dr .pos { font-family: var(--schrift-text); font-size: 13px; min-width: 0; }
+.dr .werte { white-space: nowrap; }
+.dr .werte s { color: var(--tinte-2); }
+.dr .w { text-align: right; font-weight: 700; }
+.dr.schlecht { background: var(--fehler-weich); } .dr.schlecht .w { color: var(--fehler); }
+.dr.gut { background: var(--ok-weich); } .dr.gut .w { color: var(--ok); }
+.dr.gleich { color: var(--tinte-2); }
+.dr.kopfzeile { color: var(--tinte-2); font-family: var(--schrift-text); font-size: 11px; border-bottom: 1px solid var(--linie-weich); }
+.dr.kopfzeile .w { font-weight: 400; }
+.kette { padding: 7px 10px; border-top: 1px solid var(--linie-weich); font-family: var(--schrift-text); font-size: 12px; color: var(--tinte-2); line-height: 1.7; }
+.kette b { color: var(--tinte); white-space: nowrap; font-weight: 600; }
+.lehren { background: var(--funke-weich); border: var(--kontur) solid var(--linie); border-radius: var(--radius-s); padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+.lehren h3 { margin: 0; font-family: var(--schrift-display); font-size: 16px; }
+.lehre { display: flex; flex-direction: column; gap: 3px; font-size: 13px; border-top: 1px solid var(--linie-weich); padding-top: 8px; }
+.lehre .pille { align-self: flex-start; background: var(--karte); }
+
 /* notes */
 .notizen { display: flex; flex-direction: column; gap: 18px; min-width: 0; max-width: 62ch; }
+.buehne.breit .notizen { max-width: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px 28px; }
+.buehne.breit .notizen > :first-child, .buehne.breit .notizen > p.intro { grid-column: 1 / -1; max-width: 70ch; }
 .notizen h2 { font-family: var(--schrift-display); font-size: 28px; letter-spacing: -.03em; line-height: 1.05; margin: 0; text-wrap: balance; }
 .notizen p { margin: 0; color: var(--tinte-2); }
 .notiz { border-left: 3px solid var(--funke); padding-left: 14px; display: flex; flex-direction: column; gap: 4px; }
 .notiz h3 { margin: 0; font-size: 15px; }
 .notiz .ref { font-family: var(--schrift-mono); font-size: 11px; color: var(--tinte-2); letter-spacing: .06em; }
 .notiz p { font-size: 14px; }
-@media (prefers-reduced-motion: no-preference) { .chip, .knopf, .jzeile { transition: background .12s, transform .12s; } }
+@media (prefers-reduced-motion: no-preference) { .chip, .knopf, .jzeile, .kpi, .seg button { transition: background .12s, transform .12s; } }
 </style>
 
-<div class="buehne">
-  <div class="telefon" aria-label="Mock des Tabs Verlauf">
-    <div class="screen">
+<div class="leiste">
+  <span class="titel">Verlauf-Tab · Mock</span>
+  <div class="seg" role="group" aria-label="Ansicht">
+    <button type="button" data-ansicht="handy">Handy</button>
+    <button type="button" data-ansicht="desktop">Tablet / Desktop</button>
+  </div>
+</div>
+
+<div class="buehne" id="buehne">
+  <!-- phone -->
+  <div class="telefon" id="telefon" aria-label="Mock des Tabs Verlauf auf dem Handy">
+    <div class="screen" data-root>
       <div class="kopf">
-        <div>
-          <div class="eyebrow">Alle Steuerjahre</div>
-          <h1>Verlauf</h1>
-        </div>
+        <div><div class="eyebrow">Alle Steuerjahre</div><h1>Verlauf</h1></div>
         <span class="beispiel">Beispieldaten</span>
       </div>
-
-      <div class="held" id="held"></div>
-
-      <div class="chips" role="tablist" aria-label="Kennzahl wählen" id="chips"></div>
-
-      <section class="karte" aria-live="polite">
-        <h2 id="k-titel"></h2>
-        <p class="sub" id="k-sub"></p>
-        <svg class="chart" id="chart" viewBox="0 0 360 220" role="img"></svg>
-        <div class="legende" id="legende"></div>
-        <div class="detail" id="detail"></div>
-        <div class="eule"><b>Eule</b><span id="eule"></span></div>
-        <div class="stufen">
-          <span class="pille p-bescheid">Bescheid</span>
-          <span class="pille p-schaetzung">Schätzung</span>
-          <span class="pille p-offen">offen</span>
-          <span>Tippe ein Jahr für Details.</span>
-        </div>
-      </section>
-
+      <div class="ansteht" data-r="ansteht" aria-label="Was ansteht"></div>
+      <div class="held" data-r="held"></div>
       <section class="liste" aria-label="Steuererklärungen">
-        <h2>Deine Steuerjahre</h2>
-        <div id="jahre"></div>
-        <div class="upload">
-          <p><strong>2020 oder früher ergänzen</strong>Lade einen alten Bescheid hoch, die Eule liest die Eckwerte.</p>
-          <button class="knopf" id="hochladen" type="button">Bescheid hochladen</button>
-        </div>
-        <div class="toast" id="toast" hidden></div>
+        <h2>Eure Steuerjahre</h2>
+        <div data-r="jahre"></div>
       </section>
+      <section class="diff" data-r="diff" aria-live="polite" hidden></section>
+      <div class="eyebrow">Entwicklung über die Jahre</div>
+      <div class="seg klein" role="group" aria-label="Für wen" data-r="personen"></div>
+      <div class="chips" role="tablist" aria-label="Kennzahl wählen" data-r="chips"></div>
+      <section class="karte" aria-live="polite">
+        <h2 data-r="titel"></h2>
+        <p class="sub" data-r="sub"></p>
+        <div class="hinweis" data-r="hinweis" hidden></div>
+        <svg class="chart" data-r="chart" data-w="360" data-h="230" viewBox="0 0 360 230" role="img"></svg>
+        <div class="legende" data-r="legende"></div>
+        <div class="detail" data-r="detail"></div>
+        <div class="eule"><b>Eule</b><span data-r="eule"></span></div>
+        <div class="stufen" data-r="stufen"></div>
+      </section>
+      <div class="upload">
+        <p><strong>2020 oder früher ergänzen</strong>Alten Bescheid hochladen, wie im Belege-Tab. Die Eule liest die Eckwerte.</p>
+        <button class="knopf" type="button" data-upload>Bescheid hochladen</button>
+      </div>
+      <div class="toast" data-r="toast" hidden></div>
     </div>
     <nav class="tabs" aria-label="Tab-Leiste">
       <div><i></i>Cockpit</div><div><i></i>Eule</div><div><i></i>Belege</div><div class="an"><i></i>Verlauf</div><div><i></i>Profil</div>
     </nav>
+  </div>
+
+  <!-- desktop -->
+  <div id="fenster-wrap">
+    <div class="fenster" aria-label="Mock des Tabs Verlauf auf Tablet und Desktop">
+      <nav class="seite" aria-label="Navigation">
+        <div class="marke">Steuereule</div>
+        <div class="nav"><i></i>Cockpit</div><div class="nav"><i></i>Eule</div><div class="nav"><i></i>Belege</div>
+        <div class="nav an"><i></i>Verlauf</div><div class="nav"><i></i>Profil</div>
+      </nav>
+      <div class="haupt" data-root>
+        <div class="haupt-kopf">
+          <div><div class="eyebrow">Alle Steuerjahre · 2021–2026</div><h1>Verlauf</h1></div>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <span class="beispiel">Beispieldaten</span>
+            <div class="seg" role="group" aria-label="Für wen" data-r="personen"></div>
+          </div>
+        </div>
+        <div class="ansteht" data-r="ansteht" aria-label="Was ansteht"></div>
+        <section class="tabelle-wrap" aria-label="Steuererklärungen">
+          <h2>Alle Jahre: erklärt und festgesetzt</h2>
+          <div style="overflow-x:auto"><table data-r="tabelle"></table></div>
+        </section>
+        <section class="diff" data-r="diff" aria-live="polite" hidden></section>
+        <div class="eyebrow">Entwicklung über die Jahre</div>
+        <div class="kpis" data-r="kpis"></div>
+        <div class="raster">
+          <section class="karte" aria-live="polite">
+            <h2 data-r="titel"></h2>
+            <p class="sub" data-r="sub"></p>
+            <div class="hinweis" data-r="hinweis" hidden></div>
+            <svg class="chart" data-r="chart" data-w="540" data-h="260" viewBox="0 0 540 260" role="img"></svg>
+            <div class="legende" data-r="legende"></div>
+            <div class="stufen" data-r="stufen"></div>
+          </section>
+          <div class="seitenspalte">
+            <div class="detail" data-r="detail"></div>
+            <div class="eule"><b>Eule</b><span data-r="eule"></span></div>
+          </div>
+        </div>
+        <div class="upload">
+          <p><strong>2020 oder früher ergänzen</strong>Alten Bescheid hochladen, derselbe Ablauf wie im Belege-Tab. Die Eule liest die Eckwerte, sie bleiben Entwürfe, bis ihr sie übernehmt.</p>
+          <button class="knopf" type="button" data-upload>Bescheid hochladen</button>
+        </div>
+        <div class="toast" data-r="toast" hidden></div>
+      </div>
+    </div>
   </div>
 
   <aside class="notizen">
@@ -165,278 +307,445 @@ svg .jahr:focus-visible .hit, svg .jahr.aktiv .hit { fill: var(--funke-weich); }
       <div class="eyebrow">Mock zu ADR-0098</div>
       <h2>Ein Tab für alle Jahre, mit ehrlicher Herkunft je Zahl</h2>
     </div>
-    <p>Das Cockpit bleibt ein einzelnes Steuerjahr. Der neue Tab zeigt, wie sich Einkommen, Abzüge, Werbungskosten und Erstattung über die Jahre entwickeln. Alle Zahlen sind Beispiele einer erfundenen Angestellten.</p>
-    <div class="notiz"><span class="ref">§ 1 · Ort</span><h3>Fünfter Tab „Verlauf“</h3><p>Die bisherige Liste der Erklärungen zieht unter die Diagramme. Ein Tipp auf ein Jahr öffnet dessen Cockpit.</p></div>
-    <div class="notiz"><span class="ref">§ 2 · Kennzahlen</span><h3>Vier Ansichten</h3><p>Brutto → Netto (mit Netto nach Erstattung), Werbungskosten nach Art gegen den Pauschbetrag, Erstattung/Nachzahlung mit der damaligen Schätzung, Steuerquote effektiv und Grenzsteuersatz.</p></div>
-    <div class="notiz"><span class="ref">§ 3 · Ehrlichkeit</span><h3>Bescheid, Schätzung, offen</h3><p>Volle Balken nur mit Bescheid. 2025 ist schraffiert und als Spanne beschriftet, nie als Mittelwert. 2026 bleibt eine Lücke. Vorjahres-Veränderungen gibt es nur, wenn beide Jahre einen Wert haben.</p></div>
-    <div class="notiz"><span class="ref">§ 4 · Altjahre</span><h3>Eckjahr aus altem Bescheid</h3><p>2021 kam nur über den Bescheid in die App: Werbungskosten und Erstattung sind da, Brutto und Abzüge nicht. Der Verlauf sagt das, statt zu raten, und bietet die Lohnsteuerbescheinigung an.</p></div>
-    <div class="notiz"><span class="ref">§ 5 · Rechnung</span><h3>Kern rechnet, nichts wird gespeichert</h3><p>Jeder Wert kommt aus demselben Berechnungs-Kern wie das Cockpit, je Nutzer auf Abruf. Kein Vergleich mit anderen Nutzern.</p></div>
-    <div class="notiz"><span class="ref">§ 6 · Haushalt</span><h3>Nicht im Mock</h3><p>Bei Zusammenveranlagung kommt ein Umschalter „Wir beide · Person A · Person B“ dazu; ein Wechsel der Veranlagungsart wird im Diagramm markiert.</p></div>
+    <p class="intro">Das Cockpit bleibt ein einzelnes Steuerjahr. Der neue Tab zeigt, wie sich Einkommen, Abzüge, Werbungskosten und Erstattung über die Jahre entwickeln. Beispiel: ein erfundenes Paar, 2021 und 2022 einzeln veranlagt, ab 2023 zusammen.</p>
+    <div class="notiz"><span class="ref">§ 1 · Ort</span><h3>Fünfter Tab „Verlauf“</h3><p>Auf dem Handy unten in der Tab-Leiste, auf Tablet und Desktop in der Seitenleiste. Oben steht, was ansteht (Frist, wartender Bescheid, fehlende Unterlagen), darunter alle Jahre mit erklärt und festgesetzt. Die Diagramme folgen als Vertiefung.</p></div>
+    <div class="notiz"><span class="ref">§ 2 · Kennzahlen</span><h3>Vier Ansichten</h3><p>Erstattung mit der Marke „erklärt“ (Standard), Werbungskosten nach Art gegen den Pauschbetrag, Brutto → Netto, Steuerquote und Grenzsteuersatz. Auf dem Desktop wählen die vier Kacheln die Kennzahl, jede mit Mini-Verlauf und alle für 2025.</p></div>
+    <div class="notiz"><span class="ref">§ 3 · Ehrlichkeit</span><h3>Bescheid, Schätzung, offen</h3><p>Brutto und Netto aus der Lohnsteuerbescheinigung sind Fakten, auch 2025. Was vom Bescheid abhängt, ist 2025 schraffiert und als Spanne beschriftet. 2026 bleibt eine Lücke.</p></div>
+    <div class="notiz"><span class="ref">§ 4 · Altjahre</span><h3>Eckjahr aus altem Bescheid</h3><p>Kein eigener Upload: Der Knopf im Verlauf öffnet denselben Beleg-Ablauf wie der Belege-Tab, mit der Art „Steuerbescheid“. Neu ist nur, dass ein Bescheid für ein Jahr ohne Erklärung ein Eckjahr anlegt, egal woher er kam. 2021 kam so in die App: Werbungskosten als Summe ohne Aufteilung, Erstattung und Steuer sind da, Brutto nicht.</p></div>
+    <div class="notiz"><span class="ref">§ 5 · Rechnung</span><h3>Zahlen aus dem Kern</h3><p>2022–2025 mit <code>taxEstimateEmployee</code> und <code>estimateMarriedCouple</code> aus <code>packages/core</code> gerechnet. Bescheid-Werte im Mock sind die Mitte der Kern-Spanne. 2021 hat im Kern keinen Tarif, die Eckwerte sind frei gewählt.</p></div>
+    <div class="notiz"><span class="ref">§ 6 · Haushalt</span><h3>Wir beide · Person A · Person B</h3><p>Brutto → Netto und Werbungskosten gibt es je Person. Erstattung und Steuerquote nur gemeinsam. Der Wechsel zur Zusammenveranlagung 2023 ist markiert, und dort fällt der Vorjahresvergleich weg.</p></div>
+    <div class="notiz"><span class="ref">§ 8 · Bescheid-Abgleich</span><h3>Erklärung ↔ Bescheid, nach Wirkung</h3><p>Zuerst nur, was das Finanzamt geändert hat: erklärt → Bescheid, rechts die Wirkung auf die Erstattung, gefärbt danach, ob sie euch nützt oder kostet. Folgeänderungen stehen als eine Kette, die Formularansicht ist eingeklappt. Daneben die Einspruchsfrist. Eine Zeilenform für alle Breiten.</p></div>
+    <div class="notiz"><span class="ref">§ 8 · Lehren</span><h3>Fürs nächste Mal</h3><p>Jede Abweichung hinterlässt eine Lehre: was anerkannt wurde, ob das Folgejahr dieselbe Position wieder so erklärt, und wo sie im nächsten Jahr in der Maske auftaucht. Ein eingereichtes Jahr ohne Bescheid (2025) zeigt genau diese Positionen. Fakten aus dem Bescheid, keine Vorhersage (§ 7).</p></div>
   </aside>
 </div>
 
 <script>
-const eur = n => n.toLocaleString('de-DE') + ' €'
+const fmt = n => Math.round(n).toLocaleString('de-DE')
+const eur = n => fmt(n) + ' €'
 const pct = n => n.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' %'
-const signed = n => (n > 0 ? '+' : n < 0 ? '−' : '±') + Math.abs(n).toLocaleString('de-DE') + ' €'
-
-// Example figures (fictional employee). stufe: bescheid | schaetzung | offen; eck = year added from an old Bescheid only.
-const JAHRE = [
-  { jahr: 2021, stufe: 'bescheid', eck: true, brutto: null, lst: null, kist: null, sv: null,
-    wk: { fahrt: 1400, ho: 300, am: 150, sonst: 0 }, pausch: 1000, erst: 640, est: 5910, grenz: null },
-  { jahr: 2022, stufe: 'bescheid', eck: true, brutto: 48200, lst: 7100, kist: 570, sv: 9880,
-    wk: { fahrt: 1540, ho: 600, am: 240, sonst: 0 }, pausch: 1200, erst: 812, est: 6288, grenz: 33.2 },
-  { jahr: 2023, stufe: 'bescheid', brutto: 51600, lst: 7700, kist: 616, sv: 10630,
-    wk: { fahrt: 680, ho: 300, am: 140, sonst: 0 }, pausch: 1230, erst: 1046, est: 6654, grenz: 33.6, schaetzung: [950, 1150] },
-  { jahr: 2024, stufe: 'bescheid', brutto: 54900, lst: 8350, kist: 668, sv: 11420,
-    wk: { fahrt: 1320, ho: 1260, am: 380, sonst: 0 }, pausch: 1230, erst: 1388, est: 6962, grenz: 34.1, schaetzung: [1250, 1500] },
-  { jahr: 2025, stufe: 'schaetzung', brutto: 58300, lst: 9150, kist: 732, sv: 12300,
-    wk: { fahrt: 1380, ho: 1260, am: 520, sonst: 250 }, pausch: 1230, erst: [1180, 1420], est: [7730, 7970], grenz: 34.6 },
-  { jahr: 2026, stufe: 'offen', fehlt: 'Lohnsteuerbescheinigung 2026 (kommt ab Februar 2027)' },
-]
-const netto = j => j.brutto == null ? null : j.brutto - j.lst - j.kist - j.sv
-const wkSumme = j => j.wk ? j.wk.fahrt + j.wk.ho + j.wk.am + j.wk.sonst : null
-const vor = j => JAHRE.find(x => x.jahr === j.jahr - 1)
+const signed = n => (n > 0 ? '+' : n < 0 ? '−' : '±') + fmt(Math.abs(n)) + ' €'
+const signedPp = n => (n > 0 ? '+' : n < 0 ? '−' : '±') + Math.abs(n).toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' Pp.'
 const isRange = v => Array.isArray(v)
+const showVal = (v, f = eur) => v == null ? '–' : isRange(v) ? f(v[0]) + ' – ' + f(v[1]) : f(v)
+const k1 = n => (n / 1000).toLocaleString('de-DE', { maximumFractionDigits: 1 }) + 'k'
 
-const STUFE = { bescheid: ['p-bescheid', 'Bescheid'], schaetzung: ['p-schaetzung', 'Schätzung'], offen: ['p-offen', 'offen'] }
-const pille = j => j.eck ? '<span class="pille p-eck">Eckjahr · Bescheid</span>' : `<span class="pille ${STUFE[j.stufe][0]}">${STUFE[j.stufe][1]}</span>`
+// Example household. 2022–2025 computed with packages/core (taxEstimateEmployee, estimateMarriedCouple):
+// Lohnsteuer = single-tax with only the lump sum (Steuerklasse I/IV); Bescheid values = middle of the core range.
+const PAUSCH = { 2021: 1000, 2022: 1200, 2023: 1230, 2024: 1230, 2025: 1230, 2026: 1230 }
+const JAHRE = [
+  { jahr: 2021, stufe: 'bescheid', eck: true, veranlagung: 'einzel',
+    A: { brutto: null, wkTotal: 1850, est: 6410, erst: 280 }, B: { brutto: null, wkTotal: 1000, est: 4020, erst: -60 } },
+  { jahr: 2022, stufe: 'bescheid', veranlagung: 'einzel',
+    A: { brutto: 48200, lst: 7457, sv: 9880, wk: { fahrt: 1540, ho: 600, am: 240, sonst: 0 }, est: 7065, erst: 393 },
+    B: { brutto: 36400, lst: 4444, sv: 7460, wk: { fahrt: 980, ho: 0, am: 120, sonst: 0 }, est: 4444, erst: 0 } },
+  { jahr: 2023, stufe: 'bescheid', veranlagung: 'zusammen', est: 12390, erst: 210, grenz: 31, schaetzung: [150, 420],
+    A: { brutto: 51600, lst: 8014, sv: 10630, wk: { fahrt: 680, ho: 300, am: 140, sonst: 0 } },
+    B: { brutto: 38100, lst: 4586, sv: 7850, wk: { fahrt: 1020, ho: 420, am: 90, sonst: 0 } } },
+  // 2024: the Finanzamt cut Person A's Werbungskosten by 300 € (core: erklärt zvE 70.971 / ESt 12.078 / +901 €, festgesetzt 71.271 / 12.170 / +809 €).
+  { jahr: 2024, stufe: 'bescheid', veranlagung: 'zusammen', est: 12170, erst: 809, grenz: 31, schaetzung: [700, 1050],
+    A: { brutto: 54900, lst: 8489, sv: 11420, wk: { fahrt: 1320, ho: 1260, am: 380, sonst: 0 } },
+    B: { brutto: 39000, lst: 4490, sv: 8110, wk: { fahrt: 1050, ho: 720, am: 160, sonst: 0 } } },
+  { jahr: 2025, stufe: 'schaetzung', veranlagung: 'zusammen', est: [12870, 13000], erst: [1066, 1196], grenz: 31,
+    A: { brutto: 58300, lst: 9205, sv: 12300, wk: { fahrt: 1380, ho: 1260, am: 520, sonst: 250 } },
+    B: { brutto: 41200, lst: 4861, sv: 8690, wk: { fahrt: 1080, ho: 840, am: 210, sonst: 0 } } },
+  { jahr: 2026, stufe: 'offen', veranlagung: 'zusammen', fehlt: 'die Lohnsteuerbescheinigungen 2026 von euch beiden (ab Februar 2027)' },
+]
+// Bescheid ↔ Erklärung (ADR-0098 § 8). Left side = the version frozen at submission.
+const ABGLEICH = {
+  2024: { bescheidVom: '02.11.2026', eingereicht: '21.09.2026', frist: { bis: 'Mo, 07.12.2026', tage: 19, laeuft: true },
+    gruppen: [
+      { name: 'Einkünfte', zeilen: [
+        { pos: 'Bruttoarbeitslohn · Person A', e: 54900, f: 54900 },
+        { pos: 'Bruttoarbeitslohn · Person B', e: 39000, f: 39000 } ] },
+      { name: 'Werbungskosten · Person A', zeilen: [
+        { pos: 'Fahrtweg (Entfernungspauschale)', e: 1320, f: 1320 },
+        { pos: 'Homeoffice-Pauschale', e: 1260, f: 1080, fa: 'Die Tätigkeit in der häuslichen Wohnung wurde an 180 statt 210 Tagen berücksichtigt.', wirkung: -56,
+          lehre: { was: '180 statt 210 Tage anerkannt', folgejahr: '2025 habt ihr wieder 1.260 € (210 Tage) erklärt.', tipp: 'Homeoffice-Tage 2026 laufend festhalten, zum Beispiel im Kalender oder mit einer Bescheinigung des Arbeitgebers.', maske: 'Homeoffice' } },
+        { pos: 'Arbeitsmittel', e: 380, f: 260, fa: 'Aufwendungen für das Mobiltelefon wurden wegen privater Mitbenutzung zu 50 % anerkannt.', wirkung: -37,
+          lehre: { was: 'Mobiltelefon nur zu 50 % anerkannt', folgejahr: '2025 stehen 520 € Arbeitsmittel in der Erklärung, das Telefon wieder voll.', tipp: 'Den beruflichen Anteil des Telefons 2026 belegen; ohne Nachweis hat das Finanzamt 50 % anerkannt.', maske: 'Arbeitsmittel' } },
+        { pos: 'Summe Werbungskosten A', e: 2960, f: 2660, folge: true } ] },
+      { name: 'Werbungskosten · Person B', zeilen: [
+        { pos: 'Summe Werbungskosten B', e: 1930, f: 1930 } ] },
+      { name: 'Vorsorge und Sonderausgaben', zeilen: [
+        { pos: 'Vorsorgeaufwendungen', e: 17968, f: 17968 },
+        { pos: 'Sonderausgaben-Pauschbetrag', e: 72, f: 72 } ] },
+      { name: 'Steuer', zeilen: [
+        { pos: 'Zu versteuerndes Einkommen', e: 70971, f: 71271, folge: true },
+        { pos: 'Einkommensteuer (Splitting)', e: 12078, f: 12170, folge: true },
+        { pos: 'Einbehaltene Lohnsteuer', e: 12979, f: 12979 },
+        { pos: 'Erstattung', e: 901, f: 809, folge: true, erst: true } ] },
+    ] },
+  2023: { bescheidVom: '22.05.2024', eingereicht: '18.03.2024', frist: { bis: 'Mo, 24.06.2024', laeuft: false }, gleich: 12 },
+  2022: { bescheidVom: '07.06.2023', eingereicht: '02.04.2023', frist: { bis: 'Di, 11.07.2023', laeuft: false }, gleich: 9, einzeln: true },
+}
+const eigeneZeilen = jahr => { const a = ABGLEICH[jahr]; return !a || !a.gruppen ? [] : a.gruppen.flatMap(g => g.zeilen).filter(z => z.e !== z.f && !z.folge) }
+const abweichungen = jahr => eigeneZeilen(jahr).length
+// Declared refund of a year filed in Steuereule; null when there is no filing to compare against (Eckjahr, not yet assessed).
+const erklaert = j => { const a = ABGLEICH[j.jahr]; if (!a) return null
+  return a.gruppen ? a.gruppen.flatMap(g => g.zeilen).find(z => z.erst).e : hh(j).erst }
+const mitte = v => v == null ? null : isRange(v) ? (v[0] + v[1]) / 2 : v
+let diffOffen = true, aufgeklappt = new Set()
+const vor = j => JAHRE.find(x => x.jahr === j.jahr - 1)
+const PERSONEN = { beide: 'Wir beide', A: 'Person A', B: 'Person B' }
+const ppl = p => p === 'beide' ? ['A', 'B'] : [p]
+const sumP = (j, p, f) => { if (j.stufe === 'offen') return null; const v = ppl(p).map(k => f(j[k])); return v.some(x => x == null) ? null : v.reduce((a, b) => a + b, 0) }
+const brutto = (j, p) => sumP(j, p, x => x.brutto)
+const lst = (j, p) => sumP(j, p, x => x.brutto == null ? null : x.lst)
+const sv = (j, p) => sumP(j, p, x => x.brutto == null ? null : x.sv)
+const netto = (j, p) => brutto(j, p) == null ? null : brutto(j, p) - lst(j, p) - sv(j, p)
+const wkOf = x => x.wk ? x.wk.fahrt + x.wk.ho + x.wk.am + x.wk.sonst : x.wkTotal
+const wkParts = (j, p) => { if (j.stufe === 'offen') return null
+  if (j.eck) return { bescheid: sumP(j, p, x => x.wkTotal) }
+  const o = { fahrt: 0, ho: 0, am: 0, sonst: 0 }; ppl(p).forEach(k => { for (const c in o) o[c] += j[k].wk[c] }); return o }
+const wkSum = (j, p) => sumP(j, p, wkOf)
+const pausch = (j, p) => PAUSCH[j.jahr] * ppl(p).length
+const wkAngesetzt = (j, p) => j.stufe === 'offen' ? null : ppl(p).reduce((a, k) => a + Math.max(wkOf(j[k]), PAUSCH[j.jahr]), 0)
+// Household figures (Erstattung, Steuer, Grenzsteuersatz) exist only together (ADR-0098 § 6).
+const hh = j => { if (j.stufe === 'offen') return null
+  if (j.veranlagung === 'zusammen') return { est: j.est, erst: j.erst, grenz: j.grenz, schaetzung: j.schaetzung }
+  return { est: j.A.est + j.B.est, erst: j.A.erst + j.B.erst, grenz: null, einzeln: true } }
+const quote = j => { const h = hh(j), b = brutto(j, 'beide'); if (!h || b == null) return null
+  return isRange(h.est) ? [h.est[0] / b * 100, h.est[1] / b * 100] : h.est / b * 100 }
+const vergleichbar = j => vor(j) && vor(j).veranlagung === j.veranlagung
 
-function delta(cur, prev, fmt) {
-  if (cur == null || prev == null) return '<span class="trend">kein Vorjahresvergleich</span>'
+function delta(cur, prev, f = signed, grund) {
+  if (cur == null || prev == null) return `<span class="trend">${grund || 'kein Vorjahresvergleich'}</span>`
   const lo = (isRange(cur) ? cur[0] : cur) - (isRange(prev) ? prev[1] : prev)
   const hi = (isRange(cur) ? cur[1] : cur) - (isRange(prev) ? prev[0] : prev)
-  const cls = lo > 0 ? 'auf' : hi < 0 ? 'ab' : ''
-  return `<span class="trend ${cls}">${lo === hi ? fmt(lo) : fmt(lo) + ' bis ' + fmt(hi)} zum Vorjahr</span>`
+  // A falling tax rate is good news: Pp. deltas swap the colours.
+  const gut = f === signedPp ? hi < 0 : lo > 0, schlecht = f === signedPp ? lo > 0 : hi < 0
+  const cls = gut ? 'auf' : schlecht ? 'ab' : ''
+  return `<span class="trend ${cls}">${Math.abs(lo - hi) < 1e-9 ? f(lo) : f(lo) + ' bis ' + f(hi)} zum Vorjahr</span>`
 }
+const hhDelta = (j, get, f) => vergleichbar(j) ? delta(get(j), get(vor(j)), f) : delta(null, null, f, vor(j) ? 'kein Vergleich: Veranlagungsart gewechselt' : undefined)
 
+const REIHENFOLGE = ['erst', 'wk', 'netto', 'quote']
+let metrik = 'erst', auswahl = 2024, person = 'beide', ansicht = 'handy'
+const HAUSHALT = m => m === 'erst' || m === 'quote'
+const pEff = () => HAUSHALT(metrik) ? 'beide' : person
+
+// ---------- texts ----------
+const wer = p => p === 'beide' ? 'euer' : 'das von ' + PERSONEN[p]
 const METRIKEN = {
-  netto: {
-    label: 'Brutto → Netto', titel: 'Vom Brutto zum Netto',
-    sub: 'Gestapelt: was vom Lohn übrig bleibt, über dem Balken die Netto-Quote.',
-    legende: [['var(--funke)', 'Netto'], ['var(--steuer)', 'Lohnsteuer + KiSt'], ['var(--sv)', 'Sozialversicherung']],
-    eule: 'Dein Brutto stieg seit 2022 um 21 %, dein Netto um 18 %. Der Anteil, der dir bleibt, sank von 63,6 % auf 62,0 %, vor allem durch höhere Sozialabgaben.',
-  },
-  wk: {
-    label: 'Werbungskosten', titel: 'Werbungskosten je Jahr',
+  netto: { label: 'Brutto → Netto', titel: 'Vom Brutto zum Netto',
+    sub: 'Gestapelt aus der Lohnsteuerbescheinigung; über dem Balken der Anteil, der netto bleibt.',
+    legende: () => [['var(--funke)', 'Netto'], ['var(--steuer)', 'Lohnsteuer'], ['var(--sv)', 'Sozialversicherung']],
+    eule(p) { const a = JAHRE[1], b = JAHRE[4]
+      const gb = (brutto(b, p) / brutto(a, p) - 1) * 100, gn = (netto(b, p) / netto(a, p) - 1) * 100
+      const qa = netto(a, p) / brutto(a, p) * 100, qb = netto(b, p) / brutto(b, p) * 100
+      const W = wer(p); return `${W[0].toUpperCase() + W.slice(1)} Brutto stieg von 2022 bis 2025 um ${pct(gb)}, das Netto um ${pct(gn)}. Vom Brutto blieben 2025 ${pct(qb)} netto, 2022 waren es ${pct(qa)}.` } },
+  wk: { label: 'Werbungskosten', titel: 'Werbungskosten je Jahr',
     sub: 'Nach Art gestapelt; die gestrichelte Linie ist der Arbeitnehmer-Pauschbetrag.',
-    legende: [['var(--wk-fahrt)', 'Fahrtweg'], ['var(--wk-ho)', 'Homeoffice'], ['var(--wk-am)', 'Arbeitsmittel'], ['var(--wk-sonst)', 'Sonstiges']],
-    eule: '2023 lagen deine Werbungskosten mit 1.120 € unter dem Pauschbetrag von 1.230 €. Gezählt hat also der Pauschbetrag. Seit 2024 bringt das Homeoffice am meisten.',
-  },
-  erst: {
-    label: 'Erstattung', titel: 'Erstattung und Nachzahlung',
-    sub: 'Aus dem Bescheid; die Klammer zeigt, was die Eule vorher geschätzt hatte.',
-    legende: [['var(--ok)', 'Erstattung laut Bescheid'], ['var(--warn)', 'Schätzung (Spanne)']],
-    eule: 'Deine Erstattung ist seit 2021 jedes Jahr gestiegen. 2023 und 2024 lag der Bescheid innerhalb der Spanne, die die Eule geschätzt hatte.',
-  },
-  quote: {
-    label: 'Steuerquote', titel: 'Wie viel Steuer auf dein Brutto',
-    sub: 'Effektiv: festgesetzte Einkommensteuer ÷ Brutto. Dünn: dein Grenzsteuersatz.',
-    legende: [['var(--tinte)', 'Steuerquote effektiv'], ['var(--ki)', 'Grenzsteuersatz']],
-    eule: 'Von jedem zusätzlichen Euro gehen inzwischen rund 35 Cent an Einkommensteuer, im Schnitt zahlst du aber nur etwa 13 %.',
-  },
+    legende: () => [['var(--wk-fahrt)', 'Fahrtweg'], ['var(--wk-ho)', 'Homeoffice'], ['var(--wk-am)', 'Arbeitsmittel'], ['var(--wk-sonst)', 'Sonstiges'], ['var(--wk-bescheid)', 'laut Bescheid, ohne Aufteilung']],
+    eule(p) { const unter = []
+      JAHRE.filter(j => j.stufe !== 'offen').forEach(j => ppl(p).forEach(k => { if (wkOf(j[k]) < PAUSCH[j.jahr]) unter.push(`${PERSONEN[k]} ${j.jahr} (${eur(wkOf(j[k]))})`) }))
+      const w = wkParts(JAHRE[4], p), top = Object.entries(w).sort((x, y) => y[1] - x[1])[0]
+      const name = { fahrt: 'der Fahrtweg', ho: 'das Homeoffice', am: 'die Arbeitsmittel', sonst: 'Sonstiges' }[top[0]]
+      return (unter.length ? `Unter dem Pauschbetrag lagen ${unter.join(' und ')}; dort hat der Pauschbetrag gezählt. ` : 'Ihr lagt jedes Jahr über dem Pauschbetrag. ') + `2025 bringt ${name} am meisten (${eur(top[1])}).` } },
+  erst: { label: 'Erstattung', titel: 'Erstattung und Nachzahlung',
+    sub: 'Für euch beide. Der Strich ist, was ihr erklärt hattet; die rote Fläche hat das Finanzamt gekürzt.',
+    legende: () => [['var(--ok)', 'Erstattung laut Bescheid'], ['var(--fehler-weich)', 'vom Finanzamt gekürzt'], ['var(--warn)', 'Schätzung (Spanne)']],
+    eule() { const mit = JAHRE.filter(j => j.stufe === 'bescheid' && erklaert(j) != null), anders = mit.filter(j => hh(j).erst !== erklaert(j))
+      return `Von ${mit.length} Erklärungen aus Steuereule kamen ${mit.length - anders.length} wie erklärt zurück. `
+        + anders.map(j => `${j.jahr} hat das Finanzamt ${eur(erklaert(j) - hh(j).erst)} gekürzt. `).join('')
+        + `Für 2025 schätzt die Eule ${showVal(JAHRE[4].erst)}. 2021 und 2022 sind die Summe zweier Einzelerklärungen.` } },
+  quote: { label: 'Steuerquote', titel: 'Wie viel Steuer auf euer Brutto',
+    sub: 'Effektiv: festgesetzte Einkommensteuer ÷ Brutto. Dünn: euer Grenzsteuersatz (Splitting).',
+    legende: () => [['var(--tinte)', 'Steuerquote effektiv'], ['var(--ki)', 'Grenzsteuersatz']],
+    eule() { return `Von jedem zusätzlichen Euro gehen bei euch rund ${JAHRE[3].grenz} Cent an Einkommensteuer, im Schnitt zahlt ihr ${pct(quote(JAHRE[3]))} (2024). 2024 sank die Quote, weil eure Werbungskosten stärker stiegen als das Brutto.` } },
 }
 
-let metrik = 'netto', auswahl = 2025
-
-const X0 = 34, X1 = 352, Y0 = 18, Y1 = 186
-const slot = i => X0 + (X1 - X0) / JAHRE.length * i
-const slotW = (X1 - X0) / JAHRE.length
+// ---------- chart ----------
 const el = (tag, attrs, inner = '') => `<${tag} ${Object.entries(attrs).map(([k, v]) => `${k}="${v}"`).join(' ')}>${inner}</${tag}>`
+const DEFS = `<defs><pattern id="schraffur" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+  <rect width="5" height="5" fill="var(--warn-weich)"/><line x1="0" y1="0" x2="0" y2="5" stroke="var(--warn)" stroke-width="2"/></pattern></defs>`
+function niceMax(v) { for (const s of [100, 200, 250, 500, 1000, 2000, 2500, 5000, 10000, 20000, 25000, 50000]) if (v / s <= 4.6) return { max: Math.ceil(v / s) * s, step: s }; return { max: v, step: v / 4 } }
 
-function axis(max, ticks, fmt) {
-  let s = ''
-  ticks.forEach(t => { const y = Y1 - (t / max) * (Y1 - Y0)
-    s += el('line', { x1: X0, x2: X1, y1: y, y2: y, stroke: 'var(--linie-weich)', 'stroke-width': 1 })
-    s += el('text', { x: X0 - 4, y: y + 3, 'text-anchor': 'end' }, fmt(t)) })
+function chart(W, H) {
+  const n = JAHRE.length, X0 = 40, X1 = W - 8, Y0 = 26, Y1 = H - 30, sw = (X1 - X0) / n, bw = Math.min(44, sw * 0.55)
+  const slot = i => X0 + sw * i, cxOf = i => slot(i) + sw / 2
+  const p = pEff()
+  let max, step, ticks, tickFmt
+  const scale = (v, f) => { ({ max, step } = niceMax(v)); ticks = []; for (let t = 0; t <= max + 1e-9; t += step) ticks.push(t); tickFmt = f }
+  if (metrik === 'netto') scale(Math.max(...JAHRE.map(j => brutto(j, p) || 0)) * 1.08, t => t ? k1(t) : '0')
+  if (metrik === 'wk') scale(Math.max(...JAHRE.map(j => Math.max(wkSum(j, p) || 0, pausch(j, p)))) * 1.12, t => t ? k1(t) : '0')
+  if (metrik === 'erst') scale(Math.max(...JAHRE.map(j => { const h = hh(j); return h ? Math.max(...[].concat(h.erst, erklaert(j) || 0)) : 0 })) * 1.15, t => fmt(t))
+  if (metrik === 'quote') { max = 40; ticks = [0, 10, 20, 30, 40]; tickFmt = t => t + '%' }
+  const y = v => Y1 - (v / max) * (Y1 - Y0)
+  let s = DEFS
+  ticks.forEach(t => { s += el('line', { x1: X0, x2: X1, y1: y(t), y2: y(t), stroke: 'var(--linie-weich)', 'stroke-width': 1 }) + el('text', { x: X0 - 5, y: y(t) + 3, 'text-anchor': 'end' }, tickFmt(t)) })
+  // Veranlagungsart change marker.
+  if (p === 'beide') JAHRE.forEach((j, i) => { if (i && j.veranlagung !== JAHRE[i - 1].veranlagung) {
+    s += el('line', { x1: slot(i), x2: slot(i), y1: Y0 - 14, y2: Y1, stroke: 'var(--ki)', 'stroke-width': 1.5, 'stroke-dasharray': '4 3' })
+      + el('text', { x: slot(i) + 5, y: Y0 - 6, style: 'fill:var(--ki-tinte);font-weight:700' }, 'ab ' + j.jahr + ' zusammen veranlagt') } })
+  const offen = (i, t = 'offen') => { const cx = cxOf(i)
+    return el('rect', { x: cx - bw / 2, y: Y1 - 60, width: bw, height: 60, rx: 5, fill: 'none', stroke: 'var(--tinte-2)', 'stroke-dasharray': '2 3' }) + el('text', { x: cx, y: Y1 - 26, 'text-anchor': 'middle' }, t) }
+  const stack = (i, parts, dashed) => { let top = Y1, out = ''; const x = cxOf(i) - bw / 2
+    parts.forEach(([v, fill]) => { if (!v) return; const h = (v / max) * (Y1 - Y0); top -= h
+      out += el('rect', { x, y: top, width: bw, height: h, fill, stroke: dashed ? 'var(--warn)' : 'var(--linie)', 'stroke-width': dashed ? 1.5 : 1, 'stroke-dasharray': dashed ? '3 2' : 'none' }) })
+    return { out, top } }
+  const label = (i, yy, t) => el('text', { x: cxOf(i), y: yy, 'text-anchor': 'middle', style: 'fill:var(--tinte)' }, t)
+  const linien = []
+  JAHRE.forEach((j, i) => {
+    let inner = ''
+    if (j.stufe === 'offen') inner = offen(i)
+    else if (metrik === 'netto') {
+      if (brutto(j, p) == null) inner = offen(i, 'n. a.')
+      else { const b = stack(i, [[netto(j, p), 'var(--funke)'], [lst(j, p), 'var(--steuer)'], [sv(j, p), 'var(--sv)']], false)
+        inner = b.out + label(i, b.top - 6, pct(netto(j, p) / brutto(j, p) * 100).replace(' ', '')) }
+    } else if (metrik === 'wk') {
+      const w = wkParts(j, p), sch = j.stufe === 'schaetzung'
+      const b = stack(i, j.eck ? [[w.bescheid, 'var(--wk-bescheid)']] : [[w.fahrt, 'var(--wk-fahrt)'], [w.ho, 'var(--wk-ho)'], [w.am, 'var(--wk-am)'], [w.sonst, 'var(--wk-sonst)']], sch)
+      const py = y(pausch(j, p))
+      inner = b.out + el('line', { x1: slot(i) + 4, x2: slot(i) + sw - 4, y1: py, y2: py, stroke: 'var(--fehler)', 'stroke-width': 2, 'stroke-dasharray': '4 3' })
+        + label(i, Math.min(b.top, py) - 6, k1(wkSum(j, p)))
+    } else if (metrik === 'erst') {
+      const h = hh(j), x = cxOf(i) - bw / 2
+      if (isRange(h.erst)) { const yl = y(h.erst[0]), yh = y(h.erst[1])
+        inner = el('rect', { x, y: yh, width: bw, height: yl - yh, fill: 'url(#schraffur)', stroke: 'var(--warn)', 'stroke-width': 1.5, 'stroke-dasharray': '3 2' })
+          + el('line', { x1: cxOf(i), x2: cxOf(i), y1: Y1, y2: yl, stroke: 'var(--warn)', 'stroke-width': 1.5, 'stroke-dasharray': '2 3' })
+          + label(i, yh - 6, k1(h.erst[0]) + '–' + k1(h.erst[1]))
+      } else { const yy = y(Math.max(h.erst, 0)), e = erklaert(j), ye = e == null ? yy : y(Math.max(e, 0)), top = Math.min(yy, ye)
+        // Declared vs assessed: the cut is the red area between the "erklärt" mark and the bar.
+        if (e != null && e > h.erst) inner += el('rect', { x, y: ye, width: bw, height: yy - ye, fill: 'var(--fehler-weich)', stroke: 'var(--fehler)', 'stroke-width': 1, 'stroke-dasharray': '3 2' })
+        inner += el('rect', { x, y: yy, width: bw, height: Math.max(Y1 - yy, 1.5), fill: 'var(--ok)', stroke: 'var(--linie)', 'stroke-width': 1 })
+        if (e != null) inner += el('line', { x1: x - 4, x2: x + bw + 4, y1: ye, y2: ye, stroke: 'var(--tinte)', 'stroke-width': 2 })
+        inner += label(i, top - 6, (h.einzeln ? 'Σ ' : '') + fmt(h.erst))
+        if (e != null && e !== h.erst) inner += el('text', { x: cxOf(i), y: top - 18, 'text-anchor': 'middle', style: 'fill:var(--fehler);font-weight:700' }, signed(h.erst - e)) }
+    } else {
+      const q = quote(j), h = hh(j), cx = cxOf(i)
+      if (q == null) inner = offen(i, 'n. a.')
+      else {
+        if (isRange(q)) { linien.push([cx, y((q[0] + q[1]) / 2), true, j.veranlagung])
+          inner = el('rect', { x: cx - 7, y: y(q[1]) - 3, width: 14, height: y(q[0]) - y(q[1]) + 6, rx: 4, fill: 'url(#schraffur)', stroke: 'var(--warn)', 'stroke-width': 1.5 })
+            + label(i, y(q[1]) - 10, pct(q[0]).replace(' %', '') + '–' + pct(q[1]).replace(' ', ''))
+        } else { linien.push([cx, y(q), false, j.veranlagung])
+          inner = el('circle', { cx, cy: y(q), r: 4.5, fill: 'var(--tinte)' }) + label(i, y(q) + 18, pct(q).replace(' ', '')) }
+        if (h.grenz) inner += el('circle', { cx, cy: y(h.grenz), r: 3, fill: 'var(--ki)' }) + el('text', { x: cx, y: y(h.grenz) - 8, 'text-anchor': 'middle', style: 'fill:var(--ki-tinte)' }, h.grenz + '%')
+      }
+    }
+    s += `<g class="jahr${j.jahr === auswahl ? ' aktiv' : ''}" data-jahr="${j.jahr}" tabindex="0" role="button" aria-label="${j.jahr} auswählen">`
+      + el('rect', { class: 'hit', x: slot(i) + 2, y: Y0 - 2, width: sw - 4, height: Y1 - Y0 + 28, rx: 8, fill: 'transparent' })
+      + inner + el('text', { x: cxOf(i), y: Y1 + 17, 'text-anchor': 'middle', style: j.jahr === auswahl ? 'fill:var(--tinte);font-weight:700' : '' }, j.jahr) + '</g>'
+  })
+  if (metrik === 'quote') {
+    const seg = (a, b, attrs) => el('line', { x1: a[0], y1: a[1], x2: b[0], y2: b[1], ...attrs })
+    let l = ''
+    for (let k = 1; k < linien.length; k++) if (linien[k][3] === linien[k - 1][3]) l += seg(linien[k - 1], linien[k], { stroke: 'var(--tinte)', 'stroke-width': 2, 'stroke-dasharray': linien[k][2] ? '4 3' : 'none' })
+    const g = JAHRE.map((j, i) => hh(j) && hh(j).grenz ? [cxOf(i), y(hh(j).grenz)] : null)
+    for (let k = 1; k < g.length; k++) if (g[k] && g[k - 1]) l += seg(g[k - 1], g[k], { stroke: 'var(--ki)', 'stroke-width': 1.5 })
+    s = s.replace('</defs>', '</defs>' + l)
+  }
   return s
 }
-const yOf = (v, max) => Y1 - (v / max) * (Y1 - Y0)
 
-function jahrGruppe(j, i, inner) {
-  const x = slot(i)
-  return `<g class="jahr${j.jahr === auswahl ? ' aktiv' : ''}" data-jahr="${j.jahr}" tabindex="0" role="button" aria-label="${j.jahr} auswählen">`
-    + el('rect', { class: 'hit', x: x + 2, y: 4, width: slotW - 4, height: Y1 - 4 + 26, rx: 8, fill: 'transparent' })
-    + inner
-    + el('text', { x: x + slotW / 2, y: Y1 + 16, 'text-anchor': 'middle', style: j.jahr === auswahl ? 'fill:var(--tinte);font-weight:700' : '' }, j.jahr)
-    + '</g>'
+// ---------- detail ----------
+const r = (a, b, cls = '') => `<div class="zeile ${cls}"><span>${a}</span><span class="mono">${b}</span></div>`
+function stufePille(j) {
+  if (j.stufe === 'offen') return '<span class="pille p-offen">offen</span>'
+  if (j.eck) return '<span class="pille p-eck">Eckjahr · Bescheid</span>'
+  if (metrik === 'netto') return '<span class="pille p-lstb">Lohnsteuerbescheinigung</span>'
+  return j.stufe === 'bescheid' ? '<span class="pille p-bescheid">Bescheid</span>' : '<span class="pille p-schaetzung">Schätzung</span>'
 }
-function offenMark(i, text = 'offen') {
-  const cx = slot(i) + slotW / 2
-  return el('rect', { x: cx - 18, y: Y1 - 60, width: 36, height: 60, rx: 5, fill: 'none', stroke: 'var(--tinte-2)', 'stroke-dasharray': '2 3' })
-    + el('text', { x: cx, y: Y1 - 26, 'text-anchor': 'middle' }, text)
-}
-
-const DEFS = `<defs><pattern id="schraffur" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-  <rect width="5" height="5" fill="var(--warn-weich)"/><line x1="0" y1="0" x2="0" y2="5" stroke="var(--warn)" stroke-width="2"/></pattern>
-  <pattern id="schraffur-funke" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-  <rect width="5" height="5" fill="var(--funke-weich)"/><line x1="0" y1="0" x2="0" y2="5" stroke="var(--funke)" stroke-width="2.5"/></pattern></defs>`
-
-function stackBar(i, parts, max, dashed) {
-  const bw = 30, x = slot(i) + (slotW - bw) / 2
-  let y = Y1, s = ''
-  parts.forEach(([v, fill]) => { const h = (v / max) * (Y1 - Y0); y -= h
-    s += el('rect', { x, y, width: bw, height: h, fill, stroke: 'var(--linie)', 'stroke-width': 1, 'stroke-dasharray': dashed ? '3 2' : 'none' }) })
-  return { s, top: y, cx: x + bw / 2 }
-}
-
-const ZEICHNER = {
-  netto() {
-    const max = 60000
-    let s = DEFS + axis(max, [0, 20000, 40000, 60000], t => t / 1000 + 'k')
-    JAHRE.forEach((j, i) => {
-      let inner
-      if (j.stufe === 'offen') inner = offenMark(i)
-      else if (j.brutto == null) inner = offenMark(i, 'n. a.')
-      else {
-        const sch = j.stufe === 'schaetzung'
-        const b = stackBar(i, [[netto(j), sch ? 'url(#schraffur-funke)' : 'var(--funke)'], [j.lst + j.kist, 'var(--steuer)'], [j.sv, 'var(--sv)']], max, sch)
-        inner = b.s + el('text', { x: b.cx, y: b.top - 5, 'text-anchor': 'middle', style: 'fill:var(--tinte)' }, (netto(j) / j.brutto * 100).toFixed(1).replace('.', ',') + '%')
-      }
-      s += jahrGruppe(j, i, inner)
-    })
-    return s
-  },
-  wk() {
-    const max = 4000
-    let s = DEFS + axis(max, [0, 1000, 2000, 3000, 4000], t => t ? t / 1000 + 'k' : '0')
-    JAHRE.forEach((j, i) => {
-      let inner
-      if (!j.wk) inner = offenMark(i)
-      else {
-        const sch = j.stufe === 'schaetzung'
-        const b = stackBar(i, [[j.wk.fahrt, 'var(--wk-fahrt)'], [j.wk.ho, 'var(--wk-ho)'], [j.wk.am, 'var(--wk-am)'], [j.wk.sonst, 'var(--wk-sonst)']], max, sch)
-        const py = yOf(j.pausch, max)
-        inner = b.s + el('line', { x1: slot(i) + 4, x2: slot(i) + slotW - 4, y1: py, y2: py, stroke: 'var(--fehler)', 'stroke-width': 2, 'stroke-dasharray': '4 3' })
-          + el('text', { x: b.cx, y: Math.min(b.top, py) - 6, 'text-anchor': 'middle', style: 'fill:var(--tinte)' }, (wkSumme(j) / 1000).toFixed(1).replace('.', ',') + 'k' + (sch ? '*' : ''))
-      }
-      s += jahrGruppe(j, i, inner)
-    })
-    return s
-  },
-  erst() {
-    const max = 1600
-    let s = DEFS + axis(max, [0, 400, 800, 1200, 1600], t => t ? t.toLocaleString('de-DE') : '0')
-    JAHRE.forEach((j, i) => {
-      let inner = ''
-      const bw = 30, x = slot(i) + (slotW - bw) / 2, cx = x + bw / 2
-      if (j.stufe === 'offen') inner = offenMark(i)
-      else if (isRange(j.erst)) {
-        const yl = yOf(j.erst[0], max), yh = yOf(j.erst[1], max)
-        inner = el('rect', { x, y: yh, width: bw, height: yl - yh, fill: 'url(#schraffur)', stroke: 'var(--warn)', 'stroke-width': 1.5, 'stroke-dasharray': '3 2' })
-          + el('line', { x1: cx, x2: cx, y1: Y1, y2: yl, stroke: 'var(--warn)', 'stroke-width': 1.5, 'stroke-dasharray': '2 3' })
-          + el('text', { x: cx, y: yh - 6, 'text-anchor': 'middle', style: 'fill:var(--tinte)' }, '1,2–1,4k')
-      } else {
-        const y = yOf(j.erst, max)
-        inner = el('rect', { x, y, width: bw, height: Y1 - y, fill: 'var(--ok)', stroke: 'var(--linie)', 'stroke-width': 1 })
-        if (j.schaetzung) { const a = yOf(j.schaetzung[0], max), b = yOf(j.schaetzung[1], max), bx = x + bw + 4
-          inner += el('path', { d: `M${bx - 3} ${b} H${bx} V${a} H${bx - 3}`, fill: 'none', stroke: 'var(--warn)', 'stroke-width': 1.5 }) }
-        inner += el('text', { x: cx, y: y - 6, 'text-anchor': 'middle', style: 'fill:var(--tinte)' }, j.erst.toLocaleString('de-DE'))
-      }
-      s += jahrGruppe(j, i, inner)
-    })
-    return s
-  },
-  quote() {
-    const max = 40
-    let s = DEFS + axis(max, [0, 10, 20, 30, 40], t => t + '%')
-    const pts = [], grenz = []
-    JAHRE.forEach((j, i) => {
-      const cx = slot(i) + slotW / 2
-      let inner = ''
-      if (j.stufe === 'offen') inner = offenMark(i)
-      else if (j.brutto == null) inner = offenMark(i, 'n. a.')
-      else {
-        if (j.grenz) grenz.push([cx, yOf(j.grenz, max)])
-        if (isRange(j.est)) { const lo = j.est[0] / j.brutto * 100, hi = j.est[1] / j.brutto * 100
-          pts.push([cx, yOf((lo + hi) / 2, max), true])
-          inner = el('rect', { x: cx - 7, y: yOf(hi, max) - 3, width: 14, height: yOf(lo, max) - yOf(hi, max) + 6, rx: 4, fill: 'url(#schraffur)', stroke: 'var(--warn)', 'stroke-width': 1.5 })
-            + el('text', { x: cx, y: yOf(hi, max) - 9, 'text-anchor': 'middle', style: 'fill:var(--tinte)' }, lo.toFixed(1).replace('.', ',') + '–' + hi.toFixed(1).replace('.', ','))
-        } else { const q = j.est / j.brutto * 100
-          pts.push([cx, yOf(q, max), false])
-          inner = el('circle', { cx, cy: yOf(q, max), r: 4.5, fill: 'var(--tinte)' })
-            + el('text', { x: cx, y: yOf(q, max) + 17, 'text-anchor': 'middle', style: 'fill:var(--tinte)' }, q.toFixed(1).replace('.', ',')) }
-      }
-      s += jahrGruppe(j, i, inner)
-    })
-    const line = (arr, attrs) => arr.slice(1).map((p, k) => el('line', { x1: arr[k][0], y1: arr[k][1], x2: p[0], y2: p[1], ...attrs(p) })).join('')
-    s = s.replace('</defs>', '</defs>' + line(pts, p => ({ stroke: 'var(--tinte)', 'stroke-width': 2, 'stroke-dasharray': p[2] ? '4 3' : 'none' }))
-      + line(grenz, () => ({ stroke: 'var(--ki)', 'stroke-width': 1.5 }))
-      + grenz.map(p => el('circle', { cx: p[0], cy: p[1], r: 3, fill: 'var(--ki)' })).join(''))
-    return s
-  },
-}
-
 function detail() {
-  const j = JAHRE.find(x => x.jahr === auswahl), v = vor(j)
+  const j = JAHRE.find(x => x.jahr === auswahl), v = vor(j), p = pEff()
+  const wo = p === 'beide' ? (j.veranlagung === 'zusammen' ? 'zusammen veranlagt' : 'zwei Einzelerklärungen') : PERSONEN[p]
   let rows = ''
-  const r = (a, b, cls = '') => `<div class="zeile ${cls}"><span>${a}</span><span class="mono">${b}</span></div>`
-  if (j.stufe === 'offen') rows = r('Noch offen', '') + `<div class="zeile"><span style="color:var(--tinte-2)">Es fehlt: ${j.fehlt}</span></div>`
+  if (j.stufe === 'offen') rows = `<div class="leise">Noch offen. Es fehlen ${j.fehlt}.</div>`
   else if (metrik === 'netto') {
-    if (j.brutto == null) rows = `<div class="zeile"><span style="color:var(--tinte-2)">Brutto und Abzüge stehen nicht im Bescheid ${j.jahr}.</span></div><button class="knopf" type="button" style="align-self:flex-start">Lohnsteuerbescheinigung ${j.jahr} hochladen</button>`
-    else {
-      const n = netto(j), nE = isRange(j.erst) ? [n + j.erst[0], n + j.erst[1]] : n + j.erst
-      rows = r('Brutto', eur(j.brutto)) + r('Lohnsteuer', '− ' + eur(j.lst)) + r('Kirchensteuer', '− ' + eur(j.kist)) + r('Sozialversicherung', '− ' + eur(j.sv))
-        + r('Netto', eur(n), 'summe') + r('Netto nach Erstattung', isRange(nE) ? eur(nE[0]) + ' – ' + eur(nE[1]) : eur(nE))
-        + delta(n, v && netto(v), signed)
-    }
+    if (brutto(j, p) == null) rows = `<div class="leise">Brutto und Abzüge stehen nicht im Bescheid ${j.jahr}.</div><button class="knopf" type="button" style="align-self:flex-start">Lohnsteuerbescheinigung ${j.jahr} hochladen</button>`
+    else { const n = netto(j, p)
+      rows = r('Brutto', eur(brutto(j, p))) + r('Lohnsteuer', '− ' + eur(lst(j, p))) + r('Sozialversicherung', '− ' + eur(sv(j, p))) + r('Netto', eur(n), 'summe')
+      if (p === 'beide') { const e = hh(j).erst; rows += r('Netto nach Erstattung', showVal(isRange(e) ? [n + e[0], n + e[1]] : n + e)) }
+      else if (j.veranlagung === 'zusammen') rows += `<div class="leise">Netto nach Erstattung gibt es nur für euch beide.</div>`
+      else rows += r('Netto nach Erstattung', eur(n + j[p].erst))
+      rows += delta(n, v && netto(v, p)) }
   } else if (metrik === 'wk') {
-    rows = r('Fahrtweg', eur(j.wk.fahrt)) + r('Homeoffice', eur(j.wk.ho)) + r('Arbeitsmittel', eur(j.wk.am)) + (j.wk.sonst ? r('Sonstiges', eur(j.wk.sonst)) : '')
-      + r('Summe', eur(wkSumme(j)), 'summe') + r('Pauschbetrag ' + j.jahr, eur(j.pausch))
-      + r('Angesetzt', eur(Math.max(wkSumme(j), j.pausch)) + (wkSumme(j) < j.pausch ? ' (Pauschbetrag)' : ''))
-      + delta(wkSumme(j), v && wkSumme(v), signed)
+    const w = wkParts(j, p)
+    rows = (j.eck ? r('laut Bescheid', eur(w.bescheid)) + `<div class="leise">Der Bescheid nennt nur die Summe, keine Aufteilung.</div>`
+      : r('Fahrtweg', eur(w.fahrt)) + r('Homeoffice', eur(w.ho)) + r('Arbeitsmittel', eur(w.am)) + (w.sonst ? r('Sonstiges', eur(w.sonst)) : '') + r('Summe', eur(wkSum(j, p)), 'summe'))
+      + r('Pauschbetrag ' + j.jahr + (p === 'beide' ? ' (2×)' : ''), eur(pausch(j, p))) + r('Angesetzt', eur(wkAngesetzt(j, p)))
+    ppl(p).forEach(k => { if (wkOf(j[k]) < PAUSCH[j.jahr]) rows += `<div class="leise">${PERSONEN[k]}: unter dem Pauschbetrag, angesetzt ${eur(PAUSCH[j.jahr])}.</div>` })
+    rows += delta(wkAngesetzt(j, p), v && wkAngesetzt(v, p))
   } else if (metrik === 'erst') {
-    rows = r(j.stufe === 'bescheid' ? 'Erstattung laut Bescheid' : 'Erstattung geschätzt', isRange(j.erst) ? eur(j.erst[0]) + ' – ' + eur(j.erst[1]) : eur(j.erst), 'summe')
-      + (j.schaetzung ? r('Damalige Schätzung', eur(j.schaetzung[0]) + ' – ' + eur(j.schaetzung[1])) : '')
-      + (j.schaetzung ? r('Treffer', j.erst >= j.schaetzung[0] && j.erst <= j.schaetzung[1] ? 'innerhalb der Spanne' : 'außerhalb') : '')
-      + delta(j.erst, v && v.erst, signed)
+    const h = hh(j), e = erklaert(j)
+    if (j.stufe === 'bescheid' && e != null) rows = r('Erklärt', signed(e))
+    rows += r(j.stufe === 'bescheid' ? 'Abschlusszahlung laut Bescheid' : 'Erstattung geschätzt', isRange(h.erst) ? showVal(h.erst) : signed(h.erst), 'summe')
+    if (j.stufe === 'bescheid' && e != null) rows += e !== h.erst ? r('Vom Finanzamt geändert', signed(h.erst - e)) : `<div class="leise">Wie erklärt.</div>`
+    if (h.einzeln) rows += r('davon Person A', signed(j.A.erst)) + r('davon Person B', signed(j.B.erst))
+    if (h.schaetzung) rows += r('Schätzung vor dem Bescheid', showVal(h.schaetzung)) + r('Treffer', h.erst >= h.schaetzung[0] && h.erst <= h.schaetzung[1] ? 'innerhalb der Spanne' : 'außerhalb')
+    rows += hhDelta(j, x => hh(x) && hh(x).erst)
   } else {
-    if (j.brutto == null) rows = `<div class="zeile"><span style="color:var(--tinte-2)">Ohne Brutto lässt sich die Quote für ${j.jahr} nicht bilden. Festgesetzte ESt: ${eur(j.est)}.</span></div>`
-    else { const q = e => e / j.brutto * 100
-      rows = r(j.stufe === 'bescheid' ? 'Festgesetzte ESt' : 'ESt geschätzt', isRange(j.est) ? eur(j.est[0]) + ' – ' + eur(j.est[1]) : eur(j.est))
-        + r('Steuerquote effektiv', isRange(j.est) ? pct(q(j.est[0])) + ' – ' + pct(q(j.est[1])) : pct(q(j.est)), 'summe') + r('Grenzsteuersatz', pct(j.grenz)) }
+    const h = hh(j), q = quote(j)
+    rows = r(j.stufe === 'bescheid' ? 'Festgesetzte ESt' : 'ESt geschätzt', showVal(h.est))
+    if (q == null) rows += `<div class="leise">Ohne Brutto lässt sich die Quote für ${j.jahr} nicht bilden.</div>`
+    else rows += r('Steuerquote effektiv', showVal(q, pct), 'summe') + (h.grenz ? r('Grenzsteuersatz', h.grenz + ' %') : `<div class="leise">Grenzsteuersatz: bei zwei Einzelerklärungen hat jede Person ihren eigenen.</div>`)
+    rows += hhDelta(j, quote, signedPp)
   }
-  document.getElementById('detail').innerHTML = `<div class="detail-kopf"><strong>${j.jahr}</strong>${pille(j)}</div>` + rows
+  let knopf = ''
+  if (j.stufe === 'bescheid') {
+    if (j.eck) knopf = `<div class="leise">Kein Abgleich: Die Erklärung ${j.jahr} wurde nicht in Steuereule gemacht.</div>`
+    else { const n = abweichungen(j.jahr)
+      knopf = `<button class="oeffnen" type="button" data-diff="${j.jahr}">Bescheid ↔ Erklärung <span class="zaehler${n ? '' : ' null'}">${n ? n + ' Abweichung' + (n > 1 ? 'en' : '') : 'gleich'}</span></button>` }
+  }
+  return `<div class="detail-kopf"><strong>${j.jahr}</strong>${stufePille(j)}</div><div class="leise">${wo}</div>` + rows + knopf
 }
 
+function diffHtml() {
+  const a = ABGLEICH[auswahl]
+  const kopf = `<div class="diff-kopf"><div><div class="eyebrow">Bescheid-Abgleich</div><h2>Erklärung ↔ Bescheid ${auswahl}</h2></div><button class="zu" type="button" data-diff-zu aria-label="Abgleich schließen">×</button></div>`
+  const frist = f => f.laeuft
+    ? `<div class="frist"><span><b>Einspruch möglich bis ${f.bis}</b> · noch ${f.tage} Tage (§ 355 AO)</span><button class="knopf" type="button" data-einspruch>Einspruch vorbereiten</button></div>`
+    : `<div class="frist vorbei">Einspruchsfrist endete am ${f.bis}.</div>`
+  const meta = `<div class="leise">Erklärung eingereicht am ${a.eingereicht} · Bescheid vom ${a.bescheidVom}</div>`
+  if (a.gleich) return kopf + meta + `<div class="chiprow"><span class="pille p-bescheid">Wie erklärt</span></div>`
+    + `<div class="leise">Alle ${a.gleich} Positionen stimmen mit ${a.einzeln ? 'euren beiden Einzelerklärungen' : 'eurer Erklärung'} überein. Das Finanzamt hat nichts geändert.</div>` + frist(a.frist)
+  const alle = a.gruppen.flatMap(g => g.zeilen), erstZ = alle.find(z => z.erst), gesamt = erstZ.f - erstZ.e
+  // Own deviations first, largest effect on the refund on top; consequential changes collapse into one chain.
+  const eigene = eigeneZeilen(auswahl).slice().sort((x, y) => Math.abs(y.wirkung) - Math.abs(x.wirkung)), folgen = alle.filter(z => z.folge && z.e !== z.f)
+  const summeEinzel = eigene.reduce((s, z) => s + (z.wirkung || 0), 0)
+  const cls = w => w < 0 ? 'schlecht' : w > 0 ? 'gut' : ''
+  const chips = `<div class="chiprow"><span class="pille" style="background:var(--fehler-weich)">${eigene.length} Abweichungen</span>`
+    + `<span class="pille">Erstattung ${eur(erstZ.e)} → ${eur(erstZ.f)} (${signed(gesamt)})</span></div>`
+  const werte = z => `<span class="werte"><s>${fmt(z.e)}</s> → ${fmt(z.f)} €</span>`
+  let body = `<div class="dr kopfzeile"><span>Vom Finanzamt geändert</span><span>erklärt → Bescheid</span><span class="w">Erstattung</span></div>`
+  eigene.forEach(z => { body += `<div class="dr ${cls(z.wirkung)}"><span class="pos">${z.pos}</span>${werte(z)}<span class="w">${signed(z.wirkung)}</span></div>`
+    + (z.fa ? `<div class="fa"><span>Erläuterung im Bescheid: <q>${z.fa}</q></span></div>` : '') })
+  body += `<div class="kette"><span class="folge" style="margin:0 6px 0 0">Folge</span>` + folgen.map(z => `<b>${z.pos} ${signed(z.f - z.e)}</b>`).join(' → ') + `</div>`
+  const offen = aufgeklappt.has('alle'), gleich = alle.filter(z => z.e === z.f).length
+  body += `<button class="mehr" type="button" data-gruppe="alle">${offen ? '▾ Formularansicht ausblenden' : `▸ Alle ${alle.length} Positionen in Formularreihenfolge (${gleich} wie erklärt)`}</button>`
+  if (offen) a.gruppen.forEach(g => { body += `<div class="dg"><span>${g.name}</span></div>`
+    g.zeilen.forEach(z => { body += z.e !== z.f
+      ? `<div class="dr ${cls(gesamt)}"><span class="pos">${z.pos}${z.folge ? '<span class="folge">Folge</span>' : ''}</span>${werte(z)}<span class="w">${z.folge ? '' : signed(z.wirkung)}</span></div>`
+      : `<div class="dr gleich"><span class="pos">${z.pos}</span><span class="werte">${fmt(z.f)} €</span><span class="w"></span></div>` }) })
+  const fuss = `<div class="fuss">Die rechte Spalte ist die Wirkung auf eure Erstattung: Der Kern setzt jeweils nur diese Position auf den Bescheid-Wert. Die Summe (${signed(summeEinzel)}) weicht um ${eur(Math.abs(summeEinzel - gesamt))} von der Gesamtwirkung (${signed(gesamt)}) ab, weil der Tarif nicht linear ist.</div>`
+  const lehren = `<div class="lehren"><h3>Fürs nächste Mal</h3>` + eigene.filter(z => z.lehre).map(z => `<div class="lehre"><strong>${z.pos}: ${z.lehre.was}</strong><span>${z.lehre.folgejahr} Der Bescheid ${auswahl + 1} steht noch aus.</span><span>${z.lehre.tipp}</span><span class="pille">Erscheint ${auswahl + 2} in der Maske „${z.lehre.maske}“</span></div>`).join('') + `</div>`
+  const eule = `<div class="eule"><b>Eule</b><span>Das Finanzamt hat 300 € Werbungskosten von Person A nicht anerkannt, das kostet euch ${eur(erstZ.e - erstZ.f)} Erstattung. Habt ihr Nachweise für die 30 fehlenden Homeoffice-Tage, ginge es dort um rund ${eur(56)}.</span></div>`
+  return kopf + meta + chips + frist(a.frist) + `<div class="dz-wrap"><div class="dz">${body}</div></div>` + fuss + lehren + eule
+}
+// A filed year without a Bescheid: no diff yet, only what the Finanzamt changed last year in positions declared the same way again. No forecast (ADR-0098 § 7).
+function wartetHtml(j) {
+  const z = eigeneZeilen(j.jahr - 1).filter(x => x.lehre)
+  return `<div class="diff-kopf"><div><div class="eyebrow">Wartet auf den Bescheid</div><h2>${j.jahr}: worauf ihr achten könnt</h2></div><button class="zu" type="button" data-diff-zu aria-label="Schließen">×</button></div>`
+    + `<div class="leise">Eingereicht, der Bescheid steht aus. ${z.length} Positionen hat das Finanzamt ${j.jahr - 1} gekürzt; ${j.jahr} stehen sie wieder so in der Erklärung.</div>`
+    + `<div class="lehren">` + z.map(x => `<div class="lehre"><strong>${x.pos}</strong><span>${j.jahr - 1}: ${x.lehre.was}. ${x.lehre.folgejahr}</span></div>`).join('') + `</div>`
+    + `<div class="leise">Kommt der Bescheid, steht hier der Abgleich. Eine Vorhersage macht die Eule nicht.</div>`
+}
+
+// ---------- blocks ----------
+const statusText = j => j.stufe === 'offen' ? 'Erklärung angelegt, Lohnsteuerbescheinigungen fehlen' : j.eck ? 'Alte Bescheide hochgeladen, extern erledigt'
+  : j.stufe === 'schaetzung' ? 'Eingereicht, wartet auf Bescheid'
+  : abweichungen(j.jahr) ? `Bescheid eingegangen, ${abweichungen(j.jahr)} Abweichungen` : 'Bescheid wie erklärt'
+const erstText = j => { const h = hh(j); return h ? (isRange(h.erst) ? '+' + fmt(h.erst[0]) + '–' + eur(h.erst[1]) : signed(h.erst)) : '–' }
+const veranlagungText = j => j.veranlagung === 'zusammen' ? 'Zusammen' : 'Einzeln'
+
+const standPille = j => j.stufe === 'offen' ? '<span class="pille p-offen">offen</span>' : j.eck ? '<span class="pille p-eck">Eckjahr</span>'
+  : j.stufe === 'bescheid' ? (abweichungen(j.jahr) ? `<span class="pille" style="background:var(--fehler-weich)">Bescheid · ${abweichungen(j.jahr)} Abw.</span>` : '<span class="pille p-bescheid">Bescheid · wie erklärt</span>') : '<span class="pille p-schaetzung">Schätzung</span>'
+
+// What needs attention across all years, most urgent first.
+function ansteht() {
+  const out = []
+  JAHRE.forEach(j => { const a = ABGLEICH[j.jahr]
+    if (a && a.frist.laeuft && abweichungen(j.jahr)) out.unshift([j.jahr, true, `Bescheid weicht ab: ${signed(hh(j).erst - erklaert(j))}`, `Einspruch bis ${a.frist.bis} · noch ${a.frist.tage} Tage`])
+    else if (j.stufe === 'schaetzung') { const n = eigeneZeilen(j.jahr - 1).filter(z => z.lehre).length
+      out.push([j.jahr, false, 'Wartet auf den Bescheid', n ? `${n} Positionen wie ${j.jahr - 1} erklärt, dort gekürzt` : 'Eingereicht']) }
+    else if (j.stufe === 'offen') out.push([j.jahr, false, 'Noch offen', 'Es fehlen ' + j.fehlt]) })
+  return out.map(([jahr, d, titel, text]) => `<button class="an-item${d ? ' dringend' : ''}" type="button" data-jahr="${jahr}"><span class="j">${jahr}</span><strong>${titel}</strong><span class="t">${text}</span></button>`).join('')
+}
 function held() {
-  const j = JAHRE.find(x => x.jahr === 2024), v = vor(j)
-  const sum = JAHRE.filter(x => x.stufe === 'bescheid').reduce((a, x) => a + x.erst, 0)
-  document.getElementById('held').innerHTML =
-    `<div><div class="lbl">Netto 2024 (letzter Bescheid)</div><div class="zahl mono">${eur(netto(j))}</div>${delta(netto(j), netto(v), signed)}</div>`
-    + `<div><div class="lbl">Erstattet 2021–2024</div><div class="zahl mono">${eur(sum)}</div><span class="trend">4 Bescheide</span></div>`
+  const b = JAHRE.filter(x => x.stufe === 'bescheid'), saldo = b.reduce((a, x) => a + hh(x).erst, 0)
+  const mit = b.filter(x => erklaert(x) != null), geaendert = mit.reduce((a, x) => a + hh(x).erst - erklaert(x), 0), n = mit.filter(x => hh(x).erst !== erklaert(x)).length
+  return `<div><div class="lbl">Erstattet 2021–2024 · beide</div><div class="zahl mono">${signed(saldo)}</div><span class="trend">aus ${b.length} Bescheidjahren</span></div>`
+    + `<div><div class="lbl">Vom Finanzamt geändert</div><div class="zahl mono">${signed(geaendert)}</div><span class="trend ${geaendert < 0 ? 'ab' : ''}">in ${n} von ${mit.length} Erklärungen</span></div>`
 }
-
-function render() {
-  const m = METRIKEN[metrik]
-  document.getElementById('chips').innerHTML = Object.entries(METRIKEN).map(([k, x]) =>
-    `<button class="chip" role="tab" type="button" aria-selected="${k === metrik}" data-m="${k}">${x.label}</button>`).join('')
-  document.getElementById('k-titel').textContent = m.titel
-  document.getElementById('k-sub').textContent = m.sub
-  const svg = document.getElementById('chart')
-  svg.innerHTML = ZEICHNER[metrik]()
-  svg.setAttribute('aria-label', m.titel + ', Jahre 2021 bis 2026')
-  document.getElementById('legende').innerHTML = m.legende.map(([c, t]) => `<span><i class="sw" style="background:${c}"></i>${t}</span>`).join('')
-    + (metrik === 'wk' ? '<span><i class="sw" style="background:none;border:0;border-top:2px dashed var(--fehler);height:0;width:14px"></i>Pauschbetrag</span>' : '')
-  document.getElementById('eule').textContent = m.eule
-  detail()
+// Mini trend per tile; ranges enter with their middle, open years are skipped.
+function spark(vals) {
+  const pts = vals.map((v, i) => [i, mitte(v)]).filter(x => x[1] != null); if (pts.length < 2) return ''
+  const lo = Math.min(...pts.map(x => x[1])), hi = Math.max(...pts.map(x => x[1])), n = vals.length - 1
+  const xy = ([i, v]) => (4 + i / n * 92).toFixed(1) + ',' + (19 - (hi === lo ? 0.5 : (v - lo) / (hi - lo)) * 16).toFixed(1)
+  return `<svg viewBox="0 0 100 22" preserveAspectRatio="none" aria-hidden="true"><polyline points="${pts.map(xy).join(' ')}" fill="none" stroke="var(--tinte-2)" stroke-width="1.5" vector-effect="non-scaling-stroke"/></svg>`
 }
-
+function kpis(p) {
+  const j = JAHRE[4], b = JAHRE[3]
+  const tile = (m, lbl, val, sp, d) => `<button class="kpi" type="button" data-m="${m}" aria-pressed="${m === metrik}"><span class="lbl">${lbl}</span><span class="zahl mono">${val}</span>${sp}${d}</button>`
+  return tile('erst', 'Erstattung 2025 · beide', showVal(hh(j).erst, fmt) + ' €', spark(JAHRE.map(x => hh(x) && hh(x).erst)), delta(hh(j).erst, hh(b).erst))
+    + tile('wk', 'Werbungskosten 2025 · ' + PERSONEN[p], eur(wkAngesetzt(j, p)), spark(JAHRE.map(x => wkAngesetzt(x, p))), delta(wkAngesetzt(j, p), wkAngesetzt(b, p)))
+    + tile('netto', 'Netto 2025 · ' + PERSONEN[p], eur(netto(j, p)), spark(JAHRE.map(x => netto(x, p))), delta(netto(j, p), netto(b, p)))
+    + tile('quote', 'Steuerquote 2025 · beide', showVal(quote(j), pct), spark(JAHRE.map(x => quote(x))), hhDelta(j, quote, signedPp))
+}
+function tabelle(p) {
+  const head = `<thead><tr><th>Jahr</th><th>Stand</th><th>Erstattung erklärt</th><th>laut Bescheid</th><th>Differenz</th><th>Werbungsk. angesetzt</th><th>Brutto · ${PERSONEN[p]}</th><th>Netto</th><th>Steuerquote · beide</th><th>Veranlagung</th></tr></thead>`
+  const rows = [...JAHRE].reverse().map((j, idx, arr) => {
+    const b = brutto(j, p), n = netto(j, p), q = quote(j), h = hh(j), e = erklaert(j)
+    const wechsel = arr[idx + 1] && arr[idx + 1].veranlagung !== j.veranlagung
+    const fest = j.stufe === 'bescheid' ? h.erst : null, d = e != null && fest != null ? fest - e : null
+    return `<tr data-jahr="${j.jahr}" class="${j.jahr === auswahl ? 'aktiv' : ''}${wechsel ? ' wechsel' : ''}" tabindex="0">
+      <td>${j.jahr}</td><td>${standPille(j)}</td><td>${j.stufe === 'schaetzung' ? erstText(j) : e == null ? '–' : signed(e)}</td><td>${fest == null ? '–' : signed(fest)}</td><td class="${d < 0 ? 'ab' : ''}">${d == null ? '–' : signed(d)}</td>
+      <td>${showVal(wkAngesetzt(j, p))}</td><td>${showVal(b)}</td><td>${showVal(n)}</td><td>${showVal(q, pct)}</td><td>${veranlagungText(j)}</td></tr>`
+  }).join('')
+  return head + '<tbody>' + rows + '</tbody>'
+}
 function jahresliste() {
-  const text = j => j.stufe === 'offen' ? 'Erklärung angelegt, 3 Felder offen' : j.eck ? 'Bescheid hochgeladen, extern erledigt' : j.stufe === 'schaetzung' ? 'Eingereicht, wartet auf Bescheid' : 'Bescheid geprüft'
-  const betrag = j => j.stufe === 'offen' ? '–' : isRange(j.erst) ? '+' + j.erst[0].toLocaleString('de-DE') + '–' + eur(j.erst[1]) : signed(j.erst)
-  document.getElementById('jahre').innerHTML = [...JAHRE].reverse().map(j =>
-    `<button class="jzeile" type="button" data-jahr="${j.jahr}"><span class="j">${j.jahr}</span><span><span class="t">${text(j)}</span><br>${pille(j)}</span><span class="betrag">${betrag(j)}</span></button>`).join('')
+  return [...JAHRE].reverse().map(j => { const h = hh(j), e = erklaert(j), cut = j.stufe === 'bescheid' && e != null && e !== h.erst
+    return `<button class="jzeile" type="button" data-jahr="${j.jahr}"><span class="j">${j.jahr}</span>
+    <span><span class="t">${statusText(j)} · ${veranlagungText(j)}</span><br>${standPille(j)}</span>
+    <span class="betrag">${cut ? `<s style="color:var(--tinte-2)">${signed(e)}</s><br>${signed(h.erst)}<br><b style="color:var(--fehler)">${signed(h.erst - e)}</b>` : erstText(j)}</span></button>` }).join('')
 }
 
-document.addEventListener('click', e => {
-  const chip = e.target.closest('.chip'); if (chip) { metrik = chip.dataset.m; render(); return }
-  const g = e.target.closest('.jahr'); if (g) { auswahl = +g.dataset.jahr; render(); return }
-  const z = e.target.closest('.jzeile'); if (z) { auswahl = +z.dataset.jahr; render(); document.getElementById('chart').scrollIntoView({ behavior: 'smooth', block: 'center' }); return }
-  if (e.target.id === 'hochladen') { const t = document.getElementById('toast'); t.hidden = false; t.textContent = 'Im echten Ablauf: Datei wählen, die Eule liest die Eckwerte, du übernimmst sie (Zero-Write).' }
-})
-document.addEventListener('keydown', e => { const g = e.target.closest && e.target.closest('.jahr')
-  if (g && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); auswahl = +g.dataset.jahr; render(); document.querySelector(`.jahr[data-jahr="${auswahl}"]`).focus() } })
+// ---------- render ----------
+function render() {
+  const m = METRIKEN[metrik], p = pEff()
+  document.getElementById('buehne').classList.toggle('breit', ansicht === 'desktop')
+  document.querySelectorAll('[data-ansicht]').forEach(b => b.setAttribute('aria-pressed', b.dataset.ansicht === ansicht))
+  document.querySelectorAll('[data-root]').forEach(root => {
+    const q = n => root.querySelector(`[data-r="${n}"]`), set = (n, h) => { const e = q(n); if (e) e.innerHTML = h }
+    set('personen', Object.entries(PERSONEN).map(([k, t]) => `<button type="button" data-person="${k}" aria-pressed="${k === person}">${t}</button>`).join(''))
+    set('ansteht', ansteht())
+    set('held', held())
+    set('kpis', kpis(person))
+    set('chips', REIHENFOLGE.map(k => [k, METRIKEN[k]]).map(([k, x]) => `<button class="chip" role="tab" type="button" aria-selected="${k === metrik}" data-m="${k}">${x.label}</button>`).join(''))
+    q('titel').textContent = m.titel + (p === 'beide' ? '' : ' · ' + PERSONEN[p])
+    q('sub').textContent = m.sub
+    const hint = q('hinweis'); hint.hidden = !(HAUSHALT(metrik) && person !== 'beide')
+    hint.textContent = 'Erstattung und Steuerquote gibt es nur für euch beide. Angezeigt: Wir beide.'
+    const svg = q('chart'), W = +svg.dataset.w, H = +svg.dataset.h
+    svg.innerHTML = chart(W, H); svg.setAttribute('aria-label', m.titel + ', Jahre 2021 bis 2026')
+    set('legende', m.legende().map(([c, t]) => `<span><i class="sw" style="background:${c}"></i>${t}</span>`).join('')
+      + (metrik === 'wk' ? '<span><i class="sw" style="background:none;border:0;border-top:2px dashed var(--fehler);height:0;width:14px"></i>Pauschbetrag</span>' : '')
+      + (metrik === 'erst' ? '<span><i class="sw" style="background:none;border:0;border-top:2px solid var(--tinte);height:0;width:14px"></i>erklärt</span>' : '')
+      + (p === 'beide' ? '<span><i class="sw" style="background:none;border:0;border-left:2px dashed var(--ki);height:12px;width:2px"></i>Wechsel der Veranlagungsart</span>' : ''))
+    set('detail', detail())
+    q('eule').textContent = m.eule(p)
+    set('stufen', '<span class="pille p-bescheid">Bescheid</span><span class="pille p-schaetzung">Schätzung</span><span class="pille p-offen">offen</span><span>Tippe ein Jahr für Details.</span>')
+    const jahr = JAHRE.find(x => x.jahr === auswahl), wartet = !ABGLEICH[auswahl] && jahr.stufe === 'schaetzung' && eigeneZeilen(auswahl - 1).length > 0
+    const dz = q('diff'), zeigen = diffOffen && (!!ABGLEICH[auswahl] || wartet)
+    dz.hidden = !zeigen; dz.innerHTML = !zeigen ? '' : wartet ? wartetHtml(jahr) : diffHtml()
+    set('tabelle', tabelle(person))
+    set('jahre', jahresliste())
+  })
+}
 
-held(); jahresliste(); render()
+function waehleJahr(jahr) { auswahl = jahr; render() }
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-m],[data-person],[data-ansicht],[data-jahr],[data-upload],[data-diff],[data-diff-zu],[data-gruppe],[data-einspruch]'); if (!t) return
+  let zumAbgleich = false
+  if (t.dataset.diff) { auswahl = +t.dataset.diff; diffOffen = true; zumAbgleich = true }
+  else if (t.hasAttribute('data-diff-zu')) diffOffen = false
+  else if (t.dataset.gruppe) { aufgeklappt.has(t.dataset.gruppe) ? aufgeklappt.delete(t.dataset.gruppe) : aufgeklappt.add(t.dataset.gruppe) }
+  else if (t.hasAttribute('data-einspruch')) { t.textContent = 'Öffnet den Einspruch-Ablauf'; return }
+  else if (t.dataset.m) metrik = t.dataset.m
+  else if (t.dataset.person) person = t.dataset.person
+  else if (t.dataset.ansicht) { ansicht = t.dataset.ansicht; try { history.replaceState(null, '', '#' + ansicht) } catch (_) {} }
+  // Picking a year in the list, table or the strip reopens its Abgleich; picking it in the chart only moves the detail.
+  else if (t.dataset.jahr) { auswahl = +t.dataset.jahr; if (!t.closest('svg')) diffOffen = true }
+  else if (t.hasAttribute('data-upload')) { document.querySelectorAll('[data-r="toast"]').forEach(x => { x.hidden = false; x.textContent = 'Im echten Ablauf öffnet sich der Beleg-Upload (Art: Steuerbescheid). Die Eule liest Jahr und Eckwerte; übernehmt ihr sie für ein Jahr ohne Erklärung, entsteht ein Eckjahr. Der Bescheid liegt danach auch im Belege-Tab unter „Bescheide“.' }); return }
+  render()
+  if (zumAbgleich) document.querySelectorAll('[data-r="diff"]').forEach(x => { if (x.offsetParent) x.scrollIntoView({ behavior: 'smooth', block: 'nearest' }) })
+})
+document.addEventListener('keydown', e => { const g = e.target.closest && e.target.closest('[data-jahr]')
+  if (g && g.tagName !== 'BUTTON' && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); const j = +g.dataset.jahr; waehleJahr(j)
+    const again = [...document.querySelectorAll(`[data-jahr="${j}"]`)].find(x => x.tagName === g.tagName && x.offsetParent); if (again) again.focus() } })
+const fromHash = () => { const h = location.hash.slice(1); ansicht = h === 'desktop' || h === 'handy' ? h : (window.innerWidth >= 1200 ? 'desktop' : 'handy') }
+window.addEventListener('hashchange', () => { fromHash(); render() })
+fromHash(); render()
 </script>
