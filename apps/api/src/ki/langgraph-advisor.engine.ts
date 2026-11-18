@@ -32,12 +32,12 @@ import { AI_RUNTIME_CONFIG_SERVICE, DEFAULT_AI_TURN_LIMITS, type AiRuntimeConfig
 import { anthropicThinksOnBudget, CHAT_MODEL_FACTORY, createChatModelFromConfig, type ChatModelFactory } from './chat-model.factory.js'
 import { classifyModelFailure, providerName } from './advisor-failure.js'
 import { checkPiiFree } from './ki.adapter.js'
-import { buildSystemMessage, SUMMARY_MAX_CHARS, SUMMARY_INSTRUCTIONS } from './advisor-prompt.js'
+import { buildSystemMessage, SUMMARY_MAX_CHARS, SUMMARY_INSTRUCTIONS, withHistoryCacheBreakpoint } from './advisor-prompt.js'
 import { buildToolSchemas, RejectedDraft, computedFiguresOf, unresolvedRejections } from './advisor-tools.js'
 import { AdvisorGraphState, runToolRound } from './advisor-tool-round.js'
 import { ADVISOR_TOPIC_GUARD, type AdvisorTopicGuardPort } from './advisor-topic-guard.js'
 export { toProviderToolSchema, buildToolSchemas, computedFiguresOf, unresolvedRejections } from './advisor-tools.js'
-export { buildStableSystemPrompt, buildSystemMessage } from './advisor-prompt.js'
+export { buildStableSystemPrompt, buildSystemMessage, withHistoryCacheBreakpoint } from './advisor-prompt.js'
 
 export const ADVISOR_ENGINE = Symbol('ADVISOR_ENGINE')
 
@@ -152,7 +152,10 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
     /** From this moment (epoch ms) on, the model answers without tools. */
     answerBy: number = Number.POSITIVE_INFINITY,
     now: () => number = Date.now,
+    /** Anthropic caches only marked prefixes: each round marks its newest message (see `withHistoryCacheBreakpoint`). */
+    markHistoryForCache = false,
   ) {
+    const forRound = (messages: readonly BaseMessage[]) => (markHistoryForCache ? withHistoryCacheBreakpoint(messages) : [...messages])
     const tools = buildToolSchemas()
     const bind = typeof model.bindTools === 'function' ? model.bindTools.bind(model) : null
     const boundModel = bind ? bind([...tools]) : model
@@ -174,7 +177,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
       // The same when the time is nearly up: an answer from what is there beats an error.
       const mustAnswer = state.toolRounds >= maxToolRounds || (state.toolRounds > 0 && now() >= answerBy)
       const roundModel = state.toolRounds === 0 ? planFirstModel : mustAnswer ? answerOnlyModel : boundModel
-      const streamOrValue = await roundModel.stream(state.messages, config)
+      const streamOrValue = await roundModel.stream(forRound(state.messages), config)
       for await (const chunk of streamOrValue) {
         if (chunk instanceof AIMessageChunk) {
           const thought = extractReasoningText(chunk)
@@ -207,7 +210,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
       if (isEmptyEnding(finalMsg)) {
         const nudge = new HumanMessage(ANSWER_NUDGE)
         let retried = null as BaseMessage | null
-        for await (const chunk of await answerOnlyModel.stream([...state.messages, nudge], config)) {
+        for await (const chunk of await answerOnlyModel.stream(forRound([...state.messages, nudge]), config)) {
           const text = extractMessageText((chunk as BaseMessage).content)
           if (text.length > 0) config?.writer?.({ event: 'token', data: { text } } satisfies AdvisorStreamEvent)
           // A streaming model sends chunks, one that cannot stream sends the whole message once.
@@ -436,7 +439,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
       request.signal?.aborted ? 'client' : timeout.aborted ? 'timeout' : null
 
     try {
-      const graph = this.buildCompiledGraph(chatModel, request, maxToolRounds, canForceTool, answerBy)
+      const graph = this.buildCompiledGraph(chatModel, request, maxToolRounds, canForceTool, answerBy, Date.now, slotConfig.provider === 'anthropic')
       const stream = await graph.stream(
         { messages: initialMessages },
         { streamMode: ['custom', 'updates'], signal },

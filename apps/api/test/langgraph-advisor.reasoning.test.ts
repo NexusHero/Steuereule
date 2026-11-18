@@ -1,7 +1,7 @@
 // #476: the owl's line of thought, what a turn cost, and a system prompt providers can cache.
 import { BaseChatModel, type BaseChatModelCallOptions, type BindToolsInput } from '@langchain/core/language_models/chat_models'
 import type { BaseLanguageModelInput } from '@langchain/core/language_models/base'
-import { AIMessageChunk, type BaseMessage } from '@langchain/core/messages'
+import { AIMessage, AIMessageChunk, HumanMessage, type BaseMessage } from '@langchain/core/messages'
 import { ChatGenerationChunk, type ChatResult } from '@langchain/core/outputs'
 import type { Runnable } from '@langchain/core/runnables'
 import { buildRecordHandles, type AdvisorPreviewTarget, type AdvisorStreamEvent, type AdvisorTurnRequest, type AdvisorTurnResult, type CaseDigest } from '@steuereule/core'
@@ -18,6 +18,7 @@ import {
 import { createChatModelFromConfig } from '../src/ki/chat-model.factory.js'
 import {
   buildStableSystemPrompt,
+  withHistoryCacheBreakpoint,
   buildSystemMessage,
   buildToolSchemas,
   toProviderToolSchema,
@@ -193,11 +194,11 @@ describe('system prompt built for provider-side caching (#476)', () => {
     expect(stable).not.toContain('Aktive Maske')
   })
 
-  it('marks the stable block as a cache breakpoint for Anthropic and puts the case after it', () => {
+  it('marks the stable block and the case as cache breakpoints for Anthropic, the case after the rules', () => {
     const content = buildSystemMessage('anthropic', digest, 'commute').content as Array<Record<string, unknown>>
     expect(content).toHaveLength(2)
     expect(content[0]).toMatchObject({ type: 'text', text: buildStableSystemPrompt(), cache_control: { type: 'ephemeral' } })
-    expect(content[1]!.cache_control).toBeUndefined()
+    expect(content[1]!.cache_control).toEqual({ type: 'ephemeral' })
     expect(content[1]!.text).toContain('Aktive Maske: commute')
     expect(content[1]!.text).toContain('"grossWageEur":65000')
   })
@@ -209,6 +210,32 @@ describe('system prompt built for provider-side caching (#476)', () => {
     expect(a.startsWith(stable)).toBe(true)
     expect(b.startsWith(stable)).toBe(true)
     expect(a).not.toBe(b)
+  })
+
+  it('marks the newest message of every Claude round for the cache, and nothing for the other providers', async () => {
+    const toolCall = () => new AIMessageChunk({ content: '', tool_call_chunks: [{ name: 'lookup_legal_source', args: JSON.stringify({ sourceId: 'estg-9-1' }), index: 0, id: 'c1' }] })
+    const marks = (messages: BaseMessage[]) =>
+      messages.map((m) => (Array.isArray(m.content) ? m.content.some((b) => (b as { cache_control?: unknown }).cache_control !== undefined) : false))
+
+    const claude = new ChunkedChatModel([[toolCall()], [answer('Antwort.')]])
+    await run(new LangGraphAdvisorEngine(runtime('anthropic'), () => claude))
+    // Round 1: system and the question; round 2: system, question, tool call, tool result.
+    expect(marks(claude.seenMessages[0]!)).toEqual([true, true])
+    expect(marks(claude.seenMessages[1]!)).toEqual([true, false, false, true])
+    expect(claude.seenMessages[1]![3]!.getType()).toBe('tool')
+
+    const gemini = new ChunkedChatModel([[toolCall()], [answer('Antwort.')]])
+    await run(new LangGraphAdvisorEngine(runtime('google-genai'), () => gemini))
+    expect(gemini.seenMessages.flatMap(marks).some(Boolean)).toBe(false)
+  })
+
+  it('leaves the conversation itself unmarked: only the copy sent to Claude carries the breakpoint', () => {
+    const history = [new HumanMessage('Frage'), new AIMessage('Antwort'), new HumanMessage('Noch eine')]
+    const sent = withHistoryCacheBreakpoint(history)
+    expect(sent[2]!.content).toEqual([{ type: 'text', text: 'Noch eine', cache_control: { type: 'ephemeral' } }])
+    expect(history[2]!.content).toBe('Noch eine')
+    // The model's own answer is never changed (its thinking has to reach the API as it came).
+    expect(withHistoryCacheBreakpoint(history.slice(0, 2))[1]).toBe(history[1])
   })
 
   it('sends that system message to the model', async () => {

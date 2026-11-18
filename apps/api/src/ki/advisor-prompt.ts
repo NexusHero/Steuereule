@@ -1,6 +1,6 @@
 // What the owl is told before a turn: the stable rules (cached by the providers), the case of this
 // user, and the instructions for summarising a conversation.
-import { SystemMessage } from '@langchain/core/messages'
+import { HumanMessage, SystemMessage, ToolMessage, type BaseMessage, type MessageContent } from '@langchain/core/messages'
 import {
   ADVISOR_LEGAL_SOURCES,
   describeNotesForPrompt,
@@ -171,8 +171,9 @@ function withoutPrintoutPlan(digest: CaseDigest): CaseDigest {
 }
 
 /**
- * Stable rules first, the case second. Anthropic caches only what is marked, so there the stable
- * block carries an explicit cache breakpoint; the other providers cache a repeated prefix on their own.
+ * Stable rules first, the case second. Anthropic caches only what is marked, so there both blocks
+ * carry a cache breakpoint: the rules are shared by every conversation, the case by every round and
+ * turn until a value changes. The other providers cache a repeated prefix on their own.
  */
 export function buildSystemMessage(
   provider: string,
@@ -202,11 +203,57 @@ export function buildSystemMessage(
     return new SystemMessage({
       content: [
         { type: 'text', text: stable, cache_control: { type: 'ephemeral' } },
-        { type: 'text', text: caseSpecific },
+        { type: 'text', text: caseSpecific, cache_control: { type: 'ephemeral' } },
       ],
     })
   }
   return new SystemMessage(`${stable}\n\n${caseSpecific}`)
+}
+
+const EPHEMERAL = { type: 'ephemeral' } as const
+
+function markedContent(content: MessageContent): MessageContent {
+  if (typeof content === 'string') return [{ type: 'text', text: content, cache_control: EPHEMERAL }]
+  if (content.length === 0) return content
+  const last = content[content.length - 1]!
+  return [...content.slice(0, -1), { ...last, cache_control: EPHEMERAL }]
+}
+
+/**
+ * The messages for one Anthropic round with a cache breakpoint on the newest one, so the next round
+ * and the next turn read the whole conversation so far from the cache instead of paying it again:
+ * measured, Claude cached only the rules (30k tokens) and paid case and history in every round. The
+ * graph's own messages stay untouched; an answer of the model is never marked (its thinking must
+ * reach the API unchanged).
+ */
+export function withHistoryCacheBreakpoint(messages: readonly BaseMessage[]): BaseMessage[] {
+  const last = messages[messages.length - 1]
+  if (last === undefined) return [...messages]
+  const content = markedContent(last.content)
+  let marked: BaseMessage
+  if (last instanceof ToolMessage) {
+    marked = new ToolMessage({
+      content,
+      tool_call_id: last.tool_call_id,
+      additional_kwargs: last.additional_kwargs,
+      response_metadata: last.response_metadata,
+      ...(last.name !== undefined ? { name: last.name } : {}),
+      ...(last.id !== undefined ? { id: last.id } : {}),
+      ...(last.status !== undefined ? { status: last.status } : {}),
+      ...(last.artifact !== undefined ? { artifact: last.artifact } : {}),
+    })
+  } else if (last instanceof HumanMessage) {
+    marked = new HumanMessage({
+      content,
+      additional_kwargs: last.additional_kwargs,
+      response_metadata: last.response_metadata,
+      ...(last.name !== undefined ? { name: last.name } : {}),
+      ...(last.id !== undefined ? { id: last.id } : {}),
+    } as ConstructorParameters<typeof HumanMessage>[0])
+  } else {
+    return [...messages]
+  }
+  return [...messages.slice(0, -1), marked]
 }
 
 export const SUMMARY_MAX_CHARS = 2400
