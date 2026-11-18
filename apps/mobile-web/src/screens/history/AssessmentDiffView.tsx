@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Pressable, Text, View, type TextStyle, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { Button, useTheme, type UiTheme } from '@steuereule/ui'
+import { useBreakpoint, Button, useTheme, type UiTheme } from '@steuereule/ui'
 import type { AppealDeadlineDto, AssessmentDiffDto, AssessmentDiffRowDto, AssessmentLessonDto } from '@steuereule/api-client'
 import { formatEuro, formatNumber } from '@steuereule/core'
 import { APP_NS } from '../../i18n/resources'
@@ -21,6 +21,8 @@ export interface AssessmentDiffViewProps {
   /** „Einspruch vorbereiten“: the existing Einspruch flow; without it the button stays away. */
   readonly onPrepareAppeal?: (() => void) | undefined
   readonly onClose?: (() => void) | undefined
+  /** False on the year page, whose own title already names the year. */
+  readonly yearInTitle?: boolean | undefined
   readonly testID?: string | undefined
 }
 
@@ -30,8 +32,10 @@ export interface AssessmentDiffViewProps {
  * follow-on changes as one chain; the form view collapsed; the Einspruchsfrist beside it; and the
  * lessons for next time. The same view in the Verlauf and in „Bescheid prüfen“.
  */
-export function AssessmentDiffView({ diff, deadline, submittedOn, assessmentDate, person = null, lessons = [], maskYear = null, onPrepareAppeal, onClose, testID = 'bescheid-abgleich' }: AssessmentDiffViewProps) {
+export function AssessmentDiffView({ diff, deadline, submittedOn, assessmentDate, person = null, lessons = [], maskYear = null, onPrepareAppeal, onClose, yearInTitle = true, testID = 'bescheid-abgleich' }: AssessmentDiffViewProps) {
   const t = useTheme()
+  // On a phone three column heads wrap into each other; one caption line says the same.
+  const narrow = useBreakpoint() === 's'
   const s = makeStyles(t)
   const { t: tr } = useTranslation(APP_NS)
   const label = usePositionLabel()
@@ -53,7 +57,13 @@ export function AssessmentDiffView({ diff, deadline, submittedOn, assessmentDate
         <View style={s.flex}>
           <Text style={s.eyebrow}>{tr('verlauf.abgleich.eyebrow')}</Text>
           <Text style={s.title} accessibilityRole="header">
-            {person === null ? tr('verlauf.abgleich.titel', { jahr: year }) : tr('verlauf.abgleich.titelPerson', { jahr: year, person: tr(`verlauf.person.${person}`) })}
+            {yearInTitle
+              ? person === null
+                ? tr('verlauf.abgleich.titel', { jahr: year })
+                : tr('verlauf.abgleich.titelPerson', { jahr: year, person: tr(`verlauf.person.${person}`) })
+              : person === null
+                ? tr('verlauf.abgleich.titelOhneJahr')
+                : tr('verlauf.abgleich.titelPersonOhneJahr', { person: tr(`verlauf.person.${person}`) })}
           </Text>
         </View>
         {onClose ? (
@@ -90,11 +100,17 @@ export function AssessmentDiffView({ diff, deadline, submittedOn, assessmentDate
           <AppealDeadline deadline={deadline} onPrepareAppeal={onPrepareAppeal} testID={testID} />
 
           <View style={s.table}>
-            <View style={[s.row, s.headerRow]}>
-              <Text style={[s.pos, s.headerText]}>{tr('verlauf.abgleich.spalteGeaendert')}</Text>
-              <Text style={[s.values, s.headerText]}>{tr('verlauf.abgleich.spalteWerte')}</Text>
-              <Text style={[s.effect, s.headerText]}>{tr('verlauf.abgleich.spalteWirkung')}</Text>
-            </View>
+            {narrow ? (
+              <View style={[s.row, s.headerRow]}>
+                <Text style={s.headerText} testID={`${testID}-spalten`}>{tr('verlauf.abgleich.spaltenKurz')}</Text>
+              </View>
+            ) : (
+              <View style={[s.row, s.headerRow]}>
+                <Text style={[s.pos, s.headerText]}>{tr('verlauf.abgleich.spalteGeaendert')}</Text>
+                <Text style={[s.values, s.headerText]}>{tr('verlauf.abgleich.spalteWerte')}</Text>
+                <Text style={[s.effect, s.headerText]}>{tr('verlauf.abgleich.spalteWirkung')}</Text>
+              </View>
+            )}
             {own.map((d) => {
               const effect = d.refundEffect
               const tone = effect === null || effect === 0 ? null : effect < 0 ? 'bad' : 'good'
