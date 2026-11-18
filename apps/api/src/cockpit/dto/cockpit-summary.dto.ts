@@ -34,6 +34,15 @@ export class CockpitStatusDto {
 }
 
 /** The one response shape for `GET /v1/steuerjahre/{jahr}/cockpit`. */
+/** The recorded income of a joint return, split by person (Echtdatentest 18.11.2026). */
+export class CockpitIncomeByPersonDto {
+  @ApiProperty({ type: Number, example: 96300, description: 'Recorded wages and pension of Person A (EUR).' })
+  a!: number
+
+  @ApiProperty({ type: Number, example: 107000, description: 'Recorded wages and pension of Person B (EUR).' })
+  b!: number
+}
+
 export class CockpitSummaryDto {
   @ApiProperty({ type: Number, example: 2026 })
   taxYear!: number
@@ -43,4 +52,7 @@ export class CockpitSummaryDto {
 
   @ApiProperty({ type: Number, example: 3, description: 'Minimal-Gate questions still open (REQ-015 remainingSteps).' })
   openItems!: number
+
+  @ApiPropertyOptional({ type: CockpitIncomeByPersonDto, description: 'Only for a joint return recorded in this account: the share of each person.' })
+  byPerson?: CockpitIncomeByPersonDto
 }

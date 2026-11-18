@@ -858,6 +858,26 @@
         "keine": "Nicht berufstätig"
       }
     },
+    "deJob": {
+      "titleBefore": "Warst du im Jahr auch in ",
+      "titleMark": "Deutschland",
+      "titleAfter": " angestellt?",
+      "help": "Zum Beispiel bis zum Wechsel in die Schweiz. Dann gehört deine deutsche Lohnsteuerbescheinigung mit in die Erklärung.",
+      "options": {
+        "nurSchweiz": "Nein, nur in der Schweiz",
+        "auchDeutschland": "Ja, auch in Deutschland"
+      }
+    },
+    "partnerDeJob": {
+      "titleBefore": "War dein Partner im Jahr auch in ",
+      "titleMark": "Deutschland",
+      "titleAfter": " angestellt?",
+      "help": "Dann kommt auch seine deutsche Lohnsteuerbescheinigung dazu.",
+      "options": {
+        "nurSchweiz": "Nein, nur in der Schweiz",
+        "auchDeutschland": "Ja, auch in Deutschland"
+      }
+    },
     "partnerAusland": {
       "titleBefore": "Arbeitet dein Partner auch in der ",
       "titleMark": "Schweiz",
@@ -1057,6 +1077,7 @@
       "retry": "Noch mal versuchen"
     },
     "depot": {
+      "deutscherBrokerOhneSteuer": "Deutsche Bank: Sie behält Abgeltungsteuer ein, sobald der Freistellungsauftrag ausgeschöpft ist. Trag unten ein, was laut Steuerbescheinigung einbehalten wurde (ggf. 0). Danach rechnen wir nach, ob die Abgeltungsteuer oder dein persönlicher Steuersatz günstiger ist.",
       "deutscherBroker": "Deine Bank hat Abgeltungsteuer einbehalten. Unten rechnen wir ehrlich nach, ob die Abgeltungsteuer oder dein persönlicher Steuersatz günstiger ist.",
       "auslaendischerBroker": "Ausländischer Broker: Es wurde keine deutsche Steuer abgeführt. Diese Kapitalerträge musst du in Anlage KAP erklären — sie werden mit deinem persönlichen Steuersatz versteuert. Wir erfinden hier keine Abgeltungsteuer.",
       "krypto": "Krypto bleibt in 1.0 ehrlich außen vor: Haltefristen und Anschaffungskosten rechnen wir noch nicht. Kein halbes Feature.",
@@ -1069,7 +1090,8 @@
       "kirchensteuer": "Einbehaltene Kirchensteuer (volle Euro, ggf. 0)"
     },
     "feld": {
-      "label": "Kapitalerträge (Einkünfte aus Kapitalvermögen)",
+      "label": "Kapitalerträge vor Abzug des Sparer-Pauschbetrags (Steuerbescheinigung: „Höhe der Kapitalerträge“)",
+      "plausiNetto": "Der genutzte Sparer-Pauschbetrag ist größer als deine Kapitalerträge. Hast du den Betrag nach Abzug eingetragen? Dann wäre hier {{brutto}} richtig, sonst rechnen wir 0 € Steuer auf deine Kapitalerträge.",
       "placeholder": "Ganzzahliger Wert",
       "unklar": "unlesbar"
     },
@@ -1302,6 +1324,23 @@
       "arbeitsweg": "Arbeitsweg und Arbeitstage",
       "kinder": "Kinder"
     },
+    "maskePartner": {
+      "lstb": "Lohnsteuerbescheinigung von {{name}}",
+      "ch": "Schweizer Lohnausweis von {{name}}",
+      "rente": "Rente von {{name}}",
+      "arbeitsweg": "Arbeitsweg und Arbeitstage von {{name}}"
+    },
+    "partnerSchritt": {
+      "kurz": "Dein Partner",
+      "titel": "Wer ist dein Partner?",
+      "hilfe": "Für eure gemeinsame Erklärung. Danach gehen wir die Unterlagen deines Partners genauso durch wie deine.",
+      "vorname": "Vorname",
+      "nachname": "Nachname (optional)",
+      "geburtsdatum": "Geburtsdatum (TT.MM.JJJJ)",
+      "fehlt": "Bitte Vorname und Geburtsdatum eintragen.",
+      "datumFalsch": "Bitte das Geburtsdatum als TT.MM.JJJJ eintragen.",
+      "fehler": "Das hat nicht geklappt. Prüf die Verbindung und versuch es noch mal."
+    },
     "alleinerziehend": {
       "titel": "Alleinerziehend"
     },
@@ -1433,7 +1472,8 @@
         "pendlertageZweiter": "Pendlertage zweiter Weg (so angegeben)",
         "widerspruch": "Die Tage passen nicht: Mehr als die Arbeitstage im Zeitraum dieses Wegs (höchstens 366) sind nicht möglich."
       }
-    }
+    },
+    "weekdaysPartner": "An welchen Tagen arbeitet {{name}}?"
   },
   "abgabe": {
     "back": "Zurück",
@@ -1515,7 +1555,8 @@
       "nachzahlungLabel": "Voraussichtliche Nachzahlung",
       "ergebnisLabel": "Voraussichtliches Ergebnis",
       "ausgeglichen": "Weder Nachzahlung noch Erstattung — es fällt keine Steuer an.",
-      "ergebnisSpanne": "{{nachzahlung}} Nachzahlung bis {{erstattung}} Erstattung"
+      "ergebnisSpanne": "{{nachzahlung}} Nachzahlung bis {{erstattung}} Erstattung",
+      "proPerson": "Du {{du}} · {{name}} {{partner}}"
     },
     "refreshing": "Wird aktualisiert …",
     "answerQuestions": "Fragen beantworten",
@@ -1967,6 +2008,16 @@
         "help": "Mehr als 60 Arbeitstage ohne Rückkehr an deinen Wohnsitz beenden den Grenzgänger-Status (Art. 15a DBA Schweiz).",
         "label": "Nichtrückkehrtage",
         "placeholder": "0"
+      },
+      "wohnsitzPartner": {
+        "titleBefore": "Wo wohnt ",
+        "titleMark": "{{name}}",
+        "titleAfter": "?"
+      },
+      "tagePartner": {
+        "titleBefore": "Wie viele Tage ist {{name}} ",
+        "titleMark": "nicht",
+        "titleAfter": " nach Hause zurückgekehrt?"
       }
     },
     "lohnausweis": {

@@ -115,6 +115,12 @@ export class LinkService {
     return row.personBUserId
   }
 
+  /** Every Person B this user records data for (joint returns without B's own account), over all years. */
+  async recordedPartnerUserIds(userId: string): Promise<readonly string[]> {
+    const rows = await this.repository.listForPersonA(userId)
+    return [...new Set(rows.filter((row) => row.filingType === 'zusammen' && row.personBUserId !== '' && !hasOwnAccount(row)).map((row) => row.personBUserId))]
+  }
+
   /**
    * The spouse as the owl needs to know them (ADR-0073): whose data they are, whether the user may
    * record figures for them, and the names only so they can be taken out of chat text. Null

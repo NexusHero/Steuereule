@@ -580,20 +580,22 @@ describe('StammdatenScreen small helpers (#452 slice 5)', () => {
     await waitFor(() => expect(ended).toBe(1))
   })
 
-  it('allows adding and removing reusable employers in Stammdaten', async () => {
+  it('shows the employers recorded on the certificates, and none in a fresh account (Echtdatentest 18.11.2026)', async () => {
     server.use(http.get('*/v1/stammdaten', () => HttpResponse.json(LEER)))
+    server.use(http.get('*/v1/arbeitgeber', () => HttpResponse.json([{ name: 'Rheinmetall Air Defence AG', strasse: 'Birchstrasse 155', plzOrt: '8050 Zürich' }])))
     renderScreen()
 
     const card = await screen.findByTestId('stammdaten-unternehmen-card')
-    expect(card.textContent).toContain('Novartis Pharma AG')
+    expect(card.textContent).toContain('Rheinmetall Air Defence AG')
+    expect(card.textContent).not.toContain('Novartis')
+    expect(screen.queryByTestId('stammdaten-unternehmen-hinzufuegen')).toBeNull()
+  })
 
-    input('stammdaten-unternehmen-name', 'Lonza Group AG')
-    input('stammdaten-unternehmen-strasse', 'Münchensteinerstrasse 38')
-    input('stammdaten-unternehmen-plzort', '4052 Basel')
-    input('stammdaten-unternehmen-uid', 'CHE-106.841.866')
-    fireEvent.click(screen.getByTestId('stammdaten-unternehmen-hinzufuegen'))
-
-    expect(screen.getByTestId('stammdaten-unternehmen-card').textContent).toContain('Lonza Group AG (CH)')
-    expect(screen.getByTestId('stammdaten-unternehmen-card').textContent).toContain('UID: CHE-106.841.866')
+  it('leaves the employer card out while nothing is recorded', async () => {
+    server.use(http.get('*/v1/stammdaten', () => HttpResponse.json(LEER)))
+    server.use(http.get('*/v1/arbeitgeber', () => HttpResponse.json([])))
+    renderScreen()
+    await screen.findByTestId('stammdaten-speichern')
+    expect(screen.queryByTestId('stammdaten-unternehmen-card')).toBeNull()
   })
 })

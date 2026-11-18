@@ -11,14 +11,18 @@ import {
   type Answers,
   type StromTopicId,
 } from '@steuereule/core'
-import { hasGermanJobToo, tileById, visibleTiles, type TileFacts, type TileId } from '../cockpit/tiles'
+import { GERMAN_JOB_TOO } from '@steuereule/core'
+import { crossBorderWithGermanJob, hasGermanJobToo, tileById, visibleTiles, type PartnerFacts, type TileFacts, type TileId } from '../cockpit/tiles'
 import type { FunnelPath } from '../funnel/KontoWandScreen'
 
 export type StromMaskId = 'lstb' | 'ch' | 'rente' | 'arbeitsweg' | 'kinder'
 
 export type StromStep =
   | { readonly kind: 'basis' }
-  | { readonly kind: 'maske'; readonly id: StromMaskId }
+  /** Person B's name and birth date, so the masks after it can be recorded for B (joint return). */
+  | { readonly kind: 'partner' }
+  /** A mask; `person: 'B'` records it for Person B of a joint return. */
+  | { readonly kind: 'maske'; readonly id: StromMaskId; readonly person?: 'B' }
   | { readonly kind: 'auswahl' }
   | { readonly kind: 'thema'; readonly id: StromTopicId }
   | { readonly kind: 'alleinerziehend' }
@@ -59,8 +63,10 @@ export function slugOf(step: StromStep): string {
   switch (step.kind) {
     case 'basis':
       return 'basis'
+    case 'partner':
+      return 'partner'
     case 'maske':
-      return MASK_SLUGS[step.id]
+      return step.person === 'B' ? `partner-${MASK_SLUGS[step.id]}` : MASK_SLUGS[step.id]
     case 'auswahl':
       return 'auswahl'
     case 'thema':
@@ -73,7 +79,12 @@ export function slugOf(step: StromStep): string {
 }
 
 export function stepFromSlug(slug: string | undefined): StromStep | null {
-  if (slug === 'basis' || slug === 'auswahl' || slug === 'alleinerziehend' || slug === 'fertig') return { kind: slug }
+  if (slug === 'basis' || slug === 'partner' || slug === 'auswahl' || slug === 'alleinerziehend' || slug === 'fertig') return { kind: slug }
+  if (slug?.startsWith('partner-')) {
+    const own = slug.slice('partner-'.length)
+    const id = (Object.keys(MASK_SLUGS) as StromMaskId[]).find((mask) => MASK_SLUGS[mask] === own && mask !== 'kinder')
+    return id === undefined ? null : { kind: 'maske', id, person: 'B' }
+  }
   const mask = (Object.keys(MASK_SLUGS) as StromMaskId[]).find((id) => MASK_SLUGS[id] === slug)
   if (mask !== undefined) return { kind: 'maske', id: mask }
   const topic = (Object.keys(TOPIC_SLUGS) as StromTopicId[]).find((id) => TOPIC_SLUGS[id] === slug)
@@ -92,21 +103,41 @@ function shownTiles(facts: TileFacts): ReadonlySet<TileId> {
   return new Set(visibleTiles(facts).map((tile) => tile.id))
 }
 
-/**
- * A cross-border commuter who also had a German job in the year (ADR-0079): the way-to-work mask
- * records the change (the first way ends, a second one starts), or a German certificate is already
- * entered. Then the German LStB belongs in the Strom too, right after the way to work.
- */
-function crossBorderWithGermanJob(facts: TileFacts): boolean {
-  return facts.path === 'ch' && hasGermanJobToo(facts.commute, facts.lstb)
-}
-
 function masksFor(facts: TileFacts): readonly StromMaskId[] {
   const tiles = shownTiles(facts)
   const masks = MASKS[facts.path].filter((id) => tiles.has(id))
   if (!crossBorderWithGermanJob(facts)) return masks
   const at = masks.indexOf('arbeitsweg') + 1
   return [...masks.slice(0, at), 'lstb', ...masks.slice(at)]
+}
+
+/** Person B of a joint return who is recorded in this account (no account of their own). */
+function jointPartner(answers: Answers, facts: TileFacts): PartnerFacts | null {
+  const partner = facts.partner
+  return answers.familienstand === 'Verheiratet' && partner != null && partner.joint ? partner : null
+}
+
+/**
+ * Person B's masks, in the order of A's (ADR-0088): what the basis says B does decides them. A Grenzgänger
+ * B gets the Swiss certificate and the way to work, plus the German certificate when B also worked in
+ * Germany; an employee in Germany the LStB and the way to work; a pensioner the pension.
+ */
+function partnerMasks(answers: Answers, partner: PartnerFacts): readonly StromMaskId[] {
+  const job = answers['partner-job']
+  if (job === 'Rente') return ['rente']
+  if (job !== 'Angestellt') return []
+  if (answers['partner-ausland'] !== 'Ja, in die Schweiz') return ['lstb', 'arbeitsweg']
+  const german = answers['partner-de-job'] === GERMAN_JOB_TOO || hasGermanJobToo(partner.commute, partner.lstb)
+  return german ? ['ch', 'arbeitsweg', 'lstb'] : ['ch', 'arbeitsweg']
+}
+
+/** The partner's data as the facts a tile's status reads. */
+function partnerTileFacts(partner: PartnerFacts, answers: Answers): TileFacts {
+  return { path: 'angestellte', answers, lstb: partner.lstb, ch: partner.ch, pension: partner.pension, commute: partner.commute }
+}
+
+function isPartnerNamed(partner: PartnerFacts): boolean {
+  return (partner.name ?? '').trim() !== '' && partner.birthDate !== null
 }
 
 /** The topics on this user's selection page. */
@@ -127,9 +158,17 @@ function hasTopicPage(id: StromTopicId, answers: Answers): boolean {
 export function stromSteps(answers: Answers, facts: TileFacts | null): readonly StromStep[] {
   if (!isBasisDone(answers) || facts === null) return [{ kind: 'basis' }]
   const tiles = shownTiles(facts)
+  const partner = jointPartner(answers, facts)
+  const own = masksFor(facts)
+  const beforeChildren = own.filter((id) => id !== 'kinder')
+  const bMasks = partner === null ? [] : partnerMasks(answers, partner)
   return [
     { kind: 'basis' },
-    ...masksFor(facts).map((id) => ({ kind: 'maske', id }) as const),
+    // B is named first, so every mask after it can say whose it is (Echtdatentest 18.11.2026).
+    ...(partner !== null && bMasks.length > 0 ? [{ kind: 'partner' } as const] : []),
+    ...beforeChildren.map((id) => ({ kind: 'maske', id }) as const),
+    ...bMasks.map((id) => ({ kind: 'maske', id, person: 'B' }) as const),
+    ...(own.includes('kinder') ? [{ kind: 'maske', id: 'kinder' } as const] : []),
     { kind: 'auswahl' },
     ...applicableTopics(answers)
       .filter((id) => hasTopicPage(id, answers))
@@ -143,7 +182,10 @@ export function isStepOpen(step: StromStep, answers: Answers, facts: TileFacts):
   switch (step.kind) {
     case 'basis':
       return !isBasisDone(answers)
+    case 'partner':
+      return facts.partner == null || !isPartnerNamed(facts.partner)
     case 'maske':
+      if (step.person === 'B') return facts.partner == null || tileById(step.id).status(partnerTileFacts(facts.partner, answers)) !== 'erledigt'
       return tileById(step.id).status(facts) !== 'erledigt'
     case 'auswahl':
       return applicableTopics(answers).some((id) => answers[id] === undefined)
@@ -156,6 +198,13 @@ export function isStepOpen(step: StromStep, answers: Answers, facts: TileFacts):
   }
 }
 
+/** A step whose data is still loading: neither its status nor the count can be told yet. */
+function isStepPending(step: StromStep, facts: TileFacts): boolean {
+  if (step.kind === 'partner') return facts.partner?.pending === true
+  if (step.kind !== 'maske') return false
+  return step.person === 'B' ? facts.partner?.pending === true : facts.pendingTiles?.has(step.id) === true
+}
+
 /**
  * Where "Weiter" in the cockpit leads: the first step still open, or the summary once everything is
  * answered. Null while a mask's data is still loading — no step is suggested rather than a wrong one.
@@ -164,7 +213,7 @@ export function nextOpenStep(answers: Answers, facts: TileFacts | null): StromSt
   if (!isBasisDone(answers)) return { kind: 'basis' }
   if (facts === null) return null
   for (const step of stromSteps(answers, facts)) {
-    if (step.kind === 'maske' && facts.pendingTiles?.has(step.id)) return null
+    if (isStepPending(step, facts)) return null
     if (isStepOpen(step, answers, facts)) return step
   }
   return { kind: 'fertig' }
@@ -177,7 +226,7 @@ export function nextOpenStep(answers: Answers, facts: TileFacts | null): StromSt
 export function stromProgress(answers: Answers, facts: TileFacts | null): { readonly done: number; readonly total: number } | null {
   if (facts === null || !isBasisDone(answers)) return null
   const steps = stromSteps(answers, facts).filter((s) => s.kind !== 'fertig')
-  if (steps.some((s) => s.kind === 'maske' && facts.pendingTiles?.has(s.id))) return null
+  if (steps.some((s) => isStepPending(s, facts))) return null
   return { done: steps.filter((s) => !isStepOpen(s, answers, facts)).length, total: steps.length }
 }
 

@@ -120,6 +120,12 @@ export class PrismaChSalaryCertificateRepository implements CrossBorderSalarySta
     return row === null ? null : toRecord(row as ChSalaryCertificateRow)
   }
 
+  async listForUsers(userIds: readonly string[]): Promise<readonly CrossBorderSalaryStatementRecord[]> {
+    if (userIds.length === 0) return []
+    const rows = await this.prisma.chSalaryCertificate.findMany({ where: { userId: { in: [...userIds] } }, orderBy: { taxYear: 'desc' } })
+    return rows.map((row) => toRecord(row as ChSalaryCertificateRow))
+  }
+
   async setField(userId: string, taxYear: number, field: SalaryCertificateAmountFieldId, value: string | null): Promise<CrossBorderSalaryStatementRecord> {
     const [row] = await this.prisma.$transaction([
       this.prisma.chSalaryCertificate.upsert({

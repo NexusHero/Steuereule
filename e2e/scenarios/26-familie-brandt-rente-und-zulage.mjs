@@ -43,7 +43,7 @@ export async function runScenario26(browser, webOrigin, sql) {
   const api = user.api
   await call(api, 'PUT', '/v1/profile', { firstName: 'Jonas', lastName: 'Brandt' })
   await call(api, 'PUT', '/v1/stammdaten', { familienstand: 'verheiratet', religion: 'VD', religionConsent: true, plz: '79539' })
-  await answer(api, Y, [['job', 'Angestellt'], ['ausland', 'Ja, in die Schweiz'], ['kinder', '2 oder mehr'], ['familienstand', 'Verheiratet'], ['partner-job', 'Rente']])
+  await answer(api, Y, [['job', 'Angestellt'], ['ausland', 'Ja, in die Schweiz'], ['de-job', 'Nur in der Schweiz'], ['kinder', '2 oder mehr'], ['familienstand', 'Verheiratet'], ['partner-job', 'Rente']])
   await answer(api, Y, [['ch-wohnsitz', 'Deutschland'], ['ch-nichtrueckkehrtage', '0']])
   await call(api, 'PUT', `/v1/steuerjahre/${Y}/kopplung`, { filingType: 'zusammen' })
   await call(api, 'PUT', `/v1/steuerjahre/${Y}/kopplung/person-b`, { firstName: 'Ute', lastName: 'Brandt' })
@@ -130,7 +130,7 @@ export async function runScenario26(browser, webOrigin, sql) {
   // Row E — B with an own account and a change of job; the user's joint estimate counts both of B's wages.
   const owner = await createAccount({ apiOrigin, webOrigin, sql, tag: `${TAG}-e` })
   await call(owner.api, 'PUT', '/v1/stammdaten', { familienstand: 'verheiratet', religion: 'VD', religionConsent: true, plz: '79539' })
-  await answer(owner.api, Y, [['job', 'Angestellt'], ['ausland', 'Nein'], ['kinder', 'Nein'], ['familienstand', 'Verheiratet'], ['partner-job', 'Angestellt'], ['partner-ausland', 'Ja, in die Schweiz']])
+  await answer(owner.api, Y, [['job', 'Angestellt'], ['ausland', 'Nein'], ['kinder', 'Nein'], ['familienstand', 'Verheiratet'], ['partner-job', 'Angestellt'], ['partner-ausland', 'Ja, in die Schweiz'], ['partner-de-job', 'Nur in der Schweiz']])
   await call(owner.api, 'PUT', `/v1/steuerjahre/${Y}/kopplung`, { filingType: 'zusammen' })
   for (const [field, value] of [['bruttoarbeitslohn', 52_000], ['lohnsteuer', 8_400], ['sozialversicherung', 10_600]]) {
     await call(owner.api, 'PUT', `/v1/steuerjahre/${Y}/lstb/${field}`, { kind: 'erfasst', value })
@@ -139,7 +139,7 @@ export async function runScenario26(browser, webOrigin, sql) {
   if (!code) fail('Row E: the joint return should offer an invitation code')
   const spouse = await createAccount({ apiOrigin, webOrigin, sql, tag: `${TAG}-b` })
   await call(spouse.api, 'POST', `/v1/steuerjahre/${Y}/kopplung/beitreten/${code}`)
-  await answer(spouse.api, Y, [['job', 'Angestellt'], ['ausland', 'Ja, in die Schweiz'], ['kinder', 'Nein'], ['familienstand', 'Verheiratet'], ['partner-job', 'Angestellt'], ['partner-ausland', 'Nein']])
+  await answer(spouse.api, Y, [['job', 'Angestellt'], ['ausland', 'Ja, in die Schweiz'], ['de-job', 'Nur in der Schweiz'], ['kinder', 'Nein'], ['familienstand', 'Verheiratet'], ['partner-job', 'Angestellt'], ['partner-ausland', 'Nein']])
   await answer(spouse.api, Y, [['ch-wohnsitz', 'Deutschland'], ['ch-nichtrueckkehrtage', '0']])
   for (const [field, value] of [['bruttoarbeitslohn', 20_000], ['lohnsteuer', 2_000], ['sozialversicherung', 4_000]]) {
     await call(spouse.api, 'PUT', `/v1/steuerjahre/${Y}/lstb/${field}`, { kind: 'erfasst', value })

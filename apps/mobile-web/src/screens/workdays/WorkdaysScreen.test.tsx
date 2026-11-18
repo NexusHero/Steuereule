@@ -51,6 +51,21 @@ describe('ArbeitstageScreen', () => {
     expect(screen.getAllByText(String(weekdays)).length).toBeGreaterThan(0)
   })
 
+  it('asks about the partner by name, not „du“ (Echtdatentest 18.11.2026)', async () => {
+    const i18n = createAppI18n('de')
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <I18nextProvider i18n={i18n}>
+          <ThemeProvider mode="light">
+            <WorkdaysScreen taxYear={2026} partnerName="Büsra" />
+          </ThemeProvider>
+        </I18nextProvider>
+      </QueryClientProvider>,
+    )
+    expect(await screen.findByText('An welchen Tagen arbeitet Büsra?')).toBeTruthy()
+    expect(screen.queryByText('An welchen Tagen arbeitest du?')).toBeNull()
+  })
+
   it('names a widerspruch when vacation days exceed the work days, never clamps', async () => {
     renderWorkdays()
 

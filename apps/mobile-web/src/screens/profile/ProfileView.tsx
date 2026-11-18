@@ -9,7 +9,7 @@ import { ProfileExpertModeSection } from './ProfileExpertModeSection'
 import { ProfileDictationModelSection } from './ProfileDictationModelSection'
 import { AssistantsListSection } from './AssistentenListSection'
 import { DeviceListSection } from '../device/DeviceListSection'
-import { useSavedEmployers } from '../master-data/employersStore'
+import { useKnownEmployers } from '../master-data/employersStore'
 import type { OnboardingProfile } from '../onboarding/profileMapping'
 
 interface ProfileViewProps {
@@ -27,7 +27,7 @@ export function ProfileView({ profile, onEdit, justSaved, bp, onOpenPrivacy, onO
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeProfileStyles(t)
-  const { employers } = useSavedEmployers()
+  const employers = useKnownEmployers()
   const fullName = `${profile.firstName} ${profile.lastName}`.trim()
   const initialSource = profile.firstName.trim() || profile.lastName.trim()
   const initial = initialSource ? initialSource[0]?.toUpperCase() : '?'
@@ -83,7 +83,7 @@ export function ProfileView({ profile, onEdit, justSaved, bp, onOpenPrivacy, onO
                 testID={`profil-wissensnetz-emp-${emp.id}`}
               >
                 <Text style={{ ...t.type.captionStrong, color: t.color.tinte }}>
-                  {`${emp.name} (${emp.land})`}
+                  {emp.name}
                 </Text>
               </View>
             ))}

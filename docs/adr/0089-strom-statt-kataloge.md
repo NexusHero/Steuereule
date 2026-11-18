@@ -54,3 +54,12 @@ Dazu gehören folgende Regeln:
   - Person B im Strom: „Was trifft auf ‹Name› zu?“; bis dahin bleibt „Für wen?“ in den Katalogen.
   - Belege vorbelegen die Auswahl.
   - Das Vorjahr belegt die Auswahl vor („Hat sich etwas geändert?“).
+
+## Nachtrag 18.11.2026: Person B und deutsche Anstellung im Strom
+
+Der manuelle Echtdatentest (Grenzgänger-Ehepaar, 2024 mit Wechsel von Deutschland in die Schweiz) zeigte zwei Lücken: Der Strom fragte nach „Arbeitet dein Partner auch in der Schweiz?“ nie nach den Unterlagen des Partners, und die deutsche Lohnsteuerbescheinigung kam nur über einen Jobwechsel im Arbeitsweg in den Strom. Nach dem Strom stand deshalb eine Erstattung von 27.688 € statt einer Nachzahlung von 3.797,90 €.
+
+- **Deutsche Anstellung in der Basis:** Nach „Ja, in die Schweiz“ fragt die Basis „Warst du im Jahr auch in Deutschland angestellt?“ (`de-job`), für einen Grenzgänger-Partner ebenso (`partner-de-job`). Rentner fragt sie nicht (neue Bedingung `askedWhen` an der Frage). „Auch in Deutschland“ setzt dasselbe Signal wie der Jobwechsel (ADR-0079): LStB-Schritt im Strom, LStB-Kachel offen und Pflicht.
+- **Partner-Schritt:** Bei Zusammenveranlagung ohne eigenes Konto von B folgt auf die Basis „Wer ist dein Partner?“ mit Vorname und Geburtsdatum. Der Rest von B bleibt in „Angaben für die Erklärung“.
+- **Masken von B** kommen nach den eigenen und vor den Kindern, je nach Basis: Grenzgänger Lohnausweis und Arbeitsweg (plus LStB bei deutscher Anstellung), Angestellter in Deutschland LStB und Arbeitsweg, Rentner die Rente. Adressen: `partner-schweiz`, `partner-arbeitsweg`, `partner-lohnsteuerbescheinigung`, `partner-rente`. Die Masken nennen B beim Namen.
+- **Fortschritt** zählt diese Schritte mit. Bestehende Konten sehen sie ehrlich als offen; schon Erfasstes zählt sofort als erledigt. Damit ist der offene Punkt „Person B im Strom“ oben für Masken erledigt; „Was trifft auf ‹Name› zu?“ für die Themen bleibt offen.

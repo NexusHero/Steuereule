@@ -57,6 +57,13 @@ describe('Exhaustive Matrix & Fuzzing Suite', () => {
               answers.ausland = ausland
               step = nextStepFor(minimalGate, answers)
 
+              // Switzerland: was there a German job in the year too?
+              if (ausland === 'Ja, in die Schweiz' && job !== 'Rente') {
+                expect(step).toEqual({ kind: 'question', id: 'de-job' })
+                answers['de-job'] = 'Nur in der Schweiz'
+                step = nextStepFor(minimalGate, answers)
+              }
+
               // If In ein anderes Land -> ch-only gate
               if (ausland === 'In ein anderes Land') {
                 expect(step).toEqual({ kind: 'gate', id: 'ch-only' })

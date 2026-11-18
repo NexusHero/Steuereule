@@ -2,12 +2,13 @@ import { useEffect, useRef, useState } from 'react'
 import { Pressable, Text, View, type TextStyle, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { Card, hapticSuccess, useBreakpoint, useTheme, type UiTheme } from '@steuereule/ui'
-import type { Answers, Conflict, Notice } from '@steuereule/core'
+import { GERMAN_JOB_TOO, type Answers, type Conflict, type Notice } from '@steuereule/core'
 import {
   useCapitalControllerGet,
   useChSalaryCertificateControllerGet,
   useChildrenControllerList,
   useCommuteControllerGet,
+  useLinkControllerGet,
   useLstbControllerGetLstb,
   usePensionControllerGet,
   useRentalControllerGet,
@@ -20,7 +21,7 @@ import type { FunnelPath } from '../funnel/KontoWandScreen'
 import { CockpitPartnerSection } from './CockpitPartnerSection'
 import { derivePersonas } from './personas'
 import { tileStyles } from './tileStyles'
-import { TILES, groupTiles, hasAnswersForEntry, isRequiredTile, tileHintSeverity, type TileDefinition, type TileFacts, type TileId, type TileStatus } from './tiles'
+import { TILES, groupTiles, hasAnswersForEntry, isRequiredTile, tileHintSeverity, type PartnerFacts, type TileDefinition, type TileFacts, type TileId, type TileStatus } from './tiles'
 
 export function useCockpitTileFacts(
   year: number,
@@ -39,6 +40,7 @@ export function useCockpitTileFacts(
   const rental = useRentalControllerGet(year, { query: { enabled: active } })
   const hasChildren = answers.kinder !== undefined && answers.kinder !== 'Nein'
   const children = useChildrenControllerList(year, { query: { enabled: active && hasChildren } })
+  const partner = usePartnerFacts(year, active && answers.familienstand === 'Verheiratet', answers)
 
   if (!active || path === null) return null
 
@@ -65,6 +67,41 @@ export function useCockpitTileFacts(
     capital: capital.data?.status === 200 ? capital.data.data : null,
     rental: rental.data?.status === 200 ? rental.data.data : null,
     children: children.data?.status === 200 ? children.data.data : null,
+    partner,
+  }
+}
+
+/**
+ * Person B of a joint return recorded in this account, and what is entered for B — loaded only for the
+ * masks the basis says B has (ADR-0088). Undefined for a single user; null when B files separately or
+ * has an account of their own.
+ */
+function usePartnerFacts(year: number, married: boolean, answers: Answers): PartnerFacts | null | undefined {
+  const link = useLinkControllerGet(year, { query: { enabled: married } })
+  const linkData = link.data?.status === 200 ? link.data.data : null
+  const joint = linkData !== null && linkData.filingType === 'zusammen' && !linkData.personBHasOwnAccount
+  const job = answers['partner-job']
+  const employed = married && joint && job === 'Angestellt'
+  const swiss = employed && answers['partner-ausland'] === 'Ja, in die Schweiz'
+  const B = { person: 'B' } as const
+  const lstb = useLstbControllerGetLstb(year, B, { query: { enabled: employed } })
+  const commute = useCommuteControllerGet(year, B, { query: { enabled: employed } })
+  const ch = useChSalaryCertificateControllerGet(year, B, { query: { enabled: swiss } })
+  const pension = usePensionControllerGet(year, B, { query: { enabled: married && joint && job === 'Rente' } })
+  if (!married) return undefined
+  if (link.isPending || link.isError) return { joint: false, name: null, birthDate: null, pending: true }
+  if (!joint) return null
+  const unknown = (q: { readonly isPending: boolean; readonly isError: boolean }, on: boolean) => on && (q.isPending || q.isError)
+  const pending = unknown(lstb, employed) || unknown(commute, employed) || unknown(ch, swiss) || unknown(pension, married && job === 'Rente')
+  return {
+    joint: true,
+    name: linkData.personB?.firstName ?? null,
+    birthDate: linkData.personB?.geburtsdatum ?? null,
+    ...(pending ? { pending: true } : {}),
+    lstb: lstb.data?.status === 200 ? lstb.data.data : null,
+    commute: commute.data?.status === 200 ? commute.data.data : null,
+    ch: ch.data?.status === 200 ? ch.data.data : null,
+    pension: pension.data?.status === 200 ? pension.data.data : null,
   }
 }
 
@@ -164,7 +201,7 @@ export function CockpitTiles({
     const severity = tileHintSeverity(tile.id, conflicts, notices)
     const isCompactDone = status === 'erledigt' && severity === null
     // An open tile that never blocks the return says so instead of reading like a duty.
-    const isOptional = status === 'offen' && !isRequiredTile(tile, facts.path)
+    const isOptional = status === 'offen' && !isRequiredTile(tile, facts.path, facts)
     return (
       <Pressable
         key={tile.id}
@@ -203,7 +240,7 @@ export function CockpitTiles({
     const status = tile.status(facts)
     const revisit = tileRevisitFlag(tile, facts.answers)
     const severity = tileHintSeverity(tile.id, conflicts, notices)
-    const isOptional = status === 'offen' && !isRequiredTile(tile, facts.path)
+    const isOptional = status === 'offen' && !isRequiredTile(tile, facts.path, facts)
     return (
       <Pressable
         key={tile.id}
@@ -291,6 +328,7 @@ export function CockpitTiles({
           enabled={isSignedIn}
           crossBorder={facts.answers['partner-ausland'] === 'Ja, in die Schweiz' || (facts.answers['partner-ausland'] === undefined && facts.answers.ausland === 'Ja, in die Schweiz')}
           partnerJob={facts.answers['partner-job']}
+          partnerGermanJob={facts.answers['partner-de-job'] === GERMAN_JOB_TOO}
           onOpenPartner={onOpenPartner}
         />
       ) : null}

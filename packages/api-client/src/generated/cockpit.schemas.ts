@@ -36,10 +36,19 @@ export interface CockpitStatusDto {
   gated?: string[];
 }
 
+export interface CockpitIncomeByPersonDto {
+  /** Recorded wages and pension of Person A (EUR). */
+  a: number;
+  /** Recorded wages and pension of Person B (EUR). */
+  b: number;
+}
+
 export interface CockpitSummaryDto {
   taxYear: number;
   status: CockpitStatusDto;
   /** Minimal-Gate questions still open (REQ-015 remainingSteps). */
   openItems: number;
+  /** Only for a joint return recorded in this account: the share of each person. */
+  byPerson?: CockpitIncomeByPersonDto;
 }
 

@@ -33,6 +33,7 @@ import type {
   ChSalaryCertificateControllerSetProvisionParams,
   ChSalaryCertificateControllerSetRemarksParams,
   ChSalaryCertificateResponseDto,
+  KnownEmployerDto,
   PutCrossBorderFactsDto,
   PutExchangeRateDto,
   PutNGreDto,
@@ -722,4 +723,118 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       > => {
       return useMutation(getChSalaryCertificateControllerSetCrossBorderFactsMutationOptions(options), queryClient);
     }
+
+export type knownEmployersControllerListResponse200 = {
+  data: KnownEmployerDto[]
+  status: 200
+}
+
+export type knownEmployersControllerListResponse401 = {
+  data: void
+  status: 401
+}
+
+export type knownEmployersControllerListResponseSuccess = (knownEmployersControllerListResponse200) & {
+  headers: Headers;
+};
+export type knownEmployersControllerListResponseError = (knownEmployersControllerListResponse401) & {
+  headers: Headers;
+};
+
+export type knownEmployersControllerListResponse = (knownEmployersControllerListResponseSuccess | knownEmployersControllerListResponseError)
+
+export const getKnownEmployersControllerListUrl = () => {
+
+
+
+
+  return `/v1/arbeitgeber`
+}
+
+export const knownEmployersControllerList = async ( options?: RequestInit): Promise<knownEmployersControllerListResponse> => {
+
+  return httpClient<knownEmployersControllerListResponse>(getKnownEmployersControllerListUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getKnownEmployersControllerListQueryKey = () => {
+    return [
+    `/v1/arbeitgeber`
+    ] as const;
+    }
+
+
+export const getKnownEmployersControllerListQueryOptions = <TData = Awaited<ReturnType<typeof knownEmployersControllerList>>, TError = void>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof knownEmployersControllerList>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getKnownEmployersControllerListQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof knownEmployersControllerList>>> = ({ signal }) => knownEmployersControllerList({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof knownEmployersControllerList>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type KnownEmployersControllerListQueryResult = NonNullable<Awaited<ReturnType<typeof knownEmployersControllerList>>>
+export type KnownEmployersControllerListQueryError = void
+
+
+export function useKnownEmployersControllerList<TData = Awaited<ReturnType<typeof knownEmployersControllerList>>, TError = void>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof knownEmployersControllerList>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof knownEmployersControllerList>>,
+          TError,
+          Awaited<ReturnType<typeof knownEmployersControllerList>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useKnownEmployersControllerList<TData = Awaited<ReturnType<typeof knownEmployersControllerList>>, TError = void>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof knownEmployersControllerList>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof knownEmployersControllerList>>,
+          TError,
+          Awaited<ReturnType<typeof knownEmployersControllerList>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useKnownEmployersControllerList<TData = Awaited<ReturnType<typeof knownEmployersControllerList>>, TError = void>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof knownEmployersControllerList>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useKnownEmployersControllerList<TData = Awaited<ReturnType<typeof knownEmployersControllerList>>, TError = void>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof knownEmployersControllerList>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getKnownEmployersControllerListQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 

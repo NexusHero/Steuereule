@@ -37,6 +37,11 @@ export class FakeChSalaryCertificateRepository implements CrossBorderSalaryState
     return Promise.resolve(this.store.get(key(userId, taxYear)) ?? null)
   }
 
+  listForUsers(userIds: readonly string[]): Promise<readonly CrossBorderSalaryStatementRecord[]> {
+    const wanted = new Set(userIds)
+    return Promise.resolve([...this.store.values()].filter((r) => wanted.has(r.userId)).sort((a, b) => b.taxYear - a.taxYear))
+  }
+
   setField(userId: string, taxYear: number, field: SalaryCertificateAmountFieldId, value: string | null): Promise<CrossBorderSalaryStatementRecord> {
     const k = key(userId, taxYear)
     const existing = this.store.get(k) ?? this.leer(userId, taxYear)

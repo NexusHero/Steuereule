@@ -147,6 +147,8 @@ export function pageSteps(entry: CatalogueEntry, answers: Answers): readonly Ent
   const visit = (targets: readonly FollowUpTarget[]): boolean => {
     for (const target of targets) {
       const id = targetId(target)
+      const asked = QUESTIONS[id].askedWhen
+      if (asked !== undefined && !asked(answers)) continue
       out.push(id)
       if (typeof target !== 'string' && target.terminal) return false
       const answer = answers[id] ?? (QUESTIONS[id].kind === 'gate' ? GATE_ACKNOWLEDGED : undefined)
@@ -174,6 +176,7 @@ export function answersToPost(entry: CatalogueEntry, draft: Answers, stored: Ans
     for (const target of targets) {
       const id = targetId(target)
       const decl = QUESTIONS[id]
+      if (decl.askedWhen !== undefined && !decl.askedWhen(draft)) continue
       const value = draft[id] ?? (decl.kind === 'gate' ? GATE_ACKNOWLEDGED : undefined)
       if (value === undefined) return 'missing'
       if (stored[id] !== value) posts.push({ questionId: id, value })

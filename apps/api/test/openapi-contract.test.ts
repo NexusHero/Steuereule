@@ -75,11 +75,11 @@ describe('OpenAPI contract for GET /v1/steuerjahre/{jahr}/cockpit (REQ-001)', ()
     expect(schema?.nullable).toBe(true)
   })
 
-  it('exposes CockpitSummaryDto with exactly the fields the frontend contract expects (stand + openItems + taxYear)', () => {
+  it('exposes CockpitSummaryDto with exactly the fields the frontend contract expects (stand + openItems + taxYear, the split of a joint return)', () => {
     const schema = document.components?.schemas?.CockpitSummaryDto
     expect(schema).toBeDefined()
     const properties = (schema as { properties?: Record<string, unknown> }).properties ?? {}
-    expect(Object.keys(properties).sort()).toEqual(['openItems', 'status', 'taxYear'].sort())
+    expect(Object.keys(properties).sort()).toEqual(['byPerson', 'openItems', 'status', 'taxYear'].sort())
   })
 
   it('exposes CockpitStatusDto with the flat discriminated-union fields (kind + optional variants)', () => {

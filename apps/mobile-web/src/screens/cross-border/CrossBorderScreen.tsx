@@ -37,7 +37,7 @@ import { triggerSaveErrorHaptic, watchSaveResult } from '../shared/saveFeedback'
 import { ReceiptPickerButton } from '../shared/ReceiptPickerButton'
 import { detectDocumentMimeType } from '../../lib/documentOcr'
 import { AddressSearch } from '../shared/AddressSearch'
-import { useSavedEmployers } from '../master-data/employersStore'
+import { useKnownEmployers } from '../master-data/employersStore'
 
 export interface CrossBorderScreenProps {
   readonly onDone: () => void
@@ -230,16 +230,18 @@ function ChInterviewStep({
   const styles = makeStyles(t)
 
   const topic = stepId === 'ch-wohnsitz' ? 'wohnsitz' : 'tage'
+  // For Person B the question names B instead of „du“ (Echtdatentest 18.11.2026).
+  const title = partnerName === undefined ? topic : `${topic}Partner`
 
   return (
     <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="screen-container">
       <View style={styles.headerRow}>
         <BackButton accessibilityLabel={tr('grenzgaenger.back')} onPress={onBack} />
       </View>
-      <Text style={styles.heading}>
-        {tr(`grenzgaenger.interview.${topic}.titleBefore`)}
-        <Text style={styles.mark}>{tr(`grenzgaenger.interview.${topic}.titleMark`)}</Text>
-        {tr(`grenzgaenger.interview.${topic}.titleAfter`)}
+      <Text style={styles.heading} testID="ch-interview-titel">
+        {tr(`grenzgaenger.interview.${title}.titleBefore`, { name: partnerName })}
+        <Text style={styles.mark}>{tr(`grenzgaenger.interview.${title}.titleMark`, { name: partnerName })}</Text>
+        {tr(`grenzgaenger.interview.${title}.titleAfter`, { name: partnerName })}
       </Text>
       {partnerName !== undefined ? <Text style={styles.help} testID="ch-partner-hinweis">{tr('grenzgaenger.partnerFor', { name: partnerName })}</Text> : null}
       <Text style={styles.help}>{tr(`grenzgaenger.interview.${topic}.help`)}</Text>
@@ -637,7 +639,7 @@ function NGreSection({ nGre, onSet }: { readonly nGre: NGreDetailsDto; readonly 
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
-  const { employers, addEmployer } = useSavedEmployers()
+  const employers = useKnownEmployers()
   const [employerText, setEmployerText] = useState<{
     readonly arbeitgeberName: string
     readonly arbeitgeberStrasse: string
@@ -647,7 +649,6 @@ function NGreSection({ nGre, onSet }: { readonly nGre: NGreDetailsDto; readonly 
     arbeitgeberStrasse: nGre.arbeitgeberStrasse ?? '',
     arbeitgeberPlzOrt: nGre.arbeitgeberPlzOrt ?? '',
   })
-  const [savedNotice, setSavedNotice] = useState(false)
 
   const plzMatch = /^(\d{4,5})/.exec(employerText.arbeitgeberPlzOrt.trim())
   const currentPostalCode = plzMatch ? plzMatch[1]! : ''
@@ -659,14 +660,13 @@ function NGreSection({ nGre, onSet }: { readonly nGre: NGreDetailsDto; readonly 
 
       {employers.length > 0 ? (
         <View style={styles.employerPickerBox} testID="ch-ngre-arbeitgeber-auswahl">
-          <Text style={styles.employerPickerLabel}>Gespeicherte Arbeitgeber aus deinem Profil übernehmen (Snapshot):</Text>
+          <Text style={styles.employerPickerLabel}>Schon erfasste Arbeitgeber übernehmen:</Text>
           <View style={styles.employerChipsRow}>
             {employers.map((emp) => (
               <Chip
                 key={emp.id}
                 active={employerText.arbeitgeberName === emp.name}
                 onPress={() => {
-                  setSavedNotice(false)
                   setEmployerText({
                     arbeitgeberName: emp.name,
                     arbeitgeberStrasse: emp.strasse,
@@ -711,39 +711,11 @@ function NGreSection({ nGre, onSet }: { readonly nGre: NGreDetailsDto; readonly 
           label={tr(`grenzgaenger.nGre.felder.${field}`)}
           initial={nGre[field] ?? ''}
           controlledValue={employerText[field]}
-          onControlledChange={(val) => {
-            setSavedNotice(false)
-            setEmployerText((prev) => ({ ...prev, [field]: val }))
-          }}
+          onControlledChange={(val) => setEmployerText((prev) => ({ ...prev, [field]: val }))}
           testID={`ch-ngre-${field}`}
           onCommit={(text) => onSet({ [field]: text === '' ? null : text })}
         />
       ))}
-
-      {employerText.arbeitgeberName.trim() !== '' ? (
-        <View style={styles.saveEmployerRow}>
-          <Button
-            variant="ghost"
-            onPress={() => {
-              addEmployer({
-                name: employerText.arbeitgeberName,
-                strasse: employerText.arbeitgeberStrasse,
-                plzOrt: employerText.arbeitgeberPlzOrt,
-                land: 'CH',
-              })
-              setSavedNotice(true)
-            }}
-            testID="ch-ngre-arbeitgeber-speichern"
-          >
-            Arbeitgeber im Profil merken
-          </Button>
-          {savedNotice ? (
-            <Text style={styles.savedEmployerHint} testID="ch-ngre-arbeitgeber-gespeichert">
-              ✓ Im Profil unter Unternehmen gespeichert
-            </Text>
-          ) : null}
-        </View>
-      ) : null}
 
       {N_GRE_AMOUNT_FIELDS.map((field) => (
         <NGreInput
@@ -1101,14 +1073,6 @@ function makeStyles(t: UiTheme) {
   }
   const employerPickerLabel: TextStyle = { ...t.type.small, color: t.color.tinte2, marginBottom: t.space.s2 }
   const employerChipsRow: ViewStyle = { flexDirection: 'row', flexWrap: 'wrap', gap: t.space.s2 }
-  const saveEmployerRow: ViewStyle = {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: t.space.s2,
-    marginBottom: t.space.s3,
-  }
-  const savedEmployerHint: TextStyle = { ...t.type.small, color: t.color.ok }
   return {
     screen,
     wideScreen,
@@ -1142,7 +1106,5 @@ function makeStyles(t: UiTheme) {
     employerPickerBox,
     employerPickerLabel,
     employerChipsRow,
-    saveEmployerRow,
-    savedEmployerHint,
   }
 }

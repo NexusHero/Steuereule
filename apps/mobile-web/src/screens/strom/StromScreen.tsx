@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Pressable, ScrollView, View, Text, type TextStyle, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import { Button, useBreakpoint, useTheme, type UiTheme } from '@steuereule/ui'
 import { formatEuro, formatEuroRange, type Answers } from '@steuereule/core'
 import {
@@ -21,6 +22,8 @@ import { ChildrenScreen } from '../children/ChildrenScreen'
 import { PensionerScreen } from '../pension/PensionerScreen'
 import { CrossBorderScreen } from '../cross-border/CrossBorderScreen'
 import { AuswahlPage, BasisPage, TopicPage } from './StromPages'
+import { PartnerPage } from './PartnerPage'
+import { stromStepTitle } from './stromTitles'
 import { effectOf } from './stromEffects'
 import {
   isStepOpen,
@@ -114,7 +117,14 @@ export function StromScreen({ taxYear, slug, isSignedIn, onGo, onExit, onOpenSub
     return (
       <View style={styles.maskFrame} testID={`strom-schritt-${slugOf(step)}`}>
         <StepBar step={step} answers={answers} facts={facts} onPause={onExit} />
-        <MaskStep id={step.id} taxYear={taxYear} onDone={() => goNext()} onBack={goBack} />
+        <MaskStep
+          key={slugOf(step)}
+          id={step.id}
+          taxYear={taxYear}
+          {...(step.person === 'B' ? { partnerName: partnerNameOf(facts, tr) } : {})}
+          onDone={() => goNext()}
+          onBack={goBack}
+        />
       </View>
     )
   }
@@ -137,6 +147,8 @@ export function StromScreen({ taxYear, slug, isSignedIn, onGo, onExit, onOpenSub
               else onGuestBasisDone(pathFromAnswers(latest))
             }}
           />
+        ) : step.kind === 'partner' ? (
+          <PartnerPage key={`partner-${taxYear}`} taxYear={taxYear} onSaved={goNext} />
         ) : step.kind === 'auswahl' ? (
           <AuswahlPage key={`auswahl-${taxYear}`} taxYear={taxYear} stored={answers} onSaved={goNext} />
         ) : step.kind === 'thema' || step.kind === 'alleinerziehend' ? (
@@ -190,18 +202,37 @@ function PauseLink({ onPress }: { readonly onPress: () => void }) {
   )
 }
 
-function MaskStep({ id, taxYear, onDone, onBack }: { readonly id: StromMaskId; readonly taxYear: number; readonly onDone: () => void; readonly onBack: () => void }) {
+/** Person B's first name for the masks' headings; a neutral word while it is not entered yet. */
+function partnerNameOf(facts: TileFacts | null, tr: TFunction<typeof APP_NS>): string {
+  return facts?.partner?.name?.trim() || tr('cockpit.bereich.partnerFallback')
+}
+
+/** A mask of the Strom; with `partnerName` it records Person B's data (the same screens as the partner tiles). */
+function MaskStep({
+  id,
+  taxYear,
+  partnerName,
+  onDone,
+  onBack,
+}: {
+  readonly id: StromMaskId
+  readonly taxYear: number
+  readonly partnerName?: string
+  readonly onDone: () => void
+  readonly onBack: () => void
+}) {
+  const partner = partnerName === undefined ? {} : { partnerName }
   switch (id) {
     case 'lstb':
-      return <LstbScreen taxYear={taxYear} onDone={onDone} onBack={onBack} />
+      return <LstbScreen taxYear={taxYear} {...partner} onDone={onDone} onBack={onBack} />
     case 'arbeitsweg':
-      return <WorkdaysScreen taxYear={taxYear} onDone={onDone} onBack={onBack} />
+      return <WorkdaysScreen taxYear={taxYear} {...partner} onDone={onDone} onBack={onBack} />
     case 'kinder':
       return <ChildrenScreen taxYear={taxYear} onDone={onDone} onBack={onBack} />
     case 'rente':
-      return <PensionerScreen taxYear={taxYear} onDone={onDone} onBack={onBack} />
+      return <PensionerScreen taxYear={taxYear} {...partner} onDone={onDone} onBack={onBack} />
     case 'ch':
-      return <CrossBorderScreen taxYear={taxYear} onDone={onDone} onBack={onBack} />
+      return <CrossBorderScreen taxYear={taxYear} {...partner} onDone={onDone} onBack={onBack} />
   }
 }
 
@@ -235,11 +266,10 @@ function Summary({
   const estimateQuery = useTaxEstimateControllerGet(taxYear)
   const estimate = estimateQuery.data?.status === 200 ? estimateQuery.data.data : null
   const refund = refundLine(estimate, (key) => tr(key))
-  const steps = facts === null ? [] : stromSteps(answers, facts).filter((s) => s.kind !== 'basis' && s.kind !== 'auswahl' && s.kind !== 'fertig')
+  const steps = facts === null ? [] : stromSteps(answers, facts).filter((s) => s.kind !== 'basis' && s.kind !== 'partner' && s.kind !== 'auswahl' && s.kind !== 'fertig')
   const open = facts === null ? [] : steps.filter((s) => isStepOpen(s, answers, facts))
   const taken = steps.filter((s) => !open.includes(s))
-  const titleOf = (s: StromStep) =>
-    s.kind === 'maske' ? tr(`strom.maske.${s.id}`) : s.kind === 'thema' ? tr(`strom.thema.${s.id}`) : tr('strom.alleinerziehend.titel')
+  const titleOf = (s: StromStep) => stromStepTitle(s, tr, partnerNameOf(facts, tr))
 
   return (
     <View>

@@ -858,6 +858,26 @@
         "keine": "Not working"
       }
     },
+    "deJob": {
+      "titleBefore": "Were you also employed in ",
+      "titleMark": "Germany",
+      "titleAfter": " during the year?",
+      "help": "For example until you moved to a Swiss job. Then your German wage tax certificate belongs in the return too.",
+      "options": {
+        "nurSchweiz": "No, only in Switzerland",
+        "auchDeutschland": "Yes, in Germany too"
+      }
+    },
+    "partnerDeJob": {
+      "titleBefore": "Was your partner also employed in ",
+      "titleMark": "Germany",
+      "titleAfter": " during the year?",
+      "help": "Then their German wage tax certificate comes in too.",
+      "options": {
+        "nurSchweiz": "No, only in Switzerland",
+        "auchDeutschland": "Yes, in Germany too"
+      }
+    },
     "partnerAusland": {
       "titleBefore": "Does your partner work in ",
       "titleMark": "Switzerland",
@@ -1057,6 +1077,7 @@
       "retry": "Try again"
     },
     "depot": {
+      "deutscherBrokerOhneSteuer": "German bank: it withholds Abgeltungsteuer once the exemption order is used up. Enter below what the certificate shows as withheld (0 if nothing). Then we compare it with your personal tax rate.",
       "deutscherBroker": "Your bank withheld withholding tax (Abgeltungsteuer). Below we honestly compare it with your personal tax rate.",
       "auslaendischerBroker": "Foreign broker: no German tax was withheld. You must declare this income in Anlage KAP — it is taxed at your personal rate. We never invent a withholding tax here.",
       "krypto": "Crypto honestly stays out of 1.0: holding periods and acquisition costs are not computed yet. No half feature.",
@@ -1069,7 +1090,8 @@
       "kirchensteuer": "Withheld church tax (0 if none)"
     },
     "feld": {
-      "label": "Capital income (Einkünfte aus Kapitalvermögen)",
+      "label": "Capital income before the saver's allowance (certificate: „Höhe der Kapitalerträge“)",
+      "plausiNetto": "The saver's allowance used is larger than your capital income. Did you enter the amount after the allowance? Then {{brutto}} would be right here, otherwise we compute 0 € tax on your capital income.",
       "placeholder": "Whole number",
       "unklar": "unreadable"
     },
@@ -1302,6 +1324,23 @@
       "arbeitsweg": "Commute and workdays",
       "kinder": "Children"
     },
+    "maskePartner": {
+      "lstb": "Wage tax certificate of {{name}}",
+      "ch": "Swiss salary certificate of {{name}}",
+      "rente": "Pension of {{name}}",
+      "arbeitsweg": "Commute and workdays of {{name}}"
+    },
+    "partnerSchritt": {
+      "kurz": "Your partner",
+      "titel": "Who is your partner?",
+      "hilfe": "For your joint return. Then we go through your partner's documents just like yours.",
+      "vorname": "First name",
+      "nachname": "Last name (optional)",
+      "geburtsdatum": "Date of birth (DD.MM.YYYY)",
+      "fehlt": "Please enter first name and date of birth.",
+      "datumFalsch": "Please enter the date of birth as DD.MM.YYYY.",
+      "fehler": "That did not work. Check the connection and try again."
+    },
     "alleinerziehend": {
       "titel": "Single parent"
     },
@@ -1433,7 +1472,8 @@
         "pendlertageZweiter": "Commute days, second way (as stated)",
         "widerspruch": "The days don't fit: more than the working days in this way's period (at most 366) are not possible."
       }
-    }
+    },
+    "weekdaysPartner": "Which days does {{name}} work?"
   },
   "abgabe": {
     "back": "Back",
@@ -1515,7 +1555,8 @@
       "nachzahlungLabel": "Expected back payment",
       "ergebnisLabel": "Expected result",
       "ausgeglichen": "Neither a back payment nor a refund — no tax is due.",
-      "ergebnisSpanne": "{{nachzahlung}} back payment to {{erstattung}} refund"
+      "ergebnisSpanne": "{{nachzahlung}} back payment to {{erstattung}} refund",
+      "proPerson": "You {{du}} · {{name}} {{partner}}"
     },
     "refreshing": "Refreshing …",
     "answerQuestions": "Answer questions",
@@ -1967,6 +2008,16 @@
         "help": "More than 60 working days without returning home end Grenzgänger status (Art. 15a DTA Switzerland).",
         "label": "Non-return days",
         "placeholder": "0"
+      },
+      "wohnsitzPartner": {
+        "titleBefore": "Where does ",
+        "titleMark": "{{name}}",
+        "titleAfter": " live?"
+      },
+      "tagePartner": {
+        "titleBefore": "On how many days did {{name}} ",
+        "titleMark": "not",
+        "titleAfter": " return home?"
       }
     },
     "lohnausweis": {

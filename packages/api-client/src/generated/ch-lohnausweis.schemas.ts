@@ -369,6 +369,12 @@ export interface PutCrossBorderFactsDto {
   daysWithoutReturn: number;
 }
 
+export interface KnownEmployerDto {
+  name: string;
+  strasse: string;
+  plzOrt: string;
+}
+
 export type ChSalaryCertificateControllerGetParams = {
 /**
  * B: Person A records the Swiss figures of a partner without an own account (ADR-0054).

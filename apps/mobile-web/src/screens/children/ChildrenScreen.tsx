@@ -125,8 +125,23 @@ const KINSHIP_LABEL: Record<ChildRelationship, string> = {
   '3': 'Enkelkind / Stiefkind',
 }
 
-function missingForPrintout(k: ChildItem): boolean {
-  return !k.taxId || !k.kinship || !k.familyBenefitsOffice || k.domesticResidenceAllYear == null
+type PrintoutGap = 'steuerId' | 'kindschaft' | 'familienkasse' | 'wohnsitz'
+
+const GAP_LABEL: Record<PrintoutGap, string> = {
+  steuerId: 'Steuer-ID',
+  kindschaft: 'Kindschaftsverhältnis',
+  familienkasse: 'Familienkasse',
+  wohnsitz: 'Wohnsitz',
+}
+
+/** What the printout still lacks for this child — only those, never the whole list (Echtdatentest 18.11.2026). */
+export function missingForPrintout(k: ChildItem): readonly PrintoutGap[] {
+  return [
+    ...(k.taxId ? [] : ['steuerId' as const]),
+    ...(k.kinship ? [] : ['kindschaft' as const]),
+    ...(k.familyBenefitsOffice ? [] : ['familienkasse' as const]),
+    ...(k.domesticResidenceAllYear == null ? ['wohnsitz' as const] : []),
+  ]
 }
 
 export interface ChildrenScreenProps {
@@ -564,9 +579,14 @@ function KinderScreenView({
                 : `${formatEuro(monthlyChildBenefitClaim(taxYear) * claimMonths(k.geburtsdatum, taxYear))} (gesetzlich)`}
             </Text>
           )}
-          {missingForPrintout(k) ? (
-            <Text style={styles.luecke}>
-              {tr('kinder.luecke', 'Für den Ausdruck fehlen noch Angaben (Steuer-ID, Kindschaftsverhältnis, Familienkasse, Wohnsitz).')}
+          {missingForPrintout(k).length > 0 ? (
+            <Text style={styles.luecke} testID={`kind-luecke-${k.id}`}>
+              {tr('kinder.luecke', {
+                defaultValue: 'Für den Ausdruck fehlen noch Angaben ({{felder}}).',
+                felder: missingForPrintout(k)
+                  .map((gap) => tr(`kinder.lueckeFeld.${gap}`, { defaultValue: GAP_LABEL[gap] }))
+                  .join(', '),
+              })}
             </Text>
           ) : null}
         </Card>

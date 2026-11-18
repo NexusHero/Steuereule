@@ -85,12 +85,12 @@ async function main() {
       },
       {
         name: 'Grenzgänger who lives in Switzerland',
-        gate: { job: 'Angestellt', ausland: 'Ja, in die Schweiz', kinder: 'Nein', familienstand: 'Ledig' },
+        gate: { job: 'Angestellt', ausland: 'Ja, in die Schweiz', 'de-job': 'Nur in der Schweiz', kinder: 'Nein', familienstand: 'Ledig' },
         followUps: [['schweiz', { 'ch-wohnsitz': 'Schweiz', 'ch-nichtrueckkehrtage': '4' }]],
       },
       {
         name: 'Grenzgänger who lives in Germany',
-        gate: { job: 'Angestellt', ausland: 'Ja, in die Schweiz', kinder: 'Nein', familienstand: 'Ledig' },
+        gate: { job: 'Angestellt', ausland: 'Ja, in die Schweiz', 'de-job': 'Nur in der Schweiz', kinder: 'Nein', familienstand: 'Ledig' },
         followUps: [['schweiz', { 'ch-wohnsitz': 'Deutschland', 'ch-nichtrueckkehrtage': '0' }]],
       },
     ]
