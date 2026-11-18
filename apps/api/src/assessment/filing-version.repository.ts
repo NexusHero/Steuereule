@@ -15,7 +15,10 @@ export interface FilingVersionRecord {
 
 export const FILING_VERSION_REPOSITORY = Symbol('FILING_VERSION_REPOSITORY')
 
-/** Read seam of the frozen versions; userId-scoped (ADR-0007). Versions are never changed, only added. */
+/**
+ * Read seam of the frozen versions; userId-scoped (ADR-0007). A version is never edited: the Abgabe
+ * (submission.repository.ts) writes it, a corrected return replaces it whole, the undo removes it.
+ */
 export interface FilingVersionRepository {
   /** The latest version of the year, or null when nothing was filed in the app. */
   findLatest(userId: string, taxYear: number): Promise<FilingVersionRecord | null>

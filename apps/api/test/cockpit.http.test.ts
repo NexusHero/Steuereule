@@ -70,6 +70,8 @@ describe('GET /v1/steuerjahre/:jahr/cockpit', () => {
       // 2 open LStB fields × 60 uncertainty around the settled 50000.
       status: { kind: 'spanne', from: 49880, to: 50120, openItems: 2, conflicts: 0, unconfirmedItems: 0, unconfirmedSum: 0 },
       openItems: 3,
+      // ADR-0098 §8: nothing recorded as filed yet.
+      submission: null,
     })
   })
 

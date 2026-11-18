@@ -62,6 +62,8 @@ export type AppTabParamList = {
   Cockpit: NavigatorScreenParams<CockpitStackParamList> | undefined
   Owl: undefined
   Receipts: undefined
+  /** The Verlauf over all years (ADR-0098); it took over the year list. */
+  History: undefined
   Profile: NavigatorScreenParams<ProfileStackParamList> | undefined
 }
 

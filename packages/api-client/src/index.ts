@@ -62,6 +62,8 @@ export * from './generated/eulen-modus'
 export * from './generated/eulen-modus.schemas'
 export * from './generated/assistenten'
 export * from './generated/assistenten.schemas'
+export * from './generated/abgabe'
+export * from './generated/abgabe.schemas'
 export * from './generated/verlauf'
 // The Abgleich shapes and RangeDto are the Bescheid's and the estimate's; only the Verlauf's own are re-exported here.
 export {

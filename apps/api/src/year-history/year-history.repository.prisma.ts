@@ -1,13 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common'
-import type { TaxYearStatus } from '@steuereule/core'
+import { isTaxYearStatus, type TaxYearStatus } from '@steuereule/core'
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
 import type { HistoryYearRecord, YearHistoryRepository } from './year-history.repository.js'
 
-const STATUSES: readonly TaxYearStatus[] = ['entwurf', 'pruefung', 'eingereicht', 'rueckfrage', 'bescheid', 'abgeschlossen', 'extern-erledigt']
-
 /** A stored state the core does not know is read as no state at all, not guessed. */
-function statusOf(value: string): TaxYearStatus | null {
-  return (STATUSES as readonly string[]).includes(value) ? (value as TaxYearStatus) : null
+export function statusOf(value: string): TaxYearStatus | null {
+  return isTaxYearStatus(value) ? value : null
 }
 
 @Injectable()

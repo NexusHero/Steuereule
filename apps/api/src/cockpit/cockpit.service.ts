@@ -23,6 +23,7 @@ import { wageTaxCertificateDataFrom } from '../lstb/lstb-data.js'
 import { CROSS_BORDER_SALARY_STATEMENT_REPOSITORY, type CrossBorderSalaryStatementRecord, type CrossBorderSalaryStatementRepository } from '../ch-salary-certificate/ch-salary-certificate.repository.js'
 import { crossBorderStatusFromAnswers, salaryCertificateValuesFromRecord, exchangeRateFromRecord } from '../ch-salary-certificate/salary-certificate-data.js'
 import { LinkService } from '../link/link.service.js'
+import { SubmissionService } from '../submission/submission.service.js'
 
 function recordedValue(raw: string | null): number | null {
   if (raw === null || raw === 'unklar') return null
@@ -107,6 +108,8 @@ export class CockpitService {
     @Inject(RENTAL_REPOSITORY) private readonly rentalRepository: RentalRepository,
     @Inject(CROSS_BORDER_SALARY_STATEMENT_REPOSITORY) private readonly chSalaryCertificateRepository: CrossBorderSalaryStatementRepository,
     @Optional() private readonly link?: LinkService,
+    /** The Abgabe of the year (ADR-0098 §8); absent in tests that build the cockpit without it. */
+    @Optional() @Inject(SubmissionService) private readonly submissions?: SubmissionService,
   ) {}
 
   /** Wages and pension of one person, from their own records (a Grenzgänger's Lohnausweis, the LStB, the pension). */
@@ -195,11 +198,14 @@ export class CockpitService {
       unconfirmedSum,
     })
 
+    const submission = this.submissions ? await this.submissions.state(userId, taxYear) : null
+
     return {
       taxYear: record.taxYear,
       status: toStatusDto(status),
       openItems: record.openItems,
       ...(partner === null ? {} : { byPerson: { a: own.facts.einnahmen, b: partner.facts.einnahmen } }),
+      submission,
     }
   }
 }

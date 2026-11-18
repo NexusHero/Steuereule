@@ -8,7 +8,7 @@
 // is the first consumer whose accessible label is meaningful content rather than a decorative
 // mark hidden from screen readers (OwlMark's own wrapper already sets `accessible={false}` one
 // level up), so it is the first thing here that actually needs this to reach the DOM.
-import { View, type AccessibilityRole } from 'react-native'
+import { Text as RnText, View, type AccessibilityRole } from 'react-native'
 import { type ReactNode } from 'react'
 
 type AnyProps = {
@@ -33,5 +33,25 @@ export function Rect(props: AnyProps) {
 }
 export function Circle(props: AnyProps) {
   return <View {...passthroughProps(props)} />
+}
+export function Line(props: AnyProps) {
+  return <View {...passthroughProps(props)} />
+}
+export function Polyline(props: AnyProps) {
+  return <View {...passthroughProps(props)} />
+}
+// Groups and definitions keep their children; a pattern is paint, not content, so it renders nothing.
+export function G({ children, ...rest }: AnyProps) {
+  return <View {...passthroughProps(rest)}>{children}</View>
+}
+export function Defs(_props: AnyProps) {
+  return null
+}
+export function Pattern(_props: AnyProps) {
+  return null
+}
+// Chart labels are text: a real Text, so a string child never lands bare inside a View.
+export function Text({ children, ...rest }: AnyProps) {
+  return <RnText {...passthroughProps(rest)}>{children}</RnText>
 }
 export type SvgProps = AnyProps

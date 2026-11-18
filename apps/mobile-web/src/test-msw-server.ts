@@ -370,6 +370,8 @@ export const server = setupServer(
   // stays undisturbed by the passkey section; the passkey suite overrides with real rows (and
   // with the delete route) via `server.use(...)`.
   http.get('*/api/auth/passkey/list-user-passkeys', () => HttpResponse.json([])),
+  // ADR-0098 — the Verlauf: a fresh account has no year yet, so the masks show no lesson and the tab its empty state.
+  http.get('*/v1/verlauf', () => HttpResponse.json({ today: '2026-11-18', years: [], list: [], openItems: [], diffs: [], maskLessons: null })),
   // ADR-0052 §10 — connected assistants read defaults to an empty list.
   getAssistantsControllerListConnectedMockHandler([]),
   // #451 slice 3 — the Arbeitstage mask reads the address for the holiday region; a fresh

@@ -198,3 +198,9 @@ export {
   getYearHistoryControllerGetMockHandler,
   getSteuerEuleAPIMock as getVerlaufApiMock,
 } from './generated/verlauf.msw'
+export {
+  getSubmissionControllerSubmitResponseMock,
+  getSubmissionControllerSubmitMockHandler,
+  getSubmissionControllerWithdrawMockHandler,
+  getSteuerEuleAPIMock as getAbgabeApiMock,
+} from './generated/abgabe.msw'

@@ -1926,6 +1926,305 @@
         ]
       }
     },
+    "/v1/steuerjahre/{jahr}/abgabe": {
+      "post": {
+        "operationId": "SubmissionController_submit",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (Steuerjahr).",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitTaxReturnDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The return as it stands is frozen as the filed version; the year is `eingereicht`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubmissionResultDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`SUBMISSION_DATE_INVALID` (details.problem: format | vor-jahresende | in-der-zukunft)."
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "404": {
+            "description": "`TAX_YEAR_NOT_FOUND`: nothing entered for the year yet."
+          },
+          "409": {
+            "description": "`SUBMISSION_NOT_ALLOWED` (Eckjahr or closed year) or `SUBMISSION_HAS_ASSESSMENT` (a Bescheid is recorded)."
+          }
+        },
+        "tags": [
+          "abgabe"
+        ]
+      },
+      "delete": {
+        "operationId": "SubmissionController_withdraw",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (Steuerjahr).",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The submission is undone: the filed version is removed and the year is `entwurf` again."
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "404": {
+            "description": "`SUBMISSION_NOT_FOUND`: the year has no submission to undo."
+          },
+          "409": {
+            "description": "`SUBMISSION_HAS_ASSESSMENT`: a Bescheid is recorded, the submission stays."
+          }
+        },
+        "tags": [
+          "abgabe"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/bescheid": {
+      "get": {
+        "operationId": "AssessmentController_get",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (Steuerjahr).",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The caller’s Bescheid — re-entry (fields + Abgleich + Frist).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssessmentResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          }
+        },
+        "tags": [
+          "bescheid"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/bescheid/feld/{feld}": {
+      "put": {
+        "operationId": "AssessmentController_setField",
+        "parameters": [
+          {
+            "name": "feld",
+            "required": true,
+            "in": "path",
+            "description": "One of the five Bescheid figures (ParseBescheidFeldPipe).",
+            "schema": {
+              "example": "einnahmen",
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (Steuerjahr).",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutAssessmentFieldDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated Bescheid and its derived Abgleich + Frist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssessmentResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "bescheid"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/bescheid/datum": {
+      "put": {
+        "operationId": "AssessmentController_setDate",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (Steuerjahr).",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetAssessmentDateDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated Bescheid (Bescheiddatum + Frist).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssessmentResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "bescheid"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/bescheid/status": {
+      "put": {
+        "operationId": "AssessmentController_setStatus",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (Steuerjahr).",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetAssessmentStatusDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The Bescheid after the validated transition.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssessmentResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "bescheid"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/bescheid/einspruch": {
+      "put": {
+        "operationId": "AssessmentController_setAppeal",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (Steuerjahr).",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetAppealDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The Bescheid after filing the Einspruch (validated transition).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssessmentResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "bescheid"
+        ]
+      }
+    },
     "/v1/steuerjahre/{jahr}/arbeitsweg": {
       "get": {
         "operationId": "CommuteController_get",
@@ -4098,219 +4397,6 @@
         ]
       }
     },
-    "/v1/steuerjahre/{jahr}/bescheid": {
-      "get": {
-        "operationId": "AssessmentController_get",
-        "parameters": [
-          {
-            "name": "jahr",
-            "required": true,
-            "in": "path",
-            "description": "The tax year (Steuerjahr).",
-            "schema": {
-              "example": 2026,
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "The caller’s Bescheid — re-entry (fields + Abgleich + Frist).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AssessmentResponseDto"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Guest session — this endpoint requires a signed-in account."
-          }
-        },
-        "tags": [
-          "bescheid"
-        ]
-      }
-    },
-    "/v1/steuerjahre/{jahr}/bescheid/feld/{feld}": {
-      "put": {
-        "operationId": "AssessmentController_setField",
-        "parameters": [
-          {
-            "name": "feld",
-            "required": true,
-            "in": "path",
-            "description": "One of the five Bescheid figures (ParseBescheidFeldPipe).",
-            "schema": {
-              "example": "einnahmen",
-              "type": "string"
-            }
-          },
-          {
-            "name": "jahr",
-            "required": true,
-            "in": "path",
-            "description": "The tax year (Steuerjahr).",
-            "schema": {
-              "example": 2026,
-              "type": "number"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PutAssessmentFieldDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "The updated Bescheid and its derived Abgleich + Frist.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AssessmentResponseDto"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "bescheid"
-        ]
-      }
-    },
-    "/v1/steuerjahre/{jahr}/bescheid/datum": {
-      "put": {
-        "operationId": "AssessmentController_setDate",
-        "parameters": [
-          {
-            "name": "jahr",
-            "required": true,
-            "in": "path",
-            "description": "The tax year (Steuerjahr).",
-            "schema": {
-              "example": 2026,
-              "type": "number"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SetAssessmentDateDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "The updated Bescheid (Bescheiddatum + Frist).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AssessmentResponseDto"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "bescheid"
-        ]
-      }
-    },
-    "/v1/steuerjahre/{jahr}/bescheid/status": {
-      "put": {
-        "operationId": "AssessmentController_setStatus",
-        "parameters": [
-          {
-            "name": "jahr",
-            "required": true,
-            "in": "path",
-            "description": "The tax year (Steuerjahr).",
-            "schema": {
-              "example": 2026,
-              "type": "number"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SetAssessmentStatusDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "The Bescheid after the validated transition.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AssessmentResponseDto"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "bescheid"
-        ]
-      }
-    },
-    "/v1/steuerjahre/{jahr}/bescheid/einspruch": {
-      "put": {
-        "operationId": "AssessmentController_setAppeal",
-        "parameters": [
-          {
-            "name": "jahr",
-            "required": true,
-            "in": "path",
-            "description": "The tax year (Steuerjahr).",
-            "schema": {
-              "example": 2026,
-              "type": "number"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SetAppealDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "The Bescheid after filing the Einspruch (validated transition).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AssessmentResponseDto"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "bescheid"
-        ]
-      }
-    },
     "/v1/steuerjahre/{jahr}/bestaetigung": {
       "get": {
         "operationId": "ConfirmationController_get",
@@ -5522,6 +5608,40 @@
           "b"
         ]
       },
+      "CockpitSubmissionDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "entwurf",
+              "pruefung",
+              "eingereicht",
+              "rueckfrage",
+              "bescheid",
+              "abgeschlossen",
+              "extern-erledigt"
+            ],
+            "example": "eingereicht",
+            "description": "The ADR-0039 state of the year."
+          },
+          "submittedOn": {
+            "type": "string",
+            "example": "2026-03-14",
+            "description": "ISO yyyy-mm-dd, the day the user filed."
+          },
+          "withdrawable": {
+            "type": "boolean",
+            "example": true,
+            "description": "Whether „Abgabe zurücknehmen“ is offered: until a Bescheid is recorded."
+          }
+        },
+        "required": [
+          "status",
+          "submittedOn",
+          "withdrawable"
+        ]
+      },
       "CockpitSummaryDto": {
         "type": "object",
         "properties": {
@@ -5544,12 +5664,23 @@
                 "$ref": "#/components/schemas/CockpitIncomeByPersonDto"
               }
             ]
+          },
+          "submission": {
+            "nullable": true,
+            "description": "The Abgabe (ADR-0098 §8): null until the user recorded „Ich habe die Erklärung abgegeben“.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CockpitSubmissionDto"
+              }
+            ]
           }
         },
         "required": [
           "taxYear",
           "status",
-          "openItems"
+          "openItems",
+          "submission"
         ]
       },
       "LstbFieldDto": {
@@ -7662,6 +7793,608 @@
           "name",
           "strasse",
           "plzOrt"
+        ]
+      },
+      "SubmitTaxReturnDto": {
+        "type": "object",
+        "properties": {
+          "submittedOn": {
+            "type": "string",
+            "example": "2026-03-14",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "ISO yyyy-mm-dd; after the tax year ended and not in the future (the app proposes today)."
+          }
+        },
+        "required": [
+          "submittedOn"
+        ]
+      },
+      "SubmissionResultDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "eingereicht"
+            ],
+            "example": "eingereicht"
+          },
+          "submittedOn": {
+            "type": "string",
+            "example": "2026-03-14"
+          },
+          "replacedPrevious": {
+            "type": "boolean",
+            "example": false,
+            "description": "True when a version filed earlier was replaced (a corrected return)."
+          }
+        },
+        "required": [
+          "status",
+          "submittedOn",
+          "replacedPrevious"
+        ]
+      },
+      "AssessmentFieldDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The machine field id (BescheidFeld)."
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "erfasst",
+              "offen",
+              "unklar"
+            ],
+            "description": "The field’s capture state."
+          },
+          "value": {
+            "type": "number",
+            "example": 50000,
+            "description": "The whole-euro amount — present only when kind === \"erfasst\" (erstattung may be negative)."
+          }
+        },
+        "required": [
+          "id",
+          "kind"
+        ]
+      },
+      "AssessmentDeviationDto": {
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string",
+            "enum": [
+              "einnahmen",
+              "vorsorgeaufwand",
+              "anrechnung"
+            ]
+          },
+          "assessment": {
+            "type": "number",
+            "description": "The Bescheid figure (whole euros)."
+          },
+          "calculated": {
+            "type": "number",
+            "description": "The computed figure (whole euros)."
+          },
+          "difference": {
+            "type": "number",
+            "description": "bescheid − berechnet."
+          }
+        },
+        "required": [
+          "field",
+          "assessment",
+          "calculated",
+          "difference"
+        ]
+      },
+      "AssessmentComparisonDto": {
+        "type": "object",
+        "properties": {
+          "deviations": {
+            "description": "The deviations (empty = alles stimmt überein).",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssessmentDeviationDto"
+            }
+          },
+          "calculationIncomplete": {
+            "type": "boolean",
+            "description": "The computed side is incomplete (berechne returned \"offen\")."
+          }
+        },
+        "required": [
+          "deviations",
+          "calculationIncomplete"
+        ]
+      },
+      "AssessmentDeadlineDto": {
+        "type": "object",
+        "properties": {
+          "assessmentDate": {
+            "type": "string",
+            "nullable": true,
+            "description": "Bescheiddatum (ISO yyyy-mm-dd), null until set."
+          },
+          "deadlineEnd": {
+            "type": "string",
+            "nullable": true,
+            "description": "Einspruchsfrist-Ende: one month after the notice counts as received (Bescheiddatum + 4 days, § 122 Abs. 2 AO; 3 before 2025), moved to a working day (§ 108 Abs. 3 AO). Null until the datum is set."
+          },
+          "remainingDays": {
+            "type": "number",
+            "nullable": true,
+            "description": "Whole days left (negative = abgelaufen), null until the datum is set."
+          },
+          "running": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "The Einspruchsfrist still runs (its last day included); null until the datum is set."
+          }
+        },
+        "required": [
+          "assessmentDate",
+          "deadlineEnd",
+          "remainingDays",
+          "running"
+        ]
+      },
+      "AssessmentDiffRowDto": {
+        "type": "object",
+        "properties": {
+          "position": {
+            "type": "string",
+            "example": "homeofficeA",
+            "description": "A position id of the core catalogue `ASSESSMENT_POSITIONS` (e.g. `homeofficeA`, `zuVersteuerndesEinkommen`)."
+          },
+          "label": {
+            "type": "string",
+            "example": "Homeoffice-Pauschale"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "own",
+              "followOn"
+            ],
+            "description": "`followOn` positions follow from the own ones and never count as a deviation."
+          },
+          "person": {
+            "type": "string",
+            "enum": [
+              "A",
+              "B"
+            ],
+            "nullable": true,
+            "description": "Whose column of a joint Bescheid; null for the household."
+          },
+          "declared": {
+            "type": "number",
+            "nullable": true,
+            "description": "As declared in the frozen version (euros)."
+          },
+          "assessed": {
+            "type": "number",
+            "nullable": true,
+            "description": "As assessed; null when not read."
+          },
+          "difference": {
+            "type": "number",
+            "nullable": true,
+            "description": "assessed − declared; null unless both are there."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "same",
+              "deviation",
+              "not_read",
+              "not_declared"
+            ],
+            "description": "`not_read` is never 0 and never a deviation."
+          },
+          "explanation": {
+            "type": "string",
+            "nullable": true,
+            "description": "The Finanzamt’s explanation, quoted from the Bescheid."
+          }
+        },
+        "required": [
+          "position",
+          "label",
+          "role",
+          "person",
+          "declared",
+          "assessed",
+          "difference",
+          "status",
+          "explanation"
+        ]
+      },
+      "AssessmentDiffGroupDto": {
+        "type": "object",
+        "properties": {
+          "group": {
+            "type": "string",
+            "enum": [
+              "einkuenfte",
+              "werbungskostenA",
+              "werbungskostenB",
+              "vorsorge",
+              "steuer"
+            ]
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssessmentDiffRowDto"
+            }
+          }
+        },
+        "required": [
+          "group",
+          "rows"
+        ]
+      },
+      "AssessmentOwnDeviationDto": {
+        "type": "object",
+        "properties": {
+          "position": {
+            "type": "string",
+            "example": "homeofficeA",
+            "description": "A position id of the core catalogue `ASSESSMENT_POSITIONS` (e.g. `homeofficeA`, `zuVersteuerndesEinkommen`)."
+          },
+          "label": {
+            "type": "string",
+            "example": "Homeoffice-Pauschale"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "own",
+              "followOn"
+            ],
+            "description": "`followOn` positions follow from the own ones and never count as a deviation."
+          },
+          "person": {
+            "type": "string",
+            "enum": [
+              "A",
+              "B"
+            ],
+            "nullable": true,
+            "description": "Whose column of a joint Bescheid; null for the household."
+          },
+          "declared": {
+            "type": "number",
+            "nullable": true,
+            "description": "As declared in the frozen version (euros)."
+          },
+          "assessed": {
+            "type": "number",
+            "nullable": true,
+            "description": "As assessed; null when not read."
+          },
+          "difference": {
+            "type": "number",
+            "nullable": true,
+            "description": "assessed − declared; null unless both are there."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "same",
+              "deviation",
+              "not_read",
+              "not_declared"
+            ],
+            "description": "`not_read` is never 0 and never a deviation."
+          },
+          "explanation": {
+            "type": "string",
+            "nullable": true,
+            "description": "The Finanzamt’s explanation, quoted from the Bescheid."
+          },
+          "refundEffect": {
+            "type": "number",
+            "nullable": true,
+            "example": -56,
+            "description": "Effect on the refund of setting only this position to the Bescheid’s value; null when not computable."
+          }
+        },
+        "required": [
+          "position",
+          "label",
+          "role",
+          "person",
+          "declared",
+          "assessed",
+          "difference",
+          "status",
+          "explanation",
+          "refundEffect"
+        ]
+      },
+      "AssessmentFollowOnLinkDto": {
+        "type": "object",
+        "properties": {
+          "position": {
+            "type": "string",
+            "example": "zuVersteuerndesEinkommen"
+          },
+          "label": {
+            "type": "string",
+            "example": "Zu versteuerndes Einkommen"
+          },
+          "difference": {
+            "type": "number",
+            "example": 300
+          }
+        },
+        "required": [
+          "position",
+          "label",
+          "difference"
+        ]
+      },
+      "AssessmentDiffCountsDto": {
+        "type": "object",
+        "properties": {
+          "positions": {
+            "type": "number"
+          },
+          "same": {
+            "type": "number"
+          },
+          "deviations": {
+            "type": "number",
+            "description": "Own deviations."
+          },
+          "notRead": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "positions",
+          "same",
+          "deviations",
+          "notRead"
+        ]
+      },
+      "AssessmentDiffDto": {
+        "type": "object",
+        "properties": {
+          "year": {
+            "type": "number",
+            "example": 2024
+          },
+          "filingType": {
+            "type": "string",
+            "enum": [
+              "einzel",
+              "zusammen"
+            ]
+          },
+          "groups": {
+            "description": "Every position in form order, grouped as the Bescheid groups them.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssessmentDiffGroupDto"
+            }
+          },
+          "ownDeviations": {
+            "description": "What the Finanzamt changed, largest effect on the refund first.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssessmentOwnDeviationDto"
+            }
+          },
+          "followOnChain": {
+            "description": "Summe Werbungskosten → zvE → Steuer → Erstattung, only the links that moved.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssessmentFollowOnLinkDto"
+            }
+          },
+          "totalRefundEffect": {
+            "type": "number",
+            "nullable": true,
+            "example": -92,
+            "description": "Assessed minus declared refund."
+          },
+          "singleEffectsSum": {
+            "type": "number",
+            "nullable": true,
+            "example": -94
+          },
+          "effectsDifferFromTotal": {
+            "type": "boolean",
+            "description": "The single effects do not add up to the total (the tax is not linear): say so."
+          },
+          "generalExplanations": {
+            "description": "Explanations that name no position.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "counts": {
+            "$ref": "#/components/schemas/AssessmentDiffCountsDto"
+          }
+        },
+        "required": [
+          "year",
+          "filingType",
+          "groups",
+          "ownDeviations",
+          "followOnChain",
+          "totalRefundEffect",
+          "singleEffectsSum",
+          "effectsDifferFromTotal",
+          "generalExplanations",
+          "counts"
+        ]
+      },
+      "AssessmentResponseDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "eingegangen",
+              "geprüft",
+              "einspruch-eingelegt"
+            ],
+            "description": "The bescheid-phase sub-state."
+          },
+          "assessmentDate": {
+            "type": "string",
+            "nullable": true,
+            "description": "Bescheiddatum (ISO yyyy-mm-dd)."
+          },
+          "appealReason": {
+            "type": "string",
+            "nullable": true,
+            "description": "Einspruch-Grund (closed set), null until filed."
+          },
+          "fields": {
+            "description": "The five figures, in paper order.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssessmentFieldDto"
+            }
+          },
+          "reconciliation": {
+            "description": "The Abgleich (Bescheid vs. berechnet).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AssessmentComparisonDto"
+              }
+            ]
+          },
+          "frist": {
+            "description": "The § 355 AO Einspruchsfrist.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AssessmentDeadlineDto"
+              }
+            ]
+          },
+          "nextStates": {
+            "description": "The legal next sub-states (for the UI to offer only what is legal).",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "positions": {
+            "description": "Every Besteuerungsgrundlage of the Bescheid (core `ASSESSMENT_POSITIONS`, form order) with its capture state; `offen` = not read.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssessmentFieldDto"
+            }
+          },
+          "explanations": {
+            "description": "The Finanzamt’s Erläuterungen as printed, one per paragraph.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "diff": {
+            "nullable": true,
+            "description": "Erklärung ↔ Bescheid (ADR-0098 §8), the same diff the Verlauf shows; null without a version filed in the app or without Bescheid values.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AssessmentDiffDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "status",
+          "assessmentDate",
+          "appealReason",
+          "fields",
+          "reconciliation",
+          "frist",
+          "nextStates",
+          "positions",
+          "explanations",
+          "diff"
+        ]
+      },
+      "PutAssessmentFieldDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "erfasst",
+              "offen",
+              "unklar"
+            ],
+            "description": "The field’s capture state."
+          },
+          "value": {
+            "type": "number",
+            "example": 50000,
+            "description": "The whole-euro amount — present only when kind === \"erfasst\". Sign/validity per field is validated via @steuereule/core (erstattung may be negative)."
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "SetAssessmentDateDto": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "nullable": true,
+            "example": "2026-04-15",
+            "description": "Bescheiddatum (ISO yyyy-mm-dd)."
+          }
+        }
+      },
+      "SetAssessmentStatusDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "eingegangen",
+              "geprüft",
+              "einspruch-eingelegt"
+            ],
+            "description": "The target sub-state."
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "SetAppealDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "enum": [
+              "betrag-falsch",
+              "beleg-nicht-beruecksichtigt",
+              "sonstiges"
+            ],
+            "description": "The Einspruch-Grund (closed set)."
+          }
+        },
+        "required": [
+          "reason"
         ]
       },
       "CommuteInputsDto": {
@@ -12339,568 +13072,6 @@
           "enabled",
           "cards",
           "legalStatus"
-        ]
-      },
-      "AssessmentFieldDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "description": "The machine field id (BescheidFeld)."
-          },
-          "kind": {
-            "type": "string",
-            "enum": [
-              "erfasst",
-              "offen",
-              "unklar"
-            ],
-            "description": "The field’s capture state."
-          },
-          "value": {
-            "type": "number",
-            "example": 50000,
-            "description": "The whole-euro amount — present only when kind === \"erfasst\" (erstattung may be negative)."
-          }
-        },
-        "required": [
-          "id",
-          "kind"
-        ]
-      },
-      "AssessmentDeviationDto": {
-        "type": "object",
-        "properties": {
-          "field": {
-            "type": "string",
-            "enum": [
-              "einnahmen",
-              "vorsorgeaufwand",
-              "anrechnung"
-            ]
-          },
-          "assessment": {
-            "type": "number",
-            "description": "The Bescheid figure (whole euros)."
-          },
-          "calculated": {
-            "type": "number",
-            "description": "The computed figure (whole euros)."
-          },
-          "difference": {
-            "type": "number",
-            "description": "bescheid − berechnet."
-          }
-        },
-        "required": [
-          "field",
-          "assessment",
-          "calculated",
-          "difference"
-        ]
-      },
-      "AssessmentComparisonDto": {
-        "type": "object",
-        "properties": {
-          "deviations": {
-            "description": "The deviations (empty = alles stimmt überein).",
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/AssessmentDeviationDto"
-            }
-          },
-          "calculationIncomplete": {
-            "type": "boolean",
-            "description": "The computed side is incomplete (berechne returned \"offen\")."
-          }
-        },
-        "required": [
-          "deviations",
-          "calculationIncomplete"
-        ]
-      },
-      "AssessmentDeadlineDto": {
-        "type": "object",
-        "properties": {
-          "assessmentDate": {
-            "type": "string",
-            "nullable": true,
-            "description": "Bescheiddatum (ISO yyyy-mm-dd), null until set."
-          },
-          "deadlineEnd": {
-            "type": "string",
-            "nullable": true,
-            "description": "Einspruchsfrist-Ende: one month after the notice counts as received (Bescheiddatum + 4 days, § 122 Abs. 2 AO; 3 before 2025), moved to a working day (§ 108 Abs. 3 AO). Null until the datum is set."
-          },
-          "remainingDays": {
-            "type": "number",
-            "nullable": true,
-            "description": "Whole days left (negative = abgelaufen), null until the datum is set."
-          },
-          "running": {
-            "type": "boolean",
-            "nullable": true,
-            "description": "The Einspruchsfrist still runs (its last day included); null until the datum is set."
-          }
-        },
-        "required": [
-          "assessmentDate",
-          "deadlineEnd",
-          "remainingDays",
-          "running"
-        ]
-      },
-      "AssessmentDiffRowDto": {
-        "type": "object",
-        "properties": {
-          "position": {
-            "type": "string",
-            "example": "homeofficeA",
-            "description": "A position id of the core catalogue `ASSESSMENT_POSITIONS` (e.g. `homeofficeA`, `zuVersteuerndesEinkommen`)."
-          },
-          "label": {
-            "type": "string",
-            "example": "Homeoffice-Pauschale"
-          },
-          "role": {
-            "type": "string",
-            "enum": [
-              "own",
-              "followOn"
-            ],
-            "description": "`followOn` positions follow from the own ones and never count as a deviation."
-          },
-          "person": {
-            "type": "string",
-            "enum": [
-              "A",
-              "B"
-            ],
-            "nullable": true,
-            "description": "Whose column of a joint Bescheid; null for the household."
-          },
-          "declared": {
-            "type": "number",
-            "nullable": true,
-            "description": "As declared in the frozen version (euros)."
-          },
-          "assessed": {
-            "type": "number",
-            "nullable": true,
-            "description": "As assessed; null when not read."
-          },
-          "difference": {
-            "type": "number",
-            "nullable": true,
-            "description": "assessed − declared; null unless both are there."
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "same",
-              "deviation",
-              "not_read",
-              "not_declared"
-            ],
-            "description": "`not_read` is never 0 and never a deviation."
-          },
-          "explanation": {
-            "type": "string",
-            "nullable": true,
-            "description": "The Finanzamt’s explanation, quoted from the Bescheid."
-          }
-        },
-        "required": [
-          "position",
-          "label",
-          "role",
-          "person",
-          "declared",
-          "assessed",
-          "difference",
-          "status",
-          "explanation"
-        ]
-      },
-      "AssessmentDiffGroupDto": {
-        "type": "object",
-        "properties": {
-          "group": {
-            "type": "string",
-            "enum": [
-              "einkuenfte",
-              "werbungskostenA",
-              "werbungskostenB",
-              "vorsorge",
-              "steuer"
-            ]
-          },
-          "rows": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/AssessmentDiffRowDto"
-            }
-          }
-        },
-        "required": [
-          "group",
-          "rows"
-        ]
-      },
-      "AssessmentOwnDeviationDto": {
-        "type": "object",
-        "properties": {
-          "position": {
-            "type": "string",
-            "example": "homeofficeA",
-            "description": "A position id of the core catalogue `ASSESSMENT_POSITIONS` (e.g. `homeofficeA`, `zuVersteuerndesEinkommen`)."
-          },
-          "label": {
-            "type": "string",
-            "example": "Homeoffice-Pauschale"
-          },
-          "role": {
-            "type": "string",
-            "enum": [
-              "own",
-              "followOn"
-            ],
-            "description": "`followOn` positions follow from the own ones and never count as a deviation."
-          },
-          "person": {
-            "type": "string",
-            "enum": [
-              "A",
-              "B"
-            ],
-            "nullable": true,
-            "description": "Whose column of a joint Bescheid; null for the household."
-          },
-          "declared": {
-            "type": "number",
-            "nullable": true,
-            "description": "As declared in the frozen version (euros)."
-          },
-          "assessed": {
-            "type": "number",
-            "nullable": true,
-            "description": "As assessed; null when not read."
-          },
-          "difference": {
-            "type": "number",
-            "nullable": true,
-            "description": "assessed − declared; null unless both are there."
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "same",
-              "deviation",
-              "not_read",
-              "not_declared"
-            ],
-            "description": "`not_read` is never 0 and never a deviation."
-          },
-          "explanation": {
-            "type": "string",
-            "nullable": true,
-            "description": "The Finanzamt’s explanation, quoted from the Bescheid."
-          },
-          "refundEffect": {
-            "type": "number",
-            "nullable": true,
-            "example": -56,
-            "description": "Effect on the refund of setting only this position to the Bescheid’s value; null when not computable."
-          }
-        },
-        "required": [
-          "position",
-          "label",
-          "role",
-          "person",
-          "declared",
-          "assessed",
-          "difference",
-          "status",
-          "explanation",
-          "refundEffect"
-        ]
-      },
-      "AssessmentFollowOnLinkDto": {
-        "type": "object",
-        "properties": {
-          "position": {
-            "type": "string",
-            "example": "zuVersteuerndesEinkommen"
-          },
-          "label": {
-            "type": "string",
-            "example": "Zu versteuerndes Einkommen"
-          },
-          "difference": {
-            "type": "number",
-            "example": 300
-          }
-        },
-        "required": [
-          "position",
-          "label",
-          "difference"
-        ]
-      },
-      "AssessmentDiffCountsDto": {
-        "type": "object",
-        "properties": {
-          "positions": {
-            "type": "number"
-          },
-          "same": {
-            "type": "number"
-          },
-          "deviations": {
-            "type": "number",
-            "description": "Own deviations."
-          },
-          "notRead": {
-            "type": "number"
-          }
-        },
-        "required": [
-          "positions",
-          "same",
-          "deviations",
-          "notRead"
-        ]
-      },
-      "AssessmentDiffDto": {
-        "type": "object",
-        "properties": {
-          "year": {
-            "type": "number",
-            "example": 2024
-          },
-          "filingType": {
-            "type": "string",
-            "enum": [
-              "einzel",
-              "zusammen"
-            ]
-          },
-          "groups": {
-            "description": "Every position in form order, grouped as the Bescheid groups them.",
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/AssessmentDiffGroupDto"
-            }
-          },
-          "ownDeviations": {
-            "description": "What the Finanzamt changed, largest effect on the refund first.",
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/AssessmentOwnDeviationDto"
-            }
-          },
-          "followOnChain": {
-            "description": "Summe Werbungskosten → zvE → Steuer → Erstattung, only the links that moved.",
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/AssessmentFollowOnLinkDto"
-            }
-          },
-          "totalRefundEffect": {
-            "type": "number",
-            "nullable": true,
-            "example": -92,
-            "description": "Assessed minus declared refund."
-          },
-          "singleEffectsSum": {
-            "type": "number",
-            "nullable": true,
-            "example": -94
-          },
-          "effectsDifferFromTotal": {
-            "type": "boolean",
-            "description": "The single effects do not add up to the total (the tax is not linear): say so."
-          },
-          "generalExplanations": {
-            "description": "Explanations that name no position.",
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "counts": {
-            "$ref": "#/components/schemas/AssessmentDiffCountsDto"
-          }
-        },
-        "required": [
-          "year",
-          "filingType",
-          "groups",
-          "ownDeviations",
-          "followOnChain",
-          "totalRefundEffect",
-          "singleEffectsSum",
-          "effectsDifferFromTotal",
-          "generalExplanations",
-          "counts"
-        ]
-      },
-      "AssessmentResponseDto": {
-        "type": "object",
-        "properties": {
-          "status": {
-            "type": "string",
-            "enum": [
-              "eingegangen",
-              "geprüft",
-              "einspruch-eingelegt"
-            ],
-            "description": "The bescheid-phase sub-state."
-          },
-          "assessmentDate": {
-            "type": "string",
-            "nullable": true,
-            "description": "Bescheiddatum (ISO yyyy-mm-dd)."
-          },
-          "appealReason": {
-            "type": "string",
-            "nullable": true,
-            "description": "Einspruch-Grund (closed set), null until filed."
-          },
-          "fields": {
-            "description": "The five figures, in paper order.",
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/AssessmentFieldDto"
-            }
-          },
-          "reconciliation": {
-            "description": "The Abgleich (Bescheid vs. berechnet).",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/AssessmentComparisonDto"
-              }
-            ]
-          },
-          "frist": {
-            "description": "The § 355 AO Einspruchsfrist.",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/AssessmentDeadlineDto"
-              }
-            ]
-          },
-          "nextStates": {
-            "description": "The legal next sub-states (for the UI to offer only what is legal).",
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "positions": {
-            "description": "Every Besteuerungsgrundlage of the Bescheid (core `ASSESSMENT_POSITIONS`, form order) with its capture state; `offen` = not read.",
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/AssessmentFieldDto"
-            }
-          },
-          "explanations": {
-            "description": "The Finanzamt’s Erläuterungen as printed, one per paragraph.",
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "diff": {
-            "nullable": true,
-            "description": "Erklärung ↔ Bescheid (ADR-0098 §8), the same diff the Verlauf shows; null without a version filed in the app or without Bescheid values.",
-            "type": "object",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/AssessmentDiffDto"
-              }
-            ]
-          }
-        },
-        "required": [
-          "status",
-          "assessmentDate",
-          "appealReason",
-          "fields",
-          "reconciliation",
-          "frist",
-          "nextStates",
-          "positions",
-          "explanations",
-          "diff"
-        ]
-      },
-      "PutAssessmentFieldDto": {
-        "type": "object",
-        "properties": {
-          "kind": {
-            "type": "string",
-            "enum": [
-              "erfasst",
-              "offen",
-              "unklar"
-            ],
-            "description": "The field’s capture state."
-          },
-          "value": {
-            "type": "number",
-            "example": 50000,
-            "description": "The whole-euro amount — present only when kind === \"erfasst\". Sign/validity per field is validated via @steuereule/core (erstattung may be negative)."
-          }
-        },
-        "required": [
-          "kind"
-        ]
-      },
-      "SetAssessmentDateDto": {
-        "type": "object",
-        "properties": {
-          "date": {
-            "type": "string",
-            "nullable": true,
-            "example": "2026-04-15",
-            "description": "Bescheiddatum (ISO yyyy-mm-dd)."
-          }
-        }
-      },
-      "SetAssessmentStatusDto": {
-        "type": "object",
-        "properties": {
-          "status": {
-            "type": "string",
-            "enum": [
-              "eingegangen",
-              "geprüft",
-              "einspruch-eingelegt"
-            ],
-            "description": "The target sub-state."
-          }
-        },
-        "required": [
-          "status"
-        ]
-      },
-      "SetAppealDto": {
-        "type": "object",
-        "properties": {
-          "reason": {
-            "type": "string",
-            "enum": [
-              "betrag-falsch",
-              "beleg-nicht-beruecksichtigt",
-              "sonstiges"
-            ],
-            "description": "The Einspruch-Grund (closed set)."
-          }
-        },
-        "required": [
-          "reason"
         ]
       },
       "ProvenanceDto": {

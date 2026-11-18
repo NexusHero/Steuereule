@@ -9,7 +9,6 @@ import {
   useReceiptControllerSetAssignment,
   useReceiptControllerDelete,
   getReceiptControllerListQueryKey,
-  uploadReceiptFile,
   type ReceiptResponseDto,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
@@ -23,6 +22,7 @@ import { DocumentAssignmentCard } from './DocumentAssignmentCard'
 import { ReceiptOutcomeLines } from './ReceiptOutcomeLines'
 import { useOptionalSetTaxYear, useOptionalShellTaxYear, useOptionalSwitchToTab } from '../../navigation/ShellState'
 import { storedReceiptFile } from '../../lib/receipts/storedReceiptFile'
+import { storeReceipt } from '../../lib/receipts/storeReceipt'
 import { canReadAgain, filledFieldsByYear, outcomeOfReceipt } from '../../lib/receipts/receiptOutcome'
 import { useReceiptReader, type ReceiptReader } from '../../lib/receipts/useReceiptReader'
 import { toGermanDate } from '@steuereule/core'
@@ -266,15 +266,6 @@ export function ReceiptsScreen() {
 }
 
 /** Stores a file in the Belege inbox; the caller reads it right after (ADR-0097 §4). Null when it could not be stored. */
-async function storeReceipt(file: File, kind: CreateReceiptDtoKind): Promise<{ readonly id: string } | null> {
-  try {
-    const result = await uploadReceiptFile({ file, fileName: file.name, kind })
-    return result.ok ? { id: result.data.id } : null
-  } catch {
-    return null
-  }
-}
-
 /** The tax assessment has its own kind and folder: a quiet second way in, inside the upload bar. */
 function BescheidPicker({ reader }: { readonly reader: ReceiptReader }) {
   const t = useTheme()

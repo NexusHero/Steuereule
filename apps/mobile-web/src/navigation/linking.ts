@@ -50,6 +50,8 @@ const appConfig: PathConfig<AppTabParamList> = {
     } as PathConfig<CockpitStackParamList> as never,
     Owl: 'eule',
     Receipts: 'belege',
+    // The year list moved into the Verlauf (ADR-0098 §1): old links to the list land there.
+    History: { path: 'verlauf', alias: ['steuerjahre', 'jahre', 'erklaerungen'] },
     Profile: {
       path: 'profil',
       initialRouteName: 'ProfileHome',
@@ -104,6 +106,7 @@ const ROUTE_TITLES: Readonly<Record<string, string>> = {
   Strom: 'SteuerEule — Steuererklärung',
   Owl: 'SteuerEule — Eulen-Modus',
   Receipts: 'SteuerEule — Belege',
+  History: 'SteuerEule — Verlauf',
   ProfileHome: 'SteuerEule — Profil',
   Profile: 'SteuerEule — Profil',
   Privacy: 'SteuerEule — Datenschutz',

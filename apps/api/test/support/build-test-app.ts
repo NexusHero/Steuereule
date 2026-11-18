@@ -17,6 +17,8 @@ import { TAX_DATA_EXPORT_REPOSITORY } from '../../src/account/tax-data-export.re
 import { ADVISOR_REPOSITORY, InMemoryAdvisorRepository } from '../../src/advisor/advisor.repository.js'
 import { PDF_RENDERER } from '../../src/account/export/pdf-renderer.js'
 import { ASSESSMENT_REPOSITORY } from '../../src/assessment/assessment.repository.js'
+import { FILING_VERSION_REPOSITORY } from '../../src/assessment/filing-version.repository.js'
+import { SUBMISSION_REPOSITORY } from '../../src/submission/submission.repository.js'
 import { AUDIT_REPOSITORY } from '../../src/audit/audit.repository.js'
 import { BETTER_AUTH_BUNDLE, type BetterAuthBundle } from '../../src/auth/auth.tokens.js'
 import { createResettableRateLimitStorage } from '../../src/auth/rate-limit-storage.js'
@@ -41,6 +43,8 @@ import { PROVENANCE_REPOSITORY } from '../../src/marking/marking.repository.js'
 import { FakeAccountIdentityRepository } from '../fakes/fake-account-identity.repository.js'
 import { FakeAssessmentRepository } from '../fakes/fake-assessment.repository.js'
 import { FakeAuditRepository } from '../fakes/fake-audit.repository.js'
+import { FakeFilingVersionRepository } from '../fakes/fake-filing-version.repository.js'
+import { FakeSubmissionRepository } from '../fakes/fake-submission.repository.js'
 import { FakeChildRepository } from '../fakes/fake-child.repository.js'
 import { FakeCommuteRepository } from '../fakes/fake-commute.repository.js'
 import { FakeInterviewAnswerRepository } from '../fakes/fake-interview-answer.repository.js'
@@ -85,6 +89,10 @@ export async function buildTestApp(options?: {
   pdfRenderer: FakePdfRenderer
   auditRepository: FakeAuditRepository
   taxDataExportRepository: FakeTaxDataExportRepository
+  assessmentRepository: FakeAssessmentRepository
+  filingVersionRepository: FakeFilingVersionRepository
+  submissionRepository: FakeSubmissionRepository
+  commuteRepository: FakeCommuteRepository
 }> {
   const repository = new FakeProfileRepository()
   const taxYearRepository = new FakeTaxYearRepository()
@@ -110,6 +118,8 @@ export async function buildTestApp(options?: {
   const pdfRenderer = new FakePdfRenderer()
   const taxDataExportRepository = new FakeTaxDataExportRepository()
   const auditRepository = new FakeAuditRepository()
+  const filingVersionRepository = new FakeFilingVersionRepository()
+  const submissionRepository = new FakeSubmissionRepository(filingVersionRepository, auditRepository)
 
   // Nest instantiates every provider registered on a module it constructs — including
   // PrismaService — regardless of whether anything in *this* test's request path ends up
@@ -179,6 +189,10 @@ export async function buildTestApp(options?: {
     .useValue(masterDataRepository)
     .overrideProvider(ASSESSMENT_REPOSITORY)
     .useValue(assessmentRepository)
+    .overrideProvider(FILING_VERSION_REPOSITORY)
+    .useValue(filingVersionRepository)
+    .overrideProvider(SUBMISSION_REPOSITORY)
+    .useValue(submissionRepository)
     .overrideProvider(CHILD_REPOSITORY)
     .useValue(childRepository)
     .overrideProvider(COMMUTE_REPOSITORY)
@@ -273,6 +287,10 @@ export async function buildTestApp(options?: {
     pdfRenderer,
     auditRepository,
     taxDataExportRepository,
+    assessmentRepository,
+    filingVersionRepository,
+    submissionRepository,
+    commuteRepository,
   }
 }
 

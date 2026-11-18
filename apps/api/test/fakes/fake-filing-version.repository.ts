@@ -8,6 +8,10 @@ export class FakeFilingVersionRepository implements FilingVersionRepository {
     this.rows.push(record)
   }
 
+  removeYear(userId: string, taxYear: number): void {
+    for (let i = this.rows.length - 1; i >= 0; i--) if (this.rows[i]!.userId === userId && this.rows[i]!.taxYear === taxYear) this.rows.splice(i, 1)
+  }
+
   findLatest(userId: string, taxYear: number): Promise<FilingVersionRecord | null> {
     const own = this.rows.filter((r) => r.userId === userId && r.taxYear === taxYear).sort((a, b) => b.number - a.number)
     return Promise.resolve(own[0] ?? null)

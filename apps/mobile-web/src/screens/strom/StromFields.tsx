@@ -5,6 +5,7 @@ import { QUESTIONS, formatEuro, type Answers, type EntryStepId } from '@steuereu
 import { APP_NS } from '../../i18n/resources'
 import { GlossaryHint } from '../shared/GlossaryHint'
 import { integerFrom } from '../shared/integer'
+import { MaskLessonHint } from '../history/MaskLessonHint'
 
 export interface FieldCopy {
   readonly question: (id: EntryStepId) => string
@@ -26,10 +27,12 @@ export interface StromFieldsProps {
   readonly prior?: { readonly year: number; readonly answers: Answers; readonly steps: ReadonlySet<EntryStepId> }
   /** Fields left empty although the page wants them, after a press on Weiter. */
   readonly missing?: ReadonlySet<EntryStepId>
+  /** The year of the page: a lesson from last year's Bescheid shows at its field (ADR-0098 §8). */
+  readonly taxYear?: number
 }
 
 /** One page, many fields: every question of a Strom page in order, with notices in place. */
-export function StromFields({ steps, draft, onChange, copy, idPrefix, prior, missing }: StromFieldsProps) {
+export function StromFields({ steps, draft, onChange, copy, idPrefix, prior, missing, taxYear }: StromFieldsProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
@@ -65,6 +68,7 @@ export function StromFields({ steps, draft, onChange, copy, idPrefix, prior, mis
             ) : (
               <AmountField id={id} value={draft[id]} onChange={(v) => onChange(id, v)} label={copy.question(id)} idPrefix={idPrefix} prior={prior} />
             )}
+            {taxYear !== undefined && decl.form.kind !== 'enum' ? <MaskLessonHint taxYear={taxYear} screen="interview" field={id} /> : null}
             {isMissing ? (
               <Text style={styles.missing} accessibilityLiveRegion="polite" testID={`strom-fehlt-${id}`}>
                 {tr('strom.fehlt')}

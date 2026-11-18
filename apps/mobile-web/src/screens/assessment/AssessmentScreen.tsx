@@ -16,6 +16,7 @@ import {
   type PutAssessmentFieldDto,
   type SetAssessmentStatusDtoStatus,
   type SetAppealDtoReason,
+  type AppealDeadlineDto,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
@@ -23,6 +24,7 @@ import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
 import { screenHeaderStyles, unclearableFieldStyles } from '../shared/screenStyles'
 import { triggerSaveErrorHaptic, warnOnHttpError } from '../shared/saveFeedback'
+import { AssessmentDiffView } from '../history/AssessmentDiffView'
 
 type FieldId = 'einnahmen' | 'vorsorgeaufwand' | 'anrechnung' | 'festgesetzteSteuer' | 'erstattung'
 
@@ -112,7 +114,13 @@ export function AssessmentScreen({ onDone = () => {}, onBack, taxYear = CURRENT_
 
       <DateEditor date={response.frist.assessmentDate} onSet={(date) => setDate.mutate({ jahr: taxYear, data: { date } }, mutationCallbacks)} />
 
-      <ReconciliationSection response={response} />
+      {response.diff ? (
+        <View style={styles.section}>
+          <AssessmentDiffView diff={response.diff} deadline={deadlineOf(response.frist)} assessmentDate={response.assessmentDate} testID="bescheid-abgleich" />
+        </View>
+      ) : (
+        <ReconciliationSection response={response} />
+      )}
 
       <StatusSection response={response} onSetStatus={(status) => setStatus.mutate({ jahr: taxYear, data: { status } }, mutationCallbacks)} />
 
@@ -126,6 +134,12 @@ export function AssessmentScreen({ onDone = () => {}, onBack, taxYear = CURRENT_
       </Button>
     </ScrollView>
   )
+}
+
+/** The Einspruchsfrist as the shared Abgleich shows it; none until the Bescheiddatum is set. */
+function deadlineOf(frist: AssessmentResponseDto['frist']): AppealDeadlineDto | null {
+  if (frist.deadlineEnd === null || frist.remainingDays === null) return null
+  return { endsOn: frist.deadlineEnd, remainingDays: frist.remainingDays, running: frist.running ?? frist.remainingDays >= 0 }
 }
 
 function FristBanner({ frist }: { readonly frist: AssessmentResponseDto['frist'] }) {

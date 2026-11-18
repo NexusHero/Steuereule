@@ -1,13 +1,11 @@
 import { Inject, Injectable, Optional } from '@nestjs/common'
 import {
-  annexNGreAmounts,
   appealDeadline,
   assessmentLessons,
   buildYearHistory,
-  deserializeWageTaxCertificateField,
+  declaredPersonPositions,
   diffAssessment,
   todayIso,
-  wageTaxCertificateStatus,
   type AppealDeadline,
   type AssessmentDiff,
   type AssessmentLesson,
@@ -18,7 +16,6 @@ import {
   type NextYearDeclaration,
   type PersonYearFacts,
   type TaxYearStatus,
-  type WageFacts,
   type WorkExpenseParts,
   type YearHistoryEntry,
   type YearHistoryInput,
@@ -28,15 +25,13 @@ import { ASSESSMENT_REPOSITORY, type AssessmentRecord, type AssessmentRepository
 import { FILING_VERSION_REPOSITORY, type FilingVersionRecord, type FilingVersionRepository } from '../assessment/filing-version.repository.js'
 import { AuditService } from '../audit/audit.service.js'
 import { CROSS_BORDER_SALARY_STATEMENT_REPOSITORY, type CrossBorderSalaryStatementRepository } from '../ch-salary-certificate/ch-salary-certificate.repository.js'
-import { exchangeRateFromRecord, nGreInputFromRecord } from '../ch-salary-certificate/salary-certificate-data.js'
 import { COMMUTE_REPOSITORY, type CommuteRepository } from '../commute/commute.repository.js'
-import { answersFrom } from '../interview/answers.js'
 import { INTERVIEW_ANSWER_REPOSITORY, type InterviewAnswerRepository } from '../interview/interview-answer.repository.js'
 import { PARTNER_COUPLING_REPOSITORY, type PartnerCouplingRepository } from '../link/link.repository.js'
 import { recordedSpouseUserId } from '../link/link.service.js'
-import { wageTaxCertificateDataFrom } from '../lstb/lstb-data.js'
 import { WAGE_TAX_CERTIFICATE_REPOSITORY, type WageTaxCertificateRepository } from '../lstb/lstb.repository.js'
-import { TaxEstimateService, workExpenseParts } from '../tax-estimate/tax-estimate.service.js'
+import { TaxEstimateService } from '../tax-estimate/tax-estimate.service.js'
+import { todaysWorkExpenses, wageFacts } from './person-facts.js'
 import { YEAR_HISTORY_REPOSITORY, type YearHistoryRepository } from './year-history.repository.js'
 
 /** How a year stands in the list (ADR-0098 §1). */
@@ -288,63 +283,15 @@ export class YearHistoryService {
 
   private async todaysWorkExpenses(dataUserId: string, year: number): Promise<WorkExpenseParts | null> {
     const [path, rows] = await Promise.all([this.commute.findForUserAndYear(dataUserId, year), this.interview.findAllForUserAndYear(dataUserId, year)])
-    if (path === null && rows.length === 0) return null
-    try {
-      return workExpenseParts(year, path, answersFrom(rows))
-    } catch {
-      return null
-    }
-  }
-}
-
-/** The LStB when it is complete, else the Swiss Lohnausweis at the year's rate (ADR-0042); null otherwise. */
-function wageFacts(lstbRecord: Awaited<ReturnType<WageTaxCertificateRepository['findForUserAndYear']>>, chRecord: Awaited<ReturnType<CrossBorderSalaryStatementRepository['findForUserAndYear']>>): WageFacts | null {
-  if (lstbRecord !== null) {
-    const state = wageTaxCertificateStatus(wageTaxCertificateDataFrom(lstbRecord))
-    if (state.kind === 'vollstaendig') {
-      const amount = (v: string | null | undefined) => {
-        const f = deserializeWageTaxCertificateField(v ?? null)
-        return f.kind === 'erfasst' ? f.value : 0
-      }
-      const soli = lstbRecord.solidaritaetszuschlag && /^\d+(\.\d{1,2})?$/.test(lstbRecord.solidaritaetszuschlag) ? Math.round(Number(lstbRecord.solidaritaetszuschlag)) : 0
-      return {
-        gross: state.bruttoarbeitslohn,
-        wageTax: state.lohnsteuer,
-        solidaritaetszuschlag: soli,
-        churchTax: amount(lstbRecord.kirchensteuer) + amount(lstbRecord.kirchensteuerEhegatte),
-        socialSecurity: state.sozialversicherung,
-        source: 'lohnsteuerbescheinigung',
-        exchangeRate: null,
-      }
-    }
-  }
-  const rate = exchangeRateFromRecord(chRecord)
-  if (chRecord === null || rate === null) return null
-  const rows = annexNGreAmounts(nGreInputFromRecord(chRecord, rate)).eur
-  return {
-    gross: rows.z23,
-    wageTax: rows.z25,
-    solidaritaetszuschlag: 0,
-    churchTax: 0,
-    socialSecurity: rows.z82 + rows.z85,
-    source: 'lohnausweis',
-    exchangeRate: { rate: rate.rate, period: rate.month },
+    return todaysWorkExpenses(year, path, rows)
   }
 }
 
 /** What a year declares for the lessons of the year before: its frozen version, else today's figures. */
 function declarationOf(year: number, version: FilingVersionRecord | null, a: PersonYearFacts, b: PersonYearFacts | null): NextYearDeclaration {
   if (version !== null) return { year, source: 'filed', positions: version.positions }
-  const positions: Record<string, number> = {}
-  const put = (person: 'A' | 'B', facts: PersonYearFacts | null) => {
-    if (facts === null) return
-    if (facts.wage) positions[`bruttoarbeitslohn${person}`] = facts.wage.gross
-    const w = facts.declaredWorkExpenses
-    if (w) Object.assign(positions, { [`fahrtweg${person}`]: w.fahrtweg, [`homeoffice${person}`]: w.homeoffice, [`arbeitsmittel${person}`]: w.arbeitsmittel, [`sonstigeWerbungskosten${person}`]: w.sonstiges })
-  }
-  put('A', a)
-  put('B', b)
-  return { year, source: 'answers', positions: positions as AssessmentPositionValues }
+  // The same shaping the Abgabe freezes, so a lesson reads today's answers as they would be filed.
+  return { year, source: 'answers', positions: { ...declaredPersonPositions('A', a), ...(b ? declaredPersonPositions('B', b) : {}) } }
 }
 
 /** „Was ansteht“ (ADR-0098 §1): at most one item per year, the running Einspruchsfrist first. */

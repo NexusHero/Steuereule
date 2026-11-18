@@ -492,4 +492,20 @@ export default defineConfig({
       },
     },
   },
+  // ADR-0098 §8 — the Abgabe: POST/DELETE /v1/steuerjahre/{jahr}/abgabe, „Ich habe die Erklärung
+  // abgegeben“ freezes the filed version; the cockpit reads the state back as `submission`.
+  abgabe: {
+    input: { target: '../../apps/api/openapi.json', filters: { tags: ['abgabe'] } },
+    output: {
+      target: './src/generated/abgabe.ts',
+      mode: 'split',
+      client: 'react-query',
+      httpClient: 'fetch',
+      mock: true,
+      override: {
+        mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        mock: { required: true },
+      },
+    },
+  },
 })

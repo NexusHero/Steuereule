@@ -10,6 +10,7 @@ import { LstbScanModule } from './lstb-scan/lstb-scan.module.js'
 import { ChCertificateScanModule } from './ch-certificate-scan/ch-certificate-scan.module.js'
 import { AssessmentScanModule } from './assessment-scan/assessment-scan.module.js'
 import { YearHistoryModule } from './year-history/year-history.module.js'
+import { SubmissionModule } from './submission/submission.module.js'
 import { AssessmentModule } from './assessment/assessment.module.js'
 import { UnlockModule } from './unlock/unlock.module.js'
 import { DeadlinesModule } from './deadlines/deadlines.module.js'
@@ -56,6 +57,7 @@ import { DomainErrorFilter } from './common/domain-error.filter.js'
     ChCertificateScanModule,
     AssessmentScanModule,
     YearHistoryModule,
+    SubmissionModule,
     AssessmentModule,
     AccountModule,
     AssistantsModule,
