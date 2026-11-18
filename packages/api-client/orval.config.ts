@@ -476,4 +476,20 @@ export default defineConfig({
       },
     },
   },
+  // ADR-0098 — Steuer-Verlauf: GET /v1/verlauf, every year of the account or household with the
+  // Bescheid-Abgleich, „Was ansteht“ and the lessons for the masks of the open year.
+  verlauf: {
+    input: { target: '../../apps/api/openapi.json', filters: { tags: ['verlauf'] } },
+    output: {
+      target: './src/generated/verlauf.ts',
+      mode: 'split',
+      client: 'react-query',
+      httpClient: 'fetch',
+      mock: true,
+      override: {
+        mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        mock: { required: true },
+      },
+    },
+  },
 })

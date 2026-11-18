@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common'
+import { Inject, Injectable, Optional } from '@nestjs/common'
 import { ConflictError, InvalidInputError } from '../common/domain-error.js'
 import {
   ASSESSMENT_FIELDS,
@@ -6,8 +6,13 @@ import {
   assessmentCalculationStatus,
   deserializeAssessmentField,
   deserializeWageTaxCertificateField,
-  appealDeadlineEnd,
+  ASSESSMENT_POSITIONS,
+  appealDeadline,
+  diffAssessment,
   gatedIncomeTypes,
+  isValidAssessmentPositionAmount,
+  type AssessmentField,
+  type AssessmentPositionId,
   reconcileAssessment,
   crossBorderFold,
   isAssessmentTransitionAllowed,
@@ -15,7 +20,6 @@ import {
   isValidAssessmentAmount,
   nextAssessmentStates,
   serializeAssessmentField,
-  remainingAppealDays,
   todayIso,
   ISO_DATE_PATTERN,
   type CalculationStatus,
@@ -32,8 +36,11 @@ import {
   type InterviewAnswerRepository,
 } from '../interview/interview-answer.repository.js'
 import { WAGE_TAX_CERTIFICATE_REPOSITORY, type WageTaxCertificateRepository } from '../lstb/lstb.repository.js'
-import { ASSESSMENT_REPOSITORY, type AssessmentRecord, type AssessmentRepository } from './assessment.repository.js'
+import { ASSESSMENT_REPOSITORY, type AssessmentRecord, type AssessmentRepository, type AssessmentStoredField } from './assessment.repository.js'
+import { assessedReturnOf, filedReturnOf, hasAssessedValues, positionValue } from './assessment-positions.js'
+import { FILING_VERSION_REPOSITORY, type FilingVersionRepository } from './filing-version.repository.js'
 import type { AssessmentFieldDto, PutAssessmentFieldDto } from './dto/assessment-field.dto.js'
+import { toDiffDto } from './assessment-diff.mapper.js'
 import type {
   AssessmentDeviationDto,
   AssessmentResponseDto,
@@ -75,6 +82,8 @@ export class AssessmentService {
     @Inject(INTERVIEW_ANSWER_REPOSITORY) private readonly interviewRepository: InterviewAnswerRepository,
     @Inject(CROSS_BORDER_SALARY_STATEMENT_REPOSITORY) private readonly chSalaryCertificateRepository: CrossBorderSalaryStatementRepository,
     @Inject(AuditService) private readonly auditService: AuditService,
+    /** The versions frozen at submission (ADR-0098 §8); without them there is no diff to show. */
+    @Optional() @Inject(FILING_VERSION_REPOSITORY) private readonly filingVersions?: FilingVersionRepository,
   ) {}
 
   private async calculationStatus(userId: string, taxYear: number): Promise<CalculationStatus> {
@@ -123,9 +132,10 @@ export class AssessmentService {
     const foldStatus = await this.calculationStatus(userId, taxYear)
     const reconciliation = reconcileAssessment(values, foldStatus)
 
-    const deadlineEnd = assessmentDate === null ? null : appealDeadlineEnd(assessmentDate)
-    const remainingDays =
-      deadlineEnd === null ? null : remainingAppealDays(assessmentDate as string, todayIso())
+    const deadline = assessmentDate === null ? null : appealDeadline(assessmentDate, todayIso())
+    const version = this.filingVersions ? await this.filingVersions.findLatest(userId, taxYear) : null
+    // The cockpit's Bescheidprüfung shows the very diff the Verlauf shows (ADR-0098 §8).
+    const diff = version !== null && hasAssessedValues(record) ? diffAssessment(filedReturnOf(version), assessedReturnOf(record)) : null
 
     return {
       status,
@@ -136,8 +146,11 @@ export class AssessmentService {
         deviations: reconciliation.deviations.map((a): AssessmentDeviationDto => ({ ...a })),
         calculationIncomplete: reconciliation.calculationIncomplete,
       },
-      frist: { assessmentDate, deadlineEnd, remainingDays },
+      frist: { assessmentDate, deadlineEnd: deadline?.endsOn ?? null, remainingDays: deadline?.remainingDays ?? null, running: deadline?.running ?? null },
       nextStates: [...nextAssessmentStates(status)],
+      positions: ASSESSMENT_POSITIONS.map((p) => positionDto(record, p.id)),
+      explanations: (record?.explanations ?? '').split('\n').filter((t) => t.trim() !== ''),
+      diff: diff === null ? null : toDiffDto(diff),
     }
   }
 
@@ -152,7 +165,7 @@ export class AssessmentService {
   async setField(
     userId: string,
     taxYear: number,
-    field: Parameters<AssessmentRepository['setField']>[2],
+    field: AssessmentStoredField,
     dto: PutAssessmentFieldDto,
   ): Promise<AssessmentResponseDto> {
     const record = await this.repository.setField(userId, taxYear, field, valueFromDto(field, dto))
@@ -192,13 +205,24 @@ export class AssessmentService {
   }
 }
 
-function valueFromDto(field: Parameters<AssessmentRepository['setField']>[2], dto: PutAssessmentFieldDto): string | null {
+function valueFromDto(field: AssessmentStoredField, dto: PutAssessmentFieldDto): string | null {
   if (dto.kind === 'offen') return null
   if (dto.kind === 'unklar') return 'unklar'
-  if (dto.value === undefined || !isValidAssessmentAmount(field, dto.value)) {
+  const original = ASSESSMENT_FIELDS.some((f) => f.id === field)
+  const valid =
+    dto.value !== undefined &&
+    (original ? isValidAssessmentAmount(field as AssessmentField, dto.value) : isValidAssessmentPositionAmount(field as AssessmentPositionId, dto.value))
+  if (!valid) {
     throw new InvalidInputError('FIELD_VALUE_INVALID', `kind "erfasst" requires a valid whole-euro \`wert\` for "${field}".`)
   }
-  return serializeAssessmentField(field, dto.value)
+  return original ? serializeAssessmentField(field as AssessmentField, dto.value!) : String(dto.value)
+}
+
+function positionDto(record: AssessmentRecord | null, id: AssessmentPositionId): AssessmentFieldDto {
+  const value = positionValue(record, id)
+  if (value === null) return { id, kind: 'offen' }
+  if (value === 'unklar') return { id, kind: 'unklar' }
+  return { id, kind: 'erfasst', value }
 }
 
 /** Today in Germany; the shared date module decides, re-exported here for the existing callers. */

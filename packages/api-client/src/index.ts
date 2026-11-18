@@ -62,6 +62,52 @@ export * from './generated/eulen-modus'
 export * from './generated/eulen-modus.schemas'
 export * from './generated/assistenten'
 export * from './generated/assistenten.schemas'
+export * from './generated/verlauf'
+// The Abgleich shapes and RangeDto are the Bescheid's and the estimate's; only the Verlauf's own are re-exported here.
+export {
+  AssessmentLessonDtoPerson,
+  HistoryDeltaDtoKind,
+  HistoryDeltaDtoReason,
+  HistoryFigureDtoSource,
+  HistoryFigureDtoTier,
+  LessonMaskDtoScreen,
+  LessonNextYearDtoSource,
+  OpenItemDtoKind,
+  WorkExpenseFiguresDtoPartsSource,
+  YearDiffDtoPerson,
+  YearHistoryEntryDtoFilingType,
+  YearHistoryEntryDtoPersonsItem,
+  YearHistoryEntryDtoTier,
+  YearListItemDtoFilingType,
+  YearListItemDtoKind,
+  YearListItemDtoNoDiffReason,
+  YearListItemDtoStatus,
+} from './generated/verlauf.schemas'
+export type {
+  AppealDeadlineDto,
+  AssessmentLessonDto,
+  ExchangeRateNoteDto,
+  HistoryDeltaDto,
+  HistoryFigureDto,
+  HouseholdNetFiguresDto,
+  LessonMaskDto,
+  LessonNextYearDto,
+  LessonRecognisedDto,
+  MaskLessonsDto,
+  NetFiguresDto,
+  OpenItemDto,
+  PositionRefDto,
+  RefundFiguresDto,
+  TaxRateFiguresDto,
+  WorkExpenseFiguresDto,
+  WorkExpensePartsDto,
+  YearDiffDto,
+  YearHistoryEntryDto,
+  YearHistoryResponseDto,
+  YearListItemDto,
+  YearNetDto,
+  YearWorkExpensesDto,
+} from './generated/verlauf.schemas'
 export { configureApiClient, resetApiClientConfig, getApiClientBaseUrl, type ApiClientConfig } from './http-client'
 export {
   getReceiptFileUrl,

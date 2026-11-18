@@ -233,6 +233,28 @@ describe('BestaetigungService', () => {
     expect(await service.readRawValue(USER, YEAR, 'assessment.festgesetzteSteuer')).toBe('11450')
   })
 
+  describe('a Bescheid taken over (ADR-0098 §4)', () => {
+    it('writes the Besteuerungsgrundlagen and the Erläuterungen like the five figures', async () => {
+      await service.writeConfirmedByAdvisor(USER, 2024, 'assessment.homeofficeA', '1080')
+      await service.writeConfirmedByAdvisor(USER, 2024, 'assessment.erlaeuterungen', 'Homeoffice an 180 statt 210 Tagen.')
+      const saved = await assessment.findForUserAndYear(USER, 2024)
+      expect(saved?.positions?.homeofficeA).toBe('1080')
+      expect(saved?.explanations).toBe('Homeoffice an 180 statt 210 Tagen.')
+      await expect(service.writeConfirmedByAdvisor(USER, 2024, 'assessment.homeofficeA', '-5')).rejects.toMatchObject({ code: 'FIELD_VALUE_INVALID' })
+    })
+
+    it('makes a year without a declaration an Eckjahr, whatever entry point the Bescheid came from', async () => {
+      await service.writeConfirmedByAdvisor(USER, 2021, 'assessment.erstattung', '280')
+      expect(assessment.externalYears.has(`${USER}::2021`)).toBe(true)
+    })
+
+    it('leaves a year the app keeps as it is', async () => {
+      assessment.declaredYears.add(`${USER}::2024`)
+      await service.writeConfirmedByAdvisor(USER, 2024, 'assessment.erstattung', '809')
+      expect(assessment.externalYears.has(`${USER}::2024`)).toBe(false)
+    })
+  })
+
   it('enforces hard AI_WRITE_FORBIDDEN lock on profil, stammdaten, and kopplung in advisor write & restore paths', async () => {
     for (const key of ['profil.firstName', 'stammdaten.iban', 'kopplung.filingType']) {
       await expect(service.writeConfirmedByAdvisor(USER, YEAR, key, 'tampered')).rejects.toBeInstanceOf(ForbiddenError)

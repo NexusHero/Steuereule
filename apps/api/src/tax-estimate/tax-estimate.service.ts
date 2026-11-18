@@ -610,6 +610,26 @@ function wageReplacementFrom(answers: Answers): number | null {
   return amountFromAnswer(answers['lohnersatz-betrag'])
 }
 
+/**
+ * The Werbungskosten parts as the estimate counts them (ADR-0098 §2): the Entfernungspauschale, the
+ * Homeoffice-Pauschale, the Arbeitsmittel, and the rest (professional bodies, account fees, other
+ * costs, a move and training). Their sum is what `taxEstimateEmployee` gets as Werbungskosten.
+ */
+export function workExpenseParts(
+  year: number,
+  path: CommuteInputs | null,
+  answers: Answers,
+): { fahrtweg: number; homeoffice: number; arbeitsmittel: number; sonstiges: number } {
+  const numbers = employeeFromAnswers(answers)
+  const arbeitsmittel = path?.workEquipmentEur ?? 0
+  return {
+    fahrtweg: commuterAllowanceFrom(year, path),
+    homeoffice: homeOfficeAllowanceFrom(year, path),
+    arbeitsmittel,
+    sonstiges: furtherWorkExpensesEur(path) - arbeitsmittel + numbers.relocationCosts + numbers.trainingCosts,
+  }
+}
+
 function commuterAllowanceFrom(year: number, path: CommuteInputs | null): number {
   if (path === null) return 0
   const days = calculateWorkdays({

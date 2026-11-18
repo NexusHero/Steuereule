@@ -25,6 +25,15 @@ function hasOwnAccount(row: PartnerCouplingRecord): boolean {
 
 const INVITATION_VALID_MS = 14 * 24 * 60 * 60 * 1000
 
+/**
+ * The Person B whose figures this user keeps in a year (ADR-0054): B without an own account, under A's
+ * link. B with an own account keeps their own data, which no one else reads (ADR-0098 §5).
+ */
+export function recordedSpouseUserId(row: PartnerCouplingRecord | null, userId: string): string | null {
+  if (row === null || row.personAUserId !== userId || row.personBUserId === '' || hasOwnAccount(row)) return null
+  return row.personBUserId
+}
+
 function newInvitation(now: Date): { invitationCode: string; invitationCodeValidUntil: Date } {
   return {
     invitationCode: randomBytes(8).toString('hex').toUpperCase(),

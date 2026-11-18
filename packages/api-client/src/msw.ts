@@ -193,3 +193,8 @@ export {
   getHouseholdControllerAnswerMockHandler,
   getSteuerEuleAPIMock as getHaushaltApiMock,
 } from './generated/haushalt.msw'
+export {
+  getYearHistoryControllerGetResponseMock,
+  getYearHistoryControllerGetMockHandler,
+  getSteuerEuleAPIMock as getVerlaufApiMock,
+} from './generated/verlauf.msw'

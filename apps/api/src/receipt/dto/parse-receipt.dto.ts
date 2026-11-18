@@ -28,7 +28,7 @@ export const ALLOWED_RECEIPT_PARSE_MIME_TYPES = [
 export const HOLDER_REF_PATTERN = /^(?:A|B|kind:[A-Za-z0-9_-]{1,64})$/
 
 /** Document kinds with a registered parse strategy (`auto` = generic receipt classifier). */
-export const DOCUMENT_KINDS = ['auto', 'lstb', 'chLohnausweis', 'chPensionskasse', 'chPraemien', 'chKrankenkasse'] as const
+export const DOCUMENT_KINDS = ['auto', 'lstb', 'chLohnausweis', 'chPensionskasse', 'chPraemien', 'chKrankenkasse', 'steuerbescheid'] as const
 export type DocumentKind = (typeof DOCUMENT_KINDS)[number]
 
 /** Why the device could not produce text for a stored Beleg; the server records it as `nicht_lesbar`. */
@@ -68,7 +68,7 @@ export class ParseReceiptDto {
     type: String,
     enum: DOCUMENT_KINDS,
     example: 'lstb',
-    description: 'Explicit document parser: "lstb" the German LStB, "chLohnausweis" the Swiss salary certificate, "chPensionskasse" a Swiss pension fund statement, "chPraemien" the employer letter on sickness-pay and NBU premiums, "chKrankenkasse" a Swiss health insurer statement for the tax return; "auto" routes a recognised document to its reader.',
+    description: 'Explicit document parser: "lstb" the German LStB, "chLohnausweis" the Swiss salary certificate, "chPensionskasse" a Swiss pension fund statement, "chPraemien" the employer letter on sickness-pay and NBU premiums, "chKrankenkasse" a Swiss health insurer statement for the tax return, "steuerbescheid" the Einkommensteuerbescheid (ADR-0098); "auto" routes a recognised document to its reader.',
   })
   @IsOptional()
   @IsString()
@@ -432,6 +432,33 @@ export class ParsedChLetterResponseDto {
   stagedActionIds!: string[]
 }
 
+/** What the Bescheid reader found (ADR-0098 §4): the year and date it read, and which positions it could not. */
+export class ParsedAssessmentNoticeResponseDto {
+  @ApiProperty({ type: String, nullable: true })
+  receiptId!: string | null
+
+  @ApiProperty({ type: Number, nullable: true, example: 2024, description: 'The year the Bescheid is for; its drafts go there (ADR-0097 §5).' })
+  taxYearOnDocument!: number | null
+
+  @ApiProperty({ type: String, nullable: true, example: '2026-11-02', description: 'The Bescheiddatum read (ISO), the Einspruchsfrist runs from it.' })
+  assessmentDate!: string | null
+
+  @ApiProperty({ type: [String], example: ['festgesetzteSteuer', 'erstattung'], description: 'Positions read and staged as drafts.' })
+  read!: string[]
+
+  @ApiProperty({ type: [String], example: ['sonderausgaben'], description: 'Positions the Bescheid did not give: they stay „nicht gelesen“, never 0.' })
+  notRead!: string[]
+
+  @ApiProperty({ type: Number, description: 'Explanations (Erläuterungen) read and staged as one draft.' })
+  explanations!: number
+
+  @ApiProperty({ type: Boolean, description: 'The year has no declaration in the app: taking the drafts over creates it as an Eckjahr (`extern-erledigt`).' })
+  createsEckjahr!: boolean
+
+  @ApiProperty({ type: [String] })
+  stagedActionIds!: string[]
+}
+
 export class AssignmentPersonDto {
   @ApiProperty({ type: String, example: 'B', description: '`A`, `B` or `kind:<child id>`.' })
   holder!: string
@@ -503,6 +530,9 @@ export class ParseReceiptResponseDto {
 
   @ApiPropertyOptional({ type: ParsedChLetterResponseDto, nullable: true })
   chLetter?: ParsedChLetterResponseDto | null
+
+  @ApiPropertyOptional({ type: ParsedAssessmentNoticeResponseDto, nullable: true })
+  assessmentNotice?: ParsedAssessmentNoticeResponseDto | null
 
   @ApiPropertyOptional({ type: DocumentAssignmentDto, nullable: true, description: 'Whose the document is (ADR-0092); absent for a receipt of the joint return.' })
   assignment?: DocumentAssignmentDto | null

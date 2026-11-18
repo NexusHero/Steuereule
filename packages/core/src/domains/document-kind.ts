@@ -1,7 +1,8 @@
 import { looksLikeChHealthStatement } from './ch-health-statement'
 import { classifyChInsuranceLetter } from './ch-insurance-letters'
+import { looksLikeAssessmentNotice } from './assessment-notice'
 /** Document kinds the parse endpoint has a strategy for (`auto` = generic receipt classifier). */
-export type DetectedDocumentKind = 'lstb' | 'chLohnausweis' | 'chPensionskasse' | 'chPraemien' | 'chKrankenkasse' | 'auto'
+export type DetectedDocumentKind = 'lstb' | 'chLohnausweis' | 'chPensionskasse' | 'chPraemien' | 'chKrankenkasse' | 'steuerbescheid' | 'auto'
 
 const LSTB_TITLE = /lohnsteuerbescheinigung/i
 const LSTB_ROW_MARKERS = [
@@ -48,6 +49,8 @@ function looksLikeChSalaryCertificateForm(text: string): boolean {
  */
 export function classifyDocumentKind(text: string): DetectedDocumentKind {
   if (!text) return 'auto'
+  // A tax notice quotes the LStB's rows (Bruttoarbeitslohn, einbehaltene Lohnsteuer): it is told first (ADR-0098 §4).
+  if (looksLikeAssessmentNotice(text)) return 'steuerbescheid'
   // The Swiss salary certificate; a receipt that merely mentions a Lohnausweis is none.
   if (looksLikeChSalaryCertificateForm(text)) return 'chLohnausweis'
   // A Swiss health insurer's statement for the tax return (ADR-0080).

@@ -34,6 +34,7 @@ export function taxDataTables(tx: TransactionClient): UserKeyedTable[] {
     tx.commute,
     tx.rentalProperty,
     tx.assessment,
+    tx.filingVersion,
     tx.marking,
     tx.yearTakeover,
     tx.masterData,

@@ -284,6 +284,9 @@ model TaxYear {
   /// Number of open posten conflicts (ADR-008 "± offen"); defaults to 0 until that
   /// feature exists.
   openConflicts Int      @default(0)
+  /// The ADR-0039 state (core `TaxYearStatus`). `extern-erledigt` marks an Eckjahr: a year known
+  /// only from an uploaded Bescheid, without an interview (ADR-0098 §4).
+  status        String   @default("entwurf")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -801,12 +804,56 @@ model Assessment {
   festgesetzteSteuer String? /// @encrypted?mode=strict
   /// Abschlusszahlung: Erstattung > 0, Nachzahlung < 0 (Bescheid-only, not comparable). Encrypted.
   erstattung         String? /// @encrypted?mode=strict
+  /// ADR-0098 §8: the Besteuerungsgrundlagen the Bescheid prints, per position (core
+  /// `ASSESSMENT_POSITIONS`). Same encoding as above: null = not read, "unklar" = unreadable.
+  /// A and B are the two columns of a joint Bescheid; a single Bescheid uses A.
+  bruttoarbeitslohnA            String? /// @encrypted?mode=strict
+  bruttoarbeitslohnB            String? /// @encrypted?mode=strict
+  fahrtwegA                     String? /// @encrypted?mode=strict
+  homeofficeA                   String? /// @encrypted?mode=strict
+  arbeitsmittelA                String? /// @encrypted?mode=strict
+  sonstigeWerbungskostenA       String? /// @encrypted?mode=strict
+  werbungskostenA               String? /// @encrypted?mode=strict
+  fahrtwegB                     String? /// @encrypted?mode=strict
+  homeofficeB                   String? /// @encrypted?mode=strict
+  arbeitsmittelB                String? /// @encrypted?mode=strict
+  sonstigeWerbungskostenB       String? /// @encrypted?mode=strict
+  werbungskostenB               String? /// @encrypted?mode=strict
+  sonderausgaben                String? /// @encrypted?mode=strict
+  aussergewoehnlicheBelastungen String? /// @encrypted?mode=strict
+  zuVersteuerndesEinkommen      String? /// @encrypted?mode=strict
+  steuerermaessigung35a         String? /// @encrypted?mode=strict
+  solidaritaetszuschlag         String? /// @encrypted?mode=strict
+  kirchensteuer                 String? /// @encrypted?mode=strict
+  /// The Finanzamt's Erläuterungen as printed, one paragraph per line (quoted, never interpreted).
+  erlaeuterungen                String? /// @encrypted?mode=strict
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
   @@unique([userId, taxYear])
   @@index([userId])
   @@map("Bescheid")
+}
+
+/// The version of a return frozen at submission (ADR-0098 §8, core `FiledReturn`): the left side of
+/// the Bescheid-Abgleich, so a change after submission does not move it. Immutable; a correction is
+/// a new `number`. `positions` is the JSON of the declared positions (core `ASSESSMENT_POSITIONS`)
+/// and the refund estimated at submission, encrypted at rest (ADR-0008).
+model FilingVersion {
+  id          String   @id @default(uuid())
+  /// Scoping key (ADR-0007): the account whose return it is (Person B's own data user in a single return of B).
+  userId      String
+  taxYear     Int      @map("steuerjahr")
+  number      Int      @default(1) @map("nummer")
+  filingType  String   @map("veranlagungsart")
+  /// ISO yyyy-mm-dd, the day it was submitted.
+  submittedOn String   @map("eingereichtAm")
+  positions   String   @map("positionen") /// @encrypted?mode=strict
+  createdAt   DateTime @default(now())
+
+  @@unique([userId, taxYear, number])
+  @@index([userId])
+  @@map("Fassung")
 }
 
 /// Die Kennzeichnungs-Schicht (ADR-0049, verallgemeinert durch ADR-0052 §6/§7): eine Zeile je

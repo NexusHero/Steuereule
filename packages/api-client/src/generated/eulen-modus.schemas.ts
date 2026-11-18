@@ -6,7 +6,7 @@
  * OpenAPI spec version: 1.0
  */
 /**
- * Explicit document parser: "lstb" the German LStB, "chLohnausweis" the Swiss salary certificate, "chPensionskasse" a Swiss pension fund statement, "chPraemien" the employer letter on sickness-pay and NBU premiums, "chKrankenkasse" a Swiss health insurer statement for the tax return; "auto" routes a recognised document to its reader.
+ * Explicit document parser: "lstb" the German LStB, "chLohnausweis" the Swiss salary certificate, "chPensionskasse" a Swiss pension fund statement, "chPraemien" the employer letter on sickness-pay and NBU premiums, "chKrankenkasse" a Swiss health insurer statement for the tax return, "steuerbescheid" the Einkommensteuerbescheid (ADR-0098); "auto" routes a recognised document to its reader.
  */
 export type ParseReceiptDtoKind = typeof ParseReceiptDtoKind[keyof typeof ParseReceiptDtoKind];
 
@@ -18,6 +18,7 @@ export const ParseReceiptDtoKind = {
   chPensionskasse: 'chPensionskasse',
   chPraemien: 'chPraemien',
   chKrankenkasse: 'chKrankenkasse',
+  steuerbescheid: 'steuerbescheid',
 } as const;
 
 /**
@@ -33,6 +34,7 @@ export const ParseReceiptDtoExpectedKind = {
   chPensionskasse: 'chPensionskasse',
   chPraemien: 'chPraemien',
   chKrankenkasse: 'chKrankenkasse',
+  steuerbescheid: 'steuerbescheid',
 } as const;
 
 /**
@@ -104,7 +106,7 @@ export interface ParseReceiptDto {
   taxYear: number;
   fileName: string;
   rawText?: string;
-  /** Explicit document parser: "lstb" the German LStB, "chLohnausweis" the Swiss salary certificate, "chPensionskasse" a Swiss pension fund statement, "chPraemien" the employer letter on sickness-pay and NBU premiums, "chKrankenkasse" a Swiss health insurer statement for the tax return; "auto" routes a recognised document to its reader. */
+  /** Explicit document parser: "lstb" the German LStB, "chLohnausweis" the Swiss salary certificate, "chPensionskasse" a Swiss pension fund statement, "chPraemien" the employer letter on sickness-pay and NBU premiums, "chKrankenkasse" a Swiss health insurer statement for the tax return, "steuerbescheid" the Einkommensteuerbescheid (ADR-0098); "auto" routes a recognised document to its reader. */
   kind?: ParseReceiptDtoKind;
   /** Entry context: the document the entry point expects (a mask asks for its own). Unlike `kind` it does not force a reader: a text that is clearly another document goes to that one’s reader. */
   expectedKind?: ParseReceiptDtoExpectedKind;
@@ -1092,6 +1094,30 @@ export interface ParsedChLetterResponseDto {
   stagedActionIds: string[];
 }
 
+export interface ParsedAssessmentNoticeResponseDto {
+  /** @nullable */
+  receiptId: string | null;
+  /**
+     * The year the Bescheid is for; its drafts go there (ADR-0097 §5).
+     * @nullable
+     */
+  taxYearOnDocument: number | null;
+  /**
+     * The Bescheiddatum read (ISO), the Einspruchsfrist runs from it.
+     * @nullable
+     */
+  assessmentDate: string | null;
+  /** Positions read and staged as drafts. */
+  read: string[];
+  /** Positions the Bescheid did not give: they stay „nicht gelesen“, never 0. */
+  notRead: string[];
+  /** Explanations (Erläuterungen) read and staged as one draft. */
+  explanations: number;
+  /** The year has no declaration in the app: taking the drafts over creates it as an Eckjahr (`extern-erledigt`). */
+  createsEckjahr: boolean;
+  stagedActionIds: string[];
+}
+
 export interface AssignmentPersonDto {
   /** `A`, `B` or `kind:<child id>`. */
   holder: string;
@@ -1241,6 +1267,8 @@ export interface ParseReceiptResponseDto {
   chLohnausweis?: ParsedChCertificateResponseDto | null;
   /** @nullable */
   chLetter?: ParsedChLetterResponseDto | null;
+  /** @nullable */
+  assessmentNotice?: ParsedAssessmentNoticeResponseDto | null;
   /**
      * Whose the document is (ADR-0092); absent for a receipt of the joint return.
      * @nullable

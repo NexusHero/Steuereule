@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common'
-import type { AssessmentField, AssessmentStatus } from '@steuereule/core'
+import { ASSESSMENT_NEW_POSITION_IDS, type AssessmentPositionId, type AssessmentStatus } from '@steuereule/core'
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
-import type { AssessmentFields, AssessmentRecord, AssessmentRepository } from './assessment.repository.js'
+import type { AssessmentFields, AssessmentRecord, AssessmentRepository, AssessmentStoredField } from './assessment.repository.js'
 
 type Row = {
   userId: string
@@ -14,7 +14,8 @@ type Row = {
   anrechnung: string | null
   festgesetzteSteuer: string | null
   erstattung: string | null
-}
+  erlaeuterungen: string | null
+} & Partial<Record<AssessmentPositionId, string | null>>
 
 function fieldsFromRow(row: Row): AssessmentFields {
   return {
@@ -34,22 +35,14 @@ function toRecord(row: Row): AssessmentRecord {
     assessmentDate: row.assessmentDate,
     appealReason: row.appealReason,
     fields: fieldsFromRow(row),
+    positions: Object.fromEntries(ASSESSMENT_NEW_POSITION_IDS.map((id) => [id, row[id] ?? null])),
+    explanations: row.erlaeuterungen,
   }
 }
 
-function fieldData(field: AssessmentField, value: string | null): Partial<Row> {
-  switch (field) {
-    case 'einnahmen':
-      return { einnahmen: value }
-    case 'vorsorgeaufwand':
-      return { vorsorgeaufwand: value }
-    case 'anrechnung':
-      return { anrechnung: value }
-    case 'festgesetzteSteuer':
-      return { festgesetzteSteuer: value }
-    case 'erstattung':
-      return { erstattung: value }
-  }
+/** Every stored field is a column of the same name, so the write is that one column. */
+function fieldData(field: AssessmentStoredField, value: string | null): Record<string, string | null> {
+  return { [field]: value }
 }
 
 @Injectable()
@@ -61,17 +54,17 @@ export class PrismaAssessmentRepository implements AssessmentRepository {
     return row === null ? null : toRecord(row)
   }
 
-  async setField(userId: string, taxYear: number, field: AssessmentField, value: string | null): Promise<AssessmentRecord> {
+  async listForUser(userId: string): Promise<AssessmentRecord[]> {
+    const rows = await this.prisma.assessment.findMany({ where: { userId }, orderBy: { taxYear: 'asc' } })
+    return rows.map(toRecord)
+  }
+
+  private async upsert(userId: string, taxYear: number, data: Record<string, string | null>, create: Record<string, string | null> = {}): Promise<AssessmentRecord> {
     const [row] = await this.prisma.$transaction([
       this.prisma.assessment.upsert({
         where: { userId_taxYear: { userId, taxYear } },
-        create: {
-          userId,
-          taxYear,
-          status: 'eingegangen',
-          ...fieldData(field, value),
-        },
-        update: fieldData(field, value),
+        create: { userId, taxYear, status: 'eingegangen', ...create, ...data },
+        update: data,
       }),
       this.prisma.taxDataAccessLog.create({
         data: { userId, action: 'WRITE', resource: 'bescheid' },
@@ -80,45 +73,41 @@ export class PrismaAssessmentRepository implements AssessmentRepository {
     return toRecord(row)
   }
 
-  async setDate(userId: string, taxYear: number, date: string | null): Promise<AssessmentRecord> {
-    const [row] = await this.prisma.$transaction([
-      this.prisma.assessment.upsert({
-        where: { userId_taxYear: { userId, taxYear } },
-        create: { userId, taxYear, status: 'eingegangen', assessmentDate: date },
-        update: { assessmentDate: date },
-      }),
-      this.prisma.taxDataAccessLog.create({
-        data: { userId, action: 'WRITE', resource: 'bescheid' },
-      }),
-    ])
-    return toRecord(row)
+  setField(userId: string, taxYear: number, field: AssessmentStoredField, value: string | null): Promise<AssessmentRecord> {
+    return this.upsert(userId, taxYear, fieldData(field, value))
   }
 
-  async setStatus(userId: string, taxYear: number, status: AssessmentStatus): Promise<AssessmentRecord> {
-    const [row] = await this.prisma.$transaction([
-      this.prisma.assessment.upsert({
-        where: { userId_taxYear: { userId, taxYear } },
-        create: { userId, taxYear, status },
-        update: { status },
-      }),
-      this.prisma.taxDataAccessLog.create({
-        data: { userId, action: 'WRITE', resource: 'bescheid' },
-      }),
-    ])
-    return toRecord(row)
+  setExplanations(userId: string, taxYear: number, text: string | null): Promise<AssessmentRecord> {
+    return this.upsert(userId, taxYear, { erlaeuterungen: text })
   }
 
-  async setAppeal(userId: string, taxYear: number, reason: string): Promise<AssessmentRecord> {
-    const [row] = await this.prisma.$transaction([
-      this.prisma.assessment.upsert({
-        where: { userId_taxYear: { userId, taxYear } },
-        create: { userId, taxYear, status: 'einspruch-eingelegt', appealReason: reason },
-        update: { status: 'einspruch-eingelegt', appealReason: reason },
-      }),
-      this.prisma.taxDataAccessLog.create({
-        data: { userId, action: 'WRITE', resource: 'bescheid' },
-      }),
+  setDate(userId: string, taxYear: number, date: string | null): Promise<AssessmentRecord> {
+    return this.upsert(userId, taxYear, { assessmentDate: date })
+  }
+
+  setStatus(userId: string, taxYear: number, status: AssessmentStatus): Promise<AssessmentRecord> {
+    return this.upsert(userId, taxYear, { status })
+  }
+
+  setAppeal(userId: string, taxYear: number, reason: string): Promise<AssessmentRecord> {
+    return this.upsert(userId, taxYear, { status: 'einspruch-eingelegt', appealReason: reason })
+  }
+
+  async hasDeclaration(userId: string, taxYear: number): Promise<boolean> {
+    // A year with answers is a declaration in the app even before its TaxYear row exists.
+    const [year, answers] = await Promise.all([
+      this.prisma.taxYear.findUnique({ where: { userId_taxYear: { userId, taxYear } } }),
+      this.prisma.interviewAnswer.count({ where: { userId, taxYear } }),
     ])
-    return toRecord(row)
+    return year !== null || answers > 0
+  }
+
+  async recordExternalYear(userId: string, taxYear: number): Promise<boolean> {
+    if (await this.hasDeclaration(userId, taxYear)) return false
+    await this.prisma.taxYear.createMany({
+      data: [{ userId, taxYear, baseEstimate: 0, openItems: 0, openConflicts: 0, status: 'extern-erledigt' }],
+      skipDuplicates: true,
+    })
+    return true
   }
 }

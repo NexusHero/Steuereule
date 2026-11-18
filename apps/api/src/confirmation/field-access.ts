@@ -1,5 +1,8 @@
 import {
   ASSESSMENT_FIELD_IDS,
+  ASSESSMENT_NEW_POSITION_IDS,
+  isAssessmentPositionId,
+  isValidAssessmentPositionAmount,
   CAPITAL_FIELDS,
   WAGE_TAX_CERTIFICATE_FIELDS, LSTB_OPTIONAL_LINES, LSTB_SOCIAL_LINES, LSTB_SOLI_LINE,
   PENSION_FIELDS,
@@ -9,7 +12,6 @@ import {
   calculateWorkdays,
   isValidAnswer,
   isValidAssessmentAmount,
-  serializeAssessmentField,
   type AssessmentField,
   type EntryStepId,
   type CapitalFieldId,
@@ -101,7 +103,9 @@ const COMMUTE_BOOLEAN_FIELDS: ReadonlySet<string> = new Set(['shortestRouteConfi
 const LSTB_LINE_FIELDS: readonly string[] = [...LSTB_SOCIAL_LINES, LSTB_SOLI_LINE]
 const LSTB_ACCESS_FIELDS = [...WAGE_TAX_CERTIFICATE_FIELDS, ...LSTB_OPTIONAL_LINES, ...LSTB_LINE_FIELDS] as const
 const COMMUTE_DATE_FIELDS: ReadonlySet<string> = new Set(['periodFrom', 'periodTo', 'secondFrom', 'secondTo'])
-const ASSESSMENT_ACCESS_FIELDS = [...ASSESSMENT_FIELD_IDS, 'assessmentDate'] as const
+/** The five figures, the Besteuerungsgrundlagen beyond them, the date and the Erläuterungen (ADR-0098 §8). */
+const ASSESSMENT_ACCESS_FIELDS = [...ASSESSMENT_FIELD_IDS, ...ASSESSMENT_NEW_POSITION_IDS, 'assessmentDate', 'erlaeuterungen'] as const
+const MAX_EXPLANATIONS_LENGTH = 4_000
 const INTEGER_RE = /^-?\d+$/
 
 const PENSION_ACCESS_FIELDS = ['rentenart', ...PENSION_FIELDS] as const
@@ -743,6 +747,11 @@ export function fieldAccessFrom({
   }
 
   if (assessment) {
+    // Any Bescheid value taken over, from whichever entry point, may be the first of an Eckjahr (ADR-0098 §4).
+    const written = async (userId: string, taxYear: number, value: string | null) => {
+      if (value !== null) await assessment.recordExternalYear(userId, taxYear)
+      return true
+    }
     access.assessment = {
       fields: ASSESSMENT_ACCESS_FIELDS,
       withInstance: false,
@@ -754,7 +763,9 @@ export function fieldAccessFrom({
           anrechnung: r?.fields.anrechnung ?? null,
           festgesetzteSteuer: r?.fields.festgesetzteSteuer ?? null,
           erstattung: r?.fields.erstattung ?? null,
+          ...Object.fromEntries(ASSESSMENT_NEW_POSITION_IDS.map((id) => [id, r?.positions?.[id] ?? null])),
           assessmentDate: r?.assessmentDate ?? null,
+          erlaeuterungen: r?.explanations ?? null,
         }
       },
       async write(userId, taxYear, _instance, field, value) {
@@ -763,24 +774,33 @@ export function fieldAccessFrom({
             throw new InvalidInputError('BESCHEIDDATUM_INVALID', 'assessmentDate must be an ISO yyyy-mm-dd date.')
           }
           await assessment.setDate(userId, taxYear, value)
-          return true
+          return written(userId, taxYear, value)
         }
-        if ((ASSESSMENT_FIELD_IDS as readonly string[]).includes(field)) {
-          const typedField = field as AssessmentField
+        if (field === 'erlaeuterungen') {
+          const text = value === null ? null : value.trim()
+          if (text !== null && text.length > MAX_EXPLANATIONS_LENGTH) {
+            throw new InvalidInputError('FIELD_VALUE_INVALID', `"erlaeuterungen" must be at most ${MAX_EXPLANATIONS_LENGTH} characters.`)
+          }
+          await assessment.setExplanations(userId, taxYear, text === '' ? null : text)
+          return written(userId, taxYear, text === '' ? null : text)
+        }
+        const original = (ASSESSMENT_FIELD_IDS as readonly string[]).includes(field)
+        if (original || isAssessmentPositionId(field)) {
           if (value === null || value === 'unklar') {
-            await assessment.setField(userId, taxYear, typedField, value)
-            return true
+            await assessment.setField(userId, taxYear, field as AssessmentField, value)
+            return written(userId, taxYear, value)
           }
           const trimmed = value.trim()
           if (!INTEGER_RE.test(trimmed)) {
             throw new InvalidInputError('FIELD_VALUE_INVALID', `"${field}" requires a whole-euro integer or "unklar".`)
           }
           const n = Number(trimmed)
-          if (!isValidAssessmentAmount(typedField, n)) {
+          const valid = original ? isValidAssessmentAmount(field as AssessmentField, n) : isAssessmentPositionId(field) && isValidAssessmentPositionAmount(field, n)
+          if (!valid) {
             throw new InvalidInputError('FIELD_VALUE_INVALID', `"${field}" value "${value}" is out of allowed range.`)
           }
-          await assessment.setField(userId, taxYear, typedField, serializeAssessmentField(typedField, n))
-          return true
+          await assessment.setField(userId, taxYear, field as AssessmentField, String(n))
+          return written(userId, taxYear, String(n))
         }
         return false
       },

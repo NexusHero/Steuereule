@@ -10,6 +10,7 @@ import { FakeAssessmentRepository } from './fakes/fake-assessment.repository.js'
 import { FakeChSalaryCertificateRepository } from './fakes/fake-ch-salary-certificate.repository.js'
 import { FakeInterviewAnswerRepository } from './fakes/fake-interview-answer.repository.js'
 import { FakeLstbRepository } from './fakes/fake-lstb.repository.js'
+import { FakeFilingVersionRepository } from './fakes/fake-filing-version.repository.js'
 
 const USER_ID = 'user-1'
 const YEAR = 2026
@@ -120,6 +121,40 @@ describe('BescheidService', () => {
     it('an unknown Grund is rejected', async () => {
       await service.setStatus(USER_ID, YEAR, { status: 'geprüft' })
       await expect(service.setAppeal(USER_ID, YEAR, { reason: 'weg-damit' })).rejects.toThrow(/unknown Einspruch-Grund/)
+    })
+  })
+
+  describe('the Bescheid-Abgleich of the open year (ADR-0098 §8)', () => {
+    it('has no diff without a version filed in the app, and lists every position as not read', async () => {
+      const state = await service.getState(USER_ID, YEAR)
+      expect(state.diff).toBeNull()
+      expect(state.positions.find((p) => p.id === 'homeofficeA')).toEqual({ id: 'homeofficeA', kind: 'offen' })
+    })
+
+    it('shows the same diff as the Verlauf once the frozen version and the Bescheid are there', async () => {
+      const versions = new FakeFilingVersionRepository()
+      versions.seed({
+        userId: USER_ID,
+        taxYear: 2024,
+        number: 1,
+        filingType: 'zusammen',
+        submittedOn: '2026-09-21',
+        positions: { bruttoarbeitslohnA: 54_900, fahrtwegA: 1_320, homeofficeA: 1_260, zuVersteuerndesEinkommen: 70_971, festgesetzteSteuer: 12_078, anrechnung: 12_979, erstattung: 901 },
+        estimateAtSubmission: null,
+      })
+      const withVersions = new AssessmentService(repository, lstb, interview, ch, new AuditService(auditRepository), versions)
+      await withVersions.setField(USER_ID, 2024, 'homeofficeA', { kind: 'erfasst', value: 1_080 })
+      const state = await withVersions.setField(USER_ID, 2024, 'erstattung', { kind: 'erfasst', value: 845 })
+
+      expect(state.positions.find((p) => p.id === 'homeofficeA')).toEqual({ id: 'homeofficeA', kind: 'erfasst', value: 1_080 })
+      expect(state.diff?.ownDeviations).toMatchObject([{ position: 'homeofficeA', declared: 1_260, assessed: 1_080, refundEffect: -56 }])
+      // Only what was read is compared: the unread wage, zvE, tax and credit are not deviations.
+      expect(state.diff?.counts).toMatchObject({ deviations: 1, notRead: 5 })
+    })
+
+    it('says whether the Einspruchsfrist still runs', async () => {
+      const state = await service.setDate(USER_ID, YEAR, { date: '2020-01-02' })
+      expect(state.frist.running).toBe(false)
     })
   })
 
