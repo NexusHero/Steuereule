@@ -10,7 +10,7 @@ import { CHILD_RELATIONSHIPS, OTHER_CHILD_RELATIONSHIPS, OTHER_PARENT_STATUSES }
 import { SALARY_CERTIFICATE_AMOUNT_FIELDS, SALARY_CERTIFICATE_SIGNED_FIELD } from '../domains/cross-border'
 import { LSTB_OPTIONAL_LINES, LSTB_SOCIAL_LINES, LSTB_SOLI_LINE, WAGE_TAX_CERTIFICATE_FIELDS } from '../domains/lstb'
 import { PENSION_TYPES } from '../domains/pension'
-import { ASSESSMENT_FIELDS } from '../engine/assessment'
+import { ASSESSMENT_FIELDS, ASSESSMENT_POSITIONS } from '../engine/assessment'
 import { AMOUNT_LATER, QUESTIONS, isValidAnswer, type EntryStepId } from './interview'
 import { SCREENS, type Screen } from './marking'
 
@@ -314,7 +314,10 @@ const DECLARED: Readonly<Record<Screen, { readonly perInstance: boolean; readonl
     perInstance: false,
     fields: {
       ...Object.fromEntries(ASSESSMENT_FIELDS.map((f) => [f.id, f.signed ? integer(-MAX_AMOUNT, MAX_AMOUNT) : amount])),
+      // The Besteuerungsgrundlagen of the Bescheid (ADR-0098 §8) and its Erläuterungen, read from an upload.
+      ...Object.fromEntries(ASSESSMENT_POSITIONS.map((p) => [p.id, p.signed ? integer(-MAX_AMOUNT, MAX_AMOUNT) : amount])),
       assessmentDate: date,
+      erlaeuterungen: text(4_000),
     },
   },
 }

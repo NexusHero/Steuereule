@@ -17,7 +17,8 @@
     "openapi:spec": "tsx scripts/generate-openapi-spec.ts",
     "streets:fetch": "tsx scripts/fetch-street-data.ts",
     "skills:generate": "tsx scripts/generate-skills.ts",
-    "laws:check": "tsx scripts/check-law-changes.ts"
+    "laws:check": "tsx scripts/check-law-changes.ts",
+    "seed:year-history": "tsx prisma/seed-year-history.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

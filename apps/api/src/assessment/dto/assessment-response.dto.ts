@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 import { IsIn, IsOptional, IsString } from 'class-validator'
 import { AssessmentFieldDto } from './assessment-field.dto.js'
+import { AssessmentDiffDto } from './assessment-diff.dto.js'
 
 /** One Abgleich deviation. */
 export class AssessmentDeviationDto {
@@ -36,6 +37,9 @@ export class AssessmentDeadlineDto {
 
   @ApiProperty({ type: Number, nullable: true, description: 'Whole days left (negative = abgelaufen), null until the datum is set.' })
   remainingDays!: number | null
+
+  @ApiProperty({ type: Boolean, nullable: true, description: 'The Einspruchsfrist still runs (its last day included); null until the datum is set.' })
+  running!: boolean | null
 }
 
 /** The response shape for `GET /v1/steuerjahre/{jahr}/bescheid` and every PUT. */
@@ -60,6 +64,15 @@ export class AssessmentResponseDto {
 
   @ApiProperty({ type: [String], description: 'The legal next sub-states (for the UI to offer only what is legal).' })
   nextStates!: string[]
+
+  @ApiProperty({ type: [AssessmentFieldDto], description: 'Every Besteuerungsgrundlage of the Bescheid (core `ASSESSMENT_POSITIONS`, form order) with its capture state; `offen` = not read.' })
+  positions!: AssessmentFieldDto[]
+
+  @ApiProperty({ type: [String], description: 'The Finanzamt’s Erläuterungen as printed, one per paragraph.' })
+  explanations!: string[]
+
+  @ApiProperty({ type: AssessmentDiffDto, nullable: true, description: 'Erklärung ↔ Bescheid (ADR-0098 §8), the same diff the Verlauf shows; null without a version filed in the app or without Bescheid values.' })
+  diff!: AssessmentDiffDto | null
 }
 
 /** The PUT body for a status transition. */

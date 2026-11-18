@@ -80,6 +80,219 @@ export interface AssessmentDeadlineDto {
      * @nullable
      */
   remainingDays: number | null;
+  /**
+     * The Einspruchsfrist still runs (its last day included); null until the datum is set.
+     * @nullable
+     */
+  running: boolean | null;
+}
+
+export type AssessmentDiffDtoFilingType = typeof AssessmentDiffDtoFilingType[keyof typeof AssessmentDiffDtoFilingType];
+
+
+export const AssessmentDiffDtoFilingType = {
+  einzel: 'einzel',
+  zusammen: 'zusammen',
+} as const;
+
+export type AssessmentDiffGroupDtoGroup = typeof AssessmentDiffGroupDtoGroup[keyof typeof AssessmentDiffGroupDtoGroup];
+
+
+export const AssessmentDiffGroupDtoGroup = {
+  einkuenfte: 'einkuenfte',
+  werbungskostenA: 'werbungskostenA',
+  werbungskostenB: 'werbungskostenB',
+  vorsorge: 'vorsorge',
+  steuer: 'steuer',
+} as const;
+
+/**
+ * `followOn` positions follow from the own ones and never count as a deviation.
+ */
+export type AssessmentDiffRowDtoRole = typeof AssessmentDiffRowDtoRole[keyof typeof AssessmentDiffRowDtoRole];
+
+
+export const AssessmentDiffRowDtoRole = {
+  own: 'own',
+  followOn: 'followOn',
+} as const;
+
+/**
+ * Whose column of a joint Bescheid; null for the household.
+ * @nullable
+ */
+export type AssessmentDiffRowDtoPerson = typeof AssessmentDiffRowDtoPerson[keyof typeof AssessmentDiffRowDtoPerson] | null;
+
+
+export const AssessmentDiffRowDtoPerson = {
+  A: 'A',
+  B: 'B',
+} as const;
+
+/**
+ * `not_read` is never 0 and never a deviation.
+ */
+export type AssessmentDiffRowDtoStatus = typeof AssessmentDiffRowDtoStatus[keyof typeof AssessmentDiffRowDtoStatus];
+
+
+export const AssessmentDiffRowDtoStatus = {
+  same: 'same',
+  deviation: 'deviation',
+  not_read: 'not_read',
+  not_declared: 'not_declared',
+} as const;
+
+export interface AssessmentDiffRowDto {
+  /** A position id of the core catalogue `ASSESSMENT_POSITIONS` (e.g. `homeofficeA`, `zuVersteuerndesEinkommen`). */
+  position: string;
+  label: string;
+  /** `followOn` positions follow from the own ones and never count as a deviation. */
+  role: AssessmentDiffRowDtoRole;
+  /**
+     * Whose column of a joint Bescheid; null for the household.
+     * @nullable
+     */
+  person: AssessmentDiffRowDtoPerson;
+  /**
+     * As declared in the frozen version (euros).
+     * @nullable
+     */
+  declared: number | null;
+  /**
+     * As assessed; null when not read.
+     * @nullable
+     */
+  assessed: number | null;
+  /**
+     * assessed − declared; null unless both are there.
+     * @nullable
+     */
+  difference: number | null;
+  /** `not_read` is never 0 and never a deviation. */
+  status: AssessmentDiffRowDtoStatus;
+  /**
+     * The Finanzamt’s explanation, quoted from the Bescheid.
+     * @nullable
+     */
+  explanation: string | null;
+}
+
+export interface AssessmentDiffGroupDto {
+  group: AssessmentDiffGroupDtoGroup;
+  rows: AssessmentDiffRowDto[];
+}
+
+/**
+ * `followOn` positions follow from the own ones and never count as a deviation.
+ */
+export type AssessmentOwnDeviationDtoRole = typeof AssessmentOwnDeviationDtoRole[keyof typeof AssessmentOwnDeviationDtoRole];
+
+
+export const AssessmentOwnDeviationDtoRole = {
+  own: 'own',
+  followOn: 'followOn',
+} as const;
+
+/**
+ * Whose column of a joint Bescheid; null for the household.
+ * @nullable
+ */
+export type AssessmentOwnDeviationDtoPerson = typeof AssessmentOwnDeviationDtoPerson[keyof typeof AssessmentOwnDeviationDtoPerson] | null;
+
+
+export const AssessmentOwnDeviationDtoPerson = {
+  A: 'A',
+  B: 'B',
+} as const;
+
+/**
+ * `not_read` is never 0 and never a deviation.
+ */
+export type AssessmentOwnDeviationDtoStatus = typeof AssessmentOwnDeviationDtoStatus[keyof typeof AssessmentOwnDeviationDtoStatus];
+
+
+export const AssessmentOwnDeviationDtoStatus = {
+  same: 'same',
+  deviation: 'deviation',
+  not_read: 'not_read',
+  not_declared: 'not_declared',
+} as const;
+
+export interface AssessmentOwnDeviationDto {
+  /** A position id of the core catalogue `ASSESSMENT_POSITIONS` (e.g. `homeofficeA`, `zuVersteuerndesEinkommen`). */
+  position: string;
+  label: string;
+  /** `followOn` positions follow from the own ones and never count as a deviation. */
+  role: AssessmentOwnDeviationDtoRole;
+  /**
+     * Whose column of a joint Bescheid; null for the household.
+     * @nullable
+     */
+  person: AssessmentOwnDeviationDtoPerson;
+  /**
+     * As declared in the frozen version (euros).
+     * @nullable
+     */
+  declared: number | null;
+  /**
+     * As assessed; null when not read.
+     * @nullable
+     */
+  assessed: number | null;
+  /**
+     * assessed − declared; null unless both are there.
+     * @nullable
+     */
+  difference: number | null;
+  /** `not_read` is never 0 and never a deviation. */
+  status: AssessmentOwnDeviationDtoStatus;
+  /**
+     * The Finanzamt’s explanation, quoted from the Bescheid.
+     * @nullable
+     */
+  explanation: string | null;
+  /**
+     * Effect on the refund of setting only this position to the Bescheid’s value; null when not computable.
+     * @nullable
+     */
+  refundEffect: number | null;
+}
+
+export interface AssessmentFollowOnLinkDto {
+  position: string;
+  label: string;
+  difference: number;
+}
+
+export interface AssessmentDiffCountsDto {
+  positions: number;
+  same: number;
+  /** Own deviations. */
+  deviations: number;
+  notRead: number;
+}
+
+export interface AssessmentDiffDto {
+  year: number;
+  filingType: AssessmentDiffDtoFilingType;
+  /** Every position in form order, grouped as the Bescheid groups them. */
+  groups: AssessmentDiffGroupDto[];
+  /** What the Finanzamt changed, largest effect on the refund first. */
+  ownDeviations: AssessmentOwnDeviationDto[];
+  /** Summe Werbungskosten → zvE → Steuer → Erstattung, only the links that moved. */
+  followOnChain: AssessmentFollowOnLinkDto[];
+  /**
+     * Assessed minus declared refund.
+     * @nullable
+     */
+  totalRefundEffect: number | null;
+  /** @nullable */
+  singleEffectsSum: number | null;
+  /** The single effects do not add up to the total (the tax is not linear): say so. */
+  effectsDifferFromTotal: boolean;
+  /** Explanations that name no position. */
+  generalExplanations: string[];
+  counts: AssessmentDiffCountsDto;
 }
 
 export interface AssessmentResponseDto {
@@ -103,6 +316,15 @@ export interface AssessmentResponseDto {
   frist: AssessmentDeadlineDto;
   /** The legal next sub-states (for the UI to offer only what is legal). */
   nextStates: string[];
+  /** Every Besteuerungsgrundlage of the Bescheid (core `ASSESSMENT_POSITIONS`, form order) with its capture state; `offen` = not read. */
+  positions: AssessmentFieldDto[];
+  /** The Finanzamt’s Erläuterungen as printed, one per paragraph. */
+  explanations: string[];
+  /**
+     * Erklärung ↔ Bescheid (ADR-0098 §8), the same diff the Verlauf shows; null without a version filed in the app or without Bescheid values.
+     * @nullable
+     */
+  diff: AssessmentDiffDto | null;
 }
 
 /**

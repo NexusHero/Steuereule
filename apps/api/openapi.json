@@ -4455,6 +4455,30 @@
         ]
       }
     },
+    "/v1/verlauf": {
+      "get": {
+        "operationId": "YearHistoryController_get",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Steuer-Verlauf (ADR-0098): every year of the caller’s account or household, with the Bescheid-Abgleich and „Was ansteht“.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/YearHistoryResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          }
+        },
+        "tags": [
+          "verlauf"
+        ]
+      }
+    },
     "/v1/account": {
       "delete": {
         "operationId": "AccountDeletionController_deleteAccount",
@@ -8974,10 +8998,11 @@
               "chLohnausweis",
               "chPensionskasse",
               "chPraemien",
-              "chKrankenkasse"
+              "chKrankenkasse",
+              "steuerbescheid"
             ],
             "example": "lstb",
-            "description": "Explicit document parser: \"lstb\" the German LStB, \"chLohnausweis\" the Swiss salary certificate, \"chPensionskasse\" a Swiss pension fund statement, \"chPraemien\" the employer letter on sickness-pay and NBU premiums, \"chKrankenkasse\" a Swiss health insurer statement for the tax return; \"auto\" routes a recognised document to its reader."
+            "description": "Explicit document parser: \"lstb\" the German LStB, \"chLohnausweis\" the Swiss salary certificate, \"chPensionskasse\" a Swiss pension fund statement, \"chPraemien\" the employer letter on sickness-pay and NBU premiums, \"chKrankenkasse\" a Swiss health insurer statement for the tax return, \"steuerbescheid\" the Einkommensteuerbescheid (ADR-0098); \"auto\" routes a recognised document to its reader."
           },
           "expectedKind": {
             "type": "string",
@@ -8987,7 +9012,8 @@
               "chLohnausweis",
               "chPensionskasse",
               "chPraemien",
-              "chKrankenkasse"
+              "chKrankenkasse",
+              "steuerbescheid"
             ],
             "example": "chLohnausweis",
             "description": "Entry context: the document the entry point expects (a mask asks for its own). Unlike `kind` it does not force a reader: a text that is clearly another document goes to that one’s reader."
@@ -10616,6 +10642,72 @@
           "stagedActionIds"
         ]
       },
+      "ParsedAssessmentNoticeResponseDto": {
+        "type": "object",
+        "properties": {
+          "receiptId": {
+            "type": "string",
+            "nullable": true
+          },
+          "taxYearOnDocument": {
+            "type": "number",
+            "nullable": true,
+            "example": 2024,
+            "description": "The year the Bescheid is for; its drafts go there (ADR-0097 §5)."
+          },
+          "assessmentDate": {
+            "type": "string",
+            "nullable": true,
+            "example": "2026-11-02",
+            "description": "The Bescheiddatum read (ISO), the Einspruchsfrist runs from it."
+          },
+          "read": {
+            "example": [
+              "festgesetzteSteuer",
+              "erstattung"
+            ],
+            "description": "Positions read and staged as drafts.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "notRead": {
+            "example": [
+              "sonderausgaben"
+            ],
+            "description": "Positions the Bescheid did not give: they stay „nicht gelesen“, never 0.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "explanations": {
+            "type": "number",
+            "description": "Explanations (Erläuterungen) read and staged as one draft."
+          },
+          "createsEckjahr": {
+            "type": "boolean",
+            "description": "The year has no declaration in the app: taking the drafts over creates it as an Eckjahr (`extern-erledigt`)."
+          },
+          "stagedActionIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "receiptId",
+          "taxYearOnDocument",
+          "assessmentDate",
+          "read",
+          "notRead",
+          "explanations",
+          "createsEckjahr",
+          "stagedActionIds"
+        ]
+      },
       "AssignmentPersonDto": {
         "type": "object",
         "properties": {
@@ -10896,6 +10988,15 @@
             "allOf": [
               {
                 "$ref": "#/components/schemas/ParsedChLetterResponseDto"
+              }
+            ]
+          },
+          "assessmentNotice": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ParsedAssessmentNoticeResponseDto"
               }
             ]
           },
@@ -12335,12 +12436,314 @@
             "type": "number",
             "nullable": true,
             "description": "Whole days left (negative = abgelaufen), null until the datum is set."
+          },
+          "running": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "The Einspruchsfrist still runs (its last day included); null until the datum is set."
           }
         },
         "required": [
           "assessmentDate",
           "deadlineEnd",
-          "remainingDays"
+          "remainingDays",
+          "running"
+        ]
+      },
+      "AssessmentDiffRowDto": {
+        "type": "object",
+        "properties": {
+          "position": {
+            "type": "string",
+            "example": "homeofficeA",
+            "description": "A position id of the core catalogue `ASSESSMENT_POSITIONS` (e.g. `homeofficeA`, `zuVersteuerndesEinkommen`)."
+          },
+          "label": {
+            "type": "string",
+            "example": "Homeoffice-Pauschale"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "own",
+              "followOn"
+            ],
+            "description": "`followOn` positions follow from the own ones and never count as a deviation."
+          },
+          "person": {
+            "type": "string",
+            "enum": [
+              "A",
+              "B"
+            ],
+            "nullable": true,
+            "description": "Whose column of a joint Bescheid; null for the household."
+          },
+          "declared": {
+            "type": "number",
+            "nullable": true,
+            "description": "As declared in the frozen version (euros)."
+          },
+          "assessed": {
+            "type": "number",
+            "nullable": true,
+            "description": "As assessed; null when not read."
+          },
+          "difference": {
+            "type": "number",
+            "nullable": true,
+            "description": "assessed − declared; null unless both are there."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "same",
+              "deviation",
+              "not_read",
+              "not_declared"
+            ],
+            "description": "`not_read` is never 0 and never a deviation."
+          },
+          "explanation": {
+            "type": "string",
+            "nullable": true,
+            "description": "The Finanzamt’s explanation, quoted from the Bescheid."
+          }
+        },
+        "required": [
+          "position",
+          "label",
+          "role",
+          "person",
+          "declared",
+          "assessed",
+          "difference",
+          "status",
+          "explanation"
+        ]
+      },
+      "AssessmentDiffGroupDto": {
+        "type": "object",
+        "properties": {
+          "group": {
+            "type": "string",
+            "enum": [
+              "einkuenfte",
+              "werbungskostenA",
+              "werbungskostenB",
+              "vorsorge",
+              "steuer"
+            ]
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssessmentDiffRowDto"
+            }
+          }
+        },
+        "required": [
+          "group",
+          "rows"
+        ]
+      },
+      "AssessmentOwnDeviationDto": {
+        "type": "object",
+        "properties": {
+          "position": {
+            "type": "string",
+            "example": "homeofficeA",
+            "description": "A position id of the core catalogue `ASSESSMENT_POSITIONS` (e.g. `homeofficeA`, `zuVersteuerndesEinkommen`)."
+          },
+          "label": {
+            "type": "string",
+            "example": "Homeoffice-Pauschale"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "own",
+              "followOn"
+            ],
+            "description": "`followOn` positions follow from the own ones and never count as a deviation."
+          },
+          "person": {
+            "type": "string",
+            "enum": [
+              "A",
+              "B"
+            ],
+            "nullable": true,
+            "description": "Whose column of a joint Bescheid; null for the household."
+          },
+          "declared": {
+            "type": "number",
+            "nullable": true,
+            "description": "As declared in the frozen version (euros)."
+          },
+          "assessed": {
+            "type": "number",
+            "nullable": true,
+            "description": "As assessed; null when not read."
+          },
+          "difference": {
+            "type": "number",
+            "nullable": true,
+            "description": "assessed − declared; null unless both are there."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "same",
+              "deviation",
+              "not_read",
+              "not_declared"
+            ],
+            "description": "`not_read` is never 0 and never a deviation."
+          },
+          "explanation": {
+            "type": "string",
+            "nullable": true,
+            "description": "The Finanzamt’s explanation, quoted from the Bescheid."
+          },
+          "refundEffect": {
+            "type": "number",
+            "nullable": true,
+            "example": -56,
+            "description": "Effect on the refund of setting only this position to the Bescheid’s value; null when not computable."
+          }
+        },
+        "required": [
+          "position",
+          "label",
+          "role",
+          "person",
+          "declared",
+          "assessed",
+          "difference",
+          "status",
+          "explanation",
+          "refundEffect"
+        ]
+      },
+      "AssessmentFollowOnLinkDto": {
+        "type": "object",
+        "properties": {
+          "position": {
+            "type": "string",
+            "example": "zuVersteuerndesEinkommen"
+          },
+          "label": {
+            "type": "string",
+            "example": "Zu versteuerndes Einkommen"
+          },
+          "difference": {
+            "type": "number",
+            "example": 300
+          }
+        },
+        "required": [
+          "position",
+          "label",
+          "difference"
+        ]
+      },
+      "AssessmentDiffCountsDto": {
+        "type": "object",
+        "properties": {
+          "positions": {
+            "type": "number"
+          },
+          "same": {
+            "type": "number"
+          },
+          "deviations": {
+            "type": "number",
+            "description": "Own deviations."
+          },
+          "notRead": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "positions",
+          "same",
+          "deviations",
+          "notRead"
+        ]
+      },
+      "AssessmentDiffDto": {
+        "type": "object",
+        "properties": {
+          "year": {
+            "type": "number",
+            "example": 2024
+          },
+          "filingType": {
+            "type": "string",
+            "enum": [
+              "einzel",
+              "zusammen"
+            ]
+          },
+          "groups": {
+            "description": "Every position in form order, grouped as the Bescheid groups them.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssessmentDiffGroupDto"
+            }
+          },
+          "ownDeviations": {
+            "description": "What the Finanzamt changed, largest effect on the refund first.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssessmentOwnDeviationDto"
+            }
+          },
+          "followOnChain": {
+            "description": "Summe Werbungskosten → zvE → Steuer → Erstattung, only the links that moved.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssessmentFollowOnLinkDto"
+            }
+          },
+          "totalRefundEffect": {
+            "type": "number",
+            "nullable": true,
+            "example": -92,
+            "description": "Assessed minus declared refund."
+          },
+          "singleEffectsSum": {
+            "type": "number",
+            "nullable": true,
+            "example": -94
+          },
+          "effectsDifferFromTotal": {
+            "type": "boolean",
+            "description": "The single effects do not add up to the total (the tax is not linear): say so."
+          },
+          "generalExplanations": {
+            "description": "Explanations that name no position.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "counts": {
+            "$ref": "#/components/schemas/AssessmentDiffCountsDto"
+          }
+        },
+        "required": [
+          "year",
+          "filingType",
+          "groups",
+          "ownDeviations",
+          "followOnChain",
+          "totalRefundEffect",
+          "singleEffectsSum",
+          "effectsDifferFromTotal",
+          "generalExplanations",
+          "counts"
         ]
       },
       "AssessmentResponseDto": {
@@ -12394,6 +12797,30 @@
             "items": {
               "type": "string"
             }
+          },
+          "positions": {
+            "description": "Every Besteuerungsgrundlage of the Bescheid (core `ASSESSMENT_POSITIONS`, form order) with its capture state; `offen` = not read.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssessmentFieldDto"
+            }
+          },
+          "explanations": {
+            "description": "The Finanzamt’s Erläuterungen as printed, one per paragraph.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "diff": {
+            "nullable": true,
+            "description": "Erklärung ↔ Bescheid (ADR-0098 §8), the same diff the Verlauf shows; null without a version filed in the app or without Bescheid values.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AssessmentDiffDto"
+              }
+            ]
           }
         },
         "required": [
@@ -12403,7 +12830,10 @@
           "fields",
           "reconciliation",
           "frist",
-          "nextStates"
+          "nextStates",
+          "positions",
+          "explanations",
+          "diff"
         ]
       },
       "PutAssessmentFieldDto": {
@@ -12702,6 +13132,992 @@
         "required": [
           "bruttoarbeitslohn",
           "lohnsteuer"
+        ]
+      },
+      "HistoryDeltaDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "exact",
+              "range",
+              "none"
+            ],
+            "description": "`range` when either year is a range; `none` with a `reason`."
+          },
+          "absolute": {
+            "type": "number",
+            "description": "kind `exact`: the change in euros (percentage points for a quote)."
+          },
+          "percent": {
+            "type": "number",
+            "nullable": true,
+            "description": "kind `exact`: the change in %; null for a quote or a previous value ≤ 0."
+          },
+          "absoluteRange": {
+            "description": "kind `range`: low = current low − previous high, high = current high − previous low.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RangeDto"
+              }
+            ]
+          },
+          "percentRange": {
+            "nullable": true,
+            "description": "kind `range`: the change in %, as a range.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RangeDto"
+              }
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "kein-vorjahr",
+              "offen",
+              "veranlagungsart-gewechselt"
+            ],
+            "description": "kind `none`: why there is no change to show."
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "HistoryFigureDto": {
+        "type": "object",
+        "properties": {
+          "tier": {
+            "type": "string",
+            "enum": [
+              "bescheid",
+              "schaetzung",
+              "offen"
+            ]
+          },
+          "value": {
+            "type": "number",
+            "description": "tier `bescheid`: the exact value (euros, or % for a quote)."
+          },
+          "range": {
+            "description": "tier `schaetzung`: the range (from = to where one number).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RangeDto"
+              }
+            ]
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "bescheid",
+              "lohnsteuerbescheinigung",
+              "lohnausweis",
+              "erklaerung",
+              "schaetzung"
+            ],
+            "description": "Where the value comes from (tiers `bescheid` and `schaetzung`)."
+          },
+          "missing": {
+            "example": [
+              "lohnsteuerbescheinigung"
+            ],
+            "description": "tier `offen`: what is missing (machine ids, e.g. `bruttoarbeitslohn`, `personB.bruttoarbeitslohn`, `lohnsteuerbescheinigung`).",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "delta": {
+            "$ref": "#/components/schemas/HistoryDeltaDto"
+          }
+        },
+        "required": [
+          "tier",
+          "delta"
+        ]
+      },
+      "ExchangeRateNoteDto": {
+        "type": "object",
+        "properties": {
+          "rate": {
+            "type": "number",
+            "example": 0.9502,
+            "description": "EUR per CHF."
+          },
+          "period": {
+            "type": "string",
+            "example": "2025",
+            "description": "`yyyy` (annual average) or `yyyy-mm`."
+          }
+        },
+        "required": [
+          "rate",
+          "period"
+        ]
+      },
+      "HouseholdNetFiguresDto": {
+        "type": "object",
+        "properties": {
+          "brutto": {
+            "$ref": "#/components/schemas/HistoryFigureDto"
+          },
+          "lohnsteuer": {
+            "$ref": "#/components/schemas/HistoryFigureDto"
+          },
+          "solidaritaetszuschlag": {
+            "$ref": "#/components/schemas/HistoryFigureDto"
+          },
+          "kirchensteuer": {
+            "$ref": "#/components/schemas/HistoryFigureDto"
+          },
+          "sozialversicherung": {
+            "description": "Sozialversicherung, Arbeitnehmeranteil.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HistoryFigureDto"
+              }
+            ]
+          },
+          "netto": {
+            "$ref": "#/components/schemas/HistoryFigureDto"
+          },
+          "nettoQuote": {
+            "description": "Netto ÷ Brutto in %, one decimal; its delta is in percentage points.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HistoryFigureDto"
+              }
+            ]
+          },
+          "exchangeRates": {
+            "description": "The CHF rates Swiss wages went in at (tooltip).",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExchangeRateNoteDto"
+            }
+          },
+          "nettoNachErstattung": {
+            "description": "Netto ± Abschlusszahlung; household only.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HistoryFigureDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "brutto",
+          "lohnsteuer",
+          "solidaritaetszuschlag",
+          "kirchensteuer",
+          "sozialversicherung",
+          "netto",
+          "nettoQuote",
+          "exchangeRates",
+          "nettoNachErstattung"
+        ]
+      },
+      "NetFiguresDto": {
+        "type": "object",
+        "properties": {
+          "brutto": {
+            "$ref": "#/components/schemas/HistoryFigureDto"
+          },
+          "lohnsteuer": {
+            "$ref": "#/components/schemas/HistoryFigureDto"
+          },
+          "solidaritaetszuschlag": {
+            "$ref": "#/components/schemas/HistoryFigureDto"
+          },
+          "kirchensteuer": {
+            "$ref": "#/components/schemas/HistoryFigureDto"
+          },
+          "sozialversicherung": {
+            "description": "Sozialversicherung, Arbeitnehmeranteil.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HistoryFigureDto"
+              }
+            ]
+          },
+          "netto": {
+            "$ref": "#/components/schemas/HistoryFigureDto"
+          },
+          "nettoQuote": {
+            "description": "Netto ÷ Brutto in %, one decimal; its delta is in percentage points.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HistoryFigureDto"
+              }
+            ]
+          },
+          "exchangeRates": {
+            "description": "The CHF rates Swiss wages went in at (tooltip).",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExchangeRateNoteDto"
+            }
+          }
+        },
+        "required": [
+          "brutto",
+          "lohnsteuer",
+          "solidaritaetszuschlag",
+          "kirchensteuer",
+          "sozialversicherung",
+          "netto",
+          "nettoQuote",
+          "exchangeRates"
+        ]
+      },
+      "YearNetDto": {
+        "type": "object",
+        "properties": {
+          "beide": {
+            "description": "„Wir beide“ (or the one person).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HouseholdNetFiguresDto"
+              }
+            ]
+          },
+          "A": {
+            "$ref": "#/components/schemas/NetFiguresDto"
+          },
+          "B": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NetFiguresDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "beide",
+          "A",
+          "B"
+        ]
+      },
+      "WorkExpensePartsDto": {
+        "type": "object",
+        "properties": {
+          "fahrtweg": {
+            "type": "number"
+          },
+          "homeoffice": {
+            "type": "number"
+          },
+          "arbeitsmittel": {
+            "type": "number"
+          },
+          "sonstiges": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "fahrtweg",
+          "homeoffice",
+          "arbeitsmittel",
+          "sonstiges"
+        ]
+      },
+      "WorkExpenseFiguresDto": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "description": "The sum: from the Bescheid, else as declared.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HistoryFigureDto"
+              }
+            ]
+          },
+          "angesetzt": {
+            "description": "What counted: the sum, at least the Arbeitnehmer-Pauschbetrag.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HistoryFigureDto"
+              }
+            ]
+          },
+          "parts": {
+            "nullable": true,
+            "description": "The stack; null where only the sum is known (an Eckjahr: „laut Bescheid, ohne Aufteilung“).",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/WorkExpensePartsDto"
+              }
+            ]
+          },
+          "partsSource": {
+            "type": "string",
+            "enum": [
+              "bescheid",
+              "erklaerung"
+            ],
+            "nullable": true
+          },
+          "pauschbetrag": {
+            "type": "number",
+            "nullable": true,
+            "example": 1230,
+            "description": "The year’s Arbeitnehmer-Pauschbetrag times the persons shown (the line in the chart)."
+          },
+          "belowLumpSum": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "The sum stayed below the Pauschbetrag, so the Pauschbetrag counted."
+          }
+        },
+        "required": [
+          "total",
+          "angesetzt",
+          "parts",
+          "partsSource",
+          "pauschbetrag",
+          "belowLumpSum"
+        ]
+      },
+      "YearWorkExpensesDto": {
+        "type": "object",
+        "properties": {
+          "beide": {
+            "$ref": "#/components/schemas/WorkExpenseFiguresDto"
+          },
+          "A": {
+            "$ref": "#/components/schemas/WorkExpenseFiguresDto"
+          },
+          "B": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/WorkExpenseFiguresDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "beide",
+          "A",
+          "B"
+        ]
+      },
+      "RefundFiguresDto": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "description": "Positive = Erstattung, negative = Nachzahlung; household only.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HistoryFigureDto"
+              }
+            ]
+          },
+          "declared": {
+            "type": "number",
+            "nullable": true,
+            "description": "The refund of the version filed in the app (the mark at the bar)."
+          },
+          "difference": {
+            "type": "number",
+            "nullable": true,
+            "description": "Assessed − declared (the cut area)."
+          },
+          "estimateBeforeAssessment": {
+            "nullable": true,
+            "description": "The last estimate before the Bescheid (detail only, not in the chart).",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RangeDto"
+              }
+            ]
+          },
+          "sumOfSingleFilings": {
+            "type": "boolean",
+            "description": "Two single returns added up."
+          }
+        },
+        "required": [
+          "amount",
+          "declared",
+          "difference",
+          "estimateBeforeAssessment",
+          "sumOfSingleFilings"
+        ]
+      },
+      "TaxRateFiguresDto": {
+        "type": "object",
+        "properties": {
+          "incomeTax": {
+            "description": "Festgesetzte (or estimated) Einkommensteuer.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HistoryFigureDto"
+              }
+            ]
+          },
+          "effective": {
+            "description": "Income tax ÷ household gross, in %.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HistoryFigureDto"
+              }
+            ]
+          },
+          "marginal": {
+            "nullable": true,
+            "description": "Grenzsteuersatz in whole % (splitting); null for single returns.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HistoryFigureDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "incomeTax",
+          "effective",
+          "marginal"
+        ]
+      },
+      "YearHistoryEntryDto": {
+        "type": "object",
+        "properties": {
+          "year": {
+            "type": "number",
+            "example": 2024
+          },
+          "filingType": {
+            "type": "string",
+            "enum": [
+              "einzel",
+              "zusammen"
+            ]
+          },
+          "filingTypeChanged": {
+            "type": "boolean",
+            "description": "The Veranlagungsart changed from the year before (mark it in the chart)."
+          },
+          "eckjahr": {
+            "type": "boolean",
+            "description": "Known only from an uploaded Bescheid (`extern-erledigt`)."
+          },
+          "tier": {
+            "type": "string",
+            "enum": [
+              "bescheid",
+              "schaetzung",
+              "offen"
+            ],
+            "description": "The year’s tier: `bescheid` once every filing has one, `schaetzung` when the core can estimate, else `offen`."
+          },
+          "missing": {
+            "description": "tier `offen`: what the year lacks.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "persons": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "A",
+                "B"
+              ]
+            }
+          },
+          "netto": {
+            "description": "Brutto → Netto per „beide“, A and B.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/YearNetDto"
+              }
+            ]
+          },
+          "werbungskosten": {
+            "$ref": "#/components/schemas/YearWorkExpensesDto"
+          },
+          "erstattung": {
+            "$ref": "#/components/schemas/RefundFiguresDto"
+          },
+          "steuerquote": {
+            "$ref": "#/components/schemas/TaxRateFiguresDto"
+          }
+        },
+        "required": [
+          "year",
+          "filingType",
+          "filingTypeChanged",
+          "eckjahr",
+          "tier",
+          "missing",
+          "persons",
+          "netto",
+          "werbungskosten",
+          "erstattung",
+          "steuerquote"
+        ]
+      },
+      "YearListItemDto": {
+        "type": "object",
+        "properties": {
+          "year": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "entwurf",
+              "pruefung",
+              "eingereicht",
+              "rueckfrage",
+              "bescheid",
+              "abgeschlossen",
+              "extern-erledigt"
+            ],
+            "description": "The stored ADR-0039 state; null for a year without a tax year row."
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "eckjahr",
+              "bescheid",
+              "eingereicht",
+              "offen"
+            ],
+            "description": "How the year stands, derived from its data."
+          },
+          "filingType": {
+            "type": "string",
+            "enum": [
+              "einzel",
+              "zusammen"
+            ]
+          },
+          "declaredRefund": {
+            "type": "number",
+            "nullable": true
+          },
+          "assessedRefund": {
+            "type": "number",
+            "nullable": true
+          },
+          "difference": {
+            "type": "number",
+            "nullable": true,
+            "description": "Assessed − declared."
+          },
+          "deviations": {
+            "type": "number",
+            "description": "Own deviations of the Bescheid-Abgleich(e)."
+          },
+          "noDiffReason": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "eckjahr",
+              "kein-bescheid",
+              "keine-eingereichte-fassung"
+            ],
+            "description": "Why there is no Abgleich (a sentence says why); null when there is one."
+          },
+          "withinAssessmentPeriod": {
+            "type": "boolean",
+            "description": "Within the four years of the Festsetzungsfrist; older years are for display only."
+          }
+        },
+        "required": [
+          "year",
+          "status",
+          "kind",
+          "filingType",
+          "declaredRefund",
+          "assessedRefund",
+          "difference",
+          "deviations",
+          "noDiffReason",
+          "withinAssessmentPeriod"
+        ]
+      },
+      "AppealDeadlineDto": {
+        "type": "object",
+        "properties": {
+          "endsOn": {
+            "type": "string",
+            "example": "2026-12-07",
+            "description": "The Einspruchsfrist’s last day (ISO)."
+          },
+          "remainingDays": {
+            "type": "number",
+            "example": 19,
+            "description": "Days from today; negative once it passed."
+          },
+          "running": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "endsOn",
+          "remainingDays",
+          "running"
+        ]
+      },
+      "PositionRefDto": {
+        "type": "object",
+        "properties": {
+          "position": {
+            "type": "string",
+            "example": "homeofficeA"
+          },
+          "label": {
+            "type": "string",
+            "example": "Homeoffice-Pauschale"
+          }
+        },
+        "required": [
+          "position",
+          "label"
+        ]
+      },
+      "OpenItemDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "einspruchsfrist",
+              "wartet-auf-bescheid",
+              "offen"
+            ]
+          },
+          "year": {
+            "type": "number"
+          },
+          "highlighted": {
+            "type": "boolean",
+            "description": "Shown first and highlighted (a Bescheid with deviations and a running Einspruchsfrist)."
+          },
+          "refundDifference": {
+            "type": "number",
+            "nullable": true,
+            "example": -92,
+            "description": "kind `einspruchsfrist`: assessed − declared refund in euros."
+          },
+          "deviations": {
+            "type": "number",
+            "description": "kind `einspruchsfrist`: the number of own deviations."
+          },
+          "deadline": {
+            "description": "kind `einspruchsfrist`.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AppealDeadlineDto"
+              }
+            ]
+          },
+          "repeatedCuts": {
+            "description": "kind `wartet-auf-bescheid`: positions cut the year before and declared the same way again; no amount.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PositionRefDto"
+            }
+          },
+          "missing": {
+            "description": "kind `offen`: what the year lacks.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "kind",
+          "year",
+          "highlighted"
+        ]
+      },
+      "LessonRecognisedDto": {
+        "type": "object",
+        "properties": {
+          "declared": {
+            "type": "number"
+          },
+          "assessed": {
+            "type": "number"
+          },
+          "difference": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "declared",
+          "assessed",
+          "difference"
+        ]
+      },
+      "LessonNextYearDto": {
+        "type": "object",
+        "properties": {
+          "year": {
+            "type": "number",
+            "example": 2025
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "filed",
+              "answers"
+            ],
+            "description": "`filed`: the next year’s frozen version; `answers`: today’s answers, not yet filed."
+          },
+          "declared": {
+            "type": "number",
+            "nullable": true,
+            "description": "What the next year declares for the position; never an amount for its pending Bescheid."
+          },
+          "declaredAboveRecognised": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "It again declares more than this Bescheid recognised; null when it declares nothing."
+          }
+        },
+        "required": [
+          "year",
+          "source",
+          "declared",
+          "declaredAboveRecognised"
+        ]
+      },
+      "LessonMaskDto": {
+        "type": "object",
+        "properties": {
+          "screen": {
+            "type": "string",
+            "enum": [
+              "commute",
+              "interview"
+            ],
+            "description": "The mask (`Screen`) the lesson shows at in the next open year."
+          },
+          "field": {
+            "type": "string",
+            "example": "homeOfficeDays"
+          },
+          "label": {
+            "type": "string",
+            "example": "Homeoffice"
+          }
+        },
+        "required": [
+          "screen",
+          "field",
+          "label"
+        ]
+      },
+      "AssessmentLessonDto": {
+        "type": "object",
+        "properties": {
+          "position": {
+            "type": "string",
+            "example": "homeofficeA",
+            "description": "A position id of the core catalogue `ASSESSMENT_POSITIONS` (e.g. `homeofficeA`, `zuVersteuerndesEinkommen`)."
+          },
+          "label": {
+            "type": "string"
+          },
+          "person": {
+            "type": "string",
+            "enum": [
+              "A",
+              "B"
+            ],
+            "nullable": true
+          },
+          "recognised": {
+            "$ref": "#/components/schemas/LessonRecognisedDto"
+          },
+          "nextYear": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LessonNextYearDto"
+              }
+            ]
+          },
+          "hint": {
+            "type": "string",
+            "nullable": true,
+            "description": "From the fixed catalogue per position type; null without an entry."
+          },
+          "mask": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LessonMaskDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "position",
+          "label",
+          "person",
+          "recognised",
+          "nextYear",
+          "hint",
+          "mask"
+        ]
+      },
+      "YearDiffDto": {
+        "type": "object",
+        "properties": {
+          "year": {
+            "type": "number"
+          },
+          "person": {
+            "type": "string",
+            "enum": [
+              "A",
+              "B"
+            ],
+            "nullable": true,
+            "description": "Whose single return; null for the joint one."
+          },
+          "submittedOn": {
+            "type": "string",
+            "example": "2026-09-21"
+          },
+          "assessmentDate": {
+            "type": "string",
+            "nullable": true,
+            "example": "2026-11-02"
+          },
+          "deadline": {
+            "nullable": true,
+            "description": "Null without a Bescheiddatum.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AppealDeadlineDto"
+              }
+            ]
+          },
+          "diff": {
+            "$ref": "#/components/schemas/AssessmentDiffDto"
+          },
+          "lessons": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssessmentLessonDto"
+            }
+          }
+        },
+        "required": [
+          "year",
+          "person",
+          "submittedOn",
+          "assessmentDate",
+          "deadline",
+          "diff",
+          "lessons"
+        ]
+      },
+      "MaskLessonsDto": {
+        "type": "object",
+        "properties": {
+          "year": {
+            "type": "number",
+            "example": 2026,
+            "description": "The open year whose masks show the lessons."
+          },
+          "fromYear": {
+            "type": "number",
+            "example": 2024,
+            "description": "The Bescheid they come from."
+          },
+          "lessons": {
+            "description": "Only lessons with a mask.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssessmentLessonDto"
+            }
+          }
+        },
+        "required": [
+          "year",
+          "fromYear",
+          "lessons"
+        ]
+      },
+      "YearHistoryResponseDto": {
+        "type": "object",
+        "properties": {
+          "today": {
+            "type": "string",
+            "example": "2026-11-18",
+            "description": "The day remaining days are counted from."
+          },
+          "years": {
+            "description": "The four key figures per year, oldest first.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/YearHistoryEntryDto"
+            }
+          },
+          "list": {
+            "description": "The year list, oldest first.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/YearListItemDto"
+            }
+          },
+          "openItems": {
+            "description": "„Was ansteht“, highlighted first, then the newest year first.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpenItemDto"
+            }
+          },
+          "diffs": {
+            "description": "Every Abgleich of a year with a Bescheid and a version filed in the app.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/YearDiffDto"
+            }
+          },
+          "maskLessons": {
+            "nullable": true,
+            "description": "The lessons for the masks of the latest open year.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MaskLessonsDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "today",
+          "years",
+          "list",
+          "openItems",
+          "diffs",
+          "maskLessons"
         ]
       },
       "DeleteAccountRequestDto": {

@@ -36,6 +36,8 @@ export interface AdvisorTestKit {
   readonly commuteRepo: FakeCommuteRepository
   readonly chRepo: FakeChSalaryCertificateRepository
   readonly lstbRepo: FakeLstbRepository
+  /** The Bescheid the drafts of a read Steuerbescheid are applied to (ADR-0098). */
+  readonly assessmentRepo: FakeAssessmentRepository
   /** The joint return: set it up with `set` and `updatePersonB` to give the user a Person B. */
   readonly linkService: LinkService
   readonly profileRepo: FakeProfileRepository
@@ -124,7 +126,7 @@ export function buildAdvisorTestKit(engine?: AdvisorEnginePort, modelConnection?
     undefined,
     consent,
   )
-  return { advisorRepo, interviewRepo, rentalRepo, childRepo, commuteRepo, chRepo, lstbRepo, linkService, profileRepo, consent, service, masterDataRepo, taxEstimate, children }
+  return { advisorRepo, interviewRepo, rentalRepo, childRepo, commuteRepo, chRepo, lstbRepo, assessmentRepo, linkService, profileRepo, consent, service, masterDataRepo, taxEstimate, children }
 }
 
 /** A step of a scripted engine turn: an event, or a pause that only ends when the turn is aborted. */

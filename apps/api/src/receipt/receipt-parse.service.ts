@@ -249,6 +249,8 @@ export function receiptKindOfDocument(detected: DetectedDocumentKind): ReceiptTy
       return 'Pensionskasse'
     case 'chKrankenkasse':
       return 'Krankenkasse'
+    case 'steuerbescheid':
+      return 'Steuerbescheid'
     default:
       return null
   }

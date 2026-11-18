@@ -49,6 +49,9 @@ export function holderScopeOf(kind: DetectedDocumentKind, rawText: string): Hold
       return 'adults'
     case 'chKrankenkasse':
       return 'everyone'
+    // A joint notice is the household's, a single one the uploader's: nobody to choose (ADR-0098 §4).
+    case 'steuerbescheid':
+      return 'none'
     case 'auto':
       return looksLikeChildcareNotice(rawText) ? 'children' : looksLikeWorkExpenseReceipt(rawText) ? 'adults' : 'none'
   }

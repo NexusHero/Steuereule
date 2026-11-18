@@ -47,7 +47,7 @@ export class PrismaTaxDataExportRepository implements TaxDataExportRepository {
 
   async findAllForUser(userId: string): Promise<ExportTaxDataEntry[]> {
     const where = { userId }
-    const [taxYears, answers, receiptFiles, receipts, lstb, ch, pension, capital, commute, rental, assessments, markings, yearTakeovers, masterData, kinder, links, owlSetting, owlDismissals, advisorMessages, advisorConversations, advisorNotes, advisorSituations, advisorInterviews] =
+    const [taxYears, answers, receiptFiles, receipts, lstb, ch, pension, capital, commute, rental, assessments, filingVersions, markings, yearTakeovers, masterData, kinder, links, owlSetting, owlDismissals, advisorMessages, advisorConversations, advisorNotes, advisorSituations, advisorInterviews] =
       await Promise.all([
         this.prisma.taxYear.findMany({ where }),
         this.prisma.interviewAnswer.findMany({ where }),
@@ -60,6 +60,7 @@ export class PrismaTaxDataExportRepository implements TaxDataExportRepository {
         this.prisma.commute.findMany({ where }),
         this.prisma.rentalProperty.findMany({ where }),
         this.prisma.assessment.findMany({ where }),
+        this.prisma.filingVersion.findMany({ where }),
         this.prisma.marking.findMany({ where }),
         this.prisma.yearTakeover.findMany({ where }),
         this.prisma.masterData.findMany({ where }),
@@ -107,6 +108,7 @@ export class PrismaTaxDataExportRepository implements TaxDataExportRepository {
       ...commute.map((row) => toExportEntry('Arbeitsweg', 'Commute', row)),
       ...rental.map((row) => toExportEntry('Vermietungsobjekt', 'RentalProperty', row)),
       ...assessments.map((row) => toExportEntry('Steuerbescheid', 'Assessment', row)),
+      ...filingVersions.map((row) => toExportEntry('Eingereichte Fassung', 'FilingVersion', row)),
       ...markings.map((row) => toExportEntry('Herkunft und Bestätigung', 'Marking', row)),
       ...yearTakeovers.map((row) => toExportEntry('Jahresübernahme', 'YearTakeover', row)),
       ...masterData.map((row) => toExportEntry('Erklärungs-Stammdaten', 'MasterData', row)),
