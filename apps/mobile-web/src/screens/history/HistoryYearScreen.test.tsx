@@ -1,6 +1,6 @@
 // ADR-0098 §1, §8 — one year of the Verlauf on its own page, against the `GET /v1/verlauf` wire with the
 // mock's example household: one sentence on where the year stands, then by its kind the Bescheid-Abgleich
-// with the deadline and „Fürs nächste Mal“, both Abgleiche of two single returns, the waiting year's
+// as a receipt (the deadline chip, the lessons inside the rows), both Abgleiche of two single returns, the waiting year's
 // positions without an amount, what an open year lacks (concretely), and the honest „nur Bescheid“.
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
@@ -34,14 +34,18 @@ beforeEach(() => {
 })
 
 describe('HistoryYearScreen', () => {
-  it('shows a Bescheid year with its sentence, the Abgleich (own changes first, form view collapsed), the deadline and the lessons', async () => {
+  it('shows a Bescheid year with its sentence and the receipt (own changes first, form view collapsed, lessons inside the rows)', async () => {
     const { onBack, onOpenYear, onPrepareAppeal } = renderYear(2024)
     expect(await found('verlauf-jahr-titel')).toBe('2024')
     expect(text('verlauf-jahr-satz')).toBe('Bescheid da: Das Finanzamt hat 2 Positionen geändert.')
-    expect(text('verlauf-abgleich-2024-anzahl')).toBe('2 Änderungen')
+    expect(text('verlauf-abgleich-2024-wirkung')).toBe('−92 €')
     expect(screen.getAllByTestId(/^verlauf-abgleich-2024-zeile-/)[0]!.getAttribute('data-testid')).toBe('verlauf-abgleich-2024-zeile-homeofficeA')
     expect(screen.queryByTestId('verlauf-abgleich-2024-formularansicht')).toBeNull()
-    expect(screen.getByTestId('verlauf-abgleich-2024-lehren')).toBeTruthy()
+    // The count is said once, in the page's sentence; „Fürs nächste Mal“ is no block of its own.
+    expect(text('screen-container').match(/2 Positionen|2 Änderungen/g)).toHaveLength(1)
+    expect(text('screen-container')).not.toContain('Fürs nächste Mal')
+    fireEvent.click(screen.getByRole('button', { name: /^Homeoffice-Pauschale:/ }))
+    expect(text('verlauf-abgleich-2024-detail-homeofficeA')).toContain('Erscheint 2026 in der Maske „Homeoffice“')
     // The cut stays inside the Abgleich, not in the page's head.
     expect(text('verlauf-jahr-satz')).not.toContain('€')
     fireEvent.click(screen.getByTestId('verlauf-abgleich-2024-einspruch'))

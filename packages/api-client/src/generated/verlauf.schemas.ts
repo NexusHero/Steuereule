@@ -489,6 +489,11 @@ export interface AssessmentDiffRowDto {
      * @nullable
      */
   explanation: string | null;
+  /**
+     * A few words taken from the explanation by the core’s fixed patterns (`shortAssessmentReason`); null when none fits.
+     * @nullable
+     */
+  shortReason: string | null;
 }
 
 export interface AssessmentDiffGroupDto {
@@ -565,6 +570,11 @@ export interface AssessmentOwnDeviationDto {
      * @nullable
      */
   explanation: string | null;
+  /**
+     * A few words taken from the explanation by the core’s fixed patterns (`shortAssessmentReason`); null when none fits.
+     * @nullable
+     */
+  shortReason: string | null;
   /**
      * Effect on the refund of setting only this position to the Bescheid’s value; null when not computable.
      * @nullable

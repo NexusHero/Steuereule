@@ -30,6 +30,14 @@ export class AssessmentDiffRowDto {
 
   @ApiProperty({ type: String, nullable: true, description: 'The Finanzamt’s explanation, quoted from the Bescheid.' })
   explanation!: string | null
+
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    example: '180 statt 210 Tage',
+    description: 'A few words taken from the explanation by the core’s fixed patterns (`shortAssessmentReason`); null when none fits.',
+  })
+  shortReason!: string | null
 }
 
 export class AssessmentOwnDeviationDto extends AssessmentDiffRowDto {

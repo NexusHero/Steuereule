@@ -1,7 +1,7 @@
 // ADR-0098 — the tab „Verlauf“ as a timeline (alternative A), end to end in the real app: the tab bar
 // `Cockpit · Eule · Belege · Verlauf · Profil`, the old year-list links landing in the Verlauf, „Jetzt
 // wichtig“ in the cockpit's dark block, one row per year, a year's own page (`/app/verlauf/:jahr`) with
-// the Bescheid-Abgleich, the deadline and „Fürs nächste Mal“, back to the tab, „Entwicklung ansehen“
+// the Bescheid-Abgleich as a receipt (deadline chip, lessons inside the rows), back to the tab, „Entwicklung ansehen“
 // (`/app/verlauf/entwicklung`) with the four key figures, tiers, the person toggle and the data table,
 // the upload entry behind „Ältere Jahre ergänzen“ into the one Beleg pipeline, the same Abgleich in
 // „Bescheid prüfen“, the lesson at the next year's mask, and „Ich habe die Erklärung abgegeben“ in the
@@ -122,19 +122,26 @@ async function main() {
     if ((await textOf('verlauf-jahr-titel')) !== '2024') fail('the year page should be titled by its year')
     if (!(await textOf('verlauf-jahr-satz')).includes('2 Positionen geändert')) fail('the year page should say in one sentence what the Finanzamt did')
     await see('verlauf-abgleich-2024')
-    // The page already names the year: the Abgleich does not repeat it, and on a phone one caption names the columns.
-    if ((await page.getByRole('heading', { name: 'Erklärung ↔ Bescheid 2024' }).count()) > 0) fail('the year page should not repeat the year in the Abgleich title')
-    if (!(await textOf('verlauf-abgleich-2024-spalten')).startsWith('erklärt → Bescheid')) fail('on a phone the columns should be named in one line')
-    if ((await textOf('verlauf-abgleich-2024-anzahl')) !== '2 Änderungen') fail('the Abgleich of 2024 should count two changes')
+    // The receipt (ADR-0098 §8): one figure, the deadline chip, one row per change; collapsed it fits one phone screen.
+    const receipt = await byId('verlauf-abgleich-2024').boundingBox()
+    if (receipt === null || receipt.height > 700) fail(`the collapsed Abgleich should fit one phone screen, it is ${receipt?.height} px high`)
+    if ((await page.getByRole('heading', { name: /Erklärung ↔ Bescheid/ }).count()) > 0) fail('the year page should not repeat a title in the Abgleich')
+    if ((await textOf('verlauf-abgleich-2024-wirkung')) !== '−92 €') fail('the receipt should head with the total effect on the refund')
+    for (const gone of ['verlauf-abgleich-2024-anzahl', 'verlauf-abgleich-2024-kette', 'verlauf-abgleich-2024-lehren', 'verlauf-abgleich-2024-spalten']) {
+      if (await byId(gone).count()) fail(`${gone} belongs to the old diff, not to the receipt`)
+    }
     const rows = await page.locator('[data-testid^="verlauf-abgleich-2024-zeile-"]').evaluateAll((els) => els.map((e) => e.getAttribute('data-testid')))
     if (rows[0] !== 'verlauf-abgleich-2024-zeile-homeofficeA') fail(`the largest effect should come first, the rows are ${rows.join()}`)
-    await see('verlauf-abgleich-2024-frist')
-    await see('verlauf-abgleich-2024-kette')
-    if (!(await textOf('verlauf-abgleich-2024-kette')).startsWith('daraus folgt')) fail('the follow-on chain should read „daraus folgt“')
-    if (await byId('verlauf-abgleich-2024-nichtlinear').count()) fail('the note on the sum should wait behind its toggle')
+    const homeRow = await textOf('verlauf-abgleich-2024-zeile-homeofficeA')
+    if (!homeRow.includes('180 statt 210 Tage') || !homeRow.includes('2025 wieder 210 erklärt')) fail(`the row should carry its short reason and the next year, it says ${homeRow}`)
+    if (!(await textOf('verlauf-abgleich-2024-einspruch')).startsWith('Einspruch · 19 Tage')) fail('the deadline chip should name the days left')
+    if (await byId('verlauf-abgleich-2024-nichtlinear').count()) fail('the note on the sum should wait behind its info icon')
     await byId('verlauf-abgleich-2024-nichtlinear-umschalten').click()
     await see('verlauf-abgleich-2024-nichtlinear')
-    await see('verlauf-abgleich-2024-lehren')
+    if (await byId('verlauf-abgleich-2024-detail-homeofficeA').count()) fail('a row should start collapsed')
+    await byId('verlauf-abgleich-2024-zeile-homeofficeA').getByRole('button').click()
+    await see('verlauf-abgleich-2024-detail-homeofficeA')
+    if (!(await textOf('verlauf-abgleich-2024-detail-homeofficeA')).includes('„Die Tätigkeit in der häuslichen Wohnung')) fail('an opened row should quote the Finanzamt')
     if (await byId('verlauf-abgleich-2024-formularansicht').count()) fail('the form view should start collapsed')
     await byId('verlauf-abgleich-2024-formular').click()
     await see('verlauf-abgleich-2024-formularansicht')
@@ -142,7 +149,7 @@ async function main() {
     await byId('verlauf-jahr-zurueck').click()
     await atPath('/app/verlauf')
     await see('verlauf-jetzt')
-    console.log(`[${TAG}] ✅ Year page — /app/verlauf/2024 with the Abgleich, the deadline, the lessons and the form view on demand; back returns to the tab`)
+    console.log(`[${TAG}] ✅ Year page — /app/verlauf/2024 with the receipt: one figure, the deadline chip, rows with short reasons opening to quote and lesson, the form view on demand; back returns to the tab`)
 
     // The other kinds of years, each on its own page.
     await byId('verlauf-jahr-2023').click()
@@ -282,6 +289,12 @@ async function main() {
     await deskId('verlauf-tabelle-2023').click()
     await desk.waitForURL((u) => u.pathname === '/app/verlauf/2023', { timeout: 10_000 })
     await deskId('verlauf-abgleich-2023').waitFor({ state: 'visible', timeout: 10_000 })
+    await desk.goto(`${webOrigin}/app/verlauf/2024`, { waitUntil: 'networkidle' })
+    await deskId('verlauf-abgleich-2024').waitFor({ state: 'visible', timeout: 10_000 })
+    const deskReceipt = await deskId('verlauf-abgleich-2024').boundingBox()
+    if (deskReceipt === null || deskReceipt.width > 600) fail(`the receipt should not stretch across the desktop, it is ${deskReceipt?.width} px wide`)
+    const deskRow = (await deskId('verlauf-abgleich-2024-zeile-homeofficeA').innerText()).replace(/\s+/g, ' ')
+    if (!deskRow.includes('180 statt 210 Tage') || !deskRow.includes('2025 wieder 210 erklärt')) fail(`on a wide screen the short reason should stand whole under the label, the row says ${deskRow}`)
     await desk.goto(`${webOrigin}/app/verlauf/entwicklung`, { waitUntil: 'networkidle' })
     await deskId('verlauf-kpi-erstattung').waitFor({ state: 'visible', timeout: 15_000 }).catch(() => fail('the development should show the KPI tiles on the desktop'))
     await deskId('verlauf-kpi-werbungskosten').click()

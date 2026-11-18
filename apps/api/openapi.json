@@ -8002,6 +8002,12 @@
             "type": "string",
             "nullable": true,
             "description": "The Finanzamt’s explanation, quoted from the Bescheid."
+          },
+          "shortReason": {
+            "type": "string",
+            "nullable": true,
+            "example": "180 statt 210 Tage",
+            "description": "A few words taken from the explanation by the core’s fixed patterns (`shortAssessmentReason`); null when none fits."
           }
         },
         "required": [
@@ -8013,7 +8019,8 @@
           "assessed",
           "difference",
           "status",
-          "explanation"
+          "explanation",
+          "shortReason"
         ]
       },
       "AssessmentDiffGroupDto": {
@@ -8100,6 +8107,12 @@
             "nullable": true,
             "description": "The Finanzamt’s explanation, quoted from the Bescheid."
           },
+          "shortReason": {
+            "type": "string",
+            "nullable": true,
+            "example": "180 statt 210 Tage",
+            "description": "A few words taken from the explanation by the core’s fixed patterns (`shortAssessmentReason`); null when none fits."
+          },
           "refundEffect": {
             "type": "number",
             "nullable": true,
@@ -8117,6 +8130,7 @@
           "difference",
           "status",
           "explanation",
+          "shortReason",
           "refundEffect"
         ]
       },
