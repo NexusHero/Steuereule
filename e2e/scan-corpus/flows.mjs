@@ -121,14 +121,16 @@ async function main() {
     const receiptId = sql(`SELECT id FROM "Beleg" WHERE "userId" = (SELECT id FROM "User" WHERE email = '${user.email}') ORDER BY "createdAt" DESC LIMIT 1`).trim()
     await page.goto(`${webOrigin}/app/belege`, { waitUntil: 'networkidle' })
     await page.locator(`[data-testid="receipt-delete-${receiptId}"]`).click()
-    await page.locator(`[data-testid="receipt-delete-confirm-${receiptId}"]`).click()
+    // The receipt filled the LStB, so the app asks whether its values go too (ADR-0097); keep them here.
+    await page.locator(`[data-testid="receipt-delete-frage-${receiptId}"]`).waitFor({ state: 'visible', timeout: 10_000 })
+    await page.locator(`[data-testid="receipt-delete-nur-beleg-${receiptId}"]`).click()
     await page.locator(`[data-testid="receipt-preview-${receiptId}"]`).waitFor({ state: 'detached', timeout: 15_000 })
     const left = sql(`SELECT count(*) FROM "BelegDatei" WHERE "belegId" = '${receiptId}'`).trim()
     if (left !== '0') fail(`deleting the receipt must remove its encrypted file, ${left} row(s) left`)
     const fetchRes = await api.get(`/v1/belege/${receiptId}/datei`)
     if (fetchRes.ok()) fail('a deleted receipt must not be downloadable any more')
     if ((await lstb()).bruttoarbeitslohn?.value !== 54_320) fail('deleting the receipt must keep the confirmed LStB values')
-    console.log(`[${TAG}] ✅ delete — the encrypted file is gone, the confirmed values stay`)
+    console.log(`[${TAG}] ✅ delete — asked about the values, receipt only: the encrypted file is gone, the confirmed values stay`)
 
     await ctx.close()
     await api.dispose()
