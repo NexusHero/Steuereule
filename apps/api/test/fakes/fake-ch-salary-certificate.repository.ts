@@ -3,7 +3,7 @@
 // satisfies the interface; the Bescheid service never calls them (ADR-0004: honour the real
 // per-(userId, steuerjahr) one-row contract without a database).
 import type { SalaryCertificateAmountFieldId } from '@steuereule/core'
-import { EMPTY_N_GRE, type CrossBorderSalaryStatementRecord, type CrossBorderSalaryStatementRepository, type NGreDetails } from '../../src/ch-salary-certificate/ch-salary-certificate.repository.js'
+import { EMPTY_N_GRE, type CrossBorderSalaryStatementRecord, type CrossBorderSalaryStatementRepository, type NGreDetails, type ProvisionUpdate } from '../../src/ch-salary-certificate/ch-salary-certificate.repository.js'
 
 function key(userId: string, taxYear: number): string {
   return `${userId}::${taxYear}`
@@ -53,10 +53,14 @@ export class FakeChSalaryCertificateRepository implements CrossBorderSalaryState
     return Promise.resolve(updated)
   }
 
-  setProvision(userId: string, taxYear: number, saeule3aChf: string | null, krankenkasseChf: string | null): Promise<CrossBorderSalaryStatementRecord> {
+  setProvision(userId: string, taxYear: number, provision: ProvisionUpdate): Promise<CrossBorderSalaryStatementRecord> {
     const k = key(userId, taxYear)
     const existing = this.store.get(k) ?? this.leer(userId, taxYear)
-    const updated = { ...existing, saeule3aChf, krankenkasseChf }
+    const updated = {
+      ...existing,
+      ...(provision.saeule3aChf === undefined ? {} : { saeule3aChf: provision.saeule3aChf }),
+      ...(provision.krankenkasseChf === undefined ? {} : { krankenkasseChf: provision.krankenkasseChf }),
+    }
     this.store.set(k, updated)
     return Promise.resolve(updated)
   }

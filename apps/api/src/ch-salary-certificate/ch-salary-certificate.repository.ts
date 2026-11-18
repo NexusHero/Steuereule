@@ -66,11 +66,15 @@ export interface CrossBorderSalaryStatementRecord {
 export const CROSS_BORDER_SALARY_STATEMENT_REPOSITORY = Symbol('CH_LOHNAUSWEIS_REPOSITORY')
 
 /** The persistence seam for the CH-Lohnausweis guided mask. */
+/** A partial save of the provision outside the wage: a key that is absent keeps its stored value, `null` clears it. */
+export type ProvisionUpdate = { readonly saeule3aChf?: string | null; readonly krankenkasseChf?: string | null }
+
 export interface CrossBorderSalaryStatementRepository {
   findForUserAndYear(userId: string, taxYear: number): Promise<CrossBorderSalaryStatementRecord | null>
   setField(userId: string, taxYear: number, field: SalaryCertificateAmountFieldId, value: string | null): Promise<CrossBorderSalaryStatementRecord>
   setRemarks(userId: string, taxYear: number, text: string | null): Promise<CrossBorderSalaryStatementRecord>
-  setProvision(userId: string, taxYear: number, saeule3aChf: string | null, krankenkasseChf: string | null): Promise<CrossBorderSalaryStatementRecord>
+  /** Writes only the columns the update carries (a missing key stays as stored), in one statement without reading first. */
+  setProvision(userId: string, taxYear: number, provision: ProvisionUpdate): Promise<CrossBorderSalaryStatementRecord>
   setNGre(userId: string, taxYear: number, details: Partial<NGreDetails>): Promise<CrossBorderSalaryStatementRecord>
   setExchangeRate(
     userId: string,

@@ -490,13 +490,7 @@ export function fieldAccessFrom({
           return true
         }
         if (field === 'saeule3aChf' || field === 'krankenkasseChf') {
-          const current = await chSalaryCertificate.findForUserAndYear(userId, taxYear)
-          await chSalaryCertificate.setProvision(
-            userId,
-            taxYear,
-            field === 'saeule3aChf' ? value : current?.saeule3aChf ?? null,
-            field === 'krankenkasseChf' ? value : current?.krankenkasseChf ?? null,
-          )
+          await chSalaryCertificate.setProvision(userId, taxYear, { [field]: value })
           return true
         }
         if ((NGRE_FIELDS as readonly string[]).includes(field)) {
