@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common'
 import { SALARY_CERTIFICATE_AMOUNT_FIELDS, type SalaryCertificateAmountFieldId } from '@steuereule/core'
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
-import type { ChSalaryCertificateFields, CrossBorderSalaryStatementRecord, CrossBorderSalaryStatementRepository, NGreDetails } from './ch-salary-certificate.repository.js'
+import type { ChSalaryCertificateFields, CrossBorderSalaryStatementRecord, CrossBorderSalaryStatementRepository, NGreDetails, ProvisionUpdate } from './ch-salary-certificate.repository.js'
 
 const FIELD_COLUMN: Record<SalaryCertificateAmountFieldId, keyof ChSalaryCertificateRow> = {
   lohn: 'lohn',
@@ -144,12 +144,18 @@ export class PrismaChSalaryCertificateRepository implements CrossBorderSalarySta
     return toRecord(row as ChSalaryCertificateRow)
   }
 
-  async setProvision(userId: string, taxYear: number, saeule3aChf: string | null, krankenkasseChf: string | null): Promise<CrossBorderSalaryStatementRecord> {
+  async setProvision(userId: string, taxYear: number, provision: ProvisionUpdate): Promise<CrossBorderSalaryStatementRecord> {
+    // Only the columns the save carries: two saves that overlap (KVG and Säule 3a from the mask)
+    // each set their own column in one UPDATE, so neither can put back a value it read earlier.
+    const update = {
+      ...(provision.saeule3aChf === undefined ? {} : { saeule3aChf: provision.saeule3aChf }),
+      ...(provision.krankenkasseChf === undefined ? {} : { krankenkasseChf: provision.krankenkasseChf }),
+    }
     const [row] = await this.prisma.$transaction([
       this.prisma.chSalaryCertificate.upsert({
         where: { userId_taxYear: { userId, taxYear } },
-        create: { userId, taxYear, ...EMPTY_CREATE, saeule3aChf, krankenkasseChf },
-        update: { saeule3aChf, krankenkasseChf },
+        create: { userId, taxYear, ...EMPTY_CREATE, ...update },
+        update,
       }),
       this.prisma.taxDataAccessLog.create({ data: { userId, action: 'WRITE', resource: 'ch-lohnausweis' } }),
     ])
