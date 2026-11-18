@@ -1,7 +1,7 @@
 import { ScrollView, Text, View, type TextStyle, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
-import { Button, useBreakpoint, useTheme, type UiTheme } from '@steuereule/ui'
+import { FLOW_CONTENT_MAX_WIDTH, Button, useBreakpoint, useTheme, type UiTheme } from '@steuereule/ui'
 import type { YearHistoryResponseDto, YearListItemDto } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { SELECTABLE_TAX_YEARS } from '../../config/taxYear'
@@ -89,9 +89,11 @@ function YearLoaded({ data, year, onBack, onOpenYear, onPrepareAppeal }: History
       </View>
       <YearBody data={data} item={item} onPrepareAppeal={onPrepareAppeal && selectable ? () => onPrepareAppeal(year) : undefined} />
       {onOpenYear && selectable ? (
-        <Button variant="ghost" onPress={() => onOpenYear(year)} testID={`verlauf-zum-cockpit-${year}`}>
-          {tr('verlauf.zumCockpit', { jahr: year })}
-        </Button>
+        <View style={{ width: '100%', maxWidth: FLOW_CONTENT_MAX_WIDTH }}>
+          <Button variant="ghost" onPress={() => onOpenYear(year)} testID={`verlauf-zum-cockpit-${year}`}>
+            {tr('verlauf.zumCockpit', { jahr: year })}
+          </Button>
+        </View>
       ) : null}
     </ScrollView>
   )

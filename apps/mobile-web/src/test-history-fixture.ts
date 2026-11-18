@@ -179,39 +179,39 @@ export const DIFF_2024: AssessmentDiffDto = {
     {
       group: 'einkuenfte',
       rows: [
-        { position: 'bruttoarbeitslohnA', label: 'Bruttoarbeitslohn · Person A', role: 'own', person: 'A', declared: 54900, assessed: 54900, difference: 0, status: 'same', explanation: null },
-        { position: 'bruttoarbeitslohnB', label: 'Bruttoarbeitslohn · Person B', role: 'own', person: 'B', declared: 39000, assessed: 39000, difference: 0, status: 'same', explanation: null },
+        { position: 'bruttoarbeitslohnA', label: 'Bruttoarbeitslohn · Person A', role: 'own', person: 'A', declared: 54900, assessed: 54900, difference: 0, status: 'same', explanation: null, shortReason: null },
+        { position: 'bruttoarbeitslohnB', label: 'Bruttoarbeitslohn · Person B', role: 'own', person: 'B', declared: 39000, assessed: 39000, difference: 0, status: 'same', explanation: null, shortReason: null },
       ],
     },
     {
       group: 'werbungskostenA',
       rows: [
-        { position: 'fahrtwegA', label: 'Fahrtweg (Entfernungspauschale)', role: 'own', person: 'A', declared: 1320, assessed: 1320, difference: 0, status: 'same', explanation: null },
-        { position: 'homeofficeA', label: 'Homeoffice-Pauschale', role: 'own', person: 'A', declared: 1260, assessed: 1080, difference: -180, status: 'deviation', explanation: 'Die Tätigkeit in der häuslichen Wohnung wurde an 180 statt 210 Tagen berücksichtigt.' },
-        { position: 'arbeitsmittelA', label: 'Arbeitsmittel', role: 'own', person: 'A', declared: 380, assessed: 260, difference: -120, status: 'deviation', explanation: 'Aufwendungen für das Mobiltelefon wurden wegen privater Mitbenutzung zu 50 % anerkannt.' },
-        { position: 'werbungskostenA', label: 'Summe Werbungskosten A', role: 'followOn', person: 'A', declared: 2960, assessed: 2660, difference: -300, status: 'deviation', explanation: null },
+        { position: 'fahrtwegA', label: 'Fahrtweg (Entfernungspauschale)', role: 'own', person: 'A', declared: 1320, assessed: 1320, difference: 0, status: 'same', explanation: null, shortReason: null },
+        { position: 'homeofficeA', label: 'Homeoffice-Pauschale', role: 'own', person: 'A', declared: 1260, assessed: 1080, difference: -180, status: 'deviation', explanation: 'Die Tätigkeit in der häuslichen Wohnung wurde an 180 statt 210 Tagen berücksichtigt.', shortReason: '180 statt 210 Tage' },
+        { position: 'arbeitsmittelA', label: 'Arbeitsmittel', role: 'own', person: 'A', declared: 380, assessed: 260, difference: -120, status: 'deviation', explanation: 'Aufwendungen für das Mobiltelefon wurden wegen privater Mitbenutzung zu 50 % anerkannt.', shortReason: 'Handy nur zu 50 %' },
+        { position: 'werbungskostenA', label: 'Summe Werbungskosten A', role: 'followOn', person: 'A', declared: 2960, assessed: 2660, difference: -300, status: 'deviation', explanation: null, shortReason: null },
       ],
     },
     {
       group: 'vorsorge',
       rows: [
-        { position: 'vorsorgeaufwand', label: 'Vorsorgeaufwendungen', role: 'own', person: null, declared: 17968, assessed: 17968, difference: 0, status: 'same', explanation: null },
-        { position: 'sonderausgaben', label: 'Sonderausgaben', role: 'own', person: null, declared: 72, assessed: null, difference: null, status: 'not_read', explanation: null },
+        { position: 'vorsorgeaufwand', label: 'Vorsorgeaufwendungen', role: 'own', person: null, declared: 17968, assessed: 17968, difference: 0, status: 'same', explanation: null, shortReason: null },
+        { position: 'sonderausgaben', label: 'Sonderausgaben', role: 'own', person: null, declared: 72, assessed: null, difference: null, status: 'not_read', explanation: null, shortReason: null },
       ],
     },
     {
       group: 'steuer',
       rows: [
-        { position: 'zuVersteuerndesEinkommen', label: 'Zu versteuerndes Einkommen', role: 'followOn', person: null, declared: 70971, assessed: 71271, difference: 300, status: 'deviation', explanation: null },
-        { position: 'festgesetzteSteuer', label: 'Einkommensteuer', role: 'followOn', person: null, declared: 12078, assessed: 12170, difference: 92, status: 'deviation', explanation: null },
-        { position: 'anrechnung', label: 'Einbehaltene Lohnsteuer und anrechenbare Steuern', role: 'own', person: null, declared: 12979, assessed: 12979, difference: 0, status: 'same', explanation: null },
-        { position: 'erstattung', label: 'Erstattung', role: 'followOn', person: null, declared: 901, assessed: 809, difference: -92, status: 'deviation', explanation: null },
+        { position: 'zuVersteuerndesEinkommen', label: 'Zu versteuerndes Einkommen', role: 'followOn', person: null, declared: 70971, assessed: 71271, difference: 300, status: 'deviation', explanation: null, shortReason: null },
+        { position: 'festgesetzteSteuer', label: 'Einkommensteuer', role: 'followOn', person: null, declared: 12078, assessed: 12170, difference: 92, status: 'deviation', explanation: null, shortReason: null },
+        { position: 'anrechnung', label: 'Einbehaltene Lohnsteuer und anrechenbare Steuern', role: 'own', person: null, declared: 12979, assessed: 12979, difference: 0, status: 'same', explanation: null, shortReason: null },
+        { position: 'erstattung', label: 'Erstattung', role: 'followOn', person: null, declared: 901, assessed: 809, difference: -92, status: 'deviation', explanation: null, shortReason: null },
       ],
     },
   ],
   ownDeviations: [
-    { position: 'homeofficeA', label: 'Homeoffice-Pauschale', role: 'own', person: 'A', declared: 1260, assessed: 1080, difference: -180, status: 'deviation', explanation: 'Die Tätigkeit in der häuslichen Wohnung wurde an 180 statt 210 Tagen berücksichtigt.', refundEffect: -56 },
-    { position: 'arbeitsmittelA', label: 'Arbeitsmittel', role: 'own', person: 'A', declared: 380, assessed: 260, difference: -120, status: 'deviation', explanation: 'Aufwendungen für das Mobiltelefon wurden wegen privater Mitbenutzung zu 50 % anerkannt.', refundEffect: -37 },
+    { position: 'homeofficeA', label: 'Homeoffice-Pauschale', role: 'own', person: 'A', declared: 1260, assessed: 1080, difference: -180, status: 'deviation', explanation: 'Die Tätigkeit in der häuslichen Wohnung wurde an 180 statt 210 Tagen berücksichtigt.', shortReason: '180 statt 210 Tage', refundEffect: -56 },
+    { position: 'arbeitsmittelA', label: 'Arbeitsmittel', role: 'own', person: 'A', declared: 380, assessed: 260, difference: -120, status: 'deviation', explanation: 'Aufwendungen für das Mobiltelefon wurden wegen privater Mitbenutzung zu 50 % anerkannt.', shortReason: 'Handy nur zu 50 %', refundEffect: -37 },
   ],
   followOnChain: [
     { position: 'werbungskostenA', label: 'Summe Werbungskosten A', difference: -300 },
@@ -250,7 +250,7 @@ export const LESSONS_2024: AssessmentLessonDto[] = [
 const sameDiff = (yr: number, filingType: 'einzel' | 'zusammen', positions: number): AssessmentDiffDto => ({
   year: yr,
   filingType,
-  groups: [{ group: 'steuer', rows: [{ position: 'erstattung', label: 'Erstattung', role: 'followOn', person: null, declared: 210, assessed: 210, difference: 0, status: 'same', explanation: null }] }],
+  groups: [{ group: 'steuer', rows: [{ position: 'erstattung', label: 'Erstattung', role: 'followOn', person: null, declared: 210, assessed: 210, difference: 0, status: 'same', explanation: null, shortReason: null }] }],
   ownDeviations: [],
   followOnChain: [],
   totalRefundEffect: 0,

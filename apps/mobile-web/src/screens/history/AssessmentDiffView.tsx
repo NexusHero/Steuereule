@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { Pressable, Text, View, type TextStyle, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { useBreakpoint, Button, useTheme, type UiTheme } from '@steuereule/ui'
-import type { AppealDeadlineDto, AssessmentDiffDto, AssessmentDiffRowDto, AssessmentLessonDto } from '@steuereule/api-client'
-import { formatEuro, formatNumber } from '@steuereule/core'
+import type { TFunction } from 'i18next'
+import { FLOW_CONTENT_MAX_WIDTH, useTheme, type UiTheme } from '@steuereule/ui'
+import type { AppealDeadlineDto, AssessmentDiffDto, AssessmentDiffRowDto, AssessmentLessonDto, AssessmentOwnDeviationDto } from '@steuereule/api-client'
+import { formatEuro, formatNumber, nextYearRepeat } from '@steuereule/core'
 import { APP_NS } from '../../i18n/resources'
 import { germanDate, signedEuro } from './historyFormat'
 import { usePositionLabel } from './positionLabels'
@@ -16,298 +17,301 @@ export interface AssessmentDiffViewProps {
   /** Whose single return this Abgleich is; null for the joint one. */
   readonly person?: 'A' | 'B' | null | undefined
   readonly lessons?: readonly AssessmentLessonDto[] | undefined
-  /** The open year whose masks show the lessons again (the mask pill), when known. */
+  /** The open year whose masks show the lessons again, when known. */
   readonly maskYear?: number | null | undefined
-  /** „Einspruch vorbereiten“: the existing Einspruch flow; without it the button stays away. */
+  /** The deadline chip leads into the existing Einspruch flow; without it the chip only informs. */
   readonly onPrepareAppeal?: (() => void) | undefined
-  readonly onClose?: (() => void) | undefined
   /** False on the year page, whose own title already names the year. */
   readonly yearInTitle?: boolean | undefined
   readonly testID?: string | undefined
 }
 
+type Tone = 'bad' | 'good' | null
+const toneOf = (n: number | null): Tone => (n === null || n === 0 ? null : n < 0 ? 'bad' : 'good')
+
 /**
- * Erklärung ↔ Bescheid, line by line (ADR-0098 §8, mock `diffHtml`): first only what the Finanzamt
- * changed, ordered by the effect on the refund and coloured by what it means for the user; the
- * follow-on changes as one chain; the form view collapsed; the Einspruchsfrist beside it; and the
- * lessons for next time. The same view in the Verlauf and in „Bescheid prüfen“.
+ * Erklärung ↔ Bescheid as a receipt (ADR-0098 §8): one figure for what the Bescheid did to the refund,
+ * the deadline beside it, one row per own deviation with its short reason, and the form view one tap
+ * away. Each row opens to the Finanzamt's quote and the lesson for next time. The same view in the
+ * Verlauf and in „Bescheid prüfen“.
  */
-export function AssessmentDiffView({ diff, deadline, submittedOn, assessmentDate, person = null, lessons = [], maskYear = null, onPrepareAppeal, onClose, yearInTitle = true, testID = 'bescheid-abgleich' }: AssessmentDiffViewProps) {
+export function AssessmentDiffView({ diff, deadline, submittedOn, assessmentDate, person = null, lessons = [], maskYear = null, onPrepareAppeal, yearInTitle = true, testID = 'bescheid-abgleich' }: AssessmentDiffViewProps) {
   const t = useTheme()
-  // On a phone three column heads wrap into each other; one caption line says the same.
-  const narrow = useBreakpoint() === 's'
   const s = makeStyles(t)
   const { t: tr } = useTranslation(APP_NS)
   const label = usePositionLabel()
   const [formOpen, setFormOpen] = useState(false)
   const [whyOpen, setWhyOpen] = useState(false)
-  const year = diff.year
   const own = [...diff.ownDeviations].sort((a, b) => Math.abs(b.refundEffect ?? 0) - Math.abs(a.refundEffect ?? 0))
   const refundRow = diff.groups.flatMap((g) => g.rows).find((r) => r.position === 'erstattung') ?? null
   const total = diff.totalRefundEffect
+  const personName = person === null ? null : tr(`verlauf.person.${person}`)
+  const title = yearInTitle
+    ? personName === null
+      ? tr('verlauf.abgleich.titel', { jahr: diff.year })
+      : tr('verlauf.abgleich.titelPerson', { jahr: diff.year, person: personName })
+    : personName
 
-  const meta = [
+  const footnote = [
     submittedOn ? tr('verlauf.abgleich.eingereicht', { datum: germanDate(submittedOn) }) : null,
     assessmentDate ? tr('verlauf.abgleich.bescheidVom', { datum: germanDate(assessmentDate) }) : null,
-  ].filter((x): x is string => x !== null)
+  ]
+    .filter((x): x is string => x !== null)
+    .join(' · ')
 
   return (
     <View style={s.card} testID={testID} accessibilityLiveRegion="polite">
-      <View style={s.head}>
-        <View style={s.flex}>
-          <Text style={s.eyebrow}>{tr('verlauf.abgleich.eyebrow')}</Text>
-          <Text style={s.title} accessibilityRole="header">
-            {yearInTitle
-              ? person === null
-                ? tr('verlauf.abgleich.titel', { jahr: year })
-                : tr('verlauf.abgleich.titelPerson', { jahr: year, person: tr(`verlauf.person.${person}`) })
-              : person === null
-                ? tr('verlauf.abgleich.titelOhneJahr')
-                : tr('verlauf.abgleich.titelPersonOhneJahr', { person: tr(`verlauf.person.${person}`) })}
-          </Text>
-        </View>
-        {onClose ? (
-          <Pressable accessibilityRole="button" accessibilityLabel={tr('verlauf.abgleich.schliessen')} onPress={onClose} style={s.close} testID={`${testID}-schliessen`}>
-            <Text style={s.closeGlyph}>×</Text>
-          </Pressable>
-        ) : null}
-      </View>
-      {meta.length > 0 ? <Text style={s.muted}>{meta.join(' · ')}</Text> : null}
+      {title !== null ? (
+        <Text style={s.title} accessibilityRole="header">
+          {title}
+        </Text>
+      ) : null}
 
       {diff.counts.deviations === 0 ? (
         <>
-          <View style={s.chipRow}>
-            <Text style={[s.pill, s.pillOk]}>{tr('verlauf.abgleich.wieErklaert')}</Text>
-          </View>
-          <Text style={s.muted} testID={`${testID}-gleich`}>
+          <Text style={s.body} testID={`${testID}-gleich`}>
             {tr(diff.filingType === 'einzel' && person !== null ? 'verlauf.abgleich.gleichEinzeln' : 'verlauf.abgleich.gleich', { count: diff.counts.same })}
           </Text>
           {diff.counts.notRead > 0 ? <Text style={s.muted}>{tr('verlauf.abgleich.nichtGelesenHinweis', { count: diff.counts.notRead })}</Text> : null}
-          <AppealDeadline deadline={deadline} onPrepareAppeal={onPrepareAppeal} testID={testID} />
+          {deadline !== null ? (
+            <View style={s.chipLine}>
+              <DeadlineChip deadline={deadline} onPrepareAppeal={onPrepareAppeal} testID={testID} />
+            </View>
+          ) : null}
         </>
       ) : (
         <>
-          <View style={s.chipRow}>
-            <Text style={[s.pill, s.pillBad]} testID={`${testID}-anzahl`}>
-              {tr('verlauf.abgleich.abweichungen', { count: diff.counts.deviations })}
-            </Text>
-            {refundRow && refundRow.declared !== null && refundRow.assessed !== null && total !== null ? (
-              <Text style={s.pill}>
-                {tr('verlauf.abgleich.erstattungChip', { erklaert: formatEuro(refundRow.declared), festgesetzt: formatEuro(refundRow.assessed) })}
-              </Text>
-            ) : null}
-          </View>
-          <AppealDeadline deadline={deadline} onPrepareAppeal={onPrepareAppeal} testID={testID} />
-
-          <View style={s.table}>
-            {narrow ? (
-              <View style={[s.row, s.headerRow]}>
-                <Text style={s.headerText} testID={`${testID}-spalten`}>{tr('verlauf.abgleich.spaltenKurz')}</Text>
-              </View>
-            ) : (
-              <View style={[s.row, s.headerRow]}>
-                <Text style={[s.pos, s.headerText]}>{tr('verlauf.abgleich.spalteGeaendert')}</Text>
-                <Text style={[s.values, s.headerText]}>{tr('verlauf.abgleich.spalteWerte')}</Text>
-                <Text style={[s.effect, s.headerText]}>{tr('verlauf.abgleich.spalteWirkung')}</Text>
-              </View>
-            )}
-            {own.map((d) => {
-              const effect = d.refundEffect
-              const tone = effect === null || effect === 0 ? null : effect < 0 ? 'bad' : 'good'
-              return (
-                <View key={d.position} testID={`${testID}-zeile-${d.position}`}>
-                  <View style={[s.row, tone === 'bad' ? s.rowBad : tone === 'good' ? s.rowGood : null]}>
-                    <Text style={s.pos}>{label(d.position, d.label)}</Text>
-                    {/* Value and effect wrap as one unit, so every row breaks the same way on a phone. */}
-                    <View style={s.valueGroup}>
-                    <Text style={s.values}>
-                      <Text style={s.struck}>{d.declared === null ? '–' : formatNumber(d.declared)}</Text>
-                      {` → ${d.assessed === null ? '–' : formatEuro(d.assessed)}`}
-                    </Text>
-                    <Text style={[s.effect, s.effectStrong, tone === 'bad' ? s.textBad : tone === 'good' ? s.textGood : null]} accessibilityLabel={effect === null ? tr('verlauf.abgleich.wirkungUnbekannt') : tr('verlauf.abgleich.wirkungA11y', { wert: signedEuro(effect) })}>
-                      {effect === null ? '–' : signedEuro(effect)}
-                    </Text>
-                    </View>
-                  </View>
-                  {d.explanation ? (
-                    <Text style={s.quote}>
-                      {tr('verlauf.abgleich.erlaeuterung')} <Text style={s.quoteText}>„{d.explanation}“</Text>
-                    </Text>
-                  ) : null}
-                </View>
-              )
-            })}
-            {diff.generalExplanations.map((text) => (
-              <Text key={text} style={s.quote}>
-                {tr('verlauf.abgleich.erlaeuterung')} <Text style={s.quoteText}>„{text}“</Text>
-              </Text>
-            ))}
-            {diff.followOnChain.length > 0 ? (
-              <View style={s.chain} testID={`${testID}-kette`}>
-                <Text style={s.chainText}>
-                  <Text style={s.followTag}>{tr('verlauf.abgleich.folge')}</Text>
-                  {'  '}
-                  {diff.followOnChain.map((link, i) => (
-                    <Text key={link.position}>
-                      {i > 0 ? ' → ' : ''}
-                      <Text style={s.chainLink}>{`${label(link.position, link.label)} ${signedEuro(link.difference)}`}</Text>
-                    </Text>
-                  ))}
+          <View style={s.head}>
+            <View style={s.flex}>
+              <View style={s.figureLine}>
+                <Text
+                  style={[s.figure, total === null ? null : toneText(s, toneOf(total))]}
+                  accessibilityLabel={total === null ? tr('verlauf.abgleich.wirkungUnbekannt') : tr('verlauf.abgleich.wirkungGesamtA11y', { wert: signedEuro(total) })}
+                  testID={`${testID}-wirkung`}
+                >
+                  {total === null ? '–' : signedEuro(total)}
                 </Text>
+                {diff.effectsDifferFromTotal && diff.singleEffectsSum !== null && total !== null ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={tr('verlauf.abgleich.warumSumme')}
+                    aria-expanded={whyOpen}
+                    onPress={() => setWhyOpen((v) => !v)}
+                    style={s.info}
+                    testID={`${testID}-nichtlinear-umschalten`}
+                  >
+                    <Text style={s.infoGlyph}>ⓘ</Text>
+                  </Pressable>
+                ) : null}
               </View>
-            ) : null}
-            <Pressable accessibilityRole="button" accessibilityState={{ expanded: formOpen }} onPress={() => setFormOpen((v) => !v)} style={s.more} testID={`${testID}-formular`}>
-              <Text style={s.moreText}>
-                {formOpen ? `▾ ${tr('verlauf.abgleich.formularZu')}` : `▸ ${tr('verlauf.abgleich.formularAuf', { count: diff.counts.positions, gleich: diff.counts.same })}`}
-              </Text>
-            </Pressable>
-            {formOpen ? (
-              <View testID={`${testID}-formularansicht`}>
-                {diff.groups.map((g) => (
-                  <View key={g.group}>
-                    <Text style={s.group}>{tr(`verlauf.abgleich.gruppe.${g.group}`)}</Text>
-                    {g.rows.map((r) => (
-                      <FormRow key={r.position} row={r} label={label(r.position, r.label)} totalTone={total === null ? null : total < 0 ? 'bad' : total > 0 ? 'good' : null} />
-                    ))}
-                  </View>
-                ))}
-              </View>
-            ) : null}
-          </View>
-
-          {diff.effectsDifferFromTotal && diff.singleEffectsSum !== null && total !== null ? (
-            <View>
-              {/* Behind a small toggle: the note matters only to whoever adds the column up. */}
-              <Pressable accessibilityRole="button" accessibilityState={{ expanded: whyOpen }} onPress={() => setWhyOpen((v) => !v)} style={s.info} testID={`${testID}-nichtlinear-umschalten`}>
-                <Text style={s.moreText}>{`ⓘ ${tr('verlauf.abgleich.warumSumme')}`}</Text>
-              </Pressable>
-              {whyOpen ? (
-                <Text style={s.foot} testID={`${testID}-nichtlinear`}>
-                  {tr('verlauf.abgleich.nichtLinear', { summe: signedEuro(diff.singleEffectsSum), abstand: formatEuro(Math.abs(diff.singleEffectsSum - total)), gesamt: signedEuro(total) })}
-                </Text>
-              ) : null}
             </View>
-          ) : (
-            <Text style={s.foot}>{tr('verlauf.abgleich.wirkungErklaert')}</Text>
-          )}
+            {deadline !== null ? <DeadlineChip deadline={deadline} onPrepareAppeal={onPrepareAppeal} testID={testID} /> : null}
+          </View>
+          {/* Under the figure across the full width: beside the deadline chip it broke into two lines on a phone. */}
+          {refundRow && refundRow.declared !== null && refundRow.assessed !== null ? (
+            <Text style={s.muted}>{tr('verlauf.abgleich.erstattung', { erklaert: formatNumber(refundRow.declared), festgesetzt: formatEuro(refundRow.assessed) })}</Text>
+          ) : null}
+          {whyOpen && diff.singleEffectsSum !== null && total !== null ? (
+            <Text style={s.muted} testID={`${testID}-nichtlinear`}>
+              {tr('verlauf.abgleich.nichtLinear', { summe: signedEuro(diff.singleEffectsSum), abstand: formatEuro(Math.abs(diff.singleEffectsSum - total)), gesamt: signedEuro(total) })}
+            </Text>
+          ) : null}
 
-          {lessons.length > 0 ? <Lessons lessons={lessons} year={year} maskYear={maskYear} testID={testID} /> : null}
+          <View style={s.rows}>
+            {own.map((d) => (
+              <DeviationRow key={d.position} row={d} lesson={lessons.find((l) => l.position === d.position) ?? null} maskYear={maskYear} testID={testID} />
+            ))}
+          </View>
 
-          {total !== null && total !== 0 ? (
-            <View style={s.owl}>
-              <Text style={s.owlLabel}>{tr('verlauf.eule.label')}</Text>
-              <Text style={s.owlText}>
-                {tr(total < 0 ? 'verlauf.abgleich.euleKostet' : 'verlauf.abgleich.euleNuetzt', { count: diff.counts.deviations, betrag: formatEuro(Math.abs(total)) })}
-                {own[0] && own[0].refundEffect !== null ? ` ${tr('verlauf.abgleich.euleGroesste', { position: label(own[0].position, own[0].label), wirkung: signedEuro(own[0].refundEffect) })}` : ''}
-              </Text>
+          <Pressable accessibilityRole="button" aria-expanded={formOpen} onPress={() => setFormOpen((v) => !v)} style={s.more} testID={`${testID}-formular`}>
+            <Text style={s.moreText}>
+              {formOpen
+                ? tr('verlauf.abgleich.formularZu')
+                : diff.counts.same > 0
+                  ? tr('verlauf.abgleich.weitere', { count: diff.counts.same })
+                  : tr('verlauf.abgleich.alleAnsehen')}
+            </Text>
+          </Pressable>
+          {formOpen ? (
+            <View style={s.form} testID={`${testID}-formularansicht`}>
+              {diff.generalExplanations.map((text) => (
+                <Text key={text} style={[s.quote, s.formQuote]}>{`„${text}“`}</Text>
+              ))}
+              {diff.groups.map((g) => (
+                <View key={g.group}>
+                  <Text style={s.group}>{tr(`verlauf.abgleich.gruppe.${g.group}`)}</Text>
+                  {g.rows.map((r) => (
+                    <FormRow key={r.position} row={r} label={label(r.position, r.label)} totalTone={toneOf(total)} />
+                  ))}
+                </View>
+              ))}
             </View>
           ) : null}
         </>
       )}
+      {footnote !== '' ? <Text style={s.foot}>{footnote}</Text> : null}
     </View>
   )
 }
 
-function FormRow({ row, label, totalTone }: { readonly row: AssessmentDiffRowDto; readonly label: string; readonly totalTone: 'bad' | 'good' | null }) {
-  const t = useTheme()
-  const s = makeStyles(t)
-  const { t: tr } = useTranslation(APP_NS)
-  const follow = row.role === 'followOn' ? <Text style={s.followTag}>{` ${tr('verlauf.abgleich.folge')}`}</Text> : null
-  if (row.status === 'same') {
-    return (
-      <View style={s.row}>
-        <Text style={[s.pos, s.mutedText]}>{label}</Text>
-        <Text style={[s.values, s.mutedText]}>{row.assessed === null ? '–' : formatEuro(row.assessed)}</Text>
-        <Text style={s.effect} />
-      </View>
-    )
-  }
-  if (row.status === 'not_read') {
-    return (
-      <View style={s.row}>
-        <Text style={[s.pos, s.mutedText]}>{label}</Text>
-        <Text style={[s.values, s.mutedText]}>{`${row.declared === null ? '–' : formatEuro(row.declared)} · ${tr('verlauf.abgleich.nichtGelesen')}`}</Text>
-        <Text style={s.effect} />
-      </View>
-    )
-  }
-  return (
-    <View style={[s.row, totalTone === 'bad' ? s.rowBad : totalTone === 'good' ? s.rowGood : null]}>
-      <Text style={s.pos}>
-        {label}
-        {follow}
-      </Text>
-      <Text style={s.values}>
-        <Text style={s.struck}>{row.declared === null ? tr('verlauf.abgleich.nichtErklaert') : formatNumber(row.declared)}</Text>
-        {` → ${row.assessed === null ? '–' : formatEuro(row.assessed)}`}
-      </Text>
-      <Text style={s.effect} />
-    </View>
-  )
+/** The muted line under a row: the short reason, and whether the next year declared more again. */
+function reasonParts(row: AssessmentOwnDeviationDto, lesson: AssessmentLessonDto | null, tr: TFunction): { readonly reason: string | null; readonly again: string | null } {
+  const repeat = lesson ? nextYearRepeat(row.position, lesson.nextYear) : null
+  const again =
+    repeat === null
+      ? null
+      : 'days' in repeat
+        ? tr('verlauf.abgleich.wiederTage', { jahr: repeat.year, tage: formatNumber(repeat.days) })
+        : tr('verlauf.abgleich.wiederBetrag', { jahr: repeat.year, betrag: formatEuro(repeat.amount) })
+  return { reason: row.shortReason, again }
 }
 
-/** The Einspruchsfrist beside the diff: end, days left and the way into the Einspruch, or only the date once it passed. */
-function AppealDeadline({ deadline, onPrepareAppeal, testID }: { readonly deadline: AppealDeadlineDto | null; readonly onPrepareAppeal?: (() => void) | undefined; readonly testID: string }) {
+function DeviationRow({ row, lesson, maskYear, testID }: { readonly row: AssessmentOwnDeviationDto; readonly lesson: AssessmentLessonDto | null; readonly maskYear: number | null; readonly testID: string }) {
   const t = useTheme()
   const s = makeStyles(t)
   const { t: tr } = useTranslation(APP_NS)
-  if (deadline === null) return null
-  if (!deadline.running) {
-    return (
-      <View style={[s.deadline, s.deadlinePast]} testID={`${testID}-frist-vorbei`}>
-        <Text style={s.mutedText}>{tr('verlauf.frist.vorbei', { datum: germanDate(deadline.endsOn) })}</Text>
-      </View>
-    )
-  }
-  return (
-    <View style={s.deadline} testID={`${testID}-frist`}>
-      <Text style={s.deadlineText}>
-        <Text style={s.strong}>{tr('verlauf.frist.bis', { datum: germanDate(deadline.endsOn) })}</Text>
-        {` · ${tr('verlauf.frist.resttage', { count: deadline.remainingDays })}`}
+  const label = usePositionLabel()
+  const [open, setOpen] = useState(false)
+  const effect = row.refundEffect
+  const tone = toneOf(effect)
+  const name = label(row.position, row.label)
+  const { reason, again } = reasonParts(row, lesson, tr)
+  const maskName = lesson?.mask ? tr(`verlauf.maske.${lesson.mask.field}`, { defaultValue: lesson.mask.label }) : null
+  const hint = lesson?.hint ? tr(`verlauf.lehre.hinweis.${row.position.replace(/[AB]$/, '')}`, { defaultValue: lesson.hint }) : null
+  const expandable = row.explanation !== null || hint !== null || maskName !== null
+
+  const reasonLine =
+    reason !== null || again !== null ? (
+      <Text style={s.reason}>
+        {reason}
+        {reason !== null && again !== null ? ' · ' : ''}
+        {again !== null ? (
+          <Text>
+            <Text style={s.warnGlyph}>
+              ⚠{' '}
+            </Text>
+            {again}
+          </Text>
+        ) : null}
       </Text>
-      {onPrepareAppeal ? (
-        <Button onPress={onPrepareAppeal} testID={`${testID}-einspruch`}>
-          {tr('verlauf.frist.einspruch')}
-        </Button>
+    ) : null
+
+  const main = (
+    <>
+      <View style={s.rowLine}>
+        <View style={s.flex}>
+          <Text style={s.pos}>{name}</Text>
+        </View>
+        <Text style={s.values}>
+          <Text style={s.struck}>{row.declared === null ? '–' : formatNumber(row.declared)}</Text>
+          {` ${row.assessed === null ? '–' : formatNumber(row.assessed)}`}
+        </Text>
+        <Text style={[s.effect, toneText(s, tone)]}>{effect === null ? '–' : signedEuro(effect)}</Text>
+      </View>
+      {/* Always under the label: beside it on a wide screen the line was cut off. */}
+      {reasonLine}
+    </>
+  )
+  const a11y = [
+    tr('verlauf.abgleich.zeileA11y', {
+      position: name,
+      erklaert: row.declared === null ? '–' : formatEuro(row.declared),
+      festgesetzt: row.assessed === null ? '–' : formatEuro(row.assessed),
+      wirkung: effect === null ? tr('verlauf.abgleich.wirkungUnbekannt') : signedEuro(effect),
+    }),
+    reason,
+    again,
+  ]
+    .filter(Boolean)
+    .join(' ')
+
+  return (
+    <View style={s.row} testID={`${testID}-zeile-${row.position}`}>
+      {expandable ? (
+        <Pressable accessibilityRole="button" accessibilityLabel={a11y} aria-expanded={open} onPress={() => setOpen((v) => !v)} style={s.rowPress}>
+          {main}
+        </Pressable>
+      ) : (
+        <View style={s.rowPress} accessible accessibilityLabel={a11y}>
+          {main}
+        </View>
+      )}
+      {open ? (
+        <View style={s.detail} testID={`${testID}-detail-${row.position}`}>
+          {row.explanation !== null ? <Text style={s.quote}>{`„${row.explanation}“`}</Text> : null}
+          {hint !== null ? <Text style={s.body}>{hint}</Text> : null}
+          {maskName !== null ? (
+            <Text style={s.muted}>{maskYear === null ? tr('verlauf.lehre.maskeNaechstes', { maske: maskName }) : tr('verlauf.lehre.maske', { jahr: maskYear, maske: maskName })}</Text>
+          ) : null}
+        </View>
       ) : null}
     </View>
   )
 }
 
-/** „Fürs nächste Mal“: what was recognised, whether the next year declared it again, and the catalogue's hint. */
-function Lessons({ lessons, year, maskYear, testID }: { readonly lessons: readonly AssessmentLessonDto[]; readonly year: number; readonly maskYear: number | null; readonly testID: string }) {
+function FormRow({ row, label, totalTone }: { readonly row: AssessmentDiffRowDto; readonly label: string; readonly totalTone: Tone }) {
   const t = useTheme()
   const s = makeStyles(t)
   const { t: tr } = useTranslation(APP_NS)
-  const label = usePositionLabel()
+  if (row.status === 'same' || row.status === 'not_read') {
+    const value = row.status === 'same' ? (row.assessed === null ? '–' : formatEuro(row.assessed)) : `${row.declared === null ? '–' : formatEuro(row.declared)} · ${tr('verlauf.abgleich.nichtGelesen')}`
+    return (
+      <View style={s.formRow}>
+        <Text style={[s.pos, s.mutedText]}>{label}</Text>
+        <Text style={[s.values, s.mutedText]}>{value}</Text>
+      </View>
+    )
+  }
   return (
-    <View style={s.lessons} testID={`${testID}-lehren`}>
-      <Text style={s.lessonsTitle} accessibilityRole="header">
-        {tr('verlauf.lehre.titel')}
+    <View style={[s.formRow, row.role === 'followOn' ? (totalTone === 'bad' ? s.rowBad : totalTone === 'good' ? s.rowGood : null) : null]}>
+      <Text style={s.pos}>
+        {label}
+        {row.role === 'followOn' ? <Text style={s.followTag}>{` ${tr('verlauf.abgleich.folge')}`}</Text> : null}
       </Text>
-      {lessons.map((l) => (
-        <View key={l.position} style={s.lesson}>
-          <Text style={s.strong}>{tr('verlauf.lehre.anerkannt', { position: label(l.position, l.label), festgesetzt: formatEuro(l.recognised.assessed), erklaert: formatEuro(l.recognised.declared) })}</Text>
-          {l.nextYear ? <Text style={s.body}>{nextYearText(l, year, tr)}</Text> : null}
-          {l.hint ? <Text style={s.body}>{tr(`verlauf.lehre.hinweis.${l.position.replace(/[AB]$/, '')}`, { defaultValue: l.hint })}</Text> : null}
-          {l.mask ? (
-            <Text style={s.lessonPill}>
-              {maskYear === null ? tr('verlauf.lehre.maskeNaechstes', { maske: tr(`verlauf.maske.${l.mask.field}`, { defaultValue: l.mask.label }) }) : tr('verlauf.lehre.maske', { jahr: maskYear, maske: tr(`verlauf.maske.${l.mask.field}`, { defaultValue: l.mask.label }) })}
-            </Text>
-          ) : null}
-        </View>
-      ))}
+      <Text style={s.values}>
+        <Text style={s.struck}>{row.declared === null ? tr('verlauf.abgleich.nichtErklaert') : formatNumber(row.declared)}</Text>
+        {` → ${row.assessed === null ? '–' : formatEuro(row.assessed)}`}
+      </Text>
     </View>
   )
 }
 
-function nextYearText(l: AssessmentLessonDto, year: number, tr: ReturnType<typeof useTranslation>['t']): string {
-  const next = l.nextYear!
-  if (next.declared === null) return tr('verlauf.lehre.folgejahrNicht', { jahr: next.year })
-  const key = next.source === 'filed' ? 'verlauf.lehre.folgejahrEingereicht' : 'verlauf.lehre.folgejahrAngaben'
-  const again = next.declaredAboveRecognised === true ? ` ${tr('verlauf.lehre.wiederMehr', { jahr: year })}` : ''
-  const pending = next.source === 'filed' ? ` ${tr('verlauf.lehre.bescheidAus', { jahr: next.year })}` : ''
-  return `${tr(key, { jahr: next.year, betrag: formatEuro(next.declared) })}${again}${pending}`
+/** „Einspruch · 19 Tage“ while the Einspruchsfrist runs (into the Einspruch when it can), muted once it passed. */
+function DeadlineChip({ deadline, onPrepareAppeal, testID }: { readonly deadline: AppealDeadlineDto; readonly onPrepareAppeal?: (() => void) | undefined; readonly testID: string }) {
+  const t = useTheme()
+  const s = makeStyles(t)
+  const { t: tr } = useTranslation(APP_NS)
+  const datum = germanDate(deadline.endsOn)
+  if (!deadline.running) {
+    return (
+      <Text style={[s.chip, s.chipPast]} accessibilityLabel={tr('verlauf.abgleich.fristVorbeiA11y', { datum })} testID={`${testID}-frist-vorbei`}>
+        {tr('verlauf.abgleich.fristVorbei')}
+      </Text>
+    )
+  }
+  const text = deadline.remainingDays === 0 ? tr('verlauf.abgleich.einspruchHeute') : tr('verlauf.abgleich.einspruch', { count: deadline.remainingDays })
+  if (!onPrepareAppeal) {
+    return (
+      <Text style={[s.chip, s.chipRunning]} accessibilityLabel={tr('verlauf.abgleich.fristA11y', { datum, count: deadline.remainingDays })} testID={`${testID}-frist`}>
+        {text}
+      </Text>
+    )
+  }
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={tr('verlauf.abgleich.einspruchA11y', { datum, count: deadline.remainingDays })}
+      onPress={onPrepareAppeal}
+      style={s.chipPress}
+      testID={`${testID}-einspruch`}
+    >
+      <Text style={[s.chip, s.chipRunning]}>{`${text} ›`}</Text>
+    </Pressable>
+  )
+}
+
+function toneText(s: ReturnType<typeof makeStyles>, tone: Tone): TextStyle | null {
+  return tone === 'bad' ? s.textBad : tone === 'good' ? s.textGood : null
 }
 
 function makeStyles(t: UiTheme) {
@@ -318,60 +322,51 @@ function makeStyles(t: UiTheme) {
     borderRadius: t.radius.m,
     padding: t.space.s4,
     gap: t.space.s3,
+    width: '100%',
+    maxWidth: FLOW_CONTENT_MAX_WIDTH,
     ...t.shadow.hart,
   }
+  const title: TextStyle = { ...t.type.itemTitle, color: t.color.tinte }
   const head: ViewStyle = { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: t.space.s3 }
   const flex: ViewStyle = { flex: 1, minWidth: 0 }
-  const eyebrow: TextStyle = { ...t.type.meta, color: t.color.tinte2, textTransform: 'uppercase', letterSpacing: 0.08 * t.size.xs }
-  const title: TextStyle = { ...t.type.subhead, color: t.color.tinte }
-  const close: ViewStyle = { width: 36, height: 36, borderRadius: t.radius.pille, borderWidth: t.space.kontur, borderColor: t.color.linie, alignItems: 'center', justifyContent: 'center', backgroundColor: t.color.karte }
-  const closeGlyph: TextStyle = { ...t.type.bodyStrong, color: t.color.tinte }
+  const figureLine: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s1 }
+  const figure: TextStyle = { ...t.type.headline, color: t.color.tinte, fontVariant: ['tabular-nums'] }
+  const info: ViewStyle = { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }
+  const infoGlyph: TextStyle = { ...t.type.body, color: t.color.kiTinte }
   const muted: TextStyle = { ...t.type.small, color: t.color.tinte2 }
   const mutedText: TextStyle = { color: t.color.tinte2 }
-  const chipRow: ViewStyle = { flexDirection: 'row', flexWrap: 'wrap', gap: t.space.s2 }
-  const pill: TextStyle = { ...t.type.captionStrong, color: t.color.tinte, borderWidth: 1, borderColor: t.color.linie, borderRadius: t.radius.pille, paddingHorizontal: t.space.s2, paddingVertical: 2, overflow: 'hidden' }
-  const pillOk: TextStyle = { backgroundColor: t.color.okWeich }
-  const pillBad: TextStyle = { backgroundColor: t.color.fehlerWeich }
-  const table: ViewStyle = { borderWidth: 1, borderColor: t.color.linieWeich, borderRadius: t.radius.s, overflow: 'hidden' }
-  const row: ViewStyle = { flexDirection: 'row', alignItems: 'baseline', gap: t.space.s2, paddingHorizontal: t.space.s3, paddingVertical: 6, flexWrap: 'wrap' }
-  const headerRow: ViewStyle = { borderBottomWidth: 1, borderBottomColor: t.color.linieWeich }
-  const headerText: TextStyle = { ...t.type.caption, color: t.color.tinte2 }
-  const pos: TextStyle = { ...t.type.small, color: t.color.tinte, flexGrow: 1, flexShrink: 1, flexBasis: 140 }
+  const body: TextStyle = { ...t.type.small, color: t.color.tinte }
+  const chipLine: ViewStyle = { flexDirection: 'row' }
+  const chipPress: ViewStyle = { minHeight: 44, justifyContent: 'center' }
+  const chip: TextStyle = { ...t.type.captionStrong, borderWidth: t.space.kontur, borderRadius: t.radius.pille, paddingHorizontal: t.space.s3, paddingVertical: 6, overflow: 'hidden' }
+  const chipRunning: TextStyle = { color: t.color.tinte, backgroundColor: t.color.warnWeich, borderColor: t.color.warn }
+  const chipPast: TextStyle = { color: t.color.tinte2, backgroundColor: t.color.grund, borderColor: t.color.linieWeich, alignSelf: 'flex-start' }
+  const rows: ViewStyle = { borderTopWidth: 1, borderTopColor: t.color.linieWeich }
+  const row: ViewStyle = { borderBottomWidth: 1, borderBottomColor: t.color.linieWeich }
+  const rowPress: ViewStyle = { minHeight: 44, justifyContent: 'center', paddingVertical: t.space.s2, gap: 2 }
+  const rowLine: ViewStyle = { flexDirection: 'row', alignItems: 'baseline', gap: t.space.s2 }
+  const pos: TextStyle = { ...t.type.label, color: t.color.tinte, flexShrink: 1 }
   const values: TextStyle = { ...t.type.metaLarge, color: t.color.tinte, fontVariant: ['tabular-nums'] }
-  const valueGroup: ViewStyle = { flexDirection: 'row', alignItems: 'baseline', gap: t.space.s2, marginLeft: 'auto' }
-  const effect: TextStyle = { ...t.type.metaLarge, color: t.color.tinte, minWidth: 64, textAlign: 'right', fontVariant: ['tabular-nums'] }
-  const effectStrong: TextStyle = { fontWeight: t.weight.schwer }
-  const rowBad: ViewStyle = { backgroundColor: t.color.fehlerWeich }
-  const rowGood: ViewStyle = { backgroundColor: t.color.okWeich }
+  const effect: TextStyle = { ...t.type.metaLarge, fontWeight: t.weight.schwer, color: t.color.tinte, minWidth: 64, textAlign: 'right', fontVariant: ['tabular-nums'] }
+  const struck: TextStyle = { textDecorationLine: 'line-through', color: t.color.tinte2 }
+  const reason: TextStyle = { ...t.type.caption, color: t.color.tinte2 }
+  const warnGlyph: TextStyle = { color: t.color.warn }
   const textBad: TextStyle = { color: t.color.fehler }
   const textGood: TextStyle = { color: t.color.ok }
-  const struck: TextStyle = { textDecorationLine: 'line-through', color: t.color.tinte2 }
-  const quote: TextStyle = { ...t.type.small, color: t.color.tinte2, paddingHorizontal: t.space.s3, paddingBottom: t.space.s2 }
-  const quoteText: TextStyle = { fontStyle: 'italic', color: t.color.tinte }
-  const chain: ViewStyle = { paddingHorizontal: t.space.s3, paddingVertical: t.space.s2, borderTopWidth: 1, borderTopColor: t.color.linieWeich }
-  const chainText: TextStyle = { ...t.type.caption, color: t.color.tinte2, lineHeight: 20 }
-  const chainLink: TextStyle = { ...t.type.captionStrong, color: t.color.tinte }
-  const followTag: TextStyle = { ...t.type.meta, color: t.color.tinte2, borderWidth: 1, borderColor: t.color.tinte2, borderRadius: 4, paddingHorizontal: 4 }
-  const more: ViewStyle = { borderTopWidth: 1, borderTopColor: t.color.linieWeich, borderStyle: 'dashed', paddingHorizontal: t.space.s3, paddingVertical: t.space.s2, minHeight: 44, justifyContent: 'center' }
-  const info: ViewStyle = { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start' }
+  const detail: ViewStyle = { gap: t.space.s1, paddingBottom: t.space.s3 }
+  const quote: TextStyle = { ...t.type.small, fontStyle: 'italic', color: t.color.tinte }
+  const more: ViewStyle = { minHeight: 44, justifyContent: 'center' }
   const moreText: TextStyle = { ...t.type.small, color: t.color.kiTinte }
+  const form: ViewStyle = { borderWidth: 1, borderColor: t.color.linieWeich, borderRadius: t.radius.s, overflow: 'hidden' }
+  const formQuote: TextStyle = { paddingHorizontal: t.space.s3, paddingVertical: t.space.s2 }
+  const formRow: ViewStyle = { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: t.space.s2, paddingHorizontal: t.space.s3, paddingVertical: 6 }
+  const rowBad: ViewStyle = { backgroundColor: t.color.fehlerWeich }
+  const rowGood: ViewStyle = { backgroundColor: t.color.okWeich }
+  const followTag: TextStyle = { ...t.type.meta, color: t.color.tinte2 }
   const group: TextStyle = { ...t.type.captionStrong, color: t.color.tinte2, textTransform: 'uppercase', letterSpacing: 0.04 * t.size.xs, backgroundColor: t.color.grund, paddingHorizontal: t.space.s3, paddingVertical: 4, borderTopWidth: 1, borderTopColor: t.color.linieWeich }
   const foot: TextStyle = { ...t.type.caption, color: t.color.tinte2 }
-  const deadline: ViewStyle = { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: t.space.s2, backgroundColor: t.color.warnWeich, borderWidth: t.space.kontur, borderColor: t.color.warn, borderRadius: t.radius.s, paddingHorizontal: t.space.s3, paddingVertical: t.space.s2 }
-  const deadlinePast: ViewStyle = { backgroundColor: t.color.grund, borderColor: t.color.linieWeich }
-  const deadlineText: TextStyle = { ...t.type.small, color: t.color.tinte, flexShrink: 1 }
-  const strong: TextStyle = { ...t.type.labelStrong, color: t.color.tinte }
-  const body: TextStyle = { ...t.type.small, color: t.color.tinte }
-  const lessons: ViewStyle = { backgroundColor: t.color.funkeWeich, borderWidth: t.space.kontur, borderColor: t.color.linie, borderRadius: t.radius.s, padding: t.space.s3, gap: t.space.s2 }
-  const lessonsTitle: TextStyle = { ...t.type.itemTitle, color: t.color.tinte }
-  const lesson: ViewStyle = { gap: 3, borderTopWidth: 1, borderTopColor: t.color.linieWeich, paddingTop: t.space.s2 }
-  const lessonPill: TextStyle = { ...pill, alignSelf: 'flex-start', backgroundColor: t.color.karte }
-  const owl: ViewStyle = { flexDirection: 'row', gap: t.space.s2, backgroundColor: t.color.kiWeich, borderRadius: t.radius.s, paddingHorizontal: t.space.s3, paddingVertical: t.space.s2 }
-  const owlLabel: TextStyle = { ...t.type.meta, color: t.color.kiTinte, textTransform: 'uppercase', letterSpacing: 0.08 * t.size.xs, paddingTop: 2 }
-  const owlText: TextStyle = { ...t.type.small, color: t.color.kiTinte, flex: 1 }
   return {
-    card, head, flex, eyebrow, title, close, closeGlyph, muted, mutedText, chipRow, pill, pillOk, pillBad, table, row, headerRow, headerText, pos, values, valueGroup, effect,
-    effectStrong, rowBad, rowGood, textBad, textGood, struck, quote, quoteText, chain, chainText, chainLink, followTag, more, info, moreText, group, foot, deadline,
-    deadlinePast, deadlineText, strong, body, lessons, lessonsTitle, lesson, lessonPill, owl, owlLabel, owlText,
+    card, title, head, flex, figureLine, figure, info, infoGlyph, muted, mutedText, body, chipLine, chipPress, chip, chipRunning, chipPast, rows, row, rowPress, rowLine,
+    pos, values, effect, struck, reason, warnGlyph, textBad, textGood, detail, quote, more, moreText, form, formQuote, formRow, rowBad, rowGood, followTag, group, foot,
   }
 }

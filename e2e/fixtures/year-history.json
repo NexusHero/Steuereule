@@ -2313,7 +2313,8 @@
                 "assessed": 54900,
                 "difference": 0,
                 "status": "same",
-                "explanation": null
+                "explanation": null,
+                "shortReason": null
               },
               {
                 "position": "bruttoarbeitslohnB",
@@ -2324,7 +2325,8 @@
                 "assessed": 39000,
                 "difference": 0,
                 "status": "same",
-                "explanation": null
+                "explanation": null,
+                "shortReason": null
               }
             ]
           },
@@ -2340,7 +2342,8 @@
                 "assessed": 1320,
                 "difference": 0,
                 "status": "same",
-                "explanation": null
+                "explanation": null,
+                "shortReason": null
               },
               {
                 "position": "homeofficeA",
@@ -2351,7 +2354,8 @@
                 "assessed": 1080,
                 "difference": -180,
                 "status": "deviation",
-                "explanation": "Die Tätigkeit in der häuslichen Wohnung wurde an 180 statt 210 Tagen berücksichtigt."
+                "explanation": "Die Tätigkeit in der häuslichen Wohnung wurde an 180 statt 210 Tagen berücksichtigt.",
+                "shortReason": "180 statt 210 Tage"
               },
               {
                 "position": "arbeitsmittelA",
@@ -2362,7 +2366,8 @@
                 "assessed": 260,
                 "difference": -120,
                 "status": "deviation",
-                "explanation": "Aufwendungen für das Mobiltelefon wurden wegen privater Mitbenutzung zu 50 % anerkannt."
+                "explanation": "Aufwendungen für das Mobiltelefon wurden wegen privater Mitbenutzung zu 50 % anerkannt.",
+                "shortReason": "Handy nur zu 50 %"
               },
               {
                 "position": "werbungskostenA",
@@ -2373,7 +2378,8 @@
                 "assessed": 2660,
                 "difference": -300,
                 "status": "deviation",
-                "explanation": null
+                "explanation": null,
+                "shortReason": null
               }
             ]
           },
@@ -2389,7 +2395,8 @@
                 "assessed": 17968,
                 "difference": 0,
                 "status": "same",
-                "explanation": null
+                "explanation": null,
+                "shortReason": null
               },
               {
                 "position": "sonderausgaben",
@@ -2400,7 +2407,8 @@
                 "assessed": null,
                 "difference": null,
                 "status": "not_read",
-                "explanation": null
+                "explanation": null,
+                "shortReason": null
               }
             ]
           },
@@ -2416,7 +2424,8 @@
                 "assessed": 71271,
                 "difference": 300,
                 "status": "deviation",
-                "explanation": null
+                "explanation": null,
+                "shortReason": null
               },
               {
                 "position": "festgesetzteSteuer",
@@ -2427,7 +2436,8 @@
                 "assessed": 12170,
                 "difference": 92,
                 "status": "deviation",
-                "explanation": null
+                "explanation": null,
+                "shortReason": null
               },
               {
                 "position": "anrechnung",
@@ -2438,7 +2448,8 @@
                 "assessed": 12979,
                 "difference": 0,
                 "status": "same",
-                "explanation": null
+                "explanation": null,
+                "shortReason": null
               },
               {
                 "position": "erstattung",
@@ -2449,7 +2460,8 @@
                 "assessed": 809,
                 "difference": -92,
                 "status": "deviation",
-                "explanation": null
+                "explanation": null,
+                "shortReason": null
               }
             ]
           }
@@ -2465,6 +2477,7 @@
             "difference": -180,
             "status": "deviation",
             "explanation": "Die Tätigkeit in der häuslichen Wohnung wurde an 180 statt 210 Tagen berücksichtigt.",
+            "shortReason": "180 statt 210 Tage",
             "refundEffect": -56
           },
           {
@@ -2477,6 +2490,7 @@
             "difference": -120,
             "status": "deviation",
             "explanation": "Aufwendungen für das Mobiltelefon wurden wegen privater Mitbenutzung zu 50 % anerkannt.",
+            "shortReason": "Handy nur zu 50 %",
             "refundEffect": -37
           }
         ],
@@ -2586,7 +2600,8 @@
                 "assessed": 210,
                 "difference": 0,
                 "status": "same",
-                "explanation": null
+                "explanation": null,
+                "shortReason": null
               }
             ]
           }
@@ -2632,7 +2647,8 @@
                 "assessed": 210,
                 "difference": 0,
                 "status": "same",
-                "explanation": null
+                "explanation": null,
+                "shortReason": null
               }
             ]
           }
@@ -2678,7 +2694,8 @@
                 "assessed": 210,
                 "difference": 0,
                 "status": "same",
-                "explanation": null
+                "explanation": null,
+                "shortReason": null
               }
             ]
           }
