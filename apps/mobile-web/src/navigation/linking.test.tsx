@@ -30,6 +30,9 @@ describe('navigation linking config (#443 slice 1)', () => {
     { path: '/app/verlauf' },
     { path: '/app/steuerjahre', expectedPath: '/app/verlauf' },
     { path: '/app/jahre', expectedPath: '/app/verlauf' },
+    { path: '/app/erklaerungen', expectedPath: '/app/verlauf' },
+    { path: '/app/verlauf/2024' },
+    { path: '/app/verlauf/entwicklung' },
     { path: '/app/profil' },
     { path: '/app/profil/datenschutz' },
     { path: '/app/profil/sicherheit' },
@@ -94,5 +97,15 @@ describe('navigation linking config (#443 slice 1)', () => {
     expect(formatDocumentTitle('Owl')).toBe('SteuerEule — Eulen-Modus')
     expect(formatDocumentTitle('Receipts')).toBe('SteuerEule — Belege')
     expect(formatDocumentTitle(undefined)).toBe('SteuerEule')
+  })
+
+  it('opens a year of the Verlauf with the year as a number above the timeline, and the development by its own name', () => {
+    const tabOf = (path: string) => getStateFromPath(path, linking.config)?.routes[0]?.state?.routes.find((r) => r.name === 'History')
+    const year = tabOf('/app/verlauf/2024')
+    expect(year?.name).toBe('History')
+    expect(year?.state?.routes.map((r) => r.name)).toEqual(['HistoryHome', 'HistoryYear'])
+    expect(year?.state?.routes[1]?.params).toEqual({ year: 2024 })
+    expect(tabOf('/app/verlauf/entwicklung')?.state?.routes.map((r) => r.name)).toEqual(['HistoryHome', 'HistoryDevelopment'])
+    expect(formatDocumentTitle('HistoryYear')).toBe('SteuerEule — Verlauf eines Jahres')
   })
 })

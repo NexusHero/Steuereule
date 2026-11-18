@@ -13,7 +13,10 @@ const text = (id: string) => (screen.getByTestId(id).textContent ?? '').replace(
 describe('AssessmentDiffView', () => {
   it('lists only the own deviations, largest effect on the refund first, declared struck → assessed', () => {
     renderInApp(<AssessmentDiffView diff={{ ...DIFF_2024, ownDeviations: [DIFF_2024.ownDeviations[1]!, DIFF_2024.ownDeviations[0]!] }} deadline={HISTORY_DIFFS[0]!.deadline} testID="abgleich" />)
-    expect(text('abgleich-anzahl')).toBe('2 Abweichungen')
+    expect(text('abgleich-anzahl')).toBe('2 Änderungen')
+    // The refund chip names declared and assessed; the cut itself stays in the rows and the chain.
+    expect(text('abgleich')).toContain('Erstattung 901 € → 809 €')
+    expect(text('abgleich')).not.toContain('(−92 €)')
     const rows = screen.getAllByTestId(/^abgleich-zeile-/)
     expect(rows.map((r) => r.getAttribute('data-testid'))).toEqual(['abgleich-zeile-homeofficeA', 'abgleich-zeile-arbeitsmittelA'])
     expect(text('abgleich-zeile-homeofficeA')).toContain('1.260 → 1.080 €')
@@ -23,9 +26,12 @@ describe('AssessmentDiffView', () => {
     expect(text('abgleich-zeile-homeofficeA')).toContain('„Die Tätigkeit in der häuslichen Wohnung wurde an 180 statt 210 Tagen berücksichtigt.“')
   })
 
-  it('folds the follow-on changes into one chain and says when the single effects do not add up', () => {
+  it('folds the follow-on changes into one chain and says behind a small toggle when the single effects do not add up', () => {
     renderInApp(<AssessmentDiffView diff={DIFF_2024} deadline={null} testID="abgleich" />)
-    expect(text('abgleich-kette')).toBe('Folge  Summe Werbungskosten A −300 € → Zu versteuerndes Einkommen +300 € → Einkommensteuer +92 € → Erstattung −92 €')
+    expect(text('abgleich-kette')).toBe('daraus folgt  Summe Werbungskosten A −300 € → Zu versteuerndes Einkommen +300 € → Einkommensteuer +92 € → Erstattung −92 €')
+    expect(screen.queryByTestId('abgleich-nichtlinear')).toBeNull()
+    expect(text('abgleich-nichtlinear-umschalten')).toBe('ⓘ Warum die Summe abweicht')
+    fireEvent.click(screen.getByTestId('abgleich-nichtlinear-umschalten'))
     expect(text('abgleich-nichtlinear')).toContain('Die Summe (−93 €) weicht um 1 € von der Gesamtwirkung (−92 €) ab, weil der Tarif nicht linear ist.')
   })
 
@@ -76,7 +82,7 @@ describe('AssessmentDiffView', () => {
 
   it('is translated into English', () => {
     renderInApp(<AssessmentDiffView diff={DIFF_2024} deadline={null} testID="abgleich" />, { language: 'en' })
-    expect(text('abgleich-anzahl')).toBe('2 differences')
+    expect(text('abgleich-anzahl')).toBe('2 changes')
     expect(screen.getByText('Home office allowance')).toBeTruthy()
   })
 })

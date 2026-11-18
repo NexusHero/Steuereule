@@ -48,7 +48,7 @@ const LEGEND: Readonly<Record<HistoryMetric, readonly SegmentKind[] | null>> = {
   steuerquote: null,
 }
 
-/** „Entwicklung über die Jahre“ (ADR-0098 §2, mock chips, KPIs and `chart()`): the four key figures, Erstattung first. */
+/** „Entwicklung über die Jahre“ (ADR-0098 §2, mock chips, KPIs and `chart()`): the four key figures, Erstattung first, on their own page. */
 export function HistoryDevelopment({ data, person, onPersonChange, showPersonToggle, selectedYear, onSelectYear, onOpenDiff, openYear, onOpenDrafts }: HistoryDevelopmentProps) {
   const bp = useBreakpoint()
   const t = useTheme()
@@ -106,9 +106,6 @@ export function HistoryDevelopment({ data, person, onPersonChange, showPersonTog
 
   return (
     <View style={s.section}>
-      <Text style={s.eyebrow} accessibilityRole="header">
-        {tr('verlauf.entwicklung')}
-      </Text>
       {showPersonToggle ? <PersonToggle person={person} onChange={onPersonChange} /> : null}
       {bp === 's' ? (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.chips}>
