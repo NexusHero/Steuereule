@@ -5,7 +5,7 @@ import { ToolMessage, type BaseMessage } from '@langchain/core/messages'
 import { LAW_IDS } from './law-text.js'
 import { tool, type StructuredToolInterface } from '@langchain/core/tools'
 import { z } from 'zod'
-import { ADVISOR_PERSONS, draftPersonKey, GIFT_TAX_RELATIONS, PRIVATE_SALE_KINDS, ADVISOR_PLAN_MAX_STEPS, ADVISOR_PLAN_STEP_STATUSES, ADVISOR_QUESTION_KINDS, INTERVIEW_AREA_IDS, INTERVIEW_AREA_STATUSES, type AdvisorActionProposal, type AdvisorNotStaged, type Screen } from '@steuereule/core'
+import { ADVISOR_PERSONS, draftPersonKey, ISO_DATE_PATTERN, GIFT_TAX_RELATIONS, PRIVATE_SALE_KINDS, ADVISOR_PLAN_MAX_STEPS, ADVISOR_PLAN_STEP_STATUSES, ADVISOR_QUESTION_KINDS, INTERVIEW_AREA_IDS, INTERVIEW_AREA_STATUSES, type AdvisorActionProposal, type AdvisorNotStaged, type Screen } from '@steuereule/core'
 
 export const MAX_COMPANION_FIELDS = 3
 
@@ -187,16 +187,16 @@ export const TOOL_ARG_SCHEMAS = {
   }),
   check_holding_period: z.object({
     kind: z.enum(PRIVATE_SALE_KINDS),
-    acquiredOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-    soldOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    acquiredOn: z.string().regex(ISO_DATE_PATTERN),
+    soldOn: z.string().regex(ISO_DATE_PATTERN),
     ownUseThroughout: z.boolean().optional(),
     ownUseYearOfSaleAndTwoBefore: z.boolean().optional(),
     totalGainsOfYearEur: z.number().min(-100_000_000).max(100_000_000).optional(),
   }),
   check_rental_repairs: z.object({
-    acquiredOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    acquiredOn: z.string().regex(ISO_DATE_PATTERN),
     buildingCostEur: z.number().positive().max(100_000_000),
-    repairs: z.array(z.object({ doneOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), netEur: z.number().min(0).max(100_000_000) })).max(30),
+    repairs: z.array(z.object({ doneOn: z.string().regex(ISO_DATE_PATTERN), netEur: z.number().min(0).max(100_000_000) })).max(30),
   }),
   compute_gift_tax: z.object({
     relation: z.enum(GIFT_TAX_RELATIONS),

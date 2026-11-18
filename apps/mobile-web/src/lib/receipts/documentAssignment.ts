@@ -5,7 +5,7 @@ import {
   profileControllerGetProfile,
   profileControllerPutProfile,
 } from '@steuereule/api-client'
-import type { PrintedPersonDetails } from '@steuereule/core'
+import { isIsoDate, type PrintedPersonDetails } from '@steuereule/core'
 
 /** A holder reference as a testID part: `A`, `B`, `kind-<id>` (no colon in a selector). */
 export function holderTestId(holder: string): string {
@@ -27,7 +27,7 @@ export function detailsFromDocument(printed: PrintedPersonDetails): NewHolderDet
 
 /** Whether the details are enough to create the person: names and a birth date (a child needs it). */
 export function detailsComplete(details: NewHolderDetails): boolean {
-  return details.firstName.trim() !== '' && details.lastName.trim() !== '' && /^\d{4}-\d{2}-\d{2}$/.test(details.birthDate)
+  return details.firstName.trim() !== '' && details.lastName.trim() !== '' && isIsoDate(details.birthDate)
 }
 
 export interface CreateHolderDeps {

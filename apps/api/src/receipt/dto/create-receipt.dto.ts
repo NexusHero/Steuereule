@@ -1,8 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 import { IsIn, IsNotEmpty, IsOptional, IsString, Matches } from 'class-validator'
-import { RECEIPT_TYPES, type ReceiptType } from '@steuereule/core'
-
-const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
+import { ISO_DATE_PATTERN, RECEIPT_TYPES, type ReceiptType } from '@steuereule/core'
 
 /** `type:` given explicitly on every. */
 export class CreateReceiptDto {
@@ -33,7 +31,7 @@ export class CreateReceiptDto {
   })
   @IsOptional()
   @IsString()
-  @Matches(ISO_DATE)
+  @Matches(ISO_DATE_PATTERN)
   belegdatum?: string
 
   @ApiPropertyOptional({
@@ -43,6 +41,6 @@ export class CreateReceiptDto {
   })
   @IsOptional()
   @IsString()
-  @Matches(ISO_DATE)
+  @Matches(ISO_DATE_PATTERN)
   zahlungsdatum?: string
 }

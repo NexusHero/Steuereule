@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatNumber, formatEuro, formatEuroCents, formatEuroRange } from './format'
+import { formatChf, formatEur, formatNumber, formatEuro, formatEuroCents, formatEuroRange } from './format'
 
 // NBSP that must sit between number and unit (design-system rule 10, qa-checkliste).
 const NBSP = '\u00A0'
@@ -80,5 +80,27 @@ describe('formatEuroRange', () => {
   it('nonfinite_throws_range_error', () => {
     expect(() => formatEuroRange(Number.NaN, 100)).toThrow(RangeError)
     expect(() => formatEuroRange(100, Number.POSITIVE_INFINITY)).toThrow(RangeError)
+  })
+})
+
+describe('formatEur / formatChf', () => {
+  it('whole amounts get thousands separators and no decimals', () => {
+    expect(formatEur(3135)).toBe(`3.135${NBSP}€`)
+    expect(formatChf(119580)).toBe(`119.580${NBSP}CHF`)
+    expect(formatEur(0)).toBe(`0${NBSP}€`)
+  })
+
+  it('amounts with cents always get two decimals', () => {
+    expect(formatEur(1234.5)).toBe(`1.234,50${NBSP}€`)
+    expect(formatChf(0.05)).toBe(`0,05${NBSP}CHF`)
+  })
+
+  it('keeps the sign of a negative amount', () => {
+    expect(formatChf(-75)).toBe(`-75${NBSP}CHF`)
+  })
+
+  it('rejects a value that is not a finite number', () => {
+    expect(() => formatEur(Number.NaN)).toThrow(RangeError)
+    expect(() => formatChf(Number.POSITIVE_INFINITY)).toThrow(RangeError)
   })
 })

@@ -1,6 +1,6 @@
 import { EnvelopeCryptoService } from '../../src/receipt/storage/envelope-crypto.service.js'
 import { InMemoryUserKeyStore } from './in-memory-user-key-store.js'
-import type { PutReceiptFileInput, StoragePort, StoredReceiptMeta, StoredReceiptObject } from '../../src/receipt/storage/storage.port.js'
+import type { PutReceiptFileInput, StoragePort, StoredContentKey, StoredReceiptMeta, StoredReceiptObject } from '../../src/receipt/storage/storage.port.js'
 
 interface StoredEntry {
   userId: string
@@ -92,6 +92,10 @@ export class InMemoryStorageAdapter implements StoragePort {
     const entry = this.blobs.get(this.key(userId, receiptId))
     if (!entry) return null
     return { mimeType: entry.mimeType, byteLength: entry.byteLength, contentMac: entry.contentMac }
+  }
+
+  async listContentKeys(userId: string): Promise<StoredContentKey[]> {
+    return [...this.blobs.values()].filter((e) => e.userId === userId).map((e) => ({ receiptId: e.receiptId, contentMac: e.contentMac }))
   }
 
   async delete(userId: string, receiptId: string): Promise<boolean> {

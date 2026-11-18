@@ -33,3 +33,19 @@ export function formatEuroRange(from: number, to: number): string {
   }
   return `${from.toLocaleString(LOCALE)}–${to.toLocaleString(LOCALE)}${NBSP}€`
 }
+
+function formatMoney(n: number, unit: string): string {
+  assertFinite(n)
+  const digits = Number.isInteger(n) ? 0 : 2
+  return `${n.toLocaleString(LOCALE, { minimumFractionDigits: digits, maximumFractionDigits: digits })}${NBSP}${unit}`
+}
+
+/** An amount in euros as people read it (ADR-0097): `3.135 €`, with cents `1.234,50 €`. */
+export function formatEur(n: number): string {
+  return formatMoney(n, '€')
+}
+
+/** An amount in Swiss francs as people read it (ADR-0097): `119.580 CHF`, with Rappen `0,05 CHF`. */
+export function formatChf(n: number): string {
+  return formatMoney(n, 'CHF')
+}

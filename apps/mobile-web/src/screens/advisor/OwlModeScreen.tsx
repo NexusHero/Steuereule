@@ -6,7 +6,9 @@ import { useTranslation } from 'react-i18next'
 import { AiChip, Button, Card, Chip, Option, Sheet, useBreakpoint, useTheme } from '@steuereule/ui'
 import {
   evaluateAdvisorTurn,
+  formatDraftValue,
   formatEuro,
+  isWithinEmployeeAllowance,
   LEGAL_STATUS_DATE,
   conflictingAlternatives,
   withoutAlternativesOf,
@@ -695,10 +697,7 @@ export function OwlModeScreenView({
             <View style={styles.draftList}>
               {pendingDrafts.map((draft) => {
                 const isReceipt = bridge?.receiptLinkedActionIds.has(draft.actionId) ?? false
-                const isZeroPauschbetrag =
-                  draft.effect !== 'not-computable' &&
-                  draft.deltaEur === 0 &&
-                  (draft.sourceId.startsWith('estg-9') || draft.sourceId === 'estg-4-5-6c')
+                const isZeroPauschbetrag = isWithinEmployeeAllowance(draft)
                 return (
                   <View key={draft.actionId} style={styles.draftRowCard} testID={`draft-card-${draft.actionId}`}>
                     <View style={styles.draftTopRow}>
@@ -724,7 +723,7 @@ export function OwlModeScreenView({
                       {`📄 ${formLineForField(draft.screen, draft.field).label}`}
                     </Text>
                     <Text style={styles.draftDiff}>
-                      {`${draft.previousValue ?? tr('advisor.chat.notRecorded', 'Nicht erfasst')} → ${draft.newValue}`}
+                      {`${draft.previousValue === null ? tr('advisor.chat.notRecorded', 'Nicht erfasst') : formatDraftValue(draft.screen, draft.field, draft.previousValue)} → ${formatDraftValue(draft.screen, draft.field, draft.newValue)}`}
                     </Text>
                     {alternativeIds.has(draft.actionId) ? (
                       <Button
@@ -797,7 +796,7 @@ export function OwlModeScreenView({
                     {`📄 ${formLineForField(draft.screen, draft.field).label}`}
                   </Text>
                   <Text style={styles.draftDiff}>
-                    {`${draft.previousValue ?? tr('advisor.chat.notRecorded', 'Nicht erfasst')} → ${draft.newValue}`}
+                    {`${draft.previousValue === null ? tr('advisor.chat.notRecorded', 'Nicht erfasst') : formatDraftValue(draft.screen, draft.field, draft.previousValue)} → ${formatDraftValue(draft.screen, draft.field, draft.newValue)}`}
                   </Text>
                   <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: t.space.s1 }}>
                     <Pressable

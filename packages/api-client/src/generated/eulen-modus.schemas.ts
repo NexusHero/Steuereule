@@ -21,6 +21,54 @@ export const ParseReceiptDtoKind = {
 } as const;
 
 /**
+ * Entry context: the document the entry point expects (a mask asks for its own). Unlike `kind` it does not force a reader: a text that is clearly another document goes to that one’s reader.
+ */
+export type ParseReceiptDtoExpectedKind = typeof ParseReceiptDtoExpectedKind[keyof typeof ParseReceiptDtoExpectedKind];
+
+
+export const ParseReceiptDtoExpectedKind = {
+  auto: 'auto',
+  lstb: 'lstb',
+  chLohnausweis: 'chLohnausweis',
+  chPensionskasse: 'chPensionskasse',
+  chPraemien: 'chPraemien',
+  chKrankenkasse: 'chKrankenkasse',
+} as const;
+
+/**
+ * Entry context: the mask the upload happened in; absent in the chat and the Belege tab. Without `kind`/`expectedKind`, the mask of the LStB or the Swiss Lohnausweis expects its document.
+ */
+export type ParseReceiptDtoMask = typeof ParseReceiptDtoMask[keyof typeof ParseReceiptDtoMask];
+
+
+export const ParseReceiptDtoMask = {
+  profil: 'profil',
+  stammdaten: 'stammdaten',
+  kopplung: 'kopplung',
+  interview: 'interview',
+  lstb: 'lstb',
+  commute: 'commute',
+  chLohnausweis: 'chLohnausweis',
+  rente: 'rente',
+  kapital: 'kapital',
+  vermietung: 'vermietung',
+  kind: 'kind',
+  assessment: 'assessment',
+} as const;
+
+/**
+ * The device could not read the stored Beleg (`receiptId` required): nothing is parsed, the Beleg is recorded as `nicht_lesbar` with this reason.
+ */
+export type ParseReceiptDtoDeviceReadFailure = typeof ParseReceiptDtoDeviceReadFailure[keyof typeof ParseReceiptDtoDeviceReadFailure];
+
+
+export const ParseReceiptDtoDeviceReadFailure = {
+  read_failed: 'read_failed',
+  empty_text: 'empty_text',
+  unsupported_file: 'unsupported_file',
+} as const;
+
+/**
  * Taxpayer slot when parsing a partner LStB (ADR-0054).
  */
 export type ParseReceiptDtoPerson = typeof ParseReceiptDtoPerson[keyof typeof ParseReceiptDtoPerson];
@@ -58,6 +106,14 @@ export interface ParseReceiptDto {
   rawText?: string;
   /** Explicit document parser: "lstb" the German LStB, "chLohnausweis" the Swiss salary certificate, "chPensionskasse" a Swiss pension fund statement, "chPraemien" the employer letter on sickness-pay and NBU premiums, "chKrankenkasse" a Swiss health insurer statement for the tax return; "auto" routes a recognised document to its reader. */
   kind?: ParseReceiptDtoKind;
+  /** Entry context: the document the entry point expects (a mask asks for its own). Unlike `kind` it does not force a reader: a text that is clearly another document goes to that one’s reader. */
+  expectedKind?: ParseReceiptDtoExpectedKind;
+  /** Entry context: the mask the upload happened in; absent in the chat and the Belege tab. Without `kind`/`expectedKind`, the mask of the LStB or the Swiss Lohnausweis expects its document. */
+  mask?: ParseReceiptDtoMask;
+  /** The device could not read the stored Beleg (`receiptId` required): nothing is parsed, the Beleg is recorded as `nicht_lesbar` with this reason. */
+  deviceReadFailure?: ParseReceiptDtoDeviceReadFailure;
+  /** Stage drafts even though the Beleg is a duplicate of an older upload (`duplicateOf` on the upload). Without it a duplicate is read but stages nothing. */
+  allowDuplicate?: boolean;
   /** Optional existing Beleg id owned by the caller to link provenance. */
   receiptId?: string;
   /** Taxpayer slot when parsing a partner LStB (ADR-0054). */
@@ -81,6 +137,29 @@ export type ParseReceiptResponseDtoMode = typeof ParseReceiptResponseDtoMode[key
 export const ParseReceiptResponseDtoMode = {
   vision_ocr: 'vision_ocr',
   deterministic_fallback: 'deterministic_fallback',
+} as const;
+
+/**
+ * Why nothing was proposed, when a reader knows (e.g. `keine_rechnung`, `nicht_absetzbar`, `schon_gezaehlt`).
+ * @nullable
+ */
+export type ParseReceiptResponseDtoNoValuesReason = typeof ParseReceiptResponseDtoNoValuesReason[keyof typeof ParseReceiptResponseDtoNoValuesReason] | null;
+
+
+export const ParseReceiptResponseDtoNoValuesReason = {
+  nichts_erkannt: 'nichts_erkannt',
+  keine_rechnung: 'keine_rechnung',
+  nicht_absetzbar: 'nicht_absetzbar',
+  schon_gezaehlt: 'schon_gezaehlt',
+  dublette: 'dublette',
+  blockiert: 'blockiert',
+  kein_steuerjahr: 'kein_steuerjahr',
+  anderes_konto: 'anderes_konto',
+  lesefehler: 'lesefehler',
+  unlesbar: 'unlesbar',
+  kein_text: 'kein_text',
+  nicht_unterstuetzt: 'nicht_unterstuetzt',
+  entwuerfe_fehlen: 'entwuerfe_fehlen',
 } as const;
 
 export type ParsedReceiptDataDtoVendorCategory = typeof ParsedReceiptDataDtoVendorCategory[keyof typeof ParsedReceiptDataDtoVendorCategory];
@@ -1079,6 +1158,75 @@ export interface DocumentAssignmentDto {
   alsoFor: AssignmentPersonDto[];
 }
 
+export interface ParsedReceiptDuplicateDto {
+  id: string;
+  /** Its file name (decrypted for the owner). */
+  fileName: string;
+  /** When it was uploaded (ISO timestamp). */
+  uploadedAt: string;
+}
+
+/**
+ * `neu` not read yet · `nicht_lesbar` reading failed · `vorschlaege` at least one draft waits · `uebernommen` all decided, at least one taken over · `nichts_verwertbar` read, nothing for the return · `verworfen` all drafts dismissed.
+ */
+export type ParsedReceiptProcessingDtoState = typeof ParsedReceiptProcessingDtoState[keyof typeof ParsedReceiptProcessingDtoState];
+
+
+export const ParsedReceiptProcessingDtoState = {
+  neu: 'neu',
+  nicht_lesbar: 'nicht_lesbar',
+  vorschlaege: 'vorschlaege',
+  uebernommen: 'uebernommen',
+  nichts_verwertbar: 'nichts_verwertbar',
+  verworfen: 'verworfen',
+} as const;
+
+/**
+ * Why the read found nothing or failed (for `nicht_lesbar`, `nichts_verwertbar`, and `neu` after its drafts were removed: `entwuerfe_fehlen`); null otherwise. The app words it.
+ * @nullable
+ */
+export type ParsedReceiptProcessingDtoReason = typeof ParsedReceiptProcessingDtoReason[keyof typeof ParsedReceiptProcessingDtoReason] | null;
+
+
+export const ParsedReceiptProcessingDtoReason = {
+  nichts_erkannt: 'nichts_erkannt',
+  keine_rechnung: 'keine_rechnung',
+  nicht_absetzbar: 'nicht_absetzbar',
+  schon_gezaehlt: 'schon_gezaehlt',
+  dublette: 'dublette',
+  blockiert: 'blockiert',
+  kein_steuerjahr: 'kein_steuerjahr',
+  anderes_konto: 'anderes_konto',
+  lesefehler: 'lesefehler',
+  unlesbar: 'unlesbar',
+  kein_text: 'kein_text',
+  nicht_unterstuetzt: 'nicht_unterstuetzt',
+  entwuerfe_fehlen: 'entwuerfe_fehlen',
+} as const;
+
+export interface ParsedReceiptProcessingDto {
+  /** `neu` not read yet · `nicht_lesbar` reading failed · `vorschlaege` at least one draft waits · `uebernommen` all decided, at least one taken over · `nichts_verwertbar` read, nothing for the return · `verworfen` all drafts dismissed. */
+  state: ParsedReceiptProcessingDtoState;
+  /**
+     * Why the read found nothing or failed (for `nicht_lesbar`, `nichts_verwertbar`, and `neu` after its drafts were removed: `entwuerfe_fehlen`); null otherwise. The app words it.
+     * @nullable
+     */
+  reason: ParsedReceiptProcessingDtoReason;
+  /** Drafts of this Beleg still waiting, over every tax year. */
+  pending: number;
+  /** Drafts of this Beleg taken over. */
+  applied: number;
+  /** Drafts of this Beleg decided without being taken over (dismissed, undone, superseded). */
+  dismissed: number;
+  /**
+     * The tax year its drafts sit in. When it is not the open year, say „liegt im Steuerjahr 2024“ with a link to switch.
+     * @nullable
+     */
+  draftsTaxYear: number | null;
+  /** Not yet fully processed (`neu`, `nicht_lesbar`, `vorschlaege`): the Belege tab counts these as „offen“. */
+  open: boolean;
+}
+
 export interface ParseReceiptResponseDto {
   mode: ParseReceiptResponseDtoMode;
   securityBlocked: boolean;
@@ -1098,6 +1246,31 @@ export interface ParseReceiptResponseDto {
      * @nullable
      */
   assignment?: DocumentAssignmentDto | null;
+  /**
+     * The tax year this read staged its drafts in; null when it staged none.
+     * @nullable
+     */
+  draftsTaxYear?: number | null;
+  /**
+     * Set when the drafts went to another tax year than the requested `taxYear` (ADR-0097 §5: the document’s own year, for every reader): say „liegt im Steuerjahr 2024“ with a link to switch. Null otherwise.
+     * @nullable
+     */
+  filedInTaxYear?: number | null;
+  /**
+     * Why nothing was proposed, when a reader knows (e.g. `keine_rechnung`, `nicht_absetzbar`, `schon_gezaehlt`).
+     * @nullable
+     */
+  noValuesReason?: ParseReceiptResponseDtoNoValuesReason;
+  /**
+     * The Beleg is a duplicate of this older upload: no drafts were staged unless `allowDuplicate` was sent.
+     * @nullable
+     */
+  duplicateOf?: ParsedReceiptDuplicateDto | null;
+  /**
+     * The Beleg’s processing state after this read (the same as `GET /v1/belege` shows); null without `receiptId`.
+     * @nullable
+     */
+  processing?: ParsedReceiptProcessingDto | null;
 }
 
 export type ReassignReceiptDtoTextSource = typeof ReassignReceiptDtoTextSource[keyof typeof ReassignReceiptDtoTextSource];

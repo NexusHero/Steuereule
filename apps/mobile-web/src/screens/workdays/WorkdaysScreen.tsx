@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { Button, Chip, Feld, Input, inkOnFunke, useTheme, useBreakpoint, type UiTheme } from '@steuereule/ui'
 import {
+  GERMAN_DATE_PATTERN,
   GERMAN_STATES,
   SWISS_CANTONS,
   ISO_WEEKDAYS,
@@ -531,15 +532,13 @@ function allowanceOrNull(year: number, workdays: readonly IsoWeekday[], days: nu
   }
 }
 
-const GERMAN_DATE = /^\d{2}\.\d{2}\.\d{4}$/
-
 /** Empty, or a date as TT.MM.JJJJ. */
 function validDate(s: string): boolean {
-  return s.trim() === '' || GERMAN_DATE.test(s.trim())
+  return s.trim() === '' || GERMAN_DATE_PATTERN.test(s.trim())
 }
 
 function dateOrNull(s: string): string | null {
-  return GERMAN_DATE.test(s.trim()) ? s.trim() : null
+  return GERMAN_DATE_PATTERN.test(s.trim()) ? s.trim() : null
 }
 
 function Result({ result }: { readonly result: ReturnType<typeof calculateWorkdays> }) {

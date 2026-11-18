@@ -4,7 +4,7 @@ import type {
   PutMasterDataDtoReligion,
   MasterDataResponseDto,
 } from '@steuereule/api-client'
-import { formatIban, normalizeIban } from '@steuereule/core'
+import { formatIban, isIsoDate, normalizeIban, toGermanDate, toIsoDate } from '@steuereule/core'
 
 export interface MasterDataDraft {
   geburtsdatum: string
@@ -24,17 +24,16 @@ export interface MasterDataDraft {
   telefon: string
 }
 
+/** A stored `YYYY-MM-DD` as the field shows it (`TT.MM.JJJJ`); empty for anything else. */
 export function isoToGerman(iso: string | null): string {
-  const match = iso ? /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso) : null
-  return match ? `${match[3]}.${match[2]}.${match[1]}` : ''
+  return iso !== null && isIsoDate(iso) ? (toGermanDate(iso) ?? '') : ''
 }
 
+/** What the user typed as `YYYY-MM-DD`; text that is no real date goes on unchanged so the API names the problem. */
 export function germanToIso(input: string): string | null {
   const value = input.trim()
   if (value === '') return null
-  const match = /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/.exec(value)
-  if (!match) return value
-  return `${match[3]}-${match[2]!.padStart(2, '0')}-${match[1]!.padStart(2, '0')}`
+  return toIsoDate(value) ?? value
 }
 
 function emptyToNull(value: string): string | null {

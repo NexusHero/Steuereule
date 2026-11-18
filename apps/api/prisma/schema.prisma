@@ -468,6 +468,16 @@ model Receipt {
   holders           String?      @map("inhaber") /// @encrypted?mode=strict
   /// The tax year the holders refer to (B and the children are per year). Clear, like `steuerjahr`.
   holderTaxYear     Int?         @map("inhaberSteuerjahr")
+  /// ADR-0097: the facts of the last read, from which the processing state is derived (never stored).
+  /// Clear like the dates: a timestamp, an outcome code and a reason code, no content of the document.
+  /// When the document was read last; null while it never was.
+  readAt            DateTime?    @map("gelesenAm")
+  /// How that read ended: `werte` (drafts proposed), `nichts` (nothing for the return), `fehler` (not readable).
+  readOutcome       String?      @map("leseErgebnis")
+  /// Why it ended without values or failed: a code of core's `RECEIPT_READ_REASONS`.
+  readReason        String?      @map("leseGrund")
+  /// The tax year the read staged its drafts in (ADR-0097 §5: the document's own year).
+  draftsTaxYear     Int?         @map("entwurfSteuerjahr")
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
   file              ReceiptFile?

@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
+import { GERMAN_DATE_PATTERN } from '@steuereule/core'
 import { ArrayMaxSize, ArrayUnique, IsArray, IsBoolean, IsIn, IsInt, IsOptional, IsString, Matches, Max, MaxLength, Min } from 'class-validator'
 import { MEANS_OF_TRANSPORT, type MeansOfTransport } from '../commute.repository.js'
 
@@ -109,12 +110,12 @@ export class CommuteInputsDto {
 
   @ApiPropertyOptional({ type: String, nullable: true, example: '01.01.2024', description: 'This way to work from (DD.MM.YYYY), when not the whole year (ADR-0079).' })
   @IsOptional()
-  @Matches(/^\d{2}\.\d{2}\.\d{4}$/)
+  @Matches(GERMAN_DATE_PATTERN)
   periodFrom?: string | null
 
   @ApiPropertyOptional({ type: String, nullable: true, example: '31.10.2024', description: 'This way to work until (DD.MM.YYYY).' })
   @IsOptional()
-  @Matches(/^\d{2}\.\d{2}\.\d{4}$/)
+  @Matches(GERMAN_DATE_PATTERN)
   periodTo?: string | null
 
   @ApiPropertyOptional({ type: Number, nullable: true, example: 87, description: 'A second way to work after a change of job: one-way km.' })
@@ -137,12 +138,12 @@ export class CommuteInputsDto {
 
   @ApiPropertyOptional({ type: String, nullable: true, example: '01.11.2024' })
   @IsOptional()
-  @Matches(/^\d{2}\.\d{2}\.\d{4}$/)
+  @Matches(GERMAN_DATE_PATTERN)
   secondFrom?: string | null
 
   @ApiPropertyOptional({ type: String, nullable: true, example: '31.12.2024' })
   @IsOptional()
-  @Matches(/^\d{2}\.\d{2}\.\d{4}$/)
+  @Matches(GERMAN_DATE_PATTERN)
   secondTo?: string | null
 
   @ApiPropertyOptional({ type: Number, nullable: true, example: 205, description: 'Days the first place of work was actually visited on this way; replaces the days derived from working days less days off (ADR-0093). Omitted keeps what is stored.' })

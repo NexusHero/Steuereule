@@ -227,7 +227,7 @@ describe('HTTP E2E (no-DB): Beleg upload/download/delete, LStB parse & atomic LS
       headers: { cookie: cookieA },
     })
     expect(delRes.statusCode).toBe(200)
-    expect(delRes.json()).toEqual({ deleted: true })
+    expect(delRes.json()).toEqual({ deleted: true, takenBack: 0, withdrawn: 0 })
 
     const dlAfterDelete = await app.inject({
       method: 'GET',

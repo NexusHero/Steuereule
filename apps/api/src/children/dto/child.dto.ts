@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
-import { OTHER_CHILD_RELATIONSHIPS, OTHER_PARENT_STATUSES, CHILD_RELATIONSHIPS } from '@steuereule/core'
+import { OTHER_CHILD_RELATIONSHIPS, OTHER_PARENT_STATUSES, CHILD_RELATIONSHIPS, GERMAN_DATE_PATTERN, ISO_DATE_PATTERN } from '@steuereule/core'
 import { IsBoolean, IsIn, IsNotEmpty, IsOptional, IsString, Matches, MaxLength } from 'class-validator'
 
 /** The Anlage-Kind facts beyond the child's identity — optional on write. */
@@ -38,7 +38,7 @@ class ChildDetailsDto {
 
   @ApiPropertyOptional({ type: String, nullable: true, example: '1984-02-11' })
   @IsOptional()
-  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  @Matches(ISO_DATE_PATTERN)
   otherParentBirthDate?: string | null
 
   @ApiPropertyOptional({ type: String, nullable: true, example: 'Hauptstraße 3, 01067 Dresden' })
@@ -54,7 +54,7 @@ class ChildDetailsDto {
 
   @ApiPropertyOptional({ type: String, nullable: true, example: '2025-06-30' })
   @IsOptional()
-  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  @Matches(ISO_DATE_PATTERN)
   otherParentDiedOn?: string | null
 
   @ApiPropertyOptional({ type: Boolean, nullable: true, description: 'Zeile 45: the child was registered with the filer all year.' })
@@ -95,12 +95,12 @@ class ChildDetailsDto {
 
   @ApiPropertyOptional({ type: String, nullable: true, example: '01.01.2025', description: 'Zeile 67: from (DD.MM.YYYY).' })
   @IsOptional()
-  @Matches(/^\d{2}\.\d{2}\.\d{4}$/)
+  @Matches(GERMAN_DATE_PATTERN)
   childcareFrom?: string | null
 
   @ApiPropertyOptional({ type: String, nullable: true, example: '31.12.2025', description: 'Zeile 67: until (DD.MM.YYYY).' })
   @IsOptional()
-  @Matches(/^\d{2}\.\d{2}\.\d{4}$/)
+  @Matches(GERMAN_DATE_PATTERN)
   childcareTo?: string | null
 
   @ApiPropertyOptional({ type: String, nullable: true, enum: ['A', 'B'], description: 'Who receives the Swiss Kinderzulage with their wage (ADR-0088).' })
@@ -130,7 +130,7 @@ export class CreateChildDto extends ChildDetailsDto {
   @ApiProperty({ type: String, example: '2018-05-12', description: 'ISO date YYYY-MM-DD' })
   @IsNotEmpty()
   @IsString()
-  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  @Matches(ISO_DATE_PATTERN)
   geburtsdatum!: string
 
   @ApiPropertyOptional({ type: String, example: '12345678901' })
@@ -162,7 +162,7 @@ export class UpdateChildDto extends ChildDetailsDto {
   @ApiPropertyOptional({ type: String, example: '2018-05-12' })
   @IsOptional()
   @IsString()
-  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  @Matches(ISO_DATE_PATTERN)
   geburtsdatum?: string
 
   @ApiPropertyOptional({ type: String, example: '12345678901' })

@@ -7,6 +7,7 @@ import type {
   ReceiptRepository,
   ReceiptFileMetaRecord,
   CreateReceiptData,
+  RecordReadData,
   SetAssignmentData,
 } from '../../src/receipt/receipt.repository.js'
 import type { HolderRef, ReceiptType } from '@steuereule/core'
@@ -71,6 +72,22 @@ export class FakeReceiptRepository implements ReceiptRepository {
     const index = this.rows.findIndex((row) => row.userId === userId && row.id === id)
     if (index === -1) return Promise.resolve(null)
     const updated: ReceiptRecord = { ...this.rows[index]!, kind, updatedAt: new Date() }
+    this.rows[index] = updated
+    return Promise.resolve(updated)
+  }
+
+  recordRead(userId: string, id: string, data: RecordReadData): Promise<ReceiptRecord | null> {
+    const index = this.rows.findIndex((row) => row.userId === userId && row.id === id)
+    if (index === -1) return Promise.resolve(null)
+    const updated: ReceiptRecord = {
+      ...this.rows[index]!,
+      readAt: new Date(),
+      readOutcome: data.outcome,
+      readReason: data.reason,
+      draftsTaxYear: data.draftsTaxYear,
+      ...(data.belegdatum !== undefined ? { belegdatum: data.belegdatum } : {}),
+      updatedAt: new Date(),
+    }
     this.rows[index] = updated
     return Promise.resolve(updated)
   }

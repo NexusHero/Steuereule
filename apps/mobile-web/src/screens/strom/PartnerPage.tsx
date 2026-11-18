@@ -4,13 +4,12 @@ import { useState } from 'react'
 import { Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
+import { isGermanDate } from '@steuereule/core'
 import { Button, Feld, Input, useTheme } from '@steuereule/ui'
 import { getLinkControllerGetQueryKey, useLinkControllerGet, useLinkControllerUpdatePersonB } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { germanToIso, isoToGerman } from '../master-data/masterDataMapping'
 import { makeStyles } from './StromPages'
-
-const GERMAN_DATE = /^\d{1,2}\.\d{1,2}\.\d{4}$/
 
 export function PartnerPage({ taxYear, onSaved }: { readonly taxYear: number; readonly onSaved: () => void }) {
   const t = useTheme()
@@ -27,7 +26,7 @@ export function PartnerPage({ taxYear, onSaved }: { readonly taxYear: number; re
 
   function save() {
     if (firstName.trim() === '' || birthDate.trim() === '') return setProblem('fehlt')
-    if (!GERMAN_DATE.test(birthDate.trim())) return setProblem('datumFalsch')
+    if (!isGermanDate(birthDate)) return setProblem('datumFalsch')
     setProblem(null)
     // Only what this page asks: the other fields of B (tax id, occupation, religion) stay as they are.
     updatePersonB.mutate(

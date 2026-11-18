@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { Button, Card, Chip, DateInput, Feld, Input, Option, useBreakpoint, useTheme } from '@steuereule/ui'
 import {
+  GERMAN_DATE_PATTERN,
   claimMonths,
   formatEuro,
   monthlyChildBenefitClaim,
@@ -443,8 +444,8 @@ function KinderScreenView({
       swissFamilyAllowancePayer: swissPayer,
       childcareEur: /^\d+$/.test(childcare.trim()) ? childcare.trim() : null,
       childcareProvider: childcareProvider.trim().slice(0, 120) || null,
-      childcareFrom: /^\d{2}\.\d{2}\.\d{4}$/.test(childcareFrom.trim()) ? childcareFrom.trim() : null,
-      childcareTo: /^\d{2}\.\d{2}\.\d{4}$/.test(childcareTo.trim()) ? childcareTo.trim() : null,
+      childcareFrom: GERMAN_DATE_PATTERN.test(childcareFrom.trim()) ? childcareFrom.trim() : null,
+      childcareTo: GERMAN_DATE_PATTERN.test(childcareTo.trim()) ? childcareTo.trim() : null,
     }
     try {
       if (edited) {

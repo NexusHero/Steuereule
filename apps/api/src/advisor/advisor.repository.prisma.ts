@@ -14,6 +14,8 @@ import {
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
 import {
   matchesActionId,
+  receiptDraftsOf,
+  type ReceiptDraftRecord,
   type AdvisorChatMessageRecord,
   type AdvisorConversationChange,
   type AdvisorConversationRecord,
@@ -96,6 +98,16 @@ export class PrismaAdvisorRepository implements AdvisorRepository {
       orderBy: { createdAt: 'asc' },
     })
     return rows.map(toRecord)
+  }
+
+  async listReceiptDrafts(userId: string): Promise<ReceiptDraftRecord[]> {
+    // Only the drafts' metadata column of the owl's answers: the message text is never selected.
+    const rows = await this.prisma.advisorChatMessage.findMany({
+      where: { userId, role: 'assistant', metaJson: { not: null } },
+      orderBy: { createdAt: 'asc' },
+      select: { taxYear: true, metaJson: true },
+    })
+    return rows.flatMap((row) => receiptDraftsOf(row.taxYear, parseJson<AdvisorMessageMeta>(row.metaJson)))
   }
 
   async recentUsage(limit: number): Promise<AdvisorMessageUsage[]> {

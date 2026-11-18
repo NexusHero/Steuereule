@@ -17,4 +17,14 @@ describe('childcareDeductionEur', () => {
     expect(childcareDeductionEur(2025, 1000, '2015-05-01')).toBe(800)
     expect(childcareDeductionEur(2025, null)).toBe(0)
   })
+
+  it('reads a German birth date too', () => {
+    expect(childcareDeductionEur(2025, 1000, '14.06.2010')).toBe(0)
+    expect(childcareDeductionEur(2025, 1000, '14.06.2015')).toBe(800)
+  })
+
+  it('does not exclude a child whose birth date cannot be read', () => {
+    expect(childcareDeductionEur(2025, 1000, 'unbekannt')).toBe(800)
+    expect(childcareDeductionEur(2025, 1000, '31.02.2010')).toBe(800)
+  })
 })

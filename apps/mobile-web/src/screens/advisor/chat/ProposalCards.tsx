@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { Pressable, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@steuereule/ui'
-import { ADVISOR_LEGAL_SOURCES, PERSON_B_SCREENS, formatEuro, type AdvisorActionProposal, type AdvisorLegalSource, type AdvisorTwoPathsProposal, type Screen } from '@steuereule/core'
+import { ADVISOR_LEGAL_SOURCES, PERSON_B_SCREENS, formatDraftValue, formatEuro, isWithinEmployeeAllowance, type AdvisorActionProposal, type AdvisorLegalSource, type AdvisorTwoPathsProposal, type Screen } from '@steuereule/core'
 import { APP_NS } from '../../../i18n/resources'
 import { formLineForField } from '../../shared/formLineMapping'
 import { makeStyles } from '../AdvisorChatPanel'
@@ -42,8 +42,7 @@ export function ActionProposalCardView({
   const [busyStatus, setBusyStatus] = useState<AdvisorActionProposal['status'] | null>(null)
   const isBusy = busyStatus === action.status
   const legalSource = ADVISOR_LEGAL_SOURCES[action.sourceId]
-  const showPauschbetrag =
-    action.deltaEur === 0 && (action.sourceId.startsWith('estg-9') || action.sourceId === 'estg-4-5-6c')
+  const showPauschbetrag = isWithinEmployeeAllowance(action)
 
   async function handleApply() {
     if (!onApply || isBusy) return
@@ -148,8 +147,8 @@ export function ActionProposalCardView({
         <View style={styles.diffRow}>
           <Text style={styles.diffCaption}>{tr('advisor.chat.entryLabel', 'Eintrag:')}</Text>
           <Text style={styles.diffValues}>
-            {`${action.previousValue ?? tr('advisor.chat.notRecorded', 'Nicht erfasst')} → `}
-            <Text style={styles.diffNewValue}>{action.newValue}</Text>
+            {`${action.previousValue === null ? tr('advisor.chat.notRecorded', 'Nicht erfasst') : formatDraftValue(action.screen, action.field, action.previousValue)} → `}
+            <Text style={styles.diffNewValue}>{formatDraftValue(action.screen, action.field, action.newValue)}</Text>
           </Text>
         </View>
         <View style={styles.diffRow}>

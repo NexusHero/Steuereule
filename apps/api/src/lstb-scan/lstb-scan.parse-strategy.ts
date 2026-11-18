@@ -8,6 +8,7 @@ import {
   capOcrSourcedExtraction,
   certificateHolderPerson,
   parseLstbTextDeterministically,
+  receiptFilingYear,
   scrubDocumentTextPii,
   selectLstbRelevantLines,
   type LstbExtractionResult,
@@ -175,13 +176,18 @@ export class LstbScanParseStrategy implements DocumentParseStrategy, OnModuleIni
       resource: 'beleg_analyse',
     })
 
+    // One year rule (ADR-0097 §5): an LStB of another year is read for that year and its drafts go there;
+    // the person, the linked record and the values already entered are those of that year.
+    const filingYear = receiptFilingYear(extraction.taxYear, dto.taxYear)
+    const year = filingYear ?? dto.taxYear
+
     // An upload without a person (the chat) is the user's, or B's when the LStB names B; a name that fits
     // nobody is asked about instead of guessed (as for the Swiss certificate, ADR-0074).
-    const household = dto.person === undefined ? await this.advisorService.householdNames(userId, dto.taxYear) : null
+    const household = dto.person === undefined ? await this.advisorService.householdNames(userId, year) : null
     const person: 'A' | 'B' | null = dto.person ?? (household?.B ? certificateHolderPerson(rawText, household) : holderWithoutPartner(rawText, household?.A ?? { firstName: null, lastName: null }))
     const personNotRecordable = person === 'B' && household !== null && household.B?.recordable !== true
-    const targetUserId = person !== null && !personNotRecordable ? await this.linkService.dataUser(userId, dto.taxYear, person) : userId
-    const existingLstbConflict = await this.lstbService.existingValues(targetUserId, dto.taxYear)
+    const targetUserId = person !== null && !personNotRecordable ? await this.linkService.dataUser(userId, year, person) : userId
+    const existingLstbConflict = await this.lstbService.existingValues(targetUserId, year)
 
     const toFieldDto = (f: LstbExtractionResult['fields']['bruttoarbeitslohn']) => ({
       value: f.value,
@@ -221,9 +227,10 @@ export class LstbScanParseStrategy implements DocumentParseStrategy, OnModuleIni
     let assistantMessage: ParseReceiptResponseDto['assistantMessage'] = null
     let stagedActionIds: string[] = []
 
-    // Year conflict blocks staging so nothing lands on the wrong tax year (ADR-0008).
-    if (shouldStage && yearConflict === null && person !== null && !personNotRecordable) {
-      const staged = await this.advisorService.stageLstbScanBatch(userId, dto.taxYear, {
+    // Another year no longer blocks: the drafts go to the document's year and the response says so
+    // (`yearConflict`, `draftsTaxYear`). Only a year the app does not keep stages nothing.
+    if (shouldStage && filingYear !== null && person !== null && !personNotRecordable) {
+      const staged = await this.advisorService.stageLstbScanBatch(userId, filingYear, {
         digestUserId: targetUserId,
         receiptId: dto.receiptId ?? null,
         stage,
@@ -258,6 +265,7 @@ export class LstbScanParseStrategy implements DocumentParseStrategy, OnModuleIni
       stagedAction = staged.actions[0] ?? null
       assistantMessage = staged.assistantMessage
     }
+    const draftsTaxYear = stagedActionIds.length > 0 ? filingYear : null
 
     const lstbResponse: ParsedLstbResponseDto = {
       stage,
@@ -280,6 +288,8 @@ export class LstbScanParseStrategy implements DocumentParseStrategy, OnModuleIni
       stagedAction,
       assistantMessage,
       lstb: lstbResponse,
+      draftsTaxYear,
+      noValuesReason: shouldStage && filingYear === null ? 'kein_steuerjahr' : null,
     }
   }
 }

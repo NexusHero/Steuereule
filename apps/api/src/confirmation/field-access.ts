@@ -22,6 +22,8 @@ import {
   effectivePublicHolidays,
   germanStateOfAddress,
   isHolidayRegion,
+  GERMAN_DATE_PATTERN,
+  ISO_DATE_PATTERN,
 } from '@steuereule/core'
 import { InvalidInputError } from '../common/domain-error.js'
 import type { AssessmentRepository } from '../assessment/assessment.repository.js'
@@ -99,9 +101,7 @@ const COMMUTE_BOOLEAN_FIELDS: ReadonlySet<string> = new Set(['shortestRouteConfi
 const LSTB_LINE_FIELDS: readonly string[] = [...LSTB_SOCIAL_LINES, LSTB_SOLI_LINE]
 const LSTB_ACCESS_FIELDS = [...WAGE_TAX_CERTIFICATE_FIELDS, ...LSTB_OPTIONAL_LINES, ...LSTB_LINE_FIELDS] as const
 const COMMUTE_DATE_FIELDS: ReadonlySet<string> = new Set(['periodFrom', 'periodTo', 'secondFrom', 'secondTo'])
-const GERMAN_DATE_RE = /^\d{2}\.\d{2}\.\d{4}$/
 const ASSESSMENT_ACCESS_FIELDS = [...ASSESSMENT_FIELD_IDS, 'assessmentDate'] as const
-const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 const INTEGER_RE = /^-?\d+$/
 
 const PENSION_ACCESS_FIELDS = ['rentenart', ...PENSION_FIELDS] as const
@@ -690,7 +690,7 @@ export function fieldAccessFrom({
             }
             if (COMMUTE_DATE_FIELDS.has(field)) {
               const trimmed = value === null ? null : value.trim()
-              if (trimmed !== null && trimmed !== '' && !GERMAN_DATE_RE.test(trimmed)) {
+              if (trimmed !== null && trimmed !== '' && !GERMAN_DATE_PATTERN.test(trimmed)) {
                 throw new InvalidInputError('FIELD_VALUE_INVALID', `"${field}" must be a date DD.MM.YYYY.`)
               }
               updated = { ...current, [field]: trimmed === '' ? null : trimmed }
@@ -759,7 +759,7 @@ export function fieldAccessFrom({
       },
       async write(userId, taxYear, _instance, field, value) {
         if (field === 'assessmentDate') {
-          if (value !== null && !ISO_DATE_RE.test(value)) {
+          if (value !== null && !ISO_DATE_PATTERN.test(value)) {
             throw new InvalidInputError('BESCHEIDDATUM_INVALID', 'assessmentDate must be an ISO yyyy-mm-dd date.')
           }
           await assessment.setDate(userId, taxYear, value)
