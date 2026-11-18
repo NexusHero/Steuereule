@@ -43,7 +43,7 @@ Die gemeinsame Ursache: Ein Beleg hat keinen eigenen Verarbeitungsstand. Was bei
 
 4. **Ein Upload-Weg.** Jeder Einstieg (Belege-Tab, Chat, Maske) läuft durch denselben Ablauf: speichern, lesen, Wem gehört er?, Jahr, Entwürfe. Der Einstieg gibt nur Kontext mit (erwartete Art, Person, Maske). Der Belege-Tab liest jeden Beleg nach dem Hochladen selbst. Werte bleiben Entwürfe, bis der Nutzer sie übernimmt (Zero-Write).
 
-5. **Eine Jahres-Regel.** Gehört ein Beleg in ein anderes Steuerjahr, gehen seine Entwürfe dorthin, und Chat und Beleg sagen es mit einem Link zum Wechseln. Nichts blockiert. Das Jahr aus dem Beleg wird am Beleg gespeichert, damit die Jahreszuordnung nach ADR-0040 greift.
+5. **Eine Jahres-Regel.** Gehört ein Beleg in ein anderes Steuerjahr, gehen seine Entwürfe dorthin, und Chat und Beleg sagen es mit einem Link zum Wechseln. Nichts blockiert. Das Jahr, in das die Entwürfe gingen, wird zum Jahr des Belegs, solange der Nutzer keines gewählt hat. Das gedruckte Datum zählt dafür nicht: Es ist oft das Ausstellungsdatum (eine Spendenbescheinigung vom Januar 2026 gilt für 2025). Der Leser bestimmt das Jahr nach § 11 EStG für seine Belegart. Ein Beleg ohne Verwertbares fragt nach keinem Jahr.
 
 6. **Rückverfolgbar und Löschen.** Der Beleg nennt die Felder, die er gefüllt hat; das Feld nennt seinen Beleg. Beim Löschen nennt die App die gefüllten Werte und fragt, ob sie mit entfernt werden sollen, vorausgewählt „ja“.
 
