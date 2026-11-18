@@ -58,12 +58,19 @@ export type ProfileStackParamList = {
   ProfileMasterData: undefined
 }
 
+/** The Verlauf (ADR-0098): the timeline, one year's page, and the development over the years. */
+export type HistoryStackParamList = {
+  HistoryHome: undefined
+  HistoryYear: { year: number }
+  HistoryDevelopment: undefined
+}
+
 export type AppTabParamList = {
   Cockpit: NavigatorScreenParams<CockpitStackParamList> | undefined
   Owl: undefined
   Receipts: undefined
   /** The Verlauf over all years (ADR-0098); it took over the year list. */
-  History: undefined
+  History: NavigatorScreenParams<HistoryStackParamList> | undefined
   Profile: NavigatorScreenParams<ProfileStackParamList> | undefined
 }
 

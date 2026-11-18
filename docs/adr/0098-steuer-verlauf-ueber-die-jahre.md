@@ -28,10 +28,12 @@ Die Zahlen liegen schon da, je Nutzer und Jahr: `Lstb` (Brutto, Lohnsteuer, Soli
 
 ## Entscheidung
 
-1. **Ein eigener Tab „Verlauf“.** Die Tab-Leiste wird `Cockpit · Eule · Belege · Verlauf · Profil`. Das Cockpit bleibt ein Jahr; der Verlauf ist die Sicht über alle Jahre. Der Tab ist von oben nach unten nach Dringlichkeit gebaut:
-   - **Was ansteht.** Ganz oben steht je Jahr höchstens ein Eintrag, der etwas vom Nutzer will oder auf etwas wartet: ein Bescheid mit Abweichungen und laufender Einspruchsfrist (hervorgehoben, mit Differenz in Euro und Resttagen), eine eingereichte Erklärung ohne Bescheid, ein offenes Jahr mit dem, was fehlt. Jahre ohne Anliegen erscheinen dort nicht.
-   - **Alle Jahre: erklärt und festgesetzt.** Die Liste der Steuererklärungen zieht in den Verlauf und steht über den Diagrammen. Je Jahr zeigt sie Stand, erklärte Erstattung, Erstattung laut Bescheid und die Differenz; auf Tablet und Desktop als Tabelle mit den übrigen Kennzahlen dahinter. Ein Tipp auf ein Jahr öffnet dessen Bescheid-Abgleich (§ 8) direkt unter der Liste; von dort geht es ins Cockpit des Jahres.
-   - **Entwicklung über die Jahre.** Die Diagramme (§ 2) folgen als Vertiefung.
+1. **Ein eigener Tab „Verlauf“, als Zeitleiste.** Die Tab-Leiste wird `Cockpit · Eule · Belege · Verlauf · Profil`. Das Cockpit bleibt ein Jahr; der Verlauf ist die Sicht über alle Jahre und passt auf dem Handy auf einen Bildschirm:
+   - **Jetzt wichtig.** Oben eine Karte im Stil des Cockpit-Blocks mit genau dem dringendsten Anliegen: zuerst ein Bescheid mit Abweichungen und laufender Einspruchsfrist (Differenz in Euro, Resttage), sonst eine eingereichte Erklärung ohne Bescheid, sonst ein offenes Jahr mit dem, was fehlt. Weitere Anliegen nur als Zeile („+ 2 weitere Jahre brauchen dich“); ohne Anliegen „Alles erledigt“.
+   - **Eine Zeile je Jahr.** Neuestes Jahr oben: Jahr, ein Satz zum Stand („abgegeben · wartet auf Bescheid“, „Bescheid · 92 € weniger als erklärt“, „Bescheid wie erklärt“, „nur Bescheid“, „in Arbeit · …“) und ein Betrag (laut Bescheid, als Spanne geschätzt oder „–“). Ein Tipp öffnet die Jahresseite mit Bescheid-Abgleich (§ 8), Einspruchsfrist und „Fürs nächste Mal“; von dort geht es ins Cockpit des Jahres.
+   - **Entwicklung ansehen.** Die Diagramme (§ 2) stehen auf einer eigenen Seite, einen Tipp entfernt. Darunter „Ältere Jahre ergänzen“ für den Bescheid-Upload (§ 4).
+
+   Grund: Der erste Bau nach dem Mock war auf dem Handy 5,5 Bildschirme lang (Cockpit 1,7), mit 590 Wörtern und derselben Kürzung 13-mal; die Diagramme begannen auf Bildschirm 4. Entscheidung des Product Owners nach dem UX-Review: Variante A „Zeitleiste“. Der Mock gilt weiter für Inhalte und Darstellung der Kennzahlen, nicht mehr für die Anordnung auf dem Tab.
 
 2. **Vier Kennzahlen in Version 1.**
 

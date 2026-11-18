@@ -1,5 +1,5 @@
 import type { LinkingOptions, PathConfig } from '@react-navigation/native'
-import type { AppTabParamList, CockpitStackParamList, ProfileStackParamList, RootStackParamList } from './routes'
+import type { AppTabParamList, CockpitStackParamList, HistoryStackParamList, ProfileStackParamList, RootStackParamList } from './routes'
 
 const cockpitScreens: NonNullable<PathConfig<CockpitStackParamList>['screens']> = {
   CockpitHome: '',
@@ -39,6 +39,12 @@ const profileScreens: NonNullable<PathConfig<ProfileStackParamList>['screens']> 
   ProfileMasterData: 'stammdaten',
 }
 
+const historyScreens: NonNullable<PathConfig<HistoryStackParamList>['screens']> = {
+  HistoryHome: '',
+  HistoryDevelopment: 'entwicklung',
+  HistoryYear: { path: ':year', parse: { year: Number } },
+}
+
 const appConfig: PathConfig<AppTabParamList> = {
   path: 'app',
   initialRouteName: 'Cockpit',
@@ -51,7 +57,12 @@ const appConfig: PathConfig<AppTabParamList> = {
     Owl: 'eule',
     Receipts: 'belege',
     // The year list moved into the Verlauf (ADR-0098 §1): old links to the list land there.
-    History: { path: 'verlauf', alias: ['steuerjahre', 'jahre', 'erklaerungen'] },
+    History: {
+      path: 'verlauf',
+      alias: ['steuerjahre', 'jahre', 'erklaerungen'],
+      initialRouteName: 'HistoryHome',
+      screens: historyScreens,
+    } as PathConfig<HistoryStackParamList> as never,
     Profile: {
       path: 'profil',
       initialRouteName: 'ProfileHome',
@@ -107,6 +118,9 @@ const ROUTE_TITLES: Readonly<Record<string, string>> = {
   Owl: 'SteuerEule — Eulen-Modus',
   Receipts: 'SteuerEule — Belege',
   History: 'SteuerEule — Verlauf',
+  HistoryHome: 'SteuerEule — Verlauf',
+  HistoryYear: 'SteuerEule — Verlauf eines Jahres',
+  HistoryDevelopment: 'SteuerEule — Entwicklung über die Jahre',
   ProfileHome: 'SteuerEule — Profil',
   Profile: 'SteuerEule — Profil',
   Privacy: 'SteuerEule — Datenschutz',

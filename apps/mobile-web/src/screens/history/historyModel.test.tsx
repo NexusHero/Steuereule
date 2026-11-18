@@ -1,12 +1,14 @@
 // ADR-0098 — the pure pieces of the Verlauf: how a figure, a change and what is missing are worded
 // (§3: a range stays a range, an open year has no number), how the chart columns follow the tiers,
-// and the owl's sentence built only from the numbers (§7).
+// the owl's sentence built only from the numbers (§7), and the timeline's one phrase and one amount per
+// year with the single most urgent item (§1, alternative A).
 import { describe, expect, it } from 'vitest'
 import { createAppI18n } from '../../i18n/app-i18n'
 import { HISTORY_RESPONSE, HISTORY_YEARS, est, fig, open } from '../../test-history-fixture'
 import { buildChart, niceTicks, sparkPoints } from './historyChartModel'
 import { deltaText, deltaTone, figureText, missingSentence, signedEuro, signedFigureText } from './historyFormat'
 import { owlSentence } from './owlSentences'
+import { declaredAmount, filingTypeChange, missingDetail, missingShort, urgentFirst, yearAmount, yearStatus } from './historyTimeline'
 
 const tr = createAppI18n('de').t
 const en = createAppI18n('en').t
@@ -119,5 +121,61 @@ describe('owlSentence', () => {
   it('says honestly when there is nothing to say yet', () => {
     expect(owlSentence('netto', [], [], 'beide', tr)).toBe('Für Brutto → Netto fehlt noch eine Lohnsteuerbescheinigung.')
     expect(owlSentence('erstattung', [], [], 'beide', tr)).toBe('Noch hat kein Jahr einen Bescheid oder eine Schätzung.')
+  })
+})
+
+describe('historyTimeline', () => {
+  const item = (year: number) => HISTORY_RESPONSE.list.find((l) => l.year === year)!
+  const entry = (year: number) => HISTORY_YEARS.find((y) => y.year === year)
+  const status = (year: number) => {
+    const st = yearStatus(item(year), entry(year), tr)
+    return { ...st, text: plain(st.text) }
+  }
+
+  it('puts the highlighted deadline first, then deadlines, waiting years and open years, newer first', () => {
+    expect(urgentFirst(HISTORY_RESPONSE.openItems).map((o) => `${o.kind}-${o.year}`)).toEqual(['einspruchsfrist-2024', 'wartet-auf-bescheid-2025', 'offen-2026'])
+    const items = [
+      { kind: 'offen' as const, year: 2026, highlighted: false },
+      { kind: 'wartet-auf-bescheid' as const, year: 2024, highlighted: false },
+      { kind: 'wartet-auf-bescheid' as const, year: 2025, highlighted: false },
+    ]
+    expect(urgentFirst(items).map((o) => o.year)).toEqual([2025, 2024, 2026])
+  })
+
+  it('words each year in one plain phrase, the cut in the danger tone only', () => {
+    expect(status(2026)).toEqual({ text: 'in Arbeit · 2 Lohnsteuerbescheinigungen fehlen', tone: null })
+    expect(status(2025)).toEqual({ text: 'abgegeben · wartet auf Bescheid', tone: null })
+    expect(status(2024)).toEqual({ text: 'Bescheid · 92 € weniger als erklärt', tone: 'bad' })
+    expect(status(2023)).toEqual({ text: 'Bescheid wie erklärt', tone: null })
+    expect(status(2021)).toEqual({ text: 'nur Bescheid', tone: null })
+    expect(plain(yearStatus({ ...item(2024), difference: 40 }, undefined, tr).text)).toBe('Bescheid · 40 € mehr als erklärt')
+    expect(yearStatus({ ...item(2024), difference: 0 }, undefined, tr).text).toBe('Bescheid · 2 Änderungen')
+    expect(yearStatus({ ...item(2023), noDiffReason: 'keine-eingereichte-fassung' }, undefined, tr).text).toBe('Bescheid · ohne Abgleich')
+  })
+
+  it('gives each year one amount: laut Bescheid, else the range of the estimate, else „–“', () => {
+    expect(plain(yearAmount(item(2024), entry(2024)))).toBe('+809 €')
+    expect(plain(yearAmount(item(2025), entry(2025)))).toBe('+1.066–1.196 €')
+    expect(yearAmount(item(2026), entry(2026))).toBe('–')
+    expect(plain(declaredAmount(item(2024), entry(2024)))).toBe('+901 €')
+    expect(plain(declaredAmount(item(2025), entry(2025)))).toBe('+1.066–1.196 €')
+    expect(declaredAmount(item(2021), entry(2021))).toBe('–')
+  })
+
+  it('says in a few words what an open year lacks, and concretely on its page', () => {
+    expect(missingShort(['lohnsteuerbescheinigung'], tr)).toBe('Lohnsteuerbescheinigung fehlt')
+    expect(missingShort(['einkommen', 'personB.lohnsteuerbescheinigung', 'werbungskosten', 'wechselkurs'], tr)).toBe('2 Lohnsteuerbescheinigungen fehlen, +2 weitere')
+    expect(missingShort(['etwas-neues'], tr)).toBe('Angaben fehlen')
+    expect(missingShort([], tr)).toBe('')
+    expect(missingDetail(['lohnsteuerbescheinigung', 'personB.lohnsteuerbescheinigung'], 2026, '2026-11-18', tr)).toEqual(['die Lohnsteuerbescheinigungen 2026 (kommen ab Februar 2027)'])
+    expect(missingDetail(['einkommen'], 2026, '2027-03-01', tr)).toEqual(['die Lohnsteuerbescheinigung 2026'])
+    expect(missingDetail(['personB.lohnsteuerbescheinigung', 'veranlagungsart'], 2026, '2026-11-18', tr)).toEqual(['die Lohnsteuerbescheinigung 2026 von Person B (kommt ab Februar 2027)', 'die Veranlagungsart'])
+    expect(missingShort(['lohnsteuerbescheinigung'], en)).toBe('wage tax certificate missing')
+  })
+
+  it('names the change of the filing type for the year it happened', () => {
+    expect(filingTypeChange(HISTORY_RESPONSE, 2023)).toBe('zusammen')
+    expect(filingTypeChange(HISTORY_RESPONSE, 2024)).toBeNull()
+    expect(filingTypeChange(HISTORY_RESPONSE, 2021)).toBeNull()
   })
 })

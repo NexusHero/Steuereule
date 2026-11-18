@@ -14,8 +14,8 @@ import { TabIcon } from '../icons/TabIcon'
 import { useAccountSession } from '../auth/useAccountSession'
 import { OwlModeScreen } from '../screens/advisor/OwlModeScreen'
 import { ReceiptsScreen } from '../screens/receipts/ReceiptsScreen'
-import { HistoryScreen } from '../screens/history/HistoryScreen'
 import { CockpitStack } from './CockpitStack'
+import { HistoryStack } from './HistoryStack'
 import { ProfileStack } from './ProfileStack'
 import { useShellState } from './ShellState'
 import { isSheetRouteName, type AppTabParamList } from './routes'
@@ -146,28 +146,6 @@ function OwlRoute({ navigation }: BottomTabScreenProps<AppTabParamList, 'Owl'>) 
   )
 }
 
-function HistoryRoute() {
-  const { taxYear, setTaxYear, openCockpitScreen, switchToTab, onRegister, onLogin } = useShellState()
-  const { state: sessionState } = useAccountSession()
-  return (
-    <HistoryScreen
-      isGuest={sessionState.status === 'signed-out'}
-      openYear={taxYear}
-      onRegister={onRegister}
-      onLogin={onLogin}
-      onOpenYear={(year) => {
-        setTaxYear(year)
-        openCockpitScreen('CockpitHome')
-      }}
-      onPrepareAppeal={(year) => {
-        setTaxYear(year)
-        openCockpitScreen('Assessment', { year })
-      }}
-      onOpenDrafts={() => switchToTab('Owl')}
-    />
-  )
-}
-
 export function AppTabs() {
   const t = useTheme()
   const insets = useSafeAreaInsets()
@@ -200,7 +178,7 @@ export function AppTabs() {
       <Tab.Screen name="Cockpit" component={CockpitStack} />
       <Tab.Screen name="Owl" component={OwlRoute} />
       <Tab.Screen name="Receipts" component={ReceiptsScreen} />
-      <Tab.Screen name="History" component={HistoryRoute} />
+      <Tab.Screen name="History" component={HistoryStack} />
       <Tab.Screen name="Profile" component={ProfileStack} />
     </Tab.Navigator>
   )

@@ -197,7 +197,7 @@ describe('BescheidScreen', () => {
     renderAssessment()
     expect(await screen.findByTestId('bescheid-abgleich')).toBeTruthy()
     expect(screen.getByText('Erklärung ↔ Bescheid 2026')).toBeTruthy()
-    expect(screen.getByTestId('bescheid-abgleich-anzahl').textContent).toBe('2 Abweichungen')
+    expect(screen.getByTestId('bescheid-abgleich-anzahl').textContent).toBe('2 Änderungen')
     expect((screen.getByTestId('bescheid-abgleich-frist').textContent ?? '').replace(/\u00A0/g, ' ')).toContain('Einspruch möglich bis 07.12.2026 · noch 19 Tage')
     // The old three-sum reconciliation gives way to the diff.
     expect(screen.queryByText('Abgleich mit deiner Berechnung')).toBeNull()

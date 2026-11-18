@@ -2695,83 +2695,30 @@
     },
     "nochOffenKurz": "noch offen",
     "und": "und",
-    "ansteht": {
-      "titel": "Was ansteht",
-      "weichtAb": "Bescheid weicht ab: {{differenz}}",
-      "weichtAbOhneBetrag_one": "Bescheid weicht ab: {{count}} Position",
-      "weichtAbOhneBetrag_other": "Bescheid weicht ab: {{count}} Positionen",
-      "frist_one": "Einspruch bis {{datum}} · noch {{count}} Tag",
-      "frist_other": "Einspruch bis {{datum}} · noch {{count}} Tage",
-      "wartet": "Wartet auf den Bescheid",
-      "wiederErklaert_one": "{{count}} Position wie {{vorjahr}} erklärt, dort gekürzt: {{liste}}",
-      "wiederErklaert_other": "{{count}} Positionen wie {{vorjahr}} erklärt, dort gekürzt: {{liste}}",
-      "eingereicht": "Eingereicht · wartet auf Bescheid",
-      "offen": "Noch offen"
-    },
-    "held": {
-      "erstattet": "Erstattet {{zeitraum}}",
-      "nachgezahlt": "Unterm Strich nachgezahlt {{zeitraum}}",
-      "ausBescheidjahren_one": "aus {{count}} Bescheidjahr",
-      "ausBescheidjahren_other": "aus {{count}} Bescheidjahren",
-      "geaendert": "Vom Finanzamt geändert",
-      "inErklaerungen_one": "in {{geaendert}} von {{count}} Erklärung",
-      "inErklaerungen_other": "in {{geaendert}} von {{count}} Erklärungen"
-    },
-    "liste": {
-      "titel": "Eure Steuerjahre",
-      "oeffnen": "Öffnet den Abgleich des Jahres darunter"
-    },
     "tabelle": {
-      "titel": "Alle Jahre: erklärt und festgesetzt",
       "jahr": "Jahr",
       "stand": "Stand",
       "stufe": "Stufe",
-      "erklaert": "Erstattung erklärt",
+      "erklaert": "erklärt",
       "lautBescheid": "laut Bescheid",
       "erstattung": "Erstattung",
       "differenz": "Differenz",
-      "werbungskosten": "Werbungsk. angesetzt",
-      "brutto": "Brutto · {{person}}",
-      "netto": "Netto",
-      "nettoQuote": "Netto-Quote",
-      "steuerquote": "Steuerquote · beide",
-      "veranlagung": "Veranlagung"
-    },
-    "veranlagung": {
-      "einzel": "Einzeln",
-      "zusammen": "Zusammen"
-    },
-    "stand": {
-      "offen": "Erklärung angelegt, noch offen",
-      "eckjahr": "Alter Bescheid hochgeladen, extern erledigt",
-      "eingereicht": "Eingereicht · wartet auf Bescheid",
-      "abweichungen_one": "Bescheid eingegangen, {{count}} Abweichung",
-      "abweichungen_other": "Bescheid eingegangen, {{count}} Abweichungen",
-      "wieErklaert": "Bescheid wie erklärt",
-      "bescheid": "Bescheid eingegangen"
+      "nettoQuote": "Netto-Quote"
     },
     "stufe": {
       "bescheid": "Bescheid",
       "schaetzung": "Schätzung",
       "offen": "offen",
-      "eckjahr": "Eckjahr",
-      "eckjahrBescheid": "Eckjahr · Bescheid",
+      "eckjahrBescheid": "nur Bescheid",
       "lstb": "Lohnsteuerbescheinigung",
-      "lohnausweis": "Lohnausweis",
-      "bescheidAbweichungen_one": "Bescheid · {{count}} Abw.",
-      "bescheidAbweichungen_other": "Bescheid · {{count}} Abw.",
-      "bescheidWieErklaert": "Bescheid · wie erklärt"
+      "lohnausweis": "Lohnausweis"
     },
     "zumCockpit": "Zum Cockpit {{jahr}}",
     "ohneAbgleich": {
-      "eckjahr": "Kein Abgleich: Die Erklärung {{jahr}} wurde nicht in SteuerEule gemacht. Der Bescheid zählt im Verlauf trotzdem.",
-      "ohneFassung": "Kein Abgleich: Für {{jahr}} liegt ein Bescheid vor, aber keine in SteuerEule eingereichte Fassung, mit der er sich vergleichen ließe.",
-      "wartet": "Eingereicht, der Bescheid {{jahr}} steht aus. Kommt er, steht hier der Abgleich.",
-      "offen": "{{jahr}} ist noch offen: Es gibt noch keine eingereichte Erklärung und keinen Bescheid."
+      "eckjahr": "Kein Abgleich: Die Erklärung {{jahr}} wurde nicht in SteuerEule gemacht. Der Bescheid zählt im Verlauf trotzdem."
     },
     "wartet": {
-      "eyebrow": "Wartet auf den Bescheid",
-      "titel": "{{jahr}}: worauf du achten kannst",
+      "titel": "Worauf du achten kannst",
       "text_one": "Eingereicht, der Bescheid steht aus. {{count}} Position hat das Finanzamt {{vorjahr}} gekürzt; {{jahr}} steht sie wieder so in der Erklärung.",
       "text_other": "Eingereicht, der Bescheid steht aus. {{count}} Positionen hat das Finanzamt {{vorjahr}} gekürzt; {{jahr}} stehen sie wieder so in der Erklärung.",
       "keineVorhersage": "Kommt der Bescheid, steht hier der Abgleich. Eine Vorhersage macht die Eule nicht."
@@ -2790,16 +2737,16 @@
       "gleichEinzeln_other": "Alle {{count}} Positionen stimmen mit dieser Einzelerklärung überein. Das Finanzamt hat nichts geändert.",
       "nichtGelesenHinweis_one": "{{count}} Position war im Bescheid nicht lesbar; sie steht als „nicht gelesen“, nicht als Abweichung.",
       "nichtGelesenHinweis_other": "{{count}} Positionen waren im Bescheid nicht lesbar; sie stehen als „nicht gelesen“, nicht als Abweichung.",
-      "abweichungen_one": "{{count}} Abweichung",
-      "abweichungen_other": "{{count}} Abweichungen",
-      "erstattungChip": "Erstattung {{erklaert}} → {{festgesetzt}} ({{differenz}})",
+      "abweichungen_one": "{{count}} Änderung",
+      "abweichungen_other": "{{count}} Änderungen",
+      "erstattungChip": "Erstattung {{erklaert}} → {{festgesetzt}}",
       "spalteGeaendert": "Vom Finanzamt geändert",
       "spalteWerte": "erklärt → Bescheid",
       "spalteWirkung": "Erstattung",
       "wirkungA11y": "Wirkung auf die Erstattung: {{wert}}",
       "wirkungUnbekannt": "Wirkung auf die Erstattung nicht berechenbar",
       "erlaeuterung": "Erläuterung im Bescheid:",
-      "folge": "Folge",
+      "folge": "daraus folgt",
       "formularAuf_one": "Alle {{count}} Position in Formularreihenfolge ({{gleich}} wie erklärt)",
       "formularAuf_other": "Alle {{count}} Positionen in Formularreihenfolge ({{gleich}} wie erklärt)",
       "formularZu": "Formularansicht ausblenden",
@@ -2818,7 +2765,8 @@
         "werbungskostenB": "Werbungskosten · Person B",
         "vorsorge": "Vorsorge und Sonderausgaben",
         "steuer": "Steuer"
-      }
+      },
+      "warumSumme": "Warum die Summe abweicht"
     },
     "frist": {
       "bis": "Einspruch möglich bis {{datum}}",
@@ -3014,8 +2962,8 @@
       "grenzEinzeln": "Grenzsteuersatz: Bei zwei Einzelerklärungen hat jede Person ihren eigenen.",
       "quoteOhneBrutto": "Ohne Brutto lässt sich die Quote für {{jahr}} nicht bilden.",
       "abgleich": "Bescheid ↔ Erklärung",
-      "abweichungen_one": "{{count}} Abweichung",
-      "abweichungen_other": "{{count}} Abweichungen",
+      "abweichungen_one": "{{count}} Änderung",
+      "abweichungen_other": "{{count}} Änderungen",
       "gleich": "gleich"
     },
     "eule": {
@@ -3092,10 +3040,85 @@
       "nichtGelesen": "Nicht gelesen, bleibt offen und zählt nie als 0: {{liste}}.",
       "erlaeuterungen_one": "{{count}} Erläuterung des Finanzamts gelesen.",
       "erlaeuterungen_other": "{{count}} Erläuterungen des Finanzamts gelesen.",
-      "eckjahr": "{{jahr}} hat keine Erklärung in SteuerEule: Übernimmst du die Werte, entsteht ein Eckjahr (extern erledigt).",
+      "eckjahr": "{{jahr}} hat keine Erklärung in SteuerEule: Übernimmst du die Werte, steht {{jahr}} im Verlauf als „nur Bescheid“ (extern erledigt).",
       "entwuerfe_one": "{{count}} Entwurf wartet bei der Eule, bis du ihn übernimmst.",
       "entwuerfe_other": "{{count}} Entwürfe warten bei der Eule, bis du sie übernimmst.",
       "zurEule": "Zu den Vorschlägen"
+    },
+    "zurueck": "Zurück zum Verlauf",
+    "jetzt": {
+      "label": "Jetzt wichtig",
+      "gekuerzt": "{{jahr}}: Das Finanzamt hat gekürzt",
+      "gekuerztA11y": "{{jahr}}: Das Finanzamt hat {{betrag}} gekürzt",
+      "mehr": "{{jahr}}: Das Finanzamt hat mehr erstattet",
+      "mehrA11y": "{{jahr}}: Das Finanzamt hat {{betrag}} mehr erstattet",
+      "aenderungen_one": "{{jahr}}: {{count}} Änderung im Bescheid",
+      "aenderungen_other": "{{jahr}}: {{count}} Änderungen im Bescheid",
+      "frist_one": "Einspruch noch {{count}} Tag möglich",
+      "frist_other": "Einspruch noch {{count}} Tage möglich",
+      "wartet": "{{jahr}}: Der Bescheid steht aus",
+      "wartetText_one": "Achte auf {{count}} Position, die {{vorjahr}} gekürzt wurde.",
+      "wartetText_other": "Achte auf {{count}} Positionen, die {{vorjahr}} gekürzt wurden.",
+      "wartetOhne": "Abgegeben. Jetzt ist das Finanzamt dran.",
+      "offen": "{{jahr}}: noch in Arbeit",
+      "ansehen": "Ansehen",
+      "weitere_one": "+ {{count}} weiteres Jahr braucht dich",
+      "weitere_other": "+ {{count}} weitere Jahre brauchen dich",
+      "erledigt": "Alles erledigt",
+      "erledigtText": "Kein Jahr wartet gerade auf dich. Kommt ein Bescheid oder eine Frist, steht es hier."
+    },
+    "zeile": {
+      "liste": "Deine Steuerjahre",
+      "a11y": "{{jahr}}: {{stand}}, {{betrag}}",
+      "oeffnen": "Öffnet das Jahr",
+      "offen": "in Arbeit",
+      "offenMit": "in Arbeit · {{was}}",
+      "eingereicht": "abgegeben · wartet auf Bescheid",
+      "nurBescheid": "nur Bescheid",
+      "weniger": "Bescheid · {{betrag}} weniger als erklärt",
+      "mehr": "Bescheid · {{betrag}} mehr als erklärt",
+      "aenderungen_one": "Bescheid · {{count}} Änderung",
+      "aenderungen_other": "Bescheid · {{count}} Änderungen",
+      "wieErklaert": "Bescheid wie erklärt",
+      "ohneAbgleich": "Bescheid · ohne Abgleich"
+    },
+    "fehltKurz": {
+      "lohnsteuerbescheinigung_one": "Lohnsteuerbescheinigung fehlt",
+      "lohnsteuerbescheinigung_other": "{{count}} Lohnsteuerbescheinigungen fehlen",
+      "werbungskosten": "Werbungskosten fehlen",
+      "rente": "Rentenbetrag fehlt",
+      "veranlagungsart": "Veranlagungsart fehlt",
+      "wechselkurs": "Wechselkurs fehlt",
+      "sonstiges": "Angaben fehlen",
+      "mehr": "{{erstes}}, +{{count}} weitere"
+    },
+    "links": {
+      "entwicklung": "Entwicklung ansehen",
+      "aeltere": "Ältere Jahre ergänzen"
+    },
+    "jahr": {
+      "unbekannt": {
+        "titel": "{{jahr}} steht nicht im Verlauf",
+        "text": "Für dieses Jahr gibt es weder eine Erklärung noch einen Bescheid. Zurück im Verlauf kannst du alte Jahre mit ihrem Bescheid ergänzen."
+      },
+      "satz": {
+        "offen": "In Arbeit, noch nicht abgegeben.",
+        "eingereicht": "Abgegeben, der Bescheid steht aus.",
+        "nurBescheid": "Nur der Bescheid: Die Erklärung {{jahr}} wurde nicht in SteuerEule gemacht, deshalb gibt es keinen Abgleich. Der Bescheid zählt im Verlauf trotzdem.",
+        "ohneFassung": "Für {{jahr}} liegt ein Bescheid vor, aber keine in SteuerEule eingereichte Fassung, mit der er sich vergleichen ließe.",
+        "aenderungen_one": "Bescheid da: Das Finanzamt hat {{count}} Position geändert.",
+        "aenderungen_other": "Bescheid da: Das Finanzamt hat {{count}} Positionen geändert.",
+        "wieErklaert": "Bescheid wie erklärt: Das Finanzamt hat nichts geändert."
+      },
+      "fehltTitel": "Was noch fehlt",
+      "lstb": {
+        "eine": "die Lohnsteuerbescheinigung {{jahr}}",
+        "eineKommt": "die Lohnsteuerbescheinigung {{jahr}} (kommt ab Februar {{folgejahr}})",
+        "beide": "die Lohnsteuerbescheinigungen {{jahr}}",
+        "beideKommt": "die Lohnsteuerbescheinigungen {{jahr}} (kommen ab Februar {{folgejahr}})",
+        "personB": "die Lohnsteuerbescheinigung {{jahr}} von Person B",
+        "personBKommt": "die Lohnsteuerbescheinigung {{jahr}} von Person B (kommt ab Februar {{folgejahr}})"
+      }
     }
   }
 }

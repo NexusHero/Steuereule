@@ -36,6 +36,7 @@ export function AssessmentDiffView({ diff, deadline, submittedOn, assessmentDate
   const { t: tr } = useTranslation(APP_NS)
   const label = usePositionLabel()
   const [formOpen, setFormOpen] = useState(false)
+  const [whyOpen, setWhyOpen] = useState(false)
   const year = diff.year
   const own = [...diff.ownDeviations].sort((a, b) => Math.abs(b.refundEffect ?? 0) - Math.abs(a.refundEffect ?? 0))
   const refundRow = diff.groups.flatMap((g) => g.rows).find((r) => r.position === 'erstattung') ?? null
@@ -82,7 +83,7 @@ export function AssessmentDiffView({ diff, deadline, submittedOn, assessmentDate
             </Text>
             {refundRow && refundRow.declared !== null && refundRow.assessed !== null && total !== null ? (
               <Text style={s.pill}>
-                {tr('verlauf.abgleich.erstattungChip', { erklaert: formatEuro(refundRow.declared), festgesetzt: formatEuro(refundRow.assessed), differenz: signedEuro(total) })}
+                {tr('verlauf.abgleich.erstattungChip', { erklaert: formatEuro(refundRow.declared), festgesetzt: formatEuro(refundRow.assessed) })}
               </Text>
             ) : null}
           </View>
@@ -159,9 +160,17 @@ export function AssessmentDiffView({ diff, deadline, submittedOn, assessmentDate
           </View>
 
           {diff.effectsDifferFromTotal && diff.singleEffectsSum !== null && total !== null ? (
-            <Text style={s.foot} testID={`${testID}-nichtlinear`}>
-              {tr('verlauf.abgleich.nichtLinear', { summe: signedEuro(diff.singleEffectsSum), abstand: formatEuro(Math.abs(diff.singleEffectsSum - total)), gesamt: signedEuro(total) })}
-            </Text>
+            <View>
+              {/* Behind a small toggle: the note matters only to whoever adds the column up. */}
+              <Pressable accessibilityRole="button" accessibilityState={{ expanded: whyOpen }} onPress={() => setWhyOpen((v) => !v)} style={s.info} testID={`${testID}-nichtlinear-umschalten`}>
+                <Text style={s.moreText}>{`ⓘ ${tr('verlauf.abgleich.warumSumme')}`}</Text>
+              </Pressable>
+              {whyOpen ? (
+                <Text style={s.foot} testID={`${testID}-nichtlinear`}>
+                  {tr('verlauf.abgleich.nichtLinear', { summe: signedEuro(diff.singleEffectsSum), abstand: formatEuro(Math.abs(diff.singleEffectsSum - total)), gesamt: signedEuro(total) })}
+                </Text>
+              ) : null}
+            </View>
           ) : (
             <Text style={s.foot}>{tr('verlauf.abgleich.wirkungErklaert')}</Text>
           )}
@@ -328,6 +337,7 @@ function makeStyles(t: UiTheme) {
   const chainLink: TextStyle = { ...t.type.captionStrong, color: t.color.tinte }
   const followTag: TextStyle = { ...t.type.meta, color: t.color.tinte2, borderWidth: 1, borderColor: t.color.tinte2, borderRadius: 4, paddingHorizontal: 4 }
   const more: ViewStyle = { borderTopWidth: 1, borderTopColor: t.color.linieWeich, borderStyle: 'dashed', paddingHorizontal: t.space.s3, paddingVertical: t.space.s2, minHeight: 44, justifyContent: 'center' }
+  const info: ViewStyle = { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start' }
   const moreText: TextStyle = { ...t.type.small, color: t.color.kiTinte }
   const group: TextStyle = { ...t.type.captionStrong, color: t.color.tinte2, textTransform: 'uppercase', letterSpacing: 0.04 * t.size.xs, backgroundColor: t.color.grund, paddingHorizontal: t.space.s3, paddingVertical: 4, borderTopWidth: 1, borderTopColor: t.color.linieWeich }
   const foot: TextStyle = { ...t.type.caption, color: t.color.tinte2 }
@@ -345,7 +355,7 @@ function makeStyles(t: UiTheme) {
   const owlText: TextStyle = { ...t.type.small, color: t.color.kiTinte, flex: 1 }
   return {
     card, head, flex, eyebrow, title, close, closeGlyph, muted, mutedText, chipRow, pill, pillOk, pillBad, table, row, headerRow, headerText, pos, values, valueGroup, effect,
-    effectStrong, rowBad, rowGood, textBad, textGood, struck, quote, quoteText, chain, chainText, chainLink, followTag, more, moreText, group, foot, deadline,
+    effectStrong, rowBad, rowGood, textBad, textGood, struck, quote, quoteText, chain, chainText, chainLink, followTag, more, info, moreText, group, foot, deadline,
     deadlinePast, deadlineText, strong, body, lessons, lessonsTitle, lesson, lessonPill, owl, owlLabel, owlText,
   }
 }

@@ -2695,83 +2695,30 @@
     },
     "nochOffenKurz": "still open",
     "und": "and",
-    "ansteht": {
-      "titel": "What's due",
-      "weichtAb": "Assessment differs: {{differenz}}",
-      "weichtAbOhneBetrag_one": "Assessment differs: {{count}} item",
-      "weichtAbOhneBetrag_other": "Assessment differs: {{count}} items",
-      "frist_one": "Objection until {{datum}} · {{count}} day left",
-      "frist_other": "Objection until {{datum}} · {{count}} days left",
-      "wartet": "Waiting for the assessment",
-      "wiederErklaert_one": "{{count}} item declared as in {{vorjahr}}, cut there: {{liste}}",
-      "wiederErklaert_other": "{{count}} items declared as in {{vorjahr}}, cut there: {{liste}}",
-      "eingereicht": "Filed · waiting for the assessment",
-      "offen": "Still open"
-    },
-    "held": {
-      "erstattet": "Refunded {{zeitraum}}",
-      "nachgezahlt": "Paid back on balance {{zeitraum}}",
-      "ausBescheidjahren_one": "from {{count}} assessed year",
-      "ausBescheidjahren_other": "from {{count}} assessed years",
-      "geaendert": "Changed by the tax office",
-      "inErklaerungen_one": "in {{geaendert}} of {{count}} return",
-      "inErklaerungen_other": "in {{geaendert}} of {{count}} returns"
-    },
-    "liste": {
-      "titel": "Your tax years",
-      "oeffnen": "Opens the year's comparison below"
-    },
     "tabelle": {
-      "titel": "All years: declared and assessed",
       "jahr": "Year",
       "stand": "Status",
       "stufe": "Tier",
-      "erklaert": "Refund declared",
+      "erklaert": "declared",
       "lautBescheid": "assessed",
       "erstattung": "Refund",
       "differenz": "Difference",
-      "werbungskosten": "Work exp. counted",
-      "brutto": "Gross · {{person}}",
-      "netto": "Net",
-      "nettoQuote": "Net share",
-      "steuerquote": "Tax rate · both",
-      "veranlagung": "Filing"
-    },
-    "veranlagung": {
-      "einzel": "Separate",
-      "zusammen": "Joint"
-    },
-    "stand": {
-      "offen": "Return started, still open",
-      "eckjahr": "Old assessment uploaded, done elsewhere",
-      "eingereicht": "Filed · waiting for the assessment",
-      "abweichungen_one": "Assessment received, {{count}} difference",
-      "abweichungen_other": "Assessment received, {{count}} differences",
-      "wieErklaert": "Assessed as declared",
-      "bescheid": "Assessment received"
+      "nettoQuote": "Net share"
     },
     "stufe": {
       "bescheid": "Assessment",
       "schaetzung": "Estimate",
       "offen": "open",
-      "eckjahr": "Anchor year",
-      "eckjahrBescheid": "Anchor year · assessment",
+      "eckjahrBescheid": "assessment only",
       "lstb": "Wage tax certificate",
-      "lohnausweis": "Swiss salary certificate",
-      "bescheidAbweichungen_one": "Assessment · {{count}} diff.",
-      "bescheidAbweichungen_other": "Assessment · {{count}} diff.",
-      "bescheidWieErklaert": "Assessment · as declared"
+      "lohnausweis": "Swiss salary certificate"
     },
     "zumCockpit": "Open cockpit {{jahr}}",
     "ohneAbgleich": {
-      "eckjahr": "No comparison: the {{jahr}} return was not made in SteuerEule. The assessment still counts in the history.",
-      "ohneFassung": "No comparison: there is an assessment for {{jahr}}, but no version filed in SteuerEule to compare it with.",
-      "wartet": "Filed, the {{jahr}} assessment is pending. Once it arrives, the comparison shows here.",
-      "offen": "{{jahr}} is still open: there is no filed return and no assessment yet."
+      "eckjahr": "No comparison: the {{jahr}} return was not made in SteuerEule. The assessment still counts in the history."
     },
     "wartet": {
-      "eyebrow": "Waiting for the assessment",
-      "titel": "{{jahr}}: what to watch",
+      "titel": "What to watch",
       "text_one": "Filed, the assessment is pending. The tax office cut {{count}} item in {{vorjahr}}; in {{jahr}} it is declared the same way again.",
       "text_other": "Filed, the assessment is pending. The tax office cut {{count}} items in {{vorjahr}}; in {{jahr}} they are declared the same way again.",
       "keineVorhersage": "Once the assessment arrives, the comparison shows here. The owl makes no forecast."
@@ -2790,16 +2737,16 @@
       "gleichEinzeln_other": "All {{count}} items match this separate return. The tax office changed nothing.",
       "nichtGelesenHinweis_one": "{{count}} item could not be read in the assessment; it shows as “not read”, not as a difference.",
       "nichtGelesenHinweis_other": "{{count}} items could not be read in the assessment; they show as “not read”, not as a difference.",
-      "abweichungen_one": "{{count}} difference",
-      "abweichungen_other": "{{count}} differences",
-      "erstattungChip": "Refund {{erklaert}} → {{festgesetzt}} ({{differenz}})",
+      "abweichungen_one": "{{count}} change",
+      "abweichungen_other": "{{count}} changes",
+      "erstattungChip": "Refund {{erklaert}} → {{festgesetzt}}",
       "spalteGeaendert": "Changed by the tax office",
       "spalteWerte": "declared → assessed",
       "spalteWirkung": "Refund",
       "wirkungA11y": "Effect on the refund: {{wert}}",
       "wirkungUnbekannt": "Effect on the refund cannot be computed",
       "erlaeuterung": "Explanation in the assessment:",
-      "folge": "Follows",
+      "folge": "which leads to",
       "formularAuf_one": "All {{count}} item in form order ({{gleich}} as declared)",
       "formularAuf_other": "All {{count}} items in form order ({{gleich}} as declared)",
       "formularZu": "Hide form view",
@@ -2818,7 +2765,8 @@
         "werbungskostenB": "Work expenses · Person B",
         "vorsorge": "Contributions and special expenses",
         "steuer": "Tax"
-      }
+      },
+      "warumSumme": "Why the sum differs"
     },
     "frist": {
       "bis": "Objection possible until {{datum}}",
@@ -3014,8 +2962,8 @@
       "grenzEinzeln": "Marginal tax rate: with two separate returns each person has their own.",
       "quoteOhneBrutto": "Without gross pay the rate for {{jahr}} cannot be formed.",
       "abgleich": "Assessment ↔ return",
-      "abweichungen_one": "{{count}} difference",
-      "abweichungen_other": "{{count}} differences",
+      "abweichungen_one": "{{count}} change",
+      "abweichungen_other": "{{count}} changes",
       "gleich": "same"
     },
     "eule": {
@@ -3092,10 +3040,85 @@
       "nichtGelesen": "Not read, stays open and never counts as 0: {{liste}}.",
       "erlaeuterungen_one": "{{count}} explanation of the tax office read.",
       "erlaeuterungen_other": "{{count}} explanations of the tax office read.",
-      "eckjahr": "{{jahr}} has no return in SteuerEule: if you take over the values, an anchor year (done elsewhere) is created.",
+      "eckjahr": "{{jahr}} has no return in SteuerEule: if you take over the values, {{jahr}} shows in the history as “assessment only” (done elsewhere).",
       "entwuerfe_one": "{{count}} draft waits with the owl until you take it over.",
       "entwuerfe_other": "{{count}} drafts wait with the owl until you take them over.",
       "zurEule": "Go to the proposals"
+    },
+    "zurueck": "Back to the history",
+    "jetzt": {
+      "label": "Important now",
+      "gekuerzt": "{{jahr}}: the tax office cut the refund",
+      "gekuerztA11y": "{{jahr}}: the tax office cut {{betrag}}",
+      "mehr": "{{jahr}}: the tax office refunded more",
+      "mehrA11y": "{{jahr}}: the tax office refunded {{betrag}} more",
+      "aenderungen_one": "{{jahr}}: {{count}} change in the assessment",
+      "aenderungen_other": "{{jahr}}: {{count}} changes in the assessment",
+      "frist_one": "Objection still possible for {{count}} day",
+      "frist_other": "Objection still possible for {{count}} days",
+      "wartet": "{{jahr}}: the assessment is pending",
+      "wartetText_one": "Watch {{count}} item that was cut in {{vorjahr}}.",
+      "wartetText_other": "Watch {{count}} items that were cut in {{vorjahr}}.",
+      "wartetOhne": "Filed. Now it is up to the tax office.",
+      "offen": "{{jahr}}: still in progress",
+      "ansehen": "View",
+      "weitere_one": "+ {{count}} more year needs you",
+      "weitere_other": "+ {{count}} more years need you",
+      "erledigt": "All done",
+      "erledigtText": "No year is waiting for you right now. When an assessment or a deadline comes, it shows here."
+    },
+    "zeile": {
+      "liste": "Your tax years",
+      "a11y": "{{jahr}}: {{stand}}, {{betrag}}",
+      "oeffnen": "Opens the year",
+      "offen": "in progress",
+      "offenMit": "in progress · {{was}}",
+      "eingereicht": "filed · waiting for the assessment",
+      "nurBescheid": "assessment only",
+      "weniger": "Assessment · {{betrag}} less than declared",
+      "mehr": "Assessment · {{betrag}} more than declared",
+      "aenderungen_one": "Assessment · {{count}} change",
+      "aenderungen_other": "Assessment · {{count}} changes",
+      "wieErklaert": "Assessment as declared",
+      "ohneAbgleich": "Assessment · no comparison"
+    },
+    "fehltKurz": {
+      "lohnsteuerbescheinigung_one": "wage tax certificate missing",
+      "lohnsteuerbescheinigung_other": "{{count}} wage tax certificates missing",
+      "werbungskosten": "work expenses missing",
+      "rente": "pension amount missing",
+      "veranlagungsart": "filing type missing",
+      "wechselkurs": "exchange rate missing",
+      "sonstiges": "details missing",
+      "mehr": "{{erstes}}, +{{count}} more"
+    },
+    "links": {
+      "entwicklung": "See the development",
+      "aeltere": "Add older years"
+    },
+    "jahr": {
+      "unbekannt": {
+        "titel": "{{jahr}} is not in the history",
+        "text": "This year has neither a return nor an assessment. Back in the history you can add old years with their assessment."
+      },
+      "satz": {
+        "offen": "In progress, not filed yet.",
+        "eingereicht": "Filed, the assessment is pending.",
+        "nurBescheid": "Assessment only: the {{jahr}} return was not made in SteuerEule, so there is no comparison. The assessment still counts in the history.",
+        "ohneFassung": "There is an assessment for {{jahr}}, but no version filed in SteuerEule to compare it with.",
+        "aenderungen_one": "Assessment received: the tax office changed {{count}} item.",
+        "aenderungen_other": "Assessment received: the tax office changed {{count}} items.",
+        "wieErklaert": "Assessment as declared: the tax office changed nothing."
+      },
+      "fehltTitel": "What is still missing",
+      "lstb": {
+        "eine": "the {{jahr}} wage tax certificate",
+        "eineKommt": "the {{jahr}} wage tax certificate (arrives from February {{folgejahr}})",
+        "beide": "the {{jahr}} wage tax certificates",
+        "beideKommt": "the {{jahr}} wage tax certificates (arrive from February {{folgejahr}})",
+        "personB": "the {{jahr}} wage tax certificate of person B",
+        "personBKommt": "the {{jahr}} wage tax certificate of person B (arrives from February {{folgejahr}})"
+      }
     }
   }
 }

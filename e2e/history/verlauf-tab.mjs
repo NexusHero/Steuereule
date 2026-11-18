@@ -1,9 +1,11 @@
-// ADR-0098 — the tab „Verlauf“, end to end in the real app: the tab bar `Cockpit · Eule · Belege ·
-// Verlauf · Profil`, the old year-list links landing in the Verlauf, „Was ansteht“, the summary, the
-// years (list on the phone, table on the desktop) and the Bescheid-Abgleich under the picked year, the
-// four key figures with tiers, the person toggle and the data table, the upload entry into the one Beleg
-// pipeline, the same Abgleich in „Bescheid prüfen“, the lesson at the next year's mask, and „Ich habe
-// die Erklärung abgegeben“ in the cockpit.
+// ADR-0098 — the tab „Verlauf“ as a timeline (alternative A), end to end in the real app: the tab bar
+// `Cockpit · Eule · Belege · Verlauf · Profil`, the old year-list links landing in the Verlauf, „Jetzt
+// wichtig“ in the cockpit's dark block, one row per year, a year's own page (`/app/verlauf/:jahr`) with
+// the Bescheid-Abgleich, the deadline and „Fürs nächste Mal“, back to the tab, „Entwicklung ansehen“
+// (`/app/verlauf/entwicklung`) with the four key figures, tiers, the person toggle and the data table,
+// the upload entry behind „Ältere Jahre ergänzen“ into the one Beleg pipeline, the same Abgleich in
+// „Bescheid prüfen“, the lesson at the next year's mask, and „Ich habe die Erklärung abgegeben“ in the
+// cockpit.
 //
 // `GET /v1/verlauf` and the reading of the Bescheid are served here (route mocks with the API's
 // response shape, the mock's example household from `fixtures/year-history.json`), so the row tests the
@@ -90,46 +92,85 @@ async function main() {
     await see('verlauf-titel')
     console.log(`[${TAG}] ✅ Tab „Verlauf“ — in the tab bar, and /app/steuerjahre lands there`)
 
-    // What is due, most urgent first.
-    await see('verlauf-ansteht')
-    const due = await page.locator('[data-testid^="verlauf-ansteht-"]').evaluateAll((els) => els.map((e) => e.getAttribute('data-testid')))
-    if (due.join() !== 'verlauf-ansteht-2024,verlauf-ansteht-2025,verlauf-ansteht-2026') fail(`„Was ansteht“ should start with the deadline of 2024, it is ${due.join()}`)
-    if (!(await textOf('verlauf-ansteht-2024')).includes('Bescheid weicht ab: −92 €')) fail('the deadline item should name the cut in euros')
-    await see('verlauf-held')
-    if ((await textOf('verlauf-held-erstattet')) !== '+1.632 €') fail('the summary should add the refunds of the Bescheid years')
-    if ((await textOf('verlauf-held-geaendert')) !== '−92 €') fail('the summary should say what the Finanzamt changed')
-    console.log(`[${TAG}] ✅ Was ansteht and the summary — deadline first with euros and days`)
+    const atPath = (path) => page.waitForURL((u) => u.pathname === path, { timeout: 10_000 })
 
-    // The years, and the Abgleich of the highlighted year below them.
+    // „Jetzt wichtig“: only the most urgent item, in the cockpit's dark block, the rest as one line.
+    await see('verlauf-jetzt')
+    const now = await textOf('verlauf-jetzt-inhalt')
+    if (!now.includes('2024: Das Finanzamt hat gekürzt') || !now.includes('−92 €') || !now.includes('Einspruch noch 19 Tage möglich')) fail(`„Jetzt wichtig“ should name the cut of 2024 and its days, it says ${now}`)
+    if ((await textOf('verlauf-jetzt-weitere')) !== '+ 2 weitere Jahre brauchen dich') fail('the other due years should be one quiet line')
+    for (const gone of ['verlauf-held', 'verlauf-ansteht', 'verlauf-abgleich-2024', 'verlauf-karte']) {
+      if (await byId(gone).count()) fail(`${gone} no longer belongs on the tab`)
+    }
+    await byId('verlauf-jetzt-weitere').click()
     await see('verlauf-jahre')
-    await see('verlauf-jahr-2024')
+    console.log(`[${TAG}] ✅ Jetzt wichtig — the deadline of 2024 with euros and days, the rest as one line, no summary, no Abgleich, no chart on the tab`)
+
+    // One row per year, newest first: one phrase, one amount.
+    const years = await page.locator('[data-testid^="verlauf-jahr-20"]').evaluateAll((els) => els.map((e) => e.getAttribute('data-testid')))
+    if (years.join() !== 'verlauf-jahr-2026,verlauf-jahr-2025,verlauf-jahr-2024,verlauf-jahr-2023,verlauf-jahr-2022,verlauf-jahr-2021') fail(`the timeline should list the years newest first, it is ${years.join()}`)
+    if (!(await textOf('verlauf-jahr-2024')).includes('Bescheid · 92 € weniger als erklärt')) fail('the cut year should say how much less came back')
+    if (!(await textOf('verlauf-jahr-2025')).includes('+1.066–1.196 €')) fail('the waiting year should show its estimate as a range')
+    if (!(await textOf('verlauf-jahr-2021')).includes('nur Bescheid')) fail('a year with only its Bescheid should say so')
+    await see('verlauf-entwicklung')
+    await see('verlauf-aeltere')
+    console.log(`[${TAG}] ✅ Timeline — one row per year with one phrase and one amount, a range stays a range`)
+
+    // „Ansehen“ opens the year's page with the Bescheid-Abgleich; back returns to the tab.
+    await byId('verlauf-jetzt-ansehen').click()
+    await atPath('/app/verlauf/2024')
+    if ((await textOf('verlauf-jahr-titel')) !== '2024') fail('the year page should be titled by its year')
+    if (!(await textOf('verlauf-jahr-satz')).includes('2 Positionen geändert')) fail('the year page should say in one sentence what the Finanzamt did')
     await see('verlauf-abgleich-2024')
-    if ((await textOf('verlauf-abgleich-2024-anzahl')) !== '2 Abweichungen') fail('the Abgleich of 2024 should count two deviations')
+    if ((await textOf('verlauf-abgleich-2024-anzahl')) !== '2 Änderungen') fail('the Abgleich of 2024 should count two changes')
     const rows = await page.locator('[data-testid^="verlauf-abgleich-2024-zeile-"]').evaluateAll((els) => els.map((e) => e.getAttribute('data-testid')))
     if (rows[0] !== 'verlauf-abgleich-2024-zeile-homeofficeA') fail(`the largest effect should come first, the rows are ${rows.join()}`)
     await see('verlauf-abgleich-2024-frist')
     await see('verlauf-abgleich-2024-kette')
+    if (!(await textOf('verlauf-abgleich-2024-kette')).startsWith('daraus folgt')) fail('the follow-on chain should read „daraus folgt“')
+    if (await byId('verlauf-abgleich-2024-nichtlinear').count()) fail('the note on the sum should wait behind its toggle')
+    await byId('verlauf-abgleich-2024-nichtlinear-umschalten').click()
     await see('verlauf-abgleich-2024-nichtlinear')
     await see('verlauf-abgleich-2024-lehren')
+    if (await byId('verlauf-abgleich-2024-formularansicht').count()) fail('the form view should start collapsed')
     await byId('verlauf-abgleich-2024-formular').click()
     await see('verlauf-abgleich-2024-formularansicht')
-    console.log(`[${TAG}] ✅ Bescheid-Abgleich — only the changes first, the chain, the deadline, the lessons, the form view on demand`)
+    await see('verlauf-zum-cockpit-2024')
+    await byId('verlauf-jahr-zurueck').click()
+    await atPath('/app/verlauf')
+    await see('verlauf-jetzt')
+    console.log(`[${TAG}] ✅ Year page — /app/verlauf/2024 with the Abgleich, the deadline, the lessons and the form view on demand; back returns to the tab`)
 
+    // The other kinds of years, each on its own page.
     await byId('verlauf-jahr-2023').click()
+    await atPath('/app/verlauf/2023')
     await see('verlauf-abgleich-2023-gleich')
     await see('verlauf-abgleich-2023-frist-vorbei')
-    await see('verlauf-zum-cockpit-2023')
-    await byId('verlauf-jahr-2021').click()
-    await see('verlauf-jahr-panel-2021')
-    if (!(await textOf('verlauf-ohne-abgleich-2021-grund')).startsWith('Kein Abgleich: Die Erklärung 2021 wurde nicht in SteuerEule gemacht.')) fail('an Eckjahr should say why there is no Abgleich')
-    await byId('verlauf-jahr-2025').click()
-    await see('verlauf-ohne-abgleich-2025')
-    if ((await textOf('verlauf-ohne-abgleich-2025')).includes('€')) fail('a year waiting for its Bescheid must not name an amount')
-    await byId('verlauf-ohne-abgleich-2025-schliessen').click()
-    await byId('verlauf-ohne-abgleich-2025').waitFor({ state: 'detached', timeout: 5_000 })
-    console.log(`[${TAG}] ✅ Years without a diff — „wie erklärt“, the Eckjahr sentence, the waiting year without an amount`)
+    if ((await textOf('verlauf-jahr-wechsel')) !== 'ab 2023 zusammen veranlagt') fail('the change of the filing type belongs on the year page')
+    await byId('verlauf-jahr-zurueck').click()
+    await atPath('/app/verlauf')
+    await page.goto(`${webOrigin}/app/verlauf/2022`, { waitUntil: 'networkidle' })
+    await see('verlauf-abgleich-2022-A')
+    await see('verlauf-abgleich-2022-B')
+    await page.goto(`${webOrigin}/app/verlauf/2021`, { waitUntil: 'networkidle' })
+    if (!(await textOf('verlauf-jahr-satz')).startsWith('Nur der Bescheid: Die Erklärung 2021 wurde nicht in SteuerEule gemacht')) fail('a year with only its Bescheid should say why there is no Abgleich')
+    if (await byId('verlauf-zum-cockpit-2021').count()) fail('2021 is no selectable year, so no way into its cockpit')
+    await page.goto(`${webOrigin}/app/verlauf/2025`, { waitUntil: 'networkidle' })
+    await see('verlauf-wartet-2025')
+    if ((await textOf('verlauf-wartet-2025')).includes('€')) fail('a year waiting for its Bescheid must not name an amount')
+    await page.goto(`${webOrigin}/app/verlauf/2026`, { waitUntil: 'networkidle' })
+    await see('verlauf-fehlt-2026')
+    if (!(await textOf('verlauf-fehlt-2026')).includes('die Lohnsteuerbescheinigungen 2026 (kommen ab Februar 2027)')) fail('an open year should say concretely what it lacks')
+    await see('verlauf-zum-cockpit-2026')
+    await page.goto(`${webOrigin}/app/verlauf/1999`, { waitUntil: 'networkidle' })
+    await see('verlauf-jahr-unbekannt')
+    console.log(`[${TAG}] ✅ Years — „wie erklärt“ with the change of filing type, two single returns, „nur Bescheid“, the waiting year without an amount, what an open year lacks`)
 
-    // The development: refund first, person toggle, the other key figures, the data table.
+    // „Entwicklung ansehen“: the four key figures on their own page.
+    await page.goto(`${webOrigin}/app/verlauf`, { waitUntil: 'networkidle' })
+    await byId('verlauf-entwicklung').click()
+    await atPath('/app/verlauf/entwicklung')
+    await see('verlauf-entwicklung-titel')
     await see('verlauf-karte')
     await see('verlauf-diagramm')
     await see('verlauf-diagramm-svg')
@@ -148,11 +189,15 @@ async function main() {
     await see('verlauf-detail-netto')
     await byId('verlauf-kennzahl-erstattung').click()
     await see('verlauf-detail-erstattung')
-    await byId('verlauf-detail-abgleich').click()
-    await see('verlauf-abgleich-2024')
     await byId('verlauf-datentabelle-umschalten').click()
     await see('verlauf-datentabelle')
-    console.log(`[${TAG}] ✅ Development — refund first, person toggle only where it applies, detail per year, data table behind the chart`)
+    await byId('verlauf-detail-abgleich').click()
+    await atPath('/app/verlauf/2024')
+    await see('verlauf-abgleich-2024')
+    await page.goto(`${webOrigin}/app/verlauf/entwicklung`, { waitUntil: 'networkidle' })
+    await byId('verlauf-entwicklung-zurueck').click()
+    await atPath('/app/verlauf')
+    console.log(`[${TAG}] ✅ Development — /app/verlauf/entwicklung: refund first, person toggle, detail per year, data table, the Abgleich one tap away, back to the tab`)
 
     // The upload entry: the one Beleg pipeline with the kind `steuerbescheid`.
     let parseBody = null
@@ -162,6 +207,7 @@ async function main() {
       parseBody = body
       return route.fulfill(json(BESCHEID_READ))
     })
+    await byId('verlauf-aeltere').click()
     await see('verlauf-upload')
     const pdf = await renderTextPdf(browser, ['Bescheid für 2020 über Einkommensteuer', 'Festgesetzt werden Einkommensteuer 6.410,00 EUR', 'Erstattung 280,00 EUR'])
     await byId('verlauf-upload-datei').setInputFiles({ name: 'bescheid-2020.pdf', mimeType: 'application/pdf', buffer: pdf })
@@ -179,6 +225,7 @@ async function main() {
       const real = await (await route.fetch()).json()
       return route.fulfill(json({ ...real, assessmentDate: '2026-11-02', frist: { assessmentDate: '2026-11-02', deadlineEnd: '2026-12-07', remainingDays: 19, running: true }, diff: DIFF_2024.diff }))
     })
+    await page.goto(`${webOrigin}/app/verlauf/2024`, { waitUntil: 'networkidle' })
     await byId('verlauf-abgleich-2024-einspruch').click()
     await page.waitForURL((u) => u.pathname === '/app/steuerjahr/2024/bescheid', { timeout: 10_000 })
     await see('bescheid-abgleich')
@@ -203,8 +250,15 @@ async function main() {
     await page.goto(`${webOrigin}/app/verlauf`, { waitUntil: 'networkidle' })
     await see('verlauf-leer')
     await see('verlauf-upload')
+    await page.goto(`${webOrigin}/app/verlauf/entwicklung`, { waitUntil: 'networkidle' })
+    await see('verlauf-entwicklung-leer')
     await page.unroute('**/v1/verlauf')
-    console.log(`[${TAG}] ✅ States — an error says so with a retry, an empty history says so and offers the upload`)
+    await page.route('**/v1/verlauf', (route) => route.fulfill(json({ ...HISTORY, openItems: [] })))
+    await page.goto(`${webOrigin}/app/verlauf`, { waitUntil: 'networkidle' })
+    await see('verlauf-jetzt-erledigt')
+    if (await byId('verlauf-jetzt-ansehen').count()) fail('„Alles erledigt“ needs no button')
+    await page.unroute('**/v1/verlauf')
+    console.log(`[${TAG}] ✅ States — an error says so with a retry, an empty history says so and offers the upload, nothing due says „Alles erledigt“`)
     await ctx.close()
 
     // --- Desktop ------------------------------------------------------------------------------------
@@ -215,15 +269,21 @@ async function main() {
     await desk.route('**/v1/verlauf', (route) => route.fulfill(json(HISTORY)))
     await desk.goto(`${webOrigin}/app/verlauf`, { waitUntil: 'networkidle' })
     const deskId = (id) => desk.locator(`[data-testid="${id}"]`)
-    for (const id of ['verlauf-tabelle', 'verlauf-tabelle-2024', 'verlauf-kpi-erstattung']) {
+    for (const id of ['verlauf-jetzt', 'verlauf-tabelle', 'verlauf-tabelle-2024', 'verlauf-entwicklung', 'verlauf-aeltere']) {
       await deskId(id).waitFor({ state: 'visible', timeout: 15_000 }).catch(() => fail(`${id} should be visible on the desktop`))
     }
     if (await deskId('verlauf-jahre').count()) fail('the desktop shows the table, not the phone list')
+    const heads = await desk.locator('[data-testid="verlauf-tabelle"] [role="columnheader"]').allInnerTexts()
+    if (heads.join('|') !== 'Jahr|Stand|erklärt|laut Bescheid') fail(`the table should have the four columns, it has ${heads.join('|')}`)
+    if (await desk.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)) fail('the Verlauf must not scroll sideways')
+    await deskId('verlauf-tabelle-2023').click()
+    await desk.waitForURL((u) => u.pathname === '/app/verlauf/2023', { timeout: 10_000 })
+    await deskId('verlauf-abgleich-2023').waitFor({ state: 'visible', timeout: 10_000 })
+    await desk.goto(`${webOrigin}/app/verlauf/entwicklung`, { waitUntil: 'networkidle' })
+    await deskId('verlauf-kpi-erstattung').waitFor({ state: 'visible', timeout: 15_000 }).catch(() => fail('the development should show the KPI tiles on the desktop'))
     await deskId('verlauf-kpi-werbungskosten').click()
     if (((await deskId('verlauf-karte-titel').innerText()) ?? '').trim() !== 'Werbungskosten je Jahr') fail('a KPI tile should pick its key figure')
-    await deskId('verlauf-tabelle-2023').click()
-    await deskId('verlauf-abgleich-2023').waitFor({ state: 'visible', timeout: 10_000 })
-    console.log(`[${TAG}] ✅ Desktop — the table „Alle Jahre: erklärt und festgesetzt“, KPI tiles pick the key figure`)
+    console.log(`[${TAG}] ✅ Desktop — hero, the timeline as a four-column table without sideways scroll, the year page, KPI tiles on the development page`)
 
     // „Ich habe die Erklärung abgegeben“ in the cockpit after printing, and its undo (real server).
     await desk.unroute('**/v1/verlauf')
@@ -235,7 +295,7 @@ async function main() {
     if (!(await deskId('cockpit-abgabe-marke-stand').innerText()).includes('10.03.2026')) fail('the cockpit should name the day of filing')
     await desk.goto(`${webOrigin}/app/verlauf`, { waitUntil: 'networkidle' })
     await deskId(`verlauf-tabelle-${YEAR}`).waitFor({ state: 'visible', timeout: 15_000 })
-    if (!(await deskId(`verlauf-tabelle-${YEAR}`).innerText()).includes('Schätzung') && !(await deskId(`verlauf-tabelle-${YEAR}`).innerText()).includes('offen')) fail('the filed year should be in the Verlauf')
+    if (!(await deskId(`verlauf-tabelle-${YEAR}`).innerText()).includes('abgegeben · wartet auf Bescheid')) fail('the filed year should wait for its Bescheid in the Verlauf')
     await desk.goto(`${webOrigin}/app`, { waitUntil: 'networkidle' })
     await deskId('cockpit-abgabe-zuruecknehmen').click()
     await deskId('cockpit-abgabe-marke-status').waitFor({ state: 'visible', timeout: 15_000 })
@@ -244,7 +304,7 @@ async function main() {
 
     await wide.close()
     await api.dispose()
-    console.log(`[${TAG}] PASS — the Verlauf tab, its Abgleich, charts, upload entry, lessons and the Abgabe verified (ADR-0098).`)
+    console.log(`[${TAG}] PASS — the Verlauf timeline, its year pages and Abgleich, the development, upload entry, lessons and the Abgabe verified (ADR-0098).`)
   } finally {
     await closeBrowser(browser)
     await stop()
