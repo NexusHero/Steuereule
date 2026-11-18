@@ -86,12 +86,15 @@ export function StromScreen({ taxYear, slug, isSignedIn, onGo, onExit, onOpenSub
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [basisOpen, requested?.kind])
 
+  // Person B's data decides whether the partner page and B's masks come next: it must be in first, or
+  // the step after the basis skips them (Echtdatentest 18.11.2026).
+  const partnerPending = facts?.partner?.pending === true
   useEffect(() => {
-    if (advanceFrom === null || !settled || (isSignedIn && facts === null)) return
+    if (advanceFrom === null || !settled || (isSignedIn && (facts === null || partnerPending))) return
     setAdvanceFrom(null)
     onGo(stepAfter(advanceFrom, answers, facts))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [advanceFrom, settled, facts === null, answers])
+  }, [advanceFrom, settled, facts === null, partnerPending, answers])
 
   if (interviewQuery.isPending) return <LoadingState bp={bp} label={tr('strom.laden')} />
   if (interviewQuery.isError || interview === null) {

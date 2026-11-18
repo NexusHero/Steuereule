@@ -97,4 +97,22 @@ describe('StromScreen', () => {
     await waitFor(() => expect(personB).toMatchObject({ firstName: 'Büsra', geburtsdatum: '1991-10-17' }))
     await waitFor(() => expect(onGo).toHaveBeenCalledWith({ kind: 'maske', id: 'rente' }))
   })
+
+  it('after the basis of a married couple, waits for Person B before it moves on — the partner page comes next (Echtdatentest 18.11.2026)', async () => {
+    serve({ ...BASIS, familienstand: 'Verheiratet', 'partner-job': 'Rente' })
+    server.use(
+      // The link answers late, as right after the basis has created the joint return.
+      http.get(`*/v1/steuerjahre/${YEAR}/kopplung`, async () => {
+        await new Promise((resolve) => setTimeout(resolve, 400))
+        return HttpResponse.json({ filingType: 'zusammen', personBHasOwnAccount: false }, { status: 200 })
+      }),
+      http.get(`*/v1/steuerjahre/${YEAR}/rente`, () => HttpResponse.json({ status: { kind: 'offen' } }, { status: 200 })),
+    )
+    const onGo = vi.fn()
+    renderStrom('basis', onGo)
+    fireEvent.click(await screen.findByTestId('strom-weiter'))
+    await waitFor(() => expect(onGo).toHaveBeenCalled(), { timeout: 3000 })
+    expect(onGo).toHaveBeenCalledWith({ kind: 'partner' })
+    expect(onGo).not.toHaveBeenCalledWith({ kind: 'maske', id: 'rente' })
+  })
 })
