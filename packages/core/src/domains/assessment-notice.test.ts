@@ -70,6 +70,14 @@ describe('parseAssessmentNotice', () => {
     expect(parseAssessmentNotice('Bescheid für 2023 über Einkommensteuer\nfestgesetzt werden 9.000,00\nNachzahlung 60,00 €').positions.erstattung).toBe(-60)
   })
 
+  it('reads amounts in linear time and skips a digit run that is no amount (Sonar S8786)', () => {
+    const longRun = '9'.repeat(50_000)
+    const started = performance.now()
+    const longNotice = parseAssessmentNotice(`Bescheid für 2024 über Einkommensteuer\nBruttoarbeitslohn ${longRun}. 54.900 39.000\n`)
+    expect(performance.now() - started).toBeLessThan(500)
+    expect(longNotice.positions.bruttoarbeitslohnA).not.toBe(Number(longRun))
+  })
+
   it('leaves what it cannot find out instead of reading 0', () => {
     const partial = parseAssessmentNotice('Bescheid für 2021 über Einkommensteuer\nfestgesetzt werden 6.410,00 €')
     expect(partial.positions).toEqual({ festgesetzteSteuer: 6_410 })

@@ -24,7 +24,12 @@ export interface AssessmentNoticeRead {
   readonly explanations: readonly string[]
 }
 
-const AMOUNT = /-?\d{1,3}(?:\.\d{3})+(?:,\d{2})?(?!\d)|-?\d+(?:,\d{2})?(?![\d.])/g
+// A number token is one run of digits, dots and commas: a single character class, so the search is
+// linear (Sonar S8786). Each token is then checked whole against the two forms a Bescheid prints.
+const NUMBER_TOKEN = /-?\d[\d.,]*/g
+const GROUPED_AMOUNT = /^-?\d{1,3}(?:\.\d{3})+(?:,\d{2})?$/
+// No basis on a Bescheid has more than nine digits; a longer run is a reference number, not an amount.
+const PLAIN_AMOUNT = /^-?\d{1,9}(?:,\d{2})?$/
 
 /** The euro amounts on a line, cents dropped as the Bescheid's whole-euro bases are; dates, years and § numbers skipped. */
 function amountsOf(line: string): number[] {
@@ -32,7 +37,10 @@ function amountsOf(line: string): number[] {
     .replace(/§\s*\d+[a-z]?(?:\s+abs\.?\s*\d+)?/gi, '')
     .replace(/\d{2}\.\d{2}\.\d{4}/g, '')
     .replace(/\b(?:f(?:ü|ue|u)r|jahr|veranlagungszeitraum)\s+20\d\d\b/gi, '')
-  return [...withoutRefs.matchAll(AMOUNT)].map((m) => Math.trunc(Number(m[0].replace(/\./g, '').replace(',', '.'))))
+  return [...withoutRefs.matchAll(NUMBER_TOKEN)]
+    .map((m) => m[0].replace(/[.,]$/, ''))
+    .filter((token) => GROUPED_AMOUNT.test(token) || PLAIN_AMOUNT.test(token))
+    .map((token) => Math.trunc(Number(token.replace(/\./g, '').replace(',', '.'))))
 }
 
 type Rule = {
