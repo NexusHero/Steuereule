@@ -7,7 +7,8 @@
     "cockpit": "Cockpit",
     "eule": "Owl",
     "belege": "Receipts",
-    "profil": "Profile"
+    "profil": "Profile",
+    "verlauf": "History"
   },
   "splash": {
     "greeting": "Taxes? Sorted, just like that.",
@@ -1743,6 +1744,24 @@
       "belege_one": "{{count}} document is waiting for you",
       "belege_other": "{{count}} documents are waiting for you",
       "belegeHinweis": "Assign them to a tax year so they count."
+    },
+    "abgabeMarke": {
+      "titel": "Return filed?",
+      "text": "Did you print the {{jahr}} return and hand it in at the tax office? Enter the day: the history then shows the year as filed until the assessment arrives.",
+      "datum": "Filed on (DD.MM.YYYY)",
+      "cta": "I have filed the return",
+      "gespeichert": "Saved: the year is filed and waits for the assessment.",
+      "ersetzt": "Saved: this version replaces the one filed earlier.",
+      "datumUngueltig": "Please enter a complete date (DD.MM.YYYY).",
+      "datumAusserhalb": "The date must lie after the end of {{jahr}} and must not be in the future.",
+      "schonBescheid": "An assessment is already recorded for {{jahr}}; the filing can no longer be changed.",
+      "fehler": "That didn't work. Check the connection and try again.",
+      "eingereichtTitel": "Return filed",
+      "eingereicht": "Filed on {{datum}} · waiting for the assessment",
+      "eingereichtMitBescheid": "Filed on {{datum}} · assessment recorded",
+      "zuruecknehmen": "Withdraw filing",
+      "zurueckgenommen": "The filing is withdrawn; the year is open again.",
+      "zuruecknehmenBescheid": "An assessment is already recorded; the filing stays."
     }
   },
   "belegZuordnung": {
@@ -2653,5 +2672,429 @@
   },
   "sheet": {
     "schliessen": "Close"
+  },
+  "verlauf": {
+    "titel": "History",
+    "eyebrow": "All tax years",
+    "eyebrowZeitraum": "All tax years · {{zeitraum}}",
+    "laden": "Loading your history …",
+    "fehler": {
+      "titel": "That didn't work.",
+      "text": "Your history could not be loaded. Check the connection and try again.",
+      "erneut": "Try again"
+    },
+    "gast": {
+      "titel": "The history needs an account",
+      "text": "Here all your tax years sit side by side: what was declared, what the tax office assessed and how refund, work expenses and net pay develop. For that SteuerEule must be allowed to keep your years.",
+      "registrieren": "Create account",
+      "anmelden": "Sign in"
+    },
+    "leer": {
+      "titel": "No tax year yet",
+      "text": "As soon as a year has a return or an assessment, it shows here. You can add old years with their assessment notice."
+    },
+    "nochOffenKurz": "still open",
+    "und": "and",
+    "ansteht": {
+      "titel": "What's due",
+      "weichtAb": "Assessment differs: {{differenz}}",
+      "weichtAbOhneBetrag_one": "Assessment differs: {{count}} item",
+      "weichtAbOhneBetrag_other": "Assessment differs: {{count}} items",
+      "frist_one": "Objection until {{datum}} · {{count}} day left",
+      "frist_other": "Objection until {{datum}} · {{count}} days left",
+      "wartet": "Waiting for the assessment",
+      "wiederErklaert_one": "{{count}} item declared as in {{vorjahr}}, cut there: {{liste}}",
+      "wiederErklaert_other": "{{count}} items declared as in {{vorjahr}}, cut there: {{liste}}",
+      "eingereicht": "Filed · waiting for the assessment",
+      "offen": "Still open"
+    },
+    "held": {
+      "erstattet": "Refunded {{zeitraum}}",
+      "nachgezahlt": "Paid back on balance {{zeitraum}}",
+      "ausBescheidjahren_one": "from {{count}} assessed year",
+      "ausBescheidjahren_other": "from {{count}} assessed years",
+      "geaendert": "Changed by the tax office",
+      "inErklaerungen_one": "in {{geaendert}} of {{count}} return",
+      "inErklaerungen_other": "in {{geaendert}} of {{count}} returns"
+    },
+    "liste": {
+      "titel": "Your tax years",
+      "oeffnen": "Opens the year's comparison below"
+    },
+    "tabelle": {
+      "titel": "All years: declared and assessed",
+      "jahr": "Year",
+      "stand": "Status",
+      "stufe": "Tier",
+      "erklaert": "Refund declared",
+      "lautBescheid": "assessed",
+      "erstattung": "Refund",
+      "differenz": "Difference",
+      "werbungskosten": "Work exp. counted",
+      "brutto": "Gross · {{person}}",
+      "netto": "Net",
+      "nettoQuote": "Net share",
+      "steuerquote": "Tax rate · both",
+      "veranlagung": "Filing"
+    },
+    "veranlagung": {
+      "einzel": "Separate",
+      "zusammen": "Joint"
+    },
+    "stand": {
+      "offen": "Return started, still open",
+      "eckjahr": "Old assessment uploaded, done elsewhere",
+      "eingereicht": "Filed · waiting for the assessment",
+      "abweichungen_one": "Assessment received, {{count}} difference",
+      "abweichungen_other": "Assessment received, {{count}} differences",
+      "wieErklaert": "Assessed as declared",
+      "bescheid": "Assessment received"
+    },
+    "stufe": {
+      "bescheid": "Assessment",
+      "schaetzung": "Estimate",
+      "offen": "open",
+      "eckjahr": "Anchor year",
+      "eckjahrBescheid": "Anchor year · assessment",
+      "lstb": "Wage tax certificate",
+      "lohnausweis": "Swiss salary certificate",
+      "bescheidAbweichungen_one": "Assessment · {{count}} diff.",
+      "bescheidAbweichungen_other": "Assessment · {{count}} diff.",
+      "bescheidWieErklaert": "Assessment · as declared"
+    },
+    "zumCockpit": "Open cockpit {{jahr}}",
+    "ohneAbgleich": {
+      "eckjahr": "No comparison: the {{jahr}} return was not made in SteuerEule. The assessment still counts in the history.",
+      "ohneFassung": "No comparison: there is an assessment for {{jahr}}, but no version filed in SteuerEule to compare it with.",
+      "wartet": "Filed, the {{jahr}} assessment is pending. Once it arrives, the comparison shows here.",
+      "offen": "{{jahr}} is still open: there is no filed return and no assessment yet."
+    },
+    "wartet": {
+      "eyebrow": "Waiting for the assessment",
+      "titel": "{{jahr}}: what to watch",
+      "text_one": "Filed, the assessment is pending. The tax office cut {{count}} item in {{vorjahr}}; in {{jahr}} it is declared the same way again.",
+      "text_other": "Filed, the assessment is pending. The tax office cut {{count}} items in {{vorjahr}}; in {{jahr}} they are declared the same way again.",
+      "keineVorhersage": "Once the assessment arrives, the comparison shows here. The owl makes no forecast."
+    },
+    "abgleich": {
+      "eyebrow": "Assessment comparison",
+      "titel": "Return ↔ assessment {{jahr}}",
+      "titelPerson": "Return ↔ assessment {{jahr}} · {{person}}",
+      "schliessen": "Close comparison",
+      "eingereicht": "Return filed on {{datum}}",
+      "bescheidVom": "assessment of {{datum}}",
+      "wieErklaert": "As declared",
+      "gleich_one": "The {{count}} item matches the return. The tax office changed nothing.",
+      "gleich_other": "All {{count}} items match the return. The tax office changed nothing.",
+      "gleichEinzeln_one": "The {{count}} item matches this separate return. The tax office changed nothing.",
+      "gleichEinzeln_other": "All {{count}} items match this separate return. The tax office changed nothing.",
+      "nichtGelesenHinweis_one": "{{count}} item could not be read in the assessment; it shows as “not read”, not as a difference.",
+      "nichtGelesenHinweis_other": "{{count}} items could not be read in the assessment; they show as “not read”, not as a difference.",
+      "abweichungen_one": "{{count}} difference",
+      "abweichungen_other": "{{count}} differences",
+      "erstattungChip": "Refund {{erklaert}} → {{festgesetzt}} ({{differenz}})",
+      "spalteGeaendert": "Changed by the tax office",
+      "spalteWerte": "declared → assessed",
+      "spalteWirkung": "Refund",
+      "wirkungA11y": "Effect on the refund: {{wert}}",
+      "wirkungUnbekannt": "Effect on the refund cannot be computed",
+      "erlaeuterung": "Explanation in the assessment:",
+      "folge": "Follows",
+      "formularAuf_one": "All {{count}} item in form order ({{gleich}} as declared)",
+      "formularAuf_other": "All {{count}} items in form order ({{gleich}} as declared)",
+      "formularZu": "Hide form view",
+      "nichtGelesen": "not read",
+      "nichtErklaert": "not declared",
+      "nichtLinear": "The right column is the effect on the refund: the core sets only this item to the assessed value. The sum ({{summe}}) differs by {{abstand}} from the total effect ({{gesamt}}) because the tariff is not linear.",
+      "wirkungErklaert": "The right column is the effect on the refund: the core sets only this item to the assessed value.",
+      "euleKostet_one": "The tax office changed {{count}} item, which costs {{betrag}} of refund.",
+      "euleKostet_other": "The tax office changed {{count}} items, which costs {{betrag}} of refund.",
+      "euleNuetzt_one": "The tax office changed {{count}} item, which brings {{betrag}} more refund.",
+      "euleNuetzt_other": "The tax office changed {{count}} items, which brings {{betrag}} more refund.",
+      "euleGroesste": "The largest effect is {{position}} ({{wirkung}}).",
+      "gruppe": {
+        "einkuenfte": "Income",
+        "werbungskostenA": "Work expenses · Person A",
+        "werbungskostenB": "Work expenses · Person B",
+        "vorsorge": "Contributions and special expenses",
+        "steuer": "Tax"
+      }
+    },
+    "frist": {
+      "bis": "Objection possible until {{datum}}",
+      "resttage_one": "{{count}} day left (§ 355 AO)",
+      "resttage_other": "{{count}} days left (§ 355 AO)",
+      "einspruch": "Prepare objection",
+      "vorbei": "The objection period ended on {{datum}}."
+    },
+    "lehre": {
+      "titel": "For next time",
+      "anerkannt": "{{position}}: {{festgesetzt}} recognised instead of {{erklaert}}",
+      "folgejahrEingereicht": "{{jahr}} again declared {{betrag}}.",
+      "folgejahrAngaben": "The {{jahr}} answers so far say {{betrag}}.",
+      "folgejahrNicht": "{{jahr}} does not declare this item.",
+      "wiederMehr": "That is more than was recognised for {{jahr}}.",
+      "bescheidAus": "The {{jahr}} assessment is still pending.",
+      "maske": "Shows in {{jahr}} on the “{{maske}}” screen",
+      "maskeNaechstes": "Shows in the next open year on the “{{maske}}” screen",
+      "hinweis": {
+        "homeoffice": "Keep track of home office days as you go, for example in a calendar or with a confirmation from your employer.",
+        "arbeitsmittel": "Document the work share of devices you also use privately; without proof the tax office often recognises only half.",
+        "fahrtweg": "Be able to prove the distance and the working days; the tax office uses the shortest road connection.",
+        "sonstigeWerbungskosten": "Note the work reason for every other expense and keep the receipt.",
+        "sonderausgaben": "Keep the donation receipt for every donation; from 300 € a bank statement is not enough.",
+        "aussergewoehnlicheBelastungen": "Claim only costs you bore yourself and keep prescriptions and the health insurer's reimbursements.",
+        "steuerermaessigung35a": "Claim only the labour share of the invoice and pay without cash; materials do not count."
+      }
+    },
+    "maske": {
+      "homeOfficeDays": "Home office",
+      "workEquipmentEur": "Work equipment",
+      "oneWayKm": "Commute",
+      "otherWorkExpensesEur": "Other work expenses",
+      "spenden-betrag": "Donations",
+      "gesundheit-betrag": "Medical costs",
+      "haushalt-handwerker-betrag": "Tradespeople"
+    },
+    "maskenHinweis": {
+      "label": "From the {{jahr}} assessment",
+      "homeofficeTage": "In {{jahr}} the tax office recognised {{anerkannt}} instead of {{erklaert}} home office days.",
+      "allgemein": "In {{jahr}} the tax office recognised {{anerkannt}} instead of {{erklaert}} for {{position}}.",
+      "tipp": "Tip: {{hinweis}}"
+    },
+    "position": {
+      "bruttoarbeitslohnA": "Gross wages · Person A",
+      "bruttoarbeitslohnB": "Gross wages · Person B",
+      "fahrtwegA": "Commute (distance allowance)",
+      "fahrtwegB": "Commute (distance allowance)",
+      "homeofficeA": "Home office allowance",
+      "homeofficeB": "Home office allowance",
+      "arbeitsmittelA": "Work equipment",
+      "arbeitsmittelB": "Work equipment",
+      "sonstigeWerbungskostenA": "Other work expenses",
+      "sonstigeWerbungskostenB": "Other work expenses",
+      "werbungskostenA": "Total work expenses A",
+      "werbungskostenB": "Total work expenses B",
+      "vorsorgeaufwand": "Pension and insurance contributions",
+      "sonderausgaben": "Special expenses",
+      "aussergewoehnlicheBelastungen": "Extraordinary expenses",
+      "zuVersteuerndesEinkommen": "Taxable income",
+      "festgesetzteSteuer": "Income tax",
+      "steuerermaessigung35a": "Tax reduction § 35a EStG",
+      "solidaritaetszuschlag": "Solidarity surcharge",
+      "kirchensteuer": "Church tax",
+      "anrechnung": "Wage tax withheld and creditable taxes",
+      "erstattung": "Refund"
+    },
+    "entwicklung": "Development over the years",
+    "kennzahlWaehlen": "Choose a key figure",
+    "kennzahl": {
+      "erstattung": {
+        "label": "Refund",
+        "titel": "Refund and back payment",
+        "sub": "For the household. The line is what was declared; the red area was cut by the tax office."
+      },
+      "werbungskosten": {
+        "label": "Work expenses",
+        "titel": "Work expenses per year",
+        "sub": "Stacked by kind; the dashed line is the employee lump sum."
+      },
+      "netto": {
+        "label": "Gross → net",
+        "titel": "From gross to net",
+        "sub": "Stacked from the wage tax certificate; above the bar the share that stays net."
+      },
+      "steuerquote": {
+        "label": "Tax rate",
+        "titel": "How much tax on gross pay",
+        "sub": "Effective: assessed income tax ÷ gross. Thin: the marginal tax rate."
+      }
+    },
+    "person": {
+      "fuerWen": "For whom",
+      "beide": "Both of us",
+      "A": "Person A",
+      "B": "Person B"
+    },
+    "hinweisHaushalt": "Refund and tax rate exist only together. Shown: both of us.",
+    "kpi": {
+      "label": "{{kennzahl}} {{jahr}} · {{person}}"
+    },
+    "chart": {
+      "a11y": "{{titel}}, years {{zeitraum}}. The numbers are in the table below the chart.",
+      "jahrWaehlen": "Select {{jahr}}",
+      "offen": "open",
+      "nichtAblesbar": "n/a",
+      "wechselZusammen": "joint from {{jahr}}",
+      "wechselEinzeln": "separate from {{jahr}}"
+    },
+    "segment": {
+      "netto": "Net",
+      "steuern": "Wage tax, soli, church tax",
+      "sozialversicherung": "Social security",
+      "fahrtweg": "Commute",
+      "homeoffice": "Home office",
+      "arbeitsmittel": "Work equipment",
+      "sonstiges": "Other",
+      "summeLautBescheid": "assessed, not itemised"
+    },
+    "legende": {
+      "erstattungBescheid": "Refund assessed",
+      "gekuerzt": "cut by the tax office",
+      "schaetzung": "Estimate (range)",
+      "erklaert": "declared",
+      "pauschbetrag": "Lump sum",
+      "effektiv": "Effective tax rate",
+      "grenz": "Marginal tax rate",
+      "wechsel": "Change of filing type"
+    },
+    "datentabelle": {
+      "auf": "Show numbers as a table",
+      "zu": "Hide table",
+      "a11y": "{{titel}} as a table"
+    },
+    "tippeJahr": "Tap a year for details.",
+    "delta": {
+      "zumVorjahr": "{{wert}} on the previous year",
+      "spanneWerte": "{{von}} to {{bis}}",
+      "keins": {
+        "kein-vorjahr": "no previous-year comparison",
+        "offen": "no previous-year comparison: a year is still open",
+        "veranlagungsart-gewechselt": "no comparison: filing type changed"
+      }
+    },
+    "teil": {
+      "fahrtweg": "the commute",
+      "homeoffice": "the home office",
+      "arbeitsmittel": "work equipment",
+      "sonstiges": "other expenses",
+      "fahrtwegName": "Commute",
+      "homeofficeName": "Home office",
+      "arbeitsmittelName": "Work equipment",
+      "sonstigesName": "Other"
+    },
+    "detail": {
+      "zusammen": "joint assessment",
+      "einzeln": "two separate returns",
+      "du": "your return",
+      "brutto": "Gross",
+      "lohnsteuer": "Wage tax",
+      "soli": "Solidarity surcharge",
+      "kirchensteuer": "Church tax",
+      "sozialversicherung": "Social security",
+      "netto": "Net",
+      "nettoNachErstattung": "Net after refund",
+      "nettoNachErstattungNurGemeinsam": "Net after refund exists only together.",
+      "kurs": "Swiss pay at {{kurs}} EUR/CHF ({{zeitraum}})",
+      "bruttoNichtImBescheid": "Gross pay and deductions are not on the {{jahr}} assessment: not readable from it.",
+      "lstbTitel": "Add the {{jahr}} wage tax certificate",
+      "lstbText": "The same flow as in the Receipts tab; the owl reads gross pay and deductions.",
+      "lstbCta": "Upload",
+      "summe": "Total",
+      "lautBescheid": "assessed",
+      "ohneAufteilung": "The assessment gives only the total, not the parts.",
+      "pauschbetrag": "Lump sum {{jahr}}",
+      "pauschbetragZwei": "Lump sum {{jahr}} (2×)",
+      "angesetzt": "Counted",
+      "unterPauschbetrag": "Below the lump sum, counted {{betrag}}.",
+      "unterPauschbetragPerson": "{{person}}: below the lump sum, counted {{betrag}}.",
+      "erklaert": "Declared",
+      "geschaetzt": "Refund estimated",
+      "geaendert": "Changed by the tax office",
+      "wieErklaert": "As declared.",
+      "summeEinzeln": "Sum of two separate returns.",
+      "schaetzungVorher": "Estimate before the assessment",
+      "treffer": "Hit",
+      "innerhalb": "within the range",
+      "ausserhalb": "outside the range",
+      "festgesetzteEst": "Assessed income tax",
+      "estGeschaetzt": "Income tax estimated",
+      "quoteEffektiv": "Effective tax rate",
+      "grenzsteuersatz": "Marginal tax rate",
+      "grenzEinzeln": "Marginal tax rate: with two separate returns each person has their own.",
+      "quoteOhneBrutto": "Without gross pay the rate for {{jahr}} cannot be formed.",
+      "abgleich": "Assessment ↔ return",
+      "abweichungen_one": "{{count}} difference",
+      "abweichungen_other": "{{count}} differences",
+      "gleich": "same"
+    },
+    "eule": {
+      "label": "Owl",
+      "erstattung": {
+        "bilanz_one": "Of {{count}} return from SteuerEule, {{gleich}} came back as declared.",
+        "bilanz_other": "Of {{count}} returns from SteuerEule, {{gleich}} came back as declared.",
+        "gekuerzt": "In {{jahr}} the tax office cut {{betrag}}.",
+        "mehr": "In {{jahr}} the tax office refunded {{betrag}} more.",
+        "schaetzung": "For {{jahr}} the owl estimates {{spanne}}.",
+        "einzeln_one": "{{jahre}} is the sum of two separate returns.",
+        "einzeln_other": "{{jahre}} are the sum of two separate returns.",
+        "leer": "No year has an assessment or an estimate yet."
+      },
+      "werbungskosten": {
+        "unter": "Below the lump sum were {{liste}}; there the lump sum counted.",
+        "personJahr": "{{person}} {{jahr}} ({{betrag}})",
+        "jahr": "{{jahr}} ({{betrag}})",
+        "ueber": "Every year the work expenses were above the lump sum.",
+        "groesster": "In {{jahr}} {{teil}} brings the most ({{betrag}}).",
+        "leer": "A year with work expense details is still missing."
+      },
+      "netto": {
+        "verlauf": "Gross pay changed by {{brutto}} from {{von}} to {{bis}}, net pay by {{netto}}. Of the gross, {{quoteBis}} stayed net in {{bis}}, {{quoteVon}} in {{von}}.",
+        "einJahr": "In {{jahr}}, {{quote}} of the gross stayed net.",
+        "leer": "Gross → net still needs a wage tax certificate."
+      },
+      "steuerquote": {
+        "mitGrenz": "In {{jahr}} about {{grenz}} cents of every additional euro went to income tax; on average it was {{quote}} of gross pay.",
+        "ohneGrenz": "In {{jahr}} the tax rate was {{quote}} of gross pay.",
+        "leer": "The tax rate still needs a year with gross pay and tax."
+      }
+    },
+    "fehlt": {
+      "satz": "Still open: {{liste}}.",
+      "nichtsGenannt": "Still open.",
+      "vonPersonB": "{{was}} of Person B",
+      "sonstiges": "further details",
+      "lohnsteuerbescheinigung": "the wage tax certificate",
+      "bruttoarbeitslohn": "the gross wages",
+      "lohnsteuer": "the wage tax withheld",
+      "solidaritaetszuschlag": "the solidarity surcharge",
+      "kirchensteuer": "the church tax",
+      "sozialversicherung": "the social security contributions",
+      "einkommen": "the income details",
+      "erklaerung": "the return's details",
+      "schaetzung": "enough details for an estimate",
+      "werbungskosten": "the work expenses",
+      "rente": "the pension amount",
+      "veranlagungsart": "the filing type",
+      "wechselkurs": "the exchange rate",
+      "bruttolohn-total": "the gross pay from the Swiss salary certificate",
+      "pk-obligatorium": "the pension fund contributions",
+      "lohnersatz-betrag": "the amount of wage replacement benefits",
+      "jahr-ohne-tarif": "the year's tax tariff (the owl does not compute this year)",
+      "nur-angestellte": "an estimate (the owl computes only for employees so far)",
+      "verheiratet": "the marriage details",
+      "besondere-lebenslage": "an estimate (the owl does not compute this situation yet)",
+      "kein-grenzgaenger": "the cross-border commuter details"
+    },
+    "upload": {
+      "titel": "Add {{jahr}} or earlier",
+      "text": "Upload an old assessment, as in the Receipts tab. The owl reads the key figures.",
+      "textLang": "Upload an old assessment, the same flow as in the Receipts tab. The owl reads the key figures; they stay drafts until you take them over.",
+      "cta": "Upload assessment",
+      "nurWeb": "In this version uploading works in the browser.",
+      "liest": "The owl is reading the assessment …",
+      "ohneJahr": "The assessment's year could not be read.",
+      "jahr": "Assessment for {{jahr}} recognised.",
+      "datum": "Dated {{datum}}.",
+      "gelesen_one": "Read: {{liste}}.",
+      "gelesen_other": "Read ({{count}}): {{liste}}.",
+      "nichtGelesen": "Not read, stays open and never counts as 0: {{liste}}.",
+      "erlaeuterungen_one": "{{count}} explanation of the tax office read.",
+      "erlaeuterungen_other": "{{count}} explanations of the tax office read.",
+      "eckjahr": "{{jahr}} has no return in SteuerEule: if you take over the values, an anchor year (done elsewhere) is created.",
+      "entwuerfe_one": "{{count}} draft waits with the owl until you take it over.",
+      "entwuerfe_other": "{{count}} drafts wait with the owl until you take them over.",
+      "zurEule": "Go to the proposals"
+    }
   }
 }

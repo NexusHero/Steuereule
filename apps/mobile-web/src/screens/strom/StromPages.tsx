@@ -327,6 +327,7 @@ export function TopicPage({ taxYear, stored, prior, topic, slug, onSaved }: Topi
         idPrefix="katalog"
         prior={{ year: taxYear - 1, answers: prior, steps: PRIOR_YEAR_STEPS }}
         missing={missing}
+        taxYear={taxYear}
       />
       <View style={styles.formLine} testID="strom-wirkungszeile">
         <View style={styles.dot} />

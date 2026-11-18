@@ -1036,6 +1036,8 @@ jobs:
         run: node e2e/uploads/receipts-and-lstb-scan.mjs
       - name: Cockpit progress and the Belege ↔ Eule channel — groups, one-tap assignment, a stored document read by the owl, the way back
         run: node e2e/receipts/belege-owl-channel.mjs
+      - name: Verlauf tab (ADR-0098) — what is due, the years, the Bescheid-Abgleich, four key figures, upload entry, mask lessons, the Abgabe
+        run: node e2e/history/verlauf-tab.mjs
       - name: Scan corpus metrics (#450 Teil 3B) — accuracy per variant, "falsch, aber sicher" = 0, Zero-Write, on-device, time budgets
         run: |
           node --test e2e/scan-corpus/measure.test.mjs

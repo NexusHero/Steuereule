@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   isAssessmentTransitionAllowed,
+  isTaxYearStatus,
   isTransitionAllowed,
   nextAssessmentStates,
   nextStates,
@@ -123,5 +124,13 @@ describe('the bescheid phase sub-state machine (ADR-009, ticket 10.3)', () => {
     ['einspruch-eingelegt', 'einspruch-eingelegt'],
   ] as const)('%s → %s (Selbstschleife) is forbidden — a state never re-enters itself', (from, after) => {
     expect(isAssessmentTransitionAllowed(from, after)).toBe(false)
+  })
+})
+
+describe('isTaxYearStatus', () => {
+  it('reads back only the states the core knows', () => {
+    expect(isTaxYearStatus('eingereicht')).toBe(true)
+    expect(isTaxYearStatus('extern-erledigt')).toBe(true)
+    expect(isTaxYearStatus('submitted')).toBe(false)
   })
 })

@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
+import { CockpitSubmissionDto } from '../../submission/dto/submission.dto.js'
 
 /** The honest Cockpit stand, as a flat discriminated union on the wire: `kind` fixes which optional fields are present. */
 export class CockpitStatusDto {
@@ -55,4 +56,11 @@ export class CockpitSummaryDto {
 
   @ApiPropertyOptional({ type: CockpitIncomeByPersonDto, description: 'Only for a joint return recorded in this account: the share of each person.' })
   byPerson?: CockpitIncomeByPersonDto
+
+  @ApiProperty({
+    type: CockpitSubmissionDto,
+    nullable: true,
+    description: 'The Abgabe (ADR-0098 §8): null until the user recorded „Ich habe die Erklärung abgegeben“.',
+  })
+  submission!: CockpitSubmissionDto | null
 }

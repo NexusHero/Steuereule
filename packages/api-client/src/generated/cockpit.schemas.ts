@@ -43,6 +43,31 @@ export interface CockpitIncomeByPersonDto {
   b: number;
 }
 
+/**
+ * The ADR-0039 state of the year.
+ */
+export type CockpitSubmissionDtoStatus = typeof CockpitSubmissionDtoStatus[keyof typeof CockpitSubmissionDtoStatus];
+
+
+export const CockpitSubmissionDtoStatus = {
+  entwurf: 'entwurf',
+  pruefung: 'pruefung',
+  eingereicht: 'eingereicht',
+  rueckfrage: 'rueckfrage',
+  bescheid: 'bescheid',
+  abgeschlossen: 'abgeschlossen',
+  'extern-erledigt': 'extern-erledigt',
+} as const;
+
+export interface CockpitSubmissionDto {
+  /** The ADR-0039 state of the year. */
+  status: CockpitSubmissionDtoStatus;
+  /** ISO yyyy-mm-dd, the day the user filed. */
+  submittedOn: string;
+  /** Whether „Abgabe zurücknehmen“ is offered: until a Bescheid is recorded. */
+  withdrawable: boolean;
+}
+
 export interface CockpitSummaryDto {
   taxYear: number;
   status: CockpitStatusDto;
@@ -50,5 +75,10 @@ export interface CockpitSummaryDto {
   openItems: number;
   /** Only for a joint return recorded in this account: the share of each person. */
   byPerson?: CockpitIncomeByPersonDto;
+  /**
+     * The Abgabe (ADR-0098 §8): null until the user recorded „Ich habe die Erklärung abgegeben“.
+     * @nullable
+     */
+  submission: CockpitSubmissionDto | null;
 }
 

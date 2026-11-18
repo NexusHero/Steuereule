@@ -21,6 +21,7 @@ import { OwlAdvisorCard } from '../advisor/OwlAdvisorCard'
 import { useOptionalCopilotBridge } from '../advisor/CopilotBridgeProvider'
 import { APP_NS } from '../../i18n/resources'
 import type { PartnerAreaParam } from '../../navigation/routes'
+import { SubmissionMarker } from './SubmissionMarker'
 import { SELECTABLE_TAX_YEARS, CURRENT_TAX_YEAR, isRunningTaxYear } from '../../config/taxYear'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { pathFromAnswers, type FunnelPath } from '../funnel/KontoWandScreen'
@@ -767,6 +768,8 @@ function CockpitLoaded(props: CockpitLoadedProps) {
         onOpenPrintout={onOpenPrintout}
         kinderTestID="cockpit-kinder"
       />
+      {/* After printing: the year is marked as filed, so the Verlauf shows it waiting for its Bescheid (ADR-0098). */}
+      {props.isSignedIn && onOpenPrintout && !isRunningTaxYear(year) ? <SubmissionMarker year={year} submission={summary.submission ?? null} /> : null}
     </ScrollView>
   )
 }

@@ -25,6 +25,7 @@ import {
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { integerFrom } from '../shared/integer'
+import { MaskLessonHint } from '../history/MaskLessonHint'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import type { CatalogEntryParam } from '../../navigation/routes'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
@@ -271,6 +272,7 @@ function CatalogFlow({
       ) : null}
       <Text style={styles.heading}>{tr(`katalog.questions.${step}`, { defaultValue: step })}</Text>
       <GlossaryHint stepId={step} />
+      {decl.form.kind === 'enum' ? null : <MaskLessonHint taxYear={taxYear} screen="interview" field={step} person={person} />}
       {hint !== '' ? <Text style={styles.hint} testID={`katalog-hinweis-${step}`}>{hint}</Text> : null}
       {partnerName !== null && JOINT_STEPS.includes(step) ? (
         <Text style={styles.hint} testID={`katalog-gemeinsam-${step}`}>

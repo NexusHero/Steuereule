@@ -7,7 +7,8 @@
     "cockpit": "Cockpit",
     "eule": "Eule",
     "belege": "Belege",
-    "profil": "Profil"
+    "profil": "Profil",
+    "verlauf": "Verlauf"
   },
   "splash": {
     "greeting": "Steuern? Zack, erledigt.",
@@ -1743,6 +1744,24 @@
       "belege_one": "{{count}} Beleg wartet auf dich",
       "belege_other": "{{count}} Belege warten auf dich",
       "belegeHinweis": "Ordne sie einem Steuerjahr zu, dann zählen sie."
+    },
+    "abgabeMarke": {
+      "titel": "Erklärung abgegeben?",
+      "text": "Hast du die Erklärung {{jahr}} ausgedruckt und beim Finanzamt abgegeben? Trag den Tag ein: Der Verlauf führt das Jahr dann als eingereicht, bis der Bescheid kommt.",
+      "datum": "Abgegeben am (TT.MM.JJJJ)",
+      "cta": "Ich habe die Erklärung abgegeben",
+      "gespeichert": "Gespeichert: Das Jahr ist eingereicht und wartet auf den Bescheid.",
+      "ersetzt": "Gespeichert: Diese Fassung ersetzt die früher abgegebene.",
+      "datumUngueltig": "Bitte ein vollständiges Datum eintragen (TT.MM.JJJJ).",
+      "datumAusserhalb": "Das Datum muss nach dem Ende von {{jahr}} liegen und darf nicht in der Zukunft sein.",
+      "schonBescheid": "Für {{jahr}} ist schon ein Bescheid erfasst; die Abgabe lässt sich nicht mehr ändern.",
+      "fehler": "Das hat nicht geklappt. Prüf die Verbindung und versuch es noch mal.",
+      "eingereichtTitel": "Erklärung abgegeben",
+      "eingereicht": "Eingereicht am {{datum}} · wartet auf Bescheid",
+      "eingereichtMitBescheid": "Eingereicht am {{datum}} · Bescheid erfasst",
+      "zuruecknehmen": "Abgabe zurücknehmen",
+      "zurueckgenommen": "Die Abgabe ist zurückgenommen; das Jahr ist wieder offen.",
+      "zuruecknehmenBescheid": "Es ist schon ein Bescheid erfasst; die Abgabe bleibt bestehen."
     }
   },
   "belegZuordnung": {
@@ -2653,5 +2672,429 @@
   },
   "sheet": {
     "schliessen": "Schließen"
+  },
+  "verlauf": {
+    "titel": "Verlauf",
+    "eyebrow": "Alle Steuerjahre",
+    "eyebrowZeitraum": "Alle Steuerjahre · {{zeitraum}}",
+    "laden": "Dein Verlauf wird geladen …",
+    "fehler": {
+      "titel": "Das hat nicht geklappt.",
+      "text": "Der Verlauf konnte nicht geladen werden. Prüf die Verbindung und versuch es noch mal.",
+      "erneut": "Noch mal versuchen"
+    },
+    "gast": {
+      "titel": "Der Verlauf braucht ein Konto",
+      "text": "Hier stehen alle deine Steuerjahre nebeneinander: was erklärt war, was das Finanzamt festgesetzt hat und wie sich Erstattung, Werbungskosten und Netto entwickeln. Dafür muss SteuerEule deine Jahre speichern dürfen.",
+      "registrieren": "Konto anlegen",
+      "anmelden": "Anmelden"
+    },
+    "leer": {
+      "titel": "Noch kein Steuerjahr",
+      "text": "Sobald ein Jahr eine Erklärung oder einen Bescheid hat, steht es hier. Alte Jahre kannst du mit ihrem Bescheid ergänzen."
+    },
+    "nochOffenKurz": "noch offen",
+    "und": "und",
+    "ansteht": {
+      "titel": "Was ansteht",
+      "weichtAb": "Bescheid weicht ab: {{differenz}}",
+      "weichtAbOhneBetrag_one": "Bescheid weicht ab: {{count}} Position",
+      "weichtAbOhneBetrag_other": "Bescheid weicht ab: {{count}} Positionen",
+      "frist_one": "Einspruch bis {{datum}} · noch {{count}} Tag",
+      "frist_other": "Einspruch bis {{datum}} · noch {{count}} Tage",
+      "wartet": "Wartet auf den Bescheid",
+      "wiederErklaert_one": "{{count}} Position wie {{vorjahr}} erklärt, dort gekürzt: {{liste}}",
+      "wiederErklaert_other": "{{count}} Positionen wie {{vorjahr}} erklärt, dort gekürzt: {{liste}}",
+      "eingereicht": "Eingereicht · wartet auf Bescheid",
+      "offen": "Noch offen"
+    },
+    "held": {
+      "erstattet": "Erstattet {{zeitraum}}",
+      "nachgezahlt": "Unterm Strich nachgezahlt {{zeitraum}}",
+      "ausBescheidjahren_one": "aus {{count}} Bescheidjahr",
+      "ausBescheidjahren_other": "aus {{count}} Bescheidjahren",
+      "geaendert": "Vom Finanzamt geändert",
+      "inErklaerungen_one": "in {{geaendert}} von {{count}} Erklärung",
+      "inErklaerungen_other": "in {{geaendert}} von {{count}} Erklärungen"
+    },
+    "liste": {
+      "titel": "Eure Steuerjahre",
+      "oeffnen": "Öffnet den Abgleich des Jahres darunter"
+    },
+    "tabelle": {
+      "titel": "Alle Jahre: erklärt und festgesetzt",
+      "jahr": "Jahr",
+      "stand": "Stand",
+      "stufe": "Stufe",
+      "erklaert": "Erstattung erklärt",
+      "lautBescheid": "laut Bescheid",
+      "erstattung": "Erstattung",
+      "differenz": "Differenz",
+      "werbungskosten": "Werbungsk. angesetzt",
+      "brutto": "Brutto · {{person}}",
+      "netto": "Netto",
+      "nettoQuote": "Netto-Quote",
+      "steuerquote": "Steuerquote · beide",
+      "veranlagung": "Veranlagung"
+    },
+    "veranlagung": {
+      "einzel": "Einzeln",
+      "zusammen": "Zusammen"
+    },
+    "stand": {
+      "offen": "Erklärung angelegt, noch offen",
+      "eckjahr": "Alter Bescheid hochgeladen, extern erledigt",
+      "eingereicht": "Eingereicht · wartet auf Bescheid",
+      "abweichungen_one": "Bescheid eingegangen, {{count}} Abweichung",
+      "abweichungen_other": "Bescheid eingegangen, {{count}} Abweichungen",
+      "wieErklaert": "Bescheid wie erklärt",
+      "bescheid": "Bescheid eingegangen"
+    },
+    "stufe": {
+      "bescheid": "Bescheid",
+      "schaetzung": "Schätzung",
+      "offen": "offen",
+      "eckjahr": "Eckjahr",
+      "eckjahrBescheid": "Eckjahr · Bescheid",
+      "lstb": "Lohnsteuerbescheinigung",
+      "lohnausweis": "Lohnausweis",
+      "bescheidAbweichungen_one": "Bescheid · {{count}} Abw.",
+      "bescheidAbweichungen_other": "Bescheid · {{count}} Abw.",
+      "bescheidWieErklaert": "Bescheid · wie erklärt"
+    },
+    "zumCockpit": "Zum Cockpit {{jahr}}",
+    "ohneAbgleich": {
+      "eckjahr": "Kein Abgleich: Die Erklärung {{jahr}} wurde nicht in SteuerEule gemacht. Der Bescheid zählt im Verlauf trotzdem.",
+      "ohneFassung": "Kein Abgleich: Für {{jahr}} liegt ein Bescheid vor, aber keine in SteuerEule eingereichte Fassung, mit der er sich vergleichen ließe.",
+      "wartet": "Eingereicht, der Bescheid {{jahr}} steht aus. Kommt er, steht hier der Abgleich.",
+      "offen": "{{jahr}} ist noch offen: Es gibt noch keine eingereichte Erklärung und keinen Bescheid."
+    },
+    "wartet": {
+      "eyebrow": "Wartet auf den Bescheid",
+      "titel": "{{jahr}}: worauf du achten kannst",
+      "text_one": "Eingereicht, der Bescheid steht aus. {{count}} Position hat das Finanzamt {{vorjahr}} gekürzt; {{jahr}} steht sie wieder so in der Erklärung.",
+      "text_other": "Eingereicht, der Bescheid steht aus. {{count}} Positionen hat das Finanzamt {{vorjahr}} gekürzt; {{jahr}} stehen sie wieder so in der Erklärung.",
+      "keineVorhersage": "Kommt der Bescheid, steht hier der Abgleich. Eine Vorhersage macht die Eule nicht."
+    },
+    "abgleich": {
+      "eyebrow": "Bescheid-Abgleich",
+      "titel": "Erklärung ↔ Bescheid {{jahr}}",
+      "titelPerson": "Erklärung ↔ Bescheid {{jahr}} · {{person}}",
+      "schliessen": "Abgleich schließen",
+      "eingereicht": "Erklärung eingereicht am {{datum}}",
+      "bescheidVom": "Bescheid vom {{datum}}",
+      "wieErklaert": "Wie erklärt",
+      "gleich_one": "Die {{count}} Position stimmt mit der Erklärung überein. Das Finanzamt hat nichts geändert.",
+      "gleich_other": "Alle {{count}} Positionen stimmen mit der Erklärung überein. Das Finanzamt hat nichts geändert.",
+      "gleichEinzeln_one": "Die {{count}} Position stimmt mit dieser Einzelerklärung überein. Das Finanzamt hat nichts geändert.",
+      "gleichEinzeln_other": "Alle {{count}} Positionen stimmen mit dieser Einzelerklärung überein. Das Finanzamt hat nichts geändert.",
+      "nichtGelesenHinweis_one": "{{count}} Position war im Bescheid nicht lesbar; sie steht als „nicht gelesen“, nicht als Abweichung.",
+      "nichtGelesenHinweis_other": "{{count}} Positionen waren im Bescheid nicht lesbar; sie stehen als „nicht gelesen“, nicht als Abweichung.",
+      "abweichungen_one": "{{count}} Abweichung",
+      "abweichungen_other": "{{count}} Abweichungen",
+      "erstattungChip": "Erstattung {{erklaert}} → {{festgesetzt}} ({{differenz}})",
+      "spalteGeaendert": "Vom Finanzamt geändert",
+      "spalteWerte": "erklärt → Bescheid",
+      "spalteWirkung": "Erstattung",
+      "wirkungA11y": "Wirkung auf die Erstattung: {{wert}}",
+      "wirkungUnbekannt": "Wirkung auf die Erstattung nicht berechenbar",
+      "erlaeuterung": "Erläuterung im Bescheid:",
+      "folge": "Folge",
+      "formularAuf_one": "Alle {{count}} Position in Formularreihenfolge ({{gleich}} wie erklärt)",
+      "formularAuf_other": "Alle {{count}} Positionen in Formularreihenfolge ({{gleich}} wie erklärt)",
+      "formularZu": "Formularansicht ausblenden",
+      "nichtGelesen": "nicht gelesen",
+      "nichtErklaert": "nicht erklärt",
+      "nichtLinear": "Die rechte Spalte ist die Wirkung auf die Erstattung: Der Kern setzt jeweils nur diese Position auf den Bescheid-Wert. Die Summe ({{summe}}) weicht um {{abstand}} von der Gesamtwirkung ({{gesamt}}) ab, weil der Tarif nicht linear ist.",
+      "wirkungErklaert": "Die rechte Spalte ist die Wirkung auf die Erstattung: Der Kern setzt jeweils nur diese Position auf den Bescheid-Wert.",
+      "euleKostet_one": "Das Finanzamt hat {{count}} Position geändert, das kostet {{betrag}} Erstattung.",
+      "euleKostet_other": "Das Finanzamt hat {{count}} Positionen geändert, das kostet {{betrag}} Erstattung.",
+      "euleNuetzt_one": "Das Finanzamt hat {{count}} Position geändert, das bringt {{betrag}} mehr Erstattung.",
+      "euleNuetzt_other": "Das Finanzamt hat {{count}} Positionen geändert, das bringt {{betrag}} mehr Erstattung.",
+      "euleGroesste": "Am meisten wirkt {{position}} ({{wirkung}}).",
+      "gruppe": {
+        "einkuenfte": "Einkünfte",
+        "werbungskostenA": "Werbungskosten · Person A",
+        "werbungskostenB": "Werbungskosten · Person B",
+        "vorsorge": "Vorsorge und Sonderausgaben",
+        "steuer": "Steuer"
+      }
+    },
+    "frist": {
+      "bis": "Einspruch möglich bis {{datum}}",
+      "resttage_one": "noch {{count}} Tag (§ 355 AO)",
+      "resttage_other": "noch {{count}} Tage (§ 355 AO)",
+      "einspruch": "Einspruch vorbereiten",
+      "vorbei": "Einspruchsfrist endete am {{datum}}."
+    },
+    "lehre": {
+      "titel": "Fürs nächste Mal",
+      "anerkannt": "{{position}}: {{festgesetzt}} statt {{erklaert}} anerkannt",
+      "folgejahrEingereicht": "{{jahr}} wurden wieder {{betrag}} erklärt.",
+      "folgejahrAngaben": "In den Angaben {{jahr}} stehen bisher {{betrag}}.",
+      "folgejahrNicht": "{{jahr}} ist die Position nicht erklärt.",
+      "wiederMehr": "Das ist mehr, als {{jahr}} anerkannt wurde.",
+      "bescheidAus": "Der Bescheid {{jahr}} steht noch aus.",
+      "maske": "Erscheint {{jahr}} in der Maske „{{maske}}“",
+      "maskeNaechstes": "Erscheint im nächsten offenen Jahr in der Maske „{{maske}}“",
+      "hinweis": {
+        "homeoffice": "Homeoffice-Tage laufend festhalten, zum Beispiel im Kalender oder mit einer Bescheinigung des Arbeitgebers.",
+        "arbeitsmittel": "Den beruflichen Anteil gemischt genutzter Geräte belegen; ohne Nachweis erkennt das Finanzamt oft nur die Hälfte an.",
+        "fahrtweg": "Entfernung und Arbeitstage belegen können; das Finanzamt rechnet mit der kürzesten Straßenverbindung.",
+        "sonstigeWerbungskosten": "Zu jeder sonstigen Ausgabe den beruflichen Anlass notieren und den Beleg aufheben.",
+        "sonderausgaben": "Für jede Spende die Zuwendungsbestätigung aufheben; ab 300 € genügt der Kontoauszug nicht.",
+        "aussergewoehnlicheBelastungen": "Nur selbst getragene Kosten ansetzen und Rezepte und Erstattungen der Krankenkasse aufheben.",
+        "steuerermaessigung35a": "Nur den Lohnanteil der Rechnung ansetzen und unbar zahlen; Material zählt nicht."
+      }
+    },
+    "maske": {
+      "homeOfficeDays": "Homeoffice",
+      "workEquipmentEur": "Arbeitsmittel",
+      "oneWayKm": "Arbeitsweg",
+      "otherWorkExpensesEur": "Weitere Werbungskosten",
+      "spenden-betrag": "Spenden",
+      "gesundheit-betrag": "Krankheitskosten",
+      "haushalt-handwerker-betrag": "Handwerker"
+    },
+    "maskenHinweis": {
+      "label": "Aus dem Bescheid {{jahr}}",
+      "homeofficeTage": "{{jahr}} hat das Finanzamt {{anerkannt}} statt {{erklaert}} Homeoffice-Tage anerkannt.",
+      "allgemein": "{{jahr}} hat das Finanzamt bei {{position}} {{anerkannt}} statt {{erklaert}} anerkannt.",
+      "tipp": "Tipp: {{hinweis}}"
+    },
+    "position": {
+      "bruttoarbeitslohnA": "Bruttoarbeitslohn · Person A",
+      "bruttoarbeitslohnB": "Bruttoarbeitslohn · Person B",
+      "fahrtwegA": "Fahrtweg (Entfernungspauschale)",
+      "fahrtwegB": "Fahrtweg (Entfernungspauschale)",
+      "homeofficeA": "Homeoffice-Pauschale",
+      "homeofficeB": "Homeoffice-Pauschale",
+      "arbeitsmittelA": "Arbeitsmittel",
+      "arbeitsmittelB": "Arbeitsmittel",
+      "sonstigeWerbungskostenA": "Sonstige Werbungskosten",
+      "sonstigeWerbungskostenB": "Sonstige Werbungskosten",
+      "werbungskostenA": "Summe Werbungskosten A",
+      "werbungskostenB": "Summe Werbungskosten B",
+      "vorsorgeaufwand": "Vorsorgeaufwendungen",
+      "sonderausgaben": "Sonderausgaben",
+      "aussergewoehnlicheBelastungen": "Außergewöhnliche Belastungen",
+      "zuVersteuerndesEinkommen": "Zu versteuerndes Einkommen",
+      "festgesetzteSteuer": "Einkommensteuer",
+      "steuerermaessigung35a": "Steuerermäßigung § 35a EStG",
+      "solidaritaetszuschlag": "Solidaritätszuschlag",
+      "kirchensteuer": "Kirchensteuer",
+      "anrechnung": "Einbehaltene Lohnsteuer und anrechenbare Steuern",
+      "erstattung": "Erstattung"
+    },
+    "entwicklung": "Entwicklung über die Jahre",
+    "kennzahlWaehlen": "Kennzahl wählen",
+    "kennzahl": {
+      "erstattung": {
+        "label": "Erstattung",
+        "titel": "Erstattung und Nachzahlung",
+        "sub": "Für den Haushalt. Der Strich ist, was erklärt war; die rote Fläche hat das Finanzamt gekürzt."
+      },
+      "werbungskosten": {
+        "label": "Werbungskosten",
+        "titel": "Werbungskosten je Jahr",
+        "sub": "Nach Art gestapelt; die gestrichelte Linie ist der Arbeitnehmer-Pauschbetrag."
+      },
+      "netto": {
+        "label": "Brutto → Netto",
+        "titel": "Vom Brutto zum Netto",
+        "sub": "Gestapelt aus der Lohnsteuerbescheinigung; über dem Balken der Anteil, der netto bleibt."
+      },
+      "steuerquote": {
+        "label": "Steuerquote",
+        "titel": "Wie viel Steuer aufs Brutto",
+        "sub": "Effektiv: festgesetzte Einkommensteuer ÷ Brutto. Dünn: der Grenzsteuersatz."
+      }
+    },
+    "person": {
+      "fuerWen": "Für wen",
+      "beide": "Wir beide",
+      "A": "Person A",
+      "B": "Person B"
+    },
+    "hinweisHaushalt": "Erstattung und Steuerquote gibt es nur gemeinsam. Angezeigt: Wir beide.",
+    "kpi": {
+      "label": "{{kennzahl}} {{jahr}} · {{person}}"
+    },
+    "chart": {
+      "a11y": "{{titel}}, Jahre {{zeitraum}}. Die Zahlen stehen in der Tabelle unter dem Diagramm.",
+      "jahrWaehlen": "{{jahr}} auswählen",
+      "offen": "offen",
+      "nichtAblesbar": "n. a.",
+      "wechselZusammen": "ab {{jahr}} zusammen veranlagt",
+      "wechselEinzeln": "ab {{jahr}} einzeln veranlagt"
+    },
+    "segment": {
+      "netto": "Netto",
+      "steuern": "Lohnsteuer, Soli, KiSt",
+      "sozialversicherung": "Sozialversicherung",
+      "fahrtweg": "Fahrtweg",
+      "homeoffice": "Homeoffice",
+      "arbeitsmittel": "Arbeitsmittel",
+      "sonstiges": "Sonstiges",
+      "summeLautBescheid": "laut Bescheid, ohne Aufteilung"
+    },
+    "legende": {
+      "erstattungBescheid": "Erstattung laut Bescheid",
+      "gekuerzt": "vom Finanzamt gekürzt",
+      "schaetzung": "Schätzung (Spanne)",
+      "erklaert": "erklärt",
+      "pauschbetrag": "Pauschbetrag",
+      "effektiv": "Steuerquote effektiv",
+      "grenz": "Grenzsteuersatz",
+      "wechsel": "Wechsel der Veranlagungsart"
+    },
+    "datentabelle": {
+      "auf": "Zahlen als Tabelle zeigen",
+      "zu": "Tabelle ausblenden",
+      "a11y": "{{titel}} als Tabelle"
+    },
+    "tippeJahr": "Tippe ein Jahr für Details.",
+    "delta": {
+      "zumVorjahr": "{{wert}} zum Vorjahr",
+      "spanneWerte": "{{von}} bis {{bis}}",
+      "keins": {
+        "kein-vorjahr": "kein Vorjahresvergleich",
+        "offen": "kein Vorjahresvergleich: ein Jahr ist noch offen",
+        "veranlagungsart-gewechselt": "kein Vergleich: Veranlagungsart gewechselt"
+      }
+    },
+    "teil": {
+      "fahrtweg": "der Fahrtweg",
+      "homeoffice": "das Homeoffice",
+      "arbeitsmittel": "die Arbeitsmittel",
+      "sonstiges": "Sonstiges",
+      "fahrtwegName": "Fahrtweg",
+      "homeofficeName": "Homeoffice",
+      "arbeitsmittelName": "Arbeitsmittel",
+      "sonstigesName": "Sonstiges"
+    },
+    "detail": {
+      "zusammen": "zusammen veranlagt",
+      "einzeln": "zwei Einzelerklärungen",
+      "du": "deine Erklärung",
+      "brutto": "Brutto",
+      "lohnsteuer": "Lohnsteuer",
+      "soli": "Solidaritätszuschlag",
+      "kirchensteuer": "Kirchensteuer",
+      "sozialversicherung": "Sozialversicherung",
+      "netto": "Netto",
+      "nettoNachErstattung": "Netto nach Erstattung",
+      "nettoNachErstattungNurGemeinsam": "Netto nach Erstattung gibt es nur gemeinsam.",
+      "kurs": "Schweizer Lohn zum Kurs {{kurs}} EUR/CHF ({{zeitraum}})",
+      "bruttoNichtImBescheid": "Brutto und Abzüge stehen nicht im Bescheid {{jahr}}: aus dem Bescheid nicht ablesbar.",
+      "lstbTitel": "Lohnsteuerbescheinigung {{jahr}} ergänzen",
+      "lstbText": "Derselbe Ablauf wie im Belege-Tab; die Eule liest Brutto und Abzüge.",
+      "lstbCta": "Hochladen",
+      "summe": "Summe",
+      "lautBescheid": "laut Bescheid",
+      "ohneAufteilung": "Der Bescheid nennt nur die Summe, keine Aufteilung.",
+      "pauschbetrag": "Pauschbetrag {{jahr}}",
+      "pauschbetragZwei": "Pauschbetrag {{jahr}} (2×)",
+      "angesetzt": "Angesetzt",
+      "unterPauschbetrag": "Unter dem Pauschbetrag, angesetzt {{betrag}}.",
+      "unterPauschbetragPerson": "{{person}}: unter dem Pauschbetrag, angesetzt {{betrag}}.",
+      "erklaert": "Erklärt",
+      "geschaetzt": "Erstattung geschätzt",
+      "geaendert": "Vom Finanzamt geändert",
+      "wieErklaert": "Wie erklärt.",
+      "summeEinzeln": "Summe zweier Einzelerklärungen.",
+      "schaetzungVorher": "Schätzung vor dem Bescheid",
+      "treffer": "Treffer",
+      "innerhalb": "innerhalb der Spanne",
+      "ausserhalb": "außerhalb der Spanne",
+      "festgesetzteEst": "Festgesetzte ESt",
+      "estGeschaetzt": "ESt geschätzt",
+      "quoteEffektiv": "Steuerquote effektiv",
+      "grenzsteuersatz": "Grenzsteuersatz",
+      "grenzEinzeln": "Grenzsteuersatz: Bei zwei Einzelerklärungen hat jede Person ihren eigenen.",
+      "quoteOhneBrutto": "Ohne Brutto lässt sich die Quote für {{jahr}} nicht bilden.",
+      "abgleich": "Bescheid ↔ Erklärung",
+      "abweichungen_one": "{{count}} Abweichung",
+      "abweichungen_other": "{{count}} Abweichungen",
+      "gleich": "gleich"
+    },
+    "eule": {
+      "label": "Eule",
+      "erstattung": {
+        "bilanz_one": "Von {{count}} Erklärung aus SteuerEule kam {{gleich}} wie erklärt zurück.",
+        "bilanz_other": "Von {{count}} Erklärungen aus SteuerEule kamen {{gleich}} wie erklärt zurück.",
+        "gekuerzt": "{{jahr}} hat das Finanzamt {{betrag}} gekürzt.",
+        "mehr": "{{jahr}} hat das Finanzamt {{betrag}} mehr erstattet.",
+        "schaetzung": "Für {{jahr}} schätzt die Eule {{spanne}}.",
+        "einzeln_one": "{{jahre}} ist die Summe zweier Einzelerklärungen.",
+        "einzeln_other": "{{jahre}} sind die Summe zweier Einzelerklärungen.",
+        "leer": "Noch hat kein Jahr einen Bescheid oder eine Schätzung."
+      },
+      "werbungskosten": {
+        "unter": "Unter dem Pauschbetrag lagen {{liste}}; dort hat der Pauschbetrag gezählt.",
+        "personJahr": "{{person}} {{jahr}} ({{betrag}})",
+        "jahr": "{{jahr}} ({{betrag}})",
+        "ueber": "In jedem Jahr lagen die Werbungskosten über dem Pauschbetrag.",
+        "groesster": "{{jahr}} bringt {{teil}} am meisten ({{betrag}}).",
+        "leer": "Für die Werbungskosten fehlt noch ein Jahr mit Angaben."
+      },
+      "netto": {
+        "verlauf": "Das Brutto veränderte sich von {{von}} bis {{bis}} um {{brutto}}, das Netto um {{netto}}. Vom Brutto blieben {{bis}} {{quoteBis}} netto, {{von}} waren es {{quoteVon}}.",
+        "einJahr": "{{jahr}} blieben vom Brutto {{quote}} netto.",
+        "leer": "Für Brutto → Netto fehlt noch eine Lohnsteuerbescheinigung."
+      },
+      "steuerquote": {
+        "mitGrenz": "{{jahr}} gingen von jedem zusätzlichen Euro rund {{grenz}} Cent an Einkommensteuer; im Schnitt waren es {{quote}} des Brutto.",
+        "ohneGrenz": "{{jahr}} lag die Steuerquote bei {{quote}} des Brutto.",
+        "leer": "Für die Steuerquote fehlt noch ein Jahr mit Brutto und Steuer."
+      }
+    },
+    "fehlt": {
+      "satz": "Noch offen: {{liste}}.",
+      "nichtsGenannt": "Noch offen.",
+      "vonPersonB": "{{was}} von Person B",
+      "sonstiges": "weitere Angaben",
+      "lohnsteuerbescheinigung": "die Lohnsteuerbescheinigung",
+      "bruttoarbeitslohn": "der Bruttoarbeitslohn",
+      "lohnsteuer": "die einbehaltene Lohnsteuer",
+      "solidaritaetszuschlag": "der Solidaritätszuschlag",
+      "kirchensteuer": "die Kirchensteuer",
+      "sozialversicherung": "die Sozialversicherungsbeiträge",
+      "einkommen": "die Angaben zum Einkommen",
+      "erklaerung": "die Angaben zur Erklärung",
+      "schaetzung": "genug Angaben für eine Schätzung",
+      "werbungskosten": "die Werbungskosten",
+      "rente": "der Rentenbetrag",
+      "veranlagungsart": "die Veranlagungsart",
+      "wechselkurs": "der Wechselkurs",
+      "bruttolohn-total": "der Bruttolohn aus dem Lohnausweis",
+      "pk-obligatorium": "die Pensionskassenbeiträge",
+      "lohnersatz-betrag": "der Betrag der Lohnersatzleistungen",
+      "jahr-ohne-tarif": "der Steuertarif des Jahres (für dieses Jahr rechnet die Eule nicht)",
+      "nur-angestellte": "eine Schätzung (die Eule rechnet bisher nur für Angestellte)",
+      "verheiratet": "die Angaben zur Ehe",
+      "besondere-lebenslage": "eine Schätzung (diese Lebenslage rechnet die Eule noch nicht)",
+      "kein-grenzgaenger": "die Angaben zur Grenzgänger-Eigenschaft"
+    },
+    "upload": {
+      "titel": "{{jahr}} oder früher ergänzen",
+      "text": "Alten Bescheid hochladen, wie im Belege-Tab. Die Eule liest die Eckwerte.",
+      "textLang": "Alten Bescheid hochladen, derselbe Ablauf wie im Belege-Tab. Die Eule liest die Eckwerte, sie bleiben Entwürfe, bis du sie übernimmst.",
+      "cta": "Bescheid hochladen",
+      "nurWeb": "Hochladen geht in dieser Version im Browser.",
+      "liest": "Die Eule liest den Bescheid …",
+      "ohneJahr": "Das Jahr des Bescheids war nicht lesbar.",
+      "jahr": "Bescheid für {{jahr}} erkannt.",
+      "datum": "Bescheiddatum {{datum}}.",
+      "gelesen_one": "Gelesen: {{liste}}.",
+      "gelesen_other": "Gelesen ({{count}}): {{liste}}.",
+      "nichtGelesen": "Nicht gelesen, bleibt offen und zählt nie als 0: {{liste}}.",
+      "erlaeuterungen_one": "{{count}} Erläuterung des Finanzamts gelesen.",
+      "erlaeuterungen_other": "{{count}} Erläuterungen des Finanzamts gelesen.",
+      "eckjahr": "{{jahr}} hat keine Erklärung in SteuerEule: Übernimmst du die Werte, entsteht ein Eckjahr (extern erledigt).",
+      "entwuerfe_one": "{{count}} Entwurf wartet bei der Eule, bis du ihn übernimmst.",
+      "entwuerfe_other": "{{count}} Entwürfe warten bei der Eule, bis du sie übernimmst.",
+      "zurEule": "Zu den Vorschlägen"
+    }
   }
 }

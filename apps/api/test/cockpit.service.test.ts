@@ -52,7 +52,7 @@ describe('CockpitService', () => {
 
     const summary = await service.getSummary('user-a', 2026)
 
-    expect(summary).toEqual({ taxYear: 2026, status: { kind: 'bestimmt', value: 50000 }, openItems: 0 })
+    expect(summary).toEqual({ taxYear: 2026, status: { kind: 'bestimmt', value: 50000 }, openItems: 0, submission: null })
   })
 
   it('widens into a spanne when LStB fields are still open, around the settled partial sum', async () => {

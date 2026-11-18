@@ -11,6 +11,7 @@ export const TAB_ICON_PATHS = {
   berater: 'M4 5h16v11H8l-4 4V5z',
   jahr: 'M4 5h16v15H4V5zm0 5h16M8 3v4m8-4v4',
   uebertragen: 'M12 4v12m0-12l-5 5m5-5l5 5M4 20h16',
+  verlauf: 'M4 20h16M7 16v-4m5 4V7m5 9v-6',
   profil: 'M12 11a4 4 0 100-8 4 4 0 000 8zm-7 9a7 7 0 0114 0',
 } as const
 

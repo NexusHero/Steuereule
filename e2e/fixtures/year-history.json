@@ -1,0 +1,2730 @@
+{
+  "today": "2026-11-18",
+  "years": [
+    {
+      "filingType": "einzel",
+      "filingTypeChanged": false,
+      "eckjahr": true,
+      "tier": "bescheid",
+      "missing": [],
+      "persons": [
+        "A",
+        "B"
+      ],
+      "netto": {
+        "beide": {
+          "brutto": {
+            "tier": "offen",
+            "missing": [
+              "lohnsteuerbescheinigung"
+            ],
+            "delta": {
+              "kind": "none",
+              "reason": "offen"
+            }
+          },
+          "lohnsteuer": {
+            "tier": "offen",
+            "missing": [
+              "lohnsteuerbescheinigung"
+            ],
+            "delta": {
+              "kind": "none",
+              "reason": "offen"
+            }
+          },
+          "solidaritaetszuschlag": {
+            "tier": "offen",
+            "missing": [
+              "lohnsteuerbescheinigung"
+            ],
+            "delta": {
+              "kind": "none",
+              "reason": "offen"
+            }
+          },
+          "kirchensteuer": {
+            "tier": "offen",
+            "missing": [
+              "lohnsteuerbescheinigung"
+            ],
+            "delta": {
+              "kind": "none",
+              "reason": "offen"
+            }
+          },
+          "sozialversicherung": {
+            "tier": "offen",
+            "missing": [
+              "lohnsteuerbescheinigung"
+            ],
+            "delta": {
+              "kind": "none",
+              "reason": "offen"
+            }
+          },
+          "netto": {
+            "tier": "offen",
+            "missing": [
+              "lohnsteuerbescheinigung"
+            ],
+            "delta": {
+              "kind": "none",
+              "reason": "offen"
+            }
+          },
+          "nettoQuote": {
+            "tier": "offen",
+            "missing": [
+              "lohnsteuerbescheinigung"
+            ],
+            "delta": {
+              "kind": "none",
+              "reason": "offen"
+            }
+          },
+          "exchangeRates": [],
+          "nettoNachErstattung": {
+            "tier": "offen",
+            "missing": [
+              "lohnsteuerbescheinigung"
+            ],
+            "delta": {
+              "kind": "none",
+              "reason": "offen"
+            }
+          }
+        },
+        "A": {
+          "brutto": {
+            "tier": "offen",
+            "missing": [
+              "lohnsteuerbescheinigung"
+            ],
+            "delta": {
+              "kind": "none",
+              "reason": "offen"
+            }
+          },
+          "lohnsteuer": {
+            "tier": "offen",
+            "missing": [
+              "lohnsteuerbescheinigung"
+            ],
+            "delta": {
+              "kind": "none",
+              "reason": "offen"
+            }
+          },
+          "solidaritaetszuschlag": {
+            "tier": "offen",
+            "missing": [
+              "lohnsteuerbescheinigung"
+            ],
+            "delta": {
+              "kind": "none",
+              "reason": "offen"
+            }
+          },
+          "kirchensteuer": {
+            "tier": "offen",
+            "missing": [
+              "lohnsteuerbescheinigung"
+            ],
+            "delta": {
+              "kind": "none",
+              "reason": "offen"
+            }
+          },
+          "sozialversicherung": {
+            "tier": "offen",
+            "missing": [
+              "lohnsteuerbescheinigung"
+            ],
+            "delta": {
+              "kind": "none",
+              "reason": "offen"
+            }
+          },
+          "netto": {
+            "tier": "offen",
+            "missing": [
+              "lohnsteuerbescheinigung"
+            ],
+            "delta": {
+              "kind": "none",
+              "reason": "offen"
+            }
+          },
+          "nettoQuote": {
+            "tier": "offen",
+            "missing": [
+              "lohnsteuerbescheinigung"
+            ],
+            "delta": {
+              "kind": "none",
+              "reason": "offen"
+            }
+          },
+          "exchangeRates": []
+        },
+        "B": {
+          "brutto": {
+            "tier": "offen",
+            "missing": [
+              "lohnsteuerbescheinigung"
+            ],
+            "delta": {
+              "kind": "none",
+              "reason": "offen"
+            }
+          },
+          "lohnsteuer": {
+            "tier": "offen",
+            "missing": [
+              "lohnsteuerbescheinigung"
+            ],
+            "delta": {
+              "kind": "none",
+              "reason": "offen"
+            }
+          },
+          "solidaritaetszuschlag": {
+            "tier": "offen",
+            "missing": [
+              "lohnsteuerbescheinigung"
+            ],
+            "delta": {
+              "kind": "none",
+              "reason": "offen"
+            }
+          },
+          "kirchensteuer": {
+            "tier": "offen",
+            "missing": [
+              "lohnsteuerbescheinigung"
+            ],
+            "delta": {
+              "kind": "none",
+              "reason": "offen"
+            }
+          },
+          "sozialversicherung": {
+            "tier": "offen",
+            "missing": [
+              "lohnsteuerbescheinigung"
+            ],
+            "delta": {
+              "kind": "none",
+              "reason": "offen"
+            }
+          },
+          "netto": {
+            "tier": "offen",
+            "missing": [
+              "lohnsteuerbescheinigung"
+            ],
+            "delta": {
+              "kind": "none",
+              "reason": "offen"
+            }
+          },
+          "nettoQuote": {
+            "tier": "offen",
+            "missing": [
+              "lohnsteuerbescheinigung"
+            ],
+            "delta": {
+              "kind": "none",
+              "reason": "offen"
+            }
+          },
+          "exchangeRates": []
+        }
+      },
+      "werbungskosten": {
+        "beide": {
+          "total": {
+            "tier": "bescheid",
+            "value": 2850,
+            "source": "bescheid",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "angesetzt": {
+            "tier": "bescheid",
+            "value": 2850,
+            "source": "bescheid",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "parts": null,
+          "partsSource": null,
+          "pauschbetrag": 2000,
+          "belowLumpSum": false
+        },
+        "A": {
+          "total": {
+            "tier": "bescheid",
+            "value": 1850,
+            "source": "bescheid",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "angesetzt": {
+            "tier": "bescheid",
+            "value": 1850,
+            "source": "bescheid",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "parts": null,
+          "partsSource": null,
+          "pauschbetrag": 1000,
+          "belowLumpSum": false
+        },
+        "B": {
+          "total": {
+            "tier": "bescheid",
+            "value": 1000,
+            "source": "bescheid",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "angesetzt": {
+            "tier": "bescheid",
+            "value": 1000,
+            "source": "bescheid",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "parts": null,
+          "partsSource": null,
+          "pauschbetrag": 1000,
+          "belowLumpSum": false
+        }
+      },
+      "erstattung": {
+        "amount": {
+          "tier": "bescheid",
+          "value": 220,
+          "source": "bescheid",
+          "delta": {
+            "kind": "none",
+            "reason": "kein-vorjahr"
+          }
+        },
+        "declared": null,
+        "difference": null,
+        "estimateBeforeAssessment": null,
+        "sumOfSingleFilings": true
+      },
+      "steuerquote": {
+        "incomeTax": {
+          "tier": "bescheid",
+          "value": 10430,
+          "source": "bescheid",
+          "delta": {
+            "kind": "none",
+            "reason": "kein-vorjahr"
+          }
+        },
+        "effective": {
+          "tier": "offen",
+          "missing": [
+            "bruttoarbeitslohn"
+          ],
+          "delta": {
+            "kind": "none",
+            "reason": "offen"
+          }
+        },
+        "marginal": null
+      },
+      "year": 2021
+    },
+    {
+      "filingType": "einzel",
+      "filingTypeChanged": false,
+      "eckjahr": false,
+      "tier": "bescheid",
+      "missing": [],
+      "persons": [
+        "A",
+        "B"
+      ],
+      "netto": {
+        "beide": {
+          "brutto": {
+            "tier": "bescheid",
+            "value": 84600,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "lohnsteuer": {
+            "tier": "bescheid",
+            "value": 11901,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "solidaritaetszuschlag": {
+            "tier": "bescheid",
+            "value": 0,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "kirchensteuer": {
+            "tier": "bescheid",
+            "value": 0,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "sozialversicherung": {
+            "tier": "bescheid",
+            "value": 17340,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "netto": {
+            "tier": "bescheid",
+            "value": 55359,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "nettoQuote": {
+            "tier": "bescheid",
+            "value": 65.4,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "exchangeRates": [],
+          "nettoNachErstattung": {
+            "tier": "bescheid",
+            "value": 55752,
+            "source": "bescheid",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          }
+        },
+        "A": {
+          "brutto": {
+            "tier": "bescheid",
+            "value": 48200,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "lohnsteuer": {
+            "tier": "bescheid",
+            "value": 7457,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "solidaritaetszuschlag": {
+            "tier": "bescheid",
+            "value": 0,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "kirchensteuer": {
+            "tier": "bescheid",
+            "value": 0,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "sozialversicherung": {
+            "tier": "bescheid",
+            "value": 9880,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "netto": {
+            "tier": "bescheid",
+            "value": 30863,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "nettoQuote": {
+            "tier": "bescheid",
+            "value": 64,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "exchangeRates": []
+        },
+        "B": {
+          "brutto": {
+            "tier": "bescheid",
+            "value": 36400,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "lohnsteuer": {
+            "tier": "bescheid",
+            "value": 4444,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "solidaritaetszuschlag": {
+            "tier": "bescheid",
+            "value": 0,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "kirchensteuer": {
+            "tier": "bescheid",
+            "value": 0,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "sozialversicherung": {
+            "tier": "bescheid",
+            "value": 7460,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "netto": {
+            "tier": "bescheid",
+            "value": 24496,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "nettoQuote": {
+            "tier": "bescheid",
+            "value": 67.3,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "exchangeRates": []
+        }
+      },
+      "werbungskosten": {
+        "beide": {
+          "total": {
+            "tier": "bescheid",
+            "value": 3480,
+            "source": "bescheid",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "angesetzt": {
+            "tier": "bescheid",
+            "value": 3480,
+            "source": "bescheid",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "parts": {
+            "fahrtweg": 2520,
+            "homeoffice": 600,
+            "arbeitsmittel": 360,
+            "sonstiges": 0
+          },
+          "partsSource": "bescheid",
+          "pauschbetrag": 2400,
+          "belowLumpSum": false
+        },
+        "A": {
+          "total": {
+            "tier": "bescheid",
+            "value": 2380,
+            "source": "bescheid",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "angesetzt": {
+            "tier": "bescheid",
+            "value": 2380,
+            "source": "bescheid",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "parts": {
+            "fahrtweg": 1540,
+            "homeoffice": 600,
+            "arbeitsmittel": 240,
+            "sonstiges": 0
+          },
+          "partsSource": "bescheid",
+          "pauschbetrag": 1200,
+          "belowLumpSum": false
+        },
+        "B": {
+          "total": {
+            "tier": "bescheid",
+            "value": 1100,
+            "source": "bescheid",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "angesetzt": {
+            "tier": "bescheid",
+            "value": 1200,
+            "source": "bescheid",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "parts": {
+            "fahrtweg": 980,
+            "homeoffice": 0,
+            "arbeitsmittel": 120,
+            "sonstiges": 0
+          },
+          "partsSource": "bescheid",
+          "pauschbetrag": 1200,
+          "belowLumpSum": true
+        }
+      },
+      "erstattung": {
+        "amount": {
+          "tier": "bescheid",
+          "value": 393,
+          "source": "bescheid",
+          "delta": {
+            "kind": "none",
+            "reason": "kein-vorjahr"
+          }
+        },
+        "declared": 393,
+        "difference": 0,
+        "estimateBeforeAssessment": null,
+        "sumOfSingleFilings": true
+      },
+      "steuerquote": {
+        "incomeTax": {
+          "tier": "bescheid",
+          "value": 11509,
+          "source": "bescheid",
+          "delta": {
+            "kind": "none",
+            "reason": "kein-vorjahr"
+          }
+        },
+        "effective": {
+          "tier": "bescheid",
+          "value": 13.6,
+          "source": "bescheid",
+          "delta": {
+            "kind": "none",
+            "reason": "kein-vorjahr"
+          }
+        },
+        "marginal": null
+      },
+      "year": 2022
+    },
+    {
+      "filingType": "zusammen",
+      "filingTypeChanged": true,
+      "eckjahr": false,
+      "tier": "bescheid",
+      "missing": [],
+      "persons": [
+        "A",
+        "B"
+      ],
+      "netto": {
+        "beide": {
+          "brutto": {
+            "tier": "bescheid",
+            "value": 89700,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "lohnsteuer": {
+            "tier": "bescheid",
+            "value": 12600,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "solidaritaetszuschlag": {
+            "tier": "bescheid",
+            "value": 0,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "kirchensteuer": {
+            "tier": "bescheid",
+            "value": 0,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "sozialversicherung": {
+            "tier": "bescheid",
+            "value": 18480,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "netto": {
+            "tier": "bescheid",
+            "value": 58620,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "nettoQuote": {
+            "tier": "bescheid",
+            "value": 65.4,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "exchangeRates": [],
+          "nettoNachErstattung": {
+            "tier": "bescheid",
+            "value": 58830,
+            "source": "bescheid",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          }
+        },
+        "A": {
+          "brutto": {
+            "tier": "bescheid",
+            "value": 51600,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "lohnsteuer": {
+            "tier": "bescheid",
+            "value": 8014,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "solidaritaetszuschlag": {
+            "tier": "bescheid",
+            "value": 0,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "kirchensteuer": {
+            "tier": "bescheid",
+            "value": 0,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "sozialversicherung": {
+            "tier": "bescheid",
+            "value": 10630,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "netto": {
+            "tier": "bescheid",
+            "value": 32956,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "nettoQuote": {
+            "tier": "bescheid",
+            "value": 63.9,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "exchangeRates": []
+        },
+        "B": {
+          "brutto": {
+            "tier": "bescheid",
+            "value": 38100,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "lohnsteuer": {
+            "tier": "bescheid",
+            "value": 4586,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "solidaritaetszuschlag": {
+            "tier": "bescheid",
+            "value": 0,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "kirchensteuer": {
+            "tier": "bescheid",
+            "value": 0,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "sozialversicherung": {
+            "tier": "bescheid",
+            "value": 7850,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "netto": {
+            "tier": "bescheid",
+            "value": 25664,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "nettoQuote": {
+            "tier": "bescheid",
+            "value": 67.4,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "exchangeRates": []
+        }
+      },
+      "werbungskosten": {
+        "beide": {
+          "total": {
+            "tier": "bescheid",
+            "value": 2650,
+            "source": "bescheid",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "angesetzt": {
+            "tier": "bescheid",
+            "value": 2650,
+            "source": "bescheid",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "parts": {
+            "fahrtweg": 1700,
+            "homeoffice": 720,
+            "arbeitsmittel": 230,
+            "sonstiges": 0
+          },
+          "partsSource": "bescheid",
+          "pauschbetrag": 2460,
+          "belowLumpSum": false
+        },
+        "A": {
+          "total": {
+            "tier": "bescheid",
+            "value": 1120,
+            "source": "bescheid",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "angesetzt": {
+            "tier": "bescheid",
+            "value": 1230,
+            "source": "bescheid",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "parts": {
+            "fahrtweg": 680,
+            "homeoffice": 300,
+            "arbeitsmittel": 140,
+            "sonstiges": 0
+          },
+          "partsSource": "bescheid",
+          "pauschbetrag": 1230,
+          "belowLumpSum": true
+        },
+        "B": {
+          "total": {
+            "tier": "bescheid",
+            "value": 1530,
+            "source": "bescheid",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "angesetzt": {
+            "tier": "bescheid",
+            "value": 1530,
+            "source": "bescheid",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "parts": {
+            "fahrtweg": 1020,
+            "homeoffice": 420,
+            "arbeitsmittel": 90,
+            "sonstiges": 0
+          },
+          "partsSource": "bescheid",
+          "pauschbetrag": 1230,
+          "belowLumpSum": false
+        }
+      },
+      "erstattung": {
+        "amount": {
+          "tier": "bescheid",
+          "value": 210,
+          "source": "bescheid",
+          "delta": {
+            "kind": "none",
+            "reason": "veranlagungsart-gewechselt"
+          }
+        },
+        "declared": 210,
+        "difference": 0,
+        "estimateBeforeAssessment": {
+          "from": 150,
+          "to": 420
+        },
+        "sumOfSingleFilings": false
+      },
+      "steuerquote": {
+        "incomeTax": {
+          "tier": "bescheid",
+          "value": 12390,
+          "source": "bescheid",
+          "delta": {
+            "kind": "none",
+            "reason": "kein-vorjahr"
+          }
+        },
+        "effective": {
+          "tier": "bescheid",
+          "value": 13.8,
+          "source": "bescheid",
+          "delta": {
+            "kind": "none",
+            "reason": "veranlagungsart-gewechselt"
+          }
+        },
+        "marginal": {
+          "tier": "bescheid",
+          "value": 31,
+          "source": "bescheid",
+          "delta": {
+            "kind": "none",
+            "reason": "kein-vorjahr"
+          }
+        }
+      },
+      "year": 2023
+    },
+    {
+      "filingType": "zusammen",
+      "filingTypeChanged": false,
+      "eckjahr": false,
+      "tier": "bescheid",
+      "missing": [],
+      "persons": [
+        "A",
+        "B"
+      ],
+      "netto": {
+        "beide": {
+          "brutto": {
+            "tier": "bescheid",
+            "value": 93900,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "lohnsteuer": {
+            "tier": "bescheid",
+            "value": 12979,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "solidaritaetszuschlag": {
+            "tier": "bescheid",
+            "value": 0,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "kirchensteuer": {
+            "tier": "bescheid",
+            "value": 0,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "sozialversicherung": {
+            "tier": "bescheid",
+            "value": 19530,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "netto": {
+            "tier": "bescheid",
+            "value": 61391,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "nettoQuote": {
+            "tier": "bescheid",
+            "value": 65.4,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "exchangeRates": [],
+          "nettoNachErstattung": {
+            "tier": "bescheid",
+            "value": 62200,
+            "source": "bescheid",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          }
+        },
+        "A": {
+          "brutto": {
+            "tier": "bescheid",
+            "value": 54900,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "lohnsteuer": {
+            "tier": "bescheid",
+            "value": 8489,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "solidaritaetszuschlag": {
+            "tier": "bescheid",
+            "value": 0,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "kirchensteuer": {
+            "tier": "bescheid",
+            "value": 0,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "sozialversicherung": {
+            "tier": "bescheid",
+            "value": 11420,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "netto": {
+            "tier": "bescheid",
+            "value": 34991,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "nettoQuote": {
+            "tier": "bescheid",
+            "value": 63.7,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "exchangeRates": []
+        },
+        "B": {
+          "brutto": {
+            "tier": "bescheid",
+            "value": 39000,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "lohnsteuer": {
+            "tier": "bescheid",
+            "value": 4490,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "solidaritaetszuschlag": {
+            "tier": "bescheid",
+            "value": 0,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "kirchensteuer": {
+            "tier": "bescheid",
+            "value": 0,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "sozialversicherung": {
+            "tier": "bescheid",
+            "value": 8110,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "netto": {
+            "tier": "bescheid",
+            "value": 26400,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "nettoQuote": {
+            "tier": "bescheid",
+            "value": 67.7,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "exchangeRates": []
+        }
+      },
+      "werbungskosten": {
+        "beide": {
+          "total": {
+            "tier": "bescheid",
+            "value": 4590,
+            "source": "bescheid",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "angesetzt": {
+            "tier": "bescheid",
+            "value": 4590,
+            "source": "bescheid",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "parts": {
+            "fahrtweg": 2370,
+            "homeoffice": 1800,
+            "arbeitsmittel": 420,
+            "sonstiges": 0
+          },
+          "partsSource": "bescheid",
+          "pauschbetrag": 2460,
+          "belowLumpSum": false
+        },
+        "A": {
+          "total": {
+            "tier": "bescheid",
+            "value": 2660,
+            "source": "bescheid",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "angesetzt": {
+            "tier": "bescheid",
+            "value": 2660,
+            "source": "bescheid",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "parts": {
+            "fahrtweg": 1320,
+            "homeoffice": 1080,
+            "arbeitsmittel": 260,
+            "sonstiges": 0
+          },
+          "partsSource": "bescheid",
+          "pauschbetrag": 1230,
+          "belowLumpSum": false
+        },
+        "B": {
+          "total": {
+            "tier": "bescheid",
+            "value": 1930,
+            "source": "bescheid",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "angesetzt": {
+            "tier": "bescheid",
+            "value": 1930,
+            "source": "bescheid",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "parts": {
+            "fahrtweg": 1050,
+            "homeoffice": 720,
+            "arbeitsmittel": 160,
+            "sonstiges": 0
+          },
+          "partsSource": "bescheid",
+          "pauschbetrag": 1230,
+          "belowLumpSum": false
+        }
+      },
+      "erstattung": {
+        "amount": {
+          "tier": "bescheid",
+          "value": 809,
+          "source": "bescheid",
+          "delta": {
+            "kind": "exact",
+            "absolute": 599,
+            "percent": 285.2
+          }
+        },
+        "declared": 901,
+        "difference": -92,
+        "estimateBeforeAssessment": {
+          "from": 700,
+          "to": 1050
+        },
+        "sumOfSingleFilings": false
+      },
+      "steuerquote": {
+        "incomeTax": {
+          "tier": "bescheid",
+          "value": 12170,
+          "source": "bescheid",
+          "delta": {
+            "kind": "none",
+            "reason": "kein-vorjahr"
+          }
+        },
+        "effective": {
+          "tier": "bescheid",
+          "value": 13,
+          "source": "bescheid",
+          "delta": {
+            "kind": "exact",
+            "absolute": -0.8,
+            "percent": null
+          }
+        },
+        "marginal": {
+          "tier": "bescheid",
+          "value": 31,
+          "source": "bescheid",
+          "delta": {
+            "kind": "none",
+            "reason": "kein-vorjahr"
+          }
+        }
+      },
+      "year": 2024
+    },
+    {
+      "filingType": "zusammen",
+      "filingTypeChanged": false,
+      "eckjahr": false,
+      "tier": "schaetzung",
+      "missing": [],
+      "persons": [
+        "A",
+        "B"
+      ],
+      "netto": {
+        "beide": {
+          "brutto": {
+            "tier": "bescheid",
+            "value": 99500,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "lohnsteuer": {
+            "tier": "bescheid",
+            "value": 14066,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "solidaritaetszuschlag": {
+            "tier": "bescheid",
+            "value": 0,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "kirchensteuer": {
+            "tier": "bescheid",
+            "value": 0,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "sozialversicherung": {
+            "tier": "bescheid",
+            "value": 20990,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "netto": {
+            "tier": "bescheid",
+            "value": 64444,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "nettoQuote": {
+            "tier": "bescheid",
+            "value": 64.8,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "exchangeRates": [],
+          "nettoNachErstattung": {
+            "tier": "schaetzung",
+            "range": {
+              "from": 65510,
+              "to": 65640
+            },
+            "source": "schaetzung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          }
+        },
+        "A": {
+          "brutto": {
+            "tier": "bescheid",
+            "value": 58300,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "lohnsteuer": {
+            "tier": "bescheid",
+            "value": 9205,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "solidaritaetszuschlag": {
+            "tier": "bescheid",
+            "value": 0,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "kirchensteuer": {
+            "tier": "bescheid",
+            "value": 0,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "sozialversicherung": {
+            "tier": "bescheid",
+            "value": 12300,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "netto": {
+            "tier": "bescheid",
+            "value": 36795,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "nettoQuote": {
+            "tier": "bescheid",
+            "value": 63.1,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "exchangeRates": []
+        },
+        "B": {
+          "brutto": {
+            "tier": "bescheid",
+            "value": 41200,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "lohnsteuer": {
+            "tier": "bescheid",
+            "value": 4861,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "solidaritaetszuschlag": {
+            "tier": "bescheid",
+            "value": 0,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "kirchensteuer": {
+            "tier": "bescheid",
+            "value": 0,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "sozialversicherung": {
+            "tier": "bescheid",
+            "value": 8690,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "netto": {
+            "tier": "bescheid",
+            "value": 27649,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "nettoQuote": {
+            "tier": "bescheid",
+            "value": 67.1,
+            "source": "lohnsteuerbescheinigung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "exchangeRates": []
+        }
+      },
+      "werbungskosten": {
+        "beide": {
+          "total": {
+            "tier": "schaetzung",
+            "range": {
+              "from": 5540,
+              "to": 5540
+            },
+            "source": "schaetzung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "angesetzt": {
+            "tier": "schaetzung",
+            "range": {
+              "from": 5540,
+              "to": 5540
+            },
+            "source": "schaetzung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "parts": {
+            "fahrtweg": 2460,
+            "homeoffice": 2100,
+            "arbeitsmittel": 730,
+            "sonstiges": 250
+          },
+          "partsSource": "erklaerung",
+          "pauschbetrag": 2460,
+          "belowLumpSum": false
+        },
+        "A": {
+          "total": {
+            "tier": "schaetzung",
+            "range": {
+              "from": 3410,
+              "to": 3410
+            },
+            "source": "schaetzung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "angesetzt": {
+            "tier": "schaetzung",
+            "range": {
+              "from": 3410,
+              "to": 3410
+            },
+            "source": "schaetzung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "parts": {
+            "fahrtweg": 1380,
+            "homeoffice": 1260,
+            "arbeitsmittel": 520,
+            "sonstiges": 250
+          },
+          "partsSource": "erklaerung",
+          "pauschbetrag": 1230,
+          "belowLumpSum": false
+        },
+        "B": {
+          "total": {
+            "tier": "schaetzung",
+            "range": {
+              "from": 2130,
+              "to": 2130
+            },
+            "source": "schaetzung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "angesetzt": {
+            "tier": "schaetzung",
+            "range": {
+              "from": 2130,
+              "to": 2130
+            },
+            "source": "schaetzung",
+            "delta": {
+              "kind": "none",
+              "reason": "kein-vorjahr"
+            }
+          },
+          "parts": {
+            "fahrtweg": 1080,
+            "homeoffice": 840,
+            "arbeitsmittel": 210,
+            "sonstiges": 0
+          },
+          "partsSource": "erklaerung",
+          "pauschbetrag": 1230,
+          "belowLumpSum": false
+        }
+      },
+      "erstattung": {
+        "amount": {
+          "tier": "schaetzung",
+          "range": {
+            "from": 1066,
+            "to": 1196
+          },
+          "source": "schaetzung",
+          "delta": {
+            "kind": "range",
+            "absoluteRange": {
+              "from": 257,
+              "to": 387
+            },
+            "percentRange": {
+              "from": 31.8,
+              "to": 47.8
+            }
+          }
+        },
+        "declared": 1196,
+        "difference": null,
+        "estimateBeforeAssessment": null,
+        "sumOfSingleFilings": false
+      },
+      "steuerquote": {
+        "incomeTax": {
+          "tier": "schaetzung",
+          "range": {
+            "from": 12870,
+            "to": 13000
+          },
+          "source": "schaetzung",
+          "delta": {
+            "kind": "none",
+            "reason": "kein-vorjahr"
+          }
+        },
+        "effective": {
+          "tier": "schaetzung",
+          "range": {
+            "from": 13,
+            "to": 13.1
+          },
+          "source": "schaetzung",
+          "delta": {
+            "kind": "none",
+            "reason": "kein-vorjahr"
+          }
+        },
+        "marginal": {
+          "tier": "bescheid",
+          "value": 31,
+          "source": "bescheid",
+          "delta": {
+            "kind": "none",
+            "reason": "kein-vorjahr"
+          }
+        }
+      },
+      "year": 2025
+    },
+    {
+      "filingType": "zusammen",
+      "filingTypeChanged": false,
+      "eckjahr": false,
+      "tier": "offen",
+      "missing": [
+        "lohnsteuerbescheinigung",
+        "personB.lohnsteuerbescheinigung"
+      ],
+      "persons": [
+        "A",
+        "B"
+      ],
+      "netto": {
+        "beide": {
+          "brutto": {
+            "tier": "offen",
+            "missing": [
+              "lohnsteuerbescheinigung"
+            ],
+            "delta": {
+              "kind": "none",
+              "reason": "offen"
+            }
+          },
+          "lohnsteuer": {
+            "tier": "offen",
+            "missing": [
+              "lohnsteuerbescheinigung"
+            ],
+            "delta": {
+              "kind": "none",
+              "reason": "offen"
+            }
+          },
+          "solidaritaetszuschlag": {
+            "tier": "offen",
+            "missing": [
+              "lohnsteuerbescheinigung"
+            ],
+            "delta": {
+              "kind": "none",
+              "reason": "offen"
+            }
+          },
+          "kirchensteuer": {
+            "tier": "offen",
+            "missing": [
+              "lohnsteuerbescheinigung"
+            ],
+            "delta": {
+              "kind": "none",
+              "reason": "offen"
+            }
+          },
+          "sozialversicherung": {
+            "tier": "offen",
+            "missing": [
+              "lohnsteuerbescheinigung"
+            ],
+            "delta": {
+              "kind": "none",
+              "reason": "offen"
+            }
+          },
+          "netto": {
+            "tier": "offen",
+            "missing": [
+              "lohnsteuerbescheinigung"
+            ],
+            "delta": {
+              "kind": "none",
+              "reason": "offen"
+            }
+          },
+          "nettoQuote": {
+            "tier": "offen",
+            "missing": [
+              "lohnsteuerbescheinigung"
+            ],
+            "delta": {
+              "kind": "none",
+              "reason": "offen"
+            }
+          },
+          "exchangeRates": [],
+          "nettoNachErstattung": {
+            "tier": "offen",
+            "missing": [
+              "lohnsteuerbescheinigung"
+            ],
+            "delta": {
+              "kind": "none",
+              "reason": "offen"
+            }
+          }
+        },
+        "A": {
+          "brutto": {
+            "tier": "offen",
+            "missing": [
+              "lohnsteuerbescheinigung"
+            ],
+            "delta": {
+              "kind": "none",
+              "reason": "offen"
+            }
+          },
+          "lohnsteuer": {
+            "tier": "offen",
+            "missing": [
+              "lohnsteuerbescheinigung"
+            ],
+            "delta": {
+              "kind": "none",
+              "reason": "offen"
+            }
+          },
+          "solidaritaetszuschlag": {
+            "tier": "offen",
+            "missing": [
+              "lohnsteuerbescheinigung"
+            ],
+            "delta": {
+              "kind": "none",
+              "reason": "offen"
+            }
+          },
+          "kirchensteuer": {
+            "tier": "offen",
+            "missing": [
+              "lohnsteuerbescheinigung"
+            ],
+            "delta": {
+              "kind": "none",
+              "reason": "offen"
+            }
+          },
+          "sozialversicherung": {
+            "tier": "offen",
+            "missing": [
+              "lohnsteuerbescheinigung"
+            ],
+            "delta": {
+              "kind": "none",
+              "reason": "offen"
+            }
+          },
+          "netto": {
+            "tier": "offen",
+            "missing": [
+              "lohnsteuerbescheinigung"
+            ],
+            "delta": {
+              "kind": "none",
+              "reason": "offen"
+            }
+          },
+          "nettoQuote": {
+            "tier": "offen",
+            "missing": [
+              "lohnsteuerbescheinigung"
+            ],
+            "delta": {
+              "kind": "none",
+              "reason": "offen"
+            }
+          },
+          "exchangeRates": []
+        },
+        "B": {
+          "brutto": {
+            "tier": "offen",
+            "missing": [
+              "lohnsteuerbescheinigung"
+            ],
+            "delta": {
+              "kind": "none",
+              "reason": "offen"
+            }
+          },
+          "lohnsteuer": {
+            "tier": "offen",
+            "missing": [
+              "lohnsteuerbescheinigung"
+            ],
+            "delta": {
+              "kind": "none",
+              "reason": "offen"
+            }
+          },
+          "solidaritaetszuschlag": {
+            "tier": "offen",
+            "missing": [
+              "lohnsteuerbescheinigung"
+            ],
+            "delta": {
+              "kind": "none",
+              "reason": "offen"
+            }
+          },
+          "kirchensteuer": {
+            "tier": "offen",
+            "missing": [
+              "lohnsteuerbescheinigung"
+            ],
+            "delta": {
+              "kind": "none",
+              "reason": "offen"
+            }
+          },
+          "sozialversicherung": {
+            "tier": "offen",
+            "missing": [
+              "lohnsteuerbescheinigung"
+            ],
+            "delta": {
+              "kind": "none",
+              "reason": "offen"
+            }
+          },
+          "netto": {
+            "tier": "offen",
+            "missing": [
+              "lohnsteuerbescheinigung"
+            ],
+            "delta": {
+              "kind": "none",
+              "reason": "offen"
+            }
+          },
+          "nettoQuote": {
+            "tier": "offen",
+            "missing": [
+              "lohnsteuerbescheinigung"
+            ],
+            "delta": {
+              "kind": "none",
+              "reason": "offen"
+            }
+          },
+          "exchangeRates": []
+        }
+      },
+      "werbungskosten": {
+        "beide": {
+          "total": {
+            "tier": "offen",
+            "missing": [
+              "werbungskosten"
+            ],
+            "delta": {
+              "kind": "none",
+              "reason": "offen"
+            }
+          },
+          "angesetzt": {
+            "tier": "offen",
+            "missing": [
+              "werbungskosten"
+            ],
+            "delta": {
+              "kind": "none",
+              "reason": "offen"
+            }
+          },
+          "parts": null,
+          "partsSource": null,
+          "pauschbetrag": 2460,
+          "belowLumpSum": true
+        },
+        "A": {
+          "total": {
+            "tier": "offen",
+            "missing": [
+              "lohnsteuerbescheinigung"
+            ],
+            "delta": {
+              "kind": "none",
+              "reason": "offen"
+            }
+          },
+          "angesetzt": {
+            "tier": "offen",
+            "missing": [
+              "lohnsteuerbescheinigung"
+            ],
+            "delta": {
+              "kind": "none",
+              "reason": "offen"
+            }
+          },
+          "parts": null,
+          "partsSource": null,
+          "pauschbetrag": 1230,
+          "belowLumpSum": true
+        },
+        "B": {
+          "total": {
+            "tier": "offen",
+            "missing": [
+              "lohnsteuerbescheinigung"
+            ],
+            "delta": {
+              "kind": "none",
+              "reason": "offen"
+            }
+          },
+          "angesetzt": {
+            "tier": "offen",
+            "missing": [
+              "lohnsteuerbescheinigung"
+            ],
+            "delta": {
+              "kind": "none",
+              "reason": "offen"
+            }
+          },
+          "parts": null,
+          "partsSource": null,
+          "pauschbetrag": 1230,
+          "belowLumpSum": true
+        }
+      },
+      "erstattung": {
+        "amount": {
+          "tier": "offen",
+          "missing": [
+            "lohnsteuerbescheinigung"
+          ],
+          "delta": {
+            "kind": "none",
+            "reason": "offen"
+          }
+        },
+        "declared": null,
+        "difference": null,
+        "estimateBeforeAssessment": null,
+        "sumOfSingleFilings": false
+      },
+      "steuerquote": {
+        "incomeTax": {
+          "tier": "offen",
+          "missing": [
+            "lohnsteuerbescheinigung"
+          ],
+          "delta": {
+            "kind": "none",
+            "reason": "offen"
+          }
+        },
+        "effective": {
+          "tier": "offen",
+          "missing": [
+            "lohnsteuerbescheinigung"
+          ],
+          "delta": {
+            "kind": "none",
+            "reason": "offen"
+          }
+        },
+        "marginal": null
+      },
+      "year": 2026
+    }
+  ],
+  "list": [
+    {
+      "year": 2021,
+      "status": "extern-erledigt",
+      "kind": "eckjahr",
+      "filingType": "einzel",
+      "declaredRefund": null,
+      "assessedRefund": 220,
+      "difference": null,
+      "deviations": 0,
+      "noDiffReason": "eckjahr",
+      "withinAssessmentPeriod": false
+    },
+    {
+      "year": 2022,
+      "status": "bescheid",
+      "kind": "bescheid",
+      "filingType": "einzel",
+      "declaredRefund": 393,
+      "assessedRefund": 393,
+      "difference": 0,
+      "deviations": 0,
+      "noDiffReason": null,
+      "withinAssessmentPeriod": true
+    },
+    {
+      "year": 2023,
+      "status": "bescheid",
+      "kind": "bescheid",
+      "filingType": "zusammen",
+      "declaredRefund": 210,
+      "assessedRefund": 210,
+      "difference": 0,
+      "deviations": 0,
+      "noDiffReason": null,
+      "withinAssessmentPeriod": true
+    },
+    {
+      "year": 2024,
+      "status": "bescheid",
+      "kind": "bescheid",
+      "filingType": "zusammen",
+      "declaredRefund": 901,
+      "assessedRefund": 809,
+      "difference": -92,
+      "deviations": 2,
+      "noDiffReason": null,
+      "withinAssessmentPeriod": true
+    },
+    {
+      "year": 2025,
+      "status": "eingereicht",
+      "kind": "eingereicht",
+      "filingType": "zusammen",
+      "declaredRefund": 1196,
+      "assessedRefund": null,
+      "difference": null,
+      "deviations": 0,
+      "noDiffReason": "kein-bescheid",
+      "withinAssessmentPeriod": true
+    },
+    {
+      "year": 2026,
+      "status": "entwurf",
+      "kind": "offen",
+      "filingType": "zusammen",
+      "declaredRefund": null,
+      "assessedRefund": null,
+      "difference": null,
+      "deviations": 0,
+      "noDiffReason": "kein-bescheid",
+      "withinAssessmentPeriod": true
+    }
+  ],
+  "openItems": [
+    {
+      "kind": "einspruchsfrist",
+      "year": 2024,
+      "highlighted": true,
+      "refundDifference": -92,
+      "deviations": 2,
+      "deadline": {
+        "endsOn": "2026-12-07",
+        "remainingDays": 19,
+        "running": true
+      }
+    },
+    {
+      "kind": "offen",
+      "year": 2026,
+      "highlighted": false,
+      "missing": [
+        "lohnsteuerbescheinigung",
+        "personB.lohnsteuerbescheinigung"
+      ]
+    },
+    {
+      "kind": "wartet-auf-bescheid",
+      "year": 2025,
+      "highlighted": false,
+      "repeatedCuts": [
+        {
+          "position": "homeofficeA",
+          "label": "Homeoffice-Pauschale"
+        },
+        {
+          "position": "arbeitsmittelA",
+          "label": "Arbeitsmittel"
+        }
+      ]
+    }
+  ],
+  "diffs": [
+    {
+      "year": 2024,
+      "person": null,
+      "submittedOn": "2026-09-21",
+      "assessmentDate": "2026-11-02",
+      "deadline": {
+        "endsOn": "2026-12-07",
+        "remainingDays": 19,
+        "running": true
+      },
+      "diff": {
+        "year": 2024,
+        "filingType": "zusammen",
+        "groups": [
+          {
+            "group": "einkuenfte",
+            "rows": [
+              {
+                "position": "bruttoarbeitslohnA",
+                "label": "Bruttoarbeitslohn · Person A",
+                "role": "own",
+                "person": "A",
+                "declared": 54900,
+                "assessed": 54900,
+                "difference": 0,
+                "status": "same",
+                "explanation": null
+              },
+              {
+                "position": "bruttoarbeitslohnB",
+                "label": "Bruttoarbeitslohn · Person B",
+                "role": "own",
+                "person": "B",
+                "declared": 39000,
+                "assessed": 39000,
+                "difference": 0,
+                "status": "same",
+                "explanation": null
+              }
+            ]
+          },
+          {
+            "group": "werbungskostenA",
+            "rows": [
+              {
+                "position": "fahrtwegA",
+                "label": "Fahrtweg (Entfernungspauschale)",
+                "role": "own",
+                "person": "A",
+                "declared": 1320,
+                "assessed": 1320,
+                "difference": 0,
+                "status": "same",
+                "explanation": null
+              },
+              {
+                "position": "homeofficeA",
+                "label": "Homeoffice-Pauschale",
+                "role": "own",
+                "person": "A",
+                "declared": 1260,
+                "assessed": 1080,
+                "difference": -180,
+                "status": "deviation",
+                "explanation": "Die Tätigkeit in der häuslichen Wohnung wurde an 180 statt 210 Tagen berücksichtigt."
+              },
+              {
+                "position": "arbeitsmittelA",
+                "label": "Arbeitsmittel",
+                "role": "own",
+                "person": "A",
+                "declared": 380,
+                "assessed": 260,
+                "difference": -120,
+                "status": "deviation",
+                "explanation": "Aufwendungen für das Mobiltelefon wurden wegen privater Mitbenutzung zu 50 % anerkannt."
+              },
+              {
+                "position": "werbungskostenA",
+                "label": "Summe Werbungskosten A",
+                "role": "followOn",
+                "person": "A",
+                "declared": 2960,
+                "assessed": 2660,
+                "difference": -300,
+                "status": "deviation",
+                "explanation": null
+              }
+            ]
+          },
+          {
+            "group": "vorsorge",
+            "rows": [
+              {
+                "position": "vorsorgeaufwand",
+                "label": "Vorsorgeaufwendungen",
+                "role": "own",
+                "person": null,
+                "declared": 17968,
+                "assessed": 17968,
+                "difference": 0,
+                "status": "same",
+                "explanation": null
+              },
+              {
+                "position": "sonderausgaben",
+                "label": "Sonderausgaben",
+                "role": "own",
+                "person": null,
+                "declared": 72,
+                "assessed": null,
+                "difference": null,
+                "status": "not_read",
+                "explanation": null
+              }
+            ]
+          },
+          {
+            "group": "steuer",
+            "rows": [
+              {
+                "position": "zuVersteuerndesEinkommen",
+                "label": "Zu versteuerndes Einkommen",
+                "role": "followOn",
+                "person": null,
+                "declared": 70971,
+                "assessed": 71271,
+                "difference": 300,
+                "status": "deviation",
+                "explanation": null
+              },
+              {
+                "position": "festgesetzteSteuer",
+                "label": "Einkommensteuer",
+                "role": "followOn",
+                "person": null,
+                "declared": 12078,
+                "assessed": 12170,
+                "difference": 92,
+                "status": "deviation",
+                "explanation": null
+              },
+              {
+                "position": "anrechnung",
+                "label": "Einbehaltene Lohnsteuer und anrechenbare Steuern",
+                "role": "own",
+                "person": null,
+                "declared": 12979,
+                "assessed": 12979,
+                "difference": 0,
+                "status": "same",
+                "explanation": null
+              },
+              {
+                "position": "erstattung",
+                "label": "Erstattung",
+                "role": "followOn",
+                "person": null,
+                "declared": 901,
+                "assessed": 809,
+                "difference": -92,
+                "status": "deviation",
+                "explanation": null
+              }
+            ]
+          }
+        ],
+        "ownDeviations": [
+          {
+            "position": "homeofficeA",
+            "label": "Homeoffice-Pauschale",
+            "role": "own",
+            "person": "A",
+            "declared": 1260,
+            "assessed": 1080,
+            "difference": -180,
+            "status": "deviation",
+            "explanation": "Die Tätigkeit in der häuslichen Wohnung wurde an 180 statt 210 Tagen berücksichtigt.",
+            "refundEffect": -56
+          },
+          {
+            "position": "arbeitsmittelA",
+            "label": "Arbeitsmittel",
+            "role": "own",
+            "person": "A",
+            "declared": 380,
+            "assessed": 260,
+            "difference": -120,
+            "status": "deviation",
+            "explanation": "Aufwendungen für das Mobiltelefon wurden wegen privater Mitbenutzung zu 50 % anerkannt.",
+            "refundEffect": -37
+          }
+        ],
+        "followOnChain": [
+          {
+            "position": "werbungskostenA",
+            "label": "Summe Werbungskosten A",
+            "difference": -300
+          },
+          {
+            "position": "zuVersteuerndesEinkommen",
+            "label": "Zu versteuerndes Einkommen",
+            "difference": 300
+          },
+          {
+            "position": "festgesetzteSteuer",
+            "label": "Einkommensteuer",
+            "difference": 92
+          },
+          {
+            "position": "erstattung",
+            "label": "Erstattung",
+            "difference": -92
+          }
+        ],
+        "totalRefundEffect": -92,
+        "singleEffectsSum": -93,
+        "effectsDifferFromTotal": true,
+        "generalExplanations": [],
+        "counts": {
+          "positions": 11,
+          "same": 5,
+          "deviations": 2,
+          "notRead": 1
+        }
+      },
+      "lessons": [
+        {
+          "position": "homeofficeA",
+          "label": "Homeoffice-Pauschale",
+          "person": "A",
+          "recognised": {
+            "declared": 1260,
+            "assessed": 1080,
+            "difference": -180
+          },
+          "nextYear": {
+            "year": 2025,
+            "source": "filed",
+            "declared": 1260,
+            "declaredAboveRecognised": true
+          },
+          "hint": "Homeoffice-Tage laufend festhalten, zum Beispiel im Kalender oder mit einer Bescheinigung des Arbeitgebers.",
+          "mask": {
+            "screen": "commute",
+            "field": "homeOfficeDays",
+            "label": "Homeoffice"
+          }
+        },
+        {
+          "position": "arbeitsmittelA",
+          "label": "Arbeitsmittel",
+          "person": "A",
+          "recognised": {
+            "declared": 380,
+            "assessed": 260,
+            "difference": -120
+          },
+          "nextYear": {
+            "year": 2025,
+            "source": "filed",
+            "declared": 520,
+            "declaredAboveRecognised": true
+          },
+          "hint": "Den beruflichen Anteil gemischt genutzter Geräte belegen; ohne Nachweis erkennt das Finanzamt oft nur die Hälfte an.",
+          "mask": {
+            "screen": "commute",
+            "field": "workEquipmentEur",
+            "label": "Arbeitsmittel"
+          }
+        }
+      ]
+    },
+    {
+      "year": 2023,
+      "person": null,
+      "submittedOn": "2024-03-18",
+      "assessmentDate": "2024-05-22",
+      "deadline": {
+        "endsOn": "2024-06-24",
+        "remainingDays": -877,
+        "running": false
+      },
+      "diff": {
+        "year": 2023,
+        "filingType": "zusammen",
+        "groups": [
+          {
+            "group": "steuer",
+            "rows": [
+              {
+                "position": "erstattung",
+                "label": "Erstattung",
+                "role": "followOn",
+                "person": null,
+                "declared": 210,
+                "assessed": 210,
+                "difference": 0,
+                "status": "same",
+                "explanation": null
+              }
+            ]
+          }
+        ],
+        "ownDeviations": [],
+        "followOnChain": [],
+        "totalRefundEffect": 0,
+        "singleEffectsSum": 0,
+        "effectsDifferFromTotal": false,
+        "generalExplanations": [],
+        "counts": {
+          "positions": 12,
+          "same": 12,
+          "deviations": 0,
+          "notRead": 0
+        }
+      },
+      "lessons": []
+    },
+    {
+      "year": 2022,
+      "person": "A",
+      "submittedOn": "2023-04-02",
+      "assessmentDate": "2023-06-07",
+      "deadline": {
+        "endsOn": "2023-07-11",
+        "remainingDays": -1226,
+        "running": false
+      },
+      "diff": {
+        "year": 2022,
+        "filingType": "einzel",
+        "groups": [
+          {
+            "group": "steuer",
+            "rows": [
+              {
+                "position": "erstattung",
+                "label": "Erstattung",
+                "role": "followOn",
+                "person": null,
+                "declared": 210,
+                "assessed": 210,
+                "difference": 0,
+                "status": "same",
+                "explanation": null
+              }
+            ]
+          }
+        ],
+        "ownDeviations": [],
+        "followOnChain": [],
+        "totalRefundEffect": 0,
+        "singleEffectsSum": 0,
+        "effectsDifferFromTotal": false,
+        "generalExplanations": [],
+        "counts": {
+          "positions": 9,
+          "same": 9,
+          "deviations": 0,
+          "notRead": 0
+        }
+      },
+      "lessons": []
+    },
+    {
+      "year": 2022,
+      "person": "B",
+      "submittedOn": "2023-04-02",
+      "assessmentDate": "2023-06-07",
+      "deadline": {
+        "endsOn": "2023-07-11",
+        "remainingDays": -1226,
+        "running": false
+      },
+      "diff": {
+        "year": 2022,
+        "filingType": "einzel",
+        "groups": [
+          {
+            "group": "steuer",
+            "rows": [
+              {
+                "position": "erstattung",
+                "label": "Erstattung",
+                "role": "followOn",
+                "person": null,
+                "declared": 210,
+                "assessed": 210,
+                "difference": 0,
+                "status": "same",
+                "explanation": null
+              }
+            ]
+          }
+        ],
+        "ownDeviations": [],
+        "followOnChain": [],
+        "totalRefundEffect": 0,
+        "singleEffectsSum": 0,
+        "effectsDifferFromTotal": false,
+        "generalExplanations": [],
+        "counts": {
+          "positions": 9,
+          "same": 9,
+          "deviations": 0,
+          "notRead": 0
+        }
+      },
+      "lessons": []
+    }
+  ],
+  "maskLessons": {
+    "year": 2026,
+    "fromYear": 2024,
+    "lessons": [
+      {
+        "position": "homeofficeA",
+        "label": "Homeoffice-Pauschale",
+        "person": "A",
+        "recognised": {
+          "declared": 1260,
+          "assessed": 1080,
+          "difference": -180
+        },
+        "nextYear": {
+          "year": 2025,
+          "source": "filed",
+          "declared": 1260,
+          "declaredAboveRecognised": true
+        },
+        "hint": "Homeoffice-Tage laufend festhalten, zum Beispiel im Kalender oder mit einer Bescheinigung des Arbeitgebers.",
+        "mask": {
+          "screen": "commute",
+          "field": "homeOfficeDays",
+          "label": "Homeoffice"
+        }
+      }
+    ]
+  }
+}

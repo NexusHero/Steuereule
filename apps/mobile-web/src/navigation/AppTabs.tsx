@@ -14,18 +14,20 @@ import { TabIcon } from '../icons/TabIcon'
 import { useAccountSession } from '../auth/useAccountSession'
 import { OwlModeScreen } from '../screens/advisor/OwlModeScreen'
 import { ReceiptsScreen } from '../screens/receipts/ReceiptsScreen'
+import { HistoryScreen } from '../screens/history/HistoryScreen'
 import { CockpitStack } from './CockpitStack'
 import { ProfileStack } from './ProfileStack'
 import { useShellState } from './ShellState'
 import { isSheetRouteName, type AppTabParamList } from './routes'
 
-type TabId = 'cockpit' | 'eule' | 'belege' | 'profil'
+type TabId = 'cockpit' | 'eule' | 'belege' | 'verlauf' | 'profil'
 type TabRouteName = keyof AppTabParamList
 
 const TAB_ROUTE_FOR_ID: Readonly<Record<TabId, TabRouteName>> = {
   cockpit: 'Cockpit',
   eule: 'Owl',
   belege: 'Receipts',
+  verlauf: 'History',
   profil: 'Profile',
 }
 
@@ -33,6 +35,7 @@ const TAB_ID_FOR_ROUTE: Readonly<Record<TabRouteName, TabId>> = {
   Cockpit: 'cockpit',
   Owl: 'eule',
   Receipts: 'belege',
+  History: 'verlauf',
   Profile: 'profil',
 }
 
@@ -91,6 +94,7 @@ function FloatingTabBar({ state, navigation, insets }: BottomTabBarProps) {
       icon: <OwlGlyph size={22} ink={iconColor('eule')} ground={activeTab === 'eule' ? t.color.funke : t.color.karte} testID="tab-icon-eule" />,
     },
     { id: 'belege', label: tr('tabs.belege'), icon: <TabIcon path={TAB_ICON_PATHS.belege} color={iconColor('belege')} /> },
+    { id: 'verlauf', label: tr('tabs.verlauf'), icon: <TabIcon path={TAB_ICON_PATHS.verlauf} color={iconColor('verlauf')} /> },
     { id: 'profil', label: tr('tabs.profil'), icon: <TabIcon path={TAB_ICON_PATHS.profil} color={iconColor('profil')} /> },
   ]
 
@@ -142,6 +146,28 @@ function OwlRoute({ navigation }: BottomTabScreenProps<AppTabParamList, 'Owl'>) 
   )
 }
 
+function HistoryRoute() {
+  const { taxYear, setTaxYear, openCockpitScreen, switchToTab, onRegister, onLogin } = useShellState()
+  const { state: sessionState } = useAccountSession()
+  return (
+    <HistoryScreen
+      isGuest={sessionState.status === 'signed-out'}
+      openYear={taxYear}
+      onRegister={onRegister}
+      onLogin={onLogin}
+      onOpenYear={(year) => {
+        setTaxYear(year)
+        openCockpitScreen('CockpitHome')
+      }}
+      onPrepareAppeal={(year) => {
+        setTaxYear(year)
+        openCockpitScreen('Assessment', { year })
+      }}
+      onOpenDrafts={() => switchToTab('Owl')}
+    />
+  )
+}
+
 export function AppTabs() {
   const t = useTheme()
   const insets = useSafeAreaInsets()
@@ -174,6 +200,7 @@ export function AppTabs() {
       <Tab.Screen name="Cockpit" component={CockpitStack} />
       <Tab.Screen name="Owl" component={OwlRoute} />
       <Tab.Screen name="Receipts" component={ReceiptsScreen} />
+      <Tab.Screen name="History" component={HistoryRoute} />
       <Tab.Screen name="Profile" component={ProfileStack} />
     </Tab.Navigator>
   )

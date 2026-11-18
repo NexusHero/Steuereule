@@ -15,6 +15,7 @@ import { createAppI18n } from '../../i18n/app-i18n'
 import { AssessmentScreen } from './AssessmentScreen'
 import { server } from '../../test-msw-server'
 import type { AssessmentResponseDto } from '@steuereule/api-client'
+import { DIFF_2024 } from '../../test-history-fixture'
 
 const ASSESSMENT_URL = '*/v1/steuerjahre/2026/bescheid'
 
@@ -184,5 +185,21 @@ describe('BescheidScreen', () => {
     server.use(http.get(ASSESSMENT_URL, () => HttpResponse.json({}, { status: 500 })))
     renderAssessment()
     expect(await screen.findByText('Das hat nicht geklappt.')).toBeTruthy()
+  })
+
+  it('shows the same Erklärung ↔ Bescheid diff as the Verlauf once there is a filed version (ADR-0098 §8)', async () => {
+    mockAssessment({
+      ...emptyAssessment(),
+      assessmentDate: '2026-11-02',
+      frist: { assessmentDate: '2026-11-02', deadlineEnd: '2026-12-07', remainingDays: 19, running: true },
+      diff: { ...DIFF_2024, year: 2026 },
+    })
+    renderAssessment()
+    expect(await screen.findByTestId('bescheid-abgleich')).toBeTruthy()
+    expect(screen.getByText('Erklärung ↔ Bescheid 2026')).toBeTruthy()
+    expect(screen.getByTestId('bescheid-abgleich-anzahl').textContent).toBe('2 Abweichungen')
+    expect((screen.getByTestId('bescheid-abgleich-frist').textContent ?? '').replace(/\u00A0/g, ' ')).toContain('Einspruch möglich bis 07.12.2026 · noch 19 Tage')
+    // The old three-sum reconciliation gives way to the diff.
+    expect(screen.queryByText('Abgleich mit deiner Berechnung')).toBeNull()
   })
 })

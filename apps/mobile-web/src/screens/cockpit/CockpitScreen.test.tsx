@@ -23,6 +23,7 @@ const LOADED_SUMMARY: CockpitSummaryDto = {
   taxYear: TAX_YEAR,
   status: { kind: 'spanne', from: 49880, to: 50120, openItems: 2, conflicts: 0 },
   openItems: 6,
+  submission: null,
 }
 
 function mockCockpit(data: CockpitSummaryDto | null, status = 200) {
@@ -135,6 +136,7 @@ describe('CockpitScreen', () => {
       taxYear: TAX_YEAR,
       status: { kind: 'spanne', from: 0, to: 120, openItems: 2, conflicts: 0, unconfirmedItems: 0, unconfirmedSum: 0 },
       openItems: 0,
+      submission: null,
     })
     renderCockpit()
 
@@ -144,7 +146,7 @@ describe('CockpitScreen', () => {
   })
 
   it('renders a settled point value with no range dashes (ADR-015)', async () => {
-    mockCockpit({ taxYear: TAX_YEAR, status: { kind: 'bestimmt', value: 50000 }, openItems: 0 })
+    mockCockpit({ taxYear: TAX_YEAR, status: { kind: 'bestimmt', value: 50000 }, openItems: 0, submission: null })
     renderCockpit()
 
     expect(await screen.findByText('50.000 €')).toBeTruthy()
@@ -152,7 +154,7 @@ describe('CockpitScreen', () => {
   })
 
   it('renders the gated stand honestly, naming the gated Einkunftsart, never a fake number (ADR-032)', async () => {
-    mockCockpit({ taxYear: TAX_YEAR, status: { kind: 'gated', sum: 50000, gated: ['Gewerbe'] }, openItems: 0 })
+    mockCockpit({ taxYear: TAX_YEAR, status: { kind: 'gated', sum: 50000, gated: ['Gewerbe'] }, openItems: 0, submission: null })
     renderCockpit()
 
     expect(await screen.findByText('Ehrlich: dafür sind wir noch nicht gut genug.')).toBeTruthy()
@@ -341,6 +343,7 @@ describe('CockpitScreen', () => {
       taxYear: TAX_YEAR,
       status: { kind: 'spanne', from: 0, to: 100000 + 53000, openItems: 0, conflicts: 0, unconfirmedItems: 2, unconfirmedSum: 53000 },
       openItems: 0,
+      submission: null,
     })
     server.use(
       http.get('*/v1/steuerjahre/2026/bestaetigung', () =>

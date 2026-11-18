@@ -75,11 +75,11 @@ describe('OpenAPI contract for GET /v1/steuerjahre/{jahr}/cockpit (REQ-001)', ()
     expect(schema?.nullable).toBe(true)
   })
 
-  it('exposes CockpitSummaryDto with exactly the fields the frontend contract expects (stand + openItems + taxYear, the split of a joint return)', () => {
+  it('exposes CockpitSummaryDto with exactly the fields the frontend contract expects (stand + openItems + taxYear, the split of a joint return, the Abgabe)', () => {
     const schema = document.components?.schemas?.CockpitSummaryDto
     expect(schema).toBeDefined()
     const properties = (schema as { properties?: Record<string, unknown> }).properties ?? {}
-    expect(Object.keys(properties).sort()).toEqual(['byPerson', 'openItems', 'status', 'taxYear'].sort())
+    expect(Object.keys(properties).sort()).toEqual(['byPerson', 'openItems', 'status', 'submission', 'taxYear'].sort())
   })
 
   it('exposes CockpitStatusDto with the flat discriminated-union fields (kind + optional variants)', () => {
@@ -89,6 +89,16 @@ describe('OpenAPI contract for GET /v1/steuerjahre/{jahr}/cockpit (REQ-001)', ()
     expect(Object.keys(properties).sort()).toEqual(
       ['conflicts', 'from', 'gated', 'kind', 'openItems', 'sum', 'to', 'unconfirmedItems', 'unconfirmedSum', 'value'].sort(),
     )
+  })
+})
+
+describe('OpenAPI contract for /v1/steuerjahre/{jahr}/abgabe (ADR-0098 §8)', () => {
+  it('documents POST with SubmitTaxReturnDto and DELETE with 204', () => {
+    const path = document.paths['/v1/steuerjahre/{jahr}/abgabe']
+    expect(JSON.stringify(path?.post?.requestBody)).toContain('SubmitTaxReturnDto')
+    expect(path?.post?.responses['200']).toBeDefined()
+    expect(path?.delete?.responses['204']).toBeDefined()
+    expect(path?.delete?.responses['409']).toBeDefined()
   })
 })
 

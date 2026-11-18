@@ -27,6 +27,7 @@ import {
   type CommuteInputsDto,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
+import { MaskLessonHint } from '../history/MaskLessonHint'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
 import { LoadingState } from '../shared/ScreenState'
@@ -95,6 +96,7 @@ function WorkdaysForm({
   const { t: tr } = useTranslation(APP_NS)
   const queryClient = useQueryClient()
   const save = useCommuteControllerPut()
+  const lessonPerson = partnerName === undefined ? 'A' : 'B'
 
   const [workdays, setWorkdays] = useState<readonly IsoWeekday[]>((saved?.workdays as IsoWeekday[] | undefined) ?? [1, 2, 3, 4, 5])
   const [vacation, setVacation] = useState(textFrom(saved?.vacationDays))
@@ -361,6 +363,7 @@ function WorkdaysForm({
       </Feld>
       <Feld label={tr('arbeitstage.homeoffice')}>
         <Input type="numeric" mono value={homeOffice} onChange={setHomeOffice} placeholder={tr('arbeitstage.daysPlaceholder')} accessibilityLabel={tr('arbeitstage.homeoffice')} testID="arbeitstage-homeoffice" onBlur={saveOnLeave} />
+        <MaskLessonHint taxYear={taxYear} screen="commute" field="homeOfficeDays" person={lessonPerson} />
       </Feld>
 
       <Feld label={tr('arbeitstage.feiertage.region')}>
@@ -394,6 +397,7 @@ function WorkdaysForm({
       <Text style={styles.sectionLabel}>{tr('arbeitstage.weg.titel')}</Text>
       <Feld label={tr('arbeitstage.weg.km')}>
         <Input type="numeric" mono value={km} onChange={setKm} placeholder="0" accessibilityLabel={tr('arbeitstage.weg.km')} testID="arbeitstage-km" onBlur={saveOnLeave} />
+        <MaskLessonHint taxYear={taxYear} screen="commute" field="oneWayKm" person={lessonPerson} />
       </Feld>
       <ShortestRoute active={shortest} onToggle={() => setShortest(!shortest)} testID="arbeitstage-kuerzeste" />
       <Feld label={tr('arbeitstage.weg.fahrtage.label')}>
@@ -464,6 +468,7 @@ function WorkdaysForm({
       <Text style={styles.regionHint}>{tr('arbeitstage.weitere.hilfe')}</Text>
       <Feld label={tr('arbeitstage.weitere.arbeitsmittel')}>
         <Input type="numeric" mono value={tools} onChange={setTools} placeholder="0" accessibilityLabel={tr('arbeitstage.weitere.arbeitsmittel')} testID="werbungskosten-arbeitsmittel" onBlur={saveOnLeave} />
+        <MaskLessonHint taxYear={taxYear} screen="commute" field="workEquipmentEur" person={lessonPerson} />
       </Feld>
       <Feld label={tr('arbeitstage.weitere.arbeitsmittelArt')}>
         <Input type="text" value={toolsNote} onChange={setToolsNote} placeholder={tr('arbeitstage.weitere.arbeitsmittelArtPlaceholder')} accessibilityLabel={tr('arbeitstage.weitere.arbeitsmittelArt')} testID="werbungskosten-arbeitsmittel-art" onBlur={saveOnLeave} />
@@ -479,6 +484,7 @@ function WorkdaysForm({
       </Feld>
       <Feld label={tr('arbeitstage.weitere.sonstiges')}>
         <Input type="numeric" mono value={other} onChange={setOther} placeholder="0" accessibilityLabel={tr('arbeitstage.weitere.sonstiges')} testID="werbungskosten-sonstiges" onBlur={saveOnLeave} />
+        <MaskLessonHint taxYear={taxYear} screen="commute" field="otherWorkExpensesEur" person={lessonPerson} />
       </Feld>
       <Feld label={tr('arbeitstage.weitere.sonstigesArt')}>
         <Input type="text" value={otherNote} onChange={setOtherNote} placeholder={tr('arbeitstage.weitere.sonstigesArtPlaceholder')} accessibilityLabel={tr('arbeitstage.weitere.sonstigesArt')} testID="werbungskosten-sonstiges-art" onBlur={saveOnLeave} />

@@ -7,6 +7,13 @@ export type TaxYearStatus =
   | 'abgeschlossen'
   | 'extern-erledigt'
 
+/** Every state, for reading a stored value back: a value outside it is no state, not a guess. */
+export const TAX_YEAR_STATUSES: readonly TaxYearStatus[] = ['entwurf', 'pruefung', 'eingereicht', 'rueckfrage', 'bescheid', 'abgeschlossen', 'extern-erledigt']
+
+export function isTaxYearStatus(value: string): value is TaxYearStatus {
+  return (TAX_YEAR_STATUSES as readonly string[]).includes(value)
+}
+
 const TRANSITIONS_DE: Readonly<Record<TaxYearStatus, readonly TaxYearStatus[]>> = {
   entwurf: ['pruefung', 'extern-erledigt'],
   pruefung: ['eingereicht', 'entwurf', 'extern-erledigt'],
