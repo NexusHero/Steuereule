@@ -135,12 +135,12 @@ describe('YearHistoryService', () => {
     expect(openItems[0]).toEqual({ kind: 'einspruchsfrist', year: 2024, highlighted: true, refundDifference: -92, deviations: 2, deadline: { endsOn: '2026-12-07', remainingDays: 19, running: true } })
     expect(openItems.map((i) => [i.year, i.kind])).toEqual([
       [2024, 'einspruchsfrist'],
-      [2026, 'offen'],
       [2025, 'wartet-auf-bescheid'],
+      [2026, 'offen'],
     ])
     // 2025 declared the cut positions again — named, without an amount (ADR-0098 §7).
-    expect(openItems[2]).toMatchObject({ repeatedCuts: [{ position: 'homeofficeA' }, { position: 'arbeitsmittelA' }] })
-    expect(JSON.stringify((openItems[2] as { repeatedCuts: unknown }).repeatedCuts)).not.toMatch(/\d/)
+    expect(openItems[1]).toMatchObject({ repeatedCuts: [{ position: 'homeofficeA' }, { position: 'arbeitsmittelA' }] })
+    expect(JSON.stringify((openItems[1] as { repeatedCuts: unknown }).repeatedCuts)).not.toMatch(/\d/)
   })
 
   it('gives the Abgleich of 2024 with its lessons against the frozen 2025', async () => {

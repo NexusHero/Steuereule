@@ -75,11 +75,15 @@ export function figureText(figure: HistoryFigureDto | null | undefined, unit: Fi
   return b.from === b.to ? formatEuro(Math.round(b.from)) : formatEuroRange(Math.round(Math.min(b.from, b.to)), Math.round(Math.max(b.from, b.to)))
 }
 
-/** A refund is signed: `+809 €`, a range `+1.066 – +1.196 €`. */
+/** A refund is signed: `+809 €`; a range with one sign is written once, `+1.066–1.196 €`, as in the mock. */
 export function signedFigureText(figure: HistoryFigureDto | null | undefined, openText: string): string {
   const b = bounds(figure)
   if (b === null) return openText
-  return b.from === b.to ? signedEuro(b.from) : `${signedEuro(b.from)} – ${signedEuro(b.to)}`
+  if (b.from === b.to) return signedEuro(b.from)
+  const lo = Math.round(Math.min(b.from, b.to))
+  const hi = Math.round(Math.max(b.from, b.to))
+  if (lo > 0 || hi < 0) return `${lo > 0 ? '+' : '−'}${formatEuroRange(Math.abs(lo > 0 ? lo : hi), Math.abs(lo > 0 ? hi : lo))}`
+  return `${signedEuro(lo)} – ${signedEuro(hi)}`
 }
 
 export type Tone = 'good' | 'bad' | 'neutral'
@@ -150,10 +154,11 @@ export function missingPhrases(ids: readonly string[], tr: TFunction): string[] 
 }
 
 /** „Noch offen: die Lohnsteuerbescheinigung und der Wechselkurs.“ */
-export function missingSentence(ids: readonly string[], tr: TFunction): string {
+/** What is missing, as a sentence; under a heading that already says „Noch offen“ the `fehltNoch` form avoids saying it twice. */
+export function missingSentence(ids: readonly string[], tr: TFunction, form: 'satz' | 'fehltNoch' = 'satz'): string {
   const phrases = missingPhrases(ids, tr)
   if (phrases.length === 0) return tr('verlauf.fehlt.nichtsGenannt')
-  return tr('verlauf.fehlt.satz', { liste: joinList(phrases, tr) })
+  return tr(`verlauf.fehlt.${form}`, { liste: joinList(phrases, tr) })
 }
 
 export function joinList(items: readonly string[], tr: TFunction): string {

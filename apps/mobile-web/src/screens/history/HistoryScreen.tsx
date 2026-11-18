@@ -191,7 +191,7 @@ function OpenItems({ items, wide, onPick }: { readonly items: readonly OpenItemD
           text = cuts.length > 0 ? tr('verlauf.ansteht.wiederErklaert', { count: cuts.length, vorjahr: item.year - 1, liste: cuts.map((c) => label(c.position, c.label)).join(', ') }) : tr('verlauf.ansteht.eingereicht')
         } else {
           heading = tr('verlauf.ansteht.offen')
-          text = missingSentence(item.missing ?? [], tr)
+          text = missingSentence(item.missing ?? [], tr, 'fehltNoch')
         }
         return (
           <Pressable
@@ -199,7 +199,7 @@ function OpenItems({ items, wide, onPick }: { readonly items: readonly OpenItemD
             accessibilityRole="button"
             accessibilityLabel={`${item.year}: ${heading}. ${text}`}
             onPress={() => onPick(item.year)}
-            style={[s.openItem, item.highlighted ? s.openItemUrgent : null]}
+            style={[s.openItem, wide ? s.openGridItem : null, item.highlighted ? s.openItemUrgent : null]}
             testID={`verlauf-ansteht-${item.year}`}
           >
             <Text style={s.openYear}>{item.year}</Text>
@@ -519,7 +519,9 @@ function makeStyles(t: UiTheme) {
   const buttonRow: ViewStyle = { flexDirection: 'row', flexWrap: 'wrap', gap: t.space.s2 }
   const openList: ViewStyle = { gap: t.space.s2 }
   const openGrid: ViewStyle = { flexDirection: 'row', flexWrap: 'wrap', gap: t.space.s3 }
-  const openItem: ViewStyle = { flexDirection: 'row', gap: t.space.s3, alignItems: 'baseline', backgroundColor: t.color.karte, borderWidth: t.space.kontur, borderColor: t.color.linie, borderRadius: t.radius.s, paddingHorizontal: t.space.s3, paddingVertical: t.space.s2, flexGrow: 1, flexBasis: 240, minHeight: 44 }
+  // Side by side on wide screens only; in the phone's column a basis would be a height.
+  const openGridItem: ViewStyle = { flexGrow: 1, flexBasis: 240 }
+  const openItem: ViewStyle = { flexDirection: 'row', gap: t.space.s3, alignItems: 'baseline', backgroundColor: t.color.karte, borderWidth: t.space.kontur, borderColor: t.color.linie, borderRadius: t.radius.s, paddingHorizontal: t.space.s3, paddingVertical: t.space.s2, minHeight: 44 }
   const openItemUrgent: ViewStyle = { backgroundColor: t.color.warnWeich, borderColor: t.color.warn, ...t.shadow.hartS }
   const openYear: TextStyle = { ...t.type.itemTitle, color: t.color.tinte }
   const hero: ViewStyle = { ...base.card, flexDirection: 'row', flexWrap: 'wrap', ...t.shadow.hart }
@@ -550,7 +552,7 @@ function makeStyles(t: UiTheme) {
   const close: ViewStyle = { width: 36, height: 36, borderRadius: t.radius.pille, borderWidth: t.space.kontur, borderColor: t.color.linie, alignItems: 'center', justifyContent: 'center' }
   const lessons: ViewStyle = { backgroundColor: t.color.funkeWeich, borderWidth: t.space.kontur, borderColor: t.color.linie, borderRadius: t.radius.s, padding: t.space.s3, gap: t.space.s2 }
   return {
-    ...base, screen, wideScreen, header, headRow, title, flex, buttonRow, openList, openGrid, openItem,
+    ...base, screen, wideScreen, header, headRow, title, flex, buttonRow, openList, openGrid, openGridItem, openItem,
     openItemUrgent, openYear, hero, heroCell, heroValue, listCard, listTitle, yearRow, yearRowYear, amountCol, amount, struck, textBad, textBadStrong, tableHead, th, right,
     tableRow, tableRowActive, tableRowChange, cell, td, tdYear, tdText, panel, panelCard, panelHead, close, lessons,
   }

@@ -101,6 +101,8 @@ export function AssessmentDiffView({ diff, deadline, submittedOn, assessmentDate
                 <View key={d.position} testID={`${testID}-zeile-${d.position}`}>
                   <View style={[s.row, tone === 'bad' ? s.rowBad : tone === 'good' ? s.rowGood : null]}>
                     <Text style={s.pos}>{label(d.position, d.label)}</Text>
+                    {/* Value and effect wrap as one unit, so every row breaks the same way on a phone. */}
+                    <View style={s.valueGroup}>
                     <Text style={s.values}>
                       <Text style={s.struck}>{d.declared === null ? '–' : formatNumber(d.declared)}</Text>
                       {` → ${d.assessed === null ? '–' : formatEuro(d.assessed)}`}
@@ -108,6 +110,7 @@ export function AssessmentDiffView({ diff, deadline, submittedOn, assessmentDate
                     <Text style={[s.effect, s.effectStrong, tone === 'bad' ? s.textBad : tone === 'good' ? s.textGood : null]} accessibilityLabel={effect === null ? tr('verlauf.abgleich.wirkungUnbekannt') : tr('verlauf.abgleich.wirkungA11y', { wert: signedEuro(effect) })}>
                       {effect === null ? '–' : signedEuro(effect)}
                     </Text>
+                    </View>
                   </View>
                   {d.explanation ? (
                     <Text style={s.quote}>
@@ -310,6 +313,7 @@ function makeStyles(t: UiTheme) {
   const headerText: TextStyle = { ...t.type.caption, color: t.color.tinte2 }
   const pos: TextStyle = { ...t.type.small, color: t.color.tinte, flexGrow: 1, flexShrink: 1, flexBasis: 140 }
   const values: TextStyle = { ...t.type.metaLarge, color: t.color.tinte, fontVariant: ['tabular-nums'] }
+  const valueGroup: ViewStyle = { flexDirection: 'row', alignItems: 'baseline', gap: t.space.s2, marginLeft: 'auto' }
   const effect: TextStyle = { ...t.type.metaLarge, color: t.color.tinte, minWidth: 64, textAlign: 'right', fontVariant: ['tabular-nums'] }
   const effectStrong: TextStyle = { fontWeight: t.weight.schwer }
   const rowBad: ViewStyle = { backgroundColor: t.color.fehlerWeich }
@@ -340,7 +344,7 @@ function makeStyles(t: UiTheme) {
   const owlLabel: TextStyle = { ...t.type.meta, color: t.color.kiTinte, textTransform: 'uppercase', letterSpacing: 0.08 * t.size.xs, paddingTop: 2 }
   const owlText: TextStyle = { ...t.type.small, color: t.color.kiTinte, flex: 1 }
   return {
-    card, head, flex, eyebrow, title, close, closeGlyph, muted, mutedText, chipRow, pill, pillOk, pillBad, table, row, headerRow, headerText, pos, values, effect,
+    card, head, flex, eyebrow, title, close, closeGlyph, muted, mutedText, chipRow, pill, pillOk, pillBad, table, row, headerRow, headerText, pos, values, valueGroup, effect,
     effectStrong, rowBad, rowGood, textBad, textGood, struck, quote, quoteText, chain, chainText, chainLink, followTag, more, moreText, group, foot, deadline,
     deadlinePast, deadlineText, strong, body, lessons, lessonsTitle, lesson, lessonPill, owl, owlLabel, owlText,
   }
