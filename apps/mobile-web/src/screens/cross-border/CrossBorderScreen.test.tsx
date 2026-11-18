@@ -498,10 +498,12 @@ describe('GrenzgaengerScreen — the partner’s Swiss figures (escalation case:
 
     renderScreen(() => {}, undefined, 'Nora')
 
-    await screen.findByText(/Wo wohnst/)
+    // The questions name Nora, not „du“ (Echtdatentest 18.11.2026).
+    expect((await screen.findByTestId('ch-interview-titel')).textContent).toBe('Wo wohnt Nora?')
     expect(screen.getByTestId('ch-partner-hinweis').textContent).toContain('Nora')
     fireEvent.click(screen.getByText('Deutschland'))
     await screen.findByText(/zurückgekehrt/)
+    expect(screen.getByTestId('ch-interview-titel').textContent).toBe('Wie viele Tage ist Nora nicht nach Hause zurückgekehrt?')
     fireEvent.change(screen.getByTestId('ch-tage-input'), { target: { value: '0' } })
     fireEvent.click(screen.getByTestId('ch-tage-weiter'))
 
@@ -572,9 +574,10 @@ describe('GrenzgaengerScreen — Smart summation, required indicators, upload & 
     )
   })
 
-  it('snapshots a saved employer from the profile picker into Anlage N-Gre with one click', async () => {
+  it('snapshots an employer already recorded on a certificate into Anlage N-Gre with one click (Echtdatentest 18.11.2026)', async () => {
     const bodies: unknown[] = []
     server.use(http.get(INTERVIEW_URL, () => HttpResponse.json(DONE_CH_INTERVIEW, { status: 200 })))
+    server.use(http.get('*/v1/arbeitgeber', () => HttpResponse.json([{ name: 'Cilag AG', strasse: 'Hochstrasse 201', plzOrt: '8205 Schaffhausen' }], { status: 200 })))
     server.use(
       http.put(`${CH_URL}/n-gre`, async ({ request }) => {
         bodies.push(await request.json())
@@ -583,18 +586,27 @@ describe('GrenzgaengerScreen — Smart summation, required indicators, upload & 
     )
     renderScreen()
 
-    const chip = await screen.findByTestId('ch-ngre-arbeitgeber-chip-emp-novartis-ch')
+    const chip = await screen.findByTestId('ch-ngre-arbeitgeber-chip-emp-cilag-ag')
     fireEvent.click(chip)
 
     await waitFor(() =>
       expect(bodies).toEqual([
         {
-          arbeitgeberName: 'Novartis Pharma AG',
-          arbeitgeberStrasse: 'Lichtstrasse 35',
-          arbeitgeberPlzOrt: '4056 Basel',
+          arbeitgeberName: 'Cilag AG',
+          arbeitgeberStrasse: 'Hochstrasse 201',
+          arbeitgeberPlzOrt: '8205 Schaffhausen',
         },
       ]),
     )
+  })
+
+  it('offers no employer in a fresh account — no fixed start list', async () => {
+    server.use(http.get(INTERVIEW_URL, () => HttpResponse.json(DONE_CH_INTERVIEW, { status: 200 })))
+    server.use(http.get('*/v1/arbeitgeber', () => HttpResponse.json([], { status: 200 })))
+    renderScreen()
+    await screen.findByTestId('ch-ngre-arbeitgeberName')
+    expect(screen.queryByTestId('ch-ngre-arbeitgeber-auswahl')).toBeNull()
+    expect(screen.queryByText(/Novartis/)).toBeNull()
   })
 
   it('preserves sequential employer field edits when earlier PUT refetches arrive mid-typing and saves identical Ziffer 1 + Ziffer 8', async () => {

@@ -1,5 +1,6 @@
 import {
   ENTRIES,
+  GERMAN_JOB_TOO,
   entryForStep,
   laterAmountSteps,
   nextStepFor,
@@ -54,6 +55,24 @@ export type TileRoute =
   | { readonly screen: 'Rental' }
   | { readonly screen: 'Children' }
 
+/**
+ * Person B of a joint return without an account of their own (ADR-0073): who they are and what is
+ * entered for them. Null when there is no such partner (single, separate returns, or B's own account).
+ */
+export interface PartnerFacts {
+  /** Joint return (Zusammenveranlagung) recorded by this account; false when filing separately. */
+  readonly joint: boolean
+  readonly name: string | null
+  /** ISO date, as the link stores it. */
+  readonly birthDate: string | null
+  /** A query for B is still loading or failed: no step or count is suggested rather than a wrong one. */
+  readonly pending?: boolean | undefined
+  readonly lstb?: LstbResponseDto | null | undefined
+  readonly ch?: ChSalaryCertificateResponseDto | null | undefined
+  readonly pension?: PensionResponseDto | null | undefined
+  readonly commute?: CommuteResponseDto | null | undefined
+}
+
 export interface TileFacts {
   readonly path: FunnelPath
   readonly answers: Answers
@@ -67,6 +86,7 @@ export interface TileFacts {
   readonly capital?: KapitalResponseDto | null | undefined
   readonly rental?: RentalResponseDto | null | undefined
   readonly children?: ChildrenResponseDto | null | undefined
+  readonly partner?: PartnerFacts | null | undefined
 }
 
 /**
@@ -79,6 +99,14 @@ export function hasGermanJobToo(commute: CommuteResponseDto | null | undefined, 
   const changed = inputs != null && (inputs.secondFrom != null || inputs.secondOneWayKm != null || inputs.periodTo != null)
   const entered = lstb != null && [lstb.bruttoarbeitslohn, lstb.lohnsteuer, lstb.sozialversicherung].some((field) => field.kind === 'erfasst')
   return changed || entered
+}
+
+/**
+ * The German certificate belongs to a cross-border commuter's return: the basis says so („Auch in
+ * Deutschland“), or the way to work records a change of job, or a certificate is already entered.
+ */
+export function crossBorderWithGermanJob(facts: TileFacts): boolean {
+  return facts.path === 'ch' && (facts.answers['de-job'] === GERMAN_JOB_TOO || hasGermanJobToo(facts.commute, facts.lstb))
 }
 
 export interface TileDefinition {
@@ -248,7 +276,7 @@ export function partitionTiles(facts: TileFacts): PartitionedTiles {
   const more: TileDefinition[] = []
   for (const tile of TILES) {
     if (!tile.isVisible(facts)) continue
-    if (tile.personas === 'all' || tile.personas.some((p) => personas.has(p))) {
+    if (tile.personas === 'all' || tile.personas.some((p) => personas.has(p)) || (tile.id === 'lstb' && crossBorderWithGermanJob(facts))) {
       main.push(tile)
     } else {
       more.push(tile)
@@ -272,7 +300,8 @@ export interface GroupedTiles {
  * A tile the return cannot do without: the steps of the user's path, and the two the Strom asks as steps
  * of their own once they apply (the children, Alleinerziehend).
  */
-export function isRequiredTile(tile: TileDefinition, path: FunnelPath): boolean {
+export function isRequiredTile(tile: TileDefinition, path: FunnelPath, facts?: TileFacts): boolean {
+  if (tile.id === 'lstb' && facts !== undefined && crossBorderWithGermanJob(facts)) return true
   return tile.id === 'kinder' || tile.id === 'alleinerziehend' || NEXT_STEP_ORDER[path].includes(tile.id)
 }
 
@@ -288,7 +317,7 @@ export function groupTiles(facts: TileFacts, needsAttention: (id: TileId) => boo
   for (const tile of main) {
     const settled = !facts.pendingTiles?.has(tile.id) && tile.status(facts) === 'erledigt' && !needsAttention(tile.id)
     if (settled) done.push(tile)
-    else if (isRequiredTile(tile, facts.path)) required.push(tile)
+    else if (isRequiredTile(tile, facts.path, facts)) required.push(tile)
     else optional.push(tile)
   }
   return { required, optional, done, more }

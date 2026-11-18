@@ -85,8 +85,18 @@ describe('nextStep — the identity of the next screen (product ADR-016)', () =>
       { kind: 'gate', id: 'ch-only' },
     ],
     [
-      'Switzerland does not — we cover it fully (ADR-029)',
+      'Switzerland does not — we cover it fully (ADR-029); it asks whether there was a German job too',
       { ...EMPLOYED, ausland: 'Ja, in die Schweiz' },
+      { kind: 'question', id: 'de-job' },
+    ],
+    [
+      'a pensioner with a Swiss pension is not asked about a German job',
+      { job: 'Rente', ausland: 'Ja, in die Schweiz' },
+      { kind: 'question', id: 'kinder' },
+    ],
+    [
+      'a commuter who was only in Switzerland carries on with the children',
+      { ...EMPLOYED, ausland: 'Ja, in die Schweiz', 'de-job': 'Nur in der Schweiz' },
       { kind: 'question', id: 'kinder' },
     ],
     ['no foreign work does not either', { ...EMPLOYED, ausland: 'Nein' }, { kind: 'question', id: 'kinder' }],
@@ -102,7 +112,8 @@ describe('nextStep — the identity of the next screen (product ADR-016)', () =>
     ['married asks what Person B does', { ...EMPLOYED, ausland: 'Nein', kinder: '1 Kind', familienstand: 'Verheiratet' }, { kind: 'question', id: 'partner-job' }],
     ['an employed Person B is asked about Switzerland', { ...EMPLOYED, ausland: 'Nein', kinder: '1 Kind', familienstand: 'Verheiratet', 'partner-job': 'Angestellt' }, { kind: 'question', id: 'partner-ausland' }],
     ['a retired Person B ends the gate', { ...EMPLOYED, ausland: 'Nein', kinder: '1 Kind', familienstand: 'Verheiratet', 'partner-job': 'Rente' }, { kind: 'done' }],
-    ['married with Person B answered is done', { ...EMPLOYED, ausland: 'Nein', kinder: '1 Kind', familienstand: 'Verheiratet', 'partner-job': 'Angestellt', 'partner-ausland': 'Ja, in die Schweiz' }, { kind: 'done' }],
+    ['a Person B in Switzerland is asked about a German job too', { ...EMPLOYED, ausland: 'Nein', kinder: '1 Kind', familienstand: 'Verheiratet', 'partner-job': 'Angestellt', 'partner-ausland': 'Ja, in die Schweiz' }, { kind: 'question', id: 'partner-de-job' }],
+    ['married with Person B answered is done', { ...EMPLOYED, ausland: 'Nein', kinder: '1 Kind', familienstand: 'Verheiratet', 'partner-job': 'Angestellt', 'partner-ausland': 'Ja, in die Schweiz', 'partner-de-job': 'Auch in Deutschland' }, { kind: 'done' }],
   ]
 
   it.each(cases)('%s', (_name, answers, expected) => {

@@ -73,6 +73,8 @@ export interface CrossBorderSalaryStatementRepository {
   findForUserAndYear(userId: string, taxYear: number): Promise<CrossBorderSalaryStatementRecord | null>
   setField(userId: string, taxYear: number, field: SalaryCertificateAmountFieldId, value: string | null): Promise<CrossBorderSalaryStatementRecord>
   setRemarks(userId: string, taxYear: number, text: string | null): Promise<CrossBorderSalaryStatementRecord>
+  /** Every certificate of these users, in all years, the latest first (for the employers they recorded). */
+  listForUsers(userIds: readonly string[]): Promise<readonly CrossBorderSalaryStatementRecord[]>
   /** Writes only the columns the update carries (a missing key stays as stored), in one statement without reading first. */
   setProvision(userId: string, taxYear: number, provision: ProvisionUpdate): Promise<CrossBorderSalaryStatementRecord>
   setNGre(userId: string, taxYear: number, details: Partial<NGreDetails>): Promise<CrossBorderSalaryStatementRecord>

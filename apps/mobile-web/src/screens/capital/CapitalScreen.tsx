@@ -17,7 +17,7 @@ import {
   type KapitalResponseDto,
   type GuenstigerpruefungDto,
 } from '@steuereule/api-client'
-import type { CapitalFieldId } from '@steuereule/core'
+import { formatEuro, type CapitalFieldId } from '@steuereule/core'
 import { APP_NS } from '../../i18n/resources'
 import { UnclearableNumberField } from '../shared/UnclearableNumberField'
 import { screenHeaderStyles } from '../shared/screenStyles'
@@ -96,7 +96,7 @@ export function CapitalScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX
       <Text style={styles.heading}>{tr('kapital.heading')}</Text>
       <Text style={styles.help}>{tr('kapital.help')}</Text>
 
-      <DepotNotice kind={response.depot.kind} />
+      <DepotNotice kind={response.depot.kind} withheld={withheldTax(response)} />
       {response.depot.kind === 'unbekannt' ? (
         <Button variant="ghost" onPress={() => setQuestionOpen(true)} testID="kapital-frage-beantworten">
           {tr('katalog.einkuenfteBeantworten')}
@@ -133,6 +133,8 @@ export function CapitalScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX
         />
       ))}
 
+      <NetIncomeHint response={response} />
+
       <ItemNotice
         amount={response.items[0]?.amount}
         openLabel={tr('kapital.posten.offen')}
@@ -150,19 +152,53 @@ export function CapitalScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX
   )
 }
 
-function DepotNotice({ kind }: { readonly kind: KapitalResponseDto['depot']['kind'] }) {
+function erfasst(state: KapitalResponseDto['kapitalertraege']): number | null {
+  return state.kind === 'erfasst' && state.value !== undefined ? state.value : null
+}
+
+/** The withheld capital gains tax as entered: a German bank only „has withheld“ it once it is above 0. */
+function withheldTax(response: KapitalResponseDto): number | null {
+  return erfasst(response.kapitalertragsteuer)
+}
+
+/**
+ * The estimate takes the income before the allowance and deducts the full Sparer-Pauschbetrag itself.
+ * An allowance used that is larger than the income means the amount after it was entered (682 € over
+ * the exemption order instead of 2.682 €): then the tax on it would be 0 € (Echtdatentest 18.11.2026).
+ */
+function NetIncomeHint({ response }: { readonly response: KapitalResponseDto }) {
+  const t = useTheme()
+  const { t: tr } = useTranslation(APP_NS)
+  const s = makeStyles(t)
+  const income = erfasst(response.kapitalertraege)
+  const used = erfasst(response.sparerPauschbetrag)
+  if (income === null || used === null || used <= income) return null
+  return (
+    <Text style={s.depotText} accessibilityRole="alert" testID="kapital-plausi-netto">
+      {tr('kapital.feld.plausiNetto', { brutto: formatEuro(income + used) })}
+    </Text>
+  )
+}
+
+function DepotNotice({ kind, withheld }: { readonly kind: KapitalResponseDto['depot']['kind']; readonly withheld: number | null }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const s = makeStyles(t)
   const text =
     kind === 'deutscher-broker'
-      ? tr('kapital.depot.deutscherBroker')
+      ? withheld !== null && withheld > 0
+        ? tr('kapital.depot.deutscherBroker')
+        : tr('kapital.depot.deutscherBrokerOhneSteuer')
       : kind === 'auslaendischer-broker'
         ? tr('kapital.depot.auslaendischerBroker')
         : kind === 'krypto'
           ? tr('kapital.depot.krypto')
           : tr('kapital.depot.unbekannt')
-  return <Text style={s.depotText}>{text}</Text>
+  return (
+    <Text style={s.depotText} testID="kapital-depot-hinweis">
+      {text}
+    </Text>
+  )
 }
 
 function MostFavourableCheckSection({ taxYear }: { readonly taxYear: number }) {

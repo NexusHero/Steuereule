@@ -50,7 +50,13 @@ describe('KinderScreen', () => {
     expect(screen.getByText('Geburtsdatum: 12.05.2016')).toBeDefined()
     expect(screen.getByText('Steuer-ID: 12345678901')).toBeDefined()
     expect(screen.getByText(/9\.600/)).toBeDefined() // 2025: 6.672 + 2.928
-    expect(screen.getByText(/Für den Ausdruck fehlen noch Angaben/)).toBeDefined()
+    // The tax id is there: the hint names only what is really missing.
+    expect(screen.getByTestId('kind-luecke-kind-1').textContent).toBe('Für den Ausdruck fehlen noch Angaben (Kindschaftsverhältnis, Familienkasse, Wohnsitz).')
+  })
+
+  it('names only the tax id when everything else is stored (Echtdatentest 18.11.2026)', () => {
+    renderKinder({ initialKinder: [{ ...KINDER_FIXTURE[0]!, taxId: null, kinship: '1', familyBenefitsOffice: 'Familienkasse Baden-Württemberg West', domesticResidenceAllYear: true }] as never })
+    expect(screen.getByTestId('kind-luecke-kind-1').textContent).toBe('Für den Ausdruck fehlen noch Angaben (Steuer-ID).')
   })
 
   it('hides the single-parent relief from married people, who cannot claim it', () => {

@@ -67,7 +67,7 @@ describe('KapitalScreen', () => {
   it('renders the depot-Einordnung and the Kapitalerträge field from the GET response', async () => {
     renderCapital()
 
-    expect(await screen.findByText('Kapitalerträge (Einkünfte aus Kapitalvermögen)')).toBeTruthy()
+    expect(await screen.findByText(/Kapitalerträge vor Abzug des Sparer-Pauschbetrags/)).toBeTruthy()
     // The default mask has no kap-depot answer yet — the honest "unbekannt" notice, never a guess.
     expect(screen.getByText(/ob dein Depot bei einem deutschen oder ausländischen Broker liegt/)).toBeTruthy()
   })
@@ -92,16 +92,45 @@ describe('KapitalScreen', () => {
     server.use(http.get(CAPITAL_URL, () => HttpResponse.json(GERMAN_BROKER, { status: 200 })))
     server.use(http.get(GP_URL, () => HttpResponse.json(null, { status: 200 })))
     renderCapital()
-    await screen.findByText(/Abgeltungsteuer einbehalten/)
+    await screen.findByTestId('kapital-depot-hinweis')
     expect(screen.queryByTestId('kapital-inhaber-gemeinsam')).toBeNull()
   })
 
-  it('renders the German-broker notice (Abgeltungsteuer withheld) from the GET response', async () => {
-    server.use(http.get(CAPITAL_URL, () => HttpResponse.json(GERMAN_BROKER, { status: 200 })))
+  it('renders the German-broker notice (Abgeltungsteuer withheld) once a withheld tax is entered', async () => {
+    server.use(http.get(CAPITAL_URL, () => HttpResponse.json({ ...GERMAN_BROKER, kapitalertragsteuer: { kind: 'erfasst', value: 4750 } }, { status: 200 })))
     server.use(http.get(GP_URL, () => HttpResponse.json(null, { status: 200 })))
     renderCapital()
 
     expect(await screen.findByText(/Abgeltungsteuer einbehalten/)).toBeTruthy()
+  })
+
+  it('does not claim a withheld tax while none or 0 is entered (Echtdatentest 18.11.2026)', async () => {
+    server.use(http.get(CAPITAL_URL, () => HttpResponse.json({ ...GERMAN_BROKER, kapitalertragsteuer: { kind: 'erfasst', value: 0 } }, { status: 200 })))
+    server.use(http.get(GP_URL, () => HttpResponse.json(null, { status: 200 })))
+    renderCapital()
+
+    expect(await screen.findByTestId('kapital-depot-hinweis')).toBeTruthy()
+    expect(screen.queryByText(/Abgeltungsteuer einbehalten/)).toBeNull()
+    expect(screen.getByText(/Freistellungsauftrag/)).toBeTruthy()
+  })
+
+  it('asks for the income before the allowance, and warns when the used allowance is larger than the income (Echtdatentest 18.11.2026)', async () => {
+    // 682 € is what was left over the exemption order; 2.000 € of allowance were used: the gross was meant.
+    server.use(http.get(CAPITAL_URL, () => HttpResponse.json({ ...GERMAN_BROKER, kapitalertraege: { kind: 'erfasst', value: 682 }, sparerPauschbetrag: { kind: 'erfasst', value: 2000 } }, { status: 200 })))
+    server.use(http.get(GP_URL, () => HttpResponse.json(null, { status: 200 })))
+    renderCapital()
+
+    expect(await screen.findByText(/vor Abzug des Sparer-Pauschbetrags/)).toBeTruthy()
+    expect(screen.getByTestId('kapital-plausi-netto').textContent).toMatch(/2.682/)
+  })
+
+  it('stays quiet when the income covers the used allowance', async () => {
+    server.use(http.get(CAPITAL_URL, () => HttpResponse.json({ ...GERMAN_BROKER, kapitalertraege: { kind: 'erfasst', value: 2682 }, sparerPauschbetrag: { kind: 'erfasst', value: 2000 } }, { status: 200 })))
+    server.use(http.get(GP_URL, () => HttpResponse.json(null, { status: 200 })))
+    renderCapital()
+
+    await screen.findByText(/vor Abzug des Sparer-Pauschbetrags/)
+    expect(screen.queryByTestId('kapital-plausi-netto')).toBeNull()
   })
 
   it('shows the derived Posten with its Herkunft once determined', async () => {
@@ -144,9 +173,9 @@ describe('KapitalScreen', () => {
     )
     server.use(http.get(GP_URL, () => HttpResponse.json(null, { status: 200 })))
     renderCapital()
-    await screen.findByText('Kapitalerträge (Einkünfte aus Kapitalvermögen)')
+    await screen.findByText(/Kapitalerträge vor Abzug des Sparer-Pauschbetrags/)
 
-    const input = screen.getByLabelText(/Kapitalerträge \(Einkünfte aus Kapitalvermögen\)/)
+    const input = screen.getByLabelText(/Kapitalerträge vor Abzug des Sparer-Pauschbetrags/)
     fireEvent.change(input, { target: { value: '20000' } })
     // react-native-web fires onSubmitEditing from its keyDown handler on Enter.
     fireEvent.keyDown(input, { key: 'Enter' })
@@ -215,7 +244,7 @@ describe('KapitalScreen', () => {
     queryClient.setQueryData(summaryKey, { status: 200, data: null, headers: new Headers() })
     queryClient.setQueryData(estimateKey, { status: 200, data: { kind: 'offen' }, headers: new Headers() })
 
-    const input = await screen.findByLabelText(/Kapitalerträge \(Einkünfte aus Kapitalvermögen\)/)
+    const input = await screen.findByLabelText(/Kapitalerträge vor Abzug des Sparer-Pauschbetrags/)
     fireEvent.click(screen.getByLabelText('Zurück'))
     expect(onBack).toHaveBeenCalledOnce()
 

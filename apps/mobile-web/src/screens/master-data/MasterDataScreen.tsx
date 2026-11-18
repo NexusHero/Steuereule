@@ -27,7 +27,7 @@ import { PartnerLinkStatus } from './PartnerLinkStatus'
 import { prefillCity } from '../shared/postalCodePrefill'
 import { AddressSearch } from '../shared/AddressSearch'
 import { todayIso } from '../shared/today'
-import { useSavedEmployers } from './employersStore'
+import { useKnownEmployers } from './employersStore'
 
 export interface MasterDataScreenProps {
   readonly onBack: () => void
@@ -541,133 +541,28 @@ function joinErrorText(answer: unknown): string {
   return 'Diesen Code kennen wir nicht. Prüf die Schreibweise.'
 }
 
+/**
+ * The employers already recorded on the household's Swiss salary certificates (Echtdatentest 18.11.2026).
+ * Shown only — an employer is entered on the certificate itself; a fresh account shows none.
+ */
 function EmployersMasterDataSection() {
   const theme = useTheme()
-  const { employers, addEmployer, removeEmployer } = useSavedEmployers()
-  const [name, setName] = useState('')
-  const [strasse, setStrasse] = useState('')
-  const [plzOrt, setPlzOrt] = useState('')
-  const [land, setLand] = useState<'CH' | 'DE'>('CH')
-  const [uid, setUid] = useState('')
-
-  function handleAdd() {
-    if (name.trim() === '') return
-    addEmployer({
-      name,
-      strasse,
-      plzOrt,
-      land,
-      ...(uid.trim() !== '' ? { uid } : {}),
-    })
-    setName('')
-    setStrasse('')
-    setPlzOrt('')
-    setUid('')
-  }
-
+  const employers = useKnownEmployers()
+  if (employers.length === 0) return null
   return (
     <Card style={{ marginVertical: theme.space.s3, padding: theme.space.s4 }} testID="stammdaten-unternehmen-card">
-      <Text style={{ ...theme.type.cardTitle, color: theme.color.tinte, marginBottom: theme.space.s1 }}>
-        Unternehmen & Arbeitgeber
-      </Text>
+      <Text style={{ ...theme.type.cardTitle, color: theme.color.tinte, marginBottom: theme.space.s1 }}>Arbeitgeber</Text>
       <Text style={{ ...theme.type.small, color: theme.color.tinte2, marginBottom: theme.space.s3 }}>
-        Hinterlege Arbeitgeber einmalig für Anlage N und Grenzgänger (N-Gre). Bei Auswahl im Formular werden die Angaben als Snapshot ins jeweilige Steuerjahr übernommen – historische Steuerfälle bleiben bei späteren Änderungen unberührt.
+        Aus deinen Schweizer Lohnausweisen. Ändern kannst du sie im Lohnausweis des jeweiligen Jahres; dort schlagen wir sie dir auch für das nächste Jahr vor.
       </Text>
-
-      <View style={{ gap: theme.space.s2, marginBottom: theme.space.s3 }}>
+      <View style={{ gap: theme.space.s2 }}>
         {employers.map((emp) => (
-          <View
-            key={emp.id}
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: theme.space.s2,
-              padding: theme.space.s3,
-              borderRadius: theme.radius.s,
-              backgroundColor: theme.color.grund,
-            }}
-            testID={`stammdaten-unternehmen-eintrag-${emp.id}`}
-          >
-            <View style={{ flex: 1 }}>
-              <Text style={{ ...theme.type.emphasis, color: theme.color.tinte }}>
-                {`${emp.name} (${emp.land})`}
-              </Text>
-              <Text style={{ ...theme.type.small, color: theme.color.tinte2 }}>
-                {[emp.strasse, emp.plzOrt, emp.uid ? `UID: ${emp.uid}` : null].filter(Boolean).join(' · ')}
-              </Text>
-            </View>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`${emp.name} entfernen`}
-              onPress={() => removeEmployer(emp.id)}
-              style={{
-                paddingHorizontal: theme.space.s2,
-                paddingVertical: theme.space.s1,
-                borderRadius: theme.radius.s,
-                borderWidth: 1,
-                borderColor: theme.color.linie,
-              }}
-              testID={`stammdaten-unternehmen-entfernen-${emp.id}`}
-            >
-              <Text style={{ ...theme.type.caption, color: theme.color.tinte2 }}>Entfernen</Text>
-            </Pressable>
+          <View key={emp.id} style={{ padding: theme.space.s3, borderRadius: theme.radius.s, backgroundColor: theme.color.grund }} testID={`stammdaten-unternehmen-eintrag-${emp.id}`}>
+            <Text style={{ ...theme.type.emphasis, color: theme.color.tinte }}>{emp.name}</Text>
+            <Text style={{ ...theme.type.small, color: theme.color.tinte2 }}>{[emp.strasse, emp.plzOrt].filter(Boolean).join(' · ')}</Text>
           </View>
         ))}
       </View>
-
-      <Feld label="Name des Arbeitgebers / Unternehmens">
-        <Input
-          value={name}
-          onChange={setName}
-          placeholder="z. B. Roche Pharma AG"
-          accessibilityLabel="Name des Arbeitgebers / Unternehmens"
-          testID="stammdaten-unternehmen-name"
-        />
-      </Feld>
-      <Feld label="Straße & Hausnummer">
-        <Input
-          value={strasse}
-          onChange={setStrasse}
-          placeholder="z. B. Grenzacherstrasse 124"
-          accessibilityLabel="Straße & Hausnummer des Arbeitgebers"
-          testID="stammdaten-unternehmen-strasse"
-        />
-      </Feld>
-      <Feld label="PLZ & Ort">
-        <Input
-          value={plzOrt}
-          onChange={setPlzOrt}
-          placeholder="z. B. 4070 Basel"
-          accessibilityLabel="PLZ & Ort des Arbeitgebers"
-          testID="stammdaten-unternehmen-plzort"
-        />
-      </Feld>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.space.s2, marginBottom: theme.space.s3 }}>
-        <Chip active={land === 'CH'} onPress={() => setLand('CH')} testID="stammdaten-unternehmen-land-ch">
-          Schweiz (CH)
-        </Chip>
-        <Chip active={land === 'DE'} onPress={() => setLand('DE')} testID="stammdaten-unternehmen-land-de">
-          Deutschland (DE)
-        </Chip>
-      </View>
-      <Feld label="UID / Handelsregisternummer (optional)">
-        <Input
-          value={uid}
-          onChange={setUid}
-          placeholder="z. B. CHE-105.815.301"
-          accessibilityLabel="UID oder Handelsregisternummer"
-          testID="stammdaten-unternehmen-uid"
-        />
-      </Feld>
-      <Button
-        variant="ghost"
-        disabled={name.trim() === ''}
-        onPress={handleAdd}
-        testID="stammdaten-unternehmen-hinzufuegen"
-      >
-        Unternehmen hinzufügen
-      </Button>
     </Card>
   )
 }

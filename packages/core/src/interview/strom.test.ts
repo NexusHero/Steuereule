@@ -36,6 +36,16 @@ describe('the Strom topics (ADR-0089)', () => {
     expect(isReachableFor(ENTRIES.lebenslagen, { umzug: 'Ja' }, 'umzug-kosten')).toBe(true)
   })
 
+  it('the basis page asks a commuter about a German job, and a pensioner not (Echtdatentest 18.11.2026)', () => {
+    const gate = ENTRIES['minimal-gate']
+    expect(pageSteps(gate, { job: 'Angestellt', ausland: 'Ja, in die Schweiz' })).toContain('de-job')
+    expect(pageSteps(gate, { job: 'Rente', ausland: 'Ja, in die Schweiz' })).not.toContain('de-job')
+    const pensioner = answersToPost(gate, { job: 'Rente', ausland: 'Ja, in die Schweiz', kinder: 'Nein', familienstand: 'Ledig' }, {})
+    expect(pensioner.complete).toBe(true)
+    expect(pensioner.posts.map((p) => p.questionId)).toEqual(['job', 'ausland', 'kinder', 'familienstand'])
+    expect(answersToPost(gate, { job: 'Angestellt', ausland: 'Ja, in die Schweiz', kinder: 'Nein', familienstand: 'Ledig' }, {}).complete).toBe(false)
+  })
+
   it('the Minimal-Gate keeps its order: the basis page answers it top to bottom', () => {
     expect(isReachableFor(ENTRIES['minimal-gate'], {}, 'kinder')).toBe(false)
   })

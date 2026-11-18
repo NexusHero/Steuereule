@@ -29,6 +29,7 @@ import { CockpitTiles, tileRevisitFlag, useCockpitTileFacts } from './CockpitTil
 import { derivePersonas } from './personas'
 import { nextStep, type TileDefinition, type TileFacts } from './tiles'
 import { nextOpenStep, stromProgress, type StromStep } from '../strom/stromPlan'
+import { stromStepTitle } from '../strom/stromTitles'
 import { CockpitInbox } from './CockpitInbox'
 import { makeStyles } from './CockpitScreen.styles'
 import { dismissEffect, observeMidpoint, rememberOpenedArea, type Effect } from './effectMemory'
@@ -67,23 +68,6 @@ interface Next {
   readonly label: string
   readonly onPress: () => void
   readonly missingFields?: readonly string[]
-}
-
-function stromStepTitle(step: StromStep, tr: (key: string) => string): string {
-  switch (step.kind) {
-    case 'basis':
-      return tr('strom.basis.titel')
-    case 'maske':
-      return tr(`strom.maske.${step.id}`)
-    case 'auswahl':
-      return tr('strom.auswahl.kurz')
-    case 'thema':
-      return tr(`strom.thema.${step.id}`)
-    case 'alleinerziehend':
-      return tr('strom.alleinerziehend.titel')
-    case 'fertig':
-      return tr('cockpit.abgabe.titel')
-  }
 }
 
 export function CockpitScreen({
@@ -186,7 +170,7 @@ export function CockpitScreen({
       ? null
       : stromStep.kind === 'fertig'
         ? { label: tr('cockpit.naechsterSchritt', { titel: tr('cockpit.abgabe.titel') }), onPress: () => submissionHandler?.(year) }
-        : { label: tr('cockpit.naechsterSchritt', { titel: stromStepTitle(stromStep, (key) => tr(key)) }), onPress: () => onOpenStrom(stromStep) }
+        : { label: tr('cockpit.naechsterSchritt', { titel: stromStepTitle(stromStep, tr, partnerName) }), onPress: () => onOpenStrom(stromStep) }
   const next: Next | null = onOpenStrom !== undefined && tileFacts !== null ? stromNext :
     tileFacts !== null && step !== null
       ? step.kind === 'unknown'
@@ -756,7 +740,7 @@ function CockpitLoaded(props: CockpitLoadedProps) {
         {status.kind === 'gated' ? (
           <GatedHero status={status} />
         ) : (
-          <NumericHero status={status} compact={refundFirst} />
+          <NumericHero status={status} compact={refundFirst} byPerson={summary.byPerson} partnerName={props.partnerName} />
         )}
         {/* Zero open questions is no news: the progress line below says where the user stands. */}
         {hasOpenItems || progress === null ? <Text style={styles.openItems}>{tr('cockpit.hero.openItems', { count: openItems })}</Text> : null}
@@ -787,7 +771,18 @@ function CockpitLoaded(props: CockpitLoadedProps) {
   )
 }
 
-function NumericHero({ status, compact = false }: { readonly status: CockpitStatusDto; readonly compact?: boolean }) {
+function NumericHero({
+  status,
+  compact = false,
+  byPerson,
+  partnerName,
+}: {
+  readonly status: CockpitStatusDto
+  readonly compact?: boolean
+  /** A joint return: the recorded wages of each person (Echtdatentest 18.11.2026). */
+  readonly byPerson?: CockpitSummaryDto['byPerson']
+  readonly partnerName: string
+}) {
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(useTheme())
   const calculationPath =
@@ -802,6 +797,11 @@ function NumericHero({ status, compact = false }: { readonly status: CockpitStat
       </Text>
       {status.kind === 'spanne' && (status.openItems ?? 0) > 0 ? (
         <Text style={styles.offenePosten}>{tr('cockpit.hero.offenePosten', { count: status.openItems ?? 0 })}</Text>
+      ) : null}
+      {byPerson ? (
+        <Text style={styles.offenePosten} testID="cockpit-einkommen-personen">
+          {tr('cockpit.hero.proPerson', { du: formatEuro(byPerson.a), name: partnerName, partner: formatEuro(byPerson.b) })}
+        </Text>
       ) : null}
       <HerkunftsChip source={source} />
     </>

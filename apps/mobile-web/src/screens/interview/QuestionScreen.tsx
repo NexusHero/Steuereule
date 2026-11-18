@@ -9,6 +9,7 @@ import {
   KINDER_VALUES,
   PARTNER_JOB_VALUES,
   PARTNER_FOREIGN_VALUES,
+  GERMAN_JOB_VALUES,
   QUESTION_ORDER,
   type Answers,
   type QuestionId,
@@ -57,14 +58,24 @@ const PARTNER_FOREIGN_OPTIONS: ReadonlyArray<OptionSpec<(typeof PARTNER_FOREIGN_
   { value: 'Ja, in die Schweiz', labelKey: 'interview.partnerAusland.options.schweiz' },
   { value: 'Nein', labelKey: 'interview.partnerAusland.options.nein' },
 ]
+const GERMAN_JOB_OPTIONS: ReadonlyArray<OptionSpec<(typeof GERMAN_JOB_VALUES)[number]>> = [
+  { value: 'Nur in der Schweiz', labelKey: 'interview.deJob.options.nurSchweiz' },
+  { value: 'Auch in Deutschland', labelKey: 'interview.deJob.options.auchDeutschland' },
+]
+const PARTNER_GERMAN_JOB_OPTIONS: ReadonlyArray<OptionSpec<(typeof GERMAN_JOB_VALUES)[number]>> = [
+  { value: 'Nur in der Schweiz', labelKey: 'interview.partnerDeJob.options.nurSchweiz' },
+  { value: 'Auch in Deutschland', labelKey: 'interview.partnerDeJob.options.auchDeutschland' },
+]
 
 export const QUESTION_COPY: Record<QuestionId, { readonly titleKey: string; readonly helpKey: string; readonly options: ReadonlyArray<OptionSpec<string>> }> = {
   job: { titleKey: 'interview.job', helpKey: 'interview.job.help', options: JOB_OPTIONS },
   ausland: { titleKey: 'interview.ausland', helpKey: 'interview.ausland.help', options: FOREIGN_OPTIONS },
+  'de-job': { titleKey: 'interview.deJob', helpKey: 'interview.deJob.help', options: GERMAN_JOB_OPTIONS },
   kinder: { titleKey: 'interview.kinder', helpKey: 'interview.kinder.help', options: KINDER_OPTIONS },
   familienstand: { titleKey: 'interview.familienstand', helpKey: 'interview.familienstand.help', options: MARITAL_STATUS_OPTIONS },
   'partner-job': { titleKey: 'interview.partnerJob', helpKey: 'interview.partnerJob.help', options: PARTNER_JOB_OPTIONS },
   'partner-ausland': { titleKey: 'interview.partnerAusland', helpKey: 'interview.partnerAusland.help', options: PARTNER_FOREIGN_OPTIONS },
+  'partner-de-job': { titleKey: 'interview.partnerDeJob', helpKey: 'interview.partnerDeJob.help', options: PARTNER_GERMAN_JOB_OPTIONS },
 }
 
 /**
@@ -77,8 +88,12 @@ export function interviewProgress(questionId: QuestionId, answers: Answers): { r
       ? []
       : answers['partner-job'] !== undefined && answers['partner-job'] !== 'Angestellt'
         ? ['partner-job']
-        : ['partner-job', 'partner-ausland']
-  const all: readonly QuestionId[] = [...QUESTION_ORDER, ...partnerSteps]
+        : answers['partner-ausland'] === 'Ja, in die Schweiz'
+          ? ['partner-job', 'partner-ausland', 'partner-de-job']
+          : ['partner-job', 'partner-ausland']
+  // A cross-border commuter is asked about a German job right after Switzerland (ADR-0079).
+  const own: readonly QuestionId[] = answers.ausland === 'Ja, in die Schweiz' && answers.job !== 'Rente' ? [...QUESTION_ORDER.slice(0, 2), 'de-job', ...QUESTION_ORDER.slice(2)] : QUESTION_ORDER
+  const all: readonly QuestionId[] = [...own, ...partnerSteps]
   const index = all.indexOf(questionId)
   return { step: index === -1 ? all.length - 1 : index, total: all.length }
 }

@@ -1,4 +1,4 @@
-export type MinimalGateQuestionId = 'job' | 'ausland' | 'kinder' | 'familienstand' | 'partner-job' | 'partner-ausland'
+export type MinimalGateQuestionId = 'job' | 'ausland' | 'de-job' | 'kinder' | 'familienstand' | 'partner-job' | 'partner-ausland' | 'partner-de-job'
 
 export type MinimalGateGateId = 'gewerbe' | 'ch-only'
 
@@ -128,6 +128,14 @@ export const PARTNER_JOB_VALUES = ['Angestellt', 'Rente', 'Nicht berufstätig'] 
 /** Whether an employed Person B works in Switzerland (Grenzgänger) too. */
 export const PARTNER_FOREIGN_VALUES = ['Ja, in die Schweiz', 'Nein'] as const
 
+/**
+ * Whether a cross-border commuter (or Person B) also had a German job in the year (ADR-0079): then the
+ * German Lohnsteuerbescheinigung belongs in the Strom too. Asked right after „Ja, in die Schweiz“.
+ */
+export const GERMAN_JOB_VALUES = ['Nur in der Schweiz', 'Auch in Deutschland'] as const
+
+export const GERMAN_JOB_TOO = 'Auch in Deutschland'
+
 export const HOME_OFFICE_VALUES = ['Nie', '1–2 Tage pro Woche', 'Fast immer'] as const
 
 export const TRAINING_VALUES = ['Ja', 'Nein'] as const
@@ -209,6 +217,11 @@ export interface QuestionDeclaration {
   readonly form: ValueForm
   readonly followUps?: Readonly<Record<string, readonly FollowUpTarget[]>>
   readonly defaultFollowUp?: readonly FollowUpTarget[]
+  /**
+   * Asked only when the other answers make it a question at all; otherwise it is skipped like an
+   * answered question without follow-ups (a pensioner is not asked about a German job).
+   */
+  readonly askedWhen?: (answers: Answers) => boolean
 }
 
 export const QUESTIONS: Readonly<Record<EntryStepId, QuestionDeclaration>> = {
@@ -230,9 +243,11 @@ export const QUESTIONS: Readonly<Record<EntryStepId, QuestionDeclaration>> = {
     kind: 'question',
     form: { kind: 'enum', values: FOREIGN_VALUES },
     followUps: {
+      'Ja, in die Schweiz': ['de-job'],
       'In ein anderes Land': ['ch-only'],
     },
   },
+  'de-job': { id: 'de-job', kind: 'question', form: { kind: 'enum', values: GERMAN_JOB_VALUES }, askedWhen: (answers) => answers.job !== 'Rente' },
   kinder: { id: 'kinder', kind: 'question', form: { kind: 'enum', values: KINDER_VALUES } },
   familienstand: {
     id: 'familienstand',
@@ -246,7 +261,13 @@ export const QUESTIONS: Readonly<Record<EntryStepId, QuestionDeclaration>> = {
     form: { kind: 'enum', values: PARTNER_JOB_VALUES },
     followUps: { Angestellt: ['partner-ausland'] },
   },
-  'partner-ausland': { id: 'partner-ausland', kind: 'question', form: { kind: 'enum', values: PARTNER_FOREIGN_VALUES } },
+  'partner-ausland': {
+    id: 'partner-ausland',
+    kind: 'question',
+    form: { kind: 'enum', values: PARTNER_FOREIGN_VALUES },
+    followUps: { 'Ja, in die Schweiz': ['partner-de-job'] },
+  },
+  'partner-de-job': { id: 'partner-de-job', kind: 'question', form: { kind: 'enum', values: GERMAN_JOB_VALUES } },
   gewerbe: { id: 'gewerbe', kind: 'gate', form: { kind: 'enum', values: [GATE_ACKNOWLEDGED] } },
   'ch-only': { id: 'ch-only', kind: 'gate', form: { kind: 'enum', values: [GATE_ACKNOWLEDGED] } },
 
@@ -518,10 +539,12 @@ function walk(ids: readonly FollowUpTarget[], answers: Answers): EntryStep {
     const id = targetId(target)
     if (isTerminalTarget(target)) return stepFor(id)
 
+    const decl = QUESTIONS[id]
+    if (decl.askedWhen !== undefined && !decl.askedWhen(answers)) continue
+
     const answer = answers[id]
     if (answer === undefined) return stepFor(id)
 
-    const decl = QUESTIONS[id]
     const branch = branchFor(decl, answer)
     const next = walk(branch, answers)
     if (next.kind !== 'done') return next
@@ -563,6 +586,7 @@ function countRemaining(ids: readonly FollowUpTarget[], answers: Answers): numbe
 
     const id = targetId(target)
     const decl = QUESTIONS[id]
+    if (decl.askedWhen !== undefined && !decl.askedWhen(answers)) continue
     const answer = answers[id]
 
     if (answer === undefined) {

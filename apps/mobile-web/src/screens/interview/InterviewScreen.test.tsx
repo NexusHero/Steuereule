@@ -422,11 +422,12 @@ describe('InterviewScreen', () => {
       expect(await onKinderQuestion()).toBeTruthy()
     })
 
-    it('"Ja, in die Schweiz" -> kinder question directly, no gate', async () => {
+    it('"Ja, in die Schweiz" -> no gate, the German-job question, then kinder', async () => {
       await renderOnJobQuestion()
       fireEvent.click(screen.getByText('Angestellt'))
       await onForeignQuestion()
       fireEvent.click(screen.getByText('Ja, in die Schweiz'))
+      fireEvent.click(await screen.findByTestId('interview-option-de-job-Nur in der Schweiz'))
       await onKinderQuestion()
       expect(screen.queryByText('Ehrlich: andere Länder können wir noch nicht.')).toBeNull()
     })
@@ -470,6 +471,9 @@ describe('InterviewScreen', () => {
     fireEvent.click(screen.getByText('Verheiratet / eingetragene Lebenspartnerschaft'))
     fireEvent.click(await screen.findByTestId('interview-option-partner-job-Angestellt'))
     fireEvent.click(await screen.findByTestId('interview-option-partner-ausland-Ja, in die Schweiz'))
+    // A Grenzgänger B is asked about a German job too (Echtdatentest 18.11.2026).
+    expect(onDone).not.toHaveBeenCalled()
+    fireEvent.click(await screen.findByTestId('interview-option-partner-de-job-Auch in Deutschland'))
     await waitFor(() => expect(onDone).toHaveBeenCalledOnce())
   })
 

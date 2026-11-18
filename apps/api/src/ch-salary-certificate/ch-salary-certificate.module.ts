@@ -7,11 +7,13 @@ import { ChSalaryCertificateController } from './ch-salary-certificate.controlle
 import { CROSS_BORDER_SALARY_STATEMENT_REPOSITORY } from './ch-salary-certificate.repository.js'
 import { PrismaChSalaryCertificateRepository } from './ch-salary-certificate.repository.prisma.js'
 import { ChSalaryCertificateService } from './ch-salary-certificate.service.js'
+import { KnownEmployersController } from './known-employers.controller.js'
+import { KnownEmployersService } from './known-employers.service.js'
 
 @Module({
   imports: [PrismaModule, AuditModule, InterviewModule, LinkModule],
-  controllers: [ChSalaryCertificateController],
-  providers: [ChSalaryCertificateService, { provide: CROSS_BORDER_SALARY_STATEMENT_REPOSITORY, useClass: PrismaChSalaryCertificateRepository }],
+  controllers: [ChSalaryCertificateController, KnownEmployersController],
+  providers: [ChSalaryCertificateService, KnownEmployersService, { provide: CROSS_BORDER_SALARY_STATEMENT_REPOSITORY, useClass: PrismaChSalaryCertificateRepository }],
   exports: [CROSS_BORDER_SALARY_STATEMENT_REPOSITORY],
 })
 export class ChSalaryCertificateModule {}

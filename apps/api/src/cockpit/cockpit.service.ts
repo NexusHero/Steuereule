@@ -1,7 +1,9 @@
-import { Inject, Injectable } from '@nestjs/common'
+import { Inject, Injectable, Optional } from '@nestjs/common'
 import {
   employeeFromData,
   chfToEur,
+  GERMAN_JOB_TOO,
+  type WageTaxCertificateData,
   cockpitRangeFromInputs,
   gatedIncomeTypes,
   openSalaryCertificateFields,
@@ -20,6 +22,7 @@ import { answersFrom } from '../interview/answers.js'
 import { wageTaxCertificateDataFrom } from '../lstb/lstb-data.js'
 import { CROSS_BORDER_SALARY_STATEMENT_REPOSITORY, type CrossBorderSalaryStatementRecord, type CrossBorderSalaryStatementRepository } from '../ch-salary-certificate/ch-salary-certificate.repository.js'
 import { crossBorderStatusFromAnswers, salaryCertificateValuesFromRecord, exchangeRateFromRecord } from '../ch-salary-certificate/salary-certificate-data.js'
+import { LinkService } from '../link/link.service.js'
 
 function recordedValue(raw: string | null): number | null {
   if (raw === null || raw === 'unklar') return null
@@ -63,6 +66,34 @@ function crossBorderFacts(record: CrossBorderSalaryStatementRecord | null, answe
   }
 }
 
+interface IncomeFacts {
+  readonly einnahmen: number
+  readonly openItems: number
+  readonly conflicts: number
+  readonly gated: ReturnType<typeof gatedIncomeTypes>
+}
+
+/**
+ * The German certificate of a commuter who also worked in Germany (ADR-0079): its gross wage adds to
+ * the Swiss one. Asked for in the basis but not entered yet, it is one open item.
+ */
+function withGermanJob(facts: IncomeFacts, data: WageTaxCertificateData, answers: Answers): IncomeFacts {
+  const gross = data.bruttoarbeitslohn
+  if (gross.kind === 'erfasst') return { ...facts, einnahmen: facts.einnahmen + gross.value }
+  return answers['de-job'] === GERMAN_JOB_TOO ? { ...facts, openItems: facts.openItems + 1 } : facts
+}
+
+/** What the basis says about Person B, as B's own answers (job, Switzerland, German job too). */
+function partnerAnswers(answers: Answers, own: Answers): Answers {
+  const job = answers['partner-job']
+  return {
+    ...own,
+    job: job === 'Rente' ? 'Rente' : 'Angestellt',
+    ausland: answers['partner-ausland'] === CH_FOREIGN ? CH_FOREIGN : 'Nein',
+    ...(answers['partner-de-job'] !== undefined ? { 'de-job': answers['partner-de-job'] } : {}),
+  } as Answers
+}
+
 /** Application logic: userId+steuerjahr-scoped read, then the honest fold -> wire mapping. */
 @Injectable()
 export class CockpitService {
@@ -75,24 +106,54 @@ export class CockpitService {
     @Inject(CAPITAL_REPOSITORY) private readonly capitalRepository: CapitalRepository,
     @Inject(RENTAL_REPOSITORY) private readonly rentalRepository: RentalRepository,
     @Inject(CROSS_BORDER_SALARY_STATEMENT_REPOSITORY) private readonly chSalaryCertificateRepository: CrossBorderSalaryStatementRepository,
+    @Optional() private readonly link?: LinkService,
   ) {}
+
+  /** Wages and pension of one person, from their own records (a Grenzgänger's Lohnausweis, the LStB, the pension). */
+  private async personIncome(userId: string, taxYear: number, answers: Answers): Promise<{ readonly facts: IncomeFacts; readonly data: WageTaxCertificateData; readonly pension: number | null }> {
+    const [lstbRecord, pensionRecord, chRecord] = await Promise.all([
+      this.lstbRepository.findForUserAndYear(userId, taxYear),
+      this.pensionRepository.findForUserAndYear(userId, taxYear),
+      this.chSalaryCertificateRepository.findForUserAndYear(userId, taxYear),
+    ])
+    const data = wageTaxCertificateDataFrom(lstbRecord)
+    const baseFacts: IncomeFacts = answers.ausland === CH_FOREIGN ? withGermanJob(crossBorderFacts(chRecord, answers), data, answers) : employeeFromData(data, answers)
+    // A pensioner's income is the pension, not the LStB — without it the hero read "0 €" (UX review K3).
+    const pension = answers.job === 'Rente' ? recordedValue(pensionRecord?.jahresbetrag ?? null) : null
+    const facts =
+      answers.job === 'Rente'
+        ? { ...baseFacts, einnahmen: baseFacts.einnahmen + (pension ?? 0), openItems: baseFacts.openItems + (pension === null ? 1 : 0) }
+        : baseFacts
+    return { facts, data, pension }
+  }
+
+  /** Person B of a joint return recorded in this account, or null (single, separate, or B's own account). */
+  private async partnerUser(userId: string, taxYear: number, answers: Answers): Promise<string | null> {
+    if (this.link === undefined || answers.familienstand !== 'Verheiratet') return null
+    const job = answers['partner-job']
+    if (job !== 'Angestellt' && job !== 'Rente') return null
+    try {
+      return await this.link.dataUser(userId, taxYear, 'B')
+    } catch {
+      return null
+    }
+  }
 
   async getSummary(userId: string, taxYear: number): Promise<CockpitSummaryDto | null> {
     const record = await this.taxYearRepository.findByUserAndYear(userId, taxYear)
     if (!record) return null
 
-    const [lstbRecord, interviewRows, markings, pensionRecord, capitalRecord, rentalRecords, chRecord] = await Promise.all([
-      this.lstbRepository.findForUserAndYear(userId, taxYear),
+    const [interviewRows, markings, pensionRecord, capitalRecord, rentalRecords] = await Promise.all([
       this.interviewRepository.findAllForUserAndYear(userId, taxYear),
       this.markingRepository.listForUserAndYears(userId, [taxYear]),
       this.pensionRepository.findForUserAndYear(userId, taxYear),
       this.capitalRepository.findForUserAndYear(userId, taxYear),
       this.rentalRepository.listForUserAndYear(userId, taxYear),
-      this.chSalaryCertificateRepository.findForUserAndYear(userId, taxYear),
     ])
 
-    const data = wageTaxCertificateDataFrom(lstbRecord)
     const answers = answersFrom(interviewRows)
+    const own = await this.personIncome(userId, taxYear, answers)
+    const data = own.data
 
     const unconfirmedFacts = new Set(
       markings.filter((k) => !k.confirmed).map((k) => k.key.slice(0, k.key.indexOf('.'))),
@@ -118,13 +179,13 @@ export class CockpitService {
       }
     }
 
-    const baseFacts = answers.ausland === CH_FOREIGN ? crossBorderFacts(chRecord, answers) : employeeFromData(data, answers)
-    // A pensioner's income is the pension, not the LStB — without it the hero read "0 €" (UX review K3).
-    const pension = answers.job === 'Rente' ? recordedValue(pensionRecord?.jahresbetrag ?? null) : null
-    const facts =
-      answers.job === 'Rente'
-        ? { ...baseFacts, einnahmen: baseFacts.einnahmen + (pension ?? 0), openItems: baseFacts.openItems + (pension === null ? 1 : 0) }
-        : baseFacts
+    // A joint return: Person B's wages count too, from B's own records (Echtdatentest 18.11.2026).
+    const partnerId = await this.partnerUser(userId, taxYear, answers)
+    const partner = partnerId === null ? null : await this.personIncome(partnerId, taxYear, partnerAnswers(answers, answersFrom(await this.interviewRepository.findAllForUserAndYear(partnerId, taxYear))))
+    const facts: IncomeFacts =
+      partner === null
+        ? own.facts
+        : { ...own.facts, einnahmen: own.facts.einnahmen + partner.facts.einnahmen, openItems: own.facts.openItems + partner.facts.openItems }
     const status = cockpitRangeFromInputs({
       sum: facts.einnahmen,
       openItems: facts.openItems,
@@ -134,6 +195,11 @@ export class CockpitService {
       unconfirmedSum,
     })
 
-    return { taxYear: record.taxYear, status: toStatusDto(status), openItems: record.openItems }
+    return {
+      taxYear: record.taxYear,
+      status: toStatusDto(status),
+      openItems: record.openItems,
+      ...(partner === null ? {} : { byPerson: { a: own.facts.einnahmen, b: partner.facts.einnahmen } }),
+    }
   }
 }

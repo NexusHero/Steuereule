@@ -335,7 +335,7 @@ function WorkdaysForm({
         </Text>
       ) : null}
 
-      <Text style={styles.sectionLabel}>{tr('arbeitstage.weekdays')}</Text>
+      <Text style={styles.sectionLabel}>{partnerName === undefined ? tr('arbeitstage.weekdays') : tr('arbeitstage.weekdaysPartner', { name: partnerName })}</Text>
       <View style={styles.weekdayRow}>
         {ISO_WEEKDAYS.map((tag) => (
           <Pressable

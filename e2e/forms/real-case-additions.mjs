@@ -5,6 +5,9 @@
 //           km, transport, workplace and start) and the further Werbungskosten are saved.
 //   Row A2 — the Strom then asks this cross-border commuter for the German LStB too (ADR-0089).
 //   Row B — child: childcare amount, provider and period are saved with the child.
+//   Row B2 — the child's printout hint names only what is really missing (Echtdatentest 18.11.2026).
+//   Row P — Person B in the Strom: the basis asks about a German job of both, the partner page names B
+//           (and refuses an empty name), B's masks name B, and the cockpit splits the income by person.
 //   Row C — cross-border: the official annual average rate is offered and saved.
 //   Row D — prepayments: the catalogue entry takes „Ja“ with the amount (and „Nein“ through the API).
 //   Row E — printout check: a value too long for its box is named before payment.
@@ -64,7 +67,7 @@ async function main() {
   try {
     const user = await createAccount({ apiOrigin, webOrigin, sql, tag: TAG })
     const api = user.api
-    await answer(api, YEAR, [['job', 'Angestellt'], ['ausland', 'Ja, in die Schweiz'], ['kinder', '1 Kind'], ['familienstand', 'Verheiratet'], ['partner-job', 'Angestellt'], ['partner-ausland', 'Ja, in die Schweiz']])
+    await answer(api, YEAR, [['job', 'Angestellt'], ['ausland', 'Ja, in die Schweiz'], ['de-job', 'Nur in der Schweiz'], ['kinder', '1 Kind'], ['familienstand', 'Verheiratet'], ['partner-job', 'Angestellt'], ['partner-ausland', 'Ja, in die Schweiz'], ['partner-de-job', 'Nur in der Schweiz']])
     const ctx = await newContextAtBreakpoint(browser, 'l')
     const page = await ctx.newPage()
     guardAgainst429(page, fail, '/api/auth/')
@@ -150,6 +153,13 @@ async function main() {
       15_000,
     )
     console.log(`[${TAG}] ✅ Row B — childcare amount, provider and period are saved with the child`)
+
+    // Row B2 — the printout hint lists only the gaps of this child, never the whole list.
+    const gap = page.locator('[data-testid^="kind-luecke-"]').first()
+    await gap.waitFor({ state: 'visible', timeout: 15_000 }).catch(() => fail('Row B2: the child without a tax id should name the gap'))
+    const gapText = await gap.innerText()
+    if (!gapText.includes('Steuer-ID')) fail(`Row B2: the hint should name the missing Steuer-ID, got "${gapText}"`)
+    console.log(`[${TAG}] ✅ Row B2 — the child's printout hint names what is missing`)
 
     // Row C — the official annual average rate (after the two Grenzgänger questions).
     await answer(api, YEAR, [['ch-wohnsitz', 'Deutschland'], ['ch-nichtrueckkehrtage', '0']])
@@ -425,6 +435,46 @@ async function main() {
       console.log(`[${TAG}] ✅ Row M — B's mask: a contradicting name is asked about, B's own LStB is B's`)
       await c2.close()
       await solo.api.dispose()
+    }
+
+    // Row P — Person B in the Strom (Echtdatentest 18.11.2026).
+    {
+      const couple = await createAccount({ apiOrigin, webOrigin, sql, tag: `${TAG}-paar` })
+      await answer(couple.api, YEAR, [['job', 'Angestellt'], ['ausland', 'Ja, in die Schweiz'], ['de-job', 'Auch in Deutschland'], ['kinder', 'Nein'], ['familienstand', 'Verheiratet'], ['partner-job', 'Angestellt'], ['partner-ausland', 'Ja, in die Schweiz'], ['partner-de-job', 'Auch in Deutschland']])
+      const c4 = await newContextAtBreakpoint(browser, 'l')
+      const p4 = await c4.newPage()
+      guardAgainst429(p4, fail, '/api/auth/')
+      await browserLogin(p4, webOrigin, couple.email, TAG)
+      await p4.goto(`${webOrigin}/app/steuerjahr/${YEAR}/strom/partner`, { waitUntil: 'networkidle' })
+      await visible(p4, 'strom-partner-vorname', 'Row P')
+      await p4.locator(tid('strom-weiter')).click()
+      await visible(p4, 'strom-partner-fehler', 'Row P (empty name)')
+      await p4.locator(tid('strom-partner-vorname')).fill('Nora')
+      await p4.locator(tid('strom-partner-nachname')).fill('Beispiel')
+      await p4.locator(tid('strom-partner-geburtsdatum')).fill('17.10.1991')
+      await p4.locator(tid('strom-weiter')).click()
+      // The own masks come first, then B's.
+      await visible(p4, 'strom-schritt-schweiz', 'Row P (after the partner page)')
+      const personB = (await call(couple.api, 'GET', `/v1/steuerjahre/${YEAR}/kopplung`)).personB
+      if (personB?.firstName !== 'Nora' || personB?.geburtsdatum !== '1991-10-17') fail(`Row P: Person B should be saved, got ${JSON.stringify(personB)}`)
+      await p4.goto(`${webOrigin}/app/steuerjahr/${YEAR}/strom/partner-schweiz`, { waitUntil: 'networkidle' })
+      await visible(p4, 'ch-interview-titel', 'Row P (B’s certificate)')
+      if ((await p4.locator(tid('ch-interview-titel')).innerText()) !== 'Wo wohnt Nora?') fail('Row P: B’s Swiss mask should ask „Wo wohnt Nora?“')
+      // A German job of B puts B's LStB into the Strom too.
+      await p4.goto(`${webOrigin}/app/steuerjahr/${YEAR}/strom/partner-lohnsteuerbescheinigung`, { waitUntil: 'networkidle' })
+      await visible(p4, 'strom-schritt-partner-lohnsteuerbescheinigung', 'Row P (B’s LStB)')
+      await visible(p4, 'lstb-bruttoarbeitslohn', 'Row P (B’s LStB)')
+      // The cockpit's recorded income counts both persons and names each share.
+      await call(couple.api, 'PUT', `/v1/steuerjahre/${YEAR}/lstb/bruttoarbeitslohn`, { kind: 'erfasst', value: 30000 })
+      await call(couple.api, 'PUT', `/v1/steuerjahre/${YEAR}/lstb/bruttoarbeitslohn?person=B`, { kind: 'erfasst', value: 20000 })
+      await p4.goto(`${webOrigin}/app`, { waitUntil: 'networkidle' })
+      await p4.locator(tid(`jahr-${YEAR}`)).click()
+      await visible(p4, 'cockpit-einkommen-personen', 'Row P (cockpit)')
+      const split = await p4.locator(tid('cockpit-einkommen-personen')).innerText()
+      if (!split.includes('Nora') || !split.includes('30.000') || !split.includes('20.000')) fail(`Row P: the cockpit should split the income, got "${split}"`)
+      console.log(`[${TAG}] ✅ Row P — the Strom names Person B, asks B's masks and the cockpit splits the income`)
+      await c4.close()
+      await couple.api.dispose()
     }
 
     // Row N — a user without a name (N1): „Bist du …?“; „Nein“ offers to create the person, „Ja“ takes the name.

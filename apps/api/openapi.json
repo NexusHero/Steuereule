@@ -1899,6 +1899,33 @@
         ]
       }
     },
+    "/v1/arbeitgeber": {
+      "get": {
+        "operationId": "KnownEmployersController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "The employers recorded on the Swiss salary certificates of the user and their Person B, over all years.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/KnownEmployerDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          }
+        },
+        "tags": [
+          "ch-lohnausweis"
+        ]
+      }
+    },
     "/v1/steuerjahre/{jahr}/arbeitsweg": {
       "get": {
         "operationId": "CommuteController_get",
@@ -5358,6 +5385,25 @@
           "kind"
         ]
       },
+      "CockpitIncomeByPersonDto": {
+        "type": "object",
+        "properties": {
+          "a": {
+            "type": "number",
+            "example": 96300,
+            "description": "Recorded wages and pension of Person A (EUR)."
+          },
+          "b": {
+            "type": "number",
+            "example": 107000,
+            "description": "Recorded wages and pension of Person B (EUR)."
+          }
+        },
+        "required": [
+          "a",
+          "b"
+        ]
+      },
       "CockpitSummaryDto": {
         "type": "object",
         "properties": {
@@ -5372,6 +5418,14 @@
             "type": "number",
             "example": 3,
             "description": "Minimal-Gate questions still open (REQ-015 remainingSteps)."
+          },
+          "byPerson": {
+            "description": "Only for a joint return recorded in this account: the share of each person.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CockpitIncomeByPersonDto"
+              }
+            ]
           }
         },
         "required": [
@@ -7468,6 +7522,28 @@
         "required": [
           "residence",
           "daysWithoutReturn"
+        ]
+      },
+      "KnownEmployerDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Cilag AG"
+          },
+          "strasse": {
+            "type": "string",
+            "example": "Hochstrasse 201"
+          },
+          "plzOrt": {
+            "type": "string",
+            "example": "8205 Schaffhausen"
+          }
+        },
+        "required": [
+          "name",
+          "strasse",
+          "plzOrt"
         ]
       },
       "CommuteInputsDto": {

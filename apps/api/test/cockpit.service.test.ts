@@ -13,6 +13,10 @@ import { FakeMarkingRepository } from './fakes/fake-marking.repository.js'
 import { FakeRentalRepository } from './fakes/fake-rental.repository.js'
 import { FakeChSalaryCertificateRepository } from './fakes/fake-ch-salary-certificate.repository.js'
 import type { CrossBorderSalaryStatementRecord } from '../src/ch-salary-certificate/ch-salary-certificate.repository.js'
+import { LinkService } from '../src/link/link.service.js'
+import { FakeLinkRepository } from './fakes/fake-link.repository.js'
+import { FakeProfileRepository } from './fakes/fake-profile.repository.js'
+import { FakeMasterDataRepository } from './fakes/fake-master-data.repository.js'
 
 describe('CockpitService', () => {
   let taxYear: FakeTaxYearRepository
@@ -248,6 +252,36 @@ describe('CockpitService', () => {
       const summary = await service.getSummary('user-a', 2025)
 
       expect(summary?.status).toMatchObject({ kind: 'spanne', openItems: 2 })
+    })
+
+    it('adds the German LStB of a commuter who also worked in Germany (Echtdatentest 18.11.2026)', async () => {
+      taxYear.seed('user-a', { taxYear: 2025, openItems: 0 })
+      interview.seed('user-a', 2025, { ...CROSS_BORDER, 'de-job': 'Auch in Deutschland' })
+      ch.seed(salaryCertificate({ 'bruttolohn-total': '90000', 'berufliche-vorsorge': '4500', quellensteuer: '4050' }, 1.07))
+      lstb.seed({ userId: 'user-a', taxYear: 2025, bruttoarbeitslohn: '78565', lohnsteuer: '18669', sozialversicherung: '18147' })
+
+      const summary = await service.getSummary('user-a', 2025)
+
+      expect(summary?.status).toEqual({ kind: 'bestimmt', value: 96300 + 78565 })
+      expect(summary?.byPerson).toBeUndefined()
+    })
+
+    it('sums the wages of both persons of a joint return and names each share (Echtdatentest 18.11.2026)', async () => {
+      const links = new FakeLinkRepository()
+      const link = new LinkService(links, new FakeProfileRepository(), new FakeMasterDataRepository(), { append: () => Promise.resolve() } as never)
+      service = new CockpitService(taxYear, lstb, interview, takeover, pension, capital, rental, ch, link)
+      await link.set('user-a', 2025, { filingType: 'zusammen' })
+      const b = await link.dataUser('user-a', 2025, 'B')
+      taxYear.seed('user-a', { taxYear: 2025, openItems: 0 })
+      interview.seed('user-a', 2025, { ...CROSS_BORDER, familienstand: 'Verheiratet', 'partner-job': 'Angestellt', 'partner-ausland': 'Ja, in die Schweiz', 'partner-de-job': 'Nur in der Schweiz' })
+      interview.seed(b, 2025, { 'ch-wohnsitz': 'Deutschland', 'ch-nichtrueckkehrtage': '0' })
+      ch.seed(salaryCertificate({ 'bruttolohn-total': '90000', 'berufliche-vorsorge': '4500', quellensteuer: '4050' }, 1.07))
+      ch.seed({ ...salaryCertificate({ 'bruttolohn-total': '100000', 'berufliche-vorsorge': '4000', quellensteuer: '4600' }, 1.07), userId: b })
+
+      const summary = await service.getSummary('user-a', 2025)
+
+      expect(summary?.status).toEqual({ kind: 'bestimmt', value: 96300 + 107000 })
+      expect(summary?.byPerson).toEqual({ a: 96300, b: 107000 })
     })
   })
 })

@@ -158,7 +158,17 @@ export async function openTile(page, tileId) {
 /** Waits until the Strom shows the step with this address segment (e.g. `auswahl`, `spenden`). */
 export async function waitForStromStep(page, slug) {
   try {
-    await page.locator(`[data-testid="strom-schritt-${slug}"]`).waitFor({ state: 'visible', timeout: 15_000 })
+    const wanted = page.locator(`[data-testid="strom-schritt-${slug}"]`)
+    // A married household meets Person B's steps on the way (partner name, B's masks). A scenario that
+    // does not record B goes on to the step it waits for at its own address, as a user could.
+    const partner = page.locator('[data-testid^="strom-schritt-partner"]')
+    await wanted.or(partner).first().waitFor({ state: 'visible', timeout: 15_000 })
+    if (!slug.startsWith('partner') && !(await wanted.isVisible()) && (await partner.first().isVisible())) {
+      const url = new URL(page.url())
+      url.pathname = url.pathname.replace(/\/strom\/[^/]+$/, `/strom/${slug}`)
+      await page.goto(url.toString(), { waitUntil: 'networkidle' })
+      await wanted.waitFor({ state: 'visible', timeout: 15_000 })
+    }
   } catch (err) {
     const text = (await page.locator('body').innerText().catch(() => '')).slice(0, 600)
     throw new Error(`Strom step "${slug}" did not appear; at ${page.url()}:\n${text}`, { cause: err })
@@ -175,12 +185,15 @@ export async function answerBasis(page, answers) {
   const pick = (id, value) => page.locator(`[data-testid="interview-option-${id}-${value}"]`).click()
   await pick('job', answers.job)
   if (await page.locator('[data-testid="strom-feld-ausland"]').isVisible()) await pick('ausland', answers.ausland)
+  // A Grenzgänger is asked whether there was a German job too; unless the scenario says so, there was not.
+  if (await page.locator('[data-testid="strom-feld-de-job"]').isVisible()) await pick('de-job', answers['de-job'] ?? 'Nur in der Schweiz')
   if (await page.locator('[data-testid="strom-feld-kinder"]').isVisible()) await pick('kinder', answers.kinder)
   if (await page.locator('[data-testid="strom-feld-familienstand"]').isVisible()) await pick('familienstand', answers.familienstand)
   const partnerJob = answers['partner-job'] ?? answers.partnerJob
   const partnerAusland = answers['partner-ausland'] ?? answers.partnerAusland
   if (partnerJob) await pick('partner-job', partnerJob)
   if (partnerAusland) await pick('partner-ausland', partnerAusland)
+  if (await page.locator('[data-testid="strom-feld-partner-de-job"]').isVisible()) await pick('partner-de-job', answers['partner-de-job'] ?? 'Nur in der Schweiz')
   await page.locator('[data-testid="strom-weiter"]').click()
 }
 

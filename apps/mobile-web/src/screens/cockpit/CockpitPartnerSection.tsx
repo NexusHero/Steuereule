@@ -16,10 +16,12 @@ export interface CockpitPartnerSectionProps {
   readonly crossBorder?: boolean
   /** What the interview says Person B does (ADR-0088); unanswered shows the employee's fields as before. */
   readonly partnerJob?: string | undefined
+  /** The basis says B also worked in Germany in the year: B's German certificate is asked too. */
+  readonly partnerGermanJob?: boolean
   readonly onOpenPartner: (area: PartnerAreaParam, name: string) => void
 }
 
-export function CockpitPartnerSection({ year, partnerName, enabled, crossBorder = false, partnerJob, onOpenPartner }: CockpitPartnerSectionProps) {
+export function CockpitPartnerSection({ year, partnerName, enabled, crossBorder = false, partnerJob, partnerGermanJob = false, onOpenPartner }: CockpitPartnerSectionProps) {
   const employed = partnerJob === undefined || partnerJob === 'Angestellt'
   const retired = partnerJob === 'Rente'
   const onlySwiss = crossBorder && partnerJob !== undefined
@@ -38,7 +40,7 @@ export function CockpitPartnerSection({ year, partnerName, enabled, crossBorder 
   // A partner who works only in Switzerland has a Lohnausweis, no German LStB (UX review H7) — unless the
   // way to work records a change of job or a German certificate is entered (ADR-0079); while the interview
   // has not said so, both stay on offer as before.
-  const germanCertificate = employed && (!onlySwiss || hasGermanJobToo(commuteData, lstbData))
+  const germanCertificate = employed && (!onlySwiss || partnerGermanJob || hasGermanJobToo(commuteData, lstbData))
 
   const lstbStatus = tileById('lstb').status({ path: 'angestellte', answers: {}, lstb: lstbData })
   const commuteStatus = tileById('arbeitsweg').status({ path: 'angestellte', answers: {}, commute: commuteData })

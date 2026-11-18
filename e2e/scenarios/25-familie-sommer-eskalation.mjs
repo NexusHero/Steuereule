@@ -91,8 +91,8 @@ export async function runScenario25(browser, webOrigin, sql) {
     geburtsdatum: '1987-03-12', strasse: 'Lindenweg', hausnummer: '4', plz: '79539', wohnort: 'Lörrach',
     religion: 'VD', religionConsent: true, familienstand: 'verheiratet', iban: 'DE89370400440532013000', finanzamt: 'Lörrach',
   })
-  await answer(api, Y, [['job', 'Angestellt'], ['ausland', 'Ja, in die Schweiz'], ['kinder', '2 oder mehr'], ['familienstand', 'Verheiratet']])
-  await answer(api, Y, [['partner-job', 'Angestellt'], ['partner-ausland', 'Ja, in die Schweiz']])
+  await answer(api, Y, [['job', 'Angestellt'], ['ausland', 'Ja, in die Schweiz'], ['de-job', 'Nur in der Schweiz'], ['kinder', '2 oder mehr'], ['familienstand', 'Verheiratet']])
+  await answer(api, Y, [['partner-job', 'Angestellt'], ['partner-ausland', 'Ja, in die Schweiz'], ['partner-de-job', 'Nur in der Schweiz']])
   await answer(api, Y, [['ch-wohnsitz', 'Deutschland'], ['ch-nichtrueckkehrtage', '0']])
   await call(api, 'PUT', `/v1/steuerjahre/${Y}/kopplung`, { filingType: 'zusammen' })
   await call(api, 'PUT', `/v1/steuerjahre/${Y}/kopplung/person-b`, {

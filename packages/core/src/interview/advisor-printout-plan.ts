@@ -88,7 +88,7 @@ const TEXTS: Readonly<Record<string, FieldText>> = {
   'kopplung.filingType': { question: 'Zusammen- oder Einzelveranlagung?', keywords: ['veranlag'] },
   'interview.kap-depot': { question: 'Liegt das Depot bei einem deutschen oder einem ausländischen Broker (oder ist es Krypto)?', keywords: ['broker', 'depotart'] },
   'kapital.inhaber': { question: 'Wem gehört das Depot: dir, Person B oder euch gemeinsam?', keywords: ['gehört', 'wessen', 'inhaber', 'gemeinsam'] },
-  'kapital.sparerPauschbetrag': { question: 'Genutzter Sparer-Pauschbetrag (auch 0)?', keywords: ['sparer'] },
+  'kapital.sparerPauschbetrag': { question: 'Wie viel Sparer-Pauschbetrag wurde laut Steuerbescheinigung über Freistellungsaufträge genutzt (auch 0)?', keywords: ['sparer'] },
   'kapital.kapitalertragsteuer': { question: 'Einbehaltene Kapitalertragsteuer (auch 0)?', keywords: ['kapitalertragsteuer'] },
   'kapital.solidaritaetszuschlag': { question: 'Einbehaltener Solidaritätszuschlag (auch 0)?', keywords: ['solidarit'] },
   'kapital.kirchensteuer': { question: 'Einbehaltene Kirchensteuer auf die Kapitalerträge (auch 0)?', keywords: ['kirchensteuer'] },
@@ -142,7 +142,7 @@ const TEXTS: Readonly<Record<string, FieldText>> = {
   'chLohnausweis.krankenkasseZusatzChf': { question: 'Krankenkasse: Wie viel vom erfassten Betrag entfällt auf Zusatzversicherungen (VVG) statt auf die Grundversicherung (KVG)? In CHF, auch 0.', keywords: ['zusatzversicherung', 'vvg', 'grundversicherung'] },
   'interview.einkuenfte': { question: 'Gab es Kapitalerträge über dem Sparer-Pauschbetrag bzw. Freistellungsauftrag oder ohne deutschen Steuerabzug (z. B. bei einer ausländischen Bank), oder Mieteinnahmen?', keywords: ['kapitalertr', 'freistellungsauftrag', 'sparer-pauschbetrag'] },
   'interview.vorauszahlungen-gate': { question: 'Hat das Finanzamt für das Jahr Einkommensteuer-Vorauszahlungen festgesetzt?', keywords: ['vorauszahlung'] },
-  'interview.vorauszahlungen-betrag': { question: 'Wie viel Einkommensteuer-Vorauszahlungen hast du für das Jahr gezahlt (Euro)?', keywords: ['vorauszahlung'] },
+  'interview.vorauszahlungen-betrag': { question: 'Wie viel hast du für das Jahr an Vorauszahlungen gezahlt, Einkommensteuer, Soli und Kirchensteuer zusammen (Euro)?', keywords: ['vorauszahlung'] },
   'interview.riester-art': { question: 'Riester: unmittelbar oder mittelbar begünstigt?', keywords: ['mittelbar'] },
   'interview.riester-einnahmen-vorjahr': { question: 'Beitragspflichtige Einnahmen des Vorjahrs (für Riester)?', keywords: ['vorjahr'] },
 }

@@ -240,3 +240,21 @@ describe('the place of work (Strom-vs-chat R1, ADR-0091)', () => {
     }
   })
 })
+
+describe('what the owl is told about capital income and prepayments (Echtdatentest 18.11.2026)', () => {
+  // The owl entered „682 € über dem Freistellungsauftrag“ as the income with 0 € allowance used: the
+  // estimate then took the full allowance off again and taxed nothing. And it left the Soli out of the
+  // prepayments, because it read the field as income tax only.
+  const prompt = (screen: string, field: string) => describeFieldForPrompt(fieldSpec(screen, field)!)
+
+  it('asks for capital income before the saver’s allowance, and how to get there from the amount above it', () => {
+    expect(prompt('kapital', 'kapitalertraege')).toMatch(/vor Abzug des Sparer-Pauschbetrags/)
+    expect(prompt('kapital', 'kapitalertraege')).toMatch(/Freistellungsauftrag/)
+    expect(prompt('kapital', 'sparerPauschbetrag')).toMatch(/genutzt/)
+  })
+
+  it('takes the prepayments as one sum of income tax, Soli and church tax', () => {
+    expect(prompt('interview', 'vorauszahlungen-betrag')).toMatch(/Solidaritätszuschlag/)
+    expect(prompt('interview', 'vorauszahlungen-betrag')).toMatch(/Summe/)
+  })
+})
