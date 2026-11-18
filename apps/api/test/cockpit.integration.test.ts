@@ -160,6 +160,6 @@ describe('GET /v1/steuerjahre/:jahr/cockpit — real Postgres (REQ-001 + ticket 
       headers: { cookie },
     })
 
-    expect(response.json()).toEqual({ taxYear: 2026, status: { kind: 'bestimmt', value: 50000 }, openItems: 2 })
+    expect(response.json()).toEqual({ taxYear: 2026, status: { kind: 'bestimmt', value: 50000 }, openItems: 2, submission: null })
   })
 })
