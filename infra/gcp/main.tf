@@ -106,6 +106,11 @@ resource "google_sql_database_instance" "postgres" {
       name  = "log_connections"
       value = "on"
     }
+    # And every connection's end with its duration, so a session can be followed to its close (Sonar S6258).
+    database_flags {
+      name  = "log_disconnections"
+      value = "on"
+    }
 
     insights_config {
       query_insights_enabled = false
@@ -160,6 +165,11 @@ resource "google_sql_database_instance" "keystore" {
     # Every connection attempt in the instance log, for the audit trail of tax data (Sonar S6258).
     database_flags {
       name  = "log_connections"
+      value = "on"
+    }
+    # And every connection's end with its duration, so a session can be followed to its close (Sonar S6258).
+    database_flags {
+      name  = "log_disconnections"
       value = "on"
     }
   }
