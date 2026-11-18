@@ -25,6 +25,7 @@ import { useOptionalSetTaxYear, useOptionalShellTaxYear, useOptionalSwitchToTab 
 import { storedReceiptFile } from '../../lib/receipts/storedReceiptFile'
 import { canReadAgain, filledFieldsByYear, outcomeOfReceipt } from '../../lib/receipts/receiptOutcome'
 import { useReceiptReader, type ReceiptReader } from '../../lib/receipts/useReceiptReader'
+import { toGermanDate } from '@steuereule/core'
 import { DEFAULT_TAX_YEAR } from '../../config/taxYear'
 import { makeStyles } from './ReceiptsScreen.styles'
 
@@ -458,6 +459,10 @@ function ReceiptCard({
   const kindKey = receipt.kind === null ? undefined : KIND_LABEL_KEYS[receipt.kind]
   const kindLabel = kindKey !== undefined ? tr(kindKey) : receipt.kind === null ? tr('belege.art.generic') : receipt.kind
   const folderCategory = folderForReceiptKind(receipt.kind)
+  // The folder shows the year the Beleg belongs to: the one it is assigned to, else the one its drafts went to.
+  const folderYear = (receipt.assignment.kind === 'zugeordnet' ? receipt.assignment.taxYear : null) ?? receipt.processing.draftsTaxYear ?? holderYear
+  // A Beleg with nothing for the return needs no year (ADR-0097): the assignment line would only add noise.
+  const needsYear = receipt.processing.state !== 'nichts_verwertbar' && receipt.processing.state !== 'verworfen'
   const switchToTab = useOptionalSwitchToTab()
   const setTaxYear = useOptionalSetTaxYear()
   const filledText = useFilledText()
@@ -495,16 +500,16 @@ function ReceiptCard({
       {/* One wrapped line of facts instead of a block each: folder, stored original, the two dates. */}
       <View style={s.metaRow}>
         <Text style={s.metaText} testID={`receipt-folder-${receipt.id}`}>
-          {`${holderYear} / ${tr(FOLDER_LABEL_KEYS[folderCategory])}`}
+          {`${folderYear} / ${tr(FOLDER_LABEL_KEYS[folderCategory])}`}
         </Text>
         {receipt.belegdatum !== null && (
           <Text style={s.metaText}>
-            {tr('belege.datum.belegdatum')}: <Text style={s.metaMono}>{receipt.belegdatum}</Text>
+            {tr('belege.datum.belegdatum')}: <Text style={s.metaMono}>{toGermanDate(receipt.belegdatum) ?? receipt.belegdatum}</Text>
           </Text>
         )}
         {receipt.zahlungsdatum !== null && (
           <Text style={s.metaText}>
-            {tr('belege.datum.zahlungsdatum')}: <Text style={s.metaMono}>{receipt.zahlungsdatum}</Text>
+            {tr('belege.datum.zahlungsdatum')}: <Text style={s.metaMono}>{toGermanDate(receipt.zahlungsdatum) ?? receipt.zahlungsdatum}</Text>
           </Text>
         )}
         {receipt.hasFile && <Text style={s.fileBadge}>{tr('belege.upload.fileAttached')}</Text>}
@@ -542,7 +547,7 @@ function ReceiptCard({
           />
         </View>
       ) : null}
-      <AssignmentSection receipt={receipt} onAssign={onAssign} />
+      {needsYear ? <AssignmentSection receipt={receipt} onAssign={onAssign} /> : null}
       <ReceiptHolderSection receipt={receipt} taxYear={holderYear} />
 
       <View style={s.cardFooter}>

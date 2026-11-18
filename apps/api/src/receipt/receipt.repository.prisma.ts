@@ -155,7 +155,7 @@ export class PrismaReceiptRepository implements ReceiptRepository {
           readOutcome: data.outcome,
           readReason: data.reason,
           draftsTaxYear: data.draftsTaxYear,
-          ...(data.belegdatum !== undefined ? { belegdatum: fromIsoDate(data.belegdatum) } : {}),
+          ...(data.taxYear !== undefined ? { taxYear: data.taxYear } : {}),
         },
         include: FILE_META_INCLUDE,
       }),

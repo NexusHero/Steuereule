@@ -728,6 +728,19 @@ describe('BelegeScreen', () => {
     })
     const SPENDE_FIELD = { actionId: 'a-1', taxYear: 2025, screen: 'interview', field: 'spenden-betrag', instance: null, person: 'A', label: 'Spenden', value: '3135' } as const
 
+    it('files a Beleg under the year its values went to, dates in German, and asks no year for nothing usable', async () => {
+      mockReceipts([
+        read('b-2024', 'spende-2024.pdf', { state: 'vorschlaege', reason: null, pending: 1, applied: 0, dismissed: 0, draftsTaxYear: 2024, open: true }, { assignment: { kind: 'ungebunden' }, holderTaxYear: null, belegdatum: '2025-07-16' }),
+        read('b-waage', 'waage.pdf', { state: 'nichts_verwertbar', reason: 'nicht_absetzbar', pending: 0, applied: 0, dismissed: 0, draftsTaxYear: null, open: false }, { assignment: { kind: 'ungebunden' } }),
+      ])
+      renderReceipts()
+      expect((await screen.findByTestId('receipt-folder-b-2024')).textContent).toMatch(/^2024 \//)
+      expect(screen.getByText('16.07.2025')).toBeTruthy()
+      expect(screen.queryByText('2025-07-16')).toBeNull()
+      // Only the Beleg with a value still waits for a year; the scale says nothing about years.
+      expect(screen.getAllByText('Unzugeordnet')).toHaveLength(1)
+    })
+
     it('says each state in plain words, with the reason and the way on', async () => {
       mockReceipts([
         read('b-wartet', 'spende.pdf', { state: 'vorschlaege', reason: null, pending: 2, applied: 0, dismissed: 0, draftsTaxYear: 2025, open: true }),
