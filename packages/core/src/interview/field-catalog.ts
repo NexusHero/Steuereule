@@ -328,7 +328,7 @@ const HINTS: Readonly<Partial<Record<Screen, Readonly<Record<string, string>>>>>
   interview: {
     einkuenfte: 'Pflichtfrage: Kapitalerträge über dem Sparer-Pauschbetrag bzw. Freistellungsauftrag oder ohne deutschen Steuerabzug (z. B. ausländische Bank) = „Kapitalerträge“; Mieteinnahmen = „Vermietung“; nichts davon = „Nein“',
     'vorauszahlungen-gate': '„Ja“, wenn das Finanzamt für das Jahr Einkommensteuer-Vorauszahlungen festgesetzt hat',
-    'vorauszahlungen-betrag': 'gezahlte Einkommensteuer-Vorauszahlungen des Jahres in ganzen Euro (z. B. „Vorauszahlungen: 4.800 Euro“ → 4800); die App setzt vorauszahlungen-gate dazu selbst auf „Ja“',
+    'vorauszahlungen-betrag': 'Summe aller für das Jahr gezahlten Vorauszahlungen in ganzen Euro: Einkommensteuer plus Solidaritätszuschlag plus Kirchensteuer zusammen, es gibt kein eigenes Soli-Feld (z. B. „26.004 Euro Einkommensteuer und 747 Euro Soli“ → 26751); die App setzt vorauszahlungen-gate dazu selbst auf „Ja“',
   },
   kind: {
     healthInsuranceAbroad: '„true“, wenn das Kind bei einer ausländischen Kasse versichert ist (z. B. Schweizer Grundversicherung); dann Anlage Kind Kz 89 statt Kz 66/67',
@@ -387,6 +387,10 @@ const HINTS: Readonly<Partial<Record<Screen, Readonly<Record<string, string>>>>>
   },
   kapital: {
     inhaber: 'wessen Depot: „A“ (Nutzer), „B“ (Person B) oder „gemeinsam“ (Gemeinschaftsdepot)',
+    kapitalertraege:
+      'Kapitalerträge vor Abzug des Sparer-Pauschbetrags (Steuerbescheinigung „Höhe der Kapitalerträge“); die App zieht den Pauschbetrag selbst ab. Nennt der Nutzer nur den Betrag über dem Freistellungsauftrag, ist hier dieser Betrag plus der genutzte Pauschbetrag einzutragen (z. B. „682 Euro über den Freistellungsaufträgen, 2.000 Euro verbraucht“ → 2682)',
+    sparerPauschbetrag:
+      'bereits genutzter Sparer-Pauschbetrag laut Steuerbescheinigung (über Freistellungsaufträge verbraucht), 0 nur wenn keiner genutzt wurde; „verbraucht“ heißt genutzt, bei Zusammenveranlagung meist 2000',
   },
   vermietung: {
     city: 'Ort des Mietobjekts',
