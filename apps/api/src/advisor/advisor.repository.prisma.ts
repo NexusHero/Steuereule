@@ -98,6 +98,20 @@ export class PrismaAdvisorRepository implements AdvisorRepository {
     return rows.map(toRecord)
   }
 
+  async recentUsage(limit: number): Promise<AdvisorMessageUsage[]> {
+    // Only the plain usage column (tokens, timings, model): no text, no user id leaves this query.
+    const rows = await this.prisma.advisorChatMessage.findMany({
+      where: { role: 'assistant', usageJson: { not: null } },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      select: { usageJson: true },
+    })
+    return rows.flatMap((row) => {
+      const usage = parseJson<AdvisorMessageUsage>(row.usageJson)
+      return usage ? [usage] : []
+    })
+  }
+
   async countUserMessagesSince(userId: string, since: Date): Promise<number> {
     return this.prisma.advisorChatMessage.count({
       where: {

@@ -47,6 +47,18 @@ describe('conversations in the database (#481)', () => {
     expect(raw!.titel).not.toContain('Vermietung')
   })
 
+  it('keeps the chat model picked for a conversation, and the model of each answer in its usage (ADR-0096)', async () => {
+    const conversation = await repo.createConversation(userId, YEAR, 'Modellwahl')
+    await repo.updateConversation(conversation.id, userId, { chatModel: 'anthropic:claude-opus-5-5' })
+    expect((await repo.findConversation(conversation.id, userId))?.chatModel).toBe('anthropic:claude-opus-5-5')
+    await repo.updateConversation(conversation.id, userId, { chatModel: null })
+    expect((await repo.findConversation(conversation.id, userId))?.chatModel).toBeNull()
+
+    const answer = await repo.createMessage({ userId, taxYear: YEAR, role: 'assistant', content: '', meta: null, status: 'streaming', conversationId: conversation.id })
+    await repo.finishMessage(answer.id, userId, { content: 'Ja.', status: 'complete', meta: null, reasoning: null, usage: { traceId: 'it', firstTokenMs: 900, durationMs: 1200, inputTokens: 10, outputTokens: 5, provider: 'anthropic', model: 'claude-opus-5-5', depth: 'max' } })
+    expect(await repo.recentUsage(5)).toContainEqual(expect.objectContaining({ traceId: 'it', model: 'claude-opus-5-5', depth: 'max' }))
+  })
+
   it('files a message without a conversation under the one used last', async () => {
     const used = await repo.createConversation(userId, YEAR, 'Zuletzt benutzt')
     await repo.updateConversation(used.id, userId, { lastUsedAt: new Date(Date.now() + 60_000) })

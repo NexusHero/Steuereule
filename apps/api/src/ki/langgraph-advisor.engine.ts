@@ -27,6 +27,7 @@ import {
   type AdvisorTwoPathsProposal,
   type OwlSourceId,
 } from '@steuereule/core'
+import { depthSetting, type AdvisorDepth } from '@steuereule/core'
 import { AI_RUNTIME_CONFIG_SERVICE, DEFAULT_AI_TURN_LIMITS, type AiRuntimeConfigService, type AiTurnLimits, type ResolvedAiSlotConfig } from './ai-runtime-config.service.js'
 import { anthropicThinksOnBudget, CHAT_MODEL_FACTORY, createChatModelFromConfig, type ChatModelFactory } from './chat-model.factory.js'
 import { classifyModelFailure, providerName } from './advisor-failure.js'
@@ -113,6 +114,12 @@ export const TASK_TIMEOUT_MS = 120_000
  * ran into the timeout and the user got an error instead of an answer (found by the eval).
  */
 export const ANSWER_RESERVE_MS = 20_000
+/**
+ * Max (ADR-0096): room for the answer after deep thinking, kept below what the Anthropic SDK still
+ * allows without streaming (about 21k tokens), and the time of a task, since thinking at Max took
+ * longer than the 60 s of one question and the turn fell back.
+ */
+export const MAX_DEPTH_OUTPUT_TOKENS = 20_000
 
 /** Said to the model when it ended a round after tools without a word. */
 export const ANSWER_NUDGE = 'Antworte jetzt dem Nutzer in Worten auf seine Frage, mit dem, was die Werkzeuge ergeben haben (Regel mit Norm, Betrag oder Satz, nächster Schritt). Keine weiteren Werkzeuge.'
@@ -277,9 +284,10 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
    * The model to ask when the first one fails: the fallback slot, if it is set up and is not the
    * same model with the same key (asking the same thing again helps nobody).
    */
-  private async resolveFailover(primary: ResolvedAiSlotConfig): Promise<{ readonly config: ResolvedAiSlotConfig; readonly model: BaseChatModel } | null> {
+  private async resolveFailover(primary: ResolvedAiSlotConfig, depth: AdvisorDepth | undefined): Promise<{ readonly config: ResolvedAiSlotConfig; readonly model: BaseChatModel } | null> {
     try {
-      const config = await this.runtimeConfig.resolveSlot('fallback')
+      // A Max question stays Max: the fallback thinks at its own deepest level (ADR-0096).
+      const config = withDepth(await this.runtimeConfig.resolveSlot('fallback'), depth)
       if (!config.enabled || config.provider === 'deterministic') return null
       if (config.provider === primary.provider && config.model === primary.model && config.apiKey === primary.apiKey) return null
       const model = this.resolveChatModel(config)
@@ -287,6 +295,13 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
     } catch {
       return null
     }
+  }
+
+  /** The conversation's own model, when the user picked one and its provider has a key; else the operator's. */
+  private async chatSlotFor(request: AdvisorTurnRequest): Promise<ResolvedAiSlotConfig> {
+    const choice = request.chatChoice
+    const chosen = choice !== undefined && this.runtimeConfig.resolveChatChoice ? await this.runtimeConfig.resolveChatChoice(choice.provider, choice.model) : null
+    return chosen ?? this.runtimeConfig.resolveSlot('advisor_chat')
   }
 
   async *streamTurn(request: AdvisorTurnRequest): AsyncIterable<AdvisorStreamEvent> {
@@ -318,7 +333,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
     try {
       limits = await this.runtimeConfig.resolveLimits()
       if (!(await this.runtimeConfig.isKillSwitchActive())) {
-        slotConfig = await this.runtimeConfig.resolveSlot('advisor_chat')
+        slotConfig = withDepth(await this.chatSlotFor(request), request.depth)
         chatModel = this.resolveChatModel(slotConfig)
       }
     } catch {
@@ -412,8 +427,8 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
     // The interview also does several things per answer (drafts, ticking areas off, the next
     // round): with the budget of one question it ran out of rounds before the next round (eval).
     const bigTurn = request.task !== undefined || request.skill === 'berater-interview'
+    const budgetMs = bigTurn || request.depth === 'max' ? Math.max(limits.turnTimeoutMs, TASK_TIMEOUT_MS) : limits.turnTimeoutMs
     const maxToolRounds = bigTurn ? Math.max(limits.maxToolRounds, TASK_TOOL_ROUNDS) : limits.maxToolRounds
-    const budgetMs = bigTurn ? Math.max(limits.turnTimeoutMs, TASK_TIMEOUT_MS) : limits.turnTimeoutMs
     const timeout = AbortSignal.timeout(budgetMs)
     const answerBy = Date.now() + Math.max(budgetMs - ANSWER_RESERVE_MS, budgetMs / 2)
     const signal = request.signal ? AbortSignal.any([request.signal, timeout]) : timeout
@@ -497,7 +512,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
       if (aborted === 'client') return
       const failure = classifyModelFailure(error, aborted === 'timeout' ? 'timeout' : 'error', slotConfig.provider)
       if (streamedTokenCount === 0 && canFailOver && failure.reason !== 'blocked') {
-        const next = await this.resolveFailover(slotConfig)
+        const next = await this.resolveFailover(slotConfig, request.depth)
         if (next) {
           yield { event: 'status', data: { text: `${providerName(slotConfig.provider)} antwortet nicht. Die Eule fragt ${providerName(next.config.provider)} …` } }
           for await (const ev of this.runModelTurn(request, next.config, next.model, limits, false, grayZone)) {
@@ -677,4 +692,17 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
     }
     return finalResult
   }
+}
+
+/**
+ * Max sets the deepest level the model offers (ADR-0096); Gründlich keeps the slot as configured,
+ * which is the chat's standard. A provider without a level of its own is left as it is.
+ */
+export function withDepth(config: ResolvedAiSlotConfig, depth: AdvisorDepth | undefined): ResolvedAiSlotConfig {
+  if (depth !== 'max' || !config.enabled) return config
+  if (config.provider !== 'anthropic' && config.provider !== 'google-genai' && config.provider !== 'openai') return config
+  const setting = depthSetting(config.provider, config.model, 'max')
+  if (Object.keys(setting).length === 0) return config
+  // Thinking at Max used up the usual 4096 tokens before a word was said: the answer came back empty.
+  return { ...config, ...setting, maxTokens: Math.max(config.maxTokens ?? 0, MAX_DEPTH_OUTPUT_TOKENS) }
 }

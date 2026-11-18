@@ -2543,6 +2543,21 @@
         "toggle": "Aus deinen Belegen wählen",
         "empty": "In deinen Belegen liegt noch keine Datei.",
         "all": "Alle Belege ansehen"
+      },
+      "model": {
+        "aria": "Modell dieses Gesprächs: {{model}}",
+        "standard": "{{model}} (Standard)",
+        "reference": "Vergleichsmaßstab für Kosten und Wartezeit",
+        "cost": "ca. {{factor}}× Kosten",
+        "costUnknown": "Kosten noch nicht bekannt",
+        "wait": "erste Worte nach ca. {{seconds}} s",
+        "notMeasured": "Kosten und Wartezeit noch nicht gemessen"
+      },
+      "depth": {
+        "label": "Max",
+        "aria": "Max: die Eule denkt für diese Nachricht so gründlich wie möglich",
+        "hintOff": "Aus: Die Eule antwortet gründlich (Standard).",
+        "hintOn": "An: Diese eine Nachricht beantwortet die Eule so gründlich wie das Modell kann."
       }
     },
     "companion": {

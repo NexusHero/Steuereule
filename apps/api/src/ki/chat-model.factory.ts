@@ -2,6 +2,7 @@ import { ChatAnthropic } from '@langchain/anthropic'
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai'
 import { ChatOpenAI } from '@langchain/openai'
+import { thinksOnBudget } from '@steuereule/core'
 import { DEFAULT_REASONING_BUDGET_TOKENS, type ResolvedAiSlotConfig } from './ai-runtime-config.service.js'
 
 /** Room left for the visible answer on top of an Anthropic thinking budget. */
@@ -17,15 +18,9 @@ export type ChatModelFactory = (config: ResolvedAiSlotConfig) => BaseChatModel |
 
 const THINKING_LEVEL = { low: 'LOW', medium: 'MEDIUM', high: 'HIGH' } as const
 
-/**
- * Claude models up to 4.5 think on a fixed token budget and take a temperature. Every later model
- * decides the depth itself (`adaptive`), is steered by `effort`, and rejects both a budget and a
- * temperature of our own with a 400. Unknown names count as current, so a new model works unchanged.
- */
-const BUDGET_THINKING_MODEL = /^claude-(?:3-|(?:opus|sonnet|haiku)-4(?:$|-(?:[015]|\d{8})(?:-|$)))/
-
+/** Claude up to 4.5 thinks on a token budget, every later model on `effort` (the rule lives in the core, ADR-0096). */
 export function anthropicThinksOnBudget(model: string): boolean {
-  return BUDGET_THINKING_MODEL.test(model)
+  return thinksOnBudget(model)
 }
 
 function createAnthropicModel(config: ResolvedAiSlotConfig, apiKey: string, temperature: number, reasoningBudget: number): BaseChatModel {

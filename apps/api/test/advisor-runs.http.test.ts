@@ -8,6 +8,7 @@ import { ThrottlerModule } from '@nestjs/throttler'
 import type { AdvisorStreamEvent } from '@steuereule/core'
 import { afterEach, describe, expect, it } from 'vitest'
 import { AdvisorController, FastifyThrottlerGuard } from '../src/advisor/advisor.controller.js'
+import { AdvisorModelsService } from '../src/advisor/advisor-models.service.js'
 import { AdvisorService } from '../src/advisor/advisor.service.js'
 import { InMemoryAdvisorRunLog } from '../src/advisor/run/advisor-run-log.js'
 import { AdvisorRunService } from '../src/advisor/run/advisor-run.service.js'
@@ -49,6 +50,7 @@ async function boot(script: readonly ScriptStep[]) {
     providers: [
       { provide: AdvisorService, useValue: kit.service },
       { provide: AdvisorRunService, useValue: runs },
+      { provide: AdvisorModelsService, useValue: { list: async () => ({ standard: null, models: [] }), isAvailable: async () => false } },
       { provide: BETTER_AUTH_BUNDLE, useValue: { sessionCookieName: 'se.session', auth: { api: { getSession: async () => null } } } },
       { provide: APP_FILTER, useClass: DomainErrorFilter },
       UserContextGuard,

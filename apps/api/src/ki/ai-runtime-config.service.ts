@@ -1,4 +1,5 @@
 import { Inject, Injectable, Optional } from '@nestjs/common'
+import type { AdvisorModelProvider } from '@steuereule/core'
 
 /** `advisor_guard`: the small model that checks a typed question's topic first (ADR-0069). */
 export type AiTaskSlot = 'advisor_chat' | 'vision_ocr' | 'fallback' | 'advisor_guard'
@@ -57,6 +58,13 @@ export interface AiRuntimeConfigService {
   isKillSwitchActive(): Promise<boolean>
   resolveSlot(slot: AiTaskSlot): Promise<ResolvedAiSlotConfig>
   resolveLimits(): Promise<AiTurnLimits>
+  /**
+   * The chat slot for the model a user picked for a conversation (ADR-0096), with that provider's
+   * key and the chat's own settings; null when the provider has no key, so the standard model answers.
+   */
+  resolveChatChoice?(provider: AdvisorModelProvider, model: string): Promise<ResolvedAiSlotConfig | null>
+  /** The providers that have a key for the chat, each with it, for listing their models. */
+  chatProviderKeys?(): Promise<readonly { readonly provider: AdvisorModelProvider; readonly apiKey: string; readonly baseUrl?: string | undefined }[]>
 }
 
 const VALID_PROVIDERS: ReadonlySet<string> = new Set<AiProviderKind>([
@@ -134,6 +142,41 @@ export class EnvAiRuntimeConfigService implements AiRuntimeConfigService {
       maxToolRounds: positiveIntOr(this.env.AI_MAX_TOOL_ROUNDS, DEFAULT_AI_TURN_LIMITS.maxToolRounds, 10),
       dailyMessageLimit: positiveIntOr(this.env.AI_DAILY_MESSAGE_LIMIT, DEFAULT_AI_TURN_LIMITS.dailyMessageLimit, 1_000),
     }
+  }
+
+  /** A provider's own key for the chat: the advisor key only belongs to the configured advisor provider. */
+  private chatKeyOf(provider: AdvisorModelProvider): string | null {
+    if (normalizeProvider(this.env.AI_ADVISOR_PROVIDER) === provider && this.env.AI_ADVISOR_API_KEY?.trim()) return this.env.AI_ADVISOR_API_KEY.trim()
+    switch (provider) {
+      case 'google-genai':
+        return this.env.GEMINI_API_KEY?.trim() || this.env.GOOGLE_API_KEY?.trim() || null
+      case 'anthropic':
+        return this.env.ANTHROPIC_API_KEY?.trim() || null
+      case 'openai':
+        return this.env.OPENAI_API_KEY?.trim() || null
+    }
+  }
+
+  async chatProviderKeys(): Promise<readonly { readonly provider: AdvisorModelProvider; readonly apiKey: string; readonly baseUrl?: string | undefined }[]> {
+    const standard = await this.resolveSlot('advisor_chat')
+    if (!standard.enabled || standard.provider === 'deterministic' || standard.provider === 'fake') return []
+    const out: { provider: AdvisorModelProvider; apiKey: string; baseUrl?: string }[] = []
+    for (const provider of ['anthropic', 'google-genai', 'openai'] as const) {
+      const apiKey = provider === standard.provider ? standard.apiKey : this.chatKeyOf(provider)
+      if (apiKey) out.push({ provider, apiKey, ...(provider === standard.provider && standard.baseUrl !== undefined ? { baseUrl: standard.baseUrl } : {}) })
+    }
+    return out
+  }
+
+  async resolveChatChoice(provider: AdvisorModelProvider, model: string): Promise<ResolvedAiSlotConfig | null> {
+    const standard = await this.resolveSlot('advisor_chat')
+    if (!standard.enabled || standard.provider === 'deterministic' || standard.provider === 'fake') return null
+    if (provider === standard.provider) return { ...standard, model }
+    const apiKey = this.chatKeyOf(provider)
+    if (!apiKey) return null
+    // An OpenAI-compatible base URL belongs to the standard provider, never to another one.
+    const { baseUrl: _baseUrl, ...rest } = standard
+    return { ...rest, provider, model, apiKey }
   }
 
   private inferProvider(): AiProviderKind {

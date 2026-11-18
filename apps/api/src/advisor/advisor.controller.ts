@@ -53,6 +53,8 @@ import { RequiresAccount } from '../auth/requires-account.guard.js'
 import { UserContextGuard } from '../auth/user-context.guard.js'
 import { ParseTaxYearPipe } from '../cockpit/parse-tax-year.pipe.js'
 import { AdvisorService } from './advisor.service.js'
+import { AdvisorModelsService } from './advisor-models.service.js'
+import { InvalidInputError } from '../common/domain-error.js'
 import {
   AdvisorActionMutationResponseDto,
   AdvisorChatMessageDto,
@@ -71,6 +73,8 @@ import {
   SaveAdvisorNoteDto,
   ClearAdvisorConversationResponseDto,
   RenameAdvisorConversationDto,
+  AdvisorModelsDto,
+  SetAdvisorConversationModelDto,
   SendAdvisorMessageDto,
   SendAdvisorMessageResponseDto,
   SetAdvisorFeedbackDto,
@@ -88,7 +92,38 @@ export class AdvisorController {
   constructor(
     @Inject(AdvisorService) private readonly service: AdvisorService,
     @Inject(AdvisorRunService) private readonly runs: AdvisorRunService,
+    @Inject(AdvisorModelsService) private readonly models: AdvisorModelsService,
   ) {}
+
+  @Get('models')
+  @OwlRoute()
+  @ApiOperation({ summary: 'The chat models the user may pick, with Gründlich/Max and their measured cost and wait (ADR-0096)' })
+  @ApiOkResponse({ type: AdvisorModelsDto })
+  listModels(): Promise<AdvisorModelsDto> {
+    return this.models.list()
+  }
+
+  @Put('conversations/:conversationId/model')
+  @OwlRoute()
+  @ApiOperation({ summary: 'Pick the chat model of a conversation; provider and model null go back to the standard (ADR-0096)' })
+  @ApiParam({ name: 'conversationId', type: String })
+  @ApiBody({ type: SetAdvisorConversationModelDto })
+  @ApiOkResponse({ type: AdvisorConversationDto })
+  @ApiNotFoundResponse({ description: 'No such conversation in this tax year.' })
+  async setConversationModel(
+    @CurrentUser() userId: string,
+    @Param('jahr', ParseTaxYearPipe) year: number,
+    @Param('conversationId') conversationId: string,
+    @Body() dto: SetAdvisorConversationModelDto,
+  ): Promise<AdvisorConversationDto> {
+    const provider = dto.provider ?? null
+    const model = dto.model ?? null
+    if (provider === null && model === null) return this.service.setConversationModel(userId, year, conversationId, null)
+    if (provider === null || model === null || !(await this.models.isAvailable(provider, model))) {
+      throw new InvalidInputError('ADVISOR_MODEL_UNAVAILABLE', 'Dieses Modell steht gerade nicht zur Verfügung.')
+    }
+    return this.service.setConversationModel(userId, year, conversationId, { provider, model })
+  }
 
   @Get('session')
   @OwlRoute()

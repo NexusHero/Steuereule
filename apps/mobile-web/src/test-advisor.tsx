@@ -6,7 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { vi } from 'vitest'
 import type { AdvisorChatMessageView } from '@steuereule/core'
 import { createAppI18n } from './i18n/app-i18n'
-import { AdvisorChatPanel } from './screens/advisor/AdvisorChatPanel'
+import { AdvisorChatPanel, type AdvisorChatPanelProps } from './screens/advisor/AdvisorChatPanel'
 import { CopilotBridgeProvider, type CopilotMode } from './screens/advisor/CopilotBridgeProvider'
 import { renderInApp } from './test-render'
 
@@ -28,9 +28,9 @@ export function CopilotBridgeHarness({ children }: { readonly children: ReactNod
 }
 
 /** Renders the chat panel on its own and hands back the spy its messages go out through. For tests only. */
-export function renderAdvisorChatPanel(messages: AdvisorChatMessageView[] = []) {
+export function renderAdvisorChatPanel(messages: AdvisorChatMessageView[] = [], props: Partial<AdvisorChatPanelProps> = {}) {
   const onSendMessage = vi.fn()
-  renderInApp(<AdvisorChatPanel messages={messages} onSendMessage={onSendMessage} />)
+  renderInApp(<AdvisorChatPanel messages={messages} onSendMessage={onSendMessage} {...props} />)
   return { onSendMessage }
 }
 

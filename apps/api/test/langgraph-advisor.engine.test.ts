@@ -1,3 +1,4 @@
+import { AdvisorModelsService } from '../src/advisor/advisor-models.service.js'
 import { BaseChatModel, type BaseChatModelCallOptions, type BindToolsInput } from '@langchain/core/language_models/chat_models'
 import { CallbackManagerForLLMRun } from '@langchain/core/callbacks/manager'
 import { AIMessage, AIMessageChunk, type BaseMessage } from '@langchain/core/messages'
@@ -493,6 +494,7 @@ describe('AiRuntimeConfigService & LangGraphAdvisorEngine (#446 Slice 2)', () =>
       providers: [
         { provide: AdvisorService, useValue: service },
         { provide: AdvisorRunService, useValue: new AdvisorRunService(service, new InMemoryAdvisorRunLog(), advisorRepo) },
+        { provide: AdvisorModelsService, useValue: { list: async () => ({ standard: null, models: [] }), isAvailable: async () => false } },
         {
           provide: BETTER_AUTH_BUNDLE,
           useValue: {

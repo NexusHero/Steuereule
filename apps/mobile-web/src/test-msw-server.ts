@@ -30,6 +30,7 @@ import {
   getOwlModeControllerGetSettingMockHandler,
   getOwlModeControllerGetCardsMockHandler,
   getAdvisorControllerConnectionMockHandler,
+  getAdvisorControllerListModelsMockHandler,
   getAdvisorControllerGetSessionMockHandler,
   getAssistantsControllerListConnectedMockHandler,
 } from '@steuereule/api-client/msw'
@@ -303,13 +304,15 @@ export const server = setupServer(
   getOwlModeControllerGetSettingMockHandler(EMPTY_OWL_SETTING_RESPONSE),
   getOwlModeControllerGetCardsMockHandler(EMPTY_OWL_CARDS_RESPONSE),
   getAdvisorControllerConnectionMockHandler({ state: 'connected', provider: 'Gemini', model: 'gemini-test', checkedAt: '2026-01-01T00:00:00.000Z' }),
+  // No model to pick by default: the picker and Max stay hidden unless a test offers models (ADR-0096).
+  getAdvisorControllerListModelsMockHandler({ standard: null, models: [] }),
   getAdvisorControllerGetSessionMockHandler({
     enabled: false,
     greeting: 'Hallo! Ich bin deine SteuerEule.',
     openCards: [],
     conversationId: 'conversation-1',
-    conversations: [{ id: 'conversation-1', title: null, createdAt: '2026-01-01T00:00:00.000Z', lastUsedAt: '2026-01-01T00:00:00.000Z', answering: false }],
-    projects: [{ taxYear: 2026, conversations: [{ id: 'conversation-1', title: null, createdAt: '2026-01-01T00:00:00.000Z', lastUsedAt: '2026-01-01T00:00:00.000Z', answering: false }] }],
+    conversations: [{ id: 'conversation-1', title: null, createdAt: '2026-01-01T00:00:00.000Z', lastUsedAt: '2026-01-01T00:00:00.000Z', answering: false, chatModel: null }],
+    projects: [{ taxYear: 2026, conversations: [{ id: 'conversation-1', title: null, createdAt: '2026-01-01T00:00:00.000Z', lastUsedAt: '2026-01-01T00:00:00.000Z', answering: false, chatModel: null }] }],
     context: { usedTokens: 0, maxTokens: 6000, percent: 0, level: 'ok', canSummarize: false },
     notes: [],
     situation: { text: '', updatedAt: null },

@@ -109,7 +109,7 @@ import type {
   SendAdvisorMessageResponseDto,
   AdvisorOpeningStateDto,
 } from './dto/advisor.dto.js'
-import { ANSWERING_WINDOW_MS, effectLeftOutOfEstimate, projectsOf, toPublicAction, toPublicMeta, toMessageDto, PreparedAdvisorTurn, titleFrom, liveMessages, historySources, contextOf, toNoteDto, toConversationDto } from './advisor-shared.js'
+import { ANSWERING_WINDOW_MS, effectLeftOutOfEstimate, projectsOf, toPublicAction, toPublicMeta, toMessageDto, PreparedAdvisorTurn, titleFrom, liveMessages, historySources, contextOf, toNoteDto, toConversationDto, parseChatModel } from './advisor-shared.js'
 import { AdvisorConversations } from './advisor-conversations.js'
 import { AdvisorProjectNotes } from './advisor-project-notes.js'
 import { AdvisorCaseFacts } from './advisor-case-facts.js'
@@ -317,6 +317,10 @@ export class AdvisorService {
 
   async createConversation(userId: string, taxYear: number): Promise<AdvisorConversationDto> {
     return this.conversations.createConversation(userId, taxYear)
+  }
+
+  async setConversationModel(userId: string, taxYear: number, conversationId: string, choice: { readonly provider: string; readonly model: string } | null): Promise<AdvisorConversationDto> {
+    return this.conversations.setChatModel(userId, taxYear, conversationId, choice)
   }
 
   async renameConversation(userId: string, taxYear: number, conversationId: string, title: string): Promise<AdvisorConversationDto> {
@@ -701,7 +705,8 @@ export class AdvisorService {
 
     // Whether the owl's last drafts were just taken over, and which printout gaps it asked then (ADR-0091, Nachtrag).
     const previousAnswer = lastAnswer ? { draftsApplied: draftsTakenOver(lastAnswer.meta), ...(lastAnswer.meta?.printoutGapsAsked ? { printoutGapsAsked: lastAnswer.meta.printoutGapsAsked } : {}) } : undefined
-    return { runId, userMessage, assistantMessageId: assistantMessage.id, scrubbedUserText, history, dto, conversationId: conversation.id, needsSummary, fromApp, personalDataConsent: consent, maskedPersonalData, ...(previousAnswer ? { previousAnswer } : {}), ...(opening ? { opening } : {}) }
+    const chatChoice = parseChatModel(conversation.chatModel)
+    return { runId, userMessage, assistantMessageId: assistantMessage.id, scrubbedUserText, history, dto, conversationId: conversation.id, ...(chatChoice ? { chatChoice } : {}), needsSummary, fromApp, personalDataConsent: consent, maskedPersonalData, ...(previousAnswer ? { previousAnswer } : {}), ...(opening ? { opening } : {}) }
   }
 
   /** An opening needs something to talk about and an empty conversation. */
@@ -749,7 +754,16 @@ export class AdvisorService {
     ): Promise<AdvisorChatMessageRecord> => {
       finished = true
       const fullMeta: AdvisorMessageMeta = { ...meta, ...(steps.length > 0 ? { thoughtSteps: steps } : {}) }
-      const usageRecord: AdvisorMessageUsage = { ...usage, traceId: runId, firstTokenMs, durationMs: Date.now() - startedAt }
+      const usageRecord: AdvisorMessageUsage = {
+        ...usage,
+        traceId: runId,
+        firstTokenMs,
+        durationMs: Date.now() - startedAt,
+        // Which model answered and how deep: what the cost factors of the model picker are measured from (ADR-0096).
+        ...(meta.engine?.provider ? { provider: meta.engine.provider } : {}),
+        ...(meta.engine?.model ? { model: meta.engine.model } : {}),
+        depth: dto.depth ?? 'gruendlich',
+      }
       const record = await this.advisorRepo.finishMessage(assistantMessageId, userId, {
         content,
         meta: Object.keys(fullMeta).length > 0 ? fullMeta : null,
@@ -869,6 +883,8 @@ export class AdvisorService {
         previewEffect: this.previewEffectFor(userId, taxYear),
         readEstimate: this.estimateReaderFor(userId, taxYear),
         notes: buildNoteHandles(await this.advisorRepo.listNotes(userId, taxYear)),
+        ...(turn.chatChoice ? { chatChoice: turn.chatChoice } : {}),
+        ...(dto.depth ? { depth: dto.depth } : {}),
       }
       const events = turn.opening
         ? openingStream(this.advisorEngine, request, await this.opening.brief(userId, taxYear, turn.opening.context))

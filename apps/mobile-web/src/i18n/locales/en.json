@@ -2543,6 +2543,21 @@
         "toggle": "Choose from your documents",
         "empty": "There is no file in your documents yet.",
         "all": "View all documents"
+      },
+      "model": {
+        "aria": "Model of this conversation: {{model}}",
+        "standard": "{{model}} (standard)",
+        "reference": "Reference for cost and wait",
+        "cost": "about {{factor}}× the cost",
+        "costUnknown": "cost not known yet",
+        "wait": "first words after about {{seconds}} s",
+        "notMeasured": "cost and wait not measured yet"
+      },
+      "depth": {
+        "label": "Max",
+        "aria": "Max: the owl thinks as thoroughly as it can for this message",
+        "hintOff": "Off: the owl answers thoroughly (standard).",
+        "hintOn": "On: the owl answers this one message as thoroughly as the model can."
       }
     },
     "companion": {

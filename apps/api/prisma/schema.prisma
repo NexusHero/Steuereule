@@ -1360,6 +1360,8 @@ model AdvisorConversation {
   /// instead of the messages up to `summaryUntil`; the user still sees every message.
   summary      String?              @map("zusammenfassung") /// @encrypted?mode=strict
   summaryUntil DateTime?            @map("zusammengefasstBis")
+  /// The chat model the user picked for this conversation, "provider:model" (ADR-0094). Null = the operator's.
+  chatModel    String?              @map("modell")
   messages     AdvisorChatMessage[]
 
   @@index([userId, taxYear, lastUsedAt])

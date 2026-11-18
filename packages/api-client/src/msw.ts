@@ -159,6 +159,8 @@ export {
   getAdvisorControllerConnectionResponseMock,
   getAdvisorControllerConnectionMockHandler,
   getSteuerEuleAPIMock as getEulenModusApiMock,
+  getAdvisorControllerListModelsMockHandler,
+  getAdvisorControllerSetConversationModelMockHandler,
 } from './generated/eulen-modus.msw'
 export {
   getAssistantsControllerListConnectedResponseMock,

@@ -123,6 +123,8 @@ export interface SendStreamingOptions {
   readonly replaceFromMessageId?: string | undefined
   readonly skill?: AdvisorSkillId | undefined
   readonly turbo?: boolean | undefined
+  /** Max instead of Gründlich for this one message (ADR-0096). */
+  readonly depth?: 'max' | undefined
 }
 
 /** Marks the running step of a stopped plan as aborted; finished steps stay as they are. */
@@ -630,6 +632,7 @@ export function CopilotBridgeProvider({
             ...(options?.replaceFromMessageId ? { replaceFromMessageId: options.replaceFromMessageId } : {}),
             ...(options?.skill ? { skill: options.skill } : {}),
             ...(options?.turbo ? { turbo: true } : {}),
+            ...(options?.depth === 'max' ? { depth: 'max' } : {}),
             ...(conversationIdRef.current ? { conversationId: conversationIdRef.current } : {}),
           }),
         }),

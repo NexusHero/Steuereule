@@ -10,12 +10,17 @@ import {
   IsObject,
   IsOptional,
   IsString,
+  Matches,
   MaxLength,
   ValidateIf,
   ValidateNested,
   registerDecorator,
 } from 'class-validator'
 import {
+  ADVISOR_DEPTHS,
+  ADVISOR_MODEL_PROVIDERS,
+  type AdvisorDepth,
+  type AdvisorModelProvider,
   ADVISOR_FEEDBACK_RATINGS,
   ADVISOR_SKILL_IDS,
   ADVISOR_FEEDBACK_REASONS,
@@ -547,9 +552,20 @@ export class SetAdvisorFeedbackDto {
   reason?: AdvisorFeedbackReason | undefined
 }
 
+export class AdvisorChatModelRefDto {
+  @ApiProperty({ type: String, enum: ADVISOR_MODEL_PROVIDERS })
+  provider!: AdvisorModelProvider
+
+  @ApiProperty({ type: String, example: 'claude-sonnet-5-5' })
+  model!: string
+}
+
 export class AdvisorConversationDto {
   @ApiProperty({ type: String })
   id!: string
+
+  @ApiProperty({ type: () => AdvisorChatModelRefDto, nullable: true, description: 'The chat model picked for this conversation (ADR-0096); null = the standard model.' })
+  chatModel!: AdvisorChatModelRefDto | null
 
   @ApiProperty({ type: String, nullable: true, description: 'From the first question; null while nothing has been asked.', example: 'Lohnt sich mein Arbeitsweg?' })
   title!: string | null
@@ -748,6 +764,11 @@ export class SendAdvisorMessageDto {
   @IsBoolean()
   turbo?: boolean | undefined
 
+  @ApiPropertyOptional({ type: String, enum: ADVISOR_DEPTHS, description: 'Gründlich (the standard) or Max for this one message (ADR-0096).' })
+  @IsOptional()
+  @IsIn(ADVISOR_DEPTHS)
+  depth?: AdvisorDepth | undefined
+
   @ApiPropertyOptional({
     type: String,
     enum: ADVISOR_QUICK_ACTIONS,
@@ -834,4 +855,54 @@ export class ApplyBatchActionsResponseDto {
 
   @ApiProperty({ type: [AdvisorChatMessageDto] })
   messages!: AdvisorChatMessageDto[]
+}
+
+export class SetAdvisorConversationModelDto {
+  @ApiPropertyOptional({ type: String, enum: ADVISOR_MODEL_PROVIDERS, nullable: true, description: 'Null together with model: back to the standard model.' })
+  @IsOptional()
+  @IsIn(ADVISOR_MODEL_PROVIDERS)
+  provider?: AdvisorModelProvider | null
+
+  @ApiPropertyOptional({ type: String, nullable: true, example: 'claude-opus-5-5' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  @Matches(/^[a-z0-9][a-z0-9.-]*$/i)
+  model?: string | null
+}
+
+export class AdvisorDepthProfileDto {
+  @ApiProperty({ type: String, enum: ADVISOR_DEPTHS })
+  depth!: AdvisorDepth
+
+  @ApiPropertyOptional({ type: Number, example: 3, description: 'Cost of a median answer relative to the standard model with Gründlich; absent while unknown.' })
+  costFactor?: number
+
+  @ApiPropertyOptional({ type: Number, example: 15, description: 'Median wait until the first word, in seconds; absent while unmeasured.' })
+  firstWordSeconds?: number
+
+  @ApiProperty({ type: Number, example: 12, description: 'Answers measured; below 5 the setting counts as not measured yet.' })
+  samples!: number
+}
+
+export class AdvisorModelOptionDto {
+  @ApiProperty({ type: String, enum: ADVISOR_MODEL_PROVIDERS })
+  provider!: AdvisorModelProvider
+
+  @ApiProperty({ type: String, example: 'claude-sonnet-5-5' })
+  model!: string
+
+  @ApiProperty({ type: String, example: 'Claude Sonnet 5.5' })
+  label!: string
+
+  @ApiProperty({ type: () => [AdvisorDepthProfileDto], description: 'The depths this model can do; Max only where it thinks deeper than Gründlich.' })
+  depths!: readonly AdvisorDepthProfileDto[]
+}
+
+export class AdvisorModelsDto {
+  @ApiProperty({ type: () => AdvisorChatModelRefDto, nullable: true, description: 'The operator’s standard chat model; null when the chat runs on rules only.' })
+  standard!: AdvisorChatModelRefDto | null
+
+  @ApiProperty({ type: () => [AdvisorModelOptionDto], description: 'Chat models of every provider with a key, the standard first.' })
+  models!: readonly AdvisorModelOptionDto[]
 }

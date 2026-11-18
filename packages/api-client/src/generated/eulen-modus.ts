@@ -34,6 +34,7 @@ import type {
   AdvisorControllerRunEventsParams,
   AdvisorControllerSearchParams,
   AdvisorConversationDto,
+  AdvisorModelsDto,
   AdvisorNoteDto,
   AdvisorOpeningStateDto,
   AdvisorSearchHitDto,
@@ -55,6 +56,7 @@ import type {
   SaveAdvisorSituationDto,
   SendAdvisorMessageDto,
   SendAdvisorMessageResponseDto,
+  SetAdvisorConversationModelDto,
   SetAdvisorFeedbackDto,
   SetOwlSettingDto,
   SetPersonalDataConsentDto,
@@ -250,6 +252,212 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getReceiptParseControllerReassignMutationOptions(options), queryClient);
+    }
+
+export type advisorControllerListModelsResponse200 = {
+  data: AdvisorModelsDto
+  status: 200
+}
+
+export type advisorControllerListModelsResponseSuccess = (advisorControllerListModelsResponse200) & {
+  headers: Headers;
+};
+;
+
+export type advisorControllerListModelsResponse = (advisorControllerListModelsResponseSuccess)
+
+export const getAdvisorControllerListModelsUrl = (jahr: number,) => {
+
+
+
+
+  return `/v1/steuerjahre/${jahr}/advisor/models`
+}
+
+/**
+ * @summary The chat models the user may pick, with Gründlich/Max and their measured cost and wait (ADR-0094)
+ */
+export const advisorControllerListModels = async (jahr: number, options?: RequestInit): Promise<advisorControllerListModelsResponse> => {
+
+  return httpClient<advisorControllerListModelsResponse>(getAdvisorControllerListModelsUrl(jahr),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getAdvisorControllerListModelsQueryKey = (jahr: number,) => {
+    return [
+    `/v1/steuerjahre/${jahr}/advisor/models`
+    ] as const;
+    }
+
+
+export const getAdvisorControllerListModelsQueryOptions = <TData = Awaited<ReturnType<typeof advisorControllerListModels>>, TError = unknown>(jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof advisorControllerListModels>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getAdvisorControllerListModelsQueryKey(jahr);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof advisorControllerListModels>>> = ({ signal }) => advisorControllerListModels(jahr, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: jahr !== null && jahr !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof advisorControllerListModels>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type AdvisorControllerListModelsQueryResult = NonNullable<Awaited<ReturnType<typeof advisorControllerListModels>>>
+export type AdvisorControllerListModelsQueryError = unknown
+
+
+export function useAdvisorControllerListModels<TData = Awaited<ReturnType<typeof advisorControllerListModels>>, TError = unknown>(
+ jahr: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof advisorControllerListModels>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof advisorControllerListModels>>,
+          TError,
+          Awaited<ReturnType<typeof advisorControllerListModels>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useAdvisorControllerListModels<TData = Awaited<ReturnType<typeof advisorControllerListModels>>, TError = unknown>(
+ jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof advisorControllerListModels>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof advisorControllerListModels>>,
+          TError,
+          Awaited<ReturnType<typeof advisorControllerListModels>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useAdvisorControllerListModels<TData = Awaited<ReturnType<typeof advisorControllerListModels>>, TError = unknown>(
+ jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof advisorControllerListModels>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary The chat models the user may pick, with Gründlich/Max and their measured cost and wait (ADR-0094)
+ */
+
+export function useAdvisorControllerListModels<TData = Awaited<ReturnType<typeof advisorControllerListModels>>, TError = unknown>(
+ jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof advisorControllerListModels>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getAdvisorControllerListModelsQueryOptions(jahr,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type advisorControllerSetConversationModelResponse200 = {
+  data: AdvisorConversationDto
+  status: 200
+}
+
+export type advisorControllerSetConversationModelResponse404 = {
+  data: void
+  status: 404
+}
+
+export type advisorControllerSetConversationModelResponseSuccess = (advisorControllerSetConversationModelResponse200) & {
+  headers: Headers;
+};
+export type advisorControllerSetConversationModelResponseError = (advisorControllerSetConversationModelResponse404) & {
+  headers: Headers;
+};
+
+export type advisorControllerSetConversationModelResponse = (advisorControllerSetConversationModelResponseSuccess | advisorControllerSetConversationModelResponseError)
+
+export const getAdvisorControllerSetConversationModelUrl = (jahr: number,
+    conversationId: string,) => {
+
+
+
+
+  return `/v1/steuerjahre/${jahr}/advisor/conversations/${conversationId}/model`
+}
+
+/**
+ * @summary Pick the chat model of a conversation; provider and model null go back to the standard (ADR-0094)
+ */
+export const advisorControllerSetConversationModel = async (jahr: number,
+    conversationId: string,
+    setAdvisorConversationModelDto: SetAdvisorConversationModelDto, options?: RequestInit): Promise<advisorControllerSetConversationModelResponse> => {
+
+  return httpClient<advisorControllerSetConversationModelResponse>(getAdvisorControllerSetConversationModelUrl(jahr,conversationId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(setAdvisorConversationModelDto)
+  }
+);}
+
+
+
+
+
+export const getAdvisorControllerSetConversationModelMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof advisorControllerSetConversationModel>>, TError,{jahr: number;conversationId: string;data: SetAdvisorConversationModelDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof advisorControllerSetConversationModel>>, TError,{jahr: number;conversationId: string;data: SetAdvisorConversationModelDto}, TContext> => {
+
+const mutationKey = ['advisorControllerSetConversationModel'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof advisorControllerSetConversationModel>>, {jahr: number;conversationId: string;data: SetAdvisorConversationModelDto}> = (props) => {
+          const {jahr,conversationId,data} = props ?? {};
+
+          return  advisorControllerSetConversationModel(jahr,conversationId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AdvisorControllerSetConversationModelMutationResult = NonNullable<Awaited<ReturnType<typeof advisorControllerSetConversationModel>>>
+    export type AdvisorControllerSetConversationModelMutationBody = SetAdvisorConversationModelDto
+    export type AdvisorControllerSetConversationModelMutationError = void
+
+    /**
+ * @summary Pick the chat model of a conversation; provider and model null go back to the standard (ADR-0094)
+ */
+export const useAdvisorControllerSetConversationModel = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof advisorControllerSetConversationModel>>, TError,{jahr: number;conversationId: string;data: SetAdvisorConversationModelDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof advisorControllerSetConversationModel>>,
+        TError,
+        {jahr: number;conversationId: string;data: SetAdvisorConversationModelDto},
+        TContext
+      > => {
+      return useMutation(getAdvisorControllerSetConversationModelMutationOptions(options), queryClient);
     }
 
 export type advisorControllerGetSessionResponse200 = {

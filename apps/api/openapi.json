@@ -2462,6 +2462,91 @@
         ]
       }
     },
+    "/v1/steuerjahre/{jahr}/advisor/models": {
+      "get": {
+        "operationId": "AdvisorController_listModels",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdvisorModelsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "The chat models the user may pick, with Gründlich/Max and their measured cost and wait (ADR-0094)",
+        "tags": [
+          "eulen-modus"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/advisor/conversations/{conversationId}/model": {
+      "put": {
+        "operationId": "AdvisorController_setConversationModel",
+        "parameters": [
+          {
+            "name": "conversationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetAdvisorConversationModelDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdvisorConversationDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such conversation in this tax year."
+          }
+        },
+        "summary": "Pick the chat model of a conversation; provider and model null go back to the standard (ADR-0094)",
+        "tags": [
+          "eulen-modus"
+        ]
+      }
+    },
     "/v1/steuerjahre/{jahr}/advisor/session": {
       "get": {
         "operationId": "AdvisorController_getSession",
@@ -10545,6 +10630,182 @@
           "parse"
         ]
       },
+      "AdvisorChatModelRefDto": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string",
+            "enum": [
+              "anthropic",
+              "google-genai",
+              "openai"
+            ]
+          },
+          "model": {
+            "type": "string",
+            "example": "claude-sonnet-5-5"
+          }
+        },
+        "required": [
+          "provider",
+          "model"
+        ]
+      },
+      "AdvisorDepthProfileDto": {
+        "type": "object",
+        "properties": {
+          "depth": {
+            "type": "string",
+            "enum": [
+              "gruendlich",
+              "max"
+            ]
+          },
+          "costFactor": {
+            "type": "number",
+            "example": 3,
+            "description": "Cost of a median answer relative to the standard model with Gründlich; absent while unknown."
+          },
+          "firstWordSeconds": {
+            "type": "number",
+            "example": 15,
+            "description": "Median wait until the first word, in seconds; absent while unmeasured."
+          },
+          "samples": {
+            "type": "number",
+            "example": 12,
+            "description": "Answers measured; below 5 the setting counts as not measured yet."
+          }
+        },
+        "required": [
+          "depth",
+          "samples"
+        ]
+      },
+      "AdvisorModelOptionDto": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string",
+            "enum": [
+              "anthropic",
+              "google-genai",
+              "openai"
+            ]
+          },
+          "model": {
+            "type": "string",
+            "example": "claude-sonnet-5-5"
+          },
+          "label": {
+            "type": "string",
+            "example": "Claude Sonnet 5.5"
+          },
+          "depths": {
+            "description": "The depths this model can do; Max only where it thinks deeper than Gründlich.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdvisorDepthProfileDto"
+            }
+          }
+        },
+        "required": [
+          "provider",
+          "model",
+          "label",
+          "depths"
+        ]
+      },
+      "AdvisorModelsDto": {
+        "type": "object",
+        "properties": {
+          "standard": {
+            "nullable": true,
+            "description": "The operator’s standard chat model; null when the chat runs on rules only.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AdvisorChatModelRefDto"
+              }
+            ]
+          },
+          "models": {
+            "description": "Chat models of every provider with a key, the standard first.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdvisorModelOptionDto"
+            }
+          }
+        },
+        "required": [
+          "standard",
+          "models"
+        ]
+      },
+      "SetAdvisorConversationModelDto": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string",
+            "enum": [
+              "anthropic",
+              "google-genai",
+              "openai"
+            ],
+            "nullable": true,
+            "description": "Null together with model: back to the standard model."
+          },
+          "model": {
+            "type": "string",
+            "nullable": true,
+            "example": "claude-opus-5-5"
+          }
+        }
+      },
+      "AdvisorConversationDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "chatModel": {
+            "nullable": true,
+            "description": "The chat model picked for this conversation (ADR-0094); null = the standard model.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AdvisorChatModelRefDto"
+              }
+            ]
+          },
+          "title": {
+            "type": "string",
+            "nullable": true,
+            "description": "From the first question; null while nothing has been asked.",
+            "example": "Lohnt sich mein Arbeitsweg?"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastUsedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "answering": {
+            "type": "boolean",
+            "description": "An answer is being written in this conversation right now; several conversations can answer at the same time (#503)."
+          }
+        },
+        "required": [
+          "id",
+          "chatModel",
+          "title",
+          "createdAt",
+          "lastUsedAt",
+          "answering"
+        ]
+      },
       "OwlPathDto": {
         "type": "object",
         "properties": {
@@ -10654,39 +10915,6 @@
           "reason",
           "legalStatusDate",
           "sourceTranslated"
-        ]
-      },
-      "AdvisorConversationDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "title": {
-            "type": "string",
-            "nullable": true,
-            "description": "From the first question; null while nothing has been asked.",
-            "example": "Lohnt sich mein Arbeitsweg?"
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "lastUsedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "answering": {
-            "type": "boolean",
-            "description": "An answer is being written in this conversation right now; several conversations can answer at the same time (#503)."
-          }
-        },
-        "required": [
-          "id",
-          "title",
-          "createdAt",
-          "lastUsedAt",
-          "answering"
         ]
       },
       "AdvisorProjectDto": {
@@ -10983,6 +11211,14 @@
           "turbo": {
             "type": "boolean",
             "description": "Turbo mode: the owl applies the drafts of this answer itself instead of waiting for a click. Off by default."
+          },
+          "depth": {
+            "type": "string",
+            "enum": [
+              "gruendlich",
+              "max"
+            ],
+            "description": "Gründlich (the standard) or Max for this one message (ADR-0094)."
           },
           "quickAction": {
             "type": "string",
