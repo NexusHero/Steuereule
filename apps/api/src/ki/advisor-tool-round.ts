@@ -1,53 +1,23 @@
-// One round of the owl's tool calls: what each tool checks, what it leaves in the state of the turn,
-// and what it tells the model. The graph in the engine only decides when a round runs.
+// One round of the owl's tool calls: the loop over the model's last message that hands each call to
+// its handler in ./tools/ and collects what the turn changed. The graph in the engine only decides when a round runs.
 import { Annotation } from '@langchain/langgraph'
-import { randomUUID } from 'node:crypto'
 import { AIMessage, ToolMessage, type BaseMessage } from '@langchain/core/messages'
 import { type LangGraphRunnableConfig } from '@langchain/langgraph'
-import { z } from 'zod'
 import {
   ADVISOR_LEGAL_SOURCES,
-  ADVISOR_NOTES_MAX,
-  resolveNoteHandle,
-  tidyNoteText,
-  fieldSpec,
-  resolveRecordHandle,
-  isNewRecordId,
-  simulateAdvisorFieldDelta,
-  checkDraftPerson,
-  checkDraftRules,
-  draftFollowUps,
-  impliedCompanions,
   deriveBasisAnswers,
-  isInterviewAreaId,
-  checkPrivateSale,
-  checkSmallBusiness,
-  computeGiftTax,
-  estimateTradeTax,
-  checkRentalRepairs,
-  isChurchTaxFactor,
-  privateSalesExemptionLimit,
-  privateSalesWithinLimit,
   type AdvisorActionProposal,
   type AdvisorNoteChange,
   type InterviewAreaChange,
-  type AdvisorPreviewEffect,
-  type AdvisorPreviewTarget,
   type AdvisorQuestionRound,
   type AdvisorStreamEvent,
   type AdvisorTurnRequest,
   type AdvisorTwoPathsProposal,
   type OwlSourceId,
-  type RecordHandleResolution,
-  type Screen,
 } from '@steuereule/core'
-import { checkStageValue, normalizeSourceId, validateStageTarget, type StageTargetCheck } from './advisor-safety.js'
-import { checkPiiFree } from './ki.adapter.js'
-import { toolResultLine } from './advisor-tool-results.js'
-import { ADVISOR_KNOWLEDGE } from './skills.generated.js'
-import { checkCapitalTaxation, compareFilingTypes, computeIncomeTax } from './advisor-income-tax.js'
-import { readLawForOwl, type LawId } from './law-text.js'
-import { MAX_COMPANION_FIELDS, TOOL_LABELS, TOOL_ARG_SCHEMAS, isToolName, toolResult, RejectedDraft, MAX_DRAFTS_PER_TURN, draftKey, humanReason } from './advisor-tools.js'
+import { checkStageValue, validateStageTarget } from './advisor-safety.js'
+import { TOOL_LABELS, isToolName, RejectedDraft, MAX_DRAFTS_PER_TURN } from './advisor-tools.js'
+import { createToolCallContext, toolHandlerFor, type ToolRoundTurn } from './tools/index.js'
 
 export const AdvisorGraphState = Annotation.Root({
   messages: Annotation<BaseMessage[]>({
@@ -103,7 +73,6 @@ export const AdvisorGraphState = Annotation.Root({
   }),
 })
 
-
 /**
  * Executes the tool calls of the model's last message and returns what changed in the turn.
  * Nothing here writes to the return: tools prepare drafts, notes and plans, and report back.
@@ -123,16 +92,18 @@ export async function runToolRound(
   const toolMessages: ToolMessage[] = []
   /** The user consented to personal data for the owl (ADR-0091); without it nothing changes. */
   const consent = request.personalDataConsent === true
-  let pendingActions = state.pendingActions
-  let rejectedDrafts = state.rejectedDrafts
-  let pendingTwoPaths = state.pendingTwoPaths
-  let choices = state.choices
-  let questionRound = state.questionRound
-  const situationSuggestions = [...(state.situationSuggestions ?? [])]
-  let noteChanges = state.noteChanges
-  let interviewChanges = state.interviewChanges ?? []
-  let consentRequested = state.consentRequested ?? false
-  const sources: OwlSourceId[] = []
+  const turn: ToolRoundTurn = {
+    pendingActions: state.pendingActions,
+    rejectedDrafts: state.rejectedDrafts,
+    pendingTwoPaths: state.pendingTwoPaths,
+    choices: state.choices,
+    questionRound: state.questionRound,
+    situationSuggestions: [...(state.situationSuggestions ?? [])],
+    noteChanges: state.noteChanges,
+    interviewChanges: state.interviewChanges ?? [],
+    consentRequested: state.consentRequested ?? false,
+    sources: [],
+  }
 
   for (const tc of toolCalls) {
     config?.writer?.({
@@ -143,641 +114,30 @@ export async function runToolRound(
       },
     } satisfies AdvisorStreamEvent)
 
-    const callId = tc.id ?? `call-${randomUUID().slice(0, 8)}`
-    /** Answers the model and tells the user in a few words what the tool found. */
-    const answer = (payload: Record<string, unknown>): void => {
-      toolMessages.push(toolResult(callId, tc.name, payload))
-      config?.writer?.({
-        event: 'tool_result',
-        data: { name: tc.name, ok: payload.ok === true, result: toolResultLine(tc.name, payload) },
-      } satisfies AdvisorStreamEvent)
-    }
+    const ctx = createToolCallContext({ call: tc, config, request, consent, makeActionId, turn, toolMessages })
     if (!isToolName(tc.name)) {
-      answer({ ok: false, error: `UNKNOWN_TOOL: "${tc.name}" wird nicht unterstützt.` })
+      ctx.answer({ ok: false, error: `UNKNOWN_TOOL: "${tc.name}" wird nicht unterstützt.` })
       continue
     }
-    const parseArgs = <S extends z.ZodTypeAny>(schema: S): z.infer<S> | null => {
-      const parsed = schema.safeParse(tc.args ?? {})
-      if (parsed.success) return parsed.data as z.infer<S>
-      const fields = parsed.error.issues.map((issue) => issue.path.join('.')).join(', ')
-      answer({ ok: false, error: `INVALID_ARGUMENTS: ${fields}` })
-      return null
-    }
-
-    const rejectTarget = (target: Extract<StageTargetCheck, { ok: false }>): void => {
-      // A locked field is not a dead end for the user: the workbench opens it for manual entry.
-      if (target.locked) {
-        config?.writer?.({
-          event: 'ui_command',
-          data: { openMask: target.locked.screen, focus: target.locked.field },
-        } satisfies AdvisorStreamEvent)
-      }
-      answer({ ok: false, error: target.error })
-    }
-    /** Refuses a draft: the model gets the reason, and the answer will carry it unless a retry succeeds. */
-    const refuseDraft = (label: string, screen: string, error: string, openScreen?: Screen, consentRequired?: true): void => {
-      rejectedDrafts = [...rejectedDrafts, { label, screen, reason: humanReason(error), ...(openScreen ? { openScreen } : {}), ...(consentRequired ? { consentRequired } : {}) }]
-    }
-    /**
-     * Which stored record a draft is for. Masks with one record per case take no instance at
-     * all; the others are addressed by their neutral name, and the id is filled in here.
-     */
-    const resolveInstance = (screen: Screen, field: string, raw: string | null | undefined): RecordHandleResolution | { ok: true; id: null; handle: null } => {
-      if (!fieldSpec(screen, field)?.perInstance) return { ok: true, id: null, handle: null }
-      // A new record (ADR-0091): a rental object always, a child only with the consent to personal data.
-      const allowNew = screen === 'vermietung' || (screen === 'kind' && consent)
-      return resolveRecordHandle(screen, request.records?.[screen] ?? [], raw, { allowNew })
-    }
-
-    /**
-     * The euro effect of a draft: from the app's own estimate where the caller offers it, and
-     * never a made-up figure when the estimate cannot say. The approximation over the digest
-     * only remains for setups without a database behind the engine.
-     */
-    const effectOf = async (
-      target: AdvisorPreviewTarget,
-      approximation: { beforeRefundEur: number; afterRefundEur: number; deltaEur: number },
-    ): Promise<Pick<AdvisorActionProposal, 'beforeRefundEur' | 'afterRefundEur' | 'deltaEur' | 'effect' | 'effectHint'>> => {
-      if (!request.previewEffect) {
-        // The approximation only knows the user's own figures; for Person B it would be made up.
-        return target.person === 'B'
-          ? { beforeRefundEur: 0, afterRefundEur: 0, deltaEur: 0, effect: 'not-computable', effectHint: 'Die Wirkung für Person B zeigt erst die gemeinsame Schätzung.' }
-          : approximation
-      }
-      let preview: AdvisorPreviewEffect
-      try {
-        preview = await request.previewEffect(target)
-      } catch {
-        preview = { kind: 'not-computable', hint: 'Die Wirkung lässt sich gerade nicht berechnen.' }
-      }
-      if (preview.kind === 'computed') {
-        return { beforeRefundEur: preview.beforeRefundEur, afterRefundEur: preview.afterRefundEur, deltaEur: preview.deltaEur, effect: 'computed' }
-      }
-      return { beforeRefundEur: 0, afterRefundEur: 0, deltaEur: 0, effect: 'not-computable', effectHint: preview.hint }
-    }
-
-    if (tc.name === 'simulate_tax_delta') {
-      const args = parseArgs(TOOL_ARG_SCHEMAS.simulate_tax_delta)
-      if (args === null) continue
-      const { screen, field, newValue } = args
-      const target = validateStageTarget(screen, field, consent)
-      if (!target.ok) {
-        rejectTarget(target)
-        continue
-      }
-      const simValue = checkStageValue(target.screen, field, newValue)
-      if (!simValue.ok) {
-        answer({ ok: false, error: simValue.error })
-        continue
-      }
-      const sim = simulateAdvisorFieldDelta(request.digest, target.screen, field.trim(), simValue.value)
-      const simRecord = resolveInstance(target.screen, field.trim(), null)
-      const simEffect = simRecord.ok
-        ? await effectOf({ screen: target.screen, instance: simRecord.id, values: [[field.trim(), simValue.value]] }, sim)
-        : ({ beforeRefundEur: 0, afterRefundEur: 0, deltaEur: 0, effect: 'not-computable', effectHint: simRecord.reason } as const)
-      answer({ ok: true, previousValue: sim.previousValue, ...simEffect })
-      continue
-    }
-
-    if (tc.name === 'stage_field_draft') {
-      const args = parseArgs(TOOL_ARG_SCHEMAS.stage_field_draft)
-      if (args === null) continue
-      const { screen, field, label, reason } = args
-      const sourceId = normalizeSourceId(args.sourceId)
-      const rawCompanions = Object.entries(args.companionFields ?? {}).map(([k, v]) => [k.trim(), v] as const)
-
-      const target = validateStageTarget(screen, field, consent)
-      if (!target.ok) {
-        refuseDraft(label, screen, target.error, undefined, target.consentRequired)
-        rejectTarget(target)
-        continue
-      }
-      // Person B only where the household has one A records for, and only on B's own masks.
-      const person = args.person
-      const personCheck = checkDraftPerson(request.household, person, target.screen, field, label)
-      if (!personCheck.ok) {
-        const error = `${personCheck.code}: ${personCheck.reason}`
-        refuseDraft(label, screen, error)
-        answer({ ok: false, error })
-        continue
-      }
-      if (rawCompanions.length > MAX_COMPANION_FIELDS) {
-        answer({ ok: false, error: `INVALID_ARGUMENTS: höchstens ${MAX_COMPANION_FIELDS} Begleitfelder.` })
-        continue
-      }
-      const record = resolveInstance(target.screen, field.trim(), args.instance)
-      if (!record.ok) {
-        const error = `${record.code}: ${record.reason}`
-        // No record yet: the user creates it in the mask, and the chat offers the way there.
-        // Which of several: that is a question for the user, not something to report as failed.
-        if (record.code !== 'RECORD_REQUIRED') refuseDraft(label, screen, error, record.code === 'NO_RECORD' ? target.screen : undefined)
-        if (record.code === 'NO_RECORD') {
-          config?.writer?.({ event: 'ui_command', data: { openMask: target.screen, focus: field.trim() } } satisfies AdvisorStreamEvent)
-        }
-        answer({ ok: false, error })
-        continue
-      }
-      const instance = record.id
-      if (pendingActions.length >= MAX_DRAFTS_PER_TURN) {
-        const error = `TOO_MANY_DRAFTS: höchstens ${MAX_DRAFTS_PER_TURN} Entwürfe pro Antwort. Bitte den Nutzer erst diese prüfen lassen.`
-        refuseDraft(label, screen, error)
-        answer({ ok: false, error })
-        continue
-      }
-      // Companion fields are written with the same rights as the main field, so they pass the same gate.
-      const lockedCompanion = rawCompanions
-        .map(([companionField]) => validateStageTarget(screen, companionField, consent))
-        .find((check): check is Extract<StageTargetCheck, { ok: false }> => !check.ok)
-      if (lockedCompanion) {
-        refuseDraft(label, screen, lockedCompanion.error, undefined, lockedCompanion.consentRequired)
-        rejectTarget(lockedCompanion)
-        continue
-      }
-      // Every value is checked against the field catalogue and stored in its tidied form: a
-      // draft that could not be applied is refused here, with the reason, instead of being made.
-      const checkedValues = [[field.trim(), args.newValue] as const, ...rawCompanions].map(([name, value]) => ({ name, check: checkStageValue(screen, name, value) }))
-      const badValue = checkedValues.find((entry) => !entry.check.ok)
-      if (badValue && !badValue.check.ok) {
-        refuseDraft(label, screen, badValue.check.error)
-        answer({ ok: false, error: badValue.check.error })
-        continue
-      }
-      const tidy = (name: string): string => {
-        const entry = checkedValues.find((candidate) => candidate.name === name)!
-        return entry.check.ok ? entry.check.value : ''
-      }
-      const cleanFieldName = field.trim()
-      const newValue = tidy(cleanFieldName)
-      const statedCompanions = rawCompanions.map(([name]) => [name, tidy(name)] as const)
-      // The fixed rules (ADR-0093): what the app adds itself, and what it refuses until the user confirmed it.
-      const implied = impliedCompanions(target.screen, Object.fromEntries([[cleanFieldName, newValue], ...statedCompanions]))
-      const companionEntries = [...statedCompanions, ...Object.entries(implied).map(([name, value]) => [name, value] as const)]
-      const companionFields = companionEntries.length > 0 ? Object.fromEntries(companionEntries) : undefined
-      const draftValues = Object.fromEntries([[cleanFieldName, newValue], ...companionEntries])
-      const rule = checkDraftRules({ screen: target.screen, values: draftValues, tool: 'stage', others: pendingActions.map(draftValuesOf) })
-      if (!rule.ok) {
-        // A question for the user, not a failed draft: the model asks and stages again.
-        answer({ ok: false, error: `${rule.code}: ${rule.reason}` })
-        continue
-      }
-
-      // A new child is created from its draft: it needs the first name and the birth date (ADR-0091).
-      // Further drafts of the same answer for that child (Kindergeld, Kita …) ride on the draft that creates it.
-      if (target.screen === 'kind' && isNewRecordId(instance)) {
-        const written = new Set([
-          cleanFieldName,
-          ...companionEntries.map(([name]) => name),
-          ...pendingActions.filter((existing) => existing.screen === 'kind' && existing.instance === instance).flatMap((existing) => [existing.field, ...Object.keys(existing.companionFields ?? {})]),
-        ])
-        if (!written.has('firstName') || !written.has('geburtsdatum')) {
-          const error = 'NEW_RECORD_INCOMPLETE: Ein neues Kind lege ich mit Vorname (firstName) und Geburtsdatum (geburtsdatum) in einem Entwurf an, als Haupt- oder Begleitfeld; weitere Angaben zu diesem Kind folgen danach mit derselben `instance`. Frag den Nutzer nach Vorname und Geburtsdatum, wenn sie fehlen.'
-          refuseDraft(label, screen, error)
-          answer({ ok: false, error })
-          continue
-        }
-      }
-      // With the consent to personal data the values may carry a Steuer-ID or an IBAN (ADR-0091).
-      if (!consent) {
-        try {
-          checkPiiFree({ newValue, label, reason, companionFields: companionFields ?? {} })
-        } catch (error) {
-          answer({ ok: false, error: error instanceof Error ? error.message : 'PII boundary rejected draft payload.' })
-          continue
-        }
-      }
-
-      const cleanField = field.trim()
-      const forB = person === 'B'
-      // The digest is the user's; Person B's previous value is read when the draft is stored.
-      const sim = forB ? { previousValue: null, beforeRefundEur: 0, afterRefundEur: 0, deltaEur: 0 } : simulateAdvisorFieldDelta(request.digest, target.screen, cleanField, newValue)
-      const effect = await effectOf({ screen: target.screen, instance, ...(forB ? { person } : {}), values: [...companionEntries, [cleanField, newValue]] }, sim)
-      sources.push(sourceId)
-
-      const stagedAction: AdvisorActionProposal = {
-        actionId: makeActionId(),
-        status: 'pending',
-        screen: target.screen,
-        field: cleanField,
-        instance,
-        ...(forB ? { person } : {}),
-        ...(companionFields ? { companionFields } : {}),
-        label: record.handle && !label.includes(record.handle) ? `${label} (${record.handle})` : label,
-        previousValue: sim.previousValue,
-        expectedPreviousValue: sim.previousValue,
-        newValue,
-        ...effect,
-        reason,
-        sourceId,
-        paragraph: ADVISOR_LEGAL_SOURCES[sourceId].paragraph,
-      }
-
-      // Several drafts in one answer stand side by side; a second one for the same field is a correction.
-      pendingActions = [...pendingActions.filter((existing) => draftKey(existing) !== draftKey(stagedAction)), stagedAction]
-
-      const mustAsk = draftFollowUps(target.screen, draftValues)
-      answer({ ok: true, stagedAction: { ...stagedAction, instance: record.handle }, draftsInThisAnswer: pendingActions.length, ...(mustAsk.length > 0 ? { mustAsk } : {}) })
-      continue
-    }
-
-    if (tc.name === 'withdraw_draft') {
-      const args = parseArgs(TOOL_ARG_SCHEMAS.withdraw_draft)
-      if (args === null) continue
-      const field = args.field.trim()
-      const forB = args.person === 'B'
-      const sameTarget = (action: Pick<AdvisorActionProposal, 'screen' | 'field' | 'instance' | 'person'>): boolean => {
-        if (action.screen !== args.screen || action.field !== field || (action.person === 'B') !== forB) return false
-        if (args.instance === undefined || args.instance === null) return true
-        const record = resolveInstance(action.screen, field, args.instance)
-        return record.ok && record.id === action.instance
-      }
-      const before = pendingActions.length
-      pendingActions = pendingActions.filter((action) => !sameTarget(action))
-      const withdrawnPaths = pendingTwoPaths !== null && (sameTarget(pendingTwoPaths.safePath) || sameTarget(pendingTwoPaths.maxPath))
-      if (withdrawnPaths) pendingTwoPaths = null
-      const withdrawn = before - pendingActions.length + (withdrawnPaths ? 1 : 0)
-      answer(withdrawn > 0 ? { ok: true, withdrawn, draftsInThisAnswer: pendingActions.length } : { ok: false, error: 'NO_SUCH_DRAFT: In dieser Antwort gibt es keinen solchen Entwurf.' })
-      continue
-    }
-
-    if (tc.name === 'propose_two_paths') {
-      const args = parseArgs(TOOL_ARG_SCHEMAS.propose_two_paths)
-      if (args === null) continue
-      const title = args.title
-      const sourceId = normalizeSourceId(args.sourceId)
-      const rawSafe = args.safePath
-      const rawMax = args.maxPath
-
-      const safeCheck = validateStageTarget(rawSafe.screen, rawSafe.field, consent)
-      if (!safeCheck.ok) {
-        rejectTarget(safeCheck)
-        continue
-      }
-      const maxCheck = validateStageTarget(rawMax.screen, rawMax.field, consent)
-      if (!maxCheck.ok) {
-        rejectTarget(maxCheck)
-        continue
-      }
-      const safePersonCheck = checkDraftPerson(request.household, rawSafe.person, safeCheck.screen, rawSafe.field, rawSafe.label)
-      const maxPersonCheck = checkDraftPerson(request.household, rawMax.person, maxCheck.screen, rawMax.field, rawMax.label)
-      const personRefusal = !safePersonCheck.ok ? safePersonCheck : !maxPersonCheck.ok ? maxPersonCheck : null
-      if (personRefusal) {
-        answer({ ok: false, error: `${personRefusal.code}: ${personRefusal.reason}` })
-        continue
-      }
-      const safeForB = rawSafe.person === 'B'
-      const maxForB = rawMax.person === 'B'
-
-      const safeField = rawSafe.field.trim()
-      const maxField = rawMax.field.trim()
-      const safeValue = checkStageValue(safeCheck.screen, safeField, rawSafe.newValue)
-      const maxValue = checkStageValue(maxCheck.screen, maxField, rawMax.newValue)
-      if (!safeValue.ok || !maxValue.ok) {
-        answer({ ok: false, error: !safeValue.ok ? safeValue.error : !maxValue.ok ? maxValue.error : '' })
-        continue
-      }
-      const safeNewValue = safeValue.value
-      const maxNewValue = maxValue.value
-      const others = pendingActions.map(draftValuesOf)
-      const pathRule = [
-        checkDraftRules({ screen: safeCheck.screen, values: { [safeField]: safeNewValue }, tool: 'two-paths', others }),
-        checkDraftRules({ screen: maxCheck.screen, values: { [maxField]: maxNewValue }, tool: 'two-paths', others }),
-      ].find((check) => !check.ok)
-      if (pathRule && !pathRule.ok) {
-        answer({ ok: false, error: `${pathRule.code}: ${pathRule.reason}` })
-        continue
-      }
-
-      // Two paths name no record: fine while there is exactly one, a question for the user otherwise.
-      const safeRecord = resolveInstance(safeCheck.screen, safeField, rawSafe.instance)
-      const maxRecord = resolveInstance(maxCheck.screen, maxField, rawMax.instance)
-      const missingRecord = !safeRecord.ok ? safeRecord : !maxRecord.ok ? maxRecord : null
-      if (!safeRecord.ok || !maxRecord.ok || missingRecord) {
-        answer({ ok: false, error: missingRecord ? `${missingRecord.code}: ${missingRecord.reason}` : '' })
-        continue
-      }
-      try {
-        if (!consent) checkPiiFree({ safeNewValue, maxNewValue, title, safeLabel: rawSafe.label, maxLabel: rawMax.label })
-      } catch (error) {
-        answer({ ok: false, error: error instanceof Error ? error.message : 'PII boundary rejected twoPaths payload.' })
-        continue
-      }
-
-      const unknownForB = { previousValue: null, beforeRefundEur: 0, afterRefundEur: 0, deltaEur: 0 }
-      const safeSim = safeForB ? unknownForB : simulateAdvisorFieldDelta(request.digest, safeCheck.screen, safeField, safeNewValue)
-      const maxSim = maxForB ? unknownForB : simulateAdvisorFieldDelta(request.digest, maxCheck.screen, maxField, maxNewValue)
-      const safeEffect = await effectOf({ screen: safeCheck.screen, instance: safeRecord.id, ...(safeForB ? { person: 'B' as const } : {}), values: [[safeField, safeNewValue]] }, safeSim)
-      const maxEffect = await effectOf({ screen: maxCheck.screen, instance: maxRecord.id, ...(maxForB ? { person: 'B' as const } : {}), values: [[maxField, maxNewValue]] }, maxSim)
-      const baseActionId = makeActionId()
-      sources.push(sourceId)
-
-      pendingTwoPaths = {
-        title,
-        sourceId,
-        safePath: {
-          actionId: `${baseActionId}-safe`,
-          alternativeGroup: baseActionId,
-          status: 'pending',
-          screen: safeCheck.screen,
-          field: safeField,
-          instance: safeRecord.id,
-          ...(safeForB ? { person: 'B' as const } : {}),
-          label: rawSafe.label,
-          previousValue: safeSim.previousValue,
-          expectedPreviousValue: safeSim.previousValue,
-          newValue: safeNewValue,
-          ...safeEffect,
-          reason: rawSafe.reason,
-          sourceId,
-          paragraph: ADVISOR_LEGAL_SOURCES[sourceId].paragraph,
-        },
-        maxPath: {
-          actionId: `${baseActionId}-max`,
-          alternativeGroup: baseActionId,
-          status: 'pending',
-          screen: maxCheck.screen,
-          field: maxField,
-          instance: maxRecord.id,
-          ...(maxForB ? { person: 'B' as const } : {}),
-          label: rawMax.label,
-          previousValue: maxSim.previousValue,
-          expectedPreviousValue: maxSim.previousValue,
-          newValue: maxNewValue,
-          ...maxEffect,
-          reason: rawMax.reason,
-          evidenceHint: rawMax.evidenceHint,
-          sourceId,
-          paragraph: ADVISOR_LEGAL_SOURCES[sourceId].paragraph,
-        },
-      }
-
-      answer({ ok: true, twoPaths: pendingTwoPaths })
-      continue
-    }
-
-    if (tc.name === 'ask_questions') {
-      const args = parseArgs(TOOL_ARG_SCHEMAS.ask_questions)
-      if (args === null) continue
-      questionRound = {
-        questions: args.questions.map((q) => {
-          const options = q.options.map((o) => o.trim()).filter((o) => o.length > 0)
-          // A fact gets no recommendation: one tap on it would claim the fact for the user.
-          const recommended = q.kind === 'decision' && q.recommended !== undefined && options.includes(q.recommended.trim()) ? q.recommended.trim() : undefined
-          const reason = recommended !== undefined ? q.reason?.trim() : undefined
-          return { text: q.text.trim(), options, kind: q.kind, ...(q.multiple ? { multiple: true } : {}), ...(recommended !== undefined ? { recommended } : {}), ...(reason ? { reason } : {}) }
-        }),
-      }
-      answer({ ok: true, questions: questionRound.questions.length })
-      continue
-    }
-
-    if (tc.name === 'mark_interview_area') {
-      const args = parseArgs(TOOL_ARG_SCHEMAS.mark_interview_area)
-      if (args === null) continue
-      if (!isInterviewAreaId(args.area)) continue
-      interviewChanges = [...interviewChanges.filter((change) => change.area !== args.area), { area: args.area, status: args.status }]
-      answer({ ok: true, area: args.area, status: args.status })
-      continue
-    }
-
-    if (tc.name === 'suggest_situation') {
-      const args = parseArgs(TOOL_ARG_SCHEMAS.suggest_situation)
-      if (args === null) continue
-      const text = args.text.replace(/\s+/g, ' ').trim()
-      try {
-        // A suggestion is shown to the user and may be stored: it must not carry a name or an identifier.
-        checkPiiFree({ text })
-      } catch {
-        answer({ ok: false, error: 'Der Vorschlag enthält persönliche Daten. Formuliere ihn ohne Namen und Kennungen.' })
-        continue
-      }
-      if (situationSuggestions.length < 3 && !situationSuggestions.includes(text)) situationSuggestions.push(text)
-      answer({ ok: true, suggested: text })
-      continue
-    }
-
-    if (tc.name === 'lookup_tax_knowledge') {
-      const args = parseArgs(TOOL_ARG_SCHEMAS.lookup_tax_knowledge)
-      if (args === null) continue
-      const entry = ADVISOR_KNOWLEDGE[args.topic]
-      answer({ ok: true, topic: args.topic, title: entry.title, text: entry.text })
-      continue
-    }
-
-    if (tc.name === 'compute_income_tax') {
-      const args = parseArgs(TOOL_ARG_SCHEMAS.compute_income_tax)
-      if (args === null) continue
-      if (!isChurchTaxFactor(args.churchTaxRate)) {
-        answer({ ok: false, error: 'Der Kirchensteuersatz ist 0, 0.08 (Bayern, Baden-Württemberg) oder 0.09.' })
-        continue
-      }
-      const result = computeIncomeTax({ ...args, churchTaxRate: args.churchTaxRate })
-      answer(result === null ? { ok: false, error: `Für das Jahr ${args.year} kennt der Rechenkern keinen Tarif.` } : { ok: true, ...result })
-      continue
-    }
-
-    if (tc.name === 'compare_filing_types' || tc.name === 'check_capital_taxation') {
-      const raw = tc.name === 'compare_filing_types' ? parseArgs(TOOL_ARG_SCHEMAS.compare_filing_types) : parseArgs(TOOL_ARG_SCHEMAS.check_capital_taxation)
-      if (raw === null) continue
-      if (!isChurchTaxFactor(raw.churchTaxRate)) {
-        answer({ ok: false, error: 'Der Kirchensteuersatz ist 0, 0.08 (Bayern, Baden-Württemberg) oder 0.09.' })
-        continue
-      }
-      const result = 'taxableIncomeA' in raw ? compareFilingTypes({ ...raw, churchTaxRate: raw.churchTaxRate }) : checkCapitalTaxation({ ...raw, churchTaxRate: raw.churchTaxRate })
-      answer(result === null ? { ok: false, error: `Für das Jahr ${raw.year} kennt der Rechenkern keinen Tarif.` } : { ok: true, ...result })
-      continue
-    }
-
-    if (tc.name === 'check_holding_period') {
-      const args = parseArgs(TOOL_ARG_SCHEMAS.check_holding_period)
-      if (args === null) continue
-      try {
-        const result = checkPrivateSale(args)
-        const year = Number(args.soldOn.slice(0, 4))
-        const limit =
-          args.totalGainsOfYearEur === undefined
-            ? {}
-            : { exemptionLimitEur: privateSalesExemptionLimit(year), withinExemptionLimit: privateSalesWithinLimit(args.totalGainsOfYearEur, year) }
-        answer({ ok: true, ...result, ...limit })
-      } catch (error) {
-        answer({ ok: false, error: error instanceof Error ? error.message : 'Ungültige Angaben.' })
-      }
-      continue
-    }
-
-    if (tc.name === 'check_rental_repairs') {
-      const args = parseArgs(TOOL_ARG_SCHEMAS.check_rental_repairs)
-      if (args === null) continue
-      try {
-        answer({ ok: true, ...checkRentalRepairs(args) })
-      } catch (error) {
-        answer({ ok: false, error: error instanceof Error ? error.message : 'Ungültige Angaben.' })
-      }
-      continue
-    }
-
-    if (tc.name === 'compute_gift_tax' || tc.name === 'check_small_business' || tc.name === 'estimate_trade_tax') {
-      try {
-        if (tc.name === 'compute_gift_tax') {
-          const args = parseArgs(TOOL_ARG_SCHEMAS.compute_gift_tax)
-          if (args !== null) answer({ ok: true, ...computeGiftTax(args) })
-        } else if (tc.name === 'check_small_business') {
-          const args = parseArgs(TOOL_ARG_SCHEMAS.check_small_business)
-          if (args !== null) answer({ ok: true, ...checkSmallBusiness(args) })
-        } else {
-          const args = parseArgs(TOOL_ARG_SCHEMAS.estimate_trade_tax)
-          if (args !== null) answer({ ok: true, ...estimateTradeTax(args) })
-        }
-      } catch (error) {
-        answer({ ok: false, error: error instanceof Error ? error.message : 'Ungültige Angaben.' })
-      }
-      continue
-    }
-
-    if (tc.name === 'read_law_text') {
-      const args = parseArgs(TOOL_ARG_SCHEMAS.read_law_text)
-      if (args === null) continue
-      try {
-        answer({ ok: true, ...(await readLawForOwl(args.law as LawId, args.paragraph, args)) })
-      } catch {
-        answer({ ok: false, error: 'gesetze-im-internet.de ist gerade nicht erreichbar. Stütze dich auf das nachgeschlagene Wissen und den Quellenkatalog und sage dazu, dass der Wortlaut nicht frisch gelesen wurde.' })
-      }
-      continue
-    }
-
-    if (tc.name === 'ask_clarification') {
-      const args = parseArgs(TOOL_ARG_SCHEMAS.ask_clarification)
-      if (args === null) continue
-      choices = args.choices.map((c) => c.trim()).filter((c) => c.length > 0)
-      answer({ ok: true, choices })
-      continue
-    }
-
-    if (tc.name === 'remember_note' || tc.name === 'replace_note' || tc.name === 'forget_note') {
-      // The notes as they stand after what this answer has already changed.
-      const gone = new Set(noteChanges.filter((change) => change.kind === 'removed').map((change) => change.noteId))
-      const added = noteChanges.filter((change) => change.kind === 'added').length
-      const known = (request.notes ?? []).filter((note) => !gone.has(note.id))
-      const refuse = (error: string) => answer({ ok: false, error })
-
-      if (tc.name === 'forget_note') {
-        const args = parseArgs(TOOL_ARG_SCHEMAS.forget_note)
-        if (args === null) continue
-        const note = resolveNoteHandle(known, args.note)
-        if (!note) {
-          refuse(`UNKNOWN_NOTE: „${args.note}“ gibt es nicht. Vorhanden: ${known.map((n) => n.handle).join(', ') || 'keine'}.`)
-          continue
-        }
-        noteChanges = [...noteChanges.filter((change) => change.noteId !== note.id), { kind: 'removed', noteId: note.id, text: note.text }]
-        answer({ ok: true, removed: note.handle })
-        continue
-      }
-
-      // One parse per call: a failed parse has already answered the call with its error.
-      const replaceArgs = tc.name === 'replace_note' ? parseArgs(TOOL_ARG_SCHEMAS.replace_note) : null
-      const args = tc.name === 'replace_note' ? replaceArgs : parseArgs(TOOL_ARG_SCHEMAS.remember_note)
-      if (args === null) continue
-      const text = tidyNoteText(args.text)
-      if (!text.ok) {
-        refuse(`INVALID_NOTE: ${text.reason}`)
-        continue
-      }
-      try {
-        checkPiiFree({ note: text.text })
-      } catch {
-        refuse('INVALID_NOTE: Eine Notiz darf keine persönlichen Daten enthalten (Namen, Adressen, Steuer-ID, IBAN, Geburtsdatum).')
-        continue
-      }
-      if (replaceArgs !== null) {
-        const note = resolveNoteHandle(known, replaceArgs.note)
-        if (!note) {
-          refuse(`UNKNOWN_NOTE: „${replaceArgs.note}“ gibt es nicht. Vorhanden: ${known.map((n) => n.handle).join(', ') || 'keine'}.`)
-          continue
-        }
-        const before = noteChanges.find((change) => change.noteId === note.id)?.previousText ?? note.text
-        noteChanges = [...noteChanges.filter((change) => change.noteId !== note.id), { kind: 'replaced', noteId: note.id, text: text.text, previousText: before }]
-        answer({ ok: true, replaced: note.handle })
-        continue
-      }
-      if (known.length + added >= ADVISOR_NOTES_MAX) {
-        refuse(`TOO_MANY_NOTES: höchstens ${ADVISOR_NOTES_MAX} Notizen. Ersetze oder entferne zuerst eine überholte.`)
-        continue
-      }
-      if ([...known.map((n) => n.text), ...noteChanges.filter((c) => c.kind === 'added').map((c) => c.text)].some((existing) => existing.toLowerCase() === text.text.toLowerCase())) {
-        answer({ ok: true, alreadyNoted: true })
-        continue
-      }
-      noteChanges = [...noteChanges, { kind: 'added', text: text.text }]
-      answer({ ok: true, noted: text.text })
-      continue
-    }
-
-    if (tc.name === 'request_personal_data_consent') {
-      // The card is the app's: the answer carries it whatever the model writes next (ADR-0091).
-      if (consent) {
-        answer({ ok: true, alreadyGranted: true, note: 'Die Einwilligung liegt vor. Bereite die persönlichen Angaben als Entwürfe vor.' })
-        continue
-      }
-      consentRequested = true
-      answer({ ok: true, shown: true, note: 'Die App zeigt die Einwilligung unter deiner Antwort. Sag dem Nutzer in einem Satz, dass er dort „Erlauben“ wählen oder die Angaben selbst in der Maske eintragen kann. Danach geht das Gespräch von selbst weiter.' })
-      continue
-    }
-
-    if (tc.name === 'read_current_estimate') {
-      if (!request.readEstimate) {
-        answer({ ok: false, error: 'ESTIMATE_UNAVAILABLE: Die Schätzung der App ist hier nicht verfügbar. Nenne keinen Gesamtbetrag.' })
-        continue
-      }
-      try {
-        answer({ ok: true, estimate: await request.readEstimate() })
-      } catch {
-        answer({ ok: false, error: 'ESTIMATE_UNAVAILABLE: Die Schätzung lässt sich gerade nicht lesen. Nenne keinen Gesamtbetrag.' })
-      }
-      continue
-    }
-
-    if (tc.name === 'plan_steps') {
-      const args = parseArgs(TOOL_ARG_SCHEMAS.plan_steps)
-      if (args === null) continue
-      const steps = args.steps.map((step) => ({ text: step.text.trim(), status: step.status }))
-      try {
-        checkPiiFree({ steps })
-      } catch (error) {
-        answer({ ok: false, error: error instanceof Error ? error.message : 'PII boundary rejected plan.' })
-        continue
-      }
-      config?.writer?.({ event: 'plan', data: { steps } } satisfies AdvisorStreamEvent)
-      answer({ ok: true, shown: steps.length })
-      continue
-    }
-
-    const lookupArgs = parseArgs(TOOL_ARG_SCHEMAS.lookup_legal_source)
-    if (lookupArgs === null) continue
-    const sourceId = normalizeSourceId(lookupArgs.sourceId)
-    sources.push(sourceId)
-    answer({ ok: true, source: ADVISOR_LEGAL_SOURCES[sourceId] })
+    await toolHandlerFor(tc.name).run({ name: tc.name, args: tc.args }, ctx)
   }
 
-  pendingActions = withDerivedBasisDrafts(pendingActions, request, makeActionId)
+  const pendingActions = withDerivedBasisDrafts(turn.pendingActions, request, makeActionId)
 
   return {
     messages: toolMessages,
     toolRounds: state.toolRounds + 1,
     pendingActions,
-    rejectedDrafts,
-    pendingTwoPaths,
-    choices,
-    questionRound,
-    situationSuggestions,
-    noteChanges,
-    interviewChanges,
-    consentRequested,
-    sources,
+    rejectedDrafts: turn.rejectedDrafts,
+    pendingTwoPaths: turn.pendingTwoPaths,
+    choices: turn.choices,
+    questionRound: turn.questionRound,
+    situationSuggestions: turn.situationSuggestions,
+    noteChanges: turn.noteChanges,
+    interviewChanges: turn.interviewChanges,
+    consentRequested: turn.consentRequested,
+    sources: turn.sources,
   }
-}
-
-/** A staged draft as the fixed rules read it: its mask and every value it would write. */
-function draftValuesOf(action: AdvisorActionProposal): { screen: Screen; values: Record<string, string> } {
-  return { screen: action.screen, values: { [action.field]: action.newValue, ...action.companionFields } }
 }
 
 /**
