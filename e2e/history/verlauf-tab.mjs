@@ -122,6 +122,9 @@ async function main() {
     if ((await textOf('verlauf-jahr-titel')) !== '2024') fail('the year page should be titled by its year')
     if (!(await textOf('verlauf-jahr-satz')).includes('2 Positionen geändert')) fail('the year page should say in one sentence what the Finanzamt did')
     await see('verlauf-abgleich-2024')
+    // The page already names the year: the Abgleich does not repeat it, and on a phone one caption names the columns.
+    if ((await page.getByRole('heading', { name: 'Erklärung ↔ Bescheid 2024' }).count()) > 0) fail('the year page should not repeat the year in the Abgleich title')
+    if (!(await textOf('verlauf-abgleich-2024-spalten')).startsWith('erklärt → Bescheid')) fail('on a phone the columns should be named in one line')
     if ((await textOf('verlauf-abgleich-2024-anzahl')) !== '2 Änderungen') fail('the Abgleich of 2024 should count two changes')
     const rows = await page.locator('[data-testid^="verlauf-abgleich-2024-zeile-"]').evaluateAll((els) => els.map((e) => e.getAttribute('data-testid')))
     if (rows[0] !== 'verlauf-abgleich-2024-zeile-homeofficeA') fail(`the largest effect should come first, the rows are ${rows.join()}`)

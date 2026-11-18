@@ -121,6 +121,7 @@ function YearBody({ data, item, onPrepareAppeal }: { readonly data: YearHistoryR
             lessons={d.lessons}
             maskYear={maskYear}
             onPrepareAppeal={onPrepareAppeal}
+            yearInTitle={false}
             testID={d.person === null ? `verlauf-abgleich-${year}` : `verlauf-abgleich-${year}-${d.person}`}
           />
         ))}

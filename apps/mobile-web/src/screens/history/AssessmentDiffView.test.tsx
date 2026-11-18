@@ -2,7 +2,7 @@
 // Finanzamt changed, largest effect first and coloured by what it means for the user; the follow-on
 // chain as one line; the form view collapsed; the Einspruchsfrist with the way into the Einspruch,
 // only the date once it passed; and the lessons for next time without an amount for a pending Bescheid.
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, within } from '@testing-library/react'
 import { renderInApp } from '../../test-render'
 import { DIFF_2024, HISTORY_DIFFS, LESSONS_2024 } from '../../test-history-fixture'
@@ -84,5 +84,33 @@ describe('AssessmentDiffView', () => {
     renderInApp(<AssessmentDiffView diff={DIFF_2024} deadline={null} testID="abgleich" />, { language: 'en' })
     expect(text('abgleich-anzahl')).toBe('2 changes')
     expect(screen.getByText('Home office allowance')).toBeTruthy()
+  })
+})
+
+describe('AssessmentDiffView on the year page and on a phone', () => {
+  const setViewportWidth = (width: number) => {
+    Object.defineProperty(document.documentElement, 'clientWidth', { value: width, configurable: true })
+    window.dispatchEvent(new Event('resize'))
+  }
+  afterEach(() => setViewportWidth(0))
+
+  it('leaves the year out of its title where the page already names the year', () => {
+    renderInApp(<AssessmentDiffView diff={DIFF_2024} deadline={null} yearInTitle={false} testID="abgleich" />)
+    expect(screen.getByRole('heading', { name: 'Erklärung ↔ Bescheid' })).toBeTruthy()
+    expect(screen.queryByText('Erklärung ↔ Bescheid 2024')).toBeNull()
+  })
+
+  it('names the columns in one line on a phone instead of three that wrap', () => {
+    setViewportWidth(375)
+    renderInApp(<AssessmentDiffView diff={DIFF_2024} deadline={null} testID="abgleich" />)
+    expect(screen.getByTestId('abgleich-spalten').textContent).toBe('erklärt → Bescheid · rechts die Wirkung auf die Erstattung')
+    expect(screen.queryByText('Vom Finanzamt geändert')).toBeNull()
+  })
+
+  it('keeps the three column heads on a wide screen', () => {
+    setViewportWidth(1280)
+    renderInApp(<AssessmentDiffView diff={DIFF_2024} deadline={null} testID="abgleich" />)
+    expect(screen.getByText('Vom Finanzamt geändert')).toBeTruthy()
+    expect(screen.queryByTestId('abgleich-spalten')).toBeNull()
   })
 })
