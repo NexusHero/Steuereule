@@ -3,7 +3,6 @@ import {
   decideDocumentHolder,
   holderPerson,
   holderScopeOf,
-  ISO_DATE_PATTERN,
   isHolderRef,
   otherNamedMembers,
   printedPersonNames,
@@ -220,15 +219,6 @@ function otherAccount(response: ParseReceiptResponseDto): boolean {
   return [response.lstb, response.chLohnausweis, response.chLetter].some((r) => r != null && r.personNotRecordable)
 }
 
-/**
- * The date the reader recognised, kept as the Beleg's `belegdatum` so ADR-0040's year suggestion works —
- * only while the Beleg has no date yet: a date the user typed is never overwritten.
- */
-function documentDateOf(owned: ReceiptRecord, response: ParseReceiptResponseDto): string | undefined {
-  const date = response.parsed.receiptDate
-  if (owned.belegdatum !== undefined || owned.zahlungsdatum !== undefined || date === null || !ISO_DATE_PATTERN.test(date)) return undefined
-  return Number.isNaN(new Date(date).getTime()) ? undefined : date
-}
 
 /**
  * What this read found out (ADR-0097 §2), or null when it decided nothing: the reader asked whose the
@@ -236,13 +226,14 @@ function documentDateOf(owned: ReceiptRecord, response: ParseReceiptResponseDto)
  */
 function readFactsOf(owned: ReceiptRecord, dto: ParseReceiptDto, response: ParseReceiptResponseDto, duplicate: boolean): RecordReadData | null {
   if (askedWhose(response)) return null
-  const belegdatum = documentDateOf(owned, response)
-  const withDate = belegdatum !== undefined ? { belegdatum } : {}
-  if (response.draftsTaxYear != null) return { outcome: 'werte', reason: null, draftsTaxYear: response.draftsTaxYear, ...withDate }
-  if (duplicate) return { outcome: 'nichts', reason: 'dublette', draftsTaxYear: null, ...withDate }
+  // The year the drafts went to becomes the Beleg's year; a year the user chose stays (ADR-0097 §5).
+  if (response.draftsTaxYear != null) {
+    return { outcome: 'werte', reason: null, draftsTaxYear: response.draftsTaxYear, ...(owned.taxYear == null ? { taxYear: response.draftsTaxYear } : {}) }
+  }
+  if (duplicate) return { outcome: 'nichts', reason: 'dublette', draftsTaxYear: null }
   if (dto.stageDraft === false) return null
   const reason: ReceiptReadReason = otherAccount(response) ? 'anderes_konto' : (response.noValuesReason ?? (response.securityBlocked ? 'blockiert' : 'nichts_erkannt'))
-  return { outcome: 'nichts', reason, draftsTaxYear: null, ...withDate }
+  return { outcome: 'nichts', reason, draftsTaxYear: null }
 }
 
 /**

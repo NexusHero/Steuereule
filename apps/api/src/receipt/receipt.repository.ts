@@ -53,8 +53,12 @@ export interface RecordReadData {
   readonly reason: ReceiptReadReason | null
   /** The tax year the drafts went to; null when none were staged. */
   readonly draftsTaxYear: number | null
-  /** The document's date the reader recognised (ISO yyyy-mm-dd), stored as `belegdatum` for ADR-0040's year rule. */
-  readonly belegdatum?: string | undefined
+  /**
+   * The year the reader filed the drafts in, kept as the Beleg's year while the user has not chosen one
+   * (ADR-0097 §5). The reader decides the year by § 11 for its document kind; the date printed on a
+   * Beleg is often the issue date (a donation confirmation of January 2026 for 2025), so it is not used.
+   */
+  readonly taxYear?: number | undefined
 }
 
 export const RECEIPT_REPOSITORY = Symbol('RECEIPT_REPOSITORY')

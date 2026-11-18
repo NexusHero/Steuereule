@@ -98,9 +98,9 @@ describe('Beleg lifecycle contract (ADR-0097)', () => {
 
     const after = await inbox()
     expect(after.size).toBe(5)
-    expect(after.get(withValues.id)).toMatchObject({ processing: { state: 'uebernommen', applied: 1, open: false }, belegdatum: '2025-05-10' })
+    expect(after.get(withValues.id)).toMatchObject({ processing: { state: 'uebernommen', applied: 1, open: false }, assignment: { kind: 'zugeordnet', taxYear: YEAR }, belegdatum: null })
     expect(after.get(withValues.id)?.filledFields).toEqual([expect.objectContaining({ field: 'spenden-betrag', value: '250', taxYear: YEAR })])
-    expect(after.get(otherYear.id)).toMatchObject({ processing: { state: 'vorschlaege', draftsTaxYear: 2024, open: true }, belegdatum: '2024-03-03' })
+    expect(after.get(otherYear.id)).toMatchObject({ processing: { state: 'vorschlaege', draftsTaxYear: 2024, open: true }, assignment: { kind: 'zugeordnet', taxYear: 2024 }, belegdatum: null })
     expect(after.get(nothing.id)?.processing).toMatchObject({ state: 'nichts_verwertbar', open: false })
     expect(after.get(unreadable.id)?.processing).toMatchObject({ state: 'nicht_lesbar', open: true })
     expect(after.get(duplicate.id)).toMatchObject({ processing: { state: 'nichts_verwertbar', open: false }, duplicateOf: { id: withValues.id } })

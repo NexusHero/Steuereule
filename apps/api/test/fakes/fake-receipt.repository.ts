@@ -85,7 +85,7 @@ export class FakeReceiptRepository implements ReceiptRepository {
       readOutcome: data.outcome,
       readReason: data.reason,
       draftsTaxYear: data.draftsTaxYear,
-      ...(data.belegdatum !== undefined ? { belegdatum: data.belegdatum } : {}),
+      ...(data.taxYear !== undefined ? { taxYear: data.taxYear } : {}),
       updatedAt: new Date(),
     }
     this.rows[index] = updated
