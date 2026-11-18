@@ -23,7 +23,7 @@ describe('historyFormat', () => {
     expect(plain(figureText(fig(1230), 'euro', 'noch offen'))).toBe('1.230 €')
     expect(plain(figureText(est(1180, 1420), 'euro', 'noch offen'))).toBe('1.180–1.420 €')
     expect(figureText(open(), 'euro', 'noch offen')).toBe('noch offen')
-    expect(plain(signedFigureText(est(1066, 1196), '–'))).toBe('+1.066 € – +1.196 €')
+    expect(plain(signedFigureText(est(1066, 1196), '–'))).toBe('+1.066–1.196 €')
     expect(plain(figureText(fig(13.6), 'percent', '–'))).toBe('13,6 %')
   })
 
@@ -99,7 +99,7 @@ describe('owlSentence', () => {
     const text = plain(owlSentence('erstattung', HISTORY_YEARS, HISTORY_RESPONSE.list, 'beide', tr))
     expect(text).toContain('Von 3 Erklärungen aus SteuerEule kamen 2 wie erklärt zurück.')
     expect(text).toContain('2024 hat das Finanzamt 92 € gekürzt.')
-    expect(text).toContain('Für 2025 schätzt die Eule +1.066 € – +1.196 €.')
+    expect(text).toContain('Für 2025 schätzt die Eule +1.066–1.196 €.')
     expect(text).toContain('2021 und 2022 sind die Summe zweier Einzelerklärungen.')
   })
 

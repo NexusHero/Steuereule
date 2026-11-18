@@ -2262,15 +2262,6 @@
       }
     },
     {
-      "kind": "offen",
-      "year": 2026,
-      "highlighted": false,
-      "missing": [
-        "lohnsteuerbescheinigung",
-        "personB.lohnsteuerbescheinigung"
-      ]
-    },
-    {
       "kind": "wartet-auf-bescheid",
       "year": 2025,
       "highlighted": false,
@@ -2283,6 +2274,15 @@
           "position": "arbeitsmittelA",
           "label": "Arbeitsmittel"
         }
+      ]
+    },
+    {
+      "kind": "offen",
+      "year": 2026,
+      "highlighted": false,
+      "missing": [
+        "lohnsteuerbescheinigung",
+        "personB.lohnsteuerbescheinigung"
       ]
     }
   ],

@@ -101,7 +101,7 @@ describe('HistoryScreen — phone', () => {
     expect(text('verlauf-ansteht-2024')).toContain('Bescheid weicht ab: −92 €')
     expect(text('verlauf-ansteht-2024')).toContain('Einspruch bis 07.12.2026 · noch 19 Tage')
     expect(text('verlauf-ansteht-2025')).toContain('2 Positionen wie 2024 erklärt, dort gekürzt: Homeoffice-Pauschale, Arbeitsmittel')
-    expect(text('verlauf-ansteht-2026')).toContain('Noch offen: die Lohnsteuerbescheinigung und die Lohnsteuerbescheinigung von Person B.')
+    expect(text('verlauf-ansteht-2026')).toContain('Fehlt noch: die Lohnsteuerbescheinigung und die Lohnsteuerbescheinigung von Person B.')
   })
 
   it('sums up the Bescheid years and what the Finanzamt changed (mock `held()`)', async () => {
@@ -187,7 +187,7 @@ describe('HistoryScreen — phone', () => {
     await screen.findByTestId('verlauf-detail')
     fireEvent.click(screen.getByTestId('verlauf-diagramm-jahr-2025'))
     expect(text('verlauf-detail')).toContain('2025Schätzung')
-    expect(text('verlauf-detail-erstattung')).toBe('Erstattung geschätzt+1.066 € – +1.196 €')
+    expect(text('verlauf-detail-erstattung')).toBe('Erstattung geschätzt+1.066–1.196 €')
     expect(text('verlauf-detail')).toContain('+257 € bis +387 € zum Vorjahr')
 
     fireEvent.click(screen.getByTestId('verlauf-diagramm-jahr-2023'))
@@ -234,7 +234,7 @@ describe('HistoryScreen — tablet and desktop', () => {
     expect(text('verlauf-tabelle-2024')).toContain('−92 €')
     expect(text('verlauf-tabelle-2022')).toContain('Bescheid · wie erklärt')
     expect(text('verlauf-kpi-erstattung')).toContain('Erstattung 2025 · Wir beide')
-    expect(text('verlauf-kpi-erstattung')).toContain('+1.066 € – +1.196 €')
+    expect(text('verlauf-kpi-erstattung')).toContain('+1.066–1.196 €')
     expect(text('verlauf-kpi-netto')).toContain('Brutto → Netto 2025 · Wir beide')
     expect(screen.queryByTestId('verlauf-kennzahl-erstattung')).toBeNull()
     fireEvent.click(screen.getByTestId('verlauf-kpi-werbungskosten'))

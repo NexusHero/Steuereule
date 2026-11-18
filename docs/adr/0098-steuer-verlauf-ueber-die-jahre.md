@@ -1,6 +1,6 @@
 # ADR-0098 — Steuer-Verlauf: Alle Jahre auf einen Blick
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-11-18
 - **Deciders:** NexusHero (Product Owner), Steuereule Engineering
 - **Applies to:**
@@ -79,10 +79,14 @@ Die Zahlen liegen schon da, je Nutzer und Jahr: `Lstb` (Brutto, Lohnsteuer, Soli
 ## Umsetzung
 
 1. Kern: `buildYearHistory` mit den drei Stufen und den Vorjahres-Deltas, testgetrieben gegen die Echtfälle aus ADR-0087/0090 (mehrere Jahre, Wechseljahr, Grenzgänger).
-2. API: `GET /year-history`, nutzergebunden (ADR-0007), liefert alle Jahre des Nutzers bzw. Haushalts.
+2. API: `GET /v1/verlauf`, nutzergebunden (ADR-0007), liefert alle Jahre des Nutzers bzw. Haushalts.
 3. App: Tab „Verlauf“ mit „Was ansteht“, der Jahresliste und den vier Karten; Diagramme in den Funke-Tokens, barrierefrei mit Datentabelle hinter jedem Diagramm.
 4. Bescheid-Abgleich: `Assessment` um die Besteuerungsgrundlagen erweitern (eine Migration, Felder verschlüsselt), `diffAssessment` im Kern testgetrieben, Diff-Ansicht in Verlauf und Bescheidprüfung. Dazu `assessmentLessons(diff, nextYear)` im Kern (reine Funktion, Katalog der Hinweise je Positionsart) und der Wiedereinstieg an der Maske des nächsten offenen Jahres.
 5. Eckjahr: Übernahme eines gelesenen Bescheids für ein Jahr ohne Erklärung legt ein Steuerjahr `extern-erledigt` an; der Verlauf bekommt nur einen Einstieg in den bestehenden Upload-Weg, keinen eigenen.
+
+6. Abgabe: Die App druckt die Formulare, abgegeben wird auf Papier oder in ELSTER. Deshalb trägt der Nutzer die Abgabe selbst ein: „Ich habe die Erklärung abgegeben“ im Cockpit, mit Datum (vorbelegt: heute). Das friert die eingereichte Fassung ein (`POST /v1/steuerjahre/:jahr/abgabe`), das Jahr wird `eingereicht` und steht im Verlauf als „wartet auf Bescheid“. Bis ein Bescheid erfasst ist, lässt sich die Abgabe zurücknehmen oder durch eine neue Fassung ersetzen (`DELETE …/abgabe`). Wo die Schätzung eine Spanne hat (zvE, Steuer, Erstattung), speichert die Fassung die gerundete Mitte als erklärten Wert und die Spanne daneben; gezeigt wird weiter die Spanne.
+
+Abweichung vom Mock: Die App hat auf allen Breiten die schwebende Tab-Leiste; eine Seitenleiste nur für Tablet und Desktop gibt es nicht. Der Verlauf nutzt dort das breite Layout des Mocks (Tabelle, Kacheln, Diagramm mit Seitenspalte).
 
 ## Folgen
 

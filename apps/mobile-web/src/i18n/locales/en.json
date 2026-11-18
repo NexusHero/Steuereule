@@ -3051,6 +3051,7 @@
     },
     "fehlt": {
       "satz": "Still open: {{liste}}.",
+      "fehltNoch": "Still missing: {{liste}}.",
       "nichtsGenannt": "Still open.",
       "vonPersonB": "{{was}} of Person B",
       "sonstiges": "further details",

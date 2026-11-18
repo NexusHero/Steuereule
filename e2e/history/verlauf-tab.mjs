@@ -93,7 +93,7 @@ async function main() {
     // What is due, most urgent first.
     await see('verlauf-ansteht')
     const due = await page.locator('[data-testid^="verlauf-ansteht-"]').evaluateAll((els) => els.map((e) => e.getAttribute('data-testid')))
-    if (due.join() !== 'verlauf-ansteht-2024,verlauf-ansteht-2026,verlauf-ansteht-2025') fail(`„Was ansteht“ should start with the deadline of 2024, it is ${due.join()}`)
+    if (due.join() !== 'verlauf-ansteht-2024,verlauf-ansteht-2025,verlauf-ansteht-2026') fail(`„Was ansteht“ should start with the deadline of 2024, it is ${due.join()}`)
     if (!(await textOf('verlauf-ansteht-2024')).includes('Bescheid weicht ab: −92 €')) fail('the deadline item should name the cut in euros')
     await see('verlauf-held')
     if ((await textOf('verlauf-held-erstattet')) !== '+1.632 €') fail('the summary should add the refunds of the Bescheid years')

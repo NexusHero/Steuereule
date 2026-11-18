@@ -316,7 +316,8 @@ function openItems(years: readonly GatheredYear[], diffs: readonly YearDiff[], l
       items.push({ kind: 'offen', year: g.year, highlighted: false, missing: g.input.missing.length > 0 ? g.input.missing : ['erklaerung'] })
     }
   }
-  return items.sort((x, y) => Number(y.highlighted) - Number(x.highlighted) || y.year - x.year)
+  // The highlighted deadline first, then the years in order, as in the mock.
+  return items.sort((x, y) => Number(y.highlighted) - Number(x.highlighted) || x.year - y.year)
 }
 
 /** The lessons of the latest Bescheid before the latest open year, for that year's masks (ADR-0098 §8). */
