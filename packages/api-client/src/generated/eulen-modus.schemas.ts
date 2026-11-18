@@ -1218,7 +1218,7 @@ export interface SetAdvisorConversationModelDto {
 export interface AdvisorConversationDto {
   id: string;
   /**
-     * The chat model picked for this conversation (ADR-0094); null = the standard model.
+     * The chat model picked for this conversation (ADR-0096); null = the standard model.
      * @nullable
      */
   chatModel: AdvisorChatModelRefDto | null;
@@ -1429,7 +1429,7 @@ export const SendAdvisorMessageDtoSkill = {
 } as const;
 
 /**
- * Gründlich (the standard) or Max for this one message (ADR-0094).
+ * Gründlich (the standard) or Max for this one message (ADR-0096).
  */
 export type SendAdvisorMessageDtoDepth = typeof SendAdvisorMessageDtoDepth[keyof typeof SendAdvisorMessageDtoDepth];
 
@@ -1463,7 +1463,7 @@ export interface SendAdvisorMessageDto {
   skill?: SendAdvisorMessageDtoSkill;
   /** Turbo mode: the owl applies the drafts of this answer itself instead of waiting for a click. Off by default. */
   turbo?: boolean;
-  /** Gründlich (the standard) or Max for this one message (ADR-0094). */
+  /** Gründlich (the standard) or Max for this one message (ADR-0096). */
   depth?: SendAdvisorMessageDtoDepth;
   /** Quick start that shapes the turn: forgotten_check always opens with a visible plan (#451). */
   quickAction?: SendAdvisorMessageDtoQuickAction;

@@ -275,7 +275,7 @@ export const getAdvisorControllerListModelsUrl = (jahr: number,) => {
 }
 
 /**
- * @summary The chat models the user may pick, with Gründlich/Max and their measured cost and wait (ADR-0094)
+ * @summary The chat models the user may pick, with Gründlich/Max and their measured cost and wait (ADR-0096)
  */
 export const advisorControllerListModels = async (jahr: number, options?: RequestInit): Promise<advisorControllerListModelsResponse> => {
 
@@ -346,7 +346,7 @@ export function useAdvisorControllerListModels<TData = Awaited<ReturnType<typeof
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
- * @summary The chat models the user may pick, with Gründlich/Max and their measured cost and wait (ADR-0094)
+ * @summary The chat models the user may pick, with Gründlich/Max and their measured cost and wait (ADR-0096)
  */
 
 export function useAdvisorControllerListModels<TData = Awaited<ReturnType<typeof advisorControllerListModels>>, TError = unknown>(
@@ -396,7 +396,7 @@ export const getAdvisorControllerSetConversationModelUrl = (jahr: number,
 }
 
 /**
- * @summary Pick the chat model of a conversation; provider and model null go back to the standard (ADR-0094)
+ * @summary Pick the chat model of a conversation; provider and model null go back to the standard (ADR-0096)
  */
 export const advisorControllerSetConversationModel = async (jahr: number,
     conversationId: string,
@@ -447,7 +447,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type AdvisorControllerSetConversationModelMutationError = void
 
     /**
- * @summary Pick the chat model of a conversation; provider and model null go back to the standard (ADR-0094)
+ * @summary Pick the chat model of a conversation; provider and model null go back to the standard (ADR-0096)
  */
 export const useAdvisorControllerSetConversationModel = <TError = void,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof advisorControllerSetConversationModel>>, TError,{jahr: number;conversationId: string;data: SetAdvisorConversationModelDto}, TContext>, request?: SecondParameter<typeof httpClient>}
