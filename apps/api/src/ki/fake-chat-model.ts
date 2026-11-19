@@ -5,6 +5,7 @@ import type { BaseLanguageModelInput } from '@langchain/core/language_models/bas
 import { AIMessage, AIMessageChunk, ToolMessage, type BaseMessage } from '@langchain/core/messages'
 import { ChatGenerationChunk, type ChatResult } from '@langchain/core/outputs'
 import type { Runnable } from '@langchain/core/runnables'
+import { userTextOf } from './advisor-prompt.js'
 
 interface ScriptedToolCall {
   readonly name: string
@@ -63,8 +64,9 @@ export const FAKE_KI_SCRIPT: ReadonlyArray<{ readonly keyword: RegExp; readonly 
 
 export const FAKE_KI_DEFAULT_REPLY = 'Ich bin die Test-Eule und antworte mit festem Text.'
 
+/** Only the user's own words: the case the app puts in front of the question must not trigger a script line. */
 function textOf(message: BaseMessage): string {
-  return typeof message.content === 'string' ? message.content : ''
+  return userTextOf(message.content)
 }
 
 /** Decides the next answer from the conversation alone, so every run is identical. */

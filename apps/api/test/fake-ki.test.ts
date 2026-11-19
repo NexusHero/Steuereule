@@ -46,3 +46,13 @@ describe('fake KiPort (#450 D8)', () => {
     expect(action?.event === 'action' && action.data).toMatchObject({ actionId: 'act-fake-1', status: 'pending', screen: 'commute', field: 'oneWayKm', newValue: '38' })
   })
 })
+
+describe('the fake model reads only the user\'s words', () => {
+  it('ignores what the app puts in front of the question', async () => {
+    const { buildSystemMessage, buildTurnMessages } = await import('../src/ki/advisor-prompt.js')
+    const system = buildSystemMessage('fake', 'Fall')
+    // „Homeoffice“ stands in the app's context, not in the question: no script line may fire.
+    expect(fakeKiAnswer(buildTurnMessages(system, [], 'Aktive Maske: commute (Arbeitsweg, Homeoffice)', 'Hallo')).content).toBe(FAKE_KI_DEFAULT_REPLY)
+    expect(fakeKiAnswer(buildTurnMessages(system, [], 'Aktive Maske: cockpit', 'Ich war oft im Homeoffice')).tool_calls?.length ?? 0).toBeGreaterThan(0)
+  })
+})

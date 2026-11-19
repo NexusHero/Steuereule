@@ -20,6 +20,12 @@ import {
   buildStableSystemPrompt,
   withHistoryCacheBreakpoint,
   buildSystemMessage,
+  buildTurnMessages,
+  buildCaseBlock,
+  describeTurnContext,
+  TURN_CONTEXT_HEADER,
+  USER_MESSAGE_HEADER,
+  userTextOf,
   buildToolSchemas,
   toProviderToolSchema,
   extractReasoningText,
@@ -194,22 +200,41 @@ describe('system prompt built for provider-side caching (#476)', () => {
     expect(stable).not.toContain('Aktive Maske')
   })
 
-  it('marks the stable block and the case as cache breakpoints for Anthropic, the case after the rules', () => {
-    const content = buildSystemMessage('anthropic', digest, 'commute').content as Array<Record<string, unknown>>
+  it('marks the rules and the case as cache breakpoints for Anthropic, the case after the rules', () => {
+    const content = buildSystemMessage('anthropic', buildCaseBlock(digest)).content as Array<Record<string, unknown>>
     expect(content).toHaveLength(2)
     expect(content[0]).toMatchObject({ type: 'text', text: buildStableSystemPrompt(), cache_control: { type: 'ephemeral' } })
     expect(content[1]!.cache_control).toEqual({ type: 'ephemeral' })
-    expect(content[1]!.text).toContain('Aktive Maske: commute')
     expect(content[1]!.text).toContain('"grossWageEur":65000')
   })
 
   it('gives the other providers one string that starts with the identical stable prefix', () => {
-    const a = buildSystemMessage('google-genai', digest, 'commute').content as string
-    const b = buildSystemMessage('openai', { ...digest, childrenCount: 3 }, 'interview').content as string
+    const a = buildSystemMessage('google-genai', buildCaseBlock(digest)).content as string
+    const b = buildSystemMessage('openai', buildCaseBlock({ ...digest, childrenCount: 3 })).content as string
     const stable = buildStableSystemPrompt()
     expect(a.startsWith(stable)).toBe(true)
     expect(b.startsWith(stable)).toBe(true)
     expect(a).not.toBe(b)
+  })
+
+  it('keeps what holds for one answer out of the cached case: a change of the mask leaves rules, case and history a stable prefix', () => {
+    const history = [new HumanMessage('Frage'), new AIMessage('Antwort')]
+    const turn = (screen: 'commute' | 'interview', grayZone: boolean) =>
+      buildTurnMessages(buildSystemMessage('anthropic', buildCaseBlock(digest)), history, describeTurnContext(screen, false, grayZone), 'Noch eine')
+    const a = turn('commute', false)
+    const b = turn('interview', true)
+    // Everything up to the question is identical; only the question's first block differs.
+    expect(a.slice(0, -1).map((m) => m.content)).toEqual(b.slice(0, -1).map((m) => m.content))
+    expect(JSON.stringify(a[0]!.content)).not.toContain('Aktive Maske')
+    const [contextBlock, userBlock] = a.at(-1)!.content as Array<{ text: string }>
+    expect(contextBlock!.text).toBe(`${TURN_CONTEXT_HEADER}\nAktive Maske: commute`)
+    expect(userBlock!.text).toBe(`${USER_MESSAGE_HEADER}\nNoch eine`)
+    expect(userTextOf(a.at(-1)!.content)).toBe('Noch eine')
+    const other = (b.at(-1)!.content as Array<{ text: string }>)[0]!.text
+    expect(other).toContain('Aktive Maske: interview')
+    expect(other).toContain('Grauzone')
+    // The history itself goes out as it was stored.
+    expect(a[2]).toBe(history[1])
   })
 
   it('marks the newest message of every Claude round for the cache, and nothing for the other providers', async () => {
@@ -264,10 +289,12 @@ describe('a forced plan and Anthropic thinking (#476)', () => {
     const model = new ChunkedChatModel([[answer('Antwort.')]])
     await run(new LangGraphAdvisorEngine(runtime('anthropic', { reasoning: 'summary' }), () => model), { planRequired: true })
     expect(model.toolChoices).not.toContain('plan_steps')
-    const system = model.seenMessages[0]![0]!.content as Array<{ text: string }>
-    expect(system[1]!.text).toContain('Rufe als Erstes `plan_steps` auf')
-    // The request to plan is case-specific and must not break the cached prefix.
+    const sent = model.seenMessages[0]!
+    expect((sent.at(-1)!.content as Array<{ text: string }>)[0]!.text).toContain('Rufe als Erstes `plan_steps` auf')
+    // The order to plan holds for this answer only: neither the cached rules nor the cached case carry it.
+    const system = sent[0]!.content as Array<{ text: string }>
     expect(system[0]!.text).toBe(buildStableSystemPrompt())
+    expect(system[1]!.text).not.toContain('plan_steps` auf, bevor')
   })
 })
 

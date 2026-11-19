@@ -137,6 +137,21 @@ export interface AdvisorTurnUsage {
   readonly cachedInputTokens: number
 }
 
+/**
+ * Where the time of one turn went, in milliseconds. Kept beside the token counts so a slow turn can
+ * be read (model, tools, guard or the app's own preparation) instead of guessed.
+ */
+export interface AdvisorTurnTimings {
+  /** The topic guard, from its call to its verdict; absent where none ran. */
+  readonly guardMs?: number | undefined
+  /** Each model round, from the request to its last chunk. */
+  readonly roundMs: readonly number[]
+  /** All tool rounds together. */
+  readonly toolMs: number
+  /** The app's own work before the engine was called (history, summary, case digest); set by the turn service. */
+  readonly prepMs?: number | undefined
+}
+
 export interface AdvisorTurnResult {
   readonly replyText: string
   readonly meta: AdvisorMessageMeta
@@ -146,6 +161,7 @@ export interface AdvisorTurnResult {
   /** Reasoning summaries of all rounds, joined; absent when the model supplied none. */
   readonly reasoning?: string | undefined
   readonly usage?: AdvisorTurnUsage | undefined
+  readonly timings?: AdvisorTurnTimings | undefined
   /** Set when the first model failed before its first word and the fallback model answered instead (#493). */
   readonly primaryFailure?: AdvisorModelFailure | undefined
   /** What the topic guard said; absent where no guard ran (the rules answered). */

@@ -50,7 +50,8 @@ function runtime(provider: ResolvedAiSlotConfig['provider'], fallback?: Resolved
   }
 }
 
-const systemText = (messages: BaseMessage[]): string => JSON.stringify(messages[0]!.content)
+// What the model was told: the rules (system) and the case in front of the question (last message).
+const systemText = (messages: BaseMessage[]): string => JSON.stringify([messages[0]!.content, messages.at(-1)!.content])
 const STANCE = 'Beraterhaltung (gilt immer)'
 const ADVOCATE = 'keinen Euro mehr zahlt, als das Gesetz verlangt'
 

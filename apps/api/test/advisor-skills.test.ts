@@ -66,7 +66,8 @@ async function run(model: ScriptedModel, skill?: 'berater-interview') {
   return (await engine.runTurn({ message: 'Fang bitte an.', digest: DIGEST, ...(skill ? { skill } : {}) })) as AdvisorTurnResult
 }
 
-const systemText = (messages: BaseMessage[]): string => JSON.stringify(messages[0]!.content)
+// What the model was told: the rules (system) and the case in front of the question (last message).
+const systemText = (messages: BaseMessage[]): string => JSON.stringify([messages[0]!.content, messages.at(-1)!.content])
 
 describe('the interview keeps its standing per tax year', () => {
   it('tells the model which areas are still open, only while the interview is on', async () => {

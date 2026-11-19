@@ -1,6 +1,7 @@
 // ADR-0069 §Themengrenze: before the owl answers a typed question, a small model sorts it into tax,
-// grey zone or off topic. It runs before the chat model, not beside it, so an off-topic question
-// costs one small call and never a big one. Whatever goes wrong with it, the turn is let through:
+// grey zone or off topic. It runs beside the chat model (ADR-0100): the model starts at once, and
+// nothing of its turn reaches the user or a tool before the verdict. An off-topic verdict drops the
+// started turn. Whatever goes wrong with the guard, the turn is let through:
 // the topic rule in the owl's own prompt and the attack patterns stay as the second line.
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import { HumanMessage, SystemMessage } from '@langchain/core/messages'

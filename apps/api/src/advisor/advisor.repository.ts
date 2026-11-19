@@ -1,10 +1,10 @@
 import { randomUUID } from 'node:crypto'
-import type { AdvisorActionProposal, AdvisorActionStatus, AdvisorDepth, AdvisorMessageFeedback, AdvisorMessageMeta, AdvisorMessageStatus, AdvisorTurnUsage, InterviewProgress, Screen } from '@steuereule/core'
+import type { AdvisorActionProposal, AdvisorActionStatus, AdvisorDepth, AdvisorMessageFeedback, AdvisorMessageMeta, AdvisorMessageStatus, AdvisorTurnTimings, AdvisorTurnUsage, InterviewProgress, Screen } from '@steuereule/core'
 
 export const ADVISOR_REPOSITORY = Symbol('ADVISOR_REPOSITORY')
 
 /** What a turn cost and how long it took (#476). Carries no message content. */
-export interface AdvisorMessageUsage extends Partial<AdvisorTurnUsage> {
+export interface AdvisorMessageUsage extends Partial<AdvisorTurnUsage>, Partial<AdvisorTurnTimings> {
   readonly traceId: string
   /** Which model answered and how deep it thought (ADR-0096): what the cost factors are measured from. */
   readonly provider?: string | undefined
