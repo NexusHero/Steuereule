@@ -117,6 +117,7 @@ CVE-2026-87018
 CVE-2026-87776
 CVE-2026-93749
 CVE-2026-97031
+CVE-2026-97054
 
 # Node/pnpm dependency GHSA advisories in container runtime
 GHSA-2x7j-588g-ccc2
