@@ -260,6 +260,24 @@ describe('LstbScreen', () => {
     await waitFor(() => expect(puts).toEqual([{ zuschuesseKvPv: 5072 }]))
   })
 
+  it('saves the employer’s name for the Verlauf’s „neuer Arbeitgeber“, per person, and clears it when emptied (ADR-0099 §8)', async () => {
+    const puts: { body: unknown; person: string | null }[] = []
+    server.use(
+      http.get('*/v1/steuerjahre/:jahr/lstb-arbeitgeber', () => HttpResponse.json({ arbeitgeber: 'Muster GmbH' }, { status: 200 })),
+      http.put('*/v1/steuerjahre/:jahr/lstb-arbeitgeber', async ({ request }) => {
+        const body = await request.json()
+        puts.push({ body, person: new URL(request.url).searchParams.get('person') })
+        return HttpResponse.json(body, { status: 200 })
+      }),
+    )
+    renderLstb()
+    const employer = (await screen.findByTestId('lstb-arbeitgeber')) as HTMLInputElement
+    await waitFor(() => expect(employer.value).toBe('Muster GmbH'))
+    fireEvent.change(employer, { target: { value: 'Roche AG' } })
+    fireEvent.blur(employer)
+    await waitFor(() => expect(puts).toEqual([{ body: { arbeitgeber: 'Roche AG' }, person: null }]))
+  })
+
   it('shows the Zeile 24 hint while the server reports the subsidy open, and hides it after Zeile 24 is saved', async () => {
     let open = true
     const lines = () => ({

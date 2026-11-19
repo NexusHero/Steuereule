@@ -211,3 +211,18 @@ export function sparkPoints(values: readonly ({ readonly from: number; readonly 
   const n = Math.max(values.length - 1, 1)
   return pts.map(([i, v]) => `${(4 + (i / n) * 92).toFixed(1)},${(19 - (hi === lo ? 0.5 : (v - lo) / (hi - lo)) * 16).toFixed(1)}`).join(' ')
 }
+
+/**
+ * One series of amounts per year for the group tabs of „Entwicklung“ (ADR-0099 §3, §7): signed amounts as
+ * refund bars (green above the line, red below), positive ones as a single bar; a year without a value is a gap.
+ */
+export function buildAmountChart(points: readonly { readonly year: number; readonly value: number | null }[], style: 'signed' | 'bar' = 'signed'): ChartModel {
+  const columns: ChartColumn[] = points.map(({ year, value }) => {
+    if (value === null) return { year, kind: 'gap', reason: 'offen' }
+    if (style === 'bar') return { year, kind: 'stack', estimated: false, segments: [{ kind: 'steuern', value }], label: thousands(value), line: null }
+    return { year, kind: 'refund', value, declared: null, label: signedEuro(value), cutLabel: null }
+  })
+  const values = columns.flatMap(extentOf)
+  const ticks = niceTicks(Math.min(0, ...values) * 1.12, Math.max(1, ...values) * 1.12)
+  return { metric: 'erstattung', unit: 'euro', min: ticks[0] ?? 0, max: ticks[ticks.length - 1] ?? 1, ticks, columns, filingTypeChanges: [] }
+}

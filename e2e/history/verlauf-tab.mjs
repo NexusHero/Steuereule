@@ -5,7 +5,11 @@
 // (`/app/verlauf/entwicklung`) with the four key figures, tiers, the person toggle and the data table,
 // the upload entry behind „Ältere Jahre ergänzen“ into the one Beleg pipeline, the same Abgleich in
 // „Bescheid prüfen“, the lesson at the next year's mask, and „Ich habe die Erklärung abgegeben“ in the
-// cockpit.
+// cockpit. ADR-0099: the life events between the rows, „änderbar bis“, a year without data that asks
+// „Schon abgegeben?“ once (inline, then in „Jetzt wichtig“) and starts into its cockpit, the checklist of
+// the open year, the repeated cut and the couple comparison on the year page, the group tabs of
+// „Entwicklung“, „Unterlagen“ (`/app/verlauf/unterlagen`), and the new fields in the masks (employer on
+// the LStB, the rental's purchase date and repairs, the Einspruch's date and outcome).
 //
 // `GET /v1/verlauf` and the reading of the Bescheid are served here (route mocks with the API's
 // response shape, the mock's example household from `fixtures/year-history.json`), so the row tests the
@@ -23,7 +27,74 @@ import { renderTextPdf } from '../fixtures/synthetic-documents.mjs'
 const TAG = 'verlauf-tab'
 const YEAR = 2025
 const HISTORY = JSON.parse(readFileSync(new URL('../fixtures/year-history.json', import.meta.url), 'utf8'))
-const EMPTY = { today: HISTORY.today, years: [], list: [], openItems: [], diffs: [], maskLessons: null }
+const NO_GROUPS = { crossBorder: null, rental: null, capital: null, pension: null, lossCarryForward: { status: 'notRecorded' } }
+const EMPTY = {
+  today: HISTORY.today,
+  years: [],
+  list: [],
+  openItems: [],
+  diffs: [],
+  maskLessons: null,
+  events: [],
+  recurring: null,
+  prepayments: { years: [], backPaymentYears: 0, consecutiveBackPayments: 0, averageBackPayment: null, hint: null },
+  repeatedCuts: [],
+  couples: [],
+  groups: NO_GROUPS,
+  documents: [],
+}
+
+/** ADR-0099 §1: the same household without 2022 in the app; it asks „Schon abgegeben?“ once and has no amount. */
+const GAP_DEADLINE = { kind: 'abgabe-moeglich-bis', endsOn: '2026-12-31', remainingDays: 43, running: true, endsOnIfMandatory: null }
+const OPEN_FIGURE = { tier: 'offen', missing: ['erklaerung'], delta: { kind: 'none', reason: 'offen' } }
+function withGap2022(filedElsewhere, { withAppeal = true } = {}) {
+  const ask = filedElsewhere.ask
+  return {
+    ...HISTORY,
+    years: HISTORY.years.map((y) => (y.year === 2022 ? { ...y, tier: 'offen', missing: ['erklaerung'], erstattung: { ...y.erstattung, amount: OPEN_FIGURE, declared: null, difference: null } } : y)),
+    list: HISTORY.list.map((l) =>
+      l.year === 2022
+        ? { ...l, status: 'entwurf', kind: 'offen', declaredRefund: null, assessedRefund: null, difference: null, deviations: 0, noDiffReason: 'kein-bescheid', hasData: false, filedElsewhere, withoutAssessment: false, deadline: GAP_DEADLINE }
+        : l,
+    ),
+    openItems: [
+      ...HISTORY.openItems.filter((o) => withAppeal || o.kind !== 'einspruchsfrist'),
+      ...(filedElsewhere.answer === 'weiss-nicht' ? [] : [{ kind: 'offen', year: 2022, highlighted: false, missing: ['erklaerung'], filingDeadline: '2026-12-31', askFiledElsewhere: ask }]),
+    ],
+    diffs: HISTORY.diffs.filter((d) => d.year !== 2022),
+    couples: HISTORY.couples.filter((c) => c.year !== 2022),
+    documents: HISTORY.documents.filter((d) => d.year !== 2022),
+  }
+}
+const ASKING = { answer: null, answeredOn: null, askAgainFrom: null, ask: true }
+const ANSWERED_NO = { answer: 'nein', answeredOn: HISTORY.today, askAgainFrom: null, ask: false }
+
+/** ADR-0099 §3, §7: every group tab — back payments, a second rental flat, a pension — on top of the household's Schweiz and Kapital. */
+const RENTAL_YEARS = [
+  { year: 2023, result: -3100, missing: [], depreciation: 3150, bookValueEnd: 206850 },
+  { year: 2024, result: -800, missing: [], depreciation: 4200, bookValueEnd: 202650 },
+  { year: 2025, result: 1450, missing: [], depreciation: 4200, bookValueEnd: 198450 },
+]
+const ALL_GROUPS = {
+  ...HISTORY,
+  prepayments: {
+    years: [2022, 2023, 2024].map((year, i) => ({ year, refund: -[2100, 2600, 2500][i], backPayment: [2100, 2600, 2500][i], prepayments: 1200, adjustPrepayments: true })),
+    backPaymentYears: 3,
+    consecutiveBackPayments: 3,
+    averageBackPayment: 2400,
+    hint: 'Vorauszahlungen anpassen lassen (Antrag beim Finanzamt).',
+  },
+  groups: {
+    ...HISTORY.groups,
+    rental: {
+      properties: [
+        { propertyKey: 'objekt-1', label: 'Lindenstraße 4', acquiredOn: '2023-04-01', depreciation: { annual: 4200, ratePercent: 2 }, years: RENTAL_YEARS, bookValue: 198450, yearsLeft: 47, acquisitionRelated: { windowEnd: '2026-04-01', limitEur: 37500, withinWindowEur: 12300, exceeds: false, roomLeftEur: 25200, windowOpen: false, undatedCounted: 0 } },
+        { propertyKey: 'objekt-2', label: null, acquiredOn: null, depreciation: null, years: RENTAL_YEARS, bookValue: null, yearsLeft: null, acquisitionRelated: null },
+      ],
+    },
+    pension: { startYear: 2021, sharePercent: 81, allowance: 2944, allowanceYear: 2022, years: [{ year: 2024, amount: 18400, taxablePart: 15456 }, { year: 2025, amount: 19200, taxablePart: 16256 }] },
+  },
+}
 const DIFF_2024 = HISTORY.diffs.find((d) => d.year === 2024)
 
 const json = (body, status = 200) => ({ status, contentType: 'application/json', body: JSON.stringify(body) })
@@ -112,9 +183,19 @@ async function main() {
     if (!(await textOf('verlauf-jahr-2024')).includes('Bescheid · 92 € weniger als erklärt')) fail('the cut year should say how much less came back')
     if (!(await textOf('verlauf-jahr-2025')).includes('+1.066–1.196 €')) fail('the waiting year should show its estimate as a range')
     if (!(await textOf('verlauf-jahr-2021')).includes('nur Bescheid')) fail('a year with only its Bescheid should say so')
+    if (!(await textOf('verlauf-jahr-2023')).includes('änderbar bis 31.12.2027')) fail('an assessed year should say until when it can be changed')
     await see('verlauf-entwicklung')
+    await see('verlauf-unterlagen')
     await see('verlauf-aeltere')
-    console.log(`[${TAG}] ✅ Timeline — one row per year with one phrase and one amount, a range stays a range`)
+    // ADR-0099 §4: one marker per year with an event, between the rows.
+    const markers = await page.locator('[data-testid^="verlauf-ereignis-"]').evaluateAll((els) => els.map((e) => e.getAttribute('data-testid')))
+    if (markers.join() !== 'verlauf-ereignis-2025,verlauf-ereignis-2024,verlauf-ereignis-2023') fail(`the life events should mark 2025, 2024 and 2023, they are ${markers.join()}`)
+    if ((await textOf('verlauf-ereignis-2024')) !== '2024 · neuer Arbeitgeber, Start als Grenzgänger') fail('the marker should name the events of its year')
+    // ADR-0099: the tab stays one phone screen — the link row ends within about 760 px of the timeline's top.
+    const top = await byId('verlauf-jetzt').boundingBox()
+    const end = await byId('verlauf-unterlagen').boundingBox()
+    if (top === null || end === null || end.y + end.height - top.y > 760) fail(`the hero and the timeline should fit one phone screen, they take ${end && top ? Math.round(end.y + end.height - top.y) : '?'} px`)
+    console.log(`[${TAG}] ✅ Timeline — one row per year with one phrase and one amount, a range stays a range, „änderbar bis“, the life events between the rows, „Unterlagen“ beside the development`)
 
     // „Ansehen“ opens the year's page with the Bescheid-Abgleich; back returns to the tab.
     await byId('verlauf-jetzt-ansehen').click()
@@ -175,6 +256,102 @@ async function main() {
     await page.goto(`${webOrigin}/app/verlauf/1999`, { waitUntil: 'networkidle' })
     await see('verlauf-jahr-unbekannt')
     console.log(`[${TAG}] ✅ Years — „wie erklärt“ with the change of filing type, two single returns, „nur Bescheid“, the waiting year without an amount, what an open year lacks`)
+
+    // ADR-0099 §2, §5, §6: the checklist of the open year, the repeated cut and the couple comparison.
+    await page.goto(`${webOrigin}/app/verlauf/2026`, { waitUntil: 'networkidle' })
+    await see('verlauf-wiederkehrend-2026')
+    if (!(await textOf('verlauf-wiederkehrend-2026-homeoffice')).includes('⚠ 2023 und 2024 gekürzt')) fail('the checklist should name the cuts that came again')
+    if (!(await textOf('verlauf-wiederkehrend-2026-kontofuehrung')).includes('2025: 32 €')) fail('the checklist should name last year’s amount as a hint')
+    await byId('verlauf-wiederkehrend-2026-belege').click()
+    await atPath('/app/belege')
+    await page.goto(`${webOrigin}/app/verlauf/2024`, { waitUntil: 'networkidle' })
+    await see('verlauf-muster-2024')
+    if (!(await textOf('verlauf-muster-2024-homeofficeA')).startsWith('Zum zweiten Mal gekürzt: Homeoffice-Pauschale 2023 und 2024, je 180 € weniger anerkannt.')) fail('the year page should name the repeated cut')
+    if (!(await textOf('verlauf-paare-2024')).includes('Zusammen veranlagt: 2024 hat das etwa 1.010 € bis 1.230 € gebracht')) fail('the year page should say what joint filing brought')
+    if (!(await textOf('verlauf-paare-2024-etwa')).startsWith('Rechnung der App')) fail('a joint Bescheid split by the app should say it is approximate')
+    await see('verlauf-jahr-aenderbar')
+    console.log(`[${TAG}] ✅ Hints — „Kommt jedes Jahr wieder“ on 2026 with the way to the Belege, „Zum zweiten Mal gekürzt“ and the couple comparison („etwa“) on 2024`)
+
+    // ADR-0099 §9: „Unterlagen“ — the Bescheide one by one, the time to them, the Einsprüche.
+    await page.goto(`${webOrigin}/app/verlauf`, { waitUntil: 'networkidle' })
+    await byId('verlauf-unterlagen').click()
+    await atPath('/app/verlauf/unterlagen')
+    for (const id of ['verlauf-unterlagen-titel', 'verlauf-unterlagen-bescheide', 'verlauf-unterlagen-jahr-2024', 'verlauf-unterlagen-dauer', 'verlauf-unterlagen-dauer-2024', 'verlauf-unterlagen-nachfragen-2025', 'verlauf-unterlagen-einsprueche', 'verlauf-unterlagen-einspruch-2022-0']) await see(id)
+    if (!(await textOf('verlauf-unterlagen-dauer-2024')).includes('6 Wochen')) fail('the Unterlagen should say how long the Bescheid took')
+    if (!(await textOf('verlauf-unterlagen-einspruch-2022-0')).includes('teilweise stattgegeben')) fail('the appeal history should name the outcome')
+    await page.route('**/v1/belege/bescheid-2024/datei', (route) => route.fulfill({ status: 200, contentType: 'application/pdf', body: '%PDF-1.4\n%%EOF' }))
+    await byId('verlauf-unterlagen-bescheid-bescheid-2024').click()
+    await see('receipt-file-modal')
+    await page.unroute('**/v1/belege/bescheid-2024/datei')
+    await byId('verlauf-unterlagen-zurueck').click()
+    await atPath('/app/verlauf')
+    history = EMPTY
+    await page.goto(`${webOrigin}/app/verlauf/unterlagen`, { waitUntil: 'networkidle' })
+    await see('verlauf-unterlagen-leer')
+    history = HISTORY
+    console.log(`[${TAG}] ✅ Unterlagen — /app/verlauf/unterlagen: Bescheide per year with the preview, weeks to the Bescheid with „Nachfragen lohnt sich“, the Einsprüche, the empty state`)
+
+    // ADR-0099 §3, §7: the group tabs on „Entwicklung“, only with data.
+    await page.goto(`${webOrigin}/app/verlauf/entwicklung`, { waitUntil: 'networkidle' })
+    if (await byId('verlauf-bereich-vorauszahlungen').count()) fail('a household without back payments has no prepayment tab')
+    await byId('verlauf-bereich-schweiz').click()
+    for (const id of ['verlauf-gruppe-schweiz', 'verlauf-gruppe-schweiz-kurs', 'verlauf-gruppe-schweiz-quellensteuer', 'verlauf-gruppe-schweiz-anteil', 'verlauf-gruppe-diagramm']) await see(id)
+    await byId('verlauf-gruppe-tabelle-umschalten').click()
+    await see('verlauf-gruppe-tabelle')
+    await byId('verlauf-bereich-kapital').click()
+    for (const id of ['verlauf-gruppe-kapital', 'verlauf-gruppe-kapital-pauschbetrag', 'verlauf-gruppe-kapital-guenstiger']) await see(id)
+    history = ALL_GROUPS
+    await page.goto(`${webOrigin}/app/verlauf/entwicklung`, { waitUntil: 'networkidle' })
+    await byId('verlauf-bereich-vorauszahlungen').click()
+    await see('verlauf-gruppe-vorauszahlungen')
+    if (!(await textOf('verlauf-gruppe-vorauszahlungen-hinweis')).includes('Vorauszahlungen anpassen lassen (Antrag beim Finanzamt).')) fail('back payments should lead to the prepayment hint')
+    await byId('verlauf-bereich-vermietung').click()
+    for (const id of ['verlauf-gruppe-vermietung', 'verlauf-gruppe-objekt-0', 'verlauf-gruppe-objekt-0-grenze', 'verlauf-gruppe-objekt-1', 'verlauf-gruppe-verlustvortrag']) await see(id)
+    await byId('verlauf-gruppe-tabelle-1-umschalten').click()
+    await see('verlauf-gruppe-tabelle-1')
+    await byId('verlauf-bereich-rente').click()
+    await see('verlauf-gruppe-rente')
+    await see('verlauf-gruppe-rente-jahre')
+    await page.goto(`${webOrigin}/app/verlauf/2024`, { waitUntil: 'networkidle' })
+    await see('verlauf-vorauszahlung-2024')
+    history = HISTORY
+    console.log(`[${TAG}] ✅ Development — group tabs only with data: Schweiz and Kapital for the household, Vorauszahlungen, Vermietung and Rente when there is data, each with its table`)
+
+    // ADR-0099 §1: a year without data asks „Schon abgegeben?“ once, inline while the Einspruch is more urgent.
+    const answers = []
+    await page.route('**/v1/steuerjahre/2022/abgabe-anderswo', async (route) => {
+      const body = route.request().postDataJSON()
+      answers.push(body.answer)
+      history = body.answer === 'nein' ? withGap2022(ANSWERED_NO) : withGap2022({ answer: body.answer, answeredOn: HISTORY.today, askAgainFrom: '2026-10-01', ask: false })
+      return route.fulfill(json({ year: 2022, status: body.answer === 'ja' ? 'extern-erledigt' : 'entwurf', filedElsewhere: { answer: body.answer, answeredOn: HISTORY.today, askAgainFrom: null, ask: false }, deadline: GAP_DEADLINE }))
+    })
+    history = withGap2022(ASKING)
+    await page.goto(`${webOrigin}/app/verlauf`, { waitUntil: 'networkidle' })
+    await see('verlauf-frage-2022')
+    if ((await textOf('verlauf-jahr-2022')).includes('€')) fail('a year without data must not show an amount')
+    await byId('verlauf-frage-2022-nein').click()
+    await byId('verlauf-frage-2022').waitFor({ state: 'detached', timeout: 10_000 }).catch(() => fail('after the answer the row should not ask again'))
+    if (!(await textOf('verlauf-jahr-2022')).includes('noch nicht abgegeben · bis 31.12.2026 möglich')) fail('after „Nein“ the row should say until when 2022 can be filed')
+    // Without the Einspruch the year is the most urgent: the question moves into „Jetzt wichtig“.
+    history = withGap2022(ASKING, { withAppeal: false })
+    await page.goto(`${webOrigin}/app/verlauf`, { waitUntil: 'networkidle' })
+    await see('verlauf-jetzt-frage')
+    if (await byId('verlauf-frage-2022').count()) fail('the question belongs in one place at a time')
+    await byId('verlauf-jetzt-frage-weiss-nicht').click()
+    await until(async () => answers.join(), 'nein,weiss-nicht', 'the answers should go to PUT /abgabe-anderswo')
+    history = withGap2022(ANSWERED_NO, { withAppeal: false })
+    await page.goto(`${webOrigin}/app/verlauf`, { waitUntil: 'networkidle' })
+    if (!(await textOf('verlauf-jetzt-inhalt')).includes('bis 31.12.2026 möglich')) fail('the open year should say until when it can be filed')
+    history = withGap2022(ASKING)
+    await page.goto(`${webOrigin}/app/verlauf/2022`, { waitUntil: 'networkidle' })
+    await see('verlauf-jahr-frage-2022')
+    history = withGap2022(ANSWERED_NO, { withAppeal: false })
+    await page.goto(`${webOrigin}/app/verlauf`, { waitUntil: 'networkidle' })
+    await byId('verlauf-jetzt-anfangen').click()
+    await page.waitForURL((u) => u.pathname === '/app' || u.pathname === '/app/', { timeout: 10_000 }).catch(() => fail('„2022 anfangen“ should open the cockpit'))
+    await page.unroute('**/v1/steuerjahre/2022/abgabe-anderswo')
+    history = HISTORY
+    console.log(`[${TAG}] ✅ Gap year — „Schon abgegeben?“ inline, then in „Jetzt wichtig“, no amount, „bis 31.12.2026 möglich“ after „Nein“, „2022 anfangen“ opens its cockpit`)
 
     // „Entwicklung ansehen“: the four key figures on their own page.
     await page.goto(`${webOrigin}/app/verlauf`, { waitUntil: 'networkidle' })
@@ -242,6 +419,58 @@ async function main() {
     await see('bescheid-abgleich-frist')
     await page.unroute('**/v1/steuerjahre/2024/bescheid')
     console.log(`[${TAG}] ✅ „Einspruch vorbereiten“ — opens „Bescheid prüfen“ of 2024 with the same Abgleich`)
+
+    // ADR-0099 §8: the Einspruch's date when lodging, then its outcome and amount (served here, the flow needs a Bescheid).
+    let lodged = null
+    const outcomes = []
+    await page.route('**/v1/steuerjahre/2024/bescheid', async (route) => {
+      if (route.request().method() !== 'GET') return route.continue()
+      const real = await (await route.fetch()).json()
+      const base = { ...real, assessmentDate: '2026-11-02', frist: { assessmentDate: '2026-11-02', deadlineEnd: '2026-12-07', remainingDays: 19, running: true } }
+      if (lodged === null) return route.fulfill(json({ ...base, status: 'geprüft', nextStates: ['einspruch-eingelegt'] }))
+      return route.fulfill(json({ ...base, status: 'einspruch-eingelegt', nextStates: [], appealReason: lodged.reason, appealDate: lodged.date ?? HISTORY.today, appealOutcome: outcomes.at(-1)?.outcome ?? 'offen', appealOutcomeAmount: outcomes.at(-1)?.amount ?? null }))
+    })
+    await page.route('**/v1/steuerjahre/2024/bescheid/einspruch', async (route) => {
+      lodged = route.request().postDataJSON()
+      return route.fulfill(json({}))
+    })
+    await page.route('**/v1/steuerjahre/2024/bescheid/einspruch/ergebnis', async (route) => {
+      outcomes.push(route.request().postDataJSON())
+      return route.fulfill(json({}))
+    })
+    await page.goto(`${webOrigin}/app/steuerjahr/2024/bescheid`, { waitUntil: 'networkidle' })
+    await byId('bescheid-einspruch-datum').fill('12.11.2026')
+    await byId('bescheid-einspruch-grund-betrag-falsch').click()
+    await see('bescheid-einspruch-eingelegt-am')
+    if (lodged?.date !== '2026-11-12' || lodged?.reason !== 'betrag-falsch') fail(`the Einspruch should be lodged with its date, it sent ${JSON.stringify(lodged)}`)
+    await see('bescheid-einspruch-ergebnis')
+    await byId('bescheid-einspruch-ergebnis-teilweise').click()
+    await byId('bescheid-einspruch-betrag').fill('140')
+    await byId('bescheid-einspruch-betrag').press('Tab')
+    await until(async () => JSON.stringify(outcomes.at(-1)), JSON.stringify({ outcome: 'teilweise', amount: 140 }), 'the outcome and its amount should be saved')
+    for (const glob of ['**/v1/steuerjahre/2024/bescheid', '**/v1/steuerjahre/2024/bescheid/einspruch', '**/v1/steuerjahre/2024/bescheid/einspruch/ergebnis']) await page.unroute(glob)
+    console.log(`[${TAG}] ✅ Einspruch — lodged with its date, then „teilweise stattgegeben“ with +140 €`)
+
+    // ADR-0099 §8: the employer on the LStB and the rental's purchase date and repairs (real server).
+    await page.goto(`${webOrigin}/app/steuerjahr/${YEAR}/lstb`, { waitUntil: 'networkidle' })
+    await byId('lstb-arbeitgeber').fill('Roche AG')
+    await byId('lstb-arbeitgeber').press('Tab')
+    await until(async () => (await call(api, 'GET', `/v1/steuerjahre/${YEAR}/lstb-arbeitgeber`)).arbeitgeber, 'Roche AG', 'the employer should be stored with the LStB')
+    await page.goto(`${webOrigin}/app/steuerjahr/${YEAR}/vermietung`, { waitUntil: 'networkidle' })
+    if (!(await byId('vermietung-0-anschaffungsdatum').count())) await byId('objekt-hinzufuegen').click()
+    await see('vermietung-0-erhaltung')
+    await byId('vermietung-0-anschaffungsdatum').fill('01.04.2024')
+    await byId('vermietung-0-erhaltung-hinzufuegen').click()
+    await byId('vermietung-0-erhaltung-0-betrag').fill('12300')
+    await byId('vermietung-0-erhaltung-0-betrag').press('Tab')
+    await byId('vermietung-0-erhaltung-0-datum').fill('15.05.2025')
+    const rental = async () => (await call(api, 'GET', `/v1/steuerjahre/${YEAR}/vermietung`)).properties[0]
+    await until(async () => (await rental())?.anschaffungsdatum, '2024-04-01', 'the purchase date should be stored with the property')
+    const repairs = async () => ((await rental())?.erhaltungsaufwand ?? []).map((r) => `${r.betrag}@${r.datum}`).join()
+    await until(repairs, '12300@2025-05-15', 'the repair should be stored with its date')
+    await byId('vermietung-0-erhaltung-0-entfernen').click()
+    await until(repairs, '', 'a removed repair should leave the list')
+    console.log(`[${TAG}] ✅ Masks — the employer on the LStB, the rental's purchase date and its repairs are stored`)
 
     // The lesson at the mask of the next open year.
     await page.goto(`${webOrigin}/app/steuerjahr/2026/arbeitstage`, { waitUntil: 'networkidle' })

@@ -8,7 +8,7 @@ import { http, HttpResponse } from 'msw'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { renderInApp } from '../../test-render'
 import { server } from '../../test-msw-server'
-import { EMPTY_HISTORY_RESPONSE, HISTORY_RESPONSE } from '../../test-history-fixture'
+import { EMPTY_HISTORY_RESPONSE, HISTORY_ALL_GROUPS_RESPONSE, HISTORY_RESPONSE } from '../../test-history-fixture'
 import { HistoryDevelopmentScreen } from './HistoryDevelopmentScreen'
 
 const text = (id: string) => (screen.getByTestId(id).textContent ?? '').replace(/ /g, ' ')
@@ -107,6 +107,89 @@ describe('HistoryDevelopmentScreen — phone', () => {
   })
 })
 
+describe('HistoryDevelopmentScreen — group tabs (ADR-0099 §3, §7)', () => {
+  const tabs = () =>
+    within(screen.getByRole('tablist'))
+      .getAllByRole('tab')
+      .map((t) => t.getAttribute('data-testid'))
+
+  it('offers only the groups the household has, after the refund as in the mock', async () => {
+    renderDevelopment()
+    await screen.findByTestId('verlauf-karte')
+    expect(tabs()).toEqual(['verlauf-kennzahl-erstattung', 'verlauf-bereich-schweiz', 'verlauf-bereich-kapital', 'verlauf-kennzahl-werbungskosten', 'verlauf-kennzahl-netto', 'verlauf-kennzahl-steuerquote'])
+  })
+
+  it('shows the Grenzgänger: rate and wage in euros, the credited Quellensteuer as a chart with its table, the Swiss share', async () => {
+    renderDevelopment()
+    fireEvent.click(await screen.findByTestId('verlauf-bereich-schweiz'))
+    expect(screen.queryByTestId('verlauf-karte')).toBeNull()
+    expect(text('verlauf-gruppe-schweiz-kurs')).toContain('1,065 €/CHF · 49.000 CHF → 52.185 €')
+    expect(text('verlauf-gruppe-schweiz-kurs')).toContain('Kurs +1,4 % zum Vorjahr')
+    expect(text('verlauf-gruppe-schweiz-quellensteuer')).toContain('2025: 2.348 € angerechnet, höchstens 4,5 % vom Bruttolohn (DBA Art. 15a).')
+    expect(text('verlauf-gruppe-schweiz-quellensteuer')).toContain('2025: einbehalten 2.600 CHF; mehr als 4,5 % rechnet Deutschland nicht an.')
+    expect(text('verlauf-gruppe-schweiz-anteil')).toBe('Anteil Schweizer Einkommen2024: 18,0 % · 2025: 100,0 %')
+    expect(screen.getByTestId('verlauf-gruppe-diagramm-svg')).toBeTruthy()
+    fireEvent.click(screen.getByTestId('verlauf-gruppe-tabelle-umschalten'))
+    const rows = within(screen.getByTestId('verlauf-gruppe-tabelle')).getAllByRole('row')
+    expect(rows).toHaveLength(3)
+    expect(rows[2]!.textContent).toBe('2025Person A1,06549.00052.1852.6002.348')
+    fireEvent.click(screen.getByTestId('verlauf-kennzahl-werbungskosten'))
+    expect(text('verlauf-karte-titel')).toBe('Werbungskosten je Jahr')
+  })
+
+  it('shows the capital tab with the allowance used, the Günstigerprüfung and the pots „noch nicht erfasst“', async () => {
+    renderDevelopment()
+    fireEvent.click(await screen.findByTestId('verlauf-bereich-kapital'))
+    expect(text('verlauf-gruppe-kapital-pauschbetrag')).toContain('2.000 / 2.000 €')
+    expect(text('verlauf-gruppe-kapital-pauschbetrag')).toContain('voll genutzt · 682 € darüber')
+    expect(text('verlauf-gruppe-kapital-pauschbetrag')).toContain('Verlustverrechnungstöpfe: noch nicht erfasst.')
+    expect(text('verlauf-gruppe-kapital-guenstiger')).toContain('2024: hätte nichts gebracht. 2025: ohne Bescheid keine Günstigerprüfung.')
+  })
+
+  it('shows the back payments with the prepayment hint, the rental property with AfA and the 15 % window, and the pension', async () => {
+    server.use(http.get('*/v1/verlauf', () => HttpResponse.json(HISTORY_ALL_GROUPS_RESPONSE)))
+    renderDevelopment()
+    await screen.findByTestId('verlauf-karte')
+    expect(tabs()).toEqual([
+      'verlauf-kennzahl-erstattung',
+      'verlauf-bereich-vorauszahlungen',
+      'verlauf-bereich-schweiz',
+      'verlauf-bereich-vermietung',
+      'verlauf-bereich-kapital',
+      'verlauf-bereich-rente',
+      'verlauf-kennzahl-werbungskosten',
+      'verlauf-kennzahl-netto',
+      'verlauf-kennzahl-steuerquote',
+    ])
+    fireEvent.click(screen.getByTestId('verlauf-bereich-vorauszahlungen'))
+    expect(text('verlauf-gruppe-vorauszahlungen-hinweis')).toBe('3 Jahre Nachzahlung in Folge, im Schnitt 2.400 €. Vorauszahlungen anpassen lassen (Antrag beim Finanzamt).')
+    expect(text('verlauf-gruppe-vorauszahlungen')).not.toMatch(/zurücklegen|sparen/)
+
+    fireEvent.click(screen.getByTestId('verlauf-bereich-vermietung'))
+    const flat = text('verlauf-gruppe-objekt-0')
+    expect(flat).toContain('Lindenstraße 4 · Ergebnis je Jahr')
+    expect(flat).toContain('2026: noch offen')
+    expect(flat).toContain('Jährlich 4.200 € (2,0 %) · Restwert Gebäude 198.450 € · noch 47 Jahre')
+    expect(text('verlauf-gruppe-objekt-0-grenze')).toContain('Die ersten 3 Jahre nach dem Kauf sind vorbei (01.04.2026). Bis dahin: 12.300 € von 37.500 €.')
+    expect(text('verlauf-gruppe-objekt-0-grenze')).toContain('1 Posten ohne Datum vorsichtshalber mitgezählt.')
+    expect(text('verlauf-gruppe-verlustvortrag')).toBe('Verlustvortrag: noch nicht erfasst.')
+
+    fireEvent.click(screen.getByTestId('verlauf-bereich-rente'))
+    expect(text('verlauf-gruppe-rente-jahre')).toContain('Besteuerungsanteil 81,0 % (Rentenbeginn 2021) und Rentenfreibetrag fest 2.944 € seit 2022')
+    expect(text('verlauf-gruppe-rente-jahre')).toContain('19.200 € · steuerpflichtig 16.256 €')
+    expect(text('verlauf-gruppe-rente-jahre')).toContain('der Rentenfreibetrag bleibt seit Rentenbeginn gleich')
+    fireEvent.click(screen.getByTestId('verlauf-gruppe-tabelle-umschalten'))
+    expect(within(screen.getByTestId('verlauf-gruppe-tabelle')).getAllByRole('row')).toHaveLength(3)
+  })
+
+  it('shows no group tab for a household without such data', async () => {
+    server.use(http.get('*/v1/verlauf', () => HttpResponse.json({ ...HISTORY_RESPONSE, groups: { crossBorder: null, rental: null, capital: null, pension: null, lossCarryForward: { status: 'notRecorded' } } })))
+    renderDevelopment()
+    await screen.findByTestId('verlauf-karte')
+    expect(screen.queryAllByTestId(/^verlauf-bereich-/)).toHaveLength(0)
+  })
+})
+
 describe('HistoryDevelopmentScreen — tablet and desktop', () => {
   beforeEach(() => setViewportWidth(1280))
 
@@ -121,6 +204,16 @@ describe('HistoryDevelopmentScreen — tablet and desktop', () => {
     expect(text('verlauf-karte-titel')).toBe('Werbungskosten je Jahr')
     fireEvent.click(screen.getByTestId('verlauf-person-A'))
     expect(text('verlauf-karte-titel')).toBe('Werbungskosten je Jahr · Person A')
+  })
+
+  it('offers the group tabs under the KPI tiles and switches back by a tile', async () => {
+    renderDevelopment()
+    fireEvent.click(await screen.findByTestId('verlauf-bereich-kapital'))
+    expect(screen.getByTestId('verlauf-gruppe-kapital')).toBeTruthy()
+    expect(screen.queryByTestId('verlauf-karte')).toBeNull()
+    fireEvent.click(screen.getByTestId('verlauf-kpi-netto'))
+    expect(screen.queryByTestId('verlauf-gruppe-kapital')).toBeNull()
+    expect(text('verlauf-karte-titel')).toBe('Vom Brutto zum Netto')
   })
 })
 

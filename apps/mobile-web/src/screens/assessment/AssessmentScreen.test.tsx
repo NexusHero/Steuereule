@@ -177,6 +177,47 @@ describe('BescheidScreen', () => {
     expect(posted).toEqual({ reason: 'betrag-falsch' })
   })
 
+  it('files an Einspruch with the day it was lodged (ADR-0099 §8)', async () => {
+    let state: AssessmentResponseDto = { ...emptyAssessment(), status: 'geprüft', nextStates: ['einspruch-eingelegt'] }
+    let posted: unknown = null
+    server.use(
+      http.get(ASSESSMENT_URL, () => HttpResponse.json(state, { status: 200 })),
+      http.put('*/v1/steuerjahre/2026/bescheid/einspruch', async ({ request }) => {
+        posted = await request.json()
+        state = { ...state, status: 'einspruch-eingelegt', appealReason: 'sonstiges', appealDate: '2026-11-12', appealOutcome: 'offen', nextStates: [] }
+        return HttpResponse.json(state, { status: 200 })
+      }),
+    )
+    renderAssessment()
+    fireEvent.change(await screen.findByTestId('bescheid-einspruch-datum'), { target: { value: '12.11.2026' } })
+    fireEvent.click(screen.getByTestId('bescheid-einspruch-grund-sonstiges'))
+    await screen.findByTestId('bescheid-einspruch-eingelegt-am')
+    expect(posted).toEqual({ reason: 'sonstiges', date: '2026-11-12' })
+    expect(screen.getByTestId('bescheid-einspruch-eingelegt-am').textContent).toBe('Eingelegt am 12.11.2026.')
+  })
+
+  it('records how the Einspruch ended and what it changed, for the history in „Unterlagen“ (ADR-0099 §8)', async () => {
+    let state: AssessmentResponseDto = { ...emptyAssessment(), status: 'einspruch-eingelegt', appealReason: 'betrag-falsch', appealDate: '2026-11-12', appealOutcome: 'offen', nextStates: [] }
+    const bodies: unknown[] = []
+    server.use(
+      http.get(ASSESSMENT_URL, () => HttpResponse.json(state, { status: 200 })),
+      http.put('*/v1/steuerjahre/2026/bescheid/einspruch/ergebnis', async ({ request }) => {
+        const body = (await request.json()) as { outcome: AssessmentResponseDto['appealOutcome']; amount?: number | null }
+        bodies.push(body)
+        state = { ...state, appealOutcome: body.outcome, appealOutcomeAmount: body.amount ?? null }
+        return HttpResponse.json(state, { status: 200 })
+      }),
+    )
+    renderAssessment()
+    await screen.findByTestId('bescheid-einspruch-ergebnis')
+    expect(screen.queryByTestId('bescheid-einspruch-betrag')).toBeNull()
+    fireEvent.click(screen.getByTestId('bescheid-einspruch-ergebnis-teilweise'))
+    const amount = await screen.findByTestId('bescheid-einspruch-betrag')
+    fireEvent.change(amount, { target: { value: '140' } })
+    fireEvent.blur(amount)
+    await waitFor(() => expect(bodies).toEqual([{ outcome: 'teilweise', amount: null }, { outcome: 'teilweise', amount: 140 }]))
+  })
+
   it('shows a retryable error state on a genuine network failure', async () => {
     server.use(http.get(ASSESSMENT_URL, () => HttpResponse.error()))
     renderAssessment()

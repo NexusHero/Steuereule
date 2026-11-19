@@ -1,7 +1,11 @@
 // The mock's example household (docs/mocks/steuer-verlauf.html) in the shape of `GET /v1/verlauf`, for
 // tests only: 2021 an Eckjahr from an old Bescheid, 2022 two single returns, from 2023 joint, 2024 a
-// Bescheid with two cuts and a running Einspruchsfrist, 2025 filed and waiting, 2026 open.
+// Bescheid with two cuts and a running Einspruchsfrist, 2025 filed and waiting, 2026 open. ADR-0099
+// (docs/mocks/steuer-verlauf-ideen.html): marriage 2023, a new employer and the start as a Grenzgänger
+// in 2024, a child in 2025, the checklist of 2026, Homeoffice cut twice, the couple comparison, the
+// cross-border and capital tabs, and the Unterlagen. Variants: a year without data (§1), all groups (§7).
 import type {
+  AppealHistoryEntryDto,
   AssessmentDiffDto,
   AssessmentLessonDto,
   HistoryDeltaDto,
@@ -13,6 +17,7 @@ import type {
   YearDeadlineDto,
   YearHistoryEntryDto,
   YearHistoryResponseDto,
+  YearListItemDto,
 } from '@steuereule/api-client'
 
 const none = (reason: 'kein-vorjahr' | 'offen' | 'veranlagungsart-gewechselt' = 'kein-vorjahr'): HistoryDeltaDto => ({ kind: 'none', reason })
@@ -272,8 +277,10 @@ export const HISTORY_DIFFS: YearDiffDto[] = [
 const deadline = (kind: YearDeadlineDto['kind'], endsOn: string, remainingDays: number): YearDeadlineDto => ({ kind, endsOn, remainingDays, running: remainingDays >= 0, endsOnIfMandatory: null })
 const listExtras = (d: YearDeadlineDto) => ({ hasData: true, filedElsewhere: null, withoutAssessment: false, deadline: d })
 
-/** ADR-0099: no events, checklist, groups or Unterlagen in this household's fixture. */
-const NO_INSIGHTS: Pick<YearHistoryResponseDto, 'events' | 'recurring' | 'prepayments' | 'repeatedCuts' | 'couples' | 'groups' | 'documents'> = {
+type Insights = Pick<YearHistoryResponseDto, 'events' | 'recurring' | 'prepayments' | 'repeatedCuts' | 'couples' | 'groups' | 'documents'>
+
+/** ADR-0099: no events, checklist, groups or Unterlagen (a fresh account). */
+export const NO_INSIGHTS: Insights = {
   events: [],
   recurring: null,
   prepayments: { years: [], backPaymentYears: 0, consecutiveBackPayments: 0, averageBackPayment: null, hint: null },
@@ -281,6 +288,86 @@ const NO_INSIGHTS: Pick<YearHistoryResponseDto, 'events' | 'recurring' | 'prepay
   couples: [],
   groups: { crossBorder: null, rental: null, capital: null, pension: null, lossCarryForward: { status: 'notRecorded' } },
   documents: [],
+}
+
+const APPEAL_2022: AppealHistoryEntryDto = { person: 'A', date: '2023-07-03', reason: 'betrag-falsch', outcome: 'teilweise', amount: 140 }
+
+/** ADR-0099 for the mock's household: what the ideas mock shows, from the household's own data. */
+const HOUSEHOLD_INSIGHTS: Insights = {
+  events: [
+    { year: 2023, kind: 'zusammenveranlagung', person: null },
+    { year: 2024, kind: 'neuer-arbeitgeber', person: 'A', employers: ['Roche AG'] },
+    { year: 2024, kind: 'grenzgaenger', person: 'A' },
+    { year: 2025, kind: 'kind', person: null, date: '2025-03-14', count: 1 },
+  ],
+  recurring: {
+    year: 2026,
+    done: 2,
+    open: 3,
+    items: [
+      { id: 'kontofuehrung', label: 'Kontoführung', lastYear: 2025, lastAmount: 32, lastDetail: null, currentAmount: 32, currentDetail: null, status: 'erledigt', receipt: null, cutInYears: [], fields: [{ screen: 'interview', field: 'kontofuehrung' }] },
+      { id: 'arbeitsweg', label: 'Arbeitsweg', lastYear: 2025, lastAmount: null, lastDetail: { km: 67, days: 226 }, currentAmount: null, currentDetail: { km: 67, days: 226 }, status: 'erledigt', receipt: 'uebernommen', cutInYears: [], fields: [{ screen: 'commute', field: 'oneWayKm' }] },
+      { id: 'homeoffice', label: 'Homeoffice', lastYear: 2025, lastAmount: null, lastDetail: { km: null, days: 210 }, currentAmount: null, currentDetail: null, status: 'offen', receipt: null, cutInYears: [2023, 2024], fields: [{ screen: 'commute', field: 'homeOfficeDays' }] },
+      { id: 'spenden', label: 'Spenden', lastYear: 2025, lastAmount: 3135, lastDetail: null, currentAmount: null, currentDetail: null, status: 'offen', receipt: 'vorschlag', cutInYears: [], fields: [{ screen: 'interview', field: 'spenden-betrag' }] },
+      { id: 'kita', label: 'Kita', lastYear: 2025, lastAmount: 591, lastDetail: null, currentAmount: null, currentDetail: null, status: 'offen', receipt: null, cutInYears: [], fields: [{ screen: 'children', field: 'kinderbetreuung' }] },
+    ],
+  },
+  prepayments: {
+    years: [
+      { year: 2022, refund: 393, backPayment: null, prepayments: null, adjustPrepayments: false },
+      { year: 2023, refund: 210, backPayment: null, prepayments: null, adjustPrepayments: false },
+      { year: 2024, refund: 809, backPayment: null, prepayments: null, adjustPrepayments: false },
+    ],
+    backPaymentYears: 0,
+    consecutiveBackPayments: 0,
+    averageBackPayment: null,
+    hint: null,
+  },
+  repeatedCuts: [
+    {
+      position: 'homeofficeA',
+      type: 'homeoffice',
+      person: 'A',
+      label: 'Homeoffice-Pauschale',
+      years: [
+        { year: 2023, declared: 1260, assessed: 1080, difference: -180, refundEffect: -56 },
+        { year: 2024, declared: 1260, assessed: 1080, difference: -180, refundEffect: -56 },
+      ],
+      hint: 'Homeoffice-Tage laufend festhalten, zum Beispiel im Kalender oder mit einer Bescheinigung des Arbeitgebers.',
+    },
+  ],
+  couples: [
+    { year: 2022, status: 'gerechnet', filedAs: 'einzel', approximate: false, singleTax: 11509, jointTax: 10869, jointSaving: 640, jointSavingRange: null, statement: 'eindeutig' },
+    { year: 2023, status: 'gerechnet', filedAs: 'zusammen', approximate: true, singleTax: 13450, jointTax: 12390, jointSaving: 1060, jointSavingRange: { from: 940, to: 1180 }, statement: 'eindeutig' },
+    { year: 2024, status: 'gerechnet', filedAs: 'zusammen', approximate: true, singleTax: 13290, jointTax: 12170, jointSaving: 1120, jointSavingRange: { from: 1010, to: 1230 }, statement: 'eindeutig' },
+  ],
+  groups: {
+    crossBorder: {
+      years: [
+        { year: 2024, person: 'A', rate: 1.05, period: '2024', grossChf: 8000, grossEur: 8400, rateChangePercent: null, withholdingTaxChf: 360, creditedEur: 378, creditCapped: false },
+        { year: 2025, person: 'A', rate: 1.065, period: '2025', grossChf: 49000, grossEur: 52185, rateChangePercent: 1.4, withholdingTaxChf: 2600, creditedEur: 2348, creditCapped: true },
+      ],
+      swissShare: [
+        { year: 2024, percent: 18 },
+        { year: 2025, percent: 100 },
+      ],
+    },
+    rental: null,
+    capital: {
+      years: [
+        { year: 2024, income: 2682, allowanceLimit: 2000, allowanceUsed: 2000, aboveAllowance: 682, fullyUsed: true, favourableCheck: { statement: 'eindeutig', delta: 0, recommendation: 'abgeltung' } },
+        { year: 2025, income: 2449, allowanceLimit: 2000, allowanceUsed: 2000, aboveAllowance: 449, fullyUsed: true, favourableCheck: null },
+      ],
+    },
+    pension: null,
+    lossCarryForward: { status: 'notRecorded' },
+  },
+  documents: [
+    { year: 2022, documents: [], submittedOn: '2023-04-02', assessmentDate: '2023-06-07', wait: { days: 66, weeks: 9, pending: false, askTaxOffice: false }, appeals: [APPEAL_2022] },
+    { year: 2023, documents: [{ receiptId: 'bescheid-2023', fileName: 'Bescheid_2023.pdf', uploadedAt: '2024-05-24T09:12:00.000Z', downloadPath: '/v1/belege/bescheid-2023/datei' }], submittedOn: '2024-03-18', assessmentDate: '2024-05-22', wait: { days: 65, weeks: 9, pending: false, askTaxOffice: false }, appeals: [] },
+    { year: 2024, documents: [{ receiptId: 'bescheid-2024', fileName: 'Bescheid_2024.pdf', uploadedAt: '2026-11-04T18:40:00.000Z', downloadPath: '/v1/belege/bescheid-2024/datei' }], submittedOn: '2026-09-21', assessmentDate: '2026-11-02', wait: { days: 42, weeks: 6, pending: false, askTaxOffice: false }, appeals: [] },
+    { year: 2025, documents: [], submittedOn: '2026-08-14', assessmentDate: null, wait: { days: 96, weeks: 13, pending: true, askTaxOffice: true }, appeals: [] },
+  ],
 }
 
 export const HISTORY_RESPONSE: YearHistoryResponseDto = {
@@ -309,7 +396,86 @@ export const HISTORY_RESPONSE: YearHistoryResponseDto = {
   ],
   diffs: HISTORY_DIFFS,
   maskLessons: { year: 2026, fromYear: 2024, lessons: [LESSONS_2024[0]!] },
-  ...NO_INSIGHTS,
+  ...HOUSEHOLD_INSIGHTS,
+}
+
+/**
+ * ADR-0099 §1: the same household without 2022 in the app. The year of the Festsetzungsfrist has no data,
+ * asks „Schon abgegeben?“ once, has no amount and can be filed until 31.12.2026.
+ */
+const GAP_2022: YearListItemDto = {
+  year: 2022,
+  status: 'entwurf',
+  kind: 'offen',
+  filingType: 'einzel',
+  declaredRefund: null,
+  assessedRefund: null,
+  difference: null,
+  deviations: 0,
+  noDiffReason: 'kein-bescheid',
+  withinAssessmentPeriod: true,
+  hasData: false,
+  filedElsewhere: { answer: null, answeredOn: null, askAgainFrom: null, ask: true },
+  withoutAssessment: false,
+  deadline: { kind: 'abgabe-moeglich-bis', endsOn: '2026-12-31', remainingDays: 43, running: true, endsOnIfMandatory: null },
+}
+
+export const HISTORY_GAP_RESPONSE: YearHistoryResponseDto = {
+  ...HISTORY_RESPONSE,
+  years: HISTORY_RESPONSE.years.map((y) => (y.year === 2022 ? year({ year: 2022, filingType: 'einzel', tier: 'offen', missing: ['erklaerung'] }) : y)),
+  list: HISTORY_RESPONSE.list.map((l) => (l.year === 2022 ? GAP_2022 : l)),
+  openItems: [...HISTORY_RESPONSE.openItems, { kind: 'offen', year: 2022, highlighted: false, missing: ['erklaerung'], filingDeadline: '2026-12-31', askFiledElsewhere: true }],
+  diffs: HISTORY_RESPONSE.diffs.filter((d) => d.year !== 2022),
+  couples: HISTORY_RESPONSE.couples.filter((c) => c.year !== 2022),
+  documents: HISTORY_RESPONSE.documents.filter((d) => d.year !== 2022),
+}
+
+/** ADR-0099 §3, §7: every group tab with data — back payments, Grenzgänger, a rental flat, capital, a pension. */
+export const HISTORY_ALL_GROUPS_RESPONSE: YearHistoryResponseDto = {
+  ...HISTORY_RESPONSE,
+  prepayments: {
+    years: [
+      { year: 2022, refund: -2100, backPayment: 2100, prepayments: 1200, adjustPrepayments: true },
+      { year: 2023, refund: -2600, backPayment: 2600, prepayments: 1200, adjustPrepayments: true },
+      { year: 2024, refund: -2500, backPayment: 2500, prepayments: 1600, adjustPrepayments: true },
+    ],
+    backPaymentYears: 3,
+    consecutiveBackPayments: 3,
+    averageBackPayment: 2400,
+    hint: 'Vorauszahlungen anpassen lassen (Antrag beim Finanzamt).',
+  },
+  groups: {
+    ...HISTORY_RESPONSE.groups,
+    rental: {
+      properties: [
+        {
+          propertyKey: 'objekt-1',
+          label: 'Lindenstraße 4',
+          acquiredOn: '2023-04-01',
+          depreciation: { annual: 4200, ratePercent: 2 },
+          years: [
+            { year: 2023, result: -3100, missing: [], depreciation: 3150, bookValueEnd: 206850 },
+            { year: 2024, result: -800, missing: [], depreciation: 4200, bookValueEnd: 202650 },
+            { year: 2025, result: 1450, missing: [], depreciation: 4200, bookValueEnd: 198450 },
+            { year: 2026, result: null, missing: ['mieteinnahmen'], depreciation: null, bookValueEnd: null },
+          ],
+          bookValue: 198450,
+          yearsLeft: 47,
+          acquisitionRelated: { windowEnd: '2026-04-01', limitEur: 37500, withinWindowEur: 12300, exceeds: false, roomLeftEur: 25200, windowOpen: false, undatedCounted: 1 },
+        },
+      ],
+    },
+    pension: {
+      startYear: 2021,
+      sharePercent: 81,
+      allowance: 2944,
+      allowanceYear: 2022,
+      years: [
+        { year: 2024, amount: 18400, taxablePart: 15456 },
+        { year: 2025, amount: 19200, taxablePart: 16256 },
+      ],
+    },
+  },
 }
 
 /** A fresh account: no year in the app yet. */

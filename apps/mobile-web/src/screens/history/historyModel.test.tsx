@@ -4,7 +4,7 @@
 // year with the single most urgent item (§1, alternative A).
 import { describe, expect, it } from 'vitest'
 import { createAppI18n } from '../../i18n/app-i18n'
-import { HISTORY_RESPONSE, HISTORY_YEARS, est, fig, open } from '../../test-history-fixture'
+import { HISTORY_GAP_RESPONSE, HISTORY_RESPONSE, HISTORY_YEARS, est, fig, open } from '../../test-history-fixture'
 import { buildChart, niceTicks, sparkPoints } from './historyChartModel'
 import { deltaText, deltaTone, figureText, missingSentence, signedEuro, signedFigureText } from './historyFormat'
 import { owlSentence } from './owlSentences'
@@ -142,15 +142,26 @@ describe('historyTimeline', () => {
     expect(urgentFirst(items).map((o) => o.year)).toEqual([2025, 2024, 2026])
   })
 
+  it('ranks running deadlines by their days: a year whose filing ends this year before the Einspruchsfrist when it ends first (ADR-0099 §1)', () => {
+    // 2022 can be filed until 31.12.2026 (43 days), the Einspruch of 2024 runs 19 days: the Einspruch stays first.
+    expect(urgentFirst(HISTORY_GAP_RESPONSE.openItems, HISTORY_GAP_RESPONSE.today).map((o) => `${o.kind}-${o.year}`)).toEqual(['einspruchsfrist-2024', 'offen-2022', 'wartet-auf-bescheid-2025', 'offen-2026'])
+    const later = HISTORY_GAP_RESPONSE.openItems.map((o) => (o.kind === 'einspruchsfrist' ? { ...o, deadline: { endsOn: '2026-12-31', remainingDays: 60, running: true } } : o))
+    expect(urgentFirst(later, HISTORY_GAP_RESPONSE.today)[0]).toMatchObject({ kind: 'offen', year: 2022 })
+    // A year that can still be filed for years is no deadline yet.
+    expect(urgentFirst([{ kind: 'offen', year: 2025, highlighted: false, filingDeadline: '2029-12-31' }, { kind: 'wartet-auf-bescheid', year: 2024, highlighted: false }], '2026-11-18').map((o) => o.year)).toEqual([2024, 2025])
+  })
+
   it('words each year in one plain phrase, the cut in the danger tone only', () => {
     expect(status(2026)).toEqual({ text: 'in Arbeit · 2 Lohnsteuerbescheinigungen fehlen', tone: null })
     expect(status(2025)).toEqual({ text: 'abgegeben · wartet auf Bescheid', tone: null })
     expect(status(2024)).toEqual({ text: 'Bescheid · 92 € weniger als erklärt', tone: 'bad' })
-    expect(status(2023)).toEqual({ text: 'Bescheid wie erklärt', tone: null })
+    // ADR-0099 §1: until when an assessed year can be changed, unless the row already names a change.
+    expect(status(2023)).toEqual({ text: 'Bescheid wie erklärt · änderbar bis 31.12.2027', tone: null })
     expect(status(2021)).toEqual({ text: 'nur Bescheid', tone: null })
+    expect(plain(yearStatus({ ...item(2021), deadline: { ...item(2021).deadline, endsOn: '2026-12-31', remainingDays: 43, running: true } }, undefined, tr).text)).toBe('nur Bescheid · änderbar bis 31.12.2026')
     expect(plain(yearStatus({ ...item(2024), difference: 40 }, undefined, tr).text)).toBe('Bescheid · 40 € mehr als erklärt')
     expect(yearStatus({ ...item(2024), difference: 0 }, undefined, tr).text).toBe('Bescheid · 2 Änderungen')
-    expect(yearStatus({ ...item(2023), noDiffReason: 'keine-eingereichte-fassung' }, undefined, tr).text).toBe('Bescheid · ohne Abgleich')
+    expect(yearStatus({ ...item(2023), noDiffReason: 'keine-eingereichte-fassung' }, undefined, tr).text).toBe('Bescheid · ohne Abgleich · änderbar bis 31.12.2027')
   })
 
   it('gives each year one amount: laut Bescheid, else the range of the estimate, else „–“', () => {
@@ -160,6 +171,17 @@ describe('historyTimeline', () => {
     expect(plain(declaredAmount(item(2024), entry(2024)))).toBe('+901 €')
     expect(plain(declaredAmount(item(2025), entry(2025)))).toBe('+1.066–1.196 €')
     expect(declaredAmount(item(2021), entry(2021))).toBe('–')
+  })
+
+  it('words a year without data by its answer to „Schon abgegeben?“ and never gives it an amount (ADR-0099 §1)', () => {
+    const gap = HISTORY_GAP_RESPONSE.list.find((l) => l.year === 2022)!
+    expect(yearStatus(gap, undefined, tr).text).toBe('Schon abgegeben?')
+    expect(yearStatus({ ...gap, filedElsewhere: { answer: 'nein', answeredOn: '2026-11-18', askAgainFrom: null, ask: false } }, undefined, tr).text).toBe('noch nicht abgegeben · bis 31.12.2026 möglich')
+    expect(yearStatus({ ...gap, filedElsewhere: { answer: 'weiss-nicht', answeredOn: '2026-11-18', askAgainFrom: '2026-10-01', ask: false } }, undefined, tr).text).toBe('nicht in der App · bis 31.12.2026 möglich')
+    expect(yearStatus({ ...gap, status: 'extern-erledigt', kind: 'eckjahr', withoutAssessment: true, filedElsewhere: { answer: 'ja', answeredOn: '2026-11-18', askAgainFrom: null, ask: false } }, undefined, tr).text).toBe('anderswo abgegeben · noch ohne Bescheid')
+    expect(yearAmount({ ...gap, assessedRefund: 300 }, entry(2025))).toBe('–')
+    expect(declaredAmount(gap, entry(2025))).toBe('–')
+    expect(yearStatus(gap, undefined, en).text).toBe('Already filed?')
   })
 
   it('says in a few words what an open year lacks, and concretely on its page', () => {

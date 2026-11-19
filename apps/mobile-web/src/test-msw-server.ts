@@ -274,6 +274,9 @@ export const server = setupServer(
   http.put('*/v1/steuerjahre/:jahr/lstb-zeilen', async ({ request }) => HttpResponse.json(await request.json(), { status: 200 })),
   http.get('*/v1/steuerjahre/:jahr/lstb-zuschuesse', () => HttpResponse.json({ zuschuesseKvPv: null }, { status: 200 })),
   http.put('*/v1/steuerjahre/:jahr/lstb-zuschuesse', async ({ request }) => HttpResponse.json(await request.json(), { status: 200 })),
+  // ADR-0099 §8: the employer on the LStB, empty until entered.
+  http.get('*/v1/steuerjahre/:jahr/lstb-arbeitgeber', () => HttpResponse.json({ arbeitgeber: null }, { status: 200 })),
+  http.put('*/v1/steuerjahre/:jahr/lstb-arbeitgeber', async ({ request }) => HttpResponse.json(await request.json(), { status: 200 })),
   // REQ-021 (ticket 16) — the CH-Lohnausweis guided mask + fold: empty `offen` mask by default,
   // same "fresh tax year" honesty as the interview/LStB defaults.
   getChSalaryCertificateControllerGetMockHandler(EMPTY_CH_SALARY_CERTIFICATE_RESPONSE),

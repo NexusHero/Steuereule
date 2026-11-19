@@ -33,6 +33,7 @@ describe('navigation linking config (#443 slice 1)', () => {
     { path: '/app/erklaerungen', expectedPath: '/app/verlauf' },
     { path: '/app/verlauf/2024' },
     { path: '/app/verlauf/entwicklung' },
+    { path: '/app/verlauf/unterlagen' },
     { path: '/app/profil' },
     { path: '/app/profil/datenschutz' },
     { path: '/app/profil/sicherheit' },
@@ -107,5 +108,8 @@ describe('navigation linking config (#443 slice 1)', () => {
     expect(year?.state?.routes[1]?.params).toEqual({ year: 2024 })
     expect(tabOf('/app/verlauf/entwicklung')?.state?.routes.map((r) => r.name)).toEqual(['HistoryHome', 'HistoryDevelopment'])
     expect(formatDocumentTitle('HistoryYear')).toBe('SteuerEule — Verlauf eines Jahres')
+    // ADR-0099 §9: the Unterlagen by their own name, not read as a year.
+    expect(tabOf('/app/verlauf/unterlagen')?.state?.routes.map((r) => r.name)).toEqual(['HistoryHome', 'HistoryDocuments'])
+    expect(formatDocumentTitle('HistoryDocuments')).toBe('SteuerEule — Unterlagen')
   })
 })

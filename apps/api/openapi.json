@@ -15306,7 +15306,7 @@
           },
           "undatedCounted": {
             "type": "number",
-            "description": "Repairs without a date counted in the window to be safe."
+            "description": "Number of repairs without a date counted in the window to be safe (a count, not an amount)."
           }
         },
         "required": [

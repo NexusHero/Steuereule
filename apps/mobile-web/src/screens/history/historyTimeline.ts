@@ -1,7 +1,8 @@
 import type { TFunction } from 'i18next'
 import type { OpenItemDto, YearHistoryEntryDto, YearHistoryResponseDto, YearListItemDto } from '@steuereule/api-client'
 import { formatEuro } from '@steuereule/core'
-import { missingPhrases, signedEuro, signedFigureText } from './historyFormat'
+import { germanDate, missingPhrases, signedEuro, signedFigureText } from './historyFormat'
+import { daysUntil, isLastChance } from './historyInsights'
 
 /**
  * The Verlauf as a timeline (ADR-0098 §1, alternative A): one plain phrase per year, one amount, and
@@ -16,9 +17,20 @@ export interface YearStatus {
 
 const KIND_RANK: Readonly<Record<OpenItemDto['kind'], number>> = { einspruchsfrist: 0, 'wartet-auf-bescheid': 1, offen: 2 }
 
-/** The open items, most urgent first: the highlighted deadline, then deadlines, waiting years, open years; newer first within a kind. */
-export function urgentFirst(items: readonly OpenItemDto[]): OpenItemDto[] {
-  return [...items].sort((a, b) => Number(b.highlighted) - Number(a.highlighted) || KIND_RANK[a.kind] - KIND_RANK[b.kind] || b.year - a.year)
+/** The days left of an item with a running deadline: the Einspruchsfrist, or the last chance to file a year (ADR-0099 §1). */
+function deadlineDays(item: OpenItemDto, today: string | undefined): number | null {
+  if (item.kind === 'einspruchsfrist' && item.deadline?.running) return item.deadline.remainingDays
+  if (today !== undefined && isLastChance(item, today)) return daysUntil(today, item.filingDeadline!)
+  return null
+}
+
+/**
+ * The open items, most urgent first: running deadlines by the days they have left (the Einspruchsfrist,
+ * a year whose filing ends this year), then the highlighted item, waiting years, open years; newer first within a kind.
+ */
+export function urgentFirst(items: readonly OpenItemDto[], today?: string): OpenItemDto[] {
+  const days = (i: OpenItemDto) => deadlineDays(i, today) ?? Number.POSITIVE_INFINITY
+  return [...items].sort((a, b) => days(a) - days(b) || Number(b.highlighted) - Number(a.highlighted) || KIND_RANK[a.kind] - KIND_RANK[b.kind] || b.year - a.year)
 }
 
 /** The Lohnsteuerbescheinigung and the figures that come from it; `einkommen` is what an employee lacks without it. */
@@ -75,8 +87,25 @@ export function missingDetail(ids: readonly string[], year: number, today: strin
   return out
 }
 
-/** The year's one phrase in the timeline: „in Arbeit · …“, „abgegeben · wartet auf Bescheid“, „Bescheid · 92 € weniger als erklärt“, „nur Bescheid“. */
+/** A year without data of its own (ADR-0099 §1): filed elsewhere, asked, answered „Nein“, or not in the app. */
+function gapStatus(item: YearListItemDto, tr: TFunction): YearStatus {
+  const datum = germanDate(item.deadline.endsOn)
+  const answer = item.filedElsewhere?.answer ?? null
+  if (answer === 'ja' || item.withoutAssessment) return { text: tr('verlauf.zeile.anderswo'), tone: null }
+  if (item.filedElsewhere?.ask === true) return { text: tr('verlauf.zeile.frage'), tone: null }
+  return { text: tr(answer === 'nein' ? 'verlauf.zeile.nichtAbgegeben' : 'verlauf.zeile.nichtInApp', { datum }), tone: null }
+}
+
+/** „· änderbar bis 31.12.2028“ for an assessed year whose Festsetzungsfrist runs, unless the Bescheid changed something (that row says the change). */
+function withChangeableUntil(status: YearStatus, item: YearListItemDto, tr: TFunction): YearStatus {
+  const changed = (item.difference !== null && item.difference !== 0) || item.deviations > 0
+  if (item.deadline.kind !== 'aenderbar-bis' || !item.deadline.running || changed) return status
+  return { ...status, text: tr('verlauf.zeile.aenderbar', { stand: status.text, datum: germanDate(item.deadline.endsOn) }) }
+}
+
+/** The year's one phrase in the timeline: „in Arbeit · …“, „abgegeben · wartet auf Bescheid“, „Bescheid · 92 € weniger als erklärt“, „nur Bescheid · änderbar bis …“, „noch nicht abgegeben · bis … möglich“. */
 export function yearStatus(item: YearListItemDto, entry: YearHistoryEntryDto | undefined, tr: TFunction): YearStatus {
+  if (!item.hasData || item.withoutAssessment) return gapStatus(item, tr)
   switch (item.kind) {
     case 'offen': {
       const what = missingShort(entry?.missing ?? [], tr)
@@ -85,24 +114,26 @@ export function yearStatus(item: YearListItemDto, entry: YearHistoryEntryDto | u
     case 'eingereicht':
       return { text: tr('verlauf.zeile.eingereicht'), tone: null }
     case 'eckjahr':
-      return { text: tr('verlauf.zeile.nurBescheid'), tone: null }
+      return withChangeableUntil({ text: tr('verlauf.zeile.nurBescheid'), tone: null }, item, tr)
     case 'bescheid': {
       if (item.difference !== null && item.difference < 0) return { text: tr('verlauf.zeile.weniger', { betrag: formatEuro(Math.abs(item.difference)) }), tone: 'bad' }
       if (item.difference !== null && item.difference > 0) return { text: tr('verlauf.zeile.mehr', { betrag: formatEuro(item.difference) }), tone: null }
       if (item.deviations > 0) return { text: tr('verlauf.zeile.aenderungen', { count: item.deviations }), tone: null }
-      return { text: tr(item.noDiffReason === null ? 'verlauf.zeile.wieErklaert' : 'verlauf.zeile.ohneAbgleich'), tone: null }
+      return withChangeableUntil({ text: tr(item.noDiffReason === null ? 'verlauf.zeile.wieErklaert' : 'verlauf.zeile.ohneAbgleich'), tone: null }, item, tr)
     }
   }
 }
 
-/** The year's one amount: the refund laut Bescheid, else the estimate as its range (never a midpoint, ADR-0032), else „–“. */
+/** The year's one amount: the refund laut Bescheid, else the estimate as its range (never a midpoint, ADR-0032), else „–“; never one for a year without data (ADR-0099 §1). */
 export function yearAmount(item: YearListItemDto, entry: YearHistoryEntryDto | undefined): string {
+  if (!item.hasData) return '–'
   if (item.assessedRefund !== null) return signedEuro(item.assessedRefund)
   return entry ? signedFigureText(entry.erstattung.amount, '–') : '–'
 }
 
 /** The declared refund for the wide table: the filed figure, or for a filed year its estimate range. */
 export function declaredAmount(item: YearListItemDto, entry: YearHistoryEntryDto | undefined): string {
+  if (!item.hasData) return '–'
   if (item.kind === 'eingereicht' && entry) return signedFigureText(entry.erstattung.amount, '–')
   return item.declaredRefund === null ? '–' : signedEuro(item.declaredRefund)
 }

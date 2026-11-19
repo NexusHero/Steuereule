@@ -152,6 +152,42 @@ describe('VermietungScreen', () => {
     expect(screen.queryByLabelText('Dein Anteil am Objekt in % (der Rest gehört deinem Partner)')).toBeNull()
   })
 
+  it('saves the day of purchase with the object (ADR-0099 §8, 15 % window)', async () => {
+    const bodies: unknown[] = []
+    server.use(http.get(RENTAL_URL, () => HttpResponse.json(FULL_PROPERTY, { status: 200 })))
+    server.use(
+      http.put(`${RENTAL_URL}/objekte/:objektId/adresse`, async ({ request }) => {
+        bodies.push(await request.json())
+        return HttpResponse.json(FULL_PROPERTY, { status: 200 })
+      }),
+    )
+    renderRental()
+    fireEvent.change(await screen.findByTestId('vermietung-0-anschaffungsdatum'), { target: { value: '01.04.2024' } })
+    await waitFor(() => expect(bodies).toEqual([{ anschaffungsdatum: '2024-04-01' }]))
+  })
+
+  it('keeps a list of repairs with an amount and an optional date, and sends the whole list (ADR-0099 §8)', async () => {
+    const bodies: unknown[] = []
+    server.use(http.get(RENTAL_URL, () => HttpResponse.json({ ...FULL_PROPERTY, properties: [{ ...FULL_PROPERTY.properties[0]!, erhaltungsaufwand: [{ betrag: 800, datum: null }] }] }, { status: 200 })))
+    server.use(
+      http.put(`${RENTAL_URL}/objekte/:objektId/adresse`, async ({ request }) => {
+        bodies.push(await request.json())
+        return HttpResponse.json(FULL_PROPERTY, { status: 200 })
+      }),
+    )
+    renderRental()
+    expect(((await screen.findByTestId('vermietung-0-erhaltung-0-betrag')) as HTMLInputElement).value).toBe('800')
+    fireEvent.click(screen.getByTestId('vermietung-0-erhaltung-hinzufuegen'))
+    const amount = await screen.findByTestId('vermietung-0-erhaltung-1-betrag')
+    fireEvent.change(amount, { target: { value: '12.300' } })
+    fireEvent.blur(amount)
+    await waitFor(() => expect(bodies).toEqual([{ erhaltungsaufwand: [{ betrag: 800, datum: null }, { betrag: 12300, datum: null }] }]))
+    fireEvent.change(screen.getByTestId('vermietung-0-erhaltung-1-datum'), { target: { value: '15.05.2026' } })
+    await waitFor(() => expect(bodies.at(-1)).toEqual({ erhaltungsaufwand: [{ betrag: 800, datum: null }, { betrag: 12300, datum: '2026-05-15' }] }))
+    fireEvent.click(screen.getByRole('button', { name: 'Rechnung 1 entfernen' }))
+    await waitFor(() => expect(bodies.at(-1)).toEqual({ erhaltungsaufwand: [{ betrag: 12300, datum: '2026-05-15' }] }))
+  })
+
   it('fills the empty Ort of the property from a one-place postal code (#451 slice 3)', async () => {
     const bodies: unknown[] = []
     server.use(http.get(RENTAL_URL, () => HttpResponse.json(FULL_PROPERTY, { status: 200 })))
