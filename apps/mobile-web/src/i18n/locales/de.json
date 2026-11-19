@@ -2750,9 +2750,9 @@
     },
     "wartet": {
       "titel": "Worauf du achten kannst",
-      "text_one": "Eingereicht, der Bescheid steht aus. {{count}} Position hat das Finanzamt {{vorjahr}} gekürzt; {{jahr}} steht sie wieder so in der Erklärung.",
-      "text_other": "Eingereicht, der Bescheid steht aus. {{count}} Positionen hat das Finanzamt {{vorjahr}} gekürzt; {{jahr}} stehen sie wieder so in der Erklärung.",
-      "keineVorhersage": "Kommt der Bescheid, steht hier der Abgleich. Eine Vorhersage macht die Eule nicht."
+      "text_one": "{{count}} Position hat das Finanzamt {{vorjahr}} gekürzt; {{jahr}} steht sie wieder so in der Erklärung.",
+      "text_other": "{{count}} Positionen hat das Finanzamt {{vorjahr}} gekürzt; {{jahr}} stehen sie wieder so in der Erklärung.",
+      "keineVorhersage": "Kommt der Bescheid, steht hier der Abgleich."
     },
     "abgleich": {
       "titel": "Erklärung ↔ Bescheid {{jahr}}",
@@ -2779,8 +2779,8 @@
       "zeileA11y": "{{position}}: erklärt {{erklaert}}, Bescheid {{festgesetzt}}, Wirkung auf die Erstattung {{wirkung}}.",
       "wiederTage": "{{jahr}} wieder {{tage}} erklärt",
       "wiederBetrag": "{{jahr}} wieder {{betrag}} erklärt",
-      "weitere_one": "{{count}} weitere Position wie erklärt · Alle ansehen",
-      "weitere_other": "{{count}} weitere Positionen wie erklärt · Alle ansehen",
+      "weitere_one": "{{count}} weitere wie erklärt ›",
+      "weitere_other": "{{count}} weitere wie erklärt ›",
       "alleAnsehen": "Alle Positionen ansehen",
       "formularZu": "Formularansicht ausblenden",
       "folge": "daraus folgt",
@@ -2796,7 +2796,8 @@
         "werbungskostenB": "Werbungskosten · Person B",
         "vorsorge": "Vorsorge und Sonderausgaben",
         "steuer": "Steuer"
-      }
+      },
+      "werte": "{{erklaert}} → {{festgesetzt}}"
     },
     "lehre": {
       "maske": "Erscheint {{jahr}} in der Maske „{{maske}}“",
@@ -2856,7 +2857,7 @@
       "erstattung": {
         "label": "Erstattung",
         "titel": "Erstattung und Nachzahlung",
-        "sub": "Für den Haushalt. Der Strich ist, was erklärt war; die rote Fläche hat das Finanzamt gekürzt."
+        "sub": "Für den Haushalt. Rot gestrichelt: vom Finanzamt gekürzt."
       },
       "werbungskosten": {
         "label": "Werbungskosten",
@@ -2906,7 +2907,6 @@
       "erstattungBescheid": "Erstattung laut Bescheid",
       "gekuerzt": "vom Finanzamt gekürzt",
       "schaetzung": "Schätzung (Spanne)",
-      "erklaert": "erklärt",
       "pauschbetrag": "Pauschbetrag",
       "effektiv": "Steuerquote effektiv",
       "grenz": "Grenzsteuersatz",
@@ -3127,15 +3127,17 @@
         "text": "Für dieses Jahr gibt es weder eine Erklärung noch einen Bescheid. Zurück im Verlauf kannst du alte Jahre mit ihrem Bescheid ergänzen."
       },
       "satz": {
-        "offen": "In Arbeit, noch nicht abgegeben.",
-        "eingereicht": "Abgegeben, der Bescheid steht aus.",
-        "nurBescheid": "Nur der Bescheid: Die Erklärung {{jahr}} wurde nicht in SteuerEule gemacht, deshalb gibt es keinen Abgleich. Der Bescheid zählt im Verlauf trotzdem.",
+        "offen": "In Arbeit, noch nicht abgegeben",
+        "eingereicht": "Abgegeben · wartet auf Bescheid",
+        "nurBescheid": "Nur der Bescheid. Die Erklärung lief nicht über SteuerEule, deshalb gibt es keinen Abgleich.",
         "ohneFassung": "Für {{jahr}} liegt ein Bescheid vor, aber keine in SteuerEule eingereichte Fassung, mit der er sich vergleichen ließe.",
-        "aenderungen_one": "Bescheid da: Das Finanzamt hat {{count}} Position geändert.",
-        "aenderungen_other": "Bescheid da: Das Finanzamt hat {{count}} Positionen geändert.",
-        "wieErklaert": "Bescheid wie erklärt: Das Finanzamt hat nichts geändert.",
+        "aenderungen_one": "Bescheid da · {{count}} Position geändert",
+        "aenderungen_other": "Bescheid da · {{count}} Positionen geändert",
+        "wieErklaert": "Bescheid wie erklärt",
         "luecke": "{{jahr}} ist nicht in der App. Abgeben geht bis {{datum}}.",
-        "anderswo": "Anderswo abgegeben. Lädst du den Bescheid hoch, steht {{jahr}} mit seinen Zahlen im Verlauf."
+        "anderswo": "Anderswo abgegeben. Lädst du den Bescheid hoch, steht {{jahr}} mit seinen Zahlen im Verlauf.",
+        "ohneWirkung_one": "Bescheid da · {{count}} Position geändert, ohne Wirkung auf die Erstattung",
+        "ohneWirkung_other": "Bescheid da · {{count}} Positionen geändert, ohne Wirkung auf die Erstattung"
       },
       "fehltTitel": "Was noch fehlt",
       "lstb": {
@@ -3146,7 +3148,12 @@
         "personB": "die Lohnsteuerbescheinigung {{jahr}} von Person B",
         "personBKommt": "die Lohnsteuerbescheinigung {{jahr}} von Person B (kommt ab Februar {{folgejahr}})"
       },
-      "aenderbar": "Änderbar bis {{datum}} (Festsetzungsfrist), etwa für einen vergessenen Beleg."
+      "aenderbar": "Änderbar bis {{datum}}",
+      "betrag": {
+        "schaetzung": "Schätzung {{betrag}}",
+        "erstattung": "Erstattung {{betrag}} laut Bescheid",
+        "nachzahlung": "Nachzahlung {{betrag}} laut Bescheid"
+      }
     },
     "frage": {
       "titel": "{{jahr}}: Schon abgegeben?",
@@ -3168,13 +3175,11 @@
       "grenzgaenger": "Start als Grenzgänger",
       "umzug": "Umzug",
       "immobilienkauf": "Immobilie gekauft",
-      "zeile": "{{jahr}} · {{was}}",
+      "zeile": "{{was}}",
       "a11y": "Ereignis {{jahr}}: {{was}}"
     },
     "wiederkehrend": {
       "titel": "Kommt jedes Jahr wieder",
-      "satz_one": "{{count}} Posten aus den Vorjahren, {{erledigt}} schon erledigt.",
-      "satz_other": "{{count}} Posten aus den Vorjahren, {{erledigt}} schon erledigt.",
       "erledigt": "erledigt",
       "offen": "offen",
       "vorjahr": "{{jahr}}: {{was}}",
@@ -3185,9 +3190,10 @@
       "uebernommen": "aus Beleg übernommen",
       "vorschlag": "Vorschlag aus Beleg wartet",
       "gekuerzt": "⚠ {{jahre}} gekürzt",
-      "hinweis": "Der Betrag des Vorjahres ist nur ein Hinweis, er wird nicht übernommen.",
       "belege": "Belege hochladen",
-      "a11y": "{{label}}, {{stand}}: {{text}}"
+      "a11y": "{{label}}, {{stand}}: {{text}}",
+      "erledigtZahl_one": "{{count}} erledigt",
+      "erledigtZahl_other": "{{count}} erledigt"
     },
     "muster": {
       "mal_2": "Zum zweiten Mal gekürzt",
@@ -3195,14 +3201,15 @@
       "mal_n": "Zum {{count}}. Mal gekürzt",
       "satz": "{{titel}}: {{position}} {{jahre}}.",
       "jahr": "{{jahr}} ({{betrag}} weniger anerkannt)",
-      "satzJe": "{{titel}}: {{position}} {{jahre}}, je {{betrag}} weniger anerkannt."
+      "satzJe": "{{titel}}: {{position}} {{jahre}}, je {{betrag}} weniger anerkannt.",
+      "kurz": "{{titel}}: {{position}}"
     },
     "paare": {
-      "zusammenGebracht": "Zusammen veranlagt: {{jahr}} hat das {{betrag}} gebracht gegenüber zwei Einzelerklärungen.",
-      "einzelnMehr": "Einzeln veranlagt wären es {{jahr}} {{betrag}} mehr gewesen.",
-      "zusammenMehr": "Zusammen veranlagt wären es {{jahr}} {{betrag}} mehr gewesen.",
-      "einzelnGebracht": "Einzeln veranlagt: {{jahr}} hat das {{betrag}} gebracht gegenüber der Zusammenveranlagung.",
-      "gleich": "Zusammen oder einzeln: {{jahr}} macht das keinen Unterschied.",
+      "zusammenGebracht": "Zusammen veranlagt hat {{betrag}} gebracht.",
+      "einzelnMehr": "Einzeln veranlagt wären es {{betrag}} mehr gewesen.",
+      "zusammenMehr": "Zusammen veranlagt wären es {{betrag}} mehr gewesen.",
+      "einzelnGebracht": "Einzeln veranlagt hat {{betrag}} gebracht.",
+      "gleich": "Zusammen oder einzeln macht keinen Unterschied.",
       "etwa": "Rechnung der App, etwa",
       "knapp": "Der Unterschied ist zu knapp für eine sichere Aussage.",
       "unvollstaendig": "Für den Vergleich zusammen ↔ einzeln fehlt noch: {{liste}}.",
@@ -3211,7 +3218,7 @@
       "etwaSpanne": "Rechnung der App, je nach Aufteilung der Abzüge"
     },
     "vorauszahlung": {
-      "hinweis": "Nachzahlung laut Bescheid: Vorauszahlungen anpassen lassen (Antrag beim Finanzamt)."
+      "hinweis": "Vorauszahlungen anpassen lassen (Antrag beim Finanzamt)."
     },
     "gruppe": {
       "tab": {
@@ -3221,7 +3228,7 @@
         "kapital": "Kapital",
         "rente": "Rente"
       },
-      "mehr": "Weitere Bereiche",
+      "mehr": "Deine Bereiche",
       "nichtErfasst": "noch nicht erfasst",
       "vorauszahlungen": {
         "titel": "Nachzahlung nach Vorauszahlungen",

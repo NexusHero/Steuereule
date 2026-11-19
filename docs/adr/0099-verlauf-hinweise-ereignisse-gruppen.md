@@ -33,6 +33,12 @@ Alles in einem Pull Request, ohne Prognose (ADR-0098 §7 gilt weiter).
    - Verlustvortrag und Verlustverrechnungstöpfe: „noch nicht erfasst“.
 8. **Neue Felder, nur die günstigen:** Anschaffungsdatum und Erhaltungsaufwand je Objekt und Jahr; Datum und Ergebnis eines Einspruchs; Arbeitgeber auf der Lohnsteuerbescheinigung. Jedes Mietobjekt bekommt eine feste Kennung, die die Jahresübernahme mitnimmt, damit es über die Jahre verfolgbar ist.
 9. **Unterlagen.** Eine Zeile am Ende der Zeitleiste öffnet eine Seite mit den Bescheiden als Liste (einzeln herunterladbar), der Dauer von der Abgabe bis zum Bescheid (ab zwölf Wochen ohne Bescheid „Nachfragen lohnt sich“) und der Einspruch-Historie.
+10. **Kürzen nach dem UX-Review (19.11.2026).** Gemessen am Handy trug die Jahresseite 136 Wörter, jetzt etwa 60.
+    - Der Abgleich zeigt je Änderung eine Zeile wie ein Diff: Vorzeichen, Position, Wirkung. Werte, Grund, Zitat und Hinweis öffnen sich beim Antippen (ersetzt die Zeile mit Kurzgrund aus ADR-0098 §8).
+    - Muster, Paare-Vergleich und Vorauszahlungs-Hinweis sind je eine Zeile ohne farbigen Kasten; die Herleitung steht hinter dem Antippen.
+    - Die Jahresseite nennt den Betrag des Jahres, wenn kein Abgleich ihn zeigt (Schätzung als Spanne, Erstattung oder Nachzahlung laut Bescheid). Eine Änderung ohne Wirkung auf die Erstattung sagt das.
+    - Die Checkliste klappt Erledigtes ein, außer eine Position wurde schon einmal gekürzt.
+    - „Entwicklung“ trennt Kennzahlen und Bereiche in zwei Reihen. Das Diagramm zeigt Balken, Kürzung und Schätzung; der Strich für „erklärt“, der Kasten für offene Jahre und Text im Diagramm entfallen.
 
 ## Folgen
 

@@ -9,7 +9,7 @@ import { BackButton } from '../shared/BackButton'
 import { AssessmentDiffView } from './AssessmentDiffView'
 import { HistoryGate, historyScreenStyles } from './HistoryGate'
 import { historyStyles } from './historyStyles'
-import { filingTypeChange, missingDetail } from './historyTimeline'
+import { filingTypeChange, missingDetail, yearFigure } from './historyTimeline'
 import { germanDate } from './historyFormat'
 import { asksFiledElsewhere } from './historyInsights'
 import { FiledElsewhereQuestion } from './FiledElsewhereQuestion'
@@ -52,7 +52,9 @@ function statusSentence(item: YearListItemDto, tr: TFunction): string {
       return tr('verlauf.jahr.satz.nurBescheid', { jahr: item.year })
     case 'bescheid':
       if (item.noDiffReason === 'keine-eingereichte-fassung') return tr('verlauf.jahr.satz.ohneFassung', { jahr: item.year })
-      return item.deviations > 0 ? tr('verlauf.jahr.satz.aenderungen', { count: item.deviations }) : tr('verlauf.jahr.satz.wieErklaert')
+      if (item.deviations === 0) return tr('verlauf.jahr.satz.wieErklaert')
+      // A change that left the refund where it was says so, instead of a headline that looks like a cut.
+      return tr(item.difference === 0 ? 'verlauf.jahr.satz.ohneWirkung' : 'verlauf.jahr.satz.aenderungen', { count: item.deviations })
   }
 }
 
@@ -83,6 +85,7 @@ function YearLoaded({ data, year, onBack, onOpenYear, onPrepareAppeal, onOpenRec
   const assessed = item.kind === 'bescheid' || item.kind === 'eckjahr'
   const filedElsewhere = !item.hasData && (item.withoutAssessment || item.filedElsewhere?.answer === 'ja')
   const changeable = assessed && item.deadline.kind === 'aenderbar-bis' && item.deadline.running
+  const figure = yearFigure(item, data.years.find((y) => y.year === year), data.diffs.some((d) => d.year === year), tr)
   return (
     <ScrollView contentContainerStyle={bp === 's' ? s.screen : s.wideScreen} testID="screen-container">
       {back}
@@ -93,6 +96,11 @@ function YearLoaded({ data, year, onBack, onOpenYear, onPrepareAppeal, onOpenRec
         <Text style={s.body} testID="verlauf-jahr-satz">
           {statusSentence(item, tr)}
         </Text>
+        {figure !== null ? (
+          <Text style={s.figure} testID="verlauf-jahr-betrag">
+            {figure}
+          </Text>
+        ) : null}
         {change !== null ? (
           <Text style={s.muted} testID="verlauf-jahr-wechsel">
             {tr(change === 'zusammen' ? 'verlauf.chart.wechselZusammen' : 'verlauf.chart.wechselEinzeln', { jahr: year })}
@@ -107,9 +115,11 @@ function YearLoaded({ data, year, onBack, onOpenYear, onPrepareAppeal, onOpenRec
       {asksFiledElsewhere(item) ? <FiledElsewhereQuestion year={year} tone="hell" testID={`verlauf-jahr-frage-${year}`} /> : null}
       {data.recurring !== null && data.recurring.year === year && data.recurring.items.length > 0 ? <RecurringChecklist checklist={data.recurring} onOpenReceipts={onOpenReceipts} /> : null}
       <YearBody data={data} item={item} onPrepareAppeal={onPrepareAppeal && selectable ? () => onPrepareAppeal(year) : undefined} />
-      <RepeatedCutNotes data={data} year={year} />
-      {assessed ? <CoupleNote data={data} year={year} /> : null}
-      <PrepaymentNote data={data} year={year} />
+      <View style={s.notes}>
+        <RepeatedCutNotes data={data} year={year} />
+        {assessed ? <CoupleNote data={data} year={year} /> : null}
+        <PrepaymentNote data={data} year={year} />
+      </View>
       {onOpenYear && selectable && !filedElsewhere ? (
         <View style={{ width: '100%', maxWidth: FLOW_CONTENT_MAX_WIDTH }}>
           <Button variant={item.hasData ? 'ghost' : 'primaer'} onPress={() => onOpenYear(year)} testID={`verlauf-zum-cockpit-${year}`}>
@@ -199,5 +209,6 @@ function makeStyles(t: UiTheme) {
   const head: ViewStyle = { gap: t.space.s1 }
   const items: ViewStyle = { gap: t.space.s2, borderTopWidth: 1, borderTopColor: t.color.linieWeich, paddingTop: t.space.s3 }
   const title: TextStyle = { ...t.type.title, color: t.color.tinte }
-  return { ...base, ...historyScreenStyles(t), head, items, title }
+  const notes: ViewStyle = { width: '100%', maxWidth: FLOW_CONTENT_MAX_WIDTH }
+  return { ...base, ...historyScreenStyles(t), head, items, title, notes }
 }

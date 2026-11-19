@@ -144,3 +144,18 @@ export function filingTypeChange(data: YearHistoryResponseDto, year: number): Ye
   const before = data.list.find((l) => l.year === year - 1)
   return item && before && item.filingType !== before.filingType ? item.filingType : null
 }
+
+/**
+ * The year's own figure on its page, when the Abgleich below does not already show it: the estimate of a
+ * filed year as its range, the refund or back payment of a Bescheid without an Abgleich. Never a figure
+ * for an open year or one without data (no forecast, ADR-0098 §7).
+ */
+export function yearFigure(item: YearListItemDto, entry: YearHistoryEntryDto | undefined, hasDiff: boolean, tr: TFunction): string | null {
+  if (!item.hasData || hasDiff) return null
+  if (item.assessedRefund !== null) {
+    return tr(item.assessedRefund < 0 ? 'verlauf.jahr.betrag.nachzahlung' : 'verlauf.jahr.betrag.erstattung', { betrag: formatEuro(Math.abs(item.assessedRefund)) })
+  }
+  if (item.kind !== 'eingereicht' || entry === undefined) return null
+  const range = signedFigureText(entry.erstattung.amount, '')
+  return range === '' ? null : tr('verlauf.jahr.betrag.schaetzung', { betrag: range })
+}

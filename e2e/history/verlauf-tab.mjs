@@ -1,7 +1,7 @@
 // ADR-0098 — the tab „Verlauf“ as a timeline (alternative A), end to end in the real app: the tab bar
 // `Cockpit · Eule · Belege · Verlauf · Profil`, the old year-list links landing in the Verlauf, „Jetzt
 // wichtig“ in the cockpit's dark block, one row per year, a year's own page (`/app/verlauf/:jahr`) with
-// the Bescheid-Abgleich as a receipt (deadline chip, lessons inside the rows), back to the tab, „Entwicklung ansehen“
+// the Bescheid-Abgleich as a receipt (deadline chip, one diff line per change that opens to its values, reason and lesson), back to the tab, „Entwicklung ansehen“
 // (`/app/verlauf/entwicklung`) with the four key figures, tiers, the person toggle and the data table,
 // the upload entry behind „Ältere Jahre ergänzen“ into the one Beleg pipeline, the same Abgleich in
 // „Bescheid prüfen“, the lesson at the next year's mask, and „Ich habe die Erklärung abgegeben“ in the
@@ -190,7 +190,7 @@ async function main() {
     // ADR-0099 §4: one marker per year with an event, between the rows.
     const markers = await page.locator('[data-testid^="verlauf-ereignis-"]').evaluateAll((els) => els.map((e) => e.getAttribute('data-testid')))
     if (markers.join() !== 'verlauf-ereignis-2025,verlauf-ereignis-2024,verlauf-ereignis-2023') fail(`the life events should mark 2025, 2024 and 2023, they are ${markers.join()}`)
-    if ((await textOf('verlauf-ereignis-2024')) !== '2024 · neuer Arbeitgeber, Start als Grenzgänger') fail('the marker should name the events of its year')
+    if ((await textOf('verlauf-ereignis-2024')) !== 'neuer Arbeitgeber, Start als Grenzgänger') fail('the marker should name the events of its year, without repeating the year')
     // ADR-0099: the tab stays one phone screen — the link row ends within about 760 px of the timeline's top.
     const top = await byId('verlauf-jetzt').boundingBox()
     const end = await byId('verlauf-unterlagen').boundingBox()
@@ -203,6 +203,7 @@ async function main() {
     if ((await textOf('verlauf-jahr-titel')) !== '2024') fail('the year page should be titled by its year')
     if (!(await textOf('verlauf-jahr-satz')).includes('2 Positionen geändert')) fail('the year page should say in one sentence what the Finanzamt did')
     await see('verlauf-abgleich-2024')
+    if (await byId('verlauf-jahr-betrag').count()) fail('a year with an Abgleich needs no figure of its own in the head')
     // The receipt (ADR-0098 §8): one figure, the deadline chip, one row per change; collapsed it fits one phone screen.
     const receipt = await byId('verlauf-abgleich-2024').boundingBox()
     if (receipt === null || receipt.height > 700) fail(`the collapsed Abgleich should fit one phone screen, it is ${receipt?.height} px high`)
@@ -213,8 +214,10 @@ async function main() {
     }
     const rows = await page.locator('[data-testid^="verlauf-abgleich-2024-zeile-"]').evaluateAll((els) => els.map((e) => e.getAttribute('data-testid')))
     if (rows[0] !== 'verlauf-abgleich-2024-zeile-homeofficeA') fail(`the largest effect should come first, the rows are ${rows.join()}`)
-    const homeRow = await textOf('verlauf-abgleich-2024-zeile-homeofficeA')
-    if (!homeRow.includes('180 statt 210 Tage') || !homeRow.includes('2025 wieder 210 erklärt')) fail(`the row should carry its short reason and the next year, it says ${homeRow}`)
+    // One line like a diff: sign, position (with ⚠ while the next year declared the same again), the unsigned effect.
+    const homeRow = (await textOf('verlauf-abgleich-2024-zeile-homeofficeA')).replace(/\s+/g, ' ').trim()
+    if (!homeRow.startsWith('−') || !homeRow.includes('Homeoffice-Pauschale') || !homeRow.includes('⚠') || !homeRow.endsWith('56 €')) fail(`the row should be one diff line, it says ${homeRow}`)
+    if (homeRow.includes('180 statt 210 Tage') || homeRow.includes('1.260') || homeRow.includes('wieder')) fail(`the values and the reason should wait behind the tap, the row says ${homeRow}`)
     if (!(await textOf('verlauf-abgleich-2024-einspruch')).startsWith('Einspruch · 19 Tage')) fail('the deadline chip should name the days left')
     if (await byId('verlauf-abgleich-2024-nichtlinear').count()) fail('the note on the sum should wait behind its info icon')
     await byId('verlauf-abgleich-2024-nichtlinear-umschalten').click()
@@ -222,15 +225,20 @@ async function main() {
     if (await byId('verlauf-abgleich-2024-detail-homeofficeA').count()) fail('a row should start collapsed')
     await byId('verlauf-abgleich-2024-zeile-homeofficeA').getByRole('button').click()
     await see('verlauf-abgleich-2024-detail-homeofficeA')
-    if (!(await textOf('verlauf-abgleich-2024-detail-homeofficeA')).includes('„Die Tätigkeit in der häuslichen Wohnung')) fail('an opened row should quote the Finanzamt')
+    const homeDetail = (await textOf('verlauf-abgleich-2024-detail-homeofficeA')).replace(/\s+/g, ' ')
+    if (!homeDetail.includes('1.260 → 1.080') || !homeDetail.includes('180 statt 210 Tage') || !homeDetail.includes('2025 wieder 210 erklärt')) fail(`an opened row should carry its values, the short reason and the next year, it says ${homeDetail}`)
+    if (!homeDetail.includes('„Die Tätigkeit in der häuslichen Wohnung')) fail('an opened row should quote the Finanzamt')
     if (await byId('verlauf-abgleich-2024-formularansicht').count()) fail('the form view should start collapsed')
+    if ((await textOf('verlauf-abgleich-2024')).includes('Eingereicht am')) fail('the dates should wait inside the form view')
+    if ((await textOf('verlauf-abgleich-2024-formular')).trim() !== '5 weitere wie erklärt ›') fail('the footer row should count the positions as declared')
     await byId('verlauf-abgleich-2024-formular').click()
     await see('verlauf-abgleich-2024-formularansicht')
+    if (!(await textOf('verlauf-abgleich-2024-formularansicht')).includes('Eingereicht am 21.09.2026 · Bescheid vom 02.11.2026')) fail('the form view should carry the submission and assessment dates')
     await see('verlauf-zum-cockpit-2024')
     await byId('verlauf-jahr-zurueck').click()
     await atPath('/app/verlauf')
     await see('verlauf-jetzt')
-    console.log(`[${TAG}] ✅ Year page — /app/verlauf/2024 with the receipt: one figure, the deadline chip, rows with short reasons opening to quote and lesson, the form view on demand; back returns to the tab`)
+    console.log(`[${TAG}] ✅ Year page — /app/verlauf/2024 with the receipt: one figure, the deadline chip, one diff line per change opening to values, reason, quote and lesson, the form view with the dates on demand; back returns to the tab`)
 
     // The other kinds of years, each on its own page.
     await byId('verlauf-jahr-2023').click()
@@ -244,33 +252,53 @@ async function main() {
     await see('verlauf-abgleich-2022-A')
     await see('verlauf-abgleich-2022-B')
     await page.goto(`${webOrigin}/app/verlauf/2021`, { waitUntil: 'networkidle' })
-    if (!(await textOf('verlauf-jahr-satz')).startsWith('Nur der Bescheid: Die Erklärung 2021 wurde nicht in SteuerEule gemacht')) fail('a year with only its Bescheid should say why there is no Abgleich')
+    if (!(await textOf('verlauf-jahr-satz')).startsWith('Nur der Bescheid. Die Erklärung lief nicht über SteuerEule')) fail('a year with only its Bescheid should say why there is no Abgleich')
+    if ((await textOf('verlauf-jahr-betrag')) !== 'Erstattung 220 € laut Bescheid') fail('a Bescheid year without an Abgleich should show its refund in the head')
     if (await byId('verlauf-zum-cockpit-2021').count()) fail('2021 is no selectable year, so no way into its cockpit')
     await page.goto(`${webOrigin}/app/verlauf/2025`, { waitUntil: 'networkidle' })
     await see('verlauf-wartet-2025')
-    if ((await textOf('verlauf-wartet-2025')).includes('€')) fail('a year waiting for its Bescheid must not name an amount')
+    if ((await textOf('verlauf-jahr-satz')) !== 'Abgegeben · wartet auf Bescheid') fail('a filed year should say that it waits for its Bescheid')
+    if ((await textOf('verlauf-jahr-betrag')) !== 'Schätzung +1.066–1.196 €') fail('a filed year should show its estimate as a range in the head')
+    const waiting = await textOf('verlauf-wartet-2025')
+    if (waiting.includes('€')) fail('a year waiting for its Bescheid must not name an amount')
+    if (waiting.includes('Eingereicht, der Bescheid steht aus')) fail('the card should not repeat the status sentence')
     await page.goto(`${webOrigin}/app/verlauf/2026`, { waitUntil: 'networkidle' })
     await see('verlauf-fehlt-2026')
+    if (await byId('verlauf-jahr-betrag').count()) fail('an open year must not show a figure of its own')
     if (!(await textOf('verlauf-fehlt-2026')).includes('die Lohnsteuerbescheinigungen 2026 (kommen ab Februar 2027)')) fail('an open year should say concretely what it lacks')
     await see('verlauf-zum-cockpit-2026')
     await page.goto(`${webOrigin}/app/verlauf/1999`, { waitUntil: 'networkidle' })
     await see('verlauf-jahr-unbekannt')
-    console.log(`[${TAG}] ✅ Years — „wie erklärt“ with the change of filing type, two single returns, „nur Bescheid“, the waiting year without an amount, what an open year lacks`)
+    console.log(`[${TAG}] ✅ Years — „wie erklärt“ with the change of filing type, two single returns, „nur Bescheid“ with its refund, the waiting year with its estimate and no amount in the card, what an open year lacks`)
 
     // ADR-0099 §2, §5, §6: the checklist of the open year, the repeated cut and the couple comparison.
     await page.goto(`${webOrigin}/app/verlauf/2026`, { waitUntil: 'networkidle' })
     await see('verlauf-wiederkehrend-2026')
     if (!(await textOf('verlauf-wiederkehrend-2026-homeoffice')).includes('⚠ 2023 und 2024 gekürzt')) fail('the checklist should name the cuts that came again')
+    // Done items without a cut wait behind their count.
+    if (await byId('verlauf-wiederkehrend-2026-kontofuehrung').count()) fail('a done item should be folded behind the count')
+    if (!(await textOf('verlauf-wiederkehrend-2026-erledigt')).includes('2 erledigt')) fail('the toggle should count the done items')
+    await byId('verlauf-wiederkehrend-2026-erledigt').click()
+    await see('verlauf-wiederkehrend-2026-kontofuehrung')
     if (!(await textOf('verlauf-wiederkehrend-2026-kontofuehrung')).includes('2025: 32 €')) fail('the checklist should name last year’s amount as a hint')
     await byId('verlauf-wiederkehrend-2026-belege').click()
     await atPath('/app/belege')
     await page.goto(`${webOrigin}/app/verlauf/2024`, { waitUntil: 'networkidle' })
     await see('verlauf-muster-2024')
-    if (!(await textOf('verlauf-muster-2024-homeofficeA')).startsWith('Zum zweiten Mal gekürzt: Homeoffice-Pauschale 2023 und 2024, je 180 € weniger anerkannt.')) fail('the year page should name the repeated cut')
-    if (!(await textOf('verlauf-paare-2024')).includes('Zusammen veranlagt: 2024 hat das etwa 1.010 € bis 1.230 € gebracht')) fail('the year page should say what joint filing brought')
+    if (!(await textOf('verlauf-muster-2024-homeofficeA')).startsWith('Zum zweiten Mal gekürzt: Homeoffice-Pauschale')) fail('the year page should name the repeated cut')
+    if (await byId('verlauf-muster-2024-homeofficeA-detail').count()) fail('the years and amounts of the repeated cut should wait behind the tap')
+    await byId('verlauf-muster-2024-homeofficeA').getByRole('button').click()
+    await see('verlauf-muster-2024-homeofficeA-detail')
+    if (!(await textOf('verlauf-muster-2024-homeofficeA-detail')).startsWith('Zum zweiten Mal gekürzt: Homeoffice-Pauschale 2023 und 2024, je 180 € weniger anerkannt.')) fail('the opened line should name the years and the amount of the repeated cut')
+    if (!(await textOf('verlauf-paare-2024')).includes('Zusammen veranlagt hat etwa 1.010 € bis 1.230 € gebracht.')) fail('the year page should say what joint filing brought')
+    if (await byId('verlauf-paare-2024-etwa').count()) fail('how the app got to the comparison should wait behind the tap')
+    await byId('verlauf-paare-2024').getByRole('button').click()
+    await see('verlauf-paare-2024-etwa')
     if (!(await textOf('verlauf-paare-2024-etwa')).startsWith('Rechnung der App')) fail('a joint Bescheid split by the app should say it is approximate')
     await see('verlauf-jahr-aenderbar')
-    console.log(`[${TAG}] ✅ Hints — „Kommt jedes Jahr wieder“ on 2026 with the way to the Belege, „Zum zweiten Mal gekürzt“ and the couple comparison („etwa“) on 2024`)
+    const changeable = await textOf('verlauf-jahr-aenderbar')
+    if (!changeable.startsWith('Änderbar bis ') || changeable.includes('Festsetzungsfrist')) fail(`„Änderbar bis“ should be the date alone, it says ${changeable}`)
+    console.log(`[${TAG}] ✅ Hints — „Kommt jedes Jahr wieder“ on 2026 with the done items behind their count and the way to the Belege, „Zum zweiten Mal gekürzt“ and the couple comparison as plain lines on 2024, their detail („etwa“) behind a tap`)
 
     // ADR-0099 §9: „Unterlagen“ — the Bescheide one by one, the time to them, the Einsprüche.
     await page.goto(`${webOrigin}/app/verlauf`, { waitUntil: 'networkidle' })
@@ -300,6 +328,10 @@ async function main() {
     await see('verlauf-gruppe-tabelle')
     await byId('verlauf-bereich-kapital').click()
     for (const id of ['verlauf-gruppe-kapital', 'verlauf-gruppe-kapital-pauschbetrag', 'verlauf-gruppe-kapital-guenstiger']) await see(id)
+    // Pressing the active group chip again deselects it: the key figure's chart is back.
+    await byId('verlauf-bereich-kapital').click()
+    await see('verlauf-karte')
+    if (await byId('verlauf-gruppe-kapital').count()) fail('a deselected group should leave the page')
     history = ALL_GROUPS
     await page.goto(`${webOrigin}/app/verlauf/entwicklung`, { waitUntil: 'networkidle' })
     await byId('verlauf-bereich-vorauszahlungen').click()
@@ -314,6 +346,7 @@ async function main() {
     await see('verlauf-gruppe-rente-jahre')
     await page.goto(`${webOrigin}/app/verlauf/2024`, { waitUntil: 'networkidle' })
     await see('verlauf-vorauszahlung-2024')
+    if ((await textOf('verlauf-vorauszahlung-2024')).trim() !== 'Vorauszahlungen anpassen lassen (Antrag beim Finanzamt).') fail('a year with a Nachzahlung should carry the prepayment hint as one plain line')
     history = HISTORY
     console.log(`[${TAG}] ✅ Development — group tabs only with data: Schweiz and Kapital for the household, Vorauszahlungen, Vermietung and Rente when there is data, each with its table`)
 
@@ -523,7 +556,10 @@ async function main() {
     const deskReceipt = await deskId('verlauf-abgleich-2024').boundingBox()
     if (deskReceipt === null || deskReceipt.width > 600) fail(`the receipt should not stretch across the desktop, it is ${deskReceipt?.width} px wide`)
     const deskRow = (await deskId('verlauf-abgleich-2024-zeile-homeofficeA').innerText()).replace(/\s+/g, ' ')
-    if (!deskRow.includes('180 statt 210 Tage') || !deskRow.includes('2025 wieder 210 erklärt')) fail(`on a wide screen the short reason should stand whole under the label, the row says ${deskRow}`)
+    if (!deskRow.includes('Homeoffice-Pauschale') || !deskRow.includes('56 €') || deskRow.includes('180 statt 210 Tage')) fail(`on a wide screen the row should be the same one diff line, it says ${deskRow}`)
+    await deskId('verlauf-abgleich-2024-zeile-homeofficeA').getByRole('button').click()
+    const deskDetail = (await deskId('verlauf-abgleich-2024-detail-homeofficeA').innerText()).replace(/\s+/g, ' ')
+    if (!deskDetail.includes('180 statt 210 Tage') || !deskDetail.includes('2025 wieder 210 erklärt')) fail(`on a wide screen the opened row should carry the short reason whole, it says ${deskDetail}`)
     await desk.goto(`${webOrigin}/app/verlauf/entwicklung`, { waitUntil: 'networkidle' })
     await deskId('verlauf-kpi-erstattung').waitFor({ state: 'visible', timeout: 15_000 }).catch(() => fail('the development should show the KPI tiles on the desktop'))
     await deskId('verlauf-kpi-werbungskosten').click()

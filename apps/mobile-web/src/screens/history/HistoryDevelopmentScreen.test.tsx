@@ -87,6 +87,24 @@ describe('HistoryDevelopmentScreen — phone', () => {
     expect(text('verlauf-detail')).not.toContain('Eckjahr')
   })
 
+  it('keeps the chart card quiet: short sub text, no „erklärt“ in the legend, no tier pills, the open year only a word, the filing-type change only a line', async () => {
+    renderDevelopment()
+    await screen.findByTestId('verlauf-karte')
+    const card = text('verlauf-karte')
+    expect(card).toContain('Für den Haushalt. Rot gestrichelt: vom Finanzamt gekürzt.')
+    // The legend names what the chart draws; the declared stroke is gone, so is its entry.
+    expect(card).toContain('Erstattung laut Bescheidvom Finanzamt gekürztSchätzung (Spanne)Wechsel der Veranlagungsart▸')
+    expect(card).not.toContain('erklärt')
+    // Under the table toggle only the hint is left, no Bescheid / Schätzung / offen pills.
+    expect(card).toMatch(/Zahlen als Tabelle zeigenTippe ein Jahr für Details\.$/)
+    const chart = screen.getByTestId('verlauf-diagramm-svg')
+    // The open year is the word alone, with no shape beside it.
+    const open = within(chart).getByText('offen')
+    expect(open.parentElement!.children).toHaveLength(1)
+    // The filing-type change is a line the legend names, not words in the plot; the sum of two single returns has no „Σ“.
+    expect(chart.textContent).not.toMatch(/veranlagt|Σ/)
+  })
+
   it('has a data table behind the chart with every year and tier', async () => {
     renderDevelopment()
     await screen.findByTestId('verlauf-karte')
@@ -108,15 +126,41 @@ describe('HistoryDevelopmentScreen — phone', () => {
 })
 
 describe('HistoryDevelopmentScreen — group tabs (ADR-0099 §3, §7)', () => {
-  const tabs = () =>
-    within(screen.getByRole('tablist'))
-      .getAllByRole('tab')
-      .map((t) => t.getAttribute('data-testid'))
+  /** The chip rows in order, each with its label and its chips: the key figures, then the household's own areas. */
+  const chipRows = () =>
+    screen.getAllByRole('tablist').map((list) => ({
+      label: list.getAttribute('aria-label'),
+      chips: within(list)
+        .getAllByRole('tab')
+        .map((t) => t.getAttribute('data-testid')),
+    }))
+  const METRIC_CHIPS = ['verlauf-kennzahl-erstattung', 'verlauf-kennzahl-werbungskosten', 'verlauf-kennzahl-netto', 'verlauf-kennzahl-steuerquote']
 
-  it('offers only the groups the household has, after the refund as in the mock', async () => {
+  it('offers the four key figures as one row and only the groups the household has as a second row under „Deine Bereiche“', async () => {
     renderDevelopment()
     await screen.findByTestId('verlauf-karte')
-    expect(tabs()).toEqual(['verlauf-kennzahl-erstattung', 'verlauf-bereich-schweiz', 'verlauf-bereich-kapital', 'verlauf-kennzahl-werbungskosten', 'verlauf-kennzahl-netto', 'verlauf-kennzahl-steuerquote'])
+    expect(chipRows()).toEqual([
+      { label: 'Kennzahl wählen', chips: METRIC_CHIPS },
+      { label: 'Deine Bereiche', chips: ['verlauf-bereich-schweiz', 'verlauf-bereich-kapital'] },
+    ])
+    expect(screen.getByText('Deine Bereiche')).toBeTruthy()
+    // Both rows wrap: nothing hides behind a horizontal scroll.
+    for (const list of screen.getAllByRole('tablist')) expect(getComputedStyle(list).flexWrap).toBe('wrap')
+  })
+
+  it('deselects a group by pressing its active chip again and returns to the key figure', async () => {
+    renderDevelopment()
+    const chip = await screen.findByTestId('verlauf-bereich-schweiz')
+    expect(screen.getByTestId('verlauf-kennzahl-erstattung').getAttribute('aria-selected')).toBe('true')
+    fireEvent.click(chip)
+    expect(chip.getAttribute('aria-selected')).toBe('true')
+    expect(screen.getByTestId('verlauf-kennzahl-erstattung').getAttribute('aria-selected')).toBe('false')
+    expect(screen.queryByTestId('verlauf-karte')).toBeNull()
+    fireEvent.click(chip)
+    expect(chip.getAttribute('aria-selected')).toBe('false')
+    expect(screen.queryByTestId('verlauf-gruppe-schweiz-kurs')).toBeNull()
+    expect(text('verlauf-karte-titel')).toBe('Erstattung und Nachzahlung')
+    expect(screen.getByTestId('verlauf-kennzahl-erstattung').getAttribute('aria-selected')).toBe('true')
   })
 
   it('shows the Grenzgänger: rate and wage in euros, the credited Quellensteuer as a chart with its table, the Swiss share', async () => {
@@ -150,17 +194,7 @@ describe('HistoryDevelopmentScreen — group tabs (ADR-0099 §3, §7)', () => {
     server.use(http.get('*/v1/verlauf', () => HttpResponse.json(HISTORY_ALL_GROUPS_RESPONSE)))
     renderDevelopment()
     await screen.findByTestId('verlauf-karte')
-    expect(tabs()).toEqual([
-      'verlauf-kennzahl-erstattung',
-      'verlauf-bereich-vorauszahlungen',
-      'verlauf-bereich-schweiz',
-      'verlauf-bereich-vermietung',
-      'verlauf-bereich-kapital',
-      'verlauf-bereich-rente',
-      'verlauf-kennzahl-werbungskosten',
-      'verlauf-kennzahl-netto',
-      'verlauf-kennzahl-steuerquote',
-    ])
+    expect(chipRows().map((r) => r.chips)).toEqual([METRIC_CHIPS, ['verlauf-bereich-vorauszahlungen', 'verlauf-bereich-schweiz', 'verlauf-bereich-vermietung', 'verlauf-bereich-kapital', 'verlauf-bereich-rente']])
     fireEvent.click(screen.getByTestId('verlauf-bereich-vorauszahlungen'))
     expect(text('verlauf-gruppe-vorauszahlungen-hinweis')).toBe('3 Jahre Nachzahlung in Folge, im Schnitt 2.400 €. Vorauszahlungen anpassen lassen (Antrag beim Finanzamt).')
     expect(text('verlauf-gruppe-vorauszahlungen')).not.toMatch(/zurücklegen|sparen/)
@@ -187,6 +221,9 @@ describe('HistoryDevelopmentScreen — group tabs (ADR-0099 §3, §7)', () => {
     renderDevelopment()
     await screen.findByTestId('verlauf-karte')
     expect(screen.queryAllByTestId(/^verlauf-bereich-/)).toHaveLength(0)
+    // No second row and no eyebrow for it either.
+    expect(screen.getAllByRole('tablist')).toHaveLength(1)
+    expect(screen.queryByText('Deine Bereiche')).toBeNull()
   })
 })
 
@@ -212,6 +249,11 @@ describe('HistoryDevelopmentScreen — tablet and desktop', () => {
     expect(screen.getByTestId('verlauf-gruppe-kapital')).toBeTruthy()
     expect(screen.queryByTestId('verlauf-karte')).toBeNull()
     fireEvent.click(screen.getByTestId('verlauf-kpi-netto'))
+    expect(screen.queryByTestId('verlauf-gruppe-kapital')).toBeNull()
+    expect(text('verlauf-karte-titel')).toBe('Vom Brutto zum Netto')
+    // Pressing the active group chip again deselects it here too.
+    fireEvent.click(screen.getByTestId('verlauf-bereich-kapital'))
+    fireEvent.click(screen.getByTestId('verlauf-bereich-kapital'))
     expect(screen.queryByTestId('verlauf-gruppe-kapital')).toBeNull()
     expect(text('verlauf-karte-titel')).toBe('Vom Brutto zum Netto')
   })

@@ -31,8 +31,8 @@ const toneOf = (n: number | null): Tone => (n === null || n === 0 ? null : n < 0
 
 /**
  * Erklärung ↔ Bescheid as a receipt (ADR-0098 §8): one figure for what the Bescheid did to the refund,
- * the deadline beside it, one row per own deviation with its short reason, and the form view one tap
- * away. Each row opens to the Finanzamt's quote and the lesson for next time. The same view in the
+ * the deadline beside it, one line per own deviation like a diff (sign, position, effect), and the form
+ * view one tap away. Each line opens to its values, the reason, the Finanzamt's quote and the lesson. The same view in the
  * Verlauf and in „Bescheid prüfen“.
  */
 export function AssessmentDiffView({ diff, deadline, submittedOn, assessmentDate, person = null, lessons = [], maskYear = null, onPrepareAppeal, yearInTitle = true, testID = 'bescheid-abgleich' }: AssessmentDiffViewProps) {
@@ -78,6 +78,8 @@ export function AssessmentDiffView({ diff, deadline, submittedOn, assessmentDate
               <DeadlineChip deadline={deadline} onPrepareAppeal={onPrepareAppeal} testID={testID} />
             </View>
           ) : null}
+          {/* No form view to carry the dates when nothing changed, so they stay here. */}
+          {footnote !== '' ? <Text style={s.foot}>{footnote}</Text> : null}
         </>
       ) : (
         <>
@@ -108,7 +110,7 @@ export function AssessmentDiffView({ diff, deadline, submittedOn, assessmentDate
             {deadline !== null ? <DeadlineChip deadline={deadline} onPrepareAppeal={onPrepareAppeal} testID={testID} /> : null}
           </View>
           {/* Under the figure across the full width: beside the deadline chip it broke into two lines on a phone. */}
-          {refundRow && refundRow.declared !== null && refundRow.assessed !== null ? (
+          {refundRow && refundRow.declared !== null && refundRow.assessed !== null && refundRow.declared !== refundRow.assessed ? (
             <Text style={s.muted}>{tr('verlauf.abgleich.erstattung', { erklaert: formatNumber(refundRow.declared), festgesetzt: formatEuro(refundRow.assessed) })}</Text>
           ) : null}
           {whyOpen && diff.singleEffectsSum !== null && total !== null ? (
@@ -134,6 +136,7 @@ export function AssessmentDiffView({ diff, deadline, submittedOn, assessmentDate
           </Pressable>
           {formOpen ? (
             <View style={s.form} testID={`${testID}-formularansicht`}>
+              {footnote !== '' ? <Text style={[s.foot, s.formQuote]}>{footnote}</Text> : null}
               {diff.generalExplanations.map((text) => (
                 <Text key={text} style={[s.quote, s.formQuote]}>{`„${text}“`}</Text>
               ))}
@@ -149,7 +152,6 @@ export function AssessmentDiffView({ diff, deadline, submittedOn, assessmentDate
           ) : null}
         </>
       )}
-      {footnote !== '' ? <Text style={s.foot}>{footnote}</Text> : null}
     </View>
   )
 }
@@ -166,6 +168,7 @@ function reasonParts(row: AssessmentOwnDeviationDto, lesson: AssessmentLessonDto
   return { reason: row.shortReason, again }
 }
 
+/** A change as one line, like a diff: sign, position, effect on the refund. The values, the reason and the lesson open on a tap. */
 function DeviationRow({ row, lesson, maskYear, testID }: { readonly row: AssessmentOwnDeviationDto; readonly lesson: AssessmentLessonDto | null; readonly maskYear: number | null; readonly testID: string }) {
   const t = useTheme()
   const s = makeStyles(t)
@@ -178,40 +181,7 @@ function DeviationRow({ row, lesson, maskYear, testID }: { readonly row: Assessm
   const { reason, again } = reasonParts(row, lesson, tr)
   const maskName = lesson?.mask ? tr(`verlauf.maske.${lesson.mask.field}`, { defaultValue: lesson.mask.label }) : null
   const hint = lesson?.hint ? tr(`verlauf.lehre.hinweis.${row.position.replace(/[AB]$/, '')}`, { defaultValue: lesson.hint }) : null
-  const expandable = row.explanation !== null || hint !== null || maskName !== null
-
-  const reasonLine =
-    reason !== null || again !== null ? (
-      <Text style={s.reason}>
-        {reason}
-        {reason !== null && again !== null ? ' · ' : ''}
-        {again !== null ? (
-          <Text>
-            <Text style={s.warnGlyph}>
-              ⚠{' '}
-            </Text>
-            {again}
-          </Text>
-        ) : null}
-      </Text>
-    ) : null
-
-  const main = (
-    <>
-      <View style={s.rowLine}>
-        <View style={s.flex}>
-          <Text style={s.pos}>{name}</Text>
-        </View>
-        <Text style={s.values}>
-          <Text style={s.struck}>{row.declared === null ? '–' : formatNumber(row.declared)}</Text>
-          {` ${row.assessed === null ? '–' : formatNumber(row.assessed)}`}
-        </Text>
-        <Text style={[s.effect, toneText(s, tone)]}>{effect === null ? '–' : signedEuro(effect)}</Text>
-      </View>
-      {/* Always under the label: beside it on a wide screen the line was cut off. */}
-      {reasonLine}
-    </>
-  )
+  const values = tr('verlauf.abgleich.werte', { erklaert: row.declared === null ? '–' : formatNumber(row.declared), festgesetzt: row.assessed === null ? '–' : formatNumber(row.assessed) })
   const a11y = [
     tr('verlauf.abgleich.zeileA11y', {
       position: name,
@@ -227,17 +197,23 @@ function DeviationRow({ row, lesson, maskYear, testID }: { readonly row: Assessm
 
   return (
     <View style={s.row} testID={`${testID}-zeile-${row.position}`}>
-      {expandable ? (
-        <Pressable accessibilityRole="button" accessibilityLabel={a11y} aria-expanded={open} onPress={() => setOpen((v) => !v)} style={s.rowPress}>
-          {main}
-        </Pressable>
-      ) : (
-        <View style={s.rowPress} accessible accessibilityLabel={a11y}>
-          {main}
-        </View>
-      )}
+      <Pressable accessibilityRole="button" accessibilityLabel={a11y} aria-expanded={open} onPress={() => setOpen((v) => !v)} style={s.rowPress}>
+        <Text style={[s.sign, toneText(s, tone)]}>{tone === 'bad' ? '−' : tone === 'good' ? '+' : '±'}</Text>
+        <Text style={s.pos} numberOfLines={open ? undefined : 1}>
+          {name}
+          {again !== null && !open ? <Text style={s.warnGlyph}>{' ⚠'}</Text> : null}
+        </Text>
+        <Text style={[s.effect, toneText(s, tone)]}>{effect === null ? '–' : formatEuro(Math.abs(effect))}</Text>
+      </Pressable>
       {open ? (
         <View style={s.detail} testID={`${testID}-detail-${row.position}`}>
+          <Text style={s.reason}>{[values, reason].filter(Boolean).join(' · ')}</Text>
+          {again !== null ? (
+            <Text style={s.reason}>
+              <Text style={s.warnGlyph}>⚠ </Text>
+              {again}
+            </Text>
+          ) : null}
           {row.explanation !== null ? <Text style={s.quote}>{`„${row.explanation}“`}</Text> : null}
           {hint !== null ? <Text style={s.body}>{hint}</Text> : null}
           {maskName !== null ? (
@@ -343,9 +319,9 @@ function makeStyles(t: UiTheme) {
   const chipPast: TextStyle = { color: t.color.tinte2, backgroundColor: t.color.grund, borderColor: t.color.linieWeich, alignSelf: 'flex-start' }
   const rows: ViewStyle = { borderTopWidth: 1, borderTopColor: t.color.linieWeich }
   const row: ViewStyle = { borderBottomWidth: 1, borderBottomColor: t.color.linieWeich }
-  const rowPress: ViewStyle = { minHeight: 44, justifyContent: 'center', paddingVertical: t.space.s2, gap: 2 }
-  const rowLine: ViewStyle = { flexDirection: 'row', alignItems: 'baseline', gap: t.space.s2 }
-  const pos: TextStyle = { ...t.type.label, color: t.color.tinte, flexShrink: 1 }
+  const rowPress: ViewStyle = { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: t.space.s2 }
+  const sign: TextStyle = { ...t.type.metaLarge, fontWeight: t.weight.schwer, color: t.color.tinte2, width: 14, textAlign: 'center' }
+  const pos: TextStyle = { ...t.type.label, color: t.color.tinte, flex: 1, minWidth: 0 }
   const values: TextStyle = { ...t.type.metaLarge, color: t.color.tinte, fontVariant: ['tabular-nums'] }
   const effect: TextStyle = { ...t.type.metaLarge, fontWeight: t.weight.schwer, color: t.color.tinte, minWidth: 64, textAlign: 'right', fontVariant: ['tabular-nums'] }
   const struck: TextStyle = { textDecorationLine: 'line-through', color: t.color.tinte2 }
@@ -366,7 +342,7 @@ function makeStyles(t: UiTheme) {
   const group: TextStyle = { ...t.type.captionStrong, color: t.color.tinte2, textTransform: 'uppercase', letterSpacing: 0.04 * t.size.xs, backgroundColor: t.color.grund, paddingHorizontal: t.space.s3, paddingVertical: 4, borderTopWidth: 1, borderTopColor: t.color.linieWeich }
   const foot: TextStyle = { ...t.type.caption, color: t.color.tinte2 }
   return {
-    card, title, head, flex, figureLine, figure, info, infoGlyph, muted, mutedText, body, chipLine, chipPress, chip, chipRunning, chipPast, rows, row, rowPress, rowLine,
+    card, title, head, flex, figureLine, figure, info, infoGlyph, muted, mutedText, body, chipLine, chipPress, chip, chipRunning, chipPast, rows, row, rowPress, sign,
     pos, values, effect, struck, reason, warnGlyph, textBad, textGood, detail, quote, more, moreText, form, formQuote, formRow, rowBad, rowGood, followTag, group, foot,
   }
 }
