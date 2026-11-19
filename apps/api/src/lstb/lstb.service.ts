@@ -24,6 +24,7 @@ import type { LstbConflictDto } from './dto/lstb-conflict.dto.js'
 import type { LstbStatusDto } from './dto/lstb-state.dto.js'
 import type { LstbChurchTaxDto } from './dto/lstb-church-tax.dto.js'
 import type { LstbSubsidiesDto } from './dto/lstb-subsidies.dto.js'
+import type { LstbEmployerDto } from './dto/lstb-employer.dto.js'
 import { lstbLineValuesFrom, storeLstbLines, wageTaxCertificateDataFrom } from './lstb-data.js'
 import type { LstbLinesDto, LstbLinesResponseDto } from './dto/lstb-lines.dto.js'
 import type { LstbLinePatch, WageTaxCertificateRecord } from './lstb.repository.js'
@@ -136,6 +137,19 @@ export class LstbService {
       kirchensteuerEhegatte: serialize(dto.kirchensteuerEhegatte),
     })
     return churchTaxDtoFrom(record)
+  }
+
+  /** The employer named on the certificate (ADR-0099 §8): the Verlauf reads a change of job from it. */
+  async getEmployer(userId: string, taxYear: number): Promise<LstbEmployerDto> {
+    const record = await this.repository.findForUserAndYear(userId, taxYear)
+    if (record !== null) await this.auditService.append({ userId, action: 'READ', resource: 'lstb' })
+    return { arbeitgeber: record?.arbeitgeber ?? null }
+  }
+
+  async setEmployer(userId: string, taxYear: number, dto: LstbEmployerDto): Promise<LstbEmployerDto> {
+    const name = dto.arbeitgeber?.trim() ?? ''
+    const record = await this.repository.setEmployer(userId, taxYear, name === '' ? null : name)
+    return { arbeitgeber: record.arbeitgeber ?? null }
   }
 
   /** Tax-free employer subsidies to health and care insurance (Zeile 24, ADR-0090). */

@@ -35,6 +35,9 @@ const FULL_PROPERTY: RentalResponseDto = {
       schuldzinsen: null,
       einheiten: null,
       anteilA: null,
+      propertyKey: 'obj-1',
+      anschaffungsdatum: null,
+      erhaltungsaufwand: [],
       facts: {
         einnahmen: 12000,
         werbungskosten: 1500,

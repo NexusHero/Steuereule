@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
-import { IsIn, IsOptional, IsString } from 'class-validator'
+import { IsIn, IsInt, IsOptional, IsString } from 'class-validator'
 import { AssessmentFieldDto } from './assessment-field.dto.js'
 import { AssessmentDiffDto } from './assessment-diff.dto.js'
 
@@ -53,6 +53,15 @@ export class AssessmentResponseDto {
   @ApiProperty({ type: String, nullable: true, description: 'Einspruch-Grund (closed set), null until filed.' })
   appealReason!: string | null
 
+  @ApiProperty({ type: String, nullable: true, example: '2026-07-03', description: 'The day the Einspruch was lodged (ISO), null until filed (ADR-0099 §8).' })
+  appealDate!: string | null
+
+  @ApiProperty({ type: String, nullable: true, enum: ['offen', 'stattgegeben', 'teilweise', 'abgelehnt', 'zurueckgenommen'], description: 'How the Einspruch ended; `offen` while undecided, null without an Einspruch.' })
+  appealOutcome!: 'offen' | 'stattgegeben' | 'teilweise' | 'abgelehnt' | 'zurueckgenommen' | null
+
+  @ApiProperty({ type: Number, nullable: true, example: 140, description: 'What the outcome changed the refund by, whole euros (negative = less); null when not given.' })
+  appealOutcomeAmount!: number | null
+
   @ApiProperty({ type: [AssessmentFieldDto], description: 'The five figures, in paper order.' })
   fields!: AssessmentFieldDto[]
 
@@ -95,4 +104,21 @@ export class SetAppealDto {
   @ApiProperty({ type: String, enum: ['betrag-falsch', 'beleg-nicht-beruecksichtigt', 'sonstiges'], description: 'The Einspruch-Grund (closed set).' })
   @IsIn(['betrag-falsch', 'beleg-nicht-beruecksichtigt', 'sonstiges'])
   reason!: string
+
+  @ApiPropertyOptional({ type: String, example: '2026-07-03', description: 'The day the Einspruch was lodged (ISO yyyy-mm-dd); today when absent (ADR-0099 §8).' })
+  @IsOptional()
+  @IsString()
+  date?: string
+}
+
+/** The PUT body for how an Einspruch ended (ADR-0099 §8). */
+export class SetAppealOutcomeDto {
+  @ApiProperty({ type: String, enum: ['offen', 'stattgegeben', 'teilweise', 'abgelehnt', 'zurueckgenommen'], description: 'The outcome (closed set).' })
+  @IsString()
+  outcome!: string
+
+  @ApiPropertyOptional({ type: Number, nullable: true, example: 140, description: 'What it changed the refund by, whole euros (negative = less); null or absent when not known.' })
+  @IsOptional()
+  @IsInt()
+  amount?: number | null
 }

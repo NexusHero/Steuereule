@@ -155,6 +155,14 @@ export function isAppealReason(value: string): value is AppealReason {
   return (APPEAL_REASONS as readonly string[]).includes(value)
 }
 
+/** How an Einspruch ended (ADR-0099 §8); `offen` while the Finanzamt has not decided. */
+export const APPEAL_OUTCOMES = ['offen', 'stattgegeben', 'teilweise', 'abgelehnt', 'zurueckgenommen'] as const
+export type AppealOutcome = (typeof APPEAL_OUTCOMES)[number]
+
+export function isAppealOutcome(value: string): value is AppealOutcome {
+  return (APPEAL_OUTCOMES as readonly string[]).includes(value)
+}
+
 const ISO_DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/
 
 function daysInMonth(year: number, month: number): number {

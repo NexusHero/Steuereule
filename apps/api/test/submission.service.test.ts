@@ -7,6 +7,7 @@ import { SubmissionService } from '../src/submission/submission.service.js'
 import { TaxEstimateService } from '../src/tax-estimate/tax-estimate.service.js'
 import type { YearHistoryRepository } from '../src/year-history/year-history.repository.js'
 import { YearHistoryService } from '../src/year-history/year-history.service.js'
+import { emptyYearHistoryInsights } from './fakes/year-history-insights.kit.js'
 import { FakeAssessmentRepository } from './fakes/fake-assessment.repository.js'
 import { FakeAuditRepository } from './fakes/fake-audit.repository.js'
 import { FakeChSalaryCertificateRepository } from './fakes/fake-ch-salary-certificate.repository.js'
@@ -52,8 +53,11 @@ function setup() {
   interview.seed(USER, YEAR, { job: 'Angestellt', familienstand: 'Ledig', ausland: 'Nein', kinder: 'Nein' })
   void commutes.save(USER, YEAR, commute(1_400))
 
-  const yearRepo: YearHistoryRepository = { yearsOf: async (userId) => ((await submissions.yearStatus(userId, YEAR)) === null ? [] : [{ year: YEAR, status: await submissions.yearStatus(userId, YEAR) }]) }
-  const history = new YearHistoryService(yearRepo, assessments, versions, lstb, ch, commutes, interview, link, estimates)
+  const yearRepo: YearHistoryRepository = {
+    yearsOf: async (userId) => ((await submissions.yearStatus(userId, YEAR)) === null ? [] : [{ year: YEAR, status: await submissions.yearStatus(userId, YEAR), hasData: true, filedElsewhere: null }]),
+    setFiledElsewhere: async () => undefined,
+  }
+  const history = new YearHistoryService(yearRepo, assessments, versions, lstb, ch, commutes, interview, link, estimates, emptyYearHistoryInsights(commutes))
   return { service, submissions, versions, assessments, audit, commutes, estimates, history, link, lstb, interview }
 }
 
@@ -197,8 +201,9 @@ describe('the Verlauf after the Abgabe (ADR-0098 §1, §8)', () => {
     const { service, history } = setup()
     await service.submit(USER, YEAR, { submittedOn: '2026-03-14' }, TODAY)
     const verlauf = await history.get(USER, TODAY)
-    expect(verlauf.list.map((l) => [l.year, l.status, l.kind, l.noDiffReason])).toEqual([[YEAR, 'eingereicht', 'eingereicht', 'kein-bescheid']])
-    expect(verlauf.openItems.map((i) => [i.year, i.kind])).toEqual([[YEAR, 'wartet-auf-bescheid']])
+    // The other years of the Festsetzungsfrist are gap years without data (ADR-0099 §1).
+    expect(verlauf.list.filter((l) => l.hasData).map((l) => [l.year, l.status, l.kind, l.noDiffReason])).toEqual([[YEAR, 'eingereicht', 'eingereicht', 'kein-bescheid']])
+    expect(verlauf.openItems.filter((i) => i.year === YEAR).map((i) => [i.year, i.kind])).toEqual([[YEAR, 'wartet-auf-bescheid']])
   })
 
   it('diffs the Bescheid against the frozen version, not against answers changed afterwards', async () => {
@@ -212,7 +217,7 @@ describe('the Verlauf after the Abgabe (ADR-0098 §1, §8)', () => {
 
     const verlauf = await history.get(USER, TODAY)
 
-    expect(verlauf.list[0]).toMatchObject({ year: YEAR, kind: 'bescheid', deviations: 1, noDiffReason: null })
+    expect(verlauf.list.find((l) => l.year === YEAR)).toMatchObject({ year: YEAR, kind: 'bescheid', deviations: 1, noDiffReason: null })
     const diff = verlauf.diffs.find((d) => d.year === YEAR)!
     expect(diff.submittedOn).toBe('2026-03-14')
     expect(diff.diff.ownDeviations.map((d) => [d.position, d.declared, d.assessed])).toEqual([['arbeitsmittelA', 1_400, 900]])

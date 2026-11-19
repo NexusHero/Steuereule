@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  pensionAllowance,
   EMPTY_PENSION,
   PENSION_TYPES,
   PENSION_UNCLEAR,
@@ -233,5 +234,21 @@ describe('serialisiereRentenFeld / deserialisiereRentenFeld — the one encoding
 
   it('a stored value that is neither offen, unklar, nor a valid integer is corruption — throw', () => {
     expect(() => deserializePensionField('abc')).toThrow(/neither offen, unklar/)
+  })
+})
+
+describe('pensionAllowance (Rentenfreibetrag, § 22 Nr. 1 Satz 3 Buchst. a Doppelbuchst. aa EStG)', () => {
+  it('is the tax-free part of the first full year’s pension, fixed for life', () => {
+    // Start 2023 (82,5 % taxable), first full year 2024 with 18.000 €: 17,5 % stay free.
+    expect(pensionAllowance(18_000, 82.5)).toBe(3_150)
+  })
+
+  it('rounds to whole euros', () => {
+    expect(pensionAllowance(14_321, 83)).toBe(2_435)
+  })
+
+  it('has none for a share of 100 % or an invalid amount', () => {
+    expect(pensionAllowance(18_000, 100)).toBe(0)
+    expect(pensionAllowance(-1, 80)).toBeNull()
   })
 })

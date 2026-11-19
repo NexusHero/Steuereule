@@ -19,6 +19,7 @@ import type {
 
 import type {
   LstbChurchTaxDto,
+  LstbEmployerDto,
   LstbLinesResponseDto,
   LstbResponseDto,
   LstbSubsidiesDto
@@ -38,6 +39,10 @@ export const getLstbControllerSetChurchTaxResponseMock = (overrideResponse: Part
 export const getLstbControllerGetLinesResponseMock = (overrideResponse: Partial<Extract<LstbLinesResponseDto, object>> = {}): LstbLinesResponseDto => ({rvArbeitnehmer: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), rvArbeitgeber: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), kvArbeitnehmer: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), pvArbeitnehmer: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), avArbeitnehmer: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), zuschussPv: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), solidaritaetszuschlag: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), zuschuesseKvPv: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), sozialversicherung: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), subsidyOpen: faker.datatype.boolean(), ...overrideResponse})
 
 export const getLstbControllerSetLinesResponseMock = (overrideResponse: Partial<Extract<LstbLinesResponseDto, object>> = {}): LstbLinesResponseDto => ({rvArbeitnehmer: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), rvArbeitgeber: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), kvArbeitnehmer: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), pvArbeitnehmer: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), avArbeitnehmer: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), zuschussPv: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), solidaritaetszuschlag: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), zuschuesseKvPv: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), sozialversicherung: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), subsidyOpen: faker.datatype.boolean(), ...overrideResponse})
+
+export const getLstbControllerGetEmployerResponseMock = (overrideResponse: Partial<Extract<LstbEmployerDto, object>> = {}): LstbEmployerDto => ({arbeitgeber: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), ...overrideResponse})
+
+export const getLstbControllerSetEmployerResponseMock = (overrideResponse: Partial<Extract<LstbEmployerDto, object>> = {}): LstbEmployerDto => ({arbeitgeber: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), ...overrideResponse})
 
 export const getLstbControllerGetSubsidiesResponseMock = (overrideResponse: Partial<Extract<LstbSubsidiesDto, object>> = {}): LstbSubsidiesDto => ({zuschuesseKvPv: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), ...overrideResponse})
 
@@ -128,6 +133,30 @@ export const getLstbControllerSetLinesMockHandler = (overrideResponse?: LstbLine
   }, options)
 }
 
+export const getLstbControllerGetEmployerMockHandler = (overrideResponse?: LstbEmployerDto | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<LstbEmployerDto> | LstbEmployerDto), options?: RequestHandlerOptions) => {
+  return http.get('*/v1/steuerjahre/:jahr/lstb-arbeitgeber', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getLstbControllerGetEmployerResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getLstbControllerSetEmployerMockHandler = (overrideResponse?: LstbEmployerDto | ((info: Parameters<Parameters<typeof http.put>[1]>[0]) => Promise<LstbEmployerDto> | LstbEmployerDto), options?: RequestHandlerOptions) => {
+  return http.put('*/v1/steuerjahre/:jahr/lstb-arbeitgeber', async (info: Parameters<Parameters<typeof http.put>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getLstbControllerSetEmployerResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
 export const getLstbControllerGetSubsidiesMockHandler = (overrideResponse?: LstbSubsidiesDto | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<LstbSubsidiesDto> | LstbSubsidiesDto), options?: RequestHandlerOptions) => {
   return http.get('*/v1/steuerjahre/:jahr/lstb-zuschuesse', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
 
@@ -159,6 +188,8 @@ export const getSteuerEuleAPIMock = () => [
   getLstbControllerSetChurchTaxMockHandler(),
   getLstbControllerGetLinesMockHandler(),
   getLstbControllerSetLinesMockHandler(),
+  getLstbControllerGetEmployerMockHandler(),
+  getLstbControllerSetEmployerMockHandler(),
   getLstbControllerGetSubsidiesMockHandler(),
   getLstbControllerSetSubsidiesMockHandler()
 ]

@@ -77,7 +77,8 @@ export class TakeoverService {
     if (pensionSource !== null) await copy('rente', ['rentenart' as const, ...PENSION_FIELDS], pensionSource)
     if (capitalSource !== null) await copy('kapital', ['kapitalertraege' as const], capitalSource)
     for (const property of rentalSources) {
-      const copied = await this.rentalRepository.create(userId, taxYear)
+      // The same object as last year's (ADR-0099 §8): its key and purchase date go along, the repairs stay in their year.
+      const copied = await this.rentalRepository.create(userId, taxYear, { propertyKey: property.propertyKey ?? property.id, anschaffungsdatum: property.anschaffungsdatum ?? null })
       await copy('vermietung', RENTAL_FIELDS, property, copied.id)
     }
 

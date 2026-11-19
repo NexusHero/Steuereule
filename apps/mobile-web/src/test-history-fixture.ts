@@ -10,6 +10,7 @@ import type {
   NetFiguresDto,
   WorkExpenseFiguresDto,
   YearDiffDto,
+  YearDeadlineDto,
   YearHistoryEntryDto,
   YearHistoryResponseDto,
 } from '@steuereule/api-client'
@@ -267,16 +268,31 @@ export const HISTORY_DIFFS: YearDiffDto[] = [
   { year: 2022, person: 'B', submittedOn: '2023-04-02', assessmentDate: '2023-06-07', deadline: { endsOn: '2023-07-11', remainingDays: -1226, running: false }, diff: sameDiff(2022, 'einzel', 9), lessons: [] },
 ]
 
+/** ADR-0099 §1: until when the year can be filed or its Bescheid changed. */
+const deadline = (kind: YearDeadlineDto['kind'], endsOn: string, remainingDays: number): YearDeadlineDto => ({ kind, endsOn, remainingDays, running: remainingDays >= 0, endsOnIfMandatory: null })
+const listExtras = (d: YearDeadlineDto) => ({ hasData: true, filedElsewhere: null, withoutAssessment: false, deadline: d })
+
+/** ADR-0099: no events, checklist, groups or Unterlagen in this household's fixture. */
+const NO_INSIGHTS: Pick<YearHistoryResponseDto, 'events' | 'recurring' | 'prepayments' | 'repeatedCuts' | 'couples' | 'groups' | 'documents'> = {
+  events: [],
+  recurring: null,
+  prepayments: { years: [], backPaymentYears: 0, consecutiveBackPayments: 0, averageBackPayment: null, hint: null },
+  repeatedCuts: [],
+  couples: [],
+  groups: { crossBorder: null, rental: null, capital: null, pension: null, lossCarryForward: { status: 'notRecorded' } },
+  documents: [],
+}
+
 export const HISTORY_RESPONSE: YearHistoryResponseDto = {
   today: '2026-11-18',
   years: HISTORY_YEARS,
   list: [
-    { year: 2021, status: 'extern-erledigt', kind: 'eckjahr', filingType: 'einzel', declaredRefund: null, assessedRefund: 220, difference: null, deviations: 0, noDiffReason: 'eckjahr', withinAssessmentPeriod: false },
-    { year: 2022, status: 'bescheid', kind: 'bescheid', filingType: 'einzel', declaredRefund: 393, assessedRefund: 393, difference: 0, deviations: 0, noDiffReason: null, withinAssessmentPeriod: true },
-    { year: 2023, status: 'bescheid', kind: 'bescheid', filingType: 'zusammen', declaredRefund: 210, assessedRefund: 210, difference: 0, deviations: 0, noDiffReason: null, withinAssessmentPeriod: true },
-    { year: 2024, status: 'bescheid', kind: 'bescheid', filingType: 'zusammen', declaredRefund: 901, assessedRefund: 809, difference: -92, deviations: 2, noDiffReason: null, withinAssessmentPeriod: true },
-    { year: 2025, status: 'eingereicht', kind: 'eingereicht', filingType: 'zusammen', declaredRefund: 1196, assessedRefund: null, difference: null, deviations: 0, noDiffReason: 'kein-bescheid', withinAssessmentPeriod: true },
-    { year: 2026, status: 'entwurf', kind: 'offen', filingType: 'zusammen', declaredRefund: null, assessedRefund: null, difference: null, deviations: 0, noDiffReason: 'kein-bescheid', withinAssessmentPeriod: true },
+    { year: 2021, status: 'extern-erledigt', kind: 'eckjahr', filingType: 'einzel', declaredRefund: null, assessedRefund: 220, difference: null, deviations: 0, noDiffReason: 'eckjahr', withinAssessmentPeriod: false, ...listExtras(deadline('aenderbar-bis', '2025-12-31', -322)) },
+    { year: 2022, status: 'bescheid', kind: 'bescheid', filingType: 'einzel', declaredRefund: 393, assessedRefund: 393, difference: 0, deviations: 0, noDiffReason: null, withinAssessmentPeriod: true, ...listExtras(deadline('aenderbar-bis', '2026-12-31', 43)) },
+    { year: 2023, status: 'bescheid', kind: 'bescheid', filingType: 'zusammen', declaredRefund: 210, assessedRefund: 210, difference: 0, deviations: 0, noDiffReason: null, withinAssessmentPeriod: true, ...listExtras(deadline('aenderbar-bis', '2027-12-31', 408)) },
+    { year: 2024, status: 'bescheid', kind: 'bescheid', filingType: 'zusammen', declaredRefund: 901, assessedRefund: 809, difference: -92, deviations: 2, noDiffReason: null, withinAssessmentPeriod: true, ...listExtras(deadline('aenderbar-bis', '2029-01-02', 776)) },
+    { year: 2025, status: 'eingereicht', kind: 'eingereicht', filingType: 'zusammen', declaredRefund: 1196, assessedRefund: null, difference: null, deviations: 0, noDiffReason: 'kein-bescheid', withinAssessmentPeriod: true, ...listExtras(deadline('abgabe-moeglich-bis', '2029-12-31', 1139)) },
+    { year: 2026, status: 'entwurf', kind: 'offen', filingType: 'zusammen', declaredRefund: null, assessedRefund: null, difference: null, deviations: 0, noDiffReason: 'kein-bescheid', withinAssessmentPeriod: true, ...listExtras(deadline('abgabe-moeglich-bis', '2030-12-31', 1504)) },
   ],
   openItems: [
     { kind: 'einspruchsfrist', year: 2024, highlighted: true, refundDifference: -92, deviations: 2, deadline: { endsOn: '2026-12-07', remainingDays: 19, running: true } },
@@ -293,7 +309,8 @@ export const HISTORY_RESPONSE: YearHistoryResponseDto = {
   ],
   diffs: HISTORY_DIFFS,
   maskLessons: { year: 2026, fromYear: 2024, lessons: [LESSONS_2024[0]!] },
+  ...NO_INSIGHTS,
 }
 
 /** A fresh account: no year in the app yet. */
-export const EMPTY_HISTORY_RESPONSE: YearHistoryResponseDto = { today: '2026-11-18', years: [], list: [], openItems: [], diffs: [], maskLessons: null }
+export const EMPTY_HISTORY_RESPONSE: YearHistoryResponseDto = { today: '2026-11-18', years: [], list: [], openItems: [], diffs: [], maskLessons: null, ...NO_INSIGHTS }

@@ -19,6 +19,7 @@ function toRecord(row: {
   avArbeitnehmer?: string | null
   zuschussPv?: string | null
   solidaritaetszuschlag?: string | null
+  arbeitgeber?: string | null
 }): WageTaxCertificateRecord {
   return {
     userId: row.userId,
@@ -36,6 +37,7 @@ function toRecord(row: {
     avArbeitnehmer: row.avArbeitnehmer ?? null,
     zuschussPv: row.zuschussPv ?? null,
     solidaritaetszuschlag: row.solidaritaetszuschlag ?? null,
+    arbeitgeber: row.arbeitgeber ?? null,
   }
 }
 
@@ -72,6 +74,18 @@ export class PrismaLstbRepository implements WageTaxCertificateRepository {
       this.prisma.taxDataAccessLog.create({
         data: { userId, action: 'WRITE', resource: 'lstb' },
       }),
+    ])
+    return toRecord(row)
+  }
+
+  async setEmployer(userId: string, taxYear: number, arbeitgeber: string | null): Promise<WageTaxCertificateRecord> {
+    const [row] = await this.prisma.$transaction([
+      this.prisma.lstb.upsert({
+        where: { userId_taxYear: { userId, taxYear } },
+        create: { userId, taxYear, bruttoarbeitslohn: null, lohnsteuer: null, sozialversicherung: null, arbeitgeber },
+        update: { arbeitgeber },
+      }),
+      this.prisma.taxDataAccessLog.create({ data: { userId, action: 'WRITE', resource: 'lstb' } }),
     ])
     return toRecord(row)
   }

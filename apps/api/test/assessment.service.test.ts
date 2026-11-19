@@ -122,6 +122,28 @@ describe('BescheidService', () => {
       await service.setStatus(USER_ID, YEAR, { status: 'geprüft' })
       await expect(service.setAppeal(USER_ID, YEAR, { reason: 'weg-damit' })).rejects.toThrow(/unknown Einspruch-Grund/)
     })
+
+    it('keeps the day the Einspruch was lodged, today unless given (ADR-0099 §8)', async () => {
+      await service.setStatus(USER_ID, YEAR, { status: 'geprüft' })
+      const state = await service.setAppeal(USER_ID, YEAR, { reason: 'betrag-falsch', date: '2026-07-03' })
+      expect(state).toMatchObject({ appealDate: '2026-07-03', appealOutcome: 'offen', appealOutcomeAmount: null })
+      await expect(service.setAppeal(USER_ID, YEAR + 1, { reason: 'betrag-falsch', date: '03.07.2026' })).rejects.toThrow(/ISO/)
+    })
+
+    it('records how the Einspruch ended, with the amount it changed', async () => {
+      await service.setStatus(USER_ID, YEAR, { status: 'geprüft' })
+      await service.setAppeal(USER_ID, YEAR, { reason: 'betrag-falsch', date: '2026-07-03' })
+      const state = await service.setAppealOutcome(USER_ID, YEAR, { outcome: 'teilweise', amount: 140 })
+      expect(state).toMatchObject({ status: 'einspruch-eingelegt', appealDate: '2026-07-03', appealOutcome: 'teilweise', appealOutcomeAmount: 140 })
+    })
+
+    it('has no outcome without an Einspruch, and no unknown one', async () => {
+      await expect(service.setAppealOutcome(USER_ID, YEAR, { outcome: 'abgelehnt' })).rejects.toThrow(/no Einspruch/)
+      await service.setStatus(USER_ID, YEAR, { status: 'geprüft' })
+      await service.setAppeal(USER_ID, YEAR, { reason: 'sonstiges' })
+      await expect(service.setAppealOutcome(USER_ID, YEAR, { outcome: 'gewonnen' })).rejects.toThrow(/unknown Einspruch-Ergebnis/)
+      await expect(service.setAppealOutcome(USER_ID, YEAR, { outcome: 'teilweise', amount: 1.5 })).rejects.toThrow(/whole euros/)
+    })
   })
 
   describe('the Bescheid-Abgleich of the open year (ADR-0098 §8)', () => {

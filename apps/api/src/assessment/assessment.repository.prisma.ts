@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { ASSESSMENT_NEW_POSITION_IDS, type AssessmentPositionId, type AssessmentStatus } from '@steuereule/core'
+import { ASSESSMENT_NEW_POSITION_IDS, isAppealOutcome, type AppealOutcome, type AssessmentPositionId, type AssessmentStatus } from '@steuereule/core'
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
 import type { AssessmentFields, AssessmentRecord, AssessmentRepository, AssessmentStoredField } from './assessment.repository.js'
 
@@ -9,6 +9,9 @@ type Row = {
   status: string
   assessmentDate: string | null
   appealReason: string | null
+  appealDate?: string | null
+  appealOutcome?: string | null
+  appealOutcomeAmount?: string | null
   einnahmen: string | null
   vorsorgeaufwand: string | null
   anrechnung: string | null
@@ -34,6 +37,9 @@ function toRecord(row: Row): AssessmentRecord {
     status: row.status as AssessmentStatus,
     assessmentDate: row.assessmentDate,
     appealReason: row.appealReason,
+    appealDate: row.appealDate ?? null,
+    appealOutcome: row.appealOutcome !== null && row.appealOutcome !== undefined && isAppealOutcome(row.appealOutcome) ? row.appealOutcome : null,
+    appealOutcomeAmount: row.appealOutcomeAmount ?? null,
     fields: fieldsFromRow(row),
     positions: Object.fromEntries(ASSESSMENT_NEW_POSITION_IDS.map((id) => [id, row[id] ?? null])),
     explanations: row.erlaeuterungen,
@@ -89,8 +95,12 @@ export class PrismaAssessmentRepository implements AssessmentRepository {
     return this.upsert(userId, taxYear, { status })
   }
 
-  setAppeal(userId: string, taxYear: number, reason: string): Promise<AssessmentRecord> {
-    return this.upsert(userId, taxYear, { status: 'einspruch-eingelegt', appealReason: reason })
+  setAppeal(userId: string, taxYear: number, reason: string, date: string): Promise<AssessmentRecord> {
+    return this.upsert(userId, taxYear, { status: 'einspruch-eingelegt', appealReason: reason, appealDate: date, appealOutcome: 'offen', appealOutcomeAmount: null })
+  }
+
+  setAppealOutcome(userId: string, taxYear: number, outcome: AppealOutcome, amount: string | null): Promise<AssessmentRecord> {
+    return this.upsert(userId, taxYear, { appealOutcome: outcome, appealOutcomeAmount: amount })
   }
 
   async hasDeclaration(userId: string, taxYear: number): Promise<boolean> {

@@ -44,6 +44,22 @@ describe('LstbService', () => {
     })
   })
 
+  describe('employer on the certificate (ADR-0099 §8)', () => {
+    it('is not entered until the user enters it, and is stored trimmed without touching the rest', async () => {
+      expect(await service.getEmployer(USER_ID, 2024)).toEqual({ arbeitgeber: null })
+      await service.setField(USER_ID, 2024, 'lohnsteuer', { kind: 'erfasst', value: 6100 })
+      expect(await service.setEmployer(USER_ID, 2024, { arbeitgeber: '  Muster GmbH ' })).toEqual({ arbeitgeber: 'Muster GmbH' })
+      expect(await service.getEmployer(USER_ID, 2024)).toEqual({ arbeitgeber: 'Muster GmbH' })
+      expect((await service.getState(USER_ID, 2024)).lohnsteuer).toEqual({ kind: 'erfasst', value: 6100 })
+    })
+
+    it('clears with null or an empty name', async () => {
+      await service.setEmployer(USER_ID, 2024, { arbeitgeber: 'Muster GmbH' })
+      expect(await service.setEmployer(USER_ID, 2024, { arbeitgeber: '   ' })).toEqual({ arbeitgeber: null })
+      expect(await service.setEmployer(USER_ID, 2024, { arbeitgeber: null })).toEqual({ arbeitgeber: null })
+    })
+  })
+
   describe('tax-free employer subsidies (Zeile 24, ADR-0090)', () => {
     it('are not entered until the user enters them, and store whole euros without touching the rest', async () => {
       expect(await service.getSubsidies(USER_ID, 2024)).toEqual({ zuschuesseKvPv: null })

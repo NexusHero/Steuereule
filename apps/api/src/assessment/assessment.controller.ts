@@ -1,6 +1,7 @@
 import { Body, Controller, Get, HttpCode, Inject, Param, Put, UseGuards } from '@nestjs/common'
 import {
   ApiBody,
+  ApiConflictResponse,
   ApiOkResponse,
   ApiParam,
   ApiTags,
@@ -18,6 +19,7 @@ import {
   SetAssessmentDateDto,
   SetAssessmentStatusDto,
   SetAppealDto,
+  SetAppealOutcomeDto,
 } from './dto/assessment-response.dto.js'
 
 @ApiTags('bescheid')
@@ -91,5 +93,20 @@ export class AssessmentController {
     @Body() dto: SetAppealDto,
   ): Promise<AssessmentResponseDto> {
     return this.service.setAppeal(userId, year, dto)
+  }
+
+  @Put(':jahr/bescheid/einspruch/ergebnis')
+  @HttpCode(200)
+  @RequiresAccount()
+  @ApiParam({ name: 'jahr', type: Number, example: 2026, description: 'The tax year (Steuerjahr).' })
+  @ApiBody({ type: SetAppealOutcomeDto })
+  @ApiOkResponse({ type: AssessmentResponseDto, description: 'The Bescheid with how its Einspruch ended (ADR-0099 §8).' })
+  @ApiConflictResponse({ description: 'The Bescheid has no Einspruch.' })
+  setAppealOutcome(
+    @CurrentUser() userId: string,
+    @Param('jahr', ParseTaxYearPipe) year: number,
+    @Body() dto: SetAppealOutcomeDto,
+  ): Promise<AssessmentResponseDto> {
+    return this.service.setAppealOutcome(userId, year, dto)
   }
 }

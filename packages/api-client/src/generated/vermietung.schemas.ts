@@ -42,6 +42,16 @@ export interface RentalFieldDto {
   value?: number;
 }
 
+export interface RentalRepairEntryDto {
+  /** Net of VAT, whole euros. */
+  betrag: number;
+  /**
+     * When the work was done (ISO); null when not recorded.
+     * @nullable
+     */
+  datum: string | null;
+}
+
 export interface RentalDepreciationDto {
   /** Anschaffungskosten × AfA-Satz, rounded to whole euros. */
   amount: number;
@@ -96,6 +106,15 @@ export interface RentalPropertyDto {
   einheiten: string | null;
   /** @nullable */
   anteilA: string | null;
+  /** The object across the years: the Jahresübernahme carries it to the copy (ADR-0099 §8). */
+  propertyKey: string;
+  /**
+     * Date of purchase (ISO), null while not entered.
+     * @nullable
+     */
+  anschaffungsdatum: string | null;
+  /** The Erhaltungsaufwand of this year; [] while none is recorded. */
+  erhaltungsaufwand: RentalRepairEntryDto[];
   facts: RentalPropertyFactsDto;
 }
 
@@ -157,6 +176,16 @@ export interface PutRentalFieldDto {
   value?: number;
 }
 
+export interface RentalRepairDto {
+  /** Erhaltungsaufwand net of VAT, whole euros. */
+  betrag: number;
+  /**
+     * When the work was done (ISO yyyy-mm-dd), within the tax year; absent or null when not known.
+     * @nullable
+     */
+  datum?: string | null;
+}
+
 export interface PutRentalAddressDto {
   strasse?: string;
   hausnummer?: string;
@@ -173,5 +202,12 @@ export interface PutRentalAddressDto {
   einheiten?: string;
   /** Person A's share in percent, the rest is Person B's (Anlage V Zeile 86, ADR-0054). */
   anteilA?: string;
+  /**
+     * Date of purchase (ISO yyyy-mm-dd), not after the tax year; null clears it (ADR-0099 §8).
+     * @nullable
+     */
+  anschaffungsdatum?: string | null;
+  /** The Erhaltungsaufwand of this year, replacing the stored list; [] clears it (§ 6 Abs. 1 Nr. 1a EStG, ADR-0099 §8). */
+  erhaltungsaufwand?: RentalRepairDto[];
 }
 

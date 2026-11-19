@@ -43,6 +43,10 @@ export {
   getLstbControllerGetLstbMockHandler,
   getLstbControllerSetFieldResponseMock,
   getLstbControllerSetFieldMockHandler,
+  getLstbControllerGetEmployerResponseMock,
+  getLstbControllerGetEmployerMockHandler,
+  getLstbControllerSetEmployerResponseMock,
+  getLstbControllerSetEmployerMockHandler,
   getSteuerEuleAPIMock as getLstbApiMock,
 } from './generated/lstb.msw'
 export {
@@ -196,6 +200,8 @@ export {
 export {
   getYearHistoryControllerGetResponseMock,
   getYearHistoryControllerGetMockHandler,
+  getFiledElsewhereControllerAnswerResponseMock,
+  getFiledElsewhereControllerAnswerMockHandler,
   getSteuerEuleAPIMock as getVerlaufApiMock,
 } from './generated/verlauf.msw'
 export {
@@ -204,3 +210,8 @@ export {
   getSubmissionControllerWithdrawMockHandler,
   getSteuerEuleAPIMock as getAbgabeApiMock,
 } from './generated/abgabe.msw'
+export {
+  getAssessmentControllerSetAppealOutcomeResponseMock,
+  getAssessmentControllerSetAppealOutcomeMockHandler,
+  getSteuerEuleAPIMock as getBescheidApiMock,
+} from './generated/bescheid.msw'

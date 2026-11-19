@@ -66,11 +66,31 @@ export function toEntryDto(e: YearHistoryEntry): YearHistoryEntryDto {
   }
 }
 
+type DeepMutable<T> = T extends readonly (infer U)[] ? DeepMutable<U>[] : T extends object ? { -readonly [K in keyof T]: DeepMutable<T[K]> } : T
+
+/** A deep copy through JSON: the insights are plain data (numbers, strings, arrays), and the wire takes them as they are. */
+const plain = <T>(value: T): DeepMutable<T> => JSON.parse(JSON.stringify(value)) as DeepMutable<T>
+
+function insightsDto(h: YearHistory): Pick<YearHistoryResponseDto, 'events' | 'recurring' | 'prepayments' | 'repeatedCuts' | 'couples' | 'groups' | 'documents'> {
+  return {
+    events: plain(h.events),
+    recurring: h.recurring === null ? null : plain(h.recurring),
+    prepayments: plain(h.prepayments),
+    repeatedCuts: plain(h.repeatedCuts),
+    couples: plain(h.couples),
+    groups: plain(h.groups),
+    documents: h.documents.map((d) => ({
+      ...plain(d),
+      documents: d.documents.map((doc) => ({ ...doc, downloadPath: `/v1/belege/${encodeURIComponent(doc.receiptId)}/datei` })),
+    })),
+  }
+}
+
 export function toYearHistoryDto(h: YearHistory): YearHistoryResponseDto {
   return {
     today: h.today,
     years: h.years.map(toEntryDto),
-    list: h.list.map((l) => ({ ...l })),
+    list: h.list.map((l) => ({ ...l, filedElsewhere: l.filedElsewhere === null ? null : { ...l.filedElsewhere }, deadline: { ...l.deadline } })),
     openItems: h.openItems.map((item) => {
       if (item.kind === 'einspruchsfrist') return { ...item, deadline: { ...item.deadline } }
       if (item.kind === 'wartet-auf-bescheid') return { ...item, repeatedCuts: item.repeatedCuts.map((c) => ({ ...c })) }
@@ -86,5 +106,6 @@ export function toYearHistoryDto(h: YearHistory): YearHistoryResponseDto {
       lessons: d.lessons.map(toLessonDto),
     })),
     maskLessons: h.maskLessons === null ? null : { year: h.maskLessons.year, fromYear: h.maskLessons.fromYear, lessons: h.maskLessons.lessons.map(toLessonDto) },
+    ...insightsDto(h),
   }
 }

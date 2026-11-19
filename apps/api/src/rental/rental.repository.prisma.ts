@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common'
 import type { RentalFieldId } from '@steuereule/core'
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
-import type { RentalObjectRecord, RentalRepository } from './rental.repository.js'
+import type { RentalAttributes, RentalCarryOver, RentalObjectRecord, RentalRepository } from './rental.repository.js'
 
 function toRecord(row: {
   id: string
@@ -21,6 +21,9 @@ function toRecord(row: {
   schuldzinsen?: string | null
   einheiten?: string | null
   anteilA?: string | null
+  propertyKey: string
+  anschaffungsdatum?: string | null
+  erhaltungsaufwand?: string | null
 }): RentalObjectRecord {
   return {
     id: row.id,
@@ -40,8 +43,26 @@ function toRecord(row: {
     schuldzinsen: row.schuldzinsen ?? null,
     einheiten: row.einheiten ?? null,
     anteilA: row.anteilA ?? null,
+    propertyKey: row.propertyKey,
+    anschaffungsdatum: row.anschaffungsdatum ?? null,
+    erhaltungsaufwand: row.erhaltungsaufwand ?? null,
   }
 }
+
+const ATTRIBUTE_KEYS = [
+  'strasse',
+  'hausnummer',
+  'plz',
+  'city',
+  'livingArea',
+  'depreciationAsLastYear',
+  'umlagen',
+  'schuldzinsen',
+  'einheiten',
+  'anteilA',
+  'anschaffungsdatum',
+  'erhaltungsaufwand',
+] as const satisfies readonly (keyof RentalAttributes)[]
 
 function fieldData(
   field: RentalFieldId,
@@ -71,10 +92,16 @@ export class PrismaRentalRepository implements RentalRepository {
     return rows.map(toRecord)
   }
 
-  async create(userId: string, taxYear: number): Promise<RentalObjectRecord> {
+  async listForUser(userId: string): Promise<RentalObjectRecord[]> {
+    const rows = await this.prisma.rentalProperty.findMany({ where: { userId }, orderBy: [{ taxYear: 'asc' }, { createdAt: 'asc' }] })
+    return rows.map(toRecord)
+  }
+
+  async create(userId: string, taxYear: number, carry?: RentalCarryOver): Promise<RentalObjectRecord> {
+    const carried = carry === undefined ? {} : { propertyKey: carry.propertyKey, anschaffungsdatum: carry.anschaffungsdatum }
     const [row] = await this.prisma.$transaction([
       this.prisma.rentalProperty.create({
-        data: { userId, taxYear, mieteinnahmen: null, anschaffungskosten: null, baujahr: null, werbungskosten: null },
+        data: { userId, taxYear, mieteinnahmen: null, anschaffungskosten: null, baujahr: null, werbungskosten: null, ...carried },
       }),
       this.prisma.taxDataAccessLog.create({
         data: { userId, action: 'WRITE', resource: 'vermietung' },
@@ -102,37 +129,15 @@ export class PrismaRentalRepository implements RentalRepository {
     return toRecord(row)
   }
 
-  async setAddress(
-    userId: string,
-    taxYear: number,
-    propertyId: string,
-    address: { strasse?: string | null; hausnummer?: string | null; plz?: string | null; city?: string | null; livingArea?: string | null; depreciationAsLastYear?: boolean | null; umlagen?: string | null; schuldzinsen?: string | null; einheiten?: string | null; anteilA?: string | null },
-  ): Promise<RentalObjectRecord | null> {
+  async setAddress(userId: string, taxYear: number, propertyId: string, attributes: RentalAttributes): Promise<RentalObjectRecord | null> {
     const existing = await this.prisma.rentalProperty.findFirst({ where: { id: propertyId, userId, taxYear } })
     if (existing === null) return null
 
-    const updateData: {
-      strasse?: string | null
-      hausnummer?: string | null
-      plz?: string | null
-      city?: string | null
-      livingArea?: string | null
-      depreciationAsLastYear?: boolean | null
-      umlagen?: string | null
-      schuldzinsen?: string | null
-      einheiten?: string | null
-      anteilA?: string | null
-    } = {}
-    if (address.strasse !== undefined) updateData.strasse = address.strasse
-    if (address.hausnummer !== undefined) updateData.hausnummer = address.hausnummer
-    if (address.plz !== undefined) updateData.plz = address.plz
-    if (address.city !== undefined) updateData.city = address.city
-    if (address.livingArea !== undefined) updateData.livingArea = address.livingArea
-    if (address.depreciationAsLastYear !== undefined) updateData.depreciationAsLastYear = address.depreciationAsLastYear
-    if (address.umlagen !== undefined) updateData.umlagen = address.umlagen
-    if (address.schuldzinsen !== undefined) updateData.schuldzinsen = address.schuldzinsen
-    if (address.einheiten !== undefined) updateData.einheiten = address.einheiten
-    if (address.anteilA !== undefined) updateData.anteilA = address.anteilA
+    // Only the keys the request carries are written; an absent key keeps what is stored.
+    const updateData: RentalAttributes = {}
+    for (const key of ATTRIBUTE_KEYS) {
+      if (attributes[key] !== undefined) Object.assign(updateData, { [key]: attributes[key] })
+    }
 
     const [row] = await this.prisma.$transaction([
       this.prisma.rentalProperty.update({ where: { id: propertyId }, data: updateData }),
@@ -142,4 +147,5 @@ export class PrismaRentalRepository implements RentalRepository {
     ])
     return toRecord(row)
   }
+
 }

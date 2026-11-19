@@ -317,6 +317,62 @@ export const YearListItemDtoNoDiffReason = {
   'keine-eingereichte-fassung': 'keine-eingereichte-fassung',
 } as const;
 
+/**
+ * The answer; null while not asked.
+ * @nullable
+ */
+export type FiledElsewhereDtoAnswer = typeof FiledElsewhereDtoAnswer[keyof typeof FiledElsewhereDtoAnswer] | null;
+
+
+export const FiledElsewhereDtoAnswer = {
+  ja: 'ja',
+  nein: 'nein',
+  'weiss-nicht': 'weiss-nicht',
+} as const;
+
+export interface FiledElsewhereDto {
+  /**
+     * The answer; null while not asked.
+     * @nullable
+     */
+  answer: FiledElsewhereDtoAnswer;
+  /** @nullable */
+  answeredOn: string | null;
+  /**
+     * After „weiss-nicht“: from this day the question comes again (three months before the deadline).
+     * @nullable
+     */
+  askAgainFrom: string | null;
+  /** Ask the question now. */
+  ask: boolean;
+}
+
+/**
+ * `abgabe-moeglich-bis` without a Bescheid („bis 31.12.2026 möglich“), `aenderbar-bis` with one.
+ */
+export type YearDeadlineDtoKind = typeof YearDeadlineDtoKind[keyof typeof YearDeadlineDtoKind];
+
+
+export const YearDeadlineDtoKind = {
+  'abgabe-moeglich-bis': 'abgabe-moeglich-bis',
+  'aenderbar-bis': 'aenderbar-bis',
+} as const;
+
+export interface YearDeadlineDto {
+  /** `abgabe-moeglich-bis` without a Bescheid („bis 31.12.2026 möglich“), `aenderbar-bis` with one. */
+  kind: YearDeadlineDtoKind;
+  /** The Festsetzungsfrist without a delayed start (§ 169 Abs. 2 Nr. 2 AO, § 108 Abs. 3 AO): true for every return. */
+  endsOn: string;
+  /** Days from today; negative once it passed. */
+  remainingDays: number;
+  running: boolean;
+  /**
+     * The later end should the return have been mandatory (§ 170 Abs. 2 Nr. 1 AO); null when unknown or the same. Never shown instead of `endsOn`.
+     * @nullable
+     */
+  endsOnIfMandatory: string | null;
+}
+
 export interface YearListItemDto {
   year: number;
   /**
@@ -345,6 +401,17 @@ export interface YearListItemDto {
   noDiffReason: YearListItemDtoNoDiffReason;
   /** Within the four years of the Festsetzungsfrist; older years are for display only. */
   withinAssessmentPeriod: boolean;
+  /** The year has facts of its own; a year of the Festsetzungsfrist without any is listed anyway and shows no amount (ADR-0099 §1). */
+  hasData: boolean;
+  /**
+     * „Schon abgegeben?“ for a year without data within the Festsetzungsfrist; null for every other year.
+     * @nullable
+     */
+  filedElsewhere: FiledElsewhereDto | null;
+  /** Filed elsewhere (or known from outside) but no Bescheid uploaded yet: „noch ohne Bescheid“. */
+  withoutAssessment: boolean;
+  /** „bis … möglich“ without a Bescheid, „änderbar bis …“ with one. */
+  deadline: YearDeadlineDto;
 }
 
 export type OpenItemDtoKind = typeof OpenItemDtoKind[keyof typeof OpenItemDtoKind];
@@ -387,6 +454,13 @@ export interface OpenItemDto {
   repeatedCuts?: PositionRefDto[];
   /** kind `offen`: what the year lacks. */
   missing?: string[];
+  /**
+     * kind `offen`, a year before the current one: the last day for a voluntary return (ADR-0099 §1).
+     * @nullable
+     */
+  filingDeadline?: string | null;
+  /** kind `offen`: the year has no data yet and asks „Schon abgegeben?“. */
+  askFiledElsewhere?: boolean;
 }
 
 /**
@@ -727,6 +801,517 @@ export interface MaskLessonsDto {
   lessons: AssessmentLessonDto[];
 }
 
+export type LifeEventDtoKind = typeof LifeEventDtoKind[keyof typeof LifeEventDtoKind];
+
+
+export const LifeEventDtoKind = {
+  zusammenveranlagung: 'zusammenveranlagung',
+  kind: 'kind',
+  'neuer-arbeitgeber': 'neuer-arbeitgeber',
+  grenzgaenger: 'grenzgaenger',
+  umzug: 'umzug',
+  immobilienkauf: 'immobilienkauf',
+} as const;
+
+/**
+ * Whose event; null for the household’s.
+ * @nullable
+ */
+export type LifeEventDtoPerson = typeof LifeEventDtoPerson[keyof typeof LifeEventDtoPerson] | null;
+
+
+export const LifeEventDtoPerson = {
+  A: 'A',
+  B: 'B',
+} as const;
+
+export interface LifeEventDto {
+  year: number;
+  kind: LifeEventDtoKind;
+  /**
+     * Whose event; null for the household’s.
+     * @nullable
+     */
+  person: LifeEventDtoPerson;
+  /** kind `neuer-arbeitgeber`: the employers new this year. */
+  employers?: string[];
+  /** kinds `kind`, `immobilienkauf`: the first date of the year. */
+  date?: string;
+  /** kinds `kind`, `immobilienkauf`: how many in the year. */
+  count?: number;
+}
+
+export interface RecurringDetailDto {
+  /** @nullable */
+  km: number | null;
+  /** @nullable */
+  days: number | null;
+}
+
+export type RecurringItemDtoStatus = typeof RecurringItemDtoStatus[keyof typeof RecurringItemDtoStatus];
+
+
+export const RecurringItemDtoStatus = {
+  erledigt: 'erledigt',
+  offen: 'offen',
+} as const;
+
+/**
+ * What the open year’s receipts did for the item (ADR-0097).
+ * @nullable
+ */
+export type RecurringItemDtoReceipt = typeof RecurringItemDtoReceipt[keyof typeof RecurringItemDtoReceipt] | null;
+
+
+export const RecurringItemDtoReceipt = {
+  uebernommen: 'uebernommen',
+  vorschlag: 'vorschlag',
+} as const;
+
+export interface RecurringItemFieldDto {
+  /** The mask the item is entered in. */
+  screen: string;
+  field: string;
+}
+
+export interface RecurringItemDto {
+  id: string;
+  label: string;
+  /** The latest of the last two years that had the item. */
+  lastYear: number;
+  /**
+     * That year’s amount, as a hint.
+     * @nullable
+     */
+  lastAmount: number | null;
+  /**
+     * Kilometres and days of a way to work, days of Homeoffice.
+     * @nullable
+     */
+  lastDetail: RecurringDetailDto | null;
+  /**
+     * What the open year itself has entered; null while nothing (never last year’s value).
+     * @nullable
+     */
+  currentAmount: number | null;
+  /** @nullable */
+  currentDetail: RecurringDetailDto | null;
+  status: RecurringItemDtoStatus;
+  /**
+     * What the open year’s receipts did for the item (ADR-0097).
+     * @nullable
+     */
+  receipt: RecurringItemDtoReceipt;
+  /** Years whose Bescheid cut the position again and again (ADR-0099 §5). */
+  cutInYears: number[];
+  /** Where the item is entered. */
+  fields: RecurringItemFieldDto[];
+}
+
+export interface RecurringChecklistDto {
+  /** The open year. */
+  year: number;
+  items: RecurringItemDto[];
+  done: number;
+  open: number;
+}
+
+export interface PrepaymentYearDto {
+  year: number;
+  /** Abschlusszahlung laut Bescheid: positive = Erstattung, negative = Nachzahlung. */
+  refund: number;
+  /**
+     * The Nachzahlung as a positive amount.
+     * @nullable
+     */
+  backPayment: number | null;
+  /**
+     * The prepayments the year’s answers name.
+     * @nullable
+     */
+  prepayments: number | null;
+  /** Show „Vorauszahlungen anpassen lassen“. */
+  adjustPrepayments: boolean;
+}
+
+export interface PrepaymentSeriesDto {
+  years: PrepaymentYearDto[];
+  backPaymentYears: number;
+  /** Nachzahlungen in a row up to the latest Bescheid. */
+  consecutiveBackPayments: number;
+  /** @nullable */
+  averageBackPayment: number | null;
+  /** @nullable */
+  hint: string | null;
+}
+
+/**
+ * @nullable
+ */
+export type RepeatedCutDtoPerson = typeof RepeatedCutDtoPerson[keyof typeof RepeatedCutDtoPerson] | null;
+
+
+export const RepeatedCutDtoPerson = {
+  A: 'A',
+  B: 'B',
+} as const;
+
+export interface RepeatedCutYearDto {
+  year: number;
+  declared: number;
+  assessed: number;
+  difference: number;
+  /** @nullable */
+  refundEffect: number | null;
+}
+
+export interface RepeatedCutDto {
+  position: string;
+  type: string;
+  /** @nullable */
+  person: RepeatedCutDtoPerson;
+  label: string;
+  years: RepeatedCutYearDto[];
+  /**
+     * The catalogue hint for the position type.
+     * @nullable
+     */
+  hint: string | null;
+}
+
+export type CoupleComparisonDtoStatus = typeof CoupleComparisonDtoStatus[keyof typeof CoupleComparisonDtoStatus];
+
+
+export const CoupleComparisonDtoStatus = {
+  gerechnet: 'gerechnet',
+  unvollstaendig: 'unvollstaendig',
+  'tarif-fehlt': 'tarif-fehlt',
+} as const;
+
+/**
+ * status `gerechnet`: how the year was filed.
+ */
+export type CoupleComparisonDtoFiledAs = typeof CoupleComparisonDtoFiledAs[keyof typeof CoupleComparisonDtoFiledAs];
+
+
+export const CoupleComparisonDtoFiledAs = {
+  einzel: 'einzel',
+  zusammen: 'zusammen',
+} as const;
+
+/**
+ * status `gerechnet`: the comparison’s statement (progression clause).
+ */
+export type CoupleComparisonDtoStatement = typeof CoupleComparisonDtoStatement[keyof typeof CoupleComparisonDtoStatement];
+
+
+export const CoupleComparisonDtoStatement = {
+  eindeutig: 'eindeutig',
+  'zu-knapp': 'zu-knapp',
+  unbestimmt: 'unbestimmt',
+} as const;
+
+export interface CoupleComparisonDto {
+  year: number;
+  status: CoupleComparisonDtoStatus;
+  /** status `gerechnet`: how the year was filed. */
+  filedAs?: CoupleComparisonDtoFiledAs;
+  /** status `gerechnet`: true for a joint Bescheid split by the filed facts („Rechnung der App, etwa“). */
+  approximate?: boolean;
+  /** status `gerechnet`: ESt + Soli (+ KiSt) of two single returns. */
+  singleTax?: number;
+  /** status `gerechnet`: the same, joint. */
+  jointTax?: number;
+  /** status `gerechnet`: singleTax − jointTax; > 0 the joint return is (or would have been) cheaper. */
+  jointSaving?: number;
+  /**
+     * status `gerechnet`: the saving over the ways to split a joint Bescheid; null when it is one number.
+     * @nullable
+     */
+  jointSavingRange?: RangeDto | null;
+  /** status `gerechnet`: the comparison’s statement (progression clause). */
+  statement?: CoupleComparisonDtoStatement;
+  /** status `unvollstaendig`: what is missing. */
+  missing?: string[];
+}
+
+export type CrossBorderYearDtoPerson = typeof CrossBorderYearDtoPerson[keyof typeof CrossBorderYearDtoPerson];
+
+
+export const CrossBorderYearDtoPerson = {
+  A: 'A',
+  B: 'B',
+} as const;
+
+export interface CrossBorderYearDto {
+  year: number;
+  person: CrossBorderYearDtoPerson;
+  /** EUR per CHF. */
+  rate: number;
+  /** `yyyy` or `yyyy-mm`. */
+  period: string;
+  grossChf: number;
+  grossEur: number;
+  /**
+     * Change of the rate to the year before in %.
+     * @nullable
+     */
+  rateChangePercent: number | null;
+  withholdingTaxChf: number;
+  /** Credited in Germany (N-Gre Zeile 25): at most 4,5 % of the gross wage. */
+  creditedEur: number;
+  /** More was withheld than can be credited. */
+  creditCapped: boolean;
+}
+
+export interface SwissShareDto {
+  year: number;
+  percent: number;
+}
+
+export interface CrossBorderGroupDto {
+  years: CrossBorderYearDto[];
+  /** The Swiss wage’s share of the household’s gross wage. */
+  swissShare: SwissShareDto[];
+}
+
+export interface RentalDepreciationRateDto {
+  annual: number;
+  ratePercent: number;
+}
+
+export interface RentalPropertyYearDto {
+  year: number;
+  /**
+     * Mieten + Umlagen − Werbungskosten − Schuldzinsen − AfA; null while a part is missing.
+     * @nullable
+     */
+  result: number | null;
+  missing: string[];
+  /** @nullable */
+  depreciation: number | null;
+  /**
+     * Remaining book value at year end; null without the purchase date.
+     * @nullable
+     */
+  bookValueEnd: number | null;
+}
+
+export interface AcquisitionRelatedDto {
+  windowEnd: string;
+  limitEur: number;
+  withinWindowEur: number;
+  exceeds: boolean;
+  roomLeftEur: number;
+  /** The window still runs. */
+  windowOpen: boolean;
+  /** Repairs without a date counted in the window to be safe. */
+  undatedCounted: number;
+}
+
+export interface RentalGroupPropertyDto {
+  propertyKey: string;
+  /** @nullable */
+  label: string | null;
+  /** @nullable */
+  acquiredOn: string | null;
+  /** @nullable */
+  depreciation: RentalDepreciationRateDto | null;
+  years: RentalPropertyYearDto[];
+  /** @nullable */
+  bookValue: number | null;
+  /** @nullable */
+  yearsLeft: number | null;
+  /** @nullable */
+  acquisitionRelated: AcquisitionRelatedDto | null;
+}
+
+export interface RentalGroupDto {
+  properties: RentalGroupPropertyDto[];
+}
+
+export type CapitalFavourableCheckDtoStatement = typeof CapitalFavourableCheckDtoStatement[keyof typeof CapitalFavourableCheckDtoStatement];
+
+
+export const CapitalFavourableCheckDtoStatement = {
+  eindeutig: 'eindeutig',
+  'zu-knapp': 'zu-knapp',
+  unbestimmt: 'unbestimmt',
+} as const;
+
+/**
+ * @nullable
+ */
+export type CapitalFavourableCheckDtoRecommendation = typeof CapitalFavourableCheckDtoRecommendation[keyof typeof CapitalFavourableCheckDtoRecommendation] | null;
+
+
+export const CapitalFavourableCheckDtoRecommendation = {
+  abgeltung: 'abgeltung',
+  persoenlich: 'persoenlich',
+} as const;
+
+export interface CapitalFavourableCheckDto {
+  statement: CapitalFavourableCheckDtoStatement;
+  /** Personal rate minus flat rate tax; > 0 the flat rate is cheaper. */
+  delta: number;
+  /** @nullable */
+  recommendation: CapitalFavourableCheckDtoRecommendation;
+}
+
+export interface CapitalYearDto {
+  year: number;
+  income: number;
+  allowanceLimit: number;
+  allowanceUsed: number;
+  aboveAllowance: number;
+  fullyUsed: boolean;
+  /**
+     * The Günstigerprüfung on the Bescheid’s zvE; null without one.
+     * @nullable
+     */
+  favourableCheck: CapitalFavourableCheckDto | null;
+}
+
+export interface CapitalGroupDto {
+  years: CapitalYearDto[];
+}
+
+export interface PensionYearDto {
+  year: number;
+  /** @nullable */
+  amount: number | null;
+  /** @nullable */
+  taxablePart: number | null;
+}
+
+export interface PensionGroupDto {
+  /** @nullable */
+  startYear: number | null;
+  /**
+     * Besteuerungsanteil of the start year.
+     * @nullable
+     */
+  sharePercent: number | null;
+  /**
+     * Rentenfreibetrag, fixed from the first full year.
+     * @nullable
+     */
+  allowance: number | null;
+  /** @nullable */
+  allowanceYear: number | null;
+  years: PensionYearDto[];
+}
+
+/**
+ * Verlustvortrag and Verlustverrechnungstöpfe: „noch nicht erfasst“.
+ */
+export type LossCarryForwardDtoStatus = typeof LossCarryForwardDtoStatus[keyof typeof LossCarryForwardDtoStatus];
+
+
+export const LossCarryForwardDtoStatus = {
+  notRecorded: 'notRecorded',
+} as const;
+
+export interface LossCarryForwardDto {
+  /** Verlustvortrag and Verlustverrechnungstöpfe: „noch nicht erfasst“. */
+  status: LossCarryForwardDtoStatus;
+}
+
+export interface HistoryGroupsDto {
+  /** @nullable */
+  crossBorder: CrossBorderGroupDto | null;
+  /** @nullable */
+  rental: RentalGroupDto | null;
+  /** @nullable */
+  capital: CapitalGroupDto | null;
+  /** @nullable */
+  pension: PensionGroupDto | null;
+  lossCarryForward: LossCarryForwardDto;
+}
+
+export interface AssessmentDocumentDto {
+  receiptId: string;
+  fileName: string;
+  uploadedAt: string;
+  /** The existing receipt file endpoint. */
+  downloadPath: string;
+}
+
+export interface AssessmentWaitDto {
+  days: number;
+  weeks: number;
+  /** No Bescheid yet: counted up to today. */
+  pending: boolean;
+  /** „Nachfragen lohnt sich“: more than twelve weeks without a Bescheid. */
+  askTaxOffice: boolean;
+}
+
+/**
+ * @nullable
+ */
+export type AppealHistoryEntryDtoPerson = typeof AppealHistoryEntryDtoPerson[keyof typeof AppealHistoryEntryDtoPerson] | null;
+
+
+export const AppealHistoryEntryDtoPerson = {
+  A: 'A',
+  B: 'B',
+} as const;
+
+/**
+ * @nullable
+ */
+export type AppealHistoryEntryDtoReason = typeof AppealHistoryEntryDtoReason[keyof typeof AppealHistoryEntryDtoReason] | null;
+
+
+export const AppealHistoryEntryDtoReason = {
+  'betrag-falsch': 'betrag-falsch',
+  'beleg-nicht-beruecksichtigt': 'beleg-nicht-beruecksichtigt',
+  sonstiges: 'sonstiges',
+} as const;
+
+/**
+ * @nullable
+ */
+export type AppealHistoryEntryDtoOutcome = typeof AppealHistoryEntryDtoOutcome[keyof typeof AppealHistoryEntryDtoOutcome] | null;
+
+
+export const AppealHistoryEntryDtoOutcome = {
+  offen: 'offen',
+  stattgegeben: 'stattgegeben',
+  teilweise: 'teilweise',
+  abgelehnt: 'abgelehnt',
+  zurueckgenommen: 'zurueckgenommen',
+} as const;
+
+export interface AppealHistoryEntryDto {
+  /** @nullable */
+  person: AppealHistoryEntryDtoPerson;
+  /** @nullable */
+  date: string | null;
+  /** @nullable */
+  reason: AppealHistoryEntryDtoReason;
+  /** @nullable */
+  outcome: AppealHistoryEntryDtoOutcome;
+  /** @nullable */
+  amount: number | null;
+}
+
+export interface YearDocumentsDto {
+  year: number;
+  /** The uploaded Steuerbescheide, oldest first. */
+  documents: AssessmentDocumentDto[];
+  /** @nullable */
+  submittedOn: string | null;
+  /** @nullable */
+  assessmentDate: string | null;
+  /**
+     * Submission → Bescheid; null without a submission in the app.
+     * @nullable
+     */
+  wait: AssessmentWaitDto | null;
+  appeals: AppealHistoryEntryDto[];
+}
+
 export interface YearHistoryResponseDto {
   /** The day remaining days are counted from. */
   today: string;
@@ -743,5 +1328,58 @@ export interface YearHistoryResponseDto {
      * @nullable
      */
   maskLessons: MaskLessonsDto | null;
+  /** Lebensereignisse, derived from data only (ADR-0099 §4), oldest first. */
+  events: LifeEventDto[];
+  /**
+     * „Kommt jedes Jahr wieder“ for the latest open year (ADR-0099 §2); null without one.
+     * @nullable
+     */
+  recurring: RecurringChecklistDto | null;
+  /** Nachzahlungen laut Bescheid over the years (ADR-0099 §3). */
+  prepayments: PrepaymentSeriesDto;
+  /** Positions cut in at least two Bescheid years (ADR-0099 §5). */
+  repeatedCuts: RepeatedCutDto[];
+  /** Per Bescheid year of a couple, the Veranlagungsart in both directions (ADR-0099 §6). */
+  couples: CoupleComparisonDto[];
+  /** Grenzgänger, Vermieter, Kapital, Rentner (ADR-0099 §7); each null without data. */
+  groups: HistoryGroupsDto;
+  /** Unterlagen (ADR-0099 §9): Bescheide, duration and Einsprüche per year. */
+  documents: YearDocumentsDto[];
+}
+
+/**
+ * `ja`: filed elsewhere, the year waits for its Bescheid upload; `nein`: an open year; `weiss-nicht`: ask again three months before the deadline.
+ */
+export type PutFiledElsewhereDtoAnswer = typeof PutFiledElsewhereDtoAnswer[keyof typeof PutFiledElsewhereDtoAnswer];
+
+
+export const PutFiledElsewhereDtoAnswer = {
+  ja: 'ja',
+  nein: 'nein',
+  'weiss-nicht': 'weiss-nicht',
+} as const;
+
+export interface PutFiledElsewhereDto {
+  /** `ja`: filed elsewhere, the year waits for its Bescheid upload; `nein`: an open year; `weiss-nicht`: ask again three months before the deadline. */
+  answer: PutFiledElsewhereDtoAnswer;
+}
+
+/**
+ * The ADR-0039 state the answer put the year in.
+ */
+export type FiledElsewhereResponseDtoStatus = typeof FiledElsewhereResponseDtoStatus[keyof typeof FiledElsewhereResponseDtoStatus];
+
+
+export const FiledElsewhereResponseDtoStatus = {
+  entwurf: 'entwurf',
+  'extern-erledigt': 'extern-erledigt',
+} as const;
+
+export interface FiledElsewhereResponseDto {
+  year: number;
+  /** The ADR-0039 state the answer put the year in. */
+  status: FiledElsewhereResponseDtoStatus;
+  filedElsewhere: FiledElsewhereDto;
+  deadline: YearDeadlineDto;
 }
 

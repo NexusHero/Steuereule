@@ -6,21 +6,27 @@
  * OpenAPI spec version: 1.0
  */
 import {
+  useMutation,
   useQuery
 } from '@tanstack/react-query';
 import type {
   DataTag,
   DefinedInitialDataOptions,
   DefinedUseQueryResult,
+  MutationFunction,
   QueryClient,
   QueryFunction,
   QueryKey,
   UndefinedInitialDataOptions,
+  UseMutationOptions,
+  UseMutationResult,
   UseQueryOptions,
   UseQueryResult
 } from '@tanstack/react-query';
 
 import type {
+  FiledElsewhereResponseDto,
+  PutFiledElsewhereDto,
   YearHistoryResponseDto
 } from './verlauf.schemas';
 
@@ -159,4 +165,99 @@ export function useYearHistoryControllerGet<TData = Awaited<ReturnType<typeof ye
 
 
 
+
+export type filedElsewhereControllerAnswerResponse200 = {
+  data: FiledElsewhereResponseDto
+  status: 200
+}
+
+export type filedElsewhereControllerAnswerResponse400 = {
+  data: void
+  status: 400
+}
+
+export type filedElsewhereControllerAnswerResponse401 = {
+  data: void
+  status: 401
+}
+
+export type filedElsewhereControllerAnswerResponse409 = {
+  data: void
+  status: 409
+}
+
+export type filedElsewhereControllerAnswerResponseSuccess = (filedElsewhereControllerAnswerResponse200) & {
+  headers: Headers;
+};
+export type filedElsewhereControllerAnswerResponseError = (filedElsewhereControllerAnswerResponse400 | filedElsewhereControllerAnswerResponse401 | filedElsewhereControllerAnswerResponse409) & {
+  headers: Headers;
+};
+
+export type filedElsewhereControllerAnswerResponse = (filedElsewhereControllerAnswerResponseSuccess | filedElsewhereControllerAnswerResponseError)
+
+export const getFiledElsewhereControllerAnswerUrl = (jahr: number,) => {
+
+
+
+
+  return `/v1/steuerjahre/${jahr}/abgabe-anderswo`
+}
+
+export const filedElsewhereControllerAnswer = async (jahr: number,
+    putFiledElsewhereDto: PutFiledElsewhereDto, options?: RequestInit): Promise<filedElsewhereControllerAnswerResponse> => {
+
+  return httpClient<filedElsewhereControllerAnswerResponse>(getFiledElsewhereControllerAnswerUrl(jahr),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(putFiledElsewhereDto)
+  }
+);}
+
+
+
+
+
+export const getFiledElsewhereControllerAnswerMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof filedElsewhereControllerAnswer>>, TError,{jahr: number;data: PutFiledElsewhereDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof filedElsewhereControllerAnswer>>, TError,{jahr: number;data: PutFiledElsewhereDto}, TContext> => {
+
+const mutationKey = ['filedElsewhereControllerAnswer'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof filedElsewhereControllerAnswer>>, {jahr: number;data: PutFiledElsewhereDto}> = (props) => {
+          const {jahr,data} = props ?? {};
+
+          return  filedElsewhereControllerAnswer(jahr,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type FiledElsewhereControllerAnswerMutationResult = NonNullable<Awaited<ReturnType<typeof filedElsewhereControllerAnswer>>>
+    export type FiledElsewhereControllerAnswerMutationBody = PutFiledElsewhereDto
+    export type FiledElsewhereControllerAnswerMutationError = void
+
+    export const useFiledElsewhereControllerAnswer = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof filedElsewhereControllerAnswer>>, TError,{jahr: number;data: PutFiledElsewhereDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof filedElsewhereControllerAnswer>>,
+        TError,
+        {jahr: number;data: PutFiledElsewhereDto},
+        TContext
+      > => {
+      return useMutation(getFiledElsewhereControllerAnswerMutationOptions(options), queryClient);
+    }
 

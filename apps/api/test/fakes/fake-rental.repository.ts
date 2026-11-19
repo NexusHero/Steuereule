@@ -4,7 +4,7 @@
 // unknown objectId — never a cross-user update); the derived facts are left to VermietungService
 // (as in production, the repository stores facts, never the derived state — ADR-014/048).
 import type { RentalFieldId } from '@steuereule/core'
-import type { RentalObjectRecord, RentalRepository } from '../../src/rental/rental.repository.js'
+import type { RentalAttributes, RentalCarryOver, RentalObjectRecord, RentalRepository } from '../../src/rental/rental.repository.js'
 
 function key(userId: string, taxYear: number): string {
   return `${userId}::${taxYear}`
@@ -19,7 +19,11 @@ export class FakeRentalRepository implements RentalRepository {
     return Promise.resolve([...this.store.values()].filter((r) => key(r.userId, r.taxYear) === k))
   }
 
-  create(userId: string, taxYear: number): Promise<RentalObjectRecord> {
+  listForUser(userId: string): Promise<RentalObjectRecord[]> {
+    return Promise.resolve([...this.store.values()].filter((r) => r.userId === userId).sort((a, b) => a.taxYear - b.taxYear))
+  }
+
+  create(userId: string, taxYear: number, carry?: RentalCarryOver): Promise<RentalObjectRecord> {
     this.counter += 1
     const record: RentalObjectRecord = {
       id: `fake-id-${this.counter}`,
@@ -29,6 +33,9 @@ export class FakeRentalRepository implements RentalRepository {
       anschaffungskosten: null,
       baujahr: null,
       werbungskosten: null,
+      propertyKey: carry?.propertyKey ?? `fake-key-${this.counter}`,
+      anschaffungsdatum: carry?.anschaffungsdatum ?? null,
+      erhaltungsaufwand: null,
     }
     this.store.set(`${key(userId, taxYear)}::${record.id}`, record)
     return Promise.resolve(record)
@@ -47,12 +54,13 @@ export class FakeRentalRepository implements RentalRepository {
     userId: string,
     taxYear: number,
     propertyId: string,
-    address: { strasse?: string | null; hausnummer?: string | null; plz?: string | null; city?: string | null; livingArea?: string | null; depreciationAsLastYear?: boolean | null },
+    attributes: RentalAttributes,
   ): Promise<RentalObjectRecord | null> {
     const k = `${key(userId, taxYear)}::${propertyId}`
     const existing = this.store.get(k)
     if (existing === undefined) return Promise.resolve(null)
-    const updated: RentalObjectRecord = { ...existing, ...address }
+    const defined = Object.fromEntries(Object.entries(attributes).filter(([, v]) => v !== undefined))
+    const updated: RentalObjectRecord = { ...existing, ...defined }
     this.store.set(k, updated)
     return Promise.resolve(updated)
   }
