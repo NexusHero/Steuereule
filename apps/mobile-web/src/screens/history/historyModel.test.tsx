@@ -8,7 +8,7 @@ import { HISTORY_GAP_RESPONSE, HISTORY_RESPONSE, HISTORY_YEARS, est, fig, open }
 import { buildChart, niceTicks, sparkPoints } from './historyChartModel'
 import { deltaText, deltaTone, figureText, missingSentence, signedEuro, signedFigureText } from './historyFormat'
 import { owlSentence } from './owlSentences'
-import { declaredAmount, filingTypeChange, missingDetail, missingShort, urgentFirst, yearAmount, yearStatus } from './historyTimeline'
+import { declaredAmount, filingTypeChange, missingDetail, missingShort, urgentFirst, yearAmount, yearFigure, yearStatus } from './historyTimeline'
 
 const tr = createAppI18n('de').t
 const en = createAppI18n('en').t
@@ -59,6 +59,9 @@ describe('buildChart', () => {
     const y2024 = model.columns[3]!
     expect(y2024).toMatchObject({ kind: 'refund', value: 809, declared: 901 })
     expect(y2024.kind === 'refund' && plain(y2024.cutLabel ?? '')).toBe('−92 €')
+    // The sum of two single returns (2022) is labelled like any other year, without a „Σ“.
+    const y2022 = model.columns[1]!
+    expect(y2022.kind === 'refund' && plain(y2022.label)).toBe('+393 €')
     expect(model.columns[4]).toMatchObject({ kind: 'range', from: 1066, to: 1196 })
     expect(model.filingTypeChanges).toEqual([{ year: 2023, filingType: 'zusammen' }])
     expect(model.min).toBe(0)
@@ -171,6 +174,27 @@ describe('historyTimeline', () => {
     expect(plain(declaredAmount(item(2024), entry(2024)))).toBe('+901 €')
     expect(plain(declaredAmount(item(2025), entry(2025)))).toBe('+1.066–1.196 €')
     expect(declaredAmount(item(2021), entry(2021))).toBe('–')
+  })
+
+  it('gives the year page its own figure only where no Abgleich shows it: the estimate of a filed year, the Bescheid of a year without one', () => {
+    const figure = (i: Parameters<typeof yearFigure>[0], e: Parameters<typeof yearFigure>[1], hasDiff: boolean) => {
+      const text = yearFigure(i, e, hasDiff, tr)
+      return text === null ? null : plain(text)
+    }
+    // No data: never a figure (ADR-0099 §1), whatever else the item carries.
+    expect(figure({ ...item(2025), hasData: false }, entry(2025), false)).toBeNull()
+    expect(figure({ ...item(2021), hasData: false }, entry(2021), false)).toBeNull()
+    // The Abgleich below already shows the figure.
+    expect(figure(item(2024), entry(2024), true)).toBeNull()
+    // A filed year: its estimate as the range, never a midpoint.
+    expect(figure(item(2025), entry(2025), false)).toBe('Schätzung +1.066–1.196 €')
+    expect(figure(item(2025), undefined, false)).toBeNull()
+    // A Bescheid without an Abgleich: refund or back payment, unsigned, in words.
+    expect(figure(item(2021), entry(2021), false)).toBe('Erstattung 220 € laut Bescheid')
+    expect(figure({ ...item(2021), assessedRefund: -340 }, entry(2021), false)).toBe('Nachzahlung 340 € laut Bescheid')
+    // An open year: no forecast.
+    expect(figure(item(2026), entry(2026), false)).toBeNull()
+    expect(yearFigure(item(2025), entry(2025), false, en)?.replace(/\u00a0/g, ' ')).toBe('Estimate +1.066–1.196 €')
   })
 
   it('words a year without data by its answer to „Schon abgegeben?“ and never gives it an amount (ADR-0099 §1)', () => {

@@ -130,7 +130,7 @@ function refundColumn(entry: YearHistoryEntryDto): ChartColumn {
       kind: 'refund',
       value,
       declared,
-      label: `${entry.erstattung.sumOfSingleFilings ? 'Σ ' : ''}${signedEuro(value)}`,
+      label: signedEuro(value),
       cutLabel: difference !== null && difference !== 0 ? signedEuro(difference) : null,
     }
   }

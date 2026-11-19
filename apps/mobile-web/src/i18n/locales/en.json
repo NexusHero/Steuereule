@@ -2750,9 +2750,9 @@
     },
     "wartet": {
       "titel": "What to watch",
-      "text_one": "Filed, the assessment is pending. The tax office cut {{count}} item in {{vorjahr}}; in {{jahr}} it is declared the same way again.",
-      "text_other": "Filed, the assessment is pending. The tax office cut {{count}} items in {{vorjahr}}; in {{jahr}} they are declared the same way again.",
-      "keineVorhersage": "Once the assessment arrives, the comparison shows here. The owl makes no forecast."
+      "text_one": "The tax office cut {{count}} item in {{vorjahr}}; in {{jahr}} it is declared the same way again.",
+      "text_other": "The tax office cut {{count}} items in {{vorjahr}}; in {{jahr}} they are declared the same way again.",
+      "keineVorhersage": "Once the notice is in, the comparison shows here."
     },
     "abgleich": {
       "titel": "Return ↔ assessment {{jahr}}",
@@ -2779,8 +2779,8 @@
       "zeileA11y": "{{position}}: declared {{erklaert}}, assessed {{festgesetzt}}, effect on the refund {{wirkung}}.",
       "wiederTage": "{{jahr}} again declared {{tage}}",
       "wiederBetrag": "{{jahr}} again declared {{betrag}}",
-      "weitere_one": "{{count}} more item as declared · See all",
-      "weitere_other": "{{count}} more items as declared · See all",
+      "weitere_one": "{{count}} more as declared ›",
+      "weitere_other": "{{count}} more as declared ›",
       "alleAnsehen": "See all items",
       "formularZu": "Hide form view",
       "folge": "which leads to",
@@ -2796,7 +2796,8 @@
         "werbungskostenB": "Work expenses · Person B",
         "vorsorge": "Contributions and special expenses",
         "steuer": "Tax"
-      }
+      },
+      "werte": "{{erklaert}} → {{festgesetzt}}"
     },
     "lehre": {
       "maske": "Shows in {{jahr}} on the “{{maske}}” screen",
@@ -2856,7 +2857,7 @@
       "erstattung": {
         "label": "Refund",
         "titel": "Refund and back payment",
-        "sub": "For the household. The line is what was declared; the red area was cut by the tax office."
+        "sub": "For the household. Red dashed: cut by the tax office."
       },
       "werbungskosten": {
         "label": "Work expenses",
@@ -2906,7 +2907,6 @@
       "erstattungBescheid": "Refund assessed",
       "gekuerzt": "cut by the tax office",
       "schaetzung": "Estimate (range)",
-      "erklaert": "declared",
       "pauschbetrag": "Lump sum",
       "effektiv": "Effective tax rate",
       "grenz": "Marginal tax rate",
@@ -3127,15 +3127,17 @@
         "text": "This year has neither a return nor an assessment. Back in the history you can add old years with their assessment."
       },
       "satz": {
-        "offen": "In progress, not filed yet.",
-        "eingereicht": "Filed, the assessment is pending.",
-        "nurBescheid": "Assessment only: the {{jahr}} return was not made in SteuerEule, so there is no comparison. The assessment still counts in the history.",
+        "offen": "In progress, not filed yet",
+        "eingereicht": "Filed · waiting for the notice",
+        "nurBescheid": "Only the notice. The return was not made in SteuerEule, so there is nothing to compare.",
         "ohneFassung": "There is an assessment for {{jahr}}, but no version filed in SteuerEule to compare it with.",
-        "aenderungen_one": "Assessment received: the tax office changed {{count}} item.",
-        "aenderungen_other": "Assessment received: the tax office changed {{count}} items.",
-        "wieErklaert": "Assessment as declared: the tax office changed nothing.",
+        "aenderungen_one": "Notice in · {{count}} item changed",
+        "aenderungen_other": "Notice in · {{count}} items changed",
+        "wieErklaert": "Notice as declared",
         "luecke": "{{jahr}} is not in the app. Filing is possible until {{datum}}.",
-        "anderswo": "Filed elsewhere. Upload the assessment and {{jahr}} shows its figures in the history."
+        "anderswo": "Filed elsewhere. Upload the assessment and {{jahr}} shows its figures in the history.",
+        "ohneWirkung_one": "Notice in · {{count}} item changed, no effect on the refund",
+        "ohneWirkung_other": "Notice in · {{count}} items changed, no effect on the refund"
       },
       "fehltTitel": "What is still missing",
       "lstb": {
@@ -3146,7 +3148,12 @@
         "personB": "the {{jahr}} wage tax certificate of person B",
         "personBKommt": "the {{jahr}} wage tax certificate of person B (arrives from February {{folgejahr}})"
       },
-      "aenderbar": "Can be changed until {{datum}} (assessment period), for example for a forgotten receipt."
+      "aenderbar": "Can be changed until {{datum}}",
+      "betrag": {
+        "schaetzung": "Estimate {{betrag}}",
+        "erstattung": "Refund {{betrag}} per notice",
+        "nachzahlung": "Back payment {{betrag}} per notice"
+      }
     },
     "frage": {
       "titel": "{{jahr}}: Already filed?",
@@ -3168,13 +3175,11 @@
       "grenzgaenger": "started as a cross-border commuter",
       "umzug": "moved",
       "immobilienkauf": "bought a property",
-      "zeile": "{{jahr}} · {{was}}",
+      "zeile": "{{was}}",
       "a11y": "Event {{jahr}}: {{was}}"
     },
     "wiederkehrend": {
       "titel": "Comes back every year",
-      "satz_one": "{{count}} item from previous years, {{erledigt}} already done.",
-      "satz_other": "{{count}} items from previous years, {{erledigt}} already done.",
       "erledigt": "done",
       "offen": "open",
       "vorjahr": "{{jahr}}: {{was}}",
@@ -3185,9 +3190,10 @@
       "uebernommen": "taken from a receipt",
       "vorschlag": "a suggestion from a receipt waits",
       "gekuerzt": "⚠ cut in {{jahre}}",
-      "hinweis": "Last year’s amount is only a hint; it is not copied.",
       "belege": "Upload receipts",
-      "a11y": "{{label}}, {{stand}}: {{text}}"
+      "a11y": "{{label}}, {{stand}}: {{text}}",
+      "erledigtZahl_one": "{{count}} done",
+      "erledigtZahl_other": "{{count}} done"
     },
     "muster": {
       "mal_2": "Cut for the second time",
@@ -3195,14 +3201,15 @@
       "mal_n": "Cut {{count}} times",
       "satz": "{{titel}}: {{position}} {{jahre}}.",
       "jahr": "{{jahr}} ({{betrag}} less allowed)",
-      "satzJe": "{{titel}}: {{position}} {{jahre}}, {{betrag}} less allowed each time."
+      "satzJe": "{{titel}}: {{position}} {{jahre}}, {{betrag}} less allowed each time.",
+      "kurz": "{{titel}}: {{position}}"
     },
     "paare": {
-      "zusammenGebracht": "Filed jointly: in {{jahr}} that saved {{betrag}} compared with two single returns.",
-      "einzelnMehr": "Filing separately, {{jahr}} would have brought {{betrag}} more.",
-      "zusammenMehr": "Filing jointly, {{jahr}} would have brought {{betrag}} more.",
-      "einzelnGebracht": "Filed separately: in {{jahr}} that saved {{betrag}} compared with a joint return.",
-      "gleich": "Jointly or separately: in {{jahr}} it makes no difference.",
+      "zusammenGebracht": "Filing jointly saved {{betrag}}.",
+      "einzelnMehr": "Filing separately would have brought {{betrag}} more.",
+      "zusammenMehr": "Filing jointly would have brought {{betrag}} more.",
+      "einzelnGebracht": "Filing separately saved {{betrag}}.",
+      "gleich": "Jointly or separately makes no difference.",
       "etwa": "The app’s calculation, approximate",
       "knapp": "The difference is too small for a firm statement.",
       "unvollstaendig": "The joint ↔ separate comparison still lacks: {{liste}}.",
@@ -3211,7 +3218,7 @@
       "etwaSpanne": "The app’s calculation, depending on how the deductions are split"
     },
     "vorauszahlung": {
-      "hinweis": "Back payment according to the assessment: have the prepayments adjusted (application to the tax office)."
+      "hinweis": "Have your prepayments adjusted (application to the tax office)."
     },
     "gruppe": {
       "tab": {
@@ -3221,7 +3228,7 @@
         "kapital": "Capital",
         "rente": "Pension"
       },
-      "mehr": "More areas",
+      "mehr": "Your areas",
       "nichtErfasst": "not recorded yet",
       "vorauszahlungen": {
         "titel": "Back payments after prepayments",

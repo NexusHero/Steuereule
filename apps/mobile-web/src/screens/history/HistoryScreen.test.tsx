@@ -21,8 +21,8 @@ vi.mock('../../lib/documentOcr', async (importOriginal) => {
 })
 
 const URL = '*/v1/verlauf'
-/** The tab's words for the fixture household (70 with ADR-0099's markers, deadlines and „Unterlagen“): the budget of ADR-0098 holds. */
-const WORD_BUDGET = 75
+/** The tab's words for the fixture household (67 with ADR-0099's markers, deadlines and „Unterlagen“, the markers without their year): the budget of ADR-0098 holds. */
+const WORD_BUDGET = 73
 
 function setViewportWidth(width: number) {
   Object.defineProperty(document.documentElement, 'clientWidth', { value: width, configurable: true })
@@ -167,8 +167,9 @@ describe('HistoryScreen — phone', () => {
       .getAllByTestId(/^verlauf-(jahr-\d{4}|ereignis-\d{4})$/)
       .map((e) => e.getAttribute('data-testid'))
     expect(order).toEqual(['verlauf-jahr-2026', 'verlauf-jahr-2025', 'verlauf-ereignis-2025', 'verlauf-jahr-2024', 'verlauf-ereignis-2024', 'verlauf-jahr-2023', 'verlauf-ereignis-2023', 'verlauf-jahr-2022', 'verlauf-jahr-2021'])
-    expect(text('verlauf-ereignis-2025')).toBe('2025 · Kind geboren')
-    expect(text('verlauf-ereignis-2024')).toBe('2024 · neuer Arbeitgeber, Start als Grenzgänger')
+    expect(text('verlauf-ereignis-2025')).toBe('Kind geboren')
+    expect(text('verlauf-ereignis-2024')).toBe('neuer Arbeitgeber, Start als Grenzgänger')
+    // The marker sits under its year's row, so only the label for screen readers repeats the year.
     expect(label('verlauf-ereignis-2023')).toBe('Ereignis 2023: ab jetzt zusammen veranlagt')
     // A marker is no button and no row of its own.
     expect(within(screen.getByTestId('verlauf-ereignis-2024')).queryByRole('button')).toBeNull()
@@ -224,7 +225,7 @@ describe('HistoryScreen — tablet and desktop', () => {
     expect(text('verlauf-tabelle-2025')).toBe('2025abgegeben · wartet auf Bescheid+1.066–1.196 €–')
     expect(text('verlauf-tabelle-2021')).toBe('2021nur Bescheid–+220 €')
     expect(text('verlauf-tabelle-2023')).toBe('2023Bescheid wie erklärt · änderbar bis 31.12.2027+210 €+210 €')
-    expect(text('verlauf-ereignis-2024')).toBe('2024 · neuer Arbeitgeber, Start als Grenzgänger')
+    expect(text('verlauf-ereignis-2024')).toBe('neuer Arbeitgeber, Start als Grenzgänger')
     expect(screen.getByTestId('verlauf-unterlagen')).toBeTruthy()
     expect(screen.queryByTestId('verlauf-kpi-erstattung')).toBeNull()
     expect(screen.getByTestId('verlauf-entwicklung')).toBeTruthy()

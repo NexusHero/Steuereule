@@ -74,14 +74,9 @@ export function HistoryChart({ model, selectedYear, onSelectYear, accessibilityL
     </SvgText>
   )
 
+  // An open year is a quiet word on the baseline, not a shape: an empty box read as a value.
   function gap(i: number, reason: 'offen' | 'nichtAblesbar'): ReactNode {
-    const top = Math.max(Y0, base - 60)
-    return (
-      <>
-        <Rect x={cx(i) - barWidth / 2} y={top} width={barWidth} height={base - top} rx={5} fill="none" stroke={t.color.tinte2} strokeDasharray="2 3" />
-        {label(i, top + (base - top) / 2 + 3, tr(reason === 'offen' ? 'verlauf.chart.offen' : 'verlauf.chart.nichtAblesbar'), t.color.tinte2)}
-      </>
-    )
+    return label(i, base - 6, tr(reason === 'offen' ? 'verlauf.chart.offen' : 'verlauf.chart.nichtAblesbar'), t.color.tinte2)
   }
 
   function column(c: ChartColumn, i: number): ReactNode {
@@ -141,8 +136,8 @@ export function HistoryChart({ model, selectedYear, onSelectYear, accessibilityL
               <Rect x={left} y={yd} width={barWidth} height={yv - yd} fill={t.color.fehlerWeich} stroke={t.color.fehler} strokeWidth={1} strokeDasharray="3 2" />
             ) : null}
             <Rect x={left} y={barTop} width={barWidth} height={barHeight} fill={c.value < 0 ? t.color.fehler : t.color.ok} stroke={t.color.linie} strokeWidth={1} />
-            {yd === null ? null : <Line x1={left - 4} x2={left + barWidth + 4} y1={yd} y2={yd} stroke={t.color.tinte} strokeWidth={2} />}
-            {label(i, top - 6, c.label)}
+            {/* A back payment is labelled under its bar: above the baseline it ran into the neighbouring years. */}
+            {label(i, c.value < 0 ? yv + 13 : top - 6, c.label)}
             {c.cutLabel === null ? null : label(i, top - 18, c.cutLabel, t.color.fehler, true)}
           </>
         )
@@ -208,12 +203,8 @@ export function HistoryChart({ model, selectedYear, onSelectYear, accessibilityL
             const i = model.columns.findIndex((c) => c.year === change.year)
             if (i <= 0) return null
             return (
-              <G key={`w${change.year}`}>
-                <Line x1={slot(i)} x2={slot(i)} y1={Y0 - 16} y2={y1} stroke={t.color.ki} strokeWidth={1.5} strokeDasharray="4 3" />
-                <SvgText x={slot(i) + 5} y={Y0 - 8} fontSize={10} fontFamily={t.font.mono} fontWeight={t.weight.schwer} fill={t.color.kiTinte}>
-                  {tr(change.filingType === 'zusammen' ? 'verlauf.chart.wechselZusammen' : 'verlauf.chart.wechselEinzeln', { jahr: change.year })}
-                </SvgText>
-              </G>
+              // The legend names the line; the words in the plot collided with the labels above the bars.
+              <Line key={`w${change.year}`} x1={slot(i)} x2={slot(i)} y1={Y0 - 4} y2={y1} stroke={t.color.ki} strokeWidth={1.5} strokeDasharray="4 3" />
             )
           })}
           {lines}

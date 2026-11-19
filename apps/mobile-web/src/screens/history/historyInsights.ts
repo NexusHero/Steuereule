@@ -84,9 +84,13 @@ export function cutsOfYear(cuts: readonly RepeatedCutDto[], year: number): Repea
 }
 
 /** „Zum zweiten Mal gekürzt: Homeoffice-Pauschale 2023 und 2024, je 180 € weniger anerkannt.“ */
-export function repeatedCutSentence(cut: RepeatedCutDto, label: string, tr: TFunction): string {
+export function repeatedCutTitle(cut: RepeatedCutDto, tr: TFunction): string {
   const n = cut.years.length
-  const title = n === 2 ? tr('verlauf.muster.mal_2') : n === 3 ? tr('verlauf.muster.mal_3') : tr('verlauf.muster.mal_n', { count: n })
+  return n === 2 ? tr('verlauf.muster.mal_2') : n === 3 ? tr('verlauf.muster.mal_3') : tr('verlauf.muster.mal_n', { count: n })
+}
+
+export function repeatedCutSentence(cut: RepeatedCutDto, label: string, tr: TFunction): string {
+  const title = repeatedCutTitle(cut, tr)
   // The cut is a deduction amount, not the tax effect the receipt shows next to it, so it says „weniger anerkannt“.
   const amounts = cut.years.map((y) => Math.abs(y.difference))
   if (amounts.every((a) => a === amounts[0])) {

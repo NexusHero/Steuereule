@@ -98,9 +98,6 @@ export function HistoryDevelopment({ data, person, onPersonChange, showPersonTog
       </Pressable>
       {tableOpen ? <DataTable entries={years} metric={metric} person={who} /> : null}
       <View style={s.tiers}>
-        <Text style={[s.pill, s.pillBescheid]}>{tr('verlauf.stufe.bescheid')}</Text>
-        <Text style={[s.pill, s.pillSchaetzung]}>{tr('verlauf.stufe.schaetzung')}</Text>
-        <Text style={[s.pill, s.pillOffen]}>{tr('verlauf.stufe.offen')}</Text>
         <Text style={s.muted}>{tr('verlauf.tippeJahr')}</Text>
       </View>
     </View>
@@ -117,20 +114,24 @@ export function HistoryDevelopment({ data, person, onPersonChange, showPersonTog
     <View style={s.section}>
       {showPersonToggle ? <PersonToggle person={person} onChange={onPersonChange} /> : null}
       {bp === 's' ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.chips}>
-          <View style={s.chips} role="tablist" accessibilityLabel={tr('verlauf.kennzahlWaehlen')}>
-            {/* The mock's order: the refund, then the groups the household has, then the other key figures. */}
-            {METRIC_ORDER.slice(0, 1).map((m) => (
-              <MetricChip key={m} label={tr(`verlauf.kennzahl.${m}.label`)} active={group === null && m === metric} onPress={() => pickMetric(m)} testID={`verlauf-kennzahl-${m}`} />
-            ))}
-            {groups.map((g) => (
-              <MetricChip key={g} label={tr(`verlauf.gruppe.tab.${g}`)} active={group === g} onPress={() => setGroup(g)} testID={`verlauf-bereich-${g}`} />
-            ))}
-            {METRIC_ORDER.slice(1).map((m) => (
+        <>
+          {/* Key figures and the household's own areas are two different choices, so they are two rows; both wrap, nothing hides behind a scroll. */}
+          <View style={[s.chips, s.wrap]} role="tablist" accessibilityLabel={tr('verlauf.kennzahlWaehlen')}>
+            {METRIC_ORDER.map((m) => (
               <MetricChip key={m} label={tr(`verlauf.kennzahl.${m}.label`)} active={group === null && m === metric} onPress={() => pickMetric(m)} testID={`verlauf-kennzahl-${m}`} />
             ))}
           </View>
-        </ScrollView>
+          {groups.length > 0 ? (
+            <>
+              <Text style={s.eyebrow}>{tr('verlauf.gruppe.mehr')}</Text>
+              <View style={[s.chips, s.wrap]} role="tablist" accessibilityLabel={tr('verlauf.gruppe.mehr')}>
+                {groups.map((g) => (
+                  <MetricChip key={g} label={tr(`verlauf.gruppe.tab.${g}`)} active={group === g} onPress={() => setGroup(group === g ? null : g)} testID={`verlauf-bereich-${g}`} />
+                ))}
+              </View>
+            </>
+          ) : null}
+        </>
       ) : (
         <>
           <Kpis data={data} metric={group === null ? metric : null} person={person} onPick={pickMetric} />
@@ -185,7 +186,6 @@ function Legend({ metric, showChange }: { readonly metric: HistoryMetric; readon
     items.push({ key: 'ok', swatch: { backgroundColor: t.color.ok }, text: tr('verlauf.legende.erstattungBescheid') })
     items.push({ key: 'cut', swatch: { backgroundColor: t.color.fehlerWeich, borderColor: t.color.fehler, borderStyle: 'dashed' }, text: tr('verlauf.legende.gekuerzt') })
     items.push({ key: 'est', swatch: { backgroundColor: t.color.warnWeich, borderColor: t.color.warn, borderStyle: 'dashed' }, text: tr('verlauf.legende.schaetzung') })
-    items.push({ key: 'mark', swatch: s.swatchLine, text: tr('verlauf.legende.erklaert') })
   }
   if (metric === 'werbungskosten') items.push({ key: 'pausch', swatch: { ...s.swatchLine, borderTopColor: t.color.fehler, borderStyle: 'dashed' }, text: tr('verlauf.legende.pauschbetrag') })
   if (metric === 'steuerquote') {

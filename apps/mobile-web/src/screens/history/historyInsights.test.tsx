@@ -68,17 +68,17 @@ describe('Paare (§6)', () => {
 
   it('says what joint filing brought, approximately on a joint Bescheid with its range', () => {
     const copy = coupleCopy(couple(2024), tr)
-    expect(plain(copy.text)).toBe('Zusammen veranlagt: 2024 hat das etwa 1.010 € bis 1.230 € gebracht gegenüber zwei Einzelerklärungen.')
+    expect(plain(copy.text)).toBe('Zusammen veranlagt hat etwa 1.010 € bis 1.230 € gebracht.')
     expect(plain(copy.approximate!)).toBe('Rechnung der App, je nach Aufteilung der Abzüge')
     expect(copy.note).toBeNull()
   })
 
   it('says it the other way round for single returns and when single would have been better', () => {
-    expect(plain(coupleCopy(couple(2022), tr).text)).toBe('Zusammen veranlagt wären es 2022 640 € mehr gewesen.')
+    expect(plain(coupleCopy(couple(2022), tr).text)).toBe('Zusammen veranlagt wären es 640 € mehr gewesen.')
     expect(coupleCopy(couple(2022), tr).approximate).toBeNull()
-    expect(plain(coupleCopy({ ...couple(2024), jointSaving: -300 }, tr).text)).toBe('Einzeln veranlagt wären es 2024 300 € mehr gewesen.')
-    expect(plain(coupleCopy({ ...couple(2022), jointSaving: -200 }, tr).text)).toBe('Einzeln veranlagt: 2022 hat das 200 € gebracht gegenüber der Zusammenveranlagung.')
-    expect(coupleCopy({ ...couple(2024), jointSaving: 0, approximate: false }, tr).text).toBe('Zusammen oder einzeln: 2024 macht das keinen Unterschied.')
+    expect(plain(coupleCopy({ ...couple(2024), jointSaving: -300 }, tr).text)).toBe('Einzeln veranlagt wären es 300 € mehr gewesen.')
+    expect(plain(coupleCopy({ ...couple(2022), jointSaving: -200 }, tr).text)).toBe('Einzeln veranlagt hat 200 € gebracht.')
+    expect(coupleCopy({ ...couple(2024), jointSaving: 0, approximate: false }, tr).text).toBe('Zusammen oder einzeln macht keinen Unterschied.')
     expect(coupleCopy({ ...couple(2024), statement: 'zu-knapp' }, tr).note).toBe('Der Unterschied ist zu knapp für eine sichere Aussage.')
   })
 
