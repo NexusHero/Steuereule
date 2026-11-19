@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Verlauf: weitere Ideen</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Schibsted+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap">
+<style>
+/* Ideas for the Verlauf tab after alternative A (timeline). Same tokens as steuer-verlauf.html. */
+:root {
+  --grund: #f4f2e9; --karte: #ffffff; --tinte: #191b12; --tinte-2: #5f6353;
+  --linie: #191b12; --linie-weich: #dedacb; --nacht: #191b12; --nacht-tinte: #f4f2e9;
+  --funke: #c9f229; --funke-weich: #f2fbd2; --funke-tinte: #40510a;
+  --ki: #7c5cff; --ki-weich: #ece6ff; --ki-tinte: #4630b8;
+  --ok: #1f9d55; --ok-weich: #def4e2; --warn: #e07b00; --warn-weich: #ffeecf;
+  --fehler: #e0362c; --fehler-weich: #fde3de;
+  --schrift-display: "Bricolage Grotesque", "Arial Black", sans-serif;
+  --schrift-text: "Schibsted Grotesk", system-ui, sans-serif;
+  --schrift-mono: "Space Mono", ui-monospace, Menlo, monospace;
+  --kontur: 1.5px; --radius-s: 12px; --radius: 20px; --radius-pille: 999px;
+  --schatten: 3px 3px 0 var(--linie); --schatten-s: 2px 2px 0 var(--linie);
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --grund: #12140c; --karte: #1d2013; --tinte: #f2f0e3; --tinte-2: #a9ad99; --linie: #f2f0e3; --linie-weich: #33371f; --nacht: #000;
+  --funke-weich: #2b3312; --funke-tinte: #d9f077; --ki-weich: #251d4f; --ki-tinte: #cfc4ff;
+  --ok-weich: #143020; --warn-weich: #392a10; --fehler: #e96a61; --fehler-weich: #3b1512; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --grund: #12140c; --karte: #1d2013; --tinte: #f2f0e3; --tinte-2: #a9ad99; --linie: #f2f0e3; --linie-weich: #33371f; --nacht: #000;
+  --funke-weich: #2b3312; --funke-tinte: #d9f077; --ki-weich: #251d4f; --ki-tinte: #cfc4ff;
+  --ok-weich: #143020; --warn-weich: #392a10; --fehler: #e96a61; --fehler-weich: #3b1512; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--grund); color: var(--tinte); font-family: var(--schrift-text); font-size: 15px; line-height: 1.45; padding: 20px max(16px, env(safe-area-inset-left, 0px)) 48px; }
+.mono { font-family: var(--schrift-mono); font-variant-numeric: tabular-nums; }
+.eyebrow { font-family: var(--schrift-mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--tinte-2); }
+h1.seite { font-family: var(--schrift-display); font-size: 28px; letter-spacing: -.02em; margin: 4px 0 6px; }
+.intro { max-width: 760px; color: var(--tinte-2); margin: 0 0 22px; font-size: 14px; }
+.wrap { max-width: 1240px; margin: 0 auto; }
+.raster { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 28px; align-items: start; }
+.idee { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.idee > .eyebrow { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.v1 { background: var(--funke); color: #191b12; border-radius: var(--radius-pille); padding: 1px 8px; font-weight: 700; letter-spacing: 0; text-transform: none; }
+.spaeter { border: 1px dashed var(--tinte-2); border-radius: var(--radius-pille); padding: 1px 8px; letter-spacing: 0; text-transform: none; }
+.telefon { background: var(--grund); border: var(--kontur) solid var(--linie); border-radius: 30px; box-shadow: 5px 5px 0 var(--linie); overflow: hidden; }
+.screen { padding: 18px 14px 14px; display: flex; flex-direction: column; gap: 12px; }
+.zurueck { width: 30px; height: 30px; border-radius: 50%; border: var(--kontur) solid var(--linie); display: grid; place-items: center; font-size: 14px; background: var(--karte); }
+h2.t { font-family: var(--schrift-display); font-size: 28px; line-height: 1.02; letter-spacing: -.03em; margin: 2px 0 0; }
+.satz { font-size: 13px; color: var(--tinte-2); margin-top: -6px; }
+.nacht { background: var(--nacht); color: var(--nacht-tinte); border-radius: var(--radius); padding: 14px; display: flex; flex-direction: column; gap: 6px; }
+.nacht .eyebrow { color: var(--funke); }
+.nacht .gross { font-family: var(--schrift-display); font-size: 30px; color: var(--funke); line-height: 1; }
+.nacht .klein { font-size: 13px; }
+.nacht .knopf { align-self: flex-start; }
+.knopf { background: var(--funke); color: #191b12; border: var(--kontur) solid var(--linie); border-radius: var(--radius-pille); padding: 6px 14px; font-weight: 700; font-size: 13px; }
+.link { font-size: 12.5px; text-decoration: underline; color: inherit; opacity: .9; }
+.liste { background: var(--karte); border: var(--kontur) solid var(--linie); border-radius: var(--radius); overflow: hidden; }
+.zeile { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; padding: 9px 12px; border-top: 1px solid var(--linie-weich); align-items: baseline; }
+.zeile:first-child { border-top: 0; }
+.zeile b { font-family: var(--schrift-display); font-size: 16px; }
+.zeile .s { grid-column: 1 / 3; font-size: 12.5px; color: var(--tinte-2); }
+.zeile .rot { color: var(--fehler); }
+.zeile .gruen { color: var(--ok); }
+.zeile.neu { background: var(--funke-weich); }
+.marke { display: flex; align-items: center; gap: 6px; padding: 4px 12px; font-size: 11.5px; color: var(--ki-tinte); background: var(--ki-weich); border-top: 1px solid var(--linie-weich); }
+.marke::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--ki); flex: none; }
+.weiter { display: flex; justify-content: space-between; padding: 10px 12px; border-top: 1px solid var(--linie-weich); font-weight: 600; font-size: 13.5px; }
+.karte { background: var(--karte); border: var(--kontur) solid var(--linie); border-radius: var(--radius); padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.karte h3 { margin: 0; font-family: var(--schrift-display); font-size: 16px; letter-spacing: -.01em; }
+.check { display: grid; grid-template-columns: 22px 1fr auto; gap: 8px; align-items: start; font-size: 13px; padding: 7px 0; border-top: 1px solid var(--linie-weich); }
+.check:first-of-type { border-top: 0; }
+.box { width: 18px; height: 18px; border: var(--kontur) solid var(--linie); border-radius: 5px; margin-top: 1px; display: grid; place-items: center; font-size: 12px; }
+.box.an { background: var(--funke); }
+.check .s { color: var(--tinte-2); font-size: 12px; }
+.bon { display: flex; flex-direction: column; gap: 6px; }
+.bon .kopf { display: flex; justify-content: space-between; align-items: baseline; }
+.bon .gross { font-family: var(--schrift-display); font-size: 28px; color: var(--fehler); }
+.chip { font-size: 12px; font-weight: 600; border: var(--kontur) solid var(--linie); border-radius: var(--radius-pille); padding: 3px 10px; background: var(--warn-weich); white-space: nowrap; }
+.muster { background: var(--warn-weich); border-radius: var(--radius-s); padding: 8px 10px; font-size: 12.5px; }
+.gut { background: var(--ok-weich); border-radius: var(--radius-s); padding: 8px 10px; font-size: 12.5px; }
+.balken { display: flex; align-items: flex-end; gap: 6px; height: 80px; border-bottom: 1px solid var(--linie-weich); }
+.balken div { flex: 1; border-radius: 4px 4px 0 0; border: var(--kontur) solid var(--linie); }
+.achse { display: flex; gap: 6px; font-family: var(--schrift-mono); font-size: 10px; color: var(--tinte-2); }
+.achse span { flex: 1; text-align: center; }
+.tabs { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+.tabs span { flex: none; border: var(--kontur) solid var(--linie); border-radius: var(--radius-pille); padding: 4px 10px; font-size: 12px; font-weight: 600; background: var(--karte); }
+.tabs span.an { background: var(--funke); color: #191b12; }
+.notiz { background: var(--karte); border: 1px solid var(--linie-weich); border-radius: var(--radius-s); padding: 10px 12px; font-size: 13px; display: flex; flex-direction: column; gap: 4px; }
+.notiz b { font-size: 13.5px; }
+.notiz .leise { color: var(--tinte-2); }
+.tableiste { display: grid; grid-template-columns: repeat(5, 1fr); border-top: var(--kontur) solid var(--linie); background: var(--karte); font-size: 10.5px; color: var(--tinte-2); text-align: center; }
+.tableiste div { padding: 8px 0 10px; }
+.tableiste .an { color: var(--tinte); font-weight: 700; }
+.rest { margin-top: 36px; }
+.rest h2 { font-family: var(--schrift-display); font-size: 20px; margin: 0 0 10px; }
+.rest .raster { gap: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">Mock zu ADR-0098 · nach Variante A (Zeitleiste) · Beispieldaten, erfundenes Paar</div>
+  <h1 class="seite">Verlauf: was noch dazukommen könnte</h1>
+  <p class="intro">Jede Idee sitzt an einer Stelle, die es schon gibt: im Block „Jetzt wichtig“, in der Jahreszeile, auf der Jahresseite oder auf „Entwicklung“. Der Tab bleibt ein Bildschirm. Grün markiert, was in Version 1 passt; gestrichelt, was eine eigene Entscheidung braucht.</p>
+
+  <div class="raster">
+
+    <!-- 1 + 4: years still open for a return, life events on the timeline -->
+    <section class="idee" aria-label="Idee 1 und 4">
+      <div class="eyebrow">1 · Hier liegt noch Geld &nbsp;·&nbsp; 4 · Lebensereignisse <span class="v1">Version 1</span></div>
+      <div class="telefon"><div class="screen">
+        <div class="eyebrow">Alle Steuerjahre · 2021–2026</div>
+        <h2 class="t">Verlauf</h2>
+        <div class="nacht">
+          <div class="eyebrow">Jetzt wichtig</div>
+          <div class="klein">2022: noch nicht abgegeben</div>
+          <div class="gross">bis 31.12.2026</div>
+          <div class="klein">Freiwillig abgeben lohnt sich oft: geschätzt +300–520 €</div>
+          <span class="knopf">2022 anfangen</span>
+          <span class="link">+ 1 weiteres Jahr braucht dich</span>
+        </div>
+        <div class="liste">
+          <div class="zeile"><b>2026</b><span class="mono">–</span><span class="s">in Arbeit · 2 Lohnsteuerbescheinigungen fehlen</span></div>
+          <div class="zeile"><b>2025</b><span class="mono">+1.066–1.196 €</span><span class="s">abgegeben · wartet auf Bescheid</span></div>
+          <div class="marke">2025 · Kind geboren</div>
+          <div class="zeile"><b>2024</b><span class="mono">+809 €</span><span class="s rot">Bescheid · 92 € weniger als erklärt</span></div>
+          <div class="marke">2024 · neuer Arbeitgeber, seit November Grenzgänger</div>
+          <div class="zeile"><b>2023</b><span class="mono">+210 €</span><span class="s">Bescheid wie erklärt · änderbar bis 31.12.2028</span></div>
+          <div class="marke">2023 · Heirat, ab jetzt zusammen veranlagt</div>
+          <div class="zeile neu"><b>2022</b><span class="mono">–</span><span class="s">noch nicht abgegeben · bis 31.12.2026 möglich</span></div>
+          <div class="zeile"><b>2021</b><span class="mono">+220 €</span><span class="s">nur Bescheid · änderbar bis 31.12.2026</span></div>
+          <div class="weiter">Entwicklung ansehen <span>→</span></div>
+        </div>
+      </div><div class="tableiste"><div>Cockpit</div><div>Eule</div><div>Belege</div><div class="an">Verlauf</div><div>Profil</div></div></div>
+      <div class="notiz"><b>Use Case:</b> Neue Nutzer mit Lücken, Berufseinsteiger, verpasste Jahre. Für Jahre mit Bescheid steht, bis wann sie sich noch ändern lassen (Festsetzungsfrist), etwa für einen vergessenen Beleg. Die Marker erklären Sprünge in den Zahlen (Heirat → Splitting, Kind, Jobwechsel).
+        <span class="leise">Daten: Fristen (Festsetzungsfrist, ADR-0049 M3), Veranlagungsart, Kinder, Arbeitgeber aus LStB/Lohnausweis. Die Spanne für ein nicht abgegebenes Jahr nur, wenn der Kern genug Fakten hat, sonst „Schätzung nicht möglich“.</span></div>
+    </section>
+
+    <!-- 2: what comes back every year, on the open year -->
+    <section class="idee" aria-label="Idee 2">
+      <div class="eyebrow">2 · Kommt jedes Jahr wieder <span class="v1">Version 1</span></div>
+      <div class="telefon"><div class="screen">
+        <span class="zurueck">←</span>
+        <h2 class="t">2026</h2>
+        <div class="satz">In Arbeit: 6 Posten aus den Vorjahren, 2 schon erledigt.</div>
+        <div class="karte">
+          <h3>Kommt jedes Jahr wieder</h3>
+          <div class="check"><span class="box an">✓</span><span>Kontoführung<br><span class="s">2025: 32 € · 2026 eingetragen</span></span><span class="mono">32 €</span></div>
+          <div class="check"><span class="box an">✓</span><span>Arbeitsweg<br><span class="s">2025: 67 km, 226 Tage</span></span><span class="mono">übernommen</span></div>
+          <div class="check"><span class="box"></span><span>Spenden<br><span class="s">2025: 3.135 € · Sammelbestätigung kommt meist im Januar</span></span><span class="mono">offen</span></div>
+          <div class="check"><span class="box"></span><span>Kita<br><span class="s">2025: 591 € · Bescheinigung der Kita fehlt</span></span><span class="mono">offen</span></div>
+          <div class="check"><span class="box"></span><span>Handwerker<br><span class="s">2024 und 2025 je eine Rechnung</span></span><span class="mono">offen</span></div>
+          <div class="check"><span class="box"></span><span>Krankenkasse Kind<br><span class="s">2025: 964 € · Jahresbescheinigung</span></span><span class="mono">offen</span></div>
+        </div>
+        <span class="knopf">Belege hochladen</span>
+      </div><div class="tableiste"><div>Cockpit</div><div>Eule</div><div>Belege</div><div class="an">Verlauf</div><div>Profil</div></div></div>
+      <div class="notiz"><b>Use Case:</b> Alle, vor allem Familien und Vermieter. Verhindert Vergessenes, genau das ist im Chat-Test passiert.
+        <span class="leise">Daten: Antworten und Masken der Vorjahre, Beleg-Lebenszyklus (ADR-0097). Nur Posten, die in mindestens einem der letzten zwei Jahre vorkamen; der Betrag des Vorjahres steht als Hinweis, nie als Vorschlag für das neue Jahr.</span></div>
+    </section>
+
+    <!-- 5 + paare: repeated cuts and what joint filing brought, on the year page -->
+    <section class="idee" aria-label="Idee 5 und Paare">
+      <div class="eyebrow">5 · Wiederholt gekürzt &nbsp;·&nbsp; Paare <span class="v1">Version 1</span></div>
+      <div class="telefon"><div class="screen">
+        <span class="zurueck">←</span>
+        <h2 class="t">2024</h2>
+        <div class="satz">Bescheid da: Das Finanzamt hat 2 Positionen geändert.</div>
+        <div class="karte bon">
+          <div class="kopf"><span class="gross">−92 €</span><span class="chip">Einspruch · 19 Tage ›</span></div>
+          <div class="satz" style="margin:0">Erstattung 901 → 809 €</div>
+          <div class="zeile" style="padding:6px 0"><b style="font-size:14px">Homeoffice</b><span class="mono"><s>1.260</s> 1.080 <span class="rot">−56 €</span></span><span class="s">180 statt 210 Tage · ⚠ 2025 wieder 210 erklärt</span></div>
+          <div class="zeile" style="padding:6px 0"><b style="font-size:14px">Arbeitsmittel</b><span class="mono"><s>380</s> 260 <span class="rot">−38 €</span></span><span class="s">Handy nur zu 50 %</span></div>
+        </div>
+        <div class="muster"><b>Zum zweiten Mal gekürzt:</b> Homeoffice 2023 (−30 Tage) und 2024 (−30 Tage). Mit einer Bescheinigung des Arbeitgebers zählt jeder Tag.</div>
+        <div class="gut"><b>Zusammen veranlagt:</b> 2024 hat das 1.120 € gebracht gegenüber zwei Einzelerklärungen.</div>
+      </div><div class="tableiste"><div>Cockpit</div><div>Eule</div><div>Belege</div><div class="an">Verlauf</div><div>Profil</div></div></div>
+      <div class="notiz"><b>Use Case:</b> Jeder mit Bescheid-Kürzungen; Paare, die wissen wollen, ob das Splitting etwas bringt.
+        <span class="leise">Daten: diffAssessment über alle Jahre, nur Positionen, die mindestens zweimal gekürzt wurden. Der Vergleich der Veranlagungsarten nutzt den vorhandenen Kern (filingTypeComparison) auf den Bescheid-Werten.</span></div>
+    </section>
+
+    <!-- 3 + groups: prepayments and group specific figures on Entwicklung -->
+    <section class="idee" aria-label="Idee 3 und Gruppen">
+      <div class="eyebrow">3 · Vorauszahlungen prüfen <span class="v1">Version 1</span></div>
+      <div class="telefon"><div class="screen">
+        <span class="zurueck">←</span>
+        <h2 class="t">Entwicklung</h2>
+        <div class="tabs"><span>Erstattung</span><span class="an">Vorauszahlungen</span><span>Schweiz</span><span>Kapital</span><span>Werbungskosten</span></div>
+        <div class="karte">
+          <h3>Nachzahlung nach Vorauszahlungen</h3>
+          <div class="balken">
+            <div style="height:30%;background:var(--fehler-weich)"></div>
+            <div style="height:55%;background:var(--fehler-weich)"></div>
+            <div style="height:70%;background:var(--fehler-weich)"></div>
+            <div style="height:45%;border-style:dashed;background:transparent"></div>
+          </div>
+          <div class="achse"><span>2022</span><span>2023</span><span>2024</span><span>2025</span></div>
+          <div class="muster"><b>3 Jahre Nachzahlung in Folge,</b> im Schnitt 2.400 €. Vorauszahlungen beim Finanzamt anpassen lassen oder monatlich 200 € zurücklegen.</div>
+        </div>
+      </div><div class="tableiste"><div>Cockpit</div><div>Eule</div><div>Belege</div><div class="an">Verlauf</div><div>Profil</div></div></div>
+      <div class="notiz"><b>Use Case:</b> Grenzgänger, Selbstständige, Vermieter mit Nachzahlungen Jahr für Jahr; umgekehrt, wer jedes Jahr viel erstattet bekommt („Vorauszahlungen senken lassen“).
+        <span class="leise">Daten: Bescheide und Vorauszahlungen der Jahre. Nur Tabs, für die der Haushalt Daten hat; der Hinweis beruht auf den eigenen Bescheiden, keine Prognose.</span></div>
+    </section>
+
+    <!-- practical: documents package, time to money, appeal history -->
+    <section class="idee" aria-label="Praktisches">
+      <div class="eyebrow">Praktisch: Unterlagen, Dauer, Einsprüche <span class="v1">Version 1</span></div>
+      <div class="telefon"><div class="screen">
+        <span class="zurueck">←</span>
+        <h2 class="t">Unterlagen</h2>
+        <div class="karte">
+          <h3>Bescheide als Paket</h3>
+          <div class="satz" style="margin:0">Für Kredit, Kita-Gebühren oder Wohngeld: die Bescheide der letzten 3 Jahre als ein PDF.</div>
+          <span class="knopf" style="align-self:flex-start">2022–2024 herunterladen</span>
+        </div>
+        <div class="karte">
+          <h3>Bis das Geld da war</h3>
+          <div class="check"><span></span><span>2024<br><span class="s">abgegeben 21.09. · Bescheid 02.11.</span></span><span class="mono">6 Wochen</span></div>
+          <div class="check"><span></span><span>2023<br><span class="s">abgegeben 18.03. · Bescheid 22.05.</span></span><span class="mono">9 Wochen</span></div>
+          <div class="satz" style="margin:0">Dauert es länger als 12 Wochen, lohnt eine Nachfrage beim Finanzamt.</div>
+        </div>
+        <div class="karte">
+          <h3>Einsprüche</h3>
+          <div class="check"><span></span><span>2022 · Fahrtkosten<br><span class="s">eingelegt 03.07.2023 · teilweise stattgegeben</span></span><span class="mono gruen">+140 €</span></div>
+        </div>
+      </div><div class="tableiste"><div>Cockpit</div><div>Eule</div><div>Belege</div><div class="an">Verlauf</div><div>Profil</div></div></div>
+      <div class="notiz"><b>Use Case:</b> Nachweise gegenüber Bank, Kita oder Amt; Planung, wann die Erstattung kommt; Überblick über Einsprüche.
+        <span class="leise">Daten: Bescheide im Belege-Ordner „Bescheide“, Abgabe-Datum (FilingVersion) und Bescheid-Datum, Einspruch-Ablauf. Erreichbar über eine Zeile „Unterlagen“ am Ende der Zeitleiste.</span></div>
+    </section>
+
+
+    <!-- groups: cross-border, landlords, capital, pensioners -->
+    <section class="idee" aria-label="Grenzgänger">
+      <div class="eyebrow">Gruppen · Grenzgänger <span class="v1">Version 1</span></div>
+      <div class="telefon"><div class="screen">
+        <span class="zurueck">←</span>
+        <h2 class="t">Entwicklung</h2>
+        <div class="tabs"><span>Erstattung</span><span class="an">Schweiz</span><span>Werbungskosten</span><span>Netto</span></div>
+        <div class="karte">
+          <h3>Kurs und Lohn in Euro</h3>
+          <div class="zeile" style="padding:4px 0"><b style="font-size:14px">2024</b><span class="mono">1,05 €/CHF</span><span class="s">48.000 CHF → 50.400 €</span></div>
+          <div class="zeile" style="padding:4px 0"><b style="font-size:14px">2025</b><span class="mono">1,065 €/CHF</span><span class="s">49.000 CHF → 52.185 € · +1,4 % allein durch den Kurs</span></div>
+        </div>
+        <div class="karte">
+          <h3>Schweizer Quellensteuer angerechnet</h3>
+          <div class="balken" style="height:56px">
+            <div style="height:60%;background:var(--funke-weich)"></div>
+            <div style="height:75%;background:var(--funke-weich)"></div>
+            <div style="height:80%;background:var(--funke-weich)"></div>
+          </div>
+          <div class="achse"><span>2023</span><span>2024</span><span>2025</span></div>
+          <div class="satz" style="margin:0">2025: 2.640 € angerechnet, 4,5 % vom Bruttolohn (DBA Art. 15a).</div>
+        </div>
+        <div class="karte">
+          <h3>Anteil Schweizer Einkommen</h3>
+          <div class="satz" style="margin:0">2024: 18 % (ab November) · 2025: 100 %</div>
+        </div>
+      </div><div class="tableiste"><div>Cockpit</div><div>Eule</div><div>Belege</div><div class="an">Verlauf</div><div>Profil</div></div></div>
+      <div class="notiz"><b>Use Case:</b> Grenzgänger sehen, ob ein Plus aus dem Lohn oder aus dem Kurs kommt, und was die Schweiz schon abgezogen hat.
+        <span class="leise">Daten: Lohnausweis (Ziffer 8, 12), Kurs des Jahres (ADR-0042), Anrechnung aus der Schätzung.</span></div>
+    </section>
+
+    <section class="idee" aria-label="Vermieter">
+      <div class="eyebrow">Gruppen · Vermieter <span class="v1">Version 1</span></div>
+      <div class="telefon"><div class="screen">
+        <span class="zurueck">←</span>
+        <h2 class="t">Entwicklung</h2>
+        <div class="tabs"><span>Erstattung</span><span class="an">Vermietung</span><span>Werbungskosten</span></div>
+        <div class="karte">
+          <h3>Ergebnis je Jahr</h3>
+          <div class="balken" style="height:64px;align-items:center;border-bottom:0">
+            <div style="height:70%;background:var(--fehler-weich)"></div>
+            <div style="height:35%;background:var(--fehler-weich)"></div>
+            <div style="height:30%;background:var(--ok-weich)"></div>
+            <div style="height:45%;background:var(--ok-weich)"></div>
+          </div>
+          <div class="achse"><span>2022</span><span>2023</span><span>2024</span><span>2025</span></div>
+          <div class="satz" style="margin:0">2022 und 2023 Verlust, seit 2024 Überschuss.</div>
+        </div>
+        <div class="karte">
+          <h3>Verlustvortrag</h3>
+          <div class="satz" style="margin:0">Ende 2024: noch 1.850 € offen, wird 2025 verrechnet.</div>
+        </div>
+        <div class="karte">
+          <h3>Abschreibung (AfA)</h3>
+          <div class="satz" style="margin:0">Jährlich 4.200 € · Restwert Gebäude 168.000 € · noch 40 Jahre</div>
+        </div>
+        <div class="muster"><b>15-%-Grenze:</b> In den ersten 3 Jahren nach dem Kauf (bis 2026) zählen Renovierungen über 37.500 € nicht sofort. Bisher: 12.300 €.</div>
+      </div><div class="tableiste"><div>Cockpit</div><div>Eule</div><div>Belege</div><div class="an">Verlauf</div><div>Profil</div></div></div>
+      <div class="notiz"><b>Use Case:</b> Vermieter behalten Verlustvortrag, AfA und die anschaffungsnahen Herstellungskosten (§ 6 Abs. 1 Nr. 1a EStG) über die Jahre im Blick.
+        <span class="leise">Daten: Anlage V je Objekt, Kern-Prüfung der 15-%-Grenze (check_rental_repairs), Verlustvortrag aus den Bescheiden.</span></div>
+    </section>
+
+    <section class="idee" aria-label="Kapital">
+      <div class="eyebrow">Gruppen · Kapitalerträge <span class="v1">Version 1</span></div>
+      <div class="telefon"><div class="screen">
+        <span class="zurueck">←</span>
+        <h2 class="t">Entwicklung</h2>
+        <div class="tabs"><span>Erstattung</span><span class="an">Kapital</span><span>Netto</span></div>
+        <div class="karte">
+          <h3>Freistellungsauftrag genutzt</h3>
+          <div class="zeile" style="padding:4px 0"><b style="font-size:14px">2024</b><span class="mono">2.000 / 2.000 €</span><span class="s">voll genutzt · 682 € darüber</span></div>
+          <div class="zeile" style="padding:4px 0"><b style="font-size:14px">2025</b><span class="mono">2.000 / 2.000 €</span><span class="s">voll genutzt · 449 € darüber</span></div>
+        </div>
+        <div class="karte">
+          <h3>Verlustverrechnungstöpfe</h3>
+          <div class="satz" style="margin:0">Aktien: 0 € · Sonstige: 120 € Verlust aus 2023, mit Gewinnen 2025 verrechnet.</div>
+        </div>
+        <div class="gut"><b>Günstigerprüfung:</b> 2024 hätte sie 0 € gebracht, 2025 voraussichtlich ebenfalls.</div>
+      </div><div class="tableiste"><div>Cockpit</div><div>Eule</div><div>Belege</div><div class="an">Verlauf</div><div>Profil</div></div></div>
+      <div class="notiz"><b>Use Case:</b> Sparer und Anleger sehen, ob der Freistellungsauftrag reicht und ob sich die Günstigerprüfung lohnt.
+        <span class="leise">Daten: Anlage KAP, Steuerbescheinigungen, Kern-Prüfung check_capital_taxation.</span></div>
+    </section>
+
+    <section class="idee" aria-label="Rentner">
+      <div class="eyebrow">Gruppen · Rentner <span class="v1">Version 1</span></div>
+      <div class="telefon"><div class="screen">
+        <span class="zurueck">←</span>
+        <h2 class="t">Entwicklung</h2>
+        <div class="tabs"><span>Erstattung</span><span class="an">Rente</span><span>Netto</span></div>
+        <div class="karte">
+          <h3>Rente und steuerpflichtiger Teil</h3>
+          <div class="zeile" style="padding:4px 0"><b style="font-size:14px">2024</b><span class="mono">18.400 €</span><span class="s">Besteuerungsanteil 84 % · Freibetrag fest 2.944 €</span></div>
+          <div class="zeile" style="padding:4px 0"><b style="font-size:14px">2025</b><span class="mono">19.200 €</span><span class="s">Rentenanpassung +4,4 % · der Freibetrag bleibt gleich</span></div>
+        </div>
+        <div class="muster"><b>Warum die Steuer stärker steigt als die Rente:</b> Jede Erhöhung ist voll steuerpflichtig, der Rentenfreibetrag bleibt seit Rentenbeginn gleich.</div>
+      </div><div class="tableiste"><div>Cockpit</div><div>Eule</div><div>Belege</div><div class="an">Verlauf</div><div>Profil</div></div></div>
+      <div class="notiz"><b>Use Case:</b> Rentner verstehen, warum Steuer anfällt, obwohl die Rente kaum steigt.
+        <span class="leise">Daten: Rentenbezugsmitteilung, Anlage R, Besteuerungsanteil nach Rentenbeginn (§ 22 EStG).</span></div>
+    </section>
+
+    <!-- later -->
+    <section class="idee" aria-label="Später">
+      <div class="eyebrow">Später <span class="spaeter">eigene ADR</span></div>
+      <div class="telefon"><div class="screen">
+        <span class="zurueck">←</span>
+        <h2 class="t">2027</h2>
+        <div class="karte" style="border-style:dashed">
+          <h3>So könnte 2027 aussehen</h3>
+          <div class="satz" style="margin:0">Mit den Werten von 2026 und dem Tarif 2027: Erstattung etwa +600–1.100 €.</div>
+          <div class="muster">Eine Vorschau, keine Zusage. Sie ändert sich mit jedem Beleg.</div>
+        </div>
+        <div class="karte" style="border-style:dashed;opacity:.6">
+          <h3>Vergleich mit anderen</h3>
+          <div class="satz" style="margin:0">Nicht geplant: bräuchte eine Auswertung über Nutzer hinweg, die die Feldverschlüsselung ausschließt.</div>
+        </div>
+      </div><div class="tableiste"><div>Cockpit</div><div>Eule</div><div>Belege</div><div class="an">Verlauf</div><div>Profil</div></div></div>
+      <div class="notiz"><b>Warum später:</b> ADR-0098 schließt Prognosen in Version 1 aus. Eine Vorschau verspricht leicht eine Genauigkeit, die sie nicht hat, und braucht eine eigene Entscheidung, wie sie ehrlich bleibt (Spanne, Stand der Belege).</div>
+    </section>
+
+  </div>
+</div>
+</body>
+</html>
