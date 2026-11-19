@@ -66,7 +66,7 @@ function datedEvents(kind: 'kind' | 'immobilienkauf', dates: readonly string[], 
     const y = Number(date.slice(0, 4))
     if (y >= from && y <= to) byYear.set(y, [...(byYear.get(y) ?? []), date])
   }
-  return [...byYear.entries()].map(([year, list]) => ({ year, kind, person: null, date: [...list].sort()[0]!, count: list.length }))
+  return [...byYear.entries()].map(([year, list]) => ({ year, kind, person: null, date: [...list].sort((a, b) => a.localeCompare(b))[0]!, count: list.length }))
 }
 
 export function lifeEvents(input: LifeEventsInput): LifeEvent[] {
