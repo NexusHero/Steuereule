@@ -29,6 +29,7 @@ import { useLstbScan } from './scan/useLstbScan'
 import { ChurchTaxLines } from './ChurchTaxLines'
 import { SubsidyLine } from './SubsidyLine'
 import { SocialInsuranceLines } from './SocialInsuranceLines'
+import { EmployerLine } from './EmployerLine'
 
 export interface LstbScreenProps {
   readonly onDone?: () => void
@@ -112,6 +113,8 @@ export function LstbScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YE
       })}
 
       <StateNotice response={response} />
+
+      <EmployerLine taxYear={taxYear} params={params} track={track} />
 
       <ChurchTaxLines taxYear={taxYear} params={params} track={track} />
       <SubsidyLine taxYear={taxYear} params={params} track={track} />

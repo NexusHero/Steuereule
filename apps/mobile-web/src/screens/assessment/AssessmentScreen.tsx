@@ -2,12 +2,13 @@ import { useState } from 'react'
 import { ScrollView, View, Text, Pressable, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { Button, Card, DateInput, Feld, germanDateToIso, Input, isoDateToGerman, Pill, useTheme, useBreakpoint, type UiTheme } from '@steuereule/ui'
+import { Button, Card, Chip, DateInput, Feld, germanDateToIso, Input, isoDateToGerman, Pill, useTheme, useBreakpoint, type UiTheme } from '@steuereule/ui'
 import { formatEuro } from '@steuereule/core'
 import {
   useAssessmentControllerGet,
   useAssessmentControllerSetDate,
   useAssessmentControllerSetAppeal,
+  useAssessmentControllerSetAppealOutcome,
   useAssessmentControllerSetField,
   useAssessmentControllerSetStatus,
   getAssessmentControllerGetQueryKey,
@@ -16,6 +17,8 @@ import {
   type PutAssessmentFieldDto,
   type SetAssessmentStatusDtoStatus,
   type SetAppealDtoReason,
+  type SetAppealOutcomeDto,
+  type SetAppealOutcomeDtoOutcome,
   type AppealDeadlineDto,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
@@ -35,6 +38,8 @@ const FIELDS: readonly { id: FieldId; labelKey: string }[] = [
   { id: 'festgesetzteSteuer', labelKey: 'bescheid.felder.festgesetzteSteuer' },
   { id: 'erstattung', labelKey: 'bescheid.felder.erstattung' },
 ]
+
+const OUTCOMES: readonly SetAppealOutcomeDtoOutcome[] = ['offen', 'stattgegeben', 'teilweise', 'abgelehnt', 'zurueckgenommen']
 
 const REASONS: readonly { id: 'betrag-falsch' | 'beleg-nicht-beruecksichtigt' | 'sonstiges'; labelKey: string }[] = [
   { id: 'betrag-falsch', labelKey: 'bescheid.einspruch.grund.betrag-falsch' },
@@ -59,6 +64,7 @@ export function AssessmentScreen({ onDone = () => {}, onBack, taxYear = CURRENT_
   const setDate = useAssessmentControllerSetDate()
   const setStatus = useAssessmentControllerSetStatus()
   const setAppeal = useAssessmentControllerSetAppeal()
+  const setAppealOutcome = useAssessmentControllerSetAppealOutcome()
 
   if (query.isPending) {
     return <LoadingState bp={bp} label={tr('bescheid.loading')} />
@@ -126,7 +132,8 @@ export function AssessmentScreen({ onDone = () => {}, onBack, taxYear = CURRENT_
 
       <AppealSection
         response={response}
-        onAppeal={(reason) => setAppeal.mutate({ jahr: taxYear, data: { reason } }, mutationCallbacks)}
+        onAppeal={(reason, date) => setAppeal.mutate({ jahr: taxYear, data: date === null ? { reason } : { reason, date } }, mutationCallbacks)}
+        onOutcome={(data) => setAppealOutcome.mutate({ jahr: taxYear, data }, mutationCallbacks)}
       />
 
       <Button onPress={onDone} style={styles.cta} testID="bescheid-fertig">
@@ -308,10 +315,19 @@ function StatusSection({ response, onSetStatus }: { readonly response: Assessmen
   )
 }
 
-function AppealSection({ response, onAppeal }: { readonly response: AssessmentResponseDto; readonly onAppeal: (reason: SetAppealDtoReason) => void }) {
+function AppealSection({
+  response,
+  onAppeal,
+  onOutcome,
+}: {
+  readonly response: AssessmentResponseDto
+  readonly onAppeal: (reason: SetAppealDtoReason, date: string | null) => void
+  readonly onOutcome: (outcome: SetAppealOutcomeDto) => void
+}) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const s = makeStyles(t)
+  const [dateText, setDateText] = useState('')
 
   if (!response.nextStates.includes('einspruch-eingelegt')) {
     if (response.status === 'einspruch-eingelegt') {
@@ -319,21 +335,71 @@ function AppealSection({ response, onAppeal }: { readonly response: AssessmentRe
         <View style={s.section}>
           <Text style={s.sectionHeading}>{tr('bescheid.einspruch.heading')}</Text>
           <Text style={s.ok}>{tr('bescheid.einspruch.eingelegt', { grund: tr(`bescheid.einspruch.grund.${response.appealReason ?? 'sonstiges'}`) })}</Text>
+          {response.appealDate ? (
+            <Text style={s.muted} testID="bescheid-einspruch-eingelegt-am">
+              {tr('bescheid.einspruch.eingelegtAm', { datum: isoDateToGerman(response.appealDate) })}
+            </Text>
+          ) : null}
+          <AppealOutcome response={response} onOutcome={onOutcome} />
         </View>
       )
     }
     return null
   }
 
+  // ADR-0099 §8: the day it was lodged, today when left empty.
+  const date = dateText.trim() === '' ? null : germanDateToIso(dateText)
   return (
     <View style={s.section}>
       <Text style={s.sectionHeading}>{tr('bescheid.einspruch.heading')}</Text>
       <Text style={s.muted}>{tr('bescheid.einspruch.help')}</Text>
+      <Feld label={tr('bescheid.einspruch.datum')}>
+        <Text style={s.muted}>{tr('bescheid.einspruch.datumHilfe')}</Text>
+        <DateInput value={dateText} onChange={setDateText} calendarLabel={tr('datum.kalender')} accessibilityLabel={tr('bescheid.einspruch.datum')} testID="bescheid-einspruch-datum" />
+      </Feld>
       {REASONS.map((g) => (
-        <Button key={g.id} variant="ghost" onPress={() => onAppeal(g.id)} style={s.grundButton}>
+        <Button key={g.id} variant="ghost" onPress={() => onAppeal(g.id, date)} style={s.grundButton} testID={`bescheid-einspruch-grund-${g.id}`}>
           {tr(g.labelKey)}
         </Button>
       ))}
+    </View>
+  )
+}
+
+/** ADR-0099 §8: how the Einspruch ended and what it changed, for the appeal history in „Unterlagen“. */
+function AppealOutcome({ response, onOutcome }: { readonly response: AssessmentResponseDto; readonly onOutcome: (outcome: SetAppealOutcomeDto) => void }) {
+  const t = useTheme()
+  const { t: tr } = useTranslation(APP_NS)
+  const s = makeStyles(t)
+  const outcome = response.appealOutcome ?? 'offen'
+  const [amountText, setAmountText] = useState(response.appealOutcomeAmount === null ? '' : String(response.appealOutcomeAmount))
+
+  function commitAmount() {
+    const trimmed = amountText.trim().replace(/^[−–]/, '-')
+    if (trimmed === '') {
+      if (response.appealOutcomeAmount !== null) onOutcome({ outcome, amount: null })
+      return
+    }
+    if (!/^-?\d+$/.test(trimmed)) return
+    const amount = Number(trimmed)
+    if (amount !== response.appealOutcomeAmount) onOutcome({ outcome, amount })
+  }
+
+  return (
+    <View testID="bescheid-einspruch-ergebnis">
+      <Text style={s.sectionHeading}>{tr('bescheid.einspruch.ergebnisTitel')}</Text>
+      <View style={s.outcomeRow}>
+        {OUTCOMES.map((o) => (
+          <Chip key={o} active={o === outcome} style={s.outcomeChip} onPress={() => onOutcome({ outcome: o, amount: response.appealOutcomeAmount })} testID={`bescheid-einspruch-ergebnis-${o}`}>
+            {tr(`bescheid.einspruch.ergebnis.${o}`)}
+          </Chip>
+        ))}
+      </View>
+      {outcome === 'stattgegeben' || outcome === 'teilweise' ? (
+        <Feld label={tr('bescheid.einspruch.betrag')}>
+          <Input type="text" mono value={amountText} onChange={setAmountText} placeholder="140" onBlur={commitAmount} onSubmit={commitAmount} accessibilityLabel={tr('bescheid.einspruch.betrag')} testID="bescheid-einspruch-betrag" />
+        </Feld>
+      ) : null}
     </View>
   )
 }
@@ -354,9 +420,11 @@ function makeStyles(t: UiTheme) {
   const statusRow: ViewStyle = { flexDirection: 'row', gap: t.space.s2, marginBottom: t.space.s2 }
   const cta: ViewStyle = { marginTop: t.space.s4 }
   const reasonButton: ViewStyle = { marginTop: t.space.s2 }
+  const outcomeChip: ViewStyle = { minHeight: 44 }
+  const outcomeRow: ViewStyle = { flexDirection: 'row', flexWrap: 'wrap', gap: t.space.s2, marginBottom: t.space.s2 }
   return {
     screen, wideScreen, ...screenHeaderStyles(t), ...unclearableFieldStyles(t),
     section, sectionHeading, muted, ok, fristHeading, fristBody, abweichungHead: deviationHead, abweichungFeld: deviationField,
-    abweichungDelta: deviationDelta, abweichungBody: deviationBody, statusRow, cta, grundButton: reasonButton,
+    abweichungDelta: deviationDelta, abweichungBody: deviationBody, statusRow, cta, grundButton: reasonButton, outcomeRow, outcomeChip,
   }
 }

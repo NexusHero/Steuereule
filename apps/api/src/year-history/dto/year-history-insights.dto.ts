@@ -220,7 +220,7 @@ export class AcquisitionRelatedDto {
   @ApiProperty({ type: Boolean }) exceeds!: boolean
   @ApiProperty({ type: Number }) roomLeftEur!: number
   @ApiProperty({ type: Boolean, description: 'The window still runs.' }) windowOpen!: boolean
-  @ApiProperty({ type: Number, description: 'Repairs without a date counted in the window to be safe.' }) undatedCounted!: number
+  @ApiProperty({ type: Number, description: 'Number of repairs without a date counted in the window to be safe (a count, not an amount).' }) undatedCounted!: number
 }
 
 export class RentalGroupPropertyDto {

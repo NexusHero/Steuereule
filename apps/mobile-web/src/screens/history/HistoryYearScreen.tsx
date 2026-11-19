@@ -10,6 +10,10 @@ import { AssessmentDiffView } from './AssessmentDiffView'
 import { HistoryGate, historyScreenStyles } from './HistoryGate'
 import { historyStyles } from './historyStyles'
 import { filingTypeChange, missingDetail } from './historyTimeline'
+import { germanDate } from './historyFormat'
+import { asksFiledElsewhere } from './historyInsights'
+import { FiledElsewhereQuestion } from './FiledElsewhereQuestion'
+import { CoupleNote, PrepaymentNote, RecurringChecklist, RepeatedCutNotes } from './HistoryYearInsights'
 import { usePositionLabel } from './positionLabels'
 
 export interface HistoryYearScreenProps {
@@ -22,6 +26,8 @@ export interface HistoryYearScreenProps {
   readonly onOpenYear?: ((year: number) => void) | undefined
   /** „Einspruch vorbereiten“: the Bescheidprüfung of the year with its Einspruch. */
   readonly onPrepareAppeal?: ((year: number) => void) | undefined
+  /** „Belege hochladen“ from the checklist: the Belege tab with its one pipeline (ADR-0097). */
+  readonly onOpenReceipts?: (() => void) | undefined
 }
 
 /** One year of the Verlauf (ADR-0098 §1, §8): one sentence on where it stands, then what belongs to its kind. */
@@ -34,6 +40,9 @@ export function HistoryYearScreen(props: HistoryYearScreenProps) {
 }
 
 function statusSentence(item: YearListItemDto, tr: TFunction): string {
+  // A year of the Festsetzungsfrist without data (ADR-0099 §1).
+  if (item.withoutAssessment || item.filedElsewhere?.answer === 'ja') return tr('verlauf.jahr.satz.anderswo', { jahr: item.year })
+  if (!item.hasData) return tr('verlauf.jahr.satz.luecke', { jahr: item.year, datum: germanDate(item.deadline.endsOn) })
   switch (item.kind) {
     case 'offen':
       return tr('verlauf.jahr.satz.offen')
@@ -47,7 +56,7 @@ function statusSentence(item: YearListItemDto, tr: TFunction): string {
   }
 }
 
-function YearLoaded({ data, year, onBack, onOpenYear, onPrepareAppeal }: HistoryYearScreenProps & { readonly data: YearHistoryResponseDto }) {
+function YearLoaded({ data, year, onBack, onOpenYear, onPrepareAppeal, onOpenReceipts }: HistoryYearScreenProps & { readonly data: YearHistoryResponseDto }) {
   const bp = useBreakpoint()
   const t = useTheme()
   const s = makeStyles(t)
@@ -71,6 +80,9 @@ function YearLoaded({ data, year, onBack, onOpenYear, onPrepareAppeal }: History
   }
 
   const change = filingTypeChange(data, year)
+  const assessed = item.kind === 'bescheid' || item.kind === 'eckjahr'
+  const filedElsewhere = !item.hasData && (item.withoutAssessment || item.filedElsewhere?.answer === 'ja')
+  const changeable = assessed && item.deadline.kind === 'aenderbar-bis' && item.deadline.running
   return (
     <ScrollView contentContainerStyle={bp === 's' ? s.screen : s.wideScreen} testID="screen-container">
       {back}
@@ -86,12 +98,22 @@ function YearLoaded({ data, year, onBack, onOpenYear, onPrepareAppeal }: History
             {tr(change === 'zusammen' ? 'verlauf.chart.wechselZusammen' : 'verlauf.chart.wechselEinzeln', { jahr: year })}
           </Text>
         ) : null}
+        {changeable ? (
+          <Text style={s.muted} testID="verlauf-jahr-aenderbar">
+            {tr('verlauf.jahr.aenderbar', { datum: germanDate(item.deadline.endsOn) })}
+          </Text>
+        ) : null}
       </View>
+      {asksFiledElsewhere(item) ? <FiledElsewhereQuestion year={year} tone="hell" testID={`verlauf-jahr-frage-${year}`} /> : null}
+      {data.recurring !== null && data.recurring.year === year && data.recurring.items.length > 0 ? <RecurringChecklist checklist={data.recurring} onOpenReceipts={onOpenReceipts} /> : null}
       <YearBody data={data} item={item} onPrepareAppeal={onPrepareAppeal && selectable ? () => onPrepareAppeal(year) : undefined} />
-      {onOpenYear && selectable ? (
+      <RepeatedCutNotes data={data} year={year} />
+      {assessed ? <CoupleNote data={data} year={year} /> : null}
+      <PrepaymentNote data={data} year={year} />
+      {onOpenYear && selectable && !filedElsewhere ? (
         <View style={{ width: '100%', maxWidth: FLOW_CONTENT_MAX_WIDTH }}>
-          <Button variant="ghost" onPress={() => onOpenYear(year)} testID={`verlauf-zum-cockpit-${year}`}>
-            {tr('verlauf.zumCockpit', { jahr: year })}
+          <Button variant={item.hasData ? 'ghost' : 'primaer'} onPress={() => onOpenYear(year)} testID={`verlauf-zum-cockpit-${year}`}>
+            {item.hasData ? tr('verlauf.zumCockpit', { jahr: year }) : tr('verlauf.jetzt.anfangen', { jahr: year })}
           </Button>
         </View>
       ) : null}
@@ -152,7 +174,7 @@ function YearBody({ data, item, onPrepareAppeal }: { readonly data: YearHistoryR
     )
   }
 
-  if (item.kind === 'offen') {
+  if (item.kind === 'offen' && item.hasData) {
     const entry = data.years.find((y) => y.year === year)
     const missing = missingDetail(entry?.missing ?? data.openItems.find((o) => o.year === year)?.missing ?? [], year, data.today, tr)
     if (missing.length === 0) return null

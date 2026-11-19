@@ -11,7 +11,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ParseReceiptResponseDto } from '@steuereule/api-client'
 import { renderInApp } from '../../test-render'
 import { server } from '../../test-msw-server'
-import { EMPTY_HISTORY_RESPONSE, HISTORY_RESPONSE } from '../../test-history-fixture'
+import { EMPTY_HISTORY_RESPONSE, HISTORY_GAP_RESPONSE, HISTORY_RESPONSE } from '../../test-history-fixture'
 import { HistoryScreen, type HistoryScreenProps } from './HistoryScreen'
 
 const { mockExtractDocumentText } = vi.hoisted(() => ({ mockExtractDocumentText: vi.fn() }))
@@ -21,6 +21,8 @@ vi.mock('../../lib/documentOcr', async (importOriginal) => {
 })
 
 const URL = '*/v1/verlauf'
+/** The tab's words for the fixture household (70 with ADR-0099's markers, deadlines and „Unterlagen“): the budget of ADR-0098 holds. */
+const WORD_BUDGET = 75
 
 function setViewportWidth(width: number) {
   Object.defineProperty(document.documentElement, 'clientWidth', { value: width, configurable: true })
@@ -29,7 +31,7 @@ function setViewportWidth(width: number) {
 
 function renderHistory(props: Partial<HistoryScreenProps> = {}, language: 'de' | 'en' = 'de') {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  const handlers = { onRegister: vi.fn(), onLogin: vi.fn(), onOpenYearDetail: vi.fn(), onOpenDevelopment: vi.fn(), onOpenDrafts: vi.fn() }
+  const handlers = { onRegister: vi.fn(), onLogin: vi.fn(), onOpenYearDetail: vi.fn(), onOpenDevelopment: vi.fn(), onOpenDrafts: vi.fn(), onOpenDocuments: vi.fn(), onStartYear: vi.fn() }
   renderInApp(
     <QueryClientProvider client={client}>
       <HistoryScreen isGuest={false} openYear={2025} {...handlers} {...props} />
@@ -38,6 +40,8 @@ function renderHistory(props: Partial<HistoryScreenProps> = {}, language: 'de' |
   )
   return handlers
 }
+
+const GAP_DEADLINE = { kind: 'abgabe-moeglich-bis', endsOn: '2026-12-31', remainingDays: 43, running: true, endsOnIfMandatory: null }
 
 const text = (id: string) => (screen.getByTestId(id).textContent ?? '').replace(/ /g, ' ')
 const label = (id: string) => (screen.getByTestId(id).getAttribute('aria-label') ?? '').replace(/\u00a0/g, ' ')
@@ -141,18 +145,40 @@ describe('HistoryScreen — phone', () => {
     const { onOpenYearDetail } = renderHistory()
     await screen.findByTestId('verlauf-jahre')
     const rows = within(screen.getByTestId('verlauf-jahre')).getAllByRole('button')
-    expect(rows.map((r) => r.getAttribute('data-testid'))).toEqual(['verlauf-jahr-2026', 'verlauf-jahr-2025', 'verlauf-jahr-2024', 'verlauf-jahr-2023', 'verlauf-jahr-2022', 'verlauf-jahr-2021', 'verlauf-entwicklung'])
+    expect(rows.map((r) => r.getAttribute('data-testid'))).toEqual(['verlauf-jahr-2026', 'verlauf-jahr-2025', 'verlauf-jahr-2024', 'verlauf-jahr-2023', 'verlauf-jahr-2022', 'verlauf-jahr-2021', 'verlauf-entwicklung', 'verlauf-unterlagen'])
     expect(text('verlauf-jahr-2026')).toBe('2026–in Arbeit · 2 Lohnsteuerbescheinigungen fehlen')
     expect(text('verlauf-jahr-2025')).toBe('2025+1.066–1.196 €abgegeben · wartet auf Bescheid')
     expect(text('verlauf-jahr-2024')).toBe('2024+809 €Bescheid · 92 € weniger als erklärt')
-    expect(text('verlauf-jahr-2023')).toBe('2023+210 €Bescheid wie erklärt')
-    expect(text('verlauf-jahr-2022')).toBe('2022+393 €Bescheid wie erklärt')
+    // ADR-0099 §1: an assessed year says until when it can be changed, in the row's one phrase.
+    expect(text('verlauf-jahr-2023')).toBe('2023+210 €Bescheid wie erklärt · änderbar bis 31.12.2027')
+    expect(text('verlauf-jahr-2022')).toBe('2022+393 €Bescheid wie erklärt · änderbar bis 31.12.2026')
     expect(text('verlauf-jahr-2021')).toBe('2021+220 €nur Bescheid')
     // No stage pills, no filing type in the row.
     expect(text('verlauf-jahre')).not.toMatch(/Zusammen|Einzeln|Schätzung|Eckjahr|Abw\./)
     expect(label('verlauf-jahr-2024')).toBe('2024: Bescheid · 92 € weniger als erklärt, +809 €')
     fireEvent.click(screen.getByTestId('verlauf-jahr-2022'))
     expect(onOpenYearDetail).toHaveBeenCalledWith(2022)
+  })
+
+  it('marks the life events between the rows, each under its year, from the data only (ADR-0099 §4)', async () => {
+    renderHistory()
+    await screen.findByTestId('verlauf-jahre')
+    const order = within(screen.getByTestId('verlauf-jahre'))
+      .getAllByTestId(/^verlauf-(jahr-\d{4}|ereignis-\d{4})$/)
+      .map((e) => e.getAttribute('data-testid'))
+    expect(order).toEqual(['verlauf-jahr-2026', 'verlauf-jahr-2025', 'verlauf-ereignis-2025', 'verlauf-jahr-2024', 'verlauf-ereignis-2024', 'verlauf-jahr-2023', 'verlauf-ereignis-2023', 'verlauf-jahr-2022', 'verlauf-jahr-2021'])
+    expect(text('verlauf-ereignis-2025')).toBe('2025 · Kind geboren')
+    expect(text('verlauf-ereignis-2024')).toBe('2024 · neuer Arbeitgeber, Start als Grenzgänger')
+    expect(label('verlauf-ereignis-2023')).toBe('Ereignis 2023: ab jetzt zusammen veranlagt')
+    // A marker is no button and no row of its own.
+    expect(within(screen.getByTestId('verlauf-ereignis-2024')).queryByRole('button')).toBeNull()
+  })
+
+  it('opens the Unterlagen from the end of the timeline, next to the development (ADR-0099 §9)', async () => {
+    const { onOpenDocuments } = renderHistory()
+    fireEvent.click(await screen.findByTestId('verlauf-unterlagen'))
+    expect(onOpenDocuments).toHaveBeenCalledOnce()
+    expect(text('verlauf-unterlagen')).toBe('Unterlagen→')
   })
 
   it('leads to the development and keeps the upload behind a quiet link', async () => {
@@ -173,12 +199,15 @@ describe('HistoryScreen — phone', () => {
     for (const id of ['verlauf-held', 'verlauf-abgleich-2024', 'verlauf-karte', 'verlauf-diagramm', 'verlauf-ansteht', 'verlauf-upload']) expect(screen.queryByTestId(id)).toBeNull()
     const all = text('screen-container')
     // The review counted 590 words, 45 amounts and the cut 13 times; the timeline keeps it to a screen.
+    // ADR-0099 adds three slim event markers, two „änderbar bis“ and „Unterlagen“ beside the development: still one screen.
     const words = all.replace(/[·→+–−]/g, ' ').split(/\s+/).filter((w) => /[\p{L}\d]/u.test(w))
-    expect(words.length).toBeLessThanOrEqual(75)
+    expect(words.length).toBeLessThanOrEqual(WORD_BUDGET)
     expect(all.match(/€/g)?.length ?? 0).toBeLessThanOrEqual(8)
     expect(all.match(/92 €/g)?.length).toBe(2)
-    // Header, hero, six rows, the development row and the quiet link: nothing else.
-    expect(screen.getAllByRole('button')).toHaveLength(10)
+    // At most one marker per year, and none for a year without an event.
+    expect(screen.getAllByTestId(/^verlauf-ereignis-/)).toHaveLength(3)
+    // Header, hero, six rows, the development and Unterlagen side by side, the quiet link: nothing else.
+    expect(screen.getAllByRole('button')).toHaveLength(11)
   })
 })
 
@@ -194,6 +223,9 @@ describe('HistoryScreen — tablet and desktop', () => {
     expect(text('verlauf-tabelle-2024')).toBe('2024Bescheid · 92 € weniger als erklärt+901 €+809 €')
     expect(text('verlauf-tabelle-2025')).toBe('2025abgegeben · wartet auf Bescheid+1.066–1.196 €–')
     expect(text('verlauf-tabelle-2021')).toBe('2021nur Bescheid–+220 €')
+    expect(text('verlauf-tabelle-2023')).toBe('2023Bescheid wie erklärt · änderbar bis 31.12.2027+210 €+210 €')
+    expect(text('verlauf-ereignis-2024')).toBe('2024 · neuer Arbeitgeber, Start als Grenzgänger')
+    expect(screen.getByTestId('verlauf-unterlagen')).toBeTruthy()
     expect(screen.queryByTestId('verlauf-kpi-erstattung')).toBeNull()
     expect(screen.getByTestId('verlauf-entwicklung')).toBeTruthy()
     expect(screen.getByTestId('verlauf-aeltere')).toBeTruthy()
@@ -264,6 +296,81 @@ describe('HistoryScreen — upload entry', () => {
     fireEvent.change(screen.getByTestId('verlauf-upload-datei'), { target: { files: [new File(['x'], 'notes.txt', { type: 'text/plain' })] } })
     await waitFor(() => expect(screen.getByTestId('verlauf-upload-fehler')).toBeTruthy())
     expect(fetchSpy.mock.calls.some(([url]) => String(url).includes('/v1/belege/upload'))).toBe(false)
+  })
+})
+
+describe('HistoryScreen — a year without data (ADR-0099 §1)', () => {
+  const gap = (patch: Partial<(typeof HISTORY_GAP_RESPONSE.list)[number]>, item: Partial<(typeof HISTORY_GAP_RESPONSE.openItems)[number]> = {}, withAppeal = true) => ({
+    ...HISTORY_GAP_RESPONSE,
+    list: HISTORY_GAP_RESPONSE.list.map((l) => (l.year === 2022 ? { ...l, ...patch } : l)),
+    openItems: HISTORY_GAP_RESPONSE.openItems.filter((o) => withAppeal || o.kind !== 'einspruchsfrist').map((o) => (o.year === 2022 ? { ...o, ...item } : o)),
+  })
+
+  it('shows the year as a row without an amount and asks „Schon abgegeben?“ once, inline, while the Einspruch is more urgent', async () => {
+    const bodies: unknown[] = []
+    server.use(
+      http.get(URL, () => HttpResponse.json(HISTORY_GAP_RESPONSE)),
+      http.put('*/v1/steuerjahre/2022/abgabe-anderswo', async ({ request }) => {
+        bodies.push(await request.json())
+        return HttpResponse.json({ year: 2022, status: 'entwurf', filedElsewhere: { answer: 'nein', answeredOn: '2026-11-18', askAgainFrom: null, ask: false }, deadline: GAP_DEADLINE })
+      }),
+    )
+    renderHistory()
+    await screen.findByTestId('verlauf-frage-2022')
+    expect(text('verlauf-jahr-2022')).toBe('2022–Schon abgegeben?')
+    expect(text('verlauf-jetzt')).toContain('2024: Das Finanzamt hat gekürzt')
+    expect(screen.getByRole('button', { name: 'Nein, 2022 ist noch nicht abgegeben' })).toBeTruthy()
+    server.use(http.get(URL, () => HttpResponse.json(gap({ filedElsewhere: { answer: 'nein', answeredOn: '2026-11-18', askAgainFrom: null, ask: false } }, { askFiledElsewhere: false }))))
+    fireEvent.click(screen.getByTestId('verlauf-frage-2022-nein'))
+    await waitFor(() => expect(bodies).toEqual([{ answer: 'nein' }]))
+    await waitFor(() => expect(screen.queryByTestId('verlauf-frage-2022')).toBeNull())
+    expect(text('verlauf-jahr-2022')).toBe('2022–noch nicht abgegeben · bis 31.12.2026 möglich')
+  })
+
+  it('asks in „Jetzt wichtig“ when the year is the most urgent, and not a second time in its row', async () => {
+    const bodies: unknown[] = []
+    server.use(
+      http.get(URL, () => HttpResponse.json(gap({}, {}, false))),
+      http.put('*/v1/steuerjahre/2022/abgabe-anderswo', async ({ request }) => {
+        bodies.push(await request.json())
+        return HttpResponse.json({ year: 2022, status: 'entwurf', filedElsewhere: { answer: 'weiss-nicht', answeredOn: '2026-11-18', askAgainFrom: '2026-10-01', ask: false }, deadline: GAP_DEADLINE })
+      }),
+    )
+    renderHistory()
+    await screen.findByTestId('verlauf-jetzt-frage')
+    expect(label('verlauf-jetzt-inhalt')).toBe('2022: Schon abgegeben? Nicht in der App. Abgeben geht bis 31.12.2026.')
+    expect(text('verlauf-jetzt')).not.toMatch(/€/)
+    expect(screen.queryByTestId('verlauf-frage-2022')).toBeNull()
+    expect(screen.queryByTestId('verlauf-jetzt-ansehen')).toBeNull()
+    fireEvent.click(screen.getByTestId('verlauf-jetzt-frage-weiss-nicht'))
+    await waitFor(() => expect(bodies).toEqual([{ answer: 'weiss-nicht' }]))
+  })
+
+  it('says so when the answer was not saved', async () => {
+    server.use(
+      http.get(URL, () => HttpResponse.json(gap({}, {}, false))),
+      http.put('*/v1/steuerjahre/2022/abgabe-anderswo', () => HttpResponse.json({ message: 'boom' }, { status: 409 })),
+    )
+    renderHistory()
+    fireEvent.click(await screen.findByTestId('verlauf-jetzt-frage-ja'))
+    expect(await screen.findByTestId('verlauf-jetzt-frage-fehler')).toBeTruthy()
+  })
+
+  it('after „Nein“ shows the open year with „bis 31.12.2026 möglich“ and a start into its cockpit', async () => {
+    server.use(http.get(URL, () => HttpResponse.json(gap({ filedElsewhere: { answer: 'nein', answeredOn: '2026-11-18', askAgainFrom: null, ask: false } }, { askFiledElsewhere: false }, false))))
+    const { onStartYear } = renderHistory()
+    await screen.findByTestId('verlauf-jetzt-anfangen')
+    expect(text('verlauf-jetzt-inhalt')).toBe('Jetzt wichtig2022: noch nicht abgegebenbis 31.12.2026 möglich')
+    fireEvent.click(screen.getByTestId('verlauf-jetzt-anfangen'))
+    expect(onStartYear).toHaveBeenCalledWith(2022)
+  })
+
+  it('stays quiet after „Weiß nicht“ until the question comes again', async () => {
+    server.use(http.get(URL, () => HttpResponse.json({ ...gap({ filedElsewhere: { answer: 'weiss-nicht', answeredOn: '2026-11-18', askAgainFrom: '2026-10-01', ask: false } }), openItems: HISTORY_RESPONSE.openItems })))
+    renderHistory()
+    await screen.findByTestId('verlauf-jahr-2022')
+    expect(screen.queryByTestId('verlauf-frage-2022')).toBeNull()
+    expect(text('verlauf-jahr-2022')).toBe('2022–nicht in der App · bis 31.12.2026 möglich')
   })
 })
 

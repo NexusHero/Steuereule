@@ -28,6 +28,8 @@ import {
 } from './historyFormat'
 import { historyStyles } from './historyStyles'
 import { owlSentence } from './owlSentences'
+import { groupTabs, type HistoryGroupTab } from './historyInsights'
+import { HistoryGroupPanel } from './HistoryGroups'
 
 export interface HistoryDevelopmentProps {
   readonly data: YearHistoryResponseDto
@@ -55,6 +57,13 @@ export function HistoryDevelopment({ data, person, onPersonChange, showPersonTog
   const s = makeStyles(t)
   const { t: tr } = useTranslation(APP_NS)
   const [metric, setMetric] = useState<HistoryMetric>('erstattung')
+  // A group tab (ADR-0099 §3, §7) replaces the key figure's chart while it is picked.
+  const [group, setGroup] = useState<HistoryGroupTab | null>(null)
+  const groups = groupTabs(data)
+  const pickMetric = (m: HistoryMetric) => {
+    setGroup(null)
+    setMetric(m)
+  }
   const [tableOpen, setTableOpen] = useState(false)
   const who = effectivePerson(metric, person)
   const model = buildChart(data.years, metric, person)
@@ -110,17 +119,33 @@ export function HistoryDevelopment({ data, person, onPersonChange, showPersonTog
       {bp === 's' ? (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.chips}>
           <View style={s.chips} role="tablist" accessibilityLabel={tr('verlauf.kennzahlWaehlen')}>
-            {METRIC_ORDER.map((m) => (
-              <Pressable key={m} role="tab" aria-selected={m === metric} accessibilityState={{ selected: m === metric }} onPress={() => setMetric(m)} style={[s.chip, m === metric ? s.chipActive : null]} testID={`verlauf-kennzahl-${m}`}>
-                <Text style={[s.chipText, m === metric ? s.chipTextActive : null]}>{tr(`verlauf.kennzahl.${m}.label`)}</Text>
-              </Pressable>
+            {/* The mock's order: the refund, then the groups the household has, then the other key figures. */}
+            {METRIC_ORDER.slice(0, 1).map((m) => (
+              <MetricChip key={m} label={tr(`verlauf.kennzahl.${m}.label`)} active={group === null && m === metric} onPress={() => pickMetric(m)} testID={`verlauf-kennzahl-${m}`} />
+            ))}
+            {groups.map((g) => (
+              <MetricChip key={g} label={tr(`verlauf.gruppe.tab.${g}`)} active={group === g} onPress={() => setGroup(g)} testID={`verlauf-bereich-${g}`} />
+            ))}
+            {METRIC_ORDER.slice(1).map((m) => (
+              <MetricChip key={m} label={tr(`verlauf.kennzahl.${m}.label`)} active={group === null && m === metric} onPress={() => pickMetric(m)} testID={`verlauf-kennzahl-${m}`} />
             ))}
           </View>
         </ScrollView>
       ) : (
-        <Kpis data={data} metric={metric} person={person} onPick={setMetric} />
+        <>
+          <Kpis data={data} metric={group === null ? metric : null} person={person} onPick={pickMetric} />
+          {groups.length > 0 ? (
+            <View style={[s.chips, s.wrap]} role="tablist" accessibilityLabel={tr('verlauf.gruppe.mehr')}>
+              {groups.map((g) => (
+                <MetricChip key={g} label={tr(`verlauf.gruppe.tab.${g}`)} active={group === g} onPress={() => setGroup(group === g ? null : g)} testID={`verlauf-bereich-${g}`} />
+              ))}
+            </View>
+          ) : null}
+        </>
       )}
-      {bp === 'l' ? (
+      {group !== null ? (
+        <HistoryGroupPanel data={data} tab={group} />
+      ) : bp === 'l' ? (
         <View style={s.raster}>
           <View style={s.rasterMain}>{chartCard}</View>
           <View style={s.rasterSide}>
@@ -136,6 +161,16 @@ export function HistoryDevelopment({ data, person, onPersonChange, showPersonTog
         </>
       )}
     </View>
+  )
+}
+
+function MetricChip({ label, active, onPress, testID }: { readonly label: string; readonly active: boolean; readonly onPress: () => void; readonly testID: string }) {
+  const t = useTheme()
+  const s = makeStyles(t)
+  return (
+    <Pressable role="tab" aria-selected={active} accessibilityState={{ selected: active }} onPress={onPress} style={[s.chip, active ? s.chipActive : null]} testID={testID}>
+      <Text style={[s.chipText, active ? s.chipTextActive : null]}>{label}</Text>
+    </Pressable>
   )
 }
 
@@ -177,7 +212,7 @@ function kpiYear(entries: readonly YearHistoryEntryDto[], person: HistoryPerson)
   )
 }
 
-function Kpis({ data, metric, person, onPick }: { readonly data: YearHistoryResponseDto; readonly metric: HistoryMetric; readonly person: HistoryPerson; readonly onPick: (m: HistoryMetric) => void }) {
+function Kpis({ data, metric, person, onPick }: { readonly data: YearHistoryResponseDto; readonly metric: HistoryMetric | null; readonly person: HistoryPerson; readonly onPick: (m: HistoryMetric) => void }) {
   const t = useTheme()
   const s = makeStyles(t)
   const { t: tr } = useTranslation(APP_NS)
@@ -509,11 +544,12 @@ function makeStyles(t: UiTheme) {
   const base = historyStyles(t)
   const section: ViewStyle = { gap: t.space.s3 }
   const chips: ViewStyle = { flexDirection: 'row', gap: 6, paddingVertical: 2 }
-  const chip: ViewStyle = { borderWidth: t.space.kontur, borderColor: t.color.linie, backgroundColor: t.color.karte, borderRadius: t.radius.pille, paddingHorizontal: t.space.s3, paddingVertical: 6, minHeight: 36, justifyContent: 'center' }
+  const chip: ViewStyle = { borderWidth: t.space.kontur, borderColor: t.color.linie, backgroundColor: t.color.karte, borderRadius: t.radius.pille, paddingHorizontal: t.space.s3, paddingVertical: 6, minHeight: 44, justifyContent: 'center' }
   const chipActive: ViewStyle = { backgroundColor: t.color.funke, ...t.shadow.hartS }
   const chipText: TextStyle = { ...t.type.label, color: t.color.tinte }
   const chipTextActive: TextStyle = { color: t.color.nacht }
   const kpis: ViewStyle = { flexDirection: 'row', flexWrap: 'wrap', gap: t.space.s3 }
+  const wrap: ViewStyle = { flexWrap: 'wrap' }
   const kpi: ViewStyle = { flexGrow: 1, flexBasis: 180, backgroundColor: t.color.karte, borderWidth: t.space.kontur, borderColor: t.color.linie, borderRadius: t.radius.m, paddingHorizontal: t.space.s3, paddingVertical: t.space.s3, gap: 4 }
   const kpiActive: ViewStyle = { backgroundColor: t.color.funkeWeich, ...t.shadow.hart }
   const kpiValue: TextStyle = { ...t.type.subhead, color: t.color.tinte, fontVariant: ['tabular-nums'] }
@@ -536,7 +572,7 @@ function makeStyles(t: UiTheme) {
   const counterBad: TextStyle = { backgroundColor: t.color.fehler }
   const counterOk: TextStyle = { backgroundColor: t.color.ok }
   return {
-    ...base, section, chips, chip, chipActive, chipText, chipTextActive, kpis, kpi, kpiActive, kpiValue, raster, rasterMain, rasterSide, legend, legendItem, legendText, swatch,
+    ...base, section, chips, wrap, chip, chipActive, chipText, chipTextActive, kpis, kpi, kpiActive, kpiValue, raster, rasterMain, rasterSide, legend, legendItem, legendText, swatch,
     swatchLine, tiers, tableToggle, link, dataRow, dataCell, dataHead, openDiff, counter, counterBad, counterOk,
   }
 }

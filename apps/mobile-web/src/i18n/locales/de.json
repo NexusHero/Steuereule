@@ -1027,7 +1027,14 @@
         "noTaxYear": "Diese Lohnsteuerbescheinigung ist für {{jahr}}, ein Jahr, das die App nicht führt. Es wurde nichts übernommen."
       }
     },
-    "weiter": "Weiter"
+    "weiter": "Weiter",
+    "arbeitgeber": {
+      "heading": "Arbeitgeber",
+      "help": "Wie auf der Lohnsteuerbescheinigung. Daran erkennt der Verlauf einen Jobwechsel.",
+      "label": "Name des Arbeitgebers",
+      "loading": "Arbeitgeber wird geladen …",
+      "loadError": "Der Arbeitgeber konnte nicht geladen werden."
+    }
   },
   "rente": {
     "partnerFor": "Rente von {{name}}.",
@@ -1161,7 +1168,19 @@
       "offen": "Noch offen: {{count}} Angabe(n) — die Summen zeigen nur das Erfasste.",
       "gated": "Ehrlich: Verkauf oder möbliert rechnen wir in 1.0 noch nicht."
     },
-    "weiter": "Weiter"
+    "weiter": "Weiter",
+    "anschaffungsdatum": "Anschaffungsdatum (Kauf)",
+    "anschaffungsdatumHilfe": "Für die 15-%-Grenze in den ersten drei Jahren nach dem Kauf.",
+    "erhaltung": {
+      "titel": "Erhaltungsaufwand {{jahr}} (Renovierungen, Reparaturen)",
+      "betrag": "Betrag ohne Umsatzsteuer (€)",
+      "datum": "Datum (optional)",
+      "entfernen": "Entfernen",
+      "entfernenA11y": "Rechnung {{nummer}} entfernen",
+      "hinzufuegen": "Rechnung hinzufügen",
+      "leer": "Noch keine Rechnung eingetragen.",
+      "eintrag": "Rechnung {{nummer}}"
+    }
   },
   "fristen": {
     "warnung": "Abgabefrist: {{frist}} (noch {{tage}} Tage). Bei Verspätung fällt ein Verspätungszuschlag an — mindestens {{mindestsatz}} pro Monat (§ 152 AO).",
@@ -2033,7 +2052,19 @@
         "betrag-falsch": "Ein Betrag ist falsch",
         "beleg-nicht-beruecksichtigt": "Ein Beleg wurde nicht berücksichtigt",
         "sonstiges": "Sonstiges"
-      }
+      },
+      "datum": "Eingelegt am",
+      "datumHilfe": "Leer lassen, wenn du ihn heute einlegst.",
+      "eingelegtAm": "Eingelegt am {{datum}}.",
+      "ergebnisTitel": "Wie ist der Einspruch ausgegangen?",
+      "ergebnis": {
+        "offen": "noch offen",
+        "stattgegeben": "stattgegeben",
+        "teilweise": "teilweise stattgegeben",
+        "abgelehnt": "abgelehnt",
+        "zurueckgenommen": "zurückgenommen"
+      },
+      "betrag": "Was hat sich an der Erstattung geändert? (€, minus = weniger)"
     },
     "done": "Fertig"
   },
@@ -3050,7 +3081,10 @@
       "weitere_one": "+ {{count}} weiteres Jahr braucht dich",
       "weitere_other": "+ {{count}} weitere Jahre brauchen dich",
       "erledigt": "Alles erledigt",
-      "erledigtText": "Kein Jahr wartet gerade auf dich. Kommt ein Bescheid oder eine Frist, steht es hier."
+      "erledigtText": "Kein Jahr wartet gerade auf dich. Kommt ein Bescheid oder eine Frist, steht es hier.",
+      "nichtAbgegeben": "{{jahr}}: noch nicht abgegeben",
+      "bisMoeglich": "bis {{datum}} möglich",
+      "anfangen": "{{jahr}} anfangen"
     },
     "zeile": {
       "liste": "Deine Steuerjahre",
@@ -3065,7 +3099,12 @@
       "aenderungen_one": "Bescheid · {{count}} Änderung",
       "aenderungen_other": "Bescheid · {{count}} Änderungen",
       "wieErklaert": "Bescheid wie erklärt",
-      "ohneAbgleich": "Bescheid · ohne Abgleich"
+      "ohneAbgleich": "Bescheid · ohne Abgleich",
+      "nichtAbgegeben": "noch nicht abgegeben · bis {{datum}} möglich",
+      "nichtInApp": "nicht in der App · bis {{datum}} möglich",
+      "frage": "Schon abgegeben?",
+      "anderswo": "anderswo abgegeben · noch ohne Bescheid",
+      "aenderbar": "{{stand}} · änderbar bis {{datum}}"
     },
     "fehltKurz": {
       "lohnsteuerbescheinigung_one": "Lohnsteuerbescheinigung fehlt",
@@ -3079,7 +3118,8 @@
     },
     "links": {
       "entwicklung": "Entwicklung ansehen",
-      "aeltere": "Ältere Jahre ergänzen"
+      "aeltere": "Ältere Jahre ergänzen",
+      "unterlagen": "Unterlagen"
     },
     "jahr": {
       "unbekannt": {
@@ -3093,7 +3133,9 @@
         "ohneFassung": "Für {{jahr}} liegt ein Bescheid vor, aber keine in SteuerEule eingereichte Fassung, mit der er sich vergleichen ließe.",
         "aenderungen_one": "Bescheid da: Das Finanzamt hat {{count}} Position geändert.",
         "aenderungen_other": "Bescheid da: Das Finanzamt hat {{count}} Positionen geändert.",
-        "wieErklaert": "Bescheid wie erklärt: Das Finanzamt hat nichts geändert."
+        "wieErklaert": "Bescheid wie erklärt: Das Finanzamt hat nichts geändert.",
+        "luecke": "{{jahr}} ist nicht in der App. Abgeben geht bis {{datum}}.",
+        "anderswo": "Anderswo abgegeben. Lädst du den Bescheid hoch, steht {{jahr}} mit seinen Zahlen im Verlauf."
       },
       "fehltTitel": "Was noch fehlt",
       "lstb": {
@@ -3103,7 +3145,183 @@
         "beideKommt": "die Lohnsteuerbescheinigungen {{jahr}} (kommen ab Februar {{folgejahr}})",
         "personB": "die Lohnsteuerbescheinigung {{jahr}} von Person B",
         "personBKommt": "die Lohnsteuerbescheinigung {{jahr}} von Person B (kommt ab Februar {{folgejahr}})"
+      },
+      "aenderbar": "Änderbar bis {{datum}} (Festsetzungsfrist), etwa für einen vergessenen Beleg."
+    },
+    "frage": {
+      "titel": "{{jahr}}: Schon abgegeben?",
+      "text": "Nicht in der App. Abgeben geht bis {{datum}}.",
+      "ja": "Ja",
+      "nein": "Nein",
+      "weissNicht": "Weiß nicht",
+      "jaA11y": "Ja, {{jahr}} ist schon abgegeben",
+      "neinA11y": "Nein, {{jahr}} ist noch nicht abgegeben",
+      "weissNichtA11y": "Weiß nicht, ob {{jahr}} abgegeben ist",
+      "gruppe": "Ist {{jahr}} schon abgegeben?",
+      "fehler": "Die Antwort wurde nicht gespeichert. Versuch es noch mal."
+    },
+    "ereignis": {
+      "zusammenveranlagung": "ab jetzt zusammen veranlagt",
+      "kind_one": "Kind geboren",
+      "kind_other": "{{count}} Kinder geboren",
+      "neuer-arbeitgeber": "neuer Arbeitgeber",
+      "grenzgaenger": "Start als Grenzgänger",
+      "umzug": "Umzug",
+      "immobilienkauf": "Immobilie gekauft",
+      "zeile": "{{jahr}} · {{was}}",
+      "a11y": "Ereignis {{jahr}}: {{was}}"
+    },
+    "wiederkehrend": {
+      "titel": "Kommt jedes Jahr wieder",
+      "satz_one": "{{count}} Posten aus den Vorjahren, {{erledigt}} schon erledigt.",
+      "satz_other": "{{count}} Posten aus den Vorjahren, {{erledigt}} schon erledigt.",
+      "erledigt": "erledigt",
+      "offen": "offen",
+      "vorjahr": "{{jahr}}: {{was}}",
+      "km": "{{km}} km",
+      "tage_one": "{{count}} Tag",
+      "tage_other": "{{count}} Tage",
+      "eingetragen": "{{jahr}} eingetragen {{was}}",
+      "uebernommen": "aus Beleg übernommen",
+      "vorschlag": "Vorschlag aus Beleg wartet",
+      "gekuerzt": "⚠ {{jahre}} gekürzt",
+      "hinweis": "Der Betrag des Vorjahres ist nur ein Hinweis, er wird nicht übernommen.",
+      "belege": "Belege hochladen",
+      "a11y": "{{label}}, {{stand}}: {{text}}"
+    },
+    "muster": {
+      "mal_2": "Zum zweiten Mal gekürzt",
+      "mal_3": "Zum dritten Mal gekürzt",
+      "mal_n": "Zum {{count}}. Mal gekürzt",
+      "satz": "{{titel}}: {{position}} {{jahre}}.",
+      "jahr": "{{jahr}} ({{betrag}} weniger anerkannt)",
+      "satzJe": "{{titel}}: {{position}} {{jahre}}, je {{betrag}} weniger anerkannt."
+    },
+    "paare": {
+      "zusammenGebracht": "Zusammen veranlagt: {{jahr}} hat das {{betrag}} gebracht gegenüber zwei Einzelerklärungen.",
+      "einzelnMehr": "Einzeln veranlagt wären es {{jahr}} {{betrag}} mehr gewesen.",
+      "zusammenMehr": "Zusammen veranlagt wären es {{jahr}} {{betrag}} mehr gewesen.",
+      "einzelnGebracht": "Einzeln veranlagt: {{jahr}} hat das {{betrag}} gebracht gegenüber der Zusammenveranlagung.",
+      "gleich": "Zusammen oder einzeln: {{jahr}} macht das keinen Unterschied.",
+      "etwa": "Rechnung der App, etwa",
+      "knapp": "Der Unterschied ist zu knapp für eine sichere Aussage.",
+      "unvollstaendig": "Für den Vergleich zusammen ↔ einzeln fehlt noch: {{liste}}.",
+      "tarifFehlt": "Für {{jahr}} rechnet die App den Vergleich zusammen ↔ einzeln nicht.",
+      "etwaBetrag": "etwa {{von}} bis {{bis}}",
+      "etwaSpanne": "Rechnung der App, je nach Aufteilung der Abzüge"
+    },
+    "vorauszahlung": {
+      "hinweis": "Nachzahlung laut Bescheid: Vorauszahlungen anpassen lassen (Antrag beim Finanzamt)."
+    },
+    "gruppe": {
+      "tab": {
+        "vorauszahlungen": "Vorauszahlungen",
+        "schweiz": "Schweiz",
+        "vermietung": "Vermietung",
+        "kapital": "Kapital",
+        "rente": "Rente"
+      },
+      "mehr": "Weitere Bereiche",
+      "nichtErfasst": "noch nicht erfasst",
+      "vorauszahlungen": {
+        "titel": "Nachzahlung nach Vorauszahlungen",
+        "sub": "Abschlusszahlung laut Bescheid je Jahr: Erstattung über der Linie, Nachzahlung darunter.",
+        "serie_one": "{{count}} Jahr mit Nachzahlung, im Schnitt {{betrag}}.",
+        "serie_other": "{{count}} Jahre Nachzahlung in Folge, im Schnitt {{betrag}}.",
+        "anpassen": "Vorauszahlungen anpassen lassen (Antrag beim Finanzamt).",
+        "abschluss": "Abschlusszahlung",
+        "vorauszahlungen": "Vorauszahlungen"
+      },
+      "schweiz": {
+        "kursTitel": "Kurs und Lohn in Euro",
+        "kursZeile": "{{kurs}} €/CHF · {{chf}} CHF → {{eur}}",
+        "kursAenderung": "Kurs {{prozent}} zum Vorjahr",
+        "qstTitel": "Schweizer Quellensteuer angerechnet",
+        "qstText": "{{jahr}}: {{betrag}} angerechnet, höchstens 4,5 % vom Bruttolohn (DBA Art. 15a).",
+        "gekappt": "{{jahr}}: einbehalten {{chf}} CHF; mehr als 4,5 % rechnet Deutschland nicht an.",
+        "anteilTitel": "Anteil Schweizer Einkommen",
+        "anteilZeile": "{{jahr}}: {{prozent}}",
+        "kurs": "Kurs €/CHF",
+        "lohnChf": "Lohn CHF",
+        "lohnEur": "Lohn €",
+        "qstChf": "Quellensteuer CHF",
+        "angerechnet": "angerechnet €",
+        "person": "Person"
+      },
+      "vermietung": {
+        "objekt": "Objekt {{nummer}}",
+        "ergebnisTitel": "Ergebnis je Jahr",
+        "ergebnisOffen": "{{jahr}}: noch offen",
+        "afaTitel": "Abschreibung (AfA)",
+        "afaZeile": "Jährlich {{betrag}} ({{satz}})",
+        "restwert": "Restwert Gebäude {{betrag}}",
+        "restjahre_one": "noch {{count}} Jahr",
+        "restjahre_other": "noch {{count}} Jahre",
+        "afaOffen": "AfA noch offen: Anschaffungskosten oder Baujahr fehlen.",
+        "grenzeTitel": "15-%-Grenze",
+        "grenzeOffen": "In den ersten 3 Jahren nach dem Kauf (bis {{ende}}) zählen Renovierungen über {{grenze}} nicht sofort. Bisher: {{bisher}}.",
+        "grenzeUeber": "Überschritten: {{bisher}} von {{grenze}} in den ersten 3 Jahren nach dem Kauf (bis {{ende}}). Die Renovierungen zählen dann über die AfA.",
+        "grenzeVorbei": "Die ersten 3 Jahre nach dem Kauf sind vorbei ({{ende}}). Bis dahin: {{bisher}} von {{grenze}}.",
+        "kaufOffen": "Anschaffungsdatum fehlt: ohne es prüft die App die 15-%-Grenze nicht.",
+        "verlustvortrag": "Verlustvortrag: noch nicht erfasst.",
+        "ergebnis": "Ergebnis",
+        "afa": "AfA",
+        "restwertSpalte": "Restwert",
+        "ohneDatum_one": "{{count}} Posten ohne Datum vorsichtshalber mitgezählt.",
+        "ohneDatum_other": "{{count}} Posten ohne Datum vorsichtshalber mitgezählt."
+      },
+      "kapital": {
+        "titel": "Sparer-Pauschbetrag genutzt",
+        "zeile": "{{genutzt}} / {{grenze}}",
+        "voll": "voll genutzt · {{betrag}} darüber",
+        "frei": "{{betrag}} frei",
+        "guenstigerTitel": "Günstigerprüfung",
+        "guenstigerJa": "{{jahr}}: hätte etwa {{betrag}} gebracht.",
+        "guenstigerNein": "{{jahr}}: hätte nichts gebracht.",
+        "guenstigerKnapp": "{{jahr}}: zu knapp für eine sichere Aussage.",
+        "guenstigerOhne": "{{jahr}}: ohne Bescheid keine Günstigerprüfung.",
+        "toepfe": "Verlustverrechnungstöpfe: noch nicht erfasst.",
+        "ertraege": "Erträge",
+        "genutzt": "Pauschbetrag genutzt",
+        "darueber": "darüber"
+      },
+      "rente": {
+        "titel": "Rente und steuerpflichtiger Teil",
+        "anteil": "Besteuerungsanteil {{prozent}} (Rentenbeginn {{jahr}})",
+        "freibetrag": "Rentenfreibetrag fest {{betrag}} seit {{jahr}}",
+        "zeile": "steuerpflichtig {{betrag}}",
+        "warum": "Warum die Steuer stärker steigt als die Rente: Jede Erhöhung ist voll steuerpflichtig, der Rentenfreibetrag bleibt seit Rentenbeginn gleich.",
+        "rente": "Rente",
+        "steuerpflichtig": "steuerpflichtig"
       }
+    },
+    "unterlagen": {
+      "titel": "Unterlagen",
+      "bescheideTitel": "Bescheide",
+      "bescheideText": "Für Kredit, Kita-Gebühren oder Wohngeld: jeden Bescheid einzeln ansehen und herunterladen.",
+      "keinBescheid": "kein Bescheid hochgeladen",
+      "oeffnen": "Ansehen",
+      "oeffnenA11y": "Bescheid {{jahr}} ansehen und herunterladen: {{datei}}",
+      "hochgeladen": "hochgeladen {{datum}}",
+      "dauerTitel": "Bis der Bescheid da war",
+      "dauerZeile": "abgegeben {{abgabe}} · Bescheid {{bescheid}}",
+      "dauerOffen": "abgegeben {{abgabe}} · noch kein Bescheid",
+      "wochen_one": "{{count}} Woche",
+      "wochen_other": "{{count}} Wochen",
+      "nachfragen": "Nachfragen lohnt sich",
+      "regel": "Dauert es länger als 12 Wochen, lohnt eine Nachfrage beim Finanzamt.",
+      "einspruchTitel": "Einsprüche",
+      "einspruchZeile": "{{grund}} · eingelegt {{datum}}",
+      "ergebnis": {
+        "offen": "noch offen",
+        "stattgegeben": "stattgegeben",
+        "teilweise": "teilweise stattgegeben",
+        "abgelehnt": "abgelehnt",
+        "zurueckgenommen": "zurückgenommen"
+      },
+      "keinEinspruch": "Noch kein Einspruch.",
+      "leer": "Noch keine Unterlagen: Sobald ein Jahr abgegeben ist oder einen Bescheid hat, steht es hier.",
+      "personSuffix": "{{was}} · {{person}}"
     }
   }
 }

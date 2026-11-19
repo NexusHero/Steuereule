@@ -1027,7 +1027,14 @@
         "noTaxYear": "This wage tax certificate is for {{jahr}}, a year the app does not keep. Nothing was taken over."
       }
     },
-    "weiter": "Continue"
+    "weiter": "Continue",
+    "arbeitgeber": {
+      "heading": "Employer",
+      "help": "As on the wage tax certificate. The history uses it to spot a change of job.",
+      "label": "Name of the employer",
+      "loading": "Loading the employer …",
+      "loadError": "The employer could not be loaded."
+    }
   },
   "rente": {
     "partnerFor": "Pension of {{name}}.",
@@ -1161,7 +1168,19 @@
       "offen": "Still open: {{count}} figure(s) — the totals show only what was entered.",
       "gated": "Honestly: sale or furnished short-term rental is not computed in 1.0."
     },
-    "weiter": "Continue"
+    "weiter": "Continue",
+    "anschaffungsdatum": "Date of purchase",
+    "anschaffungsdatumHilfe": "For the 15 % rule in the first three years after the purchase.",
+    "erhaltung": {
+      "titel": "Maintenance costs {{jahr}} (renovations, repairs)",
+      "betrag": "Amount without VAT (€)",
+      "datum": "Date (optional)",
+      "entfernen": "Remove",
+      "entfernenA11y": "Remove invoice {{nummer}}",
+      "hinzufuegen": "Add invoice",
+      "leer": "No invoice entered yet.",
+      "eintrag": "Invoice {{nummer}}"
+    }
   },
   "fristen": {
     "warnung": "Filing deadline: {{frist}} ({{tage}} days left). Late filing incurs a late-filing surcharge — at least {{mindestsatz}} per month (§ 152 AO).",
@@ -2033,7 +2052,19 @@
         "betrag-falsch": "An amount is wrong",
         "beleg-nicht-beruecksichtigt": "A receipt was not considered",
         "sonstiges": "Other"
-      }
+      },
+      "datum": "Lodged on",
+      "datumHilfe": "Leave empty if you lodge it today.",
+      "eingelegtAm": "Lodged on {{datum}}.",
+      "ergebnisTitel": "How did the appeal end?",
+      "ergebnis": {
+        "offen": "still open",
+        "stattgegeben": "granted",
+        "teilweise": "partly granted",
+        "abgelehnt": "rejected",
+        "zurueckgenommen": "withdrawn"
+      },
+      "betrag": "How did the refund change? (€, minus = less)"
     },
     "done": "Done"
   },
@@ -3050,7 +3081,10 @@
       "weitere_one": "+ {{count}} more year needs you",
       "weitere_other": "+ {{count}} more years need you",
       "erledigt": "All done",
-      "erledigtText": "No year is waiting for you right now. When an assessment or a deadline comes, it shows here."
+      "erledigtText": "No year is waiting for you right now. When an assessment or a deadline comes, it shows here.",
+      "nichtAbgegeben": "{{jahr}}: not filed yet",
+      "bisMoeglich": "possible until {{datum}}",
+      "anfangen": "Start {{jahr}}"
     },
     "zeile": {
       "liste": "Your tax years",
@@ -3065,7 +3099,12 @@
       "aenderungen_one": "Assessment · {{count}} change",
       "aenderungen_other": "Assessment · {{count}} changes",
       "wieErklaert": "Assessment as declared",
-      "ohneAbgleich": "Assessment · no comparison"
+      "ohneAbgleich": "Assessment · no comparison",
+      "nichtAbgegeben": "not filed yet · possible until {{datum}}",
+      "nichtInApp": "not in the app · possible until {{datum}}",
+      "frage": "Already filed?",
+      "anderswo": "filed elsewhere · no assessment yet",
+      "aenderbar": "{{stand}} · can be changed until {{datum}}"
     },
     "fehltKurz": {
       "lohnsteuerbescheinigung_one": "wage tax certificate missing",
@@ -3079,7 +3118,8 @@
     },
     "links": {
       "entwicklung": "See the development",
-      "aeltere": "Add older years"
+      "aeltere": "Add older years",
+      "unterlagen": "Documents"
     },
     "jahr": {
       "unbekannt": {
@@ -3093,7 +3133,9 @@
         "ohneFassung": "There is an assessment for {{jahr}}, but no version filed in SteuerEule to compare it with.",
         "aenderungen_one": "Assessment received: the tax office changed {{count}} item.",
         "aenderungen_other": "Assessment received: the tax office changed {{count}} items.",
-        "wieErklaert": "Assessment as declared: the tax office changed nothing."
+        "wieErklaert": "Assessment as declared: the tax office changed nothing.",
+        "luecke": "{{jahr}} is not in the app. Filing is possible until {{datum}}.",
+        "anderswo": "Filed elsewhere. Upload the assessment and {{jahr}} shows its figures in the history."
       },
       "fehltTitel": "What is still missing",
       "lstb": {
@@ -3103,7 +3145,183 @@
         "beideKommt": "the {{jahr}} wage tax certificates (arrive from February {{folgejahr}})",
         "personB": "the {{jahr}} wage tax certificate of person B",
         "personBKommt": "the {{jahr}} wage tax certificate of person B (arrives from February {{folgejahr}})"
+      },
+      "aenderbar": "Can be changed until {{datum}} (assessment period), for example for a forgotten receipt."
+    },
+    "frage": {
+      "titel": "{{jahr}}: Already filed?",
+      "text": "Not in the app. Filing is possible until {{datum}}.",
+      "ja": "Yes",
+      "nein": "No",
+      "weissNicht": "Not sure",
+      "jaA11y": "Yes, {{jahr}} is already filed",
+      "neinA11y": "No, {{jahr}} is not filed yet",
+      "weissNichtA11y": "Not sure whether {{jahr}} is filed",
+      "gruppe": "Is {{jahr}} already filed?",
+      "fehler": "The answer was not saved. Please try again."
+    },
+    "ereignis": {
+      "zusammenveranlagung": "filing jointly from now on",
+      "kind_one": "child born",
+      "kind_other": "{{count}} children born",
+      "neuer-arbeitgeber": "new employer",
+      "grenzgaenger": "started as a cross-border commuter",
+      "umzug": "moved",
+      "immobilienkauf": "bought a property",
+      "zeile": "{{jahr}} · {{was}}",
+      "a11y": "Event {{jahr}}: {{was}}"
+    },
+    "wiederkehrend": {
+      "titel": "Comes back every year",
+      "satz_one": "{{count}} item from previous years, {{erledigt}} already done.",
+      "satz_other": "{{count}} items from previous years, {{erledigt}} already done.",
+      "erledigt": "done",
+      "offen": "open",
+      "vorjahr": "{{jahr}}: {{was}}",
+      "km": "{{km}} km",
+      "tage_one": "{{count}} day",
+      "tage_other": "{{count}} days",
+      "eingetragen": "{{jahr}} entered {{was}}",
+      "uebernommen": "taken from a receipt",
+      "vorschlag": "a suggestion from a receipt waits",
+      "gekuerzt": "⚠ cut in {{jahre}}",
+      "hinweis": "Last year’s amount is only a hint; it is not copied.",
+      "belege": "Upload receipts",
+      "a11y": "{{label}}, {{stand}}: {{text}}"
+    },
+    "muster": {
+      "mal_2": "Cut for the second time",
+      "mal_3": "Cut for the third time",
+      "mal_n": "Cut {{count}} times",
+      "satz": "{{titel}}: {{position}} {{jahre}}.",
+      "jahr": "{{jahr}} ({{betrag}} less allowed)",
+      "satzJe": "{{titel}}: {{position}} {{jahre}}, {{betrag}} less allowed each time."
+    },
+    "paare": {
+      "zusammenGebracht": "Filed jointly: in {{jahr}} that saved {{betrag}} compared with two single returns.",
+      "einzelnMehr": "Filing separately, {{jahr}} would have brought {{betrag}} more.",
+      "zusammenMehr": "Filing jointly, {{jahr}} would have brought {{betrag}} more.",
+      "einzelnGebracht": "Filed separately: in {{jahr}} that saved {{betrag}} compared with a joint return.",
+      "gleich": "Jointly or separately: in {{jahr}} it makes no difference.",
+      "etwa": "The app’s calculation, approximate",
+      "knapp": "The difference is too small for a firm statement.",
+      "unvollstaendig": "The joint ↔ separate comparison still lacks: {{liste}}.",
+      "tarifFehlt": "The app does not calculate the joint ↔ separate comparison for {{jahr}}.",
+      "etwaBetrag": "about {{von}} to {{bis}}",
+      "etwaSpanne": "The app’s calculation, depending on how the deductions are split"
+    },
+    "vorauszahlung": {
+      "hinweis": "Back payment according to the assessment: have the prepayments adjusted (application to the tax office)."
+    },
+    "gruppe": {
+      "tab": {
+        "vorauszahlungen": "Prepayments",
+        "schweiz": "Switzerland",
+        "vermietung": "Rental",
+        "kapital": "Capital",
+        "rente": "Pension"
+      },
+      "mehr": "More areas",
+      "nichtErfasst": "not recorded yet",
+      "vorauszahlungen": {
+        "titel": "Back payments after prepayments",
+        "sub": "Final payment according to the assessment per year: refund above the line, back payment below.",
+        "serie_one": "{{count}} year with a back payment, {{betrag}} on average.",
+        "serie_other": "{{count}} years of back payments in a row, {{betrag}} on average.",
+        "anpassen": "Have the prepayments adjusted (application to the tax office).",
+        "abschluss": "Final payment",
+        "vorauszahlungen": "Prepayments"
+      },
+      "schweiz": {
+        "kursTitel": "Exchange rate and wage in euros",
+        "kursZeile": "{{kurs}} €/CHF · {{chf}} CHF → {{eur}}",
+        "kursAenderung": "rate {{prozent}} on the year before",
+        "qstTitel": "Swiss withholding tax credited",
+        "qstText": "{{jahr}}: {{betrag}} credited, at most 4.5 % of the gross wage (DTA Art. 15a).",
+        "gekappt": "{{jahr}}: {{chf}} CHF withheld; Germany credits no more than 4.5 %.",
+        "anteilTitel": "Share of Swiss income",
+        "anteilZeile": "{{jahr}}: {{prozent}}",
+        "kurs": "Rate €/CHF",
+        "lohnChf": "Wage CHF",
+        "lohnEur": "Wage €",
+        "qstChf": "Withholding tax CHF",
+        "angerechnet": "credited €",
+        "person": "Person"
+      },
+      "vermietung": {
+        "objekt": "Property {{nummer}}",
+        "ergebnisTitel": "Result per year",
+        "ergebnisOffen": "{{jahr}}: still open",
+        "afaTitel": "Depreciation (AfA)",
+        "afaZeile": "{{betrag}} a year ({{satz}})",
+        "restwert": "Remaining building value {{betrag}}",
+        "restjahre_one": "{{count}} year left",
+        "restjahre_other": "{{count}} years left",
+        "afaOffen": "Depreciation still open: acquisition cost or year of construction missing.",
+        "grenzeTitel": "15 % rule",
+        "grenzeOffen": "In the first 3 years after the purchase (until {{ende}}) renovations above {{grenze}} do not count at once. So far: {{bisher}}.",
+        "grenzeUeber": "Exceeded: {{bisher}} of {{grenze}} in the first 3 years after the purchase (until {{ende}}). The renovations then count through the depreciation.",
+        "grenzeVorbei": "The first 3 years after the purchase are over ({{ende}}). Until then: {{bisher}} of {{grenze}}.",
+        "kaufOffen": "Date of purchase missing: without it the app does not check the 15 % rule.",
+        "verlustvortrag": "Loss carry-forward: not recorded yet.",
+        "ergebnis": "Result",
+        "afa": "Depreciation",
+        "restwertSpalte": "Remaining value",
+        "ohneDatum_one": "{{count}} repair without a date counted to be safe.",
+        "ohneDatum_other": "{{count}} repairs without a date counted to be safe."
+      },
+      "kapital": {
+        "titel": "Saver’s allowance used",
+        "zeile": "{{genutzt}} / {{grenze}}",
+        "voll": "fully used · {{betrag}} above",
+        "frei": "{{betrag}} left",
+        "guenstigerTitel": "Most favourable check",
+        "guenstigerJa": "{{jahr}}: would have brought about {{betrag}}.",
+        "guenstigerNein": "{{jahr}}: would have brought nothing.",
+        "guenstigerKnapp": "{{jahr}}: too close for a firm statement.",
+        "guenstigerOhne": "{{jahr}}: no check without an assessment.",
+        "toepfe": "Loss offset pots: not recorded yet.",
+        "ertraege": "Income",
+        "genutzt": "Allowance used",
+        "darueber": "above"
+      },
+      "rente": {
+        "titel": "Pension and its taxable part",
+        "anteil": "Taxable share {{prozent}} (pension start {{jahr}})",
+        "freibetrag": "Pension allowance fixed at {{betrag}} since {{jahr}}",
+        "zeile": "taxable {{betrag}}",
+        "warum": "Why the tax rises faster than the pension: every increase is fully taxable, the pension allowance stays the same since the pension began.",
+        "rente": "Pension",
+        "steuerpflichtig": "taxable"
       }
+    },
+    "unterlagen": {
+      "titel": "Documents",
+      "bescheideTitel": "Assessments",
+      "bescheideText": "For a loan, daycare fees or housing benefit: view and download each assessment on its own.",
+      "keinBescheid": "no assessment uploaded",
+      "oeffnen": "View",
+      "oeffnenA11y": "View and download the assessment {{jahr}}: {{datei}}",
+      "hochgeladen": "uploaded {{datum}}",
+      "dauerTitel": "Until the assessment came",
+      "dauerZeile": "filed {{abgabe}} · assessment {{bescheid}}",
+      "dauerOffen": "filed {{abgabe}} · no assessment yet",
+      "wochen_one": "{{count}} week",
+      "wochen_other": "{{count}} weeks",
+      "nachfragen": "Worth asking",
+      "regel": "If it takes longer than 12 weeks, it is worth asking the tax office.",
+      "einspruchTitel": "Appeals",
+      "einspruchZeile": "{{grund}} · lodged {{datum}}",
+      "ergebnis": {
+        "offen": "still open",
+        "stattgegeben": "granted",
+        "teilweise": "partly granted",
+        "abgelehnt": "rejected",
+        "zurueckgenommen": "withdrawn"
+      },
+      "keinEinspruch": "No appeal yet.",
+      "leer": "No documents yet: once a year is filed or has an assessment, it shows here.",
+      "personSuffix": "{{was}} · {{person}}"
     }
   }
 }

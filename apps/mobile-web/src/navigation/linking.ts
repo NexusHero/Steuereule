@@ -42,6 +42,7 @@ const profileScreens: NonNullable<PathConfig<ProfileStackParamList>['screens']> 
 const historyScreens: NonNullable<PathConfig<HistoryStackParamList>['screens']> = {
   HistoryHome: '',
   HistoryDevelopment: 'entwicklung',
+  HistoryDocuments: 'unterlagen',
   HistoryYear: { path: ':year', parse: { year: Number } },
 }
 
@@ -121,6 +122,7 @@ const ROUTE_TITLES: Readonly<Record<string, string>> = {
   HistoryHome: 'SteuerEule — Verlauf',
   HistoryYear: 'SteuerEule — Verlauf eines Jahres',
   HistoryDevelopment: 'SteuerEule — Entwicklung über die Jahre',
+  HistoryDocuments: 'SteuerEule — Unterlagen',
   ProfileHome: 'SteuerEule — Profil',
   Profile: 'SteuerEule — Profil',
   Privacy: 'SteuerEule — Datenschutz',

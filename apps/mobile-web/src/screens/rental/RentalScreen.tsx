@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-native'
+import { Pressable, ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { Button, Card, Chip, Feld, Input, useTheme, useBreakpoint, type UiTheme } from '@steuereule/ui'
+import { Button, Card, Chip, DateInput, Feld, germanDateToIso, Input, isoDateToGerman, useTheme, useBreakpoint, type UiTheme } from '@steuereule/ui'
 import { formatEuro, RENTAL_FIELDS, type RentalFieldId } from '@steuereule/core'
 import {
   getCockpitControllerGetCockpitSummaryQueryKey,
@@ -17,6 +17,7 @@ import {
   type RentalFieldDto,
   type RentalResponseDto,
   type RentalPropertyDto,
+  type RentalRepairDto,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { UnclearableNumberField } from '../shared/UnclearableNumberField'
@@ -31,6 +32,7 @@ import { watchSaveResult } from '../shared/saveFeedback'
 import { PostalCodeHint } from '../shared/PostalCodeHint'
 import { prefillCity } from '../shared/postalCodePrefill'
 import { AddressSearch } from '../shared/AddressSearch'
+import { wholeEurosFrom } from '../shared/wholeEuros'
 
 export interface RentalScreenProps {
   readonly onDone?: () => void
@@ -121,6 +123,7 @@ export function RentalScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_
           onSend={(field, data) => send(property.id, field, data)}
           onSendAddress={(data) => sendAddress(property.id, data)}
           paar={paar}
+          taxYear={taxYear}
         />
       ))}
 
@@ -159,8 +162,10 @@ function PropertyCard({
   onSend,
   onSendAddress,
   paar = false,
+  taxYear = CURRENT_TAX_YEAR,
 }: {
   readonly paar?: boolean
+  readonly taxYear?: number
   readonly property: RentalPropertyDto
   readonly index: number
   readonly onSend: (field: RentalFieldId, data: RentalFieldDto) => void
@@ -310,10 +315,142 @@ function PropertyCard({
             </Chip>
           </View>
         </Feld>
+        <AcquisitionDate property={property} index={index} taxYear={taxYear} onSend={(anschaffungsdatum) => onSendAddress?.({ anschaffungsdatum })} />
+        <RepairsList property={property} index={index} taxYear={taxYear} onSend={(erhaltungsaufwand) => onSendAddress?.({ erhaltungsaufwand })} />
       </View>
 
       <FactsNotice property={property} />
     </Card>
+  )
+}
+
+/** ADR-0099 §8: the day of purchase, for the 15 % window of § 6 Abs. 1 Nr. 1a EStG in the Verlauf. */
+function AcquisitionDate({ property, index, taxYear, onSend }: { readonly property: RentalPropertyDto; readonly index: number; readonly taxYear: number; readonly onSend: (iso: string | null) => void }) {
+  const t = useTheme()
+  const { t: tr } = useTranslation(APP_NS)
+  const [text, setText] = useState(isoDateToGerman(property.anschaffungsdatum ?? ''))
+  function commit(value: string = text) {
+    if (value.trim() === '') {
+      if (property.anschaffungsdatum !== null) onSend(null)
+      return
+    }
+    const iso = germanDateToIso(value)
+    if (iso !== null && iso !== property.anschaffungsdatum) onSend(iso)
+  }
+  return (
+    <Feld label={tr('vermietung.anschaffungsdatum')}>
+      <Text style={{ ...t.type.small, color: t.color.tinte2 }}>{tr('vermietung.anschaffungsdatumHilfe')}</Text>
+      <DateInput
+        value={text}
+        onChange={(value) => {
+          setText(value)
+          if (value.length === 10 && value !== text) commit(value)
+        }}
+        max={`${taxYear}-12-31`}
+        calendarLabel={tr('datum.kalender')}
+        onSubmit={() => commit()}
+        onBlur={() => commit()}
+        accessibilityLabel={tr('vermietung.anschaffungsdatum')}
+        testID={`vermietung-${index}-anschaffungsdatum`}
+      />
+    </Feld>
+  )
+}
+
+interface RepairDraft {
+  readonly key: number
+  readonly betrag: string
+  readonly datum: string
+}
+
+/** The repairs to send: whole euros above zero, a complete date or none; rows still being typed stay out. */
+function repairsOf(drafts: readonly RepairDraft[]): RentalRepairDto[] {
+  return drafts.flatMap((d) => {
+    const betrag = wholeEurosFrom(d.betrag)
+    if (betrag === null || betrag <= 0) return []
+    const datum = d.datum.trim() === '' ? null : germanDateToIso(d.datum)
+    return [{ betrag, datum }]
+  })
+}
+
+/** ADR-0099 §8: the Erhaltungsaufwand of the year, one line per invoice with an optional date. */
+function RepairsList({ property, index, taxYear, onSend }: { readonly property: RentalPropertyDto; readonly index: number; readonly taxYear: number; readonly onSend: (repairs: RentalRepairDto[]) => void }) {
+  const t = useTheme()
+  const { t: tr } = useTranslation(APP_NS)
+  const [drafts, setDrafts] = useState<RepairDraft[]>(() => property.erhaltungsaufwand.map((r, i) => ({ key: i, betrag: String(r.betrag), datum: isoDateToGerman(r.datum ?? '') })))
+  const [nextKey, setNextKey] = useState(property.erhaltungsaufwand.length)
+  const stored = JSON.stringify(property.erhaltungsaufwand.map((r) => ({ betrag: r.betrag, datum: r.datum ?? null })))
+
+  function commit(next: readonly RepairDraft[] = drafts) {
+    const repairs = repairsOf(next)
+    if (JSON.stringify(repairs) !== stored) onSend(repairs)
+  }
+  function update(key: number, patch: Partial<Omit<RepairDraft, 'key'>>) {
+    setDrafts((list) => list.map((d) => (d.key === key ? { ...d, ...patch } : d)))
+  }
+
+  return (
+    <View style={{ marginTop: t.space.s3, gap: t.space.s2 }} testID={`vermietung-${index}-erhaltung`}>
+      <Text style={{ ...t.type.itemTitle, color: t.color.tinte }}>{tr('vermietung.erhaltung.titel', { jahr: taxYear })}</Text>
+      {drafts.length === 0 ? <Text style={{ ...t.type.small, color: t.color.tinte2 }}>{tr('vermietung.erhaltung.leer')}</Text> : null}
+      {drafts.map((d, i) => (
+        <View key={d.key} style={{ gap: t.space.s1, borderTopWidth: 1, borderTopColor: t.color.linieWeich, paddingTop: t.space.s2 }}>
+          <Text style={{ ...t.type.labelStrong, color: t.color.tinte }}>{tr('vermietung.erhaltung.eintrag', { nummer: i + 1 })}</Text>
+          <Feld label={tr('vermietung.erhaltung.betrag')}>
+            <Input
+              type="numeric"
+              mono
+              value={d.betrag}
+              placeholder="1200"
+              accessibilityLabel={`${tr('vermietung.erhaltung.eintrag', { nummer: i + 1 })}: ${tr('vermietung.erhaltung.betrag')}`}
+              onChange={(betrag) => update(d.key, { betrag })}
+              onBlur={() => commit()}
+              onSubmit={() => commit()}
+              testID={`vermietung-${index}-erhaltung-${i}-betrag`}
+            />
+          </Feld>
+          <Feld label={tr('vermietung.erhaltung.datum')}>
+            <DateInput
+              value={d.datum}
+              onChange={(datum) => {
+                update(d.key, { datum })
+                if (datum.length === 10) commit(drafts.map((x) => (x.key === d.key ? { ...x, datum } : x)))
+              }}
+              min={`${taxYear}-01-01`}
+              max={`${taxYear}-12-31`}
+              calendarLabel={tr('datum.kalender')}
+              onBlur={() => commit()}
+              onSubmit={() => commit()}
+              accessibilityLabel={`${tr('vermietung.erhaltung.eintrag', { nummer: i + 1 })}: ${tr('vermietung.erhaltung.datum')}`}
+              testID={`vermietung-${index}-erhaltung-${i}-datum`}
+            />
+          </Feld>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={tr('vermietung.erhaltung.entfernenA11y', { nummer: i + 1 })}
+            onPress={() => {
+              const next = drafts.filter((x) => x.key !== d.key)
+              setDrafts(next)
+              commit(next)
+            }}
+            style={{ minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start' }}
+            testID={`vermietung-${index}-erhaltung-${i}-entfernen`}
+          >
+            <Text style={{ ...t.type.small, color: t.color.tinte, textDecorationLine: 'underline' }}>{tr('vermietung.erhaltung.entfernen')}</Text>
+          </Pressable>
+        </View>
+      ))}
+      <Button
+        variant="ghost"
+        onPress={() => {
+          setDrafts((list) => [...list, { key: nextKey, betrag: '', datum: '' }])
+          setNextKey((k) => k + 1)
+        }}
+        testID={`vermietung-${index}-erhaltung-hinzufuegen`}
+      >
+        {tr('vermietung.erhaltung.hinzufuegen')}
+      </Button>
+    </View>
   )
 }
 

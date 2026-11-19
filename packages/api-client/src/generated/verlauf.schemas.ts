@@ -1105,7 +1105,7 @@ export interface AcquisitionRelatedDto {
   roomLeftEur: number;
   /** The window still runs. */
   windowOpen: boolean;
-  /** Repairs without a date counted in the window to be safe. */
+  /** Number of repairs without a date counted in the window to be safe (a count, not an amount). */
   undatedCounted: number;
 }
 

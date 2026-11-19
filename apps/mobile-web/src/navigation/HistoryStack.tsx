@@ -3,6 +3,7 @@ import { useAccountSession } from '../auth/useAccountSession'
 import { HistoryScreen } from '../screens/history/HistoryScreen'
 import { HistoryYearScreen } from '../screens/history/HistoryYearScreen'
 import { HistoryDevelopmentScreen } from '../screens/history/HistoryDevelopmentScreen'
+import { HistoryDocumentsScreen } from '../screens/history/HistoryDocumentsScreen'
 import { useShellState } from './ShellState'
 import { renderActiveStackRoute } from './guards'
 import type { HistoryStackParamList } from './routes'
@@ -16,7 +17,7 @@ function useIsGuest(): boolean {
 }
 
 function HistoryHomeRoute({ navigation }: Props<'HistoryHome'>) {
-  const { taxYear, switchToTab, onRegister, onLogin } = useShellState()
+  const { taxYear, setTaxYear, switchToTab, openCockpitScreen, onRegister, onLogin } = useShellState()
   return (
     <HistoryScreen
       isGuest={useIsGuest()}
@@ -26,12 +27,17 @@ function HistoryHomeRoute({ navigation }: Props<'HistoryHome'>) {
       onOpenYearDetail={(year) => navigation.navigate('HistoryYear', { year })}
       onOpenDevelopment={() => navigation.navigate('HistoryDevelopment')}
       onOpenDrafts={() => switchToTab('Owl')}
+      onOpenDocuments={() => navigation.navigate('HistoryDocuments')}
+      onStartYear={(year) => {
+        setTaxYear(year)
+        openCockpitScreen('CockpitHome')
+      }}
     />
   )
 }
 
 function HistoryYearRoute({ navigation, route }: Props<'HistoryYear'>) {
-  const { setTaxYear, openCockpitScreen, onRegister, onLogin } = useShellState()
+  const { setTaxYear, openCockpitScreen, switchToTab, onRegister, onLogin } = useShellState()
   return (
     <HistoryYearScreen
       year={route.params.year}
@@ -46,6 +52,10 @@ function HistoryYearRoute({ navigation, route }: Props<'HistoryYear'>) {
       onPrepareAppeal={(year) => {
         setTaxYear(year)
         openCockpitScreen('Assessment', { year })
+      }}
+      onOpenReceipts={() => {
+        setTaxYear(route.params.year)
+        switchToTab('Receipts')
       }}
     />
   )
@@ -66,13 +76,19 @@ function HistoryDevelopmentRoute({ navigation }: Props<'HistoryDevelopment'>) {
   )
 }
 
-/** The tab „Verlauf“ (ADR-0098 §1): the timeline, and one tap away a year's page or the development. */
+function HistoryDocumentsRoute({ navigation }: Props<'HistoryDocuments'>) {
+  const { onRegister, onLogin } = useShellState()
+  return <HistoryDocumentsScreen isGuest={useIsGuest()} onBack={() => navigation.navigate('HistoryHome', undefined, { pop: true })} onRegister={onRegister} onLogin={onLogin} />
+}
+
+/** The tab „Verlauf“ (ADR-0098 §1): the timeline, and one tap away a year's page, the development or the Unterlagen (ADR-0099 §9). */
 export function HistoryStack() {
   return (
     <Stack.Navigator initialRouteName="HistoryHome" screenOptions={{ headerShown: false }} screenLayout={renderActiveStackRoute}>
       <Stack.Screen name="HistoryHome" component={HistoryHomeRoute} />
       <Stack.Screen name="HistoryYear" component={HistoryYearRoute} />
       <Stack.Screen name="HistoryDevelopment" component={HistoryDevelopmentRoute} />
+      <Stack.Screen name="HistoryDocuments" component={HistoryDocumentsRoute} />
     </Stack.Navigator>
   )
 }

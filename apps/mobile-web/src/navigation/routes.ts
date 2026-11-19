@@ -63,6 +63,8 @@ export type HistoryStackParamList = {
   HistoryHome: undefined
   HistoryYear: { year: number }
   HistoryDevelopment: undefined
+  /** The Bescheide, the time to them and the Einsprüche (ADR-0099 §9). */
+  HistoryDocuments: undefined
 }
 
 export type AppTabParamList = {
