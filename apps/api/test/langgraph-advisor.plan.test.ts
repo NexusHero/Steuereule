@@ -9,7 +9,7 @@ import type { BaseLanguageModelInput } from '@langchain/core/language_models/bas
 import { describe, expect, it } from 'vitest'
 import type { AdvisorStreamEvent } from '@steuereule/core'
 import { DEFAULT_AI_TURN_LIMITS, type AiRuntimeConfigService } from '../src/ki/ai-runtime-config.service.js'
-import { buildCaseSystemPrompt, buildStableSystemPrompt, buildSystemMessage } from '../src/ki/advisor-prompt.js'
+import { buildCaseBlock, buildCaseSystemPrompt, buildStableSystemPrompt, buildSystemMessage } from '../src/ki/advisor-prompt.js'
 import { LangGraphAdvisorEngine } from '../src/ki/langgraph-advisor.engine.js'
 import { SAMPLE_DIGEST as digest } from './fixtures/sample-digest.js'
 
@@ -169,8 +169,9 @@ describe('open steps of the last plan (the owl keeps every point of a long messa
     expect(buildCaseSystemPrompt(digest, undefined, false)).not.toContain('Offen aus deinem letzten Plan')
   })
 
-  it('leaves the cached stable part byte-identical', () => {
-    const content = buildSystemMessage('anthropic', digest, undefined, false, undefined, undefined, undefined, undefined, undefined, undefined, undefined, false, undefined, undefined, false, open).content as Array<{ text: string }>
+  it('leaves the cached rules byte-identical: the open plan travels in the case block behind them', () => {
+    const caseBlock = buildCaseBlock(digest, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, open)
+    const content = buildSystemMessage('anthropic', caseBlock).content as Array<{ text: string }>
     expect(content[0]!.text).toBe(buildStableSystemPrompt())
     expect(content[1]!.text).toContain('Offen aus deinem letzten Plan:')
   })
@@ -179,7 +180,7 @@ describe('open steps of the last plan (the owl keeps every point of a long messa
     const model = new PlanScriptModel([new AIMessage('Weiter mit der Krankenversicherung.')])
     const engine = new LangGraphAdvisorEngine(runtime, () => model)
     await collect(engine.streamTurn({ message: 'Weiter', digest, openPlan: open }))
-    expect(String(model.seenMessages[0]![0]!.content)).toContain('- Spenden erfassen')
+    expect(JSON.stringify(model.seenMessages[0]![0]!.content)).toContain('- Spenden erfassen')
   })
 
   it('tells the model in the stable rules to plan one step per point and to name what stays open', () => {

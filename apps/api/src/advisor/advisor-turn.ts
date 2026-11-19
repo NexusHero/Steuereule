@@ -30,6 +30,7 @@ import {
   type AdvisorThoughtStep,
   type AdvisorTurnRequest,
   type AdvisorTurnResult,
+  type AdvisorTurnTimings,
   type AdvisorTurnUsage,
 } from '@steuereule/core'
 import { AssessmentService } from '../assessment/assessment.service.js'
@@ -238,11 +239,13 @@ export class AdvisorTurn {
       content: string,
       meta: AdvisorMessageMeta,
       usage?: AdvisorTurnUsage,
+      timings?: AdvisorTurnTimings,
     ): Promise<AdvisorChatMessageRecord> => {
       finished = true
       const fullMeta: AdvisorMessageMeta = { ...meta, ...(steps.length > 0 ? { thoughtSteps: steps } : {}) }
       const usageRecord: AdvisorMessageUsage = {
         ...usage,
+        ...timings,
         traceId: runId,
         firstTokenMs,
         durationMs: Date.now() - startedAt,
@@ -274,6 +277,10 @@ export class AdvisorTurn {
           inputTokens: usage?.inputTokens ?? null,
           outputTokens: usage?.outputTokens ?? null,
           cachedInputTokens: usage?.cachedInputTokens ?? null,
+          prepMs: timings?.prepMs ?? null,
+          guardMs: timings?.guardMs ?? null,
+          roundMs: timings?.roundMs ?? null,
+          toolMs: timings?.toolMs ?? null,
         }),
       )
       return record
@@ -374,6 +381,7 @@ export class AdvisorTurn {
         ...(dto.depth ? { depth: dto.depth } : {}),
         ...(openPlanSteps(turn.previousPlan).length > 0 ? { openPlan: openPlanSteps(turn.previousPlan) } : {}),
       }
+      const prepMs = Date.now() - startedAt
       const events = turn.opening
         ? openingStream(this.advisorEngine, request, await this.opening.brief(userId, taxYear, turn.opening.context))
         : this.advisorEngine.streamTurn(request)
@@ -472,6 +480,7 @@ export class AdvisorTurn {
               engine,
             },
             turnResult.usage,
+            turnResult.timings ? { ...turnResult.timings, prepMs } : undefined,
           )
           // An opening prepares no drafts, so there is nothing for Turbo to apply.
           const turbo = turn.opening ? null : await this.applyTurbo(userId, taxYear, runId, dto, assistant)

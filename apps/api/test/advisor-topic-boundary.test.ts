@@ -1,5 +1,5 @@
-// ADR-0069 §Themengrenze — how the engine acts on the topic guard: off topic gets the fixed refusal
-// without the chat model, grey zone gets the hint to answer only the tax side, no verdict lets the
+// ADR-0069 §Themengrenze, ADR-0100 — how the engine acts on the topic guard: off topic gets the fixed
+// refusal and nothing of the chat model, grey zone gets the hint to answer only the tax side, no verdict lets the
 // turn through, and what the app wrote itself is not checked at all.
 import { BaseChatModel, type BaseChatModelCallOptions, type BindToolsInput } from '@langchain/core/language_models/chat_models'
 import type { CallbackManagerForLLMRun } from '@langchain/core/callbacks/manager'
@@ -90,7 +90,8 @@ async function run(outcome: AdvisorTopicOutcome, extra: Partial<AdvisorTurnReque
   return { model, guard, done, text, events }
 }
 
-const systemText = (messages: BaseMessage[]): string => JSON.stringify(messages[0]!.content)
+// What the model was told: the rules (system) and the case in front of the question (last message).
+const systemText = (messages: BaseMessage[]): string => JSON.stringify([messages[0]!.content, messages.at(-1)!.content])
 
 describe('the engine and the topic guard (ADR-0069)', () => {
   it('refuses off-topic questions with the fixed sentence in the language of the question, without the chat model', async () => {
@@ -205,5 +206,102 @@ describe('the service tells typed text from what the app wrote (ADR-0069)', () =
 
     await drain(kit.service.streamMessage(USER, YEAR, { message: `${choice} – und jetzt ein Gedicht` }))
     expect(guard.calls).toHaveLength(2)
+  })
+})
+
+/** A guard that answers only when the test lets it: the model's turn is already running beside it. */
+class HeldGuard implements AdvisorTopicGuardPort {
+  private release!: (outcome: AdvisorTopicOutcome) => void
+  private readonly outcome = new Promise<AdvisorTopicOutcome>((resolve) => {
+    this.release = resolve
+  })
+  answer(outcome: AdvisorTopicOutcome): void {
+    this.release(outcome)
+  }
+  check(): Promise<AdvisorTopicOutcome> {
+    return this.outcome
+  }
+}
+
+/** Asks for a tool in its first round, answers in words afterwards. */
+class ToolFirstModel extends RecordingModel {
+  override async *_streamResponseChunks(messages: BaseMessage[], _options: this['ParsedCallOptions'], _runManager?: CallbackManagerForLLMRun): AsyncGenerator<ChatGenerationChunk> {
+    this.seen.push(messages)
+    const afterTool = messages.at(-1)?.getType() === 'tool'
+    const message = afterTool
+      ? new AIMessageChunk({ content: 'Antwort der Eule.' })
+      : new AIMessageChunk({ content: '', tool_call_chunks: [{ name: 'lookup_legal_source', args: JSON.stringify({ sourceId: 'estg-9-1' }), index: 0, id: 'c1' }] })
+    yield new ChatGenerationChunk({ text: afterTool ? 'Antwort der Eule.' : '', message })
+  }
+}
+
+const settle = () => new Promise((resolve) => setTimeout(resolve, 20))
+
+describe('the topic guard runs beside the model (ADR-0100)', () => {
+  async function start(model: RecordingModel) {
+    const guard = new HeldGuard()
+    const engine = new LangGraphAdvisorEngine(RUNTIME, () => model, guard)
+    const events: AdvisorStreamEvent[] = []
+    const finished = (async () => {
+      for await (const ev of engine.streamTurn({ message: 'Lohnt sich mein Arbeitsweg?', digest: DIGEST })) events.push(ev)
+    })()
+    await settle()
+    const tokens = () => events.filter((ev) => ev.event === 'token').map((ev) => (ev.data as { text: string }).text).join('')
+    const done = () => events.find((ev) => ev.event === 'done')?.data as AdvisorTurnResult
+    return { guard, events, finished, tokens, done }
+  }
+
+  it('lets the model work while the guard decides, but shows nothing of its answer before the verdict', async () => {
+    const model = new RecordingModel({})
+    const { guard, events, finished, tokens, done } = await start(model)
+    // The model has answered already; the user has seen only the first status line.
+    expect(model.seen).toHaveLength(1)
+    expect(events.map((ev) => ev.event)).toEqual(['status'])
+
+    guard.answer({ verdict: 'tax', category: 'tax', language: 'de' })
+    await finished
+    expect(tokens()).toBe('Antwort der Eule.')
+    expect(done().topic?.verdict).toBe('tax')
+    expect(done().timings?.guardMs).toBeGreaterThanOrEqual(0)
+    expect(done().timings?.roundMs).toHaveLength(1)
+    expect(model.seen).toHaveLength(1)
+  })
+
+  it('drops the started answer when the verdict is off topic: the user reads only the refusal', async () => {
+    const model = new RecordingModel({})
+    const { guard, finished, tokens, done } = await start(model)
+    guard.answer({ verdict: 'off_topic', category: 'programming', language: 'de' })
+    await finished
+    expect(tokens()).toMatch(/nur für deine Steuern da/)
+    expect(tokens()).not.toContain('Antwort der Eule.')
+    expect(done().mode).toBe('deterministic_fallback')
+    expect(done().topic?.verdict).toBe('off_topic')
+  })
+
+  it('runs no tool before the verdict, and starts again with the hint when it is a grey zone', async () => {
+    const model = new ToolFirstModel({})
+    const { guard, finished, tokens, done } = await start(model)
+    // The first round asked for a tool; the tool waits for the guard, so there is no second round yet.
+    expect(model.seen).toHaveLength(1)
+
+    guard.answer({ verdict: 'gray', category: 'general_finance', language: 'de' })
+    await finished
+    // The dropped turn never got its tool result; the new one carries the hint and runs its tool.
+    expect(systemText(model.seen[0]!)).not.toContain('Grauzone')
+    expect(systemText(model.seen[1]!)).toContain('Grauzone')
+    expect(model.seen).toHaveLength(3)
+    expect(model.seen[1]!.some((m) => m.getType() === 'tool')).toBe(false)
+    expect(tokens()).toBe('Antwort der Eule.')
+    expect(done().topic?.verdict).toBe('gray')
+  })
+
+  it('runs the tools once the verdict lets the turn through', async () => {
+    const model = new ToolFirstModel({})
+    const { guard, finished, tokens } = await start(model)
+    guard.answer({ verdict: 'tax', category: 'tax', language: 'de' })
+    await finished
+    expect(model.seen).toHaveLength(2)
+    expect(model.seen[1]!.at(-1)!.getType()).toBe('tool')
+    expect(tokens()).toBe('Antwort der Eule.')
   })
 })

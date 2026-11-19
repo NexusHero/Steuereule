@@ -1,5 +1,5 @@
-// What the owl is told before a turn: the stable rules (cached by the providers), the case of this
-// user, and the instructions for summarising a conversation.
+// What the owl is told before a turn: the stable rules and the case of this user (both cached by the
+// providers), the conversation, what holds for this one answer, and the instructions for summarising.
 import { HumanMessage, SystemMessage, ToolMessage, type BaseMessage, type MessageContent } from '@langchain/core/messages'
 import {
   ADVISOR_LEGAL_SOURCES,
@@ -155,11 +155,24 @@ export function describeOpenPlanForPrompt(openPlan: readonly AdvisorPlanStep[] |
   ]
 }
 
-export function buildCaseSystemPrompt(digest: CaseDigest, activeScreen: Screen | undefined, planFirst: boolean, records?: AdvisorRecordHandles, notes?: readonly AdvisorNoteHandle[], skill?: AdvisorSkillId, task?: AdvisorTask, assessment?: AdvisorAssessmentBrief, situation?: string, opening?: AdvisorOpeningBrief, grayZone = false, interview?: InterviewProgress, today: string = new Date().toISOString().slice(0, 10), household?: AdvisorHousehold, openPlan?: readonly AdvisorPlanStep[]): string {
+/**
+ * What holds only for this one answer: the mask the user is on, an order to plan first, the grey-zone
+ * hint of the topic guard. It stands in front of the question, not in the case: measured, a change of
+ * the mask alone made the provider pay case and conversation again.
+ */
+export function describeTurnContext(activeScreen: Screen | undefined, planFirst: boolean, grayZone = false): string {
+  return [
+    `Aktive Maske: ${activeScreen ?? 'cockpit'}`,
+    ...(planFirst ? ['Für diese Anfrage gilt: Rufe als Erstes `plan_steps` auf, bevor du irgendetwas anderes tust.'] : []),
+    ...(grayZone ? [GRAY_ZONE_HINT] : []),
+  ].join('\n')
+}
+
+/** The case of this user: it changes only when a value, a receipt, a note or the plan does, and is cached until then. */
+export function buildCaseBlock(digest: CaseDigest, records?: AdvisorRecordHandles, notes?: readonly AdvisorNoteHandle[], skill?: AdvisorSkillId, task?: AdvisorTask, assessment?: AdvisorAssessmentBrief, situation?: string, opening?: AdvisorOpeningBrief, interview?: InterviewProgress, today: string = new Date().toISOString().slice(0, 10), household?: AdvisorHousehold, openPlan?: readonly AdvisorPlanStep[]): string {
   return [
     describeSituationForPrompt(digest, situation),
     '',
-    `Aktive Maske: ${activeScreen ?? 'cockpit'}`,
     'PII-freier Fall-Überblick (CaseDigest):',
     JSON.stringify(withoutPrintoutPlan(digest)),
     'Angelegte Einträge (für `instance`):',
@@ -173,10 +186,13 @@ export function buildCaseSystemPrompt(digest: CaseDigest, activeScreen: Screen |
     ...(skill ? ['', skillPrompt(skill)] : []),
     ...(skill === 'berater-interview' ? ['', describeInterviewStanding(interview)] : []),
     ...(task ? ['', taskPrompt(task, digest, assessment, opening)] : []),
-    ...(planFirst ? ['', 'Für diese Anfrage gilt: Rufe als Erstes `plan_steps` auf, bevor du irgendetwas anderes tust.'] : []),
     ...describeOpenPlanForPrompt(openPlan),
-    ...(grayZone ? ['', GRAY_ZONE_HINT] : []),
   ].join('\n')
+}
+
+/** Case and turn context as one text: everything the model is told about this user for one answer. */
+export function buildCaseSystemPrompt(digest: CaseDigest, activeScreen: Screen | undefined, planFirst: boolean, records?: AdvisorRecordHandles, notes?: readonly AdvisorNoteHandle[], skill?: AdvisorSkillId, task?: AdvisorTask, assessment?: AdvisorAssessmentBrief, situation?: string, opening?: AdvisorOpeningBrief, grayZone = false, interview?: InterviewProgress, today: string = new Date().toISOString().slice(0, 10), household?: AdvisorHousehold, openPlan?: readonly AdvisorPlanStep[]): string {
+  return `${buildCaseBlock(digest, records, notes, skill, task, assessment, situation, opening, interview, today, household, openPlan)}\n\n${describeTurnContext(activeScreen, planFirst, grayZone)}`
 }
 
 /** The printout checklist and the Belege list go into the prompt as their own lists, not a second time inside the digest. */
@@ -187,45 +203,44 @@ function withoutPrintoutPlan(digest: CaseDigest): CaseDigest {
 }
 
 /**
- * Stable rules first, the case second. Anthropic caches only what is marked, so there both blocks
- * carry a cache breakpoint: the rules are shared by every conversation, the case by every round and
- * turn until a value changes. The other providers cache a repeated prefix on their own.
+ * Rules first, the case second. Anthropic caches only what is marked, so there both blocks carry a
+ * cache breakpoint: the rules are shared by every conversation, the case by every round and turn
+ * until one of its values changes. The other providers cache a repeated prefix on their own.
  */
-export function buildSystemMessage(
-  provider: string,
-  digest: CaseDigest,
-  activeScreen?: Screen,
-  /** Ask for the plan in words, for models that cannot be forced to a tool (see `canForceTool`). */
-  planFirst = false,
-  records?: AdvisorRecordHandles,
-  notes?: readonly AdvisorNoteHandle[],
-  skill?: AdvisorSkillId,
-  task?: AdvisorTask,
-  assessment?: AdvisorAssessmentBrief,
-  situation?: string,
-  opening?: AdvisorOpeningBrief,
-  /** The topic guard called the question a grey zone (ADR-0069). */
-  grayZone = false,
-  /** Which areas of the Berater-Interview are settled for this tax year. */
-  interview?: InterviewProgress,
-  /** Whether there is a Person B the owl may draft for (ADR-0073). */
-  household?: AdvisorHousehold,
-  /** The user consented to personal data for the owl (ADR-0091). */
-  personalDataConsent = false,
-  /** The steps the conversation's last plan left open. */
-  openPlan?: readonly AdvisorPlanStep[],
-): SystemMessage {
+export function buildSystemMessage(provider: string, caseBlock: string, personalDataConsent = false): SystemMessage {
   const stable = buildStableSystemPrompt(personalDataConsent)
-  const caseSpecific = buildCaseSystemPrompt(digest, activeScreen, planFirst, records, notes, skill, task, assessment, situation, opening, grayZone, interview, undefined, household, openPlan)
   if (provider === 'anthropic') {
     return new SystemMessage({
       content: [
-        { type: 'text', text: stable, cache_control: { type: 'ephemeral' } },
-        { type: 'text', text: caseSpecific, cache_control: { type: 'ephemeral' } },
+        { type: 'text', text: stable, cache_control: EPHEMERAL },
+        { type: 'text', text: caseBlock, cache_control: EPHEMERAL },
       ],
     })
   }
-  return new SystemMessage(`${stable}\n\n${caseSpecific}`)
+  return new SystemMessage(`${stable}\n\n${caseBlock}`)
+}
+
+/** Says whose words follow: the context is the app's, the question after it the user's. */
+export const TURN_CONTEXT_HEADER = '[Angaben der App zu dieser Antwort, nicht Worte des Nutzers]'
+export const USER_MESSAGE_HEADER = '[Nachricht des Nutzers]'
+
+/** The messages of a turn: rules and case, the conversation so far, then what holds for this answer and the question. */
+export function buildTurnMessages(system: SystemMessage, history: readonly BaseMessage[], turnContext: string, userMessage: string): BaseMessage[] {
+  const question = new HumanMessage({
+    content: [
+      { type: 'text', text: `${TURN_CONTEXT_HEADER}\n${turnContext}` },
+      { type: 'text', text: `${USER_MESSAGE_HEADER}\n${userMessage}` },
+    ],
+  })
+  return [system, ...history, question]
+}
+
+/** The user's own words of a message built by `buildTurnMessages`; a plain message is returned as it is. */
+export function userTextOf(content: MessageContent): string {
+  if (typeof content === 'string') return content
+  const last = content[content.length - 1]
+  const text = last && typeof last === 'object' && 'text' in last && typeof last.text === 'string' ? last.text : ''
+  return text.startsWith(`${USER_MESSAGE_HEADER}\n`) ? text.slice(USER_MESSAGE_HEADER.length + 1) : text
 }
 
 const EPHEMERAL = { type: 'ephemeral' } as const

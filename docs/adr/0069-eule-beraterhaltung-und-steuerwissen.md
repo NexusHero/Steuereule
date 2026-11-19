@@ -65,8 +65,9 @@ Umschreibung kamen durch. Entscheidungen des Product Owners vom 13.11.2026:
     Modell des Chat-Anbieters, Temperatur 0, 5 s) ordnet jede getippte Nachricht als `tax`, `gray`
     oder `off_topic` ein, mit grober Kategorie und Sprache. Er sieht die Nachricht und die letzten
     zwei Runden, damit „Und 2025?“ als Steuerfrage erkannt wird, und behandelt die Nachricht als
-    Daten, nicht als Anweisung. Er läuft vor dem Hauptmodell, nicht parallel: Eine Ablehnung kostet
-    einen kleinen Aufruf und keinen großen. Im Admin-Panel einstellbar wird der Slot mit #445; bis
+    Daten, nicht als Anweisung. Er lief zuerst vor dem Hauptmodell, damit eine Ablehnung nur
+    einen kleinen Aufruf kostet; seit ADR-0100 läuft er daneben, und bis zu seinem Urteil erreicht
+    nichts vom Hauptmodell den Nutzer oder ein Werkzeug. Im Admin-Panel einstellbar wird der Slot mit #445; bis
     dahin über die Umgebung wie die anderen Slots.
 11. **Was der Prüfer sagt, und was folgt.**
     - `off_topic`: ein fester Satz („Dabei kann ich dir nicht helfen – ich bin nur für deine
@@ -240,5 +241,5 @@ im Repo und wird beim Bauen wörtlich eingelesen, nicht von Hand in TypeScript a
 - **Das Python-Skript auf dem Server ausführen:** zweiter Rechenweg neben dem geprüften Kern.
 - **Themengrenze nur per Wortliste oder nur im Prompt:** Wortlisten sind lückenhaft und lehnen
   ehrliche Fragen ab; eine Regel nur im Prompt lässt sich wegreden.
-- **Prüfer parallel zum Hauptmodell:** schneller, aber jede Ablehnung bezahlt den großen Aufruf mit.
+- **Prüfer parallel zum Hauptmodell:** schneller, aber jede Ablehnung bezahlt den großen Aufruf mit. Mit ADR-0100 nach Messung doch so entschieden (1,3 bis 3 s je Antwort).
 - **Skill-Tabelle als maßgebliche Zahlenquelle:** zwei Quellen, die auseinanderlaufen können.
