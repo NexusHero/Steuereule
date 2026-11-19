@@ -135,6 +135,8 @@ interface MutableTimings {
   toolMs: number
 }
 
+const newTimings = (): MutableTimings => ({ roundMs: [], toolMs: 0 })
+
 /** The model's result with the guard's verdict and the time the guard took. */
 function withGuard(result: AdvisorTurnResult, topic: AdvisorTopicOutcome, guardMs: number | undefined): AdvisorTurnResult {
   return { ...result, topic, ...(result.timings && guardMs !== undefined ? { timings: { ...result.timings, guardMs } } : {}) }
@@ -165,7 +167,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
     /** Anthropic caches only marked prefixes: each round marks its newest message (see `withHistoryCacheBreakpoint`). */
     markHistoryForCache = false,
     /** Filled as the graph runs: the time of each model round and of the tools. */
-    timings: MutableTimings = { roundMs: [], toolMs: 0 },
+    timings: MutableTimings = newTimings(),
     /** Awaited before any tool runs: a turn started beside the topic guard touches nothing until the verdict is in. */
     beforeTools?: () => Promise<void>,
   ) {
@@ -509,7 +511,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
     const abortReason = (): 'client' | 'timeout' | null =>
       request.signal?.aborted ? 'client' : timeout.aborted ? 'timeout' : null
 
-    const timings: MutableTimings = { roundMs: [], toolMs: 0 }
+    const timings = newTimings()
     try {
       const graph = this.buildCompiledGraph(chatModel, request, maxToolRounds, canForceTool, answerBy, Date.now, slotConfig.provider === 'anthropic', timings, beforeTools)
       const stream = await graph.stream(
