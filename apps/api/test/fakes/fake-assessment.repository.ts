@@ -2,7 +2,7 @@
 // contract without a database (ADR-0004). The writes mirror the real repository's upsert + return
 // semantics; the derived Abgleich/Frist stay in BescheidService (ADR-014/048: facts stored, never
 // the derived state).
-import type { AssessmentStatus } from '@steuereule/core'
+import type { AppealOutcome, AssessmentStatus } from '@steuereule/core'
 import type { AssessmentRecord, AssessmentRepository, AssessmentStoredField } from '../../src/assessment/assessment.repository.js'
 
 function key(userId: string, taxYear: number): string {
@@ -78,10 +78,17 @@ export class FakeAssessmentRepository implements AssessmentRepository {
     return Promise.resolve(updated)
   }
 
-  setAppeal(userId: string, taxYear: number, reason: string): Promise<AssessmentRecord> {
+  setAppeal(userId: string, taxYear: number, reason: string, date: string): Promise<AssessmentRecord> {
     const k = key(userId, taxYear)
     const existing = this.store.get(k) ?? this.leer(userId, taxYear)
-    const updated: AssessmentRecord = { ...existing, status: 'einspruch-eingelegt', appealReason: reason }
+    const updated: AssessmentRecord = { ...existing, status: 'einspruch-eingelegt', appealReason: reason, appealDate: date, appealOutcome: 'offen', appealOutcomeAmount: null }
+    this.store.set(k, updated)
+    return Promise.resolve(updated)
+  }
+
+  setAppealOutcome(userId: string, taxYear: number, outcome: AppealOutcome, amount: string | null): Promise<AssessmentRecord> {
+    const k = key(userId, taxYear)
+    const updated: AssessmentRecord = { ...(this.store.get(k) ?? this.leer(userId, taxYear)), appealOutcome: outcome, appealOutcomeAmount: amount }
     this.store.set(k, updated)
     return Promise.resolve(updated)
   }

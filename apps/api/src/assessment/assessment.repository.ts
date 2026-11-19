@@ -1,4 +1,4 @@
-import type { AssessmentField, AssessmentPositionId, AssessmentStatus } from '@steuereule/core'
+import type { AppealOutcome, AssessmentField, AssessmentPositionId, AssessmentStatus } from '@steuereule/core'
 
 export type AssessmentFields = Record<AssessmentField, string | null>
 
@@ -11,6 +11,11 @@ export interface AssessmentRecord {
   status: AssessmentStatus
   assessmentDate: string | null
   appealReason: string | null
+  /** The day the Einspruch was lodged (ISO) and how it ended (ADR-0099 §8); absent = not recorded. */
+  appealDate?: string | null
+  appealOutcome?: AppealOutcome | null
+  /** What the outcome changed the refund by, whole euros as a string (encrypted at rest). */
+  appealOutcomeAmount?: string | null
   fields: AssessmentFields
   /** The positions beyond the five fields (ADR-0098 §8); absent = not read. */
   positions?: Partial<Record<AssessmentPositionId, string | null>>
@@ -29,7 +34,9 @@ export interface AssessmentRepository {
   setExplanations(userId: string, taxYear: number, text: string | null): Promise<AssessmentRecord>
   setDate(userId: string, taxYear: number, date: string | null): Promise<AssessmentRecord>
   setStatus(userId: string, taxYear: number, status: AssessmentStatus): Promise<AssessmentRecord>
-  setAppeal(userId: string, taxYear: number, reason: string): Promise<AssessmentRecord>
+  /** Lodges the Einspruch on `date`; its outcome starts as `offen`. */
+  setAppeal(userId: string, taxYear: number, reason: string, date: string): Promise<AssessmentRecord>
+  setAppealOutcome(userId: string, taxYear: number, outcome: AppealOutcome, amount: string | null): Promise<AssessmentRecord>
   /**
    * The Eckjahr (ADR-0098 §4): a Bescheid taken over for a year without a declaration in the app makes
    * that year `extern-erledigt` (ADR-0039), with no interview. A year the app already keeps is left as

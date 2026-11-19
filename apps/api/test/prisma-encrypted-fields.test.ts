@@ -94,6 +94,8 @@ const EXPECTED_ENCRYPTED_FIELDS: ExpectedEncryptedField[] = [
   { model: 'Lstb', field: 'avArbeitnehmer', encrypt: true, strictDecryption: true },
   { model: 'Lstb', field: 'zuschussPv', encrypt: true, strictDecryption: true },
   { model: 'Lstb', field: 'solidaritaetszuschlag', encrypt: true, strictDecryption: true },
+  // ADR-0099 §8: the employer on the certificate.
+  { model: 'Lstb', field: 'arbeitgeber', encrypt: true, strictDecryption: true },
   { model: 'ChSalaryCertificate', field: 'lohn', encrypt: true, strictDecryption: true },
   { model: 'ChSalaryCertificate', field: 'gehaltsnebenleistungen', encrypt: true, strictDecryption: true },
   { model: 'ChSalaryCertificate', field: 'irregularBenefits', encrypt: true, strictDecryption: true },
@@ -156,6 +158,9 @@ const EXPECTED_ENCRYPTED_FIELDS: ExpectedEncryptedField[] = [
   { model: 'RentalProperty', field: 'schuldzinsen', encrypt: true, strictDecryption: true },
   { model: 'RentalProperty', field: 'einheiten', encrypt: true, strictDecryption: true },
   { model: 'RentalProperty', field: 'anteilA', encrypt: true, strictDecryption: true },
+  // ADR-0099 §8: purchase date and the year's repairs.
+  { model: 'RentalProperty', field: 'anschaffungsdatum', encrypt: true, strictDecryption: true },
+  { model: 'RentalProperty', field: 'erhaltungsaufwand', encrypt: true, strictDecryption: true },
   { model: 'Child', field: 'firstName', encrypt: true, strictDecryption: true },
   { model: 'Child', field: 'lastName', encrypt: true, strictDecryption: true },
   { model: 'Child', field: 'geburtsdatum', encrypt: true, strictDecryption: true },
@@ -198,6 +203,8 @@ const EXPECTED_ENCRYPTED_FIELDS: ExpectedEncryptedField[] = [
   { model: 'Assessment', field: 'solidaritaetszuschlag', encrypt: true, strictDecryption: true },
   { model: 'Assessment', field: 'kirchensteuer', encrypt: true, strictDecryption: true },
   { model: 'Assessment', field: 'erlaeuterungen', encrypt: true, strictDecryption: true },
+  // ADR-0099 §8: what the outcome of an Einspruch changed.
+  { model: 'Assessment', field: 'appealOutcomeAmount', encrypt: true, strictDecryption: true },
   // ADR-0098 §8: the frozen version of a return.
   { model: 'FilingVersion', field: 'positions', encrypt: true, strictDecryption: true },
   { model: 'AdvisorChatMessage', field: 'content', encrypt: true, strictDecryption: true },

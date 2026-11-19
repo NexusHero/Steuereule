@@ -16,6 +16,7 @@ import {
   reconcileAssessment,
   crossBorderFold,
   isAssessmentTransitionAllowed,
+  isAppealOutcome,
   isAppealReason,
   isValidAssessmentAmount,
   nextAssessmentStates,
@@ -47,6 +48,7 @@ import type {
   SetAssessmentDateDto,
   SetAssessmentStatusDto,
   SetAppealDto,
+  SetAppealOutcomeDto,
 } from './dto/assessment-response.dto.js'
 import { answersFrom } from '../interview/answers.js'
 import { crossBorderStatusFromAnswers, salaryCertificateValuesFromRecord, exchangeRateFromRecord } from '../ch-salary-certificate/salary-certificate-data.js'
@@ -141,6 +143,9 @@ export class AssessmentService {
       status,
       assessmentDate,
       appealReason,
+      appealDate: record?.appealDate ?? null,
+      appealOutcome: record?.appealOutcome ?? null,
+      appealOutcomeAmount: record?.appealOutcomeAmount !== null && record?.appealOutcomeAmount !== undefined && /^-?\d+$/.test(record.appealOutcomeAmount) ? Number(record.appealOutcomeAmount) : null,
       fields,
       reconciliation: {
         deviations: reconciliation.deviations.map((a): AssessmentDeviationDto => ({ ...a })),
@@ -195,12 +200,33 @@ export class AssessmentService {
     if (!isAppealReason(dto.reason)) {
       throw new InvalidInputError('EINSPRUCH_GRUND_UNKNOWN', `unknown Einspruch-Grund "${dto.reason}"`)
     }
+    const date = dto.date ?? todayIso()
+    if (!ISO_DATE_PATTERN.test(date)) {
+      throw new InvalidInputError('EINSPRUCH_DATUM_INVALID', 'date must be an ISO yyyy-mm-dd date.')
+    }
     const current = await this.repository.findForUserAndYear(userId, taxYear)
     const from: AssessmentStatus = current?.status ?? 'eingegangen'
     if (!isAssessmentTransitionAllowed(from, 'einspruch-eingelegt')) {
       throw new ConflictError('BESCHEID_TRANSITION_ILLEGAL', `illegal Bescheid transition "${from}" → "einspruch-eingelegt"`)
     }
-    const record = await this.repository.setAppeal(userId, taxYear, dto.reason)
+    const record = await this.repository.setAppeal(userId, taxYear, dto.reason, date)
+    return this.toResponse(userId, taxYear, record)
+  }
+
+  /** How the Einspruch ended (ADR-0099 §8): only an Einspruch that was lodged has an outcome. */
+  async setAppealOutcome(userId: string, taxYear: number, dto: SetAppealOutcomeDto): Promise<AssessmentResponseDto> {
+    if (!isAppealOutcome(dto.outcome)) {
+      throw new InvalidInputError('EINSPRUCH_ERGEBNIS_UNKNOWN', `unknown Einspruch-Ergebnis "${dto.outcome}"`)
+    }
+    const amount = dto.amount ?? null
+    if (amount !== null && !Number.isInteger(amount)) {
+      throw new InvalidInputError('EINSPRUCH_BETRAG_INVALID', 'amount must be whole euros or null.')
+    }
+    const current = await this.repository.findForUserAndYear(userId, taxYear)
+    if (current?.status !== 'einspruch-eingelegt') {
+      throw new ConflictError('EINSPRUCH_FEHLT', 'There is no Einspruch for this Bescheid to record an outcome for.')
+    }
+    const record = await this.repository.setAppealOutcome(userId, taxYear, dto.outcome, amount === null ? null : String(amount))
     return this.toResponse(userId, taxYear, record)
   }
 }

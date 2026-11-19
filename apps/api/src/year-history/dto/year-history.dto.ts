@@ -1,6 +1,17 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 import { AssessmentDiffDto, AssessmentLessonDto } from '../../assessment/dto/assessment-diff.dto.js'
 import { RangeDto } from '../../tax-estimate/dto/tax-estimate.dto.js'
+import {
+  CoupleComparisonDto,
+  FiledElsewhereDto,
+  HistoryGroupsDto,
+  LifeEventDto,
+  PrepaymentSeriesDto,
+  RecurringChecklistDto,
+  RepeatedCutDto,
+  YearDeadlineDto,
+  YearDocumentsDto,
+} from './year-history-insights.dto.js'
 
 const TIERS = ['bescheid', 'schaetzung', 'offen'] as const
 const SOURCES = ['bescheid', 'lohnsteuerbescheinigung', 'lohnausweis', 'erklaerung', 'schaetzung'] as const
@@ -188,6 +199,18 @@ export class YearListItemDto {
 
   @ApiProperty({ type: Boolean, description: 'Within the four years of the Festsetzungsfrist; older years are for display only.' })
   withinAssessmentPeriod!: boolean
+
+  @ApiProperty({ type: Boolean, description: 'The year has facts of its own; a year of the Festsetzungsfrist without any is listed anyway and shows no amount (ADR-0099 §1).' })
+  hasData!: boolean
+
+  @ApiProperty({ type: FiledElsewhereDto, nullable: true, description: '„Schon abgegeben?“ for a year without data within the Festsetzungsfrist; null for every other year.' })
+  filedElsewhere!: FiledElsewhereDto | null
+
+  @ApiProperty({ type: Boolean, description: 'Filed elsewhere (or known from outside) but no Bescheid uploaded yet: „noch ohne Bescheid“.' })
+  withoutAssessment!: boolean
+
+  @ApiProperty({ type: YearDeadlineDto, description: '„bis … möglich“ without a Bescheid, „änderbar bis …“ with one.' })
+  deadline!: YearDeadlineDto
 }
 
 export class PositionRefDto {
@@ -219,6 +242,12 @@ export class OpenItemDto {
 
   @ApiPropertyOptional({ type: [String], description: 'kind `offen`: what the year lacks.' })
   missing?: string[]
+
+  @ApiPropertyOptional({ type: String, nullable: true, example: '2026-12-31', description: 'kind `offen`, a year before the current one: the last day for a voluntary return (ADR-0099 §1).' })
+  filingDeadline?: string | null
+
+  @ApiPropertyOptional({ type: Boolean, description: 'kind `offen`: the year has no data yet and asks „Schon abgegeben?“.' })
+  askFiledElsewhere?: boolean
 }
 
 /** The Bescheid-Abgleich of one filing of a year, with its Einspruchsfrist and „Fürs nächste Mal“. */
@@ -257,4 +286,25 @@ export class YearHistoryResponseDto {
 
   @ApiProperty({ type: MaskLessonsDto, nullable: true, description: 'The lessons for the masks of the latest open year.' })
   maskLessons!: MaskLessonsDto | null
+
+  @ApiProperty({ type: [LifeEventDto], description: 'Lebensereignisse, derived from data only (ADR-0099 §4), oldest first.' })
+  events!: LifeEventDto[]
+
+  @ApiProperty({ type: RecurringChecklistDto, nullable: true, description: '„Kommt jedes Jahr wieder“ for the latest open year (ADR-0099 §2); null without one.' })
+  recurring!: RecurringChecklistDto | null
+
+  @ApiProperty({ type: PrepaymentSeriesDto, description: 'Nachzahlungen laut Bescheid over the years (ADR-0099 §3).' })
+  prepayments!: PrepaymentSeriesDto
+
+  @ApiProperty({ type: [RepeatedCutDto], description: 'Positions cut in at least two Bescheid years (ADR-0099 §5).' })
+  repeatedCuts!: RepeatedCutDto[]
+
+  @ApiProperty({ type: [CoupleComparisonDto], description: 'Per Bescheid year of a couple, the Veranlagungsart in both directions (ADR-0099 §6).' })
+  couples!: CoupleComparisonDto[]
+
+  @ApiProperty({ type: HistoryGroupsDto, description: 'Grenzgänger, Vermieter, Kapital, Rentner (ADR-0099 §7); each null without data.' })
+  groups!: HistoryGroupsDto
+
+  @ApiProperty({ type: [YearDocumentsDto], description: 'Unterlagen (ADR-0099 §9): Bescheide, duration and Einsprüche per year.' })
+  documents!: YearDocumentsDto[]
 }

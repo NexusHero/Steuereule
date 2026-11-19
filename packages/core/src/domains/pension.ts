@@ -170,3 +170,14 @@ export function pensionStatus(pension: PensionData, gated: readonly IncomeType[]
   const openItems = coreItems === null ? 1 : 0
   return calculate({ items, openItems, conflicts: [], gated })
 }
+
+/**
+ * The Rentenfreibetrag (§ 22 Nr. 1 Satz 3 Buchst. a Doppelbuchst. aa Satz 4–5 EStG): the part of the
+ * pension of the first full year after the start that is not taxable. It stays the same euro amount for
+ * the rest of the pension; raises later on are fully taxable. Null for an amount the app cannot use.
+ */
+export function pensionAllowance(firstFullYearAmount: number, taxableSharePercentAtStart: number): number | null {
+  if (!Number.isFinite(firstFullYearAmount) || firstFullYearAmount < 0) return null
+  if (!Number.isFinite(taxableSharePercentAtStart) || taxableSharePercentAtStart < 0 || taxableSharePercentAtStart > 100) return null
+  return Math.round((firstFullYearAmount * (100 - taxableSharePercentAtStart)) / 100)
+}

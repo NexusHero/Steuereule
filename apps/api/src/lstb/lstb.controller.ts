@@ -19,6 +19,7 @@ import { LstbFieldDto } from './dto/lstb-field.dto.js'
 import { LstbResponseDto } from './dto/lstb-response.dto.js'
 import { LstbChurchTaxDto } from './dto/lstb-church-tax.dto.js'
 import { LstbSubsidiesDto } from './dto/lstb-subsidies.dto.js'
+import { LstbEmployerDto } from './dto/lstb-employer.dto.js'
 import { LstbLinesDto, LstbLinesResponseDto } from './dto/lstb-lines.dto.js'
 
 @ApiTags('lstb')
@@ -138,6 +139,37 @@ export class LstbController {
     @Query('person', ParsePersonPipe) person: 'A' | 'B',
   ): Promise<LstbLinesResponseDto> {
     return this.lstbService.setLines(await this.link.dataUser(userId, year, person), year, dto)
+  }
+
+  @Get(':jahr/lstb-arbeitgeber')
+  @RequiresAccount()
+  @ApiParam({ name: 'jahr', type: Number, example: 2026, description: 'The tax year (Steuerjahr).' })
+  @ApiOkResponse({ type: LstbEmployerDto, description: 'The employer named on the LStB (ADR-0099 §8).' })
+  @ApiUnauthorizedResponse({ description: 'Guest session — this endpoint requires a signed-in account.' })
+  @ApiQuery({ name: 'person', required: false, enum: ['A', 'B'], description: 'B: Person A reads the figures of a partner without an own account (ADR-0054).' })
+  async getEmployer(
+    @CurrentUser() userId: string,
+    @Param('jahr', ParseTaxYearPipe) year: number,
+    @Query('person', ParsePersonPipe) person: 'A' | 'B',
+  ): Promise<LstbEmployerDto> {
+    return this.lstbService.getEmployer(await this.link.dataUser(userId, year, person), year)
+  }
+
+  @Put(':jahr/lstb-arbeitgeber')
+  @HttpCode(200)
+  @RequiresAccount()
+  @ApiParam({ name: 'jahr', type: Number, example: 2026, description: 'The tax year (Steuerjahr).' })
+  @ApiBody({ type: LstbEmployerDto })
+  @ApiOkResponse({ type: LstbEmployerDto, description: 'The stored employer name.' })
+  @ApiUnauthorizedResponse({ description: 'Guest session — this endpoint requires a signed-in account.' })
+  @ApiQuery({ name: 'person', required: false, enum: ['A', 'B'], description: 'B: Person A records the figures of a partner without an own account (ADR-0054).' })
+  async setEmployer(
+    @CurrentUser() userId: string,
+    @Param('jahr', ParseTaxYearPipe) year: number,
+    @Body() dto: LstbEmployerDto,
+    @Query('person', ParsePersonPipe) person: 'A' | 'B',
+  ): Promise<LstbEmployerDto> {
+    return this.lstbService.setEmployer(await this.link.dataUser(userId, year, person), year, dto)
   }
 
   @Get(':jahr/lstb-zuschuesse')

@@ -2,6 +2,9 @@ import { Inject, Injectable } from '@nestjs/common'
 import { InvalidInputError, NotFoundError } from '../common/domain-error.js'
 import {
   deserializeRentalField,
+  deserializeRentalRepairs,
+  isIsoDate,
+  serializeRentalRepairs,
   gatedIncomeTypes,
   isValidRentalAmount,
   classifyRental,
@@ -20,7 +23,7 @@ import {
   INTERVIEW_ANSWER_REPOSITORY,
   type InterviewAnswerRepository,
 } from '../interview/interview-answer.repository.js'
-import { RENTAL_REPOSITORY, type RentalObjectRecord, type RentalRepository } from './rental.repository.js'
+import { RENTAL_REPOSITORY, type RentalAttributes, type RentalObjectRecord, type RentalRepository } from './rental.repository.js'
 import type { PutRentalFieldDto, RentalFieldDto } from './dto/rental-field.dto.js'
 import type { PutRentalAddressDto } from './dto/rental-address.dto.js'
 import type {
@@ -87,8 +90,37 @@ function propertyToDto(record: RentalObjectRecord): RentalPropertyDto {
     schuldzinsen: record.schuldzinsen ?? null,
     einheiten: record.einheiten ?? null,
     anteilA: record.anteilA ?? null,
+    propertyKey: record.propertyKey ?? record.id,
+    anschaffungsdatum: record.anschaffungsdatum ?? null,
+    erhaltungsaufwand: deserializeRentalRepairs(record.erhaltungsaufwand),
     facts: factsDto,
   }
+}
+
+/**
+ * The object's further facts as stored (ADR-0099 §8): a purchase cannot lie after the tax year it is let
+ * in, and a repair of the year is dated within it.
+ */
+function attributesFrom(dto: PutRentalAddressDto, taxYear: number): RentalAttributes {
+  const { anschaffungsdatum, erhaltungsaufwand, ...rest } = dto
+  const attributes: RentalAttributes = { ...rest }
+  if (anschaffungsdatum !== undefined) {
+    if (anschaffungsdatum !== null && !isIsoDate(anschaffungsdatum)) throw new InvalidInputError('FIELD_VALUE_INVALID', 'anschaffungsdatum must be an ISO yyyy-mm-dd date or null.')
+    if (anschaffungsdatum !== null && Number(anschaffungsdatum.slice(0, 4)) > taxYear) throw new InvalidInputError('FIELD_VALUE_INVALID', 'anschaffungsdatum lies after the tax year.')
+    attributes.anschaffungsdatum = anschaffungsdatum
+  }
+  if (erhaltungsaufwand !== undefined) {
+    const repairs = erhaltungsaufwand.map((r) => {
+      if (!Number.isInteger(r.betrag) || r.betrag < 0) throw new InvalidInputError('FIELD_VALUE_INVALID', 'erhaltungsaufwand.betrag must be whole euros, 0 or more.')
+      const datum = r.datum ?? null
+      if (datum !== null && (!isIsoDate(datum) || Number(datum.slice(0, 4)) !== taxYear)) {
+        throw new InvalidInputError('FIELD_VALUE_INVALID', 'erhaltungsaufwand.datum must be an ISO date within the tax year.')
+      }
+      return { betrag: r.betrag, datum }
+    })
+    attributes.erhaltungsaufwand = serializeRentalRepairs(repairs)
+  }
+  return attributes
 }
 
 /** Application logic for the Vermietung guided mask + fold. */
@@ -178,7 +210,7 @@ export class RentalService {
     propertyId: string,
     dto: PutRentalAddressDto,
   ): Promise<RentalResponseDto> {
-    const record = await this.repository.setAddress(userId, taxYear, propertyId, dto)
+    const record = await this.repository.setAddress(userId, taxYear, propertyId, attributesFrom(dto, taxYear))
     if (record === null) {
       throw new NotFoundError('VERMIETUNGSOBJEKT_NOT_FOUND', 'No such Vermietungsobjekt for this account and tax year.')
     }

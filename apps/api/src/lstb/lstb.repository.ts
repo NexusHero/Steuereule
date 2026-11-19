@@ -26,6 +26,8 @@ export interface WageTaxCertificateRecord {
   zuschussPv?: string | null
   /** Zeile 5, euros with cents as a decimal string. */
   solidaritaetszuschlag?: string | null
+  /** The employer named on the certificate (ADR-0099 §8). */
+  arbeitgeber?: string | null
 }
 
 export interface WageTaxCertificateChurchTax {
@@ -45,4 +47,6 @@ export interface WageTaxCertificateRepository {
   setSubsidies(userId: string, taxYear: number, zuschuesseKvPv: string | null): Promise<WageTaxCertificateRecord>
   /** Zeilen 22–27, 24c and 5 (ADR-0093); only the lines named are written. */
   setLines(userId: string, taxYear: number, lines: LstbLinePatch): Promise<WageTaxCertificateRecord>
+  /** The employer's name (ADR-0099 §8), optional like the church tax lines. */
+  setEmployer(userId: string, taxYear: number, arbeitgeber: string | null): Promise<WageTaxCertificateRecord>
 }

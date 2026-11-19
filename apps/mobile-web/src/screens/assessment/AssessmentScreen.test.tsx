@@ -24,6 +24,9 @@ function emptyAssessment(): AssessmentResponseDto {
     status: 'eingegangen',
     assessmentDate: null,
     appealReason: null,
+    appealDate: null,
+    appealOutcome: null,
+    appealOutcomeAmount: null,
     fields: [
       { id: 'einnahmen', kind: 'offen' },
       { id: 'vorsorgeaufwand', kind: 'offen' },

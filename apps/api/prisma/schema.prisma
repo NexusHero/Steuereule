@@ -265,30 +265,35 @@ model Passkey {
 /// tax identifier, only a rounded refund estimate and two open-item/conflict counts.
 /// Revisit if assessed amounts or income figures ever land on this entity.
 model TaxYear {
-  id            String   @id @default(uuid())
+  id               String   @id @default(uuid())
   /// Scoping key — same trusted userId as Profile.userId (ADR-0007). Never read from
   /// the request path/query/body.
-  userId        String
+  userId           String
   /// The tax year shown in the Cockpit (e.g. 2026). Part of the request path, but the
   /// row lookup is always userId-scoped first (`@@unique([userId, steuerjahr])`).
-  taxYear       Int      @map("steuerjahr")
+  taxYear          Int      @map("steuerjahr")
   /// Base estimate before the range is spread, in whole euro (>= 0). VESTIGIAL as of
   /// ticket 15 (Cockpit-Echtdaten): the Cockpit no longer reads this column — the spanne is
   /// now derived from @steuereule/core's `berechne`+`cockpitSpanne` over the real LStB/interview
   /// figures. Kept as a required column (no default) only so the existing write path
   /// (interview-answer.repository.prisma.ts) can keep seeding an honest `0`; a follow-up
   /// migration may drop it once every writer stops needing it.
-  baseEstimate  Int
+  baseEstimate     Int
   /// Number of still-open interview/receipt items (>= 0).
-  openItems     Int
+  openItems        Int
   /// Number of open posten conflicts (ADR-008 "± offen"); defaults to 0 until that
   /// feature exists.
-  openConflicts Int      @default(0)
+  openConflicts    Int      @default(0)
   /// The ADR-0039 state (core `TaxYearStatus`). `extern-erledigt` marks an Eckjahr: a year known
   /// only from an uploaded Bescheid, without an interview (ADR-0098 §4).
-  status        String   @default("entwurf")
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  status           String   @default("entwurf")
+  /// „Schon abgegeben?“ for a year without data (ADR-0099 §1): ja | nein | weiss-nicht, null = not asked
+  /// yet. „ja“ goes with status `extern-erledigt` (filed elsewhere, waiting for the Bescheid upload).
+  filedElsewhere   String?  @map("abgabeAnderswo")
+  /// The day of that answer (ISO); „weiss-nicht“ asks again three months before the deadline.
+  filedElsewhereOn String?  @map("abgabeAnderswoAm")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   @@unique([userId, taxYear])
 }
@@ -536,6 +541,8 @@ model Lstb {
   zuschussPv            String? /// @encrypted?mode=strict
   /// Zeile 5: withheld Solidaritätszuschlag, euros with cents as a decimal string ("165.44").
   solidaritaetszuschlag String? /// @encrypted?mode=strict
+  /// The employer named on the certificate (ADR-0099 §8), for „neuer Arbeitgeber“ in the Verlauf.
+  arbeitgeber           String? /// @encrypted?mode=strict
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
@@ -762,6 +769,14 @@ model RentalProperty {
   schuldzinsen           String? /// @encrypted?mode=strict
   einheiten              String? /// @encrypted?mode=strict
   anteilA                String? /// @encrypted?mode=strict
+  /// The object across the years (ADR-0099 §8): each year has its own row, the Jahresübernahme carries
+  /// this key over. Not tax data, so not encrypted; it only groups the rows.
+  propertyKey            String   @default(uuid()) @map("objektKennung")
+  /// Date of purchase (ISO), for the AfA pro rata, the book value and the 15 % window.
+  anschaffungsdatum      String? /// @encrypted?mode=strict
+  /// Erhaltungsaufwand of the year as JSON `[{ "betrag": 4300, "datum": "2024-05-02" | null }]`, whole
+  /// euros net of VAT (§ 6 Abs. 1 Nr. 1a EStG). Encrypted at rest; null = none recorded.
+  erhaltungsaufwand      String? /// @encrypted?mode=strict
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
 
@@ -781,29 +796,34 @@ model RentalProperty {
 /// (`status`) and the Bescheiddatum stay in the clear: the server-side transition validation and
 /// the § 355 AO Fristen-Countdown need them without decrypting, and neither is a tax identifier.
 model Assessment {
-  id                 String   @id @default(uuid())
+  id                            String   @id @default(uuid())
   /// Scoping key — same trusted userId as Profile.userId (ADR-0007). Never read from the
   /// request path/query/body.
-  userId             String
+  userId                        String
   /// The tax year these figures belong to (same granularity as Lstb/ChLohnausweis).
-  taxYear            Int      @map("steuerjahr")
+  taxYear                       Int      @map("steuerjahr")
   /// The bescheid-phase sub-state (eingegangen | geprüft | einspruch-eingelegt), validated on
   /// every write against @steuereule/core's istBescheidUebergangErlaubt — kein stiller Übergang.
-  status             String   @default("eingegangen")
+  status                        String   @default("eingegangen")
   /// Bescheiddatum (ISO yyyy-mm-dd) — the § 355 AO Einspruchsfrist runs from here. Clear.
-  assessmentDate     String?  @map("bescheiddatum")
+  assessmentDate                String?  @map("bescheiddatum")
   /// Einspruch-Grund (closed set from @steuereule/core's EINSPRUCHS_GRUENDE), null until filed.
-  appealReason       String?  @map("einspruchGrund")
+  appealReason                  String?  @map("einspruchGrund")
+  /// The day the Einspruch was lodged (ISO), and how it ended (ADR-0099 §8): offen | stattgegeben |
+  /// teilweise | abgelehnt | zurueckgenommen. The amount it changed the refund by is encrypted.
+  appealDate                    String?  @map("einspruchDatum")
+  appealOutcome                 String?  @map("einspruchErgebnis")
+  appealOutcomeAmount           String?  @map("einspruchBetrag") /// @encrypted?mode=strict
   /// Einkünfte laut Bescheid (comparable). Encrypted at rest; null=offen, "unklar"=unreadable.
-  einnahmen          String? /// @encrypted?mode=strict
+  einnahmen                     String? /// @encrypted?mode=strict
   /// Vorsorgeaufwendungen laut Bescheid (comparable). Encrypted at rest.
-  vorsorgeaufwand    String? /// @encrypted?mode=strict
+  vorsorgeaufwand               String? /// @encrypted?mode=strict
   /// Anrechenbare Steuern (Quellensteuer) laut Bescheid (comparable). Encrypted at rest.
-  anrechnung         String? /// @encrypted?mode=strict
+  anrechnung                    String? /// @encrypted?mode=strict
   /// Festgesetzte Einkommensteuer (Bescheid-only, not comparable). Encrypted at rest.
-  festgesetzteSteuer String? /// @encrypted?mode=strict
+  festgesetzteSteuer            String? /// @encrypted?mode=strict
   /// Abschlusszahlung: Erstattung > 0, Nachzahlung < 0 (Bescheid-only, not comparable). Encrypted.
-  erstattung         String? /// @encrypted?mode=strict
+  erstattung                    String? /// @encrypted?mode=strict
   /// ADR-0098 §8: the Besteuerungsgrundlagen the Bescheid prints, per position (core
   /// `ASSESSMENT_POSITIONS`). Same encoding as above: null = not read, "unklar" = unreadable.
   /// A and B are the two columns of a joint Bescheid; a single Bescheid uses A.
@@ -827,8 +847,8 @@ model Assessment {
   kirchensteuer                 String? /// @encrypted?mode=strict
   /// The Finanzamt's Erläuterungen as printed, one paragraph per line (quoted, never interpreted).
   erlaeuterungen                String? /// @encrypted?mode=strict
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  createdAt                     DateTime @default(now())
+  updatedAt                     DateTime @updatedAt
 
   @@unique([userId, taxYear])
   @@index([userId])

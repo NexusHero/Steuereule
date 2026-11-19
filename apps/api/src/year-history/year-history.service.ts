@@ -3,6 +3,9 @@ import {
   appealDeadline,
   assessmentLessons,
   buildYearHistory,
+  filedElsewhereState,
+  openAssessmentPeriodYears,
+  yearDeadline,
   declaredPersonPositions,
   diffAssessment,
   todayIso,
@@ -12,43 +15,62 @@ import {
   type AssessmentPositionId,
   type AssessmentPositionValues,
   type EstimateFacts,
+  type FiledElsewhereAnswer,
+  type FiledElsewhereState,
   type FilingYearFacts,
   type NextYearDeclaration,
   type PersonYearFacts,
   type TaxYearStatus,
   type WorkExpenseParts,
   type YearHistoryEntry,
+  type YearDeadline,
   type YearHistoryInput,
 } from '@steuereule/core'
 import { assessedValuesOf, filedReturnOf, hasAssessedValues, assessedReturnOf } from '../assessment/assessment-positions.js'
 import { ASSESSMENT_REPOSITORY, type AssessmentRecord, type AssessmentRepository } from '../assessment/assessment.repository.js'
 import { FILING_VERSION_REPOSITORY, type FilingVersionRecord, type FilingVersionRepository } from '../assessment/filing-version.repository.js'
 import { AuditService } from '../audit/audit.service.js'
-import { CROSS_BORDER_SALARY_STATEMENT_REPOSITORY, type CrossBorderSalaryStatementRepository } from '../ch-salary-certificate/ch-salary-certificate.repository.js'
+import { CROSS_BORDER_SALARY_STATEMENT_REPOSITORY, type CrossBorderSalaryStatementRecord, type CrossBorderSalaryStatementRepository } from '../ch-salary-certificate/ch-salary-certificate.repository.js'
+import { ConflictError, InvalidInputError } from '../common/domain-error.js'
 import { COMMUTE_REPOSITORY, type CommuteRepository } from '../commute/commute.repository.js'
+import { answersFrom } from '../interview/answers.js'
 import { INTERVIEW_ANSWER_REPOSITORY, type InterviewAnswerRepository } from '../interview/interview-answer.repository.js'
 import { PARTNER_COUPLING_REPOSITORY, type PartnerCouplingRepository } from '../link/link.repository.js'
 import { recordedSpouseUserId } from '../link/link.service.js'
-import { WAGE_TAX_CERTIFICATE_REPOSITORY, type WageTaxCertificateRepository } from '../lstb/lstb.repository.js'
+import { WAGE_TAX_CERTIFICATE_REPOSITORY, type WageTaxCertificateRecord, type WageTaxCertificateRepository } from '../lstb/lstb.repository.js'
 import { TaxEstimateService } from '../tax-estimate/tax-estimate.service.js'
 import { todaysWorkExpenses, wageFacts } from './person-facts.js'
-import { YEAR_HISTORY_REPOSITORY, type YearHistoryRepository } from './year-history.repository.js'
+import { YearHistoryInsightsService, type YearHistoryInsights } from './year-history-insights.service.js'
+import { YEAR_HISTORY_REPOSITORY, type HistoryYearRecord, type YearHistoryRepository } from './year-history.repository.js'
 
 /** How a year stands in the list (ADR-0098 §1). */
 export type YearKind = 'eckjahr' | 'bescheid' | 'eingereicht' | 'offen'
 
 /** One filing of a year as the API gathered it: whose, its Bescheid and its frozen version. */
-interface GatheredFiling {
+export interface GatheredFiling {
   readonly person: 'A' | 'B' | null
   readonly assessment: AssessmentRecord | null
   readonly version: FilingVersionRecord | null
   readonly facts: FilingYearFacts
 }
 
-interface GatheredYear {
+/** A person's raw records of the year, decrypted once and shared with the insights (ADR-0099). */
+export interface GatheredPerson {
+  readonly dataUserId: string
+  readonly lstb: WageTaxCertificateRecord | null
+  readonly ch: CrossBorderSalaryStatementRecord | null
+}
+
+export interface GatheredYear {
   readonly year: number
   readonly status: TaxYearStatus | null
   readonly kind: YearKind
+  /** The year has facts of its own; a gap year of the Festsetzungsfrist has none (ADR-0099 §1). */
+  readonly hasData: boolean
+  readonly filedElsewhere: HistoryYearRecord['filedElsewhere']
+  /** Person A's interview answers of the year. */
+  readonly answers: Readonly<Record<string, string>>
+  readonly persons: { readonly A: GatheredPerson; readonly B: GatheredPerson | null }
   readonly input: YearHistoryInput
   readonly filings: readonly GatheredFiling[]
   /** What the year declares today (frozen version, else today's answers), for the lessons of the year before. */
@@ -78,6 +100,14 @@ export interface YearListItem {
   readonly noDiffReason: 'eckjahr' | 'kein-bescheid' | 'keine-eingereichte-fassung' | null
   /** Within the four years a return can still be filed or changed (Festsetzungsfrist, ADR-0049 M3); older years are shown only. */
   readonly withinAssessmentPeriod: boolean
+  /** The year has facts of its own; without them it shows no amount (ADR-0099 §1). */
+  readonly hasData: boolean
+  /** „Schon abgegeben?“ for a year of the Festsetzungsfrist without data; null for every other year. */
+  readonly filedElsewhere: FiledElsewhereState | null
+  /** Filed elsewhere or known from outside, but no Bescheid uploaded yet („noch ohne Bescheid“). */
+  readonly withoutAssessment: boolean
+  /** Until when a return can be filed, or the Bescheid changed (ADR-0099 §1). */
+  readonly deadline: YearDeadline
 }
 
 export type OpenItem =
@@ -96,7 +126,16 @@ export type OpenItem =
       /** Positions the year before's Bescheid cut and this year declares the same way again; no amount (§ 7). */
       readonly repeatedCuts: ReadonlyArray<{ readonly position: AssessmentPositionId; readonly label: string }>
     }
-  | { readonly kind: 'offen'; readonly year: number; readonly highlighted: false; readonly missing: readonly string[] }
+  | {
+      readonly kind: 'offen'
+      readonly year: number
+      readonly highlighted: false
+      readonly missing: readonly string[]
+      /** A year before the current one: the last day of a voluntary return (ADR-0099 §1). */
+      readonly filingDeadline: string | null
+      /** The year has no data yet and asks „Schon abgegeben?“. */
+      readonly askFiledElsewhere: boolean
+    }
 
 export interface MaskLessons {
   /** The open year whose masks show the lessons. */
@@ -106,7 +145,7 @@ export interface MaskLessons {
   readonly lessons: readonly AssessmentLesson[]
 }
 
-export interface YearHistory {
+export interface YearHistory extends YearHistoryInsights {
   readonly today: string
   readonly years: readonly YearHistoryEntry[]
   readonly list: readonly YearListItem[]
@@ -115,8 +154,17 @@ export interface YearHistory {
   readonly maskLessons: MaskLessons | null
 }
 
+/** What answering „Schon abgegeben?“ left the year as. */
+export interface FiledElsewhereResult {
+  readonly year: number
+  readonly status: TaxYearStatus
+  readonly filedElsewhere: FiledElsewhereState
+  readonly deadline: YearDeadline
+}
+
 const SUBMITTED: ReadonlySet<TaxYearStatus> = new Set(['eingereicht', 'rueckfrage', 'bescheid', 'abgeschlossen'])
 const FESTSETZUNGSFRIST_YEARS = 4
+const NO_PERSON = (dataUserId: string): GatheredPerson => ({ dataUserId, lstb: null, ch: null })
 
 /** Positions of person `from` keyed as person A: a single return's Bescheid has one column. */
 function asPersonA(values: AssessmentPositionValues, from: 'A' | 'B'): AssessmentPositionValues {
@@ -150,21 +198,34 @@ export class YearHistoryService {
     @Inject(INTERVIEW_ANSWER_REPOSITORY) private readonly interview: InterviewAnswerRepository,
     @Inject(PARTNER_COUPLING_REPOSITORY) private readonly link: PartnerCouplingRepository,
     @Inject(TaxEstimateService) private readonly estimates: TaxEstimateService,
+    @Inject(YearHistoryInsightsService) private readonly insights: YearHistoryInsightsService,
     @Optional() @Inject(AuditService) private readonly audit?: AuditService,
   ) {}
 
-  async get(userId: string, today: string = todayIso()): Promise<YearHistory> {
+  /** The years with data plus the years of the Festsetzungsfrist without any (ADR-0099 §1), oldest first. */
+  private async recordsOf(userId: string, today: string): Promise<HistoryYearRecord[]> {
     const records = await this.years.yearsOf(userId)
-    const gathered = await Promise.all(records.map((r) => this.gather(userId, r.year, r.status)))
+    const known = new Set(records.map((r) => r.year))
+    const gaps = openAssessmentPeriodYears(today)
+      .filter((year) => !known.has(year))
+      .map((year): HistoryYearRecord => ({ year, status: null, hasData: false, filedElsewhere: null }))
+    return [...records, ...gaps].sort((a, b) => a.year - b.year)
+  }
+
+  async get(userId: string, today: string = todayIso()): Promise<YearHistory> {
+    const records = await this.recordsOf(userId, today)
+    const gathered = await Promise.all(records.map((r) => this.gather(userId, r)))
     await this.audit?.append({ userId, action: 'READ', resource: 'verlauf' })
 
     const byYear = new Map(gathered.map((g) => [g.year, g]))
     const history = buildYearHistory(gathered.map((g) => g.input))
     const diffs = gathered.flatMap((g) => this.diffsOf(g, byYear.get(g.year + 1) ?? null, today))
     const currentYear = Number(today.slice(0, 4))
+    const periodYears = new Set(openAssessmentPeriodYears(today))
     const list = gathered.map((g): YearListItem => {
       const entry = history.find((e) => e.year === g.year)!
       const own = diffs.filter((d) => d.year === g.year)
+      const assessed = g.filings.some((f) => hasAssessedValues(f.assessment))
       return {
         year: g.year,
         status: g.status,
@@ -176,9 +237,37 @@ export class YearHistoryService {
         deviations: own.reduce((n, d) => n + d.diff.counts.deviations, 0),
         noDiffReason: own.length > 0 ? null : g.kind === 'eckjahr' ? 'eckjahr' : g.kind === 'bescheid' ? 'keine-eingereichte-fassung' : 'kein-bescheid',
         withinAssessmentPeriod: g.year >= currentYear - FESTSETZUNGSFRIST_YEARS,
+        hasData: g.hasData,
+        filedElsewhere: !g.hasData && periodYears.has(g.year) ? filedElsewhereState(g.year, g.filedElsewhere, today) : null,
+        withoutAssessment: g.kind === 'eckjahr' && !assessed,
+        deadline: yearDeadline({ year: g.year, assessed, filedOn: g.filings.find((f) => f.version !== null)?.version?.submittedOn ?? null }, today),
       }
     })
-    return { today, years: history, list, openItems: openItems(gathered, diffs, list), diffs, maskLessons: maskLessons(gathered, diffs) }
+    const insights = await this.insights.build(userId, { today, years: gathered, diffs, list })
+    return { today, years: history, list, openItems: openItems(gathered, diffs, list, today), diffs, maskLessons: maskLessons(gathered, diffs), ...insights }
+  }
+
+  /**
+   * „Schon abgegeben?“ (ADR-0099 §1), once per year of the Festsetzungsfrist that has no data. „Ja“ makes
+   * the year `extern-erledigt`, waiting for its Bescheid; „Nein“ and „Weiß nicht“ leave it an open draft.
+   * The year was never declared in the app, so taking the answer back is no illegal ADR-0039 transition.
+   */
+  async answerFiledElsewhere(userId: string, year: number, answer: FiledElsewhereAnswer, today: string = todayIso()): Promise<FiledElsewhereResult> {
+    if (!openAssessmentPeriodYears(today).includes(year)) {
+      throw new InvalidInputError('JAHR_AUSSERHALB_FRIST', `${year} is not one of the years a return can still be filed for.`)
+    }
+    const record = (await this.years.yearsOf(userId)).find((r) => r.year === year)
+    if (record?.hasData === true) {
+      throw new ConflictError('JAHR_HAT_DATEN', `${year} already has data in the app; the question is only for years without.`)
+    }
+    const status: TaxYearStatus = answer === 'ja' ? 'extern-erledigt' : 'entwurf'
+    await this.years.setFiledElsewhere(userId, year, answer, today, status)
+    return {
+      year,
+      status,
+      filedElsewhere: filedElsewhereState(year, { answer, answeredOn: today }, today),
+      deadline: yearDeadline({ year, assessed: false, filedOn: null }, today),
+    }
   }
 
   /** One Abgleich per filing with a Bescheid and a version filed in the app (§ 8: two single returns, two). */
@@ -203,7 +292,8 @@ export class YearHistoryService {
     })
   }
 
-  private async gather(userId: string, year: number, status: TaxYearStatus | null): Promise<GatheredYear> {
+  private async gather(userId: string, record: HistoryYearRecord): Promise<GatheredYear> {
+    const { year, status, hasData } = record
     const link = await this.link.findByUserAndYear(userId, year)
     const filingType: 'einzel' | 'zusammen' = link?.filingType === 'zusammen' ? 'zusammen' : 'einzel'
     const spouseUserId = recordedSpouseUserId(link, userId)
@@ -213,9 +303,14 @@ export class YearHistoryService {
       spouseUserId && filingType === 'einzel' ? this.assessments.findForUserAndYear(spouseUserId, year) : Promise.resolve(null),
       spouseUserId && filingType === 'einzel' ? this.filingVersions.findLatest(spouseUserId, year) : Promise.resolve(null),
     ])
+    const [recordsA, recordsB, answerRows] = await Promise.all([
+      this.personRecords(userId, year),
+      spouseUserId ? this.personRecords(spouseUserId, year) : Promise.resolve(null),
+      this.interview.findAllForUserAndYear(userId, year),
+    ])
     const [personA, personB] = await Promise.all([
-      this.personFacts(userId, year, versionA, 'A'),
-      spouseUserId ? this.personFacts(spouseUserId, year, filingType === 'zusammen' ? versionA : versionB, filingType === 'zusammen' ? 'B' : 'A') : Promise.resolve(null),
+      this.personFacts(recordsA, year, versionA, 'A'),
+      recordsB ? this.personFacts(recordsB, year, filingType === 'zusammen' ? versionA : versionB, filingType === 'zusammen' ? 'B' : 'A') : Promise.resolve(null),
     ])
 
     // B's own single return, kept by this user, counts only where B has something for the year.
@@ -224,7 +319,8 @@ export class YearHistoryService {
     const missing: string[] = []
     const filing = async (person: 'A' | 'B' | null, estimateUser: string, assessment: AssessmentRecord | null, version: FilingVersionRecord | null, prefix: string) => {
       const assessed = hasAssessedValues(assessment)
-      const estimate = assessed ? null : await this.estimate(estimateUser, year)
+      // A year without facts of its own gets no amount, not even an estimate (ADR-0099 §1).
+      const estimate = assessed || !hasData ? null : await this.estimate(estimateUser, year)
       if (estimate !== null && 'missing' in estimate) missing.push(...estimate.missing.map((m) => `${prefix}${m}`))
       filings.push({
         person,
@@ -258,7 +354,23 @@ export class YearHistoryService {
       filings: filings.map((f) => f.facts),
       missing: [...new Set(missing)],
     }
-    return { year, status, kind, input, filings, declaration: declarationOf(year, versionA, personA, includesB ? personB : null) }
+    return {
+      year,
+      status,
+      kind,
+      hasData,
+      filedElsewhere: record.filedElsewhere,
+      answers: answersFrom(answerRows),
+      persons: { A: recordsA, B: includesB ? (recordsB ?? NO_PERSON(spouseUserId!)) : null },
+      input,
+      filings,
+      declaration: declarationOf(year, versionA, personA, includesB ? personB : null),
+    }
+  }
+
+  private async personRecords(dataUserId: string, year: number): Promise<GatheredPerson> {
+    const [lstb, ch] = await Promise.all([this.lstb.findForUserAndYear(dataUserId, year), this.ch.findForUserAndYear(dataUserId, year)])
+    return { dataUserId, lstb, ch }
   }
 
   /** The Cockpit's estimate of the year (ADR-0094): a range, or what it still needs. */
@@ -274,11 +386,10 @@ export class YearHistoryService {
   }
 
   /** A person's wage facts and what the declaration claims as Werbungskosten. */
-  private async personFacts(dataUserId: string, year: number, version: FilingVersionRecord | null, column: 'A' | 'B'): Promise<PersonYearFacts> {
-    const [lstbRecord, chRecord] = await Promise.all([this.lstb.findForUserAndYear(dataUserId, year), this.ch.findForUserAndYear(dataUserId, year)])
+  private async personFacts(records: GatheredPerson, year: number, version: FilingVersionRecord | null, column: 'A' | 'B'): Promise<PersonYearFacts> {
     const frozen = version === null ? null : partsFromPositions(version.positions, column)
-    const declaredWorkExpenses = frozen ?? (version === null ? await this.todaysWorkExpenses(dataUserId, year) : null)
-    return { wage: wageFacts(lstbRecord, chRecord), declaredWorkExpenses }
+    const declaredWorkExpenses = frozen ?? (version === null ? await this.todaysWorkExpenses(records.dataUserId, year) : null)
+    return { wage: wageFacts(records.lstb, records.ch), declaredWorkExpenses }
   }
 
   private async todaysWorkExpenses(dataUserId: string, year: number): Promise<WorkExpenseParts | null> {
@@ -294,10 +405,18 @@ function declarationOf(year: number, version: FilingVersionRecord | null, a: Per
   return { year, source: 'answers', positions: { ...declaredPersonPositions('A', a), ...(b ? declaredPersonPositions('B', b) : {}) } }
 }
 
-/** „Was ansteht“ (ADR-0098 §1): at most one item per year, the running Einspruchsfrist first. */
-function openItems(years: readonly GatheredYear[], diffs: readonly YearDiff[], list: readonly YearListItem[]): OpenItem[] {
+/**
+ * „Was ansteht“ (ADR-0098 §1): at most one item per year, the running Einspruchsfrist first. A year without
+ * data (ADR-0099 §1) is open while it asks „Schon abgegeben?“ or was answered „Nein“; „Ja“ waits for the
+ * Bescheid upload and „Weiß nicht“ stays quiet until it asks again.
+ */
+function openItems(years: readonly GatheredYear[], diffs: readonly YearDiff[], list: readonly YearListItem[], today: string): OpenItem[] {
   const items: OpenItem[] = []
+  const currentYear = Number(today.slice(0, 4))
   for (const g of years) {
+    const listItem = list.find((l) => l.year === g.year)!
+    const question = listItem.filedElsewhere
+    if (question !== null && !question.ask && question.answer !== 'nein') continue
     const own = diffs.filter((d) => d.year === g.year && d.diff.counts.deviations > 0 && d.deadline?.running === true)
     if (own.length > 0) {
       const first = [...own].sort((x, y) => x.deadline!.remainingDays - y.deadline!.remainingDays)[0]!
@@ -313,7 +432,15 @@ function openItems(years: readonly GatheredYear[], diffs: readonly YearDiff[], l
       const cuts = diffs.filter((d) => d.year === g.year - 1).flatMap((d) => d.lessons.filter((l) => l.nextYear?.declaredAboveRecognised === true))
       items.push({ kind: 'wartet-auf-bescheid', year: g.year, highlighted: false, repeatedCuts: cuts.map((l) => ({ position: l.position, label: l.label })) })
     } else if (g.kind === 'offen') {
-      items.push({ kind: 'offen', year: g.year, highlighted: false, missing: g.input.missing.length > 0 ? g.input.missing : ['erklaerung'] })
+      const filingDeadline = g.year < currentYear && listItem.deadline.running ? listItem.deadline.endsOn : null
+      items.push({
+        kind: 'offen',
+        year: g.year,
+        highlighted: false,
+        missing: g.input.missing.length > 0 ? g.input.missing : ['erklaerung'],
+        filingDeadline,
+        askFiledElsewhere: question?.ask ?? false,
+      })
     }
   }
   // The highlighted deadline first, then the years in order, as in the mock.

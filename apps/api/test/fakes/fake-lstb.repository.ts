@@ -40,6 +40,14 @@ export class FakeLstbRepository implements WageTaxCertificateRepository {
     return Promise.resolve(updated)
   }
 
+  setEmployer(userId: string, taxYear: number, arbeitgeber: string | null): Promise<WageTaxCertificateRecord> {
+    const k = key(userId, taxYear)
+    const record: WageTaxCertificateRecord = this.store.get(k) ?? { userId, taxYear, bruttoarbeitslohn: null, lohnsteuer: null, sozialversicherung: null }
+    const updated: WageTaxCertificateRecord = { ...record, arbeitgeber }
+    this.store.set(k, updated)
+    return Promise.resolve(updated)
+  }
+
   setSubsidies(userId: string, taxYear: number, zuschuesseKvPv: string | null): Promise<WageTaxCertificateRecord> {
     const k = key(userId, taxYear)
     const record: WageTaxCertificateRecord = this.store.get(k) ?? { userId, taxYear, bruttoarbeitslohn: null, lohnsteuer: null, sozialversicherung: null }

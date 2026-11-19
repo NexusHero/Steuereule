@@ -28,13 +28,16 @@ import type {
   ConfirmLstbScanDto,
   LstbChurchTaxDto,
   LstbControllerGetChurchTaxParams,
+  LstbControllerGetEmployerParams,
   LstbControllerGetLinesParams,
   LstbControllerGetLstbParams,
   LstbControllerGetSubsidiesParams,
   LstbControllerSetChurchTaxParams,
+  LstbControllerSetEmployerParams,
   LstbControllerSetFieldParams,
   LstbControllerSetLinesParams,
   LstbControllerSetSubsidiesParams,
+  LstbEmployerDto,
   LstbFieldDto,
   LstbLinesDto,
   LstbLinesResponseDto,
@@ -828,6 +831,229 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getLstbControllerSetLinesMutationOptions(options), queryClient);
+    }
+
+export type lstbControllerGetEmployerResponse200 = {
+  data: LstbEmployerDto
+  status: 200
+}
+
+export type lstbControllerGetEmployerResponse401 = {
+  data: void
+  status: 401
+}
+
+export type lstbControllerGetEmployerResponseSuccess = (lstbControllerGetEmployerResponse200) & {
+  headers: Headers;
+};
+export type lstbControllerGetEmployerResponseError = (lstbControllerGetEmployerResponse401) & {
+  headers: Headers;
+};
+
+export type lstbControllerGetEmployerResponse = (lstbControllerGetEmployerResponseSuccess | lstbControllerGetEmployerResponseError)
+
+export const getLstbControllerGetEmployerUrl = (jahr: number,
+    params?: LstbControllerGetEmployerParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/v1/steuerjahre/${jahr}/lstb-arbeitgeber?${stringifiedParams}` : `/v1/steuerjahre/${jahr}/lstb-arbeitgeber`
+}
+
+export const lstbControllerGetEmployer = async (jahr: number,
+    params?: LstbControllerGetEmployerParams, options?: RequestInit): Promise<lstbControllerGetEmployerResponse> => {
+
+  return httpClient<lstbControllerGetEmployerResponse>(getLstbControllerGetEmployerUrl(jahr,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getLstbControllerGetEmployerQueryKey = (jahr: number,
+    params?: LstbControllerGetEmployerParams,) => {
+    return [
+    `/v1/steuerjahre/${jahr}/lstb-arbeitgeber`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getLstbControllerGetEmployerQueryOptions = <TData = Awaited<ReturnType<typeof lstbControllerGetEmployer>>, TError = void>(jahr: number,
+    params?: LstbControllerGetEmployerParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof lstbControllerGetEmployer>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getLstbControllerGetEmployerQueryKey(jahr,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof lstbControllerGetEmployer>>> = ({ signal }) => lstbControllerGetEmployer(jahr,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: jahr !== null && jahr !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof lstbControllerGetEmployer>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type LstbControllerGetEmployerQueryResult = NonNullable<Awaited<ReturnType<typeof lstbControllerGetEmployer>>>
+export type LstbControllerGetEmployerQueryError = void
+
+
+export function useLstbControllerGetEmployer<TData = Awaited<ReturnType<typeof lstbControllerGetEmployer>>, TError = void>(
+ jahr: number,
+    params: undefined |  LstbControllerGetEmployerParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof lstbControllerGetEmployer>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof lstbControllerGetEmployer>>,
+          TError,
+          Awaited<ReturnType<typeof lstbControllerGetEmployer>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useLstbControllerGetEmployer<TData = Awaited<ReturnType<typeof lstbControllerGetEmployer>>, TError = void>(
+ jahr: number,
+    params?: LstbControllerGetEmployerParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof lstbControllerGetEmployer>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof lstbControllerGetEmployer>>,
+          TError,
+          Awaited<ReturnType<typeof lstbControllerGetEmployer>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useLstbControllerGetEmployer<TData = Awaited<ReturnType<typeof lstbControllerGetEmployer>>, TError = void>(
+ jahr: number,
+    params?: LstbControllerGetEmployerParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof lstbControllerGetEmployer>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useLstbControllerGetEmployer<TData = Awaited<ReturnType<typeof lstbControllerGetEmployer>>, TError = void>(
+ jahr: number,
+    params?: LstbControllerGetEmployerParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof lstbControllerGetEmployer>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getLstbControllerGetEmployerQueryOptions(jahr,params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type lstbControllerSetEmployerResponse200 = {
+  data: LstbEmployerDto
+  status: 200
+}
+
+export type lstbControllerSetEmployerResponse401 = {
+  data: void
+  status: 401
+}
+
+export type lstbControllerSetEmployerResponseSuccess = (lstbControllerSetEmployerResponse200) & {
+  headers: Headers;
+};
+export type lstbControllerSetEmployerResponseError = (lstbControllerSetEmployerResponse401) & {
+  headers: Headers;
+};
+
+export type lstbControllerSetEmployerResponse = (lstbControllerSetEmployerResponseSuccess | lstbControllerSetEmployerResponseError)
+
+export const getLstbControllerSetEmployerUrl = (jahr: number,
+    params?: LstbControllerSetEmployerParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/v1/steuerjahre/${jahr}/lstb-arbeitgeber?${stringifiedParams}` : `/v1/steuerjahre/${jahr}/lstb-arbeitgeber`
+}
+
+export const lstbControllerSetEmployer = async (jahr: number,
+    lstbEmployerDto: LstbEmployerDto,
+    params?: LstbControllerSetEmployerParams, options?: RequestInit): Promise<lstbControllerSetEmployerResponse> => {
+
+  return httpClient<lstbControllerSetEmployerResponse>(getLstbControllerSetEmployerUrl(jahr,params),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(lstbEmployerDto)
+  }
+);}
+
+
+
+
+
+export const getLstbControllerSetEmployerMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof lstbControllerSetEmployer>>, TError,{jahr: number;data: LstbEmployerDto;params?: LstbControllerSetEmployerParams}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof lstbControllerSetEmployer>>, TError,{jahr: number;data: LstbEmployerDto;params?: LstbControllerSetEmployerParams}, TContext> => {
+
+const mutationKey = ['lstbControllerSetEmployer'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof lstbControllerSetEmployer>>, {jahr: number;data: LstbEmployerDto;params?: LstbControllerSetEmployerParams}> = (props) => {
+          const {jahr,data,params} = props ?? {};
+
+          return  lstbControllerSetEmployer(jahr,data,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type LstbControllerSetEmployerMutationResult = NonNullable<Awaited<ReturnType<typeof lstbControllerSetEmployer>>>
+    export type LstbControllerSetEmployerMutationBody = LstbEmployerDto
+    export type LstbControllerSetEmployerMutationError = void
+
+    export const useLstbControllerSetEmployer = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof lstbControllerSetEmployer>>, TError,{jahr: number;data: LstbEmployerDto;params?: LstbControllerSetEmployerParams}, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof lstbControllerSetEmployer>>,
+        TError,
+        {jahr: number;data: LstbEmployerDto;params?: LstbControllerSetEmployerParams},
+        TContext
+      > => {
+      return useMutation(getLstbControllerSetEmployerMutationOptions(options), queryClient);
     }
 
 export type lstbControllerGetSubsidiesResponse200 = {

@@ -174,6 +174,14 @@ export interface LstbLinesDto {
   solidaritaetszuschlag?: number | null;
 }
 
+export interface LstbEmployerDto {
+  /**
+     * Name of the employer as printed on the certificate; empty or null clears it.
+     * @nullable
+     */
+  arbeitgeber: string | null;
+}
+
 export interface LstbSubsidiesDto {
   /**
      * Zeile 24 a–c: steuerfreie Arbeitgeberzuschüsse zur Kranken- und Pflegeversicherung, zusammen, ganze Euro.
@@ -283,6 +291,36 @@ export type LstbControllerSetLinesPerson = typeof LstbControllerSetLinesPerson[k
 
 
 export const LstbControllerSetLinesPerson = {
+  A: 'A',
+  B: 'B',
+} as const;
+
+export type LstbControllerGetEmployerParams = {
+/**
+ * B: Person A reads the figures of a partner without an own account (ADR-0054).
+ */
+person?: LstbControllerGetEmployerPerson;
+};
+
+export type LstbControllerGetEmployerPerson = typeof LstbControllerGetEmployerPerson[keyof typeof LstbControllerGetEmployerPerson];
+
+
+export const LstbControllerGetEmployerPerson = {
+  A: 'A',
+  B: 'B',
+} as const;
+
+export type LstbControllerSetEmployerParams = {
+/**
+ * B: Person A records the figures of a partner without an own account (ADR-0054).
+ */
+person?: LstbControllerSetEmployerPerson;
+};
+
+export type LstbControllerSetEmployerPerson = typeof LstbControllerSetEmployerPerson[keyof typeof LstbControllerSetEmployerPerson];
+
+
+export const LstbControllerSetEmployerPerson = {
   A: 'A',
   B: 'B',
 } as const;

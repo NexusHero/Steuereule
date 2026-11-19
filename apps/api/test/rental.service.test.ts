@@ -145,6 +145,45 @@ describe('VermietungService', () => {
     })
   })
 
+  describe('ADR-0099 §8: purchase date, repairs and the key across the years', () => {
+    it('gives every object a key of its own and starts without a purchase date or repairs', async () => {
+      const state = await service.createProperty(USER_ID, TAX_YEAR)
+      expect(state.properties[0]).toMatchObject({ anschaffungsdatum: null, erhaltungsaufwand: [] })
+      expect(state.properties[0]!.propertyKey).toEqual(expect.any(String))
+    })
+
+    it('stores the purchase date and the repairs of the year', async () => {
+      const { properties } = await service.createProperty(USER_ID, TAX_YEAR)
+      const state = await service.setAddress(USER_ID, TAX_YEAR, properties[0]!.id, {
+        anschaffungsdatum: '2024-04-01',
+        erhaltungsaufwand: [{ betrag: 4300, datum: '2026-05-02' }, { betrag: 800 }],
+      })
+      expect(state.properties[0]).toMatchObject({
+        anschaffungsdatum: '2024-04-01',
+        erhaltungsaufwand: [
+          { betrag: 4300, datum: '2026-05-02' },
+          { betrag: 800, datum: null },
+        ],
+      })
+    })
+
+    it('rejects a purchase after the tax year and a repair dated in another year', async () => {
+      const { properties } = await service.createProperty(USER_ID, TAX_YEAR)
+      const id = properties[0]!.id
+      await expect(service.setAddress(USER_ID, TAX_YEAR, id, { anschaffungsdatum: '2027-01-01' })).rejects.toThrow(/after the tax year/)
+      await expect(service.setAddress(USER_ID, TAX_YEAR, id, { anschaffungsdatum: '2024-02-30' })).rejects.toThrow(/ISO/)
+      await expect(service.setAddress(USER_ID, TAX_YEAR, id, { erhaltungsaufwand: [{ betrag: 100, datum: '2025-12-31' }] })).rejects.toThrow(/within the tax year/)
+      await expect(service.setAddress(USER_ID, TAX_YEAR, id, { erhaltungsaufwand: [{ betrag: -1 }] })).rejects.toThrow(/whole euros/)
+    })
+
+    it('clears the purchase date with null', async () => {
+      const { properties } = await service.createProperty(USER_ID, TAX_YEAR)
+      await service.setAddress(USER_ID, TAX_YEAR, properties[0]!.id, { anschaffungsdatum: '2024-04-01' })
+      const state = await service.setAddress(USER_ID, TAX_YEAR, properties[0]!.id, { anschaffungsdatum: null })
+      expect(state.properties[0]!.anschaffungsdatum).toBeNull()
+    })
+  })
+
   it('ADR-0052 §6: a user write drops the marker of exactly that field of that object', async () => {
     const property = await repository.create('user-1', 2025)
     await markings.save('user-1', 2025, { key: `vermietung:${property.id}.mieteinnahmen`, provenance: { kind: 'uebernahme', lastYear: 2024 }, confirmed: false, proposal: null })

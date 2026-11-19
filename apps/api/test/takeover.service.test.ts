@@ -85,6 +85,17 @@ describe('UebernahmeService', () => {
     expect(propertyCopies.map((o) => o.werbungskosten).sort()).toEqual(['1200', null])
   })
 
+  it('ADR-0099 §8: carries each object’s key and purchase date, so the Verlauf follows it across the years', async () => {
+    rental.seed({ id: 'alt-1', propertyKey: 'whg-lindenweg', userId: USER_ID, taxYear: 2025, mieteinnahmen: '9600', anschaffungskosten: '100000', baujahr: '1995', werbungskosten: '1200', anschaffungsdatum: '2023-04-01', erhaltungsaufwand: '[{"betrag":4300,"datum":null}]' })
+
+    await service.takeOver(USER_ID, TARGET_YEAR, 2025)
+
+    const [copy] = await rental.listForUserAndYear(USER_ID, TARGET_YEAR)
+    expect(copy).toMatchObject({ propertyKey: 'whg-lindenweg', anschaffungsdatum: '2023-04-01' })
+    // The repairs belong to their year: the new year starts without any.
+    expect(copy!.erhaltungsaufwand ?? null).toBeNull()
+  })
+
   it('ein zweiter Kopierversuch ist ein 409 — nie eine stille Kopie', async () => {
     lstb.seed({ userId: USER_ID, taxYear: 2025, bruttoarbeitslohn: '50000', lohnsteuer: null, sozialversicherung: null })
     await service.takeOver(USER_ID, TARGET_YEAR, 2025)

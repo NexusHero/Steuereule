@@ -1,6 +1,15 @@
 import { ApiProperty } from '@nestjs/swagger'
 import { RentalFieldDto } from './rental-field.dto.js'
 
+/** One stored repair of the year (ADR-0099 §8). */
+export class RentalRepairEntryDto {
+  @ApiProperty({ type: Number, example: 4300, description: 'Net of VAT, whole euros.' })
+  betrag!: number
+
+  @ApiProperty({ type: String, nullable: true, example: '2026-05-02', description: 'When the work was done (ISO); null when not recorded.' })
+  datum!: string | null
+}
+
 /** The Vermietung-Einordnung — what the `vermietung-art` answer MEANS for 1.0. */
 export class RentalClassificationDto {
   @ApiProperty({
@@ -84,6 +93,15 @@ export class RentalPropertyDto {
 
   @ApiProperty({ type: String, nullable: true })
   anteilA?: string | null
+
+  @ApiProperty({ type: String, example: 'b1d2…', description: 'The object across the years: the Jahresübernahme carries it to the copy (ADR-0099 §8).' })
+  propertyKey!: string
+
+  @ApiProperty({ type: String, nullable: true, example: '2024-04-01', description: 'Date of purchase (ISO), null while not entered.' })
+  anschaffungsdatum!: string | null
+
+  @ApiProperty({ type: [RentalRepairEntryDto], description: 'The Erhaltungsaufwand of this year; [] while none is recorded.' })
+  erhaltungsaufwand!: RentalRepairEntryDto[]
 
   @ApiProperty({ type: RentalPropertyFactsDto })
   facts!: RentalPropertyFactsDto

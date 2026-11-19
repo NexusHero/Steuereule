@@ -46,3 +46,32 @@ export function checkRentalRepairs(input: RentalRepairsInput): RentalRepairsResu
   const exceeds = withinWindowEur > limitEur
   return { windowEnd, limitEur, withinWindowEur, exceeds, roomLeftEur: exceeds ? 0 : limitEur - withinWindowEur }
 }
+
+/** One stored repair of a rental object's year (ADR-0099 §8), as the mask and the column keep it. */
+export interface StoredRentalRepair {
+  /** Whole euros, net of VAT. */
+  readonly betrag: number
+  /** When the work was done (ISO); null when not recorded. */
+  readonly datum: string | null
+}
+
+/** The column's JSON; null for none, so an empty list and a never-entered one read the same. */
+export function serializeRentalRepairs(repairs: readonly StoredRentalRepair[]): string | null {
+  return repairs.length === 0 ? null : JSON.stringify(repairs.map((r) => ({ betrag: r.betrag, datum: r.datum })))
+}
+
+/** Reads the column back; anything that is not a list of whole, non-negative amounts is read as none. */
+export function deserializeRentalRepairs(value: string | null | undefined): StoredRentalRepair[] {
+  if (value === null || value === undefined || value === '') return []
+  try {
+    const parsed: unknown = JSON.parse(value)
+    if (!Array.isArray(parsed)) return []
+    return parsed.flatMap((entry: unknown) => {
+      const e = entry as { betrag?: unknown; datum?: unknown }
+      if (typeof e?.betrag !== 'number' || !Number.isInteger(e.betrag) || e.betrag < 0) return []
+      return [{ betrag: e.betrag, datum: typeof e.datum === 'string' && isIsoDate(e.datum) ? e.datum : null }]
+    })
+  } catch {
+    return []
+  }
+}

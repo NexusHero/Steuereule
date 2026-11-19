@@ -499,6 +499,110 @@
         ]
       }
     },
+    "/v1/steuerjahre/{jahr}/lstb-arbeitgeber": {
+      "get": {
+        "operationId": "LstbController_getEmployer",
+        "parameters": [
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "B: Person A reads the figures of a partner without an own account (ADR-0054).",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (Steuerjahr).",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The employer named on the LStB (ADR-0099 §8).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LstbEmployerDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          }
+        },
+        "tags": [
+          "lstb"
+        ]
+      },
+      "put": {
+        "operationId": "LstbController_setEmployer",
+        "parameters": [
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "B: Person A records the figures of a partner without an own account (ADR-0054).",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (Steuerjahr).",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LstbEmployerDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The stored employer name.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LstbEmployerDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          }
+        },
+        "tags": [
+          "lstb"
+        ]
+      }
+    },
     "/v1/steuerjahre/{jahr}/lstb-zuschuesse": {
       "get": {
         "operationId": "LstbController_getSubsidies",
@@ -2218,6 +2322,51 @@
                 }
               }
             }
+          }
+        },
+        "tags": [
+          "bescheid"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/bescheid/einspruch/ergebnis": {
+      "put": {
+        "operationId": "AssessmentController_setAppealOutcome",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (Steuerjahr).",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetAppealOutcomeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The Bescheid with how its Einspruch ended (ADR-0099 §8).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssessmentResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The Bescheid has no Einspruch."
           }
         },
         "tags": [
@@ -4547,7 +4696,7 @@
         "parameters": [],
         "responses": {
           "200": {
-            "description": "Steuer-Verlauf (ADR-0098): every year of the caller’s account or household, with the Bescheid-Abgleich and „Was ansteht“.",
+            "description": "Steuer-Verlauf (ADR-0098, ADR-0099): every year of the caller’s account or household, with the Bescheid-Abgleich, „Was ansteht“, the hints, events, groups and Unterlagen.",
             "content": {
               "application/json": {
                 "schema": {
@@ -4558,6 +4707,57 @@
           },
           "401": {
             "description": "Guest session — this endpoint requires a signed-in account."
+          }
+        },
+        "tags": [
+          "verlauf"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/abgabe-anderswo": {
+      "put": {
+        "operationId": "FiledElsewhereController_answer",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "A year of the Festsetzungsfrist without data in the app.",
+            "schema": {
+              "example": 2022,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutFiledElsewhereDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The stored answer and the state it put the year in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FiledElsewhereResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The year is outside the four years a return can still be filed for."
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "409": {
+            "description": "The year already has data in the app."
           }
         },
         "tags": [
@@ -5933,6 +6133,20 @@
           }
         }
       },
+      "LstbEmployerDto": {
+        "type": "object",
+        "properties": {
+          "arbeitgeber": {
+            "type": "string",
+            "nullable": true,
+            "example": "Muster GmbH",
+            "description": "Name of the employer as printed on the certificate; empty or null clears it."
+          }
+        },
+        "required": [
+          "arbeitgeber"
+        ]
+      },
       "LstbSubsidiesDto": {
         "type": "object",
         "properties": {
@@ -6959,6 +7173,26 @@
           "kind"
         ]
       },
+      "RentalRepairEntryDto": {
+        "type": "object",
+        "properties": {
+          "betrag": {
+            "type": "number",
+            "example": 4300,
+            "description": "Net of VAT, whole euros."
+          },
+          "datum": {
+            "type": "string",
+            "nullable": true,
+            "example": "2026-05-02",
+            "description": "When the work was done (ISO); null when not recorded."
+          }
+        },
+        "required": [
+          "betrag",
+          "datum"
+        ]
+      },
       "RentalDepreciationDto": {
         "type": "object",
         "properties": {
@@ -7076,6 +7310,24 @@
             "type": "string",
             "nullable": true
           },
+          "propertyKey": {
+            "type": "string",
+            "example": "b1d2…",
+            "description": "The object across the years: the Jahresübernahme carries it to the copy (ADR-0099 §8)."
+          },
+          "anschaffungsdatum": {
+            "type": "string",
+            "nullable": true,
+            "example": "2024-04-01",
+            "description": "Date of purchase (ISO), null while not entered."
+          },
+          "erhaltungsaufwand": {
+            "description": "The Erhaltungsaufwand of this year; [] while none is recorded.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RentalRepairEntryDto"
+            }
+          },
           "facts": {
             "$ref": "#/components/schemas/RentalPropertyFactsDto"
           }
@@ -7096,6 +7348,9 @@
           "schuldzinsen",
           "einheiten",
           "anteilA",
+          "propertyKey",
+          "anschaffungsdatum",
+          "erhaltungsaufwand",
           "facts"
         ]
       },
@@ -7202,6 +7457,25 @@
           "kind"
         ]
       },
+      "RentalRepairDto": {
+        "type": "object",
+        "properties": {
+          "betrag": {
+            "type": "number",
+            "example": 4300,
+            "description": "Erhaltungsaufwand net of VAT, whole euros."
+          },
+          "datum": {
+            "type": "string",
+            "nullable": true,
+            "example": "2026-05-02",
+            "description": "When the work was done (ISO yyyy-mm-dd), within the tax year; absent or null when not known."
+          }
+        },
+        "required": [
+          "betrag"
+        ]
+      },
       "PutRentalAddressDto": {
         "type": "object",
         "properties": {
@@ -7248,6 +7522,19 @@
             "type": "string",
             "example": "50",
             "description": "Person A's share in percent, the rest is Person B's (Anlage V Zeile 86, ADR-0054)."
+          },
+          "anschaffungsdatum": {
+            "type": "string",
+            "nullable": true,
+            "example": "2024-04-01",
+            "description": "Date of purchase (ISO yyyy-mm-dd), not after the tax year; null clears it (ADR-0099 §8)."
+          },
+          "erhaltungsaufwand": {
+            "description": "The Erhaltungsaufwand of this year, replacing the stored list; [] clears it (§ 6 Abs. 1 Nr. 1a EStG, ADR-0099 §8).",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RentalRepairDto"
+            }
           }
         }
       },
@@ -8276,6 +8563,30 @@
             "nullable": true,
             "description": "Einspruch-Grund (closed set), null until filed."
           },
+          "appealDate": {
+            "type": "string",
+            "nullable": true,
+            "example": "2026-07-03",
+            "description": "The day the Einspruch was lodged (ISO), null until filed (ADR-0099 §8)."
+          },
+          "appealOutcome": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "offen",
+              "stattgegeben",
+              "teilweise",
+              "abgelehnt",
+              "zurueckgenommen"
+            ],
+            "description": "How the Einspruch ended; `offen` while undecided, null without an Einspruch."
+          },
+          "appealOutcomeAmount": {
+            "type": "number",
+            "nullable": true,
+            "example": 140,
+            "description": "What the outcome changed the refund by, whole euros (negative = less); null when not given."
+          },
           "fields": {
             "description": "The five figures, in paper order.",
             "type": "array",
@@ -8335,6 +8646,9 @@
           "status",
           "assessmentDate",
           "appealReason",
+          "appealDate",
+          "appealOutcome",
+          "appealOutcomeAmount",
           "fields",
           "reconciliation",
           "frist",
@@ -8405,10 +8719,40 @@
               "sonstiges"
             ],
             "description": "The Einspruch-Grund (closed set)."
+          },
+          "date": {
+            "type": "string",
+            "example": "2026-07-03",
+            "description": "The day the Einspruch was lodged (ISO yyyy-mm-dd); today when absent (ADR-0099 §8)."
           }
         },
         "required": [
           "reason"
+        ]
+      },
+      "SetAppealOutcomeDto": {
+        "type": "object",
+        "properties": {
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "offen",
+              "stattgegeben",
+              "teilweise",
+              "abgelehnt",
+              "zurueckgenommen"
+            ],
+            "description": "The outcome (closed set)."
+          },
+          "amount": {
+            "type": "number",
+            "nullable": true,
+            "example": 140,
+            "description": "What it changed the refund by, whole euros (negative = less); null or absent when not known."
+          }
+        },
+        "required": [
+          "outcome"
         ]
       },
       "CommuteInputsDto": {
@@ -13855,6 +14199,81 @@
           "steuerquote"
         ]
       },
+      "FiledElsewhereDto": {
+        "type": "object",
+        "properties": {
+          "answer": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "ja",
+              "nein",
+              "weiss-nicht"
+            ],
+            "description": "The answer; null while not asked."
+          },
+          "answeredOn": {
+            "type": "string",
+            "nullable": true,
+            "example": "2026-11-19"
+          },
+          "askAgainFrom": {
+            "type": "string",
+            "nullable": true,
+            "example": "2027-09-30",
+            "description": "After „weiss-nicht“: from this day the question comes again (three months before the deadline)."
+          },
+          "ask": {
+            "type": "boolean",
+            "description": "Ask the question now."
+          }
+        },
+        "required": [
+          "answer",
+          "answeredOn",
+          "askAgainFrom",
+          "ask"
+        ]
+      },
+      "YearDeadlineDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "abgabe-moeglich-bis",
+              "aenderbar-bis"
+            ],
+            "description": "`abgabe-moeglich-bis` without a Bescheid („bis 31.12.2026 möglich“), `aenderbar-bis` with one."
+          },
+          "endsOn": {
+            "type": "string",
+            "example": "2026-12-31",
+            "description": "The Festsetzungsfrist without a delayed start (§ 169 Abs. 2 Nr. 2 AO, § 108 Abs. 3 AO): true for every return."
+          },
+          "remainingDays": {
+            "type": "number",
+            "example": 42,
+            "description": "Days from today; negative once it passed."
+          },
+          "running": {
+            "type": "boolean"
+          },
+          "endsOnIfMandatory": {
+            "type": "string",
+            "nullable": true,
+            "example": "2029-01-02",
+            "description": "The later end should the return have been mandatory (§ 170 Abs. 2 Nr. 1 AO); null when unknown or the same. Never shown instead of `endsOn`."
+          }
+        },
+        "required": [
+          "kind",
+          "endsOn",
+          "remainingDays",
+          "running",
+          "endsOnIfMandatory"
+        ]
+      },
       "YearListItemDto": {
         "type": "object",
         "properties": {
@@ -13922,6 +14341,32 @@
           "withinAssessmentPeriod": {
             "type": "boolean",
             "description": "Within the four years of the Festsetzungsfrist; older years are for display only."
+          },
+          "hasData": {
+            "type": "boolean",
+            "description": "The year has facts of its own; a year of the Festsetzungsfrist without any is listed anyway and shows no amount (ADR-0099 §1)."
+          },
+          "filedElsewhere": {
+            "nullable": true,
+            "description": "„Schon abgegeben?“ for a year without data within the Festsetzungsfrist; null for every other year.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FiledElsewhereDto"
+              }
+            ]
+          },
+          "withoutAssessment": {
+            "type": "boolean",
+            "description": "Filed elsewhere (or known from outside) but no Bescheid uploaded yet: „noch ohne Bescheid“."
+          },
+          "deadline": {
+            "description": "„bis … möglich“ without a Bescheid, „änderbar bis …“ with one.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/YearDeadlineDto"
+              }
+            ]
           }
         },
         "required": [
@@ -13934,7 +14379,11 @@
           "difference",
           "deviations",
           "noDiffReason",
-          "withinAssessmentPeriod"
+          "withinAssessmentPeriod",
+          "hasData",
+          "filedElsewhere",
+          "withoutAssessment",
+          "deadline"
         ]
       },
       "AppealDeadlineDto": {
@@ -14026,6 +14475,16 @@
             "items": {
               "type": "string"
             }
+          },
+          "filingDeadline": {
+            "type": "string",
+            "nullable": true,
+            "example": "2026-12-31",
+            "description": "kind `offen`, a year before the current one: the last day for a voluntary return (ADR-0099 §1)."
+          },
+          "askFiledElsewhere": {
+            "type": "boolean",
+            "description": "kind `offen`: the year has no data yet and asks „Schon abgegeben?“."
           }
         },
         "required": [
@@ -14249,6 +14708,1049 @@
           "lessons"
         ]
       },
+      "LifeEventDto": {
+        "type": "object",
+        "properties": {
+          "year": {
+            "type": "number",
+            "example": 2023
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "zusammenveranlagung",
+              "kind",
+              "neuer-arbeitgeber",
+              "grenzgaenger",
+              "umzug",
+              "immobilienkauf"
+            ]
+          },
+          "person": {
+            "type": "string",
+            "enum": [
+              "A",
+              "B"
+            ],
+            "nullable": true,
+            "description": "Whose event; null for the household’s."
+          },
+          "employers": {
+            "example": [
+              "Grenz AG"
+            ],
+            "description": "kind `neuer-arbeitgeber`: the employers new this year.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "date": {
+            "type": "string",
+            "example": "2025-03-14",
+            "description": "kinds `kind`, `immobilienkauf`: the first date of the year."
+          },
+          "count": {
+            "type": "number",
+            "example": 1,
+            "description": "kinds `kind`, `immobilienkauf`: how many in the year."
+          }
+        },
+        "required": [
+          "year",
+          "kind",
+          "person"
+        ]
+      },
+      "RecurringDetailDto": {
+        "type": "object",
+        "properties": {
+          "km": {
+            "type": "number",
+            "nullable": true,
+            "example": 67
+          },
+          "days": {
+            "type": "number",
+            "nullable": true,
+            "example": 226
+          }
+        },
+        "required": [
+          "km",
+          "days"
+        ]
+      },
+      "RecurringItemFieldDto": {
+        "type": "object",
+        "properties": {
+          "screen": {
+            "type": "string",
+            "example": "commute",
+            "description": "The mask the item is entered in."
+          },
+          "field": {
+            "type": "string",
+            "example": "accountFeesEur"
+          }
+        },
+        "required": [
+          "screen",
+          "field"
+        ]
+      },
+      "RecurringItemDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "kontofuehrung"
+          },
+          "label": {
+            "type": "string",
+            "example": "Kontoführung"
+          },
+          "lastYear": {
+            "type": "number",
+            "example": 2025,
+            "description": "The latest of the last two years that had the item."
+          },
+          "lastAmount": {
+            "type": "number",
+            "nullable": true,
+            "example": 32,
+            "description": "That year’s amount, as a hint."
+          },
+          "lastDetail": {
+            "nullable": true,
+            "description": "Kilometres and days of a way to work, days of Homeoffice.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RecurringDetailDto"
+              }
+            ]
+          },
+          "currentAmount": {
+            "type": "number",
+            "nullable": true,
+            "description": "What the open year itself has entered; null while nothing (never last year’s value)."
+          },
+          "currentDetail": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RecurringDetailDto"
+              }
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "erledigt",
+              "offen"
+            ]
+          },
+          "receipt": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "uebernommen",
+              "vorschlag"
+            ],
+            "description": "What the open year’s receipts did for the item (ADR-0097)."
+          },
+          "cutInYears": {
+            "description": "Years whose Bescheid cut the position again and again (ADR-0099 §5).",
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "fields": {
+            "description": "Where the item is entered.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RecurringItemFieldDto"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "lastYear",
+          "lastAmount",
+          "lastDetail",
+          "currentAmount",
+          "currentDetail",
+          "status",
+          "receipt",
+          "cutInYears",
+          "fields"
+        ]
+      },
+      "RecurringChecklistDto": {
+        "type": "object",
+        "properties": {
+          "year": {
+            "type": "number",
+            "example": 2026,
+            "description": "The open year."
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RecurringItemDto"
+            }
+          },
+          "done": {
+            "type": "number"
+          },
+          "open": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "year",
+          "items",
+          "done",
+          "open"
+        ]
+      },
+      "PrepaymentYearDto": {
+        "type": "object",
+        "properties": {
+          "year": {
+            "type": "number"
+          },
+          "refund": {
+            "type": "number",
+            "description": "Abschlusszahlung laut Bescheid: positive = Erstattung, negative = Nachzahlung."
+          },
+          "backPayment": {
+            "type": "number",
+            "nullable": true,
+            "description": "The Nachzahlung as a positive amount."
+          },
+          "prepayments": {
+            "type": "number",
+            "nullable": true,
+            "description": "The prepayments the year’s answers name."
+          },
+          "adjustPrepayments": {
+            "type": "boolean",
+            "description": "Show „Vorauszahlungen anpassen lassen“."
+          }
+        },
+        "required": [
+          "year",
+          "refund",
+          "backPayment",
+          "prepayments",
+          "adjustPrepayments"
+        ]
+      },
+      "PrepaymentSeriesDto": {
+        "type": "object",
+        "properties": {
+          "years": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PrepaymentYearDto"
+            }
+          },
+          "backPaymentYears": {
+            "type": "number"
+          },
+          "consecutiveBackPayments": {
+            "type": "number",
+            "description": "Nachzahlungen in a row up to the latest Bescheid."
+          },
+          "averageBackPayment": {
+            "type": "number",
+            "nullable": true
+          },
+          "hint": {
+            "type": "string",
+            "nullable": true,
+            "example": "Vorauszahlungen anpassen lassen (Antrag beim Finanzamt)"
+          }
+        },
+        "required": [
+          "years",
+          "backPaymentYears",
+          "consecutiveBackPayments",
+          "averageBackPayment",
+          "hint"
+        ]
+      },
+      "RepeatedCutYearDto": {
+        "type": "object",
+        "properties": {
+          "year": {
+            "type": "number"
+          },
+          "declared": {
+            "type": "number"
+          },
+          "assessed": {
+            "type": "number"
+          },
+          "difference": {
+            "type": "number"
+          },
+          "refundEffect": {
+            "type": "number",
+            "nullable": true
+          }
+        },
+        "required": [
+          "year",
+          "declared",
+          "assessed",
+          "difference",
+          "refundEffect"
+        ]
+      },
+      "RepeatedCutDto": {
+        "type": "object",
+        "properties": {
+          "position": {
+            "type": "string",
+            "example": "homeofficeA"
+          },
+          "type": {
+            "type": "string",
+            "example": "homeoffice"
+          },
+          "person": {
+            "type": "string",
+            "enum": [
+              "A",
+              "B"
+            ],
+            "nullable": true
+          },
+          "label": {
+            "type": "string",
+            "example": "Homeoffice-Pauschale"
+          },
+          "years": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RepeatedCutYearDto"
+            }
+          },
+          "hint": {
+            "type": "string",
+            "nullable": true,
+            "description": "The catalogue hint for the position type."
+          }
+        },
+        "required": [
+          "position",
+          "type",
+          "person",
+          "label",
+          "years",
+          "hint"
+        ]
+      },
+      "CoupleComparisonDto": {
+        "type": "object",
+        "properties": {
+          "year": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "gerechnet",
+              "unvollstaendig",
+              "tarif-fehlt"
+            ]
+          },
+          "filedAs": {
+            "type": "string",
+            "enum": [
+              "einzel",
+              "zusammen"
+            ],
+            "description": "status `gerechnet`: how the year was filed."
+          },
+          "approximate": {
+            "type": "boolean",
+            "description": "status `gerechnet`: true for a joint Bescheid split by the filed facts („Rechnung der App, etwa“)."
+          },
+          "singleTax": {
+            "type": "number",
+            "description": "status `gerechnet`: ESt + Soli (+ KiSt) of two single returns."
+          },
+          "jointTax": {
+            "type": "number",
+            "description": "status `gerechnet`: the same, joint."
+          },
+          "jointSaving": {
+            "type": "number",
+            "example": 1120,
+            "description": "status `gerechnet`: singleTax − jointTax; > 0 the joint return is (or would have been) cheaper."
+          },
+          "jointSavingRange": {
+            "nullable": true,
+            "description": "status `gerechnet`: the saving over the ways to split a joint Bescheid; null when it is one number.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RangeDto"
+              }
+            ]
+          },
+          "statement": {
+            "type": "string",
+            "enum": [
+              "eindeutig",
+              "zu-knapp",
+              "unbestimmt"
+            ],
+            "description": "status `gerechnet`: the comparison’s statement (progression clause)."
+          },
+          "missing": {
+            "description": "status `unvollstaendig`: what is missing.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "year",
+          "status"
+        ]
+      },
+      "CrossBorderYearDto": {
+        "type": "object",
+        "properties": {
+          "year": {
+            "type": "number"
+          },
+          "person": {
+            "type": "string",
+            "enum": [
+              "A",
+              "B"
+            ]
+          },
+          "rate": {
+            "type": "number",
+            "example": 1.065,
+            "description": "EUR per CHF."
+          },
+          "period": {
+            "type": "string",
+            "example": "2025",
+            "description": "`yyyy` or `yyyy-mm`."
+          },
+          "grossChf": {
+            "type": "number"
+          },
+          "grossEur": {
+            "type": "number"
+          },
+          "rateChangePercent": {
+            "type": "number",
+            "nullable": true,
+            "example": 1.4,
+            "description": "Change of the rate to the year before in %."
+          },
+          "withholdingTaxChf": {
+            "type": "number"
+          },
+          "creditedEur": {
+            "type": "number",
+            "description": "Credited in Germany (N-Gre Zeile 25): at most 4,5 % of the gross wage."
+          },
+          "creditCapped": {
+            "type": "boolean",
+            "description": "More was withheld than can be credited."
+          }
+        },
+        "required": [
+          "year",
+          "person",
+          "rate",
+          "period",
+          "grossChf",
+          "grossEur",
+          "rateChangePercent",
+          "withholdingTaxChf",
+          "creditedEur",
+          "creditCapped"
+        ]
+      },
+      "SwissShareDto": {
+        "type": "object",
+        "properties": {
+          "year": {
+            "type": "number"
+          },
+          "percent": {
+            "type": "number",
+            "example": 18.7
+          }
+        },
+        "required": [
+          "year",
+          "percent"
+        ]
+      },
+      "CrossBorderGroupDto": {
+        "type": "object",
+        "properties": {
+          "years": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CrossBorderYearDto"
+            }
+          },
+          "swissShare": {
+            "description": "The Swiss wage’s share of the household’s gross wage.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SwissShareDto"
+            }
+          }
+        },
+        "required": [
+          "years",
+          "swissShare"
+        ]
+      },
+      "RentalDepreciationRateDto": {
+        "type": "object",
+        "properties": {
+          "annual": {
+            "type": "number",
+            "example": 4200
+          },
+          "ratePercent": {
+            "type": "number",
+            "example": 2
+          }
+        },
+        "required": [
+          "annual",
+          "ratePercent"
+        ]
+      },
+      "RentalPropertyYearDto": {
+        "type": "object",
+        "properties": {
+          "year": {
+            "type": "number"
+          },
+          "result": {
+            "type": "number",
+            "nullable": true,
+            "description": "Mieten + Umlagen − Werbungskosten − Schuldzinsen − AfA; null while a part is missing."
+          },
+          "missing": {
+            "example": [
+              "werbungskosten"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "depreciation": {
+            "type": "number",
+            "nullable": true
+          },
+          "bookValueEnd": {
+            "type": "number",
+            "nullable": true,
+            "description": "Remaining book value at year end; null without the purchase date."
+          }
+        },
+        "required": [
+          "year",
+          "result",
+          "missing",
+          "depreciation",
+          "bookValueEnd"
+        ]
+      },
+      "AcquisitionRelatedDto": {
+        "type": "object",
+        "properties": {
+          "windowEnd": {
+            "type": "string",
+            "example": "2026-04-01"
+          },
+          "limitEur": {
+            "type": "number"
+          },
+          "withinWindowEur": {
+            "type": "number"
+          },
+          "exceeds": {
+            "type": "boolean"
+          },
+          "roomLeftEur": {
+            "type": "number"
+          },
+          "windowOpen": {
+            "type": "boolean",
+            "description": "The window still runs."
+          },
+          "undatedCounted": {
+            "type": "number",
+            "description": "Repairs without a date counted in the window to be safe."
+          }
+        },
+        "required": [
+          "windowEnd",
+          "limitEur",
+          "withinWindowEur",
+          "exceeds",
+          "roomLeftEur",
+          "windowOpen",
+          "undatedCounted"
+        ]
+      },
+      "RentalGroupPropertyDto": {
+        "type": "object",
+        "properties": {
+          "propertyKey": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string",
+            "nullable": true,
+            "example": "Lindenweg 4"
+          },
+          "acquiredOn": {
+            "type": "string",
+            "nullable": true
+          },
+          "depreciation": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RentalDepreciationRateDto"
+              }
+            ]
+          },
+          "years": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RentalPropertyYearDto"
+            }
+          },
+          "bookValue": {
+            "type": "number",
+            "nullable": true
+          },
+          "yearsLeft": {
+            "type": "number",
+            "nullable": true
+          },
+          "acquisitionRelated": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AcquisitionRelatedDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "propertyKey",
+          "label",
+          "acquiredOn",
+          "depreciation",
+          "years",
+          "bookValue",
+          "yearsLeft",
+          "acquisitionRelated"
+        ]
+      },
+      "RentalGroupDto": {
+        "type": "object",
+        "properties": {
+          "properties": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RentalGroupPropertyDto"
+            }
+          }
+        },
+        "required": [
+          "properties"
+        ]
+      },
+      "CapitalFavourableCheckDto": {
+        "type": "object",
+        "properties": {
+          "statement": {
+            "type": "string",
+            "enum": [
+              "eindeutig",
+              "zu-knapp",
+              "unbestimmt"
+            ]
+          },
+          "delta": {
+            "type": "number",
+            "description": "Personal rate minus flat rate tax; > 0 the flat rate is cheaper."
+          },
+          "recommendation": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "abgeltung",
+              "persoenlich"
+            ]
+          }
+        },
+        "required": [
+          "statement",
+          "delta",
+          "recommendation"
+        ]
+      },
+      "CapitalYearDto": {
+        "type": "object",
+        "properties": {
+          "year": {
+            "type": "number"
+          },
+          "income": {
+            "type": "number"
+          },
+          "allowanceLimit": {
+            "type": "number"
+          },
+          "allowanceUsed": {
+            "type": "number"
+          },
+          "aboveAllowance": {
+            "type": "number"
+          },
+          "fullyUsed": {
+            "type": "boolean"
+          },
+          "favourableCheck": {
+            "nullable": true,
+            "description": "The Günstigerprüfung on the Bescheid’s zvE; null without one.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CapitalFavourableCheckDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "year",
+          "income",
+          "allowanceLimit",
+          "allowanceUsed",
+          "aboveAllowance",
+          "fullyUsed",
+          "favourableCheck"
+        ]
+      },
+      "CapitalGroupDto": {
+        "type": "object",
+        "properties": {
+          "years": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CapitalYearDto"
+            }
+          }
+        },
+        "required": [
+          "years"
+        ]
+      },
+      "PensionYearDto": {
+        "type": "object",
+        "properties": {
+          "year": {
+            "type": "number"
+          },
+          "amount": {
+            "type": "number",
+            "nullable": true
+          },
+          "taxablePart": {
+            "type": "number",
+            "nullable": true
+          }
+        },
+        "required": [
+          "year",
+          "amount",
+          "taxablePart"
+        ]
+      },
+      "PensionGroupDto": {
+        "type": "object",
+        "properties": {
+          "startYear": {
+            "type": "number",
+            "nullable": true
+          },
+          "sharePercent": {
+            "type": "number",
+            "nullable": true,
+            "example": 82.5,
+            "description": "Besteuerungsanteil of the start year."
+          },
+          "allowance": {
+            "type": "number",
+            "nullable": true,
+            "description": "Rentenfreibetrag, fixed from the first full year."
+          },
+          "allowanceYear": {
+            "type": "number",
+            "nullable": true
+          },
+          "years": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PensionYearDto"
+            }
+          }
+        },
+        "required": [
+          "startYear",
+          "sharePercent",
+          "allowance",
+          "allowanceYear",
+          "years"
+        ]
+      },
+      "LossCarryForwardDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "notRecorded"
+            ],
+            "description": "Verlustvortrag and Verlustverrechnungstöpfe: „noch nicht erfasst“."
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "HistoryGroupsDto": {
+        "type": "object",
+        "properties": {
+          "crossBorder": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CrossBorderGroupDto"
+              }
+            ]
+          },
+          "rental": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RentalGroupDto"
+              }
+            ]
+          },
+          "capital": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CapitalGroupDto"
+              }
+            ]
+          },
+          "pension": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PensionGroupDto"
+              }
+            ]
+          },
+          "lossCarryForward": {
+            "$ref": "#/components/schemas/LossCarryForwardDto"
+          }
+        },
+        "required": [
+          "crossBorder",
+          "rental",
+          "capital",
+          "pension",
+          "lossCarryForward"
+        ]
+      },
+      "AssessmentDocumentDto": {
+        "type": "object",
+        "properties": {
+          "receiptId": {
+            "type": "string"
+          },
+          "fileName": {
+            "type": "string",
+            "example": "Bescheid-2024.pdf"
+          },
+          "uploadedAt": {
+            "type": "string",
+            "example": "2026-11-03T09:12:00.000Z"
+          },
+          "downloadPath": {
+            "type": "string",
+            "example": "/v1/belege/0f…/datei",
+            "description": "The existing receipt file endpoint."
+          }
+        },
+        "required": [
+          "receiptId",
+          "fileName",
+          "uploadedAt",
+          "downloadPath"
+        ]
+      },
+      "AssessmentWaitDto": {
+        "type": "object",
+        "properties": {
+          "days": {
+            "type": "number"
+          },
+          "weeks": {
+            "type": "number"
+          },
+          "pending": {
+            "type": "boolean",
+            "description": "No Bescheid yet: counted up to today."
+          },
+          "askTaxOffice": {
+            "type": "boolean",
+            "description": "„Nachfragen lohnt sich“: more than twelve weeks without a Bescheid."
+          }
+        },
+        "required": [
+          "days",
+          "weeks",
+          "pending",
+          "askTaxOffice"
+        ]
+      },
+      "AppealHistoryEntryDto": {
+        "type": "object",
+        "properties": {
+          "person": {
+            "type": "string",
+            "enum": [
+              "A",
+              "B"
+            ],
+            "nullable": true
+          },
+          "date": {
+            "type": "string",
+            "nullable": true,
+            "example": "2023-07-03"
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "betrag-falsch",
+              "beleg-nicht-beruecksichtigt",
+              "sonstiges"
+            ]
+          },
+          "outcome": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "offen",
+              "stattgegeben",
+              "teilweise",
+              "abgelehnt",
+              "zurueckgenommen"
+            ]
+          },
+          "amount": {
+            "type": "number",
+            "nullable": true,
+            "example": 140
+          }
+        },
+        "required": [
+          "person",
+          "date",
+          "reason",
+          "outcome",
+          "amount"
+        ]
+      },
+      "YearDocumentsDto": {
+        "type": "object",
+        "properties": {
+          "year": {
+            "type": "number"
+          },
+          "documents": {
+            "description": "The uploaded Steuerbescheide, oldest first.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssessmentDocumentDto"
+            }
+          },
+          "submittedOn": {
+            "type": "string",
+            "nullable": true
+          },
+          "assessmentDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "wait": {
+            "nullable": true,
+            "description": "Submission → Bescheid; null without a submission in the app.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AssessmentWaitDto"
+              }
+            ]
+          },
+          "appeals": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AppealHistoryEntryDto"
+            }
+          }
+        },
+        "required": [
+          "year",
+          "documents",
+          "submittedOn",
+          "assessmentDate",
+          "wait",
+          "appeals"
+        ]
+      },
       "YearHistoryResponseDto": {
         "type": "object",
         "properties": {
@@ -14294,6 +15796,60 @@
                 "$ref": "#/components/schemas/MaskLessonsDto"
               }
             ]
+          },
+          "events": {
+            "description": "Lebensereignisse, derived from data only (ADR-0099 §4), oldest first.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LifeEventDto"
+            }
+          },
+          "recurring": {
+            "nullable": true,
+            "description": "„Kommt jedes Jahr wieder“ for the latest open year (ADR-0099 §2); null without one.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RecurringChecklistDto"
+              }
+            ]
+          },
+          "prepayments": {
+            "description": "Nachzahlungen laut Bescheid over the years (ADR-0099 §3).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PrepaymentSeriesDto"
+              }
+            ]
+          },
+          "repeatedCuts": {
+            "description": "Positions cut in at least two Bescheid years (ADR-0099 §5).",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RepeatedCutDto"
+            }
+          },
+          "couples": {
+            "description": "Per Bescheid year of a couple, the Veranlagungsart in both directions (ADR-0099 §6).",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CoupleComparisonDto"
+            }
+          },
+          "groups": {
+            "description": "Grenzgänger, Vermieter, Kapital, Rentner (ADR-0099 §7); each null without data.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HistoryGroupsDto"
+              }
+            ]
+          },
+          "documents": {
+            "description": "Unterlagen (ADR-0099 §9): Bescheide, duration and Einsprüche per year.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/YearDocumentsDto"
+            }
           }
         },
         "required": [
@@ -14302,7 +15858,60 @@
           "list",
           "openItems",
           "diffs",
-          "maskLessons"
+          "maskLessons",
+          "events",
+          "recurring",
+          "prepayments",
+          "repeatedCuts",
+          "couples",
+          "groups",
+          "documents"
+        ]
+      },
+      "PutFiledElsewhereDto": {
+        "type": "object",
+        "properties": {
+          "answer": {
+            "type": "string",
+            "enum": [
+              "ja",
+              "nein",
+              "weiss-nicht"
+            ],
+            "description": "`ja`: filed elsewhere, the year waits for its Bescheid upload; `nein`: an open year; `weiss-nicht`: ask again three months before the deadline."
+          }
+        },
+        "required": [
+          "answer"
+        ]
+      },
+      "FiledElsewhereResponseDto": {
+        "type": "object",
+        "properties": {
+          "year": {
+            "type": "number",
+            "example": 2022
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "entwurf",
+              "extern-erledigt"
+            ],
+            "description": "The ADR-0039 state the answer put the year in."
+          },
+          "filedElsewhere": {
+            "$ref": "#/components/schemas/FiledElsewhereDto"
+          },
+          "deadline": {
+            "$ref": "#/components/schemas/YearDeadlineDto"
+          }
+        },
+        "required": [
+          "year",
+          "status",
+          "filedElsewhere",
+          "deadline"
         ]
       },
       "DeleteAccountRequestDto": {

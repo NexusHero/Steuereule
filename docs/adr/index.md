@@ -116,6 +116,7 @@ The ADRs **justify** the architecture; the [living arc42 document](../arc42/READ
 | 0096 | Modell und Denktiefe wählbar (Gründlich / Max) | Accepted |
 | 0097 | Beleg-Lebenszyklus: Jeder Beleg sagt, was aus ihm wurde | Accepted |
 | 0098 | Steuer-Verlauf: Alle Jahre auf einen Blick | Accepted |
+| 0099 | Verlauf: Hinweise, Lebensereignisse und Gruppen | Accepted |
 
 See also the [Tech Radar](./tech-radar.md).
 

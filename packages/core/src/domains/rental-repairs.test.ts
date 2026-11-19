@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { checkRentalRepairs } from './rental-repairs'
+import { checkRentalRepairs, deserializeRentalRepairs, serializeRentalRepairs } from './rental-repairs'
 
 describe('repairs after buying a rented building (§ 6 Abs. 1 Nr. 1a EStG)', () => {
   it('counts net repairs in the three years after the purchase against 15 % of the building', () => {
@@ -15,5 +15,19 @@ describe('repairs after buying a rented building (§ 6 Abs. 1 Nr. 1a EStG)', () 
   it('refuses what it cannot read', () => {
     expect(() => checkRentalRepairs({ acquiredOn: '01.04.2024', buildingCostEur: 1, repairs: [] })).toThrow(RangeError)
     expect(() => checkRentalRepairs({ acquiredOn: '2024-04-01', buildingCostEur: 0, repairs: [] })).toThrow(RangeError)
+  })
+})
+
+describe('stored repairs (ADR-0099 §8)', () => {
+  it('round-trips the list and reads an empty one as none', () => {
+    const stored = serializeRentalRepairs([{ betrag: 4300, datum: '2024-05-02' }, { betrag: 800, datum: null }])
+    expect(deserializeRentalRepairs(stored)).toEqual([{ betrag: 4300, datum: '2024-05-02' }, { betrag: 800, datum: null }])
+    expect(serializeRentalRepairs([])).toBeNull()
+    expect(deserializeRentalRepairs(null)).toEqual([])
+  })
+
+  it('drops what is not a whole amount and reads a broken column as none', () => {
+    expect(deserializeRentalRepairs('[{"betrag":-1},{"betrag":12.5},{"betrag":100,"datum":"x"}]')).toEqual([{ betrag: 100, datum: null }])
+    expect(deserializeRentalRepairs('{')).toEqual([])
   })
 })

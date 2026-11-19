@@ -18,6 +18,21 @@ export const AssessmentResponseDtoStatus = {
 } as const;
 
 /**
+ * How the Einspruch ended; `offen` while undecided, null without an Einspruch.
+ * @nullable
+ */
+export type AssessmentResponseDtoAppealOutcome = typeof AssessmentResponseDtoAppealOutcome[keyof typeof AssessmentResponseDtoAppealOutcome] | null;
+
+
+export const AssessmentResponseDtoAppealOutcome = {
+  offen: 'offen',
+  stattgegeben: 'stattgegeben',
+  teilweise: 'teilweise',
+  abgelehnt: 'abgelehnt',
+  zurueckgenommen: 'zurueckgenommen',
+} as const;
+
+/**
  * The field’s capture state.
  */
 export type AssessmentFieldDtoKind = typeof AssessmentFieldDtoKind[keyof typeof AssessmentFieldDtoKind];
@@ -318,6 +333,21 @@ export interface AssessmentResponseDto {
      * @nullable
      */
   appealReason: string | null;
+  /**
+     * The day the Einspruch was lodged (ISO), null until filed (ADR-0099 §8).
+     * @nullable
+     */
+  appealDate: string | null;
+  /**
+     * How the Einspruch ended; `offen` while undecided, null without an Einspruch.
+     * @nullable
+     */
+  appealOutcome: AssessmentResponseDtoAppealOutcome;
+  /**
+     * What the outcome changed the refund by, whole euros (negative = less); null when not given.
+     * @nullable
+     */
+  appealOutcomeAmount: number | null;
   /** The five figures, in paper order. */
   fields: AssessmentFieldDto[];
   /** The Abgleich (Bescheid vs. berechnet). */
@@ -396,5 +426,31 @@ export const SetAppealDtoReason = {
 export interface SetAppealDto {
   /** The Einspruch-Grund (closed set). */
   reason: SetAppealDtoReason;
+  /** The day the Einspruch was lodged (ISO yyyy-mm-dd); today when absent (ADR-0099 §8). */
+  date?: string;
+}
+
+/**
+ * The outcome (closed set).
+ */
+export type SetAppealOutcomeDtoOutcome = typeof SetAppealOutcomeDtoOutcome[keyof typeof SetAppealOutcomeDtoOutcome];
+
+
+export const SetAppealOutcomeDtoOutcome = {
+  offen: 'offen',
+  stattgegeben: 'stattgegeben',
+  teilweise: 'teilweise',
+  abgelehnt: 'abgelehnt',
+  zurueckgenommen: 'zurueckgenommen',
+} as const;
+
+export interface SetAppealOutcomeDto {
+  /** The outcome (closed set). */
+  outcome: SetAppealOutcomeDtoOutcome;
+  /**
+     * What it changed the refund by, whole euros (negative = less); null or absent when not known.
+     * @nullable
+     */
+  amount?: number | null;
 }
 
