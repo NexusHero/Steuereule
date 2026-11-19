@@ -13,7 +13,7 @@
   - `apps/mobile-web/src/screens/assessment/AssessmentScreen.tsx` (zeigt denselben Abgleich)
   - `apps/mobile-web/src/navigation/{AppTabs,routes}.tsx`, `apps/mobile-web/src/screens/history/` (neu)
 - **Baut auf:** ADR-0032 (Nichts versprechen, was der Slice nicht liefert), ADR-0038 (Berechnungs-Kern), ADR-0039 (Steuerjahr-Zustandsmaschine), ADR-0049 (Jahresübernahme), ADR-0094 (Die Schätzung rechnet wie der Bescheid), ADR-0097 (Beleg-Lebenszyklus, ein Upload-Weg), ADR-0008 (Feldverschlüsselung)
-- **Mock:** `docs/mocks/steuer-verlauf.html`
+- **Mock:** `docs/mocks/steuer-verlauf.html`; weitere Ideen nach der Zeitleiste (noch nicht entschieden): `docs/mocks/steuer-verlauf-ideen.html`
 
 ## Kontext
 
