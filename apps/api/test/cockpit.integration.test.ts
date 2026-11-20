@@ -99,6 +99,9 @@ describe('GET /v1/steuerjahre/:jahr/cockpit — real Postgres (REQ-001 + ticket 
       status: { kind: 'spanne', from: 49880, to: 50120, openItems: 2, conflicts: 0, unconfirmedItems: 0, unconfirmedSum: 0 },
       openItems: 2,
       submission: null,
+      // ADR-0101: switch off, an employee files on paper.
+      capabilities: { selbststaendig: false },
+      filingPath: 'papier',
     })
   })
 
@@ -124,6 +127,9 @@ describe('GET /v1/steuerjahre/:jahr/cockpit — real Postgres (REQ-001 + ticket 
       status: { kind: 'spanne', from: 0, to: 180, openItems: 3, conflicts: 0, unconfirmedItems: 0, unconfirmedSum: 0 },
       openItems: 2,
       submission: null,
+      // ADR-0101: switch off, an employee files on paper.
+      capabilities: { selbststaendig: false },
+      filingPath: 'papier',
     })
   })
 
@@ -160,6 +166,6 @@ describe('GET /v1/steuerjahre/:jahr/cockpit — real Postgres (REQ-001 + ticket 
       headers: { cookie },
     })
 
-    expect(response.json()).toEqual({ taxYear: 2026, status: { kind: 'bestimmt', value: 50000 }, openItems: 2, submission: null })
+    expect(response.json()).toEqual({ taxYear: 2026, status: { kind: 'bestimmt', value: 50000 }, openItems: 2, submission: null, capabilities: { selbststaendig: false }, filingPath: 'papier' })
   })
 })
