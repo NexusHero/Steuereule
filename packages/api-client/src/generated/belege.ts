@@ -28,6 +28,7 @@ import type {
   CreateReceiptDto,
   DeleteReceiptResponseDto,
   ReceiptControllerDeleteParams,
+  ReceiptControllerUploadBody,
   ReceiptResponseDto,
   SetAssignmentDto
 } from './belege.schemas';
@@ -258,14 +259,28 @@ export const getReceiptControllerUploadUrl = () => {
   return `/v1/belege/upload`
 }
 
-export const receiptControllerUpload = async ( options?: RequestInit): Promise<receiptControllerUploadResponse> => {
+export const receiptControllerUpload = async (receiptControllerUploadBody: ReceiptControllerUploadBody, options?: RequestInit): Promise<receiptControllerUploadResponse> => {
+    const formData = new FormData();
+formData.append(`file`, receiptControllerUploadBody.file);
+if(receiptControllerUploadBody.kind !== undefined) {
+ formData.append(`kind`, receiptControllerUploadBody.kind);
+ }
+if(receiptControllerUploadBody.belegdatum !== undefined) {
+ formData.append(`belegdatum`, receiptControllerUploadBody.belegdatum);
+ }
+if(receiptControllerUploadBody.zahlungsdatum !== undefined) {
+ formData.append(`zahlungsdatum`, receiptControllerUploadBody.zahlungsdatum);
+ }
+if(receiptControllerUploadBody.direction !== undefined) {
+ formData.append(`direction`, receiptControllerUploadBody.direction);
+ }
 
   return httpClient<receiptControllerUploadResponse>(getReceiptControllerUploadUrl(),
   {
     ...options,
     method: 'POST'
-
-
+    ,
+    body: formData
   }
 );}
 
@@ -274,8 +289,8 @@ export const receiptControllerUpload = async ( options?: RequestInit): Promise<r
 
 
 export const getReceiptControllerUploadMutationOptions = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof receiptControllerUpload>>, TError,void, TContext>, request?: SecondParameter<typeof httpClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof receiptControllerUpload>>, TError,void, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof receiptControllerUpload>>, TError,{data: ReceiptControllerUploadBody}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof receiptControllerUpload>>, TError,{data: ReceiptControllerUploadBody}, TContext> => {
 
 const mutationKey = ['receiptControllerUpload'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -287,10 +302,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof receiptControllerUpload>>, void> = () => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof receiptControllerUpload>>, {data: ReceiptControllerUploadBody}> = (props) => {
+          const {data} = props ?? {};
 
-
-          return  receiptControllerUpload(requestOptions)
+          return  receiptControllerUpload(data,requestOptions)
         }
 
 
@@ -301,15 +316,15 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type ReceiptControllerUploadMutationResult = NonNullable<Awaited<ReturnType<typeof receiptControllerUpload>>>
-
+    export type ReceiptControllerUploadMutationBody = ReceiptControllerUploadBody
     export type ReceiptControllerUploadMutationError = unknown
 
     export const useReceiptControllerUpload = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof receiptControllerUpload>>, TError,void, TContext>, request?: SecondParameter<typeof httpClient>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof receiptControllerUpload>>, TError,{data: ReceiptControllerUploadBody}, TContext>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof receiptControllerUpload>>,
         TError,
-        void,
+        {data: ReceiptControllerUploadBody},
         TContext
       > => {
       return useMutation(getReceiptControllerUploadMutationOptions(options), queryClient);

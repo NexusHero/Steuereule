@@ -14,6 +14,7 @@ import {
   type EntryQuestionId,
   type EntryStepId,
   type FollowUpTarget,
+  type InterviewOptions,
   type QuestionDeclaration,
 } from './interview'
 
@@ -142,13 +143,13 @@ function branchFor(decl: QuestionDeclaration, answer: string): readonly FollowUp
  * Every step a one-page form shows, top-down: a question, then (once answered) what follows from
  * its answer; a notice (gate) is shown in place. An unanswered choice does not open its branch yet.
  */
-export function pageSteps(entry: CatalogueEntry, answers: Answers): readonly EntryStepId[] {
+export function pageSteps(entry: CatalogueEntry, answers: Answers, options?: InterviewOptions): readonly EntryStepId[] {
   const out: EntryStepId[] = []
   const visit = (targets: readonly FollowUpTarget[]): boolean => {
     for (const target of targets) {
       const id = targetId(target)
       const asked = QUESTIONS[id].askedWhen
-      if (asked !== undefined && !asked(answers)) continue
+      if (asked !== undefined && !asked(answers, options)) continue
       out.push(id)
       if (typeof target !== 'string' && target.terminal) return false
       const answer = answers[id] ?? (QUESTIONS[id].kind === 'gate' ? GATE_ACKNOWLEDGED : undefined)
@@ -170,13 +171,13 @@ export function topicPageSteps(id: StromTopicId, answers: Answers): readonly Ent
  * it follows). Notices are acknowledged on the way. `complete` is false when a shown field is still
  * empty; then nothing is sent, so a half-filled page never leaves half its answers behind.
  */
-export function answersToPost(entry: CatalogueEntry, draft: Answers, stored: Answers): { readonly complete: boolean; readonly posts: readonly StromPost[] } {
+export function answersToPost(entry: CatalogueEntry, draft: Answers, stored: Answers, options?: InterviewOptions): { readonly complete: boolean; readonly posts: readonly StromPost[] } {
   const posts: StromPost[] = []
   const plan = (targets: readonly FollowUpTarget[]): 'ok' | 'missing' | 'stop' => {
     for (const target of targets) {
       const id = targetId(target)
       const decl = QUESTIONS[id]
-      if (decl.askedWhen !== undefined && !decl.askedWhen(draft)) continue
+      if (decl.askedWhen !== undefined && !decl.askedWhen(draft, options)) continue
       const value = draft[id] ?? (decl.kind === 'gate' ? GATE_ACKNOWLEDGED : undefined)
       if (value === undefined) return 'missing'
       if (stored[id] !== value) posts.push({ questionId: id, value })

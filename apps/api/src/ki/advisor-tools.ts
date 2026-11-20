@@ -13,6 +13,7 @@ export const TOOL_LABELS: Readonly<Record<string, string>> = {
   simulate_tax_delta: 'Simuliere Vorher/Nachher-Steuerwirkung …',
   stage_field_draft: 'Bereite sicheren Entwurf vor …',
   withdraw_draft: 'Ziehe einen Entwurf zurück …',
+  stage_booking_draft: 'Bereite eine Buchung als Entwurf vor …',
   propose_two_paths: 'Vergleiche Zwei-Wege-Strategien …',
   ask_clarification: 'Prüfe Rückfragen …',
   ask_questions: 'Bereite die nächsten Fragen vor …',
@@ -124,6 +125,37 @@ export const TOOL_ARG_SCHEMAS = {
   stage_field_draft: draftTargetSchema.extend({
     sourceId: z.string().max(40).default('estg-9-1'),
     companionFields: z.record(z.string().max(100), z.string().max(200)).optional(),
+  }),
+  /**
+   * A booking for the user's book (ADR-0101 §18): an entry draft in cents, checked against the book
+   * (accounts of its chart, tax key, balanced amounts, open period) before it is shown; posted on accept.
+   */
+  stage_booking_draft: z.object({
+    date: z.string().regex(ISO_DATE_PATTERN),
+    documentNumber: z.string().min(1).max(40),
+    text: z.string().min(1).max(200),
+    lines: z
+      .array(
+        z.object({
+          account: z.string().regex(/^\d{4,8}$/),
+          side: z.enum(['debit', 'credit']),
+          amount: z.number().int().min(1).max(10_000_000_000),
+          taxKey: z.string().max(20).optional(),
+          amountIs: z.enum(['gross', 'net']).optional(),
+        }),
+      )
+      .min(2)
+      .max(20),
+    asset: z
+      .object({
+        label: z.string().min(1).max(200),
+        method: z.enum(['linear', 'degressive', 'gwg', 'sofort']),
+        category: z.string().max(40).optional(),
+        usefulLifeYears: z.number().int().min(1).max(50).optional(),
+      })
+      .optional(),
+    label: z.string().max(160),
+    reason: z.string().max(400).default(''),
   }),
   /** Takes back a draft of this answer the owl found wrong, so the user is not left to spot and refuse it. */
   withdraw_draft: z.object({
@@ -247,6 +279,8 @@ export const TOOL_DESCRIPTIONS: Readonly<Record<ToolName, string>> = {
     'Simuliert deterministisch die exakte Vorher/Nachher-Erstattungswirkung eines Feldes ohne etwas in der Datenbank zu ändern.',
   stage_field_draft:
     'Erstellt einen unverbindlichen Feld-Entwurf (Status pending) zur Prüfung und Freigabe im Eulen-Modus. Rechnet das Steuerdelta deterministisch aus. `person`: `A` für den Nutzer selbst, `B` für Angaben über Ehefrau, Ehemann oder Partner in der Zusammenveranlagung (nur Masken lstb, chLohnausweis, commute, rente, profil, stammdaten und nur, wenn der Haushalt Person B nennt). Gibt es Person B, ist `person` in diesen Masken Pflicht; ohne Angabe oder wenn der Titel Person B nennt, der Entwurf aber für den Nutzer ist, lehnt die App ihn ab.',
+  stage_booking_draft:
+    'Bereitet für Selbstständige eine Buchung als Entwurf vor (Zero-Write: gebucht wird erst, wenn der Nutzer übernimmt). Beträge in ganzen Cent, `side` debit (Soll) oder credit (Haben), Konten aus dem Kontenrahmen des Buchs (Fall-Überblick `business.chart`), `taxKey` z. B. ust19, ust7, vst19, vst7, kleinunternehmer, none; Bruttobeträge teilt die App selbst auf. Für ein Anlagegut `asset` mit Abschreibung (linear mit Nutzungsdauer laut AfA-Tabelle, gwg bis 800 € netto, sofort bis 250 €). Die App prüft Konten, Steuerschlüssel, Ausgleich von Soll und Haben und die Festschreibung und nennt sonst den Grund.',
   withdraw_draft:
     'Zieht einen Entwurf dieser Antwort zurück, den du als falsch erkannt hast (Maske, Feld, ggf. Datensatz und `person` wie beim Entwurf). Statt den Nutzer zu bitten, eine Karte abzulehnen, ziehst du sie selbst zurück und legst sie bei Bedarf richtig neu an.',
   propose_two_paths:

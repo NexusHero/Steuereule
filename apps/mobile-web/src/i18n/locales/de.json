@@ -1515,7 +1515,9 @@
     "schrittVergleich": "Veranlagungsartenvergleich",
     "vergleichUeberspringen": "Überspringen",
     "schrittAusdruck": "Ausdruck",
-    "zumAusdruck": "Weiter zum Ausdruck"
+    "zumAusdruck": "Weiter zum Ausdruck",
+    "elsterHinweis": "Ein Jahr mit Selbstständigkeit gibst du über Mein ELSTER ab – wir füllen dir aus, was du dort einträgst.",
+    "zurAusfuellhilfe": "Zur ELSTER-Ausfüllhilfe"
   },
   "plausibilitaet": {
     "back": "Zurück",
@@ -1666,6 +1668,10 @@
       "partner-rente": {
         "titel": "Rente",
         "formular": "Anlage R"
+      },
+      "selbststaendig": {
+        "titel": "Selbstständigkeit",
+        "formular": "EÜR, USt, GewSt"
       }
     },
     "weitereThemen": "Weitere Themen",
@@ -1781,7 +1787,8 @@
       "zuruecknehmen": "Abgabe zurücknehmen",
       "zurueckgenommen": "Die Abgabe ist zurückgenommen; das Jahr ist wieder offen.",
       "zuruecknehmenBescheid": "Es ist schon ein Bescheid erfasst; die Abgabe bleibt bestehen."
-    }
+    },
+    "elsterHinweis": "Ein Jahr mit Selbstständigkeit gibst du über Mein ELSTER ab – wir füllen dir aus, was du dort einträgst."
   },
   "belegZuordnung": {
     "frage": {
@@ -3329,6 +3336,415 @@
       "keinEinspruch": "Noch kein Einspruch.",
       "leer": "Noch keine Unterlagen: Sobald ein Jahr abgegeben ist oder einen Bescheid hat, steht es hier.",
       "personSuffix": "{{was}} · {{person}}"
+    }
+  },
+  "business": {
+    "zurueck": "Zurück",
+    "laden": "Lade …",
+    "ja": "Ja",
+    "nein": "Nein",
+    "titel": "Selbstständig {{year}}",
+    "speichernFehler": "Das hat nicht geklappt. Versuch es bitte noch einmal.",
+    "gesperrt": {
+      "titel": "Noch nicht freigeschaltet",
+      "text": "Die Selbstständigkeit ist für dieses Konto oder dieses Jahr nicht freigeschaltet. Gib im Interview „Selbstständig“ oder „Beides“ an."
+    },
+    "ladefehler": {
+      "titel": "Das hat nicht geladen",
+      "text": "Versuch es bitte noch einmal.",
+      "nochmal": "Nochmal versuchen"
+    },
+    "status": {
+      "nichtBestaetigt": "Art offen",
+      "zeile": "{{art}} · {{modus}} · {{konten}}",
+      "buchLaedt": "Buch lädt …",
+      "buchungen_one": "{{count}} Buchung",
+      "buchungen_other": "{{count}} Buchungen",
+      "gewinn": "Gewinn {{betrag}}",
+      "verlust": "Verlust {{betrag}}"
+    },
+    "art": {
+      "freiberuf": "Freiberuf",
+      "gewerbe": "Gewerbe"
+    },
+    "modus": {
+      "euer": "EÜR",
+      "bilanz": "Bilanz"
+    },
+    "offen": {
+      "titel": "Offen",
+      "nichts": "Nichts offen.",
+      "kette": "Das Buch ist beschädigt",
+      "art": "Freiberuf oder Gewerbe bestätigen",
+      "keineBuchungen": "Noch keine Buchungen",
+      "bank_one": "{{count}} Bankumsatz zu prüfen",
+      "bank_other": "{{count}} Bankumsätze zu prüfen"
+    },
+    "seite": {
+      "profil": "Profil",
+      "buch": "Buch",
+      "erfassung": "Schnellerfassung",
+      "bank": "Bank",
+      "anlagen": "Anlagen",
+      "abschluss": "Abschluss",
+      "umsatzsteuer": "Umsatzsteuer",
+      "gewerbesteuer": "Gewerbesteuer",
+      "verluste": "Verluste",
+      "elster": "ELSTER-Ausfüllhilfe",
+      "export": "Export",
+      "freischalten": "Freischalten",
+      "beruf": "Beruf genauer",
+      "gewerbedaten": "Gewerbesteuer-Angaben",
+      "beteiligungen": "Beteiligungen"
+    },
+    "profil": {
+      "artTitel": "Freiberuf oder Gewerbe",
+      "frage": {
+        "ownExpertWork": "Arbeitest du mit eigenem Fachwissen?",
+        "employsQualifiedStaff": "Hast du fachlich ausgebildetes Personal?",
+        "leadsPersonally": "Leitest du alles selbst und eigenverantwortlich?",
+        "tradesGoods": "Handelst du mit Waren?"
+      },
+      "vorschlag": {
+        "freiberuf": "Wir schlagen vor: Freiberuf",
+        "gewerbe": "Wir schlagen vor: Gewerbe",
+        "unklar": "Unklar – bitte entscheide selbst"
+      },
+      "bestaetigen": "Du bestätigst. Im Zweifel gilt, was das Finanzamt bisher festgesetzt hat.",
+      "buchfuehrung": "Buchführung",
+      "gewinnermittlung": "Gewinnermittlung",
+      "kontenrahmen": "Kontenrahmen",
+      "kleinunternehmer": "Kleinunternehmer (§ 19 UStG)",
+      "versteuerung": "Umsatzsteuer nach",
+      "versteuerungArt": {
+        "ist": "vereinnahmten Entgelten",
+        "soll": "vereinbarten Entgelten"
+      },
+      "gemeinde": "Gemeinde und Hebesatz",
+      "gemeindeName": "Gemeinde",
+      "hebesatzSuchen": "Hebesatz suchen",
+      "hebesatzFehler": "Die Suche hat nicht geklappt.",
+      "hebesatzKeiner": "Keine Gemeinde gefunden. Trag den Hebesatz unten selbst ein.",
+      "hebesatzZeile": "{{name}} ({{land}}): {{prozent}} % · Tabelle {{jahr}}",
+      "hebesatzNehmen": "Übernehmen",
+      "hebesatzKorrektur": "Hebesatz selbst eintragen (%)",
+      "berufGenauer": "Beruf genauer angeben",
+      "beginn": "Beginn der Tätigkeit"
+    },
+    "buch": {
+      "kette": "Die Kette des Buchs ist gebrochen. Gebucht und exportiert wird erst wieder, wenn das geklärt ist.",
+      "leer": "Noch keine Buchungen.",
+      "stornoZu": "Storno zu {{nummer}}",
+      "storniert": "storniert",
+      "stornieren": "Stornieren",
+      "neu": "Neue Buchung",
+      "datum": "Datum",
+      "text": "Buchungstext",
+      "beleg": "Belegnummer",
+      "soll": "Soll-Konto",
+      "haben": "Haben-Konto",
+      "betrag": "Betrag (brutto)",
+      "steuerschluessel": "Steuerschlüssel",
+      "formularFehler": "Bitte fülle alle Felder aus, mit einem Betrag über 0.",
+      "buchen": "Buchen",
+      "belegHochladen": "Beleg hochladen",
+      "festschreiben": "Festschreiben",
+      "festBis": "Fest bis {{datum}}",
+      "nichtFest": "Noch nichts festgeschrieben.",
+      "festBisLabel": "Festschreiben bis"
+    },
+    "steuerschluessel": {
+      "none": "ohne",
+      "ust19": "USt 19 %",
+      "ust7": "USt 7 %",
+      "ust0": "USt 0 %",
+      "steuerfrei": "steuerfrei",
+      "kleinunternehmer": "Kleinunternehmer",
+      "igLieferung": "IG-Lieferung",
+      "vst19": "Vorsteuer 19 %",
+      "vst7": "Vorsteuer 7 %",
+      "rc13b19": "§ 13b 19 %",
+      "igErwerb19": "IG-Erwerb 19 %",
+      "igErwerb7": "IG-Erwerb 7 %"
+    },
+    "erfassung": {
+      "nurEuer": "Summen je Zeile gibt es nur bei der EÜR. Mit Bilanz buchst du im Buch.",
+      "stand": "Stand",
+      "einnahmen": "Einnahmen",
+      "ausgaben": "Ausgaben",
+      "gewinn": "Gewinn",
+      "einnahmenTitel": "Betriebseinnahmen",
+      "ausgabenTitel": "Betriebsausgaben",
+      "ungueltig": "Mindestens ein Betrag ist keine Zahl.",
+      "gebucht": "Gebucht.",
+      "buchen": "Summen buchen",
+      "zeile": {
+        "einnahmen_umsatzsteuerpflichtig": "Umsatzsteuerpflichtige Einnahmen",
+        "einnahmen_umsatzsteuerfrei": "Umsatzsteuerfreie Einnahmen",
+        "einnahmen_kleinunternehmer": "Einnahmen als Kleinunternehmer",
+        "ausgaben_waren_rohstoffe": "Waren und Rohstoffe",
+        "ausgaben_fremdleistungen": "Fremdleistungen",
+        "ausgaben_personal": "Personal",
+        "ausgaben_raumkosten": "Raumkosten",
+        "ausgaben_kfz": "Kfz-Kosten",
+        "ausgaben_reise": "Reisekosten",
+        "ausgaben_telekommunikation": "Telefon und Internet",
+        "ausgaben_fortbildung": "Fortbildung",
+        "ausgaben_rechts_beratung": "Rechts- und Steuerberatung",
+        "ausgaben_versicherungen_beitraege": "Versicherungen und Beiträge",
+        "ausgaben_werbung": "Werbung",
+        "ausgaben_schuldzinsen": "Schuldzinsen",
+        "ausgaben_sonstige": "Sonstige Ausgaben"
+      }
+    },
+    "bank": {
+      "importTitel": "Kontoauszug einlesen",
+      "quelle": {
+        "sparkasse": "Sparkasse",
+        "ing": "ING",
+        "dkb": "DKB",
+        "commerzbank": "Commerzbank",
+        "camt053": "CAMT.053",
+        "eigene": "Eigene Spalten"
+      },
+      "dateiWaehlen": "Datei wählen",
+      "nurWeb": "Das Einlesen geht im Browser.",
+      "ergebnis": "{{added}} neu, {{duplicates}} schon da, {{outside}} außerhalb des Jahres",
+      "vorschlaege_one": "{{count}} Vorschlag",
+      "vorschlaege_other": "{{count}} Vorschläge",
+      "leer": "Nichts zu prüfen.",
+      "vorschlag": "Konto {{konto}} · {{text}}",
+      "konto": "Konto",
+      "regelMerken": "Als Regel merken",
+      "buchen": "Buchen",
+      "ignorieren": "Ignorieren",
+      "mapping": {
+        "hinweis": "Name der Spalte oder ihre Nummer ab 0.",
+        "trenner": "Trenner",
+        "dezimal": "Dezimalzeichen",
+        "datum": "Datumsformat",
+        "buchungstag": "Spalte Buchungstag",
+        "betrag": "Betrag",
+        "eineSpalte": "Eine Spalte",
+        "sollHaben": "Soll und Haben",
+        "soll": "Spalte Soll",
+        "haben": "Spalte Haben",
+        "betragSpalte": "Spalte Betrag",
+        "gegenpartei": "Spalte Name der Gegenseite (optional)",
+        "iban": "Spalte IBAN der Gegenseite (optional)",
+        "verwendungszweck": "Spalten Verwendungszweck (mit Komma)",
+        "unvollstaendig": "Gib Buchungstag, Betrag und Verwendungszweck an."
+      }
+    },
+    "anlagen": {
+      "leer": "Noch keine Anlagegüter.",
+      "anschaffung": "Anschaffung {{betrag}}",
+      "summe": "Buchwert gesamt",
+      "abgang": "Abgang",
+      "abgangDatum": "Datum des Abgangs",
+      "erloes": "Erlös",
+      "abgangSpeichern": "Abgang speichern",
+      "ungueltig": "Bitte prüfe die Angaben.",
+      "neu": "Neues Anlagegut",
+      "bezeichnung": "Bezeichnung",
+      "konto": "Konto",
+      "datum": "Anschaffungsdatum",
+      "kosten": "Anschaffungskosten",
+      "methode": "Abschreibung",
+      "methodeArt": {
+        "linear": "linear",
+        "degressive": "degressiv",
+        "gwg": "GWG",
+        "sofort": "sofort"
+      },
+      "nutzungsdauer": "Nutzungsdauer (Jahre)",
+      "speichern": "Speichern",
+      "afaBuchen": "Abschreibung des Jahres buchen",
+      "art": "Art laut AfA-Tabelle",
+      "jahre_one": "{{count}} Jahr",
+      "jahre_other": "{{count}} Jahre"
+    },
+    "abschluss": {
+      "euer": "Einnahmenüberschussrechnung",
+      "gewinn": "Gewinn",
+      "guv": "GuV",
+      "jahresergebnis": "Jahresergebnis",
+      "bilanz": "Bilanz",
+      "aktiva": "Aktiva",
+      "passiva": "Passiva",
+      "uebertragen": "Eröffnungsbilanz {{year}} gebucht.",
+      "uebertragenButton": "In {{year}} übernehmen"
+    },
+    "ust": {
+      "klein": "Kleinunternehmer: keine Umsatzsteuer.",
+      "umsatzsteuer": "Umsatzsteuer 19 %",
+      "umsatzsteuerErmaessigt": "Umsatzsteuer 7 %",
+      "vorsteuer": "Abziehbare Vorsteuer",
+      "jahr": "Umsatzsteuer des Jahres",
+      "vorauszahlungen": "Vorauszahlungen",
+      "saldo": "Ergebnis",
+      "erstattung": "Erstattung",
+      "nachzahlung": "Nachzahlung",
+      "vorauszahlungenTitel": "Vorauszahlungen",
+      "vorauszahlungenFeld": "Gezahlte Vorauszahlungen (Summe)"
+    },
+    "gewst": {
+      "entfaellt": "Als Freiberufler zahlst du keine Gewerbesteuer.",
+      "offen": "Noch nicht berechenbar.",
+      "hebesatzFehlt": "Es fehlt der Hebesatz deiner Gemeinde.",
+      "zumProfil": "Zum Profil",
+      "hinzurechnung": "Hinzurechnungen",
+      "kuerzung": "Kürzungen",
+      "gewerbeertrag": "Gewerbeertrag",
+      "messbetrag": "Steuermessbetrag",
+      "hebesatz": "Hebesatz",
+      "steuer": "Gewerbesteuer",
+      "hebesatzKorrigiert": "Hebesatz von dir eingetragen.",
+      "hebesatzTabelle": "Hebesatz aus der Gemeindetabelle {{jahr}}.",
+      "gewinn": "Gewinn",
+      "fehlbetrag": "Fehlbetrag aus Vorjahren (§ 10a)",
+      "freibetrag": "Freibetrag",
+      "fehlbetragRest": "Noch nicht verbrauchter Fehlbetrag: {{betrag}}"
+    },
+    "verluste": {
+      "gewinn": "Gewinn aus dem Betrieb",
+      "vortragGenutzt": "Verlustvortrag genutzt",
+      "neuerVerlust": "Neuer Verlust",
+      "vortragRest": "Vortrag am Jahresende",
+      "vortragTitel": "Verlustvortrag",
+      "vortragFeld": "Verlustvortrag laut letztem Bescheid (€)",
+      "ruecktragTitel": "Verlustrücktrag",
+      "jahrDavor": "In das Vorjahr",
+      "zweitesJahrDavor": "In das Jahr davor",
+      "nurGanz": "Seit 2022 gibt es den Rücktrag ganz oder gar nicht.",
+      "ruecktragNehmen": "Rücktrag nehmen",
+      "ruecktragVerzicht": "Darauf verzichten",
+      "weitereTitel": "Angaben aus den Bescheiden",
+      "platzVorjahr": "Noch nutzbar im Vorjahr (€)",
+      "platzJahrDavor": "Noch nutzbar im Jahr davor (€)",
+      "zurueckgetragen": "Verlust eines späteren Jahres, hierher zurückgetragen (€)"
+    },
+    "elster": {
+      "formular": {
+        "anlage-euer": "Anlage EÜR",
+        "anlage-s": "Anlage S",
+        "anlage-g": "Anlage G",
+        "ust-2-a": "USt 2 A",
+        "gewst-1-a": "Gewerbesteuererklärung (GewSt 1 A)",
+        "est-1-a": "ESt 1 A",
+        "anlage-sonstiges": "Sonstiges"
+      },
+      "nichtFreigeschaltet": "Die Ausfüllhilfe für {{year}} ist noch nicht freigeschaltet.",
+      "nichtVeroeffentlicht": "Das Formular „{{form}}“ für {{year}} ist noch nicht veröffentlicht. Wir raten keine Zeilen.",
+      "nichtVerfuegbar": "Für „{{form}}“ gibt es hier noch keine Ausfüllhilfe.",
+      "nachBedeutung": "Dieses Formular hat keine amtlichen Zeilennummern. Such das Feld in Mein ELSTER nach seiner Bezeichnung.",
+      "zeile": "Zeile {{zeile}}",
+      "kennzahl": "Kz {{kz}}",
+      "feld": "Feld in Mein ELSTER: {{label}}",
+      "nichtErmittelt": "nicht ermittelt",
+      "kopieren": "Kopieren",
+      "kopiert": "Kopiert",
+      "kopierenA11y": "Wert kopieren: {{label}}",
+      "weitere": "Weitere Zeilen ({{count}}) – leer lassen",
+      "freigeschaltet": "{{year}} ist freigeschaltet.",
+      "abgebrochen": "Freischalten abgebrochen. Du kannst es jederzeit noch einmal versuchen."
+    },
+    "export": {
+      "nichtFreigeschaltet": "Der Export für {{year}} ist noch nicht freigeschaltet.",
+      "gobd": "Datenexport für die Betriebsprüfung",
+      "gobdText": "Eine ZIP-Datei mit Buchungen, Konten und Protokoll.",
+      "gobdKnopf": "ZIP herunterladen",
+      "verfahren": "Verfahrensdokumentation",
+      "verfahrenVollstaendig": "Vollständig.",
+      "verfahrenSpeichern": "Speichern",
+      "ebilanz": "E-Bilanz",
+      "ebilanzNichtUebermittelt": "Wird noch nicht an die Finanzverwaltung gesendet.",
+      "ebilanzDatei": "Datensatz herunterladen",
+      "platzhalter": {
+        "unternehmen": "Name des Unternehmens",
+        "inhaber": "Inhaber/in",
+        "anschrift": "Anschrift",
+        "steuernummer": "Steuernummer",
+        "taetigkeit": "Art der Tätigkeit",
+        "kontenrahmen": "Kontenrahmen",
+        "gewinnermittlung": "Gewinnermittlung",
+        "beginn": "Beginn der Tätigkeit",
+        "appVersion": "Version der Software",
+        "hosting": "Wo die Software betrieben wird",
+        "speicherort": "Wo die Daten liegen",
+        "datensicherung": "Wie die Daten gesichert werden",
+        "verschluesselung": "Wie die Daten verschlüsselt sind",
+        "belegablage": "Wie Belege abgelegt werden",
+        "verantwortlich": "Verantwortlich für die Buchführung",
+        "stand": "Stand der Dokumentation"
+      }
+    },
+    "freischalten": {
+      "text": "Buchhaltung, Umsatz- und Gewerbesteuer, Ausfüllhilfe und Exporte für {{year}} sind in der Stufe für Selbstständige enthalten.",
+      "knopf": "Für Selbstständige freischalten",
+      "nichtEingerichtet": "Diese Stufe ist noch nicht eingerichtet. Bitte versuch es später."
+    },
+    "entwurf": {
+      "soll": "Soll",
+      "haben": "Haben",
+      "buchen": "Buchen",
+      "gebucht": "✓ Gebucht",
+      "stornieren": "↩ Stornieren"
+    },
+    "person": {
+      "A": "Ich",
+      "B": "Partner"
+    },
+    "beruf": {
+      "bisher": "Was das Finanzamt bisher festgesetzt hat",
+      "keinBescheid": "Noch kein Bescheid",
+      "katalog": "Katalogberuf (§ 18 EStG)",
+      "keiner": "Keiner davon",
+      "aehnlich": "Ist dein Beruf einem Katalogberuf ähnlich?",
+      "taetigkeit": "Freie Tätigkeit",
+      "keine": "Keine"
+    },
+    "gewerbedaten": {
+      "finanzierung": "Finanzierungsanteile (§ 8 Nr. 1)",
+      "ungueltig": "Mindestens ein Betrag ist keine Zahl.",
+      "gespeichert": "Gespeichert.",
+      "speichern": "Speichern",
+      "feld": {
+        "debtChargesEur": "Entgelte für Schulden",
+        "annuitiesEur": "Renten und dauernde Lasten",
+        "silentPartnerSharesEur": "Gewinnanteile stiller Gesellschafter",
+        "rentMovableEur": "Miete beweglicher Wirtschaftsgüter",
+        "rentMovableLowEmissionEur": "Miete beweglicher Wirtschaftsgüter (emissionsarm)",
+        "rentImmovableEur": "Miete unbeweglicher Wirtschaftsgüter",
+        "licencesEur": "Lizenzen und Konzessionen",
+        "otherAdditionsEur": "Weitere Hinzurechnungen (§ 8 Nr. 4–12)",
+        "einheitswertEur": "Einheitswert des Grundbesitzes",
+        "otherDeductionsEur": "Weitere Kürzungen (§ 9 Nr. 2–10)",
+        "lossCarriedForwardEur": "Gewerbeverlust aus dem letzten Bescheid"
+      }
+    },
+    "beteiligungen": {
+      "leer": "Keine Beteiligungen.",
+      "entfernen": "Entfernen",
+      "neu": "Beteiligung hinzufügen",
+      "hinweis": "Nur der Betrag aus dem Feststellungsbescheid der Gesellschaft.",
+      "name": "Gesellschaft",
+      "gewinn": "Dein Gewinnanteil (€)",
+      "messbetrag": "Anteiliger Steuermessbetrag (€)",
+      "gewerbesteuer": "Anteilige Gewerbesteuer (€)",
+      "ungueltig": "Bitte Name und Gewinnanteil angeben.",
+      "hinzufuegen": "Hinzufügen"
+    },
+    "beleg": {
+      "titel": "Beleg des Betriebs",
+      "hochladen": "Beleg hochladen",
+      "liest": "Lese den Beleg …",
+      "fehler": "Der Beleg konnte nicht gelesen werden.",
+      "keinEntwurf": "Aus dem Beleg wurde kein Buchungsentwurf.",
+      "richtung": {
+        "ausgabe": "Ausgabe",
+        "einnahme": "Einnahme"
+      }
     }
   }
 }

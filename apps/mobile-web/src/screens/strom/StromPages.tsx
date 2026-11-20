@@ -29,6 +29,7 @@ import { StromFields, type FieldCopy } from './StromFields'
 import { useStromSave, type SaveResult } from './useStromSave'
 import { estimateMidpoint, rememberEffect } from './stromEffects'
 import { applicableTopics } from './stromPlan'
+import { useStromOptions } from './stromOptions'
 
 const LATER_ALLOWED: ReadonlySet<EntryStepId> = new Set<EntryStepId>(LATER_ALLOWED_STEPS)
 
@@ -101,11 +102,12 @@ export function BasisPage({ taxYear, stored, onSaved }: { readonly taxYear: numb
   const [result, setResult] = useState<SaveResult | null>(null)
   const { save, saving } = useStromSave(taxYear)
   const copy = useBasisCopy(taxYear, draft)
+  const options = useStromOptions()
   const entry = ENTRIES['minimal-gate']
-  const steps = pageSteps(entry, draft)
+  const steps = pageSteps(entry, draft, options)
 
   async function next() {
-    const plan = answersToPost(entry, withoutEmpty(draft), stored)
+    const plan = answersToPost(entry, withoutEmpty(draft), stored, options)
     if (!plan.complete) {
       setMissing(missingOf(steps, draft))
       return

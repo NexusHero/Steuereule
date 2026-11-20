@@ -40,7 +40,7 @@ const DEVICE_FAILURE_REASON: Readonly<Record<DeviceReadFailure, ReceiptReadReaso
 }
 
 /** The document a mask asks for, when the client names no kind (ADR-0097 §4: the entry point only gives context). */
-const MASK_EXPECTS: Partial<Record<Screen, DocumentKind>> = { lstb: 'lstb', chLohnausweis: 'chLohnausweis' }
+const MASK_EXPECTS: Partial<Record<Screen, DocumentKind>> = { lstb: 'lstb', chLohnausweis: 'chLohnausweis', buchung: 'geschaeftsbeleg' }
 
 /**
  * Entry point of `POST /v1/belege/parse`, the one ingest use case of every entry point (ADR-0097 §4):
@@ -128,10 +128,19 @@ export class ReceiptParseService implements OnModuleInit {
 
   /** Routes the text to its reader and decides whose the document is (ADR-0092) before it is read. */
   private async read(userId: string, dto: ParseReceiptDto, owned: ReceiptRecord | null): Promise<ParseReceiptResponseDto> {
-    const kind = this.kindFor(dto)
+    // A Beleg filed as a business receipt goes to its reader, with the direction the upload recorded.
+    const business = owned !== null && (owned.kind === 'Geschaeftsbeleg' || owned.direction != null) && (dto.kind === undefined || dto.kind === 'auto')
+    const kind = business ? 'geschaeftsbeleg' : this.kindFor(dto)
     const strategy = this.registry.resolve(kind)
     if (strategy === null) {
       throw new InvalidInputError('RECEIPT_KIND_UNSUPPORTED', `Belegart "${kind}" wird nicht unterstützt.`)
+    }
+
+    // A business receipt (ADR-0101) is the business's, the account holder's own: it is filed as such and
+    // read into a booking draft, without the household question of a personal document.
+    if (kind === 'geschaeftsbeleg') {
+      if (owned !== null && (owned.kind === undefined || owned.kind === null || owned.kind === 'Sonstiges')) await this.receiptRepository.setKind(userId, owned.id, 'Geschaeftsbeleg')
+      return strategy.parse(userId, { ...dto, direction: dto.direction ?? owned?.direction ?? 'ausgabe' })
     }
 
     // The Belege inbox files by kind: what the reader recognised is written back, so the tab does not show it as „Sonstiges“.
@@ -139,7 +148,7 @@ export class ReceiptParseService implements OnModuleInit {
 
     // Whose the document is (ADR-0092): one rule for the masks, the Belege tab and the chat.
     const rawText = dto.rawText ?? ''
-    const scope = holderScopeOf(kind, rawText)
+    const scope = holderScopeOf(kind as DetectedDocumentKind, rawText)
     if (this.advisor === undefined || scope === 'none') return strategy.parse(userId, dto)
     const members = await this.advisor.householdMembers(userId, dto.taxYear)
     const chosen = dto.holder ?? dto.person
@@ -149,7 +158,7 @@ export class ReceiptParseService implements OnModuleInit {
         throw new InvalidInputError('BELEG_HOLDER_UNKNOWN', `"${ref}" is nobody of this household in ${dto.taxYear}.`)
       }
     }
-    const printed = printedPersonNames(kind, rawText)
+    const printed = printedPersonNames(kind as DetectedDocumentKind, rawText)
     const decision = decideDocumentHolder({
       scope,
       members,

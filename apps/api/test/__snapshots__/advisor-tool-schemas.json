@@ -104,6 +104,126 @@
   {
     "type": "function",
     "function": {
+      "name": "stage_booking_draft",
+      "description": "Bereitet für Selbstständige eine Buchung als Entwurf vor (Zero-Write: gebucht wird erst, wenn der Nutzer übernimmt). Beträge in ganzen Cent, `side` debit (Soll) oder credit (Haben), Konten aus dem Kontenrahmen des Buchs (Fall-Überblick `business.chart`), `taxKey` z. B. ust19, ust7, vst19, vst7, kleinunternehmer, none; Bruttobeträge teilt die App selbst auf. Für ein Anlagegut `asset` mit Abschreibung (linear mit Nutzungsdauer laut AfA-Tabelle, gwg bis 800 € netto, sofort bis 250 €). Die App prüft Konten, Steuerschlüssel, Ausgleich von Soll und Haben und die Festschreibung und nennt sonst den Grund.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "documentNumber": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "lines": {
+            "minItems": 2,
+            "maxItems": 20,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "account": {
+                  "type": "string",
+                  "pattern": "^\\d{4,8}$"
+                },
+                "side": {
+                  "type": "string",
+                  "enum": [
+                    "debit",
+                    "credit"
+                  ]
+                },
+                "amount": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 10000000000
+                },
+                "taxKey": {
+                  "type": "string",
+                  "maxLength": 20
+                },
+                "amountIs": {
+                  "type": "string",
+                  "enum": [
+                    "gross",
+                    "net"
+                  ]
+                }
+              },
+              "required": [
+                "account",
+                "side",
+                "amount"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "asset": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "method": {
+                "type": "string",
+                "enum": [
+                  "linear",
+                  "degressive",
+                  "gwg",
+                  "sofort"
+                ]
+              },
+              "category": {
+                "type": "string",
+                "maxLength": 40
+              },
+              "usefulLifeYears": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 50
+              }
+            },
+            "required": [
+              "label",
+              "method"
+            ],
+            "additionalProperties": false
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "reason": {
+            "default": "",
+            "type": "string",
+            "maxLength": 400
+          }
+        },
+        "required": [
+          "date",
+          "documentNumber",
+          "text",
+          "lines",
+          "label",
+          "reason"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
       "name": "withdraw_draft",
       "description": "Zieht einen Entwurf dieser Antwort zurück, den du als falsch erkannt hast (Maske, Feld, ggf. Datensatz und `person` wie beim Entwurf). Statt den Nutzer zu bitten, eine Karte abzulehnen, ziehst du sie selbst zurück und legst sie bei Bedarf richtig neu an.",
       "parameters": {

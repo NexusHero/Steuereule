@@ -1,0 +1,14 @@
+Umsatzanzeige;Datei erstellt am: 01.04.2025 10:00
+
+IBAN;DE89 3704 0044 0532 0130 00
+Kontoname;Girokonto
+Bank;Testbank
+Kunde;Erika Beispiel
+Zeitraum;01.03.2025 - 31.03.2025
+Saldo;12.345,67;EUR
+
+Sortierung;Datum absteigend
+
+Buchung;Valuta;Auftraggeber/Empfänger;Buchungstext;Verwendungszweck;Saldo;Währung;Betrag;Währung
+31.03.2025;31.03.2025;Beispiel Kunde GmbH;Gutschrift;Rechnung RE-2025-021;12.345,67;EUR;2.380,00;EUR
+12.03.2025;12.03.2025;Bürobedarf Muster KG;Lastschrift;"Bestellung 99; Kunde 12";9.965,67;EUR;-1.234,56;EUR

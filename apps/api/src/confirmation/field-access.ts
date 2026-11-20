@@ -72,7 +72,15 @@ export interface FieldAccessRepositories {
    * creates Person B's placeholder, so there is someone to record for (ADR-0054, ADR-0091).
    */
   readonly linkFilingType?: (userId: string, taxYear: number, filingType: 'einzel' | 'zusammen') => Promise<void>
+  /**
+   * The book (ADR-0101 §18): a booking draft the user takes is posted as a journal entry, never
+   * written as a field. Provided by the business module; without it a booking draft cannot be applied.
+   */
+  readonly booking?: ScreenAccess
 }
+
+/** The one field of a booking draft: the entry as JSON (core `serializeBookingDraft`). */
+export const BOOKING_ACCESS_FIELDS = ['entry'] as const
 
 const COMMUTE_ACCESS_FIELDS = [
   'workdays',
@@ -197,6 +205,7 @@ export const WRITABLE_FIELDS_BY_SCREEN: Readonly<Record<Screen, readonly string[
   kind: CHILD_ACCESS_FIELDS,
   commute: COMMUTE_ACCESS_FIELDS,
   assessment: ASSESSMENT_ACCESS_FIELDS,
+  buchung: BOOKING_ACCESS_FIELDS,
 }
 
 export function fieldAccessFrom({
@@ -213,6 +222,7 @@ export function fieldAccessFrom({
   commute,
   assessment,
   linkFilingType,
+  booking,
 }: FieldAccessRepositories): FieldAccess {
   const access: Partial<Record<Screen, ScreenAccess>> = {
     lstb: {
@@ -807,5 +817,6 @@ export function fieldAccessFrom({
     }
   }
 
+  if (booking) access.buchung = booking
   return access
 }

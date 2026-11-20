@@ -18,6 +18,7 @@ import { PrintoutService } from '../printout/printout.service.js'
 import { passThroughTransactionRunner, type TransactionRunner } from '../prisma/transaction.js'
 import { type ReceiptRepository } from '../receipt/receipt.repository.js'
 import { TaxEstimateService, type TaxEstimateStatus } from '../tax-estimate/tax-estimate.service.js'
+import type { BusinessService } from '../business/business.service.js'
 import { type AdvisorRepository } from './advisor.repository.js'
 import { AdvisorCaseFacts } from './advisor-case-facts.js'
 import { AdvisorDrafts } from './advisor-drafts.js'
@@ -88,6 +89,8 @@ export class AdvisorCaseDigest {
     private readonly printout: PrintoutService | undefined,
     private readonly receiptRepo: ReceiptRepository | undefined,
     private readonly taxEstimate: TaxEstimateService | undefined,
+    /** The book of the self-employed (ADR-0101); absent where the owl runs without it. */
+    private readonly business?: BusinessService | undefined,
   ) {}
 
   /** Every name that must not reach a model: the user's, the children's and the spouse's. */
@@ -121,7 +124,32 @@ export class AdvisorCaseDigest {
 
   async buildCaseDigest(userId: string, taxYear: number): Promise<CaseDigest> {
     const withInbox = await this.withReceiptInbox(userId, taxYear, await this.facts.buildCaseDigest(userId, taxYear))
-    return this.withPrintoutGaps(userId, taxYear, withInbox)
+    return this.withBusiness(userId, taxYear, await this.withPrintoutGaps(userId, taxYear, withInbox))
+  }
+
+  /** A short business summary (ADR-0101): profit so far, VAT balance, open bank items, the book's frame. */
+  private async withBusiness(userId: string, taxYear: number, digest: CaseDigest): Promise<CaseDigest> {
+    if (!this.business) return digest
+    try {
+      const [summary, target] = await Promise.all([this.business.digest(userId, taxYear), this.business.bookingTarget(userId, taxYear, 'A')])
+      if (summary === null) return digest
+      return {
+        ...digest,
+        business: {
+          kind: summary.kind === 'freiberuf' || summary.kind === 'gewerbe' ? summary.kind : null,
+          mode: target.mode,
+          chart: target.chart,
+          lockedThrough: target.lockedThrough,
+          smallBusiness: target.smallBusiness,
+          profitSoFarEur: summary.profitSoFarEur,
+          vatBalanceEur: summary.vatBalanceEur,
+          openBankItems: summary.openBankItems,
+        },
+      }
+    } catch (error) {
+      this.logger.warn(`business summary for the digest failed: ${error instanceof Error ? error.name : 'unknown'}`)
+      return digest
+    }
   }
 
   /** The stored Belege of the year, as far as the owl may know them (no file names). A failing read leaves the digest as it was. */

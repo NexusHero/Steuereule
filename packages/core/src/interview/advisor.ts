@@ -145,6 +145,15 @@ export const ADVISOR_LEGAL_SOURCES: Readonly<Record<OwlSourceId, AdvisorLegalSou
     legalStatusDate: LEGAL_SOURCES_CHECKED_ON,
     url: 'https://www.gesetze-im-internet.de/ao_1977/__355.html',
   },
+  'estg-4-3': {
+    sourceId: 'estg-4-3',
+    paragraph: '§ 4 Abs. 3 EStG',
+    title: 'Gewinn als Überschuss der Betriebseinnahmen über die Betriebsausgaben',
+    summary:
+      'Wer nicht bilanzieren muss, ermittelt den Gewinn als Überschuss der Betriebseinnahmen über die Betriebsausgaben; jede Einnahme und Ausgabe wird mit Beleg gebucht (ADR-0101).',
+    legalStatusDate: LEGAL_SOURCES_CHECKED_ON,
+    url: 'https://www.gesetze-im-internet.de/estg/__4.html',
+  },
 }
 
 export type AdvisorEffectKind = 'computed' | 'not-computable'
@@ -414,6 +423,21 @@ export interface CaseDigest {
   readonly answeredGates?: Readonly<Record<string, string>> | undefined
   /** Everything else the interview and the masks know, in figures only (#501 follow-up). */
   readonly furtherFacts?: CaseFurtherFacts | undefined
+  /** The business of the year (ADR-0101), in figures only; absent without one or with the switch off. */
+  readonly business?: CaseBusiness | undefined
+}
+
+/** What the owl knows of the book: enough to check a booking draft and to explain the year. */
+export interface CaseBusiness {
+  readonly kind: 'freiberuf' | 'gewerbe' | null
+  readonly mode: 'euer' | 'bilanz'
+  readonly chart: 'SKR03' | 'SKR04'
+  readonly lockedThrough: string | null
+  readonly smallBusiness: boolean
+  readonly profitSoFarEur: number
+  /** Umsatzsteuer still to pay (+) or to get back (−) for the year; null for a Kleinunternehmer. */
+  readonly vatBalanceEur: number | null
+  readonly openBankItems: number
 }
 
 /**

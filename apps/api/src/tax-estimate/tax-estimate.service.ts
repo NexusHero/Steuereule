@@ -21,6 +21,9 @@ import {
   type EstimateChurchTax,
   type GermanState,
   taxEstimateCrossBorder,
+  taxEstimateSelfEmployed,
+  type BusinessIncome,
+  type LossCarry,
   depreciationRatePercent,
   claimMonths,
   estimateMarriedCouple,
@@ -59,6 +62,8 @@ import { PENSION_REPOSITORY, type PensionRepository } from '../pension/pension.r
 import { pensionDataFromRecord } from '../pension/pension.service.js'
 import { churchTaxDtoFrom, subsidiesDtoFrom } from '../lstb/lstb.service.js'
 import type { WageTaxCertificateRecord } from '../lstb/lstb.repository.js'
+import { declaresSelfEmployment, interviewOptions, selfEmploymentEnabled } from '../config/self-employment.js'
+import { BusinessService } from '../business/business.service.js'
 
 export type TaxEstimateStatus =
   | (Omit<Extract<TaxEstimate, { kind: 'spanne' }>, 'churchTax'> & {
@@ -89,7 +94,18 @@ export class TaxEstimateService {
     @Inject(RENTAL_REPOSITORY) private readonly rental?: RentalRepository,
     @Optional() @Inject(PENSION_REPOSITORY) private readonly pension?: PensionRepository,
     @Optional() @Inject(CAPITAL_REPOSITORY) private readonly capital?: CapitalRepository,
+    /** The book of the self-employed (ADR-0101); absent in tests that build the estimate without it. */
+    @Optional() @Inject(BusinessService) private readonly business?: BusinessService,
   ) {}
+
+  /**
+   * Gewinneinkünfte, § 10d and § 35 of one person (ADR-0101), only with the switch on and a business
+   * declared; null keeps every estimate exactly as before.
+   */
+  private async businessOf(userId: string, year: number, person: 'A' | 'B' = 'A'): Promise<{ business: BusinessIncome; losses: LossCarry } | null> {
+    if (!this.business || !selfEmploymentEnabled()) return null
+    return this.business.estimateInput(userId, year, person)
+  }
 
   async getState(
     userId: string,
@@ -98,6 +114,8 @@ export class TaxEstimateService {
   ): Promise<TaxEstimateStatus> {
     const status = await this.calculate(userId, year, boostersEnabled)
     if (status.kind !== 'spanne') return status
+    // The business path passed the prepayments into the core already (ADR-0101): never twice.
+    if (status.prepayments !== undefined) return status
     // Prepayments the tax office set for the year count against the tax like withheld wage tax (§ 36
     // Abs. 2 Nr. 1 EStG); in a joint return there is one assessment, so they are asked once, of Person A.
     const prepayments = amountAnswer(answersFrom(await this.interview.findAllForUserAndYear(userId, year)), 'vorauszahlungen')
@@ -116,18 +134,26 @@ export class TaxEstimateService {
     ])
     const answers = answersFrom(interviewRows)
 
-    // Employees and pensioners get an estimate; the self-employed are out of scope (gewerbe gate).
-    if (answers.job !== 'Angestellt' && answers.job !== 'Rente') return { kind: 'nicht-moeglich', reason: 'nur-angestellte' }
+    // Employees and pensioners get an estimate; the self-employed only with the switch on (ADR-0101, REQ-015).
+    const selfEmployed = selfEmploymentEnabled() && declaresSelfEmployment(answers.job)
+    if (!selfEmployed && answers.job !== 'Angestellt' && answers.job !== 'Rente') return { kind: 'nicht-moeglich', reason: 'nur-angestellte' }
     if (masterData?.familienstand === 'verheiratet' || answers.familienstand === 'Verheiratet') {
       return this.marriedCouple(userId, year, boostersEnabled)
     }
-    if (gatedIncomeTypes(answers).length > 0 || specialCircumstance(answers)) {
+    if (gatedIncomeTypes(answers, interviewOptions()).length > 0 || specialCircumstance(answers)) {
       return { kind: 'nicht-moeglich', reason: 'besondere-lebenslage' }
     }
     // § 32b EStG: the benefits are counted, not a reason to give up (UX review K3); the amount is needed though.
     const wageReplacement = wageReplacementFrom(answers)
     if (wageReplacement === null) return { kind: 'offen', missing: ['lohnersatz-betrag'] }
     if (answers.job === 'Rente') return this.pensioner(userId, year, answers, masterData, boostersEnabled)
+    const ownBusiness = selfEmployed ? await this.businessOf(userId, year) : null
+    if (selfEmployed && ownBusiness === null) return { kind: 'offen', missing: ['selbststaendig'] }
+    // § 37 EStG prepayments go into the core with the business (credited like wage tax, Soli exact).
+    const prepaymentsEur = amountAnswer(answers, 'vorauszahlungen')
+    const businessInputs = ownBusiness === null ? {} : { business: ownBusiness.business, losses: ownBusiness.losses, ...(prepaymentsEur > 0 ? { prepayments: { incomeTaxEur: prepaymentsEur } } : {}) }
+    const withPrepayments = (status: TaxEstimateStatus): TaxEstimateStatus =>
+      ownBusiness !== null && status.kind === 'spanne' ? { ...status, prepayments: prepaymentsEur } : status
 
     const numbers = employeeFromAnswers(answers)
     const allowance = commuterAllowanceFrom(year, path) + homeOfficeAllowanceFrom(year, path) + furtherWorkExpensesEur(path)
@@ -150,6 +176,28 @@ export class TaxEstimateService {
     const healthExpensesEur = boostersEnabled ? extraordinaryBurdenFromAnswers(answers) : 0
     const churchTax = churchTaxInput(masterData, lstbRecord, 'own', await this.childrenForChurchTax(userId, year, answers))
 
+    // Self-employed without a job (ADR-0101): the profit is the income, the provision paid outside a wage.
+    if (ownBusiness !== null && answers.job === 'Selbstständig') {
+      return withPrepayments(
+        withEstimateExtras(
+          taxEstimateSelfEmployed({
+            year,
+            ...businessInputs,
+            business: ownBusiness.business,
+            provision: { ...NO_PROVISION, healthBasicEur: numbers.healthCareContributions, healthWithSickPayEur: numbers.healthCareContributions },
+            donations: numbers.donations + childcare,
+            householdReductionEur,
+            healthExpensesEur,
+            singleParent,
+            singleParentChildren,
+            childrenBracket,
+            churchTax,
+          }),
+          laterCount,
+        ),
+      )
+    }
+
     if (answers.ausland === CH_FOREIGN) {
       const values = salaryCertificateValuesFromRecord(chRecord)
       const exchangeRate = exchangeRateFromRecord(chRecord)
@@ -169,9 +217,10 @@ export class TaxEstimateService {
       const krankenkasseChf = chRecord?.krankenkasseChf === null || chRecord?.krankenkasseChf === undefined ? 0 : Number(chRecord.krankenkasseChf)
       // A change of job during the year: the German employer's certificate counts as well (ADR-0079).
       const germanWage = completeGermanWage(lstbRecord)
-      return withEstimateExtras(
+      return withPrepayments(withEstimateExtras(
         taxEstimateCrossBorder({
           year,
+          ...businessInputs,
           ...(germanWage ? { germanWage: { gross: germanWage.bruttoarbeitslohn, wageTax: germanWage.lohnsteuer, socialSecurity: deductibleSocialSecurity(germanWage.sozialversicherung, lstbRecord) } } : {}),
           wageEur: rows.z23,
           withholdingTaxEur: rows.z25,
@@ -190,15 +239,16 @@ export class TaxEstimateService {
           wageReplacementEur: wageReplacement,
         }),
         laterCount,
-      )
+      ))
     }
 
     const state = wageTaxCertificateStatus(wageTaxCertificateDataFrom(lstbRecord))
     if (state.kind === 'unvollstaendig') return { kind: 'offen', missing: [...state.open, ...state.unclear] }
     if (state.kind === 'widerspruch') return { kind: 'offen', missing: state.conflicts.map((w) => w.kind) }
-      return withEstimateExtras(
+      return withPrepayments(withEstimateExtras(
         taxEstimateEmployee({
           year,
+          ...businessInputs,
           bruttoarbeitslohn: state.bruttoarbeitslohn,
           lohnsteuer: state.lohnsteuer,
           sozialversicherung: deductibleSocialSecurity(state.sozialversicherung, lstbRecord),
@@ -215,7 +265,7 @@ export class TaxEstimateService {
           wageReplacementEur: wageReplacement,
         }),
         laterCount,
-      )
+      ))
     }, { 'tax.year': year, 'user.id': userId })
   }
 
@@ -305,11 +355,25 @@ export class TaxEstimateService {
     const healthExpensesEur = boostersEnabled
       ? extraordinaryBurdenFromAnswers(a.answers) + extraordinaryBurdenFromAnswers(bAnswers)
       : 0
+    // ADR-0101: each spouse's business; Person B recorded in A's account keeps B's book in A's account.
+    const [businessA, businessB] = await Promise.all([
+      this.businessOf(link.personAUserId, year),
+      link.personBUserId ? this.businessOf(link.personBUserId, year) : this.businessOf(link.personAUserId, year, 'B'),
+    ])
+    const businessInputs =
+      businessA === null && businessB === null
+        ? {}
+        : {
+            business: { a: businessA?.business, b: businessB?.business },
+            // One Feststellung for the couple's joint assessment: what both bring forward.
+            losses: { carriedForwardEur: (businessA?.losses.carriedForwardEur ?? 0) + (businessB?.losses.carriedForwardEur ?? 0) },
+          }
     const capitalRecord = this.capital ? await this.capital.findForUserAndYear(link.personAUserId, year) : null
     const capital = flatRateCapital(capitalRecord, getTaxYearParameters(year).lumpSums.saverJoint)
     const amountOf = (value: string | null | undefined) => (value && /^\d+$/.test(value) ? Number(value) : 0)
     const estimate = estimateMarriedCouple({
       year,
+      ...businessInputs,
       // § 32 Abs. 6 Satz 5 EStG: a twelfth of the allowances for every month the child counts.
       childAllowanceEur: kinder.reduce((sum, k) => sum + Math.round((childTaxAllowance(year) * claimMonths(k.geburtsdatum, year)) / 12), 0),
       // Anlage Kind Zeilen 27–29: what the parents pay for the children's basic insurance.
@@ -436,6 +500,16 @@ export class TaxEstimateService {
         const item = pensionAsCoreLineItem(pensionDataFromRecord(pensionRecord))
         if (item === null) return { kind: 'offen', missing: ['rente'] }
         return { kind: 'ok', donations: numbers.donations, laterCount, answers, spouse: { kind: 'pension', taxablePensionEur: item.amount } }
+      }
+      // A spouse who lives on the business (ADR-0101): the provision paid outside a wage.
+      if ((await this.businessOf(userId, year)) !== null) {
+        return {
+          kind: 'ok',
+          donations: numbers.donations,
+          laterCount,
+          answers,
+          spouse: { kind: 'selfEmployed', provision: { ...NO_PROVISION, healthBasicEur: numbers.healthCareContributions, healthWithSickPayEur: numbers.healthCareContributions } },
+        }
       }
       return { kind: 'none', laterCount, answers }
     }

@@ -26,9 +26,11 @@ import { CROSS_BORDER_SALARY_STATEMENT_REPOSITORY, type CrossBorderSalaryStateme
 import { ChSalaryCertificateModule } from '../ch-salary-certificate/ch-salary-certificate.module.js'
 import { CHILD_REPOSITORY, type ChildRepository } from '../children/child.repository.js'
 import { ChildrenModule } from '../children/children.module.js'
+import { BusinessModule } from '../business/business.module.js'
+import { BOOKING_FIELD_ACCESS } from '../business/booking-field-access.js'
 import { ConfirmationController } from './confirmation.controller.js'
 import { ConfirmationService } from './confirmation.service.js'
-import { FIELD_ACCESS, fieldAccessFrom } from './field-access.js'
+import { FIELD_ACCESS, fieldAccessFrom, type ScreenAccess } from './field-access.js'
 
 @Module({
   imports: [
@@ -46,6 +48,7 @@ import { FIELD_ACCESS, fieldAccessFrom } from './field-access.js'
     ChildrenModule,
     CommuteModule,
     AssessmentModule,
+    BusinessModule,
   ],
   controllers: [ConfirmationController],
   providers: [
@@ -66,6 +69,7 @@ import { FIELD_ACCESS, fieldAccessFrom } from './field-access.js'
         COMMUTE_REPOSITORY,
         ASSESSMENT_REPOSITORY,
         LinkService,
+        BOOKING_FIELD_ACCESS,
       ],
       useFactory: (
         lstb: WageTaxCertificateRepository,
@@ -81,6 +85,7 @@ import { FIELD_ACCESS, fieldAccessFrom } from './field-access.js'
         commute: CommuteRepository,
         assessment: AssessmentRepository,
         linkService: LinkService,
+        booking: ScreenAccess,
       ) =>
         fieldAccessFrom({
           lstb,
@@ -99,6 +104,8 @@ import { FIELD_ACCESS, fieldAccessFrom } from './field-access.js'
           linkFilingType: async (userId, taxYear, filingType) => {
             await linkService.set(userId, taxYear, { filingType })
           },
+          // ADR-0101 §18: a booking draft the user takes is posted as an entry, never written as a field.
+          booking,
         }),
     },
   ],

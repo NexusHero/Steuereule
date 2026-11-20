@@ -9,13 +9,14 @@ import { MarkingModule } from '../marking/marking.module.js'
 import { RentalModule } from '../rental/rental.module.js'
 import { LinkModule } from '../link/link.module.js'
 import { SubmissionModule } from '../submission/submission.module.js'
+import { BusinessModule } from '../business/business.module.js'
 import { CockpitController } from './cockpit.controller.js'
 import { CockpitService } from './cockpit.service.js'
 import { PrismaTaxYearRepository } from './tax-year.repository.prisma.js'
 import { TAX_YEAR_REPOSITORY } from './tax-year.repository.js'
 
 @Module({
-  imports: [PrismaModule, LstbModule, InterviewModule, MarkingModule, PensionModule, CapitalModule, RentalModule, ChSalaryCertificateModule, LinkModule, SubmissionModule],
+  imports: [PrismaModule, LstbModule, InterviewModule, MarkingModule, PensionModule, CapitalModule, RentalModule, ChSalaryCertificateModule, LinkModule, SubmissionModule, BusinessModule],
   controllers: [CockpitController],
   providers: [
     CockpitService,

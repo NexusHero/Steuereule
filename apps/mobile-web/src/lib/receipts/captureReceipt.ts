@@ -39,7 +39,9 @@ export type CaptureResult =
 export interface CaptureReceiptOptions {
   readonly taxYear: number
   /** Force a strategy (the LStB mask); otherwise the text decides (chat, inbox). */
-  readonly kind?: DetectedDocumentKind | undefined
+  readonly kind?: DetectedDocumentKind | 'geschaeftsbeleg' | undefined
+  /** A business receipt (ADR-0101 §6): an expense or an invoice the business wrote; the draft is a booking in that direction. */
+  readonly direction?: 'ausgabe' | 'einnahme' | undefined
   /** Entry context (ADR-0097 §4): the document a mask expects; unlike `kind` it does not force a reader. */
   readonly expectedKind?: ParseReceiptDtoExpectedKind | undefined
   /** Entry context: the mask the upload happened in. */
@@ -119,7 +121,7 @@ export async function captureReceipt(file: File, options: CaptureReceiptOptions)
   }
   if (extracted.text.trim().length === 0) return deviceFailure(deps, options, file.name, receiptId, 'empty_text')
 
-  const kind = options.kind ?? classifyDocumentKind(extracted.text)
+  const kind: DetectedDocumentKind | 'geschaeftsbeleg' = options.kind ?? classifyDocumentKind(extracted.text)
   const payload: ParseReceiptDto = {
     taxYear: options.taxYear,
     kind,
@@ -135,13 +137,14 @@ export async function captureReceipt(file: File, options: CaptureReceiptOptions)
     ...(options.area !== undefined ? { area: options.area } : {}),
     ...(options.holder !== undefined ? { holder: options.holder } : {}),
     ...(options.alsoFor === true ? { alsoFor: true } : {}),
+    ...(options.direction !== undefined ? { direction: options.direction } : {}),
   }
 
   options.onPhase?.('parsing')
   try {
     const parsed = await deps.parse(payload)
     if (parsed.status !== 200) return { ok: false, failure: 'parse_failed' }
-    return { ok: true, kind, receiptId, response: parsed.data, rawText: extracted.text, textSource: payload.textSource ?? 'ocr' }
+    return { ok: true, kind: kind as DetectedDocumentKind, receiptId, response: parsed.data, rawText: extracted.text, textSource: payload.textSource ?? 'ocr' }
   } catch {
     return { ok: false, failure: 'parse_failed' }
   }

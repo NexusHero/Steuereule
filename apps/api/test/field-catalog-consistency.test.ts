@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest'
 import { MEANS_OF_TRANSPORT } from '../src/commute/commute.repository.js'
 import { AI_FORBIDDEN_FIELDS, AI_FORBIDDEN_SCREENS, isAiWritable } from '../src/confirmation/ai-write-policy.js'
 import { WRITABLE_FIELDS_BY_SCREEN } from '../src/confirmation/field-access.js'
-import { AI_WRITABLE_FIELDS } from '../src/ki/advisor-safety.js'
+import { AI_WRITABLE_FIELDS, OWN_TOOL_SCREENS } from '../src/ki/advisor-safety.js'
 
 describe('field catalogue and write path describe the same fields (ADR-0066)', () => {
   it.each(SCREENS)('screen %s: catalogue and writable fields are identical', (screen) => {
@@ -20,6 +20,12 @@ describe('field catalogue and write path describe the same fields (ADR-0066)', (
 
   it('offers the owl exactly the catalogue fields the write policy allows', () => {
     for (const screen of SCREENS) {
+      // A booking is offered through its own tool (stage_booking_draft, ADR-0101 §18), the write path takes it.
+      if (OWN_TOOL_SCREENS.has(screen)) {
+        expect(AI_WRITABLE_FIELDS[screen], screen).toBeUndefined()
+        expect(isAiWritable(screen, 'entry')).toBe(true)
+        continue
+      }
       const offered = AI_WRITABLE_FIELDS[screen] ?? []
       const allowed = fieldsOfScreen(screen).filter((spec) => isAiWritable(screen, spec.field)).map((spec) => spec.field)
       expect(offered, screen).toEqual(allowed)

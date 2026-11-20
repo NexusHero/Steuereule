@@ -4,5 +4,5 @@
     "noEmit": true,
     "rootDir": "."
   },
-  "include": ["src", "prisma/seed.ts", "prisma/seed-year-history.ts", "test", "scripts"]
+  "include": ["src", "prisma/seed.ts", "prisma/seed-year-history.ts", "prisma/seed-selbststaendig.ts", "test", "scripts"]
 }

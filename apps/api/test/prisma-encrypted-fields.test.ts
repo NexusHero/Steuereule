@@ -61,6 +61,34 @@ function byModelField(a: ExpectedField, b: ExpectedField): number {
 // commit as any intentional change to what schema.prisma encrypts — that is the
 // entire point: an unintended change to this set, from any cause, must go red here.
 const EXPECTED_ENCRYPTED_FIELDS: ExpectedEncryptedField[] = [
+  // ADR-0101: the business, the book, its assets, the bank import and the booking rules.
+  { model: 'BusinessProfile', field: 'professionAnswers', encrypt: true, strictDecryption: true },
+  { model: 'BusinessProfile', field: 'suggestion', encrypt: true, strictDecryption: true },
+  { model: 'BusinessProfile', field: 'name', encrypt: true, strictDecryption: true },
+  { model: 'BusinessProfile', field: 'municipalityAgs', encrypt: true, strictDecryption: true },
+  { model: 'BusinessProfile', field: 'multiplierOverride', encrypt: true, strictDecryption: true },
+  { model: 'BusinessProfile', field: 'startDate', encrypt: true, strictDecryption: true },
+  { model: 'BusinessProfile', field: 'vatPrepayments', encrypt: true, strictDecryption: true },
+  { model: 'BusinessProfile', field: 'tradeTaxInputs', encrypt: true, strictDecryption: true },
+  { model: 'BusinessProfile', field: 'lossFacts', encrypt: true, strictDecryption: true },
+  { model: 'BusinessProfile', field: 'partnershipShares', encrypt: true, strictDecryption: true },
+  { model: 'BusinessProfile', field: 'procedureDoc', encrypt: true, strictDecryption: true },
+  { model: 'JournalEntry', field: 'documentNumber', encrypt: true, strictDecryption: true },
+  { model: 'JournalEntry', field: 'receiptRef', encrypt: true, strictDecryption: true },
+  { model: 'JournalEntry', field: 'text', encrypt: true, strictDecryption: true },
+  { model: 'JournalEntry', field: 'regularPayment', encrypt: true, strictDecryption: true },
+  { model: 'JournalEntry', field: 'draft', encrypt: true, strictDecryption: true },
+  { model: 'JournalLine', field: 'amount', encrypt: true, strictDecryption: true },
+  { model: 'LedgerLogRecord', field: 'payload', encrypt: true, strictDecryption: true },
+  { model: 'FixedAsset', field: 'label', encrypt: true, strictDecryption: true },
+  { model: 'FixedAsset', field: 'acquisitionDate', encrypt: true, strictDecryption: true },
+  { model: 'FixedAsset', field: 'acquisitionCost', encrypt: true, strictDecryption: true },
+  { model: 'FixedAsset', field: 'specialDepreciation', encrypt: true, strictDecryption: true },
+  { model: 'FixedAsset', field: 'disposal', encrypt: true, strictDecryption: true },
+  { model: 'BankTransaction', field: 'amount', encrypt: true, strictDecryption: true },
+  { model: 'BankTransaction', field: 'details', encrypt: true, strictDecryption: true },
+  { model: 'BookingRule', field: 'criteria', encrypt: true, strictDecryption: true },
+  { model: 'BookingRule', field: 'text', encrypt: true, strictDecryption: true },
   { model: 'MasterData', field: 'geburtsdatum', encrypt: true, strictDecryption: true },
   { model: 'MasterData', field: 'strasse', encrypt: true, strictDecryption: true },
   { model: 'MasterData', field: 'hausnummer', encrypt: true, strictDecryption: true },
@@ -229,6 +257,14 @@ const EXPECTED_HASHED_FIELDS: ExpectedHashedField[] = []
 // on — worth covering here too since it costs nothing once the DMMF is already parsed.
 // Every model here relies on its default (the `@id` field), so every value is "id".
 const EXPECTED_CURSORS: Record<string, string> = {
+  BusinessProfile: 'id',
+  Ledger: 'id',
+  JournalEntry: 'id',
+  JournalLine: 'id',
+  LedgerLogRecord: 'id',
+  FixedAsset: 'id',
+  BankTransaction: 'id',
+  BookingRule: 'id',
   Profile: 'id',
   TaxDataAccessLog: 'id',
   User: 'id',
@@ -336,6 +372,8 @@ describe('encrypted/hashed field set (#325) — derived from Prisma.dmmf, not co
       'AdvisorChatSession',
       'DeviceCode',
       'LegalHold',
+      // ADR-0101: the book's frame only (chart, mode, Festschreibung date); its entries are encrypted.
+      'Ledger',
       'OauthAccessToken',
       'OauthClient',
       'OauthConsent',

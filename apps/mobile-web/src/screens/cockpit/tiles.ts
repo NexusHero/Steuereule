@@ -12,6 +12,7 @@ import {
   type WageTaxCertificateFieldState,
 } from '@steuereule/core'
 import type {
+  BusinessProfileDto,
   ChSalaryCertificateResponseDto,
   ChildrenResponseDto,
   CommuteResponseDto,
@@ -42,6 +43,7 @@ export type TileId =
   | 'haushalt'
   | 'gesundheit'
   | 'vorauszahlungen'
+  | 'selbststaendig'
 
 export type TileStatus = 'offen' | 'erledigt' | 'betrag-offen'
 
@@ -54,6 +56,7 @@ export type TileRoute =
   | { readonly screen: 'Capital' }
   | { readonly screen: 'Rental' }
   | { readonly screen: 'Children' }
+  | { readonly screen: 'Business' }
 
 /**
  * Person B of a joint return without an account of their own (ADR-0073): who they are and what is
@@ -87,6 +90,9 @@ export interface TileFacts {
   readonly rental?: RentalResponseDto | null | undefined
   readonly children?: ChildrenResponseDto | null | undefined
   readonly partner?: PartnerFacts | null | undefined
+  /** The self-employment path is on (the server's switch) and the interview declares self-employment (ADR-0101). */
+  readonly selfEmployment?: boolean | undefined
+  readonly business?: BusinessProfileDto | null | undefined
 }
 
 /**
@@ -255,6 +261,15 @@ export const TILES: readonly TileDefinition[] = [
     isVisible: () => true,
     status: (f) => catalogStatus('vorauszahlungen', f.answers),
   },
+  {
+    // The self-employed path (ADR-0101): shown only with the server's switch on and a declared self-employment.
+    id: 'selbststaendig',
+    titleKey: 'cockpit.kachel.selbststaendig.titel',
+    route: { screen: 'Business' },
+    personas: 'all',
+    isVisible: (f) => f.selfEmployment === true,
+    status: (f) => (f.business != null && f.business.confirmedKind !== null && f.business.bookExists ? 'erledigt' : 'offen'),
+  },
 ]
 
 const TILES_BY_ID: Readonly<Record<TileId, TileDefinition>> = Object.fromEntries(
@@ -302,7 +317,7 @@ export interface GroupedTiles {
  */
 export function isRequiredTile(tile: TileDefinition, path: FunnelPath, facts?: TileFacts): boolean {
   if (tile.id === 'lstb' && facts !== undefined && crossBorderWithGermanJob(facts)) return true
-  return tile.id === 'kinder' || tile.id === 'alleinerziehend' || NEXT_STEP_ORDER[path].includes(tile.id)
+  return tile.id === 'kinder' || tile.id === 'alleinerziehend' || tile.id === 'selbststaendig' || NEXT_STEP_ORDER[path].includes(tile.id)
 }
 
 /**

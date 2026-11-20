@@ -75,11 +75,11 @@ describe('OpenAPI contract for GET /v1/steuerjahre/{jahr}/cockpit (REQ-001)', ()
     expect(schema?.nullable).toBe(true)
   })
 
-  it('exposes CockpitSummaryDto with exactly the fields the frontend contract expects (stand + openItems + taxYear, the split of a joint return, the Abgabe)', () => {
+  it('exposes CockpitSummaryDto with exactly the fields the frontend contract expects (stand + openItems + taxYear, the split of a joint return, the Abgabe, the server capabilities of ADR-0101)', () => {
     const schema = document.components?.schemas?.CockpitSummaryDto
     expect(schema).toBeDefined()
     const properties = (schema as { properties?: Record<string, unknown> }).properties ?? {}
-    expect(Object.keys(properties).sort()).toEqual(['byPerson', 'openItems', 'status', 'submission', 'taxYear'].sort())
+    expect(Object.keys(properties).sort()).toEqual(['byPerson', 'capabilities', 'filingPath', 'openItems', 'status', 'submission', 'taxYear'].sort())
   })
 
   it('exposes CockpitStatusDto with the flat discriminated-union fields (kind + optional variants)', () => {
@@ -424,5 +424,95 @@ describe('OpenAPI contract for /v1/steuerjahre/{jahr}/advisor/actions/apply-batc
       | { properties?: Record<string, { type?: string }> }
       | undefined
     expect(schema?.properties?.laterAmounts?.type).toBe('number')
+  })
+})
+
+describe('OpenAPI contract for /v1/steuerjahre/{jahr}/selbststaendig (ADR-0101)', () => {
+  const paths = document.paths as Record<string, Record<string, { tags?: string[]; parameters?: { name: string; in: string }[]; requestBody?: unknown; responses?: Record<string, unknown> }>>
+  const base = '/v1/steuerjahre/{jahr}/selbststaendig'
+
+  it.each([
+    ['get', ''],
+    ['put', ''],
+    ['get', '/buch'],
+    ['post', '/buchungen'],
+    ['post', '/buchungen/{nummer}/storno'],
+    ['post', '/schnellerfassung'],
+    ['post', '/festschreibung'],
+    ['post', '/bank/import'],
+    ['get', '/bank'],
+    ['post', '/bank/{umsatzId}/buchen'],
+    ['post', '/bank/{umsatzId}/ignorieren'],
+    ['get', '/anlagen'],
+    ['post', '/anlagen'],
+    ['post', '/anlagen/{anlageId}/abgang'],
+    ['post', '/anlagen/abschreibung'],
+    ['get', '/abschluss'],
+    ['post', '/abschluss/eroeffnung'],
+    ['get', '/umsatzsteuer'],
+    ['get', '/gewerbesteuer'],
+    ['get', '/gewerbesteuer/hebesatz'],
+    ['get', '/verluste'],
+    ['get', '/elster/{formular}'],
+    ['get', '/export/gobd'],
+    ['get', '/verfahrensdokumentation'],
+    ['put', '/verfahrensdokumentation'],
+    ['get', '/e-bilanz'],
+    ['get', '/e-bilanz/datei'],
+    ['post', '/checkout'],
+  ])('%s %s is documented under the selbststaendig tag with the jahr parameter', (method, suffix) => {
+    const operation = paths[`${base}${suffix}`]?.[method]
+    expect(operation, `${method} ${base}${suffix}`).toBeDefined()
+    expect(operation?.tags).toEqual(['selbststaendig'])
+    expect(operation?.parameters?.some((p) => p.name === 'jahr' && p.in === 'path')).toBe(true)
+  })
+
+  it('documents the request bodies the core checks and the paid parts', () => {
+    expect(paths[`${base}/buchungen`]?.post?.requestBody).toBeDefined()
+    expect(paths[`${base}/bank/import`]?.post?.requestBody).toBeDefined()
+    expect(paths[`${base}/elster/{formular}`]?.get?.responses?.['402']).toBeDefined()
+    expect(paths[`${base}/export/gobd`]?.get?.responses?.['402']).toBeDefined()
+  })
+
+  it('the cockpit summary carries the capability the app follows', () => {
+    const schemas = (document.components?.schemas ?? {}) as Record<string, { properties?: Record<string, unknown> }>
+    expect(schemas.CockpitSummaryDto?.properties?.capabilities).toBeDefined()
+    expect(schemas.CockpitCapabilitiesDto?.properties?.selbststaendig).toBeDefined()
+  })
+})
+
+describe('OpenAPI contract: typed results and declared errors of the selbststaendig tag (ADR-0101)', () => {
+  const paths = document.paths as Record<string, Record<string, { responses?: Record<string, { content?: Record<string, { schema?: { $ref?: string; type?: string } }> }> }>>
+  const schemas = (document.components?.schemas ?? {}) as Record<string, { properties?: Record<string, { description?: string }> }>
+  const base = '/v1/steuerjahre/{jahr}/selbststaendig'
+  const ok = (path: string, method = 'get') => paths[`${base}${path}`]?.[method]?.responses?.['200']?.content?.['application/json']?.schema?.$ref
+
+  it.each([
+    ['/abschluss', 'ClosingDto'],
+    ['/umsatzsteuer', 'VatReturnDto'],
+    ['/gewerbesteuer', 'TradeTaxDto'],
+    ['/verluste', 'LossesDto'],
+    ['/anlagen', 'AssetsResponseDto'],
+    ['/kataloge', 'BusinessCataloguesDto'],
+  ])('%s answers %s, not a free object', (path, dto) => {
+    expect(ok(path)).toBe(`#/components/schemas/${dto}`)
+  })
+
+  it.each([
+    ['/elster/{formular}', 'get', ['400', '402', '403', '404', '409']],
+    ['/export/gobd', 'get', ['400', '402', '403', '409']],
+    ['/buchungen', 'post', ['400', '403', '409']],
+    ['/checkout', 'post', ['400', '403', '503']],
+  ])('%s %s declares %s with the error body', (path, method, statuses) => {
+    const responses = paths[`${base}${path}`]?.[method]?.responses ?? {}
+    for (const status of statuses) expect(responses[status]?.content?.['application/json']?.schema?.$ref, status).toBe('#/components/schemas/BusinessErrorDto')
+  })
+
+  it('documents the units the app relies on', () => {
+    expect(schemas.BankTransactionDataDto?.properties?.amount?.description).toMatch(/Signed integer cents/)
+    expect(schemas.ElsterLineDto?.properties?.value?.description).toMatch(/Euros as a number/)
+    expect(schemas.AssetRegisterRowDto?.properties?.id?.description).toMatch(/abgang/)
+    expect(schemas.ProfessionAnswersDto?.properties?.catalogProfession).toBeDefined()
+    expect(schemas.CsvColumnDto?.properties?.index).toBeDefined()
   })
 })

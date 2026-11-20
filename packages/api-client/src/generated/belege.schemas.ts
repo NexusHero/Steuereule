@@ -5,6 +5,18 @@
  * Onboarding profile endpoints (steuereule#29)
  * OpenAPI spec version: 1.0
  */
+/**
+ * A business receipt (ADR-0101 §6): expense or an invoice the business wrote; null for every other Beleg (always present).
+ * @nullable
+ */
+export type ReceiptResponseDtoDirection = typeof ReceiptResponseDtoDirection[keyof typeof ReceiptResponseDtoDirection] | null;
+
+
+export const ReceiptResponseDtoDirection = {
+  ausgabe: 'ausgabe',
+  einnahme: 'einnahme',
+} as const;
+
 export type AssignmentDtoKind = typeof AssignmentDtoKind[keyof typeof AssignmentDtoKind];
 
 
@@ -113,6 +125,7 @@ export const ReceiptFilledFieldDtoScreen = {
   vermietung: 'vermietung',
   kind: 'kind',
   assessment: 'assessment',
+  buchung: 'buchung',
 } as const;
 
 /**
@@ -172,6 +185,11 @@ export interface ReceiptResponseDto {
      * @nullable
      */
   zahlungsdatum: string | null;
+  /**
+     * A business receipt (ADR-0101 §6): expense or an invoice the business wrote; null for every other Beleg (always present).
+     * @nullable
+     */
+  direction?: ReceiptResponseDtoDirection;
   /** Whether an encrypted original document binary is attached. */
   hasFile: boolean;
   /**
@@ -220,6 +238,7 @@ export const CreateReceiptDtoKind = {
   Rentenbezugsmitteilung: 'Rentenbezugsmitteilung',
   Steuerbescheinigung: 'Steuerbescheinigung',
   Steuerbescheid: 'Steuerbescheid',
+  Geschaeftsbeleg: 'Geschaeftsbeleg',
   Sonstiges: 'Sonstiges',
 } as const;
 
@@ -248,6 +267,27 @@ export interface DeleteReceiptResponseDto {
   /** Waiting drafts of the Beleg withdrawn (only with `takeBackValues=true`). */
   withdrawn: number;
 }
+
+/**
+ * A business receipt (ADR-0101 §6): an expense or an invoice the business wrote. Files the Beleg as Geschaeftsbeleg; its parse drafts the booking in that direction.
+ */
+export type ReceiptControllerUploadBodyDirection = typeof ReceiptControllerUploadBodyDirection[keyof typeof ReceiptControllerUploadBodyDirection];
+
+
+export const ReceiptControllerUploadBodyDirection = {
+  ausgabe: 'ausgabe',
+  einnahme: 'einnahme',
+} as const;
+
+export type ReceiptControllerUploadBody = {
+  file: Blob;
+  /** Belegart (RECEIPT_TYPES), e.g. Geschaeftsbeleg. */
+  kind?: string;
+  belegdatum?: string;
+  zahlungsdatum?: string;
+  /** A business receipt (ADR-0101 §6): an expense or an invoice the business wrote. Files the Beleg as Geschaeftsbeleg; its parse drafts the booking in that direction. */
+  direction?: ReceiptControllerUploadBodyDirection;
+};
 
 export type ReceiptControllerDeleteParams = {
 /**

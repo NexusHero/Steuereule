@@ -2680,6 +2680,2354 @@
         ]
       }
     },
+    "/v1/steuerjahre/{jahr}/selbststaendig/kataloge": {
+      "get": {
+        "operationId": "BusinessController_catalogues",
+        "parameters": [
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "Whose business: A (default) or B of a joint return.",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The lists the inputs take: Katalogberufe, free activities, AfA-table categories, bank CSV presets.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessCataloguesDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body fails validation (`fields`) or a business rule (`code`, German `message`), e.g. BOOKING_UNBALANCED, LEDGER_PERIOD_LOCKED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "403": {
+            "description": "SELF_EMPLOYMENT_DISABLED (switch off) or SELF_EMPLOYMENT_NOT_DECLARED (no self-employment in the interview).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "selbststaendig"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/selbststaendig": {
+      "get": {
+        "operationId": "BusinessController_profile",
+        "parameters": [
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "Whose business: A (default) or B of a joint return.",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The business profile with the core’s Freiberuf/Gewerbe suggestion and its reasons.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessProfileDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body fails validation (`fields`) or a business rule (`code`, German `message`), e.g. BOOKING_UNBALANCED, LEDGER_PERIOD_LOCKED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "403": {
+            "description": "SELF_EMPLOYMENT_DISABLED (switch off) or SELF_EMPLOYMENT_NOT_DECLARED (no self-employment in the interview).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "selbststaendig"
+        ]
+      },
+      "put": {
+        "operationId": "BusinessController_saveProfile",
+        "parameters": [
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "Whose business: A (default) or B of a joint return.",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BusinessProfileInputDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessProfileDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body fails validation (`fields`) or a business rule (`code`, German `message`), e.g. BOOKING_UNBALANCED, LEDGER_PERIOD_LOCKED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "403": {
+            "description": "SELF_EMPLOYMENT_DISABLED (switch off) or SELF_EMPLOYMENT_NOT_DECLARED (no self-employment in the interview).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "BOOK_INTEGRITY_BROKEN (hash chain or entry not as logged), BOOK_FRAME_FIXED, a draft or transaction already done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "selbststaendig"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/selbststaendig/buch": {
+      "get": {
+        "operationId": "BusinessController_book",
+        "parameters": [
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "Whose business: A (default) or B of a joint return.",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Every entry of the year; `integrity` is checked on every read (hash chain, numbering).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body fails validation (`fields`) or a business rule (`code`, German `message`), e.g. BOOKING_UNBALANCED, LEDGER_PERIOD_LOCKED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "403": {
+            "description": "SELF_EMPLOYMENT_DISABLED (switch off) or SELF_EMPLOYMENT_NOT_DECLARED (no self-employment in the interview).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "selbststaendig"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/selbststaendig/buchungen": {
+      "post": {
+        "operationId": "BusinessController_post",
+        "parameters": [
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "Whose business: A (default) or B of a joint return.",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BookingDraftDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The posted entry (VAT lines added by its tax keys).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JournalEntryDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body fails validation (`fields`) or a business rule (`code`, German `message`), e.g. BOOKING_UNBALANCED, LEDGER_PERIOD_LOCKED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "403": {
+            "description": "SELF_EMPLOYMENT_DISABLED (switch off) or SELF_EMPLOYMENT_NOT_DECLARED (no self-employment in the interview).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "BOOK_INTEGRITY_BROKEN (hash chain or entry not as logged), BOOK_FRAME_FIXED, a draft or transaction already done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "selbststaendig"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/selbststaendig/buchungen/{nummer}/storno": {
+      "post": {
+        "operationId": "BusinessController_reverse",
+        "parameters": [
+          {
+            "name": "nummer",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "Whose business: A (default) or B of a joint return.",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReversalDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The Storno entry; the original stays unchanged (GoBD).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JournalEntryDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body fails validation (`fields`) or a business rule (`code`, German `message`), e.g. BOOKING_UNBALANCED, LEDGER_PERIOD_LOCKED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "403": {
+            "description": "SELF_EMPLOYMENT_DISABLED (switch off) or SELF_EMPLOYMENT_NOT_DECLARED (no self-employment in the interview).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The entry, transaction, asset or form does not exist for this account.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "BOOK_INTEGRITY_BROKEN (hash chain or entry not as logged), BOOK_FRAME_FIXED, a draft or transaction already done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "selbststaendig"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/selbststaendig/schnellerfassung": {
+      "post": {
+        "operationId": "BusinessController_quickEntry",
+        "parameters": [
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "Whose business: A (default) or B of a joint return.",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuickEntryDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "One booking per EÜR total (ADR-0101 §6).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/JournalEntryDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body fails validation (`fields`) or a business rule (`code`, German `message`), e.g. BOOKING_UNBALANCED, LEDGER_PERIOD_LOCKED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "403": {
+            "description": "SELF_EMPLOYMENT_DISABLED (switch off) or SELF_EMPLOYMENT_NOT_DECLARED (no self-employment in the interview).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "BOOK_INTEGRITY_BROKEN (hash chain or entry not as logged), BOOK_FRAME_FIXED, a draft or transaction already done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "selbststaendig"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/selbststaendig/festschreibung": {
+      "post": {
+        "operationId": "BusinessController_lock",
+        "parameters": [
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "Whose business: A (default) or B of a joint return.",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LockDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body fails validation (`fields`) or a business rule (`code`, German `message`), e.g. BOOKING_UNBALANCED, LEDGER_PERIOD_LOCKED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "403": {
+            "description": "SELF_EMPLOYMENT_DISABLED (switch off) or SELF_EMPLOYMENT_NOT_DECLARED (no self-employment in the interview).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "BOOK_INTEGRITY_BROKEN (hash chain or entry not as logged), BOOK_FRAME_FIXED, a draft or transaction already done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "selbststaendig"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/selbststaendig/bank/import": {
+      "post": {
+        "operationId": "BusinessController_importBank",
+        "parameters": [
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "Whose business: A (default) or B of a joint return.",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BankImportDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "New transactions are stored once per fingerprint; re-imports add nothing twice.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankImportResultDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body fails validation (`fields`) or a business rule (`code`, German `message`), e.g. BOOKING_UNBALANCED, LEDGER_PERIOD_LOCKED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "403": {
+            "description": "SELF_EMPLOYMENT_DISABLED (switch off) or SELF_EMPLOYMENT_NOT_DECLARED (no self-employment in the interview).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "selbststaendig"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/selbststaendig/bank": {
+      "get": {
+        "operationId": "BusinessController_bank",
+        "parameters": [
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "Whose business: A (default) or B of a joint return.",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Imported transactions with a booking suggestion from the rules.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BankTransactionDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body fails validation (`fields`) or a business rule (`code`, German `message`), e.g. BOOKING_UNBALANCED, LEDGER_PERIOD_LOCKED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "403": {
+            "description": "SELF_EMPLOYMENT_DISABLED (switch off) or SELF_EMPLOYMENT_NOT_DECLARED (no self-employment in the interview).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "selbststaendig"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/selbststaendig/bank/{umsatzId}/buchen": {
+      "post": {
+        "operationId": "BusinessController_acceptBank",
+        "parameters": [
+          {
+            "name": "umsatzId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "Whose business: A (default) or B of a joint return.",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptBankTransactionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JournalEntryDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body fails validation (`fields`) or a business rule (`code`, German `message`), e.g. BOOKING_UNBALANCED, LEDGER_PERIOD_LOCKED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "403": {
+            "description": "SELF_EMPLOYMENT_DISABLED (switch off) or SELF_EMPLOYMENT_NOT_DECLARED (no self-employment in the interview).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The entry, transaction, asset or form does not exist for this account.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "BOOK_INTEGRITY_BROKEN (hash chain or entry not as logged), BOOK_FRAME_FIXED, a draft or transaction already done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "selbststaendig"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/selbststaendig/bank/{umsatzId}/ignorieren": {
+      "post": {
+        "operationId": "BusinessController_ignoreBank",
+        "parameters": [
+          {
+            "name": "umsatzId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "Whose business: A (default) or B of a joint return.",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "The body fails validation (`fields`) or a business rule (`code`, German `message`), e.g. BOOKING_UNBALANCED, LEDGER_PERIOD_LOCKED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "403": {
+            "description": "SELF_EMPLOYMENT_DISABLED (switch off) or SELF_EMPLOYMENT_NOT_DECLARED (no self-employment in the interview).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The entry, transaction, asset or form does not exist for this account.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "selbststaendig"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/selbststaendig/anlagen": {
+      "get": {
+        "operationId": "BusinessController_assets",
+        "parameters": [
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "Whose business: A (default) or B of a joint return.",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The asset register of the year with the core’s depreciation; a row `id` is the asset id `…/anlagen/{anlageId}/abgang` takes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetsResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body fails validation (`fields`) or a business rule (`code`, German `message`), e.g. BOOKING_UNBALANCED, LEDGER_PERIOD_LOCKED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "403": {
+            "description": "SELF_EMPLOYMENT_DISABLED (switch off) or SELF_EMPLOYMENT_NOT_DECLARED (no self-employment in the interview).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "selbststaendig"
+        ]
+      },
+      "post": {
+        "operationId": "BusinessController_createAsset",
+        "parameters": [
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "Whose business: A (default) or B of a joint return.",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FixedAssetInputDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FixedAssetDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body fails validation (`fields`) or a business rule (`code`, German `message`), e.g. BOOKING_UNBALANCED, LEDGER_PERIOD_LOCKED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "403": {
+            "description": "SELF_EMPLOYMENT_DISABLED (switch off) or SELF_EMPLOYMENT_NOT_DECLARED (no self-employment in the interview).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "selbststaendig"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/selbststaendig/anlagen/{anlageId}/abgang": {
+      "post": {
+        "operationId": "BusinessController_disposeAsset",
+        "parameters": [
+          {
+            "name": "anlageId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "Whose business: A (default) or B of a joint return.",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssetDisposalDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FixedAssetDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body fails validation (`fields`) or a business rule (`code`, German `message`), e.g. BOOKING_UNBALANCED, LEDGER_PERIOD_LOCKED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "403": {
+            "description": "SELF_EMPLOYMENT_DISABLED (switch off) or SELF_EMPLOYMENT_NOT_DECLARED (no self-employment in the interview).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The entry, transaction, asset or form does not exist for this account.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "selbststaendig"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/selbststaendig/anlagen/abschreibung": {
+      "post": {
+        "operationId": "BusinessController_bookDepreciation",
+        "parameters": [
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "Whose business: A (default) or B of a joint return.",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Books the year’s depreciation and disposals, once per asset and year.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/JournalEntryDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body fails validation (`fields`) or a business rule (`code`, German `message`), e.g. BOOKING_UNBALANCED, LEDGER_PERIOD_LOCKED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "403": {
+            "description": "SELF_EMPLOYMENT_DISABLED (switch off) or SELF_EMPLOYMENT_NOT_DECLARED (no self-employment in the interview).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "BOOK_INTEGRITY_BROKEN (hash chain or entry not as logged), BOOK_FRAME_FIXED, a draft or transaction already done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "selbststaendig"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/selbststaendig/abschluss": {
+      "get": {
+        "operationId": "BusinessController_closing",
+        "parameters": [
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "Whose business: A (default) or B of a joint return.",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "EÜR totals and profit, or GuV, Bilanz, closing balances and the opening entry of the next year.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClosingDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body fails validation (`fields`) or a business rule (`code`, German `message`), e.g. BOOKING_UNBALANCED, LEDGER_PERIOD_LOCKED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "403": {
+            "description": "SELF_EMPLOYMENT_DISABLED (switch off) or SELF_EMPLOYMENT_NOT_DECLARED (no self-employment in the interview).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "selbststaendig"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/selbststaendig/abschluss/eroeffnung": {
+      "post": {
+        "operationId": "BusinessController_carryForward",
+        "parameters": [
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "Whose business: A (default) or B of a joint return.",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The Eröffnungsbilanz entry posted into the next year’s book.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JournalEntryDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body fails validation (`fields`) or a business rule (`code`, German `message`), e.g. BOOKING_UNBALANCED, LEDGER_PERIOD_LOCKED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "403": {
+            "description": "SELF_EMPLOYMENT_DISABLED (switch off) or SELF_EMPLOYMENT_NOT_DECLARED (no self-employment in the interview).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "BOOK_INTEGRITY_BROKEN (hash chain or entry not as logged), BOOK_FRAME_FIXED, a draft or transaction already done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "selbststaendig"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/selbststaendig/umsatzsteuer": {
+      "get": {
+        "operationId": "BusinessController_vat",
+        "parameters": [
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "Whose business: A (default) or B of a joint return.",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Umsatzsteuer-Jahreserklärung from the book and the prepayments sum.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VatReturnDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body fails validation (`fields`) or a business rule (`code`, German `message`), e.g. BOOKING_UNBALANCED, LEDGER_PERIOD_LOCKED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "403": {
+            "description": "SELF_EMPLOYMENT_DISABLED (switch off) or SELF_EMPLOYMENT_NOT_DECLARED (no self-employment in the interview).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "selbststaendig"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/selbststaendig/gewerbesteuer": {
+      "get": {
+        "operationId": "BusinessController_tradeTax",
+        "parameters": [
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "Whose business: A (default) or B of a joint return.",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Gewerbesteuer-Erklärung: status berechnet | offen (missing) | entfaellt (Freiberuf).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TradeTaxDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body fails validation (`fields`) or a business rule (`code`, German `message`), e.g. BOOKING_UNBALANCED, LEDGER_PERIOD_LOCKED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "403": {
+            "description": "SELF_EMPLOYMENT_DISABLED (switch off) or SELF_EMPLOYMENT_NOT_DECLARED (no self-employment in the interview).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "selbststaendig"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/selbststaendig/gewerbesteuer/hebesatz": {
+      "get": {
+        "operationId": "BusinessController_hebesatz",
+        "parameters": [
+          {
+            "name": "land",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "BY",
+              "type": "string"
+            }
+          },
+          {
+            "name": "gemeinde",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "example": "Neustadt",
+              "type": "string"
+            }
+          },
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "Whose business: A (default) or B of a joint return.",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "One municipality, or several as choices; the table year says where the value is from.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HebesatzLookupDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body fails validation (`fields`) or a business rule (`code`, German `message`), e.g. BOOKING_UNBALANCED, LEDGER_PERIOD_LOCKED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "403": {
+            "description": "SELF_EMPLOYMENT_DISABLED (switch off) or SELF_EMPLOYMENT_NOT_DECLARED (no self-employment in the interview).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "selbststaendig"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/selbststaendig/verluste": {
+      "get": {
+        "operationId": "BusinessController_losses",
+        "parameters": [
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "Whose business: A (default) or B of a joint return.",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "§ 10d: facts, rules of the year, Verlustvortrag used, a new loss and its Rücktrag (or the waiver).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LossesDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body fails validation (`fields`) or a business rule (`code`, German `message`), e.g. BOOKING_UNBALANCED, LEDGER_PERIOD_LOCKED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "403": {
+            "description": "SELF_EMPLOYMENT_DISABLED (switch off) or SELF_EMPLOYMENT_NOT_DECLARED (no self-employment in the interview).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "selbststaendig"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/selbststaendig/elster/{formular}": {
+      "get": {
+        "operationId": "BusinessController_elster",
+        "parameters": [
+          {
+            "name": "formular",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "enum": [
+                "anlage-euer",
+                "anlage-s",
+                "anlage-g",
+                "ust-2-a",
+                "gewst-1-a",
+                "est-1-a",
+                "anlage-sonstiges"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "Whose business: A (default) or B of a joint return.",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Per line: Zeile, Kennzahl, label and the value to type into Mein ELSTER; unpublished years say so.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ElsterHelpDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body fails validation (`fields`) or a business rule (`code`, German `message`), e.g. BOOKING_UNBALANCED, LEDGER_PERIOD_LOCKED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "402": {
+            "description": "SELF_EMPLOYMENT_NOT_UNLOCKED: the year is not paid at the self-employment tier.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "SELF_EMPLOYMENT_DISABLED (switch off) or SELF_EMPLOYMENT_NOT_DECLARED (no self-employment in the interview).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The entry, transaction, asset or form does not exist for this account.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "BOOK_INTEGRITY_BROKEN (hash chain or entry not as logged), BOOK_FRAME_FIXED, a draft or transaction already done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "selbststaendig"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/selbststaendig/export/gobd": {
+      "get": {
+        "operationId": "BusinessController_gobd",
+        "parameters": [
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "Whose business: A (default) or B of a joint return.",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Z3 data export (§ 147 Abs. 6 AO): index.xml, buchungen.csv, konten.csv, protokoll.csv.",
+            "content": {
+              "application/zip": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body fails validation (`fields`) or a business rule (`code`, German `message`), e.g. BOOKING_UNBALANCED, LEDGER_PERIOD_LOCKED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "402": {
+            "description": "SELF_EMPLOYMENT_NOT_UNLOCKED: the year is not paid at the self-employment tier.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "SELF_EMPLOYMENT_DISABLED (switch off) or SELF_EMPLOYMENT_NOT_DECLARED (no self-employment in the interview).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "BOOK_INTEGRITY_BROKEN (hash chain or entry not as logged), BOOK_FRAME_FIXED, a draft or transaction already done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "selbststaendig"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/selbststaendig/verfahrensdokumentation": {
+      "get": {
+        "operationId": "BusinessController_procedureDoc",
+        "parameters": [
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "Whose business: A (default) or B of a joint return.",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProcedureDocDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body fails validation (`fields`) or a business rule (`code`, German `message`), e.g. BOOKING_UNBALANCED, LEDGER_PERIOD_LOCKED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "403": {
+            "description": "SELF_EMPLOYMENT_DISABLED (switch off) or SELF_EMPLOYMENT_NOT_DECLARED (no self-employment in the interview).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "selbststaendig"
+        ]
+      },
+      "put": {
+        "operationId": "BusinessController_saveProcedureDoc",
+        "parameters": [
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "Whose business: A (default) or B of a joint return.",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProcedureDocInputDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProcedureDocDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body fails validation (`fields`) or a business rule (`code`, German `message`), e.g. BOOKING_UNBALANCED, LEDGER_PERIOD_LOCKED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "403": {
+            "description": "SELF_EMPLOYMENT_DISABLED (switch off) or SELF_EMPLOYMENT_NOT_DECLARED (no self-employment in the interview).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "selbststaendig"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/selbststaendig/e-bilanz": {
+      "get": {
+        "operationId": "BusinessController_eBilanz",
+        "parameters": [
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "Whose business: A (default) or B of a joint return.",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Preview of the XBRL data set; not transmitted (ADR-0101 §17).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EBilanzDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body fails validation (`fields`) or a business rule (`code`, German `message`), e.g. BOOKING_UNBALANCED, LEDGER_PERIOD_LOCKED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "403": {
+            "description": "SELF_EMPLOYMENT_DISABLED (switch off) or SELF_EMPLOYMENT_NOT_DECLARED (no self-employment in the interview).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "BOOK_INTEGRITY_BROKEN (hash chain or entry not as logged), BOOK_FRAME_FIXED, a draft or transaction already done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "selbststaendig"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/selbststaendig/e-bilanz/datei": {
+      "get": {
+        "operationId": "BusinessController_eBilanzFile",
+        "parameters": [
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "Whose business: A (default) or B of a joint return.",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The XBRL instance as a file (not transmitted).",
+            "content": {
+              "application/xml": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body fails validation (`fields`) or a business rule (`code`, German `message`), e.g. BOOKING_UNBALANCED, LEDGER_PERIOD_LOCKED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "402": {
+            "description": "SELF_EMPLOYMENT_NOT_UNLOCKED: the year is not paid at the self-employment tier.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "SELF_EMPLOYMENT_DISABLED (switch off) or SELF_EMPLOYMENT_NOT_DECLARED (no self-employment in the interview).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "BOOK_INTEGRITY_BROKEN (hash chain or entry not as logged), BOOK_FRAME_FIXED, a draft or transaction already done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "selbststaendig"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/selbststaendig/checkout": {
+      "post": {
+        "operationId": "BusinessController_checkout",
+        "parameters": [
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "Whose business: A (default) or B of a joint return.",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Stripe Checkout at the self-employment price (STRIPE_PRICE_ID_SELBSTSTAENDIG).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessCheckoutResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body fails validation (`fields`) or a business rule (`code`, German `message`), e.g. BOOKING_UNBALANCED, LEDGER_PERIOD_LOCKED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "403": {
+            "description": "SELF_EMPLOYMENT_DISABLED (switch off) or SELF_EMPLOYMENT_NOT_DECLARED (no self-employment in the interview).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "PAYMENT_NOT_CONFIGURED or PAYMENT_TIER_NOT_CONFIGURED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "selbststaendig"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/freischaltung": {
+      "get": {
+        "operationId": "UnlockController_status",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnlockStatusDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — paying requires a signed-in account."
+          }
+        },
+        "tags": [
+          "freischaltung"
+        ]
+      }
+    },
     "/v1/belege": {
       "get": {
         "operationId": "ReceiptController_list",
@@ -2737,6 +5085,45 @@
       "post": {
         "operationId": "ReceiptController_upload",
         "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "file"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "description": "Belegart (RECEIPT_TYPES), e.g. Geschaeftsbeleg."
+                  },
+                  "belegdatum": {
+                    "type": "string",
+                    "example": "2025-03-14"
+                  },
+                  "zahlungsdatum": {
+                    "type": "string",
+                    "example": "2025-03-20"
+                  },
+                  "direction": {
+                    "type": "string",
+                    "enum": [
+                      "ausgabe",
+                      "einnahme"
+                    ],
+                    "description": "A business receipt (ADR-0101 §6): an expense or an invoice the business wrote. Files the Beleg as Geschaeftsbeleg; its parse drafts the booking in that direction."
+                  }
+                }
+              }
+            }
+          }
+        },
         "responses": {
           "201": {
             "description": "Uploads and encrypts an original PDF/image receipt binary (max 10 MB) and creates the Beleg (`processing.state` `neu`). Every entry point then reads the file on the device and calls `POST /v1/belege/parse` with the returned `id` as `receiptId` (or with `deviceReadFailure` when the device cannot read it), so the Beleg reaches a state (ADR-0097 §4). A file the user uploaded before is still stored and comes back with `duplicateOf`.",
@@ -4330,40 +6717,6 @@
         ]
       }
     },
-    "/v1/steuerjahre/{jahr}/freischaltung": {
-      "get": {
-        "operationId": "UnlockController_status",
-        "parameters": [
-          {
-            "name": "jahr",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "example": 2025,
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UnlockStatusDto"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Guest session — paying requires a signed-in account."
-          }
-        },
-        "tags": [
-          "freischaltung"
-        ]
-      }
-    },
     "/v1/eulen-modus/personendaten-einwilligung": {
       "get": {
         "operationId": "OwlModeController_getPersonalDataConsent",
@@ -4597,7 +6950,8 @@
                 "anlageR",
                 "anlageKap",
                 "anlageV",
-                "anlageKind"
+                "anlageKind",
+                "anlageEuer"
               ],
               "type": "string"
             }
@@ -5842,6 +8196,19 @@
           "withdrawable"
         ]
       },
+      "CockpitCapabilitiesDto": {
+        "type": "object",
+        "properties": {
+          "selbststaendig": {
+            "type": "boolean",
+            "example": false,
+            "description": "SELBSTSTAENDIGE_ENABLED: „Selbstständig“/„Beides“ lead into the self-employment path (EÜR, Buch, USt, GewSt) instead of the Gewerbe-Gate."
+          }
+        },
+        "required": [
+          "selbststaendig"
+        ]
+      },
       "CockpitSummaryDto": {
         "type": "object",
         "properties": {
@@ -5874,6 +8241,22 @@
                 "$ref": "#/components/schemas/CockpitSubmissionDto"
               }
             ]
+          },
+          "capabilities": {
+            "description": "Server switches the app follows (always present).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CockpitCapabilitiesDto"
+              }
+            ]
+          },
+          "filingPath": {
+            "type": "string",
+            "enum": [
+              "papier",
+              "elster-ausfuellhilfe"
+            ],
+            "description": "How this year is filed: „papier“ with the printout (ADR-0050), „elster-ausfuellhilfe“ through Mein ELSTER with the fill-in help for a year with self-employment (switch on, ADR-0101 §16)."
           }
         },
         "required": [
@@ -9666,6 +12049,2613 @@
           }
         }
       },
+      "BusinessErrorDto": {
+        "type": "object",
+        "properties": {
+          "statusCode": {
+            "type": "number",
+            "example": 409
+          },
+          "error": {
+            "type": "string",
+            "example": "Conflict"
+          },
+          "code": {
+            "type": "string",
+            "example": "BOOK_INTEGRITY_BROKEN",
+            "description": "Stable error code (absent only for a DTO validation 400, which carries `fields`)."
+          },
+          "message": {
+            "type": "string",
+            "example": "Buchung 3 weicht vom Protokoll ab.",
+            "description": "German, shown to the user."
+          },
+          "fields": {
+            "type": "object",
+            "description": "DTO validation only: the fields and their constraint."
+          }
+        },
+        "required": [
+          "statusCode"
+        ]
+      },
+      "CatalogEntryDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string",
+            "description": "German label."
+          }
+        },
+        "required": [
+          "key",
+          "label"
+        ]
+      },
+      "AssetCategoryDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "enum": [
+              "computer",
+              "software",
+              "mobile_phone",
+              "telephone",
+              "fax",
+              "camera_audio_video",
+              "projector",
+              "copier",
+              "cash_register",
+              "card_reader",
+              "shredder",
+              "office_furniture",
+              "steel_cabinet",
+              "safe",
+              "carpet",
+              "car",
+              "motorcycle_bicycle",
+              "truck",
+              "trailer",
+              "forklift",
+              "workshop_equipment",
+              "shop_fittings",
+              "shop_installations",
+              "trade_fair_stand",
+              "air_conditioner",
+              "fridge",
+              "dishwasher",
+              "washing_machine",
+              "microwave",
+              "drill_mobile",
+              "drill_stationary",
+              "saw_mobile",
+              "saw_stationary",
+              "grinder_mobile",
+              "welding",
+              "machine_other",
+              "pressure_washer",
+              "alarm_system",
+              "photovoltaic",
+              "container",
+              "lab_equipment",
+              "vending_machine"
+            ],
+            "description": "Key of the official AfA table (core USEFUL_LIVES)."
+          },
+          "label": {
+            "type": "string"
+          },
+          "years": {
+            "type": "number",
+            "description": "Useful life in years."
+          },
+          "source": {
+            "type": "string",
+            "description": "The official source of the useful life."
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "years",
+          "source"
+        ]
+      },
+      "BusinessCataloguesDto": {
+        "type": "object",
+        "properties": {
+          "professions": {
+            "description": "Katalogberufe the suggestion knows (`professionAnswers.catalogProfession`).",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CatalogEntryDto"
+            }
+          },
+          "freeActivities": {
+            "description": "Free activities (`professionAnswers.freeActivity`).",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CatalogEntryDto"
+            }
+          },
+          "assetCategories": {
+            "description": "AfA-table categories (`category` of an asset).",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssetCategoryDto"
+            }
+          },
+          "bankPresets": {
+            "type": "array",
+            "description": "Bank CSV presets (`preset` of the bank import).",
+            "items": {
+              "type": "string",
+              "enum": [
+                "sparkasse",
+                "ing",
+                "dkb",
+                "commerzbank"
+              ]
+            }
+          }
+        },
+        "required": [
+          "professions",
+          "freeActivities",
+          "assetCategories",
+          "bankPresets"
+        ]
+      },
+      "ProfessionAnswersDto": {
+        "type": "object",
+        "properties": {
+          "priorAssessment": {
+            "type": "string",
+            "enum": [
+              "freiberuf",
+              "gewerbe"
+            ],
+            "nullable": true,
+            "description": "What the last assessment said (Anlage S or G); null when there is none."
+          },
+          "catalogProfession": {
+            "type": "string",
+            "enum": [
+              "arzt",
+              "zahnarzt",
+              "tierarzt",
+              "rechtsanwalt",
+              "notar",
+              "patentanwalt",
+              "vermessungsingenieur",
+              "ingenieur",
+              "architekt",
+              "handelschemiker",
+              "wirtschaftspruefer",
+              "steuerberater",
+              "beratender_volks_betriebswirt",
+              "vereidigter_buchpruefer",
+              "steuerbevollmaechtigter",
+              "heilpraktiker",
+              "dentist",
+              "krankengymnast",
+              "journalist",
+              "bildberichterstatter",
+              "dolmetscher",
+              "uebersetzer",
+              "lotse"
+            ],
+            "nullable": true,
+            "description": "Katalogberuf of § 18 Abs. 1 Nr. 1 EStG (core CATALOG_PROFESSIONS)."
+          },
+          "similarToCatalogProfession": {
+            "type": "boolean",
+            "description": "Comparable to a Katalogberuf in training and work (ähnlicher Beruf)."
+          },
+          "freeActivity": {
+            "type": "string",
+            "enum": [
+              "wissenschaftlich",
+              "kuenstlerisch",
+              "schriftstellerisch",
+              "unterrichtend",
+              "erzieherisch"
+            ],
+            "nullable": true,
+            "description": "A free activity (wissenschaftlich, künstlerisch, …)."
+          },
+          "ownExpertWork": {
+            "type": "boolean",
+            "description": "The work rests on own expert knowledge; absent = Nein."
+          },
+          "employsQualifiedStaff": {
+            "type": "boolean",
+            "description": "Employs qualified staff; absent = Nein."
+          },
+          "leadsPersonally": {
+            "type": "boolean",
+            "description": "Leads the staff personally and answers for each job; absent = Nein."
+          },
+          "tradesGoods": {
+            "type": "boolean",
+            "description": "Trades goods or runs a shop beside the profession; absent = Nein."
+          }
+        }
+      },
+      "ProfessionSuggestionDto": {
+        "type": "object",
+        "properties": {
+          "suggestion": {
+            "type": "string",
+            "enum": [
+              "freiberuf",
+              "gewerbe",
+              "unklar"
+            ]
+          },
+          "reasons": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "basis": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "suggestion",
+          "reasons",
+          "basis"
+        ]
+      },
+      "FinancingComponentsDto": {
+        "type": "object",
+        "properties": {
+          "debtChargesEur": {
+            "type": "number",
+            "description": "§ 8 Nr. 1 a GewStG: Entgelte für Schulden, euros."
+          },
+          "annuitiesEur": {
+            "type": "number",
+            "description": "§ 8 Nr. 1 b: Renten und dauernde Lasten, euros."
+          },
+          "silentPartnerSharesEur": {
+            "type": "number",
+            "description": "§ 8 Nr. 1 c: Gewinnanteile stiller Gesellschafter, euros."
+          },
+          "rentMovableEur": {
+            "type": "number",
+            "description": "§ 8 Nr. 1 d: Miete/Leasing beweglicher Wirtschaftsgüter, euros."
+          },
+          "rentMovableLowEmissionEur": {
+            "type": "number",
+            "description": "§ 8 Nr. 1 d: dieselbe für E-Fahrzeuge und Fahrräder, euros."
+          },
+          "rentImmovableEur": {
+            "type": "number",
+            "description": "§ 8 Nr. 1 e: Miete/Pacht unbeweglicher Wirtschaftsgüter, euros."
+          },
+          "licencesEur": {
+            "type": "number",
+            "description": "§ 8 Nr. 1 f: Lizenzen und Konzessionen, euros."
+          }
+        }
+      },
+      "TradeTaxInputsDto": {
+        "type": "object",
+        "properties": {
+          "financing": {
+            "$ref": "#/components/schemas/FinancingComponentsDto"
+          },
+          "otherAdditionsEur": {
+            "type": "number",
+            "description": "Further additions (§ 8 Nr. 4–12 GewStG), euros."
+          },
+          "einheitswertEur": {
+            "type": "number",
+            "description": "Einheitswert of the business land for § 9 Nr. 1 GewStG, euros."
+          },
+          "otherDeductionsEur": {
+            "type": "number",
+            "description": "Further deductions (§ 9 Nr. 2–10), euros."
+          },
+          "lossCarriedForwardEur": {
+            "type": "number",
+            "description": "Gewerbeverlust carried forward (§ 10a GewStG), euros."
+          }
+        }
+      },
+      "LossFactsDto": {
+        "type": "object",
+        "properties": {
+          "carriedForwardEur": {
+            "type": "number",
+            "description": "Verbleibender Verlustvortrag of the last Feststellungsbescheid, euros."
+          },
+          "waiveCarryBack": {
+            "type": "boolean",
+            "description": "§ 10d Abs. 1 Satz 5: waive the Rücktrag (as a whole)."
+          },
+          "roomEur": {
+            "description": "What the GdE of the year before and the second year before still offers, euros: [y−1, y−2].",
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "carriedBackEur": {
+            "type": "number",
+            "description": "A later year’s loss carried back into this year, euros."
+          }
+        }
+      },
+      "PartnershipShareDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "freiberuf",
+              "gewerbe"
+            ]
+          },
+          "profitEur": {
+            "type": "number",
+            "description": "Share of the profit per Feststellungsbescheid, euros (negative for a loss)."
+          },
+          "baseAmountEur": {
+            "type": "number",
+            "description": "Share of the Gewerbesteuer-Messbetrag (§ 35), euros."
+          },
+          "tradeTaxEur": {
+            "type": "number",
+            "description": "Share of the Gewerbesteuer actually due (§ 35), euros."
+          }
+        },
+        "required": [
+          "name",
+          "kind",
+          "profitEur"
+        ]
+      },
+      "BusinessProfileDto": {
+        "type": "object",
+        "properties": {
+          "person": {
+            "type": "string",
+            "enum": [
+              "A",
+              "B"
+            ]
+          },
+          "confirmedKind": {
+            "type": "string",
+            "enum": [
+              "freiberuf",
+              "gewerbe"
+            ],
+            "nullable": true
+          },
+          "professionAnswers": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ProfessionAnswersDto"
+              }
+            ]
+          },
+          "suggestion": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ProfessionSuggestionDto"
+              }
+            ]
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "euer",
+              "bilanz"
+            ]
+          },
+          "chart": {
+            "type": "string",
+            "enum": [
+              "SKR03",
+              "SKR04"
+            ]
+          },
+          "smallBusiness": {
+            "type": "boolean"
+          },
+          "vatMethod": {
+            "type": "string",
+            "enum": [
+              "ist",
+              "soll"
+            ]
+          },
+          "municipalityAgs": {
+            "type": "string",
+            "nullable": true
+          },
+          "multiplierOverride": {
+            "type": "number",
+            "nullable": true
+          },
+          "startDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "vatPrepaymentsCents": {
+            "type": "number",
+            "nullable": true
+          },
+          "tradeTaxInputs": {
+            "$ref": "#/components/schemas/TradeTaxInputsDto"
+          },
+          "lossFacts": {
+            "$ref": "#/components/schemas/LossFactsDto"
+          },
+          "partnershipShares": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PartnershipShareDto"
+            }
+          },
+          "bookExists": {
+            "type": "boolean",
+            "description": "A book exists: chart and mode are fixed once something is booked."
+          }
+        },
+        "required": [
+          "person",
+          "confirmedKind",
+          "professionAnswers",
+          "suggestion",
+          "name",
+          "mode",
+          "chart",
+          "smallBusiness",
+          "vatMethod",
+          "municipalityAgs",
+          "multiplierOverride",
+          "startDate",
+          "vatPrepaymentsCents",
+          "tradeTaxInputs",
+          "lossFacts",
+          "partnershipShares",
+          "bookExists"
+        ]
+      },
+      "BusinessProfileInputDto": {
+        "type": "object",
+        "properties": {
+          "confirmedKind": {
+            "type": "string",
+            "enum": [
+              "freiberuf",
+              "gewerbe"
+            ],
+            "nullable": true,
+            "description": "The kind the user confirms."
+          },
+          "professionAnswers": {
+            "nullable": true,
+            "description": "The profession questions; the core’s Freiberuf/Gewerbe suggestion is computed from them. Replaced as a whole.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ProfessionAnswersDto"
+              }
+            ]
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "euer",
+              "bilanz"
+            ]
+          },
+          "chart": {
+            "type": "string",
+            "enum": [
+              "SKR03",
+              "SKR04"
+            ]
+          },
+          "smallBusiness": {
+            "type": "boolean"
+          },
+          "vatMethod": {
+            "type": "string",
+            "enum": [
+              "ist",
+              "soll"
+            ]
+          },
+          "municipalityAgs": {
+            "type": "string",
+            "nullable": true,
+            "example": "09162000",
+            "description": "Amtlicher Gemeindeschlüssel."
+          },
+          "multiplierOverride": {
+            "type": "number",
+            "nullable": true,
+            "example": 490,
+            "description": "Hebesatz in percent, instead of the table’s."
+          },
+          "startDate": {
+            "type": "string",
+            "nullable": true,
+            "example": "2024-01-01"
+          },
+          "vatPrepaymentsCents": {
+            "type": "number",
+            "nullable": true,
+            "description": "Umsatzsteuer prepayments of the year in cents."
+          },
+          "tradeTaxInputs": {
+            "nullable": true,
+            "description": "Gewerbesteuer inputs, euros. Replaced as a whole: send the complete object.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TradeTaxInputsDto"
+              }
+            ]
+          },
+          "lossFacts": {
+            "nullable": true,
+            "description": "§ 10d facts, euros. Replaced as a whole.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LossFactsDto"
+              }
+            ]
+          },
+          "partnershipShares": {
+            "nullable": true,
+            "description": "Shares from partnerships (Feststellungsbescheid). Replaced as a whole.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PartnershipShareDto"
+            }
+          }
+        }
+      },
+      "BookIntegrityDto": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "description": "false: the hash chain or an entry is not as logged — shown to the user, exports refuse."
+          },
+          "reason": {
+            "type": "string",
+            "description": "German reason when ok is false."
+          },
+          "firstBadSeq": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "ok"
+        ]
+      },
+      "JournalLineDto": {
+        "type": "object",
+        "properties": {
+          "account": {
+            "type": "string"
+          },
+          "side": {
+            "type": "string",
+            "enum": [
+              "debit",
+              "credit"
+            ]
+          },
+          "amount": {
+            "type": "number",
+            "description": "Cents."
+          },
+          "taxKey": {
+            "type": "string"
+          },
+          "taxPart": {
+            "type": "string",
+            "enum": [
+              "base",
+              "tax"
+            ],
+            "nullable": true
+          }
+        },
+        "required": [
+          "account",
+          "side",
+          "amount",
+          "taxKey",
+          "taxPart"
+        ]
+      },
+      "JournalEntryDto": {
+        "type": "object",
+        "properties": {
+          "number": {
+            "type": "number"
+          },
+          "date": {
+            "type": "string"
+          },
+          "documentNumber": {
+            "type": "string"
+          },
+          "receiptRef": {
+            "type": "string",
+            "nullable": true
+          },
+          "text": {
+            "type": "string"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/JournalLineDto"
+            }
+          },
+          "reversalOf": {
+            "type": "number",
+            "nullable": true
+          },
+          "source": {
+            "type": "string",
+            "description": "nutzer | eule:… | bank:… | beleg:… | afa:… | summe | storno | eb"
+          },
+          "reversedBy": {
+            "type": "number",
+            "nullable": true,
+            "description": "The Storno that reversed this entry."
+          }
+        },
+        "required": [
+          "number",
+          "date",
+          "documentNumber",
+          "receiptRef",
+          "text",
+          "lines",
+          "reversalOf"
+        ]
+      },
+      "BookDto": {
+        "type": "object",
+        "properties": {
+          "chart": {
+            "type": "string",
+            "enum": [
+              "SKR03",
+              "SKR04"
+            ]
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "euer",
+              "bilanz"
+            ]
+          },
+          "lockedThrough": {
+            "type": "string",
+            "nullable": true
+          },
+          "integrity": {
+            "$ref": "#/components/schemas/BookIntegrityDto"
+          },
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/JournalEntryDto"
+            }
+          }
+        },
+        "required": [
+          "chart",
+          "mode",
+          "lockedThrough",
+          "integrity",
+          "entries"
+        ]
+      },
+      "BookingLineDto": {
+        "type": "object",
+        "properties": {
+          "account": {
+            "type": "string",
+            "example": "4930",
+            "description": "Account number in the book’s chart (SKR03/SKR04)."
+          },
+          "side": {
+            "type": "string",
+            "enum": [
+              "debit",
+              "credit"
+            ]
+          },
+          "amount": {
+            "type": "number",
+            "example": 11900,
+            "description": "Integer cents, always positive."
+          },
+          "taxKey": {
+            "type": "string",
+            "example": "vst19",
+            "description": "Tax key (core BookingTaxKey); omitted = none."
+          },
+          "amountIs": {
+            "type": "string",
+            "enum": [
+              "gross",
+              "net"
+            ]
+          }
+        },
+        "required": [
+          "account",
+          "side",
+          "amount"
+        ]
+      },
+      "BookingAssetDto": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string",
+            "example": "Notebook"
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "linear",
+              "degressive",
+              "gwg",
+              "sofort"
+            ]
+          },
+          "category": {
+            "type": "string",
+            "example": "computer",
+            "description": "Key of the official AfA table (core USEFUL_LIVES)."
+          },
+          "usefulLifeYears": {
+            "type": "number",
+            "example": 3
+          }
+        },
+        "required": [
+          "label",
+          "method"
+        ]
+      },
+      "BookingDraftDto": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "example": "2025-03-14"
+          },
+          "documentNumber": {
+            "type": "string",
+            "example": "R-2025-031"
+          },
+          "text": {
+            "type": "string",
+            "example": "Bürobedarf"
+          },
+          "receiptRef": {
+            "type": "string",
+            "description": "Reference to a stored receipt (Beleg id)."
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BookingLineDto"
+            }
+          },
+          "asset": {
+            "description": "A fixed asset: how it is depreciated.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BookingAssetDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "date",
+          "documentNumber",
+          "text",
+          "lines"
+        ]
+      },
+      "ReversalDto": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "example": "2025-04-02"
+          },
+          "documentNumber": {
+            "type": "string",
+            "example": "ST-1"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "date",
+          "documentNumber"
+        ]
+      },
+      "QuickTotalDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "example": "ausgaben_telekommunikation",
+            "description": "Core EuerKey."
+          },
+          "amountCents": {
+            "type": "number",
+            "example": 48000,
+            "description": "Integer cents."
+          },
+          "date": {
+            "type": "string",
+            "example": "2025-12-31"
+          }
+        },
+        "required": [
+          "key",
+          "amountCents"
+        ]
+      },
+      "QuickEntryDto": {
+        "type": "object",
+        "properties": {
+          "totals": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QuickTotalDto"
+            }
+          }
+        },
+        "required": [
+          "totals"
+        ]
+      },
+      "LockDto": {
+        "type": "object",
+        "properties": {
+          "through": {
+            "type": "string",
+            "example": "2025-06-30",
+            "description": "Festschreibung through this day; only moves forward."
+          }
+        },
+        "required": [
+          "through"
+        ]
+      },
+      "CsvColumnDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Buchungstag"
+          },
+          "nth": {
+            "type": "number",
+            "example": 2,
+            "description": "Which occurrence of a repeated header name, 1 = first."
+          },
+          "index": {
+            "type": "number",
+            "example": 1,
+            "description": "Column position in the header row, 0 = first; used when `name` is not given."
+          }
+        }
+      },
+      "CsvMappingDto": {
+        "type": "object",
+        "properties": {
+          "delimiter": {
+            "type": "string",
+            "enum": [
+              ";",
+              ",",
+              "\t"
+            ]
+          },
+          "decimal": {
+            "type": "string",
+            "enum": [
+              ",",
+              "."
+            ],
+            "description": "Decimal separator of the amounts."
+          },
+          "dateFormat": {
+            "type": "string",
+            "enum": [
+              "DD.MM.YYYY",
+              "DD.MM.YY",
+              "YYYY-MM-DD"
+            ]
+          },
+          "bookingDate": {
+            "$ref": "#/components/schemas/CsvColumnDto"
+          },
+          "valueDate": {
+            "$ref": "#/components/schemas/CsvColumnDto"
+          },
+          "amount": {
+            "description": "One signed amount column; or `debit` and `credit`.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CsvColumnDto"
+              }
+            ]
+          },
+          "debit": {
+            "description": "Unsigned debit (Soll) column, with `credit`.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CsvColumnDto"
+              }
+            ]
+          },
+          "credit": {
+            "description": "Unsigned credit (Haben) column, with `debit`.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CsvColumnDto"
+              }
+            ]
+          },
+          "counterpartyName": {
+            "$ref": "#/components/schemas/CsvColumnDto"
+          },
+          "counterpartyIban": {
+            "$ref": "#/components/schemas/CsvColumnDto"
+          },
+          "reference": {
+            "description": "One or more columns, joined with a space.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CsvColumnDto"
+            }
+          },
+          "currency": {
+            "$ref": "#/components/schemas/CsvColumnDto"
+          },
+          "endToEndId": {
+            "$ref": "#/components/schemas/CsvColumnDto"
+          },
+          "accountIban": {
+            "$ref": "#/components/schemas/CsvColumnDto"
+          },
+          "defaultCurrency": {
+            "type": "string",
+            "example": "EUR"
+          }
+        },
+        "required": [
+          "delimiter",
+          "decimal",
+          "dateFormat",
+          "bookingDate",
+          "reference"
+        ]
+      },
+      "BankImportDto": {
+        "type": "object",
+        "properties": {
+          "format": {
+            "type": "string",
+            "enum": [
+              "csv",
+              "camt053"
+            ]
+          },
+          "content": {
+            "type": "string",
+            "description": "The file content as text (UTF-8)."
+          },
+          "preset": {
+            "type": "string",
+            "enum": [
+              "sparkasse",
+              "ing",
+              "dkb",
+              "commerzbank"
+            ]
+          },
+          "mapping": {
+            "description": "The column mapping, when no preset fits (columns by header name or position).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CsvMappingDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "format",
+          "content"
+        ]
+      },
+      "BankImportResultDto": {
+        "type": "object",
+        "properties": {
+          "added": {
+            "type": "number"
+          },
+          "duplicates": {
+            "type": "number"
+          },
+          "outsideYear": {
+            "type": "number",
+            "description": "Transactions dated in another year (not imported into this book)."
+          }
+        },
+        "required": [
+          "added",
+          "duplicates",
+          "outsideYear"
+        ]
+      },
+      "BankTransactionDataDto": {
+        "type": "object",
+        "properties": {
+          "accountIban": {
+            "type": "string",
+            "nullable": true
+          },
+          "bookingDate": {
+            "type": "string"
+          },
+          "valueDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "amount": {
+            "type": "number",
+            "description": "Signed integer cents: positive is money in, negative money out."
+          },
+          "currency": {
+            "type": "string"
+          },
+          "counterpartyName": {
+            "type": "string",
+            "nullable": true
+          },
+          "counterpartyIban": {
+            "type": "string",
+            "nullable": true
+          },
+          "reference": {
+            "type": "string"
+          },
+          "endToEndId": {
+            "type": "string",
+            "nullable": true
+          },
+          "bankReference": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "accountIban",
+          "bookingDate",
+          "valueDate",
+          "amount",
+          "currency",
+          "counterpartyName",
+          "counterpartyIban",
+          "reference",
+          "endToEndId",
+          "bankReference"
+        ]
+      },
+      "BookingSuggestionDto": {
+        "type": "object",
+        "properties": {
+          "ruleId": {
+            "type": "string"
+          },
+          "account": {
+            "type": "string"
+          },
+          "taxKey": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ruleId",
+          "account",
+          "taxKey",
+          "text"
+        ]
+      },
+      "BankTransactionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "offen",
+              "gebucht",
+              "ignoriert"
+            ]
+          },
+          "entryNumber": {
+            "type": "number",
+            "nullable": true
+          },
+          "transaction": {
+            "$ref": "#/components/schemas/BankTransactionDataDto"
+          },
+          "suggestion": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BookingSuggestionDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "entryNumber",
+          "transaction",
+          "suggestion"
+        ]
+      },
+      "AcceptBankTransactionDto": {
+        "type": "object",
+        "properties": {
+          "account": {
+            "type": "string",
+            "description": "Account; defaults to the suggestion."
+          },
+          "taxKey": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "documentNumber": {
+            "type": "string"
+          },
+          "remember": {
+            "type": "boolean",
+            "description": "Remember as a booking rule for this counterparty."
+          }
+        }
+      },
+      "AssetRegisterRowDto": {
+        "type": "object",
+        "properties": {
+          "acquisitionCost": {
+            "type": "number",
+            "description": "Integer cents."
+          },
+          "openingBookValue": {
+            "type": "number",
+            "description": "Integer cents."
+          },
+          "additions": {
+            "type": "number",
+            "description": "Integer cents."
+          },
+          "depreciation": {
+            "type": "number",
+            "description": "Integer cents."
+          },
+          "disposals": {
+            "type": "number",
+            "description": "Book value that left with a disposal in the year, integer cents."
+          },
+          "closingBookValue": {
+            "type": "number",
+            "description": "Integer cents."
+          },
+          "id": {
+            "type": "string",
+            "description": "The asset id: the same id `POST …/anlagen/{anlageId}/abgang` takes."
+          },
+          "label": {
+            "type": "string"
+          },
+          "account": {
+            "type": "string",
+            "description": "Asset account in the book’s chart."
+          },
+          "acquisitionDate": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "acquisitionCost",
+          "openingBookValue",
+          "additions",
+          "depreciation",
+          "disposals",
+          "closingBookValue",
+          "id",
+          "label",
+          "account",
+          "acquisitionDate"
+        ]
+      },
+      "AssetRegisterColumnsDto": {
+        "type": "object",
+        "properties": {
+          "acquisitionCost": {
+            "type": "number",
+            "description": "Integer cents."
+          },
+          "openingBookValue": {
+            "type": "number",
+            "description": "Integer cents."
+          },
+          "additions": {
+            "type": "number",
+            "description": "Integer cents."
+          },
+          "depreciation": {
+            "type": "number",
+            "description": "Integer cents."
+          },
+          "disposals": {
+            "type": "number",
+            "description": "Book value that left with a disposal in the year, integer cents."
+          },
+          "closingBookValue": {
+            "type": "number",
+            "description": "Integer cents."
+          }
+        },
+        "required": [
+          "acquisitionCost",
+          "openingBookValue",
+          "additions",
+          "depreciation",
+          "disposals",
+          "closingBookValue"
+        ]
+      },
+      "AssetRegisterDto": {
+        "type": "object",
+        "properties": {
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssetRegisterRowDto"
+            }
+          },
+          "totals": {
+            "$ref": "#/components/schemas/AssetRegisterColumnsDto"
+          }
+        },
+        "required": [
+          "rows",
+          "totals"
+        ]
+      },
+      "FixedAssetDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The id `POST …/anlagen/{anlageId}/abgang` takes."
+          },
+          "taxYear": {
+            "type": "number",
+            "description": "Year of acquisition."
+          },
+          "person": {
+            "type": "string",
+            "enum": [
+              "A",
+              "B"
+            ]
+          },
+          "label": {
+            "type": "string"
+          },
+          "account": {
+            "type": "string"
+          },
+          "acquisitionDate": {
+            "type": "string"
+          },
+          "acquisitionCost": {
+            "type": "number",
+            "description": "Net acquisition cost, integer cents."
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "linear",
+              "degressive",
+              "gwg",
+              "sofort",
+              "building"
+            ]
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "computer",
+              "software",
+              "mobile_phone",
+              "telephone",
+              "fax",
+              "camera_audio_video",
+              "projector",
+              "copier",
+              "cash_register",
+              "card_reader",
+              "shredder",
+              "office_furniture",
+              "steel_cabinet",
+              "safe",
+              "carpet",
+              "car",
+              "motorcycle_bicycle",
+              "truck",
+              "trailer",
+              "forklift",
+              "workshop_equipment",
+              "shop_fittings",
+              "shop_installations",
+              "trade_fair_stand",
+              "air_conditioner",
+              "fridge",
+              "dishwasher",
+              "washing_machine",
+              "microwave",
+              "drill_mobile",
+              "drill_stationary",
+              "saw_mobile",
+              "saw_stationary",
+              "grinder_mobile",
+              "welding",
+              "machine_other",
+              "pressure_washer",
+              "alarm_system",
+              "photovoltaic",
+              "container",
+              "lab_equipment",
+              "vending_machine"
+            ],
+            "nullable": true
+          },
+          "usefulLifeYears": {
+            "type": "number",
+            "nullable": true
+          },
+          "specialDepreciation": {
+            "type": "string",
+            "nullable": true,
+            "description": "JSON: { byYear: { [year]: cents }, costReduction: cents }."
+          },
+          "disposal": {
+            "type": "string",
+            "nullable": true,
+            "description": "JSON: { date, proceedsCents }."
+          }
+        },
+        "required": [
+          "id",
+          "taxYear",
+          "person",
+          "label",
+          "account",
+          "acquisitionDate",
+          "acquisitionCost",
+          "method",
+          "category",
+          "usefulLifeYears",
+          "specialDepreciation",
+          "disposal"
+        ]
+      },
+      "AssetsResponseDto": {
+        "type": "object",
+        "properties": {
+          "register": {
+            "$ref": "#/components/schemas/AssetRegisterDto"
+          },
+          "records": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FixedAssetDto"
+            }
+          }
+        },
+        "required": [
+          "register",
+          "records"
+        ]
+      },
+      "FixedAssetInputDto": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "account": {
+            "type": "string",
+            "example": "0420"
+          },
+          "acquisitionDate": {
+            "type": "string",
+            "example": "2025-03-14"
+          },
+          "acquisitionCostCents": {
+            "type": "number",
+            "description": "Net cost in cents."
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "linear",
+              "degressive",
+              "gwg",
+              "sofort"
+            ]
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "computer",
+              "software",
+              "mobile_phone",
+              "telephone",
+              "fax",
+              "camera_audio_video",
+              "projector",
+              "copier",
+              "cash_register",
+              "card_reader",
+              "shredder",
+              "office_furniture",
+              "steel_cabinet",
+              "safe",
+              "carpet",
+              "car",
+              "motorcycle_bicycle",
+              "truck",
+              "trailer",
+              "forklift",
+              "workshop_equipment",
+              "shop_fittings",
+              "shop_installations",
+              "trade_fair_stand",
+              "air_conditioner",
+              "fridge",
+              "dishwasher",
+              "washing_machine",
+              "microwave",
+              "drill_mobile",
+              "drill_stationary",
+              "saw_mobile",
+              "saw_stationary",
+              "grinder_mobile",
+              "welding",
+              "machine_other",
+              "pressure_washer",
+              "alarm_system",
+              "photovoltaic",
+              "container",
+              "lab_equipment",
+              "vending_machine"
+            ],
+            "description": "AfA-table category (GET …/selbststaendig/kataloge); sets the useful life when none is given."
+          },
+          "usefulLifeYears": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "label",
+          "account",
+          "acquisitionDate",
+          "acquisitionCostCents",
+          "method"
+        ]
+      },
+      "AssetDisposalDto": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string"
+          },
+          "proceedsCents": {
+            "type": "number",
+            "description": "Net proceeds in cents."
+          }
+        },
+        "required": [
+          "date"
+        ]
+      },
+      "EuerTotalsDto": {
+        "type": "object",
+        "properties": {
+          "year": {
+            "type": "number"
+          },
+          "byKey": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number"
+            },
+            "description": "Per EuerKey, integer cents: Einnahmen for income keys, Ausgaben for the others."
+          },
+          "nonDeductible": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number"
+            },
+            "description": "The not (fully) deductible part per EuerKey, integer cents."
+          },
+          "einnahmen": {
+            "type": "number",
+            "description": "Integer cents."
+          },
+          "ausgaben": {
+            "type": "number",
+            "description": "Integer cents."
+          },
+          "ueberschuss": {
+            "type": "number",
+            "description": "Integer cents."
+          }
+        },
+        "required": [
+          "year",
+          "byKey",
+          "nonDeductible",
+          "einnahmen",
+          "ausgaben",
+          "ueberschuss"
+        ]
+      },
+      "ProfitLineDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "EuerKey."
+          },
+          "amountEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "countedEur": {
+            "type": "number",
+            "description": "What the profit counts of it, euros."
+          },
+          "effectEur": {
+            "type": "number",
+            "description": "Signed effect on the profit, euros."
+          }
+        },
+        "required": [
+          "key",
+          "amountEur",
+          "countedEur",
+          "effectEur"
+        ]
+      },
+      "EuerProfitDto": {
+        "type": "object",
+        "properties": {
+          "incomeEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "expensesEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "nonDeductibleEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "profitBeforeIabEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "profitEur": {
+            "type": "number",
+            "description": "Gewinn, euros (negative = Verlust)."
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProfitLineDto"
+            }
+          },
+          "openPoints": {
+            "description": "Restricted expenses entered as totals only; the user should check them.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "incomeEur",
+          "expensesEur",
+          "nonDeductibleEur",
+          "profitBeforeIabEur",
+          "profitEur",
+          "lines",
+          "openPoints"
+        ]
+      },
+      "EuerClosingDto": {
+        "type": "object",
+        "properties": {
+          "totals": {
+            "$ref": "#/components/schemas/EuerTotalsDto"
+          },
+          "profit": {
+            "$ref": "#/components/schemas/EuerProfitDto"
+          }
+        },
+        "required": [
+          "totals",
+          "profit"
+        ]
+      },
+      "IncomeStatementDto": {
+        "type": "object",
+        "properties": {
+          "year": {
+            "type": "number"
+          },
+          "positions": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number"
+            },
+            "description": "Per § 275 HGB position (GuV.1 …), integer cents."
+          },
+          "profit": {
+            "type": "number",
+            "description": "Jahresüberschuss (+) or Jahresfehlbetrag (−), integer cents."
+          }
+        },
+        "required": [
+          "year",
+          "positions",
+          "profit"
+        ]
+      },
+      "EquityDevelopmentDto": {
+        "type": "object",
+        "properties": {
+          "opening": {
+            "type": "number",
+            "description": "Integer cents."
+          },
+          "deposits": {
+            "type": "number",
+            "description": "Integer cents."
+          },
+          "withdrawals": {
+            "type": "number",
+            "description": "Integer cents."
+          },
+          "profit": {
+            "type": "number",
+            "description": "Integer cents."
+          },
+          "closing": {
+            "type": "number",
+            "description": "Integer cents."
+          }
+        },
+        "required": [
+          "opening",
+          "deposits",
+          "withdrawals",
+          "profit",
+          "closing"
+        ]
+      },
+      "BalanceSheetDto": {
+        "type": "object",
+        "properties": {
+          "year": {
+            "type": "number"
+          },
+          "aktiva": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number"
+            },
+            "description": "Aktiva per § 266 HGB position (A.I …), integer cents."
+          },
+          "passiva": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number"
+            },
+            "description": "Passiva per position (P.A …), integer cents."
+          },
+          "totalAktiva": {
+            "type": "number",
+            "description": "Integer cents."
+          },
+          "totalPassiva": {
+            "type": "number",
+            "description": "Integer cents."
+          },
+          "equity": {
+            "$ref": "#/components/schemas/EquityDevelopmentDto"
+          },
+          "profit": {
+            "type": "number",
+            "description": "Integer cents."
+          }
+        },
+        "required": [
+          "year",
+          "aktiva",
+          "passiva",
+          "totalAktiva",
+          "totalPassiva",
+          "equity",
+          "profit"
+        ]
+      },
+      "ClosingBalanceDto": {
+        "type": "object",
+        "properties": {
+          "account": {
+            "type": "string"
+          },
+          "side": {
+            "type": "string",
+            "enum": [
+              "debit",
+              "credit"
+            ]
+          },
+          "amount": {
+            "type": "number",
+            "description": "Integer cents."
+          }
+        },
+        "required": [
+          "account",
+          "side",
+          "amount"
+        ]
+      },
+      "DraftLineDto": {
+        "type": "object",
+        "properties": {
+          "account": {
+            "type": "string"
+          },
+          "side": {
+            "type": "string",
+            "enum": [
+              "debit",
+              "credit"
+            ]
+          },
+          "amount": {
+            "type": "number",
+            "description": "Integer cents."
+          },
+          "taxKey": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account",
+          "side",
+          "amount"
+        ]
+      },
+      "OpeningEntryDto": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string"
+          },
+          "documentNumber": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DraftLineDto"
+            }
+          }
+        },
+        "required": [
+          "date",
+          "documentNumber",
+          "text",
+          "lines"
+        ]
+      },
+      "BilanzClosingDto": {
+        "type": "object",
+        "properties": {
+          "incomeStatement": {
+            "$ref": "#/components/schemas/IncomeStatementDto"
+          },
+          "balanceSheet": {
+            "$ref": "#/components/schemas/BalanceSheetDto"
+          },
+          "closingBalances": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ClosingBalanceDto"
+            }
+          },
+          "openingEntry": {
+            "description": "The Eröffnungsbilanz entry of the next year (`POST …/abschluss/eroeffnung` posts it).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OpeningEntryDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "incomeStatement",
+          "balanceSheet",
+          "closingBalances",
+          "openingEntry"
+        ]
+      },
+      "ClosingDto": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "euer",
+              "bilanz"
+            ]
+          },
+          "integrity": {
+            "$ref": "#/components/schemas/BookIntegrityDto"
+          },
+          "euer": {
+            "nullable": true,
+            "description": "Present for mode euer.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/EuerClosingDto"
+              }
+            ]
+          },
+          "bilanz": {
+            "nullable": true,
+            "description": "Present for mode bilanz.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BilanzClosingDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "mode",
+          "integrity",
+          "euer",
+          "bilanz"
+        ]
+      },
+      "NetByRateDto": {
+        "type": "object",
+        "properties": {
+          "standard": {
+            "type": "number",
+            "description": "19 %, euros."
+          },
+          "reduced": {
+            "type": "number",
+            "description": "7 %, euros."
+          },
+          "zero": {
+            "type": "number",
+            "description": "0 %, euros."
+          }
+        }
+      },
+      "VatFiguresDto": {
+        "type": "object",
+        "properties": {
+          "taxableNetEur": {
+            "description": "Taxable net turnover per rate, euros.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NetByRateDto"
+              }
+            ]
+          },
+          "reverseChargeNetEur": {
+            "description": "§ 13b net fees received, euros.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NetByRateDto"
+              }
+            ]
+          },
+          "taxFreeWithDeductionEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "taxFreeWithoutDeductionEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "smallBusinessTurnoverEur": {
+            "type": "number",
+            "description": "Turnover as Kleinunternehmer, euros."
+          },
+          "inputVatEur": {
+            "type": "number",
+            "description": "Euros."
+          }
+        },
+        "required": [
+          "taxableNetEur",
+          "reverseChargeNetEur",
+          "taxFreeWithDeductionEur",
+          "taxFreeWithoutDeductionEur",
+          "smallBusinessTurnoverEur",
+          "inputVatEur"
+        ]
+      },
+      "OutputVatDto": {
+        "type": "object",
+        "properties": {
+          "standard": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "reduced": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "zero": {
+            "type": "number",
+            "description": "Euros."
+          }
+        },
+        "required": [
+          "standard",
+          "reduced",
+          "zero"
+        ]
+      },
+      "VatResultDto": {
+        "type": "object",
+        "properties": {
+          "outputVat": {
+            "description": "Output VAT per rate, euros.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OutputVatDto"
+              }
+            ]
+          },
+          "reverseChargeVatEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "inputVatDeductibleEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "vatOfYearEur": {
+            "type": "number",
+            "description": "Umsatzsteuer of the year before the prepayments, euros."
+          },
+          "prepaymentsEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "balanceEur": {
+            "type": "number",
+            "description": "Positive = Abschlusszahlung, negative = Erstattung, euros."
+          }
+        },
+        "required": [
+          "outputVat",
+          "reverseChargeVatEur",
+          "inputVatDeductibleEur",
+          "vatOfYearEur",
+          "prepaymentsEur",
+          "balanceEur"
+        ]
+      },
+      "VatReturnDto": {
+        "type": "object",
+        "properties": {
+          "figures": {
+            "$ref": "#/components/schemas/VatFiguresDto"
+          },
+          "result": {
+            "$ref": "#/components/schemas/VatResultDto"
+          },
+          "cashAccountingAllowed": {
+            "type": "boolean",
+            "description": "Ist-Versteuerung allowed by the turnover (§ 20 UStG)."
+          }
+        },
+        "required": [
+          "figures",
+          "result",
+          "cashAccountingAllowed"
+        ]
+      },
+      "TradeTaxResultDto": {
+        "type": "object",
+        "properties": {
+          "additionsEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "deductionsEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "tradeIncomeBeforeLossEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "lossUsedEur": {
+            "type": "number",
+            "description": "§ 10a GewStG: Gewerbeverlust (Fehlbetrag) of earlier years used this year, euros — why the Gewerbeertrag is below Gewinn + Hinzurechnungen − Kürzungen."
+          },
+          "lossRemainingEur": {
+            "type": "number",
+            "description": "Gewerbeverlust left to carry forward (§ 10a Satz 6), euros."
+          },
+          "roundedTradeIncomeEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "allowanceEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "baseAmountEur": {
+            "type": "number",
+            "description": "Steuermessbetrag, whole euros."
+          },
+          "multiplierPercent": {
+            "type": "number",
+            "description": "Hebesatz in percent."
+          },
+          "tradeTaxEur": {
+            "type": "number",
+            "description": "Euros."
+          }
+        },
+        "required": [
+          "additionsEur",
+          "deductionsEur",
+          "tradeIncomeBeforeLossEur",
+          "lossUsedEur",
+          "lossRemainingEur",
+          "roundedTradeIncomeEur",
+          "allowanceEur",
+          "baseAmountEur",
+          "multiplierPercent",
+          "tradeTaxEur"
+        ]
+      },
+      "TradeTaxMultiplierDto": {
+        "type": "object",
+        "properties": {
+          "percent": {
+            "type": "number",
+            "description": "Hebesatz in percent."
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "korrektur",
+              "tabelle"
+            ],
+            "description": "The user’s correction or the official table."
+          },
+          "tableYear": {
+            "type": "number",
+            "nullable": true,
+            "description": "The year of the table the value is from."
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "percent",
+          "source",
+          "tableYear",
+          "note"
+        ]
+      },
+      "TradeTaxDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "berechnet",
+              "offen",
+              "entfaellt"
+            ]
+          },
+          "profitEur": {
+            "type": "number",
+            "description": "status berechnet: the Gewinn aus Gewerbebetrieb the return starts from, euros."
+          },
+          "result": {
+            "description": "status berechnet.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TradeTaxResultDto"
+              }
+            ]
+          },
+          "multiplier": {
+            "description": "status berechnet.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TradeTaxMultiplierDto"
+              }
+            ]
+          },
+          "missing": {
+            "example": [
+              "hebesatz"
+            ],
+            "description": "status offen: what is missing.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "reason": {
+            "type": "string",
+            "description": "status entfaellt: why (German)."
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "MunicipalityDto": {
+        "type": "object",
+        "properties": {
+          "ags": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "land": {
+            "type": "string"
+          },
+          "multiplierPercent": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "ags",
+          "name",
+          "land",
+          "multiplierPercent"
+        ]
+      },
+      "HebesatzLookupDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "found",
+              "choices",
+              "not_found"
+            ]
+          },
+          "municipality": {
+            "$ref": "#/components/schemas/MunicipalityDto"
+          },
+          "choices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MunicipalityDto"
+            }
+          },
+          "tableYear": {
+            "type": "number",
+            "nullable": true,
+            "description": "The year of the table the value is from."
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "kind",
+          "tableYear",
+          "note"
+        ]
+      },
+      "LossRulesDto": {
+        "type": "object",
+        "properties": {
+          "carryBackCapEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "carryBackYears": {
+            "type": "number"
+          },
+          "forwardBaseEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "forwardRate": {
+            "type": "number",
+            "description": "Share above the Sockelbetrag, e.g. 0.7."
+          }
+        },
+        "required": [
+          "carryBackCapEur",
+          "carryBackYears",
+          "forwardBaseEur",
+          "forwardRate"
+        ]
+      },
+      "LossYearDto": {
+        "type": "object",
+        "properties": {
+          "carryBackDeductedEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "carryForwardDeductedEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "gdeAfterLossesEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "newLossEur": {
+            "type": "number",
+            "description": "This year’s loss as a positive amount; 0 in a profit year."
+          },
+          "remainingCarryForwardEur": {
+            "type": "number",
+            "description": "Euros."
+          }
+        },
+        "required": [
+          "carryBackDeductedEur",
+          "carryForwardDeductedEur",
+          "gdeAfterLossesEur",
+          "newLossEur",
+          "remainingCarryForwardEur"
+        ]
+      },
+      "CarryBackDto": {
+        "type": "object",
+        "properties": {
+          "intoYearBeforeEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "intoSecondYearBeforeEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "remainingEur": {
+            "type": "number",
+            "description": "What goes forward into the Feststellung."
+          }
+        },
+        "required": [
+          "intoYearBeforeEur",
+          "intoSecondYearBeforeEur",
+          "remainingEur"
+        ]
+      },
+      "LossesDto": {
+        "type": "object",
+        "properties": {
+          "facts": {
+            "$ref": "#/components/schemas/LossFactsDto"
+          },
+          "rules": {
+            "$ref": "#/components/schemas/LossRulesDto"
+          },
+          "businessProfitEur": {
+            "type": "number",
+            "description": "The business profit of the year from the book, euros."
+          },
+          "year": {
+            "$ref": "#/components/schemas/LossYearDto"
+          },
+          "carryBack": {
+            "nullable": true,
+            "description": "Only in a loss year.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CarryBackDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "facts",
+          "rules",
+          "businessProfitEur",
+          "year",
+          "carryBack"
+        ]
+      },
+      "ElsterLineDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "zeile": {
+            "type": "string",
+            "nullable": true,
+            "description": "Zeile as printed; null where the form has no public line numbers."
+          },
+          "kennzahlen": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "label": {
+            "type": "string"
+          },
+          "value": {
+            "oneOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "nullable": true,
+            "description": "Euros as a number (two decimals at most); a word („Ja“) where the field takes one; null = nothing to enter."
+          }
+        },
+        "required": [
+          "id",
+          "zeile",
+          "kennzahlen",
+          "label",
+          "value"
+        ]
+      },
+      "ElsterHelpDto": {
+        "type": "object",
+        "properties": {
+          "form": {
+            "type": "string"
+          },
+          "year": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "published",
+              "not_published",
+              "not_available"
+            ]
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          },
+          "sourceUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "lineNumbersAvailable": {
+            "type": "boolean",
+            "description": "false: no official Zeile numbers (Anlage S/G, GewSt 1 A, unpublished year) — name the field by its label („Feld in Mein ELSTER: …“)."
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ElsterLineDto"
+            }
+          }
+        },
+        "required": [
+          "form",
+          "year",
+          "status",
+          "note",
+          "sourceUrl",
+          "lineNumbersAvailable",
+          "lines"
+        ]
+      },
+      "ProcedureDocDto": {
+        "type": "object",
+        "properties": {
+          "values": {
+            "type": "object"
+          },
+          "text": {
+            "type": "string"
+          },
+          "missing": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "values",
+          "text",
+          "missing"
+        ]
+      },
+      "ProcedureDocInputDto": {
+        "type": "object",
+        "properties": {
+          "values": {
+            "type": "object",
+            "description": "Values of the Verfahrensdokumentation placeholders (core VERFAHRENSDOKU_PLACEHOLDERS)."
+          }
+        },
+        "required": [
+          "values"
+        ]
+      },
+      "EBilanzDto": {
+        "type": "object",
+        "properties": {
+          "xbrl": {
+            "type": "string"
+          },
+          "transmitted": {
+            "type": "boolean",
+            "enum": [
+              false
+            ]
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "xbrl",
+          "transmitted",
+          "note"
+        ]
+      },
+      "BusinessCheckoutResponseDto": {
+        "type": "object",
+        "properties": {
+          "checkoutUrl": {
+            "type": "string",
+            "example": "https://checkout.stripe.com/c/pay/cs_test_…"
+          }
+        },
+        "required": [
+          "checkoutUrl"
+        ]
+      },
+      "UnlockStatusDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "freigeschaltet",
+              "offen",
+              "nicht-verfuegbar"
+            ],
+            "description": "freigeschaltet = paid for this tax year; offen = payable; nicht-verfuegbar = payment is not configured on this environment."
+          },
+          "tier": {
+            "type": "string",
+            "enum": [
+              "standard",
+              "selbststaendig"
+            ],
+            "description": "The price tier this year needs (ADR-0101 §21); always sent."
+          },
+          "filingPath": {
+            "type": "string",
+            "enum": [
+              "papier",
+              "elster-ausfuellhilfe"
+            ],
+            "description": "How the year is filed: the paper printout, or Mein ELSTER with the fill-in help (self-employment, ADR-0101 §16); always sent."
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
       "AssignmentDto": {
         "type": "object",
         "properties": {
@@ -9801,7 +14791,8 @@
               "kapital",
               "vermietung",
               "kind",
-              "assessment"
+              "assessment",
+              "buchung"
             ],
             "example": "interview"
           },
@@ -9899,6 +14890,15 @@
             "nullable": true,
             "example": "2026-01-15",
             "description": "Payment date (ISO yyyy-mm-dd)."
+          },
+          "direction": {
+            "type": "string",
+            "enum": [
+              "ausgabe",
+              "einnahme"
+            ],
+            "nullable": true,
+            "description": "A business receipt (ADR-0101 §6): expense or an invoice the business wrote; null for every other Beleg (always present)."
           },
           "hasFile": {
             "type": "boolean",
@@ -10004,6 +15004,7 @@
               "Rentenbezugsmitteilung",
               "Steuerbescheinigung",
               "Steuerbescheid",
+              "Geschaeftsbeleg",
               "Sonstiges"
             ],
             "example": "Lohnausweis",
@@ -10090,10 +15091,11 @@
               "chPensionskasse",
               "chPraemien",
               "chKrankenkasse",
-              "steuerbescheid"
+              "steuerbescheid",
+              "geschaeftsbeleg"
             ],
             "example": "lstb",
-            "description": "Explicit document parser: \"lstb\" the German LStB, \"chLohnausweis\" the Swiss salary certificate, \"chPensionskasse\" a Swiss pension fund statement, \"chPraemien\" the employer letter on sickness-pay and NBU premiums, \"chKrankenkasse\" a Swiss health insurer statement for the tax return, \"steuerbescheid\" the Einkommensteuerbescheid (ADR-0098); \"auto\" routes a recognised document to its reader."
+            "description": "Explicit document parser: \"geschaeftsbeleg\" a Rechnung or Quittung of the business (ADR-0101: a booking draft), \"lstb\" the German LStB, \"chLohnausweis\" the Swiss salary certificate, \"chPensionskasse\" a Swiss pension fund statement, \"chPraemien\" the employer letter on sickness-pay and NBU premiums, \"chKrankenkasse\" a Swiss health insurer statement for the tax return, \"steuerbescheid\" the Einkommensteuerbescheid (ADR-0098); \"auto\" routes a recognised document to its reader."
           },
           "expectedKind": {
             "type": "string",
@@ -10104,7 +15106,8 @@
               "chPensionskasse",
               "chPraemien",
               "chKrankenkasse",
-              "steuerbescheid"
+              "steuerbescheid",
+              "geschaeftsbeleg"
             ],
             "example": "chLohnausweis",
             "description": "Entry context: the document the entry point expects (a mask asks for its own). Unlike `kind` it does not force a reader: a text that is clearly another document goes to that one’s reader."
@@ -10123,7 +15126,8 @@
               "kapital",
               "vermietung",
               "kind",
-              "assessment"
+              "assessment",
+              "buchung"
             ],
             "example": "lstb",
             "description": "Entry context: the mask the upload happened in; absent in the chat and the Belege tab. Without `kind`/`expectedKind`, the mask of the LStB or the Swiss Lohnausweis expects its document."
@@ -10191,6 +15195,15 @@
             ],
             "example": "application/pdf"
           },
+          "direction": {
+            "type": "string",
+            "enum": [
+              "ausgabe",
+              "einnahme"
+            ],
+            "example": "ausgabe",
+            "description": "For a business receipt (`geschaeftsbeleg`, ADR-0101): an expense (default) or an invoice the business wrote."
+          },
           "stageDraft": {
             "type": "boolean",
             "example": true,
@@ -10244,7 +15257,8 @@
               "kapital",
               "vermietung",
               "kind",
-              "assessment"
+              "assessment",
+              "buchung"
             ],
             "example": "interview"
           },
@@ -10328,7 +15342,8 @@
               "kapital",
               "vermietung",
               "kind",
-              "assessment"
+              "assessment",
+              "buchung"
             ],
             "example": "interview"
           },
@@ -10804,7 +15819,8 @@
               "kapital",
               "vermietung",
               "kind",
-              "assessment"
+              "assessment",
+              "buchung"
             ],
             "example": "interview"
           },
@@ -12805,7 +17821,8 @@
               "kapital",
               "vermietung",
               "kind",
-              "assessment"
+              "assessment",
+              "buchung"
             ],
             "example": "interview"
           },
@@ -13327,23 +18344,6 @@
           "statusUrl"
         ]
       },
-      "UnlockStatusDto": {
-        "type": "object",
-        "properties": {
-          "status": {
-            "type": "string",
-            "enum": [
-              "freigeschaltet",
-              "offen",
-              "nicht-verfuegbar"
-            ],
-            "description": "freigeschaltet = paid for this tax year; offen = payable; nicht-verfuegbar = payment is not configured on this environment."
-          }
-        },
-        "required": [
-          "status"
-        ]
-      },
       "PersonalDataConsentResponseDto": {
         "type": "object",
         "properties": {
@@ -13503,7 +18503,8 @@
               "kapital",
               "vermietung",
               "kind",
-              "assessment"
+              "assessment",
+              "buchung"
             ],
             "example": "lstb"
           },
@@ -13561,7 +18562,8 @@
               "anlageR",
               "anlageKap",
               "anlageV",
-              "anlageKind"
+              "anlageKind",
+              "anlageEuer"
             ],
             "example": "anlageN"
           },

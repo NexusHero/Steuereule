@@ -79,7 +79,9 @@ import {
   type HouseholdNames,
   type LstbScanBatchInput,
   type ReceiptProposalInput,
+  type BookingProposalInput,
 } from './advisor-document-staging.js'
+import { BusinessService } from '../business/business.service.js'
 export { MAX_CONVERSATIONS_PER_YEAR, searchKey, snippetAround, titleFrom } from './advisor-shared.js'
 export type { PreparedAdvisorTurn } from './advisor-shared.js'
 export { effectFromEstimates, estimateReadingFrom } from './advisor-case-digest.js'
@@ -113,6 +115,7 @@ export class AdvisorService {
     @Optional() @Inject(PrintoutService) private readonly printout?: PrintoutService,
     @Optional() @Inject(PersonalDataConsentService) private readonly personalDataConsent?: PersonalDataConsentService,
     @Optional() @Inject(RECEIPT_REPOSITORY) private readonly receiptRepo?: ReceiptRepository,
+    @Optional() @Inject(BusinessService) private readonly business?: BusinessService,
   ) {}
 
   /** Whether the user consented to personal data going to the owl's model (ADR-0091); read fresh on every use. */
@@ -197,6 +200,7 @@ export class AdvisorService {
       this.printout,
       this.receiptRepo,
       this.taxEstimate,
+      this.business,
     ))
   }
 
@@ -450,6 +454,10 @@ export class AdvisorService {
   }
 
   // ── Documents staged as drafts (advisor-document-staging.ts) ───────────────────────────────
+
+  async stageBookingProposal(userId: string, taxYear: number, input: BookingProposalInput): Promise<{ action: AdvisorActionProposal; assistantMessage: AdvisorChatMessageDto }> {
+    return this.staging.stageBookingProposal(userId, taxYear, input)
+  }
 
   async stageReceiptProposal(userId: string, taxYear: number, input: ReceiptProposalInput): Promise<{ action: AdvisorActionProposal; assistantMessage: AdvisorChatMessageDto }> {
     return this.staging.stageReceiptProposal(userId, taxYear, input)

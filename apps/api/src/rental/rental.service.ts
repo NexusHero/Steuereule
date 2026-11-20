@@ -34,6 +34,7 @@ import type {
   RentalStatusDto,
 } from './dto/rental-response.dto.js'
 import { answersFrom } from '../interview/answers.js'
+import { interviewOptions } from '../config/self-employment.js'
 
 function dataFromRecord(record: RentalObjectRecord) {
   return {
@@ -140,7 +141,7 @@ export class RentalService {
 
   private async toResponse(userId: string, taxYear: number, records: RentalObjectRecord[]): Promise<RentalResponseDto> {
     const answers = await this.answers(userId, taxYear)
-    const gated = gatedIncomeTypes(answers)
+    const gated = gatedIncomeTypes(answers, interviewOptions())
     const classification: RentalClassificationDto = classifyRental(answers['vermietung-art'])
 
     const properties = records.map((record) => dataFromRecord(record))

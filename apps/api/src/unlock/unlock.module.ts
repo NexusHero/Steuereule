@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common'
 import { resolveWebAppUrl } from '../auth/better-auth-env.js'
 import { PrismaModule } from '../prisma/prisma.module.js'
+import { InterviewModule } from '../interview/interview.module.js'
 import { UnlockController } from './unlock.controller.js'
 import { UNLOCK_REPOSITORY } from './unlock.repository.js'
 import { PrismaUnlockRepository } from './unlock.repository.prisma.js'
@@ -9,7 +10,7 @@ import { resolvePaymentProvider } from './fake-payment-provider.js'
 import { PAYMENT_PROVIDER, type PaymentProvider } from './payment-provider.js'
 
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, InterviewModule],
   controllers: [UnlockController],
   providers: [
     UnlockService,

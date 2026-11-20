@@ -212,6 +212,8 @@ export interface CopilotBridgeContextValue {
     options?: { readonly acknowledgedConflict?: StaleConflictState | undefined; /** Stay in the owl instead of jumping to the cockpit. */ readonly stay?: boolean | undefined },
   ) => Promise<boolean>
   readonly applySingleAction: (actionId: string) => Promise<boolean>
+  /** Why the last single apply was refused (the API's German reason), for the card of that draft. */
+  readonly applyFailure: { readonly actionId: string; readonly message: string } | null
   readonly undoSingleAction: (actionId: string) => Promise<boolean>
   readonly parsingReceipt: boolean
   readonly lastParsedReceipt: ParseReceiptResponseDto | null
@@ -771,9 +773,11 @@ export function CopilotBridgeProvider({
     [isAuthenticated, onModeChange, queryClient, recordAppliedActions, taxYear],
   )
 
+  const [applyFailure, setApplyFailure] = useState<{ readonly actionId: string; readonly message: string } | null>(null)
   const applySingleAction = useCallback(
     async (actionId: string): Promise<boolean> => {
       if (!isAuthenticated) return false
+      setApplyFailure(null)
       setStaleConflict(null)
       setOpenChatError(null)
       try {
@@ -793,9 +797,12 @@ export function CopilotBridgeProvider({
           return false
         }
         // A draft that cannot be written must say so; a button that does nothing is the worst answer.
-        setOpenChatError(extractErrorMessage(res.data) ?? tr('advisor.chat.applyFailed'))
+        const reason = extractErrorMessage(res.data) ?? tr('advisor.chat.applyFailed')
+        setApplyFailure({ actionId, message: reason })
+        setOpenChatError(reason)
         return false
       } catch {
+        setApplyFailure({ actionId, message: tr('advisor.chat.applyFailed') })
         setOpenChatError(tr('advisor.chat.applyFailed'))
         return false
       }
@@ -1039,6 +1046,7 @@ export function CopilotBridgeProvider({
       clearStaleConflict: () => setStaleConflict(null),
       applyAllPending,
       applySingleAction,
+      applyFailure,
       undoSingleAction,
       parsingReceipt,
       lastParsedReceipt,
@@ -1096,6 +1104,7 @@ export function CopilotBridgeProvider({
       staleConflict,
       applyAllPending,
       applySingleAction,
+      applyFailure,
       undoSingleAction,
       parsingReceipt,
       lastParsedReceipt,

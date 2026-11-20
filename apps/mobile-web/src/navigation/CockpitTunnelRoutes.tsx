@@ -64,6 +64,9 @@ export function navigateToTileRoute(
     case 'Children':
       navigation.navigate('Children', { year })
       return
+    case 'Business':
+      navigation.navigate('Business', { year })
+      return
   }
 }
 
@@ -199,6 +202,7 @@ export function SubmissionRoute({ navigation, route }: Props<'Submission'>) {
         onBack={goHome}
         onOpenTile={(tileId, revisit) => navigateToTileRoute(navigation, year, tileById(tileId), revisit)}
         onOpenPrintout={(targetYear) => onOpenPrintout?.(targetYear)}
+        onOpenElsterHelp={(targetYear) => navigation.navigate('Business', { year: targetYear, page: 'elster' })}
       />
     </RequiresAccount>
   )

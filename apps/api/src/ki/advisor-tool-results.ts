@@ -23,6 +23,7 @@ const TEMPLATES: Readonly<Record<string, (payload: Payload) => string>> = {
     const delta = num(staged.deltaEur)
     return staged.effect === 'computed' && delta !== null && delta !== 0 ? `fertig · ${signed(delta)} Erstattung` : 'fertig'
   },
+  stage_booking_draft: (p) => (p.ok === true ? 'Buchung vorbereitet' : 'nicht vorbereitet'),
   propose_two_paths: () => 'zwei Wege',
   withdraw_draft: (p) => (p.ok === true ? 'zurückgezogen' : 'nichts zurückzuziehen'),
   ask_questions: (p) => plural(num(p.questions) ?? 0, 'Frage', 'Fragen'),

@@ -296,6 +296,24 @@ export default defineConfig({
       },
     },
   },
+  // ADR-0101 — Selbstständige: profile with the Freiberuf/Gewerbe suggestion, the book (bookings, Storno,
+  // quick path, Festschreibung), bank import, assets, closing, VAT, trade tax, losses, the ELSTER fill-in
+  // help, the GoBD export, the Verfahrensdokumentation and the E-Bilanz preview. One `selbststaendig` tag.
+  selbststaendig: {
+    input: { target: '../../apps/api/openapi.json', filters: { tags: ['selbststaendig'] } },
+    output: {
+      target: './src/generated/selbststaendig.ts',
+      mode: 'split',
+      client: 'react-query',
+      httpClient: 'fetch',
+      mock: true,
+      override: {
+        mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        // Nullable fields (`| null`) and optional ones need every mocked property populated, as for vermietung.
+        mock: { required: true },
+      },
+    },
+  },
   // REQ-027 (ticket 10.7) — the Fristen-/Verspätungszuschlag-Warnmodus: GET the honest
   // Fristen-Fakt (ADR-0039). Same `fristen` OpenAPI tag the one endpoint carries.
   fristen: {

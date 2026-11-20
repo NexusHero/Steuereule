@@ -24,6 +24,7 @@ import type { PostAnswerDto } from './dto/post-answer.dto.js'
 import type { PostAnswerResponseDto } from './dto/post-answer-response.dto.js'
 import { answersFrom } from './answers.js'
 import { LinkService } from '../link/link.service.js'
+import { interviewOptions } from '../config/self-employment.js'
 
 /** QuestionId is not reachable given the answers stored so far. */
 export class UnreachableAnswerError extends ConflictError {
@@ -112,8 +113,8 @@ export class InterviewService {
     const entry = ENTRIES[entryId as EntryId]
     return {
       answers: answers as Record<string, string>,
-      nextStep: nextStepFor(entry, answers),
-      openItems: remainingStepsFor(entry, answers),
+      nextStep: nextStepFor(entry, answers, interviewOptions()),
+      openItems: remainingStepsFor(entry, answers, interviewOptions()),
     }
   }
 
@@ -128,11 +129,11 @@ export class InterviewService {
     assertGuestMayUse(kind, entryId)
 
     const entry = ENTRIES[entryId]
-    if (!isReachableFor(entry, answers, dto.questionId as never)) throw new UnreachableAnswerError(dto.questionId)
+    if (!isReachableFor(entry, answers, dto.questionId as never, interviewOptions())) throw new UnreachableAnswerError(dto.questionId)
     if (!isValidAnswer(dto.questionId as never, dto.value)) throw new InvalidAnswerValueError(dto.questionId)
 
     const updatedAnswers: Answers = { ...answers, [dto.questionId]: dto.value }
-    const openItems = remainingSteps(updatedAnswers)
+    const openItems = remainingSteps(updatedAnswers, interviewOptions())
 
     await this.repository.write({
       userId,
@@ -144,6 +145,6 @@ export class InterviewService {
 
     if (dto.questionId === 'familienstand') await this.adoptHousehold(userId, taxYear, updatedAnswers, kind)
 
-    return { nextStep: nextStepFor(entry, updatedAnswers), openItems: remainingStepsFor(entry, updatedAnswers) }
+    return { nextStep: nextStepFor(entry, updatedAnswers, interviewOptions()), openItems: remainingStepsFor(entry, updatedAnswers, interviewOptions()) }
   }
 }

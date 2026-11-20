@@ -22,6 +22,7 @@ import {
 } from './CockpitTunnelRoutes'
 import {
   AssessmentRoute,
+  BusinessRoute,
   CapitalRoute,
   ChildrenRoute,
   CockpitMasterDataRoute,
@@ -66,6 +67,7 @@ function CockpitHomeRoute({ navigation }: Props<'CockpitHome'>) {
       onOpenMasterData={() => navigation.navigate('CockpitMasterData', { year: taxYear })}
       onOpenReceipts={() => switchToTab('Receipts')}
       onOpenSubmission={(year) => navigation.navigate('Submission', { year })}
+      onOpenElsterHelp={(year) => navigation.navigate('Business', { year, page: 'elster' })}
       onOpenTile={(tile, revisit) => navigateToTileRoute(navigation, taxYear, tile, revisit)}
       onOpenPartner={(area, name) => {
         setPartner({ area, name })
@@ -157,6 +159,7 @@ export function CockpitStack() {
       <Stack.Screen name="Assessment" component={AssessmentRoute} />
       <Stack.Screen name="CockpitMasterData" component={CockpitMasterDataRoute} />
       <Stack.Screen name="OfficialForm" component={OfficialFormRoute} />
+      <Stack.Screen name="Business" component={BusinessRoute} getId={({ params }) => `${params.year}-${params.page ?? ''}-${params.person ?? 'A'}`} />
       <Stack.Group screenOptions={{ presentation: 'transparentModal', animation: 'slide_from_bottom' }}>
         <Stack.Screen name="Lstb" component={LstbRoute} />
         <Stack.Screen name="Pension" component={PensionRoute} />

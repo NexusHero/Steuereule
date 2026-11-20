@@ -13,6 +13,7 @@ import {
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { ReceiptPickerButton } from '../shared/ReceiptPickerButton'
+import { BusinessReceiptUpload } from '../business/BusinessReceiptUpload'
 import { detectDocumentMimeType } from '../../lib/documentOcr'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { triggerSaveErrorHaptic, warnOnHttpError } from '../shared/saveFeedback'
@@ -351,6 +352,7 @@ function UploadCard({ reader }: { readonly reader: ReceiptReader }) {
   const [uploading, setUploading] = useState(false)
   const [statusMessage, setStatusMessage] = useState<{ readonly kind: 'ok' | 'error'; readonly text: string } | null>(null)
   const isWeb = typeof document !== 'undefined'
+  const uploadYear = useOptionalShellTaxYear() ?? DEFAULT_TAX_YEAR
 
   async function handleFileSelected(file: File | undefined) {
     if (!file) return
@@ -399,6 +401,7 @@ function UploadCard({ reader }: { readonly reader: ReceiptReader }) {
         </Text>
       )}
       <BescheidPicker reader={reader} />
+      {isWeb ? <BusinessReceiptUpload taxYear={uploadYear} onlyForSelfEmployed /> : null}
     </Card>
   )
 }

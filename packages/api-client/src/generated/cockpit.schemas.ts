@@ -5,6 +5,17 @@
  * Onboarding profile endpoints (steuereule#29)
  * OpenAPI spec version: 1.0
  */
+/**
+ * How this year is filed: „papier“ with the printout (ADR-0050), „elster-ausfuellhilfe“ through Mein ELSTER with the fill-in help for a year with self-employment (switch on, ADR-0101 §16).
+ */
+export type CockpitSummaryDtoFilingPath = typeof CockpitSummaryDtoFilingPath[keyof typeof CockpitSummaryDtoFilingPath];
+
+
+export const CockpitSummaryDtoFilingPath = {
+  papier: 'papier',
+  'elster-ausfuellhilfe': 'elster-ausfuellhilfe',
+} as const;
+
 export type CockpitStatusDtoKind = typeof CockpitStatusDtoKind[keyof typeof CockpitStatusDtoKind];
 
 
@@ -68,6 +79,11 @@ export interface CockpitSubmissionDto {
   withdrawable: boolean;
 }
 
+export interface CockpitCapabilitiesDto {
+  /** SELBSTSTAENDIGE_ENABLED: „Selbstständig“/„Beides“ lead into the self-employment path (EÜR, Buch, USt, GewSt) instead of the Gewerbe-Gate. */
+  selbststaendig: boolean;
+}
+
 export interface CockpitSummaryDto {
   taxYear: number;
   status: CockpitStatusDto;
@@ -80,5 +96,9 @@ export interface CockpitSummaryDto {
      * @nullable
      */
   submission: CockpitSubmissionDto | null;
+  /** Server switches the app follows (always present). */
+  capabilities?: CockpitCapabilitiesDto;
+  /** How this year is filed: „papier“ with the printout (ADR-0050), „elster-ausfuellhilfe“ through Mein ELSTER with the fill-in help for a year with self-employment (switch on, ADR-0101 §16). */
+  filingPath?: CockpitSummaryDtoFilingPath;
 }
 

@@ -1515,7 +1515,9 @@
     "schrittVergleich": "Assessment comparison",
     "vergleichUeberspringen": "Skip",
     "schrittAusdruck": "Printout",
-    "zumAusdruck": "Continue to printout"
+    "zumAusdruck": "Continue to printout",
+    "elsterHinweis": "A year with self-employment is filed through Mein ELSTER – we show you what to enter there.",
+    "zurAusfuellhilfe": "To the ELSTER fill-in help"
   },
   "plausibilitaet": {
     "back": "Back",
@@ -1666,6 +1668,10 @@
       "partner-rente": {
         "titel": "Pension",
         "formular": "Anlage R"
+      },
+      "selbststaendig": {
+        "titel": "Self-employment",
+        "formular": "Cash-basis, VAT, trade tax"
       }
     },
     "weitereThemen": "More topics",
@@ -1781,7 +1787,8 @@
       "zuruecknehmen": "Withdraw filing",
       "zurueckgenommen": "The filing is withdrawn; the year is open again.",
       "zuruecknehmenBescheid": "An assessment is already recorded; the filing stays."
-    }
+    },
+    "elsterHinweis": "A year with self-employment is filed through Mein ELSTER – we show you what to enter there."
   },
   "belegZuordnung": {
     "frage": {
@@ -3329,6 +3336,415 @@
       "keinEinspruch": "No appeal yet.",
       "leer": "No documents yet: once a year is filed or has an assessment, it shows here.",
       "personSuffix": "{{was}} · {{person}}"
+    }
+  },
+  "business": {
+    "zurueck": "Back",
+    "laden": "Loading …",
+    "ja": "Yes",
+    "nein": "No",
+    "titel": "Self-employed {{year}}",
+    "speichernFehler": "That did not work. Please try again.",
+    "gesperrt": {
+      "titel": "Not unlocked yet",
+      "text": "Self-employment is not unlocked for this account or year. Answer „Self-employed“ or „Both“ in the interview."
+    },
+    "ladefehler": {
+      "titel": "That did not load",
+      "text": "Please try again.",
+      "nochmal": "Try again"
+    },
+    "status": {
+      "nichtBestaetigt": "Type open",
+      "zeile": "{{art}} · {{modus}} · {{konten}}",
+      "buchLaedt": "Loading book …",
+      "buchungen_one": "{{count}} booking",
+      "buchungen_other": "{{count}} bookings",
+      "gewinn": "Profit {{betrag}}",
+      "verlust": "Loss {{betrag}}"
+    },
+    "art": {
+      "freiberuf": "Freelance",
+      "gewerbe": "Trade"
+    },
+    "modus": {
+      "euer": "Cash-basis",
+      "bilanz": "Balance sheet"
+    },
+    "offen": {
+      "titel": "Open",
+      "nichts": "Nothing open.",
+      "kette": "The book is damaged",
+      "art": "Confirm freelance or trade",
+      "keineBuchungen": "No bookings yet",
+      "bank_one": "{{count}} bank item to check",
+      "bank_other": "{{count}} bank items to check"
+    },
+    "seite": {
+      "profil": "Profile",
+      "buch": "Book",
+      "erfassung": "Quick entry",
+      "bank": "Bank",
+      "anlagen": "Assets",
+      "abschluss": "Closing",
+      "umsatzsteuer": "VAT",
+      "gewerbesteuer": "Trade tax",
+      "verluste": "Losses",
+      "elster": "ELSTER fill-in help",
+      "export": "Export",
+      "freischalten": "Unlock",
+      "beruf": "Profession in detail",
+      "gewerbedaten": "Trade tax inputs",
+      "beteiligungen": "Partnership shares"
+    },
+    "profil": {
+      "artTitel": "Freelance or trade",
+      "frage": {
+        "ownExpertWork": "Do you work from your own expertise?",
+        "employsQualifiedStaff": "Do you employ trained staff?",
+        "leadsPersonally": "Do you lead everything yourself and answer for it?",
+        "tradesGoods": "Do you trade in goods?"
+      },
+      "vorschlag": {
+        "freiberuf": "We suggest: freelance",
+        "gewerbe": "We suggest: trade",
+        "unklar": "Unclear – please decide yourself"
+      },
+      "bestaetigen": "You confirm. When in doubt, what the tax office has set so far applies.",
+      "buchfuehrung": "Bookkeeping",
+      "gewinnermittlung": "Profit calculation",
+      "kontenrahmen": "Chart of accounts",
+      "kleinunternehmer": "Small business (§ 19 UStG)",
+      "versteuerung": "VAT on",
+      "versteuerungArt": {
+        "ist": "payments received",
+        "soll": "amounts agreed"
+      },
+      "gemeinde": "Municipality and multiplier",
+      "gemeindeName": "Municipality",
+      "hebesatzSuchen": "Find multiplier",
+      "hebesatzFehler": "The search did not work.",
+      "hebesatzKeiner": "No municipality found. Enter the multiplier below yourself.",
+      "hebesatzZeile": "{{name}} ({{land}}): {{prozent}} % · table {{jahr}}",
+      "hebesatzNehmen": "Use this",
+      "hebesatzKorrektur": "Enter the multiplier yourself (%)",
+      "berufGenauer": "Describe the profession",
+      "beginn": "Start of the activity"
+    },
+    "buch": {
+      "kette": "The chain of the book is broken. Nothing is booked or exported until this is cleared up.",
+      "leer": "No bookings yet.",
+      "stornoZu": "Reversal of {{nummer}}",
+      "storniert": "reversed",
+      "stornieren": "Reverse",
+      "neu": "New booking",
+      "datum": "Date",
+      "text": "Booking text",
+      "beleg": "Document number",
+      "soll": "Debit account",
+      "haben": "Credit account",
+      "betrag": "Amount (gross)",
+      "steuerschluessel": "Tax key",
+      "formularFehler": "Please fill in every field, with an amount above 0.",
+      "buchen": "Book",
+      "belegHochladen": "Upload receipt",
+      "festschreiben": "Lock period",
+      "festBis": "Locked through {{datum}}",
+      "nichtFest": "Nothing locked yet.",
+      "festBisLabel": "Lock through"
+    },
+    "steuerschluessel": {
+      "none": "none",
+      "ust19": "VAT 19 %",
+      "ust7": "VAT 7 %",
+      "ust0": "VAT 0 %",
+      "steuerfrei": "tax-free",
+      "kleinunternehmer": "small business",
+      "igLieferung": "EU supply",
+      "vst19": "Input VAT 19 %",
+      "vst7": "Input VAT 7 %",
+      "rc13b19": "§ 13b 19 %",
+      "igErwerb19": "EU acquisition 19 %",
+      "igErwerb7": "EU acquisition 7 %"
+    },
+    "erfassung": {
+      "nurEuer": "Totals per line exist for the cash-basis method only. With a balance sheet you book in the Book.",
+      "stand": "Status",
+      "einnahmen": "Income",
+      "ausgaben": "Expenses",
+      "gewinn": "Profit",
+      "einnahmenTitel": "Business income",
+      "ausgabenTitel": "Business expenses",
+      "ungueltig": "At least one amount is not a number.",
+      "gebucht": "Booked.",
+      "buchen": "Book totals",
+      "zeile": {
+        "einnahmen_umsatzsteuerpflichtig": "Income subject to VAT",
+        "einnahmen_umsatzsteuerfrei": "VAT-free income",
+        "einnahmen_kleinunternehmer": "Income as small business",
+        "ausgaben_waren_rohstoffe": "Goods and materials",
+        "ausgaben_fremdleistungen": "External services",
+        "ausgaben_personal": "Staff",
+        "ausgaben_raumkosten": "Premises",
+        "ausgaben_kfz": "Vehicle costs",
+        "ausgaben_reise": "Travel",
+        "ausgaben_telekommunikation": "Phone and internet",
+        "ausgaben_fortbildung": "Training",
+        "ausgaben_rechts_beratung": "Legal and tax advice",
+        "ausgaben_versicherungen_beitraege": "Insurance and fees",
+        "ausgaben_werbung": "Advertising",
+        "ausgaben_schuldzinsen": "Interest",
+        "ausgaben_sonstige": "Other expenses"
+      }
+    },
+    "bank": {
+      "importTitel": "Import a bank statement",
+      "quelle": {
+        "sparkasse": "Sparkasse",
+        "ing": "ING",
+        "dkb": "DKB",
+        "commerzbank": "Commerzbank",
+        "camt053": "CAMT.053",
+        "eigene": "Own columns"
+      },
+      "dateiWaehlen": "Choose file",
+      "nurWeb": "Import works in the browser.",
+      "ergebnis": "{{added}} new, {{duplicates}} already there, {{outside}} outside the year",
+      "vorschlaege_one": "{{count}} suggestion",
+      "vorschlaege_other": "{{count}} suggestions",
+      "leer": "Nothing to check.",
+      "vorschlag": "Account {{konto}} · {{text}}",
+      "konto": "Account",
+      "regelMerken": "Remember as a rule",
+      "buchen": "Book",
+      "ignorieren": "Ignore",
+      "mapping": {
+        "hinweis": "Name of the column, or its number from 0.",
+        "trenner": "Delimiter",
+        "dezimal": "Decimal sign",
+        "datum": "Date format",
+        "buchungstag": "Booking date column",
+        "betrag": "Amount",
+        "eineSpalte": "One column",
+        "sollHaben": "Debit and credit",
+        "soll": "Debit column",
+        "haben": "Credit column",
+        "betragSpalte": "Amount column",
+        "gegenpartei": "Counterparty name column (optional)",
+        "iban": "Counterparty IBAN column (optional)",
+        "verwendungszweck": "Reference columns (comma separated)",
+        "unvollstaendig": "Give the booking date, the amount and the reference."
+      }
+    },
+    "anlagen": {
+      "leer": "No assets yet.",
+      "anschaffung": "Acquired for {{betrag}}",
+      "summe": "Total book value",
+      "abgang": "Disposal",
+      "abgangDatum": "Disposal date",
+      "erloes": "Proceeds",
+      "abgangSpeichern": "Save disposal",
+      "ungueltig": "Please check the entries.",
+      "neu": "New asset",
+      "bezeichnung": "Name",
+      "konto": "Account",
+      "datum": "Acquisition date",
+      "kosten": "Acquisition cost",
+      "methode": "Depreciation",
+      "methodeArt": {
+        "linear": "straight-line",
+        "degressive": "declining",
+        "gwg": "low-value",
+        "sofort": "immediate"
+      },
+      "nutzungsdauer": "Useful life (years)",
+      "speichern": "Save",
+      "afaBuchen": "Book the year's depreciation",
+      "art": "Kind per AfA table",
+      "jahre_one": "{{count}} year",
+      "jahre_other": "{{count}} years"
+    },
+    "abschluss": {
+      "euer": "Cash-basis statement",
+      "gewinn": "Profit",
+      "guv": "Income statement",
+      "jahresergebnis": "Result of the year",
+      "bilanz": "Balance sheet",
+      "aktiva": "Assets",
+      "passiva": "Liabilities",
+      "uebertragen": "Opening balance {{year}} booked.",
+      "uebertragenButton": "Carry into {{year}}"
+    },
+    "ust": {
+      "klein": "Small business: no VAT.",
+      "umsatzsteuer": "VAT 19 %",
+      "umsatzsteuerErmaessigt": "VAT 7 %",
+      "vorsteuer": "Deductible input VAT",
+      "jahr": "VAT of the year",
+      "vorauszahlungen": "Prepayments",
+      "saldo": "Result",
+      "erstattung": "Refund",
+      "nachzahlung": "To pay",
+      "vorauszahlungenTitel": "Prepayments",
+      "vorauszahlungenFeld": "Prepayments paid (total)"
+    },
+    "gewst": {
+      "entfaellt": "As a freelancer you pay no trade tax.",
+      "offen": "Cannot be calculated yet.",
+      "hebesatzFehlt": "Your municipality's multiplier is missing.",
+      "zumProfil": "To the profile",
+      "hinzurechnung": "Add-backs",
+      "kuerzung": "Deductions",
+      "gewerbeertrag": "Trade income",
+      "messbetrag": "Base amount",
+      "hebesatz": "Multiplier",
+      "steuer": "Trade tax",
+      "hebesatzKorrigiert": "Multiplier entered by you.",
+      "hebesatzTabelle": "Multiplier from the municipal table {{jahr}}.",
+      "gewinn": "Profit",
+      "fehlbetrag": "Loss of earlier years (§ 10a)",
+      "freibetrag": "Allowance",
+      "fehlbetragRest": "Loss not yet used: {{betrag}}"
+    },
+    "verluste": {
+      "gewinn": "Profit from the business",
+      "vortragGenutzt": "Loss carry-forward used",
+      "neuerVerlust": "New loss",
+      "vortragRest": "Carry-forward at year end",
+      "vortragTitel": "Loss carry-forward",
+      "vortragFeld": "Carry-forward per the last notice (€)",
+      "ruecktragTitel": "Loss carry-back",
+      "jahrDavor": "Into the year before",
+      "zweitesJahrDavor": "Into the second year before",
+      "nurGanz": "Since 2022 the carry-back is all or nothing.",
+      "ruecktragNehmen": "Take the carry-back",
+      "ruecktragVerzicht": "Waive it",
+      "weitereTitel": "From the notices",
+      "platzVorjahr": "Still usable in the year before (€)",
+      "platzJahrDavor": "Still usable in the second year before (€)",
+      "zurueckgetragen": "A later year's loss carried back to this year (€)"
+    },
+    "elster": {
+      "formular": {
+        "anlage-euer": "Anlage EÜR",
+        "anlage-s": "Anlage S",
+        "anlage-g": "Anlage G",
+        "ust-2-a": "USt 2 A",
+        "gewst-1-a": "Trade tax return (GewSt 1 A)",
+        "est-1-a": "ESt 1 A",
+        "anlage-sonstiges": "Other"
+      },
+      "nichtFreigeschaltet": "The fill-in help for {{year}} is not unlocked yet.",
+      "nichtVeroeffentlicht": "The form „{{form}}“ for {{year}} is not published yet. We do not guess lines.",
+      "nichtVerfuegbar": "There is no fill-in help for „{{form}}“ yet.",
+      "nachBedeutung": "This form has no official line numbers. Find the field in Mein ELSTER by its name.",
+      "zeile": "Line {{zeile}}",
+      "kennzahl": "Kz {{kz}}",
+      "feld": "Field in Mein ELSTER: {{label}}",
+      "nichtErmittelt": "not determined",
+      "kopieren": "Copy",
+      "kopiert": "Copied",
+      "kopierenA11y": "Copy value: {{label}}",
+      "weitere": "Further lines ({{count}}) – leave empty",
+      "freigeschaltet": "{{year}} is unlocked.",
+      "abgebrochen": "Unlocking was cancelled. You can try again any time."
+    },
+    "export": {
+      "nichtFreigeschaltet": "The export for {{year}} is not unlocked yet.",
+      "gobd": "Data export for a tax audit",
+      "gobdText": "A ZIP file with bookings, accounts and log.",
+      "gobdKnopf": "Download ZIP",
+      "verfahren": "Procedure documentation",
+      "verfahrenVollstaendig": "Complete.",
+      "verfahrenSpeichern": "Save",
+      "ebilanz": "E-balance sheet",
+      "ebilanzNichtUebermittelt": "Not sent to the tax authorities yet.",
+      "ebilanzDatei": "Download data set",
+      "platzhalter": {
+        "unternehmen": "Name of the business",
+        "inhaber": "Owner",
+        "anschrift": "Address",
+        "steuernummer": "Tax number",
+        "taetigkeit": "Kind of activity",
+        "kontenrahmen": "Chart of accounts",
+        "gewinnermittlung": "Profit calculation",
+        "beginn": "Start of the activity",
+        "appVersion": "Software version",
+        "hosting": "Where the software runs",
+        "speicherort": "Where the data is stored",
+        "datensicherung": "How the data is backed up",
+        "verschluesselung": "How the data is encrypted",
+        "belegablage": "How receipts are filed",
+        "verantwortlich": "Responsible for the bookkeeping",
+        "stand": "Date of the documentation"
+      }
+    },
+    "freischalten": {
+      "text": "Bookkeeping, VAT and trade tax, fill-in help and exports for {{year}} are part of the tier for the self-employed.",
+      "knopf": "Unlock for the self-employed",
+      "nichtEingerichtet": "This tier is not set up yet. Please try again later."
+    },
+    "entwurf": {
+      "soll": "Debit",
+      "haben": "Credit",
+      "buchen": "Book",
+      "gebucht": "✓ Booked",
+      "stornieren": "↩ Reverse"
+    },
+    "person": {
+      "A": "Me",
+      "B": "Partner"
+    },
+    "beruf": {
+      "bisher": "What the tax office has set so far",
+      "keinBescheid": "No notice yet",
+      "katalog": "Listed profession (§ 18 EStG)",
+      "keiner": "None of them",
+      "aehnlich": "Is your work similar to a listed profession?",
+      "taetigkeit": "Free activity",
+      "keine": "None"
+    },
+    "gewerbedaten": {
+      "finanzierung": "Financing parts (§ 8 no. 1)",
+      "ungueltig": "At least one amount is not a number.",
+      "gespeichert": "Saved.",
+      "speichern": "Save",
+      "feld": {
+        "debtChargesEur": "Interest and debt charges",
+        "annuitiesEur": "Annuities and permanent charges",
+        "silentPartnerSharesEur": "Silent partners' profit shares",
+        "rentMovableEur": "Rent of movable assets",
+        "rentMovableLowEmissionEur": "Rent of movable assets (low emission)",
+        "rentImmovableEur": "Rent of immovable assets",
+        "licencesEur": "Licences and concessions",
+        "otherAdditionsEur": "Further add-backs (§ 8 nos. 4–12)",
+        "einheitswertEur": "Assessed value of the land",
+        "otherDeductionsEur": "Further deductions (§ 9 nos. 2–10)",
+        "lossCarriedForwardEur": "Trade loss per the last notice"
+      }
+    },
+    "beteiligungen": {
+      "leer": "No shares.",
+      "entfernen": "Remove",
+      "neu": "Add a share",
+      "hinweis": "Only the amount from the partnership's assessment.",
+      "name": "Partnership",
+      "gewinn": "Your profit share (€)",
+      "messbetrag": "Share of the base amount (€)",
+      "gewerbesteuer": "Share of the trade tax (€)",
+      "ungueltig": "Please give a name and a profit share.",
+      "hinzufuegen": "Add"
+    },
+    "beleg": {
+      "titel": "Receipt of the business",
+      "hochladen": "Upload receipt",
+      "liest": "Reading the receipt …",
+      "fehler": "The receipt could not be read.",
+      "keinEntwurf": "No booking draft came from the receipt.",
+      "richtung": {
+        "ausgabe": "Expense",
+        "einnahme": "Income"
+      }
     }
   }
 }

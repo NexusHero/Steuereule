@@ -38,6 +38,7 @@ import type { PutCrossBorderFactsDto } from './dto/cross-border-facts.dto.js'
 import type { ChItemDto, NGreDetailsDto, PutRemarksDto, PutNGreDto, PutProvisionDto } from './dto/ch-item.dto.js'
 import type { CalculationStatusDto, ChSalaryCertificateResponseDto } from './dto/ch-salary-certificate-response.dto.js'
 import { crossBorderStatusFromAnswers, exchangeRateFromRecord } from './salary-certificate-data.js'
+import { interviewOptions } from '../config/self-employment.js'
 
 function fieldsFromRecord(record: CrossBorderSalaryStatementRecord | null): { fields: SalaryCertificateFieldDto[]; values: SalaryCertificateValues } {
   const fields: SalaryCertificateFieldDto[] = []
@@ -146,7 +147,7 @@ export class ChSalaryCertificateService {
     const exchangeRate = exchangeRateFromRecord(record)
     const answers = await this.answers(userId, taxYear)
     const status = crossBorderStatusFromAnswers(answers)
-    const gated = gatedIncomeTypes(answers)
+    const gated = gatedIncomeTypes(answers, interviewOptions())
 
     const saeule3aChf = record === null || record.saeule3aChf === null ? undefined : Number(record.saeule3aChf)
     const krankenkasseChf = record === null || record.krankenkasseChf === null ? undefined : Number(record.krankenkasseChf)

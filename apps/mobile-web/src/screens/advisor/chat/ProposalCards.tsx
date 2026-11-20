@@ -7,21 +7,17 @@ import { ADVISOR_LEGAL_SOURCES, PERSON_B_SCREENS, formatDraftValue, formatEuro, 
 import { APP_NS } from '../../../i18n/resources'
 import { formLineForField } from '../../shared/formLineMapping'
 import { makeStyles } from '../AdvisorChatPanel'
+import { BookingDraftCard } from './BookingDraftCard'
 
-export function ActionProposalCardView({
-  action,
-  onApply,
-  onUndo,
-  onDismiss,
-  onInspectMask,
-  receiptLinked,
-  onSelectSource,
-  styles,
-  testIDPrefix = 'advisor-action',
-  partnerName,
-  ownName,
-  jointReturn = false,
-}: {
+/** A draft of the owl: one field of a mask, or (screen `buchung`, ADR-0101 §18) a booking of the self-employed. */
+export function ActionProposalCardView(props: FieldProposalCardProps) {
+  if (props.action.screen === 'buchung') {
+    return <BookingDraftCard action={props.action} onApply={props.onApply} onUndo={props.onUndo} onDismiss={props.onDismiss} styles={props.styles} testIDPrefix={props.testIDPrefix} />
+  }
+  return <FieldProposalCard {...props} />
+}
+
+interface FieldProposalCardProps {
   readonly action: AdvisorActionProposal
   /** The spouse's first name, for a draft that writes Person B's fields (ADR-0073). */
   readonly partnerName?: string | undefined
@@ -37,7 +33,22 @@ export function ActionProposalCardView({
   readonly onSelectSource: (source: AdvisorLegalSource) => void
   readonly styles: ReturnType<typeof makeStyles>
   readonly testIDPrefix?: string
-}) {
+}
+
+function FieldProposalCard({
+  action,
+  onApply,
+  onUndo,
+  onDismiss,
+  onInspectMask,
+  receiptLinked,
+  onSelectSource,
+  styles,
+  testIDPrefix = 'advisor-action',
+  partnerName,
+  ownName,
+  jointReturn = false,
+}: FieldProposalCardProps) {
   const { t: tr } = useTranslation(APP_NS)
   const [busyStatus, setBusyStatus] = useState<AdvisorActionProposal['status'] | null>(null)
   const isBusy = busyStatus === action.status

@@ -52,6 +52,7 @@ import type {
 } from './dto/assessment-response.dto.js'
 import { answersFrom } from '../interview/answers.js'
 import { crossBorderStatusFromAnswers, salaryCertificateValuesFromRecord, exchangeRateFromRecord } from '../ch-salary-certificate/salary-certificate-data.js'
+import { interviewOptions } from '../config/self-employment.js'
 
 
 function fieldsFromRecord(record: AssessmentRecord | null): { fields: AssessmentFieldDto[]; values: AssessmentValues } {
@@ -118,7 +119,7 @@ export class AssessmentService {
         ...(krankenkasseChf !== undefined ? { krankenkasseChf } : {}),
         status,
         exchangeRate,
-        gated: gatedIncomeTypes(answers),
+        gated: gatedIncomeTypes(answers, interviewOptions()),
       })
     }
 

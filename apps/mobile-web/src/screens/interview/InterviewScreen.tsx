@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { useBreakpoint } from '@steuereule/ui'
-import { ENTRIES, nextStep, nextStepFor, type Answers, type StepId } from '@steuereule/core'
+import { ENTRIES, nextStep, nextStepFor, type Answers, type InterviewOptions, type StepId } from '@steuereule/core'
 import {
   useInterviewControllerGetInterview,
   useInterviewControllerPostAnswer,
@@ -18,12 +18,13 @@ import { type PostErrorKind } from './PostErrorNotice'
 import { clearStepAndFollowUps } from './clearStepAndFollowUps'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { triggerSaveErrorHaptic } from '../shared/saveFeedback'
+import { useSelfEmploymentCapability } from '../business/useSelfEmployment'
 
-function walkedMinimalGateSteps(answers: Answers): readonly StepId[] {
+function walkedMinimalGateSteps(answers: Answers, options: InterviewOptions): readonly StepId[] {
   const walked: StepId[] = []
   let reached: Answers = {}
   for (;;) {
-    const step = nextStepFor(ENTRIES['minimal-gate'], reached)
+    const step = nextStepFor(ENTRIES['minimal-gate'], reached, options)
     if (step.kind === 'done') return walked
     const id = step.id as StepId
     const answer = answers[id]
@@ -46,6 +47,9 @@ export function InterviewScreen({ onDone, taxYear = CURRENT_TAX_YEAR, onChangeYe
   const { t: tr } = useTranslation(APP_NS)
   const queryClient = useQueryClient()
   const interviewQuery = useInterviewControllerGetInterview(taxYear)
+  // The server's switch decides whether the Gewerbe gate stops the self-employed (ADR-0101 §20).
+  const capability = useSelfEmploymentCapability(taxYear)
+  const options = capability.options
   const postAnswer = useInterviewControllerPostAnswer({
     mutation: {
       onSuccess: (response) => {
@@ -77,15 +81,15 @@ export function InterviewScreen({ onDone, taxYear = CURRENT_TAX_YEAR, onChangeYe
   }, [])
 
   useEffect(() => {
-    if (!seeded && interviewQuery.isFetchedAfterMount && interviewQuery.data?.status === 200) {
+    if (!seeded && !capability.pending && interviewQuery.isFetchedAfterMount && interviewQuery.data?.status === 200) {
       const loaded = interviewQuery.data.data.answers as Answers
       setAnswers(loaded)
-      setHistory(walkedMinimalGateSteps(loaded))
+      setHistory(walkedMinimalGateSteps(loaded, options))
       setSeeded(true)
     }
-  }, [seeded, interviewQuery.isFetchedAfterMount, interviewQuery.data])
+  }, [seeded, capability.pending, interviewQuery.isFetchedAfterMount, interviewQuery.data])
 
-  const current = seeded ? nextStep(answers) : null
+  const current = seeded ? nextStep(answers, options) : null
 
   useEffect(() => {
     if (current?.kind === 'done') onDone(answers)
@@ -115,7 +119,7 @@ export function InterviewScreen({ onDone, taxYear = CURRENT_TAX_YEAR, onChangeYe
     const previousAnswers = answers
     const previousHistory = history
     const nextAnswers = { ...answers, [stepId]: value }
-    if (nextStep(nextAnswers).kind === 'done') {
+    if (nextStep(nextAnswers, options).kind === 'done') {
       refetchOnInterviewSyncRef.current = true
     }
     setHistory((h) => [...h, stepId])

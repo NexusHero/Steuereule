@@ -17,8 +17,34 @@ export const UnlockStatusDtoStatus = {
   'nicht-verfuegbar': 'nicht-verfuegbar',
 } as const;
 
+/**
+ * The price tier this year needs (ADR-0101 §21); always sent.
+ */
+export type UnlockStatusDtoTier = typeof UnlockStatusDtoTier[keyof typeof UnlockStatusDtoTier];
+
+
+export const UnlockStatusDtoTier = {
+  standard: 'standard',
+  selbststaendig: 'selbststaendig',
+} as const;
+
+/**
+ * How the year is filed: the paper printout, or Mein ELSTER with the fill-in help (self-employment, ADR-0101 §16); always sent.
+ */
+export type UnlockStatusDtoFilingPath = typeof UnlockStatusDtoFilingPath[keyof typeof UnlockStatusDtoFilingPath];
+
+
+export const UnlockStatusDtoFilingPath = {
+  papier: 'papier',
+  'elster-ausfuellhilfe': 'elster-ausfuellhilfe',
+} as const;
+
 export interface UnlockStatusDto {
   /** freigeschaltet = paid for this tax year; offen = payable; nicht-verfuegbar = payment is not configured on this environment. */
   status: UnlockStatusDtoStatus;
+  /** The price tier this year needs (ADR-0101 §21); always sent. */
+  tier?: UnlockStatusDtoTier;
+  /** How the year is filed: the paper printout, or Mein ELSTER with the fill-in help (self-employment, ADR-0101 §16); always sent. */
+  filingPath?: UnlockStatusDtoFilingPath;
 }
 

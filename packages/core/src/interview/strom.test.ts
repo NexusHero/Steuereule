@@ -161,3 +161,18 @@ describe('which topic is still open', () => {
     expect(isTopicOpen('spenden', { spenden: 'Nein' })).toBe(false)
   })
 })
+
+describe('the Gewerbe gate with the self-employment switch (ADR-0101 §20)', () => {
+  const gate = ENTRIES['minimal-gate']
+  it('shows the gate on the basis page while the switch is off, and not when it is on', () => {
+    expect(pageSteps(gate, { job: 'Selbstständig' })).toContain('gewerbe')
+    expect(pageSteps(gate, { job: 'Selbstständig' }, { selfEmployment: true })).not.toContain('gewerbe')
+  })
+  it('stops at the gate while the switch is off, and walks on to the next questions when it is on', () => {
+    const off = answersToPost(gate, { job: 'Selbstständig' }, {})
+    expect(off.complete).toBe(true)
+    expect(off.posts.map((p) => p.questionId)).toContain('gewerbe')
+    const on = answersToPost(gate, { job: 'Selbstständig' }, {}, { selfEmployment: true })
+    expect(on.complete).toBe(false)
+  })
+})
