@@ -28,7 +28,7 @@ Alles in einem Pull Request, ohne Mock, in den Mustern der App.
 5. **Gewinnermittlung:** EÜR (§ 4 Abs. 3 EStG) für alle, die dürfen; Bilanz (§ 4 Abs. 1, § 5 EStG) für alle, die bilanzieren müssen (§ 140, § 141 AO) oder wollen.
 6. **Erfassung:** Summen je EÜR-Zeile als schneller Weg, oder einzelne Belege über die eine Beleg-Pipeline (ADR-0097). Beides landet im Buch (Punkt 10).
 7. **Abschreibung:** geringwertige Wirtschaftsgüter bis 800 € sofort, lineare AfA nach amtlicher Tabelle, Sammelposten (250 bis 1.000 €), degressive AfA wo zulässig, Investitionsabzugsbetrag und Sonder-AfA (§ 7g EStG).
-8. **Umsatzsteuer:** Kleinunternehmer-Prüfung (§ 19 UStG) und Regelbesteuerung mit Umsatzsteuer-Jahreserklärung. Voranmeldungen bleiben außerhalb der App; die gezahlten Vorauszahlungen trägt der Nutzer als Summe ein.
+8. **Umsatzsteuer:** Kleinunternehmer-Prüfung (§ 19 UStG) und Regelbesteuerung mit Umsatzsteuer-Jahreserklärung. ~~Voranmeldungen bleiben außerhalb der App; die gezahlten Vorauszahlungen trägt der Nutzer als Summe ein.~~ Geändert durch §22: Die App rechnet die Voranmeldungen und die Zusammenfassende Meldung; die Summe der Vorauszahlungen kommt aus ihnen, wenn der Nutzer keine eigene einträgt.
 9. **Gewerbesteuer:** Gewerbesteuer-Erklärung, Freibetrag 24.500 €, Hebesatz aus der amtlichen Gemeindetabelle (der Nutzer kann ihn korrigieren), Anrechnung auf die Einkommensteuer (§ 35 EStG).
 10. **Verluste:** Verlustvortrag aus dem letzten Feststellungsbescheid übernehmen und verrechnen, einen neuen Verlust ausweisen, den Rücktrag in die zwei Vorjahre rechnen und den Verzicht darauf anbieten (§ 10d EStG; seit 2022 nur ganz oder gar nicht).
 
@@ -43,7 +43,7 @@ Alles in einem Pull Request, ohne Mock, in den Mustern der App.
 ### Abgabe
 
 16. **Ausfüllhilfe für Mein ELSTER:** Die App rechnet alles und zeigt je Formularzeile, was der Nutzer in Mein ELSTER einträgt, für Hauptvordruck, Anlage S/G, EÜR, Umsatz- und Gewerbesteuer-Erklärung. Das ändert ADR-0050 für Selbstständige: kein Papier, kein Ausdruck als Abgabe. Die übrige Einkommensteuererklärung (Hauptvordruck, Anlage N, N-Gre, R, KAP, V, Kind, Vorsorgeaufwand, Sonderausgaben, AV, haushaltsnahe Aufwendungen, außergewöhnliche Belastungen) zeigt sie mit denselben Werten, die der Formular-Ausdruck drucken würde, je Exemplar (Person, Kind, Objekt), Zeile und Kennzahl aus den vermessenen Vordrucken des Jahres (`felder-<jahr>.zeilen.json`, auch für 2022 und 2023, die nicht gedruckt werden); für ein Jahr ohne veröffentlichte Vordrucke nennt sie die Werte ohne Zeilen und sagt das.
-17. **E-Bilanz wartet auf ELSTER:** Bilanzierer können buchen und abschließen; die Abgabe der E-Bilanz kommt mit der ELSTER-Übermittlung. Bis dahin sagt die App das offen.
+17. **E-Bilanz wartet auf ELSTER:** Bilanzierer können buchen und abschließen; die Abgabe der E-Bilanz kommt mit der ELSTER-Übermittlung. Bis dahin sagt die App das offen. Ergänzt durch §22: Die Übermittlung ist bis zur Kante gebaut und wird mit ERiC und dem Zertifikat des Betreibers eingeschaltet.
 
 ### Eule
 
@@ -54,6 +54,18 @@ Alles in einem Pull Request, ohne Mock, in den Mustern der App.
 19. **Prüfung:** Golden-Testfälle aus amtlichen Beispielen und durchgerechneten Fällen, je Steuerjahr. Keine externe Prüfung.
 20. **Schalter:** Das Gewerbe-Gate bleibt für Nutzer an, bis der Product Owner die Ergebnisse gesichtet und den Schalter umgelegt hat. Der Code ist ab dem Merge da.
 21. **Preis:** eine eigene, höhere Stufe je Steuerjahr für Jahre mit Selbstständigkeit, über eine zweite Stripe-Preis-ID. Den Betrag legt der Product Owner in Stripe fest; Buchhaltung, Umsatz- und Gewerbesteuer sind darin enthalten.
+
+### Nachtrag vom 21.11.2026: die Lücken nach der ersten Fassung
+
+22. Eine Durchsicht des Stands nach dem Merge fand falsche Rechnungen, Gruppen, die nicht durchkamen, und Einschränkungen. Der Product Owner hat entschieden, alle in einem Pull Request zu beheben. Bei externen Abhängigkeiten baut die App bis zur Kante. Die Voranmeldungen rechnet sie und zeigt sie als Ausfüllhilfe. Beim Lohn bucht sie die Werte des Lohnprogramms und rechnet Minijobs selbst. Rechtswerte stehen mit Quellen in `docs/research/selbststaendige-erweiterung.md`.
+    - **Vorsorge ohne Lohn:** KV, PV und Krankengeld zählen so, wie sie eingetragen sind. Die 4-%-Kürzung gilt einmal und nur auf die KV. Neu sind die eigene Altersvorsorge (gesetzliche RV, Versorgungswerk, Rürup) und weitere Versicherungen; für KSK-Mitglieder gilt die Grenze von 1.900 €.
+    - **Gruppen, die jetzt durchkommen:** Rentner mit Nebengewerbe (Frage `rente-selbststaendig`). Selbstständige mit Midijob oder Nebenjob als einzigem Lohn. Mehrere Betriebe je Person (Spalte `betrieb`). Die Umsatzsteuer rechnet über alle Betriebe einer Person, weil es einen Unternehmer mit einem Unternehmen gibt; Anlage EÜR, S/G und GewSt gibt es je Betrieb.
+    - **Kleinunternehmer:** Im Gründungsjahr gelten 25.000 € (ab 2025, tatsächlicher Umsatz) bzw. 22.000 € (bis 2024, hochgerechnet). Die App gleicht den Haken im Profil mit dem Buch ab. § 20 UStG misst am Vorjahr.
+    - **EÜR:** Nicht abziehbare Buchungen mindern den Gewinn nicht mehr. Die Zehn-Tage-Regel (§ 11 EStG) gilt über die Buchgrenze.
+    - **Neu:** Firmenwagen (1-%-Regel mit E/Hybrid-Bruchteilen, Fahrtenbuch, Kostendeckelung, Wege Wohnung–Betrieb, USt-Wertabgabe). Voranmeldungen, ig. Erwerb und Zusammenfassende Meldung (USt-IdNr. an der Buchung). E-Rechnungen (XRechnung UBL/CII, ZUGFeRD; XML als Original gespeichert, nur als Download in einer Sandbox ausgeliefert). § 16/§ 34 und § 34a. Lohn mit Minijob-Abgaben und Lohnsteuer-Anmeldung, ohne SV-Meldungen.
+    - **E-Bilanz:** Die Elementnamen folgen der amtlichen Taxonomie 6.9; der Anlagenspiegel ist dimensional aufgebaut. Übermittelt wird über eine ERiC-Sidecar des Betreibers (`ELSTER_TRANSMISSION_ENABLED`, `ELSTER_ERIC_CLI`, `ELSTER_CERT_PATH`, `ELSTER_CERT_PIN`, `ELSTER_HERSTELLER_ID`). Die XBRL-Datei geht über stdin, die PIN nur in die Umgebung der Sidecar. ERiC-Lizenz und Zertifikat sind Sache des Betreibers.
+    - **Anlage S/G:** Die Zeilen kommen aus einer geprüften Datei, die der Betreiber aus Mein ELSTER abliest (`apps/api/assets/elster-lines/`). Ohne Datei zeigt die App Beträge ohne Zeilen.
+    - **Bleibt offen und wird offen gesagt:** Die Vordrucke 2026 (Hauptvordruck, Anlage Sonstiges, GewSt) erscheinen erst noch. Die Kennzahlen der Voranmeldung sind die von 2026; die Vordrucke 2022–2025 liefert das BMF nicht mehr aus, ob sie gleich sind, ist ungeprüft. Ungeprüft sind auch die Minijob-Umlagen (Quelle ist das Magazin der Minijob-Zentrale) und der Höchstbetrag der Altersvorsorge 2026 (abgeleitet). Schnellerfassungs-Summen zu 19 %/7 % tragen keinen Steuersatz. Eulen-Entwürfe außerhalb von Belegen buchen in den ersten Betrieb.
 
 ## Folgen
 
