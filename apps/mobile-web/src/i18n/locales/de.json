@@ -3454,7 +3454,8 @@
       "hebesatzNehmen": "Übernehmen",
       "hebesatzKorrektur": "Hebesatz selbst eintragen (%)",
       "berufGenauer": "Beruf genauer angeben",
-      "beginn": "Beginn der Tätigkeit"
+      "beginn": "Beginn der Tätigkeit",
+      "buchfuehrungBefreit": "Vom Finanzamt von der Buchführungspflicht befreit (§ 148 AO)? Dann darfst du nach vereinnahmten Entgelten versteuern, egal wie hoch der Umsatz ist (§ 20 Nr. 2 UStG)."
     },
     "buch": {
       "kette": "Die Kette des Buchs ist gebrochen. Gebucht und exportiert wird erst wieder, wenn das geklärt ist.",
@@ -3492,6 +3493,8 @@
       "igErwerb19": "IG-Erwerb 19 %",
       "igErwerb7": "IG-Erwerb 7 %",
       "rcEu19": "§ 13b Abs. 1 (EU) 19 %",
+      "rc13b7": "§ 13b 7 %",
+      "rcEu7": "§ 13b Abs. 1 (EU) 7 %",
       "euLeistung": "EU-Leistung (Empfänger schuldet)"
     },
     "erfassung": {
@@ -3583,14 +3586,35 @@
         "degressive": "degressiv",
         "elektrofahrzeug": "E-Fahrzeug 75 %",
         "gwg": "GWG",
-        "sofort": "sofort"
+        "sofort": "sofort",
+        "building": "Gebäude",
+        "building_degressive": "Gebäude 5 % degressiv"
       },
       "nutzungsdauer": "Nutzungsdauer (Jahre)",
       "speichern": "Speichern",
       "afaBuchen": "Abschreibung des Jahres buchen",
       "art": "Art laut AfA-Tabelle",
       "jahre_one": "{{count}} Jahr",
-      "jahre_other": "{{count}} Jahre"
+      "jahre_other": "{{count}} Jahre",
+      "nutzung": "Nutzung",
+      "nutzungArt": {
+        "betrieb": "betrieblich, nicht Wohnzwecke",
+        "wohnen": "Wohnzwecke"
+      },
+      "gebaeudeDatum": {
+        "completed": "Fertigstellung",
+        "applicationFiled": "Bauantrag gestellt am (optional)",
+        "constructionStarted": "Baubeginn (Baubeginnsanzeige)",
+        "contractSigned": "Kaufvertrag (bei Kauf bis Ende des Fertigstellungsjahres)"
+      },
+      "sonderAfa": "Sonder-AfA § 7g im Anschaffungsjahr (€, optional)",
+      "gewinnVorjahr": "Gewinn im Wirtschaftsjahr vor der Anschaffung (€, höchstens 200.000 €)",
+      "berichtigung": "Vorsteuer berichtigen (§ 15a)",
+      "berichtigungHinweis": "Ändert sich bei einem Anlagegut innerhalb von fünf Jahren (Gebäude: zehn) der Anteil, für den du Vorsteuer abziehen darfst, wird der Vorsteuerabzug jedes Jahr anteilig berichtigt. Auch der Wechsel aus der oder in die Kleinunternehmerregelung zählt. Bis 1.000 € Vorsteuer gibt es keine Berichtigung.",
+      "vorsteuer": "Vorsteuer auf die Anschaffungskosten (€)",
+      "anteilUrspruenglich": "Damals abgezogen (%)",
+      "anteilJahr": "Abziehbar in {{jahr}} (%)",
+      "berichtigungSpeichern": "Berichtigung speichern"
     },
     "abschluss": {
       "euer": "Einnahmenüberschussrechnung",
@@ -3619,7 +3643,11 @@
       "kleinGrenzeVorjahr": "Dein Umsatz im Vorjahr lag über {{grenze}}. Damit gilt die Kleinunternehmerregelung in diesem Jahr nicht: Prüf das im Profil.",
       "kleinGrenzeJahr": "Dein Umsatz in diesem Jahr liegt mit {{umsatz}} über {{grenze}}. Damit endet die Kleinunternehmerregelung: Prüf das im Profil.",
       "kleinVorjahrUnbekannt": "Für das Vorjahr gibt es hier kein Buch. Die Kleinunternehmerregelung gilt nur, wenn dein Vorjahresumsatz höchstens {{grenze}} war.",
-      "kleinAb": "Seit dem Umsatz vom {{datum}} gilt die Kleinunternehmerregelung nicht mehr: Dieser und alle späteren Umsätze sind umsatzsteuerpflichtig, die früheren bleiben steuerfrei (§ 19 Abs. 1 UStG). Buch sie ab diesem Tag mit Umsatzsteuer und stell Rechnungen mit Umsatzsteuer aus."
+      "kleinAb": "Seit dem Umsatz vom {{datum}} gilt die Kleinunternehmerregelung nicht mehr: Dieser und alle späteren Umsätze sind umsatzsteuerpflichtig, die früheren bleiben steuerfrei (§ 19 Abs. 1 UStG). Buch sie ab diesem Tag mit Umsatzsteuer und stell Rechnungen mit Umsatzsteuer aus.",
+      "berichtigung15a": "Vorsteuerberichtigung (§ 15a UStG)",
+      "berichtigung15aTitel": "Vorsteuerberichtigung je Anlagegut",
+      "berichtigung15aHinweis": "Positiv: mehr Vorsteuer, negativ: zurückzahlen. In Mein ELSTER trägst du die Summe in der Zeile „Berichtigung des Vorsteuerabzugs (§ 15a UStG)“ ein.",
+      "berichtigung15aVa": "schon in der Voranmeldung (über 6.000 € oder Verkauf, § 44 Abs. 3 UStDV)"
     },
     "gewst": {
       "entfaellt": "Als Freiberufler zahlst du keine Gewerbesteuer.",
@@ -3964,7 +3992,8 @@
         "employerSocialEur": "Sozialversicherung Arbeitgeberanteil und Umlagen (€)",
         "flatWageTaxEur": "Pauschale Lohnsteuer (€, Kz 41)",
         "flat37bTaxEur": "Pauschale Lohnsteuer § 37b EStG (€, Kz 44)",
-        "flatChurchTaxEur": "Pauschale Kirchensteuer (€, Kz 47)"
+        "flatChurchTaxEur": "Pauschale Kirchensteuer (€, Kz 47)",
+        "bavSupportEur": "BAV-Förderbetrag § 100 EStG (€, Kz 45)"
       },
       "kirche": {
         "ev": "evangelisch",
@@ -3994,7 +4023,9 @@
         "44": "Pauschale Lohnsteuer § 37b",
         "48": "Verbleiben",
         "47": "Pauschale Kirchensteuer",
-        "land": "Kirchensteuer (Zeile deines Bundeslandes)"
+        "land": "Kirchensteuer (Zeile deines Bundeslandes)",
+        "90": "Arbeitnehmer mit BAV-Förderbetrag",
+        "45": "BAV-Förderbetrag"
       },
       "minijobAbgaben": "Minijob-Abgaben an die Minijob-Zentrale",
       "minijobHinweis": "Fällig am drittletzten Bankarbeitstag des Monats; die Pauschsteuer von 2 % ist darin enthalten.",

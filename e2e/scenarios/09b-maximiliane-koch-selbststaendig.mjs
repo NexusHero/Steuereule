@@ -247,7 +247,40 @@ export async function runScenario09b(browser, webOrigin) {
   await see('anlage-abgang-datum')
   await see('anlage-abgang-erloes')
   await see('anlage-abgang-buchen')
-  console.log('[09b] PASS: asset registered, depreciation booked, disposal form')
+  // § 15a UStG: the input VAT of the laptop, deducted in full, half deductible this year (below 1.000 €: no correction).
+  await byPrefix('anlage-15a-').first().click()
+  await see('anlage-15a')
+  await byId('anlage-15a-vorsteuer').fill('285,00')
+  await byId('anlage-15a-ursprung').fill('100')
+  await byId('anlage-15a-jahr').fill('50')
+  await byId('anlage-15a-speichern').click()
+  await byId('anlage-15a').waitFor({ state: 'detached', timeout: 10_000 })
+  // A building (§ 7 Abs. 4 EStG) with its use and completion, and a printer with the § 7g Sonder-AfA.
+  await byId('anlage-neu').click()
+  await byId('anlage-bezeichnung').fill('Lager')
+  await byId('anlage-konto').fill('0090')
+  await byId('anlage-datum').fill('01.03.2025')
+  await byId('anlage-kosten').fill('200.000,00')
+  await byId('anlage-methode-building').click()
+  await see('anlage-gebaeude')
+  await byId('anlage-nutzung-wohnen').click()
+  await byId('anlage-nutzung-betrieb').click()
+  await byId('anlage-gebaeude-completed').fill('01.01.2000')
+  await byId('anlage-speichern').click()
+  await byId('anlage-formular').waitFor({ state: 'detached', timeout: 10_000 })
+  await byId('anlage-neu').click()
+  await byId('anlage-bezeichnung').fill('Drucker')
+  await byId('anlage-konto').fill('0410')
+  await byId('anlage-datum').fill('01.04.2025')
+  await byId('anlage-kosten').fill('1.000,00')
+  await byId('anlage-methode-linear').click()
+  await page.selectOption('[data-testid="anlage-kategorie"]', 'computer')
+  await byId('anlage-sonder-afa').fill('200,00')
+  await see('anlage-gewinn-vorjahr')
+  await byId('anlage-gewinn-vorjahr').fill('50.000,00')
+  await byId('anlage-speichern').click()
+  await byId('anlage-formular').waitFor({ state: 'detached', timeout: 10_000 })
+  console.log('[09b] PASS: asset registered, depreciation booked, disposal form, § 15a, building and § 7g')
 
   // --- Closing -------------------------------------------------------------------------------------------------------------------
   await go('abschluss')
@@ -450,16 +483,21 @@ export async function runScenario09b(browser, webOrigin) {
   await byId('va-periode-quartal').click()
   await page.unroute(`${API}/umsatzsteuer/voranmeldungen`)
   // The Kleinunternehmer limits: crossed in the founding year, and a year before without a book.
-  const vat = { figures: {}, result: { outputVat: { standard: 0, reduced: 0, zero: 0 }, inputVatDeductibleEur: 0, vatOfYearEur: 0, prepaymentsEur: 0, balanceEur: 0 }, cashAccountingAllowed: true }
+  const vat = { figures: {}, result: { outputVat: { standard: 0, reduced: 0, zero: 0 }, inputVatDeductibleEur: 0, inputVatCorrectionEur: 0, vatOfYearEur: 0, prepaymentsEur: 0, balanceEur: 0 }, cashAccountingAllowed: true, inputVatCorrections: [] }
   const small = { eligible: false, priorYearLimitEur: 25000, currentYearLimitEur: 25000, crossed: 'current_year', foundingYear: true, priorYearKnown: true, turnoverEur: 26000, matchesProfile: false, taxedFrom: '2025-12-01' }
   await page.route(`${API}`, (route) => (route.request().method() === 'GET' ? route.fetch().then(async (r) => route.fulfill(json({ ...(await r.json()), smallBusiness: true }))) : route.fallback()))
-  await page.route(`${API}/umsatzsteuer`, (route) => route.fulfill(json({ ...vat, smallBusiness: small })))
+  await page.route(`${API}/umsatzsteuer`, (route) =>
+    route.fulfill(json({ ...vat, result: { ...vat.result, inputVatCorrectionEur: -570 }, smallBusiness: small, inputVatCorrections: [{ assetId: 'a1', label: 'Lager', correctionEur: -570, inPrepayment: false }] })),
+  )
   await go('umsatzsteuer')
   await see('ust-klein-grenze')
+  // § 15a UStG: the year's correction and the line per asset.
+  await see('ust-15a')
+  await see('ust-15a-liste')
   // From 2025 the rule ends with the supply that passed the limit (§ 19 Abs. 1 Satz 1 UStG).
   await see('ust-klein-ab')
   await page.unroute(`${API}/umsatzsteuer`)
-  await page.route(`${API}/umsatzsteuer`, (route) => route.fulfill(json({ ...vat, smallBusiness: { ...small, eligible: true, crossed: null, foundingYear: false, priorYearKnown: false, matchesProfile: true, taxedFrom: null } })))
+  await page.route(`${API}/umsatzsteuer`, (route) => route.fulfill(json({ ...vat, smallBusiness: { ...small, eligible: true, crossed: null, foundingYear: false, priorYearKnown: false, matchesProfile: true, taxedFrom: null }, inputVatCorrections: [] })))
   await go('umsatzsteuer')
   await see('ust-klein-vorjahr')
   await page.unroute(`${API}/umsatzsteuer`)

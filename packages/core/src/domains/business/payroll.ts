@@ -144,11 +144,17 @@ export interface WageTaxRunFacts {
   readonly flat37bTaxEur?: number | undefined
   /** Pauschale Kirchensteuer in the simplified procedure: Kz 47. */
   readonly flatChurchTaxEur?: number | undefined
+  /** BAV-Förderbetrag the employer takes off the wage tax (§ 100 EStG): Kz 45, the employee counts in Kz 90. */
+  readonly bavSupportEur?: number | undefined
 }
 
+/** § 100 Abs. 2 Satz 1 EStG: 30 % of the additional employer contribution, at most 288 € a year per employee. */
+export const BAV_SUPPORT_MAX_EUR = 288
+
 /**
- * The Kennzahlen of one Lohnsteuer-Anmeldung (Vordruck 2026): 86 employees (Minijobber included), 42 Lohnsteuer,
- * 41 and 44 pauschale Lohnsteuer, 48 Verbleiben (42 + 41 + 44; the Kürzungen 33 and 45 the app does not know),
+ * The Kennzahlen of one Lohnsteuer-Anmeldung (Vordruck 2026): 86 employees (Minijobber included), 90 of them with
+ * a BAV-Förderbetrag, 42 Lohnsteuer, 41 and 44 pauschale Lohnsteuer, 45 the Förderbetrag (§ 100 EStG), 48
+ * Verbleiben (42 + 41 + 44 − 45; Kz 33, the Kürzung for merchant ships of § 41a Abs. 4, does not arise in the app),
  * 49 Soli, 47 pauschale Kirchensteuer, 61/62 and the Land lines church tax, 83 total. The Minijob's 2 % goes to
  * the Knappschaft, not here (Hinweis Nr. 2).
  */
@@ -161,20 +167,23 @@ export function wageTaxReturn(runs: readonly WageTaxRunFacts[], state: FederalSt
   }
   // Kz 86 counts every employee, Aushilfen and Minijobber included (Vordruck 2026, Hinweis Nr. 11).
   put('86', new Set(runs.map((r) => r.employee)).size)
+  put('90', new Set(regular.filter((r) => (r.bavSupportEur ?? 0) > 0).map((r) => r.employee)).size)
   const wageTax = sum((r) => r.wageTaxEur)
   const flat = sum((r) => r.flatWageTaxEur ?? 0)
   const flat37b = sum((r) => r.flat37bTaxEur ?? 0)
+  const bav = sum((r) => r.bavSupportEur ?? 0)
   put('42', wageTax)
   put('41', flat)
   put('44', flat37b)
-  if (flat !== 0 || flat37b !== 0) put('48', wageTax + flat + flat37b)
+  put('45', bav)
+  if (flat !== 0 || flat37b !== 0 || bav !== 0) put('48', wageTax + flat + flat37b - bav)
   put('49', sum((r) => r.soliEur))
   put('47', sum((r) => r.flatChurchTaxEur ?? 0))
   for (const r of regular) {
     const kz = r.church ? churchKennzahl(state, r.church) : null
     if (kz) put(kz, r.churchTaxEur)
   }
-  put('83', sum((r) => r.wageTaxEur + (r.flatWageTaxEur ?? 0) + (r.flat37bTaxEur ?? 0) + r.soliEur + r.churchTaxEur + (r.flatChurchTaxEur ?? 0)))
+  put('83', sum((r) => r.wageTaxEur + (r.flatWageTaxEur ?? 0) + (r.flat37bTaxEur ?? 0) - (r.bavSupportEur ?? 0) + r.soliEur + r.churchTaxEur + (r.flatChurchTaxEur ?? 0)))
   return k
 }
 

@@ -55,6 +55,14 @@ describe('Lohnsteuer-Anmeldung (§ 41a EStG)', () => {
     expect(r).toEqual({ '86': 1, '42': 300, '41': 50, '44': 20, '48': 370, '47': 3.5, '83': 373.5 })
   })
 
+  it('takes the BAV-Förderbetrag off the wage tax (Kz 45) and counts its employees (Kz 90), § 100 EStG read', () => {
+    const r = wageTaxReturn([
+      { kind: 'regulaer', employee: 'A', wageTaxEur: 300, soliEur: 0, churchTaxEur: 0, church: null, bavSupportEur: 24 },
+      { kind: 'regulaer', employee: 'B', wageTaxEur: 200, soliEur: 0, churchTaxEur: 0, church: null },
+    ])
+    expect(r).toEqual({ '86': 2, '90': 1, '42': 500, '45': 24, '48': 476, '83': 476 })
+  })
+
   it('puts the church tax of other communities on the line of the Betriebsstätte’s Land; one without a line counts in 83 only', () => {
     expect(federalStateOfAgs('08111000')).toBe('BW')
     expect(churchKennzahl('BW', 'iw')).toBe('73')

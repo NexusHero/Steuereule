@@ -399,6 +399,57 @@ describe('the assets', () => {
     await waitFor(() => expect(screen.queryByTestId('anlage-formular')).toBeNull())
   })
 
+  it('adds a building with its use and dates, and a machine with the § 7g Sonder-AfA and last year’s profit', async () => {
+    server.use(http.get(`${BASE_URL}/anlagen`, () => HttpResponse.json(REGISTER)))
+    useCatalogues()
+    const bodies: unknown[] = []
+    server.use(http.post(`${BASE_URL}/anlagen`, async ({ request }) => { bodies.push(await request.json()); return HttpResponse.json({}, { status: 201 }) }))
+    renderBusiness('anlagen')
+    fireEvent.click(await screen.findByTestId('anlage-neu'))
+    fireEvent.click(screen.getByTestId('anlage-methode-building_degressive'))
+    expect(screen.queryByTestId('anlage-kategorie')).toBeNull()
+    fill({ 'anlage-bezeichnung': 'Wohnhaus', 'anlage-konto': '0090', 'anlage-kosten': '300000' })
+    fireEvent.click(screen.getByTestId('anlage-nutzung-wohnen'))
+    fireEvent.change(screen.getByTestId('anlage-gebaeude-completed'), { target: { value: '01.12.2024' } })
+    fireEvent.change(screen.getByTestId('anlage-gebaeude-constructionStarted'), { target: { value: '15.11.2023' } })
+    fireEvent.click(screen.getByTestId('anlage-speichern'))
+    await waitFor(() => expect(bodies[0]).toMatchObject({ method: 'building_degressive', building: { use: 'wohnen', completed: '2024-12-01', constructionStarted: '2023-11-15' } }))
+
+    fireEvent.click(await screen.findByTestId('anlage-neu'))
+    fireEvent.click(screen.getByTestId('anlage-methode-linear'))
+    fill()
+    fireEvent.change(screen.getByTestId('anlage-nutzungsdauer'), { target: { value: '5' } })
+    expect(screen.queryByTestId('anlage-gewinn-vorjahr')).toBeNull()
+    fireEvent.change(screen.getByTestId('anlage-sonder-afa'), { target: { value: '100' } })
+    fireEvent.change(screen.getByTestId('anlage-gewinn-vorjahr'), { target: { value: '80.000,00' } })
+    fireEvent.click(screen.getByTestId('anlage-speichern'))
+    await waitFor(() => expect(bodies[1]).toMatchObject({ specialDepreciation: { byYear: { '2025': 10_000 }, priorYearProfitEur: 80_000 } }))
+  })
+
+  it('refuses a building without a completion date', async () => {
+    server.use(http.get(`${BASE_URL}/anlagen`, () => HttpResponse.json(REGISTER)))
+    useCatalogues()
+    renderBusiness('anlagen')
+    fireEvent.click(await screen.findByTestId('anlage-neu'))
+    fireEvent.click(screen.getByTestId('anlage-methode-building'))
+    fill()
+    fireEvent.click(screen.getByTestId('anlage-speichern'))
+    expect(await screen.findByText(/Bitte/)).toBeTruthy()
+  })
+
+  it('saves the § 15a correction of an asset, keeping the shares of earlier years', async () => {
+    server.use(http.get(`${BASE_URL}/anlagen`, () => HttpResponse.json({ ...REGISTER, records: [{ id: 'a1', vatCorrection: JSON.stringify({ inputVatCents: 570_000, originalShare: 1, shareByYear: { '2024': 1 } }) }] })))
+    useCatalogues()
+    let body: unknown = null
+    server.use(http.put(`${BASE_URL}/anlagen/a1/angaben`, async ({ request }) => { body = await request.json(); return HttpResponse.json({}) }))
+    renderBusiness('anlagen')
+    fireEvent.click(await screen.findByTestId('anlage-15a-a1'))
+    fireEvent.change(screen.getByTestId('anlage-15a-vorsteuer'), { target: { value: '5.700,00' } })
+    fireEvent.change(screen.getByTestId('anlage-15a-jahr'), { target: { value: '50' } })
+    fireEvent.click(screen.getByTestId('anlage-15a-speichern'))
+    await waitFor(() => expect(body).toEqual({ vatCorrection: { inputVatCents: 570_000, originalShare: 1, shareByYear: { '2024': 1, '2025': 0.5 } } }))
+  })
+
   it('offers the 75 % AfA of an electric vehicle without a useful life (§ 7 Abs. 2a EStG)', async () => {
     server.use(http.get(`${BASE_URL}/anlagen`, () => HttpResponse.json(REGISTER)))
     useCatalogues()

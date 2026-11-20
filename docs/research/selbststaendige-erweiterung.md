@@ -267,12 +267,31 @@ Die Regeln in `packages/core/src/domains/business` und die Vorsorge wurden gegen
   - § 13b mit 7 % in der Rechnung der Voranmeldung
 - **Gewerbesteuer:** Mindesthebesatz 280 % ab 2027.
 
-**Bleibt offen:**
-- **§ 13b mit 7 % buchen:** Dafür braucht das Buch eigene Steuerkonten. Die DATEV-Nummern (SKR03/SKR04) für Umsatz- und Vorsteuer nach § 13b mit 7 % ließen sich nicht aus einer Primärquelle belegen; ohne belegte Nummern legt die App keine Konten an.
-- **§ 15a und § 20 Nr. 2:** im Kern gerechnet, noch ohne Eingabe in der App (Verlauf des Vorsteueranteils je Anlagegut; Befreiung nach § 148 AO im Profil).
-- **Gebäude und § 7g-Sonder-AfA:** Beides lässt sich über die API noch nicht anlegen. Die Regeln im Kern stimmen jetzt.
-- **Geschenke:** Die 50-€-Grenze hängt am Wirtschaftsjahr (§ 52 Abs. 6 Satz 10). Die App führt nur Bücher nach Kalenderjahr, das macht keinen Unterschied.
-- **Lohnsteuer-Anmeldung:** Die Kürzungen Kz 33 und 45 rechnet die App nicht. Die Formel für Kz 48 ist aus dem Aufbau des Vordrucks geschlossen, nicht ausdrücklich belegt.
-- **Ungeklärt (Auslegung):**
-  - Gilt die Ausnahme nach Abs. 2 Satz 2 auch für den Entnahmeüberschuss nach § 34a Abs. 4?
-  - Ist der Höchstbetrag für den Verlustrücktrag (§ 10d Abs. 1 Satz 2) für beide Jahre gemeinsam?
+**Geschlossen am 20.11.2026 (zweiter Teil):**
+- **§ 13b mit 7 % buchbar:** Steuerschlüssel `rc13b7` und `rcEu7` auf den Konten ohne Steuersatz. Laut DATEV-Kontenrahmen 2026 (Art.-Nr. 11174 / 11175, gelesen) gibt es kein eigenes 7-%-Konto für § 13b:
+  - Umsatzsteuer nach § 13b UStG: SKR03 1785, SKR04 3835
+  - Abziehbare Vorsteuer nach § 13b UStG: SKR03 1578, SKR04 1408
+  - Die Voranmeldung versteuert den 7-%-Teil mit 7 %.
+- **Pauschale Lohnsteuer:** gebucht auf „Pauschale Steuer für Arbeitnehmer“ (SKR03 4198, SKR04 6039, DATEV 2026).
+- **§ 20 Satz 1 Nr. 2 UStG:** Die Befreiung nach § 148 AO steht im Profil, sobald man „Ist“ wählt.
+- **Gebäude über API und Seite:**
+  - Nutzung, Fertigstellung, Bauantrag
+  - bei 5 % degressiv Baubeginn oder Kaufvertrag
+  - neue Spalte `Anlagegut.gebaeude`, verschlüsselt
+- **§ 7g-Sonder-AfA** mit Gewinn des Vorjahres beim Anlegen.
+- **§ 15a UStG je Anlagegut:**
+  - Eingaben: Vorsteuer, ursprünglicher Anteil, Anteil je Jahr
+  - neue Spalte `Anlagegut.vorsteuerberichtigung`, verschlüsselt
+  - Die Berichtigung des Jahres fließt in die Jahres-Umsatzsteuer; die Seite listet sie je Anlagegut.
+  - Die Kennzahl der Zeile „Berichtigung des Vorsteuerabzugs (§ 15a UStG)“ in USt 2 A steht nicht im erzeugten Formularkatalog. Die App nennt deshalb die Zeile mit Namen statt mit einer ungeprüften Kennzahl.
+- **Lohnsteuer-Anmeldung:**
+  - Kz 45 BAV-Förderbetrag (§ 100 EStG, höchstens 288 € je Arbeitnehmer und Jahr)
+  - Kz 90 Zahl der Arbeitnehmer mit Förderbetrag
+  - Kz 48 = 42 + 41 + 44 − 45
+  - Kz 33 (Handelsschiffe, § 41a Abs. 4) kommt in der App nicht vor.
+- **Ausfüllhilfe USt 2 A:** EU-Leistungen (§ 13b Abs. 1) und andere § 13b-Leistungen haben je eine eigene Zeile. Die Vorsteuer steht getrennt nach Rechnungen, EU-Erwerb und § 13b; vorher stand alles in „Vorsteuer aus Rechnungen“.
+
+**Bleibt offen (Auslegung, ohne BMF-Schreiben nicht zu entscheiden):**
+- Gilt die Ausnahme nach Abs. 2 Satz 2 auch für den Entnahmeüberschuss nach § 34a Abs. 4?
+- Ist der Höchstbetrag für den Verlustrücktrag (§ 10d Abs. 1 Satz 2) für beide Jahre gemeinsam?
+- Der BAV-Förderbetrag mindert die abzuführende Lohnsteuer, wird aber nicht gesondert gebucht. Die Zahlung an das Finanzamt bucht der Nutzer in der gezahlten Höhe.

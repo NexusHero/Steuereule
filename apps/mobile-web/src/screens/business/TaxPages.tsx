@@ -73,9 +73,18 @@ export function VatPage({ taxYear, person, business = 1, onBack }: BusinessPageP
         <Figure label={tr('business.ust.umsatzsteuerErmaessigt')} value={plainEuro(vat.result.outputVat.reduced)} />
         <Figure label={tr('business.ust.vorsteuer')} value={plainEuro(vat.result.inputVatDeductibleEur)} />
         <Figure label={tr('business.ust.jahr')} value={plainEuro(vat.result.vatOfYearEur)} />
+        {vat.result.inputVatCorrectionEur !== 0 ? <Figure label={tr('business.ust.berichtigung15a')} value={plainEuro(vat.result.inputVatCorrectionEur)} testID="ust-15a" /> : null}
         <Figure label={tr('business.ust.vorauszahlungen')} value={plainEuro(vat.result.prepaymentsEur)} />
         <Figure strong label={vat.result.balanceEur < 0 ? tr('business.ust.erstattung') : tr('business.ust.nachzahlung')} value={plainEuro(Math.abs(vat.result.balanceEur))} testID="ust-saldo" />
       </Section>
+      {vat.inputVatCorrections.length > 0 ? (
+        <Section title={tr('business.ust.berichtigung15aTitel')} testID="ust-15a-liste">
+          <Note>{tr('business.ust.berichtigung15aHinweis')}</Note>
+          {vat.inputVatCorrections.map((c) => (
+            <Figure key={c.assetId} label={c.inPrepayment ? `${c.label} · ${tr('business.ust.berichtigung15aVa')}` : c.label} value={plainEuro(c.correctionEur)} />
+          ))}
+        </Section>
+      ) : null}
       <Section title={tr('business.ust.vorauszahlungenTitel')}>
         <Feld label={tr('business.ust.vorauszahlungenFeld')}>
           <Input

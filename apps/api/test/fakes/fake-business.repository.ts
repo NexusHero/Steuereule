@@ -126,6 +126,13 @@ export class FakeBusinessRepository implements BusinessRepository {
     return record
   }
 
+  async setAssetFacts(userId: string, assetId: string, facts: { readonly specialDepreciation?: string | null; readonly vatCorrection?: string | null }) {
+    const asset = this.assets.find((a) => a.id === assetId && a.userId === userId)
+    if (!asset) return null
+    Object.assign(asset, facts)
+    return asset
+  }
+
   async setAssetDisposal(userId: string, assetId: string, disposal: string) {
     const asset = this.assets.find((a) => a.id === assetId && a.userId === userId)
     if (!asset) return null

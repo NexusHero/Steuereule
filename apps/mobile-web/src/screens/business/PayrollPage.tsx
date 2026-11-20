@@ -10,7 +10,7 @@ import { personParams, plainEuro, type ApiProblem } from './businessKit'
 import { attempt, queryProblem, useRefreshBusiness } from './useBusiness'
 import type { BusinessPageProps } from './BusinessScreen'
 
-const KZ_FIRST = ['86', '42', '41', '44', '48', '49', '47', '61', '62'] as const
+const KZ_FIRST = ['86', '90', '42', '41', '44', '45', '48', '49', '47', '61', '62'] as const
 /** The Anmeldung's lines in form order; the Land lines for other communities (63–78) after 62, 83 last. */
 const kzOrder = (kennzahlen: Readonly<Record<string, number>>) => [
   ...KZ_FIRST.filter((kz) => kennzahlen[kz] !== undefined),
@@ -18,7 +18,7 @@ const kzOrder = (kennzahlen: Readonly<Record<string, number>>) => [
   ...(kennzahlen['83'] !== undefined ? ['83'] : []),
 ]
 const KNOWN_KZ: ReadonlySet<string> = new Set([...KZ_FIRST, '83'])
-const AMOUNTS = ['wageTaxEur', 'soliEur', 'churchTaxEur', 'employeeSocialEur', 'employerSocialEur', 'flatWageTaxEur', 'flat37bTaxEur', 'flatChurchTaxEur'] as const
+const AMOUNTS = ['wageTaxEur', 'soliEur', 'churchTaxEur', 'employeeSocialEur', 'employerSocialEur', 'flatWageTaxEur', 'flat37bTaxEur', 'flatChurchTaxEur', 'bavSupportEur'] as const
 type Church = NonNullable<PayrollRunInputDto['church']>
 const OTHER_CHURCHES = Object.values(PayrollRunInputDtoChurch).filter((c) => c !== 'ev' && c !== 'rk')
 const dateDe = (iso: string) => `${iso.slice(8, 10)}.${iso.slice(5, 7)}.${iso.slice(0, 4)}`
@@ -172,7 +172,7 @@ export function PayrollPage({ taxYear, person, business = 1, onBack }: BusinessP
           <View key={w.label} style={{ marginBottom: t.space.s3 }} testID={`lohn-lsta-${w.label}`}>
             <Text style={{ ...t.type.bodyStrong, color: t.color.tinte }}>{`${w.label} · ${tr('business.va.faellig', { datum: dateDe(w.due) })}`}</Text>
             {kzOrder(w.kennzahlen).map((kz) => (
-              <Figure key={kz} label={`Kz ${kz} · ${tr(KNOWN_KZ.has(kz) ? `business.lohn.kz.${kz}` : 'business.lohn.kz.land')}`} value={kz === '86' ? String(w.kennzahlen[kz]) : plainEuro(w.kennzahlen[kz]!)} />
+              <Figure key={kz} label={`Kz ${kz} · ${tr(KNOWN_KZ.has(kz) ? `business.lohn.kz.${kz}` : 'business.lohn.kz.land')}`} value={kz === '86' || kz === '90' ? String(w.kennzahlen[kz]) : plainEuro(w.kennzahlen[kz]!)} />
             ))}
           </View>
         ))}

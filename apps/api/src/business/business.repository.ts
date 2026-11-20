@@ -91,6 +91,10 @@ export interface FixedAssetRecord {
   readonly specialDepreciation: string | null
   /** JSON `{ date, proceedsCents }`. */
   readonly disposal: string | null
+  /** JSON `{ use, completed, applicationFiled?, constructionStarted?, contractSigned? }` (§ 7 Abs. 4, 5a EStG). */
+  readonly buildingFacts: string | null
+  /** JSON `{ inputVatCents, originalShare, shareByYear, disposalShare? }` (§ 15a UStG). */
+  readonly vatCorrection: string | null
 }
 
 export type NewFixedAsset = Omit<FixedAssetRecord, 'id'>
@@ -157,6 +161,8 @@ export interface BusinessRepository {
   listAssets(userId: string, ref: BusinessRef, throughYear: number): Promise<FixedAssetRecord[]>
   createAsset(userId: string, asset: NewFixedAsset): Promise<FixedAssetRecord>
   setAssetDisposal(userId: string, assetId: string, disposal: string): Promise<FixedAssetRecord | null>
+  /** The Sonder-AfA and the Vorsteuerberichtigung of an asset; `null` clears one, an absent key keeps it. */
+  setAssetFacts(userId: string, assetId: string, facts: { readonly specialDepreciation?: string | null; readonly vatCorrection?: string | null }): Promise<FixedAssetRecord | null>
 
   listBankTransactions(userId: string, taxYear: number, ref: BusinessRef): Promise<BankTransactionRecord[]>
   /** Inserts the transactions whose fingerprint is new for the book; returns how many were new. */

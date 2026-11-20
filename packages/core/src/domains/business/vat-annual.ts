@@ -64,12 +64,16 @@ export interface VatAnnualInput {
   readonly inputVatEur: number
   /** The prepayments of the year as the user paid them (sum of the Voranmeldungen and Sondervorauszahlung). */
   readonly prepaymentsEur: number
+  /** The Vorsteuerberichtigung of the year (§ 15a UStG): positive more input tax, negative to pay back. */
+  readonly inputVatCorrectionEur?: number | undefined
 }
 
 export interface VatAnnualResult {
   readonly outputVat: Readonly<Record<VatRateKind, number>>
   readonly reverseChargeVatEur: number
   readonly inputVatDeductibleEur: number
+  /** The § 15a correction inside `vatOfYearEur`. */
+  readonly inputVatCorrectionEur: number
   /** Umsatzsteuer of the year (verbleibende Umsatzsteuer before the prepayments). */
   readonly vatOfYearEur: number
   readonly prepaymentsEur: number
@@ -101,11 +105,14 @@ export function vatAnnualReturn(input: VatAnnualInput): VatAnnualResult {
   const reverse = taxByRate(input.reverseChargeNetEur)
   const reverseChargeVatEur = cents(reverse.standard + reverse.reduced)
   const inputVatDeductibleEur = small ? 0 : cents(input.inputVatEur + reverseChargeVatEur)
-  const vatOfYearEur = cents(outputVat.standard + outputVat.reduced + reverseChargeVatEur - inputVatDeductibleEur)
+  // § 15a also binds a Kleinunternehmer: a move to or from § 19 is a change of the deductible share.
+  const inputVatCorrectionEur = cents(input.inputVatCorrectionEur ?? 0)
+  const vatOfYearEur = cents(outputVat.standard + outputVat.reduced + reverseChargeVatEur - inputVatDeductibleEur - inputVatCorrectionEur)
   return {
     outputVat,
     reverseChargeVatEur,
     inputVatDeductibleEur,
+    inputVatCorrectionEur,
     vatOfYearEur,
     prepaymentsEur: input.prepaymentsEur,
     balanceEur: cents(vatOfYearEur - input.prepaymentsEur),

@@ -4178,6 +4178,110 @@
         ]
       }
     },
+    "/v1/steuerjahre/{jahr}/selbststaendig/anlagen/{anlageId}/angaben": {
+      "put": {
+        "operationId": "BusinessController_setAssetFacts",
+        "parameters": [
+          {
+            "name": "anlageId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "Whose business: A (default) or B of a joint return.",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssetFactsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The § 7g Sonder-AfA and the § 15a Vorsteuerberichtigung of the asset; null clears one.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FixedAssetDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body fails validation (`fields`) or a business rule (`code`, German `message`), e.g. BOOKING_UNBALANCED, LEDGER_PERIOD_LOCKED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "403": {
+            "description": "SELF_EMPLOYMENT_DISABLED (switch off) or SELF_EMPLOYMENT_NOT_DECLARED (no self-employment in the interview).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The entry, transaction, asset or form does not exist for this account.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "selbststaendig"
+        ]
+      }
+    },
     "/v1/steuerjahre/{jahr}/selbststaendig/anlagen/{anlageId}/abgang": {
       "post": {
         "operationId": "BusinessController_disposeAsset",
@@ -13485,6 +13589,10 @@
           "chooseMonthly": {
             "type": "boolean",
             "description": "Monthly by choice after a refund above the limit (§ 18 Abs. 2a UStG)."
+          },
+          "exemptFromBookkeeping": {
+            "type": "boolean",
+            "description": "Freed from keeping books by the office (§ 148 AO): Istversteuerung whatever the turnover (§ 20 Satz 1 Nr. 2 UStG)."
           }
         }
       },
@@ -14891,7 +14999,8 @@
               "elektrofahrzeug",
               "gwg",
               "sofort",
-              "building"
+              "building",
+              "building_degressive"
             ]
           },
           "category": {
@@ -14955,6 +15064,16 @@
             "type": "string",
             "nullable": true,
             "description": "JSON: { date, proceedsCents }."
+          },
+          "buildingFacts": {
+            "type": "string",
+            "nullable": true,
+            "description": "JSON: { use, completed, applicationFiled?, constructionStarted?, contractSigned? } (§ 7 Abs. 4, 5a EStG)."
+          },
+          "vatCorrection": {
+            "type": "string",
+            "nullable": true,
+            "description": "JSON: { inputVatCents, originalShare, shareByYear, disposalShare? } (§ 15a UStG)."
           }
         },
         "required": [
@@ -14969,7 +15088,9 @@
           "category",
           "usefulLifeYears",
           "specialDepreciation",
-          "disposal"
+          "disposal",
+          "buildingFacts",
+          "vatCorrection"
         ]
       },
       "AssetsResponseDto": {
@@ -14988,6 +15109,66 @@
         "required": [
           "register",
           "records"
+        ]
+      },
+      "BuildingFactsDto": {
+        "type": "object",
+        "properties": {
+          "use": {
+            "type": "string",
+            "enum": [
+              "betrieb",
+              "wohnen"
+            ],
+            "description": "'betrieb': not used for living (Abs. 4 Nr. 1); 'wohnen': living (Nr. 2, Abs. 5a)."
+          },
+          "completed": {
+            "type": "string",
+            "example": "2024-05-01",
+            "description": "Completion (Fertigstellung)."
+          },
+          "applicationFiled": {
+            "type": "string",
+            "example": "2024-05-01",
+            "description": "Bauantrag: 3 % for a business building only when filed after 31.3.1985."
+          },
+          "constructionStarted": {
+            "type": "string",
+            "example": "2024-05-01",
+            "description": "Baubeginn (Abs. 5a)."
+          },
+          "contractSigned": {
+            "type": "string",
+            "example": "2024-05-01",
+            "description": "Purchase contract of a building bought by the end of its completion year (Abs. 5a)."
+          }
+        },
+        "required": [
+          "use",
+          "completed"
+        ]
+      },
+      "SpecialDepreciationDto": {
+        "type": "object",
+        "properties": {
+          "byYear": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "description": "Year → Sonder-AfA in cents, the acquisition year and the four after it."
+          },
+          "costReduction": {
+            "type": "number",
+            "description": "Cut of the cost by the IAB added back, cents (§ 7g Abs. 2)."
+          },
+          "priorYearProfitEur": {
+            "type": "number",
+            "description": "Profit of the business year before the acquisition, euros (§ 7g Abs. 6 Nr. 1: at most 200.000 €)."
+          }
+        },
+        "required": [
+          "byYear"
         ]
       },
       "FixedAssetInputDto": {
@@ -15015,9 +15196,11 @@
               "degressive",
               "elektrofahrzeug",
               "gwg",
-              "sofort"
+              "sofort",
+              "building",
+              "building_degressive"
             ],
-            "description": "'elektrofahrzeug': § 7 Abs. 2a EStG, 75/10/5/5/3/2 % for an electric vehicle bought 1.7.2025–31.12.2027."
+            "description": "'elektrofahrzeug': § 7 Abs. 2a EStG, 75/10/5/5/3/2 % for an electric vehicle bought 1.7.2025–31.12.2027; 'building' and 'building_degressive' need `building`."
           },
           "category": {
             "type": "string",
@@ -15069,6 +15252,12 @@
           },
           "usefulLifeYears": {
             "type": "number"
+          },
+          "building": {
+            "$ref": "#/components/schemas/BuildingFactsDto"
+          },
+          "specialDepreciation": {
+            "$ref": "#/components/schemas/SpecialDepreciationDto"
           }
         },
         "required": [
@@ -15078,6 +15267,58 @@
           "acquisitionCostCents",
           "method"
         ]
+      },
+      "VatCorrectionDto": {
+        "type": "object",
+        "properties": {
+          "inputVatCents": {
+            "type": "number",
+            "description": "Input VAT on the acquisition cost, cents."
+          },
+          "originalShare": {
+            "type": "number",
+            "description": "Share originally deducted, 0–1."
+          },
+          "shareByYear": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number"
+            },
+            "description": "Year → deductible share as it turned out, 0–1."
+          },
+          "disposalShare": {
+            "type": "number",
+            "description": "The share the sale or Entnahme allows (1 taxable, 0 tax-free); dated by the disposal."
+          }
+        },
+        "required": [
+          "inputVatCents",
+          "originalShare",
+          "shareByYear"
+        ]
+      },
+      "AssetFactsDto": {
+        "type": "object",
+        "properties": {
+          "specialDepreciation": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SpecialDepreciationDto"
+              }
+            ]
+          },
+          "vatCorrection": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/VatCorrectionDto"
+              }
+            ]
+          }
+        }
       },
       "AssetDisposalDto": {
         "type": "object",
@@ -15893,6 +16134,10 @@
             "type": "number",
             "description": "Pauschale Kirchensteuer in the simplified procedure, Kz 47."
           },
+          "bavSupportEur": {
+            "type": "number",
+            "description": "BAV-Förderbetrag taken off the wage tax (§ 100 EStG), Kz 45; at most 288 € a year per employee."
+          },
           "employeeSocialEur": {
             "type": "number",
             "description": "The employee’s share of social security."
@@ -16286,6 +16531,10 @@
             "type": "number",
             "description": "Euros."
           },
+          "inputVatCorrectionEur": {
+            "type": "number",
+            "description": "The Vorsteuerberichtigung of the year inside the VAT (§ 15a UStG): positive more input tax, negative to pay back."
+          },
           "vatOfYearEur": {
             "type": "number",
             "description": "Umsatzsteuer of the year before the prepayments, euros."
@@ -16303,6 +16552,7 @@
           "outputVat",
           "reverseChargeVatEur",
           "inputVatDeductibleEur",
+          "inputVatCorrectionEur",
           "vatOfYearEur",
           "prepaymentsEur",
           "balanceEur"
@@ -16366,6 +16616,31 @@
           "taxedFrom"
         ]
       },
+      "InputVatCorrectionLineDto": {
+        "type": "object",
+        "properties": {
+          "assetId": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "correctionEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "inPrepayment": {
+            "type": "boolean",
+            "description": "Above 6.000 € or in the year of a sale: already in the Voranmeldung (§ 44 Abs. 3 UStDV)."
+          }
+        },
+        "required": [
+          "assetId",
+          "label",
+          "correctionEur",
+          "inPrepayment"
+        ]
+      },
       "VatReturnDto": {
         "type": "object",
         "properties": {
@@ -16381,13 +16656,21 @@
           },
           "smallBusiness": {
             "$ref": "#/components/schemas/SmallBusinessCheckDto"
+          },
+          "inputVatCorrections": {
+            "description": "The § 15a corrections of the year per asset.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InputVatCorrectionLineDto"
+            }
           }
         },
         "required": [
           "figures",
           "result",
           "cashAccountingAllowed",
-          "smallBusiness"
+          "smallBusiness",
+          "inputVatCorrections"
         ]
       },
       "TradeTaxResultDto": {
