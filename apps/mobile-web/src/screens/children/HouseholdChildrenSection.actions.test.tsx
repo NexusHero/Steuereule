@@ -1,0 +1,126 @@
+// Household children — the remaining actions: toggling the offered children, "ja" to a duplicate
+// question, leaving the household, cancelling a deletion, the over-25 hint and the failure notice.
+import { describe, expect, it, vi } from 'vitest'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { I18nextProvider } from 'react-i18next'
+import { ThemeProvider } from '@steuereule/ui'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { http, HttpResponse } from 'msw'
+import type { HouseholdPersonDto, HouseholdResponseDto } from '@steuereule/api-client'
+import { createAppI18n } from '../../i18n/app-i18n'
+import { server } from '../../test-msw-server'
+import { HouseholdChildrenSection } from './HouseholdChildrenSection'
+
+const person = (over: Partial<HouseholdPersonDto>): HouseholdPersonDto => ({
+  personId: 'p1',
+  kind: 'child',
+  firstName: 'Mila',
+  lastName: 'Richter',
+  birthDate: '2019-05-12',
+  childId: null,
+  inThisYear: false,
+  fromYear: 2025,
+  preselected: true,
+  selectable: true,
+  asksForEducation: false,
+  leftFromYear: null,
+  updatedBySelf: true,
+  updatedAt: '2026-01-05T10:00:00.000Z',
+  ...over,
+})
+
+const household = (persons: HouseholdPersonDto[], candidates: HouseholdResponseDto['candidates'] = []): HouseholdResponseDto => ({
+  householdUserId: 'user',
+  persons,
+  candidates,
+  partnerLink: null,
+})
+
+function renderSection(onChanged = vi.fn(async () => {})) {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+  render(
+    <QueryClientProvider client={queryClient}>
+      <I18nextProvider i18n={createAppI18n('de')}>
+        <ThemeProvider mode="light">
+          <HouseholdChildrenSection taxYear={2026} onChanged={onChanged} />
+        </ThemeProvider>
+      </I18nextProvider>
+    </QueryClientProvider>,
+  )
+  return { onChanged }
+}
+
+const serveHousehold = (body: HouseholdResponseDto) => server.use(http.get('*/v1/steuerjahre/2026/haushalt', () => HttpResponse.json(body)))
+
+describe('HouseholdChildrenSection — actions', () => {
+  it('lets the user untick and tick a child, names the over-25 hint, and disables taking over nothing', async () => {
+    serveHousehold(household([person({}), person({ personId: 'p2', firstName: 'Jonas', birthDate: '1999-03-01', preselected: false })]))
+    renderSection()
+    const mila = await screen.findByTestId('haushalt-kind-0')
+    await waitFor(() => expect(mila.getAttribute('aria-checked')).toBe('true'))
+    expect(screen.getByTestId('haushalt-kind-1').textContent).toContain('aus 2025')
+
+    fireEvent.click(mila)
+    await waitFor(() => expect(mila.getAttribute('aria-checked')).toBe('false'))
+    expect(screen.getByTestId('haushalt-uebernehmen').getAttribute('aria-disabled') ?? screen.getByTestId('haushalt-uebernehmen').hasAttribute('disabled')).toBeTruthy()
+
+    fireEvent.click(screen.getByTestId('haushalt-kind-1').querySelector('[role="button"]') ?? screen.getByTestId('haushalt-kind-1'))
+    await waitFor(() => expect(screen.getByTestId('haushalt-kind-1').getAttribute('aria-checked')).toBe('true'))
+  })
+
+  it('confirms a duplicate with "ja"', async () => {
+    let answered: unknown = null
+    serveHousehold(
+      household([], [{ id: 'c1', a: { personId: 'p1', name: 'Mila Richter', birthDate: '2019-05-12' }, b: { personId: 'p2', name: 'Milla Richter', birthDate: '2019-05-12' } }]),
+    )
+    server.use(
+      http.post('*/v1/steuerjahre/2026/haushalt/dubletten/c1', async ({ request }) => {
+        answered = await request.json()
+        return HttpResponse.json(household([]))
+      }),
+    )
+    const { onChanged } = renderSection()
+    await act(async () => {
+      fireEvent.click(await screen.findByTestId('haushalt-dublette-ja'))
+    })
+    await waitFor(() => expect(answered).toEqual({ same: true }))
+    await waitFor(() => expect(onChanged).toHaveBeenCalled())
+  })
+
+  it('takes a child out of this year and keeps the cancel path of the deletion warning', async () => {
+    let left = 0
+    serveHousehold(household([person({ inThisYear: true, childId: 'k1', asksForEducation: true })]))
+    server.use(
+      http.post('*/v1/steuerjahre/2026/haushalt/personen/p1/nicht-mehr-dabei', () => {
+        left += 1
+        return HttpResponse.json(household([]))
+      }),
+      http.delete('*/v1/steuerjahre/2026/haushalt/personen/p1', () => HttpResponse.json(household([]))),
+    )
+    renderSection()
+    await screen.findByTestId('haushalt-dabei-0')
+    expect(screen.queryByTestId('haushalt-geaendert-0')).toBeNull()
+
+    fireEvent.click(screen.getByTestId('haushalt-loeschen-0'))
+    expect(screen.getByTestId('haushalt-loeschen-warnung')).toBeTruthy()
+    fireEvent.click(screen.getByTestId('haushalt-loeschen-abbrechen'))
+    expect(screen.queryByTestId('haushalt-loeschen-warnung')).toBeNull()
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('haushalt-nicht-mehr-dabei-0'))
+    })
+    await waitFor(() => expect(left).toBe(1))
+  })
+
+  it('says so when a household action fails, and does not report a change', async () => {
+    serveHousehold(household([person({ inThisYear: true, childId: 'k1' })]))
+    server.use(http.delete('*/v1/steuerjahre/2026/haushalt/personen/p1', () => HttpResponse.json({ message: 'no' }, { status: 500 })))
+    const { onChanged } = renderSection()
+    fireEvent.click(await screen.findByTestId('haushalt-loeschen-0'))
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('haushalt-loeschen-bestaetigen'))
+    })
+    expect(await screen.findByTestId('haushalt-fehler')).toBeTruthy()
+    expect(onChanged).not.toHaveBeenCalled()
+  })
+})
