@@ -65,19 +65,20 @@ function render(data, sources) {
     '',
     "import type { ExtractedLine } from './types'",
     '',
-    '/** Per form and tax year: the rows read from that year\'s PDF, in form order. */',
-    'export const EXTRACTED_LINES: Readonly<Record<string, Readonly<Record<number, readonly ExtractedLine[]>>>> = {',
+    '// One JSON string per form: rows of a form repeat from year to year, and as code they read as',
+    '// duplicated blocks to the duplication check; as data they are what they are.',
+    'const DATA: Readonly<Record<string, string>> = {',
   ]
-  for (const [form, years] of Object.entries(data)) {
-    lines.push(`  ${JSON.stringify(form)}: {`)
-    for (const [year, rows] of Object.entries(years)) {
-      lines.push(`    ${year}: [`)
-      for (const r of rows) lines.push(`      ${JSON.stringify(r).replace(/"(id|zeile|kz|label)":/g, '$1: ')},`)
-      lines.push('    ],')
-    }
-    lines.push('  },')
-  }
-  lines.push('}', '')
+  for (const [form, years] of Object.entries(data)) lines.push(`  ${JSON.stringify(form)}: ${JSON.stringify(JSON.stringify(years))},`)
+  lines.push(
+    '}',
+    '',
+    '/** Per form and tax year: the rows read from that year\'s PDF, in form order. */',
+    'export const EXTRACTED_LINES: Readonly<Record<string, Readonly<Record<number, readonly ExtractedLine[]>>>> = Object.fromEntries(',
+    '  Object.entries(DATA).map(([form, json]) => [form, JSON.parse(json) as Record<number, readonly ExtractedLine[]>]),',
+    ')',
+    '',
+  )
   lines.push('/** SHA-256 of the PDF each year was read from, to tell a re-published form from the one checked here. */')
   lines.push('export const SOURCE_SHA256: Readonly<Record<string, Readonly<Record<number, string>>>> = {')
   for (const [form, years] of Object.entries(sources)) {

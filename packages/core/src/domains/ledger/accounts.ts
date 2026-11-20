@@ -1,6 +1,5 @@
 import type { EuerKey } from '../business/euer-keys'
-import { SKR03_NUMBERS } from './accounts-skr03'
-import { SKR04_NUMBERS } from './accounts-skr04'
+import { SKR03_NUMBERS, SKR04_NUMBERS } from './accounts-numbers'
 
 /**
  * The charts of accounts SKR03 and SKR04 (ADR-0101 §12), curated for a sole trader or freelancer.
