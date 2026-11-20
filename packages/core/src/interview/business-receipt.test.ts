@@ -52,3 +52,22 @@ describe('business receipt → booking draft (ADR-0101 §6, §18)', () => {
     expect(bookingDraftFromReceipt(readBusinessReceipt('Danke für Ihren Einkauf'), { chart: 'SKR03', smallBusiness: false, year: 2025, direction: 'ausgabe' })).toMatchObject({ ok: false })
   })
 })
+
+describe('reading receipt text stays linear (Sonar S8786)', () => {
+  it('reads grouped and plain amounts as before', () => {
+    // A Netto line is never the total; plain „Gesamt“ and „Brutto“ are (common on till receipts).
+    expect(readBusinessReceipt('Rechnung Nr. R-2025/17\nNetto 1.234,56 €\n19 % USt').grossCents).toBeNull()
+    expect(readBusinessReceipt('Gesamt 1.234,56 €\nMwSt 19%').grossCents).toBe(123456)
+    expect(readBusinessReceipt('Brutto 99,00\n19,00 %').grossCents).toBe(9900)
+    expect(readBusinessReceipt('Summe 1 234,56 EUR').grossCents).toBe(123456)
+    expect(readBusinessReceipt('Beleg-Nr: B12\nSumme 1234,56').grossCents).toBe(123456)
+    expect(readBusinessReceipt('Invoice no. INV9\nTotal 12.34').grossCents).toBe(1234)
+  })
+
+  it('does not stall on long hostile input', () => {
+    const hostile = `${'1 '.repeat(20_000)}x ${'Rechnungsnr'.repeat(2_000)} ${'19 '.repeat(20_000)}`
+    const started = Date.now()
+    readBusinessReceipt(hostile)
+    expect(Date.now() - started).toBeLessThan(500)
+  })
+})

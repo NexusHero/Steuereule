@@ -96,9 +96,7 @@ export function parseXml(input: string): XmlElement {
       if (nameMatch === null) throw new XmlError('Element ohne Namen')
       const qname = nameMatch[0]
       const attrs: Record<string, string> = {}
-      const attrRe = /([^\s=]+)\s*=\s*("([^"]*)"|'([^']*)')/g
-      let m: RegExpExecArray | null
-      while ((m = attrRe.exec(body.slice(qname.length))) !== null) attrs[m[1]!] = decode(m[3] ?? m[4] ?? '')
+      for (const [name, value] of parseAttributes(body.slice(qname.length))) attrs[name] = decode(value)
       if (root !== null) throw new XmlError('Mehr als ein Wurzelelement')
       if (selfClosing) {
         const element: XmlElement = { qname, name: localName(qname), attrs, children: [], text: '' }
@@ -145,4 +143,31 @@ export function at(element: XmlElement | null, path: string): XmlElement | null 
 export function textAt(element: XmlElement | null, path: string): string | null {
   const found = at(element, path)
   return found === null ? null : found.text
+}
+
+/**
+ * The attributes of a start tag (`name="value"` or `name='value'`), read in one pass: a bank file is
+ * user input, and a backtracking pattern over a long tag would let one upload stall the parser.
+ */
+function parseAttributes(source: string): [string, string][] {
+  const out: [string, string][] = []
+  let i = 0
+  const isSpace = (c: string | undefined) => c === ' ' || c === '\n' || c === '\r' || c === '\t'
+  while (i < source.length) {
+    while (isSpace(source[i])) i++
+    const nameStart = i
+    while (i < source.length && !isSpace(source[i]) && source[i] !== '=') i++
+    const name = source.slice(nameStart, i)
+    while (isSpace(source[i])) i++
+    if (name === '' || source[i] !== '=') break
+    i++
+    while (isSpace(source[i])) i++
+    const quote = source[i]
+    if (quote !== '"' && quote !== "'") break
+    const end = source.indexOf(quote, i + 1)
+    if (end < 0) break
+    out.push([name, source.slice(i + 1, end)])
+    i = end + 1
+  }
+  return out
 }
