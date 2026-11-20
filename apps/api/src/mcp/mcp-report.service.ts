@@ -99,6 +99,44 @@ export class McpReportService {
   }
 
   /**
+   * The way from the income to the result, in the figures of the app's own estimate (never recomputed):
+   * what an assistant needs to explain the result and to find where a notice differs.
+   */
+  async breakdown(userId: string, taxYear: number): Promise<Record<string, unknown>> {
+    const status = await this.estimate.getState(userId, taxYear)
+    if (status.kind === 'offen') return { ok: false, grund: 'offen', fehlt: [...status.missing] }
+    if (status.kind !== 'spanne') return { ok: false, grund: status.reason }
+    // A range collapses to its figure where both ends agree, which is the rule once every line is known.
+    const figure = (range: { readonly from: number; readonly to: number }) => (range.from === range.to ? range.from : { vonEur: range.from, bisEur: range.to })
+    const steps = status.breakdown
+    const child = steps?.childAllowance
+    return {
+      ok: true,
+      taxYear,
+      zusammenveranlagung: status.jointAssessment === true,
+      ...(steps?.persons ? { personen: steps.persons.map((p, i) => ({ person: i === 0 ? 'A' : 'B', einkuenfteEur: p.incomeEur, werbungskostenEur: p.workExpensesEur, angerechneteSteuerEur: p.creditedTaxEur })) } : {}),
+      ...(steps?.rentalSurplusEur !== undefined ? { vermietungEur: steps.rentalSurplusEur } : {}),
+      ...(steps ? { summeDerEinkuenfteEur: steps.totalIncomeEur } : {}),
+      vorsorgeAbzugEur: figure(status.provision),
+      ...(steps?.provision ? { vorsorgeZeilen: steps.provision } : {}),
+      sonderausgabenEur: status.specialExpenses,
+      ...(steps ? { aussergewoehnlicheBelastungenEur: steps.extraordinaryBurdenEur } : {}),
+      ...(child ? { kinder: { freibetragEur: child.allowanceEur, kindergeldEur: child.childBenefitEur, freibetragAngesetzt: child.used } } : {}),
+      zuVersteuerndesEinkommenEur: figure(status.taxableIncome),
+      ...(steps ? { tariflicheEinkommensteuerEur: figure(steps.tariffTax), steuerermaessigung35aEur: steps.householdReductionEur } : {}),
+      ...(child?.used ? { hinzugerechnetesKindergeldEur: child.childBenefitEur } : {}),
+      ...(steps?.capitalFlatTaxEur !== undefined ? { abgeltungsteuerEur: steps.capitalFlatTaxEur } : {}),
+      einkommensteuerEur: figure(status.incomeTax),
+      solidaritaetszuschlagEur: figure(status.solidaritaetszuschlag),
+      kirchensteuer: status.churchTaxOpen ? 'offen: Kirchensteuerpflicht oder Konfession fehlt' : (status.churchTax ?? 'keine'),
+      angerechnetEur: status.anrechnung,
+      vorauszahlungenEur: status.prepayments ?? 0,
+      ergebnisEur: figure(status.result),
+      lesehilfe: 'einkommensteuerEur = tarifliche Steuer − § 35a + hinzugerechnetes Kindergeld + Abgeltungsteuer. ergebnisEur: positiv = Erstattung, negativ = Nachzahlung, nach Anrechnung und Vorauszahlungen.',
+    }
+  }
+
+  /**
    * The refund before and after an entry, by the app's own estimate, through the very write path an
    * entry uses, inside a transaction that is always rolled back.
    */

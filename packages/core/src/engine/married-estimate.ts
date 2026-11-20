@@ -230,7 +230,8 @@ export function estimateMarriedCouple(input: MarriedEstimateInput): MarriedEstim
       : 0
   // With the lines of every spouse the deduction is the one on the notice; otherwise the range (ADR-0094).
   const details = spouses.map((s) => s.detail).filter((d) => d !== null)
-  const exact = details.length > 0 && details.every((d) => d !== undefined) ? deductibleProvision(input.year, details as PersonProvision[], input.childrenProvision).totalEur : null
+  const provisionLines = details.length > 0 && details.every((d) => d !== undefined) ? deductibleProvision(input.year, details as PersonProvision[], input.childrenProvision) : null
+  const exact = provisionLines?.totalEur ?? null
   const provision =
     exact !== null
       ? { from: exact, to: exact }
@@ -309,6 +310,17 @@ export function estimateMarriedCouple(input: MarriedEstimateInput): MarriedEstim
     },
     childAllowanceUsed,
     churchTax,
+    breakdown: {
+      persons: spouses.map((s) => ({ incomeEur: s.income, workExpensesEur: s.werbungskosten, creditedTaxEur: s.credit })),
+      ...(input.rentalSurplus !== 0 ? { rentalSurplusEur: input.rentalSurplus } : {}),
+      totalIncomeEur: income,
+      ...(provisionLines ? { provision: provisionLines } : {}),
+      extraordinaryBurdenEur: deductibleBurdenEur,
+      childAllowance: { allowanceEur: allowance, childBenefitEur: input.childBenefit, used: childAllowanceUsed },
+      tariffTax: { from: tariffAt(zve.from), to: tariffAt(zve.to) },
+      householdReductionEur: afterCredit(tariffAt(zve.to)).taxEur - reducedTariffTaxFor(zve.to),
+      ...(flatTax > 0 ? { capitalFlatTaxEur: flatTax } : {}),
+    },
     ...(withBusiness
       ? {
           business: {

@@ -5,7 +5,7 @@ import { calculateExtraordinaryBurden, type BurdenChildrenBracket } from '../dom
 import { churchTaxOnIncome, type ChurchMembership } from '../domains/church-tax'
 import { childTaxAllowance } from '../domains/children'
 import type { GermanState } from '../common/postal-codes'
-import { deductibleProvision, type PersonProvision } from '../domains/provision'
+import { deductibleProvision, type PersonProvision, type ProvisionDeduction } from '../domains/provision'
 import { withSpecialTariffs } from '../domains/business/special-tariffs'
 import { afterTradeTaxCredit, businessTotal, creditPerson, lossesOfYear, type BusinessEstimate, type BusinessIncome, type LossCarry, type Prepayments } from './business-income'
 
@@ -41,6 +41,31 @@ export interface ChurchTaxInput {
   readonly children: number
 }
 
+/**
+ * The steps behind an estimate (ADR-0052 amendment 3): what each person earned after Werbungskosten, how
+ * the provision is made up, and how the tariff tax becomes the income tax of the result. Where the
+ * estimate is a range, these are the ends of the same range.
+ */
+export interface EstimateBreakdown {
+  /** Einkünfte aus nichtselbständiger Arbeit or pension per person (A first), after Werbungskosten. */
+  readonly persons?: readonly { readonly incomeEur: number; readonly workExpensesEur: number; readonly creditedTaxEur: number }[]
+  readonly rentalSurplusEur?: number
+  /** Summe der Einkünfte, before losses, provision and Sonderausgaben. */
+  readonly totalIncomeEur: number
+  /** The lines of the Vorsorge deduction, when every person's lines are known (ADR-0094). */
+  readonly provision?: ProvisionDeduction
+  /** § 33 EStG: what is deducted after the zumutbare Belastung. */
+  readonly extraordinaryBurdenEur: number
+  /** Günstigerprüfung § 31 EStG: the allowance wins only when it saves more than the Kindergeld. */
+  readonly childAllowance?: { readonly allowanceEur: number; readonly childBenefitEur: number; readonly used: boolean }
+  /** Tariff tax on the taxable income (after the child allowance when it is used), before reductions. */
+  readonly tariffTax: Range
+  /** § 35a EStG, as far as it reduced the tax. */
+  readonly householdReductionEur: number
+  /** § 32d Abs. 1 EStG: flat tax on capital income not taxed at source, part of the income tax. */
+  readonly capitalFlatTaxEur?: number
+}
+
 export type TaxEstimate =
   | {
       readonly kind: 'spanne'
@@ -57,6 +82,8 @@ export type TaxEstimate =
       readonly churchTax?: EstimateChurchTax
       /** Present when the caller passed Gewinneinkünfte, losses or prepayments (ADR-0101). */
       readonly business?: BusinessEstimate
+      /** How the figures above come about; for explaining the estimate, never a second calculation. */
+      readonly breakdown?: EstimateBreakdown
     }
   | { readonly kind: 'nicht-moeglich'; readonly reason: 'jahr-ohne-tarif' }
 
@@ -454,6 +481,13 @@ function estimate(input: {
       to: settle(input.alreadyPaid(incomeTaxOwed.from) + prepaid - soliRange.from + churchBalance.to),
     },
     ...(churchTax ? { churchTax } : {}),
+    breakdown: {
+      persons: [{ incomeEur: otherIncome, workExpensesEur: input.werbungskosten, creditedTaxEur: input.anrechnung }],
+      totalIncomeEur: sumOfIncome,
+      extraordinaryBurdenEur: deductibleBurdenEur,
+      tariffTax: { from: credited.from.taxEur, to: credited.to.taxEur },
+      householdReductionEur: credited.to.taxEur - incomeTaxOwed.to,
+    },
     ...(withBusiness
       ? {
           business: {
