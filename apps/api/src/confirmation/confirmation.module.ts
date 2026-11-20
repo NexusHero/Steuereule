@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common'
 import { ASSESSMENT_REPOSITORY, type AssessmentRepository } from '../assessment/assessment.repository.js'
 import { AssessmentModule } from '../assessment/assessment.module.js'
+import { AssistantTaskModule } from '../assistant-task/assistant-task.module.js'
 import { AuditModule } from '../audit/audit.module.js'
 import { CAPITAL_REPOSITORY, type CapitalRepository } from '../capital/capital.repository.js'
 import { CapitalModule } from '../capital/capital.module.js'
@@ -49,6 +50,7 @@ import { FIELD_ACCESS, fieldAccessFrom, type ScreenAccess } from './field-access
     CommuteModule,
     AssessmentModule,
     BusinessModule,
+    AssistantTaskModule,
   ],
   controllers: [ConfirmationController],
   providers: [

@@ -7,8 +7,10 @@ import { formatEuro } from '@steuereule/core'
 import {
   useConfirmationControllerConfirmAnnex,
   useConfirmationControllerDecideProposal,
+  useConfirmationControllerDecideTask,
   useConfirmationControllerGet,
   type AnnexConfirmationDto,
+  type AssistantTaskDto,
   type ProvenanceDto,
   type FieldProvenanceDto,
 } from '@steuereule/api-client'
@@ -69,6 +71,7 @@ export function ConfirmationScreen({ year, onBack, onOpenScreen }: ConfirmationS
   const overview = useConfirmationControllerGet(year)
   const confirm = useConfirmationControllerConfirmAnnex()
   const decide = useConfirmationControllerDecideProposal()
+  const decideTask = useConfirmationControllerDecideTask()
   const [error, setError] = useState(false)
 
   if (overview.isPending) return <LoadingState bp={bp} label={t('bestaetigung.loading')} />
@@ -84,6 +87,8 @@ export function ConfirmationScreen({ year, onBack, onOpenScreen }: ConfirmationS
     )
   }
   const { annexes } = overview.data.data
+  // An API of before #547 answers without tasks.
+  const tasks: readonly AssistantTaskDto[] = overview.data.data.tasks ?? []
 
   const afterChange = async (action: () => Promise<{ status: number }>) => {
     setError(false)
@@ -109,15 +114,48 @@ export function ConfirmationScreen({ year, onBack, onOpenScreen }: ConfirmationS
         <Text style={styles.appbarTitle}>{t('bestaetigung.title', { jahr: year })}</Text>
       </View>
 
-      {annexes.length === 0 ? (
-        <Text style={styles.sectionBody}>{t('bestaetigung.leer')}</Text>
-      ) : (
+      {annexes.length > 0 ? (
         <Text style={styles.sectionBody}>{t('bestaetigung.intro')}</Text>
-      )}
+      ) : tasks.length === 0 ? (
+        <Text style={styles.sectionBody}>{t('bestaetigung.leer')}</Text>
+      ) : null}
       {error ? (
         <Text style={styles.hint} accessibilityLiveRegion="polite">
           {t('bestaetigung.fehler')}
         </Text>
+      ) : null}
+
+      {tasks.length > 0 ? (
+        <Card style={{ marginBottom: theme.space.s4 }} testID="aufgaben">
+          <Text style={styles.sectionTitle}>{t('bestaetigung.aufgaben.title')}</Text>
+          <Text style={styles.hint}>{t('bestaetigung.aufgaben.intro')}</Text>
+          {tasks.map((task) => (
+            <View key={task.id} style={{ gap: theme.space.s1, marginTop: theme.space.s3 }} testID={`aufgabe-${task.id}`}>
+              <Text style={styles.sectionTitle}>{t(`bestaetigung.aufgaben.art.${task.kind}`, { defaultValue: t('bestaetigung.aufgaben.art.sonstiges') })}</Text>
+              {/* What an assistant wrote: a text node only, never markup or a link. */}
+              <Text style={styles.sectionBody}>{task.text}</Text>
+              <Text style={styles.hint}>{t('bestaetigung.aufgaben.von', { name: task.assistant })}</Text>
+              <View style={{ flexDirection: 'row', gap: theme.space.s2 }}>
+                <Button
+                  variant="ghost"
+                  disabled={decideTask.isPending}
+                  testID={`aufgabe-erledigt-${task.id}`}
+                  onPress={() => void afterChange(() => decideTask.mutateAsync({ jahr: year, id: task.id, data: { decision: 'erledigt' } }))}
+                >
+                  {t('bestaetigung.aufgaben.erledigt')}
+                </Button>
+                <Button
+                  variant="ghost"
+                  disabled={decideTask.isPending}
+                  testID={`aufgabe-verwerfen-${task.id}`}
+                  onPress={() => void afterChange(() => decideTask.mutateAsync({ jahr: year, id: task.id, data: { decision: 'verworfen' } }))}
+                >
+                  {t('bestaetigung.aufgaben.verwerfen')}
+                </Button>
+              </View>
+            </View>
+          ))}
+        </Card>
       ) : null}
 
       {annexes.map((annex: AnnexConfirmationDto) => {

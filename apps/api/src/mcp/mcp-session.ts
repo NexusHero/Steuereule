@@ -1,5 +1,6 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { checkDraftPerson, PERSON_B_HANDLE, type AdvisorHousehold, type Screen } from '@steuereule/core'
+import type { AssistantTaskService } from '../assistant-task/assistant-task.service.js'
 import type { AuditService } from '../audit/audit.service.js'
 import type { ChildrenService } from '../children/children.service.js'
 import type { CockpitService } from '../cockpit/cockpit.service.js'
@@ -47,6 +48,8 @@ export interface McpDeps {
   readonly deadlines?: Pick<DeadlinesService, 'getDeadlines'> | undefined
   /** A rental object is a record of its own: the mask `vermietung` needs its id as `instance`. */
   readonly rentals?: Pick<RentalRepository, 'listForUserAndYear' | 'create' | 'delete'> | undefined
+  /** What only the user can do in the app, left as a task (#547). */
+  readonly tasks?: Pick<AssistantTaskService, 'create' | 'listForAssistant'> | undefined
 }
 
 export function assertScope(assistant: AssistantSessionInfo, requiredScope: string): void {

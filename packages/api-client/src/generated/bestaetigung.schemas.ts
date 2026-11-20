@@ -106,8 +106,32 @@ export interface AnnexConfirmationDto {
   values: FieldProvenanceDto[];
 }
 
+export type AssistantTaskDtoKind = typeof AssistantTaskDtoKind[keyof typeof AssistantTaskDtoKind];
+
+
+export const AssistantTaskDtoKind = {
+  konfession: 'konfession',
+  einwilligung: 'einwilligung',
+  bestaetigen: 'bestaetigen',
+  beleg_nachreichen: 'beleg_nachreichen',
+  kind_entfernen: 'kind_entfernen',
+  sonstiges: 'sonstiges',
+} as const;
+
+export interface AssistantTaskDto {
+  id: string;
+  kind: AssistantTaskDtoKind;
+  /** Written by the assistant; show as plain text only. */
+  text: string;
+  /** Name of the assistant that left the task. */
+  assistant: string;
+  createdAt: string;
+}
+
 export interface ConfirmationResponseDto {
   annexes: AnnexConfirmationDto[];
+  /** The open tasks the user's assistant left for this tax year. */
+  tasks: AssistantTaskDto[];
 }
 
 export type ProposalDecisionDtoDecision = typeof ProposalDecisionDtoDecision[keyof typeof ProposalDecisionDtoDecision];
@@ -133,5 +157,17 @@ export interface ProposalDecisionDto {
   decision: ProposalDecisionDtoDecision;
   /** Whose proposal: B for a value of Person B the user records. Default A. */
   person?: ProposalDecisionDtoPerson;
+}
+
+export type TaskDecisionDtoDecision = typeof TaskDecisionDtoDecision[keyof typeof TaskDecisionDtoDecision];
+
+
+export const TaskDecisionDtoDecision = {
+  erledigt: 'erledigt',
+  verworfen: 'verworfen',
+} as const;
+
+export interface TaskDecisionDto {
+  decision: TaskDecisionDtoDecision;
 }
 

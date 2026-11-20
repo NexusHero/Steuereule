@@ -17,12 +17,14 @@ import {
   type Marking,
   type Screen,
 } from '@steuereule/core'
+import { AssistantTaskService } from '../assistant-task/assistant-task.service.js'
+import type { AssistantTaskDecision } from '../assistant-task/assistant-task.repository.js'
 import { AuditService } from '../audit/audit.service.js'
 import { LinkService } from '../link/link.service.js'
 import { PROVENANCE_REPOSITORY, type ProvenanceRecord, type ProvenanceRepository } from '../marking/marking.repository.js'
 import { assertAiWritable } from './ai-write-policy.js'
 import { FIELD_ACCESS, type FieldAccess, type ScreenAccess } from './field-access.js'
-import type { ConfirmationResponseDto, ProvenanceDto, FieldProvenanceDto } from './dto/confirmation.dto.js'
+import type { AssistantTaskDto, ConfirmationResponseDto, ProvenanceDto, FieldProvenanceDto } from './dto/confirmation.dto.js'
 
 export type WriteResult = 'geschrieben' | 'vorschlag' | 'unveraendert'
 
@@ -63,7 +65,23 @@ export class ConfirmationService {
     @Inject(AuditService) private readonly auditService: AuditService,
     /** Whose figures the user records as Person B (ADR-0054): their values are confirmed here too. */
     @Optional() @Inject(LinkService) private readonly link?: Pick<LinkService, 'spouseForAdvisor'>,
+    /** The tasks the user's assistant left (#547); without the seam the overview carries none. */
+    @Optional() @Inject(AssistantTaskService) private readonly tasks?: Pick<AssistantTaskService, 'listOpen' | 'decide'>,
   ) {}
+
+  /** The open tasks of the user's own account, as the Cockpit and the confirmation screen show them. */
+  private async openTasks(userId: string, taxYear: number): Promise<AssistantTaskDto[]> {
+    const open = (await this.tasks?.listOpen(userId, taxYear)) ?? []
+    if (open.length > 0) await this.auditService.append({ userId, action: 'READ', resource: 'assistent-aufgabe' })
+    return open.map((t) => ({ id: t.id, kind: t.kind, text: t.text, assistant: t.assistant, createdAt: t.createdAt.toISOString() }))
+  }
+
+  /** The user settles or discards a task; the assistant reads the state with `aufgaben_auflisten`. */
+  async decideTask(userId: string, taxYear: number, taskId: string, decision: AssistantTaskDecision): Promise<ConfirmationResponseDto> {
+    if (this.tasks === undefined) throw new NotFoundError('TASK_NOT_FOUND', 'There is no open task with this id in this tax year.')
+    await this.tasks.decide(userId, taxYear, taskId, decision)
+    return this.overview(userId, taxYear)
+  }
 
   /** The Person B whose data the user records in a joint return; null when B keeps an own account. */
   private async recordedSpouse(userId: string, taxYear: number): Promise<string | null> {
@@ -242,7 +260,8 @@ export class ConfirmationService {
       ...(await this.list(userId, taxYear)).filter(isOpen).map((record) => ({ record, dataUserId: userId, person: undefined })),
       ...(spouse === null ? [] : (await this.list(spouse, taxYear)).filter(isOpen).map((record) => ({ record, dataUserId: spouse, person: 'B' as const }))),
     ]
-    if (open.length === 0) return { annexes: [] }
+    const tasks = await this.openTasks(userId, taxYear)
+    if (open.length === 0) return { annexes: [], tasks }
     await this.auditService.append({ userId, action: 'READ', resource: 'kennzeichnung' })
 
     const read = new Map<string, Promise<Readonly<Record<string, string | null>> | null>>()
@@ -269,6 +288,7 @@ export class ConfirmationService {
       })
     }
     return {
+      tasks,
       annexes: ANNEXES.flatMap((annex) => {
         const own = values.filter((w) => w.annex === annex).map((w) => w.dto)
         return own.length === 0 ? [] : [{ annex, unconfirmed: own.filter((w) => !w.confirmed).length, values: own }]

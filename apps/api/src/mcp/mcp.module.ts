@@ -19,6 +19,7 @@ import { LinkModule } from '../link/link.module.js'
 import { ChildrenModule } from '../children/children.module.js'
 import { DeadlinesModule } from '../deadlines/deadlines.module.js'
 import { RentalModule } from '../rental/rental.module.js'
+import { AssistantTaskModule } from '../assistant-task/assistant-task.module.js'
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { RentalModule } from '../rental/rental.module.js'
     ChildrenModule,
     DeadlinesModule,
     RentalModule,
+    AssistantTaskModule,
   ],
   controllers: [McpController],
   providers: [McpService, McpReportService],

@@ -1468,6 +1468,29 @@ model AdvisorNote {
   @@map("BeraterNotiz")
 }
 
+// A task the user's own assistant (MCP, ADR-0052) leaves for the user: something only the user can
+// do in the app (enter the confession, give a consent, confirm entries). Shown in the Cockpit until
+// the user settles or discards it. The text is free text an external model wrote: encrypted, and
+// checked for identifiers before it is stored. No FK to User, like every tax-data table: the account
+// deletion erases it through `taxDataTables`, so a legal hold keeps it.
+model AssistantTask {
+  id        String    @id @default(uuid())
+  userId    String
+  taxYear   Int       @map("steuerjahr")
+  /// One of ASSISTANT_TASK_KINDS (assistant-task.repository.ts).
+  kind      String    @map("art")
+  text      String    @map("inhalt") /// @encrypted?mode=strict
+  /// The client name of the assistant that left the task.
+  assistant String    @map("assistent")
+  /// 'offen' | 'erledigt' | 'verworfen'
+  status    String    @default("offen")
+  createdAt DateTime  @default(now())
+  decidedAt DateTime? @map("entschiedenAm")
+
+  @@index([userId, taxYear])
+  @@map("AssistentAufgabe")
+}
+
 // Where the Berater-Interview stands for one tax year: which areas of the checklist are settled
 // (`done`) or do not apply. Kept by the app so the interview neither asks twice nor stops early,
 // whatever the model remembers. Encrypted: "kinder: not_applicable" says something about the household.

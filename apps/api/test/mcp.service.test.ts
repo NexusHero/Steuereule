@@ -28,6 +28,8 @@ import { FakeTaxYearRepository } from './fakes/fake-tax-year.repository.js'
 import { FakeOwlSettingRepository, FakeOwlCardDismissalRepository } from './fakes/fake-owl-mode.repository.js'
 import type { AssessmentRepository } from '../src/assessment/assessment.repository.js'
 import { RagKiAdapter } from '../src/ki/ki.adapter.js'
+import { AssistantTaskService } from '../src/assistant-task/assistant-task.service.js'
+import { FakeAssistantTaskRepository } from './fakes/fake-assistant-task.repository.js'
 import type { UnlockRepository } from '../src/unlock/unlock.repository.js'
 import type { PaymentProvider } from '../src/unlock/payment-provider.js'
 import type { CommuteRepository } from '../src/commute/commute.repository.js'
@@ -539,7 +541,86 @@ describe('McpService (ADR-0052 §3 / §5 / §8 / §12)', () => {
     })
   })
 
+  describe('tasks for the user (#547)', () => {
+    let tasks: AssistantTaskService
+
+    async function clientWithTasks(assistant: AssistantSessionInfo = ALL_SCOPES_ASSISTANT) {
+      const svc = new McpService(cockpitService, printoutService, confirmationService, owlModeService, receiptService, unlockService, profileRepo, masterDataRepo, auditService, undefined, undefined, undefined, undefined, undefined, tasks)
+      const server = svc.createServer(USER, assistant)
+      const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
+      await server.connect(serverTransport)
+      const client = new Client({ name: 'TestClient', version: '1.0.0' })
+      await client.connect(clientTransport)
+      return client
+    }
+
+    beforeEach(() => {
+      tasks = new AssistantTaskService(new FakeAssistantTaskRepository())
+    })
+
+    it('aufgabe_fuer_nutzer leaves a task the user sees, and aufgaben_auflisten shows its state', async () => {
+      const client = await clientWithTasks()
+      const created = JSON.parse(getText(await client.callTool({ name: 'aufgabe_fuer_nutzer', arguments: { taxYear: YEAR, art: 'konfession', text: 'Bitte trage deine Konfession in den Stammdaten ein.' } })))
+      expect(created).toMatchObject({ ok: true, status: 'offen' })
+      expect(await tasks.listOpen(USER, YEAR)).toMatchObject([{ id: created.id, kind: 'konfession', assistant: 'Claude' }])
+
+      await tasks.decide(USER, YEAR, created.id, 'erledigt')
+      const listed = JSON.parse(getText(await client.callTool({ name: 'aufgaben_auflisten', arguments: { taxYear: YEAR } })))
+      expect(listed.aufgaben).toEqual([{ id: created.id, art: 'konfession', text: 'Bitte trage deine Konfession in den Stammdaten ein.', status: 'erledigt' }])
+    })
+
+    it('the same open task twice is one task', async () => {
+      const client = await clientWithTasks()
+      const args = { taxYear: YEAR, art: 'bestaetigen', text: 'Bitte bestätige die Einträge der Anlage N.' }
+      const first = JSON.parse(getText(await client.callTool({ name: 'aufgabe_fuer_nutzer', arguments: args })))
+      const second = JSON.parse(getText(await client.callTool({ name: 'aufgabe_fuer_nutzer', arguments: args })))
+      expect(second.id).toBe(first.id)
+      expect(await tasks.listOpen(USER, YEAR)).toHaveLength(1)
+    })
+
+    it('refuses a text with an identifier, an empty one, and the twenty-first open task', async () => {
+      const client = await clientWithTasks()
+      const withIban = await client.callTool({ name: 'aufgabe_fuer_nutzer', arguments: { taxYear: YEAR, art: 'sonstiges', text: 'Prüfe die IBAN DE89370400440532013000.' } })
+      expect((withIban as { isError?: boolean }).isError).toBe(true)
+      expect(getText(withIban)).toContain('TEXT_HAS_IDENTIFIER')
+      expect(getText(await client.callTool({ name: 'aufgabe_fuer_nutzer', arguments: { taxYear: YEAR, art: 'sonstiges', text: '  ' } }))).toContain('TEXT_INVALID')
+      expect(await tasks.listOpen(USER, YEAR)).toEqual([])
+      for (let i = 0; i < 20; i += 1) await tasks.create(USER, YEAR, { kind: 'sonstiges', text: `Aufgabe ${i}`, assistant: 'Claude' })
+      expect(getText(await client.callTool({ name: 'aufgabe_fuer_nutzer', arguments: { taxYear: YEAR, art: 'sonstiges', text: 'Eine mehr' } }))).toContain('TOO_MANY_TASKS')
+    })
+
+    it('an assistant lists only the tasks it left itself', async () => {
+      await tasks.create(USER, YEAR, { kind: 'sonstiges', text: 'Von einem anderen Assistenten', assistant: 'Another' })
+      await tasks.create('user-2', YEAR, { kind: 'sonstiges', text: 'Eines anderen Nutzers', assistant: 'Claude' })
+      const client = await clientWithTasks()
+      expect(JSON.parse(getText(await client.callTool({ name: 'aufgaben_auflisten', arguments: { taxYear: YEAR } }))).aufgaben).toEqual([])
+    })
+
+    it('leaving a task needs the write scope, listing the read scope', async () => {
+      const readOnly = await clientWithTasks({ ...ALL_SCOPES_ASSISTANT, scopes: ['steuerdaten:read'] })
+      expect(getText(await readOnly.callTool({ name: 'aufgabe_fuer_nutzer', arguments: { taxYear: YEAR, art: 'sonstiges', text: 'Bitte prüfen.' } }))).toContain('steuerdaten:write')
+      expect(await tasks.listOpen(USER, YEAR)).toEqual([])
+      const writeOnly = await clientWithTasks({ ...ALL_SCOPES_ASSISTANT, scopes: ['steuerdaten:write'] })
+      expect(getText(await writeOnly.callTool({ name: 'aufgaben_auflisten', arguments: { taxYear: YEAR } }))).toContain('steuerdaten:read')
+    })
+
+    it('without the task seam the tools are not offered', async () => {
+      const client = await connectClient()
+      expect((await client.listTools()).tools.map((t) => t.name)).not.toContain('aufgabe_fuer_nutzer')
+    })
+  })
+
   describe('maske_eintragen_stapel (ADR-0052 amendment 3, #544)', () => {
+    it('writes first and last name of an empty profile, and counts a proposal apart from a written value', async () => {
+      const client = await connectClient()
+      const names = JSON.parse(getText(await client.callTool({ name: 'maske_eintragen_stapel', arguments: { taxYear: YEAR, screen: 'profil', felder: { firstName: 'Suhay', lastName: 'Sevinc' } } })))
+      expect(names.felder.lastName).toMatchObject({ ergebnis: 'geschrieben' })
+      expect(await profileRepo.findByUserId(USER)).toMatchObject({ firstName: 'Suhay', lastName: 'Sevinc' })
+      await lstbRepo.setField(USER, YEAR, 'lohnsteuer', '700')
+      const mixed = JSON.parse(getText(await client.callTool({ name: 'maske_eintragen_stapel', arguments: { taxYear: YEAR, screen: 'lstb', felder: { lohnsteuer: '720', bruttoarbeitslohn: '65000' } } })))
+      expect(mixed).toMatchObject({ geschrieben: 1, vorschlaege: 1, abgelehnt: 0 })
+    })
+
     it('writes many fields of one mask in one call and answers per field', async () => {
       const client = await connectClient()
       const res = await client.callTool({ name: 'maske_eintragen_stapel', arguments: { taxYear: YEAR, screen: 'lstb', felder: { bruttoarbeitslohn: '65.000', lohnsteuer: '12000', gibtEsNicht: '1', kirchensteuer: 'viel' } } })

@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 import { ANNEXES, SCREENS } from '@steuereule/core'
+import { ASSISTANT_TASK_DECISIONS, ASSISTANT_TASK_KINDS, type AssistantTaskDecision, type AssistantTaskKind } from '../../assistant-task/assistant-task.repository.js'
 import { IsIn, IsOptional } from 'class-validator'
 
 export class ProvenanceDto {
@@ -64,10 +65,37 @@ export class AnnexConfirmationDto {
   values!: FieldProvenanceDto[]
 }
 
-/** Was der Nutzer noch prüfen muss: je Anlage die unbestätigten Werte und offenen Vorschläge. */
+/** A task the user's own assistant left for the user (#547); `text` is plain text, never markup. */
+export class AssistantTaskDto {
+  @ApiProperty({ type: String })
+  id!: string
+
+  @ApiProperty({ type: String, enum: ASSISTANT_TASK_KINDS, example: 'konfession' })
+  kind!: AssistantTaskKind
+
+  @ApiProperty({ type: String, example: 'Bitte trage deine Konfession in den Stammdaten ein.', description: 'Written by the assistant; show as plain text only.' })
+  text!: string
+
+  @ApiProperty({ type: String, example: 'Claude', description: 'Name of the assistant that left the task.' })
+  assistant!: string
+
+  @ApiProperty({ type: String, format: 'date-time' })
+  createdAt!: string
+}
+
+/** Was der Nutzer noch prüfen muss: je Anlage die unbestätigten Werte und offenen Vorschläge, dazu die offenen Aufgaben. */
 export class ConfirmationResponseDto {
   @ApiProperty({ type: [AnnexConfirmationDto] })
   annexes!: AnnexConfirmationDto[]
+
+  @ApiProperty({ type: [AssistantTaskDto], description: 'The open tasks the user\'s assistant left for this tax year.' })
+  tasks!: AssistantTaskDto[]
+}
+
+export class TaskDecisionDto {
+  @ApiProperty({ type: String, enum: ASSISTANT_TASK_DECISIONS })
+  @IsIn(ASSISTANT_TASK_DECISIONS)
+  decision!: AssistantTaskDecision
 }
 
 export class ProposalDecisionDto {

@@ -8273,6 +8273,63 @@
         ]
       }
     },
+    "/v1/steuerjahre/{jahr}/bestaetigung/aufgaben/{id}": {
+      "put": {
+        "operationId": "ConfirmationController_decideTask",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "The id of a task from the overview.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (ParseSteuerjahrPipe, same as Cockpit).",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskDecisionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The task the assistant left is settled or discarded; the remaining overview.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfirmationResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "404": {
+            "description": "No open task with this id in this tax year."
+          }
+        },
+        "tags": [
+          "bestaetigung"
+        ]
+      }
+    },
     "/v1/verlauf": {
       "get": {
         "operationId": "YearHistoryController_get",
@@ -20952,6 +21009,47 @@
           "values"
         ]
       },
+      "AssistantTaskDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "konfession",
+              "einwilligung",
+              "bestaetigen",
+              "beleg_nachreichen",
+              "kind_entfernen",
+              "sonstiges"
+            ],
+            "example": "konfession"
+          },
+          "text": {
+            "type": "string",
+            "example": "Bitte trage deine Konfession in den Stammdaten ein.",
+            "description": "Written by the assistant; show as plain text only."
+          },
+          "assistant": {
+            "type": "string",
+            "example": "Claude",
+            "description": "Name of the assistant that left the task."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "text",
+          "assistant",
+          "createdAt"
+        ]
+      },
       "ConfirmationResponseDto": {
         "type": "object",
         "properties": {
@@ -20960,10 +21058,18 @@
             "items": {
               "$ref": "#/components/schemas/AnnexConfirmationDto"
             }
+          },
+          "tasks": {
+            "description": "The open tasks the user's assistant left for this tax year.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssistantTaskDto"
+            }
           }
         },
         "required": [
-          "annexes"
+          "annexes",
+          "tasks"
         ]
       },
       "ProposalDecisionDto": {
@@ -20983,6 +21089,21 @@
               "B"
             ],
             "description": "Whose proposal: B for a value of Person B the user records. Default A."
+          }
+        },
+        "required": [
+          "decision"
+        ]
+      },
+      "TaskDecisionDto": {
+        "type": "object",
+        "properties": {
+          "decision": {
+            "type": "string",
+            "enum": [
+              "erledigt",
+              "verworfen"
+            ]
           }
         },
         "required": [

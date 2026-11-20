@@ -46,7 +46,7 @@ describe('ConfirmationScreen loading', () => {
   })
 
   it('goes back from the app bar', async () => {
-    serve({ annexes: [] })
+    serve({ annexes: [], tasks: [] })
     const { onBack } = renderScreen()
     fireEvent.click(await screen.findByTestId('bestaetigung-zurueck'))
     expect(onBack).toHaveBeenCalledOnce()
@@ -123,7 +123,7 @@ describe('ConfirmationScreen values', () => {
   })
 
   it('offers no way to change an Anlage that holds no values', async () => {
-    serve({ annexes: [{ annex: 'anlageV', unconfirmed: 0, values: [] }] } as ConfirmationResponseDto)
+    serve({ annexes: [{ annex: 'anlageV', unconfirmed: 0, values: [] }], tasks: [] } as ConfirmationResponseDto)
     renderScreen()
     await screen.findByText('Anlage V')
     expect(screen.queryByTestId('aendern-anlageV')).toBeNull()

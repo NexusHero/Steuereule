@@ -19,6 +19,8 @@ import { FakeInterviewAnswerRepository } from './fakes/fake-interview-answer.rep
 import { FakeChSalaryCertificateRepository } from './fakes/fake-ch-salary-certificate.repository.js'
 import { FakeChildRepository } from './fakes/fake-child.repository.js'
 import { AuditService } from '../src/audit/audit.service.js'
+import { AssistantTaskService } from '../src/assistant-task/assistant-task.service.js'
+import { FakeAssistantTaskRepository } from './fakes/fake-assistant-task.repository.js'
 
 const USER = 'user-1'
 const YEAR = 2025
@@ -248,7 +250,7 @@ describe('BestaetigungService', () => {
 
   it('the overview is scoped to the caller', async () => {
     await service.write('user-2', YEAR, 'lstb.lohnsteuer', '700', CLAUDE)
-    expect(await service.overview(USER, YEAR)).toEqual({ annexes: [] })
+    expect(await service.overview(USER, YEAR)).toEqual({ annexes: [], tasks: [] })
     expect(await service.missing(USER, YEAR)).toEqual([])
   })
 
@@ -351,5 +353,61 @@ describe('BestaetigungService', () => {
     expect(await profile.findByUserId(USER)).toBeNull()
     expect(await masterData.findByUserId(USER)).toBeNull()
     expect(await link.findByUserAndYear(USER, YEAR)).toBeNull()
+  })
+  describe('tasks the assistant left for the user (#547)', () => {
+    let tasks: AssistantTaskService
+    let audit: FakeAuditRepository
+    let svc: ConfirmationService
+
+    beforeEach(() => {
+      tasks = new AssistantTaskService(new FakeAssistantTaskRepository())
+      audit = new FakeAuditRepository()
+      svc = new ConfirmationService(
+        markings,
+        fieldAccessFrom({ lstb, pension, capital: new FakeCapitalRepository(), rental, profile, masterData, link, interview, chSalaryCertificate: chSalary, child, commute, assessment }),
+        new AuditService(audit),
+        undefined,
+        tasks,
+      )
+    })
+
+    it('a service without the task seam always answers with no tasks', async () => {
+      expect(await service.overview(USER, YEAR)).toEqual({ annexes: [], tasks: [] })
+    })
+
+    it('the overview carries the open tasks even when no value is unconfirmed, and logs the read', async () => {
+      const created = await tasks.create(USER, YEAR, { kind: 'konfession', text: 'Bitte trage deine Konfession ein.', assistant: 'Claude' })
+      if (!created.ok) throw new Error('setup')
+      expect(await svc.overview(USER, YEAR)).toEqual({
+        annexes: [],
+        tasks: [{ id: created.task.id, kind: 'konfession', text: 'Bitte trage deine Konfession ein.', assistant: 'Claude', createdAt: created.task.createdAt.toISOString() }],
+      })
+      expect(audit.all()).toContainEqual(expect.objectContaining({ userId: USER, action: 'READ', resource: 'assistent-aufgabe' }))
+    })
+
+    it('the overview carries the tasks next to the unconfirmed values', async () => {
+      await tasks.create(USER, YEAR, { kind: 'bestaetigen', text: 'Bitte bestätige die Anlage N.', assistant: 'Claude' })
+      await svc.write(USER, YEAR, 'lstb.bruttoarbeitslohn', '50000', CLAUDE)
+      const overview = await svc.overview(USER, YEAR)
+      expect(overview.annexes.map((a) => a.annex)).toEqual(['anlageN'])
+      expect(overview.tasks.map((t) => t.kind)).toEqual(['bestaetigen'])
+    })
+
+    it('settling or discarding a task takes it out of the overview', async () => {
+      const a = await tasks.create(USER, YEAR, { kind: 'konfession', text: 'Erste Aufgabe', assistant: 'Claude' })
+      const b = await tasks.create(USER, YEAR, { kind: 'sonstiges', text: 'Zweite Aufgabe', assistant: 'Claude' })
+      if (!a.ok || !b.ok) throw new Error('setup')
+      expect((await svc.decideTask(USER, YEAR, a.task.id, 'erledigt')).tasks.map((t) => t.id)).toEqual([b.task.id])
+      expect((await svc.decideTask(USER, YEAR, b.task.id, 'verworfen')).tasks).toEqual([])
+      expect((await tasks.listForAssistant(USER, YEAR, 'Claude')).map((t) => t.status)).toEqual(['erledigt', 'verworfen'])
+    })
+
+    it('a task of another user, or one that is not there, is not found', async () => {
+      const created = await tasks.create('user-2', YEAR, { kind: 'konfession', text: 'Fremde Aufgabe', assistant: 'Claude' })
+      if (!created.ok) throw new Error('setup')
+      await expect(svc.decideTask(USER, YEAR, created.task.id, 'erledigt')).rejects.toMatchObject({ code: 'TASK_NOT_FOUND' })
+      await expect(service.decideTask(USER, YEAR, 'nope', 'erledigt')).rejects.toMatchObject({ code: 'TASK_NOT_FOUND' })
+      expect(await tasks.listOpen('user-2', YEAR)).toHaveLength(1)
+    })
   })
 })

@@ -6,7 +6,7 @@ import { RequiresAccount } from '../auth/requires-account.guard.js'
 import { UserContextGuard } from '../auth/user-context.guard.js'
 import { ParseTaxYearPipe } from '../cockpit/parse-tax-year.pipe.js'
 import { ConfirmationService } from './confirmation.service.js'
-import { ConfirmationResponseDto, ProposalDecisionDto } from './dto/confirmation.dto.js'
+import { ConfirmationResponseDto, ProposalDecisionDto, TaskDecisionDto } from './dto/confirmation.dto.js'
 
 const YEAR_PARAM = { name: 'jahr', type: Number, example: 2025, description: 'The tax year (ParseSteuerjahrPipe, same as Cockpit).' }
 
@@ -54,5 +54,22 @@ export class ConfirmationController {
     @Body() body: ProposalDecisionDto,
   ): Promise<ConfirmationResponseDto> {
     return this.service.decideProposal(userId, year, key, body.decision, body.person ?? 'A')
+  }
+
+  @Put(':jahr/bestaetigung/aufgaben/:id')
+  @RequiresAccount()
+  @ApiParam(YEAR_PARAM)
+  @ApiParam({ name: 'id', type: String, description: 'The id of a task from the overview.' })
+  @ApiBody({ type: TaskDecisionDto })
+  @ApiOkResponse({ type: ConfirmationResponseDto, description: 'The task the assistant left is settled or discarded; the remaining overview.' })
+  @ApiNotFoundResponse({ description: 'No open task with this id in this tax year.' })
+  @ApiUnauthorizedResponse({ description: 'Guest session — this endpoint requires a signed-in account.' })
+  decideTask(
+    @CurrentUser() userId: string,
+    @Param('jahr', ParseTaxYearPipe) year: number,
+    @Param('id') id: string,
+    @Body() body: TaskDecisionDto,
+  ): Promise<ConfirmationResponseDto> {
+    return this.service.decideTask(userId, year, id, body.decision)
   }
 }

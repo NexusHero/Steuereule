@@ -38,7 +38,11 @@ const WITH_VALUES: ConfirmationResponseDto = {
       ],
     },
   ],
+  tasks: [],
 }
+
+const TASK = { id: 'task-1', kind: 'konfession', text: 'Bitte trage deine Konfession in den Stammdaten ein.', assistant: 'Claude', createdAt: '2026-01-05T10:00:00.000Z' } as const
+const SECOND_TASK = { id: 'task-2', kind: 'beleg_nachreichen', text: '<b>Die Spendenquittung</b> fehlt noch.', assistant: 'Claude', createdAt: '2026-01-05T10:01:00.000Z' } as const
 
 function renderScreen(locale: 'de' | 'en' = 'de') {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
@@ -120,5 +124,78 @@ describe('BestaetigungScreen (REQ-032, ADR-0052 §6/§7)', () => {
     expect(await screen.findByText('1 value unconfirmed')).toBeTruthy()
     expect(screen.getByText('Carried over from 2024')).toBeTruthy()
     expect(screen.getByText('Assistant: Claude suggests 4.800 € instead of 4.750 €.')).toBeTruthy()
+  })
+
+  describe('tasks the assistant left (#547)', () => {
+    it('lists the open tasks with their kind, text and assistant, the text as plain text', async () => {
+      server.use(http.get('*/v1/steuerjahre/2025/bestaetigung', () => HttpResponse.json({ annexes: [], tasks: [TASK, SECOND_TASK] })))
+      renderScreen()
+
+      expect(await screen.findByText('Aufgaben von deinem Assistenten')).toBeTruthy()
+      expect(screen.getByText('Konfession eintragen')).toBeTruthy()
+      expect(screen.getByText('Bitte trage deine Konfession in den Stammdaten ein.')).toBeTruthy()
+      expect(screen.getByText('Beleg nachreichen')).toBeTruthy()
+      // Markup an assistant wrote stays text: no element is made of it.
+      expect(screen.getByText('<b>Die Spendenquittung</b> fehlt noch.')).toBeTruthy()
+      expect(screen.getByTestId('aufgabe-task-2').querySelector('b')).toBeNull()
+      expect(screen.getAllByText('Von Claude')).toHaveLength(2)
+      // Tasks are open: the screen does not claim there is nothing left.
+      expect(screen.queryByText('Alles bestätigt. Es gibt nichts mehr zu prüfen.')).toBeNull()
+    })
+
+    it('settling a task sends „erledigt“ for exactly that task and shows what is left', async () => {
+      const decisions: { id: string; body: unknown }[] = []
+      let tasks: unknown[] = [TASK, SECOND_TASK]
+      server.use(
+        http.get('*/v1/steuerjahre/2025/bestaetigung', () => HttpResponse.json({ annexes: [], tasks })),
+        http.put('*/v1/steuerjahre/2025/bestaetigung/aufgaben/:id', async ({ params, request }) => {
+          decisions.push({ id: String(params.id), body: await request.json() })
+          tasks = [SECOND_TASK]
+          return HttpResponse.json({ annexes: [], tasks })
+        }),
+      )
+      renderScreen()
+
+      fireEvent.click(await screen.findByTestId('aufgabe-erledigt-task-1'))
+
+      await waitFor(() => expect(decisions).toEqual([{ id: 'task-1', body: { decision: 'erledigt' } }]))
+      await waitFor(() => expect(screen.queryByTestId('aufgabe-task-1')).toBeNull())
+      expect(screen.getByTestId('aufgabe-task-2')).toBeTruthy()
+    })
+
+    it('discarding the last task sends „verworfen“ and leaves the honest empty state', async () => {
+      const decisions: unknown[] = []
+      let tasks: unknown[] = [TASK]
+      server.use(
+        http.get('*/v1/steuerjahre/2025/bestaetigung', () => HttpResponse.json({ annexes: [], tasks })),
+        http.put('*/v1/steuerjahre/2025/bestaetigung/aufgaben/task-1', async ({ request }) => {
+          decisions.push(await request.json())
+          tasks = []
+          return HttpResponse.json({ annexes: [], tasks })
+        }),
+      )
+      renderScreen()
+
+      fireEvent.click(await screen.findByTestId('aufgabe-verwerfen-task-1'))
+
+      expect(await screen.findByText('Alles bestätigt. Es gibt nichts mehr zu prüfen.')).toBeTruthy()
+      expect(decisions).toEqual([{ decision: 'verworfen' }])
+    })
+
+    it('shows the tasks next to the values to confirm, and none when the answer carries none', async () => {
+      server.use(http.get('*/v1/steuerjahre/2025/bestaetigung', () => HttpResponse.json({ ...WITH_VALUES, tasks: [TASK] })))
+      renderScreen('en')
+
+      expect(await screen.findByText('Tasks from your assistant')).toBeTruthy()
+      expect(screen.getByText('1 value unconfirmed')).toBeTruthy()
+    })
+
+    it('an answer of an older API without tasks still renders', async () => {
+      server.use(http.get('*/v1/steuerjahre/2025/bestaetigung', () => HttpResponse.json({ annexes: [] })))
+      renderScreen()
+
+      expect(await screen.findByText('Alles bestätigt. Es gibt nichts mehr zu prüfen.')).toBeTruthy()
+      expect(screen.queryByText('Aufgaben von deinem Assistenten')).toBeNull()
+    })
   })
 })
