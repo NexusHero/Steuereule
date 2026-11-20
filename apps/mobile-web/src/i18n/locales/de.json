@@ -3417,7 +3417,8 @@
       "beruf": "Beruf genauer",
       "gewerbedaten": "Gewerbesteuer-Angaben",
       "beteiligungen": "Beteiligungen",
-      "firmenwagen": "Firmenwagen"
+      "firmenwagen": "Firmenwagen",
+      "voranmeldungen": "Umsatzsteuer-Voranmeldungen"
     },
     "profil": {
       "artTitel": "Freiberuf oder Gewerbe",
@@ -3487,7 +3488,9 @@
       "vst7": "Vorsteuer 7 %",
       "rc13b19": "§ 13b 19 %",
       "igErwerb19": "IG-Erwerb 19 %",
-      "igErwerb7": "IG-Erwerb 7 %"
+      "igErwerb7": "IG-Erwerb 7 %",
+      "rcEu19": "§ 13b Abs. 1 (EU) 19 %",
+      "euLeistung": "EU-Leistung (Empfänger schuldet)"
     },
     "erfassung": {
       "nurEuer": "Summen je Zeile gibt es nur bei der EÜR. Mit Bilanz buchst du im Buch.",
@@ -3608,7 +3611,7 @@
       "erstattung": "Erstattung",
       "nachzahlung": "Nachzahlung",
       "vorauszahlungenTitel": "Vorauszahlungen",
-      "vorauszahlungenFeld": "Gezahlte Vorauszahlungen (Summe)",
+      "vorauszahlungenFeld": "Gezahlte Vorauszahlungen (Summe; leer = Summe der Voranmeldungen)",
       "kleinGrenzeGruendung": "Im Gründungsjahr gilt die Kleinunternehmerregelung nur bis {{grenze}} Umsatz. Dein Buch zeigt {{umsatz}}: Prüf im Profil, ob du Umsatzsteuer ausweisen musst.",
       "kleinGrenzeVorjahr": "Dein Umsatz im Vorjahr lag über {{grenze}}. Damit gilt die Kleinunternehmerregelung in diesem Jahr nicht: Prüf das im Profil.",
       "kleinGrenzeJahr": "Dein Umsatz in diesem Jahr liegt mit {{umsatz}} über {{grenze}}. Damit endet die Kleinunternehmerregelung: Prüf das im Profil.",
@@ -3845,6 +3848,55 @@
       "umsatzsteuer": "Umsatzsteuer darauf",
       "wegeNichtAbziehbar": "Wege Wohnung–Betrieb, nicht abziehbar",
       "gedeckelt": "Gedeckelt auf die Gesamtkosten des Fahrzeugs (Kostendeckelung)."
+    },
+    "va": {
+      "hinweis": "Die App rechnet jede Voranmeldung aus deinem Buch. Eintragen und abschicken machst du in Mein ELSTER (Formular „Umsatzsteuer-Voranmeldung“).",
+      "zeitraum": "Voranmeldungszeitraum",
+      "periode": {
+        "monat": "Monatlich",
+        "quartal": "Vierteljährlich",
+        "befreit": "Keine Voranmeldung"
+      },
+      "quelle": {
+        "angabe": "wie vom Finanzamt festgelegt",
+        "vorjahressteuer": "nach der Umsatzsteuer des Vorjahres",
+        "gruendung_schaetzung": "Gründungsjahr: nach der voraussichtlichen Steuer",
+        "wahl_ueberschuss": "monatlich gewählt (Überschuss im Vorjahr)"
+      },
+      "wahl": {
+        "auto": "Automatisch",
+        "monat": "Monat",
+        "quartal": "Quartal",
+        "befreit": "Befreit"
+      },
+      "dauerfrist": "Dauerfristverlängerung",
+      "sondervorauszahlung": "Sondervorauszahlung (1/11, wird im Dezember verrechnet)",
+      "befreitText": "Das Finanzamt kann dich von Voranmeldungen befreien; dann zahlst du die Umsatzsteuer mit der Jahreserklärung.",
+      "faellig": "fällig {{datum}}",
+      "zahllast": "Zu zahlen (Kz 83)",
+      "ueberschuss": "Erstattung (Kz 83)",
+      "summe": "Vorauszahlungen im Jahr (mit Sondervorauszahlung)",
+      "zm": "Zusammenfassende Meldung (an das BZSt)",
+      "zmKeine": "Keine innergemeinschaftlichen Lieferungen oder EU-Leistungen gebucht.",
+      "ohneUstId": "ohne USt-IdNr.",
+      "ustIdFehlt": "Bei einer Buchung fehlt die USt-IdNr. des Abnehmers. Trag sie in der Buchung nach (Storno und neu buchen).",
+      "kz": {
+        "81": "Umsätze 19 %",
+        "86": "Umsätze 7 %",
+        "41": "Innergemeinschaftliche Lieferungen",
+        "21": "Nicht steuerbare Leistungen (EU)",
+        "48": "Steuerfreie Umsätze ohne Vorsteuerabzug",
+        "89": "Innergemeinschaftliche Erwerbe 19 %",
+        "93": "Innergemeinschaftliche Erwerbe 7 %",
+        "46": "Leistungen von EU-Unternehmen (§ 13b Abs. 1)",
+        "47": "Steuer darauf",
+        "84": "Andere Leistungen nach § 13b",
+        "85": "Steuer darauf",
+        "66": "Vorsteuer aus Rechnungen",
+        "61": "Vorsteuer aus innergemeinschaftlichem Erwerb",
+        "67": "Vorsteuer nach § 13b",
+        "39": "Abzug Sondervorauszahlung"
+      }
     }
   }
 }

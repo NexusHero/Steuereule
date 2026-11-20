@@ -4718,6 +4718,82 @@
         ]
       }
     },
+    "/v1/steuerjahre/{jahr}/selbststaendig/umsatzsteuer/voranmeldungen": {
+      "get": {
+        "operationId": "BusinessController_vatPrepayments",
+        "parameters": [
+          {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "Whose business: A (default) or B of a joint return.",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The Voranmeldungen of the year with their Kennzahlen, the Sondervorauszahlung and the Zusammenfassende Meldungen; nothing is transmitted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VatPrepaymentsDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body fails validation (`fields`) or a business rule (`code`, German `message`), e.g. BOOKING_UNBALANCED, LEDGER_PERIOD_LOCKED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "403": {
+            "description": "SELF_EMPLOYMENT_DISABLED (switch off) or SELF_EMPLOYMENT_NOT_DECLARED (no self-employment in the interview).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "selbststaendig"
+        ]
+      }
+    },
     "/v1/steuerjahre/{jahr}/selbststaendig/umsatzsteuer": {
       "get": {
         "operationId": "BusinessController_vat",
@@ -13034,6 +13110,32 @@
           "basis"
         ]
       },
+      "VatPeriodFactsDto": {
+        "type": "object",
+        "properties": {
+          "period": {
+            "type": "string",
+            "enum": [
+              "monat",
+              "quartal",
+              "befreit"
+            ],
+            "description": "The period the office set; absent = derived from the year before."
+          },
+          "extension": {
+            "type": "boolean",
+            "description": "Dauerfristverlängerung (§ 46 UStDV)."
+          },
+          "specialPrepaymentEur": {
+            "type": "number",
+            "description": "The Sondervorauszahlung as paid; absent = 1/11 of last year (§ 47 UStDV)."
+          },
+          "chooseMonthly": {
+            "type": "boolean",
+            "description": "Monthly by choice after a refund above the limit (§ 18 Abs. 2a UStG)."
+          }
+        }
+      },
       "FinancingComponentsDto": {
         "type": "object",
         "properties": {
@@ -13231,6 +13333,9 @@
             "type": "number",
             "nullable": true
           },
+          "vatPeriodFacts": {
+            "$ref": "#/components/schemas/VatPeriodFactsDto"
+          },
           "tradeTaxInputs": {
             "$ref": "#/components/schemas/TradeTaxInputsDto"
           },
@@ -13263,6 +13368,7 @@
           "multiplierOverride",
           "startDate",
           "vatPrepaymentsCents",
+          "vatPeriodFacts",
           "tradeTaxInputs",
           "lossFacts",
           "partnershipShares",
@@ -13470,7 +13576,17 @@
           "vatPrepaymentsCents": {
             "type": "number",
             "nullable": true,
-            "description": "Umsatzsteuer prepayments of the year in cents."
+            "description": "Umsatzsteuer prepayments of the year in cents; absent or null = the Voranmeldungen’s total."
+          },
+          "vatPeriodFacts": {
+            "nullable": true,
+            "description": "The Voranmeldung facts. Replaced as a whole.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/VatPeriodFactsDto"
+              }
+            ]
           },
           "tradeTaxInputs": {
             "nullable": true,
@@ -13740,6 +13856,11 @@
             "items": {
               "$ref": "#/components/schemas/BookingLineDto"
             }
+          },
+          "counterpartyVatId": {
+            "type": "string",
+            "example": "ATU12345678",
+            "description": "The counterparty’s foreign VAT id (Zusammenfassende Meldung, § 18a UStG)."
           },
           "asset": {
             "description": "A fixed asset: how it is depreciated.",
@@ -15065,6 +15186,163 @@
         },
         "required": [
           "kind"
+        ]
+      },
+      "VatPeriodDto": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string",
+            "example": "Q1/2025"
+          },
+          "from": {
+            "type": "string"
+          },
+          "to": {
+            "type": "string"
+          },
+          "due": {
+            "type": "string",
+            "description": "Due date before any § 108 AO shift."
+          },
+          "kennzahlen": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number"
+            },
+            "description": "Kennzahl → euros (USt 1 A)."
+          },
+          "vatDueEur": {
+            "type": "number",
+            "description": "Kz 83: to pay (+) or refund (−)."
+          }
+        },
+        "required": [
+          "label",
+          "from",
+          "to",
+          "due",
+          "kennzahlen",
+          "vatDueEur"
+        ]
+      },
+      "EcSalesRowDto": {
+        "type": "object",
+        "properties": {
+          "vatId": {
+            "type": "string",
+            "nullable": true,
+            "description": "The buyer’s VAT id; null when the entry has none (to be completed)."
+          },
+          "goodsEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "servicesEur": {
+            "type": "number",
+            "description": "Euros."
+          }
+        },
+        "required": [
+          "vatId",
+          "goodsEur",
+          "servicesEur"
+        ]
+      },
+      "EcSalesReportDto": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "due": {
+            "type": "string"
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EcSalesRowDto"
+            }
+          }
+        },
+        "required": [
+          "label",
+          "due",
+          "rows"
+        ]
+      },
+      "EcSalesListDto": {
+        "type": "object",
+        "properties": {
+          "period": {
+            "type": "string",
+            "enum": [
+              "monat",
+              "quartal"
+            ]
+          },
+          "reports": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EcSalesReportDto"
+            }
+          }
+        },
+        "required": [
+          "period",
+          "reports"
+        ]
+      },
+      "VatPrepaymentsDto": {
+        "type": "object",
+        "properties": {
+          "period": {
+            "type": "string",
+            "enum": [
+              "monat",
+              "quartal",
+              "befreit"
+            ]
+          },
+          "periodSource": {
+            "type": "string",
+            "enum": [
+              "angabe",
+              "vorjahressteuer",
+              "gruendung_schaetzung",
+              "wahl_ueberschuss"
+            ]
+          },
+          "extension": {
+            "type": "boolean"
+          },
+          "specialPrepaymentEur": {
+            "type": "number",
+            "nullable": true,
+            "description": "Sondervorauszahlung, euros; monthly filers with extension only."
+          },
+          "periods": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VatPeriodDto"
+            }
+          },
+          "totalEur": {
+            "type": "number",
+            "description": "All prepayments with the Sondervorauszahlung: the annual return’s Vorauszahlungssoll."
+          },
+          "ecSalesList": {
+            "$ref": "#/components/schemas/EcSalesListDto"
+          }
+        },
+        "required": [
+          "period",
+          "periodSource",
+          "extension",
+          "specialPrepaymentEur",
+          "periods",
+          "totalEur",
+          "ecSalesList"
         ]
       },
       "NetByRateDto": {

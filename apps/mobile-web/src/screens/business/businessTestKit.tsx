@@ -16,6 +16,7 @@ export const BASE_URL = `*/v1/steuerjahre/${YEAR}/selbststaendig`
 export const BASE_PROFILE: BusinessProfileDto = {
   person: 'A',
   business: 1,
+  vatPeriodFacts: {},
   confirmedKind: null,
   professionAnswers: null,
   suggestion: null,

@@ -3417,7 +3417,8 @@
       "beruf": "Profession in detail",
       "gewerbedaten": "Trade tax inputs",
       "beteiligungen": "Partnership shares",
-      "firmenwagen": "Company car"
+      "firmenwagen": "Company car",
+      "voranmeldungen": "VAT advance returns"
     },
     "profil": {
       "artTitel": "Freelance or trade",
@@ -3487,7 +3488,9 @@
       "vst7": "Input VAT 7 %",
       "rc13b19": "§ 13b 19 %",
       "igErwerb19": "EU acquisition 19 %",
-      "igErwerb7": "EU acquisition 7 %"
+      "igErwerb7": "EU acquisition 7 %",
+      "rcEu19": "§ 13b Abs. 1 (EU) 19 %",
+      "euLeistung": "EU service (recipient owes)"
     },
     "erfassung": {
       "nurEuer": "Totals per line exist for the cash-basis method only. With a balance sheet you book in the Book.",
@@ -3608,7 +3611,7 @@
       "erstattung": "Refund",
       "nachzahlung": "To pay",
       "vorauszahlungenTitel": "Prepayments",
-      "vorauszahlungenFeld": "Prepayments paid (total)",
+      "vorauszahlungenFeld": "Prepayments paid (sum; empty = total of the advance returns)",
       "kleinGrenzeGruendung": "In the founding year the small business rule only holds up to {{grenze}} turnover. Your book shows {{umsatz}}: check in the profile whether you have to charge VAT.",
       "kleinGrenzeVorjahr": "Your turnover last year was above {{grenze}}. The small business rule does not apply this year: check this in the profile.",
       "kleinGrenzeJahr": "Your turnover this year, {{umsatz}}, is above {{grenze}}. The small business rule ends: check this in the profile.",
@@ -3845,6 +3848,55 @@
       "umsatzsteuer": "VAT on it",
       "wegeNichtAbziehbar": "Home–business trips, not deductible",
       "gedeckelt": "Capped at the vehicle's total costs."
+    },
+    "va": {
+      "hinweis": "The app computes each return from your book. You enter and send it in Mein ELSTER (form „Umsatzsteuer-Voranmeldung“).",
+      "zeitraum": "Filing period",
+      "periode": {
+        "monat": "Monthly",
+        "quartal": "Quarterly",
+        "befreit": "No advance return"
+      },
+      "quelle": {
+        "angabe": "as set by the tax office",
+        "vorjahressteuer": "by last year's VAT",
+        "gruendung_schaetzung": "founding year: by the expected VAT",
+        "wahl_ueberschuss": "monthly by choice (refund last year)"
+      },
+      "wahl": {
+        "auto": "Automatic",
+        "monat": "Month",
+        "quartal": "Quarter",
+        "befreit": "Exempt"
+      },
+      "dauerfrist": "Permanent extension",
+      "sondervorauszahlung": "Special prepayment (1/11, offset in December)",
+      "befreitText": "The tax office can exempt you from advance returns; then you pay the VAT with the annual return.",
+      "faellig": "due {{datum}}",
+      "zahllast": "To pay (Kz 83)",
+      "ueberschuss": "Refund (Kz 83)",
+      "summe": "Prepayments in the year (with the special prepayment)",
+      "zm": "EC sales list (to the BZSt)",
+      "zmKeine": "No intra-EU supplies or EU services booked.",
+      "ohneUstId": "without VAT id",
+      "ustIdFehlt": "An entry lacks the buyer's VAT id. Add it to the entry (reverse and book again).",
+      "kz": {
+        "81": "Turnover 19 %",
+        "86": "Turnover 7 %",
+        "41": "Intra-EU supplies",
+        "21": "Non-taxable services (EU)",
+        "48": "Exempt turnover without input VAT",
+        "89": "Intra-EU acquisitions 19 %",
+        "93": "Intra-EU acquisitions 7 %",
+        "46": "Services of EU businesses (§ 13b Abs. 1)",
+        "47": "Tax on it",
+        "84": "Other § 13b services",
+        "85": "Tax on it",
+        "66": "Input VAT from invoices",
+        "61": "Input VAT from intra-EU acquisitions",
+        "67": "Input VAT § 13b",
+        "39": "Special prepayment deducted"
+      }
     }
   }
 }

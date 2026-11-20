@@ -2,6 +2,12 @@ import { HttpException, HttpStatus, Inject, Injectable, Optional } from '@nestjs
 import {
   accountFor,
   companyCarUse,
+  ecSalesListPeriod,
+  specialPrepayment,
+  vatFilingPeriod,
+  vatPeriodReturn,
+  vatPeriodsOf,
+  type VatFilingPeriod,
   type CompanyCarInput,
   type CompanyCarResult,
   checkSmallBusiness,
@@ -95,7 +101,7 @@ import {
   type NewFixedAsset,
   type LoadedBook,
 } from './business.repository.js'
-import { accountForEuerKey, bankAccountOf, bookIntegrity, byKeyInEuros, deductibleByKeyInEuros, eur, registerAssetOf, vatFiguresOf, type BookIntegrity, type VatFigures } from './business-ledger.js'
+import { accountForEuerKey, bankAccountOf, bookIntegrity, byKeyInEuros, deductibleByKeyInEuros, ecSalesListOf, eur, registerAssetOf, vatFiguresOf, type BookIntegrity, type VatFigures } from './business-ledger.js'
 import { HebesatzDirectory, type HebesatzLookup } from './hebesatz.js'
 import { zipStored } from './zip.js'
 
@@ -109,6 +115,29 @@ export interface TradeTaxInputs {
   readonly einheitswertEur?: number
   readonly otherDeductionsEur?: number
   readonly lossCarriedForwardEur?: number
+}
+
+/**
+ * The Voranmeldung facts of the person (ADR-0101 §22): the period the office set (else derived from the
+ * year before), the Dauerfristverlängerung, the Sondervorauszahlung as paid, the monthly choice on a refund.
+ */
+export interface VatPeriodFacts {
+  readonly period?: VatFilingPeriod | undefined
+  readonly extension?: boolean | undefined
+  readonly specialPrepaymentEur?: number | undefined
+  readonly chooseMonthly?: boolean | undefined
+}
+
+export interface VatPrepaymentOverview {
+  readonly period: VatFilingPeriod
+  readonly periodSource: 'angabe' | 'vorjahressteuer' | 'gruendung_schaetzung' | 'wahl_ueberschuss'
+  readonly extension: boolean
+  /** Monthly filers with the Dauerfristverlängerung only; deducted in December. */
+  readonly specialPrepaymentEur: number | null
+  readonly periods: readonly { readonly label: string; readonly from: string; readonly to: string; readonly due: string; readonly kennzahlen: Readonly<Record<string, number>>; readonly vatDueEur: number }[]
+  /** All prepayments of the year with the Sondervorauszahlung: the Vorauszahlungssoll of the annual return. */
+  readonly totalEur: number
+  readonly ecSalesList: { readonly period: 'monat' | 'quartal'; readonly reports: readonly { readonly label: string; readonly due: string; readonly rows: readonly { readonly vatId: string | null; readonly goodsEur: number; readonly servicesEur: number }[] }[] }
 }
 
 /** § 10d facts: the Verlustvortrag of the last Feststellungsbescheid, the waiver of the Rücktrag, room in the years before. */
@@ -146,6 +175,7 @@ export interface BusinessProfileView {
   readonly multiplierOverride: number | null
   readonly startDate: string | null
   readonly vatPrepaymentsCents: number | null
+  readonly vatPeriodFacts: VatPeriodFacts
   readonly tradeTaxInputs: TradeTaxInputs
   readonly lossFacts: LossFacts
   readonly partnershipShares: readonly PartnershipShare[]
@@ -164,6 +194,7 @@ export interface ProfileInput {
   readonly multiplierOverride?: number | null | undefined
   readonly startDate?: string | null | undefined
   readonly vatPrepaymentsCents?: number | null | undefined
+  readonly vatPeriodFacts?: VatPeriodFacts | null | undefined
   readonly tradeTaxInputs?: TradeTaxInputs | null | undefined
   readonly lossFacts?: LossFacts | null | undefined
   readonly partnershipShares?: readonly PartnershipShare[] | null | undefined
@@ -284,6 +315,7 @@ export class BusinessService {
       multiplierOverride: record?.multiplierOverride ? Number(record.multiplierOverride) : null,
       startDate: record?.startDate ?? null,
       vatPrepaymentsCents: record?.vatPrepayments ? Number(record.vatPrepayments) : null,
+      vatPeriodFacts: parseJson<VatPeriodFacts>(record?.vatPeriodFacts ?? null, {}),
       tradeTaxInputs: parseJson<TradeTaxInputs>(record?.tradeTaxInputs ?? null, {}),
       lossFacts: parseJson<LossFacts>(record?.lossFacts ?? null, {}),
       partnershipShares: parseJson<PartnershipShare[]>(record?.partnershipShares ?? null, []),
@@ -365,6 +397,7 @@ export class BusinessService {
       ...(input.multiplierOverride !== undefined ? { multiplierOverride: input.multiplierOverride === null ? null : String(input.multiplierOverride) } : {}),
       ...(input.startDate !== undefined ? { startDate: input.startDate } : {}),
       ...(input.vatPrepaymentsCents !== undefined ? { vatPrepayments: input.vatPrepaymentsCents === null ? null : String(input.vatPrepaymentsCents) } : {}),
+      ...(input.vatPeriodFacts !== undefined ? { vatPeriodFacts: input.vatPeriodFacts === null ? null : JSON.stringify(input.vatPeriodFacts) } : {}),
       ...(input.tradeTaxInputs !== undefined ? { tradeTaxInputs: input.tradeTaxInputs === null ? null : JSON.stringify(input.tradeTaxInputs) } : {}),
       ...(input.lossFacts !== undefined ? { lossFacts: input.lossFacts === null ? null : JSON.stringify(input.lossFacts) } : {}),
       ...(input.partnershipShares !== undefined ? { partnershipShares: input.partnershipShares === null ? null : JSON.stringify(input.partnershipShares) } : {}),
@@ -817,6 +850,67 @@ export class BusinessService {
   }
 
   /**
+   * The Voranmeldungen of the year (ADR-0101 §22, § 18 UStG): the period from the facts or the year
+   * before, each period's Kennzahlen from all books of the person, the Sondervorauszahlung (§ 47 UStDV)
+   * taken off in December, and the Zusammenfassende Meldungen (§ 18a UStG). Nothing is transmitted.
+   */
+  async vatPrepayments(userId: string, year: number, ref: BusinessRef): Promise<VatPrepaymentOverview> {
+    await this.assertOpen(userId, year)
+    const overview = await this.prepaymentsOf(userId, year, ref.person)
+    await this.audit.append({ userId, action: 'READ', resource: 'selbststaendig' })
+    return overview
+  }
+
+  private async prepaymentsOf(userId: string, year: number, person: BusinessPerson): Promise<VatPrepaymentOverview> {
+    const [businesses, prior] = await Promise.all([this.businessesOf(userId, year, person), this.businessesOf(userId, year - 1, person)])
+    const profile = businesses.find((b) => b.ref.business === FIRST_BUSINESS)?.profile ?? businesses[0]?.profile ?? null
+    const facts = parseJson<VatPeriodFacts>(profile?.vatPeriodFacts ?? null, {})
+    const entries = businesses.flatMap((b) => b.ledger.entries)
+    const regime = profile?.smallBusiness ? 'klein' : 'regel'
+    const starts = businesses.map((b) => b.profile?.startDate ?? null).filter((d): d is string => d !== null).sort()
+    const start = starts[0] ?? null
+    const founding = start !== null && Number(start.slice(0, 4)) === year
+    const priorEntries = prior.flatMap((b) => b.ledger.entries)
+    const priorVat = priorEntries.length === 0 ? null : this.vatOf({ chart: 'SKR03', mode: 'euer', entries: priorEntries, lockedThrough: null }, profile, year - 1).result.vatOfYearEur
+    const priorMonths = start !== null && Number(start.slice(0, 4)) === year - 1 ? 12 - Number(start.slice(5, 7)) + 1 : 12
+    const derived = founding
+      ? vatFilingPeriod({ year, founding: { expectedVatEur: this.vatOf({ chart: 'SKR03', mode: 'euer', entries, lockedThrough: null }, profile, year).result.vatOfYearEur } })
+      : vatFilingPeriod({ year, priorYearVatEur: priorVat ?? 0, priorYearMonthsActive: priorMonths, chooseMonthly: facts.chooseMonthly })
+    const period = facts.period ?? derived.period
+    const extension = facts.extension === true
+    const specialPrepaymentEur = period === 'monat' && extension ? (facts.specialPrepaymentEur ?? specialPrepayment({ priorYearPrepaymentsEur: Math.max(0, priorVat ?? 0), priorYearMonthsActive: priorMonths })) : null
+    const list = vatPeriodsOf(year, period, extension)
+    const periods = list.map((p, index) => {
+      const figures = vatFiguresOf(entries, year, p)
+      const r = vatPeriodReturn({ figures, regime, ...(index === list.length - 1 && specialPrepaymentEur !== null ? { specialPrepaymentDeductionEur: specialPrepaymentEur } : {}) })
+      return { ...p, kennzahlen: r.kennzahlen, vatDueEur: r.vatDueEur }
+    })
+    const totalEur = round2(periods.reduce((sum, p) => sum + p.vatDueEur, 0) + (specialPrepaymentEur ?? 0))
+    return { period, periodSource: facts.period ? 'angabe' : derived.reason, extension, specialPrepaymentEur, periods, totalEur, ecSalesList: this.ecSalesListsOf(year, entries, priorEntries) }
+  }
+
+  /**
+   * The Zusammenfassende Meldungen of the year (§ 18a UStG): per quarter, and per month from the quarter
+   * in which the goods passed 50.000 € in it or one of the four before (Abs. 1 Satz 2, 3). Due on the 25th.
+   */
+  private ecSalesListsOf(year: number, entries: readonly JournalEntry[], priorEntries: readonly JournalEntry[]): VatPrepaymentOverview['ecSalesList'] {
+    const all = [...priorEntries, ...entries]
+    const quarters = vatPeriodsOf(year, 'quartal', false)
+    const months = vatPeriodsOf(year, 'monat', false)
+    const goodsOf = (p: { from: string; to: string }) => ecSalesListOf(all, p).reduce((sum, r) => sum + r.goodsEur, 0)
+    const byQuarter = [...vatPeriodsOf(year - 1, 'quartal', false), ...quarters].map(goodsOf)
+    const firstMonthly = quarters.findIndex((_, i) => ecSalesListPeriod({ goodsByQuarterEur: byQuarter.slice(i, i + 5).reverse() }) === 'monat')
+    const due25 = (to: string) => {
+      const y = Number(to.slice(0, 4))
+      const m = Number(to.slice(5, 7))
+      return m === 12 ? `${y + 1}-01-25` : `${y}-${String(m + 1).padStart(2, '0')}-25`
+    }
+    const periods = quarters.flatMap((q, i) => (firstMonthly !== -1 && i >= firstMonthly ? months.slice(i * 3, i * 3 + 3) : [q]))
+    const reports = periods.map((p) => ({ label: p.label, due: due25(p.to), rows: ecSalesListOf(entries, p) })).filter((r) => r.rows.length > 0)
+    return { period: firstMonthly === -1 ? 'quartal' : 'monat', reports }
+  }
+
+  /**
    * The VAT of the person: one Unternehmer, one Unternehmen (§ 2 Abs. 1 Satz 2 UStG), so all his
    * businesses' journals together, with the person-wide facts of the first business. The business began
    * with the earliest start date of them; § 20 Nr. 3 holds when all are freelance.
@@ -826,13 +920,15 @@ export class BusinessService {
     const profile = businesses.find((b) => b.ref.business === FIRST_BUSINESS)?.profile ?? businesses[0]?.profile ?? null
     const entries = businesses.flatMap((b) => b.ledger.entries)
     const chart = businesses[0]?.ledger.chart ?? 'SKR03'
-    const { figures, result } = this.vatOf({ chart, mode: 'euer', entries, lockedThrough: null }, profile, year)
+    const derivedPrepayments = profile?.vatPrepayments ? null : (await this.prepaymentsOf(userId, year, person)).totalEur
+    const { figures, result } = this.vatOf({ chart, mode: 'euer', entries, lockedThrough: null }, profile, year, derivedPrepayments)
     const starts = businesses.map((b) => b.profile?.startDate ?? null).filter((d): d is string => d !== null).sort()
     const freelanceOnly = businesses.length > 0 && businesses.every((b) => b.profile?.kind === 'freiberuf')
     return { figures, result, profile, startDate: starts[0] ?? null, freelanceOnly }
   }
 
-  private vatOf(ledger: Ledger, profile: BusinessProfileRecord | null, year: number): { figures: VatFigures; result: VatAnnualResult } {
+  /** `derivedPrepaymentsEur`: the Voranmeldungen's total, used when the user entered no sum of his own. */
+  private vatOf(ledger: Ledger, profile: BusinessProfileRecord | null, year: number, derivedPrepaymentsEur: number | null = null): { figures: VatFigures; result: VatAnnualResult } {
     const figures = vatFiguresOf(ledger.entries, year)
     const result = vatAnnualReturn({
       year,
@@ -843,7 +939,7 @@ export class BusinessService {
       taxFreeWithoutDeductionEur: figures.taxFreeWithoutDeductionEur,
       reverseChargeNetEur: figures.reverseChargeNetEur,
       inputVatEur: figures.inputVatEur,
-      prepaymentsEur: profile?.vatPrepayments ? eur(Number(profile.vatPrepayments)) : 0,
+      prepaymentsEur: profile?.vatPrepayments ? eur(Number(profile.vatPrepayments)) : (derivedPrepaymentsEur ?? 0),
     })
     return { figures, result }
   }
@@ -1317,7 +1413,7 @@ function taxKeyOfAccount(chart: ChartOfAccounts, number: string): BookingTaxKey 
 }
 
 /** The profile fields that belong to the person, not to one business (ADR-0101 §22). */
-const PERSON_WIDE = ['smallBusiness', 'vatMethod', 'vatPrepayments', 'lossFacts', 'partnershipShares'] as const
+const PERSON_WIDE = ['smallBusiness', 'vatMethod', 'vatPrepayments', 'vatPeriodFacts', 'lossFacts', 'partnershipShares'] as const
 
 function personWideOf(record: Partial<BusinessProfileRecord> | null): BusinessProfilePatch {
   if (record === null) return {}

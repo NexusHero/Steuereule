@@ -70,6 +70,7 @@ import type {
   BusinessControllerSaveProfileParams,
   BusinessControllerTradeTaxParams,
   BusinessControllerVatParams,
+  BusinessControllerVatPrepaymentsParams,
   BusinessErrorDto,
   BusinessListItemDto,
   BusinessProfileDto,
@@ -92,6 +93,7 @@ import type {
   QuickEntryDto,
   ReversalDto,
   TradeTaxDto,
+  VatPrepaymentsDto,
   VatReturnDto
 } from './selbststaendig.schemas';
 
@@ -2815,6 +2817,145 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       > => {
       return useMutation(getBusinessControllerBookCompanyCarMutationOptions(options), queryClient);
     }
+
+export type businessControllerVatPrepaymentsResponse200 = {
+  data: VatPrepaymentsDto
+  status: 200
+}
+
+export type businessControllerVatPrepaymentsResponse400 = {
+  data: BusinessErrorDto
+  status: 400
+}
+
+export type businessControllerVatPrepaymentsResponse401 = {
+  data: void
+  status: 401
+}
+
+export type businessControllerVatPrepaymentsResponse403 = {
+  data: BusinessErrorDto
+  status: 403
+}
+
+export type businessControllerVatPrepaymentsResponseSuccess = (businessControllerVatPrepaymentsResponse200) & {
+  headers: Headers;
+};
+export type businessControllerVatPrepaymentsResponseError = (businessControllerVatPrepaymentsResponse400 | businessControllerVatPrepaymentsResponse401 | businessControllerVatPrepaymentsResponse403) & {
+  headers: Headers;
+};
+
+export type businessControllerVatPrepaymentsResponse = (businessControllerVatPrepaymentsResponseSuccess | businessControllerVatPrepaymentsResponseError)
+
+export const getBusinessControllerVatPrepaymentsUrl = (jahr: number,
+    params?: BusinessControllerVatPrepaymentsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/v1/steuerjahre/${jahr}/selbststaendig/umsatzsteuer/voranmeldungen?${stringifiedParams}` : `/v1/steuerjahre/${jahr}/selbststaendig/umsatzsteuer/voranmeldungen`
+}
+
+export const businessControllerVatPrepayments = async (jahr: number,
+    params?: BusinessControllerVatPrepaymentsParams, options?: RequestInit): Promise<businessControllerVatPrepaymentsResponse> => {
+
+  return httpClient<businessControllerVatPrepaymentsResponse>(getBusinessControllerVatPrepaymentsUrl(jahr,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getBusinessControllerVatPrepaymentsQueryKey = (jahr: number,
+    params?: BusinessControllerVatPrepaymentsParams,) => {
+    return [
+    `/v1/steuerjahre/${jahr}/selbststaendig/umsatzsteuer/voranmeldungen`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getBusinessControllerVatPrepaymentsQueryOptions = <TData = Awaited<ReturnType<typeof businessControllerVatPrepayments>>, TError = BusinessErrorDto | void>(jahr: number,
+    params?: BusinessControllerVatPrepaymentsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof businessControllerVatPrepayments>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getBusinessControllerVatPrepaymentsQueryKey(jahr,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof businessControllerVatPrepayments>>> = ({ signal }) => businessControllerVatPrepayments(jahr,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: jahr !== null && jahr !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof businessControllerVatPrepayments>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type BusinessControllerVatPrepaymentsQueryResult = NonNullable<Awaited<ReturnType<typeof businessControllerVatPrepayments>>>
+export type BusinessControllerVatPrepaymentsQueryError = BusinessErrorDto | void
+
+
+export function useBusinessControllerVatPrepayments<TData = Awaited<ReturnType<typeof businessControllerVatPrepayments>>, TError = BusinessErrorDto | void>(
+ jahr: number,
+    params: undefined |  BusinessControllerVatPrepaymentsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof businessControllerVatPrepayments>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof businessControllerVatPrepayments>>,
+          TError,
+          Awaited<ReturnType<typeof businessControllerVatPrepayments>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useBusinessControllerVatPrepayments<TData = Awaited<ReturnType<typeof businessControllerVatPrepayments>>, TError = BusinessErrorDto | void>(
+ jahr: number,
+    params?: BusinessControllerVatPrepaymentsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof businessControllerVatPrepayments>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof businessControllerVatPrepayments>>,
+          TError,
+          Awaited<ReturnType<typeof businessControllerVatPrepayments>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useBusinessControllerVatPrepayments<TData = Awaited<ReturnType<typeof businessControllerVatPrepayments>>, TError = BusinessErrorDto | void>(
+ jahr: number,
+    params?: BusinessControllerVatPrepaymentsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof businessControllerVatPrepayments>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useBusinessControllerVatPrepayments<TData = Awaited<ReturnType<typeof businessControllerVatPrepayments>>, TError = BusinessErrorDto | void>(
+ jahr: number,
+    params?: BusinessControllerVatPrepaymentsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof businessControllerVatPrepayments>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getBusinessControllerVatPrepaymentsQueryOptions(jahr,params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export type businessControllerVatResponse200 = {
   data: VatReturnDto

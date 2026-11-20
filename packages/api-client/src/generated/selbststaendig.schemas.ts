@@ -205,6 +205,29 @@ export interface ProfessionSuggestionDto {
   basis: string[];
 }
 
+/**
+ * The period the office set; absent = derived from the year before.
+ */
+export type VatPeriodFactsDtoPeriod = typeof VatPeriodFactsDtoPeriod[keyof typeof VatPeriodFactsDtoPeriod];
+
+
+export const VatPeriodFactsDtoPeriod = {
+  monat: 'monat',
+  quartal: 'quartal',
+  befreit: 'befreit',
+} as const;
+
+export interface VatPeriodFactsDto {
+  /** The period the office set; absent = derived from the year before. */
+  period?: VatPeriodFactsDtoPeriod;
+  /** Dauerfristverlängerung (§ 46 UStDV). */
+  extension?: boolean;
+  /** The Sondervorauszahlung as paid; absent = 1/11 of last year (§ 47 UStDV). */
+  specialPrepaymentEur?: number;
+  /** Monthly by choice after a refund above the limit (§ 18 Abs. 2a UStG). */
+  chooseMonthly?: boolean;
+}
+
 export interface FinancingComponentsDto {
   /** § 8 Nr. 1 a GewStG: Entgelte für Schulden, euros. */
   debtChargesEur?: number;
@@ -288,6 +311,7 @@ export interface BusinessProfileDto {
   startDate: string | null;
   /** @nullable */
   vatPrepaymentsCents: number | null;
+  vatPeriodFacts: VatPeriodFactsDto;
   tradeTaxInputs: TradeTaxInputsDto;
   lossFacts: LossFactsDto;
   partnershipShares: PartnershipShareDto[];
@@ -449,10 +473,15 @@ export interface BusinessProfileInputDto {
   /** @nullable */
   startDate?: string | null;
   /**
-     * Umsatzsteuer prepayments of the year in cents.
+     * Umsatzsteuer prepayments of the year in cents; absent or null = the Voranmeldungen’s total.
      * @nullable
      */
   vatPrepaymentsCents?: number | null;
+  /**
+     * The Voranmeldung facts. Replaced as a whole.
+     * @nullable
+     */
+  vatPeriodFacts?: VatPeriodFactsDto | null;
   /**
      * Gewerbesteuer inputs, euros. Replaced as a whole: send the complete object.
      * @nullable
@@ -603,6 +632,8 @@ export interface BookingDraftDto {
   /** Reference to a stored receipt (Beleg id). */
   receiptRef?: string;
   lines: BookingLineDto[];
+  /** The counterparty’s foreign VAT id (Zusammenfassende Meldung, § 18a UStG). */
+  counterpartyVatId?: string;
   /** A fixed asset: how it is depreciated. */
   asset?: BookingAssetDto;
 }
@@ -1287,6 +1318,88 @@ export interface CompanyCarResultDto {
   vat?: CarVatResultDto | null;
   reason?: CompanyCarResultDtoReason;
   missing?: string[];
+}
+
+export type VatPrepaymentsDtoPeriod = typeof VatPrepaymentsDtoPeriod[keyof typeof VatPrepaymentsDtoPeriod];
+
+
+export const VatPrepaymentsDtoPeriod = {
+  monat: 'monat',
+  quartal: 'quartal',
+  befreit: 'befreit',
+} as const;
+
+export type VatPrepaymentsDtoPeriodSource = typeof VatPrepaymentsDtoPeriodSource[keyof typeof VatPrepaymentsDtoPeriodSource];
+
+
+export const VatPrepaymentsDtoPeriodSource = {
+  angabe: 'angabe',
+  vorjahressteuer: 'vorjahressteuer',
+  gruendung_schaetzung: 'gruendung_schaetzung',
+  wahl_ueberschuss: 'wahl_ueberschuss',
+} as const;
+
+/**
+ * Kennzahl → euros (USt 1 A).
+ */
+export type VatPeriodDtoKennzahlen = {[key: string]: number};
+
+export interface VatPeriodDto {
+  label: string;
+  from: string;
+  to: string;
+  /** Due date before any § 108 AO shift. */
+  due: string;
+  /** Kennzahl → euros (USt 1 A). */
+  kennzahlen: VatPeriodDtoKennzahlen;
+  /** Kz 83: to pay (+) or refund (−). */
+  vatDueEur: number;
+}
+
+export type EcSalesListDtoPeriod = typeof EcSalesListDtoPeriod[keyof typeof EcSalesListDtoPeriod];
+
+
+export const EcSalesListDtoPeriod = {
+  monat: 'monat',
+  quartal: 'quartal',
+} as const;
+
+export interface EcSalesRowDto {
+  /**
+     * The buyer’s VAT id; null when the entry has none (to be completed).
+     * @nullable
+     */
+  vatId: string | null;
+  /** Euros. */
+  goodsEur: number;
+  /** Euros. */
+  servicesEur: number;
+}
+
+export interface EcSalesReportDto {
+  label: string;
+  due: string;
+  rows: EcSalesRowDto[];
+}
+
+export interface EcSalesListDto {
+  period: EcSalesListDtoPeriod;
+  reports: EcSalesReportDto[];
+}
+
+export interface VatPrepaymentsDto {
+  period: VatPrepaymentsDtoPeriod;
+  periodSource: VatPrepaymentsDtoPeriodSource;
+  extension: boolean;
+  /**
+     * Sondervorauszahlung, euros; monthly filers with extension only.
+     * @nullable
+     */
+  specialPrepaymentEur: number | null;
+  periods: VatPeriodDto[];
+  /** All prepayments with the Sondervorauszahlung: the annual return’s Vorauszahlungssoll. */
+  totalEur: number;
+  ecSalesList: EcSalesListDto;
 }
 
 export interface NetByRateDto {
@@ -2088,6 +2201,25 @@ export type BusinessControllerBookCompanyCarPerson = typeof BusinessControllerBo
 
 
 export const BusinessControllerBookCompanyCarPerson = {
+  A: 'A',
+  B: 'B',
+} as const;
+
+export type BusinessControllerVatPrepaymentsParams = {
+/**
+ * Which business of the person, from 1 (default); ADR-0101 §22.
+ */
+betrieb?: number;
+/**
+ * Whose business: A (default) or B of a joint return.
+ */
+person?: BusinessControllerVatPrepaymentsPerson;
+};
+
+export type BusinessControllerVatPrepaymentsPerson = typeof BusinessControllerVatPrepaymentsPerson[keyof typeof BusinessControllerVatPrepaymentsPerson];
+
+
+export const BusinessControllerVatPrepaymentsPerson = {
   A: 'A',
   B: 'B',
 } as const;

@@ -420,3 +420,49 @@ export class CompanyCarResultDto {
   @ApiPropertyOptional({ enum: ['betriebliche_nutzung_bis_50'] }) reason?: 'betriebliche_nutzung_bis_50'
   @ApiPropertyOptional({ type: [String] }) missing?: string[]
 }
+
+// ---------------------------------------------------------------------------------------------------
+// Umsatzsteuer-Voranmeldung und Zusammenfassende Meldung (ADR-0101 §22)
+
+export class VatPeriodFactsDto {
+  @ApiPropertyOptional({ enum: ['monat', 'quartal', 'befreit'], description: 'The period the office set; absent = derived from the year before.' }) @IsOptional() @IsIn(['monat', 'quartal', 'befreit']) period?: 'monat' | 'quartal' | 'befreit'
+  @ApiPropertyOptional({ type: Boolean, description: 'Dauerfristverlängerung (§ 46 UStDV).' }) @IsOptional() @IsBoolean() extension?: boolean
+  @ApiPropertyOptional({ ...EUR, description: 'The Sondervorauszahlung as paid; absent = 1/11 of last year (§ 47 UStDV).' }) @IsOptional() @IsNumber() @Min(0) specialPrepaymentEur?: number
+  @ApiPropertyOptional({ type: Boolean, description: 'Monthly by choice after a refund above the limit (§ 18 Abs. 2a UStG).' }) @IsOptional() @IsBoolean() chooseMonthly?: boolean
+}
+
+export class VatPeriodDto {
+  @ApiProperty({ type: String, example: 'Q1/2025' }) label!: string
+  @ApiProperty({ type: String }) from!: string
+  @ApiProperty({ type: String }) to!: string
+  @ApiProperty({ type: String, description: 'Due date before any § 108 AO shift.' }) due!: string
+  @ApiProperty({ type: 'object', additionalProperties: { type: 'number' }, description: 'Kennzahl → euros (USt 1 A).' }) kennzahlen!: Record<string, number>
+  @ApiProperty({ ...EUR, description: 'Kz 83: to pay (+) or refund (−).' }) vatDueEur!: number
+}
+
+export class EcSalesRowDto {
+  @ApiProperty({ type: String, nullable: true, description: 'The buyer’s VAT id; null when the entry has none (to be completed).' }) vatId!: string | null
+  @ApiProperty(EUR) goodsEur!: number
+  @ApiProperty(EUR) servicesEur!: number
+}
+
+export class EcSalesReportDto {
+  @ApiProperty({ type: String }) label!: string
+  @ApiProperty({ type: String }) due!: string
+  @ApiProperty({ type: [EcSalesRowDto] }) rows!: EcSalesRowDto[]
+}
+
+export class EcSalesListDto {
+  @ApiProperty({ enum: ['monat', 'quartal'] }) period!: 'monat' | 'quartal'
+  @ApiProperty({ type: [EcSalesReportDto] }) reports!: EcSalesReportDto[]
+}
+
+export class VatPrepaymentsDto {
+  @ApiProperty({ enum: ['monat', 'quartal', 'befreit'] }) period!: 'monat' | 'quartal' | 'befreit'
+  @ApiProperty({ enum: ['angabe', 'vorjahressteuer', 'gruendung_schaetzung', 'wahl_ueberschuss'] }) periodSource!: 'angabe' | 'vorjahressteuer' | 'gruendung_schaetzung' | 'wahl_ueberschuss'
+  @ApiProperty({ type: Boolean }) extension!: boolean
+  @ApiProperty({ type: Number, nullable: true, description: 'Sondervorauszahlung, euros; monthly filers with extension only.' }) specialPrepaymentEur!: number | null
+  @ApiProperty({ type: [VatPeriodDto] }) periods!: VatPeriodDto[]
+  @ApiProperty({ ...EUR, description: 'All prepayments with the Sondervorauszahlung: the annual return’s Vorauszahlungssoll.' }) totalEur!: number
+  @ApiProperty({ type: EcSalesListDto }) ecSalesList!: EcSalesListDto
+}

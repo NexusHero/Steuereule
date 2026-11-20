@@ -143,6 +143,9 @@ export function parseBookingDraft(raw: string): { readonly ok: true; readonly dr
       text: draft.text.trim(),
       lines,
       ...(asset !== undefined ? { asset } : {}),
+      ...(typeof draft.counterpartyVatId === 'string' && /^[A-Z]{2}[0-9A-Z+*]{2,12}$/.test(draft.counterpartyVatId.replace(/\s/g, '').toUpperCase())
+        ? { counterpartyVatId: draft.counterpartyVatId.replace(/\s/g, '').toUpperCase() }
+        : {}),
     },
   }
 }

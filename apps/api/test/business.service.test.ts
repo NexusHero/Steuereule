@@ -398,6 +398,32 @@ describe('BusinessService (ADR-0101)', () => {
     expect(after - before).toBeCloseTo(5_508 + 837.22 + 1_578.6, 2)
   })
 
+  it('computes the Voranmeldungen from the book and carries their total into the annual return (§ 18 UStG, ADR-0101 §22)', async () => {
+    const { service } = setup()
+    // 2024: 12.000 € VAT owed → 2025 monthly (above 9.000 €).
+    await service.post('u', 2024, A1, { date: '2024-06-01', documentNumber: 'R-24', text: 'Honorar', lines: [{ account: '1200', side: 'debit', amount: 7_516_000 }, { account: '8400', side: 'credit', amount: 7_516_000, taxKey: 'ust19' }] })
+    await service.saveProfile('u', 2025, A1, { vatPeriodFacts: { extension: true } })
+    await service.post('u', 2025, A1, { ...sale, date: '2025-03-01', documentNumber: 'R-25-1' })
+    await service.post('u', 2025, A1, { ...supplies, date: '2025-03-05', documentNumber: 'Q-25-1' })
+    // An intra-EU supply in May to an Austrian buyer.
+    await service.post('u', 2025, A1, { date: '2025-05-02', documentNumber: 'R-25-2', text: 'Lieferung Wien', counterpartyVatId: 'atu 12345678', lines: [{ account: '1200', side: 'debit', amount: 500_000 }, { account: '8125', side: 'credit', amount: 500_000, taxKey: 'igLieferung' }] })
+    const va = await service.vatPrepayments('u', 2025, A1)
+    expect(va).toMatchObject({ period: 'monat', periodSource: 'vorjahressteuer', extension: true })
+    expect(va.periods).toHaveLength(12)
+    // 12.000 € × 12 / 12 / 11 → 1.091 € Sondervorauszahlung, deducted in December.
+    expect(va.specialPrepaymentEur).toBe(1_091)
+    const march = va.periods[2]!
+    expect(march).toMatchObject({ label: '03/2025', due: '2025-05-10' })
+    expect(march.kennzahlen).toMatchObject({ '81': 1_000, '66': 19, '83': 171 })
+    expect(va.periods[11]!.kennzahlen['39']).toBe(1_091)
+    expect(va.totalEur).toBe(171)
+    expect(va.ecSalesList).toEqual({ period: 'quartal', reports: [{ label: 'Q2/2025', due: '2025-07-25', rows: [{ vatId: 'ATU12345678', goodsEur: 5_000, servicesEur: 0 }] }] })
+    // No sum entered: the annual return takes the Voranmeldungen.
+    expect((await service.vatReturn('u', 2025, A1)).result.prepaymentsEur).toBe(171)
+    await service.saveProfile('u', 2025, A1, { vatPrepaymentsCents: 20_000 })
+    expect((await service.vatReturn('u', 2025, A1)).result.prepaymentsEur).toBe(200)
+  })
+
   it('the GoBD export is a zip with index.xml and the journal, and is itself logged in the chain', async () => {
     const { service, repository } = setup()
     await service.post('u', YEAR, A1, sale)

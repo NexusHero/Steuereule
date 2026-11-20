@@ -4,7 +4,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 import { IsArray, IsBoolean, IsIn, IsInt, IsObject, IsOptional, IsString, Length, Matches, Max, MaxLength, Min, ValidateNested } from 'class-validator'
 import { Type } from 'class-transformer'
 import { USEFUL_LIVES } from '@steuereule/core'
-import { BookIntegrityDto, CsvMappingDto, LossFactsDto, PartnershipShareDto, ProfessionAnswersDto, TradeTaxInputsDto } from './business-results.dto.js'
+import { BookIntegrityDto, CsvMappingDto, LossFactsDto, PartnershipShareDto, ProfessionAnswersDto, TradeTaxInputsDto, VatPeriodFactsDto } from './business-results.dto.js'
 
 export { BookIntegrityDto }
 
@@ -65,6 +65,11 @@ export class BookingDraftDto {
   @ApiProperty({ type: [BookingLineDto] })
   @IsArray()
   lines!: BookingLineDto[]
+
+  @ApiPropertyOptional({ type: String, example: 'ATU12345678', description: 'The counterparty’s foreign VAT id (Zusammenfassende Meldung, § 18a UStG).' })
+  @IsOptional()
+  @Matches(/^[A-Z]{2}[0-9A-Z+*]{2,12}$/)
+  counterpartyVatId?: string
 
   @ApiPropertyOptional({ type: BookingAssetDto, description: 'A fixed asset: how it is depreciated.' })
   @IsOptional()
@@ -201,10 +206,16 @@ export class BusinessProfileInputDto {
   @Matches(ISO_DATE)
   startDate?: string | null
 
-  @ApiPropertyOptional({ type: Number, nullable: true, description: 'Umsatzsteuer prepayments of the year in cents.' })
+  @ApiPropertyOptional({ type: Number, nullable: true, description: 'Umsatzsteuer prepayments of the year in cents; absent or null = the Voranmeldungen’s total.' })
   @IsOptional()
   @IsInt()
   vatPrepaymentsCents?: number | null
+
+  @ApiPropertyOptional({ type: VatPeriodFactsDto, nullable: true, description: 'The Voranmeldung facts. Replaced as a whole.' })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => VatPeriodFactsDto)
+  vatPeriodFacts?: VatPeriodFactsDto | null
 
   @ApiPropertyOptional({ type: TradeTaxInputsDto, nullable: true, description: 'Gewerbesteuer inputs, euros. Replaced as a whole: send the complete object.' })
   @IsOptional()
@@ -293,6 +304,9 @@ export class BusinessProfileDto {
 
   @ApiProperty({ type: Number, nullable: true })
   vatPrepaymentsCents!: number | null
+
+  @ApiProperty({ type: VatPeriodFactsDto })
+  vatPeriodFacts!: VatPeriodFactsDto
 
   @ApiProperty({ type: TradeTaxInputsDto })
   tradeTaxInputs!: TradeTaxInputsDto

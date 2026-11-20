@@ -32,6 +32,8 @@ export interface BusinessProfileRecord {
   readonly multiplierOverride: string | null
   readonly startDate: string | null
   readonly vatPrepayments: string | null
+  /** JSON of the Voranmeldung facts (period, Dauerfristverlängerung, Sondervorauszahlung), ADR-0101 §22. */
+  readonly vatPeriodFacts: string | null
   readonly tradeTaxInputs: string | null
   readonly lossFacts: string | null
   readonly partnershipShares: string | null

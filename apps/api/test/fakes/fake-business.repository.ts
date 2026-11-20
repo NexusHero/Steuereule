@@ -44,7 +44,7 @@ export class FakeBusinessRepository implements BusinessRepository {
   async saveProfile(userId: string, taxYear: number, ref: BusinessRef, patch: BusinessProfilePatch) {
     const current = this.profiles.get(key(userId, taxYear, ref)) ?? {
       id: `p${++this.seq}`, userId, taxYear, person: ref.person, business: ref.business, kind: null, professionAnswers: null, suggestion: null, name: null, mode: 'euer', chart: 'SKR03',
-      smallBusiness: false, vatMethod: 'ist', municipalityAgs: null, multiplierOverride: null, startDate: null, vatPrepayments: null, tradeTaxInputs: null,
+      smallBusiness: false, vatMethod: 'ist', municipalityAgs: null, multiplierOverride: null, startDate: null, vatPrepayments: null, vatPeriodFacts: null, tradeTaxInputs: null,
       lossFacts: null, partnershipShares: null, procedureDoc: null,
     } satisfies BusinessProfileRecord
     const next = { ...current, ...Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined)) } as BusinessProfileRecord

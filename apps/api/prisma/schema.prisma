@@ -1555,6 +1555,8 @@ model BusinessProfile {
   startDate          String?  @map("beginn") /// @encrypted?mode=strict
   /// Umsatzsteuer prepayments of the year as one sum in cents (ADR-0101 §8).
   vatPrepayments     String?  @map("ustVorauszahlungen") /// @encrypted?mode=strict
+  /// The Voranmeldung facts as JSON (ADR-0101 §22): period chosen or set by the office, Dauerfristverlängerung, Sondervorauszahlung.
+  vatPeriodFacts     String?  @map("ustVaAngaben") /// @encrypted?mode=strict
   /// Gewerbesteuer inputs as JSON: § 8 Nr. 1 components, § 9 Nr. 1, other additions and deductions, Gewerbeverlust.
   tradeTaxInputs     String?  @map("gewstAngaben") /// @encrypted?mode=strict
   /// Loss facts as JSON: Verlustvortrag from the last Feststellungsbescheid, the Rücktrag waiver.
@@ -1608,6 +1610,8 @@ model JournalEntry {
   /// The § 11 EStG facts of a regular payment as JSON.
   regularPayment String?       @map("wiederkehrend") /// @encrypted?mode=strict
   reversalOf     Int?          @map("stornoVon")
+  /// The counterparty's foreign VAT id for the Zusammenfassende Meldung (ADR-0101 §22); null when none.
+  counterpartyVatId String?    @map("ustIdNr") /// @encrypted?mode=strict
   /// Where the entry came from: "nutzer", "eule:<ref>", "bank:<id>", "beleg:<id>", "afa:<id>", "eb". No tax data.
   source         String        @default("nutzer") @map("herkunft")
   /// The accepted draft as JSON when the entry came from one (owl, receipt): what the draft's undo compares.

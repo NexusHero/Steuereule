@@ -40,6 +40,7 @@ import {
   ReversalDto,
 } from './dto/business.dto.js'
 import {
+  VatPrepaymentsDto,
   CompanyCarResultDto,
   AssetsResponseDto,
   BusinessCataloguesDto,
@@ -328,6 +329,13 @@ export class BusinessController {
   @Errors(409)
   bookCompanyCar(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number, @Body() dto: CompanyCarInputDto, @Query('person') person?: string, @Query('betrieb') business?: string): Promise<JournalEntryDto[]> {
     return this.service.bookCompanyCar(userId, year, refOf(person, business), dto) as unknown as Promise<JournalEntryDto[]>
+  }
+
+  @Get(':jahr/selbststaendig/umsatzsteuer/voranmeldungen')
+  @RequiresAccount()
+  @ApiOkResponse({ type: VatPrepaymentsDto, description: 'The Voranmeldungen of the year with their Kennzahlen, the Sondervorauszahlung and the Zusammenfassende Meldungen; nothing is transmitted.' })
+  vatPrepayments(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number, @Query('person') person?: string, @Query('betrieb') business?: string): Promise<VatPrepaymentsDto> {
+    return this.service.vatPrepayments(userId, year, refOf(person, business)) as unknown as Promise<VatPrepaymentsDto>
   }
 
   @Get(':jahr/selbststaendig/umsatzsteuer')

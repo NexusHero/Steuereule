@@ -42,6 +42,7 @@ function toProfile(row: {
   multiplierOverride: string | null
   startDate: string | null
   vatPrepayments: string | null
+  vatPeriodFacts: string | null
   tradeTaxInputs: string | null
   lossFacts: string | null
   partnershipShares: string | null
@@ -65,6 +66,7 @@ function toProfile(row: {
     multiplierOverride: row.multiplierOverride,
     startDate: row.startDate,
     vatPrepayments: row.vatPrepayments,
+    vatPeriodFacts: row.vatPeriodFacts,
     tradeTaxInputs: row.tradeTaxInputs,
     lossFacts: row.lossFacts,
     partnershipShares: row.partnershipShares,
@@ -117,6 +119,7 @@ function toEntry(row: {
   text: string
   regularPayment: string | null
   reversalOf: number | null
+  counterpartyVatId?: string | null
   lines: { account: string; side: string; amount: string; taxKey: string; taxPart: string | null }[]
 }): JournalEntry {
   return {
@@ -136,6 +139,8 @@ function toEntry(row: {
     ),
     regularPayment: row.regularPayment === null ? null : (JSON.parse(row.regularPayment) as JournalEntry['regularPayment']),
     reversalOf: row.reversalOf,
+    // Only when there is one: an absent id keeps the canonical JSON, and with it the hash, of older entries.
+    ...(row.counterpartyVatId ? { counterpartyVatId: row.counterpartyVatId } : {}),
   }
 }
 
@@ -221,6 +226,7 @@ export class PrismaBusinessRepository implements BusinessRepository {
           text: entry.text,
           regularPayment: entry.regularPayment === null ? null : JSON.stringify(entry.regularPayment),
           reversalOf: entry.reversalOf,
+          counterpartyVatId: entry.counterpartyVatId ?? null,
           source,
           draft: draft ?? null,
           contentHash: entryContentHash(entry),

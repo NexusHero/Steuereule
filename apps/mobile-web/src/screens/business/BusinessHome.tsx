@@ -32,6 +32,7 @@ const LINKS: readonly LinkSpec[] = [
   { page: 'firmenwagen', show: () => true },
   { page: 'abschluss', show: () => true },
   { page: 'umsatzsteuer', show: () => true },
+  { page: 'voranmeldungen', show: () => true },
   { page: 'gewerbesteuer', show: (f) => f.gewerbe },
   { page: 'verluste', show: () => true },
   { page: 'elster', show: () => true },
