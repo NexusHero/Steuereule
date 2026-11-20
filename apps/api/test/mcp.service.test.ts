@@ -207,6 +207,7 @@ describe('McpService (ADR-0052 §3 / §5 / §8 / §12)', () => {
       'einkommensteuer_berechnen',
       'eintrag_zuruecknehmen',
       'eulen_hinweise',
+      'feld_finden',
       'gesetzestext_lesen',
       'gewerbesteuer_schaetzen',
       'haushalt_ueberblick',
@@ -222,6 +223,8 @@ describe('McpService (ADR-0052 §3 / §5 / §8 / §12)', () => {
       'spekulationsfrist_pruefen',
       'steuerwissen_lesen',
       'veranlagungsarten_vergleichen',
+      'vordruck_zeilen',
+      'wechselkurs',
       'zahllink_anfordern',
     ])
   })
@@ -268,7 +271,7 @@ describe('McpService (ADR-0052 §3 / §5 / §8 / §12)', () => {
     const report = {
       report: async (_u: string, taxYear: number) => ({ taxYear, nextSteps: ['x'] }),
       openQuestions: async () => ({ openQuestions: 2, next: { id: 'job', kind: 'question', answers: ['Angestellt'] } }),
-      simulate: async () => ({ ok: true, beforeRefundEur: 100, afterRefundEur: 250, deltaEur: 150 }),
+      simulateEntries: async () => ({ ok: true, beforeRefundEur: 100, afterRefundEur: 250, deltaEur: 150 }),
     }
     const withReport = new McpService(cockpitService, printoutService, confirmationService, owlModeService, receiptService, unlockService, profileRepo, masterDataRepo, auditService, report as never)
     const server = withReport.createServer(USER, ALL_SCOPES_ASSISTANT)
@@ -284,7 +287,7 @@ describe('McpService (ADR-0052 §3 / §5 / §8 / §12)', () => {
   })
 
   it('auswirkung_simulieren writes on trial, so it needs the write scope and refuses a read-only assistant', async () => {
-    const report = { simulate: vi.fn() }
+    const report = { simulateEntries: vi.fn() }
     const withReport = new McpService(cockpitService, printoutService, confirmationService, owlModeService, receiptService, unlockService, profileRepo, masterDataRepo, auditService, report as never)
     const server = withReport.createServer(USER, { ...ALL_SCOPES_ASSISTANT, scopes: ['steuerdaten:read'] })
     const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
@@ -294,11 +297,27 @@ describe('McpService (ADR-0052 §3 / §5 / §8 / §12)', () => {
     const res = await client.callTool({ name: 'auswirkung_simulieren', arguments: { taxYear: YEAR, screen: 'lstb', field: 'bruttoarbeitslohn', value: '50000' } })
     expect((res as { isError?: boolean }).isError).toBe(true)
     expect(getText(res)).toContain('steuerdaten:write')
-    expect(report.simulate).not.toHaveBeenCalled()
+    expect(report.simulateEntries).not.toHaveBeenCalled()
+  })
+
+  it('szenario_simulieren hands every checked entry to one simulation, Person B’s in her data', async () => {
+    const report = { simulateEntries: vi.fn().mockResolvedValue({ ok: true, beforeRefundEur: 0, afterRefundEur: 10, deltaEur: 10 }) }
+    const link = { spouseForAdvisor: async () => ({ spouseUserId: 'shadow-b', recordable: true, firstName: null, lastName: null }), dataUser: async () => 'shadow-b' }
+    const svc = new McpService(cockpitService, printoutService, confirmationService, owlModeService, receiptService, unlockService, profileRepo, masterDataRepo, auditService, report as never, link as never)
+    const server = svc.createServer(USER, ALL_SCOPES_ASSISTANT)
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
+    await server.connect(serverTransport)
+    const client = new Client({ name: 'TestClient', version: '1.0.0' })
+    await client.connect(clientTransport)
+    const eintraege = [{ screen: 'chLohnausweis', field: 'krankenkasseChf', value: '3.593', person: 'A' }, { screen: 'chLohnausweis', field: 'krankenkasseChf', value: '3593', person: 'B' }]
+    expect(JSON.parse(getText(await client.callTool({ name: 'szenario_simulieren', arguments: { taxYear: YEAR, eintraege } }))).deltaEur).toBe(10)
+    expect(report.simulateEntries).toHaveBeenCalledWith(USER, YEAR, [expect.objectContaining({ field: 'krankenkasseChf', value: '3593', dataUserId: USER }), expect.objectContaining({ dataUserId: 'shadow-b' })])
+    const bad = await client.callTool({ name: 'szenario_simulieren', arguments: { taxYear: YEAR, eintraege: [{ screen: 'lstb', field: 'gibtEsNicht', value: '1', person: 'A' }] } })
+    expect(JSON.parse(getText(bad)).ok).toBe(false)
   })
 
   it('auswirkung_simulieren refuses a target the advisor would refuse and stores nothing', async () => {
-    const report = { simulate: async () => { throw new Error('must not run') } }
+    const report = { simulateEntries: async () => { throw new Error('must not run') } }
     const withReport = new McpService(cockpitService, printoutService, confirmationService, owlModeService, receiptService, unlockService, profileRepo, masterDataRepo, auditService, report as never)
     const server = withReport.createServer(USER, ALL_SCOPES_ASSISTANT)
     const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
@@ -479,6 +498,47 @@ describe('McpService (ADR-0052 §3 / §5 / §8 / §12)', () => {
     })
   })
 
+  describe('rental objects as records (#549)', () => {
+    async function clientWithRentals() {
+      const svc = new McpService(cockpitService, printoutService, confirmationService, owlModeService, receiptService, unlockService, profileRepo, masterDataRepo, auditService, undefined, undefined, undefined, undefined, rentalRepo)
+      const server = svc.createServer(USER, ALL_SCOPES_ASSISTANT)
+      const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
+      await server.connect(serverTransport)
+      const client = new Client({ name: 'TestClient', version: '1.0.0' })
+      await client.connect(clientTransport)
+      return client
+    }
+
+    it('vermietung_anlegen creates an object the assistant can fill, list and remove again', async () => {
+      const client = await clientWithRentals()
+      const created = JSON.parse(getText(await client.callTool({ name: 'vermietung_anlegen', arguments: { taxYear: YEAR } })))
+      expect(created).toMatchObject({ ok: true, nummer: 1 })
+      await client.callTool({ name: 'maske_eintragen', arguments: { taxYear: YEAR, screen: 'vermietung', instance: created.instance, field: 'mieteinnahmen', value: '9600' } })
+      expect((await rentalRepo.listForUserAndYear(USER, YEAR))[0]?.mieteinnahmen).toBe('9600')
+      const listed = JSON.parse(getText(await client.callTool({ name: 'vermietungen_auflisten', arguments: { taxYear: YEAR } })))
+      expect(listed.objekte).toEqual([{ instance: created.instance, nummer: 1 }])
+      const removed = await client.callTool({ name: 'vermietung_entfernen', arguments: { taxYear: YEAR, instance: created.instance } })
+      expect(JSON.parse(getText(removed))).toMatchObject({ ok: true })
+      expect(await rentalRepo.listForUserAndYear(USER, YEAR)).toEqual([])
+      expect((await confirmationService.list(USER, YEAR)).filter((m) => m.key.startsWith('vermietung:'))).toEqual([])
+    })
+
+    it('vermietung_entfernen keeps an object of the user and one that is not there', async () => {
+      const client = await clientWithRentals()
+      const own = await rentalRepo.create(USER, YEAR)
+      const refused = await client.callTool({ name: 'vermietung_entfernen', arguments: { taxYear: YEAR, instance: own.id } })
+      expect(getText(refused)).toContain('NOT_OWN_ENTRY')
+      expect(getText(await client.callTool({ name: 'vermietung_entfernen', arguments: { taxYear: YEAR, instance: 'nope' } }))).toContain('NO_RECORD')
+      expect(await rentalRepo.listForUserAndYear(USER, YEAR)).toHaveLength(1)
+    })
+
+    it('vermietung_anlegen needs the write scope and stops at ten objects', async () => {
+      const client = await clientWithRentals()
+      for (let i = 0; i < 10; i += 1) await rentalRepo.create(USER, YEAR)
+      expect(getText(await client.callTool({ name: 'vermietung_anlegen', arguments: { taxYear: YEAR } }))).toContain('TOO_MANY')
+    })
+  })
+
   describe('maske_eintragen_stapel (ADR-0052 amendment 3, #544)', () => {
     it('writes many fields of one mask in one call and answers per field', async () => {
       const client = await connectClient()
@@ -522,6 +582,33 @@ describe('McpService (ADR-0052 §3 / §5 / §8 / §12)', () => {
     expect(JSON.parse(getText(ok)).ergebnis).toBe('geschrieben')
     const household = JSON.parse(getText(await client.callTool({ name: 'haushalt_ueberblick', arguments: { taxYear: YEAR } })))
     expect(household.personen[0].kirchensteuerpflichtig).toBe(false)
+  })
+
+  describe('comfort tools (#548)', () => {
+    it('wechselkurs names the annual average rate of the year', async () => {
+      const client = await connectClient()
+      expect(JSON.parse(getText(await client.callTool({ name: 'wechselkurs', arguments: { taxYear: 2025 } })))).toMatchObject({ ok: true, eurJeChf: 1.065 })
+      expect(JSON.parse(getText(await client.callTool({ name: 'wechselkurs', arguments: { taxYear: 1999 } }))).ok).toBe(false)
+    })
+
+    it('feld_finden finds a field by a word of its description, never the confession', async () => {
+      const client = await connectClient()
+      const hits = JSON.parse(getText(await client.callTool({ name: 'feld_finden', arguments: { stichwort: 'Krankentaggeld' } }))).treffer
+      expect(hits.map((h: { feld: string }) => h.feld)).toContain('steuerfreiesKrankentaggeldChf')
+      const religion = JSON.parse(getText(await client.callTool({ name: 'feld_finden', arguments: { stichwort: 'religion' } }))).treffer
+      expect(religion.map((h: { feld: string }) => `${h.feld}`)).not.toContain('religion')
+    })
+
+    it('vordruck_zeilen shows Kennzahlen with amounts only, no name, id or address', async () => {
+      await profileRepo.upsert(USER, { firstName: 'Markus', lastName: 'Brenner', steuerId: '12345678901', steuernummer: '0812345678' })
+      await lstbRepo.setField(USER, YEAR, 'bruttoarbeitslohn', '65000')
+      const client = await connectClient()
+      const text = getText(await client.callTool({ name: 'vordruck_zeilen', arguments: { taxYear: YEAR } }))
+      const anlN = JSON.parse(text).formulare.find((f: { formular: string }) => f.formular === 'anlage-n')
+      expect(Object.values(anlN.kennzahlen)).toContain('65000')
+      for (const secret of ['Markus', 'Brenner', '12345678901', '0812345678']) expect(text, secret).not.toContain(secret)
+      expect(Object.keys(JSON.parse(text).formulare.flatMap((f: { kennzahlen: object }) => Object.keys(f.kennzahlen))).length).toBeGreaterThan(0)
+    })
   })
 
   it('maske_eintragen points a booking to the booking path instead of writing it as a field', async () => {

@@ -3,6 +3,8 @@ import { checkDraftPerson, PERSON_B_HANDLE, type AdvisorHousehold, type Screen }
 import type { AuditService } from '../audit/audit.service.js'
 import type { ChildrenService } from '../children/children.service.js'
 import type { CockpitService } from '../cockpit/cockpit.service.js'
+import type { DeadlinesService } from '../deadlines/deadlines.service.js'
+import type { RentalRepository } from '../rental/rental.repository.js'
 import type { ConfirmationService } from '../confirmation/confirmation.service.js'
 import type { LinkService } from '../link/link.service.js'
 import type { MasterDataRepository } from '../master-data/master-data.repository.js'
@@ -42,6 +44,9 @@ export interface McpDeps {
   readonly link?: Pick<LinkService, 'spouseForAdvisor' | 'dataUser'> | undefined
   /** A child is a record of its own: the mask `kind` needs its id as `instance`. */
   readonly children?: Pick<ChildrenService, 'list' | 'create' | 'delete'> | undefined
+  readonly deadlines?: Pick<DeadlinesService, 'getDeadlines'> | undefined
+  /** A rental object is a record of its own: the mask `vermietung` needs its id as `instance`. */
+  readonly rentals?: Pick<RentalRepository, 'listForUserAndYear' | 'create' | 'delete'> | undefined
 }
 
 export function assertScope(assistant: AssistantSessionInfo, requiredScope: string): void {

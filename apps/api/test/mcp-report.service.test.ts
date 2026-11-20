@@ -230,4 +230,24 @@ describe('McpReportService (ADR-0052 amendment 2)', () => {
       expect(result).toMatchObject({ ok: false })
     })
   })
+
+  describe('check: what closes each gap of the printout (#547)', () => {
+    it('names the field, the person or child and who has to act, with the child’s instance', async () => {
+      const printout = { check: vi.fn().mockResolvedValue({ missing: ['kinder'] }) }
+      const confirmation = { overview: vi.fn(), writeConfirmedByAdvisor: vi.fn(), readRawValues: vi.fn().mockResolvedValue({}) }
+      const result = await service({ printout, confirmation }).check('u', 2024, { spouse: null, childIds: ['kind-uuid-1'] })
+      const fragen = result.fragen as { betrifft: string; instance?: string; screen: string; werTraegtEin: string }[]
+      expect(fragen.length).toBeGreaterThan(0)
+      expect(fragen.every((q) => q.screen !== 'kind' || q.instance === 'kind-uuid-1')).toBe(true)
+      expect(fragen.some((q) => q.werTraegtEin === 'du')).toBe(true)
+      expect(JSON.stringify(result)).not.toContain('keywords')
+    })
+
+    it('lists what no entry closes (a confirmation, a form the app does not print)', async () => {
+      const printout = { check: vi.fn().mockResolvedValue({ missing: ['unbestaetigt.anlageN'] }) }
+      const confirmation = { overview: vi.fn(), writeConfirmedByAdvisor: vi.fn(), readRawValues: vi.fn().mockResolvedValue({}) }
+      const result = await service({ printout, confirmation }).check('u', 2024, { spouse: null, childIds: [] })
+      expect(result.nurNutzer).toEqual([expect.stringContaining('unbestaetigt.anlageN')])
+    })
+  })
 })
