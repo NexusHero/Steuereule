@@ -42,6 +42,8 @@ export interface CaptureReceiptOptions {
   readonly kind?: DetectedDocumentKind | 'geschaeftsbeleg' | undefined
   /** A business receipt (ADR-0101 §6): an expense or an invoice the business wrote; the draft is a booking in that direction. */
   readonly direction?: 'ausgabe' | 'einnahme' | undefined
+  /** A business receipt: which business of the account holder books it (ADR-0101 §22). */
+  readonly business?: number | undefined
   /** Entry context (ADR-0097 §4): the document a mask expects; unlike `kind` it does not force a reader. */
   readonly expectedKind?: ParseReceiptDtoExpectedKind | undefined
   /** Entry context: the mask the upload happened in. */
@@ -138,6 +140,7 @@ export async function captureReceipt(file: File, options: CaptureReceiptOptions)
     ...(options.holder !== undefined ? { holder: options.holder } : {}),
     ...(options.alsoFor === true ? { alsoFor: true } : {}),
     ...(options.direction !== undefined ? { direction: options.direction } : {}),
+    ...(options.business !== undefined && options.business > 1 ? { business: options.business } : {}),
   }
 
   options.onPhase?.('parsing')

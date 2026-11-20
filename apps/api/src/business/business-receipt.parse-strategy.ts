@@ -44,7 +44,8 @@ export class BusinessReceiptParseStrategy implements DocumentParseStrategy, OnMo
       const summary = 'Geschäftsbelege bucht SteuerEule nur für Selbstständige; dafür ist die Selbstständigkeit im Interview anzugeben.'
       return { mode: 'deterministic_fallback', securityBlocked: false, parsed: { vendorCategory: 'sonstiges', receiptDate: read.date, amountEur: null, suggestedScreen: null, suggestedField: null, suggestedValue: null, summary, taxYear: null }, stagedAction: null, assistantMessage: null, draftsTaxYear: null }
     }
-    const target = await this.business.bookingTarget(userId, dto.taxYear, OWN_FIRST_BUSINESS)
+    const ref = dto.business !== undefined && dto.business > 1 ? { person: 'A' as const, business: dto.business } : OWN_FIRST_BUSINESS
+    const target = await this.business.bookingTarget(userId, dto.taxYear, ref)
     const proposal = bookingDraftFromReceipt(read, {
       chart: target.chart,
       smallBusiness: target.smallBusiness,
@@ -74,6 +75,7 @@ export class BusinessReceiptParseStrategy implements DocumentParseStrategy, OnMo
       summaryText: ['Ich habe den Geschäftsbeleg als Buchung vorbereitet. Prüf Konto, Steuersatz und Datum, bevor du sie übernimmst.', ...invoiceNotes, ...proposal.notes].join('\n'),
       receiptId: dto.receiptId ?? null,
       fromOcr: dto.textSource === 'ocr',
+      business: ref.business,
       engine: { mode: 'deterministic_fallback', provider: 'deterministic' },
     })
     return { ...nothing, stagedAction: staged.action, assistantMessage: staged.assistantMessage, draftsTaxYear: dto.taxYear }

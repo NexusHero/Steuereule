@@ -196,6 +196,13 @@ export class ParseReceiptDto {
   @IsIn(['ausgabe', 'einnahme'])
   direction?: 'ausgabe' | 'einnahme'
 
+  @ApiPropertyOptional({ type: Number, minimum: 1, maximum: 99, description: 'For a business receipt: which business of the account holder books it (ADR-0101 §22); the first by default.' })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(99)
+  business?: number
+
   @ApiPropertyOptional({
     type: Boolean,
     example: true,

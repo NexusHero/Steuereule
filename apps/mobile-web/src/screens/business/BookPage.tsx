@@ -186,7 +186,7 @@ export function BookPage({ taxYear, person, business = 1, onBack }: BusinessPage
       )}
 
       <Section>
-        <BusinessReceiptUpload taxYear={taxYear} />
+        <BusinessReceiptUpload taxYear={taxYear} business={business} />
       </Section>
 
       <Section title={tr('business.buch.festschreiben')}>

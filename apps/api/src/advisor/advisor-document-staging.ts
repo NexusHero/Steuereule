@@ -1,3 +1,4 @@
+import { instanceForBusiness } from '../business/booking-field-access.js'
 import {
   ADVISOR_LEGAL_SOURCES,
   addAmounts,
@@ -95,6 +96,8 @@ export interface BookingProposalInput {
   readonly engine: AdvisorEngineInfo
   readonly receiptId?: string | null | undefined
   readonly fromOcr?: boolean | undefined
+  /** The business the draft books into (ADR-0101 §22); the first by default. */
+  readonly business?: number | undefined
 }
 
 /** The fields of one scanned Lohnsteuerbescheinigung, for `stageLstbScanBatch`. */
@@ -305,7 +308,7 @@ export class AdvisorDocumentStaging {
       status: 'pending',
       screen: 'buchung',
       field: 'entry',
-      instance: `beleg-${input.receiptId ?? newActionId()}`,
+      instance: instanceForBusiness(input.business ?? 1, `beleg-${input.receiptId ?? newActionId()}`),
       label: input.label,
       previousValue: null,
       expectedPreviousValue: null,

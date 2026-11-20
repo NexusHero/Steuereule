@@ -146,6 +146,12 @@ export interface ParseReceiptDto {
   mimeType?: ParseReceiptDtoMimeType;
   /** For a business receipt (`geschaeftsbeleg`, ADR-0101): an expense (default) or an invoice the business wrote. */
   direction?: ParseReceiptDtoDirection;
+  /**
+     * For a business receipt: which business of the account holder books it (ADR-0101 §22); the first by default.
+     * @minimum 1
+     * @maximum 99
+     */
+  business?: number;
   /** Stages an unconfirmed pending draft in Eulen-Modus when true (default true). */
   stageDraft?: boolean;
 }

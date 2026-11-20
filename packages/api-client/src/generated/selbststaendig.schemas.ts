@@ -634,6 +634,13 @@ export interface BookDto {
   entries: JournalEntryDto[];
 }
 
+export interface RegularPaymentDto {
+  /** Due date after any § 108 AO shift. */
+  dueDate: string;
+  /** The year the payment belongs to economically. */
+  periodYear: number;
+}
+
 export type BookingLineDtoSide = typeof BookingLineDtoSide[keyof typeof BookingLineDtoSide];
 
 
@@ -680,6 +687,8 @@ export interface BookingAssetDto {
 }
 
 export interface BookingDraftDto {
+  /** § 11 Abs. 1 Satz 2 EStG: a regular payment around the turn of the year, counted in the EÜR of the year it belongs to. */
+  regularPayment?: RegularPaymentDto;
   date: string;
   documentNumber: string;
   text: string;

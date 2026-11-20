@@ -14223,6 +14223,25 @@
           "entries"
         ]
       },
+      "RegularPaymentDto": {
+        "type": "object",
+        "properties": {
+          "dueDate": {
+            "type": "string",
+            "example": "2025-01-10",
+            "description": "Due date after any § 108 AO shift."
+          },
+          "periodYear": {
+            "type": "number",
+            "example": 2024,
+            "description": "The year the payment belongs to economically."
+          }
+        },
+        "required": [
+          "dueDate",
+          "periodYear"
+        ]
+      },
       "BookingLineDto": {
         "type": "object",
         "properties": {
@@ -14296,6 +14315,14 @@
       "BookingDraftDto": {
         "type": "object",
         "properties": {
+          "regularPayment": {
+            "description": "§ 11 Abs. 1 Satz 2 EStG: a regular payment around the turn of the year, counted in the EÜR of the year it belongs to.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RegularPaymentDto"
+              }
+            ]
+          },
           "date": {
             "type": "string",
             "example": "2025-03-14"
@@ -17685,6 +17712,12 @@
             ],
             "example": "ausgabe",
             "description": "For a business receipt (`geschaeftsbeleg`, ADR-0101): an expense (default) or an invoice the business wrote."
+          },
+          "business": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 99,
+            "description": "For a business receipt: which business of the account holder books it (ADR-0101 §22); the first by default."
           },
           "stageDraft": {
             "type": "boolean",
