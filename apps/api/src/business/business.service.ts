@@ -950,7 +950,7 @@ export class BusinessService {
     const facts = parseJson<VatPeriodFacts>(profile?.vatPeriodFacts ?? null, {})
     const entries = businesses.flatMap((b) => b.vatEntries)
     const regime = profile?.smallBusiness ? 'klein' : 'regel'
-    const starts = businesses.map((b) => b.profile?.startDate ?? null).filter((d): d is string => d !== null).sort()
+    const starts = businesses.map((b) => b.profile?.startDate ?? null).filter((d): d is string => d !== null).sort((a, b) => a.localeCompare(b))
     const start = starts[0] ?? null
     const founding = start !== null && Number(start.slice(0, 4)) === year
     const priorEntries = prior.flatMap((b) => b.vatEntries)
@@ -1008,7 +1008,7 @@ export class BusinessService {
     const chart = businesses[0]?.ledger.chart ?? 'SKR03'
     const derivedPrepayments = profile?.vatPrepayments ? null : (await this.prepaymentsOf(userId, year, person)).totalEur
     const { figures, result } = this.vatOf({ chart, mode: 'euer', entries, lockedThrough: null }, profile, year, derivedPrepayments)
-    const starts = businesses.map((b) => b.profile?.startDate ?? null).filter((d): d is string => d !== null).sort()
+    const starts = businesses.map((b) => b.profile?.startDate ?? null).filter((d): d is string => d !== null).sort((a, b) => a.localeCompare(b))
     const freelanceOnly = businesses.length > 0 && businesses.every((b) => b.profile?.kind === 'freiberuf')
     return { figures, result, profile, startDate: starts[0] ?? null, freelanceOnly }
   }
