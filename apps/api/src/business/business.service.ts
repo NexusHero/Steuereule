@@ -1,6 +1,7 @@
 import { HttpException, HttpStatus, Inject, Injectable, Optional } from '@nestjs/common'
 import {
   accountFor,
+  euerYearOf,
   companyCarUse,
   minijobCharges,
   minijobLimitEur,
@@ -785,7 +786,13 @@ export class BusinessService {
 
   private async loaded(userId: string, year: number, ref: BusinessRef): Promise<{ book: LoadedBook | null; ledger: Ledger; profile: BusinessProfileRecord | null }> {
     const [{ chart, mode, profile }, book] = await Promise.all([this.frame(userId, year, ref), this.repository.loadBook(userId, year, ref)])
-    return { book, profile, ledger: book?.ledger ?? { chart, mode, entries: [], lockedThrough: null } }
+    const ledger = book?.ledger ?? { chart, mode, entries: [], lockedThrough: null }
+    if (ledger.mode !== 'euer') return { book, profile, ledger }
+    // § 11 Abs. 1 Satz 2, Abs. 2 Satz 2 EStG (ADR-0101 §22): a regular payment booked in the neighbouring
+    // year's book that belongs to this year counts here; the EÜR filter by euerYearOf does the rest.
+    const neighbours = await Promise.all([this.repository.loadBook(userId, year - 1, ref), this.repository.loadBook(userId, year + 1, ref)])
+    const borrowed = neighbours.flatMap((n) => (n?.ledger.entries ?? []).filter((e) => e.regularPayment !== null && euerYearOf(e) === year))
+    return { book, profile, ledger: borrowed.length === 0 ? ledger : { ...ledger, entries: [...ledger.entries, ...borrowed] } }
   }
 
   /** The profit of the year in euros from the book, the restricted expenses applied (EÜR) or the GuV (Bilanz). */

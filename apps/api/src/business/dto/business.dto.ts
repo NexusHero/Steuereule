@@ -42,7 +42,18 @@ export class BookingAssetDto {
 }
 
 /** A booking as the user (or an accepted draft) posts it; checked by the core against the book. */
+export class RegularPaymentDto {
+  @ApiProperty({ type: String, example: '2025-01-10', description: 'Due date after any § 108 AO shift.' }) @Matches(ISO_DATE) dueDate!: string
+  @ApiProperty({ type: Number, example: 2024, description: 'The year the payment belongs to economically.' }) @IsInt() periodYear!: number
+}
+
 export class BookingDraftDto {
+  @ApiPropertyOptional({ type: RegularPaymentDto, description: '§ 11 Abs. 1 Satz 2 EStG: a regular payment around the turn of the year, counted in the EÜR of the year it belongs to.' })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => RegularPaymentDto)
+  regularPayment?: RegularPaymentDto
+
   @ApiProperty({ type: String, example: '2025-03-14' })
   @Matches(ISO_DATE)
   date!: string

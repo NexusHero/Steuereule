@@ -469,6 +469,16 @@ describe('BusinessService (ADR-0101)', () => {
     expect(input.business.selfEmployedEur).toBe(-(3_000 + 640 + 600 + 187.02))
   })
 
+  it('a regular payment paid on 5 January for December counts in the year before (§ 11 ten-day rule, ADR-0101 §22)', async () => {
+    const { service } = setup()
+    await service.quickEntry('u', YEAR, A1, [{ key: 'einnahmen_umsatzsteuerpflichtig', amountCents: 1_000_000 }])
+    await service.quickEntry('u', 2025, A1, [{ key: 'einnahmen_umsatzsteuerpflichtig', amountCents: 1_000_000 }])
+    const before2024 = (await service.estimateInput('u', YEAR, 'A'))!.business.selfEmployedEur ?? 0
+    await service.post('u', 2025, A1, { date: '2025-01-05', documentNumber: 'M-12', text: 'Büromiete Dezember', regularPayment: { dueDate: '2025-01-01', periodYear: 2024 }, lines: [{ account: '4210', side: 'debit', amount: 80_000 }, { account: '1200', side: 'credit', amount: 80_000 }] })
+    expect((await service.estimateInput('u', YEAR, 'A'))!.business.selfEmployedEur).toBe(before2024 - 800)
+    expect((await service.estimateInput('u', 2025, 'A'))!.business.selfEmployedEur).toBe(10_000)
+  })
+
   it('the GoBD export is a zip with index.xml and the journal, and is itself logged in the chain', async () => {
     const { service, repository } = setup()
     await service.post('u', YEAR, A1, sale)

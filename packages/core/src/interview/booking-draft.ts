@@ -115,11 +115,16 @@ export function parseBookingDraft(raw: string): { readonly ok: true; readonly dr
   if (typeof draft.documentNumber !== 'string' || draft.documentNumber.trim() === '' || draft.documentNumber.length > 40) return { ok: false, reason: 'Die Belegnummer fehlt.' }
   if (typeof draft.text !== 'string' || draft.text.trim() === '' || draft.text.length > MAX_TEXT) return { ok: false, reason: `Der Buchungstext fehlt oder ist länger als ${MAX_TEXT} Zeichen.` }
   if (draft.receiptRef !== undefined && draft.receiptRef !== null && typeof draft.receiptRef !== 'string') return { ok: false, reason: 'Der Belegverweis ist ein Text.' }
-  // One book per year (ADR-0101): an entry counts in the EÜR of the year it is paid in (§ 11 EStG). The
-  // ten-day rule for regular payments around the turn of the year would move it into the other year's
-  // book, which this model cannot do; it says so instead of booking it where it does not count.
+  // The ten-day rule (§ 11 Abs. 1 Satz 2, Abs. 2 Satz 2 EStG): a regular payment around the turn of the
+  // year is booked in the year it was paid and counts in the EÜR of the year it belongs to; the EÜR of
+  // that year reads it from the neighbouring book (ADR-0101 §22).
+  let regularPayment: { dueDate: string; periodYear: number } | undefined
   if (draft.regularPayment !== undefined && draft.regularPayment !== null) {
-    return { ok: false, reason: 'Regelmäßig wiederkehrende Zahlungen um den Jahreswechsel (§ 11 Abs. 1 Satz 2 EStG) ordnet die App noch nicht dem anderen Jahr zu. Gebucht wird im Jahr der Zahlung, ohne diese Angabe.' }
+    const rp = draft.regularPayment as { dueDate?: unknown; periodYear?: unknown }
+    if (typeof rp.dueDate !== 'string' || !isBookingDate(rp.dueDate) || typeof rp.periodYear !== 'number' || !Number.isInteger(rp.periodYear)) {
+      return { ok: false, reason: 'Eine regelmäßig wiederkehrende Zahlung braucht ihr Fälligkeitsdatum und das Jahr, zu dem sie gehört.' }
+    }
+    regularPayment = { dueDate: rp.dueDate, periodYear: rp.periodYear }
   }
   if (!Array.isArray(draft.lines) || draft.lines.length < 2 || draft.lines.length > MAX_LINES) return { ok: false, reason: `Eine Buchung hat 2 bis ${MAX_LINES} Zeilen.` }
   const lines: EntryDraftLine[] = []
@@ -143,6 +148,7 @@ export function parseBookingDraft(raw: string): { readonly ok: true; readonly dr
       text: draft.text.trim(),
       lines,
       ...(asset !== undefined ? { asset } : {}),
+      ...(regularPayment !== undefined ? { regularPayment } : {}),
       ...(typeof draft.counterpartyVatId === 'string' && /^[A-Z]{2}[0-9A-Z+*]{2,12}$/.test(draft.counterpartyVatId.replace(/\s/g, '').toUpperCase())
         ? { counterpartyVatId: draft.counterpartyVatId.replace(/\s/g, '').toUpperCase() }
         : {}),
