@@ -9,6 +9,9 @@ import {
   maskName,
   maskPhone,
   checkDraftPerson,
+  describeFieldForPrompt,
+  fieldsOfScreen,
+  PERSON_B_SCREENS,
   PERSON_B_HANDLE,
   provenanceKey,
   SCREENS,
@@ -28,7 +31,8 @@ import { MASTER_DATA_REPOSITORY, type MasterDataRepository } from '../master-dat
 import { AuditService } from '../audit/audit.service.js'
 import { LinkService } from '../link/link.service.js'
 import { ChildrenService } from '../children/children.service.js'
-import { checkStageValue, validateStageTarget } from '../ki/advisor-safety.js'
+import { checkStageValue, OWN_TOOL_SCREENS, validateStageTarget } from '../ki/advisor-safety.js'
+import { isAiWritable } from '../confirmation/ai-write-policy.js'
 import { registerAdviceTools } from './mcp-advice-tools.js'
 import { McpReportService } from './mcp-report.service.js'
 
@@ -340,6 +344,7 @@ export class McpService {
     })
     this.registerReportTools(server, userId, assistant)
     this.registerChildTools(server, userId, assistant)
+    this.registerFieldTool(server, userId, assistant)
 
     return server
   }
@@ -363,7 +368,7 @@ export class McpService {
 
     server.tool(
       'offene_fragen',
-      'Nennt die nächste offene Interview-Frage der App mit ihren möglichen Antworten und wie viele noch folgen. Das sind Tatsachen, die nur der Nutzer kennt: Frage ihn und trage die Antwort mit maske_eintragen (Maske "interview") ein. Erfinde nie eine Antwort.',
+      'Nennt je Interview-Bereich (Grundfragen, Lebenslagen, Einkünfte, Sonderausgaben, Grenzgänger, Haushalt, Gesundheit, Vorauszahlungen …) die nächste offene Frage mit ihren möglichen Antworten und wie viele dort noch folgen. Das sind Tatsachen, die nur der Nutzer kennt: Frage ihn und trage die Antwort mit maske_eintragen (Maske "interview") ein; danach erneut aufrufen. Erfinde nie eine Antwort.',
       { taxYear: z.number().int().describe('Das Steuerjahr (z.B. 2024 oder 2025)') },
       async ({ taxYear }) => {
         assertScope(assistant, 'steuerdaten:read')
@@ -429,11 +434,37 @@ export class McpService {
       },
       async ({ taxYear, firstName, lastName, geburtsdatum }) => {
         assertScope(assistant, 'steuerdaten:write')
-        const before = new Set((await children.list(userId, taxYear)).kinder.map((k) => k.id))
+        const existing = (await children.list(userId, taxYear)).kinder
+        // The same child twice would count its allowance twice; a repeated call returns the one already there.
+        const same = existing.find((k) => k.firstName.trim().toLowerCase() === firstName.trim().toLowerCase() && k.geburtsdatum === geburtsdatum)
+        if (same) return json({ ok: true, instance: same.id, nummer: same.sequenceNumber, bereitsVorhanden: true, hinweis: 'Dieses Kind gibt es schon; weitere Angaben mit maske_eintragen und dieser instance.' })
+        const before = new Set(existing.map((k) => k.id))
         const after = (await children.create(userId, taxYear, { firstName, lastName, geburtsdatum })).kinder
         await this.auditService.append({ userId, action: 'WRITE', resource: 'kind_anlegen' })
         const created = after.find((k) => !before.has(k.id))
         return json({ ok: true, instance: created?.id ?? null, nummer: created?.sequenceNumber ?? null, hinweis: 'Weitere Angaben mit maske_eintragen, Maske "kind", instance wie angegeben.' })
+      },
+    )
+  }
+
+  /** What each field of a mask means and what it takes: the catalogue's own descriptions, as the in-app advisor sees them. */
+  private registerFieldTool(server: McpServer, userId: string, assistant: AssistantSessionInfo): void {
+    server.tool(
+      'maske_felder',
+      'Beschreibt die Felder einer Erfassungsmaske: Name, Form des Werts und was hineingehört. Vor dem ersten Eintrag in eine Maske aufrufen, statt Feldnamen zu raten. `je_person`: bei Zusammenveranlagung `person` mitgeben; `braucht_instance`: Datensatz-ID mitgeben (Kind: kinder_auflisten).',
+      { screen: z.enum(SCREENS).describe('Die Erfassungsmaske (z.B. lstb, chLohnausweis, commute, kind, interview)') },
+      async ({ screen }) => {
+        assertScope(assistant, 'steuerdaten:read')
+        await this.auditService.append({ userId, action: 'READ', resource: 'maske_felder' })
+        const json = (value: unknown) => ({ content: [{ type: 'text' as const, text: JSON.stringify(value, null, 2) }] })
+        if (OWN_TOOL_SCREENS.has(screen)) return json({ ok: false, error: 'Buchungen sind über diesen Zugang noch nicht möglich; der Nutzer bucht in der App.' })
+        const specs = fieldsOfScreen(screen).filter((spec) => isAiWritable(screen, spec.field, true))
+        return json({
+          screen,
+          braucht_instance: specs.some((spec) => spec.perInstance),
+          je_person: PERSON_B_SCREENS.has(screen),
+          felder: specs.map((spec) => ({ feld: spec.field, beschreibung: describeFieldForPrompt(spec) })),
+        })
       },
     )
   }

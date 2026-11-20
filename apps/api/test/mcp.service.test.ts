@@ -210,6 +210,7 @@ describe('McpService (ADR-0052 §3 / §5 / §8 / §12)', () => {
       'kapitalertraege_guenstigerpruefung',
       'kleinunternehmer_pruefen',
       'maske_eintragen',
+      'maske_felder',
       'rechtsquelle_nachschlagen',
       'renovierung_15_prozent_pruefen',
       'schenkungsteuer_berechnen',
@@ -371,13 +372,40 @@ describe('McpService (ADR-0052 §3 / §5 / §8 / §12)', () => {
       expect(children.create).toHaveBeenCalledWith(USER, YEAR, { firstName: 'Zeynep', lastName: 'Sevinc', geburtsdatum: '2022-06-14' })
     })
 
-    it('kind_anlegen needs the write scope', async () => {
+    it('kind_anlegen does not create the same child twice, it returns the one already there', async () => {
+    const kinder = [zeynep]
+    const children = { list: async () => ({ kinder }), create: vi.fn() }
+    const client = await clientWith(children)
+    const res = await client.callTool({ name: 'kind_anlegen', arguments: { taxYear: YEAR, firstName: ' zeynep ', lastName: 'Sevinc', geburtsdatum: '2022-06-14' } })
+    expect(JSON.parse(getText(res))).toMatchObject({ ok: true, instance: 'kind-1', bereitsVorhanden: true })
+    expect(children.create).not.toHaveBeenCalled()
+  })
+
+  it('kind_anlegen needs the write scope', async () => {
       const children = { list: async () => ({ kinder: [] }), create: vi.fn() }
       const client = await clientWith(children, ['steuerdaten:read'])
       const res = await client.callTool({ name: 'kind_anlegen', arguments: { taxYear: YEAR, firstName: 'Z', lastName: 'S', geburtsdatum: '2022-06-14' } })
       expect((res as { isError?: boolean }).isError).toBe(true)
       expect(children.create).not.toHaveBeenCalled()
     })
+  })
+
+  it('maske_felder describes each field of a mask, with the hints of the catalogue', async () => {
+    const client = await connectClient()
+    const parsed = JSON.parse(getText(await client.callTool({ name: 'maske_felder', arguments: { screen: 'lstb' } })))
+    expect(parsed).toMatchObject({ screen: 'lstb', braucht_instance: false, je_person: true })
+    expect(parsed.felder.find((f: { feld: string }) => f.feld === 'zuschuesseKvPv').beschreibung).toContain('Zeile 24 a–c zusammen')
+    const kind = JSON.parse(getText(await client.callTool({ name: 'maske_felder', arguments: { screen: 'kind' } })))
+    expect(kind.braucht_instance).toBe(true)
+    expect(kind.felder.find((f: { feld: string }) => f.feld === 'swissFamilyAllowanceEur').beschreibung).toContain('NICHT im Bruttolohn')
+  })
+
+  it('maske_felder leaves out the fields an assistant never writes and the booking mask', async () => {
+    const client = await connectClient()
+    const kopplung = JSON.parse(getText(await client.callTool({ name: 'maske_felder', arguments: { screen: 'kopplung' } })))
+    expect(kopplung.felder.map((f: { feld: string }) => f.feld)).toEqual(['filingType'])
+    const buchung = await client.callTool({ name: 'maske_felder', arguments: { screen: 'buchung' } })
+    expect(JSON.parse(getText(buchung)).ok).toBe(false)
   })
 
   it('maske_eintragen points a booking to the booking path instead of writing it as a field', async () => {

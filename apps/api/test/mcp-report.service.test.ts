@@ -61,7 +61,7 @@ describe('McpReportService (ADR-0052 amendment 2)', () => {
   })
 
   it('openQuestions names the next interview question with its answers, and nothing once the interview is done', async () => {
-    const open = { getState: vi.fn().mockResolvedValue({ answers: {}, nextStep: { kind: 'question', id: 'job' }, openItems: 3 }) }
+    const open = { getState: vi.fn(async (_u: string, _y: number, entry?: string) => (entry === 'minimal-gate' ? { answers: {}, nextStep: { kind: 'question', id: 'job' }, openItems: 3 } : { answers: {}, nextStep: { kind: 'done' }, openItems: 0 })) }
     const result = await service({ interview: open }).openQuestions('u', 2025)
     expect(result.openQuestions).toBe(3)
     expect(result.next?.id).toBe('job')
@@ -107,5 +107,19 @@ describe('McpReportService (ADR-0052 amendment 2)', () => {
     const result = await service({ confirmation, transactions: unknown }).simulate('u', 2025, 'lstb', 'bruttoarbeitslohn', '50000')
     expect(result.ok).toBe(false)
     expect(confirmation.writeConfirmedByAdvisor).not.toHaveBeenCalled()
+  })
+
+  it('openQuestions walks every interview area, not only the basic questions', async () => {
+    const byEntry: Record<string, unknown> = {
+      'minimal-gate': { answers: {}, nextStep: { kind: 'done' }, openItems: 0 },
+      sonderausgaben: { answers: {}, nextStep: { kind: 'question', id: 'spenden' }, openItems: 5 },
+      vorauszahlungen: { answers: {}, nextStep: { kind: 'question', id: 'vorauszahlungen-gate' }, openItems: 1 },
+    }
+    const interview = { getState: vi.fn(async (_u: string, _y: number, entry?: string) => byEntry[entry ?? 'minimal-gate'] ?? { answers: {}, nextStep: { kind: 'done' }, openItems: 0 }) }
+    const result = await service({ interview }).openQuestions('u', 2024)
+    expect(result.openQuestions).toBe(6)
+    expect(result.next?.id).toBe('spenden')
+    expect(result.bereiche.map((b) => b.bereich)).toEqual(['sonderausgaben', 'vorauszahlungen'])
+    expect(result.bereiche[0]).toMatchObject({ offen: 5, naechste: { id: 'spenden', answers: ['Ja', 'Nein'] } })
   })
 })
