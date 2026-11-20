@@ -37,33 +37,33 @@ beim Menschen.
       Datenschutzerklärung (Drittland), AGB-Klausel zur Verantwortung für bestätigte Werte; Teil der
       1.0-Abnahme (#329, Ticket 11).
 
-- [ ] **17.6 Lesesicht und Datenminimierung** (Amendment 3, 1–6, 8–9) — `maske_lesen(screen, person)`
+- [ ] #542 **17.6 Lesesicht und Datenminimierung** (Amendment 3, 1–6, 8–9) — `maske_lesen(screen, person)`
       mit Wert, Stand und Herkunft je Feld; `haushalt_ueberblick` ersetzt `steuerjahr_stand` (Alter,
       Bundesland, Familienstand/Veranlagung, Berufsgruppe, Kinder als Nummer und Alter); Belege lesen
       ohne Dateinamen; Dritte nur als Rolle und Land; Freitext nur „gesetzt“; Steuer-ID und IBAN nie.
       DSFA (`docs/legal/agenten-zugang-dsfa-stberg.md`) nachziehen. Tier T1.
-- [ ] **17.7 Kirchensteuerpflicht ohne Konfession** (Amendment 3, 7) — neue Angabe „kirchensteuerpflichtig
+- [ ] #543 **17.7 Kirchensteuerpflicht ohne Konfession** (Amendment 3, 7) — neue Angabe „kirchensteuerpflichtig
       ja/nein“ je Person; Schätzung nutzt sie, solange keine Konfession eingetragen ist; Konfession des
       Nutzers gewinnt, Widerspruch und fehlende Konfession als Lücke im Bericht; Religionsschlüssel über
       MCP nicht mehr beschreibbar. Tier T1 (Art. 9).
-- [ ] **17.8 Stapel-Eintrag** — `maske_eintragen_stapel(screen, person, instance, felder{})`: viele Felder
+- [ ] #544 **17.8 Stapel-Eintrag** — `maske_eintragen_stapel(screen, person, instance, felder{})`: viele Felder
       einer Maske in einem Aufruf, Ergebnis je Feld (geschrieben / Vorschlag / abgelehnt mit Grund), keine
       Teil-Transaktion über Masken hinweg. Im Lauf 2024 waren es 134 Einzelaufrufe. Tier T2.
-- [ ] **17.9 Schätzung aufschlüsseln** — Rechenweg der App-Schätzung: Einkünfte und Werbungskosten je
+- [ ] #545 **17.9 Schätzung aufschlüsseln** — Rechenweg der App-Schätzung: Einkünfte und Werbungskosten je
       Person, Vorsorge nach Bausteinen, Sonderausgaben, Kinderfreibetrag gegen Kindergeld, § 35a,
       tarifliche Steuer, Anrechnungen, Vorauszahlungen. Im Lauf 2024 ließ sich 52.358 € ESt gegen 47.388 €
       Tarif nicht erklären. Blocks 17.10. Tier T2.
-- [ ] **17.10 Bescheid-Abgleich** — Bescheidwerte eintragen (Maske `assessment`), Unterschied zur
+- [ ] #546 **17.10 Bescheid-Abgleich** — Bescheidwerte eintragen (Maske `assessment`), Unterschied zur
       Erklärung je Position mit Wirkung und Einspruchsfrist zurück (vorhandene Bescheidprüfung,
-      Jahresverlauf). Blocked by 17.9. Tier T2.
-- [ ] **17.11 Prüfregeln, Ausdruck-Plan, Aufgaben an den Nutzer** — feste Plausibilitätsregeln und der
+      Jahresverlauf). Blocked by #545 (17.9). Tier T2.
+- [ ] #547 **17.11 Prüfregeln, Ausdruck-Plan, Aufgaben an den Nutzer** — feste Plausibilitätsregeln und der
       Plan „was schließt welche Lücke, wer tut es“ wie beim In-App-Berater; der Assistent legt Aufgaben
       in die App, die nur der Nutzer erledigen kann (Konfession, Einwilligung, Bestätigen), sichtbar im
       Cockpit. Tier T2.
-- [ ] **17.12 Komfort-Werkzeuge** — Veranlagungsvergleich aus den Falldaten; Szenario über mehrere
+- [ ] #548 **17.12 Komfort-Werkzeuge** — Veranlagungsvergleich aus den Falldaten; Szenario über mehrere
       Felder; amtliche Wechselkurse (Monat/Jahr); Vordruck-Zeilen je Wert; Feld finden per Stichwort;
       Vorjahreswerte (Jahresübernahme) und Fristen. Tier T3.
-- [ ] **17.13 Vermietung und Buchungen** — Vermietungsobjekte anlegen/entfernen (wie Kinder); Buchungen
+- [ ] #549 **17.13 Vermietung und Buchungen** — Vermietungsobjekte anlegen/entfernen (wie Kinder); Buchungen
       und Anlagegüter für Selbstständige als Entwurf wie `stage_booking_draft` (ADR-0101 §18). Tier T1.
 
 ## Nicht Teil davon
