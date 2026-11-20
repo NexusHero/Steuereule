@@ -1423,18 +1423,20 @@ export class BusinessService {
         const isTrade = form === 'anlage-g'
         if ((profile?.kind === 'gewerbe') !== isTrade) return { byLine: () => null, unnumbered: [] }
         const trade = this.tradeTaxOf(ledger, profile, year)
-        return {
-          byLine: () => null,
-          unnumbered: unnumbered([
-            [isTrade ? 'anlage-g.gewinn' : 'anlage-s.gewinn', isTrade ? 'Gewinn aus Gewerbebetrieb' : 'Gewinn aus freiberuflicher Tätigkeit', profit],
-            ...(isTrade && trade.status === 'berechnet'
-              ? ([
-                  ['anlage-g.messbetrag', 'Gewerbesteuer-Messbetrag (§ 35 EStG)', trade.result.baseAmountEur],
-                  ['anlage-g.gewerbesteuer', 'Tatsächlich zu zahlende Gewerbesteuer (§ 35 EStG)', trade.result.tradeTaxEur],
-                ] as [string, string, number][])
-              : []),
-          ]),
-        }
+        const disposal = this.specialOf(ledger, profile, year, trade.status === 'berechnet' ? trade.result.tradeTaxEur : 0).disposal
+        const rows: [string, string, number | string | null][] = [
+          [isTrade ? 'anlage-g.gewinn' : 'anlage-s.gewinn', isTrade ? 'Gewinn aus Gewerbebetrieb' : 'Gewinn aus freiberuflicher Tätigkeit', profit],
+          ...(disposal !== null && disposal.taxableGainEur > 0 ? ([[isTrade ? 'anlage-g.veraeusserungsgewinn' : 'anlage-s.veraeusserungsgewinn', 'Veräußerungs- oder Aufgabegewinn (§ 16 EStG) nach Freibetrag', disposal.taxableGainEur]] as [string, string, number][]) : []),
+          ...(isTrade && trade.status === 'berechnet'
+            ? ([
+                ['anlage-g.messbetrag', 'Gewerbesteuer-Messbetrag (§ 35 EStG)', trade.result.baseAmountEur],
+                ['anlage-g.gewerbesteuer', 'Tatsächlich zu zahlende Gewerbesteuer (§ 35 EStG)', trade.result.tradeTaxEur],
+              ] as [string, string, number][])
+            : []),
+        ]
+        // With lines read off Mein ELSTER (ADR-0101 §22) each value has its place; otherwise the amounts stand alone.
+        const byId = new Map(rows.map(([id, , v]) => [id, v]))
+        return { byLine: (id) => byId.get(id) ?? null, unnumbered: unnumbered(rows) }
       }
       case 'gewst-1-a': {
         const trade = this.tradeTaxOf(ledger, profile, year)

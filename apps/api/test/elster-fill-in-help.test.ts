@@ -2,7 +2,7 @@
 // self-employed, a child, a property) the help names exactly the values the paper printout fills
 // (ADR-0050) for the same field ids, per copy; the Zeilen come from each year's measured Vordrucke.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import type { BookingDraft } from '@steuereule/core'
+import { clearSuppliedLines, parseSuppliedLines, registerSuppliedLines, type BookingDraft } from '@steuereule/core'
 import { AuditService } from '../src/audit/audit.service.js'
 import { BusinessService } from '../src/business/business.service.js'
 import { ElsterHelpService } from '../src/business/elster-help.service.js'
@@ -183,6 +183,20 @@ describe('ELSTER fill-in help over the whole return (ADR-0101 §16)', () => {
     expect(shop.lines.find((l) => l.kennzahlen.includes('112'))?.value).toBe(2000)
     const vat = await help.help(USER, 2025, A1, 'ust-2-a', undefined)
     expect(vat.lines.find((l) => l.id === 'ust.umsatz-19')?.value).toBe(3000)
+  })
+
+  it('Anlage S: the profit stands in its Zeile once lines read off Mein ELSTER are filed (ADR-0101 §22)', async () => {
+    const { help } = await household([2025])
+    const parsed = parseSuppliedLines(JSON.stringify({ form: 'anlage-s', year: 2025, source: 'Mein ELSTER, Anlage S 2025, abgelesen am 21.11.2026', lines: [{ id: 'anlage-s.gewinn', zeile: '4', kennzahlen: ['100'], label: 'Gewinn' }] }))
+    if (!parsed.ok) throw new Error(parsed.errors.join())
+    registerSuppliedLines(parsed.supplied)
+    try {
+      const s = await help.help(USER, 2025, A1, 'anlage-s', undefined)
+      expect(s).toMatchObject({ status: 'published', lineNumbersAvailable: true })
+      expect(s.lines).toEqual([{ id: 'anlage-s.gewinn', zeile: '4', kennzahlen: ['100'], label: 'Gewinn', column: null, value: 1190 }])
+    } finally {
+      clearSuppliedLines()
+    }
   })
 
   it('2026: the forms are not published, so the help names the values without Zeilen and says so', async () => {

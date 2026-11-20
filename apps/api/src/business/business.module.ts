@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common'
+import { Module, type OnModuleInit } from '@nestjs/common'
 import { AuditModule } from '../audit/audit.module.js'
 import { InterviewModule } from '../interview/interview.module.js'
 import { PrismaModule } from '../prisma/prisma.module.js'
@@ -11,6 +11,7 @@ import { PrismaBusinessRepository } from './business.repository.prisma.js'
 import { BusinessService, HEBESATZ_DIRECTORY } from './business.service.js'
 import { ElsterHelpService } from './elster-help.service.js'
 import { HebesatzDirectory } from './hebesatz.js'
+import { loadSuppliedElsterLines } from './elster-supplied-lines.js'
 
 /** Selbstständige (ADR-0101): profile, book, bank import, assets, closing, VAT, trade tax, fill-in help, exports. */
 @Module({
@@ -25,4 +26,9 @@ import { HebesatzDirectory } from './hebesatz.js'
   ],
   exports: [BusinessService, BOOKING_FIELD_ACCESS],
 })
-export class BusinessModule {}
+export class BusinessModule implements OnModuleInit {
+  /** Anlage S/G lines read off Mein ELSTER, where the operator filed them (ADR-0101 §22). */
+  onModuleInit(): void {
+    loadSuppliedElsterLines()
+  }
+}
