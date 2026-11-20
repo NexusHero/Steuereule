@@ -7,3 +7,14 @@ export function isAssistantSignIn(search: string = typeof window === 'undefined'
   const params = new URLSearchParams(search)
   return params.has('sig') && params.has('client_id')
 }
+
+/**
+ * Switches between login and registration inside an assistant's connection, keeping the signed request
+ * exactly as it is (repeated keys and order matter for its signature, so it cannot travel as route
+ * params). Returns false outside such a connection, where the app navigates as usual.
+ */
+export function carryAssistantSignIn(path: string, go: (url: string) => void = (url) => window.location.assign(url)): boolean {
+  if (typeof window === 'undefined' || !isAssistantSignIn(window.location.search)) return false
+  go(`${path}${window.location.search}`)
+  return true
+}
