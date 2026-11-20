@@ -5,6 +5,10 @@ import type { FastifyReply, FastifyRequest } from 'fastify'
 import { BETTER_AUTH_BUNDLE, type BetterAuthBundle } from './auth.tokens.js'
 import { newGuestUserId, resolveGuestSessionSecret, signGuestSession, verifyGuestSession } from './guest-session.js'
 import { PrismaService } from '../prisma/prisma.service.js'
+import { verifyJwsAccessToken } from 'better-auth/oauth2'
+import { authIssuer, mcpResourceUrl } from './mcp-oauth.js'
+
+type JwksFetch = Extract<Parameters<typeof verifyJwsAccessToken>[1]['jwksFetch'], () => unknown>
 
 export const GUEST_SESSION_COOKIE = 'se_guest_session'
 export const USER_ID_REQUEST_KEY = 'userId'
@@ -42,6 +46,46 @@ export class UserContextGuard implements CanActivate {
     @Optional() @Inject(PrismaService) private readonly prisma?: PrismaService,
   ) {}
 
+  /**
+   * A token an MCP client asked for the MCP endpoint (RFC 8707) is a JWT signed by better-auth: checked
+   * against its keys, our issuer and the MCP endpoint as audience. A JWT cannot be revoked, so the
+   * connection itself is checked too: revoking deletes the consent, and that stops the token at once
+   * (ADR-0052 §10). Client-credentials tokens carry no user and are refused.
+   */
+  private async acceptJwtAccessToken(request: RequestWithUserId, rawToken: string): Promise<boolean> {
+    if (!this.prisma) throw new UnauthorizedException('Database unavailable for bearer token verification.')
+    // The bundle is typed with better-auth's base API; the jwt plugin adds getJwks at runtime.
+    const auth = this.betterAuth.auth as unknown as { api: { getJwks: JwksFetch }; options: { baseURL?: unknown } }
+    const baseUrl = String(auth.options.baseURL)
+    let claims: { sub?: unknown; client_id?: unknown; scope?: unknown }
+    try {
+      claims = await verifyJwsAccessToken(rawToken, {
+        jwksFetch: () => auth.api.getJwks(),
+        verifyOptions: { issuer: authIssuer(baseUrl), audience: mcpResourceUrl(baseUrl) },
+      })
+    } catch {
+      throw new UnauthorizedException('Invalid bearer token.')
+    }
+    const userId = typeof claims.sub === 'string' ? claims.sub : null
+    const clientId = typeof claims.client_id === 'string' ? claims.client_id : null
+    if (!userId || !clientId || userId === clientId) throw new UnauthorizedException('Invalid bearer token.')
+    const [client, consent] = await Promise.all([
+      this.prisma.oauthClient.findUnique({ where: { clientId } }),
+      this.prisma.oauthConsent.findFirst({ where: { userId, clientId } }),
+    ])
+    if (!client || client.disabled) throw new UnauthorizedException('OAuth client has been disabled.')
+    if (!consent) throw new UnauthorizedException('Bearer token has been revoked.')
+    request[USER_ID_REQUEST_KEY] = userId
+    request[USER_ID_KIND_REQUEST_KEY] = 'bearer'
+    request[AUTH_CONTEXT_REQUEST_KEY] = {
+      source: 'assistent',
+      clientId,
+      clientName: client.name ?? 'Assistent',
+      scopes: typeof claims.scope === 'string' ? claims.scope.split(' ').filter((scope) => scope.length > 0) : [],
+    }
+    return true
+  }
+
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<RequestWithUserId>()
     const reply = context.switchToHttp().getResponse<FastifyReply>()
@@ -55,6 +99,7 @@ export class UserContextGuard implements CanActivate {
       if (!this.prisma) {
         throw new UnauthorizedException('Database unavailable for bearer token verification.')
       }
+      if (rawToken.split('.').length === 3) return this.acceptJwtAccessToken(request, rawToken)
       const tokenHash = createHash('sha256').update(rawToken).digest('base64url')
       const tokenRecord = await this.prisma.oauthAccessToken.findUnique({
         where: { token: tokenHash },

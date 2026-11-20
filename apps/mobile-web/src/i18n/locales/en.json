@@ -2258,6 +2258,7 @@
     "scopeSteuerdatenWrite": "Fill tax facts (remains unconfirmed until your review)",
     "scopeBelegeWrite": "Upload receipts",
     "scopeZahllinkRead": "Fetch payment link",
+    "scopeOfflineAccess": "The connection lasts until you revoke it under “Connected assistants”",
     "drittlandHeading": "Data transfer notice (third countries)",
     "drittlandNotice": "By connecting, your data is transferred to the provider of this assistant. This may include servers in third countries (e.g. US) without an EU adequacy decision. Processing is governed by that provider’s policies.",
     "allow": "Allow connection",

@@ -1,6 +1,6 @@
 import { UnauthorizedException, type ExecutionContext } from '@nestjs/common'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createHash } from 'node:crypto'
+import { createHash, generateKeyPairSync, sign as signWith } from 'node:crypto'
 import { signGuestSession } from '../src/auth/guest-session.js'
 import {
   AUTH_CONTEXT_REQUEST_KEY,
@@ -287,6 +287,66 @@ describe('UserContextGuard', () => {
       const guestReq = makeContext({})
       await guard.canActivate(guestReq.context)
       expect(guestReq.request[AUTH_CONTEXT_REQUEST_KEY]).toEqual({ source: 'nutzer' })
+    })
+  })
+
+  // MCP clients ask for a token bound to the MCP endpoint (RFC 8707): better-auth signs it as a JWT.
+  describe('OAuth 2.1 JWT access token for the MCP endpoint (ADR-0052 §2)', () => {
+    const BASE = 'http://localhost:3501'
+    const { publicKey, privateKey } = generateKeyPairSync('ed25519')
+    const jwk = { ...publicKey.export({ format: 'jwk' }), kid: 'k1', alg: 'EdDSA' }
+    const b64 = (value: object) => Buffer.from(JSON.stringify(value)).toString('base64url')
+    function jwt(claims: Record<string, unknown>): string {
+      const head = `${b64({ alg: 'EdDSA', kid: 'k1', typ: 'at+jwt' })}.${b64(claims)}`
+      return `${head}.${signWith(null, Buffer.from(head), privateKey).toString('base64url')}`
+    }
+    const now = Math.floor(Date.now() / 1000)
+    const valid = { iss: `${BASE}/api/auth`, aud: `${BASE}/mcp/sse`, sub: 'oauth-user-id', client_id: 'client-1', azp: 'client-1', scope: 'steuerdaten:read steuerdaten:write', iat: now, exp: now + 600 }
+
+    function bundle(): BetterAuthBundle {
+      return {
+        auth: { api: { getSession: vi.fn(), getJwks: vi.fn().mockResolvedValue({ keys: [jwk] }) }, options: { baseURL: BASE } } as unknown as BetterAuthBundle['auth'],
+        sessionCookieName: SESSION_COOKIE_NAME,
+        enabledSocialProviders: [],
+        rateLimitStorage: createResettableRateLimitStorage(),
+      }
+    }
+    function prisma(client: object | null = { clientId: 'client-1', name: 'Claude', disabled: false }, consent: object | null = { id: 'c1' }) {
+      return {
+        oauthAccessToken: { findUnique: vi.fn().mockResolvedValue(null) },
+        oauthClient: { findUnique: vi.fn().mockResolvedValue(client) },
+        oauthConsent: { findFirst: vi.fn().mockResolvedValue(consent) },
+      } as unknown as PrismaService
+    }
+
+    it('a JWT for the MCP endpoint sets the assistant context from its claims and the client', async () => {
+      const guard = new UserContextGuard(bundle(), prisma())
+      const { context, request } = makeContext({}, { authorization: `Bearer ${jwt(valid)}` })
+      await expect(guard.canActivate(context)).resolves.toBe(true)
+      expect(request[USER_ID_REQUEST_KEY]).toBe('oauth-user-id')
+      expect(request[USER_ID_KIND_REQUEST_KEY]).toBe('bearer')
+      expect(request[AUTH_CONTEXT_REQUEST_KEY]).toEqual({ source: 'assistent', clientId: 'client-1', clientName: 'Claude', scopes: ['steuerdaten:read', 'steuerdaten:write'] })
+    })
+
+    it('refuses a JWT for another audience, another issuer or a forged signature', async () => {
+      for (const token of [jwt({ ...valid, aud: 'https://elsewhere.example/api' }), jwt({ ...valid, iss: 'https://evil.example' }), `${jwt(valid).slice(0, -4)}AAAA`]) {
+        const guard = new UserContextGuard(bundle(), prisma())
+        const { context } = makeContext({}, { authorization: `Bearer ${token}` })
+        await expect(guard.canActivate(context)).rejects.toBeInstanceOf(UnauthorizedException)
+      }
+    })
+
+    it('a revoked connection stops a JWT at once: no consent, no access (ADR-0052 §10)', async () => {
+      const guard = new UserContextGuard(bundle(), prisma(undefined, null))
+      const { context } = makeContext({}, { authorization: `Bearer ${jwt(valid)}` })
+      await expect(guard.canActivate(context)).rejects.toBeInstanceOf(UnauthorizedException)
+    })
+
+    it('refuses a JWT of a disabled client and one without a user (client credentials)', async () => {
+      const disabled = new UserContextGuard(bundle(), prisma({ clientId: 'client-1', name: 'Claude', disabled: true }))
+      await expect(disabled.canActivate(makeContext({}, { authorization: `Bearer ${jwt(valid)}` }).context)).rejects.toBeInstanceOf(UnauthorizedException)
+      const machine = new UserContextGuard(bundle(), prisma())
+      await expect(machine.canActivate(makeContext({}, { authorization: `Bearer ${jwt({ ...valid, sub: 'client-1' })}` }).context)).rejects.toBeInstanceOf(UnauthorizedException)
     })
   })
 })

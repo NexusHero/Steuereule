@@ -196,5 +196,16 @@ Werkzeuge**, keine Agent-zu-Agent-Frage an unser LLM.
   gekennzeichnet); das Bestätigen einer Anlage gilt für beide.
 - **Kinder als Datensätze:** `kinder_auflisten` (Vorname maskiert, Geburtsjahr, `instance`) und
   `kind_anlegen` (Scope `steuerdaten:write`); die Angaben folgen mit `maske_eintragen`, Maske `kind`.
+- **Anmeldung für Standard-MCP-Clients** (MCP Authorization, RFC 9728/8414/8707), im lokalen Lauf mit
+  echtem MCP-Client geprüft: `/mcp/sse` antwortet ohne Token mit 401 und
+  `WWW-Authenticate: Bearer resource_metadata=…`; `/.well-known/oauth-protected-resource[/mcp/sse]` nennt
+  better-auth unter `/api/auth` als Server, dessen Metadaten auch unter
+  `/.well-known/oauth-authorization-server[/api/auth]` liegen. Der MCP-Endpunkt ist eine OAuth-Ressource;
+  ihr Eintrag entsteht bei der ersten `/oauth2/`-Anfrage (`ensureMcpResource`), nicht beim Start, damit
+  die App ohne Datenbank bootet. Tokens für diese Ressource sind JWTs (Aussteller `…/api/auth`,
+  Zielgruppe `…/mcp/sse`); der Guard prüft sie gegen die eigenen Schlüssel und verlangt zusätzlich die
+  noch bestehende Einwilligung, damit ein Widerruf auch für JWTs sofort wirkt (§10). Clients mit
+  Loopback-Weiterleitung gelten als native (RFC 8252), `offline_access` gibt Refresh-Tokens, die
+  Einwilligungsseite sagt dazu, dass die Verbindung bis zum Widerruf besteht.
 - **Noch nicht:** Buchungen und Anlagegüter (Selbstständige), neue Vermietungsobjekte und das
   Zurückziehen eigener Einträge über MCP. Bezahlen, Konto und Einwilligungen bleiben ausgeschlossen (§4).
