@@ -3920,7 +3920,7 @@
         "capitalAccountEur": "Wert des Betriebsvermögens (Kapitalkonto) zu diesem Tag (€)",
         "requestedEur": "Beantragter begünstigter Betrag (€)",
         "carriedForwardEur": "Nachversteuerungspflichtiger Betrag laut letztem Bescheid (€)",
-        "withdrawalsForRetainedTaxEur": "Entnahmen für die Thesaurierungssteuer (€, ab 2024)"
+        "withdrawalsForRetainedTaxEur": "Entnahmen für die Thesaurierungssteuer früherer Jahre (€, ab 2024)"
       },
       "freibetrag": "Freibetrag beantragen (ab 55 oder dauernd berufsunfähig, einmal im Leben)",
       "methode": {

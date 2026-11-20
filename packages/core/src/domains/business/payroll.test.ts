@@ -41,13 +41,13 @@ describe('Lohnsteuer-Anmeldung (§ 41a EStG)', () => {
     expect(wageTaxFilingPeriod({ priorYearWageTaxEur: 1_000, priorYearMonthsActive: 2 })).toBe('monat')
   })
 
-  it('sums the runs of a period into the Kennzahlen (42, 49, 61/62, 83, 86); Minijobs stay out', () => {
+  it('sums the runs of a period into the Kennzahlen (42, 49, 61/62, 83, 86); a Minijob counts in Kz 86 only (Hinweis Nr. 11)', () => {
     const r = wageTaxReturn([
       { kind: 'regulaer', employee: 'A', wageTaxEur: 300, soliEur: 0, churchTaxEur: 24, church: 'ev' },
       { kind: 'regulaer', employee: 'B', wageTaxEur: 500, soliEur: 10, churchTaxEur: 40, church: 'rk' },
       { kind: 'minijob', employee: 'C', wageTaxEur: 0, soliEur: 0, churchTaxEur: 0, church: null },
     ])
-    expect(r).toEqual({ '86': 2, '42': 800, '49': 10, '61': 24, '62': 40, '83': 874 })
+    expect(r).toEqual({ '86': 3, '42': 800, '49': 10, '61': 24, '62': 40, '83': 874 })
   })
 })
 

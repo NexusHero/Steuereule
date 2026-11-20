@@ -1315,9 +1315,11 @@ export class BusinessService {
           requestedEur: retainedFacts.requestedEur,
           carriedForwardEur: retainedFacts.carriedForwardEur ?? 0,
           withdrawalsForRetainedTaxEur: retainedFacts.withdrawalsForRetainedTaxEur,
+          disposal: disposal !== null,
         })
-        // § 34a Abs. 1 Satz 1: not in a year whose disposal gain uses § 16 Abs. 4 or § 34 Abs. 3.
-        if (disposal !== null && (disposal.allowanceEur > 0 || disposal.method === 'ermaessigt')) retained = null
+        // § 34a Abs. 1 Satz 1 excludes only the disposal gain that uses § 16 Abs. 4 or § 34 Abs. 3 ("soweit"); it is
+        // taxed apart from the book's profit, so the running profit may still be retained. The sale recaptures the
+        // carried amount (Abs. 6 Nr. 1).
       }
     }
     return { disposal, retained }

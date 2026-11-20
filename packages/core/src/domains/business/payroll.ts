@@ -93,7 +93,7 @@ export interface WageTaxRunFacts {
 }
 
 /**
- * The Kennzahlen of one Lohnsteuer-Anmeldung (Vordruck 2026): 86 employees, 42 Lohnsteuer, 49 Soli,
+ * The Kennzahlen of one Lohnsteuer-Anmeldung (Vordruck 2026): 86 employees (Minijobber included), 42 Lohnsteuer, 49 Soli,
  * 61/62 church tax, 83 total. The Minijob's 2 % goes to the Knappschaft, not here (Hinweis Nr. 2).
  */
 export function wageTaxReturn(runs: readonly WageTaxRunFacts[]): Readonly<Record<string, number>> {
@@ -102,7 +102,8 @@ export function wageTaxReturn(runs: readonly WageTaxRunFacts[]): Readonly<Record
   const put = (kz: string, v: number) => {
     if (v !== 0) k[kz] = c2(v)
   }
-  put('86', new Set(regular.map((r) => r.employee)).size)
+  // Kz 86 counts every employee, Aushilfen and Minijobber included (Vordruck 2026, Hinweis Nr. 11).
+  put('86', new Set(runs.map((r) => r.employee)).size)
   put('42', regular.reduce((s, r) => s + r.wageTaxEur, 0))
   put('49', regular.reduce((s, r) => s + r.soliEur, 0))
   put('61', regular.filter((r) => r.church === 'ev').reduce((s, r) => s + r.churchTaxEur, 0))

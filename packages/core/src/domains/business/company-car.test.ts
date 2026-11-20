@@ -69,6 +69,21 @@ describe('private use of a business car (1 %-Regel, Fahrtenbuch, Kostendeckelung
     expect(r.vat!.baseEur + r.vat!.freeOfVatEur).toBeLessThanOrEqual(1_000)
   })
 
+  it('compares an electric car with its total costs, the AfA in them at a quarter (BMF 05.11.2021 Rn. 13, read)', () => {
+    // 1 % of 13.000 € × 12 = 1.560 €; total costs 5.000 € of which 4.000 € AfA count 5.000 − 4.000 × 3/4 = 2.000 €: no cap.
+    const free = companyCarUse({ ...PETROL, drive: 'elektro', listPriceGrossEur: 52_000, totalCostsEur: 5_000, depreciationEur: 4_000 })
+    if (free.kind !== 'berechnet') throw new Error(free.kind)
+    expect(free.capped).toBe(false)
+    expect(free.privateUseEur).toBe(1_560)
+    // Total costs 2.000 € of which 1.600 € AfA count 800 €: the cap takes 800 €, not 1.560 €.
+    const capped = companyCarUse({ ...PETROL, drive: 'elektro', listPriceGrossEur: 52_000, totalCostsEur: 2_000, depreciationEur: 1_600 })
+    if (capped.kind !== 'berechnet') throw new Error(capped.kind)
+    expect(capped.capped).toBe(true)
+    expect(capped.privateUseEur).toBe(800)
+    // The VAT compares the full value with the unreduced costs: 2.000 €.
+    expect(capped.vat!.baseEur + capped.vat!.freeOfVatEur).toBe(2_000)
+  })
+
   it('refuses the 1 % rule at business use of 50 % or less: a logbook or an estimate is needed', () => {
     expect(companyCarUse({ ...PETROL, businessShareOver50: false })).toEqual({ kind: 'nicht_zulaessig', reason: 'betriebliche_nutzung_bis_50' })
   })

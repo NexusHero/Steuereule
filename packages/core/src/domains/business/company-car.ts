@@ -57,7 +57,7 @@ export interface CompanyCarInput extends CarFacts {
   readonly method: 'pauschal' | 'fahrtenbuch'
   /** Gesamtkosten of the car in the year, AfA included: the cap, and the basis of the logbook method. */
   readonly totalCostsEur?: number | undefined
-  /** The AfA inside `totalCostsEur`: by logbook an electric or hybrid car counts it at its fraction. */
+  /** The AfA inside `totalCostsEur`: an electric or hybrid car counts it at its fraction, by logbook and in the Kostendeckelung (BMF 05.11.2021 Rn. 13). */
   readonly depreciationEur?: number | undefined
   /** By logbook: the private share of the kilometres (0–1). */
   readonly privateShare?: number | undefined
@@ -105,17 +105,19 @@ export function companyCarUse(input: CompanyCarInput): CompanyCarResult {
     let privateUseEur = cents(assessedListPriceEur * 0.01 * months)
     let commute = input.commute ? commuteOf(input.year, assessedListPriceEur * 0.0003 * input.commute.distanceKm * months, input.commute) : null
     let capped = false
-    if (input.totalCostsEur !== undefined && privateUseEur + (commute?.nonDeductibleEur ?? 0) > input.totalCostsEur) {
+    // BMF 05.11.2021 Rn. 13: for the comparison the AfA inside the total costs counts at the same fraction as the list price.
+    const capCostsEur = input.totalCostsEur === undefined ? undefined : input.totalCostsEur - (input.depreciationEur ?? 0) * (1 - factor)
+    if (capCostsEur !== undefined && privateUseEur + (commute?.nonDeductibleEur ?? 0) > capCostsEur) {
       capped = true
-      const total = Math.max(0, input.totalCostsEur)
+      const total = Math.max(0, capCostsEur)
       const commuteNon = Math.min(commute?.nonDeductibleEur ?? 0, total)
       if (commute) commute = { ...commute, nonDeductibleEur: cents(commuteNon) }
       privateUseEur = cents(total - commuteNon)
     }
     // The VAT takes the full list price, the fractions are income tax only (Abschn. 15.23 Abs. 5 UStAE).
     const fullValue = Math.floor(input.listPriceGrossEur / 100) * 100 * 0.01 * months
-    // Under the Kostendeckelung the Wertabgabe cannot exceed the car's total costs either.
-    const vat = vatDeductible ? wertabgabe(capped ? Math.min(fullValue, Math.max(0, input.totalCostsEur ?? fullValue)) : fullValue) : null
+    // The Wertabgabe cannot exceed the car's total costs either; the VAT compares them unreduced.
+    const vat = vatDeductible ? wertabgabe(Math.min(fullValue, Math.max(0, input.totalCostsEur ?? fullValue))) : null
     return { kind: 'berechnet', method: 'pauschal', factor, assessedListPriceEur, privateUseEur, commute, capped, vat }
   }
 

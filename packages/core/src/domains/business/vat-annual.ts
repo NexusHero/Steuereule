@@ -49,7 +49,7 @@ export interface VatAnnualInput {
   readonly year: number
   /** Soll: by agreed fees; Ist: by fees received (§ 13 Abs. 1 Nr. 1 a and b UStG). The amounts below follow it. */
   readonly method: VatMethod
-  /** 'klein': § 19 UStG applies; only § 13b tax is owed and nothing is deducted (§ 19 Abs. 1 Satz 4 UStG). */
+  /** 'klein': § 19 UStG applies; only § 13b tax is owed and nothing is deducted (§ 19 Abs. 1 Satz 4 UStG until 2024, § 15 Abs. 2 Satz 1 Nr. 1 UStG from 2025). */
   readonly regime: 'regel' | 'klein'
   /** Taxable net turnover by rate, including unentgeltliche Wertabgaben (§ 3 Abs. 1b, 9a UStG). */
   readonly taxableNetEur: NetByRate
@@ -89,7 +89,7 @@ function taxByRate(net: NetByRate | undefined): Record<VatRateKind, number> {
 /**
  * The annual return: output tax by rate on the net turnover, plus the § 13b tax as recipient, less
  * the input tax. The § 13b tax is deductible again as input tax (§ 15 Abs. 1 Satz 1 Nr. 4 UStG) when
- * the business may deduct at all; a Kleinunternehmer may not (§ 19 Abs. 1 Satz 4 UStG).
+ * the business may deduct at all; a Kleinunternehmer may not (§ 19 Abs. 1 Satz 4 UStG until 2024, § 15 Abs. 2 Satz 1 Nr. 1 UStG from 2025).
  * Turnover without deduction does not cut input tax here: the caller enters only deductible input
  * tax (§ 15 Abs. 2 and 4 UStG need the split per invoice, which the bookkeeping holds).
  */

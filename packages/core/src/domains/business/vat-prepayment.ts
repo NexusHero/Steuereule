@@ -33,7 +33,8 @@ export function vatFilingPeriod(input: FilingPeriodInput): { readonly period: Va
   const limits = vatPeriodLimits(input.year)
   if (input.founding) {
     const vat = input.founding.expectedVatEur
-    return { period: vat > limits.monthlyAboveEur ? 'monat' : vat <= limits.exemptUpToEur ? 'befreit' : 'quartal', reason: 'gruendung_schaetzung' }
+    // Satz 3 frees only a small tax owed, not an expected refund.
+    return { period: vat > limits.monthlyAboveEur ? 'monat' : vat <= limits.exemptUpToEur && vat >= 0 ? 'befreit' : 'quartal', reason: 'gruendung_schaetzung' }
   }
   const months = Math.min(12, Math.max(1, Math.ceil(input.priorYearMonthsActive ?? 12)))
   const vat = ((input.priorYearVatEur ?? 0) * 12) / months
@@ -159,7 +160,7 @@ export function vatPeriodReturn(input: { readonly figures: PeriodFigures; readon
   put('47', rcEu)
   put('84', f.reverseChargeOtherNetEur)
   put('85', rcOther)
-  // A Kleinunternehmer deducts nothing (§ 19 Abs. 1 Satz 4 UStG).
+  // A Kleinunternehmer deducts nothing (§ 19 Abs. 1 Satz 4 UStG until 2024; from 2025 his supplies are tax-free and § 15 Abs. 2 Satz 1 Nr. 1 excludes the deduction).
   const input66 = small ? 0 : f.inputVatEur
   const input61 = small ? 0 : ig19 + ig7
   const input67 = small ? 0 : rcEu + rcOther

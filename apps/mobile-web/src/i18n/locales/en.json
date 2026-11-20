@@ -3920,7 +3920,7 @@
         "capitalAccountEur": "Value of the business assets (capital account) at that date (€)",
         "requestedEur": "Amount applied for (€)",
         "carriedForwardEur": "Amount subject to recapture per last notice (€)",
-        "withdrawalsForRetainedTaxEur": "Withdrawals for the retained-profit tax (€, from 2024)"
+        "withdrawalsForRetainedTaxEur": "Withdrawals for the retained-profit tax of earlier years (€, from 2024)"
       },
       "freibetrag": "Apply for the allowance (55 or permanently disabled, once in a life)",
       "methode": {

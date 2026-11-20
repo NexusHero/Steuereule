@@ -17,6 +17,8 @@ describe('the Voranmeldungszeitraum (§ 18 Abs. 2, 2a UStG)', () => {
 
   it('for a founder 2021–2026: the expected VAT of the year, last year annualised (Abs. 2 Satz 6)', () => {
     expect(vatFilingPeriod({ year: 2025, founding: { expectedVatEur: 12_000 } })).toEqual({ period: 'monat', reason: 'gruendung_schaetzung' })
+    // Satz 3 frees a small tax owed, not an expected refund (statute read).
+    expect(vatFilingPeriod({ year: 2025, founding: { expectedVatEur: -1_500 } })).toEqual({ period: 'quartal', reason: 'gruendung_schaetzung' })
     // 3.000 € in three months of the year before are 12.000 € a year.
     expect(vatFilingPeriod({ year: 2026, priorYearVatEur: 3_000, priorYearMonthsActive: 3 })).toEqual({ period: 'monat', reason: 'vorjahressteuer' })
   })

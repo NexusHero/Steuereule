@@ -461,7 +461,7 @@ describe('BusinessService (ADR-0101)', () => {
     const p = await service.payroll('u', 2026, A1)
     // First year: January's 450 € × 12 = 5.400 € → monthly.
     expect(p.wageTaxPeriod).toBe('monat')
-    expect(p.wageTaxReturns).toEqual([{ label: '01/2026', due: '2026-02-10', kennzahlen: { '86': 1, '42': 450, '61': 36, '83': 486 } }])
+    expect(p.wageTaxReturns).toEqual([{ label: '01/2026', due: '2026-02-10', kennzahlen: { '86': 2, '42': 450, '61': 36, '83': 486 } }])
     expect(p.minijobCharges).toEqual([{ month: 1, totalEur: 208.62 }])
     expect(p.runs.map((r) => [r.employee, r.netEur])).toEqual([['Anna', 1_894], ['Ben', 578.4]])
     // The book: wages, Minijob, employer charges as Personalaufwand.

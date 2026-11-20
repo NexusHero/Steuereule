@@ -264,7 +264,7 @@ export interface RetainedFactsDto {
   requestedEur: number;
   /** Nachversteuerungspflichtiger Betrag of the last Feststellung. */
   carriedForwardEur?: number;
-  /** From 2024: withdrawals to pay the § 34a tax (Abs. 2 Satz 2). */
+  /** From 2024: withdrawals this year to pay the § 34a tax of earlier years (Abs. 2 Satz 2); this year's tax the app deems paid from the withdrawals itself (Satz 3). */
   withdrawalsForRetainedTaxEur?: number;
 }
 

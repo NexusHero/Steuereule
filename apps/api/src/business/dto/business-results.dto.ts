@@ -483,7 +483,7 @@ export class DisposalFactsDto {
 export class RetainedFactsDto {
   @ApiProperty({ ...EUR, description: 'The amount applied for under § 34a.' }) @IsNumber() @Min(0) requestedEur!: number
   @ApiPropertyOptional({ ...EUR, description: 'Nachversteuerungspflichtiger Betrag of the last Feststellung.' }) @IsOptional() @IsNumber() @Min(0) carriedForwardEur?: number
-  @ApiPropertyOptional({ ...EUR, description: 'From 2024: withdrawals to pay the § 34a tax (Abs. 2 Satz 2).' }) @IsOptional() @IsNumber() @Min(0) withdrawalsForRetainedTaxEur?: number
+  @ApiPropertyOptional({ ...EUR, description: 'From 2024: withdrawals this year to pay the § 34a tax of earlier years (Abs. 2 Satz 2); this year\'s tax the app deems paid from the withdrawals itself (Satz 3).' }) @IsOptional() @IsNumber() @Min(0) withdrawalsForRetainedTaxEur?: number
 }
 
 export class DisposalResultDto {

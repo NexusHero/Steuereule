@@ -213,3 +213,59 @@ Der Gesetzestext ([§ 19 Abs. 1 UStG](https://www.gesetze-im-internet.de/ustg_19
 | § 19 Teiljahr im Vorjahr | Bis 2024 wird hochgerechnet (§ 19 Abs. 3 Satz 3 a. F., Abschnitt 19.3 Abs. 3 UStAE a. F.). Ab 2025 zählt der tatsächliche Umsatz; der Satz zur Umrechnung ist entfallen. | gesetze-im-internet.de (Wayback 2024 und aktuell); BMF 18.03.2025. Geprüft |
 | § 34a Gewerbesteuer | Vor VZ 2024 nicht hinzugerechnet; die Gewerbesteuer minderte als nicht abziehbare Betriebsausgabe den begünstigungsfähigen Gewinn (BMF 11.08.2008 Rz. 16). Erst die geltende Fassung rechnet sie hinzu. | § 34a (Wayback 2023, aktuell); EStH 2023 Anhang 27c. Geprüft; die BGBl-Fundstelle der Änderung nicht gelesen |
 | § 47 UStDV | 1/11 der **Summe der Vorauszahlungen** des Vorjahres, nicht der Jahressteuer. | § 47 Abs. 1 Satz 2 UStDV; USt 1 H 2026 Zeile 8. Geprüft |
+
+## 13. Gesetzesprüfung vom 20.11.2026
+
+Die Regeln in `packages/core/src/domains/business` und die Vorsorge wurden gegen die amtlichen Texte geprüft: gesetze-im-internet.de, BGBl, BMF-Schreiben, Vordruck der Lohnsteuer-Anmeldung 2026 und Minijob-Zentrale.
+
+**Behoben:**
+- **§ 34a Abs. 2 Satz 3 EStG (ab VZ 2024):** Entnahmen gelten vorrangig als Zahlung der Thesaurierungssteuer und ihres Solis. Die App setzt das selbst an, als Fixpunkt, weil die Steuer vom freigestellten Betrag abhängt. Das Eingabefeld gilt nur noch für Steuer früherer Jahre.
+- **§ 34a Abs. 6 Nr. 1 EStG:** Eine Veräußerung oder Aufgabe versteuert den ganzen nachversteuerungspflichtigen Betrag mit 25 % nach. Bisher entfiel § 34a im Jahr der Veräußerung ganz. Abs. 1 schließt aber nur den begünstigten Veräußerungsgewinn aus („soweit“).
+- **BMF 05.11.2021 Rn. 13:** Bei der Kostendeckelung von E- und Hybridautos zählt die AfA in den Gesamtkosten mit demselben Bruchteil wie der Listenpreis.
+- **Lohnsteuer-Anmeldung 2026, Kz 86:** Sie zählt alle Arbeitnehmer, Aushilfen und Minijobber eingeschlossen (Hinweis Nr. 11).
+- **§ 18 Abs. 2 Satz 3 UStG:** Ein Gründer, der eine Erstattung erwartet, ist nicht befreit.
+- **Zitate korrigiert:** § 34 Abs. 3 Satz 5 statt Satz 4; § 19 Abs. 1 Satz 4 UStG gilt nur bis 2024, ab 2025 schließt § 15 Abs. 2 Satz 1 Nr. 1 den Vorsteuerabzug aus.
+
+**Geprüft und richtig:**
+- Gewerbesteuer: §§ 8 Nr. 1, 9 Nr. 1 (ab 2025 Grundsteuer), 10a, 11 GewStG
+- § 35 EStG
+- §§ 16 Abs. 4, 34 Abs. 1 und 3, 34a-Sätze EStG
+- Katalogberufe nach § 18 EStG
+- Vorsorge-Höchstbeträge 2022–2026
+- Degressive AfA: alle drei Fenster
+- GWG und Sammelposten
+- § 7g EStG
+- § 10d EStG
+- § 4 Abs. 5 EStG: Bewirtung, Geschenke, Verpflegung, Homeoffice
+- Preisgrenzen und Hybrid-Reichweiten beim Firmenwagen
+- § 18 Abs. 2/2a UStG und § 47 UStDV
+- Kennzahlen der USt 1 A
+- Grenzen nach § 19 und § 20 UStG
+- Minijob-Grenzen, -Sätze und -Umlagen 2022–2026, RV-Mindestbemessungsgrundlage 175 €
+- Zeiträume nach § 41a EStG
+- **Nicht falsch, aber anders als zunächst gemeldet:** Kleinunternehmer und Erwerbsschwelle (§ 1a Abs. 3 UStG). Wer mit Erwerbs-Schlüssel bucht, hat seine USt-IdNr verwendet; das gilt als Verzicht nach Abs. 4.
+
+**Offen (Randfälle, noch nicht gebaut):**
+- **Firmenwagen:**
+  - Batterieabzug für E- und Hybridautos, die vor 2019 angeschafft wurden, und für Hybride ohne Reichweite (§ 6 Abs. 1 Nr. 4 Satz 2 Nr. 1)
+  - Leasingraten beim Fahrtenbuch
+- **AfA:**
+  - § 7 Abs. 2a EStG (E-Fahrzeuge 7/2025–2027: 75 %)
+  - Gewinngrenze für die Sonder-AfA nach § 7g Abs. 6 Nr. 1 wird nicht geprüft
+  - Gebäude: Bauantrag nach 31.3.1985, und § 7 Abs. 5a nur für Wohnzwecke
+- **Gewinn:** Die 50-€-Grenze für Geschenke hängt am Wirtschaftsjahr (§ 52 Abs. 6 Satz 10).
+- **Lohn:**
+  - § 41a Abs. 2 Satz 4 EStG: neue Betriebsstätte, erster voller Monat × 12
+  - U1 nur bis 30 Arbeitnehmer (AAG)
+  - Kirchensteuer anderer Konfessionen
+  - Pauschale Lohnsteuer (Kz 41/44/47/48)
+- **Umsatzsteuer:**
+  - § 13b-Steuer mit 7 %
+  - Wechsel der ZM mitten im Quartal (§ 18a Abs. 1 Satz 3)
+  - § 19 ab 2025: Schnitt mitten im Jahr bei Überschreiten von 100.000 €; Meldepflichten nur nach § 18 Abs. 4a
+  - § 20 Nr. 2 und 4 UStG
+  - § 15a UStG
+- **Ab 2027:** Mindesthebesatz 280 % (§ 16 Abs. 4 Satz 2, § 36 Abs. 5b GewStG), bevor 2027 dazukommt.
+- **Ungeklärt (Auslegung):**
+  - Gilt die Ausnahme nach Abs. 2 Satz 2 auch für den Entnahmeüberschuss nach § 34a Abs. 4?
+  - Ist der Höchstbetrag für den Verlustrücktrag (§ 10d Abs. 1 Satz 2) für beide Jahre gemeinsam?

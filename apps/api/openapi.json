@@ -13550,7 +13550,7 @@
           },
           "withdrawalsForRetainedTaxEur": {
             "type": "number",
-            "description": "From 2024: withdrawals to pay the § 34a tax (Abs. 2 Satz 2)."
+            "description": "From 2024: withdrawals this year to pay the § 34a tax of earlier years (Abs. 2 Satz 2); this year's tax the app deems paid from the withdrawals itself (Satz 3)."
           }
         },
         "required": [
