@@ -18,7 +18,11 @@ export default defineConfig({
       reporter: ['text-summary', ['lcov', { projectRoot: '../..' }]],
       include: ['src/**/*.{ts,tsx}'],
       exclude: ['src/**/*.test.tsx', 'src/index.ts', 'src/test-setup.ts', 'src/gallery/**'],
-      thresholds: { statements: 90, branches: 90, functions: 90, lines: 90 },
+      // CI sets COVERAGE_REPORT_ONLY: this package is below its 90% today, so CI measures it for
+      // SonarQube Cloud without gating on it until the gap is closed. Local runs still gate.
+      thresholds: process.env.COVERAGE_REPORT_ONLY
+        ? {}
+        : { statements: 90, branches: 90, functions: 90, lines: 90 },
     },
   },
 })
