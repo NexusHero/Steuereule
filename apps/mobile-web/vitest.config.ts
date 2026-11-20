@@ -101,6 +101,8 @@ export default defineConfig({
     },
     coverage: {
       provider: 'v8',
+      // lcov feeds SonarQube Cloud; paths relative to the repo root so Sonar can match them.
+      reporter: ['text-summary', ['lcov', { projectRoot: '../..' }]],
       include: ['src/**/*.{ts,tsx}'],
       // Derived from the house naming convention (Musti's #329 finding 3, and its correction on
       // #330 confirming `test-`-prefixed modules in `src` are the established pattern), not

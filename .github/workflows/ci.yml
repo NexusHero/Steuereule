@@ -11,6 +11,7 @@
 #
 # Flow:  validate-compose ──► lint ──────────────► build ──► smoke
 #                          ├─► test ───────────────┤    ├─► cross-origin-smoke
+#                          │     └─► sonar          │    │
 #                          └─► integration ─────────┘    └─► prod-deploy-smoke
 #        docs-consistency (standalone — reads docs/, needs no build)
 name: CI
@@ -139,10 +140,25 @@ jobs:
         run: pnpm --filter @steuereule/api prisma:generate
       - name: Typecheck
         run: pnpm -r typecheck
-      - name: Test (includes DevMLOps Golden Dataset, Red-Team & PII Fuzzing suites)
-        run: pnpm -r test
-      - name: Coverage Gate (@steuereule/core >= 92% lines/stmts, >= 95% funcs, >= 85% branches)
+      # Coverage is measured everywhere (lcov for the `sonar` job) but gated only on core, as
+      # before: ui and mobile-web sit below the 90% their own configs name (functions 87% / 82%,
+      # measured 2026-11-20), so their thresholds are switched off here until they are raised.
+      - name: Test with coverage (includes DevMLOps Golden Dataset, Red-Team & PII Fuzzing suites)
+        run: >-
+          pnpm --filter './apps/*' --filter './packages/*' --filter '!@steuereule/core' test --coverage
+          --coverage.thresholds.lines=0 --coverage.thresholds.functions=0
+          --coverage.thresholds.branches=0 --coverage.thresholds.statements=0
+      - name: Coverage Gate (@steuereule/core >= 90% lines/stmts/funcs/branches)
         run: pnpm --filter @steuereule/core coverage
+      - name: Upload the coverage reports for SonarQube Cloud
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: coverage-lcov
+          path: |
+            packages/*/coverage/lcov.info
+            apps/*/coverage/lcov.info
+          if-no-files-found: error
+          retention-days: 3
       - name: License Compliance Gate (Block AGPL/GPL/BUSL/SSPL)
         run: node scripts/checks/license-check.mjs
       - name: AcroForm Preprocessor Gate — pre-compiled Vordruck templates match felder-<jahr>.json
@@ -224,6 +240,28 @@ jobs:
             echo "::error::The regenerated api-client no longer typechecks (exactOptionalPropertyTypes). See orval.config.ts's per-project 'override.mock' entries — a genuinely optional, non-nullable response property (e.g. StepDto.id, #242) needs 'mock.required: true' on that project or orval's default faker mock emits an explicit 'undefined' that TS2375 rejects."
             exit 1
           }
+
+  # SonarQube Cloud analysis with the coverage of the `test` job (automatic analysis is off,
+  # it cannot import coverage). Settings live in sonar-project.properties. Fork PRs get no
+  # SONAR_TOKEN, so the job is skipped for them instead of failing.
+  sonar:
+    name: SonarQube Cloud
+    needs: test
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          # Full history for blame and new-code detection.
+          fetch-depth: 0
+      - name: Download the coverage reports
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: coverage-lcov
+      - name: SonarQube Cloud scan
+        uses: SonarSource/sonarqube-scan-action@59202af334b4ba7b5db01b701b8e79f8b3bef0f4 # v8.5.0
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
   # Real gate (#66, extended for Slice 2/ADR-0012): proves the DSGVO-critical
   # guarantees — REQ-003 field-encryption at rest, REQ-004 append-only audit log,

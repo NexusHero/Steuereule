@@ -31,5 +31,13 @@ export default defineConfig({
       NODE_ENV: 'test',
       VITEST: 'true',
     },
+    // Measured for SonarQube Cloud only, no threshold: the unit tier alone does not exercise the
+    // DB-backed code, which the integration tier covers.
+    coverage: {
+      provider: 'v8',
+      reporter: ['text-summary', ['lcov', { projectRoot: '../..' }]],
+      include: ['src/**/*.ts'],
+      exclude: ['src/**/*.spec.ts', 'src/**/*.test.ts'],
+    },
   },
 })

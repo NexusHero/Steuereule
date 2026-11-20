@@ -14,6 +14,8 @@ export default defineConfig({
     include: ['src/**/*.test.tsx'],
     coverage: {
       provider: 'v8',
+      // lcov feeds SonarQube Cloud; paths relative to the repo root so Sonar can match them.
+      reporter: ['text-summary', ['lcov', { projectRoot: '../..' }]],
       include: ['src/**/*.{ts,tsx}'],
       exclude: ['src/**/*.test.tsx', 'src/index.ts', 'src/test-setup.ts', 'src/gallery/**'],
       thresholds: { statements: 90, branches: 90, functions: 90, lines: 90 },
