@@ -215,3 +215,41 @@ Werkzeuge**, keine Agent-zu-Agent-Frage an unser LLM.
 - **Felder beschreiben:** `maske_felder` liefert je Maske Form und Hinweis aus dem Feldkatalog; Verweise
   auf Werkzeuge des In-App-Beraters werden für den externen Assistenten umformuliert.
 - **Noch nicht:** Buchungen und Anlagegüter (Selbstständige) und neue Vermietungsobjekte über MCP. Bezahlen, Konto und Einwilligungen bleiben ausgeschlossen (§4).
+
+## Amendment 3 (2026-11-20) — Lesesicht: der Assistent liest abgeleitet, nicht im Detail
+
+Stakeholder-Entscheidungen (NexusHero, Grilling 20.11.2026 nach dem Echtdatenlauf 2024 über MCP).
+Verschärft §8 („lesen maskiert“) zu Datenminimierung; gilt nur für den externen Assistenten, der
+In-App-Berater behält ADR-0091.
+
+1. **Personen nur abgeleitet.** Je Person (Nutzer, Partner, Kinder): Alter am 31.12. des Steuerjahres
+   statt Geburtsdatum, Bundesland statt Adresse (keine PLZ, kein Ort, keine Straße), Familienstand und
+   Veranlagung, Berufsgruppe aus der Interview-Antwort `beruf` (nicht die Berufsbezeichnung).
+   Steuer-ID und IBAN nie, auch nicht maskiert.
+2. **Beträge im Klartext.** Steuerbeträge identifizieren niemanden und sind der Kern der Beratung.
+3. **Schreiben genau, lesen abgeleitet.** Der Assistent schreibt genaue Werte (Geburtsdatum,
+   Arbeitgeberadresse); zurück liest er sie abgeleitet, auch seine eigenen („Geburtsdatum gesetzt,
+   Alter 33“).
+4. **Dritte nur als Rolle und Land** („Arbeitgeber 1, Schweiz“); Arbeitgeber, Kita, Handwerker,
+   Spendenempfänger und der andere Elternteil ohne Namen und Adressen.
+5. **Freitext nur als „gesetzt“.** Bemerkungen, Erläuterungen und Notizen fließen nicht zurück.
+6. **Kinder als Nummer und Alter** mit `instance`, ohne Anfangsbuchstaben; die Zuordnung gleich alter
+   Kinder hält der Assistent selbst (aus `kind_anlegen`).
+7. **Kirchensteuer ohne Konfession.** Der Assistent schreibt je Person nur die neue Angabe
+   „kirchensteuerpflichtig ja/nein“, die die Schätzung nutzt; eine Konfession (Art. 9 DSGVO) trägt der
+   Nutzer mit Einwilligung in der App ein. Bei „ja“ ohne Konfession meldet der Bericht eine Lücke für
+   den Ausdruck. Widersprechen sich beide, gilt die Konfession des Nutzers (§7), der Bericht nennt den
+   Widerspruch. Der Religionsschlüssel ist über MCP nicht mehr beschreibbar.
+8. **Werkzeuge.** `maske_lesen(screen, person)`: je Feld Wert (Beträge klar, Persönliches abgeleitet),
+   Stand (bestätigt / unbestätigt / Vorschlag offen) und Herkunft als Art (Nutzer, du selbst, anderer
+   Assistent, Jahresübernahme, Beleg; Namen anderer Assistenten nicht). `haushalt_ueberblick` ersetzt
+   `steuerjahr_stand`. Belege lesbar mit belegId, Art, Jahr, Datum und den Feldern, deren Herkunft sie
+   sind, ohne Dateinamen.
+9. **Transparenz** über das Audit-Log wie bisher (REQ-004); keine eigene Ansicht.
+
+Dazu, aus dem Echtdatenlauf, weitere Werkzeuge für die Arbeit des Assistenten (Ticketschnitt in
+`17-agenten-zugang-mcp.md`, Slices 17.8–17.13): Stapel-Eintrag je Maske, Aufschlüsselung der Schätzung
+(Rechenweg), Bescheid-Abgleich mit Einspruchsfrist, Prüfregeln und Ausdruck-Plan, Aufgaben an den
+Nutzer, Komfort (Veranlagungsvergleich aus Falldaten, Mehrfeld-Szenario, Wechselkurse, Vordruck-Zeilen,
+Feld finden, Vorjahr und Fristen), Vermietungsobjekte und Buchungen. Unverändert ausgeschlossen:
+Belege serverseitig auslesen (§11), Einwilligungen, Bezahlen, Kontoaktionen.
