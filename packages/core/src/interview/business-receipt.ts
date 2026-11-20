@@ -19,8 +19,10 @@ export interface BusinessReceiptRead {
 
 export type ReceiptDirection = 'ausgabe' | 'einnahme'
 
-const AMOUNT = String.raw`(\d{1,3}(?:[.\s]\d{3})*,\d{2}|\d+,\d{2}|\d+\.\d{2})`
-const TOTAL_LABELS = /(gesamtbetrag|rechnungsbetrag|zu\s+zahlen(?:der\s+betrag)?|endbetrag|summe\s+brutto|bruttobetrag|gesamt\s*\(brutto\)|gesamtsumme|summe|total|betrag)/i
+// Either grouped thousands („1.234,56“, „1 234,56“) or plain digits („1234,56“, „12.34“); the two branches
+// cannot both match the same digits, so the pattern stays linear on long receipt text.
+const AMOUNT = String.raw`(\d{1,3}(?:[.\s]\d{3})+,\d{2}|\d+[.,]\d{2})`
+const TOTAL_LABELS = /(gesamtbetrag|rechnungsbetrag|zu\s+zahlen(?:der\s+betrag)?|endbetrag|summe\s+brutto|bruttobetrag|gesamt\s*\(brutto\)|gesamtsumme|gesamt\b|brutto\b|summe|total|betrag)/i
 
 function cents(raw: string): number {
   const normalized = raw.includes(',') ? raw.replaceAll(/[.\s]/g, '').replace(',', '.') : raw
@@ -41,8 +43,8 @@ function readTotal(lines: readonly string[]): number | null {
 
 function readRate(text: string): 19 | 7 | 0 | null {
   if (/§\s*19\s*UStG|kleinunternehmer|ohne\s+(?:ausweis\s+der\s+)?umsatzsteuer|umsatzsteuerfrei/i.test(text)) return 0
-  if (/\b19\s*(?:,0+)?\s*%/.test(text)) return 19
-  if (/\b7\s*(?:,0+)?\s*%/.test(text)) return 7
+  if (/\b19(?:,0+)?\s?%/.test(text)) return 19
+  if (/\b7(?:,0+)?\s?%/.test(text)) return 7
   return null
 }
 
@@ -57,7 +59,7 @@ function readDate(text: string): IsoDate | null {
 }
 
 function readInvoiceNumber(text: string): string | null {
-  const match = /(rechnungs?-?\s*(?:nr|nummer)|beleg-?\s*(?:nr|nummer)|invoice\s*(?:no|number))\.?\s*:?\s*([A-Z0-9][A-Z0-9/_-]{1,30})/i.exec(text)
+  const match = /(rechnungs?-?\s?(?:nr|nummer)|beleg-?\s?(?:nr|nummer)|invoice\s?(?:no|number))[.:\s]{0,4}([A-Z0-9][A-Z0-9/_-]{1,30})/i.exec(text)
   return match ? match[2]! : null
 }
 

@@ -64,7 +64,7 @@ describe('the self-employment switch in the interview', () => {
     mount(<InterviewScreen taxYear={YEAR} onDone={() => {}} />)
     await screen.findByText('Mehrfachjobs? Nimm die Hauptquelle — der Rest kommt später.')
     fireEvent.click(screen.getByText('Selbstständig'))
-    await screen.findByText('Ehrlich: dafür sind wir noch nicht gut genug.')
+    expect(await screen.findByText('Ehrlich: dafür sind wir noch nicht gut genug.')).toBeTruthy()
   })
 })
 

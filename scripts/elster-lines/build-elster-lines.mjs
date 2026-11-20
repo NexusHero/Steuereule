@@ -29,7 +29,7 @@ function euerRows(rows, year) {
       if (hit) section = hit.id
     }
     if (!section) continue
-    if (row.kz.length === 0 && EUER_SKIP.test(row.label.replace(/\s*\(.*$/, ''))) continue
+    if (row.kz.length === 0 && EUER_SKIP.test(withoutParenthesis(row.label))) continue
     let key
     if (row.kz.length > 0) key = `kz${row.kz[0]}`
     else key = EUER_UNNUMBERED.find(([re]) => re.test(row.label))?.[1]
@@ -57,6 +57,9 @@ function specRows(form, rows, year) {
   }
   return out
 }
+
+/** The label up to its first parenthesis, trimmed (a pattern for this backtracked on long labels). */
+const withoutParenthesis = (label) => (label.includes('(') ? label.slice(0, label.indexOf('(')) : label).trimEnd()
 
 function render(data, sources) {
   const lines = [

@@ -36,3 +36,17 @@ describe('parseXml', () => {
     expect(() => parseXml('<a>'.repeat(70) + '</a>'.repeat(70))).toThrow(/verschachtelt/)
   })
 })
+
+describe('attributes are read in one pass', () => {
+  it('reads double- and single-quoted attributes and stops at a broken one', () => {
+    const root = parseXml(`<a x="1" y = '2' z="3"/>`)
+    expect(root.attrs).toEqual({ x: '1', y: '2', z: '3' })
+    expect(parseXml(`<a x="1" broken/>`).attrs).toEqual({ x: '1' })
+  })
+
+  it('does not stall on a long tag', () => {
+    const started = Date.now()
+    expect(() => parseXml(`<a ${'b'.repeat(100_000)}=/>`)).not.toThrow()
+    expect(Date.now() - started).toBeLessThan(500)
+  })
+})
