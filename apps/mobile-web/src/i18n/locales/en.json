@@ -3607,7 +3607,11 @@
       "erstattung": "Refund",
       "nachzahlung": "To pay",
       "vorauszahlungenTitel": "Prepayments",
-      "vorauszahlungenFeld": "Prepayments paid (total)"
+      "vorauszahlungenFeld": "Prepayments paid (total)",
+      "kleinGrenzeGruendung": "In the founding year the small business rule only holds up to {{grenze}} turnover. Your book shows {{umsatz}}: check in the profile whether you have to charge VAT.",
+      "kleinGrenzeVorjahr": "Your turnover last year was above {{grenze}}. The small business rule does not apply this year: check this in the profile.",
+      "kleinGrenzeJahr": "Your turnover this year, {{umsatz}}, is above {{grenze}}. The small business rule ends: check this in the profile.",
+      "kleinVorjahrUnbekannt": "There is no book for last year here. The small business rule only applies if last year's turnover was at most {{grenze}}."
     },
     "gewst": {
       "entfaellt": "As a freelancer you pay no trade tax.",

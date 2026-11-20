@@ -6,6 +6,8 @@ import type { BookDto, ElsterHelpDto, JournalEntryDto } from '@steuereule/api-cl
 import { server } from '../../test-msw-server'
 import { BASE_PROFILE, BASE_URL, EMPTY_BOOK, renderBusiness, useBusinessDefaults, useElsterForms, YEAR } from './businessTestKit'
 
+const SMALL_OK = { eligible: true, priorYearLimitEur: 25_000, currentYearLimitEur: 100_000, crossed: null, foundingYear: false, priorYearKnown: true, turnoverEur: 0, matchesProfile: true }
+
 const ENTRY: JournalEntryDto = {
   number: 1,
   date: '2025-03-01',
@@ -282,7 +284,7 @@ describe('the assets and the closing', () => {
 describe('Umsatzsteuer, Gewerbesteuer and Verluste', () => {
   it('shows the VAT result as Nachzahlung or Erstattung, with plain amounts and no sign', async () => {
     useBusinessDefaults()
-    server.use(http.get(`${BASE_URL}/umsatzsteuer`, () => HttpResponse.json({ figures: {}, result: { outputVat: { standard: 1900, reduced: 0, zero: 0 }, inputVatDeductibleEur: 400, vatOfYearEur: 1500, prepaymentsEur: 1000, balanceEur: 500 }, cashAccountingAllowed: true })))
+    server.use(http.get(`${BASE_URL}/umsatzsteuer`, () => HttpResponse.json({ figures: {}, result: { outputVat: { standard: 1900, reduced: 0, zero: 0 }, inputVatDeductibleEur: 400, vatOfYearEur: 1500, prepaymentsEur: 1000, balanceEur: 500 }, cashAccountingAllowed: true, smallBusiness: SMALL_OK })))
     renderBusiness('umsatzsteuer')
     expect((await screen.findByTestId('ust-saldo')).textContent).toBe('500,00\u00a0€')
     expect(screen.getByText('Nachzahlung')).toBeTruthy()

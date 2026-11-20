@@ -3607,7 +3607,11 @@
       "erstattung": "Erstattung",
       "nachzahlung": "Nachzahlung",
       "vorauszahlungenTitel": "Vorauszahlungen",
-      "vorauszahlungenFeld": "Gezahlte Vorauszahlungen (Summe)"
+      "vorauszahlungenFeld": "Gezahlte Vorauszahlungen (Summe)",
+      "kleinGrenzeGruendung": "Im Gründungsjahr gilt die Kleinunternehmerregelung nur bis {{grenze}} Umsatz. Dein Buch zeigt {{umsatz}}: Prüf im Profil, ob du Umsatzsteuer ausweisen musst.",
+      "kleinGrenzeVorjahr": "Dein Umsatz im Vorjahr lag über {{grenze}}. Damit gilt die Kleinunternehmerregelung in diesem Jahr nicht: Prüf das im Profil.",
+      "kleinGrenzeJahr": "Dein Umsatz in diesem Jahr liegt mit {{umsatz}} über {{grenze}}. Damit endet die Kleinunternehmerregelung: Prüf das im Profil.",
+      "kleinVorjahrUnbekannt": "Für das Vorjahr gibt es hier kein Buch. Die Kleinunternehmerregelung gilt nur, wenn dein Vorjahresumsatz höchstens {{grenze}} war."
     },
     "gewst": {
       "entfaellt": "Als Freiberufler zahlst du keine Gewerbesteuer.",

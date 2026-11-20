@@ -14233,6 +14233,58 @@
           "balanceEur"
         ]
       },
+      "SmallBusinessCheckDto": {
+        "type": "object",
+        "properties": {
+          "eligible": {
+            "type": "boolean",
+            "description": "The § 19 UStG limits are kept by the book’s turnover."
+          },
+          "priorYearLimitEur": {
+            "type": "number",
+            "description": "Limit for the year before (in the founding year: for the running year), euros."
+          },
+          "currentYearLimitEur": {
+            "type": "number",
+            "description": "Limit for the running year, euros."
+          },
+          "crossed": {
+            "type": "string",
+            "enum": [
+              "prior_year",
+              "current_year"
+            ],
+            "nullable": true,
+            "description": "Which limit is crossed."
+          },
+          "foundingYear": {
+            "type": "boolean",
+            "description": "The business started this year (§ 19 Abs. 2 UStG nF, Abschn. 19.1 Abs. 4 UStAE)."
+          },
+          "priorYearKnown": {
+            "type": "boolean",
+            "description": "The turnover of the year before is known from its book."
+          },
+          "turnoverEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "matchesProfile": {
+            "type": "boolean",
+            "description": "False when the profile claims the rule although a limit is crossed."
+          }
+        },
+        "required": [
+          "eligible",
+          "priorYearLimitEur",
+          "currentYearLimitEur",
+          "crossed",
+          "foundingYear",
+          "priorYearKnown",
+          "turnoverEur",
+          "matchesProfile"
+        ]
+      },
       "VatReturnDto": {
         "type": "object",
         "properties": {
@@ -14244,13 +14296,17 @@
           },
           "cashAccountingAllowed": {
             "type": "boolean",
-            "description": "Ist-Versteuerung allowed by the turnover (§ 20 UStG)."
+            "description": "Ist-Versteuerung allowed by the turnover of the year before (§ 20 UStG)."
+          },
+          "smallBusiness": {
+            "$ref": "#/components/schemas/SmallBusinessCheckDto"
           }
         },
         "required": [
           "figures",
           "result",
-          "cashAccountingAllowed"
+          "cashAccountingAllowed",
+          "smallBusiness"
         ]
       },
       "TradeTaxResultDto": {

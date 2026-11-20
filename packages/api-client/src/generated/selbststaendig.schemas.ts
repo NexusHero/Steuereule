@@ -1187,11 +1187,46 @@ export interface VatResultDto {
   balanceEur: number;
 }
 
+/**
+ * Which limit is crossed.
+ * @nullable
+ */
+export type SmallBusinessCheckDtoCrossed = typeof SmallBusinessCheckDtoCrossed[keyof typeof SmallBusinessCheckDtoCrossed] | null;
+
+
+export const SmallBusinessCheckDtoCrossed = {
+  prior_year: 'prior_year',
+  current_year: 'current_year',
+} as const;
+
+export interface SmallBusinessCheckDto {
+  /** The § 19 UStG limits are kept by the book’s turnover. */
+  eligible: boolean;
+  /** Limit for the year before (in the founding year: for the running year), euros. */
+  priorYearLimitEur: number;
+  /** Limit for the running year, euros. */
+  currentYearLimitEur: number;
+  /**
+     * Which limit is crossed.
+     * @nullable
+     */
+  crossed: SmallBusinessCheckDtoCrossed;
+  /** The business started this year (§ 19 Abs. 2 UStG nF, Abschn. 19.1 Abs. 4 UStAE). */
+  foundingYear: boolean;
+  /** The turnover of the year before is known from its book. */
+  priorYearKnown: boolean;
+  /** Euros. */
+  turnoverEur: number;
+  /** False when the profile claims the rule although a limit is crossed. */
+  matchesProfile: boolean;
+}
+
 export interface VatReturnDto {
   figures: VatFiguresDto;
   result: VatResultDto;
-  /** Ist-Versteuerung allowed by the turnover (§ 20 UStG). */
+  /** Ist-Versteuerung allowed by the turnover of the year before (§ 20 UStG). */
   cashAccountingAllowed: boolean;
+  smallBusiness: SmallBusinessCheckDto;
 }
 
 export type TradeTaxDtoStatus = typeof TradeTaxDtoStatus[keyof typeof TradeTaxDtoStatus];

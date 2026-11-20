@@ -7,6 +7,17 @@ describe('small business rule (§ 19 UStG)', () => {
     expect(checkSmallBusiness({ year: 2024, priorYearTurnoverEur: 24_000, currentYearTurnoverEur: 30_000 })).toMatchObject({ eligible: false, crossed: 'prior_year' })
     expect(checkSmallBusiness({ year: 2026, priorYearTurnoverEur: 10_000, currentYearTurnoverEur: 100_001 })).toMatchObject({ eligible: false, crossed: 'current_year' })
   })
+
+  it('in the founding year from 2025 holds the running year to 25.000 €, with nothing to annualise (§ 19 Abs. 2 UStG)', () => {
+    expect(checkSmallBusiness({ year: 2025, priorYearTurnoverEur: 0, currentYearTurnoverEur: 25_000, founding: { monthsActive: 3 } })).toEqual({ eligible: true, priorYearLimitEur: 25_000, currentYearLimitEur: 25_000, crossed: null })
+    expect(checkSmallBusiness({ year: 2026, priorYearTurnoverEur: 0, currentYearTurnoverEur: 25_001, founding: { monthsActive: 12 } })).toMatchObject({ eligible: false, crossed: 'current_year' })
+  })
+
+  it('in the founding year until 2024 annualises the expected turnover and holds it to 22.000 € (Abschn. 19.1 Abs. 4 UStAE)', () => {
+    // 6.000 € in three months are 24.000 € a year: above 22.000 €.
+    expect(checkSmallBusiness({ year: 2024, priorYearTurnoverEur: 0, currentYearTurnoverEur: 6_000, founding: { monthsActive: 3 } })).toEqual({ eligible: false, priorYearLimitEur: 22_000, currentYearLimitEur: 22_000, crossed: 'current_year' })
+    expect(checkSmallBusiness({ year: 2023, priorYearTurnoverEur: 0, currentYearTurnoverEur: 5_000, founding: { monthsActive: 3 } })).toMatchObject({ eligible: true })
+  })
 })
 
 describe('trade tax overview (GewStG, § 35 EStG)', () => {

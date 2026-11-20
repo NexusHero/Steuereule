@@ -1,5 +1,7 @@
 import { HttpException, HttpStatus, Inject, Injectable, Optional } from '@nestjs/common'
 import {
+  checkSmallBusiness,
+  type SmallBusinessResult,
   AssetError,
   ClosingError,
   EBilanzError,
@@ -436,12 +438,15 @@ export class BusinessService {
       const account = accountForEuerKey(chart, key)
       if (account === null) throw new InvalidInputError('QUICK_ENTRY_NO_ACCOUNT', `Für „${key}“ hat der ${chart} kein Konto.`)
       const income = isIncomeKey(key)
+      // A tax key that only labels the line (no VAT in it) keeps the turnover visible to the VAT return
+      // and the § 19 test; a key that splits VAT stays off, the EÜR total is net and its VAT has its own line.
+      const labelKey = LABEL_ONLY_TAX_KEYS.has(taxKeyOfAccount(chart, account)) ? { taxKey: taxKeyOfAccount(chart, account) } : {}
       const draft: BookingDraft = {
         date: date ?? `${year}-12-31`,
         documentNumber: `Summe-${key}`,
         text: `Summe ${year}: ${key}`,
         lines: income
-          ? [{ account: bank, side: 'debit', amount: amountCents }, { account, side: 'credit', amount: amountCents }]
+          ? [{ account: bank, side: 'debit', amount: amountCents }, { account, side: 'credit', amount: amountCents, ...labelKey }]
           : [{ account, side: 'debit', amount: amountCents }, { account: bank, side: 'credit', amount: amountCents }],
       }
       return { draft, source: 'summe' }
@@ -669,13 +674,20 @@ export class BusinessService {
   // ------------------------------------------------------------------------------------------------
   // Umsatzsteuer (ADR-0101 §8)
 
-  async vatReturn(userId: string, year: number, person: BusinessPerson): Promise<{ readonly figures: VatFigures; readonly result: VatAnnualResult; readonly cashAccountingAllowed: boolean }> {
+  async vatReturn(
+    userId: string,
+    year: number,
+    person: BusinessPerson,
+  ): Promise<{ readonly figures: VatFigures; readonly result: VatAnnualResult; readonly cashAccountingAllowed: boolean; readonly smallBusiness: SmallBusinessCheck }> {
     await this.assertOpen(userId, year)
-    const { ledger, profile } = await this.loaded(userId, year, person)
+    const [{ ledger, profile }, prior] = await Promise.all([this.loaded(userId, year, person), this.repository.loadBook(userId, year - 1, person)])
     const result = this.vatOf(ledger, profile, year)
     await this.audit.append({ userId, action: 'READ', resource: 'selbststaendig' })
-    const turnover = (result.figures.taxableNetEur.standard ?? 0) + (result.figures.taxableNetEur.reduced ?? 0) + result.figures.smallBusinessTurnoverEur
-    return { ...result, cashAccountingAllowed: cashAccountingAllowed(year, turnover, profile?.kind === 'freiberuf') }
+    const priorTurnoverEur = prior === null ? null : turnoverOf(vatFiguresOf(prior.ledger.entries, year - 1))
+    const smallBusiness = smallBusinessCheckOf(year, profile, turnoverOf(result.figures), priorTurnoverEur)
+    // § 20 Satz 1 Nr. 1 UStG: the Gesamtumsatz of the year before; in the founding year the running one.
+    const basis = priorTurnoverEur ?? turnoverOf(result.figures)
+    return { ...result, cashAccountingAllowed: cashAccountingAllowed(year, basis, profile?.kind === 'freiberuf'), smallBusiness }
   }
 
   private vatOf(ledger: Ledger, profile: BusinessProfileRecord | null, year: number): { figures: VatFigures; result: VatAnnualResult } {
@@ -1082,3 +1094,41 @@ export function ledgerCall<T>(work: () => T): T {
 }
 
 export type { EntryDraft }
+
+/** The Kleinunternehmer test of the year (§ 19 UStG) against the book, and whether the profile says the same. */
+export interface SmallBusinessCheck extends SmallBusinessResult {
+  readonly foundingYear: boolean
+  /** The turnover of the year before was read from its book; without it only the running year is tested. */
+  readonly priorYearKnown: boolean
+  readonly turnoverEur: number
+  /**
+   * False when the profile claims the Kleinunternehmer rule and the turnover crossed a limit. Eligible
+   * without the flag is fine: the user may waive the rule (§ 19 Abs. 2 aF, Abs. 3 nF UStG).
+   */
+  readonly matchesProfile: boolean
+}
+
+/** Gesamtumsatz as § 19 Abs. 3 UStG counts it, read off the book: taxable, tax-free and Kleinunternehmer turnover. */
+export function turnoverOf(f: VatFigures): number {
+  return round2((f.taxableNetEur.standard ?? 0) + (f.taxableNetEur.reduced ?? 0) + f.smallBusinessTurnoverEur + f.taxFreeWithDeductionEur + f.taxFreeWithoutDeductionEur)
+}
+
+export function smallBusinessCheckOf(year: number, profile: BusinessProfileRecord | null, turnoverEur: number, priorYearTurnoverEur: number | null): SmallBusinessCheck {
+  const start = profile?.startDate ?? null
+  const foundingYear = start !== null && Number(start.slice(0, 4)) === year
+  const monthsActive = foundingYear ? 12 - Number(start.slice(5, 7)) + 1 : 12
+  const result = checkSmallBusiness({
+    year,
+    priorYearTurnoverEur: foundingYear ? 0 : (priorYearTurnoverEur ?? 0),
+    currentYearTurnoverEur: turnoverEur,
+    ...(foundingYear ? { founding: { monthsActive } } : {}),
+  })
+  return { ...result, foundingYear, priorYearKnown: foundingYear || priorYearTurnoverEur !== null, turnoverEur, matchesProfile: !(profile?.smallBusiness === true && !result.eligible) }
+}
+
+/** Tax keys that carry no VAT amount: they only say what kind of turnover a line is. */
+const LABEL_ONLY_TAX_KEYS: ReadonlySet<BookingTaxKey> = new Set<BookingTaxKey>(['kleinunternehmer', 'steuerfrei', 'igLieferung', 'ust0'])
+
+function taxKeyOfAccount(chart: ChartOfAccounts, number: string): BookingTaxKey {
+  return chartAccounts(chart).find((a) => a.number === number)?.defaultTaxKey ?? 'none'
+}

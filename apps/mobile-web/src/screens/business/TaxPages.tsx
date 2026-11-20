@@ -54,6 +54,15 @@ export function VatPage({ taxYear, person, onBack }: BusinessPageProps) {
   return (
     <BusinessFrame title={tr('business.seite.umsatzsteuer')} onBack={onBack} testID="umsatzsteuer-seite">
       {small ? <Note testID="ust-klein">{tr('business.ust.klein')}</Note> : null}
+      {!vat.smallBusiness.matchesProfile ? (
+        <Note tone="error" testID="ust-klein-grenze">
+          {tr(vat.smallBusiness.foundingYear ? 'business.ust.kleinGrenzeGruendung' : vat.smallBusiness.crossed === 'prior_year' ? 'business.ust.kleinGrenzeVorjahr' : 'business.ust.kleinGrenzeJahr', {
+            umsatz: plainEuro(vat.smallBusiness.turnoverEur),
+            grenze: plainEuro(vat.smallBusiness.crossed === 'prior_year' ? vat.smallBusiness.priorYearLimitEur : vat.smallBusiness.currentYearLimitEur),
+          })}
+        </Note>
+      ) : null}
+      {small && vat.smallBusiness.matchesProfile && !vat.smallBusiness.priorYearKnown ? <Note testID="ust-klein-vorjahr">{tr('business.ust.kleinVorjahrUnbekannt', { grenze: plainEuro(vat.smallBusiness.priorYearLimitEur) })}</Note> : null}
       <Section>
         <Figure label={tr('business.ust.umsatzsteuer')} value={plainEuro(vat.result.outputVat.standard)} />
         <Figure label={tr('business.ust.umsatzsteuerErmaessigt')} value={plainEuro(vat.result.outputVat.reduced)} />

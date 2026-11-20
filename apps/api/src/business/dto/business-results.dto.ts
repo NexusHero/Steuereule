@@ -266,10 +266,22 @@ export class VatResultDto {
   @ApiProperty({ ...EUR, description: 'Positive = Abschlusszahlung, negative = Erstattung, euros.' }) balanceEur!: number
 }
 
+export class SmallBusinessCheckDto {
+  @ApiProperty({ type: Boolean, description: 'The § 19 UStG limits are kept by the book’s turnover.' }) eligible!: boolean
+  @ApiProperty({ type: Number, description: 'Limit for the year before (in the founding year: for the running year), euros.' }) priorYearLimitEur!: number
+  @ApiProperty({ type: Number, description: 'Limit for the running year, euros.' }) currentYearLimitEur!: number
+  @ApiProperty({ enum: ['prior_year', 'current_year'], nullable: true, description: 'Which limit is crossed.' }) crossed!: 'prior_year' | 'current_year' | null
+  @ApiProperty({ type: Boolean, description: 'The business started this year (§ 19 Abs. 2 UStG nF, Abschn. 19.1 Abs. 4 UStAE).' }) foundingYear!: boolean
+  @ApiProperty({ type: Boolean, description: 'The turnover of the year before is known from its book.' }) priorYearKnown!: boolean
+  @ApiProperty(EUR) turnoverEur!: number
+  @ApiProperty({ type: Boolean, description: 'False when the profile claims the rule although a limit is crossed.' }) matchesProfile!: boolean
+}
+
 export class VatReturnDto {
   @ApiProperty({ type: VatFiguresDto }) figures!: VatFiguresDto
   @ApiProperty({ type: VatResultDto }) result!: VatResultDto
-  @ApiProperty({ type: Boolean, description: 'Ist-Versteuerung allowed by the turnover (§ 20 UStG).' }) cashAccountingAllowed!: boolean
+  @ApiProperty({ type: Boolean, description: 'Ist-Versteuerung allowed by the turnover of the year before (§ 20 UStG).' }) cashAccountingAllowed!: boolean
+  @ApiProperty({ type: SmallBusinessCheckDto }) smallBusiness!: SmallBusinessCheckDto
 }
 
 // ---------------------------------------------------------------------------------------------------

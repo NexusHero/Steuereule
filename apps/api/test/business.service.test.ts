@@ -212,6 +212,22 @@ describe('BusinessService (ADR-0101)', () => {
     expect(result.prepaymentsEur).toBe(10_000)
   })
 
+  it('tests the Kleinunternehmer rule against the book: the founding year has the lower limit, the year before comes from its book (§ 19 UStG)', async () => {
+    const { service } = setup()
+    await service.saveProfile('u', 2025, 'A', { smallBusiness: true, startDate: '2025-10-01' })
+    await service.quickEntry('u', 2025, 'A', [{ key: 'einnahmen_kleinunternehmer', amountCents: 2_600_000, date: '2025-12-01' }])
+    expect((await service.vatReturn('u', 2025, 'A')).smallBusiness).toEqual({
+      eligible: false, priorYearLimitEur: 25_000, currentYearLimitEur: 25_000, crossed: 'current_year', foundingYear: true, priorYearKnown: true, turnoverEur: 26_000, matchesProfile: false,
+    })
+
+    await service.saveProfile('u', YEAR, 'A', { smallBusiness: true, startDate: '2020-01-01' })
+    await service.quickEntry('u', YEAR, 'A', [{ key: 'einnahmen_kleinunternehmer', amountCents: 2_000_000 }])
+    await service.saveProfile('u', 2025, 'A', { startDate: '2020-01-01' })
+    const later = (await service.vatReturn('u', 2025, 'A')).smallBusiness
+    // 20.000 € in 2024 keep the 25.000 € limit; 26.000 € in 2025 are under 100.000 €.
+    expect(later).toMatchObject({ eligible: true, foundingYear: false, priorYearKnown: true, matchesProfile: true })
+  })
+
   it('trade tax: Freiberuf owes none; a Gewerbe uses the table by AGS, the user’s correction wins', async () => {
     const { service } = setup()
     await service.quickEntry('u', YEAR, 'A', [{ key: 'einnahmen_umsatzsteuerpflichtig', amountCents: 10_000_000 }])
