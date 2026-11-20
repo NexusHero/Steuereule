@@ -211,6 +211,7 @@ describe('McpService (ADR-0052 §3 / §5 / §8 / §12)', () => {
       'kapitalertraege_guenstigerpruefung',
       'kleinunternehmer_pruefen',
       'maske_eintragen',
+      'maske_eintragen_stapel',
       'maske_felder',
       'rechtsquelle_nachschlagen',
       'renovierung_15_prozent_pruefen',
@@ -473,6 +474,36 @@ describe('McpService (ADR-0052 §3 / §5 / §8 / §12)', () => {
       const confirmed = await client.callTool({ name: 'kind_entfernen', arguments: { taxYear: YEAR, instance: created.instance } })
       expect((confirmed as { isError?: boolean }).isError).toBe(true)
       expect(await childRepo.listForUserAndYear(USER, YEAR)).toHaveLength(2)
+    })
+  })
+
+  describe('maske_eintragen_stapel (ADR-0052 amendment 3, #544)', () => {
+    it('writes many fields of one mask in one call and answers per field', async () => {
+      const client = await connectClient()
+      const res = await client.callTool({ name: 'maske_eintragen_stapel', arguments: { taxYear: YEAR, screen: 'lstb', felder: { bruttoarbeitslohn: '65.000', lohnsteuer: '12000', gibtEsNicht: '1', kirchensteuer: 'viel' } } })
+      const parsed = JSON.parse(getText(res))
+      expect(parsed.geschrieben).toBe(2)
+      expect(parsed.abgelehnt).toBe(2)
+      expect(parsed.felder.bruttoarbeitslohn).toMatchObject({ ergebnis: 'geschrieben' })
+      expect(parsed.felder.gibtEsNicht.fehler).toContain('UNKNOWN_FIELD')
+      expect(parsed.felder.kirchensteuer.fehler).toContain('INVALID_VALUE')
+      expect(await lstbRepo.findForUserAndYear(USER, YEAR)).toMatchObject({ bruttoarbeitslohn: '65000', lohnsteuer: '12000' })
+    })
+
+    it('keeps the user’s value and files a proposal, like the single entry', async () => {
+      await lstbRepo.setField(USER, YEAR, 'lohnsteuer', '700')
+      const client = await connectClient()
+      const parsed = JSON.parse(getText(await client.callTool({ name: 'maske_eintragen_stapel', arguments: { taxYear: YEAR, screen: 'lstb', felder: { lohnsteuer: '720' } } })))
+      expect(parsed.felder.lohnsteuer.ergebnis).toBe('vorschlag')
+      expect((await lstbRepo.findForUserAndYear(USER, YEAR))?.lohnsteuer).toBe('700')
+    })
+
+    it('refuses more than 60 fields and needs the write scope', async () => {
+      const client = await connectClient()
+      const many = Object.fromEntries(Array.from({ length: 61 }, (_, i) => [`f${i}`, '1']))
+      expect((await client.callTool({ name: 'maske_eintragen_stapel', arguments: { taxYear: YEAR, screen: 'lstb', felder: many } }) as { isError?: boolean }).isError).toBe(true)
+      const readOnly = await connectClient({ ...ALL_SCOPES_ASSISTANT, scopes: ['steuerdaten:read'] })
+      expect((await readOnly.callTool({ name: 'maske_eintragen_stapel', arguments: { taxYear: YEAR, screen: 'lstb', felder: { lohnsteuer: '1' } } }) as { isError?: boolean }).isError).toBe(true)
     })
   })
 

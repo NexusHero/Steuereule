@@ -129,4 +129,49 @@ describe('McpReportService (ADR-0052 amendment 2)', () => {
     expect(result.bereiche).toEqual([])
     expect(result.openQuestions).toBe(0)
   })
+
+  describe('breakdown (#545)', () => {
+    const withBreakdown = {
+      ...computed(-3677.49, -3677.49),
+      werbungskosten: 3371,
+      provision: { from: 27029, to: 27029 },
+      specialExpenses: 3909,
+      taxableIncome: { from: 173018, to: 173018 },
+      incomeTax: { from: 53364, to: 53364 },
+      solidaritaetszuschlag: { from: 1667.49, to: 1667.49 },
+      anrechnung: 24603,
+      prepayments: 26751,
+      breakdown: {
+        persons: [{ incomeEur: 90000, workExpensesEur: 1230, creditedTaxEur: 19770 }, { incomeEur: 105000, workExpensesEur: 2141, creditedTaxEur: 4833 }],
+        totalIncomeEur: 195000,
+        extraordinaryBurdenEur: 0,
+        childAllowance: { allowanceEur: 9540, childBenefitEur: 3000, used: true },
+        tariffTax: { from: 51394, to: 51394 },
+        householdReductionEur: 1200,
+        capitalFlatTaxEur: 170,
+      },
+    }
+
+    it('lays out the way from the income to the result in the app’s own figures', async () => {
+      const result = await service({ estimate: { getState: vi.fn().mockResolvedValue(withBreakdown) } }).breakdown('u', 2024)
+      expect(result).toMatchObject({
+        ok: true,
+        personen: [{ person: 'A', einkuenfteEur: 90000, werbungskostenEur: 1230 }, { person: 'B', einkuenfteEur: 105000 }],
+        summeDerEinkuenfteEur: 195000,
+        zuVersteuerndesEinkommenEur: 173018,
+        tariflicheEinkommensteuerEur: 51394,
+        steuerermaessigung35aEur: 1200,
+        hinzugerechnetesKindergeldEur: 3000,
+        abgeltungsteuerEur: 170,
+        einkommensteuerEur: 53364,
+        vorauszahlungenEur: 26751,
+        ergebnisEur: -3677.49,
+      })
+    })
+
+    it('says what is missing while there is no estimate yet', async () => {
+      const result = await service({ estimate: { getState: vi.fn().mockResolvedValue({ kind: 'offen', missing: ['lstb'] }) } }).breakdown('u', 2024)
+      expect(result).toEqual({ ok: false, grund: 'offen', fehlt: ['lstb'] })
+    })
+  })
 })

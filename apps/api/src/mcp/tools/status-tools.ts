@@ -127,6 +127,17 @@ export function registerReportTools(session: McpSession, deps: McpDeps): void {
   )
 
   server.tool(
+    'schaetzung_aufschluesseln',
+    'Zeigt den Rechenweg der App-Schätzung: Einkünfte und Werbungskosten je Person, Vorsorge nach Zeilen, Sonderausgaben, Kinderfreibetrag gegen Kindergeld, zu versteuerndes Einkommen, tarifliche Steuer, § 35a, hinzugerechnetes Kindergeld, Abgeltungsteuer, Soli, Anrechnung, Vorauszahlungen und Ergebnis. Nutze es, um dem Nutzer das Ergebnis zu erklären und Abweichungen zu einem Bescheid zu finden, statt selbst nachzurechnen.',
+    { taxYear: z.number().int().describe('Das Steuerjahr (z.B. 2024 oder 2025)') },
+    async ({ taxYear }) => {
+      assertScope(assistant, 'steuerdaten:read')
+      await deps.audit.append({ userId, action: 'READ', resource: 'schaetzung_aufschluesseln' })
+      return json(await report.breakdown(userId, taxYear))
+    },
+  )
+
+  server.tool(
     'offene_fragen',
     'Nennt je Interview-Bereich (Grundfragen, Lebenslagen, Einkünfte, Sonderausgaben, Grenzgänger, Haushalt, Gesundheit, Vorauszahlungen …) die nächste offene Frage mit ihren möglichen Antworten und wie viele dort noch folgen. Das sind Tatsachen, die nur der Nutzer kennt: Frage ihn und trage die Antwort mit maske_eintragen (Maske "interview") ein; danach erneut aufrufen. Erfinde nie eine Antwort.',
     { taxYear: z.number().int().describe('Das Steuerjahr (z.B. 2024 oder 2025)') },
