@@ -13,7 +13,7 @@ import { Choice } from './Choice'
 import { APP_NS } from '../../i18n/resources'
 import { captureReceipt } from '../../lib/receipts/captureReceipt'
 import { uploadBusinessReceipt } from '../../lib/receipts/uploadBusinessReceipt'
-import { ReceiptPickerButton } from '../shared/ReceiptPickerButton'
+import { BUSINESS_RECEIPT_ACCEPT, ReceiptPickerButton } from '../shared/ReceiptPickerButton'
 import { BookingDraftCard } from '../advisor/chat/BookingDraftCard'
 import { makeStyles } from '../advisor/AdvisorChatPanel.styles'
 import { problemOf } from './businessKit'
@@ -72,7 +72,7 @@ export function BusinessReceiptUpload({ taxYear, onlyForSelfEmployed = false }: 
           </Choice>
         ))}
       </View>
-      <ReceiptPickerButton onFile={(file) => void take(file)} disabled={busy} testID="beleg-geschaeft-datei" unsupportedHint={tr('business.bank.nurWeb')}>
+      <ReceiptPickerButton accept={BUSINESS_RECEIPT_ACCEPT} onFile={(file) => void take(file)} disabled={busy} testID="beleg-geschaeft-datei" unsupportedHint={tr('business.bank.nurWeb')}>
         {busy ? tr('business.beleg.liest') : tr('business.beleg.hochladen')}
       </ReceiptPickerButton>
       {message !== null ? (

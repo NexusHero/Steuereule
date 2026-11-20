@@ -5,6 +5,7 @@ import { USEFUL_LIVES, type AssetCategory } from '../domains/business/depreciati
 import { accountFor, type AccountConceptId, type BookingTaxKey, type ChartOfAccounts } from '../domains/ledger/accounts'
 import { isBookingDate, vatFromGross, type IsoDate } from '../domains/ledger/journal'
 import type { BookingDraft } from './booking-draft'
+import { looksLikeEInvoice, readEInvoice } from './e-invoice'
 
 export interface BusinessReceiptRead {
   /** The total to pay in cents (gross). */
@@ -63,8 +64,15 @@ function readInvoiceNumber(text: string): string | null {
   return match ? match[2]! : null
 }
 
-/** What the receipt text says: total, VAT rate, date, number. Pure, no model. */
+/**
+ * What the receipt says: total, VAT rate, date, number. Pure, no model. An E-Rechnung (XRechnung,
+ * ZUGFeRD XML) is read from its structure (ADR-0101 §22); any other text by its labels.
+ */
 export function readBusinessReceipt(text: string): BusinessReceiptRead {
+  if (looksLikeEInvoice(text)) {
+    const invoice = readEInvoice(text)
+    if (invoice.ok) return { ...invoice.read, description: invoice.read.description.slice(0, 80) }
+  }
   const lines = text.split(/\r?\n/).map((l) => l.trim()).filter((l) => l.length > 0)
   const candidate = (l: string) => /[a-zäöü]{4,}/i.test(l) && !TOTAL_LABELS.test(l) && !/rechnung|quittung|datum|nr\.|ust-id|steuernummer|iban|bic|straße|str\.|\d{5}\s|gmbh|\bag\b|\bkg\b|e\.\s?k\.|danke|netto|mwst|ust\b/i.test(l)
   // An item that names an asset or a known expense says more than the issuer's line.

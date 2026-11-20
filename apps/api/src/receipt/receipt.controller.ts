@@ -136,12 +136,15 @@ export class ReceiptController {
     const file = await this.receiptService.getFile(userId, id)
     const asciiName = file.fileName.replace(/[^\x20-\x7E]/g, '_').replace(/["\\]/g, '_') || 'beleg'
     const encodedName = encodeURIComponent(file.fileName)
+    // An XML file is never rendered in the API's origin: a download, in a sandbox (ADR-0101 §22).
+    const xml = file.mimeType === 'application/xml'
     void reply
       .header('Content-Type', file.mimeType)
-      .header('Content-Disposition', `inline; filename="${asciiName}"; filename*=UTF-8''${encodedName}`)
+      .header('Content-Disposition', `${xml ? 'attachment' : 'inline'}; filename="${asciiName}"; filename*=UTF-8''${encodedName}`)
       .header('X-Content-Type-Options', 'nosniff')
       .header('Cache-Control', 'no-store')
-      .send(file.buffer)
+    if (xml) void reply.header('Content-Security-Policy', "default-src 'none'; sandbox")
+    void reply.send(file.buffer)
   }
 
   @Post(':id/zuordnung')

@@ -16833,7 +16833,8 @@
             "type": "string",
             "enum": [
               "pdf_text",
-              "ocr"
+              "ocr",
+              "einvoice"
             ],
             "example": "pdf_text",
             "description": "How rawText was produced on the device: a PDF text layer, or OCR of a photo/scan (never green, ADR-0060)."

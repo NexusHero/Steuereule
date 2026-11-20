@@ -93,6 +93,7 @@ export type ParseReceiptDtoTextSource = typeof ParseReceiptDtoTextSource[keyof t
 export const ParseReceiptDtoTextSource = {
   pdf_text: 'pdf_text',
   ocr: 'ocr',
+  einvoice: 'einvoice',
 } as const;
 
 export type ParseReceiptDtoMimeType = typeof ParseReceiptDtoMimeType[keyof typeof ParseReceiptDtoMimeType];

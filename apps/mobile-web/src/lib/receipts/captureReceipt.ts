@@ -25,7 +25,7 @@ export type CaptureResult =
       readonly response: ParseReceiptResponseDto
       /** The text read on the device: kept only in memory, to read the document again for someone else. */
       readonly rawText: string
-      readonly textSource: 'pdf_text' | 'ocr'
+      readonly textSource: 'pdf_text' | 'ocr' | 'einvoice'
     }
   | {
       readonly ok: false
@@ -127,7 +127,7 @@ export async function captureReceipt(file: File, options: CaptureReceiptOptions)
     kind,
     fileName: file.name,
     rawText: extracted.text,
-    textSource: extracted.kind === 'pdf' && !extracted.usedOcrFallback ? 'pdf_text' : 'ocr',
+    textSource: extracted.einvoice ? 'einvoice' : extracted.kind === 'pdf' && !extracted.usedOcrFallback ? 'pdf_text' : 'ocr',
     stageDraft: options.stageDraft ?? true,
     ...(options.expectedKind !== undefined ? { expectedKind: options.expectedKind } : {}),
     ...(options.mask !== undefined ? { mask: options.mask } : {}),
