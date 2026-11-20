@@ -67,6 +67,16 @@ export interface ProposalDto {
   provenance: ProvenanceDto;
 }
 
+/**
+ * Set when the value belongs to Person B, whose figures the user records (ADR-0054).
+ */
+export type FieldProvenanceDtoPerson = typeof FieldProvenanceDtoPerson[keyof typeof FieldProvenanceDtoPerson];
+
+
+export const FieldProvenanceDtoPerson = {
+  B: 'B',
+} as const;
+
 export interface FieldProvenanceDto {
   key: string;
   screen: FieldProvenanceDtoScreen;
@@ -85,6 +95,8 @@ export interface FieldProvenanceDto {
   confirmed: boolean;
   /** @nullable */
   proposal: ProposalDto | null;
+  /** Set when the value belongs to Person B, whose figures the user records (ADR-0054). */
+  person?: FieldProvenanceDtoPerson;
 }
 
 export interface AnnexConfirmationDto {
@@ -106,7 +118,20 @@ export const ProposalDecisionDtoDecision = {
   verwerfen: 'verwerfen',
 } as const;
 
+/**
+ * Whose proposal: B for a value of Person B the user records. Default A.
+ */
+export type ProposalDecisionDtoPerson = typeof ProposalDecisionDtoPerson[keyof typeof ProposalDecisionDtoPerson];
+
+
+export const ProposalDecisionDtoPerson = {
+  A: 'A',
+  B: 'B',
+} as const;
+
 export interface ProposalDecisionDto {
   decision: ProposalDecisionDtoDecision;
+  /** Whose proposal: B for a value of Person B the user records. Default A. */
+  person?: ProposalDecisionDtoPerson;
 }
 

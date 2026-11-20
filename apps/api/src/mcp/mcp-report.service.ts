@@ -93,7 +93,16 @@ export class McpReportService {
    * The refund before and after an entry, by the app's own estimate, through the very write path an
    * entry uses, inside a transaction that is always rolled back.
    */
-  async simulate(userId: string, taxYear: number, screen: Parameters<typeof provenanceKey>[0], field: string, value: string, instance?: string): Promise<SimulationResult> {
+  async simulate(
+    userId: string,
+    taxYear: number,
+    screen: Parameters<typeof provenanceKey>[0],
+    field: string,
+    value: string,
+    instance?: string,
+    /** Whose field is written on trial: Person B's for a value of hers; the estimate is the couple's, read for the user. */
+    dataUserId: string = userId,
+  ): Promise<SimulationResult> {
     // The write is rolled back only by a real database transaction: trust the Prisma runner alone, never
     // an unknown one, and never join a transaction already running (its commit would keep the write).
     if (!(this.transactions instanceof PrismaTransactionRunner) || isInsideTransaction()) return { ok: false, reason: 'Die Simulation steht in dieser Umgebung nicht zur Verfügung.' }
@@ -104,7 +113,7 @@ export class McpReportService {
     try {
       await this.transactions.run(async () => {
         const before = estimateReadingFrom(await this.estimate.getState(userId, taxYear))
-        await this.confirmation.writeConfirmedByAdvisor(userId, taxYear, provenanceKey(screen, field, instance), value, undefined, undefined, { personalDataConsent: true })
+        await this.confirmation.writeConfirmedByAdvisor(dataUserId, taxYear, provenanceKey(screen, field, instance), value, undefined, undefined, { personalDataConsent: true })
         const after = estimateReadingFrom(await this.estimate.getState(userId, taxYear))
         if (before.kind === 'computed' && after.kind === 'computed') {
           const beforeRefundEur = midpoint(before.result)

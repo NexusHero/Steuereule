@@ -145,6 +145,46 @@ describe('BestaetigungService', () => {
     expect(await service.missing(USER, YEAR)).toEqual([])
   })
 
+  describe('Person B recorded by the user (ADR-0054, ADR-0052 amendment 2)', () => {
+    const SHADOW_B = 'shadow-b'
+    const spouse = (recordable: boolean) => ({ spouseForAdvisor: async () => ({ spouseUserId: SHADOW_B, recordable, firstName: null, lastName: null }) })
+    const withSpouse = (recordable: boolean) =>
+      new ConfirmationService(markings, fieldAccessFrom({ lstb, pension, capital: new FakeCapitalRepository(), rental, profile, masterData, link, interview, chSalaryCertificate: chSalary, child, commute, assessment }), new AuditService(new FakeAuditRepository()), spouse(recordable) as never)
+
+    it('the overview shows the values the assistant wrote for Person B, marked as hers', async () => {
+      const svc = withSpouse(true)
+      await svc.write(SHADOW_B, YEAR, 'chLohnausweis.krankenkasseChf', '3593', CLAUDE)
+      const overview = await svc.overview(USER, YEAR)
+      expect(overview.annexes).toHaveLength(1)
+      expect(overview.annexes[0]!.unconfirmed).toBe(1)
+      expect(overview.annexes[0]!.values[0]).toMatchObject({ key: 'chLohnausweis.krankenkasseChf', person: 'B', value: '3593' })
+    })
+
+    it('confirming an Anlage confirms Person B’s values in it too, so her block lifts', async () => {
+      const svc = withSpouse(true)
+      await svc.write(SHADOW_B, YEAR, 'chLohnausweis.krankenkasseChf', '3593', CLAUDE)
+      const [annex] = (await svc.overview(USER, YEAR)).annexes
+      await svc.confirmAnnex(USER, YEAR, annex!.annex)
+      expect(await svc.missing(SHADOW_B, YEAR)).toEqual([])
+      expect((await svc.overview(USER, YEAR)).annexes).toEqual([])
+    })
+
+    it('decides a proposal on Person B’s field in her data', async () => {
+      const svc = withSpouse(true)
+      await lstb.setField(SHADOW_B, YEAR, 'lohnsteuer', '700')
+      await svc.write(SHADOW_B, YEAR, 'lstb.lohnsteuer', '720', CLAUDE)
+      await svc.decideProposal(USER, YEAR, 'lstb.lohnsteuer', 'annehmen', 'B')
+      expect((await lstb.findForUserAndYear(SHADOW_B, YEAR))?.lohnsteuer).toBe('720')
+    })
+
+    it('leaves out a Person B who keeps her data in her own account', async () => {
+      const svc = withSpouse(false)
+      await svc.write(SHADOW_B, YEAR, 'chLohnausweis.krankenkasseChf', '3593', CLAUDE)
+      expect((await svc.overview(USER, YEAR)).annexes).toEqual([])
+      await expect(svc.decideProposal(USER, YEAR, 'lstb.lohnsteuer', 'annehmen', 'B')).rejects.toMatchObject({ code: 'PERSON_B_OWNS_DATA' })
+    })
+  })
+
   it('a proposal decision on a field without a proposal is a 404, an unknown key a 400', async () => {
     await expect(service.decideProposal(USER, YEAR, 'lstb.lohnsteuer', 'annehmen')).rejects.toMatchObject({ code: 'PROPOSAL_NOT_FOUND' })
     await expect(service.decideProposal(USER, YEAR, 'gewerbe.gewinn', 'annehmen')).rejects.toMatchObject({ code: 'FIELD_UNKNOWN' })

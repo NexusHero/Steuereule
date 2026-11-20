@@ -129,8 +129,13 @@ export function ConfirmationScreen({ year, onBack, onOpenScreen }: ConfirmationS
             <Text style={styles.hint}>
               {annex.unconfirmed > 0 ? t('bestaetigung.unbestaetigt', { count: annex.unconfirmed }) : t('bestaetigung.nurVorschlaege')}
             </Text>
-            {annex.values.map((w) => (
-              <View key={w.key} style={{ gap: theme.space.s1, marginTop: theme.space.s3 }}>
+            {annex.values.map((w) => {
+              // A field can be the user's and Person B's at once (ADR-0054): the person is part of its identity.
+              const id = w.person === 'B' ? `B-${w.key}` : w.key
+              const decision = (d: 'annehmen' | 'verwerfen') => ({ decision: d, ...(w.person === 'B' ? { person: 'B' as const } : {}) })
+              return (
+              <View key={id} style={{ gap: theme.space.s1, marginTop: theme.space.s3 }}>
+                {w.person === 'B' ? <Text style={styles.hint}>{t('bestaetigung.personB')}</Text> : null}
                 <Text style={styles.sectionBody}>{fieldLabel(t, w)}</Text>
                 <Text style={styles.sectionTitle}>{valueText(t, w, w.value)}</Text>
                 <Text style={styles.hint}>{provenanceText(t, w.provenance)}</Text>
@@ -147,16 +152,16 @@ export function ConfirmationScreen({ year, onBack, onOpenScreen }: ConfirmationS
                       <Button
                         variant="ghost"
                         disabled={decide.isPending}
-                        testID={`vorschlag-annehmen-${w.key}`}
-                        onPress={() => void afterChange(() => decide.mutateAsync({ jahr: year, key: w.key, data: { decision: 'annehmen' } }))}
+                        testID={`vorschlag-annehmen-${id}`}
+                        onPress={() => void afterChange(() => decide.mutateAsync({ jahr: year, key: w.key, data: decision('annehmen') }))}
                       >
                         {t('bestaetigung.vorschlagAnnehmen')}
                       </Button>
                       <Button
                         variant="ghost"
                         disabled={decide.isPending}
-                        testID={`vorschlag-verwerfen-${w.key}`}
-                        onPress={() => void afterChange(() => decide.mutateAsync({ jahr: year, key: w.key, data: { decision: 'verwerfen' } }))}
+                        testID={`vorschlag-verwerfen-${id}`}
+                        onPress={() => void afterChange(() => decide.mutateAsync({ jahr: year, key: w.key, data: decision('verwerfen') }))}
                       >
                         {t('bestaetigung.vorschlagVerwerfen')}
                       </Button>
@@ -164,7 +169,8 @@ export function ConfirmationScreen({ year, onBack, onOpenScreen }: ConfirmationS
                   </View>
                 ) : null}
               </View>
-            ))}
+              )
+            })}
             <View style={{ gap: theme.space.s2, marginTop: theme.space.s4 }}>
               {annex.unconfirmed > 0 ? (
                 <Button

@@ -53,6 +53,6 @@ export class ConfirmationController {
     @Param('key') key: string,
     @Body() body: ProposalDecisionDto,
   ): Promise<ConfirmationResponseDto> {
-    return this.service.decideProposal(userId, year, key, body.decision)
+    return this.service.decideProposal(userId, year, key, body.decision, body.person ?? 'A')
   }
 }

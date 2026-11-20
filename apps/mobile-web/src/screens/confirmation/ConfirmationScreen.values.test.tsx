@@ -159,3 +159,31 @@ describe('ConfirmationScreen failing saves', () => {
     expect(await screen.findByText('Das hat nicht geklappt. Versuch es noch mal.')).toBeTruthy()
   })
 })
+
+describe('ConfirmationScreen Person B (ADR-0054)', () => {
+  it('marks a value of Person B and decides her proposal in her data', async () => {
+    let decided: unknown = null
+    serve({
+      annexes: [
+        {
+          annex: 'anlageN',
+          unconfirmed: 0,
+          values: [
+            value({ key: 'lstb.lohnsteuer', confirmed: true, proposal: { value: '720', provenance: { kind: 'assistent', name: 'Claude' } } }),
+            value({ key: 'lstb.lohnsteuer', person: 'B', confirmed: true, proposal: { value: '820', provenance: { kind: 'assistent', name: 'Claude' } } }),
+          ],
+        },
+      ],
+    } as ConfirmationResponseDto)
+    server.use(
+      http.put('*/v1/steuerjahre/2025/bestaetigung/vorschlaege/:key', async ({ request }) => {
+        decided = await request.json()
+        return HttpResponse.json({ annexes: [] })
+      }),
+    )
+    renderScreen()
+    expect(await screen.findByText('Person B')).toBeTruthy()
+    fireEvent.click(screen.getByTestId('vorschlag-annehmen-B-lstb.lohnsteuer'))
+    await waitFor(() => expect(decided).toEqual({ decision: 'annehmen', person: 'B' }))
+  })
+})

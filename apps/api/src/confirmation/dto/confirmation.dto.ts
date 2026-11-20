@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 import { ANNEXES, SCREENS } from '@steuereule/core'
-import { IsIn } from 'class-validator'
+import { IsIn, IsOptional } from 'class-validator'
 
 export class ProvenanceDto {
   @ApiProperty({ type: String, enum: ['nutzer', 'uebernahme', 'assistent', 'beleg'], example: 'assistent' })
@@ -48,6 +48,9 @@ export class FieldProvenanceDto {
 
   @ApiProperty({ type: ProposalDto, nullable: true })
   proposal!: ProposalDto | null
+
+  @ApiPropertyOptional({ type: String, enum: ['B'], description: 'Set when the value belongs to Person B, whose figures the user records (ADR-0054).' })
+  person?: 'B'
 }
 
 export class AnnexConfirmationDto {
@@ -71,4 +74,9 @@ export class ProposalDecisionDto {
   @ApiProperty({ type: String, enum: ['annehmen', 'verwerfen'] })
   @IsIn(['annehmen', 'verwerfen'])
   decision!: 'annehmen' | 'verwerfen'
+
+  @ApiPropertyOptional({ type: String, enum: ['A', 'B'], description: 'Whose proposal: B for a value of Person B the user records. Default A.' })
+  @IsOptional()
+  @IsIn(['A', 'B'])
+  person?: 'A' | 'B'
 }

@@ -8,8 +8,11 @@ import {
   maskHouseNumber,
   maskName,
   maskPhone,
+  checkDraftPerson,
+  PERSON_B_HANDLE,
   provenanceKey,
   SCREENS,
+  type AdvisorHousehold,
   RECEIPT_TYPES,
   type ReceiptType,
   type Provenance,
@@ -23,6 +26,8 @@ import { UnlockService } from '../unlock/unlock.service.js'
 import { PROFILE_REPOSITORY, type ProfileRepository } from '../profile/profile.repository.js'
 import { MASTER_DATA_REPOSITORY, type MasterDataRepository } from '../master-data/master-data.repository.js'
 import { AuditService } from '../audit/audit.service.js'
+import { LinkService } from '../link/link.service.js'
+import { ChildrenService } from '../children/children.service.js'
 import { checkStageValue, validateStageTarget } from '../ki/advisor-safety.js'
 import { registerAdviceTools } from './mcp-advice-tools.js'
 import { McpReportService } from './mcp-report.service.js'
@@ -56,7 +61,24 @@ export class McpService {
     @Inject(MASTER_DATA_REPOSITORY) private readonly masterDataRepository: MasterDataRepository,
     @Inject(AuditService) private readonly auditService: AuditService,
     @Optional() @Inject(McpReportService) private readonly report?: McpReportService,
+    /** The joint return (ADR-0054): whose data a value for Person B goes to. */
+    @Optional() @Inject(LinkService) private readonly link?: Pick<LinkService, 'spouseForAdvisor' | 'dataUser'>,
+    /** A child is a record of its own: the mask `kind` needs its id as `instance`. */
+    @Optional() @Inject(ChildrenService) private readonly children?: Pick<ChildrenService, 'list' | 'create'>,
   ) {}
+
+  /**
+   * Whose data an entry writes, with the in-app advisor's rules (`checkDraftPerson`): Person B only in a
+   * joint return the user records for, only on B's own masks, and on those masks the person is required.
+   */
+  private async dataUserFor(userId: string, taxYear: number, screen: (typeof SCREENS)[number], field: string, person: 'A' | 'B' | undefined): Promise<{ ok: true; dataUserId: string } | { ok: false; error: string }> {
+    const spouse = await this.link?.spouseForAdvisor(userId, taxYear)
+    const household: AdvisorHousehold = { personB: spouse ? { handle: PERSON_B_HANDLE, recordable: spouse.recordable, figures: null } : null }
+    const check = checkDraftPerson(household, person, screen, field)
+    if (!check.ok) return { ok: false, error: `${check.code}: ${check.reason}` }
+    if (person !== 'B' || !this.link) return { ok: true, dataUserId: userId }
+    return { ok: true, dataUserId: await this.link.dataUser(userId, taxYear, 'B') }
+  }
 
   createServer(userId: string, assistant: AssistantSessionInfo): McpServer {
     const server = new McpServer({
@@ -158,8 +180,9 @@ export class McpService {
         field: z.string().describe('Der Feldbezeichner (z.B. bruttoarbeitslohn, mieteinnahmen)'),
         value: z.string().nullable().describe('Der einzutragende Wert als String, oder null'),
         receiptId: z.string().optional().describe('Optionale Beleg-ID als Herkunftsnachweis'),
+        person: z.enum(['A', 'B']).optional().describe('Bei Zusammenveranlagung: A der Nutzer, B Ehegatte oder Ehegattin. Pflicht in den Masken lstb, chLohnausweis, commute, rente, profil, stammdaten, sobald es Person B gibt.'),
       },
-      async ({ taxYear, screen, instance, field, value, receiptId }) => {
+      async ({ taxYear, screen, instance, field, value, receiptId, person }) => {
         assertScope(assistant, 'steuerdaten:write')
         // The same target and value checks as the in-app advisor (unknown field, never-writable field,
         // booking mask, catalogue value rules). The user's own assistant may write personal fields (ADR-0052 §8).
@@ -176,12 +199,14 @@ export class McpService {
           if (!checked.ok) return { isError: true, content: [{ type: 'text', text: JSON.stringify({ ok: false, error: checked.error }, null, 2) }] }
           cleanValue = checked.value
         }
+        const whose = await this.dataUserFor(userId, taxYear, screen, cleanField, person)
+        if (!whose.ok) return { isError: true, content: [{ type: 'text', text: JSON.stringify({ ok: false, error: whose.error }, null, 2) }] }
         const key = provenanceKey(screen, cleanField, instance)
         const provenance: Provenance =
           receiptId !== undefined
             ? { kind: 'assistent', name: assistant.clientName, receiptId }
             : { kind: 'assistent', name: assistant.clientName }
-        const result = await this.confirmationService.write(userId, taxYear, key, cleanValue, provenance)
+        const result = await this.confirmationService.write(whose.dataUserId, taxYear, key, cleanValue, provenance)
         await this.auditService.append({ userId, action: 'WRITE', resource: 'maske_eintragen' })
 
         return {
@@ -191,6 +216,7 @@ export class McpService {
               text: JSON.stringify(
                 {
                   schluessel: key,
+                  ...(person === 'B' ? { person: 'B' } : {}),
                   ergebnis: result,
                   hinweis:
                     result === 'vorschlag'
@@ -313,6 +339,7 @@ export class McpService {
       audit: (resource) => this.auditService.append({ userId, action: 'READ', resource }),
     })
     this.registerReportTools(server, userId, assistant)
+    this.registerChildTools(server, userId, assistant)
 
     return server
   }
@@ -354,8 +381,9 @@ export class McpService {
         instance: z.string().optional().describe('Instanz-ID bei mehrfachen Objekten'),
         field: z.string().describe('Der Feldbezeichner'),
         value: z.string().describe('Der Wert, dessen Wirkung simuliert wird'),
+        person: z.enum(['A', 'B']).optional().describe('Wie bei maske_eintragen'),
       },
-      async ({ taxYear, screen, instance, field, value }) => {
+      async ({ taxYear, screen, instance, field, value, person }) => {
         // The simulation writes on trial and rolls back: only an assistant that may enter values gets it.
         assertScope(assistant, 'steuerdaten:write')
         await this.auditService.append({ userId, action: 'READ', resource: 'auswirkung_simulieren' })
@@ -363,7 +391,49 @@ export class McpService {
         if (!target.ok) return json({ ok: false, error: target.error })
         const checked = checkStageValue(screen, field, value)
         if (!checked.ok) return json({ ok: false, error: checked.error })
-        return json(await report.simulate(userId, taxYear, screen, field.trim(), checked.value, instance))
+        const whose = await this.dataUserFor(userId, taxYear, screen, field.trim(), person)
+        if (!whose.ok) return json({ ok: false, error: whose.error })
+        return json(await report.simulate(userId, taxYear, screen, field.trim(), checked.value, instance, whose.dataUserId))
+      },
+    )
+  }
+
+  /** The children of the year as records, so the assistant can address the mask `kind` (ADR-0052 amendment 2). */
+  private registerChildTools(server: McpServer, userId: string, assistant: AssistantSessionInfo): void {
+    const children = this.children
+    if (!children) return
+    const json = (value: unknown) => ({ content: [{ type: 'text' as const, text: JSON.stringify(value, null, 2) }] })
+    // Names of third parties only masked (§8): the number and birth year tell the children apart.
+    const listed = (kinder: readonly { id: string; sequenceNumber: number; firstName: string; geburtsdatum: string }[]) =>
+      kinder.map((k) => ({ instance: k.id, nummer: k.sequenceNumber, vorname: maskName(k.firstName), geburtsjahr: k.geburtsdatum.slice(0, 4) }))
+
+    server.tool(
+      'kinder_auflisten',
+      'Listet die Kinder des Steuerjahres mit ihrer `instance` für die Maske `kind` (Vorname maskiert, Geburtsjahr). Vor dem Anlegen prüfen, ob das Kind schon da ist.',
+      { taxYear: z.number().int().describe('Das Steuerjahr (z.B. 2024 oder 2025)') },
+      async ({ taxYear }) => {
+        assertScope(assistant, 'steuerdaten:read')
+        await this.auditService.append({ userId, action: 'READ', resource: 'kinder_auflisten' })
+        return json({ kinder: listed((await children.list(userId, taxYear)).kinder) })
+      },
+    )
+
+    server.tool(
+      'kind_anlegen',
+      'Legt ein Kind für das Steuerjahr an und gibt seine `instance` zurück. Alle weiteren Angaben (Kindergeld, Verwandtschaft, Krankenversicherung, Betreuung …) danach mit maske_eintragen, Maske `kind`, und dieser `instance`.',
+      {
+        taxYear: z.number().int().describe('Das Steuerjahr (z.B. 2024 oder 2025)'),
+        firstName: z.string().min(1).max(100).describe('Vorname des Kindes'),
+        lastName: z.string().min(1).max(100).describe('Nachname des Kindes'),
+        geburtsdatum: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).describe('Geburtsdatum im Format YYYY-MM-DD'),
+      },
+      async ({ taxYear, firstName, lastName, geburtsdatum }) => {
+        assertScope(assistant, 'steuerdaten:write')
+        const before = new Set((await children.list(userId, taxYear)).kinder.map((k) => k.id))
+        const after = (await children.create(userId, taxYear, { firstName, lastName, geburtsdatum })).kinder
+        await this.auditService.append({ userId, action: 'WRITE', resource: 'kind_anlegen' })
+        const created = after.find((k) => !before.has(k.id))
+        return json({ ok: true, instance: created?.id ?? null, nummer: created?.sequenceNumber ?? null, hinweis: 'Weitere Angaben mit maske_eintragen, Maske "kind", instance wie angegeben.' })
       },
     )
   }

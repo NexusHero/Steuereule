@@ -402,6 +402,7 @@
     "anlageBestaetigen": "Confirm {{anlage}}",
     "einzelnAendern": "Change individually",
     "vorschlag": "{{herkunft}} suggests {{neu}} instead of {{alt}}.",
+    "personB": "Person B",
     "vorschlagAnnehmen": "Accept",
     "vorschlagVerwerfen": "Discard",
     "leererWert": "empty",

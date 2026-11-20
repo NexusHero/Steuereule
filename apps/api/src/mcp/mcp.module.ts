@@ -15,6 +15,8 @@ import { McpReportService } from './mcp-report.service.js'
 import { McpService } from './mcp.service.js'
 import { InterviewModule } from '../interview/interview.module.js'
 import { TaxEstimateModule } from '../tax-estimate/tax-estimate.module.js'
+import { LinkModule } from '../link/link.module.js'
+import { ChildrenModule } from '../children/children.module.js'
 
 @Module({
   imports: [
@@ -31,6 +33,8 @@ import { TaxEstimateModule } from '../tax-estimate/tax-estimate.module.js'
     AuditModule,
     InterviewModule,
     TaxEstimateModule,
+    LinkModule,
+    ChildrenModule,
   ],
   controllers: [McpController],
   providers: [McpService, McpReportService],
