@@ -258,3 +258,18 @@ describe('what the owl is told about capital income and prepayments (Echtdatente
     expect(prompt('interview', 'vorauszahlungen-betrag')).toMatch(/Summe/)
   })
 })
+
+describe('fields an assistant can only fill right with their shape (ADR-0052 amendment 2)', () => {
+  it('date fields in TT.MM.JJJJ refuse an ISO date or free text at the catalogue already, not only at the mask', () => {
+    for (const [screen, field] of [['commute', 'periodFrom'], ['commute', 'periodTo'], ['commute', 'secondFrom'], ['commute', 'secondTo'], ['kind', 'childcareFrom'], ['kind', 'childcareTo']] as const) {
+      expect(validateFieldValue(screen, field, '01.11.2024'), field).toEqual({ ok: true, value: '01.11.2024' })
+      expect(validateFieldValue(screen, field, '2024-11-01').ok, field).toBe(false)
+      expect(validateFieldValue(screen, field, 'irgendwas').ok, field).toBe(false)
+    }
+  })
+
+  it('the religion says which key means none, so no one has to guess VD', () => {
+    const spec = fieldsOfScreen('stammdaten').find((s) => s.field === 'religion')!
+    expect(describeFieldForPrompt(spec)).toContain('VD = keine')
+  })
+})

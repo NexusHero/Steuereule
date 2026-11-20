@@ -5,7 +5,7 @@ import { describePrintoutGap } from '../advisor/advisor-printout-gaps.js'
 import { effectLeftOutOfEstimate } from '../advisor/advisor-shared.js'
 import { HOUSEHOLD_AND_HEALTH_BOOSTERS } from '../config/features.js'
 import { ConfirmationService } from '../confirmation/confirmation.service.js'
-import { InterviewService } from '../interview/interview.service.js'
+import { admittedEntryIds, InterviewService } from '../interview/interview.service.js'
 import { PrintoutService } from '../printout/printout.service.js'
 import { isInsideTransaction, PrismaTransactionRunner, TRANSACTION_RUNNER, type TransactionRunner } from '../prisma/transaction.js'
 import { TaxEstimateService } from '../tax-estimate/tax-estimate.service.js'
@@ -79,14 +79,21 @@ export class McpReportService {
     }
   }
 
-  /** The next step of the interview and what is left: the facts only the user can give. */
-  async openQuestions(userId: string, taxYear: number): Promise<{ readonly openQuestions: number; readonly next: AssistantQuestion | null }> {
-    const state = await this.interview.getState(userId, taxYear)
-    const step = state.nextStep
-    if (step.kind === 'done' || step.id === undefined) return { openQuestions: state.openItems, next: null }
-    const form = QUESTIONS[step.id as EntryStepId]?.form
-    const answers = form?.kind === 'enum' ? [...form.values] : undefined
-    return { openQuestions: state.openItems, next: { id: step.id, kind: step.kind, ...(answers ? { answers } : {}) } }
+  /**
+   * The open questions of every interview area the app asks (basic questions, Sonderausgaben, Lebenslagen,
+   * Grenzgänger, Vorauszahlungen …): the facts only the user can give, area by area.
+   */
+  async openQuestions(userId: string, taxYear: number): Promise<{ readonly openQuestions: number; readonly next: AssistantQuestion | null; readonly bereiche: readonly { readonly bereich: string; readonly offen: number; readonly naechste: AssistantQuestion }[] }> {
+    const bereiche: { bereich: string; offen: number; naechste: AssistantQuestion }[] = []
+    for (const entry of admittedEntryIds(HOUSEHOLD_AND_HEALTH_BOOSTERS)) {
+      const state = await this.interview.getState(userId, taxYear, entry)
+      const step = state.nextStep
+      if (step.kind === 'done' || step.id === undefined) continue
+      const form = QUESTIONS[step.id as EntryStepId]?.form
+      const answers = form?.kind === 'enum' ? [...form.values] : undefined
+      bereiche.push({ bereich: entry, offen: state.openItems, naechste: { id: step.id, kind: step.kind, ...(answers ? { answers } : {}) } })
+    }
+    return { openQuestions: bereiche.reduce((sum, b) => sum + b.offen, 0), next: bereiche[0]?.naechste ?? null, bereiche }
   }
 
   /**

@@ -123,6 +123,8 @@ export function isAiWritableField(screen: string, field: string, personalDataCon
 const amount: FieldValueKind = { kind: 'amount', max: MAX_AMOUNT }
 const signedAmount: FieldValueKind = { kind: 'amount', max: MAX_AMOUNT, signed: true }
 const text = (maxLength: number): FieldValueKind => ({ kind: 'text', maxLength })
+/** A day the masks keep as TT.MM.JJJJ (commute periods, childcare): checked here too, not only when the mask saves it. */
+const germanDate: FieldValueKind = { kind: 'pattern', pattern: /^\d{2}\.\d{2}\.\d{4}$/, shape: 'Datum TT.MM.JJJJ' }
 const integer = (min: number, max: number): FieldValueKind => ({ kind: 'integer', min, max })
 const oneOf = (values: readonly string[]): FieldValueKind => ({ kind: 'enum', values })
 const bool: FieldValueKind = { kind: 'boolean' }
@@ -198,12 +200,12 @@ const DECLARED: Readonly<Record<Screen, { readonly perInstance: boolean; readonl
       accountFeesEur: amount,
       otherWorkExpensesEur: amount,
       otherWorkExpensesNote: text(100),
-      periodFrom: text(10),
-      periodTo: text(10),
+      periodFrom: germanDate,
+      periodTo: germanDate,
       secondOneWayKm: integer(0, 999),
       secondTransport: oneOf(['pkw', 'oepnv', 'andere']),
-      secondFrom: text(10),
-      secondTo: text(10),
+      secondFrom: germanDate,
+      secondTo: germanDate,
       /** The first place of work (Anlage N/N-Gre „Arbeitsort“) — an address, so personal (ADR-0091). */
       workplace: text(120),
       secondWorkplace: text(120),
@@ -307,8 +309,8 @@ const DECLARED: Readonly<Record<Screen, { readonly perInstance: boolean; readonl
       swissFamilyAllowanceEur: { kind: 'amount', max: 9_999_999 },
       childcareEur: { kind: 'amount', max: 9_999_999 },
       childcareProvider: text(45),
-      childcareFrom: text(10),
-      childcareTo: text(10),
+      childcareFrom: germanDate,
+      childcareTo: germanDate,
       swissFamilyAllowancePayer: oneOf(['A', 'B'] as const),
       healthInsuranceAbroad: bool,
     },
@@ -338,6 +340,9 @@ const HINTS: Readonly<Partial<Record<Screen, Readonly<Record<string, string>>>>>
     einkuenfte: 'Pflichtfrage: Kapitalerträge über dem Sparer-Pauschbetrag bzw. Freistellungsauftrag oder ohne deutschen Steuerabzug (z. B. ausländische Bank) = „Kapitalerträge“; Mieteinnahmen = „Vermietung“; nichts davon = „Nein“',
     'vorauszahlungen-gate': '„Ja“, wenn das Finanzamt für das Jahr Einkommensteuer-Vorauszahlungen festgesetzt hat',
     'vorauszahlungen-betrag': 'Summe aller für das Jahr gezahlten Vorauszahlungen in ganzen Euro: Einkommensteuer plus Solidaritätszuschlag plus Kirchensteuer zusammen, es gibt kein eigenes Soli-Feld (z. B. „26.004 Euro Einkommensteuer und 747 Euro Soli“ → 26751); die App setzt vorauszahlungen-gate dazu selbst auf „Ja“',
+  },
+  stammdaten: {
+    religion: 'ELSTER-Schlüssel: VD = keine Religionszugehörigkeit (keine Kirchensteuer), EV = evangelisch, RK = römisch-katholisch, AK = altkatholisch; die übrigen Schlüssel sind Freireligiöse, Israelitische und Jüdische Gemeinden',
   },
   kind: {
     healthInsuranceAbroad: '„true“, wenn das Kind bei einer ausländischen Kasse versichert ist (z. B. Schweizer Grundversicherung); dann Anlage Kind Kz 89 statt Kz 66/67',
