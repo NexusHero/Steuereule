@@ -231,6 +231,63 @@ describe('LoginScreen', () => {
     expect(receivedBody).toMatchObject({ email: 'a@b.de', password: 'geheim-123' })
   })
 
+  describe('sign-in inside an assistant connection (ADR-0052 §2)', () => {
+    const OAUTH_SEARCH = '?response_type=code&client_id=c1&scope=steuerdaten%3Aread&state=s&exp=1&ba_iat=1&ba_param=client_id&ba_param=response_type&ba_param=scope&ba_param=state&ba_param=exp&ba_param=ba_iat&ba_param=ba_param&sig=abc'
+    const CONTINUE = 'http://localhost:8121/oauth/consent?client_id=c1'
+    afterEach(() => window.history.replaceState(null, '', '/'))
+
+    it('hands the signed request to the sign-in and continues to the consent instead of the cockpit', async () => {
+      window.history.replaceState(null, '', `/login${OAUTH_SEARCH}`)
+      let receivedBody: Record<string, unknown> = {}
+      server.use(
+        http.post(`${BASE_URL}/api/auth/sign-in/email`, async ({ request }) => {
+          receivedBody = (await request.json()) as Record<string, unknown>
+          return HttpResponse.json({ redirect: true, url: CONTINUE, token: 'tok_1', user: { id: 'u1', email: 'a@b.de', emailVerified: false, name: '' } })
+        }),
+      )
+      const onDone = vi.fn()
+      renderLogin({ onDone })
+      fillCredentials()
+      fireEvent.click(screen.getByText('Einloggen'))
+      await waitFor(() => expect(String(receivedBody.oauth_query ?? '')).toContain('sig=abc'))
+      await new Promise((resolve) => setTimeout(resolve, 50))
+      expect(onDone).not.toHaveBeenCalled()
+      expect(screen.queryByText(/Bitte bestätige noch deine E-Mail/)).toBeNull()
+    })
+
+    it('after the second factor it continues to the consent as well', async () => {
+      window.history.replaceState(null, '', `/login${OAUTH_SEARCH}`)
+      server.use(
+        http.post(`${BASE_URL}/api/auth/sign-in/email`, () => HttpResponse.json({ twoFactorRedirect: true, twoFactorMethods: ['totp'] })),
+        http.post(`${BASE_URL}/api/auth/two-factor/verify-totp`, () => HttpResponse.json({ redirect: true, url: CONTINUE, token: 'tok_1', user: { id: 'u1', email: 'a@b.de', emailVerified: true, name: '' } })),
+      )
+      const onDone = vi.fn()
+      renderLogin({ onDone })
+      fillCredentials()
+      fireEvent.click(screen.getByText('Einloggen'))
+      fireEvent.change(await screen.findByPlaceholderText('123456'), { target: { value: '123456' } })
+      fireEvent.click(screen.getByText('Bestätigen'))
+      await new Promise((resolve) => setTimeout(resolve, 100))
+      expect(onDone).not.toHaveBeenCalled()
+    })
+
+    it('a normal sign-in sends no OAuth request along', async () => {
+      let receivedBody: Record<string, unknown> = {}
+      server.use(
+        http.post(`${BASE_URL}/api/auth/sign-in/email`, async ({ request }) => {
+          receivedBody = (await request.json()) as Record<string, unknown>
+          return HttpResponse.json({ token: 'tok_1', user: { id: 'u1', email: 'a@b.de', emailVerified: true, name: '' } })
+        }),
+      )
+      const onDone = vi.fn()
+      renderLogin({ onDone })
+      fillCredentials()
+      fireEvent.click(screen.getByText('Einloggen'))
+      await waitFor(() => expect(onDone).toHaveBeenCalledOnce())
+      expect(receivedBody.oauth_query).toBeUndefined()
+    })
+  })
+
   it('shows the 2FA challenge after the primary factor succeeds (REQ-007)', async () => {
     server.use(
       http.post(`${BASE_URL}/api/auth/sign-in/email`, () =>
