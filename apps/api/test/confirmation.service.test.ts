@@ -185,6 +185,40 @@ describe('BestaetigungService', () => {
     })
   })
 
+  describe('an assistant takes back its own entry (ADR-0052 amendment 2)', () => {
+    const OTHER = { kind: 'assistent', name: 'Gemini' } as const
+
+    it('clears an unconfirmed value the same assistant wrote, and its marking', async () => {
+      await service.write(USER, YEAR, 'lstb.lohnsteuer', '700', CLAUDE)
+      expect(await service.withdrawAssistantEntry(USER, YEAR, 'lstb.lohnsteuer', 'Claude')).toBe('zurueckgenommen')
+      expect((await lstb.findForUserAndYear(USER, YEAR))?.lohnsteuer ?? null).toBeNull()
+      expect(markings.all()).toEqual([])
+    })
+
+    it('drops only its proposal on a value the user confirmed, the user value stays', async () => {
+      await lstb.setField(USER, YEAR, 'lohnsteuer', '700')
+      await service.write(USER, YEAR, 'lstb.lohnsteuer', '720', CLAUDE)
+      expect(await service.withdrawAssistantEntry(USER, YEAR, 'lstb.lohnsteuer', 'Claude')).toBe('vorschlag-entfernt')
+      expect((await lstb.findForUserAndYear(USER, YEAR))?.lohnsteuer).toBe('700')
+      expect(markings.all()).toEqual([])
+    })
+
+    it('refuses a value the user entered or confirmed, and one another assistant wrote', async () => {
+      await lstb.setField(USER, YEAR, 'lohnsteuer', '700')
+      await expect(service.withdrawAssistantEntry(USER, YEAR, 'lstb.lohnsteuer', 'Claude')).rejects.toMatchObject({ code: 'NOT_OWN_ENTRY' })
+      await service.write(USER, YEAR, 'lstb.bruttoarbeitslohn', '5000', OTHER)
+      await expect(service.withdrawAssistantEntry(USER, YEAR, 'lstb.bruttoarbeitslohn', 'Claude')).rejects.toMatchObject({ code: 'NOT_OWN_ENTRY' })
+      await service.write(USER, YEAR, 'rente.jahresbetrag', '1', CLAUDE)
+      await service.confirmAnnex(USER, YEAR, 'anlageR')
+      await expect(service.withdrawAssistantEntry(USER, YEAR, 'rente.jahresbetrag', 'Claude')).rejects.toMatchObject({ code: 'NOT_OWN_ENTRY' })
+    })
+
+    it('marks values a non-user wrote another way as unconfirmed, with their source', async () => {
+      await service.markUnconfirmed(USER, YEAR, ['lstb.lohnsteuer'], CLAUDE)
+      expect(markings.all()).toEqual([{ userId: USER, taxYear: YEAR, key: 'lstb.lohnsteuer', provenance: CLAUDE, confirmed: false, proposal: null }])
+    })
+  })
+
   it('a proposal decision on a field without a proposal is a 404, an unknown key a 400', async () => {
     await expect(service.decideProposal(USER, YEAR, 'lstb.lohnsteuer', 'annehmen')).rejects.toMatchObject({ code: 'PROPOSAL_NOT_FOUND' })
     await expect(service.decideProposal(USER, YEAR, 'gewerbe.gewinn', 'annehmen')).rejects.toMatchObject({ code: 'FIELD_UNKNOWN' })

@@ -207,5 +207,11 @@ Werkzeuge**, keine Agent-zu-Agent-Frage an unser LLM.
   noch bestehende Einwilligung, damit ein Widerruf auch für JWTs sofort wirkt (§10). Clients mit
   Loopback-Weiterleitung gelten als native (RFC 8252), `offline_access` gibt Refresh-Tokens, die
   Einwilligungsseite sagt dazu, dass die Verbindung bis zum Widerruf besteht.
-- **Noch nicht:** Buchungen und Anlagegüter (Selbstständige), neue Vermietungsobjekte und das
-  Zurückziehen eigener Einträge über MCP. Bezahlen, Konto und Einwilligungen bleiben ausgeschlossen (§4).
+- **Eigene Fehler zurücknehmen:** `eintrag_zuruecknehmen` leert einen unbestätigten Wert oder verwirft
+  einen Vorschlag, beides nur, wenn derselbe Assistent ihn geschrieben hat. `kind_entfernen` löscht nur
+  ein Kind, das der Assistent angelegt hat und an dem nichts bestätigt oder vom Nutzer eingetragen ist;
+  dafür markiert `kind_anlegen` Name und Geburtsdatum als unbestätigte Einträge des Assistenten.
+  Doppeltes `kind_anlegen` liefert das vorhandene Kind.
+- **Felder beschreiben:** `maske_felder` liefert je Maske Form und Hinweis aus dem Feldkatalog; Verweise
+  auf Werkzeuge des In-App-Beraters werden für den externen Assistenten umformuliert.
+- **Noch nicht:** Buchungen und Anlagegüter (Selbstständige) und neue Vermietungsobjekte über MCP. Bezahlen, Konto und Einwilligungen bleiben ausgeschlossen (§4).
