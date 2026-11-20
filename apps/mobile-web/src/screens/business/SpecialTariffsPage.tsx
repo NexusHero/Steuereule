@@ -141,7 +141,7 @@ export function SpecialTariffsPage({ taxYear, person, business = 1, onBack }: Bu
           <View testID="sonder-thesaurierung-ergebnis">
             <Figure label={tr('business.sonder.nichtEntnommen')} value={plainEuro(computed.retained.nonWithdrawnEur)} />
             <Figure label={tr('business.sonder.beguenstigt')} value={plainEuro(computed.retained.favouredEur)} />
-            <Figure strong label={tr('business.sonder.thesaurierungSteuer', { satz: String(computed.retained.rate * 100).replace('.', ',') })} value={plainEuro(computed.retained.taxEur)} />
+            <Figure strong label={tr('business.sonder.thesaurierungSteuer', { satz: String(Math.round(computed.retained.rate * 10_000) / 100).replace('.', ',') })} value={plainEuro(computed.retained.taxEur)} />
             {computed.retained.recaptureEur > 0 ? <Figure label={tr('business.sonder.nachversteuerung')} value={plainEuro(computed.retained.recaptureEur)} /> : null}
             <Figure label={tr('business.sonder.vortrag')} value={plainEuro(computed.retained.nextCarriedForwardEur)} />
           </View>
