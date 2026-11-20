@@ -141,7 +141,7 @@ export class TaxEstimateService {
     if (masterData?.familienstand === 'verheiratet' || answers.familienstand === 'Verheiratet') {
       return this.marriedCouple(userId, year, boostersEnabled)
     }
-    if (gatedIncomeTypes(answers, interviewOptions()).length > 0 || specialCircumstance(answers)) {
+    if (gatedIncomeTypes(answers, interviewOptions()).length > 0 || specialCircumstance(answers, selfEmployed && answers.job === 'Selbstständig')) {
       return { kind: 'nicht-moeglich', reason: 'besondere-lebenslage' }
     }
     // § 32b EStG: the benefits are counted, not a reason to give up (UX review K3); the amount is needed though.
@@ -179,12 +179,26 @@ export class TaxEstimateService {
 
     // Self-employed without a job (ADR-0101): the profit is the income, the provision paid outside a wage.
     if (ownBusiness !== null && answers.job === 'Selbstständig') {
+      // A Midijob or a job beside the business (ADR-0101 §22): its wage tax certificate is the wage.
+      let wage: { gross: number; wageTax: number; socialSecurity: number; workExpensesEur: number } | undefined
+      if (answers.nebenjob === 'Midijob' || answers.nebenjob === 'Nebenjob') {
+        const side = wageTaxCertificateStatus(wageTaxCertificateDataFrom(lstbRecord))
+        if (side.kind === 'unvollstaendig') return { kind: 'offen', missing: [...side.open, ...side.unclear] }
+        if (side.kind === 'widerspruch') return { kind: 'offen', missing: side.conflicts.map((w) => w.kind) }
+        wage = {
+          gross: side.bruttoarbeitslohn,
+          wageTax: side.lohnsteuer,
+          socialSecurity: deductibleSocialSecurity(side.sozialversicherung, lstbRecord),
+          workExpensesEur: allowance + numbers.relocationCosts + numbers.trainingCosts,
+        }
+      }
       return withPrepayments(
         withEstimateExtras(
           taxEstimateSelfEmployed({
             year,
             ...businessInputs,
             business: ownBusiness.business,
+            ...(wage ? { wage } : {}),
             // The lines as entered: deductibleProvision cuts the 4 % for Krankengeld once, on the KV only (ADR-0101 §22).
             provision: selfPaidProvisionFromAnswers(answers),
             donations: numbers.donations + childcare,
@@ -690,8 +704,14 @@ function rentalSurplus(o: {
 }
 
 /** Life situations the estimate cannot price yet; wage replacement benefits are priced (§ 32b, UX review K3). */
-function specialCircumstance(answers: Answers): boolean {
-  return answers.dhf === 'Ja' || answers.abfindung === 'Ja' || answers.nebenjob === 'Midijob' || answers.nebenjob === 'Nebenjob'
+/**
+ * Cases the estimate does not cover. A Midijob or side job beside an employment means two wage tax
+ * certificates; beside a business without other employment it is the only one, which the
+ * self-employed estimate takes (ADR-0101 §22).
+ */
+function specialCircumstance(answers: Answers, sideJobIsOnlyWage = false): boolean {
+  const sideJob = answers.nebenjob === 'Midijob' || answers.nebenjob === 'Nebenjob'
+  return answers.dhf === 'Ja' || answers.abfindung === 'Ja' || (sideJob && !sideJobIsOnlyWage)
 }
 
 /** Wage replacement benefits of the year: 0 without, the amount with, null when „Ja“ is answered but the amount is missing. */
