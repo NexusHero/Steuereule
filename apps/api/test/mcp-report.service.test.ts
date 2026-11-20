@@ -59,4 +59,37 @@ describe('McpReportService (ADR-0052 amendment 2)', () => {
     expect(JSON.stringify(result)).not.toContain('Prisma')
     expect(JSON.stringify(result)).not.toContain('db-internal')
   })
+
+  it('openQuestions names the next interview question with its answers, and nothing once the interview is done', async () => {
+    const open = { getState: vi.fn().mockResolvedValue({ answers: {}, nextStep: { kind: 'question', id: 'job' }, openItems: 3 }) }
+    const result = await service({ interview: open }).openQuestions('u', 2025)
+    expect(result.openQuestions).toBe(3)
+    expect(result.next?.id).toBe('job')
+    expect(result.next?.answers).toContain('Angestellt')
+    expect((await service().openQuestions('u', 2025)).next).toBeNull()
+  })
+
+  it('a report with open questions, gaps and unconfirmed annexes names each next step and no go-ahead', async () => {
+    const report = await service({
+      estimate: { getState: vi.fn().mockRejectedValue(new Error('down')) },
+      printout: { check: vi.fn().mockResolvedValue({ missing: ['kapital'] }) },
+      confirmation: { overview: vi.fn().mockResolvedValue({ annexes: [{ annex: 'N', unconfirmed: 2 }, { annex: 'KAP', unconfirmed: 0 }] }) },
+      interview: { getState: vi.fn().mockResolvedValue({ answers: {}, nextStep: { kind: 'question', id: 'job' }, openItems: 1 }) },
+    }).report('u', 2025)
+    expect(report.estimate).toEqual({ kind: 'unavailable' })
+    expect(report.unconfirmed).toEqual([{ annex: 'N', count: 2 }])
+    expect(report.printout).toMatchObject({ checked: true, ready: false })
+    expect(report.nextSteps).toHaveLength(3)
+    expect(report.nextSteps.join(' ')).not.toContain('zahllink_anfordern')
+  })
+
+  it('says why there is no delta when the estimate becomes possible only now, or not yet', async () => {
+    const open = { kind: 'offen' as const, missing: ['lstb'] }
+    const firstTime = { getState: vi.fn().mockResolvedValueOnce(open).mockResolvedValueOnce(computed(100, 100)) }
+    const notYet = { getState: vi.fn().mockResolvedValue(open) }
+    const first = await service({ estimate: firstTime }).simulate('u', 2025, 'lstb', 'bruttoarbeitslohn', '50000')
+    const later = await service({ estimate: notYet }).simulate('u', 2025, 'lstb', 'bruttoarbeitslohn', '50000')
+    expect(first).toMatchObject({ ok: false, reason: expect.stringContaining('erstmals') })
+    expect(later).toMatchObject({ ok: false, reason: expect.stringContaining('vollständig') })
+  })
 })
