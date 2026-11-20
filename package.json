@@ -32,7 +32,8 @@
       "i18next": "24.2.3",
       "@huggingface/transformers>onnxruntime-node": "-",
       "@huggingface/transformers>sharp": "-",
-      "node-forge": "1.4.2"
+      "node-forge": "1.4.2",
+      "effect": "3.22.5"
     },
     "onlyBuiltDependencies": [
       "@bundled-es-modules/glob",
