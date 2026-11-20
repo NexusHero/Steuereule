@@ -203,21 +203,23 @@ describe('McpService (ADR-0052 §3 / §5 / §8 / §12)', () => {
     expect(toolNames).toEqual([
       'ausdruck_vorpruefung',
       'beleg_hochladen',
+      'belege_auflisten',
       'einkommensteuer_berechnen',
       'eintrag_zuruecknehmen',
       'eulen_hinweise',
       'gesetzestext_lesen',
       'gewerbesteuer_schaetzen',
+      'haushalt_ueberblick',
       'kapitalertraege_guenstigerpruefung',
       'kleinunternehmer_pruefen',
       'maske_eintragen',
       'maske_eintragen_stapel',
       'maske_felder',
+      'maske_lesen',
       'rechtsquelle_nachschlagen',
       'renovierung_15_prozent_pruefen',
       'schenkungsteuer_berechnen',
       'spekulationsfrist_pruefen',
-      'steuerjahr_stand',
       'steuerwissen_lesen',
       'veranlagungsarten_vergleichen',
       'zahllink_anfordern',
@@ -361,7 +363,7 @@ describe('McpService (ADR-0052 §3 / §5 / §8 / §12)', () => {
     it('kinder_auflisten names each child by id, number, masked name and birth year only', async () => {
       const client = await clientWith({ list: async () => ({ kinder: [zeynep] }) })
       const parsed = JSON.parse(getText(await client.callTool({ name: 'kinder_auflisten', arguments: { taxYear: YEAR } })))
-      expect(parsed.kinder).toEqual([{ instance: 'kind-1', nummer: 1, vorname: 'Z***', geburtsjahr: '2022' }])
+      expect(parsed.kinder).toEqual([{ instance: 'kind-1', nummer: 1, alterJahre: YEAR - 2022 }])
       expect(getText(await client.callTool({ name: 'kinder_auflisten', arguments: { taxYear: YEAR } }))).not.toContain('Zeynep')
     })
 
@@ -507,6 +509,21 @@ describe('McpService (ADR-0052 §3 / §5 / §8 / §12)', () => {
     })
   })
 
+  it('refuses a confession over MCP and points to the yes/no instead (Art. 9, #543)', async () => {
+    const client = await connectClient()
+    const res = await client.callTool({ name: 'maske_eintragen', arguments: { taxYear: YEAR, screen: 'stammdaten', field: 'religion', value: 'RK' } })
+    expect((res as { isError?: boolean }).isError).toBe(true)
+    expect(getText(res)).toContain('kirchensteuerpflichtig')
+    expect((await masterDataRepo.findByUserId(USER))?.religion ?? null).toBeNull()
+    const felder = JSON.parse(getText(await client.callTool({ name: 'maske_felder', arguments: { screen: 'stammdaten' } }))).felder.map((f: { feld: string }) => f.feld)
+    expect(felder).toContain('kirchensteuerpflichtig')
+    expect(felder).not.toContain('religion')
+    const ok = await client.callTool({ name: 'maske_eintragen', arguments: { taxYear: YEAR, screen: 'stammdaten', field: 'kirchensteuerpflichtig', value: 'false' } })
+    expect(JSON.parse(getText(ok)).ergebnis).toBe('geschrieben')
+    const household = JSON.parse(getText(await client.callTool({ name: 'haushalt_ueberblick', arguments: { taxYear: YEAR } })))
+    expect(household.personen[0].kirchensteuerpflichtig).toBe(false)
+  })
+
   it('maske_eintragen points a booking to the booking path instead of writing it as a field', async () => {
     const client = await connectClient()
     const res = await client.callTool({ name: 'maske_eintragen', arguments: { taxYear: YEAR, screen: 'buchung', field: 'betrag', value: '10' } })
@@ -514,7 +531,7 @@ describe('McpService (ADR-0052 §3 / §5 / §8 / §12)', () => {
     expect(getText(res)).toContain('USE_BOOKING_TOOL')
   })
 
-  it('steuerjahr_stand masks all sensitive personal data (Steuer-ID, IBAN, address, name)', async () => {
+  it('haushalt_ueberblick shows the household derived, without any name, id, address or birth date', async () => {
     await profileRepo.upsert(USER, {
       firstName: 'Markus',
       lastName: 'Brenner',
@@ -540,23 +557,55 @@ describe('McpService (ADR-0052 §3 / §5 / §8 / §12)', () => {
     })
 
     const client = await connectClient()
-    const res = await client.callTool({ name: 'steuerjahr_stand', arguments: { taxYear: YEAR } })
-    const text = getText(res)
+    const text = getText(await client.callTool({ name: 'haushalt_ueberblick', arguments: { taxYear: YEAR } }))
     const parsed = JSON.parse(text)
 
-    expect(parsed.steuerjahr).toBe(YEAR)
-    // PII masking checks
-    expect(parsed.profil.firstName).toBe('M***')
-    expect(parsed.profil.lastName).toBe('B***')
-    expect(parsed.profil.steuerId).toBe('12*******01')
-    expect(parsed.stammdaten.strasse).toBe('G***')
-    expect(parsed.stammdaten.hausnummer).toBe('***')
-    expect(parsed.stammdaten.iban).toBe('DE** **** **** **** **** 00')
-    expect(parsed.stammdaten.telefon).toBe('07621 ***')
-    // Non-PII is preserved
-    expect(parsed.stammdaten.plz).toBe('4058')
-    expect(parsed.stammdaten.wohnort).toBe('Basel')
-    expect(parsed.stammdaten.beruf).toBe('Entwickler')
+    // Derived, never the detail (ADR-0052 amendment 3).
+    expect(parsed.personen[0]).toMatchObject({ person: 'A', alterJahre: YEAR - 1985, familienstand: 'verheiratet', kirchensteuerpflichtig: null })
+    for (const secret of ['Markus', 'Brenner', '12345678901', '0812345678', 'Grenzacherstrasse', 'DE89370400440532013000', '07621', '4058', 'Basel', 'Entwickler', '1985-05-15']) {
+      expect(text, secret).not.toContain(secret)
+    }
+  })
+
+  it('maske_lesen reads amounts in plain with state and source, and people only derived', async () => {
+    await masterDataRepo.save(USER, { geburtsdatum: '1985-05-15', strasse: 'Musterweg', hausnummer: '1', hausnummerZusatz: null, plz: '78176', wohnort: 'Blumberg', beruf: 'Entwickler', religion: 'RK', familienstand: 'verheiratet', familienstandSeit: null, iban: null, kontoinhaber: null, finanzamt: null, telefon: null, religionEinwilligungAm: null })
+    await lstbRepo.setField(USER, YEAR, 'lohnsteuer', '700')
+    const client = await connectClient()
+    await client.callTool({ name: 'maske_eintragen', arguments: { taxYear: YEAR, screen: 'lstb', field: 'bruttoarbeitslohn', value: '65000' } })
+    await client.callTool({ name: 'maske_eintragen', arguments: { taxYear: YEAR, screen: 'lstb', field: 'lohnsteuer', value: '720' } })
+
+    const lstb = JSON.parse(getText(await client.callTool({ name: 'maske_lesen', arguments: { taxYear: YEAR, screen: 'lstb', nurGefuellte: true } })))
+    expect(lstb.felder).toEqual([
+      { feld: 'bruttoarbeitslohn', wert: '65000', stand: 'unbestaetigt', herkunft: 'du' },
+      { feld: 'lohnsteuer', wert: '700', stand: 'vorschlag-offen', herkunft: 'nutzer', vorschlag: { wert: '720', herkunft: 'du' } },
+    ])
+
+    const text = getText(await client.callTool({ name: 'maske_lesen', arguments: { taxYear: YEAR, screen: 'stammdaten' } }))
+    const stamm = Object.fromEntries(JSON.parse(text).felder.map((f: { feld: string }) => [f.feld, f]))
+    expect(stamm.geburtsdatum).toMatchObject({ gesetzt: true, alterJahre: YEAR - 1985 })
+    expect(stamm.plz).toMatchObject({ gesetzt: true, bundesland: 'BW' })
+    expect(stamm.religion).toMatchObject({ gesetzt: true, kirchensteuerpflichtig: true })
+    expect(stamm.strasse).toMatchObject({ gesetzt: true })
+    for (const secret of ['Musterweg', '78176', 'Blumberg', 'Entwickler', '1985-05-15', '"RK"']) expect(text, secret).not.toContain(secret)
+  })
+
+  it('maske_lesen needs the instance for a child and names the kind of another assistant’s entry, not its name', async () => {
+    const client = await connectClient()
+    expect(getText(await client.callTool({ name: 'maske_lesen', arguments: { taxYear: YEAR, screen: 'kind' } }))).toContain('RECORD_REQUIRED')
+    const other = await connectClient({ ...ALL_SCOPES_ASSISTANT, clientName: 'Gemini' })
+    await other.callTool({ name: 'maske_eintragen', arguments: { taxYear: YEAR, screen: 'lstb', field: 'lohnsteuer', value: '700' } })
+    const text = getText(await client.callTool({ name: 'maske_lesen', arguments: { taxYear: YEAR, screen: 'lstb', nurGefuellte: true } }))
+    expect(JSON.parse(text).felder[0]).toMatchObject({ herkunft: 'anderer-assistent' })
+    expect(text).not.toContain('Gemini')
+  })
+
+  it('belege_auflisten lists receipts without their file names', async () => {
+    const client = await connectClient()
+    const created = JSON.parse(getText(await client.callTool({ name: 'beleg_hochladen', arguments: { fileName: 'Sevinc_Lohnausweis.pdf', taxYear: YEAR } })))
+    await client.callTool({ name: 'maske_eintragen', arguments: { taxYear: YEAR, screen: 'lstb', field: 'lohnsteuer', value: '700', receiptId: created.belegId } })
+    const text = getText(await client.callTool({ name: 'belege_auflisten', arguments: { taxYear: YEAR } }))
+    expect(JSON.parse(text).belege).toEqual([expect.objectContaining({ belegId: created.belegId, steuerjahr: YEAR, felder: ['lstb.lohnsteuer'] })])
+    expect(text).not.toContain('Sevinc')
   })
 
   it('maske_eintragen writes values as unconfirmed with assistant provenance', async () => {
@@ -669,7 +718,7 @@ describe('McpService (ADR-0052 §3 / §5 / §8 / §12)', () => {
     })
 
     // Reading works
-    const readRes = await readOnlyClient.callTool({ name: 'steuerjahr_stand', arguments: { taxYear: YEAR } })
+    const readRes = await readOnlyClient.callTool({ name: 'haushalt_ueberblick', arguments: { taxYear: YEAR } })
     expect(getText(readRes)).toBeTruthy()
 
     // Writing fails with error

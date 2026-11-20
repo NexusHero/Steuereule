@@ -787,7 +787,7 @@ function stateFromPostalCode(plz: string | null | undefined): GermanState | null
  * data, the withheld church tax from the LStB (Zeile 6, for a married person plus Zeile 7).
  */
 function churchTaxInput(
-  masterData: { religion?: string | null; plz?: string | null } | null | undefined,
+  masterData: { religion?: string | null; plz?: string | null; kirchensteuerpflichtig?: boolean | null } | null | undefined,
   lstbRecord: WageTaxCertificateRecord | null,
   lines: 'own' | 'with-spouse-line',
   children: number,
@@ -796,7 +796,7 @@ function churchTaxInput(
   const own = lstb.kirchensteuer
   const withheld = own === null ? null : own + (lines === 'with-spouse-line' ? (lstb.kirchensteuerEhegatte ?? 0) : 0)
   return {
-    membership: churchMembership(masterData?.religion),
+    membership: churchMembership(masterData?.religion, masterData?.kirchensteuerpflichtig),
     state: stateFromPostalCode(masterData?.plz),
     postalCode: masterData?.plz ?? null,
     withheld,

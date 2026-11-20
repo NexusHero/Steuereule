@@ -1,24 +1,25 @@
 import { z } from 'zod'
-import { fieldsOfScreen, maskName, provenanceKey } from '@steuereule/core'
+import { fieldsOfScreen, provenanceKey } from '@steuereule/core'
 import { assertScope, json, refused, type McpDeps, type McpSession } from '../mcp-session.js'
+import { ageAtYearEnd } from '../read-view.js'
 
 /** The children of the year as records, so the assistant can address the mask `kind` (ADR-0052 amendment 2). */
 export function registerChildTools(session: McpSession, deps: McpDeps): void {
   const { server, userId, assistant } = session
   const children = deps.children
   if (!children) return
-  // Names of third parties only masked (§8): the number and birth year tell the children apart.
-  const listed = (kinder: readonly { id: string; sequenceNumber: number; firstName: string; geburtsdatum: string }[]) =>
-    kinder.map((k) => ({ instance: k.id, nummer: k.sequenceNumber, vorname: maskName(k.firstName), geburtsjahr: k.geburtsdatum.slice(0, 4) }))
+  // A child reads as its number and age (amendment 3, 6): no name, no initial, no birth year.
+  const listed = (kinder: readonly { id: string; sequenceNumber: number; geburtsdatum: string }[], taxYear: number) =>
+    kinder.map((k) => ({ instance: k.id, nummer: k.sequenceNumber, alterJahre: ageAtYearEnd(k.geburtsdatum, taxYear) }))
 
   server.tool(
     'kinder_auflisten',
-    'Listet die Kinder des Steuerjahres mit ihrer `instance` für die Maske `kind` (Vorname maskiert, Geburtsjahr). Vor dem Anlegen prüfen, ob das Kind schon da ist.',
+    'Listet die Kinder des Steuerjahres mit ihrer `instance` für die Maske `kind`, als Nummer und Alter am Jahresende. Merke dir beim Anlegen, welche instance zu welchem Kind gehört.',
     { taxYear: z.number().int().describe('Das Steuerjahr (z.B. 2024 oder 2025)') },
     async ({ taxYear }) => {
       assertScope(assistant, 'steuerdaten:read')
       await deps.audit.append({ userId, action: 'READ', resource: 'kinder_auflisten' })
-      return json({ kinder: listed((await children.list(userId, taxYear)).kinder) })
+      return json({ kinder: listed((await children.list(userId, taxYear)).kinder, taxYear) })
     },
   )
 

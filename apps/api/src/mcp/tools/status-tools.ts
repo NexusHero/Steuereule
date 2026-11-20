@@ -1,56 +1,11 @@
 import { z } from 'zod'
-import { maskHouseNumber, maskIban, maskName, maskPhone, maskStreet, maskTaxId, SCREENS } from '@steuereule/core'
+import { SCREENS } from '@steuereule/core'
 import { checkStageValue, validateStageTarget } from '../../ki/advisor-safety.js'
 import { assertScope, json, dataUserFor, type McpDeps, type McpSession } from '../mcp-session.js'
 
 /** Where the return stands: state, printout pre-check, owl hints, payment link (ADR-0052 §3, §5, §8, §12). */
 export function registerStatusTools(session: McpSession, deps: McpDeps): void {
   const { server, userId, assistant } = session
-
-  // 1. Tool: steuerjahr_stand (Lesen maskiert, ADR-0052 §8)
-  server.tool(
-    'steuerjahr_stand',
-    'Liest den aktuellen Bearbeitungsstand, die geschätzte Erstattung/Nachzahlung und erfasste Abschnitte für ein Steuerjahr. Personenbezogene Daten werden maskiert zurückgegeben.',
-    {
-      taxYear: z.number().int().describe('Das Steuerjahr (z.B. 2024 oder 2025)'),
-    },
-    async ({ taxYear }) => {
-      assertScope(assistant, 'steuerdaten:read')
-      await deps.audit.append({ userId, action: 'READ', resource: 'steuerjahr_stand' })
-
-      const summary = await deps.cockpit.getSummary(userId, taxYear)
-      const profile = await deps.profiles.findByUserId(userId)
-      const masterData = await deps.masterData.findByUserId(userId)
-
-      const maskedData = {
-        steuerjahr: taxYear,
-        status: summary?.status ?? null,
-        openItems: summary?.openItems ?? 0,
-        profil: profile
-          ? {
-              firstName: maskName(profile.firstName),
-              lastName: maskName(profile.lastName),
-              steuerId: maskTaxId(profile.steuerId),
-              steuernummer: maskTaxId(profile.steuernummer),
-            }
-          : null,
-        stammdaten: masterData
-          ? {
-              beruf: masterData.beruf,
-              familienstand: masterData.familienstand,
-              strasse: maskStreet(masterData.strasse),
-              hausnummer: maskHouseNumber(masterData.hausnummer),
-              plz: masterData.plz,
-              wohnort: masterData.wohnort,
-              iban: maskIban(masterData.iban),
-              telefon: maskPhone(masterData.telefon),
-            }
-          : null,
-      }
-
-      return json(maskedData)
-    },
-  )
 
   // 2. Tool: ausdruck_vorpruefung (Was fehlt für den Ausdruck, ADR-0052 §3)
   server.tool(

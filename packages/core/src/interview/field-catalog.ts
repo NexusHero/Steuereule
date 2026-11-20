@@ -154,6 +154,8 @@ const DECLARED: Readonly<Record<Screen, { readonly perInstance: boolean; readonl
       wohnort: text(100),
       beruf: text(100),
       religion: oneOf(RELIGION_KEYS),
+      /** Liable to church tax or not, without the confession (ADR-0052 amendment 3). */
+      kirchensteuerpflichtig: bool,
       familienstand: oneOf(MARITAL_STATUSES),
       familienstandSeit: date,
       iban: { kind: 'iban' },
@@ -342,6 +344,7 @@ const HINTS: Readonly<Partial<Record<Screen, Readonly<Record<string, string>>>>>
     'vorauszahlungen-betrag': 'Summe aller für das Jahr gezahlten Vorauszahlungen in ganzen Euro: Einkommensteuer plus Solidaritätszuschlag plus Kirchensteuer zusammen, es gibt kein eigenes Soli-Feld (z. B. „26.004 Euro Einkommensteuer und 747 Euro Soli“ → 26751); die App setzt vorauszahlungen-gate dazu selbst auf „Ja“',
   },
   stammdaten: {
+    kirchensteuerpflichtig: '„true“ = kirchensteuerpflichtig, „false“ = nicht; ohne die Konfession, die der Nutzer selbst einträgt. Eine eingetragene Konfession geht vor',
     religion: 'ELSTER-Schlüssel: VD = keine Religionszugehörigkeit (keine Kirchensteuer), EV = evangelisch, RK = römisch-katholisch, AK = altkatholisch; die übrigen Schlüssel sind Freireligiöse, Israelitische und Jüdische Gemeinden',
   },
   kind: {

@@ -21,7 +21,7 @@ const rollingBack: TransactionRunner = new PrismaTransactionRunner({ $transactio
 function service(overrides: { estimate?: unknown; printout?: unknown; confirmation?: unknown; interview?: unknown; transactions?: TransactionRunner | undefined } = {}) {
   const estimate = overrides.estimate ?? { getState: vi.fn().mockResolvedValue(computed(100, 100)) }
   const printout = overrides.printout ?? { check: vi.fn().mockResolvedValue({ missing: [] }) }
-  const confirmation = overrides.confirmation ?? { overview: vi.fn().mockResolvedValue({ annexes: [] }), writeConfirmedByAdvisor: vi.fn() }
+  const confirmation = overrides.confirmation ?? { overview: vi.fn().mockResolvedValue({ annexes: [] }), writeConfirmedByAdvisor: vi.fn(), readRawValues: vi.fn().mockResolvedValue({ 'stammdaten.kirchensteuerpflichtig': 'false' }) }
   const interview = overrides.interview ?? { getState: vi.fn().mockResolvedValue({ answers: {}, nextStep: { kind: 'done' }, openItems: 0 }) }
   return new McpReportService(estimate as never, printout as never, confirmation as never, interview as never, 'transactions' in overrides ? overrides.transactions : rollingBack)
 }
@@ -73,7 +73,7 @@ describe('McpReportService (ADR-0052 amendment 2)', () => {
     const report = await service({
       estimate: { getState: vi.fn().mockRejectedValue(new Error('down')) },
       printout: { check: vi.fn().mockResolvedValue({ missing: ['kapital'] }) },
-      confirmation: { overview: vi.fn().mockResolvedValue({ annexes: [{ annex: 'N', unconfirmed: 2 }, { annex: 'KAP', unconfirmed: 0 }] }) },
+      confirmation: { readRawValues: vi.fn().mockResolvedValue({ 'stammdaten.kirchensteuerpflichtig': 'false' }), overview: vi.fn().mockResolvedValue({ annexes: [{ annex: 'N', unconfirmed: 2 }, { annex: 'KAP', unconfirmed: 0 }] }) },
       interview: { getState: vi.fn().mockResolvedValue({ answers: {}, nextStep: { kind: 'question', id: 'job' }, openItems: 1 }) },
     }).report('u', 2025)
     expect(report.estimate).toEqual({ kind: 'unavailable' })
@@ -172,6 +172,30 @@ describe('McpReportService (ADR-0052 amendment 2)', () => {
     it('says what is missing while there is no estimate yet', async () => {
       const result = await service({ estimate: { getState: vi.fn().mockResolvedValue({ kind: 'offen', missing: ['lstb'] }) } }).breakdown('u', 2024)
       expect(result).toEqual({ ok: false, grund: 'offen', fehlt: ['lstb'] })
+    })
+  })
+
+  describe('church tax in the report (#543)', () => {
+    const withMasterData = (values: Record<string, string | null>) => ({ overview: vi.fn().mockResolvedValue({ annexes: [] }), writeConfirmedByAdvisor: vi.fn(), readRawValues: vi.fn().mockResolvedValue(values) })
+
+    it('asks for the yes/no while nothing is known', async () => {
+      const report = await service({ confirmation: withMasterData({ 'stammdaten.religion': null, 'stammdaten.kirchensteuerpflichtig': null }) }).report('u', 2024)
+      expect(report.nextSteps.join(' ')).toContain('stammdaten.kirchensteuerpflichtig')
+    })
+
+    it('names the missing confession of a liable person as the user’s task', async () => {
+      const report = await service({ confirmation: withMasterData({ 'stammdaten.religion': null, 'stammdaten.kirchensteuerpflichtig': 'true' }) }).report('u', 2024)
+      expect(report.nextSteps.join(' ')).toContain('Konfession fehlt')
+    })
+
+    it('says that the user’s confession wins when it contradicts the yes/no', async () => {
+      const report = await service({ confirmation: withMasterData({ 'stammdaten.religion': 'RK', 'stammdaten.kirchensteuerpflichtig': 'false' }) }).report('u', 2024)
+      expect(report.nextSteps.join(' ')).toContain('widerspricht')
+    })
+
+    it('is silent when the yes/no is set and nothing contradicts it', async () => {
+      const report = await service({ confirmation: withMasterData({ 'stammdaten.religion': null, 'stammdaten.kirchensteuerpflichtig': 'false' }) }).report('u', 2024)
+      expect(report.nextSteps.join(' ')).not.toContain('irchensteuer')
     })
   })
 })

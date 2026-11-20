@@ -15,6 +15,9 @@ function forExternalAssistant(description: string): string {
 
 const MAX_BATCH_FIELDS = 60
 
+/** Fields only the user enters, even through their own assistant. */
+const isUserOnly = (screen: Screen, field: string): boolean => screen === 'stammdaten' && field.trim() === 'religion'
+
 /** Entering values (unconfirmed, ADR-0052 §6/§7), describing the fields, and taking an own entry back. */
 export function registerEntryTools(session: McpSession, deps: McpDeps): void {
   const { server, userId, assistant } = session
@@ -28,6 +31,8 @@ export function registerEntryTools(session: McpSession, deps: McpDeps): void {
    */
   async function writeField(entry: { taxYear: number; screen: Screen; instance?: string | undefined; field: string; value: string | null; receiptId?: string | undefined; person?: 'A' | 'B' | undefined }): Promise<{ ok: true; key: string; result: string } | { ok: false; error: string }> {
     const { taxYear, screen, instance, value, receiptId, person } = entry
+    // Art. 9 DSGVO: the confession is the user's to enter, with the consent in the app (amendment 3, 7).
+    if (isUserOnly(screen, entry.field)) return { ok: false, error: 'USER_ONLY: Die Konfession trägt der Nutzer selbst in der App ein. Trage stattdessen stammdaten.kirchensteuerpflichtig („true“ oder „false“) ein.' }
     const target = validateStageTarget(screen, entry.field, true)
     if (!target.ok) return { ok: false, error: target.error.startsWith('USE_BOOKING_TOOL') ? 'USE_BOOKING_TOOL: Buchungen sind über diesen Zugang noch nicht möglich; der Nutzer bucht in der App.' : target.error }
     const field = entry.field.trim()
@@ -112,7 +117,7 @@ export function registerEntryTools(session: McpSession, deps: McpDeps): void {
       assertScope(assistant, 'steuerdaten:read')
       await deps.audit.append({ userId, action: 'READ', resource: 'maske_felder' })
       if (OWN_TOOL_SCREENS.has(screen)) return json({ ok: false, error: 'Buchungen sind über diesen Zugang noch nicht möglich; der Nutzer bucht in der App.' })
-      const specs = fieldsOfScreen(screen).filter((spec) => isAiWritable(screen, spec.field, true))
+      const specs = fieldsOfScreen(screen).filter((spec) => isAiWritable(screen, spec.field, true) && !isUserOnly(screen, spec.field))
       return json({
         screen,
         braucht_instance: specs.some((spec) => spec.perInstance),

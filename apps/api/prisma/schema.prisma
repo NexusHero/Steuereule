@@ -959,6 +959,8 @@ model MasterData {
   beruf                  String? /// @encrypted?mode=strict
   religion               String? /// @encrypted?mode=strict
   religionEinwilligungAm DateTime?
+  /// Liable to church tax or not, without the confession (ADR-0052 amendment 3); the confession wins.
+  kirchensteuerpflichtig Boolean?
   familienstand          String? /// @encrypted?mode=strict
   familienstandSeit      String? /// @encrypted?mode=strict
   iban                   String? /// @encrypted?mode=strict

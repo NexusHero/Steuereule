@@ -16,6 +16,7 @@ import { McpReportService } from './mcp-report.service.js'
 import { assertScope, type AssistantSessionInfo, type McpDeps, type McpSession } from './mcp-session.js'
 import { registerChildTools } from './tools/child-tools.js'
 import { registerEntryTools } from './tools/entry-tools.js'
+import { registerReadTools } from './tools/read-tools.js'
 import { registerReceiptTools } from './tools/receipt-tools.js'
 import { registerReportTools, registerStatusTools } from './tools/status-tools.js'
 
@@ -53,6 +54,7 @@ export class McpService {
     const { deps } = this
 
     registerStatusTools(session, deps)
+    registerReadTools(session, deps)
     registerEntryTools(session, deps)
     registerReceiptTools(session, deps)
     registerAdviceTools(server, assistant, {
