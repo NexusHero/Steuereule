@@ -195,7 +195,7 @@ describe('McpService (ADR-0052 §3 / §5 / §8 / §12)', () => {
     return content[0]?.text ?? ''
   }
 
-  it('lists all 6 domain-specific tools with clear schemas', async () => {
+  it('lists the booking-free domain tools and the deterministic advice tools', async () => {
     const client = await connectClient()
     const result = await client.listTools()
     const toolNames = result.tools.map((t) => t.name).sort()
@@ -203,11 +203,98 @@ describe('McpService (ADR-0052 §3 / §5 / §8 / §12)', () => {
     expect(toolNames).toEqual([
       'ausdruck_vorpruefung',
       'beleg_hochladen',
+      'einkommensteuer_berechnen',
       'eulen_hinweise',
+      'gesetzestext_lesen',
+      'gewerbesteuer_schaetzen',
+      'kapitalertraege_guenstigerpruefung',
+      'kleinunternehmer_pruefen',
       'maske_eintragen',
+      'rechtsquelle_nachschlagen',
+      'renovierung_15_prozent_pruefen',
+      'schenkungsteuer_berechnen',
+      'spekulationsfrist_pruefen',
       'steuerjahr_stand',
+      'steuerwissen_lesen',
+      'veranlagungsarten_vergleichen',
       'zahllink_anfordern',
     ])
+  })
+
+  it('einkommensteuer_berechnen quotes the tax core instead of letting the assistant work it out', async () => {
+    const client = await connectClient()
+    const res = await client.callTool({ name: 'einkommensteuer_berechnen', arguments: { year: 2025, taxableIncome: 50000 } })
+    const parsed = JSON.parse(getText(res))
+    expect(parsed.ok).toBe(true)
+    expect(parsed.incomeTaxEur).toBeGreaterThan(0)
+    expect(parsed.totalEur).toBeGreaterThanOrEqual(parsed.incomeTaxEur)
+  })
+
+  it('the advice tools need the read scope and refuse an assistant without it', async () => {
+    const client = await connectClient({ ...ALL_SCOPES_ASSISTANT, scopes: ['belege:write'] })
+    const res = await client.callTool({ name: 'steuerwissen_lesen', arguments: { topic: 'kennzahlen' } })
+    expect((res as { isError?: boolean }).isError).toBe(true)
+    expect(getText(res)).toContain('steuerdaten:read')
+  })
+
+  it('steuerwissen_lesen returns the checked knowledge section', async () => {
+    const client = await connectClient()
+    const res = await client.callTool({ name: 'steuerwissen_lesen', arguments: { topic: 'kennzahlen' } })
+    const parsed = JSON.parse(getText(res))
+    expect(parsed.ok).toBe(true)
+    expect(parsed.text.length).toBeGreaterThan(100)
+  })
+
+  it('maske_eintragen refuses an unknown field with the valid ones, as the in-app advisor does', async () => {
+    const client = await connectClient()
+    const res = await client.callTool({ name: 'maske_eintragen', arguments: { taxYear: YEAR, screen: 'lstb', field: 'grossWageEur', value: '5000' } })
+    expect((res as { isError?: boolean }).isError).toBe(true)
+    expect(getText(res)).toContain('UNKNOWN_FIELD')
+  })
+
+  it('maske_eintragen refuses a value the field cannot hold', async () => {
+    const client = await connectClient()
+    const res = await client.callTool({ name: 'maske_eintragen', arguments: { taxYear: YEAR, screen: 'lstb', field: 'bruttoarbeitslohn', value: 'viel Geld' } })
+    expect((res as { isError?: boolean }).isError).toBe(true)
+    expect(getText(res)).toContain('INVALID_VALUE')
+  })
+
+  it('steuerbericht, offene_fragen and auswirkung_simulieren give the assistant feedback for its user', async () => {
+    const report = {
+      report: async (_u: string, taxYear: number) => ({ taxYear, nextSteps: ['x'] }),
+      openQuestions: async () => ({ openQuestions: 2, next: { id: 'job', kind: 'question', answers: ['Angestellt'] } }),
+      simulate: async () => ({ ok: true, beforeRefundEur: 100, afterRefundEur: 250, deltaEur: 150 }),
+    }
+    const withReport = new McpService(cockpitService, printoutService, confirmationService, owlModeService, receiptService, unlockService, profileRepo, masterDataRepo, auditService, report as never)
+    const server = withReport.createServer(USER, ALL_SCOPES_ASSISTANT)
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
+    await server.connect(serverTransport)
+    const client = new Client({ name: 'TestClient', version: '1.0.0' })
+    await client.connect(clientTransport)
+
+    expect(JSON.parse(getText(await client.callTool({ name: 'steuerbericht', arguments: { taxYear: YEAR } }))).taxYear).toBe(YEAR)
+    expect(JSON.parse(getText(await client.callTool({ name: 'offene_fragen', arguments: { taxYear: YEAR } }))).next.id).toBe('job')
+    const sim = await client.callTool({ name: 'auswirkung_simulieren', arguments: { taxYear: YEAR, screen: 'lstb', field: 'bruttoarbeitslohn', value: '50000' } })
+    expect(JSON.parse(getText(sim)).deltaEur).toBe(150)
+  })
+
+  it('auswirkung_simulieren refuses a target the advisor would refuse and stores nothing', async () => {
+    const report = { simulate: async () => { throw new Error('must not run') } }
+    const withReport = new McpService(cockpitService, printoutService, confirmationService, owlModeService, receiptService, unlockService, profileRepo, masterDataRepo, auditService, report as never)
+    const server = withReport.createServer(USER, ALL_SCOPES_ASSISTANT)
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
+    await server.connect(serverTransport)
+    const client = new Client({ name: 'TestClient', version: '1.0.0' })
+    await client.connect(clientTransport)
+    const res = await client.callTool({ name: 'auswirkung_simulieren', arguments: { taxYear: YEAR, screen: 'lstb', field: 'gibtEsNicht', value: '1' } })
+    expect(JSON.parse(getText(res)).ok).toBe(false)
+  })
+
+  it('maske_eintragen points a booking to the booking path instead of writing it as a field', async () => {
+    const client = await connectClient()
+    const res = await client.callTool({ name: 'maske_eintragen', arguments: { taxYear: YEAR, screen: 'buchung', field: 'betrag', value: '10' } })
+    expect((res as { isError?: boolean }).isError).toBe(true)
+    expect(getText(res)).toContain('USE_BOOKING_TOOL')
   })
 
   it('steuerjahr_stand masks all sensitive personal data (Steuer-ID, IBAN, address, name)', async () => {

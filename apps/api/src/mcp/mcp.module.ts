@@ -11,7 +11,10 @@ import { ProfileModule } from '../profile/profile.module.js'
 import { MasterDataModule } from '../master-data/master-data.module.js'
 import { AuditModule } from '../audit/audit.module.js'
 import { McpController } from './mcp.controller.js'
+import { McpReportService } from './mcp-report.service.js'
 import { McpService } from './mcp.service.js'
+import { InterviewModule } from '../interview/interview.module.js'
+import { TaxEstimateModule } from '../tax-estimate/tax-estimate.module.js'
 
 @Module({
   imports: [
@@ -26,9 +29,11 @@ import { McpService } from './mcp.service.js'
     ProfileModule,
     MasterDataModule,
     AuditModule,
+    InterviewModule,
+    TaxEstimateModule,
   ],
   controllers: [McpController],
-  providers: [McpService],
+  providers: [McpService, McpReportService],
   exports: [McpService],
 })
 export class McpModule {}

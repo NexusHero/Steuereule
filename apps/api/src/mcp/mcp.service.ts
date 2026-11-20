@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common'
+import { Inject, Injectable, Optional } from '@nestjs/common'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import {
@@ -23,6 +23,9 @@ import { UnlockService } from '../unlock/unlock.service.js'
 import { PROFILE_REPOSITORY, type ProfileRepository } from '../profile/profile.repository.js'
 import { MASTER_DATA_REPOSITORY, type MasterDataRepository } from '../master-data/master-data.repository.js'
 import { AuditService } from '../audit/audit.service.js'
+import { checkStageValue, validateStageTarget } from '../ki/advisor-safety.js'
+import { registerAdviceTools } from './mcp-advice-tools.js'
+import { McpReportService } from './mcp-report.service.js'
 
 export interface AssistantSessionInfo {
   readonly clientId: string
@@ -52,6 +55,7 @@ export class McpService {
     @Inject(PROFILE_REPOSITORY) private readonly profileRepository: ProfileRepository,
     @Inject(MASTER_DATA_REPOSITORY) private readonly masterDataRepository: MasterDataRepository,
     @Inject(AuditService) private readonly auditService: AuditService,
+    @Optional() @Inject(McpReportService) private readonly report?: McpReportService,
   ) {}
 
   createServer(userId: string, assistant: AssistantSessionInfo): McpServer {
@@ -157,6 +161,17 @@ export class McpService {
       },
       async ({ taxYear, screen, instance, field, value, receiptId }) => {
         assertScope(assistant, 'steuerdaten:write')
+        // The same target and value checks as the in-app advisor (unknown field, never-writable field,
+        // booking mask, catalogue value rules). The user's own assistant may write personal fields (ADR-0052 §8).
+        const target = validateStageTarget(screen, field, true)
+        if (!target.ok) {
+          const error = target.error.startsWith('USE_BOOKING_TOOL') ? 'USE_BOOKING_TOOL: Buchungen sind über diesen Zugang noch nicht möglich; der Nutzer bucht in der App.' : target.error
+          return { isError: true, content: [{ type: 'text', text: JSON.stringify({ ok: false, error }, null, 2) }] }
+        }
+        if (value !== null) {
+          const checked = checkStageValue(screen, field, value)
+          if (!checked.ok) return { isError: true, content: [{ type: 'text', text: JSON.stringify({ ok: false, error: checked.error }, null, 2) }] }
+        }
         const key = provenanceKey(screen, field, instance)
         const provenance: Provenance =
           receiptId !== undefined
@@ -289,6 +304,62 @@ export class McpService {
       },
     )
 
+    registerAdviceTools(server, assistant, {
+      requireRead: (who) => assertScope(who, 'steuerdaten:read'),
+      audit: (resource) => this.auditService.append({ userId, action: 'READ', resource }),
+    })
+    this.registerReportTools(server, userId, assistant)
+
     return server
+  }
+
+  /** Feedback for the assistant's user: the state in words, the questions only they can answer, an entry's effect (ADR-0052 amendment 2). */
+  private registerReportTools(server: McpServer, userId: string, assistant: AssistantSessionInfo): void {
+    const report = this.report
+    if (!report) return
+    const json = (value: unknown) => ({ content: [{ type: 'text' as const, text: JSON.stringify(value, null, 2) }] })
+
+    server.tool(
+      'steuerbericht',
+      'Liefert den Stand der Erklärung zum Weitersagen an den Nutzer: die Schätzung der App (Erstattung oder Nachzahlung), was für den Ausdruck fehlt, was der Nutzer noch bestätigen muss, offene Interview-Fragen und die nächsten Schritte. Rufe es nach jedem größeren Eintrag auf und gib dem Nutzer eine verständliche Zusammenfassung.',
+      { taxYear: z.number().int().describe('Das Steuerjahr (z.B. 2024 oder 2025)') },
+      async ({ taxYear }) => {
+        assertScope(assistant, 'steuerdaten:read')
+        await this.auditService.append({ userId, action: 'READ', resource: 'steuerbericht' })
+        return json(await report.report(userId, taxYear))
+      },
+    )
+
+    server.tool(
+      'offene_fragen',
+      'Nennt die nächste offene Interview-Frage der App mit ihren möglichen Antworten und wie viele noch folgen. Das sind Tatsachen, die nur der Nutzer kennt: Frage ihn und trage die Antwort mit maske_eintragen (Maske "interview") ein. Erfinde nie eine Antwort.',
+      { taxYear: z.number().int().describe('Das Steuerjahr (z.B. 2024 oder 2025)') },
+      async ({ taxYear }) => {
+        assertScope(assistant, 'steuerdaten:read')
+        await this.auditService.append({ userId, action: 'READ', resource: 'offene_fragen' })
+        return json(await report.openQuestions(userId, taxYear))
+      },
+    )
+
+    server.tool(
+      'auswirkung_simulieren',
+      'Zeigt vorab, was ein Eintrag an der Erstattung ändert (Schätzung der App vorher und nachher), ohne etwas zu speichern. Nutze es, um dem Nutzer die Folge einer Angabe zu erklären, bevor du sie mit maske_eintragen einträgst.',
+      {
+        taxYear: z.number().int().describe('Das Steuerjahr (z.B. 2024 oder 2025)'),
+        screen: z.enum(SCREENS).describe('Die Erfassungsmaske'),
+        instance: z.string().optional().describe('Instanz-ID bei mehrfachen Objekten'),
+        field: z.string().describe('Der Feldbezeichner'),
+        value: z.string().describe('Der Wert, dessen Wirkung simuliert wird'),
+      },
+      async ({ taxYear, screen, instance, field, value }) => {
+        assertScope(assistant, 'steuerdaten:read')
+        await this.auditService.append({ userId, action: 'READ', resource: 'auswirkung_simulieren' })
+        const target = validateStageTarget(screen, field, true)
+        if (!target.ok) return json({ ok: false, error: target.error })
+        const checked = checkStageValue(screen, field, value)
+        if (!checked.ok) return json({ ok: false, error: checked.error })
+        return json(await report.simulate(userId, taxYear, screen, field.trim(), checked.value, instance))
+      },
+    )
   }
 }
