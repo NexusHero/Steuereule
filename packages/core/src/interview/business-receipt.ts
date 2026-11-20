@@ -20,8 +20,8 @@ export interface BusinessReceiptRead {
 export type ReceiptDirection = 'ausgabe' | 'einnahme'
 
 // Either grouped thousands („1.234,56“, „1 234,56“) or plain digits („1234,56“, „12.34“); the two branches
-// cannot both match the same digits, so the pattern stays linear on long receipt text.
-const AMOUNT = String.raw`(\d{1,3}(?:[.\s]\d{3})+,\d{2}|\d+[.,]\d{2})`
+// cannot both match the same digits, and bounded repeats (up to 999 Mrd. €) keep the pattern linear on long text.
+const AMOUNT = String.raw`(\d{1,3}(?:[.\s]\d{3}){1,4},\d{2}|\d{1,12}[.,]\d{2})`
 const TOTAL_LABELS = /(gesamtbetrag|rechnungsbetrag|zu\s+zahlen(?:der\s+betrag)?|endbetrag|summe\s+brutto|bruttobetrag|gesamt\s*\(brutto\)|gesamtsumme|gesamt\b|brutto\b|summe|total|betrag)/i
 
 function cents(raw: string): number {
