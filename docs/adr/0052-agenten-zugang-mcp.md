@@ -166,3 +166,26 @@ Technischer Schnitt (folgt aus §6/§7, ohne neue Abhängigkeit):
   und schreibt Felder nur über die Repositories der Masken. 17.1 verdrahtet die Masken, die ein
   Nicht-Nutzer heute füllen kann (LStB, Rente, Kapital, Vermietung); die übrigen Masken bekommen
   Schreibweg und Nutzer-Hook mit dem Assistenten (17.3).
+
+## Amendment 2 (2026-11-20) — Beratung und Rückmeldung für den Assistenten
+
+Stakeholder-Entscheidung (NexusHero): Der Assistent des Nutzers bekommt dieselbe fachliche Beratung
+wie der In-App-Berater, damit er die Erklärung selbstständig führen und seinem Nutzer Rückmeldung
+geben kann. Kein Modellaufruf unsererseits (§1 bleibt): die Beratung sind **deterministische
+Werkzeuge**, keine Agent-zu-Agent-Frage an unser LLM.
+
+- **Beratungswerkzeuge** (Scope `steuerdaten:read`, lesen und schreiben keine Nutzerdaten, auditiert):
+  `einkommensteuer_berechnen`, `veranlagungsarten_vergleichen`, `kapitalertraege_guenstigerpruefung`,
+  `spekulationsfrist_pruefen`, `renovierung_15_prozent_pruefen`, `schenkungsteuer_berechnen`,
+  `kleinunternehmer_pruefen`, `gewerbesteuer_schaetzen`, `steuerwissen_lesen`, `gesetzestext_lesen`,
+  `rechtsquelle_nachschlagen`. Sie teilen Schemas und Rechenkern mit dem In-App-Berater
+  (`TOOL_ARG_SCHEMAS`), die Zahlen sind also dieselben.
+- **Rückmeldung:** `steuerbericht` (Schätzung, Ausdruck-Lücken, unbestätigte Anlagen, offene Fragen,
+  nächste Schritte), `offene_fragen` (nächste Interview-Frage mit möglichen Antworten, nur der Nutzer
+  kennt sie) und `auswirkung_simulieren` (Erstattung vorher/nachher über den echten Schreibweg in einer
+  immer zurückgerollten Transaktion).
+- **Eintragen mit derselben Zielprüfung wie der interne Berater:** `maske_eintragen` lehnt unbekannte
+  Felder, nie beschreibbare Felder, die Buchungsmaske und Werte, die das Feld nicht halten kann, mit
+  dem Grund ab. Personenbezogene Felder bleiben für den eigenen Assistenten offen (§8).
+- **Noch nicht:** Buchungen und Anlagegüter (Selbstständige) und das Zurückziehen eigener Einträge über
+  MCP. Bezahlen, Konto und Einwilligungen bleiben ausgeschlossen (§4).
