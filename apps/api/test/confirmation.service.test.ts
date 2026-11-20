@@ -219,6 +219,13 @@ describe('BestaetigungService', () => {
     })
   })
 
+  it('stores „kirchensteuerpflichtig“ as a yes/no of its own and leaves the confession alone (#543)', async () => {
+    await service.write(USER, YEAR, 'stammdaten.kirchensteuerpflichtig', 'false', CLAUDE)
+    expect((await masterData.findByUserId(USER))?.kirchensteuerpflichtig).toBe(false)
+    expect((await masterData.findByUserId(USER))?.religion ?? null).toBeNull()
+    expect(await service.readRawValues(USER, YEAR, ['stammdaten.kirchensteuerpflichtig'])).toEqual({ 'stammdaten.kirchensteuerpflichtig': 'false' })
+  })
+
   it('a proposal decision on a field without a proposal is a 404, an unknown key a 400', async () => {
     await expect(service.decideProposal(USER, YEAR, 'lstb.lohnsteuer', 'annehmen')).rejects.toMatchObject({ code: 'PROPOSAL_NOT_FOUND' })
     await expect(service.decideProposal(USER, YEAR, 'gewerbe.gewinn', 'annehmen')).rejects.toMatchObject({ code: 'FIELD_UNKNOWN' })

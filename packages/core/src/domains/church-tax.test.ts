@@ -176,3 +176,13 @@ describe('church tax data', () => {
     }
   })
 })
+
+describe('church tax without the confession (ADR-0052 amendment 3, #543)', () => {
+  it('takes the yes/no only while no confession is entered; the confession wins', () => {
+    expect(churchMembership(null, false)).toEqual({ kind: 'none' })
+    expect(churchMembership('', true)).toEqual({ kind: 'member', church: 'other' })
+    expect(churchMembership(null, null)).toEqual({ kind: 'unknown' })
+    expect(churchMembership('RK', false)).toEqual({ kind: 'member', church: 'RK' })
+    expect(churchMembership('VD', true)).toEqual({ kind: 'none' })
+  })
+})

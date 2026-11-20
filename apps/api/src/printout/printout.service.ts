@@ -30,7 +30,7 @@ import { PARTNER_COUPLING_REPOSITORY, type PartnerCouplingRepository } from '../
 import { WAGE_TAX_CERTIFICATE_REPOSITORY, type WageTaxCertificateRepository } from '../lstb/lstb.repository.js'
 import { PROFILE_REPOSITORY, type ProfileRepository } from '../profile/profile.repository.js'
 import { PENSION_REPOSITORY, type PensionRepository } from '../pension/pension.repository.js'
-import { MASTER_DATA_REPOSITORY, type MasterDataRepository } from '../master-data/master-data.repository.js'
+import { MASTER_DATA_REPOSITORY, religionForReturn, type MasterDataRepository } from '../master-data/master-data.repository.js'
 import { RENTAL_REPOSITORY, type RentalRepository } from '../rental/rental.repository.js'
 import { childAllowancesEur } from '../children/swiss-allowance.js'
 import { fillInForms } from './fill-in-lines.js'
@@ -242,7 +242,7 @@ export class PrintoutService {
         lastName: spouseProf?.lastName ?? null,
         steuerId: spouseProf?.steuerId ?? null,
         geburtsdatum: spouseSd?.geburtsdatum ?? null,
-        religion: spouseSd?.religion ?? null,
+        religion: religionForReturn(spouseSd),
         beruf: spouseSd?.beruf ?? null,
         bruttoarbeitslohn: spouseLstb?.bruttoarbeitslohn ?? null,
         pension: spousePension ? { rentenart: spousePension.rentenart, jahresbetrag: spousePension.jahresbetrag } : null,
@@ -314,7 +314,7 @@ export class PrintoutService {
         steuerId: profile?.steuerId ?? null,
         steuernummer: profile?.steuernummer ?? null,
       },
-      masterData,
+      masterData: masterData ? { ...masterData, religion: religionForReturn(masterData) } : masterData,
       bruttoarbeitslohn: lstb?.bruttoarbeitslohn ?? null,
       pension: pension ? { rentenart: pension.rentenart, jahresbetrag: pension.jahresbetrag } : null,
       capital: capital

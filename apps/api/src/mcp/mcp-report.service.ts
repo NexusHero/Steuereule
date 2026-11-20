@@ -9,6 +9,7 @@ import { admittedEntryIds, InterviewService } from '../interview/interview.servi
 import { PrintoutService } from '../printout/printout.service.js'
 import { isInsideTransaction, PrismaTransactionRunner, TRANSACTION_RUNNER, type TransactionRunner } from '../prisma/transaction.js'
 import { TaxEstimateService } from '../tax-estimate/tax-estimate.service.js'
+import { churchTaxLiableFrom } from './read-view.js'
 
 /** Thrown on purpose at the end of a simulation: the transaction must never commit. */
 class SimulationRollback extends Error {}
@@ -64,6 +65,7 @@ export class McpReportService {
     ])
     const unconfirmed = overview.annexes.filter((annex) => annex.unconfirmed > 0).map((annex) => ({ annex: annex.annex, count: annex.unconfirmed }))
     const nextSteps: string[] = []
+    nextSteps.push(...(await this.churchTaxNotes(userId, taxYear)))
     if (gaps === null) nextSteps.push('Die Ausdruck-Vorprüfung ließ sich für dieses Jahr nicht ausführen: Sage dem Nutzer nicht, dass die Erklärung druckfertig ist.')
     if (interview.openItems > 0) nextSteps.push(`Das Interview hat noch ${interview.openItems} offene Frage(n): Nutzer fragen, dann mit maske_eintragen (Maske "interview") eintragen.`)
     if (gaps !== null && gaps.length > 0) nextSteps.push('Für den Ausdruck fehlen noch Angaben (siehe "gaps"): erfassen oder den Nutzer darum bitten.')
@@ -77,6 +79,17 @@ export class McpReportService {
       interview: { openQuestions: interview.openItems },
       nextSteps,
     }
+  }
+
+  /** What is open about the church tax of the user (ADR-0052 amendment 3, 7): the yes/no, the confession, a contradiction. */
+  private async churchTaxNotes(userId: string, taxYear: number): Promise<string[]> {
+    const values = await this.confirmation.readRawValues(userId, taxYear, ['stammdaten.religion', 'stammdaten.kirchensteuerpflichtig'])
+    const confession = churchTaxLiableFrom(values['stammdaten.religion'])
+    const said = values['stammdaten.kirchensteuerpflichtig'] ?? null
+    if (confession === null && said === null) return ['Kirchensteuerpflicht ist offen: Frage den Nutzer und trage stammdaten.kirchensteuerpflichtig („true“ oder „false“) ein.']
+    if (confession === null && said === 'true') return ['Kirchensteuerpflichtig, aber die Konfession fehlt: Sie ist für den Satz und den Ausdruck nötig, und nur der Nutzer trägt sie in der App ein (Profil).']
+    if (confession !== null && said !== null && String(confession) !== said) return ['Die Konfession, die der Nutzer eingetragen hat, widerspricht deiner Angabe „kirchensteuerpflichtig“; es gilt die Konfession. Kläre das mit dem Nutzer.']
+    return []
   }
 
   /**

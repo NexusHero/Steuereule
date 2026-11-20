@@ -20,9 +20,16 @@ export type ChurchMembership =
   | { readonly kind: 'unknown' }
   | { readonly kind: 'member'; readonly church: ChurchKind | 'other' }
 
-/** ELStAM religion key → membership. `VD` = no church levying Kirchensteuer. */
-export function churchMembership(religion: string | null | undefined): ChurchMembership {
-  if (religion === undefined || religion === null || religion.trim() === '') return { kind: 'unknown' }
+/**
+ * ELStAM religion key → membership. `VD` = no church levying Kirchensteuer. Without a key, the plain
+ * yes/no „kirchensteuerpflichtig“ decides (ADR-0052 amendment 3): it says that church tax is due, not
+ * to which church, so the rate stays open. An entered key always wins.
+ */
+export function churchMembership(religion: string | null | undefined, liable?: boolean | null): ChurchMembership {
+  if (religion === undefined || religion === null || religion.trim() === '') {
+    if (liable === true) return { kind: 'member', church: 'other' }
+    return liable === false ? { kind: 'none' } : { kind: 'unknown' }
+  }
   if (religion === 'VD') return { kind: 'none' }
   if (religion === 'EV' || religion === 'RK') return { kind: 'member', church: religion }
   return { kind: 'member', church: 'other' }
