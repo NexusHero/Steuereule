@@ -15,8 +15,8 @@ const computed = (from: number, to: number) => ({
   churchTaxOpen: false,
 })
 
-/** A runner that, like Prisma, discards the work when it throws. */
-const rollingBack: TransactionRunner = { run: (work) => work() }
+/** The Prisma runner over a client stub: the only runner the simulation trusts to roll back. */
+const rollingBack: TransactionRunner = new PrismaTransactionRunner({ $transaction: async (work) => work({}) })
 
 function service(overrides: { estimate?: unknown; printout?: unknown; confirmation?: unknown; interview?: unknown; transactions?: TransactionRunner | undefined } = {}) {
   const estimate = overrides.estimate ?? { getState: vi.fn().mockResolvedValue(computed(100, 100)) }
@@ -97,6 +97,14 @@ describe('McpReportService (ADR-0052 amendment 2)', () => {
     const outer = new PrismaTransactionRunner({ $transaction: async (work) => work({}) })
     const confirmation = { overview: vi.fn(), writeConfirmedByAdvisor: vi.fn() }
     const result = await outer.run(() => service({ confirmation, transactions: outer }).simulate('u', 2025, 'lstb', 'bruttoarbeitslohn', '50000'))
+    expect(result.ok).toBe(false)
+    expect(confirmation.writeConfirmedByAdvisor).not.toHaveBeenCalled()
+  })
+
+  it('trusts only the Prisma runner to roll back, never an unknown one', async () => {
+    const confirmation = { overview: vi.fn(), writeConfirmedByAdvisor: vi.fn() }
+    const unknown: TransactionRunner = { run: (work) => work() }
+    const result = await service({ confirmation, transactions: unknown }).simulate('u', 2025, 'lstb', 'bruttoarbeitslohn', '50000')
     expect(result.ok).toBe(false)
     expect(confirmation.writeConfirmedByAdvisor).not.toHaveBeenCalled()
   })

@@ -7,7 +7,7 @@ import { HOUSEHOLD_AND_HEALTH_BOOSTERS } from '../config/features.js'
 import { ConfirmationService } from '../confirmation/confirmation.service.js'
 import { InterviewService } from '../interview/interview.service.js'
 import { PrintoutService } from '../printout/printout.service.js'
-import { isInsideTransaction, passThroughTransactionRunner, TRANSACTION_RUNNER, type TransactionRunner } from '../prisma/transaction.js'
+import { isInsideTransaction, PrismaTransactionRunner, TRANSACTION_RUNNER, type TransactionRunner } from '../prisma/transaction.js'
 import { TaxEstimateService } from '../tax-estimate/tax-estimate.service.js'
 
 /** Thrown on purpose at the end of a simulation: the transaction must never commit. */
@@ -94,9 +94,9 @@ export class McpReportService {
    * entry uses, inside a transaction that is always rolled back.
    */
   async simulate(userId: string, taxYear: number, screen: Parameters<typeof provenanceKey>[0], field: string, value: string, instance?: string): Promise<SimulationResult> {
-    // Without a real transaction the entry would stay written and confirmed: never simulate then.
-    // Inside a running transaction `run` joins it, and the rollback would not reach its commit: refuse too.
-    if (!this.transactions || this.transactions === passThroughTransactionRunner || isInsideTransaction()) return { ok: false, reason: 'Die Simulation steht in dieser Umgebung nicht zur Verfügung.' }
+    // The write is rolled back only by a real database transaction: trust the Prisma runner alone, never
+    // an unknown one, and never join a transaction already running (its commit would keep the write).
+    if (!(this.transactions instanceof PrismaTransactionRunner) || isInsideTransaction()) return { ok: false, reason: 'Die Simulation steht in dieser Umgebung nicht zur Verfügung.' }
     // § 35a and § 33 are left out of the estimate while their boosters are off: 0 € would read as "brings nothing".
     const leftOut = effectLeftOutOfEstimate({ screen, instance: instance ?? null, values: [[field, value]] }, HOUSEHOLD_AND_HEALTH_BOOSTERS)
     if (leftOut && leftOut.kind === 'not-computable') return { ok: false, reason: leftOut.hint }
