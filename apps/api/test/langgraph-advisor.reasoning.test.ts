@@ -107,7 +107,7 @@ const thinking = (text: string): AIMessageChunk => new AIMessageChunk({ content:
 /** Test chunks carry provider-shaped fields the constructor's types are narrower than. */
 const chunkOf = (fields: Record<string, unknown>): AIMessageChunk => new AIMessageChunk(fields as never)
 
-const answer = (text: string, usage?: { input: number; output: number; cached?: number }): AIMessageChunk =>
+const answer = (text: string, usage?: { input: number; output: number; cached?: number; written?: number }): AIMessageChunk =>
   chunkOf({
     content: text,
     ...(usage
@@ -116,7 +116,14 @@ const answer = (text: string, usage?: { input: number; output: number; cached?: 
             input_tokens: usage.input,
             output_tokens: usage.output,
             total_tokens: usage.input + usage.output,
-            ...(usage.cached !== undefined ? { input_token_details: { cache_read: usage.cached } } : {}),
+            ...(usage.cached !== undefined || usage.written !== undefined
+              ? {
+                  input_token_details: {
+                    ...(usage.cached !== undefined ? { cache_read: usage.cached } : {}),
+                    ...(usage.written !== undefined ? { cache_creation: usage.written } : {}),
+                  },
+                }
+              : {}),
           },
         }
       : {}),
@@ -172,15 +179,21 @@ describe('LangGraphAdvisorEngine: reasoning and usage (#476)', () => {
     expect(result.reasoning).toBeUndefined()
   })
 
-  it('adds up token usage over all rounds, including cache hits', async () => {
+  it('adds up token usage over all rounds, including cache hits and cache writes', async () => {
     const toolCall = chunkOf({
       content: '',
       tool_call_chunks: [{ name: 'lookup_legal_source', args: JSON.stringify({ sourceId: 'estg-9-1' }), index: 0, id: 'c1' }],
-      usage_metadata: { input_tokens: 1500, output_tokens: 40, total_tokens: 1540, input_token_details: { cache_read: 1200 } },
+      usage_metadata: { input_tokens: 1500, output_tokens: 40, total_tokens: 1540, input_token_details: { cache_read: 1200, cache_creation: 250 } },
     })
-    const model = new ChunkedChatModel([[toolCall], [answer('Antwort.', { input: 1600, output: 60, cached: 1200 })]])
+    const model = new ChunkedChatModel([[toolCall], [answer('Antwort.', { input: 1600, output: 60, cached: 1200, written: 300 })]])
     const { result } = await run(new LangGraphAdvisorEngine(runtime('anthropic'), () => model))
-    expect(result.usage).toEqual({ inputTokens: 3100, outputTokens: 100, cachedInputTokens: 2400 })
+    expect(result.usage).toEqual({ inputTokens: 3100, outputTokens: 100, cachedInputTokens: 2400, cacheWriteInputTokens: 550 })
+  })
+
+  it('counts no cache writes where the provider reports none', async () => {
+    const model = new ChunkedChatModel([[answer('Antwort.', { input: 1600, output: 60, cached: 1200 })]])
+    const { result } = await run(new LangGraphAdvisorEngine(runtime('google-genai'), () => model))
+    expect(result.usage).toEqual({ inputTokens: 1600, outputTokens: 60, cachedInputTokens: 1200, cacheWriteInputTokens: 0 })
   })
 
   it('reports no usage rather than zeros when the provider sends none', async () => {
