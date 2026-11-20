@@ -508,3 +508,51 @@ export class SpecialTariffsDto {
   @ApiProperty({ type: RetainedResultDto, nullable: true, description: '§ 34a: the result; null without facts or for an EÜR.' }) retained!: RetainedResultDto | null
   @ApiProperty({ type: Boolean, description: '§ 34a was asked for but the profit is an EÜR: only a Bilanzierer may (§ 4 Abs. 1, § 5 EStG).' }) retainedOnlyBilanz!: boolean
 }
+
+// ---------------------------------------------------------------------------------------------------
+// Lohn (ADR-0101 §22)
+
+export class PayrollRunInputDto {
+  @ApiProperty({ type: Number, minimum: 1, maximum: 12 }) @IsInt() @Min(1) @Max(12) month!: number
+  @ApiProperty({ enum: ['regulaer', 'minijob'] }) @IsIn(['regulaer', 'minijob']) kind!: 'regulaer' | 'minijob'
+  @ApiProperty({ type: String, maxLength: 80, description: 'The employee as the user calls them.' }) @IsString() @MaxLength(80) employee!: string
+  @ApiProperty(EUR) @IsNumber() @Min(0) grossEur!: number
+  @ApiPropertyOptional(EUR) @IsOptional() @IsNumber() @Min(0) wageTaxEur?: number
+  @ApiPropertyOptional(EUR) @IsOptional() @IsNumber() @Min(0) soliEur?: number
+  @ApiPropertyOptional(EUR) @IsOptional() @IsNumber() @Min(0) churchTaxEur?: number
+  @ApiPropertyOptional({ enum: ['ev', 'rk'], nullable: true }) @IsOptional() @IsIn(['ev', 'rk', null]) church?: 'ev' | 'rk' | null
+  @ApiPropertyOptional({ ...EUR, description: 'The employee’s share of social security.' }) @IsOptional() @IsNumber() @Min(0) employeeSocialEur?: number
+  @ApiPropertyOptional({ ...EUR, description: 'The employer’s share and the levies.' }) @IsOptional() @IsNumber() @Min(0) employerSocialEur?: number
+  @ApiPropertyOptional({ type: Boolean, description: 'Minijob: in the statutory health insurance (flat 13 % KV).' }) @IsOptional() @IsBoolean() statutoryHealthInsured?: boolean
+  @ApiPropertyOptional({ type: Boolean, description: 'Minijob: exempt from the pension insurance.' }) @IsOptional() @IsBoolean() rvExempt?: boolean
+}
+
+export class PayrollRunDto {
+  @ApiProperty({ type: String }) id!: string
+  @ApiProperty({ type: Number }) month!: number
+  @ApiProperty({ enum: ['regulaer', 'minijob'] }) kind!: 'regulaer' | 'minijob'
+  @ApiProperty({ type: String }) employee!: string
+  @ApiProperty(EUR) grossEur!: number
+  @ApiProperty(EUR) netEur!: number
+  @ApiProperty(EUR) wageTaxEur!: number
+  @ApiProperty(EUR) employerChargesEur!: number
+  @ApiProperty({ type: Number, nullable: true }) entryNumber!: number | null
+}
+
+export class WageTaxReturnDto {
+  @ApiProperty({ type: String }) label!: string
+  @ApiProperty({ type: String }) due!: string
+  @ApiProperty({ type: 'object', additionalProperties: { type: 'number' }, description: 'Kennzahl → value (Lohnsteuer-Anmeldung).' }) kennzahlen!: Record<string, number>
+}
+
+export class MinijobMonthDto {
+  @ApiProperty({ type: Number }) month!: number
+  @ApiProperty({ ...EUR, description: 'Employer charges and the Minijobber’s RV share, to the Minijob-Zentrale.' }) totalEur!: number
+}
+
+export class PayrollOverviewDto {
+  @ApiProperty({ type: [PayrollRunDto] }) runs!: PayrollRunDto[]
+  @ApiProperty({ enum: ['monat', 'quartal', 'jahr'] }) wageTaxPeriod!: 'monat' | 'quartal' | 'jahr'
+  @ApiProperty({ type: [WageTaxReturnDto] }) wageTaxReturns!: WageTaxReturnDto[]
+  @ApiProperty({ type: [MinijobMonthDto] }) minijobCharges!: MinijobMonthDto[]
+}

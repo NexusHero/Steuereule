@@ -1743,3 +1743,26 @@ model BookingRule {
   @@index([userId])
   @@map("Buchungsregel")
 }
+
+/// One payroll run of an employee of the business (ADR-0101 §22): the amounts of the outside payroll, or a
+/// Minijob the app computed; the Lohnsteuer-Anmeldung sums them. Booked as one entry (entryNumber).
+model PayrollRun {
+  id          String   @id @default(uuid())
+  userId      String
+  taxYear     Int      @map("steuerjahr")
+  person      String   @default("A")
+  business    Int      @default(1) @map("betrieb")
+  /// 1–12.
+  month       Int      @map("monat")
+  /// "regulaer" or "minijob".
+  kind        String   @map("art")
+  /// The employee's name as the user calls them.
+  employee    String   @map("arbeitnehmer") /// @encrypted?mode=strict
+  /// The amounts as JSON (gross, wage tax, Soli, church tax and kind, social security shares).
+  amounts     String   @map("betraege") /// @encrypted?mode=strict
+  entryNumber Int?     @map("buchungsnummer")
+  createdAt   DateTime @default(now())
+
+  @@index([userId, taxYear, person, business])
+  @@map("Lohnlauf")
+}

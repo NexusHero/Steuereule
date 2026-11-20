@@ -15,7 +15,22 @@ import type {
   FixedAssetRecord,
   LoadedBook,
   NewFixedAsset,
+  PayrollRunRecord,
 } from './business.repository.js'
+
+function toPayrollRun(row: { id: string; taxYear: number; person: string; business: number; month: number; kind: string; employee: string; amounts: string; entryNumber: number | null }): PayrollRunRecord {
+  return {
+    id: row.id,
+    taxYear: row.taxYear,
+    person: row.person === 'B' ? 'B' : 'A',
+    business: row.business,
+    month: row.month,
+    kind: row.kind === 'minijob' ? 'minijob' : 'regulaer',
+    employee: row.employee,
+    amounts: row.amounts,
+    entryNumber: row.entryNumber,
+  }
+}
 
 type Tx = Pick<EncryptedPrismaClient, 'ledger' | 'journalEntry' | 'journalLine' | 'ledgerLogRecord' | 'fixedAsset' | '$queryRaw'>
 
@@ -311,6 +326,15 @@ export class PrismaBusinessRepository implements BusinessRepository {
 
   async setBankTransactionStatus(userId: string, id: string, status: BankTransactionRecord['status'], entryNumber: number | null): Promise<void> {
     await this.prisma.bankTransaction.updateMany({ where: { id, userId }, data: { status, entryNumber } })
+  }
+
+  async listPayrollRuns(userId: string, taxYear: number, ref: BusinessRef): Promise<PayrollRunRecord[]> {
+    const rows = await this.prisma.payrollRun.findMany({ where: { userId, taxYear, ...ref }, orderBy: [{ month: 'asc' }, { createdAt: 'asc' }] })
+    return rows.map(toPayrollRun)
+  }
+
+  async addPayrollRun(userId: string, run: Omit<PayrollRunRecord, 'id'>): Promise<PayrollRunRecord> {
+    return toPayrollRun(await this.prisma.payrollRun.create({ data: { userId, ...run } }))
   }
 
   async listRules(userId: string, person: BusinessPerson): Promise<BookingRuleRecord[]> {

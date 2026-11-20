@@ -452,6 +452,23 @@ describe('BusinessService (ADR-0101)', () => {
     expect((await service.estimateInput('u', 2026, 'A'))!.business.special?.retained).toEqual({ favouredEur: 50_000, taxEur: 14_125, recaptureEur: 0 })
   })
 
+  it('books payroll runs and derives the Lohnsteuer-Anmeldung and the Minijob charges (ADR-0101 §22)', async () => {
+    const { service } = setup()
+    await service.addPayrollRun('u', 2026, A1, { month: 1, kind: 'regulaer', employee: 'Anna', grossEur: 3_000, wageTaxEur: 450, soliEur: 0, churchTaxEur: 36, church: 'ev', employeeSocialEur: 620, employerSocialEur: 640 })
+    const { entry } = await service.addPayrollRun('u', 2026, A1, { month: 1, kind: 'minijob', employee: 'Ben', grossEur: 600, statutoryHealthInsured: true })
+    expect(entry?.date).toBe('2026-01-31')
+    await expect(service.addPayrollRun('u', 2026, A1, { month: 2, kind: 'minijob', employee: 'Ben', grossEur: 700 })).rejects.toMatchObject({ code: 'PAYROLL_MINIJOB_OVER_LIMIT' })
+    const p = await service.payroll('u', 2026, A1)
+    // First year: January's 450 € × 12 = 5.400 € → monthly.
+    expect(p.wageTaxPeriod).toBe('monat')
+    expect(p.wageTaxReturns).toEqual([{ label: '01/2026', due: '2026-02-10', kennzahlen: { '86': 1, '42': 450, '61': 36, '83': 486 } }])
+    expect(p.minijobCharges).toEqual([{ month: 1, totalEur: 208.62 }])
+    expect(p.runs.map((r) => [r.employee, r.netEur])).toEqual([['Anna', 1_894], ['Ben', 578.4]])
+    // The book: wages, Minijob, employer charges as Personalaufwand.
+    const input = (await service.estimateInput('u', 2026, 'A'))!
+    expect(input.business.selfEmployedEur).toBe(-(3_000 + 640 + 600 + 187.02))
+  })
+
   it('the GoBD export is a zip with index.xml and the journal, and is itself logged in the chain', async () => {
     const { service, repository } = setup()
     await service.post('u', YEAR, A1, sale)

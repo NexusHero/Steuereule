@@ -3419,7 +3419,8 @@
       "beteiligungen": "Partnership shares",
       "firmenwagen": "Company car",
       "voranmeldungen": "VAT advance returns",
-      "sondertarife": "Sale of the business & retained profits"
+      "sondertarife": "Sale of the business & retained profits",
+      "lohn": "Wages"
     },
     "profil": {
       "artTitel": "Freelance or trade",
@@ -3934,6 +3935,50 @@
       "thesaurierungSteuer": "Tax on it ({{satz}} %)",
       "nachversteuerung": "Recapture (25 %)",
       "vortrag": "Amount subject to recapture at year end"
+    },
+    "lohn": {
+      "hinweis": "For employees you book the amounts of the payroll (tax adviser or payroll software); the app computes a Minijob itself. Social security reports stay with the payroll software or the Minijob-Zentrale.",
+      "neu": "Add a payroll run",
+      "art": {
+        "regulaer": "Employee",
+        "minijob": "Minijob"
+      },
+      "feld": {
+        "employee": "Name",
+        "month": "Month",
+        "grossEur": "Gross wage (€)",
+        "wageTaxEur": "Wage tax (€)",
+        "soliEur": "Solidarity surcharge (€)",
+        "churchTaxEur": "Church tax (€)",
+        "employeeSocialEur": "Social security, employee share (€)",
+        "employerSocialEur": "Social security, employer share and levies (€)"
+      },
+      "kirche": {
+        "ev": "Protestant",
+        "rk": "Roman Catholic"
+      },
+      "privatVersichert": "Privately health insured",
+      "rvBefreit": "Exempt from pension insurance",
+      "ungueltig": "Please enter name, month (1–12) and gross wage, amounts as numbers.",
+      "buchen": "Book",
+      "laeufe": "Booked payroll runs",
+      "keine": "No payroll runs booked yet.",
+      "anmeldung": "Wage tax return ({{zeitraum}})",
+      "zeitraum": {
+        "monat": "monthly",
+        "quartal": "quarterly",
+        "jahr": "yearly"
+      },
+      "kz": {
+        "86": "Number of employees",
+        "42": "Wage tax",
+        "49": "Solidarity surcharge",
+        "61": "Church tax Protestant",
+        "62": "Church tax Roman Catholic",
+        "83": "Total"
+      },
+      "minijobAbgaben": "Minijob charges to the Minijob-Zentrale",
+      "minijobHinweis": "Due on the third last bank day of the month; the 2 % flat tax is included."
     }
   }
 }

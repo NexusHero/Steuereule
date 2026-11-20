@@ -116,6 +116,19 @@ export interface BookingRuleRecord {
   readonly text: string | null
 }
 
+/** One payroll run (ADR-0101 §22); `amounts` is JSON of the core PayrollRunAmounts and the church kind. */
+export interface PayrollRunRecord {
+  readonly id: string
+  readonly taxYear: number
+  readonly person: BusinessPerson
+  readonly business: number
+  readonly month: number
+  readonly kind: 'regulaer' | 'minijob'
+  readonly employee: string
+  readonly amounts: string
+  readonly entryNumber: number | null
+}
+
 export const BUSINESS_REPOSITORY = Symbol('BUSINESS_REPOSITORY')
 
 /** Persistence of the self-employment path (ADR-0101); every call is scoped to the trusted userId. */
@@ -155,6 +168,9 @@ export interface BusinessRepository {
     transactions: readonly { readonly fingerprint: string; readonly amount: number; readonly details: string }[],
   ): Promise<number>
   setBankTransactionStatus(userId: string, id: string, status: BankTransactionRecord['status'], entryNumber: number | null): Promise<void>
+
+  listPayrollRuns(userId: string, taxYear: number, ref: BusinessRef): Promise<PayrollRunRecord[]>
+  addPayrollRun(userId: string, run: Omit<PayrollRunRecord, 'id'>): Promise<PayrollRunRecord>
 
   listRules(userId: string, person: BusinessPerson): Promise<BookingRuleRecord[]>
   createRule(userId: string, rule: Omit<BookingRuleRecord, 'id'>): Promise<BookingRuleRecord>

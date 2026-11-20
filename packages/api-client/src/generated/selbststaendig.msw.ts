@@ -35,6 +35,7 @@ import type {
   HebesatzLookupDto,
   JournalEntryDto,
   LossesDto,
+  PayrollOverviewDto,
   ProcedureDocDto,
   SpecialTariffsDto,
   TradeTaxDto,
@@ -94,6 +95,12 @@ export const getBusinessControllerCarryForwardResponseMock = (overrideResponse: 
 export const getBusinessControllerCompanyCarResponseMock = (overrideResponse: Partial<Extract<CompanyCarResultDto, object>> = {}): CompanyCarResultDto => ({kind: faker.helpers.arrayElement(['berechnet','nicht_zulaessig','offen'] as const), method: faker.helpers.arrayElement(['pauschal','fahrtenbuch'] as const), factor: faker.number.float({fractionDigits: 2}), assessedListPriceEur: faker.number.float({fractionDigits: 2}), privateUseEur: faker.number.float({fractionDigits: 2}), commute: faker.helpers.arrayElement([{...{valueEur: faker.number.float({fractionDigits: 2}), allowanceEur: faker.number.float({fractionDigits: 2}), nonDeductibleEur: faker.number.float({fractionDigits: 2})},}, null]), capped: faker.datatype.boolean(), vat: faker.helpers.arrayElement([{...{baseEur: faker.number.float({fractionDigits: 2}), vatEur: faker.number.float({fractionDigits: 2}), freeOfVatEur: faker.number.float({fractionDigits: 2})},}, null]), reason: faker.helpers.arrayElement(['betriebliche_nutzung_bis_50'] as const), missing: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), ...overrideResponse})
 
 export const getBusinessControllerBookCompanyCarResponseMock = (): JournalEntryDto[] => (Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({number: faker.number.float({fractionDigits: 2}), date: faker.string.alpha({length: {min: 10, max: 20}}), documentNumber: faker.string.alpha({length: {min: 10, max: 20}}), receiptRef: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), text: faker.string.alpha({length: {min: 10, max: 20}}), lines: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({account: faker.string.alpha({length: {min: 10, max: 20}}), side: faker.helpers.arrayElement(['debit','credit'] as const), amount: faker.number.float({fractionDigits: 2}), taxKey: faker.string.alpha({length: {min: 10, max: 20}}), taxPart: faker.helpers.arrayElement([faker.helpers.arrayElement(['base','tax'] as const), null])})), reversalOf: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), source: faker.string.alpha({length: {min: 10, max: 20}}), reversedBy: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null])})))
+
+export const getBusinessControllerPayrollResponseMock = (overrideResponse: Partial<Extract<PayrollOverviewDto, object>> = {}): PayrollOverviewDto => ({runs: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), month: faker.number.float({fractionDigits: 2}), kind: faker.helpers.arrayElement(['regulaer','minijob'] as const), employee: faker.string.alpha({length: {min: 10, max: 20}}), grossEur: faker.number.float({fractionDigits: 2}), netEur: faker.number.float({fractionDigits: 2}), wageTaxEur: faker.number.float({fractionDigits: 2}), employerChargesEur: faker.number.float({fractionDigits: 2}), entryNumber: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null])})), wageTaxPeriod: faker.helpers.arrayElement(['monat','quartal','jahr'] as const), wageTaxReturns: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({label: faker.string.alpha({length: {min: 10, max: 20}}), due: faker.string.alpha({length: {min: 10, max: 20}}), kennzahlen: {
+        [faker.string.alphanumeric(5)]: faker.number.float({fractionDigits: 2})
+      }})), minijobCharges: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({month: faker.number.float({fractionDigits: 2}), totalEur: faker.number.float({fractionDigits: 2})})), ...overrideResponse})
+
+export const getBusinessControllerAddPayrollRunResponseMock = (overrideResponse: Partial<Extract<JournalEntryDto, object>> = {}): JournalEntryDto => ({number: faker.number.float({fractionDigits: 2}), date: faker.string.alpha({length: {min: 10, max: 20}}), documentNumber: faker.string.alpha({length: {min: 10, max: 20}}), receiptRef: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), text: faker.string.alpha({length: {min: 10, max: 20}}), lines: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({account: faker.string.alpha({length: {min: 10, max: 20}}), side: faker.helpers.arrayElement(['debit','credit'] as const), amount: faker.number.float({fractionDigits: 2}), taxKey: faker.string.alpha({length: {min: 10, max: 20}}), taxPart: faker.helpers.arrayElement([faker.helpers.arrayElement(['base','tax'] as const), null])})), reversalOf: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), source: faker.string.alpha({length: {min: 10, max: 20}}), reversedBy: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), ...overrideResponse})
 
 export const getBusinessControllerSpecialTariffsResponseMock = (overrideResponse: Partial<Extract<SpecialTariffsDto, object>> = {}): SpecialTariffsDto => ({disposal: faker.helpers.arrayElement([{...{gainEur: faker.number.float({fractionDigits: 2}), allowanceEur: faker.number.float({fractionDigits: 2}), taxableGainEur: faker.number.float({fractionDigits: 2}), method: faker.helpers.arrayElement(['fuenftel','ermaessigt','keine'] as const)},}, null]), retained: faker.helpers.arrayElement([{...{nonWithdrawnEur: faker.number.float({fractionDigits: 2}), favouredEur: faker.number.float({fractionDigits: 2}), rate: faker.number.float({fractionDigits: 2}), taxEur: faker.number.float({fractionDigits: 2}), recaptureBaseEur: faker.number.float({fractionDigits: 2}), recaptureEur: faker.number.float({fractionDigits: 2}), nextCarriedForwardEur: faker.number.float({fractionDigits: 2})},}, null]), retainedOnlyBilanz: faker.datatype.boolean(), ...overrideResponse})
 
@@ -398,6 +405,30 @@ export const getBusinessControllerBookCompanyCarMockHandler = (overrideResponse?
   }, options)
 }
 
+export const getBusinessControllerPayrollMockHandler = (overrideResponse?: PayrollOverviewDto | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<PayrollOverviewDto> | PayrollOverviewDto), options?: RequestHandlerOptions) => {
+  return http.get('*/v1/steuerjahre/:jahr/selbststaendig/lohn', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getBusinessControllerPayrollResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getBusinessControllerAddPayrollRunMockHandler = (overrideResponse?: JournalEntryDto | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<JournalEntryDto> | JournalEntryDto), options?: RequestHandlerOptions) => {
+  return http.post('*/v1/steuerjahre/:jahr/selbststaendig/lohn', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getBusinessControllerAddPayrollRunResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
 export const getBusinessControllerSpecialTariffsMockHandler = (overrideResponse?: SpecialTariffsDto | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<SpecialTariffsDto> | SpecialTariffsDto), options?: RequestHandlerOptions) => {
   return http.get('*/v1/steuerjahre/:jahr/selbststaendig/sondertarife', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
 
@@ -594,6 +625,8 @@ export const getSteuerEuleAPIMock = () => [
   getBusinessControllerCarryForwardMockHandler(),
   getBusinessControllerCompanyCarMockHandler(),
   getBusinessControllerBookCompanyCarMockHandler(),
+  getBusinessControllerPayrollMockHandler(),
+  getBusinessControllerAddPayrollRunMockHandler(),
   getBusinessControllerSpecialTariffsMockHandler(),
   getBusinessControllerVatPrepaymentsMockHandler(),
   getBusinessControllerVatMockHandler(),

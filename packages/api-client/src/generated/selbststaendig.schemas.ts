@@ -1374,6 +1374,116 @@ export interface CompanyCarResultDto {
   missing?: string[];
 }
 
+export type PayrollOverviewDtoWageTaxPeriod = typeof PayrollOverviewDtoWageTaxPeriod[keyof typeof PayrollOverviewDtoWageTaxPeriod];
+
+
+export const PayrollOverviewDtoWageTaxPeriod = {
+  monat: 'monat',
+  quartal: 'quartal',
+  jahr: 'jahr',
+} as const;
+
+export type PayrollRunDtoKind = typeof PayrollRunDtoKind[keyof typeof PayrollRunDtoKind];
+
+
+export const PayrollRunDtoKind = {
+  regulaer: 'regulaer',
+  minijob: 'minijob',
+} as const;
+
+export interface PayrollRunDto {
+  id: string;
+  month: number;
+  kind: PayrollRunDtoKind;
+  employee: string;
+  /** Euros. */
+  grossEur: number;
+  /** Euros. */
+  netEur: number;
+  /** Euros. */
+  wageTaxEur: number;
+  /** Euros. */
+  employerChargesEur: number;
+  /** @nullable */
+  entryNumber: number | null;
+}
+
+/**
+ * Kennzahl → value (Lohnsteuer-Anmeldung).
+ */
+export type WageTaxReturnDtoKennzahlen = {[key: string]: number};
+
+export interface WageTaxReturnDto {
+  label: string;
+  due: string;
+  /** Kennzahl → value (Lohnsteuer-Anmeldung). */
+  kennzahlen: WageTaxReturnDtoKennzahlen;
+}
+
+export interface MinijobMonthDto {
+  month: number;
+  /** Employer charges and the Minijobber’s RV share, to the Minijob-Zentrale. */
+  totalEur: number;
+}
+
+export interface PayrollOverviewDto {
+  runs: PayrollRunDto[];
+  wageTaxPeriod: PayrollOverviewDtoWageTaxPeriod;
+  wageTaxReturns: WageTaxReturnDto[];
+  minijobCharges: MinijobMonthDto[];
+}
+
+export type PayrollRunInputDtoKind = typeof PayrollRunInputDtoKind[keyof typeof PayrollRunInputDtoKind];
+
+
+export const PayrollRunInputDtoKind = {
+  regulaer: 'regulaer',
+  minijob: 'minijob',
+} as const;
+
+/**
+ * @nullable
+ */
+export type PayrollRunInputDtoChurch = typeof PayrollRunInputDtoChurch[keyof typeof PayrollRunInputDtoChurch] | null;
+
+
+export const PayrollRunInputDtoChurch = {
+  ev: 'ev',
+  rk: 'rk',
+} as const;
+
+export interface PayrollRunInputDto {
+  /**
+     * @minimum 1
+     * @maximum 12
+     */
+  month: number;
+  kind: PayrollRunInputDtoKind;
+  /**
+     * The employee as the user calls them.
+     * @maxLength 80
+     */
+  employee: string;
+  /** Euros. */
+  grossEur: number;
+  /** Euros. */
+  wageTaxEur?: number;
+  /** Euros. */
+  soliEur?: number;
+  /** Euros. */
+  churchTaxEur?: number;
+  /** @nullable */
+  church?: PayrollRunInputDtoChurch;
+  /** The employee’s share of social security. */
+  employeeSocialEur?: number;
+  /** The employer’s share and the levies. */
+  employerSocialEur?: number;
+  /** Minijob: in the statutory health insurance (flat 13 % KV). */
+  statutoryHealthInsured?: boolean;
+  /** Minijob: exempt from the pension insurance. */
+  rvExempt?: boolean;
+}
+
 export type DisposalResultDtoMethod = typeof DisposalResultDtoMethod[keyof typeof DisposalResultDtoMethod];
 
 
@@ -2302,6 +2412,44 @@ export type BusinessControllerBookCompanyCarPerson = typeof BusinessControllerBo
 
 
 export const BusinessControllerBookCompanyCarPerson = {
+  A: 'A',
+  B: 'B',
+} as const;
+
+export type BusinessControllerPayrollParams = {
+/**
+ * Which business of the person, from 1 (default); ADR-0101 §22.
+ */
+betrieb?: number;
+/**
+ * Whose business: A (default) or B of a joint return.
+ */
+person?: BusinessControllerPayrollPerson;
+};
+
+export type BusinessControllerPayrollPerson = typeof BusinessControllerPayrollPerson[keyof typeof BusinessControllerPayrollPerson];
+
+
+export const BusinessControllerPayrollPerson = {
+  A: 'A',
+  B: 'B',
+} as const;
+
+export type BusinessControllerAddPayrollRunParams = {
+/**
+ * Which business of the person, from 1 (default); ADR-0101 §22.
+ */
+betrieb?: number;
+/**
+ * Whose business: A (default) or B of a joint return.
+ */
+person?: BusinessControllerAddPayrollRunPerson;
+};
+
+export type BusinessControllerAddPayrollRunPerson = typeof BusinessControllerAddPayrollRunPerson[keyof typeof BusinessControllerAddPayrollRunPerson];
+
+
+export const BusinessControllerAddPayrollRunPerson = {
   A: 'A',
   B: 'B',
 } as const;

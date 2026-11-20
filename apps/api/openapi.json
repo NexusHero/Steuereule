@@ -4718,6 +4718,176 @@
         ]
       }
     },
+    "/v1/steuerjahre/{jahr}/selbststaendig/lohn": {
+      "get": {
+        "operationId": "BusinessController_payroll",
+        "parameters": [
+          {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "Whose business: A (default) or B of a joint return.",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The payroll runs, the Lohnsteuer-Anmeldungen (§ 41a EStG) and the Minijob charges; no social security reports are filed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayrollOverviewDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body fails validation (`fields`) or a business rule (`code`, German `message`), e.g. BOOKING_UNBALANCED, LEDGER_PERIOD_LOCKED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "403": {
+            "description": "SELF_EMPLOYMENT_DISABLED (switch off) or SELF_EMPLOYMENT_NOT_DECLARED (no self-employment in the interview).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "selbststaendig"
+        ]
+      },
+      "post": {
+        "operationId": "BusinessController_addPayrollRun",
+        "parameters": [
+          {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "Whose business: A (default) or B of a joint return.",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PayrollRunInputDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The entry the run was booked as.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JournalEntryDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body fails validation (`fields`) or a business rule (`code`, German `message`), e.g. BOOKING_UNBALANCED, LEDGER_PERIOD_LOCKED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "403": {
+            "description": "SELF_EMPLOYMENT_DISABLED (switch off) or SELF_EMPLOYMENT_NOT_DECLARED (no self-employment in the interview).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "BOOK_INTEGRITY_BROKEN (hash chain or entry not as logged), BOOK_FRAME_FIXED, a draft or transaction already done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "selbststaendig"
+        ]
+      }
+    },
     "/v1/steuerjahre/{jahr}/selbststaendig/sondertarife": {
       "get": {
         "operationId": "BusinessController_specialTariffs",
@@ -15371,6 +15541,202 @@
         },
         "required": [
           "kind"
+        ]
+      },
+      "PayrollRunDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "month": {
+            "type": "number"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "regulaer",
+              "minijob"
+            ]
+          },
+          "employee": {
+            "type": "string"
+          },
+          "grossEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "netEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "wageTaxEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "employerChargesEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "entryNumber": {
+            "type": "number",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "month",
+          "kind",
+          "employee",
+          "grossEur",
+          "netEur",
+          "wageTaxEur",
+          "employerChargesEur",
+          "entryNumber"
+        ]
+      },
+      "WageTaxReturnDto": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "due": {
+            "type": "string"
+          },
+          "kennzahlen": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number"
+            },
+            "description": "Kennzahl → value (Lohnsteuer-Anmeldung)."
+          }
+        },
+        "required": [
+          "label",
+          "due",
+          "kennzahlen"
+        ]
+      },
+      "MinijobMonthDto": {
+        "type": "object",
+        "properties": {
+          "month": {
+            "type": "number"
+          },
+          "totalEur": {
+            "type": "number",
+            "description": "Employer charges and the Minijobber’s RV share, to the Minijob-Zentrale."
+          }
+        },
+        "required": [
+          "month",
+          "totalEur"
+        ]
+      },
+      "PayrollOverviewDto": {
+        "type": "object",
+        "properties": {
+          "runs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PayrollRunDto"
+            }
+          },
+          "wageTaxPeriod": {
+            "type": "string",
+            "enum": [
+              "monat",
+              "quartal",
+              "jahr"
+            ]
+          },
+          "wageTaxReturns": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WageTaxReturnDto"
+            }
+          },
+          "minijobCharges": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MinijobMonthDto"
+            }
+          }
+        },
+        "required": [
+          "runs",
+          "wageTaxPeriod",
+          "wageTaxReturns",
+          "minijobCharges"
+        ]
+      },
+      "PayrollRunInputDto": {
+        "type": "object",
+        "properties": {
+          "month": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 12
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "regulaer",
+              "minijob"
+            ]
+          },
+          "employee": {
+            "type": "string",
+            "maxLength": 80,
+            "description": "The employee as the user calls them."
+          },
+          "grossEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "wageTaxEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "soliEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "churchTaxEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "church": {
+            "type": "string",
+            "enum": [
+              "ev",
+              "rk"
+            ],
+            "nullable": true
+          },
+          "employeeSocialEur": {
+            "type": "number",
+            "description": "The employee’s share of social security."
+          },
+          "employerSocialEur": {
+            "type": "number",
+            "description": "The employer’s share and the levies."
+          },
+          "statutoryHealthInsured": {
+            "type": "boolean",
+            "description": "Minijob: in the statutory health insurance (flat 13 % KV)."
+          },
+          "rvExempt": {
+            "type": "boolean",
+            "description": "Minijob: exempt from the pension insurance."
+          }
+        },
+        "required": [
+          "month",
+          "kind",
+          "employee",
+          "grossEur"
         ]
       },
       "DisposalResultDto": {

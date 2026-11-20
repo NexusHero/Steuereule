@@ -30,6 +30,7 @@ const LINKS: readonly LinkSpec[] = [
   { page: 'bank', show: () => true },
   { page: 'anlagen', show: () => true },
   { page: 'firmenwagen', show: () => true },
+  { page: 'lohn', show: () => true },
   { page: 'abschluss', show: () => true },
   { page: 'umsatzsteuer', show: () => true },
   { page: 'voranmeldungen', show: () => true },

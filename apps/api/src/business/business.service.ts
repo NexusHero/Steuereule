@@ -2,6 +2,11 @@ import { HttpException, HttpStatus, Inject, Injectable, Optional } from '@nestjs
 import {
   accountFor,
   companyCarUse,
+  minijobCharges,
+  minijobLimitEur,
+  payrollEntryLines,
+  wageTaxFilingPeriod,
+  wageTaxReturn,
   disposalGain,
   retainedProfitTax,
   type RetainedProfit,
@@ -141,6 +146,32 @@ export interface VatPrepaymentOverview {
   /** All prepayments of the year with the Sondervorauszahlung: the Vorauszahlungssoll of the annual return. */
   readonly totalEur: number
   readonly ecSalesList: { readonly period: 'monat' | 'quartal'; readonly reports: readonly { readonly label: string; readonly due: string; readonly rows: readonly { readonly vatId: string | null; readonly goodsEur: number; readonly servicesEur: number }[] }[] }
+}
+
+/** One payroll run as entered (ADR-0101 §22): the outside payroll's amounts, or a Minijob's gross. */
+export interface PayrollRunInput {
+  readonly month: number
+  readonly kind: 'regulaer' | 'minijob'
+  readonly employee: string
+  readonly grossEur: number
+  readonly wageTaxEur?: number | undefined
+  readonly soliEur?: number | undefined
+  readonly churchTaxEur?: number | undefined
+  readonly church?: 'ev' | 'rk' | null | undefined
+  readonly employeeSocialEur?: number | undefined
+  readonly employerSocialEur?: number | undefined
+  /** Minijob: the flat KV only for a Minijobber in the statutory insurance. */
+  readonly statutoryHealthInsured?: boolean | undefined
+  /** Minijob: exempt from the RV on application. */
+  readonly rvExempt?: boolean | undefined
+}
+
+export interface PayrollOverview {
+  readonly runs: readonly { readonly id: string; readonly month: number; readonly kind: 'regulaer' | 'minijob'; readonly employee: string; readonly grossEur: number; readonly netEur: number; readonly wageTaxEur: number; readonly employerChargesEur: number; readonly entryNumber: number | null }[]
+  readonly wageTaxPeriod: 'monat' | 'quartal' | 'jahr'
+  readonly wageTaxReturns: readonly { readonly label: string; readonly due: string; readonly kennzahlen: Readonly<Record<string, number>> }[]
+  /** The Minijob charges per month, to the Minijob-Zentrale (Beitragsnachweis), due on the third last bank day. */
+  readonly minijobCharges: readonly { readonly month: number; readonly totalEur: number }[]
 }
 
 /** The sale or giving up of the business in the year (§ 16 EStG) and how its gain is taxed (§ 34 EStG). */
@@ -1113,6 +1144,104 @@ export class BusinessService {
         ...(Object.keys(specialFacts).length > 0 ? { special: specialFacts } : {}),
       },
       losses: { carriedForwardEur: facts.carriedForwardEur ?? 0, ...(facts.carriedBackEur !== undefined ? { carriedBackEur: facts.carriedBackEur } : {}) },
+    }
+  }
+
+  // ------------------------------------------------------------------------------------------------
+  // Lohn (ADR-0101 §22)
+
+  /**
+   * Books one payroll run and keeps it for the Lohnsteuer-Anmeldung. A regular employee's amounts come
+   * from the outside payroll; a Minijob's charges the core computes. Dated the last day of the month.
+   */
+  async addPayrollRun(userId: string, year: number, ref: BusinessRef, input: PayrollRunInput) {
+    await this.assertOpen(userId, year)
+    if (!(input.month >= 1 && input.month <= 12)) throw new InvalidInputError('PAYROLL_MONTH', 'Der Monat ist 1 bis 12.')
+    const mini = input.kind === 'minijob' ? minijobCharges({ year, month: input.month, grossEur: input.grossEur, statutoryHealthInsured: input.statutoryHealthInsured !== false, rvExempt: input.rvExempt === true }) : null
+    if (mini?.overLimit) throw new InvalidInputError('PAYROLL_MINIJOB_OVER_LIMIT', `Über ${minijobLimitEur(year, input.month)} € im Monat ist es kein Minijob; trag die Werte aus der Lohnabrechnung ein.`)
+    const amounts = {
+      kind: input.kind,
+      grossEur: input.grossEur,
+      wageTaxEur: mini ? 0 : (input.wageTaxEur ?? 0),
+      soliEur: mini ? 0 : (input.soliEur ?? 0),
+      churchTaxEur: mini ? 0 : (input.churchTaxEur ?? 0),
+      employeeSocialEur: mini ? mini.employeeRvEur : (input.employeeSocialEur ?? 0),
+      employerSocialEur: mini ? mini.employerTotalEur : (input.employerSocialEur ?? 0),
+    }
+    const lines = payrollEntryLines(amounts)
+    if (!lines.ok) throw new InvalidInputError('PAYROLL_AMOUNTS', lines.reason)
+    const { chart, mode, profile } = await this.frame(userId, year, ref)
+    const n = (concept: Parameters<typeof accountFor>[1]) => accountFor(chart, concept).number
+    const c = (v: number) => Math.round(v * 100)
+    const day = new Date(Date.UTC(year, input.month, 0)).getUTCDate()
+    const l = lines.lines
+    const draft: BookingDraft = {
+      date: `${year}-${String(input.month).padStart(2, '0')}-${String(day).padStart(2, '0')}`,
+      documentNumber: `Lohn-${year}-${String(input.month).padStart(2, '0')}-${input.employee.slice(0, 20)}`,
+      text: `${input.kind === 'minijob' ? 'Minijob' : 'Lohn'} ${input.employee} ${String(input.month).padStart(2, '0')}/${year}`,
+      lines: [
+        { account: n(input.kind === 'minijob' ? 'temp_wages' : 'wages'), side: 'debit', amount: c(l.wagesEur) },
+        ...(l.employerSocialEur > 0 ? [{ account: n('social_security'), side: 'debit' as const, amount: c(l.employerSocialEur) }] : []),
+        ...(l.netEur > 0 ? [{ account: n('bank'), side: 'credit' as const, amount: c(l.netEur) }] : []),
+        ...(l.taxesEur > 0 ? [{ account: n('wage_tax_payables'), side: 'credit' as const, amount: c(l.taxesEur) }] : []),
+        ...(l.socialPayableEur > 0 ? [{ account: n('social_security_payables'), side: 'credit' as const, amount: c(l.socialPayableEur) }] : []),
+      ],
+    }
+    const [entry] = await this.repository.changeBook(userId, year, ref, { chart, mode }, (book) => {
+      const out = this.postAll(book, year, profile, [{ draft, source: 'lohn' }])
+      return { result: out.posted, append: out.append }
+    })
+    const run = await this.repository.addPayrollRun(userId, {
+      taxYear: year,
+      person: ref.person,
+      business: ref.business,
+      month: input.month,
+      kind: input.kind,
+      employee: input.employee,
+      amounts: JSON.stringify({ ...amounts, church: input.church ?? null, netEur: l.netEur }),
+      entryNumber: entry?.number ?? null,
+    })
+    await this.audit.append({ userId, action: 'WRITE', resource: 'selbststaendig' })
+    return { run, entry }
+  }
+
+  /** The runs of the year, the Lohnsteuer-Anmeldungen (§ 41a EStG) and the Minijob charges per month. */
+  async payroll(userId: string, year: number, ref: BusinessRef): Promise<PayrollOverview> {
+    await this.assertOpen(userId, year)
+    const [records, prior] = await Promise.all([this.repository.listPayrollRuns(userId, year, ref), this.repository.listPayrollRuns(userId, year - 1, ref)])
+    type Stored = { kind: 'regulaer' | 'minijob'; grossEur: number; wageTaxEur: number; soliEur: number; churchTaxEur: number; employerSocialEur: number; church: 'ev' | 'rk' | null; netEur: number }
+    const parse = (r: { amounts: string }) => parseJson<Stored>(r.amounts, { kind: 'regulaer', grossEur: 0, wageTaxEur: 0, soliEur: 0, churchTaxEur: 0, employerSocialEur: 0, church: null, netEur: 0 })
+    const runs = records.map((r) => ({ record: r, a: parse(r) }))
+    // § 41a Abs. 2: by last year's wage tax; a new employer annualises its first month (Satz 3).
+    const priorTax = prior.reduce((s, r) => s + parse(r).wageTaxEur, 0)
+    const firstMonth = runs.filter((r) => r.a.kind === 'regulaer').map((r) => r.record.month).sort((a, b) => a - b)[0]
+    const wageTaxPeriod =
+      prior.length > 0
+        ? wageTaxFilingPeriod({ priorYearWageTaxEur: priorTax, priorYearMonthsActive: 12 - Math.min(...prior.map((r) => r.month)) + 1 })
+        : firstMonth === undefined
+          ? 'jahr'
+          : wageTaxFilingPeriod({ priorYearWageTaxEur: runs.filter((r) => r.record.month === firstMonth).reduce((s, r) => s + r.a.wageTaxEur, 0), priorYearMonthsActive: 1 })
+    const step = wageTaxPeriod === 'monat' ? 1 : wageTaxPeriod === 'quartal' ? 3 : 12
+    const wageTaxReturns = []
+    for (let start = 1; start <= 12; start += step) {
+      const end = start + step - 1
+      const inPeriod = runs.filter((r) => r.record.month >= start && r.record.month <= end)
+      if (inPeriod.length === 0) continue
+      const kennzahlen = wageTaxReturn(inPeriod.map((r) => ({ kind: r.a.kind, employee: r.record.employee, wageTaxEur: r.a.wageTaxEur, soliEur: r.a.soliEur, churchTaxEur: r.a.churchTaxEur, church: r.a.church })))
+      if (Object.keys(kennzahlen).length === 0) continue
+      const label = step === 1 ? `${String(start).padStart(2, '0')}/${year}` : step === 3 ? `Q${(start + 2) / 3}/${year}` : String(year)
+      const dueMonth = end + 1
+      const due = dueMonth > 12 ? `${year + 1}-01-10` : `${year}-${String(dueMonth).padStart(2, '0')}-10`
+      wageTaxReturns.push({ label, due, kennzahlen })
+    }
+    const minijob = new Map<number, number>()
+    for (const r of runs) if (r.a.kind === 'minijob') minijob.set(r.record.month, round2((minijob.get(r.record.month) ?? 0) + r.a.employerSocialEur + (r.a.grossEur - r.a.netEur)))
+    await this.audit.append({ userId, action: 'READ', resource: 'selbststaendig' })
+    return {
+      runs: runs.map(({ record, a }) => ({ id: record.id, month: record.month, kind: a.kind, employee: record.employee, grossEur: a.grossEur, netEur: a.netEur, wageTaxEur: a.wageTaxEur, employerChargesEur: a.employerSocialEur, entryNumber: record.entryNumber })),
+      wageTaxPeriod,
+      wageTaxReturns,
+      minijobCharges: [...minijob.entries()].sort((a, b) => a[0] - b[0]).map(([month, totalEur]) => ({ month, totalEur })),
     }
   }
 

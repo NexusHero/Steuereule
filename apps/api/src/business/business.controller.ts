@@ -40,6 +40,8 @@ import {
   ReversalDto,
 } from './dto/business.dto.js'
 import {
+  PayrollOverviewDto,
+  PayrollRunInputDto,
   SpecialTariffsDto,
   VatPrepaymentsDto,
   CompanyCarResultDto,
@@ -330,6 +332,22 @@ export class BusinessController {
   @Errors(409)
   bookCompanyCar(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number, @Body() dto: CompanyCarInputDto, @Query('person') person?: string, @Query('betrieb') business?: string): Promise<JournalEntryDto[]> {
     return this.service.bookCompanyCar(userId, year, refOf(person, business), dto) as unknown as Promise<JournalEntryDto[]>
+  }
+
+  @Get(':jahr/selbststaendig/lohn')
+  @RequiresAccount()
+  @ApiOkResponse({ type: PayrollOverviewDto, description: 'The payroll runs, the Lohnsteuer-Anmeldungen (§ 41a EStG) and the Minijob charges; no social security reports are filed.' })
+  payroll(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number, @Query('person') person?: string, @Query('betrieb') business?: string): Promise<PayrollOverviewDto> {
+    return this.service.payroll(userId, year, refOf(person, business)) as unknown as Promise<PayrollOverviewDto>
+  }
+
+  @Post(':jahr/selbststaendig/lohn')
+  @RequiresAccount()
+  @ApiBody({ type: PayrollRunInputDto })
+  @ApiOkResponse({ type: JournalEntryDto, description: 'The entry the run was booked as.' })
+  @Errors(409)
+  async addPayrollRun(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number, @Body() dto: PayrollRunInputDto, @Query('person') person?: string, @Query('betrieb') business?: string): Promise<JournalEntryDto> {
+    return (await this.service.addPayrollRun(userId, year, refOf(person, business), dto)).entry as unknown as JournalEntryDto
   }
 
   @Get(':jahr/selbststaendig/sondertarife')

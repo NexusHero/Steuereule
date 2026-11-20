@@ -3419,7 +3419,8 @@
       "beteiligungen": "Beteiligungen",
       "firmenwagen": "Firmenwagen",
       "voranmeldungen": "Umsatzsteuer-Voranmeldungen",
-      "sondertarife": "Betriebsaufgabe & Thesaurierung"
+      "sondertarife": "Betriebsaufgabe & Thesaurierung",
+      "lohn": "Lohn"
     },
     "profil": {
       "artTitel": "Freiberuf oder Gewerbe",
@@ -3934,6 +3935,50 @@
       "thesaurierungSteuer": "Steuer darauf ({{satz}} %)",
       "nachversteuerung": "Nachversteuerung (25 %)",
       "vortrag": "Nachversteuerungspflichtiger Betrag zum Jahresende"
+    },
+    "lohn": {
+      "hinweis": "Für Angestellte buchst du die Werte aus der Lohnabrechnung (Steuerbüro oder Lohnprogramm); einen Minijob rechnet die App selbst. Die Meldungen zur Sozialversicherung bleiben beim Lohnprogramm bzw. bei der Minijob-Zentrale.",
+      "neu": "Lohnlauf erfassen",
+      "art": {
+        "regulaer": "Angestellt",
+        "minijob": "Minijob"
+      },
+      "feld": {
+        "employee": "Name",
+        "month": "Monat",
+        "grossEur": "Bruttolohn (€)",
+        "wageTaxEur": "Lohnsteuer (€)",
+        "soliEur": "Solidaritätszuschlag (€)",
+        "churchTaxEur": "Kirchensteuer (€)",
+        "employeeSocialEur": "Sozialversicherung Arbeitnehmeranteil (€)",
+        "employerSocialEur": "Sozialversicherung Arbeitgeberanteil und Umlagen (€)"
+      },
+      "kirche": {
+        "ev": "evangelisch",
+        "rk": "römisch-katholisch"
+      },
+      "privatVersichert": "Privat krankenversichert",
+      "rvBefreit": "Von der Rentenversicherung befreit",
+      "ungueltig": "Bitte Name, Monat (1–12) und Bruttolohn eintragen, Beträge als Zahlen.",
+      "buchen": "Buchen",
+      "laeufe": "Gebuchte Lohnläufe",
+      "keine": "Noch keine Lohnläufe gebucht.",
+      "anmeldung": "Lohnsteuer-Anmeldung ({{zeitraum}})",
+      "zeitraum": {
+        "monat": "monatlich",
+        "quartal": "vierteljährlich",
+        "jahr": "jährlich"
+      },
+      "kz": {
+        "86": "Zahl der Arbeitnehmer",
+        "42": "Lohnsteuer",
+        "49": "Solidaritätszuschlag",
+        "61": "Kirchensteuer evangelisch",
+        "62": "Kirchensteuer römisch-katholisch",
+        "83": "Gesamtbetrag"
+      },
+      "minijobAbgaben": "Minijob-Abgaben an die Minijob-Zentrale",
+      "minijobHinweis": "Fällig am drittletzten Bankarbeitstag des Monats; die Pauschsteuer von 2 % ist darin enthalten."
     }
   }
 }

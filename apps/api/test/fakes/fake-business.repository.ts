@@ -14,6 +14,7 @@ import type {
   FixedAssetRecord,
   LoadedBook,
   NewFixedAsset,
+  PayrollRunRecord,
 } from '../../src/business/business.repository.js'
 
 interface StoredBook {
@@ -153,6 +154,18 @@ export class FakeBusinessRepository implements BusinessRepository {
       const tx = book.bank.find((b) => b.id === id)
       if (tx) Object.assign(tx, { status, entryNumber })
     }
+  }
+
+  readonly payroll: (PayrollRunRecord & { userId: string })[] = []
+
+  async listPayrollRuns(userId: string, taxYear: number, ref: BusinessRef) {
+    return this.payroll.filter((r) => r.userId === userId && r.taxYear === taxYear && r.person === ref.person && r.business === ref.business).sort((a, b) => a.month - b.month)
+  }
+
+  async addPayrollRun(userId: string, run: Omit<PayrollRunRecord, 'id'>) {
+    const record = { ...run, id: `l${++this.seq}`, userId }
+    this.payroll.push(record)
+    return record
   }
 
   async listRules(userId: string, person: BusinessPerson) {

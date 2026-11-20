@@ -17,9 +17,10 @@ import { SharesPage } from './SharesPage'
 import { CompanyCarPage } from './CompanyCarPage'
 import { VatPrepaymentsPage } from './VatPrepaymentsPage'
 import { SpecialTariffsPage } from './SpecialTariffsPage'
+import { PayrollPage } from './PayrollPage'
 import type { Person } from './businessKit'
 
-export const BUSINESS_PAGES = ['profil', 'buch', 'erfassung', 'bank', 'anlagen', 'abschluss', 'umsatzsteuer', 'gewerbesteuer', 'verluste', 'elster', 'export', 'freischalten', 'beruf', 'gewerbedaten', 'beteiligungen', 'firmenwagen', 'voranmeldungen', 'sondertarife'] as const
+export const BUSINESS_PAGES = ['profil', 'buch', 'erfassung', 'bank', 'anlagen', 'abschluss', 'umsatzsteuer', 'gewerbesteuer', 'verluste', 'elster', 'export', 'freischalten', 'beruf', 'gewerbedaten', 'beteiligungen', 'firmenwagen', 'voranmeldungen', 'sondertarife', 'lohn'] as const
 export type BusinessPage = (typeof BUSINESS_PAGES)[number]
 
 export function isBusinessPage(value: string | undefined): value is BusinessPage {
@@ -86,5 +87,7 @@ export function BusinessScreen({ page, onChangePerson, onChangeBusiness, payment
       return <VatPrepaymentsPage {...props} />
     case 'sondertarife':
       return <SpecialTariffsPage {...props} />
+    case 'lohn':
+      return <PayrollPage {...props} />
   }
 }
