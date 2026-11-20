@@ -26,10 +26,10 @@ function answerOf(profile: BusinessProfileDto, id: QuestionId): boolean | null {
 }
 
 /** Freiberuf or Gewerbe (the app suggests, you confirm), the way the books are kept, Kleinunternehmer, Gemeinde and Hebesatz. */
-export function ProfilePage({ taxYear, person, onBack, onOpenPage }: BusinessPageProps) {
+export function ProfilePage({ taxYear, person, business = 1, onBack, onOpenPage }: BusinessPageProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
-  const params = personParams(person)
+  const params = personParams(person, business)
   const query = useBusinessControllerProfile(taxYear, params)
   const saveProfile = useBusinessControllerSaveProfile()
   const refresh = useRefreshBusiness(taxYear)

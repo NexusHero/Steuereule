@@ -1,7 +1,9 @@
 // The made-up self-employed household of the demo seed (ADR-0101), as pure use of the BusinessService so
 // a unit test can run it against in-memory repositories and the seed against the database alike.
 import type { BookingDraft } from '@steuereule/core'
-import type { BusinessPerson, BusinessRepository } from './business.repository.js'
+import { OWN_FIRST_BUSINESS, type BusinessRef, type BusinessRepository } from './business.repository.js'
+
+const SPOUSE_FIRST_BUSINESS: BusinessRef = { person: 'B', business: 1 }
 import type { BusinessService } from './business.service.js'
 
 const euros = (amount: number): number => Math.round(amount * 100)
@@ -53,7 +55,7 @@ function tradeYear(year: number): BookingDraft[] {
   ]
 }
 
-async function bookOnce(business: BusinessService, repository: BusinessRepository, userId: string, year: number, person: BusinessPerson, drafts: readonly BookingDraft[]): Promise<number> {
+async function bookOnce(business: BusinessService, repository: BusinessRepository, userId: string, year: number, person: BusinessRef, drafts: readonly BookingDraft[]): Promise<number> {
   const book = await repository.loadBook(userId, year, person)
   if (book !== null && book.ledger.entries.length > 0) return 0
   for (const draft of drafts) await business.post(userId, year, person, draft)
@@ -72,7 +74,7 @@ export const DEMO_YEARS = [2024, 2025] as const
 export async function seedDemoHousehold(business: BusinessService, repository: BusinessRepository, userId: string): Promise<{ loss2024Eur: number }> {
   for (const year of DEMO_YEARS) {
 
-    await business.saveProfile(userId, year, 'A', {
+    await business.saveProfile(userId, year, OWN_FIRST_BUSINESS, {
       name: 'Übersetzungsbüro Muster',
       professionAnswers: { priorAssessment: 'freiberuf', freeActivity: 'schriftstellerisch', ownExpertWork: true, employsQualifiedStaff: false, leadsPersonally: true, tradesGoods: false },
       confirmedKind: 'freiberuf',
@@ -83,7 +85,7 @@ export async function seedDemoHousehold(business: BusinessService, repository: B
       startDate: '2021-04-01',
       vatPrepaymentsCents: euros(year === 2024 ? 7_200 : 8_400),
     })
-    await business.saveProfile(userId, year, 'B', {
+    await business.saveProfile(userId, year, SPOUSE_FIRST_BUSINESS, {
       name: 'Beispiel Onlinehandel',
       professionAnswers: { priorAssessment: null, ownExpertWork: false, employsQualifiedStaff: false, leadsPersonally: true, tradesGoods: true },
       confirmedKind: 'gewerbe',
@@ -98,29 +100,29 @@ export async function seedDemoHousehold(business: BusinessService, repository: B
       ...(year === 2025 ? { lossFacts: { carriedForwardEur: 0 } } : {}),
     })
 
-    const a = await bookOnce(business, repository, userId, year, 'A', freelancerYear(year))
+    const a = await bookOnce(business, repository, userId, year, OWN_FIRST_BUSINESS, freelancerYear(year))
     if (a > 0 && year === 2024) {
       // An asset with its depreciation by the official table (computer hardware: one year).
-      await business.post(userId, year, 'A', { ...cash('2024-03-14', 'RE-IT-0042', 'Notebook', '0420', '1200', 1_428, 'vst19', 'out'), asset: { label: 'Notebook', method: 'linear', category: 'computer', usefulLifeYears: 1 } })
-      await business.bookDepreciation(userId, year, 'A')
+      await business.post(userId, year, OWN_FIRST_BUSINESS, { ...cash('2024-03-14', 'RE-IT-0042', 'Notebook', '0420', '1200', 1_428, 'vst19', 'out'), asset: { label: 'Notebook', method: 'linear', category: 'computer', usefulLifeYears: 1 } })
+      await business.bookDepreciation(userId, year, OWN_FIRST_BUSINESS)
     }
     if (year === 2025) {
       // The Eröffnungsbilanz of the Gewerbe from the 2024 closing, before the 2025 bookings.
-      const nextBook = await repository.loadBook(userId, 2025, 'B')
-      if (nextBook === null || nextBook.ledger.entries.length === 0) await business.carryForward(userId, 2024, 'B')
-      const next = await repository.loadBook(userId, 2025, 'B')
-      if (next !== null && next.ledger.entries.length === 1) for (const draft of tradeYear(2025)) await business.post(userId, 2025, 'B', draft)
+      const nextBook = await repository.loadBook(userId, 2025, SPOUSE_FIRST_BUSINESS)
+      if (nextBook === null || nextBook.ledger.entries.length === 0) await business.carryForward(userId, 2024, SPOUSE_FIRST_BUSINESS)
+      const next = await repository.loadBook(userId, 2025, SPOUSE_FIRST_BUSINESS)
+      if (next !== null && next.ledger.entries.length === 1) for (const draft of tradeYear(2025)) await business.post(userId, 2025, SPOUSE_FIRST_BUSINESS, draft)
     } else {
-      await bookOnce(business, repository, userId, year, 'B', tradeYear(year))
+      await bookOnce(business, repository, userId, year, SPOUSE_FIRST_BUSINESS, tradeYear(year))
     }
   }
 
-  const loss2024 = await business.closing(userId, 2024, 'B')
+  const loss2024 = await business.closing(userId, 2024, SPOUSE_FIRST_BUSINESS)
   const loss = loss2024.bilanz ? -loss2024.bilanz.incomeStatement.profit / 100 : 0
   if (loss > 0) {
     // The loss of 2024 goes forward: 2025 takes it from the Feststellungsbescheid, the Rücktrag is waived.
-    await business.saveProfile(userId, 2024, 'B', { lossFacts: { waiveCarryBack: true } })
-    await business.saveProfile(userId, 2025, 'B', { lossFacts: { carriedForwardEur: Math.round(loss) }, tradeTaxInputs: { financing: { rentImmovableEur: 9_600 }, lossCarriedForwardEur: Math.round(loss) } })
+    await business.saveProfile(userId, 2024, SPOUSE_FIRST_BUSINESS, { lossFacts: { waiveCarryBack: true } })
+    await business.saveProfile(userId, 2025, SPOUSE_FIRST_BUSINESS, { lossFacts: { carriedForwardEur: Math.round(loss) }, tradeTaxInputs: { financing: { rentImmovableEur: 9_600 }, lossCarriedForwardEur: Math.round(loss) } })
   }
   return { loss2024Eur: Math.round(loss) }
 }

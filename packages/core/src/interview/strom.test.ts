@@ -176,3 +176,11 @@ describe('the Gewerbe gate with the self-employment switch (ADR-0101 §20)', () 
     expect(on.complete).toBe(false)
   })
 })
+
+describe('the provision topics of the self-employed (ADR-0101 §22)', () => {
+  it('show their amounts on the topic page, without the switch option the page passes', () => {
+    expect(topicPageSteps('altersvorsorge', { job: 'Selbstständig', altersvorsorge: 'Ja' })).toEqual(['av-rv-betrag', 'av-versorgungswerk-betrag', 'av-basisrente-betrag', 'av-ksk'])
+    expect(topicPageSteps('versicherungen', { job: 'Selbstständig', versicherungen: 'Ja' })).toEqual(['versicherungen-betrag'])
+    expect(isTopicApplicable('altersvorsorge', { job: 'Angestellt' })).toBe(false)
+  })
+})

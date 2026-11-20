@@ -49,6 +49,11 @@ const MARITAL_STATUS_OPTIONS: ReadonlyArray<OptionSpec<(typeof MARITAL_STATUS_VA
   { value: 'Verwitwet', labelKey: 'interview.familienstand.options.verwitwet' },
 ]
 
+const PENSION_BUSINESS_OPTIONS: ReadonlyArray<OptionSpec<'Ja' | 'Nein'>> = [
+  { value: 'Ja', labelKey: 'interview.renteSelbststaendig.options.ja' },
+  { value: 'Nein', labelKey: 'interview.renteSelbststaendig.options.nein' },
+]
+
 const PARTNER_JOB_OPTIONS: ReadonlyArray<OptionSpec<(typeof PARTNER_JOB_VALUES)[number]>> = [
   { value: 'Angestellt', labelKey: 'interview.partnerJob.options.angestellt' },
   { value: 'Rente', labelKey: 'interview.partnerJob.options.rente' },
@@ -69,6 +74,7 @@ const PARTNER_GERMAN_JOB_OPTIONS: ReadonlyArray<OptionSpec<(typeof GERMAN_JOB_VA
 
 export const QUESTION_COPY: Record<QuestionId, { readonly titleKey: string; readonly helpKey: string; readonly options: ReadonlyArray<OptionSpec<string>> }> = {
   job: { titleKey: 'interview.job', helpKey: 'interview.job.help', options: JOB_OPTIONS },
+  'rente-selbststaendig': { titleKey: 'interview.renteSelbststaendig', helpKey: 'interview.renteSelbststaendig.help', options: PENSION_BUSINESS_OPTIONS },
   ausland: { titleKey: 'interview.ausland', helpKey: 'interview.ausland.help', options: FOREIGN_OPTIONS },
   'de-job': { titleKey: 'interview.deJob', helpKey: 'interview.deJob.help', options: GERMAN_JOB_OPTIONS },
   kinder: { titleKey: 'interview.kinder', helpKey: 'interview.kinder.help', options: KINDER_OPTIONS },
@@ -92,7 +98,10 @@ export function interviewProgress(questionId: QuestionId, answers: Answers): { r
           ? ['partner-job', 'partner-ausland', 'partner-de-job']
           : ['partner-job', 'partner-ausland']
   // A cross-border commuter is asked about a German job right after Switzerland (ADR-0079).
-  const own: readonly QuestionId[] = answers.ausland === 'Ja, in die Schweiz' && answers.job !== 'Rente' ? [...QUESTION_ORDER.slice(0, 2), 'de-job', ...QUESTION_ORDER.slice(2)] : QUESTION_ORDER
+  const base: readonly QuestionId[] = answers.ausland === 'Ja, in die Schweiz' && answers.job !== 'Rente' ? [...QUESTION_ORDER.slice(0, 2), 'de-job', ...QUESTION_ORDER.slice(2)] : QUESTION_ORDER
+  // A pensioner is asked about a business right after the job, once the switch puts the question (ADR-0101 §22).
+  const pensionBusiness = answers.job === 'Rente' && (questionId === 'rente-selbststaendig' || answers['rente-selbststaendig'] !== undefined)
+  const own: readonly QuestionId[] = pensionBusiness ? [base[0] as QuestionId, 'rente-selbststaendig', ...base.slice(1)] : base
   const all: readonly QuestionId[] = [...own, ...partnerSteps]
   const index = all.indexOf(questionId)
   return { step: index === -1 ? all.length - 1 : index, total: all.length }

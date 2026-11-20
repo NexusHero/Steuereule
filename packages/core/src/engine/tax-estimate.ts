@@ -6,6 +6,7 @@ import { churchTaxOnIncome, type ChurchMembership } from '../domains/church-tax'
 import { childTaxAllowance } from '../domains/children'
 import type { GermanState } from '../common/postal-codes'
 import { deductibleProvision, type PersonProvision } from '../domains/provision'
+import { withSpecialTariffs } from '../domains/business/special-tariffs'
 import { afterTradeTaxCredit, businessTotal, creditPerson, lossesOfYear, type BusinessEstimate, type BusinessIncome, type LossCarry, type Prepayments } from './business-income'
 
 export interface Range {
@@ -144,6 +145,11 @@ export interface PensionerEstimateInput {
   readonly selfPaidKvPv: number
   /** Privately insured: the self-paid contributions replace the statutory share deducted from the pension. */
   readonly privatelyInsured?: boolean | undefined
+  /**
+   * A pensioner with a business (ADR-0101 §22): own pension contributions (Basisrente, Versorgungswerk,
+   * statutory RV) and other insurance, under the caps of § 10 Abs. 3 and 4 EStG.
+   */
+  readonly ownProvision?: { readonly pensionEur: number; readonly otherEur: number } | undefined
   readonly householdReductionEur?: number | undefined
   readonly healthExpensesEur?: number | undefined
   readonly childrenBracket?: BurdenChildrenBracket | undefined
@@ -260,12 +266,13 @@ export function taxEstimateCrossBorder(e: CrossBorderEstimateInput): TaxEstimate
 export function taxEstimatePensioner(e: PensionerEstimateInput): TaxEstimate {
   if (!isSupportedIncomeTaxYear(e.year)) return { kind: 'nicht-moeglich', reason: 'jahr-ohne-tarif' }
   const params = getTaxYearParameters(e.year)
-  const provision = e.privatelyInsured
+  const basic = e.privatelyInsured
     ? { from: e.selfPaidKvPv, to: e.selfPaidKvPv }
     : {
         from: Math.round(e.grossPensionEur * STATUTORY_PENSIONER_HEALTH_SHARE.from) + e.selfPaidKvPv,
         to: Math.round(e.grossPensionEur * STATUTORY_PENSIONER_HEALTH_SHARE.to) + e.selfPaidKvPv,
       }
+  const provision = e.ownProvision ? { from: withOwnProvision(e.year, basic.from, e.ownProvision), to: withOwnProvision(e.year, basic.to, e.ownProvision) } : basic
   return estimate({
     year: e.year,
     einnahmen: e.taxablePensionEur,
@@ -283,6 +290,18 @@ export function taxEstimatePensioner(e: PensionerEstimateInput): TaxEstimate {
     losses: e.losses,
     prepayments: e.prepayments,
   })
+}
+
+/**
+ * The basic health and care insurance plus a pensioner's own pension contributions and other insurance:
+ * the pension under its Höchstbetrag, the other insurance only where the basic insurance leaves room
+ * under the 1.900 € cap (§ 10 Abs. 4 Satz 2 EStG: the pension insurer pays half of the KVdR).
+ */
+function withOwnProvision(year: number, basicEur: number, own: { readonly pensionEur: number; readonly otherEur: number }): number {
+  const d = deductibleProvision(year, [
+    { pensionOwnEur: own.pensionEur, pensionEmployerEur: 0, healthBasicEur: basicEur, healthWithSickPayEur: 0, careEur: 0, employerSubsidyEur: 0, otherEur: own.otherEur, reducedOtherCap: true },
+  ])
+  return d.totalEur
 }
 
 /** A single self-employed person, with or without a side job (ADR-0101). */
@@ -402,7 +421,8 @@ function estimate(input: {
   const taxableIncome = { from: zve(input.provision.to), to: zve(input.provision.from) }
   const reductionEur = input.householdReductionEur ?? 0
   const progression = input.progressionIncomeEur ?? 0
-  const tariff = (z: number) => (progression > 0 ? progressionClauseTax(z, progression, input.year) : incomeTax(z, input.year))
+  // § 34 and § 34a take their parts out of the tariff (ADR-0101 §22); without them the tariff is as it was.
+  const tariff = withSpecialTariffs((z: number) => (progression > 0 ? progressionClauseTax(z, progression, input.year) : incomeTax(z, input.year)), input.business?.special)
   // § 35 EStG comes off the tariff tax before § 35a (Rn. 4 of BMF 3.11.2016).
   const persons = [creditPerson(input.business, [otherIncome])]
   const credited = { from: afterTradeTaxCredit(persons, tariff(taxableIncome.from)), to: afterTradeTaxCredit(persons, tariff(taxableIncome.to)) }

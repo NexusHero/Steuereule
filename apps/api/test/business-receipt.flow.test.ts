@@ -2,6 +2,7 @@
 // is an expense or an income (`direction`), the parse routes the Beleg to the business reader and carries the
 // direction into `bookingDraftFromReceipt`.
 import { afterEach, describe, expect, it } from 'vitest'
+import { businessOfInstance, instanceForBusiness } from '../src/business/booking-field-access.js'
 import { AuditService } from '../src/audit/audit.service.js'
 import { BusinessReceiptParseStrategy } from '../src/business/business-receipt.parse-strategy.js'
 import type { BusinessService } from '../src/business/business.service.js'
@@ -60,5 +61,23 @@ describe('business receipts through the one Beleg upload (ADR-0101 §6)', () => 
       expect.objectContaining({ account: '1200', side: 'debit' }),
       expect.objectContaining({ account: '8400', side: 'credit', taxKey: 'ust19' }),
     ])
+  })
+
+  it('books into the chosen business: its frame is asked, the draft names it (ADR-0101 §22)', async () => {
+    process.env.SELBSTSTAENDIGE_ENABLED = 'true'
+    const staged: { business?: number }[] = []
+    const asked: unknown[] = []
+    const advisor = { stageBookingProposal: async (_u: string, _y: number, input: { business?: number }) => (staged.push(input), { action: null, assistantMessage: null }) } as unknown as AdvisorService
+    const business = { pathOpen: async () => true, bookingTarget: async (_u: string, _y: number, ref: unknown) => (asked.push(ref), { chart: 'SKR03', mode: 'euer', year: 2025, lockedThrough: null, smallBusiness: false }) } as unknown as BusinessService
+    const strategy = new BusinessReceiptParseStrategy(new DocumentParseRegistry(), advisor, new AuditService(new FakeAuditRepository()), business)
+    await strategy.parse('u', { taxYear: 2025, fileName: 'r.pdf', rawText: INVOICE, business: 2 })
+    expect(asked).toEqual([{ person: 'A', business: 2 }])
+    expect(staged[0]?.business).toBe(2)
+  })
+
+  it('reads the business of a draft from its instance, the first without a prefix', () => {
+    expect(businessOfInstance('beleg-abc')).toEqual({ person: 'A', business: 1 })
+    expect(businessOfInstance(instanceForBusiness(3, 'beleg-abc'))).toEqual({ person: 'A', business: 3 })
+    expect(instanceForBusiness(1, 'beleg-abc')).toBe('beleg-abc')
   })
 })

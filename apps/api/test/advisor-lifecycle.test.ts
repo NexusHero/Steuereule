@@ -116,7 +116,7 @@ describe('AdvisorService message lifecycle (#476)', () => {
       { event: 'tool', data: { name: 'lookup_legal_source', label: 'Prüfe EStG-Paragraph …' } },
       { event: 'tool_result', data: { name: 'lookup_legal_source', ok: true, result: '§ 9 EStG' } },
       token('Antwort'),
-      doneEvent({ replyText: 'Antwort', usage: { inputTokens: 1200, outputTokens: 80, cachedInputTokens: 900 } }),
+      doneEvent({ replyText: 'Antwort', usage: { inputTokens: 1200, outputTokens: 80, cachedInputTokens: 900, cacheWriteInputTokens: 300 } }),
     ])
     const { service, advisorRepo } = buildAdvisorTestKit(engine)
     const events = await collect(service.streamMessage(USER, YEAR, { message: 'Hi' }))
@@ -133,7 +133,7 @@ describe('AdvisorService message lifecycle (#476)', () => {
 
     const stored = (await advisorRepo.listForUserAndYear(USER, YEAR))[1]!
     expect(stored.reasoning).toBe('Erst die Pauschale prüfen.')
-    expect(stored.usage).toMatchObject({ inputTokens: 1200, outputTokens: 80, cachedInputTokens: 900 })
+    expect(stored.usage).toMatchObject({ inputTokens: 1200, outputTokens: 80, cachedInputTokens: 900, cacheWriteInputTokens: 300 })
     expect(stored.usage?.traceId).toBeTruthy()
     expect(stored.usage?.firstTokenMs).toBeGreaterThanOrEqual(0)
     expect(stored.usage?.durationMs).toBeGreaterThanOrEqual(stored.usage!.firstTokenMs!)

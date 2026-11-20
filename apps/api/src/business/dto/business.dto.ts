@@ -1,10 +1,10 @@
 // Wire shapes of the self-employment path (ADR-0101). Nested facts travel as plain objects: the core
 // checks their content (parseBookingDraft, suggestProfessionKind, the tax rules), not class-validator.
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
-import { IsArray, IsBoolean, IsIn, IsInt, IsObject, IsOptional, IsString, Matches, Max, MaxLength, Min, ValidateNested } from 'class-validator'
+import { IsArray, IsBoolean, IsIn, IsInt, IsObject, IsOptional, IsString, Length, Matches, Max, MaxLength, Min, ValidateNested } from 'class-validator'
 import { Type } from 'class-transformer'
 import { USEFUL_LIVES } from '@steuereule/core'
-import { BookIntegrityDto, CsvMappingDto, LossFactsDto, PartnershipShareDto, ProfessionAnswersDto, TradeTaxInputsDto } from './business-results.dto.js'
+import { BookIntegrityDto, CsvMappingDto, LossFactsDto, PartnershipShareDto, ProfessionAnswersDto, TradeTaxInputsDto, VatPeriodFactsDto, DisposalFactsDto, RetainedFactsDto } from './business-results.dto.js'
 
 export { BookIntegrityDto }
 
@@ -42,7 +42,18 @@ export class BookingAssetDto {
 }
 
 /** A booking as the user (or an accepted draft) posts it; checked by the core against the book. */
+export class RegularPaymentDto {
+  @ApiProperty({ type: String, example: '2025-01-10', description: 'Due date after any § 108 AO shift.' }) @Matches(ISO_DATE) dueDate!: string
+  @ApiProperty({ type: Number, example: 2024, description: 'The year the payment belongs to economically.' }) @IsInt() periodYear!: number
+}
+
 export class BookingDraftDto {
+  @ApiPropertyOptional({ type: RegularPaymentDto, description: '§ 11 Abs. 1 Satz 2 EStG: a regular payment around the turn of the year, counted in the EÜR of the year it belongs to.' })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => RegularPaymentDto)
+  regularPayment?: RegularPaymentDto
+
   @ApiProperty({ type: String, example: '2025-03-14' })
   @Matches(ISO_DATE)
   date!: string
@@ -65,6 +76,11 @@ export class BookingDraftDto {
   @ApiProperty({ type: [BookingLineDto] })
   @IsArray()
   lines!: BookingLineDto[]
+
+  @ApiPropertyOptional({ type: String, example: 'ATU12345678', description: 'The counterparty’s foreign VAT id (Zusammenfassende Meldung, § 18a UStG).' })
+  @IsOptional()
+  @Matches(/^[A-Z]{2}[0-9A-Z+*]{2,12}$/)
+  counterpartyVatId?: string
 
   @ApiPropertyOptional({ type: BookingAssetDto, description: 'A fixed asset: how it is depreciated.' })
   @IsOptional()
@@ -111,6 +127,29 @@ export class QuickEntryDto {
   @ValidateNested({ each: true })
   @Type(() => QuickTotalDto)
   totals!: QuickTotalDto[]
+}
+
+export class CarCommuteDto {
+  @ApiProperty({ type: Number, description: 'One-way distance home–business, full km.' }) @IsInt() @Min(0) @Max(1000) distanceKm!: number
+  @ApiProperty({ type: Number, description: 'Days the trip was made.' }) @IsInt() @Min(0) @Max(366) days!: number
+}
+
+/** The facts of a business car for its private use (ADR-0101 §22, § 6 Abs. 1 Nr. 4 EStG). */
+export class CompanyCarInputDto {
+  @ApiProperty({ enum: ['verbrenner', 'elektro', 'hybrid'] }) @IsIn(['verbrenner', 'elektro', 'hybrid']) drive!: 'verbrenner' | 'elektro' | 'hybrid'
+  @ApiProperty({ type: String, example: '2024-03-01', description: 'Acquisition date.' }) @Matches(ISO_DATE) acquired!: string
+  @ApiProperty({ type: Number, description: 'Bruttolistenpreis with the extras, euros.' }) @IsInt() @Min(1) @Max(10_000_000) listPriceGrossEur!: number
+  @ApiPropertyOptional({ type: Number }) @IsOptional() @IsInt() @Min(0) @Max(1000) co2GPerKm?: number
+  @ApiPropertyOptional({ type: Number }) @IsOptional() @IsInt() @Min(0) @Max(2000) electricRangeKm?: number
+  @ApiProperty({ type: Boolean, description: 'More than half of the use is business.' }) @IsBoolean() businessShareOver50!: boolean
+  @ApiProperty({ type: Number, description: 'Months in the business assets this year.' }) @IsInt() @Min(1) @Max(12) monthsInBusiness!: number
+  @ApiProperty({ enum: ['pauschal', 'fahrtenbuch'] }) @IsIn(['pauschal', 'fahrtenbuch']) method!: 'pauschal' | 'fahrtenbuch'
+  @ApiPropertyOptional({ type: Number, description: 'Total costs of the car in the year with the AfA, euros.' }) @IsOptional() @IsInt() @Min(0) totalCostsEur?: number
+  @ApiPropertyOptional({ type: Number, description: 'The AfA inside the total costs, euros.' }) @IsOptional() @IsInt() @Min(0) depreciationEur?: number
+  @ApiPropertyOptional({ type: Number, description: 'Logbook: private share of the km, 0–1.' }) @IsOptional() @Min(0) @Max(1) privateShare?: number
+  @ApiPropertyOptional({ type: Number, description: 'Logbook: km of the year.' }) @IsOptional() @IsInt() @Min(0) totalKm?: number
+  @ApiPropertyOptional({ type: Number, description: 'Logbook: costs that carried input VAT, euros.' }) @IsOptional() @IsInt() @Min(0) costsWithInputVatEur?: number
+  @ApiPropertyOptional({ type: CarCommuteDto }) @IsOptional() @ValidateNested() @Type(() => CarCommuteDto) commute?: CarCommuteDto
 }
 
 export class LockDto {
@@ -178,10 +217,28 @@ export class BusinessProfileInputDto {
   @Matches(ISO_DATE)
   startDate?: string | null
 
-  @ApiPropertyOptional({ type: Number, nullable: true, description: 'Umsatzsteuer prepayments of the year in cents.' })
+  @ApiPropertyOptional({ type: Number, nullable: true, description: 'Umsatzsteuer prepayments of the year in cents; absent or null = the Voranmeldungen’s total.' })
   @IsOptional()
   @IsInt()
   vatPrepaymentsCents?: number | null
+
+  @ApiPropertyOptional({ type: VatPeriodFactsDto, nullable: true, description: 'The Voranmeldung facts. Replaced as a whole.' })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => VatPeriodFactsDto)
+  vatPeriodFacts?: VatPeriodFactsDto | null
+
+  @ApiPropertyOptional({ type: DisposalFactsDto, nullable: true, description: 'Sale or giving up of the business (§ 16, § 34 EStG). Replaced as a whole.' })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => DisposalFactsDto)
+  disposalFacts?: DisposalFactsDto | null
+
+  @ApiPropertyOptional({ type: RetainedFactsDto, nullable: true, description: 'Thesaurierung (§ 34a EStG), Bilanz only. Replaced as a whole.' })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => RetainedFactsDto)
+  retainedFacts?: RetainedFactsDto | null
 
   @ApiPropertyOptional({ type: TradeTaxInputsDto, nullable: true, description: 'Gewerbesteuer inputs, euros. Replaced as a whole: send the complete object.' })
   @IsOptional()
@@ -214,9 +271,26 @@ export class ProfessionSuggestionDto {
   basis!: string[]
 }
 
+export class BusinessListItemDto {
+  @ApiProperty({ type: Number, description: 'The business number of the person, from 1.' }) business!: number
+  @ApiProperty({ type: String, nullable: true }) name!: string | null
+  @ApiProperty({ enum: ['freiberuf', 'gewerbe'], nullable: true }) kind!: 'freiberuf' | 'gewerbe' | null
+  @ApiProperty({ enum: ['euer', 'bilanz'] }) mode!: 'euer' | 'bilanz'
+}
+
+export class NewBusinessDto {
+  @ApiProperty({ type: String, minLength: 1, maxLength: 120, description: 'What the user calls the business.' })
+  @IsString()
+  @Length(1, 120)
+  name!: string
+}
+
 export class BusinessProfileDto {
   @ApiProperty({ enum: ['A', 'B'] })
   person!: 'A' | 'B'
+
+  @ApiProperty({ type: Number, description: 'The business number of the person, from 1 (ADR-0101 §22).' })
+  business!: number
 
   @ApiProperty({ enum: ['freiberuf', 'gewerbe'], nullable: true })
   confirmedKind!: 'freiberuf' | 'gewerbe' | null
@@ -253,6 +327,15 @@ export class BusinessProfileDto {
 
   @ApiProperty({ type: Number, nullable: true })
   vatPrepaymentsCents!: number | null
+
+  @ApiProperty({ type: VatPeriodFactsDto })
+  vatPeriodFacts!: VatPeriodFactsDto
+
+  @ApiProperty({ type: DisposalFactsDto, nullable: true })
+  disposalFacts!: DisposalFactsDto | null
+
+  @ApiProperty({ type: RetainedFactsDto, nullable: true })
+  retainedFacts!: RetainedFactsDto | null
 
   @ApiProperty({ type: TradeTaxInputsDto })
   tradeTaxInputs!: TradeTaxInputsDto
@@ -456,7 +539,23 @@ export class ElsterHelpDto {
 export class EBilanzDto {
   @ApiProperty({ type: String }) xbrl!: string
   @ApiProperty({ type: Boolean, enum: [false] }) transmitted!: false
+  @ApiProperty({ type: Boolean, description: 'The operator set up the ERiC sidecar and certificate: the data set can be validated and sent.' }) transmissionReady!: boolean
   @ApiProperty({ type: String }) note!: string
+}
+
+export class EBilanzTransmitDto {
+  @ApiProperty({ enum: ['validieren', 'senden'] })
+  @IsIn(['validieren', 'senden'])
+  mode!: 'validieren' | 'senden'
+}
+
+export class EBilanzTransmissionDto {
+  @ApiProperty({ enum: ['ok', 'abgelehnt', 'nicht_eingerichtet'] }) status!: 'ok' | 'abgelehnt' | 'nicht_eingerichtet'
+  @ApiPropertyOptional({ enum: ['validieren', 'senden'] }) mode?: 'validieren' | 'senden'
+  @ApiPropertyOptional({ type: String, nullable: true, description: 'The ELSTER transfer ticket after sending.' }) ticket?: string | null
+  @ApiPropertyOptional({ type: String, nullable: true }) protocol?: string | null
+  @ApiPropertyOptional({ type: [String], description: 'ERiC’s messages on a refusal.' }) messages?: string[]
+  @ApiPropertyOptional({ type: [String], description: 'What the operator still has to set up.' }) missing?: string[]
 }
 
 export class MunicipalityDto {

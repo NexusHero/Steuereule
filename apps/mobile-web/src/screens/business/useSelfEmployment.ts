@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import type { Answers, InterviewOptions } from '@steuereule/core'
+import { declaresBusiness, type Answers, type InterviewOptions } from '@steuereule/core'
 import { cockpitControllerGetCockpitSummary, getCockpitControllerGetCockpitSummaryQueryKey } from '@steuereule/api-client'
 
-/** The interview declares self-employment: „Selbstständig“ or „Beides“ (ADR-0101). */
+/** The interview declares self-employment: „Selbstständig“, „Beides“ or a pensioner with a business (ADR-0101 §22). */
 export function declaresSelfEmployment(answers: Answers): boolean {
-  return answers.job === 'Selbstständig' || answers.job === 'Beides'
+  return declaresBusiness(answers)
 }
 
 export interface SelfEmploymentCapability {

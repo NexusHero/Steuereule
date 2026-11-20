@@ -13,7 +13,7 @@ import { Choice } from './Choice'
 import { APP_NS } from '../../i18n/resources'
 import { captureReceipt } from '../../lib/receipts/captureReceipt'
 import { uploadBusinessReceipt } from '../../lib/receipts/uploadBusinessReceipt'
-import { ReceiptPickerButton } from '../shared/ReceiptPickerButton'
+import { BUSINESS_RECEIPT_ACCEPT, ReceiptPickerButton } from '../shared/ReceiptPickerButton'
 import { BookingDraftCard } from '../advisor/chat/BookingDraftCard'
 import { makeStyles } from '../advisor/AdvisorChatPanel.styles'
 import { problemOf } from './businessKit'
@@ -26,7 +26,7 @@ type Direction = 'ausgabe' | 'einnahme'
  * (ADR-0097), and what comes out is a booking draft shown as a booking, taken over or not by the user.
  * `onlyForSelfEmployed` hides it where the user has no self-employment (the Belege tab).
  */
-export function BusinessReceiptUpload({ taxYear, onlyForSelfEmployed = false }: { readonly taxYear: number; readonly onlyForSelfEmployed?: boolean }) {
+export function BusinessReceiptUpload({ taxYear, business = 1, onlyForSelfEmployed = false }: { readonly taxYear: number; readonly business?: number; readonly onlyForSelfEmployed?: boolean }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
@@ -47,7 +47,7 @@ export function BusinessReceiptUpload({ taxYear, onlyForSelfEmployed = false }: 
     setBusy(true)
     setMessage(null)
     setDraft(null)
-    const result = await captureReceipt(file, { taxYear, kind: 'geschaeftsbeleg', direction, deps: { upload: uploadBusinessReceipt(direction) } })
+    const result = await captureReceipt(file, { taxYear, kind: 'geschaeftsbeleg', direction, business, deps: { upload: uploadBusinessReceipt(direction) } })
     setBusy(false)
     if (!result.ok) return setMessage(tr('business.beleg.fehler'))
     const staged = result.response.stagedAction
@@ -72,7 +72,7 @@ export function BusinessReceiptUpload({ taxYear, onlyForSelfEmployed = false }: 
           </Choice>
         ))}
       </View>
-      <ReceiptPickerButton onFile={(file) => void take(file)} disabled={busy} testID="beleg-geschaeft-datei" unsupportedHint={tr('business.bank.nurWeb')}>
+      <ReceiptPickerButton accept={BUSINESS_RECEIPT_ACCEPT} onFile={(file) => void take(file)} disabled={busy} testID="beleg-geschaeft-datei" unsupportedHint={tr('business.bank.nurWeb')}>
         {busy ? tr('business.beleg.liest') : tr('business.beleg.hochladen')}
       </ReceiptPickerButton>
       {message !== null ? (

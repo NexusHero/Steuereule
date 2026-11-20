@@ -57,6 +57,7 @@ export function taxDataTables(tx: TransactionClient): UserKeyedTable[] {
     tx.ledger,
     tx.fixedAsset,
     tx.bookingRule,
+    tx.payrollRun,
     tx.businessProfile,
   ]
 }

@@ -1,12 +1,21 @@
+import { useState } from 'react'
 import { Pressable, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { useTheme } from '@steuereule/ui'
-import { useBusinessControllerBank, useBusinessControllerBook, useBusinessControllerClosing, useBusinessControllerProfile, useLinkControllerGet } from '@steuereule/api-client'
+import { Button, Feld, Input, useTheme } from '@steuereule/ui'
+import {
+  useBusinessControllerAddBusiness,
+  useBusinessControllerBank,
+  useBusinessControllerBook,
+  useBusinessControllerBusinesses,
+  useBusinessControllerClosing,
+  useBusinessControllerProfile,
+  useLinkControllerGet,
+} from '@steuereule/api-client'
 import { Choice } from './Choice'
 import { APP_NS } from '../../i18n/resources'
 import { BusinessFrame, BusinessQueryState, Note, Section } from './BusinessFrame'
 import { personParams, plainEuro, type Person } from './businessKit'
-import { queryProblem } from './useBusiness'
+import { attempt, queryProblem, useRefreshBusiness } from './useBusiness'
 import type { BusinessPage, BusinessPageProps } from './BusinessScreen'
 
 interface LinkSpec {
@@ -20,20 +29,32 @@ const LINKS: readonly LinkSpec[] = [
   { page: 'erfassung', show: (f) => f.euer },
   { page: 'bank', show: () => true },
   { page: 'anlagen', show: () => true },
+  { page: 'firmenwagen', show: () => true },
+  { page: 'lohn', show: () => true },
   { page: 'abschluss', show: () => true },
   { page: 'umsatzsteuer', show: () => true },
+  { page: 'voranmeldungen', show: () => true },
   { page: 'gewerbesteuer', show: (f) => f.gewerbe },
   { page: 'verluste', show: () => true },
+  { page: 'sondertarife', show: () => true },
   { page: 'elster', show: () => true },
   { page: 'export', show: () => true },
   { page: 'freischalten', show: () => true },
 ]
 
 /** The area's first screen: a short status, what is open, and the way into each page. Roughly one phone screen. */
-export function BusinessHome({ taxYear, person, onBack, onOpenPage, onChangePerson }: BusinessPageProps & { readonly onChangePerson?: (person: Person) => void }) {
+export function BusinessHome({
+  taxYear,
+  person,
+  business = 1,
+  onBack,
+  onOpenPage,
+  onChangePerson,
+  onChangeBusiness,
+}: BusinessPageProps & { readonly onChangePerson?: (person: Person) => void; readonly onChangeBusiness?: (business: number) => void }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
-  const params = personParams(person)
+  const params = personParams(person, business)
   const profile = useBusinessControllerProfile(taxYear, params)
   const book = useBusinessControllerBook(taxYear, params, { query: { enabled: profile.data?.status === 200 } })
   const closing = useBusinessControllerClosing(taxYear, params, { query: { enabled: profile.data?.status === 200, retry: false } })
@@ -42,6 +63,12 @@ export function BusinessHome({ taxYear, person, onBack, onOpenPage, onChangePers
   const household = useLinkControllerGet(taxYear, { query: { enabled: onChangePerson !== undefined } })
   const couple = household.data?.status === 200 && household.data.data.filingType === 'zusammen' && !household.data.data.personBHasOwnAccount
   const partnerName = household.data?.status === 200 ? (household.data.data.personB?.firstName?.trim() || null) : null
+  // Several businesses of one person (ADR-0101 §22): a Freiberuf beside a Gewerbe, two Gewerbebetriebe.
+  const businesses = useBusinessControllerBusinesses(taxYear, personParams(person), { query: { enabled: onChangeBusiness !== undefined && profile.data?.status === 200 } })
+  const add = useBusinessControllerAddBusiness()
+  const refresh = useRefreshBusiness(taxYear)
+  const [newName, setNewName] = useState<string | null>(null)
+  const [addProblem, setAddProblem] = useState<string | null>(null)
   const problem = queryProblem(profile)
   const title = tr('business.titel', { year: taxYear })
 
@@ -81,6 +108,47 @@ export function BusinessHome({ taxYear, person, onBack, onOpenPage, onChangePers
             {partnerName ?? tr('business.person.B')}
           </Choice>
         </View>
+      ) : null}
+      {onChangeBusiness ? (
+        <Section title={tr('business.betriebe.titel')} testID="business-betriebe">
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.s2 }}>
+            {(businesses.data?.status === 200 ? businesses.data.data : [{ business: 1, name: p.name, kind: p.confirmedKind, mode: p.mode }]).map((b) => (
+              <Choice key={b.business} selected={b.business === business} onPress={() => onChangeBusiness(b.business)} testID={`business-betrieb-${b.business}`}>
+                {b.name?.trim() || tr('business.betriebe.ohneName', { nummer: b.business })}
+              </Choice>
+            ))}
+            {newName === null ? (
+              <Choice selected={false} onPress={() => setNewName('')} testID="business-betrieb-neu">
+                {tr('business.betriebe.neu')}
+              </Choice>
+            ) : null}
+          </View>
+          {newName !== null ? (
+            <View style={{ gap: t.space.s2, marginTop: t.space.s3 }}>
+              <Feld label={tr('business.betriebe.name')}>
+                <Input value={newName} onChange={setNewName} accessibilityLabel={tr('business.betriebe.name')} testID="business-betrieb-name" />
+              </Feld>
+              <Button
+                disabled={newName.trim() === ''}
+                onPress={() =>
+                  void (async () => {
+                    setAddProblem(null)
+                    const outcome = await attempt(() => add.mutateAsync({ jahr: taxYear, data: { name: newName.trim() }, ...(person === 'B' ? { params: { person: 'B' } } : {}) }))
+                    if (!outcome.ok) return setAddProblem(outcome.problem.message ?? tr('business.speichernFehler'))
+                    setNewName(null)
+                    refresh()
+                    const created = outcome.response.data as { readonly business?: number } | undefined
+                    if (created?.business !== undefined) onChangeBusiness(created.business)
+                  })()
+                }
+                testID="business-betrieb-anlegen"
+              >
+                {tr('business.betriebe.anlegen')}
+              </Button>
+              {addProblem !== null ? <Note tone="error">{addProblem}</Note> : null}
+            </View>
+          ) : null}
+        </Section>
       ) : null}
       <Section>
         <Text style={{ ...t.type.bodyStrong, color: t.color.tinte }} testID="business-status">

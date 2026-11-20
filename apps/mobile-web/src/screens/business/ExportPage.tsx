@@ -3,6 +3,8 @@ import { Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { Button, Feld, Input, useTheme } from '@steuereule/ui'
 import {
+  useBusinessControllerTransmitEBilanz,
+  type EBilanzTransmissionDto,
   getBusinessControllerEBilanzFileUrl,
   getBusinessControllerGobdUrl,
   useBusinessControllerEBilanz,
@@ -17,16 +19,26 @@ import { attempt, useRefreshBusiness } from './useBusiness'
 import type { BusinessPageProps } from './BusinessScreen'
 
 /** Exports: the GoBD data export for an audit, the Verfahrensdokumentation, and the E-Bilanz data set (not sent). */
-export function ExportPage({ taxYear, person, onBack, onOpenPage }: BusinessPageProps) {
+export function ExportPage({ taxYear, person, business = 1, onBack, onOpenPage }: BusinessPageProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
-  const params = personParams(person)
+  const params = personParams(person, business)
   const doc = useBusinessControllerProcedureDoc(taxYear, params)
   const saveDoc = useBusinessControllerSaveProcedureDoc()
   const bilanz = useBusinessControllerEBilanz(taxYear, params)
   const refresh = useRefreshBusiness(taxYear)
   const [problem, setProblem] = useState<ApiProblem | null>(null)
   const [values, setValues] = useState<Readonly<Record<string, string>>>({})
+  const transmit = useBusinessControllerTransmitEBilanz()
+  const [transmission, setTransmission] = useState<EBilanzTransmissionDto | null>(null)
+
+  async function send(mode: 'validieren' | 'senden') {
+    setProblem(null)
+    setTransmission(null)
+    const outcome = await attempt(() => transmit.mutateAsync({ jahr: taxYear, data: { mode }, ...(params ? { params } : {}) }))
+    if (outcome.ok) setTransmission(outcome.response.data as EBilanzTransmissionDto)
+    else setProblem(outcome.problem)
+  }
 
   async function download(url: string, name: string) {
     setProblem(null)
@@ -88,11 +100,28 @@ export function ExportPage({ taxYear, person, onBack, onOpenPage }: BusinessPage
           {tr('business.export.ebilanzNichtUebermittelt')}
         </Text>
         {xbrl?.note ? <Note>{xbrl.note}</Note> : null}
-        <View style={{ marginTop: t.space.s2 }}>
+        <View style={{ marginTop: t.space.s2, gap: t.space.s2 }}>
           <Button variant="ghost" disabled={xbrl === null} onPress={() => void download(getBusinessControllerEBilanzFileUrl(taxYear, params), `e-bilanz-${taxYear}.xbrl`)} testID="ebilanz-datei">
             {tr('business.export.ebilanzDatei')}
           </Button>
+          {xbrl?.transmissionReady ? (
+            <>
+              <Button variant="ghost" onPress={() => void send('validieren')} testID="ebilanz-pruefen">
+                {tr('business.export.ebilanzPruefen')}
+              </Button>
+              <Button onPress={() => void send('senden')} testID="ebilanz-senden">
+                {tr('business.export.ebilanzSenden')}
+              </Button>
+            </>
+          ) : null}
         </View>
+        {transmission?.status === 'ok' ? (
+          <Note testID="ebilanz-ok">{transmission.mode === 'senden' ? tr('business.export.ebilanzGesendet', { ticket: transmission.ticket ?? '–' }) : tr('business.export.ebilanzPlausibel')}</Note>
+        ) : null}
+        {transmission?.status === 'abgelehnt' ? (
+          <Note tone="error" testID="ebilanz-abgelehnt">{[tr('business.export.ebilanzAbgelehnt'), ...(transmission.messages ?? [])].join(' ')}</Note>
+        ) : null}
+        {transmission?.status === 'nicht_eingerichtet' ? <Note tone="warn">{tr('business.export.ebilanzNichtEingerichtet')}</Note> : null}
       </Section>
     </BusinessFrame>
   )

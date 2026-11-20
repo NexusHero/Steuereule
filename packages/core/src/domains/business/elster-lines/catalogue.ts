@@ -1,5 +1,6 @@
 import { EUER_KEYS, type EuerKey } from '../euer-keys'
 import { EXTRACTED_LINES, SOURCE_SHA256 } from './lines.generated'
+import { onSuppliedLinesChange, suppliedLinesFor } from './supplied'
 import {
   ELSTER_YEARS,
   type ElsterForm,
@@ -145,10 +146,16 @@ function buildLines(form: ElsterForm, year: ElsterYear, dataKey: string): readon
 }
 
 const cache = new Map<string, ElsterLinesResult>()
+onSuppliedLinesChange(() => cache.clear())
 
 /** The lines of `form` in tax year `year`, or why the app cannot show them. */
 export function elsterLinesFor(form: ElsterForm, year: ElsterYear): ElsterLinesResult {
-  if (ELECTRONIC_ONLY.has(form)) return { status: 'not_available', reason: 'electronic_only' }
+  if (ELECTRONIC_ONLY.has(form)) {
+    // Anlage S/G: only from a checked file read off Mein ELSTER (ADR-0101 §22), never guessed.
+    const supplied = suppliedLinesFor(form, year)
+    if (!supplied) return { status: 'not_available', reason: 'electronic_only' }
+    return { status: 'published', lines: supplied.lines, source: { url: supplied.source, sha256: supplied.sha256 } }
+  }
   const dataKey = DATA_KEY[form]
   const cacheKey = `${form}:${year}`
   const cached = cache.get(cacheKey)

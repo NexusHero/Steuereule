@@ -78,9 +78,9 @@ describe('the booking draft card', () => {
     expect(onUndo).toHaveBeenCalledWith('act-b1')
   })
 
-  it('says why a draft cannot be a booking (the 10-day rule is not modelled) and cannot be taken over', () => {
+  it('says why a draft cannot be a booking (a regular payment without its year) and cannot be taken over', () => {
     renderInApp(<Card action={action({}, { ...DRAFT, regularPayment: { dueDate: '2025-01-05' } })} onApply={vi.fn()} />)
-    expect(screen.getByTestId('buchung-entwurf-ungueltig').textContent).toContain('§ 11 Abs. 1 Satz 2 EStG')
+    expect(screen.getByTestId('buchung-entwurf-ungueltig').textContent).toContain('Fälligkeitsdatum und das Jahr')
     expect(screen.getByTestId('buchung-entwurf-uebernehmen').getAttribute('aria-disabled')).toBe('true')
   })
 })

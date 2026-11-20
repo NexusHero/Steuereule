@@ -159,3 +159,22 @@ describe('married couple with a trade', () => {
     expect(withCredit.solidaritaetszuschlag.from).toBeLessThan(without.solidaritaetszuschlag.from)
   })
 })
+
+describe('special tariffs in the estimate (§ 34, § 34a EStG, ADR-0101 §22)', () => {
+  const base = { year: 2025, provision: { pensionOwnEur: 0, pensionEmployerEur: 0, healthBasicEur: 0, healthWithSickPayEur: 0, careEur: 0, employerSubsidyEur: 0, otherEur: 0, reducedOtherCap: false }, donations: 0 } as const
+
+  it('the Fünftelregelung on a § 16 gain lowers the tax against the plain tariff', () => {
+    const plain = taxEstimateSelfEmployed({ ...base, business: { tradeEur: 130_000 } })
+    const fifth = taxEstimateSelfEmployed({ ...base, business: { tradeEur: 130_000, special: { extraordinary: { gainEur: 100_000, method: 'fuenftel' } } } })
+    if (plain.kind !== 'spanne' || fifth.kind !== 'spanne') throw new Error('expected ranges')
+    expect(fifth.incomeTax.to).toBeLessThan(plain.incomeTax.to)
+  })
+
+  it('a sole trader’s § 16 gain bears no trade tax and stays out of the § 35 numerator', () => {
+    const tradeTax = [{ baseAmountEur: 1_000, tradeTaxEur: 4_000 }]
+    const withGain = taxEstimateSelfEmployed({ ...base, business: { tradeEur: 130_000, tradeTax, tradeWithoutTradeTaxEur: 100_000 } })
+    const allTrade = taxEstimateSelfEmployed({ ...base, business: { tradeEur: 130_000, tradeTax } })
+    if (withGain.kind !== 'spanne' || allTrade.kind !== 'spanne') throw new Error('expected ranges')
+    expect(withGain.business?.tradeTaxCredit.to).toBeLessThanOrEqual(allTrade.business!.tradeTaxCredit.to)
+  })
+})

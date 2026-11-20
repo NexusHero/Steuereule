@@ -13,6 +13,8 @@ import { server } from '../../test-msw-server'
 import { CheckoutPage } from './CheckoutPage'
 import { BASE_PROFILE, BASE_URL, CATALOGUES, renderBusiness, useBusinessDefaults, useCatalogues, YEAR } from './businessTestKit'
 
+const SMALL_OK = { eligible: true, priorYearLimitEur: 25_000, currentYearLimitEur: 100_000, crossed: null, foundingYear: false, priorYearKnown: true, turnoverEur: 0, matchesProfile: true }
+
 afterEach(() => vi.restoreAllMocks())
 
 const refusal = (status: number, message: string, code = 'X') => HttpResponse.json({ statusCode: status, code, message }, { status })
@@ -202,7 +204,7 @@ describe('the profile', () => {
 })
 
 describe('Umsatzsteuer', () => {
-  const VAT = (balanceEur: number) => ({ figures: {}, result: { outputVat: { standard: 0, reduced: 0, zero: 0 }, inputVatDeductibleEur: 0, vatOfYearEur: 0, prepaymentsEur: 0, balanceEur }, cashAccountingAllowed: true })
+  const VAT = (balanceEur: number) => ({ figures: {}, result: { outputVat: { standard: 0, reduced: 0, zero: 0 }, inputVatDeductibleEur: 0, vatOfYearEur: 0, prepaymentsEur: 0, balanceEur }, cashAccountingAllowed: true, smallBusiness: SMALL_OK })
   const useVat = (balanceEur = 100) => server.use(http.get(`${BASE_URL}/umsatzsteuer`, () => HttpResponse.json(VAT(balanceEur))))
 
   it('retries a failed first read', async () => {
@@ -219,6 +221,27 @@ describe('Umsatzsteuer', () => {
     expect(await screen.findByText('Erstattung')).toBeTruthy()
     expect(screen.getByTestId('ust-saldo').textContent).toBe('250,00 €')
     expect(screen.getByTestId('ust-klein')).toBeTruthy()
+  })
+
+  it('warns when the profile claims the Kleinunternehmer rule and the founding year crossed its limit (§ 19 Abs. 2 UStG)', async () => {
+    useBusinessDefaults({ ...BASE_PROFILE, smallBusiness: true })
+    server.use(
+      http.get(`${BASE_URL}/umsatzsteuer`, () =>
+        HttpResponse.json({ ...VAT(0), smallBusiness: { ...SMALL_OK, eligible: false, crossed: 'current_year', currentYearLimitEur: 25_000, foundingYear: true, turnoverEur: 26_000, matchesProfile: false } }),
+      ),
+    )
+    renderBusiness('umsatzsteuer')
+    const note = (await screen.findByTestId('ust-klein-grenze')).textContent?.replace(/\s/g, ' ')
+    expect(note).toContain('Gründungsjahr')
+    expect(note).toContain('26.000,00 €')
+    expect(note).toContain('25.000,00 €')
+  })
+
+  it('says the year before is unknown when there is no book for it', async () => {
+    useBusinessDefaults({ ...BASE_PROFILE, smallBusiness: true })
+    server.use(http.get(`${BASE_URL}/umsatzsteuer`, () => HttpResponse.json({ ...VAT(0), smallBusiness: { ...SMALL_OK, priorYearKnown: false } })))
+    renderBusiness('umsatzsteuer')
+    expect((await screen.findByTestId('ust-klein-vorjahr')).textContent?.replace(/\s/g, ' ')).toContain('25.000,00 €')
   })
 
   it('saves the prepayments in cents when the field is left, and none when emptied', async () => {

@@ -1,5 +1,6 @@
 import { applyLosses, type LossYearResult } from '../domains/business/losses'
 import { tradeTaxCredit, type TradeTaxCreditPerson } from '../domains/business/trade-tax'
+import type { SpecialTariffFacts } from '../domains/business/special-tariffs'
 
 /**
  * Gewinneinkünfte of one person as the estimate takes them (ADR-0101): the profit of the Anlage S
@@ -12,6 +13,13 @@ export interface BusinessIncome {
   readonly tradeEur?: number | undefined
   /** Messbetrag and Gewerbesteuer of each trade (from `tradeTaxReturn`), for the § 35 EStG credit. */
   readonly tradeTax?: readonly { readonly baseAmountEur: number; readonly tradeTaxEur: number }[] | undefined
+  /**
+   * A § 16 gain (after the allowance, inside `tradeEur` or `selfEmployedEur`) and a § 34a retained profit
+   * (ADR-0101 §22): taxed by § 34 or § 34a instead of the tariff.
+   */
+  readonly special?: SpecialTariffFacts | undefined
+  /** The part of `tradeEur` that bears no trade tax (a sole trader's § 16 gain, § 7 Satz 2 GewStG): out of the § 35 numerator. */
+  readonly tradeWithoutTradeTaxEur?: number | undefined
 }
 
 /** § 10d EStG facts of the year (see `applyLosses`). */
@@ -56,7 +64,11 @@ export function lossesOfYear(year: number, joint: boolean, gdeEur: number, losse
 /** One person for the § 35 ceiling: the business types plus the other Einkunftsarten of that person. */
 export function creditPerson(business: BusinessIncome | undefined, otherTypesEur: readonly number[]): TradeTaxCreditPerson {
   return {
-    income: { tradeEur: business?.tradeEur ?? 0, otherTypesEur: [business?.selfEmployedEur ?? 0, ...otherTypesEur] },
+    income: {
+      tradeEur: (business?.tradeEur ?? 0) - Math.max(0, business?.tradeWithoutTradeTaxEur ?? 0),
+      tradeTypeTotalEur: business?.tradeEur ?? 0,
+      otherTypesEur: [business?.selfEmployedEur ?? 0, ...otherTypesEur],
+    },
     businesses: business?.tradeTax ?? [],
   }
 }

@@ -15,6 +15,8 @@ import { FakePensionRepository } from './fakes/fake-pension.repository.js'
 import { FakeRentalRepository } from './fakes/fake-rental.repository.js'
 import { FakeTaxYearRepository } from './fakes/fake-tax-year.repository.js'
 
+const A1 = { person: 'A', business: 1 } as const
+
 async function setup() {
   const taxYear = new FakeTaxYearRepository()
   const interview = new FakeInterviewAnswerRepository()
@@ -35,7 +37,7 @@ describe('Cockpit sum with the business profit (ADR-0101)', () => {
   it('switch on: the profit of the book counts in the sum', async () => {
     process.env.SELBSTSTAENDIGE_ENABLED = 'true'
     const { service, business } = await setup()
-    await business.quickEntry('u', 2025, 'A', [
+    await business.quickEntry('u', 2025, A1, [
       { key: 'einnahmen_umsatzsteuerpflichtig', amountCents: 5_000_000 },
       { key: 'ausgaben_telekommunikation', amountCents: 200_000 },
     ])

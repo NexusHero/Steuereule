@@ -135,6 +135,11 @@ export interface AdvisorTurnUsage {
   readonly outputTokens: number
   /** Input tokens the provider served from its prompt cache. */
   readonly cachedInputTokens: number
+  /**
+   * Input tokens written to the prompt cache (Anthropic bills them above the normal input price).
+   * Writes that are never read again cost more than no caching at all; this is what shows them.
+   */
+  readonly cacheWriteInputTokens: number
 }
 
 /**

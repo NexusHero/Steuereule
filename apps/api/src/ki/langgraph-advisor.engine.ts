@@ -90,6 +90,7 @@ function sumUsage(messages: readonly BaseMessage[]): AdvisorTurnUsage | undefine
   let inputTokens = 0
   let outputTokens = 0
   let cachedInputTokens = 0
+  let cacheWriteInputTokens = 0
   for (const message of messages) {
     const usage = (message as { usage_metadata?: UsageMetadata | undefined }).usage_metadata
     if (!usage) continue
@@ -97,8 +98,9 @@ function sumUsage(messages: readonly BaseMessage[]): AdvisorTurnUsage | undefine
     inputTokens += usage.input_tokens ?? 0
     outputTokens += usage.output_tokens ?? 0
     cachedInputTokens += usage.input_token_details?.cache_read ?? 0
+    cacheWriteInputTokens += usage.input_token_details?.cache_creation ?? 0
   }
-  return seen ? { inputTokens, outputTokens, cachedInputTokens } : undefined
+  return seen ? { inputTokens, outputTokens, cachedInputTokens, cacheWriteInputTokens } : undefined
 }
 
 /**

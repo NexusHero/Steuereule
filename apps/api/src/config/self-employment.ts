@@ -1,4 +1,4 @@
-import type { InterviewOptions } from '@steuereule/core'
+import { declaresBusiness, type Answers, type InterviewOptions } from '@steuereule/core'
 
 /**
  * The server switch of ADR-0101 §20: `SELBSTSTAENDIGE_ENABLED`. Off (the default, also when unset or
@@ -22,11 +22,11 @@ export function interviewOptions(env: NodeJS.ProcessEnv = process.env): Intervie
  */
 export type FilingPath = 'papier' | 'elster-ausfuellhilfe'
 
-export function filingPathOf(job: string | undefined, env: NodeJS.ProcessEnv = process.env): FilingPath {
-  return selfEmploymentEnabled(env) && declaresSelfEmployment(job) ? 'elster-ausfuellhilfe' : 'papier'
+export function filingPathOf(answers: Answers, env: NodeJS.ProcessEnv = process.env): FilingPath {
+  return selfEmploymentEnabled(env) && declaresSelfEmployment(answers) ? 'elster-ausfuellhilfe' : 'papier'
 }
 
-/** The jobs that have a business behind them (REQ-015's two self-employed answers). */
-export function declaresSelfEmployment(job: string | undefined): boolean {
-  return job === 'Selbstständig' || job === 'Beides'
+/** The answers that have a business behind them: „Selbstständig“, „Beides“, or a pensioner with one (ADR-0101 §22). */
+export function declaresSelfEmployment(answers: Answers): boolean {
+  return declaresBusiness(answers)
 }

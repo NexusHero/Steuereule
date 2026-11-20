@@ -82,6 +82,21 @@ describe('HTTP E2E (no-DB): Beleg upload/download/delete, LStB parse & atomic LS
     expect(res.body).toContain('imageBase64')
   })
 
+  it('stores an E-Rechnung as XML and serves it only as a sandboxed download, never inline (ADR-0101 §22)', async () => {
+    const cookieA = 'better-auth.session_token=tok-user-a'
+    const xml = Buffer.from('<?xml version="1.0"?><ubl:Invoice xmlns:ubl="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2"><cbc:ID>1</cbc:ID></ubl:Invoice>', 'utf8')
+    const mp = createMultipartBody('file', 'rechnung.xml', 'application/xml', xml, { kind: 'Sonstiges' })
+    const uploadRes = await app.inject({ method: 'POST', url: '/v1/belege/upload', headers: { cookie: cookieA, 'content-type': `multipart/form-data; boundary=${mp.boundary}` }, payload: mp.body })
+    expect(uploadRes.statusCode).toBe(201)
+    const uploaded = uploadRes.json()
+    expect(uploaded.mimeType).toBe('application/xml')
+    const dl = await app.inject({ method: 'GET', url: `/v1/belege/${uploaded.id}/datei`, headers: { cookie: cookieA } })
+    expect(dl.statusCode).toBe(200)
+    expect(dl.headers['content-disposition']).toMatch(/^attachment;/)
+    expect(dl.headers['content-security-policy']).toBe("default-src 'none'; sandbox")
+    expect(Buffer.from(dl.rawPayload).equals(xml)).toBe(true)
+  })
+
   it('uploads PDF, serves decrypted binary with security headers, isolates cross-user, stages LStB & confirms atomically', async () => {
     const cookieA = 'better-auth.session_token=tok-user-a'
     const cookieB = 'better-auth.session_token=tok-user-b'

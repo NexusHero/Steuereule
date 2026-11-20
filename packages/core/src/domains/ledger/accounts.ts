@@ -44,6 +44,10 @@ export type BookingTaxKey =
   | 'vst19'
   | 'vst7'
   | 'rc13b19'
+  /** § 13b Abs. 1 UStG: a service of an EU business (Kz 46/47 of the Voranmeldung). */
+  | 'rcEu19'
+  /** A B2B service to an EU business, the recipient owes the VAT there (§ 3a Abs. 2, § 18a Abs. 2 UStG; Kz 21). */
+  | 'euLeistung'
   | 'igErwerb19'
   | 'igErwerb7'
 
@@ -234,7 +238,7 @@ const CONCEPTS: Readonly<Record<AccountConceptId, ConceptDef>> = {
   revenue_other_free: revenue('Weitere steuerfreie Umsätze (§ 4 Nr. 2 bis 7 UStG)', 'einnahmen_umsatzsteuerfrei', 'steuerfrei'),
   revenue_kleinunternehmer: revenue('Umsätze als Kleinunternehmer (§ 19 UStG)', 'einnahmen_kleinunternehmer', 'kleinunternehmer'),
   revenue_7: revenue('Umsätze 7 %', 'einnahmen_umsatzsteuerpflichtig', 'ust7'),
-  revenue_eu_services: revenue('Leistungen an EU-Unternehmen (dort steuerpflichtig)', 'einnahmen_umsatzsteuerfrei', 'ust0'),
+  revenue_eu_services: revenue('Leistungen an EU-Unternehmen (dort steuerpflichtig)', 'einnahmen_umsatzsteuerfrei', 'euLeistung'),
   revenue_13b: revenue('Umsätze, für die der Kunde die Steuer schuldet (§ 13b UStG)', 'einnahmen_umsatzsteuerfrei', 'ust0'),
   revenue_third_country: revenue('Leistungen ins Drittland (im Inland nicht steuerbar)', 'einnahmen_umsatzsteuerfrei', 'ust0'),
   revenue_19: revenue('Umsätze 19 %', 'einnahmen_umsatzsteuerpflichtig', 'ust19'),
@@ -256,7 +260,7 @@ const CONCEPTS: Readonly<Record<AccountConceptId, ConceptDef>> = {
   material: expense('Material', 'ausgaben_waren_rohstoffe', 'GuV.5'),
   third_party_services: expense('Leistungen Dritter (Fremdleistungen)', 'ausgaben_fremdleistungen', 'GuV.5'),
   construction_13b_19: expense('Bauleistungen inländischer Unternehmer (§ 13b UStG)', 'ausgaben_fremdleistungen', 'GuV.5', 'rc13b19'),
-  services_eu_13b_19: expense('Leistungen von EU-Unternehmern (§ 13b UStG)', 'ausgaben_fremdleistungen', 'GuV.8', 'rc13b19'),
+  services_eu_13b_19: expense('Leistungen von EU-Unternehmern (§ 13b UStG)', 'ausgaben_fremdleistungen', 'GuV.8', 'rcEu19'),
   services_foreign_13b_19: expense('Leistungen ausländischer Unternehmer (§ 13b UStG)', 'ausgaben_fremdleistungen', 'GuV.5', 'rc13b19'),
   goods_free: expense('Einkauf von Waren ohne Vorsteuer', 'ausgaben_waren_rohstoffe', 'GuV.5', 'none'),
   goods_7: expense('Einkauf von Waren 7 %', 'ausgaben_waren_rohstoffe', 'GuV.5', 'vst7'),

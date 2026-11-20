@@ -9,6 +9,9 @@ import { FakeAuditRepository } from './fakes/fake-audit.repository.js'
 import { FakeBusinessRepository } from './fakes/fake-business.repository.js'
 import { FakeInterviewAnswerRepository } from './fakes/fake-interview-answer.repository.js'
 
+const A1 = { person: 'A', business: 1 } as const
+const B1 = { person: 'B', business: 1 } as const
+
 describe('demo household of seed:selbststaendig', () => {
   const previous = process.env.SELBSTSTAENDIGE_ENABLED
   beforeEach(() => {
@@ -28,18 +31,18 @@ describe('demo household of seed:selbststaendig', () => {
     const { loss2024Eur } = await seedDemoHousehold(business, repository, 'u')
     expect(loss2024Eur).toBeGreaterThan(0)
     for (const [year, person] of [[2024, 'A'], [2025, 'A'], [2024, 'B'], [2025, 'B']] as const) {
-      expect((await business.getBook('u', year, person)).integrity.ok, `${year} ${person}`).toBe(true)
+      expect((await business.getBook('u', year, { person, business: 1 })).integrity.ok, `${year} ${person}`).toBe(true)
     }
-    const freelancer = await business.closing('u', 2025, 'A')
+    const freelancer = await business.closing('u', 2025, A1)
     expect(freelancer.euer?.profit.profitEur).toBeGreaterThan(40_000)
-    const trade = await business.tradeTax('u', 2025, 'B')
+    const trade = await business.tradeTax('u', 2025, B1)
     expect(trade).toMatchObject({ status: 'berechnet', multiplier: { percent: 460 } })
     expect(trade.status === 'berechnet' ? trade.result.tradeTaxEur : 0).toBeGreaterThan(0)
-    const vat = await business.vatReturn('u', 2025, 'A')
+    const vat = await business.vatReturn('u', 2025, A1)
     expect(vat.result.prepaymentsEur).toBe(8_400)
 
-    const before = (await business.getBook('u', 2025, 'B')).entries.length
+    const before = (await business.getBook('u', 2025, B1)).entries.length
     await seedDemoHousehold(business, repository, 'u')
-    expect((await business.getBook('u', 2025, 'B')).entries.length).toBe(before)
+    expect((await business.getBook('u', 2025, B1)).entries.length).toBe(before)
   })
 })

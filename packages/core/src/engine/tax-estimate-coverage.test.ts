@@ -121,6 +121,16 @@ describe('taxEstimatePensioner (Anlage R, UX review K3)', () => {
     expect(estimate.provision).toEqual({ from: 4200, to: 4200 })
   })
 
+  it('adds the own pension contributions and other insurance of a pensioner with a business (ADR-0101 §22)', () => {
+    const estimate = taxEstimatePensioner({ ...PENSIONER, selfPaidKvPv: 4200, privatelyInsured: true, ownProvision: { pensionEur: 3000, otherEur: 500 } })
+    if (estimate.kind !== 'spanne') throw new Error('expected a range')
+    // The basic insurance (4.200 €) already fills the 1.900 € cap: the other insurance adds nothing.
+    expect(estimate.provision).toEqual({ from: 7200, to: 7200 })
+    const small = taxEstimatePensioner({ ...PENSIONER, selfPaidKvPv: 1000, privatelyInsured: true, ownProvision: { pensionEur: 0, otherEur: 1500 } })
+    if (small.kind !== 'spanne') throw new Error('expected a range')
+    expect(small.provision).toEqual({ from: 1900, to: 1900 })
+  })
+
   it('shows a back payment for a high pension', () => {
     const estimate = taxEstimatePensioner({ ...PENSIONER, grossPensionEur: 40000, taxablePensionEur: 33000 })
     if (estimate.kind !== 'spanne') throw new Error('expected a range')

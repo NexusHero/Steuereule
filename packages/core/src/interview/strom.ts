@@ -5,6 +5,7 @@
 import {
   ENTRIES,
   GATE_ACKNOWLEDGED,
+  paysOwnProvision,
   AMOUNT_LATER,
   QUESTIONS,
   entryForStep,
@@ -31,6 +32,8 @@ export type StromTopicId =
   | 'haushalt-gate'
   | 'kv-pv'
   | 'riester'
+  | 'altersvorsorge'
+  | 'versicherungen'
   | 'gesundheit-gate'
   | 'spenden'
   | 'einkuenfte'
@@ -54,6 +57,8 @@ export const STROM_TOPICS: readonly StromTopic[] = [
   { id: 'haushalt-gate', group: 'wohnen', rare: false },
   { id: 'kv-pv', group: 'vorsorge', rare: false },
   { id: 'riester', group: 'vorsorge', rare: false },
+  { id: 'altersvorsorge', group: 'vorsorge', rare: false },
+  { id: 'versicherungen', group: 'vorsorge', rare: false },
   { id: 'gesundheit-gate', group: 'gesundheit', rare: false },
   { id: 'spenden', group: 'sonstiges', rare: false },
   { id: 'einkuenfte', group: 'sonstiges', rare: true },
@@ -79,6 +84,8 @@ export function topicEntry(id: StromTopicId): CatalogueEntry {
 /** Training costs are Werbungskosten: only someone who works has them (§ 9 EStG). */
 export function isTopicApplicable(id: StromTopicId, answers: Answers): boolean {
   if (id === 'fortbildung') return answers.job === 'Angestellt' || answers.job === 'Beides'
+  // Pension and other insurance outside a wage: only who has no wage tax certificate carrying them (ADR-0101 §22).
+  if (id === 'altersvorsorge' || id === 'versicherungen') return paysOwnProvision(answers)
   return true
 }
 

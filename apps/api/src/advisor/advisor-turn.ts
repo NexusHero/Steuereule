@@ -277,6 +277,7 @@ export class AdvisorTurn {
           inputTokens: usage?.inputTokens ?? null,
           outputTokens: usage?.outputTokens ?? null,
           cachedInputTokens: usage?.cachedInputTokens ?? null,
+          cacheWriteInputTokens: usage?.cacheWriteInputTokens ?? null,
           prepMs: timings?.prepMs ?? null,
           guardMs: timings?.guardMs ?? null,
           roundMs: timings?.roundMs ?? null,

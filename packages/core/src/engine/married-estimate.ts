@@ -5,6 +5,7 @@ import { incomeTax as basicTariff } from '../math/tarif'
 import { childTaxAllowance } from '../domains/children'
 import { applyHouseholdTaxReduction } from '../domains/household-services'
 import { calculateExtraordinaryBurden, type BurdenChildrenBracket } from '../domains/extraordinary-burdens'
+import { withSpecialTariffs, type SpecialTariffFacts } from '../domains/business/special-tariffs'
 import { capitalFlatTax, isSupportedIncomeTaxYear, progressionClauseTax, soliExemptionLimits, soliOnFlatTax, solidaritaetszuschlag, solidaritaetszuschlagInCents, splittingTariff } from '../math/tarif'
 import { getTaxYearParameters } from '../math/tax-parameters'
 import { deductibleProvision, type ChildrenProvision, type PersonProvision } from '../domains/provision'
@@ -246,7 +247,11 @@ export function estimateMarriedCouple(input: MarriedEstimateInput): MarriedEstim
   const allowance = input.childAllowanceEur ?? input.children * childTaxAllowance(input.year)
   // § 32b EStG: wage replacement benefits raise the rate on the splitting tariff as for a single person.
   const progression = Math.max(0, Math.floor(input.wageReplacementEur ?? 0))
-  const tariff = (z: number) => (progression > 0 ? progressionClauseTax(z, progression, input.year, true) : splittingTariff(z, 0, input.year))
+  // § 34 / § 34a parts of either spouse come out of the splitting tariff (ADR-0101 §22).
+  const tariff = withSpecialTariffs(
+    (z: number) => (progression > 0 ? progressionClauseTax(z, progression, input.year, true) : splittingTariff(z, 0, input.year)),
+    mergedSpecial(businessA?.special, businessB?.special),
+  )
   const withAllowance = (z: number) => tariff(Math.max(0, z - allowance))
   const withBenefit = (z: number) => tariff(z)
   // Günstigerprüfung: the allowance only wins when it saves more tax than the Kindergeld paid out.
@@ -386,4 +391,28 @@ function coupleChurchTax(
     churchTaxMixedMarriage({ ...common, membership, memberShare: { from: share, to: share }, kirchgeldBase: amounts.kirchgeldBase }),
     amounts.withheld,
   )
+}
+
+/**
+ * The special tariffs of a couple: the retained profits add up. Of the § 16 gains one takes the reduced
+ * rate (the largest that asks for it; the tariff models one per year), every other the Fünftelregelung.
+ */
+function mergedSpecial(a: SpecialTariffFacts | undefined, b: SpecialTariffFacts | undefined): SpecialTariffFacts | undefined {
+  if (!a && !b) return undefined
+  const gains = [a?.extraordinary, b?.extraordinary].filter((x): x is NonNullable<typeof x> => x !== undefined)
+  const retained = [a?.retained, b?.retained].filter((x): x is NonNullable<typeof x> => x !== undefined)
+  return {
+    ...(gains.length > 0 ? { extraordinary: coupleGains(gains) } : {}),
+    ...(retained.length > 0
+      ? { retained: { favouredEur: retained.reduce((s, r) => s + r.favouredEur, 0), taxEur: retained.reduce((s, r) => s + r.taxEur, 0), recaptureEur: retained.reduce((s, r) => s + r.recaptureEur, 0) } }
+      : {}),
+  }
+}
+
+function coupleGains(gains: readonly NonNullable<SpecialTariffFacts['extraordinary']>[]): NonNullable<SpecialTariffFacts['extraordinary']> {
+  const total = gains.reduce((s, g) => s + g.gainEur + (g.fifthGainEur ?? 0), 0)
+  const reduced = gains.filter((g) => g.method === 'ermaessigt').sort((a, b) => b.gainEur - a.gainEur)[0]
+  if (!reduced) return { gainEur: total, method: 'fuenftel' }
+  const rest = total - reduced.gainEur
+  return { gainEur: reduced.gainEur, method: 'ermaessigt', ...(rest > 0 ? { fifthGainEur: rest } : {}) }
 }

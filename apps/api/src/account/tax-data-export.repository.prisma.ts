@@ -96,7 +96,7 @@ export class PrismaTaxDataExportRepository implements TaxDataExportRepository {
     const partnerLinks = await this.prisma.partnerLink.findMany({ where: { OR: [{ personAUserId: userId }, { personBUserId: userId }] } })
     const mergeQuestions = await this.prisma.householdMergeCandidate.findMany({ where: { householdUserId: userId } })
     // ADR-0101: the business, the book and everything booked in it.
-    const [businesses, ledgers, journalEntries, journalLines, ledgerLog, fixedAssets, bankTransactions, bookingRules] = await Promise.all([
+    const [businesses, ledgers, journalEntries, journalLines, ledgerLog, fixedAssets, bankTransactions, bookingRules, payrollRuns] = await Promise.all([
       this.prisma.businessProfile.findMany({ where }),
       this.prisma.ledger.findMany({ where }),
       this.prisma.journalEntry.findMany({ where, orderBy: [{ taxYear: 'asc' }, { number: 'asc' }] }),
@@ -105,6 +105,7 @@ export class PrismaTaxDataExportRepository implements TaxDataExportRepository {
       this.prisma.fixedAsset.findMany({ where }),
       this.prisma.bankTransaction.findMany({ where }),
       this.prisma.bookingRule.findMany({ where }),
+      this.prisma.payrollRun.findMany({ where }),
     ])
 
     const entries = [
@@ -144,6 +145,7 @@ export class PrismaTaxDataExportRepository implements TaxDataExportRepository {
       ...fixedAssets.map((row) => toExportEntry('Anlagegut', 'FixedAsset', row)),
       ...bankTransactions.map((row) => toExportEntry('Kontoumsatz', 'BankTransaction', row)),
       ...bookingRules.map((row) => toExportEntry('Buchungsregel', 'BookingRule', row)),
+      ...payrollRuns.map((row) => toExportEntry('Lohnlauf', 'PayrollRun', row)),
     ]
     return entries.sort(
       (a, b) =>

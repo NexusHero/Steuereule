@@ -3,6 +3,8 @@ import { Platform, Text, type TextStyle } from 'react-native'
 import { Button } from '@steuereule/ui'
 
 export const RECEIPT_ACCEPT = 'application/pdf,image/jpeg,image/png,image/webp'
+/** Business receipts also take an E-Rechnung as XRechnung file (ADR-0101 §22). */
+export const BUSINESS_RECEIPT_ACCEPT = `${RECEIPT_ACCEPT},application/xml,text/xml,.xml`
 
 export interface ReceiptPickerButtonProps {
   readonly onFile: (file: File) => void
@@ -17,6 +19,8 @@ export interface ReceiptPickerButtonProps {
   readonly hintStyle?: TextStyle | undefined
   /** Defaults to `${testID}-input`. */
   readonly inputTestID?: string | undefined
+  /** The file types the picker offers; PDFs and photos by default. */
+  readonly accept?: string | undefined
 }
 
 /** One file picker for PDFs and photos, shared by the LStB mask, the Belege inbox and the chat. */
@@ -30,6 +34,7 @@ export function ReceiptPickerButton({
   unsupportedHint,
   hintStyle,
   inputTestID,
+  accept = RECEIPT_ACCEPT,
 }: ReceiptPickerButtonProps) {
   const inputRef = useRef<HTMLInputElement | null>(null)
 
@@ -46,7 +51,7 @@ export function ReceiptPickerButton({
       <input
         ref={inputRef}
         type="file"
-        accept={RECEIPT_ACCEPT}
+        accept={accept}
         multiple={multiple === true}
         data-testid={inputTestID ?? `${testID}-input`}
         style={{ display: 'none' }}

@@ -6,6 +6,8 @@ import type { BookDto, ElsterHelpDto, JournalEntryDto } from '@steuereule/api-cl
 import { server } from '../../test-msw-server'
 import { BASE_PROFILE, BASE_URL, EMPTY_BOOK, renderBusiness, useBusinessDefaults, useElsterForms, YEAR } from './businessTestKit'
 
+const SMALL_OK = { eligible: true, priorYearLimitEur: 25_000, currentYearLimitEur: 100_000, crossed: null, foundingYear: false, priorYearKnown: true, turnoverEur: 0, matchesProfile: true }
+
 const ENTRY: JournalEntryDto = {
   number: 1,
   date: '2025-03-01',
@@ -55,6 +57,41 @@ describe('the overview', () => {
     renderBusiness(undefined)
     expect(await screen.findByText('Noch nicht freigeschaltet')).toBeTruthy()
     expect(screen.queryByTestId('fehler-erneut-versuchen')).toBeNull()
+  })
+})
+
+describe('several businesses of one person (ADR-0101 §22)', () => {
+  it('switches between the businesses and adds one, then opens it', async () => {
+    useBusinessDefaults({ ...BASE_PROFILE, name: 'Übersetzungen' })
+    const posted: unknown[] = []
+    server.use(
+      http.get(`${BASE_URL}/betriebe`, () => HttpResponse.json([{ business: 1, name: 'Übersetzungen', kind: 'freiberuf', mode: 'euer' }, { business: 2, name: null, kind: null, mode: 'euer' }])),
+      http.post(`${BASE_URL}/betriebe`, async ({ request }) => {
+        posted.push(await request.json())
+        return HttpResponse.json({ ...BASE_PROFILE, business: 3, name: 'Onlineshop' }, { status: 201 })
+      }),
+    )
+    const onChangeBusiness = vi.fn()
+    renderBusiness(undefined, { onChangeBusiness })
+    fireEvent.click(await screen.findByTestId('business-betrieb-2'))
+    expect(onChangeBusiness).toHaveBeenCalledWith(2)
+    expect(screen.getByTestId('business-betrieb-2').textContent).toBe('Betrieb 2')
+    fireEvent.click(screen.getByTestId('business-betrieb-neu'))
+    fireEvent.change(screen.getByTestId('business-betrieb-name'), { target: { value: 'Onlineshop' } })
+    fireEvent.click(screen.getByTestId('business-betrieb-anlegen'))
+    await waitFor(() => expect(onChangeBusiness).toHaveBeenCalledWith(3))
+    expect(posted).toEqual([{ name: 'Onlineshop' }])
+  })
+
+  it('asks the API for the chosen business on every page', async () => {
+    let asked: string | null = null
+    useBusinessDefaults()
+    server.use(http.get(BASE_URL, ({ request }) => {
+      asked = new URL(request.url).searchParams.get('betrieb')
+      return HttpResponse.json({ ...BASE_PROFILE, business: 2 })
+    }))
+    renderBusiness('profil', { business: 2 })
+    await waitFor(() => expect(asked).toBe('2'))
   })
 })
 
@@ -282,7 +319,7 @@ describe('the assets and the closing', () => {
 describe('Umsatzsteuer, Gewerbesteuer and Verluste', () => {
   it('shows the VAT result as Nachzahlung or Erstattung, with plain amounts and no sign', async () => {
     useBusinessDefaults()
-    server.use(http.get(`${BASE_URL}/umsatzsteuer`, () => HttpResponse.json({ figures: {}, result: { outputVat: { standard: 1900, reduced: 0, zero: 0 }, inputVatDeductibleEur: 400, vatOfYearEur: 1500, prepaymentsEur: 1000, balanceEur: 500 }, cashAccountingAllowed: true })))
+    server.use(http.get(`${BASE_URL}/umsatzsteuer`, () => HttpResponse.json({ figures: {}, result: { outputVat: { standard: 1900, reduced: 0, zero: 0 }, inputVatDeductibleEur: 400, vatOfYearEur: 1500, prepaymentsEur: 1000, balanceEur: 500 }, cashAccountingAllowed: true, smallBusiness: SMALL_OK })))
     renderBusiness('umsatzsteuer')
     expect((await screen.findByTestId('ust-saldo')).textContent).toBe('500,00\u00a0€')
     expect(screen.getByText('Nachzahlung')).toBeTruthy()

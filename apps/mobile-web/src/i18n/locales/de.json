@@ -900,6 +900,16 @@
       "body1": "Jedes Land hat sein eigenes Abkommen mit eigenen Regeln — Österreich und Frankreich mit Grenzzonen, Luxemburg mit Bagatellgrenze. Halb gerechnet wäre falsch gerechnet.",
       "body2": "Was heute geht: die Schweiz komplett — und dein restliches Steuerjahr sowieso. Österreich, Frankreich und Luxemburg stehen auf der Liste.",
       "continueWithoutForeign": "Ohne Auslands-Teil weitermachen"
+    },
+    "renteSelbststaendig": {
+      "titleBefore": "Hast du neben der Rente ein ",
+      "titleMark": "Gewerbe",
+      "titleAfter": " oder arbeitest freiberuflich?",
+      "help": "Zum Beispiel einen kleinen Onlineshop, Vorträge oder Beratung. Dann rechnen wir deinen Gewinn mit deiner Rente zusammen.",
+      "options": {
+        "ja": "Ja",
+        "nein": "Nein"
+      }
     }
   },
   "lstb": {
@@ -1256,7 +1266,14 @@
       "gesundheit-erstattung": "Davon erstattet von Krankenkasse, Versicherung oder Beihilfe (€, ggf. 0)",
       "vorauszahlungen-gate": "Hast du für dieses Jahr Vorauszahlungen ans Finanzamt geleistet (Einkommensteuer, festgesetzt im letzten Bescheid)?",
       "vorauszahlungen-betrag": "Summe der gezahlten Vorauszahlungen im Jahr (Einkommensteuer, Soli und Kirchensteuer zusammen, €)",
-      "riester-einnahmen-vorjahr": "Beitragspflichtige Einnahmen im Vorjahr (steht in deiner Renteninformation bzw. der Meldebescheinigung zur Sozialversicherung)"
+      "riester-einnahmen-vorjahr": "Beitragspflichtige Einnahmen im Vorjahr (steht in deiner Renteninformation bzw. der Meldebescheinigung zur Sozialversicherung)",
+      "altersvorsorge": "Zahlst du selbst in eine Altersvorsorge ein (gesetzliche Rente, Versorgungswerk, Rürup)?",
+      "av-rv-betrag": "Eigene Beiträge zur gesetzlichen Rentenversicherung im Jahr (auch über die Künstlersozialkasse; €, ggf. 0)",
+      "av-versorgungswerk-betrag": "Beiträge an ein berufsständisches Versorgungswerk im Jahr (€, ggf. 0)",
+      "av-basisrente-betrag": "Beiträge zu einer Basisrente (Rürup) im Jahr (€, ggf. 0)",
+      "av-ksk": "Bist du über die Künstlersozialkasse versichert?",
+      "versicherungen": "Zahlst du weitere Versicherungen (Haftpflicht, Unfall, Berufsunfähigkeit, Risikoleben)?",
+      "versicherungen-betrag": "Beiträge für diese Versicherungen im Jahr (€)"
     },
     "hints": {
       "haushalt-gate": "Nur Arbeits-, Maschinen- und Fahrtkosten zählen, kein Material. Bezahlt per Überweisung, nicht bar."
@@ -1333,7 +1350,9 @@
       "gesundheit-gate": "Krankheitskosten (Zahnarzt, Brille, Zuzahlungen)",
       "spenden": "Spenden",
       "einkuenfte": "Kapitalerträge oder Vermietung",
-      "vorauszahlungen-gate": "Vorauszahlungen ans Finanzamt"
+      "vorauszahlungen-gate": "Vorauszahlungen ans Finanzamt",
+      "altersvorsorge": "Altersvorsorge selbst gezahlt",
+      "versicherungen": "Weitere Versicherungen"
     },
     "art": {
       "nebenjob": "Welche Art von Nebenjob?",
@@ -1380,7 +1399,9 @@
       "spenden": "Geht in die Anlage Sonderausgaben (Zuwendungen).",
       "einkuenfte": "Geht in die Anlage KAP oder V; die Beträge trägst du danach unter Kapital und Vermietung ein.",
       "vorauszahlungen-gate": "Wird mit der Steuer verrechnet wie die Lohnsteuer.",
-      "alleinerziehend": "Geht in die Anlage Kind (Entlastungsbetrag für Alleinerziehende)."
+      "alleinerziehend": "Geht in die Anlage Kind (Entlastungsbetrag für Alleinerziehende).",
+      "altersvorsorge": "Geht in die Anlage Vorsorgeaufwand (Altersvorsorge).",
+      "versicherungen": "Geht in die Anlage Vorsorgeaufwand (weitere sonstige Vorsorge)."
     },
     "fertig": {
       "erstattung": "Voraussichtliche Erstattung",
@@ -3395,7 +3416,11 @@
       "freischalten": "Freischalten",
       "beruf": "Beruf genauer",
       "gewerbedaten": "Gewerbesteuer-Angaben",
-      "beteiligungen": "Beteiligungen"
+      "beteiligungen": "Beteiligungen",
+      "firmenwagen": "Firmenwagen",
+      "voranmeldungen": "Umsatzsteuer-Voranmeldungen",
+      "sondertarife": "Betriebsaufgabe & Thesaurierung",
+      "lohn": "Lohn"
     },
     "profil": {
       "artTitel": "Freiberuf oder Gewerbe",
@@ -3465,7 +3490,9 @@
       "vst7": "Vorsteuer 7 %",
       "rc13b19": "§ 13b 19 %",
       "igErwerb19": "IG-Erwerb 19 %",
-      "igErwerb7": "IG-Erwerb 7 %"
+      "igErwerb7": "IG-Erwerb 7 %",
+      "rcEu19": "§ 13b Abs. 1 (EU) 19 %",
+      "euLeistung": "EU-Leistung (Empfänger schuldet)"
     },
     "erfassung": {
       "nurEuer": "Summen je Zeile gibt es nur bei der EÜR. Mit Bilanz buchst du im Buch.",
@@ -3586,7 +3613,11 @@
       "erstattung": "Erstattung",
       "nachzahlung": "Nachzahlung",
       "vorauszahlungenTitel": "Vorauszahlungen",
-      "vorauszahlungenFeld": "Gezahlte Vorauszahlungen (Summe)"
+      "vorauszahlungenFeld": "Gezahlte Vorauszahlungen (Summe; leer = Summe der Voranmeldungen)",
+      "kleinGrenzeGruendung": "Im Gründungsjahr gilt die Kleinunternehmerregelung nur bis {{grenze}} Umsatz. Dein Buch zeigt {{umsatz}}: Prüf im Profil, ob du Umsatzsteuer ausweisen musst.",
+      "kleinGrenzeVorjahr": "Dein Umsatz im Vorjahr lag über {{grenze}}. Damit gilt die Kleinunternehmerregelung in diesem Jahr nicht: Prüf das im Profil.",
+      "kleinGrenzeJahr": "Dein Umsatz in diesem Jahr liegt mit {{umsatz}} über {{grenze}}. Damit endet die Kleinunternehmerregelung: Prüf das im Profil.",
+      "kleinVorjahrUnbekannt": "Für das Vorjahr gibt es hier kein Buch. Die Kleinunternehmerregelung gilt nur, wenn dein Vorjahresumsatz höchstens {{grenze}} war."
     },
     "gewst": {
       "entfaellt": "Als Freiberufler zahlst du keine Gewerbesteuer.",
@@ -3700,7 +3731,13 @@
         "belegablage": "Wie Belege abgelegt werden",
         "verantwortlich": "Verantwortlich für die Buchführung",
         "stand": "Stand der Dokumentation"
-      }
+      },
+      "ebilanzPruefen": "Mit ERiC prüfen",
+      "ebilanzSenden": "An ELSTER übermitteln",
+      "ebilanzGesendet": "An ELSTER übermittelt (Transferticket {{ticket}}).",
+      "ebilanzPlausibel": "ERiC hat den Datensatz geprüft: keine Fehler.",
+      "ebilanzAbgelehnt": "ELSTER hat den Datensatz abgelehnt:",
+      "ebilanzNichtEingerichtet": "Die Übermittlung ist auf diesem Server nicht eingerichtet."
     },
     "freischalten": {
       "text": "Buchhaltung, Umsatz- und Gewerbesteuer, Ausfüllhilfe und Exporte für {{year}} sind in der Stufe für Selbstständige enthalten.",
@@ -3768,6 +3805,186 @@
         "ausgabe": "Ausgabe",
         "einnahme": "Einnahme"
       }
+    },
+    "betriebe": {
+      "titel": "Deine Betriebe",
+      "ohneName": "Betrieb {{nummer}}",
+      "neu": "+ Weiterer Betrieb",
+      "name": "Wie heißt der Betrieb?",
+      "anlegen": "Betrieb anlegen"
+    },
+    "kfz": {
+      "hinweis": "Nutzt du ein Fahrzeug aus dem Betrieb auch privat, ist der private Anteil eine Entnahme. Die App rechnet ihn und bucht ihn auf Wunsch zum 31.12.",
+      "fahrzeug": "Fahrzeug",
+      "methode": "Wie wird die Privatnutzung ermittelt?",
+      "wege": "Wege zwischen Wohnung und Betrieb",
+      "antrieb": {
+        "verbrenner": "Verbrenner",
+        "elektro": "Elektro",
+        "hybrid": "Plug-in-Hybrid"
+      },
+      "methoden": {
+        "pauschal": "1-%-Regel",
+        "fahrtenbuch": "Fahrtenbuch"
+      },
+      "ueber50": {
+        "ja": "Mehr als 50 % betrieblich",
+        "nein": "50 % oder weniger"
+      },
+      "feld": {
+        "listPriceGrossEur": "Bruttolistenpreis mit Sonderausstattung (€)",
+        "acquired": "Angeschafft am",
+        "co2GPerKm": "CO₂-Ausstoß (g/km)",
+        "electricRangeKm": "Elektrische Reichweite (km)",
+        "monthsInBusiness": "Monate im Betrieb in diesem Jahr",
+        "totalCostsEur": "Gesamtkosten des Fahrzeugs im Jahr, mit Abschreibung (€)",
+        "depreciationEur": "Davon Abschreibung (€)",
+        "privatePercent": "Privatanteil laut Fahrtenbuch (%)",
+        "totalKm": "Gefahrene Kilometer im Jahr",
+        "costsWithInputVatEur": "Kosten mit Vorsteuerabzug (€)",
+        "distanceKm": "Entfernung Wohnung–Betrieb (km, einfach)",
+        "days": "Tage mit dieser Fahrt"
+      },
+      "ungueltig": "Bitte Listenpreis und Anschaffungsdatum (JJJJ-MM-TT) eintragen und nur ganze Zahlen verwenden.",
+      "berechnen": "Berechnen",
+      "buchen": "Als Buchung übernehmen",
+      "gebucht": "Gebucht zum 31.12. – zu sehen im Buch.",
+      "nichtZulaessig": "Die 1-%-Regel gilt nur bei mehr als 50 % betrieblicher Nutzung. Ermittle den Privatanteil mit einem Fahrtenbuch.",
+      "offen": "Für das Fahrtenbuch fehlen die Gesamtkosten oder der Privatanteil.",
+      "bruchteil": "Für dieses Fahrzeug zählt der Listenpreis nur zu {{anteil}} (§ 6 Abs. 1 Nr. 4 EStG).",
+      "privatanteil": "Private Nutzung (Entnahme)",
+      "umsatzsteuer": "Umsatzsteuer darauf",
+      "wegeNichtAbziehbar": "Wege Wohnung–Betrieb, nicht abziehbar",
+      "gedeckelt": "Gedeckelt auf die Gesamtkosten des Fahrzeugs (Kostendeckelung)."
+    },
+    "va": {
+      "hinweis": "Die App rechnet jede Voranmeldung aus deinem Buch. Eintragen und abschicken machst du in Mein ELSTER (Formular „Umsatzsteuer-Voranmeldung“).",
+      "zeitraum": "Voranmeldungszeitraum",
+      "periode": {
+        "monat": "Monatlich",
+        "quartal": "Vierteljährlich",
+        "befreit": "Keine Voranmeldung"
+      },
+      "quelle": {
+        "angabe": "wie vom Finanzamt festgelegt",
+        "vorjahressteuer": "nach der Umsatzsteuer des Vorjahres",
+        "gruendung_schaetzung": "Gründungsjahr: nach der voraussichtlichen Steuer",
+        "wahl_ueberschuss": "monatlich gewählt (Überschuss im Vorjahr)"
+      },
+      "wahl": {
+        "auto": "Automatisch",
+        "monat": "Monat",
+        "quartal": "Quartal",
+        "befreit": "Befreit"
+      },
+      "dauerfrist": "Dauerfristverlängerung",
+      "sondervorauszahlung": "Sondervorauszahlung (1/11, wird im Dezember verrechnet)",
+      "befreitText": "Das Finanzamt kann dich von Voranmeldungen befreien; dann zahlst du die Umsatzsteuer mit der Jahreserklärung.",
+      "faellig": "fällig {{datum}}",
+      "zahllast": "Zu zahlen (Kz 83)",
+      "ueberschuss": "Erstattung (Kz 83)",
+      "summe": "Vorauszahlungen im Jahr (mit Sondervorauszahlung)",
+      "zm": "Zusammenfassende Meldung (an das BZSt)",
+      "zmKeine": "Keine innergemeinschaftlichen Lieferungen oder EU-Leistungen gebucht.",
+      "ohneUstId": "ohne USt-IdNr.",
+      "ustIdFehlt": "Bei einer Buchung fehlt die USt-IdNr. des Abnehmers. Trag sie in der Buchung nach (Storno und neu buchen).",
+      "kz": {
+        "81": "Umsätze 19 %",
+        "86": "Umsätze 7 %",
+        "41": "Innergemeinschaftliche Lieferungen",
+        "21": "Nicht steuerbare Leistungen (EU)",
+        "48": "Steuerfreie Umsätze ohne Vorsteuerabzug",
+        "89": "Innergemeinschaftliche Erwerbe 19 %",
+        "93": "Innergemeinschaftliche Erwerbe 7 %",
+        "46": "Leistungen von EU-Unternehmen (§ 13b Abs. 1)",
+        "47": "Steuer darauf",
+        "84": "Andere Leistungen nach § 13b",
+        "85": "Steuer darauf",
+        "66": "Vorsteuer aus Rechnungen",
+        "61": "Vorsteuer aus innergemeinschaftlichem Erwerb",
+        "67": "Vorsteuer nach § 13b",
+        "39": "Abzug Sondervorauszahlung"
+      }
+    },
+    "sonder": {
+      "aufgabe": "Betrieb verkauft oder aufgegeben (§ 16 EStG)",
+      "aufgabeHinweis": "Der Veräußerungs- oder Aufgabegewinn wird neben dem laufenden Gewinn versteuert, auf Antrag mit Freibetrag und ermäßigt. Gewerbesteuer fällt bei einem Einzelunternehmer darauf nicht an.",
+      "art": {
+        "veraeusserung": "Verkauf",
+        "aufgabe": "Aufgabe"
+      },
+      "feld": {
+        "date": "Datum",
+        "priceEur": "Veräußerungspreis bzw. Wert der übernommenen Wirtschaftsgüter (€)",
+        "costsEur": "Veräußerungskosten (€)",
+        "capitalAccountEur": "Wert des Betriebsvermögens (Kapitalkonto) zu diesem Tag (€)",
+        "requestedEur": "Beantragter begünstigter Betrag (€)",
+        "carriedForwardEur": "Nachversteuerungspflichtiger Betrag laut letztem Bescheid (€)",
+        "withdrawalsForRetainedTaxEur": "Entnahmen für die Thesaurierungssteuer (€, ab 2024)"
+      },
+      "freibetrag": "Freibetrag beantragen (ab 55 oder dauernd berufsunfähig, einmal im Leben)",
+      "methode": {
+        "fuenftel": "Fünftelregelung",
+        "ermaessigt": "Ermäßigter Steuersatz (56 %)",
+        "keine": "Normaler Tarif"
+      },
+      "speichern": "Speichern",
+      "ungueltig": "Bitte Datum (JJJJ-MM-TT) und Beträge als Zahlen eintragen.",
+      "gewinn": "Veräußerungsgewinn",
+      "freibetragBetrag": "Freibetrag (§ 16 Abs. 4)",
+      "steuerpflichtig": "Steuerpflichtiger Gewinn",
+      "thesaurierung": "Thesaurierung (§ 34a EStG)",
+      "thesaurierungHinweis": "Als Bilanzierer kannst du nicht entnommene Gewinne auf Antrag mit einem festen Satz versteuern; bei späterer Entnahme folgt die Nachversteuerung mit 25 %.",
+      "nurBilanz": "Die Thesaurierung gibt es nur bei Bilanzierung. Mit EÜR rechnet die App sie nicht.",
+      "nichtEntnommen": "Nicht entnommener Gewinn",
+      "beguenstigt": "Begünstigter Betrag",
+      "thesaurierungSteuer": "Steuer darauf ({{satz}} %)",
+      "nachversteuerung": "Nachversteuerung (25 %)",
+      "vortrag": "Nachversteuerungspflichtiger Betrag zum Jahresende"
+    },
+    "lohn": {
+      "hinweis": "Für Angestellte buchst du die Werte aus der Lohnabrechnung (Steuerbüro oder Lohnprogramm); einen Minijob rechnet die App selbst. Die Meldungen zur Sozialversicherung bleiben beim Lohnprogramm bzw. bei der Minijob-Zentrale.",
+      "neu": "Lohnlauf erfassen",
+      "art": {
+        "regulaer": "Angestellt",
+        "minijob": "Minijob"
+      },
+      "feld": {
+        "employee": "Name",
+        "month": "Monat",
+        "grossEur": "Bruttolohn (€)",
+        "wageTaxEur": "Lohnsteuer (€)",
+        "soliEur": "Solidaritätszuschlag (€)",
+        "churchTaxEur": "Kirchensteuer (€)",
+        "employeeSocialEur": "Sozialversicherung Arbeitnehmeranteil (€)",
+        "employerSocialEur": "Sozialversicherung Arbeitgeberanteil und Umlagen (€)"
+      },
+      "kirche": {
+        "ev": "evangelisch",
+        "rk": "römisch-katholisch"
+      },
+      "privatVersichert": "Privat krankenversichert",
+      "rvBefreit": "Von der Rentenversicherung befreit",
+      "ungueltig": "Bitte Name, Monat (1–12) und Bruttolohn eintragen, Beträge als Zahlen.",
+      "buchen": "Buchen",
+      "laeufe": "Gebuchte Lohnläufe",
+      "keine": "Noch keine Lohnläufe gebucht.",
+      "anmeldung": "Lohnsteuer-Anmeldung ({{zeitraum}})",
+      "zeitraum": {
+        "monat": "monatlich",
+        "quartal": "vierteljährlich",
+        "jahr": "jährlich"
+      },
+      "kz": {
+        "86": "Zahl der Arbeitnehmer",
+        "42": "Lohnsteuer",
+        "49": "Solidaritätszuschlag",
+        "61": "Kirchensteuer evangelisch",
+        "62": "Kirchensteuer römisch-katholisch",
+        "83": "Gesamtbetrag"
+      },
+      "minijobAbgaben": "Minijob-Abgaben an die Minijob-Zentrale",
+      "minijobHinweis": "Fällig am drittletzten Bankarbeitstag des Monats; die Pauschsteuer von 2 % ist darin enthalten."
     }
   }
 }

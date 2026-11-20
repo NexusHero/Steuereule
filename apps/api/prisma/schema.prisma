@@ -1530,6 +1530,8 @@ model BusinessProfile {
   taxYear            Int      @map("steuerjahr")
   /// "A" (the account holder) or "B" (the spouse recorded in this account).
   person             String   @default("A")
+  /// The business of this person, from 1 (ADR-0101 §22): a Freiberuf beside a Gewerbe, two Gewerbebetriebe.
+  business           Int      @default(1) @map("betrieb")
   /// The confirmed kind: "freiberuf" or "gewerbe"; null until the user confirmed the suggestion.
   kind               String?  @map("art")
   /// The answers to the profession questions as JSON (core ProfessionAnswers).
@@ -1553,6 +1555,12 @@ model BusinessProfile {
   startDate          String?  @map("beginn") /// @encrypted?mode=strict
   /// Umsatzsteuer prepayments of the year as one sum in cents (ADR-0101 §8).
   vatPrepayments     String?  @map("ustVorauszahlungen") /// @encrypted?mode=strict
+  /// The Voranmeldung facts as JSON (ADR-0101 §22): period chosen or set by the office, Dauerfristverlängerung, Sondervorauszahlung.
+  vatPeriodFacts     String?  @map("ustVaAngaben") /// @encrypted?mode=strict
+  /// Sale or giving up of the business as JSON (§ 16, § 34 EStG; ADR-0101 §22).
+  disposalFacts      String?  @map("veraeusserung") /// @encrypted?mode=strict
+  /// The Thesaurierung of a Bilanzierer as JSON (§ 34a EStG; ADR-0101 §22).
+  retainedFacts      String?  @map("thesaurierung") /// @encrypted?mode=strict
   /// Gewerbesteuer inputs as JSON: § 8 Nr. 1 components, § 9 Nr. 1, other additions and deductions, Gewerbeverlust.
   tradeTaxInputs     String?  @map("gewstAngaben") /// @encrypted?mode=strict
   /// Loss facts as JSON: Verlustvortrag from the last Feststellungsbescheid, the Rücktrag waiver.
@@ -1564,7 +1572,7 @@ model BusinessProfile {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
-  @@unique([userId, taxYear, person])
+  @@unique([userId, taxYear, person, business])
   @@index([userId, taxYear])
   @@map("Betrieb")
 }
@@ -1575,6 +1583,8 @@ model Ledger {
   userId           String
   taxYear          Int               @map("steuerjahr")
   person           String            @default("A")
+  /// The business the book belongs to (ADR-0101 §22): one book per business.
+  business         Int               @default(1) @map("betrieb")
   chart            String            @map("kontenrahmen")
   mode             String            @map("gewinnermittlung")
   /// Festschreibung: no entry dated on or before this ISO date.
@@ -1584,7 +1594,7 @@ model Ledger {
   logRecords       LedgerLogRecord[]
   bankTransactions BankTransaction[]
 
-  @@unique([userId, taxYear, person])
+  @@unique([userId, taxYear, person, business])
   @@index([userId, taxYear])
   @@map("Buch")
 }
@@ -1604,6 +1614,8 @@ model JournalEntry {
   /// The § 11 EStG facts of a regular payment as JSON.
   regularPayment String?       @map("wiederkehrend") /// @encrypted?mode=strict
   reversalOf     Int?          @map("stornoVon")
+  /// The counterparty's foreign VAT id for the Zusammenfassende Meldung (ADR-0101 §22); null when none.
+  counterpartyVatId String?    @map("ustIdNr") /// @encrypted?mode=strict
   /// Where the entry came from: "nutzer", "eule:<ref>", "bank:<id>", "beleg:<id>", "afa:<id>", "eb". No tax data.
   source         String        @default("nutzer") @map("herkunft")
   /// The accepted draft as JSON when the entry came from one (owl, receipt): what the draft's undo compares.
@@ -1670,6 +1682,7 @@ model FixedAsset {
   /// The year of acquisition: the asset is listed in that year and every later one.
   taxYear             Int      @map("steuerjahr")
   person              String   @default("A")
+  business            Int      @default(1) @map("betrieb")
   label               String   @map("bezeichnung") /// @encrypted?mode=strict
   /// The asset account in the book's chart.
   account             String   @map("konto")
@@ -1729,4 +1742,27 @@ model BookingRule {
 
   @@index([userId])
   @@map("Buchungsregel")
+}
+
+/// One payroll run of an employee of the business (ADR-0101 §22): the amounts of the outside payroll, or a
+/// Minijob the app computed; the Lohnsteuer-Anmeldung sums them. Booked as one entry (entryNumber).
+model PayrollRun {
+  id          String   @id @default(uuid())
+  userId      String
+  taxYear     Int      @map("steuerjahr")
+  person      String   @default("A")
+  business    Int      @default(1) @map("betrieb")
+  /// 1–12.
+  month       Int      @map("monat")
+  /// "regulaer" or "minijob".
+  kind        String   @map("art")
+  /// The employee's name as the user calls them.
+  employee    String   @map("arbeitnehmer") /// @encrypted?mode=strict
+  /// The amounts as JSON (gross, wage tax, Soli, church tax and kind, social security shares).
+  amounts     String   @map("betraege") /// @encrypted?mode=strict
+  entryNumber Int?     @map("buchungsnummer")
+  createdAt   DateTime @default(now())
+
+  @@index([userId, taxYear, person, business])
+  @@map("Lohnlauf")
 }

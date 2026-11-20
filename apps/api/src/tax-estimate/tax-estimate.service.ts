@@ -23,6 +23,7 @@ import {
   taxEstimateCrossBorder,
   taxEstimateSelfEmployed,
   type BusinessIncome,
+  selfPaidProvisionFromAnswers,
   type LossCarry,
   depreciationRatePercent,
   claimMonths,
@@ -135,20 +136,20 @@ export class TaxEstimateService {
     const answers = answersFrom(interviewRows)
 
     // Employees and pensioners get an estimate; the self-employed only with the switch on (ADR-0101, REQ-015).
-    const selfEmployed = selfEmploymentEnabled() && declaresSelfEmployment(answers.job)
+    const selfEmployed = selfEmploymentEnabled() && declaresSelfEmployment(answers)
     if (!selfEmployed && answers.job !== 'Angestellt' && answers.job !== 'Rente') return { kind: 'nicht-moeglich', reason: 'nur-angestellte' }
     if (masterData?.familienstand === 'verheiratet' || answers.familienstand === 'Verheiratet') {
       return this.marriedCouple(userId, year, boostersEnabled)
     }
-    if (gatedIncomeTypes(answers, interviewOptions()).length > 0 || specialCircumstance(answers)) {
+    if (gatedIncomeTypes(answers, interviewOptions()).length > 0 || specialCircumstance(answers, selfEmployed && answers.job === 'Selbstständig')) {
       return { kind: 'nicht-moeglich', reason: 'besondere-lebenslage' }
     }
     // § 32b EStG: the benefits are counted, not a reason to give up (UX review K3); the amount is needed though.
     const wageReplacement = wageReplacementFrom(answers)
     if (wageReplacement === null) return { kind: 'offen', missing: ['lohnersatz-betrag'] }
-    if (answers.job === 'Rente') return this.pensioner(userId, year, answers, masterData, boostersEnabled)
     const ownBusiness = selfEmployed ? await this.businessOf(userId, year) : null
     if (selfEmployed && ownBusiness === null) return { kind: 'offen', missing: ['selbststaendig'] }
+    if (answers.job === 'Rente') return this.pensioner(userId, year, answers, masterData, boostersEnabled, ownBusiness)
     // § 37 EStG prepayments go into the core with the business (credited like wage tax, Soli exact).
     const prepaymentsEur = amountAnswer(answers, 'vorauszahlungen')
     const businessInputs = ownBusiness === null ? {} : { business: ownBusiness.business, losses: ownBusiness.losses, ...(prepaymentsEur > 0 ? { prepayments: { incomeTaxEur: prepaymentsEur } } : {}) }
@@ -178,13 +179,28 @@ export class TaxEstimateService {
 
     // Self-employed without a job (ADR-0101): the profit is the income, the provision paid outside a wage.
     if (ownBusiness !== null && answers.job === 'Selbstständig') {
+      // A Midijob or a job beside the business (ADR-0101 §22): its wage tax certificate is the wage.
+      let wage: { gross: number; wageTax: number; socialSecurity: number; workExpensesEur: number } | undefined
+      if (answers.nebenjob === 'Midijob' || answers.nebenjob === 'Nebenjob') {
+        const side = wageTaxCertificateStatus(wageTaxCertificateDataFrom(lstbRecord))
+        if (side.kind === 'unvollstaendig') return { kind: 'offen', missing: [...side.open, ...side.unclear] }
+        if (side.kind === 'widerspruch') return { kind: 'offen', missing: side.conflicts.map((w) => w.kind) }
+        wage = {
+          gross: side.bruttoarbeitslohn,
+          wageTax: side.lohnsteuer,
+          socialSecurity: deductibleSocialSecurity(side.sozialversicherung, lstbRecord),
+          workExpensesEur: allowance + numbers.relocationCosts + numbers.trainingCosts,
+        }
+      }
       return withPrepayments(
         withEstimateExtras(
           taxEstimateSelfEmployed({
             year,
             ...businessInputs,
             business: ownBusiness.business,
-            provision: { ...NO_PROVISION, healthBasicEur: numbers.healthCareContributions, healthWithSickPayEur: numbers.healthCareContributions },
+            ...(wage ? { wage } : {}),
+            // The lines as entered: deductibleProvision cuts the 4 % for Krankengeld once, on the KV only (ADR-0101 §22).
+            provision: selfPaidProvisionFromAnswers(answers),
             donations: numbers.donations + childcare,
             householdReductionEur,
             healthExpensesEur,
@@ -279,6 +295,7 @@ export class TaxEstimateService {
     answers: Answers,
     masterData: Awaited<ReturnType<MasterDataRepository['findByUserId']>>,
     boostersEnabled: boolean,
+    ownBusiness: { business: BusinessIncome; losses: LossCarry } | null = null,
   ): Promise<TaxEstimateStatus> {
     const record = this.pension ? await this.pension.findForUserAndYear(userId, year) : null
     const data = record ? pensionDataFromRecord(record) : null
@@ -296,6 +313,7 @@ export class TaxEstimateService {
         donations: numbers.donations + childcare,
         selfPaidKvPv: numbers.healthCareContributions,
         privatelyInsured: answers['kv-pv'] === 'Ja' && answers['kv-pv-art'] === 'Privat',
+        ...(ownBusiness === null ? {} : pensionerBusinessInputs(ownBusiness, answers)),
         householdReductionEur: boostersEnabled ? householdServicesFromAnswers(answers, year).totalReductionEur : 0,
         healthExpensesEur: boostersEnabled ? extraordinaryBurdenFromAnswers(answers) : 0,
         childrenBracket: burdenChildrenBracket(answers.kinder, recordedChildren),
@@ -508,7 +526,7 @@ export class TaxEstimateService {
           donations: numbers.donations,
           laterCount,
           answers,
-          spouse: { kind: 'selfEmployed', provision: { ...NO_PROVISION, healthBasicEur: numbers.healthCareContributions, healthWithSickPayEur: numbers.healthCareContributions } },
+          spouse: { kind: 'selfEmployed', provision: selfPaidProvisionFromAnswers(answers) },
         }
       }
       return { kind: 'none', laterCount, answers }
@@ -532,6 +550,18 @@ export class TaxEstimateService {
         ...employeeProvision(lstbRecord, numbers.healthCareContributions),
       },
     }
+  }
+}
+
+/** A pensioner's business (ADR-0101 §22): profit, losses, prepayments and the provision he pays himself. */
+function pensionerBusinessInputs(own: { business: BusinessIncome; losses: LossCarry }, answers: Answers) {
+  const provision = selfPaidProvisionFromAnswers(answers)
+  const prepaymentsEur = amountAnswer(answers, 'vorauszahlungen')
+  return {
+    business: own.business,
+    losses: own.losses,
+    ownProvision: { pensionEur: provision.pensionOwnEur, otherEur: provision.otherEur },
+    ...(prepaymentsEur > 0 ? { prepayments: { incomeTaxEur: prepaymentsEur } } : {}),
   }
 }
 
@@ -674,8 +704,14 @@ function rentalSurplus(o: {
 }
 
 /** Life situations the estimate cannot price yet; wage replacement benefits are priced (§ 32b, UX review K3). */
-function specialCircumstance(answers: Answers): boolean {
-  return answers.dhf === 'Ja' || answers.abfindung === 'Ja' || answers.nebenjob === 'Midijob' || answers.nebenjob === 'Nebenjob'
+/**
+ * Cases the estimate does not cover. A Midijob or side job beside an employment means two wage tax
+ * certificates; beside a business without other employment it is the only one, which the
+ * self-employed estimate takes (ADR-0101 §22).
+ */
+function specialCircumstance(answers: Answers, sideJobIsOnlyWage = false): boolean {
+  const sideJob = answers.nebenjob === 'Midijob' || answers.nebenjob === 'Nebenjob'
+  return answers.dhf === 'Ja' || answers.abfindung === 'Ja' || (sideJob && !sideJobIsOnlyWage)
 }
 
 /** Wage replacement benefits of the year: 0 without, the amount with, null when „Ja“ is answered but the amount is missing. */

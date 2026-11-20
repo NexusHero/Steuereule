@@ -35,7 +35,7 @@ export type CockpitStackParamList = {
   Strom: { year: number; step: string }
   /** The self-employed area (ADR-0101): `page` is one address segment (`buch`, `bank`, `elster` ...), none is the overview. */
   /** `zahlung` is the query parameter of the Stripe return URL (`erfolg`). */
-  Business: { year: number; page?: string; person?: 'A' | 'B'; zahlung?: string }
+  Business: { year: number; page?: string; person?: 'A' | 'B'; zahlung?: string; betrieb?: string }
 }
 
 export const SHEET_ROUTE_NAMES: readonly (keyof CockpitStackParamList)[] = [

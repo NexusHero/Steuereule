@@ -36,6 +36,8 @@ export interface EntryDraft {
   readonly text: string
   readonly lines: readonly EntryDraftLine[]
   readonly regularPayment?: RegularPayment
+  /** The customer's or supplier's foreign VAT id, for the Zusammenfassende Meldung (§ 18a Abs. 7 UStG). */
+  readonly counterpartyVatId?: string
 }
 
 export interface JournalLine {
@@ -58,6 +60,11 @@ export interface JournalEntry {
   readonly regularPayment: RegularPayment | null
   /** The number of the entry this Storno reverses. */
   readonly reversalOf: number | null
+  /**
+   * The counterparty's foreign VAT id (ADR-0101 §22, § 18a UStG). Absent, not null, when there is none:
+   * the canonical JSON leaves it out, so the hash of every older entry stays as it was.
+   */
+  readonly counterpartyVatId?: string
 }
 
 export interface Ledger {
@@ -107,6 +114,8 @@ export const TAX_KEYS: Readonly<Record<BookingTaxKey, TaxKeySpec>> = {
   vst7: { rate: 7, output: null, input: 'input_vat_7' },
   // Reverse charge: the recipient owes the tax and deducts it at once, so both lines arise together.
   rc13b19: { rate: 19, output: 'vat_13b_19', input: 'input_vat_13b_19' },
+  rcEu19: { rate: 19, output: 'vat_13b_19', input: 'input_vat_13b_19' },
+  euLeistung: { rate: 0, output: null, input: null },
   igErwerb19: { rate: 19, output: 'vat_ig_19', input: 'input_vat_ig_19' },
   igErwerb7: { rate: 7, output: 'vat_ig_7', input: 'input_vat_ig_7' },
 }
@@ -206,6 +215,7 @@ export function postEntry(ledger: Ledger, draft: EntryDraft): { ledger: Ledger; 
     lines: draft.lines.flatMap((l) => expandLine(ledger.chart, l)),
     regularPayment: draft.regularPayment ?? null,
     reversalOf: null,
+    ...(draft.counterpartyVatId ? { counterpartyVatId: draft.counterpartyVatId.replace(/\s/g, '').toUpperCase() } : {}),
   })
 }
 
@@ -238,6 +248,7 @@ export function reverseEntry(ledger: Ledger, number: number, input: ReversalInpu
     lines: original.lines.map((l) => ({ ...l, side: l.side === 'debit' ? 'credit' : 'debit' })),
     regularPayment: original.regularPayment,
     reversalOf: number,
+    ...(original.counterpartyVatId ? { counterpartyVatId: original.counterpartyVatId } : {}),
   })
 }
 

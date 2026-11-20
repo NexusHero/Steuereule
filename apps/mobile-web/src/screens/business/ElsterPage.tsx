@@ -48,17 +48,17 @@ export function valueText(value: ElsterLineDto['value']): string | null {
 }
 
 /** The ELSTER fill-in help: per form, line by line, what to enter in Mein ELSTER, with a copy action per value. */
-export function ElsterPage({ taxYear, person, onBack, onOpenPage, payment }: BusinessPageProps & { readonly payment?: string | undefined }) {
+export function ElsterPage({ taxYear, person, business = 1, onBack, onOpenPage, payment }: BusinessPageProps & { readonly payment?: string | undefined }) {
   const paid = payment === 'erfolg'
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const [chosen, setChosen] = useState<string | null>(null)
   const [copied, setCopied] = useState<string | null>(null)
-  const list = useBusinessControllerElsterForms(taxYear, personParams(person))
+  const list = useBusinessControllerElsterForms(taxYear, personParams(person, business))
   const entries = list.data?.status === 200 ? list.data.data.forms : []
   const entry = entries.find((e) => entryKey(e) === chosen) ?? entries[0]
   const form = entry?.form ?? 'anlage-euer'
-  const query = useBusinessControllerElster(taxYear, form, { ...personParams(person), ...(entry?.instance ? { instanz: entry.instance.id } : {}) }, { query: { enabled: entry !== undefined } })
+  const query = useBusinessControllerElster(taxYear, form, { ...personParams(person, business), ...(entry?.instance ? { instanz: entry.instance.id } : {}) }, { query: { enabled: entry !== undefined } })
   const [showRest, setShowRest] = useState(false)
   const refetchList = list.refetch
   // Back from the checkout (`?zahlung=erfolg`): the year is paid, the help is read again.

@@ -2680,10 +2680,267 @@
         ]
       }
     },
+    "/v1/steuerjahre/{jahr}/selbststaendig/betriebe": {
+      "get": {
+        "operationId": "BusinessController_businesses",
+        "parameters": [
+          {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "Whose business: A (default) or B of a joint return.",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The businesses of the person in the year, at least the first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BusinessListItemDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body fails validation (`fields`) or a business rule (`code`, German `message`), e.g. BOOKING_UNBALANCED, LEDGER_PERIOD_LOCKED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "403": {
+            "description": "SELF_EMPLOYMENT_DISABLED (switch off) or SELF_EMPLOYMENT_NOT_DECLARED (no self-employment in the interview).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "selbststaendig"
+        ]
+      },
+      "post": {
+        "operationId": "BusinessController_addBusiness",
+        "parameters": [
+          {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "Whose business: A (default) or B of a joint return.",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewBusinessDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The new business with the next number.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessProfileDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body fails validation (`fields`) or a business rule (`code`, German `message`), e.g. BOOKING_UNBALANCED, LEDGER_PERIOD_LOCKED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "403": {
+            "description": "SELF_EMPLOYMENT_DISABLED (switch off) or SELF_EMPLOYMENT_NOT_DECLARED (no self-employment in the interview).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "selbststaendig"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/selbststaendig/betriebe/{nummer}/entfernen": {
+      "post": {
+        "operationId": "BusinessController_removeBusiness",
+        "parameters": [
+          {
+            "name": "nummer",
+            "required": true,
+            "in": "path",
+            "description": "The business number, from 2.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "Whose business: A (default) or B of a joint return.",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "The body fails validation (`fields`) or a business rule (`code`, German `message`), e.g. BOOKING_UNBALANCED, LEDGER_PERIOD_LOCKED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "403": {
+            "description": "SELF_EMPLOYMENT_DISABLED (switch off) or SELF_EMPLOYMENT_NOT_DECLARED (no self-employment in the interview).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "BOOK_INTEGRITY_BROKEN (hash chain or entry not as logged), BOOK_FRAME_FIXED, a draft or transaction already done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "selbststaendig"
+        ]
+      }
+    },
     "/v1/steuerjahre/{jahr}/selbststaendig/kataloge": {
       "get": {
         "operationId": "BusinessController_catalogues",
         "parameters": [
+          {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
           {
             "name": "person",
             "required": false,
@@ -2752,6 +3009,15 @@
         "operationId": "BusinessController_profile",
         "parameters": [
           {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
             "name": "person",
             "required": false,
             "in": "query",
@@ -2816,6 +3082,15 @@
       "put": {
         "operationId": "BusinessController_saveProfile",
         "parameters": [
+          {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
           {
             "name": "person",
             "required": false,
@@ -2904,6 +3179,15 @@
         "operationId": "BusinessController_book",
         "parameters": [
           {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
             "name": "person",
             "required": false,
             "in": "query",
@@ -2970,6 +3254,15 @@
       "post": {
         "operationId": "BusinessController_post",
         "parameters": [
+          {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
           {
             "name": "person",
             "required": false,
@@ -3061,6 +3354,15 @@
             "name": "nummer",
             "required": true,
             "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
             "schema": {
               "type": "number"
             }
@@ -3163,6 +3465,15 @@
         "operationId": "BusinessController_quickEntry",
         "parameters": [
           {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
             "name": "person",
             "required": false,
             "in": "query",
@@ -3253,6 +3564,15 @@
         "operationId": "BusinessController_lock",
         "parameters": [
           {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
             "name": "person",
             "required": false,
             "in": "query",
@@ -3340,6 +3660,15 @@
         "operationId": "BusinessController_importBank",
         "parameters": [
           {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
             "name": "person",
             "required": false,
             "in": "query",
@@ -3417,6 +3746,15 @@
         "operationId": "BusinessController_bank",
         "parameters": [
           {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
             "name": "person",
             "required": false,
             "in": "query",
@@ -3492,6 +3830,15 @@
             "in": "path",
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
             }
           },
           {
@@ -3600,6 +3947,15 @@
             }
           },
           {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
             "name": "person",
             "required": false,
             "in": "query",
@@ -3667,6 +4023,15 @@
         "operationId": "BusinessController_assets",
         "parameters": [
           {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
             "name": "person",
             "required": false,
             "in": "query",
@@ -3731,6 +4096,15 @@
       "post": {
         "operationId": "BusinessController_createAsset",
         "parameters": [
+          {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
           {
             "name": "person",
             "required": false,
@@ -3814,6 +4188,15 @@
             "in": "path",
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
             }
           },
           {
@@ -3904,6 +4287,15 @@
         "operationId": "BusinessController_bookDepreciation",
         "parameters": [
           {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
             "name": "person",
             "required": false,
             "in": "query",
@@ -3984,6 +4376,15 @@
         "operationId": "BusinessController_closing",
         "parameters": [
           {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
             "name": "person",
             "required": false,
             "in": "query",
@@ -4050,6 +4451,15 @@
       "post": {
         "operationId": "BusinessController_carryForward",
         "parameters": [
+          {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
           {
             "name": "person",
             "required": false,
@@ -4123,10 +4533,526 @@
         ]
       }
     },
+    "/v1/steuerjahre/{jahr}/selbststaendig/firmenwagen": {
+      "post": {
+        "operationId": "BusinessController_companyCar",
+        "parameters": [
+          {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "Whose business: A (default) or B of a joint return.",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompanyCarInputDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The private use of a business car (1 %-Regel or Fahrtenbuch), the commute and the VAT; nothing is booked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanyCarResultDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body fails validation (`fields`) or a business rule (`code`, German `message`), e.g. BOOKING_UNBALANCED, LEDGER_PERIOD_LOCKED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "403": {
+            "description": "SELF_EMPLOYMENT_DISABLED (switch off) or SELF_EMPLOYMENT_NOT_DECLARED (no self-employment in the interview).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "selbststaendig"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/selbststaendig/firmenwagen/buchen": {
+      "post": {
+        "operationId": "BusinessController_bookCompanyCar",
+        "parameters": [
+          {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "Whose business: A (default) or B of a joint return.",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompanyCarInputDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The Entnahme and the non-deductible commute, dated 31.12.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/JournalEntryDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body fails validation (`fields`) or a business rule (`code`, German `message`), e.g. BOOKING_UNBALANCED, LEDGER_PERIOD_LOCKED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "403": {
+            "description": "SELF_EMPLOYMENT_DISABLED (switch off) or SELF_EMPLOYMENT_NOT_DECLARED (no self-employment in the interview).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "BOOK_INTEGRITY_BROKEN (hash chain or entry not as logged), BOOK_FRAME_FIXED, a draft or transaction already done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "selbststaendig"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/selbststaendig/lohn": {
+      "get": {
+        "operationId": "BusinessController_payroll",
+        "parameters": [
+          {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "Whose business: A (default) or B of a joint return.",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The payroll runs, the Lohnsteuer-Anmeldungen (§ 41a EStG) and the Minijob charges; no social security reports are filed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayrollOverviewDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body fails validation (`fields`) or a business rule (`code`, German `message`), e.g. BOOKING_UNBALANCED, LEDGER_PERIOD_LOCKED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "403": {
+            "description": "SELF_EMPLOYMENT_DISABLED (switch off) or SELF_EMPLOYMENT_NOT_DECLARED (no self-employment in the interview).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "selbststaendig"
+        ]
+      },
+      "post": {
+        "operationId": "BusinessController_addPayrollRun",
+        "parameters": [
+          {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "Whose business: A (default) or B of a joint return.",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PayrollRunInputDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The entry the run was booked as.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JournalEntryDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body fails validation (`fields`) or a business rule (`code`, German `message`), e.g. BOOKING_UNBALANCED, LEDGER_PERIOD_LOCKED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "403": {
+            "description": "SELF_EMPLOYMENT_DISABLED (switch off) or SELF_EMPLOYMENT_NOT_DECLARED (no self-employment in the interview).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "BOOK_INTEGRITY_BROKEN (hash chain or entry not as logged), BOOK_FRAME_FIXED, a draft or transaction already done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "selbststaendig"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/selbststaendig/sondertarife": {
+      "get": {
+        "operationId": "BusinessController_specialTariffs",
+        "parameters": [
+          {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "Whose business: A (default) or B of a joint return.",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "§ 16 gain with § 34, and the § 34a Thesaurierung of the business, as the estimate takes them.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SpecialTariffsDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body fails validation (`fields`) or a business rule (`code`, German `message`), e.g. BOOKING_UNBALANCED, LEDGER_PERIOD_LOCKED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "403": {
+            "description": "SELF_EMPLOYMENT_DISABLED (switch off) or SELF_EMPLOYMENT_NOT_DECLARED (no self-employment in the interview).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "selbststaendig"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/selbststaendig/umsatzsteuer/voranmeldungen": {
+      "get": {
+        "operationId": "BusinessController_vatPrepayments",
+        "parameters": [
+          {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "Whose business: A (default) or B of a joint return.",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The Voranmeldungen of the year with their Kennzahlen, the Sondervorauszahlung and the Zusammenfassende Meldungen; nothing is transmitted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VatPrepaymentsDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body fails validation (`fields`) or a business rule (`code`, German `message`), e.g. BOOKING_UNBALANCED, LEDGER_PERIOD_LOCKED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "403": {
+            "description": "SELF_EMPLOYMENT_DISABLED (switch off) or SELF_EMPLOYMENT_NOT_DECLARED (no self-employment in the interview).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "selbststaendig"
+        ]
+      }
+    },
     "/v1/steuerjahre/{jahr}/selbststaendig/umsatzsteuer": {
       "get": {
         "operationId": "BusinessController_vat",
         "parameters": [
+          {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
           {
             "name": "person",
             "required": false,
@@ -4194,6 +5120,15 @@
       "get": {
         "operationId": "BusinessController_tradeTax",
         "parameters": [
+          {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
           {
             "name": "person",
             "required": false,
@@ -4280,6 +5215,15 @@
             }
           },
           {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
             "name": "person",
             "required": false,
             "in": "query",
@@ -4347,6 +5291,15 @@
         "operationId": "BusinessController_losses",
         "parameters": [
           {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
             "name": "person",
             "required": false,
             "in": "query",
@@ -4413,6 +5366,15 @@
       "get": {
         "operationId": "BusinessController_elsterForms",
         "parameters": [
+          {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
           {
             "name": "person",
             "required": false,
@@ -4529,6 +5491,15 @@
             }
           },
           {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
             "name": "person",
             "required": false,
             "in": "query",
@@ -4626,6 +5597,15 @@
         "operationId": "BusinessController_gobd",
         "parameters": [
           {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
             "name": "person",
             "required": false,
             "in": "query",
@@ -4714,6 +5694,15 @@
         "operationId": "BusinessController_procedureDoc",
         "parameters": [
           {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
             "name": "person",
             "required": false,
             "in": "query",
@@ -4778,6 +5767,15 @@
       "put": {
         "operationId": "BusinessController_saveProcedureDoc",
         "parameters": [
+          {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
           {
             "name": "person",
             "required": false,
@@ -4856,6 +5854,15 @@
         "operationId": "BusinessController_eBilanz",
         "parameters": [
           {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
             "name": "person",
             "required": false,
             "in": "query",
@@ -4928,10 +5935,125 @@
         ]
       }
     },
+    "/v1/steuerjahre/{jahr}/selbststaendig/e-bilanz/uebermittlung": {
+      "post": {
+        "operationId": "BusinessController_transmitEBilanz",
+        "parameters": [
+          {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "Whose business: A (default) or B of a joint return.",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EBilanzTransmitDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Validates or sends the E-Bilanz through the operator’s ERiC sidecar; nicht_eingerichtet names what is missing.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EBilanzTransmissionDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body fails validation (`fields`) or a business rule (`code`, German `message`), e.g. BOOKING_UNBALANCED, LEDGER_PERIOD_LOCKED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "402": {
+            "description": "SELF_EMPLOYMENT_NOT_UNLOCKED: the year is not paid at the self-employment tier.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "SELF_EMPLOYMENT_DISABLED (switch off) or SELF_EMPLOYMENT_NOT_DECLARED (no self-employment in the interview).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "BOOK_INTEGRITY_BROKEN (hash chain or entry not as logged), BOOK_FRAME_FIXED, a draft or transaction already done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "selbststaendig"
+        ]
+      }
+    },
     "/v1/steuerjahre/{jahr}/selbststaendig/e-bilanz/datei": {
       "get": {
         "operationId": "BusinessController_eBilanzFile",
         "parameters": [
+          {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
           {
             "name": "person",
             "required": false,
@@ -5019,6 +6141,15 @@
       "post": {
         "operationId": "BusinessController_checkout",
         "parameters": [
+          {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
           {
             "name": "person",
             "required": false,
@@ -12177,6 +13308,514 @@
           "statusCode"
         ]
       },
+      "BusinessListItemDto": {
+        "type": "object",
+        "properties": {
+          "business": {
+            "type": "number",
+            "description": "The business number of the person, from 1."
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "freiberuf",
+              "gewerbe"
+            ],
+            "nullable": true
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "euer",
+              "bilanz"
+            ]
+          }
+        },
+        "required": [
+          "business",
+          "name",
+          "kind",
+          "mode"
+        ]
+      },
+      "NewBusinessDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120,
+            "description": "What the user calls the business."
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "ProfessionAnswersDto": {
+        "type": "object",
+        "properties": {
+          "priorAssessment": {
+            "type": "string",
+            "enum": [
+              "freiberuf",
+              "gewerbe"
+            ],
+            "nullable": true,
+            "description": "What the last assessment said (Anlage S or G); null when there is none."
+          },
+          "catalogProfession": {
+            "type": "string",
+            "enum": [
+              "arzt",
+              "zahnarzt",
+              "tierarzt",
+              "rechtsanwalt",
+              "notar",
+              "patentanwalt",
+              "vermessungsingenieur",
+              "ingenieur",
+              "architekt",
+              "handelschemiker",
+              "wirtschaftspruefer",
+              "steuerberater",
+              "beratender_volks_betriebswirt",
+              "vereidigter_buchpruefer",
+              "steuerbevollmaechtigter",
+              "heilpraktiker",
+              "dentist",
+              "krankengymnast",
+              "journalist",
+              "bildberichterstatter",
+              "dolmetscher",
+              "uebersetzer",
+              "lotse"
+            ],
+            "nullable": true,
+            "description": "Katalogberuf of § 18 Abs. 1 Nr. 1 EStG (core CATALOG_PROFESSIONS)."
+          },
+          "similarToCatalogProfession": {
+            "type": "boolean",
+            "description": "Comparable to a Katalogberuf in training and work (ähnlicher Beruf)."
+          },
+          "freeActivity": {
+            "type": "string",
+            "enum": [
+              "wissenschaftlich",
+              "kuenstlerisch",
+              "schriftstellerisch",
+              "unterrichtend",
+              "erzieherisch"
+            ],
+            "nullable": true,
+            "description": "A free activity (wissenschaftlich, künstlerisch, …)."
+          },
+          "ownExpertWork": {
+            "type": "boolean",
+            "description": "The work rests on own expert knowledge; absent = Nein."
+          },
+          "employsQualifiedStaff": {
+            "type": "boolean",
+            "description": "Employs qualified staff; absent = Nein."
+          },
+          "leadsPersonally": {
+            "type": "boolean",
+            "description": "Leads the staff personally and answers for each job; absent = Nein."
+          },
+          "tradesGoods": {
+            "type": "boolean",
+            "description": "Trades goods or runs a shop beside the profession; absent = Nein."
+          }
+        }
+      },
+      "ProfessionSuggestionDto": {
+        "type": "object",
+        "properties": {
+          "suggestion": {
+            "type": "string",
+            "enum": [
+              "freiberuf",
+              "gewerbe",
+              "unklar"
+            ]
+          },
+          "reasons": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "basis": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "suggestion",
+          "reasons",
+          "basis"
+        ]
+      },
+      "VatPeriodFactsDto": {
+        "type": "object",
+        "properties": {
+          "period": {
+            "type": "string",
+            "enum": [
+              "monat",
+              "quartal",
+              "befreit"
+            ],
+            "description": "The period the office set; absent = derived from the year before."
+          },
+          "extension": {
+            "type": "boolean",
+            "description": "Dauerfristverlängerung (§ 46 UStDV)."
+          },
+          "specialPrepaymentEur": {
+            "type": "number",
+            "description": "The Sondervorauszahlung as paid; absent = 1/11 of last year (§ 47 UStDV)."
+          },
+          "chooseMonthly": {
+            "type": "boolean",
+            "description": "Monthly by choice after a refund above the limit (§ 18 Abs. 2a UStG)."
+          }
+        }
+      },
+      "DisposalFactsDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "veraeusserung",
+              "aufgabe"
+            ]
+          },
+          "date": {
+            "type": "string",
+            "example": "2025-09-30"
+          },
+          "priceEur": {
+            "type": "number",
+            "description": "Price, or for an Aufgabe the value of the assets taken over and the proceeds of their sale."
+          },
+          "costsEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "capitalAccountEur": {
+            "type": "number",
+            "description": "Wert des Betriebsvermögens (capital account) at the date."
+          },
+          "allowance": {
+            "type": "boolean",
+            "description": "§ 16 Abs. 4: allowance applied for (age 55 or disabled, never used before)."
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "fuenftel",
+              "ermaessigt",
+              "keine"
+            ]
+          }
+        },
+        "required": [
+          "kind",
+          "date",
+          "priceEur",
+          "costsEur",
+          "capitalAccountEur",
+          "allowance",
+          "method"
+        ]
+      },
+      "RetainedFactsDto": {
+        "type": "object",
+        "properties": {
+          "requestedEur": {
+            "type": "number",
+            "description": "The amount applied for under § 34a."
+          },
+          "carriedForwardEur": {
+            "type": "number",
+            "description": "Nachversteuerungspflichtiger Betrag of the last Feststellung."
+          },
+          "withdrawalsForRetainedTaxEur": {
+            "type": "number",
+            "description": "From 2024: withdrawals to pay the § 34a tax (Abs. 2 Satz 2)."
+          }
+        },
+        "required": [
+          "requestedEur"
+        ]
+      },
+      "FinancingComponentsDto": {
+        "type": "object",
+        "properties": {
+          "debtChargesEur": {
+            "type": "number",
+            "description": "§ 8 Nr. 1 a GewStG: Entgelte für Schulden, euros."
+          },
+          "annuitiesEur": {
+            "type": "number",
+            "description": "§ 8 Nr. 1 b: Renten und dauernde Lasten, euros."
+          },
+          "silentPartnerSharesEur": {
+            "type": "number",
+            "description": "§ 8 Nr. 1 c: Gewinnanteile stiller Gesellschafter, euros."
+          },
+          "rentMovableEur": {
+            "type": "number",
+            "description": "§ 8 Nr. 1 d: Miete/Leasing beweglicher Wirtschaftsgüter, euros."
+          },
+          "rentMovableLowEmissionEur": {
+            "type": "number",
+            "description": "§ 8 Nr. 1 d: dieselbe für E-Fahrzeuge und Fahrräder, euros."
+          },
+          "rentImmovableEur": {
+            "type": "number",
+            "description": "§ 8 Nr. 1 e: Miete/Pacht unbeweglicher Wirtschaftsgüter, euros."
+          },
+          "licencesEur": {
+            "type": "number",
+            "description": "§ 8 Nr. 1 f: Lizenzen und Konzessionen, euros."
+          }
+        }
+      },
+      "TradeTaxInputsDto": {
+        "type": "object",
+        "properties": {
+          "financing": {
+            "$ref": "#/components/schemas/FinancingComponentsDto"
+          },
+          "otherAdditionsEur": {
+            "type": "number",
+            "description": "Further additions (§ 8 Nr. 4–12 GewStG), euros."
+          },
+          "einheitswertEur": {
+            "type": "number",
+            "description": "Einheitswert of the business land for § 9 Nr. 1 GewStG, euros."
+          },
+          "otherDeductionsEur": {
+            "type": "number",
+            "description": "Further deductions (§ 9 Nr. 2–10), euros."
+          },
+          "lossCarriedForwardEur": {
+            "type": "number",
+            "description": "Gewerbeverlust carried forward (§ 10a GewStG), euros."
+          }
+        }
+      },
+      "LossFactsDto": {
+        "type": "object",
+        "properties": {
+          "carriedForwardEur": {
+            "type": "number",
+            "description": "Verbleibender Verlustvortrag of the last Feststellungsbescheid, euros."
+          },
+          "waiveCarryBack": {
+            "type": "boolean",
+            "description": "§ 10d Abs. 1 Satz 5: waive the Rücktrag (as a whole)."
+          },
+          "roomEur": {
+            "description": "What the GdE of the year before and the second year before still offers, euros: [y−1, y−2].",
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "carriedBackEur": {
+            "type": "number",
+            "description": "A later year’s loss carried back into this year, euros."
+          }
+        }
+      },
+      "PartnershipShareDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "freiberuf",
+              "gewerbe"
+            ]
+          },
+          "profitEur": {
+            "type": "number",
+            "description": "Share of the profit per Feststellungsbescheid, euros (negative for a loss)."
+          },
+          "baseAmountEur": {
+            "type": "number",
+            "description": "Share of the Gewerbesteuer-Messbetrag (§ 35), euros."
+          },
+          "tradeTaxEur": {
+            "type": "number",
+            "description": "Share of the Gewerbesteuer actually due (§ 35), euros."
+          }
+        },
+        "required": [
+          "name",
+          "kind",
+          "profitEur"
+        ]
+      },
+      "BusinessProfileDto": {
+        "type": "object",
+        "properties": {
+          "person": {
+            "type": "string",
+            "enum": [
+              "A",
+              "B"
+            ]
+          },
+          "business": {
+            "type": "number",
+            "description": "The business number of the person, from 1 (ADR-0101 §22)."
+          },
+          "confirmedKind": {
+            "type": "string",
+            "enum": [
+              "freiberuf",
+              "gewerbe"
+            ],
+            "nullable": true
+          },
+          "professionAnswers": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ProfessionAnswersDto"
+              }
+            ]
+          },
+          "suggestion": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ProfessionSuggestionDto"
+              }
+            ]
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "euer",
+              "bilanz"
+            ]
+          },
+          "chart": {
+            "type": "string",
+            "enum": [
+              "SKR03",
+              "SKR04"
+            ]
+          },
+          "smallBusiness": {
+            "type": "boolean"
+          },
+          "vatMethod": {
+            "type": "string",
+            "enum": [
+              "ist",
+              "soll"
+            ]
+          },
+          "municipalityAgs": {
+            "type": "string",
+            "nullable": true
+          },
+          "multiplierOverride": {
+            "type": "number",
+            "nullable": true
+          },
+          "startDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "vatPrepaymentsCents": {
+            "type": "number",
+            "nullable": true
+          },
+          "vatPeriodFacts": {
+            "$ref": "#/components/schemas/VatPeriodFactsDto"
+          },
+          "disposalFacts": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DisposalFactsDto"
+              }
+            ]
+          },
+          "retainedFacts": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RetainedFactsDto"
+              }
+            ]
+          },
+          "tradeTaxInputs": {
+            "$ref": "#/components/schemas/TradeTaxInputsDto"
+          },
+          "lossFacts": {
+            "$ref": "#/components/schemas/LossFactsDto"
+          },
+          "partnershipShares": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PartnershipShareDto"
+            }
+          },
+          "bookExists": {
+            "type": "boolean",
+            "description": "A book exists: chart and mode are fixed once something is booked."
+          }
+        },
+        "required": [
+          "person",
+          "business",
+          "confirmedKind",
+          "professionAnswers",
+          "suggestion",
+          "name",
+          "mode",
+          "chart",
+          "smallBusiness",
+          "vatMethod",
+          "municipalityAgs",
+          "multiplierOverride",
+          "startDate",
+          "vatPrepaymentsCents",
+          "vatPeriodFacts",
+          "disposalFacts",
+          "retainedFacts",
+          "tradeTaxInputs",
+          "lossFacts",
+          "partnershipShares",
+          "bookExists"
+        ]
+      },
       "CatalogEntryDto": {
         "type": "object",
         "properties": {
@@ -12308,342 +13947,6 @@
           "bankPresets"
         ]
       },
-      "ProfessionAnswersDto": {
-        "type": "object",
-        "properties": {
-          "priorAssessment": {
-            "type": "string",
-            "enum": [
-              "freiberuf",
-              "gewerbe"
-            ],
-            "nullable": true,
-            "description": "What the last assessment said (Anlage S or G); null when there is none."
-          },
-          "catalogProfession": {
-            "type": "string",
-            "enum": [
-              "arzt",
-              "zahnarzt",
-              "tierarzt",
-              "rechtsanwalt",
-              "notar",
-              "patentanwalt",
-              "vermessungsingenieur",
-              "ingenieur",
-              "architekt",
-              "handelschemiker",
-              "wirtschaftspruefer",
-              "steuerberater",
-              "beratender_volks_betriebswirt",
-              "vereidigter_buchpruefer",
-              "steuerbevollmaechtigter",
-              "heilpraktiker",
-              "dentist",
-              "krankengymnast",
-              "journalist",
-              "bildberichterstatter",
-              "dolmetscher",
-              "uebersetzer",
-              "lotse"
-            ],
-            "nullable": true,
-            "description": "Katalogberuf of § 18 Abs. 1 Nr. 1 EStG (core CATALOG_PROFESSIONS)."
-          },
-          "similarToCatalogProfession": {
-            "type": "boolean",
-            "description": "Comparable to a Katalogberuf in training and work (ähnlicher Beruf)."
-          },
-          "freeActivity": {
-            "type": "string",
-            "enum": [
-              "wissenschaftlich",
-              "kuenstlerisch",
-              "schriftstellerisch",
-              "unterrichtend",
-              "erzieherisch"
-            ],
-            "nullable": true,
-            "description": "A free activity (wissenschaftlich, künstlerisch, …)."
-          },
-          "ownExpertWork": {
-            "type": "boolean",
-            "description": "The work rests on own expert knowledge; absent = Nein."
-          },
-          "employsQualifiedStaff": {
-            "type": "boolean",
-            "description": "Employs qualified staff; absent = Nein."
-          },
-          "leadsPersonally": {
-            "type": "boolean",
-            "description": "Leads the staff personally and answers for each job; absent = Nein."
-          },
-          "tradesGoods": {
-            "type": "boolean",
-            "description": "Trades goods or runs a shop beside the profession; absent = Nein."
-          }
-        }
-      },
-      "ProfessionSuggestionDto": {
-        "type": "object",
-        "properties": {
-          "suggestion": {
-            "type": "string",
-            "enum": [
-              "freiberuf",
-              "gewerbe",
-              "unklar"
-            ]
-          },
-          "reasons": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "basis": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        },
-        "required": [
-          "suggestion",
-          "reasons",
-          "basis"
-        ]
-      },
-      "FinancingComponentsDto": {
-        "type": "object",
-        "properties": {
-          "debtChargesEur": {
-            "type": "number",
-            "description": "§ 8 Nr. 1 a GewStG: Entgelte für Schulden, euros."
-          },
-          "annuitiesEur": {
-            "type": "number",
-            "description": "§ 8 Nr. 1 b: Renten und dauernde Lasten, euros."
-          },
-          "silentPartnerSharesEur": {
-            "type": "number",
-            "description": "§ 8 Nr. 1 c: Gewinnanteile stiller Gesellschafter, euros."
-          },
-          "rentMovableEur": {
-            "type": "number",
-            "description": "§ 8 Nr. 1 d: Miete/Leasing beweglicher Wirtschaftsgüter, euros."
-          },
-          "rentMovableLowEmissionEur": {
-            "type": "number",
-            "description": "§ 8 Nr. 1 d: dieselbe für E-Fahrzeuge und Fahrräder, euros."
-          },
-          "rentImmovableEur": {
-            "type": "number",
-            "description": "§ 8 Nr. 1 e: Miete/Pacht unbeweglicher Wirtschaftsgüter, euros."
-          },
-          "licencesEur": {
-            "type": "number",
-            "description": "§ 8 Nr. 1 f: Lizenzen und Konzessionen, euros."
-          }
-        }
-      },
-      "TradeTaxInputsDto": {
-        "type": "object",
-        "properties": {
-          "financing": {
-            "$ref": "#/components/schemas/FinancingComponentsDto"
-          },
-          "otherAdditionsEur": {
-            "type": "number",
-            "description": "Further additions (§ 8 Nr. 4–12 GewStG), euros."
-          },
-          "einheitswertEur": {
-            "type": "number",
-            "description": "Einheitswert of the business land for § 9 Nr. 1 GewStG, euros."
-          },
-          "otherDeductionsEur": {
-            "type": "number",
-            "description": "Further deductions (§ 9 Nr. 2–10), euros."
-          },
-          "lossCarriedForwardEur": {
-            "type": "number",
-            "description": "Gewerbeverlust carried forward (§ 10a GewStG), euros."
-          }
-        }
-      },
-      "LossFactsDto": {
-        "type": "object",
-        "properties": {
-          "carriedForwardEur": {
-            "type": "number",
-            "description": "Verbleibender Verlustvortrag of the last Feststellungsbescheid, euros."
-          },
-          "waiveCarryBack": {
-            "type": "boolean",
-            "description": "§ 10d Abs. 1 Satz 5: waive the Rücktrag (as a whole)."
-          },
-          "roomEur": {
-            "description": "What the GdE of the year before and the second year before still offers, euros: [y−1, y−2].",
-            "type": "array",
-            "items": {
-              "type": "number"
-            }
-          },
-          "carriedBackEur": {
-            "type": "number",
-            "description": "A later year’s loss carried back into this year, euros."
-          }
-        }
-      },
-      "PartnershipShareDto": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string"
-          },
-          "kind": {
-            "type": "string",
-            "enum": [
-              "freiberuf",
-              "gewerbe"
-            ]
-          },
-          "profitEur": {
-            "type": "number",
-            "description": "Share of the profit per Feststellungsbescheid, euros (negative for a loss)."
-          },
-          "baseAmountEur": {
-            "type": "number",
-            "description": "Share of the Gewerbesteuer-Messbetrag (§ 35), euros."
-          },
-          "tradeTaxEur": {
-            "type": "number",
-            "description": "Share of the Gewerbesteuer actually due (§ 35), euros."
-          }
-        },
-        "required": [
-          "name",
-          "kind",
-          "profitEur"
-        ]
-      },
-      "BusinessProfileDto": {
-        "type": "object",
-        "properties": {
-          "person": {
-            "type": "string",
-            "enum": [
-              "A",
-              "B"
-            ]
-          },
-          "confirmedKind": {
-            "type": "string",
-            "enum": [
-              "freiberuf",
-              "gewerbe"
-            ],
-            "nullable": true
-          },
-          "professionAnswers": {
-            "nullable": true,
-            "type": "object",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/ProfessionAnswersDto"
-              }
-            ]
-          },
-          "suggestion": {
-            "nullable": true,
-            "type": "object",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/ProfessionSuggestionDto"
-              }
-            ]
-          },
-          "name": {
-            "type": "string",
-            "nullable": true
-          },
-          "mode": {
-            "type": "string",
-            "enum": [
-              "euer",
-              "bilanz"
-            ]
-          },
-          "chart": {
-            "type": "string",
-            "enum": [
-              "SKR03",
-              "SKR04"
-            ]
-          },
-          "smallBusiness": {
-            "type": "boolean"
-          },
-          "vatMethod": {
-            "type": "string",
-            "enum": [
-              "ist",
-              "soll"
-            ]
-          },
-          "municipalityAgs": {
-            "type": "string",
-            "nullable": true
-          },
-          "multiplierOverride": {
-            "type": "number",
-            "nullable": true
-          },
-          "startDate": {
-            "type": "string",
-            "nullable": true
-          },
-          "vatPrepaymentsCents": {
-            "type": "number",
-            "nullable": true
-          },
-          "tradeTaxInputs": {
-            "$ref": "#/components/schemas/TradeTaxInputsDto"
-          },
-          "lossFacts": {
-            "$ref": "#/components/schemas/LossFactsDto"
-          },
-          "partnershipShares": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/PartnershipShareDto"
-            }
-          },
-          "bookExists": {
-            "type": "boolean",
-            "description": "A book exists: chart and mode are fixed once something is booked."
-          }
-        },
-        "required": [
-          "person",
-          "confirmedKind",
-          "professionAnswers",
-          "suggestion",
-          "name",
-          "mode",
-          "chart",
-          "smallBusiness",
-          "vatMethod",
-          "municipalityAgs",
-          "multiplierOverride",
-          "startDate",
-          "vatPrepaymentsCents",
-          "tradeTaxInputs",
-          "lossFacts",
-          "partnershipShares",
-          "bookExists"
-        ]
-      },
       "BusinessProfileInputDto": {
         "type": "object",
         "properties": {
@@ -12714,7 +14017,37 @@
           "vatPrepaymentsCents": {
             "type": "number",
             "nullable": true,
-            "description": "Umsatzsteuer prepayments of the year in cents."
+            "description": "Umsatzsteuer prepayments of the year in cents; absent or null = the Voranmeldungen’s total."
+          },
+          "vatPeriodFacts": {
+            "nullable": true,
+            "description": "The Voranmeldung facts. Replaced as a whole.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/VatPeriodFactsDto"
+              }
+            ]
+          },
+          "disposalFacts": {
+            "nullable": true,
+            "description": "Sale or giving up of the business (§ 16, § 34 EStG). Replaced as a whole.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DisposalFactsDto"
+              }
+            ]
+          },
+          "retainedFacts": {
+            "nullable": true,
+            "description": "Thesaurierung (§ 34a EStG), Bilanz only. Replaced as a whole.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RetainedFactsDto"
+              }
+            ]
           },
           "tradeTaxInputs": {
             "nullable": true,
@@ -12890,6 +14223,25 @@
           "entries"
         ]
       },
+      "RegularPaymentDto": {
+        "type": "object",
+        "properties": {
+          "dueDate": {
+            "type": "string",
+            "example": "2025-01-10",
+            "description": "Due date after any § 108 AO shift."
+          },
+          "periodYear": {
+            "type": "number",
+            "example": 2024,
+            "description": "The year the payment belongs to economically."
+          }
+        },
+        "required": [
+          "dueDate",
+          "periodYear"
+        ]
+      },
       "BookingLineDto": {
         "type": "object",
         "properties": {
@@ -12963,6 +14315,14 @@
       "BookingDraftDto": {
         "type": "object",
         "properties": {
+          "regularPayment": {
+            "description": "§ 11 Abs. 1 Satz 2 EStG: a regular payment around the turn of the year, counted in the EÜR of the year it belongs to.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RegularPaymentDto"
+              }
+            ]
+          },
           "date": {
             "type": "string",
             "example": "2025-03-14"
@@ -12984,6 +14344,11 @@
             "items": {
               "$ref": "#/components/schemas/BookingLineDto"
             }
+          },
+          "counterpartyVatId": {
+            "type": "string",
+            "example": "ATU12345678",
+            "description": "The counterparty’s foreign VAT id (Zusammenfassende Meldung, § 18a UStG)."
           },
           "asset": {
             "description": "A fixed asset: how it is depreciated.",
@@ -14108,6 +15473,667 @@
           "bilanz"
         ]
       },
+      "CarCommuteDto": {
+        "type": "object",
+        "properties": {
+          "distanceKm": {
+            "type": "number",
+            "description": "One-way distance home–business, full km."
+          },
+          "days": {
+            "type": "number",
+            "description": "Days the trip was made."
+          }
+        },
+        "required": [
+          "distanceKm",
+          "days"
+        ]
+      },
+      "CompanyCarInputDto": {
+        "type": "object",
+        "properties": {
+          "drive": {
+            "type": "string",
+            "enum": [
+              "verbrenner",
+              "elektro",
+              "hybrid"
+            ]
+          },
+          "acquired": {
+            "type": "string",
+            "example": "2024-03-01",
+            "description": "Acquisition date."
+          },
+          "listPriceGrossEur": {
+            "type": "number",
+            "description": "Bruttolistenpreis with the extras, euros."
+          },
+          "co2GPerKm": {
+            "type": "number"
+          },
+          "electricRangeKm": {
+            "type": "number"
+          },
+          "businessShareOver50": {
+            "type": "boolean",
+            "description": "More than half of the use is business."
+          },
+          "monthsInBusiness": {
+            "type": "number",
+            "description": "Months in the business assets this year."
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "pauschal",
+              "fahrtenbuch"
+            ]
+          },
+          "totalCostsEur": {
+            "type": "number",
+            "description": "Total costs of the car in the year with the AfA, euros."
+          },
+          "depreciationEur": {
+            "type": "number",
+            "description": "The AfA inside the total costs, euros."
+          },
+          "privateShare": {
+            "type": "number",
+            "description": "Logbook: private share of the km, 0–1."
+          },
+          "totalKm": {
+            "type": "number",
+            "description": "Logbook: km of the year."
+          },
+          "costsWithInputVatEur": {
+            "type": "number",
+            "description": "Logbook: costs that carried input VAT, euros."
+          },
+          "commute": {
+            "$ref": "#/components/schemas/CarCommuteDto"
+          }
+        },
+        "required": [
+          "drive",
+          "acquired",
+          "listPriceGrossEur",
+          "businessShareOver50",
+          "monthsInBusiness",
+          "method"
+        ]
+      },
+      "CarCommuteResultDto": {
+        "type": "object",
+        "properties": {
+          "valueEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "allowanceEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "nonDeductibleEur": {
+            "type": "number",
+            "description": "Euros."
+          }
+        },
+        "required": [
+          "valueEur",
+          "allowanceEur",
+          "nonDeductibleEur"
+        ]
+      },
+      "CarVatResultDto": {
+        "type": "object",
+        "properties": {
+          "baseEur": {
+            "type": "number",
+            "description": "Net base of the Wertabgabe at 19 %."
+          },
+          "vatEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "freeOfVatEur": {
+            "type": "number",
+            "description": "The part without VAT (20 % of the 1 % value)."
+          }
+        },
+        "required": [
+          "baseEur",
+          "vatEur",
+          "freeOfVatEur"
+        ]
+      },
+      "CompanyCarResultDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "berechnet",
+              "nicht_zulaessig",
+              "offen"
+            ]
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "pauschal",
+              "fahrtenbuch"
+            ]
+          },
+          "factor": {
+            "type": "number",
+            "description": "Fraction of the list price (1, 0,5, 0,25)."
+          },
+          "assessedListPriceEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "privateUseEur": {
+            "type": "number",
+            "description": "The Entnahme of the year."
+          },
+          "commute": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CarCommuteResultDto"
+              }
+            ]
+          },
+          "capped": {
+            "type": "boolean"
+          },
+          "vat": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CarVatResultDto"
+              }
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "betriebliche_nutzung_bis_50"
+            ]
+          },
+          "missing": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "PayrollRunDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "month": {
+            "type": "number"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "regulaer",
+              "minijob"
+            ]
+          },
+          "employee": {
+            "type": "string"
+          },
+          "grossEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "netEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "wageTaxEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "employerChargesEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "entryNumber": {
+            "type": "number",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "month",
+          "kind",
+          "employee",
+          "grossEur",
+          "netEur",
+          "wageTaxEur",
+          "employerChargesEur",
+          "entryNumber"
+        ]
+      },
+      "WageTaxReturnDto": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "due": {
+            "type": "string"
+          },
+          "kennzahlen": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number"
+            },
+            "description": "Kennzahl → value (Lohnsteuer-Anmeldung)."
+          }
+        },
+        "required": [
+          "label",
+          "due",
+          "kennzahlen"
+        ]
+      },
+      "MinijobMonthDto": {
+        "type": "object",
+        "properties": {
+          "month": {
+            "type": "number"
+          },
+          "totalEur": {
+            "type": "number",
+            "description": "Employer charges and the Minijobber’s RV share, to the Minijob-Zentrale."
+          }
+        },
+        "required": [
+          "month",
+          "totalEur"
+        ]
+      },
+      "PayrollOverviewDto": {
+        "type": "object",
+        "properties": {
+          "runs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PayrollRunDto"
+            }
+          },
+          "wageTaxPeriod": {
+            "type": "string",
+            "enum": [
+              "monat",
+              "quartal",
+              "jahr"
+            ]
+          },
+          "wageTaxReturns": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WageTaxReturnDto"
+            }
+          },
+          "minijobCharges": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MinijobMonthDto"
+            }
+          }
+        },
+        "required": [
+          "runs",
+          "wageTaxPeriod",
+          "wageTaxReturns",
+          "minijobCharges"
+        ]
+      },
+      "PayrollRunInputDto": {
+        "type": "object",
+        "properties": {
+          "month": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 12
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "regulaer",
+              "minijob"
+            ]
+          },
+          "employee": {
+            "type": "string",
+            "maxLength": 80,
+            "description": "The employee as the user calls them."
+          },
+          "grossEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "wageTaxEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "soliEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "churchTaxEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "church": {
+            "type": "string",
+            "enum": [
+              "ev",
+              "rk"
+            ],
+            "nullable": true
+          },
+          "employeeSocialEur": {
+            "type": "number",
+            "description": "The employee’s share of social security."
+          },
+          "employerSocialEur": {
+            "type": "number",
+            "description": "The employer’s share and the levies."
+          },
+          "statutoryHealthInsured": {
+            "type": "boolean",
+            "description": "Minijob: in the statutory health insurance (flat 13 % KV)."
+          },
+          "rvExempt": {
+            "type": "boolean",
+            "description": "Minijob: exempt from the pension insurance."
+          }
+        },
+        "required": [
+          "month",
+          "kind",
+          "employee",
+          "grossEur"
+        ]
+      },
+      "DisposalResultDto": {
+        "type": "object",
+        "properties": {
+          "gainEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "allowanceEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "taxableGainEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "fuenftel",
+              "ermaessigt",
+              "keine"
+            ]
+          }
+        },
+        "required": [
+          "gainEur",
+          "allowanceEur",
+          "taxableGainEur",
+          "method"
+        ]
+      },
+      "RetainedResultDto": {
+        "type": "object",
+        "properties": {
+          "nonWithdrawnEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "favouredEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "rate": {
+            "type": "number"
+          },
+          "taxEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "recaptureBaseEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "recaptureEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "nextCarriedForwardEur": {
+            "type": "number",
+            "description": "Nachversteuerungspflichtiger Betrag to be declared at year end."
+          }
+        },
+        "required": [
+          "nonWithdrawnEur",
+          "favouredEur",
+          "rate",
+          "taxEur",
+          "recaptureBaseEur",
+          "recaptureEur",
+          "nextCarriedForwardEur"
+        ]
+      },
+      "SpecialTariffsDto": {
+        "type": "object",
+        "properties": {
+          "disposal": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DisposalResultDto"
+              }
+            ]
+          },
+          "retained": {
+            "nullable": true,
+            "description": "§ 34a: the result; null without facts or for an EÜR.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RetainedResultDto"
+              }
+            ]
+          },
+          "retainedOnlyBilanz": {
+            "type": "boolean",
+            "description": "§ 34a was asked for but the profit is an EÜR: only a Bilanzierer may (§ 4 Abs. 1, § 5 EStG)."
+          }
+        },
+        "required": [
+          "disposal",
+          "retained",
+          "retainedOnlyBilanz"
+        ]
+      },
+      "VatPeriodDto": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string",
+            "example": "Q1/2025"
+          },
+          "from": {
+            "type": "string"
+          },
+          "to": {
+            "type": "string"
+          },
+          "due": {
+            "type": "string",
+            "description": "Due date before any § 108 AO shift."
+          },
+          "kennzahlen": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number"
+            },
+            "description": "Kennzahl → euros (USt 1 A)."
+          },
+          "vatDueEur": {
+            "type": "number",
+            "description": "Kz 83: to pay (+) or refund (−)."
+          }
+        },
+        "required": [
+          "label",
+          "from",
+          "to",
+          "due",
+          "kennzahlen",
+          "vatDueEur"
+        ]
+      },
+      "EcSalesRowDto": {
+        "type": "object",
+        "properties": {
+          "vatId": {
+            "type": "string",
+            "nullable": true,
+            "description": "The buyer’s VAT id; null when the entry has none (to be completed)."
+          },
+          "goodsEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "servicesEur": {
+            "type": "number",
+            "description": "Euros."
+          }
+        },
+        "required": [
+          "vatId",
+          "goodsEur",
+          "servicesEur"
+        ]
+      },
+      "EcSalesReportDto": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "due": {
+            "type": "string"
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EcSalesRowDto"
+            }
+          }
+        },
+        "required": [
+          "label",
+          "due",
+          "rows"
+        ]
+      },
+      "EcSalesListDto": {
+        "type": "object",
+        "properties": {
+          "period": {
+            "type": "string",
+            "enum": [
+              "monat",
+              "quartal"
+            ]
+          },
+          "reports": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EcSalesReportDto"
+            }
+          }
+        },
+        "required": [
+          "period",
+          "reports"
+        ]
+      },
+      "VatPrepaymentsDto": {
+        "type": "object",
+        "properties": {
+          "period": {
+            "type": "string",
+            "enum": [
+              "monat",
+              "quartal",
+              "befreit"
+            ]
+          },
+          "periodSource": {
+            "type": "string",
+            "enum": [
+              "angabe",
+              "vorjahressteuer",
+              "gruendung_schaetzung",
+              "wahl_ueberschuss"
+            ]
+          },
+          "extension": {
+            "type": "boolean"
+          },
+          "specialPrepaymentEur": {
+            "type": "number",
+            "nullable": true,
+            "description": "Sondervorauszahlung, euros; monthly filers with extension only."
+          },
+          "periods": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VatPeriodDto"
+            }
+          },
+          "totalEur": {
+            "type": "number",
+            "description": "All prepayments with the Sondervorauszahlung: the annual return’s Vorauszahlungssoll."
+          },
+          "ecSalesList": {
+            "$ref": "#/components/schemas/EcSalesListDto"
+          }
+        },
+        "required": [
+          "period",
+          "periodSource",
+          "extension",
+          "specialPrepaymentEur",
+          "periods",
+          "totalEur",
+          "ecSalesList"
+        ]
+      },
       "NetByRateDto": {
         "type": "object",
         "properties": {
@@ -14233,6 +16259,58 @@
           "balanceEur"
         ]
       },
+      "SmallBusinessCheckDto": {
+        "type": "object",
+        "properties": {
+          "eligible": {
+            "type": "boolean",
+            "description": "The § 19 UStG limits are kept by the book’s turnover."
+          },
+          "priorYearLimitEur": {
+            "type": "number",
+            "description": "Limit for the year before (in the founding year: for the running year), euros."
+          },
+          "currentYearLimitEur": {
+            "type": "number",
+            "description": "Limit for the running year, euros."
+          },
+          "crossed": {
+            "type": "string",
+            "enum": [
+              "prior_year",
+              "current_year"
+            ],
+            "nullable": true,
+            "description": "Which limit is crossed."
+          },
+          "foundingYear": {
+            "type": "boolean",
+            "description": "The business started this year (§ 19 Abs. 2 UStG nF, Abschn. 19.1 Abs. 4 UStAE)."
+          },
+          "priorYearKnown": {
+            "type": "boolean",
+            "description": "The turnover of the year before is known from its book."
+          },
+          "turnoverEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "matchesProfile": {
+            "type": "boolean",
+            "description": "False when the profile claims the rule although a limit is crossed."
+          }
+        },
+        "required": [
+          "eligible",
+          "priorYearLimitEur",
+          "currentYearLimitEur",
+          "crossed",
+          "foundingYear",
+          "priorYearKnown",
+          "turnoverEur",
+          "matchesProfile"
+        ]
+      },
       "VatReturnDto": {
         "type": "object",
         "properties": {
@@ -14244,13 +16322,17 @@
           },
           "cashAccountingAllowed": {
             "type": "boolean",
-            "description": "Ist-Versteuerung allowed by the turnover (§ 20 UStG)."
+            "description": "Ist-Versteuerung allowed by the turnover of the year before (§ 20 UStG)."
+          },
+          "smallBusiness": {
+            "$ref": "#/components/schemas/SmallBusinessCheckDto"
           }
         },
         "required": [
           "figures",
           "result",
-          "cashAccountingAllowed"
+          "cashAccountingAllowed",
+          "smallBusiness"
         ]
       },
       "TradeTaxResultDto": {
@@ -14807,6 +16889,10 @@
               false
             ]
           },
+          "transmissionReady": {
+            "type": "boolean",
+            "description": "The operator set up the ERiC sidecar and certificate: the data set can be validated and sent."
+          },
           "note": {
             "type": "string"
           }
@@ -14814,7 +16900,69 @@
         "required": [
           "xbrl",
           "transmitted",
+          "transmissionReady",
           "note"
+        ]
+      },
+      "EBilanzTransmitDto": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "validieren",
+              "senden"
+            ]
+          }
+        },
+        "required": [
+          "mode"
+        ]
+      },
+      "EBilanzTransmissionDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "abgelehnt",
+              "nicht_eingerichtet"
+            ]
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "validieren",
+              "senden"
+            ]
+          },
+          "ticket": {
+            "type": "string",
+            "nullable": true,
+            "description": "The ELSTER transfer ticket after sending."
+          },
+          "protocol": {
+            "type": "string",
+            "nullable": true
+          },
+          "messages": {
+            "description": "ERiC’s messages on a refusal.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "missing": {
+            "description": "What the operator still has to set up.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "status"
         ]
       },
       "BusinessCheckoutResponseDto": {
@@ -15540,7 +17688,8 @@
             "type": "string",
             "enum": [
               "pdf_text",
-              "ocr"
+              "ocr",
+              "einvoice"
             ],
             "example": "pdf_text",
             "description": "How rawText was produced on the device: a PDF text layer, or OCR of a photo/scan (never green, ADR-0060)."
@@ -15563,6 +17712,12 @@
             ],
             "example": "ausgabe",
             "description": "For a business receipt (`geschaeftsbeleg`, ADR-0101): an expense (default) or an invoice the business wrote."
+          },
+          "business": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 99,
+            "description": "For a business receipt: which business of the account holder books it (ADR-0101 §22); the first by default."
           },
           "stageDraft": {
             "type": "boolean",

@@ -26,9 +26,14 @@ describe('parseBookingDraft', () => {
     ['a fractional amount', JSON.stringify({ date: '2025-01-01', documentNumber: '1', text: 'x', lines: [{ account: '1200', side: 'debit', amount: 1.5 }, { account: '8400', side: 'credit', amount: 1.5 }] })],
     ['an unknown side', JSON.stringify({ date: '2025-01-01', documentNumber: '1', text: 'x', lines: [{ account: '1200', side: 'links', amount: 1 }, { account: '8400', side: 'credit', amount: 1 }] })],
     ['an unknown tax key', JSON.stringify({ date: '2025-01-01', documentNumber: '1', text: 'x', lines: [{ account: '1200', side: 'debit', amount: 1, taxKey: 'ust16' }, { account: '8400', side: 'credit', amount: 1 }] })],
-    ['a regular payment for the other year (§ 11 ten-day rule)', JSON.stringify({ date: '2025-01-05', documentNumber: '1', text: 'Miete Dezember', regularPayment: { dueDate: '2025-01-01', periodYear: 2024 }, lines: [{ account: '4210', side: 'debit', amount: 100 }, { account: '1200', side: 'credit', amount: 100 }] })],
+    ['a regular payment without its due date', JSON.stringify({ date: '2025-01-05', documentNumber: '1', text: 'Miete Dezember', regularPayment: { periodYear: 2024 }, lines: [{ account: '4210', side: 'debit', amount: 100 }, { account: '1200', side: 'credit', amount: 100 }] })],
   ])('refuses %s', (_label, raw) => {
     expect(parseBookingDraft(raw).ok).toBe(false)
+  })
+
+  it('keeps a regular payment for the other year (§ 11 ten-day rule, ADR-0101 §22)', () => {
+    const raw = JSON.stringify({ date: '2025-01-05', documentNumber: '1', text: 'Miete Dezember', regularPayment: { dueDate: '2025-01-01', periodYear: 2024 }, lines: [{ account: '4210', side: 'debit', amount: 100 }, { account: '1200', side: 'credit', amount: 100 }] })
+    expect(parseBookingDraft(raw)).toMatchObject({ ok: true, draft: { regularPayment: { dueDate: '2025-01-01', periodYear: 2024 } } })
   })
 })
 

@@ -28,10 +28,10 @@ const EXPENSE_KEYS = [
 ] as const
 
 /** The quick path (ADR-0101 §6): one total per EÜR line; each becomes a booking in the Buch. */
-export function QuickEntryPage({ taxYear, person, onBack }: BusinessPageProps) {
+export function QuickEntryPage({ taxYear, person, business = 1, onBack }: BusinessPageProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
-  const params = personParams(person)
+  const params = personParams(person, business)
   const closing = useBusinessControllerClosing(taxYear, params)
   const quick = useBusinessControllerQuickEntry()
   const refresh = useRefreshBusiness(taxYear)

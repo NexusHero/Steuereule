@@ -19,9 +19,9 @@ import { attempt, queryProblem, useRefreshBusiness } from './useBusiness'
 import type { BusinessPageProps } from './BusinessScreen'
 
 /** The Umsatzsteuer-Jahreserklärung from the book; the prepayments are one sum the user enters. */
-export function VatPage({ taxYear, person, onBack }: BusinessPageProps) {
+export function VatPage({ taxYear, person, business = 1, onBack }: BusinessPageProps) {
   const { t: tr } = useTranslation(APP_NS)
-  const params = personParams(person)
+  const params = personParams(person, business)
   const query = useBusinessControllerVat(taxYear, params)
   const profile = useBusinessControllerProfile(taxYear, params)
   const save = useBusinessControllerSaveProfile()
@@ -54,6 +54,15 @@ export function VatPage({ taxYear, person, onBack }: BusinessPageProps) {
   return (
     <BusinessFrame title={tr('business.seite.umsatzsteuer')} onBack={onBack} testID="umsatzsteuer-seite">
       {small ? <Note testID="ust-klein">{tr('business.ust.klein')}</Note> : null}
+      {!vat.smallBusiness.matchesProfile ? (
+        <Note tone="error" testID="ust-klein-grenze">
+          {tr(vat.smallBusiness.foundingYear ? 'business.ust.kleinGrenzeGruendung' : vat.smallBusiness.crossed === 'prior_year' ? 'business.ust.kleinGrenzeVorjahr' : 'business.ust.kleinGrenzeJahr', {
+            umsatz: plainEuro(vat.smallBusiness.turnoverEur),
+            grenze: plainEuro(vat.smallBusiness.crossed === 'prior_year' ? vat.smallBusiness.priorYearLimitEur : vat.smallBusiness.currentYearLimitEur),
+          })}
+        </Note>
+      ) : null}
+      {small && vat.smallBusiness.matchesProfile && !vat.smallBusiness.priorYearKnown ? <Note testID="ust-klein-vorjahr">{tr('business.ust.kleinVorjahrUnbekannt', { grenze: plainEuro(vat.smallBusiness.priorYearLimitEur) })}</Note> : null}
       <Section>
         <Figure label={tr('business.ust.umsatzsteuer')} value={plainEuro(vat.result.outputVat.standard)} />
         <Figure label={tr('business.ust.umsatzsteuerErmaessigt')} value={plainEuro(vat.result.outputVat.reduced)} />
@@ -82,10 +91,10 @@ export function VatPage({ taxYear, person, onBack }: BusinessPageProps) {
 }
 
 /** The Gewerbesteuer-Erklärung: calculated, open (what is missing), or not due (Freiberuf). */
-export function TradeTaxPage({ taxYear, person, onBack, onOpenPage }: BusinessPageProps) {
+export function TradeTaxPage({ taxYear, person, business = 1, onBack, onOpenPage }: BusinessPageProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
-  const query = useBusinessControllerTradeTax(taxYear, personParams(person))
+  const query = useBusinessControllerTradeTax(taxYear, personParams(person, business))
   const loadProblem = queryProblem(query)
   if (query.isPending || loadProblem !== null || query.data?.status !== 200) {
     return (
@@ -133,10 +142,10 @@ export function TradeTaxPage({ taxYear, person, onBack, onOpenPage }: BusinessPa
 }
 
 /** Verluste (§ 10d): the carry-forward used, a new loss and its carry-back; the waiver only as a whole. */
-export function LossesPage({ taxYear, person, onBack }: BusinessPageProps) {
+export function LossesPage({ taxYear, person, business = 1, onBack }: BusinessPageProps) {
   const { t: tr } = useTranslation(APP_NS)
   const t = useTheme()
-  const params = personParams(person)
+  const params = personParams(person, business)
   const query = useBusinessControllerLosses(taxYear, params)
   const profile = useBusinessControllerProfile(taxYear, params)
   const save = useBusinessControllerSaveProfile()

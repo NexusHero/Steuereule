@@ -46,6 +46,8 @@ const TOPIC_SLUGS: Readonly<Record<StromTopicId, string>> = {
   'haushalt-gate': 'haushalt',
   'kv-pv': 'krankenversicherung',
   riester: 'riester',
+  altersvorsorge: 'altersvorsorge',
+  versicherungen: 'versicherungen',
   'gesundheit-gate': 'krankheitskosten',
   spenden: 'spenden',
   einkuenfte: 'einkuenfte',

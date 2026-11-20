@@ -900,6 +900,16 @@
       "body1": "Every country has its own treaty with its own rules — Austria and France with border zones, Luxembourg with a minor-amount threshold. Half-computed would be wrong.",
       "body2": "What works today: Switzerland, completely — and the rest of your tax year regardless. Austria, France and Luxembourg are on the list.",
       "continueWithoutForeign": "Continue without the foreign part"
+    },
+    "renteSelbststaendig": {
+      "titleBefore": "Besides your pension, do you run a ",
+      "titleMark": "business",
+      "titleAfter": " or work freelance?",
+      "help": "For example a small online shop, talks or consulting. Then we add your profit to your pension.",
+      "options": {
+        "ja": "Yes",
+        "nein": "No"
+      }
     }
   },
   "lstb": {
@@ -1256,7 +1266,14 @@
       "gesundheit-erstattung": "Of which reimbursed by the health insurer, an insurance or Beihilfe (€, 0 if none)",
       "vorauszahlungen-gate": "Did you make prepayments to the tax office for this year (income tax, set in your last assessment)?",
       "vorauszahlungen-betrag": "Total prepayments paid in the year (income tax, solidarity surcharge and church tax together, €)",
-      "riester-einnahmen-vorjahr": "Contributory earnings in the previous year (see your pension statement or social-insurance notice)"
+      "riester-einnahmen-vorjahr": "Contributory earnings in the previous year (see your pension statement or social-insurance notice)",
+      "altersvorsorge": "Do you pay into a pension yourself (statutory pension, professional pension fund, Rürup)?",
+      "av-rv-betrag": "Own contributions to the statutory pension insurance in the year (also via the Künstlersozialkasse; €, 0 if none)",
+      "av-versorgungswerk-betrag": "Contributions to a professional pension fund (Versorgungswerk) in the year (€, 0 if none)",
+      "av-basisrente-betrag": "Contributions to a Basisrente (Rürup) in the year (€, 0 if none)",
+      "av-ksk": "Are you insured through the Künstlersozialkasse?",
+      "versicherungen": "Do you pay other insurance (liability, accident, disability, term life)?",
+      "versicherungen-betrag": "Contributions for this insurance in the year (€)"
     },
     "hints": {
       "haushalt-gate": "Only labour, machine, and travel costs count, not materials. Paid by bank transfer, not cash."
@@ -1333,7 +1350,9 @@
       "gesundheit-gate": "Medical costs (dentist, glasses, co-payments)",
       "spenden": "Donations",
       "einkuenfte": "Investment income or letting",
-      "vorauszahlungen-gate": "Tax prepayments"
+      "vorauszahlungen-gate": "Tax prepayments",
+      "altersvorsorge": "Pension paid yourself",
+      "versicherungen": "Other insurance"
     },
     "art": {
       "nebenjob": "What kind of side job?",
@@ -1380,7 +1399,9 @@
       "spenden": "Goes into Anlage Sonderausgaben (donations).",
       "einkuenfte": "Goes into Anlage KAP or V; you enter the amounts under capital and letting afterwards.",
       "vorauszahlungen-gate": "Credited against the tax like wage tax.",
-      "alleinerziehend": "Goes into Anlage Kind (single-parent allowance)."
+      "alleinerziehend": "Goes into Anlage Kind (single-parent allowance).",
+      "altersvorsorge": "Goes into the Anlage Vorsorgeaufwand (pension).",
+      "versicherungen": "Goes into the Anlage Vorsorgeaufwand (other provision)."
     },
     "fertig": {
       "erstattung": "Expected refund",
@@ -3395,7 +3416,11 @@
       "freischalten": "Unlock",
       "beruf": "Profession in detail",
       "gewerbedaten": "Trade tax inputs",
-      "beteiligungen": "Partnership shares"
+      "beteiligungen": "Partnership shares",
+      "firmenwagen": "Company car",
+      "voranmeldungen": "VAT advance returns",
+      "sondertarife": "Sale of the business & retained profits",
+      "lohn": "Wages"
     },
     "profil": {
       "artTitel": "Freelance or trade",
@@ -3465,7 +3490,9 @@
       "vst7": "Input VAT 7 %",
       "rc13b19": "§ 13b 19 %",
       "igErwerb19": "EU acquisition 19 %",
-      "igErwerb7": "EU acquisition 7 %"
+      "igErwerb7": "EU acquisition 7 %",
+      "rcEu19": "§ 13b Abs. 1 (EU) 19 %",
+      "euLeistung": "EU service (recipient owes)"
     },
     "erfassung": {
       "nurEuer": "Totals per line exist for the cash-basis method only. With a balance sheet you book in the Book.",
@@ -3586,7 +3613,11 @@
       "erstattung": "Refund",
       "nachzahlung": "To pay",
       "vorauszahlungenTitel": "Prepayments",
-      "vorauszahlungenFeld": "Prepayments paid (total)"
+      "vorauszahlungenFeld": "Prepayments paid (sum; empty = total of the advance returns)",
+      "kleinGrenzeGruendung": "In the founding year the small business rule only holds up to {{grenze}} turnover. Your book shows {{umsatz}}: check in the profile whether you have to charge VAT.",
+      "kleinGrenzeVorjahr": "Your turnover last year was above {{grenze}}. The small business rule does not apply this year: check this in the profile.",
+      "kleinGrenzeJahr": "Your turnover this year, {{umsatz}}, is above {{grenze}}. The small business rule ends: check this in the profile.",
+      "kleinVorjahrUnbekannt": "There is no book for last year here. The small business rule only applies if last year's turnover was at most {{grenze}}."
     },
     "gewst": {
       "entfaellt": "As a freelancer you pay no trade tax.",
@@ -3700,7 +3731,13 @@
         "belegablage": "How receipts are filed",
         "verantwortlich": "Responsible for the bookkeeping",
         "stand": "Date of the documentation"
-      }
+      },
+      "ebilanzPruefen": "Check with ERiC",
+      "ebilanzSenden": "Send to ELSTER",
+      "ebilanzGesendet": "Sent to ELSTER (transfer ticket {{ticket}}).",
+      "ebilanzPlausibel": "ERiC checked the data set: no errors.",
+      "ebilanzAbgelehnt": "ELSTER refused the data set:",
+      "ebilanzNichtEingerichtet": "Transmission is not set up on this server."
     },
     "freischalten": {
       "text": "Bookkeeping, VAT and trade tax, fill-in help and exports for {{year}} are part of the tier for the self-employed.",
@@ -3768,6 +3805,186 @@
         "ausgabe": "Expense",
         "einnahme": "Income"
       }
+    },
+    "betriebe": {
+      "titel": "Your businesses",
+      "ohneName": "Business {{nummer}}",
+      "neu": "+ Another business",
+      "name": "What is the business called?",
+      "anlegen": "Add business"
+    },
+    "kfz": {
+      "hinweis": "If you also use a business vehicle privately, the private share is a withdrawal. The app computes it and books it on 31 Dec if you want.",
+      "fahrzeug": "Vehicle",
+      "methode": "How is the private use determined?",
+      "wege": "Trips between home and business",
+      "antrieb": {
+        "verbrenner": "Combustion",
+        "elektro": "Electric",
+        "hybrid": "Plug-in hybrid"
+      },
+      "methoden": {
+        "pauschal": "1 % rule",
+        "fahrtenbuch": "Logbook"
+      },
+      "ueber50": {
+        "ja": "More than 50 % business",
+        "nein": "50 % or less"
+      },
+      "feld": {
+        "listPriceGrossEur": "Gross list price with extras (€)",
+        "acquired": "Acquired on",
+        "co2GPerKm": "CO₂ emissions (g/km)",
+        "electricRangeKm": "Electric range (km)",
+        "monthsInBusiness": "Months in the business this year",
+        "totalCostsEur": "Total costs of the vehicle in the year, with depreciation (€)",
+        "depreciationEur": "Of which depreciation (€)",
+        "privatePercent": "Private share per logbook (%)",
+        "totalKm": "Kilometres driven in the year",
+        "costsWithInputVatEur": "Costs with input VAT (€)",
+        "distanceKm": "Distance home–business (km, one way)",
+        "days": "Days with this trip"
+      },
+      "ungueltig": "Please enter the list price and the acquisition date (YYYY-MM-DD) and use whole numbers only.",
+      "berechnen": "Compute",
+      "buchen": "Book it",
+      "gebucht": "Booked on 31 Dec – see the book.",
+      "nichtZulaessig": "The 1 % rule needs more than 50 % business use. Determine the private share with a logbook.",
+      "offen": "The logbook method needs the total costs and the private share.",
+      "bruchteil": "For this vehicle the list price counts only at {{anteil}} (§ 6 Abs. 1 Nr. 4 EStG).",
+      "privatanteil": "Private use (withdrawal)",
+      "umsatzsteuer": "VAT on it",
+      "wegeNichtAbziehbar": "Home–business trips, not deductible",
+      "gedeckelt": "Capped at the vehicle's total costs."
+    },
+    "va": {
+      "hinweis": "The app computes each return from your book. You enter and send it in Mein ELSTER (form „Umsatzsteuer-Voranmeldung“).",
+      "zeitraum": "Filing period",
+      "periode": {
+        "monat": "Monthly",
+        "quartal": "Quarterly",
+        "befreit": "No advance return"
+      },
+      "quelle": {
+        "angabe": "as set by the tax office",
+        "vorjahressteuer": "by last year's VAT",
+        "gruendung_schaetzung": "founding year: by the expected VAT",
+        "wahl_ueberschuss": "monthly by choice (refund last year)"
+      },
+      "wahl": {
+        "auto": "Automatic",
+        "monat": "Month",
+        "quartal": "Quarter",
+        "befreit": "Exempt"
+      },
+      "dauerfrist": "Permanent extension",
+      "sondervorauszahlung": "Special prepayment (1/11, offset in December)",
+      "befreitText": "The tax office can exempt you from advance returns; then you pay the VAT with the annual return.",
+      "faellig": "due {{datum}}",
+      "zahllast": "To pay (Kz 83)",
+      "ueberschuss": "Refund (Kz 83)",
+      "summe": "Prepayments in the year (with the special prepayment)",
+      "zm": "EC sales list (to the BZSt)",
+      "zmKeine": "No intra-EU supplies or EU services booked.",
+      "ohneUstId": "without VAT id",
+      "ustIdFehlt": "An entry lacks the buyer's VAT id. Add it to the entry (reverse and book again).",
+      "kz": {
+        "81": "Turnover 19 %",
+        "86": "Turnover 7 %",
+        "41": "Intra-EU supplies",
+        "21": "Non-taxable services (EU)",
+        "48": "Exempt turnover without input VAT",
+        "89": "Intra-EU acquisitions 19 %",
+        "93": "Intra-EU acquisitions 7 %",
+        "46": "Services of EU businesses (§ 13b Abs. 1)",
+        "47": "Tax on it",
+        "84": "Other § 13b services",
+        "85": "Tax on it",
+        "66": "Input VAT from invoices",
+        "61": "Input VAT from intra-EU acquisitions",
+        "67": "Input VAT § 13b",
+        "39": "Special prepayment deducted"
+      }
+    },
+    "sonder": {
+      "aufgabe": "Business sold or given up (§ 16 EStG)",
+      "aufgabeHinweis": "The gain is taxed beside the current profit, on application with an allowance and at a reduced rate. A sole trader owes no trade tax on it.",
+      "art": {
+        "veraeusserung": "Sale",
+        "aufgabe": "Giving up"
+      },
+      "feld": {
+        "date": "Date",
+        "priceEur": "Sale price or value of the assets taken over (€)",
+        "costsEur": "Costs of the sale (€)",
+        "capitalAccountEur": "Value of the business assets (capital account) at that date (€)",
+        "requestedEur": "Amount applied for (€)",
+        "carriedForwardEur": "Amount subject to recapture per last notice (€)",
+        "withdrawalsForRetainedTaxEur": "Withdrawals for the retained-profit tax (€, from 2024)"
+      },
+      "freibetrag": "Apply for the allowance (55 or permanently disabled, once in a life)",
+      "methode": {
+        "fuenftel": "One-fifth rule",
+        "ermaessigt": "Reduced rate (56 %)",
+        "keine": "Ordinary tariff"
+      },
+      "speichern": "Save",
+      "ungueltig": "Please enter the date (YYYY-MM-DD) and amounts as numbers.",
+      "gewinn": "Gain on the sale",
+      "freibetragBetrag": "Allowance (§ 16 Abs. 4)",
+      "steuerpflichtig": "Taxable gain",
+      "thesaurierung": "Retained profits (§ 34a EStG)",
+      "thesaurierungHinweis": "With a balance sheet, profits you leave in the business can be taxed at a fixed rate on application; withdrawing them later is taxed at 25 %.",
+      "nurBilanz": "Retained-profit taxation needs a balance sheet. With an EÜR the app does not compute it.",
+      "nichtEntnommen": "Profit not withdrawn",
+      "beguenstigt": "Favoured amount",
+      "thesaurierungSteuer": "Tax on it ({{satz}} %)",
+      "nachversteuerung": "Recapture (25 %)",
+      "vortrag": "Amount subject to recapture at year end"
+    },
+    "lohn": {
+      "hinweis": "For employees you book the amounts of the payroll (tax adviser or payroll software); the app computes a Minijob itself. Social security reports stay with the payroll software or the Minijob-Zentrale.",
+      "neu": "Add a payroll run",
+      "art": {
+        "regulaer": "Employee",
+        "minijob": "Minijob"
+      },
+      "feld": {
+        "employee": "Name",
+        "month": "Month",
+        "grossEur": "Gross wage (€)",
+        "wageTaxEur": "Wage tax (€)",
+        "soliEur": "Solidarity surcharge (€)",
+        "churchTaxEur": "Church tax (€)",
+        "employeeSocialEur": "Social security, employee share (€)",
+        "employerSocialEur": "Social security, employer share and levies (€)"
+      },
+      "kirche": {
+        "ev": "Protestant",
+        "rk": "Roman Catholic"
+      },
+      "privatVersichert": "Privately health insured",
+      "rvBefreit": "Exempt from pension insurance",
+      "ungueltig": "Please enter name, month (1–12) and gross wage, amounts as numbers.",
+      "buchen": "Book",
+      "laeufe": "Booked payroll runs",
+      "keine": "No payroll runs booked yet.",
+      "anmeldung": "Wage tax return ({{zeitraum}})",
+      "zeitraum": {
+        "monat": "monthly",
+        "quartal": "quarterly",
+        "jahr": "yearly"
+      },
+      "kz": {
+        "86": "Number of employees",
+        "42": "Wage tax",
+        "49": "Solidarity surcharge",
+        "61": "Church tax Protestant",
+        "62": "Church tax Roman Catholic",
+        "83": "Total"
+      },
+      "minijobAbgaben": "Minijob charges to the Minijob-Zentrale",
+      "minijobHinweis": "Due on the third last bank day of the month; the 2 % flat tax is included."
     }
   }
 }

@@ -50,7 +50,7 @@ describe('taxonomyForFiscalYear', () => {
     expect(taxonomyForFiscalYear('2024-07-01').version).toBe('6.7')
     expect(() => taxonomyForFiscalYear('2021-01-01')).toThrow(EBilanzError)
     expect(() => taxonomyForFiscalYear('2027-01-01')).toThrow(EBilanzError)
-    expect(E_BILANZ_TAXONOMIES.map((t) => t.date)).toEqual(['2021-04-01', '2022-04-01', '2023-04-01', '2024-04-01', '2025-04-01'])
+    expect(E_BILANZ_TAXONOMIES.map((t) => t.date)).toEqual(['2021-04-01', '2022-04-01', '2023-04-01', '2024-04-01', '2025-04-01', '2026-04-01'])
   })
 })
 
@@ -70,7 +70,7 @@ describe('eBilanzInstance', () => {
       'http://www.xbrl.de/taxonomies/de-gaap-ci-2025-04-01/de-gaap-ci-2025-04-01-shell-fiscal.xsd',
     ])
     const contexts = root.children.filter((c) => c.qname === 'xbrli:context').map((c) => c.attrs.id)
-    expect(contexts).toEqual(['D-2025', 'I-2025', 'I-2024'])
+    expect(contexts).toEqual(['D-2025', 'I-2025', 'I-2024', 'D-2025-AV1'])
     for (const fact of [...gaap.values(), ...gcd.values()]) if (fact.children.length === 0) expect(contexts).toContain(fact.attrs.contextRef)
     for (const fact of gaap.values()) if (fact.children.length === 0) expect(fact.attrs).toMatchObject({ unitRef: 'EUR', decimals: '2' })
   })
@@ -124,14 +124,15 @@ describe('eBilanzInstance', () => {
     expect(read(bank, E_BILANZ_DETAIL_ELEMENTS.accountBalance)).toBe('3225.00')
   })
 
-  it('carries the Anlagenspiegel of every fixed-asset position', () => {
+  it('carries the Anlagenspiegel dimensionally: a primary item per column, the position as member of dim_changes.nt.ass.gross', () => {
     const tan = 'de-gaap-ci:bs.ass.fixAss.tan'
-    expect(gaap.has(`bs.ass.fixAss.tan${E_BILANZ_DETAIL_ELEMENTS.assetColumns.additions}`)).toBe(true)
-    const fact = root.children.find((c) => c.qname === `${tan}${E_BILANZ_DETAIL_ELEMENTS.assetColumns.bookValueClosing}`)!
+    const context = root.children.find((c) => c.name === 'context' && JSON.stringify(c).includes(tan))!
+    expect(JSON.stringify(context)).toContain(E_BILANZ_DETAIL_ELEMENTS.assetDimension)
+    const fact = root.children.find((c) => c.qname === E_BILANZ_DETAIL_ELEMENTS.assetColumns.bookValueClosing && c.attrs.contextRef === context.attrs.id)!
     expect(fact.text).toBe('800.00')
-    expect(fact.attrs.contextRef).toBe('I-2025')
-    const opening = root.children.find((c) => c.qname === `${tan}${E_BILANZ_DETAIL_ELEMENTS.assetColumns.acquisitionCostOpening}`)!
-    expect(opening.attrs.contextRef).toBe('I-2024')
+    expect(root.children.some((c) => c.qname === 'de-gaap-ci:gross.addition' && c.attrs.contextRef === context.attrs.id)).toBe(true)
+    // No more invented names like bs.ass.fixAss.tan.gross.addition.
+    expect(root.children.some((c) => c.qname.startsWith(`${tan}.`))).toBe(false)
   })
 })
 
@@ -146,8 +147,9 @@ describe('Kontennachweise and Anlagenspiegel requirements', () => {
     const { kontennachweise: _, ...without } = base
     expect(() => eBilanzInstance(without)).toThrow(/Kontennachweise/)
     const explained = eBilanzInstance({ ...without, kontennachweisExplanation: 'Umstellung der Software' })
-    expect(explained).toContain(E_BILANZ_DETAIL_ELEMENTS.explanation)
-    expect(explained).toContain('Umstellung der Software')
+    // The taxonomy has no element for the explanation: the instance builds, the text goes another way.
+    expect(explained).not.toContain('Umstellung der Software')
+    expect(explained).not.toContain(E_BILANZ_DETAIL_ELEMENTS.accountTuple)
     expect(() => eBilanzInstance({ ...base, taxonomy: E_BILANZ_TAXONOMIES[3]! })).toThrow(/6\.9/)
   })
 

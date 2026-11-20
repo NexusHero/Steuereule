@@ -36,14 +36,19 @@ import type {
   BusinessCataloguesDto,
   BusinessCheckoutResponseDto,
   BusinessControllerAcceptBankParams,
+  BusinessControllerAddBusinessParams,
+  BusinessControllerAddPayrollRunParams,
   BusinessControllerAssetsParams,
   BusinessControllerBankParams,
+  BusinessControllerBookCompanyCarParams,
   BusinessControllerBookDepreciationParams,
   BusinessControllerBookParams,
+  BusinessControllerBusinessesParams,
   BusinessControllerCarryForwardParams,
   BusinessControllerCataloguesParams,
   BusinessControllerCheckoutParams,
   BusinessControllerClosingParams,
+  BusinessControllerCompanyCarParams,
   BusinessControllerCreateAssetParams,
   BusinessControllerDisposeAssetParams,
   BusinessControllerEBilanzFileParams,
@@ -56,20 +61,30 @@ import type {
   BusinessControllerImportBankParams,
   BusinessControllerLockParams,
   BusinessControllerLossesParams,
+  BusinessControllerPayrollParams,
   BusinessControllerPostParams,
   BusinessControllerProcedureDocParams,
   BusinessControllerProfileParams,
   BusinessControllerQuickEntryParams,
+  BusinessControllerRemoveBusinessParams,
   BusinessControllerReverseParams,
   BusinessControllerSaveProcedureDocParams,
   BusinessControllerSaveProfileParams,
+  BusinessControllerSpecialTariffsParams,
   BusinessControllerTradeTaxParams,
+  BusinessControllerTransmitEBilanzParams,
   BusinessControllerVatParams,
+  BusinessControllerVatPrepaymentsParams,
   BusinessErrorDto,
+  BusinessListItemDto,
   BusinessProfileDto,
   BusinessProfileInputDto,
   ClosingDto,
+  CompanyCarInputDto,
+  CompanyCarResultDto,
   EBilanzDto,
+  EBilanzTransmissionDto,
+  EBilanzTransmitDto,
   ElsterFormListDto,
   ElsterHelpDto,
   FixedAssetDto,
@@ -78,11 +93,16 @@ import type {
   JournalEntryDto,
   LockDto,
   LossesDto,
+  NewBusinessDto,
+  PayrollOverviewDto,
+  PayrollRunInputDto,
   ProcedureDocDto,
   ProcedureDocInputDto,
   QuickEntryDto,
   ReversalDto,
+  SpecialTariffsDto,
   TradeTaxDto,
+  VatPrepaymentsDto,
   VatReturnDto
 } from './selbststaendig.schemas';
 
@@ -107,6 +127,352 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export type businessControllerBusinessesResponse200 = {
+  data: BusinessListItemDto[]
+  status: 200
+}
+
+export type businessControllerBusinessesResponse400 = {
+  data: BusinessErrorDto
+  status: 400
+}
+
+export type businessControllerBusinessesResponse401 = {
+  data: void
+  status: 401
+}
+
+export type businessControllerBusinessesResponse403 = {
+  data: BusinessErrorDto
+  status: 403
+}
+
+export type businessControllerBusinessesResponseSuccess = (businessControllerBusinessesResponse200) & {
+  headers: Headers;
+};
+export type businessControllerBusinessesResponseError = (businessControllerBusinessesResponse400 | businessControllerBusinessesResponse401 | businessControllerBusinessesResponse403) & {
+  headers: Headers;
+};
+
+export type businessControllerBusinessesResponse = (businessControllerBusinessesResponseSuccess | businessControllerBusinessesResponseError)
+
+export const getBusinessControllerBusinessesUrl = (jahr: number,
+    params?: BusinessControllerBusinessesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/v1/steuerjahre/${jahr}/selbststaendig/betriebe?${stringifiedParams}` : `/v1/steuerjahre/${jahr}/selbststaendig/betriebe`
+}
+
+export const businessControllerBusinesses = async (jahr: number,
+    params?: BusinessControllerBusinessesParams, options?: RequestInit): Promise<businessControllerBusinessesResponse> => {
+
+  return httpClient<businessControllerBusinessesResponse>(getBusinessControllerBusinessesUrl(jahr,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getBusinessControllerBusinessesQueryKey = (jahr: number,
+    params?: BusinessControllerBusinessesParams,) => {
+    return [
+    `/v1/steuerjahre/${jahr}/selbststaendig/betriebe`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getBusinessControllerBusinessesQueryOptions = <TData = Awaited<ReturnType<typeof businessControllerBusinesses>>, TError = BusinessErrorDto | void>(jahr: number,
+    params?: BusinessControllerBusinessesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof businessControllerBusinesses>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getBusinessControllerBusinessesQueryKey(jahr,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof businessControllerBusinesses>>> = ({ signal }) => businessControllerBusinesses(jahr,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: jahr !== null && jahr !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof businessControllerBusinesses>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type BusinessControllerBusinessesQueryResult = NonNullable<Awaited<ReturnType<typeof businessControllerBusinesses>>>
+export type BusinessControllerBusinessesQueryError = BusinessErrorDto | void
+
+
+export function useBusinessControllerBusinesses<TData = Awaited<ReturnType<typeof businessControllerBusinesses>>, TError = BusinessErrorDto | void>(
+ jahr: number,
+    params: undefined |  BusinessControllerBusinessesParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof businessControllerBusinesses>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof businessControllerBusinesses>>,
+          TError,
+          Awaited<ReturnType<typeof businessControllerBusinesses>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useBusinessControllerBusinesses<TData = Awaited<ReturnType<typeof businessControllerBusinesses>>, TError = BusinessErrorDto | void>(
+ jahr: number,
+    params?: BusinessControllerBusinessesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof businessControllerBusinesses>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof businessControllerBusinesses>>,
+          TError,
+          Awaited<ReturnType<typeof businessControllerBusinesses>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useBusinessControllerBusinesses<TData = Awaited<ReturnType<typeof businessControllerBusinesses>>, TError = BusinessErrorDto | void>(
+ jahr: number,
+    params?: BusinessControllerBusinessesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof businessControllerBusinesses>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useBusinessControllerBusinesses<TData = Awaited<ReturnType<typeof businessControllerBusinesses>>, TError = BusinessErrorDto | void>(
+ jahr: number,
+    params?: BusinessControllerBusinessesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof businessControllerBusinesses>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getBusinessControllerBusinessesQueryOptions(jahr,params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type businessControllerAddBusinessResponse200 = {
+  data: BusinessProfileDto
+  status: 200
+}
+
+export type businessControllerAddBusinessResponse400 = {
+  data: BusinessErrorDto
+  status: 400
+}
+
+export type businessControllerAddBusinessResponse401 = {
+  data: void
+  status: 401
+}
+
+export type businessControllerAddBusinessResponse403 = {
+  data: BusinessErrorDto
+  status: 403
+}
+
+export type businessControllerAddBusinessResponseSuccess = (businessControllerAddBusinessResponse200) & {
+  headers: Headers;
+};
+export type businessControllerAddBusinessResponseError = (businessControllerAddBusinessResponse400 | businessControllerAddBusinessResponse401 | businessControllerAddBusinessResponse403) & {
+  headers: Headers;
+};
+
+export type businessControllerAddBusinessResponse = (businessControllerAddBusinessResponseSuccess | businessControllerAddBusinessResponseError)
+
+export const getBusinessControllerAddBusinessUrl = (jahr: number,
+    params?: BusinessControllerAddBusinessParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/v1/steuerjahre/${jahr}/selbststaendig/betriebe?${stringifiedParams}` : `/v1/steuerjahre/${jahr}/selbststaendig/betriebe`
+}
+
+export const businessControllerAddBusiness = async (jahr: number,
+    newBusinessDto: NewBusinessDto,
+    params?: BusinessControllerAddBusinessParams, options?: RequestInit): Promise<businessControllerAddBusinessResponse> => {
+
+  return httpClient<businessControllerAddBusinessResponse>(getBusinessControllerAddBusinessUrl(jahr,params),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(newBusinessDto)
+  }
+);}
+
+
+
+
+
+export const getBusinessControllerAddBusinessMutationOptions = <TError = BusinessErrorDto | void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof businessControllerAddBusiness>>, TError,{jahr: number;data: NewBusinessDto;params?: BusinessControllerAddBusinessParams}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof businessControllerAddBusiness>>, TError,{jahr: number;data: NewBusinessDto;params?: BusinessControllerAddBusinessParams}, TContext> => {
+
+const mutationKey = ['businessControllerAddBusiness'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof businessControllerAddBusiness>>, {jahr: number;data: NewBusinessDto;params?: BusinessControllerAddBusinessParams}> = (props) => {
+          const {jahr,data,params} = props ?? {};
+
+          return  businessControllerAddBusiness(jahr,data,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type BusinessControllerAddBusinessMutationResult = NonNullable<Awaited<ReturnType<typeof businessControllerAddBusiness>>>
+    export type BusinessControllerAddBusinessMutationBody = NewBusinessDto
+    export type BusinessControllerAddBusinessMutationError = BusinessErrorDto | void
+
+    export const useBusinessControllerAddBusiness = <TError = BusinessErrorDto | void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof businessControllerAddBusiness>>, TError,{jahr: number;data: NewBusinessDto;params?: BusinessControllerAddBusinessParams}, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof businessControllerAddBusiness>>,
+        TError,
+        {jahr: number;data: NewBusinessDto;params?: BusinessControllerAddBusinessParams},
+        TContext
+      > => {
+      return useMutation(getBusinessControllerAddBusinessMutationOptions(options), queryClient);
+    }
+
+export type businessControllerRemoveBusinessResponse400 = {
+  data: BusinessErrorDto
+  status: 400
+}
+
+export type businessControllerRemoveBusinessResponse401 = {
+  data: void
+  status: 401
+}
+
+export type businessControllerRemoveBusinessResponse403 = {
+  data: BusinessErrorDto
+  status: 403
+}
+
+export type businessControllerRemoveBusinessResponse409 = {
+  data: BusinessErrorDto
+  status: 409
+}
+
+;
+export type businessControllerRemoveBusinessResponseError = (businessControllerRemoveBusinessResponse400 | businessControllerRemoveBusinessResponse401 | businessControllerRemoveBusinessResponse403 | businessControllerRemoveBusinessResponse409) & {
+  headers: Headers;
+};
+
+export type businessControllerRemoveBusinessResponse = (businessControllerRemoveBusinessResponseError)
+
+export const getBusinessControllerRemoveBusinessUrl = (jahr: number,
+    nummer: number,
+    params?: BusinessControllerRemoveBusinessParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/v1/steuerjahre/${jahr}/selbststaendig/betriebe/${nummer}/entfernen?${stringifiedParams}` : `/v1/steuerjahre/${jahr}/selbststaendig/betriebe/${nummer}/entfernen`
+}
+
+export const businessControllerRemoveBusiness = async (jahr: number,
+    nummer: number,
+    params?: BusinessControllerRemoveBusinessParams, options?: RequestInit): Promise<businessControllerRemoveBusinessResponse> => {
+
+  return httpClient<businessControllerRemoveBusinessResponse>(getBusinessControllerRemoveBusinessUrl(jahr,nummer,params),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getBusinessControllerRemoveBusinessMutationOptions = <TError = BusinessErrorDto | void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof businessControllerRemoveBusiness>>, TError,{jahr: number;nummer: number;params?: BusinessControllerRemoveBusinessParams}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof businessControllerRemoveBusiness>>, TError,{jahr: number;nummer: number;params?: BusinessControllerRemoveBusinessParams}, TContext> => {
+
+const mutationKey = ['businessControllerRemoveBusiness'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof businessControllerRemoveBusiness>>, {jahr: number;nummer: number;params?: BusinessControllerRemoveBusinessParams}> = (props) => {
+          const {jahr,nummer,params} = props ?? {};
+
+          return  businessControllerRemoveBusiness(jahr,nummer,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type BusinessControllerRemoveBusinessMutationResult = NonNullable<Awaited<ReturnType<typeof businessControllerRemoveBusiness>>>
+
+    export type BusinessControllerRemoveBusinessMutationError = BusinessErrorDto | void
+
+    export const useBusinessControllerRemoveBusiness = <TError = BusinessErrorDto | void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof businessControllerRemoveBusiness>>, TError,{jahr: number;nummer: number;params?: BusinessControllerRemoveBusinessParams}, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof businessControllerRemoveBusiness>>,
+        TError,
+        {jahr: number;nummer: number;params?: BusinessControllerRemoveBusinessParams},
+        TContext
+      > => {
+      return useMutation(getBusinessControllerRemoveBusinessMutationOptions(options), queryClient);
+    }
 
 export type businessControllerCataloguesResponse200 = {
   data: BusinessCataloguesDto
@@ -2248,6 +2614,745 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       return useMutation(getBusinessControllerCarryForwardMutationOptions(options), queryClient);
     }
 
+export type businessControllerCompanyCarResponse200 = {
+  data: CompanyCarResultDto
+  status: 200
+}
+
+export type businessControllerCompanyCarResponse400 = {
+  data: BusinessErrorDto
+  status: 400
+}
+
+export type businessControllerCompanyCarResponse401 = {
+  data: void
+  status: 401
+}
+
+export type businessControllerCompanyCarResponse403 = {
+  data: BusinessErrorDto
+  status: 403
+}
+
+export type businessControllerCompanyCarResponseSuccess = (businessControllerCompanyCarResponse200) & {
+  headers: Headers;
+};
+export type businessControllerCompanyCarResponseError = (businessControllerCompanyCarResponse400 | businessControllerCompanyCarResponse401 | businessControllerCompanyCarResponse403) & {
+  headers: Headers;
+};
+
+export type businessControllerCompanyCarResponse = (businessControllerCompanyCarResponseSuccess | businessControllerCompanyCarResponseError)
+
+export const getBusinessControllerCompanyCarUrl = (jahr: number,
+    params?: BusinessControllerCompanyCarParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/v1/steuerjahre/${jahr}/selbststaendig/firmenwagen?${stringifiedParams}` : `/v1/steuerjahre/${jahr}/selbststaendig/firmenwagen`
+}
+
+export const businessControllerCompanyCar = async (jahr: number,
+    companyCarInputDto: CompanyCarInputDto,
+    params?: BusinessControllerCompanyCarParams, options?: RequestInit): Promise<businessControllerCompanyCarResponse> => {
+
+  return httpClient<businessControllerCompanyCarResponse>(getBusinessControllerCompanyCarUrl(jahr,params),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(companyCarInputDto)
+  }
+);}
+
+
+
+
+
+export const getBusinessControllerCompanyCarMutationOptions = <TError = BusinessErrorDto | void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof businessControllerCompanyCar>>, TError,{jahr: number;data: CompanyCarInputDto;params?: BusinessControllerCompanyCarParams}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof businessControllerCompanyCar>>, TError,{jahr: number;data: CompanyCarInputDto;params?: BusinessControllerCompanyCarParams}, TContext> => {
+
+const mutationKey = ['businessControllerCompanyCar'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof businessControllerCompanyCar>>, {jahr: number;data: CompanyCarInputDto;params?: BusinessControllerCompanyCarParams}> = (props) => {
+          const {jahr,data,params} = props ?? {};
+
+          return  businessControllerCompanyCar(jahr,data,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type BusinessControllerCompanyCarMutationResult = NonNullable<Awaited<ReturnType<typeof businessControllerCompanyCar>>>
+    export type BusinessControllerCompanyCarMutationBody = CompanyCarInputDto
+    export type BusinessControllerCompanyCarMutationError = BusinessErrorDto | void
+
+    export const useBusinessControllerCompanyCar = <TError = BusinessErrorDto | void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof businessControllerCompanyCar>>, TError,{jahr: number;data: CompanyCarInputDto;params?: BusinessControllerCompanyCarParams}, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof businessControllerCompanyCar>>,
+        TError,
+        {jahr: number;data: CompanyCarInputDto;params?: BusinessControllerCompanyCarParams},
+        TContext
+      > => {
+      return useMutation(getBusinessControllerCompanyCarMutationOptions(options), queryClient);
+    }
+
+export type businessControllerBookCompanyCarResponse200 = {
+  data: JournalEntryDto[]
+  status: 200
+}
+
+export type businessControllerBookCompanyCarResponse400 = {
+  data: BusinessErrorDto
+  status: 400
+}
+
+export type businessControllerBookCompanyCarResponse401 = {
+  data: void
+  status: 401
+}
+
+export type businessControllerBookCompanyCarResponse403 = {
+  data: BusinessErrorDto
+  status: 403
+}
+
+export type businessControllerBookCompanyCarResponse409 = {
+  data: BusinessErrorDto
+  status: 409
+}
+
+export type businessControllerBookCompanyCarResponseSuccess = (businessControllerBookCompanyCarResponse200) & {
+  headers: Headers;
+};
+export type businessControllerBookCompanyCarResponseError = (businessControllerBookCompanyCarResponse400 | businessControllerBookCompanyCarResponse401 | businessControllerBookCompanyCarResponse403 | businessControllerBookCompanyCarResponse409) & {
+  headers: Headers;
+};
+
+export type businessControllerBookCompanyCarResponse = (businessControllerBookCompanyCarResponseSuccess | businessControllerBookCompanyCarResponseError)
+
+export const getBusinessControllerBookCompanyCarUrl = (jahr: number,
+    params?: BusinessControllerBookCompanyCarParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/v1/steuerjahre/${jahr}/selbststaendig/firmenwagen/buchen?${stringifiedParams}` : `/v1/steuerjahre/${jahr}/selbststaendig/firmenwagen/buchen`
+}
+
+export const businessControllerBookCompanyCar = async (jahr: number,
+    companyCarInputDto: CompanyCarInputDto,
+    params?: BusinessControllerBookCompanyCarParams, options?: RequestInit): Promise<businessControllerBookCompanyCarResponse> => {
+
+  return httpClient<businessControllerBookCompanyCarResponse>(getBusinessControllerBookCompanyCarUrl(jahr,params),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(companyCarInputDto)
+  }
+);}
+
+
+
+
+
+export const getBusinessControllerBookCompanyCarMutationOptions = <TError = BusinessErrorDto | void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof businessControllerBookCompanyCar>>, TError,{jahr: number;data: CompanyCarInputDto;params?: BusinessControllerBookCompanyCarParams}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof businessControllerBookCompanyCar>>, TError,{jahr: number;data: CompanyCarInputDto;params?: BusinessControllerBookCompanyCarParams}, TContext> => {
+
+const mutationKey = ['businessControllerBookCompanyCar'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof businessControllerBookCompanyCar>>, {jahr: number;data: CompanyCarInputDto;params?: BusinessControllerBookCompanyCarParams}> = (props) => {
+          const {jahr,data,params} = props ?? {};
+
+          return  businessControllerBookCompanyCar(jahr,data,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type BusinessControllerBookCompanyCarMutationResult = NonNullable<Awaited<ReturnType<typeof businessControllerBookCompanyCar>>>
+    export type BusinessControllerBookCompanyCarMutationBody = CompanyCarInputDto
+    export type BusinessControllerBookCompanyCarMutationError = BusinessErrorDto | void
+
+    export const useBusinessControllerBookCompanyCar = <TError = BusinessErrorDto | void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof businessControllerBookCompanyCar>>, TError,{jahr: number;data: CompanyCarInputDto;params?: BusinessControllerBookCompanyCarParams}, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof businessControllerBookCompanyCar>>,
+        TError,
+        {jahr: number;data: CompanyCarInputDto;params?: BusinessControllerBookCompanyCarParams},
+        TContext
+      > => {
+      return useMutation(getBusinessControllerBookCompanyCarMutationOptions(options), queryClient);
+    }
+
+export type businessControllerPayrollResponse200 = {
+  data: PayrollOverviewDto
+  status: 200
+}
+
+export type businessControllerPayrollResponse400 = {
+  data: BusinessErrorDto
+  status: 400
+}
+
+export type businessControllerPayrollResponse401 = {
+  data: void
+  status: 401
+}
+
+export type businessControllerPayrollResponse403 = {
+  data: BusinessErrorDto
+  status: 403
+}
+
+export type businessControllerPayrollResponseSuccess = (businessControllerPayrollResponse200) & {
+  headers: Headers;
+};
+export type businessControllerPayrollResponseError = (businessControllerPayrollResponse400 | businessControllerPayrollResponse401 | businessControllerPayrollResponse403) & {
+  headers: Headers;
+};
+
+export type businessControllerPayrollResponse = (businessControllerPayrollResponseSuccess | businessControllerPayrollResponseError)
+
+export const getBusinessControllerPayrollUrl = (jahr: number,
+    params?: BusinessControllerPayrollParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/v1/steuerjahre/${jahr}/selbststaendig/lohn?${stringifiedParams}` : `/v1/steuerjahre/${jahr}/selbststaendig/lohn`
+}
+
+export const businessControllerPayroll = async (jahr: number,
+    params?: BusinessControllerPayrollParams, options?: RequestInit): Promise<businessControllerPayrollResponse> => {
+
+  return httpClient<businessControllerPayrollResponse>(getBusinessControllerPayrollUrl(jahr,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getBusinessControllerPayrollQueryKey = (jahr: number,
+    params?: BusinessControllerPayrollParams,) => {
+    return [
+    `/v1/steuerjahre/${jahr}/selbststaendig/lohn`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getBusinessControllerPayrollQueryOptions = <TData = Awaited<ReturnType<typeof businessControllerPayroll>>, TError = BusinessErrorDto | void>(jahr: number,
+    params?: BusinessControllerPayrollParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof businessControllerPayroll>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getBusinessControllerPayrollQueryKey(jahr,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof businessControllerPayroll>>> = ({ signal }) => businessControllerPayroll(jahr,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: jahr !== null && jahr !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof businessControllerPayroll>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type BusinessControllerPayrollQueryResult = NonNullable<Awaited<ReturnType<typeof businessControllerPayroll>>>
+export type BusinessControllerPayrollQueryError = BusinessErrorDto | void
+
+
+export function useBusinessControllerPayroll<TData = Awaited<ReturnType<typeof businessControllerPayroll>>, TError = BusinessErrorDto | void>(
+ jahr: number,
+    params: undefined |  BusinessControllerPayrollParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof businessControllerPayroll>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof businessControllerPayroll>>,
+          TError,
+          Awaited<ReturnType<typeof businessControllerPayroll>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useBusinessControllerPayroll<TData = Awaited<ReturnType<typeof businessControllerPayroll>>, TError = BusinessErrorDto | void>(
+ jahr: number,
+    params?: BusinessControllerPayrollParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof businessControllerPayroll>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof businessControllerPayroll>>,
+          TError,
+          Awaited<ReturnType<typeof businessControllerPayroll>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useBusinessControllerPayroll<TData = Awaited<ReturnType<typeof businessControllerPayroll>>, TError = BusinessErrorDto | void>(
+ jahr: number,
+    params?: BusinessControllerPayrollParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof businessControllerPayroll>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useBusinessControllerPayroll<TData = Awaited<ReturnType<typeof businessControllerPayroll>>, TError = BusinessErrorDto | void>(
+ jahr: number,
+    params?: BusinessControllerPayrollParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof businessControllerPayroll>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getBusinessControllerPayrollQueryOptions(jahr,params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type businessControllerAddPayrollRunResponse200 = {
+  data: JournalEntryDto
+  status: 200
+}
+
+export type businessControllerAddPayrollRunResponse400 = {
+  data: BusinessErrorDto
+  status: 400
+}
+
+export type businessControllerAddPayrollRunResponse401 = {
+  data: void
+  status: 401
+}
+
+export type businessControllerAddPayrollRunResponse403 = {
+  data: BusinessErrorDto
+  status: 403
+}
+
+export type businessControllerAddPayrollRunResponse409 = {
+  data: BusinessErrorDto
+  status: 409
+}
+
+export type businessControllerAddPayrollRunResponseSuccess = (businessControllerAddPayrollRunResponse200) & {
+  headers: Headers;
+};
+export type businessControllerAddPayrollRunResponseError = (businessControllerAddPayrollRunResponse400 | businessControllerAddPayrollRunResponse401 | businessControllerAddPayrollRunResponse403 | businessControllerAddPayrollRunResponse409) & {
+  headers: Headers;
+};
+
+export type businessControllerAddPayrollRunResponse = (businessControllerAddPayrollRunResponseSuccess | businessControllerAddPayrollRunResponseError)
+
+export const getBusinessControllerAddPayrollRunUrl = (jahr: number,
+    params?: BusinessControllerAddPayrollRunParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/v1/steuerjahre/${jahr}/selbststaendig/lohn?${stringifiedParams}` : `/v1/steuerjahre/${jahr}/selbststaendig/lohn`
+}
+
+export const businessControllerAddPayrollRun = async (jahr: number,
+    payrollRunInputDto: PayrollRunInputDto,
+    params?: BusinessControllerAddPayrollRunParams, options?: RequestInit): Promise<businessControllerAddPayrollRunResponse> => {
+
+  return httpClient<businessControllerAddPayrollRunResponse>(getBusinessControllerAddPayrollRunUrl(jahr,params),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(payrollRunInputDto)
+  }
+);}
+
+
+
+
+
+export const getBusinessControllerAddPayrollRunMutationOptions = <TError = BusinessErrorDto | void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof businessControllerAddPayrollRun>>, TError,{jahr: number;data: PayrollRunInputDto;params?: BusinessControllerAddPayrollRunParams}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof businessControllerAddPayrollRun>>, TError,{jahr: number;data: PayrollRunInputDto;params?: BusinessControllerAddPayrollRunParams}, TContext> => {
+
+const mutationKey = ['businessControllerAddPayrollRun'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof businessControllerAddPayrollRun>>, {jahr: number;data: PayrollRunInputDto;params?: BusinessControllerAddPayrollRunParams}> = (props) => {
+          const {jahr,data,params} = props ?? {};
+
+          return  businessControllerAddPayrollRun(jahr,data,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type BusinessControllerAddPayrollRunMutationResult = NonNullable<Awaited<ReturnType<typeof businessControllerAddPayrollRun>>>
+    export type BusinessControllerAddPayrollRunMutationBody = PayrollRunInputDto
+    export type BusinessControllerAddPayrollRunMutationError = BusinessErrorDto | void
+
+    export const useBusinessControllerAddPayrollRun = <TError = BusinessErrorDto | void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof businessControllerAddPayrollRun>>, TError,{jahr: number;data: PayrollRunInputDto;params?: BusinessControllerAddPayrollRunParams}, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof businessControllerAddPayrollRun>>,
+        TError,
+        {jahr: number;data: PayrollRunInputDto;params?: BusinessControllerAddPayrollRunParams},
+        TContext
+      > => {
+      return useMutation(getBusinessControllerAddPayrollRunMutationOptions(options), queryClient);
+    }
+
+export type businessControllerSpecialTariffsResponse200 = {
+  data: SpecialTariffsDto
+  status: 200
+}
+
+export type businessControllerSpecialTariffsResponse400 = {
+  data: BusinessErrorDto
+  status: 400
+}
+
+export type businessControllerSpecialTariffsResponse401 = {
+  data: void
+  status: 401
+}
+
+export type businessControllerSpecialTariffsResponse403 = {
+  data: BusinessErrorDto
+  status: 403
+}
+
+export type businessControllerSpecialTariffsResponseSuccess = (businessControllerSpecialTariffsResponse200) & {
+  headers: Headers;
+};
+export type businessControllerSpecialTariffsResponseError = (businessControllerSpecialTariffsResponse400 | businessControllerSpecialTariffsResponse401 | businessControllerSpecialTariffsResponse403) & {
+  headers: Headers;
+};
+
+export type businessControllerSpecialTariffsResponse = (businessControllerSpecialTariffsResponseSuccess | businessControllerSpecialTariffsResponseError)
+
+export const getBusinessControllerSpecialTariffsUrl = (jahr: number,
+    params?: BusinessControllerSpecialTariffsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/v1/steuerjahre/${jahr}/selbststaendig/sondertarife?${stringifiedParams}` : `/v1/steuerjahre/${jahr}/selbststaendig/sondertarife`
+}
+
+export const businessControllerSpecialTariffs = async (jahr: number,
+    params?: BusinessControllerSpecialTariffsParams, options?: RequestInit): Promise<businessControllerSpecialTariffsResponse> => {
+
+  return httpClient<businessControllerSpecialTariffsResponse>(getBusinessControllerSpecialTariffsUrl(jahr,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getBusinessControllerSpecialTariffsQueryKey = (jahr: number,
+    params?: BusinessControllerSpecialTariffsParams,) => {
+    return [
+    `/v1/steuerjahre/${jahr}/selbststaendig/sondertarife`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getBusinessControllerSpecialTariffsQueryOptions = <TData = Awaited<ReturnType<typeof businessControllerSpecialTariffs>>, TError = BusinessErrorDto | void>(jahr: number,
+    params?: BusinessControllerSpecialTariffsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof businessControllerSpecialTariffs>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getBusinessControllerSpecialTariffsQueryKey(jahr,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof businessControllerSpecialTariffs>>> = ({ signal }) => businessControllerSpecialTariffs(jahr,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: jahr !== null && jahr !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof businessControllerSpecialTariffs>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type BusinessControllerSpecialTariffsQueryResult = NonNullable<Awaited<ReturnType<typeof businessControllerSpecialTariffs>>>
+export type BusinessControllerSpecialTariffsQueryError = BusinessErrorDto | void
+
+
+export function useBusinessControllerSpecialTariffs<TData = Awaited<ReturnType<typeof businessControllerSpecialTariffs>>, TError = BusinessErrorDto | void>(
+ jahr: number,
+    params: undefined |  BusinessControllerSpecialTariffsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof businessControllerSpecialTariffs>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof businessControllerSpecialTariffs>>,
+          TError,
+          Awaited<ReturnType<typeof businessControllerSpecialTariffs>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useBusinessControllerSpecialTariffs<TData = Awaited<ReturnType<typeof businessControllerSpecialTariffs>>, TError = BusinessErrorDto | void>(
+ jahr: number,
+    params?: BusinessControllerSpecialTariffsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof businessControllerSpecialTariffs>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof businessControllerSpecialTariffs>>,
+          TError,
+          Awaited<ReturnType<typeof businessControllerSpecialTariffs>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useBusinessControllerSpecialTariffs<TData = Awaited<ReturnType<typeof businessControllerSpecialTariffs>>, TError = BusinessErrorDto | void>(
+ jahr: number,
+    params?: BusinessControllerSpecialTariffsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof businessControllerSpecialTariffs>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useBusinessControllerSpecialTariffs<TData = Awaited<ReturnType<typeof businessControllerSpecialTariffs>>, TError = BusinessErrorDto | void>(
+ jahr: number,
+    params?: BusinessControllerSpecialTariffsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof businessControllerSpecialTariffs>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getBusinessControllerSpecialTariffsQueryOptions(jahr,params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type businessControllerVatPrepaymentsResponse200 = {
+  data: VatPrepaymentsDto
+  status: 200
+}
+
+export type businessControllerVatPrepaymentsResponse400 = {
+  data: BusinessErrorDto
+  status: 400
+}
+
+export type businessControllerVatPrepaymentsResponse401 = {
+  data: void
+  status: 401
+}
+
+export type businessControllerVatPrepaymentsResponse403 = {
+  data: BusinessErrorDto
+  status: 403
+}
+
+export type businessControllerVatPrepaymentsResponseSuccess = (businessControllerVatPrepaymentsResponse200) & {
+  headers: Headers;
+};
+export type businessControllerVatPrepaymentsResponseError = (businessControllerVatPrepaymentsResponse400 | businessControllerVatPrepaymentsResponse401 | businessControllerVatPrepaymentsResponse403) & {
+  headers: Headers;
+};
+
+export type businessControllerVatPrepaymentsResponse = (businessControllerVatPrepaymentsResponseSuccess | businessControllerVatPrepaymentsResponseError)
+
+export const getBusinessControllerVatPrepaymentsUrl = (jahr: number,
+    params?: BusinessControllerVatPrepaymentsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/v1/steuerjahre/${jahr}/selbststaendig/umsatzsteuer/voranmeldungen?${stringifiedParams}` : `/v1/steuerjahre/${jahr}/selbststaendig/umsatzsteuer/voranmeldungen`
+}
+
+export const businessControllerVatPrepayments = async (jahr: number,
+    params?: BusinessControllerVatPrepaymentsParams, options?: RequestInit): Promise<businessControllerVatPrepaymentsResponse> => {
+
+  return httpClient<businessControllerVatPrepaymentsResponse>(getBusinessControllerVatPrepaymentsUrl(jahr,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getBusinessControllerVatPrepaymentsQueryKey = (jahr: number,
+    params?: BusinessControllerVatPrepaymentsParams,) => {
+    return [
+    `/v1/steuerjahre/${jahr}/selbststaendig/umsatzsteuer/voranmeldungen`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getBusinessControllerVatPrepaymentsQueryOptions = <TData = Awaited<ReturnType<typeof businessControllerVatPrepayments>>, TError = BusinessErrorDto | void>(jahr: number,
+    params?: BusinessControllerVatPrepaymentsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof businessControllerVatPrepayments>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getBusinessControllerVatPrepaymentsQueryKey(jahr,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof businessControllerVatPrepayments>>> = ({ signal }) => businessControllerVatPrepayments(jahr,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: jahr !== null && jahr !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof businessControllerVatPrepayments>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type BusinessControllerVatPrepaymentsQueryResult = NonNullable<Awaited<ReturnType<typeof businessControllerVatPrepayments>>>
+export type BusinessControllerVatPrepaymentsQueryError = BusinessErrorDto | void
+
+
+export function useBusinessControllerVatPrepayments<TData = Awaited<ReturnType<typeof businessControllerVatPrepayments>>, TError = BusinessErrorDto | void>(
+ jahr: number,
+    params: undefined |  BusinessControllerVatPrepaymentsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof businessControllerVatPrepayments>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof businessControllerVatPrepayments>>,
+          TError,
+          Awaited<ReturnType<typeof businessControllerVatPrepayments>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useBusinessControllerVatPrepayments<TData = Awaited<ReturnType<typeof businessControllerVatPrepayments>>, TError = BusinessErrorDto | void>(
+ jahr: number,
+    params?: BusinessControllerVatPrepaymentsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof businessControllerVatPrepayments>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof businessControllerVatPrepayments>>,
+          TError,
+          Awaited<ReturnType<typeof businessControllerVatPrepayments>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useBusinessControllerVatPrepayments<TData = Awaited<ReturnType<typeof businessControllerVatPrepayments>>, TError = BusinessErrorDto | void>(
+ jahr: number,
+    params?: BusinessControllerVatPrepaymentsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof businessControllerVatPrepayments>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useBusinessControllerVatPrepayments<TData = Awaited<ReturnType<typeof businessControllerVatPrepayments>>, TError = BusinessErrorDto | void>(
+ jahr: number,
+    params?: BusinessControllerVatPrepaymentsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof businessControllerVatPrepayments>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getBusinessControllerVatPrepaymentsQueryOptions(jahr,params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export type businessControllerVatResponse200 = {
   data: VatReturnDto
   status: 200
@@ -3655,6 +4760,120 @@ export function useBusinessControllerEBilanz<TData = Awaited<ReturnType<typeof b
 
 
 
+
+export type businessControllerTransmitEBilanzResponse200 = {
+  data: EBilanzTransmissionDto
+  status: 200
+}
+
+export type businessControllerTransmitEBilanzResponse400 = {
+  data: BusinessErrorDto
+  status: 400
+}
+
+export type businessControllerTransmitEBilanzResponse401 = {
+  data: void
+  status: 401
+}
+
+export type businessControllerTransmitEBilanzResponse402 = {
+  data: BusinessErrorDto
+  status: 402
+}
+
+export type businessControllerTransmitEBilanzResponse403 = {
+  data: BusinessErrorDto
+  status: 403
+}
+
+export type businessControllerTransmitEBilanzResponse409 = {
+  data: BusinessErrorDto
+  status: 409
+}
+
+export type businessControllerTransmitEBilanzResponseSuccess = (businessControllerTransmitEBilanzResponse200) & {
+  headers: Headers;
+};
+export type businessControllerTransmitEBilanzResponseError = (businessControllerTransmitEBilanzResponse400 | businessControllerTransmitEBilanzResponse401 | businessControllerTransmitEBilanzResponse402 | businessControllerTransmitEBilanzResponse403 | businessControllerTransmitEBilanzResponse409) & {
+  headers: Headers;
+};
+
+export type businessControllerTransmitEBilanzResponse = (businessControllerTransmitEBilanzResponseSuccess | businessControllerTransmitEBilanzResponseError)
+
+export const getBusinessControllerTransmitEBilanzUrl = (jahr: number,
+    params?: BusinessControllerTransmitEBilanzParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/v1/steuerjahre/${jahr}/selbststaendig/e-bilanz/uebermittlung?${stringifiedParams}` : `/v1/steuerjahre/${jahr}/selbststaendig/e-bilanz/uebermittlung`
+}
+
+export const businessControllerTransmitEBilanz = async (jahr: number,
+    eBilanzTransmitDto: EBilanzTransmitDto,
+    params?: BusinessControllerTransmitEBilanzParams, options?: RequestInit): Promise<businessControllerTransmitEBilanzResponse> => {
+
+  return httpClient<businessControllerTransmitEBilanzResponse>(getBusinessControllerTransmitEBilanzUrl(jahr,params),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(eBilanzTransmitDto)
+  }
+);}
+
+
+
+
+
+export const getBusinessControllerTransmitEBilanzMutationOptions = <TError = BusinessErrorDto | void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof businessControllerTransmitEBilanz>>, TError,{jahr: number;data: EBilanzTransmitDto;params?: BusinessControllerTransmitEBilanzParams}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof businessControllerTransmitEBilanz>>, TError,{jahr: number;data: EBilanzTransmitDto;params?: BusinessControllerTransmitEBilanzParams}, TContext> => {
+
+const mutationKey = ['businessControllerTransmitEBilanz'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof businessControllerTransmitEBilanz>>, {jahr: number;data: EBilanzTransmitDto;params?: BusinessControllerTransmitEBilanzParams}> = (props) => {
+          const {jahr,data,params} = props ?? {};
+
+          return  businessControllerTransmitEBilanz(jahr,data,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type BusinessControllerTransmitEBilanzMutationResult = NonNullable<Awaited<ReturnType<typeof businessControllerTransmitEBilanz>>>
+    export type BusinessControllerTransmitEBilanzMutationBody = EBilanzTransmitDto
+    export type BusinessControllerTransmitEBilanzMutationError = BusinessErrorDto | void
+
+    export const useBusinessControllerTransmitEBilanz = <TError = BusinessErrorDto | void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof businessControllerTransmitEBilanz>>, TError,{jahr: number;data: EBilanzTransmitDto;params?: BusinessControllerTransmitEBilanzParams}, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof businessControllerTransmitEBilanz>>,
+        TError,
+        {jahr: number;data: EBilanzTransmitDto;params?: BusinessControllerTransmitEBilanzParams},
+        TContext
+      > => {
+      return useMutation(getBusinessControllerTransmitEBilanzMutationOptions(options), queryClient);
+    }
 
 export type businessControllerEBilanzFileResponse200 = {
   data: string

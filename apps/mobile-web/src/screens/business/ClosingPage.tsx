@@ -10,10 +10,10 @@ import { attempt, queryProblem, useRefreshBusiness } from './useBusiness'
 import type { BusinessPageProps } from './BusinessScreen'
 
 /** The year's result: EÜR totals and profit, or GuV and Bilanz with the opening balance carried into the next year. */
-export function ClosingPage({ taxYear, person, onBack }: BusinessPageProps) {
+export function ClosingPage({ taxYear, person, business = 1, onBack }: BusinessPageProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
-  const params = personParams(person)
+  const params = personParams(person, business)
   const query = useBusinessControllerClosing(taxYear, params)
   const carry = useBusinessControllerCarryForward()
   const refresh = useRefreshBusiness(taxYear)

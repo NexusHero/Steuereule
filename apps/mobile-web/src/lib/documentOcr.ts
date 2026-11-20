@@ -2,6 +2,11 @@ import { recognizePhoto, type GrayImage, type RgbaImage } from './imagePreproces
 
 const ALLOWED_PDF_MIME = 'application/pdf'
 const ALLOWED_IMAGE_MIMES = new Set(['image/jpeg', 'image/png', 'image/webp'])
+/** An E-Rechnung as XRechnung file (ADR-0101 §22). */
+const ALLOWED_XML_MIME = 'application/xml'
+/** The names ZUGFeRD / Factur-X / XRechnung give the XML they embed in a PDF/A-3. */
+const EMBEDDED_INVOICE_NAME = /(factur-x|zugferd|xrechnung)[\w-]*\.xml$/i
+const INVOICE_ROOT = /<(?:[A-Za-z][\w.-]*:)?(Invoice|CreditNote|CrossIndustryInvoice)[\s>]/
 /** A text layer costs nothing to read; a certificate with its supplementary sheets has more than five pages. */
 const MAX_PDF_TEXT_PAGES = 12
 /** A scanned Lohnausweis with its Beiblatt has five pages (real-data run); each page costs seconds of OCR. */
@@ -29,11 +34,13 @@ export interface OcrProgress {
 }
 
 export interface DocumentOcrResult {
-  readonly kind: 'pdf' | 'image'
+  readonly kind: 'pdf' | 'image' | 'xml'
   readonly mimeType: string
   readonly text: string
   readonly usedOcrFallback: boolean
   readonly pagesProcessed: number
+  /** `text` is the XML of an E-Rechnung (an XRechnung file or the XML a ZUGFeRD PDF embeds). */
+  readonly einvoice?: boolean
 }
 
 export interface PdfJsLikePage {
@@ -48,6 +55,8 @@ export interface PdfJsLikePage {
 export interface PdfJsLikeDocument {
   readonly numPages: number
   getPage(pageNumber: number): Promise<PdfJsLikePage>
+  /** pdf.js: the embedded files of the PDF (a ZUGFeRD invoice carries its XML here). */
+  getAttachments?(): Promise<Readonly<Record<string, { readonly filename: string; readonly content: Uint8Array }>> | null>
   destroy?(): Promise<void>
 }
 
@@ -239,7 +248,10 @@ export function detectDocumentMimeType(
     return 'image/webp'
   }
 
+  if (looksLikeInvoiceXml(bytes)) return ALLOWED_XML_MIME
+
   const normalizedMime = fallbackMimeType?.split(';')[0]?.trim().toLowerCase()
+  if (normalizedMime === ALLOWED_XML_MIME || normalizedMime === 'text/xml') return ALLOWED_XML_MIME
   if (normalizedMime === ALLOWED_PDF_MIME || (normalizedMime && ALLOWED_IMAGE_MIMES.has(normalizedMime))) {
     return normalizedMime
   }
@@ -249,6 +261,30 @@ export function detectDocumentMimeType(
   if (lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg')) return 'image/jpeg'
   if (lowerName.endsWith('.png')) return 'image/png'
   if (lowerName.endsWith('.webp')) return 'image/webp'
+  if (lowerName.endsWith('.xml')) return ALLOWED_XML_MIME
+  return null
+}
+
+/** The first bytes are an XML document whose root is an invoice (no BOM, or a UTF-8 one). */
+function looksLikeInvoiceXml(bytes: Uint8Array): boolean {
+  if (bytes.length === 0) return false
+  const head = new TextDecoder('utf-8').decode(bytes.subarray(0, 4096)).replace(/^\uFEFF/, '').trimStart()
+  return head.startsWith('<') && INVOICE_ROOT.test(head)
+}
+
+/** The XML a ZUGFeRD / Factur-X PDF embeds, when it is an invoice; null otherwise. */
+async function embeddedInvoiceXml(doc: PdfJsLikeDocument): Promise<string | null> {
+  if (typeof doc.getAttachments !== 'function') return null
+  try {
+    const attachments = await doc.getAttachments()
+    for (const file of Object.values(attachments ?? {})) {
+      if (!EMBEDDED_INVOICE_NAME.test(file.filename) && !file.filename.toLowerCase().endsWith('.xml')) continue
+      const text = new TextDecoder('utf-8').decode(file.content).replace(/^\uFEFF/, '')
+      if (INVOICE_ROOT.test(text.slice(0, 4096))) return text
+    }
+  } catch {
+    // A broken attachment table is no reason to stop reading the visible text.
+  }
   return null
 }
 
@@ -382,7 +418,14 @@ export async function extractDocumentTextOnDevice(
   const mimeType = detectDocumentMimeType(bytes, options.mimeType ?? file.type, inferredName)
 
   if (mimeType === null) {
-    throw new Error('Unsupported document format: expected PDF, JPEG, PNG or WebP.')
+    throw new Error('Unsupported document format: expected PDF, JPEG, PNG, WebP or an E-Rechnung (XML).')
+  }
+
+  // An XRechnung is the invoice itself: its XML goes to the reader as it is, no OCR (ADR-0101 §22).
+  if (mimeType === ALLOWED_XML_MIME) {
+    options.onProgress?.({ stage: 'done', progress: 1 })
+    const text = new TextDecoder('utf-8').decode(bytes).replace(/^\uFEFF/, '')
+    return { kind: 'xml', mimeType, text, usedOcrFallback: false, pagesProcessed: 0, einvoice: true }
   }
 
   const createWorker = options.deps?.createTesseractWorker ?? defaultCreateTesseractWorker
@@ -399,6 +442,12 @@ export async function extractDocumentTextOnDevice(
     }).promise
 
     try {
+      // ZUGFeRD / Factur-X: the structured invoice beats any text read off the page.
+      const embedded = await embeddedInvoiceXml(pdfDoc)
+      if (embedded !== null) {
+        options.onProgress?.({ stage: 'done', progress: 1 })
+        return { kind: 'pdf', mimeType, text: embedded, usedOcrFallback: false, pagesProcessed: 0, einvoice: true }
+      }
       const totalPages = Math.max(0, pdfDoc.numPages)
       const textLimit = Math.min(totalPages, MAX_PDF_TEXT_PAGES)
       const pageTexts: string[] = []

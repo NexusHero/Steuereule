@@ -11,6 +11,17 @@ export interface SmallBusinessInput {
   readonly priorYearTurnoverEur: number
   /** Up to 2024 the expected turnover of the year, from 2025 the actual one so far. */
   readonly currentYearTurnoverEur: number
+  /**
+   * The business started in this year: there is no year before, and the running year has the lower
+   * limit. `monthsActive` counts begun months (Abschn. 19.1 Abs. 4 UStAE: until 2024 the turnover is
+   * annualised over them).
+   */
+  readonly founding?: { readonly monthsActive: number } | undefined
+  /**
+   * The business started during the year before: until 2024 its turnover is annualised over the begun
+   * months (§ 19 Abs. 3 Satz 3, 4 UStG a. F.); from 2025 the actual turnover counts (§ 19 n. F.).
+   */
+  readonly priorYearMonthsActive?: number | undefined
 }
 
 export interface SmallBusinessResult {
@@ -29,8 +40,18 @@ export interface SmallBusinessResult {
 export function checkSmallBusiness(input: SmallBusinessInput): SmallBusinessResult {
   const fromNewRule = input.year >= 2025
   const priorYearLimitEur = fromNewRule ? 25_000 : 22_000
+  if (input.founding) {
+    // Founding year: only the running year counts, against the prior-year limit (§ 19 Abs. 2 UStG from
+    // 2025, actual turnover; until 2024 the expected turnover, annualised, Abschn. 19.1 Abs. 4 UStAE).
+    const months = Math.min(12, Math.max(1, Math.ceil(input.founding.monthsActive)))
+    const turnover = fromNewRule ? input.currentYearTurnoverEur : (input.currentYearTurnoverEur * 12) / months
+    const crossed = turnover > priorYearLimitEur ? 'current_year' : null
+    return { eligible: crossed === null, priorYearLimitEur, currentYearLimitEur: priorYearLimitEur, crossed }
+  }
   const currentYearLimitEur = fromNewRule ? 100_000 : 50_000
-  const crossed = input.priorYearTurnoverEur > priorYearLimitEur ? 'prior_year' : input.currentYearTurnoverEur > currentYearLimitEur ? 'current_year' : null
+  const priorMonths = Math.min(12, Math.max(1, Math.ceil(input.priorYearMonthsActive ?? 12)))
+  const prior = fromNewRule ? input.priorYearTurnoverEur : (input.priorYearTurnoverEur * 12) / priorMonths
+  const crossed = prior > priorYearLimitEur ? 'prior_year' : input.currentYearTurnoverEur > currentYearLimitEur ? 'current_year' : null
   return { eligible: crossed === null, priorYearLimitEur, currentYearLimitEur, crossed }
 }
 

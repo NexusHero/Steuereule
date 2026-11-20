@@ -168,13 +168,13 @@ export class ParseReceiptDto {
 
   @ApiPropertyOptional({
     type: String,
-    enum: ['pdf_text', 'ocr'],
+    enum: ['pdf_text', 'ocr', 'einvoice'],
     example: 'pdf_text',
     description: 'How rawText was produced on the device: a PDF text layer, or OCR of a photo/scan (never green, ADR-0060).',
   })
   @IsOptional()
-  @IsIn(['pdf_text', 'ocr'])
-  textSource?: 'pdf_text' | 'ocr'
+  @IsIn(['pdf_text', 'ocr', 'einvoice'])
+  textSource?: 'pdf_text' | 'ocr' | 'einvoice'
 
   @ApiPropertyOptional({
     type: String,
@@ -195,6 +195,13 @@ export class ParseReceiptDto {
   @IsOptional()
   @IsIn(['ausgabe', 'einnahme'])
   direction?: 'ausgabe' | 'einnahme'
+
+  @ApiPropertyOptional({ type: Number, minimum: 1, maximum: 99, description: 'For a business receipt: which business of the account holder books it (ADR-0101 §22); the first by default.' })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(99)
+  business?: number
 
   @ApiPropertyOptional({
     type: Boolean,

@@ -22,6 +22,34 @@ describe('documentOcr (on-device PDF & image OCR)', () => {
     await expect(extractDocumentTextOnDevice(htmlBlob, { fileName: 'evil.html' })).rejects.toThrow(/Unsupported document/)
   })
 
+  // ADR-0101 §22: an E-Rechnung is read as the XML it is, never by OCR.
+  it('reads an XRechnung file as its XML and refuses an HTML file that only looks like XML', async () => {
+    const xml = '<?xml version="1.0"?>\n<ubl:Invoice xmlns:ubl="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2"><cbc:ID>7</cbc:ID></ubl:Invoice>'
+    expect(detectDocumentMimeType(new TextEncoder().encode(xml))).toBe('application/xml')
+    expect(detectDocumentMimeType(new Uint8Array([1, 2]), undefined, 'rechnung.xml')).toBe('application/xml')
+    const res = await extractDocumentTextOnDevice(new Blob([xml], { type: 'application/xml' }), { fileName: 'rechnung.xml' })
+    expect(res).toMatchObject({ kind: 'xml', einvoice: true, text: xml })
+    expect(detectDocumentMimeType(new TextEncoder().encode('<html><body/></html>'), 'text/html', 'x.html')).toBeNull()
+  })
+
+  it('takes the XML a ZUGFeRD PDF embeds instead of its visible text', async () => {
+    const xml = '<rsm:CrossIndustryInvoice xmlns:rsm="urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100"/>'
+    const getPage = vi.fn()
+    const pdfMod: PdfJsLikeModule = {
+      getDocument: () => ({
+        promise: Promise.resolve({
+          numPages: 1,
+          destroy: async () => {},
+          getPage,
+          getAttachments: async () => ({ 'factur-x.xml': { filename: 'factur-x.xml', content: new TextEncoder().encode(xml) } }),
+        }),
+      }),
+    }
+    const res = await extractDocumentTextOnDevice(new Blob([new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d])], { type: 'application/pdf' }), { deps: { loadPdfJs: async () => pdfMod } })
+    expect(res).toMatchObject({ kind: 'pdf', einvoice: true, text: xml })
+    expect(getPage).not.toHaveBeenCalled()
+  })
+
   // #450 5D: pdf.js hands out text in pieces. The pieces were glued with one space, so a whole page
   // became ONE line and the LStB parser read the last number of the page as the Lohnsteuer —
   // a wrong value on a green field. A line ends where pdf.js says so (`hasEOL`) or the baseline moves.

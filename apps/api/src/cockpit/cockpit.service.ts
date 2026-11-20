@@ -226,7 +226,7 @@ export class CockpitService {
       ...(partner === null ? {} : { byPerson: { a: ownIncome, b: partnerIncome } }),
       submission,
       capabilities: { selbststaendig: selfEmploymentEnabled() },
-      filingPath: filingPathOf(answers.job),
+      filingPath: filingPathOf(answers),
     }
   }
 }

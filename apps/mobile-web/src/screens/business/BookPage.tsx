@@ -42,10 +42,10 @@ function entryAmount(entry: JournalEntryDto): number {
 }
 
 /** The book: entries, the state of its chain, a new booking, Storno and the Festschreibung. */
-export function BookPage({ taxYear, person, onBack }: BusinessPageProps) {
+export function BookPage({ taxYear, person, business = 1, onBack }: BusinessPageProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
-  const params = personParams(person)
+  const params = personParams(person, business)
   const query = useBusinessControllerBook(taxYear, params)
   const post = useBusinessControllerPost()
   const reverse = useBusinessControllerReverse()
@@ -186,7 +186,7 @@ export function BookPage({ taxYear, person, onBack }: BusinessPageProps) {
       )}
 
       <Section>
-        <BusinessReceiptUpload taxYear={taxYear} />
+        <BusinessReceiptUpload taxYear={taxYear} business={business} />
       </Section>
 
       <Section title={tr('business.buch.festschreiben')}>
