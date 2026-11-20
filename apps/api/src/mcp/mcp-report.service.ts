@@ -1,7 +1,8 @@
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common'
-import { appealDeadline, ASSESSMENT_POSITIONS, provenanceKey, QUESTIONS, type AdvisorEstimateReading, type EntryStepId } from '@steuereule/core'
+import { appealDeadline, ASSESSMENT_POSITIONS, buildRecordHandles, ENTRY_RULE_CODES, provenanceKey, QUESTIONS, type AdvisorEstimateReading, type EntryStepId, type Screen } from '@steuereule/core'
 import { estimateReadingFrom } from '../advisor/advisor-case-digest.js'
 import { describePrintoutGap } from '../advisor/advisor-printout-gaps.js'
+import { buildPrintoutPlan } from '../advisor/advisor-printout-plan.js'
 import { effectLeftOutOfEstimate } from '../advisor/advisor-shared.js'
 import { HOUSEHOLD_AND_HEALTH_BOOSTERS } from '../config/features.js'
 import { ConfirmationService } from '../confirmation/confirmation.service.js'
@@ -28,6 +29,15 @@ export interface AssistantQuestion {
   readonly id: string
   readonly kind: 'question' | 'gate'
   readonly answers?: readonly string[]
+}
+
+/** One value written on trial; `dataUserId` is Person B's for a value of hers. */
+export interface SimulationEntry {
+  readonly screen: Screen
+  readonly field: string
+  readonly value: string
+  readonly instance?: string | undefined
+  readonly dataUserId?: string | undefined
 }
 
 export type SimulationResult =
@@ -150,6 +160,42 @@ export class McpReportService {
   }
 
   /**
+   * What closes each gap of the printout and each fixed entry rule (ADR-0091, ADR-0093), as the in-app
+   * advisor gets it: the field, whose it is, and whether the assistant may enter it or only the user.
+   * Field names and neutral record names only; a child carries its `instance`.
+   */
+  async check(userId: string, taxYear: number, household: { readonly spouse: { readonly spouseUserId: string; readonly recordable: boolean } | null; readonly childIds: readonly string[] }): Promise<Record<string, unknown>> {
+    const missing = await this.printout.check(userId, taxYear).then((check) => check.missing, () => null)
+    if (missing === null) return { ok: false, grund: 'Die Ausdruck-Vorprüfung ließ sich für dieses Jahr nicht ausführen.' }
+    const kinder = buildRecordHandles('kind', household.childIds)
+    const plan = await buildPrintoutPlan({
+      userId,
+      taxYear,
+      missing: [...missing, ...ENTRY_RULE_CODES],
+      spouse: household.spouse,
+      records: { kind: kinder },
+      // The user's own assistant may enter personal fields (ADR-0052 §8).
+      personalDataConsent: true,
+      read: (dataUserId, year, keys) => this.confirmation.readRawValues(dataUserId, year, keys),
+    })
+    return {
+      ok: true,
+      taxYear,
+      fragen: plan.questions.map((q) => ({
+        betrifft: q.subject,
+        frage: q.question,
+        screen: q.screen,
+        feld: q.field,
+        ...(q.person === 'B' ? { person: 'B' } : {}),
+        ...(q.record ? { instance: kinder.find((k) => k.handle === q.record)?.id ?? null } : {}),
+        werTraegtEin: q.owlMayDraft ? 'du' : 'nur der Nutzer',
+        sperrtAusdruck: q.required,
+      })),
+      nurNutzer: plan.unplanned.map(describePrintoutGap),
+    }
+  }
+
+  /**
    * A notice beside the return (ADR-0052 amendment 3, #546): each position the assistant entered from
    * the notice against the app's own figure, and the appeal deadline. The assistant explains the
    * differences with the breakdown; nothing here is recomputed.
@@ -189,7 +235,7 @@ export class McpReportService {
       const bescheidEur = notice(position.id)
       const erklaerungEur = own[position.id]
       if (bescheidEur === null) return []
-      return [{ position: position.id, bezeichnung: position.label, erklaerungEur: erklaerungEur ?? null, bescheidEur, abweichungEur: erklaerungEur === undefined ? null : bescheidEur - erklaerungEur }]
+      return [{ position: position.id, bezeichnung: position.label, erklaerungEur: erklaerungEur ?? null, bescheidEur, abweichungEur: erklaerungEur === undefined ? null : Math.round((bescheidEur - erklaerungEur) * 100) / 100 }]
     })
     const date = noticed['assessment.assessmentDate']
     const deadline = date ? appealDeadline(date, today) : null
@@ -206,27 +252,28 @@ export class McpReportService {
    * The refund before and after an entry, by the app's own estimate, through the very write path an
    * entry uses, inside a transaction that is always rolled back.
    */
-  async simulate(
-    userId: string,
-    taxYear: number,
-    screen: Parameters<typeof provenanceKey>[0],
-    field: string,
-    value: string,
-    instance?: string,
-    /** Whose field is written on trial: Person B's for a value of hers; the estimate is the couple's, read for the user. */
-    dataUserId: string = userId,
-  ): Promise<SimulationResult> {
+  async simulate(userId: string, taxYear: number, screen: Screen, field: string, value: string, instance?: string, dataUserId: string = userId): Promise<SimulationResult> {
+    return this.simulateEntries(userId, taxYear, [{ screen, field, value, instance, dataUserId }])
+  }
+
+  /** The same for several entries at once: one scenario, one refund before and after (#548). */
+  async simulateEntries(userId: string, taxYear: number, entries: readonly SimulationEntry[]): Promise<SimulationResult> {
     // The write is rolled back only by a real database transaction: trust the Prisma runner alone, never
     // an unknown one, and never join a transaction already running (its commit would keep the write).
     if (!(this.transactions instanceof PrismaTransactionRunner) || isInsideTransaction()) return { ok: false, reason: 'Die Simulation steht in dieser Umgebung nicht zur Verfügung.' }
     // § 35a and § 33 are left out of the estimate while their boosters are off: 0 € would read as "brings nothing".
-    const leftOut = effectLeftOutOfEstimate({ screen, instance: instance ?? null, values: [[field, value]] }, HOUSEHOLD_AND_HEALTH_BOOSTERS)
-    if (leftOut && leftOut.kind === 'not-computable') return { ok: false, reason: leftOut.hint }
+    for (const entry of entries) {
+      const leftOut = effectLeftOutOfEstimate({ screen: entry.screen, instance: entry.instance ?? null, values: [[entry.field, entry.value]] }, HOUSEHOLD_AND_HEALTH_BOOSTERS)
+      if (leftOut && leftOut.kind === 'not-computable') return { ok: false, reason: leftOut.hint }
+    }
     let result: SimulationResult = { ok: false, reason: NOT_COMPUTABLE }
     try {
       await this.transactions.run(async () => {
         const before = estimateReadingFrom(await this.estimate.getState(userId, taxYear))
-        await this.confirmation.writeConfirmedByAdvisor(dataUserId, taxYear, provenanceKey(screen, field, instance), value, undefined, undefined, { personalDataConsent: true })
+        for (const entry of entries) {
+          // Whose field is written on trial: Person B's for a value of hers; the estimate is the couple's, read for the user.
+          await this.confirmation.writeConfirmedByAdvisor(entry.dataUserId ?? userId, taxYear, provenanceKey(entry.screen, entry.field, entry.instance), entry.value, undefined, undefined, { personalDataConsent: true })
+        }
         const after = estimateReadingFrom(await this.estimate.getState(userId, taxYear))
         if (before.kind === 'computed' && after.kind === 'computed') {
           const beforeRefundEur = midpoint(before.result)
@@ -242,7 +289,7 @@ export class McpReportService {
     } catch (error) {
       if (!(error instanceof SimulationRollback)) {
         // The reason stays in our log; the external assistant gets no internals (ADR-0052 §8).
-        this.logger.warn(`simulation failed for ${screen}: ${error instanceof Error ? error.name : 'unknown'}`)
+        this.logger.warn(`simulation failed for ${entries.map((entry) => entry.screen).join(',')}: ${error instanceof Error ? error.name : 'unknown'}`)
         return { ok: false, reason: NOT_COMPUTABLE }
       }
     }

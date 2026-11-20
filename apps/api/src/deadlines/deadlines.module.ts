@@ -5,5 +5,6 @@ import { DeadlinesService } from './deadlines.service.js'
 @Module({
   controllers: [DeadlinesController],
   providers: [DeadlinesService],
+  exports: [DeadlinesService],
 })
 export class DeadlinesModule {}

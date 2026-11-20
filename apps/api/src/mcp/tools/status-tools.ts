@@ -1,6 +1,7 @@
 import { z } from 'zod'
-import { SCREENS } from '@steuereule/core'
+import { SCREENS, type Screen } from '@steuereule/core'
 import { checkStageValue, validateStageTarget } from '../../ki/advisor-safety.js'
+import type { SimulationEntry } from '../mcp-report.service.js'
 import { assertScope, json, dataUserFor, type McpDeps, type McpSession } from '../mcp-session.js'
 
 /** Where the return stands: state, printout pre-check, owl hints, payment link (ADR-0052 §3, §5, §8, §12). */
@@ -104,6 +105,18 @@ export function registerReportTools(session: McpSession, deps: McpDeps): void {
   )
 
   server.tool(
+    'pruefen',
+    'Prüft die Erklärung wie der Berater der App: was für den Ausdruck fehlt und was die festen Eintragsregeln verlangen, je Lücke mit Feld, Person oder Kind, ob du es eintragen darfst oder nur der Nutzer, und ob es den Ausdruck sperrt. Am Ende eines Laufs aufrufen und abarbeiten.',
+    { taxYear: z.number().int().describe('Das Steuerjahr (z.B. 2024 oder 2025)') },
+    async ({ taxYear }) => {
+      assertScope(assistant, 'steuerdaten:read')
+      await deps.audit.append({ userId, action: 'READ', resource: 'pruefen' })
+      const [spouse, kinder] = await Promise.all([deps.link?.spouseForAdvisor(userId, taxYear), deps.children?.list(userId, taxYear)])
+      return json(await report.check(userId, taxYear, { spouse: spouse ? { spouseUserId: spouse.spouseUserId, recordable: spouse.recordable } : null, childIds: (kinder?.kinder ?? []).map((k) => k.id) }))
+    },
+  )
+
+  server.tool(
     'offene_fragen',
     'Nennt je Interview-Bereich (Grundfragen, Lebenslagen, Einkünfte, Sonderausgaben, Grenzgänger, Haushalt, Gesundheit, Vorauszahlungen …) die nächste offene Frage mit ihren möglichen Antworten und wie viele dort noch folgen. Das sind Tatsachen, die nur der Nutzer kennt: Frage ihn und trage die Antwort mit maske_eintragen (Maske "interview") ein; danach erneut aufrufen. Erfinde nie eine Antwort.',
     { taxYear: z.number().int().describe('Das Steuerjahr (z.B. 2024 oder 2025)') },
@@ -113,6 +126,17 @@ export function registerReportTools(session: McpSession, deps: McpDeps): void {
       return json(await report.openQuestions(userId, taxYear))
     },
   )
+
+  /** An entry of a simulation, checked like a real one: target, value and whose data it would be. */
+  async function trialEntry(taxYear: number, entry: { screen: Screen; instance?: string | undefined; field: string; value: string; person?: 'A' | 'B' | undefined }): Promise<{ ok: true; entry: SimulationEntry } | { ok: false; error: string }> {
+    const target = validateStageTarget(entry.screen, entry.field, true)
+    if (!target.ok) return { ok: false, error: target.error }
+    const checked = checkStageValue(entry.screen, entry.field, entry.value)
+    if (!checked.ok) return { ok: false, error: checked.error }
+    const whose = await dataUserFor(deps.link, userId, taxYear, entry.screen, entry.field.trim(), entry.person)
+    if (!whose.ok) return whose
+    return { ok: true, entry: { screen: entry.screen, field: entry.field.trim(), value: checked.value, instance: entry.instance, dataUserId: whose.dataUserId } }
+  }
 
   server.tool(
     'auswirkung_simulieren',
@@ -125,17 +149,37 @@ export function registerReportTools(session: McpSession, deps: McpDeps): void {
       value: z.string().describe('Der Wert, dessen Wirkung simuliert wird'),
       person: z.enum(['A', 'B']).optional().describe('Wie bei maske_eintragen'),
     },
-    async ({ taxYear, screen, instance, field, value, person }) => {
+    async ({ taxYear, ...entry }) => {
       // The simulation writes on trial and rolls back: only an assistant that may enter values gets it.
       assertScope(assistant, 'steuerdaten:write')
       await deps.audit.append({ userId, action: 'READ', resource: 'auswirkung_simulieren' })
-      const target = validateStageTarget(screen, field, true)
-      if (!target.ok) return json({ ok: false, error: target.error })
-      const checked = checkStageValue(screen, field, value)
-      if (!checked.ok) return json({ ok: false, error: checked.error })
-      const whose = await dataUserFor(deps.link, userId, taxYear, screen, field.trim(), person)
-      if (!whose.ok) return json({ ok: false, error: whose.error })
-      return json(await report.simulate(userId, taxYear, screen, field.trim(), checked.value, instance, whose.dataUserId))
+      const prepared = await trialEntry(taxYear, entry)
+      if (!prepared.ok) return json({ ok: false, error: prepared.error })
+      return json(await report.simulateEntries(userId, taxYear, [prepared.entry]))
+    },
+  )
+
+  server.tool(
+    'szenario_simulieren',
+    'Wie auswirkung_simulieren, aber für mehrere Einträge zusammen (höchstens 20): die Erstattung vorher und nachher für das ganze Szenario, ohne etwas zu speichern. Für Fragen wie „was bringt es, wenn beide Krankenkassenbeiträge und der des Kindes stimmen?“.',
+    {
+      taxYear: z.number().int().describe('Das Steuerjahr (z.B. 2024 oder 2025)'),
+      eintraege: z
+        .array(z.object({ screen: z.enum(SCREENS), instance: z.string().optional(), field: z.string(), value: z.string(), person: z.enum(['A', 'B']).optional() }))
+        .min(1)
+        .max(20)
+        .describe('Die Einträge des Szenarios, wie bei maske_eintragen'),
+    },
+    async ({ taxYear, eintraege }) => {
+      assertScope(assistant, 'steuerdaten:write')
+      await deps.audit.append({ userId, action: 'READ', resource: 'szenario_simulieren' })
+      const entries: SimulationEntry[] = []
+      for (const entry of eintraege) {
+        const prepared = await trialEntry(taxYear, entry)
+        if (!prepared.ok) return json({ ok: false, error: `${entry.screen}.${entry.field}: ${prepared.error}` })
+        entries.push(prepared.entry)
+      }
+      return json(await report.simulateEntries(userId, taxYear, entries))
     },
   )
 }

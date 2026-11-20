@@ -1,6 +1,7 @@
 import { z } from 'zod'
-import { fieldsOfScreen, provenanceKey } from '@steuereule/core'
+import { provenanceKey } from '@steuereule/core'
 import { assertScope, json, refused, type McpDeps, type McpSession } from '../mcp-session.js'
+import { ownRecord } from '../own-record.js'
 import { ageAtYearEnd } from '../read-view.js'
 
 /** The children of the year as records, so the assistant can address the mask `kind` (ADR-0052 amendment 2). */
@@ -59,18 +60,10 @@ export function registerChildTools(session: McpSession, deps: McpDeps): void {
       assertScope(assistant, 'steuerdaten:write')
       const child = (await children.list(userId, taxYear)).kinder.find((k) => k.id === instance)
       if (!child) return refused('NO_RECORD: Dieses Kind gibt es für das Jahr nicht.')
-      const prefix = `kind:${instance}.`
-      const markings = (await deps.confirmation.list(userId, taxYear)).filter((m) => m.key.startsWith(prefix))
-      const own = (m: (typeof markings)[number]) => !m.confirmed && m.proposal === null && m.provenance.kind === 'assistent' && m.provenance.name === assistant.clientName
-      const keys = fieldsOfScreen('kind').map((spec) => provenanceKey('kind', spec.field, instance))
-      const values = await deps.confirmation.readRawValues(userId, taxYear, keys)
-      // Every value of the child must be this assistant's unconfirmed entry; one the user typed or confirmed keeps the child.
-      const untouched = keys.every((key) => values[key] === null || values[key] === undefined || values[key] === '' || markings.some((m) => m.key === key && own(m)))
-      if (!untouched || markings.some((m) => !own(m)) || !markings.some((m) => m.key === `${prefix}firstName`)) {
-        return refused('NOT_OWN_ENTRY: Dieses Kind hat der Nutzer angelegt oder schon bestätigt; entfernen kann es nur er in der App.')
-      }
+      const record = await ownRecord(deps, { userId, taxYear, screen: 'kind', instance, anchorField: 'firstName' }, assistant)
+      if (!record.own) return refused('NOT_OWN_ENTRY: Dieses Kind hat der Nutzer angelegt oder schon bestätigt; entfernen kann es nur er in der App.')
       await children.delete(userId, taxYear, instance)
-      await deps.confirmation.forget(userId, taxYear, markings.map((m) => m.key))
+      await deps.confirmation.forget(userId, taxYear, record.keys)
       await deps.audit.append({ userId, action: 'WRITE', resource: 'kind_entfernen' })
       return json({ ok: true, entfernt: instance })
     },
