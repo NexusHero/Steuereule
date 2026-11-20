@@ -2258,6 +2258,7 @@
     "scopeSteuerdatenWrite": "Steuerfakten ausfüllen (bleibt unbestätigt bis zu Ihrer Prüfung)",
     "scopeBelegeWrite": "Belege hochladen",
     "scopeZahllinkRead": "Zahllink abrufen",
+    "scopeOfflineAccess": "Verbindung bleibt bestehen, bis Sie sie unter „Verbundene Assistenten“ widerrufen",
     "drittlandHeading": "Hinweis zur Datenübertragung (Drittland)",
     "drittlandNotice": "Durch die Verbindung werden Ihre Daten an den Anbieter dieses Assistenten übermittelt. Dies kann Server in einem Drittland (z. B. USA) ohne Angemessenheitsbeschluss der EU-Kommission umfassen. Die Verarbeitung dort unterliegt den Bestimmungen des jeweiligen Anbieters.",
     "allow": "Verbindung erlauben",

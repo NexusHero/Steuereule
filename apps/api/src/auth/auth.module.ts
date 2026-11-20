@@ -13,12 +13,13 @@ import { resolveSmtpConfig, SmtpEmailSender } from './smtp-email-sender.js'
 import { RequiresAccountGuard } from './requires-account.guard.js'
 import { UserContextGuard } from './user-context.guard.js'
 import { AuthCapabilitiesController } from './auth-capabilities.controller.js'
+import { OAuthDiscoveryController } from './oauth-discovery.controller.js'
 
 /** The auth wiring seam: builds the one shared better-auth instance off the existing PrismaService connection. */
 @Global()
 @Module({
   imports: [PrismaModule],
-  controllers: [AuthCapabilitiesController],
+  controllers: [AuthCapabilitiesController, OAuthDiscoveryController],
   providers: [
     {
       provide: EMAIL_SENDER,

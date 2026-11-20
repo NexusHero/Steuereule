@@ -1,11 +1,11 @@
 import {
   Controller,
-  ForbiddenException,
   Get,
   Inject,
   Post,
   Req,
   Res,
+  UnauthorizedException,
   UseGuards,
 } from '@nestjs/common'
 import type { FastifyReply } from 'fastify'
@@ -17,6 +17,9 @@ import {
   type AssistantAuthContext,
   type RequestWithUserId,
 } from '../auth/user-context.guard.js'
+import { BETTER_AUTH_BUNDLE } from '../auth/auth.tokens.js'
+import type { BetterAuthBundle } from '../auth/better-auth.js'
+import { mcpBearerChallenge } from '../auth/mcp-oauth.js'
 import { McpService } from './mcp.service.js'
 
 interface McpSession {
@@ -34,7 +37,16 @@ interface McpSession {
 export class McpController {
   private readonly sessions = new Map<string, McpSession>()
 
-  constructor(@Inject(McpService) private readonly mcpService: McpService) {}
+  constructor(
+    @Inject(McpService) private readonly mcpService: McpService,
+    @Inject(BETTER_AUTH_BUNDLE) private readonly betterAuth: BetterAuthBundle,
+  ) {}
+
+  /** No assistant token: 401 with the pointer to the sign-in, so an MCP client can start the OAuth flow (RFC 9728 §5.1). */
+  private challenge(reply: FastifyReply): never {
+    reply.header('WWW-Authenticate', mcpBearerChallenge(String(this.betterAuth.auth.options.baseURL)))
+    throw new UnauthorizedException('Der MCP-Endpunkt ist nur für autorisierte KI-Assistenten mit OAuth-Bearer-Token zugänglich.')
+  }
 
   @Get('sse')
   async sse(@Req() request: RequestWithUserId, @Res() reply: FastifyReply): Promise<void> {
@@ -42,7 +54,7 @@ export class McpController {
     const userId = request[USER_ID_REQUEST_KEY]
 
     if (!authContext || authContext.source !== 'assistent' || !userId) {
-      throw new ForbiddenException('Der MCP-Endpunkt ist nur für autorisierte KI-Assistenten mit OAuth-Bearer-Token zugänglich.')
+      this.challenge(reply)
     }
 
     const assistantContext = authContext as AssistantAuthContext
@@ -77,7 +89,7 @@ export class McpController {
     const userId = request[USER_ID_REQUEST_KEY]
 
     if (!authContext || authContext.source !== 'assistent' || !userId) {
-      throw new ForbiddenException('Der MCP-Endpunkt ist nur für autorisierte KI-Assistenten mit OAuth-Bearer-Token zugänglich.')
+      this.challenge(reply)
     }
 
     const query = request.query as { sessionId?: string } | undefined
