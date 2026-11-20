@@ -273,3 +273,10 @@ describe('fields an assistant can only fill right with their shape (ADR-0052 ame
     expect(describeFieldForPrompt(spec)).toContain('VD = keine')
   })
 })
+
+describe('the child benefit an assistant enters (ADR-0052 amendment 2)', () => {
+  it('says it is the claim of the year in euros, not a monthly amount', () => {
+    const spec = fieldsOfScreen('kind').find((s) => s.field === 'childBenefitClaimEur')!
+    expect(describeFieldForPrompt(spec)).toContain('im Jahr')
+  })
+})
