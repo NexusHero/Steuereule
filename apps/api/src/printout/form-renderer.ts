@@ -111,6 +111,29 @@ export const FIELD_SETS: Readonly<Record<number, FieldSet>> = { 2024: felder2024
  * year instead of failing as unknown ids. Every other unknown id still fails, so a typo cannot hide.
  */
 export const NOT_ON_FORM: Readonly<Record<number, readonly string[]>> = {
+  // 2022 and 2023 are measured for the ELSTER fill-in help only (ADR-0101 §16), not printed (FIELD_SETS).
+  2022: [
+    'anlNGre.beruf',
+    // The commute table of 2022 has one row per workplace instead of the 1/2 code of later years.
+    'anlN.wegArt',
+    'anlN.weg2Art',
+    'anlNGre.wegArt',
+    'anlNGre.weg2Art',
+    // One „Sonstiges“ line in the Werbungskosten of the Anlage N-Gre 2022.
+    'anlNGre.z58Text',
+    'anlNGre.z58Eur',
+    // The Anlage V 2022 asks for rents per storey, not per described unit, and has no detail text
+    // beside Schuldzinsen and Sonstiges.
+    'anlV.z13Bezeichnung',
+    'anlV.z13Miete',
+    'anlV.z13Wohnflaeche',
+    'anlV.z46Text',
+    'anlV.z80Text',
+    // The page-2 head of the ESt 1 A 2022 is framed in a way vermessen.mjs cannot resolve; it repeats
+    // the Steuernummer and is no line of its own.
+    'est1a.kopfSeite2',
+  ],
+  2023: ['anlNGre.beruf'],
   2024: ['anlNGre.beruf'],
 }
 

@@ -171,12 +171,15 @@ export interface ElsterLineValue {
   readonly zeile: string | null
   readonly kennzahlen: readonly string[]
   readonly label: string
+  /** The column heading where one line holds several boxes (vom / bis, CHF / EUR); null otherwise. */
+  readonly column: string | null
   /** Euros, or a word („Ja“) where the line takes one; null where the app has nothing for it. */
   readonly value: number | string | null
 }
 
 export interface ElsterHelp {
-  readonly form: ElsterForm
+  /** A business form (ElsterForm) or an income-tax Vordruck of the paper printout (`anlage-n`, …). */
+  readonly form: string
   readonly year: number
   readonly status: 'published' | 'not_published' | 'not_available'
   /** German, for the user: why a year or form has no line numbers. */
@@ -822,11 +825,29 @@ export class BusinessService {
   // ------------------------------------------------------------------------------------------------
   // ELSTER fill-in help (ADR-0101 §16)
 
+  /** The gate of the whole fill-in help: the path open, a year the help knows, the tier paid. */
+  async assertElsterOpen(userId: string, year: number): Promise<void> {
+    await this.assertOpen(userId, year)
+    if (!(ELSTER_YEARS as readonly number[]).includes(year)) throw new NotFoundError('ELSTER_YEAR_UNKNOWN', `Für ${year} gibt es keine Ausfüllhilfe.`)
+    await this.assertUnlocked(userId, year)
+  }
+
+  /** The business forms of the fill-in help that carry at least one value the app computed. */
+  async elsterFormsWithValues(userId: string, year: number, person: BusinessPerson): Promise<ElsterForm[]> {
+    await this.assertElsterOpen(userId, year)
+    const { book, ledger, profile } = await this.loaded(userId, year, person)
+    if (book) this.assertIntact(book)
+    return ELSTER_FORMS.filter((form) => {
+      const values = this.formValues(form, ledger, profile, year)
+      const lines = elsterLinesFor(form, year as ElsterYear)
+      return lines.status === 'published' ? lines.lines.some((line) => values.byLine(line.id, line.euerKeys) !== null) : values.unnumbered.some((line) => line.value !== null)
+    })
+  }
+
   async elsterHelp(userId: string, year: number, person: BusinessPerson, form: string): Promise<ElsterHelp> {
     await this.assertOpen(userId, year)
     if (!(ELSTER_FORMS as readonly string[]).includes(form)) throw new NotFoundError('ELSTER_FORM_UNKNOWN', `Das Formular „${form}“ kennt die Ausfüllhilfe nicht.`)
-    if (!(ELSTER_YEARS as readonly number[]).includes(year)) throw new NotFoundError('ELSTER_YEAR_UNKNOWN', `Für ${year} gibt es keine Ausfüllhilfe.`)
-    await this.assertUnlocked(userId, year)
+    await this.assertElsterOpen(userId, year)
     const { book, ledger, profile } = await this.loaded(userId, year, person)
     if (book) this.assertIntact(book)
     const values = this.formValues(form as ElsterForm, ledger, profile, year)
@@ -840,7 +861,7 @@ export class BusinessService {
         note: null,
         sourceUrl: lines.source.url,
         lineNumbersAvailable: lines.lines.some((line) => line.zeile !== null),
-        lines: lines.lines.map((line) => ({ id: line.id, zeile: line.zeile, kennzahlen: line.kennzahlen, label: line.label, value: values.byLine(line.id, line.euerKeys) })),
+        lines: lines.lines.map((line) => ({ id: line.id, zeile: line.zeile, kennzahlen: line.kennzahlen, label: line.label, column: null, value: values.byLine(line.id, line.euerKeys) })),
       }
     }
     // An electronic-only form needs no note of its own: `lineNumbersAvailable: false` already tells the app to say so once.
@@ -854,7 +875,7 @@ export class BusinessService {
   /** What the app computed for a form: by line id (published forms) and as labelled amounts (others). */
   private formValues(form: ElsterForm, ledger: Ledger, profile: BusinessProfileRecord | null, year: number): { byLine: (id: string, euerKeys: readonly EuerKey[]) => number | string | null; unnumbered: ElsterLineValue[] } {
     const profit = this.profitOf(ledger, year)
-    const unnumbered = (rows: readonly [string, string, number | string | null][]): ElsterLineValue[] => rows.map(([id, label, value]) => ({ id, zeile: null, kennzahlen: [], label, value }))
+    const unnumbered = (rows: readonly [string, string, number | string | null][]): ElsterLineValue[] => rows.map(([id, label, value]) => ({ id, zeile: null, kennzahlen: [], label, column: null, value }))
     switch (form) {
       case 'anlage-euer': {
         if (ledger.mode !== 'euer') return { byLine: () => null, unnumbered: [] }

@@ -48,6 +48,7 @@ import type {
   BusinessControllerDisposeAssetParams,
   BusinessControllerEBilanzFileParams,
   BusinessControllerEBilanzParams,
+  BusinessControllerElsterFormsParams,
   BusinessControllerElsterParams,
   BusinessControllerGobdParams,
   BusinessControllerHebesatzParams,
@@ -69,6 +70,7 @@ import type {
   BusinessProfileInputDto,
   ClosingDto,
   EBilanzDto,
+  ElsterFormListDto,
   ElsterHelpDto,
   FixedAssetDto,
   FixedAssetInputDto,
@@ -2802,6 +2804,160 @@ export function useBusinessControllerLosses<TData = Awaited<ReturnType<typeof bu
 
 
 
+export type businessControllerElsterFormsResponse200 = {
+  data: ElsterFormListDto
+  status: 200
+}
+
+export type businessControllerElsterFormsResponse400 = {
+  data: BusinessErrorDto
+  status: 400
+}
+
+export type businessControllerElsterFormsResponse401 = {
+  data: void
+  status: 401
+}
+
+export type businessControllerElsterFormsResponse402 = {
+  data: BusinessErrorDto
+  status: 402
+}
+
+export type businessControllerElsterFormsResponse403 = {
+  data: BusinessErrorDto
+  status: 403
+}
+
+export type businessControllerElsterFormsResponse404 = {
+  data: BusinessErrorDto
+  status: 404
+}
+
+export type businessControllerElsterFormsResponse409 = {
+  data: BusinessErrorDto
+  status: 409
+}
+
+export type businessControllerElsterFormsResponseSuccess = (businessControllerElsterFormsResponse200) & {
+  headers: Headers;
+};
+export type businessControllerElsterFormsResponseError = (businessControllerElsterFormsResponse400 | businessControllerElsterFormsResponse401 | businessControllerElsterFormsResponse402 | businessControllerElsterFormsResponse403 | businessControllerElsterFormsResponse404 | businessControllerElsterFormsResponse409) & {
+  headers: Headers;
+};
+
+export type businessControllerElsterFormsResponse = (businessControllerElsterFormsResponseSuccess | businessControllerElsterFormsResponseError)
+
+export const getBusinessControllerElsterFormsUrl = (jahr: number,
+    params?: BusinessControllerElsterFormsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/v1/steuerjahre/${jahr}/selbststaendig/elster?${stringifiedParams}` : `/v1/steuerjahre/${jahr}/selbststaendig/elster`
+}
+
+export const businessControllerElsterForms = async (jahr: number,
+    params?: BusinessControllerElsterFormsParams, options?: RequestInit): Promise<businessControllerElsterFormsResponse> => {
+
+  return httpClient<businessControllerElsterFormsResponse>(getBusinessControllerElsterFormsUrl(jahr,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getBusinessControllerElsterFormsQueryKey = (jahr: number,
+    params?: BusinessControllerElsterFormsParams,) => {
+    return [
+    `/v1/steuerjahre/${jahr}/selbststaendig/elster`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getBusinessControllerElsterFormsQueryOptions = <TData = Awaited<ReturnType<typeof businessControllerElsterForms>>, TError = BusinessErrorDto | void>(jahr: number,
+    params?: BusinessControllerElsterFormsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof businessControllerElsterForms>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getBusinessControllerElsterFormsQueryKey(jahr,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof businessControllerElsterForms>>> = ({ signal }) => businessControllerElsterForms(jahr,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: jahr !== null && jahr !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof businessControllerElsterForms>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type BusinessControllerElsterFormsQueryResult = NonNullable<Awaited<ReturnType<typeof businessControllerElsterForms>>>
+export type BusinessControllerElsterFormsQueryError = BusinessErrorDto | void
+
+
+export function useBusinessControllerElsterForms<TData = Awaited<ReturnType<typeof businessControllerElsterForms>>, TError = BusinessErrorDto | void>(
+ jahr: number,
+    params: undefined |  BusinessControllerElsterFormsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof businessControllerElsterForms>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof businessControllerElsterForms>>,
+          TError,
+          Awaited<ReturnType<typeof businessControllerElsterForms>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useBusinessControllerElsterForms<TData = Awaited<ReturnType<typeof businessControllerElsterForms>>, TError = BusinessErrorDto | void>(
+ jahr: number,
+    params?: BusinessControllerElsterFormsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof businessControllerElsterForms>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof businessControllerElsterForms>>,
+          TError,
+          Awaited<ReturnType<typeof businessControllerElsterForms>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useBusinessControllerElsterForms<TData = Awaited<ReturnType<typeof businessControllerElsterForms>>, TError = BusinessErrorDto | void>(
+ jahr: number,
+    params?: BusinessControllerElsterFormsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof businessControllerElsterForms>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useBusinessControllerElsterForms<TData = Awaited<ReturnType<typeof businessControllerElsterForms>>, TError = BusinessErrorDto | void>(
+ jahr: number,
+    params?: BusinessControllerElsterFormsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof businessControllerElsterForms>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getBusinessControllerElsterFormsQueryOptions(jahr,params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export type businessControllerElsterResponse200 = {
   data: ElsterHelpDto
   status: 200
@@ -2847,7 +3003,7 @@ export type businessControllerElsterResponseError = (businessControllerElsterRes
 export type businessControllerElsterResponse = (businessControllerElsterResponseSuccess | businessControllerElsterResponseError)
 
 export const getBusinessControllerElsterUrl = (jahr: number,
-    formular: 'anlage-euer' | 'anlage-s' | 'anlage-g' | 'ust-2-a' | 'gewst-1-a' | 'est-1-a' | 'anlage-sonstiges',
+    formular: string,
     params?: BusinessControllerElsterParams,) => {
   const normalizedParams = new URLSearchParams();
 
@@ -2864,7 +3020,7 @@ export const getBusinessControllerElsterUrl = (jahr: number,
 }
 
 export const businessControllerElster = async (jahr: number,
-    formular: 'anlage-euer' | 'anlage-s' | 'anlage-g' | 'ust-2-a' | 'gewst-1-a' | 'est-1-a' | 'anlage-sonstiges',
+    formular: string,
     params?: BusinessControllerElsterParams, options?: RequestInit): Promise<businessControllerElsterResponse> => {
 
   return httpClient<businessControllerElsterResponse>(getBusinessControllerElsterUrl(jahr,formular,params),
@@ -2881,7 +3037,7 @@ export const businessControllerElster = async (jahr: number,
 
 
 export const getBusinessControllerElsterQueryKey = (jahr: number,
-    formular: 'anlage-euer' | 'anlage-s' | 'anlage-g' | 'ust-2-a' | 'gewst-1-a' | 'est-1-a' | 'anlage-sonstiges',
+    formular: string,
     params?: BusinessControllerElsterParams,) => {
     return [
     `/v1/steuerjahre/${jahr}/selbststaendig/elster/${formular}`, ...(params ? [params] : [])
@@ -2890,7 +3046,7 @@ export const getBusinessControllerElsterQueryKey = (jahr: number,
 
 
 export const getBusinessControllerElsterQueryOptions = <TData = Awaited<ReturnType<typeof businessControllerElster>>, TError = BusinessErrorDto | void>(jahr: number,
-    formular: 'anlage-euer' | 'anlage-s' | 'anlage-g' | 'ust-2-a' | 'gewst-1-a' | 'est-1-a' | 'anlage-sonstiges',
+    formular: string,
     params?: BusinessControllerElsterParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof businessControllerElster>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
 ) => {
 
@@ -2915,7 +3071,7 @@ export type BusinessControllerElsterQueryError = BusinessErrorDto | void
 
 export function useBusinessControllerElster<TData = Awaited<ReturnType<typeof businessControllerElster>>, TError = BusinessErrorDto | void>(
  jahr: number,
-    formular: 'anlage-euer' | 'anlage-s' | 'anlage-g' | 'ust-2-a' | 'gewst-1-a' | 'est-1-a' | 'anlage-sonstiges',
+    formular: string,
     params: undefined |  BusinessControllerElsterParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof businessControllerElster>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof businessControllerElster>>,
@@ -2927,7 +3083,7 @@ export function useBusinessControllerElster<TData = Awaited<ReturnType<typeof bu
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useBusinessControllerElster<TData = Awaited<ReturnType<typeof businessControllerElster>>, TError = BusinessErrorDto | void>(
  jahr: number,
-    formular: 'anlage-euer' | 'anlage-s' | 'anlage-g' | 'ust-2-a' | 'gewst-1-a' | 'est-1-a' | 'anlage-sonstiges',
+    formular: string,
     params?: BusinessControllerElsterParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof businessControllerElster>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof businessControllerElster>>,
@@ -2939,14 +3095,14 @@ export function useBusinessControllerElster<TData = Awaited<ReturnType<typeof bu
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useBusinessControllerElster<TData = Awaited<ReturnType<typeof businessControllerElster>>, TError = BusinessErrorDto | void>(
  jahr: number,
-    formular: 'anlage-euer' | 'anlage-s' | 'anlage-g' | 'ust-2-a' | 'gewst-1-a' | 'est-1-a' | 'anlage-sonstiges',
+    formular: string,
     params?: BusinessControllerElsterParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof businessControllerElster>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 
 export function useBusinessControllerElster<TData = Awaited<ReturnType<typeof businessControllerElster>>, TError = BusinessErrorDto | void>(
  jahr: number,
-    formular: 'anlage-euer' | 'anlage-s' | 'anlage-g' | 'ust-2-a' | 'gewst-1-a' | 'est-1-a' | 'anlage-sonstiges',
+    formular: string,
     params?: BusinessControllerElsterParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof businessControllerElster>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {

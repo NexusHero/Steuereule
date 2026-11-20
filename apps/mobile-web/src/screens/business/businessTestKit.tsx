@@ -5,7 +5,7 @@ import { I18nextProvider } from 'react-i18next'
 import { ThemeProvider } from '@steuereule/ui'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
-import type { BookDto, BusinessProfileDto } from '@steuereule/api-client'
+import type { BookDto, BusinessProfileDto, ElsterFormEntryDto } from '@steuereule/api-client'
 import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { BusinessScreen } from './BusinessScreen'
@@ -43,6 +43,17 @@ export function useBusinessDefaults(profile: BusinessProfileDto = BASE_PROFILE, 
     http.get(`${BASE_URL}/bank`, () => HttpResponse.json([])),
     http.get(`${BASE_URL}/abschluss`, () => HttpResponse.json({ mode: 'euer', integrity: { ok: true }, euer: { totals: { einnahmen: 0, ausgaben: 0 }, profit: { profitEur: 0 } }, bilanz: null })),
   )
+}
+
+/** The fill-in help's form list as the API gives it for a business without other income. */
+export const BUSINESS_ELSTER_FORMS: ElsterFormEntryDto[] = [
+  ...(['anlage-euer', 'anlage-s', 'anlage-g', 'ust-2-a', 'gewst-1-a'] as const).map((form) => ({ form, group: 'business' as const, instance: null })),
+  ...(['est-1-a', 'anlage-sonstiges'] as const).map((form) => ({ form, group: 'income-tax' as const, instance: null })),
+]
+
+/** The ELSTER page reads its form list first; a test names the forms it is about. */
+export function useElsterForms(forms: ElsterFormEntryDto[] = BUSINESS_ELSTER_FORMS) {
+  server.use(http.get(`${BASE_URL}/elster`, () => HttpResponse.json({ year: YEAR, forms })))
 }
 
 export function renderBusiness(

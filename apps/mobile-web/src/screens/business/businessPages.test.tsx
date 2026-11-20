@@ -1,10 +1,10 @@
 // The pages of the self-employed area against the shared contract (MSW handlers, typed by the generated client).
-import { describe, it, expect, vi, afterEach } from 'vitest'
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
 import { screen, fireEvent, waitFor, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { BookDto, ElsterHelpDto, JournalEntryDto } from '@steuereule/api-client'
 import { server } from '../../test-msw-server'
-import { BASE_PROFILE, BASE_URL, EMPTY_BOOK, renderBusiness, useBusinessDefaults, YEAR } from './businessTestKit'
+import { BASE_PROFILE, BASE_URL, EMPTY_BOOK, renderBusiness, useBusinessDefaults, useElsterForms, YEAR } from './businessTestKit'
 
 const ENTRY: JournalEntryDto = {
   number: 1,
@@ -326,16 +326,18 @@ describe('Umsatzsteuer, Gewerbesteuer and Verluste', () => {
 })
 
 describe('the ELSTER fill-in help', () => {
+  beforeEach(() => useElsterForms())
   const HELP: ElsterHelpDto = {
     form: 'anlage-euer',
+    instance: null,
     year: 2025,
     status: 'published',
     note: null,
     sourceUrl: null,
     lineNumbersAvailable: true,
     lines: [
-      { id: 'euer.betriebseinnahmen', zeile: '12', kennzahlen: ['111'], label: 'Betriebseinnahmen', value: 5000 },
-      { id: 'euer.offen', zeile: '13', kennzahlen: [], label: 'Ungeklärt', value: null },
+      { id: 'euer.betriebseinnahmen', zeile: '12', kennzahlen: ['111'], label: 'Betriebseinnahmen', column: null, value: 5000 },
+      { id: 'euer.offen', zeile: '13', kennzahlen: [], label: 'Ungeklärt', column: null, value: null },
     ],
   }
   const mockForm = (form: string, help: ElsterHelpDto | { status: number }) =>
@@ -366,7 +368,7 @@ describe('the ELSTER fill-in help', () => {
 
   it('shows a form without official line numbers by meaning: „Feld in Mein ELSTER: …“', async () => {
     mockForm('anlage-euer', HELP)
-    mockForm('anlage-s', { ...HELP, form: 'anlage-s', lineNumbersAvailable: false, lines: [{ id: 'anlage-s.gewinn', zeile: null, kennzahlen: [], label: 'Gewinn', value: 42000.5 }] })
+    mockForm('anlage-s', { ...HELP, form: 'anlage-s', lineNumbersAvailable: false, lines: [{ id: 'anlage-s.gewinn', zeile: null, kennzahlen: [], label: 'Gewinn', column: null, value: 42000.5 }] })
     renderBusiness('elster')
     fireEvent.click(await screen.findByTestId('elster-formular-anlage-s'))
     const row = await screen.findByTestId('elster-zeile-anlage-s.gewinn')
@@ -392,6 +394,7 @@ describe('the ELSTER fill-in help', () => {
 })
 
 describe('the ELSTER fill-in help, by meaning and after the checkout', () => {
+  beforeEach(() => useElsterForms())
   const byMeaning = (form: string, status: 'published' | 'not_available') =>
     server.use(
       http.get(`${BASE_URL}/elster/${form}`, () =>
@@ -504,3 +507,68 @@ describe('the checkout at the self-employment tier', () => {
 })
 
 export { YEAR }
+
+describe('the ELSTER fill-in help over the whole return (ADR-0101 §16)', () => {
+  const FORMS = [
+    { form: 'anlage-euer', group: 'business' as const, instance: null },
+    { form: 'est-1-a', group: 'income-tax' as const, instance: null },
+    { form: 'anlage-n', group: 'income-tax' as const, instance: { id: 'A', kind: 'person' as const, person: 'A' as const, name: null, number: 1 } },
+    { form: 'anlage-n', group: 'income-tax' as const, instance: { id: 'B', kind: 'person' as const, person: 'B' as const, name: null, number: 2 } },
+    { form: 'anlage-v', group: 'income-tax' as const, instance: { id: 'obj-1', kind: 'property' as const, person: null, name: 'Kastanienallee 9', number: 1 } },
+    { form: 'anlage-kind', group: 'income-tax' as const, instance: { id: 'kid-1', kind: 'child' as const, person: null, name: 'Lotta', number: 1 } },
+    { form: 'anlage-kind', group: 'income-tax' as const, instance: { id: 'kid-2', kind: 'child' as const, person: null, name: null, number: 2 } },
+  ]
+  const empty = (form: string): ElsterHelpDto => ({ form, instance: null, year: YEAR, status: 'published', note: null, sourceUrl: null, lineNumbersAvailable: true, lines: [] })
+
+  it('lists only the forms with values, business first, each copy named by person, child or property', async () => {
+    useElsterForms(FORMS)
+    server.use(http.get(`${BASE_URL}/elster/anlage-euer`, () => HttpResponse.json(empty('anlage-euer'))))
+    renderBusiness('elster')
+    expect((await screen.findByTestId('elster-formular-anlage-euer')).textContent).toBe('✓Anlage EÜR')
+    expect(screen.getByTestId('elster-formular-est-1-a').textContent).toBe('ESt 1 A')
+    expect(screen.getByTestId('elster-formular-anlage-n-1').textContent).toBe('Anlage N · Ich')
+    expect(screen.getByTestId('elster-formular-anlage-n-2').textContent).toBe('Anlage N · Partner')
+    expect(screen.getByTestId('elster-formular-anlage-v-1').textContent).toBe('Anlage V · Kastanienallee 9')
+    expect(screen.getByTestId('elster-formular-anlage-kind-1').textContent).toBe('Anlage Kind · Lotta')
+    expect(screen.getByTestId('elster-formular-anlage-kind-2').textContent).toBe('Anlage Kind · Kind 2')
+    // Forms without a value are not offered at all.
+    expect(screen.queryByTestId('elster-formular-gewst-1-a')).toBeNull()
+    expect(screen.getByText('Betrieb')).toBeTruthy()
+    expect(screen.getByText('Einkommensteuererklärung')).toBeTruthy()
+  })
+
+  it('reads the chosen copy by its id and shows the column of a shared line', async () => {
+    useElsterForms(FORMS)
+    let asked: string | null = null
+    server.use(
+      http.get(`${BASE_URL}/elster/anlage-euer`, () => HttpResponse.json(empty('anlage-euer'))),
+      http.get(`${BASE_URL}/elster/anlage-kind`, ({ request }) => {
+        asked = new URL(request.url).searchParams.get('instanz')
+        return HttpResponse.json({
+          ...empty('anlage-kind'),
+          instance: FORMS[5]!.instance,
+          lines: [{ id: 'anlKind.kz42Von', zeile: '45', kennzahlen: ['42'], label: 'Das Kind war mit mir in der gemeinsamen Wohnung gemeldet im Zeitraum', column: 'vom', value: '01.01.' }],
+        })
+      }),
+    )
+    renderBusiness('elster')
+    fireEvent.click(await screen.findByTestId('elster-formular-anlage-kind-1'))
+    const row = await screen.findByTestId('elster-zeile-anlKind.kz42Von')
+    expect(asked).toBe('kid-1')
+    expect(within(row).getByText('Zeile 45 · Kz 42')).toBeTruthy()
+    expect(within(row).getByText('Spalte: vom')).toBeTruthy()
+    expect(screen.getByTestId('elster-wert-anlKind.kz42Von').textContent).toBe('01.01.')
+  })
+
+  it('says so when no form has a value yet', async () => {
+    useElsterForms([])
+    renderBusiness('elster')
+    expect(await screen.findByTestId('elster-keine-formulare')).toBeTruthy()
+  })
+
+  it('leads to the unlock when the form list answers 402', async () => {
+    server.use(http.get(`${BASE_URL}/elster`, () => HttpResponse.json({ statusCode: 402, code: 'SELF_EMPLOYMENT_NOT_UNLOCKED', message: 'x' }, { status: 402 })))
+    renderBusiness('elster')
+    expect(await screen.findByTestId('elster-freischalten')).toBeTruthy()
+  })
+})

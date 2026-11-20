@@ -3632,7 +3632,18 @@
         "ust-2-a": "USt 2 A",
         "gewst-1-a": "Trade tax return (GewSt 1 A)",
         "est-1-a": "ESt 1 A",
-        "anlage-sonstiges": "Other"
+        "anlage-sonstiges": "Other",
+        "anlage-n": "Anlage N",
+        "anlage-r": "Anlage R",
+        "anlage-kap": "Anlage KAP",
+        "anlage-n-gre": "Anlage N-Gre",
+        "anlage-v": "Anlage V",
+        "anlage-kind": "Anlage Kind",
+        "anlage-sonderausgaben": "Anlage Sonderausgaben (special expenses)",
+        "anlage-aussergewoehnliche-belastungen": "Anlage Außergewöhnliche Belastungen (extraordinary burdens)",
+        "anlage-haushaltsnahe-aufwendungen": "Anlage Haushaltsnahe Aufwendungen (household services)",
+        "anlage-av": "Anlage AV",
+        "anlage-vorsorgeaufwand": "Anlage Vorsorgeaufwand (insurance)"
       },
       "nichtFreigeschaltet": "The fill-in help for {{year}} is not unlocked yet.",
       "nichtVeroeffentlicht": "The form „{{form}}“ for {{year}} is not published yet. We do not guess lines.",
@@ -3647,7 +3658,19 @@
       "kopierenA11y": "Copy value: {{label}}",
       "weitere": "Further lines ({{count}}) – leave empty",
       "freigeschaltet": "{{year}} is unlocked.",
-      "abgebrochen": "Unlocking was cancelled. You can try again any time."
+      "abgebrochen": "Unlocking was cancelled. You can try again any time.",
+      "gruppe": {
+        "business": "Business",
+        "income-tax": "Income tax return"
+      },
+      "instanz": {
+        "titel": "{{form}} · {{name}}",
+        "kind": "Child {{number}}",
+        "objekt": "Property {{number}}",
+        "exemplar": "Copy {{number}}"
+      },
+      "spalte": "Column: {{column}}",
+      "keineFormulare": "For {{year}} the app has no values yet to enter in Mein ELSTER."
     },
     "export": {
       "nichtFreigeschaltet": "The export for {{year}} is not unlocked yet.",

@@ -27,6 +27,10 @@ Voraussetzung: poppler (`pdftotext`, `pdftocairo`), z. B. `brew install poppler`
    `felder-<jahr>.lage.txt` gegen den Bericht des Vorjahres lesen: Steht jedes Feld in der Zeile,
    neben der Beschriftung und unter der Spalte, die sein Name verspricht? Ein Betrag neben
    „Bezeichnung …“, ein EUR-Feld unter „CHF“ oder eine Kennzahl einer Nachbarzeile ist ein Fehler.
+   Derselbe Lauf schreibt `felder-<jahr>.zeilen.json` (Zeile, Kennzahl und amtliche Beschriftung je
+   Feld); daraus nennt die ELSTER-Ausfüllhilfe (ADR-0101 §16) die Zeilen. Ein Jahr kann vermessen sein,
+   ohne gedruckt zu werden: 2022 und 2023 stehen nur für die Ausfüllhilfe da, `FIELD_SETS` in
+   `form-renderer.ts` entscheidet, welche Jahre der Ausdruck druckt.
 5. **Ⓔ-Zeilen prüfen** — Zeilen mit dem ⓔ-Symbol meldet der Arbeitgeber bzw. Rentenversicherer
    elektronisch; ein Eintrag dort übersteuert die Meldung. Neue ⓔ-Kennzeichnungen gegenüber dem
    Vorjahr mit der Zuordnung in `ausdruck-werte.ts` abgleichen.

@@ -13,7 +13,7 @@ import { SubmissionGateProvider } from '../../navigation/SubmissionGateContext'
 import { SubmissionScreen } from '../submission/SubmissionScreen'
 import { CockpitScreen } from '../cockpit/CockpitScreen'
 import { usePlausibility } from '../plausibility/usePlausibility'
-import { renderBusiness, useBusinessDefaults, BASE_URL } from './businessTestKit'
+import { renderBusiness, useBusinessDefaults, useElsterForms, BASE_URL } from './businessTestKit'
 
 const YEAR = 2025
 const ANSWERS = { job: 'Selbstständig', ausland: 'Nein', kinder: 'Nein', familienstand: 'Ledig' }
@@ -93,6 +93,7 @@ describe('the way forward of a year filed through Mein ELSTER', () => {
 describe('back from the checkout', () => {
   it('says plainly that unlocking was cancelled (?zahlung=abbruch)', async () => {
     useBusinessDefaults()
+    useElsterForms()
     server.use(http.get(`${BASE_URL}/elster/anlage-euer`, () => HttpResponse.json({ form: 'anlage-euer', year: YEAR, status: 'published', note: null, sourceUrl: null, lineNumbersAvailable: true, lines: [] })))
     renderBusiness('elster', { payment: 'abbruch' })
     expect(await screen.findByTestId('elster-abgebrochen')).toBeTruthy()

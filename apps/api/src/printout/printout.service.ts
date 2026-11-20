@@ -33,6 +33,7 @@ import { PENSION_REPOSITORY, type PensionRepository } from '../pension/pension.r
 import { MASTER_DATA_REPOSITORY, type MasterDataRepository } from '../master-data/master-data.repository.js'
 import { RENTAL_REPOSITORY, type RentalRepository } from '../rental/rental.repository.js'
 import { childAllowancesEur } from '../children/swiss-allowance.js'
+import { fillInForms } from './fill-in-lines.js'
 import { liveForms, type LiveForm } from './live-values.js'
 import { printoutValues, type CommuteFacts, type ChSalaryCertificateFacts, type LifeSituationFacts, type PersonBFacts } from './printout-values.js'
 import {
@@ -129,6 +130,19 @@ export class PrintoutService {
     const { values, instances, entityIds } = await this.collectValues(userId, year)
     await this.audit.append({ userId, action: 'READ', resource: 'ausdruck-werte' })
     return { forms: liveForms(year, fieldSet, values, instances, entityIds) }
+  }
+
+  /**
+   * The copies the paper printout would print, for the ELSTER fill-in help (ADR-0101 §16): the same
+   * facts and the same `printoutValues`, for every year the app offers, printed or not. The records
+   * behind per-record copies are named so the help can tell two Anlagen Kind apart.
+   */
+  async fillInValues(userId: string, year: number): Promise<{ forms: LiveForm[]; names: Readonly<Record<string, string | null>> }> {
+    const link = await this.link.findByUserAndYear(userId, year)
+    // ADR-0054: Person A files the couple's return; Person B has no return of their own to type in.
+    if (link?.filingType === 'zusammen' && link.personAUserId !== userId) return { forms: [], names: {} }
+    const { values, instances, entityIds, names } = await this.collectValues(userId, year)
+    return { forms: fillInForms(year, values, instances, entityIds), names }
   }
 
   /** The Vordruck a field id belongs to in a tax year, or null when that year has no such field. */
@@ -344,7 +358,11 @@ export class PrintoutService {
     })
     // Same order as the instances printout-values.ts builds for these forms.
     const entityIds = { 'anlage-kind': kinder.map((k) => k.id), 'anlage-v': properties.map((p) => p.id) }
-    return { ...printed, entityIds }
+    const names: Record<string, string | null> = Object.fromEntries([
+      ...kinder.map((k) => [k.id, k.firstName ?? null] as const),
+      ...rentalFacts.map((r, i) => [properties[i]!.id, r.strasse ?? r.city ?? null] as const),
+    ])
+    return { ...printed, entityIds, names }
   }
 }
 

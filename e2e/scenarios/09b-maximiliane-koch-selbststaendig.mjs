@@ -281,6 +281,17 @@ export async function runScenario09b(browser, webOrigin) {
   await page.route(`${API}/elster/gewst-1-a`, (route) => route.fulfill(json(help('gewst-1-a', { year: 2026, status: 'not_published', note: 'Noch nicht veröffentlicht.' }))))
   await page.route(`${API}/elster/anlage-sonstiges`, (route) => route.fulfill(json(help('anlage-sonstiges', { status: 'not_available' }))))
   await page.route(`${API}/elster/ust-2-a`, (route) => route.fulfill(json({ statusCode: 402, code: 'SELF_EMPLOYMENT_NOT_UNLOCKED', message: 'Nicht freigeschaltet.' }, 402)))
+  // The list names only the forms with values: the business forms, then the return, each copy on its own (ADR-0101 §16).
+  const lotta = { id: 'kind-1', kind: 'child', person: null, name: 'Lotta', number: 1 }
+  const elsterForms = [
+    ...['anlage-euer', 'anlage-g', 'ust-2-a', 'gewst-1-a'].map((form) => ({ form, group: 'business', instance: null })),
+    { form: 'anlage-sonstiges', group: 'income-tax', instance: null },
+    { form: 'anlage-kind', group: 'income-tax', instance: lotta },
+  ]
+  await page.route(`${API}/elster`, (route) => route.fulfill(json({ year: YEAR, forms: elsterForms })))
+  await page.route(/\/selbststaendig\/elster\/anlage-kind(\?|$)/, (route) =>
+    route.fulfill(json(help('anlage-kind', { instance: lotta, lines: [{ id: 'anlKind.kz66', zeile: '27', kennzahlen: ['66'], label: 'Beiträge zu Krankenversicherungen des Kindes', column: null, value: '420' }] }))),
+  )
   await go('elster')
   await see('elster-seite')
   await see('elster-formular-anlage-euer')
@@ -294,6 +305,8 @@ export async function runScenario09b(browser, webOrigin) {
   await byId('elster-formular-anlage-g').click()
   await see('elster-nach-bedeutung')
   await see('elster-zeile-anlage-g.gewinn')
+  await byId('elster-formular-anlage-kind-1').click()
+  await see('elster-zeile-anlKind.kz66')
   await byId('elster-formular-gewst-1-a').click()
   await see('elster-nicht-veroeffentlicht')
   await byId('elster-formular-anlage-sonstiges').click()
@@ -307,13 +320,19 @@ export async function runScenario09b(browser, webOrigin) {
   await see('elster-freigeschaltet')
   await page.goto(`${webOrigin}/app/steuerjahr/${YEAR}/selbststaendig/elster?zahlung=abbruch`, { waitUntil: 'networkidle' })
   await see('elster-abgebrochen')
+  // A year without any value to type says so instead of offering empty forms.
+  await page.unroute(`${API}/elster`)
+  await page.route(`${API}/elster`, (route) => route.fulfill(json({ year: YEAR, forms: [] })))
+  await go('elster')
+  await see('elster-keine-formulare')
+  await page.unroute(`${API}/elster`)
   // A year with self-employment is filed through Mein ELSTER: cockpit and Abgabe say so and lead here.
   await page.goto(`${webOrigin}/app`, { waitUntil: 'networkidle' })
   await see('cockpit-elster-hinweis')
   await page.goto(`${webOrigin}/app/steuerjahr/${YEAR}/abgabe`, { waitUntil: 'networkidle' })
   await see('abgabe-elster-hinweis')
   await see('abgabe-zur-ausfuellhilfe')
-  console.log('[09b] PASS: ELSTER help — lines, by meaning, not published, not available, not paid')
+  console.log('[09b] PASS: ELSTER help — form list with copies, lines, by meaning, not published, not available, not paid, nothing to type')
 
   // --- Export: GoBD zip, Verfahrensdokumentation, E-Bilanz (not sent) ---------------------------------------------------------
   await go('export')

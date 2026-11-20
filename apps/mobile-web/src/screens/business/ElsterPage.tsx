@@ -1,9 +1,10 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { Pressable, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import { Button, Chip, useTheme } from '@steuereule/ui'
 import { formatNumber } from '@steuereule/core'
-import { useBusinessControllerElster, type ElsterLineDto } from '@steuereule/api-client'
+import { useBusinessControllerElster, useBusinessControllerElsterForms, type ElsterFormEntryDto, type ElsterLineDto } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { copyText } from '../../lib/clipboard'
 import { BusinessFrame, BusinessQueryState, Note, Section } from './BusinessFrame'
@@ -11,8 +12,33 @@ import { personParams } from './businessKit'
 import { queryProblem } from './useBusiness'
 import type { BusinessPageProps } from './BusinessScreen'
 
-const FORMS = ['anlage-euer', 'anlage-s', 'anlage-g', 'ust-2-a', 'gewst-1-a', 'est-1-a', 'anlage-sonstiges'] as const
-type Form = (typeof FORMS)[number]
+
+/** A chip's stable id: the form, and the copy's number where the form has several (two Anlagen Kind). */
+export function entryKey(entry: ElsterFormEntryDto): string {
+  return entry.instance ? `${entry.form}-${entry.instance.number}` : entry.form
+}
+
+/**
+ * The name of one copy: „Anlage Kind · Lotta“, „Anlage V · Kastanienallee 9“, „Anlage N · Partner“. A
+ * person's form is named by the person only where the other person has one too.
+ */
+export function entryLabel(entry: ElsterFormEntryDto, all: readonly ElsterFormEntryDto[], tr: TFunction<typeof APP_NS>): string {
+  const form = tr(`business.elster.formular.${entry.form}`)
+  const instance = entry.instance
+  if (!instance) return form
+  const twin = all.filter((e) => e.form === entry.form).length > 1
+  const name =
+    instance.kind === 'child'
+      ? (instance.name ?? tr('business.elster.instanz.kind', { number: instance.number }))
+      : instance.kind === 'property'
+        ? (instance.name ?? tr('business.elster.instanz.objekt', { number: instance.number }))
+        : instance.kind === 'person'
+          ? twin && instance.person
+            ? tr(`business.person.${instance.person}`)
+            : null
+          : tr('business.elster.instanz.exemplar', { number: instance.number })
+  return name === null ? form : tr('business.elster.instanz.titel', { form, name })
+}
 
 /** What to type: a number as German decimals (the copy is the same text), text as it is, nothing as „nicht ermittelt“. */
 export function valueText(value: ElsterLineDto['value']): string | null {
@@ -26,40 +52,53 @@ export function ElsterPage({ taxYear, person, onBack, onOpenPage, payment }: Bus
   const paid = payment === 'erfolg'
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
-  const [form, setForm] = useState<Form>('anlage-euer')
+  const [chosen, setChosen] = useState<string | null>(null)
   const [copied, setCopied] = useState<string | null>(null)
-  const query = useBusinessControllerElster(taxYear, form, personParams(person))
+  const list = useBusinessControllerElsterForms(taxYear, personParams(person))
+  const entries = list.data?.status === 200 ? list.data.data.forms : []
+  const entry = entries.find((e) => entryKey(e) === chosen) ?? entries[0]
+  const form = entry?.form ?? 'anlage-euer'
+  const query = useBusinessControllerElster(taxYear, form, { ...personParams(person), ...(entry?.instance ? { instanz: entry.instance.id } : {}) }, { query: { enabled: entry !== undefined } })
   const [showRest, setShowRest] = useState(false)
-  const refetch = query.refetch
+  const refetchList = list.refetch
   // Back from the checkout (`?zahlung=erfolg`): the year is paid, the help is read again.
   useEffect(() => {
-    if (paid) void refetch()
-  }, [paid, refetch])
-  const formName = tr(`business.elster.formular.${form}`)
+    if (paid) void refetchList()
+  }, [paid, refetchList])
+  const formName = entry ? entryLabel(entry, entries, tr) : ''
   // The API's own notes may name the form by its id; the user reads its name.
-  const noteOf = (note: string | null) => (note === null ? null : note.replaceAll(form, formName))
+  const noteOf = (note: string | null) => (note === null ? null : note.replaceAll(form, tr(`business.elster.formular.${form}`)))
 
-  const forms = (
-    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.s2, marginBottom: t.space.s4 }} accessibilityRole="tablist">
-      {FORMS.map((f) => (
-        <Chip key={f} active={form === f} onPress={() => setForm(f)} testID={`elster-formular-${f}`}>
-          {tr(`business.elster.formular.${f}`)}
-        </Chip>
-      ))}
-    </View>
-  )
+  const chips = (group: ElsterFormEntryDto['group']) => {
+    const inGroup = entries.filter((e) => e.group === group)
+    if (inGroup.length === 0) return null
+    return (
+      <View style={{ marginBottom: t.space.s3 }}>
+        <Text style={{ ...t.type.small, color: t.color.tinte2, marginBottom: t.space.s1 }}>{tr(`business.elster.gruppe.${group}`)}</Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.s2 }} accessibilityRole="tablist">
+          {inGroup.map((e) => (
+            <Chip key={entryKey(e)} active={entry !== undefined && entryKey(entry) === entryKey(e)} onPress={() => setChosen(entryKey(e))} testID={`elster-formular-${entryKey(e)}`}>
+              {entryLabel(e, entries, tr)}
+            </Chip>
+          ))}
+        </View>
+      </View>
+    )
+  }
   const frame = (children: ReactNode) => (
     <BusinessFrame title={tr('business.seite.elster')} onBack={onBack} testID="elster-seite">
-      {forms}
+      <View style={{ marginBottom: t.space.s2 }}>
+        {chips('business')}
+        {chips('income-tax')}
+      </View>
       {payment === 'abbruch' ? <Note testID="elster-abgebrochen">{tr('business.elster.abgebrochen')}</Note> : null}
       {paid ? <Note testID="elster-freigeschaltet">{tr('business.elster.freigeschaltet', { year: taxYear })}</Note> : null}
       {children}
     </BusinessFrame>
   )
 
-  if (query.isPending) return frame(<BusinessQueryState pending problem={null} onRetry={() => undefined} />)
   // The fill-in help is part of the self-employment tier: 402 says so and leads to the checkout.
-  if (query.data?.status === 402) {
+  if (list.data?.status === 402 || query.data?.status === 402) {
     return frame(
       <Section testID="elster-nicht-freigeschaltet">
         <Text style={{ ...t.type.body, color: t.color.tinte }}>{tr('business.elster.nichtFreigeschaltet', { year: taxYear })}</Text>
@@ -69,6 +108,17 @@ export function ElsterPage({ taxYear, person, onBack, onOpenPage, payment }: Bus
       </Section>,
     )
   }
+  if (list.isPending) return frame(<BusinessQueryState pending problem={null} onRetry={() => undefined} />)
+  const listProblem = queryProblem(list)
+  if (listProblem !== null) return frame(<BusinessQueryState pending={false} problem={listProblem} onRetry={() => void list.refetch()} />)
+  if (entry === undefined) {
+    return frame(
+      <Section testID="elster-keine-formulare">
+        <Text style={{ ...t.type.body, color: t.color.tinte }}>{tr('business.elster.keineFormulare', { year: taxYear })}</Text>
+      </Section>,
+    )
+  }
+  if (query.isPending) return frame(<BusinessQueryState pending problem={null} onRetry={() => undefined} />)
   const problem = queryProblem(query)
   if (problem !== null || query.data?.status !== 200) return frame(<BusinessQueryState pending={false} problem={problem ?? { status: 0, code: null, message: null }} onRetry={() => void query.refetch()} />)
 
@@ -103,6 +153,7 @@ export function ElsterPage({ taxYear, person, onBack, onOpenPage, payment }: Bus
       <View key={line.id} style={{ paddingVertical: t.space.s2, borderBottomWidth: 1, borderBottomColor: t.color.linieWeich }} testID={`elster-zeile-${line.id}`}>
         <Text style={{ ...t.type.small, color: t.color.tinte2 }}>{place}</Text>
         {help.lineNumbersAvailable ? <Text style={{ ...t.type.body, color: t.color.tinte }}>{line.label}</Text> : null}
+        {line.column ? <Text style={{ ...t.type.small, color: t.color.tinte2 }}>{tr('business.elster.spalte', { column: line.column })}</Text> : null}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: t.space.s3 }}>
           <Text style={{ ...t.type.figureStrong, color: text === null ? t.color.tinte2 : t.color.tinte, fontVariant: ['tabular-nums'] }} testID={`elster-wert-${line.id}`}>
             {text ?? tr('business.elster.nichtErmittelt')}

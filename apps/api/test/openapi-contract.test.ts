@@ -453,6 +453,7 @@ describe('OpenAPI contract for /v1/steuerjahre/{jahr}/selbststaendig (ADR-0101)'
     ['get', '/gewerbesteuer'],
     ['get', '/gewerbesteuer/hebesatz'],
     ['get', '/verluste'],
+    ['get', '/elster'],
     ['get', '/elster/{formular}'],
     ['get', '/export/gobd'],
     ['get', '/verfahrensdokumentation'],
@@ -494,11 +495,13 @@ describe('OpenAPI contract: typed results and declared errors of the selbststaen
     ['/verluste', 'LossesDto'],
     ['/anlagen', 'AssetsResponseDto'],
     ['/kataloge', 'BusinessCataloguesDto'],
+    ['/elster', 'ElsterFormListDto'],
   ])('%s answers %s, not a free object', (path, dto) => {
     expect(ok(path)).toBe(`#/components/schemas/${dto}`)
   })
 
   it.each([
+    ['/elster', 'get', ['400', '402', '403', '404', '409']],
     ['/elster/{formular}', 'get', ['400', '402', '403', '404', '409']],
     ['/export/gobd', 'get', ['400', '402', '403', '409']],
     ['/buchungen', 'post', ['400', '403', '409']],

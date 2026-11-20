@@ -12,6 +12,7 @@ import { ParseTaxYearPipe } from '../cockpit/parse-tax-year.pipe.js'
 import { UnlockService } from '../unlock/unlock.service.js'
 import type { BusinessPerson } from './business.repository.js'
 import { BusinessService, type LossFacts, type PartnershipShare, type TradeTaxInputs } from './business.service.js'
+import { ElsterHelpService } from './elster-help.service.js'
 import {
   AcceptBankTransactionDto,
   AssetDisposalDto,
@@ -24,6 +25,7 @@ import {
   BusinessProfileDto,
   BusinessProfileInputDto,
   EBilanzDto,
+  ElsterFormListDto,
   ElsterHelpDto,
   FixedAssetInputDto,
   HebesatzLookupDto,
@@ -80,6 +82,7 @@ export class BusinessController {
   constructor(
     @Inject(BusinessService) private readonly service: BusinessService,
     @Inject(UnlockService) private readonly unlock: UnlockService,
+    @Inject(ElsterHelpService) private readonly elsterHelp: ElsterHelpService,
   ) {}
 
   @Get(':jahr/selbststaendig/kataloge')
@@ -298,13 +301,28 @@ export class BusinessController {
     return this.service.losses(userId, year, personOf(person)) as unknown as Promise<LossesDto>
   }
 
+  @Get(':jahr/selbststaendig/elster')
+  @RequiresAccount()
+  @ApiOkResponse({ type: ElsterFormListDto, description: 'The forms of the whole return that carry a value for this household and year, each copy (person, child, property) on its own.' })
+  @Errors(402, 404, 409)
+  elsterForms(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number, @Query('person') person?: string): Promise<ElsterFormListDto> {
+    return this.elsterHelp.forms(userId, year, personOf(person)) as unknown as Promise<ElsterFormListDto>
+  }
+
   @Get(':jahr/selbststaendig/elster/:formular')
   @RequiresAccount()
-  @ApiParam({ name: 'formular', enum: ['anlage-euer', 'anlage-s', 'anlage-g', 'ust-2-a', 'gewst-1-a', 'est-1-a', 'anlage-sonstiges'] })
+  @ApiParam({ name: 'formular', type: String, description: 'A business form (anlage-euer, anlage-s, anlage-g, ust-2-a, gewst-1-a, anlage-sonstiges) or a Vordruck of the return (est-1-a, anlage-n, anlage-kind, anlage-v …).' })
+  @ApiQuery({ name: 'instanz', required: false, type: String, description: 'Which copy, as the listing names it (`instance.id`); the first copy by default.' })
   @ApiOkResponse({ type: ElsterHelpDto, description: 'Per line: Zeile, Kennzahl, label and the value to type into Mein ELSTER; unpublished years say so.' })
   @Errors(402, 404, 409)
-  elster(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number, @Param('formular') form: string, @Query('person') person?: string): Promise<ElsterHelpDto> {
-    return this.service.elsterHelp(userId, year, personOf(person), form) as unknown as Promise<ElsterHelpDto>
+  elster(
+    @CurrentUser() userId: string,
+    @Param('jahr', ParseTaxYearPipe) year: number,
+    @Param('formular') form: string,
+    @Query('person') person?: string,
+    @Query('instanz') instance?: string,
+  ): Promise<ElsterHelpDto> {
+    return this.elsterHelp.help(userId, year, personOf(person), form, instance === '' ? undefined : instance) as unknown as Promise<ElsterHelpDto>
   }
 
   @Get(':jahr/selbststaendig/export/gobd')

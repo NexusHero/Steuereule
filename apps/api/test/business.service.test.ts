@@ -252,7 +252,7 @@ describe('BusinessService (ADR-0101)', () => {
     expect(s.note).toBeNull()
     expect(s.lineNumbersAvailable).toBe(false)
     // By meaning, with a stable id and the German field name, even without official line numbers.
-    expect(s.lines).toEqual([{ id: 'anlage-s.gewinn', zeile: null, kennzahlen: [], label: 'Gewinn aus freiberuflicher Tätigkeit', value: -1200 }])
+    expect(s.lines).toEqual([{ id: 'anlage-s.gewinn', zeile: null, kennzahlen: [], label: 'Gewinn aus freiberuflicher Tätigkeit', column: null, value: -1200 }])
 
     const locked = setup('Selbstständig', false)
     await expect(locked.service.elsterHelp('u', YEAR, 'A', 'anlage-euer')).rejects.toMatchObject({ status: 402 })
