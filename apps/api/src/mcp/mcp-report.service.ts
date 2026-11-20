@@ -7,7 +7,7 @@ import { HOUSEHOLD_AND_HEALTH_BOOSTERS } from '../config/features.js'
 import { ConfirmationService } from '../confirmation/confirmation.service.js'
 import { InterviewService } from '../interview/interview.service.js'
 import { PrintoutService } from '../printout/printout.service.js'
-import { passThroughTransactionRunner, TRANSACTION_RUNNER, type TransactionRunner } from '../prisma/transaction.js'
+import { isInsideTransaction, passThroughTransactionRunner, TRANSACTION_RUNNER, type TransactionRunner } from '../prisma/transaction.js'
 import { TaxEstimateService } from '../tax-estimate/tax-estimate.service.js'
 
 /** Thrown on purpose at the end of a simulation: the transaction must never commit. */
@@ -95,7 +95,8 @@ export class McpReportService {
    */
   async simulate(userId: string, taxYear: number, screen: Parameters<typeof provenanceKey>[0], field: string, value: string, instance?: string): Promise<SimulationResult> {
     // Without a real transaction the entry would stay written and confirmed: never simulate then.
-    if (!this.transactions || this.transactions === passThroughTransactionRunner) return { ok: false, reason: 'Die Simulation steht in dieser Umgebung nicht zur Verfügung.' }
+    // Inside a running transaction `run` joins it, and the rollback would not reach its commit: refuse too.
+    if (!this.transactions || this.transactions === passThroughTransactionRunner || isInsideTransaction()) return { ok: false, reason: 'Die Simulation steht in dieser Umgebung nicht zur Verfügung.' }
     // § 35a and § 33 are left out of the estimate while their boosters are off: 0 € would read as "brings nothing".
     const leftOut = effectLeftOutOfEstimate({ screen, instance: instance ?? null, values: [[field, value]] }, HOUSEHOLD_AND_HEALTH_BOOSTERS)
     if (leftOut && leftOut.kind === 'not-computable') return { ok: false, reason: leftOut.hint }
