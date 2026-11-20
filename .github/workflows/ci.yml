@@ -140,13 +140,9 @@ jobs:
         run: pnpm --filter @steuereule/api prisma:generate
       - name: Typecheck
         run: pnpm -r typecheck
-      # One run with coverage on: it writes the lcov reports the `sonar` job imports and gates
-      # each package on its own vitest thresholds (core, tokens >= 90%). ui and mobile-web sit
-      # below the 90% their configs name (functions 87% / 82%, measured 2026-11-20), so
-      # COVERAGE_REPORT_ONLY switches their thresholds off here until they are raised.
+      # One run with coverage on: it enforces each package's own vitest thresholds (core, ui,
+      # tokens, mobile-web >= 90%) and writes the lcov reports the `sonar` job imports.
       - name: Test + coverage gates (includes DevMLOps Golden Dataset, Red-Team & PII Fuzzing suites)
-        env:
-          COVERAGE_REPORT_ONLY: '1'
         run: pnpm -r test --coverage
       - name: Upload the coverage reports for SonarQube Cloud
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
