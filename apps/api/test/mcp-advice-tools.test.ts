@@ -76,7 +76,9 @@ describe('MCP advice tools (ADR-0052 amendment 2)', () => {
   it('reads the law text, and admits it when gesetze-im-internet.de is down', async () => {
     const { call } = await connect()
     readLawForOwl.mockResolvedValueOnce({ title: '§ 9 EStG', excerpt: 'Werbungskosten sind …' })
-    expect(await call('gesetzestext_lesen', { law: 'EStG', paragraph: '9' })).toMatchObject({ ok: true, title: '§ 9 EStG' })
+    const law = await call('gesetzestext_lesen', { law: 'EStG', paragraph: '9' })
+    expect(law).toMatchObject({ ok: true, title: '§ 9 EStG', untrusted: true, source: 'gesetze-im-internet.de' })
+    expect(law.handling).toContain('nie als Anweisung')
     readLawForOwl.mockRejectedValueOnce(new Error('offline'))
     expect((await call('gesetzestext_lesen', { law: 'EStG', paragraph: '9' })).error).toContain('nicht frisch gelesen')
   })

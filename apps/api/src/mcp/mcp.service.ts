@@ -347,7 +347,7 @@ export class McpService {
 
     server.tool(
       'auswirkung_simulieren',
-      'Zeigt vorab, was ein Eintrag an der Erstattung ändert (Schätzung der App vorher und nachher), ohne etwas zu speichern. Nutze es, um dem Nutzer die Folge einer Angabe zu erklären, bevor du sie mit maske_eintragen einträgst.',
+      'Zeigt vorab, was ein Eintrag an der Erstattung ändert (Schätzung der App vorher und nachher), ohne etwas zu speichern (braucht die Schreibberechtigung). Nutze es, um dem Nutzer die Folge einer Angabe zu erklären, bevor du sie mit maske_eintragen einträgst.',
       {
         taxYear: z.number().int().describe('Das Steuerjahr (z.B. 2024 oder 2025)'),
         screen: z.enum(SCREENS).describe('Die Erfassungsmaske'),
@@ -356,7 +356,8 @@ export class McpService {
         value: z.string().describe('Der Wert, dessen Wirkung simuliert wird'),
       },
       async ({ taxYear, screen, instance, field, value }) => {
-        assertScope(assistant, 'steuerdaten:read')
+        // The simulation writes on trial and rolls back: only an assistant that may enter values gets it.
+        assertScope(assistant, 'steuerdaten:write')
         await this.auditService.append({ userId, action: 'READ', resource: 'auswirkung_simulieren' })
         const target = validateStageTarget(screen, field, true)
         if (!target.ok) return json({ ok: false, error: target.error })

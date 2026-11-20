@@ -183,7 +183,9 @@ Werkzeuge**, keine Agent-zu-Agent-Frage an unser LLM.
 - **Rückmeldung:** `steuerbericht` (Schätzung, Ausdruck-Lücken, unbestätigte Anlagen, offene Fragen,
   nächste Schritte), `offene_fragen` (nächste Interview-Frage mit möglichen Antworten, nur der Nutzer
   kennt sie) und `auswirkung_simulieren` (Erstattung vorher/nachher über den echten Schreibweg in einer
-  immer zurückgerollten Transaktion).
+  immer zurückgerollten Transaktion; Scope `steuerdaten:write`, nie innerhalb einer laufenden Transaktion).
+- **Fremdtext gekennzeichnet:** `gesetzestext_lesen` liefert den abgerufenen Wortlaut mit `untrusted: true`
+  und dem Hinweis, ihn nur als Quelle zu zitieren.
 - **Eintragen mit derselben Zielprüfung wie der interne Berater:** `maske_eintragen` lehnt unbekannte
   Felder, nie beschreibbare Felder, die Buchungsmaske und Werte, die das Feld nicht halten kann, mit
   dem Grund ab. Personenbezogene Felder bleiben für den eigenen Assistenten offen (§8).
