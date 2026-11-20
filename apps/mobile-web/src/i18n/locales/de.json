@@ -3731,7 +3731,13 @@
         "belegablage": "Wie Belege abgelegt werden",
         "verantwortlich": "Verantwortlich für die Buchführung",
         "stand": "Stand der Dokumentation"
-      }
+      },
+      "ebilanzPruefen": "Mit ERiC prüfen",
+      "ebilanzSenden": "An ELSTER übermitteln",
+      "ebilanzGesendet": "An ELSTER übermittelt (Transferticket {{ticket}}).",
+      "ebilanzPlausibel": "ERiC hat den Datensatz geprüft: keine Fehler.",
+      "ebilanzAbgelehnt": "ELSTER hat den Datensatz abgelehnt:",
+      "ebilanzNichtEingerichtet": "Die Übermittlung ist auf diesem Server nicht eingerichtet."
     },
     "freischalten": {
       "text": "Buchhaltung, Umsatz- und Gewerbesteuer, Ausfüllhilfe und Exporte für {{year}} sind in der Stufe für Selbstständige enthalten.",

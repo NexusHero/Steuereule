@@ -21,6 +21,7 @@ import type {
   ClosingDto,
   CompanyCarResultDto,
   EBilanzDto,
+  EBilanzTransmissionDto,
   ElsterFormListDto,
   ElsterHelpDto,
   FixedAssetDto,
@@ -118,7 +119,9 @@ export const getBusinessControllerProcedureDocResponseMock = (overrideResponse: 
 
 export const getBusinessControllerSaveProcedureDocResponseMock = (overrideResponse: Partial<Extract<ProcedureDocDto, object>> = {}): ProcedureDocDto => ({values: {}, text: faker.string.alpha({length: {min: 10, max: 20}}), missing: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), ...overrideResponse})
 
-export const getBusinessControllerEBilanzResponseMock = (overrideResponse: Partial<Extract<EBilanzDto, object>> = {}): EBilanzDto => ({xbrl: faker.string.alpha({length: {min: 10, max: 20}}), transmitted: faker.helpers.arrayElement([false] as const), note: faker.string.alpha({length: {min: 10, max: 20}}), ...overrideResponse})
+export const getBusinessControllerEBilanzResponseMock = (overrideResponse: Partial<Extract<EBilanzDto, object>> = {}): EBilanzDto => ({xbrl: faker.string.alpha({length: {min: 10, max: 20}}), transmitted: faker.helpers.arrayElement([false] as const), transmissionReady: faker.datatype.boolean(), note: faker.string.alpha({length: {min: 10, max: 20}}), ...overrideResponse})
+
+export const getBusinessControllerTransmitEBilanzResponseMock = (overrideResponse: Partial<Extract<EBilanzTransmissionDto, object>> = {}): EBilanzTransmissionDto => ({status: faker.helpers.arrayElement(['ok','abgelehnt','nicht_eingerichtet'] as const), mode: faker.helpers.arrayElement(['validieren','senden'] as const), ticket: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), protocol: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), messages: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), missing: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), ...overrideResponse})
 
 export const getBusinessControllerEBilanzFileResponseMock = (): string => (faker.word.sample())
 

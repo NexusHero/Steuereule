@@ -92,6 +92,7 @@ import {
 import { AuditService } from '../audit/audit.service.js'
 import { ConflictError, ForbiddenError, InvalidInputError, NotFoundError } from '../common/domain-error.js'
 import { selfEmploymentEnabled, declaresSelfEmployment } from '../config/self-employment.js'
+import { elsterTransmissionConfig, missingForTransmission, transmitEBilanz, type TransmissionMode, type TransmissionResult } from './elster-transmission.js'
 import { INTERVIEW_ANSWER_REPOSITORY, type InterviewAnswerRepository } from '../interview/interview-answer.repository.js'
 import { answersFrom } from '../interview/answers.js'
 import { UnlockService } from '../unlock/unlock.service.js'
@@ -1519,7 +1520,7 @@ export class BusinessService {
   }
 
   /** The E-Bilanz as XBRL, not transmitted (ADR-0101 §17); `download` is gated by the tier. */
-  async eBilanz(userId: string, year: number, ref: BusinessRef, download: boolean): Promise<{ xbrl: string; transmitted: false; note: string }> {
+  async eBilanz(userId: string, year: number, ref: BusinessRef, download: boolean): Promise<{ xbrl: string; transmitted: false; transmissionReady: boolean; note: string }> {
     await this.assertOpen(userId, year)
     if (download) await this.assertUnlocked(userId, year)
     const { book, ledger, profile } = await this.loaded(userId, year, ref)
@@ -1542,7 +1543,27 @@ export class BusinessService {
       }),
     )
     await this.audit.append({ userId, action: 'READ', resource: download ? 'selbststaendig-export' : 'selbststaendig' })
-    return { xbrl, transmitted: false, note: 'Die E-Bilanz wird noch nicht übermittelt; das kommt mit der ELSTER-Übermittlung. Bis dahin ist dies eine Vorschau des Datensatzes.' }
+    const ready = missingForTransmission(elsterTransmissionConfig()).length === 0
+    return {
+      xbrl,
+      transmitted: false,
+      transmissionReady: ready,
+      note: ready
+        ? 'Der Datensatz kann geprüft und an ELSTER übermittelt werden.'
+        : 'Die Übermittlung an ELSTER ist auf diesem Server noch nicht eingerichtet (ERiC und Zertifikat des Betreibers fehlen). Bis dahin ist dies eine Vorschau des Datensatzes; die Elementnamen folgen der amtlichen Taxonomie, geprüft hat ihn ERiC noch nicht.',
+    }
+  }
+
+  /**
+   * Validates or sends the E-Bilanz through the operator's ERiC sidecar (ADR-0101 §17, §22). The paid
+   * tier is needed for both; sending writes an export record into the book's log.
+   */
+  async transmitEBilanz(userId: string, year: number, ref: BusinessRef, mode: TransmissionMode): Promise<TransmissionResult> {
+    await this.assertUnlocked(userId, year)
+    const { xbrl } = await this.eBilanz(userId, year, ref, true)
+    const result = await transmitEBilanz(xbrl, mode)
+    await this.audit.append({ userId, action: mode === 'senden' ? 'WRITE' : 'READ', resource: 'selbststaendig-elster' })
+    return result
   }
 }
 

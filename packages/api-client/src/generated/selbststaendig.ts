@@ -72,6 +72,7 @@ import type {
   BusinessControllerSaveProfileParams,
   BusinessControllerSpecialTariffsParams,
   BusinessControllerTradeTaxParams,
+  BusinessControllerTransmitEBilanzParams,
   BusinessControllerVatParams,
   BusinessControllerVatPrepaymentsParams,
   BusinessErrorDto,
@@ -82,6 +83,8 @@ import type {
   CompanyCarInputDto,
   CompanyCarResultDto,
   EBilanzDto,
+  EBilanzTransmissionDto,
+  EBilanzTransmitDto,
   ElsterFormListDto,
   ElsterHelpDto,
   FixedAssetDto,
@@ -4757,6 +4760,120 @@ export function useBusinessControllerEBilanz<TData = Awaited<ReturnType<typeof b
 
 
 
+
+export type businessControllerTransmitEBilanzResponse200 = {
+  data: EBilanzTransmissionDto
+  status: 200
+}
+
+export type businessControllerTransmitEBilanzResponse400 = {
+  data: BusinessErrorDto
+  status: 400
+}
+
+export type businessControllerTransmitEBilanzResponse401 = {
+  data: void
+  status: 401
+}
+
+export type businessControllerTransmitEBilanzResponse402 = {
+  data: BusinessErrorDto
+  status: 402
+}
+
+export type businessControllerTransmitEBilanzResponse403 = {
+  data: BusinessErrorDto
+  status: 403
+}
+
+export type businessControllerTransmitEBilanzResponse409 = {
+  data: BusinessErrorDto
+  status: 409
+}
+
+export type businessControllerTransmitEBilanzResponseSuccess = (businessControllerTransmitEBilanzResponse200) & {
+  headers: Headers;
+};
+export type businessControllerTransmitEBilanzResponseError = (businessControllerTransmitEBilanzResponse400 | businessControllerTransmitEBilanzResponse401 | businessControllerTransmitEBilanzResponse402 | businessControllerTransmitEBilanzResponse403 | businessControllerTransmitEBilanzResponse409) & {
+  headers: Headers;
+};
+
+export type businessControllerTransmitEBilanzResponse = (businessControllerTransmitEBilanzResponseSuccess | businessControllerTransmitEBilanzResponseError)
+
+export const getBusinessControllerTransmitEBilanzUrl = (jahr: number,
+    params?: BusinessControllerTransmitEBilanzParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/v1/steuerjahre/${jahr}/selbststaendig/e-bilanz/uebermittlung?${stringifiedParams}` : `/v1/steuerjahre/${jahr}/selbststaendig/e-bilanz/uebermittlung`
+}
+
+export const businessControllerTransmitEBilanz = async (jahr: number,
+    eBilanzTransmitDto: EBilanzTransmitDto,
+    params?: BusinessControllerTransmitEBilanzParams, options?: RequestInit): Promise<businessControllerTransmitEBilanzResponse> => {
+
+  return httpClient<businessControllerTransmitEBilanzResponse>(getBusinessControllerTransmitEBilanzUrl(jahr,params),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(eBilanzTransmitDto)
+  }
+);}
+
+
+
+
+
+export const getBusinessControllerTransmitEBilanzMutationOptions = <TError = BusinessErrorDto | void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof businessControllerTransmitEBilanz>>, TError,{jahr: number;data: EBilanzTransmitDto;params?: BusinessControllerTransmitEBilanzParams}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof businessControllerTransmitEBilanz>>, TError,{jahr: number;data: EBilanzTransmitDto;params?: BusinessControllerTransmitEBilanzParams}, TContext> => {
+
+const mutationKey = ['businessControllerTransmitEBilanz'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof businessControllerTransmitEBilanz>>, {jahr: number;data: EBilanzTransmitDto;params?: BusinessControllerTransmitEBilanzParams}> = (props) => {
+          const {jahr,data,params} = props ?? {};
+
+          return  businessControllerTransmitEBilanz(jahr,data,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type BusinessControllerTransmitEBilanzMutationResult = NonNullable<Awaited<ReturnType<typeof businessControllerTransmitEBilanz>>>
+    export type BusinessControllerTransmitEBilanzMutationBody = EBilanzTransmitDto
+    export type BusinessControllerTransmitEBilanzMutationError = BusinessErrorDto | void
+
+    export const useBusinessControllerTransmitEBilanz = <TError = BusinessErrorDto | void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof businessControllerTransmitEBilanz>>, TError,{jahr: number;data: EBilanzTransmitDto;params?: BusinessControllerTransmitEBilanzParams}, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof businessControllerTransmitEBilanz>>,
+        TError,
+        {jahr: number;data: EBilanzTransmitDto;params?: BusinessControllerTransmitEBilanzParams},
+        TContext
+      > => {
+      return useMutation(getBusinessControllerTransmitEBilanzMutationOptions(options), queryClient);
+    }
 
 export type businessControllerEBilanzFileResponse200 = {
   data: string

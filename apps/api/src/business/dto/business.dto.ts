@@ -528,7 +528,23 @@ export class ElsterHelpDto {
 export class EBilanzDto {
   @ApiProperty({ type: String }) xbrl!: string
   @ApiProperty({ type: Boolean, enum: [false] }) transmitted!: false
+  @ApiProperty({ type: Boolean, description: 'The operator set up the ERiC sidecar and certificate: the data set can be validated and sent.' }) transmissionReady!: boolean
   @ApiProperty({ type: String }) note!: string
+}
+
+export class EBilanzTransmitDto {
+  @ApiProperty({ enum: ['validieren', 'senden'] })
+  @IsIn(['validieren', 'senden'])
+  mode!: 'validieren' | 'senden'
+}
+
+export class EBilanzTransmissionDto {
+  @ApiProperty({ enum: ['ok', 'abgelehnt', 'nicht_eingerichtet'] }) status!: 'ok' | 'abgelehnt' | 'nicht_eingerichtet'
+  @ApiPropertyOptional({ enum: ['validieren', 'senden'] }) mode?: 'validieren' | 'senden'
+  @ApiPropertyOptional({ type: String, nullable: true, description: 'The ELSTER transfer ticket after sending.' }) ticket?: string | null
+  @ApiPropertyOptional({ type: String, nullable: true }) protocol?: string | null
+  @ApiPropertyOptional({ type: [String], description: 'ERiC’s messages on a refusal.' }) messages?: string[]
+  @ApiPropertyOptional({ type: [String], description: 'What the operator still has to set up.' }) missing?: string[]
 }
 
 export class MunicipalityDto {

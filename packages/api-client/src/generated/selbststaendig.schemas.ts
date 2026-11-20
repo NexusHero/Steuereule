@@ -1972,7 +1972,54 @@ export interface ProcedureDocInputDto {
 export interface EBilanzDto {
   xbrl: string;
   transmitted: false;
+  /** The operator set up the ERiC sidecar and certificate: the data set can be validated and sent. */
+  transmissionReady: boolean;
   note: string;
+}
+
+export type EBilanzTransmitDtoMode = typeof EBilanzTransmitDtoMode[keyof typeof EBilanzTransmitDtoMode];
+
+
+export const EBilanzTransmitDtoMode = {
+  validieren: 'validieren',
+  senden: 'senden',
+} as const;
+
+export interface EBilanzTransmitDto {
+  mode: EBilanzTransmitDtoMode;
+}
+
+export type EBilanzTransmissionDtoStatus = typeof EBilanzTransmissionDtoStatus[keyof typeof EBilanzTransmissionDtoStatus];
+
+
+export const EBilanzTransmissionDtoStatus = {
+  ok: 'ok',
+  abgelehnt: 'abgelehnt',
+  nicht_eingerichtet: 'nicht_eingerichtet',
+} as const;
+
+export type EBilanzTransmissionDtoMode = typeof EBilanzTransmissionDtoMode[keyof typeof EBilanzTransmissionDtoMode];
+
+
+export const EBilanzTransmissionDtoMode = {
+  validieren: 'validieren',
+  senden: 'senden',
+} as const;
+
+export interface EBilanzTransmissionDto {
+  status: EBilanzTransmissionDtoStatus;
+  mode?: EBilanzTransmissionDtoMode;
+  /**
+     * The ELSTER transfer ticket after sending.
+     * @nullable
+     */
+  ticket?: string | null;
+  /** @nullable */
+  protocol?: string | null;
+  /** ERiC’s messages on a refusal. */
+  messages?: string[];
+  /** What the operator still has to set up. */
+  missing?: string[];
 }
 
 export interface BusinessCheckoutResponseDto {
@@ -2684,6 +2731,25 @@ export type BusinessControllerEBilanzPerson = typeof BusinessControllerEBilanzPe
 
 
 export const BusinessControllerEBilanzPerson = {
+  A: 'A',
+  B: 'B',
+} as const;
+
+export type BusinessControllerTransmitEBilanzParams = {
+/**
+ * Which business of the person, from 1 (default); ADR-0101 §22.
+ */
+betrieb?: number;
+/**
+ * Whose business: A (default) or B of a joint return.
+ */
+person?: BusinessControllerTransmitEBilanzPerson;
+};
+
+export type BusinessControllerTransmitEBilanzPerson = typeof BusinessControllerTransmitEBilanzPerson[keyof typeof BusinessControllerTransmitEBilanzPerson];
+
+
+export const BusinessControllerTransmitEBilanzPerson = {
   A: 'A',
   B: 'B',
 } as const;

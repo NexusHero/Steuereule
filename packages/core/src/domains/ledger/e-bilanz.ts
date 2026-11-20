@@ -29,32 +29,37 @@ export const E_BILANZ_TAXONOMIES: readonly TaxonomyVersion[] = [
   { version: '6.7', date: '2023-04-01', mandatoryForYearsBeginningAfter: '2023-12-31', bmfLetter: 'BMF-Schreiben vom 9.6.2023, IV C 6 - S 2133-b/22/10002 :002' },
   { version: '6.8', date: '2024-04-01', mandatoryForYearsBeginningAfter: '2024-12-31', bmfLetter: 'BMF-Schreiben vom Juni 2024 (Veröffentlichung der Taxonomien 6.8)' },
   { version: '6.9', date: '2025-04-01', mandatoryForYearsBeginningAfter: '2025-12-31', bmfLetter: 'BMF-Schreiben vom 10.6.2025' },
+  // Published on esteuer.de as taxonomie_20260615; the BMF letter was not read (research §9).
+  { version: '6.10', date: '2026-04-01', mandatoryForYearsBeginningAfter: '2026-12-31', bmfLetter: null },
 ]
 
 /**
- * Element names for the Kontennachweis tuple and the Anlagenspiegel columns. Unverified: the taxonomy
- * package on esteuer.de was not reachable, so these names are our best reading and must be checked
- * against the 6.9 schema (and ERiC) before the first transmission. Kept in one place for that reason.
+ * Element names of the Kontennachweis tuple and the Anlagenspiegel, read off the official 6.9 package
+ * (esteuer.de, `de-gaap-ci-2025-04-01.xsd` and `…-dimensions.xsd`; unchanged in 6.10), research
+ * selbststaendige-erweiterung.md §9. The tuple is `accountBalances` with a capital B, its items
+ * `accountbalances.` with a small one. The Anlagenspiegel is dimensional: each column is a primary item,
+ * the position a member of `dim_changes.nt.ass.gross`. Validation by ERiC is still to come (§17).
  */
 export const E_BILANZ_DETAIL_ELEMENTS = {
-  accountTuple: 'de-gaap-ci:accountBalances.detail',
-  accountPosition: 'de-gaap-ci:accountBalances.detail.position',
-  accountNumber: 'de-gaap-ci:accountBalances.detail.accountNo',
-  accountLabel: 'de-gaap-ci:accountBalances.detail.accountName',
-  accountBalance: 'de-gaap-ci:accountBalances.detail.balance',
-  explanation: 'de-gaap-ci:accountBalances.explanationNotTransmitted',
-  /** Suffixes appended to the position element (`bs.ass.fixAss.tan` + `.gross.addition`). */
+  accountTuple: 'de-gaap-ci:detailedInformation.accountBalances',
+  accountPosition: 'de-gaap-ci:detailedInformation.accountbalances.positionName',
+  accountNumber: 'de-gaap-ci:detailedInformation.accountbalances.accountNumber',
+  accountLabel: 'de-gaap-ci:detailedInformation.accountbalances.accountDescription',
+  accountBalance: 'de-gaap-ci:detailedInformation.accountbalances.amount',
+  /** The explicit dimension whose member names the fixed-asset position of an Anlagenspiegel fact. */
+  assetDimension: 'de-gaap-ci:dim_changes.nt.ass.gross',
+  /** One primary item per column. */
   assetColumns: {
-    acquisitionCostOpening: '.gross.beginning',
-    additions: '.gross.addition',
-    disposalsAtCost: '.gross.disposal',
-    acquisitionCostClosing: '.gross.end',
-    depreciationOpening: '.accDepr.beginning',
-    depreciationOfYear: '.accDepr.DeprPeriod',
-    depreciationOnDisposals: '.accDepr.disposal',
-    depreciationClosing: '.accDepr.end',
-    bookValueOpening: '.net.beginning',
-    bookValueClosing: '.net.end',
+    acquisitionCostOpening: 'de-gaap-ci:grossCost.beginning',
+    additions: 'de-gaap-ci:gross.addition',
+    disposalsAtCost: 'de-gaap-ci:gross.release',
+    acquisitionCostClosing: 'de-gaap-ci:gross',
+    depreciationOpening: 'de-gaap-ci:accDepr.beginning',
+    depreciationOfYear: 'de-gaap-ci:accDepr.DeprPeriod',
+    depreciationOnDisposals: 'de-gaap-ci:accDepr.release',
+    depreciationClosing: 'de-gaap-ci:accDepr',
+    bookValueOpening: 'de-gaap-ci:all_Prev_period',
+    bookValueClosing: 'de-gaap-ci:all',
   } satisfies Record<keyof AnlagespiegelColumns, string>,
 } as const
 
@@ -113,7 +118,10 @@ export interface EBilanzInput {
   readonly taxonomy?: TaxonomyVersion
   /** From `kontennachweise` in closing.ts. */
   readonly kontennachweise?: readonly PositionedBalance[]
-  /** With 6.9 only: why the Kontennachweise go to the Finanzamt another way (BMF-Schreiben vom 10.6.2025). */
+  /**
+   * With 6.9 only: why the Kontennachweise go to the Finanzamt another way (BMF-Schreiben vom 10.6.2025).
+   * The taxonomy has no element for it; the user sends it with the return, the instance carries none.
+   */
   readonly kontennachweisExplanation?: string
   /** From `anlagespiegel` in assets.ts; a Mussfeld, also when empty. */
   readonly anlagespiegel: { readonly rows: readonly AnlagespiegelRow[] }
@@ -206,23 +214,23 @@ export function eBilanzInstance(input: EBilanzInput): string {
     const ctx = r.position.startsWith('GuV') ? D : I
     return `  <${E.accountTuple}>${el(E.accountPosition, r.element, ctx)}${el(E.accountNumber, r.account, ctx)}${el(E.accountLabel, r.label, ctx)}${amount(E.accountBalance, r.amount, ctx)}</${E.accountTuple}>`
   })
-  const explanation = input.kontennachweise === undefined && input.kontennachweisExplanation !== undefined
-    ? [`  ${el(E.explanation, input.kontennachweisExplanation, D)}`]
-    : []
-  const assetFacts = input.anlagespiegel.rows.flatMap((r) =>
-    (Object.keys(E.assetColumns) as (keyof AnlagespiegelColumns)[]).map((k) => {
-      const ctx = k.endsWith('Opening') ? P : k.endsWith('Closing') ? I : D
-      return `  ${amount(`de-gaap-ci:${r.element}${E.assetColumns[k]}`, r[k], ctx)}`
-    }))
+  // The Anlagenspiegel: one duration context per position, its member in the dimension (dimensional, 6.9).
+  const assetContexts = input.anlagespiegel.rows.map(
+    (r, index) =>
+      `  <xbrli:context id="${D}-AV${index + 1}">${entity.replace('</xbrli:entity>', `<xbrli:segment><xbrldi:explicitMember dimension="${E.assetDimension}">de-gaap-ci:${r.element}</xbrldi:explicitMember></xbrli:segment></xbrli:entity>`)}<xbrli:period><xbrli:startDate>${input.fiscalYearBegin}</xbrli:startDate><xbrli:endDate>${input.fiscalYearEnd}</xbrli:endDate></xbrli:period></xbrli:context>`,
+  )
+  const assetFacts = input.anlagespiegel.rows.flatMap((r, index) =>
+    (Object.keys(E.assetColumns) as (keyof AnlagespiegelColumns)[]).map((k) => `  ${amount(E.assetColumns[k], r[k], `${D}-AV${index + 1}`)}`))
   const guvTotal = GUV_INCOME.reduce((s, p) => s + (is.positions[p] ?? 0), 0) - GUV_EXPENSE.reduce((s, p) => s + (is.positions[p] ?? 0), 0)
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',
-    `<xbrli:xbrl xmlns:xbrli="http://www.xbrl.org/2003/instance" xmlns:link="http://www.xbrl.org/2003/linkbase" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:iso4217="http://www.xbrl.org/2003/iso4217" xmlns:de-gcd="${gcd}" xmlns:de-gaap-ci="${gaap}">`,
+    `<xbrli:xbrl xmlns:xbrli="http://www.xbrl.org/2003/instance" xmlns:link="http://www.xbrl.org/2003/linkbase" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:iso4217="http://www.xbrl.org/2003/iso4217" xmlns:xbrldi="http://xbrl.org/2006/xbrldi" xmlns:de-gcd="${gcd}" xmlns:de-gaap-ci="${gaap}">`,
     `  <link:schemaRef xlink:type="simple" xlink:href="${gcd}/de-gcd-${taxonomy.date}-shell.xsd"/>`,
     `  <link:schemaRef xlink:type="simple" xlink:href="${gaap}/de-gaap-ci-${taxonomy.date}-shell-fiscal.xsd"/>`,
     `  <xbrli:context id="${D}">${entity}<xbrli:period><xbrli:startDate>${input.fiscalYearBegin}</xbrli:startDate><xbrli:endDate>${input.fiscalYearEnd}</xbrli:endDate></xbrli:period></xbrli:context>`,
     `  <xbrli:context id="${I}">${entity}<xbrli:period><xbrli:instant>${input.fiscalYearEnd}</xbrli:instant></xbrli:period></xbrli:context>`,
     `  <xbrli:context id="${P}">${entity}<xbrli:period><xbrli:instant>${priorClosing}</xbrli:instant></xbrli:period></xbrli:context>`,
+    ...assetContexts,
     '  <xbrli:unit id="EUR"><xbrli:measure>iso4217:EUR</xbrli:measure></xbrli:unit>',
     // GCD: Stammdaten of the report and of the company
     fact('de-gcd:genInfo.report.id.reportType.reportType.JA', 'Jahresabschluss'),
@@ -250,7 +258,6 @@ export function eBilanzInstance(input: EBilanzInput): string {
     money(E_BILANZ_ELEMENTS['GuV.17'], guvTotal, D),
     ...assetFacts,
     ...accountTuples,
-    ...explanation,
     '</xbrli:xbrl>',
     '',
   ].join('\n')

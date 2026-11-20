@@ -5935,6 +5935,112 @@
         ]
       }
     },
+    "/v1/steuerjahre/{jahr}/selbststaendig/e-bilanz/uebermittlung": {
+      "post": {
+        "operationId": "BusinessController_transmitEBilanz",
+        "parameters": [
+          {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "Whose business: A (default) or B of a joint return.",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EBilanzTransmitDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Validates or sends the E-Bilanz through the operator’s ERiC sidecar; nicht_eingerichtet names what is missing.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EBilanzTransmissionDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body fails validation (`fields`) or a business rule (`code`, German `message`), e.g. BOOKING_UNBALANCED, LEDGER_PERIOD_LOCKED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "402": {
+            "description": "SELF_EMPLOYMENT_NOT_UNLOCKED: the year is not paid at the self-employment tier.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "SELF_EMPLOYMENT_DISABLED (switch off) or SELF_EMPLOYMENT_NOT_DECLARED (no self-employment in the interview).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "BOOK_INTEGRITY_BROKEN (hash chain or entry not as logged), BOOK_FRAME_FIXED, a draft or transaction already done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "selbststaendig"
+        ]
+      }
+    },
     "/v1/steuerjahre/{jahr}/selbststaendig/e-bilanz/datei": {
       "get": {
         "operationId": "BusinessController_eBilanzFile",
@@ -16756,6 +16862,10 @@
               false
             ]
           },
+          "transmissionReady": {
+            "type": "boolean",
+            "description": "The operator set up the ERiC sidecar and certificate: the data set can be validated and sent."
+          },
           "note": {
             "type": "string"
           }
@@ -16763,7 +16873,69 @@
         "required": [
           "xbrl",
           "transmitted",
+          "transmissionReady",
           "note"
+        ]
+      },
+      "EBilanzTransmitDto": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "validieren",
+              "senden"
+            ]
+          }
+        },
+        "required": [
+          "mode"
+        ]
+      },
+      "EBilanzTransmissionDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "abgelehnt",
+              "nicht_eingerichtet"
+            ]
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "validieren",
+              "senden"
+            ]
+          },
+          "ticket": {
+            "type": "string",
+            "nullable": true,
+            "description": "The ELSTER transfer ticket after sending."
+          },
+          "protocol": {
+            "type": "string",
+            "nullable": true
+          },
+          "messages": {
+            "description": "ERiC’s messages on a refusal.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "missing": {
+            "description": "What the operator still has to set up.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "status"
         ]
       },
       "BusinessCheckoutResponseDto": {

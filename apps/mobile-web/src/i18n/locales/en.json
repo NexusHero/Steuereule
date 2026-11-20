@@ -3731,7 +3731,13 @@
         "belegablage": "How receipts are filed",
         "verantwortlich": "Responsible for the bookkeeping",
         "stand": "Date of the documentation"
-      }
+      },
+      "ebilanzPruefen": "Check with ERiC",
+      "ebilanzSenden": "Send to ELSTER",
+      "ebilanzGesendet": "Sent to ELSTER (transfer ticket {{ticket}}).",
+      "ebilanzPlausibel": "ERiC checked the data set: no errors.",
+      "ebilanzAbgelehnt": "ELSTER refused the data set:",
+      "ebilanzNichtEingerichtet": "Transmission is not set up on this server."
     },
     "freischalten": {
       "text": "Bookkeeping, VAT and trade tax, fill-in help and exports for {{year}} are part of the tier for the self-employed.",

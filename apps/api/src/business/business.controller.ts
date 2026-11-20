@@ -26,6 +26,8 @@ import {
   BusinessListItemDto,
   NewBusinessDto,
   CompanyCarInputDto,
+  EBilanzTransmitDto,
+  EBilanzTransmissionDto,
   BusinessProfileInputDto,
   EBilanzDto,
   ElsterFormListDto,
@@ -455,6 +457,16 @@ export class BusinessController {
   @Errors(409)
   eBilanz(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number, @Query('person') person?: string, @Query('betrieb') business?: string): Promise<EBilanzDto> {
     return this.service.eBilanz(userId, year, refOf(person, business), false)
+  }
+
+  @Post(':jahr/selbststaendig/e-bilanz/uebermittlung')
+  @HttpCode(200)
+  @RequiresAccount()
+  @ApiBody({ type: EBilanzTransmitDto })
+  @ApiOkResponse({ type: EBilanzTransmissionDto, description: 'Validates or sends the E-Bilanz through the operator’s ERiC sidecar; nicht_eingerichtet names what is missing.' })
+  @Errors(402, 409)
+  transmitEBilanz(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number, @Body() dto: EBilanzTransmitDto, @Query('person') person?: string, @Query('betrieb') business?: string): Promise<EBilanzTransmissionDto> {
+    return this.service.transmitEBilanz(userId, year, refOf(person, business), dto.mode) as unknown as Promise<EBilanzTransmissionDto>
   }
 
   @Get(':jahr/selbststaendig/e-bilanz/datei')

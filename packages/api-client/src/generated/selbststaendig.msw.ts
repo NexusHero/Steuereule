@@ -29,6 +29,7 @@ import type {
   ClosingDto,
   CompanyCarResultDto,
   EBilanzDto,
+  EBilanzTransmissionDto,
   ElsterFormListDto,
   ElsterHelpDto,
   FixedAssetDto,
@@ -126,7 +127,9 @@ export const getBusinessControllerProcedureDocResponseMock = (overrideResponse: 
 
 export const getBusinessControllerSaveProcedureDocResponseMock = (overrideResponse: Partial<Extract<ProcedureDocDto, object>> = {}): ProcedureDocDto => ({values: {}, text: faker.string.alpha({length: {min: 10, max: 20}}), missing: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), ...overrideResponse})
 
-export const getBusinessControllerEBilanzResponseMock = (overrideResponse: Partial<Extract<EBilanzDto, object>> = {}): EBilanzDto => ({xbrl: faker.string.alpha({length: {min: 10, max: 20}}), transmitted: faker.helpers.arrayElement([false] as const), note: faker.string.alpha({length: {min: 10, max: 20}}), ...overrideResponse})
+export const getBusinessControllerEBilanzResponseMock = (overrideResponse: Partial<Extract<EBilanzDto, object>> = {}): EBilanzDto => ({xbrl: faker.string.alpha({length: {min: 10, max: 20}}), transmitted: faker.helpers.arrayElement([false] as const), transmissionReady: faker.datatype.boolean(), note: faker.string.alpha({length: {min: 10, max: 20}}), ...overrideResponse})
+
+export const getBusinessControllerTransmitEBilanzResponseMock = (overrideResponse: Partial<Extract<EBilanzTransmissionDto, object>> = {}): EBilanzTransmissionDto => ({status: faker.helpers.arrayElement(['ok','abgelehnt','nicht_eingerichtet'] as const), mode: faker.helpers.arrayElement(['validieren','senden'] as const), ticket: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), protocol: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), messages: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), missing: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), ...overrideResponse})
 
 export const getBusinessControllerEBilanzFileResponseMock = (): string => (faker.word.sample())
 
@@ -577,6 +580,18 @@ export const getBusinessControllerEBilanzMockHandler = (overrideResponse?: EBila
   }, options)
 }
 
+export const getBusinessControllerTransmitEBilanzMockHandler = (overrideResponse?: EBilanzTransmissionDto | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<EBilanzTransmissionDto> | EBilanzTransmissionDto), options?: RequestHandlerOptions) => {
+  return http.post('*/v1/steuerjahre/:jahr/selbststaendig/e-bilanz/uebermittlung', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getBusinessControllerTransmitEBilanzResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
 export const getBusinessControllerEBilanzFileMockHandler = (overrideResponse?: string | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<string> | string), options?: RequestHandlerOptions) => {
   return http.get('*/v1/steuerjahre/:jahr/selbststaendig/e-bilanz/datei', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
 
@@ -639,6 +654,7 @@ export const getSteuerEuleAPIMock = () => [
   getBusinessControllerProcedureDocMockHandler(),
   getBusinessControllerSaveProcedureDocMockHandler(),
   getBusinessControllerEBilanzMockHandler(),
+  getBusinessControllerTransmitEBilanzMockHandler(),
   getBusinessControllerEBilanzFileMockHandler(),
   getBusinessControllerCheckoutMockHandler()
 ]
