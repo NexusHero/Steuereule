@@ -232,6 +232,7 @@ export function CockpitScreen({
       {...shared}
       summary={summary}
       confirmation={confirmationQuery.data?.status === 200 ? confirmationQuery.data.data.annexes : null}
+      assistantTaskCount={confirmationQuery.data?.status === 200 ? (confirmationQuery.data.data.tasks ?? []).length : 0}
       {...(onOpenConfirmation ? { onOpenConfirmation: () => onOpenConfirmation(year) } : {})}
     />
   )
@@ -680,23 +681,27 @@ function CockpitEmpty(props: CockpitEmptyProps) {
 
 interface ConfirmationNoticeProps {
   readonly annexes: readonly AnnexConfirmationDto[] | null
+  /** Open tasks the user's assistant left (#547); the confirmation screen lists them. */
+  readonly taskCount: number
   readonly status: CockpitStatusDto
   readonly onOpenConfirmation?: () => void
 }
 
-function ConfirmationNotice({ annexes, status, onOpenConfirmation }: ConfirmationNoticeProps) {
+function ConfirmationNotice({ annexes, taskCount, status, onOpenConfirmation }: ConfirmationNoticeProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
   const open = (annexes ?? []).filter((a) => a.unconfirmed > 0)
-  if (open.length === 0) return null
+  if (open.length === 0 && taskCount === 0) return null
   const sum = status.kind === 'spanne' ? (status.unconfirmedSum ?? 0) : 0
 
   return (
     <Card variant="default" testID="bestaetigung-hinweis">
-      <Text style={styles.help}>
-        {sum > 0 ? tr('cockpit.bestaetigung.hinweis', { count: open.reduce((n, a) => n + a.unconfirmed, 0), summe: formatEuro(sum) }) : tr('cockpit.bestaetigung.hinweisOhneSumme')}
-      </Text>
+      {open.length > 0 ? (
+        <Text style={styles.help}>
+          {sum > 0 ? tr('cockpit.bestaetigung.hinweis', { count: open.reduce((n, a) => n + a.unconfirmed, 0), summe: formatEuro(sum) }) : tr('cockpit.bestaetigung.hinweisOhneSumme')}
+        </Text>
+      ) : null}
       {open.map((a) => (
         <View key={a.annex} style={styles.uebernahmeZeile}>
           <Text style={styles.uebernahmeZeileText}>
@@ -707,9 +712,14 @@ function ConfirmationNotice({ annexes, status, onOpenConfirmation }: Confirmatio
           </Text>
         </View>
       ))}
+      {taskCount > 0 ? (
+        <View style={styles.uebernahmeZeile} testID="bestaetigung-aufgaben">
+          <Text style={styles.uebernahmeZeileText}>{tr('cockpit.bestaetigung.aufgaben', { count: taskCount })}</Text>
+        </View>
+      ) : null}
       {onOpenConfirmation ? (
         <Button variant="ghost" onPress={onOpenConfirmation} testID="bestaetigung-oeffnen">
-          {tr('cockpit.bestaetigung.pruefen')}
+          {open.length > 0 ? tr('cockpit.bestaetigung.pruefen') : tr('cockpit.bestaetigung.aufgabenAnsehen')}
         </Button>
       ) : null}
     </Card>
@@ -719,6 +729,7 @@ function ConfirmationNotice({ annexes, status, onOpenConfirmation }: Confirmatio
 interface CockpitLoadedProps extends CockpitEmptyProps {
   readonly summary: CockpitSummaryDto
   readonly confirmation: readonly AnnexConfirmationDto[] | null
+  readonly assistantTaskCount: number
   readonly onOpenConfirmation?: () => void
 }
 
@@ -743,7 +754,7 @@ function CockpitLoaded(props: CockpitLoadedProps) {
       <Appbar year={year} onYearChange={onYearChange} isRefreshing={isRefreshing} />
       <YearNotices year={year} answers={deadlineAnswers} />
       <EuleBannerNotice />
-      <ConfirmationNotice annexes={confirmation} status={status} {...(onOpenConfirmation ? { onOpenConfirmation } : {})} />
+      <ConfirmationNotice annexes={confirmation} taskCount={props.assistantTaskCount} status={status} {...(onOpenConfirmation ? { onOpenConfirmation } : {})} />
       <Card variant="nacht">
         {refundFirst ? (
           <>

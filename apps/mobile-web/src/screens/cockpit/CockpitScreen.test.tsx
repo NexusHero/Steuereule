@@ -392,6 +392,35 @@ describe('CockpitScreen', () => {
     await screen.findByText('49.880–50.120 €')
     expect(screen.queryByTestId('bestaetigung-hinweis')).toBeNull()
   })
+
+  it('#547: an open task of the assistant shows the notice even when every value is confirmed, and opens the screen', async () => {
+    mockCockpit(LOADED_SUMMARY)
+    server.use(
+      http.get('*/v1/steuerjahre/2026/bestaetigung', () =>
+        HttpResponse.json({ annexes: [], tasks: [{ id: 't1', kind: 'konfession', text: 'Bitte trage deine Konfession ein.', assistant: 'Claude', createdAt: '2026-01-05T10:00:00.000Z' }] }),
+      ),
+    )
+    const onOpenConfirmation = vi.fn()
+    renderCockpit({ onOpenConfirmation })
+
+    expect(await screen.findByText('1 Aufgabe von deinem Assistenten')).toBeTruthy()
+    // No value waits: the notice does not claim one does.
+    expect(screen.queryByText('Neue Werte warten auf deine Bestätigung.')).toBeNull()
+    fireEvent.click(screen.getByTestId('bestaetigung-oeffnen'))
+    expect(onOpenConfirmation).toHaveBeenCalledWith(TAX_YEAR)
+  })
+
+  it('#547: tasks are counted next to the unconfirmed values', async () => {
+    mockCockpit(LOADED_SUMMARY)
+    const task = (id: string) => ({ id, kind: 'sonstiges', text: 'Bitte prüfen.', assistant: 'Claude', createdAt: '2026-01-05T10:00:00.000Z' })
+    server.use(
+      http.get('*/v1/steuerjahre/2026/bestaetigung', () => HttpResponse.json({ annexes: [{ annex: 'anlageR', unconfirmed: 1, values: [] }], tasks: [task('a'), task('b')] })),
+    )
+    renderCockpit()
+
+    expect(await screen.findByText('2 Aufgaben von deinem Assistenten')).toBeTruthy()
+    expect(screen.getByText('Anlage R · 1 Wert unbestätigt')).toBeTruthy()
+  })
 })
 
 describe('CockpitScreen — Formular-Ausdruck entry (ADR-0050)', () => {

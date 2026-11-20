@@ -330,8 +330,9 @@ export function fieldAccessFrom({
       async read(userId) {
         const p = await profile.findByUserId(userId)
         return {
-          firstName: p?.firstName ?? null,
-          lastName: p?.lastName ?? null,
+          // The profile stores a missing name as '' (both are required columns): that is no value to keep.
+          firstName: p?.firstName || null,
+          lastName: p?.lastName || null,
           steuerId: p?.steuerId ?? null,
           steuernummer: p?.steuernummer ?? null,
         }

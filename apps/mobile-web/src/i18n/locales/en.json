@@ -408,6 +408,21 @@
     "leererWert": "empty",
     "unklar": "unreadable",
     "fehler": "That did not work. Please try again.",
+    "aufgaben": {
+      "title": "Tasks from your assistant",
+      "intro": "Only you can do these. Tick off what is done, or discard what does not fit.",
+      "von": "From {{name}}",
+      "erledigt": "Done",
+      "verwerfen": "Discard",
+      "art": {
+        "konfession": "Enter your religious affiliation",
+        "einwilligung": "Give a consent",
+        "bestaetigen": "Confirm entries",
+        "beleg_nachreichen": "Hand in a receipt",
+        "kind_entfernen": "Remove a child",
+        "sonstiges": "Task"
+      }
+    },
     "anlagen": {
       "hauptvordruck": "Main form (ESt 1 A)",
       "anlageN": "Anlage N",
@@ -1766,6 +1781,9 @@
       "hinweis_one": "{{summe}} is still waiting for your confirmation.",
       "hinweis_other": "{{summe}} are still waiting for your confirmation.",
       "hinweisOhneSumme": "New values are waiting for your confirmation.",
+      "aufgaben_one": "{{count}} task from your assistant",
+      "aufgaben_other": "{{count}} tasks from your assistant",
+      "aufgabenAnsehen": "View tasks",
       "anlage": "{{anlage}} · {{anzahl}}",
       "pruefen": "Review & confirm"
     },

@@ -48,6 +48,7 @@ export function taxDataTables(tx: TransactionClient): UserKeyedTable[] {
     tx.advisorNote,
     tx.advisorSituation,
     tx.advisorInterview,
+    tx.assistantTask,
     // ADR-0101: lines before their entries, entries, log and bank transactions before their book (FKs).
     // The append-only trigger lets these deletes through only under ERASURE_SETTING (see below).
     tx.journalLine,

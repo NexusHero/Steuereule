@@ -1,5 +1,6 @@
 import { Inject, Injectable, Optional } from '@nestjs/common'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import { AssistantTaskService } from '../assistant-task/assistant-task.service.js'
 import { AuditService } from '../audit/audit.service.js'
 import { ChildrenService } from '../children/children.service.js'
 import { CockpitService } from '../cockpit/cockpit.service.js'
@@ -22,6 +23,7 @@ import { registerEntryTools } from './tools/entry-tools.js'
 import { registerReadTools } from './tools/read-tools.js'
 import { registerReceiptTools } from './tools/receipt-tools.js'
 import { registerRentalTools } from './tools/rental-tools.js'
+import { registerTaskTools } from './tools/task-tools.js'
 import { registerReportTools, registerStatusTools } from './tools/status-tools.js'
 
 export type { AssistantSessionInfo } from './mcp-session.js'
@@ -50,8 +52,9 @@ export class McpService {
     @Optional() @Inject(ChildrenService) children?: McpDeps['children'],
     @Optional() @Inject(DeadlinesService) deadlines?: McpDeps['deadlines'],
     @Optional() @Inject(RENTAL_REPOSITORY) rentals?: McpDeps['rentals'],
+    @Optional() @Inject(AssistantTaskService) tasks?: McpDeps['tasks'],
   ) {
-    this.deps = { cockpit, printout, confirmation, owlMode, receipts, unlock, profiles, masterData, audit, report, link, children, deadlines, rentals }
+    this.deps = { cockpit, printout, confirmation, owlMode, receipts, unlock, profiles, masterData, audit, report, link, children, deadlines, rentals, tasks }
   }
 
   createServer(userId: string, assistant: AssistantSessionInfo): McpServer {
@@ -71,6 +74,7 @@ export class McpService {
     registerChildTools(session, deps)
     registerComfortTools(session, deps)
     registerRentalTools(session, deps)
+    registerTaskTools(session, deps)
 
     return server
   }

@@ -105,7 +105,7 @@ describe('REQ-032 — Herkunft und Bestätigung (ADR-0052 §6/§7), against the 
     // Changing a value yourself is confirming it.
     expect((await put(cookie, `${YEAR}/kapital/kapitalertraege`, { kind: 'erfasst', value: 310 })).status).toBe(200)
     expect((await missing(cookie)).filter((k) => k.startsWith('unbestaetigt.'))).toEqual([])
-    expect(await overview(cookie)).toEqual({ annexes: [] })
+    expect(await overview(cookie)).toEqual({ annexes: [], tasks: [] })
   })
 
   it('Herkunft und Bestätigungsstand sind Teil des Art.-15/20-Exports (entschlüsselt)', async () => {
@@ -140,7 +140,7 @@ describe('REQ-032 — Herkunft und Bestätigung (ADR-0052 §6/§7), against the 
     const b = await signUp('req-032-b@example.com')
     await lastYearAndOwnValue(a.cookie)
 
-    expect(await overview(b.cookie)).toEqual({ annexes: [] })
+    expect(await overview(b.cookie)).toEqual({ annexes: [], tasks: [] })
     expect((await put(b.cookie, `${YEAR}/bestaetigung/anlagen/anlageN`)).status).toBe(200)
     expect((await put(b.cookie, `${YEAR}/bestaetigung/vorschlaege/lstb.bruttoarbeitslohn`, { decision: 'annehmen' })).status).toBe(404)
 

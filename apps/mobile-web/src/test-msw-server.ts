@@ -196,7 +196,7 @@ export const EMPTY_TAKEOVER_RESPONSE: RolloverResponseDto = {
 }
 
 /** Default `GET .../bestaetigung` answer (REQ-032): nothing to confirm — no hint, nothing blocked. */
-export const EMPTY_CONFIRMATION_RESPONSE: ConfirmationResponseDto = { annexes: [] }
+export const EMPTY_CONFIRMATION_RESPONSE: ConfirmationResponseDto = { annexes: [], tasks: [] }
 
 export const EMPTY_KINDER_RESPONSE: ChildrenResponseDto = {
   kinder: [],

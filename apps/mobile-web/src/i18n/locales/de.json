@@ -408,6 +408,21 @@
     "leererWert": "leer",
     "unklar": "unlesbar",
     "fehler": "Das hat nicht geklappt. Versuch es noch mal.",
+    "aufgaben": {
+      "title": "Aufgaben von deinem Assistenten",
+      "intro": "Das kannst nur du erledigen. Hak ab, was erledigt ist, oder verwirf, was nicht passt.",
+      "von": "Von {{name}}",
+      "erledigt": "Erledigt",
+      "verwerfen": "Verwerfen",
+      "art": {
+        "konfession": "Konfession eintragen",
+        "einwilligung": "Einwilligung geben",
+        "bestaetigen": "Einträge bestätigen",
+        "beleg_nachreichen": "Beleg nachreichen",
+        "kind_entfernen": "Kind entfernen",
+        "sonstiges": "Aufgabe"
+      }
+    },
     "anlagen": {
       "hauptvordruck": "Hauptvordruck (ESt 1 A)",
       "anlageN": "Anlage N",
@@ -1766,6 +1781,9 @@
       "hinweis_one": "{{summe}} wartet noch auf deine Bestätigung.",
       "hinweis_other": "{{summe}} warten noch auf deine Bestätigung.",
       "hinweisOhneSumme": "Neue Werte warten auf deine Bestätigung.",
+      "aufgaben_one": "{{count}} Aufgabe von deinem Assistenten",
+      "aufgaben_other": "{{count}} Aufgaben von deinem Assistenten",
+      "aufgabenAnsehen": "Aufgaben ansehen",
       "anlage": "{{anlage}} · {{anzahl}}",
       "pruefen": "Prüfen & bestätigen"
     },

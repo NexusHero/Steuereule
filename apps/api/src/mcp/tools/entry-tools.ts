@@ -84,7 +84,7 @@ export function registerEntryTools(session: McpSession, deps: McpDeps): void {
 
   server.tool(
     'maske_eintragen_stapel',
-    `Trägt viele Felder einer Maske in einem Aufruf ein (höchstens ${MAX_BATCH_FIELDS}), mit denselben Regeln wie maske_eintragen. Das Ergebnis nennt je Feld „geschrieben“, „vorschlag“, „unveraendert“ oder den Grund der Ablehnung; ein abgelehntes Feld hält die übrigen nicht auf. Feldnamen und Formen vorher mit maske_felder nachsehen.`,
+    `Trägt viele Felder einer Maske in einem Aufruf ein (höchstens ${MAX_BATCH_FIELDS}), mit denselben Regeln wie maske_eintragen. Das Ergebnis nennt je Feld „geschrieben“, „vorschlag“ (der Nutzer hat dort schon einen Wert; deiner wartet auf seine Entscheidung und zählt bis dahin nicht), „unveraendert“ oder den Grund der Ablehnung; ein abgelehntes Feld hält die übrigen nicht auf. Feldnamen und Formen vorher mit maske_felder nachsehen.`,
     {
       taxYear: z.number().int().describe('Das Steuerjahr (z.B. 2024 oder 2025)'),
       screen: z.enum(SCREENS).describe('Die Erfassungsmaske'),
@@ -103,8 +103,9 @@ export function registerEntryTools(session: McpSession, deps: McpDeps): void {
         const written = await writeField({ taxYear, screen, instance, field, value, receiptId, person })
         results[field] = written.ok ? { ergebnis: written.result } : { fehler: written.error }
       }
+      const count = (outcome: string) => Object.values(results).filter((r) => 'ergebnis' in r && r.ergebnis === outcome).length
       const rejected = Object.values(results).filter((r) => 'fehler' in r).length
-      return json({ screen, ...(person === 'B' ? { person: 'B' } : {}), geschrieben: entries.length - rejected, abgelehnt: rejected, felder: results, hinweis: 'Alles Eingetragene ist unbestätigt, bis der Nutzer es in der App bestätigt.' })
+      return json({ screen, ...(person === 'B' ? { person: 'B' } : {}), geschrieben: count('geschrieben'), vorschlaege: count('vorschlag'), unveraendert: count('unveraendert'), abgelehnt: rejected, felder: results, hinweis: 'Alles Eingetragene ist unbestätigt, bis der Nutzer es in der App bestätigt.' })
     },
   )
 
