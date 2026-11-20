@@ -226,7 +226,7 @@ export class BusinessService {
       throw new ForbiddenError('SELF_EMPLOYMENT_DISABLED', 'Selbstständige kann SteuerEule noch nicht berechnen.')
     }
     const answers = answersFrom(await this.interview.findAllForUserAndYear(userId, year))
-    if (!declaresSelfEmployment(answers.job)) {
+    if (!declaresSelfEmployment(answers)) {
       throw new ForbiddenError('SELF_EMPLOYMENT_NOT_DECLARED', 'Im Interview ist für dieses Jahr keine selbstständige Tätigkeit angegeben.')
     }
   }

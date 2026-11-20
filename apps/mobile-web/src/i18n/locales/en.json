@@ -900,6 +900,16 @@
       "body1": "Every country has its own treaty with its own rules — Austria and France with border zones, Luxembourg with a minor-amount threshold. Half-computed would be wrong.",
       "body2": "What works today: Switzerland, completely — and the rest of your tax year regardless. Austria, France and Luxembourg are on the list.",
       "continueWithoutForeign": "Continue without the foreign part"
+    },
+    "renteSelbststaendig": {
+      "titleBefore": "Besides your pension, do you run a ",
+      "titleMark": "business",
+      "titleAfter": " or work freelance?",
+      "help": "For example a small online shop, talks or consulting. Then we add your profit to your pension.",
+      "options": {
+        "ja": "Yes",
+        "nein": "No"
+      }
     }
   },
   "lstb": {
@@ -1256,7 +1266,14 @@
       "gesundheit-erstattung": "Of which reimbursed by the health insurer, an insurance or Beihilfe (€, 0 if none)",
       "vorauszahlungen-gate": "Did you make prepayments to the tax office for this year (income tax, set in your last assessment)?",
       "vorauszahlungen-betrag": "Total prepayments paid in the year (income tax, solidarity surcharge and church tax together, €)",
-      "riester-einnahmen-vorjahr": "Contributory earnings in the previous year (see your pension statement or social-insurance notice)"
+      "riester-einnahmen-vorjahr": "Contributory earnings in the previous year (see your pension statement or social-insurance notice)",
+      "altersvorsorge": "Do you pay into a pension yourself (statutory pension, professional pension fund, Rürup)?",
+      "av-rv-betrag": "Own contributions to the statutory pension insurance in the year (also via the Künstlersozialkasse; €, 0 if none)",
+      "av-versorgungswerk-betrag": "Contributions to a professional pension fund (Versorgungswerk) in the year (€, 0 if none)",
+      "av-basisrente-betrag": "Contributions to a Basisrente (Rürup) in the year (€, 0 if none)",
+      "av-ksk": "Are you insured through the Künstlersozialkasse?",
+      "versicherungen": "Do you pay other insurance (liability, accident, disability, term life)?",
+      "versicherungen-betrag": "Contributions for this insurance in the year (€)"
     },
     "hints": {
       "haushalt-gate": "Only labour, machine, and travel costs count, not materials. Paid by bank transfer, not cash."
@@ -1333,7 +1350,9 @@
       "gesundheit-gate": "Medical costs (dentist, glasses, co-payments)",
       "spenden": "Donations",
       "einkuenfte": "Investment income or letting",
-      "vorauszahlungen-gate": "Tax prepayments"
+      "vorauszahlungen-gate": "Tax prepayments",
+      "altersvorsorge": "Pension paid yourself",
+      "versicherungen": "Other insurance"
     },
     "art": {
       "nebenjob": "What kind of side job?",
@@ -1380,7 +1399,9 @@
       "spenden": "Goes into Anlage Sonderausgaben (donations).",
       "einkuenfte": "Goes into Anlage KAP or V; you enter the amounts under capital and letting afterwards.",
       "vorauszahlungen-gate": "Credited against the tax like wage tax.",
-      "alleinerziehend": "Goes into Anlage Kind (single-parent allowance)."
+      "alleinerziehend": "Goes into Anlage Kind (single-parent allowance).",
+      "altersvorsorge": "Goes into the Anlage Vorsorgeaufwand (pension).",
+      "versicherungen": "Goes into the Anlage Vorsorgeaufwand (other provision)."
     },
     "fertig": {
       "erstattung": "Expected refund",

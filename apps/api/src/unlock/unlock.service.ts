@@ -27,13 +27,13 @@ export class UnlockService {
   async requiredTier(userId: string, taxYear: number): Promise<UnlockTier> {
     if (!this.interview || !selfEmploymentEnabled()) return 'standard'
     const answers = answersFrom(await this.interview.findAllForUserAndYear(userId, taxYear))
-    return declaresSelfEmployment(answers.job) ? 'selbststaendig' : 'standard'
+    return declaresSelfEmployment(answers) ? 'selbststaendig' : 'standard'
   }
 
   /** Where the user files the year: the printout's paper path or the ELSTER fill-in help (ADR-0101 §16). */
   async filingPath(userId: string, taxYear: number): Promise<FilingPath> {
     if (!this.interview) return 'papier'
-    return filingPathOf(answersFrom(await this.interview.findAllForUserAndYear(userId, taxYear)).job)
+    return filingPathOf(answersFrom(await this.interview.findAllForUserAndYear(userId, taxYear)))
   }
 
   /** Unlocked when the year is paid at the tier it needs; every paid part (printout, fill-in help, exports) asks here. */

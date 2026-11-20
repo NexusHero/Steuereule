@@ -29,6 +29,8 @@ export const GATE_COPY: Readonly<Partial<Record<EntryStepId, { readonly topic: s
   spenden: { topic: 'Spenden', sourceId: 'estg-10b' },
   'kv-pv': { topic: 'Selbst gezahlte Kranken- und Pflegeversicherung', sourceId: 'estg-10-1-3' },
   riester: { topic: 'Riester-Vertrag', sourceId: 'estg-9-1' },
+  altersvorsorge: { topic: 'Selbst gezahlte Altersvorsorge', sourceId: 'estg-10-1-3' },
+  versicherungen: { topic: 'Weitere Versicherungen', sourceId: 'estg-10-1-3' },
   'haushalt-gate': { topic: 'Haushaltsnahe Aufwendungen', sourceId: 'estg-35a' },
   'gesundheit-gate': { topic: 'Krankheitskosten', sourceId: 'estg-33' },
   'vorauszahlungen-gate': { topic: 'Vorauszahlungen', sourceId: 'estg-9-1' },

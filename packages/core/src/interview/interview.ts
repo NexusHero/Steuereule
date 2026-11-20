@@ -1,4 +1,13 @@
-export type MinimalGateQuestionId = 'job' | 'ausland' | 'de-job' | 'kinder' | 'familienstand' | 'partner-job' | 'partner-ausland' | 'partner-de-job'
+export type MinimalGateQuestionId =
+  | 'job'
+  | 'rente-selbststaendig'
+  | 'ausland'
+  | 'de-job'
+  | 'kinder'
+  | 'familienstand'
+  | 'partner-job'
+  | 'partner-ausland'
+  | 'partner-de-job'
 
 export type MinimalGateGateId = 'gewerbe' | 'ch-only'
 
@@ -40,6 +49,13 @@ export type SpecialExpenseQuestionId =
   | 'riester-betrag'
   | 'riester-art'
   | 'riester-einnahmen-vorjahr'
+  | 'altersvorsorge'
+  | 'av-rv-betrag'
+  | 'av-versorgungswerk-betrag'
+  | 'av-basisrente-betrag'
+  | 'av-ksk'
+  | 'versicherungen'
+  | 'versicherungen-betrag'
 
 export type SingleParentQuestionId = 'ae-weitere-person' | 'ae-haushaltsgemeinschaft'
 
@@ -173,6 +189,10 @@ export const LATER_ALLOWED_STEPS = [
   'pv-betrag',
   'kv-wahl-betrag',
   'riester-betrag',
+  'av-rv-betrag',
+  'av-versorgungswerk-betrag',
+  'av-basisrente-betrag',
+  'versicherungen-betrag',
   'haushalt-dienstleistung-betrag',
   'haushalt-handwerker-betrag',
   'haushalt-handwerker-rechnungsbetrag',
@@ -234,6 +254,16 @@ export interface InterviewOptions {
 
 const NO_OPTIONS: InterviewOptions = {}
 
+/** The answers that put a business behind the year (REQ-015, ADR-0101 §22): self-employed, both, or a pensioner with one. */
+export function declaresBusiness(answers: Answers): boolean {
+  return answers.job === 'Selbstständig' || answers.job === 'Beides' || (answers.job === 'Rente' && answers['rente-selbststaendig'] === 'Ja')
+}
+
+/** A business and no wage: no wage tax certificate carries the pension and the insurance, the person pays them himself. */
+export function paysOwnProvision(answers: Answers): boolean {
+  return answers.job === 'Selbstständig' || (answers.job === 'Rente' && answers['rente-selbststaendig'] === 'Ja')
+}
+
 function isAsked(decl: QuestionDeclaration, answers: Answers, options: InterviewOptions): boolean {
   return decl.askedWhen === undefined || decl.askedWhen(answers, options)
 }
@@ -247,9 +277,16 @@ export const QUESTIONS: Readonly<Record<EntryStepId, QuestionDeclaration>> = {
       Selbstständig: [{ step: 'gewerbe', terminal: true }],
       Beides: ['gewerbe'],
       Angestellt: [],
-      Rente: [],
+      Rente: ['rente-selbststaendig'],
     },
     defaultFollowUp: ['gewerbe'],
+  },
+  /** A pensioner with a business on the side (ADR-0101 §22): only a question with the self-employment switch on. */
+  'rente-selbststaendig': {
+    id: 'rente-selbststaendig',
+    kind: 'question',
+    form: { kind: 'enum', values: YES_NO_VALUES },
+    askedWhen: (_answers, options) => options?.selfEmployment === true,
   },
   beruf: { id: 'beruf', kind: 'question', form: { kind: 'enum', values: PROFESSION_VALUES } },
   ausland: {
@@ -370,6 +407,32 @@ export const QUESTIONS: Readonly<Record<EntryStepId, QuestionDeclaration>> = {
   'kv-pv-betrag': { id: 'kv-pv-betrag', kind: 'question', form: { kind: 'integer', min: 0, max: 1000000 } },
   'pv-betrag': { id: 'pv-betrag', kind: 'question', form: { kind: 'integer', min: 0, max: 1000000 } },
   'kv-wahl-betrag': { id: 'kv-wahl-betrag', kind: 'question', form: { kind: 'integer', min: 0, max: 1000000 } },
+  // Provision paid outside a wage (ADR-0101 §22): the pension and the other insurance of someone
+  // whose wage tax certificate does not carry them, the self-employed and the pensioner with a business.
+  altersvorsorge: {
+    id: 'altersvorsorge',
+    kind: 'question',
+    form: { kind: 'enum', values: YES_NO_VALUES },
+    followUps: { Ja: ['av-rv-betrag', 'av-versorgungswerk-betrag', 'av-basisrente-betrag', 'av-ksk'] },
+    askedWhen: (answers, options) => options?.selfEmployment === true && paysOwnProvision(answers),
+  },
+  /** Own contributions to the statutory pension (voluntary, compulsory, the own half through the KSK). */
+  'av-rv-betrag': { id: 'av-rv-betrag', kind: 'question', form: { kind: 'integer', min: 0, max: 1000000 } },
+  /** Contributions to a berufsständisches Versorgungswerk (§ 10 Abs. 1 Nr. 2 Buchst. a EStG). */
+  'av-versorgungswerk-betrag': { id: 'av-versorgungswerk-betrag', kind: 'question', form: { kind: 'integer', min: 0, max: 1000000 } },
+  /** Contributions to a Basisrente (Rürup, § 10 Abs. 1 Nr. 2 Buchst. b EStG). */
+  'av-basisrente-betrag': { id: 'av-basisrente-betrag', kind: 'question', form: { kind: 'integer', min: 0, max: 1000000 } },
+  /** Member of the Künstlersozialkasse, which pays half of the KV: the cap of § 10 Abs. 4 Satz 2 EStG. */
+  'av-ksk': { id: 'av-ksk', kind: 'question', form: { kind: 'enum', values: YES_NO_VALUES } },
+  versicherungen: {
+    id: 'versicherungen',
+    kind: 'question',
+    form: { kind: 'enum', values: YES_NO_VALUES },
+    followUps: { Ja: ['versicherungen-betrag'] },
+    askedWhen: (answers, options) => options?.selfEmployment === true && paysOwnProvision(answers),
+  },
+  /** Haftpflicht, Unfall, Berufsunfähigkeit, Risikoleben, voluntary Arbeitslosenversicherung (§ 10 Abs. 1 Nr. 3a EStG). */
+  'versicherungen-betrag': { id: 'versicherungen-betrag', kind: 'question', form: { kind: 'integer', min: 0, max: 1000000 } },
   riester: { id: 'riester', kind: 'question', form: { kind: 'enum', values: YES_NO_VALUES }, followUps: { Ja: ['riester-betrag', 'riester-art'] } },
   'riester-betrag': { id: 'riester-betrag', kind: 'question', form: { kind: 'integer', min: 0, max: 1000000 } },
   'riester-art': {
@@ -452,7 +515,7 @@ export const ENTRIES: Readonly<Record<EntryId, CatalogueEntry>> = {
   },
   sonderausgaben: {
     id: 'sonderausgaben',
-    steps: ['spenden', 'kv-pv', 'riester'],
+    steps: ['spenden', 'kv-pv', 'riester', 'altersvorsorge', 'versicherungen'],
     orderFree: true,
   },
   'segment-ch': { id: 'segment-ch', steps: ['ch-wohnsitz', 'ch-nichtrueckkehrtage'] },

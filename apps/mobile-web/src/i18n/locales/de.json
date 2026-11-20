@@ -900,6 +900,16 @@
       "body1": "Jedes Land hat sein eigenes Abkommen mit eigenen Regeln — Österreich und Frankreich mit Grenzzonen, Luxemburg mit Bagatellgrenze. Halb gerechnet wäre falsch gerechnet.",
       "body2": "Was heute geht: die Schweiz komplett — und dein restliches Steuerjahr sowieso. Österreich, Frankreich und Luxemburg stehen auf der Liste.",
       "continueWithoutForeign": "Ohne Auslands-Teil weitermachen"
+    },
+    "renteSelbststaendig": {
+      "titleBefore": "Hast du neben der Rente ein ",
+      "titleMark": "Gewerbe",
+      "titleAfter": " oder arbeitest freiberuflich?",
+      "help": "Zum Beispiel einen kleinen Onlineshop, Vorträge oder Beratung. Dann rechnen wir deinen Gewinn mit deiner Rente zusammen.",
+      "options": {
+        "ja": "Ja",
+        "nein": "Nein"
+      }
     }
   },
   "lstb": {
@@ -1256,7 +1266,14 @@
       "gesundheit-erstattung": "Davon erstattet von Krankenkasse, Versicherung oder Beihilfe (€, ggf. 0)",
       "vorauszahlungen-gate": "Hast du für dieses Jahr Vorauszahlungen ans Finanzamt geleistet (Einkommensteuer, festgesetzt im letzten Bescheid)?",
       "vorauszahlungen-betrag": "Summe der gezahlten Vorauszahlungen im Jahr (Einkommensteuer, Soli und Kirchensteuer zusammen, €)",
-      "riester-einnahmen-vorjahr": "Beitragspflichtige Einnahmen im Vorjahr (steht in deiner Renteninformation bzw. der Meldebescheinigung zur Sozialversicherung)"
+      "riester-einnahmen-vorjahr": "Beitragspflichtige Einnahmen im Vorjahr (steht in deiner Renteninformation bzw. der Meldebescheinigung zur Sozialversicherung)",
+      "altersvorsorge": "Zahlst du selbst in eine Altersvorsorge ein (gesetzliche Rente, Versorgungswerk, Rürup)?",
+      "av-rv-betrag": "Eigene Beiträge zur gesetzlichen Rentenversicherung im Jahr (auch über die Künstlersozialkasse; €, ggf. 0)",
+      "av-versorgungswerk-betrag": "Beiträge an ein berufsständisches Versorgungswerk im Jahr (€, ggf. 0)",
+      "av-basisrente-betrag": "Beiträge zu einer Basisrente (Rürup) im Jahr (€, ggf. 0)",
+      "av-ksk": "Bist du über die Künstlersozialkasse versichert?",
+      "versicherungen": "Zahlst du weitere Versicherungen (Haftpflicht, Unfall, Berufsunfähigkeit, Risikoleben)?",
+      "versicherungen-betrag": "Beiträge für diese Versicherungen im Jahr (€)"
     },
     "hints": {
       "haushalt-gate": "Nur Arbeits-, Maschinen- und Fahrtkosten zählen, kein Material. Bezahlt per Überweisung, nicht bar."
@@ -1333,7 +1350,9 @@
       "gesundheit-gate": "Krankheitskosten (Zahnarzt, Brille, Zuzahlungen)",
       "spenden": "Spenden",
       "einkuenfte": "Kapitalerträge oder Vermietung",
-      "vorauszahlungen-gate": "Vorauszahlungen ans Finanzamt"
+      "vorauszahlungen-gate": "Vorauszahlungen ans Finanzamt",
+      "altersvorsorge": "Altersvorsorge selbst gezahlt",
+      "versicherungen": "Weitere Versicherungen"
     },
     "art": {
       "nebenjob": "Welche Art von Nebenjob?",
@@ -1380,7 +1399,9 @@
       "spenden": "Geht in die Anlage Sonderausgaben (Zuwendungen).",
       "einkuenfte": "Geht in die Anlage KAP oder V; die Beträge trägst du danach unter Kapital und Vermietung ein.",
       "vorauszahlungen-gate": "Wird mit der Steuer verrechnet wie die Lohnsteuer.",
-      "alleinerziehend": "Geht in die Anlage Kind (Entlastungsbetrag für Alleinerziehende)."
+      "alleinerziehend": "Geht in die Anlage Kind (Entlastungsbetrag für Alleinerziehende).",
+      "altersvorsorge": "Geht in die Anlage Vorsorgeaufwand (Altersvorsorge).",
+      "versicherungen": "Geht in die Anlage Vorsorgeaufwand (weitere sonstige Vorsorge)."
     },
     "fertig": {
       "erstattung": "Voraussichtliche Erstattung",

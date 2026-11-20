@@ -20,14 +20,15 @@ import { FakePensionRepository } from './fakes/fake-pension.repository.js'
 const commute: CommuteRepository = { findForUserAndYear: async () => null, save: async (_u, _j, e) => e }
 
 function setup() {
+  const pension = new FakePensionRepository()
   const interview = new FakeInterviewAnswerRepository()
   const repository = new FakeBusinessRepository()
   const business = new BusinessService(repository, interview, new AuditService(new FakeAuditRepository()), new HebesatzDirectory())
   const service = new TaxEstimateService(
     new FakeLstbRepository(), interview, new FakeChSalaryCertificateRepository(), new FakeMasterDataRepository(), commute,
-    new FakeLinkRepository(), new FakeChildRepository(), new FakeRentalRepository(), new FakePensionRepository(), undefined, business,
+    new FakeLinkRepository(), new FakeChildRepository(), new FakeRentalRepository(), pension, undefined, business,
   )
-  return { interview, business, service }
+  return { interview, business, service, pension }
 }
 
 const SELF_EMPLOYED = { job: 'Selbstständig', ausland: 'Nein', kinder: 'Nein', familienstand: 'Ledig' }
@@ -72,5 +73,37 @@ describe('tax estimate of the self-employed (ADR-0101)', () => {
     expect(prepaid.prepayments).toBe(3000)
     expect(prepaid.result.to - high.result.to).toBeGreaterThanOrEqual(3000)
     expect(prepaid.result.to - high.result.to).toBeLessThan(3000 * 1.1)
+  })
+
+  it('deducts the provision the self-employed pay themselves: pension and KV/PV, the Krankengeld cut once (ADR-0101 §22)', async () => {
+    process.env.SELBSTSTAENDIGE_ENABLED = 'true'
+    const { interview, business, service } = setup()
+    interview.seed('u', 2025, SELF_EMPLOYED)
+    await business.quickEntry('u', 2025, 'A', [{ key: 'einnahmen_umsatzsteuerpflichtig', amountCents: 6_000_000 }])
+    interview.seed('u', 2025, { 'kv-pv': 'Ja', 'kv-pv-art': 'Gesetzlich (freiwillig)', 'kv-krankengeld': 'Ja', 'kv-pv-betrag': '6000', 'pv-betrag': '1200', 'kv-wahl-betrag': '0' })
+    const healthOnly = await service.getState('u', 2025)
+    interview.seed('u', 2025, { altersvorsorge: 'Ja', 'av-rv-betrag': '0', 'av-versorgungswerk-betrag': '10000', 'av-basisrente-betrag': '0', 'av-ksk': 'Nein' })
+    const withPension = await service.getState('u', 2025)
+    if (healthOnly.kind !== 'spanne' || withPension.kind !== 'spanne') throw new Error('expected ranges')
+    // 6.000 € KV less 4 % (240 €) plus 1.200 € PV — not 4 % off the care insurance, not twice.
+    expect(healthOnly.provision).toEqual({ from: 6960, to: 6960 })
+    expect(withPension.provision).toEqual({ from: 16_960, to: 16_960 })
+    expect(withPension.result.to).toBeGreaterThan(healthOnly.result.to)
+  })
+
+  it('a pensioner with a business: the pension and the profit are taxed together (ADR-0101 §22)', async () => {
+    process.env.SELBSTSTAENDIGE_ENABLED = 'true'
+    const { interview, business, service, pension } = setup()
+    interview.seed('u', 2025, { job: 'Rente', 'rente-selbststaendig': 'Ja', ausland: 'Nein', kinder: 'Nein', familienstand: 'Ledig' })
+    await expect(service.getState('u', 2025)).resolves.toEqual({ kind: 'offen', missing: ['selbststaendig'] })
+    await business.quickEntry('u', 2025, 'A', [{ key: 'einnahmen_umsatzsteuerpflichtig', amountCents: 2_000_000 }])
+    await expect(service.getState('u', 2025)).resolves.toEqual({ kind: 'offen', missing: ['rente'] })
+    pension.seed({ userId: 'u', taxYear: 2025, rentenart: 'GesetzlicheRente', jahresbetrag: '18000', rentenbeginnJahr: '2019', alterBeiRentenbeginn: null })
+    const small = await service.getState('u', 2025)
+    await business.quickEntry('u', 2025, 'A', [{ key: 'einnahmen_umsatzsteuerpflichtig', amountCents: 2_000_000 }])
+    const large = await service.getState('u', 2025)
+    if (small.kind !== 'spanne' || large.kind !== 'spanne') throw new Error('expected ranges')
+    expect(large.incomeTax.to).toBeGreaterThan(small.incomeTax.to)
+    expect(small.result.to).toBeLessThan(0)
   })
 })
