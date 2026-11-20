@@ -102,6 +102,7 @@ export function vatFiguresOf(entries: readonly JournalEntry[], year: number, per
   let withDeduction = 0
   let withoutDeduction = 0
   let small = 0
+  let zero = 0
   let euServices = 0
   let input = 0
   for (const entry of entries) {
@@ -111,6 +112,7 @@ export function vatFiguresOf(entries: readonly JournalEntry[], year: number, per
       if (line.taxPart === 'base') {
         if (line.taxKey === 'ust19') standard += signed
         else if (line.taxKey === 'ust7') reduced += signed
+        else if (line.taxKey === 'ust0') zero += signed
         else if (line.taxKey === 'igLieferung') withDeduction += signed
         else if (line.taxKey === 'steuerfrei') withoutDeduction += signed
         else if (line.taxKey === 'kleinunternehmer') small += signed
@@ -127,7 +129,7 @@ export function vatFiguresOf(entries: readonly JournalEntry[], year: number, per
     }
   }
   return {
-    taxableNetEur: { standard: eur(standard), reduced: eur(reduced) },
+    taxableNetEur: { standard: eur(standard), reduced: eur(reduced), zero: eur(zero) },
     reverseChargeNetEur: { standard: eur(rcEu + rcOther + igStandard), reduced: eur(igReduced) },
     taxFreeWithDeductionEur: eur(withDeduction),
     taxFreeWithoutDeductionEur: eur(withoutDeduction),

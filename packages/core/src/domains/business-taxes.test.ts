@@ -8,6 +8,12 @@ describe('small business rule (§ 19 UStG)', () => {
     expect(checkSmallBusiness({ year: 2026, priorYearTurnoverEur: 10_000, currentYearTurnoverEur: 100_001 })).toMatchObject({ eligible: false, crossed: 'current_year' })
   })
 
+  it('annualises a part-year year before until 2024, not from 2025 (§ 19 Abs. 3 Satz 3 a. F., verified)', () => {
+    // Started 1.7.: 12.000 € in six months are 24.000 € a year, above 22.000 €.
+    expect(checkSmallBusiness({ year: 2024, priorYearTurnoverEur: 12_000, currentYearTurnoverEur: 10_000, priorYearMonthsActive: 6 })).toMatchObject({ eligible: false, crossed: 'prior_year' })
+    expect(checkSmallBusiness({ year: 2025, priorYearTurnoverEur: 15_000, currentYearTurnoverEur: 10_000, priorYearMonthsActive: 6 })).toMatchObject({ eligible: true })
+  })
+
   it('in the founding year from 2025 holds the running year to 25.000 €, with nothing to annualise (§ 19 Abs. 2 UStG)', () => {
     expect(checkSmallBusiness({ year: 2025, priorYearTurnoverEur: 0, currentYearTurnoverEur: 25_000, founding: { monthsActive: 3 } })).toEqual({ eligible: true, priorYearLimitEur: 25_000, currentYearLimitEur: 25_000, crossed: null })
     expect(checkSmallBusiness({ year: 2026, priorYearTurnoverEur: 0, currentYearTurnoverEur: 25_001, founding: { monthsActive: 12 } })).toMatchObject({ eligible: false, crossed: 'current_year' })

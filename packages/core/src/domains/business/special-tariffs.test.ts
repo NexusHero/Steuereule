@@ -60,6 +60,12 @@ describe('Thesaurierung (§ 34a EStG)', () => {
     expect(r).toMatchObject({ favouredEur: 0, recaptureBaseEur: 30_000, recaptureEur: 7_500, nextCarriedForwardEur: 0 })
   })
 
+  it('adds the Gewerbesteuer back only from VZ 2024; before, the profit after it is what is not withdrawn (verified)', () => {
+    const base = { profitEur: 300_000, withdrawalsEur: 100_000, depositsEur: 0, tradeTaxEur: 20_000, requestedEur: 1_000_000, carriedForwardEur: 0 }
+    expect(retainedProfitTax({ ...base, year: 2023 }).nonWithdrawnEur).toBe(200_000)
+    expect(retainedProfitTax({ ...base, year: 2024 }).nonWithdrawnEur).toBe(220_000)
+  })
+
   it('the rate falls from 2028 (27 %, 26 % from 2030, 25 % from 2032)', () => {
     expect(retainedProfitTax({ year: 2028, profitEur: 1, withdrawalsEur: 0, depositsEur: 0, tradeTaxEur: 0, requestedEur: 1, carriedForwardEur: 0 }).rate).toBe(0.27)
   })

@@ -69,6 +69,12 @@ describe('one Voranmeldung (USt 1 A)', () => {
     expect(r.vatDueEur).toBe(190)
   })
 
+  it('lists 0 % photovoltaic supplies in Kz 87 from 2023, not in the 2022 form (verified)', () => {
+    const pv = { ...figures, taxableNetEur: { standard: 0, reduced: 0, zero: 5_000 } }
+    expect(vatPeriodReturn({ figures: pv, regime: 'regel', year: 2023 }).kennzahlen['87']).toBe(5_000)
+    expect(vatPeriodReturn({ figures: pv, regime: 'regel', year: 2022 }).kennzahlen['87']).toBeUndefined()
+  })
+
   it('takes the Sondervorauszahlung off in the last period (Kz 39)', () => {
     const r = vatPeriodReturn({ figures, regime: 'regel', specialPrepaymentDeductionEur: 400 })
     expect(r.kennzahlen['39']).toBe(400)

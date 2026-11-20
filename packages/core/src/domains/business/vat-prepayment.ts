@@ -119,13 +119,13 @@ const REDUCED = 0.07
  * 46/47 and 84/85 § 13b, 66/61/67 input VAT, 39 Sondervorauszahlung, 83). That 2022–2025 used the same
  * Kennzahlen could not be checked against the old forms (research §3); the help says so.
  */
-export function vatPeriodReturn(input: { readonly figures: PeriodFigures; readonly regime: 'regel' | 'klein'; readonly specialPrepaymentDeductionEur?: number | undefined }): VatPeriodResult {
+export function vatPeriodReturn(input: { readonly figures: PeriodFigures; readonly regime: 'regel' | 'klein'; readonly specialPrepaymentDeductionEur?: number | undefined; readonly year?: number | undefined }): VatPeriodResult {
   // The Bemessungsgrundlagen are declared in whole euros (cents dropped), the tax on them with cents.
   const whole = (v: number | undefined) => Math.trunc(v ?? 0)
   const raw = input.figures
   const f: PeriodFigures = {
     ...raw,
-    taxableNetEur: { standard: whole(raw.taxableNetEur.standard), reduced: whole(raw.taxableNetEur.reduced) },
+    taxableNetEur: { standard: whole(raw.taxableNetEur.standard), reduced: whole(raw.taxableNetEur.reduced), zero: whole(raw.taxableNetEur.zero) },
     intraEuAcquisitionNetEur: { standard: whole(raw.intraEuAcquisitionNetEur.standard), reduced: whole(raw.intraEuAcquisitionNetEur.reduced) },
     reverseChargeEuServicesNetEur: whole(raw.reverseChargeEuServicesNetEur),
     reverseChargeOtherNetEur: whole(raw.reverseChargeOtherNetEur),
@@ -147,6 +147,8 @@ export function vatPeriodReturn(input: { readonly figures: PeriodFigures; readon
   if (!small) {
     put('81', f.taxableNetEur.standard ?? 0)
     put('86', f.taxableNetEur.reduced ?? 0)
+    // 0 % for photovoltaic supplies (§ 12 Abs. 3 UStG): Kz 87 from the 2023 form on (verified).
+    if ((input.year ?? 2026) >= 2023) put('87', f.taxableNetEur.zero ?? 0)
     put('41', f.taxFreeWithDeductionEur)
     put('48', f.taxFreeWithoutDeductionEur)
     put('21', f.euServicesNetEur)

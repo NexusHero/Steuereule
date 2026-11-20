@@ -36,7 +36,7 @@ export interface RetainedProfitInput {
   readonly profitEur: number
   readonly withdrawalsEur: number
   readonly depositsEur: number
-  /** The Gewerbesteuer is added back to the nicht entnommene Gewinn (Abs. 2 Satz 1). */
+  /** The Gewerbesteuer is added back to the nicht entnommene Gewinn from VZ 2024 (Abs. 2 Satz 1 n. F.; before, it stayed off, BMF 11.08.2008 Rz. 16). */
   readonly tradeTaxEur: number
   /** From VZ 2024: withdrawals to pay the § 34a tax and its Soli stay out (Abs. 2 Satz 2). */
   readonly withdrawalsForRetainedTaxEur?: number | undefined
@@ -75,7 +75,8 @@ const c2 = (v: number) => Math.round(v * 100) / 100
 export function retainedProfitTax(input: RetainedProfitInput): RetainedProfit {
   const excluded = input.year >= 2024 ? Math.max(0, input.withdrawalsForRetainedTaxEur ?? 0) : 0
   const balance = input.withdrawalsEur - excluded - input.depositsEur
-  const nonWithdrawnEur = c2(Math.max(0, input.profitEur - Math.max(0, balance) + Math.max(0, input.tradeTaxEur)))
+  const tradeTaxBack = input.year >= 2024 ? Math.max(0, input.tradeTaxEur) : 0
+  const nonWithdrawnEur = c2(Math.max(0, input.profitEur - Math.max(0, balance) + tradeTaxBack))
   const favouredEur = c2(Math.min(Math.max(0, input.requestedEur), nonWithdrawnEur, Math.max(0, input.profitEur)))
   const rate = retainedProfitRate(input.year)
   const taxEur = c2(favouredEur * rate)

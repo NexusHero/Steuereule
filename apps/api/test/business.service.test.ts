@@ -525,6 +525,19 @@ describe('BusinessService (ADR-0101)', () => {
     }
   })
 
+  it('takes the Sondervorauszahlung from the sum of last year’s Vorauszahlungen, not its annual VAT (§ 47 UStDV, verified)', async () => {
+    const { service } = setup()
+    // 2024 filed quarterly: 1.900 € VAT in Q1, so 1.900 € of Vorauszahlungen.
+    await service.saveProfile('u', YEAR, A1, { vatPeriodFacts: { period: 'quartal' } })
+    await service.post('u', YEAR, A1, { date: '2024-02-01', documentNumber: 'R-1', text: 'Honorar', lines: [{ account: '1200', side: 'debit', amount: 1_190_000 }, { account: '8400', side: 'credit', amount: 1_190_000, taxKey: 'ust19' }] })
+    await service.saveProfile('u', 2025, A1, { vatPeriodFacts: { period: 'monat', extension: true } })
+    const fromVoranmeldungen = (await service.vatPrepayments('u', 2025, A1)).specialPrepaymentEur
+    expect(fromVoranmeldungen).toBe(Math.round(1_900 / 11))
+    // A sum entered for 2024 wins.
+    await service.saveProfile('u', YEAR, A1, { vatPrepaymentsCents: 1_100_000 })
+    expect((await service.vatPrepayments('u', 2025, A1)).specialPrepaymentEur).toBe(1_000)
+  })
+
   it('the GoBD export is a zip with index.xml and the journal, and is itself logged in the chain', async () => {
     const { service, repository } = setup()
     await service.post('u', YEAR, A1, sale)

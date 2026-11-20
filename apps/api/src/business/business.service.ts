@@ -944,7 +944,7 @@ export class BusinessService {
     return overview
   }
 
-  private async prepaymentsOf(userId: string, year: number, person: BusinessPerson): Promise<VatPrepaymentOverview> {
+  private async prepaymentsOf(userId: string, year: number, person: BusinessPerson, depth = 0): Promise<VatPrepaymentOverview> {
     const [businesses, prior] = await Promise.all([this.businessesOf(userId, year, person), this.businessesOf(userId, year - 1, person)])
     const profile = businesses.find((b) => b.ref.business === FIRST_BUSINESS)?.profile ?? businesses[0]?.profile ?? null
     const facts = parseJson<VatPeriodFacts>(profile?.vatPeriodFacts ?? null, {})
@@ -964,15 +964,34 @@ export class BusinessService {
       : vatFilingPeriod({ year, priorYearVatEur: priorVat ?? 0, priorYearMonthsActive: priorMonths, chooseMonthly: facts.chooseMonthly })
     const period = facts.period ?? derived.period
     const extension = facts.extension === true
-    const specialPrepaymentEur = period === 'monat' && extension ? (facts.specialPrepaymentEur ?? specialPrepayment({ priorYearPrepaymentsEur: Math.max(0, priorVat ?? 0), priorYearMonthsActive: priorMonths })) : null
+    const priorProfile = prior.find((b) => b.ref.business === FIRST_BUSINESS)?.profile ?? null
+    // The year before's own Voranmeldungen (one level back is enough for its Sondervorauszahlung).
+    const specialPrepaymentBasis =
+      period === 'monat' && extension && facts.specialPrepaymentEur === undefined && prior.length > 0 && depth === 0
+        ? priorProfile?.vatPrepayments
+          ? eur(Number(priorProfile.vatPrepayments))
+          : await this.priorPrepaymentsTotal(userId, year - 1, person, depth + 1)
+        : null
+    // § 47 Abs. 1 UStDV: 1/11 of the sum of last year's Vorauszahlungen: as entered for that year, else its Voranmeldungen.
+    const priorPrepaymentsEur = specialPrepaymentBasis ?? Math.max(0, priorVat ?? 0)
+    const specialPrepaymentEur = period === 'monat' && extension ? (facts.specialPrepaymentEur ?? specialPrepayment({ priorYearPrepaymentsEur: priorPrepaymentsEur, priorYearMonthsActive: priorMonths })) : null
     const list = vatPeriodsOf(year, period, extension)
     const periods = list.map((p, index) => {
       const figures = vatFiguresOf(entries, year, p)
-      const r = vatPeriodReturn({ figures, regime, ...(index === list.length - 1 && specialPrepaymentEur !== null ? { specialPrepaymentDeductionEur: specialPrepaymentEur } : {}) })
+      const r = vatPeriodReturn({ figures, regime, year, ...(index === list.length - 1 && specialPrepaymentEur !== null ? { specialPrepaymentDeductionEur: specialPrepaymentEur } : {}) })
       return { ...p, kennzahlen: r.kennzahlen, vatDueEur: r.vatDueEur }
     })
     const totalEur = round2(periods.reduce((sum, p) => sum + p.vatDueEur, 0) + (specialPrepaymentEur ?? 0))
     return { period, periodSource: facts.period ? 'angabe' : derived.reason, extension, specialPrepaymentEur, periods, totalEur, ecSalesList: this.ecSalesListsOf(year, entries, priorEntries) }
+  }
+
+  /**
+   * The year before's Vorauszahlungen as its Voranmeldungen give them; null when it had none in the app
+   * (the year before that has no book, so its period reads „befreit“): then the annual VAT stands in.
+   */
+  private async priorPrepaymentsTotal(userId: string, year: number, person: BusinessPerson, depth: number): Promise<number | null> {
+    const overview = await this.prepaymentsOf(userId, year, person, depth)
+    return overview.periods.length > 0 ? overview.totalEur : null
   }
 
   /**
@@ -1683,11 +1702,14 @@ export function smallBusinessCheckOf(year: number, profile: BusinessProfileRecor
   const start = profile?.startDate ?? null
   const foundingYear = start !== null && Number(start.slice(0, 4)) === year
   const monthsActive = foundingYear ? 12 - Number(start.slice(5, 7)) + 1 : 12
+  // Started during the year before: until 2024 its turnover is annualised (§ 19 Abs. 3 Satz 3 UStG a. F.).
+  const startedYearBefore = start !== null && Number(start.slice(0, 4)) === year - 1
   const result = checkSmallBusiness({
     year,
     priorYearTurnoverEur: foundingYear ? 0 : (priorYearTurnoverEur ?? 0),
     currentYearTurnoverEur: turnoverEur,
     ...(foundingYear ? { founding: { monthsActive } } : {}),
+    ...(startedYearBefore ? { priorYearMonthsActive: 12 - Number(start.slice(5, 7)) + 1 } : {}),
   })
   return { ...result, foundingYear, priorYearKnown: foundingYear || priorYearTurnoverEur !== null, turnoverEur, matchesProfile: !(profile?.smallBusiness === true && !result.eligible) }
 }

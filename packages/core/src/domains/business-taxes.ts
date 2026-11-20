@@ -17,6 +17,11 @@ export interface SmallBusinessInput {
    * annualised over them).
    */
   readonly founding?: { readonly monthsActive: number } | undefined
+  /**
+   * The business started during the year before: until 2024 its turnover is annualised over the begun
+   * months (§ 19 Abs. 3 Satz 3, 4 UStG a. F.); from 2025 the actual turnover counts (§ 19 n. F.).
+   */
+  readonly priorYearMonthsActive?: number | undefined
 }
 
 export interface SmallBusinessResult {
@@ -44,7 +49,9 @@ export function checkSmallBusiness(input: SmallBusinessInput): SmallBusinessResu
     return { eligible: crossed === null, priorYearLimitEur, currentYearLimitEur: priorYearLimitEur, crossed }
   }
   const currentYearLimitEur = fromNewRule ? 100_000 : 50_000
-  const crossed = input.priorYearTurnoverEur > priorYearLimitEur ? 'prior_year' : input.currentYearTurnoverEur > currentYearLimitEur ? 'current_year' : null
+  const priorMonths = Math.min(12, Math.max(1, Math.ceil(input.priorYearMonthsActive ?? 12)))
+  const prior = fromNewRule ? input.priorYearTurnoverEur : (input.priorYearTurnoverEur * 12) / priorMonths
+  const crossed = prior > priorYearLimitEur ? 'prior_year' : input.currentYearTurnoverEur > currentYearLimitEur ? 'current_year' : null
   return { eligible: crossed === null, priorYearLimitEur, currentYearLimitEur, crossed }
 }
 
