@@ -17,10 +17,10 @@ import { attempt, useRefreshBusiness } from './useBusiness'
 import type { BusinessPageProps } from './BusinessScreen'
 
 /** Exports: the GoBD data export for an audit, the Verfahrensdokumentation, and the E-Bilanz data set (not sent). */
-export function ExportPage({ taxYear, person, onBack, onOpenPage }: BusinessPageProps) {
+export function ExportPage({ taxYear, person, business = 1, onBack, onOpenPage }: BusinessPageProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
-  const params = personParams(person)
+  const params = personParams(person, business)
   const doc = useBusinessControllerProcedureDoc(taxYear, params)
   const saveDoc = useBusinessControllerSaveProcedureDoc()
   const bilanz = useBusinessControllerEBilanz(taxYear, params)

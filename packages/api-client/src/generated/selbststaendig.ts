@@ -36,10 +36,12 @@ import type {
   BusinessCataloguesDto,
   BusinessCheckoutResponseDto,
   BusinessControllerAcceptBankParams,
+  BusinessControllerAddBusinessParams,
   BusinessControllerAssetsParams,
   BusinessControllerBankParams,
   BusinessControllerBookDepreciationParams,
   BusinessControllerBookParams,
+  BusinessControllerBusinessesParams,
   BusinessControllerCarryForwardParams,
   BusinessControllerCataloguesParams,
   BusinessControllerCheckoutParams,
@@ -60,12 +62,14 @@ import type {
   BusinessControllerProcedureDocParams,
   BusinessControllerProfileParams,
   BusinessControllerQuickEntryParams,
+  BusinessControllerRemoveBusinessParams,
   BusinessControllerReverseParams,
   BusinessControllerSaveProcedureDocParams,
   BusinessControllerSaveProfileParams,
   BusinessControllerTradeTaxParams,
   BusinessControllerVatParams,
   BusinessErrorDto,
+  BusinessListItemDto,
   BusinessProfileDto,
   BusinessProfileInputDto,
   ClosingDto,
@@ -78,6 +82,7 @@ import type {
   JournalEntryDto,
   LockDto,
   LossesDto,
+  NewBusinessDto,
   ProcedureDocDto,
   ProcedureDocInputDto,
   QuickEntryDto,
@@ -107,6 +112,352 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export type businessControllerBusinessesResponse200 = {
+  data: BusinessListItemDto[]
+  status: 200
+}
+
+export type businessControllerBusinessesResponse400 = {
+  data: BusinessErrorDto
+  status: 400
+}
+
+export type businessControllerBusinessesResponse401 = {
+  data: void
+  status: 401
+}
+
+export type businessControllerBusinessesResponse403 = {
+  data: BusinessErrorDto
+  status: 403
+}
+
+export type businessControllerBusinessesResponseSuccess = (businessControllerBusinessesResponse200) & {
+  headers: Headers;
+};
+export type businessControllerBusinessesResponseError = (businessControllerBusinessesResponse400 | businessControllerBusinessesResponse401 | businessControllerBusinessesResponse403) & {
+  headers: Headers;
+};
+
+export type businessControllerBusinessesResponse = (businessControllerBusinessesResponseSuccess | businessControllerBusinessesResponseError)
+
+export const getBusinessControllerBusinessesUrl = (jahr: number,
+    params?: BusinessControllerBusinessesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/v1/steuerjahre/${jahr}/selbststaendig/betriebe?${stringifiedParams}` : `/v1/steuerjahre/${jahr}/selbststaendig/betriebe`
+}
+
+export const businessControllerBusinesses = async (jahr: number,
+    params?: BusinessControllerBusinessesParams, options?: RequestInit): Promise<businessControllerBusinessesResponse> => {
+
+  return httpClient<businessControllerBusinessesResponse>(getBusinessControllerBusinessesUrl(jahr,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getBusinessControllerBusinessesQueryKey = (jahr: number,
+    params?: BusinessControllerBusinessesParams,) => {
+    return [
+    `/v1/steuerjahre/${jahr}/selbststaendig/betriebe`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getBusinessControllerBusinessesQueryOptions = <TData = Awaited<ReturnType<typeof businessControllerBusinesses>>, TError = BusinessErrorDto | void>(jahr: number,
+    params?: BusinessControllerBusinessesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof businessControllerBusinesses>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getBusinessControllerBusinessesQueryKey(jahr,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof businessControllerBusinesses>>> = ({ signal }) => businessControllerBusinesses(jahr,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: jahr !== null && jahr !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof businessControllerBusinesses>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type BusinessControllerBusinessesQueryResult = NonNullable<Awaited<ReturnType<typeof businessControllerBusinesses>>>
+export type BusinessControllerBusinessesQueryError = BusinessErrorDto | void
+
+
+export function useBusinessControllerBusinesses<TData = Awaited<ReturnType<typeof businessControllerBusinesses>>, TError = BusinessErrorDto | void>(
+ jahr: number,
+    params: undefined |  BusinessControllerBusinessesParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof businessControllerBusinesses>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof businessControllerBusinesses>>,
+          TError,
+          Awaited<ReturnType<typeof businessControllerBusinesses>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useBusinessControllerBusinesses<TData = Awaited<ReturnType<typeof businessControllerBusinesses>>, TError = BusinessErrorDto | void>(
+ jahr: number,
+    params?: BusinessControllerBusinessesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof businessControllerBusinesses>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof businessControllerBusinesses>>,
+          TError,
+          Awaited<ReturnType<typeof businessControllerBusinesses>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useBusinessControllerBusinesses<TData = Awaited<ReturnType<typeof businessControllerBusinesses>>, TError = BusinessErrorDto | void>(
+ jahr: number,
+    params?: BusinessControllerBusinessesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof businessControllerBusinesses>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useBusinessControllerBusinesses<TData = Awaited<ReturnType<typeof businessControllerBusinesses>>, TError = BusinessErrorDto | void>(
+ jahr: number,
+    params?: BusinessControllerBusinessesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof businessControllerBusinesses>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getBusinessControllerBusinessesQueryOptions(jahr,params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type businessControllerAddBusinessResponse200 = {
+  data: BusinessProfileDto
+  status: 200
+}
+
+export type businessControllerAddBusinessResponse400 = {
+  data: BusinessErrorDto
+  status: 400
+}
+
+export type businessControllerAddBusinessResponse401 = {
+  data: void
+  status: 401
+}
+
+export type businessControllerAddBusinessResponse403 = {
+  data: BusinessErrorDto
+  status: 403
+}
+
+export type businessControllerAddBusinessResponseSuccess = (businessControllerAddBusinessResponse200) & {
+  headers: Headers;
+};
+export type businessControllerAddBusinessResponseError = (businessControllerAddBusinessResponse400 | businessControllerAddBusinessResponse401 | businessControllerAddBusinessResponse403) & {
+  headers: Headers;
+};
+
+export type businessControllerAddBusinessResponse = (businessControllerAddBusinessResponseSuccess | businessControllerAddBusinessResponseError)
+
+export const getBusinessControllerAddBusinessUrl = (jahr: number,
+    params?: BusinessControllerAddBusinessParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/v1/steuerjahre/${jahr}/selbststaendig/betriebe?${stringifiedParams}` : `/v1/steuerjahre/${jahr}/selbststaendig/betriebe`
+}
+
+export const businessControllerAddBusiness = async (jahr: number,
+    newBusinessDto: NewBusinessDto,
+    params?: BusinessControllerAddBusinessParams, options?: RequestInit): Promise<businessControllerAddBusinessResponse> => {
+
+  return httpClient<businessControllerAddBusinessResponse>(getBusinessControllerAddBusinessUrl(jahr,params),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(newBusinessDto)
+  }
+);}
+
+
+
+
+
+export const getBusinessControllerAddBusinessMutationOptions = <TError = BusinessErrorDto | void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof businessControllerAddBusiness>>, TError,{jahr: number;data: NewBusinessDto;params?: BusinessControllerAddBusinessParams}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof businessControllerAddBusiness>>, TError,{jahr: number;data: NewBusinessDto;params?: BusinessControllerAddBusinessParams}, TContext> => {
+
+const mutationKey = ['businessControllerAddBusiness'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof businessControllerAddBusiness>>, {jahr: number;data: NewBusinessDto;params?: BusinessControllerAddBusinessParams}> = (props) => {
+          const {jahr,data,params} = props ?? {};
+
+          return  businessControllerAddBusiness(jahr,data,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type BusinessControllerAddBusinessMutationResult = NonNullable<Awaited<ReturnType<typeof businessControllerAddBusiness>>>
+    export type BusinessControllerAddBusinessMutationBody = NewBusinessDto
+    export type BusinessControllerAddBusinessMutationError = BusinessErrorDto | void
+
+    export const useBusinessControllerAddBusiness = <TError = BusinessErrorDto | void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof businessControllerAddBusiness>>, TError,{jahr: number;data: NewBusinessDto;params?: BusinessControllerAddBusinessParams}, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof businessControllerAddBusiness>>,
+        TError,
+        {jahr: number;data: NewBusinessDto;params?: BusinessControllerAddBusinessParams},
+        TContext
+      > => {
+      return useMutation(getBusinessControllerAddBusinessMutationOptions(options), queryClient);
+    }
+
+export type businessControllerRemoveBusinessResponse400 = {
+  data: BusinessErrorDto
+  status: 400
+}
+
+export type businessControllerRemoveBusinessResponse401 = {
+  data: void
+  status: 401
+}
+
+export type businessControllerRemoveBusinessResponse403 = {
+  data: BusinessErrorDto
+  status: 403
+}
+
+export type businessControllerRemoveBusinessResponse409 = {
+  data: BusinessErrorDto
+  status: 409
+}
+
+;
+export type businessControllerRemoveBusinessResponseError = (businessControllerRemoveBusinessResponse400 | businessControllerRemoveBusinessResponse401 | businessControllerRemoveBusinessResponse403 | businessControllerRemoveBusinessResponse409) & {
+  headers: Headers;
+};
+
+export type businessControllerRemoveBusinessResponse = (businessControllerRemoveBusinessResponseError)
+
+export const getBusinessControllerRemoveBusinessUrl = (jahr: number,
+    nummer: number,
+    params?: BusinessControllerRemoveBusinessParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/v1/steuerjahre/${jahr}/selbststaendig/betriebe/${nummer}/entfernen?${stringifiedParams}` : `/v1/steuerjahre/${jahr}/selbststaendig/betriebe/${nummer}/entfernen`
+}
+
+export const businessControllerRemoveBusiness = async (jahr: number,
+    nummer: number,
+    params?: BusinessControllerRemoveBusinessParams, options?: RequestInit): Promise<businessControllerRemoveBusinessResponse> => {
+
+  return httpClient<businessControllerRemoveBusinessResponse>(getBusinessControllerRemoveBusinessUrl(jahr,nummer,params),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getBusinessControllerRemoveBusinessMutationOptions = <TError = BusinessErrorDto | void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof businessControllerRemoveBusiness>>, TError,{jahr: number;nummer: number;params?: BusinessControllerRemoveBusinessParams}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof businessControllerRemoveBusiness>>, TError,{jahr: number;nummer: number;params?: BusinessControllerRemoveBusinessParams}, TContext> => {
+
+const mutationKey = ['businessControllerRemoveBusiness'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof businessControllerRemoveBusiness>>, {jahr: number;nummer: number;params?: BusinessControllerRemoveBusinessParams}> = (props) => {
+          const {jahr,nummer,params} = props ?? {};
+
+          return  businessControllerRemoveBusiness(jahr,nummer,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type BusinessControllerRemoveBusinessMutationResult = NonNullable<Awaited<ReturnType<typeof businessControllerRemoveBusiness>>>
+
+    export type BusinessControllerRemoveBusinessMutationError = BusinessErrorDto | void
+
+    export const useBusinessControllerRemoveBusiness = <TError = BusinessErrorDto | void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof businessControllerRemoveBusiness>>, TError,{jahr: number;nummer: number;params?: BusinessControllerRemoveBusinessParams}, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof businessControllerRemoveBusiness>>,
+        TError,
+        {jahr: number;nummer: number;params?: BusinessControllerRemoveBusinessParams},
+        TContext
+      > => {
+      return useMutation(getBusinessControllerRemoveBusinessMutationOptions(options), queryClient);
+    }
 
 export type businessControllerCataloguesResponse200 = {
   data: BusinessCataloguesDto

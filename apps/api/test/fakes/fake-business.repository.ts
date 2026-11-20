@@ -7,6 +7,7 @@ import type {
   BookAppend,
   BookingRuleRecord,
   BusinessPerson,
+  BusinessRef,
   BusinessProfilePatch,
   BusinessProfileRecord,
   BusinessRepository,
@@ -25,7 +26,7 @@ interface StoredBook {
   bank: BankTransactionRecord[]
 }
 
-const key = (userId: string, year: number, person: BusinessPerson) => `${userId}|${year}|${person}`
+const key = (userId: string, year: number, ref: BusinessRef) => `${userId}|${year}|${ref.person}|${ref.business}`
 
 export class FakeBusinessRepository implements BusinessRepository {
   readonly profiles = new Map<string, BusinessProfileRecord>()
@@ -36,19 +37,29 @@ export class FakeBusinessRepository implements BusinessRepository {
   /** Test seam: the next asset insert of a book change fails, as a database error would. */
   failAssetInsert = false
 
-  async findProfile(userId: string, taxYear: number, person: BusinessPerson) {
-    return this.profiles.get(key(userId, taxYear, person)) ?? null
+  async findProfile(userId: string, taxYear: number, ref: BusinessRef) {
+    return this.profiles.get(key(userId, taxYear, ref)) ?? null
   }
 
-  async saveProfile(userId: string, taxYear: number, person: BusinessPerson, patch: BusinessProfilePatch) {
-    const current = this.profiles.get(key(userId, taxYear, person)) ?? {
-      id: `p${++this.seq}`, userId, taxYear, person, kind: null, professionAnswers: null, suggestion: null, name: null, mode: 'euer', chart: 'SKR03',
+  async saveProfile(userId: string, taxYear: number, ref: BusinessRef, patch: BusinessProfilePatch) {
+    const current = this.profiles.get(key(userId, taxYear, ref)) ?? {
+      id: `p${++this.seq}`, userId, taxYear, person: ref.person, business: ref.business, kind: null, professionAnswers: null, suggestion: null, name: null, mode: 'euer', chart: 'SKR03',
       smallBusiness: false, vatMethod: 'ist', municipalityAgs: null, multiplierOverride: null, startDate: null, vatPrepayments: null, tradeTaxInputs: null,
       lossFacts: null, partnershipShares: null, procedureDoc: null,
     } satisfies BusinessProfileRecord
     const next = { ...current, ...Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined)) } as BusinessProfileRecord
-    this.profiles.set(key(userId, taxYear, person), next)
+    this.profiles.set(key(userId, taxYear, ref), next)
     return next
+  }
+
+  async listProfiles(userId: string, taxYear: number, person: BusinessPerson) {
+    return [...this.profiles.values()].filter((p) => p.userId === userId && p.taxYear === taxYear && p.person === person).sort((a, b) => a.business - b.business)
+  }
+
+  async deleteProfile(userId: string, taxYear: number, ref: BusinessRef) {
+    this.profiles.delete(key(userId, taxYear, ref))
+    const book = this.books.get(key(userId, taxYear, ref))
+    if (book && book.entries.length === 0) this.books.delete(key(userId, taxYear, ref))
   }
 
   private loaded(book: StoredBook): LoadedBook {
@@ -61,13 +72,13 @@ export class FakeBusinessRepository implements BusinessRepository {
     }
   }
 
-  async loadBook(userId: string, taxYear: number, person: BusinessPerson) {
-    const book = this.books.get(key(userId, taxYear, person))
+  async loadBook(userId: string, taxYear: number, ref: BusinessRef) {
+    const book = this.books.get(key(userId, taxYear, ref))
     return book ? this.loaded(book) : null
   }
 
-  private ensure(userId: string, taxYear: number, person: BusinessPerson, frame: { chart: ChartOfAccounts; mode: BookkeepingMode }): StoredBook {
-    const k = key(userId, taxYear, person)
+  private ensure(userId: string, taxYear: number, ref: BusinessRef, frame: { chart: ChartOfAccounts; mode: BookkeepingMode }): StoredBook {
+    const k = key(userId, taxYear, ref)
     let book = this.books.get(k)
     if (!book) {
       book = { id: `b${++this.seq}`, chart: frame.chart, mode: frame.mode, lockedThrough: null, entries: [], log: [], bank: [] }
@@ -79,11 +90,11 @@ export class FakeBusinessRepository implements BusinessRepository {
   async changeBook<T>(
     userId: string,
     taxYear: number,
-    person: BusinessPerson,
+    ref: BusinessRef,
     frame: { chart: ChartOfAccounts; mode: BookkeepingMode },
     work: (book: LoadedBook) => { result: T; append: BookAppend } | Promise<{ result: T; append: BookAppend }>,
   ): Promise<T> {
-    const book = this.ensure(userId, taxYear, person, frame)
+    const book = this.ensure(userId, taxYear, ref, frame)
     const { result, append } = await work(this.loaded(book))
     // One transaction: a failing asset insert leaves the book untouched, as the database rolls back.
     if ((append.assets ?? []).length > 0 && this.failAssetInsert) throw new Error('asset insert failed')
@@ -98,14 +109,14 @@ export class FakeBusinessRepository implements BusinessRepository {
   }
 
   /** Test seam: changes a stored entry behind the log's back, as a raw UPDATE would. */
-  tamper(userId: string, taxYear: number, person: BusinessPerson, number: number, change: (entry: JournalEntry) => JournalEntry): void {
-    const book = this.books.get(key(userId, taxYear, person))!
+  tamper(userId: string, taxYear: number, ref: BusinessRef, number: number, change: (entry: JournalEntry) => JournalEntry): void {
+    const book = this.books.get(key(userId, taxYear, ref))!
     const stored = book.entries.find((e) => e.entry.number === number)!
     stored.entry = change(stored.entry)
   }
 
-  async listAssets(userId: string, person: BusinessPerson, throughYear: number) {
-    return this.assets.filter((a) => a.userId === userId && a.person === person && a.taxYear <= throughYear)
+  async listAssets(userId: string, ref: BusinessRef, throughYear: number) {
+    return this.assets.filter((a) => a.userId === userId && a.person === ref.person && a.business === ref.business && a.taxYear <= throughYear)
   }
 
   async createAsset(userId: string, asset: NewFixedAsset) {
@@ -121,12 +132,12 @@ export class FakeBusinessRepository implements BusinessRepository {
     return asset
   }
 
-  async listBankTransactions(userId: string, taxYear: number, person: BusinessPerson) {
-    return [...(this.books.get(key(userId, taxYear, person))?.bank ?? [])]
+  async listBankTransactions(userId: string, taxYear: number, ref: BusinessRef) {
+    return [...(this.books.get(key(userId, taxYear, ref))?.bank ?? [])]
   }
 
-  async addBankTransactions(userId: string, taxYear: number, person: BusinessPerson, frame: { chart: ChartOfAccounts; mode: BookkeepingMode }, transactions: readonly { fingerprint: string; amount: number; details: string }[]) {
-    const book = this.ensure(userId, taxYear, person, frame)
+  async addBankTransactions(userId: string, taxYear: number, ref: BusinessRef, frame: { chart: ChartOfAccounts; mode: BookkeepingMode }, transactions: readonly { fingerprint: string; amount: number; details: string }[]) {
+    const book = this.ensure(userId, taxYear, ref, frame)
     let added = 0
     for (const tx of transactions) {
       if (book.bank.some((b) => b.fingerprint === tx.fingerprint)) continue

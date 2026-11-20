@@ -1,4 +1,5 @@
 import type { ScreenAccess } from '../confirmation/field-access.js'
+import { OWN_FIRST_BUSINESS } from './business.repository.js'
 import { BOOKING_ACCESS_FIELDS } from '../confirmation/field-access.js'
 import type { BusinessService } from './business.service.js'
 
@@ -13,10 +14,10 @@ export function bookingFieldAccess(service: Pick<BusinessService, 'acceptedDraft
   return {
     fields: BOOKING_ACCESS_FIELDS,
     withInstance: true,
-    read: async (userId, taxYear, instance) => (instance === null ? null : { entry: await service.acceptedDraft(userId, taxYear, 'A', instance) }),
+    read: async (userId, taxYear, instance) => (instance === null ? null : { entry: await service.acceptedDraft(userId, taxYear, OWN_FIRST_BUSINESS, instance) }),
     write: async (userId, taxYear, instance, field, value) => {
       if (instance === null || field !== 'entry') return false
-      await service.applyDraft(userId, taxYear, 'A', instance, value)
+      await service.applyDraft(userId, taxYear, OWN_FIRST_BUSINESS, instance, value)
       return true
     },
   }

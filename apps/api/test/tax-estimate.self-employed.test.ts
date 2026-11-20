@@ -17,6 +17,9 @@ import { FakeChildRepository } from './fakes/fake-child.repository.js'
 import { FakeRentalRepository } from './fakes/fake-rental.repository.js'
 import { FakePensionRepository } from './fakes/fake-pension.repository.js'
 
+const A1 = { person: 'A', business: 1 } as const
+const B1 = { person: 'B', business: 1 } as const
+
 const commute: CommuteRepository = { findForUserAndYear: async () => null, save: async (_u, _j, e) => e }
 
 function setup() {
@@ -59,10 +62,10 @@ describe('tax estimate of the self-employed (ADR-0101)', () => {
     process.env.SELBSTSTAENDIGE_ENABLED = 'true'
     const { interview, business, service } = setup()
     interview.seed('u', 2025, SELF_EMPLOYED)
-    await business.quickEntry('u', 2025, 'A', [{ key: 'einnahmen_umsatzsteuerpflichtig', amountCents: 4_000_000 }])
+    await business.quickEntry('u', 2025, A1, [{ key: 'einnahmen_umsatzsteuerpflichtig', amountCents: 4_000_000 }])
     const low = await service.getState('u', 2025)
     expect(low.kind).toBe('spanne')
-    await business.quickEntry('u', 2025, 'A', [{ key: 'einnahmen_umsatzsteuerpflichtig', amountCents: 2_000_000 }])
+    await business.quickEntry('u', 2025, A1, [{ key: 'einnahmen_umsatzsteuerpflichtig', amountCents: 2_000_000 }])
     const high = await service.getState('u', 2025)
     if (low.kind !== 'spanne' || high.kind !== 'spanne') throw new Error('expected ranges')
     // The result is a refund (+) or back-payment (−): more profit, more to pay.
@@ -80,7 +83,7 @@ describe('tax estimate of the self-employed (ADR-0101)', () => {
     process.env.SELBSTSTAENDIGE_ENABLED = 'true'
     const { interview, business, service } = setup()
     interview.seed('u', 2025, SELF_EMPLOYED)
-    await business.quickEntry('u', 2025, 'A', [{ key: 'einnahmen_umsatzsteuerpflichtig', amountCents: 6_000_000 }])
+    await business.quickEntry('u', 2025, A1, [{ key: 'einnahmen_umsatzsteuerpflichtig', amountCents: 6_000_000 }])
     interview.seed('u', 2025, { 'kv-pv': 'Ja', 'kv-pv-art': 'Gesetzlich (freiwillig)', 'kv-krankengeld': 'Ja', 'kv-pv-betrag': '6000', 'pv-betrag': '1200', 'kv-wahl-betrag': '0' })
     const healthOnly = await service.getState('u', 2025)
     interview.seed('u', 2025, { altersvorsorge: 'Ja', 'av-rv-betrag': '0', 'av-versorgungswerk-betrag': '10000', 'av-basisrente-betrag': '0', 'av-ksk': 'Nein' })
@@ -97,11 +100,11 @@ describe('tax estimate of the self-employed (ADR-0101)', () => {
     const { interview, business, service, pension } = setup()
     interview.seed('u', 2025, { job: 'Rente', 'rente-selbststaendig': 'Ja', ausland: 'Nein', kinder: 'Nein', familienstand: 'Ledig' })
     await expect(service.getState('u', 2025)).resolves.toEqual({ kind: 'offen', missing: ['selbststaendig'] })
-    await business.quickEntry('u', 2025, 'A', [{ key: 'einnahmen_umsatzsteuerpflichtig', amountCents: 2_000_000 }])
+    await business.quickEntry('u', 2025, A1, [{ key: 'einnahmen_umsatzsteuerpflichtig', amountCents: 2_000_000 }])
     await expect(service.getState('u', 2025)).resolves.toEqual({ kind: 'offen', missing: ['rente'] })
     pension.seed({ userId: 'u', taxYear: 2025, rentenart: 'GesetzlicheRente', jahresbetrag: '18000', rentenbeginnJahr: '2019', alterBeiRentenbeginn: null })
     const small = await service.getState('u', 2025)
-    await business.quickEntry('u', 2025, 'A', [{ key: 'einnahmen_umsatzsteuerpflichtig', amountCents: 2_000_000 }])
+    await business.quickEntry('u', 2025, A1, [{ key: 'einnahmen_umsatzsteuerpflichtig', amountCents: 2_000_000 }])
     const large = await service.getState('u', 2025)
     if (small.kind !== 'spanne' || large.kind !== 'spanne') throw new Error('expected ranges')
     expect(large.incomeTax.to).toBeGreaterThan(small.incomeTax.to)
@@ -112,7 +115,7 @@ describe('tax estimate of the self-employed (ADR-0101)', () => {
     process.env.SELBSTSTAENDIGE_ENABLED = 'true'
     const { interview, business, service, lstb } = setup()
     interview.seed('u', 2025, { ...SELF_EMPLOYED, nebenjob: 'Midijob', 'nebenjob-brutto': '18000' })
-    await business.quickEntry('u', 2025, 'A', [{ key: 'einnahmen_umsatzsteuerpflichtig', amountCents: 3_000_000 }])
+    await business.quickEntry('u', 2025, A1, [{ key: 'einnahmen_umsatzsteuerpflichtig', amountCents: 3_000_000 }])
     const withoutCertificate = await service.getState('u', 2025)
     expect(withoutCertificate.kind).toBe('offen')
     lstb.seed({ userId: 'u', taxYear: 2025, bruttoarbeitslohn: '18000', lohnsteuer: '900', sozialversicherung: '3600' })

@@ -8,6 +8,7 @@ import type {
   BookingRuleRecord,
   BookRecord,
   BusinessPerson,
+  BusinessRef,
   BusinessProfilePatch,
   BusinessProfileRecord,
   BusinessRepository,
@@ -28,6 +29,7 @@ function toProfile(row: {
   userId: string
   taxYear: number
   person: string
+  business: number
   kind: string | null
   professionAnswers: string | null
   suggestion: string | null
@@ -50,6 +52,7 @@ function toProfile(row: {
     userId: row.userId,
     taxYear: row.taxYear,
     person: row.person === 'B' ? 'B' : 'A',
+    business: row.business,
     kind: row.kind === 'freiberuf' || row.kind === 'gewerbe' ? row.kind : null,
     professionAnswers: row.professionAnswers,
     suggestion: row.suggestion,
@@ -77,6 +80,7 @@ function toAsset(row: {
   id: string
   taxYear: number
   person: string
+  business: number
   label: string
   account: string
   acquisitionDate: string
@@ -91,6 +95,7 @@ function toAsset(row: {
     id: row.id,
     taxYear: row.taxYear,
     person: row.person === 'B' ? 'B' : 'A',
+    business: row.business,
     label: row.label,
     account: row.account,
     acquisitionDate: row.acquisitionDate,
@@ -138,19 +143,29 @@ function toEntry(row: {
 export class PrismaBusinessRepository implements BusinessRepository {
   constructor(@Inject(ENCRYPTED_PRISMA) private readonly prisma: EncryptedPrismaClient) {}
 
-  async findProfile(userId: string, taxYear: number, person: BusinessPerson): Promise<BusinessProfileRecord | null> {
-    const row = await this.prisma.businessProfile.findUnique({ where: { userId_taxYear_person: { userId, taxYear, person } } })
+  async findProfile(userId: string, taxYear: number, ref: BusinessRef): Promise<BusinessProfileRecord | null> {
+    const row = await this.prisma.businessProfile.findUnique({ where: { userId_taxYear_person_business: { userId, taxYear, ...ref } } })
     return row ? toProfile(row) : null
   }
 
-  async saveProfile(userId: string, taxYear: number, person: BusinessPerson, patch: BusinessProfilePatch): Promise<BusinessProfileRecord> {
+  async listProfiles(userId: string, taxYear: number, person: BusinessPerson): Promise<BusinessProfileRecord[]> {
+    const rows = await this.prisma.businessProfile.findMany({ where: { userId, taxYear, person }, orderBy: { business: 'asc' } })
+    return rows.map(toProfile)
+  }
+
+  async saveProfile(userId: string, taxYear: number, ref: BusinessRef, patch: BusinessProfilePatch): Promise<BusinessProfileRecord> {
     const data = Object.fromEntries(Object.entries(patch).filter(([, value]) => value !== undefined))
     const row = await this.prisma.businessProfile.upsert({
-      where: { userId_taxYear_person: { userId, taxYear, person } },
-      create: { userId, taxYear, person, ...data },
+      where: { userId_taxYear_person_business: { userId, taxYear, ...ref } },
+      create: { userId, taxYear, ...ref, ...data },
       update: data,
     })
     return toProfile(row)
+  }
+
+  async deleteProfile(userId: string, taxYear: number, ref: BusinessRef): Promise<void> {
+    await this.prisma.businessProfile.deleteMany({ where: { userId, taxYear, ...ref } })
+    await this.prisma.ledger.deleteMany({ where: { userId, taxYear, ...ref, entries: { none: {} }, logRecords: { none: {} }, bankTransactions: { none: {} } } })
   }
 
   private async load(tx: Tx, book: BookRecord): Promise<LoadedBook> {
@@ -167,22 +182,22 @@ export class PrismaBusinessRepository implements BusinessRepository {
     }
   }
 
-  async loadBook(userId: string, taxYear: number, person: BusinessPerson): Promise<LoadedBook | null> {
-    const row = await this.prisma.ledger.findUnique({ where: { userId_taxYear_person: { userId, taxYear, person } } })
+  async loadBook(userId: string, taxYear: number, ref: BusinessRef): Promise<LoadedBook | null> {
+    const row = await this.prisma.ledger.findUnique({ where: { userId_taxYear_person_business: { userId, taxYear, ...ref } } })
     return row ? this.load(this.prisma, toBook(row)) : null
   }
 
   async changeBook<T>(
     userId: string,
     taxYear: number,
-    person: BusinessPerson,
+    ref: BusinessRef,
     frame: { readonly chart: ChartOfAccounts; readonly mode: BookkeepingMode },
     work: (book: LoadedBook) => { readonly result: T; readonly append: BookAppend } | Promise<{ readonly result: T; readonly append: BookAppend }>,
   ): Promise<T> {
     return this.prisma.$transaction(async (raw) => {
       const tx = raw as unknown as Tx
-      const existing = await tx.ledger.findUnique({ where: { userId_taxYear_person: { userId, taxYear, person } } })
-      const created = existing ?? (await tx.ledger.create({ data: { userId, taxYear, person, chart: frame.chart, mode: frame.mode } }))
+      const existing = await tx.ledger.findUnique({ where: { userId_taxYear_person_business: { userId, taxYear, ...ref } } })
+      const created = existing ?? (await tx.ledger.create({ data: { userId, taxYear, ...ref, chart: frame.chart, mode: frame.mode } }))
       // The row lock serialises every change of one book: gapless numbers, one chain.
       await tx.$queryRaw`SELECT "id" FROM "Buch" WHERE "id" = ${created.id} FOR UPDATE`
       const loaded = await this.load(tx, toBook(created))
@@ -230,8 +245,8 @@ export class PrismaBusinessRepository implements BusinessRepository {
     }
   }
 
-  async listAssets(userId: string, person: BusinessPerson, throughYear: number): Promise<FixedAssetRecord[]> {
-    const rows = await this.prisma.fixedAsset.findMany({ where: { userId, person, taxYear: { lte: throughYear } }, orderBy: { createdAt: 'asc' } })
+  async listAssets(userId: string, ref: BusinessRef, throughYear: number): Promise<FixedAssetRecord[]> {
+    const rows = await this.prisma.fixedAsset.findMany({ where: { userId, ...ref, taxYear: { lte: throughYear } }, orderBy: { createdAt: 'asc' } })
     return rows.map(toAsset)
   }
 
@@ -247,8 +262,8 @@ export class PrismaBusinessRepository implements BusinessRepository {
     return row ? toAsset(row) : null
   }
 
-  async listBankTransactions(userId: string, taxYear: number, person: BusinessPerson): Promise<BankTransactionRecord[]> {
-    const book = await this.prisma.ledger.findUnique({ where: { userId_taxYear_person: { userId, taxYear, person } } })
+  async listBankTransactions(userId: string, taxYear: number, ref: BusinessRef): Promise<BankTransactionRecord[]> {
+    const book = await this.prisma.ledger.findUnique({ where: { userId_taxYear_person_business: { userId, taxYear, ...ref } } })
     if (!book) return []
     const rows = await this.prisma.bankTransaction.findMany({ where: { ledgerId: book.id, userId }, orderBy: { createdAt: 'asc' } })
     return rows.map((r) => ({
@@ -264,13 +279,13 @@ export class PrismaBusinessRepository implements BusinessRepository {
   async addBankTransactions(
     userId: string,
     taxYear: number,
-    person: BusinessPerson,
+    ref: BusinessRef,
     frame: { readonly chart: ChartOfAccounts; readonly mode: BookkeepingMode },
     transactions: readonly { readonly fingerprint: string; readonly amount: number; readonly details: string }[],
   ): Promise<number> {
     const book = await this.prisma.ledger.upsert({
-      where: { userId_taxYear_person: { userId, taxYear, person } },
-      create: { userId, taxYear, person, chart: frame.chart, mode: frame.mode },
+      where: { userId_taxYear_person_business: { userId, taxYear, ...ref } },
+      create: { userId, taxYear, ...ref, chart: frame.chart, mode: frame.mode },
       update: {},
     })
     const known = new Set((await this.prisma.bankTransaction.findMany({ where: { ledgerId: book.id }, select: { fingerprint: true } })).map((r) => r.fingerprint))

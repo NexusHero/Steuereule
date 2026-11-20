@@ -3793,6 +3793,13 @@
         "ausgabe": "Expense",
         "einnahme": "Income"
       }
+    },
+    "betriebe": {
+      "titel": "Your businesses",
+      "ohneName": "Business {{nummer}}",
+      "neu": "+ Another business",
+      "name": "What is the business called?",
+      "anlegen": "Add business"
     }
   }
 }

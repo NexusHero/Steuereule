@@ -4,20 +4,22 @@ import { AuditService } from '../audit/audit.service.js'
 import { INCOME_TAX_FORMS, LATEST_LINES_YEAR, latestLineOf, lineIdsOf, lineOf, linesPublished, type FormLine } from '../printout/fill-in-lines.js'
 import type { LiveForm, LiveFormInstance } from '../printout/live-values.js'
 import { PrintoutService } from '../printout/printout.service.js'
-import type { BusinessPerson } from './business.repository.js'
+import { FIRST_BUSINESS, type BusinessRef } from './business.repository.js'
 import { BusinessService, type ElsterHelp, type ElsterLineValue } from './business.service.js'
 
 /** The forms of the business itself, before the income-tax return (ADR-0101 §16). */
 const BUSINESS_FORMS = ['anlage-euer', 'anlage-s', 'anlage-g', 'ust-2-a', 'gewst-1-a'] as const
+/** The business form that belongs to the person: one VAT return for all his businesses (§ 2 Abs. 1 Satz 2 UStG). */
+const PERSON_BUSINESS_FORMS: ReadonlySet<string> = new Set(['ust-2-a'])
 /** Business lines on income-tax forms: the § 10d lines of ESt 1 A and of the Anlage Sonstiges. */
 const LOSS_FORMS = ['est-1-a', 'anlage-sonstiges'] as const
 
 /** Whose copy of a form this is: a person of a joint return, a child, a property, or the n-th copy. */
 export interface ElsterInstance {
   readonly id: string
-  readonly kind: 'person' | 'child' | 'property' | 'copy'
+  readonly kind: 'person' | 'child' | 'property' | 'copy' | 'business'
   readonly person: 'A' | 'B' | null
-  /** The child's first name or the property's street; null where the app has none. */
+  /** The child's first name, the property's street, the business's name; null where the app has none. */
   readonly name: string | null
   /** 1-based position among the copies of the form. */
   readonly number: number
@@ -66,10 +68,23 @@ export class ElsterHelpService {
   ) {}
 
   /** The forms with at least one value for this household and year, business forms first. */
-  async forms(userId: string, year: number, person: BusinessPerson): Promise<ElsterFormList> {
+  async forms(userId: string, year: number, ref: BusinessRef): Promise<ElsterFormList> {
     await this.business.assertElsterOpen(userId, year)
-    const [withValues, { forms, names }] = await Promise.all([this.business.elsterFormsWithValues(userId, year, person), this.printout.fillInValues(userId, year)])
-    const entries: ElsterFormEntry[] = BUSINESS_FORMS.filter((form) => withValues.includes(form)).map((form) => ({ form, group: 'business', instance: null }))
+    const businesses = await this.business.listBusinesses(userId, year, ref.person)
+    const [perBusiness, { forms, names }] = await Promise.all([
+      Promise.all(businesses.map(async (b) => ({ b, withValues: await this.business.elsterFormsWithValues(userId, year, { person: ref.person, business: b.business }) }))),
+      this.printout.fillInValues(userId, year),
+    ])
+    const withValues = perBusiness.find((x) => x.b.business === FIRST_BUSINESS)?.withValues ?? perBusiness[0]?.withValues ?? []
+    const several = businesses.length > 1
+    // One copy of a business form per business (ADR-0101 §22); the VAT return once for the person.
+    const entries: ElsterFormEntry[] = BUSINESS_FORMS.flatMap((form): ElsterFormEntry[] =>
+      PERSON_BUSINESS_FORMS.has(form) || !several
+        ? perBusiness.some((x) => x.withValues.includes(form)) ? [{ form, group: 'business', instance: null }] : []
+        : perBusiness
+            .filter((x) => x.withValues.includes(form))
+            .map((x) => ({ form, group: 'business', instance: { id: `betrieb-${x.b.business}`, kind: 'business', person: ref.person, name: x.b.name, number: x.b.business } })),
+    )
     for (const live of forms) {
       for (const [index, copy] of live.instances.entries()) {
         if (this.linesOf(year, live.formular, copy).some((line) => line.value !== null)) {
@@ -85,8 +100,14 @@ export class ElsterHelpService {
   }
 
   /** One form (one copy of it): per line Zeile, Kennzahl, label and the value to type. */
-  async help(userId: string, year: number, person: BusinessPerson, form: string, instanceId: string | undefined): Promise<ElsterFillInHelp> {
-    if (!INCOME_TAX_FORMS.includes(form)) return { ...(await this.business.elsterHelp(userId, year, person, form)), instance: null }
+  async help(userId: string, year: number, ref: BusinessRef, form: string, instanceId: string | undefined): Promise<ElsterFillInHelp> {
+    if (!INCOME_TAX_FORMS.includes(form)) {
+      const business = /^betrieb-(\d+)$/.exec(instanceId ?? '')
+      const target = business ? { person: ref.person, business: Number(business[1]) } : ref
+      const instance: ElsterInstance | null = business ? { id: instanceId!, kind: 'business', person: ref.person, name: null, number: target.business } : null
+      return { ...(await this.business.elsterHelp(userId, year, target, form)), instance }
+    }
+    const person = ref
     await this.business.assertElsterOpen(userId, year)
     const { forms, names } = await this.printout.fillInValues(userId, year)
     const live = forms.find((f) => f.formular === form)

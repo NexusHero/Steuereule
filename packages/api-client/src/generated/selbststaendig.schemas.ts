@@ -5,92 +5,33 @@
  * Onboarding profile endpoints (steuereule#29)
  * OpenAPI spec version: 1.0
  */
-export type BusinessCataloguesDtoBankPresetsItem = typeof BusinessCataloguesDtoBankPresetsItem[keyof typeof BusinessCataloguesDtoBankPresetsItem];
-
-
-export const BusinessCataloguesDtoBankPresetsItem = {
-  sparkasse: 'sparkasse',
-  ing: 'ing',
-  dkb: 'dkb',
-  commerzbank: 'commerzbank',
-} as const;
-
-export interface CatalogEntryDto {
-  key: string;
-  /** German label. */
-  label: string;
-}
-
 /**
- * Key of the official AfA table (core USEFUL_LIVES).
+ * @nullable
  */
-export type AssetCategoryDtoKey = typeof AssetCategoryDtoKey[keyof typeof AssetCategoryDtoKey];
+export type BusinessListItemDtoKind = typeof BusinessListItemDtoKind[keyof typeof BusinessListItemDtoKind] | null;
 
 
-export const AssetCategoryDtoKey = {
-  computer: 'computer',
-  software: 'software',
-  mobile_phone: 'mobile_phone',
-  telephone: 'telephone',
-  fax: 'fax',
-  camera_audio_video: 'camera_audio_video',
-  projector: 'projector',
-  copier: 'copier',
-  cash_register: 'cash_register',
-  card_reader: 'card_reader',
-  shredder: 'shredder',
-  office_furniture: 'office_furniture',
-  steel_cabinet: 'steel_cabinet',
-  safe: 'safe',
-  carpet: 'carpet',
-  car: 'car',
-  motorcycle_bicycle: 'motorcycle_bicycle',
-  truck: 'truck',
-  trailer: 'trailer',
-  forklift: 'forklift',
-  workshop_equipment: 'workshop_equipment',
-  shop_fittings: 'shop_fittings',
-  shop_installations: 'shop_installations',
-  trade_fair_stand: 'trade_fair_stand',
-  air_conditioner: 'air_conditioner',
-  fridge: 'fridge',
-  dishwasher: 'dishwasher',
-  washing_machine: 'washing_machine',
-  microwave: 'microwave',
-  drill_mobile: 'drill_mobile',
-  drill_stationary: 'drill_stationary',
-  saw_mobile: 'saw_mobile',
-  saw_stationary: 'saw_stationary',
-  grinder_mobile: 'grinder_mobile',
-  welding: 'welding',
-  machine_other: 'machine_other',
-  pressure_washer: 'pressure_washer',
-  alarm_system: 'alarm_system',
-  photovoltaic: 'photovoltaic',
-  container: 'container',
-  lab_equipment: 'lab_equipment',
-  vending_machine: 'vending_machine',
+export const BusinessListItemDtoKind = {
+  freiberuf: 'freiberuf',
+  gewerbe: 'gewerbe',
 } as const;
 
-export interface AssetCategoryDto {
-  /** Key of the official AfA table (core USEFUL_LIVES). */
-  key: AssetCategoryDtoKey;
-  label: string;
-  /** Useful life in years. */
-  years: number;
-  /** The official source of the useful life. */
-  source: string;
-}
+export type BusinessListItemDtoMode = typeof BusinessListItemDtoMode[keyof typeof BusinessListItemDtoMode];
 
-export interface BusinessCataloguesDto {
-  /** Katalogberufe the suggestion knows (`professionAnswers.catalogProfession`). */
-  professions: CatalogEntryDto[];
-  /** Free activities (`professionAnswers.freeActivity`). */
-  freeActivities: CatalogEntryDto[];
-  /** AfA-table categories (`category` of an asset). */
-  assetCategories: AssetCategoryDto[];
-  /** Bank CSV presets (`preset` of the bank import). */
-  bankPresets: BusinessCataloguesDtoBankPresetsItem[];
+
+export const BusinessListItemDtoMode = {
+  euer: 'euer',
+  bilanz: 'bilanz',
+} as const;
+
+export interface BusinessListItemDto {
+  /** The business number of the person, from 1. */
+  business: number;
+  /** @nullable */
+  name: string | null;
+  /** @nullable */
+  kind: BusinessListItemDtoKind;
+  mode: BusinessListItemDtoMode;
 }
 
 /**
@@ -107,6 +48,15 @@ export interface BusinessErrorDto {
   message?: string;
   /** DTO validation only: the fields and their constraint. */
   fields?: BusinessErrorDtoFields;
+}
+
+export interface NewBusinessDto {
+  /**
+     * What the user calls the business.
+     * @minLength 1
+     * @maxLength 120
+     */
+  name: string;
 }
 
 export type BusinessProfileDtoPerson = typeof BusinessProfileDtoPerson[keyof typeof BusinessProfileDtoPerson];
@@ -316,6 +266,8 @@ export interface PartnershipShareDto {
 
 export interface BusinessProfileDto {
   person: BusinessProfileDtoPerson;
+  /** The business number of the person, from 1 (ADR-0101 §22). */
+  business: number;
   /** @nullable */
   confirmedKind: BusinessProfileDtoConfirmedKind;
   /** @nullable */
@@ -341,6 +293,94 @@ export interface BusinessProfileDto {
   partnershipShares: PartnershipShareDto[];
   /** A book exists: chart and mode are fixed once something is booked. */
   bookExists: boolean;
+}
+
+export type BusinessCataloguesDtoBankPresetsItem = typeof BusinessCataloguesDtoBankPresetsItem[keyof typeof BusinessCataloguesDtoBankPresetsItem];
+
+
+export const BusinessCataloguesDtoBankPresetsItem = {
+  sparkasse: 'sparkasse',
+  ing: 'ing',
+  dkb: 'dkb',
+  commerzbank: 'commerzbank',
+} as const;
+
+export interface CatalogEntryDto {
+  key: string;
+  /** German label. */
+  label: string;
+}
+
+/**
+ * Key of the official AfA table (core USEFUL_LIVES).
+ */
+export type AssetCategoryDtoKey = typeof AssetCategoryDtoKey[keyof typeof AssetCategoryDtoKey];
+
+
+export const AssetCategoryDtoKey = {
+  computer: 'computer',
+  software: 'software',
+  mobile_phone: 'mobile_phone',
+  telephone: 'telephone',
+  fax: 'fax',
+  camera_audio_video: 'camera_audio_video',
+  projector: 'projector',
+  copier: 'copier',
+  cash_register: 'cash_register',
+  card_reader: 'card_reader',
+  shredder: 'shredder',
+  office_furniture: 'office_furniture',
+  steel_cabinet: 'steel_cabinet',
+  safe: 'safe',
+  carpet: 'carpet',
+  car: 'car',
+  motorcycle_bicycle: 'motorcycle_bicycle',
+  truck: 'truck',
+  trailer: 'trailer',
+  forklift: 'forklift',
+  workshop_equipment: 'workshop_equipment',
+  shop_fittings: 'shop_fittings',
+  shop_installations: 'shop_installations',
+  trade_fair_stand: 'trade_fair_stand',
+  air_conditioner: 'air_conditioner',
+  fridge: 'fridge',
+  dishwasher: 'dishwasher',
+  washing_machine: 'washing_machine',
+  microwave: 'microwave',
+  drill_mobile: 'drill_mobile',
+  drill_stationary: 'drill_stationary',
+  saw_mobile: 'saw_mobile',
+  saw_stationary: 'saw_stationary',
+  grinder_mobile: 'grinder_mobile',
+  welding: 'welding',
+  machine_other: 'machine_other',
+  pressure_washer: 'pressure_washer',
+  alarm_system: 'alarm_system',
+  photovoltaic: 'photovoltaic',
+  container: 'container',
+  lab_equipment: 'lab_equipment',
+  vending_machine: 'vending_machine',
+} as const;
+
+export interface AssetCategoryDto {
+  /** Key of the official AfA table (core USEFUL_LIVES). */
+  key: AssetCategoryDtoKey;
+  label: string;
+  /** Useful life in years. */
+  years: number;
+  /** The official source of the useful life. */
+  source: string;
+}
+
+export interface BusinessCataloguesDto {
+  /** Katalogberufe the suggestion knows (`professionAnswers.catalogProfession`). */
+  professions: CatalogEntryDto[];
+  /** Free activities (`professionAnswers.freeActivity`). */
+  freeActivities: CatalogEntryDto[];
+  /** AfA-table categories (`category` of an asset). */
+  assetCategories: AssetCategoryDto[];
+  /** Bank CSV presets (`preset` of the bank import). */
+  bankPresets: BusinessCataloguesDtoBankPresetsItem[];
 }
 
 /**
@@ -1505,7 +1545,68 @@ export interface BusinessCheckoutResponseDto {
   checkoutUrl: string;
 }
 
+export type BusinessControllerBusinessesParams = {
+/**
+ * Which business of the person, from 1 (default); ADR-0101 §22.
+ */
+betrieb?: number;
+/**
+ * Whose business: A (default) or B of a joint return.
+ */
+person?: BusinessControllerBusinessesPerson;
+};
+
+export type BusinessControllerBusinessesPerson = typeof BusinessControllerBusinessesPerson[keyof typeof BusinessControllerBusinessesPerson];
+
+
+export const BusinessControllerBusinessesPerson = {
+  A: 'A',
+  B: 'B',
+} as const;
+
+export type BusinessControllerAddBusinessParams = {
+/**
+ * Which business of the person, from 1 (default); ADR-0101 §22.
+ */
+betrieb?: number;
+/**
+ * Whose business: A (default) or B of a joint return.
+ */
+person?: BusinessControllerAddBusinessPerson;
+};
+
+export type BusinessControllerAddBusinessPerson = typeof BusinessControllerAddBusinessPerson[keyof typeof BusinessControllerAddBusinessPerson];
+
+
+export const BusinessControllerAddBusinessPerson = {
+  A: 'A',
+  B: 'B',
+} as const;
+
+export type BusinessControllerRemoveBusinessParams = {
+/**
+ * Which business of the person, from 1 (default); ADR-0101 §22.
+ */
+betrieb?: number;
+/**
+ * Whose business: A (default) or B of a joint return.
+ */
+person?: BusinessControllerRemoveBusinessPerson;
+};
+
+export type BusinessControllerRemoveBusinessPerson = typeof BusinessControllerRemoveBusinessPerson[keyof typeof BusinessControllerRemoveBusinessPerson];
+
+
+export const BusinessControllerRemoveBusinessPerson = {
+  A: 'A',
+  B: 'B',
+} as const;
+
 export type BusinessControllerCataloguesParams = {
+/**
+ * Which business of the person, from 1 (default); ADR-0101 §22.
+ */
+betrieb?: number;
 /**
  * Whose business: A (default) or B of a joint return.
  */
@@ -1522,6 +1623,10 @@ export const BusinessControllerCataloguesPerson = {
 
 export type BusinessControllerProfileParams = {
 /**
+ * Which business of the person, from 1 (default); ADR-0101 §22.
+ */
+betrieb?: number;
+/**
  * Whose business: A (default) or B of a joint return.
  */
 person?: BusinessControllerProfilePerson;
@@ -1536,6 +1641,10 @@ export const BusinessControllerProfilePerson = {
 } as const;
 
 export type BusinessControllerSaveProfileParams = {
+/**
+ * Which business of the person, from 1 (default); ADR-0101 §22.
+ */
+betrieb?: number;
 /**
  * Whose business: A (default) or B of a joint return.
  */
@@ -1552,6 +1661,10 @@ export const BusinessControllerSaveProfilePerson = {
 
 export type BusinessControllerBookParams = {
 /**
+ * Which business of the person, from 1 (default); ADR-0101 §22.
+ */
+betrieb?: number;
+/**
  * Whose business: A (default) or B of a joint return.
  */
 person?: BusinessControllerBookPerson;
@@ -1566,6 +1679,10 @@ export const BusinessControllerBookPerson = {
 } as const;
 
 export type BusinessControllerPostParams = {
+/**
+ * Which business of the person, from 1 (default); ADR-0101 §22.
+ */
+betrieb?: number;
 /**
  * Whose business: A (default) or B of a joint return.
  */
@@ -1582,6 +1699,10 @@ export const BusinessControllerPostPerson = {
 
 export type BusinessControllerReverseParams = {
 /**
+ * Which business of the person, from 1 (default); ADR-0101 §22.
+ */
+betrieb?: number;
+/**
  * Whose business: A (default) or B of a joint return.
  */
 person?: BusinessControllerReversePerson;
@@ -1596,6 +1717,10 @@ export const BusinessControllerReversePerson = {
 } as const;
 
 export type BusinessControllerQuickEntryParams = {
+/**
+ * Which business of the person, from 1 (default); ADR-0101 §22.
+ */
+betrieb?: number;
 /**
  * Whose business: A (default) or B of a joint return.
  */
@@ -1612,6 +1737,10 @@ export const BusinessControllerQuickEntryPerson = {
 
 export type BusinessControllerLockParams = {
 /**
+ * Which business of the person, from 1 (default); ADR-0101 §22.
+ */
+betrieb?: number;
+/**
  * Whose business: A (default) or B of a joint return.
  */
 person?: BusinessControllerLockPerson;
@@ -1626,6 +1755,10 @@ export const BusinessControllerLockPerson = {
 } as const;
 
 export type BusinessControllerImportBankParams = {
+/**
+ * Which business of the person, from 1 (default); ADR-0101 §22.
+ */
+betrieb?: number;
 /**
  * Whose business: A (default) or B of a joint return.
  */
@@ -1642,6 +1775,10 @@ export const BusinessControllerImportBankPerson = {
 
 export type BusinessControllerBankParams = {
 /**
+ * Which business of the person, from 1 (default); ADR-0101 §22.
+ */
+betrieb?: number;
+/**
  * Whose business: A (default) or B of a joint return.
  */
 person?: BusinessControllerBankPerson;
@@ -1656,6 +1793,10 @@ export const BusinessControllerBankPerson = {
 } as const;
 
 export type BusinessControllerAcceptBankParams = {
+/**
+ * Which business of the person, from 1 (default); ADR-0101 §22.
+ */
+betrieb?: number;
 /**
  * Whose business: A (default) or B of a joint return.
  */
@@ -1672,6 +1813,10 @@ export const BusinessControllerAcceptBankPerson = {
 
 export type BusinessControllerIgnoreBankParams = {
 /**
+ * Which business of the person, from 1 (default); ADR-0101 §22.
+ */
+betrieb?: number;
+/**
  * Whose business: A (default) or B of a joint return.
  */
 person?: BusinessControllerIgnoreBankPerson;
@@ -1686,6 +1831,10 @@ export const BusinessControllerIgnoreBankPerson = {
 } as const;
 
 export type BusinessControllerAssetsParams = {
+/**
+ * Which business of the person, from 1 (default); ADR-0101 §22.
+ */
+betrieb?: number;
 /**
  * Whose business: A (default) or B of a joint return.
  */
@@ -1702,6 +1851,10 @@ export const BusinessControllerAssetsPerson = {
 
 export type BusinessControllerCreateAssetParams = {
 /**
+ * Which business of the person, from 1 (default); ADR-0101 §22.
+ */
+betrieb?: number;
+/**
  * Whose business: A (default) or B of a joint return.
  */
 person?: BusinessControllerCreateAssetPerson;
@@ -1716,6 +1869,10 @@ export const BusinessControllerCreateAssetPerson = {
 } as const;
 
 export type BusinessControllerDisposeAssetParams = {
+/**
+ * Which business of the person, from 1 (default); ADR-0101 §22.
+ */
+betrieb?: number;
 /**
  * Whose business: A (default) or B of a joint return.
  */
@@ -1732,6 +1889,10 @@ export const BusinessControllerDisposeAssetPerson = {
 
 export type BusinessControllerBookDepreciationParams = {
 /**
+ * Which business of the person, from 1 (default); ADR-0101 §22.
+ */
+betrieb?: number;
+/**
  * Whose business: A (default) or B of a joint return.
  */
 person?: BusinessControllerBookDepreciationPerson;
@@ -1746,6 +1907,10 @@ export const BusinessControllerBookDepreciationPerson = {
 } as const;
 
 export type BusinessControllerClosingParams = {
+/**
+ * Which business of the person, from 1 (default); ADR-0101 §22.
+ */
+betrieb?: number;
 /**
  * Whose business: A (default) or B of a joint return.
  */
@@ -1762,6 +1927,10 @@ export const BusinessControllerClosingPerson = {
 
 export type BusinessControllerCarryForwardParams = {
 /**
+ * Which business of the person, from 1 (default); ADR-0101 §22.
+ */
+betrieb?: number;
+/**
  * Whose business: A (default) or B of a joint return.
  */
 person?: BusinessControllerCarryForwardPerson;
@@ -1777,6 +1946,10 @@ export const BusinessControllerCarryForwardPerson = {
 
 export type BusinessControllerVatParams = {
 /**
+ * Which business of the person, from 1 (default); ADR-0101 §22.
+ */
+betrieb?: number;
+/**
  * Whose business: A (default) or B of a joint return.
  */
 person?: BusinessControllerVatPerson;
@@ -1791,6 +1964,10 @@ export const BusinessControllerVatPerson = {
 } as const;
 
 export type BusinessControllerTradeTaxParams = {
+/**
+ * Which business of the person, from 1 (default); ADR-0101 §22.
+ */
+betrieb?: number;
 /**
  * Whose business: A (default) or B of a joint return.
  */
@@ -1809,6 +1986,10 @@ export type BusinessControllerHebesatzParams = {
 land?: string;
 gemeinde: string;
 /**
+ * Which business of the person, from 1 (default); ADR-0101 §22.
+ */
+betrieb?: number;
+/**
  * Whose business: A (default) or B of a joint return.
  */
 person?: BusinessControllerHebesatzPerson;
@@ -1824,6 +2005,10 @@ export const BusinessControllerHebesatzPerson = {
 
 export type BusinessControllerLossesParams = {
 /**
+ * Which business of the person, from 1 (default); ADR-0101 §22.
+ */
+betrieb?: number;
+/**
  * Whose business: A (default) or B of a joint return.
  */
 person?: BusinessControllerLossesPerson;
@@ -1838,6 +2023,10 @@ export const BusinessControllerLossesPerson = {
 } as const;
 
 export type BusinessControllerElsterFormsParams = {
+/**
+ * Which business of the person, from 1 (default); ADR-0101 §22.
+ */
+betrieb?: number;
 /**
  * Whose business: A (default) or B of a joint return.
  */
@@ -1858,6 +2047,10 @@ export type BusinessControllerElsterParams = {
  */
 instanz?: string;
 /**
+ * Which business of the person, from 1 (default); ADR-0101 §22.
+ */
+betrieb?: number;
+/**
  * Whose business: A (default) or B of a joint return.
  */
 person?: BusinessControllerElsterPerson;
@@ -1872,6 +2065,10 @@ export const BusinessControllerElsterPerson = {
 } as const;
 
 export type BusinessControllerGobdParams = {
+/**
+ * Which business of the person, from 1 (default); ADR-0101 §22.
+ */
+betrieb?: number;
 /**
  * Whose business: A (default) or B of a joint return.
  */
@@ -1888,6 +2085,10 @@ export const BusinessControllerGobdPerson = {
 
 export type BusinessControllerProcedureDocParams = {
 /**
+ * Which business of the person, from 1 (default); ADR-0101 §22.
+ */
+betrieb?: number;
+/**
  * Whose business: A (default) or B of a joint return.
  */
 person?: BusinessControllerProcedureDocPerson;
@@ -1902,6 +2103,10 @@ export const BusinessControllerProcedureDocPerson = {
 } as const;
 
 export type BusinessControllerSaveProcedureDocParams = {
+/**
+ * Which business of the person, from 1 (default); ADR-0101 §22.
+ */
+betrieb?: number;
 /**
  * Whose business: A (default) or B of a joint return.
  */
@@ -1918,6 +2123,10 @@ export const BusinessControllerSaveProcedureDocPerson = {
 
 export type BusinessControllerEBilanzParams = {
 /**
+ * Which business of the person, from 1 (default); ADR-0101 §22.
+ */
+betrieb?: number;
+/**
  * Whose business: A (default) or B of a joint return.
  */
 person?: BusinessControllerEBilanzPerson;
@@ -1933,6 +2142,10 @@ export const BusinessControllerEBilanzPerson = {
 
 export type BusinessControllerEBilanzFileParams = {
 /**
+ * Which business of the person, from 1 (default); ADR-0101 §22.
+ */
+betrieb?: number;
+/**
  * Whose business: A (default) or B of a joint return.
  */
 person?: BusinessControllerEBilanzFilePerson;
@@ -1947,6 +2160,10 @@ export const BusinessControllerEBilanzFilePerson = {
 } as const;
 
 export type BusinessControllerCheckoutParams = {
+/**
+ * Which business of the person, from 1 (default); ADR-0101 §22.
+ */
+betrieb?: number;
 /**
  * Whose business: A (default) or B of a joint return.
  */

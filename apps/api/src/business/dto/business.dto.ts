@@ -1,7 +1,7 @@
 // Wire shapes of the self-employment path (ADR-0101). Nested facts travel as plain objects: the core
 // checks their content (parseBookingDraft, suggestProfessionKind, the tax rules), not class-validator.
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
-import { IsArray, IsBoolean, IsIn, IsInt, IsObject, IsOptional, IsString, Matches, Max, MaxLength, Min, ValidateNested } from 'class-validator'
+import { IsArray, IsBoolean, IsIn, IsInt, IsObject, IsOptional, IsString, Length, Matches, Max, MaxLength, Min, ValidateNested } from 'class-validator'
 import { Type } from 'class-transformer'
 import { USEFUL_LIVES } from '@steuereule/core'
 import { BookIntegrityDto, CsvMappingDto, LossFactsDto, PartnershipShareDto, ProfessionAnswersDto, TradeTaxInputsDto } from './business-results.dto.js'
@@ -214,9 +214,26 @@ export class ProfessionSuggestionDto {
   basis!: string[]
 }
 
+export class BusinessListItemDto {
+  @ApiProperty({ type: Number, description: 'The business number of the person, from 1.' }) business!: number
+  @ApiProperty({ type: String, nullable: true }) name!: string | null
+  @ApiProperty({ enum: ['freiberuf', 'gewerbe'], nullable: true }) kind!: 'freiberuf' | 'gewerbe' | null
+  @ApiProperty({ enum: ['euer', 'bilanz'] }) mode!: 'euer' | 'bilanz'
+}
+
+export class NewBusinessDto {
+  @ApiProperty({ type: String, minLength: 1, maxLength: 120, description: 'What the user calls the business.' })
+  @IsString()
+  @Length(1, 120)
+  name!: string
+}
+
 export class BusinessProfileDto {
   @ApiProperty({ enum: ['A', 'B'] })
   person!: 'A' | 'B'
+
+  @ApiProperty({ type: Number, description: 'The business number of the person, from 1 (ADR-0101 §22).' })
+  business!: number
 
   @ApiProperty({ enum: ['freiberuf', 'gewerbe'], nullable: true })
   confirmedKind!: 'freiberuf' | 'gewerbe' | null

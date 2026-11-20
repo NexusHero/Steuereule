@@ -17,7 +17,7 @@ const parse = (raw: string): number | undefined | null => {
 }
 
 /** Shares in a partnership, taken over from its Feststellungsbescheid (ADR-0101 §3): name, kind, profit, Messbetrag, trade tax. */
-export function SharesPage({ taxYear, person, onBack }: BusinessPageProps) {
+export function SharesPage({ taxYear, person, business = 1, onBack }: BusinessPageProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const { query, profile, loadProblem, save, problem } = useProfileEditor(taxYear, person)

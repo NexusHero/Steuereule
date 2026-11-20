@@ -26,6 +26,8 @@ export function isBusinessPage(value: string | undefined): value is BusinessPage
 export interface BusinessPageProps {
   readonly taxYear: number
   readonly person: Person
+  /** The business of the person, from 1 (ADR-0101 §22). */
+  readonly business?: number
   readonly onBack: () => void
   readonly onOpenPage: (page: BusinessPage | undefined) => void
 }
@@ -36,12 +38,14 @@ export interface BusinessScreenProps extends BusinessPageProps {
   readonly payment?: string | undefined
   /** A couple records one business per person; the area's overview switches between A and B. */
   readonly onChangePerson?: (person: Person) => void
+  /** Several businesses of one person: the overview switches between them and adds one. */
+  readonly onChangeBusiness?: (business: number) => void
 }
 
 /** The self-employed area (ADR-0101): an overview of one phone screen, every topic on a page of its own. */
-export function BusinessScreen({ page, onChangePerson, payment, ...props }: BusinessScreenProps) {
+export function BusinessScreen({ page, onChangePerson, onChangeBusiness, payment, ...props }: BusinessScreenProps) {
   useTranslation(APP_NS)
-  if (!isBusinessPage(page)) return <BusinessHome {...props} {...(onChangePerson ? { onChangePerson } : {})} />
+  if (!isBusinessPage(page)) return <BusinessHome {...props} {...(onChangePerson ? { onChangePerson } : {})} {...(onChangeBusiness ? { onChangeBusiness } : {})} />
   switch (page) {
     case 'profil':
       return <ProfilePage {...props} />

@@ -60,6 +60,41 @@ describe('the overview', () => {
   })
 })
 
+describe('several businesses of one person (ADR-0101 §22)', () => {
+  it('switches between the businesses and adds one, then opens it', async () => {
+    useBusinessDefaults({ ...BASE_PROFILE, name: 'Übersetzungen' })
+    const posted: unknown[] = []
+    server.use(
+      http.get(`${BASE_URL}/betriebe`, () => HttpResponse.json([{ business: 1, name: 'Übersetzungen', kind: 'freiberuf', mode: 'euer' }, { business: 2, name: null, kind: null, mode: 'euer' }])),
+      http.post(`${BASE_URL}/betriebe`, async ({ request }) => {
+        posted.push(await request.json())
+        return HttpResponse.json({ ...BASE_PROFILE, business: 3, name: 'Onlineshop' }, { status: 201 })
+      }),
+    )
+    const onChangeBusiness = vi.fn()
+    renderBusiness(undefined, { onChangeBusiness })
+    fireEvent.click(await screen.findByTestId('business-betrieb-2'))
+    expect(onChangeBusiness).toHaveBeenCalledWith(2)
+    expect(screen.getByTestId('business-betrieb-2').textContent).toBe('Betrieb 2')
+    fireEvent.click(screen.getByTestId('business-betrieb-neu'))
+    fireEvent.change(screen.getByTestId('business-betrieb-name'), { target: { value: 'Onlineshop' } })
+    fireEvent.click(screen.getByTestId('business-betrieb-anlegen'))
+    await waitFor(() => expect(onChangeBusiness).toHaveBeenCalledWith(3))
+    expect(posted).toEqual([{ name: 'Onlineshop' }])
+  })
+
+  it('asks the API for the chosen business on every page', async () => {
+    let asked: string | null = null
+    useBusinessDefaults()
+    server.use(http.get(BASE_URL, ({ request }) => {
+      asked = new URL(request.url).searchParams.get('betrieb')
+      return HttpResponse.json({ ...BASE_PROFILE, business: 2 })
+    }))
+    renderBusiness('profil', { business: 2 })
+    await waitFor(() => expect(asked).toBe('2'))
+  })
+})
+
 describe('the profile', () => {
   it('shows the suggestion with its reasons and saves the confirmation', async () => {
     useBusinessDefaults({ ...BASE_PROFILE, suggestion: { suggestion: 'freiberuf', reasons: ['Katalogberuf: Architekt'], basis: ['§ 18 EStG'] } })

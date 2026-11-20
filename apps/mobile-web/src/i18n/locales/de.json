@@ -3793,6 +3793,13 @@
         "ausgabe": "Ausgabe",
         "einnahme": "Einnahme"
       }
+    },
+    "betriebe": {
+      "titel": "Deine Betriebe",
+      "ohneName": "Betrieb {{nummer}}",
+      "neu": "+ Weiterer Betrieb",
+      "name": "Wie heißt der Betrieb?",
+      "anlegen": "Betrieb anlegen"
     }
   }
 }

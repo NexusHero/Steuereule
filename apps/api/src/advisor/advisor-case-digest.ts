@@ -1,4 +1,5 @@
 import { Logger } from '@nestjs/common'
+import { OWN_FIRST_BUSINESS } from '../business/business.repository.js'
 import {
   ENTRY_RULE_CODES,
   PERSON_B_HANDLE,
@@ -131,7 +132,7 @@ export class AdvisorCaseDigest {
   private async withBusiness(userId: string, taxYear: number, digest: CaseDigest): Promise<CaseDigest> {
     if (!this.business) return digest
     try {
-      const [summary, target] = await Promise.all([this.business.digest(userId, taxYear), this.business.bookingTarget(userId, taxYear, 'A')])
+      const [summary, target] = await Promise.all([this.business.digest(userId, taxYear), this.business.bookingTarget(userId, taxYear, OWN_FIRST_BUSINESS)])
       if (summary === null) return digest
       return {
         ...digest,

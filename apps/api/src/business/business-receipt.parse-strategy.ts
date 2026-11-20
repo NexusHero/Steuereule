@@ -1,4 +1,5 @@
 import { Inject, Injectable, type OnModuleInit } from '@nestjs/common'
+import { OWN_FIRST_BUSINESS } from './business.repository.js'
 import { bookingDraftFromReceipt, checkBookingDraft, readBusinessReceipt, serializeBookingDraft } from '@steuereule/core'
 import { AdvisorService } from '../advisor/advisor.service.js'
 import { AuditService } from '../audit/audit.service.js'
@@ -34,7 +35,7 @@ export class BusinessReceiptParseStrategy implements DocumentParseStrategy, OnMo
       const summary = 'Geschäftsbelege bucht SteuerEule nur für Selbstständige; dafür ist die Selbstständigkeit im Interview anzugeben.'
       return { mode: 'deterministic_fallback', securityBlocked: false, parsed: { vendorCategory: 'sonstiges', receiptDate: read.date, amountEur: null, suggestedScreen: null, suggestedField: null, suggestedValue: null, summary, taxYear: null }, stagedAction: null, assistantMessage: null, draftsTaxYear: null }
     }
-    const target = await this.business.bookingTarget(userId, dto.taxYear, 'A')
+    const target = await this.business.bookingTarget(userId, dto.taxYear, OWN_FIRST_BUSINESS)
     const proposal = bookingDraftFromReceipt(read, {
       chart: target.chart,
       smallBusiness: target.smallBusiness,

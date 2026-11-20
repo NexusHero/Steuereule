@@ -2680,10 +2680,267 @@
         ]
       }
     },
+    "/v1/steuerjahre/{jahr}/selbststaendig/betriebe": {
+      "get": {
+        "operationId": "BusinessController_businesses",
+        "parameters": [
+          {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "Whose business: A (default) or B of a joint return.",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The businesses of the person in the year, at least the first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BusinessListItemDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body fails validation (`fields`) or a business rule (`code`, German `message`), e.g. BOOKING_UNBALANCED, LEDGER_PERIOD_LOCKED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "403": {
+            "description": "SELF_EMPLOYMENT_DISABLED (switch off) or SELF_EMPLOYMENT_NOT_DECLARED (no self-employment in the interview).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "selbststaendig"
+        ]
+      },
+      "post": {
+        "operationId": "BusinessController_addBusiness",
+        "parameters": [
+          {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "Whose business: A (default) or B of a joint return.",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewBusinessDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The new business with the next number.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessProfileDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body fails validation (`fields`) or a business rule (`code`, German `message`), e.g. BOOKING_UNBALANCED, LEDGER_PERIOD_LOCKED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "403": {
+            "description": "SELF_EMPLOYMENT_DISABLED (switch off) or SELF_EMPLOYMENT_NOT_DECLARED (no self-employment in the interview).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "selbststaendig"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/selbststaendig/betriebe/{nummer}/entfernen": {
+      "post": {
+        "operationId": "BusinessController_removeBusiness",
+        "parameters": [
+          {
+            "name": "nummer",
+            "required": true,
+            "in": "path",
+            "description": "The business number, from 2.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "Whose business: A (default) or B of a joint return.",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "The body fails validation (`fields`) or a business rule (`code`, German `message`), e.g. BOOKING_UNBALANCED, LEDGER_PERIOD_LOCKED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "403": {
+            "description": "SELF_EMPLOYMENT_DISABLED (switch off) or SELF_EMPLOYMENT_NOT_DECLARED (no self-employment in the interview).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "BOOK_INTEGRITY_BROKEN (hash chain or entry not as logged), BOOK_FRAME_FIXED, a draft or transaction already done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "selbststaendig"
+        ]
+      }
+    },
     "/v1/steuerjahre/{jahr}/selbststaendig/kataloge": {
       "get": {
         "operationId": "BusinessController_catalogues",
         "parameters": [
+          {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
           {
             "name": "person",
             "required": false,
@@ -2752,6 +3009,15 @@
         "operationId": "BusinessController_profile",
         "parameters": [
           {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
             "name": "person",
             "required": false,
             "in": "query",
@@ -2816,6 +3082,15 @@
       "put": {
         "operationId": "BusinessController_saveProfile",
         "parameters": [
+          {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
           {
             "name": "person",
             "required": false,
@@ -2904,6 +3179,15 @@
         "operationId": "BusinessController_book",
         "parameters": [
           {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
             "name": "person",
             "required": false,
             "in": "query",
@@ -2970,6 +3254,15 @@
       "post": {
         "operationId": "BusinessController_post",
         "parameters": [
+          {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
           {
             "name": "person",
             "required": false,
@@ -3061,6 +3354,15 @@
             "name": "nummer",
             "required": true,
             "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
             "schema": {
               "type": "number"
             }
@@ -3163,6 +3465,15 @@
         "operationId": "BusinessController_quickEntry",
         "parameters": [
           {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
             "name": "person",
             "required": false,
             "in": "query",
@@ -3253,6 +3564,15 @@
         "operationId": "BusinessController_lock",
         "parameters": [
           {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
             "name": "person",
             "required": false,
             "in": "query",
@@ -3340,6 +3660,15 @@
         "operationId": "BusinessController_importBank",
         "parameters": [
           {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
             "name": "person",
             "required": false,
             "in": "query",
@@ -3417,6 +3746,15 @@
         "operationId": "BusinessController_bank",
         "parameters": [
           {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
             "name": "person",
             "required": false,
             "in": "query",
@@ -3492,6 +3830,15 @@
             "in": "path",
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
             }
           },
           {
@@ -3600,6 +3947,15 @@
             }
           },
           {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
             "name": "person",
             "required": false,
             "in": "query",
@@ -3667,6 +4023,15 @@
         "operationId": "BusinessController_assets",
         "parameters": [
           {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
             "name": "person",
             "required": false,
             "in": "query",
@@ -3731,6 +4096,15 @@
       "post": {
         "operationId": "BusinessController_createAsset",
         "parameters": [
+          {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
           {
             "name": "person",
             "required": false,
@@ -3814,6 +4188,15 @@
             "in": "path",
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
             }
           },
           {
@@ -3904,6 +4287,15 @@
         "operationId": "BusinessController_bookDepreciation",
         "parameters": [
           {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
             "name": "person",
             "required": false,
             "in": "query",
@@ -3984,6 +4376,15 @@
         "operationId": "BusinessController_closing",
         "parameters": [
           {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
             "name": "person",
             "required": false,
             "in": "query",
@@ -4050,6 +4451,15 @@
       "post": {
         "operationId": "BusinessController_carryForward",
         "parameters": [
+          {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
           {
             "name": "person",
             "required": false,
@@ -4128,6 +4538,15 @@
         "operationId": "BusinessController_vat",
         "parameters": [
           {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
             "name": "person",
             "required": false,
             "in": "query",
@@ -4194,6 +4613,15 @@
       "get": {
         "operationId": "BusinessController_tradeTax",
         "parameters": [
+          {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
           {
             "name": "person",
             "required": false,
@@ -4280,6 +4708,15 @@
             }
           },
           {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
             "name": "person",
             "required": false,
             "in": "query",
@@ -4347,6 +4784,15 @@
         "operationId": "BusinessController_losses",
         "parameters": [
           {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
             "name": "person",
             "required": false,
             "in": "query",
@@ -4413,6 +4859,15 @@
       "get": {
         "operationId": "BusinessController_elsterForms",
         "parameters": [
+          {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
           {
             "name": "person",
             "required": false,
@@ -4529,6 +4984,15 @@
             }
           },
           {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
             "name": "person",
             "required": false,
             "in": "query",
@@ -4626,6 +5090,15 @@
         "operationId": "BusinessController_gobd",
         "parameters": [
           {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
             "name": "person",
             "required": false,
             "in": "query",
@@ -4714,6 +5187,15 @@
         "operationId": "BusinessController_procedureDoc",
         "parameters": [
           {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
             "name": "person",
             "required": false,
             "in": "query",
@@ -4778,6 +5260,15 @@
       "put": {
         "operationId": "BusinessController_saveProcedureDoc",
         "parameters": [
+          {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
           {
             "name": "person",
             "required": false,
@@ -4856,6 +5347,15 @@
         "operationId": "BusinessController_eBilanz",
         "parameters": [
           {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
             "name": "person",
             "required": false,
             "in": "query",
@@ -4932,6 +5432,15 @@
       "get": {
         "operationId": "BusinessController_eBilanzFile",
         "parameters": [
+          {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
           {
             "name": "person",
             "required": false,
@@ -5019,6 +5528,15 @@
       "post": {
         "operationId": "BusinessController_checkout",
         "parameters": [
+          {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
           {
             "name": "person",
             "required": false,
@@ -12177,135 +12695,52 @@
           "statusCode"
         ]
       },
-      "CatalogEntryDto": {
+      "BusinessListItemDto": {
         "type": "object",
         "properties": {
-          "key": {
-            "type": "string"
+          "business": {
+            "type": "number",
+            "description": "The business number of the person, from 1."
           },
-          "label": {
+          "name": {
             "type": "string",
-            "description": "German label."
-          }
-        },
-        "required": [
-          "key",
-          "label"
-        ]
-      },
-      "AssetCategoryDto": {
-        "type": "object",
-        "properties": {
-          "key": {
+            "nullable": true
+          },
+          "kind": {
             "type": "string",
             "enum": [
-              "computer",
-              "software",
-              "mobile_phone",
-              "telephone",
-              "fax",
-              "camera_audio_video",
-              "projector",
-              "copier",
-              "cash_register",
-              "card_reader",
-              "shredder",
-              "office_furniture",
-              "steel_cabinet",
-              "safe",
-              "carpet",
-              "car",
-              "motorcycle_bicycle",
-              "truck",
-              "trailer",
-              "forklift",
-              "workshop_equipment",
-              "shop_fittings",
-              "shop_installations",
-              "trade_fair_stand",
-              "air_conditioner",
-              "fridge",
-              "dishwasher",
-              "washing_machine",
-              "microwave",
-              "drill_mobile",
-              "drill_stationary",
-              "saw_mobile",
-              "saw_stationary",
-              "grinder_mobile",
-              "welding",
-              "machine_other",
-              "pressure_washer",
-              "alarm_system",
-              "photovoltaic",
-              "container",
-              "lab_equipment",
-              "vending_machine"
+              "freiberuf",
+              "gewerbe"
             ],
-            "description": "Key of the official AfA table (core USEFUL_LIVES)."
+            "nullable": true
           },
-          "label": {
-            "type": "string"
-          },
-          "years": {
-            "type": "number",
-            "description": "Useful life in years."
-          },
-          "source": {
+          "mode": {
             "type": "string",
-            "description": "The official source of the useful life."
+            "enum": [
+              "euer",
+              "bilanz"
+            ]
           }
         },
         "required": [
-          "key",
-          "label",
-          "years",
-          "source"
+          "business",
+          "name",
+          "kind",
+          "mode"
         ]
       },
-      "BusinessCataloguesDto": {
+      "NewBusinessDto": {
         "type": "object",
         "properties": {
-          "professions": {
-            "description": "Katalogberufe the suggestion knows (`professionAnswers.catalogProfession`).",
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/CatalogEntryDto"
-            }
-          },
-          "freeActivities": {
-            "description": "Free activities (`professionAnswers.freeActivity`).",
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/CatalogEntryDto"
-            }
-          },
-          "assetCategories": {
-            "description": "AfA-table categories (`category` of an asset).",
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/AssetCategoryDto"
-            }
-          },
-          "bankPresets": {
-            "type": "array",
-            "description": "Bank CSV presets (`preset` of the bank import).",
-            "items": {
-              "type": "string",
-              "enum": [
-                "sparkasse",
-                "ing",
-                "dkb",
-                "commerzbank"
-              ]
-            }
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120,
+            "description": "What the user calls the business."
           }
         },
         "required": [
-          "professions",
-          "freeActivities",
-          "assetCategories",
-          "bankPresets"
+          "name"
         ]
       },
       "ProfessionAnswersDto": {
@@ -12537,6 +12972,10 @@
               "B"
             ]
           },
+          "business": {
+            "type": "number",
+            "description": "The business number of the person, from 1 (ADR-0101 §22)."
+          },
           "confirmedKind": {
             "type": "string",
             "enum": [
@@ -12626,6 +13065,7 @@
         },
         "required": [
           "person",
+          "business",
           "confirmedKind",
           "professionAnswers",
           "suggestion",
@@ -12642,6 +13082,137 @@
           "lossFacts",
           "partnershipShares",
           "bookExists"
+        ]
+      },
+      "CatalogEntryDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string",
+            "description": "German label."
+          }
+        },
+        "required": [
+          "key",
+          "label"
+        ]
+      },
+      "AssetCategoryDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "enum": [
+              "computer",
+              "software",
+              "mobile_phone",
+              "telephone",
+              "fax",
+              "camera_audio_video",
+              "projector",
+              "copier",
+              "cash_register",
+              "card_reader",
+              "shredder",
+              "office_furniture",
+              "steel_cabinet",
+              "safe",
+              "carpet",
+              "car",
+              "motorcycle_bicycle",
+              "truck",
+              "trailer",
+              "forklift",
+              "workshop_equipment",
+              "shop_fittings",
+              "shop_installations",
+              "trade_fair_stand",
+              "air_conditioner",
+              "fridge",
+              "dishwasher",
+              "washing_machine",
+              "microwave",
+              "drill_mobile",
+              "drill_stationary",
+              "saw_mobile",
+              "saw_stationary",
+              "grinder_mobile",
+              "welding",
+              "machine_other",
+              "pressure_washer",
+              "alarm_system",
+              "photovoltaic",
+              "container",
+              "lab_equipment",
+              "vending_machine"
+            ],
+            "description": "Key of the official AfA table (core USEFUL_LIVES)."
+          },
+          "label": {
+            "type": "string"
+          },
+          "years": {
+            "type": "number",
+            "description": "Useful life in years."
+          },
+          "source": {
+            "type": "string",
+            "description": "The official source of the useful life."
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "years",
+          "source"
+        ]
+      },
+      "BusinessCataloguesDto": {
+        "type": "object",
+        "properties": {
+          "professions": {
+            "description": "Katalogberufe the suggestion knows (`professionAnswers.catalogProfession`).",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CatalogEntryDto"
+            }
+          },
+          "freeActivities": {
+            "description": "Free activities (`professionAnswers.freeActivity`).",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CatalogEntryDto"
+            }
+          },
+          "assetCategories": {
+            "description": "AfA-table categories (`category` of an asset).",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssetCategoryDto"
+            }
+          },
+          "bankPresets": {
+            "type": "array",
+            "description": "Bank CSV presets (`preset` of the bank import).",
+            "items": {
+              "type": "string",
+              "enum": [
+                "sparkasse",
+                "ing",
+                "dkb",
+                "commerzbank"
+              ]
+            }
+          }
+        },
+        "required": [
+          "professions",
+          "freeActivities",
+          "assetCategories",
+          "bankPresets"
         ]
       },
       "BusinessProfileInputDto": {

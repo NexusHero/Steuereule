@@ -11,11 +11,11 @@ import { useProfileEditor } from './useProfileEditor'
 import type { BusinessPageProps } from './BusinessScreen'
 
 /** The questions behind „Freiberuf oder Gewerbe“ (§ 18 EStG): Katalogberuf, a similar one, free activity, what the tax office said. */
-export function ProfessionPage({ taxYear, person, onBack }: BusinessPageProps) {
+export function ProfessionPage({ taxYear, person, business = 1, onBack }: BusinessPageProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const { query, profile, loadProblem, save, problem } = useProfileEditor(taxYear, person)
-  const catalogues = useBusinessControllerCatalogues(taxYear, personParams(person))
+  const catalogues = useBusinessControllerCatalogues(taxYear, personParams(person, business))
 
   if (query.isPending || profile === null || loadProblem !== null) {
     return (

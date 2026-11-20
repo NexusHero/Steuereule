@@ -1530,6 +1530,8 @@ model BusinessProfile {
   taxYear            Int      @map("steuerjahr")
   /// "A" (the account holder) or "B" (the spouse recorded in this account).
   person             String   @default("A")
+  /// The business of this person, from 1 (ADR-0101 §22): a Freiberuf beside a Gewerbe, two Gewerbebetriebe.
+  business           Int      @default(1) @map("betrieb")
   /// The confirmed kind: "freiberuf" or "gewerbe"; null until the user confirmed the suggestion.
   kind               String?  @map("art")
   /// The answers to the profession questions as JSON (core ProfessionAnswers).
@@ -1564,7 +1566,7 @@ model BusinessProfile {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
-  @@unique([userId, taxYear, person])
+  @@unique([userId, taxYear, person, business])
   @@index([userId, taxYear])
   @@map("Betrieb")
 }
@@ -1575,6 +1577,8 @@ model Ledger {
   userId           String
   taxYear          Int               @map("steuerjahr")
   person           String            @default("A")
+  /// The business the book belongs to (ADR-0101 §22): one book per business.
+  business         Int               @default(1) @map("betrieb")
   chart            String            @map("kontenrahmen")
   mode             String            @map("gewinnermittlung")
   /// Festschreibung: no entry dated on or before this ISO date.
@@ -1584,7 +1588,7 @@ model Ledger {
   logRecords       LedgerLogRecord[]
   bankTransactions BankTransaction[]
 
-  @@unique([userId, taxYear, person])
+  @@unique([userId, taxYear, person, business])
   @@index([userId, taxYear])
   @@map("Buch")
 }
@@ -1670,6 +1674,7 @@ model FixedAsset {
   /// The year of acquisition: the asset is listed in that year and every later one.
   taxYear             Int      @map("steuerjahr")
   person              String   @default("A")
+  business            Int      @default(1) @map("betrieb")
   label               String   @map("bezeichnung") /// @encrypted?mode=strict
   /// The asset account in the book's chart.
   account             String   @map("konto")

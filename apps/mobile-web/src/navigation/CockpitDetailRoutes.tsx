@@ -189,18 +189,23 @@ export function BusinessRoute({ navigation, route }: Props<'Business'>) {
   const year = useYearGuard(route.params?.year, navigation)
   if (year === null) return null
   const person = route.params?.person === 'B' ? 'B' : 'A'
+  // ADR-0101 §22: which business of the person; the first unless the link names another.
+  const business = Number.isSafeInteger(Number(route.params?.betrieb)) && Number(route.params?.betrieb) > 1 ? Number(route.params?.betrieb) : 1
   const page = route.params?.page
   const home = () => navigation.navigate('CockpitHome', undefined, { pop: true })
+  const own: { person?: 'B'; betrieb?: string } = { ...(person === 'B' ? { person: 'B' as const } : {}), ...(business > 1 ? { betrieb: String(business) } : {}) }
   return (
     <RequiresAccount>
       <BusinessScreen
         taxYear={year}
         person={person}
+        business={business}
         page={page}
         payment={route.params?.zahlung}
-        onOpenPage={(next) => navigation.navigate('Business', { year, ...(next ? { page: next } : {}), ...(person === 'B' ? { person } : {}) })}
-        onBack={() => (page ? navigation.navigate('Business', { year, ...(person === 'B' ? { person } : {}) }, { pop: true }) : home())}
+        onOpenPage={(next) => navigation.navigate('Business', { year, ...(next ? { page: next } : {}), ...own })}
+        onBack={() => (page ? navigation.navigate('Business', { year, ...own }, { pop: true }) : home())}
         onChangePerson={(next) => navigation.navigate('Business', { year, ...(next === 'B' ? { person: next } : {}) })}
+        onChangeBusiness={(next) => navigation.navigate('Business', { year, ...(person === 'B' ? { person } : {}), ...(next > 1 ? { betrieb: String(next) } : {}) })}
       />
     </RequiresAccount>
   )

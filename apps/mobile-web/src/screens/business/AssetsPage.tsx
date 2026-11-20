@@ -22,10 +22,10 @@ import type { BusinessPageProps } from './BusinessScreen'
 const METHODS: readonly FixedAssetInputDtoMethod[] = ['linear', 'degressive', 'gwg', 'sofort']
 
 /** Anlagevermögen: the register of the year, a new asset, its disposal, and booking the year's AfA. */
-export function AssetsPage({ taxYear, person, onBack }: BusinessPageProps) {
+export function AssetsPage({ taxYear, person, business = 1, onBack }: BusinessPageProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
-  const params = personParams(person)
+  const params = personParams(person, business)
   const query = useBusinessControllerAssets(taxYear, params)
   const catalogues = useBusinessControllerCatalogues(taxYear, params)
   const categories = catalogues.data?.status === 200 ? catalogues.data.data.assetCategories : []

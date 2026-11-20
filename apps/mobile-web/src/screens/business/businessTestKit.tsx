@@ -15,6 +15,7 @@ export const BASE_URL = `*/v1/steuerjahre/${YEAR}/selbststaendig`
 
 export const BASE_PROFILE: BusinessProfileDto = {
   person: 'A',
+  business: 1,
   confirmedKind: null,
   professionAnswers: null,
   suggestion: null,
@@ -58,7 +59,7 @@ export function useElsterForms(forms: ElsterFormEntryDto[] = BUSINESS_ELSTER_FOR
 
 export function renderBusiness(
   page: string | undefined,
-  handlers: { onOpenPage?: (p: string | undefined) => void; onBack?: () => void; onChangePerson?: (p: 'A' | 'B') => void; payment?: string } = {},
+  handlers: { onOpenPage?: (p: string | undefined) => void; onBack?: () => void; onChangePerson?: (p: 'A' | 'B') => void; onChangeBusiness?: (b: number) => void; business?: number; payment?: string } = {},
 ): RenderResult {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   const wrap = (node: ReactNode) => (
@@ -73,11 +74,13 @@ export function renderBusiness(
       <BusinessScreen
         taxYear={YEAR}
         person="A"
+        {...(handlers.business ? { business: handlers.business } : {})}
         page={page}
         payment={handlers.payment}
         onBack={handlers.onBack ?? (() => {})}
         onOpenPage={handlers.onOpenPage ?? (() => {})}
         {...(handlers.onChangePerson ? { onChangePerson: handlers.onChangePerson } : {})}
+        {...(handlers.onChangeBusiness ? { onChangeBusiness: handlers.onChangeBusiness } : {})}
       />,
     ),
   )

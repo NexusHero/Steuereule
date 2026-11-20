@@ -11,7 +11,7 @@ const FINANCING = ['debtChargesEur', 'annuitiesEur', 'silentPartnerSharesEur', '
 const OTHER = ['otherAdditionsEur', 'einheitswertEur', 'otherDeductionsEur', 'lossCarriedForwardEur'] as const satisfies readonly (keyof TradeTaxInputsDto)[]
 
 /** The inputs of the Gewerbesteuer (§ 8 Nr. 1 parts, Einheitswert, further additions and deductions, Gewerbeverlust); whole euros. */
-export function TradeInputsPage({ taxYear, person, onBack }: BusinessPageProps) {
+export function TradeInputsPage({ taxYear, person, business = 1, onBack }: BusinessPageProps) {
   const { t: tr } = useTranslation(APP_NS)
   const { query, profile, loadProblem, save, problem } = useProfileEditor(taxYear, person)
   const [values, setValues] = useState<Readonly<Record<string, string>>>({})

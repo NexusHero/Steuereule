@@ -23,10 +23,10 @@ type Source = BankImportDtoPreset | 'camt053' | 'eigene'
 const SOURCES: readonly Source[] = ['sparkasse', 'ing', 'dkb', 'commerzbank', 'camt053', 'eigene']
 
 /** Bank statements as a file (CSV with a preset, or CAMT.053); the app suggests, you accept or ignore. No bank login. */
-export function BankPage({ taxYear, person, onBack }: BusinessPageProps) {
+export function BankPage({ taxYear, person, business = 1, onBack }: BusinessPageProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
-  const params = personParams(person)
+  const params = personParams(person, business)
   const query = useBusinessControllerBank(taxYear, params)
   const importBank = useBusinessControllerImportBank()
   const accept = useBusinessControllerAcceptBank()

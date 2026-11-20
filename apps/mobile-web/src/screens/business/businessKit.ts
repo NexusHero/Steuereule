@@ -3,8 +3,10 @@ import { formatEuroCents, toGermanDate } from '@steuereule/core'
 export type Person = 'A' | 'B'
 
 /** The `?person=` query of the self-employment endpoints: none for A (the default). */
-export function personParams(person: Person): { readonly person: 'B' } | undefined {
-  return person === 'B' ? { person: 'B' } : undefined
+/** The query of a business page: the spouse's business (`person=B`) and a further business (`betrieb`, ADR-0101 §22). */
+export function personParams(person: Person, business = 1): { readonly person?: 'B'; readonly betrieb?: number } | undefined {
+  if (person !== 'B' && business === 1) return undefined
+  return { ...(person === 'B' ? { person: 'B' as const } : {}), ...(business !== 1 ? { betrieb: business } : {}) }
 }
 
 /** A plain signed amount (`+1.234,50 €`, `−80,00 €`): the book speaks in cents, the screen in signed euros. */
