@@ -107,6 +107,12 @@ describe('the interview asks for it', () => {
     expect(nextStepFor(SPECIAL_EXPENSES, { ...answers, altersvorsorge: 'Nein' }, SWITCH_ON)).toEqual({ kind: 'question', id: 'versicherungen' })
   })
 
+  it('asks it without the switch option too: the catalogue and the Strom topic pages walk the graph without it (E2E finding)', () => {
+    const answers: Answers = { job: 'Selbstständig', spenden: 'Nein', 'kv-pv': 'Nein', riester: 'Nein' }
+    expect(nextStepFor(SPECIAL_EXPENSES, answers)).toEqual({ kind: 'question', id: 'altersvorsorge' })
+    expect(nextStepFor(SPECIAL_EXPENSES, { ...answers, altersvorsorge: 'Ja' })).toEqual({ kind: 'question', id: 'av-rv-betrag' })
+  })
+
   it('does not ask an employee, whose pension stands on the wage tax certificate', () => {
     expect(nextStepFor(SPECIAL_EXPENSES, { job: 'Angestellt', spenden: 'Nein', 'kv-pv': 'Nein', riester: 'Nein' }, SWITCH_ON)).toEqual({ kind: 'done' })
   })

@@ -414,7 +414,8 @@ export const QUESTIONS: Readonly<Record<EntryStepId, QuestionDeclaration>> = {
     kind: 'question',
     form: { kind: 'enum', values: YES_NO_VALUES },
     followUps: { Ja: ['av-rv-betrag', 'av-versorgungswerk-betrag', 'av-basisrente-betrag', 'av-ksk'] },
-    askedWhen: (answers, options) => options?.selfEmployment === true && paysOwnProvision(answers),
+    // Not tied to the switch: only a business without a wage reaches it, and that needs the switch already.
+    askedWhen: (answers) => paysOwnProvision(answers),
   },
   /** Own contributions to the statutory pension (voluntary, compulsory, the own half through the KSK). */
   'av-rv-betrag': { id: 'av-rv-betrag', kind: 'question', form: { kind: 'integer', min: 0, max: 1000000 } },
@@ -429,7 +430,8 @@ export const QUESTIONS: Readonly<Record<EntryStepId, QuestionDeclaration>> = {
     kind: 'question',
     form: { kind: 'enum', values: YES_NO_VALUES },
     followUps: { Ja: ['versicherungen-betrag'] },
-    askedWhen: (answers, options) => options?.selfEmployment === true && paysOwnProvision(answers),
+    // Not tied to the switch: only a business without a wage reaches it, and that needs the switch already.
+    askedWhen: (answers) => paysOwnProvision(answers),
   },
   /** Haftpflicht, Unfall, Berufsunfähigkeit, Risikoleben, voluntary Arbeitslosenversicherung (§ 10 Abs. 1 Nr. 3a EStG). */
   'versicherungen-betrag': { id: 'versicherungen-betrag', kind: 'question', form: { kind: 'integer', min: 0, max: 1000000 } },
