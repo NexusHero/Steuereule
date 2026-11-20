@@ -91,7 +91,7 @@ import {
   type NewFixedAsset,
   type LoadedBook,
 } from './business.repository.js'
-import { accountForEuerKey, bankAccountOf, bookIntegrity, byKeyInEuros, eur, registerAssetOf, vatFiguresOf, type BookIntegrity, type VatFigures } from './business-ledger.js'
+import { accountForEuerKey, bankAccountOf, bookIntegrity, byKeyInEuros, deductibleByKeyInEuros, eur, registerAssetOf, vatFiguresOf, type BookIntegrity, type VatFigures } from './business-ledger.js'
 import { HebesatzDirectory, type HebesatzLookup } from './hebesatz.js'
 import { zipStored } from './zip.js'
 
@@ -688,7 +688,7 @@ export class BusinessService {
 
   /** The profit of the year in euros from the book, the restricted expenses applied (EÜR) or the GuV (Bilanz). */
   private profitOf(ledger: Ledger, year: number): number {
-    if (ledger.mode === 'euer') return euerProfit(year, byKeyInEuros(euerTotals(ledger, year).byKey)).profitEur
+    if (ledger.mode === 'euer') return euerProfit(year, deductibleByKeyInEuros(euerTotals(ledger, year))).profitEur
     return eur(incomeStatement(ledger, year).profit)
   }
 
@@ -699,7 +699,7 @@ export class BusinessService {
     await this.audit.append({ userId, action: 'READ', resource: 'selbststaendig' })
     if (ledger.mode === 'euer') {
       const totals = euerTotals(ledger, year)
-      const profit = euerProfit(year, byKeyInEuros(totals.byKey))
+      const profit = euerProfit(year, deductibleByKeyInEuros(totals))
       return { mode: 'euer' as const, integrity, euer: { totals, profit }, bilanz: null }
     }
     const statement = incomeStatement(ledger, year)
@@ -1005,7 +1005,7 @@ export class BusinessService {
     switch (form) {
       case 'anlage-euer': {
         if (ledger.mode !== 'euer') return { byLine: () => null, unnumbered: [] }
-        const result = euerProfit(year, byKeyInEuros(euerTotals(ledger, year).byKey))
+        const result = euerProfit(year, deductibleByKeyInEuros(euerTotals(ledger, year)))
         const counted = new Map<EuerKey, number>()
         for (const line of result.lines) counted.set(line.key, (counted.get(line.key) ?? 0) + line.amountEur)
         return {

@@ -360,6 +360,15 @@ describe('BusinessService (ADR-0101)', () => {
     expect((await service.listBusinesses('u', YEAR, 'A')).map((b) => b.business)).toEqual([1, 2])
   })
 
+  it('a booking on a non-deductible account is listed but does not lower the EÜR profit (§ 4 Abs. 5 EStG)', async () => {
+    const { service } = setup()
+    await service.quickEntry('u', YEAR, A1, [{ key: 'einnahmen_umsatzsteuerpflichtig', amountCents: 1_000_000 }])
+    const before = (await service.estimateInput('u', YEAR, 'A'))!.business.selfEmployedEur
+    // 4635 (SKR03) Geschenke über der Freigrenze: 200 € that the profit must not take.
+    await service.post('u', YEAR, A1, { date: '2024-05-02', documentNumber: 'G-1', text: 'Geschenk', lines: [{ account: '4635', side: 'debit', amount: 20_000 }, { account: '1200', side: 'credit', amount: 20_000 }] })
+    expect((await service.estimateInput('u', YEAR, 'A'))!.business.selfEmployedEur).toBe(before)
+  })
+
   it('the GoBD export is a zip with index.xml and the journal, and is itself logged in the chain', async () => {
     const { service, repository } = setup()
     await service.post('u', YEAR, A1, sale)

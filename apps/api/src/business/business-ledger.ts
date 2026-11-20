@@ -48,6 +48,20 @@ export function byKeyInEuros(byKey: Readonly<Partial<Record<EuerKey, number>>>):
   return Object.fromEntries(Object.entries(byKey).map(([key, value]) => [key, eur(value ?? 0)])) as Partial<Record<EuerKey, number>>
 }
 
+/**
+ * The EÜR totals in euros with the non-deductible bookings of the restricted expenses taken out: an
+ * entry on „Geschenke über der Freigrenze“ or „Bewirtung (nicht abziehbarer Teil)“ is listed in the
+ * book but must not lower the profit (§ 4 Abs. 5 EStG). The fully non-deductible keys (Gewerbesteuer,
+ * § 4 Abs. 4a, fines) are counted 0 by `euerProfit` already and stay as they are.
+ */
+export function deductibleByKeyInEuros(totals: { readonly byKey: Readonly<Partial<Record<EuerKey, number>>>; readonly nonDeductible: Readonly<Partial<Record<EuerKey, number>>> }): Partial<Record<EuerKey, number>> {
+  const out = { ...totals.byKey }
+  for (const [key, amount] of Object.entries(totals.nonDeductible) as [EuerKey, number][]) {
+    if (key.startsWith('beschraenkt_')) out[key] = Math.max(0, (out[key] ?? 0) - amount)
+  }
+  return byKeyInEuros(out)
+}
+
 /** The first account of the chart that lands on an EÜR key: the target of a quick-path total. */
 export function accountForEuerKey(chart: ChartOfAccounts, key: EuerKey): string | null {
   const account = chartAccounts(chart).find((a) => a.euer === key && (a.kind === 'revenue' || a.kind === 'expense'))
