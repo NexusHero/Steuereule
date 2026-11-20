@@ -27,7 +27,6 @@ import { FakeProfileRepository } from './fakes/fake-profile.repository.js'
 import { FakeRentalRepository } from './fakes/fake-rental.repository.js'
 
 const A1 = { person: 'A', business: 1 } as const
-const B1 = { person: 'B', business: 1 } as const
 
 const TEMPLATES_BASE = new URL('../assets/vordrucke/', import.meta.url)
 const USER = 'u-koch'

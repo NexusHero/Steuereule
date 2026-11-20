@@ -15,7 +15,6 @@ import { FakeBusinessRepository } from './fakes/fake-business.repository.js'
 import { FakeInterviewAnswerRepository } from './fakes/fake-interview-answer.repository.js'
 
 const A1 = { person: 'A', business: 1 } as const
-const B1 = { person: 'B', business: 1 } as const
 
 const YEAR = 2024
 const SPARKASSE = readFileSync(new URL('../../../packages/core/src/domains/ledger/__fixtures__/sparkasse-csv-camt-v2.csv', import.meta.url), 'utf8')

@@ -77,7 +77,7 @@ export function BookingDraftCard({
           })}
         </View>
       ) : (
-        // The draft cannot be shown as a booking (e.g. the 10-day rule is not modelled): the reason, plainly.
+        // The draft cannot be shown as a booking (e.g. a regular payment without its year): the reason, plainly.
         <Text style={styles.actionReason} accessibilityRole="alert" testID={`${testIDPrefix}-ungueltig`}>
           {parsed.reason}
         </Text>

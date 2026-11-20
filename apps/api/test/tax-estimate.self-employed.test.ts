@@ -18,7 +18,6 @@ import { FakeRentalRepository } from './fakes/fake-rental.repository.js'
 import { FakePensionRepository } from './fakes/fake-pension.repository.js'
 
 const A1 = { person: 'A', business: 1 } as const
-const B1 = { person: 'B', business: 1 } as const
 
 const commute: CommuteRepository = { findForUserAndYear: async () => null, save: async (_u, _j, e) => e }
 

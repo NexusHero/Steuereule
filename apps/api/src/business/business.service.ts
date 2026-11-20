@@ -111,7 +111,7 @@ import {
   type NewFixedAsset,
   type LoadedBook,
 } from './business.repository.js'
-import { accountForEuerKey, bankAccountOf, bookIntegrity, byKeyInEuros, deductibleByKeyInEuros, ecSalesListOf, eur, registerAssetOf, vatFiguresOf, type BookIntegrity, type VatFigures } from './business-ledger.js'
+import { accountForEuerKey, bankAccountOf, bookIntegrity, deductibleByKeyInEuros, ecSalesListOf, eur, registerAssetOf, vatFiguresOf, type BookIntegrity, type VatFigures } from './business-ledger.js'
 import { HebesatzDirectory, type HebesatzLookup } from './hebesatz.js'
 import { zipStored } from './zip.js'
 
@@ -971,7 +971,7 @@ export class BusinessService {
     const months = vatPeriodsOf(year, 'monat', false)
     const goodsOf = (p: { from: string; to: string }) => ecSalesListOf(all, p).reduce((sum, r) => sum + r.goodsEur, 0)
     const byQuarter = [...vatPeriodsOf(year - 1, 'quartal', false), ...quarters].map(goodsOf)
-    const firstMonthly = quarters.findIndex((_, i) => ecSalesListPeriod({ goodsByQuarterEur: byQuarter.slice(i, i + 5).reverse() }) === 'monat')
+    const firstMonthly = quarters.findIndex((_, i) => ecSalesListPeriod({ goodsByQuarterEur: byQuarter.slice(i, i + 5) }) === 'monat')
     const due25 = (to: string) => {
       const y = Number(to.slice(0, 4))
       const m = Number(to.slice(5, 7))

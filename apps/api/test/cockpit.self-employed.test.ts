@@ -16,7 +16,6 @@ import { FakeRentalRepository } from './fakes/fake-rental.repository.js'
 import { FakeTaxYearRepository } from './fakes/fake-tax-year.repository.js'
 
 const A1 = { person: 'A', business: 1 } as const
-const B1 = { person: 'B', business: 1 } as const
 
 async function setup() {
   const taxYear = new FakeTaxYearRepository()
