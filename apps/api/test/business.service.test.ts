@@ -64,7 +64,7 @@ describe('BusinessService (ADR-0101)', () => {
   })
 
   it('switch off: the whole path answers 403, nothing is stored', async () => {
-    delete process.env.SELBSTSTAENDIGE_ENABLED
+    process.env.SELBSTSTAENDIGE_ENABLED = 'false'
     const { service, repository } = setup()
     await expect(service.getProfile('u', YEAR, A1)).rejects.toMatchObject({ code: 'SELF_EMPLOYMENT_DISABLED' })
     await expect(service.post('u', YEAR, A1, sale)).rejects.toMatchObject({ code: 'SELF_EMPLOYMENT_DISABLED' })

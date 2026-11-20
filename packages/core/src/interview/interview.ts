@@ -246,7 +246,8 @@ export interface QuestionDeclaration {
 
 /**
  * Server switches that change the graph (ADR-0101 §20). `selfEmployment` is `SELBSTSTAENDIGE_ENABLED`:
- * off (the default) the Gewerbe-Gate stops the self-employed as REQ-015 says; on, they walk on.
+ * off (also when the option is not passed) the Gewerbe-Gate stops the self-employed as REQ-015 says; on, they
+ * walk on. The server has it on unless `SELBSTSTAENDIGE_ENABLED` is set to off (PO decision of 20.11.2026).
  */
 export interface InterviewOptions {
   readonly selfEmployment?: boolean | undefined

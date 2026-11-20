@@ -84,6 +84,30 @@ describe('legal texts stay honest about what the product does', () => {
   })
 })
 
+describe('the self-employment area (ADR-0101, on by default since 20.11.2026)', () => {
+  const privacyText = content('datenschutz', OPERATOR).flatMap((s) => s.paragraphs).join('\n')
+  const termsText = content('agb', OPERATOR).flatMap((s) => s.paragraphs).join('\n')
+
+  it('names every model provider of the owl, not only Google', () => {
+    expect(privacyText).toMatch(/Anthropic \(Claude\) bzw\. OpenAI/)
+  })
+
+  it('names the third-party data of the book, the processor role and the AVV in the terms', () => {
+    expect(privacyText).toMatch(/Daten Dritter/)
+    expect(privacyText).toMatch(/Art\. 28 DSGVO/)
+    expect(termsText).toMatch(/Auftragsverarbeitung \(Art\. 28 DSGVO\)/)
+  })
+
+  it('names the E-Bilanz transmission and tells the self-employed to export before deleting', () => {
+    expect(privacyText).toMatch(/E-Bilanz .*ELSTER-Schnittstelle an die Finanzverwaltung/)
+    expect(privacyText).toMatch(/§ 147 AO, GoBD\).*GoBD-Export/)
+  })
+
+  it('no longer says the self-employed are not supported', () => {
+    expect(content('hinweise', OPERATOR).flatMap((s) => s.paragraphs).join('\n')).not.toMatch(/unterstützt SteuerEule nicht/)
+  })
+})
+
 describe('OSM attribution (#451 slice 3, decision 8)', () => {
   it('names OpenStreetMap and the ODbL under Wichtige Hinweise', () => {
     renderPage('hinweise')

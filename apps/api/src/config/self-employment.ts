@@ -1,14 +1,15 @@
 import { declaresBusiness, type Answers, type InterviewOptions } from '@steuereule/core'
 
 /**
- * The server switch of ADR-0101 §20: `SELBSTSTAENDIGE_ENABLED`. Off (the default, also when unset or
- * misspelt) the Gewerbe-Gate of REQ-015 stops the self-employed exactly as before; on, „Selbstständig“
- * and „Beides“ lead into the self-employment path. Read on every call, not at boot, so a test can flip
- * it and the product owner's change takes effect with the next request after a restart of the env.
+ * The server switch of ADR-0101 §20: `SELBSTSTAENDIGE_ENABLED`. On by default since the product owner's
+ * decision of 20.11.2026: „Selbstständig“, „Beides“ and a pensioner with a business lead into the
+ * self-employment path. Only an explicit off (`false`, `0`, `no`, `nein`, `off`) brings back the Gewerbe-Gate of
+ * REQ-015, e.g. for the E2E stack that pins that path. Read on every call, not at boot, so a test can
+ * flip it and a change takes effect with the next request after a restart of the env.
  */
 export function selfEmploymentEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
   const raw = env.SELBSTSTAENDIGE_ENABLED?.trim().toLowerCase()
-  return raw === 'true' || raw === '1' || raw === 'yes' || raw === 'on'
+  return !(raw === 'false' || raw === '0' || raw === 'no' || raw === 'nein' || raw === 'off')
 }
 
 /** The interview graph options every server-side caller of the gate passes (`nextStepFor`, `gatedIncomeTypes`). */
