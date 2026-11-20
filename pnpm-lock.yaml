@@ -13,6 +13,7 @@ overrides:
   '@huggingface/transformers>onnxruntime-node': '-'
   '@huggingface/transformers>sharp': '-'
   node-forge: 1.4.2
+  effect: 3.22.5
 
 importers:
 
@@ -4025,8 +4026,8 @@ packages:
   ee-first@1.1.1:
     resolution: {integrity: sha512-WMwm9LhRUo+WUaRN+vRuETqG89IgZphVSNkdFgeb6sS/E4OrDIN7t48CAewSHXc6C8lefD8KKfr5vY61brQlow==}
 
-  effect@3.21.0:
-    resolution: {integrity: sha512-PPN80qRokCd1f015IANNhrwOnLO7GrrMQfk4/lnZRE/8j7UPWrNNjPV0uBrZutI/nHzernbW+J0hdqQysHiSnQ==}
+  effect@3.22.5:
+    resolution: {integrity: sha512-AdIU4llI19BzhJ4xUBZix7kS8oiYSlCsJ61j3UM3UyJw9ecDrsrrweDFm/Ku1nHbJWMLoynK+1Me4it3Zkmjpw==}
 
   electron-to-chromium@1.5.395:
     resolution: {integrity: sha512-7zt9Aw+SrmxLWLN0zhaTWZQiCdryLVrYTq5R7iZakLvi2UQPYMMsROYV/2qVCzMeCiSXHwKOU+sZ4zOVVlrtKA==}
@@ -9191,7 +9192,7 @@ snapshots:
     dependencies:
       c12: 3.1.0(magicast@0.3.5)
       deepmerge-ts: 7.1.5
-      effect: 3.21.0
+      effect: 3.22.5
       empathic: 2.0.0
     transitivePeerDependencies:
       - magicast
@@ -10761,7 +10762,7 @@ snapshots:
 
   ee-first@1.1.1: {}
 
-  effect@3.21.0:
+  effect@3.22.5:
     dependencies:
       '@standard-schema/spec': 1.1.0
       fast-check: 3.23.2
