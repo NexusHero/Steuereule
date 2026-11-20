@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
 import { McpService, type AssistantSessionInfo } from '../src/mcp/mcp.service.js'
@@ -276,6 +276,20 @@ describe('McpService (ADR-0052 §3 / §5 / §8 / §12)', () => {
     expect(JSON.parse(getText(await client.callTool({ name: 'offene_fragen', arguments: { taxYear: YEAR } }))).next.id).toBe('job')
     const sim = await client.callTool({ name: 'auswirkung_simulieren', arguments: { taxYear: YEAR, screen: 'lstb', field: 'bruttoarbeitslohn', value: '50000' } })
     expect(JSON.parse(getText(sim)).deltaEur).toBe(150)
+  })
+
+  it('auswirkung_simulieren writes on trial, so it needs the write scope and refuses a read-only assistant', async () => {
+    const report = { simulate: vi.fn() }
+    const withReport = new McpService(cockpitService, printoutService, confirmationService, owlModeService, receiptService, unlockService, profileRepo, masterDataRepo, auditService, report as never)
+    const server = withReport.createServer(USER, { ...ALL_SCOPES_ASSISTANT, scopes: ['steuerdaten:read'] })
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
+    await server.connect(serverTransport)
+    const client = new Client({ name: 'TestClient', version: '1.0.0' })
+    await client.connect(clientTransport)
+    const res = await client.callTool({ name: 'auswirkung_simulieren', arguments: { taxYear: YEAR, screen: 'lstb', field: 'bruttoarbeitslohn', value: '50000' } })
+    expect((res as { isError?: boolean }).isError).toBe(true)
+    expect(getText(res)).toContain('steuerdaten:write')
+    expect(report.simulate).not.toHaveBeenCalled()
   })
 
   it('auswirkung_simulieren refuses a target the advisor would refuse and stores nothing', async () => {
