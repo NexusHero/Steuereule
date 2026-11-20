@@ -1339,6 +1339,67 @@ export interface LossesDto {
   carryBack: CarryBackDto | null;
 }
 
+export type ElsterFormEntryDtoGroup = typeof ElsterFormEntryDtoGroup[keyof typeof ElsterFormEntryDtoGroup];
+
+
+export const ElsterFormEntryDtoGroup = {
+  business: 'business',
+  'income-tax': 'income-tax',
+} as const;
+
+export type ElsterInstanceDtoKind = typeof ElsterInstanceDtoKind[keyof typeof ElsterInstanceDtoKind];
+
+
+export const ElsterInstanceDtoKind = {
+  person: 'person',
+  child: 'child',
+  property: 'property',
+  copy: 'copy',
+} as const;
+
+/**
+ * @nullable
+ */
+export type ElsterInstanceDtoPerson = typeof ElsterInstanceDtoPerson[keyof typeof ElsterInstanceDtoPerson] | null;
+
+
+export const ElsterInstanceDtoPerson = {
+  A: 'A',
+  B: 'B',
+} as const;
+
+export interface ElsterInstanceDto {
+  /** Pass back as `instanz`: the child or property id, A / B, or the copy number. */
+  id: string;
+  kind: ElsterInstanceDtoKind;
+  /** @nullable */
+  person: ElsterInstanceDtoPerson;
+  /**
+     * The child's first name or the property's street.
+     * @nullable
+     */
+  name: string | null;
+  /** 1-based position among the copies of the form. */
+  number: number;
+}
+
+export interface ElsterFormEntryDto {
+  /** A business form (anlage-euer …) or a Vordruck of the income-tax return (est-1-a, anlage-n …). */
+  form: string;
+  group: ElsterFormEntryDtoGroup;
+  /**
+     * Which copy; null for a form filed once.
+     * @nullable
+     */
+  instance: ElsterInstanceDto | null;
+}
+
+export interface ElsterFormListDto {
+  year: number;
+  /** The forms with at least one value, business forms first, then the return in the order of the paper printout. */
+  forms: ElsterFormEntryDto[];
+}
+
 export type ElsterHelpDtoStatus = typeof ElsterHelpDtoStatus[keyof typeof ElsterHelpDtoStatus];
 
 
@@ -1357,12 +1418,19 @@ export interface ElsterLineDto {
   zeile: string | null;
   kennzahlen: string[];
   label: string;
+  /**
+     * Column heading where one Zeile holds several boxes (vom / bis, CHF / EUR); null otherwise.
+     * @nullable
+     */
+  column: string | null;
   /** Euros as a number (two decimals at most); a word („Ja“) where the field takes one; null = nothing to enter. */
   value: number | string | null;
 }
 
 export interface ElsterHelpDto {
   form: string;
+  /** @nullable */
+  instance: ElsterInstanceDto | null;
   year: number;
   status: ElsterHelpDtoStatus;
   /** @nullable */
@@ -1734,7 +1802,26 @@ export const BusinessControllerLossesPerson = {
   B: 'B',
 } as const;
 
+export type BusinessControllerElsterFormsParams = {
+/**
+ * Whose business: A (default) or B of a joint return.
+ */
+person?: BusinessControllerElsterFormsPerson;
+};
+
+export type BusinessControllerElsterFormsPerson = typeof BusinessControllerElsterFormsPerson[keyof typeof BusinessControllerElsterFormsPerson];
+
+
+export const BusinessControllerElsterFormsPerson = {
+  A: 'A',
+  B: 'B',
+} as const;
+
 export type BusinessControllerElsterParams = {
+/**
+ * Which copy, as the listing names it (`instance.id`); the first copy by default.
+ */
+instanz?: string;
 /**
  * Whose business: A (default) or B of a joint return.
  */

@@ -24,24 +24,28 @@ function personOf(values: FieldValues): 'A' | 'B' | null {
   return null
 }
 
+/** Which Vordruck each field id belongs to, and the order the forms print in. */
+export interface FormMembership {
+  readonly formOf: ReadonlyMap<string, string>
+  readonly order: readonly string[]
+}
+
 /**
- * Splits the printout values into the copies the renderer prints, exactly as `renderForms` does:
- * a form with instances prints those, any other form prints the shared values that belong to it.
+ * Splits values into the copies the renderer prints, exactly as `renderForms` does: a form with
+ * instances prints those, any other form prints the shared values that belong to it. A copy with no
+ * value of its form is no copy.
  */
-export function liveForms(
-  year: number,
-  fieldSet: FieldSet,
+export function splitIntoForms(
+  membership: FormMembership,
   values: FieldValues,
   instances: Readonly<Record<string, readonly FieldValues[]>> | undefined,
   entityIds: EntityIds,
 ): LiveForm[] {
-  const formOf = new Map(fieldSet.felder.map((field) => [field.id, field.formular]))
   const onForm = (formular: string, source: FieldValues): FieldValues =>
-    Object.fromEntries(Object.entries(forYear(year, source)).filter(([id]) => formOf.get(id) === formular))
+    Object.fromEntries(Object.entries(source).filter(([id]) => membership.formOf.get(id) === formular))
 
   const forms: LiveForm[] = []
-  for (const formular of FORM_ORDER) {
-    if (!(formular in fieldSet.vorlagen)) continue
+  for (const formular of membership.order) {
     const list = instances?.[formular]
     const copies = list && list.length > 0 ? list.map((v) => onForm(formular, v)) : [onForm(formular, values)]
     const filled = copies
@@ -54,4 +58,20 @@ export function liveForms(
     })
   }
   return forms
+}
+
+/** The printed copies of a year whose Vordrucke the printout fills; fields its forms lack are dropped. */
+export function liveForms(
+  year: number,
+  fieldSet: FieldSet,
+  values: FieldValues,
+  instances: Readonly<Record<string, readonly FieldValues[]>> | undefined,
+  entityIds: EntityIds,
+): LiveForm[] {
+  const membership: FormMembership = {
+    formOf: new Map(fieldSet.felder.map((field) => [field.id, field.formular])),
+    order: FORM_ORDER.filter((formular) => formular in fieldSet.vorlagen),
+  }
+  const ofYear = instances ? Object.fromEntries(Object.entries(instances).map(([form, list]) => [form, list.map((v) => forYear(year, v))])) : undefined
+  return splitIntoForms(membership, forYear(year, values), ofYear, entityIds)
 }

@@ -1,0 +1,2761 @@
+{
+  "jahr": 2022,
+  "felder": [
+    {
+      "id": "est1a.einkommensteuererklaerung",
+      "formular": "est-1-a",
+      "seite": 1,
+      "zeile": "1",
+      "kennzahlen": [],
+      "label": "Einkommensteuererklärung",
+      "spalte": null
+    },
+    {
+      "id": "est1a.steuernummer",
+      "formular": "est-1-a",
+      "seite": 1,
+      "zeile": "4",
+      "kennzahlen": [],
+      "label": "Steuernummer",
+      "spalte": null
+    },
+    {
+      "id": "est1a.finanzamt",
+      "formular": "est-1-a",
+      "seite": 1,
+      "zeile": "5",
+      "kennzahlen": [],
+      "label": "An das Finanzamt",
+      "spalte": null
+    },
+    {
+      "id": "est1a.telefon",
+      "formular": "est-1-a",
+      "seite": 1,
+      "zeile": "7",
+      "kennzahlen": [],
+      "label": "Allgemeine Angaben",
+      "spalte": null
+    },
+    {
+      "id": "est1a.idnr",
+      "formular": "est-1-a",
+      "seite": 1,
+      "zeile": "8",
+      "kennzahlen": [],
+      "label": "Identifikationsnummer (IdNr.)",
+      "spalte": null
+    },
+    {
+      "id": "est1a.geburtsdatum",
+      "formular": "est-1-a",
+      "seite": 1,
+      "zeile": "8",
+      "kennzahlen": [],
+      "label": "Identifikationsnummer (IdNr.)",
+      "spalte": "Geburtsdatum"
+    },
+    {
+      "id": "est1a.name",
+      "formular": "est-1-a",
+      "seite": 1,
+      "zeile": "9",
+      "kennzahlen": [],
+      "label": "Name",
+      "spalte": null
+    },
+    {
+      "id": "est1a.vorname",
+      "formular": "est-1-a",
+      "seite": 1,
+      "zeile": "10",
+      "kennzahlen": [],
+      "label": "Vorname",
+      "spalte": null
+    },
+    {
+      "id": "est1a.religion",
+      "formular": "est-1-a",
+      "seite": 1,
+      "zeile": "11",
+      "kennzahlen": [],
+      "label": "Titel, akademischer Grad",
+      "spalte": null
+    },
+    {
+      "id": "est1a.beruf",
+      "formular": "est-1-a",
+      "seite": 1,
+      "zeile": "17",
+      "kennzahlen": [],
+      "label": "Ausgeübter Beruf",
+      "spalte": null
+    },
+    {
+      "id": "est1a.strasse",
+      "formular": "est-1-a",
+      "seite": 1,
+      "zeile": "12",
+      "kennzahlen": [],
+      "label": "Straße (derzeitige Adresse)",
+      "spalte": null
+    },
+    {
+      "id": "est1a.hausnummer",
+      "formular": "est-1-a",
+      "seite": 1,
+      "zeile": "13",
+      "kennzahlen": [],
+      "label": "Hausnummer",
+      "spalte": null
+    },
+    {
+      "id": "est1a.hausnummerZusatz",
+      "formular": "est-1-a",
+      "seite": 1,
+      "zeile": "13",
+      "kennzahlen": [],
+      "label": "Hausnummer",
+      "spalte": "Hausnummerzusatz"
+    },
+    {
+      "id": "est1a.plz",
+      "formular": "est-1-a",
+      "seite": 1,
+      "zeile": "14",
+      "kennzahlen": [],
+      "label": "Postleitzahl (Inland)",
+      "spalte": null
+    },
+    {
+      "id": "est1a.wohnort",
+      "formular": "est-1-a",
+      "seite": 1,
+      "zeile": "15",
+      "kennzahlen": [],
+      "label": "Wohnort",
+      "spalte": null
+    },
+    {
+      "id": "est1a.verheiratetSeit",
+      "formular": "est-1-a",
+      "seite": 1,
+      "zeile": "18",
+      "kennzahlen": [],
+      "label": "Verheiratet / Lebenspartnerschaft begründet seit dem",
+      "spalte": null
+    },
+    {
+      "id": "est1a.verwitwetSeit",
+      "formular": "est-1-a",
+      "seite": 1,
+      "zeile": "18",
+      "kennzahlen": [],
+      "label": "Verheiratet / Lebenspartnerschaft begründet seit dem",
+      "spalte": "Verwitwet seit dem"
+    },
+    {
+      "id": "est1a.geschiedenSeit",
+      "formular": "est-1-a",
+      "seite": 1,
+      "zeile": "18",
+      "kennzahlen": [],
+      "label": "Verheiratet / Lebenspartnerschaft begründet seit dem",
+      "spalte": "aufgehoben seit dem"
+    },
+    {
+      "id": "est1a.getrenntSeit",
+      "formular": "est-1-a",
+      "seite": 1,
+      "zeile": "18",
+      "kennzahlen": [],
+      "label": "Verheiratet / Lebenspartnerschaft begründet seit dem",
+      "spalte": null
+    },
+    {
+      "id": "est1a.zusammenveranlagung",
+      "formular": "est-1-a",
+      "seite": 1,
+      "zeile": "29",
+      "kennzahlen": [],
+      "label": "Zusammenveranlagung",
+      "spalte": null
+    },
+    {
+      "id": "est1a.einzelveranlagung",
+      "formular": "est-1-a",
+      "seite": 1,
+      "zeile": "29",
+      "kennzahlen": [],
+      "label": "Zusammenveranlagung",
+      "spalte": null
+    },
+    {
+      "id": "est1a.idnrB",
+      "formular": "est-1-a",
+      "seite": 1,
+      "zeile": "19",
+      "kennzahlen": [],
+      "label": "Nur bei Zusammenveranlagung: Ehefrau oder Person B (Ehepartner/-in B / Lebenspartner/-in B nach dem LPartG) IdNr.",
+      "spalte": "IdNr."
+    },
+    {
+      "id": "est1a.geburtsdatumB",
+      "formular": "est-1-a",
+      "seite": 1,
+      "zeile": "19",
+      "kennzahlen": [],
+      "label": "Nur bei Zusammenveranlagung: Ehefrau oder Person B (Ehepartner/-in B / Lebenspartner/-in B nach dem LPartG) IdNr.",
+      "spalte": "Geburtsdatum"
+    },
+    {
+      "id": "est1a.nameB",
+      "formular": "est-1-a",
+      "seite": 1,
+      "zeile": "20",
+      "kennzahlen": [],
+      "label": "Name",
+      "spalte": null
+    },
+    {
+      "id": "est1a.vornameB",
+      "formular": "est-1-a",
+      "seite": 1,
+      "zeile": "21",
+      "kennzahlen": [],
+      "label": "Vorname",
+      "spalte": null
+    },
+    {
+      "id": "est1a.religionB",
+      "formular": "est-1-a",
+      "seite": 1,
+      "zeile": "22",
+      "kennzahlen": [],
+      "label": "Titel, akademischer Grad",
+      "spalte": null
+    },
+    {
+      "id": "est1a.berufB",
+      "formular": "est-1-a",
+      "seite": 1,
+      "zeile": "28",
+      "kennzahlen": [],
+      "label": "Ausgeübter Beruf",
+      "spalte": null
+    },
+    {
+      "id": "est1a.ibanInland",
+      "formular": "est-1-a",
+      "seite": 2,
+      "zeile": "31",
+      "kennzahlen": [],
+      "label": "IBAN (inländisches Geldinstitut) D E",
+      "spalte": null
+    },
+    {
+      "id": "est1a.ibanAusland",
+      "formular": "est-1-a",
+      "seite": 2,
+      "zeile": "32",
+      "kennzahlen": [],
+      "label": "IBAN (ausländisches Geldinstitut)",
+      "spalte": null
+    },
+    {
+      "id": "est1a.kontoinhaberSelbst",
+      "formular": "est-1-a",
+      "seite": 2,
+      "zeile": "34",
+      "kennzahlen": [],
+      "label": "Kontoinhaber/-in stpfl. Person / Ehemann / Person A",
+      "spalte": null
+    },
+    {
+      "id": "est1a.kontoinhaberName",
+      "formular": "est-1-a",
+      "seite": 2,
+      "zeile": "34",
+      "kennzahlen": [],
+      "label": "Kontoinhaber/-in stpfl. Person / Ehemann / Person A",
+      "spalte": "Name (im Fall der Abtretung bitte amtlichen Abtretungsvordruck einreichen)"
+    },
+    {
+      "id": "anlN.name",
+      "formular": "anlage-n",
+      "seite": 1,
+      "zeile": "1",
+      "kennzahlen": [],
+      "label": "Name",
+      "spalte": null
+    },
+    {
+      "id": "anlN.vorname",
+      "formular": "anlage-n",
+      "seite": 1,
+      "zeile": "2",
+      "kennzahlen": [],
+      "label": "Vorname",
+      "spalte": null
+    },
+    {
+      "id": "anlN.steuernummer",
+      "formular": "anlage-n",
+      "seite": 1,
+      "zeile": "3",
+      "kennzahlen": [],
+      "label": "Steuernummer",
+      "spalte": null
+    },
+    {
+      "id": "anlN.personA",
+      "formular": "anlage-n",
+      "seite": 1,
+      "zeile": "3",
+      "kennzahlen": [],
+      "label": "Steuernummer",
+      "spalte": null
+    },
+    {
+      "id": "anlN.personB",
+      "formular": "anlage-n",
+      "seite": 1,
+      "zeile": "4",
+      "kennzahlen": [],
+      "label": "Sofern keine IdNr. vorhanden: eTIN lt. Lohnsteuerbescheinigung(en)",
+      "spalte": null
+    },
+    {
+      "id": "anlN.kz110",
+      "formular": "anlage-n",
+      "seite": 1,
+      "zeile": "6",
+      "kennzahlen": [
+        "110"
+      ],
+      "label": "Bruttoarbeitslohn",
+      "spalte": null
+    },
+    {
+      "id": "anlN.wegOrt",
+      "formular": "anlage-n",
+      "seite": 2,
+      "zeile": "31",
+      "kennzahlen": [],
+      "label": "Erste Tätigkeitsstätte in (PLZ, Ort und Straße)",
+      "spalte": null
+    },
+    {
+      "id": "anlN.wegTageJeWoche",
+      "formular": "anlage-n",
+      "seite": 2,
+      "zeile": "31",
+      "kennzahlen": [],
+      "label": "Erste Tätigkeitsstätte in (PLZ, Ort und Straße)",
+      "spalte": null
+    },
+    {
+      "id": "anlN.wegFreieTage",
+      "formular": "anlage-n",
+      "seite": 2,
+      "zeile": "31",
+      "kennzahlen": [],
+      "label": "Erste Tätigkeitsstätte in (PLZ, Ort und Straße)",
+      "spalte": "Dienstreisetage"
+    },
+    {
+      "id": "anlN.kz110Tage",
+      "formular": "anlage-n",
+      "seite": 2,
+      "zeile": "35",
+      "kennzahlen": [
+        "110"
+      ],
+      "label": "Ort lt. Zeile",
+      "spalte": null
+    },
+    {
+      "id": "anlN.kz111",
+      "formular": "anlage-n",
+      "seite": 2,
+      "zeile": "35",
+      "kennzahlen": [
+        "111"
+      ],
+      "label": "Ort lt. Zeile",
+      "spalte": null
+    },
+    {
+      "id": "anlN.kz112",
+      "formular": "anlage-n",
+      "seite": 2,
+      "zeile": "35",
+      "kennzahlen": [
+        "112"
+      ],
+      "label": "Ort lt. Zeile",
+      "spalte": null
+    },
+    {
+      "id": "anlN.wegVon",
+      "formular": "anlage-n",
+      "seite": 2,
+      "zeile": "31",
+      "kennzahlen": [],
+      "label": "Erste Tätigkeitsstätte in (PLZ, Ort und Straße)",
+      "spalte": "vom"
+    },
+    {
+      "id": "anlN.wegBis",
+      "formular": "anlage-n",
+      "seite": 2,
+      "zeile": "31",
+      "kennzahlen": [],
+      "label": "Erste Tätigkeitsstätte in (PLZ, Ort und Straße)",
+      "spalte": "bis"
+    },
+    {
+      "id": "anlN.weg2Ort",
+      "formular": "anlage-n",
+      "seite": 2,
+      "zeile": "32",
+      "kennzahlen": [],
+      "label": "Erste Tätigkeitsstätte in (PLZ, Ort und Straße)",
+      "spalte": null
+    },
+    {
+      "id": "anlN.weg2Von",
+      "formular": "anlage-n",
+      "seite": 2,
+      "zeile": "32",
+      "kennzahlen": [],
+      "label": "vom",
+      "spalte": null
+    },
+    {
+      "id": "anlN.weg2Bis",
+      "formular": "anlage-n",
+      "seite": 2,
+      "zeile": "32",
+      "kennzahlen": [],
+      "label": "bis",
+      "spalte": null
+    },
+    {
+      "id": "anlN.weg2TageJeWoche",
+      "formular": "anlage-n",
+      "seite": 2,
+      "zeile": "32",
+      "kennzahlen": [],
+      "label": "je Woche",
+      "spalte": null
+    },
+    {
+      "id": "anlN.weg2FreieTage",
+      "formular": "anlage-n",
+      "seite": 2,
+      "zeile": "32",
+      "kennzahlen": [],
+      "label": "Dienstreisetage",
+      "spalte": null
+    },
+    {
+      "id": "anlN.kz130Tage",
+      "formular": "anlage-n",
+      "seite": 2,
+      "zeile": "36",
+      "kennzahlen": [
+        "130"
+      ],
+      "label": "Tagen",
+      "spalte": null
+    },
+    {
+      "id": "anlN.kz131",
+      "formular": "anlage-n",
+      "seite": 2,
+      "zeile": "36",
+      "kennzahlen": [
+        "131"
+      ],
+      "label": "abgerundet)",
+      "spalte": null
+    },
+    {
+      "id": "anlN.kz132",
+      "formular": "anlage-n",
+      "seite": 2,
+      "zeile": "36",
+      "kennzahlen": [
+        "132"
+      ],
+      "label": "km",
+      "spalte": null
+    },
+    {
+      "id": "anlR.name",
+      "formular": "anlage-r",
+      "seite": 1,
+      "zeile": "1",
+      "kennzahlen": [],
+      "label": "Name",
+      "spalte": null
+    },
+    {
+      "id": "anlR.vorname",
+      "formular": "anlage-r",
+      "seite": 1,
+      "zeile": "2",
+      "kennzahlen": [],
+      "label": "Vorname",
+      "spalte": null
+    },
+    {
+      "id": "anlR.steuernummer",
+      "formular": "anlage-r",
+      "seite": 1,
+      "zeile": "3",
+      "kennzahlen": [],
+      "label": "Steuernummer",
+      "spalte": null
+    },
+    {
+      "id": "anlR.lfdNr",
+      "formular": "anlage-r",
+      "seite": 1,
+      "zeile": "3",
+      "kennzahlen": [],
+      "label": "Steuernummer",
+      "spalte": null
+    },
+    {
+      "id": "anlR.personA",
+      "formular": "anlage-r",
+      "seite": 1,
+      "zeile": "3",
+      "kennzahlen": [],
+      "label": "Steuernummer",
+      "spalte": null
+    },
+    {
+      "id": "anlR.personB",
+      "formular": "anlage-r",
+      "seite": 1,
+      "zeile": "3",
+      "kennzahlen": [],
+      "label": "Steuernummer",
+      "spalte": null
+    },
+    {
+      "id": "anlR.kz101",
+      "formular": "anlage-r",
+      "seite": 1,
+      "zeile": "4",
+      "kennzahlen": [
+        "101"
+      ],
+      "label": "Rentenbetrag (einschließlich Einmalzahlung und Leistungen)",
+      "spalte": null
+    },
+    {
+      "id": "anlR.kz131",
+      "formular": "anlage-r",
+      "seite": 1,
+      "zeile": "13",
+      "kennzahlen": [
+        "131"
+      ],
+      "label": "Rentenbetrag",
+      "spalte": null
+    },
+    {
+      "id": "anlKap.name",
+      "formular": "anlage-kap",
+      "seite": 1,
+      "zeile": "1",
+      "kennzahlen": [],
+      "label": "Name",
+      "spalte": null
+    },
+    {
+      "id": "anlKap.vorname",
+      "formular": "anlage-kap",
+      "seite": 1,
+      "zeile": "2",
+      "kennzahlen": [],
+      "label": "Vorname",
+      "spalte": null
+    },
+    {
+      "id": "anlKap.steuernummer",
+      "formular": "anlage-kap",
+      "seite": 1,
+      "zeile": "3",
+      "kennzahlen": [],
+      "label": "Steuernummer",
+      "spalte": null
+    },
+    {
+      "id": "anlKap.personA",
+      "formular": "anlage-kap",
+      "seite": 1,
+      "zeile": "3",
+      "kennzahlen": [],
+      "label": "Steuernummer",
+      "spalte": null
+    },
+    {
+      "id": "anlKap.personB",
+      "formular": "anlage-kap",
+      "seite": 1,
+      "zeile": null,
+      "kennzahlen": [],
+      "label": "Einkünfte aus Kapitalvermögen / Anrechnung von Steuern",
+      "spalte": null
+    },
+    {
+      "id": "anlKap.guenstigerpruefung",
+      "formular": "anlage-kap",
+      "seite": 1,
+      "zeile": "4",
+      "kennzahlen": [
+        "201/401"
+      ],
+      "label": "Ich beantrage die Günstigerprüfung für sämtliche Kapitalerträge. (Bei Zusammenveranlagung: Die Anlage KAP meines Ehegatten / Lebenspartners ist beigefügt.)",
+      "spalte": null
+    },
+    {
+      "id": "anlKap.kz210",
+      "formular": "anlage-kap",
+      "seite": 1,
+      "zeile": "7",
+      "kennzahlen": [
+        "210/410"
+      ],
+      "label": "Kapitalerträge",
+      "spalte": null
+    },
+    {
+      "id": "anlKap.kz234",
+      "formular": "anlage-kap",
+      "seite": 1,
+      "zeile": "19",
+      "kennzahlen": [
+        "234/434"
+      ],
+      "label": "Ausländische Kapitalerträge (ohne Betrag lt. Zeile 50)",
+      "spalte": null
+    },
+    {
+      "id": "anlKap.kz217",
+      "formular": "anlage-kap",
+      "seite": 1,
+      "zeile": "16",
+      "kennzahlen": [
+        "217/417"
+      ],
+      "label": "In Anspruch genommener Sparer-Pauschbetrag, der auf die in den Zeilen 7 bis 15, 30 und 33 erklärten Kapitalerträge entfällt (ggf. „0“)",
+      "spalte": null
+    },
+    {
+      "id": "anlKap.kz218",
+      "formular": "anlage-kap",
+      "seite": 1,
+      "zeile": "17",
+      "kennzahlen": [
+        "218/418"
+      ],
+      "label": "Bei Eintragungen in den Zeilen 7 bis 15, 18 bis 27, 30, 33, 50 und 52 dieser Anlage, in den Zeilen 6 bis 28, 32 und 33 der Anlage KAP-BET sowie in der Anlage KAP-INV: In Anspruch genommener Sparer-Pauschbetrag, der auf die in der Anlage KAP nicht erklärten Kapitalerträge entfällt (ggf. „0“)",
+      "spalte": null
+    },
+    {
+      "id": "anlKap.kz280",
+      "formular": "anlage-kap",
+      "seite": 2,
+      "zeile": "37",
+      "kennzahlen": [
+        "280/480"
+      ],
+      "label": "Kapitalertragsteuer",
+      "spalte": null
+    },
+    {
+      "id": "anlKap.kz281",
+      "formular": "anlage-kap",
+      "seite": 2,
+      "zeile": "38",
+      "kennzahlen": [
+        "281/481"
+      ],
+      "label": "Solidaritätszuschlag",
+      "spalte": null
+    },
+    {
+      "id": "anlKap.kz282",
+      "formular": "anlage-kap",
+      "seite": 2,
+      "zeile": "39",
+      "kennzahlen": [
+        "282/482"
+      ],
+      "label": "Kirchensteuer zur Kapitalertragsteuer",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.name",
+      "formular": "anlage-n-gre",
+      "seite": 1,
+      "zeile": "1",
+      "kennzahlen": [],
+      "label": "Name",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.vorname",
+      "formular": "anlage-n-gre",
+      "seite": 1,
+      "zeile": "2",
+      "kennzahlen": [],
+      "label": "Vorname",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.steuernummer",
+      "formular": "anlage-n-gre",
+      "seite": 1,
+      "zeile": "3",
+      "kennzahlen": [],
+      "label": "Steuernummer",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.personA",
+      "formular": "anlage-n-gre",
+      "seite": 1,
+      "zeile": "2",
+      "kennzahlen": [],
+      "label": "Vorname",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.personB",
+      "formular": "anlage-n-gre",
+      "seite": 1,
+      "zeile": "3",
+      "kennzahlen": [],
+      "label": "Steuernummer",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.kz117",
+      "formular": "anlage-n-gre",
+      "seite": 1,
+      "zeile": "4",
+      "kennzahlen": [
+        "117"
+      ],
+      "label": "als Grenzgänger nach",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.z6Chf",
+      "formular": "anlage-n-gre",
+      "seite": 1,
+      "zeile": "5",
+      "kennzahlen": [],
+      "label": "Bruttoarbeitslohn lt. beigefügtem Lohnausweis des Arbeitgebers nebst Anlagen in die Schweiz: lt. Zeile 8 des Lohnausweises; bitte auch Gehaltsmitteilungen einreichen) Abzüglich steuerfreie Bezüge (soweit im Bruttoarbeitslohn lt. Zeile 5 enthalten)",
+      "spalte": "CHF"
+    },
+    {
+      "id": "anlNGre.z6Eur",
+      "formular": "anlage-n-gre",
+      "seite": 1,
+      "zeile": "5",
+      "kennzahlen": [],
+      "label": "Bruttoarbeitslohn lt. beigefügtem Lohnausweis des Arbeitgebers nebst Anlagen in die Schweiz: lt. Zeile 8 des Lohnausweises; bitte auch Gehaltsmitteilungen einreichen) Abzüglich steuerfreie Bezüge (soweit im Bruttoarbeitslohn lt. Zeile 5 enthalten)",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.z8Chf",
+      "formular": "anlage-n-gre",
+      "seite": 1,
+      "zeile": "7",
+      "kennzahlen": [],
+      "label": "Kinder- und Ausbildungszulage",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.z8Eur",
+      "formular": "anlage-n-gre",
+      "seite": 1,
+      "zeile": "7",
+      "kennzahlen": [],
+      "label": "Kinder- und Ausbildungszulage",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.z9Chf",
+      "formular": "anlage-n-gre",
+      "seite": 1,
+      "zeile": "8",
+      "kennzahlen": [],
+      "label": "Steuerfreies Krankentaggeld",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.z9Eur",
+      "formular": "anlage-n-gre",
+      "seite": 1,
+      "zeile": "8",
+      "kennzahlen": [],
+      "label": "Steuerfreies Krankentaggeld",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.z15Chf",
+      "formular": "anlage-n-gre",
+      "seite": 1,
+      "zeile": "14",
+      "kennzahlen": [],
+      "label": "Verbleiben Zuzüglich steuerpflichtige Bezüge",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.z15Eur",
+      "formular": "anlage-n-gre",
+      "seite": 1,
+      "zeile": "14",
+      "kennzahlen": [],
+      "label": "Verbleiben Zuzüglich steuerpflichtige Bezüge",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.z18Chf",
+      "formular": "anlage-n-gre",
+      "seite": 1,
+      "zeile": "16",
+      "kennzahlen": [],
+      "label": "Arbeitgeberbeiträge zur Kollektivkrankentaggeldversicherung (vgl. Zeile 96)",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.z18Eur",
+      "formular": "anlage-n-gre",
+      "seite": 1,
+      "zeile": "16",
+      "kennzahlen": [],
+      "label": "Arbeitgeberbeiträge zur Kollektivkrankentaggeldversicherung (vgl. Zeile 96)",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.z19Chf",
+      "formular": "anlage-n-gre",
+      "seite": 1,
+      "zeile": "17",
+      "kennzahlen": [],
+      "label": "Arbeitgeberbeiträge zur NBUV (vgl. Zeile 97)",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.z19Eur",
+      "formular": "anlage-n-gre",
+      "seite": 1,
+      "zeile": "17",
+      "kennzahlen": [],
+      "label": "Arbeitgeberbeiträge zur NBUV (vgl. Zeile 97)",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.z20Chf",
+      "formular": "anlage-n-gre",
+      "seite": 1,
+      "zeile": "18",
+      "kennzahlen": [],
+      "label": "Beiträge des Arbeitgebers ins Überobligatorium (Säule 2b der Schweizer Altersvorsorge)",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.z20Eur",
+      "formular": "anlage-n-gre",
+      "seite": 1,
+      "zeile": "18",
+      "kennzahlen": [],
+      "label": "Beiträge des Arbeitgebers ins Überobligatorium (Säule 2b der Schweizer Altersvorsorge)",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.z23Chf",
+      "formular": "anlage-n-gre",
+      "seite": 1,
+      "zeile": "21",
+      "kennzahlen": [],
+      "label": "Steuerpflichtiger Arbeitslohn",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.z23Eur",
+      "formular": "anlage-n-gre",
+      "seite": 1,
+      "zeile": "21",
+      "kennzahlen": [],
+      "label": "Steuerpflichtiger Arbeitslohn",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.z25Chf",
+      "formular": "anlage-n-gre",
+      "seite": 1,
+      "zeile": "23",
+      "kennzahlen": [],
+      "label": "In der Schweiz erhobene Abzugssteuer (höchstens 4,5 % von Zeile 5 und Zeile 19)",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.z25Eur",
+      "formular": "anlage-n-gre",
+      "seite": 1,
+      "zeile": "23",
+      "kennzahlen": [],
+      "label": "In der Schweiz erhobene Abzugssteuer (höchstens 4,5 % von Zeile 5 und Zeile 19)",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.z75Chf",
+      "formular": "anlage-n-gre",
+      "seite": 4,
+      "zeile": "91",
+      "kennzahlen": [],
+      "label": "Bruttoarbeitslohn lt. Zeile 5 Versicherungsleistungen bei Unfall, Krankheit,",
+      "spalte": "CHF"
+    },
+    {
+      "id": "anlNGre.z75Eur",
+      "formular": "anlage-n-gre",
+      "seite": 4,
+      "zeile": "91",
+      "kennzahlen": [],
+      "label": "Bruttoarbeitslohn lt. Zeile 5 Versicherungsleistungen bei Unfall, Krankheit,",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.z76Chf",
+      "formular": "anlage-n-gre",
+      "seite": 4,
+      "zeile": "92",
+      "kennzahlen": [],
+      "label": "Invalidität; Familienzulagen (z. B. Kinder-, Ausbildungs-, Unterhaltszulage), Freibetrag für AHV-Renten-Bezieher",
+      "spalte": "CHF"
+    },
+    {
+      "id": "anlNGre.z76Eur",
+      "formular": "anlage-n-gre",
+      "seite": 4,
+      "zeile": "92",
+      "kennzahlen": [],
+      "label": "Invalidität; Familienzulagen (z. B. Kinder-, Ausbildungs-, Unterhaltszulage), Freibetrag für AHV-Renten-Bezieher",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.z77Chf",
+      "formular": "anlage-n-gre",
+      "seite": 4,
+      "zeile": "93",
+      "kennzahlen": [],
+      "label": "Bemessungsgrundlage Sozialabgaben",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.z77Eur",
+      "formular": "anlage-n-gre",
+      "seite": 4,
+      "zeile": "93",
+      "kennzahlen": [],
+      "label": "Bemessungsgrundlage Sozialabgaben",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.z78Chf",
+      "formular": "anlage-n-gre",
+      "seite": 4,
+      "zeile": "94",
+      "kennzahlen": [],
+      "label": "Erwerbsersatzordnung [EO] (0,25 % von Zeile 93)",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.z78Eur",
+      "formular": "anlage-n-gre",
+      "seite": 4,
+      "zeile": "94",
+      "kennzahlen": [],
+      "label": "Erwerbsersatzordnung [EO] (0,25 % von Zeile 93)",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.z79Chf",
+      "formular": "anlage-n-gre",
+      "seite": 4,
+      "zeile": "95",
+      "kennzahlen": [],
+      "label": "Arbeitslosenversicherung (von Zeile 93) 1,1 % für Lohnteile bis 148.200 CHF / 146,718 EUR weitere 0,5 % für Lohnteile über 148.200 CHF / 146.718 EUR",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.z79Eur",
+      "formular": "anlage-n-gre",
+      "seite": 4,
+      "zeile": "95",
+      "kennzahlen": [],
+      "label": "Arbeitslosenversicherung (von Zeile 93) 1,1 % für Lohnteile bis 148.200 CHF / 146,718 EUR weitere 0,5 % für Lohnteile über 148.200 CHF / 146.718 EUR",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.z80Chf",
+      "formular": "anlage-n-gre",
+      "seite": 4,
+      "zeile": "96",
+      "kennzahlen": [],
+      "label": "Beiträge zur Krankentaggeldversicherung",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.z80Eur",
+      "formular": "anlage-n-gre",
+      "seite": 4,
+      "zeile": "96",
+      "kennzahlen": [],
+      "label": "Beiträge zur Krankentaggeldversicherung",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.z81Chf",
+      "formular": "anlage-n-gre",
+      "seite": 4,
+      "zeile": "97",
+      "kennzahlen": [],
+      "label": "50 % der Beiträge zur NBUV",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.z81Eur",
+      "formular": "anlage-n-gre",
+      "seite": 4,
+      "zeile": "97",
+      "kennzahlen": [],
+      "label": "50 % der Beiträge zur NBUV",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.z82Chf",
+      "formular": "anlage-n-gre",
+      "seite": 4,
+      "zeile": "98",
+      "kennzahlen": [],
+      "label": "Sonstige Vorsorgeaufwendungen",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.z82Eur",
+      "formular": "anlage-n-gre",
+      "seite": 4,
+      "zeile": "98",
+      "kennzahlen": [],
+      "label": "Sonstige Vorsorgeaufwendungen",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.z83Chf",
+      "formular": "anlage-n-gre",
+      "seite": 4,
+      "zeile": "99",
+      "kennzahlen": [],
+      "label": "AHV / IV 5,05 % von Zeile 93",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.z83Eur",
+      "formular": "anlage-n-gre",
+      "seite": 4,
+      "zeile": "99",
+      "kennzahlen": [],
+      "label": "AHV / IV 5,05 % von Zeile 93",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.z84Chf",
+      "formular": "anlage-n-gre",
+      "seite": 4,
+      "zeile": "100",
+      "kennzahlen": [],
+      "label": "Beiträge des Arbeitnehmers ins Obligatorium (Säule 2a)",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.z84Eur",
+      "formular": "anlage-n-gre",
+      "seite": 4,
+      "zeile": "100",
+      "kennzahlen": [],
+      "label": "Beiträge des Arbeitnehmers ins Obligatorium (Säule 2a)",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.z85Chf",
+      "formular": "anlage-n-gre",
+      "seite": 4,
+      "zeile": "101",
+      "kennzahlen": [],
+      "label": "Summe Arbeitnehmerbeiträge",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.z85Eur",
+      "formular": "anlage-n-gre",
+      "seite": 4,
+      "zeile": "101",
+      "kennzahlen": [],
+      "label": "Summe Arbeitnehmerbeiträge",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.z86Chf",
+      "formular": "anlage-n-gre",
+      "seite": 4,
+      "zeile": "102",
+      "kennzahlen": [],
+      "label": "AHV / IV lt. Zeile 99",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.z86Eur",
+      "formular": "anlage-n-gre",
+      "seite": 4,
+      "zeile": "102",
+      "kennzahlen": [],
+      "label": "AHV / IV lt. Zeile 99",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.z87Chf",
+      "formular": "anlage-n-gre",
+      "seite": 4,
+      "zeile": "103",
+      "kennzahlen": [],
+      "label": "Beiträge des Arbeitgebers ins Obligatorium (Säule 2a)",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.z87Eur",
+      "formular": "anlage-n-gre",
+      "seite": 4,
+      "zeile": "103",
+      "kennzahlen": [],
+      "label": "Beiträge des Arbeitgebers ins Obligatorium (Säule 2a)",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.z88Chf",
+      "formular": "anlage-n-gre",
+      "seite": 4,
+      "zeile": "104",
+      "kennzahlen": [],
+      "label": "Summe Arbeitgeberbeiträge",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.z88Eur",
+      "formular": "anlage-n-gre",
+      "seite": 4,
+      "zeile": "104",
+      "kennzahlen": [],
+      "label": "Summe Arbeitgeberbeiträge",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.arbeitgeberName",
+      "formular": "anlage-n-gre",
+      "seite": 4,
+      "zeile": "105",
+      "kennzahlen": [],
+      "label": "Name (Bezeichnung)",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.arbeitgeberStrasse",
+      "formular": "anlage-n-gre",
+      "seite": 4,
+      "zeile": "106",
+      "kennzahlen": [],
+      "label": "Straße und Hausnummer",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.arbeitgeberPlzOrt",
+      "formular": "anlage-n-gre",
+      "seite": 4,
+      "zeile": "107",
+      "kennzahlen": [],
+      "label": "Postleitzahl, Ort",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.wegOrt",
+      "formular": "anlage-n-gre",
+      "seite": 2,
+      "zeile": "31",
+      "kennzahlen": [],
+      "label": "Erste Tätigkeitsstätte (PLZ, Ort und Straße)",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.wegTageJeWoche",
+      "formular": "anlage-n-gre",
+      "seite": 2,
+      "zeile": "31",
+      "kennzahlen": [],
+      "label": "Erste Tätigkeitsstätte (PLZ, Ort und Straße)",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.wegFreieTage",
+      "formular": "anlage-n-gre",
+      "seite": 2,
+      "zeile": "31",
+      "kennzahlen": [],
+      "label": "Erste Tätigkeitsstätte (PLZ, Ort und Straße)",
+      "spalte": "Dienstreisetage"
+    },
+    {
+      "id": "anlNGre.kz110Tage",
+      "formular": "anlage-n-gre",
+      "seite": 2,
+      "zeile": "35",
+      "kennzahlen": [
+        "110"
+      ],
+      "label": "Ort lt. Zeile",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.kz111",
+      "formular": "anlage-n-gre",
+      "seite": 2,
+      "zeile": "35",
+      "kennzahlen": [
+        "111"
+      ],
+      "label": "Ort lt. Zeile",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.kz112",
+      "formular": "anlage-n-gre",
+      "seite": 2,
+      "zeile": "35",
+      "kennzahlen": [
+        "112"
+      ],
+      "label": "Ort lt. Zeile",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.wegVon",
+      "formular": "anlage-n-gre",
+      "seite": 2,
+      "zeile": "31",
+      "kennzahlen": [],
+      "label": "Erste Tätigkeitsstätte (PLZ, Ort und Straße)",
+      "spalte": "vom"
+    },
+    {
+      "id": "anlNGre.wegBis",
+      "formular": "anlage-n-gre",
+      "seite": 2,
+      "zeile": "31",
+      "kennzahlen": [],
+      "label": "Erste Tätigkeitsstätte (PLZ, Ort und Straße)",
+      "spalte": "bis"
+    },
+    {
+      "id": "anlNGre.weg2Ort",
+      "formular": "anlage-n-gre",
+      "seite": 2,
+      "zeile": "32",
+      "kennzahlen": [],
+      "label": "Erste Tätigkeitsstätte (PLZ, Ort und Straße)",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.weg2Von",
+      "formular": "anlage-n-gre",
+      "seite": 2,
+      "zeile": "32",
+      "kennzahlen": [],
+      "label": "vom",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.weg2Bis",
+      "formular": "anlage-n-gre",
+      "seite": 2,
+      "zeile": "32",
+      "kennzahlen": [],
+      "label": "bis",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.weg2TageJeWoche",
+      "formular": "anlage-n-gre",
+      "seite": 2,
+      "zeile": "32",
+      "kennzahlen": [],
+      "label": "je Woche",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.weg2FreieTage",
+      "formular": "anlage-n-gre",
+      "seite": 2,
+      "zeile": "32",
+      "kennzahlen": [],
+      "label": "Dienstreisetage",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.kz130Tage",
+      "formular": "anlage-n-gre",
+      "seite": 2,
+      "zeile": "36",
+      "kennzahlen": [
+        "130"
+      ],
+      "label": "Tagen",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.kz131",
+      "formular": "anlage-n-gre",
+      "seite": 2,
+      "zeile": "36",
+      "kennzahlen": [
+        "131"
+      ],
+      "label": "abgerundet)",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.kz132",
+      "formular": "anlage-n-gre",
+      "seite": 2,
+      "zeile": "36",
+      "kennzahlen": [
+        "132"
+      ],
+      "label": "km",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.z95Arbeitgeber",
+      "formular": "anlage-n-gre",
+      "seite": 4,
+      "zeile": "111",
+      "kennzahlen": [],
+      "label": "Wer bezahlt die Versicherungsprämien?",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.z95Arbeitnehmer",
+      "formular": "anlage-n-gre",
+      "seite": 4,
+      "zeile": "111",
+      "kennzahlen": [],
+      "label": "Wer bezahlt die Versicherungsprämien?",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.z96Arbeitgeber",
+      "formular": "anlage-n-gre",
+      "seite": 4,
+      "zeile": "113",
+      "kennzahlen": [],
+      "label": "Anteil des Arbeitgebers",
+      "spalte": "CHF"
+    },
+    {
+      "id": "anlNGre.z96Arbeitnehmer",
+      "formular": "anlage-n-gre",
+      "seite": 4,
+      "zeile": "113",
+      "kennzahlen": [],
+      "label": "Anteil des Arbeitgebers",
+      "spalte": "CHF"
+    },
+    {
+      "id": "anlNGre.z97Arbeitgeber",
+      "formular": "anlage-n-gre",
+      "seite": 4,
+      "zeile": "114",
+      "kennzahlen": [],
+      "label": "Wer bezahlt die Versicherungsprämien?",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.z97Arbeitnehmer",
+      "formular": "anlage-n-gre",
+      "seite": 4,
+      "zeile": "114",
+      "kennzahlen": [],
+      "label": "Wer bezahlt die Versicherungsprämien?",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.z98Arbeitgeber",
+      "formular": "anlage-n-gre",
+      "seite": 4,
+      "zeile": "116",
+      "kennzahlen": [],
+      "label": "Anteil des Arbeitgebers",
+      "spalte": "CHF"
+    },
+    {
+      "id": "anlNGre.z98Arbeitnehmer",
+      "formular": "anlage-n-gre",
+      "seite": 4,
+      "zeile": "116",
+      "kennzahlen": [],
+      "label": "Anteil des Arbeitgebers",
+      "spalte": "CHF"
+    },
+    {
+      "id": "anlV.name",
+      "formular": "anlage-v",
+      "seite": 1,
+      "zeile": "1",
+      "kennzahlen": [],
+      "label": "Name / Gemeinschaft",
+      "spalte": null
+    },
+    {
+      "id": "anlV.vorname",
+      "formular": "anlage-v",
+      "seite": 1,
+      "zeile": "2",
+      "kennzahlen": [],
+      "label": "Vorname",
+      "spalte": null
+    },
+    {
+      "id": "anlV.steuernummer",
+      "formular": "anlage-v",
+      "seite": 1,
+      "zeile": "3",
+      "kennzahlen": [],
+      "label": "Steuernummer",
+      "spalte": null
+    },
+    {
+      "id": "anlV.lfdNr",
+      "formular": "anlage-v",
+      "seite": 1,
+      "zeile": "3",
+      "kennzahlen": [],
+      "label": "Steuernummer",
+      "spalte": null
+    },
+    {
+      "id": "anlV.strasse",
+      "formular": "anlage-v",
+      "seite": 1,
+      "zeile": "4",
+      "kennzahlen": [],
+      "label": "Lage des Grundstücks / der Eigentumswohnung Straße, Hausnummer",
+      "spalte": null
+    },
+    {
+      "id": "anlV.plz",
+      "formular": "anlage-v",
+      "seite": 1,
+      "zeile": "5",
+      "kennzahlen": [],
+      "label": "Postleitzahl",
+      "spalte": null
+    },
+    {
+      "id": "anlV.ort",
+      "formular": "anlage-v",
+      "seite": 1,
+      "zeile": "5",
+      "kennzahlen": [],
+      "label": "Postleitzahl",
+      "spalte": "Ort"
+    },
+    {
+      "id": "anlV.wohnflaeche",
+      "formular": "anlage-v",
+      "seite": 1,
+      "zeile": "8",
+      "kennzahlen": [
+        "54"
+      ],
+      "label": "Gesamtwohnfläche",
+      "spalte": null
+    },
+    {
+      "id": "anlV.kz01",
+      "formular": "anlage-v",
+      "seite": 1,
+      "zeile": "9",
+      "kennzahlen": [
+        "01"
+      ],
+      "label": "Mieteinnahmen für Wohnungen (ohne Umlagen)",
+      "spalte": null
+    },
+    {
+      "id": "anlV.kz04",
+      "formular": "anlage-v",
+      "seite": 1,
+      "zeile": "13",
+      "kennzahlen": [
+        "04"
+      ],
+      "label": "Umlagen, verrechnet mit Erstattungen (z. B. Wassergeld, Flur- u. Kellerbeleuchtung, Müllabfuhr, Zentralheizung usw.) auf die Zeilen 9 und 11 entfallen",
+      "spalte": null
+    },
+    {
+      "id": "anlV.z32Einnahmen",
+      "formular": "anlage-v",
+      "seite": 1,
+      "zeile": "21",
+      "kennzahlen": [],
+      "label": "Summe der Einnahmen",
+      "spalte": null
+    },
+    {
+      "id": "anlV.z33Linear",
+      "formular": "anlage-v",
+      "seite": 2,
+      "zeile": "33",
+      "kennzahlen": [],
+      "label": "linear",
+      "spalte": null
+    },
+    {
+      "id": "anlV.z33Satz",
+      "formular": "anlage-v",
+      "seite": 2,
+      "zeile": "33",
+      "kennzahlen": [],
+      "label": "linear",
+      "spalte": null
+    },
+    {
+      "id": "anlV.z33WieVorjahr",
+      "formular": "anlage-v",
+      "seite": 2,
+      "zeile": "33",
+      "kennzahlen": [],
+      "label": "linear",
+      "spalte": null
+    },
+    {
+      "id": "anlV.z33Afa",
+      "formular": "anlage-v",
+      "seite": 2,
+      "zeile": "33",
+      "kennzahlen": [],
+      "label": "linear",
+      "spalte": null
+    },
+    {
+      "id": "anlV.kz30",
+      "formular": "anlage-v",
+      "seite": 2,
+      "zeile": "33",
+      "kennzahlen": [
+        "30"
+      ],
+      "label": "linear",
+      "spalte": null
+    },
+    {
+      "id": "anlV.z46Betrag",
+      "formular": "anlage-v",
+      "seite": 2,
+      "zeile": "37",
+      "kennzahlen": [],
+      "label": "Schuldzinsen (ohne Tilgungsbeträge)",
+      "spalte": null
+    },
+    {
+      "id": "anlV.kz33",
+      "formular": "anlage-v",
+      "seite": 2,
+      "zeile": "37",
+      "kennzahlen": [
+        "33"
+      ],
+      "label": "Schuldzinsen (ohne Tilgungsbeträge)",
+      "spalte": null
+    },
+    {
+      "id": "anlV.z80Betrag",
+      "formular": "anlage-v",
+      "seite": 2,
+      "zeile": "50",
+      "kennzahlen": [],
+      "label": "Sonstiges",
+      "spalte": null
+    },
+    {
+      "id": "anlV.kz49",
+      "formular": "anlage-v",
+      "seite": 2,
+      "zeile": "50",
+      "kennzahlen": [
+        "49"
+      ],
+      "label": "Sonstiges",
+      "spalte": null
+    },
+    {
+      "id": "anlV.werbungskostenSumme",
+      "formular": "anlage-v",
+      "seite": 2,
+      "zeile": "51",
+      "kennzahlen": [],
+      "label": "Summe der Werbungskosten (zu übertragen nach Zeile 22)",
+      "spalte": null
+    },
+    {
+      "id": "anlV.ueberschuss",
+      "formular": "anlage-v",
+      "seite": 1,
+      "zeile": "23",
+      "kennzahlen": [],
+      "label": "Überschuss (zu übertragen nach Zeile 24)",
+      "spalte": null
+    },
+    {
+      "id": "anlV.kz20",
+      "formular": "anlage-v",
+      "seite": 1,
+      "zeile": "24",
+      "kennzahlen": [
+        "20"
+      ],
+      "label": "Zurechnung des Betrags aus Zeile 23",
+      "spalte": "EUR"
+    },
+    {
+      "id": "anlV.kz21",
+      "formular": "anlage-v",
+      "seite": 1,
+      "zeile": "24",
+      "kennzahlen": [
+        "21"
+      ],
+      "label": "Zurechnung des Betrags aus Zeile 23",
+      "spalte": "EUR"
+    },
+    {
+      "id": "anlKind.name",
+      "formular": "anlage-kind",
+      "seite": 1,
+      "zeile": "1",
+      "kennzahlen": [],
+      "label": "Name",
+      "spalte": null
+    },
+    {
+      "id": "anlKind.vornameEltern",
+      "formular": "anlage-kind",
+      "seite": 1,
+      "zeile": "2",
+      "kennzahlen": [],
+      "label": "Vorname",
+      "spalte": null
+    },
+    {
+      "id": "anlKind.steuernummer",
+      "formular": "anlage-kind",
+      "seite": 1,
+      "zeile": "3",
+      "kennzahlen": [],
+      "label": "Steuernummer",
+      "spalte": null
+    },
+    {
+      "id": "anlKind.lfdNr",
+      "formular": "anlage-kind",
+      "seite": 1,
+      "zeile": "3",
+      "kennzahlen": [],
+      "label": "Steuernummer",
+      "spalte": null
+    },
+    {
+      "id": "anlKind.idnr",
+      "formular": "anlage-kind",
+      "seite": 1,
+      "zeile": "4",
+      "kennzahlen": [],
+      "label": "Identifikationsnummer 01",
+      "spalte": null
+    },
+    {
+      "id": "anlKind.vorname",
+      "formular": "anlage-kind",
+      "seite": 1,
+      "zeile": "5",
+      "kennzahlen": [],
+      "label": "Vorname",
+      "spalte": null
+    },
+    {
+      "id": "anlKind.nachname",
+      "formular": "anlage-kind",
+      "seite": 1,
+      "zeile": "5",
+      "kennzahlen": [],
+      "label": "Vorname",
+      "spalte": null
+    },
+    {
+      "id": "anlKind.geburtsdatum",
+      "formular": "anlage-kind",
+      "seite": 1,
+      "zeile": "6",
+      "kennzahlen": [
+        "16"
+      ],
+      "label": "Geburtsdatum",
+      "spalte": null
+    },
+    {
+      "id": "anlKind.kindergeld",
+      "formular": "anlage-kind",
+      "seite": 1,
+      "zeile": "6",
+      "kennzahlen": [
+        "15"
+      ],
+      "label": "Geburtsdatum",
+      "spalte": "EUR"
+    },
+    {
+      "id": "anlKind.familienkasse",
+      "formular": "anlage-kind",
+      "seite": 1,
+      "zeile": "7",
+      "kennzahlen": [],
+      "label": "Für die Kindergeldfestsetzung zuständige Familienkasse",
+      "spalte": null
+    },
+    {
+      "id": "anlKind.kz66",
+      "formular": "anlage-kind",
+      "seite": 2,
+      "zeile": "31",
+      "kennzahlen": [
+        "66"
+      ],
+      "label": "Beiträge zu Krankenversicherungen des Kindes (nur Basisabsicherung, keine Wahlleistungen)",
+      "spalte": null
+    },
+    {
+      "id": "anlKind.kz67",
+      "formular": "anlage-kind",
+      "seite": 2,
+      "zeile": "32",
+      "kennzahlen": [
+        "67"
+      ],
+      "label": "Beiträge zur sozialen Pflegeversicherung und / oder zur privaten Pflege-Pflichtversicherung",
+      "spalte": null
+    },
+    {
+      "id": "anlKind.kz89",
+      "formular": "anlage-kind",
+      "seite": 2,
+      "zeile": "41",
+      "kennzahlen": [
+        "89"
+      ],
+      "label": "Beiträge (abzüglich steuerfreier Zuschüsse und / oder Erstattungen) zu ausländischen Kranken- und Pflegeversicherungen des Kindes, die mit inländischen gesetzlichen Kranken- und Pflegeversicherungen vergleichbar sind (nur Basisabsicherung)",
+      "spalte": null
+    },
+    {
+      "id": "anlN.kz330",
+      "formular": "anlage-n",
+      "seite": 2,
+      "zeile": "46",
+      "kennzahlen": [
+        "330"
+      ],
+      "label": "Fortbildungskosten – soweit nicht steuerfrei ersetzt –",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.kz330",
+      "formular": "anlage-n-gre",
+      "seite": 2,
+      "zeile": "42",
+      "kennzahlen": [
+        "330"
+      ],
+      "label": "Fortbildungskosten – soweit nicht steuerfrei ersetzt –",
+      "spalte": null
+    },
+    {
+      "id": "est1a.kz120",
+      "formular": "est-1-a",
+      "seite": 2,
+      "zeile": "43",
+      "kennzahlen": [
+        "120"
+      ],
+      "label": "– die dem Progressionsvorbehalt unterliegen, z. B. Arbeitslosengeld, Elterngeld, Insolvenzgeld, Krankengeld, Mutterschaftsgeld, Verdienstausfallentschädigung (Infektionsschutzgesetz)",
+      "spalte": "EUR"
+    },
+    {
+      "id": "est1a.kz121",
+      "formular": "est-1-a",
+      "seite": 2,
+      "zeile": "43",
+      "kennzahlen": [
+        "121"
+      ],
+      "label": "– die dem Progressionsvorbehalt unterliegen, z. B. Arbeitslosengeld, Elterngeld, Insolvenzgeld, Krankengeld, Mutterschaftsgeld, Verdienstausfallentschädigung (Infektionsschutzgesetz)",
+      "spalte": "EUR"
+    },
+    {
+      "id": "anlKind.inlandVon",
+      "formular": "anlage-kind",
+      "seite": 1,
+      "zeile": "8",
+      "kennzahlen": [],
+      "label": "Wohnsitz im Inland",
+      "spalte": "vom"
+    },
+    {
+      "id": "anlKind.inlandBis",
+      "formular": "anlage-kind",
+      "seite": 1,
+      "zeile": "8",
+      "kennzahlen": [],
+      "label": "Wohnsitz im Inland",
+      "spalte": "bis"
+    },
+    {
+      "id": "anlKind.kz02",
+      "formular": "anlage-kind",
+      "seite": 1,
+      "zeile": "10",
+      "kennzahlen": [
+        "02"
+      ],
+      "label": "Person A",
+      "spalte": null
+    },
+    {
+      "id": "anlKind.kz03",
+      "formular": "anlage-kind",
+      "seite": 1,
+      "zeile": "10",
+      "kennzahlen": [
+        "03"
+      ],
+      "label": "Person A",
+      "spalte": null
+    },
+    {
+      "id": "anlKind.aeName",
+      "formular": "anlage-kind",
+      "seite": 1,
+      "zeile": "11",
+      "kennzahlen": [],
+      "label": "Name, Vorname",
+      "spalte": null
+    },
+    {
+      "id": "anlKind.aeGeburtsdatum",
+      "formular": "anlage-kind",
+      "seite": 1,
+      "zeile": "11",
+      "kennzahlen": [],
+      "label": "Name, Vorname",
+      "spalte": null
+    },
+    {
+      "id": "anlKind.aeVon",
+      "formular": "anlage-kind",
+      "seite": 1,
+      "zeile": "11",
+      "kennzahlen": [
+        "04"
+      ],
+      "label": "Name, Vorname",
+      "spalte": "vom"
+    },
+    {
+      "id": "anlKind.aeBis",
+      "formular": "anlage-kind",
+      "seite": 1,
+      "zeile": "11",
+      "kennzahlen": [
+        "04"
+      ],
+      "label": "Name, Vorname",
+      "spalte": "bis"
+    },
+    {
+      "id": "anlKind.aeAdresse",
+      "formular": "anlage-kind",
+      "seite": 1,
+      "zeile": "12",
+      "kennzahlen": [],
+      "label": "Letzte bekannte Adresse",
+      "spalte": null
+    },
+    {
+      "id": "anlKind.aeArt",
+      "formular": "anlage-kind",
+      "seite": 1,
+      "zeile": "12",
+      "kennzahlen": [],
+      "label": "Letzte bekannte Adresse",
+      "spalte": null
+    },
+    {
+      "id": "anlKind.kz06",
+      "formular": "anlage-kind",
+      "seite": 1,
+      "zeile": "14",
+      "kennzahlen": [
+        "06"
+      ],
+      "label": "Das Kindschaftsverhältnis zum anderen Elternteil ist durch dessen Tod erloschen am",
+      "spalte": null
+    },
+    {
+      "id": "anlKind.kz05",
+      "formular": "anlage-kind",
+      "seite": 1,
+      "zeile": "15",
+      "kennzahlen": [
+        "05"
+      ],
+      "label": "Der Wohnsitz oder gewöhnliche Aufenthalt des anderen Elternteiles ist nicht zu ermitteln oder der Vater des Kindes ist amtlich nicht feststellbar",
+      "spalte": null
+    },
+    {
+      "id": "anlKind.kz42Von",
+      "formular": "anlage-kind",
+      "seite": 2,
+      "zeile": "49",
+      "kennzahlen": [
+        "42"
+      ],
+      "label": "Das Kind war mit mir in der gemeinsamen Wohnung gemeldet",
+      "spalte": "vom"
+    },
+    {
+      "id": "anlKind.kz42Bis",
+      "formular": "anlage-kind",
+      "seite": 2,
+      "zeile": "49",
+      "kennzahlen": [
+        "42"
+      ],
+      "label": "Das Kind war mit mir in der gemeinsamen Wohnung gemeldet",
+      "spalte": "bis"
+    },
+    {
+      "id": "anlKind.kz44Von",
+      "formular": "anlage-kind",
+      "seite": 2,
+      "zeile": "50",
+      "kennzahlen": [
+        "44"
+      ],
+      "label": "Für das Kind wurde mir Kindergeld ausgezahlt",
+      "spalte": "vom"
+    },
+    {
+      "id": "anlKind.kz44Bis",
+      "formular": "anlage-kind",
+      "seite": 2,
+      "zeile": "50",
+      "kennzahlen": [
+        "44"
+      ],
+      "label": "Für das Kind wurde mir Kindergeld ausgezahlt",
+      "spalte": "bis"
+    },
+    {
+      "id": "anlKind.kz46",
+      "formular": "anlage-kind",
+      "seite": 2,
+      "zeile": "51",
+      "kennzahlen": [
+        "46"
+      ],
+      "label": "Außer mir war(en) in der gemeinsamen Wohnung eine / mehrere volljährige Person(en) gemeldet, für die (zeitweise) kein Anspruch auf Kindergeld oder Freibeträge für Kinder bestand.",
+      "spalte": null
+    },
+    {
+      "id": "anlKind.kz49",
+      "formular": "anlage-kind",
+      "seite": 2,
+      "zeile": "52",
+      "kennzahlen": [
+        "49"
+      ],
+      "label": "Es bestand eine Haushaltsgemeinschaft mit mindestens einer weiteren volljährigen Person, für die (zeitweise) kein Anspruch auf Kindergeld oder Freibeträge für Kinder bestand.",
+      "spalte": null
+    },
+    {
+      "id": "anlSo.name",
+      "formular": "anlage-sonderausgaben",
+      "seite": 1,
+      "zeile": "1",
+      "kennzahlen": [],
+      "label": "Name",
+      "spalte": null
+    },
+    {
+      "id": "anlSo.vorname",
+      "formular": "anlage-sonderausgaben",
+      "seite": 1,
+      "zeile": "2",
+      "kennzahlen": [],
+      "label": "Vorname",
+      "spalte": null
+    },
+    {
+      "id": "anlSo.steuernummer",
+      "formular": "anlage-sonderausgaben",
+      "seite": 1,
+      "zeile": "3",
+      "kennzahlen": [],
+      "label": "Steuernummer",
+      "spalte": null
+    },
+    {
+      "id": "anlSo.spenden",
+      "formular": "anlage-sonderausgaben",
+      "seite": 1,
+      "zeile": "5",
+      "kennzahlen": [
+        "123"
+      ],
+      "label": "Spenden und Mitgliedsbeiträge (ohne Beträge in den Zeilen 9 bis 12) – zur Förderung steuerbegünstigter Zwecke an Empfänger im Inland",
+      "spalte": null
+    },
+    {
+      "id": "anlAv.name",
+      "formular": "anlage-av",
+      "seite": 1,
+      "zeile": "1",
+      "kennzahlen": [],
+      "label": "Name",
+      "spalte": null
+    },
+    {
+      "id": "anlAv.vorname",
+      "formular": "anlage-av",
+      "seite": 1,
+      "zeile": "2",
+      "kennzahlen": [],
+      "label": "Vorname",
+      "spalte": null
+    },
+    {
+      "id": "anlAv.steuernummer",
+      "formular": "anlage-av",
+      "seite": 1,
+      "zeile": "3",
+      "kennzahlen": [],
+      "label": "Steuernummer",
+      "spalte": null
+    },
+    {
+      "id": "anlAv.unmittelbar",
+      "formular": "anlage-av",
+      "seite": 1,
+      "zeile": "5",
+      "kennzahlen": [
+        "106"
+      ],
+      "label": "Ich bin für das Jahr 2022 unmittelbar begünstigt. (Bitte die Zeilen 6 bis 14 ausfüllen.)",
+      "spalte": null
+    },
+    {
+      "id": "anlAv.kz100",
+      "formular": "anlage-av",
+      "seite": 1,
+      "zeile": "6",
+      "kennzahlen": [
+        "100"
+      ],
+      "label": "Beitragspflichtige Einnahmen i. S. d. inländischen gesetzlichen Rentenversicherung 2021",
+      "spalte": null
+    },
+    {
+      "id": "anlAv.mittelbar",
+      "formular": "anlage-av",
+      "seite": 1,
+      "zeile": "15",
+      "kennzahlen": [
+        "106"
+      ],
+      "label": "Ich bin für das Jahr 2022 mittelbar begünstigt.",
+      "spalte": null
+    },
+    {
+      "id": "anlVor.name",
+      "formular": "anlage-vorsorgeaufwand",
+      "seite": 1,
+      "zeile": "1",
+      "kennzahlen": [],
+      "label": "Name",
+      "spalte": null
+    },
+    {
+      "id": "anlVor.vorname",
+      "formular": "anlage-vorsorgeaufwand",
+      "seite": 1,
+      "zeile": "2",
+      "kennzahlen": [],
+      "label": "Vorname",
+      "spalte": null
+    },
+    {
+      "id": "anlVor.steuernummer",
+      "formular": "anlage-vorsorgeaufwand",
+      "seite": 1,
+      "zeile": "3",
+      "kennzahlen": [],
+      "label": "Steuernummer",
+      "spalte": null
+    },
+    {
+      "id": "anlVor.kz326",
+      "formular": "anlage-vorsorgeaufwand",
+      "seite": 1,
+      "zeile": "16",
+      "kennzahlen": [
+        "326"
+      ],
+      "label": "Beiträge zu Krankenversicherungen – ohne Beiträge, die in Zeile 11 geltend gemacht werden – (z. B. bei Rentnern, bei freiwillig gesetzlich versicherten Selbstzahlern)",
+      "spalte": null
+    },
+    {
+      "id": "anlVor.kz328",
+      "formular": "anlage-vorsorgeaufwand",
+      "seite": 1,
+      "zeile": "17",
+      "kennzahlen": [
+        "328"
+      ],
+      "label": "In Zeile 16 enthaltene Beiträge zur Krankenversicherung, aus denen sich ein Anspruch auf Krankengeld ergibt",
+      "spalte": null
+    },
+    {
+      "id": "anlVor.kz329",
+      "formular": "anlage-vorsorgeaufwand",
+      "seite": 1,
+      "zeile": "18",
+      "kennzahlen": [
+        "329"
+      ],
+      "label": "Beiträge zu sozialen Pflegeversicherungen – ohne Beiträge, die in Zeile 13 geltend gemacht werden – (z. B. bei Rentnern, bei freiwillig gesetzlich versicherten Selbstzahlern)",
+      "spalte": null
+    },
+    {
+      "id": "anlVor.kz338",
+      "formular": "anlage-vorsorgeaufwand",
+      "seite": 1,
+      "zeile": "22",
+      "kennzahlen": [
+        "338"
+      ],
+      "label": "Über die Basisabsicherung hinausgehende Beiträge zu Krankenversicherungen (z. B. für Wahlleistungen, Zusatzversicherungen) abzüglich erstatteter Beiträge",
+      "spalte": null
+    },
+    {
+      "id": "anlVor.kz350",
+      "formular": "anlage-vorsorgeaufwand",
+      "seite": 1,
+      "zeile": "23",
+      "kennzahlen": [
+        "350"
+      ],
+      "label": "Beiträge zu Krankenversicherungen (nur Basisabsicherung, keine Wahlleistungen)",
+      "spalte": null
+    },
+    {
+      "id": "anlVor.kz351",
+      "formular": "anlage-vorsorgeaufwand",
+      "seite": 1,
+      "zeile": "24",
+      "kennzahlen": [
+        "351"
+      ],
+      "label": "Beiträge zu Pflege-Pflichtversicherungen Zu den Zeilen 23 und 24:",
+      "spalte": null
+    },
+    {
+      "id": "anlVor.kz354",
+      "formular": "anlage-vorsorgeaufwand",
+      "seite": 1,
+      "zeile": "27",
+      "kennzahlen": [
+        "354"
+      ],
+      "label": "034098_22 Über die Basisabsicherung hinausgehende Beiträge zu Krankenversicherungen (z. B. für Wahlleistungen, Zusatzversicherungen) und / oder zu zusätzlichen Pflegeversicherungen abzüglich erstatteter Beiträge",
+      "spalte": null
+    },
+    {
+      "id": "anlVor.kz333",
+      "formular": "anlage-vorsorgeaufwand",
+      "seite": 2,
+      "zeile": "31",
+      "kennzahlen": [
+        "333"
+      ],
+      "label": "Beiträge (abzüglich steuerfreier Zuschüsse zur Krankenversicherung, die mit einer inländischen Krankenversicherung vergleichbar ist (nur Basisabsicherung, keine Wahlleistungen)",
+      "spalte": "EUR"
+    },
+    {
+      "id": "anlVor.kz334",
+      "formular": "anlage-vorsorgeaufwand",
+      "seite": 2,
+      "zeile": "32",
+      "kennzahlen": [
+        "334"
+      ],
+      "label": "In Zeile 31 enthaltene Beiträge zur Krankenversicherung, aus denen sich kein Anspruch auf Krankengeld ergibt",
+      "spalte": "EUR"
+    },
+    {
+      "id": "anlVor.kz335",
+      "formular": "anlage-vorsorgeaufwand",
+      "seite": 2,
+      "zeile": "33",
+      "kennzahlen": [
+        "335"
+      ],
+      "label": "Beiträge (abzüglich steuerfreier Zuschüsse zur sozialen Pflegeversicherung / Pflege-Pflichtversicherung, die mit einer inländischen Pflegeversicherung vergleichbar ist",
+      "spalte": null
+    },
+    {
+      "id": "anlVor.kz339",
+      "formular": "anlage-vorsorgeaufwand",
+      "seite": 2,
+      "zeile": "36",
+      "kennzahlen": [
+        "339"
+      ],
+      "label": "Über die Basisabsicherung hinausgehende Beiträge (abzüglich erstatteter Beiträge) zu Krankenversicherungen und zusätzlichen Pflegeversicherungen (z. B. für Wahlleistungen, Zusatzversicherungen)",
+      "spalte": null
+    },
+    {
+      "id": "anlVor.kz426",
+      "formular": "anlage-vorsorgeaufwand",
+      "seite": 1,
+      "zeile": "16",
+      "kennzahlen": [
+        "426"
+      ],
+      "label": "Beiträge zu Krankenversicherungen – ohne Beiträge, die in Zeile 11 geltend gemacht werden – (z. B. bei Rentnern, bei freiwillig gesetzlich versicherten Selbstzahlern)",
+      "spalte": null
+    },
+    {
+      "id": "anlVor.kz428",
+      "formular": "anlage-vorsorgeaufwand",
+      "seite": 1,
+      "zeile": "17",
+      "kennzahlen": [
+        "428"
+      ],
+      "label": "In Zeile 16 enthaltene Beiträge zur Krankenversicherung, aus denen sich ein Anspruch auf Krankengeld ergibt",
+      "spalte": null
+    },
+    {
+      "id": "anlVor.kz429",
+      "formular": "anlage-vorsorgeaufwand",
+      "seite": 1,
+      "zeile": "18",
+      "kennzahlen": [
+        "429"
+      ],
+      "label": "Beiträge zu sozialen Pflegeversicherungen – ohne Beiträge, die in Zeile 13 geltend gemacht werden – (z. B. bei Rentnern, bei freiwillig gesetzlich versicherten Selbstzahlern)",
+      "spalte": null
+    },
+    {
+      "id": "anlVor.kz438",
+      "formular": "anlage-vorsorgeaufwand",
+      "seite": 1,
+      "zeile": "22",
+      "kennzahlen": [
+        "438"
+      ],
+      "label": "Über die Basisabsicherung hinausgehende Beiträge zu Krankenversicherungen (z. B. für Wahlleistungen, Zusatzversicherungen) abzüglich erstatteter Beiträge",
+      "spalte": null
+    },
+    {
+      "id": "anlVor.kz450",
+      "formular": "anlage-vorsorgeaufwand",
+      "seite": 1,
+      "zeile": "23",
+      "kennzahlen": [
+        "450"
+      ],
+      "label": "Beiträge zu Krankenversicherungen (nur Basisabsicherung, keine Wahlleistungen)",
+      "spalte": null
+    },
+    {
+      "id": "anlVor.kz451",
+      "formular": "anlage-vorsorgeaufwand",
+      "seite": 1,
+      "zeile": "24",
+      "kennzahlen": [
+        "451"
+      ],
+      "label": "Beiträge zu Pflege-Pflichtversicherungen Zu den Zeilen 23 und 24:",
+      "spalte": null
+    },
+    {
+      "id": "anlVor.kz454",
+      "formular": "anlage-vorsorgeaufwand",
+      "seite": 1,
+      "zeile": "27",
+      "kennzahlen": [
+        "454"
+      ],
+      "label": "034098_22 Über die Basisabsicherung hinausgehende Beiträge zu Krankenversicherungen (z. B. für Wahlleistungen, Zusatzversicherungen) und / oder zu zusätzlichen Pflegeversicherungen abzüglich erstatteter Beiträge",
+      "spalte": null
+    },
+    {
+      "id": "anlVor.kz433",
+      "formular": "anlage-vorsorgeaufwand",
+      "seite": 2,
+      "zeile": "31",
+      "kennzahlen": [
+        "433"
+      ],
+      "label": "Beiträge (abzüglich steuerfreier Zuschüsse zur Krankenversicherung, die mit einer inländischen Krankenversicherung vergleichbar ist (nur Basisabsicherung, keine Wahlleistungen)",
+      "spalte": "EUR"
+    },
+    {
+      "id": "anlVor.kz434",
+      "formular": "anlage-vorsorgeaufwand",
+      "seite": 2,
+      "zeile": "32",
+      "kennzahlen": [
+        "434"
+      ],
+      "label": "In Zeile 31 enthaltene Beiträge zur Krankenversicherung, aus denen sich kein Anspruch auf Krankengeld ergibt",
+      "spalte": "EUR"
+    },
+    {
+      "id": "anlVor.kz435",
+      "formular": "anlage-vorsorgeaufwand",
+      "seite": 2,
+      "zeile": "33",
+      "kennzahlen": [
+        "435"
+      ],
+      "label": "Beiträge (abzüglich steuerfreier Zuschüsse zur sozialen Pflegeversicherung / Pflege-Pflichtversicherung, die mit einer inländischen Pflegeversicherung vergleichbar ist",
+      "spalte": null
+    },
+    {
+      "id": "anlVor.kz439",
+      "formular": "anlage-vorsorgeaufwand",
+      "seite": 2,
+      "zeile": "36",
+      "kennzahlen": [
+        "439"
+      ],
+      "label": "Über die Basisabsicherung hinausgehende Beiträge (abzüglich erstatteter Beiträge) zu Krankenversicherungen und zusätzlichen Pflegeversicherungen (z. B. für Wahlleistungen, Zusatzversicherungen)",
+      "spalte": null
+    },
+    {
+      "id": "anlN.z53Text",
+      "formular": "anlage-n",
+      "seite": 2,
+      "zeile": "41",
+      "kennzahlen": [],
+      "label": "Beiträge zu Berufsverbänden (Bezeichnung der Verbände)",
+      "spalte": null
+    },
+    {
+      "id": "anlN.kz310",
+      "formular": "anlage-n",
+      "seite": 2,
+      "zeile": "41",
+      "kennzahlen": [
+        "310"
+      ],
+      "label": "Beiträge zu Berufsverbänden (Bezeichnung der Verbände)",
+      "spalte": null
+    },
+    {
+      "id": "anlN.z54Text",
+      "formular": "anlage-n",
+      "seite": 2,
+      "zeile": "42",
+      "kennzahlen": [],
+      "label": "Aufwendungen für Arbeitsmittel – soweit nicht steuerfrei ersetzt – (Art der Arbeitsmittel bitte einzeln angeben.)",
+      "spalte": null
+    },
+    {
+      "id": "anlN.z54Eur",
+      "formular": "anlage-n",
+      "seite": 2,
+      "zeile": "42",
+      "kennzahlen": [],
+      "label": "Aufwendungen für Arbeitsmittel – soweit nicht steuerfrei ersetzt – (Art der Arbeitsmittel bitte einzeln angeben.)",
+      "spalte": "EUR"
+    },
+    {
+      "id": "anlN.kz320",
+      "formular": "anlage-n",
+      "seite": 2,
+      "zeile": "43",
+      "kennzahlen": [
+        "320"
+      ],
+      "label": "",
+      "spalte": null
+    },
+    {
+      "id": "anlN.z62Text",
+      "formular": "anlage-n",
+      "seite": 2,
+      "zeile": "48",
+      "kennzahlen": [],
+      "label": "Sonstiges (z. B. Bewerbungskosten, Kontoführungsgebühren)",
+      "spalte": null
+    },
+    {
+      "id": "anlN.z62Eur",
+      "formular": "anlage-n",
+      "seite": 2,
+      "zeile": "48",
+      "kennzahlen": [],
+      "label": "Sonstiges (z. B. Bewerbungskosten, Kontoführungsgebühren)",
+      "spalte": null
+    },
+    {
+      "id": "anlN.z63Text",
+      "formular": "anlage-n",
+      "seite": 2,
+      "zeile": "49",
+      "kennzahlen": [],
+      "label": "Sonstiges (z. B. Bewerbungskosten, Kontoführungsgebühren)",
+      "spalte": null
+    },
+    {
+      "id": "anlN.z63Eur",
+      "formular": "anlage-n",
+      "seite": 2,
+      "zeile": "49",
+      "kennzahlen": [],
+      "label": "",
+      "spalte": null
+    },
+    {
+      "id": "anlN.kz380",
+      "formular": "anlage-n",
+      "seite": 2,
+      "zeile": "49",
+      "kennzahlen": [
+        "380"
+      ],
+      "label": "",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.z48Text",
+      "formular": "anlage-n-gre",
+      "seite": 2,
+      "zeile": "37",
+      "kennzahlen": [],
+      "label": "Beiträge zu Berufsverbänden (Bezeichnung der Verbände)",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.kz310",
+      "formular": "anlage-n-gre",
+      "seite": 2,
+      "zeile": "37",
+      "kennzahlen": [
+        "310"
+      ],
+      "label": "Beiträge zu Berufsverbänden (Bezeichnung der Verbände)",
+      "spalte": "EUR"
+    },
+    {
+      "id": "anlNGre.z49Text",
+      "formular": "anlage-n-gre",
+      "seite": 2,
+      "zeile": "38",
+      "kennzahlen": [],
+      "label": "Aufwendungen für Arbeitsmittel – soweit nicht steuerfrei ersetzt – (Art der Arbeitsmittel bitte einzeln angeben)",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.z49Eur",
+      "formular": "anlage-n-gre",
+      "seite": 2,
+      "zeile": "38",
+      "kennzahlen": [],
+      "label": "Aufwendungen für Arbeitsmittel – soweit nicht steuerfrei ersetzt – (Art der Arbeitsmittel bitte einzeln angeben)",
+      "spalte": "EUR"
+    },
+    {
+      "id": "anlNGre.kz320",
+      "formular": "anlage-n-gre",
+      "seite": 2,
+      "zeile": "39",
+      "kennzahlen": [
+        "320"
+      ],
+      "label": "",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.z57Text",
+      "formular": "anlage-n-gre",
+      "seite": 2,
+      "zeile": "44",
+      "kennzahlen": [],
+      "label": "Sonstiges (z. B. Bewerbungskosten, Kontoführungsgebühren)",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.z57Eur",
+      "formular": "anlage-n-gre",
+      "seite": 2,
+      "zeile": "44",
+      "kennzahlen": [],
+      "label": "Sonstiges (z. B. Bewerbungskosten, Kontoführungsgebühren)",
+      "spalte": null
+    },
+    {
+      "id": "anlNGre.kz380",
+      "formular": "anlage-n-gre",
+      "seite": 2,
+      "zeile": "44",
+      "kennzahlen": [
+        "380"
+      ],
+      "label": "Sonstiges (z. B. Bewerbungskosten, Kontoführungsgebühren)",
+      "spalte": null
+    },
+    {
+      "id": "anlKind.z67Text",
+      "formular": "anlage-kind",
+      "seite": 3,
+      "zeile": "76",
+      "kennzahlen": [],
+      "label": "– ohne Aufwendungen für die Verpflegung, den (Nachhilfe-) Unterricht, die Vermittlung besonderer Fähigkeiten, die sportlichen und anderen Freizeitbetätigungen des Kindes – Art der Dienstleistung, Name und Anschrift des Dienstleisters",
+      "spalte": "Art der Dienstleistung, Name und Anschrift des Dienstleisters"
+    },
+    {
+      "id": "anlKind.z67Von",
+      "formular": "anlage-kind",
+      "seite": 3,
+      "zeile": "76",
+      "kennzahlen": [],
+      "label": "– ohne Aufwendungen für die Verpflegung, den (Nachhilfe-) Unterricht, die Vermittlung besonderer Fähigkeiten, die sportlichen und anderen Freizeitbetätigungen des Kindes – Art der Dienstleistung, Name und Anschrift des Dienstleisters",
+      "spalte": "vom"
+    },
+    {
+      "id": "anlKind.z67Bis",
+      "formular": "anlage-kind",
+      "seite": 3,
+      "zeile": "76",
+      "kennzahlen": [],
+      "label": "– ohne Aufwendungen für die Verpflegung, den (Nachhilfe-) Unterricht, die Vermittlung besonderer Fähigkeiten, die sportlichen und anderen Freizeitbetätigungen des Kindes – Art der Dienstleistung, Name und Anschrift des Dienstleisters",
+      "spalte": "bis"
+    },
+    {
+      "id": "anlKind.kz51",
+      "formular": "anlage-kind",
+      "seite": 3,
+      "zeile": "76",
+      "kennzahlen": [
+        "51"
+      ],
+      "label": "– ohne Aufwendungen für die Verpflegung, den (Nachhilfe-) Unterricht, die Vermittlung besonderer Fähigkeiten, die sportlichen und anderen Freizeitbetätigungen des Kindes – Art der Dienstleistung, Name und Anschrift des Dienstleisters",
+      "spalte": "EUR"
+    },
+    {
+      "id": "anlAgB.name",
+      "formular": "anlage-aussergewoehnliche-belastungen",
+      "seite": 1,
+      "zeile": "1",
+      "kennzahlen": [],
+      "label": "Name",
+      "spalte": null
+    },
+    {
+      "id": "anlAgB.vorname",
+      "formular": "anlage-aussergewoehnliche-belastungen",
+      "seite": 1,
+      "zeile": "2",
+      "kennzahlen": [],
+      "label": "Vorname",
+      "spalte": null
+    },
+    {
+      "id": "anlAgB.steuernummer",
+      "formular": "anlage-aussergewoehnliche-belastungen",
+      "seite": 1,
+      "zeile": "3",
+      "kennzahlen": [],
+      "label": "Steuernummer",
+      "spalte": null
+    },
+    {
+      "id": "anlAgB.z23Text",
+      "formular": "anlage-aussergewoehnliche-belastungen",
+      "seite": 2,
+      "zeile": "31",
+      "kennzahlen": [],
+      "label": "Art der Aufwendungen",
+      "spalte": null
+    },
+    {
+      "id": "anlAgB.kz302",
+      "formular": "anlage-aussergewoehnliche-belastungen",
+      "seite": 2,
+      "zeile": "31",
+      "kennzahlen": [
+        "302"
+      ],
+      "label": "Art der Aufwendungen",
+      "spalte": "EUR"
+    },
+    {
+      "id": "anlAgB.kz303",
+      "formular": "anlage-aussergewoehnliche-belastungen",
+      "seite": 2,
+      "zeile": "31",
+      "kennzahlen": [
+        "303"
+      ],
+      "label": "Art der Aufwendungen",
+      "spalte": "EUR"
+    },
+    {
+      "id": "anlHha.name",
+      "formular": "anlage-haushaltsnahe-aufwendungen",
+      "seite": 1,
+      "zeile": "1",
+      "kennzahlen": [],
+      "label": "Name",
+      "spalte": null
+    },
+    {
+      "id": "anlHha.vorname",
+      "formular": "anlage-haushaltsnahe-aufwendungen",
+      "seite": 1,
+      "zeile": "2",
+      "kennzahlen": [],
+      "label": "Vorname",
+      "spalte": null
+    },
+    {
+      "id": "anlHha.steuernummer",
+      "formular": "anlage-haushaltsnahe-aufwendungen",
+      "seite": 1,
+      "zeile": "3",
+      "kennzahlen": [],
+      "label": "Steuernummer",
+      "spalte": null
+    },
+    {
+      "id": "anlHha.z4Text",
+      "formular": "anlage-haushaltsnahe-aufwendungen",
+      "seite": 1,
+      "zeile": "4",
+      "kennzahlen": [],
+      "label": "Art der Tätigkeit",
+      "spalte": null
+    },
+    {
+      "id": "anlHha.kz202",
+      "formular": "anlage-haushaltsnahe-aufwendungen",
+      "seite": 1,
+      "zeile": "4",
+      "kennzahlen": [
+        "202"
+      ],
+      "label": "Art der Tätigkeit",
+      "spalte": "EUR"
+    },
+    {
+      "id": "anlHha.z5Text",
+      "formular": "anlage-haushaltsnahe-aufwendungen",
+      "seite": 1,
+      "zeile": "5",
+      "kennzahlen": [],
+      "label": "Art der Tätigkeit / Aufwendungen",
+      "spalte": null
+    },
+    {
+      "id": "anlHha.kz212",
+      "formular": "anlage-haushaltsnahe-aufwendungen",
+      "seite": 1,
+      "zeile": "5",
+      "kennzahlen": [
+        "212"
+      ],
+      "label": "Art der Tätigkeit / Aufwendungen",
+      "spalte": null
+    },
+    {
+      "id": "anlHha.z6Text",
+      "formular": "anlage-haushaltsnahe-aufwendungen",
+      "seite": 1,
+      "zeile": "6",
+      "kennzahlen": [],
+      "label": "Art der Aufwendungen",
+      "spalte": null
+    },
+    {
+      "id": "anlHha.z6Rechnung",
+      "formular": "anlage-haushaltsnahe-aufwendungen",
+      "seite": 1,
+      "zeile": "6",
+      "kennzahlen": [],
+      "label": "Art der Aufwendungen",
+      "spalte": null
+    },
+    {
+      "id": "anlHha.z6Lohn",
+      "formular": "anlage-haushaltsnahe-aufwendungen",
+      "seite": 1,
+      "zeile": "6",
+      "kennzahlen": [],
+      "label": "Art der Aufwendungen",
+      "spalte": "EUR"
+    },
+    {
+      "id": "anlHha.kz214",
+      "formular": "anlage-haushaltsnahe-aufwendungen",
+      "seite": 1,
+      "zeile": "9",
+      "kennzahlen": [
+        "214"
+      ],
+      "label": "Summe steuerlich berücksichtigungsfähiger Lohnanteile, Maschinen- und Fahrtkosten inkl. Umsatzsteuer",
+      "spalte": null
+    }
+  ]
+}

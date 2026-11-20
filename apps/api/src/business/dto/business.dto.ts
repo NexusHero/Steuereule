@@ -416,12 +416,34 @@ export class ElsterLineDto {
   @ApiProperty({ type: String, nullable: true, description: 'Zeile as printed; null where the form has no public line numbers.' }) zeile!: string | null
   @ApiProperty({ type: [String] }) kennzahlen!: string[]
   @ApiProperty({ type: String }) label!: string
+  @ApiProperty({ type: String, nullable: true, description: 'Column heading where one Zeile holds several boxes (vom / bis, CHF / EUR); null otherwise.' }) column!: string | null
   // A raw schema: the union of number and word has no class for Nest's reflection to follow.
   @ApiProperty({ type: 'object', oneOf: [{ type: 'number' }, { type: 'string' }], nullable: true, description: 'Euros as a number (two decimals at most); a word („Ja“) where the field takes one; null = nothing to enter.' } as never) value!: number | string | null
 }
 
+export class ElsterInstanceDto {
+  @ApiProperty({ type: String, description: 'Pass back as `instanz`: the child or property id, A / B, or the copy number.' }) id!: string
+  @ApiProperty({ enum: ['person', 'child', 'property', 'copy'] }) kind!: 'person' | 'child' | 'property' | 'copy'
+  @ApiProperty({ enum: ['A', 'B'], nullable: true }) person!: 'A' | 'B' | null
+  @ApiProperty({ type: String, nullable: true, description: "The child's first name or the property's street." }) name!: string | null
+  @ApiProperty({ type: Number, description: '1-based position among the copies of the form.' }) number!: number
+}
+
+export class ElsterFormEntryDto {
+  @ApiProperty({ type: String, description: 'A business form (anlage-euer …) or a Vordruck of the income-tax return (est-1-a, anlage-n …).' }) form!: string
+  @ApiProperty({ enum: ['business', 'income-tax'] }) group!: 'business' | 'income-tax'
+  @ApiProperty({ type: ElsterInstanceDto, nullable: true, description: 'Which copy; null for a form filed once.' }) instance!: ElsterInstanceDto | null
+}
+
+export class ElsterFormListDto {
+  @ApiProperty({ type: Number }) year!: number
+  @ApiProperty({ type: [ElsterFormEntryDto], description: 'The forms with at least one value, business forms first, then the return in the order of the paper printout.' })
+  forms!: ElsterFormEntryDto[]
+}
+
 export class ElsterHelpDto {
   @ApiProperty({ type: String }) form!: string
+  @ApiProperty({ type: ElsterInstanceDto, nullable: true }) instance!: ElsterInstanceDto | null
   @ApiProperty({ type: Number }) year!: number
   @ApiProperty({ enum: ['published', 'not_published', 'not_available'] }) status!: 'published' | 'not_published' | 'not_available'
   @ApiProperty({ type: String, nullable: true }) note!: string | null

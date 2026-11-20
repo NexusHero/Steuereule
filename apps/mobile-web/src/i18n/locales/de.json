@@ -3632,7 +3632,18 @@
         "ust-2-a": "USt 2 A",
         "gewst-1-a": "Gewerbesteuererklärung (GewSt 1 A)",
         "est-1-a": "ESt 1 A",
-        "anlage-sonstiges": "Sonstiges"
+        "anlage-sonstiges": "Sonstiges",
+        "anlage-n": "Anlage N",
+        "anlage-r": "Anlage R",
+        "anlage-kap": "Anlage KAP",
+        "anlage-n-gre": "Anlage N-Gre",
+        "anlage-v": "Anlage V",
+        "anlage-kind": "Anlage Kind",
+        "anlage-sonderausgaben": "Anlage Sonderausgaben",
+        "anlage-aussergewoehnliche-belastungen": "Anlage Außergewöhnliche Belastungen",
+        "anlage-haushaltsnahe-aufwendungen": "Anlage Haushaltsnahe Aufwendungen",
+        "anlage-av": "Anlage AV",
+        "anlage-vorsorgeaufwand": "Anlage Vorsorgeaufwand"
       },
       "nichtFreigeschaltet": "Die Ausfüllhilfe für {{year}} ist noch nicht freigeschaltet.",
       "nichtVeroeffentlicht": "Das Formular „{{form}}“ für {{year}} ist noch nicht veröffentlicht. Wir raten keine Zeilen.",
@@ -3647,7 +3658,19 @@
       "kopierenA11y": "Wert kopieren: {{label}}",
       "weitere": "Weitere Zeilen ({{count}}) – leer lassen",
       "freigeschaltet": "{{year}} ist freigeschaltet.",
-      "abgebrochen": "Freischalten abgebrochen. Du kannst es jederzeit noch einmal versuchen."
+      "abgebrochen": "Freischalten abgebrochen. Du kannst es jederzeit noch einmal versuchen.",
+      "gruppe": {
+        "business": "Betrieb",
+        "income-tax": "Einkommensteuererklärung"
+      },
+      "instanz": {
+        "titel": "{{form}} · {{name}}",
+        "kind": "Kind {{number}}",
+        "objekt": "Objekt {{number}}",
+        "exemplar": "{{number}}. Exemplar"
+      },
+      "spalte": "Spalte: {{column}}",
+      "keineFormulare": "Für {{year}} hat die App noch keine Werte, die du in Mein ELSTER einträgst."
     },
     "export": {
       "nichtFreigeschaltet": "Der Export für {{year}} ist noch nicht freigeschaltet.",

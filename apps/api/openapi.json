@@ -4409,24 +4409,122 @@
         ]
       }
     },
+    "/v1/steuerjahre/{jahr}/selbststaendig/elster": {
+      "get": {
+        "operationId": "BusinessController_elsterForms",
+        "parameters": [
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "Whose business: A (default) or B of a joint return.",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The forms of the whole return that carry a value for this household and year, each copy (person, child, property) on its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ElsterFormListDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body fails validation (`fields`) or a business rule (`code`, German `message`), e.g. BOOKING_UNBALANCED, LEDGER_PERIOD_LOCKED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "402": {
+            "description": "SELF_EMPLOYMENT_NOT_UNLOCKED: the year is not paid at the self-employment tier.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "SELF_EMPLOYMENT_DISABLED (switch off) or SELF_EMPLOYMENT_NOT_DECLARED (no self-employment in the interview).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The entry, transaction, asset or form does not exist for this account.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "BOOK_INTEGRITY_BROKEN (hash chain or entry not as logged), BOOK_FRAME_FIXED, a draft or transaction already done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "selbststaendig"
+        ]
+      }
+    },
     "/v1/steuerjahre/{jahr}/selbststaendig/elster/{formular}": {
       "get": {
         "operationId": "BusinessController_elster",
         "parameters": [
           {
+            "name": "instanz",
+            "required": false,
+            "in": "query",
+            "description": "Which copy, as the listing names it (`instance.id`); the first copy by default.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "formular",
             "required": true,
             "in": "path",
+            "description": "A business form (anlage-euer, anlage-s, anlage-g, ust-2-a, gewst-1-a, anlage-sonstiges) or a Vordruck of the return (est-1-a, anlage-n, anlage-kind, anlage-v …).",
             "schema": {
-              "enum": [
-                "anlage-euer",
-                "anlage-s",
-                "anlage-g",
-                "ust-2-a",
-                "gewst-1-a",
-                "est-1-a",
-                "anlage-sonstiges"
-              ],
               "type": "string"
             }
           },
@@ -5025,6 +5123,251 @@
         },
         "tags": [
           "freischaltung"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/ausdruck/pruefung": {
+      "get": {
+        "operationId": "PrintoutController_check",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Everything that would stop the printout — checked before anyone pays.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrintoutCheckDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "404": {
+            "description": "No measured templates exist for this tax year."
+          }
+        },
+        "tags": [
+          "ausdruck"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/ausdruck/werte": {
+      "get": {
+        "operationId": "PrintoutController_liveValues",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "What the printout would show, per Vordruck and copy, for the live form view. Free: only the PDF is paid (ADR-0050).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LiveFormValuesDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "404": {
+            "description": "No measured templates exist for this tax year."
+          }
+        },
+        "tags": [
+          "ausdruck"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/ausdruck/checkout": {
+      "post": {
+        "operationId": "PrintoutController_checkout",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The hosted Stripe Checkout page to redirect to.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckoutResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "422": {
+            "description": "`fehlend`: the printout could not be delivered yet, so payment is not offered."
+          },
+          "503": {
+            "description": "Payment is not configured on this environment."
+          }
+        },
+        "tags": [
+          "ausdruck"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/ausdruck/async": {
+      "post": {
+        "operationId": "PrintoutController_exportAsync",
+        "parameters": [
+          {
+            "name": "bearbeitbar",
+            "required": false,
+            "in": "query",
+            "description": "true → editable PDF",
+            "schema": {
+              "enum": [
+                "true"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Asynchronous PDF rendering job enqueued (ADR-0056).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrintoutJobDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "ausdruck"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/ausdruck/jobs/{jobId}": {
+      "get": {
+        "operationId": "PrintoutController_getJob",
+        "parameters": [
+          {
+            "name": "jobId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": "job_4bf92f3577b34da6a3ce929d0e0e4736",
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Status of the asynchronous PDF export job.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrintoutJobDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "ausdruck"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/ausdruck": {
+      "get": {
+        "operationId": "PrintoutController_printout",
+        "parameters": [
+          {
+            "name": "bearbeitbar",
+            "required": false,
+            "in": "query",
+            "description": "true → the values as named, editable AcroForm fields (for a correction before printing).",
+            "schema": {
+              "enum": [
+                "true"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The filled Vordrucke (ESt 1 A + used Anlagen) as one PDF to print, sign and hand in."
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "402": {
+            "description": "The Ausdruck for this tax year is not unlocked (ADR-0050)."
+          },
+          "404": {
+            "description": "No measured templates exist for this tax year."
+          },
+          "422": {
+            "description": "`fehlend`: what the Hauptvordruck still needs; `zuLang`: a value too long for its field."
+          }
+        },
+        "tags": [
+          "ausdruck"
         ]
       }
     },
@@ -6469,251 +6812,6 @@
         },
         "tags": [
           "eulen-modus"
-        ]
-      }
-    },
-    "/v1/steuerjahre/{jahr}/ausdruck/pruefung": {
-      "get": {
-        "operationId": "PrintoutController_check",
-        "parameters": [
-          {
-            "name": "jahr",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "example": 2025,
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Everything that would stop the printout — checked before anyone pays.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PrintoutCheckDto"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Guest session — this endpoint requires a signed-in account."
-          },
-          "404": {
-            "description": "No measured templates exist for this tax year."
-          }
-        },
-        "tags": [
-          "ausdruck"
-        ]
-      }
-    },
-    "/v1/steuerjahre/{jahr}/ausdruck/werte": {
-      "get": {
-        "operationId": "PrintoutController_liveValues",
-        "parameters": [
-          {
-            "name": "jahr",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "example": 2025,
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "What the printout would show, per Vordruck and copy, for the live form view. Free: only the PDF is paid (ADR-0050).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/LiveFormValuesDto"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Guest session — this endpoint requires a signed-in account."
-          },
-          "404": {
-            "description": "No measured templates exist for this tax year."
-          }
-        },
-        "tags": [
-          "ausdruck"
-        ]
-      }
-    },
-    "/v1/steuerjahre/{jahr}/ausdruck/checkout": {
-      "post": {
-        "operationId": "PrintoutController_checkout",
-        "parameters": [
-          {
-            "name": "jahr",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "example": 2025,
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "The hosted Stripe Checkout page to redirect to.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CheckoutResponseDto"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Guest session — this endpoint requires a signed-in account."
-          },
-          "422": {
-            "description": "`fehlend`: the printout could not be delivered yet, so payment is not offered."
-          },
-          "503": {
-            "description": "Payment is not configured on this environment."
-          }
-        },
-        "tags": [
-          "ausdruck"
-        ]
-      }
-    },
-    "/v1/steuerjahre/{jahr}/ausdruck/async": {
-      "post": {
-        "operationId": "PrintoutController_exportAsync",
-        "parameters": [
-          {
-            "name": "bearbeitbar",
-            "required": false,
-            "in": "query",
-            "description": "true → editable PDF",
-            "schema": {
-              "enum": [
-                "true"
-              ],
-              "type": "string"
-            }
-          },
-          {
-            "name": "jahr",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "example": 2025,
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "202": {
-            "description": "Asynchronous PDF rendering job enqueued (ADR-0056).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PrintoutJobDto"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "ausdruck"
-        ]
-      }
-    },
-    "/v1/steuerjahre/{jahr}/ausdruck/jobs/{jobId}": {
-      "get": {
-        "operationId": "PrintoutController_getJob",
-        "parameters": [
-          {
-            "name": "jobId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "example": "job_4bf92f3577b34da6a3ce929d0e0e4736",
-              "type": "string"
-            }
-          },
-          {
-            "name": "jahr",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "example": 2025,
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Status of the asynchronous PDF export job.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PrintoutJobDto"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "ausdruck"
-        ]
-      }
-    },
-    "/v1/steuerjahre/{jahr}/ausdruck": {
-      "get": {
-        "operationId": "PrintoutController_printout",
-        "parameters": [
-          {
-            "name": "bearbeitbar",
-            "required": false,
-            "in": "query",
-            "description": "true → the values as named, editable AcroForm fields (for a correction before printing).",
-            "schema": {
-              "enum": [
-                "true"
-              ],
-              "type": "string"
-            }
-          },
-          {
-            "name": "jahr",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "example": 2025,
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "The filled Vordrucke (ESt 1 A + used Anlagen) as one PDF to print, sign and hand in."
-          },
-          "401": {
-            "description": "Guest session — this endpoint requires a signed-in account."
-          },
-          "402": {
-            "description": "The Ausdruck for this tax year is not unlocked (ADR-0050)."
-          },
-          "404": {
-            "description": "No measured templates exist for this tax year."
-          },
-          "422": {
-            "description": "`fehlend`: what the Hauptvordruck still needs; `zuLang`: a value too long for its field."
-          }
-        },
-        "tags": [
-          "ausdruck"
         ]
       }
     },
@@ -14468,6 +14566,98 @@
           "carryBack"
         ]
       },
+      "ElsterInstanceDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Pass back as `instanz`: the child or property id, A / B, or the copy number."
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "person",
+              "child",
+              "property",
+              "copy"
+            ]
+          },
+          "person": {
+            "type": "string",
+            "enum": [
+              "A",
+              "B"
+            ],
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true,
+            "description": "The child's first name or the property's street."
+          },
+          "number": {
+            "type": "number",
+            "description": "1-based position among the copies of the form."
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "person",
+          "name",
+          "number"
+        ]
+      },
+      "ElsterFormEntryDto": {
+        "type": "object",
+        "properties": {
+          "form": {
+            "type": "string",
+            "description": "A business form (anlage-euer …) or a Vordruck of the income-tax return (est-1-a, anlage-n …)."
+          },
+          "group": {
+            "type": "string",
+            "enum": [
+              "business",
+              "income-tax"
+            ]
+          },
+          "instance": {
+            "nullable": true,
+            "description": "Which copy; null for a form filed once.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ElsterInstanceDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "form",
+          "group",
+          "instance"
+        ]
+      },
+      "ElsterFormListDto": {
+        "type": "object",
+        "properties": {
+          "year": {
+            "type": "number"
+          },
+          "forms": {
+            "description": "The forms with at least one value, business forms first, then the return in the order of the paper printout.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ElsterFormEntryDto"
+            }
+          }
+        },
+        "required": [
+          "year",
+          "forms"
+        ]
+      },
       "ElsterLineDto": {
         "type": "object",
         "properties": {
@@ -14488,6 +14678,11 @@
           "label": {
             "type": "string"
           },
+          "column": {
+            "type": "string",
+            "nullable": true,
+            "description": "Column heading where one Zeile holds several boxes (vom / bis, CHF / EUR); null otherwise."
+          },
           "value": {
             "oneOf": [
               {
@@ -14506,6 +14701,7 @@
           "zeile",
           "kennzahlen",
           "label",
+          "column",
           "value"
         ]
       },
@@ -14514,6 +14710,15 @@
         "properties": {
           "form": {
             "type": "string"
+          },
+          "instance": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ElsterInstanceDto"
+              }
+            ]
           },
           "year": {
             "type": "number"
@@ -14547,6 +14752,7 @@
         },
         "required": [
           "form",
+          "instance",
           "year",
           "status",
           "note",
@@ -14654,6 +14860,160 @@
         },
         "required": [
           "status"
+        ]
+      },
+      "PrintoutCheckDto": {
+        "type": "object",
+        "properties": {
+          "missing": {
+            "example": [
+              "iban",
+              "anlageV"
+            ],
+            "description": "What stops the printout: missing Stammdaten keys, `ehegatte` (married, not yet supported), or an Anlage that is not printable yet (`anlageV`, `anlageKap`, `anlageNGre`, `anlageRAvBav`, `anlageRAus`). Empty = printable.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "missing"
+        ]
+      },
+      "LiveFormInstanceDto": {
+        "type": "object",
+        "properties": {
+          "person": {
+            "type": "string",
+            "enum": [
+              "A",
+              "B"
+            ],
+            "nullable": true,
+            "description": "Whose copy it is when the form says so (Anlage N, R, KAP, N-Gre of a couple); null otherwise."
+          },
+          "entityId": {
+            "type": "string",
+            "nullable": true,
+            "example": "kind_3f2a",
+            "description": "The record behind a per-record form: the child (Anlage Kind) or the rental object (Anlage V); null otherwise."
+          },
+          "values": {
+            "type": "object",
+            "additionalProperties": {
+              "oneOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "boolean",
+                  "enum": [
+                    true
+                  ]
+                }
+              ]
+            },
+            "example": {
+              "anlN.personA": true,
+              "anlN.kz110": "42000"
+            },
+            "description": "The AcroForm field ids of this copy and what is printed in them; `true` = a cross."
+          }
+        },
+        "required": [
+          "person",
+          "entityId",
+          "values"
+        ]
+      },
+      "LiveFormDto": {
+        "type": "object",
+        "properties": {
+          "formular": {
+            "type": "string",
+            "example": "anlage-n",
+            "description": "The Vordruck id, as for `ausdruck/vorlage/:formular`."
+          },
+          "instances": {
+            "description": "Every printed copy of this Vordruck, in print order.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LiveFormInstanceDto"
+            }
+          }
+        },
+        "required": [
+          "formular",
+          "instances"
+        ]
+      },
+      "LiveFormValuesDto": {
+        "type": "object",
+        "properties": {
+          "forms": {
+            "description": "The filled Vordrucke in print order; Vordrucke without values are left out.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LiveFormDto"
+            }
+          }
+        },
+        "required": [
+          "forms"
+        ]
+      },
+      "CheckoutResponseDto": {
+        "type": "object",
+        "properties": {
+          "checkoutUrl": {
+            "type": "string",
+            "example": "https://checkout.stripe.com/c/pay/cs_test_…"
+          }
+        },
+        "required": [
+          "checkoutUrl"
+        ]
+      },
+      "PrintoutJobDto": {
+        "type": "object",
+        "properties": {
+          "jobId": {
+            "type": "string",
+            "example": "job_4bf92f3577b34da6a3ce929d0e0e4736",
+            "description": "Unique asynchronous export job identifier."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "processing",
+              "completed",
+              "failed"
+            ],
+            "example": "queued",
+            "description": "Current state of the background PDF rendering job."
+          },
+          "statusUrl": {
+            "type": "string",
+            "example": "/v1/steuerjahre/2025/ausdruck/jobs/job_4bf92f3577b34da6a3ce929d0e0e4736",
+            "description": "Polling URL to check job progress."
+          },
+          "downloadUrl": {
+            "type": "string",
+            "example": "/v1/steuerjahre/2025/ausdruck",
+            "description": "Download URL when status is completed."
+          },
+          "error": {
+            "type": "string",
+            "example": "Error during PDF synthesis",
+            "description": "Error explanation if job failed."
+          }
+        },
+        "required": [
+          "jobId",
+          "status",
+          "statusUrl"
         ]
       },
       "AssignmentDto": {
@@ -18188,160 +18548,6 @@
         "required": [
           "message",
           "action"
-        ]
-      },
-      "PrintoutCheckDto": {
-        "type": "object",
-        "properties": {
-          "missing": {
-            "example": [
-              "iban",
-              "anlageV"
-            ],
-            "description": "What stops the printout: missing Stammdaten keys, `ehegatte` (married, not yet supported), or an Anlage that is not printable yet (`anlageV`, `anlageKap`, `anlageNGre`, `anlageRAvBav`, `anlageRAus`). Empty = printable.",
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        },
-        "required": [
-          "missing"
-        ]
-      },
-      "LiveFormInstanceDto": {
-        "type": "object",
-        "properties": {
-          "person": {
-            "type": "string",
-            "enum": [
-              "A",
-              "B"
-            ],
-            "nullable": true,
-            "description": "Whose copy it is when the form says so (Anlage N, R, KAP, N-Gre of a couple); null otherwise."
-          },
-          "entityId": {
-            "type": "string",
-            "nullable": true,
-            "example": "kind_3f2a",
-            "description": "The record behind a per-record form: the child (Anlage Kind) or the rental object (Anlage V); null otherwise."
-          },
-          "values": {
-            "type": "object",
-            "additionalProperties": {
-              "oneOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "boolean",
-                  "enum": [
-                    true
-                  ]
-                }
-              ]
-            },
-            "example": {
-              "anlN.personA": true,
-              "anlN.kz110": "42000"
-            },
-            "description": "The AcroForm field ids of this copy and what is printed in them; `true` = a cross."
-          }
-        },
-        "required": [
-          "person",
-          "entityId",
-          "values"
-        ]
-      },
-      "LiveFormDto": {
-        "type": "object",
-        "properties": {
-          "formular": {
-            "type": "string",
-            "example": "anlage-n",
-            "description": "The Vordruck id, as for `ausdruck/vorlage/:formular`."
-          },
-          "instances": {
-            "description": "Every printed copy of this Vordruck, in print order.",
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/LiveFormInstanceDto"
-            }
-          }
-        },
-        "required": [
-          "formular",
-          "instances"
-        ]
-      },
-      "LiveFormValuesDto": {
-        "type": "object",
-        "properties": {
-          "forms": {
-            "description": "The filled Vordrucke in print order; Vordrucke without values are left out.",
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/LiveFormDto"
-            }
-          }
-        },
-        "required": [
-          "forms"
-        ]
-      },
-      "CheckoutResponseDto": {
-        "type": "object",
-        "properties": {
-          "checkoutUrl": {
-            "type": "string",
-            "example": "https://checkout.stripe.com/c/pay/cs_test_…"
-          }
-        },
-        "required": [
-          "checkoutUrl"
-        ]
-      },
-      "PrintoutJobDto": {
-        "type": "object",
-        "properties": {
-          "jobId": {
-            "type": "string",
-            "example": "job_4bf92f3577b34da6a3ce929d0e0e4736",
-            "description": "Unique asynchronous export job identifier."
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "queued",
-              "processing",
-              "completed",
-              "failed"
-            ],
-            "example": "queued",
-            "description": "Current state of the background PDF rendering job."
-          },
-          "statusUrl": {
-            "type": "string",
-            "example": "/v1/steuerjahre/2025/ausdruck/jobs/job_4bf92f3577b34da6a3ce929d0e0e4736",
-            "description": "Polling URL to check job progress."
-          },
-          "downloadUrl": {
-            "type": "string",
-            "example": "/v1/steuerjahre/2025/ausdruck",
-            "description": "Download URL when status is completed."
-          },
-          "error": {
-            "type": "string",
-            "example": "Error during PDF synthesis",
-            "description": "Error explanation if job failed."
-          }
-        },
-        "required": [
-          "jobId",
-          "status",
-          "statusUrl"
         ]
       },
       "PersonalDataConsentResponseDto": {

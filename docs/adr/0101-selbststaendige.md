@@ -42,7 +42,7 @@ Alles in einem Pull Request, ohne Mock, in den Mustern der App.
 
 ### Abgabe
 
-16. **Ausfüllhilfe für Mein ELSTER:** Die App rechnet alles und zeigt je Formularzeile, was der Nutzer in Mein ELSTER einträgt, für Hauptvordruck, Anlage S/G, EÜR, Umsatz- und Gewerbesteuer-Erklärung. Das ändert ADR-0050 für Selbstständige: kein Papier, kein Ausdruck als Abgabe.
+16. **Ausfüllhilfe für Mein ELSTER:** Die App rechnet alles und zeigt je Formularzeile, was der Nutzer in Mein ELSTER einträgt, für Hauptvordruck, Anlage S/G, EÜR, Umsatz- und Gewerbesteuer-Erklärung. Das ändert ADR-0050 für Selbstständige: kein Papier, kein Ausdruck als Abgabe. Die übrige Einkommensteuererklärung (Hauptvordruck, Anlage N, N-Gre, R, KAP, V, Kind, Vorsorgeaufwand, Sonderausgaben, AV, haushaltsnahe Aufwendungen, außergewöhnliche Belastungen) zeigt sie mit denselben Werten, die der Formular-Ausdruck drucken würde, je Exemplar (Person, Kind, Objekt), Zeile und Kennzahl aus den vermessenen Vordrucken des Jahres (`felder-<jahr>.zeilen.json`, auch für 2022 und 2023, die nicht gedruckt werden); für ein Jahr ohne veröffentlichte Vordrucke nennt sie die Werte ohne Zeilen und sagt das.
 17. **E-Bilanz wartet auf ELSTER:** Bilanzierer können buchen und abschließen; die Abgabe der E-Bilanz kommt mit der ELSTER-Übermittlung. Bis dahin sagt die App das offen.
 
 ### Eule

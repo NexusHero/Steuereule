@@ -1,0 +1,288 @@
+# Lage der Ausdruck-Felder 2022 — erzeugt von scripts/vordrucke/lagebericht.mjs, nicht von Hand ändern.
+# Feld-ID · Seite · Zeile · ↑ Spaltenkopf über dem Kasten · ← Beschriftung links daneben
+est1a.einkommensteuererklaerung S1 Z1    ↑                              ← 
+est1a.steuernummer             S1 Z4    ↑ der Mobilitätsprämie         ← 202200301201 Steuernummer
+est1a.finanzamt                S1 Z5    ↑ An das Finanzamt             ← 
+est1a.telefon                  S1 Z7    ↑ Telefonische Rückfragen tag… ← Allgemeine Angaben Steuerpflichtige Person (stpfl. Person)
+est1a.idnr                     S1 Z8    ↑ Identifikationsnummer (IdNr… ← 
+est1a.geburtsdatum             S1 Z8    ↑ Geburtsdatum                 ← Identifikationsnummer (IdNr.)
+est1a.name                     S1 Z9    ↑ Name                         ← 
+est1a.vorname                  S1 Z10   ↑ Vorname                      ← 
+est1a.religion                 S1 Z11   ↑ Anleitung                    ← Weitere siehe Titel, akademischer Grad Religion
+est1a.beruf                    S1 Z17   ↑ Ausgeübter Beruf             ← 
+est1a.strasse                  S1 Z12   ↑ Straße (derzeitige Adresse)  ← 
+est1a.hausnummer               S1 Z13   ↑ Hausnummer                   ← 
+est1a.hausnummerZusatz         S1 Z13   ↑ Hausnummerzusatz             ← Hausnummer
+est1a.plz                      S1 Z14   ↑ Postleitzahl (Inland)        ← 
+est1a.wohnort                  S1 Z15   ↑ Wohnort                      ← 
+est1a.verheiratetSeit          S1 Z18   ↑ begründet seit dem           ← 
+est1a.verwitwetSeit            S1 Z18   ↑ Verwitwet seit dem           ← Verheiratet / Lebenspartnerschaft begründet seit dem
+est1a.geschiedenSeit           S1 Z18   ↑ aufgehoben seit dem          ← Verheiratet / Lebenspartnerschaft begründet seit dem Verwitwet seit dem
+est1a.getrenntSeit             S1 Z18   ↑ Dauernd getrennt lebend sei… ← Verheiratet / Lebenspartnerschaft Geschieden / Lebenspartnerschaft begründet seit dem Ver…
+est1a.zusammenveranlagung      S1 Z29   ↑                              ← 
+est1a.einzelveranlagung        S1 Z29   ↑                              ← Zusammenveranlagung
+est1a.idnrB                    S1 Z19   ↑ IdNr.                        ← 
+est1a.geburtsdatumB            S1 Z19   ↑ Geburtsdatum                 ← IdNr.
+est1a.nameB                    S1 Z20   ↑ Name                         ← 
+est1a.vornameB                 S1 Z21   ↑ Vorname                      ← 
+est1a.religionB                S1 Z22   ↑ Anleitung                    ← Weitere siehe Titel, akademischer Grad Religion
+est1a.berufB                   S1 Z28   ↑ Ausgeübter Beruf             ← 
+est1a.ibanInland               S2 Z31   ↑ IBAN (inländisches Geldinst… ← 
+est1a.ibanAusland              S2 Z32   ↑ IBAN (ausländisches Geldins… ← 
+est1a.kontoinhaberSelbst       S2 Z34   ↑ BIC                          ← 
+est1a.kontoinhaberName         S2 Z34   ↑ Name (im Fall der Abtretung… ← Kontoinhaber/-in stpfl. Person / Ehe- Ehefrau / mann / Person A Person B oder:
+anlN.name                      S1 Z1    ↑ Name                         ← 
+anlN.vorname                   S1 Z2    ↑ Vorname                      ← 
+anlN.steuernummer              S1 Z3    ↑                              ← Steuernummer
+anlN.personA                   S1 Z3    ↑ Ehegatte                     ← Anlage N Steuernummer
+anlN.personB                   S1 Z4    ↑                              ← 202200303201 Sofern keine IdNr. vorhanden: eTIN lt. Lohnsteuerbescheinigung(en) eTIN lt. …
+anlN.kz110                     S1 Z6    ↑ EUR                          ← Bruttoarbeitslohn 110
+anlN.wegOrt                    S2 Z31   ↑ Erste Tätigkeitsstätte in (… ← 
+anlN.wegTageJeWoche            S2 Z31   ↑ je Woche                     ← 
+anlN.wegFreieTage              S2 Z31   ↑ Dienstreisetage              ← 
+anlN.kz110Tage                 S2 Z35   ↑ Tagen                        ← lt. Zeile 110
+anlN.kz111                     S2 Z35   ↑ abgerundet)                  ← lt. Zeile Tagen 110 111
+anlN.kz112                     S2 Z35   ↑ Pkw zurückgelegt             ← lt. Zeile Tagen abgerundet) 110 111 112 km
+anlN.wegVon                    S2 Z31   ↑ vom                          ← 
+anlN.wegBis                    S2 Z31   ↑ bis                          ← 
+anlN.weg2Ort                   S2 Z32   ↑ Erste Tätigkeitsstätte in (… ← 
+anlN.weg2Von                   S2 Z32   ↑ vom                          ← 
+anlN.weg2Bis                   S2 Z32   ↑ bis                          ← 
+anlN.weg2TageJeWoche           S2 Z32   ↑ je Woche                     ← 
+anlN.weg2FreieTage             S2 Z32   ↑ Dienstreisetage              ← 
+anlN.kz130Tage                 S2 Z36   ↑ Tagen                        ← 130
+anlN.kz131                     S2 Z36   ↑ abgerundet)                  ← 130 131
+anlN.kz132                     S2 Z36   ↑ Pkw zurückgelegt             ← 130 131 132 km
+anlR.name                      S1 Z1    ↑ Name                         ← 
+anlR.vorname                   S1 Z2    ↑ Vorname                      ← 
+anlR.steuernummer              S1 Z3    ↑                              ← Steuernummer
+anlR.lfdNr                     S1 Z3    ↑                              ← lfd. Nr. Steuernummer der Anlage
+anlR.personA                   S1 Z3    ↑ eine                         ← lfd. Nr. Steuernummer der Anlage
+anlR.personB                   S1 Z3    ↑ eine                         ← Steuernummer der Anlage
+anlR.kz101                     S1 Z4    ↑ EUR                          ← Rentenbetrag 101 (einschließlich Einmalzahlung und Leistungen)
+anlR.kz131                     S1 Z13   ↑ EUR                          ← Rentenbetrag 131
+anlKap.name                    S1 Z1    ↑ Name                         ← 
+anlKap.vorname                 S1 Z2    ↑ Vorname                      ← 
+anlKap.steuernummer            S1 Z3    ↑                              ← Steuernummer
+anlKap.personA                 S1 Z3    ↑                              ← Steuernummer
+anlKap.personB                 S1 Kopf  ↑                              ← 202200305201 Einkünfte aus Kapitalvermögen / Anrechnung von Steuern
+anlKap.guenstigerpruefung      S1 Z4    ↑                              ← Ich beantrage die Günstigerprüfung für sämtliche Kapitalerträge. 201/401 (Bei Zusammenver…
+anlKap.kz210                   S1 Z7    ↑ EUR                          ← Kapitalerträge 210/410
+anlKap.kz234                   S1 Z19   ↑ EUR                          ← Ausländische Kapitalerträge (ohne Betrag lt. Zeile 50) 234/434
+anlKap.kz217                   S1 Z16   ↑ EUR                          ← In Anspruch genommener Sparer-Pauschbetrag, der auf die in den 217/417 Zeilen 7 bis 15, 3…
+anlKap.kz218                   S1 Z17   ↑                              ← in den Zeilen 6 bis 28, 32 und 33 der Anlage KAP-BET sowie in der Anlage KAP-INV: In Ansp…
+anlKap.kz280                   S2 Z37   ↑ EUR Ct                       ← Kapitalertragsteuer 280/480
+anlKap.kz281                   S2 Z38   ↑ EUR Ct                       ← Solidaritätszuschlag 281/481
+anlKap.kz282                   S2 Z39   ↑                              ← Kirchensteuer zur Kapitalertragsteuer 282/482
+anlNGre.name                   S1 Z1    ↑ Name                         ← 
+anlNGre.vorname                S1 Z2    ↑ Vorname                      ← 
+anlNGre.steuernummer           S1 Z3    ↑                              ← Steuernummer
+anlNGre.personA                S1 Z2    ↑ von                          ← Vorname
+anlNGre.personB                S1 Z3    ↑ von                          ← Steuernummer
+anlNGre.kz117                  S1 Z4    ↑ Einkünfte                    ← 202200316201 1. Ausländische als Grenzgänger 117 nach
+anlNGre.z6Chf                  S1 Z5    ↑ CHF                          ← Bruttoarbeitslohn lt. beigefügtem Lohnausweis des Arbeitgebers nebst Anlagen (bei Grenzgä…
+anlNGre.z6Eur                  S1 Z5    ↑ (ggf. umgerechnet *)         ← CHF Bruttoarbeitslohn lt. beigefügtem Lohnausweis , des Arbeitgebers nebst Anlagen ––– (b…
+anlNGre.z8Chf                  S1 Z7    ↑                              ← – Kinder- und Ausbildungszulage
+anlNGre.z8Eur                  S1 Z7    ↑                              ← , – ––– – Kinder- und Ausbildungszulage
+anlNGre.z9Chf                  S1 Z8    ↑                              ← – Steuerfreies Krankentaggeld
+anlNGre.z9Eur                  S1 Z8    ↑                              ← , – ––– – Steuerfreies Krankentaggeld
+anlNGre.z15Chf                 S1 Z14   ↑                              ← Verbleiben Zuzüglich steuerpflichtige Bezüge
+anlNGre.z15Eur                 S1 Z14   ↑                              ← , ––– Verbleiben Zuzüglich steuerpflichtige Bezüge
+anlNGre.z18Chf                 S1 Z16   ↑                              ← Arbeitgeberbeiträge zur Kollektivkranken- + taggeldversicherung (vgl. Zeile 96)
+anlNGre.z18Eur                 S1 Z16   ↑                              ← Arbeitgeberbeiträge zur Kollektivkranken- , + ––– + taggeldversicherung (vgl. Zeile 96)
+anlNGre.z19Chf                 S1 Z17   ↑                              ← Arbeitgeberbeiträge zur NBUV + (vgl. Zeile 97)
+anlNGre.z19Eur                 S1 Z17   ↑                              ← Arbeitgeberbeiträge zur NBUV , + ––– + (vgl. Zeile 97)
+anlNGre.z20Chf                 S1 Z18   ↑                              ← Beiträge des Arbeitgebers ins Überobligatorium + (Säule 2b der Schweizer Altersvorsorge)
+anlNGre.z20Eur                 S1 Z18   ↑                              ← Beiträge des Arbeitgebers ins Überobligatorium , + ––– + (Säule 2b der Schweizer Altersvo…
+anlNGre.z23Chf                 S1 Z21   ↑                              ← Steuerpflichtiger Arbeitslohn 116
+anlNGre.z23Eur                 S1 Z21   ↑                              ← , ––– Steuerpflichtiger Arbeitslohn 116 116
+anlNGre.z25Chf                 S1 Z23   ↑ ,                            ← mehrere Jahre) In der Schweiz erhobene Abzugssteuer 135 (höchstens 4,5 % von Zeile 5 und …
+anlNGre.z25Eur                 S1 Z23   ↑ ,                            ← mehrere Jahre) In der Schweiz erhobene Abzugssteuer 135 135 (höchstens 4,5 % von Zeile 5 …
+anlNGre.z75Chf                 S4 Z91   ↑ CHF                          ← Bruttoarbeitslohn lt. Zeile 5 Versicherungsleistungen bei Unfall, Krankheit,
+anlNGre.z75Eur                 S4 Z91   ↑ (ggf. umgerechnet)           ← CHF , ––– Bruttoarbeitslohn lt. Zeile 5 Versicherungsleistungen bei Unfall, Krankheit,
+anlNGre.z76Chf                 S4 Z92   ↑ CHF                          ← Versicherungsleistungen bei Unfall, Krankheit, Invalidität; Familienzulagen (z. B. Kinder…
+anlNGre.z76Eur                 S4 Z92   ↑ (ggf. umgerechnet)           ← Versicherungsleistungen bei Unfall, Krankheit, Invalidität; Familienzulagen (z. B. Kinder…
+anlNGre.z77Chf                 S4 Z93   ↑                              ← Bemessungsgrundlage Sozialabgaben
+anlNGre.z77Eur                 S4 Z93   ↑                              ← , ––– Bemessungsgrundlage Sozialabgaben
+anlNGre.z78Chf                 S4 Z94   ↑                              ← Erwerbsersatzordnung [EO] (0,25 % von Zeile 93)
+anlNGre.z78Eur                 S4 Z94   ↑                              ← , ––– Erwerbsersatzordnung [EO] (0,25 % von Zeile 93)
+anlNGre.z79Chf                 S4 Z95   ↑                              ← Arbeitslosenversicherung (von Zeile 93) 1,1 % für Lohnteile bis 148.200 CHF / 146,718 EUR…
+anlNGre.z79Eur                 S4 Z95   ↑                              ← Arbeitslosenversicherung (von Zeile 93) 1,1 % für Lohnteile bis 148.200 CHF / 146,718 EUR…
+anlNGre.z80Chf                 S4 Z96   ↑                              ← + 0,5 % für Lohnteile über 148.200 CHF / 146.718 EUR + Beiträge zur Krankentaggeldversich…
+anlNGre.z80Eur                 S4 Z96   ↑                              ← , + ––– + 0,5 % für Lohnteile über 148.200 CHF / 146.718 EUR , + ––– + Beiträge zur Krank…
+anlNGre.z81Chf                 S4 Z97   ↑                              ← Beiträge zur Krankentaggeldversicherung + % der Beiträge zur NBUV
+anlNGre.z81Eur                 S4 Z97   ↑                              ← Beiträge zur Krankentaggeldversicherung , + ––– + % der Beiträge zur NBUV
+anlNGre.z82Chf                 S4 Z98   ↑                              ← Sonstige Vorsorgeaufwendungen
+anlNGre.z82Eur                 S4 Z98   ↑                              ← , ––– Sonstige Vorsorgeaufwendungen 370/470
+anlNGre.z83Chf                 S4 Z99   ↑                              ← AHV / IV 5,05 % von Zeile 93
+anlNGre.z83Eur                 S4 Z99   ↑                              ← , ––– AHV / IV 5,05 % von Zeile 93
+anlNGre.z84Chf                 S4 Z100  ↑                              ← Beiträge des Arbeitnehmers + ins Obligatorium (Säule 2a)
+anlNGre.z84Eur                 S4 Z100  ↑                              ← Beiträge des Arbeitnehmers , + ––– + ins Obligatorium (Säule 2a)
+anlNGre.z85Chf                 S4 Z101  ↑                              ← Summe Arbeitnehmerbeiträge
+anlNGre.z85Eur                 S4 Z101  ↑                              ← , ––– Summe Arbeitnehmerbeiträge 300/400
+anlNGre.z86Chf                 S4 Z102  ↑                              ← AHV / IV lt. Zeile 99
+anlNGre.z86Eur                 S4 Z102  ↑                              ← , ––– AHV / IV lt. Zeile 99
+anlNGre.z87Chf                 S4 Z103  ↑                              ← Beiträge des Arbeitgebers + ins Obligatorium (Säule 2a)
+anlNGre.z87Eur                 S4 Z103  ↑                              ← Beiträge des Arbeitgebers , + ––– + ins Obligatorium (Säule 2a)
+anlNGre.z88Chf                 S4 Z104  ↑                              ← Summe Arbeitgeberbeiträge
+anlNGre.z88Eur                 S4 Z104  ↑                              ← , ––– Summe Arbeitgeberbeiträge 304/404
+anlNGre.arbeitgeberName        S4 Z105  ↑ Name (Bezeichnung)           ← 
+anlNGre.arbeitgeberStrasse     S4 Z106  ↑ Straße und Hausnummer        ← 
+anlNGre.arbeitgeberPlzOrt      S4 Z107  ↑ Postleitzahl, Ort            ← 
+anlNGre.wegOrt                 S2 Z31   ↑ Erste Tätigkeitsstätte (PLZ… ← 
+anlNGre.wegTageJeWoche         S2 Z31   ↑ je Woche                     ← Erste Tätigkeitsstätte (PLZ, Ort und Straße) vom bis
+anlNGre.wegFreieTage           S2 Z31   ↑ Dienstreisetage              ← Erste Tätigkeitsstätte (PLZ, Ort und Straße) vom bis je Woche
+anlNGre.kz110Tage              S2 Z35   ↑ Tagen                        ← lt. Zeile 110
+anlNGre.kz111                  S2 Z35   ↑ abgerundet)                  ← lt. Zeile Tagen 110 111
+anlNGre.kz112                  S2 Z35   ↑ Pkw zurückgelegt             ← lt. Zeile Tagen abgerundet) 110 111 112 km
+anlNGre.wegVon                 S2 Z31   ↑ vom                          ← Erste Tätigkeitsstätte (PLZ, Ort und Straße)
+anlNGre.wegBis                 S2 Z31   ↑ bis                          ← Erste Tätigkeitsstätte (PLZ, Ort und Straße) vom
+anlNGre.weg2Ort                S2 Z32   ↑ Erste Tätigkeitsstätte (PLZ… ← 
+anlNGre.weg2Von                S2 Z32   ↑ vom                          ← 
+anlNGre.weg2Bis                S2 Z32   ↑ bis                          ← 
+anlNGre.weg2TageJeWoche        S2 Z32   ↑ je Woche                     ← 
+anlNGre.weg2FreieTage          S2 Z32   ↑ Dienstreisetage              ← 
+anlNGre.kz130Tage              S2 Z36   ↑ Tagen                        ← 130
+anlNGre.kz131                  S2 Z36   ↑ abgerundet)                  ← 130 131
+anlNGre.kz132                  S2 Z36   ↑ Pkw zurückgelegt             ← 130 131 132 km
+anlNGre.z95Arbeitgeber         S4 Z111  ↑ Versicherung /               ← Wer bezahlt die Versicherungsprämien? Arbeitgeber
+anlNGre.z95Arbeitnehmer        S4 Z111  ↑ Kollektivversicherungsvertr… ← Wer bezahlt die Versicherungsprämien? Arbeitgeber % Arbeitnehmer
+anlNGre.z96Arbeitgeber         S4 Z113  ↑ CHF                          ← Anteil des Arbeitgebers
+anlNGre.z96Arbeitnehmer        S4 Z113  ↑ CHF                          ← CHF , ––– Anteil des Arbeitgebers Anteil des Arbeitnehmers
+anlNGre.z97Arbeitgeber         S4 Z114  ↑ des                          ← 7. Nichtberufsunfallversicherung Wer bezahlt die Versicherungsprämien? Arbeitgeber
+anlNGre.z97Arbeitnehmer        S4 Z114  ↑ ,                            ← 7. Nichtberufsunfallversicherung Wer bezahlt die Versicherungsprämien? Arbeitgeber % Arbe…
+anlNGre.z98Arbeitgeber         S4 Z116  ↑ CHF                          ← Anteil des Arbeitgebers
+anlNGre.z98Arbeitnehmer        S4 Z116  ↑ CHF                          ← CHF , ––– Anteil des Arbeitgebers Anteil des Arbeitnehmers
+anlV.name                      S1 Z1    ↑ Name / Gemeinschaft          ← 
+anlV.vorname                   S1 Z2    ↑ Vorname                      ← 
+anlV.steuernummer              S1 Z3    ↑                              ← Steuernummer
+anlV.lfdNr                     S1 Z3    ↑                              ← lfd. Nr. Steuernummer der Anlage
+anlV.strasse                   S1 Z4    ↑ Straße, Hausnummer           ← 
+anlV.plz                       S1 Z5    ↑ Postleitzahl                 ← 
+anlV.ort                       S1 Z5    ↑ Ort                          ← Postleitzahl
+anlV.wohnflaeche               S1 Z8    ↑ genutzt                      ← Gesamt- wohn- 54 fläche
+anlV.kz01                      S1 Z9    ↑ EUR                          ← Erdgeschoss 1. Obergeschoss 2. Obergeschoss weitere Geschosse Mieteinnahmen für Wohnungen…
+anlV.kz04                      S1 Z13   ↑                              ← Umlagen, verrechnet mit Erstattungen (z. B. Wassergeld, Flur- u. Kellerbeleuchtung, Mülla…
+anlV.z32Einnahmen              S1 Z21   ↑                              ← Summe der Einnahmen
+anlV.z33Linear                 S2 Z33   ↑                              ← 
+anlV.z33Satz                   S2 Z33   ↑ 34 und 35)                   ← linear degressiv
+anlV.z33WieVorjahr             S2 Z33   ↑                              ← % linear degressiv
+anlV.z33Afa                    S2 Z33   ↑ 1                            ← wie lt.ges. % linear degressiv 2021 Erltg.
+anlV.kz30                      S2 Z33   ↑ 4                            ← % wie lt.ges. % linear degressiv 30 2021 Erltg.
+anlV.z46Betrag                 S2 Z37   ↑                              ← Schuldzinsen (ohne Tilgungsbeträge)
+anlV.kz33                      S2 Z37   ↑                              ← Schuldzinsen (ohne Tilgungsbeträge) 33
+anlV.z80Betrag                 S2 Z50   ↑                              ← Sonstiges
+anlV.kz49                      S2 Z50   ↑                              ← Sonstiges 49
+anlV.werbungskostenSumme       S2 Z51   ↑                              ← Summe der Werbungskosten (zu übertragen nach Zeile 22)
+anlV.ueberschuss               S1 Z23   ↑                              ← = (zu übertragen nach Zeile 24) Überschuss stpfl. Person / Ehemann /
+anlV.kz20                      S1 Z24   ↑ EUR                          ← Zurechnung des Betrags aus Zeile 23 20
+anlV.kz21                      S1 Z24   ↑ EUR                          ← EUR ,– Zurechnung des Betrags aus Zeile 23 20 21
+anlKind.name                   S1 Z1    ↑ Name                         ← 
+anlKind.vornameEltern          S1 Z2    ↑ Vorname                      ← 
+anlKind.steuernummer           S1 Z3    ↑                              ← Steuernummer
+anlKind.lfdNr                  S1 Z3    ↑                              ← lfd. Nr. Steuernummer der Anlage
+anlKind.idnr                   S1 Z4    ↑                              ← 202200302201 Angaben zum Kind 01 Identifikationsnummer
+anlKind.vorname                S1 Z5    ↑ Vorname                      ← 
+anlKind.nachname               S1 Z5    ↑ ggf. abweichender Familienn… ← Vorname
+anlKind.geburtsdatum           S1 Z6    ↑ Geburtsdatum                 ← 16
+anlKind.kindergeld             S1 Z6    ↑ EUR                          ← Geburtsdatum Anspruch auf Kindergeld (einschließlich Kinderbonus) oder 16 15 vergleichbar…
+anlKind.familienkasse          S1 Z7    ↑ Für die Kindergeldfestsetzu… ← 
+anlKind.kz66                   S2 Z31   ↑ EUR                          ← Beiträge zu Krankenversicherungen des Kindes (nur Basisabsicherung, keine Wahlleistungen)…
+anlKind.kz67                   S2 Z32   ↑ EUR                          ← Beiträge zur sozialen Pflegeversicherung und / oder zur privaten Pflege-Pflichtversicheru…
+anlKind.kz89                   S2 Z41   ↑ EUR                          ← Beiträge (abzüglich steuerfreier Zuschüsse und / oder Erstattungen) zu ausländischen Kran…
+anlN.kz330                     S2 Z46   ↑ Anzahl der                   ← Fortbildungskosten – soweit nicht steuerfrei ersetzt – 330
+anlNGre.kz330                  S2 Z42   ↑ Anzahl der                   ← Fortbildungskosten – soweit nicht steuerfrei ersetzt – 330
+est1a.kz120                    S2 Z43   ↑ EUR                          ← – die dem Progressionsvorbehalt unterliegen, z. B. Arbeits- losengeld, Elterngeld, Insolv…
+est1a.kz121                    S2 Z43   ↑ EUR                          ← – die dem Progressionsvorbehalt unterliegen, z. B. Arbeits- losengeld, Elterngeld, Insolv…
+anlKind.inlandVon              S1 Z8    ↑ vom                          ← Wohnsitz 00 im Inland
+anlKind.inlandBis              S1 Z8    ↑ bis                          ← vom Wohnsitz 00 im Inland
+anlKind.kz02                   S1 Z10   ↑ Ausland                      ← 02
+anlKind.kz03                   S1 Z10   ↑ Person                       ← 1 = leibliches Kind / 2 = Pflegekind 3 = Enkelkind / Adoptivkind Stiefkind 02 03
+anlKind.aeName                 S1 Z11   ↑ Name, Vorname                ← 
+anlKind.aeGeburtsdatum         S1 Z11   ↑ Geburtsdatum dieser Person   ← Name, Vorname
+anlKind.aeVon                  S1 Z11   ↑ vom                          ← Name, Vorname Geburtsdatum dieser Person 04
+anlKind.aeBis                  S1 Z11   ↑ bis                          ← vom Name, Vorname Geburtsdatum dieser Person 04
+anlKind.aeAdresse              S1 Z12   ↑ Letzte bekannte Adresse      ← 
+anlKind.aeArt                  S1 Z12   ↑ Art                          ← Letzte bekannte Adresse
+anlKind.kz06                   S1 Z14   ↑ 2 = Pflegekind               ← Das Kindschaftsverhältnis zum anderen Elternteil ist durch dessen Tod erloschen am 06
+anlKind.kz05                   S1 Z15   ↑                              ← Der Wohnsitz oder gewöhnliche Aufenthalt des anderen Elternteiles ist nicht zu ermitteln …
+anlKind.kz42Von                S2 Z49   ↑ vom                          ← Entlastungsbetrag für Alleinerziehende Das Kind war mit mir in der gemeinsamen Wohnung ge…
+anlKind.kz42Bis                S2 Z49   ↑ bis                          ← Entlastungsbetrag für Alleinerziehende vom Das Kind war mit mir in der gemeinsamen Wohnun…
+anlKind.kz44Von                S2 Z50   ↑ vom                          ← Für das Kind wurde mir Kindergeld ausgezahlt 44
+anlKind.kz44Bis                S2 Z50   ↑ bis                          ← Für das Kind wurde mir Kindergeld ausgezahlt 44
+anlKind.kz46                   S2 Z51   ↑                              ← eine / mehrere volljährige Person(en) gemeldet, für die (zeitweise) kein Anspruch auf Kin…
+anlKind.kz49                   S2 Z52   ↑                              ← mindestens einer weiteren volljährigen Person, für die (zeitweise) kein Anspruch auf Kind…
+anlSo.name                     S1 Z1    ↑ Name                         ← 
+anlSo.vorname                  S1 Z2    ↑ Vorname                      ← 
+anlSo.steuernummer             S1 Z3    ↑                              ← Steuernummer
+anlSo.spenden                  S1 Z5    ↑ EUR                          ← Zeilen 9 bis 12) – zur Förderung steuerbegünstigter Zwecke 123 an Empfänger im Inland
+anlAv.name                     S1 Z1    ↑ Name                         ← 
+anlAv.vorname                  S1 Z2    ↑ Vorname                      ← 
+anlAv.steuernummer             S1 Z3    ↑                              ← Steuernummer
+anlAv.unmittelbar              S1 Z5    ↑                              ← Ich bin für das Jahr 2022 unmittelbar begünstigt. 106 (Bitte die Zeilen 6 bis 14 ausfülle…
+anlAv.kz100                    S1 Z6    ↑ EUR                          ← Beitragspflichtige Einnahmen i. S. d. inländischen gesetzlichen Renten- 100 versicherung …
+anlAv.mittelbar                S1 Z15   ↑                              ← Ich bin für das Jahr 2022 mittelbar begünstigt. 106 (Bei Einzelveranlagung von Ehegatten …
+anlVor.name                    S1 Z1    ↑ Name                         ← 
+anlVor.vorname                 S1 Z2    ↑ Vorname                      ← 
+anlVor.steuernummer            S1 Z3    ↑                              ← Steuernummer
+anlVor.kz326                   S1 Z16   ↑                              ← Beiträge zu Krankenversicherungen – ohne Beiträge, die in Zeile 11 geltend gemacht werden…
+anlVor.kz328                   S1 Z17   ↑                              ← In Zeile 16 enthaltene Beiträge zur Krankenversicherung, aus 328 denen sich ein Anspruch …
+anlVor.kz329                   S1 Z18   ↑                              ← Beiträge zu sozialen Pflegeversicherungen – ohne Beiträge, die in Zeile 13 geltend gemach…
+anlVor.kz338                   S1 Z22   ↑                              ← Über die Basisabsicherung hinausgehende Beiträge zu Krankenversiche- rungen (z. B. für Wa…
+anlVor.kz350                   S1 Z23   ↑                              ← Beiträge zu Krankenversicherungen (nur Basisabsicherung, keine Wahl- 350 leistungen)
+anlVor.kz351                   S1 Z24   ↑                              ← leistungen) Beiträge zu Pflege-Pflichtversicherungen 351
+anlVor.kz354                   S1 Z27   ↑                              ← 034098_22 Über die Basisabsicherung hinausgehende Beiträge zu Krankenversiche- rungen (z.…
+anlVor.kz333                   S2 Z31   ↑ EUR                          ← Beiträge (abzüglich steuerfreier Zuschüsse ) – ohne Beträge lt. Zeile 37 – zur Krankenver…
+anlVor.kz334                   S2 Z32   ↑ EUR                          ← vergleichbar ist (nur Basisabsicherung, keine Wahlleistungen) In Zeile 31 enthaltene Beit…
+anlVor.kz335                   S2 Z33   ↑                              ← Beiträge (abzüglich steuerfreier Zuschüsse ) – ohne Beträge lt. Zeile 39 – zur sozialen P…
+anlVor.kz339                   S2 Z36   ↑                              ← Über die Basisabsicherung hinausgehende Beiträge (abzüglich erstatteter Beiträge) zu Kran…
+anlVor.kz426                   S1 Z16   ↑                              ← Beiträge zu Krankenversicherungen – ohne Beiträge, die in Zeile 11 geltend gemacht werden…
+anlVor.kz428                   S1 Z17   ↑                              ← In Zeile 16 enthaltene Beiträge zur Krankenversicherung, aus 328 428 ,- denen sich ein An…
+anlVor.kz429                   S1 Z18   ↑                              ← Beiträge zu sozialen Pflegeversicherungen – ohne Beiträge, die in Zeile 13 geltend gemach…
+anlVor.kz438                   S1 Z22   ↑                              ← Über die Basisabsicherung hinausgehende Beiträge zu Krankenversiche- ,- rungen (z. B. für…
+anlVor.kz450                   S1 Z23   ↑                              ← Beiträge zu Krankenversicherungen (nur Basisabsicherung, keine Wahl- ,- 350 450 leistunge…
+anlVor.kz451                   S1 Z24   ↑                              ← leistungen) ,- Beiträge zu Pflege-Pflichtversicherungen 351 451
+anlVor.kz454                   S1 Z27   ↑                              ← 034098_22 Über die Basisabsicherung hinausgehende Beiträge zu Krankenversiche- ,- rungen …
+anlVor.kz433                   S2 Z31   ↑ EUR                          ← Beiträge (abzüglich steuerfreier Zuschüsse ) EUR – ohne Beträge lt. Zeile 37 – zur Kranke…
+anlVor.kz434                   S2 Z32   ↑ EUR                          ← vergleichbar ist (nur Basisabsicherung, keine Wahlleistungen) In Zeile 31 enthaltene Beit…
+anlVor.kz435                   S2 Z33   ↑                              ← Beiträge (abzüglich steuerfreier Zuschüsse ) – ohne Beträge lt. Zeile 39 – zur sozialen P…
+anlVor.kz439                   S2 Z36   ↑                              ← Über die Basisabsicherung hinausgehende Beiträge (abzüglich erstatteter Beiträge) zu Kran…
+anlN.z53Text                   S2 Z41   ↑ Beiträge zu Berufsverbänden… ← 
+anlN.kz310                     S2 Z41   ↑                              ← Beiträge zu Berufsverbänden (Bezeichnung der Verbände) 310
+anlN.z54Text                   S2 Z42   ↑ Aufwendungen für Arbeitsmit… ← 
+anlN.z54Eur                    S2 Z42   ↑ EUR                          ← 
+anlN.kz320                     S2 Z43   ↑                              ← , – + 320
+anlN.z62Text                   S2 Z48   ↑ Sonstiges (z. B. Bewerbungs… ← 
+anlN.z62Eur                    S2 Z48   ↑                              ← Sonstiges (z. B. Bewerbungskosten, Kontoführungsgebühren) +
+anlN.z63Text                   S2 Z49   ↑ Sonstiges (z. B. Bewerbungs… ← 
+anlN.z63Eur                    S2 Z49   ↑                              ← +
+anlN.kz380                     S2 Z49   ↑                              ← , – + 380
+anlNGre.z48Text                S2 Z37   ↑ Beiträge zu Berufsverbänden… ← 
+anlNGre.kz310                  S2 Z37   ↑ EUR                          ← (Bezeichnung der Verbände) Beiträge zu Berufsverbänden 310
+anlNGre.z49Text                S2 Z38   ↑ Aufwendungen für Arbeitsmit… ← 
+anlNGre.z49Eur                 S2 Z38   ↑ EUR                          ← 
+anlNGre.kz320                  S2 Z39   ↑                              ← , ––– + 320
+anlNGre.z57Text                S2 Z44   ↑ Sonstiges (z. B. Bewerbungs… ← 
+anlNGre.z57Eur                 S2 Z44   ↑                              ← Sonstiges (z. B. Bewerbungskosten, Kontoführungsgebühren) +
+anlNGre.kz380                  S2 Z44   ↑                              ← Sonstiges (z. B. Bewerbungskosten, Kontoführungsgebühren) , ––– + 380
+anlKind.z67Text                S3 Z76   ↑ Art der Dienstleistung, Nam… ← 
+anlKind.z67Von                 S3 Z76   ↑ vom                          ← Art der Dienstleistung, Name und Anschrift des Dienstleisters
+anlKind.z67Bis                 S3 Z76   ↑ bis                          ← vom Art der Dienstleistung, Name und Anschrift des Dienstleisters
+anlKind.kz51                   S3 Z76   ↑ EUR                          ← vom bis Art der Dienstleistung, Name und Anschrift des Dienstleisters 51
+anlAgB.name                    S1 Z1    ↑ Name                         ← 
+anlAgB.vorname                 S1 Z2    ↑ Vorname                      ← 
+anlAgB.steuernummer            S1 Z3    ↑                              ← Steuernummer
+anlAgB.z23Text                 S2 Z31   ↑ Art der Aufwendungen         ← 
+anlAgB.kz302                   S2 Z31   ↑ EUR                          ← Art der Aufwendungen 302
+anlAgB.kz303                   S2 Z31   ↑ EUR                          ← EUR Art der Aufwendungen ,– 302 303
+anlHha.name                    S1 Z1    ↑ Name                         ← 
+anlHha.vorname                 S1 Z2    ↑ Vorname                      ← 
+anlHha.steuernummer            S1 Z3    ↑                              ← Steuernummer
+anlHha.z4Text                  S1 Z4    ↑ Art der Tätigkeit            ← 
+anlHha.kz202                   S1 Z4    ↑ EUR                          ← Art der Tätigkeit 202
+anlHha.z5Text                  S1 Z5    ↑ Art der Tätigkeit / Aufwend… ← 
+anlHha.kz212                   S1 Z5    ↑                              ← Art der Tätigkeit / Aufwendungen 212
+anlHha.z6Text                  S1 Z6    ↑ Art der Aufwendungen         ← 
+anlHha.z6Rechnung              S1 Z6    ↑ anteilig)                    ← Art der Aufwendungen
+anlHha.z6Lohn                  S1 Z6    ↑ EUR                          ← EUR Art der Aufwendungen ,–
+anlHha.kz214                   S1 Z9    ↑                              ← Summe steuerlich berücksichtigungsfähiger Lohnanteile, Maschinen- und Fahrtkosten 214 ink…
