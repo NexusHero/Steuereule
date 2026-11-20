@@ -3,6 +3,7 @@
 // Festschreibung, quick path, bank import, VAT, trade tax with the Hebesatz table, the ELSTER fill-in help
 // behind the tier, and booking drafts posted only on accept.
 import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { serializeBookingDraft, type BookingDraft } from '@steuereule/core'
 import { AuditService } from '../src/audit/audit.service.js'
@@ -476,6 +477,52 @@ describe('BusinessService (ADR-0101)', () => {
     await service.post('u', 2025, A1, { date: '2025-01-05', documentNumber: 'M-12', text: 'Büromiete Dezember', regularPayment: { dueDate: '2025-01-01', periodYear: 2024 }, lines: [{ account: '4210', side: 'debit', amount: 80_000 }, { account: '1200', side: 'credit', amount: 80_000 }] })
     expect((await service.estimateInput('u', YEAR, 'A'))!.business.selfEmployedEur).toBe(before2024 - 800)
     expect((await service.estimateInput('u', 2025, 'A'))!.business.selfEmployedEur).toBe(10_000)
+  })
+
+  it('a further business sees the person-wide Kleinunternehmer flag and losses, and must exist before it books (review)', async () => {
+    const { service } = setup()
+    await service.saveProfile('u', YEAR, A1, { smallBusiness: true, lossFacts: { carriedForwardEur: 5_000 } })
+    await service.addBusiness('u', YEAR, 'A', 'Shop')
+    const A2 = { person: 'A', business: 2 } as const
+    expect((await service.bookingTarget('u', YEAR, A2)).smallBusiness).toBe(true)
+    // A Kleinunternehmer cannot charge 19 % in the second business either.
+    await expect(service.post('u', YEAR, A2, sale)).rejects.toBeTruthy()
+    await expect(service.post('u', YEAR, { person: 'A', business: 7 }, supplies)).rejects.toMatchObject({ code: 'BUSINESS_UNKNOWN' })
+  })
+
+  it('takes 70 % of a Bewirtung booked as the 70/30 split once, not twice (review)', async () => {
+    const { service } = setup()
+    await service.quickEntry('u', YEAR, A1, [{ key: 'einnahmen_umsatzsteuerpflichtig', amountCents: 1_000_000 }])
+    const before = (await service.estimateInput('u', YEAR, 'A'))!.business.selfEmployedEur ?? 0
+    await service.post('u', YEAR, A1, { date: '2024-05-02', documentNumber: 'B-1', text: 'Bewirtung', lines: [{ account: '4650', side: 'debit', amount: 7_000 }, { account: '4654', side: 'debit', amount: 3_000 }, { account: '1200', side: 'credit', amount: 10_000 }] })
+    expect((await service.estimateInput('u', YEAR, 'A'))!.business.selfEmployedEur).toBe(before - 70)
+  })
+
+  it('reads an EU service booked with the old keys as Kz 21 and § 13b Abs. 1, and lists it in the ZM (review)', async () => {
+    const { service } = setup()
+    await service.saveProfile('u', 2025, A1, { vatPeriodFacts: { period: 'quartal' } })
+    await service.post('u', 2025, A1, { date: '2025-02-03', documentNumber: 'EU-1', text: 'Beratung Wien', counterpartyVatId: 'ATU12345678', lines: [{ account: '1200', side: 'debit', amount: 100_000 }, { account: '8336', side: 'credit', amount: 100_000, taxKey: 'ust0' }] })
+    const va = await service.vatPrepayments('u', 2025, A1)
+    const q1 = va.periods.find((p) => p.kennzahlen['21'] !== undefined)
+    expect(q1?.kennzahlen['21']).toBe(1_000)
+    expect(va.ecSalesList.reports[0]?.rows).toEqual([{ vatId: 'ATU12345678', goodsEur: 0, servicesEur: 1_000 }])
+  })
+
+  it('sends the E-Bilanz once, under the book’s lock, and keeps the ticket in the log (review)', async () => {
+    const env = { ELSTER_TRANSMISSION_ENABLED: 'true', ELSTER_ERIC_CLI: fileURLToPath(new URL('./fixtures/fake-eric-cli.mjs', import.meta.url)), ELSTER_CERT_PATH: '/run/x.pfx', ELSTER_CERT_PIN: '123456', ELSTER_HERSTELLER_ID: '74931' }
+    const saved = { ...process.env }
+    Object.assign(process.env, env)
+    try {
+      const { service, repository } = setup()
+      await service.saveProfile('u', 2025, A1, { mode: 'bilanz' })
+      await service.saveProcedureDoc('u', 2025, A1, { steuernummer: '5133081508159' })
+      await service.post('u', 2025, A1, { ...sale, date: '2025-03-01', documentNumber: 'R-25' })
+      await expect(service.transmitEBilanz('u', 2025, A1, 'senden')).resolves.toMatchObject({ status: 'ok', ticket: 'TK-1' })
+      expect(repository.books.get('u|2025|A|1')!.log.at(-1)).toMatchObject({ kind: 'export', payload: { kind: 'e-bilanz', ticket: 'TK-1' } })
+      await expect(service.transmitEBilanz('u', 2025, A1, 'senden')).rejects.toMatchObject({ code: 'E_BILANZ_ALREADY_SENT' })
+    } finally {
+      for (const k of Object.keys(env)) if (saved[k] === undefined) delete process.env[k]
+    }
   })
 
   it('the GoBD export is a zip with index.xml and the journal, and is itself logged in the chain', async () => {

@@ -22,6 +22,10 @@ describe('E-Bilanz transmission', () => {
     await expect(transmitEBilanz(XBRL, 'senden', config)).resolves.toEqual({ status: 'ok', mode: 'senden', ticket: 'TK-1', protocol: 'übermittelt' })
   })
 
+  it('counts only a clean exit as a transmission', async () => {
+    await expect(transmitEBilanz(XBRL, 'senden', elsterTransmissionConfig({ ...READY, ELSTER_CERT_PATH: '/exit-1' }))).resolves.toMatchObject({ status: 'abgelehnt' })
+  })
+
   it('passes the refusal through', async () => {
     await expect(transmitEBilanz(XBRL, 'senden', elsterTransmissionConfig({ ...READY, ELSTER_HERSTELLER_ID: '1' }))).resolves.toEqual({ status: 'abgelehnt', messages: ['Vertrag verletzt'] })
   })

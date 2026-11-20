@@ -89,7 +89,17 @@ export function retainedProfitTax(input: RetainedProfitInput): RetainedProfit {
 
 export interface SpecialTariffFacts {
   /** A § 16 gain after the allowance, inside the zvE, taxed by § 34 Abs. 1 or 3. */
-  readonly extraordinary?: { readonly gainEur: number; readonly method: 'fuenftel' | 'ermaessigt' } | undefined
+  readonly extraordinary?:
+    | {
+        readonly gainEur: number
+        readonly method: 'fuenftel' | 'ermaessigt'
+        /**
+         * Further § 16 gains beside the one taxed at the reduced rate: § 34 Abs. 3 Satz 4 allows it for one
+         * gain only, the others take the Fünftelregelung (Abs. 1).
+         */
+        readonly fifthGainEur?: number | undefined
+      }
+    | undefined
   /** A § 34a retained profit (and recapture) of a Bilanzierer. */
   readonly retained?: Pick<RetainedProfit, 'favouredEur' | 'taxEur' | 'recaptureEur'> | undefined
 }
@@ -116,6 +126,10 @@ export function withSpecialTariffs(tariff: (z: number) => number, facts: Special
     const capped = Math.min(gain, REDUCED_CAP_EUR)
     const average = rest > 0 ? tariff(rest) / rest : 0
     const rate = Math.max(REDUCED_FLOOR, REDUCED_SHARE * average)
-    return Math.floor(tariff(rest - capped) + capped * rate + special)
+    // The rest of the income, with any further gain by the Fünftelregelung.
+    const others = rest - capped
+    const fifth = Math.min(Math.max(0, facts.extraordinary.fifthGainEur ?? 0), Math.max(0, others))
+    const ordinaryTax = fifth <= 0 ? tariff(others) : others - fifth < 0 ? 5 * tariff(others / 5) : tariff(others - fifth) + 5 * (tariff(others - fifth + fifth / 5) - tariff(others - fifth))
+    return Math.floor(ordinaryTax + capped * rate + special)
   }
 }

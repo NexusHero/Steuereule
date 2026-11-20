@@ -57,7 +57,8 @@ export function byKeyInEuros(byKey: Readonly<Partial<Record<EuerKey, number>>>):
 export function deductibleByKeyInEuros(totals: { readonly byKey: Readonly<Partial<Record<EuerKey, number>>>; readonly nonDeductible: Readonly<Partial<Record<EuerKey, number>>> }): Partial<Record<EuerKey, number>> {
   const out = { ...totals.byKey }
   for (const [key, amount] of Object.entries(totals.nonDeductible) as [EuerKey, number][]) {
-    if (key.startsWith('beschraenkt_')) out[key] = Math.max(0, (out[key] ?? 0) - amount)
+    // Bewirtung: euerProfit takes 70 % of the whole amount, so a booking split 70/30 must stay whole here.
+    if (key.startsWith('beschraenkt_') && key !== 'beschraenkt_bewirtung') out[key] = Math.max(0, (out[key] ?? 0) - amount)
   }
   return byKeyInEuros(out)
 }
@@ -209,4 +210,20 @@ export function registerAssetOf(record: FixedAssetRecord, throughYear: number): 
     depreciationByYear: Object.fromEntries(schedule.map((row) => [row.year, cents(row.depreciationEur + row.specialDepreciationEur + row.costReductionEur)])),
     ...(disposal ? { disposal: { date: disposal.date, ...(disposal.proceedsCents ? { proceedsNet: disposal.proceedsCents } : {}) } } : {}),
   }
+}
+
+/**
+ * The entries of one book for the VAT, with the tax keys of today: entries booked before ADR-0101 §22
+ * carry `ust0` on the EU-services revenue account and `rc13b19` on the EU-services expense account;
+ * they mean Kz 21 and Kz 46/47. Only the own book's entries, never ones borrowed for § 11 (they are
+ * dated in the other year and would count twice).
+ */
+export function vatEntriesOf(chart: ChartOfAccounts, entries: readonly JournalEntry[]): JournalEntry[] {
+  const euRevenue = accountFor(chart, 'revenue_eu_services').number
+  const euServices = accountFor(chart, 'services_eu_13b_19').number
+  return entries.map((entry) =>
+    entry.lines.some((l) => (l.account === euRevenue && l.taxKey === 'ust0') || (l.account === euServices && l.taxKey === 'rc13b19'))
+      ? { ...entry, lines: entry.lines.map((l) => (l.account === euRevenue && l.taxKey === 'ust0' ? { ...l, taxKey: 'euLeistung' as const } : l.taxKey === 'rc13b19' && entry.lines.some((x) => x.account === euServices) ? { ...l, taxKey: 'rcEu19' as const } : l)) }
+      : entry,
+  )
 }

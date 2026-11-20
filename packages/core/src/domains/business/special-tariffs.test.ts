@@ -36,6 +36,14 @@ describe('§ 34 EStG on the gain', () => {
   })
 })
 
+describe('two § 16 gains: the reduced rate for one, the Fünftelregelung for the other (§ 34 Abs. 3 Satz 4)', () => {
+  it('taxes the second gain by fifths beside the reduced one', () => {
+    const both = withSpecialTariffs(T, { extraordinary: { gainEur: 100_000, method: 'ermaessigt', fifthGainEur: 40_000 } })
+    const rate = Math.max(0.14, (0.56 * T(190_000)) / 190_000)
+    expect(both(190_000)).toBe(Math.floor(T(50_000) + 5 * (T(58_000) - T(50_000)) + 100_000 * rate))
+  })
+})
+
 describe('Thesaurierung (§ 34a EStG)', () => {
   it('the retained profit at 28,25 % instead of the tariff, the rest by the tariff (Abs. 1)', () => {
     const r = retainedProfitTax({ year: 2025, profitEur: 300_000, withdrawalsEur: 100_000, depositsEur: 0, tradeTaxEur: 20_000, requestedEur: 150_000, carriedForwardEur: 0 })

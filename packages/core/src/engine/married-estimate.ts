@@ -394,20 +394,25 @@ function coupleChurchTax(
 }
 
 /**
- * The special tariffs of a couple: the retained profits add up; a § 16 gain of each spouse adds up under
- * one method (each spouse uses § 34 Abs. 3 once in a life, a couple with both gains takes the Fünftelregelung
- * unless both chose the reduced rate).
+ * The special tariffs of a couple: the retained profits add up. Of the § 16 gains one takes the reduced
+ * rate (the largest that asks for it; the tariff models one per year), every other the Fünftelregelung.
  */
 function mergedSpecial(a: SpecialTariffFacts | undefined, b: SpecialTariffFacts | undefined): SpecialTariffFacts | undefined {
   if (!a && !b) return undefined
   const gains = [a?.extraordinary, b?.extraordinary].filter((x): x is NonNullable<typeof x> => x !== undefined)
   const retained = [a?.retained, b?.retained].filter((x): x is NonNullable<typeof x> => x !== undefined)
   return {
-    ...(gains.length > 0
-      ? { extraordinary: { gainEur: gains.reduce((s, g) => s + g.gainEur, 0), method: gains.every((g) => g.method === 'ermaessigt') ? 'ermaessigt' : 'fuenftel' } }
-      : {}),
+    ...(gains.length > 0 ? { extraordinary: coupleGains(gains) } : {}),
     ...(retained.length > 0
       ? { retained: { favouredEur: retained.reduce((s, r) => s + r.favouredEur, 0), taxEur: retained.reduce((s, r) => s + r.taxEur, 0), recaptureEur: retained.reduce((s, r) => s + r.recaptureEur, 0) } }
       : {}),
   }
+}
+
+function coupleGains(gains: readonly NonNullable<SpecialTariffFacts['extraordinary']>[]): NonNullable<SpecialTariffFacts['extraordinary']> {
+  const total = gains.reduce((s, g) => s + g.gainEur + (g.fifthGainEur ?? 0), 0)
+  const reduced = gains.filter((g) => g.method === 'ermaessigt').sort((a, b) => b.gainEur - a.gainEur)[0]
+  if (!reduced) return { gainEur: total, method: 'fuenftel' }
+  const rest = total - reduced.gainEur
+  return { gainEur: reduced.gainEur, method: 'ermaessigt', ...(rest > 0 ? { fifthGainEur: rest } : {}) }
 }

@@ -120,7 +120,19 @@ const REDUCED = 0.07
  * Kennzahlen could not be checked against the old forms (research §3); the help says so.
  */
 export function vatPeriodReturn(input: { readonly figures: PeriodFigures; readonly regime: 'regel' | 'klein'; readonly specialPrepaymentDeductionEur?: number | undefined }): VatPeriodResult {
-  const f = input.figures
+  // The Bemessungsgrundlagen are declared in whole euros (cents dropped), the tax on them with cents.
+  const whole = (v: number | undefined) => Math.trunc(v ?? 0)
+  const raw = input.figures
+  const f: PeriodFigures = {
+    ...raw,
+    taxableNetEur: { standard: whole(raw.taxableNetEur.standard), reduced: whole(raw.taxableNetEur.reduced) },
+    intraEuAcquisitionNetEur: { standard: whole(raw.intraEuAcquisitionNetEur.standard), reduced: whole(raw.intraEuAcquisitionNetEur.reduced) },
+    reverseChargeEuServicesNetEur: whole(raw.reverseChargeEuServicesNetEur),
+    reverseChargeOtherNetEur: whole(raw.reverseChargeOtherNetEur),
+    taxFreeWithDeductionEur: whole(raw.taxFreeWithDeductionEur),
+    taxFreeWithoutDeductionEur: whole(raw.taxFreeWithoutDeductionEur),
+    euServicesNetEur: whole(raw.euServicesNetEur),
+  }
   const k: Record<string, number> = {}
   const put = (kz: string, value: number) => {
     if (value !== 0) k[kz] = cents(value)

@@ -74,7 +74,8 @@ export async function transmitEBilanz(xbrl: string, mode: TransmissionMode, conf
       config.cli!,
       [mode, '--verfahren', 'ElsterBilanz', '--hersteller-id', config.herstellerId!],
       { timeout: TIMEOUT_MS, maxBuffer: MAX_OUTPUT, env: { PATH: process.env.PATH ?? '', ERIC_CERT_PATH: config.certPath!, ERIC_CERT_PIN: config.certPin! } },
-      (error, stdout) => resolve({ stdout: String(stdout), failed: error && !String(stdout).trim() ? error.message : null }),
+      // Only a clean exit counts: `{ ok: true }` after a non-zero exit is no transmission.
+      (error, stdout) => resolve({ stdout: String(stdout), failed: error ? error.message : null }),
     )
     child.stdin?.end(xbrl)
   })

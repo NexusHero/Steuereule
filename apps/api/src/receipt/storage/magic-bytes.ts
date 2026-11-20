@@ -93,7 +93,8 @@ export function isEInvoiceXml(buffer: Buffer): boolean {
   const whole = buffer.toString('utf8')
   if (/<!DOCTYPE|<!ENTITY/i.test(whole)) return false
   let rest = text
-  if (rest.startsWith('<?xml')) {
+  // The XML declaration only (`<?xml ` or `<?xml?>`), never `<?xml-stylesheet`.
+  if (/^<\?xml[\s?]/.test(rest)) {
     const end = rest.indexOf('?>')
     if (end < 0) return false
     rest = rest.slice(end + 2).trimStart()

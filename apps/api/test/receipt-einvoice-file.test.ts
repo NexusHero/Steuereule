@@ -19,6 +19,7 @@ describe('E-Rechnung files (§ 14 Abs. 1 UStG, GoBD)', () => {
       '<?xml version="1.0"?><?xml-stylesheet href="x.xsl"?><Invoice/>',
       '<?xml version="1.0"?><!DOCTYPE Invoice [<!ENTITY x SYSTEM "file:///etc/passwd">]><Invoice>&x;</Invoice>',
       '<Invoice/><!ENTITY late "x">',
+      '<?xml-stylesheet href="x.xsl"?><Invoice/>',
     ]) {
       expect(isEInvoiceXml(Buffer.from(evil)), evil).toBe(false)
       expect(() => detectAllowedReceiptMimeType(Buffer.from(evil))).toThrow(/Unzulässiges Dateiformat/)

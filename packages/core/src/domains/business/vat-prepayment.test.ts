@@ -63,6 +63,12 @@ describe('one Voranmeldung (USt 1 A)', () => {
     expect(r.kennzahlen['83']).toBe(1_070)
   })
 
+  it('declares the bases in whole euros and the tax on them (review)', () => {
+    const r = vatPeriodReturn({ figures: { ...figures, taxableNetEur: { standard: 1_000.99, reduced: 0 }, intraEuAcquisitionNetEur: { standard: 0, reduced: 0 }, reverseChargeEuServicesNetEur: 0, taxFreeWithDeductionEur: 0, euServicesNetEur: 0, inputVatEur: 0 }, regime: 'regel' })
+    expect(r.kennzahlen['81']).toBe(1_000)
+    expect(r.vatDueEur).toBe(190)
+  })
+
   it('takes the Sondervorauszahlung off in the last period (Kz 39)', () => {
     const r = vatPeriodReturn({ figures, regime: 'regel', specialPrepaymentDeductionEur: 400 })
     expect(r.kennzahlen['39']).toBe(400)

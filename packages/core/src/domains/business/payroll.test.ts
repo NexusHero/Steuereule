@@ -19,6 +19,11 @@ describe('Minijob (gewerblich): limits and employer charges', () => {
     })
   })
 
+  it('measures the Minijobber’s RV share on at least 175 € (§ 163 Abs. 8 SGB VI)', () => {
+    // 100 €: 18,6 % of 175 € = 32,55 € less the employer's 15 € = 17,55 €.
+    expect(minijobCharges({ year: 2025, month: 1, grossEur: 100, statutoryHealthInsured: true, rvExempt: false }).employeeRvEur).toBe(17.55)
+  })
+
   it('no KV for a privately insured Minijobber, no own RV share when exempt; above the limit it is no Minijob', () => {
     const r = minijobCharges({ year: 2025, month: 6, grossEur: 500, statutoryHealthInsured: false, rvExempt: true })
     expect(r.employer.kvEur).toBe(0)

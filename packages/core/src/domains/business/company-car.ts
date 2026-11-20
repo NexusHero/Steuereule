@@ -114,7 +114,8 @@ export function companyCarUse(input: CompanyCarInput): CompanyCarResult {
     }
     // The VAT takes the full list price, the fractions are income tax only (Abschn. 15.23 Abs. 5 UStAE).
     const fullValue = Math.floor(input.listPriceGrossEur / 100) * 100 * 0.01 * months
-    const vat = vatDeductible ? wertabgabe(capped ? Math.min(fullValue, privateUseEur / factor) : fullValue) : null
+    // Under the Kostendeckelung the Wertabgabe cannot exceed the car's total costs either.
+    const vat = vatDeductible ? wertabgabe(capped ? Math.min(fullValue, Math.max(0, input.totalCostsEur ?? fullValue)) : fullValue) : null
     return { kind: 'berechnet', method: 'pauschal', factor, assessedListPriceEur, privateUseEur, commute, capped, vat }
   }
 

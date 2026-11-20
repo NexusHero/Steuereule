@@ -62,6 +62,13 @@ describe('private use of a business car (1 %-Regel, Fahrtenbuch, Kostendeckelung
     expect(r.privateUseEur + r.commute!.nonDeductibleEur).toBe(5_000)
   })
 
+  it('under the Kostendeckelung the VAT base of an electric car stays within the total costs (review)', () => {
+    const r = companyCarUse({ ...PETROL, drive: 'elektro', listPriceGrossEur: 52_000, totalCostsEur: 1_000 })
+    if (r.kind !== 'berechnet') throw new Error(r.kind)
+    expect(r.capped).toBe(true)
+    expect(r.vat!.baseEur + r.vat!.freeOfVatEur).toBeLessThanOrEqual(1_000)
+  })
+
   it('refuses the 1 % rule at business use of 50 % or less: a logbook or an estimate is needed', () => {
     expect(companyCarUse({ ...PETROL, businessShareOver50: false })).toEqual({ kind: 'nicht_zulaessig', reason: 'betriebliche_nutzung_bis_50' })
   })

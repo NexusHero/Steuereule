@@ -25,6 +25,7 @@ const MINIJOB_RATES: Readonly<Record<number, MinijobRates>> = {
 
 /** The RV rate (18,6 % 2022–2026): the Minijobber pays what exceeds the employer's 15 %. */
 const RV_TOTAL = 0.186
+const RV_MIN_BASE_EUR = 175
 
 /** § 8 Abs. 1a SGB IV: 450 € until 30.9.2022, then Mindestlohn × 130 / 3 (520, 538, 556, 603 €). */
 export function minijobLimitEur(year: number, month: number): number {
@@ -68,7 +69,8 @@ export function minijobCharges(input: MinijobInput): MinijobCharges {
     insolvencyEur: c2(gross * rates.insolvency),
   }
   const employerTotalEur = c2(Object.values(employer).reduce((s, v) => s + v, 0))
-  const employeeRvEur = input.rvExempt ? 0 : c2(gross * (RV_TOTAL - rates.rv))
+  // § 163 Abs. 8 SGB VI: the Minijobber's share is measured on at least 175 €; the employer's 15 % on the pay.
+  const employeeRvEur = input.rvExempt ? 0 : c2(Math.min(gross, Math.max(0, Math.max(gross, RV_MIN_BASE_EUR) * RV_TOTAL - gross * rates.rv)))
   return { overLimit: gross > minijobLimitEur(input.year, input.month), employer, employerTotalEur, employeeRvEur, netPayEur: c2(gross - employeeRvEur) }
 }
 

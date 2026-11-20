@@ -111,7 +111,7 @@ import {
   type NewFixedAsset,
   type LoadedBook,
 } from './business.repository.js'
-import { accountForEuerKey, bankAccountOf, bookIntegrity, deductibleByKeyInEuros, ecSalesListOf, eur, registerAssetOf, vatFiguresOf, type BookIntegrity, type VatFigures } from './business-ledger.js'
+import { accountForEuerKey, bankAccountOf, bookIntegrity, deductibleByKeyInEuros, ecSalesListOf, vatEntriesOf, eur, registerAssetOf, vatFiguresOf, type BookIntegrity, type VatFigures } from './business-ledger.js'
 import { HebesatzDirectory, type HebesatzLookup } from './hebesatz.js'
 import { zipStored } from './zip.js'
 
@@ -432,6 +432,9 @@ export class BusinessService {
     if (ref.business === FIRST_BUSINESS) throw new ConflictError('BUSINESS_FIRST_STAYS', 'Der erste Betrieb bleibt; du kannst ihn umbenennen.')
     const book = await this.repository.loadBook(userId, year, ref)
     if (book !== null && book.ledger.entries.length > 0) throw new ConflictError('BUSINESS_HAS_BOOK', 'In diesem Betrieb wurde schon gebucht; Buchungen bleiben erhalten (GoBD).')
+    // Assets and payroll runs belong to the business: a later business with the same number must not inherit them.
+    const [assets, runs] = await Promise.all([this.repository.listAssets(userId, ref, year + 50), this.repository.listPayrollRuns(userId, year, ref)])
+    if (assets.length > 0 || runs.length > 0) throw new ConflictError('BUSINESS_HAS_RECORDS', 'Zu diesem Betrieb gibt es Anlagen oder Lohnläufe; er bleibt.')
     await this.repository.deleteProfile(userId, year, ref)
     await this.audit.append({ userId, action: 'WRITE', resource: 'selbststaendig' })
   }
@@ -480,8 +483,13 @@ export class BusinessService {
   }
 
   /** The frame a new book gets: what the profile says, SKR03 and EÜR otherwise. */
+  /**
+   * The frame of a book with the person-wide facts merged in (Kleinunternehmer, losses …), so every
+   * business is checked against them (ADR-0101 §22). A further business must exist before it is used.
+   */
   private async frame(userId: string, year: number, ref: BusinessRef): Promise<{ chart: ChartOfAccounts; mode: BookkeepingMode; profile: BusinessProfileRecord | null }> {
-    const profile = await this.profileRecord(userId, year, ref)
+    const profile = await this.personRecord(userId, year, ref)
+    if (profile === null && ref.business !== FIRST_BUSINESS) throw new NotFoundError('BUSINESS_UNKNOWN', `Den Betrieb ${ref.business} gibt es für ${year} nicht; leg ihn in der Übersicht an.`)
     return { chart: profile?.chart ?? 'SKR03', mode: profile?.mode ?? 'euer', profile }
   }
 
@@ -791,7 +799,10 @@ export class BusinessService {
     // § 11 Abs. 1 Satz 2, Abs. 2 Satz 2 EStG (ADR-0101 §22): a regular payment booked in the neighbouring
     // year's book that belongs to this year counts here; the EÜR filter by euerYearOf does the rest.
     const neighbours = await Promise.all([this.repository.loadBook(userId, year - 1, ref), this.repository.loadBook(userId, year + 1, ref)])
-    const borrowed = neighbours.flatMap((n) => (n?.ledger.entries ?? []).filter((e) => e.regularPayment !== null && euerYearOf(e) === year))
+    // Only from an EÜR book in the same chart: a Bilanz counts by date, and another chart reads the numbers wrong.
+    const borrowed = neighbours
+      .filter((n) => n !== null && n.book.chart === ledger.chart && n.book.mode === 'euer')
+      .flatMap((n) => n!.ledger.entries.filter((e) => e.regularPayment !== null && euerYearOf(e) === year))
     return { book, profile, ledger: borrowed.length === 0 ? ledger : { ...ledger, entries: [...ledger.entries, ...borrowed] } }
   }
 
@@ -914,7 +925,7 @@ export class BusinessService {
     const { profile, startDate, freelanceOnly } = vat
     await this.audit.append({ userId, action: 'READ', resource: 'selbststaendig' })
     const priorBooks = prior.filter((b) => b.book !== null)
-    const priorTurnoverEur = priorBooks.length === 0 ? null : turnoverOf(vatFiguresOf(priorBooks.flatMap((b) => b.ledger.entries), year - 1))
+    const priorTurnoverEur = priorBooks.length === 0 ? null : turnoverOf(vatFiguresOf(priorBooks.flatMap((b) => b.vatEntries), year - 1))
     const smallBusiness = smallBusinessCheckOf(year, profile === null ? null : { ...profile, startDate }, turnoverOf(vat.figures), priorTurnoverEur)
     // § 20 Satz 1 Nr. 1 UStG: the Gesamtumsatz of the year before; in the founding year the running one.
     const basis = priorTurnoverEur ?? turnoverOf(vat.figures)
@@ -937,16 +948,19 @@ export class BusinessService {
     const [businesses, prior] = await Promise.all([this.businessesOf(userId, year, person), this.businessesOf(userId, year - 1, person)])
     const profile = businesses.find((b) => b.ref.business === FIRST_BUSINESS)?.profile ?? businesses[0]?.profile ?? null
     const facts = parseJson<VatPeriodFacts>(profile?.vatPeriodFacts ?? null, {})
-    const entries = businesses.flatMap((b) => b.ledger.entries)
+    const entries = businesses.flatMap((b) => b.vatEntries)
     const regime = profile?.smallBusiness ? 'klein' : 'regel'
     const starts = businesses.map((b) => b.profile?.startDate ?? null).filter((d): d is string => d !== null).sort()
     const start = starts[0] ?? null
     const founding = start !== null && Number(start.slice(0, 4)) === year
-    const priorEntries = prior.flatMap((b) => b.ledger.entries)
+    const priorEntries = prior.flatMap((b) => b.vatEntries)
     const priorVat = priorEntries.length === 0 ? null : this.vatOf({ chart: 'SKR03', mode: 'euer', entries: priorEntries, lockedThrough: null }, profile, year - 1).result.vatOfYearEur
     const priorMonths = start !== null && Number(start.slice(0, 4)) === year - 1 ? 12 - Number(start.slice(5, 7)) + 1 : 12
+    // A founder's expected VAT: what is booked so far, over the months since the start (§ 18 Abs. 2 Satz 6 UStG).
+    const lastMonth = Math.max(Number(start?.slice(5, 7) ?? 1), ...entries.filter((e) => e.date.startsWith(String(year))).map((e) => Number(e.date.slice(5, 7))))
+    const monthsSoFar = Math.max(1, lastMonth - Number(start?.slice(5, 7) ?? 1) + 1)
     const derived = founding
-      ? vatFilingPeriod({ year, founding: { expectedVatEur: this.vatOf({ chart: 'SKR03', mode: 'euer', entries, lockedThrough: null }, profile, year).result.vatOfYearEur } })
+      ? vatFilingPeriod({ year, founding: { expectedVatEur: (this.vatOf({ chart: 'SKR03', mode: 'euer', entries, lockedThrough: null }, profile, year).result.vatOfYearEur * 12) / monthsSoFar } })
       : vatFilingPeriod({ year, priorYearVatEur: priorVat ?? 0, priorYearMonthsActive: priorMonths, chooseMonthly: facts.chooseMonthly })
     const period = facts.period ?? derived.period
     const extension = facts.extension === true
@@ -990,7 +1004,7 @@ export class BusinessService {
   private async personVat(userId: string, year: number, person: BusinessPerson): Promise<{ figures: VatFigures; result: VatAnnualResult; profile: BusinessProfileRecord | null; startDate: string | null; freelanceOnly: boolean }> {
     const businesses = await this.businessesOf(userId, year, person)
     const profile = businesses.find((b) => b.ref.business === FIRST_BUSINESS)?.profile ?? businesses[0]?.profile ?? null
-    const entries = businesses.flatMap((b) => b.ledger.entries)
+    const entries = businesses.flatMap((b) => b.vatEntries)
     const chart = businesses[0]?.ledger.chart ?? 'SKR03'
     const derivedPrepayments = profile?.vatPrepayments ? null : (await this.prepaymentsOf(userId, year, person)).totalEur
     const { figures, result } = this.vatOf({ chart, mode: 'euer', entries, lockedThrough: null }, profile, year, derivedPrepayments)
@@ -1140,7 +1154,7 @@ export class BusinessService {
     tradeTax.push(...shares.filter((s) => s.kind === 'gewerbe' && s.baseAmountEur !== undefined).map((s) => ({ baseAmountEur: s.baseAmountEur!, tradeTaxEur: s.tradeTaxEur ?? 0 })))
     const facts = parseJson<LossFacts>(first?.lossFacts ?? null, {})
     const specialFacts = {
-      ...(gains.length > 0 ? { extraordinary: { gainEur: round2(gains.reduce((s, g) => s + g.gainEur, 0)), method: gains[0]!.method } } : {}),
+      ...(gains.length > 0 ? { extraordinary: extraordinaryOf(gains) } : {}),
       ...(retained.length > 0 ? { retained: { favouredEur: round2(retained.reduce((s, r) => s + r.favouredEur, 0)), taxEur: round2(retained.reduce((s, r) => s + r.taxEur, 0)), recaptureEur: round2(retained.reduce((s, r) => s + r.recaptureEur, 0)) } } : {}),
     }
     return {
@@ -1291,10 +1305,15 @@ export class BusinessService {
   }
 
   /** Every business of the person that has a profile or a book, loaded, the person-wide facts merged in. */
-  private async businessesOf(userId: string, year: number, person: BusinessPerson): Promise<{ ref: BusinessRef; book: LoadedBook | null; ledger: Ledger; profile: BusinessProfileRecord | null }[]> {
+  private async businessesOf(userId: string, year: number, person: BusinessPerson): Promise<{ ref: BusinessRef; book: LoadedBook | null; ledger: Ledger; profile: BusinessProfileRecord | null; vatEntries: JournalEntry[] }[]> {
     const profiles = await this.repository.listProfiles(userId, year, person)
     const numbers = new Set([FIRST_BUSINESS, ...profiles.map((p) => p.business)])
-    const loaded = await Promise.all([...numbers].sort((a, b) => a - b).map(async (business) => ({ ref: { person, business }, ...(await this.loaded(userId, year, { person, business })) })))
+    const loaded = await Promise.all(
+      [...numbers].sort((a, b) => a - b).map(async (business) => {
+        const l = await this.loaded(userId, year, { person, business })
+        return { ref: { person, business }, ...l, vatEntries: vatEntriesOf(l.ledger.chart, l.book?.ledger.entries ?? []) }
+      }),
+    )
     return loaded.filter((b) => b.profile !== null || b.book !== null)
   }
 
@@ -1379,7 +1398,7 @@ export class BusinessService {
     const [own, businesses] = await Promise.all([this.loaded(userId, year, ref), this.businessesOf(userId, year, ref.person)])
     for (const b of businesses) if (b.book) this.assertIntact(b.book)
     const first = businesses.find((b) => b.ref.business === FIRST_BUSINESS)?.profile ?? own.profile
-    const merged: Ledger = { chart: own.ledger.chart, mode: 'euer', entries: businesses.flatMap((b) => b.ledger.entries), lockedThrough: null }
+    const merged: Ledger = { chart: own.ledger.chart, mode: 'euer', entries: businesses.flatMap((b) => b.vatEntries), lockedThrough: null }
     const personProfitEur = round2(businesses.reduce((sum, b) => sum + (b.book === null ? 0 : this.profitOf(b.ledger, year)), 0))
     return {
       own: { ledger: own.ledger, profile: ref.business === FIRST_BUSINESS ? own.profile : own.profile === null ? null : { ...own.profile, ...personWideOf(first) }, personProfitEur: null },
@@ -1570,8 +1589,24 @@ export class BusinessService {
   async transmitEBilanz(userId: string, year: number, ref: BusinessRef, mode: TransmissionMode): Promise<TransmissionResult> {
     await this.assertUnlocked(userId, year)
     const { xbrl } = await this.eBilanz(userId, year, ref, true)
-    const result = await transmitEBilanz(xbrl, mode)
-    await this.audit.append({ userId, action: mode === 'senden' ? 'WRITE' : 'READ', resource: 'selbststaendig-elster' })
+    if (mode === 'validieren') {
+      const result = await transmitEBilanz(xbrl, mode)
+      await this.audit.append({ userId, action: 'READ', resource: 'selbststaendig-elster' })
+      return result
+    }
+    // Sending runs under the book's lock: two requests cannot both send; the ticket goes into the log.
+    const { chart, mode: bookMode } = await this.frame(userId, year, ref)
+    const result = await this.repository.changeBook<TransmissionResult>(userId, year, ref, { chart, mode: bookMode }, async (book) => {
+      this.assertIntact(book)
+      if (book.log.some((r) => r.kind === 'export' && (r.payload as { kind?: string } | null)?.kind === 'e-bilanz')) {
+        throw new ConflictError('E_BILANZ_ALREADY_SENT', 'Die E-Bilanz für dieses Jahr ist schon übermittelt; eine Berichtigung macht die App nicht.')
+      }
+      const sent = await transmitEBilanz(xbrl, 'senden')
+      if (sent.status !== 'ok') return { result: sent, append: {} }
+      const log = appendLogRecord(book.log, 'export', { kind: 'e-bilanz', ticket: sent.ticket }, this.now())
+      return { result: sent, append: { log: log.slice(book.log.length) } }
+    })
+    await this.audit.append({ userId, action: 'WRITE', resource: 'selbststaendig-elster' })
     return result
   }
 }
@@ -1658,7 +1693,7 @@ export function smallBusinessCheckOf(year: number, profile: BusinessProfileRecor
 }
 
 /** Tax keys that carry no VAT amount: they only say what kind of turnover a line is. */
-const LABEL_ONLY_TAX_KEYS: ReadonlySet<BookingTaxKey> = new Set<BookingTaxKey>(['kleinunternehmer', 'steuerfrei', 'igLieferung', 'ust0'])
+const LABEL_ONLY_TAX_KEYS: ReadonlySet<BookingTaxKey> = new Set<BookingTaxKey>(['kleinunternehmer', 'steuerfrei', 'igLieferung', 'ust0', 'euLeistung'])
 
 function taxKeyOfAccount(chart: ChartOfAccounts, number: string): BookingTaxKey {
   return chartAccounts(chart).find((a) => a.number === number)?.defaultTaxKey ?? 'none'
@@ -1688,4 +1723,16 @@ function privateBalanceEur(ledger: Ledger, year: number): number {
     for (const line of entry.lines) if (privateAccounts.has(line.account)) cents += line.side === 'debit' ? line.amount : -line.amount
   }
   return eur(cents)
+}
+
+/**
+ * § 34 Abs. 3 Satz 4 EStG: the reduced rate for one gain only (the largest that asks for it); every other
+ * gain with § 34 takes the Fünftelregelung (ADR-0101 §22).
+ */
+function extraordinaryOf(gains: readonly { gainEur: number; method: 'fuenftel' | 'ermaessigt' }[]): { gainEur: number; method: 'fuenftel' | 'ermaessigt'; fifthGainEur?: number } {
+  const reduced = gains.filter((g) => g.method === 'ermaessigt').sort((a, b) => b.gainEur - a.gainEur)[0]
+  const total = round2(gains.reduce((s, g) => s + g.gainEur, 0))
+  if (!reduced) return { gainEur: total, method: 'fuenftel' }
+  const rest = round2(total - reduced.gainEur)
+  return { gainEur: reduced.gainEur, method: 'ermaessigt', ...(rest > 0 ? { fifthGainEur: rest } : {}) }
 }
