@@ -1,7 +1,6 @@
 // Bookkeeping for the self-employed (ADR-0101). Each module adds its own export line here.
 export * from './accounts'
-export * from './accounts-skr03'
-export * from './accounts-skr04'
+export * from './accounts-numbers'
 export * from './journal'
 export * from './gobd'
 export * from './bank-import'

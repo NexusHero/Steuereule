@@ -138,7 +138,7 @@ export function bookingDraftFromReceipt(
       asset = { label: read.description, method: 'gwg', category }
       notes.push('Geringwertiges Wirtschaftsgut: im Jahr der Anschaffung voll abgeschrieben (§ 6 Abs. 2 EStG).')
     } else {
-      concept = category === 'software' ? 'software' : category === 'office_furniture' ? 'office_equipment' : 'office_equipment'
+      concept = category === 'software' ? 'software' : 'office_equipment'
       asset = { label: read.description, method: 'linear', category, usefulLifeYears: USEFUL_LIVES[category].years }
       notes.push(`Anlagegut: lineare AfA über ${USEFUL_LIVES[category].years} Jahr(e) laut AfA-Tabelle (${USEFUL_LIVES[category].label}).`)
     }

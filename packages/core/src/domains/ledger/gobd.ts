@@ -49,7 +49,8 @@ export function canonicalJson(value: unknown): string {
   }
   if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`
   const record = value as Record<string, unknown>
-  const keys = Object.keys(record).filter((k) => record[k] !== undefined).sort()
+  // Code-unit order, never locale order: the hash must be the same on every machine.
+  const keys = Object.keys(record).filter((k) => record[k] !== undefined).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0))
   return `{${keys.map((k) => `${JSON.stringify(k)}:${canonicalJson(record[k])}`).join(',')}}`
 }
 

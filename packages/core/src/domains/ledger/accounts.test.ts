@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { EUER_KEYS } from '../business/euer-keys'
 import { accountFor, chartAccounts, findAccount, translateAccount, type ChartOfAccounts } from './accounts'
-import { SKR03_NUMBERS } from './accounts-skr03'
-import { SKR04_NUMBERS } from './accounts-skr04'
+import { SKR03_NUMBERS, SKR04_NUMBERS } from './accounts-numbers'
 
 // ADR-0101 §12 — SKR03 and SKR04 from one list of concepts, so both charts mean the same.
 
