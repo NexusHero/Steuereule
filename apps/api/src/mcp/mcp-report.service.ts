@@ -1,5 +1,5 @@
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common'
-import { provenanceKey, QUESTIONS, type AdvisorEstimateReading, type EntryStepId } from '@steuereule/core'
+import { appealDeadline, ASSESSMENT_POSITIONS, provenanceKey, QUESTIONS, type AdvisorEstimateReading, type EntryStepId } from '@steuereule/core'
 import { estimateReadingFrom } from '../advisor/advisor-case-digest.js'
 import { describePrintoutGap } from '../advisor/advisor-printout-gaps.js'
 import { effectLeftOutOfEstimate } from '../advisor/advisor-shared.js'
@@ -146,6 +146,59 @@ export class McpReportService {
       vorauszahlungenEur: status.prepayments ?? 0,
       ergebnisEur: figure(status.result),
       lesehilfe: 'einkommensteuerEur = tarifliche Steuer − § 35a + hinzugerechnetes Kindergeld + Abgeltungsteuer. ergebnisEur: positiv = Erstattung, negativ = Nachzahlung, nach Anrechnung und Vorauszahlungen.',
+    }
+  }
+
+  /**
+   * A notice beside the return (ADR-0052 amendment 3, #546): each position the assistant entered from
+   * the notice against the app's own figure, and the appeal deadline. The assistant explains the
+   * differences with the breakdown; nothing here is recomputed.
+   */
+  async compareAssessment(userId: string, taxYear: number, today: string = new Date().toISOString().slice(0, 10)): Promise<Record<string, unknown>> {
+    const ids = ASSESSMENT_POSITIONS.map((position) => position.id)
+    const [status, noticed] = await Promise.all([
+      this.estimate.getState(userId, taxYear),
+      this.confirmation.readRawValues(userId, taxYear, [...ids.map((id) => `assessment.${id}`), 'assessment.assessmentDate']),
+    ])
+    const notice = (id: string): number | null => {
+      const raw = noticed[`assessment.${id}`]
+      return raw === null || raw === undefined || raw === '' ? null : Number(raw)
+    }
+    if (ids.every((id) => notice(id) === null)) return { ok: false, grund: 'Es ist kein Bescheid eingetragen: Trage seine Werte in die Maske "assessment" ein (maske_felder zeigt die Positionen).' }
+    if (status.kind !== 'spanne') return { ok: false, grund: 'Die Schätzung der App ist noch nicht möglich; ohne sie gibt es nichts zu vergleichen.' }
+
+    const steps = status.breakdown
+    const upper = (range: { readonly to: number }) => Math.round(range.to)
+    const person = (index: number) => steps?.persons?.[index]
+    const own: Readonly<Record<string, number | undefined>> = {
+      bruttoarbeitslohnA: person(0) ? person(0)!.incomeEur + person(0)!.workExpensesEur : undefined,
+      bruttoarbeitslohnB: person(1) ? person(1)!.incomeEur + person(1)!.workExpensesEur : undefined,
+      werbungskostenA: person(0)?.workExpensesEur,
+      werbungskostenB: person(1)?.workExpensesEur,
+      vorsorgeaufwand: upper(status.provision),
+      sonderausgaben: status.specialExpenses,
+      aussergewoehnlicheBelastungen: steps?.extraordinaryBurdenEur,
+      zuVersteuerndesEinkommen: upper(status.taxableIncome),
+      festgesetzteSteuer: upper(status.incomeTax),
+      steuerermaessigung35a: steps?.householdReductionEur,
+      solidaritaetszuschlag: upper(status.solidaritaetszuschlag),
+      anrechnung: status.anrechnung,
+      erstattung: upper(status.result),
+    }
+    const positionen = ASSESSMENT_POSITIONS.flatMap((position) => {
+      const bescheidEur = notice(position.id)
+      const erklaerungEur = own[position.id]
+      if (bescheidEur === null) return []
+      return [{ position: position.id, bezeichnung: position.label, erklaerungEur: erklaerungEur ?? null, bescheidEur, abweichungEur: erklaerungEur === undefined ? null : bescheidEur - erklaerungEur }]
+    })
+    const date = noticed['assessment.assessmentDate']
+    const deadline = date ? appealDeadline(date, today) : null
+    return {
+      ok: true,
+      taxYear,
+      positionen,
+      einspruchsfrist: deadline && date ? { bescheidVom: date, endetAm: deadline.endsOn, verbleibendeTage: deadline.remainingDays, laeuft: deadline.running } : null,
+      lesehilfe: 'abweichungEur = Bescheid minus App. „erstattung“: positiv = Erstattung, negativ = Nachzahlung. Erkläre Abweichungen mit schaetzung_aufschluesseln; nenne dem Nutzer die Einspruchsfrist, wenn der Bescheid zu seinen Ungunsten abweicht.',
     }
   }
 

@@ -93,6 +93,17 @@ export function registerReportTools(session: McpSession, deps: McpDeps): void {
   )
 
   server.tool(
+    'bescheid_abgleichen',
+    'Vergleicht einen eingetragenen Steuerbescheid mit der Erklärung in der App: je Position der Wert der App, der Wert des Bescheids und die Abweichung, dazu die Einspruchsfrist. Vorher die Werte des Bescheids in die Maske "assessment" eintragen (Positionen und assessmentDate; maske_felder zeigt sie).',
+    { taxYear: z.number().int().describe('Das Steuerjahr (z.B. 2024 oder 2025)') },
+    async ({ taxYear }) => {
+      assertScope(assistant, 'steuerdaten:read')
+      await deps.audit.append({ userId, action: 'READ', resource: 'bescheid_abgleichen' })
+      return json(await report.compareAssessment(userId, taxYear))
+    },
+  )
+
+  server.tool(
     'offene_fragen',
     'Nennt je Interview-Bereich (Grundfragen, Lebenslagen, Einkünfte, Sonderausgaben, Grenzgänger, Haushalt, Gesundheit, Vorauszahlungen …) die nächste offene Frage mit ihren möglichen Antworten und wie viele dort noch folgen. Das sind Tatsachen, die nur der Nutzer kennt: Frage ihn und trage die Antwort mit maske_eintragen (Maske "interview") ein; danach erneut aufrufen. Erfinde nie eine Antwort.',
     { taxYear: z.number().int().describe('Das Steuerjahr (z.B. 2024 oder 2025)') },
