@@ -198,4 +198,36 @@ describe('McpReportService (ADR-0052 amendment 2)', () => {
       expect(report.nextSteps.join(' ')).not.toContain('irchensteuer')
     })
   })
+
+  describe('comparing a notice with the return (#546)', () => {
+    const estimate = {
+      ...computed(-3677.49, -3677.49),
+      werbungskosten: 3371,
+      provision: { from: 27029, to: 27029 },
+      specialExpenses: 3909,
+      taxableIncome: { from: 173018, to: 173018 },
+      incomeTax: { from: 53364, to: 53364 },
+      solidaritaetszuschlag: { from: 1667.49, to: 1667.49 },
+      anrechnung: 24603,
+      prepayments: 26751,
+      breakdown: { persons: [{ incomeEur: 98624, workExpensesEur: 1230, creditedTaxEur: 19771 }, { incomeEur: 114872, workExpensesEur: 2141, creditedTaxEur: 4832 }], totalIncomeEur: 213496, extraordinaryBurdenEur: 0, tariffTax: { from: 51394, to: 51394 }, householdReductionEur: 1200 },
+    }
+    const notice = (values: Record<string, string | null>) => ({ overview: vi.fn(), writeConfirmedByAdvisor: vi.fn(), readRawValues: vi.fn().mockResolvedValue(values) })
+
+    it('lists each position of the notice beside the app’s figure, with the difference', async () => {
+      const result = await service({ estimate: { getState: vi.fn().mockResolvedValue(estimate) }, confirmation: notice({ 'assessment.zuVersteuerndesEinkommen': '174855', 'assessment.werbungskostenB': '2047', 'assessment.vorsorgeaufwand': '26785', 'assessment.festgesetzteSteuer': '54136', 'assessment.erstattung': '-4060', 'assessment.assessmentDate': '2026-10-26' }) }).compareAssessment('u', 2024, '2026-11-20')
+      expect(result.ok).toBe(true)
+      const rows = Object.fromEntries((result.positionen as { position: string }[]).map((r) => [r.position, r]))
+      expect(rows.zuVersteuerndesEinkommen).toMatchObject({ erklaerungEur: 173018, bescheidEur: 174855, abweichungEur: 1837 })
+      expect(rows.werbungskostenB).toMatchObject({ erklaerungEur: 2141, bescheidEur: 2047, abweichungEur: -94 })
+      expect(rows.erstattung).toMatchObject({ erklaerungEur: -3677, bescheidEur: -4060, abweichungEur: -383 })
+      expect(result.einspruchsfrist).toMatchObject({ bescheidVom: '2026-10-26' })
+      expect(rows.sonderausgaben).toBeUndefined()
+    })
+
+    it('says so when no notice is entered', async () => {
+      const result = await service({ estimate: { getState: vi.fn().mockResolvedValue(estimate) }, confirmation: notice({}) }).compareAssessment('u', 2024)
+      expect(result).toMatchObject({ ok: false })
+    })
+  })
 })
