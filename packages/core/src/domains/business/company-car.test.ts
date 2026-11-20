@@ -1,0 +1,89 @@
+import { describe, expect, it } from 'vitest'
+import { companyCarUse, listPriceFactor } from './company-car'
+
+const PETROL = {
+  year: 2025,
+  listPriceGrossEur: 45_990,
+  acquired: '2023-04-01',
+  drive: 'verbrenner',
+  businessShareOver50: true,
+  monthsInBusiness: 12,
+  method: 'pauschal',
+  totalCostsEur: 14_000,
+} as const
+
+describe('the fraction of the list price (§ 6 Abs. 1 Nr. 4 Satz 2 Nr. 2–5 EStG)', () => {
+  it('takes a quarter for an electric car up to the cap of its acquisition date, half above it', () => {
+    expect(listPriceFactor({ drive: 'elektro', acquired: '2023-12-31', listPriceGrossEur: 60_000 })).toBe(0.25)
+    expect(listPriceFactor({ drive: 'elektro', acquired: '2023-12-31', listPriceGrossEur: 60_001 })).toBe(0.5)
+    expect(listPriceFactor({ drive: 'elektro', acquired: '2025-06-30', listPriceGrossEur: 70_000 })).toBe(0.25)
+    expect(listPriceFactor({ drive: 'elektro', acquired: '2025-07-01', listPriceGrossEur: 99_000 })).toBe(0.25)
+    expect(listPriceFactor({ drive: 'elektro', acquired: '2018-12-31', listPriceGrossEur: 40_000 })).toBe(1)
+  })
+
+  it('takes half for a hybrid that meets the CO₂ or range rule of its acquisition date', () => {
+    expect(listPriceFactor({ drive: 'hybrid', acquired: '2021-06-01', listPriceGrossEur: 50_000, electricRangeKm: 45 })).toBe(0.5)
+    expect(listPriceFactor({ drive: 'hybrid', acquired: '2023-06-01', listPriceGrossEur: 50_000, electricRangeKm: 55 })).toBe(1)
+    expect(listPriceFactor({ drive: 'hybrid', acquired: '2023-06-01', listPriceGrossEur: 50_000, co2GPerKm: 40 })).toBe(0.5)
+    expect(listPriceFactor({ drive: 'hybrid', acquired: '2025-02-01', listPriceGrossEur: 50_000, electricRangeKm: 79 })).toBe(1)
+    expect(listPriceFactor({ drive: 'hybrid', acquired: '2025-02-01', listPriceGrossEur: 50_000, electricRangeKm: 80 })).toBe(0.5)
+  })
+})
+
+describe('private use of a business car (1 %-Regel, Fahrtenbuch, Kostendeckelung)', () => {
+  it('1 % of the list price rounded down to 100 € a month, the VAT on 80 % of the full value (Abschn. 15.23 Abs. 5 UStAE)', () => {
+    const r = companyCarUse(PETROL)
+    if (r.kind !== 'berechnet') throw new Error(r.kind)
+    expect(r.assessedListPriceEur).toBe(45_900)
+    expect(r.privateUseEur).toBe(5_508)
+    expect(r.vat).toEqual({ baseEur: 4_406.4, vatEur: 837.22, freeOfVatEur: 1_101.6 })
+    expect(r.capped).toBe(false)
+  })
+
+  it('an electric car: a quarter for the income tax, the full list price for the VAT', () => {
+    const r = companyCarUse({ ...PETROL, drive: 'elektro', listPriceGrossEur: 52_000 })
+    if (r.kind !== 'berechnet') throw new Error(r.kind)
+    expect(r.assessedListPriceEur).toBe(13_000)
+    expect(r.privateUseEur).toBe(1_560)
+    expect(r.vat?.baseEur).toBe(4_992)
+  })
+
+  it('home to business: 0,03 % per km and month less the Entfernungspauschale is not deductible (§ 4 Abs. 5 Satz 1 Nr. 6 EStG)', () => {
+    const r = companyCarUse({ ...PETROL, commute: { distanceKm: 15, days: 200 } })
+    if (r.kind !== 'berechnet') throw new Error(r.kind)
+    // 45.900 × 0,03 % × 15 km × 12 = 2.478,60 €; Pauschale 2025: 200 × 15 × 0,30 = 900 €.
+    expect(r.commute).toEqual({ valueEur: 2_478.6, allowanceEur: 900, nonDeductibleEur: 1_578.6 })
+  })
+
+  it('caps the use and the non-deductible commute at the car’s total costs', () => {
+    const r = companyCarUse({ ...PETROL, totalCostsEur: 5_000, commute: { distanceKm: 15, days: 200 } })
+    if (r.kind !== 'berechnet') throw new Error(r.kind)
+    expect(r.capped).toBe(true)
+    expect(r.privateUseEur + r.commute!.nonDeductibleEur).toBe(5_000)
+  })
+
+  it('refuses the 1 % rule at business use of 50 % or less: a logbook or an estimate is needed', () => {
+    expect(companyCarUse({ ...PETROL, businessShareOver50: false })).toEqual({ kind: 'nicht_zulaessig', reason: 'betriebliche_nutzung_bis_50' })
+  })
+
+  it('by logbook: the private share of the costs, the AfA of an electric car at a quarter', () => {
+    const r = companyCarUse({ ...PETROL, drive: 'elektro', listPriceGrossEur: 52_000, method: 'fahrtenbuch', totalCostsEur: 12_000, depreciationEur: 8_000, privateShare: 0.2, costsWithInputVatEur: 3_000 })
+    if (r.kind !== 'berechnet') throw new Error(r.kind)
+    // 12.000 − 8.000 × 3/4 = 6.000 € × 20 %.
+    expect(r.privateUseEur).toBe(1_200)
+    expect(r.vat?.baseEur).toBe(600)
+  })
+
+  it('by logbook the trips home–business cost their share of the kilometres', () => {
+    const r = companyCarUse({ ...PETROL, method: 'fahrtenbuch', totalCostsEur: 10_000, privateShare: 0.1, totalKm: 20_000, commute: { distanceKm: 10, days: 100 } })
+    if (r.kind !== 'berechnet') throw new Error(r.kind)
+    // 0,50 €/km × 2.000 km = 1.000 €; Pauschale 100 × 10 × 0,30 = 300 €.
+    expect(r.commute).toEqual({ valueEur: 1_000, allowanceEur: 300, nonDeductibleEur: 700 })
+  })
+
+  it('pro rata for the months the car was in the business', () => {
+    const r = companyCarUse({ ...PETROL, monthsInBusiness: 4 })
+    if (r.kind !== 'berechnet') throw new Error(r.kind)
+    expect(r.privateUseEur).toBe(1_836)
+  })
+})

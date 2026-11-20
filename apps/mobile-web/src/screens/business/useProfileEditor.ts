@@ -4,8 +4,8 @@ import { personParams, type ApiProblem, type Person } from './businessKit'
 import { attempt, queryProblem, useRefreshBusiness } from './useBusiness'
 
 /** The profile and a way to change it: nested objects are replaced whole by the API, so callers send complete ones. */
-export function useProfileEditor(taxYear: number, person: Person) {
-  const params = personParams(person)
+export function useProfileEditor(taxYear: number, person: Person, business = 1) {
+  const params = personParams(person, business)
   const query = useBusinessControllerProfile(taxYear, params)
   const mutation = useBusinessControllerSaveProfile()
   const refresh = useRefreshBusiness(taxYear)

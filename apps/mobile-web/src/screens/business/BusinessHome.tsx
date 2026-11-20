@@ -29,6 +29,7 @@ const LINKS: readonly LinkSpec[] = [
   { page: 'erfassung', show: (f) => f.euer },
   { page: 'bank', show: () => true },
   { page: 'anlagen', show: () => true },
+  { page: 'firmenwagen', show: () => true },
   { page: 'abschluss', show: () => true },
   { page: 'umsatzsteuer', show: () => true },
   { page: 'gewerbesteuer', show: (f) => f.gewerbe },

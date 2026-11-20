@@ -4533,6 +4533,191 @@
         ]
       }
     },
+    "/v1/steuerjahre/{jahr}/selbststaendig/firmenwagen": {
+      "post": {
+        "operationId": "BusinessController_companyCar",
+        "parameters": [
+          {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "Whose business: A (default) or B of a joint return.",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompanyCarInputDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The private use of a business car (1 %-Regel or Fahrtenbuch), the commute and the VAT; nothing is booked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanyCarResultDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body fails validation (`fields`) or a business rule (`code`, German `message`), e.g. BOOKING_UNBALANCED, LEDGER_PERIOD_LOCKED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "403": {
+            "description": "SELF_EMPLOYMENT_DISABLED (switch off) or SELF_EMPLOYMENT_NOT_DECLARED (no self-employment in the interview).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "selbststaendig"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/selbststaendig/firmenwagen/buchen": {
+      "post": {
+        "operationId": "BusinessController_bookCompanyCar",
+        "parameters": [
+          {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "Whose business: A (default) or B of a joint return.",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompanyCarInputDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The Entnahme and the non-deductible commute, dated 31.12.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/JournalEntryDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body fails validation (`fields`) or a business rule (`code`, German `message`), e.g. BOOKING_UNBALANCED, LEDGER_PERIOD_LOCKED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "403": {
+            "description": "SELF_EMPLOYMENT_DISABLED (switch off) or SELF_EMPLOYMENT_NOT_DECLARED (no self-employment in the interview).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "BOOK_INTEGRITY_BROKEN (hash chain or entry not as logged), BOOK_FRAME_FIXED, a draft or transaction already done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "selbststaendig"
+        ]
+      }
+    },
     "/v1/steuerjahre/{jahr}/selbststaendig/umsatzsteuer": {
       "get": {
         "operationId": "BusinessController_vat",
@@ -14677,6 +14862,209 @@
           "integrity",
           "euer",
           "bilanz"
+        ]
+      },
+      "CarCommuteDto": {
+        "type": "object",
+        "properties": {
+          "distanceKm": {
+            "type": "number",
+            "description": "One-way distance home–business, full km."
+          },
+          "days": {
+            "type": "number",
+            "description": "Days the trip was made."
+          }
+        },
+        "required": [
+          "distanceKm",
+          "days"
+        ]
+      },
+      "CompanyCarInputDto": {
+        "type": "object",
+        "properties": {
+          "drive": {
+            "type": "string",
+            "enum": [
+              "verbrenner",
+              "elektro",
+              "hybrid"
+            ]
+          },
+          "acquired": {
+            "type": "string",
+            "example": "2024-03-01",
+            "description": "Acquisition date."
+          },
+          "listPriceGrossEur": {
+            "type": "number",
+            "description": "Bruttolistenpreis with the extras, euros."
+          },
+          "co2GPerKm": {
+            "type": "number"
+          },
+          "electricRangeKm": {
+            "type": "number"
+          },
+          "businessShareOver50": {
+            "type": "boolean",
+            "description": "More than half of the use is business."
+          },
+          "monthsInBusiness": {
+            "type": "number",
+            "description": "Months in the business assets this year."
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "pauschal",
+              "fahrtenbuch"
+            ]
+          },
+          "totalCostsEur": {
+            "type": "number",
+            "description": "Total costs of the car in the year with the AfA, euros."
+          },
+          "depreciationEur": {
+            "type": "number",
+            "description": "The AfA inside the total costs, euros."
+          },
+          "privateShare": {
+            "type": "number",
+            "description": "Logbook: private share of the km, 0–1."
+          },
+          "totalKm": {
+            "type": "number",
+            "description": "Logbook: km of the year."
+          },
+          "costsWithInputVatEur": {
+            "type": "number",
+            "description": "Logbook: costs that carried input VAT, euros."
+          },
+          "commute": {
+            "$ref": "#/components/schemas/CarCommuteDto"
+          }
+        },
+        "required": [
+          "drive",
+          "acquired",
+          "listPriceGrossEur",
+          "businessShareOver50",
+          "monthsInBusiness",
+          "method"
+        ]
+      },
+      "CarCommuteResultDto": {
+        "type": "object",
+        "properties": {
+          "valueEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "allowanceEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "nonDeductibleEur": {
+            "type": "number",
+            "description": "Euros."
+          }
+        },
+        "required": [
+          "valueEur",
+          "allowanceEur",
+          "nonDeductibleEur"
+        ]
+      },
+      "CarVatResultDto": {
+        "type": "object",
+        "properties": {
+          "baseEur": {
+            "type": "number",
+            "description": "Net base of the Wertabgabe at 19 %."
+          },
+          "vatEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "freeOfVatEur": {
+            "type": "number",
+            "description": "The part without VAT (20 % of the 1 % value)."
+          }
+        },
+        "required": [
+          "baseEur",
+          "vatEur",
+          "freeOfVatEur"
+        ]
+      },
+      "CompanyCarResultDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "berechnet",
+              "nicht_zulaessig",
+              "offen"
+            ]
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "pauschal",
+              "fahrtenbuch"
+            ]
+          },
+          "factor": {
+            "type": "number",
+            "description": "Fraction of the list price (1, 0,5, 0,25)."
+          },
+          "assessedListPriceEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "privateUseEur": {
+            "type": "number",
+            "description": "The Entnahme of the year."
+          },
+          "commute": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CarCommuteResultDto"
+              }
+            ]
+          },
+          "capped": {
+            "type": "boolean"
+          },
+          "vat": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CarVatResultDto"
+              }
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "betriebliche_nutzung_bis_50"
+            ]
+          },
+          "missing": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "kind"
         ]
       },
       "NetByRateDto": {

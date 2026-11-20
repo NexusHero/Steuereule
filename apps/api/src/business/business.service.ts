@@ -1,5 +1,9 @@
 import { HttpException, HttpStatus, Inject, Injectable, Optional } from '@nestjs/common'
 import {
+  accountFor,
+  companyCarUse,
+  type CompanyCarInput,
+  type CompanyCarResult,
   checkSmallBusiness,
   type SmallBusinessResult,
   AssetError,
@@ -725,6 +729,71 @@ export class BusinessService {
     })
     await this.audit.append({ userId, action: 'WRITE', resource: 'selbststaendig' })
     return entry
+  }
+
+  // ------------------------------------------------------------------------------------------------
+  // Firmenwagen (ADR-0101 §22)
+
+  /** The private use of a business car: computed, nothing booked. A Kleinunternehmer owes no Wertabgabe. */
+  async companyCar(userId: string, year: number, ref: BusinessRef, input: Omit<CompanyCarInput, 'year' | 'vatDeductible'>): Promise<CompanyCarResult> {
+    await this.assertOpen(userId, year)
+    const profile = await this.personRecord(userId, year, ref)
+    return companyCarUse({ ...input, year, vatDeductible: !(profile?.smallBusiness ?? false) })
+  }
+
+  /**
+   * Books the year's private use: the Entnahme (income tax value on the EÜR line, the VAT on its full
+   * base through the 19 % account, the rest without VAT) and the non-deductible commute moved off the
+   * car costs. Two entries dated 31.12., source `kfz`.
+   */
+  async bookCompanyCar(userId: string, year: number, ref: BusinessRef, input: Omit<CompanyCarInput, 'year' | 'vatDeductible'>): Promise<readonly JournalEntry[]> {
+    const result = await this.companyCar(userId, year, ref, input)
+    if (result.kind !== 'berechnet') throw new InvalidInputError('CAR_NOT_COMPUTABLE', result.kind === 'offen' ? 'Für das Fahrtenbuch fehlen Gesamtkosten oder Privatanteil.' : 'Die 1-%-Regel gilt nur bei mehr als 50 % betrieblicher Nutzung.')
+    const { chart, mode, profile } = await this.frame(userId, year, ref)
+    const n = (concept: Parameters<typeof accountFor>[1]) => accountFor(chart, concept).number
+    const c = (eurAmount: number) => Math.round(eurAmount * 100)
+    const drafts: { draft: BookingDraft; source: string }[] = []
+    const use = c(result.privateUseEur)
+    const base = c(result.vat?.baseEur ?? 0)
+    const vat = c(result.vat?.vatEur ?? 0)
+    if (use > 0 || base > 0) {
+      const rest = use - base
+      drafts.push({
+        source: 'kfz',
+        draft: {
+          date: `${year}-12-31`,
+          documentNumber: `Kfz-Privat-${year}`,
+          text: `Private Kfz-Nutzung ${year} (${result.method === 'pauschal' ? '1-%-Regel' : 'Fahrtenbuch'})`,
+          lines: [
+            { account: n('private_withdrawals'), side: 'debit', amount: use + vat },
+            ...(base > 0 ? [{ account: n('private_car_use_19'), side: 'credit' as const, amount: base, taxKey: 'ust19' as const, amountIs: 'net' as const }] : []),
+            // An electric car: the VAT base above the income tax value; the difference comes back off the EÜR line.
+            ...(rest > 0 ? [{ account: n('private_car_use_free'), side: 'credit' as const, amount: rest }] : rest < 0 ? [{ account: n('private_car_use_free'), side: 'debit' as const, amount: -rest }] : []),
+          ],
+        },
+      })
+    }
+    const commute = c(result.commute?.nonDeductibleEur ?? 0)
+    if (commute > 0) {
+      drafts.push({
+        source: 'kfz',
+        draft: {
+          date: `${year}-12-31`,
+          documentNumber: `Kfz-Wege-${year}`,
+          text: `Wege Wohnung–Betrieb ${year}, nicht abziehbarer Teil (§ 4 Abs. 5 Satz 1 Nr. 6 EStG)`,
+          lines: [
+            { account: n('commute_nondeductible'), side: 'debit', amount: commute },
+            { account: n('vehicle_other'), side: 'credit', amount: commute },
+          ],
+        },
+      })
+    }
+    const posted = await this.repository.changeBook(userId, year, ref, { chart, mode }, (book) => {
+      const out = this.postAll(book, year, profile, drafts)
+      return { result: out.posted, append: out.append }
+    })
+    await this.audit.append({ userId, action: 'WRITE', resource: 'selbststaendig' })
+    return posted
   }
 
   // ------------------------------------------------------------------------------------------------

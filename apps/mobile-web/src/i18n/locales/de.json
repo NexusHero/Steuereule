@@ -3416,7 +3416,8 @@
       "freischalten": "Freischalten",
       "beruf": "Beruf genauer",
       "gewerbedaten": "Gewerbesteuer-Angaben",
-      "beteiligungen": "Beteiligungen"
+      "beteiligungen": "Beteiligungen",
+      "firmenwagen": "Firmenwagen"
     },
     "profil": {
       "artTitel": "Freiberuf oder Gewerbe",
@@ -3800,6 +3801,50 @@
       "neu": "+ Weiterer Betrieb",
       "name": "Wie heißt der Betrieb?",
       "anlegen": "Betrieb anlegen"
+    },
+    "kfz": {
+      "hinweis": "Nutzt du ein Fahrzeug aus dem Betrieb auch privat, ist der private Anteil eine Entnahme. Die App rechnet ihn und bucht ihn auf Wunsch zum 31.12.",
+      "fahrzeug": "Fahrzeug",
+      "methode": "Wie wird die Privatnutzung ermittelt?",
+      "wege": "Wege zwischen Wohnung und Betrieb",
+      "antrieb": {
+        "verbrenner": "Verbrenner",
+        "elektro": "Elektro",
+        "hybrid": "Plug-in-Hybrid"
+      },
+      "methoden": {
+        "pauschal": "1-%-Regel",
+        "fahrtenbuch": "Fahrtenbuch"
+      },
+      "ueber50": {
+        "ja": "Mehr als 50 % betrieblich",
+        "nein": "50 % oder weniger"
+      },
+      "feld": {
+        "listPriceGrossEur": "Bruttolistenpreis mit Sonderausstattung (€)",
+        "acquired": "Angeschafft am",
+        "co2GPerKm": "CO₂-Ausstoß (g/km)",
+        "electricRangeKm": "Elektrische Reichweite (km)",
+        "monthsInBusiness": "Monate im Betrieb in diesem Jahr",
+        "totalCostsEur": "Gesamtkosten des Fahrzeugs im Jahr, mit Abschreibung (€)",
+        "depreciationEur": "Davon Abschreibung (€)",
+        "privatePercent": "Privatanteil laut Fahrtenbuch (%)",
+        "totalKm": "Gefahrene Kilometer im Jahr",
+        "costsWithInputVatEur": "Kosten mit Vorsteuerabzug (€)",
+        "distanceKm": "Entfernung Wohnung–Betrieb (km, einfach)",
+        "days": "Tage mit dieser Fahrt"
+      },
+      "ungueltig": "Bitte Listenpreis und Anschaffungsdatum (JJJJ-MM-TT) eintragen und nur ganze Zahlen verwenden.",
+      "berechnen": "Berechnen",
+      "buchen": "Als Buchung übernehmen",
+      "gebucht": "Gebucht zum 31.12. – zu sehen im Buch.",
+      "nichtZulaessig": "Die 1-%-Regel gilt nur bei mehr als 50 % betrieblicher Nutzung. Ermittle den Privatanteil mit einem Fahrtenbuch.",
+      "offen": "Für das Fahrtenbuch fehlen die Gesamtkosten oder der Privatanteil.",
+      "bruchteil": "Für dieses Fahrzeug zählt der Listenpreis nur zu {{anteil}} (§ 6 Abs. 1 Nr. 4 EStG).",
+      "privatanteil": "Private Nutzung (Entnahme)",
+      "umsatzsteuer": "Umsatzsteuer darauf",
+      "wegeNichtAbziehbar": "Wege Wohnung–Betrieb, nicht abziehbar",
+      "gedeckelt": "Gedeckelt auf die Gesamtkosten des Fahrzeugs (Kostendeckelung)."
     }
   }
 }

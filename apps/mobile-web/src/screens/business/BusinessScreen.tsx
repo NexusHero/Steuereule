@@ -14,9 +14,10 @@ import { CheckoutPage } from './CheckoutPage'
 import { ProfessionPage } from './ProfessionPage'
 import { TradeInputsPage } from './TradeInputsPage'
 import { SharesPage } from './SharesPage'
+import { CompanyCarPage } from './CompanyCarPage'
 import type { Person } from './businessKit'
 
-export const BUSINESS_PAGES = ['profil', 'buch', 'erfassung', 'bank', 'anlagen', 'abschluss', 'umsatzsteuer', 'gewerbesteuer', 'verluste', 'elster', 'export', 'freischalten', 'beruf', 'gewerbedaten', 'beteiligungen'] as const
+export const BUSINESS_PAGES = ['profil', 'buch', 'erfassung', 'bank', 'anlagen', 'abschluss', 'umsatzsteuer', 'gewerbesteuer', 'verluste', 'elster', 'export', 'freischalten', 'beruf', 'gewerbedaten', 'beteiligungen', 'firmenwagen'] as const
 export type BusinessPage = (typeof BUSINESS_PAGES)[number]
 
 export function isBusinessPage(value: string | undefined): value is BusinessPage {
@@ -77,5 +78,7 @@ export function BusinessScreen({ page, onChangePerson, onChangeBusiness, payment
       return <TradeInputsPage {...props} />
     case 'beteiligungen':
       return <SharesPage {...props} />
+    case 'firmenwagen':
+      return <CompanyCarPage {...props} />
   }
 }

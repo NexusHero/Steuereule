@@ -392,3 +392,31 @@ export class AssetsResponseDto {
   @ApiProperty({ type: [FixedAssetDto] }) records!: FixedAssetDto[]
 }
 
+
+// ---------------------------------------------------------------------------------------------------
+// Firmenwagen (ADR-0101 §22)
+
+export class CarCommuteResultDto {
+  @ApiProperty(EUR) valueEur!: number
+  @ApiProperty(EUR) allowanceEur!: number
+  @ApiProperty(EUR) nonDeductibleEur!: number
+}
+
+export class CarVatResultDto {
+  @ApiProperty({ ...EUR, description: 'Net base of the Wertabgabe at 19 %.' }) baseEur!: number
+  @ApiProperty(EUR) vatEur!: number
+  @ApiProperty({ ...EUR, description: 'The part without VAT (20 % of the 1 % value).' }) freeOfVatEur!: number
+}
+
+export class CompanyCarResultDto {
+  @ApiProperty({ enum: ['berechnet', 'nicht_zulaessig', 'offen'] }) kind!: 'berechnet' | 'nicht_zulaessig' | 'offen'
+  @ApiPropertyOptional({ enum: ['pauschal', 'fahrtenbuch'] }) method?: 'pauschal' | 'fahrtenbuch'
+  @ApiPropertyOptional({ type: Number, description: 'Fraction of the list price (1, 0,5, 0,25).' }) factor?: number
+  @ApiPropertyOptional(EUR) assessedListPriceEur?: number
+  @ApiPropertyOptional({ ...EUR, description: 'The Entnahme of the year.' }) privateUseEur?: number
+  @ApiPropertyOptional({ type: CarCommuteResultDto, nullable: true }) commute?: CarCommuteResultDto | null
+  @ApiPropertyOptional({ type: Boolean }) capped?: boolean
+  @ApiPropertyOptional({ type: CarVatResultDto, nullable: true }) vat?: CarVatResultDto | null
+  @ApiPropertyOptional({ enum: ['betriebliche_nutzung_bis_50'] }) reason?: 'betriebliche_nutzung_bis_50'
+  @ApiPropertyOptional({ type: [String] }) missing?: string[]
+}

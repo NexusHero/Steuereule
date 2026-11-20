@@ -39,6 +39,7 @@ import type {
   BusinessControllerAddBusinessParams,
   BusinessControllerAssetsParams,
   BusinessControllerBankParams,
+  BusinessControllerBookCompanyCarParams,
   BusinessControllerBookDepreciationParams,
   BusinessControllerBookParams,
   BusinessControllerBusinessesParams,
@@ -46,6 +47,7 @@ import type {
   BusinessControllerCataloguesParams,
   BusinessControllerCheckoutParams,
   BusinessControllerClosingParams,
+  BusinessControllerCompanyCarParams,
   BusinessControllerCreateAssetParams,
   BusinessControllerDisposeAssetParams,
   BusinessControllerEBilanzFileParams,
@@ -73,6 +75,8 @@ import type {
   BusinessProfileDto,
   BusinessProfileInputDto,
   ClosingDto,
+  CompanyCarInputDto,
+  CompanyCarResultDto,
   EBilanzDto,
   ElsterFormListDto,
   ElsterHelpDto,
@@ -2597,6 +2601,219 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getBusinessControllerCarryForwardMutationOptions(options), queryClient);
+    }
+
+export type businessControllerCompanyCarResponse200 = {
+  data: CompanyCarResultDto
+  status: 200
+}
+
+export type businessControllerCompanyCarResponse400 = {
+  data: BusinessErrorDto
+  status: 400
+}
+
+export type businessControllerCompanyCarResponse401 = {
+  data: void
+  status: 401
+}
+
+export type businessControllerCompanyCarResponse403 = {
+  data: BusinessErrorDto
+  status: 403
+}
+
+export type businessControllerCompanyCarResponseSuccess = (businessControllerCompanyCarResponse200) & {
+  headers: Headers;
+};
+export type businessControllerCompanyCarResponseError = (businessControllerCompanyCarResponse400 | businessControllerCompanyCarResponse401 | businessControllerCompanyCarResponse403) & {
+  headers: Headers;
+};
+
+export type businessControllerCompanyCarResponse = (businessControllerCompanyCarResponseSuccess | businessControllerCompanyCarResponseError)
+
+export const getBusinessControllerCompanyCarUrl = (jahr: number,
+    params?: BusinessControllerCompanyCarParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/v1/steuerjahre/${jahr}/selbststaendig/firmenwagen?${stringifiedParams}` : `/v1/steuerjahre/${jahr}/selbststaendig/firmenwagen`
+}
+
+export const businessControllerCompanyCar = async (jahr: number,
+    companyCarInputDto: CompanyCarInputDto,
+    params?: BusinessControllerCompanyCarParams, options?: RequestInit): Promise<businessControllerCompanyCarResponse> => {
+
+  return httpClient<businessControllerCompanyCarResponse>(getBusinessControllerCompanyCarUrl(jahr,params),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(companyCarInputDto)
+  }
+);}
+
+
+
+
+
+export const getBusinessControllerCompanyCarMutationOptions = <TError = BusinessErrorDto | void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof businessControllerCompanyCar>>, TError,{jahr: number;data: CompanyCarInputDto;params?: BusinessControllerCompanyCarParams}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof businessControllerCompanyCar>>, TError,{jahr: number;data: CompanyCarInputDto;params?: BusinessControllerCompanyCarParams}, TContext> => {
+
+const mutationKey = ['businessControllerCompanyCar'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof businessControllerCompanyCar>>, {jahr: number;data: CompanyCarInputDto;params?: BusinessControllerCompanyCarParams}> = (props) => {
+          const {jahr,data,params} = props ?? {};
+
+          return  businessControllerCompanyCar(jahr,data,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type BusinessControllerCompanyCarMutationResult = NonNullable<Awaited<ReturnType<typeof businessControllerCompanyCar>>>
+    export type BusinessControllerCompanyCarMutationBody = CompanyCarInputDto
+    export type BusinessControllerCompanyCarMutationError = BusinessErrorDto | void
+
+    export const useBusinessControllerCompanyCar = <TError = BusinessErrorDto | void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof businessControllerCompanyCar>>, TError,{jahr: number;data: CompanyCarInputDto;params?: BusinessControllerCompanyCarParams}, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof businessControllerCompanyCar>>,
+        TError,
+        {jahr: number;data: CompanyCarInputDto;params?: BusinessControllerCompanyCarParams},
+        TContext
+      > => {
+      return useMutation(getBusinessControllerCompanyCarMutationOptions(options), queryClient);
+    }
+
+export type businessControllerBookCompanyCarResponse200 = {
+  data: JournalEntryDto[]
+  status: 200
+}
+
+export type businessControllerBookCompanyCarResponse400 = {
+  data: BusinessErrorDto
+  status: 400
+}
+
+export type businessControllerBookCompanyCarResponse401 = {
+  data: void
+  status: 401
+}
+
+export type businessControllerBookCompanyCarResponse403 = {
+  data: BusinessErrorDto
+  status: 403
+}
+
+export type businessControllerBookCompanyCarResponse409 = {
+  data: BusinessErrorDto
+  status: 409
+}
+
+export type businessControllerBookCompanyCarResponseSuccess = (businessControllerBookCompanyCarResponse200) & {
+  headers: Headers;
+};
+export type businessControllerBookCompanyCarResponseError = (businessControllerBookCompanyCarResponse400 | businessControllerBookCompanyCarResponse401 | businessControllerBookCompanyCarResponse403 | businessControllerBookCompanyCarResponse409) & {
+  headers: Headers;
+};
+
+export type businessControllerBookCompanyCarResponse = (businessControllerBookCompanyCarResponseSuccess | businessControllerBookCompanyCarResponseError)
+
+export const getBusinessControllerBookCompanyCarUrl = (jahr: number,
+    params?: BusinessControllerBookCompanyCarParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/v1/steuerjahre/${jahr}/selbststaendig/firmenwagen/buchen?${stringifiedParams}` : `/v1/steuerjahre/${jahr}/selbststaendig/firmenwagen/buchen`
+}
+
+export const businessControllerBookCompanyCar = async (jahr: number,
+    companyCarInputDto: CompanyCarInputDto,
+    params?: BusinessControllerBookCompanyCarParams, options?: RequestInit): Promise<businessControllerBookCompanyCarResponse> => {
+
+  return httpClient<businessControllerBookCompanyCarResponse>(getBusinessControllerBookCompanyCarUrl(jahr,params),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(companyCarInputDto)
+  }
+);}
+
+
+
+
+
+export const getBusinessControllerBookCompanyCarMutationOptions = <TError = BusinessErrorDto | void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof businessControllerBookCompanyCar>>, TError,{jahr: number;data: CompanyCarInputDto;params?: BusinessControllerBookCompanyCarParams}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof businessControllerBookCompanyCar>>, TError,{jahr: number;data: CompanyCarInputDto;params?: BusinessControllerBookCompanyCarParams}, TContext> => {
+
+const mutationKey = ['businessControllerBookCompanyCar'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof businessControllerBookCompanyCar>>, {jahr: number;data: CompanyCarInputDto;params?: BusinessControllerBookCompanyCarParams}> = (props) => {
+          const {jahr,data,params} = props ?? {};
+
+          return  businessControllerBookCompanyCar(jahr,data,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type BusinessControllerBookCompanyCarMutationResult = NonNullable<Awaited<ReturnType<typeof businessControllerBookCompanyCar>>>
+    export type BusinessControllerBookCompanyCarMutationBody = CompanyCarInputDto
+    export type BusinessControllerBookCompanyCarMutationError = BusinessErrorDto | void
+
+    export const useBusinessControllerBookCompanyCar = <TError = BusinessErrorDto | void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof businessControllerBookCompanyCar>>, TError,{jahr: number;data: CompanyCarInputDto;params?: BusinessControllerBookCompanyCarParams}, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof businessControllerBookCompanyCar>>,
+        TError,
+        {jahr: number;data: CompanyCarInputDto;params?: BusinessControllerBookCompanyCarParams},
+        TContext
+      > => {
+      return useMutation(getBusinessControllerBookCompanyCarMutationOptions(options), queryClient);
     }
 
 export type businessControllerVatResponse200 = {

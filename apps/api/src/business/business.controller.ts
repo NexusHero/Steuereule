@@ -25,6 +25,7 @@ import {
   BusinessProfileDto,
   BusinessListItemDto,
   NewBusinessDto,
+  CompanyCarInputDto,
   BusinessProfileInputDto,
   EBilanzDto,
   ElsterFormListDto,
@@ -39,6 +40,7 @@ import {
   ReversalDto,
 } from './dto/business.dto.js'
 import {
+  CompanyCarResultDto,
   AssetsResponseDto,
   BusinessCataloguesDto,
   BusinessErrorDto,
@@ -308,6 +310,24 @@ export class BusinessController {
   @Errors(409)
   carryForward(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number, @Query('person') person?: string, @Query('betrieb') business?: string): Promise<JournalEntryDto> {
     return this.service.carryForward(userId, year, refOf(person, business)) as unknown as Promise<JournalEntryDto>
+  }
+
+  @Post(':jahr/selbststaendig/firmenwagen')
+  @HttpCode(200)
+  @RequiresAccount()
+  @ApiBody({ type: CompanyCarInputDto })
+  @ApiOkResponse({ type: CompanyCarResultDto, description: 'The private use of a business car (1 %-Regel or Fahrtenbuch), the commute and the VAT; nothing is booked.' })
+  companyCar(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number, @Body() dto: CompanyCarInputDto, @Query('person') person?: string, @Query('betrieb') business?: string): Promise<CompanyCarResultDto> {
+    return this.service.companyCar(userId, year, refOf(person, business), dto) as unknown as Promise<CompanyCarResultDto>
+  }
+
+  @Post(':jahr/selbststaendig/firmenwagen/buchen')
+  @RequiresAccount()
+  @ApiBody({ type: CompanyCarInputDto })
+  @ApiOkResponse({ type: JournalEntryDto, isArray: true, description: 'The Entnahme and the non-deductible commute, dated 31.12.' })
+  @Errors(409)
+  bookCompanyCar(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number, @Body() dto: CompanyCarInputDto, @Query('person') person?: string, @Query('betrieb') business?: string): Promise<JournalEntryDto[]> {
+    return this.service.bookCompanyCar(userId, year, refOf(person, business), dto) as unknown as Promise<JournalEntryDto[]>
   }
 
   @Get(':jahr/selbststaendig/umsatzsteuer')

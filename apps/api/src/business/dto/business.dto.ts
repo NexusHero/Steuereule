@@ -113,6 +113,29 @@ export class QuickEntryDto {
   totals!: QuickTotalDto[]
 }
 
+export class CarCommuteDto {
+  @ApiProperty({ type: Number, description: 'One-way distance home–business, full km.' }) @IsInt() @Min(0) @Max(1000) distanceKm!: number
+  @ApiProperty({ type: Number, description: 'Days the trip was made.' }) @IsInt() @Min(0) @Max(366) days!: number
+}
+
+/** The facts of a business car for its private use (ADR-0101 §22, § 6 Abs. 1 Nr. 4 EStG). */
+export class CompanyCarInputDto {
+  @ApiProperty({ enum: ['verbrenner', 'elektro', 'hybrid'] }) @IsIn(['verbrenner', 'elektro', 'hybrid']) drive!: 'verbrenner' | 'elektro' | 'hybrid'
+  @ApiProperty({ type: String, example: '2024-03-01', description: 'Acquisition date.' }) @Matches(ISO_DATE) acquired!: string
+  @ApiProperty({ type: Number, description: 'Bruttolistenpreis with the extras, euros.' }) @IsInt() @Min(1) @Max(10_000_000) listPriceGrossEur!: number
+  @ApiPropertyOptional({ type: Number }) @IsOptional() @IsInt() @Min(0) @Max(1000) co2GPerKm?: number
+  @ApiPropertyOptional({ type: Number }) @IsOptional() @IsInt() @Min(0) @Max(2000) electricRangeKm?: number
+  @ApiProperty({ type: Boolean, description: 'More than half of the use is business.' }) @IsBoolean() businessShareOver50!: boolean
+  @ApiProperty({ type: Number, description: 'Months in the business assets this year.' }) @IsInt() @Min(1) @Max(12) monthsInBusiness!: number
+  @ApiProperty({ enum: ['pauschal', 'fahrtenbuch'] }) @IsIn(['pauschal', 'fahrtenbuch']) method!: 'pauschal' | 'fahrtenbuch'
+  @ApiPropertyOptional({ type: Number, description: 'Total costs of the car in the year with the AfA, euros.' }) @IsOptional() @IsInt() @Min(0) totalCostsEur?: number
+  @ApiPropertyOptional({ type: Number, description: 'The AfA inside the total costs, euros.' }) @IsOptional() @IsInt() @Min(0) depreciationEur?: number
+  @ApiPropertyOptional({ type: Number, description: 'Logbook: private share of the km, 0–1.' }) @IsOptional() @Min(0) @Max(1) privateShare?: number
+  @ApiPropertyOptional({ type: Number, description: 'Logbook: km of the year.' }) @IsOptional() @IsInt() @Min(0) totalKm?: number
+  @ApiPropertyOptional({ type: Number, description: 'Logbook: costs that carried input VAT, euros.' }) @IsOptional() @IsInt() @Min(0) costsWithInputVatEur?: number
+  @ApiPropertyOptional({ type: CarCommuteDto }) @IsOptional() @ValidateNested() @Type(() => CarCommuteDto) commute?: CarCommuteDto
+}
+
 export class LockDto {
   @ApiProperty({ type: String, example: '2025-06-30', description: 'Festschreibung through this day; only moves forward.' })
   @Matches(ISO_DATE)

@@ -363,10 +363,39 @@ describe('BusinessService (ADR-0101)', () => {
   it('a booking on a non-deductible account is listed but does not lower the EÜR profit (§ 4 Abs. 5 EStG)', async () => {
     const { service } = setup()
     await service.quickEntry('u', YEAR, A1, [{ key: 'einnahmen_umsatzsteuerpflichtig', amountCents: 1_000_000 }])
-    const before = (await service.estimateInput('u', YEAR, 'A'))!.business.selfEmployedEur
+    const before = (await service.estimateInput('u', YEAR, 'A'))!.business.selfEmployedEur ?? 0
     // 4635 (SKR03) Geschenke über der Freigrenze: 200 € that the profit must not take.
     await service.post('u', YEAR, A1, { date: '2024-05-02', documentNumber: 'G-1', text: 'Geschenk', lines: [{ account: '4635', side: 'debit', amount: 20_000 }, { account: '1200', side: 'credit', amount: 20_000 }] })
     expect((await service.estimateInput('u', YEAR, 'A'))!.business.selfEmployedEur).toBe(before)
+  })
+
+  it('books the private use of a business car: Entnahme, VAT on 80 % of the full list price, the commute off the car costs (ADR-0101 §22)', async () => {
+    const { service } = setup()
+    await service.quickEntry('u', 2025, A1, [{ key: 'einnahmen_umsatzsteuerpflichtig', amountCents: 5_000_000 }, { key: 'ausgaben_kfz', amountCents: 1_400_000 }])
+    const before = (await service.estimateInput('u', 2025, 'A'))!.business.selfEmployedEur ?? 0
+    const car = { drive: 'elektro', acquired: '2024-05-01', listPriceGrossEur: 52_000, businessShareOver50: true, monthsInBusiness: 12, method: 'pauschal', totalCostsEur: 14_000, commute: { distanceKm: 15, days: 200 } } as const
+    const computed = await service.companyCar('u', 2025, A1, car)
+    expect(computed).toMatchObject({ kind: 'berechnet', privateUseEur: 1_560, vat: { baseEur: 4_992, vatEur: 948.48 } })
+    const entries = await service.bookCompanyCar('u', 2025, A1, car)
+    expect(entries.map((e) => e.documentNumber)).toEqual(['Kfz-Privat-2025'])
+    // 13.000 × 0,03 % × 15 × 12 = 702 € less 900 € Pauschale: nothing non-deductible, only the Entnahme posts.
+    const after = (await service.estimateInput('u', 2025, 'A'))!.business.selfEmployedEur ?? 0
+    // The profit rises by the Entnahme (1.560 €) and the VAT on it as income (948,48 €), the quick totals carry no VAT key.
+    expect(after - before).toBeCloseTo(1_560 + 948.48, 2)
+    const vat = await service.vatReturn('u', 2025, A1)
+    expect(vat.result.outputVat.standard).toBeCloseTo(948.48, 2)
+  })
+
+  it('moves the non-deductible commute of a petrol car off the car costs', async () => {
+    const { service } = setup()
+    await service.quickEntry('u', 2025, A1, [{ key: 'einnahmen_umsatzsteuerpflichtig', amountCents: 5_000_000 }, { key: 'ausgaben_kfz', amountCents: 1_400_000 }])
+    const before = (await service.estimateInput('u', 2025, 'A'))!.business.selfEmployedEur ?? 0
+    const car = { drive: 'verbrenner', acquired: '2023-04-01', listPriceGrossEur: 45_990, businessShareOver50: true, monthsInBusiness: 12, method: 'pauschal', totalCostsEur: 14_000, commute: { distanceKm: 15, days: 200 } } as const
+    const entries = await service.bookCompanyCar('u', 2025, A1, car)
+    expect(entries.map((e) => e.documentNumber)).toEqual(['Kfz-Privat-2025', 'Kfz-Wege-2025'])
+    const after = (await service.estimateInput('u', 2025, 'A'))!.business.selfEmployedEur ?? 0
+    // Entnahme 5.508 € + its VAT 837,22 € + the commute 1.578,60 € that no longer counts as an expense.
+    expect(after - before).toBeCloseTo(5_508 + 837.22 + 1_578.6, 2)
   })
 
   it('the GoBD export is a zip with index.xml and the journal, and is itself logged in the chain', async () => {

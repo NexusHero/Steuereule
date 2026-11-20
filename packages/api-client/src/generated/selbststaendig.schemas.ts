@@ -1179,6 +1179,116 @@ export interface ClosingDto {
   bilanz: BilanzClosingDto | null;
 }
 
+export type CompanyCarInputDtoDrive = typeof CompanyCarInputDtoDrive[keyof typeof CompanyCarInputDtoDrive];
+
+
+export const CompanyCarInputDtoDrive = {
+  verbrenner: 'verbrenner',
+  elektro: 'elektro',
+  hybrid: 'hybrid',
+} as const;
+
+export type CompanyCarInputDtoMethod = typeof CompanyCarInputDtoMethod[keyof typeof CompanyCarInputDtoMethod];
+
+
+export const CompanyCarInputDtoMethod = {
+  pauschal: 'pauschal',
+  fahrtenbuch: 'fahrtenbuch',
+} as const;
+
+export interface CarCommuteDto {
+  /** One-way distance home–business, full km. */
+  distanceKm: number;
+  /** Days the trip was made. */
+  days: number;
+}
+
+export interface CompanyCarInputDto {
+  drive: CompanyCarInputDtoDrive;
+  /** Acquisition date. */
+  acquired: string;
+  /** Bruttolistenpreis with the extras, euros. */
+  listPriceGrossEur: number;
+  co2GPerKm?: number;
+  electricRangeKm?: number;
+  /** More than half of the use is business. */
+  businessShareOver50: boolean;
+  /** Months in the business assets this year. */
+  monthsInBusiness: number;
+  method: CompanyCarInputDtoMethod;
+  /** Total costs of the car in the year with the AfA, euros. */
+  totalCostsEur?: number;
+  /** The AfA inside the total costs, euros. */
+  depreciationEur?: number;
+  /** Logbook: private share of the km, 0–1. */
+  privateShare?: number;
+  /** Logbook: km of the year. */
+  totalKm?: number;
+  /** Logbook: costs that carried input VAT, euros. */
+  costsWithInputVatEur?: number;
+  commute?: CarCommuteDto;
+}
+
+export type CompanyCarResultDtoKind = typeof CompanyCarResultDtoKind[keyof typeof CompanyCarResultDtoKind];
+
+
+export const CompanyCarResultDtoKind = {
+  berechnet: 'berechnet',
+  nicht_zulaessig: 'nicht_zulaessig',
+  offen: 'offen',
+} as const;
+
+export type CompanyCarResultDtoMethod = typeof CompanyCarResultDtoMethod[keyof typeof CompanyCarResultDtoMethod];
+
+
+export const CompanyCarResultDtoMethod = {
+  pauschal: 'pauschal',
+  fahrtenbuch: 'fahrtenbuch',
+} as const;
+
+export type CompanyCarResultDtoReason = typeof CompanyCarResultDtoReason[keyof typeof CompanyCarResultDtoReason];
+
+
+export const CompanyCarResultDtoReason = {
+  betriebliche_nutzung_bis_50: 'betriebliche_nutzung_bis_50',
+} as const;
+
+export interface CarCommuteResultDto {
+  /** Euros. */
+  valueEur: number;
+  /** Euros. */
+  allowanceEur: number;
+  /** Euros. */
+  nonDeductibleEur: number;
+}
+
+export interface CarVatResultDto {
+  /** Net base of the Wertabgabe at 19 %. */
+  baseEur: number;
+  /** Euros. */
+  vatEur: number;
+  /** The part without VAT (20 % of the 1 % value). */
+  freeOfVatEur: number;
+}
+
+export interface CompanyCarResultDto {
+  kind: CompanyCarResultDtoKind;
+  method?: CompanyCarResultDtoMethod;
+  /** Fraction of the list price (1, 0,5, 0,25). */
+  factor?: number;
+  /** Euros. */
+  assessedListPriceEur?: number;
+  /** The Entnahme of the year. */
+  privateUseEur?: number;
+  /** @nullable */
+  commute?: CarCommuteResultDto | null;
+  capped?: boolean;
+  /** @nullable */
+  vat?: CarVatResultDto | null;
+  reason?: CompanyCarResultDtoReason;
+  missing?: string[];
+}
+
 export interface NetByRateDto {
   /** 19 %, euros. */
   standard?: number;
@@ -1940,6 +2050,44 @@ export type BusinessControllerCarryForwardPerson = typeof BusinessControllerCarr
 
 
 export const BusinessControllerCarryForwardPerson = {
+  A: 'A',
+  B: 'B',
+} as const;
+
+export type BusinessControllerCompanyCarParams = {
+/**
+ * Which business of the person, from 1 (default); ADR-0101 §22.
+ */
+betrieb?: number;
+/**
+ * Whose business: A (default) or B of a joint return.
+ */
+person?: BusinessControllerCompanyCarPerson;
+};
+
+export type BusinessControllerCompanyCarPerson = typeof BusinessControllerCompanyCarPerson[keyof typeof BusinessControllerCompanyCarPerson];
+
+
+export const BusinessControllerCompanyCarPerson = {
+  A: 'A',
+  B: 'B',
+} as const;
+
+export type BusinessControllerBookCompanyCarParams = {
+/**
+ * Which business of the person, from 1 (default); ADR-0101 §22.
+ */
+betrieb?: number;
+/**
+ * Whose business: A (default) or B of a joint return.
+ */
+person?: BusinessControllerBookCompanyCarPerson;
+};
+
+export type BusinessControllerBookCompanyCarPerson = typeof BusinessControllerBookCompanyCarPerson[keyof typeof BusinessControllerBookCompanyCarPerson];
+
+
+export const BusinessControllerBookCompanyCarPerson = {
   A: 'A',
   B: 'B',
 } as const;

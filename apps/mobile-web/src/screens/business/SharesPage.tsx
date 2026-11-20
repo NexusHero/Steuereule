@@ -20,7 +20,7 @@ const parse = (raw: string): number | undefined | null => {
 export function SharesPage({ taxYear, person, business = 1, onBack }: BusinessPageProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
-  const { query, profile, loadProblem, save, problem } = useProfileEditor(taxYear, person)
+  const { query, profile, loadProblem, save, problem } = useProfileEditor(taxYear, person, business)
   const [form, setForm] = useState({ name: '', kind: 'freiberuf' as PartnershipShareDto['kind'], profit: '', base: '', tax: '' })
   const [invalid, setInvalid] = useState(false)
 

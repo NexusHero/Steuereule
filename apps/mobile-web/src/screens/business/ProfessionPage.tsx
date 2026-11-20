@@ -14,7 +14,7 @@ import type { BusinessPageProps } from './BusinessScreen'
 export function ProfessionPage({ taxYear, person, business = 1, onBack }: BusinessPageProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
-  const { query, profile, loadProblem, save, problem } = useProfileEditor(taxYear, person)
+  const { query, profile, loadProblem, save, problem } = useProfileEditor(taxYear, person, business)
   const catalogues = useBusinessControllerCatalogues(taxYear, personParams(person, business))
 
   if (query.isPending || profile === null || loadProblem !== null) {
