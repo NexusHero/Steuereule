@@ -122,4 +122,11 @@ describe('McpReportService (ADR-0052 amendment 2)', () => {
     expect(result.bereiche.map((b) => b.bereich)).toEqual(['sonderausgaben', 'vorauszahlungen'])
     expect(result.bereiche[0]).toMatchObject({ offen: 5, naechste: { id: 'spenden', answers: ['Ja', 'Nein'] } })
   })
+
+  it('openQuestions does not ask a married couple the questions for single parents (§ 24b EStG)', async () => {
+    const interview = { getState: vi.fn(async (_u: string, _y: number, entry?: string) => (entry === 'alleinerziehend' ? { answers: { familienstand: 'Verheiratet' }, nextStep: { kind: 'question', id: 'ae-weitere-person' }, openItems: 2 } : { answers: { familienstand: 'Verheiratet' }, nextStep: { kind: 'done' }, openItems: 0 })) }
+    const result = await service({ interview }).openQuestions('u', 2024)
+    expect(result.bereiche).toEqual([])
+    expect(result.openQuestions).toBe(0)
+  })
 })

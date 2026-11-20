@@ -345,6 +345,7 @@ const HINTS: Readonly<Partial<Record<Screen, Readonly<Record<string, string>>>>>
     religion: 'ELSTER-Schlüssel: VD = keine Religionszugehörigkeit (keine Kirchensteuer), EV = evangelisch, RK = römisch-katholisch, AK = altkatholisch; die übrigen Schlüssel sind Freireligiöse, Israelitische und Jüdische Gemeinden',
   },
   kind: {
+    childBenefitClaimEur: 'Kindergeldanspruch für dieses Kind in Euro im Jahr (Monate × Monatsbetrag, z. B. 12 × 250 = 3000); die App vergleicht ihn mit dem Kinderfreibetrag',
     healthInsuranceAbroad: '„true“, wenn das Kind bei einer ausländischen Kasse versichert ist (z. B. Schweizer Grundversicherung); dann Anlage Kind Kz 89 statt Kz 66/67',
     swissFamilyAllowanceEur: 'Schweizer Kinder-/Familienzulage für dieses Kind in Euro im Jahr, wenn sie NICHT im Bruttolohn Ziffer 8 des Lohnausweises steckt; steckt sie drin, stattdessen chLohnausweis.familienzulagenChf (die App verteilt sie auf die Kinder)',
     childcareEur: 'Kinderbetreuungskosten, die die Eltern gezahlt haben (Kita, Tagesmutter, Hort), Euro im Jahr, ohne Verpflegung; Anlage Kind Kz 51',

@@ -89,6 +89,8 @@ export class McpReportService {
       const state = await this.interview.getState(userId, taxYear, entry)
       const step = state.nextStep
       if (step.kind === 'done' || step.id === undefined) continue
+      // § 24b EStG is closed to married people; the app hides the area for them too.
+      if (entry === 'alleinerziehend' && state.answers.familienstand === 'Verheiratet') continue
       const form = QUESTIONS[step.id as EntryStepId]?.form
       const answers = form?.kind === 'enum' ? [...form.values] : undefined
       bereiche.push({ bereich: entry, offen: state.openItems, naechste: { id: step.id, kind: step.kind, ...(answers ? { answers } : {}) } })
