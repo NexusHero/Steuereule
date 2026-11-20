@@ -35,11 +35,12 @@ export type VatMethod = 'soll' | 'ist'
 
 /**
  * § 20 Satz 1 UStG: Istversteuerung on application up to a Gesamtumsatz of the year before of
- * 800.000 € from 2024 (Wachstumschancengesetz), 600.000 € before; for a freelance activity
- * regardless of turnover (Nr. 3). Returns whether the office may grant it.
+ * 800.000 € from 2024 (Wachstumschancengesetz), 600.000 € before (Nr. 1); for a business freed from keeping books
+ * under § 148 AO (Nr. 2); for a freelance activity regardless of turnover (Nr. 3). Nr. 4 is for public bodies,
+ * never a person using the app. Returns whether the office may grant it.
  */
-export function cashAccountingAllowed(year: number, priorYearTotalTurnoverEur: number, freelance: boolean): boolean {
-  if (freelance) return true
+export function cashAccountingAllowed(year: number, priorYearTotalTurnoverEur: number, freelance: boolean, exemptFromBookkeeping = false): boolean {
+  if (freelance || exemptFromBookkeeping) return true
   return priorYearTotalTurnoverEur <= (year >= 2024 ? 800_000 : 600_000)
 }
 

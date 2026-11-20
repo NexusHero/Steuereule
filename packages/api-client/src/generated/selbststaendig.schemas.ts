@@ -929,6 +929,7 @@ export type FixedAssetDtoMethod = typeof FixedAssetDtoMethod[keyof typeof FixedA
 export const FixedAssetDtoMethod = {
   linear: 'linear',
   degressive: 'degressive',
+  elektrofahrzeug: 'elektrofahrzeug',
   gwg: 'gwg',
   sofort: 'sofort',
   building: 'building',
@@ -1018,12 +1019,16 @@ export interface AssetsResponseDto {
   records: FixedAssetDto[];
 }
 
+/**
+ * 'elektrofahrzeug': § 7 Abs. 2a EStG, 75/10/5/5/3/2 % for an electric vehicle bought 1.7.2025–31.12.2027.
+ */
 export type FixedAssetInputDtoMethod = typeof FixedAssetInputDtoMethod[keyof typeof FixedAssetInputDtoMethod];
 
 
 export const FixedAssetInputDtoMethod = {
   linear: 'linear',
   degressive: 'degressive',
+  elektrofahrzeug: 'elektrofahrzeug',
   gwg: 'gwg',
   sofort: 'sofort',
 } as const;
@@ -1085,6 +1090,7 @@ export interface FixedAssetInputDto {
   acquisitionDate: string;
   /** Net cost in cents. */
   acquisitionCostCents: number;
+  /** 'elektrofahrzeug': § 7 Abs. 2a EStG, 75/10/5/5/3/2 % for an electric vehicle bought 1.7.2025–31.12.2027. */
   method: FixedAssetInputDtoMethod;
   /** AfA-table category (GET …/selbststaendig/kataloge); sets the useful life when none is given. */
   category?: FixedAssetInputDtoCategory;
@@ -1305,6 +1311,8 @@ export interface CompanyCarInputDto {
   listPriceGrossEur: number;
   co2GPerKm?: number;
   electricRangeKm?: number;
+  /** Battery capacity in kWh: the battery deduction of a car bought before 2023 without a fraction (§ 6 Abs. 1 Nr. 4 Satz 2 Nr. 1 EStG). */
+  batteryKwh?: number;
   /** More than half of the use is business. */
   businessShareOver50: boolean;
   /** Months in the business assets this year. */
@@ -1312,8 +1320,10 @@ export interface CompanyCarInputDto {
   method: CompanyCarInputDtoMethod;
   /** Total costs of the car in the year with the AfA, euros. */
   totalCostsEur?: number;
-  /** The AfA inside the total costs, euros. */
+  /** The AfA inside the total costs, euros; an electric or hybrid car counts it at its fraction. */
   depreciationEur?: number;
+  /** Logbook: leasing rates inside the total costs, euros; an electric or hybrid car counts them at its fraction. */
+  leasingEur?: number;
   /** Logbook: private share of the km, 0–1. */
   privateShare?: number;
   /** Logbook: km of the year. */
@@ -1440,6 +1450,8 @@ export interface PayrollOverviewDto {
   wageTaxPeriod: PayrollOverviewDtoWageTaxPeriod;
   wageTaxReturns: WageTaxReturnDto[];
   minijobCharges: MinijobMonthDto[];
+  /** Church-tax codes the Anmeldung of the Betriebsstätte’s Land has no line for: their tax is in Kz 83 only. */
+  unassignedChurchCodes: string[];
 }
 
 export type PayrollRunInputDtoKind = typeof PayrollRunInputDtoKind[keyof typeof PayrollRunInputDtoKind];
@@ -1451,6 +1463,7 @@ export const PayrollRunInputDtoKind = {
 } as const;
 
 /**
+ * Church-tax code of the ELStAM; ev and rk go to Kz 61/62, the others to the line of the Betriebsstätte’s Land.
  * @nullable
  */
 export type PayrollRunInputDtoChurch = typeof PayrollRunInputDtoChurch[keyof typeof PayrollRunInputDtoChurch] | null;
@@ -1459,6 +1472,19 @@ export type PayrollRunInputDtoChurch = typeof PayrollRunInputDtoChurch[keyof typ
 export const PayrollRunInputDtoChurch = {
   ev: 'ev',
   rk: 'rk',
+  ak: 'ak',
+  ib: 'ib',
+  fb: 'fb',
+  iw: 'iw',
+  is: 'is',
+  jh: 'jh',
+  jd: 'jd',
+  fm: 'fm',
+  il: 'il',
+  fs: 'fs',
+  fg: 'fg',
+  fa: 'fa',
+  ih: 'ih',
 } as const;
 
 export interface PayrollRunInputDto {
@@ -1481,8 +1507,17 @@ export interface PayrollRunInputDto {
   soliEur?: number;
   /** Euros. */
   churchTaxEur?: number;
-  /** @nullable */
+  /**
+     * Church-tax code of the ELStAM; ev and rk go to Kz 61/62, the others to the line of the Betriebsstätte’s Land.
+     * @nullable
+     */
   church?: PayrollRunInputDtoChurch;
+  /** Pauschale Lohnsteuer the employer takes over (§§ 40, 40a Abs. 1, 3, 40b EStG), Kz 41. */
+  flatWageTaxEur?: number;
+  /** Pauschale Lohnsteuer under § 37b EStG, Kz 44. */
+  flat37bTaxEur?: number;
+  /** Pauschale Kirchensteuer in the simplified procedure, Kz 47. */
+  flatChurchTaxEur?: number;
   /** The employee’s share of social security. */
   employeeSocialEur?: number;
   /** The employer’s share and the levies. */
@@ -1491,6 +1526,8 @@ export interface PayrollRunInputDto {
   statutoryHealthInsured?: boolean;
   /** Minijob: exempt from the pension insurance. */
   rvExempt?: boolean;
+  /** Minijob: false for an employer with more than 30 employees, who pays no U1 (§ 1 Abs. 1 AAG). */
+  u1Applies?: boolean;
 }
 
 export type DisposalResultDtoMethod = typeof DisposalResultDtoMethod[keyof typeof DisposalResultDtoMethod];
@@ -1702,6 +1739,11 @@ export interface SmallBusinessCheckDto {
   turnoverEur: number;
   /** False when the profile claims the rule although a limit is crossed. */
   matchesProfile: boolean;
+  /**
+     * From 2025: the date of the supply that passed the running year’s limit; it and every later one are taxed (§ 19 Abs. 1 Satz 1 UStG).
+     * @nullable
+     */
+  taxedFrom: string | null;
 }
 
 export interface VatReturnDto {

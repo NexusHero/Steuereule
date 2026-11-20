@@ -14888,6 +14888,7 @@
             "enum": [
               "linear",
               "degressive",
+              "elektrofahrzeug",
               "gwg",
               "sofort",
               "building"
@@ -15012,9 +15013,11 @@
             "enum": [
               "linear",
               "degressive",
+              "elektrofahrzeug",
               "gwg",
               "sofort"
-            ]
+            ],
+            "description": "'elektrofahrzeug': § 7 Abs. 2a EStG, 75/10/5/5/3/2 % for an electric vehicle bought 1.7.2025–31.12.2027."
           },
           "category": {
             "type": "string",
@@ -15516,6 +15519,10 @@
           "electricRangeKm": {
             "type": "number"
           },
+          "batteryKwh": {
+            "type": "number",
+            "description": "Battery capacity in kWh: the battery deduction of a car bought before 2023 without a fraction (§ 6 Abs. 1 Nr. 4 Satz 2 Nr. 1 EStG)."
+          },
           "businessShareOver50": {
             "type": "boolean",
             "description": "More than half of the use is business."
@@ -15537,7 +15544,11 @@
           },
           "depreciationEur": {
             "type": "number",
-            "description": "The AfA inside the total costs, euros."
+            "description": "The AfA inside the total costs, euros; an electric or hybrid car counts it at its fraction."
+          },
+          "leasingEur": {
+            "type": "number",
+            "description": "Logbook: leasing rates inside the total costs, euros; an electric or hybrid car counts them at its fraction."
           },
           "privateShare": {
             "type": "number",
@@ -15795,13 +15806,21 @@
             "items": {
               "$ref": "#/components/schemas/MinijobMonthDto"
             }
+          },
+          "unassignedChurchCodes": {
+            "description": "Church-tax codes the Anmeldung of the Betriebsstätte’s Land has no line for: their tax is in Kz 83 only.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [
           "runs",
           "wageTaxPeriod",
           "wageTaxReturns",
-          "minijobCharges"
+          "minijobCharges",
+          "unassignedChurchCodes"
         ]
       },
       "PayrollRunInputDto": {
@@ -15844,9 +15863,35 @@
             "type": "string",
             "enum": [
               "ev",
-              "rk"
+              "rk",
+              "ak",
+              "ib",
+              "fb",
+              "iw",
+              "is",
+              "jh",
+              "jd",
+              "fm",
+              "il",
+              "fs",
+              "fg",
+              "fa",
+              "ih"
             ],
-            "nullable": true
+            "nullable": true,
+            "description": "Church-tax code of the ELStAM; ev and rk go to Kz 61/62, the others to the line of the Betriebsstätte’s Land."
+          },
+          "flatWageTaxEur": {
+            "type": "number",
+            "description": "Pauschale Lohnsteuer the employer takes over (§§ 40, 40a Abs. 1, 3, 40b EStG), Kz 41."
+          },
+          "flat37bTaxEur": {
+            "type": "number",
+            "description": "Pauschale Lohnsteuer under § 37b EStG, Kz 44."
+          },
+          "flatChurchTaxEur": {
+            "type": "number",
+            "description": "Pauschale Kirchensteuer in the simplified procedure, Kz 47."
           },
           "employeeSocialEur": {
             "type": "number",
@@ -15863,6 +15908,10 @@
           "rvExempt": {
             "type": "boolean",
             "description": "Minijob: exempt from the pension insurance."
+          },
+          "u1Applies": {
+            "type": "boolean",
+            "description": "Minijob: false for an employer with more than 30 employees, who pays no U1 (§ 1 Abs. 1 AAG)."
           }
         },
         "required": [
@@ -16298,6 +16347,11 @@
           "matchesProfile": {
             "type": "boolean",
             "description": "False when the profile claims the rule although a limit is crossed."
+          },
+          "taxedFrom": {
+            "type": "string",
+            "nullable": true,
+            "description": "From 2025: the date of the supply that passed the running year’s limit; it and every later one are taxed (§ 19 Abs. 1 Satz 1 UStG)."
           }
         },
         "required": [
@@ -16308,7 +16362,8 @@
           "foundingYear",
           "priorYearKnown",
           "turnoverEur",
-          "matchesProfile"
+          "matchesProfile",
+          "taxedFrom"
         ]
       },
       "VatReturnDto": {

@@ -237,6 +237,17 @@ describe('Umsatzsteuer', () => {
     expect(note).toContain('25.000,00 €')
   })
 
+  it('says from which supply the turnover is taxed once the limit was passed in the year (§ 19 Abs. 1 Satz 1 UStG)', async () => {
+    useBusinessDefaults({ ...BASE_PROFILE, smallBusiness: true })
+    server.use(
+      http.get(`${BASE_URL}/umsatzsteuer`, () =>
+        HttpResponse.json({ ...VAT(0), smallBusiness: { ...SMALL_OK, eligible: false, crossed: 'current_year', turnoverEur: 101_000, matchesProfile: false, taxedFrom: '2025-11-02' } }),
+      ),
+    )
+    renderBusiness('umsatzsteuer')
+    expect((await screen.findByTestId('ust-klein-ab')).textContent).toContain('02.11.2025')
+  })
+
   it('says the year before is unknown when there is no book for it', async () => {
     useBusinessDefaults({ ...BASE_PROFILE, smallBusiness: true })
     server.use(http.get(`${BASE_URL}/umsatzsteuer`, () => HttpResponse.json({ ...VAT(0), smallBusiness: { ...SMALL_OK, priorYearKnown: false } })))

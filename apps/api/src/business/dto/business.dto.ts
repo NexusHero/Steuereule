@@ -141,11 +141,13 @@ export class CompanyCarInputDto {
   @ApiProperty({ type: Number, description: 'Bruttolistenpreis with the extras, euros.' }) @IsInt() @Min(1) @Max(10_000_000) listPriceGrossEur!: number
   @ApiPropertyOptional({ type: Number }) @IsOptional() @IsInt() @Min(0) @Max(1000) co2GPerKm?: number
   @ApiPropertyOptional({ type: Number }) @IsOptional() @IsInt() @Min(0) @Max(2000) electricRangeKm?: number
+  @ApiPropertyOptional({ type: Number, description: 'Battery capacity in kWh: the battery deduction of a car bought before 2023 without a fraction (§ 6 Abs. 1 Nr. 4 Satz 2 Nr. 1 EStG).' }) @IsOptional() @Min(0) @Max(500) batteryKwh?: number
   @ApiProperty({ type: Boolean, description: 'More than half of the use is business.' }) @IsBoolean() businessShareOver50!: boolean
   @ApiProperty({ type: Number, description: 'Months in the business assets this year.' }) @IsInt() @Min(1) @Max(12) monthsInBusiness!: number
   @ApiProperty({ enum: ['pauschal', 'fahrtenbuch'] }) @IsIn(['pauschal', 'fahrtenbuch']) method!: 'pauschal' | 'fahrtenbuch'
   @ApiPropertyOptional({ type: Number, description: 'Total costs of the car in the year with the AfA, euros.' }) @IsOptional() @IsInt() @Min(0) totalCostsEur?: number
-  @ApiPropertyOptional({ type: Number, description: 'The AfA inside the total costs, euros.' }) @IsOptional() @IsInt() @Min(0) depreciationEur?: number
+  @ApiPropertyOptional({ type: Number, description: 'The AfA inside the total costs, euros; an electric or hybrid car counts it at its fraction.' }) @IsOptional() @IsInt() @Min(0) depreciationEur?: number
+  @ApiPropertyOptional({ type: Number, description: 'Logbook: leasing rates inside the total costs, euros; an electric or hybrid car counts them at its fraction.' }) @IsOptional() @IsInt() @Min(0) leasingEur?: number
   @ApiPropertyOptional({ type: Number, description: 'Logbook: private share of the km, 0–1.' }) @IsOptional() @Min(0) @Max(1) privateShare?: number
   @ApiPropertyOptional({ type: Number, description: 'Logbook: km of the year.' }) @IsOptional() @IsInt() @Min(0) totalKm?: number
   @ApiPropertyOptional({ type: Number, description: 'Logbook: costs that carried input VAT, euros.' }) @IsOptional() @IsInt() @Min(0) costsWithInputVatEur?: number
@@ -468,7 +470,9 @@ export class FixedAssetInputDto {
   @ApiProperty({ type: String, example: '0420' }) @Matches(/^\d{4,8}$/) account!: string
   @ApiProperty({ type: String, example: '2025-03-14' }) @Matches(ISO_DATE) acquisitionDate!: string
   @ApiProperty({ type: Number, description: 'Net cost in cents.' }) @IsInt() @Min(1) acquisitionCostCents!: number
-  @ApiProperty({ enum: ['linear', 'degressive', 'gwg', 'sofort'] }) @IsIn(['linear', 'degressive', 'gwg', 'sofort']) method!: string
+  @ApiProperty({ enum: ['linear', 'degressive', 'elektrofahrzeug', 'gwg', 'sofort'], description: "'elektrofahrzeug': § 7 Abs. 2a EStG, 75/10/5/5/3/2 % for an electric vehicle bought 1.7.2025–31.12.2027." })
+  @IsIn(['linear', 'degressive', 'elektrofahrzeug', 'gwg', 'sofort'])
+  method!: string
   @ApiPropertyOptional({ enum: Object.keys(USEFUL_LIVES), description: 'AfA-table category (GET …/selbststaendig/kataloge); sets the useful life when none is given.' })
   @IsOptional()
   @IsIn(Object.keys(USEFUL_LIVES))

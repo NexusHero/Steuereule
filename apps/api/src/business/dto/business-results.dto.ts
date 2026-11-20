@@ -4,7 +4,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 import { Type } from 'class-transformer'
 import { IsBoolean, IsIn, IsInt, IsNumber, IsOptional, IsString, Matches, Max, MaxLength, Min, ValidateNested, IsArray } from 'class-validator'
-import { BANK_CSV_PRESETS, CATALOG_PROFESSIONS, FREE_ACTIVITIES, USEFUL_LIVES } from '@steuereule/core'
+import { BANK_CSV_PRESETS, CATALOG_PROFESSIONS, CHURCH_CODES, FREE_ACTIVITIES, USEFUL_LIVES, type ChurchCode } from '@steuereule/core'
 
 export const ASSET_CATEGORIES = Object.keys(USEFUL_LIVES) as (keyof typeof USEFUL_LIVES)[]
 const EUR = { type: Number, description: 'Euros.' } as const
@@ -275,6 +275,7 @@ export class SmallBusinessCheckDto {
   @ApiProperty({ type: Boolean, description: 'The turnover of the year before is known from its book.' }) priorYearKnown!: boolean
   @ApiProperty(EUR) turnoverEur!: number
   @ApiProperty({ type: Boolean, description: 'False when the profile claims the rule although a limit is crossed.' }) matchesProfile!: boolean
+  @ApiProperty({ type: String, nullable: true, description: 'From 2025: the date of the supply that passed the running year’s limit; it and every later one are taxed (§ 19 Abs. 1 Satz 1 UStG).' }) taxedFrom!: string | null
 }
 
 export class VatReturnDto {
@@ -380,7 +381,7 @@ export class FixedAssetDto {
   @ApiProperty({ type: String }) account!: string
   @ApiProperty({ type: String }) acquisitionDate!: string
   @ApiProperty({ ...CENTS, description: 'Net acquisition cost, integer cents.' }) acquisitionCost!: number
-  @ApiProperty({ enum: ['linear', 'degressive', 'gwg', 'sofort', 'building'] }) method!: string
+  @ApiProperty({ enum: ['linear', 'degressive', 'elektrofahrzeug', 'gwg', 'sofort', 'building'] }) method!: string
   @ApiProperty({ enum: ASSET_CATEGORIES, nullable: true }) category!: string | null
   @ApiProperty({ type: Number, nullable: true }) usefulLifeYears!: number | null
   @ApiProperty({ type: String, nullable: true, description: 'JSON: { byYear: { [year]: cents }, costReduction: cents }.' }) specialDepreciation!: string | null
@@ -520,11 +521,18 @@ export class PayrollRunInputDto {
   @ApiPropertyOptional(EUR) @IsOptional() @IsNumber() @Min(0) wageTaxEur?: number
   @ApiPropertyOptional(EUR) @IsOptional() @IsNumber() @Min(0) soliEur?: number
   @ApiPropertyOptional(EUR) @IsOptional() @IsNumber() @Min(0) churchTaxEur?: number
-  @ApiPropertyOptional({ enum: ['ev', 'rk'], nullable: true }) @IsOptional() @IsIn(['ev', 'rk', null]) church?: 'ev' | 'rk' | null
+  @ApiPropertyOptional({ enum: [...CHURCH_CODES], nullable: true, description: 'Church-tax code of the ELStAM; ev and rk go to Kz 61/62, the others to the line of the Betriebsstätte’s Land.' })
+  @IsOptional()
+  @IsIn([...CHURCH_CODES, null])
+  church?: ChurchCode | null
+  @ApiPropertyOptional({ ...EUR, description: 'Pauschale Lohnsteuer the employer takes over (§§ 40, 40a Abs. 1, 3, 40b EStG), Kz 41.' }) @IsOptional() @IsNumber() @Min(0) flatWageTaxEur?: number
+  @ApiPropertyOptional({ ...EUR, description: 'Pauschale Lohnsteuer under § 37b EStG, Kz 44.' }) @IsOptional() @IsNumber() @Min(0) flat37bTaxEur?: number
+  @ApiPropertyOptional({ ...EUR, description: 'Pauschale Kirchensteuer in the simplified procedure, Kz 47.' }) @IsOptional() @IsNumber() @Min(0) flatChurchTaxEur?: number
   @ApiPropertyOptional({ ...EUR, description: 'The employee’s share of social security.' }) @IsOptional() @IsNumber() @Min(0) employeeSocialEur?: number
   @ApiPropertyOptional({ ...EUR, description: 'The employer’s share and the levies.' }) @IsOptional() @IsNumber() @Min(0) employerSocialEur?: number
   @ApiPropertyOptional({ type: Boolean, description: 'Minijob: in the statutory health insurance (flat 13 % KV).' }) @IsOptional() @IsBoolean() statutoryHealthInsured?: boolean
   @ApiPropertyOptional({ type: Boolean, description: 'Minijob: exempt from the pension insurance.' }) @IsOptional() @IsBoolean() rvExempt?: boolean
+  @ApiPropertyOptional({ type: Boolean, description: 'Minijob: false for an employer with more than 30 employees, who pays no U1 (§ 1 Abs. 1 AAG).' }) @IsOptional() @IsBoolean() u1Applies?: boolean
 }
 
 export class PayrollRunDto {
@@ -555,4 +563,5 @@ export class PayrollOverviewDto {
   @ApiProperty({ enum: ['monat', 'quartal', 'jahr'] }) wageTaxPeriod!: 'monat' | 'quartal' | 'jahr'
   @ApiProperty({ type: [WageTaxReturnDto] }) wageTaxReturns!: WageTaxReturnDto[]
   @ApiProperty({ type: [MinijobMonthDto] }) minijobCharges!: MinijobMonthDto[]
+  @ApiProperty({ type: [String], description: 'Church-tax codes the Anmeldung of the Betriebsstätte’s Land has no line for: their tax is in Kz 83 only.' }) unassignedChurchCodes!: string[]
 }

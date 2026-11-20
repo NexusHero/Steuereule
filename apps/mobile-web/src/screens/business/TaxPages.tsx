@@ -62,6 +62,11 @@ export function VatPage({ taxYear, person, business = 1, onBack }: BusinessPageP
           })}
         </Note>
       ) : null}
+      {vat.smallBusiness.taxedFrom ? (
+        <Note tone="error" testID="ust-klein-ab">
+          {tr('business.ust.kleinAb', { datum: `${vat.smallBusiness.taxedFrom.slice(8, 10)}.${vat.smallBusiness.taxedFrom.slice(5, 7)}.${vat.smallBusiness.taxedFrom.slice(0, 4)}` })}
+        </Note>
+      ) : null}
       {small && vat.smallBusiness.matchesProfile && !vat.smallBusiness.priorYearKnown ? <Note testID="ust-klein-vorjahr">{tr('business.ust.kleinVorjahrUnbekannt', { grenze: plainEuro(vat.smallBusiness.priorYearLimitEur) })}</Note> : null}
       <Section>
         <Figure label={tr('business.ust.umsatzsteuer')} value={plainEuro(vat.result.outputVat.standard)} />

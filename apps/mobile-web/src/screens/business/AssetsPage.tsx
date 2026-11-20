@@ -19,7 +19,7 @@ import { CatalogPicker } from './CatalogPicker'
 import { attempt, queryProblem, useRefreshBusiness } from './useBusiness'
 import type { BusinessPageProps } from './BusinessScreen'
 
-const METHODS: readonly FixedAssetInputDtoMethod[] = ['linear', 'degressive', 'gwg', 'sofort']
+const METHODS: readonly FixedAssetInputDtoMethod[] = ['linear', 'degressive', 'elektrofahrzeug', 'gwg', 'sofort']
 
 /** Anlagevermögen: the register of the year, a new asset, its disposal, and booking the year's AfA. */
 export function AssetsPage({ taxYear, person, business = 1, onBack }: BusinessPageProps) {

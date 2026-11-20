@@ -186,7 +186,7 @@ function parse<T>(value: string | null): T | null {
 export function depreciableOf(record: FixedAssetRecord): DepreciableAsset {
   const special = parse<SpecialDepreciationFacts>(record.specialDepreciation)
   const disposal = parse<DisposalFacts>(record.disposal)
-  const method = (['linear', 'degressive', 'gwg', 'sofort', 'building'].includes(record.method) ? record.method : 'linear') as DepreciableAsset['method']
+  const method = (['linear', 'degressive', 'elektrofahrzeug', 'gwg', 'sofort', 'building'].includes(record.method) ? record.method : 'linear') as DepreciableAsset['method']
   return {
     id: record.id,
     acquired: record.acquisitionDate,

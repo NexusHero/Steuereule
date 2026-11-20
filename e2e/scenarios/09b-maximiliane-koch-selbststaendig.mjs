@@ -451,13 +451,15 @@ export async function runScenario09b(browser, webOrigin) {
   await page.unroute(`${API}/umsatzsteuer/voranmeldungen`)
   // The Kleinunternehmer limits: crossed in the founding year, and a year before without a book.
   const vat = { figures: {}, result: { outputVat: { standard: 0, reduced: 0, zero: 0 }, inputVatDeductibleEur: 0, vatOfYearEur: 0, prepaymentsEur: 0, balanceEur: 0 }, cashAccountingAllowed: true }
-  const small = { eligible: false, priorYearLimitEur: 25000, currentYearLimitEur: 25000, crossed: 'current_year', foundingYear: true, priorYearKnown: true, turnoverEur: 26000, matchesProfile: false }
+  const small = { eligible: false, priorYearLimitEur: 25000, currentYearLimitEur: 25000, crossed: 'current_year', foundingYear: true, priorYearKnown: true, turnoverEur: 26000, matchesProfile: false, taxedFrom: '2025-12-01' }
   await page.route(`${API}`, (route) => (route.request().method() === 'GET' ? route.fetch().then(async (r) => route.fulfill(json({ ...(await r.json()), smallBusiness: true }))) : route.fallback()))
   await page.route(`${API}/umsatzsteuer`, (route) => route.fulfill(json({ ...vat, smallBusiness: small })))
   await go('umsatzsteuer')
   await see('ust-klein-grenze')
+  // From 2025 the rule ends with the supply that passed the limit (§ 19 Abs. 1 Satz 1 UStG).
+  await see('ust-klein-ab')
   await page.unroute(`${API}/umsatzsteuer`)
-  await page.route(`${API}/umsatzsteuer`, (route) => route.fulfill(json({ ...vat, smallBusiness: { ...small, eligible: true, crossed: null, foundingYear: false, priorYearKnown: false, matchesProfile: true } })))
+  await page.route(`${API}/umsatzsteuer`, (route) => route.fulfill(json({ ...vat, smallBusiness: { ...small, eligible: true, crossed: null, foundingYear: false, priorYearKnown: false, matchesProfile: true, taxedFrom: null } })))
   await go('umsatzsteuer')
   await see('ust-klein-vorjahr')
   await page.unroute(`${API}/umsatzsteuer`)
@@ -496,6 +498,8 @@ export async function runScenario09b(browser, webOrigin) {
   await byId('lohn-privat-versichert').click()
   await byId('lohn-privat-versichert').click()
   await byId('lohn-rv-befreit').click()
+  // An employer with more than 30 employees pays no U1 (§ 1 Abs. 1 AAG).
+  await byId('lohn-ueber-30').click()
   await byId('lohn-buchen').click()
   await see('lohn-minijob')
   await byId('lohn-art-regulaer').click()
@@ -506,12 +510,20 @@ export async function runScenario09b(browser, webOrigin) {
   await byId('lohn-churchTaxEur').fill('24')
   await byId('lohn-employeeSocialEur').fill('600')
   await byId('lohn-employerSocialEur').fill('620')
+  // The other communities open on „Andere“; choosing ev closes them again.
+  await byId('lohn-kirche-andere').click()
+  await see('lohn-kirche-iw')
   await byId('lohn-kirche-ev').click()
   await byId('lohn-buchen').click()
   await see('lohn-laeufe')
   await see('lohn-anmeldungen')
   // January's 300 € × 12 = 3.600 €: quarterly (§ 41a Abs. 2 EStG).
   await see('lohn-lsta-Q1/2025')
+  // A community the Land's Anmeldung has no line for is said so (served by a route mock).
+  await page.route(`${API}/lohn`, (route) => (route.request().method() === 'GET' ? route.fetch().then(async (r) => route.fulfill(json({ ...(await r.json()), unassignedChurchCodes: ['iw'] }))) : route.fallback()))
+  await go('lohn')
+  await see('lohn-kirche-ohne-zeile')
+  await page.unroute(`${API}/lohn`)
   console.log('[09b] PASS: Minijob and employee booked, Lohnsteuer-Anmeldung per quarter')
 
   // --- E-Bilanz: sent only where the operator set up ERiC; ERiC's refusal shown --------------------------------------------

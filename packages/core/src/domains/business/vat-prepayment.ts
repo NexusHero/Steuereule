@@ -94,6 +94,9 @@ export interface PeriodFigures {
   readonly reverseChargeEuServicesNetEur: number
   /** § 13b Abs. 2 Nr. 1, 2, 4–12: the other cases (construction, foreign non-EU services …). */
   readonly reverseChargeOtherNetEur: number
+  /** The part of the two § 13b bases above that is taxed at 7 % (§ 13b Abs. 1 and 2 cover reduced-rate supplies too). */
+  readonly reverseChargeEuServicesReducedNetEur?: number | undefined
+  readonly reverseChargeOtherReducedNetEur?: number | undefined
   /** Intra-EU supplies to a buyer with a VAT id (Kz 41). */
   readonly taxFreeWithDeductionEur: number
   /** § 4 Nr. 8–29 UStG (Kz 48). */
@@ -130,6 +133,8 @@ export function vatPeriodReturn(input: { readonly figures: PeriodFigures; readon
     intraEuAcquisitionNetEur: { standard: whole(raw.intraEuAcquisitionNetEur.standard), reduced: whole(raw.intraEuAcquisitionNetEur.reduced) },
     reverseChargeEuServicesNetEur: whole(raw.reverseChargeEuServicesNetEur),
     reverseChargeOtherNetEur: whole(raw.reverseChargeOtherNetEur),
+    reverseChargeEuServicesReducedNetEur: Math.min(whole(raw.reverseChargeEuServicesReducedNetEur), whole(raw.reverseChargeEuServicesNetEur)),
+    reverseChargeOtherReducedNetEur: Math.min(whole(raw.reverseChargeOtherReducedNetEur), whole(raw.reverseChargeOtherNetEur)),
     taxFreeWithDeductionEur: whole(raw.taxFreeWithDeductionEur),
     taxFreeWithoutDeductionEur: whole(raw.taxFreeWithoutDeductionEur),
     euServicesNetEur: whole(raw.euServicesNetEur),
@@ -143,8 +148,9 @@ export function vatPeriodReturn(input: { readonly figures: PeriodFigures; readon
   const out7 = small ? 0 : (f.taxableNetEur.reduced ?? 0) * REDUCED
   const ig19 = (f.intraEuAcquisitionNetEur.standard ?? 0) * STANDARD
   const ig7 = (f.intraEuAcquisitionNetEur.reduced ?? 0) * REDUCED
-  const rcEu = f.reverseChargeEuServicesNetEur * STANDARD
-  const rcOther = f.reverseChargeOtherNetEur * STANDARD
+  const rcTax = (base: number, reduced: number) => (base - reduced) * STANDARD + reduced * REDUCED
+  const rcEu = rcTax(f.reverseChargeEuServicesNetEur, f.reverseChargeEuServicesReducedNetEur ?? 0)
+  const rcOther = rcTax(f.reverseChargeOtherNetEur, f.reverseChargeOtherReducedNetEur ?? 0)
   if (!small) {
     put('81', f.taxableNetEur.standard ?? 0)
     put('86', f.taxableNetEur.reduced ?? 0)
@@ -181,4 +187,22 @@ export function vatPeriodReturn(input: { readonly figures: PeriodFigures; readon
  */
 export function ecSalesListPeriod(input: { readonly goodsByQuarterEur: readonly number[] }): 'monat' | 'quartal' {
   return input.goodsByQuarterEur.slice(0, 5).some((q) => q > 50_000) ? 'monat' : 'quartal'
+}
+
+/**
+ * § 18a Abs. 1 Satz 3 UStG: a quarterly filer whose supplies of goods (and § 25b Abs. 2 supplies) pass 50.000 € in
+ * the course of the running quarter files a ZM by the 25th after the month they passed it, for that month and the
+ * months of the quarter before it; monthly from then on. `goodsByMonthEur` lists the running quarter's months so far.
+ */
+export function ecSalesListInQuarter(input: { readonly goodsByMonthEur: readonly number[]; readonly fourQuartersBeforeEur: readonly number[] }):
+  | { readonly period: 'monat'; readonly reason: 'vorquartale' }
+  | { readonly period: 'quartal' }
+  | { readonly period: 'monat'; readonly reason: 'im_quartal'; readonly monthOfQuarter: number } {
+  if (input.fourQuartersBeforeEur.slice(0, 4).some((q) => q > 50_000)) return { period: 'monat', reason: 'vorquartale' }
+  let sum = 0
+  for (let i = 0; i < Math.min(3, input.goodsByMonthEur.length); i++) {
+    sum += input.goodsByMonthEur[i] ?? 0
+    if (sum > 50_000) return { period: 'monat', reason: 'im_quartal', monthOfQuarter: i + 1 }
+  }
+  return { period: 'quartal' }
 }

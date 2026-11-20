@@ -222,6 +222,8 @@ describe('BusinessService (ADR-0101)', () => {
     await service.quickEntry('u', 2025, A1, [{ key: 'einnahmen_kleinunternehmer', amountCents: 2_600_000, date: '2025-12-01' }])
     expect((await service.vatReturn('u', 2025, A1)).smallBusiness).toEqual({
       eligible: false, priorYearLimitEur: 25_000, currentYearLimitEur: 25_000, crossed: 'current_year', foundingYear: true, priorYearKnown: true, turnoverEur: 26_000, matchesProfile: false,
+      // The one quick entry passed the founding year's 25.000 €: taxed from its date (§ 19 Abs. 1 Satz 1 UStG).
+      taxedFrom: '2025-12-01',
     })
 
     await service.saveProfile('u', YEAR, A1, { smallBusiness: true, startDate: '2020-01-01' })
@@ -506,6 +508,44 @@ describe('BusinessService (ADR-0101)', () => {
     const q1 = va.periods.find((p) => p.kennzahlen['21'] !== undefined)
     expect(q1?.kennzahlen['21']).toBe(1_000)
     expect(va.ecSalesList.reports[0]?.rows).toEqual([{ vatId: 'ATU12345678', goodsEur: 0, servicesEur: 1_000 }])
+  })
+
+  it('in the quarter the goods pass 50.000 €: one ZM up to that month, monthly after it (§ 18a Abs. 1 Satz 3 UStG)', async () => {
+    const { service } = setup()
+    const ig = (date: string, cents: number, n: string) => ({ date, documentNumber: n, text: 'Lieferung Wien', counterpartyVatId: 'ATU12345678', lines: [{ account: '1200', side: 'debit' as const, amount: cents }, { account: '8125', side: 'credit' as const, amount: cents, taxKey: 'igLieferung' as const }] })
+    await service.post('u', 2025, A1, ig('2025-04-03', 3_000_000, 'R-1'))
+    await service.post('u', 2025, A1, ig('2025-05-06', 3_000_000, 'R-2'))
+    await service.post('u', 2025, A1, ig('2025-06-09', 1_000_000, 'R-3'))
+    const va = await service.vatPrepayments('u', 2025, A1)
+    expect(va.ecSalesList.period).toBe('monat')
+    expect(va.ecSalesList.reports.map((r) => [r.label, r.due, r.rows[0]?.goodsEur])).toEqual([
+      ['04–05/2025', '2025-06-25', 60_000],
+      ['06/2025', '2025-07-25', 10_000],
+    ])
+  })
+
+  it('books the pauschale Lohnsteuer, puts another community on its Land line and says when a Land has none (Vordruck 2026)', async () => {
+    const { service } = setup()
+    await service.saveProfile('u', 2026, A1, { municipalityAgs: '08111000' })
+    await service.addPayrollRun('u', 2026, A1, { month: 1, kind: 'regulaer', employee: 'Anna', grossEur: 3_000, wageTaxEur: 300, churchTaxEur: 24, church: 'iw', flatWageTaxEur: 50, employeeSocialEur: 600, employerSocialEur: 620 })
+    await service.addPayrollRun('u', 2026, A1, { month: 1, kind: 'regulaer', employee: 'Cem', grossEur: 2_000, wageTaxEur: 100, churchTaxEur: 8, church: 'jh' })
+    const { entry } = await service.addPayrollRun('u', 2026, A1, { month: 1, kind: 'minijob', employee: 'Ben', grossEur: 600, statutoryHealthInsured: true, u1Applies: false })
+    expect(entry).not.toBeNull()
+    const p = await service.payroll('u', 2026, A1)
+    // Baden-Württemberg: iw on line 73; jh has no line there and stays in Kz 83 only.
+    expect(p.wageTaxReturns[0]!.kennzahlen).toEqual({ '86': 3, '42': 400, '41': 50, '48': 450, '73': 24, '83': 482 })
+    expect(p.unassignedChurchCodes).toEqual(['jh'])
+    // The Minijob without U1: 13 % + 15 % + 2 % + 0,22 % + 0,15 % of 600 € plus the RV share of 21,60 €.
+    expect(p.minijobCharges).toEqual([{ month: 1, totalEur: 203.82 }])
+  })
+
+  it('adds an electric vehicle with the 75 % AfA, and stores nothing it cannot depreciate (§ 7 Abs. 2a EStG)', async () => {
+    const { service, repository } = setup()
+    const base = { label: 'E-Transporter', account: '0350', acquisitionCostCents: 4_000_000, method: 'elektrofahrzeug' }
+    await service.createAsset('u', 2025, A1, { ...base, acquisitionDate: '2025-08-01' })
+    await expect(service.createAsset('u', 2025, A1, { ...base, label: 'zu früh', acquisitionDate: '2025-06-30' })).rejects.toBeDefined()
+    const stored = await repository.listAssets('u', A1, 2025)
+    expect(stored.map((a) => a.label)).toEqual(['E-Transporter'])
   })
 
   it('sends the E-Bilanz once, under the book’s lock, and keeps the ticket in the log (review)', async () => {

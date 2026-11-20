@@ -245,27 +245,34 @@ Die Regeln in `packages/core/src/domains/business` und die Vorsorge wurden gegen
 - Zeiträume nach § 41a EStG
 - **Nicht falsch, aber anders als zunächst gemeldet:** Kleinunternehmer und Erwerbsschwelle (§ 1a Abs. 3 UStG). Wer mit Erwerbs-Schlüssel bucht, hat seine USt-IdNr verwendet; das gilt als Verzicht nach Abs. 4.
 
-**Offen (Randfälle, noch nicht gebaut):**
+**Nachgebaut am 20.11.2026:**
 - **Firmenwagen:**
-  - Batterieabzug für E- und Hybridautos, die vor 2019 angeschafft wurden, und für Hybride ohne Reichweite (§ 6 Abs. 1 Nr. 4 Satz 2 Nr. 1)
-  - Leasingraten beim Fahrtenbuch
+  - Batterieabzug für Autos, die vor 2023 ohne Bruchteil angeschafft wurden (§ 6 Abs. 1 Nr. 4 Satz 2 Nr. 1 EStG; 500 €/kWh bis 2013, jährlich 50 € weniger, höchstens 10.000 €, jährlich 500 € weniger)
+  - beim Fahrtenbuch die Leasingraten mit Bruchteil; Feld „Batteriekapazität“ und „Leasingraten“ auf der Seite
 - **AfA:**
-  - § 7 Abs. 2a EStG (E-Fahrzeuge 7/2025–2027: 75 %)
-  - Gewinngrenze für die Sonder-AfA nach § 7g Abs. 6 Nr. 1 wird nicht geprüft
-  - Gebäude: Bauantrag nach 31.3.1985, und § 7 Abs. 5a nur für Wohnzwecke
-- **Gewinn:** Die 50-€-Grenze für Geschenke hängt am Wirtschaftsjahr (§ 52 Abs. 6 Satz 10).
+  - § 7 Abs. 2a EStG als Methode „E-Fahrzeug 75 %“ (75/10/5/5/3/2 %, ohne Monate, ohne Sonder-AfA)
+  - Gebäude: 3 % nach Abs. 4 Nr. 1 nur mit Bauantrag nach 31.3.1985; Abs. 5a nur für Wohnzwecke, auch beim Kauf mit Vertrag im Fenster
+  - § 7g Abs. 6 Nr. 1: Gewinngrenze des Vorjahres
+  - Ein Anlagegut, dessen Plan sich nicht rechnen lässt, wird nicht mehr gespeichert (vorher erst gespeichert, dann geprüft).
 - **Lohn:**
-  - § 41a Abs. 2 Satz 4 EStG: neue Betriebsstätte, erster voller Monat × 12
-  - U1 nur bis 30 Arbeitnehmer (AAG)
-  - Kirchensteuer anderer Konfessionen
-  - Pauschale Lohnsteuer (Kz 41/44/47/48)
+  - § 41a Abs. 2 Satz 4 EStG (neue Betriebsstätte: erster Monat × 12)
+  - U1 abschaltbar (§ 1 Abs. 1 AAG)
+  - pauschale Lohnsteuer (Kz 41, 44), Verbleiben (Kz 48), pauschale Kirchensteuer (Kz 47); Buchung als Personalaufwand
+  - Kirchensteuer anderer Gemeinschaften auf der Zeile des Landes (Vordruck 2026, Seite 3); das Land kommt aus dem Gemeindeschlüssel. Ohne Zeile steht sie nur in Kz 83, und die Seite sagt es.
 - **Umsatzsteuer:**
-  - § 13b-Steuer mit 7 %
-  - Wechsel der ZM mitten im Quartal (§ 18a Abs. 1 Satz 3)
-  - § 19 ab 2025: Schnitt mitten im Jahr bei Überschreiten von 100.000 €; Meldepflichten nur nach § 18 Abs. 4a
-  - § 20 Nr. 2 und 4 UStG
-  - § 15a UStG
-- **Ab 2027:** Mindesthebesatz 280 % (§ 16 Abs. 4 Satz 2, § 36 Abs. 5b GewStG), bevor 2027 dazukommt.
+  - Zusammenfassende Meldung: Wechsel im Quartal (§ 18a Abs. 1 Satz 3 UStG)
+  - § 19 ab 2025: Datum des Umsatzes, der die Grenze überschreitet, auf der Umsatzsteuer-Seite
+  - § 20 Satz 1 Nr. 2 UStG im Kern
+  - Vorsteuerberichtigung nach § 15a UStG mit §§ 44, 45 UStDV im Kern (`inputVatCorrection`)
+  - § 13b mit 7 % in der Rechnung der Voranmeldung
+- **Gewerbesteuer:** Mindesthebesatz 280 % ab 2027.
+
+**Bleibt offen:**
+- **§ 13b mit 7 % buchen:** Dafür braucht das Buch eigene Steuerkonten. Die DATEV-Nummern (SKR03/SKR04) für Umsatz- und Vorsteuer nach § 13b mit 7 % ließen sich nicht aus einer Primärquelle belegen; ohne belegte Nummern legt die App keine Konten an.
+- **§ 15a und § 20 Nr. 2:** im Kern gerechnet, noch ohne Eingabe in der App (Verlauf des Vorsteueranteils je Anlagegut; Befreiung nach § 148 AO im Profil).
+- **Gebäude und § 7g-Sonder-AfA:** Beides lässt sich über die API noch nicht anlegen. Die Regeln im Kern stimmen jetzt.
+- **Geschenke:** Die 50-€-Grenze hängt am Wirtschaftsjahr (§ 52 Abs. 6 Satz 10). Die App führt nur Bücher nach Kalenderjahr, das macht keinen Unterschied.
+- **Lohnsteuer-Anmeldung:** Die Kürzungen Kz 33 und 45 rechnet die App nicht. Die Formel für Kz 48 ist aus dem Aufbau des Vordrucks geschlossen, nicht ausdrücklich belegt.
 - **Ungeklärt (Auslegung):**
   - Gilt die Ausnahme nach Abs. 2 Satz 2 auch für den Entnahmeüberschuss nach § 34a Abs. 4?
   - Ist der Höchstbetrag für den Verlustrücktrag (§ 10d Abs. 1 Satz 2) für beide Jahre gemeinsam?

@@ -19,6 +19,8 @@ describe('VAT rates per year (§ 12, § 28 UStG)', () => {
   it('allows Istversteuerung up to 600.000 € before 2024, 800.000 € from 2024, always for a freelancer', () => {
     expect(cashAccountingAllowed(2023, 700_000, false)).toBe(false)
     expect(cashAccountingAllowed(2024, 700_000, false)).toBe(true)
+    // Nr. 2: freed from keeping books under § 148 AO, whatever the turnover (statute read).
+    expect(cashAccountingAllowed(2025, 2_000_000, false, true)).toBe(true)
     expect(cashAccountingAllowed(2025, 2_000_000, true)).toBe(true)
   })
 })

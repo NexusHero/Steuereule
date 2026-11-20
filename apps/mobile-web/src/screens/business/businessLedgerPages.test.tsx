@@ -399,6 +399,20 @@ describe('the assets', () => {
     await waitFor(() => expect(screen.queryByTestId('anlage-formular')).toBeNull())
   })
 
+  it('offers the 75 % AfA of an electric vehicle without a useful life (§ 7 Abs. 2a EStG)', async () => {
+    server.use(http.get(`${BASE_URL}/anlagen`, () => HttpResponse.json(REGISTER)))
+    useCatalogues()
+    let body: unknown = null
+    server.use(http.post(`${BASE_URL}/anlagen`, async ({ request }) => { body = await request.json(); return HttpResponse.json({}, { status: 201 }) }))
+    renderBusiness('anlagen')
+    fireEvent.click(await screen.findByTestId('anlage-neu'))
+    fireEvent.click(screen.getByTestId('anlage-methode-elektrofahrzeug'))
+    expect(screen.queryByTestId('anlage-nutzungsdauer')).toBeNull()
+    fill()
+    fireEvent.click(screen.getByTestId('anlage-speichern'))
+    await waitFor(() => expect(body).toMatchObject({ method: 'elektrofahrzeug' }))
+  })
+
   it('refuses a form that is incomplete or has a fractional life, and the API\'s refusal of a valid one', async () => {
     server.use(http.get(`${BASE_URL}/anlagen`, () => HttpResponse.json(REGISTER)), http.post(`${BASE_URL}/anlagen`, () => problem(400, 'Konto gibt es nicht.')))
     useCatalogues()

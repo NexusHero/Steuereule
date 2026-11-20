@@ -3581,6 +3581,7 @@
       "methodeArt": {
         "linear": "linear",
         "degressive": "degressiv",
+        "elektrofahrzeug": "E-Fahrzeug 75 %",
         "gwg": "GWG",
         "sofort": "sofort"
       },
@@ -3617,7 +3618,8 @@
       "kleinGrenzeGruendung": "Im Gründungsjahr gilt die Kleinunternehmerregelung nur bis {{grenze}} Umsatz. Dein Buch zeigt {{umsatz}}: Prüf im Profil, ob du Umsatzsteuer ausweisen musst.",
       "kleinGrenzeVorjahr": "Dein Umsatz im Vorjahr lag über {{grenze}}. Damit gilt die Kleinunternehmerregelung in diesem Jahr nicht: Prüf das im Profil.",
       "kleinGrenzeJahr": "Dein Umsatz in diesem Jahr liegt mit {{umsatz}} über {{grenze}}. Damit endet die Kleinunternehmerregelung: Prüf das im Profil.",
-      "kleinVorjahrUnbekannt": "Für das Vorjahr gibt es hier kein Buch. Die Kleinunternehmerregelung gilt nur, wenn dein Vorjahresumsatz höchstens {{grenze}} war."
+      "kleinVorjahrUnbekannt": "Für das Vorjahr gibt es hier kein Buch. Die Kleinunternehmerregelung gilt nur, wenn dein Vorjahresumsatz höchstens {{grenze}} war.",
+      "kleinAb": "Seit dem Umsatz vom {{datum}} gilt die Kleinunternehmerregelung nicht mehr: Dieser und alle späteren Umsätze sind umsatzsteuerpflichtig, die früheren bleiben steuerfrei (§ 19 Abs. 1 UStG). Buch sie ab diesem Tag mit Umsatzsteuer und stell Rechnungen mit Umsatzsteuer aus."
     },
     "gewst": {
       "entfaellt": "Als Freiberufler zahlst du keine Gewerbesteuer.",
@@ -3836,9 +3838,11 @@
         "acquired": "Angeschafft am",
         "co2GPerKm": "CO₂-Ausstoß (g/km)",
         "electricRangeKm": "Elektrische Reichweite (km)",
+        "batteryKwh": "Batteriekapazität (kWh, Kauf vor 2023)",
         "monthsInBusiness": "Monate im Betrieb in diesem Jahr",
         "totalCostsEur": "Gesamtkosten des Fahrzeugs im Jahr, mit Abschreibung (€)",
         "depreciationEur": "Davon Abschreibung (€)",
+        "leasingEur": "Davon Leasingraten (€)",
         "privatePercent": "Privatanteil laut Fahrtenbuch (%)",
         "totalKm": "Gefahrene Kilometer im Jahr",
         "costsWithInputVatEur": "Kosten mit Vorsteuerabzug (€)",
@@ -3957,11 +3961,15 @@
         "soliEur": "Solidaritätszuschlag (€)",
         "churchTaxEur": "Kirchensteuer (€)",
         "employeeSocialEur": "Sozialversicherung Arbeitnehmeranteil (€)",
-        "employerSocialEur": "Sozialversicherung Arbeitgeberanteil und Umlagen (€)"
+        "employerSocialEur": "Sozialversicherung Arbeitgeberanteil und Umlagen (€)",
+        "flatWageTaxEur": "Pauschale Lohnsteuer (€, Kz 41)",
+        "flat37bTaxEur": "Pauschale Lohnsteuer § 37b EStG (€, Kz 44)",
+        "flatChurchTaxEur": "Pauschale Kirchensteuer (€, Kz 47)"
       },
       "kirche": {
         "ev": "evangelisch",
-        "rk": "römisch-katholisch"
+        "rk": "römisch-katholisch",
+        "andere": "Andere (Kürzel laut Lohnabrechnung)"
       },
       "privatVersichert": "Privat krankenversichert",
       "rvBefreit": "Von der Rentenversicherung befreit",
@@ -3981,10 +3989,17 @@
         "49": "Solidaritätszuschlag",
         "61": "Kirchensteuer evangelisch",
         "62": "Kirchensteuer römisch-katholisch",
-        "83": "Gesamtbetrag"
+        "83": "Gesamtbetrag",
+        "41": "Pauschale Lohnsteuer",
+        "44": "Pauschale Lohnsteuer § 37b",
+        "48": "Verbleiben",
+        "47": "Pauschale Kirchensteuer",
+        "land": "Kirchensteuer (Zeile deines Bundeslandes)"
       },
       "minijobAbgaben": "Minijob-Abgaben an die Minijob-Zentrale",
-      "minijobHinweis": "Fällig am drittletzten Bankarbeitstag des Monats; die Pauschsteuer von 2 % ist darin enthalten."
+      "minijobHinweis": "Fällig am drittletzten Bankarbeitstag des Monats; die Pauschsteuer von 2 % ist darin enthalten.",
+      "ueber30": "Mehr als 30 Beschäftigte (keine Umlage U1)",
+      "kircheOhneZeile": "Für {{kuerzel}} hat die Lohnsteuer-Anmeldung deines Bundeslandes keine eigene Zeile, oder der Gemeindeschlüssel im Profil fehlt. Die Kirchensteuer steckt nur im Gesamtbetrag (Kz 83); frag dein Finanzamt, wohin sie gehört."
     }
   }
 }

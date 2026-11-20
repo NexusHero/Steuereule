@@ -34,6 +34,33 @@ describe('the company car', () => {
     expect(await screen.findByTestId('kfz-gebucht')).toBeTruthy()
   })
 
+  it('asks the battery of an electric car bought before 2023, the AfA for the cap, and by logbook the leasing', async () => {
+    useBusinessDefaults()
+    const sent: unknown[] = []
+    server.use(
+      http.post(`${BASE_URL}/firmenwagen`, async ({ request }) => {
+        sent.push(await request.json())
+        return HttpResponse.json({ kind: 'berechnet', method: 'pauschal', factor: 1, assessedListPriceEur: 27_800, privateUseEur: 3_336, commute: null, capped: false, vat: null })
+      }),
+    )
+    renderBusiness('firmenwagen')
+    fireEvent.click(await screen.findByTestId('kfz-antrieb-elektro'))
+    fireEvent.change(screen.getByTestId('kfz-listPriceGrossEur'), { target: { value: '36250' } })
+    fireEvent.change(screen.getByTestId('kfz-acquired'), { target: { value: '2016-02-01' } })
+    fireEvent.change(screen.getByTestId('kfz-batteryKwh'), { target: { value: '24' } })
+    fireEvent.change(screen.getByTestId('kfz-depreciationEur'), { target: { value: '4000' } })
+    fireEvent.click(screen.getByTestId('kfz-berechnen'))
+    await waitFor(() => expect(sent[0]).toMatchObject({ batteryKwh: 24, depreciationEur: 4_000 }))
+    // Bought from 2023 there is no battery deduction to ask for.
+    fireEvent.change(screen.getByTestId('kfz-acquired'), { target: { value: '2024-02-01' } })
+    expect(screen.queryByTestId('kfz-batteryKwh')).toBeNull()
+    fireEvent.click(screen.getByTestId('kfz-methode-fahrtenbuch'))
+    fireEvent.change(screen.getByTestId('kfz-leasingEur'), { target: { value: '3000' } })
+    fireEvent.click(screen.getByTestId('kfz-berechnen'))
+    await waitFor(() => expect(sent[1]).toMatchObject({ method: 'fahrtenbuch', leasingEur: 3_000 }))
+    expect(sent[1]).not.toHaveProperty('batteryKwh')
+  })
+
   it('asks for the list price and the date before it computes', async () => {
     useBusinessDefaults()
     renderBusiness('firmenwagen')

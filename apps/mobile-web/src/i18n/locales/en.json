@@ -3581,6 +3581,7 @@
       "methodeArt": {
         "linear": "straight-line",
         "degressive": "declining",
+        "elektrofahrzeug": "electric vehicle 75 %",
         "gwg": "low-value",
         "sofort": "immediate"
       },
@@ -3617,7 +3618,8 @@
       "kleinGrenzeGruendung": "In the founding year the small business rule only holds up to {{grenze}} turnover. Your book shows {{umsatz}}: check in the profile whether you have to charge VAT.",
       "kleinGrenzeVorjahr": "Your turnover last year was above {{grenze}}. The small business rule does not apply this year: check this in the profile.",
       "kleinGrenzeJahr": "Your turnover this year, {{umsatz}}, is above {{grenze}}. The small business rule ends: check this in the profile.",
-      "kleinVorjahrUnbekannt": "There is no book for last year here. The small business rule only applies if last year's turnover was at most {{grenze}}."
+      "kleinVorjahrUnbekannt": "There is no book for last year here. The small business rule only applies if last year's turnover was at most {{grenze}}.",
+      "kleinAb": "From the supply of {{datum}} the small business rule no longer applies: that supply and all later ones are subject to VAT, the earlier ones stay exempt (§ 19 Abs. 1 UStG). Book them with VAT from that day and invoice with VAT."
     },
     "gewst": {
       "entfaellt": "As a freelancer you pay no trade tax.",
@@ -3836,9 +3838,11 @@
         "acquired": "Acquired on",
         "co2GPerKm": "CO₂ emissions (g/km)",
         "electricRangeKm": "Electric range (km)",
+        "batteryKwh": "Battery capacity (kWh, bought before 2023)",
         "monthsInBusiness": "Months in the business this year",
         "totalCostsEur": "Total costs of the vehicle in the year, with depreciation (€)",
         "depreciationEur": "Of which depreciation (€)",
+        "leasingEur": "Of which leasing rates (€)",
         "privatePercent": "Private share per logbook (%)",
         "totalKm": "Kilometres driven in the year",
         "costsWithInputVatEur": "Costs with input VAT (€)",
@@ -3957,11 +3961,15 @@
         "soliEur": "Solidarity surcharge (€)",
         "churchTaxEur": "Church tax (€)",
         "employeeSocialEur": "Social security, employee share (€)",
-        "employerSocialEur": "Social security, employer share and levies (€)"
+        "employerSocialEur": "Social security, employer share and levies (€)",
+        "flatWageTaxEur": "Flat-rate wage tax (€, Kz 41)",
+        "flat37bTaxEur": "Flat-rate wage tax § 37b EStG (€, Kz 44)",
+        "flatChurchTaxEur": "Flat-rate church tax (€, Kz 47)"
       },
       "kirche": {
         "ev": "Protestant",
-        "rk": "Roman Catholic"
+        "rk": "Roman Catholic",
+        "andere": "Other (code from the payslip)"
       },
       "privatVersichert": "Privately health insured",
       "rvBefreit": "Exempt from pension insurance",
@@ -3981,10 +3989,17 @@
         "49": "Solidarity surcharge",
         "61": "Church tax Protestant",
         "62": "Church tax Roman Catholic",
-        "83": "Total"
+        "83": "Total",
+        "41": "Flat-rate wage tax",
+        "44": "Flat-rate wage tax § 37b",
+        "48": "Remaining",
+        "47": "Flat-rate church tax",
+        "land": "Church tax (line of your federal state)"
       },
       "minijobAbgaben": "Minijob charges to the Minijob-Zentrale",
-      "minijobHinweis": "Due on the third last bank day of the month; the 2 % flat tax is included."
+      "minijobHinweis": "Due on the third last bank day of the month; the 2 % flat tax is included.",
+      "ueber30": "More than 30 employees (no U1 levy)",
+      "kircheOhneZeile": "The wage tax return of your federal state has no line of its own for {{kuerzel}}, or the municipality key in the profile is missing. The church tax is only in the total (Kz 83); ask your tax office where it belongs."
     }
   }
 }
