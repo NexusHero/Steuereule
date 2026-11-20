@@ -19,6 +19,7 @@ import { readLawTextTool } from './read-law-text.js'
 import { requestPersonalDataConsentTool } from './request-personal-data-consent.js'
 import { simulateTaxDeltaTool } from './simulate-tax-delta.js'
 import { stageFieldDraftTool } from './stage-field-draft.js'
+import { stageBookingDraftTool } from './stage-booking-draft.js'
 import { suggestSituationTool } from './suggest-situation.js'
 import { withdrawDraftTool } from './withdraw-draft.js'
 import { type ToolHandler } from './tool-call-context.js'
@@ -37,6 +38,7 @@ function coveringEveryTool<const H extends readonly ToolHandler[]>(
 const TOOL_HANDLERS = coveringEveryTool([
   simulateTaxDeltaTool,
   stageFieldDraftTool,
+  stageBookingDraftTool,
   withdrawDraftTool,
   proposeTwoPathsTool,
   askQuestionsTool,

@@ -30,9 +30,15 @@ export type StageTargetCheck =
 
 type WritableFields = Readonly<Partial<Record<Screen, readonly string[]>>>
 
+/**
+ * Masks the owl reaches through a tool of their own, never through `stage_field_draft`: a booking is a
+ * whole journal entry checked against the book (`stage_booking_draft`, ADR-0101 §18), not a field value.
+ */
+export const OWN_TOOL_SCREENS: ReadonlySet<Screen> = new Set<Screen>(['buchung'])
+
 function writableFields(personalDataConsent: boolean): WritableFields {
   return Object.fromEntries(
-    SCREENS.map((screen) => [screen, fieldsOfScreen(screen).filter((spec) => isAiWritable(screen, spec.field, personalDataConsent)).map((spec) => spec.field)] as const).filter(
+    SCREENS.filter((screen) => !OWN_TOOL_SCREENS.has(screen)).map((screen) => [screen, fieldsOfScreen(screen).filter((spec) => isAiWritable(screen, spec.field, personalDataConsent)).map((spec) => spec.field)] as const).filter(
       ([, fields]) => fields.length > 0,
     ),
   )
@@ -81,6 +87,9 @@ export function validateStageTarget(screen: string, field: string, personalDataC
     }
   }
   const typedScreen = screen as Screen
+  if (OWN_TOOL_SCREENS.has(typedScreen)) {
+    return { ok: false, error: 'USE_BOOKING_TOOL: Eine Buchung bereitest du mit `stage_booking_draft` vor, nicht als Feld.' }
+  }
   const cleanField = field.trim()
   if (AI_NEVER_FIELDS.has(cleanField)) {
     return { ok: false, error: `AI_WRITE_FORBIDDEN: Feld "${screen}.${cleanField}" schreibt die Eule nie; das macht der Nutzer selbst.` }

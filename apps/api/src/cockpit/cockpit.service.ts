@@ -24,6 +24,8 @@ import { CROSS_BORDER_SALARY_STATEMENT_REPOSITORY, type CrossBorderSalaryStateme
 import { crossBorderStatusFromAnswers, salaryCertificateValuesFromRecord, exchangeRateFromRecord } from '../ch-salary-certificate/salary-certificate-data.js'
 import { LinkService } from '../link/link.service.js'
 import { SubmissionService } from '../submission/submission.service.js'
+import { filingPathOf, interviewOptions, selfEmploymentEnabled } from '../config/self-employment.js'
+import { BusinessService } from '../business/business.service.js'
 
 function recordedValue(raw: string | null): number | null {
   if (raw === null || raw === 'unklar') return null
@@ -63,7 +65,7 @@ function crossBorderFacts(record: CrossBorderSalaryStatementRecord | null, answe
     einnahmen: gross !== undefined && exchangeRate !== null ? Math.round(chfToEur(gross, exchangeRate.rate)) : 0,
     openItems: openFields + (exchangeRate === null ? 1 : 0),
     conflicts: 0,
-    gated: gatedIncomeTypes(answers),
+    gated: gatedIncomeTypes(answers, interviewOptions()),
   }
 }
 
@@ -110,7 +112,15 @@ export class CockpitService {
     @Optional() private readonly link?: LinkService,
     /** The Abgabe of the year (ADR-0098 §8); absent in tests that build the cockpit without it. */
     @Optional() @Inject(SubmissionService) private readonly submissions?: SubmissionService,
+    /** The book of the self-employed (ADR-0101); absent in tests that build the cockpit without it. */
+    @Optional() @Inject(BusinessService) private readonly business?: BusinessService,
   ) {}
+
+  /** The year's Gewinneinkünfte of one person from the book (Anlage S plus G), 0 without one or with the switch off. */
+  private async businessProfit(userId: string, taxYear: number, person: 'A' | 'B'): Promise<number> {
+    const input = this.business ? await this.business.estimateInput(userId, taxYear, person) : null
+    return input === null ? 0 : Math.round((input.business.selfEmployedEur ?? 0) + (input.business.tradeEur ?? 0))
+  }
 
   /** Wages and pension of one person, from their own records (a Grenzgänger's Lohnausweis, the LStB, the pension). */
   private async personIncome(userId: string, taxYear: number, answers: Answers): Promise<{ readonly facts: IncomeFacts; readonly data: WageTaxCertificateData; readonly pension: number | null }> {
@@ -120,7 +130,7 @@ export class CockpitService {
       this.chSalaryCertificateRepository.findForUserAndYear(userId, taxYear),
     ])
     const data = wageTaxCertificateDataFrom(lstbRecord)
-    const baseFacts: IncomeFacts = answers.ausland === CH_FOREIGN ? withGermanJob(crossBorderFacts(chRecord, answers), data, answers) : employeeFromData(data, answers)
+    const baseFacts: IncomeFacts = answers.ausland === CH_FOREIGN ? withGermanJob(crossBorderFacts(chRecord, answers), data, answers) : { ...employeeFromData(data, answers), gated: gatedIncomeTypes(answers, interviewOptions()) }
     // A pensioner's income is the pension, not the LStB — without it the hero read "0 €" (UX review K3).
     const pension = answers.job === 'Rente' ? recordedValue(pensionRecord?.jahresbetrag ?? null) : null
     const facts =
@@ -185,10 +195,19 @@ export class CockpitService {
     // A joint return: Person B's wages count too, from B's own records (Echtdatentest 18.11.2026).
     const partnerId = await this.partnerUser(userId, taxYear, answers)
     const partner = partnerId === null ? null : await this.personIncome(partnerId, taxYear, partnerAnswers(answers, answersFrom(await this.interviewRepository.findAllForUserAndYear(partnerId, taxYear))))
+    // ADR-0101: the profit of each person's book; B's book is B's own account or, for B kept here, person B.
+    const married = answers.familienstand === 'Verheiratet'
+    const [profitA, profitB] = await Promise.all([
+      this.businessProfit(userId, taxYear, 'A'),
+      partnerId !== null ? this.businessProfit(partnerId, taxYear, 'A') : married ? this.businessProfit(userId, taxYear, 'B') : Promise.resolve(0),
+    ])
+    // A loss lowers the other income, but the sum of a person never goes below zero.
+    const ownIncome = Math.max(0, own.facts.einnahmen + profitA)
+    const partnerIncome = partner === null ? Math.max(0, profitB) : Math.max(0, partner.facts.einnahmen + profitB)
     const facts: IncomeFacts =
       partner === null
-        ? own.facts
-        : { ...own.facts, einnahmen: own.facts.einnahmen + partner.facts.einnahmen, openItems: own.facts.openItems + partner.facts.openItems }
+        ? { ...own.facts, einnahmen: ownIncome + (married ? Math.max(0, profitB) : 0) }
+        : { ...own.facts, einnahmen: ownIncome + partnerIncome, openItems: own.facts.openItems + partner.facts.openItems }
     const status = cockpitRangeFromInputs({
       sum: facts.einnahmen,
       openItems: facts.openItems,
@@ -204,8 +223,10 @@ export class CockpitService {
       taxYear: record.taxYear,
       status: toStatusDto(status),
       openItems: record.openItems,
-      ...(partner === null ? {} : { byPerson: { a: own.facts.einnahmen, b: partner.facts.einnahmen } }),
+      ...(partner === null ? {} : { byPerson: { a: ownIncome, b: partnerIncome } }),
       submission,
+      capabilities: { selbststaendig: selfEmploymentEnabled() },
+      filingPath: filingPathOf(answers.job),
     }
   }
 }

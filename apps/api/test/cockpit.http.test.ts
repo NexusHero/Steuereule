@@ -72,6 +72,8 @@ describe('GET /v1/steuerjahre/:jahr/cockpit', () => {
       openItems: 3,
       // ADR-0098 §8: nothing recorded as filed yet.
       submission: null,
+      capabilities: { selbststaendig: false },
+      filingPath: 'papier',
     })
   })
 

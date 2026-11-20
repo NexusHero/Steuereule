@@ -48,7 +48,29 @@ export function taxDataTables(tx: TransactionClient): UserKeyedTable[] {
     tx.advisorNote,
     tx.advisorSituation,
     tx.advisorInterview,
+    // ADR-0101: lines before their entries, entries, log and bank transactions before their book (FKs).
+    // The append-only trigger lets these deletes through only under ERASURE_SETTING (see below).
+    tx.journalLine,
+    tx.journalEntry,
+    tx.ledgerLogRecord,
+    tx.bankTransaction,
+    tx.ledger,
+    tx.fixedAsset,
+    tx.bookingRule,
+    tx.businessProfile,
   ]
+}
+
+/**
+ * The transaction-local setting the append-only trigger of migration 20261120100000_self_employment
+ * checks: only with it on may a journal entry, its lines, the log or the book be deleted. Art. 17
+ * DSGVO wins over the GoBD retention for the app's copy; it is set only here, inside the erasure.
+ */
+export const ERASURE_SETTING = 'steuereule.erasure'
+
+/** Turns the erasure flag on for the rest of this transaction only (`set_config(…, true)`). */
+export async function allowErasure(tx: Pick<TransactionClient, '$executeRaw'>): Promise<void> {
+  await tx.$executeRaw`SELECT set_config(${ERASURE_SETTING}, 'on', true)`
 }
 
 export async function deleteAccountTransaction(
@@ -81,6 +103,7 @@ export async function deleteAccountTransaction(
         retainedUnderLegalHold += await table.count({ where: { userId } })
       }
     } else {
+      await allowErasure(tx)
       for (const table of taxDataTables(tx)) {
         await table.deleteMany({ where: { userId } })
       }

@@ -35,7 +35,7 @@ Dieses Dokument bietet die **fachliche Anwendungsfall-Sicht** auf Steuereule. Es
 | **Sarah Fischer** | Angestellte mit Homeoffice und Riester-Rentenvertrag (Sonderausgaben § 10a EStG) | UC-02, UC-03, UC-05 | `e2e/scenarios/06-sarah-fischer-homeoffice-riester.mjs` |
 | **David Richter** | Alleinerziehend mit Kind, Entlastungsbetrag nach § 24b EStG, Kindergeld-Günstigerprüfung | UC-02, UC-03, UC-05 | `e2e/scenarios/07-david-richter-alleinerziehend.mjs`, `16-sabine-kranz-geschieden-kind.mjs` |
 | **Maximilian Allesgeber** | Vollspektrum-Erfasser mit allen Lebenslagen (Umzug, doppelte Haushaltsführung, Abfindung) | UC-02, UC-03, UC-05 | `e2e/scenarios/17-maximilian-allesgeber-maximal-katalog.mjs` |
-| **Maximiliane Koch** | Gewerbetreibende / Selbstständige (Gewerbe-Gate fängt unzulässige Einkunftsarten in 1.0 ehrlich ab) | UC-02 (Gate) | `e2e/scenarios/09-maximiliane-koch-selbststaendig-gate.mjs` |
+| **Maximiliane Koch** | Gewerbetreibende / Selbstständige: Gewerbe-Gate, solange der Schalter für Selbstständige aus ist; danach EÜR, Buchhaltung, Umsatz- und Gewerbesteuer ([ADR-0101](adr/0101-selbststaendige.md)) | UC-02 (Gate) | `e2e/scenarios/09-maximiliane-koch-selbststaendig-gate.mjs` |
 | **Erika Zimmermann** | Verwitwete Steuerzahlerin (Gnadensplitting nach § 32a Abs. 6 EStG im Sterbefolgejahr) | UC-02, UC-04, UC-05 | `e2e/scenarios/13-erika-zimmermann-verwitwet.mjs` |
 
 ---
@@ -73,7 +73,7 @@ Dieses Dokument bietet die **fachliche Anwendungsfall-Sicht** auf Steuereule. Es
 * **Ziel:** Schnelle Einordnung der Einkunftsarten und rechtskonformer Ausschluss nicht unterstützter Fälle ([ADR-0031](adr/0031-the-interview-is-three-questions-and-a-catalog.md)).
 * **Ablauf:**
   1. Frage 1: Erwerbstätigkeit (`Angestellt`, `Rentner`, `Selbstständig/Gewerbe`, `Beides`).
-     * *Gewerbe-Gate:* Selbstständige werden mit transparentem Hinweis auf Version 1.x abgefangen ([REQ-015](requirements/register.md#REQ-015)).
+     * *Gewerbe-Gate:* Selbstständige werden mit transparentem Hinweis abgefangen ([REQ-015](requirements/register.md#REQ-015)), solange der Schalter für Selbstständige aus ist; danach führt der Weg in EÜR, Buchhaltung, Umsatz- und Gewerbesteuer ([ADR-0101](adr/0101-selbststaendige.md)).
   2. Frage 2: Auslandsbezug (`Inland`, `Schweiz / Grenzgänger`, `Anderes Ausland`).
      * *CH-Only-Gate:* Nur Grenzgänger zur Schweiz werden in Version 1.0 unterstützt ([ADR-0042](adr/0042-grenzgaenger-ch-vertikale.md)).
   3. Frage 3: Kinder (`Ja`, `Nein`).

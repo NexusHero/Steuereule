@@ -40,6 +40,7 @@ import type { MostFavourableCheckDto, MostFavourableCheckSourceDto } from './dto
 import type { UncertaintyDto } from '../filing-type-comparison/dto/filing-type-comparison-response.dto.js'
 import { answersFrom } from '../interview/answers.js'
 import { wageTaxCertificateDataFrom } from '../lstb/lstb-data.js'
+import { interviewOptions } from '../config/self-employment.js'
 
 function dataFromRecord(record: CapitalRecord | null): CapitalData {
   if (record === null) return EMPTY_CAPITAL
@@ -159,7 +160,7 @@ export class CapitalService {
   private async toResponse(userId: string, taxYear: number, record: CapitalRecord | null): Promise<CapitalResponseDto> {
     const data = dataFromRecord(record)
     const answers = await this.answers(userId, taxYear)
-    const gated = gatedIncomeTypes(answers)
+    const gated = gatedIncomeTypes(answers, interviewOptions())
     const depot = classifyCapitalDepot(answers['kap-depot'])
 
     const coreItems = capitalAsCoreLineItem(data)

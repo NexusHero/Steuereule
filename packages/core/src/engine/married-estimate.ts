@@ -8,6 +8,7 @@ import { calculateExtraordinaryBurden, type BurdenChildrenBracket } from '../dom
 import { capitalFlatTax, isSupportedIncomeTaxYear, progressionClauseTax, soliExemptionLimits, soliOnFlatTax, solidaritaetszuschlag, solidaritaetszuschlagInCents, splittingTariff } from '../math/tarif'
 import { getTaxYearParameters } from '../math/tax-parameters'
 import { deductibleProvision, type ChildrenProvision, type PersonProvision } from '../domains/provision'
+import { afterTradeTaxCredit, businessTotal, creditPerson, lossesOfYear, type BusinessIncome, type LossCarry, type Prepayments } from './business-income'
 
 /** One spouse's wage income, as either the German Lohnsteuerbescheinigung or the Swiss Anlage N-Gre gives it. */
 export type SpouseIncome =
@@ -64,6 +65,14 @@ export type SpouseIncome =
       readonly kind: 'pension'
       readonly taxablePensionEur: number
     }
+  | {
+      /**
+       * No wage and no pension: a spouse who lives on the business (`MarriedEstimateInput.business`),
+       * with the provision paid outside a wage (ADR-0101).
+       */
+      readonly kind: 'selfEmployed'
+      readonly provision: PersonProvision
+    }
 
 /** § 9a S. 1 Nr. 3 EStG: Werbungskosten-Pauschbetrag for pensions. */
 const PENSION_LUMP_SUM_EUR = 102
@@ -99,6 +108,12 @@ export interface MarriedEstimateInput {
   readonly capitalIncomeEur?: number | undefined
   /** Kapitalertragsteuer and Soli the banks withheld on that income: credited like the wage tax. */
   readonly capitalTaxWithheldEur?: number | undefined
+  /** Gewinneinkünfte of each spouse (Anlage S and G), beside or instead of the wage (ADR-0101). */
+  readonly business?: { readonly a?: BusinessIncome | undefined; readonly b?: BusinessIncome | undefined } | undefined
+  /** § 10d EStG of the couple: the joint Verlustvortrag and Rücktrag (doubled limits). */
+  readonly losses?: LossCarry | undefined
+  /** Income tax and Soli prepaid by Vorauszahlungsbescheid. */
+  readonly prepayments?: Prepayments | undefined
 }
 
 export interface SpouseChurchTax {
@@ -137,6 +152,10 @@ interface SpouseFigures {
 
 function spouseFigures(s: SpouseIncome, year: number): SpouseFigures {
   const params = getTaxYearParameters(year)
+  if (s.kind === 'selfEmployed') {
+    const deduction = deductibleProvision(year, [s.provision]).totalEur
+    return { werbungskosten: 0, income: 0, provision: { from: deduction, to: deduction }, credit: 0, detail: s.provision }
+  }
   if (s.kind === 'pension') {
     const werbungskosten = Math.min(PENSION_LUMP_SUM_EUR, s.taxablePensionEur)
     return { werbungskosten, income: s.taxablePensionEur - werbungskosten, provision: { from: 0, to: 0 }, credit: 0, detail: null }
@@ -189,8 +208,11 @@ export function estimateMarriedCouple(input: MarriedEstimateInput): MarriedEstim
   if (!isSupportedIncomeTaxYear(input.year)) return { kind: 'nicht-moeglich', reason: 'jahr-ohne-tarif' }
   const params = getTaxYearParameters(input.year)
   const spouses = [input.a, ...(input.b ? [input.b] : [])].map((s) => spouseFigures(s, input.year))
-  const income = spouses.reduce((sum, s) => sum + s.income, 0) + input.rentalSurplus
+  const businessA = input.business?.a
+  const businessB = input.business?.b
+  const income = spouses.reduce((sum, s) => sum + s.income, 0) + input.rentalSurplus + businessTotal(businessA) + businessTotal(businessB)
   const gdeEur = Math.max(0, income)
+  const losses = lossesOfYear(input.year, true, income, input.losses)
   const bracket: BurdenChildrenBracket =
     input.childrenBracket ?? (input.children >= 3 ? '3+' : input.children >= 1 ? '1-2' : '0')
   const deductibleBurdenEur =
@@ -218,7 +240,7 @@ export function estimateMarriedCouple(input: MarriedEstimateInput): MarriedEstim
   // § 10 Abs. 1 Nr. 4 EStG: the church tax withheld in the year is a Sonderausgabe.
   const withheld = withheldChurchTax(input)
   const specialExpenses = Math.max(params.lumpSums.specialExpensesJoint, input.donations + (withheld ?? 0))
-  const taxableIncome = (deduction: number) => Math.max(0, income - deduction - specialExpenses - deductibleBurdenEur)
+  const taxableIncome = (deduction: number) => Math.max(0, losses.gdeAfterLossesEur - deduction - specialExpenses - deductibleBurdenEur)
   const zve = { from: taxableIncome(provision.to), to: taxableIncome(provision.from) }
 
   const allowance = input.childAllowanceEur ?? input.children * childTaxAllowance(input.year)
@@ -230,8 +252,11 @@ export function estimateMarriedCouple(input: MarriedEstimateInput): MarriedEstim
   // Günstigerprüfung: the allowance only wins when it saves more tax than the Kindergeld paid out.
   const childAllowanceUsed = allowance > 0 && withBenefit(zve.to) - withAllowance(zve.to) > input.childBenefit
   const reductionEur = input.householdReductionEur ?? 0
+  // § 35 EStG per spouse (BMF 3.11.2016 Rn. 10, 16); the rental surplus is not split, so it counts as A's.
+  const persons = [creditPerson(businessA, [spouses[0]?.income ?? 0, input.rentalSurplus]), creditPerson(businessB, [spouses[1]?.income ?? 0])]
+  const afterCredit = (tax: number) => afterTradeTaxCredit(persons, tax)
   const reducedTariffTaxFor = (z: number) =>
-    applyHouseholdTaxReduction(childAllowanceUsed ? withAllowance(z) : withBenefit(z), reductionEur)
+    applyHouseholdTaxReduction(afterCredit(childAllowanceUsed ? withAllowance(z) : withBenefit(z)).taxEur, reductionEur)
   // § 32d Abs. 1 EStG: capital income not taxed at source bears the flat rate on top of the tariff.
   const flatTax = capitalFlatTax(input.capitalIncomeEur ?? 0, input.year)
   const incomeTaxFor = (z: number) =>
@@ -242,8 +267,10 @@ export function estimateMarriedCouple(input: MarriedEstimateInput): MarriedEstim
   const exemptionLimit = soliExemptionLimits(input.year as never).joint
   // On the tax after the reductions (§ 3 Abs. 1 Nr. 1 SolZG), to the cent as on the notice; the Soli on
   // the flat tax knows no exemption limit (§ 3 Abs. 3 SolZG).
+  // Church tax ignores the § 35 credit (§ 51a Abs. 2 Satz 3 EStG); the Soli takes the tax after it (§ 3 Abs. 2 SolZG).
   const churchBasis = (z: number) => applyHouseholdTaxReduction(withAllowance(z), reductionEur)
-  const soliFor = (z: number) => (solidaritaetszuschlagInCents(churchBasis(z), exemptionLimit) + soliOnFlatTax(flatTax)) / 100
+  const soliBasis = (z: number) => applyHouseholdTaxReduction(afterCredit(withAllowance(z)).taxEur, reductionEur)
+  const soliFor = (z: number) => (solidaritaetszuschlagInCents(soliBasis(z), exemptionLimit) + soliOnFlatTax(flatTax)) / 100
   const soli = { from: soliFor(zve.from), to: soliFor(zve.to) }
   const churchTax = coupleChurchTax(input, spouses, {
     basis: { from: churchBasis(zve.from), to: churchBasis(zve.to) },
@@ -256,7 +283,10 @@ export function estimateMarriedCouple(input: MarriedEstimateInput): MarriedEstim
       ? { from: churchTax.withheld - churchTax.due.to, to: churchTax.withheld - churchTax.due.from }
       : { from: 0, to: 0 }
 
-  const credit = spouses.reduce((sum, s) => sum + s.credit, 0) + (input.capitalTaxWithheldEur ?? 0)
+  const prepaidSoli = input.prepayments?.soliEur ?? 0
+  const credit = spouses.reduce((sum, s) => sum + s.credit, 0) + (input.capitalTaxWithheldEur ?? 0) + (input.prepayments?.incomeTaxEur ?? 0)
+  const withBusiness = input.business !== undefined || input.losses !== undefined || input.prepayments !== undefined
+  const tariffAt = (z: number) => (childAllowanceUsed ? withAllowance(z) : withBenefit(z))
   return {
     kind: 'spanne',
     // What was deducted for both spouses together; it was a fixed 0 before (real-case test).
@@ -269,11 +299,22 @@ export function estimateMarriedCouple(input: MarriedEstimateInput): MarriedEstim
     solidaritaetszuschlag: soli,
     anrechnung: credit,
     result: {
-      from: cents(credit - incomeTax.to - soli.to + churchBalance.from),
-      to: cents(credit - incomeTax.from - soli.from + churchBalance.to),
+      from: cents(credit + prepaidSoli - incomeTax.to - soli.to + churchBalance.from),
+      to: cents(credit + prepaidSoli - incomeTax.from - soli.from + churchBalance.to),
     },
     childAllowanceUsed,
     churchTax,
+    ...(withBusiness
+      ? {
+          business: {
+            selfEmployedEur: (businessA?.selfEmployedEur ?? 0) + (businessB?.selfEmployedEur ?? 0),
+            tradeEur: (businessA?.tradeEur ?? 0) + (businessB?.tradeEur ?? 0),
+            gdeEur: income,
+            losses,
+            tradeTaxCredit: { from: afterCredit(tariffAt(zve.from)).creditEur, to: afterCredit(tariffAt(zve.to)).creditEur },
+          },
+        }
+      : {}),
   }
 }
 

@@ -29,7 +29,8 @@ export class UnlockController {
     @CurrentUser() userId: string,
     @Param('jahr', ParseTaxYearPipe) year: number,
   ): Promise<UnlockStatusDto> {
-    return { status: await this.service.status(userId, year) }
+    const [status, tier, filingPath] = await Promise.all([this.service.status(userId, year), this.service.requiredTier(userId, year), this.service.filingPath(userId, year)])
+    return { status, tier, filingPath }
   }
 
   @Post('v1/zahlung/stripe/webhook')

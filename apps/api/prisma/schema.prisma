@@ -486,6 +486,8 @@ model Receipt {
   readReason        String?      @map("leseGrund")
   /// The tax year the read staged its drafts in (ADR-0097 §5: the document's own year).
   draftsTaxYear     Int?         @map("entwurfSteuerjahr")
+  /// A business receipt (ADR-0101 §6): "ausgabe" (an expense) or "einnahme" (an invoice the business wrote).
+  direction         String?      @map("richtung")
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
   file              ReceiptFile?
@@ -926,6 +928,9 @@ model Unlock {
   /// "offen" until the webhook confirms payment, then "bezahlt".
   status                  String    @default("offen")
   stripeCheckoutSessionId String    @unique
+  /// Which price was paid (ADR-0101 §21): "standard" or "selbststaendig"; a year with self-employment
+  /// needs "selbststaendig", which also covers everything "standard" opens.
+  tier                    String    @default("standard") @map("stufe")
   amountCents             Int?      @map("betragCent")
   paidAt                  DateTime? @map("bezahltAm")
   createdAt               DateTime  @default(now())
@@ -1505,4 +1510,223 @@ model ReceiptFile {
 
   @@index([userId])
   @@map("BelegDatei")
+}
+
+// --- Selbstständige (ADR-0101) ---------------------------------------------------
+// One book per person and tax year. Entries, their lines and the log are append-only: a trigger in
+// migration 20261120100000_self_employment rejects UPDATE and DELETE on them (GoBD); account deletion
+// sets a transaction-local erasure flag the trigger lets through (Art. 17, delete-account-transaction.ts).
+// Amounts, texts, names, references and IBANs are field-encrypted like their neighbours (ADR-0008);
+// structure (account numbers, sides, tax keys, dates, numbers, hashes) stays in the clear because the
+// trigger, the uniqueness of numbers and the hash chain need it. Hashes are computed over the
+// plaintext, so the chain does not depend on the encryption.
+
+/// The business of one person in one tax year: Freiberuf or Gewerbe, how the profit is determined,
+/// the VAT and trade tax facts the user enters (ADR-0101 §2, §5, §8, §9, §10, §3).
+model BusinessProfile {
+  id                 String   @id @default(uuid())
+  /// Scoping key — same trusted userId as Profile.userId (ADR-0007).
+  userId             String
+  taxYear            Int      @map("steuerjahr")
+  /// "A" (the account holder) or "B" (the spouse recorded in this account).
+  person             String   @default("A")
+  /// The confirmed kind: "freiberuf" or "gewerbe"; null until the user confirmed the suggestion.
+  kind               String?  @map("art")
+  /// The answers to the profession questions as JSON (core ProfessionAnswers).
+  professionAnswers  String?  @map("berufsAngaben") /// @encrypted?mode=strict
+  /// The core's suggestion with its reasons as JSON, kept with the answers it came from.
+  suggestion         String?  @map("vorschlag") /// @encrypted?mode=strict
+  /// Name of the business as the user calls it.
+  name               String?  @map("bezeichnung") /// @encrypted?mode=strict
+  /// "euer" or "bilanz".
+  mode               String   @default("euer") @map("gewinnermittlung")
+  /// "SKR03" or "SKR04".
+  chart              String   @default("SKR03") @map("kontenrahmen")
+  smallBusiness      Boolean  @default(false) @map("kleinunternehmer")
+  /// "ist" or "soll" (§ 13 Abs. 1 Nr. 1 UStG).
+  vatMethod          String   @default("ist") @map("versteuerung")
+  /// Amtlicher Gemeindeschlüssel of the Betriebsstätte.
+  municipalityAgs    String?  @map("gemeindeAgs") /// @encrypted?mode=strict
+  /// The Hebesatz the user set instead of the table's, in percent.
+  multiplierOverride String?  @map("hebesatzKorrektur") /// @encrypted?mode=strict
+  /// Start of the business (ISO date).
+  startDate          String?  @map("beginn") /// @encrypted?mode=strict
+  /// Umsatzsteuer prepayments of the year as one sum in cents (ADR-0101 §8).
+  vatPrepayments     String?  @map("ustVorauszahlungen") /// @encrypted?mode=strict
+  /// Gewerbesteuer inputs as JSON: § 8 Nr. 1 components, § 9 Nr. 1, other additions and deductions, Gewerbeverlust.
+  tradeTaxInputs     String?  @map("gewstAngaben") /// @encrypted?mode=strict
+  /// Loss facts as JSON: Verlustvortrag from the last Feststellungsbescheid, the Rücktrag waiver.
+  lossFacts          String?  @map("verlustAngaben") /// @encrypted?mode=strict
+  /// Shares from partnerships as JSON (amounts of their Feststellungsbescheid, ADR-0101 §3).
+  partnershipShares  String?  @map("beteiligungen") /// @encrypted?mode=strict
+  /// The values of the Verfahrensdokumentation as JSON.
+  procedureDoc       String?  @map("verfahrensdoku") /// @encrypted?mode=strict
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@unique([userId, taxYear, person])
+  @@index([userId, taxYear])
+  @@map("Betrieb")
+}
+
+/// The book (ADR-0101 §11): chart, mode and the Festschreibung, which only moves forward (trigger).
+model Ledger {
+  id               String            @id @default(uuid())
+  userId           String
+  taxYear          Int               @map("steuerjahr")
+  person           String            @default("A")
+  chart            String            @map("kontenrahmen")
+  mode             String            @map("gewinnermittlung")
+  /// Festschreibung: no entry dated on or before this ISO date.
+  lockedThrough    String?           @map("festgeschriebenBis")
+  createdAt        DateTime          @default(now())
+  entries          JournalEntry[]
+  logRecords       LedgerLogRecord[]
+  bankTransactions BankTransaction[]
+
+  @@unique([userId, taxYear, person])
+  @@index([userId, taxYear])
+  @@map("Buch")
+}
+
+/// One journal entry, never changed (append-only trigger); a correction is a Storno entry.
+model JournalEntry {
+  id             String        @id @default(uuid())
+  ledgerId       String        @map("buchId")
+  userId         String
+  taxYear        Int           @map("steuerjahr")
+  /// Gapless per book, from 1.
+  number         Int           @map("nummer")
+  date           String        @map("datum")
+  documentNumber String        @map("belegnummer") /// @encrypted?mode=strict
+  receiptRef     String?       @map("belegverweis") /// @encrypted?mode=strict
+  text           String        @map("buchungstext") /// @encrypted?mode=strict
+  /// The § 11 EStG facts of a regular payment as JSON.
+  regularPayment String?       @map("wiederkehrend") /// @encrypted?mode=strict
+  reversalOf     Int?          @map("stornoVon")
+  /// Where the entry came from: "nutzer", "eule:<ref>", "bank:<id>", "beleg:<id>", "afa:<id>", "eb". No tax data.
+  source         String        @default("nutzer") @map("herkunft")
+  /// The accepted draft as JSON when the entry came from one (owl, receipt): what the draft's undo compares.
+  draft          String?       @map("entwurf") /// @encrypted?mode=strict
+  /// SHA-256 over the canonical plaintext of the entry.
+  contentHash    String        @map("inhaltHash")
+  createdAt      DateTime      @default(now())
+  ledger         Ledger        @relation(fields: [ledgerId], references: [id], onDelete: Restrict)
+  lines          JournalLine[]
+
+  @@unique([ledgerId, number])
+  @@index([userId, taxYear])
+  @@map("Buchung")
+}
+
+/// One line of an entry as the ledger expanded it (VAT lines included), never changed.
+model JournalLine {
+  id       String       @id @default(uuid())
+  entryId  String       @map("buchungId")
+  userId   String
+  taxYear  Int          @map("steuerjahr")
+  position Int          @map("zeile")
+  account  String       @map("konto")
+  /// "debit" or "credit".
+  side     String       @map("seite")
+  /// Cents as a decimal string.
+  amount   String       @map("betrag") /// @encrypted?mode=strict
+  taxKey   String       @map("steuerschluessel")
+  /// "base", "tax" or null.
+  taxPart  String?      @map("steueranteil")
+  entry    JournalEntry @relation(fields: [entryId], references: [id], onDelete: Restrict)
+
+  @@unique([entryId, position])
+  @@index([userId, taxYear])
+  @@map("Buchungszeile")
+}
+
+/// The hash-chained log of the book (GoBD Rz. 107 ff.): entries, locks and exports, never changed.
+model LedgerLogRecord {
+  id       String @id @default(uuid())
+  ledgerId String @map("buchId")
+  userId   String
+  taxYear  Int    @map("steuerjahr")
+  seq      Int    @map("lfdNr")
+  /// ISO timestamp the API stamped; part of the hashed content.
+  at       String @map("zeitpunkt")
+  /// "entry", "lock" or "export".
+  kind     String @map("art")
+  /// Canonical JSON of the payload.
+  payload  String @map("inhalt") /// @encrypted?mode=strict
+  prevHash String @map("vorgaengerHash")
+  hash     String
+  ledger   Ledger @relation(fields: [ledgerId], references: [id], onDelete: Restrict)
+
+  @@unique([ledgerId, seq])
+  @@index([userId, taxYear])
+  @@map("Buchungsprotokoll")
+}
+
+/// A fixed asset of the business; the depreciation is computed by the core from these facts.
+model FixedAsset {
+  id                  String   @id @default(uuid())
+  userId              String
+  /// The year of acquisition: the asset is listed in that year and every later one.
+  taxYear             Int      @map("steuerjahr")
+  person              String   @default("A")
+  label               String   @map("bezeichnung") /// @encrypted?mode=strict
+  /// The asset account in the book's chart.
+  account             String   @map("konto")
+  acquisitionDate     String   @map("anschaffungsdatum") /// @encrypted?mode=strict
+  /// Net cost in cents.
+  acquisitionCost     String   @map("anschaffungskosten") /// @encrypted?mode=strict
+  /// "linear", "degressive", "gwg", "sofort", "building".
+  method              String   @map("methode")
+  category            String?  @map("anlagenart")
+  usefulLifeYears     Int?     @map("nutzungsdauer")
+  /// The Sonder-AfA (§ 7g Abs. 5) per year as JSON, and the cut of the cost (§ 7g Abs. 2).
+  specialDepreciation String?  @map("sonderAfa") /// @encrypted?mode=strict
+  /// Disposal as JSON: date and proceeds in cents.
+  disposal            String?  @map("abgang") /// @encrypted?mode=strict
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([userId, taxYear])
+  @@map("Anlagegut")
+}
+
+/// A transaction from an imported statement; the fingerprint keeps a re-import from doubling it.
+model BankTransaction {
+  id          String   @id @default(uuid())
+  ledgerId    String   @map("buchId")
+  userId      String
+  taxYear     Int      @map("steuerjahr")
+  /// SHA-256 of the core (withFingerprints), unique per book.
+  fingerprint String   @map("fingerabdruck")
+  /// Signed cents.
+  amount      String   @map("betrag") /// @encrypted?mode=strict
+  /// Date, counterparty, IBAN and reference as JSON.
+  details     String   @map("angaben") /// @encrypted?mode=strict
+  /// "offen", "gebucht" or "ignoriert".
+  status      String   @default("offen")
+  entryNumber Int?     @map("buchungNummer")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  ledger      Ledger   @relation(fields: [ledgerId], references: [id], onDelete: Restrict)
+
+  @@unique([ledgerId, fingerprint])
+  @@index([userId, taxYear])
+  @@map("Kontoumsatz")
+}
+
+/// A rule the bank import suggests bookings with (core BookingRule); per person, across years.
+model BookingRule {
+  id        String   @id @default(uuid())
+  userId    String
+  person    String   @default("A")
+  /// The matching criteria as JSON (IBAN, name, reference, direction).
+  criteria  String   @map("kriterien") /// @encrypted?mode=strict
+  account   String   @map("konto")
+  taxKey    String   @map("steuerschluessel")
+  text      String?  @map("buchungstext") /// @encrypted?mode=strict
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("Buchungsregel")
 }

@@ -1,8 +1,12 @@
+import type { UnlockTier } from './unlock.repository.js'
+
 export const PAYMENT_PROVIDER = Symbol('ZAHLUNGSANBIETER')
 
 export interface CheckoutRequest {
   userId: string
   taxYear: number
+  /** Which price the session charges (ADR-0101 §21); `standard` when not given. */
+  tier?: UnlockTier
   successUrl: string
   cancelUrl: string
 }

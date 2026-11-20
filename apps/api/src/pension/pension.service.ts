@@ -27,6 +27,7 @@ import { PENSION_REPOSITORY, type PensionRecord, type PensionRepository } from '
 import type { PutPensionFieldDto, PensionFieldDto } from './dto/pension-field.dto.js'
 import type { PutPensionKindDto } from './dto/pension-kind.dto.js'
 import type { PensionItemDto, PensionResponseDto, PensionStatusDto } from './dto/pension-response.dto.js'
+import { interviewOptions } from '../config/self-employment.js'
 
 export function pensionDataFromRecord(record: PensionRecord | null): PensionData {
   if (record === null) return EMPTY_PENSION
@@ -87,7 +88,7 @@ export class PensionService {
   private async toResponse(userId: string, taxYear: number, record: PensionRecord | null): Promise<PensionResponseDto> {
     const data = pensionDataFromRecord(record)
     const answers = await this.answers(userId, taxYear)
-    const gated = gatedIncomeTypes(answers)
+    const gated = gatedIncomeTypes(answers, interviewOptions())
 
     const coreItems = pensionAsCoreLineItem(data)
     const items: PensionItemDto[] = coreItems === null ? [] : [itemToDto(coreItems)]

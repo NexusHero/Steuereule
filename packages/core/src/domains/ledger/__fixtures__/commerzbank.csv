@@ -1,0 +1,3 @@
+Buchungstag;Wertstellung;Umsatzart;Buchungstext;Betrag;Währung;IBAN Kontoinhaber;Kategorie
+28.03.2025;28.03.2025;Gutschrift;Beispiel Kunde GmbH Rechnung RE-2025-020;714,00;EUR;DE89370400440532013000;Einnahmen
+29.03.2025;29.03.2025;Lastschrift;Versicherung Muster VVaG Beitrag 2025;-420,00;EUR;DE89370400440532013000;Versicherung

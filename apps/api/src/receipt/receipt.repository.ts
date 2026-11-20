@@ -1,4 +1,4 @@
-import type { HolderRef, ReceiptReadOutcome, ReceiptReadReason, ReceiptType } from '@steuereule/core'
+import type { HolderRef, ReceiptDirection, ReceiptReadOutcome, ReceiptReadReason, ReceiptType } from '@steuereule/core'
 
 export interface ReceiptFileMetaRecord {
   readonly mimeType: string
@@ -27,6 +27,8 @@ export interface ReceiptRecord {
   readOutcome?: ReceiptReadOutcome | null
   readReason?: ReceiptReadReason | null
   draftsTaxYear?: number | null
+  /** A business receipt (ADR-0101 §6): expense or income; absent for every other Beleg. */
+  direction?: ReceiptDirection | null
   createdAt: Date
   updatedAt: Date
 }
@@ -39,6 +41,7 @@ export interface CreateReceiptData {
   receiptDate?: string
   zahlungsdatum?: string
   paymentDate?: string
+  direction?: ReceiptDirection
 }
 
 /** The one assignment write: confirm a year, optionally dismissing a contradicting suggestion. */

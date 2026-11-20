@@ -1,0 +1,6 @@
+"Konto";"Girokonto DE89370400440532013000"
+"Kontostand vom 31.03.2025:";"5.000,00 €"
+""
+"Buchungsdatum";"Wertstellung";"Status";"Zahlungspflichtige*r";"Zahlungsempfänger*in";"Verwendungszweck";"Umsatztyp";"IBAN";"Betrag (€)";"Gläubiger-ID";"Mandatsreferenz";"Kundenreferenz"
+"20.03.25";"20.03.25";"Gebucht";"Beispiel Kunde GmbH";"Erika Beispiel";"RE-2025-019";"Eingang";"DE02100100109307118603";"595";"";"";"RE-2025-019"
+"21.03.25";"21.03.25";"Gebucht";"Erika Beispiel";"Coworking Space GmbH";"Miete Maerz";"Ausgang";"DE75512108001245126199";"-238,00";"";"";""

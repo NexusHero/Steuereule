@@ -22,6 +22,8 @@ import { ChildrenScreen } from '../children/ChildrenScreen'
 import { PensionerScreen } from '../pension/PensionerScreen'
 import { CrossBorderScreen } from '../cross-border/CrossBorderScreen'
 import { AuswahlPage, BasisPage, TopicPage } from './StromPages'
+import { useSelfEmploymentCapability } from '../business/useSelfEmployment'
+import { StromOptionsContext, useStromOptions } from './stromOptions'
 import { PartnerPage } from './PartnerPage'
 import { stromStepTitle } from './stromTitles'
 import { effectOf } from './stromEffects'
@@ -51,12 +53,24 @@ export interface StromScreenProps {
 }
 
 /** The Strom (ADR-0089): one continuous flow through the return, one address per step. */
-export function StromScreen({ taxYear, slug, isSignedIn, onGo, onExit, onOpenSubmission, onGuestBasisDone }: StromScreenProps) {
+export function StromScreen(props: StromScreenProps) {
+  const capability = useSelfEmploymentCapability(props.taxYear)
+  return (
+    <StromOptionsContext.Provider value={capability.options}>
+      <StromScreenBody {...props} />
+    </StromOptionsContext.Provider>
+  )
+}
+
+function StromScreenBody({ taxYear, slug, isSignedIn, onGo, onExit, onOpenSubmission, onGuestBasisDone }: StromScreenProps) {
   const bp = useBreakpoint()
   const t = useTheme()
   const styles = makeStyles(t)
   const { t: tr } = useTranslation(APP_NS)
   const interviewQuery = useInterviewControllerGetInterview(taxYear)
+  // The server's self-employment switch: with it on the Gewerbe gate is no step (ADR-0101 §20).
+  const capability = useSelfEmploymentCapability(taxYear)
+  const options = capability.options
   const priorQuery = useInterviewControllerGetInterview(taxYear - 1, undefined, { query: { retry: false, enabled: isSignedIn } })
   const masterDataQuery = useMasterDataControllerRead({ query: { enabled: isSignedIn } })
   const interview = interviewQuery.data?.status === 200 ? interviewQuery.data.data : null
@@ -69,7 +83,7 @@ export function StromScreen({ taxYear, slug, isSignedIn, onGo, onExit, onOpenSub
   const settled = interview !== null && !interviewQuery.isFetching
   // An unknown address (e.g. „weiter“ from the cockpit) leads to the step the user continues with,
   // once the answers and the masks' data are in — never a guess from a half-loaded state.
-  const continueAt = requested === null && settled ? (isSignedIn ? nextOpenStep(answers, facts) : { kind: 'basis' as const }) : null
+  const continueAt = requested === null && settled ? (isSignedIn ? nextOpenStep(answers, facts, options) : { kind: 'basis' as const }) : null
   const step = requested ?? continueAt
   // After a save the next step is worked out from the fresh answers: the selection changes the plan.
   const [advanceFrom, setAdvanceFrom] = useState<StromStep | null>(null)
@@ -92,11 +106,11 @@ export function StromScreen({ taxYear, slug, isSignedIn, onGo, onExit, onOpenSub
   useEffect(() => {
     if (advanceFrom === null || !settled || (isSignedIn && (facts === null || partnerPending))) return
     setAdvanceFrom(null)
-    onGo(stepAfter(advanceFrom, answers, facts))
+    onGo(stepAfter(advanceFrom, answers, facts, options))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [advanceFrom, settled, facts === null, partnerPending, answers])
 
-  if (interviewQuery.isPending) return <LoadingState bp={bp} label={tr('strom.laden')} />
+  if (interviewQuery.isPending || capability.pending) return <LoadingState bp={bp} label={tr('strom.laden')} />
   if (interviewQuery.isError || interview === null) {
     return (
       <ErrorState
@@ -112,7 +126,7 @@ export function StromScreen({ taxYear, slug, isSignedIn, onGo, onExit, onOpenSub
   if (step.kind !== 'basis' && isSignedIn && facts === null) return <LoadingState bp={bp} label={tr('strom.laden')} />
 
   const goNext = () => setAdvanceFrom(step)
-  const previous = stepBefore(step, answers, facts)
+  const previous = stepBefore(step, answers, facts, options)
   const goBack = () => (previous === null ? onExit() : onGo(previous))
 
   // A mask is the mask itself, with its own back button and title; the Strom only decides where it leads.
@@ -175,7 +189,8 @@ export function StromScreen({ taxYear, slug, isSignedIn, onGo, onExit, onOpenSub
 function StepCount({ step, answers, facts }: { readonly step: StromStep; readonly answers: Answers; readonly facts: TileFacts | null }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
-  const position = stepPosition(step, answers, facts)
+  const options = useStromOptions()
+  const position = stepPosition(step, answers, facts, options)
   if (position === null) return <Text style={{ ...t.type.metaLarge, color: t.color.tinte2 }} numberOfLines={1}>{tr('strom.fertigMarke')}</Text>
   return (
     <Text style={{ ...t.type.metaLarge, color: t.color.tinte2 }} numberOfLines={1} testID="strom-position">
@@ -269,8 +284,9 @@ function Summary({
   const estimateQuery = useTaxEstimateControllerGet(taxYear)
   const estimate = estimateQuery.data?.status === 200 ? estimateQuery.data.data : null
   const refund = refundLine(estimate, (key) => tr(key))
-  const steps = facts === null ? [] : stromSteps(answers, facts).filter((s) => s.kind !== 'basis' && s.kind !== 'partner' && s.kind !== 'auswahl' && s.kind !== 'fertig')
-  const open = facts === null ? [] : steps.filter((s) => isStepOpen(s, answers, facts))
+  const options = useStromOptions()
+  const steps = facts === null ? [] : stromSteps(answers, facts, options).filter((s) => s.kind !== 'basis' && s.kind !== 'partner' && s.kind !== 'auswahl' && s.kind !== 'fertig')
+  const open = facts === null ? [] : steps.filter((s) => isStepOpen(s, answers, facts, options))
   const taken = steps.filter((s) => !open.includes(s))
   const titleOf = (s: StromStep) => stromStepTitle(s, tr, partnerNameOf(facts, tr))
 

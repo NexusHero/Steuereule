@@ -221,7 +221,21 @@ export interface QuestionDeclaration {
    * Asked only when the other answers make it a question at all; otherwise it is skipped like an
    * answered question without follow-ups (a pensioner is not asked about a German job).
    */
-  readonly askedWhen?: (answers: Answers) => boolean
+  readonly askedWhen?: (answers: Answers, options?: InterviewOptions) => boolean
+}
+
+/**
+ * Server switches that change the graph (ADR-0101 §20). `selfEmployment` is `SELBSTSTAENDIGE_ENABLED`:
+ * off (the default) the Gewerbe-Gate stops the self-employed as REQ-015 says; on, they walk on.
+ */
+export interface InterviewOptions {
+  readonly selfEmployment?: boolean | undefined
+}
+
+const NO_OPTIONS: InterviewOptions = {}
+
+function isAsked(decl: QuestionDeclaration, answers: Answers, options: InterviewOptions): boolean {
+  return decl.askedWhen === undefined || decl.askedWhen(answers, options)
 }
 
 export const QUESTIONS: Readonly<Record<EntryStepId, QuestionDeclaration>> = {
@@ -268,7 +282,8 @@ export const QUESTIONS: Readonly<Record<EntryStepId, QuestionDeclaration>> = {
     followUps: { 'Ja, in die Schweiz': ['partner-de-job'] },
   },
   'partner-de-job': { id: 'partner-de-job', kind: 'question', form: { kind: 'enum', values: GERMAN_JOB_VALUES } },
-  gewerbe: { id: 'gewerbe', kind: 'gate', form: { kind: 'enum', values: [GATE_ACKNOWLEDGED] } },
+  // With the switch on there is no gate to stop at: the self-employed path takes over (ADR-0101).
+  gewerbe: { id: 'gewerbe', kind: 'gate', form: { kind: 'enum', values: [GATE_ACKNOWLEDGED] }, askedWhen: (_answers, options) => options?.selfEmployment !== true },
   'ch-only': { id: 'ch-only', kind: 'gate', form: { kind: 'enum', values: [GATE_ACKNOWLEDGED] } },
 
   partner: { id: 'partner', kind: 'question', form: { kind: 'enum', values: PARTNER_VALUES } },
@@ -569,35 +584,35 @@ function branchFor(decl: QuestionDeclaration, answer: string): readonly FollowUp
   return decl.defaultFollowUp ?? []
 }
 
-function walk(ids: readonly FollowUpTarget[], answers: Answers): EntryStep {
+function walk(ids: readonly FollowUpTarget[], answers: Answers, options: InterviewOptions): EntryStep {
   for (const target of ids) {
     const id = targetId(target)
-    if (isTerminalTarget(target)) return stepFor(id)
-
     const decl = QUESTIONS[id]
-    if (decl.askedWhen !== undefined && !decl.askedWhen(answers)) continue
+    // A terminal step that is not asked (the Gewerbe-Gate with the switch on) stops nothing.
+    if (!isAsked(decl, answers, options)) continue
+    if (isTerminalTarget(target)) return stepFor(id)
 
     const answer = answers[id]
     if (answer === undefined) return stepFor(id)
 
     const branch = branchFor(decl, answer)
-    const next = walk(branch, answers)
+    const next = walk(branch, answers, options)
     if (next.kind !== 'done') return next
   }
   return { kind: 'done' }
 }
 
-export function nextStepFor(entry: CatalogueEntry, answers: Answers): EntryStep {
-  return walk(entry.steps, answers)
+export function nextStepFor(entry: CatalogueEntry, answers: Answers, options: InterviewOptions = NO_OPTIONS): EntryStep {
+  return walk(entry.steps, answers, options)
 }
 
-export function isReachableFor(entry: CatalogueEntry, answers: Answers, target: EntryStepId): boolean {
-  if (entry.orderFree === true) return entry.steps.some((top) => isReachableFor({ id: entry.id, steps: [top] }, answers, target))
+export function isReachableFor(entry: CatalogueEntry, answers: Answers, target: EntryStepId, options: InterviewOptions = NO_OPTIONS): boolean {
+  if (entry.orderFree === true) return entry.steps.some((top) => isReachableFor({ id: entry.id, steps: [top] }, answers, target, options))
   const seen = new Set<EntryStepId>()
   let reached: Answers = {}
 
   for (;;) {
-    const step = nextStepFor(entry, reached)
+    const step = nextStepFor(entry, reached, options)
     const id = step.kind === 'done' ? undefined : step.id
     if (id === undefined) return false
     if (id === target) return true
@@ -614,14 +629,13 @@ export function isReachableFor(entry: CatalogueEntry, answers: Answers, target: 
 
 const TERMINAL_STOP = Symbol('terminal-stop')
 
-function countRemaining(ids: readonly FollowUpTarget[], answers: Answers): number | typeof TERMINAL_STOP {
+function countRemaining(ids: readonly FollowUpTarget[], answers: Answers, options: InterviewOptions): number | typeof TERMINAL_STOP {
   let total = 0
   for (const target of ids) {
-    if (isTerminalTarget(target)) return TERMINAL_STOP
-
     const id = targetId(target)
     const decl = QUESTIONS[id]
-    if (decl.askedWhen !== undefined && !decl.askedWhen(answers)) continue
+    if (!isAsked(decl, answers, options)) continue
+    if (isTerminalTarget(target)) return TERMINAL_STOP
     const answer = answers[id]
 
     if (answer === undefined) {
@@ -629,28 +643,28 @@ function countRemaining(ids: readonly FollowUpTarget[], answers: Answers): numbe
       continue
     }
 
-    const sub = countRemaining(branchFor(decl, answer), answers)
+    const sub = countRemaining(branchFor(decl, answer), answers, options)
     if (sub === TERMINAL_STOP) return TERMINAL_STOP
     total += sub
   }
   return total
 }
 
-export function remainingStepsFor(entry: CatalogueEntry, answers: Answers): number {
-  const result = countRemaining(entry.steps, answers)
+export function remainingStepsFor(entry: CatalogueEntry, answers: Answers, options: InterviewOptions = NO_OPTIONS): number {
+  const result = countRemaining(entry.steps, answers, options)
   return result === TERMINAL_STOP ? 0 : result
 }
 
-export function nextStep(answers: Answers): Step {
-  return nextStepFor(ENTRIES['minimal-gate'], answers) as Step
+export function nextStep(answers: Answers, options: InterviewOptions = NO_OPTIONS): Step {
+  return nextStepFor(ENTRIES['minimal-gate'], answers, options) as Step
 }
 
-export function remainingSteps(answers: Answers): number {
-  return remainingStepsFor(ENTRIES['minimal-gate'], answers)
+export function remainingSteps(answers: Answers, options: InterviewOptions = NO_OPTIONS): number {
+  return remainingStepsFor(ENTRIES['minimal-gate'], answers, options)
 }
 
-export function isReachable(answers: Answers, target: StepId): boolean {
-  return isReachableFor(ENTRIES['minimal-gate'], answers, target)
+export function isReachable(answers: Answers, target: StepId, options: InterviewOptions = NO_OPTIONS): boolean {
+  return isReachableFor(ENTRIES['minimal-gate'], answers, target, options)
 }
 
 function isAccepted(form: ValueForm, value: string): boolean {

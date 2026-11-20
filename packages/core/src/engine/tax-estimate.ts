@@ -5,6 +5,8 @@ import { calculateExtraordinaryBurden, type BurdenChildrenBracket } from '../dom
 import { churchTaxOnIncome, type ChurchMembership } from '../domains/church-tax'
 import { childTaxAllowance } from '../domains/children'
 import type { GermanState } from '../common/postal-codes'
+import { deductibleProvision, type PersonProvision } from '../domains/provision'
+import { afterTradeTaxCredit, businessTotal, creditPerson, lossesOfYear, type BusinessEstimate, type BusinessIncome, type LossCarry, type Prepayments } from './business-income'
 
 export interface Range {
   readonly from: number
@@ -52,6 +54,8 @@ export type TaxEstimate =
       readonly result: Range
       /** Present when the caller passed the church tax facts. */
       readonly churchTax?: EstimateChurchTax
+      /** Present when the caller passed Gewinneinkünfte, losses or prepayments (ADR-0101). */
+      readonly business?: BusinessEstimate
     }
   | { readonly kind: 'nicht-moeglich'; readonly reason: 'jahr-ohne-tarif' }
 
@@ -78,6 +82,12 @@ export interface EmployeeEstimateInput {
   readonly churchTax?: ChurchTaxInput | undefined
   /** Wage replacement benefits (Kurzarbeit-, Eltern-, Krankengeld …): tax-free, but under the progression clause (§ 32b EStG). */
   readonly wageReplacementEur?: number | undefined
+  /** Gewinneinkünfte beside the main income (ADR-0101). */
+  readonly business?: BusinessIncome | undefined
+  /** § 10d EStG: Verlustvortrag and Rücktrag of the year. */
+  readonly losses?: LossCarry | undefined
+  /** Income tax and Soli prepaid by Vorauszahlungsbescheid. */
+  readonly prepayments?: Prepayments | undefined
 }
 
 /** The EUR lines of the Anlage N-Gre (anlageNGreBetraege) plus what the user pays outside the salary. */
@@ -114,6 +124,12 @@ export interface CrossBorderEstimateInput {
   readonly churchTax?: Omit<ChurchTaxInput, 'withheld'> | undefined
   /** Wage replacement benefits under the progression clause (§ 32b EStG). */
   readonly wageReplacementEur?: number | undefined
+  /** Gewinneinkünfte beside the main income (ADR-0101). */
+  readonly business?: BusinessIncome | undefined
+  /** § 10d EStG: Verlustvortrag and Rücktrag of the year. */
+  readonly losses?: LossCarry | undefined
+  /** Income tax and Soli prepaid by Vorauszahlungsbescheid. */
+  readonly prepayments?: Prepayments | undefined
 }
 
 /** What a single pensioner's estimate needs (Anlage R, UX review K3). */
@@ -133,6 +149,12 @@ export interface PensionerEstimateInput {
   readonly childrenBracket?: BurdenChildrenBracket | undefined
   /** Church tax is not withheld from a pension: `withheld` counts as 0. */
   readonly churchTax?: Omit<ChurchTaxInput, 'withheld'> | undefined
+  /** Gewinneinkünfte beside the main income (ADR-0101). */
+  readonly business?: BusinessIncome | undefined
+  /** § 10d EStG: Verlustvortrag and Rücktrag of the year. */
+  readonly losses?: LossCarry | undefined
+  /** Income tax and Soli prepaid by Vorauszahlungsbescheid. */
+  readonly prepayments?: Prepayments | undefined
 }
 
 /**
@@ -189,6 +211,9 @@ export function taxEstimateEmployee(e: EmployeeEstimateInput): TaxEstimate {
     childrenBracket: e.childrenBracket,
     churchTax: e.churchTax,
     progressionIncomeEur: progressionIncome(e.wageReplacementEur, e.bruttoarbeitslohn, e.commuterAllowance + e.otherIncomeRelatedExpenses, params.lumpSums.employee),
+    business: e.business,
+    losses: e.losses,
+    prepayments: e.prepayments,
   })
 }
 
@@ -222,6 +247,9 @@ export function taxEstimateCrossBorder(e: CrossBorderEstimateInput): TaxEstimate
     childrenBracket: e.childrenBracket,
     churchTax: e.churchTax ? { ...e.churchTax, withheld: 0 } : undefined,
     progressionIncomeEur: progressionIncome(e.wageReplacementEur, e.wageEur + (german?.gross ?? 0), e.commuterAllowance, params.lumpSums.employee),
+    business: e.business,
+    losses: e.losses,
+    prepayments: e.prepayments,
   })
 }
 
@@ -251,6 +279,73 @@ export function taxEstimatePensioner(e: PensionerEstimateInput): TaxEstimate {
     healthExpensesEur: e.healthExpensesEur,
     childrenBracket: e.childrenBracket,
     churchTax: e.churchTax ? { ...e.churchTax, withheld: 0 } : undefined,
+    business: e.business,
+    losses: e.losses,
+    prepayments: e.prepayments,
+  })
+}
+
+/** A single self-employed person, with or without a side job (ADR-0101). */
+export interface SelfEmployedEstimateInput {
+  readonly year: number
+  readonly business: BusinessIncome
+  readonly losses?: LossCarry | undefined
+  readonly prepayments?: Prepayments | undefined
+  /** What the person paid for provision outside a wage (Anlage Vorsorgeaufwand), line by line. */
+  readonly provision: PersonProvision
+  /** A job beside the business: its Lohnsteuerbescheinigung and Werbungskosten. */
+  readonly wage?:
+    | {
+        readonly gross: number
+        readonly wageTax: number
+        readonly socialSecurity: number
+        /** Werbungskosten actually paid; below the Arbeitnehmer-Pauschbetrag that one counts. */
+        readonly workExpensesEur: number
+      }
+    | undefined
+  readonly donations: number
+  readonly householdReductionEur?: number | undefined
+  readonly healthExpensesEur?: number | undefined
+  readonly singleParent?: boolean | undefined
+  readonly singleParentChildren?: number | undefined
+  readonly childrenBracket?: BurdenChildrenBracket | undefined
+  /** No church tax is withheld from a profit; with a side job `withheld` is its LStB Zeilen 6 + 7. */
+  readonly churchTax?: ChurchTaxInput | undefined
+}
+
+/**
+ * A ranged estimate for a single self-employed person: profit of Anlage S and G, § 10d, tariff, § 35,
+ * Soli on the tax after § 35 (§ 3 Abs. 2 SolZG), church tax on the tax before it (§ 51a Abs. 2 Satz 3).
+ */
+export function taxEstimateSelfEmployed(e: SelfEmployedEstimateInput): TaxEstimate {
+  if (!isSupportedIncomeTaxYear(e.year)) return { kind: 'nicht-moeglich', reason: 'jahr-ohne-tarif' }
+  const params = getTaxYearParameters(e.year)
+  const own = deductibleProvision(e.year, [e.provision]).totalEur
+  const wage = e.wage
+  const provision = {
+    from: own + (wage ? Math.round(wage.socialSecurity * SV_DEDUCTIBLE.from) : 0),
+    to: own + (wage ? Math.round(wage.socialSecurity * SV_DEDUCTIBLE.to) : 0),
+  }
+  // § 9a Satz 2 EStG: the lump sum comes off only up to the wage, so it never makes a loss.
+  const werbungskosten = wage ? (wage.workExpensesEur > params.lumpSums.employee ? wage.workExpensesEur : Math.min(params.lumpSums.employee, wage.gross)) : 0
+  return estimate({
+    year: e.year,
+    einnahmen: wage?.gross ?? 0,
+    werbungskosten,
+    provision,
+    donations: e.donations,
+    alreadyPaid: (taxAmount) => (wage ? wage.wageTax + soli(wage.wageTax, e.year) : 0) - taxAmount,
+    anrechnung: wage?.wageTax ?? 0,
+    specialExpensesLumpSum: params.lumpSums.specialExpensesSingle,
+    householdReductionEur: e.householdReductionEur,
+    healthExpensesEur: e.healthExpensesEur,
+    singleParent: e.singleParent,
+    singleParentChildren: e.singleParentChildren,
+    childrenBracket: e.childrenBracket,
+    churchTax: e.churchTax ? { ...e.churchTax, withheld: wage ? e.churchTax.withheld : 0 } : undefined,
+    business: e.business,
+    losses: e.losses,
+    prepayments: e.prepayments,
   })
 }
 
@@ -271,13 +366,21 @@ function estimate(input: {
   readonly churchTax?: ChurchTaxInput | undefined
   /** Tax-free income under the progression clause (§ 32b EStG); 0 or absent = the plain tariff. */
   readonly progressionIncomeEur?: number | undefined
+  readonly business?: BusinessIncome | undefined
+  readonly losses?: LossCarry | undefined
+  readonly prepayments?: Prepayments | undefined
 }): TaxEstimate {
   const params = getTaxYearParameters(input.year)
   const furtherChildren = Math.max(0, Math.floor(input.singleParentChildren ?? 1) - 1)
   const singleParentRelief = input.singleParent
     ? params.children.singleParentReliefEur + furtherChildren * params.children.singleParentAdditionalChildEur
     : 0
-  const gdeEur = Math.max(0, input.einnahmen - input.werbungskosten - singleParentRelief)
+  const otherIncome = input.einnahmen - input.werbungskosten
+  const sumOfIncome = otherIncome + businessTotal(input.business)
+  // The relief comes off a positive Summe der Einkünfte only, so it never enlarges a loss for § 10d.
+  const gdeBeforeLosses = sumOfIncome - Math.min(singleParentRelief, Math.max(0, sumOfIncome))
+  const gdeEur = Math.max(0, gdeBeforeLosses)
+  const losses = lossesOfYear(input.year, false, gdeBeforeLosses, input.losses)
   const deductibleBurdenEur =
     (input.healthExpensesEur ?? 0) > 0
       ? Math.round(
@@ -295,15 +398,17 @@ function estimate(input: {
   const churchTaxPaid = church?.membership.kind === 'member' ? (church.withheld ?? 0) : 0
   const specialExpenses = Math.max(input.specialExpensesLumpSum, input.donations + churchTaxPaid)
   // § 24b is deducted from the Summe der Einkünfte, so it lowers the zvE as well (#450 Teil 6).
-  const zve = (provision: number) =>
-    Math.max(0, input.einnahmen - input.werbungskosten - singleParentRelief - provision - specialExpenses - deductibleBurdenEur)
+  const zve = (provision: number) => Math.max(0, losses.gdeAfterLossesEur - provision - specialExpenses - deductibleBurdenEur)
   const taxableIncome = { from: zve(input.provision.to), to: zve(input.provision.from) }
   const reductionEur = input.householdReductionEur ?? 0
   const progression = input.progressionIncomeEur ?? 0
   const tariff = (z: number) => (progression > 0 ? progressionClauseTax(z, progression, input.year) : incomeTax(z, input.year))
+  // § 35 EStG comes off the tariff tax before § 35a (Rn. 4 of BMF 3.11.2016).
+  const persons = [creditPerson(input.business, [otherIncome])]
+  const credited = { from: afterTradeTaxCredit(persons, tariff(taxableIncome.from)), to: afterTradeTaxCredit(persons, tariff(taxableIncome.to)) }
   const incomeTaxOwed = {
-    from: applyHouseholdTaxReduction(tariff(taxableIncome.from), reductionEur),
-    to: applyHouseholdTaxReduction(tariff(taxableIncome.to), reductionEur),
+    from: applyHouseholdTaxReduction(credited.from.taxEur, reductionEur),
+    to: applyHouseholdTaxReduction(credited.to.taxEur, reductionEur),
   }
   const soliRange = { from: soli(incomeTaxOwed.from, input.year), to: soli(incomeTaxOwed.to, input.year) }
   const churchTax = church ? estimateChurchTax(input.year, church, taxableIncome, reductionEur) : undefined
@@ -311,6 +416,10 @@ function estimate(input: {
     churchTax?.kind === 'spanne'
       ? { from: churchTax.withheld - churchTax.due.to, to: churchTax.withheld - churchTax.due.from }
       : { from: 0, to: 0 }
+  const prepaid = (input.prepayments?.incomeTaxEur ?? 0) + (input.prepayments?.soliEur ?? 0)
+  const withBusiness = input.business !== undefined || input.losses !== undefined || input.prepayments !== undefined
+  // The § 35 credit carries cents; without business facts the result stays exactly as before ADR-0101.
+  const settle = (value: number) => (withBusiness ? cents(value) : value)
   return {
     kind: 'spanne',
     werbungskosten: input.werbungskosten,
@@ -319,12 +428,23 @@ function estimate(input: {
     taxableIncome,
     incomeTax: incomeTaxOwed,
     solidaritaetszuschlag: soliRange,
-    anrechnung: input.anrechnung,
+    anrechnung: input.anrechnung + (input.prepayments?.incomeTaxEur ?? 0),
     result: {
-      from: input.alreadyPaid(incomeTaxOwed.to) - soliRange.to + churchBalance.from,
-      to: input.alreadyPaid(incomeTaxOwed.from) - soliRange.from + churchBalance.to,
+      from: settle(input.alreadyPaid(incomeTaxOwed.to) + prepaid - soliRange.to + churchBalance.from),
+      to: settle(input.alreadyPaid(incomeTaxOwed.from) + prepaid - soliRange.from + churchBalance.to),
     },
     ...(churchTax ? { churchTax } : {}),
+    ...(withBusiness
+      ? {
+          business: {
+            selfEmployedEur: input.business?.selfEmployedEur ?? 0,
+            tradeEur: input.business?.tradeEur ?? 0,
+            gdeEur: gdeBeforeLosses,
+            losses,
+            tradeTaxCredit: { from: credited.from.creditEur, to: credited.to.creditEur },
+          },
+        }
+      : {}),
   }
 }
 
@@ -361,6 +481,9 @@ export function homeOfficeAllowance(year: number, homeOfficeDays: number): numbe
   const { dailyRateEur, maxDays, maxAnnualEur } = getTaxYearParameters(year).homeOffice
   return Math.min(Math.min(Math.floor(homeOfficeDays), maxDays) * dailyRateEur, maxAnnualEur)
 }
+
+/** Keeps a sum of euro amounts with cents free of float noise. */
+const cents = (value: number) => Math.round(value * 100) / 100
 
 function soli(incomeTaxAmount: number, year: number): number {
   if (!isSupportedIncomeTaxYear(year)) return 0

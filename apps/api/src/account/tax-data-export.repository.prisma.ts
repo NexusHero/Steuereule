@@ -95,6 +95,17 @@ export class PrismaTaxDataExportRepository implements TaxDataExportRepository {
     const personalDataConsents = await this.prisma.owlPersonalDataConsent.findMany({ where })
     const partnerLinks = await this.prisma.partnerLink.findMany({ where: { OR: [{ personAUserId: userId }, { personBUserId: userId }] } })
     const mergeQuestions = await this.prisma.householdMergeCandidate.findMany({ where: { householdUserId: userId } })
+    // ADR-0101: the business, the book and everything booked in it.
+    const [businesses, ledgers, journalEntries, journalLines, ledgerLog, fixedAssets, bankTransactions, bookingRules] = await Promise.all([
+      this.prisma.businessProfile.findMany({ where }),
+      this.prisma.ledger.findMany({ where }),
+      this.prisma.journalEntry.findMany({ where, orderBy: [{ taxYear: 'asc' }, { number: 'asc' }] }),
+      this.prisma.journalLine.findMany({ where }),
+      this.prisma.ledgerLogRecord.findMany({ where, orderBy: [{ taxYear: 'asc' }, { seq: 'asc' }] }),
+      this.prisma.fixedAsset.findMany({ where }),
+      this.prisma.bankTransaction.findMany({ where }),
+      this.prisma.bookingRule.findMany({ where }),
+    ])
 
     const entries = [
       ...taxYears.map((row) => toExportEntry('Steuerjahr', 'TaxYear', row)),
@@ -125,6 +136,14 @@ export class PrismaTaxDataExportRepository implements TaxDataExportRepository {
       ...householdRows.map((row) => toExportEntry('Haushalt (Person)', 'HouseholdPerson', row)),
       ...partnerLinks.map((row) => toExportEntry('Partner-Verknüpfung', 'PartnerLink', row)),
       ...mergeQuestions.map((row) => toExportEntry('Haushalt (Rückfrage „dieselben?“)', 'HouseholdMergeCandidate', row)),
+      ...businesses.map((row) => toExportEntry('Betrieb', 'BusinessProfile', row)),
+      ...ledgers.map((row) => toExportEntry('Buch', 'Ledger', row)),
+      ...journalEntries.map((row) => toExportEntry('Buchung', 'JournalEntry', row)),
+      ...journalLines.map((row) => toExportEntry('Buchungszeile', 'JournalLine', row)),
+      ...ledgerLog.map((row) => toExportEntry('Buchungsprotokoll', 'LedgerLogRecord', row)),
+      ...fixedAssets.map((row) => toExportEntry('Anlagegut', 'FixedAsset', row)),
+      ...bankTransactions.map((row) => toExportEntry('Kontoumsatz', 'BankTransaction', row)),
+      ...bookingRules.map((row) => toExportEntry('Buchungsregel', 'BookingRule', row)),
     ]
     return entries.sort(
       (a, b) =>

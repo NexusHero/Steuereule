@@ -5,6 +5,8 @@ export interface StripeConfig {
   secretKey: string
   webhookSecret: string
   priceId: string
+  /** STRIPE_PRICE_ID_SELBSTSTAENDIG: the higher price for a year with self-employment (ADR-0101 §21); optional. */
+  priceIdSelfEmployed?: string
 }
 
 export function resolveStripeConfig(env: NodeJS.ProcessEnv = process.env): StripeConfig | undefined {
@@ -16,7 +18,8 @@ export function resolveStripeConfig(env: NodeJS.ProcessEnv = process.env): Strip
   if (!secretKey || !webhookSecret || !priceId) {
     throw new Error('STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET and STRIPE_PRICE_ID must be set together.')
   }
-  return { secretKey, webhookSecret, priceId }
+  const priceIdSelfEmployed = env.STRIPE_PRICE_ID_SELBSTSTAENDIG?.trim()
+  return { secretKey, webhookSecret, priceId, ...(priceIdSelfEmployed ? { priceIdSelfEmployed } : {}) }
 }
 
 export const REVOCATION_NOTICE =
@@ -33,11 +36,14 @@ export class StripePaymentProvider implements PaymentProvider {
   }
 
   async createCheckout(request: CheckoutRequest): Promise<CheckoutSession> {
+    const tier = request.tier ?? 'standard'
+    const price = tier === 'selbststaendig' ? this.config.priceIdSelfEmployed : this.config.priceId
+    if (!price) throw new Error('STRIPE_PRICE_ID_SELBSTSTAENDIG is not set: the self-employment tier cannot be sold here.')
     const session = await this.stripe.checkout.sessions.create({
       mode: 'payment',
-      line_items: [{ price: this.config.priceId, quantity: 1 }],
+      line_items: [{ price, quantity: 1 }],
       client_reference_id: request.userId,
-      metadata: { userId: request.userId, steuerjahr: String(request.taxYear) },
+      metadata: { userId: request.userId, steuerjahr: String(request.taxYear), stufe: tier },
       success_url: request.successUrl,
       cancel_url: request.cancelUrl,
       locale: 'de',

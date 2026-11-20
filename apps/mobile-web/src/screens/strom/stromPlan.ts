@@ -7,6 +7,7 @@ import {
   isTopicApplicable,
   isTopicOpen,
   nextStepFor,
+  type InterviewOptions,
   topicPageSteps,
   type Answers,
   type StromTopicId,
@@ -95,8 +96,8 @@ export function sameStep(a: StromStep, b: StromStep): boolean {
   return slugOf(a) === slugOf(b)
 }
 
-function isBasisDone(answers: Answers): boolean {
-  return nextStepFor(ENTRIES['minimal-gate'], answers).kind === 'done'
+function isBasisDone(answers: Answers, options: InterviewOptions = {}): boolean {
+  return nextStepFor(ENTRIES['minimal-gate'], answers, options).kind === 'done'
 }
 
 function shownTiles(facts: TileFacts): ReadonlySet<TileId> {
@@ -155,8 +156,8 @@ function hasTopicPage(id: StromTopicId, answers: Answers): boolean {
  * Every step of this user's Strom, in order. Without `facts` (the basis is not answered yet, or the
  * cockpit's data is still loading) the Strom is just its basis page.
  */
-export function stromSteps(answers: Answers, facts: TileFacts | null): readonly StromStep[] {
-  if (!isBasisDone(answers) || facts === null) return [{ kind: 'basis' }]
+export function stromSteps(answers: Answers, facts: TileFacts | null, options: InterviewOptions = {}): readonly StromStep[] {
+  if (!isBasisDone(answers, options) || facts === null) return [{ kind: 'basis' }]
   const tiles = shownTiles(facts)
   const partner = jointPartner(answers, facts)
   const own = masksFor(facts)
@@ -178,10 +179,10 @@ export function stromSteps(answers: Answers, facts: TileFacts | null): readonly 
   ]
 }
 
-export function isStepOpen(step: StromStep, answers: Answers, facts: TileFacts): boolean {
+export function isStepOpen(step: StromStep, answers: Answers, facts: TileFacts, options: InterviewOptions = {}): boolean {
   switch (step.kind) {
     case 'basis':
-      return !isBasisDone(answers)
+      return !isBasisDone(answers, options)
     case 'partner':
       return facts.partner == null || !isPartnerNamed(facts.partner)
     case 'maske':
@@ -209,12 +210,12 @@ function isStepPending(step: StromStep, facts: TileFacts): boolean {
  * Where "Weiter" in the cockpit leads: the first step still open, or the summary once everything is
  * answered. Null while a mask's data is still loading — no step is suggested rather than a wrong one.
  */
-export function nextOpenStep(answers: Answers, facts: TileFacts | null): StromStep | null {
-  if (!isBasisDone(answers)) return { kind: 'basis' }
+export function nextOpenStep(answers: Answers, facts: TileFacts | null, options: InterviewOptions = {}): StromStep | null {
+  if (!isBasisDone(answers, options)) return { kind: 'basis' }
   if (facts === null) return null
-  for (const step of stromSteps(answers, facts)) {
+  for (const step of stromSteps(answers, facts, options)) {
     if (isStepPending(step, facts)) return null
-    if (isStepOpen(step, answers, facts)) return step
+    if (isStepOpen(step, answers, facts, options)) return step
   }
   return { kind: 'fertig' }
 }
@@ -223,31 +224,31 @@ export function nextOpenStep(answers: Answers, facts: TileFacts | null): StromSt
  * How far the user is: the steps of their Strom that are answered, out of all of them (the summary is
  * no step of its own). Null while a mask's data is still loading — no count rather than a wrong one.
  */
-export function stromProgress(answers: Answers, facts: TileFacts | null): { readonly done: number; readonly total: number } | null {
-  if (facts === null || !isBasisDone(answers)) return null
-  const steps = stromSteps(answers, facts).filter((s) => s.kind !== 'fertig')
+export function stromProgress(answers: Answers, facts: TileFacts | null, options: InterviewOptions = {}): { readonly done: number; readonly total: number } | null {
+  if (facts === null || !isBasisDone(answers, options)) return null
+  const steps = stromSteps(answers, facts, options).filter((s) => s.kind !== 'fertig')
   if (steps.some((s) => isStepPending(s, facts))) return null
-  return { done: steps.filter((s) => !isStepOpen(s, answers, facts)).length, total: steps.length }
+  return { done: steps.filter((s) => !isStepOpen(s, answers, facts, options)).length, total: steps.length }
 }
 
 /** The step after `current` in this user's Strom; the summary when `current` is no longer part of it. */
-export function stepAfter(current: StromStep, answers: Answers, facts: TileFacts | null): StromStep {
-  const steps = stromSteps(answers, facts)
+export function stepAfter(current: StromStep, answers: Answers, facts: TileFacts | null, options: InterviewOptions = {}): StromStep {
+  const steps = stromSteps(answers, facts, options)
   const index = steps.findIndex((s) => sameStep(s, current))
-  if (index === -1) return nextOpenStep(answers, facts) ?? { kind: 'fertig' }
+  if (index === -1) return nextOpenStep(answers, facts, options) ?? { kind: 'fertig' }
   return steps[index + 1] ?? { kind: 'fertig' }
 }
 
 /** The step before `current`, or null at the start (back leaves the Strom). */
-export function stepBefore(current: StromStep, answers: Answers, facts: TileFacts | null): StromStep | null {
-  const steps = stromSteps(answers, facts)
+export function stepBefore(current: StromStep, answers: Answers, facts: TileFacts | null, options: InterviewOptions = {}): StromStep | null {
+  const steps = stromSteps(answers, facts, options)
   const index = steps.findIndex((s) => sameStep(s, current))
   return index > 0 ? (steps[index - 1] ?? null) : null
 }
 
 /** "Schritt x von y" for the header. */
-export function stepPosition(current: StromStep, answers: Answers, facts: TileFacts | null): { readonly index: number; readonly total: number } | null {
-  const steps = stromSteps(answers, facts).filter((s) => s.kind !== 'fertig')
+export function stepPosition(current: StromStep, answers: Answers, facts: TileFacts | null, options: InterviewOptions = {}): { readonly index: number; readonly total: number } | null {
+  const steps = stromSteps(answers, facts, options).filter((s) => s.kind !== 'fertig')
   const index = steps.findIndex((s) => sameStep(s, current))
   return index === -1 ? null : { index: index + 1, total: steps.length }
 }

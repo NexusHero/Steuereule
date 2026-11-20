@@ -1,4 +1,4 @@
-import type { Answers } from '../interview/interview'
+import type { Answers, InterviewOptions } from '../interview/interview'
 
 export type IncomeType =
   | 'Nichtselbstständig'
@@ -57,11 +57,15 @@ export function incomeTypesFromAnswers(answers: Answers): readonly IncomeType[] 
   return INCOME_TYPES.filter((kind) => declared.has(kind))
 }
 
-export function gatedIncomeTypes(answers: Answers): readonly IncomeType[] {
+/**
+ * The declared Einkunftsarten the app cannot handle. `Gewerbe` stands for all self-employment
+ * (Freiberuf and Gewerbe alike, ADR-0101 §1): gated unless the self-employment switch is on.
+ */
+export function gatedIncomeTypes(answers: Answers, options: InterviewOptions = {}): readonly IncomeType[] {
   const declared = new Set(incomeTypesFromAnswers(answers))
   const gated = new Set<IncomeType>()
 
-  if (declared.has('Gewerbe')) gated.add('Gewerbe')
+  if (declared.has('Gewerbe') && options.selfEmployment !== true) gated.add('Gewerbe')
   if (declared.has('Kapital') && answers['kap-depot'] === 'Krypto') gated.add('Kapital')
   if (declared.has('Vermietung') && answers['vermietung-art'] === 'Verkauf oder möbliert') gated.add('Vermietung')
 

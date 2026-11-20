@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Synthetic statement for tests: names, IBANs and amounts are invented. -->
+<Document xmlns="urn:iso:std:iso:20022:tech:xsd:camt.053.001.08">
+  <BkToCstmrStmt>
+    <GrpHdr><MsgId>TEST-0001</MsgId><CreDtTm>2025-03-31T18:00:00</CreDtTm></GrpHdr>
+    <Stmt>
+      <Id>STMT-2025-03</Id>
+      <Acct><Id><IBAN>DE89370400440532013000</IBAN></Id><Ccy>EUR</Ccy></Acct>
+      <Ntry>
+        <Amt Ccy="EUR">1190.00</Amt>
+        <CdtDbtInd>CRDT</CdtDbtInd>
+        <Sts><Cd>BOOK</Cd></Sts>
+        <BookgDt><Dt>2025-03-03</Dt></BookgDt>
+        <ValDt><Dt>2025-03-03</Dt></ValDt>
+        <AcctSvcrRef>BANKREF-1</AcctSvcrRef>
+        <NtryDtls><TxDtls>
+          <Refs><EndToEndId>RE-2025-017</EndToEndId></Refs>
+          <RltdPties>
+            <Dbtr><Pty><Nm>Beispiel Kunde GmbH</Nm></Pty></Dbtr>
+            <DbtrAcct><Id><IBAN>DE02100100109307118603</IBAN></Id></DbtrAcct>
+          </RltdPties>
+          <RmtInf><Ustrd>Rechnung RE-2025-017</Ustrd></RmtInf>
+        </TxDtls></NtryDtls>
+      </Ntry>
+      <Ntry>
+        <Amt Ccy="EUR">59.50</Amt>
+        <CdtDbtInd>DBIT</CdtDbtInd>
+        <Sts><Cd>BOOK</Cd></Sts>
+        <BookgDt><DtTm>2025-03-05T09:12:00</DtTm></BookgDt>
+        <ValDt><Dt>2025-03-05</Dt></ValDt>
+        <NtryDtls><TxDtls>
+          <Refs><EndToEndId>NOTPROVIDED</EndToEndId></Refs>
+          <RltdPties>
+            <Cdtr><Nm>Funknetz &amp; Co. AG</Nm></Cdtr>
+            <CdtrAcct><Id><IBAN>DE75512108001245126199</IBAN></Id></CdtrAcct>
+          </RltdPties>
+          <RmtInf><Ustrd>Kundennr 4711</Ustrd><Ustrd>Rechnung Maerz</Ustrd></RmtInf>
+        </TxDtls></NtryDtls>
+      </Ntry>
+      <Ntry>
+        <Amt Ccy="EUR">80.00</Amt>
+        <CdtDbtInd>DBIT</CdtDbtInd>
+        <Sts><Cd>PDNG</Cd></Sts>
+        <BookgDt><Dt>2025-03-06</Dt></BookgDt>
+      </Ntry>
+      <Ntry>
+        <Amt Ccy="EUR">300.00</Amt>
+        <CdtDbtInd>DBIT</CdtDbtInd>
+        <Sts><Cd>BOOK</Cd></Sts>
+        <BookgDt><Dt>2025-03-10</Dt></BookgDt>
+        <NtryDtls>
+          <TxDtls>
+            <Amt Ccy="EUR">100.00</Amt>
+            <RltdPties><Cdtr><Nm>Lieferant Eins</Nm></Cdtr></RltdPties>
+            <RmtInf><Ustrd>ER-1</Ustrd></RmtInf>
+          </TxDtls>
+          <TxDtls>
+            <AmtDtls><TxAmt><Amt Ccy="EUR">200.00</Amt></TxAmt></AmtDtls>
+            <RltdPties><Cdtr><Nm>Lieferant Zwei</Nm></Cdtr></RltdPties>
+            <RmtInf><Ustrd>ER-2</Ustrd></RmtInf>
+          </TxDtls>
+        </NtryDtls>
+      </Ntry>
+      <Ntry>
+        <Amt Ccy="EUR">5.00</Amt>
+        <CdtDbtInd>DBIT</CdtDbtInd>
+        <Sts><Cd>BOOK</Cd></Sts>
+        <BookgDt><Dt>2025-03-31</Dt></BookgDt>
+        <AddtlNtryInf>Kontoführung</AddtlNtryInf>
+      </Ntry>
+    </Stmt>
+  </BkToCstmrStmt>
+</Document>

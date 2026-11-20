@@ -2,7 +2,7 @@ import type { WageTaxCertificateFieldId, WageTaxCertificateStatus } from '../dom
 import type { WorkdaysResult } from '../common/workdays'
 import type { EmployeeStatus } from '../domains/employee'
 import type { IncomeType } from '../domains/income-types'
-import { laterAmountSteps, type Answers, type EntryStepId } from './interview'
+import { laterAmountSteps, type Answers, type EntryStepId, type InterviewOptions } from './interview'
 
 export type Conflict =
   | { readonly kind: 'lstb-offen'; readonly fields: readonly WageTaxCertificateFieldId[] }
@@ -28,11 +28,20 @@ export type PlausibilityResult =
   | { readonly kind: 'einreichbar'; readonly notices: readonly Notice[] }
   | { readonly kind: 'nicht-einreichbar'; readonly conflicts: readonly Conflict[]; readonly notices: readonly Notice[] }
 
-export function checkPlausibility(inputs: PlausibilityInput): PlausibilityResult {
+/**
+ * `options.selfEmployment` is the server switch (ADR-0101 §20, cockpit `capabilities.selbststaendig`):
+ * with it the self-employment is no gated Einkunftsart, and a person who is only self-employed
+ * (`job: Selbstständig`) files no Lohnsteuerbescheinigung, so none is demanded.
+ */
+export function checkPlausibility(inputs: PlausibilityInput, options: InterviewOptions = {}): PlausibilityResult {
   const conflicts: Conflict[] = []
   const notices: Notice[] = []
+  const selfEmployment = options.selfEmployment === true
+  const withoutEmployment = selfEmployment && inputs.answers?.job === 'Selbstständig'
 
-  if (inputs.lstb.kind === 'unvollstaendig') {
+  if (withoutEmployment) {
+    // no wage, no certificate to check
+  } else if (inputs.lstb.kind === 'unvollstaendig') {
     if (inputs.lstb.open.length > 0) conflicts.push({ kind: 'lstb-offen', fields: inputs.lstb.open })
     if (inputs.lstb.unclear.length > 0) conflicts.push({ kind: 'lstb-unklar', fields: inputs.lstb.unclear })
   } else if (inputs.lstb.kind === 'widerspruch') {
@@ -45,6 +54,7 @@ export function checkPlausibility(inputs: PlausibilityInput): PlausibilityResult
 
   if (inputs.status.kind === 'offen') {
     for (const incomeType of inputs.status.gated) {
+      if (selfEmployment && incomeType === 'Gewerbe') continue
       conflicts.push({ kind: 'gated-einkunftsart', incomeType })
     }
   }

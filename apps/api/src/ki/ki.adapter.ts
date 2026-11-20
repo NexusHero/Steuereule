@@ -116,6 +116,14 @@ export const LEGAL_SOURCES: Readonly<Record<OwlSourceId | 'estg-32', LegalSource
       'Der Einspruch gegen einen Steuerbescheid ist innerhalb eines Monats nach Bekanntgabe des Verwaltungsakts einzulegen.',
     url: 'https://www.gesetze-im-internet.de/ao_1977/__355.html',
   },
+  'estg-4-3': {
+    id: 'estg-4-3',
+    paragraph: '§ 4 Abs. 3 Satz 1 EStG',
+    legalStatusDate: '01.01.2025',
+    translation:
+      'Steuerpflichtige, die nicht zu Büchern verpflichtet sind, können als Gewinn den Überschuss der Betriebseinnahmen über die Betriebsausgaben ansetzen.',
+    url: 'https://www.gesetze-im-internet.de/estg/__4.html',
+  },
 }
 
 const IBAN_REGEX = /\b[A-Z]{2}\d{2}(?:[\s.-]?[A-Z0-9]{4}){3,7}(?:[\s.-]?[A-Z0-9]{1,4})?\b|\b[A-Z]{2}\d{2}[A-Z0-9]{11,30}\b/i

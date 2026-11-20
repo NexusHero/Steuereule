@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger'
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 import { RECEIPT_PROCESSING_STATES, RECEIPT_READ_REASONS, SCREENS, type ReceiptProcessingState, type ReceiptReadReason, type Screen } from '@steuereule/core'
 import { AssignmentDto } from './assignment.dto.js'
 
@@ -92,6 +92,10 @@ export class ReceiptResponseDto {
 
   @ApiProperty({ type: String, nullable: true, example: '2026-01-15', description: 'Payment date (ISO yyyy-mm-dd).' })
   zahlungsdatum!: string | null
+
+  // Optional on the wire only so older client fixtures stay valid; the server always sends it.
+  @ApiPropertyOptional({ enum: ['ausgabe', 'einnahme'], nullable: true, description: 'A business receipt (ADR-0101 §6): expense or an invoice the business wrote; null for every other Beleg (always present).' })
+  direction?: 'ausgabe' | 'einnahme' | null
 
   @ApiProperty({ type: Boolean, example: true, description: 'Whether an encrypted original document binary is attached.' })
   hasFile!: boolean

@@ -16,6 +16,7 @@ export const AnnexConfirmationDtoAnnex = {
   anlageKap: 'anlageKap',
   anlageV: 'anlageV',
   anlageKind: 'anlageKind',
+  anlageEuer: 'anlageEuer',
 } as const;
 
 export type FieldProvenanceDtoScreen = typeof FieldProvenanceDtoScreen[keyof typeof FieldProvenanceDtoScreen];
@@ -34,6 +35,7 @@ export const FieldProvenanceDtoScreen = {
   vermietung: 'vermietung',
   kind: 'kind',
   assessment: 'assessment',
+  buchung: 'buchung',
 } as const;
 
 export type ProvenanceDtoKind = typeof ProvenanceDtoKind[keyof typeof ProvenanceDtoKind];

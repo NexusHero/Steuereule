@@ -85,6 +85,18 @@ export interface ReceiptProposalInput {
   readonly receiptMark?: ReceiptMark | undefined
 }
 
+/** A booking read from a business receipt (ADR-0101 §6, §18): the entry draft as JSON, checked by the core. */
+export interface BookingProposalInput {
+  /** Core `serializeBookingDraft`; the book checks it again when the user takes it. */
+  readonly entry: string
+  readonly label: string
+  readonly reason: string
+  readonly summaryText: string
+  readonly engine: AdvisorEngineInfo
+  readonly receiptId?: string | null | undefined
+  readonly fromOcr?: boolean | undefined
+}
+
 /** The fields of one scanned Lohnsteuerbescheinigung, for `stageLstbScanBatch`. */
 export interface LstbScanBatchInput {
   readonly digestUserId?: string | undefined
@@ -277,6 +289,42 @@ export class AdvisorDocumentStaging {
       action: toPublicAction((enrichedMeta.action ?? enrichedMeta.actions?.[0])!),
       assistantMessage: toMessageDto(assistantMessage),
     }
+  }
+
+  /**
+   * A booking draft from a receipt (ADR-0101 §18): one pending draft on the `buchung` mask, its own
+   * reference as instance, so taking it posts exactly one entry and its undo posts the Storno.
+   */
+  async stageBookingProposal(userId: string, taxYear: number, input: BookingProposalInput): Promise<{ action: AdvisorActionProposal; assistantMessage: AdvisorChatMessageDto }> {
+    assertAiWritable('buchung', 'entry')
+    checkPiiFree({ label: input.label, reason: input.reason, summaryText: input.summaryText })
+    const setting = await this.owlModeService.getSetting(userId)
+    if (!setting.enabled) await this.owlModeService.setSetting(userId, true)
+    const action: AdvisorActionProposal = {
+      actionId: newActionId(),
+      status: 'pending',
+      screen: 'buchung',
+      field: 'entry',
+      instance: `beleg-${input.receiptId ?? newActionId()}`,
+      label: input.label,
+      previousValue: null,
+      expectedPreviousValue: null,
+      newValue: input.entry,
+      beforeRefundEur: 0,
+      afterRefundEur: 0,
+      deltaEur: 0,
+      effect: 'not-computable',
+      effectHint: 'Die Wirkung zeigt die Schätzung, sobald die Buchung übernommen ist.',
+      reason: input.reason,
+      sourceId: 'estg-4-3',
+      paragraph: ADVISOR_LEGAL_SOURCES['estg-4-3'].paragraph,
+      ...(input.receiptId ? { receiptId: input.receiptId } : {}),
+      ...(input.fromOcr ? { confidenceStatus: 'pruefen' as const, fieldReason: 'ocr_source' as const } : {}),
+    }
+    const meta = await this.drafts.enrichDraftsWithRawBaseline(userId, taxYear, { sources: ['estg-4-3'], action })
+    await this.drafts.supersedePendingDraftsForSameTargets(userId, taxYear, this.drafts.collectPendingTargetKeys(meta))
+    const assistantMessage = await this.advisorRepo.createMessage({ userId, taxYear, role: 'assistant', content: input.summaryText, meta: { ...meta, engine: input.engine } })
+    return { action: toPublicAction((meta.action ?? meta.actions?.[0])!), assistantMessage: toMessageDto(assistantMessage) }
   }
 
   async stageLstbScanBatch(

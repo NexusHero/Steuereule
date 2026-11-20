@@ -118,6 +118,7 @@ The ADRs **justify** the architecture; the [living arc42 document](../arc42/READ
 | 0098 | Steuer-Verlauf: Alle Jahre auf einen Blick | Accepted |
 | 0099 | Verlauf: Hinweise, Lebensereignisse und Gruppen | Accepted |
 | 0100 | Eule: Wächter neben dem Modell, Zeiten je Runde, Maske vor der Frage | Accepted |
+| 0101 | Selbstständige: EÜR, Buchhaltung, Bilanz, Umsatz- und Gewerbesteuer | Accepted |
 
 See also the [Tech Radar](./tech-radar.md).
 

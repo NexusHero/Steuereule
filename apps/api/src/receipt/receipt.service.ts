@@ -19,6 +19,8 @@ export interface UploadReceiptInput {
   readonly kind?: string | undefined
   readonly belegdatum?: string | undefined
   readonly zahlungsdatum?: string | undefined
+  /** A business receipt (ADR-0101 §6): `ausgabe` or `einnahme`; files the Beleg as a Geschäftsbeleg. */
+  readonly direction?: string | undefined
 }
 
 export interface DownloadedReceiptFile {
@@ -84,6 +86,7 @@ function toReceiptResponse(record: ReceiptRecord, derived: DerivedReceiptFacts, 
     kind: record.kind ?? null,
     belegdatum: record.belegdatum ?? null,
     zahlungsdatum: record.zahlungsdatum ?? null,
+    direction: record.direction ?? null,
     hasFile: fileMeta !== null,
     mimeType: fileMeta?.mimeType ?? null,
     byteLength: fileMeta?.byteLength ?? null,
@@ -145,10 +148,17 @@ export class ReceiptService {
     const kind = assertReceiptTypeOrUndefined(input.kind)
     const belegdatum = assertIsoDateOrUndefined(input.belegdatum, 'belegdatum')
     const zahlungsdatum = assertIsoDateOrUndefined(input.zahlungsdatum, 'zahlungsdatum')
+    const direction = input.direction === undefined || input.direction === '' ? undefined : input.direction
+    if (direction !== undefined && direction !== 'ausgabe' && direction !== 'einnahme') {
+      throw new InvalidInputError('RECEIPT_DIRECTION_INVALID', '"direction" ist "ausgabe" oder "einnahme".')
+    }
+    // A direction makes it a business receipt: it is read into a booking draft (ADR-0101 §6).
+    const fileAs = kind ?? (direction !== undefined ? ('Geschaeftsbeleg' as const) : undefined)
 
     const record = await this.repository.create(userId, {
       fileName: cleanFileName,
-      ...(kind !== undefined ? { kind } : {}),
+      ...(fileAs !== undefined ? { kind: fileAs } : {}),
+      ...(direction !== undefined ? { direction } : {}),
       ...(belegdatum !== undefined ? { belegdatum } : {}),
       ...(zahlungsdatum !== undefined ? { zahlungsdatum } : {}),
     })

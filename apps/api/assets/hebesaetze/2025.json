@@ -1,0 +1,8 @@
+{
+  "year": 2025,
+  "status": "not_available",
+  "reason": "Noch nicht veröffentlicht (Stand der Abfrage); Destatis veröffentlicht die Gemeindewerte eines Jahres im Folgejahr.",
+  "fallbackYear": 2024,
+  "retrieved": "2026-11-19",
+  "entries": []
+}

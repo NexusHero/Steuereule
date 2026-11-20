@@ -28,7 +28,7 @@ export const ALLOWED_RECEIPT_PARSE_MIME_TYPES = [
 export const HOLDER_REF_PATTERN = /^(?:A|B|kind:[A-Za-z0-9_-]{1,64})$/
 
 /** Document kinds with a registered parse strategy (`auto` = generic receipt classifier). */
-export const DOCUMENT_KINDS = ['auto', 'lstb', 'chLohnausweis', 'chPensionskasse', 'chPraemien', 'chKrankenkasse', 'steuerbescheid'] as const
+export const DOCUMENT_KINDS = ['auto', 'lstb', 'chLohnausweis', 'chPensionskasse', 'chPraemien', 'chKrankenkasse', 'steuerbescheid', 'geschaeftsbeleg'] as const
 export type DocumentKind = (typeof DOCUMENT_KINDS)[number]
 
 /** Why the device could not produce text for a stored Beleg; the server records it as `nicht_lesbar`. */
@@ -68,7 +68,7 @@ export class ParseReceiptDto {
     type: String,
     enum: DOCUMENT_KINDS,
     example: 'lstb',
-    description: 'Explicit document parser: "lstb" the German LStB, "chLohnausweis" the Swiss salary certificate, "chPensionskasse" a Swiss pension fund statement, "chPraemien" the employer letter on sickness-pay and NBU premiums, "chKrankenkasse" a Swiss health insurer statement for the tax return, "steuerbescheid" the Einkommensteuerbescheid (ADR-0098); "auto" routes a recognised document to its reader.',
+    description: 'Explicit document parser: "geschaeftsbeleg" a Rechnung or Quittung of the business (ADR-0101: a booking draft), "lstb" the German LStB, "chLohnausweis" the Swiss salary certificate, "chPensionskasse" a Swiss pension fund statement, "chPraemien" the employer letter on sickness-pay and NBU premiums, "chKrankenkasse" a Swiss health insurer statement for the tax return, "steuerbescheid" the Einkommensteuerbescheid (ADR-0098); "auto" routes a recognised document to its reader.',
   })
   @IsOptional()
   @IsString()
@@ -185,6 +185,16 @@ export class ParseReceiptDto {
   @IsString()
   @IsIn([...ALLOWED_RECEIPT_PARSE_MIME_TYPES])
   mimeType?: (typeof ALLOWED_RECEIPT_PARSE_MIME_TYPES)[number]
+
+  @ApiPropertyOptional({
+    type: String,
+    enum: ['ausgabe', 'einnahme'],
+    example: 'ausgabe',
+    description: 'For a business receipt (`geschaeftsbeleg`, ADR-0101): an expense (default) or an invoice the business wrote.',
+  })
+  @IsOptional()
+  @IsIn(['ausgabe', 'einnahme'])
+  direction?: 'ausgabe' | 'einnahme'
 
   @ApiPropertyOptional({
     type: Boolean,

@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Card, hapticSuccess, useBreakpoint, useTheme, type UiTheme } from '@steuereule/ui'
 import { GERMAN_JOB_TOO, type Answers, type Conflict, type Notice } from '@steuereule/core'
 import {
+  useBusinessControllerProfile,
   useCapitalControllerGet,
   useChSalaryCertificateControllerGet,
   useChildrenControllerList,
@@ -20,6 +21,7 @@ import type { PartnerAreaParam } from '../../navigation/routes'
 import type { FunnelPath } from '../funnel/KontoWandScreen'
 import { CockpitPartnerSection } from './CockpitPartnerSection'
 import { derivePersonas } from './personas'
+import { declaresSelfEmployment, useSelfEmploymentCapability } from '../business/useSelfEmployment'
 import { tileStyles } from './tileStyles'
 import { TILES, groupTiles, hasAnswersForEntry, isRequiredTile, tileHintSeverity, type PartnerFacts, type TileDefinition, type TileFacts, type TileId, type TileStatus } from './tiles'
 
@@ -41,6 +43,10 @@ export function useCockpitTileFacts(
   const hasChildren = answers.kinder !== undefined && answers.kinder !== 'Nein'
   const children = useChildrenControllerList(year, { query: { enabled: active && hasChildren } })
   const partner = usePartnerFacts(year, active && answers.familienstand === 'Verheiratet', answers)
+  // The self-employment tile exists only with the server's switch on and a declared self-employment.
+  const capability = useSelfEmploymentCapability(year)
+  const selfEmployment = capability.enabled && declaresSelfEmployment(answers)
+  const business = useBusinessControllerProfile(year, undefined, { query: { enabled: active && selfEmployment, retry: false } })
 
   if (!active || path === null) return null
 
@@ -54,6 +60,7 @@ export function useCockpitTileFacts(
   if (unknown(capital)) pendingTiles.add('kapital')
   if (unknown(rental)) pendingTiles.add('vermietung')
   if (hasChildren && unknown(children)) pendingTiles.add('kinder')
+  if (selfEmployment && business.isPending) pendingTiles.add('selbststaendig')
 
   return {
     path,
@@ -68,6 +75,7 @@ export function useCockpitTileFacts(
     rental: rental.data?.status === 200 ? rental.data.data : null,
     children: children.data?.status === 200 ? children.data.data : null,
     partner,
+    ...(selfEmployment ? { selfEmployment: true, business: business.data?.status === 200 ? business.data.data : null } : {}),
   }
 }
 

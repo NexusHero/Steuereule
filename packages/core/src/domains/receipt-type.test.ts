@@ -16,6 +16,7 @@ describe('BELEGARTEN — the CH document types (ADR-029)', () => {
       'Rentenbezugsmitteilung',
       'Steuerbescheinigung',
       'Steuerbescheid',
+      'Geschaeftsbeleg',
       'Sonstiges',
     ])
   })

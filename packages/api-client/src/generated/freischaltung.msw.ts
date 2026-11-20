@@ -22,7 +22,7 @@ import type {
 } from './freischaltung.schemas';
 
 
-export const getUnlockControllerStatusResponseMock = (overrideResponse: Partial<Extract<UnlockStatusDto, object>> = {}): UnlockStatusDto => ({status: faker.helpers.arrayElement(['freigeschaltet','offen','nicht-verfuegbar'] as const), ...overrideResponse})
+export const getUnlockControllerStatusResponseMock = (overrideResponse: Partial<Extract<UnlockStatusDto, object>> = {}): UnlockStatusDto => ({status: faker.helpers.arrayElement(['freigeschaltet','offen','nicht-verfuegbar'] as const), tier: faker.helpers.arrayElement(['standard','selbststaendig'] as const), filingPath: faker.helpers.arrayElement(['papier','elster-ausfuellhilfe'] as const), ...overrideResponse})
 
 
 export const getUnlockControllerStatusMockHandler = (overrideResponse?: UnlockStatusDto | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<UnlockStatusDto> | UnlockStatusDto), options?: RequestHandlerOptions) => {

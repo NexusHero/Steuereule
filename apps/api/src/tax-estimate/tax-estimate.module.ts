@@ -9,11 +9,12 @@ import { PensionModule } from '../pension/pension.module.js'
 import { CapitalModule } from '../capital/capital.module.js'
 import { LstbModule } from '../lstb/lstb.module.js'
 import { MasterDataModule } from '../master-data/master-data.module.js'
+import { BusinessModule } from '../business/business.module.js'
 import { TaxEstimateController } from './tax-estimate.controller.js'
 import { TaxEstimateService } from './tax-estimate.service.js'
 
 @Module({
-  imports: [LstbModule, InterviewModule, ChSalaryCertificateModule, MasterDataModule, CommuteModule, LinkModule, ChildrenModule, RentalModule, PensionModule, CapitalModule],
+  imports: [LstbModule, InterviewModule, ChSalaryCertificateModule, MasterDataModule, CommuteModule, LinkModule, ChildrenModule, RentalModule, PensionModule, CapitalModule, BusinessModule],
   controllers: [TaxEstimateController],
   providers: [TaxEstimateService],
   exports: [TaxEstimateService],

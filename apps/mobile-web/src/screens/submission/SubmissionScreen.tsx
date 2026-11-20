@@ -3,7 +3,7 @@ import { ScrollView, Text, View, type TextStyle, type ViewStyle } from 'react-na
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
 import { Button, Card, useBreakpoint, useTheme, type UiTheme } from '@steuereule/ui'
-import { useLinkControllerGet, useMasterDataControllerRead } from '@steuereule/api-client'
+import { useLinkControllerGet, useMasterDataControllerRead, useUnlockControllerStatus } from '@steuereule/api-client'
 import type { Answers, Conflict, Notice } from '@steuereule/core'
 import { CURRENT_TAX_YEAR, isRunningTaxYear } from '../../config/taxYear'
 import { APP_NS } from '../../i18n/resources'
@@ -21,6 +21,8 @@ export interface SubmissionScreenProps {
   readonly onBack?: () => void
   readonly onOpenTile: (target: TileId, revisit: boolean) => void
   readonly onOpenPrintout: (year: number) => void
+  /** A year with self-employment is filed through Mein ELSTER: the way on leads to the fill-in help. */
+  readonly onOpenElsterHelp?: (year: number) => void
 }
 
 export function SubmissionScreen({
@@ -28,6 +30,7 @@ export function SubmissionScreen({
   onBack,
   onOpenTile,
   onOpenPrintout,
+  onOpenElsterHelp,
 }: SubmissionScreenProps) {
   const bp = useBreakpoint()
   const t = useTheme()
@@ -35,6 +38,8 @@ export function SubmissionScreen({
   const { t: tr } = useTranslation(APP_NS)
   const { confirmNotices, areNoticesConfirmed } = useShellState()
   const plausibility = usePlausibility(taxYear)
+  const unlock = useUnlockControllerStatus(taxYear, { query: { enabled: onOpenElsterHelp !== undefined } })
+  const viaElster = onOpenElsterHelp !== undefined && unlock.data?.status === 200 && unlock.data.data.filingPath === 'elster-ausfuellhilfe'
   const masterDataQuery = useMasterDataControllerRead()
   const isMarried =
     masterDataQuery.data?.status === 200 && masterDataQuery.data.data.familienstand === 'verheiratet'
@@ -140,14 +145,20 @@ export function SubmissionScreen({
         </Card>
       ) : null}
 
-      <Button
-        onPress={() => onOpenPrintout(taxYear)}
-        disabled={!canOpenPrintout}
-        style={styles.printBtn}
-        testID="abgabe-zum-ausdruck"
-      >
-        {tr('abgabe.zumAusdruck')}
-      </Button>
+      {viaElster ? (
+        <>
+          <Text style={styles.elsterHint} testID="abgabe-elster-hinweis">
+            {tr('abgabe.elsterHinweis')}
+          </Text>
+          <Button onPress={() => onOpenElsterHelp(taxYear)} disabled={!canOpenPrintout} style={styles.printBtn} testID="abgabe-zur-ausfuellhilfe">
+            {tr('abgabe.zurAusfuellhilfe')}
+          </Button>
+        </>
+      ) : (
+        <Button onPress={() => onOpenPrintout(taxYear)} disabled={!canOpenPrintout} style={styles.printBtn} testID="abgabe-zum-ausdruck">
+          {tr('abgabe.zumAusdruck')}
+        </Button>
+      )}
     </ScrollView>
   )
 }
@@ -231,6 +242,7 @@ function makeStyles(t: UiTheme) {
   const confirmBtn: ViewStyle = { marginTop: t.space.s3 }
   const skipBtn: ViewStyle = { marginTop: t.space.s3 }
   const printBtn: ViewStyle = { marginTop: t.space.s2 }
+  const elsterHint: TextStyle = { ...t.type.small, color: t.color.tinte2, marginTop: t.space.s3 }
   const runningYearNotice: ViewStyle = {
     borderWidth: 1,
     borderColor: t.color.tinte2,
@@ -259,5 +271,6 @@ function makeStyles(t: UiTheme) {
     confirmBtn,
     skipBtn,
     printBtn,
+    elsterHint,
   }
 }

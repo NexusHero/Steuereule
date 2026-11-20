@@ -8,6 +8,8 @@ export const RECEIPT_TYPES = [
   'Rentenbezugsmitteilung',
   'Steuerbescheinigung',
   'Steuerbescheid',
+  // A Rechnung or Quittung of the business (ADR-0101 §6): read into a booking draft, never into a field.
+  'Geschaeftsbeleg',
   'Sonstiges',
 ] as const
 

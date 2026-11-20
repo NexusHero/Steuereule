@@ -27,6 +27,7 @@ import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { pathFromAnswers, type FunnelPath } from '../funnel/KontoWandScreen'
 import { usePlausibility } from '../plausibility/usePlausibility'
 import { CockpitTiles, tileRevisitFlag, useCockpitTileFacts } from './CockpitTiles'
+import { useSelfEmploymentCapability } from '../business/useSelfEmployment'
 import { derivePersonas } from './personas'
 import { nextStep, type TileDefinition, type TileFacts } from './tiles'
 import { nextOpenStep, stromProgress, type StromStep } from '../strom/stromPlan'
@@ -55,6 +56,8 @@ export interface CockpitScreenProps {
   readonly onOpenReceipts?: () => void
   readonly onOpenPrintout?: (year: number) => void
   readonly onOpenSubmission?: (year: number) => void
+  /** A year with self-employment is filed through Mein ELSTER: the way forward leads to the fill-in help (ADR-0101 §16). */
+  readonly onOpenElsterHelp?: (year: number) => void
   readonly onOpenConfirmation?: (year: number) => void
   readonly onContinuePath?: (path: FunnelPath) => void
   readonly onOpenTile?: (tile: TileDefinition, revisit: boolean) => void
@@ -85,6 +88,7 @@ export function CockpitScreen({
   onOpenPrintout,
   onOpenOfficialForm,
   onOpenSubmission,
+  onOpenElsterHelp,
   onOpenConfirmation,
   onContinuePath,
   onOpenTile,
@@ -102,6 +106,7 @@ export function CockpitScreen({
     onYearChange?.(fresh)
   }
   const query = useCockpitControllerGetCockpitSummary(year)
+  const selfEmployment = useSelfEmploymentCapability(year)
   const [pulling, setPulling] = useState(false)
   const confirmationQuery = useConfirmationControllerGet(year)
   const interviewQuery = useInterviewControllerGetInterview(year)
@@ -163,9 +168,10 @@ export function CockpitScreen({
     rememberOpenedArea(year, tile.id)
     onOpenTile?.(tile, revisit)
   }
-  const submissionHandler = onOpenSubmission ?? onOpenPrintout
+  const filedViaElster = summary?.filingPath === 'elster-ausfuellhilfe' && onOpenElsterHelp !== undefined
+  const submissionHandler = filedViaElster ? onOpenElsterHelp : (onOpenSubmission ?? onOpenPrintout)
   const step = tileFacts !== null ? nextStep(tileFacts) : null
-  const stromStep = tileFacts !== null && onOpenStrom !== undefined ? nextOpenStep(answers, tileFacts) : null
+  const stromStep = tileFacts !== null && onOpenStrom !== undefined ? nextOpenStep(answers, tileFacts, selfEmployment.options) : null
   const stromNext: Next | null =
     tileFacts === null || onOpenStrom === undefined || stromStep === null
       ? null
@@ -189,7 +195,7 @@ export function CockpitScreen({
         ? { label: tr('cockpit.weiterMitDeinemWeg', { pfad: tr(`funnel.kontoWand.pfad.${path}`) }), onPress: () => onContinuePath(path) }
         : null
 
-  const progress = stromProgress(answers, tileFacts)
+  const progress = stromProgress(answers, tileFacts, selfEmployment.options)
 
   const shared: CockpitEmptyProps = {
     progress,
@@ -204,6 +210,7 @@ export function CockpitScreen({
     isJointMarried,
     partnerName,
     findings,
+    filedViaElster,
     onOpenTile: openTile,
     ...(onOpenPartner ? { onOpenPartner } : {}),
     ...(submissionHandler ? { onOpenSubmission: () => submissionHandler(year), onOpenPrintout: () => submissionHandler(year) } : {}),
@@ -380,6 +387,8 @@ function YearNotices({ year, answers }: { readonly year: number; readonly answer
 
 interface CockpitEmptyProps {
   readonly year: number
+  /** The year is filed through Mein ELSTER (self-employment): said in one line above the work area. */
+  readonly filedViaElster?: boolean
   readonly onYearChange: (year: number) => void
   readonly refresh: PullToRefresh
   readonly isRefreshing: boolean
@@ -649,7 +658,12 @@ function CockpitEmpty(props: CockpitEmptyProps) {
             {tr('cockpit.answerQuestions')}
           </Button>
         ) : null}
-        <CockpitWorkArea {...props} owlTestID="cockpit-empty-eulen-modus" />
+        {props.filedViaElster ? (
+        <Text style={styles.elsterHint} testID="cockpit-elster-hinweis">
+          {tr('cockpit.elsterHinweis')}
+        </Text>
+      ) : null}
+      <CockpitWorkArea {...props} owlTestID="cockpit-empty-eulen-modus" />
         <SecondaryActions
           tileFacts={tileFacts}
           onOpenAssessment={onOpenAssessment}
@@ -756,6 +770,11 @@ function CockpitLoaded(props: CockpitLoadedProps) {
         <Button onPress={onOpenInterview} style={styles.cta} testID="cockpit-interview">
           {tr('cockpit.answerQuestions')}
         </Button>
+      ) : null}
+      {props.filedViaElster ? (
+        <Text style={styles.elsterHint} testID="cockpit-elster-hinweis">
+          {tr('cockpit.elsterHinweis')}
+        </Text>
       ) : null}
       <CockpitWorkArea {...props} hasPositiveRefund={estimate?.kind === 'spanne' && (estimate.result?.from ?? 0) > 0} />
       <SecondaryActions

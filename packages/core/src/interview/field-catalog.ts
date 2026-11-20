@@ -13,6 +13,7 @@ import { PENSION_TYPES } from '../domains/pension'
 import { ASSESSMENT_FIELDS, ASSESSMENT_POSITIONS } from '../engine/assessment'
 import { AMOUNT_LATER, QUESTIONS, isValidAnswer, type EntryStepId } from './interview'
 import { SCREENS, type Screen } from './marking'
+import { parseBookingDraft, serializeBookingDraft } from './booking-draft'
 
 /** What a value has to look like. Stored values are strings; `kind` says which strings. */
 export type FieldValueKind =
@@ -37,6 +38,8 @@ export type FieldValueKind =
   | { readonly kind: 'text'; readonly maxLength: number }
   /** An interview answer: the question's own form decides, `QUESTIONS` is the source. */
   | { readonly kind: 'interview' }
+  /** A booking draft as JSON (booking-draft.ts); the book it goes into checks it once more. */
+  | { readonly kind: 'bookingDraft' }
 
 export interface FieldSpec {
   readonly screen: Screen
@@ -320,6 +323,8 @@ const DECLARED: Readonly<Record<Screen, { readonly perInstance: boolean; readonl
       erlaeuterungen: text(4_000),
     },
   },
+  /** One booking per draft; the instance is the draft's own reference, the book posts it on accept (ADR-0101 §18). */
+  buchung: { perInstance: true, fields: { entry: { kind: 'bookingDraft' } } },
 }
 
 /**
@@ -547,6 +552,10 @@ function checkKind(kind: FieldValueKind, field: string, raw: string): FieldValue
           : `Erlaubt ist eine ganze Zahl von ${form.min} bis ${form.max}.`,
       )
     }
+    case 'bookingDraft': {
+      const parsed = parseBookingDraft(raw)
+      return parsed.ok ? valid(serializeBookingDraft(parsed.draft)) : invalid(parsed.reason)
+    }
   }
 }
 
@@ -594,6 +603,8 @@ function describeShape(spec: FieldSpec): string {
       return `${spec.field} (IBAN ohne Leerzeichen)`
     case 'text':
       return `${spec.field} (Text, höchstens ${value.maxLength} Zeichen)`
+    case 'bookingDraft':
+      return `${spec.field} (Buchungsentwurf als JSON)`
     case 'interview': {
       const form = QUESTIONS[spec.field as EntryStepId].form
       return form.kind === 'enum'

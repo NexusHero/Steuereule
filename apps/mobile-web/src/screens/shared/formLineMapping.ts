@@ -168,6 +168,9 @@ export function formLineForField(screen: Screen, field?: string): FormLineInfo {
 
     case 'assessment':
       return { form: 'Bescheidprüfung', label: 'Steuerbescheid-Abgleich' }
+    // A booking draft of the self-employed (ADR-0101 §18): it lands in the EÜR or the Bilanz.
+    case 'buchung':
+      return { form: 'Anlage EÜR', label: 'Buchung · Anlage EÜR bzw. Bilanz' }
   }
 }
 

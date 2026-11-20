@@ -66,6 +66,23 @@ export class ReceiptController {
 
   @Post('upload')
   @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['file'],
+      properties: {
+        file: { type: 'string', format: 'binary' },
+        kind: { type: 'string', description: 'Belegart (RECEIPT_TYPES), e.g. Geschaeftsbeleg.' },
+        belegdatum: { type: 'string', example: '2025-03-14' },
+        zahlungsdatum: { type: 'string', example: '2025-03-20' },
+        direction: {
+          type: 'string',
+          enum: ['ausgabe', 'einnahme'],
+          description: 'A business receipt (ADR-0101 §6): an expense or an invoice the business wrote. Files the Beleg as Geschaeftsbeleg; its parse drafts the booking in that direction.',
+        },
+      },
+    },
+  })
   @ApiCreatedResponse({
     type: ReceiptResponseDto,
     description:
@@ -105,6 +122,7 @@ export class ReceiptController {
       kind: readMultipartField(part.fields, 'kind'),
       belegdatum: readMultipartField(part.fields, 'belegdatum'),
       zahlungsdatum: readMultipartField(part.fields, 'zahlungsdatum'),
+      direction: readMultipartField(part.fields, 'direction'),
     })
   }
 

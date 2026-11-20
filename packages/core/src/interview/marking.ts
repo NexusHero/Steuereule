@@ -17,10 +17,10 @@ export interface Marking {
   readonly proposal: Proposal | null
 }
 
-export const SCREENS = ['profil', 'stammdaten', 'kopplung', 'interview', 'lstb', 'commute', 'chLohnausweis', 'rente', 'kapital', 'vermietung', 'kind', 'assessment'] as const
+export const SCREENS = ['profil', 'stammdaten', 'kopplung', 'interview', 'lstb', 'commute', 'chLohnausweis', 'rente', 'kapital', 'vermietung', 'kind', 'assessment', 'buchung'] as const
 export type Screen = (typeof SCREENS)[number]
 
-export const ANNEXES = ['hauptvordruck', 'anlageN', 'anlageNGre', 'anlageR', 'anlageKap', 'anlageV', 'anlageKind'] as const
+export const ANNEXES = ['hauptvordruck', 'anlageN', 'anlageNGre', 'anlageR', 'anlageKap', 'anlageV', 'anlageKind', 'anlageEuer'] as const
 export type Annex = (typeof ANNEXES)[number]
 const ANNEX_PER_SCREEN: Readonly<Record<Screen, Annex>> = {
   profil: 'hauptvordruck',
@@ -35,6 +35,8 @@ const ANNEX_PER_SCREEN: Readonly<Record<Screen, Annex>> = {
   vermietung: 'anlageV',
   kind: 'anlageKind',
   assessment: 'hauptvordruck',
+  // A booking the owl prepared (ADR-0101 §18): it feeds the EÜR, the Anlage S/G and the Bilanz.
+  buchung: 'anlageEuer',
 }
 
 export const YEAR_INDEPENDENT = 0

@@ -31,6 +31,8 @@ import { PensionModule } from './pension/pension.module.js'
 import { MasterDataModule } from './master-data/master-data.module.js'
 import { FilingTypeComparisonModule } from './filing-type-comparison/filing-type-comparison.module.js'
 import { RentalModule } from './rental/rental.module.js'
+import { BusinessModule } from './business/business.module.js'
+import { BusinessReceiptModule } from './business/business-receipt.module.js'
 import { ChildrenModule } from './children/children.module.js'
 import { LinkModule } from './link/link.module.js'
 import { HouseholdModule } from './household/household.module.js'
@@ -66,6 +68,8 @@ import { DomainErrorFilter } from './common/domain-error.filter.js'
     HealthModule,
     FilingTypeComparisonModule,
     RentalModule,
+    BusinessModule,
+    BusinessReceiptModule,
     DeadlinesModule,
     TakeoverModule,
     ConfirmationModule,

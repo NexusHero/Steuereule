@@ -9,6 +9,7 @@ import { LstbScreen } from '../screens/lstb/LstbScreen'
 import { WorkdaysScreen } from '../screens/workdays/WorkdaysScreen'
 import { CrossBorderScreen } from '../screens/cross-border/CrossBorderScreen'
 import { PensionerScreen } from '../screens/pension/PensionerScreen'
+import { BusinessScreen } from '../screens/business/BusinessScreen'
 import { OfficialFormScreen } from '../screens/printout/OfficialFormScreen'
 import type { Screen } from '@steuereule/core'
 import { useShellState } from './ShellState'
@@ -179,6 +180,27 @@ export function OfficialFormRoute({ navigation, route }: Props<'OfficialForm'>) 
         initialForm={route.params?.form}
         onBack={back}
         onInspectField={(screen, _field, person) => openMaskFor(navigation, screen, person ?? 'A', year)}
+      />
+    </RequiresAccount>
+  )
+}
+
+export function BusinessRoute({ navigation, route }: Props<'Business'>) {
+  const year = useYearGuard(route.params?.year, navigation)
+  if (year === null) return null
+  const person = route.params?.person === 'B' ? 'B' : 'A'
+  const page = route.params?.page
+  const home = () => navigation.navigate('CockpitHome', undefined, { pop: true })
+  return (
+    <RequiresAccount>
+      <BusinessScreen
+        taxYear={year}
+        person={person}
+        page={page}
+        payment={route.params?.zahlung}
+        onOpenPage={(next) => navigation.navigate('Business', { year, ...(next ? { page: next } : {}), ...(person === 'B' ? { person } : {}) })}
+        onBack={() => (page ? navigation.navigate('Business', { year, ...(person === 'B' ? { person } : {}) }, { pop: true }) : home())}
+        onChangePerson={(next) => navigation.navigate('Business', { year, ...(next === 'B' ? { person: next } : {}) })}
       />
     </RequiresAccount>
   )

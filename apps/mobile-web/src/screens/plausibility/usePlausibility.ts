@@ -16,6 +16,7 @@ import {
   type LstbResponseDto,
 } from '@steuereule/api-client'
 import { pathFromAnswers } from '../funnel/KontoWandScreen'
+import { useSelfEmploymentCapability } from '../business/useSelfEmployment'
 
 export type PlausibilityStatus = 'loading' | 'error' | 'ready'
 
@@ -40,13 +41,15 @@ function dataFromResponse(r: LstbResponseDto): WageTaxCertificateData {
   }
 }
 
-function foldInputs(data: WageTaxCertificateData, answers: Answers) {
+function foldInputs(data: WageTaxCertificateData, answers: Answers, selfEmployment: boolean) {
   const facts = employeeFromData(data, answers)
   const rawLstbStatus = wageTaxCertificateStatus(data)
   const path = pathFromAnswers(answers)
   // Rentner and Swiss cross-border workers do not fill the German LStB; keep empty LStB unblocked there.
+  // With self-employment on, a pure „Selbstständig“ has no wage tax certificate to demand (for „Beides“ it stays required).
+  const lstbRequired = path === 'angestellte' && !(selfEmployment && answers.job === 'Selbstständig')
   const lstb =
-    path === 'angestellte' || rawLstbStatus.kind === 'widerspruch'
+    lstbRequired || rawLstbStatus.kind === 'widerspruch'
       ? rawLstbStatus
       : { kind: 'vollstaendig' as const, bruttoarbeitslohn: 0, lohnsteuer: 0, sozialversicherung: 0 }
 
@@ -75,6 +78,7 @@ export function usePlausibility(
   const lstbQuery = useLstbControllerGetLstb(taxYear, undefined, { query: { enabled } })
   const interviewQuery = useInterviewControllerGetInterview(taxYear, undefined, { query: { enabled } })
   const masterDataQuery = useMasterDataControllerRead({ query: { enabled } })
+  const capability = useSelfEmploymentCapability(taxYear)
 
   const retry = () => {
     void lstbQuery.refetch()
@@ -86,7 +90,7 @@ export function usePlausibility(
     return { status: 'ready', conflicts: [], notices: [], missingPersonalDetails: null, answers: {}, retry }
   }
 
-  if (lstbQuery.isPending || interviewQuery.isPending || masterDataQuery.isPending) {
+  if (lstbQuery.isPending || interviewQuery.isPending || masterDataQuery.isPending || (enabled && capability.pending)) {
     return { status: 'loading', conflicts: [], notices: [], missingPersonalDetails: null, answers: {}, retry }
   }
 
@@ -101,7 +105,7 @@ export function usePlausibility(
 
   const data = dataFromResponse(lstbQuery.data.data)
   const answers = interviewQuery.data.data.answers as Answers
-  const result = checkPlausibility(foldInputs(data, answers))
+  const result = checkPlausibility(foldInputs(data, answers, capability.enabled), { selfEmployment: capability.enabled })
   const missingPersonalDetails =
     masterDataQuery.data?.status === 200 ? masterDataQuery.data.data.missing.length : null
 

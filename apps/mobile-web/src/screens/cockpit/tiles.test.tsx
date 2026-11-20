@@ -105,7 +105,7 @@ function completeCommute(): CommuteResponseDto {
 }
 
 describe('cockpit tiles (§ 2.2–2.4 & Slice 5 § 5.2)', () => {
-  it('defines all 14 tiles with unique IDs, title keys, and persona rules', () => {
+  it('defines all 15 tiles with unique IDs, title keys, and persona rules', () => {
     const ids = TILES.map((t) => t.id)
     expect(ids).toEqual([
       'lstb',
@@ -122,6 +122,7 @@ describe('cockpit tiles (§ 2.2–2.4 & Slice 5 § 5.2)', () => {
       'haushalt',
       'gesundheit',
       'vorauszahlungen',
+      'selbststaendig',
     ])
     for (const tile of TILES) {
       expect(tile.titleKey).toBe(`cockpit.kachel.${tile.id}.titel`)

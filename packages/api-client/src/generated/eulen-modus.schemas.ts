@@ -6,7 +6,7 @@
  * OpenAPI spec version: 1.0
  */
 /**
- * Explicit document parser: "lstb" the German LStB, "chLohnausweis" the Swiss salary certificate, "chPensionskasse" a Swiss pension fund statement, "chPraemien" the employer letter on sickness-pay and NBU premiums, "chKrankenkasse" a Swiss health insurer statement for the tax return, "steuerbescheid" the Einkommensteuerbescheid (ADR-0098); "auto" routes a recognised document to its reader.
+ * Explicit document parser: "geschaeftsbeleg" a Rechnung or Quittung of the business (ADR-0101: a booking draft), "lstb" the German LStB, "chLohnausweis" the Swiss salary certificate, "chPensionskasse" a Swiss pension fund statement, "chPraemien" the employer letter on sickness-pay and NBU premiums, "chKrankenkasse" a Swiss health insurer statement for the tax return, "steuerbescheid" the Einkommensteuerbescheid (ADR-0098); "auto" routes a recognised document to its reader.
  */
 export type ParseReceiptDtoKind = typeof ParseReceiptDtoKind[keyof typeof ParseReceiptDtoKind];
 
@@ -19,6 +19,7 @@ export const ParseReceiptDtoKind = {
   chPraemien: 'chPraemien',
   chKrankenkasse: 'chKrankenkasse',
   steuerbescheid: 'steuerbescheid',
+  geschaeftsbeleg: 'geschaeftsbeleg',
 } as const;
 
 /**
@@ -35,6 +36,7 @@ export const ParseReceiptDtoExpectedKind = {
   chPraemien: 'chPraemien',
   chKrankenkasse: 'chKrankenkasse',
   steuerbescheid: 'steuerbescheid',
+  geschaeftsbeleg: 'geschaeftsbeleg',
 } as const;
 
 /**
@@ -56,6 +58,7 @@ export const ParseReceiptDtoMask = {
   vermietung: 'vermietung',
   kind: 'kind',
   assessment: 'assessment',
+  buchung: 'buchung',
 } as const;
 
 /**
@@ -102,11 +105,22 @@ export const ParseReceiptDtoMimeType = {
   'application/pdf': 'application/pdf',
 } as const;
 
+/**
+ * For a business receipt (`geschaeftsbeleg`, ADR-0101): an expense (default) or an invoice the business wrote.
+ */
+export type ParseReceiptDtoDirection = typeof ParseReceiptDtoDirection[keyof typeof ParseReceiptDtoDirection];
+
+
+export const ParseReceiptDtoDirection = {
+  ausgabe: 'ausgabe',
+  einnahme: 'einnahme',
+} as const;
+
 export interface ParseReceiptDto {
   taxYear: number;
   fileName: string;
   rawText?: string;
-  /** Explicit document parser: "lstb" the German LStB, "chLohnausweis" the Swiss salary certificate, "chPensionskasse" a Swiss pension fund statement, "chPraemien" the employer letter on sickness-pay and NBU premiums, "chKrankenkasse" a Swiss health insurer statement for the tax return, "steuerbescheid" the Einkommensteuerbescheid (ADR-0098); "auto" routes a recognised document to its reader. */
+  /** Explicit document parser: "geschaeftsbeleg" a Rechnung or Quittung of the business (ADR-0101: a booking draft), "lstb" the German LStB, "chLohnausweis" the Swiss salary certificate, "chPensionskasse" a Swiss pension fund statement, "chPraemien" the employer letter on sickness-pay and NBU premiums, "chKrankenkasse" a Swiss health insurer statement for the tax return, "steuerbescheid" the Einkommensteuerbescheid (ADR-0098); "auto" routes a recognised document to its reader. */
   kind?: ParseReceiptDtoKind;
   /** Entry context: the document the entry point expects (a mask asks for its own). Unlike `kind` it does not force a reader: a text that is clearly another document goes to that one’s reader. */
   expectedKind?: ParseReceiptDtoExpectedKind;
@@ -129,6 +143,8 @@ export interface ParseReceiptDto {
   /** How rawText was produced on the device: a PDF text layer, or OCR of a photo/scan (never green, ADR-0060). */
   textSource?: ParseReceiptDtoTextSource;
   mimeType?: ParseReceiptDtoMimeType;
+  /** For a business receipt (`geschaeftsbeleg`, ADR-0101): an expense (default) or an invoice the business wrote. */
+  direction?: ParseReceiptDtoDirection;
   /** Stages an unconfirmed pending draft in Eulen-Modus when true (default true). */
   stageDraft?: boolean;
 }
@@ -197,6 +213,7 @@ export const ParsedReceiptDataDtoSuggestedScreen = {
   vermietung: 'vermietung',
   kind: 'kind',
   assessment: 'assessment',
+  buchung: 'buchung',
 } as const;
 
 export interface ParsedReceiptDataDto {
@@ -243,6 +260,7 @@ export const AdvisorActionProposalDtoScreen = {
   vermietung: 'vermietung',
   kind: 'kind',
   assessment: 'assessment',
+  buchung: 'buchung',
 } as const;
 
 /**
@@ -561,6 +579,7 @@ export const AdvisorMaxPathProposalDtoScreen = {
   vermietung: 'vermietung',
   kind: 'kind',
   assessment: 'assessment',
+  buchung: 'buchung',
 } as const;
 
 /**
@@ -1617,6 +1636,7 @@ export const SendAdvisorMessageDtoActiveScreen = {
   vermietung: 'vermietung',
   kind: 'kind',
   assessment: 'assessment',
+  buchung: 'buchung',
 } as const;
 
 /**

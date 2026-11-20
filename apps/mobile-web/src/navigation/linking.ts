@@ -30,6 +30,7 @@ const cockpitScreens: NonNullable<PathConfig<CockpitStackParamList>['screens']> 
   OfficialForm: { path: 'steuerjahr/:year/formular/:form?', parse: { year: Number } },
   Partner: { path: 'steuerjahr/:year/partner/:area', parse: { year: Number } },
   Strom: { path: 'steuerjahr/:year/strom/:step', parse: { year: Number } },
+  Business: { path: 'steuerjahr/:year/selbststaendig/:page?', parse: { year: Number } },
 }
 
 const profileScreens: NonNullable<PathConfig<ProfileStackParamList>['screens']> = {
@@ -116,6 +117,7 @@ const ROUTE_TITLES: Readonly<Record<string, string>> = {
   OfficialForm: 'SteuerEule — Amtliches Formular',
   Partner: 'SteuerEule — Partner',
   Strom: 'SteuerEule — Steuererklärung',
+  Business: 'SteuerEule — Selbstständigkeit',
   Owl: 'SteuerEule — Eulen-Modus',
   Receipts: 'SteuerEule — Belege',
   History: 'SteuerEule — Verlauf',

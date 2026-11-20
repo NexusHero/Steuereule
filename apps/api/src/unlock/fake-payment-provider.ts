@@ -11,8 +11,9 @@ export const FAKE_PAYMENT_SIGNATURE = 'fake-payment-signature'
  * the printout gate run unchanged. Selectable only with PAYMENT_FAKE_PROVIDER=1 outside production.
  */
 export class FakePaymentProvider implements PaymentProvider {
+  /** Both tiers (ADR-0101 §21): the tier is stored with the open unlock, so the paid event needs no price. */
   async createCheckout(request: CheckoutRequest): Promise<CheckoutSession> {
-    return { id: `fake_cs_${randomUUID()}`, url: request.successUrl }
+    return { id: `fake_cs_${request.tier ?? 'standard'}_${randomUUID()}`, url: request.successUrl }
   }
 
   verifyEvent(rawData: Buffer, signature: string): PaymentEvent {

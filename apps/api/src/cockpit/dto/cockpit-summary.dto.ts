@@ -44,6 +44,16 @@ export class CockpitIncomeByPersonDto {
   b!: number
 }
 
+/** What this server offers (ADR-0101 §20): the app follows the server, never a client-side flag. */
+export class CockpitCapabilitiesDto {
+  @ApiProperty({
+    type: Boolean,
+    example: false,
+    description: 'SELBSTSTAENDIGE_ENABLED: „Selbstständig“/„Beides“ lead into the self-employment path (EÜR, Buch, USt, GewSt) instead of the Gewerbe-Gate.',
+  })
+  selbststaendig!: boolean
+}
+
 export class CockpitSummaryDto {
   @ApiProperty({ type: Number, example: 2026 })
   taxYear!: number
@@ -63,4 +73,15 @@ export class CockpitSummaryDto {
     description: 'The Abgabe (ADR-0098 §8): null until the user recorded „Ich habe die Erklärung abgegeben“.',
   })
   submission!: CockpitSubmissionDto | null
+
+  // Optional on the wire only so older client fixtures stay valid; the server always sends it.
+  @ApiPropertyOptional({ type: CockpitCapabilitiesDto, description: 'Server switches the app follows (always present).' })
+  capabilities?: CockpitCapabilitiesDto
+
+  // Optional on the wire only for older client fixtures; the server always sends it.
+  @ApiPropertyOptional({
+    enum: ['papier', 'elster-ausfuellhilfe'],
+    description: 'How this year is filed: „papier“ with the printout (ADR-0050), „elster-ausfuellhilfe“ through Mein ELSTER with the fill-in help for a year with self-employment (switch on, ADR-0101 §16).',
+  })
+  filingPath?: 'papier' | 'elster-ausfuellhilfe'
 }

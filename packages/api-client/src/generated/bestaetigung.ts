@@ -185,7 +185,7 @@ export type confirmationControllerConfirmAnnexResponseError = (confirmationContr
 export type confirmationControllerConfirmAnnexResponse = (confirmationControllerConfirmAnnexResponseSuccess | confirmationControllerConfirmAnnexResponseError)
 
 export const getConfirmationControllerConfirmAnnexUrl = (jahr: number,
-    anlage: 'hauptvordruck' | 'anlageN' | 'anlageNGre' | 'anlageR' | 'anlageKap' | 'anlageV' | 'anlageKind',) => {
+    anlage: 'hauptvordruck' | 'anlageN' | 'anlageNGre' | 'anlageR' | 'anlageKap' | 'anlageV' | 'anlageKind' | 'anlageEuer',) => {
 
 
 
@@ -194,7 +194,7 @@ export const getConfirmationControllerConfirmAnnexUrl = (jahr: number,
 }
 
 export const confirmationControllerConfirmAnnex = async (jahr: number,
-    anlage: 'hauptvordruck' | 'anlageN' | 'anlageNGre' | 'anlageR' | 'anlageKap' | 'anlageV' | 'anlageKind', options?: RequestInit): Promise<confirmationControllerConfirmAnnexResponse> => {
+    anlage: 'hauptvordruck' | 'anlageN' | 'anlageNGre' | 'anlageR' | 'anlageKap' | 'anlageV' | 'anlageKind' | 'anlageEuer', options?: RequestInit): Promise<confirmationControllerConfirmAnnexResponse> => {
 
   return httpClient<confirmationControllerConfirmAnnexResponse>(getConfirmationControllerConfirmAnnexUrl(jahr,anlage),
   {
@@ -210,8 +210,8 @@ export const confirmationControllerConfirmAnnex = async (jahr: number,
 
 
 export const getConfirmationControllerConfirmAnnexMutationOptions = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmationControllerConfirmAnnex>>, TError,{jahr: number;anlage: 'hauptvordruck' | 'anlageN' | 'anlageNGre' | 'anlageR' | 'anlageKap' | 'anlageV' | 'anlageKind'}, TContext>, request?: SecondParameter<typeof httpClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof confirmationControllerConfirmAnnex>>, TError,{jahr: number;anlage: 'hauptvordruck' | 'anlageN' | 'anlageNGre' | 'anlageR' | 'anlageKap' | 'anlageV' | 'anlageKind'}, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmationControllerConfirmAnnex>>, TError,{jahr: number;anlage: 'hauptvordruck' | 'anlageN' | 'anlageNGre' | 'anlageR' | 'anlageKap' | 'anlageV' | 'anlageKind' | 'anlageEuer'}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof confirmationControllerConfirmAnnex>>, TError,{jahr: number;anlage: 'hauptvordruck' | 'anlageN' | 'anlageNGre' | 'anlageR' | 'anlageKap' | 'anlageV' | 'anlageKind' | 'anlageEuer'}, TContext> => {
 
 const mutationKey = ['confirmationControllerConfirmAnnex'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -223,7 +223,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof confirmationControllerConfirmAnnex>>, {jahr: number;anlage: 'hauptvordruck' | 'anlageN' | 'anlageNGre' | 'anlageR' | 'anlageKap' | 'anlageV' | 'anlageKind'}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof confirmationControllerConfirmAnnex>>, {jahr: number;anlage: 'hauptvordruck' | 'anlageN' | 'anlageNGre' | 'anlageR' | 'anlageKap' | 'anlageV' | 'anlageKind' | 'anlageEuer'}> = (props) => {
           const {jahr,anlage} = props ?? {};
 
           return  confirmationControllerConfirmAnnex(jahr,anlage,requestOptions)
@@ -241,11 +241,11 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type ConfirmationControllerConfirmAnnexMutationError = void
 
     export const useConfirmationControllerConfirmAnnex = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmationControllerConfirmAnnex>>, TError,{jahr: number;anlage: 'hauptvordruck' | 'anlageN' | 'anlageNGre' | 'anlageR' | 'anlageKap' | 'anlageV' | 'anlageKind'}, TContext>, request?: SecondParameter<typeof httpClient>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmationControllerConfirmAnnex>>, TError,{jahr: number;anlage: 'hauptvordruck' | 'anlageN' | 'anlageNGre' | 'anlageR' | 'anlageKap' | 'anlageV' | 'anlageKind' | 'anlageEuer'}, TContext>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof confirmationControllerConfirmAnnex>>,
         TError,
-        {jahr: number;anlage: 'hauptvordruck' | 'anlageN' | 'anlageNGre' | 'anlageR' | 'anlageKap' | 'anlageV' | 'anlageKind'},
+        {jahr: number;anlage: 'hauptvordruck' | 'anlageN' | 'anlageNGre' | 'anlageR' | 'anlageKap' | 'anlageV' | 'anlageKind' | 'anlageEuer'},
         TContext
       > => {
       return useMutation(getConfirmationControllerConfirmAnnexMutationOptions(options), queryClient);
