@@ -42,6 +42,14 @@ export interface AssistantSessionInfo {
   readonly scopes: readonly string[]
 }
 
+/**
+ * The catalogue's hints are written for the in-app advisor and name its tools; the user's assistant has
+ * none of them, so those references become what it should do instead.
+ */
+function forExternalAssistant(description: string): string {
+  return description.replace('nur über `propose_two_paths` vorschlagen', 'dem Nutzer beide Wege zeigen und ihn entscheiden lassen')
+}
+
 function assertScope(assistant: AssistantSessionInfo, requiredScope: string): void {
   if (!assistant.scopes.includes(requiredScope)) {
     throw new Error(`Fehlender OAuth-Scope: ${requiredScope}. Dem Assistenten wurde diese Berechtigung nicht erteilt.`)
@@ -68,7 +76,7 @@ export class McpService {
     /** The joint return (ADR-0054): whose data a value for Person B goes to. */
     @Optional() @Inject(LinkService) private readonly link?: Pick<LinkService, 'spouseForAdvisor' | 'dataUser'>,
     /** A child is a record of its own: the mask `kind` needs its id as `instance`. */
-    @Optional() @Inject(ChildrenService) private readonly children?: Pick<ChildrenService, 'list' | 'create'>,
+    @Optional() @Inject(ChildrenService) private readonly children?: Pick<ChildrenService, 'list' | 'create' | 'delete'>,
   ) {}
 
   /**
@@ -345,6 +353,7 @@ export class McpService {
     this.registerReportTools(server, userId, assistant)
     this.registerChildTools(server, userId, assistant)
     this.registerFieldTool(server, userId, assistant)
+    this.registerWithdrawTool(server, userId, assistant)
 
     return server
   }
@@ -442,7 +451,37 @@ export class McpService {
         const after = (await children.create(userId, taxYear, { firstName, lastName, geburtsdatum })).kinder
         await this.auditService.append({ userId, action: 'WRITE', resource: 'kind_anlegen' })
         const created = after.find((k) => !before.has(k.id))
+        // Name and birth date are the assistant's entry like any other: unconfirmed, and so removable by it.
+        if (created) await this.confirmationService.markUnconfirmed(userId, taxYear, ['firstName', 'lastName', 'geburtsdatum'].map((field) => provenanceKey('kind', field, created.id)), { kind: 'assistent', name: assistant.clientName })
         return json({ ok: true, instance: created?.id ?? null, nummer: created?.sequenceNumber ?? null, hinweis: 'Weitere Angaben mit maske_eintragen, Maske "kind", instance wie angegeben.' })
+      },
+    )
+
+    server.tool(
+      'kind_entfernen',
+      'Entfernt ein Kind, das du selbst angelegt hast und an dem noch nichts bestätigt oder vom Nutzer eingetragen ist (z. B. ein versehentlich doppelt angelegtes). Ein Kind, das der Nutzer angelegt oder bestätigt hat, entfernt nur er in der App.',
+      {
+        taxYear: z.number().int().describe('Das Steuerjahr (z.B. 2024 oder 2025)'),
+        instance: z.string().describe('Die instance des Kindes aus kinder_auflisten'),
+      },
+      async ({ taxYear, instance }) => {
+        assertScope(assistant, 'steuerdaten:write')
+        const child = (await children.list(userId, taxYear)).kinder.find((k) => k.id === instance)
+        if (!child) return { isError: true, content: [{ type: 'text' as const, text: JSON.stringify({ ok: false, error: 'NO_RECORD: Dieses Kind gibt es für das Jahr nicht.' }) }] }
+        const prefix = `kind:${instance}.`
+        const markings = (await this.confirmationService.list(userId, taxYear)).filter((m) => m.key.startsWith(prefix))
+        const own = (m: (typeof markings)[number]) => !m.confirmed && m.proposal === null && m.provenance.kind === 'assistent' && m.provenance.name === assistant.clientName
+        const keys = fieldsOfScreen('kind').map((spec) => provenanceKey('kind', spec.field, instance))
+        const values = await this.confirmationService.readRawValues(userId, taxYear, keys)
+        // Every value of the child must be this assistant's unconfirmed entry; one the user typed or confirmed keeps the child.
+        const untouched = keys.every((key) => values[key] === null || values[key] === undefined || values[key] === '' || markings.some((m) => m.key === key && own(m)))
+        if (!untouched || markings.some((m) => !own(m)) || !markings.some((m) => m.key === `${prefix}firstName`)) {
+          return { isError: true, content: [{ type: 'text' as const, text: JSON.stringify({ ok: false, error: 'NOT_OWN_ENTRY: Dieses Kind hat der Nutzer angelegt oder schon bestätigt; entfernen kann es nur er in der App.' }) }] }
+        }
+        await children.delete(userId, taxYear, instance)
+        await this.confirmationService.forget(userId, taxYear, markings.map((m) => m.key))
+        await this.auditService.append({ userId, action: 'WRITE', resource: 'kind_entfernen' })
+        return json({ ok: true, entfernt: instance })
       },
     )
   }
@@ -463,8 +502,37 @@ export class McpService {
           screen,
           braucht_instance: specs.some((spec) => spec.perInstance),
           je_person: PERSON_B_SCREENS.has(screen),
-          felder: specs.map((spec) => ({ feld: spec.field, beschreibung: describeFieldForPrompt(spec) })),
+          felder: specs.map((spec) => ({ feld: spec.field, beschreibung: forExternalAssistant(describeFieldForPrompt(spec)) })),
         })
+      },
+    )
+  }
+
+  /** Taking back an entry the assistant made by mistake: only its own, only while the user has not confirmed it. */
+  private registerWithdrawTool(server: McpServer, userId: string, assistant: AssistantSessionInfo): void {
+    server.tool(
+      'eintrag_zuruecknehmen',
+      'Nimmt einen eigenen Eintrag zurück, den du als falsch erkannt hast: Ein unbestätigter Wert, den du eingetragen hast, wird geleert; ein Vorschlag von dir auf einem bestätigten Wert wird verworfen. Werte des Nutzers oder anderer Assistenten bleiben. Danach bei Bedarf richtig neu eintragen.',
+      {
+        taxYear: z.number().int().describe('Das Steuerjahr (z.B. 2024 oder 2025)'),
+        screen: z.enum(SCREENS).describe('Die Erfassungsmaske'),
+        instance: z.string().optional().describe('Instanz-ID bei mehrfachen Objekten'),
+        field: z.string().describe('Der Feldbezeichner'),
+        person: z.enum(['A', 'B']).optional().describe('Wie bei maske_eintragen'),
+      },
+      async ({ taxYear, screen, instance, field, person }) => {
+        assertScope(assistant, 'steuerdaten:write')
+        const whose = await this.dataUserFor(userId, taxYear, screen, field.trim(), person)
+        if (!whose.ok) return { isError: true, content: [{ type: 'text' as const, text: JSON.stringify({ ok: false, error: whose.error }) }] }
+        const key = provenanceKey(screen, field.trim(), instance)
+        try {
+          const ergebnis = await this.confirmationService.withdrawAssistantEntry(whose.dataUserId, taxYear, key, assistant.clientName)
+          await this.auditService.append({ userId, action: 'WRITE', resource: 'eintrag_zuruecknehmen' })
+          return { content: [{ type: 'text' as const, text: JSON.stringify({ ok: true, schluessel: key, ergebnis }, null, 2) }] }
+        } catch (error) {
+          const code = (error as { code?: string }).code ?? 'ERROR'
+          return { isError: true, content: [{ type: 'text' as const, text: JSON.stringify({ ok: false, error: `${code}: ${error instanceof Error ? error.message : ''}` }) }] }
+        }
       },
     )
   }

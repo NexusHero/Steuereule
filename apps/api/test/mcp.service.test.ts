@@ -204,6 +204,7 @@ describe('McpService (ADR-0052 §3 / §5 / §8 / §12)', () => {
       'ausdruck_vorpruefung',
       'beleg_hochladen',
       'einkommensteuer_berechnen',
+      'eintrag_zuruecknehmen',
       'eulen_hinweise',
       'gesetzestext_lesen',
       'gewerbesteuer_schaetzen',
@@ -400,12 +401,79 @@ describe('McpService (ADR-0052 §3 / §5 / §8 / §12)', () => {
     expect(kind.felder.find((f: { feld: string }) => f.feld === 'swissFamilyAllowanceEur').beschreibung).toContain('NICHT im Bruttolohn')
   })
 
+  it('maske_felder names no tool of the in-app advisor the assistant does not have', async () => {
+    const client = await connectClient()
+    const text = getText(await client.callTool({ name: 'maske_felder', arguments: { screen: 'chLohnausweis' } }))
+    expect(text).not.toContain('propose_two_paths')
+    const field = JSON.parse(text).felder.find((f: { feld: string }) => f.feld === 'steuerfreiesKrankentaggeldChf')
+    expect(field.beschreibung).toContain('beide Wege')
+  })
+
   it('maske_felder leaves out the fields an assistant never writes and the booking mask', async () => {
     const client = await connectClient()
     const kopplung = JSON.parse(getText(await client.callTool({ name: 'maske_felder', arguments: { screen: 'kopplung' } })))
     expect(kopplung.felder.map((f: { feld: string }) => f.feld)).toEqual(['filingType'])
     const buchung = await client.callTool({ name: 'maske_felder', arguments: { screen: 'buchung' } })
     expect(JSON.parse(getText(buchung)).ok).toBe(false)
+  })
+
+  describe('taking back what the assistant entered (ADR-0052 amendment 2)', () => {
+    async function clientWithChildren() {
+      const children = {
+        list: async (u: string, y: number) => ({ kinder: await childRepo.listForUserAndYear(u, y) }),
+        create: async (u: string, y: number, dto: { firstName: string; lastName: string; geburtsdatum: string }) => {
+          await childRepo.create(u, y, dto)
+          return { kinder: await childRepo.listForUserAndYear(u, y) }
+        },
+        delete: async (u: string, y: number, id: string) => {
+          await childRepo.delete(u, y, id)
+          return { kinder: await childRepo.listForUserAndYear(u, y) }
+        },
+      }
+      const svc = new McpService(cockpitService, printoutService, confirmationService, owlModeService, receiptService, unlockService, profileRepo, masterDataRepo, auditService, undefined, undefined, children as never)
+      const server = svc.createServer(USER, ALL_SCOPES_ASSISTANT)
+      const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
+      await server.connect(serverTransport)
+      const client = new Client({ name: 'TestClient', version: '1.0.0' })
+      await client.connect(clientTransport)
+      return client
+    }
+
+    it('eintrag_zuruecknehmen clears its own unconfirmed value and refuses one the user entered', async () => {
+      const client = await connectClient()
+      await client.callTool({ name: 'maske_eintragen', arguments: { taxYear: YEAR, screen: 'lstb', field: 'lohnsteuer', value: '700' } })
+      const res = await client.callTool({ name: 'eintrag_zuruecknehmen', arguments: { taxYear: YEAR, screen: 'lstb', field: 'lohnsteuer' } })
+      expect(JSON.parse(getText(res))).toMatchObject({ ok: true, ergebnis: 'zurueckgenommen' })
+      expect((await lstbRepo.findForUserAndYear(USER, YEAR))?.lohnsteuer ?? null).toBeNull()
+      await lstbRepo.setField(USER, YEAR, 'bruttoarbeitslohn', '60000')
+      const refused = await client.callTool({ name: 'eintrag_zuruecknehmen', arguments: { taxYear: YEAR, screen: 'lstb', field: 'bruttoarbeitslohn' } })
+      expect((refused as { isError?: boolean }).isError).toBe(true)
+      expect(getText(refused)).toContain('NOT_OWN_ENTRY')
+    })
+
+    it('kind_anlegen marks the child as the assistant’s entry, and kind_entfernen removes such a child', async () => {
+      const client = await clientWithChildren()
+      const created = JSON.parse(getText(await client.callTool({ name: 'kind_anlegen', arguments: { taxYear: YEAR, firstName: 'Zeynep', lastName: 'Sevinc', geburtsdatum: '2022-06-14' } })))
+      expect((await confirmationService.list(USER, YEAR)).filter((m) => m.key.startsWith(`kind:${created.instance}.`)).every((m) => !m.confirmed && m.provenance.kind === 'assistent')).toBe(true)
+      await client.callTool({ name: 'maske_eintragen', arguments: { taxYear: YEAR, screen: 'kind', instance: created.instance, field: 'childcareEur', value: '616' } })
+      const res = await client.callTool({ name: 'kind_entfernen', arguments: { taxYear: YEAR, instance: created.instance } })
+      expect(JSON.parse(getText(res))).toMatchObject({ ok: true })
+      expect(await childRepo.listForUserAndYear(USER, YEAR)).toEqual([])
+      expect((await confirmationService.list(USER, YEAR)).filter((m) => m.key.startsWith('kind:'))).toEqual([])
+    })
+
+    it('kind_entfernen refuses a child the user created, or one the user already confirmed', async () => {
+      const client = await clientWithChildren()
+      await childRepo.create(USER, YEAR, { firstName: 'Ali', lastName: 'Sevinc', geburtsdatum: '2020-01-01' })
+      const own = (await childRepo.listForUserAndYear(USER, YEAR))[0]!
+      const refused = await client.callTool({ name: 'kind_entfernen', arguments: { taxYear: YEAR, instance: own.id } })
+      expect((refused as { isError?: boolean }).isError).toBe(true)
+      const created = JSON.parse(getText(await client.callTool({ name: 'kind_anlegen', arguments: { taxYear: YEAR, firstName: 'Zeynep', lastName: 'Sevinc', geburtsdatum: '2022-06-14' } })))
+      await confirmationService.confirmAnnex(USER, YEAR, 'anlageKind')
+      const confirmed = await client.callTool({ name: 'kind_entfernen', arguments: { taxYear: YEAR, instance: created.instance } })
+      expect((confirmed as { isError?: boolean }).isError).toBe(true)
+      expect(await childRepo.listForUserAndYear(USER, YEAR)).toHaveLength(2)
+    })
   })
 
   it('maske_eintragen points a booking to the booking path instead of writing it as a field', async () => {

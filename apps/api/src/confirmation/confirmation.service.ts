@@ -285,6 +285,43 @@ export class ConfirmationService {
     return this.overview(userId, taxYear)
   }
 
+  /**
+   * The user's assistant takes back what it entered itself (ADR-0052 amendment 2): its unconfirmed value
+   * is cleared, or its proposal on a value the user confirmed is dropped. Anything the user entered or
+   * confirmed, and anything another assistant wrote, stays.
+   */
+  async withdrawAssistantEntry(userId: string, taxYear: number, key: string, assistantName: string): Promise<'zurueckgenommen' | 'vorschlag-entfernt'> {
+    const a = this.address(key, taxYear)
+    const existing = await this.repository.find(userId, a.taxYear, key)
+    const own = (p: Provenance | undefined): boolean => p?.kind === 'assistent' && p.name === assistantName
+    if (existing?.proposal && own(existing.proposal.provenance)) {
+      const rest = dismissProposal({ ...existing, value: await this.currentValue(userId, a) })
+      if (rest === null) await this.repository.remove(userId, a.taxYear, [key])
+      else await this.repository.save(userId, a.taxYear, rest)
+      return 'vorschlag-entfernt'
+    }
+    if (existing && !existing.confirmed && existing.proposal === null && own(existing.provenance)) {
+      await this.writeValue(userId, a, null)
+      await this.repository.remove(userId, a.taxYear, [key])
+      return 'zurueckgenommen'
+    }
+    throw new ForbiddenError('NOT_OWN_ENTRY', `"${key}" is not an unconfirmed entry of this assistant; the user changes it in the app.`)
+  }
+
+  /** Drops the markings of a record that is gone (a child the assistant removed). */
+  async forget(userId: string, taxYear: number, keys: readonly string[]): Promise<void> {
+    if (keys.length > 0) await this.repository.remove(userId, taxYear, keys)
+  }
+
+  /** Values a non-user wrote outside this service (a child the assistant created): unconfirmed, with their source. */
+  async markUnconfirmed(userId: string, taxYear: number, keys: readonly string[], provenance: Provenance): Promise<void> {
+    if (provenance.kind === 'nutzer') throw new Error('markUnconfirmed is for non-user writes.')
+    for (const key of keys) {
+      const a = this.address(key, taxYear)
+      await this.repository.save(userId, a.taxYear, { key, provenance, confirmed: false, proposal: null })
+    }
+  }
+
   async decideProposal(userId: string, taxYear: number, key: string, decision: 'annehmen' | 'verwerfen', person: 'A' | 'B' = 'A'): Promise<ConfirmationResponseDto> {
     const dataUserId = await this.dataUserFor(userId, taxYear, person)
     const a = this.address(key, taxYear)
