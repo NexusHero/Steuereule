@@ -5,7 +5,7 @@ import { checkCapitalTaxation, compareFilingTypes, computeIncomeTax } from '../k
 import { TOOL_ARG_SCHEMAS } from '../ki/advisor-tools.js'
 import { readLawForOwl, type LawId } from '../ki/law-text.js'
 import { ADVISOR_KNOWLEDGE } from '../ki/skills.generated.js'
-import type { AssistantSessionInfo } from './mcp.service.js'
+import type { AssistantSessionInfo } from './mcp-session.js'
 
 /** What the advice tools need from the host: the scope check and the audit line. */
 export interface AdviceToolHost {
