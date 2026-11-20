@@ -168,16 +168,20 @@ export class McpService {
           const error = target.error.startsWith('USE_BOOKING_TOOL') ? 'USE_BOOKING_TOOL: Buchungen sind über diesen Zugang noch nicht möglich; der Nutzer bucht in der App.' : target.error
           return { isError: true, content: [{ type: 'text', text: JSON.stringify({ ok: false, error }, null, 2) }] }
         }
+        // Store what the catalogue tidied ("50.000" → "50000"), never the raw input, under the trimmed name.
+        const cleanField = field.trim()
+        let cleanValue: string | null = null
         if (value !== null) {
-          const checked = checkStageValue(screen, field, value)
+          const checked = checkStageValue(screen, cleanField, value)
           if (!checked.ok) return { isError: true, content: [{ type: 'text', text: JSON.stringify({ ok: false, error: checked.error }, null, 2) }] }
+          cleanValue = checked.value
         }
-        const key = provenanceKey(screen, field, instance)
+        const key = provenanceKey(screen, cleanField, instance)
         const provenance: Provenance =
           receiptId !== undefined
             ? { kind: 'assistent', name: assistant.clientName, receiptId }
             : { kind: 'assistent', name: assistant.clientName }
-        const result = await this.confirmationService.write(userId, taxYear, key, value, provenance)
+        const result = await this.confirmationService.write(userId, taxYear, key, cleanValue, provenance)
         await this.auditService.append({ userId, action: 'WRITE', resource: 'maske_eintragen' })
 
         return {

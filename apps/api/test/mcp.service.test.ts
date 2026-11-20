@@ -369,6 +369,13 @@ describe('McpService (ADR-0052 §3 / §5 / §8 / §12)', () => {
     expect(marking?.provenance).toEqual({ kind: 'assistent', name: 'Claude' })
   })
 
+  it('maske_eintragen stores the value as the catalogue tidied it, under the trimmed field name', async () => {
+    const client = await connectClient()
+    const res = await client.callTool({ name: 'maske_eintragen', arguments: { taxYear: YEAR, screen: 'lstb', field: ' bruttoarbeitslohn ', value: '50.000' } })
+    expect(JSON.parse(getText(res)).schluessel).toBe('lstb.bruttoarbeitslohn')
+    expect((await lstbRepo.findForUserAndYear(USER, YEAR))?.bruttoarbeitslohn).toBe('50000')
+  })
+
   it('maske_eintragen creates a proposal if user already entered a confirmed value', async () => {
     // User already entered 60000
     await lstbRepo.setField(USER, YEAR, 'bruttoarbeitslohn', '60000')
