@@ -1,5 +1,5 @@
-import { Inject, Injectable } from '@nestjs/common'
-import { ConflictError, InvalidInputError, NotFoundError } from '../common/domain-error.js'
+import { Inject, Injectable, Optional } from '@nestjs/common'
+import { ConflictError, ForbiddenError, InvalidInputError, NotFoundError } from '../common/domain-error.js'
 import {
   validateFieldValue,
   ANNEXES,
@@ -18,6 +18,7 @@ import {
   type Screen,
 } from '@steuereule/core'
 import { AuditService } from '../audit/audit.service.js'
+import { LinkService } from '../link/link.service.js'
 import { PROVENANCE_REPOSITORY, type ProvenanceRecord, type ProvenanceRepository } from '../marking/marking.repository.js'
 import { assertAiWritable } from './ai-write-policy.js'
 import { FIELD_ACCESS, type FieldAccess, type ScreenAccess } from './field-access.js'
@@ -60,7 +61,22 @@ export class ConfirmationService {
     @Inject(PROVENANCE_REPOSITORY) private readonly repository: ProvenanceRepository,
     @Inject(FIELD_ACCESS) private readonly access: FieldAccess,
     @Inject(AuditService) private readonly auditService: AuditService,
+    /** Whose figures the user records as Person B (ADR-0054): their values are confirmed here too. */
+    @Optional() @Inject(LinkService) private readonly link?: Pick<LinkService, 'spouseForAdvisor'>,
   ) {}
+
+  /** The Person B whose data the user records in a joint return; null when B keeps an own account. */
+  private async recordedSpouse(userId: string, taxYear: number): Promise<string | null> {
+    const spouse = await this.link?.spouseForAdvisor(userId, taxYear)
+    return spouse?.recordable ? spouse.spouseUserId : null
+  }
+
+  private async dataUserFor(userId: string, taxYear: number, person: 'A' | 'B'): Promise<string> {
+    if (person === 'A') return userId
+    const spouse = await this.recordedSpouse(userId, taxYear)
+    if (spouse === null) throw new ForbiddenError('PERSON_B_OWNS_DATA', 'Person B maintains their data in their own account.')
+    return spouse
+  }
 
   private address(key: string, taxYear: number): Address {
     let parts: ReturnType<typeof decomposeProvenanceKey>
@@ -220,17 +236,22 @@ export class ConfirmationService {
   }
 
   async overview(userId: string, taxYear: number): Promise<ConfirmationResponseDto> {
-    const open = (await this.list(userId, taxYear)).filter((r) => !r.confirmed || r.proposal !== null)
+    const spouse = await this.recordedSpouse(userId, taxYear)
+    const isOpen = (r: ProvenanceRecord) => !r.confirmed || r.proposal !== null
+    const open = [
+      ...(await this.list(userId, taxYear)).filter(isOpen).map((record) => ({ record, dataUserId: userId, person: undefined })),
+      ...(spouse === null ? [] : (await this.list(spouse, taxYear)).filter(isOpen).map((record) => ({ record, dataUserId: spouse, person: 'B' as const }))),
+    ]
     if (open.length === 0) return { annexes: [] }
     await this.auditService.append({ userId, action: 'READ', resource: 'kennzeichnung' })
 
     const read = new Map<string, Promise<Readonly<Record<string, string | null>> | null>>()
     const values: { annex: Annex; dto: FieldProvenanceDto }[] = []
-    for (const r of open) {
+    for (const { record: r, dataUserId, person } of open) {
       const { screen, instance, field } = decomposeProvenanceKey(r.key)
       const access = this.access[screen]
-      const cacheKey = `${r.taxYear}|${screen}|${instance ?? ''}`
-      if (access !== undefined && !read.has(cacheKey)) read.set(cacheKey, access.read(userId, r.taxYear, instance))
+      const cacheKey = `${dataUserId}|${r.taxYear}|${screen}|${instance ?? ''}`
+      if (access !== undefined && !read.has(cacheKey)) read.set(cacheKey, access.read(dataUserId, r.taxYear, instance))
       const fields = access === undefined ? null : await read.get(cacheKey)
       values.push({
         annex: annexOf(r.key),
@@ -243,6 +264,7 @@ export class ConfirmationService {
           provenance: provenanceDto(r.provenance),
           confirmed: r.confirmed,
           proposal: r.proposal === null ? null : { value: r.proposal.value, provenance: provenanceDto(r.proposal.provenance) },
+          ...(person === undefined ? {} : { person }),
         },
       })
     }
@@ -257,22 +279,26 @@ export class ConfirmationService {
   async confirmAnnex(userId: string, taxYear: number, annex: Annex): Promise<ConfirmationResponseDto> {
     if (!(ANNEXES as readonly string[]).includes(annex)) throw new InvalidInputError('ANLAGE_UNKNOWN', `"${annex}" is not an Anlage.`)
     await this.repository.confirmAnnex(userId, [taxYear, YEAR_INDEPENDENT], annex)
+    // The user confirms the Anlage for the Person B they record, as they entered her figures (ADR-0054).
+    const spouse = await this.recordedSpouse(userId, taxYear)
+    if (spouse !== null) await this.repository.confirmAnnex(spouse, [taxYear, YEAR_INDEPENDENT], annex)
     return this.overview(userId, taxYear)
   }
 
-  async decideProposal(userId: string, taxYear: number, key: string, decision: 'annehmen' | 'verwerfen'): Promise<ConfirmationResponseDto> {
+  async decideProposal(userId: string, taxYear: number, key: string, decision: 'annehmen' | 'verwerfen', person: 'A' | 'B' = 'A'): Promise<ConfirmationResponseDto> {
+    const dataUserId = await this.dataUserFor(userId, taxYear, person)
     const a = this.address(key, taxYear)
-    const existing = await this.repository.find(userId, a.taxYear, key)
+    const existing = await this.repository.find(dataUserId, a.taxYear, key)
     if (existing === null || existing.proposal === null) throw new NotFoundError('PROPOSAL_NOT_FOUND', `There is no open proposal for "${key}".`)
-    const marking: Marking = { ...existing, value: await this.currentValue(userId, a) }
+    const marking: Marking = { ...existing, value: await this.currentValue(dataUserId, a) }
     if (decision === 'annehmen') {
       const assumed = acceptProposal(marking)
-      await this.writeValue(userId, a, assumed.value)
-      await this.repository.save(userId, a.taxYear, assumed)
+      await this.writeValue(dataUserId, a, assumed.value)
+      await this.repository.save(dataUserId, a.taxYear, assumed)
     } else {
       const rest = dismissProposal(marking)
-      if (rest === null) await this.repository.remove(userId, a.taxYear, [key])
-      else await this.repository.save(userId, a.taxYear, rest)
+      if (rest === null) await this.repository.remove(dataUserId, a.taxYear, [key])
+      else await this.repository.save(dataUserId, a.taxYear, rest)
     }
     return this.overview(userId, taxYear)
   }

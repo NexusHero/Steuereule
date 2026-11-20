@@ -20898,6 +20898,13 @@
                 "$ref": "#/components/schemas/ProposalDto"
               }
             ]
+          },
+          "person": {
+            "type": "string",
+            "enum": [
+              "B"
+            ],
+            "description": "Set when the value belongs to Person B, whose figures the user records (ADR-0054)."
           }
         },
         "required": [
@@ -20968,6 +20975,14 @@
               "annehmen",
               "verwerfen"
             ]
+          },
+          "person": {
+            "type": "string",
+            "enum": [
+              "A",
+              "B"
+            ],
+            "description": "Whose proposal: B for a value of Person B the user records. Default A."
           }
         },
         "required": [

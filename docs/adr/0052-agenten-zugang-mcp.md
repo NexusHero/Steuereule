@@ -189,5 +189,12 @@ Werkzeuge**, keine Agent-zu-Agent-Frage an unser LLM.
 - **Eintragen mit derselben Zielprüfung wie der interne Berater:** `maske_eintragen` lehnt unbekannte
   Felder, nie beschreibbare Felder, die Buchungsmaske und Werte, die das Feld nicht halten kann, mit
   dem Grund ab. Personenbezogene Felder bleiben für den eigenen Assistenten offen (§8).
-- **Noch nicht:** Buchungen und Anlagegüter (Selbstständige) und das Zurückziehen eigener Einträge über
-  MCP. Bezahlen, Konto und Einwilligungen bleiben ausgeschlossen (§4).
+- **Person B (Zusammenveranlagung, ADR-0054):** `maske_eintragen` und `auswirkung_simulieren` nehmen
+  `person` (A/B) mit den Regeln des In-App-Beraters (`checkDraftPerson`): B nur, wenn der Nutzer B's
+  Angaben führt, nur in B's eigenen Masken, dort ist die Person Pflicht. Der Nutzer bestätigt B's
+  unbestätigte Werte und entscheidet ihre Vorschläge auf „Prüfen & bestätigen“ mit (als „Person B“
+  gekennzeichnet); das Bestätigen einer Anlage gilt für beide.
+- **Kinder als Datensätze:** `kinder_auflisten` (Vorname maskiert, Geburtsjahr, `instance`) und
+  `kind_anlegen` (Scope `steuerdaten:write`); die Angaben folgen mit `maske_eintragen`, Maske `kind`.
+- **Noch nicht:** Buchungen und Anlagegüter (Selbstständige), neue Vermietungsobjekte und das
+  Zurückziehen eigener Einträge über MCP. Bezahlen, Konto und Einwilligungen bleiben ausgeschlossen (§4).

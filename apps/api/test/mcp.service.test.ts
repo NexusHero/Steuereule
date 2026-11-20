@@ -304,6 +304,82 @@ describe('McpService (ADR-0052 §3 / §5 / §8 / §12)', () => {
     expect(JSON.parse(getText(res)).ok).toBe(false)
   })
 
+  describe('maske_eintragen for Person B (ADR-0054, ADR-0052 amendment 2)', () => {
+    const SHADOW_B = 'shadow-b-mcp'
+    async function clientWith(link: unknown) {
+      const svc = new McpService(cockpitService, printoutService, confirmationService, owlModeService, receiptService, unlockService, profileRepo, masterDataRepo, auditService, undefined, link as never)
+      const server = svc.createServer(USER, ALL_SCOPES_ASSISTANT)
+      const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
+      await server.connect(serverTransport)
+      const client = new Client({ name: 'TestClient', version: '1.0.0' })
+      await client.connect(clientTransport)
+      return client
+    }
+    const recordedB = {
+      spouseForAdvisor: async () => ({ spouseUserId: SHADOW_B, recordable: true, firstName: null, lastName: null }),
+      dataUser: async (_u: string, _y: number, person: 'A' | 'B') => (person === 'B' ? SHADOW_B : USER),
+    }
+
+    it('writes Person B’s value into her data, unconfirmed', async () => {
+      const client = await clientWith(recordedB)
+      const res = await client.callTool({ name: 'maske_eintragen', arguments: { taxYear: YEAR, screen: 'lstb', field: 'bruttoarbeitslohn', value: '42000', person: 'B' } })
+      expect(JSON.parse(getText(res)).ergebnis).toBe('geschrieben')
+      expect((await lstbRepo.findForUserAndYear(SHADOW_B, YEAR))?.bruttoarbeitslohn).toBe('42000')
+      expect((await lstbRepo.findForUserAndYear(USER, YEAR))?.bruttoarbeitslohn ?? null).toBeNull()
+    })
+
+    it('asks for the person on a mask that exists twice in a joint return', async () => {
+      const client = await clientWith(recordedB)
+      const res = await client.callTool({ name: 'maske_eintragen', arguments: { taxYear: YEAR, screen: 'lstb', field: 'bruttoarbeitslohn', value: '42000' } })
+      expect((res as { isError?: boolean }).isError).toBe(true)
+      expect(getText(res)).toContain('PERSON_REQUIRED')
+    })
+
+    it('refuses Person B without a joint return, and on a joint mask', async () => {
+      const none = await clientWith({ spouseForAdvisor: async () => null, dataUser: async () => USER })
+      expect(getText(await none.callTool({ name: 'maske_eintragen', arguments: { taxYear: YEAR, screen: 'lstb', field: 'bruttoarbeitslohn', value: '1', person: 'B' } }))).toContain('NO_PERSON_B')
+      const joint = await clientWith(recordedB)
+      expect(getText(await joint.callTool({ name: 'maske_eintragen', arguments: { taxYear: YEAR, screen: 'kapital', field: 'inhaber', value: 'gemeinsam', person: 'B' } }))).toContain('JOINT_SCREEN')
+    })
+  })
+
+  describe('children (ADR-0052 amendment 2)', () => {
+    async function clientWith(children: unknown, scopes = ALL_SCOPES_ASSISTANT.scopes) {
+      const svc = new McpService(cockpitService, printoutService, confirmationService, owlModeService, receiptService, unlockService, profileRepo, masterDataRepo, auditService, undefined, undefined, children as never)
+      const server = svc.createServer(USER, { ...ALL_SCOPES_ASSISTANT, scopes })
+      const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
+      await server.connect(serverTransport)
+      const client = new Client({ name: 'TestClient', version: '1.0.0' })
+      await client.connect(clientTransport)
+      return client
+    }
+    const zeynep = { id: 'kind-1', sequenceNumber: 1, firstName: 'Zeynep', lastName: 'Sevinc', geburtsdatum: '2022-06-14' }
+
+    it('kinder_auflisten names each child by id, number, masked name and birth year only', async () => {
+      const client = await clientWith({ list: async () => ({ kinder: [zeynep] }) })
+      const parsed = JSON.parse(getText(await client.callTool({ name: 'kinder_auflisten', arguments: { taxYear: YEAR } })))
+      expect(parsed.kinder).toEqual([{ instance: 'kind-1', nummer: 1, vorname: 'Z***', geburtsjahr: '2022' }])
+      expect(getText(await client.callTool({ name: 'kinder_auflisten', arguments: { taxYear: YEAR } }))).not.toContain('Zeynep')
+    })
+
+    it('kind_anlegen creates the child and returns the instance for maske_eintragen', async () => {
+      const kinder: (typeof zeynep)[] = []
+      const children = { list: async () => ({ kinder }), create: vi.fn(async () => { kinder.push(zeynep); return { kinder } }) }
+      const client = await clientWith(children)
+      const res = await client.callTool({ name: 'kind_anlegen', arguments: { taxYear: YEAR, firstName: 'Zeynep', lastName: 'Sevinc', geburtsdatum: '2022-06-14' } })
+      expect(JSON.parse(getText(res))).toMatchObject({ ok: true, instance: 'kind-1' })
+      expect(children.create).toHaveBeenCalledWith(USER, YEAR, { firstName: 'Zeynep', lastName: 'Sevinc', geburtsdatum: '2022-06-14' })
+    })
+
+    it('kind_anlegen needs the write scope', async () => {
+      const children = { list: async () => ({ kinder: [] }), create: vi.fn() }
+      const client = await clientWith(children, ['steuerdaten:read'])
+      const res = await client.callTool({ name: 'kind_anlegen', arguments: { taxYear: YEAR, firstName: 'Z', lastName: 'S', geburtsdatum: '2022-06-14' } })
+      expect((res as { isError?: boolean }).isError).toBe(true)
+      expect(children.create).not.toHaveBeenCalled()
+    })
+  })
+
   it('maske_eintragen points a booking to the booking path instead of writing it as a field', async () => {
     const client = await connectClient()
     const res = await client.callTool({ name: 'maske_eintragen', arguments: { taxYear: YEAR, screen: 'buchung', field: 'betrag', value: '10' } })
