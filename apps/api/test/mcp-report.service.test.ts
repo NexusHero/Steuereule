@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { McpReportService } from '../src/mcp/mcp-report.service.js'
-import { passThroughTransactionRunner, type TransactionRunner } from '../src/prisma/transaction.js'
+import { passThroughTransactionRunner, PrismaTransactionRunner, type TransactionRunner } from '../src/prisma/transaction.js'
 
 const computed = (from: number, to: number) => ({
   kind: 'spanne' as const,
@@ -91,5 +91,13 @@ describe('McpReportService (ADR-0052 amendment 2)', () => {
     const later = await service({ estimate: notYet }).simulate('u', 2025, 'lstb', 'bruttoarbeitslohn', '50000')
     expect(first).toMatchObject({ ok: false, reason: expect.stringContaining('erstmals') })
     expect(later).toMatchObject({ ok: false, reason: expect.stringContaining('vollständig') })
+  })
+
+  it('never simulates inside a transaction that is already running: the rollback would not reach its commit', async () => {
+    const outer = new PrismaTransactionRunner({ $transaction: async (work) => work({}) })
+    const confirmation = { overview: vi.fn(), writeConfirmedByAdvisor: vi.fn() }
+    const result = await outer.run(() => service({ confirmation, transactions: outer }).simulate('u', 2025, 'lstb', 'bruttoarbeitslohn', '50000'))
+    expect(result.ok).toBe(false)
+    expect(confirmation.writeConfirmedByAdvisor).not.toHaveBeenCalled()
   })
 })

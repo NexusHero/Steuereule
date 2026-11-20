@@ -20,6 +20,14 @@ export const passThroughTransactionRunner: TransactionRunner = {
 const activeTransaction = new AsyncLocalStorage<object>()
 
 /**
+ * Whether the caller already runs inside a transaction. `run` then joins it instead of starting its
+ * own, so work that relies on its own rollback (a simulation) must refuse rather than ride along.
+ */
+export function isInsideTransaction(): boolean {
+  return activeTransaction.getStore() !== undefined
+}
+
+/**
  * Repositories keep injecting one client; the proxy routes each call to the
  * transaction client of the surrounding `run`, so no repository signature changes.
  */
