@@ -45,6 +45,7 @@ function setup(job = 'Selbstständig', unlocked = true) {
   const interview = new FakeInterviewAnswerRepository()
   interview.seed('u', YEAR, { job })
   interview.seed('u', 2025, { job })
+  interview.seed('u', 2026, { job })
   const unlock = { status: async () => (unlocked ? 'freigeschaltet' : 'offen') } as unknown as UnlockService
   let tick = 0
   const clock = () => `2026-11-19T10:00:${String(tick++ % 60).padStart(2, '0')}.000Z`
@@ -422,6 +423,33 @@ describe('BusinessService (ADR-0101)', () => {
     expect((await service.vatReturn('u', 2025, A1)).result.prepaymentsEur).toBe(171)
     await service.saveProfile('u', 2025, A1, { vatPrepaymentsCents: 20_000 })
     expect((await service.vatReturn('u', 2025, A1)).result.prepaymentsEur).toBe(200)
+  })
+
+  it('a sale of the Gewerbebetrieb: the gain after the § 16 allowance goes into Anlage G with the Fünftelregelung, without trade tax (ADR-0101 §22)', async () => {
+    const { service } = setup()
+    await service.saveProfile('u', 2025, A1, {
+      confirmedKind: 'gewerbe',
+      multiplierOverride: 400,
+      disposalFacts: { kind: 'veraeusserung', date: '2025-09-30', priceEur: 200_000, costsEur: 5_000, capitalAccountEur: 95_000, allowance: true, method: 'fuenftel' },
+    })
+    await service.quickEntry('u', 2025, A1, [{ key: 'einnahmen_umsatzsteuerpflichtig', amountCents: 3_000_000 }])
+    expect(await service.specialTariffs('u', 2025, A1)).toEqual({ disposal: { gainEur: 100_000, allowanceEur: 45_000, taxableGainEur: 55_000, method: 'fuenftel' }, retained: null })
+    const input = (await service.estimateInput('u', 2025, 'A'))!
+    expect(input.business).toMatchObject({ tradeEur: 85_000, tradeWithoutTradeTaxEur: 55_000, special: { extraordinary: { gainEur: 55_000, method: 'fuenftel' } } })
+    // The trade tax is the current profit's only.
+    expect((await service.tradeTax('u', 2025, A1))).toMatchObject({ status: 'berechnet', profitEur: 30_000 })
+  })
+
+  it('§ 34a needs a Bilanz; there it takes the profit not withdrawn (ADR-0101 §22)', async () => {
+    const { service } = setup()
+    await service.saveProfile('u', 2025, A1, { retainedFacts: { requestedEur: 10_000 } })
+    expect((await service.specialTariffs('u', 2025, A1)).retained).toBe('nur_bilanz')
+    await service.saveProfile('u', 2026, A1, { mode: 'bilanz', retainedFacts: { requestedEur: 50_000 } })
+    await service.post('u', 2026, A1, { ...sale, date: '2026-03-01', documentNumber: 'R-26', lines: [{ account: '1200', side: 'debit', amount: 11_900_000 }, { account: '8400', side: 'credit', amount: 11_900_000, taxKey: 'ust19' }] })
+    const retained = (await service.specialTariffs('u', 2026, A1)).retained
+    if (retained === null || retained === 'nur_bilanz') throw new Error('expected a result')
+    expect(retained).toMatchObject({ favouredEur: 50_000, rate: 0.2825, taxEur: 14_125 })
+    expect((await service.estimateInput('u', 2026, 'A'))!.business.special?.retained).toEqual({ favouredEur: 50_000, taxEur: 14_125, recaptureEur: 0 })
   })
 
   it('the GoBD export is a zip with index.xml and the journal, and is itself logged in the chain', async () => {

@@ -70,6 +70,8 @@ const EXPECTED_ENCRYPTED_FIELDS: ExpectedEncryptedField[] = [
   { model: 'BusinessProfile', field: 'startDate', encrypt: true, strictDecryption: true },
   { model: 'BusinessProfile', field: 'vatPrepayments', encrypt: true, strictDecryption: true },
   { model: 'BusinessProfile', field: 'vatPeriodFacts', encrypt: true, strictDecryption: true },
+  { model: 'BusinessProfile', field: 'disposalFacts', encrypt: true, strictDecryption: true },
+  { model: 'BusinessProfile', field: 'retainedFacts', encrypt: true, strictDecryption: true },
   { model: 'BusinessProfile', field: 'tradeTaxInputs', encrypt: true, strictDecryption: true },
   { model: 'BusinessProfile', field: 'lossFacts', encrypt: true, strictDecryption: true },
   { model: 'BusinessProfile', field: 'partnershipShares', encrypt: true, strictDecryption: true },

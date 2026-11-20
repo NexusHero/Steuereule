@@ -68,6 +68,7 @@ import type {
   BusinessControllerReverseParams,
   BusinessControllerSaveProcedureDocParams,
   BusinessControllerSaveProfileParams,
+  BusinessControllerSpecialTariffsParams,
   BusinessControllerTradeTaxParams,
   BusinessControllerVatParams,
   BusinessControllerVatPrepaymentsParams,
@@ -92,6 +93,7 @@ import type {
   ProcedureDocInputDto,
   QuickEntryDto,
   ReversalDto,
+  SpecialTariffsDto,
   TradeTaxDto,
   VatPrepaymentsDto,
   VatReturnDto
@@ -2817,6 +2819,145 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       > => {
       return useMutation(getBusinessControllerBookCompanyCarMutationOptions(options), queryClient);
     }
+
+export type businessControllerSpecialTariffsResponse200 = {
+  data: SpecialTariffsDto
+  status: 200
+}
+
+export type businessControllerSpecialTariffsResponse400 = {
+  data: BusinessErrorDto
+  status: 400
+}
+
+export type businessControllerSpecialTariffsResponse401 = {
+  data: void
+  status: 401
+}
+
+export type businessControllerSpecialTariffsResponse403 = {
+  data: BusinessErrorDto
+  status: 403
+}
+
+export type businessControllerSpecialTariffsResponseSuccess = (businessControllerSpecialTariffsResponse200) & {
+  headers: Headers;
+};
+export type businessControllerSpecialTariffsResponseError = (businessControllerSpecialTariffsResponse400 | businessControllerSpecialTariffsResponse401 | businessControllerSpecialTariffsResponse403) & {
+  headers: Headers;
+};
+
+export type businessControllerSpecialTariffsResponse = (businessControllerSpecialTariffsResponseSuccess | businessControllerSpecialTariffsResponseError)
+
+export const getBusinessControllerSpecialTariffsUrl = (jahr: number,
+    params?: BusinessControllerSpecialTariffsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/v1/steuerjahre/${jahr}/selbststaendig/sondertarife?${stringifiedParams}` : `/v1/steuerjahre/${jahr}/selbststaendig/sondertarife`
+}
+
+export const businessControllerSpecialTariffs = async (jahr: number,
+    params?: BusinessControllerSpecialTariffsParams, options?: RequestInit): Promise<businessControllerSpecialTariffsResponse> => {
+
+  return httpClient<businessControllerSpecialTariffsResponse>(getBusinessControllerSpecialTariffsUrl(jahr,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getBusinessControllerSpecialTariffsQueryKey = (jahr: number,
+    params?: BusinessControllerSpecialTariffsParams,) => {
+    return [
+    `/v1/steuerjahre/${jahr}/selbststaendig/sondertarife`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getBusinessControllerSpecialTariffsQueryOptions = <TData = Awaited<ReturnType<typeof businessControllerSpecialTariffs>>, TError = BusinessErrorDto | void>(jahr: number,
+    params?: BusinessControllerSpecialTariffsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof businessControllerSpecialTariffs>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getBusinessControllerSpecialTariffsQueryKey(jahr,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof businessControllerSpecialTariffs>>> = ({ signal }) => businessControllerSpecialTariffs(jahr,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: jahr !== null && jahr !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof businessControllerSpecialTariffs>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type BusinessControllerSpecialTariffsQueryResult = NonNullable<Awaited<ReturnType<typeof businessControllerSpecialTariffs>>>
+export type BusinessControllerSpecialTariffsQueryError = BusinessErrorDto | void
+
+
+export function useBusinessControllerSpecialTariffs<TData = Awaited<ReturnType<typeof businessControllerSpecialTariffs>>, TError = BusinessErrorDto | void>(
+ jahr: number,
+    params: undefined |  BusinessControllerSpecialTariffsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof businessControllerSpecialTariffs>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof businessControllerSpecialTariffs>>,
+          TError,
+          Awaited<ReturnType<typeof businessControllerSpecialTariffs>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useBusinessControllerSpecialTariffs<TData = Awaited<ReturnType<typeof businessControllerSpecialTariffs>>, TError = BusinessErrorDto | void>(
+ jahr: number,
+    params?: BusinessControllerSpecialTariffsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof businessControllerSpecialTariffs>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof businessControllerSpecialTariffs>>,
+          TError,
+          Awaited<ReturnType<typeof businessControllerSpecialTariffs>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useBusinessControllerSpecialTariffs<TData = Awaited<ReturnType<typeof businessControllerSpecialTariffs>>, TError = BusinessErrorDto | void>(
+ jahr: number,
+    params?: BusinessControllerSpecialTariffsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof businessControllerSpecialTariffs>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useBusinessControllerSpecialTariffs<TData = Awaited<ReturnType<typeof businessControllerSpecialTariffs>>, TError = BusinessErrorDto | void>(
+ jahr: number,
+    params?: BusinessControllerSpecialTariffsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof businessControllerSpecialTariffs>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getBusinessControllerSpecialTariffsQueryOptions(jahr,params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export type businessControllerVatPrepaymentsResponse200 = {
   data: VatPrepaymentsDto

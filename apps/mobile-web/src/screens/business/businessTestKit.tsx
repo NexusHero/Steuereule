@@ -17,6 +17,8 @@ export const BASE_PROFILE: BusinessProfileDto = {
   person: 'A',
   business: 1,
   vatPeriodFacts: {},
+  disposalFacts: null,
+  retainedFacts: null,
   confirmedKind: null,
   professionAnswers: null,
   suggestion: null,

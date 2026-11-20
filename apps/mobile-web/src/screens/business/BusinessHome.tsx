@@ -35,6 +35,7 @@ const LINKS: readonly LinkSpec[] = [
   { page: 'voranmeldungen', show: () => true },
   { page: 'gewerbesteuer', show: (f) => f.gewerbe },
   { page: 'verluste', show: () => true },
+  { page: 'sondertarife', show: () => true },
   { page: 'elster', show: () => true },
   { page: 'export', show: () => true },
   { page: 'freischalten', show: () => true },

@@ -466,3 +466,45 @@ export class VatPrepaymentsDto {
   @ApiProperty({ ...EUR, description: 'All prepayments with the Sondervorauszahlung: the annual return’s Vorauszahlungssoll.' }) totalEur!: number
   @ApiProperty({ type: EcSalesListDto }) ecSalesList!: EcSalesListDto
 }
+
+// ---------------------------------------------------------------------------------------------------
+// § 16 / § 34 and § 34a (ADR-0101 §22)
+
+export class DisposalFactsDto {
+  @ApiProperty({ enum: ['veraeusserung', 'aufgabe'] }) @IsIn(['veraeusserung', 'aufgabe']) kind!: 'veraeusserung' | 'aufgabe'
+  @ApiProperty({ type: String, example: '2025-09-30' }) @Matches(/^\d{4}-\d{2}-\d{2}$/) date!: string
+  @ApiProperty({ ...EUR, description: 'Price, or for an Aufgabe the value of the assets taken over and the proceeds of their sale.' }) @IsNumber() @Min(0) priceEur!: number
+  @ApiProperty(EUR) @IsNumber() @Min(0) costsEur!: number
+  @ApiProperty({ ...EUR, description: 'Wert des Betriebsvermögens (capital account) at the date.' }) @IsNumber() capitalAccountEur!: number
+  @ApiProperty({ type: Boolean, description: '§ 16 Abs. 4: allowance applied for (age 55 or disabled, never used before).' }) @IsBoolean() allowance!: boolean
+  @ApiProperty({ enum: ['fuenftel', 'ermaessigt', 'keine'] }) @IsIn(['fuenftel', 'ermaessigt', 'keine']) method!: 'fuenftel' | 'ermaessigt' | 'keine'
+}
+
+export class RetainedFactsDto {
+  @ApiProperty({ ...EUR, description: 'The amount applied for under § 34a.' }) @IsNumber() @Min(0) requestedEur!: number
+  @ApiPropertyOptional({ ...EUR, description: 'Nachversteuerungspflichtiger Betrag of the last Feststellung.' }) @IsOptional() @IsNumber() @Min(0) carriedForwardEur?: number
+  @ApiPropertyOptional({ ...EUR, description: 'From 2024: withdrawals to pay the § 34a tax (Abs. 2 Satz 2).' }) @IsOptional() @IsNumber() @Min(0) withdrawalsForRetainedTaxEur?: number
+}
+
+export class DisposalResultDto {
+  @ApiProperty(EUR) gainEur!: number
+  @ApiProperty(EUR) allowanceEur!: number
+  @ApiProperty(EUR) taxableGainEur!: number
+  @ApiProperty({ enum: ['fuenftel', 'ermaessigt', 'keine'] }) method!: 'fuenftel' | 'ermaessigt' | 'keine'
+}
+
+export class RetainedResultDto {
+  @ApiProperty(EUR) nonWithdrawnEur!: number
+  @ApiProperty(EUR) favouredEur!: number
+  @ApiProperty({ type: Number }) rate!: number
+  @ApiProperty(EUR) taxEur!: number
+  @ApiProperty(EUR) recaptureBaseEur!: number
+  @ApiProperty(EUR) recaptureEur!: number
+  @ApiProperty({ ...EUR, description: 'Nachversteuerungspflichtiger Betrag to be declared at year end.' }) nextCarriedForwardEur!: number
+}
+
+export class SpecialTariffsDto {
+  @ApiProperty({ type: DisposalResultDto, nullable: true }) disposal!: DisposalResultDto | null
+  @ApiProperty({ type: RetainedResultDto, nullable: true, description: '§ 34a: the result; null without facts or for an EÜR.' }) retained!: RetainedResultDto | null
+  @ApiProperty({ type: Boolean, description: '§ 34a was asked for but the profit is an EÜR: only a Bilanzierer may (§ 4 Abs. 1, § 5 EStG).' }) retainedOnlyBilanz!: boolean
+}

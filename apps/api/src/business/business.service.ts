@@ -2,6 +2,9 @@ import { HttpException, HttpStatus, Inject, Injectable, Optional } from '@nestjs
 import {
   accountFor,
   companyCarUse,
+  disposalGain,
+  retainedProfitTax,
+  type RetainedProfit,
   ecSalesListPeriod,
   specialPrepayment,
   vatFilingPeriod,
@@ -140,6 +143,28 @@ export interface VatPrepaymentOverview {
   readonly ecSalesList: { readonly period: 'monat' | 'quartal'; readonly reports: readonly { readonly label: string; readonly due: string; readonly rows: readonly { readonly vatId: string | null; readonly goodsEur: number; readonly servicesEur: number }[] }[] }
 }
 
+/** The sale or giving up of the business in the year (§ 16 EStG) and how its gain is taxed (§ 34 EStG). */
+export interface DisposalFacts {
+  readonly kind: 'veraeusserung' | 'aufgabe'
+  readonly date: string
+  readonly priceEur: number
+  readonly costsEur: number
+  /** Wert des Betriebsvermögens (capital account) at the date. */
+  readonly capitalAccountEur: number
+  /** § 16 Abs. 4: applied for; age 55 or permanently unable to work, never used before. */
+  readonly allowance: boolean
+  /** § 34 Abs. 1 Fünftelregelung, Abs. 3 reduced rate (age 55 or disabled, once in a life), or the plain tariff. */
+  readonly method: 'fuenftel' | 'ermaessigt' | 'keine'
+}
+
+/** § 34a of a Bilanzierer: the amount applied for and the nachversteuerungspflichtige Betrag carried. */
+export interface RetainedFacts {
+  readonly requestedEur: number
+  readonly carriedForwardEur?: number | undefined
+  /** From 2024: withdrawals made to pay the § 34a tax (Abs. 2 Satz 2). */
+  readonly withdrawalsForRetainedTaxEur?: number | undefined
+}
+
 /** § 10d facts: the Verlustvortrag of the last Feststellungsbescheid, the waiver of the Rücktrag, room in the years before. */
 export interface LossFacts {
   readonly carriedForwardEur?: number
@@ -176,6 +201,8 @@ export interface BusinessProfileView {
   readonly startDate: string | null
   readonly vatPrepaymentsCents: number | null
   readonly vatPeriodFacts: VatPeriodFacts
+  readonly disposalFacts: DisposalFacts | null
+  readonly retainedFacts: RetainedFacts | null
   readonly tradeTaxInputs: TradeTaxInputs
   readonly lossFacts: LossFacts
   readonly partnershipShares: readonly PartnershipShare[]
@@ -195,6 +222,8 @@ export interface ProfileInput {
   readonly startDate?: string | null | undefined
   readonly vatPrepaymentsCents?: number | null | undefined
   readonly vatPeriodFacts?: VatPeriodFacts | null | undefined
+  readonly disposalFacts?: DisposalFacts | null | undefined
+  readonly retainedFacts?: RetainedFacts | null | undefined
   readonly tradeTaxInputs?: TradeTaxInputs | null | undefined
   readonly lossFacts?: LossFacts | null | undefined
   readonly partnershipShares?: readonly PartnershipShare[] | null | undefined
@@ -316,6 +345,8 @@ export class BusinessService {
       startDate: record?.startDate ?? null,
       vatPrepaymentsCents: record?.vatPrepayments ? Number(record.vatPrepayments) : null,
       vatPeriodFacts: parseJson<VatPeriodFacts>(record?.vatPeriodFacts ?? null, {}),
+      disposalFacts: parseJson<DisposalFacts | null>(record?.disposalFacts ?? null, null),
+      retainedFacts: parseJson<RetainedFacts | null>(record?.retainedFacts ?? null, null),
       tradeTaxInputs: parseJson<TradeTaxInputs>(record?.tradeTaxInputs ?? null, {}),
       lossFacts: parseJson<LossFacts>(record?.lossFacts ?? null, {}),
       partnershipShares: parseJson<PartnershipShare[]>(record?.partnershipShares ?? null, []),
@@ -398,6 +429,8 @@ export class BusinessService {
       ...(input.startDate !== undefined ? { startDate: input.startDate } : {}),
       ...(input.vatPrepaymentsCents !== undefined ? { vatPrepayments: input.vatPrepaymentsCents === null ? null : String(input.vatPrepaymentsCents) } : {}),
       ...(input.vatPeriodFacts !== undefined ? { vatPeriodFacts: input.vatPeriodFacts === null ? null : JSON.stringify(input.vatPeriodFacts) } : {}),
+      ...(input.disposalFacts !== undefined ? { disposalFacts: input.disposalFacts === null ? null : JSON.stringify(input.disposalFacts) } : {}),
+      ...(input.retainedFacts !== undefined ? { retainedFacts: input.retainedFacts === null ? null : JSON.stringify(input.retainedFacts) } : {}),
       ...(input.tradeTaxInputs !== undefined ? { tradeTaxInputs: input.tradeTaxInputs === null ? null : JSON.stringify(input.tradeTaxInputs) } : {}),
       ...(input.lossFacts !== undefined ? { lossFacts: input.lossFacts === null ? null : JSON.stringify(input.lossFacts) } : {}),
       ...(input.partnershipShares !== undefined ? { partnershipShares: input.partnershipShares === null ? null : JSON.stringify(input.partnershipShares) } : {}),
@@ -1041,12 +1074,25 @@ export class BusinessService {
     let selfEmployedEur = 0
     let tradeEur = 0
     const tradeTax: { baseAmountEur: number; tradeTaxEur: number }[] = []
+    let tradeWithoutTradeTaxEur = 0
+    const gains: { gainEur: number; method: 'fuenftel' | 'ermaessigt' }[] = []
+    const retained: { favouredEur: number; taxEur: number; recaptureEur: number }[] = []
     for (const { book, ledger, profile } of businesses) {
       const own = book === null ? 0 : this.profitOf(ledger, year)
       if (profile?.kind === 'gewerbe') tradeEur += own
       else selfEmployedEur += own
       const trade = this.tradeTaxOf(ledger, profile, year)
       if (trade.status === 'berechnet') tradeTax.push({ baseAmountEur: trade.result.baseAmountEur, tradeTaxEur: trade.result.tradeTaxEur })
+      // § 16: the gain beside the current profit; a sole trader's bears no trade tax (§ 7 Satz 2 GewStG e contrario, R 7.1 Abs. 3 GewStR).
+      const special = this.specialOf(ledger, profile, year, trade.status === 'berechnet' ? trade.result.tradeTaxEur : 0)
+      if (special.disposal !== null && special.disposal.taxableGainEur > 0) {
+        if (profile?.kind === 'gewerbe') {
+          tradeEur += special.disposal.taxableGainEur
+          tradeWithoutTradeTaxEur += special.disposal.taxableGainEur
+        } else selfEmployedEur += special.disposal.taxableGainEur
+        if (special.disposal.method !== 'keine') gains.push({ gainEur: special.disposal.taxableGainEur, method: special.disposal.method })
+      }
+      if (special.retained !== null && special.retained !== 'nur_bilanz') retained.push(special.retained)
     }
     const first = businesses.find((b) => b.ref.business === FIRST_BUSINESS)?.profile ?? null
     const shares = parseJson<PartnershipShare[]>(first?.partnershipShares ?? null, [])
@@ -1054,10 +1100,57 @@ export class BusinessService {
     tradeEur += shares.filter((s) => s.kind === 'gewerbe').reduce((sum, s) => sum + s.profitEur, 0)
     tradeTax.push(...shares.filter((s) => s.kind === 'gewerbe' && s.baseAmountEur !== undefined).map((s) => ({ baseAmountEur: s.baseAmountEur!, tradeTaxEur: s.tradeTaxEur ?? 0 })))
     const facts = parseJson<LossFacts>(first?.lossFacts ?? null, {})
+    const specialFacts = {
+      ...(gains.length > 0 ? { extraordinary: { gainEur: round2(gains.reduce((s, g) => s + g.gainEur, 0)), method: gains[0]!.method } } : {}),
+      ...(retained.length > 0 ? { retained: { favouredEur: round2(retained.reduce((s, r) => s + r.favouredEur, 0)), taxEur: round2(retained.reduce((s, r) => s + r.taxEur, 0)), recaptureEur: round2(retained.reduce((s, r) => s + r.recaptureEur, 0)) } } : {}),
+    }
     return {
-      business: { selfEmployedEur: round2(selfEmployedEur), tradeEur: round2(tradeEur), tradeTax },
+      business: {
+        selfEmployedEur: round2(selfEmployedEur),
+        tradeEur: round2(tradeEur),
+        tradeTax,
+        ...(tradeWithoutTradeTaxEur > 0 ? { tradeWithoutTradeTaxEur: round2(tradeWithoutTradeTaxEur) } : {}),
+        ...(Object.keys(specialFacts).length > 0 ? { special: specialFacts } : {}),
+      },
       losses: { carriedForwardEur: facts.carriedForwardEur ?? 0, ...(facts.carriedBackEur !== undefined ? { carriedBackEur: facts.carriedBackEur } : {}) },
     }
+  }
+
+  /** § 16 / § 34 and § 34a of one business as the profile and the book say (ADR-0101 §22). */
+  async specialTariffs(userId: string, year: number, ref: BusinessRef) {
+    await this.assertOpen(userId, year)
+    const { ledger, profile } = await this.loaded(userId, year, ref)
+    const trade = this.tradeTaxOf(ledger, profile, year)
+    const result = this.specialOf(ledger, profile, year, trade.status === 'berechnet' ? trade.result.tradeTaxEur : 0)
+    await this.audit.append({ userId, action: 'READ', resource: 'selbststaendig' })
+    return result
+  }
+
+  private specialOf(ledger: Ledger, profile: BusinessProfileRecord | null, year: number, tradeTaxEur: number) {
+    const disposalFacts = parseJson<DisposalFacts | null>(profile?.disposalFacts ?? null, null)
+    const disposal = disposalFacts !== null && Number(disposalFacts.date.slice(0, 4)) === year ? { ...disposalGain(disposalFacts), method: disposalFacts.method } : null
+    const retainedFacts = parseJson<RetainedFacts | null>(profile?.retainedFacts ?? null, null)
+    let retained: RetainedProfit | 'nur_bilanz' | null = null
+    if (retainedFacts !== null) {
+      if (ledger.mode !== 'bilanz') retained = 'nur_bilanz'
+      else {
+        // § 34a Abs. 2: the balance of withdrawals and deposits, read off the private accounts of the book.
+        const balance = privateBalanceEur(ledger, year)
+        retained = retainedProfitTax({
+          year,
+          profitEur: this.profitOf(ledger, year),
+          withdrawalsEur: Math.max(0, balance),
+          depositsEur: Math.max(0, -balance),
+          tradeTaxEur,
+          requestedEur: retainedFacts.requestedEur,
+          carriedForwardEur: retainedFacts.carriedForwardEur ?? 0,
+          withdrawalsForRetainedTaxEur: retainedFacts.withdrawalsForRetainedTaxEur,
+        })
+        // § 34a Abs. 1 Satz 1: not in a year whose disposal gain uses § 16 Abs. 4 or § 34 Abs. 3.
+        if (disposal !== null && (disposal.allowanceEur > 0 || disposal.method === 'ermaessigt')) retained = null
+      }
+    }
+    return { disposal, retained }
   }
 
   /** Every business of the person that has a profile or a book, loaded, the person-wide facts merged in. */
@@ -1426,3 +1519,14 @@ function withoutPersonWide(patch: BusinessProfilePatch): BusinessProfilePatch {
 
 /** Forms of the person, not of one business: one VAT return for the Unternehmer, the § 10d lines of the return. */
 const PERSON_FORMS: ReadonlySet<ElsterForm> = new Set<ElsterForm>(['ust-2-a', 'est-1-a', 'anlage-sonstiges'])
+
+/** Net debit of the private accounts in the year, euros: positive = more withdrawn than deposited. */
+function privateBalanceEur(ledger: Ledger, year: number): number {
+  const privateAccounts = new Set(chartAccounts(ledger.chart).filter((a) => a.kind === 'private').map((a) => a.number))
+  let cents = 0
+  for (const entry of ledger.entries) {
+    if (Number(entry.date.slice(0, 4)) !== year) continue
+    for (const line of entry.lines) if (privateAccounts.has(line.account)) cents += line.side === 'debit' ? line.amount : -line.amount
+  }
+  return eur(cents)
+}

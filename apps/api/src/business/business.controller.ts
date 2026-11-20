@@ -40,6 +40,7 @@ import {
   ReversalDto,
 } from './dto/business.dto.js'
 import {
+  SpecialTariffsDto,
   VatPrepaymentsDto,
   CompanyCarResultDto,
   AssetsResponseDto,
@@ -329,6 +330,14 @@ export class BusinessController {
   @Errors(409)
   bookCompanyCar(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number, @Body() dto: CompanyCarInputDto, @Query('person') person?: string, @Query('betrieb') business?: string): Promise<JournalEntryDto[]> {
     return this.service.bookCompanyCar(userId, year, refOf(person, business), dto) as unknown as Promise<JournalEntryDto[]>
+  }
+
+  @Get(':jahr/selbststaendig/sondertarife')
+  @RequiresAccount()
+  @ApiOkResponse({ type: SpecialTariffsDto, description: '§ 16 gain with § 34, and the § 34a Thesaurierung of the business, as the estimate takes them.' })
+  async specialTariffs(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number, @Query('person') person?: string, @Query('betrieb') business?: string): Promise<SpecialTariffsDto> {
+    const result = await this.service.specialTariffs(userId, year, refOf(person, business))
+    return { disposal: result.disposal, retained: result.retained === 'nur_bilanz' ? null : result.retained, retainedOnlyBilanz: result.retained === 'nur_bilanz' } as SpecialTariffsDto
   }
 
   @Get(':jahr/selbststaendig/umsatzsteuer/voranmeldungen')

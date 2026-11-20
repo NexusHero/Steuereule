@@ -1557,6 +1557,10 @@ model BusinessProfile {
   vatPrepayments     String?  @map("ustVorauszahlungen") /// @encrypted?mode=strict
   /// The Voranmeldung facts as JSON (ADR-0101 §22): period chosen or set by the office, Dauerfristverlängerung, Sondervorauszahlung.
   vatPeriodFacts     String?  @map("ustVaAngaben") /// @encrypted?mode=strict
+  /// Sale or giving up of the business as JSON (§ 16, § 34 EStG; ADR-0101 §22).
+  disposalFacts      String?  @map("veraeusserung") /// @encrypted?mode=strict
+  /// The Thesaurierung of a Bilanzierer as JSON (§ 34a EStG; ADR-0101 §22).
+  retainedFacts      String?  @map("thesaurierung") /// @encrypted?mode=strict
   /// Gewerbesteuer inputs as JSON: § 8 Nr. 1 components, § 9 Nr. 1, other additions and deductions, Gewerbeverlust.
   tradeTaxInputs     String?  @map("gewstAngaben") /// @encrypted?mode=strict
   /// Loss facts as JSON: Verlustvortrag from the last Feststellungsbescheid, the Rücktrag waiver.

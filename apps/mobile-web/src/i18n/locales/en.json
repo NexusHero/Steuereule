@@ -3418,7 +3418,8 @@
       "gewerbedaten": "Trade tax inputs",
       "beteiligungen": "Partnership shares",
       "firmenwagen": "Company car",
-      "voranmeldungen": "VAT advance returns"
+      "voranmeldungen": "VAT advance returns",
+      "sondertarife": "Sale of the business & retained profits"
     },
     "profil": {
       "artTitel": "Freelance or trade",
@@ -3897,6 +3898,42 @@
         "67": "Input VAT § 13b",
         "39": "Special prepayment deducted"
       }
+    },
+    "sonder": {
+      "aufgabe": "Business sold or given up (§ 16 EStG)",
+      "aufgabeHinweis": "The gain is taxed beside the current profit, on application with an allowance and at a reduced rate. A sole trader owes no trade tax on it.",
+      "art": {
+        "veraeusserung": "Sale",
+        "aufgabe": "Giving up"
+      },
+      "feld": {
+        "date": "Date",
+        "priceEur": "Sale price or value of the assets taken over (€)",
+        "costsEur": "Costs of the sale (€)",
+        "capitalAccountEur": "Value of the business assets (capital account) at that date (€)",
+        "requestedEur": "Amount applied for (€)",
+        "carriedForwardEur": "Amount subject to recapture per last notice (€)",
+        "withdrawalsForRetainedTaxEur": "Withdrawals for the retained-profit tax (€, from 2024)"
+      },
+      "freibetrag": "Apply for the allowance (55 or permanently disabled, once in a life)",
+      "methode": {
+        "fuenftel": "One-fifth rule",
+        "ermaessigt": "Reduced rate (56 %)",
+        "keine": "Ordinary tariff"
+      },
+      "speichern": "Save",
+      "ungueltig": "Please enter the date (YYYY-MM-DD) and amounts as numbers.",
+      "gewinn": "Gain on the sale",
+      "freibetragBetrag": "Allowance (§ 16 Abs. 4)",
+      "steuerpflichtig": "Taxable gain",
+      "thesaurierung": "Retained profits (§ 34a EStG)",
+      "thesaurierungHinweis": "With a balance sheet, profits you leave in the business can be taxed at a fixed rate on application; withdrawing them later is taxed at 25 %.",
+      "nurBilanz": "Retained-profit taxation needs a balance sheet. With an EÜR the app does not compute it.",
+      "nichtEntnommen": "Profit not withdrawn",
+      "beguenstigt": "Favoured amount",
+      "thesaurierungSteuer": "Tax on it ({{satz}} %)",
+      "nachversteuerung": "Recapture (25 %)",
+      "vortrag": "Amount subject to recapture at year end"
     }
   }
 }

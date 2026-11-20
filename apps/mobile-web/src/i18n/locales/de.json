@@ -3418,7 +3418,8 @@
       "gewerbedaten": "Gewerbesteuer-Angaben",
       "beteiligungen": "Beteiligungen",
       "firmenwagen": "Firmenwagen",
-      "voranmeldungen": "Umsatzsteuer-Voranmeldungen"
+      "voranmeldungen": "Umsatzsteuer-Voranmeldungen",
+      "sondertarife": "Betriebsaufgabe & Thesaurierung"
     },
     "profil": {
       "artTitel": "Freiberuf oder Gewerbe",
@@ -3897,6 +3898,42 @@
         "67": "Vorsteuer nach § 13b",
         "39": "Abzug Sondervorauszahlung"
       }
+    },
+    "sonder": {
+      "aufgabe": "Betrieb verkauft oder aufgegeben (§ 16 EStG)",
+      "aufgabeHinweis": "Der Veräußerungs- oder Aufgabegewinn wird neben dem laufenden Gewinn versteuert, auf Antrag mit Freibetrag und ermäßigt. Gewerbesteuer fällt bei einem Einzelunternehmer darauf nicht an.",
+      "art": {
+        "veraeusserung": "Verkauf",
+        "aufgabe": "Aufgabe"
+      },
+      "feld": {
+        "date": "Datum",
+        "priceEur": "Veräußerungspreis bzw. Wert der übernommenen Wirtschaftsgüter (€)",
+        "costsEur": "Veräußerungskosten (€)",
+        "capitalAccountEur": "Wert des Betriebsvermögens (Kapitalkonto) zu diesem Tag (€)",
+        "requestedEur": "Beantragter begünstigter Betrag (€)",
+        "carriedForwardEur": "Nachversteuerungspflichtiger Betrag laut letztem Bescheid (€)",
+        "withdrawalsForRetainedTaxEur": "Entnahmen für die Thesaurierungssteuer (€, ab 2024)"
+      },
+      "freibetrag": "Freibetrag beantragen (ab 55 oder dauernd berufsunfähig, einmal im Leben)",
+      "methode": {
+        "fuenftel": "Fünftelregelung",
+        "ermaessigt": "Ermäßigter Steuersatz (56 %)",
+        "keine": "Normaler Tarif"
+      },
+      "speichern": "Speichern",
+      "ungueltig": "Bitte Datum (JJJJ-MM-TT) und Beträge als Zahlen eintragen.",
+      "gewinn": "Veräußerungsgewinn",
+      "freibetragBetrag": "Freibetrag (§ 16 Abs. 4)",
+      "steuerpflichtig": "Steuerpflichtiger Gewinn",
+      "thesaurierung": "Thesaurierung (§ 34a EStG)",
+      "thesaurierungHinweis": "Als Bilanzierer kannst du nicht entnommene Gewinne auf Antrag mit einem festen Satz versteuern; bei späterer Entnahme folgt die Nachversteuerung mit 25 %.",
+      "nurBilanz": "Die Thesaurierung gibt es nur bei Bilanzierung. Mit EÜR rechnet die App sie nicht.",
+      "nichtEntnommen": "Nicht entnommener Gewinn",
+      "beguenstigt": "Begünstigter Betrag",
+      "thesaurierungSteuer": "Steuer darauf ({{satz}} %)",
+      "nachversteuerung": "Nachversteuerung (25 %)",
+      "vortrag": "Nachversteuerungspflichtiger Betrag zum Jahresende"
     }
   }
 }

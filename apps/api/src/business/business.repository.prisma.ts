@@ -43,6 +43,8 @@ function toProfile(row: {
   startDate: string | null
   vatPrepayments: string | null
   vatPeriodFacts: string | null
+  disposalFacts: string | null
+  retainedFacts: string | null
   tradeTaxInputs: string | null
   lossFacts: string | null
   partnershipShares: string | null
@@ -67,6 +69,8 @@ function toProfile(row: {
     startDate: row.startDate,
     vatPrepayments: row.vatPrepayments,
     vatPeriodFacts: row.vatPeriodFacts,
+    disposalFacts: row.disposalFacts,
+    retainedFacts: row.retainedFacts,
     tradeTaxInputs: row.tradeTaxInputs,
     lossFacts: row.lossFacts,
     partnershipShares: row.partnershipShares,

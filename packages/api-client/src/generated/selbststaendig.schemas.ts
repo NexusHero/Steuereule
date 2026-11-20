@@ -228,6 +228,46 @@ export interface VatPeriodFactsDto {
   chooseMonthly?: boolean;
 }
 
+export type DisposalFactsDtoKind = typeof DisposalFactsDtoKind[keyof typeof DisposalFactsDtoKind];
+
+
+export const DisposalFactsDtoKind = {
+  veraeusserung: 'veraeusserung',
+  aufgabe: 'aufgabe',
+} as const;
+
+export type DisposalFactsDtoMethod = typeof DisposalFactsDtoMethod[keyof typeof DisposalFactsDtoMethod];
+
+
+export const DisposalFactsDtoMethod = {
+  fuenftel: 'fuenftel',
+  ermaessigt: 'ermaessigt',
+  keine: 'keine',
+} as const;
+
+export interface DisposalFactsDto {
+  kind: DisposalFactsDtoKind;
+  date: string;
+  /** Price, or for an Aufgabe the value of the assets taken over and the proceeds of their sale. */
+  priceEur: number;
+  /** Euros. */
+  costsEur: number;
+  /** Wert des Betriebsvermögens (capital account) at the date. */
+  capitalAccountEur: number;
+  /** § 16 Abs. 4: allowance applied for (age 55 or disabled, never used before). */
+  allowance: boolean;
+  method: DisposalFactsDtoMethod;
+}
+
+export interface RetainedFactsDto {
+  /** The amount applied for under § 34a. */
+  requestedEur: number;
+  /** Nachversteuerungspflichtiger Betrag of the last Feststellung. */
+  carriedForwardEur?: number;
+  /** From 2024: withdrawals to pay the § 34a tax (Abs. 2 Satz 2). */
+  withdrawalsForRetainedTaxEur?: number;
+}
+
 export interface FinancingComponentsDto {
   /** § 8 Nr. 1 a GewStG: Entgelte für Schulden, euros. */
   debtChargesEur?: number;
@@ -312,6 +352,10 @@ export interface BusinessProfileDto {
   /** @nullable */
   vatPrepaymentsCents: number | null;
   vatPeriodFacts: VatPeriodFactsDto;
+  /** @nullable */
+  disposalFacts: DisposalFactsDto | null;
+  /** @nullable */
+  retainedFacts: RetainedFactsDto | null;
   tradeTaxInputs: TradeTaxInputsDto;
   lossFacts: LossFactsDto;
   partnershipShares: PartnershipShareDto[];
@@ -482,6 +526,16 @@ export interface BusinessProfileInputDto {
      * @nullable
      */
   vatPeriodFacts?: VatPeriodFactsDto | null;
+  /**
+     * Sale or giving up of the business (§ 16, § 34 EStG). Replaced as a whole.
+     * @nullable
+     */
+  disposalFacts?: DisposalFactsDto | null;
+  /**
+     * Thesaurierung (§ 34a EStG), Bilanz only. Replaced as a whole.
+     * @nullable
+     */
+  retainedFacts?: RetainedFactsDto | null;
   /**
      * Gewerbesteuer inputs, euros. Replaced as a whole: send the complete object.
      * @nullable
@@ -1318,6 +1372,53 @@ export interface CompanyCarResultDto {
   vat?: CarVatResultDto | null;
   reason?: CompanyCarResultDtoReason;
   missing?: string[];
+}
+
+export type DisposalResultDtoMethod = typeof DisposalResultDtoMethod[keyof typeof DisposalResultDtoMethod];
+
+
+export const DisposalResultDtoMethod = {
+  fuenftel: 'fuenftel',
+  ermaessigt: 'ermaessigt',
+  keine: 'keine',
+} as const;
+
+export interface DisposalResultDto {
+  /** Euros. */
+  gainEur: number;
+  /** Euros. */
+  allowanceEur: number;
+  /** Euros. */
+  taxableGainEur: number;
+  method: DisposalResultDtoMethod;
+}
+
+export interface RetainedResultDto {
+  /** Euros. */
+  nonWithdrawnEur: number;
+  /** Euros. */
+  favouredEur: number;
+  rate: number;
+  /** Euros. */
+  taxEur: number;
+  /** Euros. */
+  recaptureBaseEur: number;
+  /** Euros. */
+  recaptureEur: number;
+  /** Nachversteuerungspflichtiger Betrag to be declared at year end. */
+  nextCarriedForwardEur: number;
+}
+
+export interface SpecialTariffsDto {
+  /** @nullable */
+  disposal: DisposalResultDto | null;
+  /**
+     * § 34a: the result; null without facts or for an EÜR.
+     * @nullable
+     */
+  retained: RetainedResultDto | null;
+  /** § 34a was asked for but the profit is an EÜR: only a Bilanzierer may (§ 4 Abs. 1, § 5 EStG). */
+  retainedOnlyBilanz: boolean;
 }
 
 export type VatPrepaymentsDtoPeriod = typeof VatPrepaymentsDtoPeriod[keyof typeof VatPrepaymentsDtoPeriod];
@@ -2201,6 +2302,25 @@ export type BusinessControllerBookCompanyCarPerson = typeof BusinessControllerBo
 
 
 export const BusinessControllerBookCompanyCarPerson = {
+  A: 'A',
+  B: 'B',
+} as const;
+
+export type BusinessControllerSpecialTariffsParams = {
+/**
+ * Which business of the person, from 1 (default); ADR-0101 §22.
+ */
+betrieb?: number;
+/**
+ * Whose business: A (default) or B of a joint return.
+ */
+person?: BusinessControllerSpecialTariffsPerson;
+};
+
+export type BusinessControllerSpecialTariffsPerson = typeof BusinessControllerSpecialTariffsPerson[keyof typeof BusinessControllerSpecialTariffsPerson];
+
+
+export const BusinessControllerSpecialTariffsPerson = {
   A: 'A',
   B: 'B',
 } as const;

@@ -6,6 +6,7 @@ import { churchTaxOnIncome, type ChurchMembership } from '../domains/church-tax'
 import { childTaxAllowance } from '../domains/children'
 import type { GermanState } from '../common/postal-codes'
 import { deductibleProvision, type PersonProvision } from '../domains/provision'
+import { withSpecialTariffs } from '../domains/business/special-tariffs'
 import { afterTradeTaxCredit, businessTotal, creditPerson, lossesOfYear, type BusinessEstimate, type BusinessIncome, type LossCarry, type Prepayments } from './business-income'
 
 export interface Range {
@@ -420,7 +421,8 @@ function estimate(input: {
   const taxableIncome = { from: zve(input.provision.to), to: zve(input.provision.from) }
   const reductionEur = input.householdReductionEur ?? 0
   const progression = input.progressionIncomeEur ?? 0
-  const tariff = (z: number) => (progression > 0 ? progressionClauseTax(z, progression, input.year) : incomeTax(z, input.year))
+  // § 34 and § 34a take their parts out of the tariff (ADR-0101 §22); without them the tariff is as it was.
+  const tariff = withSpecialTariffs((z: number) => (progression > 0 ? progressionClauseTax(z, progression, input.year) : incomeTax(z, input.year)), input.business?.special)
   // § 35 EStG comes off the tariff tax before § 35a (Rn. 4 of BMF 3.11.2016).
   const persons = [creditPerson(input.business, [otherIncome])]
   const credited = { from: afterTradeTaxCredit(persons, tariff(taxableIncome.from)), to: afterTradeTaxCredit(persons, tariff(taxableIncome.to)) }

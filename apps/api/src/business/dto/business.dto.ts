@@ -4,7 +4,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 import { IsArray, IsBoolean, IsIn, IsInt, IsObject, IsOptional, IsString, Length, Matches, Max, MaxLength, Min, ValidateNested } from 'class-validator'
 import { Type } from 'class-transformer'
 import { USEFUL_LIVES } from '@steuereule/core'
-import { BookIntegrityDto, CsvMappingDto, LossFactsDto, PartnershipShareDto, ProfessionAnswersDto, TradeTaxInputsDto, VatPeriodFactsDto } from './business-results.dto.js'
+import { BookIntegrityDto, CsvMappingDto, LossFactsDto, PartnershipShareDto, ProfessionAnswersDto, TradeTaxInputsDto, VatPeriodFactsDto, DisposalFactsDto, RetainedFactsDto } from './business-results.dto.js'
 
 export { BookIntegrityDto }
 
@@ -217,6 +217,18 @@ export class BusinessProfileInputDto {
   @Type(() => VatPeriodFactsDto)
   vatPeriodFacts?: VatPeriodFactsDto | null
 
+  @ApiPropertyOptional({ type: DisposalFactsDto, nullable: true, description: 'Sale or giving up of the business (§ 16, § 34 EStG). Replaced as a whole.' })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => DisposalFactsDto)
+  disposalFacts?: DisposalFactsDto | null
+
+  @ApiPropertyOptional({ type: RetainedFactsDto, nullable: true, description: 'Thesaurierung (§ 34a EStG), Bilanz only. Replaced as a whole.' })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => RetainedFactsDto)
+  retainedFacts?: RetainedFactsDto | null
+
   @ApiPropertyOptional({ type: TradeTaxInputsDto, nullable: true, description: 'Gewerbesteuer inputs, euros. Replaced as a whole: send the complete object.' })
   @IsOptional()
   @ValidateNested()
@@ -307,6 +319,12 @@ export class BusinessProfileDto {
 
   @ApiProperty({ type: VatPeriodFactsDto })
   vatPeriodFacts!: VatPeriodFactsDto
+
+  @ApiProperty({ type: DisposalFactsDto, nullable: true })
+  disposalFacts!: DisposalFactsDto | null
+
+  @ApiProperty({ type: RetainedFactsDto, nullable: true })
+  retainedFacts!: RetainedFactsDto | null
 
   @ApiProperty({ type: TradeTaxInputsDto })
   tradeTaxInputs!: TradeTaxInputsDto

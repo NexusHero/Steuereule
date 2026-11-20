@@ -4718,6 +4718,82 @@
         ]
       }
     },
+    "/v1/steuerjahre/{jahr}/selbststaendig/sondertarife": {
+      "get": {
+        "operationId": "BusinessController_specialTariffs",
+        "parameters": [
+          {
+            "name": "betrieb",
+            "required": false,
+            "in": "query",
+            "description": "Which business of the person, from 1 (default); ADR-0101 §22.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "Whose business: A (default) or B of a joint return.",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "§ 16 gain with § 34, and the § 34a Thesaurierung of the business, as the estimate takes them.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SpecialTariffsDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body fails validation (`fields`) or a business rule (`code`, German `message`), e.g. BOOKING_UNBALANCED, LEDGER_PERIOD_LOCKED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "403": {
+            "description": "SELF_EMPLOYMENT_DISABLED (switch off) or SELF_EMPLOYMENT_NOT_DECLARED (no self-employment in the interview).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "selbststaendig"
+        ]
+      }
+    },
     "/v1/steuerjahre/{jahr}/selbststaendig/umsatzsteuer/voranmeldungen": {
       "get": {
         "operationId": "BusinessController_vatPrepayments",
@@ -13136,6 +13212,75 @@
           }
         }
       },
+      "DisposalFactsDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "veraeusserung",
+              "aufgabe"
+            ]
+          },
+          "date": {
+            "type": "string",
+            "example": "2025-09-30"
+          },
+          "priceEur": {
+            "type": "number",
+            "description": "Price, or for an Aufgabe the value of the assets taken over and the proceeds of their sale."
+          },
+          "costsEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "capitalAccountEur": {
+            "type": "number",
+            "description": "Wert des Betriebsvermögens (capital account) at the date."
+          },
+          "allowance": {
+            "type": "boolean",
+            "description": "§ 16 Abs. 4: allowance applied for (age 55 or disabled, never used before)."
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "fuenftel",
+              "ermaessigt",
+              "keine"
+            ]
+          }
+        },
+        "required": [
+          "kind",
+          "date",
+          "priceEur",
+          "costsEur",
+          "capitalAccountEur",
+          "allowance",
+          "method"
+        ]
+      },
+      "RetainedFactsDto": {
+        "type": "object",
+        "properties": {
+          "requestedEur": {
+            "type": "number",
+            "description": "The amount applied for under § 34a."
+          },
+          "carriedForwardEur": {
+            "type": "number",
+            "description": "Nachversteuerungspflichtiger Betrag of the last Feststellung."
+          },
+          "withdrawalsForRetainedTaxEur": {
+            "type": "number",
+            "description": "From 2024: withdrawals to pay the § 34a tax (Abs. 2 Satz 2)."
+          }
+        },
+        "required": [
+          "requestedEur"
+        ]
+      },
       "FinancingComponentsDto": {
         "type": "object",
         "properties": {
@@ -13336,6 +13481,24 @@
           "vatPeriodFacts": {
             "$ref": "#/components/schemas/VatPeriodFactsDto"
           },
+          "disposalFacts": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DisposalFactsDto"
+              }
+            ]
+          },
+          "retainedFacts": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RetainedFactsDto"
+              }
+            ]
+          },
           "tradeTaxInputs": {
             "$ref": "#/components/schemas/TradeTaxInputsDto"
           },
@@ -13369,6 +13532,8 @@
           "startDate",
           "vatPrepaymentsCents",
           "vatPeriodFacts",
+          "disposalFacts",
+          "retainedFacts",
           "tradeTaxInputs",
           "lossFacts",
           "partnershipShares",
@@ -13585,6 +13750,26 @@
             "allOf": [
               {
                 "$ref": "#/components/schemas/VatPeriodFactsDto"
+              }
+            ]
+          },
+          "disposalFacts": {
+            "nullable": true,
+            "description": "Sale or giving up of the business (§ 16, § 34 EStG). Replaced as a whole.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DisposalFactsDto"
+              }
+            ]
+          },
+          "retainedFacts": {
+            "nullable": true,
+            "description": "Thesaurierung (§ 34a EStG), Bilanz only. Replaced as a whole.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RetainedFactsDto"
               }
             ]
           },
@@ -15186,6 +15371,111 @@
         },
         "required": [
           "kind"
+        ]
+      },
+      "DisposalResultDto": {
+        "type": "object",
+        "properties": {
+          "gainEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "allowanceEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "taxableGainEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "fuenftel",
+              "ermaessigt",
+              "keine"
+            ]
+          }
+        },
+        "required": [
+          "gainEur",
+          "allowanceEur",
+          "taxableGainEur",
+          "method"
+        ]
+      },
+      "RetainedResultDto": {
+        "type": "object",
+        "properties": {
+          "nonWithdrawnEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "favouredEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "rate": {
+            "type": "number"
+          },
+          "taxEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "recaptureBaseEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "recaptureEur": {
+            "type": "number",
+            "description": "Euros."
+          },
+          "nextCarriedForwardEur": {
+            "type": "number",
+            "description": "Nachversteuerungspflichtiger Betrag to be declared at year end."
+          }
+        },
+        "required": [
+          "nonWithdrawnEur",
+          "favouredEur",
+          "rate",
+          "taxEur",
+          "recaptureBaseEur",
+          "recaptureEur",
+          "nextCarriedForwardEur"
+        ]
+      },
+      "SpecialTariffsDto": {
+        "type": "object",
+        "properties": {
+          "disposal": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DisposalResultDto"
+              }
+            ]
+          },
+          "retained": {
+            "nullable": true,
+            "description": "§ 34a: the result; null without facts or for an EÜR.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RetainedResultDto"
+              }
+            ]
+          },
+          "retainedOnlyBilanz": {
+            "type": "boolean",
+            "description": "§ 34a was asked for but the profit is an EÜR: only a Bilanzierer may (§ 4 Abs. 1, § 5 EStG)."
+          }
+        },
+        "required": [
+          "disposal",
+          "retained",
+          "retainedOnlyBilanz"
         ]
       },
       "VatPeriodDto": {
