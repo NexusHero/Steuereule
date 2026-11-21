@@ -113,9 +113,18 @@ export const MAX_CONVERSATIONS_PER_YEAR = 50
 
 export const TITLE_MAX_LENGTH = 60
 
+/** What `scrubUserMessagePii` puts in place of a name, an id or a contact. */
+const MASKING_PLACEHOLDER = /\[(?:[A-ZÄÖÜ]+-)+GESCHÜTZT\]|\[MANDANT\]/gu
+
 /** A conversation title from free text: one line, cut at a word where possible. */
 export function titleFrom(text: string): string | null {
-  const oneLine = text.replace(/\s+/g, ' ').trim()
+  // The first question is stored masked while the consent is missing; its stand-ins („[MANDANT]“) are
+  // the app's own words and read as an ellipsis in a title.
+  const oneLine = text
+    .replace(MASKING_PLACEHOLDER, '…')
+    .replace(/…(?:\s*…)+/g, '…')
+    .replace(/\s+/g, ' ')
+    .trim()
   if (oneLine === '') return null
   if (oneLine.length <= TITLE_MAX_LENGTH) return oneLine
   const cut = oneLine.slice(0, TITLE_MAX_LENGTH)

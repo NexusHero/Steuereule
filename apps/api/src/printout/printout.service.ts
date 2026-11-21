@@ -33,9 +33,9 @@ import { PENSION_REPOSITORY, type PensionRepository } from '../pension/pension.r
 import { MASTER_DATA_REPOSITORY, religionForReturn, type MasterDataRepository } from '../master-data/master-data.repository.js'
 import { RENTAL_REPOSITORY, type RentalRepository } from '../rental/rental.repository.js'
 import { childAllowancesEur } from '../children/swiss-allowance.js'
-import { fillInForms } from './fill-in-lines.js'
-import { liveForms, type LiveForm } from './live-values.js'
-import { printoutValues, type CommuteFacts, type ChSalaryCertificateFacts, type LifeSituationFacts, type PersonBFacts } from './printout-values.js'
+import { fillInForms, lineNumbersOf } from './fill-in-lines.js'
+import { liveForms, type LiveForm, type LiveFormWithLines } from './live-values.js'
+import { printoutValues, type ChildGapField, type CommuteFacts, type ChSalaryCertificateFacts, type LifeSituationFacts, type PersonBFacts } from './printout-values.js'
 import {
   FIELD_SETS,
   FORM_ORDER,
@@ -89,14 +89,14 @@ export class PrintoutService {
     return loadAcroFormTemplateBytes(yearDir, formular)
   }
 
-  async check(userId: string, year: number): Promise<{ missing: string[] }> {
+  async check(userId: string, year: number): Promise<{ missing: string[]; missingChildFields: ChildGapField[] }> {
     const fieldSet = FIELD_SETS[year]
     if (!fieldSet) throw new NotFoundError('VORDRUCKE_MISSING', `No Vordrucke are available for tax year ${year} yet.`)
-    const { values, instances, missing } = await this.collect(userId, year)
+    const { values, instances, missing, missingChildFields } = await this.collect(userId, year)
     // A value too long for its box (at the 10 pt the forms require) would fail only after payment: once
     // nothing else is missing, it is named here, as „zuLang.<field>“, so the user shortens it first (ADR-0085).
-    if (missing.length > 0) return { missing }
-    return { missing: (await this.tooLong(year, values, instances)).map((id) => `zuLang.${id}`) }
+    if (missing.length > 0) return { missing, missingChildFields }
+    return { missing: (await this.tooLong(year, values, instances)).map((id) => `zuLang.${id}`), missingChildFields }
   }
 
   private async tooLong(year: number, values: FieldValues, instances: Record<string, readonly FieldValues[]> | undefined): Promise<string[]> {
@@ -121,7 +121,7 @@ export class PrintoutService {
    * The values of every printed copy for the live form view. Shown before payment: only the PDF is
    * paid (ADR-0050); the check before payment (ADR-0085) shows what is missing the same way.
    */
-  async liveValues(userId: string, year: number): Promise<{ forms: LiveForm[] }> {
+  async liveValues(userId: string, year: number): Promise<{ forms: LiveFormWithLines[] }> {
     const fieldSet = FIELD_SETS[year]
     if (!fieldSet) throw new NotFoundError('VORDRUCKE_MISSING', `No Vordrucke are available for tax year ${year} yet.`)
     const link = await this.link.findByUserAndYear(userId, year)
@@ -129,7 +129,8 @@ export class PrintoutService {
     if (link?.filingType === 'zusammen' && link.personAUserId !== userId) return { forms: [] }
     const { values, instances, entityIds } = await this.collectValues(userId, year)
     await this.audit.append({ userId, action: 'READ', resource: 'ausdruck-werte' })
-    return { forms: liveForms(year, fieldSet, values, instances, entityIds) }
+    const forms = liveForms(year, fieldSet, values, instances, entityIds)
+    return { forms: forms.map((form) => ({ ...form, instances: form.instances.map((copy) => ({ ...copy, lines: lineNumbersOf(year, copy.values) })) })) }
   }
 
   /**
@@ -196,7 +197,7 @@ export class PrintoutService {
     // ADR-0054: a couple files one return, printed by Person A. Person B sees it but never prints a
     // second one with themselves as Person A.
     if (link?.filingType === 'zusammen' && link.personAUserId !== userId) {
-      return { values: {}, instances: {}, missing: ['personADruckt'] }
+      return { values: {}, instances: {}, missing: ['personADruckt'], missingChildFields: [] }
     }
     const values = await this.collectValues(userId, year)
     const personBUserId = link?.filingType === 'zusammen' && link.personBUserId ? link.personBUserId : null

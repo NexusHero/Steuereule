@@ -145,12 +145,15 @@ export function makeStyles(t: UiTheme) {
     opacity: 0.85,
     marginTop: t.space.s2,
   }
+  // 44 px keeps each missing detail a comfortable touch target.
+  const missingEstimateRow: ViewStyle = { minHeight: 44, justifyContent: 'center' }
   const refundLater: TextStyle = {
     ...t.type.caption,
     color: t.color.nachtText,
     opacity: 0.6,
     marginTop: t.space.s2,
   }
+  const missingEstimateText: TextStyle = { ...t.type.small, color: t.color.nachtText, textDecorationLine: 'underline' }
   const gatedHeading: TextStyle = {
     ...t.type.subhead,
     color: t.color.funke,
@@ -212,5 +215,5 @@ export function makeStyles(t: UiTheme) {
   }
   const runningYearText: TextStyle = { ...t.type.small, color: t.color.tinte }
 
-  return { progress, progressBar, progressSegment, progressSegmentDone, progressText, runningYearNotice, runningYearText, screen, wideScreen, appbar, appbarTitleReihe: appbarTitleRow, appbarTitle, jahrReihe: yearRow, uebernahmeZeile: takeoverRow, uebernahmeZeileText: takeoverRowText, heading, help, cta, elsterHint, secondaryCta, secondaryGrid, secondaryGridItem, missingBox, missingToggleRow, missingToggleText, missingChipRow, missingChip, missingChipText, berater, emptyBlock, heroLabel, refundLabel, heroValue, heroValueSmall, effectLine, heroDivider, openItems, offenePosten: openItemCount, refundLater, gatedHeading, gatedBody, euleBannerCard, euleBannerRow, euleBannerCopy, euleBannerTitle, euleBannerEffect, euleBannerProvenance, euleBannerDismissBtn, euleBannerDismissText }
+  return { progress, progressBar, progressSegment, progressSegmentDone, progressText, runningYearNotice, runningYearText, screen, wideScreen, appbar, appbarTitleReihe: appbarTitleRow, appbarTitle, jahrReihe: yearRow, uebernahmeZeile: takeoverRow, uebernahmeZeileText: takeoverRowText, heading, help, cta, elsterHint, secondaryCta, secondaryGrid, secondaryGridItem, missingBox, missingToggleRow, missingToggleText, missingChipRow, missingChip, missingChipText, berater, emptyBlock, heroLabel, refundLabel, heroValue, heroValueSmall, effectLine, heroDivider, openItems, offenePosten: openItemCount, refundLater, missingEstimateRow, missingEstimateText, gatedHeading, gatedBody, euleBannerCard, euleBannerRow, euleBannerCopy, euleBannerTitle, euleBannerEffect, euleBannerProvenance, euleBannerDismissBtn, euleBannerDismissText }
 }

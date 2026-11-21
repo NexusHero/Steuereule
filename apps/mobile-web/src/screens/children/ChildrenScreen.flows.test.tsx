@@ -237,6 +237,19 @@ describe('KinderScreen — married household and form details', () => {
     const field = screen.getByLabelText('Schweizer Kinderzulage') as HTMLInputElement
     expect(field.value).toBe('')
     expect(field.placeholder).toBe('2748 (aus dem Lohnausweis)')
+    // The same figure is asked in the cross-border mask: the second place says so (Echtdatenlauf 4).
+    const hint = screen.getByTestId('kind-kinderzulage-hinweis').textContent ?? ''
+    expect(hint).toContain('Schweizer Lohnausweis')
+    expect(hint).toMatch(/2\.748\s€/)
+  })
+
+  it('tells a new child, too, that the Swiss allowance is the figure of the Lohnausweis and may stay empty', () => {
+    renderView()
+    fireEvent.click(screen.getByTestId('kind-neu'))
+    fireEvent.click(screen.getByTestId('kind-weitere-angaben'))
+    const hint = screen.getByTestId('kind-kinderzulage-hinweis').textContent ?? ''
+    expect(hint).toContain('Schweizer Lohnausweis')
+    expect(hint).toContain('leer')
   })
 
   it('rounds an insurance amount with cents and ignores a non-numeric one instead of sending it', async () => {

@@ -135,8 +135,6 @@ export async function runScenario21(browser, webOrigin, sql) {
   // --- 2. PrintoutRoute Embedded Sub-Screens ---
   unlockTaxYearInDb(sql, email, 2025)
   await page.locator('[data-testid="cockpit-ausdruck"]').click()
-  await page.locator('[data-testid="abgabe-vergleich-ueberspringen"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="abgabe-vergleich-ueberspringen"]').click()
   await page.locator('[data-testid="abgabe-zum-ausdruck"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="abgabe-zum-ausdruck"]').click()
   await page.locator('[data-testid="ausdruck-zurueck"]').waitFor({ state: 'visible', timeout: 10_000 })

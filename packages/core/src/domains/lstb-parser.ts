@@ -318,8 +318,10 @@ export function evaluateLstbExtraction(input: LstbExtractionInput): LstbExtracti
         calculation,
         reason: 'unreadable',
       }
-    } else if ((svCategoriesPresent.size < 2 && svRounded > 0) || svCategoriesPresent.has('kv') !== svCategoriesPresent.has('pv')) {
-      // One category alone, or health without nursing care (they are withheld together): a line is missing.
+    } else if ((svCategoriesPresent.size < 2 && svRounded > 0) || svCategoriesPresent.has('kv') !== svCategoriesPresent.has('pv') || (svRounded > 0 && !svCategoriesPresent.has('rv'))) {
+      // One category alone, health without nursing care (they are withheld together), or no pension line
+      // beside the others: a line is missing. A scan that read lines 25 and 26 only gave about half the
+      // sum as if it were complete (real-data run); whoever truly pays no pension insurance confirms it.
       svField = {
         value: svRounded,
         status: 'pruefen',

@@ -169,6 +169,13 @@ describe('conversations of a tax year (#481)', () => {
 })
 
 describe('titleFrom', () => {
+  it('never shows a masking placeholder in a title (real-data run: „Ich bin [MANDANT] und möchte …“)', () => {
+    expect(titleFrom('Hallo! Ich bin [MANDANT] und möchte unsere Steuer machen')).toBe('Hallo! Ich bin … und möchte unsere Steuer machen')
+    expect(titleFrom('Meine IBAN ist [IBAN-GESCHÜTZT], Steuer-ID [STEUER-ID-GESCHÜTZT].')).toBe('Meine IBAN ist …, Steuer-ID ….')
+    expect(titleFrom('[MANDANT] [MANDANT]')).toBe('…')
+    expect(titleFrom('[MANDANT]')).toBe('…')
+  })
+
   it('keeps a short question as it is, on one line', () => {
     expect(titleFrom('  Lohnt sich\n mein Arbeitsweg? ')).toBe('Lohnt sich mein Arbeitsweg?')
   })

@@ -1027,6 +1027,27 @@ export interface ChCertificateChecksDto {
   net: ChCertificateChecksDtoNet;
 }
 
+/**
+ * Krankentaggeld, or a benefit after an accident (Unfalltaggeld, UVG, SUVA), which is taxed differently.
+ */
+export type ChDailyBenefitDtoKind = typeof ChDailyBenefitDtoKind[keyof typeof ChDailyBenefitDtoKind];
+
+
+export const ChDailyBenefitDtoKind = {
+  sickness: 'sickness',
+  accident: 'accident',
+} as const;
+
+export interface ChDailyBenefitDto {
+  /** Krankentaggeld, or a benefit after an accident (Unfalltaggeld, UVG, SUVA), which is taxed differently. */
+  kind: ChDailyBenefitDtoKind;
+  /**
+     * Whole CHF as the remark prints it; null when it names no amount.
+     * @nullable
+     */
+  amountChf: number | null;
+}
+
 export interface ParsedChCertificateResponseDto {
   stage: ParsedChCertificateResponseDtoStage;
   /** @nullable */
@@ -1050,6 +1071,11 @@ export interface ParsedChCertificateResponseDto {
   canteen: boolean;
   /** Box F: free transport between home and work. */
   freeTransport: boolean;
+  /**
+     * A paid-out daily benefit the remarks name („KK-Taggeld Verrechnung“). The certificate does not say whether it is part of Ziffer 8: the app asks, and never writes it on its own.
+     * @nullable
+     */
+  dailyBenefit: ChDailyBenefitDto | null;
   /** Ziffern every certificate carries that could not be read. */
   missing: string[];
   stagedActionIds: string[];

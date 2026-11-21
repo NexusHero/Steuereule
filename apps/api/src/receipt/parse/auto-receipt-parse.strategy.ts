@@ -210,7 +210,8 @@ function craftsmanProposal(invoice: CraftsmanInvoiceRead) {
       'haushalt-gate': 'Ja',
       ...(invoice.invoiceTotalEur ? { 'haushalt-handwerker-rechnungsbetrag': String(invoice.invoiceTotalEur) } : {}),
     },
-    summaryText: `Handwerkerrechnung über ${invoice.invoiceTotalEur ? formatEur(invoice.invoiceTotalEur) : '? €'} erkannt, davon Arbeitskosten ${formatEur(invoice.labourEur ?? 0)} (${how}). Nach [estg-35a] ermäßigt das die Steuer um 20 % der Arbeitskosten. ${warnings.join(' ')} Bitte prüfe den Lohnanteil:`,
+    // The invoice says none of the three conditions of § 35a: asked here, by the app (real-data run: never asked).
+    summaryText: `Handwerkerrechnung über ${invoice.invoiceTotalEur ? formatEur(invoice.invoiceTotalEur) : '? €'} erkannt, davon Arbeitskosten ${formatEur(invoice.labourEur ?? 0)} (${how}). Nach [estg-35a] ermäßigt das die Steuer um 20 % der Arbeitskosten. ${warnings.join(' ')} Drei Fragen dazu, die die Rechnung nicht beantwortet: Habt ihr per Überweisung bezahlt (nicht bar)? War die Arbeit in eurem eigenen Haushalt (selbst bewohnt)? Gab es dafür eine öffentliche Förderung (KfW, BAFA, Zuschuss)? Bitte prüfe auch den Lohnanteil:`,
   }
 }
 

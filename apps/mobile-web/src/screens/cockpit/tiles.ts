@@ -45,7 +45,20 @@ export type TileId =
   | 'vorauszahlungen'
   | 'selbststaendig'
 
-export type TileStatus = 'offen' | 'erledigt' | 'betrag-offen'
+/** `kein-thema`: the topic's one question is answered „Nein“ (said so, or not picked in the Strom): settled, but nothing was done. */
+export type TileStatus = 'offen' | 'erledigt' | 'betrag-offen' | 'kein-thema'
+
+/** A tile is out of the way: its work is done, or its topic does not apply. */
+export function isSettled(status: TileStatus): boolean {
+  return status === 'erledigt' || status === 'kein-thema'
+}
+
+/** Tiles that are one topic of the Strom's selection, with the yes/no question that opens them. */
+const TOPIC_GATE: Partial<Record<CatalogEntryParam, EntryStepId>> = {
+  haushalt: 'haushalt-gate',
+  gesundheit: 'gesundheit-gate',
+  vorauszahlungen: 'vorauszahlungen-gate',
+}
 
 export type TileRoute =
   | { readonly screen: 'Lstb' }
@@ -135,7 +148,10 @@ function catalogStatus(entry: CatalogEntryParam, answers: Answers): TileStatus {
   if (laterAmountSteps(answers).some((step) => entryForStep(step) === entry)) {
     return 'betrag-offen'
   }
-  return nextStepFor(ENTRIES[entry], answers).kind === 'done' ? 'erledigt' : 'offen'
+  if (nextStepFor(ENTRIES[entry], answers).kind !== 'done') return 'offen'
+  const gate = TOPIC_GATE[entry]
+  // „Erledigt“ would claim work on a topic the user never entered (Echtdatenlauf 4).
+  return gate !== undefined && answers[gate] === 'Nein' ? 'kein-thema' : 'erledigt'
 }
 
 export const TILES: readonly TileDefinition[] = [
@@ -217,7 +233,8 @@ export const TILES: readonly TileDefinition[] = [
     route: { screen: 'Rental' },
     personas: ['vermieter'],
     isVisible: () => true,
-    status: (f) => (f.rental?.status.kind === 'bestimmt' ? 'erledigt' : 'offen'),
+    // Without an object the fold is „bestimmt“ at zero: nothing was entered, so nothing is done.
+    status: (f) => (f.rental != null && f.rental.status.kind === 'bestimmt' && f.rental.properties.length > 0 ? 'erledigt' : 'offen'),
   },
   {
     id: 'kinder',
@@ -330,7 +347,7 @@ export function groupTiles(facts: TileFacts, needsAttention: (id: TileId) => boo
   const optional: TileDefinition[] = []
   const done: TileDefinition[] = []
   for (const tile of main) {
-    const settled = !facts.pendingTiles?.has(tile.id) && tile.status(facts) === 'erledigt' && !needsAttention(tile.id)
+    const settled = !facts.pendingTiles?.has(tile.id) && isSettled(tile.status(facts)) && !needsAttention(tile.id)
     if (settled) done.push(tile)
     else if (isRequiredTile(tile, facts.path, facts)) required.push(tile)
     else optional.push(tile)

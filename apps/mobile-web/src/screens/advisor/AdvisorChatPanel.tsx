@@ -337,13 +337,15 @@ export function AdvisorChatPanel({
   const canReplace = !isSending && lastUser !== null
 
   /**
-   * „Erlauben“ on the consent card: the owl answers the user's last message again, now with the
-   * consent, in place of the turn that had to refuse. Nobody retypes anything (ADR-0091).
+   * „Erlauben“ on the consent card: the conversation goes on with the consent, and nobody retypes
+   * anything (ADR-0091). The answer the user has already read stays: replacing it made its questions
+   * vanish (real-data run). A question stored in its masked form is sent again as typed, as a new
+   * turn, so the owl hears the words; otherwise the owl is told that the consent exists.
    */
   function continueAfterConsent() {
     if (!canReplace || lastUser === null) return
     const repeat = textToRepeatAfterConsent(lastUser.content, lastTypedRef.current)
-    void (repeat !== null ? send(repeat, { replaceFromMessageId: lastUser.id }) : send(tr('owlPersonalData.card.continueMessage')))
+    void send(repeat !== null && repeat !== lastUser.content ? repeat : tr('owlPersonalData.card.continueMessage'))
   }
 
   async function copyMessage(id: string, content: string) {
@@ -613,7 +615,7 @@ export function AdvisorChatPanel({
               ) : null}
 
               {/* The owl needed personal data without consent: ask once, explicitly (ADR-0091) */}
-              {msg.meta?.personalDataConsentRequest === true ? <PersonalDataConsentCard onGranted={index === messages.length - 1 && canReplace ? continueAfterConsent : undefined} /> : null}
+              {msg.meta?.personalDataConsentRequest === true ? <PersonalDataConsentCard provider={chatModel?.provider ?? models?.standard?.provider ?? null} onGranted={index === messages.length - 1 && canReplace ? continueAfterConsent : undefined} /> : null}
 
               {/* The model did not answer: the rules did, and the reason stays with the answer (#487) */}
               {msg.meta?.modelFailure ? (

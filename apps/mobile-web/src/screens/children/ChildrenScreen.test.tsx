@@ -8,6 +8,7 @@ import {
   getCockpitControllerGetCockpitSummaryQueryKey,
   getTaxEstimateControllerGetQueryKey,
 } from '@steuereule/api-client'
+import { CHILDCARE_PROVIDER_WIDTH_PT, fitsPrintBox } from '@steuereule/core'
 import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { ChildrenScreen } from './ChildrenScreen'
@@ -302,10 +303,61 @@ describe('KinderScreen', () => {
     fireEvent.change(provider, { target: { value: 'Kita Sonnenschein, Hauptstr. 1, 79100 Freiburg' } })
     expect(provider.value).toBe('Kita Sonnenschein, Hauptstr. 1, 79100 Freiburg')
     expect(screen.queryByTestId('kind-betreuung-anbieter-voll')).toBeNull()
-    fireEvent.change(provider, { target: { value: 'Kindertagesstätte Sonnenschein e. V., Hauptstraße 12, 79100 Freiburg im Breisgau' } })
-    // The longer text is refused as a whole, the field keeps what fits, and a line says why.
-    expect(provider.value).toBe('Kita Sonnenschein, Hauptstr. 1, 79100 Freiburg')
+    // One more character than fits: the field keeps what fits, and a line says why.
+    fireEvent.change(provider, { target: { value: 'Kita Sonnenschein, Hauptstr. 1, 79100 Freiburg im Breisgau' } })
+    expect(provider.value.startsWith('Kita Sonnenschein, Hauptstr. 1, 79100 Freiburg')).toBe(true)
+    expect(fitsPrintBox(provider.value, CHILDCARE_PROVIDER_WIDTH_PT)).toBe(true)
     expect(screen.getByTestId('kind-betreuung-anbieter-voll')).toBeTruthy()
+  })
+
+  it('cuts a pasted provider that is too long to what fits instead of leaving the field empty (Echtdatenlauf 4)', async () => {
+    const onAdd = vi.fn().mockResolvedValue(undefined)
+    renderKinder({ onAddChild: onAdd })
+    startNewChild('Noah', '02.09.2021')
+    fireEvent.click(screen.getByTestId('kind-weitere-angaben'))
+    const provider = screen.getByTestId('kind-betreuung-anbieter') as HTMLInputElement
+    const pasted = 'Kindertagesstätte Sonnenschein e. V., Hauptstraße 12, 79100 Freiburg im Breisgau'
+    fireEvent.change(provider, { target: { value: pasted } })
+
+    expect(provider.value).not.toBe('')
+    expect(pasted.startsWith(provider.value)).toBe(true)
+    expect(fitsPrintBox(provider.value, CHILDCARE_PROVIDER_WIDTH_PT)).toBe(true)
+    // Not one character more would fit.
+    expect(fitsPrintBox(pasted.slice(0, provider.value.length + 1).trim(), CHILDCARE_PROVIDER_WIDTH_PT)).toBe(false)
+    expect(screen.getByTestId('kind-betreuung-anbieter-voll').textContent).toContain('gekürzt')
+
+    fireEvent.click(screen.getByTestId('kind-speichern'))
+    await waitFor(() => expect(onAdd).toHaveBeenCalledWith(expect.objectContaining({ childcareProvider: provider.value.trim() })))
+  })
+
+  it('says next to the button when saving an edited child failed, and keeps the form (Echtdatenlauf 4)', async () => {
+    const onSave = vi.fn().mockRejectedValue(new Error('400'))
+    renderKinder({ onSaveChild: onSave })
+    fireEvent.click(screen.getByLabelText('Kind Lina bearbeiten'))
+    expect(screen.queryByTestId('kind-speichern-fehler')).toBeNull()
+    fireEvent.click(screen.getByTestId('kind-speichern'))
+
+    expect((await screen.findByTestId('kind-speichern-fehler')).textContent).toContain('nicht gespeichert')
+    expect((screen.getByLabelText('Vorname') as HTMLInputElement).value).toBe('Lina')
+    // A second try that succeeds takes the message away again.
+    onSave.mockResolvedValueOnce(undefined)
+    fireEvent.click(screen.getByTestId('kind-speichern'))
+    await waitFor(() => expect(screen.queryByTestId('kind-speichern-fehler')).toBeNull())
+  })
+
+  it('confirms a saved edit where the form was, and says what is missing instead of doing nothing', async () => {
+    const onSave = vi.fn().mockResolvedValue(undefined)
+    renderKinder({ onSaveChild: onSave })
+    fireEvent.click(screen.getByLabelText('Kind Lina bearbeiten'))
+    fireEvent.change(screen.getByLabelText('Vorname'), { target: { value: '' } })
+    fireEvent.click(screen.getByTestId('kind-speichern'))
+    expect(screen.getByTestId('kind-speichern-fehler').textContent).toContain('Vorname')
+    expect(onSave).not.toHaveBeenCalled()
+
+    fireEvent.change(screen.getByLabelText('Vorname'), { target: { value: 'Lina' } })
+    fireEvent.click(screen.getByTestId('kind-speichern'))
+    expect((await screen.findByTestId('kind-gespeichert')).textContent).toBe('Lina ist gespeichert.')
+    expect(screen.queryByLabelText('Vorname')).toBeNull()
   })
 
   it('allows adding a new child', async () => {

@@ -74,7 +74,10 @@ export class ReceiptParseService implements OnModuleInit {
     if (dto.deviceReadFailure !== undefined) return this.recordDeviceFailure(userId, owned, dto.deviceReadFailure)
 
     // The same file again (ADR-0097 §7): read, so it is filed, but its drafts stay with the first upload.
-    const original = owned !== null && dto.allowDuplicate !== true ? await this.originalOf(userId, owned.id) : null
+    // Only an upload that was read to a result holds drafts to stay with: a first upload whose „Für wen?“
+    // never got an answer left nothing, and its copy was refused as a duplicate for good (real-data run).
+    const earlier = owned !== null && dto.allowDuplicate !== true ? await this.originalOf(userId, owned.id) : null
+    const original = earlier !== null && earlier.readOutcome != null ? earlier : null
     const readDto = original !== null ? { ...dto, stageDraft: false } : dto
     let response: ParseReceiptResponseDto
     try {

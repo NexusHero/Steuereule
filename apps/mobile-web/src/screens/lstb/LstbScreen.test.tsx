@@ -165,6 +165,14 @@ describe('LstbScreen', () => {
     expect(screen.getByText('Die Lohnsteuer ist höher als der Bruttoarbeitslohn.')).toBeTruthy()
   })
 
+  it('does not put the word „unlesbar“ under a field that is fine: the way out reads as the action it is (Echtdatenlauf 4)', async () => {
+    renderLstb()
+    await screen.findByText('Bruttoarbeitslohn (Zeile 3)')
+    // The bare word read like a verdict on every field; it is an offer to the user who cannot read the paper.
+    expect(screen.queryByText('unlesbar')).toBeNull()
+    expect(screen.getAllByRole('button', { name: 'Kann ich nicht lesen' }).length).toBeGreaterThan(0)
+  })
+
   it('PUTs the honest "unklar" state when the unreadable fallback is tapped', async () => {
     let body: unknown
     let url = ''
@@ -178,7 +186,7 @@ describe('LstbScreen', () => {
     renderLstb()
     await screen.findByText('Bruttoarbeitslohn (Zeile 3)')
 
-    const unclearButtons = screen.getAllByText('unlesbar')
+    const unclearButtons = screen.getAllByText('Kann ich nicht lesen')
     fireEvent.click(unclearButtons[0]!)
 
     await waitFor(() => expect(body).toEqual({ kind: 'unklar' }))

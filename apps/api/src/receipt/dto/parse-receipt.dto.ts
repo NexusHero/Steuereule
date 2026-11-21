@@ -359,6 +359,14 @@ export class ChCertificateChecksDto {
   net!: 'ok' | 'conflict' | 'unknown'
 }
 
+export class ChDailyBenefitDto {
+  @ApiProperty({ type: String, enum: ['sickness', 'accident'], description: 'Krankentaggeld, or a benefit after an accident (Unfalltaggeld, UVG, SUVA), which is taxed differently.' })
+  kind!: 'sickness' | 'accident'
+
+  @ApiProperty({ type: Number, nullable: true, example: 12345, description: 'Whole CHF as the remark prints it; null when it names no amount.' })
+  amountChf!: number | null
+}
+
 export class ParsedChCertificateResponseDto {
   @ApiProperty({ type: String, enum: ['deterministic', 'llm_text_fallback'] })
   stage!: 'deterministic' | 'llm_text_fallback'
@@ -392,6 +400,13 @@ export class ParsedChCertificateResponseDto {
 
   @ApiProperty({ type: Boolean, description: 'Box F: free transport between home and work.' })
   freeTransport!: boolean
+
+  @ApiProperty({
+    type: ChDailyBenefitDto,
+    nullable: true,
+    description: 'A paid-out daily benefit the remarks name („KK-Taggeld Verrechnung“). The certificate does not say whether it is part of Ziffer 8: the app asks, and never writes it on its own.',
+  })
+  dailyBenefit!: ChDailyBenefitDto | null
 
   @ApiProperty({ type: [String], description: 'Ziffern every certificate carries that could not be read.' })
   missing!: string[]

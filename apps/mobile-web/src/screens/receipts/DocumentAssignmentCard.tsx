@@ -59,7 +59,11 @@ export function DocumentAssignmentCard({ question, printed, busy = false, error 
       : question.reason === 'contradiction'
         ? tr('belegZuordnung.frage.contradiction', { printed: printedName || tr('belegZuordnung.frage.someoneElse'), area: question.area ? name(question.area) : '' })
         : question.reason === 'unknown'
-          ? printedName
+          ? // A child's document (a childcare certificate addressed to a parent) and no child yet: the
+            // name on it is no stranger, there is just nobody it could belong to.
+            printedName !== '' && question.options.length === 0 && question.offerCreate.length === 1 && question.offerCreate[0] === 'kind'
+            ? tr('belegZuordnung.frage.childNeeded')
+            : printedName
             ? tr('belegZuordnung.frage.unknown', { printed: printedName })
             : tr('belegZuordnung.frage.unknownNoName')
           : tr('belegZuordnung.frage.which')

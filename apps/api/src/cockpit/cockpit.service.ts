@@ -140,16 +140,31 @@ export class CockpitService {
     return { facts, data, pension }
   }
 
-  /** Person B of a joint return recorded in this account, or null (single, separate, or B's own account). */
-  private async partnerUser(userId: string, taxYear: number, answers: Answers): Promise<string | null> {
-    if (this.link === undefined || answers.familienstand !== 'Verheiratet') return null
-    const job = answers['partner-job']
-    if (job !== 'Angestellt' && job !== 'Rente') return null
+  /**
+   * Person B of a joint return recorded in this account with the answers their income is read by, or
+   * null (single, separate, B's own account, or nothing known about B's income). The basis names B's
+   * job; where it was never asked (the owl sets up the joint return and B's records directly), B's
+   * recorded wages speak for themselves: a Lohnausweis makes B a Grenzgänger, an LStB an employee.
+   */
+  private async partner(userId: string, taxYear: number, answers: Answers): Promise<{ readonly userId: string; readonly answers: Answers } | null> {
+    if (this.link === undefined) return null
+    let partnerId: string
     try {
-      return await this.link.dataUser(userId, taxYear, 'B')
+      partnerId = await this.link.dataUser(userId, taxYear, 'B')
     } catch {
       return null
     }
+    const own = answersFrom(await this.interviewRepository.findAllForUserAndYear(partnerId, taxYear))
+    const job = answers['partner-job']
+    if (answers.familienstand === 'Verheiratet' && (job === 'Angestellt' || job === 'Rente')) return { userId: partnerId, answers: partnerAnswers(answers, own) }
+    const [lstbRecord, chRecord] = await Promise.all([
+      this.lstbRepository.findForUserAndYear(partnerId, taxYear),
+      this.chSalaryCertificateRepository.findForUserAndYear(partnerId, taxYear),
+    ])
+    const swissWage = recordedValue(chRecord?.fields['bruttolohn-total'] ?? null) !== null
+    const germanWage = recordedValue(lstbRecord?.bruttoarbeitslohn ?? null) !== null
+    if (!swissWage && !germanWage) return null
+    return { userId: partnerId, answers: { ...own, job: 'Angestellt', ausland: swissWage ? CH_FOREIGN : 'Nein' } as Answers }
   }
 
   async getSummary(userId: string, taxYear: number): Promise<CockpitSummaryDto | null> {
@@ -193,8 +208,9 @@ export class CockpitService {
     }
 
     // A joint return: Person B's wages count too, from B's own records (Echtdatentest 18.11.2026).
-    const partnerId = await this.partnerUser(userId, taxYear, answers)
-    const partner = partnerId === null ? null : await this.personIncome(partnerId, taxYear, partnerAnswers(answers, answersFrom(await this.interviewRepository.findAllForUserAndYear(partnerId, taxYear))))
+    const partnerPerson = await this.partner(userId, taxYear, answers)
+    const partnerId = partnerPerson?.userId ?? null
+    const partner = partnerPerson === null ? null : await this.personIncome(partnerPerson.userId, taxYear, partnerPerson.answers)
     // ADR-0101: the profit of each person's book; B's book is B's own account or, for B kept here, person B.
     const married = answers.familienstand === 'Verheiratet'
     const [profitA, profitB] = await Promise.all([

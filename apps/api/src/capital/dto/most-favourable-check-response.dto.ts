@@ -44,8 +44,8 @@ export class MostFavourableCheckDto {
 
   @ApiPropertyOptional({
     type: String,
-    enum: ['keine-abgeltung-einbehalten', 'krypto-gegated', 'kap-depot-nicht-beantwortet', 'keine-kapitalertraege'],
+    enum: ['keine-abgeltung-einbehalten', 'krypto-gegated', 'kap-depot-nicht-beantwortet', 'keine-kapitalertraege', 'uebriges-einkommen-unbekannt'],
     description: 'Why the Günstigerprüfung does not apply (only when kind === "nicht-anwendbar").',
   })
-  reason?: 'keine-abgeltung-einbehalten' | 'krypto-gegated' | 'kap-depot-nicht-beantwortet' | 'keine-kapitalertraege'
+  reason?: 'keine-abgeltung-einbehalten' | 'krypto-gegated' | 'kap-depot-nicht-beantwortet' | 'keine-kapitalertraege' | 'uebriges-einkommen-unbekannt'
 }

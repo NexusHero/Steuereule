@@ -68,3 +68,42 @@ export function heldDraftsNote(held: readonly HeldDraft[]): string {
   const items = held.map((h) => `${h.label}: steht schon auf ${h.recorded} (mein Vorschlag wäre ${h.proposed})`).join('; ')
   return `\n\nUnverändert gelassen, weil schon eingetragen: ${items}. Wenn ein Wert falsch ist, sag mir den richtigen, dann bereite ich die Änderung vor.`
 }
+
+/**
+ * The line for drafts that were left out because the field already holds exactly their value. Without it
+ * a card the owl announced simply never appeared (real-data run: announced three times, never shown).
+ */
+export function unchangedDraftsNote(unchanged: readonly Pick<GuardedDraft, 'label' | 'newValue'>[]): string {
+  if (unchanged.length === 0) return ''
+  const items = unchanged.map((draft) => `${draft.label} (${draft.newValue})`).join('; ')
+  return `\n\nSchon genau so eingetragen, deshalb gibt es dafür keine Karte: ${items}.`
+}
+
+/** The stock sentence of an answer that only prepared drafts: it counts the drafts that are shown. */
+export function preparedDraftsSentence(labels: readonly string[]): string {
+  if (labels.length === 0) return ''
+  return labels.length === 1 ? `Ich habe den Entwurf „${labels[0]}“ als unverbindlichen Vorschlag vorbereitet.` : `Ich habe ${labels.length} Entwürfe als unverbindliche Vorschläge vorbereitet.`
+}
+
+const COUNT_WORDS: Readonly<Record<string, number>> = { zwei: 2, beiden: 2, drei: 3, vier: 4, fünf: 5, sechs: 6, sieben: 7, acht: 8 }
+const ANNOUNCED = /\b(\d{1,2}|zwei|beiden|drei|vier|fünf|sechs|sieben|acht)\s+(?:(?:neuen?|weiteren?|gewünschten|ersten)\s+)?(?:Entw(?:ü|ue)rfe|Entwurfskarten)\b/iu
+
+/** How many drafts a text says it prepared („5 Entwürfe“, „fünf neue Entwürfe“); null when it names no number. */
+export function announcedDraftCount(reply: string): number | null {
+  const match = ANNOUNCED.exec(reply)
+  if (!match) return null
+  const word = match[1]!.toLowerCase()
+  return /^\d+$/.test(word) ? Number(word) : (COUNT_WORDS[word] ?? null)
+}
+
+/**
+ * Said by the app when the text announces more drafts than the answer shows: the model counted one the
+ * app refused or left out, and the user looked for a card that is not there. The text itself stays as written.
+ */
+export function draftCountNote(reply: string, shown: number): string {
+  const announced = announcedDraftCount(reply)
+  if (announced === null || announced <= shown) return ''
+  const really = shown === 0 ? 'ist kein Entwurf' : shown === 1 ? 'ist ein Entwurf' : `sind ${shown} Entwürfe`
+  return `\n\nHinweis der App: Vorbereitet ${really}, nicht ${announced}. Es gilt, was als Karte unter dieser Antwort steht.`
+}
+

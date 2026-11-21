@@ -233,6 +233,8 @@ function Result({ dto }: { readonly dto: GuenstigerpruefungDto }) {
           ? tr('kapital.guenstigerpruefung.kryptoGegated')
           : dto.reason === 'keine-kapitalertraege'
             ? tr('kapital.guenstigerpruefung.keineKapitalertraege')
+            : dto.reason === 'uebriges-einkommen-unbekannt'
+              ? tr('kapital.guenstigerpruefung.uebrigesEinkommenUnbekannt')
             : tr('kapital.guenstigerpruefung.kapDepotNichtBeantwortet')
     return <Text style={s.aussage}>{text}</Text>
   }

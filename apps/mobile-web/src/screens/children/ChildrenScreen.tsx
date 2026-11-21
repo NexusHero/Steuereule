@@ -26,6 +26,7 @@ import {
   type OtherParentStatus,
   type ChildRelationship,
   CHILDCARE_PROVIDER_WIDTH_PT,
+  cutToPrintBox,
   fitsPrintBox,
 } from '@steuereule/core'
 import {
@@ -312,7 +313,12 @@ function KinderScreenView({
   const [healthAbroad, setHealthAbroad] = useState(false)
   const [childcare, setChildcare] = useState('')
   const [childcareProvider, setChildcareProvider] = useState('')
-  const [providerFull, setProviderFull] = useState(false)
+  /** The provider text hit the width of the form line: typed one character too many, or a longer text was cut. */
+  const [providerFull, setProviderFull] = useState<'voll' | 'gekuerzt' | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<'pflicht' | 'datum' | 'server' | null>(null)
+  /** The child the last save stored, named where the form was. */
+  const [savedName, setSavedName] = useState<string | null>(null)
   const [childcareFrom, setChildcareFrom] = useState('')
   const [childcareTo, setChildcareTo] = useState('')
   const [relationship, setRelationship] = useState<ChildRelationship | null>(null)
@@ -425,7 +431,17 @@ function KinderScreenView({
   }
 
   async function handleSave() {
-    if (!firstName.trim() || !lastName.trim() || !geburtsdatum.trim()) return
+    if (saving) return
+    setSavedName(null)
+    // A press that does nothing reads like a broken button (real-data run 4): say what is missing.
+    if (!firstName.trim() || !lastName.trim() || !geburtsdatum.trim()) {
+      setSaveError('pflicht')
+      return
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(germanToIso(geburtsdatum) ?? '')) {
+      setSaveError('datum')
+      return
+    }
     const payload: ChildInput = {
       firstName: firstName.trim(),
       lastName: lastName.trim(),
@@ -450,10 +466,12 @@ function KinderScreenView({
       swissFamilyAllowanceEur: wholeText(swissAllowance),
       swissFamilyAllowancePayer: swissPayer,
       childcareEur: wholeText(childcare),
-      childcareProvider: childcareProvider.trim().slice(0, 120) || null,
+      childcareProvider: childcareProvider.trim() || null,
       childcareFrom: GERMAN_DATE_PATTERN.test(childcareFrom.trim()) ? childcareFrom.trim() : null,
       childcareTo: GERMAN_DATE_PATTERN.test(childcareTo.trim()) ? childcareTo.trim() : null,
     }
+    setSaving(true)
+    setSaveError(null)
     try {
       if (edited) {
         if (onSaveChild) await onSaveChild(edited, payload)
@@ -461,9 +479,13 @@ function KinderScreenView({
         await onAddChild(payload)
       }
     } catch {
-      // The save did not reach the server: keep the form open with the user's input.
+      // The save did not reach the server or was refused: keep the form open with the user's input, and say so here.
+      setSaveError('server')
       return
+    } finally {
+      setSaving(false)
     }
+    setSavedName(payload.firstName)
     if (edited) {
       setKinder(kinder.map((k) => (k.id === edited ? { ...k, ...payload } : k)))
     } else {
@@ -819,6 +841,10 @@ function KinderScreenView({
                   accessibilityLabel="Schweizer Kinderzulage"
                   testID="kind-schweizer-kinderzulage"
                 />
+                {/* The cross-border mask asks the same figure (real-data run 4): say that it is one figure, not two. */}
+                <Text style={{ ...t.type.small, color: t.color.tinte2 }} testID="kind-kinderzulage-hinweis">
+                  {swissDerived ? tr('kinder.kinderzulageAusLohnausweis', { betrag: formatEuro(Number(swissDerived)) }) : tr('kinder.kinderzulageHinweis')}
+                </Text>
               </Feld>
               {married ? (
                 <Feld label={tr('kinder.zulageVon', 'Die Kinderzulage kommt mit dem Lohn von')}>
@@ -855,9 +881,15 @@ function KinderScreenView({
                   value={childcareProvider}
                   onChange={(next) => {
                     // Only what fits the form's line (Anlage Kind Z. 67) — the printout would refuse the rest after payment (ADR-0090).
-                    const fits = fitsPrintBox(next.trim(), CHILDCARE_PROVIDER_WIDTH_PT)
-                    setProviderFull(!fits)
-                    if (fits) setChildcareProvider(next)
+                    if (fitsPrintBox(next.trim(), CHILDCARE_PROVIDER_WIDTH_PT)) {
+                      setProviderFull(null)
+                      setChildcareProvider(next)
+                      return
+                    }
+                    // Typed one character too many: nothing changes. A longer text (pasted) is cut to what fits, never dropped.
+                    const kept = cutToPrintBox(next, CHILDCARE_PROVIDER_WIDTH_PT)
+                    setProviderFull(kept === childcareProvider ? 'voll' : 'gekuerzt')
+                    setChildcareProvider(kept)
                   }}
                   placeholder="z.B. Kindergarten, Gemeinde Musterdorf, Hauptstr. 1"
                   accessibilityLabel="Anbieter der Kinderbetreuung"
@@ -865,7 +897,7 @@ function KinderScreenView({
                 />
                 {providerFull ? (
                   <Text style={{ ...t.type.small, color: t.color.warn }} accessibilityLiveRegion="polite" testID="kind-betreuung-anbieter-voll">
-                    Mehr passt nicht in die Zeile des Formulars. Kürz z. B. die Anschrift ab (Straße und Ort genügen).
+                    {tr(providerFull === 'gekuerzt' ? 'kinder.anbieterGekuerzt' : 'kinder.anbieterVoll')}
                   </Text>
                 ) : null}
               </Feld>
@@ -877,11 +909,22 @@ function KinderScreenView({
               </Feld>
             </>
           ) : null}
-          <Button onPress={handleSave} style={styles.addButton} testID="kind-speichern">
-            {tr('kinder.save', 'Kind speichern')}
+          {saveError !== null ? (
+            <Text style={{ ...t.type.small, color: t.color.fehler, marginTop: t.space.s2 }} accessibilityRole="alert" testID="kind-speichern-fehler">
+              {tr(saveError === 'pflicht' ? 'kinder.pflichtFehlt' : saveError === 'datum' ? 'kinder.datumFalsch' : 'kinder.speichernFehler')}
+            </Text>
+          ) : null}
+          <Button onPress={handleSave} disabled={saving} style={styles.addButton} testID="kind-speichern">
+            {saving ? tr('kinder.speichert') : tr('kinder.save', 'Kind speichern')}
           </Button>
         </Card>
       ) : (
+        <>
+        {savedName !== null ? (
+          <Text style={{ ...t.type.small, color: t.color.ok }} accessibilityLiveRegion="polite" testID="kind-gespeichert">
+            {tr('kinder.gespeichert', { name: savedName })}
+          </Text>
+        ) : null}
         <Button
           variant="ghost"
           onPress={() => {
@@ -893,6 +936,7 @@ function KinderScreenView({
         >
           + Weiteres Kind hinzufügen
         </Button>
+        </>
       )}
 
       {onSingleParentQuestions && kinder.length > 0 && !married ? (

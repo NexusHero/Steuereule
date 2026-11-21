@@ -339,7 +339,7 @@ const DECLARED: Readonly<Record<Screen, { readonly perInstance: boolean; readonl
  */
 const HINTS: Readonly<Partial<Record<Screen, Readonly<Record<string, string>>>>> = {
   interview: {
-    einkuenfte: 'Pflichtfrage: Kapitalerträge über dem Sparer-Pauschbetrag bzw. Freistellungsauftrag oder ohne deutschen Steuerabzug (z. B. ausländische Bank) = „Kapitalerträge“; Mieteinnahmen = „Vermietung“; nichts davon = „Nein“',
+    einkuenfte: 'Pflichtfrage: Kapitalerträge (Zinsen, Dividenden, ein Depot; auch wenn ein Freistellungsauftrag sie abdeckt oder ohne deutschen Steuerabzug, z. B. ausländische Bank) = „Kapitalerträge“, dann nach der Höhe fragen; Mieteinnahmen = „Vermietung“; beides = „Beides“; „Nein“ nur, wenn der Nutzer sagt, dass es weder Kapitalerträge noch Mieten gab',
     'vorauszahlungen-gate': '„Ja“, wenn das Finanzamt für das Jahr Einkommensteuer-Vorauszahlungen festgesetzt hat',
     'vorauszahlungen-betrag': 'Summe aller für das Jahr gezahlten Vorauszahlungen in ganzen Euro: Einkommensteuer plus Solidaritätszuschlag plus Kirchensteuer zusammen, es gibt kein eigenes Soli-Feld (z. B. „26.004 Euro Einkommensteuer und 747 Euro Soli“ → 26751); die App setzt vorauszahlungen-gate dazu selbst auf „Ja“',
   },

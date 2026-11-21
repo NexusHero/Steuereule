@@ -52,6 +52,21 @@ describe('KinderService', () => {
     expect(afterDelete.kinder[0]!.firstName).toBe('Noah-Elias')
   })
 
+  it('takes a childcare provider only as wide as the form line prints it, the limit the mask applies too (Anlage Kind Z. 67)', async () => {
+    const service = new ChildrenService(new FakeChildRepository(), new FakeAuditService() as any)
+    const child = { firstName: 'Lina', lastName: 'Mustermann', geburtsdatum: '2019-05-10' }
+    const fits = 'Kita Sonnenschein, Hauptstr. 1, 79100 Freiburg'
+    const tooWide = 'Kindertagesstätte Sonnenschein e. V., Hauptstraße 12, 79100 Freiburg im Breisgau'
+
+    const created = await service.create('user-1', 2025, { ...child, childcareProvider: fits })
+    expect(created.kinder[0]!.childcareProvider).toBe(fits)
+
+    await expect(service.create('user-1', 2025, { ...child, childcareProvider: tooWide })).rejects.toMatchObject({ code: 'BETREUUNG_ANBIETER_ZU_LANG' })
+    await expect(service.update('user-1', 2025, created.kinder[0]!.id, { childcareProvider: tooWide })).rejects.toMatchObject({ code: 'BETREUUNG_ANBIETER_ZU_LANG' })
+    // The stored text is untouched by the refused update.
+    expect((await service.list('user-1', 2025)).kinder[0]!.childcareProvider).toBe(fits)
+  })
+
   it('rejects a birth date in the future of the tax year', async () => {
     const repo = new FakeChildRepository()
     const audit = new FakeAuditService()

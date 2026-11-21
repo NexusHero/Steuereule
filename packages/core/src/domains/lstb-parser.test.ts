@@ -159,6 +159,24 @@ describe('parseLstbTextDeterministically', () => {
     expect(res.fields.bruttoarbeitslohn.reason).toBe('plausibility_conflict')
   })
 
+  it('marks the sum as partial when only health and nursing care were read, the pension line missing (real-data run: about half the sum)', () => {
+    const res = evaluateLstbExtraction({
+      taxYear: 2024,
+      line3Brutto: 70000,
+      line4Lohnsteuer: 15000,
+      svBreakdown: { line23: null, line23a: null, line23b: null, line25: 5600, line26: 1200, line27: null },
+    })
+    expect(res.fields.sozialversicherung).toMatchObject({ value: 6800, status: 'pruefen', reason: 'partial_sv_lines', sourceLines: ['25', '26'] })
+    expect(res.unresolvedFields).toContain('sozialversicherung')
+    const full = evaluateLstbExtraction({
+      taxYear: 2024,
+      line3Brutto: 70000,
+      line4Lohnsteuer: 15000,
+      svBreakdown: { line23: 6500, line23a: null, line23b: null, line25: 5600, line26: 1200, line27: 900 },
+    })
+    expect(full.fields.sozialversicherung).toMatchObject({ value: 14200, status: 'ok', reason: null })
+  })
+
   it('marks single-line SV as partial_sv_lines (pruefen) and missing fields as missing', () => {
     const partial = [
       'Lohnsteuerbescheinigung für 2025',

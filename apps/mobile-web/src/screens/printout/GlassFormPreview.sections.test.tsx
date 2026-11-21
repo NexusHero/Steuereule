@@ -25,9 +25,9 @@ const commute = (km: number, allowance: number, homeOffice: number, equipment: n
   commuterAllowance: allowance,
 })
 const chFields = (gross: number, qst: number, ahv: number) => [
-  { id: 'grossWageChf', digit: '8', kind: 'erfasst', value: gross },
-  { id: 'withholdingTaxChf', digit: '12', kind: 'erfasst', value: qst },
-  { id: 'ahvContributionsChf', digit: '9', kind: 'erfasst', value: ahv },
+  { id: 'bruttolohn-total', digit: '8', kind: 'erfasst', value: gross },
+  { id: 'quellensteuer', digit: '12', kind: 'erfasst', value: qst },
+  { id: 'ahv-beitraege', digit: '9', kind: 'erfasst', value: ahv },
 ]
 const EMPTY_FIELD = { kind: 'offen' }
 

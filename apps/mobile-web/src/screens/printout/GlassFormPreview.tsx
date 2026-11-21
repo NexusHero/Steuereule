@@ -22,6 +22,7 @@ import { APP_NS } from '../../i18n/resources'
 import { useExpertMode } from '../../lib/expertModePreference'
 import { useAcroFieldSaver } from './useAcroFieldSaver'
 import { AcroFormLiveViewer, type AcroFormPdfLoader } from './AcroFormLiveViewer'
+import { anlageNWorkRows, copyOf, nGreRows as nGreRowsOf, provisionRows, type LiveRowContext } from './liveFormRows'
 
 export interface GlassFormRow {
   readonly id: string
@@ -186,8 +187,12 @@ function GlassFormPreviewBody({
     masterData: masterDataQuery.data?.status === 200 ? masterDataQuery.data.data : null,
   })
   // What the printout would print, per copy (A/B, each child, each rental object), straight from the API.
-  const liveValuesQuery = usePrintoutControllerLiveValues(year, { query: { enabled: viewMode === 'acroform' } })
+  // Both views read it: the official form shows it in place, the structured rows name the same values.
+  const liveValuesQuery = usePrintoutControllerLiveValues(year)
   const liveForms = liveValuesQuery.data?.status === 200 ? liveValuesQuery.data.data.forms : []
+  // Without printed values (a year without Vordrucke, Person B's own account) the rows fall back to the masks' figures.
+  const hasLive = liveForms.length > 0
+  const liveSettled = !liveValuesQuery.isPending
 
   const linkData = linkQuery.data?.status === 200 ? linkQuery.data.data : null
   const isJoint = linkData?.filingType === 'zusammen'
@@ -217,6 +222,9 @@ function GlassFormPreviewBody({
     const found = field ? provenanceByKey.get(`${screen}.${field}`) : undefined
     return formatProvenanceBadge(found, tr)
   }
+
+  const liveRowContext = (person: 'A' | 'B'): LiveRowContext => ({ year, person, tr: (key, options) => tr(key, options ?? {}), prov })
+  const persons: readonly ('A' | 'B')[] = isJoint ? ['A', 'B'] : ['A']
 
   const sections: GlassFormSection[] = []
 
@@ -379,11 +387,23 @@ function GlassFormPreviewBody({
       field: 'lohnsteuer',
     })
   }
-  if (commute?.inputs && commute.commuterAllowance != null && commute.commuterAllowance > 0) {
+  // The ways and the further Werbungskosten stand on the form the printout puts them on (Anlage N or
+  // N-Gre); only without printed values are they named from the commute mask, under Anlage N.
+  const commuteFromMask = liveSettled && !hasLive
+  /** Every way behind the year's allowance: after a change of job the first one alone would mislead („0 km“). */
+  const waysKm = (inputs: { oneWayKm?: number | null; secondOneWayKm?: number | null }): string =>
+    [inputs.oneWayKm, inputs.secondOneWayKm].filter((km): km is number => km != null).map((km) => `${km} km`).join(' + ')
+  if (hasLive) {
+    for (const person of persons) {
+      const copy = copyOf(liveForms, 'anlage-n', person)
+      if (copy) anlageNRows.push(...anlageNWorkRows(copy, liveRowContext(person)))
+    }
+  }
+  if (commuteFromMask && commute?.inputs && commute.commuterAllowance != null && commute.commuterAllowance > 0) {
     anlageNRows.push({
       id: 'anlageN-weg-a',
       line: 'Zeilen 31–39',
-      label: `Entfernungspauschale (${commute.inputs.oneWayKm} km · ${commute.workdays?.commuteDays ?? 0} Tage)`,
+      label: `Entfernungspauschale (${waysKm(commute.inputs)} · ${commute.workdays?.commuteDays ?? 0} Tage)`,
       value: formatEuro(commute.commuterAllowance),
       person: 'A',
       provenanceLabel: prov('commute', 'oneWayKm'),
@@ -404,7 +424,7 @@ function GlassFormPreviewBody({
       field: 'homeOfficeDays',
     })
   }
-  if (commute?.inputs?.workEquipmentEur && commute.inputs.workEquipmentEur > 0) {
+  if (commuteFromMask && commute?.inputs?.workEquipmentEur && commute.inputs.workEquipmentEur > 0) {
     anlageNRows.push({
       id: 'anlageN-arbeitsmittel-a',
       line: 'Zeilen 42–43',
@@ -416,11 +436,11 @@ function GlassFormPreviewBody({
       field: 'workEquipmentEur',
     })
   }
-  if (isJoint && commuteB?.inputs && commuteB.commuterAllowance != null && commuteB.commuterAllowance > 0) {
+  if (commuteFromMask && isJoint && commuteB?.inputs && commuteB.commuterAllowance != null && commuteB.commuterAllowance > 0) {
     anlageNRows.push({
       id: 'anlageN-weg-b',
       line: 'Zeilen 31–39 (Person B)',
-      label: `Entfernungspauschale (${partnerName}, ${commuteB.inputs.oneWayKm} km)`,
+      label: `Entfernungspauschale (${partnerName}, ${waysKm(commuteB.inputs)})`,
       value: formatEuro(commuteB.commuterAllowance),
       person: 'B',
       provenanceLabel: prov('commute', 'oneWayKm'),
@@ -429,7 +449,7 @@ function GlassFormPreviewBody({
     })
   }
   const fortbildung = amountFromAnswer(answers['fortbildung-kosten'])
-  if (fortbildung !== null && fortbildung > 0) {
+  if (!hasLive && fortbildung !== null && fortbildung > 0) {
     anlageNRows.push({
       id: 'anlageN-fortbildung',
       line: 'Zeile 46',
@@ -442,7 +462,7 @@ function GlassFormPreviewBody({
     })
   }
   const umzug = amountFromAnswer(answers['umzug-kosten'])
-  if (umzug !== null && umzug > 0) {
+  if (!hasLive && umzug !== null && umzug > 0) {
     anlageNRows.push({
       id: 'anlageN-umzug',
       line: 'Zeile 48',
@@ -480,9 +500,15 @@ function GlassFormPreviewBody({
   const nGreRows: GlassFormRow[] = []
   const ch = chQuery.data?.status === 200 ? chQuery.data.data : null
   const chB = chBQuery.data?.status === 200 ? chBQuery.data.data : null
-  const chGrossA = ch?.fields.find((f) => f.id === 'grossWageChf')
-  const chQstA = ch?.fields.find((f) => f.id === 'withholdingTaxChf')
-  const chAhvA = ch?.fields.find((f) => f.id === 'ahvContributionsChf')
+  // The printed Anlage N-Gre of each person; while the printout has none for a person (the Lohnausweis is
+  // incomplete, or there are no printed values at all), the figures recorded from the Lohnausweis stand in.
+  const nGreCopyA = copyOf(liveForms, 'anlage-n-gre', 'A')
+  const nGreCopyB = isJoint ? copyOf(liveForms, 'anlage-n-gre', 'B') : null
+  if (nGreCopyA) nGreRows.push(...nGreRowsOf(nGreCopyA, liveRowContext('A')))
+  if (nGreCopyB) nGreRows.push(...nGreRowsOf(nGreCopyB, liveRowContext('B')))
+  const chGrossA = nGreCopyA ? undefined : ch?.fields.find((f) => f.id === 'bruttolohn-total')
+  const chQstA = nGreCopyA ? undefined : ch?.fields.find((f) => f.id === 'quellensteuer')
+  const chAhvA = nGreCopyA ? undefined : ch?.fields.find((f) => f.id === 'ahv-beitraege')
 
   if (chGrossA?.kind === 'erfasst' && chGrossA.value !== undefined) {
     nGreRows.push({
@@ -520,9 +546,9 @@ function GlassFormPreviewBody({
       field: 'ahvContributionsChf',
     })
   }
-  if (isJoint && chB) {
-    const chGrossB = chB.fields.find((f) => f.id === 'grossWageChf')
-    const chQstB = chB.fields.find((f) => f.id === 'withholdingTaxChf')
+  if (isJoint && chB && !nGreCopyB) {
+    const chGrossB = chB.fields.find((f) => f.id === 'bruttolohn-total')
+    const chQstB = chB.fields.find((f) => f.id === 'quellensteuer')
     if (chGrossB?.kind === 'erfasst' && chGrossB.value !== undefined) {
       nGreRows.push({
         id: 'ngre-brutto-b',
@@ -583,8 +609,12 @@ function GlassFormPreviewBody({
       field: 'sozialversicherung',
     })
   }
+  // Self-paid insurance as the Anlage Vorsorgeaufwand prints it, for both persons; the interview's own
+  // amount only while there are no printed values.
+  const provisionCopy = copyOf(liveForms, 'anlage-vorsorgeaufwand', null)
+  if (provisionCopy) vorsorgeRows.push(...provisionRows(provisionCopy, isJoint, { year, tr: (key, options) => tr(key, options ?? {}), prov }))
   const kvPv = amountFromAnswer(answers['kv-pv-betrag'])
-  if (kvPv !== null && kvPv > 0) {
+  if (!hasLive && kvPv !== null && kvPv > 0) {
     vorsorgeRows.push({
       id: 'vorsorge-kv-a',
       line: 'Vorsorge Z. 16–28',

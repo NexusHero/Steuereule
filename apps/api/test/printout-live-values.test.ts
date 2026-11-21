@@ -85,6 +85,19 @@ describe('PrintoutService.liveValues (live form view)', () => {
     expect(n?.instances[0]?.values['anlN.kz110']).toBe('42000')
   })
 
+  it('names the Zeile of each value on the form of that year, so the structured preview needs no table of its own', async () => {
+    const { service } = await setup()
+
+    const { forms } = await service.liveValues('u1', 2025)
+
+    const est = forms.find((f) => f.formular === 'est-1-a')?.instances[0]
+    expect(est?.lines['est1a.name']).toBe('9')
+    const n = forms.find((f) => f.formular === 'anlage-n')?.instances[0]
+    expect(n?.lines['anlN.kz110']).toBe('5')
+    // A cross in the page head has no Zeile; only fields of the copy are named.
+    expect(Object.keys(n?.lines ?? {}).every((id) => id in (n?.values ?? {}))).toBe(true)
+  })
+
   it('tags each child and rental instance with the id of its record, in the order of the forms', async () => {
     const { service, mia, ben } = await setup()
 

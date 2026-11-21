@@ -190,6 +190,7 @@ export const MostFavourableCheckDtoReason = {
   'krypto-gegated': 'krypto-gegated',
   'kap-depot-nicht-beantwortet': 'kap-depot-nicht-beantwortet',
   'keine-kapitalertraege': 'keine-kapitalertraege',
+  'uebriges-einkommen-unbekannt': 'uebriges-einkommen-unbekannt',
 } as const;
 
 export type UncertaintyDtoKind = typeof UncertaintyDtoKind[keyof typeof UncertaintyDtoKind];

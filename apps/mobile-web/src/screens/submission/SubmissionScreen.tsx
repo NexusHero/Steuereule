@@ -44,7 +44,7 @@ export function SubmissionScreen({
   const isMarried =
     masterDataQuery.data?.status === 200 && masterDataQuery.data.data.familienstand === 'verheiratet'
   const linkQuery = useLinkControllerGet(taxYear, { query: { enabled: isMarried } })
-  const [comparisonDone, setComparisonDone] = useState(false)
+  const [comparisonOpen, setComparisonOpen] = useState(false)
   const hasBlockingConflict = plausibility.status === 'ready' && plausibility.conflicts.length > 0
   useBlockingConflictHaptic(taxYear, hasBlockingConflict)
 
@@ -70,7 +70,8 @@ export function SubmissionScreen({
   const isJointFiling =
     isMarried && linkQuery.data?.status === 200 && linkQuery.data.data.filingType === 'zusammen'
   const isRunningYear = isRunningTaxYear(taxYear)
-  const canOpenPrintout = !isRunningYear && step1Passed && (!isJointFiling || comparisonDone)
+  // The filing type is recorded with the partner (Kopplung): the comparison is an extra, never a gate.
+  const canOpenPrintout = !isRunningYear && step1Passed
 
   const openFindingTile = (target: TileId) => {
     const revisit = tileRevisitFlag(tileById(target), answers)
@@ -131,17 +132,22 @@ export function SubmissionScreen({
         ) : null}
       </Card>
 
-      {step1Passed && isJointFiling && !comparisonDone ? (
-        <Card variant="default" style={styles.sectionCard} testID="abgabe-vergleich-abschnitt">
-          <FilingTypeComparisonScreen embedded taxYear={taxYear} onDone={() => setComparisonDone(true)} />
-          <Button
-            variant="leise"
-            onPress={() => setComparisonDone(true)}
-            style={styles.skipBtn}
-            testID="abgabe-vergleich-ueberspringen"
-          >
-            {tr('abgabe.vergleichUeberspringen')}
-          </Button>
+      {step1Passed && isJointFiling ? (
+        <Card variant="default" style={styles.sectionCard}>
+          <Text style={styles.sectionTitle}>{tr('abgabe.schrittVergleich')}</Text>
+          <Text style={styles.filingTypeText} testID="abgabe-veranlagungsart">{tr('abgabe.zusammenErfasst')}</Text>
+          {comparisonOpen ? (
+            <View testID="abgabe-vergleich-abschnitt">
+              <FilingTypeComparisonScreen embedded marriedKnown taxYear={taxYear} />
+              <Button variant="leise" onPress={() => setComparisonOpen(false)} style={styles.skipBtn} testID="abgabe-vergleich-schliessen">
+                {tr('abgabe.vergleichSchliessen')}
+              </Button>
+            </View>
+          ) : (
+            <Button variant="ghost" onPress={() => setComparisonOpen(true)} style={styles.skipBtn} testID="abgabe-vergleich-oeffnen">
+              {tr('abgabe.vergleichOeffnen')}
+            </Button>
+          )}
         </Card>
       ) : null}
 
@@ -230,6 +236,7 @@ function makeStyles(t: UiTheme) {
     marginBottom: t.space.s2,
   }
   const okText: TextStyle = { ...t.type.body, color: t.color.ok }
+  const filingTypeText: TextStyle = { ...t.type.body, color: t.color.tinte }
   const findingBlock: ViewStyle = { marginTop: t.space.s2, gap: t.space.s2 }
   const findingHeading: TextStyle = {
     ...t.type.label,
@@ -262,6 +269,7 @@ function makeStyles(t: UiTheme) {
     sectionCard,
     sectionTitle,
     okText,
+    filingTypeText,
     findingBlock,
     findingHeading,
     findingRow,

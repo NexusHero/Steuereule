@@ -18,10 +18,12 @@ export interface CockpitPartnerSectionProps {
   readonly partnerJob?: string | undefined
   /** The basis says B also worked in Germany in the year: B's German certificate is asked too. */
   readonly partnerGermanJob?: boolean
+  /** Areas that hold something the estimate still lacks: they do not read „Erledigt“. */
+  readonly openAreas?: ReadonlySet<PartnerAreaParam>
   readonly onOpenPartner: (area: PartnerAreaParam, name: string) => void
 }
 
-export function CockpitPartnerSection({ year, partnerName, enabled, crossBorder = false, partnerJob, partnerGermanJob = false, onOpenPartner }: CockpitPartnerSectionProps) {
+export function CockpitPartnerSection({ year, partnerName, enabled, crossBorder = false, partnerJob, partnerGermanJob = false, openAreas, onOpenPartner }: CockpitPartnerSectionProps) {
   const employed = partnerJob === undefined || partnerJob === 'Angestellt'
   const retired = partnerJob === 'Rente'
   const onlySwiss = crossBorder && partnerJob !== undefined
@@ -88,7 +90,7 @@ export function CockpitPartnerSection({ year, partnerName, enabled, crossBorder 
       </Text>
       <View style={styles.grid}>
         {items.map((item) => {
-          const isDone = item.status === 'erledigt'
+          const isDone = item.status === 'erledigt' && !openAreas?.has(item.area)
           return (
             <Pressable
               key={item.area}

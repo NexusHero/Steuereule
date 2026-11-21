@@ -735,6 +735,18 @@ describe('AdvisorService (In-App Steuerberater Agent "Deine Eule")', () => {
     expect(plan?.questions.find((q) => q.key === 'A|kind:Kind 1.taxId')).toMatchObject({ owlMayDraft: false, mask: 'Kinder' })
   })
 
+  it('asks once whether a paid-out sickness benefit sits in a recorded Swiss gross wage (real-data run)', async () => {
+    const printout = { check: async () => ({ missing: ['iban', 'finanzamt'] }) }
+    const withPrintout = new AdvisorService(advisorRepo, owlModeService, confirmationService, new AuditService(auditRepo), interviewRepo, lstbRepo, chRepo, commuteRepo, childRepo, new FakeRentalRepository(), new FakeCapitalRepository(), profileRepo, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, printout as never)
+    await confirmationService.writeConfirmedByAdvisor(USER, YEAR, 'chLohnausweis.bruttolohn-total', '98000')
+    const keys = (await withPrintout.buildCaseDigest(USER, YEAR)).furtherFacts?.printoutPlan?.questions.map((q) => q.key) ?? []
+    // A recorded Swiss wage statement asks once whether a paid-out sickness benefit sits in the gross wage.
+    expect(keys).toContain('A|chLohnausweis.steuerfreiesKrankentaggeldChf')
+    await confirmationService.writeConfirmedByAdvisor(USER, YEAR, 'chLohnausweis.steuerfreiesKrankentaggeldChf', '0')
+    const after = (await withPrintout.buildCaseDigest(USER, YEAR)).furtherFacts?.printoutPlan?.questions.map((q) => q.key) ?? []
+    expect(after).not.toContain('A|chLohnausweis.steuerfreiesKrankentaggeldChf')
+  })
+
   it('asks what still blocks the printout when the user asks „Fehlt noch etwas?“, without a model too (ADR-0091, Nachtrag)', async () => {
     const printout = { check: async () => ({ missing: ['kinder'] }) }
     const withPrintout = new AdvisorService(advisorRepo, owlModeService, confirmationService, new AuditService(auditRepo), interviewRepo, lstbRepo, chRepo, commuteRepo, childRepo, new FakeRentalRepository(), new FakeCapitalRepository(), profileRepo, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, printout as never)

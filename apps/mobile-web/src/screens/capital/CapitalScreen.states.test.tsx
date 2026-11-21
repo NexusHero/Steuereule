@@ -86,7 +86,7 @@ describe('CapitalScreen states', () => {
     renderCapital()
     await screen.findByText('Kapital & Depot')
 
-    fireEvent.click(screen.getByText('unlesbar'))
+    fireEvent.click(screen.getByText('Kann ich nicht lesen'))
 
     await waitFor(() => expect(bodies[0]).toEqual({ kind: 'unklar' }))
   })
@@ -135,6 +135,7 @@ describe('the Günstigerprüfung verdicts', () => {
     ['keine-abgeltung-einbehalten', 'Keine Abgeltungsteuer einbehalten — die Günstigerprüfung stellt sich hier nicht.'],
     ['krypto-gegated', 'Krypto bleibt 2.0 — keine Günstigerprüfung für Krypto.'],
     ['keine-kapitalertraege', 'Trag zuerst deine Kapitalerträge ein — dann rechnen wir den Vergleich.'],
+    ['uebriges-einkommen-unbekannt', 'Ob der persönliche Steuersatz günstiger ist, hängt vom gesamten Einkommen ab (Schweizer Lohn, Rente, bei Ehepaaren auch das des Partners). Das rechnet die Schätzung im Cockpit mit; eine eigene Zahl zeigen wir hier deshalb nicht.'],
     ['kap-depot-nicht-beantwortet', 'Erst die Depot-Frage im Interview beantworten — dann wissen wir, ob die Günstigerprüfung anwendbar ist.'],
   ])('names why it does not apply: %s', async (reason, expected) => {
     mockCapital()

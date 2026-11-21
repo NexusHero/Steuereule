@@ -172,5 +172,32 @@ describe('the health insurer’s statement', () => {
     const answers = Object.fromEntries((await kit.interviewRepo.findAllForUserAndYear(USER, YEAR)).map((a) => [a.questionId, a.value]))
     expect(answers).toMatchObject({ 'gesundheit-gate': 'Ja', 'gesundheit-betrag': '2015' })
   })
-})
 
+  describe('a statement the app could not match by name (real-data run: „Nichts erkannt“ beside the amount it had read)', () => {
+    const forHolder = (strategy: ChHealthStatementParseStrategy, rawText: string, holder: string) =>
+      strategy.parse(USER, { taxYear: YEAR, fileName: 'kk.pdf', rawText, textSource: 'pdf_text', holder } as never) as unknown as Promise<{ parsed: { summary: string }; stagedAction: { field: string; newValue: string; person?: string } | null }>
+
+    it('takes a one-person statement for the person the user assigned it to', async () => {
+      const { kit, strategy } = await setUp()
+      // Person B is on record with the first name only: the full name on the statement fits nobody.
+      await kit.linkService.updatePersonB(USER, YEAR, { firstName: 'Anna', lastName: '' })
+      const res = await forHolder(strategy, perPerson('Anna-Lena Beispiel', "2'115.00"), 'B')
+      expect(res.stagedAction).toMatchObject({ field: 'krankenkasseChf', newValue: '2115', person: 'B' })
+    })
+
+    it('matches a member known by the first name only when nobody else fits', async () => {
+      const { kit, strategy } = await setUp()
+      await kit.linkService.updatePersonB(USER, YEAR, { firstName: 'Anna', lastName: '' })
+      await parse(strategy, family)
+      const all = (await kit.advisorRepo.listForUserAndYear(USER, YEAR)).flatMap((m) => m.meta?.actions ?? [])
+      expect(all.filter((d) => d.field === 'krankenkasseChf').map((d) => [d.newValue, d.person ?? 'A'])).toEqual([['1400', 'A'], ['1400', 'B']])
+    })
+
+    it('says why nothing was prepared instead of staying silent', async () => {
+      const { strategy } = await setUp()
+      const res = await forHolder(strategy, family.replaceAll('ANNA MUSTER', 'ERIKA FREMD'), 'B')
+      expect(res.stagedAction).toBeNull()
+      expect(res.parsed.summary).toContain('niemandem im Haushalt zuordnen')
+    })
+  })
+})

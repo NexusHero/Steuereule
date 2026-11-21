@@ -58,6 +58,14 @@ describe('eulen-modus', () => {
     expect(generateOwlCards({ taxYear: 2025, childrenPerInterview: true, hasChildrenRecorded: true })).toEqual([])
   })
 
+  it('names the childcare rule of the tax year, not the one of 2025 (real-data run)', () => {
+    const reason = (taxYear: number) => generateOwlCards({ taxYear, childrenPerInterview: true, hasChildrenRecorded: false })[0]!.reason
+    expect(reason(2024)).toContain('zwei Dritteln')
+    expect(reason(2024)).toContain('4.000 €')
+    expect(reason(2024)).not.toContain('4.800')
+    expect(reason(2025)).toContain('4.800 €')
+  })
+
   it('triggers archiv_einspruch for past year in appeal window (ADR-042)', () => {
     const facts: OwlInputFacts = {
       taxYear: 2025,
