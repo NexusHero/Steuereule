@@ -3,7 +3,7 @@ import { describeFieldForPrompt, fieldsOfScreen, PERSON_B_SCREENS, provenanceKey
 import { DomainError } from '../../common/domain-error.js'
 import { isAiWritable } from '../../confirmation/ai-write-policy.js'
 import { checkStageValue, OWN_TOOL_SCREENS, validateStageTarget } from '../../ki/advisor-safety.js'
-import { assertScope, json, refused, dataUserFor, type McpDeps, type McpSession } from '../mcp-session.js'
+import { isOwnProvenance, provenanceOf, assertScope, json, refused, dataUserFor, type McpDeps, type McpSession } from '../mcp-session.js'
 
 /**
  * The catalogue's hints are written for the in-app advisor and name its tools; the user's assistant has
@@ -45,7 +45,7 @@ export function registerEntryTools(session: McpSession, deps: McpDeps): void {
     const whose = await dataUserFor(deps.link, userId, taxYear, screen, field, person)
     if (!whose.ok) return whose
     const key = provenanceKey(screen, field, instance)
-    const provenance: Provenance = receiptId !== undefined ? { kind: 'assistent', name: assistant.clientName, receiptId } : { kind: 'assistent', name: assistant.clientName }
+    const provenance: Provenance = provenanceOf(assistant, receiptId)
     try {
       const result = await deps.confirmation.write(whose.dataUserId, taxYear, key, cleanValue, provenance)
       await deps.audit.append({ userId, action: 'WRITE', resource: 'maske_eintragen' })
@@ -145,7 +145,7 @@ export function registerEntryTools(session: McpSession, deps: McpDeps): void {
       if (!whose.ok) return refused(whose.error)
       const key = provenanceKey(screen, field.trim(), instance)
       try {
-        const ergebnis = await deps.confirmation.withdrawAssistantEntry(whose.dataUserId, taxYear, key, assistant.clientName)
+        const ergebnis = await deps.confirmation.withdrawAssistantEntry(whose.dataUserId, taxYear, key, (p) => isOwnProvenance(p, assistant))
         await deps.audit.append({ userId, action: 'WRITE', resource: 'eintrag_zuruecknehmen' })
         return json({ ok: true, schluessel: key, ergebnis })
       } catch (error) {

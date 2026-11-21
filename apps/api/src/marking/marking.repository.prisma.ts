@@ -8,9 +8,10 @@ interface ProvenanceColumns {
   name: string | null
   receiptId: string | null
   lastYear: number | null
+  clientId: string | null
 }
 
-function provenanceFromColumns({ kind, name, receiptId, lastYear }: ProvenanceColumns): Provenance {
+function provenanceFromColumns({ kind, name, receiptId, lastYear, clientId }: ProvenanceColumns): Provenance {
   switch (kind) {
     case 'nutzer':
       return { kind: 'nutzer' }
@@ -19,7 +20,7 @@ function provenanceFromColumns({ kind, name, receiptId, lastYear }: ProvenanceCo
       return { kind: 'uebernahme', lastYear }
     case 'assistent':
       if (name === null) break
-      return receiptId === null ? { kind: 'assistent', name } : { kind: 'assistent', name, receiptId }
+      return { kind: 'assistent', name, ...(receiptId === null ? {} : { receiptId }), ...(clientId === null ? {} : { clientId }) }
     case 'beleg':
       if (receiptId === null) break
       return { kind: 'beleg', receiptId }
@@ -33,6 +34,7 @@ function provenanceToColumns(h: Provenance): ProvenanceColumns {
     name: h.kind === 'assistent' ? h.name : null,
     receiptId: h.kind === 'beleg' || (h.kind === 'assistent' && h.receiptId !== undefined) ? (h.receiptId ?? null) : null,
     lastYear: h.kind === 'uebernahme' ? h.lastYear : null,
+    clientId: h.kind === 'assistent' ? (h.clientId ?? null) : null,
   }
 }
 
@@ -44,11 +46,13 @@ interface Row {
   provenanceName: string | null
   provenanceReceiptId: string | null
   lastYear: number | null
+  provenanceClientId: string | null
   confirmed: boolean
   proposalProvenanceKind: string | null
   proposalProvenanceName: string | null
   proposalReceiptId: string | null
   proposalLastYear: number | null
+  proposalClientId: string | null
   proposalValue: string | null
 }
 
@@ -57,14 +61,14 @@ function toRecord(row: Row): ProvenanceRecord {
     userId: row.userId,
     taxYear: row.taxYear,
     key: row.itemKey,
-    provenance: provenanceFromColumns({ kind: row.provenanceKind, name: row.provenanceName, receiptId: row.provenanceReceiptId, lastYear: row.lastYear }),
+    provenance: provenanceFromColumns({ kind: row.provenanceKind, name: row.provenanceName, receiptId: row.provenanceReceiptId, lastYear: row.lastYear, clientId: row.provenanceClientId }),
     confirmed: row.confirmed,
     proposal:
       row.proposalProvenanceKind === null
         ? null
         : {
             value: row.proposalValue,
-            provenance: provenanceFromColumns({ kind: row.proposalProvenanceKind, name: row.proposalProvenanceName, receiptId: row.proposalReceiptId, lastYear: row.proposalLastYear }),
+            provenance: provenanceFromColumns({ kind: row.proposalProvenanceKind, name: row.proposalProvenanceName, receiptId: row.proposalReceiptId, lastYear: row.proposalLastYear, clientId: row.proposalClientId }),
           },
   }
 }
@@ -78,11 +82,13 @@ function toData(k: Omit<Marking, 'value'>) {
     provenanceName: h.name,
     provenanceReceiptId: h.receiptId,
     lastYear: h.lastYear,
+    provenanceClientId: h.clientId,
     confirmed: k.confirmed,
     proposalProvenanceKind: v?.kind ?? null,
     proposalProvenanceName: v?.name ?? null,
     proposalReceiptId: v?.receiptId ?? null,
     proposalLastYear: v?.lastYear ?? null,
+    proposalClientId: v?.clientId ?? null,
     proposalValue: k.proposal?.value ?? null,
   }
 }

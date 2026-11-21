@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { provenanceKey } from '@steuereule/core'
-import { assertScope, json, refused, type McpDeps, type McpSession } from '../mcp-session.js'
+import { assertScope, json, provenanceOf, refused, type McpDeps, type McpSession } from '../mcp-session.js'
 import { ownRecord } from '../own-record.js'
 
 const MAX_OBJECTS = 10
@@ -37,7 +37,7 @@ export function registerRentalTools(session: McpSession, deps: McpDeps): void {
       const created = await rentals.create(userId, taxYear)
       await deps.audit.append({ userId, action: 'WRITE', resource: 'vermietung_anlegen' })
       // The marking makes the object the assistant's own entry: unconfirmed, and so removable by it.
-      await deps.confirmation.markUnconfirmed(userId, taxYear, [provenanceKey('vermietung', ANCHOR, created.id)], { kind: 'assistent', name: assistant.clientName })
+      await deps.confirmation.markUnconfirmed(userId, taxYear, [provenanceKey('vermietung', ANCHOR, created.id)], provenanceOf(assistant))
       return json({ ok: true, instance: created.id, nummer: existing.length + 1, hinweis: 'Angaben mit maske_eintragen, Maske "vermietung", instance wie angegeben. Die Felder nennt maske_felder.' })
     },
   )

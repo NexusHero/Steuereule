@@ -1,3 +1,4 @@
+import type { Provenance } from '@steuereule/core'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { checkDraftPerson, PERSON_B_HANDLE, type AdvisorHousehold, type Screen } from '@steuereule/core'
 import type { AssistantTaskService } from '../assistant-task/assistant-task.service.js'
@@ -50,6 +51,20 @@ export interface McpDeps {
   readonly rentals?: Pick<RentalRepository, 'listForUserAndYear' | 'create' | 'delete'> | undefined
   /** What only the user can do in the app, left as a task (#547). */
   readonly tasks?: Pick<AssistantTaskService, 'create' | 'listForAssistant'> | undefined
+}
+
+/** The Herkunft an entry of this assistant carries. */
+export function provenanceOf(assistant: AssistantSessionInfo, receiptId?: string): Extract<Provenance, { kind: 'assistent' }> {
+  return { kind: 'assistent', name: assistant.clientName, clientId: assistant.clientId, ...(receiptId === undefined ? {} : { receiptId }) }
+}
+
+/**
+ * Whether an entry is this assistant's own: by the client id of the connection, never by its name alone,
+ * which every client chooses for itself. Entries from before the id was kept match by name.
+ */
+export function isOwnProvenance(provenance: Provenance | undefined, assistant: Pick<AssistantSessionInfo, 'clientId' | 'clientName'>): boolean {
+  if (provenance?.kind !== 'assistent') return false
+  return provenance.clientId === undefined ? provenance.name === assistant.clientName : provenance.clientId === assistant.clientId
 }
 
 export function assertScope(assistant: AssistantSessionInfo, requiredScope: string): void {

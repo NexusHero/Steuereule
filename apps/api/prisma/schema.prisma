@@ -900,6 +900,8 @@ model Marking {
   provenanceName         String?  @map("herkunftName")
   provenanceReceiptId    String?  @map("herkunftBelegId")
   lastYear               Int?     @map("vorjahr")
+  /// The OAuth client that wrote the value (ADR-0052 amendment 4); null for rows from before, and for non-assistants.
+  provenanceClientId     String?  @map("herkunftClientId")
   /// false = UNBESTÄTIGT; true = the user confirmed the Anlage or chose the value.
   confirmed              Boolean  @default(false) @map("bestaetigt")
   /// Null when there is no open proposal.
@@ -907,6 +909,7 @@ model Marking {
   proposalProvenanceName String?  @map("vorschlagHerkunftName")
   proposalReceiptId      String?  @map("vorschlagBelegId")
   proposalLastYear       Int?     @map("vorschlagVorjahr")
+  proposalClientId       String?  @map("vorschlagClientId")
   proposalValue          String?  @map("vorschlagWert") /// @encrypted?mode=strict
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
@@ -1480,8 +1483,10 @@ model AssistantTask {
   /// One of ASSISTANT_TASK_KINDS (assistant-task.repository.ts).
   kind      String    @map("art")
   text      String    @map("inhalt") /// @encrypted?mode=strict
-  /// The client name of the assistant that left the task.
+  /// The client name of the assistant that left the task, as the user reads it.
   assistant String    @map("assistent")
+  /// The OAuth client that left it: what "its own tasks" goes by (ADR-0052 amendment 4).
+  clientId  String    @map("clientId")
   /// 'offen' | 'erledigt' | 'verworfen'
   status    String    @default("offen")
   createdAt DateTime  @default(now())

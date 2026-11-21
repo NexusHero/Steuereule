@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { provenanceKey } from '@steuereule/core'
-import { assertScope, json, refused, type McpDeps, type McpSession } from '../mcp-session.js'
+import { assertScope, json, provenanceOf, refused, type McpDeps, type McpSession } from '../mcp-session.js'
 import { ownRecord } from '../own-record.js'
 import { ageAtYearEnd } from '../read-view.js'
 
@@ -44,7 +44,7 @@ export function registerChildTools(session: McpSession, deps: McpDeps): void {
       await deps.audit.append({ userId, action: 'WRITE', resource: 'kind_anlegen' })
       const created = after.find((k) => !before.has(k.id))
       // Name and birth date are the assistant's entry like any other: unconfirmed, and so removable by it.
-      if (created) await deps.confirmation.markUnconfirmed(userId, taxYear, ['firstName', 'lastName', 'geburtsdatum'].map((field) => provenanceKey('kind', field, created.id)), { kind: 'assistent', name: assistant.clientName })
+      if (created) await deps.confirmation.markUnconfirmed(userId, taxYear, ['firstName', 'lastName', 'geburtsdatum'].map((field) => provenanceKey('kind', field, created.id)), provenanceOf(assistant))
       return json({ ok: true, instance: created?.id ?? null, nummer: created?.sequenceNumber ?? null, hinweis: 'Weitere Angaben mit maske_eintragen, Maske "kind", instance wie angegeben.' })
     },
   )

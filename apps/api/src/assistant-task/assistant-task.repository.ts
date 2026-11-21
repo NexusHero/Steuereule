@@ -14,6 +14,8 @@ export interface AssistantTaskRecord {
   text: string
   /** The client name of the assistant that left the task. */
   assistant: string
+  /** The OAuth client that left it. */
+  clientId: string
   status: AssistantTaskStatus
   createdAt: Date
   decidedAt: Date | null
@@ -23,6 +25,7 @@ export interface NewAssistantTask {
   kind: AssistantTaskKind
   text: string
   assistant: string
+  clientId: string
 }
 
 export const ASSISTANT_TASK_REPOSITORY = Symbol('ASSISTANT_TASK_REPOSITORY')

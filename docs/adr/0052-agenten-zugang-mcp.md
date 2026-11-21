@@ -253,3 +253,31 @@ Dazu, aus dem Echtdatenlauf, weitere Werkzeuge für die Arbeit des Assistenten (
 Nutzer, Komfort (Veranlagungsvergleich aus Falldaten, Mehrfeld-Szenario, Wechselkurse, Vordruck-Zeilen,
 Feld finden, Vorjahr und Fristen), Vermietungsobjekte und Buchungen. Unverändert ausgeschlossen:
 Belege serverseitig auslesen (§11), Einwilligungen, Bezahlen, Kontoaktionen.
+
+## Amendment 4 (2026-11-21) — Der Zugang des Assistenten endet am MCP-Endpunkt
+
+Befund aus dem Sicherheitsreview nach den Echtdatenläufen: Ein Assistenten-Token wurde seit 17.2 von
+`UserContextGuard` auf jeder Route angenommen und von `RequiresAccount` wie eine Nutzer-Sitzung
+behandelt; gesperrt war nur, wo `@ForbidAssistant()` stand (5 von 39 Controllern). Über die normale
+API ließen sich damit die Lesesicht (Amendment 3), die Scopes und „nur der Nutzer bestätigt“ umgehen.
+
+1. **Erlaubnis statt Verbotsliste.** Ein Bearer-Token gilt nur an Controllern mit
+   `@AcceptsAssistantToken()`; das ist allein der MCP-Controller. Überall sonst antwortet der Guard mit
+   403, bevor er das Token nachschlägt. Ein Test hält fest, dass die Markierung nur dort steht.
+   `@ForbidAssistant()` bleibt als zweite Sperre stehen.
+2. **Registrierung nur mit Anmeldung.** `allowUnauthenticatedClientRegistration` ist aus: Einen Client
+   registriert nur ein angemeldeter Nutzer. Folge: Ein MCP-Client, der sich vor der Anmeldung selbst
+   registriert (RFC 7591, so verbinden sich die üblichen Assistenten), kommt so nicht mehr herein; dafür
+   braucht es einen Weg in der App, einen Client anzulegen. Offen, eigenes Ticket.
+3. **Der Assistent ist seine Client-ID.** Herkunft (`Kennzeichnung.herkunftClientId`,
+   `vorschlagClientId`) und Aufgaben (`AssistentAufgabe.clientId`) merken sich die Client-ID. „Eigener
+   Eintrag“ (zurücknehmen, Kind oder Objekt entfernen, eigene Aufgaben lesen, „du“ in der Lesesicht)
+   geht nach ihr; der Name, den sich ein Client selbst gibt, ist nur Anzeige. Einträge von vor dieser
+   Änderung tragen keine ID und gelten weiter nach dem Namen.
+4. **Aufgaben an den Nutzer** (`aufgabe_fuer_nutzer`): feste Arten, höchstens 300 Zeichen, keine
+   Kennungen (IBAN, Steuer-ID), keine Links oder Webadressen, höchstens 20 offene je Jahr; in der App
+   nur als reiner Text mit dem Namen des Assistenten.
+
+Bewusst nicht in diesem Schnitt: Obergrenze für Werkzeugaufrufe und gleichzeitige Sitzungen; Aufgaben
+nur aus Textbausteinen. Buchungsentwürfe über MCP bleiben offen (eine Buchung ist kein Feldwert und
+braucht einen eigenen Entwurfsweg).

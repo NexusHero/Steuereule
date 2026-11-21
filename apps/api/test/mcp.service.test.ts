@@ -463,6 +463,18 @@ describe('McpService (ADR-0052 §3 / §5 / §8 / §12)', () => {
       return client
     }
 
+    it('a second client that only shares the name is another assistant: it neither takes the entry back nor reads it as its own', async () => {
+      const first = await connectClient()
+      await first.callTool({ name: 'maske_eintragen', arguments: { taxYear: YEAR, screen: 'lstb', field: 'lohnsteuer', value: '700' } })
+      expect((await confirmationService.list(USER, YEAR))[0]?.provenance).toMatchObject({ kind: 'assistent', name: 'Claude', clientId: 'client-claude' })
+      const twin = await connectClient({ ...ALL_SCOPES_ASSISTANT, clientId: 'client-twin' })
+      const refused = await twin.callTool({ name: 'eintrag_zuruecknehmen', arguments: { taxYear: YEAR, screen: 'lstb', field: 'lohnsteuer' } })
+      expect(getText(refused)).toContain('NOT_OWN_ENTRY')
+      const read = JSON.parse(getText(await twin.callTool({ name: 'maske_lesen', arguments: { taxYear: YEAR, screen: 'lstb', nurGefuellte: true } })))
+      expect(read.felder.find((f: { feld: string }) => f.feld === 'lohnsteuer').herkunft).toBe('anderer-assistent')
+      expect((await lstbRepo.findForUserAndYear(USER, YEAR))?.lohnsteuer).toBe('700')
+    })
+
     it('eintrag_zuruecknehmen clears its own unconfirmed value and refuses one the user entered', async () => {
       const client = await connectClient()
       await client.callTool({ name: 'maske_eintragen', arguments: { taxYear: YEAR, screen: 'lstb', field: 'lohnsteuer', value: '700' } })
@@ -585,13 +597,13 @@ describe('McpService (ADR-0052 §3 / §5 / §8 / §12)', () => {
       expect(getText(withIban)).toContain('TEXT_HAS_IDENTIFIER')
       expect(getText(await client.callTool({ name: 'aufgabe_fuer_nutzer', arguments: { taxYear: YEAR, art: 'sonstiges', text: '  ' } }))).toContain('TEXT_INVALID')
       expect(await tasks.listOpen(USER, YEAR)).toEqual([])
-      for (let i = 0; i < 20; i += 1) await tasks.create(USER, YEAR, { kind: 'sonstiges', text: `Aufgabe ${i}`, assistant: 'Claude' })
+      for (let i = 0; i < 20; i += 1) await tasks.create(USER, YEAR, { kind: 'sonstiges', text: `Aufgabe ${i}`, assistant: 'Claude', clientId: 'client-claude' })
       expect(getText(await client.callTool({ name: 'aufgabe_fuer_nutzer', arguments: { taxYear: YEAR, art: 'sonstiges', text: 'Eine mehr' } }))).toContain('TOO_MANY_TASKS')
     })
 
     it('an assistant lists only the tasks it left itself', async () => {
-      await tasks.create(USER, YEAR, { kind: 'sonstiges', text: 'Von einem anderen Assistenten', assistant: 'Another' })
-      await tasks.create('user-2', YEAR, { kind: 'sonstiges', text: 'Eines anderen Nutzers', assistant: 'Claude' })
+      await tasks.create(USER, YEAR, { kind: 'sonstiges', text: 'Von einem anderen Assistenten', assistant: 'Another', clientId: 'client-other' })
+      await tasks.create('user-2', YEAR, { kind: 'sonstiges', text: 'Eines anderen Nutzers', assistant: 'Claude', clientId: 'client-claude' })
       const client = await clientWithTasks()
       expect(JSON.parse(getText(await client.callTool({ name: 'aufgaben_auflisten', arguments: { taxYear: YEAR } }))).aufgaben).toEqual([])
     })
@@ -760,7 +772,7 @@ describe('McpService (ADR-0052 §3 / §5 / §8 / §12)', () => {
   it('maske_lesen needs the instance for a child and names the kind of another assistant’s entry, not its name', async () => {
     const client = await connectClient()
     expect(getText(await client.callTool({ name: 'maske_lesen', arguments: { taxYear: YEAR, screen: 'kind' } }))).toContain('RECORD_REQUIRED')
-    const other = await connectClient({ ...ALL_SCOPES_ASSISTANT, clientName: 'Gemini' })
+    const other = await connectClient({ ...ALL_SCOPES_ASSISTANT, clientId: 'client-gemini', clientName: 'Gemini' })
     await other.callTool({ name: 'maske_eintragen', arguments: { taxYear: YEAR, screen: 'lstb', field: 'lohnsteuer', value: '700' } })
     const text = getText(await client.callTool({ name: 'maske_lesen', arguments: { taxYear: YEAR, screen: 'lstb', nurGefuellte: true } }))
     expect(JSON.parse(text).felder[0]).toMatchObject({ herkunft: 'anderer-assistent' })
@@ -800,7 +812,7 @@ describe('McpService (ADR-0052 §3 / §5 / §8 / §12)', () => {
     const markings = await confirmationService.list(USER, YEAR)
     const marking = markings.find((m) => m.key === 'lstb.bruttoarbeitslohn')
     expect(marking?.confirmed).toBe(false)
-    expect(marking?.provenance).toEqual({ kind: 'assistent', name: 'Claude' })
+    expect(marking?.provenance).toEqual({ kind: 'assistent', name: 'Claude', clientId: 'client-claude' })
   })
 
   it('maske_eintragen stores the value as the catalogue tidied it, under the trimmed field name', async () => {
@@ -833,6 +845,7 @@ describe('McpService (ADR-0052 §3 / §5 / §8 / §12)', () => {
     const overview = await confirmationService.overview(USER, YEAR)
     const prop = overview.annexes[0]?.values[0]?.proposal
     expect(prop?.value).toBe('65000')
+    // What the user reads carries the name only; the client id stays inside.
     expect(prop?.provenance).toEqual({ kind: 'assistent', name: 'Claude' })
   })
 

@@ -1,13 +1,13 @@
 import { z } from 'zod'
 import { decomposeProvenanceKey, fieldsOfScreen, PERSON_B_INTERVIEW_FIELDS, PERSON_B_SCREENS, provenanceKey, SCREENS, type FieldSpec, type Provenance, type Screen } from '@steuereule/core'
 import { OWN_TOOL_SCREENS } from '../../ki/advisor-safety.js'
-import { assertScope, json, refused, type AssistantSessionInfo, type McpDeps, type McpSession } from '../mcp-session.js'
+import { assertScope, isOwnProvenance, json, refused, type AssistantSessionInfo, type McpDeps, type McpSession } from '../mcp-session.js'
 import { ageAtYearEnd, churchTaxLiableFrom, readView, stateOfPostalCode } from '../read-view.js'
 
 /** Where a value came from, as a kind; another assistant's name stays out (ADR-0052 amendment 3). */
 function sourceOf(provenance: Provenance | undefined, assistant: AssistantSessionInfo): string {
   if (provenance === undefined || provenance.kind === 'nutzer') return 'nutzer'
-  if (provenance.kind === 'assistent') return provenance.name === assistant.clientName ? 'du' : 'anderer-assistent'
+  if (provenance.kind === 'assistent') return isOwnProvenance(provenance, assistant) ? 'du' : 'anderer-assistent'
   return provenance.kind === 'uebernahme' ? 'jahresuebernahme' : 'beleg'
 }
 

@@ -1,4 +1,5 @@
-import { UnauthorizedException, type ExecutionContext } from '@nestjs/common'
+import { ForbiddenException, UnauthorizedException, type ExecutionContext } from '@nestjs/common'
+import { AcceptsAssistantToken } from '../src/auth/accepts-assistant-token.js'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createHash, generateKeyPairSync, sign as signWith } from 'node:crypto'
 import { signGuestSession } from '../src/auth/guest-session.js'
@@ -16,11 +17,20 @@ import type { PrismaService } from '../src/prisma/prisma.service.js'
 const SECRET = 'test-secret'
 const SESSION_COOKIE_NAME = 'better-auth.session_token'
 
-function makeContext(cookies: Record<string, string | undefined>, headers: Record<string, string | undefined> = {}) {
+@AcceptsAssistantToken()
+class McpLikeController {
+  readonly kind = 'mcp'
+}
+class OrdinaryController {
+  readonly kind = 'ordinary'
+}
+
+function makeContext(cookies: Record<string, string | undefined>, headers: Record<string, string | undefined> = {}, controller: object = McpLikeController) {
   const request: Record<string, unknown> = { cookies, headers }
   const setCookie = vi.fn()
   const reply = { setCookie }
   const context = {
+    getClass: () => controller,
     switchToHttp: () => ({
       getRequest: () => request,
       getResponse: () => reply,
@@ -156,6 +166,15 @@ describe('UserContextGuard', () => {
     function hashToken(raw: string): string {
       return createHash('sha256').update(raw).digest('base64url')
     }
+
+    it('refuses an assistant token on every controller but the MCP endpoint, before looking it up', async () => {
+      const findUnique = vi.fn()
+      const guard = new UserContextGuard(makeBetterAuthBundle(vi.fn()), { oauthAccessToken: { findUnique } } as unknown as PrismaService)
+      const { context, request } = makeContext({}, { authorization: 'Bearer some-valid-token' }, OrdinaryController)
+      await expect(guard.canActivate(context)).rejects.toBeInstanceOf(ForbiddenException)
+      expect(findUnique).not.toHaveBeenCalled()
+      expect(request[USER_ID_REQUEST_KEY]).toBeUndefined()
+    })
 
     it('a valid bearer token sets userId, userIdKind = bearer, and authContext with assistant info', async () => {
       const rawToken = 'test-access-token-123'

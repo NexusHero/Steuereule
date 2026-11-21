@@ -136,7 +136,9 @@ function buildOptions(options: CreateBetterAuthOptions & { rateLimitStorage: Res
         accessTokenExpiresIn: 15 * 60,
         requirePKCE: true,
         allowDynamicClientRegistration: true,
-        allowUnauthenticatedClientRegistration: true,
+        // Only a signed-in user registers a client (ADR-0052 amendment 4): nobody fills the client table
+        // from outside, and every client belongs to the account that created it.
+        allowUnauthenticatedClientRegistration: false,
         // MCP clients on the user's machine register a loopback redirect without `application_type`:
         // such a client is native (RFC 8252), one with an https redirect stays a web client.
         clientRegistrationDefaultApplicationType: 'infer',

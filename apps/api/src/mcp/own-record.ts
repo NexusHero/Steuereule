@@ -1,5 +1,5 @@
 import { fieldsOfScreen, provenanceKey, type Screen } from '@steuereule/core'
-import type { AssistantSessionInfo, McpDeps } from './mcp-session.js'
+import { isOwnProvenance, type AssistantSessionInfo, type McpDeps } from './mcp-session.js'
 
 export interface OwnRecord {
   /** Whether the record is this assistant's own, unconfirmed and untouched by the user. */
@@ -22,7 +22,7 @@ export async function ownRecord(
   const { userId, taxYear, screen, instance, anchorField } = target
   const prefix = `${screen}:${instance}.`
   const markings = (await deps.confirmation.list(userId, taxYear)).filter((m) => m.key.startsWith(prefix))
-  const isOwn = (m: (typeof markings)[number]) => !m.confirmed && m.proposal === null && m.provenance.kind === 'assistent' && m.provenance.name === assistant.clientName
+  const isOwn = (m: (typeof markings)[number]) => !m.confirmed && m.proposal === null && isOwnProvenance(m.provenance, assistant)
   const keys = fieldsOfScreen(screen).map((spec) => provenanceKey(screen, spec.field, instance))
   const values = await deps.confirmation.readRawValues(userId, taxYear, keys)
   const empty = (value: unknown) => value === null || value === undefined || value === ''

@@ -19,7 +19,7 @@ export function registerTaskTools(session: McpSession, deps: McpDeps): void {
     },
     async ({ taxYear, art, text }) => {
       assertScope(assistant, 'steuerdaten:write')
-      const result = await tasks.create(userId, taxYear, { kind: art, text, assistant: assistant.clientName })
+      const result = await tasks.create(userId, taxYear, { kind: art, text, assistant: assistant.clientName, clientId: assistant.clientId })
       if (!result.ok) return refused(`${result.code}: ${result.reason}`)
       if (!result.existing) await deps.audit.append({ userId, action: 'WRITE', resource: 'aufgabe_fuer_nutzer' })
       return json({
@@ -38,7 +38,7 @@ export function registerTaskTools(session: McpSession, deps: McpDeps): void {
     async ({ taxYear }) => {
       assertScope(assistant, 'steuerdaten:read')
       await deps.audit.append({ userId, action: 'READ', resource: 'aufgaben_auflisten' })
-      const own = await tasks.listForAssistant(userId, taxYear, assistant.clientName)
+      const own = await tasks.listForAssistant(userId, taxYear, assistant.clientId)
       return json({ aufgaben: own.map((t) => ({ id: t.id, art: t.kind, text: t.text, status: t.status })) })
     },
   )

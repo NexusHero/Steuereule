@@ -17,6 +17,7 @@ import {
   type AssistantAuthContext,
   type RequestWithUserId,
 } from '../auth/user-context.guard.js'
+import { AcceptsAssistantToken } from '../auth/accepts-assistant-token.js'
 import { BETTER_AUTH_BUNDLE } from '../auth/auth.tokens.js'
 import type { BetterAuthBundle } from '../auth/better-auth.js'
 import { mcpBearerChallenge } from '../auth/mcp-oauth.js'
@@ -33,6 +34,7 @@ interface McpSession {
  * Traces to: ADR-0052 §2 (OAuth 2.1 Remote MCP), §3 (Werkzeuge).
  */
 @Controller('mcp')
+@AcceptsAssistantToken()
 @UseGuards(UserContextGuard)
 export class McpController {
   private readonly sessions = new Map<string, McpSession>()
