@@ -523,6 +523,18 @@ export class AdvisorDocumentStaging {
         rawActions.push(draft(incoming))
         continue
       }
+      // A second insurer's statement for another part of the year adds up; „ersetzen“ would delete the first
+      // insurer's premium (real-data run). Both ways stay only where the periods overlap or the value was typed.
+      if (how === 'ask' && item.accumulate === true && existing!.fromDocument && !periodsOverlap(existing!.counted, item.countedItems)) {
+        const sum = addAmounts(existing!.value!, incoming)
+        rawActions.push(
+          draft(sum, {
+            reason: `Schon eingetragen: ${existing!.value} aus einem anderen Beleg. Dieser Beleg gilt für einen anderen Zeitraum des Jahres (etwa eine zweite Kasse nach einem Wechsel): zusammen ${sum}.`,
+            ...(item.countedItems ? { countedItems: [...existing!.counted, ...item.countedItems] } : {}),
+          }),
+        )
+        continue
+      }
       if (how === 'add') {
         const sum = addAmounts(existing!.value!, incoming)
         rawActions.push(draft(sum, { reason: `Vom Beleg gelesen: bisher ${existing!.value}, dazu ${incoming}.`, ...(item.countedItems ? { countedItems: [...existing!.counted, ...item.countedItems] } : {}) }))
@@ -614,7 +626,9 @@ export class AdvisorDocumentStaging {
     const stored = await this.confirmationService.valueWithSource(dataUserId, taxYear, key).catch(() => ({ value: null, receiptId: null }))
     if (stored.value === null) return { value: null, source: 'none', fromDocument: false, counted: [], marks }
     const own = receiptId !== null && stored.receiptId === receiptId
-    return { value: stored.value, source: own ? 'thisDocument' : 'other', fromDocument: stored.receiptId !== null, counted: [], marks }
+    // What the applied draft counted (a statement, its period): a later document is compared with it.
+    const counted = drafts.filter((a) => a.status === 'applied').at(-1)?.countedItems ?? []
+    return { value: stored.value, source: own ? 'thisDocument' : 'other', fromDocument: stored.receiptId !== null || counted.length > 0, counted, marks }
   }
 
   private async pendingCountedItems(userId: string, taxYear: number, target: CountTarget): Promise<AdvisorCountedItem[]> {
@@ -847,3 +861,17 @@ export function combinationDrafts(
   })
   return [{ ...add, alternativeGroup: `combine:${add.actionId}` }, replace]
 }
+
+/** „01.01.2025 - 30.06.2025“ as two ISO dates, or null. */
+function periodRange(period: string | undefined): readonly [string, string] | null {
+  const m = /(\d{2})\.(\d{2})\.(\d{4})\s*-\s*(\d{2})\.(\d{2})\.(\d{4})/.exec(period ?? '')
+  return m ? [`${m[3]}-${m[2]}-${m[1]}`, `${m[6]}-${m[5]}-${m[4]}`] : null
+}
+
+/** Whether a document's period overlaps one already counted; unknown periods are no overlap. */
+function periodsOverlap(counted: readonly AdvisorCountedItem[], incoming: readonly AdvisorCountedItem[] | undefined): boolean {
+  const before = counted.map((item) => periodRange(item.period)).filter((range): range is readonly [string, string] => range !== null)
+  const now = (incoming ?? []).map((item) => periodRange(item.period)).filter((range): range is readonly [string, string] => range !== null)
+  return before.some(([from, to]) => now.some(([nowFrom, nowTo]) => nowFrom <= to && from <= nowTo))
+}
+

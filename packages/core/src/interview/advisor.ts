@@ -228,6 +228,8 @@ export interface AdvisorActionProposal {
 export interface AdvisorCountedItem {
   readonly ref: string | null
   readonly amountKey: string
+  /** The period the document covers („01.01.2025 - 30.06.2025“), where it names one: a second insurer for another part of the year adds up. */
+  readonly period?: string | undefined
 }
 
 export interface AdvisorUndoEntry {

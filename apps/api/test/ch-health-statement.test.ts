@@ -87,6 +87,51 @@ describe('the health insurer’s statement', () => {
     expect(latest.find((d) => d.field === 'krankenkasseChf' && !d.person)?.newValue).toBe('3400')
   })
 
+  // Real-data run: a family statement did not assign the spouse; Person B had no name on record yet.
+  it('assigns the one insured adult nobody matches to Person B while B has no name, and says so', async () => {
+    const kit = buildAdvisorTestKit()
+    await kit.profileRepo.upsert(USER, { firstName: 'Kemal', lastName: 'Muster', steuerId: null, steuernummer: null })
+    await kit.linkService.set(USER, YEAR, { filingType: 'zusammen' })
+    await kit.childRepo.create(USER, YEAR, { firstName: 'Lea', lastName: 'Muster', geburtsdatum: '2022-01-01' })
+    await kit.chRepo.setExchangeRate(USER, YEAR, { month: '2025', rate: 1.05, mode: 'jahresdurchschnitt' })
+    const strategy = new ChHealthStatementParseStrategy(new DocumentParseRegistry(), kit.service, new AuditService(new FakeAuditRepository()), kit.linkService, kit.chRepo, kit.childRepo)
+    const res = await parse(strategy, family)
+    const drafts = (await kit.advisorRepo.listForUserAndYear(USER, YEAR)).flatMap((m) => m.meta?.actions ?? [])
+    expect(drafts.find((d) => d.field === 'krankenkasseChf' && d.person === 'B')?.newValue).toBe('1400')
+    expect(res.assistantMessage?.content).toContain('Person B zugeordnet')
+    expect(res.assistantMessage?.content).not.toContain('niemandem im Haushalt zuordnen')
+  })
+
+  // Real-data run: a second insurer's card offered „ersetzen“ as an equal choice, which would delete the first
+  // insurer's premium. A second insurer for another part of the year adds up; „ersetzen“ only for an overlap.
+  describe('a second insurer in the same year', () => {
+    const secondHalf = (premium: string, from = '01.07.2025', to = '31.12.2025') =>
+      ['CSS Versicherung AG', 'Auszug fur die Steuererklarung 2025', 'Kemal Muster, 01.02.1990, Versicherten Nr. 200 000 1', 'Versicherungszeitraum Versicherungspramien Betrag', `${from} - ${to} Pramie Grundversicherung (KVG) ${premium}`, `Total Versicherungspramien ${premium}`].join('\n')
+    const firstApplied = async () => {
+      const { kit, strategy } = await setUp()
+      await parse(strategy, perPerson('Kemal Muster', "2'000.00"))
+      const drafts = (await kit.advisorRepo.listForUserAndYear(USER, YEAR)).flatMap((m) => m.meta?.actions ?? [])
+      await kit.service.applyBatch(USER, YEAR, { drafts: drafts.map((d) => ({ actionId: d.actionId })) })
+      return { kit, strategy }
+    }
+    const pendingPremiums = async (kit: Awaited<ReturnType<typeof setUp>>['kit']) =>
+      (await kit.advisorRepo.listForUserAndYear(USER, YEAR)).flatMap((m) => m.meta?.actions ?? []).filter((d) => d.status === 'pending' && d.field === 'krankenkasseChf' && !d.person)
+
+    it('adds a statement for the other half of the year, says why, and offers no „ersetzen“', async () => {
+      const { kit, strategy } = await firstApplied()
+      await parse(strategy, secondHalf("1'800.00"))
+      const pending = await pendingPremiums(kit)
+      expect(pending.map((d) => d.newValue)).toEqual(['3800'])
+      expect(pending[0]!.reason).toContain('anderen Zeitraum')
+    })
+
+    it('still offers both ways when the periods overlap', async () => {
+      const { kit, strategy } = await firstApplied()
+      await parse(strategy, secondHalf("1'800.00", '01.03.2025', '31.12.2025'))
+      expect((await pendingPremiums(kit)).map((d) => d.newValue).sort()).toEqual(['1800', '3800'])
+    })
+  })
+
   it('converts the child’s premiums at the official annual average while no rate is chosen, to be checked (ADR-0086)', async () => {
     const { kit, strategy } = await setUp(false)
     const res = await parse(strategy, family)
