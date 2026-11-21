@@ -222,6 +222,47 @@ export interface ReceiptResponseDto {
   duplicateOf: ReceiptDuplicateDto | null;
 }
 
+export interface ReceiptFolderCountsDto {
+  /** Belege in the folder Einkünfte (Lohnausweis, Quellensteuer, Rentenbezugsmitteilung, Familienzulage). */
+  einkuenfte: number;
+  /** Belege in the folder Vorsorge (Pensionskasse, Säule 3a, Krankenkasse). */
+  vorsorge: number;
+  /** Belege in the folder Bescheide (Steuerbescheid, Steuerbescheinigung). */
+  bescheide: number;
+  /** Every other Beleg, one without a kind included. */
+  weitere: number;
+}
+
+export interface ReceiptProposalDto {
+  id: string;
+  /** The tax year the Beleg is proposed for. */
+  taxYear: number;
+}
+
+export interface ReceiptCountsDto {
+  /** Every Beleg of the caller, whatever page or folder is shown. */
+  total: number;
+  /** Belege not fully processed yet (`processing.open`), over all of them. */
+  open: number;
+  /** Belege whose tax year is not confirmed yet: no year, only proposed, or in conflict. */
+  unassigned: number;
+  folders: ReceiptFolderCountsDto;
+  /** Every Beleg whose year is only proposed and waits for a yes, over all of them: what one tap on „alle zuordnen“ takes. */
+  proposals: ReceiptProposalDto[];
+}
+
+export interface ReceiptPageResponseDto {
+  /** One page of the Beleg inbox, newest first. */
+  items: ReceiptResponseDto[];
+  /**
+     * Pass it as `cursor` for the next page; null on the last one. Opaque: do not build or read it.
+     * @nullable
+     */
+  nextCursor: string | null;
+  /** The numbers the inbox shows, counted over all Belege and not just this page. */
+  counts: ReceiptCountsDto;
+}
+
 /**
  * Document type (ADR-029). Omitted = null (not classified); pass 'Sonstiges' to classify a generic receipt explicitly.
  */
@@ -267,6 +308,31 @@ export interface DeleteReceiptResponseDto {
   /** Waiting drafts of the Beleg withdrawn (only with `takeBackValues=true`). */
   withdrawn: number;
 }
+
+export type ReceiptControllerListParams = {
+/**
+ * Only the Belege of this folder; the counts still cover all of them.
+ */
+ordner?: ReceiptControllerListOrdner;
+/**
+ * `nextCursor` of the page before.
+ */
+cursor?: string;
+/**
+ * Belege per page, 1 to 100; 30 without it.
+ */
+limit?: number;
+};
+
+export type ReceiptControllerListOrdner = typeof ReceiptControllerListOrdner[keyof typeof ReceiptControllerListOrdner];
+
+
+export const ReceiptControllerListOrdner = {
+  einkuenfte: 'einkuenfte',
+  vorsorge: 'vorsorge',
+  bescheide: 'bescheide',
+  weitere: 'weitere',
+} as const;
 
 /**
  * A business receipt (ADR-0101 §6): an expense or an invoice the business wrote. Files the Beleg as Geschaeftsbeleg; its parse drafts the booking in that direction.

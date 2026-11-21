@@ -498,6 +498,7 @@ model Receipt {
 
   @@index([userId])
   @@index([userId, taxYear])
+  @@index([userId, createdAt(sort: Desc), id(sort: Desc)])
   @@map("Beleg")
 }
 

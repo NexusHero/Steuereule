@@ -138,3 +138,53 @@ export class DeleteReceiptResponseDto {
   @ApiProperty({ type: Number, example: 0, description: 'Waiting drafts of the Beleg withdrawn (only with `takeBackValues=true`).' })
   withdrawn!: number
 }
+
+export class ReceiptFolderCountsDto {
+  @ApiProperty({ type: Number, example: 3, description: 'Belege in the folder Einkünfte (Lohnausweis, Quellensteuer, Rentenbezugsmitteilung, Familienzulage).' })
+  einkuenfte!: number
+
+  @ApiProperty({ type: Number, example: 1, description: 'Belege in the folder Vorsorge (Pensionskasse, Säule 3a, Krankenkasse).' })
+  vorsorge!: number
+
+  @ApiProperty({ type: Number, example: 0, description: 'Belege in the folder Bescheide (Steuerbescheid, Steuerbescheinigung).' })
+  bescheide!: number
+
+  @ApiProperty({ type: Number, example: 5, description: 'Every other Beleg, one without a kind included.' })
+  weitere!: number
+}
+
+export class ReceiptProposalDto {
+  @ApiProperty({ type: String, example: 'b1f6c9a0-0f5e-4a52-9a43-7d0c4d3b2e10' })
+  id!: string
+
+  @ApiProperty({ type: Number, example: 2025, description: 'The tax year the Beleg is proposed for.' })
+  taxYear!: number
+}
+
+export class ReceiptCountsDto {
+  @ApiProperty({ type: Number, example: 9, description: 'Every Beleg of the caller, whatever page or folder is shown.' })
+  total!: number
+
+  @ApiProperty({ type: Number, example: 2, description: 'Belege not fully processed yet (`processing.open`), over all of them.' })
+  open!: number
+
+  @ApiProperty({ type: Number, example: 4, description: 'Belege whose tax year is not confirmed yet: no year, only proposed, or in conflict.' })
+  unassigned!: number
+
+  @ApiProperty({ type: ReceiptFolderCountsDto })
+  folders!: ReceiptFolderCountsDto
+
+  @ApiProperty({ type: [ReceiptProposalDto], description: 'Every Beleg whose year is only proposed and waits for a yes, over all of them: what one tap on „alle zuordnen“ takes.' })
+  proposals!: ReceiptProposalDto[]
+}
+
+export class ReceiptPageResponseDto {
+  @ApiProperty({ type: [ReceiptResponseDto], description: 'One page of the Beleg inbox, newest first.' })
+  items!: ReceiptResponseDto[]
+
+  @ApiProperty({ type: String, nullable: true, example: 'eyJ0IjoiMjAyNi0wMS0wMVQwMDowMDowMC4wMDBaIiwiaSI6ImFiYyJ9', description: 'Pass it as `cursor` for the next page; null on the last one. Opaque: do not build or read it.' })
+  nextCursor!: string | null
+
+  @ApiProperty({ type: ReceiptCountsDto, description: 'The numbers the inbox shows, counted over all Belege and not just this page.' })
+  counts!: ReceiptCountsDto
+}

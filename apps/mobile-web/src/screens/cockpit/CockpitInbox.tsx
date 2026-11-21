@@ -1,8 +1,8 @@
 import { Pressable, Text, View, type TextStyle, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { useReceiptControllerList } from '@steuereule/api-client'
 import { useTheme, type UiTheme } from '@steuereule/ui'
 import { APP_NS } from '../../i18n/resources'
+import { useReceiptInbox } from '../../lib/receipts/useReceiptInbox'
 
 export interface CockpitInboxProps {
   readonly onOpenReceipts: () => void
@@ -16,9 +16,9 @@ export function CockpitInbox({ onOpenReceipts }: CockpitInboxProps) {
   const t = useTheme()
   const styles = makeStyles(t)
   const { t: tr } = useTranslation(APP_NS)
-  const query = useReceiptControllerList()
-  const receipts = query.data?.status === 200 ? query.data.data : []
-  const waiting = receipts.filter((receipt) => receipt.assignment.kind !== 'zugeordnet').length
+  // Only the count is wanted: the smallest page carries it, over all Belege.
+  const query = useReceiptInbox({ limit: 1 })
+  const waiting = query.data?.pages[0]?.counts.unassigned ?? 0
   if (waiting === 0) return null
   return (
     <Pressable accessibilityRole="button" onPress={onOpenReceipts} style={styles.row} testID="cockpit-belege-eingang">

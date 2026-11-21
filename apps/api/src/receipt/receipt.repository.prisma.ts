@@ -1,7 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { isHolderRef, isReceiptReadOutcome, isReceiptReadReason, isReceiptType, type HolderRef, type ReceiptType } from '@steuereule/core'
+import type { Prisma } from '@prisma/client'
+import { RECEIPT_FOLDER_KINDS, isHolderRef, isReceiptReadOutcome, isReceiptReadReason, isReceiptType, type HolderRef, type ReceiptFolder, type ReceiptType } from '@steuereule/core'
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
-import type { ReceiptRecord, ReceiptRepository, CreateReceiptData, RecordReadData, SetAssignmentData } from './receipt.repository.js'
+import type { ReceiptFacts, ReceiptPageQuery, ReceiptRecord, ReceiptRepository, CreateReceiptData, RecordReadData, SetAssignmentData } from './receipt.repository.js'
 
 function toIsoDate(value: Date): string {
   return value.toISOString().slice(0, 10)
@@ -59,6 +60,32 @@ const FILE_META_INCLUDE = {
   file: { select: { mimeType: true, byteLength: true } },
 } as const
 
+const FACT_KEYS: ReadonlySet<string> = new Set(['id', 'kind', 'taxYear', 'belegdatum', 'zahlungsdatum', 'proposalDismissed', 'readAt', 'readOutcome', 'readReason', 'draftsTaxYear', 'createdAt'])
+
+/** The kinds a folder holds as a where clause; `weitere` is every other kind and a Beleg without one. */
+function folderFilter(folder: ReceiptFolder): Prisma.ReceiptWhereInput {
+  const named = Object.values(RECEIPT_FOLDER_KINDS).flat()
+  if (folder === 'weitere') return { OR: [{ kind: null }, { kind: { notIn: [...named] } }] }
+  return { kind: { in: [...RECEIPT_FOLDER_KINDS[folder]] } }
+}
+
+function toFacts(row: {
+  id: string
+  kind: string | null
+  taxYear: number | null
+  belegdatum: Date | null
+  zahlungsdatum: Date | null
+  proposalDismissed: boolean
+  readAt: Date | null
+  readOutcome: string | null
+  readReason: string | null
+  draftsTaxYear: number | null
+  createdAt: Date
+}): ReceiptFacts {
+  const record = toRecord({ ...row, userId: '', fileName: '', updatedAt: row.createdAt })
+  return Object.fromEntries(Object.entries(record).filter(([key]) => FACT_KEYS.has(key))) as unknown as ReceiptFacts
+}
+
 function fromIsoDate(value: string): Date {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) throw new RangeError(`not a valid date: ${value}`)
@@ -75,6 +102,49 @@ export class PrismaReceiptRepository implements ReceiptRepository {
       include: FILE_META_INCLUDE,
       orderBy: { createdAt: 'desc' },
     })
+    return rows.map(toRecord)
+  }
+
+  async listFactsForUser(userId: string): Promise<ReceiptFacts[]> {
+    const rows = await this.prisma.receipt.findMany({
+      where: { userId },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      select: {
+        id: true,
+        kind: true,
+        taxYear: true,
+        belegdatum: true,
+        zahlungsdatum: true,
+        proposalDismissed: true,
+        readAt: true,
+        readOutcome: true,
+        readReason: true,
+        draftsTaxYear: true,
+        createdAt: true,
+      },
+    })
+    return rows.map(toFacts)
+  }
+
+  async findPageForUser(userId: string, query: ReceiptPageQuery): Promise<ReceiptRecord[]> {
+    const rows = await this.prisma.receipt.findMany({
+      where: {
+        userId,
+        ...(query.folder !== undefined ? folderFilter(query.folder) : {}),
+        ...(query.after !== undefined
+          ? { OR: [{ createdAt: { lt: query.after.createdAt } }, { createdAt: query.after.createdAt, id: { lt: query.after.id } }] }
+          : {}),
+      },
+      include: FILE_META_INCLUDE,
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: query.limit,
+    })
+    return rows.map(toRecord)
+  }
+
+  async findManyByIdsForUser(userId: string, ids: readonly string[]): Promise<ReceiptRecord[]> {
+    if (ids.length === 0) return []
+    const rows = await this.prisma.receipt.findMany({ where: { userId, id: { in: [...ids] } }, include: FILE_META_INCLUDE })
     return rows.map(toRecord)
   }
 

@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { Pressable, Text, View, type TextStyle, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { useReceiptControllerList, type ReceiptResponseDto } from '@steuereule/api-client'
+import { type ReceiptResponseDto } from '@steuereule/api-client'
 import { useTheme, type UiTheme } from '@steuereule/ui'
 import { APP_NS } from '../../../i18n/resources'
 import { storedReceiptFile } from '../../../lib/receipts/storedReceiptFile'
+import { useReceiptInbox } from '../../../lib/receipts/useReceiptInbox'
 
 export interface StoredReceiptPickerProps {
   /** Reads the stored original for the owl; resolves when it is done. */
@@ -28,8 +29,8 @@ export function StoredReceiptPicker({ onRead, disabled = false, onOpenReceipts }
   const [open, setOpen] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [failedId, setFailedId] = useState<string | null>(null)
-  const query = useReceiptControllerList({ query: { enabled: open } })
-  const stored = query.data?.status === 200 ? query.data.data.filter((receipt) => receipt.hasFile) : []
+  const query = useReceiptInbox({ enabled: open })
+  const stored = (query.data?.pages.flatMap((page) => page.items) ?? []).filter((receipt) => receipt.hasFile)
 
   async function read(receipt: ReceiptResponseDto) {
     setBusyId(receipt.id)
@@ -75,6 +76,11 @@ export function StoredReceiptPicker({ onRead, disabled = false, onOpenReceipts }
               </Text>
             </Pressable>
           ))}
+          {query.hasNextPage ? (
+            <Pressable accessibilityRole="button" disabled={query.isFetchingNextPage} onPress={() => void query.fetchNextPage()} style={styles.toggle} testID="advisor-stored-receipts-more">
+              <Text style={styles.toggleText}>{tr(query.isFetchingNextPage ? 'belege.mehrLaden.laedt' : 'belege.mehrLaden.cta')}</Text>
+            </Pressable>
+          ) : null}
           {failedId !== null ? (
             <Text style={styles.hint} accessibilityLiveRegion="polite" testID="advisor-stored-receipt-failed">
               {tr('belege.eule.ergebnis.unreadable')}

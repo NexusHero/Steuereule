@@ -2001,6 +2001,10 @@
       "retry": "Noch mal versuchen"
     },
     "offen_one": "{{count}} offen",
+    "mehrLaden": {
+      "cta": "Mehr laden",
+      "laedt": "Lädt …"
+    },
     "offen_other": "{{count}} offen",
     "empty": {
       "heading": "Noch keine Belege.",

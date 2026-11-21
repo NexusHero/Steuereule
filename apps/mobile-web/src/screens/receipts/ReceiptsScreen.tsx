@@ -5,7 +5,6 @@ import { useQueryClient } from '@tanstack/react-query'
 import { Button, Card, Chip, HerkunftsChip, Input, Pill, useTheme, useBreakpoint } from '@steuereule/ui'
 import {
   CreateReceiptDtoKind,
-  useReceiptControllerList,
   useReceiptControllerSetAssignment,
   useReceiptControllerDelete,
   getReceiptControllerListQueryKey,
@@ -25,8 +24,9 @@ import { useOptionalSetTaxYear, useOptionalShellTaxYear, useOptionalSwitchToTab 
 import { storedReceiptFile } from '../../lib/receipts/storedReceiptFile'
 import { storeReceipt } from '../../lib/receipts/storeReceipt'
 import { canReadAgain, filledFieldsByYear, outcomeOfReceipt } from '../../lib/receipts/receiptOutcome'
+import { useReceiptInbox } from '../../lib/receipts/useReceiptInbox'
 import { useReceiptReader, type ReceiptReader } from '../../lib/receipts/useReceiptReader'
-import { toGermanDate } from '@steuereule/core'
+import { receiptFolderOfKind, toGermanDate, type ReceiptFolder } from '@steuereule/core'
 import { DEFAULT_TAX_YEAR } from '../../config/taxYear'
 import { makeStyles } from './ReceiptsScreen.styles'
 
@@ -45,20 +45,7 @@ const KIND_LABEL_KEYS: Readonly<Record<string, string>> = {
 
 const YEAR_RE = /^\d{4}$/
 
-export type ReceiptFolderCategory = 'alle' | 'einkuenfte' | 'vorsorge' | 'bescheide' | 'weitere'
-
-export function folderForReceiptKind(kind: ReceiptResponseDto['kind']): Exclude<ReceiptFolderCategory, 'alle'> {
-  if (kind === 'Lohnausweis' || kind === 'Quellensteuer' || kind === 'Rentenbezugsmitteilung' || kind === 'Familienzulage') {
-    return 'einkuenfte'
-  }
-  if (kind === 'Pensionskasse' || kind === 'Saeule3a' || kind === 'Krankenkasse') {
-    return 'vorsorge'
-  }
-  if (kind === 'Steuerbescheid' || kind === 'Steuerbescheinigung') {
-    return 'bescheide'
-  }
-  return 'weitere'
-}
+export type ReceiptFolderCategory = 'alle' | ReceiptFolder
 
 const FOLDER_LABEL_KEYS = {
   alle: 'belege.ordner.alle',
@@ -84,7 +71,6 @@ export function ReceiptsScreen() {
   const styles = makeStyles(t)
   const { t: tr } = useTranslation(APP_NS)
   const queryClient = useQueryClient()
-  const query = useReceiptControllerList()
   const setAssignment = useReceiptControllerSetAssignment()
   const deleteReceipt = useReceiptControllerDelete()
   const openYear = useOptionalShellTaxYear() ?? DEFAULT_TAX_YEAR
@@ -96,11 +82,13 @@ export function ReceiptsScreen() {
   const [deleteErrorId, setDeleteErrorId] = useState<string | null>(null)
   const [deleteResult, setDeleteResult] = useState<string | null>(null)
   const [activeFolder, setActiveFolder] = useState<ReceiptFolderCategory>('alle')
+  // The server filters by folder and counts over every Beleg; the screen only shows the pages it loaded.
+  const query = useReceiptInbox({ folder: activeFolder === 'alle' ? undefined : activeFolder })
 
   if (query.isPending) {
     return <LoadingState bp={bp} label={tr('belege.loading')} />
   }
-  if (query.isError || query.data.status !== 200) {
+  if (query.isError || query.data === undefined) {
     return (
       <ErrorState
         bp={bp}
@@ -112,18 +100,14 @@ export function ReceiptsScreen() {
     )
   }
 
-  const receipts = query.data.data
+  const receipts = query.data.pages.flatMap((page) => page.items)
+  const counts = query.data.pages[0]!.counts
   // „Offen“ is what is not fully processed yet (ADR-0097 §1), no longer what has no year.
-  const open = receipts.filter((b) => b.processing.open).length
-  const visibleReceipts =
-    activeFolder === 'alle'
-      ? receipts
-      : receipts.filter((r) => folderForReceiptKind(r.kind) === activeFolder)
+  const open = counts.open
+  const visibleReceipts = receipts
 
   // Proposals that only wait for a yes: one tap takes them all (a conflict stays the user's own decision).
-  const proposals = receipts.flatMap((r) =>
-    r.assignment.kind === 'vorgeschlagen' && typeof r.assignment.taxYear === 'number' ? [{ id: r.id, taxYear: r.assignment.taxYear }] : [],
-  )
+  const proposals = counts.proposals
 
   function assign(id: string, taxYear: number, proposalDismissed = false) {
     setAssignment.mutate(
@@ -204,7 +188,7 @@ export function ReceiptsScreen() {
           </Button>
         </View>
       ) : null}
-      {receipts.length > 0 ? (
+      {counts.total > 0 ? (
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -213,10 +197,7 @@ export function ReceiptsScreen() {
           testID="belege-ordner-filter"
         >
           {(['alle', 'einkuenfte', 'vorsorge', 'bescheide', 'weitere'] as const).map((folder) => {
-            const count =
-              folder === 'alle'
-                ? receipts.length
-                : receipts.filter((r) => folderForReceiptKind(r.kind) === folder).length
+            const count = folder === 'alle' ? counts.total : counts.folders[folder]
             return (
               <Chip
                 key={folder}
@@ -235,7 +216,7 @@ export function ReceiptsScreen() {
         {...(previewReceipt?.fileName ? { fileName: previewReceipt.fileName } : {})}
         onClose={() => setPreviewReceipt(null)}
       />
-      {receipts.length === 0 ? (
+      {counts.total === 0 ? (
         <Empty />
       ) : (
         visibleReceipts.map((receipt) => (
@@ -262,6 +243,11 @@ export function ReceiptsScreen() {
           />
         ))
       )}
+      {query.hasNextPage ? (
+        <Button onPress={() => void query.fetchNextPage()} disabled={query.isFetchingNextPage} style={styles.compactButton} testID="belege-mehr-laden">
+          {tr(query.isFetchingNextPage ? 'belege.mehrLaden.laedt' : 'belege.mehrLaden.cta')}
+        </Button>
+      ) : null}
     </ScrollView>
   )
 }
@@ -452,7 +438,7 @@ function ReceiptCard({
   const holderYear = receipt.holderTaxYear ?? shellYear ?? (receipt.assignment.kind === 'zugeordnet' ? receipt.assignment.taxYear : null) ?? DEFAULT_TAX_YEAR
   const kindKey = receipt.kind === null ? undefined : KIND_LABEL_KEYS[receipt.kind]
   const kindLabel = kindKey !== undefined ? tr(kindKey) : receipt.kind === null ? tr('belege.art.generic') : receipt.kind
-  const folderCategory = folderForReceiptKind(receipt.kind)
+  const folderCategory = receiptFolderOfKind(receipt.kind)
   // The folder shows the year the Beleg belongs to: the one it is assigned to, else the one its drafts went to.
   const folderYear = (receipt.assignment.kind === 'zugeordnet' ? receipt.assignment.taxYear : null) ?? receipt.processing.draftsTaxYear ?? holderYear
   // A Beleg with nothing for the return needs no year (ADR-0097): the assignment line would only add noise.
