@@ -1,5 +1,5 @@
 import { HOUSEHOLD_AND_HEALTH_BOOSTERS } from '../config/features.js'
-import { HttpException, HttpStatus, Inject, Injectable, UnprocessableEntityException } from '@nestjs/common'
+import { HttpException, HttpStatus, Inject, Injectable, Optional, UnprocessableEntityException } from '@nestjs/common'
 import { NotFoundError } from '../common/domain-error.js'
 import {
   CH_RESIDENCE_VALUES,
@@ -48,6 +48,21 @@ import {
 
 export const TEMPLATES_BASE = Symbol('VORLAGEN_BASIS')
 export const ACROFORM_TEMPLATES_BASE = Symbol('ACROFORM_VORLAGEN_BASIS')
+/** The Cockpit estimate, looked up when asked for (the estimate's module reads the same records). */
+export const PRINTOUT_ESTIMATE = Symbol('PRINTOUT_ESTIMATE')
+
+/** What the printout check needs of the estimate: whether the return ends in a payment. */
+export interface PrintoutEstimate {
+  getState(userId: string, taxYear: number): Promise<{ readonly kind: string; readonly result?: { readonly from: number; readonly to: number } }>
+}
+
+/** What stops the printout, and what only belongs on it for a refund. */
+export interface PrintoutCheck {
+  readonly missing: string[]
+  readonly missingChildFields: ChildGapField[]
+  /** Missing, but not needed for this return: the IBAN while the estimate is a payment throughout. */
+  readonly hints: string[]
+}
 
 function crossBorderStatusFrom(answers: Record<string, string>): CrossBorderStatus | null {
   const residence = answers['ch-wohnsitz']
@@ -77,6 +92,7 @@ export class PrintoutService {
     @Inject(AuditService) private readonly audit: AuditService,
     @Inject(TEMPLATES_BASE) private readonly templatesBase: URL,
     @Inject(ACROFORM_TEMPLATES_BASE) private readonly acroFormTemplatesBase: URL = new URL('../vordrucke-acroform/', templatesBase),
+    @Optional() @Inject(PRINTOUT_ESTIMATE) private readonly estimate?: PrintoutEstimate,
   ) {}
 
   async loadAcroFormTemplate(year: number, formular: string): Promise<Uint8Array> {
@@ -89,14 +105,26 @@ export class PrintoutService {
     return loadAcroFormTemplateBytes(yearDir, formular)
   }
 
-  async check(userId: string, year: number): Promise<{ missing: string[]; missingChildFields: ChildGapField[] }> {
+  async check(userId: string, year: number): Promise<PrintoutCheck> {
     const fieldSet = FIELD_SETS[year]
     if (!fieldSet) throw new NotFoundError('VORDRUCKE_MISSING', `No Vordrucke are available for tax year ${year} yet.`)
-    const { values, instances, missing, missingChildFields } = await this.collect(userId, year)
+    const collected = await this.collect(userId, year)
+    const { values, instances, missingChildFields } = collected
+    // The IBAN is only needed for a refund (real-data run): a return that ends in a payment throughout the
+    // estimate's range prints without it, and the IBAN is named as a hint.
+    const hints = collected.missing.includes('iban') && (await this.endsInPayment(userId, year)) ? ['iban'] : []
+    const missing = collected.missing.filter((code) => !hints.includes(code))
     // A value too long for its box (at the 10 pt the forms require) would fail only after payment: once
     // nothing else is missing, it is named here, as „zuLang.<field>“, so the user shortens it first (ADR-0085).
-    if (missing.length > 0) return { missing, missingChildFields }
-    return { missing: (await this.tooLong(year, values, instances)).map((id) => `zuLang.${id}`), missingChildFields }
+    if (missing.length > 0) return { missing, missingChildFields, hints }
+    return { missing: (await this.tooLong(year, values, instances)).map((id) => `zuLang.${id}`), missingChildFields, hints }
+  }
+
+  /** Whether the estimate is a payment over its whole range; unknown or open counts as a possible refund. */
+  private async endsInPayment(userId: string, year: number): Promise<boolean> {
+    if (!this.estimate) return false
+    const state = await this.estimate.getState(userId, year).catch(() => null)
+    return state?.kind === 'spanne' && state.result !== undefined && state.result.to < 0
   }
 
   private async tooLong(year: number, values: FieldValues, instances: Record<string, readonly FieldValues[]> | undefined): Promise<string[]> {

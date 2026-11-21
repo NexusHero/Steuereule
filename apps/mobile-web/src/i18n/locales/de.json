@@ -1674,8 +1674,6 @@
     "heading": "Prüfung vor Abgabe",
     "einreichbar": "Alles klar — keine Widersprüche, nichts mehr offen.",
     "nichtEinreichbar": "Da ist noch etwas offen:",
-    "stammdatenOffen_one": "Für den Ausdruck fehlt noch 1 persönliche Angabe (z. B. Adresse oder IBAN).",
-    "stammdatenOffen_other": "Für den Ausdruck fehlen noch {{count}} persönliche Angaben (z. B. Adresse oder IBAN).",
     "stammdatenUnbekannt": "Ob deine persönlichen Angaben vollständig sind, konnten wir gerade nicht prüfen.",
     "weiterZumVergleich": "Weiter zum Veranlagungsartenvergleich",
     "werktageNote": "Ehrlich: die Arbeitstage- und Pendlerpauschale-Prüfung folgt in einem späteren Schritt.",
@@ -1692,7 +1690,10 @@
       "erfasst-nicht-gerechnet": "Erfasste, aber noch nicht gerechnete Beträge sind vorhanden.",
       "werbungskosten-uebersteigt-einnahmen": "Deine Werbungskosten übersteigen die Einnahmen.",
       "betrag-spaeter": "Mindestens ein Betrag ist noch mit „Später eintragen“ markiert."
-    }
+    },
+    "ausdruckOffen_one": "Für den Ausdruck fehlt noch 1 Angabe (z. B. Adresse oder IBAN).",
+    "ausdruckOffen_other": "Für den Ausdruck fehlen noch {{count}} Angaben (z. B. Adresse oder IBAN).",
+    "ibanHinweis": "Eine IBAN fehlt. Für eine Nachzahlung brauchst du keine; ergibt sich doch eine Erstattung, trag sie in „Angaben für die Erklärung“ ein."
   },
   "cockpit": {
     "appbarTitle": "Steuerjahr",

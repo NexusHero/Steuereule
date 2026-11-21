@@ -58,16 +58,25 @@ describe('PlausibilitaetScreen', () => {
     expect(screen.getByText('Ehrlich: die Arbeitstage- und Pendlerpauschale-Prüfung folgt in einem späteren Schritt.')).toBeTruthy()
   })
 
-  it('does not claim "nichts mehr offen" while personal details for the printout are missing', async () => {
-    server.use(
-      completeLstb(),
-      finishedInterview({ job: 'Angestellt' }),
-      http.get('*/v1/stammdaten', () => HttpResponse.json({ missing: ['iban', 'plz', 'wohnort'] }, { status: 200 })),
-    )
+  // The same list the printout check blocks on (real-data run: the printout was blocked while this screen said nothing was open).
+  function printoutCheck(body: { missing: string[]; hints: string[] }) {
+    return http.get(`*/v1/steuerjahre/${TAX_YEAR}/ausdruck/pruefung`, () => HttpResponse.json({ ...body, missingChildFields: [] }, { status: 200 }))
+  }
+
+  it('does not claim "nichts mehr offen" while the printout check still names something', async () => {
+    server.use(completeLstb(), finishedInterview({ job: 'Angestellt' }), printoutCheck({ missing: ['iban', 'plz', 'wohnort'], hints: [] }))
     renderPlausibility()
 
-    expect(await screen.findByText('Für den Ausdruck fehlen noch 3 persönliche Angaben (z. B. Adresse oder IBAN).')).toBeTruthy()
+    expect(await screen.findByText('Für den Ausdruck fehlen noch 3 Angaben (z. B. Adresse oder IBAN).')).toBeTruthy()
     expect(screen.queryByText('Alles klar — keine Widersprüche, nichts mehr offen.')).toBeNull()
+  })
+
+  it('names a missing IBAN of a return with a payment as a hint only', async () => {
+    server.use(completeLstb(), finishedInterview({ job: 'Angestellt' }), printoutCheck({ missing: [], hints: ['iban'] }))
+    renderPlausibility()
+
+    expect(await screen.findByText('Alles klar — keine Widersprüche, nichts mehr offen.')).toBeTruthy()
+    expect(screen.getByText('Eine IBAN fehlt. Für eine Nachzahlung brauchst du keine; ergibt sich doch eine Erstattung, trag sie in „Angaben für die Erklärung“ ein.')).toBeTruthy()
   })
 
   it('names a gated Einkunftsart as a blocker (ADR-032)', async () => {

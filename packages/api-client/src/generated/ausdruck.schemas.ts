@@ -22,6 +22,8 @@ export interface PrintoutCheckDto {
   missing: string[];
   /** Which details of the children are behind `kinder` in `missing`, so the hint names them: `child` = children were named but none is recorded, `residence` = whether the child lived in Germany all year, `otherParent` = the other parent. Empty without `kinder`. */
   missingChildFields: PrintoutCheckDtoMissingChildFieldsItem[];
+  /** Missing, but not stopping this printout: `iban` while the estimate is a payment over its whole range (an IBAN is only needed for a refund). */
+  hints: string[];
 }
 
 /**
