@@ -1,7 +1,8 @@
 import { createHash } from 'node:crypto'
-import { Inject, Injectable, Optional, UnauthorizedException, type CanActivate, type ExecutionContext } from '@nestjs/common'
+import { ForbiddenException, Inject, Injectable, Optional, UnauthorizedException, type CanActivate, type ExecutionContext } from '@nestjs/common'
 import { fromNodeHeaders } from 'better-auth/node'
 import type { FastifyReply, FastifyRequest } from 'fastify'
+import { ACCEPTS_ASSISTANT_TOKEN } from './accepts-assistant-token.js'
 import { BETTER_AUTH_BUNDLE, type BetterAuthBundle } from './auth.tokens.js'
 import { newGuestUserId, resolveGuestSessionSecret, signGuestSession, verifyGuestSession } from './guest-session.js'
 import { PrismaService } from '../prisma/prisma.service.js'
@@ -92,6 +93,11 @@ export class UserContextGuard implements CanActivate {
 
     const authHeader = request.headers?.authorization
     if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
+      // An assistant's token is good for the MCP endpoint only (ADR-0052 amendment 4): on any other
+      // controller it would pass for the user and walk around the tools' scopes and read view.
+      if (Reflect.getMetadata(ACCEPTS_ASSISTANT_TOKEN, context.getClass()) !== true) {
+        throw new ForbiddenException('Ein Assistenten-Token gilt nur am MCP-Endpunkt.')
+      }
       const rawToken = authHeader.slice(7).trim()
       if (!rawToken) {
         throw new UnauthorizedException('Missing bearer token.')

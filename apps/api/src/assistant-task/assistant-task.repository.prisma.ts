@@ -18,6 +18,7 @@ function toRecord(row: {
   kind: string
   text: string
   assistant: string
+  clientId: string
   status: string
   createdAt: Date
   decidedAt: Date | null
@@ -36,7 +37,7 @@ export class PrismaAssistantTaskRepository implements AssistantTaskRepository {
 
   async create(userId: string, taxYear: number, task: NewAssistantTask): Promise<AssistantTaskRecord> {
     const [row] = await this.prisma.$transaction([
-      this.prisma.assistantTask.create({ data: { userId, taxYear, kind: task.kind, text: task.text, assistant: task.assistant } }),
+      this.prisma.assistantTask.create({ data: { userId, taxYear, kind: task.kind, text: task.text, assistant: task.assistant, clientId: task.clientId } }),
       this.prisma.taxDataAccessLog.create({ data: { userId, action: 'WRITE', resource: RESOURCE } }),
     ])
     return toRecord(row)

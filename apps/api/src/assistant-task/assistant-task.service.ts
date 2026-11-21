@@ -53,7 +53,7 @@ export class AssistantTaskService {
     if (open.length >= MAX_OPEN_TASKS) {
       return { ok: false, code: 'TOO_MANY_TASKS', reason: `Es sind schon ${MAX_OPEN_TASKS} Aufgaben offen. Der Nutzer muss erst welche erledigen oder verwerfen.` }
     }
-    const task = await this.repository.create(userId, taxYear, { kind: input.kind, text, assistant: input.assistant })
+    const task = await this.repository.create(userId, taxYear, { kind: input.kind, text, assistant: input.assistant, clientId: input.clientId })
     return { ok: true, task, existing: false }
   }
 
@@ -63,8 +63,8 @@ export class AssistantTaskService {
   }
 
   /** The tasks one assistant left, with their state: it sees its own, not another assistant's. */
-  async listForAssistant(userId: string, taxYear: number, assistant: string): Promise<AssistantTaskRecord[]> {
-    return (await this.repository.listForUserAndYear(userId, taxYear)).filter((t) => t.assistant === assistant)
+  async listForAssistant(userId: string, taxYear: number, clientId: string): Promise<AssistantTaskRecord[]> {
+    return (await this.repository.listForUserAndYear(userId, taxYear)).filter((t) => t.clientId === clientId)
   }
 
   async decide(userId: string, taxYear: number, taskId: string, decision: AssistantTaskDecision): Promise<AssistantTaskRecord> {

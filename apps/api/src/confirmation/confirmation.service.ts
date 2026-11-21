@@ -310,10 +310,9 @@ export class ConfirmationService {
    * is cleared, or its proposal on a value the user confirmed is dropped. Anything the user entered or
    * confirmed, and anything another assistant wrote, stays.
    */
-  async withdrawAssistantEntry(userId: string, taxYear: number, key: string, assistantName: string): Promise<'zurueckgenommen' | 'vorschlag-entfernt'> {
+  async withdrawAssistantEntry(userId: string, taxYear: number, key: string, own: (provenance: Provenance | undefined) => boolean): Promise<'zurueckgenommen' | 'vorschlag-entfernt'> {
     const a = this.address(key, taxYear)
     const existing = await this.repository.find(userId, a.taxYear, key)
-    const own = (p: Provenance | undefined): boolean => p?.kind === 'assistent' && p.name === assistantName
     if (existing?.proposal && own(existing.proposal.provenance)) {
       const rest = dismissProposal({ ...existing, value: await this.currentValue(userId, a) })
       if (rest === null) await this.repository.remove(userId, a.taxYear, [key])

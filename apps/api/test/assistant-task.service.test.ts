@@ -6,7 +6,7 @@ import { FakeAssistantTaskRepository } from './fakes/fake-assistant-task.reposit
 
 const USER = 'user-1'
 const YEAR = 2025
-const CONFESSION = { kind: 'konfession', text: 'Bitte trage deine Konfession in den Stammdaten ein.', assistant: 'Claude' } as const
+const CONFESSION = { kind: 'konfession', text: 'Bitte trage deine Konfession in den Stammdaten ein.', assistant: 'Claude', clientId: 'client-claude' } as const
 
 describe('AssistantTaskService', () => {
   let service: AssistantTaskService
@@ -17,16 +17,16 @@ describe('AssistantTaskService', () => {
 
   it('stores a task that is open for the user and listed for its assistant', async () => {
     const result = await service.create(USER, YEAR, CONFESSION)
-    expect(result).toMatchObject({ ok: true, existing: false, task: { kind: 'konfession', status: 'offen', assistant: 'Claude' } })
+    expect(result).toMatchObject({ ok: true, existing: false, task: { kind: 'konfession', status: 'offen', assistant: 'Claude', clientId: 'client-claude' } })
     expect((await service.listOpen(USER, YEAR)).map((t) => t.text)).toEqual([CONFESSION.text])
-    expect(await service.listForAssistant(USER, YEAR, 'Claude')).toHaveLength(1)
+    expect(await service.listForAssistant(USER, YEAR, 'client-claude')).toHaveLength(1)
   })
 
   it('keeps tasks apart per user, per year and per assistant', async () => {
     await service.create(USER, YEAR, CONFESSION)
     expect(await service.listOpen('user-2', YEAR)).toEqual([])
     expect(await service.listOpen(USER, YEAR - 1)).toEqual([])
-    expect(await service.listForAssistant(USER, YEAR, 'Another')).toEqual([])
+    expect(await service.listForAssistant(USER, YEAR, 'client-other')).toEqual([])
   })
 
   it('trims the text and refuses an empty or too long one', async () => {
@@ -73,7 +73,7 @@ describe('AssistantTaskService', () => {
     await service.decide(USER, YEAR, a.task.id, 'erledigt')
     await service.decide(USER, YEAR, b.task.id, 'verworfen')
     expect(await service.listOpen(USER, YEAR)).toEqual([])
-    expect((await service.listForAssistant(USER, YEAR, 'Claude')).map((t) => t.status)).toEqual(['erledigt', 'verworfen'])
+    expect((await service.listForAssistant(USER, YEAR, 'client-claude')).map((t) => t.status)).toEqual(['erledigt', 'verworfen'])
   })
 
   it('does not decide a task of another user, an unknown one, or one already decided', async () => {
@@ -83,14 +83,14 @@ describe('AssistantTaskService', () => {
     await expect(service.decide(USER, YEAR, 'nope', 'erledigt')).rejects.toBeInstanceOf(NotFoundError)
     await service.decide(USER, YEAR, created.task.id, 'verworfen')
     await expect(service.decide(USER, YEAR, created.task.id, 'erledigt')).rejects.toBeInstanceOf(NotFoundError)
-    expect((await service.listForAssistant(USER, YEAR, 'Claude'))[0]?.status).toBe('verworfen')
+    expect((await service.listForAssistant(USER, YEAR, 'client-claude'))[0]?.status).toBe('verworfen')
   })
 
   it('refuses a text with a link or a web address', async () => {
     const fresh = new AssistantTaskService(new FakeAssistantTaskRepository())
     for (const text of ['Bitte bestätige unter https://example.com', 'Siehe www.beispiel.de', 'Melde dich bei konto-pruefung.com an']) {
-      expect(await fresh.create('u1', 2025, { kind: 'sonstiges', text, assistant: 'Claude' })).toMatchObject({ ok: false, code: 'TEXT_HAS_LINK' })
+      expect(await fresh.create('u1', 2025, { kind: 'sonstiges', text, assistant: 'Claude', clientId: 'client-claude' })).toMatchObject({ ok: false, code: 'TEXT_HAS_LINK' })
     }
-    expect(await fresh.create('u1', 2025, { kind: 'beleg_nachreichen', text: 'Bitte die Prämienbescheinigung für Juli bis Dezember nachreichen (z.B. als PDF).', assistant: 'Claude' })).toMatchObject({ ok: true })
+    expect(await fresh.create('u1', 2025, { kind: 'beleg_nachreichen', text: 'Bitte die Prämienbescheinigung für Juli bis Dezember nachreichen (z.B. als PDF).', assistant: 'Claude', clientId: 'client-claude' })).toMatchObject({ ok: true })
   })
 })

@@ -192,7 +192,7 @@ describe('BestaetigungService', () => {
 
     it('clears an unconfirmed value the same assistant wrote, and its marking', async () => {
       await service.write(USER, YEAR, 'lstb.lohnsteuer', '700', CLAUDE)
-      expect(await service.withdrawAssistantEntry(USER, YEAR, 'lstb.lohnsteuer', 'Claude')).toBe('zurueckgenommen')
+      expect(await service.withdrawAssistantEntry(USER, YEAR, 'lstb.lohnsteuer', (p) => p?.kind === 'assistent' && p.name === 'Claude')).toBe('zurueckgenommen')
       expect((await lstb.findForUserAndYear(USER, YEAR))?.lohnsteuer ?? null).toBeNull()
       expect(markings.all()).toEqual([])
     })
@@ -200,19 +200,19 @@ describe('BestaetigungService', () => {
     it('drops only its proposal on a value the user confirmed, the user value stays', async () => {
       await lstb.setField(USER, YEAR, 'lohnsteuer', '700')
       await service.write(USER, YEAR, 'lstb.lohnsteuer', '720', CLAUDE)
-      expect(await service.withdrawAssistantEntry(USER, YEAR, 'lstb.lohnsteuer', 'Claude')).toBe('vorschlag-entfernt')
+      expect(await service.withdrawAssistantEntry(USER, YEAR, 'lstb.lohnsteuer', (p) => p?.kind === 'assistent' && p.name === 'Claude')).toBe('vorschlag-entfernt')
       expect((await lstb.findForUserAndYear(USER, YEAR))?.lohnsteuer).toBe('700')
       expect(markings.all()).toEqual([])
     })
 
     it('refuses a value the user entered or confirmed, and one another assistant wrote', async () => {
       await lstb.setField(USER, YEAR, 'lohnsteuer', '700')
-      await expect(service.withdrawAssistantEntry(USER, YEAR, 'lstb.lohnsteuer', 'Claude')).rejects.toMatchObject({ code: 'NOT_OWN_ENTRY' })
+      await expect(service.withdrawAssistantEntry(USER, YEAR, 'lstb.lohnsteuer', (p) => p?.kind === 'assistent' && p.name === 'Claude')).rejects.toMatchObject({ code: 'NOT_OWN_ENTRY' })
       await service.write(USER, YEAR, 'lstb.bruttoarbeitslohn', '5000', OTHER)
-      await expect(service.withdrawAssistantEntry(USER, YEAR, 'lstb.bruttoarbeitslohn', 'Claude')).rejects.toMatchObject({ code: 'NOT_OWN_ENTRY' })
+      await expect(service.withdrawAssistantEntry(USER, YEAR, 'lstb.bruttoarbeitslohn', (p) => p?.kind === 'assistent' && p.name === 'Claude')).rejects.toMatchObject({ code: 'NOT_OWN_ENTRY' })
       await service.write(USER, YEAR, 'rente.jahresbetrag', '1', CLAUDE)
       await service.confirmAnnex(USER, YEAR, 'anlageR')
-      await expect(service.withdrawAssistantEntry(USER, YEAR, 'rente.jahresbetrag', 'Claude')).rejects.toMatchObject({ code: 'NOT_OWN_ENTRY' })
+      await expect(service.withdrawAssistantEntry(USER, YEAR, 'rente.jahresbetrag', (p) => p?.kind === 'assistent' && p.name === 'Claude')).rejects.toMatchObject({ code: 'NOT_OWN_ENTRY' })
     })
 
     it('marks values a non-user wrote another way as unconfirmed, with their source', async () => {
@@ -376,7 +376,7 @@ describe('BestaetigungService', () => {
     })
 
     it('the overview carries the open tasks even when no value is unconfirmed, and logs the read', async () => {
-      const created = await tasks.create(USER, YEAR, { kind: 'konfession', text: 'Bitte trage deine Konfession ein.', assistant: 'Claude' })
+      const created = await tasks.create(USER, YEAR, { kind: 'konfession', text: 'Bitte trage deine Konfession ein.', assistant: 'Claude', clientId: 'client-claude' })
       if (!created.ok) throw new Error('setup')
       expect(await svc.overview(USER, YEAR)).toEqual({
         annexes: [],
@@ -386,7 +386,7 @@ describe('BestaetigungService', () => {
     })
 
     it('the overview carries the tasks next to the unconfirmed values', async () => {
-      await tasks.create(USER, YEAR, { kind: 'bestaetigen', text: 'Bitte bestätige die Anlage N.', assistant: 'Claude' })
+      await tasks.create(USER, YEAR, { kind: 'bestaetigen', text: 'Bitte bestätige die Anlage N.', assistant: 'Claude', clientId: 'client-claude' })
       await svc.write(USER, YEAR, 'lstb.bruttoarbeitslohn', '50000', CLAUDE)
       const overview = await svc.overview(USER, YEAR)
       expect(overview.annexes.map((a) => a.annex)).toEqual(['anlageN'])
@@ -394,16 +394,16 @@ describe('BestaetigungService', () => {
     })
 
     it('settling or discarding a task takes it out of the overview', async () => {
-      const a = await tasks.create(USER, YEAR, { kind: 'konfession', text: 'Erste Aufgabe', assistant: 'Claude' })
-      const b = await tasks.create(USER, YEAR, { kind: 'sonstiges', text: 'Zweite Aufgabe', assistant: 'Claude' })
+      const a = await tasks.create(USER, YEAR, { kind: 'konfession', text: 'Erste Aufgabe', assistant: 'Claude', clientId: 'client-claude' })
+      const b = await tasks.create(USER, YEAR, { kind: 'sonstiges', text: 'Zweite Aufgabe', assistant: 'Claude', clientId: 'client-claude' })
       if (!a.ok || !b.ok) throw new Error('setup')
       expect((await svc.decideTask(USER, YEAR, a.task.id, 'erledigt')).tasks.map((t) => t.id)).toEqual([b.task.id])
       expect((await svc.decideTask(USER, YEAR, b.task.id, 'verworfen')).tasks).toEqual([])
-      expect((await tasks.listForAssistant(USER, YEAR, 'Claude')).map((t) => t.status)).toEqual(['erledigt', 'verworfen'])
+      expect((await tasks.listForAssistant(USER, YEAR, 'client-claude')).map((t) => t.status)).toEqual(['erledigt', 'verworfen'])
     })
 
     it('a task of another user, or one that is not there, is not found', async () => {
-      const created = await tasks.create('user-2', YEAR, { kind: 'konfession', text: 'Fremde Aufgabe', assistant: 'Claude' })
+      const created = await tasks.create('user-2', YEAR, { kind: 'konfession', text: 'Fremde Aufgabe', assistant: 'Claude', clientId: 'client-claude' })
       if (!created.ok) throw new Error('setup')
       await expect(svc.decideTask(USER, YEAR, created.task.id, 'erledigt')).rejects.toMatchObject({ code: 'TASK_NOT_FOUND' })
       await expect(service.decideTask(USER, YEAR, 'nope', 'erledigt')).rejects.toMatchObject({ code: 'TASK_NOT_FOUND' })
