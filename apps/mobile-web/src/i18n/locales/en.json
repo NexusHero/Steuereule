@@ -1713,7 +1713,7 @@
       "nochOffen": "Still open",
       "offenePosten_one": "{{count}} item still open",
       "offenePosten_other": "{{count}} items still open",
-      "herkunftRegel": "Range rule · ADR-015",
+      "herkunftRegel": "While entries are open, we show a range instead of a fixed amount.",
       "herkunftRechenweg_one": "{{count}} open item × {{perItem}} uncertainty",
       "herkunftRechenweg_other": "{{count}} open items × {{perItem}} uncertainty",
       "gatedHeading": "Honestly: we're not good enough for this yet.",

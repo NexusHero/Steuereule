@@ -1713,7 +1713,7 @@
       "nochOffen": "Noch offen",
       "offenePosten_one": "{{count}} Posten offen",
       "offenePosten_other": "{{count}} Posten offen",
-      "herkunftRegel": "Spannen-Regel · ADR-015",
+      "herkunftRegel": "Solange Angaben offen sind, zeigen wir eine Spanne statt eines festen Betrags.",
       "herkunftRechenweg_one": "{{count}} offener Posten × {{perItem}} Unsicherheit",
       "herkunftRechenweg_other": "{{count}} offene Posten × {{perItem}} Unsicherheit",
       "gatedHeading": "Ehrlich: dafür sind wir noch nicht gut genug.",

@@ -188,7 +188,8 @@ describe('CockpitScreen', () => {
 
     await screen.findByText('Erfasstes Einkommen')
     fireEvent.click(screen.getByText('Herkunft'))
-    expect(screen.getByText('Spannen-Regel · ADR-015')).toBeTruthy()
+    expect(screen.getByText('Solange Angaben offen sind, zeigen wir eine Spanne statt eines festen Betrags.')).toBeTruthy()
+    expect(screen.queryByText(/ADR-/)).toBeNull()
     expect(screen.getByText('2 offene Posten × 60 € Unsicherheit')).toBeTruthy()
   })
 
