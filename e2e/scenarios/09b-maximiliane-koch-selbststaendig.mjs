@@ -593,7 +593,9 @@ export async function runScenario09b(browser, webOrigin) {
     newValue: JSON.stringify({ date: `${YEAR}-03-01`, documentNumber: 'RE-17', text: 'Druckerpapier', lines: [{ account: '4930', side: 'debit', amount: 11900, taxKey: 'vst19' }, { account: '1200', side: 'credit', amount: 11900 }] }),
     beforeRefundEur: 0, afterRefundEur: 0, deltaEur: 0, reason: 'Aus der Rechnung gelesen.', sourceId: 'estg-4-3', paragraph: '§ 4 Abs. 3 EStG',
   })
-  await page.route('**/advisor/session', async (route) => {
+  // The session is read with `?conversationId=…`: the pattern must take the query too (as chat-first-layout does).
+  await page.route('**/advisor/session*', async (route) => {
+    if (route.request().method() !== 'GET') return route.fallback()
     const res = await route.fetch().catch(() => null)
     if (res === null) return
     const body = await res.json()
@@ -608,7 +610,7 @@ export async function runScenario09b(browser, webOrigin) {
   await see('buchung-entwurf-verwerfen')
   await see('buchung-entwurf-gebucht')
   await see('buchung-entwurf-rueckgaengig')
-  await page.unroute('**/advisor/session', { behavior: 'ignoreErrors' })
+  await page.unroute('**/advisor/session*', { behavior: 'ignoreErrors' })
 
   // --- Checkout at the self-employment price; an unconfigured tier says so --------------------------------------------------------
   await page.route(`${API}/checkout`, (route) => route.fulfill(json({ statusCode: 503, code: 'PAYMENT_TIER_NOT_CONFIGURED', message: 'x' }, 503)))
