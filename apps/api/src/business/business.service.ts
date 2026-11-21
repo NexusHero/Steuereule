@@ -32,6 +32,7 @@ import {
   chartAccounts,
   BANK_CSV_PRESETS,
   USEFUL_LIVES,
+  type AssetCategory,
   appendLogRecord,
   applyLosses,
   balanceSheet,
@@ -815,7 +816,8 @@ export class BusinessService {
       acquisitionCost: input.acquisitionCostCents,
       method: input.method,
       category: input.category ?? null,
-      usefulLifeYears: input.usefulLifeYears ?? null,
+      // The category sets the useful life when none is given (the DTO's contract), as on the booking path.
+      usefulLifeYears: input.usefulLifeYears ?? (input.category && Object.hasOwn(USEFUL_LIVES, input.category) ? USEFUL_LIVES[input.category as AssetCategory].years : null),
       specialDepreciation: input.specialDepreciation ? JSON.stringify(input.specialDepreciation) : null,
       disposal: null,
       buildingFacts: input.building ? JSON.stringify(input.building) : null,

@@ -539,6 +539,13 @@ describe('BusinessService (ADR-0101)', () => {
     expect(p.minijobCharges).toEqual([{ month: 1, totalEur: 203.82 }])
   })
 
+  it('adds a computer by its category, without a useful life of its own (09b in CI, 21.11.2026)', async () => {
+    const { service, repository } = setup()
+    await service.createAsset('u', 2025, A1, { label: 'Laptop', account: '0410', acquisitionDate: '2025-02-15', acquisitionCostCents: 150_000, method: 'linear', category: 'computer' })
+    const [laptop] = await repository.listAssets('u', A1, 2025)
+    expect([laptop?.label, laptop?.usefulLifeYears]).toEqual(['Laptop', 1])
+  })
+
   it('adds an electric vehicle with the 75 % AfA, and stores nothing it cannot depreciate (§ 7 Abs. 2a EStG)', async () => {
     const { service, repository } = setup()
     const base = { label: 'E-Transporter', account: '0350', acquisitionCostCents: 4_000_000, method: 'elektrofahrzeug' }
